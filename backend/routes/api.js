@@ -239,7 +239,7 @@ import { withEventPlaces } from "../lib/raceTimeline.js"; // #6350
 import { meanPhysiology, BENCHMARK_FIELDS } from "../lib/physiologyBenchmark.js";
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
 import { getScoutState, startTargetAssignment, startMission, cancelAssignment, loadScout, loadScoutHistory } from "../lib/scoutAssignmentService.js";
-import { recordScoutLooks } from "../lib/potentialEstimateWriter.js"; // #7685
+import { recordScoutLooks, loadEstimateDevelopmentXp } from "../lib/potentialEstimateWriter.js"; // #7685, #6110 F1
 import {
   buildTypeCeilingBands, buildVerdict, scoutPrecisionInfo,
   buildTypePrognosisBands, roleCeilRating, ratingFromAbilities,
@@ -2483,7 +2483,7 @@ router.post("/scouting/estimates", requireAuth, presencePulseLimiter, async (req
     // Caps forlader stadig ALDRIG serveren (#1162): kun det maskerede bånd gør.
     // #3014 · ids kan have op til 500 rytter-ids (grænsen ovenfor) — 500 UUID'er
     // ≈ 18,5 KB, over PostgRESTs ~16 KB URL-længde-cap. Chunket via fetchAllRowsChunkedIn.
-    const [{ state }, scout, riders, abilityRows, seasonNumber] = await Promise.all([
+    const [{ state }, scout, riders, abilityRows, seasonNumber, prognosisXp] = await Promise.all([
       loadScoutState(req.team.id),
       loadScout(req.team.id, supabase),
       fetchAllRowsChunkedIn(ids, (chunk) => supabase
@@ -2491,12 +2491,13 @@ router.post("/scouting/estimates", requireAuth, presencePulseLimiter, async (req
       fetchAllRowsChunkedIn(ids, (chunk) => supabase
         .from("rider_derived_abilities").select("*").in("rider_id", chunk).order("rider_id")),
       getActiveSeasonNumber(),
+      loadEstimateDevelopmentXp(supabase), // #6110 F1: null = prognosen som foer
     ]);
     const abilitiesByRider = new Map((abilityRows ?? []).map((row) => [row.rider_id, row]));
     const academyPrognoses = await loadAcademyPrognoses(supabase, {
       enabled: (riders ?? []).some((r) => r.team_id === req.team.id && r.is_academy)
         && await isAcademyKnowledgeEnabled(supabase), teamId: req.team.id,
-      riders: riders ?? [], abilitiesByRider, seasonNumber, scout,
+      riders: riders ?? [], abilitiesByRider, seasonNumber, scout, developmentXp: prognosisXp,
     });
     // #3213: holdets ægte spejder driver rest-båndets gulv (#2244) — uden den
     // faldt beregningen tavst tilbage til DEFAULT_SCOUT for alle hold.
@@ -2530,6 +2531,7 @@ router.post("/scouting/estimates", requireAuth, presencePulseLimiter, async (req
             riderId: rider.id,
             teamId: req.team.id,
             scout,
+            developmentXp: prognosisXp,
           });
           // #6853: én regel for hvilken rolle der vises (potentialDisplayBand.js).
           const band = displayPotentialBand(bands, rider.primary_type);
@@ -2612,10 +2614,11 @@ router.get("/development/transition", requireAuth, async (req, res) => {
     }
     if (!backupRows?.length) return res.json({ active: false });
 
-    const [{ data: abilityRows, error: abErr }, seasonNumber, scout] = await Promise.all([
+    const [{ data: abilityRows, error: abErr }, seasonNumber, scout, prognosisXp] = await Promise.all([
       supabase.from("rider_derived_abilities").select("*").in("rider_id", ids),
       getActiveSeasonNumber(),
       loadScout(req.team.id, supabase),
+      loadEstimateDevelopmentXp(supabase), // #6110 F1
     ]);
     if (abErr) throw new Error(`rider_derived_abilities (transition): ${abErr.message}`);
 
@@ -2638,7 +2641,7 @@ router.get("/development/transition", requireAuth, async (req, res) => {
         nowAbilities: ab, age,
         primaryType: rider.primary_type, secondaryType: rider.secondary_type,
         potentiale: rider.potentiale,
-        level: SCOUTING_CONFIG.maxLevel, riderId: rider.id, teamId: req.team.id, scout,
+        level: SCOUTING_CONFIG.maxLevel, riderId: rider.id, teamId: req.team.id, scout, developmentXp: prognosisXp,
       });
       const band = bands.find((x) => x.key === rider.primary_type) ?? null;
       if (before.captured_at && (!capturedAt || before.captured_at > capturedAt)) capturedAt = before.captured_at;
@@ -2868,10 +2871,11 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
       .from("rider_derived_abilities").select("*").eq("rider_id", rider.id).maybeSingle();
     if (abErr) throw new Error(abErr.message);
 
+    const prognosisXp = await loadEstimateDevelopmentXp(supabase); // #6110 F1: null = prognosen som foer
     const academyPrognoses = await loadAcademyPrognoses(supabase, {
       enabled: own && rider.is_academy && await isAcademyKnowledgeEnabled(supabase), teamId: req.team.id,
       riders: [rider], abilitiesByRider: new Map([[rider.id, ab]]),
-      seasonNumber: await getActiveSeasonNumber(), scout,
+      seasonNumber: await getActiveSeasonNumber(), scout, developmentXp: prognosisXp,
     });
     if (academyPrognoses.has(rider.id)) {
       return res.json({ own: true, ...academyEstimate(academyPrognoses.get(rider.id)) });
@@ -2893,7 +2897,7 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
       // scoutede potentiale-interval (bias + halvbredde, se scoutingReport.js).
       types = buildTypePrognosisBands({
         nowAbilities: ab, age, primaryType: rider.primary_type, secondaryType: rider.secondary_type,
-        potentiale: rider.potentiale, level, riderId: rider.id, teamId: req.team.id, scout,
+        potentiale: rider.potentiale, level, riderId: rider.id, teamId: req.team.id, scout, developmentXp: prognosisXp,
       }).map((t) => ({
         ...t,
         // #3746: `ceilLo/ceilHi` er en ALIAS for prognose-båndet (kompatibilitet
@@ -19031,9 +19035,9 @@ router.get("/academy/me", requireAuth, async (req, res) => {
     // #3746/#3213: prognose-motoren kræver sæson-alder + holdets ÆGTE spejder
     // (samme mønster som estimates/scouting-report-ruterne, der begge sender
     // scout eksplicit) — én hentning hver, genbruges for alle kandidater.
-    const [prognosisSeasonNumber, prognosisScout] = candidateIds.length > 0
-      ? await Promise.all([getActiveSeasonNumber(), loadScout(teamId, supabase)])
-      : [null, null];
+    const [prognosisSeasonNumber, prognosisScout, prognosisXp] = candidateIds.length > 0
+      ? await Promise.all([getActiveSeasonNumber(), loadScout(teamId, supabase), loadEstimateDevelopmentXp(supabase)]) // #6110 F1
+      : [null, null, null];
 
     // #1748 (b): en 'offered' intake-kandidat der i mellemtiden er blevet anskaffet
     // ad en anden vej (vundet på ungdomsauktion af et andet hold → is_academy=true /
@@ -19079,6 +19083,7 @@ router.get("/academy/me", requireAuth, async (req, res) => {
           riderId: row.rider_id,
           teamId,
           scout: prognosisScout,
+          developmentXp: prognosisXp,
         });
         const band = bands.find((b) => b.key === potRow.primary_type) ?? null;
         if (band && band.progLo != null) {
