@@ -15,17 +15,25 @@
  *      `action_timing_windows` (database/2026-11-13-8101-action-timing.sql).
  *      Lederen læser hele døgnet med én SELECT:
  *        select * from public.action_timing_summary(24);
- *   3. ALARM (samme tick): en handling der i kvarteret har for mange kald over
- *      3 sekunder, giver én besked til Discord-ops. Dubletspærren
- *      (opsAlertDedupe.js) gør, at hver handling højst giver ÉN besked pr.
- *      alarmvindue, med en opsummering af det kvarter der udløste den.
+ *   3. ALARM (samme tick): en handling der bryder kvarter- ELLER time-reglen,
+ *      giver én besked til Discord-ops. Dubletspærren (opsAlertDedupe.js) gør,
+ *      at hver handling højst giver ÉN besked pr. alarmvindue, uanset hvilken
+ *      af de to regler der fyrede. Handlinger på listen over KENDTE brud
+ *      (KNOWN_BREACHES) måles og gemmes som alle andre, men giver i stedet højst
+ *      ÉN samlet påmindelse i døgnet ("stadig over loftet: ...").
  *
  * Hvorfor reglerne ser ud som de gør (kvalitativt; tallene står i #8101):
  *   - Sjældne handlinger (Træn nu, Opret hold) bruges få gange om dagen, og hvert
  *     tryk er en spiller der venter. Ét langsomt kald er nok.
- *   - De hyppige handlinger har i dag enkelte spredte kald over 3 s. Alarmen
- *     kræver både et minimum af langsomme kald og en andel over dagens
+ *   - De hyppige handlinger har i dag enkelte spredte kald over 3 s. Kvarter-
+ *     reglen kræver både et minimum af langsomme kald og en andel over dagens
  *     udgangspunkt, så den ikke hyler fra dag ét, men fyrer når det bliver værre.
+ *   - Time-reglen (designet i #8101: over 20 % af kaldene den seneste time, mindst
+ *     5 kald) fanger langsomhed der er spredt jævnt ud, så intet enkelt kvarter
+ *     når minimum på 3 langsomme kald.
+ *   - "Opret hold" og "gem holdprofil" deler ruten PUT /api/teams/my. Ruten
+ *     markerer selv en rigtig oprettelse (`markActionTiming`), så kun den tæller
+ *     som Opret hold; profil-gem måles under en egen nøgle uden alarm.
  *   - Hængende forbindelser (meget lange kald) er en anden fejl end langsom kode
  *     (#8101-noten). De tælles for sig og udløser ikke 3-sekunders-alarmen.
  *   - 5xx-svar springes over (Sentry fanger dem), og de første minutter efter
@@ -42,6 +50,13 @@ export const ALERT_WINDOW_MS = 6 * 60 * 60 * 1000;
 export const WARMUP_MS = 2 * 60 * 1000;
 export const MIN_SLOW_CALLS = 3;
 export const MAX_SLOW_SHARE = 0.1;
+// Time-reglen fra designet i #8101: over 20 % af kaldene den seneste time, kun
+// når der var mindst 5 kald.
+export const HOUR_WINDOW_MS = 60 * 60 * 1000;
+export const HOUR_MIN_CALLS = 5;
+export const HOUR_MAX_SLOW_SHARE = 0.2;
+// Kendte brud giver højst én samlet påmindelse pr. fast UTC-døgn.
+export const KNOWN_BREACH_REMINDER_MS = 24 * 60 * 60 * 1000;
 export const RETENTION_DAYS = 35;
 // Øvre grænse (ms) for hver histogram-spand; sidste spand er "over den sidste".
 // SKAL matche bounds-arrayet i database/2026-11-13-8101-action-timing.sql (testet).
@@ -88,7 +103,9 @@ export const ACTIONS = [
       ["POST", "/api/transfers"],
     ],
   },
-  { key: "team_create", label: "Opret hold", rare: true, routes: [["PUT", "/api/teams/my"]] },
+  // Ingen egen rute: PUT /api/teams/my matches som team_profile_save og løftes
+  // til team_create, når ruten markerer en rigtig oprettelse (se SECONDARY_ACTIONS).
+  { key: "team_create", label: "Opret hold", rare: true, routes: [] },
   {
     key: "dashboard_open",
     label: "Åbn forsiden",
@@ -99,13 +116,45 @@ export const ACTIONS = [
   },
 ];
 
-const ACTION_BY_KEY = new Map(ACTIONS.map((a) => [a.key, a]));
+/**
+ * Målt, men aldrig alarmerende. PUT /api/teams/my bruges både til at oprette
+ * holdet og til at gemme holdnavn/managernavn bagefter. Et langsomt profil-gem må
+ * ikke give en alarm med titlen "Opret hold"; men tallet er gratis at gemme og
+ * viser i opgørelsen, om ruten som helhed er langsom. `promotesTo` er den eneste
+ * nøgle, ruten må løfte kaldet til (via `markActionTiming`).
+ */
+export const SECONDARY_ACTIONS = [
+  {
+    key: "team_profile_save",
+    label: "Gem holdprofil",
+    alert: false,
+    promotesTo: "team_create",
+    routes: [["PUT", "/api/teams/my"]],
+  },
+];
+
+/**
+ * KENDTE brud: handlinger der i dag ligger over loftet, og som har en åben opgave.
+ * De måles og står i opgørelsen som alle andre, men giver højst ÉN samlet
+ * påmindelse i døgnet i stedet for en alarm pr. handling pr. 6 timer. Fjern en
+ * linje, når opgaven er løst; så alarmerer handlingen som alle andre igen.
+ *   - Træn nu: #7982 (svaret tager 10 til 22 s).
+ *   - Opret hold: #8143 (serverens mange ture til databasen; der findes ingen
+ *     egen opgave for opret hold, og det er de samme ture der gør den langsom).
+ */
+export const KNOWN_BREACHES = Object.freeze([
+  Object.freeze({ key: "train_now", issue: 7982 }),
+  Object.freeze({ key: "team_create", issue: 8143 }),
+]);
+
+const MEASURED_ACTIONS = [...ACTIONS, ...SECONDARY_ACTIONS];
+const ACTION_BY_KEY = new Map(MEASURED_ACTIONS.map((a) => [a.key, a]));
 
 // Forkompilerede matchere grupperet pr. metode: et request uden for listen
 // koster ét Map-opslag og højst et par regex-tests.
 const MATCHERS_BY_METHOD = (() => {
   const byMethod = new Map();
-  for (const action of ACTIONS) {
+  for (const action of MEASURED_ACTIONS) {
     for (const [method, pattern] of action.routes) {
       if (!byMethod.has(method)) byMethod.set(method, []);
       byMethod.get(method).push({ key: action.key, re: new RegExp(`^${pattern}/?$`) });
@@ -166,20 +215,70 @@ export function summarizeDurations(durations) {
   };
 }
 
+/** Langsomme kald i en opgørelse: over 3 s, men ikke hængende (egen fejlklasse). */
+export function slowCallsOf(summary) {
+  return Math.max(0, (summary?.over3s ?? 0) - (summary?.hung ?? 0));
+}
+
 /**
- * Alarm-reglen for ét vindue. Hængende kald tæller ikke med (egen fejlklasse).
- * @param {{ key: string, summary: ReturnType<typeof summarizeDurations> }} args
- * @returns {{ breach: boolean, slowCalls: number, share: number }}
+ * Alarm-reglerne for én handling. Hængende kald tæller ikke med (egen fejlklasse).
+ *   - Kvarter: sjælden handling ved ét langsomt kald; ellers mindst 3 langsomme
+ *     kald og mindst 10 % af kvarterets kald.
+ *   - Time: over 20 % af kaldene den seneste time, kun med mindst 5 kald.
+ * `rule` er "quarter", "hour", "both" eller null. To regler giver stadig kun ét
+ * brud (og dermed højst én besked) for handlingen.
+ * @param {{ key: string, summary: ReturnType<typeof summarizeDurations>,
+ *           hour?: { calls: number, slowCalls: number } }} args
  */
-export function evaluateBreach({ key, summary }) {
+export function evaluateBreach({ key, summary, hour }) {
   const action = ACTION_BY_KEY.get(key);
-  const slowCalls = Math.max(0, (summary?.over3s ?? 0) - (summary?.hung ?? 0));
+  const slowCalls = slowCallsOf(summary);
   const calls = summary?.calls ?? 0;
   const share = calls > 0 ? slowCalls / calls : 0;
-  if (!action || slowCalls === 0) return { breach: false, slowCalls, share };
-  if (action.rare) return { breach: true, slowCalls, share };
-  return { breach: slowCalls >= MIN_SLOW_CALLS && share >= MAX_SLOW_SHARE, slowCalls, share };
+  const hourCalls = hour?.calls ?? 0;
+  const hourSlowCalls = hour?.slowCalls ?? 0;
+  const hourShare = hourCalls > 0 ? hourSlowCalls / hourCalls : 0;
+  const base = { slowCalls, share, hourCalls, hourSlowCalls, hourShare };
+  if (!action || action.alert === false) return { breach: false, rule: null, ...base };
+
+  const quarter = slowCalls > 0 && (action.rare ? true : slowCalls >= MIN_SLOW_CALLS && share >= MAX_SLOW_SHARE);
+  const hourly = hourCalls >= HOUR_MIN_CALLS && hourShare > HOUR_MAX_SLOW_SHARE;
+  const rule = quarter && hourly ? "both" : quarter ? "quarter" : hourly ? "hour" : null;
+  return { breach: rule !== null, rule, ...base };
 }
+
+/**
+ * Den seneste times kvarterer pr. handling, i hukommelsen (én pr. proces). Hver
+ * flush lægger sit kvarter til; time-reglen lægger de kvarterer sammen, der
+ * sluttede inden for den seneste time (dette + de tre foregående).
+ */
+export function createHourHistory({ windowMs = HOUR_WINDOW_MS } = {}) {
+  const byKey = new Map();
+  const prune = (list, atMs) => {
+    while (list.length && list[0].atMs <= atMs - windowMs) list.shift();
+  };
+  return {
+    add(key, atMs, calls, slowCalls) {
+      let list = byKey.get(key);
+      if (!list) byKey.set(key, (list = []));
+      list.push({ atMs, calls, slowCalls });
+      prune(list, atMs);
+    },
+    totals(key, atMs) {
+      const list = byKey.get(key) ?? [];
+      prune(list, atMs);
+      let calls = 0;
+      let slowCalls = 0;
+      for (const e of list) {
+        calls += e.calls;
+        slowCalls += e.slowCalls;
+      }
+      return { calls, slowCalls };
+    },
+  };
+}
+
+export const defaultHourHistory = createHourHistory();
 
 /** Start på det faste alarmvindue (UTC-justeret), som `now` ligger i. */
 export function alertWindowStart(now, windowMs = ALERT_WINDOW_MS) {
@@ -228,6 +327,23 @@ export function createActionTimingRecorder({ nowMs = () => Date.now(), bootMs, w
 export const defaultActionTimingRecorder = createActionTimingRecorder();
 
 /**
+ * Ruten fortæller måleren, hvilken handling kaldet reelt var. Bruges af
+ * PUT /api/teams/my, når `upsertOwnTeamProfile` har oprettet holdet
+ * (`result.created`). Intet databasekald, ingen ændring i svaret; kaster aldrig.
+ * Middlewaren accepterer kun en nøgle, som den matchede rutes `promotesTo` tillader.
+ */
+export function markActionTiming(res, key) {
+  try {
+    if (res && ACTION_BY_KEY.has(key)) {
+      if (!res.locals) res.locals = {};
+      res.locals.actionTimingKey = key;
+    }
+  } catch {
+    // best-effort: en tabt markering betyder kun, at kaldet tælles som profil-gem.
+  }
+}
+
+/**
  * Express-middleware. Placeres tidligt i server.js, så hele serverens tid tæller.
  * @param {{ recorder?: ReturnType<typeof createActionTimingRecorder>, clock?: () => number }} [opts]
  */
@@ -242,7 +358,9 @@ export function createActionTimingMiddleware({
         const started = clock();
         res.once("finish", () => {
           try {
-            recorder.record(key, clock() - started, res.statusCode);
+            const marked = res.locals?.actionTimingKey;
+            const finalKey = marked && marked === ACTION_BY_KEY.get(key)?.promotesTo ? marked : key;
+            recorder.record(finalKey, clock() - started, res.statusCode);
           } catch {
             // best-effort: måleren må aldrig kunne vælte et svar (#8101); en
             // tabt måling er harmløs, og et kast her ville ramme Node's event-emitter.
@@ -261,18 +379,31 @@ function fmtSeconds(ms) {
   return `${(ms / 1000).toFixed(2).replace(".", ",")} s`;
 }
 
+const pctText = (share) => `${Math.round(share * 100)} %`;
+
 /** Discord-embed for én handling i ét vindue. */
-export function buildBreachEmbed({ key, summary, windowStart, windowEnd, slowCalls, share }) {
+export function buildBreachEmbed({
+  key,
+  summary,
+  windowStart,
+  windowEnd,
+  slowCalls,
+  share,
+  rule = "quarter",
+  hourCalls = 0,
+  hourSlowCalls = 0,
+  hourShare = 0,
+}) {
   const label = ACTION_BY_KEY.get(key)?.label ?? key;
-  const pct = `${Math.round(share * 100)} %`;
   const minutes = Math.max(1, Math.round((windowEnd.getTime() - windowStart.getTime()) / 60000));
+  const quarterLine = `${slowCalls} af ${summary.calls} kald tog over 3 sekunder de seneste ${minutes} min (${pctText(share)}).`;
+  const hourLine = `${hourSlowCalls} af ${hourCalls} kald tog over 3 sekunder den seneste time (${pctText(hourShare)}).`;
+  const lines = rule === "hour" ? [hourLine] : rule === "both" ? [quarterLine, hourLine] : [quarterLine];
   return {
     embeds: [
       {
         title: `Svartid over 3 s: ${label}`,
-        description:
-          `${slowCalls} af ${summary.calls} kald tog over 3 sekunder de seneste ${minutes} min (${pct}).\n` +
-          "Hele døgnet: `select * from public.action_timing_summary(24);`",
+        description: `${lines.join("\n")}\nHele døgnet: \`select * from public.action_timing_summary(24);\``,
         color: 0xe67e22,
         fields: [
           { name: "Kald", value: String(summary.calls), inline: true },
@@ -284,6 +415,33 @@ export function buildBreachEmbed({ key, summary, windowStart, windowEnd, slowCal
         ],
         footer: { text: "Højst én besked pr. handling pr. 6 timer (#8101)" },
         timestamp: windowEnd.toISOString(),
+      },
+    ],
+  };
+}
+
+/**
+ * Én samlet påmindelse om kendte brud (højst én pr. døgn).
+ * @param {{ breaches: object[], knownBreaches: ReadonlyArray<{key: string, issue: number}>, now: Date }} args
+ */
+export function buildKnownBreachEmbed({ breaches, knownBreaches, now }) {
+  const issueOf = new Map(knownBreaches.map((k) => [k.key, k.issue]));
+  const names = breaches.map((b) => `${ACTION_BY_KEY.get(b.key)?.label ?? b.key} (#${issueOf.get(b.key)})`);
+  const detail = breaches.map((b) => {
+    const label = ACTION_BY_KEY.get(b.key)?.label ?? b.key;
+    return `${label}: ${b.slowCalls} af ${b.summary.calls} kald over 3 s i kvarteret, langsomste ${fmtSeconds(b.summary.maxMs)}`;
+  });
+  return {
+    embeds: [
+      {
+        title: "Kendte brud på svartids-loftet",
+        description:
+          `Stadig over loftet: ${names.join(", ")}.\n${detail.join("\n")}\n` +
+          "Kendt og har en opgave, derfor kun én påmindelse i døgnet. Hele døgnet: " +
+          "`select * from public.action_timing_summary(24);`",
+        color: 0x95a5a6,
+        footer: { text: "Højst én påmindelse pr. døgn; fjern handlingen fra KNOWN_BREACHES når opgaven er løst (#8101)" },
+        timestamp: now.toISOString(),
       },
     ],
   };
@@ -306,11 +464,14 @@ let missingTableLogged = false;
  * @param {{ supabase: object, recorder?: ReturnType<typeof createActionTimingRecorder>,
  *           now?: Date, sendWebhookFn?: Function, getOpsWebhookFn?: Function,
  *           captureExceptionFn?: Function, procId?: string }} args
- * @returns {Promise<{ rows: object[], breaches: object[], alerted: string[], persisted: boolean }>}
+ * @returns {Promise<{ rows: object[], breaches: object[], alerted: string[],
+ *                     reminded: string[], persisted: boolean }>}
  */
 export async function runActionTimingFlush({
   supabase,
   recorder = defaultActionTimingRecorder,
+  hourHistory = defaultHourHistory,
+  knownBreaches = KNOWN_BREACHES,
   now = new Date(),
   sendWebhookFn,
   getOpsWebhookFn,
@@ -320,10 +481,11 @@ export async function runActionTimingFlush({
   const { windowStart, windowEnd, perAction } = recorder.drain();
   const rows = [];
   const breaches = [];
-  for (const action of ACTIONS) {
+  for (const action of MEASURED_ACTIONS) {
     const durations = perAction.get(action.key);
     if (!durations?.length) continue;
     const summary = summarizeDurations(durations);
+    hourHistory.add(action.key, now.getTime(), summary.calls, slowCallsOf(summary));
     rows.push({
       window_start: windowStart.toISOString(),
       window_end: windowEnd.toISOString(),
@@ -337,9 +499,13 @@ export async function runActionTimingFlush({
       hung: summary.hung,
       buckets: summary.buckets,
     });
-    const verdict = evaluateBreach({ key: action.key, summary });
+    const hour = hourHistory.totals(action.key, now.getTime());
+    const verdict = evaluateBreach({ key: action.key, summary, hour });
     if (verdict.breach) breaches.push({ key: action.key, summary, ...verdict });
   }
+  const knownKeys = new Set(knownBreaches.map((k) => k.key));
+  const knownHits = breaches.filter((b) => knownKeys.has(b.key));
+  const newBreaches = breaches.filter((b) => !knownKeys.has(b.key));
 
   let persisted = false;
   if (rows.length && supabase) {
@@ -360,12 +526,13 @@ export async function runActionTimingFlush({
   }
 
   const alerted = [];
+  const reminded = [];
   const url = breaches.length && supabase && getOpsWebhookFn ? await getOpsWebhookFn() : null;
   // Uden en kanal at sende til claimes vinduet ikke: ellers ville en midlertidigt
   // manglende webhook bruge vinduet op, og bruddet ville aldrig blive meldt.
   if (url && sendWebhookFn) {
     const signature = buildAlertSignature([alertWindowStart(now).toISOString()]);
-    for (const b of breaches) {
+    for (const b of newBreaches) {
       // Én besked pr. handling pr. alarmvindue: signaturen er vinduets start, så
       // første brud i et nyt vindue er "ændret", og resten af vinduet er stille.
       // Fail-safe-stille ved læsefejl: en svartids-alarm hvert kvarter er værre
@@ -387,9 +554,29 @@ export async function runActionTimingFlush({
       await shouldAlertOnChange(dedupe);
       alerted.push(b.key);
     }
+
+    // Kendte brud: én samlet påmindelse pr. fast UTC-døgn, uanset hvor mange af
+    // dem der bryder, og hvor mange kvarterer de gør det i. Samme spørg-send-
+    // claim-mønster som ovenfor.
+    if (knownHits.length) {
+      const dedupe = {
+        supabase,
+        alertKey: `${ALERT_KEY_PREFIX}:known-breaches`,
+        signature: buildAlertSignature([alertWindowStart(now, KNOWN_BREACH_REMINDER_MS).toISOString()]),
+        now,
+        captureExceptionFn,
+        alertOnReadError: false,
+      };
+      const { alert } = await shouldAlertOnChange({ ...dedupe, claim: false });
+      if (alert) {
+        await sendWebhookFn(url, buildKnownBreachEmbed({ breaches: knownHits, knownBreaches, now }));
+        await shouldAlertOnChange(dedupe);
+        reminded.push(...knownHits.map((b) => b.key));
+      }
+    }
   }
 
-  return { rows, breaches, alerted, persisted };
+  return { rows, breaches, alerted, reminded, persisted };
 }
 
 let configuredFlush = null;
