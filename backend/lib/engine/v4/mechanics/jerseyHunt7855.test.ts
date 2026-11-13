@@ -220,6 +220,72 @@ test("#7855 C kalibrering: en hel dags jagt alene svarer til prisordet Haard", (
   }
 });
 
+// ── Frikortet (dom 2): jagten er aldrig en billigere vej til samme loeb ───────
+
+const huntWorked = (run: Run, id: string) => [...passagesOf(run, "sprint"), ...passagesOf(run, "kom")].filter((p) => p.hunt_work_7855?.includes(id)).length;
+
+test("#7855 frikort (dom 2): fri rolle og sprinterkaptajn betaler aldrig mindre med jagt end for samme loeb uden opgaven", () => {
+  // De kaemper om passagerne i forvejen, saa opgaven giver dem samme loeb som foelg med (samme indsats).
+  const cases: Array<{ id: string; role: string; task: "hunt_points" | "hunt_kom"; profiles: string[] }> = [
+    { id: "t0r1", role: "sprint_captain", task: "hunt_points", profiles: ["flat", "hilly", "mountain"] },
+    { id: "t0r4", role: "free_role", task: "hunt_points", profiles: ["flat", "hilly", "mountain"] },
+    { id: "t0r4", role: "free_role", task: "hunt_kom", profiles: ["hilly", "mountain"] },
+  ];
+  for (const c of cases) {
+    assert.equal(frozenField().find((r) => r.rider_id === c.id)!.role, c.role);
+    for (const profile of c.profiles) {
+      for (const seed of SEEDS.slice(0, 3)) {
+        const label = `${c.role} ${c.task} ${profile} ${seed}`;
+        const hunt = runStage(stageRow(profile), seed, { [c.id]: [{ task: c.task }] });
+        const follow = runStage(stageRow(profile), seed, { [c.id]: [{ task: "follow_moves" }] });
+        assert.ok(hunt.output.stage_plan_load_efforts?.[c.id], `${label}: planen er gyldig`);
+        assert.ok([...passagesOf(hunt, "sprint"), ...passagesOf(hunt, "kom")].some((p) => p.hunters?.includes(c.id)), `${label}: han jager`);
+        assert.deepEqual(timesOf(hunt), timesOf(follow), `${label}: samme loeb som foelg med`);
+        assert.ok(fatigueOf(hunt, c.id) >= fatigueOf(follow, c.id), `${label}: jagten er aldrig billigere end foelg med`);
+      }
+    }
+  }
+});
+
+test("#7855 valg 3: hver passage opgaven faar en hjaelper til at koere med om, koster oveni samme indsats uden opgaven", () => {
+  const cases: Array<{ id: string; task: "hunt_points" | "hunt_kom"; rows: Array<() => Record<string, unknown>> }> = [
+    { id: "t0r2", task: "hunt_points", rows: [() => stageRow("flat"), flatTwoSprints, () => stageRow("hilly"), () => stageRow("mountain")] },
+    { id: "t1r2", task: "hunt_kom", rows: [() => stageRow("hilly"), () => stageRow("mountain")] },
+  ];
+  let paid = 0;
+  for (const c of cases) {
+    for (const row of c.rows) {
+      for (const seed of SEEDS.slice(0, 3)) {
+        const hunt = runStage(row(), seed, { [c.id]: [{ task: c.task }] });
+        const tempo = runStage(row(), seed, { [c.id]: [{ task: "tempo" }] });
+        assert.deepEqual(timesOf(hunt), timesOf(tempo), "samme indsats i loebet: samme loeb");
+        const label = `${c.task} ${hunt.profile} ${seed}`;
+        if (huntWorked(hunt, c.id) > 0) {
+          paid++;
+          assert.ok(fatigueOf(hunt, c.id) > fatigueOf(tempo, c.id), `${label}: han spurtede mere og betaler mere`);
+        } else {
+          assert.ok(fatigueOf(hunt, c.id) >= fatigueOf(tempo, c.id), `${label}: aldrig billigere`);
+        }
+      }
+    }
+  }
+  assert.ok(paid > 0, "scenarierne skal ramme betalte passager");
+});
+
+test("#7855 valg 3: to betalte spurter koster mere end én", () => {
+  let compared = 0;
+  for (const seed of SEEDS.slice(0, 3)) {
+    const one = runStage(stageRow("flat"), seed, { t0r2: [{ task: "hunt_points" }] });
+    const oneBase = runStage(stageRow("flat"), seed, { t0r2: [{ task: "tempo" }] });
+    const two = runStage(flatTwoSprints(), seed, { t0r2: [{ task: "hunt_points" }] });
+    const twoBase = runStage(flatTwoSprints(), seed, { t0r2: [{ task: "tempo" }] });
+    if (huntWorked(two, "t0r2") <= huntWorked(one, "t0r2")) continue;
+    compared++;
+    assert.ok(fatigueOf(two, "t0r2") - fatigueOf(twoBase, "t0r2") > fatigueOf(one, "t0r2") - fatigueOf(oneBase, "t0r2"), `${seed}: flere betalte spurter, hoejere pris oven paa samme indsats`);
+  }
+  assert.ok(compared > 0, "scenariet skal ramme en etape med flere betalte spurter");
+});
+
 test("#7855 A: udbrud og bjergjagt fra start; samme loeb, og jagten gaelder ogsaa foerste top", () => {
   const row = stageRow("mountain") as Record<string, unknown>;
   let made = 0;

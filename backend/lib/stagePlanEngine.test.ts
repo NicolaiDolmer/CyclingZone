@@ -417,3 +417,12 @@ test("#7855 valg C: et jagt-led taeller som Middel i dagens haardeste indsats; t
   advanceStagePlan(thenTempo, { state: groups7855(false), segment: seg7855(90, 120), segmentIndex: 2, entrants: ENTRANTS });
   assert.deepEqual(stagePlanLoadEfforts(thenTempo), { h1: "protect" });
 });
+
+test("#7855 frikort (dom 2): et jagt-led taeller aldrig lettere i traetheden end den indsats, det koeres med i loebet", () => {
+  // Jagten koeres i loebet paa samme indsats som foelg med og tempo. Talte leddet lettere bagefter, var
+  // opgaven en billigere vej til samme loeb for en rytter, der kaemper om passagerne i forvejen.
+  const huntOnly = createStagePlanRuntime(huntOrder7855([{ task: "hunt_kom" }]), HUNT_ROUTE_7855, ENTRANTS, { jerseyHunt7855: true })!;
+  const tempoOnly = createStagePlanRuntime(huntOrder7855([{ task: "tempo" }]), HUNT_ROUTE_7855, ENTRANTS, { jerseyHunt7855: true })!;
+  assert.equal(stagePlanEntrants(huntOnly, ENTRANTS)["h1"].effort, stagePlanEntrants(tempoOnly, ENTRANTS)["h1"].effort, "samme indsats i loebet");
+  assert.deepEqual(stagePlanLoadEfforts(huntOnly), stagePlanLoadEfforts(tempoOnly), "og aldrig lettere i traetheden");
+});
