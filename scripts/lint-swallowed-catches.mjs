@@ -60,6 +60,7 @@ export function collectFiles(root = ROOT) {
       if (st.isDirectory()) { walk(full); continue; }
       if (!entry.endsWith(".js")) continue;
       if (entry.endsWith(".test.js")) continue; // tests må gerne sluge
+      if (entry.endsWith(".harness.js")) continue; // #7982: en tests harness er testkode (kun importeret af testen)
       files.push(full);
     }
   };
