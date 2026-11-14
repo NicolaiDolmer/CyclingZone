@@ -106,13 +106,21 @@ export default function WeekBoard({
                 aria-pressed={selected}
                 title={`${race.name} · ${t(raceDayLabelKey(race), { day: gameDaySpan(race.gameDayStart, race.gameDayEnd), days: gameDaySpan(race.gameDayStart, race.gameDayEnd) })}`}
                 style={{ gridColumn: `${startCol + 1} / ${endCol + 2}`, gridRow: lane + 2 }}
-                className={`flex min-w-0 items-center gap-2 rounded-cz border px-2 py-1.5 text-left text-xs transition-colors ${
+                className={`flex min-w-0 items-center gap-1 overflow-hidden rounded-cz border px-1 py-1.5 text-left text-xs transition-colors sm:gap-2 sm:px-2 ${
                   selected ? "border-cz-3 bg-cz-subtle" : "border-cz-border bg-cz-card hover:bg-cz-subtle"
                 }`}
               >
-                <ReadinessMark state={readiness.state} />
+                <span className="hidden sm:inline-flex">
+                  <ReadinessMark state={readiness.state} />
+                </span>
                 <span className="min-w-0 flex-1 truncate font-semibold text-cz-1">{race.name}</span>
-                <StageStrip types={types} max={4} size={12} className="hidden sm:inline-flex" />
+                {/* Navnet har forrang: i en bar paa én dag fylder etape-striben navnet vaek ("V."), saa den vises
+                    kun naar baren spaender over flere dage (striben staar altid i loebslisten). */}
+                {endCol > startCol && (
+                  <span className="hidden sm:inline-flex">
+                    <StageStrip types={types} max={4} size={12} />
+                  </span>
+                )}
                 <span
                   className={`shrink-0 font-data text-3xs font-semibold tabular-nums ${
                     readiness.state === "ready" ? "text-cz-success" : "text-cz-warning"
