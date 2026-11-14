@@ -1192,7 +1192,7 @@ test("#6181 punkt 7: refusion, 'not_stuck' og en RPC-fejl giver ingen udbetaling
   const [held] = await listHeldSaleEscrowsForAdmin(supabase2);
   assert.equal((await resolveStuckSaleEscrow(supabase2, { escrowId: held.id, outcome: "release", adminUserId: null, now: new Date(FLUSHED_AT), notifyReleased: notify.fn })).status, "not_stuck");
   const failing = { ...supabase2, rpc: async () => ({ data: null, error: { code: "XX000", message: "nede" } }) };
-  await assert.rejects(() => resolveStuckSaleEscrow(failing, { escrowId: held.id, outcome: "release", adminUserId: null, notifyReleased: notify.fn }), /nede/);
+  await assert.rejects(() => resolveStuckSaleEscrow(failing, { escrowId: held.id, outcome: "release", adminUserId: null, now: new Date(FLUSHED_AT), notifyReleased: notify.fn }), /nede/);
   assert.deepEqual(notify.sent, []);
 });
 
