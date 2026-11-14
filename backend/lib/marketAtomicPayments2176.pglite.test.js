@@ -1,12 +1,15 @@
 // #2176: the money guard and the four atomic payment paths must stay on when
 // auto-accept goes from beta to on for everyone. Fixed clock throughout.
+// The base database carries every migration production already has for these
+// functions (beta scope + #8015), so comparisons are against the live shape.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import { betaDatabase2176 } from './__fixtures__/marketBeta2176Db.js';
+import {
+  betaDatabase2176, productionDatabase2176, migrationsTouching2176, migrationSource2176,
+  MARKET_ATOMIC_2176, BETA_SCOPE_2176, PATCHED_AFTER_BETA_2176, GATED_FUNCTIONS_2176,
+} from './__fixtures__/marketBeta2176Db.js';
 
-const ATOMIC = '2026-11-14-2176-market-atomic-payments.sql';
-const migration = () => readFile(new URL('../../database/' + ATOMIC, import.meta.url), 'utf8');
+const migration = () => migrationSource2176(MARKET_ATOMIC_2176);
 const id = n => `00000000-0000-0000-0000-${String(n).padStart(12, '0')}`;
 const A = id(1), B = id(2), D = id(4), R = id(201), DEAL = id(901), AUCTION = id(700);
 const NOW = '2026-11-10T10:00:00Z', END = '2026-11-10T14:00:00Z';
@@ -14,9 +17,11 @@ const one = async (db, sql, params = []) => (await db.query(sql, params)).rows[0
 const scalar = async (db, sql, params = []) => (await one(db, sql, params)).n;
 const balance = (db, team) => scalar(db, 'SELECT balance::int AS n FROM teams WHERE id=$1', [team]);
 const owner = (db, rider = R) => scalar(db, 'SELECT team_id AS n FROM riders WHERE id=$1', [rider]);
+// #8015 made a zero floor disable the seller departure check entirely.
+const FLOOR_8015 = /IF p_min_riders > 0 AND \(v_count-1-cardinality\(v_outgoing\)-v_risk<p_min_riders\) THEN/;
 
 async function database(t) {
-  const db = await betaDatabase2176(t);
+  const db = await productionDatabase2176(t);
   const sql = await migration();
   await db.exec(sql); await db.exec(sql); // idempotent re-apply
   return db;
@@ -64,18 +69,83 @@ const GATED = ['market_discretionary_finance_guard_2176()', 'auto_accept_release
 const definition = async (db, signature) =>
   (await one(db, 'SELECT pg_get_functiondef($1::regprocedure) AS def', ['public.' + signature])).def.replace(/\r\n/g, '\n');
 
-test('the five gated bodies are verbatim apart from the gate call', async t => {
-  const db = await betaDatabase2176(t);
-  const before = {};
-  for (const signature of GATED) before[signature] = await definition(db, signature);
+const CREATE = GATED[4];
+const METADATA = `SELECT p.proacl::text AS acl,p.prosecdef,p.proconfig,p.proowner::regrole::text AS owner
+  FROM pg_proc p WHERE p.oid=$1::regprocedure`;
+
+test('the five production bodies are unchanged apart from the gate call', async t => {
+  const db = await productionDatabase2176(t);
+  const before = {}, meta = {};
+  for (const signature of GATED) {
+    before[signature] = await definition(db, signature);
+    meta[signature] = await one(db, METADATA, ['public.' + signature]);
+  }
+  assert.match(before[CREATE], FLOOR_8015, 'the comparison base is the #8015-patched production definition');
   await db.exec(await migration());
   for (const signature of GATED) {
     assert.equal(before[signature].split('public.market_beta_mode_2176()').length - 1, 1, `${signature}: exactly one old gate`);
     assert.equal(await definition(db, signature),
       before[signature].replace('public.market_beta_mode_2176()', 'public.market_atomic_payments_2176()'), signature);
+    assert.deepEqual(await one(db, METADATA, ['public.' + signature]), meta[signature], `${signature}: ACL, owner, security`);
   }
+  assert.match(await definition(db, CREATE), FLOOR_8015, 'the #8015 floor survives');
   assert.equal((await one(db, `SELECT count(*)::int AS n FROM pg_trigger WHERE tgname='market_discretionary_finance_guard_2176'`)).n, 1,
     'the existing guard trigger stays attached');
+});
+
+test('the migration aborts instead of guessing when a gate call is not exactly one', async t => {
+  const db = await productionDatabase2176(t);
+  const def = await definition(db, CREATE);
+  await db.exec(def.replace('PERFORM public.auto_accept_lock_teams', 'PERFORM public.market_beta_mode_2176(); PERFORM public.auto_accept_lock_teams'));
+  await assert.rejects(db.exec(await migration()), /#2176: unexpected gate calls in public\.create_market_auction_2176/);
+  await db.exec('ROLLBACK');
+  assert.equal((await one(db, `SELECT count(*)::int AS n FROM pg_proc WHERE proname='market_atomic_payments_2176'`)).n, 0,
+    'nothing is applied: one transaction');
+});
+
+// A team whose only owned riders are youth (no seniors at all) lists one on an
+// ordinary auction with the backend's zero floor. #8015 made this `created`.
+async function youthOnlyCreate(db) {
+  await db.exec(`INSERT INTO riders(id,team_id,is_academy,squad) VALUES('${id(601)}','${A}',true,'junior'),('${id(602)}','${A}',true,'u23')`);
+  const data = { rider_id: id(601), seller_team_id: A, starting_price: 100000, current_price: 100000, current_bidder_id: null,
+    min_increment: 1000, calculated_end: END, is_flash: false };
+  return (await one(db, `SELECT create_market_auction_2176($1,$2,0,'{}') AS r`, [data, A])).r.status;
+}
+
+for (const [market, auto] of [['on', 'beta'], ['on', 'on']]) {
+  test(`${market}/${auto}: a youth-only team can list a youth rider with floor 0 after the migration`, async t => {
+    const db = await database(t); await flags(db, market, auto);
+    assert.equal(await youthOnlyCreate(db), 'created');
+  });
+}
+
+test('guard: every migration touching the gated functions, in filename order, keeps #8015 and the new gate', async t => {
+  const touching = await migrationsTouching2176(GATED_FUNCTIONS_2176);
+  assert.equal(touching[0], BETA_SCOPE_2176);
+  assert.ok(touching.includes(MARKET_ATOMIC_2176));
+  assert.deepEqual(touching.filter(name => name > BETA_SCOPE_2176 && name < MARKET_ATOMIC_2176), PATCHED_AFTER_BETA_2176,
+    'a migration between beta scope and atomic payments patches a gated function: add it to PATCHED_AFTER_BETA_2176');
+  // Beta scope is already applied by the fixture; replay every later one, twice.
+  const db = await betaDatabase2176(t);
+  for (let pass = 0; pass < 2; pass++) for (const name of touching.slice(1)) await db.exec(await migrationSource2176(name));
+  assert.match(await definition(db, CREATE), FLOOR_8015, 'a later migration rewrote create_market_auction_2176 with an older body');
+  for (const signature of GATED) {
+    const def = await definition(db, signature);
+    assert.equal(def.includes('public.market_beta_mode_2176()'), false, `${signature}: old gate came back`);
+    assert.equal(def.split('public.market_atomic_payments_2176()').length - 1, 1, `${signature}: one atomic gate`);
+  }
+  await flags(db, 'on', 'beta');
+  assert.equal(await youthOnlyCreate(db), 'created');
+});
+
+test('negative control: a copied pre-#8015 body is caught by the floor guard and blocks youth listing', async t => {
+  const db = await database(t); await flags(db, 'on', 'beta');
+  const old = (await migrationSource2176(BETA_SCOPE_2176))
+    .match(/CREATE OR REPLACE FUNCTION public\.create_market_auction_2176\([\s\S]*?END; \$\$;/);
+  assert.ok(old, 'the beta-scope body is still extractable');
+  await db.exec(old[0].replace('public.market_beta_mode_2176()', 'public.market_atomic_payments_2176()'));
+  assert.doesNotMatch(await definition(db, CREATE), FLOOR_8015, 'the guard pattern detects the rollback');
+  assert.equal(await youthOnlyCreate(db), 'seller_squad_floor', 'this is the regression the judge found');
 });
 
 const STAGES = ['off', 'beta', 'on', true, false];
