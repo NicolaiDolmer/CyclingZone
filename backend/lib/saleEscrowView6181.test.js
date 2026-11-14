@@ -334,7 +334,8 @@ test("PATCH /admin/feature-flags: beta afvises for binaere noegler, som for bool
   assert.ok(binaryCheck > 0, "handleren skal kende de binaere noegler");
   assert.ok(upsert > 0 && binaryCheck < upsert, "afvisningen skal ligge foer skrivningen");
   assert.match(block, /PLAYER_VISIBLE_BINARY_FLAG_KEYS\.includes\(key\) && stage === "beta"/);
-  assert.match(block, /status\(409\)\.json\(\{\s*error: [^}]*errorCode: "flag_binary_only"/);
+  const binaryReturn = block.slice(binaryCheck, block.indexOf("}", block.indexOf("return res", binaryCheck)) + 1);
+  assert.match(binaryReturn, /status\(409\)\.json\(\{\s*error: [^}]*errorCode: "flag_boolean_only"/, "samme 409-svar som boolean-raekker");
   assert.match(api, /import \{[^}]*\bPLAYER_VISIBLE_BINARY_FLAG_KEYS\b[^}]*\} from "\.\.\/lib\/stageFlagCatalog\.js"/);
   assert.ok(PLAYER_VISIBLE_BINARY_FLAG_KEYS.includes("sale_escrow_enabled"), "pengelaasen er binaer: beta betyder slukket");
 });

@@ -15764,8 +15764,9 @@ router.patch("/admin/feature-flags/:key", requireAdmin, adminWriteLimiter, async
       });
     }
     // #6181: binaere noegler laeses kun som "on"; "beta" ville stille betyde slukket for alle.
+    // Samme svar som boolean-raekkerne nedenfor (genbruger deres oversaettelse).
     if (PLAYER_VISIBLE_BINARY_FLAG_KEYS.includes(key) && stage === "beta") {
-      return res.status(409).json({ error: "This flag is binary (off/on): beta counts as off for everyone", errorCode: "flag_binary_only" });
+      return res.status(409).json({ error: "This flag is on/off only and has no beta stage", errorCode: "flag_boolean_only" });
     }
 
     // Een laesning, to formaal: det forrige stadie til admin_log, og om raekken
