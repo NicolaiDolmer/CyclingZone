@@ -120,9 +120,9 @@ export type StagePlanRuntime = {
 /**
  * #7855 valg 3 + hul 1 og 2 (ejer 13/11 "Samme pris", 14/11 "Som rent udbrud"): hvad
  * prisen husker mellem segmentgraenserne. `passagesSeen`: hvor mange af etapens passager der
- * allerede er laest. `segmentIndex`: det segment, motoren senest startede.
+ * allerede er laest.
  */
-type MissedBreakHunt7855 = { eligible: ReadonlySet<string>; fromField: Set<string>; passagesSeen: number; segmentIndex: number };
+type MissedBreakHunt7855 = { eligible: ReadonlySet<string>; fromField: Set<string>; passagesSeen: number };
 
 /**
  * #7635: hvad "sat"-reglen husker mellem segmentgraenserne (kun med kontakten).
@@ -235,7 +235,7 @@ export function createStagePlanRuntime(
   // kun hjaelperen og kun "Hent point" paa udbrudsleddet; kun traetheden efter etapen aendres.
   if (opts.jerseyHunt7855 === true) {
     const eligible = riderIds.filter((id) => entrants[id]?.role === "helper" && legs.get(id)![0].task === "breakaway" && legs.get(id)![0].hunt === "hunt_points");
-    if (eligible.length > 0) rt.missedBreakHunt7855 = { eligible: new Set(eligible), fromField: new Set(), passagesSeen: 0, segmentIndex: 0 };
+    if (eligible.length > 0) rt.missedBreakHunt7855 = { eligible: new Set(eligible), fromField: new Set(), passagesSeen: 0 };
   }
   return rt;
 }
@@ -261,25 +261,24 @@ function takeNewSprints7855(missed: MissedBreakHunt7855, state: EngineState): Re
  *    koert paa udbrudsleddet og taeller (leddet han koerte segmentet paa, ikke det naeste).
  *  - hul 1: kom han med i et sent dannet udbrud uden at jage en spurt fra feltet, er der intet
  *    at taelle; han betaler som rent udbrud plus de spurter, han koerte efter (valg C).
- * Hvor han laa ved spurten, laeses paa gruppebillederne ved segmentgraenserne lige foer og lige
- * efter den (de samme billeder som motorens groupSnapshots). Ligger spurten paa selve graensen,
- * eller i etapens foerste segment (intet billede fra foer), afgoer billedet efter alene.
+ * Hvor han laa ved spurten, laeses paa gruppebilledet ved slutningen af det segment, spurten
+ * ligger i: motoren afgoer passagerne sidst i segmentet paa netop de grupper (segmentLoop, M9),
+ * ogsaa naar udbruddet dannes midt i segmentet. Ligger han i udbruddet der, koerte han spurten
+ * i udbruddet og jagede ikke fra feltet, uanset hvor han sad ved graensen foer.
  * Uden for ejerens svar (uaendret som foer): en rytter, der har vaeret i udbruddet og er hentet
  * (dommerens S7), noteres aldrig her. Kun noteret; loebet er uaendret (se stagePlanLoadEfforts).
  */
 function noteHuntFromField7855(
   missed: MissedBreakHunt7855,
   riderId: string,
-  args: { legDuringSegment: ResolvedLeg; sprints: ReadonlyArray<SprintPassage7855>; segmentEndKm: number; wasInEscape: boolean; inEscapeNow: boolean; firstSegment: boolean },
+  args: { legDuringSegment: ResolvedLeg; sprints: ReadonlyArray<SprintPassage7855>; wasInEscape: boolean; inEscapeNow: boolean },
 ): void {
   if (!missed.eligible.has(riderId) || args.wasInEscape) return;
   if (args.legDuringSegment.task !== "breakaway" || args.legDuringSegment.hunt === null) return;
   const chased = args.sprints.filter((p) => (p.hunters ?? []).includes(riderId));
   if (chased.length === 0) return;
-  // Han har ikke vaeret i udbruddet ved segmentets start (wasInEscape), saa billedet foer viser
-  // ham i feltet; spurten var kun koert foran feltet, naar billedet efter er det eneste, der gaelder.
-  const ahead = args.inEscapeNow && chased.every((p) => args.firstSegment || p.km >= args.segmentEndKm);
-  if (!ahead) missed.fromField.add(riderId);
+  // Spurterne her er alle afgjort sidst i det segment, der lige er koert, paa gruppebilledet nu.
+  if (!args.inEscapeNow) missed.fromField.add(riderId);
 }
 
 function isEscape(group: RaceGroup): boolean {
@@ -473,8 +472,6 @@ export function advanceStagePlan(
   // #7855 valg 3 + hul 1 og 2: spurterne i segmentet, der lige er koert (tom uden kontakten).
   const missed = rt.missedBreakHunt7855;
   const sprints = missed ? takeNewSprints7855(missed, state) : [];
-  const firstSegmentDone = segmentIndex === 1;
-  if (missed) missed.segmentIndex = segmentIndex;
   for (const riderId of rt.riderIds) {
     if (state.riders[riderId]?.status !== "racing") continue;
     const legs = rt.legs.get(riderId)!;
@@ -482,7 +479,7 @@ export function advanceStagePlan(
     const group = groupOf(state.groups, riderId);
     const inEscape = group !== undefined && isEscape(group);
     if (missed && sprints.length > 0) {
-      noteHuntFromField7855(missed, riderId, { legDuringSegment: legs[cur], sprints, segmentEndKm: segment.from_km, wasInEscape: rt.everInEscape.has(riderId), inEscapeNow: inEscape, firstSegment: firstSegmentDone });
+      noteHuntFromField7855(missed, riderId, { legDuringSegment: legs[cur], sprints, wasInEscape: rt.everInEscape.has(riderId), inEscapeNow: inEscape });
     }
     if (inEscape) rt.everInEscape.add(riderId);
 
@@ -542,7 +539,7 @@ export function advanceStagePlanAtFinish(
     const cur = rt.current.get(riderId) ?? 0;
     if (missed && sprints.length > 0) {
       const group = groupOf(state.groups, riderId);
-      noteHuntFromField7855(missed, riderId, { legDuringSegment: legs[cur], sprints, segmentEndKm: segment.to_km, wasInEscape: rt.everInEscape.has(riderId), inEscapeNow: group !== undefined && isEscape(group), firstSegment: missed.segmentIndex === 0 });
+      noteHuntFromField7855(missed, riderId, { legDuringSegment: legs[cur], sprints, wasInEscape: rt.everInEscape.has(riderId), inEscapeNow: group !== undefined && isEscape(group) });
     }
     let next = cur;
     while (next + 1 < legs.length && legs[next + 1].fromKm !== null && (legs[next + 1].fromKm as number) <= segment.to_km) next += 1;
