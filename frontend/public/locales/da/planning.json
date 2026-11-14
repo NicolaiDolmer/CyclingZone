@@ -129,6 +129,34 @@
     "error": "Intet blev gemt. {error}",
     "errorIn": "Intet blev gemt på grund af {race}: {error}"
   },
+  "bulk": {
+    "auto": "Lad assistenten udtage",
+    "autoHint": "Fylder de tomme pladser. Dine egne valg bliver.",
+    "clear": "Fjern udtagelser",
+    "clearHint": "Tager rytterne ud. Løbene bliver i kalenderen.",
+    "withdraw": "Afmeld",
+    "withdrawHint": "Holdet stiller ikke til start og kan miste løbet.",
+    "nothing": "Intet at ændre i disse løb",
+    "menu": "Handlinger",
+    "scopeLabel": "Gælder",
+    "scope": { "next": "Næste løb", "nextNamed": "Næste løb: {race}", "checked": "{count, plural, one {Afkrydsede løb (#)} other {Afkrydsede løb (#)}}", "shown": "Viste løb ({count})", "season": "Hele sæsonen ({count})", "seasonShort": "Hele sæsonen", "pick": "Kryds løb af i listen" },
+    "checkedCount": "{count, plural, one {# løb valgt} other {# løb valgt}}",
+    "tick": "Vælg",
+    "untick": "Fjern flueben",
+    "selectionLabel": "Afkrydsede løb",
+    "draft": {
+      "label": "Kladde",
+      "title": "Kladde.",
+      "note": "Intet er gemt, før du gemmer.",
+      "auto": "{count, plural, one {Trup udtaget i # løb} other {Trupper udtaget i # løb}}, {riders, plural, one {# rytter sat ind} other {# ryttere sat ind}}",
+      "clear": "{count, plural, one {Udtagelsen fjernet i # løb} other {Udtagelserne fjernet i # løb}}",
+      "withdraw": "{count, plural, one {Afmeldt # løb: holdet stiller ikke til start} other {Afmeldt # løb: holdet stiller ikke til start}}",
+      "undo": "Fortryd",
+      "save": "Gem",
+      "mark": "Kladde",
+      "open": { "auto": "Assistentens trup til dette løb ligger i kladden. Truppen herunder er den gemte, indtil du gemmer.", "clear": "Udtagelsen til dette løb er fjernet i kladden. Truppen herunder er den gemte, indtil du gemmer.", "withdraw": "Løbet er afmeldt i kladden. Intet ændres, før du gemmer." }
+    }
+  },
   "error": {
     "title": "Planlægningen kunne ikke indlæses",
     "description": "Intet er tabt. Dine gemte trupper er i sikkerhed.",

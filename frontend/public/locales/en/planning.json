@@ -129,6 +129,34 @@
     "error": "Nothing was saved. {error}",
     "errorIn": "Nothing was saved because of {race}: {error}"
   },
+  "bulk": {
+    "auto": "Let the assistant pick",
+    "autoHint": "Fills the open places. Your own picks stay.",
+    "clear": "Remove squads",
+    "clearHint": "Takes the riders out. The races stay on the calendar.",
+    "withdraw": "Withdraw",
+    "withdrawHint": "The team does not start and can lose the race.",
+    "nothing": "Nothing to change in these races",
+    "menu": "Actions",
+    "scopeLabel": "Applies to",
+    "scope": { "next": "Next race", "nextNamed": "Next race: {race}", "checked": "{count, plural, one {Ticked race (#)} other {Ticked races (#)}}", "shown": "Shown races ({count})", "season": "Whole season ({count})", "seasonShort": "Whole season", "pick": "Tick races in the list" },
+    "checkedCount": "{count, plural, one {# race ticked} other {# races ticked}}",
+    "tick": "Tick",
+    "untick": "Clear ticks",
+    "selectionLabel": "Ticked races",
+    "draft": {
+      "label": "Draft",
+      "title": "Draft.",
+      "note": "Nothing is saved until you save.",
+      "auto": "{count, plural, one {Squad picked in # race} other {Squads picked in # races}}, {riders, plural, one {# rider added} other {# riders added}}",
+      "clear": "{count, plural, one {Squad removed in # race} other {Squads removed in # races}}",
+      "withdraw": "{count, plural, one {Withdrawn from # race: the team does not start} other {Withdrawn from # races: the team does not start}}",
+      "undo": "Undo",
+      "save": "Save",
+      "mark": "Draft",
+      "open": { "auto": "The assistant's squad for this race is in the draft. The squad below is the saved one until you save.", "clear": "This race's squad is removed in the draft. The squad below is the saved one until you save.", "withdraw": "This race is withdrawn in the draft. Nothing changes until you save." }
+    }
+  },
   "error": {
     "title": "Planning could not load",
     "description": "Nothing was lost. Your saved squads are safe.",

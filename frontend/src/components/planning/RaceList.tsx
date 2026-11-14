@@ -2,6 +2,7 @@
 // senere uger er foldet til en linje ("Uge 46 · 7 loeb · 5 mangler"). Raekken viser navn, dato,
 // klasse, etapeantal, etape-stribe, advarsel om faelles loebsdage og klar-maerke.
 import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronDownIcon, ChevronRightIcon, Button, EmptyState, FlagIcon } from "./primitives.ts";
 import {
@@ -54,6 +55,8 @@ function RaceRow({
   selected,
   dates,
   onSelect,
+  check,
+  mark,
 }: {
   race: SeasonRace;
   readiness: Readiness;
@@ -62,20 +65,23 @@ function RaceRow({
   selected: boolean;
   dates: Map<number, string>;
   onSelect: (id: string) => void;
+  /** #7535 design-spor (?actions): afkrydsningsfelt foran raekken. */
+  check?: { checked: boolean; onToggle: () => void } | null;
+  mark?: ReactNode;
 }) {
   const { t, i18n } = useTranslation("planning");
   const { t: tr } = useTranslation("races");
   const start = raceStartDate(race, dates);
   const cls = tr(`classOption.${race.raceClass}`, { defaultValue: String(race.raceClass ?? "") });
-  return (
+  const row = (
     <button
       type="button"
       onClick={() => onSelect(race.id)}
       aria-pressed={selected}
       data-testid="planning-race-row"
-      className={`grid w-full grid-cols-[minmax(0,1fr)_auto] gap-2 border-b border-cz-border px-3.5 py-2.5 text-left last:border-b-0 ${
-        selected ? "bg-cz-subtle" : "hover:bg-cz-subtle"
-      }`}
+      className={`grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 py-2.5 pr-3.5 text-left ${
+        check ? "pl-1" : "border-b border-cz-border pl-3.5 last:border-b-0"
+      } ${selected ? "bg-cz-subtle" : "hover:bg-cz-subtle"}`}
     >
       <span className="min-w-0">
         <span className="block truncate text-[13.5px] font-medium text-cz-1">{race.name}</span>
@@ -97,8 +103,27 @@ function RaceRow({
           </span>
         )}
       </span>
-      <span className="self-start"><ReadinessBadge readiness={readiness} /></span>
+      <span className="flex flex-col items-end gap-1 self-start">
+        <ReadinessBadge readiness={readiness} />
+        {mark}
+      </span>
     </button>
+  );
+  if (!check) return row;
+  return (
+    <div className={`flex border-b border-cz-border last:border-b-0 ${selected ? "bg-cz-subtle" : ""}`}>
+      <label className="flex min-h-11 min-w-11 shrink-0 cursor-pointer justify-center pt-3 sm:min-h-0 sm:min-w-9">
+        <input
+          type="checkbox"
+          checked={check.checked}
+          onChange={check.onToggle}
+          aria-label={race.name}
+          className="h-4 w-4 accent-cz-accent"
+          data-testid="planning-race-check"
+        />
+      </label>
+      {row}
+    </div>
   );
 }
 
@@ -124,6 +149,14 @@ interface RaceListProps {
   /** Et skrivekald koerer (sidens skrive-laas): en rydning venter, til det er faerdigt. */
   clearLocked?: boolean;
   onClear: () => void;
+  /** #7535 design-spor (?actions=a|b|c, kun preview-mocken): erstatter "Ryd udtagelser" i hovedet. */
+  headerAction?: ReactNode;
+  /** Ekstra raekke i hovedet (variant A's vaerktoejslinje). */
+  toolbar?: ReactNode;
+  /** Afkrydsningsfelter foran raekkerne (variant C, og A/B med omfanget "Afkrydsede"). */
+  checks?: { checked: Set<string>; onToggle: (id: string) => void } | null;
+  /** Maerke ved et loeb i kladden. */
+  rowMark?: (raceId: string) => ReactNode;
 }
 
 export default function RaceList({
@@ -145,6 +178,10 @@ export default function RaceList({
   clearMax = 0,
   clearLocked = false,
   onClear,
+  headerAction,
+  toolbar,
+  checks = null,
+  rowMark,
 }: RaceListProps) {
   const { t } = useTranslation("planning");
   const groups = useMemo(() => groupRacesByWeek(races, dates), [races, dates]);
@@ -169,7 +206,7 @@ export default function RaceList({
             {t("raceList.showPast")}
           </label>
           {/* Rydder de viste loebs udtagelser som en kladde (ejer 14/11): intet gemmes foer Gem i bjaelken. */}
-          <Button
+          {headerAction !== undefined ? headerAction : <Button
             variant="ghost"
             size="sm"
             onClick={onClear}
@@ -186,9 +223,10 @@ export default function RaceList({
             data-testid="planning-clear-shown"
           >
             {t("raceList.clear")}
-          </Button>
+          </Button>}
         </div>
       </header>
+      {toolbar}
 
       {races.length === 0 ? (
         <div className="p-3.5">
@@ -233,6 +271,8 @@ export default function RaceList({
                     readiness={raceReadiness(race, counts.get(race.id) ?? 0, withdrawn)}
                     overlaps={overlappingRaces(race, allRaces, withdrawn)}
                     onSelect={onSelect}
+                    check={checks ? { checked: checks.checked.has(race.id), onToggle: () => checks.onToggle(race.id) } : null}
+                    mark={rowMark?.(race.id)}
                   />
                 ))}
             </section>

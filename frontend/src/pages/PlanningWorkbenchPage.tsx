@@ -18,6 +18,18 @@ import RaceList from "../components/planning/RaceList.tsx";
 import RaceWorkbench, { type RaceWorkbenchHandle } from "../components/planning/RaceWorkbench.tsx";
 import UnsavedBar, { ClearDraftBar } from "../components/planning/UnsavedBar.tsx";
 import SelectionDeadlineReminder from "../components/planning/SelectionDeadlineReminder.tsx";
+import {
+  useBulkActions,
+  BulkToolbarA,
+  BulkMenuB,
+  CheckedCount,
+  BulkShortcutsC,
+  BulkSelectionBarC,
+  BulkDraftBar,
+  BulkRowMark,
+  BulkOpenRaceNote,
+} from "../components/planning/BulkActions.tsx";
+import { parseActionsVariant, type PreviewRider } from "../components/planning/bulkActionsModel.ts";
 import { useSelectionReminder, refreshSelectionReminder } from "../hooks/useSelectionReminder.ts";
 import { usePlanningWorkbenchFlag } from "../lib/usePlanningWorkbenchFlag.ts";
 import { seasonReferenceYear } from "../lib/riderAge.js";
@@ -225,6 +237,30 @@ function Workbench() {
   }, [allRaces]);
 
   const listRaces = useMemo(() => visibleRaces(allRaces, dates, { scope, showPast, today }), [allRaces, dates, scope, showPast, today]);
+
+  // #7535 DESIGN-SPOR (merges ikke): ?actions=a|b|c viser en af tre varianter af de tre handlinger
+  // ("Lad assistenten udtage", "Fjern udtagelser", "Afmeld"). Virker KUN i preview-mocken; i et
+  // prod-build er variabelen udefineret, og siden er uaendret. Gem anvender kladden lokalt.
+  const actionsVariant = parseActionsVariant(searchParams.get("actions"), Boolean(import.meta.env.VITE_PREVIEW_MOCK));
+  const commitBulk = useCallback((next: SeasonEntry[], withdrawIds: string[]) => {
+    setEntries(next);
+    if (!withdrawIds.length) return;
+    setWithdrawnHere((cur) => new Set([...cur, ...withdrawIds]));
+    setRejoined((cur) => new Set([...cur].filter((id) => !withdrawIds.includes(id))));
+  }, []);
+  const bulk = useBulkActions({
+    variant: actionsVariant,
+    entries: shownEntries,
+    withdrawn,
+    locks,
+    allRaces,
+    listRaces,
+    riders: (payload?.riders ?? []) as PreviewRider[],
+    terrain,
+    onCommit: commitBulk,
+  });
+  const viewWithdrawn = bulk ? bulk.withdrawn : withdrawn;
+  const viewCounts = useMemo(() => (bulk ? pickedCounts(bulk.entries) : counts), [bulk, counts]);
   const boardRaces = useMemo(() => (showPast ? allRaces : allRaces.filter((r) => !isRacePast(r))), [allRaces, showPast]);
 
   // Det valgte loeb: ?race= i adressen, ellers det foerste kommende loeb der mangler en trup.
@@ -551,8 +587,8 @@ function Workbench() {
             races={boardRaces}
             dates={dates}
             monday={activeMonday}
-            counts={counts}
-            withdrawn={withdrawn}
+            counts={viewCounts}
+            withdrawn={viewWithdrawn}
             terrain={terrain}
             selectedId={selected?.id}
             onSelect={requestSelect}
@@ -574,14 +610,16 @@ function Workbench() {
         {hasClearDraft && (
           <ClearDraftBar count={clearDraft.size} busy={clearBusy} locked={writing !== null} error={clearError} onUndo={undoClear} onSave={saveClear} />
         )}
+        {bulk?.variant === "c" && <BulkSelectionBarC bulk={bulk} />}
+        {bulk && <BulkDraftBar bulk={bulk} />}
         <div className={`grid items-start gap-3.5 ${showList ? "lg:grid-cols-[296px_minmax(0,1fr)]" : ""}`}>
           {showList && (
             <RaceList
               races={listRaces}
               allRaces={allRaces}
               dates={dates}
-              counts={counts}
-              withdrawn={withdrawn}
+              counts={viewCounts}
+              withdrawn={viewWithdrawn}
               terrain={terrain}
               selectedId={selected?.id}
               onSelect={requestSelect}
@@ -595,9 +633,19 @@ function Workbench() {
               clearMax={SELECTION_BULK_MAX}
               clearLocked={writing !== null}
               onClear={() => clearShown(clearPlan.ids)}
+              {...(bulk
+                ? {
+                    headerAction:
+                      bulk.variant === "a" ? <CheckedCount bulk={bulk} /> : bulk.variant === "b" ? <><CheckedCount bulk={bulk} /><BulkMenuB bulk={bulk} /></> : <BulkShortcutsC bulk={bulk} />,
+                    toolbar: bulk.variant === "a" ? <BulkToolbarA bulk={bulk} /> : undefined,
+                    checks: bulk.checkMode ? { checked: bulk.checked, onToggle: bulk.toggleCheck } : null,
+                    rowMark: (id: string) => <BulkRowMark kind={bulk.draftKind(id)} />,
+                  }
+                : {})}
             />
           )}
           <div ref={anchorRef} className="min-w-0 scroll-mt-4">
+            {bulk && selected && <BulkOpenRaceNote kind={bulk.draftKind(selected.id)} />}
             {selected ? (
               <RaceWorkbench
                 key={selected.id}

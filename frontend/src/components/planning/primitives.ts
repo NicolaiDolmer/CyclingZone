@@ -27,6 +27,7 @@ import { Flag as FlagBase } from "../Flag.jsx";
 import { isU23 as isU23Base } from "../../lib/riderAge.js";
 import { injuryTimeLeft as injuryTimeLeftBase } from "../../lib/training.js";
 import { useReloadBlock as useReloadBlockBase, RELOAD_BLOCK_REASONS as RELOAD_BLOCK_REASONS_BASE } from "../../lib/reloadGate.js";
+import { useDismiss as useDismissBase } from "../ui/useDismiss.js";
 
 type AnyComponent = (props: any) => any;
 
@@ -43,6 +44,12 @@ export const ChevronUpIcon: AnyComponent = ui.ChevronUpIcon as any;
 export const ChevronDownIcon: AnyComponent = ui.ChevronDownIcon as any;
 export const CalendarIcon: AnyComponent = ui.CalendarIcon as any;
 export const FlagIcon: AnyComponent = ui.FlagIcon as any;
+// #7535 design-spor (?actions=a|b|c, kun preview-mocken): de tre handlingers ikoner og menu.
+export const TeamIcon: AnyComponent = ui.TeamIcon as any;
+export const XIcon: AnyComponent = ui.XIcon as any;
+export const AlertTriangleIcon: AnyComponent = ui.AlertTriangleIcon as any;
+export const Menu: AnyComponent = ui.Menu as any;
+export const MenuItem: AnyComponent = ui.MenuItem as any;
 export const SortableTh: AnyComponent = SortableThBase as any;
 export const RiderNameCell: AnyComponent = RiderNameCellBase as any;
 export const RiderBadges: AnyComponent = RiderBadgesBase as any;
@@ -64,6 +71,7 @@ export const injuryTimeLeft: (condition: { injured_until?: string | null; injury
 } = injuryTimeLeftBase as any;
 export const useReloadBlock: (active: boolean, reason?: string) => void = useReloadBlockBase as any;
 export const RELOAD_BLOCK_REASONS: { DIRTY: string } = RELOAD_BLOCK_REASONS_BASE as any;
+export const useDismiss: (ref: { current: HTMLElement | null }, onDismiss: () => void, active?: boolean) => void = useDismissBase as any;
 
 export const partialSquadOutlook: (args: Record<string, unknown>) => {
   kind: string;
