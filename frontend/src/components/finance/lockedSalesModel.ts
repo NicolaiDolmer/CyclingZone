@@ -96,8 +96,13 @@ export function nextLockedSales(prev: LockedSalesSnapshot | null, userId: string
   return { userId, data: NO_LOCKED_SALES };
 }
 
-/** Noeglen til "slutter om N dage" / "slutter i dag"; null = intet loeb at vise. */
+/**
+ * Noeglen til "slutter om N dage" / "slutter i dag"; null = ingen tid at vise.
+ * Dommerens punkt 8 (#6181): et negativt tal betyder, at sidste etape laa foer i dag
+ * (loebet er koert, men ikke gjort faerdigt). Saa vises kun loebets navn, aldrig
+ * "slutter i dag". Backenden sender null i det tilfaelde; dette er andet vaern.
+ */
 export function endsInKey(daysLeft: number | null): { key: string; count?: number } | null {
-  if (daysLeft == null || !Number.isFinite(daysLeft)) return null;
-  return daysLeft <= 0 ? { key: "lockedSalesBox.endsToday" } : { key: "lockedSalesBox.endsIn", count: daysLeft };
+  if (daysLeft == null || !Number.isFinite(daysLeft) || daysLeft < 0) return null;
+  return daysLeft === 0 ? { key: "lockedSalesBox.endsToday" } : { key: "lockedSalesBox.endsIn", count: daysLeft };
 }

@@ -51,7 +51,9 @@ export function soldRiderIds(escrow) {
 
 /**
  * Hele kalenderdage (dansk tid) fra nu til loebets sidste etape. 0 = i dag.
- * Negativt (sidste etape er passeret, loebet afsluttes) bliver 0.
+ * Dommerens punkt 8 (#6181, ejer 14/11): ligger sidste etape paa en dag FOER i dag,
+ * er loebet koert, men ikke gjort faerdigt. Saa er "slutter i dag" forkert, og
+ * svaret er null: linjen viser kun loebets navn.
  *
  * @param {string|Date|null|undefined} endsAt
  * @param {Date} now
@@ -63,7 +65,8 @@ export function daysUntil(endsAt, now) {
   if (Number.isNaN(end.getTime())) return null;
   const a = Date.parse(`${copenhagenDateString(now)}T00:00:00Z`);
   const b = Date.parse(`${copenhagenDateString(end)}T00:00:00Z`);
-  return Math.max(0, Math.round((b - a) / DAY_MS));
+  const days = Math.round((b - a) / DAY_MS);
+  return days < 0 ? null : days;
 }
 
 /**
@@ -286,22 +289,50 @@ export function buildSaleLockedSellerNotification({ riderName: name, price, ride
 }
 
 /**
+ * De af ids, der er leveret til deres maalhold: noteret i escrow'en (varigt bevis,
+ * ogsaa efter et videresalg) eller staar paa maalholdet nu.
+ *
+ * @param {{ rider_ids: string[], target_team_ids: string[], delivered_rider_ids?: string[] }} escrow
+ * @param {string[]} ids
+ * @param {Map<string, { team_id?: string|null }>} ridersById
+ * @returns {string[]}
+ */
+export function deliveredRiderIds(escrow, ids, ridersById) {
+  const delivered = new Set(escrow.delivered_rider_ids || []);
+  return ids.filter((id) => {
+    const target = escrow.target_team_ids?.[escrow.rider_ids.indexOf(id)];
+    return delivered.has(id) || (target != null && ridersById.get(id)?.team_id === target);
+  });
+}
+
+/**
  * Saelgerens besked, naar de laaste penge er udbetalt (rytteren har skiftet hold).
  * Kaldes efter et settle med status 'released'. Kaster aldrig: pengene er allerede
  * flyttet, og en manglende besked maa ikke ligne en fejlet udbetaling.
  *
  * @param {any} supabase
- * @param {{ id: string, payee_team_id: string, payer_team_id: string, amount: number|string, rider_ids: string[], target_team_ids: string[] }} escrow
- * @param {{ notifyTeamOwner?: typeof notifyTeamOwnerDefault, now?: Date }} [deps]  now = afregningstidspunktet (fast ur, Codex P1)
+ * onlyDelivered (admin-afgoerelsen af et fastlaast bytte, dommerens punkt 7): teksten
+ * siger "X har skiftet hold", saa kun saelgerens ryttere, der faktisk er leveret,
+ * naevnes. Er ingen af dem leveret, sendes intet, for teksten ville vaere forkert
+ * (ingen ny spillertekst; ejeren afgoer, om den sjaeldne sag skal have sin egen).
+ *
+ * @param {any} supabase
+ * @param {{ id: string, payee_team_id: string, payer_team_id: string, amount: number|string, rider_ids: string[], target_team_ids: string[], delivered_rider_ids?: string[] }} escrow
+ * @param {{ notifyTeamOwner?: typeof notifyTeamOwnerDefault, now?: Date, onlyDelivered?: boolean }} [deps]  now = afregningstidspunktet (fast ur, Codex P1)
  * @returns {Promise<boolean>} true naar beskeden er sendt
  */
-export async function notifySellerSaleEscrowReleased(supabase, escrow, { notifyTeamOwner = notifyTeamOwnerDefault, now } = {}) {
+export async function notifySellerSaleEscrowReleased(supabase, escrow, { notifyTeamOwner = notifyTeamOwnerDefault, now, onlyDelivered = false } = {}) {
   try {
     if (!escrow?.id || !escrow.payee_team_id) return false;
-    const ids = soldRiderIds(escrow);
-    const { data: riders, error } = await supabase.from("riders").select("id, firstname, lastname").in("id", ids); // pagination-safe: een handels 1-2 ryttere.
+    const sold = soldRiderIds(escrow);
+    const { data: riders, error } = await supabase.from("riders").select(onlyDelivered ? "id, firstname, lastname, team_id" : "id, firstname, lastname").in("id", sold); // pagination-safe: een handels 1-2 ryttere.
     if (error) throw new Error(error.message);
     const byId = new Map((riders || []).map((r) => [r.id, r]));
+    const ids = onlyDelivered ? deliveredRiderIds(escrow, sold, byId) : sold;
+    if (ids.length === 0) {
+      console.warn(`[saleEscrow] udbetalings-besked for ${escrow.id} springes over: ingen af saelgerens ryttere har skiftet hold`);
+      return false;
+    }
     const names = ids.map((id) => riderName(byId.get(id))).filter(Boolean).join(", ");
     const notice = buildKeyedNotification({
       titleCode: "notif.saleEscrow.releasedTitle",
