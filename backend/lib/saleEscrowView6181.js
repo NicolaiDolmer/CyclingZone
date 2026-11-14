@@ -292,10 +292,10 @@ export function buildSaleLockedSellerNotification({ riderName: name, price, ride
  *
  * @param {any} supabase
  * @param {{ id: string, payee_team_id: string, payer_team_id: string, amount: number|string, rider_ids: string[], target_team_ids: string[] }} escrow
- * @param {{ notifyTeamOwner?: typeof notifyTeamOwnerDefault }} [deps]
+ * @param {{ notifyTeamOwner?: typeof notifyTeamOwnerDefault, now?: Date }} [deps]  now = afregningstidspunktet (fast ur, Codex P1)
  * @returns {Promise<boolean>} true naar beskeden er sendt
  */
-export async function notifySellerSaleEscrowReleased(supabase, escrow, { notifyTeamOwner = notifyTeamOwnerDefault } = {}) {
+export async function notifySellerSaleEscrowReleased(supabase, escrow, { notifyTeamOwner = notifyTeamOwnerDefault, now } = {}) {
   try {
     if (!escrow?.id || !escrow.payee_team_id) return false;
     const ids = soldRiderIds(escrow);
@@ -317,6 +317,7 @@ export async function notifySellerSaleEscrowReleased(supabase, escrow, { notifyT
       message: notice.message,
       relatedId: escrow.id,
       metadata: notice.metadata,
+      now,
     });
     return true;
   } catch (err) {

@@ -389,12 +389,13 @@ function refundPayload(sourcePath) {
  *
  * @param {any} supabase
  * @param {any} escrow
- * @param {((supabase: any, escrow: any) => Promise<unknown>) | undefined} notifyReleased  indsprøjtet i proever
+ * @param {((supabase: any, escrow: any, opts: { now: Date }) => Promise<unknown>) | undefined} notifyReleased  indsprøjtet i proever
+ * @param {Date} now  afregningstidspunktet; beskedtjenesten bruger det til dublet-tjek og cache (Codex P1)
  */
-async function notifySellerReleased(supabase, escrow, notifyReleased) {
+async function notifySellerReleased(supabase, escrow, notifyReleased, now) {
   try {
     const send = notifyReleased ?? (await import("./saleEscrowView6181.js")).notifySellerSaleEscrowReleased;
-    await send(supabase, escrow);
+    await send(supabase, escrow, { now });
   } catch (err) {
     // best-effort: udbetalingen er sket i settle_sale_escrow; kun beskeden mangler.
     console.error(`[saleEscrow] udbetalings-besked for ${escrow?.id} kunne ikke sendes: ${errorMessage(err)}`);
@@ -423,7 +424,7 @@ async function settle(supabase, escrowId, outcome, { at, sourcePath }) {
  *
  * @param {any} supabase
  * @param {{ id: string, pending_team_id: string }} rider
- * @param {{ flushedAt: string, notifyReleased?: (supabase: any, escrow: any) => Promise<unknown> }} opts
+ * @param {{ flushedAt: string, notifyReleased?: (supabase: any, escrow: any, opts: { now: Date }) => Promise<unknown> }} opts
  */
 export async function releaseSaleEscrowForFlush(supabase, rider, { flushedAt, notifyReleased }) {
   if (!(await isSaleEscrowEnabled(supabase))) return null;
@@ -460,7 +461,7 @@ export async function releaseSaleEscrowForFlush(supabase, rider, { flushedAt, no
   });
   if (rpcError) return { data: null, error: rpcError };
   if (data?.status !== "released") return null;
-  await notifySellerReleased(supabase, escrow, notifyReleased);
+  await notifySellerReleased(supabase, escrow, notifyReleased, new Date(flushedAt));
   const moved = Array.isArray(data.moved_rider_ids) && data.moved_rider_ids.includes(rider.id);
   return { data: moved ? [{ id: rider.id }] : [], error: null };
 }
@@ -505,7 +506,7 @@ export async function refundSaleEscrowsForReleasedRiders(supabase, riderIds, { n
  *
  * @returns {Promise<{ checked: number, released: number, refunded: number, waiting: number, stuck: number, failed: number, errors: Array<{ escrowId: string|null, message: string }> }>}
  */
-/** @param {{ supabase: any, now?: Date, sourcePath?: string, notifyReleased?: (supabase: any, escrow: any) => Promise<unknown> }} args */
+/** @param {{ supabase: any, now?: Date, sourcePath?: string, notifyReleased?: (supabase: any, escrow: any, opts: { now: Date }) => Promise<unknown> }} args */
 export async function reconcileHeldSaleEscrows({ supabase, now = new Date(), sourcePath = "saleEscrowFlow6181.reconcile", notifyReleased }) {
   /** @type {{ checked: number, released: number, refunded: number, waiting: number, stuck: number, failed: number, errors: Array<{ escrowId: string|null, message: string }> }} */
   const result = { checked: 0, released: 0, refunded: 0, waiting: 0, stuck: 0, failed: 0, errors: [] };
@@ -537,7 +538,7 @@ export async function reconcileHeldSaleEscrows({ supabase, now = new Date(), sou
       const settled = await settle(supabase, escrow.id, action, { at, sourcePath });
       if (settled?.status === "released") {
         result.released += 1;
-        await notifySellerReleased(supabase, escrow, notifyReleased);
+        await notifySellerReleased(supabase, escrow, notifyReleased, now);
       }
       else if (settled?.status === "refunded") result.refunded += 1;
     } catch (err) {

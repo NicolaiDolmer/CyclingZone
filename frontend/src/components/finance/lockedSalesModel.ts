@@ -47,6 +47,38 @@ export function canReuseShared(
   return !fresh && shared !== null && shared.key === key && nowMs - shared.at < windowMs;
 }
 
+/**
+ * Samler mange anmodninger i traek (dommerens B1): hoejst eet kald ad gangen plus eet
+ * efterfoelgende. Kommer der anmodninger, mens et kald koerer, starter praecis eet nyt
+ * kald, naar det er faerdigt, med den seneste anmodnings argument. Saa henter en ny
+ * besked altid paa ny (kaldet starter efter beskeden), men en byge af beskeder og
+ * flere steder paa skaermen giver tilsammen hoejst to kald. Kaster aldrig.
+ */
+export function coalesceLatest<A>(run: (arg: A) => Promise<void>): (arg: A) => Promise<void> {
+  let inFlight: Promise<void> | null = null;
+  let queued: Promise<void> | null = null;
+  let queuedArg: A;
+  const start = (arg: A): Promise<void> => {
+    const p: Promise<void> = Promise.resolve()
+      .then(() => run(arg))
+      .catch(() => { /* non-critical: kalderen haandterer selv fejl; koeen maa aldrig sidde fast */ })
+      .then(() => { if (inFlight === p) inFlight = null; });
+    inFlight = p;
+    return p;
+  };
+  return (arg: A) => {
+    if (!inFlight) return start(arg);
+    queuedArg = arg;
+    if (!queued) {
+      queued = inFlight.then(() => {
+        queued = null;
+        return start(queuedArg);
+      });
+    }
+    return queued;
+  };
+}
+
 export interface LockedSalesSnapshot {
   userId: string;
   data: LockedSales;

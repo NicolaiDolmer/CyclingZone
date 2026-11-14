@@ -196,9 +196,11 @@ test("buildSaleLockedSellerNotification: ejerens tekst, titlen fra handelstypen"
 test("notifySellerSaleEscrowReleased: saelgeren faar udbetalings-beskeden een gang", async () => {
   const supabase = fakeSupabase(world());
   const sent = [];
-  const ok = await notifySellerSaleEscrowReleased(supabase, world().sale_escrows[0], { notifyTeamOwner: async (args) => { sent.push(args); } });
+  const settledAt = new Date("2026-11-08T10:00:00.000Z");
+  const ok = await notifySellerSaleEscrowReleased(supabase, world().sale_escrows[0], { notifyTeamOwner: async (args) => { sent.push(args); }, now: settledAt });
   assert.equal(ok, true);
   assert.equal(sent.length, 1);
+  assert.equal(sent[0].now, settledAt, "afregningstidspunktet gives til beskedtjenesten, aldrig systemets ur (Codex P1)");
   assert.equal(sent[0].teamId, SELLER);
   assert.equal(sent[0].relatedId, "e1");
   assert.equal(sent[0].metadata.messageCode, "notif.saleEscrow.releasedMessage");

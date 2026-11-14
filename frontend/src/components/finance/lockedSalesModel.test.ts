@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { NO_LOCKED_SALES, canReuseShared, endsInKey, lockedSalesFromResponse, lockedSalesShareKey, nextLockedSales } from "./lockedSalesModel.ts";
+import { NO_LOCKED_SALES, canReuseShared, coalesceLatest, endsInKey, lockedSalesFromResponse, lockedSalesShareKey, nextLockedSales } from "./lockedSalesModel.ts";
 import { isHelpBlockVisible } from "../../pages/helpFlagGates.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -65,12 +65,78 @@ test("menuen opdaterer sig selv: ved sideskift, fokus og ny besked, og alle sted
   assert.match(component, /\}, \[refreshKey, pathname\]\);/, "sideskift henter igen");
   assert.match(component, /window\.addEventListener\("focus", refresh\);/);
   assert.match(component, /window\.addEventListener\(LOCKED_SALES_REFRESH_EVENT, refreshFresh\);/);
-  assert.match(component, /const refreshFresh = \(\) => \{ void loadLockedSales\(refreshKey, \{ fresh: true \}\); \};/, "en ny besked genbruger aldrig det delte svar");
+  assert.match(component, /const refreshFreshShared = coalesceLatest\(\(refreshKey: unknown\) => loadLockedSales\(refreshKey, \{ fresh: true \}\)\);/, "en ny besked genbruger aldrig det delte svar, men samles for hele skaermen");
+  assert.match(component, /const refreshFresh = \(\) => \{ void refreshFreshShared\(refreshKey\); \};/, "hvert sted paa skaermen gaar gennem den samme samler");
   assert.match(component, /if \(gen !== generation \|\| current\.session\?\.user\?\.id !== userId\) return;/, "et forsinket svar fra en anden session vises aldrig");
   assert.match(component, /for \(const listener of listeners\) listener\(latest\.data\);/, "hvert svar gaar til alle steder paa skaermen");
   assert.match(component, /return res\.ok \? lockedSalesFromResponse\(res\.data\) : null;/, "en fejl er ikke 'intet laast'");
   const layout = src("../Layout.jsx").replace(/\r\n/g, "\n");
-  assert.match(layout, /channel\.on\("postgres_changes", \{ event: "\*", schema: "public", table: "notifications"[^\n]*\n\s*async \(\) => \{\n\s*window\.dispatchEvent\(new Event\(LOCKED_SALES_REFRESH_EVENT\)\);/, "en ny besked henter de laaste salg igen");
+  assert.match(layout, /channel\.on\("postgres_changes", \{ event: "\*", schema: "public", table: "notifications"[^\n]*\n\s*async \(payload\) => \{\n[^\n]*\n\s*if \(payload\?\.eventType === "INSERT"\) window\.dispatchEvent\(new Event\(LOCKED_SALES_REFRESH_EVENT\)\);/, "kun en ny besked henter de laaste salg igen, ikke 'markeret som laest'");
+});
+
+/** Et kald, der koerer, til proeven siger stop. */
+function controlledRun() {
+  const calls: unknown[] = [];
+  const pending: Array<() => void> = [];
+  const run = (arg: unknown) => {
+    calls.push(arg);
+    return new Promise<void>((resolve) => { pending.push(resolve); });
+  };
+  const finishNext = async () => { await settle(); pending.shift()?.(); await settle(); };
+  return { calls, run, finishNext, open: () => pending.length };
+}
+const settle = async () => { for (let i = 0; i < 10; i += 1) await Promise.resolve(); };
+
+test("B1: en byge af beskeder giver hoejst eet kald ad gangen plus eet efterfoelgende", async () => {
+  const c = controlledRun();
+  const request = coalesceLatest(c.run);
+  for (let i = 0; i < 50; i += 1) void request(`saldo-${i}`);
+  await settle();
+  assert.equal(c.calls.length, 1, "kun eet kald koerer");
+  await c.finishNext();
+  assert.deepEqual(c.calls, ["saldo-0", "saldo-49"], "eet efterfoelgende kald med den seneste anmodning");
+  await c.finishNext();
+  assert.equal(c.calls.length, 2, "ikke flere end to i alt");
+  assert.equal(c.open(), 0);
+});
+
+test("B1: flere steder paa skaermen deler kaldet (een samler for hele skaermen)", async () => {
+  const c = controlledRun();
+  const request = coalesceLatest(c.run);
+  const bus = new EventTarget();
+  // Menuen, dashboardet, Oekonomis saldo og Oekonomis boks lytter alle.
+  for (let place = 0; place < 4; place += 1) bus.addEventListener("refresh", () => { void request("saldo"); });
+  for (let i = 0; i < 20; i += 1) bus.dispatchEvent(new Event("refresh"));
+  await settle();
+  assert.equal(c.calls.length, 1);
+  await c.finishNext();
+  await c.finishNext();
+  assert.equal(c.calls.length, 2, "20 beskeder x 4 steder = 2 kald");
+});
+
+test("B1: en ny besked efter et kald henter altid paa ny, ogsaa midt i et kald", async () => {
+  const c = controlledRun();
+  const request = coalesceLatest(c.run);
+  void request("a");
+  await c.finishNext();
+  assert.equal(c.calls.length, 1);
+  void request("b");
+  await settle();
+  assert.deepEqual(c.calls, ["a", "b"], "intet koerer: ny besked giver straks et nyt kald");
+  void request("c");
+  await settle();
+  assert.equal(c.calls.length, 2, "kommer mens 'b' koerer: venter, genbruger ikke 'b'");
+  await c.finishNext();
+  assert.deepEqual(c.calls, ["a", "b", "c"], "starter efter beskeden, saa svaret er nyt");
+  await c.finishNext();
+});
+
+test("B1: et fejlet kald laaser ikke samleren", async () => {
+  let n = 0;
+  const request = coalesceLatest(async () => { n += 1; throw new Error("netvaerk"); });
+  await request("x");
+  await request("y");
+  assert.equal(n, 2);
 });
 
 test("kontakten slukket: Hjaelp viser dagens tekst, aldrig tvillingen; taendt: omvendt", () => {

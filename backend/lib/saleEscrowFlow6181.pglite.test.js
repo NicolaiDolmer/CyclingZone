@@ -36,6 +36,8 @@ import {
   squadRestoreImage,
 } from "./saleEscrowFlow6181.js";
 import { flushParkedRider } from "./stageRaceTransferDefer.js";
+import { notifySellerSaleEscrowReleased } from "./saleEscrowView6181.js";
+import { notifyTeamOwner } from "./notificationService.js";
 import { seniorSquadPatch } from "./squads.js";
 import { runFullBetaReset } from "./betaResetService.js";
 import { MIGRATIONS, SCHEMA } from "./__fixtures__/saleEscrow6181Schema.js";
@@ -1067,6 +1069,46 @@ test("#6181 B11: refusion ved pension giver kun de to refusionsbeskeder, aldrig 
   assert.deepEqual(await refundSaleEscrowsForReleasedRiders(supabase, [RIDER.r1], { now: new Date(FLUSHED_AT), sourcePath: "test" }), { refunded: 1, failed: 0 });
   const codes = (await notifications(db)).map((n) => n.metadata?.messageCode).sort();
   assert.deepEqual(codes, ["notif.saleEscrowRefund.buyerMessage", "notif.saleEscrowRefund.sellerMessage"]);
+});
+
+test("#6181 Codex P1: udbetalings-beskeden faar afregningstidspunktet med hele vejen til den rigtige notifyTeamOwner", async () => {
+  /** Den rigtige beskedfunktion, men med et oeje paa hvilket ur den faar. */
+  const watched = () => {
+    /** @type {any[]} */
+    const clocks = [];
+    const fn = (s, escrow, opts) => notifySellerSaleEscrowReleased(s, escrow, {
+      ...opts,
+      notifyTeamOwner: async (args) => { clocks.push(args.now); return notifyTeamOwner(args); },
+    });
+    return { clocks, fn };
+  };
+
+  // Flushen: flushedAt.
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  await withOwners(db);
+  await heldTransfer(db, supabase, 60_000);
+  const flush = watched();
+  await releaseSaleEscrowForFlush(supabase, { id: RIDER.r1, pending_team_id: TEAM.B }, { flushedAt: FLUSHED_AT, notifyReleased: flush.fn });
+  assert.equal(flush.clocks.length, 1);
+  assert.ok(flush.clocks[0] instanceof Date, "et fast ur, ikke systemets");
+  assert.equal(flush.clocks[0].toISOString(), FLUSHED_AT);
+  assert.equal((await releasedNotes(db)).length, 1, "beskeden er skrevet gennem den rigtige tjeneste");
+
+  // Heal-sweepet: dets eget now.
+  const db2 = await database();
+  await setFlag(db2, "on");
+  const supabase2 = adapter(db2);
+  await withOwners(db2);
+  await heldTransfer(db2, supabase2, 40_000);
+  await setFlag(db2, "off");
+  assert.equal(await flushParkedRider(supabase2, { id: RIDER.r1, team_id: TEAM.A, pending_team_id: TEAM.B }, FLUSH_OPTS), true);
+  const sweepAt = new Date("2026-11-09T04:00:00.000Z");
+  const sweep = watched();
+  assert.equal((await reconcileHeldSaleEscrows({ supabase: supabase2, now: sweepAt, notifyReleased: sweep.fn })).released, 1);
+  assert.deepEqual(sweep.clocks, [sweepAt]);
+  assert.equal((await releasedNotes(db2)).length, 1);
 });
 
 test("#6181: udbetalings-beskeden gennem den rigtige notifyTeamOwner: een besked til saelgerens bruger, ogsaa efter heal-sweepet", async () => {

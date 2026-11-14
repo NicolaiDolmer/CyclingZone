@@ -20,7 +20,7 @@ import { authHeaders, supabase } from "../../lib/supabase";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import { formatNumber } from "../../lib/intl.js";
 import {
-  NO_LOCKED_SALES, canReuseShared, endsInKey, lockedSalesFromResponse, lockedSalesShareKey, nextLockedSales,
+  NO_LOCKED_SALES, canReuseShared, coalesceLatest, endsInKey, lockedSalesFromResponse, lockedSalesShareKey, nextLockedSales,
   type LockedSales, type LockedSalesSnapshot,
 } from "./lockedSalesModel.ts";
 
@@ -71,6 +71,11 @@ async function loadLockedSales(refreshKey: unknown, { fresh = false }: { fresh?:
   for (const listener of listeners) listener(latest.data);
 }
 
+// En ny besked henter altid paa ny, men samlet for hele skaermen: en byge af beskeder
+// og flere steder paa skaermen giver hoejst eet kald ad gangen plus eet efterfoelgende
+// (dommerens B1; ruten deler loft med mange andre laeseveje).
+const refreshFreshShared = coalesceLatest((refreshKey: unknown) => loadLockedSales(refreshKey, { fresh: true }));
+
 /**
  * @param refreshKey  saldoen; en ny saldo (fx efter en udbetaling) henter igen. Et nyt
  *   laast salg eller en refusion aendrer ikke saelgerens saldo, saa listen hentes ogsaa
@@ -87,7 +92,7 @@ export function useLockedSales(refreshKey: unknown): LockedSales {
     if (refreshKey == null) return undefined;
     const refresh = () => { void loadLockedSales(refreshKey); };
     // En ny besked kan betyde et nyt laast salg eller en refusion: hent altid paa ny.
-    const refreshFresh = () => { void loadLockedSales(refreshKey, { fresh: true }); };
+    const refreshFresh = () => { void refreshFreshShared(refreshKey); };
     refresh();
     window.addEventListener("focus", refresh);
     window.addEventListener(LOCKED_SALES_REFRESH_EVENT, refreshFresh);

@@ -761,8 +761,9 @@ export default function Layout() {
     // tomt tilbage midt i auth-init.
     return subscribeAuthedChannel("layout-notifs-v2", channel =>
       channel.on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${session.user.id}` },
-        async () => {
-          window.dispatchEvent(new Event(LOCKED_SALES_REFRESH_EVENT)); // #6181: et laast salg eller en refusion giver en besked, ikke en ny saldo
+        async (payload) => {
+          // #6181: et laast salg eller en refusion giver en NY besked, ikke en ny saldo. "Markeret som laest" aendrer intet laast.
+          if (payload?.eventType === "INSERT") window.dispatchEvent(new Event(LOCKED_SALES_REFRESH_EVENT));
           setUnread(await fetchUnreadCount(session.user.id));
           const { data: t } = await supabase.from("teams").select("balance").eq("user_id", session.user.id).maybeSingle();
           if (t) setBalance(t.balance);
