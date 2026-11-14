@@ -129,6 +129,34 @@
     "error": "Er is niets opgeslagen. {error}",
     "errorIn": "Er is niets opgeslagen door {race}: {error}"
   },
+  "bulk": {
+    "auto": "Laat de assistent kiezen",
+    "autoHint": "Vult de open plekken. Je eigen keuzes blijven.",
+    "clear": "Selecties verwijderen",
+    "clearHint": "Haalt de renners eruit. De koersen blijven op de kalender.",
+    "withdraw": "Afmelden",
+    "withdrawHint": "De ploeg start niet en kan de koers mislopen.",
+    "nothing": "Niets te wijzigen in deze koersen",
+    "menu": "Acties",
+    "scopeLabel": "Geldt voor",
+    "scope": { "next": "Volgende koers", "nextNamed": "Volgende koers: {race}", "checked": "{count, plural, one {Aangevinkte koers (#)} other {Aangevinkte koersen (#)}}", "shown": "Getoonde koersen ({count})", "season": "Heel het seizoen ({count})", "seasonShort": "Heel het seizoen", "pick": "Vink koersen aan in de lijst" },
+    "checkedCount": "{count, plural, one {# koers aangevinkt} other {# koersen aangevinkt}}",
+    "tick": "Vink aan",
+    "untick": "Vinkjes wissen",
+    "selectionLabel": "Aangevinkte koersen",
+    "draft": {
+      "label": "Concept",
+      "title": "Concept.",
+      "note": "Er is niets opgeslagen tot je opslaat.",
+      "auto": "{count, plural, one {Selectie gekozen in # koers} other {Selecties gekozen in # koersen}}, {riders, plural, one {# renner toegevoegd} other {# renners toegevoegd}}",
+      "clear": "{count, plural, one {Selectie verwijderd in # koers} other {Selecties verwijderd in # koersen}}",
+      "withdraw": "{count, plural, one {Afgemeld voor # koers: de ploeg start niet} other {Afgemeld voor # koersen: de ploeg start niet}}",
+      "undo": "Ongedaan maken",
+      "save": "Opslaan",
+      "mark": "Concept",
+      "open": { "auto": "De selectie van de assistent voor deze koers staat in het concept. De selectie hieronder is de opgeslagen tot je opslaat.", "clear": "De selectie van deze koers is verwijderd in het concept. De selectie hieronder is de opgeslagen tot je opslaat.", "withdraw": "Deze koers is afgemeld in het concept. Er verandert niets tot je opslaat." }
+    }
+  },
   "error": {
     "title": "De planning kon niet laden",
     "description": "Er is niets verloren gegaan. Je opgeslagen selecties zijn veilig.",

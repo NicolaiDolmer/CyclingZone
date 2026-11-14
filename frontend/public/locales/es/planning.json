@@ -129,6 +129,34 @@
     "error": "No se guardó nada. {error}",
     "errorIn": "No se guardó nada por {race}: {error}"
   },
+  "bulk": {
+    "auto": "Que elija el asistente",
+    "autoHint": "Rellena las plazas libres. Tus elecciones se quedan.",
+    "clear": "Quitar equipos",
+    "clearHint": "Saca a los corredores. Las carreras siguen en el calendario.",
+    "withdraw": "Retirar",
+    "withdrawHint": "El equipo no toma la salida y puede perder la carrera.",
+    "nothing": "Nada que cambiar en estas carreras",
+    "menu": "Acciones",
+    "scopeLabel": "Se aplica a",
+    "scope": { "next": "Próxima carrera", "nextNamed": "Próxima carrera: {race}", "checked": "{count, plural, one {Carrera marcada (#)} other {Carreras marcadas (#)}}", "shown": "Carreras mostradas ({count})", "season": "Toda la temporada ({count})", "seasonShort": "Toda la temporada", "pick": "Marca carreras en la lista" },
+    "checkedCount": "{count, plural, one {# carrera marcada} other {# carreras marcadas}}",
+    "tick": "Marcar",
+    "untick": "Quitar marcas",
+    "selectionLabel": "Carreras marcadas",
+    "draft": {
+      "label": "Borrador",
+      "title": "Borrador.",
+      "note": "No se guarda nada hasta que guardes.",
+      "auto": "{count, plural, one {Equipo elegido en # carrera} other {Equipos elegidos en # carreras}}, {riders, plural, one {# corredor añadido} other {# corredores añadidos}}",
+      "clear": "{count, plural, one {Equipo quitado en # carrera} other {Equipos quitados en # carreras}}",
+      "withdraw": "{count, plural, one {Retirado de # carrera: el equipo no toma la salida} other {Retirado de # carreras: el equipo no toma la salida}}",
+      "undo": "Deshacer",
+      "save": "Guardar",
+      "mark": "Borrador",
+      "open": { "auto": "El equipo del asistente para esta carrera está en el borrador. El equipo de abajo es el guardado hasta que guardes.", "clear": "El equipo de esta carrera está quitado en el borrador. El equipo de abajo es el guardado hasta que guardes.", "withdraw": "Esta carrera está retirada en el borrador. Nada cambia hasta que guardes." }
+    }
+  },
   "error": {
     "title": "No se pudo cargar la planificación",
     "description": "No se ha perdido nada. Tus equipos guardados están a salvo.",

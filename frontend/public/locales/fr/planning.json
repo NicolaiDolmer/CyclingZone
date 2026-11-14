@@ -129,6 +129,34 @@
     "error": "Rien n'a été enregistré. {error}",
     "errorIn": "Rien n'a été enregistré à cause de {race} : {error}"
   },
+  "bulk": {
+    "auto": "Laisser l'assistant choisir",
+    "autoHint": "Remplit les places libres. Tes choix restent.",
+    "clear": "Retirer les sélections",
+    "clearHint": "Retire les coureurs. Les courses restent au calendrier.",
+    "withdraw": "Se désinscrire",
+    "withdrawHint": "L'équipe ne prend pas le départ et peut perdre la course.",
+    "nothing": "Rien à changer dans ces courses",
+    "menu": "Actions",
+    "scopeLabel": "S'applique à",
+    "scope": { "next": "Prochaine course", "nextNamed": "Prochaine course : {race}", "checked": "{count, plural, one {Course cochée (#)} other {Courses cochées (#)}}", "shown": "Courses affichées ({count})", "season": "Toute la saison ({count})", "seasonShort": "Toute la saison", "pick": "Coche des courses dans la liste" },
+    "checkedCount": "{count, plural, one {# course cochée} other {# courses cochées}}",
+    "tick": "Cocher",
+    "untick": "Tout décocher",
+    "selectionLabel": "Courses cochées",
+    "draft": {
+      "label": "Brouillon",
+      "title": "Brouillon.",
+      "note": "Rien n'est enregistré avant que tu enregistres.",
+      "auto": "{count, plural, one {Équipe choisie dans # course} other {Équipes choisies dans # courses}}, {riders, plural, one {# coureur ajouté} other {# coureurs ajoutés}}",
+      "clear": "{count, plural, one {Sélection retirée dans # course} other {Sélections retirées dans # courses}}",
+      "withdraw": "{count, plural, one {Désinscrit de # course : l'équipe ne prend pas le départ} other {Désinscrit de # courses : l'équipe ne prend pas le départ}}",
+      "undo": "Annuler",
+      "save": "Enregistrer",
+      "mark": "Brouillon",
+      "open": { "auto": "L'équipe de l'assistant pour cette course est dans le brouillon. L'équipe ci-dessous est celle enregistrée jusqu'à ce que tu enregistres.", "clear": "La sélection de cette course est retirée dans le brouillon. L'équipe ci-dessous est celle enregistrée jusqu'à ce que tu enregistres.", "withdraw": "Cette course est désinscrite dans le brouillon. Rien ne change avant que tu enregistres." }
+    }
+  },
   "error": {
     "title": "La planification n'a pas pu se charger",
     "description": "Rien n'a été perdu. Tes équipes enregistrées sont en sécurité.",
