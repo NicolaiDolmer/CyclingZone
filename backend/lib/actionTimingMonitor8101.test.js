@@ -822,6 +822,46 @@ test("langsomhed spredt jævnt over en time meldes (én besked)", async () => {
   assert.match(JSON.stringify(sent[0].payload), /den seneste time/);
 });
 
+// Lokal Codex-runde: et stille kvarter må ikke skjule et time-brud, der først
+// opstår, når et gammelt kvarter med hurtige kald glider ud af timen.
+test("time-reglen vurderes også i et stille kvarter", async () => {
+  const supabase = fakeSupabase();
+  const { rec } = warmRecorder();
+  const sent = [];
+  const hourHistory = createHourHistory();
+  const quarters = [
+    ["2026-11-14T06:15:00Z", 100, 0],
+    ["2026-11-14T06:30:00Z", 0, 2],
+    ["2026-11-14T06:45:00Z", 0, 2],
+    ["2026-11-14T07:00:00Z", 0, 2],
+    ["2026-11-14T07:15:00Z", 0, 0], // stille kvarter; de hurtige kald er nu over en time gamle
+  ];
+  const rules = [];
+  let last;
+  for (const [at, fast, slow] of quarters) {
+    recordQuarter(rec, "training_open", { fast, slow });
+    last = await flushWith({ supabase, rec, now: new Date(at), sent, hourHistory });
+    rules.push(last.breaches.map((b) => b.rule).join(","));
+  }
+  assert.deepEqual(rules, ["", "", "", "", "hour"]);
+  assert.equal(last.rows.length, 0, "et stille kvarter skriver ingen række");
+  assert.deepEqual(last.alerted, ["training_open"]);
+  assert.equal(sent.length, 1);
+  assert.match(JSON.stringify(sent[0].payload), /den seneste time/);
+});
+
+test("et stille kvarter uden historik giver hverken række eller alarm", async () => {
+  const supabase = fakeSupabase();
+  const { rec } = warmRecorder();
+  const sent = [];
+  const hourHistory = createHourHistory();
+  recordQuarter(rec, "training_open", { fast: 0, slow: 2 });
+  await flushWith({ supabase, rec, now: new Date("2026-11-14T06:15:00Z"), sent, hourHistory });
+  const r = await flushWith({ supabase, rec, now: new Date("2026-11-14T07:30:00Z"), sent, hourHistory });
+  assert.deepEqual(r.breaches, [], "historikken er over en time gammel");
+  assert.equal(sent.length, 0);
+});
+
 test("spredt langsomhed under 20 % af timen giver ingen alarm", async () => {
   const supabase = fakeSupabase();
   const { rec } = warmRecorder();

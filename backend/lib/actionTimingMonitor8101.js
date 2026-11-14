@@ -493,9 +493,18 @@ export async function runActionTimingFlush({
   const rows = [];
   const breaches = [];
   for (const action of MEASURED_ACTIONS) {
-    const durations = perAction.get(action.key);
-    if (!durations?.length) continue;
+    const durations = perAction.get(action.key) ?? [];
     const summary = summarizeDurations(durations);
+    // Time-reglen vurderes også i et stille kvarter: når et gammelt kvarter med
+    // hurtige kald glider ud af timen, kan timens andel først nu være over
+    // loftet. Uden kald nu og uden historik er der intet at vurdere.
+    const hour = hourHistory.totals(action.key, now.getTime());
+    if (!durations.length && hour.calls === 0) continue;
+    if (!durations.length) {
+      const verdict = evaluateBreach({ key: action.key, summary, hour });
+      if (verdict.breach) breaches.push({ key: action.key, summary, ...verdict });
+      continue;
+    }
     hourHistory.add(action.key, now.getTime(), summary.calls, slowCallsOf(summary));
     rows.push({
       window_start: windowStart.toISOString(),
@@ -510,8 +519,8 @@ export async function runActionTimingFlush({
       hung: summary.hung,
       buckets: summary.buckets,
     });
-    const hour = hourHistory.totals(action.key, now.getTime());
-    const verdict = evaluateBreach({ key: action.key, summary, hour });
+    // Timen inklusive dette kvarter.
+    const verdict = evaluateBreach({ key: action.key, summary, hour: hourHistory.totals(action.key, now.getTime()) });
     if (verdict.breach) breaches.push({ key: action.key, summary, ...verdict });
   }
   const knownKeys = new Set(knownBreaches.map((k) => k.key));
