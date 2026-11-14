@@ -699,6 +699,55 @@ export async function loadNextStageByRider({ supabase, riderIds, seasonId, now =
   return out;
 }
 
+// ── #7801 svartid: Træningens læsninger deles inden for ét kald ──────────────────────────────
+const MUTATIONS = new Set(["insert", "update", "upsert", "delete"]);
+const keyPart = (_key, value) => {
+  if (value === undefined) return { undef: true };
+  if (value instanceof Set) return { set: [...value] };
+  if (value instanceof Map) return { map: [...value] };
+  return value;
+};
+const copyAnswer = (res) => ({ ...res, data: res.data == null ? res.data : structuredClone(res.data) });
+
+/**
+ * En databaseklient til ét kald: en læsning, der allerede er besvaret uden fejl i samme kald,
+ * gives igen (som kopi) i stedet for at blive sendt igen. Kun nøjagtig samme forespørgsel
+ * (tabel, filtre, rækkefølge) deles. Fejl huskes aldrig, så et nyt forsøg går til databasen.
+ * Skrivninger går altid igennem. Intet lever ud over kaldet, der lavede klienten.
+ */
+export function sharedReadsClient(supabase) {
+  const answered = new Map();
+  const from = (table) => {
+    const steps = [];
+    const build = () => steps.reduce((query, [method, args]) => query[method](...args), supabase.from(table));
+    const send = () => new Promise((resolve) => { resolve(build()); });
+    const run = () => {
+      if (steps.some(([method]) => MUTATIONS.has(method))) return send();
+      const key = JSON.stringify([table, steps], keyPart);
+      if (answered.has(key)) return Promise.resolve(copyAnswer(answered.get(key)));
+      return send().then((res) => {
+        if (res && !res.error) answered.set(key, copyAnswer(res));
+        return res;
+      });
+    };
+    const query = new Proxy({}, {
+      get(_target, prop) {
+        if (prop === "then" || prop === "catch" || prop === "finally") return (...args) => run()[prop](...args);
+        if (typeof prop === "symbol") return undefined;
+        return (...args) => { steps.push([prop, args]); return query; };
+      },
+    });
+    return query;
+  };
+  return new Proxy(supabase, {
+    get(target, prop) {
+      if (prop === "from") return from;
+      const value = Reflect.get(target, prop);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+}
+
 /**
  * Træningsfladens tal: rider_id → { fatigue, fatigueAtStart }, med form for stemplede datoer.
  * Null ved slukket kontakt uden instant-stempler. `fatigueAtStart` er skønnet ved start af rytterens næste
@@ -707,20 +756,35 @@ export async function loadNextStageByRider({ supabase, riderIds, seasonId, now =
  * Næste etape i dag: datoens kørte etaper ligger alle før den, så skønnet er tallet lige nu.
  * Næste etape i morgen: aftenens opgørelse (samme prognose som "Træthed i aften", I5), for
  * rytterens første etape i morgen har ingen etaper før sig på datoen.
+ *
+ * Svartid (#7801): tændt startes prognosen, så snart rytternes næste etape er kendt, samtidig
+ * med tallet lige nu, og alle tre deler én klient (sharedReadsClient), så kontakter, lægeopslag
+ * og stempler, som tallet allerede har læst, ikke læses igen. Slukket er vejen uændret.
  */
 export async function fatigueOutlookForTeam({ supabase, team, seasonId, conditions, abilityByRider = null, now = new Date() }) {
   if (!(conditions ?? []).length) return null;
-  const enabled = await isFatigueNow7801Enabled(supabase);
+  const reads = sharedReadsClient(supabase);
+  const enabled = await isFatigueNow7801Enabled(reads);
   let instant;
   let fatigueNow;
   let nextP = null;
+  let tonightP = null;
+  const today = copenhagenDateString(now);
+  const needsTonight = (next) => [...next.values()].some((n) => n.tickDate !== today);
   if (enabled) {
     // #7801 rest-byg: rytternes næste etape afhænger ikke af tallet og hentes samtidig med det.
     // Tallet kommer fra samme visnings-opslag som de andre flader; kan det ikke regnes, er det
     // null ("—"), ikke morgenens tal.
-    nextP = loadNextStageByRider({ supabase, riderIds: [...new Set(conditions.map((c) => c.rider_id))], seasonId, now })
+    nextP = loadNextStageByRider({ supabase: reads, riderIds: [...new Set(conditions.map((c) => c.rider_id))], seasonId, now })
       .then((value) => ({ value }), (error) => ({ error }));
-    ({ fatigue: fatigueNow, instant } = await teamFatigueNowForSurface({ supabase, conditions, abilityByRider, teamId: team?.id ?? null, now }));
+    // Prognosen afhænger kun af holdet og datoen, ikke af tallet nu: den venter ikke på det.
+    tonightP = nextP.then(async ({ value }) => {
+      if (!value || !needsTonight(value)) return null;
+      // Dynamisk import: prognosen importerer motorens raceFatigue.js, som importerer dette modul.
+      const { loadTeamFatigueForecast } = await import("./trainingWeekPlanForecast.js");
+      return loadTeamFatigueForecast({ supabase: reads, team, seasonId, now });
+    }).then((value) => ({ value }), (error) => ({ error }));
+    ({ fatigue: fatigueNow, instant } = await teamFatigueNowForSurface({ supabase: reads, conditions, abilityByRider, teamId: team?.id ?? null, now }));
   } else {
     instant = await loadInstantConditions({ supabase, riderIds: conditions.map(c => c.rider_id), tickDate: copenhagenDateString(now), failOpenWhenOff: true });
     if (!instant.size) return null;
@@ -737,12 +801,17 @@ export async function fatigueOutlookForTeam({ supabase, team, seasonId, conditio
     } else {
       next = await loadNextStageByRider({ supabase, riderIds: [...out.keys()], seasonId, now });
     }
-    const today = copenhagenDateString(now);
     let tonight = null;
-    if ([...next.values()].some((n) => n.tickDate !== today)) {
-      // Dynamisk import: prognosen importerer motorens raceFatigue.js, som importerer dette modul.
-      const { loadTeamFatigueForecast } = await import("./trainingWeekPlanForecast.js");
-      tonight = await loadTeamFatigueForecast({ supabase, team, seasonId, now });
+    if (needsTonight(next)) {
+      if (tonightP) {
+        const settled = await tonightP;
+        if (settled.error) throw settled.error;
+        tonight = settled.value;
+      } else {
+        // Dynamisk import: prognosen importerer motorens raceFatigue.js, som importerer dette modul.
+        const { loadTeamFatigueForecast } = await import("./trainingWeekPlanForecast.js");
+        tonight = await loadTeamFatigueForecast({ supabase, team, seasonId, now });
+      }
     }
     for (const [id, n] of next) {
       const row = out.get(id);
