@@ -16,6 +16,12 @@
 //   4. Den lokale kopi tilhører én bruger. Logger en anden ind på enheden, gælder
 //      den forriges markører ikke, og de sendes heller ikke op på den nye konto.
 //      Udlogget: kun den lokale kopi, som i dag.
+//   5. En læsning hører til den bruger, der var logget ind, da den skete, og
+//      holdes adskilt fra den lokale kopi (som kan være en anden brugers). Den
+//      sendes op, så længe serveren ikke vides at have den, uanset om den lokale
+//      kopi rykkede; og afstemningen fletter den ind, før den kasserer en anden
+//      brugers kopi. Så går ingen læsning tabt, uanset hvilken rækkefølge siden,
+//      Layout og serverens svar lander i.
 import { useEffect } from "react";
 
 export type SeenMarkerKey = "patch_notes" | "roadmap";
@@ -74,24 +80,25 @@ export interface SeenMarkerSyncPlan {
  * Ren afstemning mellem enhedens lokale kopi og serveren.
  * `sameOwner`: den lokale kopi er denne brugers, eller ejeren er ukendt (en kopi
  * fra før udrulningen: det er netop den, regel 3 flytter op).
+ * `reads`: hvad den indloggede bruger selv har læst i denne fane (regel 5).
  */
 export function planSeenMarkerSync(
   local: Partial<Record<SeenMarkerKey, string | null>>,
   server: SeenMarkers,
   sameOwner: boolean,
+  reads: SeenMarkers = {},
 ): SeenMarkerSyncPlan {
   const plan: SeenMarkerSyncPlan = { localWrites: {}, push: {} };
   for (const key of SEEN_MARKER_KEYS) {
     const mine = isSeenMarker(local[key]) ? local[key] : null;
     const theirs = isSeenMarker(server[key]) ? server[key] : null;
-    if (!sameOwner) {
-      // Regel 4: en anden brugers lokale markør gælder ikke og sendes ikke op.
-      if (theirs !== mine) plan.localWrites[key] = theirs;
-      continue;
-    }
-    const next = laterSeenMarker(mine, theirs);
-    if (next && next !== mine) plan.localWrites[key] = next;
-    if (mine && (!theirs || mine > theirs)) plan.push[key] = mine;
+    const read = isSeenMarker(reads[key]) ? reads[key] : null;
+    // Regel 4: en anden brugers lokale markør gælder ikke og sendes ikke op;
+    // regel 5: brugerens egne læsninger tæller altid med.
+    const own = sameOwner ? laterSeenMarker(mine, read) : read;
+    const next = laterSeenMarker(theirs, own);
+    if (next !== mine) plan.localWrites[key] = next;
+    if (own && (!theirs || own > theirs)) plan.push[key] = own;
   }
   return plan;
 }
@@ -107,12 +114,41 @@ export interface SeenMarkersBackend {
   fetchMarkers(): Promise<{ ok: boolean; available: boolean; markers: unknown } | null>;
   /** true = serveren har markørerne. */
   putMarkers(markers: SeenMarkers): Promise<boolean>;
-  /** Fortæl åbne sider om brugerens markører fra serveren. */
-  announce?(markers: SeenMarkers): void;
+  /**
+   * Fortæl åbne sider om brugerens markører fra serveren. `replace`: den lokale
+   * kopi var en anden brugers, så sidens øjebliksbillede skal erstattes, ikke flettes.
+   */
+  announce?(markers: SeenMarkers, options?: { replace: boolean }): void;
 }
 
-/** Markører denne fane selv har sendt op (dette besøg), pr. forbindelse. */
-const ownPushes = new WeakMap<SeenMarkersBackend, SeenMarkers>();
+/** Fanens hukommelse pr. forbindelse (regel 5), aldrig i localStorage. */
+interface TabState {
+  /** Hvad hver bruger har læst i denne fane. */
+  reads: Map<string, SeenMarkers>;
+  /** Hvad serveren vides at have pr. bruger (hentet eller bekræftet); kun en nedre grænse. */
+  confirmed: Map<string, SeenMarkers>;
+  /** Læsninger hvis bruger endnu ikke er slået op. */
+  pending: Set<Promise<unknown>>;
+}
+const tabs = new WeakMap<SeenMarkersBackend, TabState>();
+
+function tabFor(backend: SeenMarkersBackend): TabState {
+  let tab = tabs.get(backend);
+  if (!tab) {
+    tab = { reads: new Map(), confirmed: new Map(), pending: new Set() };
+    tabs.set(backend, tab);
+  }
+  return tab;
+}
+
+/** Ryk brugerens markør frem i et af fanens kort. true = den rykkede. */
+function advanceFor(map: Map<string, SeenMarkers>, userId: string, key: SeenMarkerKey, value: string | null | undefined): boolean {
+  const current = map.get(userId) ?? {};
+  const next = laterSeenMarker(current[key], value);
+  if (!next || next === current[key]) return false;
+  map.set(userId, { ...current, [key]: next });
+  return true;
+}
 
 function readLocal(storage: StorageLike | null, key: string): string | null {
   try { return storage?.getItem(key) ?? null; } catch { return null; }
@@ -157,40 +193,61 @@ export async function syncSeenMarkers(backend: SeenMarkersBackend = appBackend):
     if (!userId) return false; // udlogget: kun den lokale kopi, som i dag
     const res = await backend.fetchMarkers().catch(() => null);
     if (!res || !res.ok || !res.available) return false; // regel 1: faldvej = lokal kopi
+    // Regel 5: læsninger startet før dette punkt skal kende deres bruger, før
+    // kopien afstemmes. Hvert opslag er en hurtig session-læsning; loftet er kun
+    // et værn mod en uendelig strøm af nye læsninger.
+    const tab = tabFor(backend);
+    for (let round = 0; round < 10 && tab.pending.size; round += 1) {
+      await Promise.allSettled([...tab.pending]);
+    }
     // Brugeren skiftede undervejs: svaret er den forriges og smides væk.
     const nowUser = await backend.getUserId().catch(() => null);
     if (nowUser !== userId) return false;
 
+    // Herfra og til afstemningen er skrevet, sker alt uden pause (ingen await),
+    // så ingen læsning kan lande midt i den.
     const server = parseSeenMarkers(res.markers);
+    for (const [key, value] of Object.entries(server) as [SeenMarkerKey, string][]) advanceFor(tab.confirmed, userId, key, value);
+    const reads = tab.reads.get(userId) ?? {};
     const owner = readLocal(backend.storage, SEEN_MARKERS_OWNER_KEY);
     const sameOwner = !owner || owner === userId;
     // Læst først nu, så en markør sat mens svaret var på vej, er med.
     const local: Partial<Record<SeenMarkerKey, string | null>> = {};
     for (const key of SEEN_MARKER_KEYS) local[key] = readLocalSeenMarker(key, backend.storage);
 
-    const plan = planSeenMarkerSync(local, server, sameOwner);
+    const plan = planSeenMarkerSync(local, server, sameOwner, reads);
     for (const [key, value] of Object.entries(plan.localWrites) as [SeenMarkerKey, string | null][]) {
       writeLocal(backend.storage, SEEN_MARKER_LOCAL_KEYS[key], value);
     }
     writeLocal(backend.storage, SEEN_MARKERS_OWNER_KEY, userId);
-    if (Object.keys(plan.push).length) void backend.putMarkers(plan.push).catch(() => false);
+    if (Object.keys(plan.push).length) {
+      const push = plan.push;
+      void backend.putMarkers(push).then((ok) => {
+        if (!ok) return;
+        for (const [key, value] of Object.entries(push) as [SeenMarkerKey, string][]) advanceFor(tab.confirmed, userId, key, value);
+      }).catch(() => false);
+    }
 
     // Kun serverens værdier (det brugeren så på andre enheder). Den lokale kopi kan
-    // allerede indeholde dette besøg, og en værdi denne fane selv har sendt op, er
-    // også dette besøg: ingen af dem må slukke sidens "nyt"-markeringer.
-    const own = ownPushes.get(backend) ?? {};
+    // allerede indeholde dette besøg, og en værdi brugeren selv har læst i denne
+    // fane, er også dette besøg: ingen af dem må slukke sidens "nyt"-markeringer.
     const elsewhere: SeenMarkers = {};
     for (const [key, value] of Object.entries(server) as [SeenMarkerKey, string][]) {
-      if (value !== own[key]) elsewhere[key] = value;
+      if (value !== reads[key]) elsewhere[key] = value;
     }
-    if (Object.keys(elsewhere).length) backend.announce?.(elsewhere);
+    // En anden brugers kopi: åbne sider tog deres øjebliksbillede af den, så det erstattes.
+    if (Object.keys(elsewhere).length) backend.announce?.(elsewhere, { replace: !sameOwner });
     return Object.keys(plan.localWrites).length > 0;
   } catch {
     return false; // ikke-kritisk UI: prikken falder tilbage til den lokale kopi
   }
 }
 
-/** Send én markør op (fire-and-forget). Udlogget eller fejl: kun den lokale kopi. */
+/**
+ * Notér en læsning på den indloggede bruger og send den op, medmindre serveren
+ * allerede vides at have den eller en nyere (regel 5). Uafhængig af om den lokale
+ * kopi rykkede. Udlogget eller fejl: kun den lokale kopi. Kaster aldrig.
+ */
 export async function pushSeenMarker(
   key: SeenMarkerKey,
   value: string | null | undefined,
@@ -198,19 +255,31 @@ export async function pushSeenMarker(
 ): Promise<boolean> {
   if (!isSeenMarker(value)) return false;
   try {
-    const userId = await backend.getUserId().catch(() => null);
+    const tab = tabFor(backend);
+    // Læsningen knyttes til brugeren, før en afstemning må bruge den (se syncSeenMarkers).
+    const attributed = (async () => {
+      const userId = await backend.getUserId().catch(() => null);
+      if (userId) advanceFor(tab.reads, userId, key, value);
+      return userId;
+    })();
+    tab.pending.add(attributed);
+    let userId: string | null;
+    try { userId = await attributed; } finally { tab.pending.delete(attributed); }
     if (!userId) return false;
-    ownPushes.set(backend, { ...ownPushes.get(backend), [key]: value });
-    return await backend.putMarkers({ [key]: value });
+    const known = tab.confirmed.get(userId)?.[key] ?? null;
+    if (known && laterSeenMarker(known, value) === known) return true; // serveren har den eller en nyere
+    const ok = await backend.putMarkers({ [key]: value }).catch(() => false);
+    if (ok) advanceFor(tab.confirmed, userId, key, value);
+    return ok;
   } catch {
     return false;
   }
 }
 
-/** Sæt den lokale markør fremad og send den op, hvis den rykkede. Blokerer aldrig. */
+/** Sæt den lokale markør fremad og notér læsningen på brugeren (regel 5). Blokerer aldrig. */
 export function markSeen(key: SeenMarkerKey, value: string | null | undefined, backend: SeenMarkersBackend = appBackend): void {
-  const { value: now, advanced } = advanceLocalSeenMarker(key, value, backend.storage);
-  if (advanced) void pushSeenMarker(key, now, backend);
+  advanceLocalSeenMarker(key, value, backend.storage);
+  void pushSeenMarker(key, value, backend);
 }
 
 /**
@@ -222,8 +291,11 @@ export function useSeenMarkersSynced(key: SeenMarkerKey, setSnapshot: (update: (
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
     const onSynced = (event: Event) => {
-      const value = parseSeenMarkers((event as CustomEvent).detail)[key];
-      if (value) setSnapshot((prev) => laterSeenMarker(prev, value));
+      const detail = ((event as CustomEvent).detail ?? {}) as { markers?: unknown; replace?: boolean };
+      const value = parseSeenMarkers(detail.markers)[key];
+      if (!value) return;
+      // replace: øjebliksbilledet var taget af en anden brugers kopi (brugerskift).
+      setSnapshot((prev) => (detail.replace ? value : laterSeenMarker(prev, value)));
     };
     window.addEventListener(SEEN_MARKERS_SYNCED_EVENT, onSynced);
     return () => window.removeEventListener(SEEN_MARKERS_SYNCED_EVENT, onSynced);
@@ -269,7 +341,8 @@ const appBackend: SeenMarkersBackend = {
     );
     return res.ok;
   },
-  announce(markers) {
-    try { window.dispatchEvent(new CustomEvent(SEEN_MARKERS_SYNCED_EVENT, { detail: markers })); } catch { /* ingen window */ }
+  announce(markers, options) {
+    const detail = { markers, replace: Boolean(options?.replace) };
+    try { window.dispatchEvent(new CustomEvent(SEEN_MARKERS_SYNCED_EVENT, { detail })); } catch { /* ingen window */ }
   },
 };

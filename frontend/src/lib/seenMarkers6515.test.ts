@@ -237,6 +237,157 @@ test("en markør denne fane selv sendte op, slukker ikke sidens nyt-markeringer"
   assert.deepEqual(laptop.announced, []);
 }));
 
+// ── Rettelsesrunde (Codex-fund 2 og 3): rækkefølge og samtidighed ─────────
+
+/** Et løfte testen selv slipper: styrer præcis hvornår serveren svarer. */
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((r) => { resolve = r; });
+  return { promise, resolve };
+}
+
+test("fund 2: læsningen sendes op, selv om den lokale kopi allerede havde datoen", withFixedClock(async () => {
+  // PatchNotesPage (eller en tidligere fejlet PUT) har sat datoen lokalt; serveren er bagud.
+  const server = fakeServer({ markers: { patch_notes: "2026-11-01" } });
+  const laptop = device(server, memoryStorage({ [SEEN_MARKERS_OWNER_KEY]: "user-a", [PN]: LATEST_PATCH }), { id: "user-a" });
+  markSeen("patch_notes", LATEST_PATCH, laptop.backend);
+  await flush();
+  assert.equal(server.state.markers.patch_notes, LATEST_PATCH, "noten skal være læst på de andre enheder");
+}));
+
+test("fund 2: begge indlæsnings-rækkefølger (side før Layout, Layout før side) gemmer læsningen", withFixedClock(async () => {
+  for (const order of [["page", "layout"], ["layout", "page"]]) {
+    const server = fakeServer({ markers: { patch_notes: "2026-11-01" } });
+    const laptop = device(server, memoryStorage({ [SEEN_MARKERS_OWNER_KEY]: "user-a", [PN]: "2026-11-01" }), { id: "user-a" });
+    await syncSeenMarkers(laptop.backend); // serveren svarede først
+    for (const _who of order) { markSeen("patch_notes", LATEST_PATCH, laptop.backend); await flush(); }
+    assert.equal(server.state.markers.patch_notes, LATEST_PATCH, order.join(" -> "));
+    assert.ok(server.state.puts.length <= 1, "serveren vides at have den: ingen ekstra PUT");
+  }
+}));
+
+test("fund 2: PatchNotesPage skriver ikke længere selv i localStorage, men via den fælles skriver", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const source = await readFile(new URL("../pages/PatchNotesPage.jsx", import.meta.url), "utf8");
+  assert.equal(/localStorage\.setItem\(/.test(source), false);
+  assert.match(source, /markSeen\("patch_notes", latestOverall\)/);
+});
+
+test("serverfejl på PUT: næste læsning af samme dato prøver igen", withFixedClock(async () => {
+  const server = fakeServer({ markers: { patch_notes: "2026-11-01" } });
+  const laptop = device(server, memoryStorage({ [SEEN_MARKERS_OWNER_KEY]: "user-a" }), { id: "user-a" });
+  server.state.down = true;
+  markSeen("patch_notes", LATEST_PATCH, laptop.backend);
+  await flush();
+  assert.equal(server.state.markers.patch_notes, "2026-11-01");
+  server.state.down = false;
+  markSeen("patch_notes", LATEST_PATCH, laptop.backend);
+  await flush();
+  assert.equal(server.state.markers.patch_notes, LATEST_PATCH);
+}));
+
+test("fund 3: bruger B læser Roadmap før synken er færdig, på en enhed med A's markører: læsningen bevares", withFixedClock(async () => {
+  const server = fakeServer(); // B's række: tom
+  const fetchGate = deferred<void>();
+  const storage = memoryStorage({ [SEEN_MARKERS_OWNER_KEY]: "user-a", [RM]: LATEST_ROADMAP, [PN]: LATEST_PATCH });
+  const backend: SeenMarkersBackend = {
+    storage,
+    getUserId: async () => "user-b",
+    fetchMarkers: async () => { const snapshot = await server.get(); await fetchGate.promise; return snapshot; },
+    putMarkers: (m) => server.put(m),
+  };
+  const sync = syncSeenMarkers(backend);
+  await flush();
+  markSeen("roadmap", LATEST_ROADMAP, backend); // B åbner Roadmap; A havde samme tidsstempel lokalt
+  await flush();
+  fetchGate.resolve(); // serverens (tomme) svar for B lander først nu
+  await sync;
+  await flush();
+  assert.equal(storage.getItem(RM), LATEST_ROADMAP, "B's læsning står stadig lokalt");
+  assert.equal(isRoadmapUnread(LATEST_ROADMAP, storage.getItem(RM)), false, "ingen prik efter at have læst siden");
+  assert.equal(server.state.markers.roadmap, LATEST_ROADMAP, "B's læsning er gemt på B");
+  // A's patch notes-markør gælder stadig ikke for B og sendes ikke op.
+  assert.equal(storage.getItem(PN), null);
+  assert.equal(server.state.markers.patch_notes, undefined);
+  assert.equal(storage.getItem(SEEN_MARKERS_OWNER_KEY), "user-b");
+}));
+
+test("fund 3: synken venter på at en læsning kender sin bruger, før den afstemmer", withFixedClock(async () => {
+  const server = fakeServer();
+  const fetchGate = deferred<void>();
+  const slowSession = deferred<string>();
+  let calls = 0;
+  const storage = memoryStorage({ [SEEN_MARKERS_OWNER_KEY]: "user-a", [RM]: LATEST_ROADMAP });
+  const backend: SeenMarkersBackend = {
+    storage,
+    // 1. kald: synkens opslag. 2. kald: læsningens opslag (langsomt). Resten: hurtigt.
+    getUserId: async () => { calls += 1; return calls === 2 ? slowSession.promise : "user-b"; },
+    fetchMarkers: async () => { const snapshot = await server.get(); await fetchGate.promise; return snapshot; },
+    putMarkers: (m) => server.put(m),
+  };
+  const sync = syncSeenMarkers(backend);
+  await flush();
+  markSeen("roadmap", LATEST_ROADMAP, backend);
+  fetchGate.resolve();
+  await flush(); await flush();
+  assert.equal(storage.getItem(RM), LATEST_ROADMAP, "intet afstemt, mens læsningens bruger er ukendt");
+  slowSession.resolve("user-b");
+  await sync;
+  await flush();
+  assert.equal(storage.getItem(RM), LATEST_ROADMAP);
+  assert.equal(server.state.markers.roadmap, LATEST_ROADMAP);
+}));
+
+test("brugerskift i samme fane: A's læsninger følger ikke med over på B", withFixedClock(async () => {
+  const server = fakeServer(); // én række pr. bruger: her B's
+  const user = { id: "user-a" as string | null };
+  const storage = memoryStorage({ [SEEN_MARKERS_OWNER_KEY]: "user-a" });
+  const putsBy: Array<[string | null, SeenMarkers]> = [];
+  const backend: SeenMarkersBackend = {
+    storage,
+    getUserId: async () => user.id,
+    fetchMarkers: () => server.get(),
+    putMarkers: async (m) => { putsBy.push([user.id, m]); return user.id === "user-b" ? server.put(m) : true; },
+  };
+  markSeen("roadmap", LATEST_ROADMAP, backend); // A læser
+  await flush();
+  user.id = "user-b"; // A logger ud, B logger ind uden genindlæsning
+  await syncSeenMarkers(backend);
+  await flush();
+  assert.equal(storage.getItem(RM), null, "A's læsning gælder ikke for B");
+  assert.deepEqual(putsBy.filter(([who]) => who === "user-b"), [], "intet af A's sendt op på B");
+}));
+
+test("brugerskift: en åben side får B's markør i stedet for A's øjebliksbillede", withFixedClock(async () => {
+  const server = fakeServer({ markers: { roadmap: "2026-11-01T00:00:00Z" } }); // B's række
+  const storage = memoryStorage({ [SEEN_MARKERS_OWNER_KEY]: "user-a", [RM]: LATEST_ROADMAP });
+  const replaced: Array<[SeenMarkers, boolean]> = [];
+  const backend: SeenMarkersBackend = {
+    storage,
+    getUserId: async () => "user-b",
+    fetchMarkers: () => server.get(),
+    putMarkers: (m) => server.put(m),
+    announce: (m, options) => { replaced.push([m, Boolean(options?.replace)]); },
+  };
+  await syncSeenMarkers(backend);
+  assert.deepEqual(replaced, [[{ roadmap: "2026-11-01T00:00:00Z" }, true]]);
+}));
+
+test("to faner samme bruger: hver læsning gemmes, ingen fane hiver den anden tilbage", withFixedClock(async () => {
+  const server = fakeServer();
+  const storage = memoryStorage({ [SEEN_MARKERS_OWNER_KEY]: "user-a" });
+  const tab1 = device(server, storage, { id: "user-a" });
+  const tab2 = device(server, storage, { id: "user-a" });
+  markSeen("patch_notes", LATEST_PATCH, tab1.backend);
+  markSeen("roadmap", "2026-11-01T00:00:00Z", tab2.backend);
+  await flush();
+  markSeen("roadmap", LATEST_ROADMAP, tab1.backend);
+  await syncSeenMarkers(tab2.backend);
+  await flush();
+  assert.deepEqual(server.state.markers, { patch_notes: LATEST_PATCH, roadmap: LATEST_ROADMAP });
+  assert.equal(storage.getItem(RM), LATEST_ROADMAP);
+}));
+
 test("advanceLocalSeenMarker: rykker kun frem", () => {
   const storage = memoryStorage({ [PN]: LATEST_PATCH });
   assert.deepEqual(advanceLocalSeenMarker("patch_notes", "2026-11-01", storage), { value: LATEST_PATCH, advanced: false });

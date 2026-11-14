@@ -5,7 +5,7 @@ import {
   effectiveRollout, filterByRollout,
 } from "../lib/patchNotes.js";
 import { loadAnonymousFlags } from "../lib/featureStage.ts";
-import { useSeenMarkersSynced } from "../lib/seenMarkers6515.ts"; // #6515
+import { markSeen, useSeenMarkersSynced } from "../lib/seenMarkers6515.ts"; // #6515
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import { documentLang } from "../i18n/languages.js";
 import { intlLocale } from "../lib/intlLocale.ts";
@@ -124,9 +124,8 @@ export default function PatchNotesPage() {
     [flat, lang],
   );
   useEffect(() => {
-    if (latestOverall) {
-      try { localStorage.setItem(LAST_SEEN_KEY, latestOverall); } catch { /* ignore */ }
-    }
+    // #6515: den fælles skriver (kun fremad + sendes op på brugeren), så læsningen gemmes uanset indlæsnings-rækkefølge.
+    if (latestOverall) markSeen("patch_notes", latestOverall);
   }, [latestOverall]);
 
   const latest = days[0]?.date;
