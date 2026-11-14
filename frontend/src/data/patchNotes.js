@@ -1,5 +1,28 @@
 export const PATCHES = [
 {
+  "version": "7.447",
+  "date": "2026-11-14",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Interface",
+      "en": {
+        "title": "Yellow dots follow your account",
+        "body": "The yellow dots on Patch Notes and Roadmap now remember what you have read across devices. Read the news on your phone, and the dot is gone on your computer too."
+      },
+      "da": {
+        "title": "Gule prikker følger din konto",
+        "body": "De gule prikker ved Patch Notes og Roadmap husker nu, hvad du har læst, på tværs af enheder. Læser du nyhederne på telefonen, er prikken også væk på computeren."
+      },
+      "refs": [
+        6515
+      ]
+    }
+  ]
+},
+{
   "version": "7.446",
   "date": "2026-11-14",
   "changes": [
