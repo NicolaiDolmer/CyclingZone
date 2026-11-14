@@ -389,13 +389,14 @@ function refundPayload(sourcePath) {
  *
  * @param {any} supabase
  * @param {any} escrow
- * @param {((supabase: any, escrow: any, opts: { now: Date }) => Promise<unknown>) | undefined} notifyReleased  indsprøjtet i proever
+ * @param {((supabase: any, escrow: any, opts: { now: Date, onlyDelivered?: boolean }) => Promise<unknown>) | undefined} notifyReleased  indsprøjtet i proever
  * @param {Date} now  afregningstidspunktet; beskedtjenesten bruger det til dublet-tjek og cache (Codex P1)
+ * @param {{ onlyDelivered?: boolean }} [extra]  admin-afgoerelsen: kun ryttere, der faktisk har skiftet hold, naevnes
  */
-async function notifySellerReleased(supabase, escrow, notifyReleased, now) {
+async function notifySellerReleased(supabase, escrow, notifyReleased, now, extra = {}) {
   try {
     const send = notifyReleased ?? (await import("./saleEscrowView6181.js")).notifySellerSaleEscrowReleased;
-    await send(supabase, escrow, { now });
+    await send(supabase, escrow, { now, ...extra });
   } catch (err) {
     // best-effort: udbetalingen er sket i settle_sale_escrow; kun beskeden mangler.
     console.error(`[saleEscrow] udbetalings-besked for ${escrow?.id} kunne ikke sendes: ${errorMessage(err)}`);
@@ -611,11 +612,16 @@ export async function listHeldSaleEscrowsForAdmin(supabase) {
  * 'not_stuck': saa er det reconcile/heal-sweepets sag). Penge kan ikke opstaa:
  * release og refund udelukker hinanden (samme noegler og vagter som settle).
  *
+ * Dommerens punkt 7 (#6181, ejer 14/11): ved release faar saelgeren (modtageren)
+ * samme udbetalings-besked som ved holdskiftet, foerst naar RPC'en har svaret
+ * 'released' (pengene er flyttet), og best-effort: en fejlet besked aendrer aldrig
+ * svaret. Refusion og alle andre svar giver ingen udbetalings-besked.
+ *
  * @param {any} supabase
- * @param {{ escrowId: string, outcome: "release"|"refund", adminUserId: string|null, now?: Date }} args
+ * @param {{ escrowId: string, outcome: "release"|"refund", adminUserId: string|null, now?: Date, notifyReleased?: (supabase: any, escrow: any, opts: { now: Date, onlyDelivered?: boolean }) => Promise<unknown> }} args
  * @returns {Promise<{ status: string, [k: string]: any }>}
  */
-export async function resolveStuckSaleEscrow(supabase, { escrowId, outcome, adminUserId, now = new Date() }) {
+export async function resolveStuckSaleEscrow(supabase, { escrowId, outcome, adminUserId, now = new Date(), notifyReleased }) {
   if (outcome !== "release" && outcome !== "refund") {
     throw new Error(`resolveStuckSaleEscrow: outcome skal vaere release eller refund, ikke ${outcome}`);
   }
@@ -635,7 +641,34 @@ export async function resolveStuckSaleEscrow(supabase, { escrowId, outcome, admi
     p_settled_at: now.toISOString(),
   });
   if (error) throw new Error(`resolve_stuck_sale_escrow(${escrowId}, ${outcome}) fejlede: ${error.message}`);
+  if (outcome === "release" && data?.status === "released") {
+    await notifySellerAfterAdminRelease(supabase, escrowId, notifyReleased, now);
+  }
   return data;
+}
+
+/**
+ * Punkt 7: RPC'en svarer kun status og id, saa escrow'en (modtager, ryttere, beloeb)
+ * laeses her, efter udbetalingen. I et fastlaast bytte er een rytter ikke flyttet,
+ * saa beskeden naevner kun dem, der faktisk har skiftet hold (onlyDelivered).
+ * Kaster aldrig: pengene er allerede udbetalt.
+ *
+ * @param {any} supabase @param {string} escrowId
+ * @param {((supabase: any, escrow: any, opts: { now: Date, onlyDelivered?: boolean }) => Promise<unknown>) | undefined} notifyReleased
+ * @param {Date} now
+ */
+async function notifySellerAfterAdminRelease(supabase, escrowId, notifyReleased, now) {
+  try {
+    // id er PRIMARY KEY: hoejst een raekke (limit(1) som i saleEscrowStatusForDeal).
+    const { data, error } = await supabase.from("sale_escrows").select(ESCROW_COLUMNS).eq("id", escrowId).limit(1);
+    if (error) throw new Error(error.message);
+    const escrow = Array.isArray(data) ? data[0] : undefined;
+    if (!escrow) throw new Error("escrow'en blev ikke fundet efter udbetalingen");
+    await notifySellerReleased(supabase, escrow, notifyReleased, now, { onlyDelivered: true });
+  } catch (err) {
+    // best-effort: resolve_stuck_sale_escrow har udbetalt; kun beskeden mangler.
+    console.error(`[saleEscrow] udbetalings-besked efter admin-afgoerelse af ${escrowId} kunne ikke sendes: ${errorMessage(err)}`);
+  }
 }
 
 /**

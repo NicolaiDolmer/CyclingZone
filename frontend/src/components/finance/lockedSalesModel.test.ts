@@ -34,6 +34,14 @@ test("endsInKey: dage tilbage, i dag, eller intet loeb", () => {
   assert.equal(endsInKey(null), null);
 });
 
+test("#6181 punkt 8: sidste etape foer i dag (negativt) viser aldrig 'slutter i dag', kun loebets navn", () => {
+  assert.equal(endsInKey(-1), null);
+  assert.equal(endsInKey(-5), null);
+  assert.deepEqual(endsInKey(0), { key: "lockedSalesBox.endsToday" }, "i dag er stadig 'slutter i dag'");
+  assert.deepEqual(endsInKey(1), { key: "lockedSalesBox.endsIn", count: 1 });
+  assert.equal(endsInKey(Number.NaN), null);
+});
+
 test("lockedSalesShareKey (Codex P1): to brugere med samme saldo deler aldrig svar", () => {
   assert.notEqual(lockedSalesShareKey("bruger-a", 500000), lockedSalesShareKey("bruger-b", 500000));
   assert.equal(lockedSalesShareKey("bruger-a", 500000), lockedSalesShareKey("bruger-a", 500000), "samme bruger og saldo deler");
