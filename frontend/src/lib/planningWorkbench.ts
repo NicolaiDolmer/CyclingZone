@@ -412,14 +412,31 @@ const ROLE_FROM_ENTRY: Record<string, RoleKey> = {
   luxury_helper: "luxury_helper",
 };
 
-// ── "Ryd udtagelser" over de viste loeb (kladde) ────────────────────────────
+// ── "Handlinger" over mange loeb (kladde, ejer 14/11 variant B) ─────────────
+// Tre handlinger ("Lad assistenten udtage", "Fjern udtagelser", "Afmeld") over et valgt omfang af
+// loeb. Alt lander som en KLADDE: intet gemmes, foer spilleren trykker Gem, og alle kald gaar gennem
+// sidens ene skrive-laas. Gem er alt eller intet pr. kald (PLANNING_CENTER_RULES §1).
 
 /** Train now-laaste ryttere pr. loeb, som saesonmatrixen sender dem (trainNowLockByRace). */
 export type TrainNowLocks = Record<string, { riderIds?: string[] } | undefined>;
 
+export type BulkKind = "auto" | "clear" | "withdraw";
+export type BulkScope = "next" | "checked" | "shown" | "season";
+export const BULK_SCOPES: BulkScope[] = ["next", "checked", "shown", "season"];
+export const BULK_KINDS: BulkKind[] = ["auto", "clear", "withdraw"];
+
+/** Kladden: hvad hver handling goer ved hvert loeb (sidste handling paa et loeb vinder). */
+export interface BulkDraft {
+  kinds: Map<string, BulkKind>;
+  /** Assistentens trup pr. loeb (serverens forslag), som den saa ud, da handlingen blev valgt. */
+  auto: Map<string, SeasonEntry[]>;
+}
+
+export const EMPTY_DRAFT: BulkDraft = Object.freeze({ kinds: new Map(), auto: new Map() }) as BulkDraft;
+
 /**
- * De viste loeb "Ryd udtagelser" kan rydde: kommende, ikke laaste, ikke afmeldte, med mindst én
- * rytter der kan tages ud (Train now-laaste bliver staaende, saa et loeb med kun dem er ikke ryddeligt).
+ * De loeb "Fjern udtagelser" kan rydde: kommende, ikke laaste, ikke afmeldte, med mindst én rytter
+ * der kan tages ud (Train now-laaste bliver staaende, saa et loeb med kun dem er ikke ryddeligt).
  */
 export function clearableRaceIds(
   races: SeasonRace[],
@@ -442,7 +459,7 @@ export function clearableRaceIds(
     .map((race) => race.id);
 }
 
-/** Entries som kladden viser dem: de ryddede loeb beholder kun deres Train now-laaste ryttere (med rolle). */
+/** Entries efter en rydning: de ryddede loeb beholder kun deres Train now-laaste ryttere (med rolle). */
 export function entriesAfterClear(entries: SeasonEntry[], raceIds: Set<string>, locks: TrainNowLocks = {}): SeasonEntry[] {
   if (!raceIds.size) return entries;
   return entries.filter((e) => !raceIds.has(e.raceId) || (locks[e.raceId]?.riderIds ?? []).includes(e.riderId));
@@ -458,70 +475,181 @@ export function selectionFromEntries(entries: SeasonEntry[]): Selection {
   return sel;
 }
 
-/**
- * Body til PUT /api/races/selection/bulk for de ryddede loeb: hvert loeb gemmes med de ryttere der
- * bliver (kun Train now-laaste, som serveren ikke lader tage ud). Samme form som et enkelt gem.
- */
-export function clearChanges(entries: SeasonEntry[], raceIds: string[], locks: TrainNowLocks = {}): Array<Record<string, unknown>> {
-  return clearSubmission(entries, raceIds, locks).changes;
+/** Entries som kladden viser dem: ryddede loeb uden ryttere (Train now-laaste bliver), afmeldte tomme, assistentens trupper sat ind. */
+export function entriesWithDraft(entries: SeasonEntry[], draft: BulkDraft, locks: TrainNowLocks = {}): SeasonEntry[] {
+  if (!draft.kinds.size) return entries;
+  const cleared = new Set([...draft.kinds].filter(([, k]) => k === "clear").map(([id]) => id));
+  const replaced = new Set([...draft.kinds].filter(([, k]) => k !== "clear").map(([id]) => id));
+  const kept = entriesAfterClear(entries, cleared, locks).filter((e) => !replaced.has(e.raceId));
+  const added = [...draft.kinds].filter(([, k]) => k === "auto").flatMap(([id]) => draft.auto.get(id) ?? []);
+  return [...kept, ...added];
 }
 
-/**
- * Det et gem af rydningen SENDER: body til bulk-kaldet og, pr. loeb, den udtagelse serveren gemmer.
- * Svaret afstemmes mod dette oejebliksbillede, aldrig mod det siden viser, naar svaret kommer.
- */
-export function clearSubmission(
-  entries: SeasonEntry[],
-  raceIds: string[],
-  locks: TrainNowLocks = {},
-): { changes: Array<Record<string, unknown>>; selections: Map<string, Selection> } {
-  const keep = entriesAfterClear(entries, new Set(raceIds), locks);
-  const selections = new Map<string, Selection>();
-  const changes = raceIds.map((raceId) => {
-    const sel = selectionFromEntries(keep.filter((e) => e.raceId === raceId));
-    selections.set(raceId, sel);
-    return { raceId, ...toPutBody(sel, sel.luxuryHelperId != null) };
+/** Afmeldte loeb som kladden viser dem (de gemte plus kladdens afmeldinger). */
+export function withdrawnWithDraft(withdrawn: Set<string>, draft: BulkDraft): Set<string> {
+  const ids = [...draft.kinds].filter(([, k]) => k === "withdraw").map(([id]) => id);
+  return ids.length ? new Set([...withdrawn, ...ids]) : withdrawn;
+}
+
+const byCalendar = (a: SeasonRace, b: SeasonRace) => a.gameDayStart - b.gameDayStart || a.name.localeCompare(b.name);
+
+/** De loeb et omfang daekker, i kalenderens raekkefoelge. Kun kommende loeb kan aendres. */
+export function scopeRaces(
+  scope: BulkScope,
+  ctx: { allRaces: SeasonRace[]; listRaces: SeasonRace[]; checked: Set<string>; withdrawn: Set<string> },
+): SeasonRace[] {
+  const open = ctx.allRaces.filter((r) => !isRacePast(r));
+  if (scope === "season") return [...open].sort(byCalendar);
+  if (scope === "shown") return ctx.listRaces.filter((r) => !isRacePast(r));
+  if (scope === "checked") return open.filter((r) => ctx.checked.has(r.id)).sort(byCalendar);
+  // "Naeste loeb": det foerste kommende loeb, holdet stadig kan aendre i.
+  const next = [...open].sort(byCalendar).find((r) => !r.lineupLocked && !ctx.withdrawn.has(r.id));
+  return next ? [next] : [];
+}
+
+/** De loeb i omfanget, som handlingen faktisk aendrer (taelleren ved knappen). `entries`/`withdrawn` er kladdens visning. */
+export function actionTargets(
+  kind: BulkKind,
+  races: SeasonRace[],
+  ctx: { entries: SeasonEntry[]; withdrawn: Set<string>; locks?: TrainNowLocks },
+): SeasonRace[] {
+  if (kind === "clear") {
+    const ids = new Set(clearableRaceIds(races, ctx.entries, ctx.withdrawn, ctx.locks));
+    return races.filter((r) => ids.has(r.id));
+  }
+  const counts = pickedCounts(ctx.entries);
+  return races.filter((race) => {
+    if (isRacePast(race) || race.lineupLocked || ctx.withdrawn.has(race.id)) return false;
+    if (kind === "withdraw") return true;
+    // Assistenten fylder kun tomme pladser; et afmeldt loeb (gemt eller i kladden) faar aldrig en trup.
+    return raceReadiness(race, counts.get(race.id) ?? 0, ctx.withdrawn).missing > 0;
   });
-  return { changes, selections };
 }
 
 /**
- * "Ryd udtagelser" gemmes altid i ÉT atomisk kald (PLANNING_CENTER_RULES §1: alt eller intet), og
- * serveren tager hoejst `max` loeb pr. kald. Kladden fyldes derfor kun op til loftet, med de foerste
- * ryddelige loeb i listens raekkefoelge. `capped` siger, at der var flere, end loftet gav plads til.
+ * Kladden gemmes altid i ÉT atomisk kald pr. slags (masse-gem og masse-afmeld), og serveren tager
+ * hoejst `max` loeb pr. kald. Nye loeb laegges derfor kun i kladden op til loftet; loeb der allerede
+ * er i kladden, fylder ikke mere. `capped` siger aerligt, at der var flere, end loftet gav plads til.
  */
-export function capClearable(clearable: string[], draftSize: number, max: number): { ids: string[]; capped: boolean } {
-  const room = Math.max(0, max - draftSize);
-  return { ids: clearable.slice(0, room), capped: clearable.length > room };
+export function capToRoom(ids: string[], draft: BulkDraft, max: number): { ids: string[]; capped: boolean } {
+  const fresh = ids.filter((id) => !draft.kinds.has(id));
+  const room = Math.max(0, max - draft.kinds.size);
+  const allowed = new Set(fresh.slice(0, room));
+  return { ids: ids.filter((id) => draft.kinds.has(id) || allowed.has(id)), capped: fresh.length > room };
+}
+
+/** Laegger en handling oven i kladden for de givne loeb (ny kladde; den gamle roeres ikke). */
+export function addToDraft(draft: BulkDraft, kind: BulkKind, raceIds: string[], auto?: Map<string, SeasonEntry[]>): BulkDraft {
+  const kinds = new Map(draft.kinds);
+  const nextAuto = new Map(draft.auto);
+  for (const id of raceIds) {
+    if (kind === "auto" && !auto?.has(id)) continue;
+    kinds.set(id, kind);
+    if (kind === "auto") nextAuto.set(id, auto!.get(id)!);
+    else nextAuto.delete(id);
+  }
+  return { kinds, auto: nextAuto };
+}
+
+/** Tager loeb ud af kladden (spilleren har selv aendret, gemt eller afmeldt dem paa fladen). */
+export function dropFromDraft(draft: BulkDraft, raceIds: Iterable<string>): BulkDraft {
+  const drop = [...raceIds].filter((id) => draft.kinds.has(id));
+  if (!drop.length) return draft;
+  const kinds = new Map(draft.kinds);
+  const auto = new Map(draft.auto);
+  for (const id of drop) {
+    kinds.delete(id);
+    auto.delete(id);
+  }
+  return { kinds, auto };
+}
+
+/** Bjaelkens resume: antal loeb pr. handling og hvor mange ryttere assistenten satte ind. */
+export function draftSummary(draft: BulkDraft, entries: SeasonEntry[]): { auto: number; added: number; clear: number; withdraw: number } {
+  let auto = 0;
+  let clear = 0;
+  let withdraw = 0;
+  let added = 0;
+  for (const [id, kind] of draft.kinds) {
+    if (kind === "auto") {
+      auto += 1;
+      const before = new Set(entries.filter((e) => e.raceId === id).map((e) => e.riderId));
+      added += (draft.auto.get(id) ?? []).filter((e) => !before.has(e.riderId)).length;
+    } else if (kind === "clear") clear += 1;
+    else withdraw += 1;
+  }
+  return { auto, added, clear, withdraw };
+}
+
+export interface ProposalEntry {
+  rider_id: string;
+  race_role: string | null;
 }
 
 /**
- * Sidens rydning rammer det aabne loeb: fladen viser den ryddede trup (Train now-laaste bliver, med
- * rolle fra den gemte trup), og kladden FOER rydningen huskes, saa Fortryd kan stille netop den tilbage.
+ * Kladdens trupper, som assistenten skal regne med (POST /races/selection/auto/propose, `overrides`):
+ * ryddede og assistent-udtagne loeb i kladden. Afmeldinger i kladden er ikke med; deres ryttere
+ * binder stadig, til afmeldingen er gemt.
  */
-export function applyPageClear(current: Selection, saved: Selection, lockedIds: Iterable<string>): { sel: Selection; before: Selection } {
-  return { sel: clearSquad(saved, lockedIds), before: current };
+export function draftOverrides(entries: SeasonEntry[], draft: BulkDraft, locks: TrainNowLocks = {}): Record<string, ProposalEntry[]> {
+  const view = entriesWithDraft(entries, draft, locks);
+  const out: Record<string, ProposalEntry[]> = {};
+  for (const [raceId, kind] of draft.kinds) {
+    if (kind === "withdraw") continue;
+    out[raceId] = view.filter((e) => e.raceId === raceId).map((e) => ({ rider_id: e.riderId, race_role: e.raceRole }));
+  }
+  return out;
 }
 
-/** Fortryd paa siden: den kladde spilleren havde foer rydningen, ellers den gemte trup. */
-export function undoPageClear(before: Selection | null, saved: Selection): Selection {
-  return before ?? saved;
+/** Serverens forslag som kladde-trupper. Et afmeldt loeb (gemt eller i kladden) springes altid over. */
+export function proposalsToDraft(
+  proposals: Array<{ race_id?: unknown; entries?: unknown }> | null | undefined,
+  skip: Set<string> = new Set(),
+): Map<string, SeasonEntry[]> {
+  const out = new Map<string, SeasonEntry[]>();
+  for (const p of proposals ?? []) {
+    const raceId = typeof p?.race_id === "string" ? p.race_id : null;
+    if (!raceId || skip.has(raceId) || !Array.isArray(p.entries) || !p.entries.length) continue;
+    out.set(
+      raceId,
+      (p.entries as ProposalEntry[])
+        .filter((e) => e && typeof e.rider_id === "string")
+        .map((e) => ({ raceId, riderId: e.rider_id, raceRole: e.race_role && e.race_role !== "helper" ? e.race_role : null })),
+    );
+  }
+  return out;
 }
 
 /**
- * Hvad fladen goer med den huskede kladde (localStorage). Mens sidens rydning vises, roeres den ikke:
- * rydningen er kun en kladde, og spillerens egen ugemte trup skal overleve et Fortryd.
+ * Det et Gem af kladden SENDER: masse-gemmets aendringer (assistent og rydning) og afmeldingerne,
+ * plus pr. loeb den udtagelse serveren gemmer. Svaret afstemmes mod dette oejebliksbillede.
  */
-export function draftCacheAction({ ready, clearShown, dirty }: { ready: boolean; clearShown: boolean; dirty: boolean }): "keep" | "remember" | "forget" {
-  if (!ready || clearShown) return "keep";
-  return dirty ? "remember" : "forget";
+export function draftSubmission(
+  entries: SeasonEntry[],
+  draft: BulkDraft,
+  locks: TrainNowLocks = {},
+): { changes: Array<Record<string, unknown>>; selections: Map<string, Selection>; withdrawIds: string[] } {
+  const view = entriesWithDraft(entries, draft, locks);
+  const selections = new Map<string, Selection>();
+  const changes: Array<Record<string, unknown>> = [];
+  const withdrawIds: string[] = [];
+  for (const [raceId, kind] of draft.kinds) {
+    if (kind === "withdraw") {
+      withdrawIds.push(raceId);
+      continue;
+    }
+    const sel = selectionFromEntries(view.filter((e) => e.raceId === raceId));
+    selections.set(raceId, sel);
+    changes.push({ raceId, ...toPutBody(sel, sel.luxuryHelperId != null) });
+  }
+  return { changes, selections, withdrawIds };
 }
 
 /**
- * Et gemt bulk-kald afstemmes mod det loeb og den udtagelse der blev SENDT. Et andet loeb end det
+ * Et gemt masse-kald afstemmes mod det loeb og den udtagelse der blev SENDT. Et andet loeb end det
  * fladen viser roeres ikke; aendringer lavet mens kaldet koerte, forbliver ugemte (dirty).
  */
-export function settleClearSave(
+export function settleBulkSave(
   view: { raceId: string; sel: Selection },
   submitted: { raceId: string; sel: Selection },
 ): { mine: false } | { mine: true; saved: Selection; dirty: boolean } {
@@ -529,10 +657,164 @@ export function settleClearSave(
   return { mine: true, saved: submitted.sel, dirty: selectionDirty(view.sel, submitted.sel) };
 }
 
+/** Svaret fra et af kladdens kald (samme form som planningWorkbenchData's ApiResult). */
+export interface BulkCallResult {
+  ok: boolean;
+  data?: any;
+}
+
+/** De tre kald kladden bruger. Siden giver de rigtige; proeverne giver styrede loefter. */
+export interface BulkApi {
+  propose: (raceIds: string[], overrides: Record<string, ProposalEntry[]>) => Promise<BulkCallResult>;
+  saveSelections: (changes: Array<Record<string, unknown>>) => Promise<BulkCallResult>;
+  withdraw: (raceIds: string[], dryRun: boolean) => Promise<BulkCallResult>;
+}
+
+/** En fejl fra et af kladdens kald: hvad der gik galt, og hvad der eventuelt alligevel blev gemt. */
+export interface BulkFailure {
+  step: "assist" | "save" | "withdraw";
+  /** Trupperne blev gemt, men afmeldingerne ikke (de ligger stadig i kladden). */
+  partial: boolean;
+  body: any;
+}
+
+export interface BulkState {
+  /** Kladden efter hver handling; den sidste er den gaeldende. Fortryd fjerner den sidste. */
+  stack: BulkDraft[];
+  failure: BulkFailure | null;
+  /** Assistenten fandt ingen ledige ryttere til loebene (intet er aendret). */
+  emptyAssist: boolean;
+}
+
+export interface BulkSaved {
+  selections: Map<string, Selection>;
+  withdrawn: string[];
+}
+
+/**
+ * Kladdens tilstand og de tre handlinger, uden React. Alle kald gaar gennem sidens skrive-laas:
+ * mens et kald koerer (et gem, en afmelding, assistenten), kan hverken en handling, Fortryd eller
+ * Gem sendes, og intet anvendes paa kladden imens.
+ */
+export function createBulkStore({ gate, api }: { gate: WriteGate; api: BulkApi }) {
+  let state: BulkState = { stack: [], failure: null, emptyAssist: false };
+  const listeners = new Set<() => void>();
+  const set = (next: Partial<BulkState>) => {
+    state = { ...state, ...next };
+    for (const listener of [...listeners]) listener();
+  };
+  const draft = () => state.stack[state.stack.length - 1] ?? EMPTY_DRAFT;
+  const push = (next: BulkDraft) => set({ stack: [...state.stack, next], failure: null, emptyAssist: false });
+
+  return {
+    get: () => state,
+    draft,
+    subscribe(listener: () => void) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    /**
+     * En handling paa de givne loeb (allerede afgraenset af omfanget og loftet). "Lad assistenten
+     * udtage" spoerger serveren (laeser kun) og laegger svaret i kladden.
+     */
+    async run(
+      kind: BulkKind,
+      raceIds: string[],
+      ctx: { entries: SeasonEntry[]; locks?: TrainNowLocks; withdrawn?: Set<string> },
+    ): Promise<"done" | "busy" | "empty" | "failed"> {
+      if (!raceIds.length) return "empty";
+      if (gate.current()) return "busy";
+      if (kind !== "auto") {
+        push(addToDraft(draft(), kind, raceIds));
+        return "done";
+      }
+      const result = await gate.run("assist", () => api.propose(raceIds, draftOverrides(ctx.entries, draft(), ctx.locks)));
+      if (!result.ran) return "busy";
+      const res = result.value;
+      if (!res.ok) {
+        set({ failure: { step: "assist", partial: false, body: res.data ?? {} }, emptyAssist: false });
+        return "failed";
+      }
+      // Et loeb afmeldt imens (gemt eller i kladden) faar aldrig assistentens trup.
+      const out = withdrawnWithDraft(ctx.withdrawn ?? new Set(), draft());
+      const auto = proposalsToDraft(res.data?.proposals, out);
+      if (!auto.size) {
+        set({ emptyAssist: true, failure: null });
+        return "empty";
+      }
+      push(addToDraft(draft(), "auto", [...auto.keys()], auto));
+      return "done";
+    },
+    /** Fortryd: kladden som den var foer den seneste handling. Venter, mens et kald koerer. */
+    undo(): boolean {
+      if (gate.current() || !state.stack.length) return false;
+      set({ stack: state.stack.slice(0, -1), failure: null, emptyAssist: false });
+      return true;
+    },
+    /** Loebene forlader kladden helt (ogsaa i Fortryd-historikken): spilleren har selv taget over. */
+    drop(raceIds: Iterable<string>) {
+      const ids = [...raceIds];
+      if (!state.stack.some((d) => ids.some((id) => d.kinds.has(id)))) return;
+      set({ stack: state.stack.map((d) => dropFromDraft(d, ids)).filter((d) => d.kinds.size > 0) });
+    },
+    /**
+     * Gem: foerst kontrolleres afmeldingerne (uden at skrive), saa gemmes trupperne i ét atomisk kald,
+     * og til sidst afmeldingerne i ét atomisk kald. `onSaved` koerer inden for laasen, saa siden kan
+     * afstemme fladen, foer noget andet kan ske.
+     */
+    async save(
+      ctx: { entries: SeasonEntry[]; locks?: TrainNowLocks },
+      onSaved?: (saved: BulkSaved) => Promise<void> | void,
+    ): Promise<"saved" | "busy" | "failed" | "partial" | "empty"> {
+      const current = draft();
+      if (!current.kinds.size) return "empty";
+      const sub = draftSubmission(ctx.entries, current, ctx.locks);
+      const result = await gate.run("bulk", async () => {
+        if (sub.withdrawIds.length && sub.changes.length) {
+          const check = await api.withdraw(sub.withdrawIds, true);
+          if (!check.ok) {
+            set({ failure: { step: "withdraw", partial: false, body: check.data ?? {} } });
+            return "failed" as const;
+          }
+        }
+        if (sub.changes.length) {
+          const res = await api.saveSelections(sub.changes);
+          if (!res.ok) {
+            set({ failure: { step: "save", partial: false, body: res.data ?? {} } });
+            return "failed" as const;
+          }
+        }
+        if (sub.withdrawIds.length) {
+          const res = await api.withdraw(sub.withdrawIds, false);
+          if (!res.ok) {
+            const savedSquads = sub.changes.length > 0;
+            // Trupperne er gemt; kun afmeldingerne bliver i kladden, saa intet gemt ser ugemt ud.
+            const rest = addToDraft(EMPTY_DRAFT, "withdraw", sub.withdrawIds);
+            set({ stack: savedSquads ? [rest] : state.stack, failure: { step: "withdraw", partial: savedSquads, body: res.data ?? {} } });
+            if (savedSquads) await onSaved?.({ selections: sub.selections, withdrawn: [] });
+            return savedSquads ? ("partial" as const) : ("failed" as const);
+          }
+        }
+        set({ stack: [], failure: null, emptyAssist: false });
+        await onSaved?.({ selections: sub.selections, withdrawn: sub.withdrawIds });
+        return "saved" as const;
+      });
+      return result.ran ? result.value : "busy";
+    },
+  };
+}
+
+export type BulkStore = ReturnType<typeof createBulkStore>;
+
 // ── Skrive-laasen: ÉT sted ejer "der er et skrivekald i gang" ───────────────
 
-/** Hvilket skrivekald der koerer: fladens gem, en afmelding/deltag igen, eller sidens masse-gem. */
-export type WriteKind = "save" | "withdraw" | "bulk";
+/**
+ * Hvilket kald der koerer: fladens gem, en afmelding/deltag igen, sidens masse-gem, eller assistentens
+ * forslag til kladden (det laeser kun, men kladden maa ikke aendres, mens et gem er undervejs).
+ */
+export type WriteKind = "save" | "withdraw" | "bulk" | "assist";
 
 export type WriteResult<T> = { ran: true; value: T } | { ran: false };
 
@@ -577,27 +859,6 @@ export function createWriteGate(): WriteGate {
       }
     },
   };
-}
-
-/**
- * Hvad fladen goer med sidens rydning lige nu. Mens et skrivekald koerer, VENTER den: en rydning
- * eller en fortrydelse anvendes foerst, naar kaldet er faerdigt, saa en kladde aldrig kan blandes
- * ind i (eller loese op for) et gem, der stadig er undervejs.
- */
-export function pageClearStep({
-  ready,
-  pendingClear,
-  clearShown,
-  writing,
-}: {
-  ready: boolean;
-  pendingClear: boolean;
-  clearShown: boolean;
-  writing: WriteKind | null;
-}): "apply" | "undo" | "wait" | "none" {
-  if (!ready) return "none";
-  const step = pendingClear && !clearShown ? "apply" : !pendingClear && clearShown ? "undo" : "none";
-  return step !== "none" && writing ? "wait" : step;
 }
 
 /**

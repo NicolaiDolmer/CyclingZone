@@ -28,17 +28,13 @@ import { deadlineCountdown } from "../../lib/selectionReminder.ts";
 import {
   DEFAULT_SQUAD_SORT,
   EMPTY_SELECTION,
-  applyPageClear,
   buildSquadRows,
   clearSquad,
   copySquadFrom,
-  draftCacheAction,
-  settleClearSave,
-  undoPageClear,
+  settleBulkSave,
   entriesFromSelection,
   nextSort,
   overlappingRaces,
-  pageClearStep,
   profileColumns,
   selectionDirty,
   selectionFromServer,
@@ -82,13 +78,13 @@ export interface RaceWorkbenchHandle {
   save: () => Promise<boolean>;
   discard: () => void;
   /**
-   * Sidens "Ryd udtagelser" er gemt for `raceId` med den SENDTE udtagelse. Svarer true, naar det er
+   * Sidens Handlinger-kladde er gemt for `raceId` med den SENDTE udtagelse. Svarer true, naar det er
    * fladens eget loeb (fladen styrer saa selv sin huskede kladde); et andet loeb roeres ikke.
    */
   markSaved: (raceId: string, submitted: Selection) => boolean;
   /** Hent rytternes tilgaengelighed (bindinger) igen efter et gem andetsteds; kladden roeres ikke. */
   refreshAvailability: () => Promise<void>;
-  /** Har fladen ugemte aendringer lige nu (sidens rydning tæller ikke; den har sin egen bjaelke)? */
+  /** Har fladen ugemte aendringer lige nu? */
   isDirty: () => boolean;
 }
 
@@ -108,22 +104,16 @@ interface RaceWorkbenchProps {
   /** Loebssidens fulde ruteprofil i stedet for det kompakte kort ("Vis fuld profil"). */
   profileFull?: boolean;
   onToggleProfileFull?: () => void;
-  /** Loebet er ryddet af sidens "Ryd udtagelser" (kladde, intet gemt endnu). */
-  pendingClear?: boolean;
-  /** Spilleren har aendret, gemt eller kasseret loebet selv: det er ikke laengere en del af sidens rydning. */
-  onLeaveClear?: (raceId: string) => void;
   /**
-   * Sidens skrive-laas (ét sted ejer "der er et skrivekald i gang"). Fladens gem og afmelding koerer
-   * gennem den, og mens den holdes, er fladen laast og venter med at anvende sidens rydning.
+   * Spilleren aendrer loebets trup selv paa fladen: loebet forlader sidens Handlinger-kladde (spillerens
+   * eget valg vinder; fladen viser altid den gemte trup plus spillerens egne aendringer).
+   */
+  onEdit?: (raceId: string) => void;
+  /**
+   * Sidens skrive-laas (ét sted ejer "der er et kald i gang"). Fladens gem og afmelding koerer
+   * gennem den, og mens den holdes, er fladen laast.
    */
   gate: WriteGate;
-  /**
-   * Spillerens kladde foer sidens rydning, holdt af siden pr. loeb (overlever et skift af loeb, hvor
-   * fladen afmonteres). Er loebet ikke laengere i rydningen, er det kladden der skal gendannes.
-   */
-  clearBefore?: Selection | null;
-  /** Fladen melder kladden foer rydningen (eller null: den er brugt eller ikke laengere relevant). */
-  onClearBefore?: (raceId: string, before: Selection | null) => void;
   onDirtyChange?: (dirty: boolean) => void;
   onSaved?: (raceId: string, entries: SeasonEntry[]) => void;
   onWithdrawnChange?: (raceId: string, withdrawn: boolean) => void;
@@ -150,11 +140,8 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     onToggleProfileHidden,
     profileFull = false,
     onToggleProfileFull,
-    pendingClear = false,
-    onLeaveClear,
+    onEdit,
     gate,
-    clearBefore = null,
-    onClearBefore,
     onDirtyChange,
     onSaved,
     onWithdrawnChange,
@@ -180,18 +167,11 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
   const [copyOpen, setCopyOpen] = useState(false);
   const [profiles, setProfiles] = useState<StageProfileRow[]>([]);
   const [profilesLoading, setProfilesLoading] = useState(true);
-  // Viser fladen sidens rydning lige nu (kladden er "ryd", ikke spillerens egne aendringer)?
-  const [clearShown, setClearShown] = useState(false);
-  // Spillerens kladde FOER sidens rydning: Fortryd stiller den tilbage (ikke den gemte trup).
-  const beforeClear = useRef<Selection | null>(null);
   const generation = useRef(0);
-  const latest = useRef<{ ready: boolean; sel: Selection; saved: Selection; readOnly: boolean; clientErrors: string[]; sprintLeaderAllowed: boolean; size: { min: number; max: number }; clearShown: boolean } | null>(null);
+  const latest = useRef<{ ready: boolean; sel: Selection; saved: Selection; readOnly: boolean; clientErrors: string[]; sprintLeaderAllowed: boolean; size: { min: number; max: number } } | null>(null);
 
   const dirty = state === "ready" && selectionDirty(sel, saved);
   useReloadBlock(dirty || locked, RELOAD_BLOCK_REASONS.DIRTY);
-  // Sidens rydning, som load() ser den (load er bundet til loebet alene og maa ikke genkoere ved hvert skift).
-  const pageClear = useRef({ pendingClear, clearBefore, onClearBefore });
-  pageClear.current = { pendingClear, clearBefore, onClearBefore };
 
   const load = useCallback(async () => {
     const gen = ++generation.current;
@@ -203,8 +183,6 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     setSort(DEFAULT_SQUAD_SORT);
     setSel(EMPTY_SELECTION);
     setSaved(EMPTY_SELECTION);
-    setClearShown(false);
-    beforeClear.current = null;
     setProfilesLoading(true);
     loadStageProfiles(race.id).then((rows) => {
       if (gen !== generation.current) return;
@@ -223,13 +201,9 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
       const server = body.withdrawn && !body.did_not_start && !body.lineup_locked ? null : body.selection;
       const initial = selectionFromServer(server);
       // Et ugemt udkast overlever en navigation vaek fra siden (kladden er ikke gemt, men heller ikke tabt).
-      // Er sidens rydning fortrudt, mens loebet ikke var aabent, er det kladden FOER rydningen, der gendannes.
-      const page = pageClear.current;
-      const kept = !page.pendingClear ? page.clearBefore : null;
-      const draft = kept ?? readSelectionDraft(race.id);
+      const draft = readSelectionDraft(race.id);
       const restored: Selection = draft ? reconcileSelectionDraft(draft, body.riders) : initial;
       const wasRestored = draft != null && selectionDirty(restored, initial);
-      if (kept) page.onClearBefore?.(race.id, null);
       setData(body);
       setSaved(initial);
       setSel(wasRestored ? restored : initial);
@@ -247,51 +221,16 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     };
   }, [load]);
 
-  // Sidens rydning er sidens egen kladde: den aabner ikke bjaelken ved skift af loeb (den gaelder
-  // stadig, til den gemmes eller fortrydes i sin egen bjaelke).
   useEffect(() => {
-    onDirtyChange?.(dirty && !clearShown);
-  }, [dirty, clearShown, onDirtyChange]);
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
 
-  // Den huskede kladde roeres ikke, mens sidens rydning vises (rydningen er kun en kladde).
+  // Et ugemt udkast huskes (overlever en navigation); en ren flade glemmer det.
   useEffect(() => {
-    const action = draftCacheAction({ ready: state === "ready", clearShown, dirty });
-    if (action === "remember") rememberSelectionDraft(race.id, sel);
-    else if (action === "forget") forgetSelectionDraft(race.id);
-  }, [state, dirty, sel, race.id, clearShown]);
-
-  // "Ryd udtagelser" paa siden: loebet vises ryddet (Train now-laaste bliver, med rolle). Fortryder
-  // spilleren paa siden, stilles den kladde tilbage, som stod der foer rydningen (en ugemt trup er
-  // ikke tabt). Spillerens egne aendringer bryder forbindelsen. Mens et skrivekald koerer, venter
-  // baade rydning og fortrydelse, til kaldet er faerdigt (pageClearStep); de roerer aldrig laasen.
-  const lockedKey = (data?.trainNowLock?.riderIds ?? []).join(",");
-  useEffect(() => {
-    const step = pageClearStep({ ready: state === "ready", pendingClear, clearShown, writing });
-    if (step === "apply") {
-      // Har siden allerede kladden foer rydningen (fladen er monteret igen efter et skift), er det den.
-      const step = applyPageClear(clearBefore ?? sel, saved, lockedKey ? lockedKey.split(",") : []);
-      beforeClear.current = step.before;
-      if (!clearBefore && selectionDirty(sel, saved)) onClearBefore?.(race.id, sel);
-      setSel(step.sel);
-      setClearShown(true);
-      setSaveState("idle");
-      setSaveError(null);
-      setNote(null);
-    } else if (step === "undo") {
-      setSel(undoPageClear(beforeClear.current, saved));
-      beforeClear.current = null;
-      setClearShown(false);
-      onClearBefore?.(race.id, null);
-    }
-  }, [state, pendingClear, clearShown, writing, saved, sel, lockedKey, clearBefore, onClearBefore, race.id]);
-
-  const leaveClear = () => {
-    if (!clearShown) return;
-    beforeClear.current = null;
-    setClearShown(false);
-    onClearBefore?.(race.id, null);
-    onLeaveClear?.(race.id);
-  };
+    if (state !== "ready") return;
+    if (dirty) rememberSelectionDraft(race.id, sel);
+    else forgetSelectionDraft(race.id);
+  }, [state, dirty, sel, race.id]);
 
   const stageTypes = useMemo(
     () => profiles.map((p) => p.profile_type).filter((type): type is string => typeof type === "string" && type.length > 0),
@@ -334,14 +273,12 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
         : sel.riderIds.length > 0
           ? tr(outlook.kind === "assistantFills" ? "selection.partialHint" : "selection.partialHintShort", { open: outlook.open, free: outlook.free })
           : null;
-  // Et loeb i sidens rydning gemmes fra bjaelken (som /planning's "Ryd udtagelse"), saa fladens egen
-  // kaptajn-regel for "Gem trup" vises ikke som en fejl her.
-  const blockReason = dirty && !clearShown && clientErrors.length ? tr(`selection.errors.${clientErrors[0]}`, { min: size.min, max: size.max }) : null;
+  const blockReason = dirty && clientErrors.length ? tr(`selection.errors.${clientErrors[0]}`, { min: size.min, max: size.max }) : null;
 
   const edit = (next: Selection) => {
-    // Mens et skrivekald koerer, aendres kladden ikke: svaret afstemmes altid mod det, der blev sendt.
+    // Mens et kald koerer, aendres kladden ikke: svaret afstemmes altid mod det, der blev sendt.
     if (gate.current()) return;
-    leaveClear();
+    onEdit?.(race.id);
     setSel(next);
     setSaveState("idle");
     setSaveError(null);
@@ -385,10 +322,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
         setSaved(current.sel);
         setData((d: SelectionResponse) => (d ? { ...d, withdrawn: false } : d)); // et gem melder holdet til igen
         setSaveState("saved");
-        beforeClear.current = null;
-        setClearShown(false); // et gem af en ryddet trup er gemt; siden fjerner loebet fra sin rydning (onSaved)
-        onClearBefore?.(race.id, null);
-        onSaved?.(race.id, entriesFromSelection(race.id, current.sel));
+        onSaved?.(race.id, entriesFromSelection(race.id, current.sel)); // siden tager loebet ud af sin kladde
         return true;
       } catch {
         setSaveState("error");
@@ -397,7 +331,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
       }
     });
     return result.ran ? result.value : false;
-  }, [gate, race.id, onSaved, onClearBefore]);
+  }, [gate, race.id, onSaved]);
 
   const discard = useCallback(() => {
     if (!latest.current || gate.current()) return;
@@ -406,25 +340,16 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     setSaveState("idle");
     setSaveError(null);
     setNote(null);
-    // Kassér paa et ryddet loeb fortryder rydningen for netop dette loeb.
-    if (latest.current.clearShown) {
-      beforeClear.current = null;
-      setClearShown(false);
-      onClearBefore?.(race.id, null);
-      onLeaveClear?.(race.id);
-    }
-  }, [gate, race.id, onLeaveClear, onClearBefore]);
+  }, [gate, race.id]);
 
   // Afstemningen sker mod det SENDTE (loebs-id + udtagelse), ikke mod det fladen viser nu: et andet
   // loeb roeres ikke, og aendringer lavet mens kaldet koerte, forbliver en ugemt kladde.
   const markSaved = useCallback((raceId: string, submitted: Selection) => {
     const current = latest.current;
     if (!current || !current.ready) return false;
-    const result = settleClearSave({ raceId: race.id, sel: current.sel }, { raceId, sel: submitted });
+    const result = settleBulkSave({ raceId: race.id, sel: current.sel }, { raceId, sel: submitted });
     if (!result.mine) return false;
-    beforeClear.current = null;
     setSaved(result.saved);
-    setClearShown(false);
     setSaveError(null);
     if (!result.dirty) {
       forgetSelectionDraft(race.id);
@@ -447,10 +372,10 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
 
   const isDirty = useCallback(() => {
     const current = latest.current;
-    return !!current && current.ready && !current.clearShown && selectionDirty(current.sel, current.saved);
+    return !!current && current.ready && selectionDirty(current.sel, current.saved);
   }, []);
 
-  latest.current = { ready: state === "ready", sel, saved, readOnly, clientErrors, sprintLeaderAllowed, size, clearShown };
+  latest.current = { ready: state === "ready", sel, saved, readOnly, clientErrors, sprintLeaderAllowed, size };
   useImperativeHandle(ref, () => ({ save, discard, markSaved, refreshAvailability, isDirty }), [save, discard, markSaved, refreshAvailability, isDirty]);
 
   // Afmeld / deltag igen: samme endpoint, samme guards og samme tekster som loebstavlen paa /planning.
