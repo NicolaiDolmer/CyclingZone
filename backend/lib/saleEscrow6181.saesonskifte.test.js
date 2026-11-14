@@ -116,13 +116,18 @@ function captureRes() {
 
 const REACHED_FIRST_WRITE = new Error("vagtpost: foerste skrivning naaet");
 
+// Fast ur (samme harness som seasonTransitionReadiness.training.test.js): handlerne
+// laeser `new Date()`, saa prøverne giver `Date` ind og aldrig afhaenger af vaeguret.
+const FIXED_NOW = "2026-11-14T12:00:00.000Z";
+class FixedDate extends Date { constructor(...args) { super(...(args.length ? args : [FIXED_NOW])); } }
+
 /** Manuel saesonstart: stopper ved spaerren, eller naar foerste skrivning (ensureSeasonStandings). */
 async function runManualStart(dbOpts) {
   const supabase = seasonDb({ status: "upcoming", ...dbOpts });
-  const handler = routeHandler("/admin/seasons/:id/start", ["supabase", "ensureSeasonStandings", "captureApiRouteError", "saleEscrowTransitionGuard", "SALE_ESCROW_FORCE_BLOCKED_ERROR"]);
+  const handler = routeHandler("/admin/seasons/:id/start", ["supabase", "Date", "ensureSeasonStandings", "captureApiRouteError", "saleEscrowTransitionGuard", "SALE_ESCROW_FORCE_BLOCKED_ERROR"]);
   let wrote = false;
   const out = captureRes();
-  await handler({ params: { id: "s5" } }, out.res, supabase,
+  await handler({ params: { id: "s5" } }, out.res, supabase, FixedDate,
     async () => { wrote = true; throw REACHED_FIRST_WRITE; },
     (e) => { if (e !== REACHED_FIRST_WRITE) throw e; },
     saleEscrowTransitionGuard, SALE_ESCROW_FORCE_BLOCKED_ERROR);
@@ -132,15 +137,17 @@ async function runManualStart(dbOpts) {
 /** Manuel saesonafslutning: stopper ved spaerren, eller naar claim'et (foer alt irreversibelt). */
 async function runManualEnd(dbOpts) {
   const supabase = seasonDb({ status: "active", ...dbOpts });
-  const handler = routeHandler("/admin/seasons/:id/end", ["supabase", "assessSeasonEndBlockers", "assessFinalTrainingDateSettlement", "claimSeasonEndOrReject", "captureApiRouteError", "saleEscrowTransitionGuard", "SALE_ESCROW_FORCE_BLOCKED_ERROR"]);
+  const handler = routeHandler("/admin/seasons/:id/end", ["supabase", "Date", "assessSeasonEndBlockers", "assessFinalTrainingDateSettlement", "claimSeasonEndOrReject", "captureApiRouteError", "saleEscrowTransitionGuard", "SALE_ESCROW_FORCE_BLOCKED_ERROR"]);
   let claimed = false;
+  let settlementNow = null;
   const out = captureRes();
-  await handler({ params: { id: "s5" } }, out.res, supabase,
-    async () => ({ blocked: false }), async () => ({ blocked: false }),
+  await handler({ params: { id: "s5" } }, out.res, supabase, FixedDate,
+    async () => ({ blocked: false }),
+    async ({ now }) => { settlementNow = now; return { blocked: false }; },
     async () => { claimed = true; return false; },
     (e) => { throw e; },
     saleEscrowTransitionGuard, SALE_ESCROW_FORCE_BLOCKED_ERROR);
-  return { ...out, claimed, reads: supabase.reads };
+  return { ...out, claimed, settlementNow, reads: supabase.reads };
 }
 
 for (const [label, run, sentinel] of [
@@ -180,3 +187,9 @@ for (const [label, run, sentinel] of [
     assert.equal(r.body.held_sale_escrows, 2);
   });
 }
+
+test("manuel saesonafslutning: handleren koerer paa det faste ur, ikke vaeguret", async () => {
+  const r = await runManualEnd({ held: 0 });
+  assert.ok(r.settlementNow instanceof Date);
+  assert.equal(r.settlementNow.toISOString(), FIXED_NOW);
+});
