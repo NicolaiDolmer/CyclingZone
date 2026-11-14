@@ -59,7 +59,7 @@ export function ClearDraftBar({
 }: {
   count: number;
   busy: boolean;
-  /** Arbejdsfladen gemmer eller afmelder lige nu: Gem venter, saa kaldene aldrig krydser. */
+  /** Et skrivekald koerer (sidens skrive-laas): baade Gem og Fortryd venter, saa intet krydser. */
   locked?: boolean;
   error?: string | null;
   onUndo: () => void;
@@ -85,7 +85,7 @@ export function ClearDraftBar({
         )}
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="secondary" size="sm" onClick={onUndo} disabled={busy} data-testid="planning-clear-undo">
+        <Button variant="secondary" size="sm" onClick={onUndo} disabled={busy || locked} data-testid="planning-clear-undo">
           {t("clearBar.undo")}
         </Button>
         <Button variant="secondary" size="sm" onClick={onSave} loading={busy} disabled={locked} data-testid="planning-clear-save">

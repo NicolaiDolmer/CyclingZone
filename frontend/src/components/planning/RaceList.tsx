@@ -121,6 +121,8 @@ interface RaceListProps {
   /** Der er flere ryddelige loeb, end ét gem kan rumme: knappen siger det aerligt (loftet er clearMax). */
   clearCapped?: boolean;
   clearMax?: number;
+  /** Et skrivekald koerer (sidens skrive-laas): en rydning venter, til det er faerdigt. */
+  clearLocked?: boolean;
   onClear: () => void;
 }
 
@@ -141,6 +143,7 @@ export default function RaceList({
   clearCount,
   clearCapped = false,
   clearMax = 0,
+  clearLocked = false,
   onClear,
 }: RaceListProps) {
   const { t } = useTranslation("planning");
@@ -170,7 +173,7 @@ export default function RaceList({
             variant="ghost"
             size="sm"
             onClick={onClear}
-            disabled={clearCount === 0}
+            disabled={clearCount === 0 || clearLocked}
             title={
               clearCapped
                 ? clearCount > 0

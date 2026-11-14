@@ -8,7 +8,7 @@
 // eksisterende endpoints (se lib/planningWorkbenchData.ts); der er ingen nye skrive-endpoints.
 //
 // Layout: T2 wide data (cap 1600 px). Spec: docs/superpowers/specs/2026-11-02-planning-workbench-design.md
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 import { Link, Navigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -36,8 +36,11 @@ import {
   capClearable,
   clearSubmission,
   clearableRaceIds,
+  createWriteGate,
   entriesAfterClear,
+  raceSwitchStep,
   type TrainNowLocks,
+  type WriteGate,
   copenhagenToday,
   dateIndex,
   groupRacesByWeek,
@@ -125,19 +128,23 @@ function Workbench() {
   const [profileFull, setProfileFull] = useState(() => readPref("profileFull", false));
   // "Ryd udtagelser" (ejer 14/11): de ryddede loeb er en kladde, indtil spilleren gemmer eller fortryder.
   const [clearDraft, setClearDraft] = useState<Set<string>>(() => new Set());
-  const [clearBusy, setClearBusy] = useState(false);
   const [clearError, setClearError] = useState<string | null>(null);
+  // Sidens skrive-laas: ÉT sted ejer "der er et skrivekald i gang" (fladens gem, afmeld, masse-gem).
+  // Alle veje der sender eller anvender noget (gem, masse-gem, Ryd, Fortryd, loebsskift) laeser den,
+  // og kun det kald der tog den, kan slippe den.
+  const [gate] = useState<WriteGate>(() => createWriteGate());
+  const writing = useSyncExternalStore(gate.subscribe, gate.current);
+  const clearBusy = writing === "bulk";
   // Spillerens ugemte kladde FOER rydningen, pr. loeb: overlever et skift af loeb, saa Fortryd altid kan
   // stille den tilbage (den delte kladde-hukommelse har kun plads til ét loeb).
   const [clearBefore, setClearBefore] = useState<Map<string, Selection>>(() => new Map());
-  // Arbejdsfladen gemmer eller afmelder lige nu: masse-gemmet venter (kaldene maa ikke krydse).
-  const [workbenchBusy, setWorkbenchBusy] = useState(false);
   const [scope, setScope] = useState<RaceScope>("next7");
   const [showPast, setShowPast] = useState(false);
   const [weekMonday, setWeekMonday] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const [barBusy, setBarBusy] = useState(false);
+  // Et loebsskift, der kom mens et skrivekald koerte: udfoeres, naar kaldet er faerdigt.
+  const [queuedId, setQueuedId] = useState<string | null>(null);
   const workbenchRef = useRef<RaceWorkbenchHandle>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
   const userPicked = useRef(false);
@@ -270,15 +277,27 @@ function Workbench() {
     [allRaces, dates, setSearchParams],
   );
 
-  // Et klik paa et andet loeb med ugemte aendringer aabner bjaelken i stedet for at miste dem.
-  const requestSelect = (id: string) => {
-    if (selected && id === selected.id) return;
-    if (dirty) {
-      setPendingId(id);
-      return;
-    }
-    selectRace(id);
-  };
+  // Et klik paa et andet loeb med ugemte aendringer aabner bjaelken i stedet for at miste dem. Mens et
+  // skrivekald koerer, saettes skiftet i koe (svaret skal lande paa den flade, der sendte det).
+  const selectedId = selected?.id ?? null;
+  const requestSelect = useCallback(
+    (id: string) => {
+      const step = raceSwitchStep({
+        same: id === selectedId,
+        writing: gate.current(),
+        dirty: workbenchRef.current?.isDirty() ?? dirty,
+      });
+      if (step === "queue") setQueuedId(id);
+      else if (step === "ask") setPendingId(id);
+      else if (step === "go") selectRace(id);
+    },
+    [selectedId, gate, dirty, selectRace],
+  );
+  useEffect(() => {
+    if (writing || !queuedId) return;
+    setQueuedId(null);
+    requestSelect(queuedId);
+  }, [writing, queuedId, requestSelect]);
 
   // På en smal skaerm staar arbejdsfladen under listen: scroll den i syne naar et loeb vaelges.
   useEffect(() => {
@@ -304,15 +323,15 @@ function Workbench() {
   const pendingRace = pendingId ? allRaces.find((r) => r.id === pendingId) : null;
   const stay = () => setPendingId(null);
   const discardAndOpen = () => {
+    if (gate.current()) return;
     workbenchRef.current?.discard();
     const id = pendingId;
     setPendingId(null);
     if (id) selectRace(id);
   };
   const saveAndOpen = async () => {
-    setBarBusy(true);
+    // Gemmet tager selv sidens skrive-laas: holdes den, sendes intet, og bjaelken bliver staaende.
     const ok = await workbenchRef.current?.save();
-    setBarBusy(false);
     if (ok && pendingId) {
       const id = pendingId;
       setPendingId(null);
@@ -355,56 +374,59 @@ function Workbench() {
   const onLeaveClear = useCallback((raceId: string) => dropFromClear([raceId]), [dropFromClear]);
 
   // "Ryd udtagelser": de VISTE loeb (efter filteret) ryddes som en kladde. Intet gemmes her.
+  // Rydning og Fortryd er kladder, men de anvendes aldrig midt i et skrivekald (knapperne er laast,
+  // og fladen venter selv med at vise dem, til kaldet er faerdigt).
   const clearShown = (ids: string[]) => {
-    if (!ids.length) return;
+    if (!ids.length || gate.current()) return;
     setClearError(null);
     setClearDraft((cur) => new Set([...cur, ...ids]));
   };
   const undoClear = () => {
+    if (gate.current()) return;
     setClearError(null);
     setClearDraft(new Set());
   };
   // Gem kladden: ÉT atomisk kald, alt eller intet (PLANNING_CENTER_RULES §1). Kladden kan aldrig vokse
   // ud over serverens loft pr. kald (capClearable), saa den deles aldrig i flere uafhaengige gem.
+  // Kaldet holder sidens skrive-laas, til den aabne flade har afstemt og hentet sin tilgaengelighed.
   const saveClear = async () => {
     const ids = [...clearDraft];
-    if (!ids.length || workbenchBusy) return;
+    if (!ids.length) return;
     // Oejebliksbilledet af det der SENDES; svaret afstemmes mod det, ikke mod siden naar svaret kommer.
     const { changes, selections } = clearSubmission(entries, ids, locks);
-    setClearBusy(true);
-    setClearError(null);
-    try {
-      const res = await saveRaceSelectionsBulk(changes);
-      if (!res.ok) {
-        const body = res.data ?? {};
-        const conflict = Array.isArray(body.conflicts) ? body.conflicts[0] : null;
-        const message = conflict
-          ? tr("selection.errors.selection_rider_bound_named", { rider: conflict.rider_name ?? "", race: conflict.race_name ?? conflict.bound_race_name ?? "" })
-          : tr([`selection.errors.${body.error || "generic"}`, "selection.errors.generic"]);
-        const failed = allRaces.find((r) => r.id === body.race_id);
-        setClearError(failed ? t("clearBar.errorIn", { race: failed.name, error: message }) : t("clearBar.error", { error: message }));
-        return;
+    await gate.run("bulk", async () => {
+      setClearError(null);
+      try {
+        const res = await saveRaceSelectionsBulk(changes);
+        if (!res.ok) {
+          const body = res.data ?? {};
+          const conflict = Array.isArray(body.conflicts) ? body.conflicts[0] : null;
+          const message = conflict
+            ? tr("selection.errors.selection_rider_bound_named", { rider: conflict.rider_name ?? "", race: conflict.race_name ?? conflict.bound_race_name ?? "" })
+            : tr([`selection.errors.${body.error || "generic"}`, "selection.errors.generic"]);
+          const failed = allRaces.find((r) => r.id === body.race_id);
+          setClearError(failed ? t("clearBar.errorIn", { race: failed.name, error: message }) : t("clearBar.error", { error: message }));
+          return;
+        }
+        const saved = new Set(ids);
+        setEntries((cur) => entriesAfterClear(cur, saved, locks));
+        // Den aabne flade afstemmer selv sit eget loeb mod det sendte; de andre sendte loebs huskede
+        // kladder er nu foraeldede og glemmes.
+        const view = workbenchRef.current;
+        for (const id of ids) {
+          const submitted = selections.get(id);
+          if (!(submitted && view?.markSaved(id, submitted))) forgetSelectionDraft(id);
+        }
+        forgetClearBefore(ids);
+        dropFromClear(ids);
+        refreshSelectionReminder();
+        setLoadVersion((v) => v + 1);
+        // Ryttere bundet i et ryddet loeb er nu fri: den aabne flade henter deres tilgaengelighed igen.
+        await view?.refreshAvailability();
+      } catch {
+        setClearError(t("clearBar.error", { error: tr("selection.errors.generic") }));
       }
-      const saved = new Set(ids);
-      setEntries((cur) => entriesAfterClear(cur, saved, locks));
-      // Den aabne flade afstemmer selv sit eget loeb (og beholder aendringer lavet imens); de andre
-      // sendte loebs huskede kladder er nu foraeldede og glemmes.
-      const view = workbenchRef.current;
-      for (const id of ids) {
-        const submitted = selections.get(id);
-        if (!(submitted && view?.markSaved(id, submitted))) forgetSelectionDraft(id);
-      }
-      // Ryttere bundet i et ryddet loeb er nu fri: den aabne flade henter deres tilgaengelighed igen.
-      view?.refreshAvailability();
-      forgetClearBefore(ids);
-      dropFromClear(ids);
-      refreshSelectionReminder();
-      setLoadVersion((v) => v + 1);
-    } catch {
-      setClearError(t("clearBar.error", { error: tr("selection.errors.generic") }));
-    } finally {
-      setClearBusy(false);
-    }
+    });
   };
 
   const onWithdrawnChange = useCallback((raceId: string, isOut: boolean) => {
@@ -543,14 +565,14 @@ function Workbench() {
           <UnsavedBar
             raceName={selected.name}
             nextName={pendingRace.name}
-            busy={barBusy || clearBusy}
+            busy={writing !== null}
             onStay={stay}
             onDiscard={discardAndOpen}
             onSaveAndOpen={saveAndOpen}
           />
         )}
         {hasClearDraft && (
-          <ClearDraftBar count={clearDraft.size} busy={clearBusy} locked={workbenchBusy} error={clearError} onUndo={undoClear} onSave={saveClear} />
+          <ClearDraftBar count={clearDraft.size} busy={clearBusy} locked={writing !== null} error={clearError} onUndo={undoClear} onSave={saveClear} />
         )}
         <div className={`grid items-start gap-3.5 ${showList ? "lg:grid-cols-[296px_minmax(0,1fr)]" : ""}`}>
           {showList && (
@@ -571,6 +593,7 @@ function Workbench() {
               clearCount={clearPlan.ids.length}
               clearCapped={clearPlan.capped}
               clearMax={SELECTION_BULK_MAX}
+              clearLocked={writing !== null}
               onClear={() => clearShown(clearPlan.ids)}
             />
           )}
@@ -592,10 +615,9 @@ function Workbench() {
                 onToggleProfileFull={toggleProfileFull}
                 pendingClear={clearDraft.has(selected.id)}
                 onLeaveClear={onLeaveClear}
-                saveLocked={clearBusy}
+                gate={gate}
                 clearBefore={clearBefore.get(selected.id) ?? null}
                 onClearBefore={onClearBefore}
-                onBusyChange={setWorkbenchBusy}
                 onDirtyChange={setDirty}
                 onSaved={onSaved}
                 onWithdrawnChange={onWithdrawnChange}
