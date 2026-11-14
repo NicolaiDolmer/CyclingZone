@@ -24,6 +24,9 @@ import { RULES_NUMBERS } from "../lib/rulesNumbers";
 import { divColor } from "../lib/divisionColors.js";
 import { POOL_ALL, matchesPoolTab } from "../lib/standingsPoolFilter.js";
 import { applySeniorSquadFilter, filterSeniorSquadRows, withActiveSeniorPools } from "../lib/seniorScope.ts";
+import UpdatedAtLine from "../components/rankings/UpdatedAtLine.tsx"; // #7664
+import { startFreshnessProbe } from "../lib/rankingFreshness.ts";
+import { loadRankingFreshness } from "../lib/rankingFreshnessApi.ts";
 
 // #1608/#1688 4-tier-pyramide: divisions-fanerne dækker tier 1..MAX_DIVISION (4).
 // Tier-tallet hentes fra den delte konstant-mirror (rulesNumbers), så frontend ikke
@@ -97,6 +100,8 @@ export default function StandingsPage() {
   const [standings, setStandings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // #7664: "Opdateret kl." (null = ingen linje, fx kontakten slukket).
+  const [updatedAt, setUpdatedAt] = useState(/** @type {string | null} */ (null));
   // #5315 — ?division=<tier>&pool=<id> (fra Dashboardets "Full standings"-link,
   // se lib/standingsLink.ts) forvælger division+pulje-fane ved deep-link, så
   // siden lander direkte på managerens egen pulje i stedet for hele tieren.
@@ -149,6 +154,9 @@ export default function StandingsPage() {
   // #4068: loadAllInner refererer ingen reaktive værdier (kun stabile setters)
   // — memoized med tomme deps så identiteten er stabil på tværs af renders.
   const loadAllInner = useCallback(async () => {
+    // #7664: startes FOER tallene laeses; bruges kun hvis svaret er kommet,
+    // naar tallene er hentet (se lib/rankingFreshness.ts). Blokerer intet.
+    const freshness = startFreshnessProbe(loadRankingFreshness);
     // #2444 · teams- og pools-queryen afhænger hverken af user eller activeSeason
     // (statisk reference-/holddata) — de kørte tidligere sidst i en 4-forespørgsels-
     // Promise.all, EFTER to sekventielle awaits (user → mine → season). Startet
@@ -293,6 +301,8 @@ export default function StandingsPage() {
       });
       setRacePoints(prog);
     }
+    // #7664: kun naar rangliste-tallene faktisk er hentet ovenfor.
+    setUpdatedAt(activeSeason && merged.length ? freshness.settled() : null);
   }, []);
 
   // #2175/#4068: loadAll pakket i try/catch/finally → en fejlet query viser
@@ -754,6 +764,7 @@ export default function StandingsPage() {
           for tre faner og kan ikke bære den. */}
       <p className="mb-3 text-[13px] text-cz-2">
         {season ? t("season", { n: season.number }) : t("noActiveSeason")}
+        {season && <UpdatedAtLine at={updatedAt} ns="standings" />}{/* #7664: kun naar de nye tabeller laeses */}
       </p>
 
       {/* Filter-bar (T2-recept): op til 3 Selects + search Input, compare-handling

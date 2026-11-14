@@ -31,7 +31,7 @@ function harness(name: string, apiRows: unknown[], fail = false) {
     fetchGlobalRanks: fetchRows, fetchRiderRankings: fetchRows,
     // #7664: the freshness probe is started before the numbers and read after them.
     startFreshnessProbe: () => ({ settled: () => "2026-11-13T13:07:00.000Z" }),
-    authHeaders: async () => null, apiFetch: async () => ({ ok: false, data: null }),
+    loadRankingFreshness: async () => null,
   });
   return { hook: hook(), states };
 }

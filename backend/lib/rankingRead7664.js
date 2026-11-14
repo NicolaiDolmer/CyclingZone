@@ -15,6 +15,11 @@
 // laesninger tilbage til matviews, saa en fejl i skyggen aldrig giver tomme
 // eller gamle tal.
 //
+// Nødvej: fejler selve laesningen i skyggen (ruterne eller forsiden), faar
+// spilleren svaret fra matviews i stedet for en fejl, kildevalget holdes paa
+// matviews i SHADOW_FALLBACK_WINDOW_MS, og Sentry faar hoejst een rapport pr.
+// vindue. Med kontakten slukket er intet af dette i spil.
+//
 // global_rank_mv har ingen skygge. Den bygger paa season_standings, som
 // opdateres ved finaliseringen, og laeses som i dag.
 import { AsyncLocalStorage } from "node:async_hooks";
@@ -44,12 +49,64 @@ export const SOURCE_CACHE_TTL_MS = 10_000;
 // aendringerne i dette vindue foer den koerer (se refreshRankingMatviews.js).
 export const LEGACY_HOLD_MS_7664 = 15 * 60 * 1000;
 
+// Nødvej: fejler en laesning i de nye tabeller, laeses de gamle i stedet, og
+// kildevalget holdes paa de gamle i dette vindue (saa hvert request ikke
+// betaler for en fejlende laesning, og "opdateret kl." forsvinder, mens tallene
+// kommer fra de gamle tabeller). Sentry faar hoejst een rapport pr. vindue.
+export const SHADOW_FALLBACK_WINDOW_MS = 5 * 60 * 1000;
+
 /** @type {Readonly<RankingReadSource>} */
 const LEGACY = Object.freeze({ source: "legacy", currentAsOf: null });
 let sourceCache = new WeakMap();
+// Nødvejens hold pr. klient (udloebstid), gemt for sig selv: et kildeopslag,
+// der allerede var i gang, da holdet blev sat, maa ikke kunne overskrive det.
+let fallbackHoldUntil = new WeakMap();
+let fallbackReport = { lastAt: -Infinity, suppressed: 0 };
 
 export function __resetRankingReadCacheForTests() {
   sourceCache = new WeakMap();
+  fallbackHoldUntil = new WeakMap();
+  fallbackReport = { lastAt: -Infinity, suppressed: 0 };
+}
+
+/** Holder nødvejen kildevalget paa de gamle tabeller lige nu? */
+function fallbackHoldActive(supabase, at) {
+  return (fallbackHoldUntil.get(supabase) ?? -Infinity) > at;
+}
+
+/** Supabase-fejl er ofte et objekt med `message`, ikke en Error. */
+function toError(error) {
+  if (error instanceof Error) return error;
+  return new Error(String(/** @type {{ message?: unknown }} */ (error)?.message ?? error));
+}
+
+/**
+ * En laesning i de nye tabeller fejlede, og laeseren bruger de gamle i stedet.
+ * Holder kildevalget paa de gamle i vinduet og rapporterer hoejst een gang pr.
+ * vindue (pr. backend-proces); de undertrykte taelles med i naeste rapport.
+ * @param {any} supabase
+ * @param {unknown} error
+ * @param {string} path
+ * @param {{ now?: () => number, captureExceptionFn?: CaptureFn }} [options]
+ */
+function noteShadowFallback(supabase, error, path, { now = Date.now, captureExceptionFn } = {}) {
+  const at = now();
+  if (supabase && typeof supabase === "object") {
+    fallbackHoldUntil.set(supabase, at + SHADOW_FALLBACK_WINDOW_MS);
+    // Efter holdet slaas kilden op paa ny i stedet for at genbruge et gammelt valg.
+    sourceCache.delete(supabase);
+  }
+  if (at - fallbackReport.lastAt < SHADOW_FALLBACK_WINDOW_MS) {
+    fallbackReport.suppressed += 1;
+    return;
+  }
+  const suppressed = fallbackReport.suppressed;
+  fallbackReport = { lastAt: at, suppressed: 0 };
+  captureExceptionFn?.(toError(error), {
+    tags: { lib: "rankingRead7664", path },
+    fallback: "legacy_tables",
+    suppressed_since_last_report: suppressed,
+  });
 }
 
 /**
@@ -80,7 +137,7 @@ async function shadowRebuildFinished(supabase) {
 }
 
 /** @typedef {{ source: "legacy"|"shadow", currentAsOf: string|null }} RankingReadSource */
-/** @typedef {(error: Error, context: { tags: Record<string, string> }) => void} CaptureFn */
+/** @typedef {(error: Error, context: { tags: Record<string, string>, [extra: string]: unknown }) => void} CaptureFn */
 
 /**
  * Hvilken kilde rangliste-ruterne skal laese nu.
@@ -92,6 +149,7 @@ async function shadowRebuildFinished(supabase) {
  */
 export async function resolveRankingReadSource(supabase, { now = Date.now, captureExceptionFn } = {}) {
   if (!supabase?.from || !supabase?.rpc) return LEGACY;
+  if (fallbackHoldActive(supabase, now())) return LEGACY;
   const hit = sourceCache.get(supabase);
   if (hit && hit.expiresAt > now()) return hit.value;
   /** @type {RankingReadSource} */
@@ -114,6 +172,9 @@ export async function resolveRankingReadSource(supabase, { now = Date.now, captu
     });
     value = LEGACY;
   }
+  // Blev nødvejens hold sat, mens opslaget kørte, vinder holdet, og opslagets
+  // svar gemmes ikke.
+  if (fallbackHoldActive(supabase, now())) return LEGACY;
   sourceCache.set(supabase, { value, expiresAt: now() + SOURCE_CACHE_TTL_MS });
   return value;
 }
@@ -131,15 +192,84 @@ export function rankingTableFor(name, source) {
 }
 
 /**
- * Express-middleware: vaelger kilde een gang pr. request og binder den til
- * requestets asynkrone kontekst.
+ * Kører rangliste-routeren med kildevalget bundet til requestets asynkrone
+ * kontekst (vaelges een gang pr. request).
+ *
+ * Kilden er de gamle tabeller (kontakten slukket): routeren koerer direkte,
+ * praecis som foer; intet svar opfanges.
+ *
+ * Kilden er de nye tabeller: ender requestet i et 5xx-svar, efter at det har
+ * laest mindst een ny tabel, sendes svaret ikke. Routeren koeres i stedet een
+ * gang til mod de gamle tabeller, og spilleren faar det svar. Fejlen
+ * rapporteres hoejst een gang pr. vindue (noteShadowFallback). Fejler ogsaa
+ * de gamle tabeller, er svaret og rapporten som i dag.
+ * @param {any} supabase den raa klient (samme noegle som kildevalget)
+ * @param {(req: any, res: any, next: (err?: unknown) => void) => void} handler rangliste-routeren
+ * @param {{ now?: () => number, captureExceptionFn?: CaptureFn }} [options]
  */
-export function rankingReadMiddleware(supabase, options = {}) {
+export function rankingReadWithFallback7664(supabase, handler, options = {}) {
   return async (req, res, next) => {
     const value = await resolveRankingReadSource(supabase, options);
-    requestSource.run(value, next);
+    if (value.source !== "shadow") {
+      requestSource.run(value, () => handler(req, res, next));
+      return;
+    }
+    /** @type {ShadowAttempt} */
+    const attempt = { ...value, fallback: true, shadowRead: false, withheld: null };
+    const statusBefore = res.statusCode;
+    const headersBefore = res.getHeaders();
+    const ownSend = Object.prototype.hasOwnProperty.call(res, "send") ? res.send : null;
+    let settled = false;
+    const release = () => {
+      if (settled) return false;
+      settled = true;
+      if (ownSend) res.send = ownSend;
+      else delete res.send; // tilbage til Express' egen send
+      return true;
+    };
+    // Ingen nødvej (svaret gik igennem, eller routeren gav videre): en
+    // tilbageholdt fejl rapporteres, som routeren selv ville have gjort.
+    const passThrough = () => {
+      if (release()) attempt.withheld?.report();
+    };
+    res.send = function sendWithFallback(/** @type {unknown[]} */ ...args) {
+      if (settled || !(res.statusCode >= 500 && attempt.shadowRead)) {
+        passThrough();
+        return res.send(...args);
+      }
+      release();
+      const failedStatus = res.statusCode;
+      // Nulstil det, det fejlede forsoeg naaede at saette, foer de gamle laeses.
+      for (const name of res.getHeaderNames()) if (!(name in headersBefore)) res.removeHeader(name);
+      for (const [name, header] of Object.entries(headersBefore)) if (header !== undefined) res.setHeader(name, header);
+      res.statusCode = statusBefore;
+      noteShadowFallback(supabase, attempt.withheld?.error ?? new Error(`ranking read failed with HTTP ${failedStatus}`), "route", options);
+      requestSource.run(LEGACY, () => handler(req, res, next));
+      return res;
+    };
+    requestSource.run(attempt, () => handler(req, res, (/** @type {unknown} */ err) => { passThrough(); next(err); }));
   };
 }
+
+/**
+ * reportError til rangliste-routeren. I et forsoeg mod de nye tabeller, der
+ * allerede har laest en ny tabel, holdes fejlen tilbage: nødvejen rapporterer
+ * den (een gang pr. vindue). Alle andre fejl, og alt med kontakten slukket,
+ * gaar direkte videre som i dag.
+ * @param {(error: unknown) => void} reportError
+ */
+export function withShadowFallbackReport(reportError) {
+  return (/** @type {unknown} */ error) => {
+    const store = /** @type {ShadowAttempt | undefined} */ (requestSource.getStore());
+    if (store?.fallback && store.shadowRead && !store.withheld) {
+      store.withheld = { error, report: () => reportError(error) };
+      return;
+    }
+    reportError(error);
+  };
+}
+
+/** @typedef {RankingReadSource & { fallback: true, shadowRead: boolean, withheld: { error: unknown, report: () => void } | null }} ShadowAttempt */
 
 /**
  * Samme klient, men `.from(<matview>)` peger paa skyggetabellen, naar
@@ -149,7 +279,12 @@ export function createRankingReadClient(supabase) {
   return new Proxy(supabase, {
     get(target, prop) {
       if (prop === "from") {
-        return (name, ...rest) => target.from(rankingTableFor(name, currentRankingReadSource().source), ...rest);
+        return (name, ...rest) => {
+          const store = /** @type {ShadowAttempt | undefined} */ (requestSource.getStore());
+          const table = rankingTableFor(name, store?.source);
+          if (store?.fallback && table !== name) store.shadowRead = true;
+          return target.from(table, ...rest);
+        };
       }
       const value = Reflect.get(target, prop, target);
       return typeof value === "function" ? value.bind(target) : value;
@@ -255,11 +390,8 @@ export async function readDashboardTopRiders7664(supabase, { seasonId, leagueDiv
   } catch (error) {
     // best-effort: forsiden falder tilbage til dagens RPC (api.js).
     if (!shadowStarted) return null;
-    // Supabase-fejl er ofte et objekt med `message`, ikke en Error.
-    const message = error instanceof Error ? error.message : String(/** @type {{ message?: unknown }} */ (error)?.message ?? error);
-    captureExceptionFn?.(error instanceof Error ? error : new Error(message), {
-      tags: { lib: "rankingRead7664", path: "dashboard-top" },
-    });
+    // Hoejst een rapport pr. vindue, og kildevalget holdes paa de gamle tabeller.
+    noteShadowFallback(supabase, error, "dashboard-top", { now, captureExceptionFn });
     return null;
   } finally {
     clearTimeout(timer);
