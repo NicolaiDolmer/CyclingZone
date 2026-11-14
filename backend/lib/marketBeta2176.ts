@@ -120,12 +120,15 @@ export async function isMarketTransportEnabled2176(client: MarketClient2176): Pr
   return value === 'beta' || value === 'on' || value === true;
 }
 
-export async function isMarketBetaMode2176(client: MarketClient2176): Promise<boolean> {
+// Mirrors SQL market_atomic_payments_2176(). Atomic market payments must not
+// switch off when auto-accept goes from beta to on (#2176), so global M3 keeps
+// them for auto-accept beta and on alike; auto-accept off keeps the old paths.
+export async function isMarketAtomicPayments2176(client: MarketClient2176): Promise<boolean> {
   const market = await readMarketFlag2176(client, 'market_commitment_6181');
   if (market === 'beta') return true;
-  // Auto-accept beta also needs atomic payments when M3 is already global.
   if (market !== 'on' && market !== true) return false;
-  return await readMarketFlag2176(client, 'auto_accept_enabled') === 'beta';
+  const auto = await readMarketFlag2176(client, 'auto_accept_enabled');
+  return auto === 'beta' || auto === 'on' || auto === true;
 }
 
 export async function marketProtectedTeamIds2176(client: MarketClient2176, teamIds: string[]): Promise<Set<string>> {

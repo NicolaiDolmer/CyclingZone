@@ -1,5 +1,5 @@
 import { FINANCE_ACTOR_TYPE, FINANCE_REASON, FINANCE_RELATED_ENTITY } from './economyConstants.js';
-import { isMarketBetaMode2176, readMarketSpendIssue2176 } from './marketBeta2176.ts';
+import { isMarketAtomicPayments2176, readMarketSpendIssue2176 } from './marketBeta2176.ts';
 import type { MarketClient2176, MarketSpendIssue2176 } from './marketBeta2176.ts';
 
 export type ScoutAssignment2176 = {
@@ -14,7 +14,7 @@ type ScoutResult2176 = { status: 'created'; assignment: ScoutCreated2176; debit:
 export async function createScoutAssignmentBeta2176(client: MarketClient2176, {
   assignment, sourcePath, metadata,
 }: { assignment: ScoutAssignment2176; sourcePath: 'scoutAssignmentService.startMission' | 'scoutAssignmentService.startTargetAssignment'; metadata: Record<string, unknown> }): Promise<ScoutResult2176> {
-  if (!(await isMarketBetaMode2176(client))) return null;
+  if (!(await isMarketAtomicPayments2176(client))) return null;
   // These are debitTeam's existing audit defaults. SQL supplies the canonical
   // key using the assignment UUID it creates in the same transaction.
   const payload = {

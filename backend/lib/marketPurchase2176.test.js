@@ -9,8 +9,15 @@ function fixture(stage,result={data:{status:'created',assignment:{id:'assignment
  const calls=[];return{calls,from(){return{select(){return this;},eq(){return this;},maybeSingle:async()=>({data:{value:stage},error:null})};},
  rpc:async(name,args)=>{calls.push({name,args});return result;}};
 }
-test('scouting on/off keep the original service path without the new RPC',async()=>{
- for(const stage of ['on',true,'off',false,null]){const db=fixture(stage);assert.equal(await createScoutAssignmentBeta2176(db,input),null);assert.equal(db.calls.length,0);}
+// The fixture answers both flags with the same stage, so 'on'/true is bid lock
+// on AND auto-accept on: #2176 keeps the atomic path there (going live must not
+// drop it). Off and missing keep the original service path.
+test('scouting off keeps the original service path without the new RPC',async()=>{
+ for(const stage of ['off',false,null]){const db=fixture(stage);assert.equal(await createScoutAssignmentBeta2176(db,input),null);assert.equal(db.calls.length,0);}
+});
+test('scouting with both flags on keeps the atomic RPC (#2176)',async()=>{
+ for(const stage of ['on',true]){const db=fixture(stage);assert.equal((await createScoutAssignmentBeta2176(db,input)).status,'created');
+  assert.equal(db.calls[0].name,'market_scout_assignment_2176');}
 });
 test('beta scout purchase uses the existing exact audit semantics and committed receipt',async()=>{
  const db=fixture('beta');const result=await createScoutAssignmentBeta2176(db,input);

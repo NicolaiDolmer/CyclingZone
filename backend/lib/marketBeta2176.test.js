@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   isAutoAcceptActorEnabled2176, isAutoAcceptPairEnabled2176, projectAutoAcceptListings2176,
-  isMarketTransportEnabled2176, isMarketProtectionEnabled2176, isMarketBetaMode2176,
+  isMarketTransportEnabled2176, isMarketProtectionEnabled2176, isMarketAtomicPayments2176,
   projectAutoAcceptOffers2176,
   readMarketSpendIssue2176,
 } from './marketBeta2176.ts';
@@ -34,10 +34,18 @@ function fixture({ auto = 'beta', market = 'beta', sellerBeta = true, buyerBeta 
   return client;
 }
 
-for (const market of ['on', true]) test(`auto-accept beta keeps atomic writer transport with global M3=${market}`,async()=>{
-  assert.equal(await isMarketBetaMode2176(fixture({market,auto:'beta'})),true);
-  assert.equal(await isMarketBetaMode2176(fixture({market,auto:'on'})),false);
-  assert.equal(await isMarketBetaMode2176(fixture({market,auto:'off'})),false);
+for (const market of ['on', true]) test(`auto-accept beta and on keep atomic writer transport with global M3=${market}`,async()=>{
+  assert.equal(await isMarketAtomicPayments2176(fixture({market,auto:'beta'})),true);
+  assert.equal(await isMarketAtomicPayments2176(fixture({market,auto:'on'})),true,'#2176: going live must not drop atomic payments');
+  assert.equal(await isMarketAtomicPayments2176(fixture({market,auto:true})),true);
+  assert.equal(await isMarketAtomicPayments2176(fixture({market,auto:'off'})),false);
+  assert.equal(await isMarketAtomicPayments2176(fixture({market,auto:false})),false);
+});
+
+for (const auto of ['off','beta','on']) test(`atomic payments follow the M3 beta and off stages unchanged (auto=${auto})`,async()=>{
+  assert.equal(await isMarketAtomicPayments2176(fixture({market:'beta',auto})),true);
+  assert.equal(await isMarketAtomicPayments2176(fixture({market:'off',auto})),false);
+  assert.equal(await isMarketAtomicPayments2176(fixture({market:false,auto})),false);
 });
 
 for (const [sellerBeta, buyerBeta, expected] of [[true, true, true], [true, false, false], [false, true, false], [false, false, false]]) {

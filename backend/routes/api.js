@@ -133,7 +133,7 @@ import {
 } from "../lib/marketPause.js";
 import { resolveProxyBids } from "../lib/proxyBidding.js";
 import { marketGateResponse6181, canAffordAutoBid6181, canAffordAutoBidScoped2176, syncBidLeader6181, applySellerOutgoingAuctions6181, auctionStartCommitmentResponse6181, readBidContext6181, isLoweredProxy6181 } from "../lib/marketCommitment6181.js"; // #6181 PR 5
-import { projectAutoAcceptListings2176, projectAutoAcceptOffers2176, readMarketFlag2176, isMarketProtectionEnabled2176, isMarketBetaMode2176 } from "../lib/marketBeta2176.ts";
+import { projectAutoAcceptListings2176, projectAutoAcceptOffers2176, readMarketFlag2176, isMarketProtectionEnabled2176, isMarketAtomicPayments2176 } from "../lib/marketBeta2176.ts";
 import { releaseFeeAvailableResponse6181 } from "../lib/releaseFeeGate6181.js"; // #6181 dommer-fund
 import {
   createLoan,
@@ -2148,7 +2148,7 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
       related_entity_id: rider.id,
     },
   };
-  const lockedRelease = await releaseRiderUnderTeamLock(supabase, { riderId: rider.id, teamId: req.team.id, atRiskRiders: releaseAtRiskRiders, marketBeta: await isMarketBetaMode2176(supabase), fee, feePayload: releaseFeePayment2176.payload }); // #2176: under holdlåsen, slukket = null
+  const lockedRelease = await releaseRiderUnderTeamLock(supabase, { riderId: rider.id, teamId: req.team.id, atRiskRiders: releaseAtRiskRiders, marketBeta: await isMarketAtomicPayments2176(supabase), fee, feePayload: releaseFeePayment2176.payload }); // #2176: under holdlåsen, slukket = null
   if (lockedRelease?.error) return res.status(lockedRelease.error.status).json(lockedRelease.error.body);
   const { data: released } = lockedRelease ?? await supabase
     .from("riders")
@@ -2281,7 +2281,7 @@ router.post("/riders/:id/academy-release", requireAuth, marketWriteLimiter, asyn
       related_entity_id: rider.id,
     },
   };
-  const lockedAcademyRelease = await releaseRiderUnderTeamLock(supabase, { riderId: rider.id, teamId: req.team.id, academy: true, marketBeta: await isMarketBetaMode2176(supabase), fee, feePayload: academyReleaseFeePayment2176.payload });
+  const lockedAcademyRelease = await releaseRiderUnderTeamLock(supabase, { riderId: rider.id, teamId: req.team.id, academy: true, marketBeta: await isMarketAtomicPayments2176(supabase), fee, feePayload: academyReleaseFeePayment2176.payload });
   if (lockedAcademyRelease?.error) return res.status(lockedAcademyRelease.error.status).json(lockedAcademyRelease.error.body);
   const { data: released, error: releaseErr } = lockedAcademyRelease ?? await supabase
     .from("riders")
@@ -7820,7 +7820,7 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
       is_flash: flash_auction,
     };
   let created2176 = null;
-  if (await isMarketBetaMode2176(supabase)) {
+  if (await isMarketAtomicPayments2176(supabase)) {
     const attempt = await supabase.rpc("create_market_auction_2176", { p_auction: auctionData2176, p_expected_owner: rider.team_id ?? null, p_min_riders: SELLER_SQUAD_FLOOR, p_at_risk_rider_ids: sellerFloorRiskIds(auctionAtRiskRiders2176) });
     if (attempt.error) created2176 = { data: null, error: attempt.error };
     else if (attempt.data?.status === "created") created2176 = { data: attempt.data.auction, error: null };
