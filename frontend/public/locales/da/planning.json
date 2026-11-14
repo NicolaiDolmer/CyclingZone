@@ -38,7 +38,9 @@
     },
     "clear": "Ryd udtagelser",
     "clearTitle": "{count, plural, one {Rydder udtagelsen i det viste løb. Intet gemmes, før du trykker Gem.} other {Rydder udtagelserne i de # viste løb. Intet gemmes, før du trykker Gem.}}",
-    "clearNone": "Ingen udtagelser at rydde i de viste løb"
+    "clearNone": "Ingen udtagelser at rydde i de viste løb",
+    "clearCapped": "Rydder udtagelserne i de første {count} af de viste løb. Ét gem kan højst rumme {max} løb, så gem dem, og ryd derefter resten.",
+    "clearFull": "Ét gem kan højst rumme {max} løb. Gem eller fortryd de ryddede løb, før du rydder flere."
   },
   "status": {
     "ready": "Klar",

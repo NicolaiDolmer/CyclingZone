@@ -457,11 +457,70 @@ export function selectionFromEntries(entries: SeasonEntry[]): Selection {
  * bliver (kun Train now-laaste, som serveren ikke lader tage ud). Samme form som et enkelt gem.
  */
 export function clearChanges(entries: SeasonEntry[], raceIds: string[], locks: TrainNowLocks = {}): Array<Record<string, unknown>> {
+  return clearSubmission(entries, raceIds, locks).changes;
+}
+
+/**
+ * Det et gem af rydningen SENDER: body til bulk-kaldet og, pr. loeb, den udtagelse serveren gemmer.
+ * Svaret afstemmes mod dette oejebliksbillede, aldrig mod det siden viser, naar svaret kommer.
+ */
+export function clearSubmission(
+  entries: SeasonEntry[],
+  raceIds: string[],
+  locks: TrainNowLocks = {},
+): { changes: Array<Record<string, unknown>>; selections: Map<string, Selection> } {
   const keep = entriesAfterClear(entries, new Set(raceIds), locks);
-  return raceIds.map((raceId) => {
+  const selections = new Map<string, Selection>();
+  const changes = raceIds.map((raceId) => {
     const sel = selectionFromEntries(keep.filter((e) => e.raceId === raceId));
+    selections.set(raceId, sel);
     return { raceId, ...toPutBody(sel, sel.luxuryHelperId != null) };
   });
+  return { changes, selections };
+}
+
+/**
+ * "Ryd udtagelser" gemmes altid i ÉT atomisk kald (PLANNING_CENTER_RULES §1: alt eller intet), og
+ * serveren tager hoejst `max` loeb pr. kald. Kladden fyldes derfor kun op til loftet, med de foerste
+ * ryddelige loeb i listens raekkefoelge. `capped` siger, at der var flere, end loftet gav plads til.
+ */
+export function capClearable(clearable: string[], draftSize: number, max: number): { ids: string[]; capped: boolean } {
+  const room = Math.max(0, max - draftSize);
+  return { ids: clearable.slice(0, room), capped: clearable.length > room };
+}
+
+/**
+ * Sidens rydning rammer det aabne loeb: fladen viser den ryddede trup (Train now-laaste bliver, med
+ * rolle fra den gemte trup), og kladden FOER rydningen huskes, saa Fortryd kan stille netop den tilbage.
+ */
+export function applyPageClear(current: Selection, saved: Selection, lockedIds: Iterable<string>): { sel: Selection; before: Selection } {
+  return { sel: clearSquad(saved, lockedIds), before: current };
+}
+
+/** Fortryd paa siden: den kladde spilleren havde foer rydningen, ellers den gemte trup. */
+export function undoPageClear(before: Selection | null, saved: Selection): Selection {
+  return before ?? saved;
+}
+
+/**
+ * Hvad fladen goer med den huskede kladde (localStorage). Mens sidens rydning vises, roeres den ikke:
+ * rydningen er kun en kladde, og spillerens egen ugemte trup skal overleve et Fortryd.
+ */
+export function draftCacheAction({ ready, clearShown, dirty }: { ready: boolean; clearShown: boolean; dirty: boolean }): "keep" | "remember" | "forget" {
+  if (!ready || clearShown) return "keep";
+  return dirty ? "remember" : "forget";
+}
+
+/**
+ * Et gemt bulk-kald afstemmes mod det loeb og den udtagelse der blev SENDT. Et andet loeb end det
+ * fladen viser roeres ikke; aendringer lavet mens kaldet koerte, forbliver ugemte (dirty).
+ */
+export function settleClearSave(
+  view: { raceId: string; sel: Selection },
+  submitted: { raceId: string; sel: Selection },
+): { mine: false } | { mine: true; saved: Selection; dirty: boolean } {
+  if (view.raceId !== submitted.raceId) return { mine: false };
+  return { mine: true, saved: submitted.sel, dirty: selectionDirty(view.sel, submitted.sel) };
 }
 
 // ── Trup-tabellen (Squad) ───────────────────────────────────────────────────

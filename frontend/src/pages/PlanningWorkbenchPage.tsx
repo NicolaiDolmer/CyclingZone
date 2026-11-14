@@ -33,7 +33,8 @@ import {
 } from "../lib/planningWorkbenchData.ts";
 import {
   addDays,
-  clearChanges,
+  capClearable,
+  clearSubmission,
   clearableRaceIds,
   entriesAfterClear,
   type TrainNowLocks,
@@ -340,42 +341,44 @@ function Workbench() {
     setClearError(null);
     setClearDraft(new Set());
   };
-  // Gem kladden: samme regler som et enkelt gem, alt eller intet pr. kald (serverens loft pr. kald).
+  // Gem kladden: ÉT atomisk kald, alt eller intet (PLANNING_CENTER_RULES §1). Kladden kan aldrig vokse
+  // ud over serverens loft pr. kald (capClearable), saa den deles aldrig i flere uafhaengige gem.
   const saveClear = async () => {
     const ids = [...clearDraft];
     if (!ids.length) return;
+    // Oejebliksbilledet af det der SENDES; svaret afstemmes mod det, ikke mod siden naar svaret kommer.
+    const { changes, selections } = clearSubmission(entries, ids, locks);
     setClearBusy(true);
     setClearError(null);
-    const done: string[] = [];
     try {
-      for (let i = 0; i < ids.length; i += SELECTION_BULK_MAX) {
-        const chunk = ids.slice(i, i + SELECTION_BULK_MAX);
-        const res = await saveRaceSelectionsBulk(clearChanges(entries, chunk, locks));
-        if (!res.ok) {
-          const body = res.data ?? {};
-          const conflict = Array.isArray(body.conflicts) ? body.conflicts[0] : null;
-          const message = conflict
-            ? tr("selection.errors.selection_rider_bound_named", { rider: conflict.rider_name ?? "", race: conflict.race_name ?? conflict.bound_race_name ?? "" })
-            : tr([`selection.errors.${body.error || "generic"}`, "selection.errors.generic"]);
-          const failed = allRaces.find((r) => r.id === body.race_id);
-          setClearError(failed ? t("clearBar.errorIn", { race: failed.name, error: message }) : t("clearBar.error", { error: message }));
-          break;
-        }
-        done.push(...chunk);
+      const res = await saveRaceSelectionsBulk(changes);
+      if (!res.ok) {
+        const body = res.data ?? {};
+        const conflict = Array.isArray(body.conflicts) ? body.conflicts[0] : null;
+        const message = conflict
+          ? tr("selection.errors.selection_rider_bound_named", { rider: conflict.rider_name ?? "", race: conflict.race_name ?? conflict.bound_race_name ?? "" })
+          : tr([`selection.errors.${body.error || "generic"}`, "selection.errors.generic"]);
+        const failed = allRaces.find((r) => r.id === body.race_id);
+        setClearError(failed ? t("clearBar.errorIn", { race: failed.name, error: message }) : t("clearBar.error", { error: message }));
+        return;
       }
-    } catch {
-      setClearError(t("clearBar.error", { error: tr("selection.errors.generic") }));
-    }
-    if (done.length) {
-      const saved = new Set(done);
+      const saved = new Set(ids);
       setEntries((cur) => entriesAfterClear(cur, saved, locks));
-      for (const id of done) forgetSelectionDraft(id);
-      if (selected && saved.has(selected.id)) workbenchRef.current?.markSaved();
-      dropFromClear(done);
+      // Den aabne flade afstemmer selv sit eget loeb (og beholder aendringer lavet imens); de andre
+      // sendte loebs huskede kladder er nu foraeldede og glemmes.
+      const view = workbenchRef.current;
+      for (const id of ids) {
+        const submitted = selections.get(id);
+        if (!(submitted && view?.markSaved(id, submitted))) forgetSelectionDraft(id);
+      }
+      dropFromClear(ids);
       refreshSelectionReminder();
       setLoadVersion((v) => v + 1);
+    } catch {
+      setClearError(t("clearBar.error", { error: tr("selection.errors.generic") }));
+    } finally {
+      setClearBusy(false);
     }
-    setClearBusy(false);
   };
 
   const onWithdrawnChange = useCallback((raceId: string, isOut: boolean) => {
@@ -412,8 +415,9 @@ function Workbench() {
     setProfileFull(!profileFull);
     writePref("profileFull", !profileFull);
   };
-  // Det "Ryd udtagelser" ville rydde lige nu: de viste loeb, der stadig har ryttere i kladden.
-  const clearable = clearableRaceIds(listRaces, shownEntries, withdrawn, locks);
+  // Det "Ryd udtagelser" ville rydde lige nu: de viste loeb, der stadig har ryttere i kladden, kun op
+  // til serverens loft for ét gem (saa kladden altid kan gemmes i ét atomisk kald).
+  const clearPlan = capClearable(clearableRaceIds(listRaces, shownEntries, withdrawn, locks), clearDraft.size, SELECTION_BULK_MAX);
 
   const upcomingNeed = allRaces.filter(
     (r) => !isRacePast(r) && (raceStartDate(r, dates) ?? "9999") <= addDays(today, 8) && raceReadiness(r, counts.get(r.id) ?? 0, withdrawn).state === "missing",
@@ -510,7 +514,7 @@ function Workbench() {
           <UnsavedBar
             raceName={selected.name}
             nextName={pendingRace.name}
-            busy={barBusy}
+            busy={barBusy || clearBusy}
             onStay={stay}
             onDiscard={discardAndOpen}
             onSaveAndOpen={saveAndOpen}
@@ -535,8 +539,10 @@ function Workbench() {
               showPast={showPast}
               onShowPast={setShowPast}
               today={today}
-              clearCount={clearable.length}
-              onClear={() => clearShown(clearable)}
+              clearCount={clearPlan.ids.length}
+              clearCapped={clearPlan.capped}
+              clearMax={SELECTION_BULK_MAX}
+              onClear={() => clearShown(clearPlan.ids)}
             />
           )}
           <div ref={anchorRef} className="min-w-0 scroll-mt-4">
@@ -557,6 +563,7 @@ function Workbench() {
                 onToggleProfileFull={toggleProfileFull}
                 pendingClear={clearDraft.has(selected.id)}
                 onLeaveClear={onLeaveClear}
+                saveLocked={clearBusy}
                 onDirtyChange={setDirty}
                 onSaved={onSaved}
                 onWithdrawnChange={onWithdrawnChange}

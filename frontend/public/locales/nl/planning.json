@@ -38,7 +38,9 @@
     },
     "clear": "Selecties wissen",
     "clearTitle": "{count, plural, one {Wist de selectie in de getoonde koers. Er wordt niets opgeslagen tot je op Opslaan drukt.} other {Wist de selecties in de # getoonde koersen. Er wordt niets opgeslagen tot je op Opslaan drukt.}}",
-    "clearNone": "Geen selecties om te wissen in de getoonde koersen"
+    "clearNone": "Geen selecties om te wissen in de getoonde koersen",
+    "clearCapped": "Wist de selecties in de eerste {count} getoonde koersen. Eén keer opslaan kan hooguit {max} koersen bevatten: sla deze op en wis daarna de rest.",
+    "clearFull": "Eén keer opslaan kan hooguit {max} koersen bevatten. Sla de gewiste koersen op of maak ze ongedaan voordat je er meer wist."
   },
   "status": {
     "ready": "Klaar",

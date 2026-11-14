@@ -38,7 +38,9 @@
     },
     "clear": "Clear squads",
     "clearTitle": "{count, plural, one {Clears the squad in the race shown. Nothing is saved until you press Save.} other {Clears the squads in the # races shown. Nothing is saved until you press Save.}}",
-    "clearNone": "No squads to clear in the races shown"
+    "clearNone": "No squads to clear in the races shown",
+    "clearCapped": "Clears the squads in the first {count} of the races shown. One save holds at most {max} races, so save these, then clear the rest.",
+    "clearFull": "One save holds at most {max} races. Save or undo the cleared races before you clear more."
   },
   "status": {
     "ready": "Ready",

@@ -38,7 +38,9 @@
     },
     "clear": "Vider les équipes",
     "clearTitle": "{count, plural, one {Vide l'équipe de la course affichée. Rien n'est enregistré avant que tu appuies sur Enregistrer.} other {Vide les équipes des # courses affichées. Rien n'est enregistré avant que tu appuies sur Enregistrer.}}",
-    "clearNone": "Aucune équipe à vider dans les courses affichées"
+    "clearNone": "Aucune équipe à vider dans les courses affichées",
+    "clearCapped": "Vide les équipes des {count} premières courses affichées. Un enregistrement contient au plus {max} courses : enregistre-les, puis vide le reste.",
+    "clearFull": "Un enregistrement contient au plus {max} courses. Enregistre ou annule les courses vidées avant d'en vider d'autres."
   },
   "status": {
     "ready": "Prêt",

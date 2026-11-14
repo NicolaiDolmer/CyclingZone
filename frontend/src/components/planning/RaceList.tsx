@@ -118,6 +118,9 @@ interface RaceListProps {
   today: string;
   /** Antal viste loeb "Ryd udtagelser" kan rydde (0 = knappen er slaaet fra). */
   clearCount: number;
+  /** Der er flere ryddelige loeb, end ét gem kan rumme: knappen siger det aerligt (loftet er clearMax). */
+  clearCapped?: boolean;
+  clearMax?: number;
   onClear: () => void;
 }
 
@@ -136,6 +139,8 @@ export default function RaceList({
   onShowPast,
   today,
   clearCount,
+  clearCapped = false,
+  clearMax = 0,
   onClear,
 }: RaceListProps) {
   const { t } = useTranslation("planning");
@@ -166,7 +171,15 @@ export default function RaceList({
             size="sm"
             onClick={onClear}
             disabled={clearCount === 0}
-            title={clearCount > 0 ? t("raceList.clearTitle", { count: clearCount }) : t("raceList.clearNone")}
+            title={
+              clearCapped
+                ? clearCount > 0
+                  ? t("raceList.clearCapped", { count: clearCount, max: clearMax })
+                  : t("raceList.clearFull", { max: clearMax })
+                : clearCount > 0
+                  ? t("raceList.clearTitle", { count: clearCount })
+                  : t("raceList.clearNone")
+            }
             data-testid="planning-clear-shown"
           >
             {t("raceList.clear")}

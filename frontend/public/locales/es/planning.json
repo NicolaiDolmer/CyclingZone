@@ -38,7 +38,9 @@
     },
     "clear": "Vaciar equipos",
     "clearTitle": "{count, plural, one {Vacía el equipo de la carrera mostrada. No se guarda nada hasta que pulses Guardar.} other {Vacía los equipos de las # carreras mostradas. No se guarda nada hasta que pulses Guardar.}}",
-    "clearNone": "No hay equipos que vaciar en las carreras mostradas"
+    "clearNone": "No hay equipos que vaciar en las carreras mostradas",
+    "clearCapped": "Vacía los equipos de las primeras {count} carreras mostradas. Un guardado admite como máximo {max} carreras: guarda estas y luego vacía el resto.",
+    "clearFull": "Un guardado admite como máximo {max} carreras. Guarda o deshaz las carreras vaciadas antes de vaciar más."
   },
   "status": {
     "ready": "Listo",

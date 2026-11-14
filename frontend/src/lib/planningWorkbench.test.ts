@@ -38,6 +38,12 @@ import {
   entriesAfterClear,
   selectionFromEntries,
   clearChanges,
+  clearSubmission,
+  capClearable,
+  applyPageClear,
+  undoPageClear,
+  draftCacheAction,
+  settleClearSave,
   type SeasonRace,
   type SquadRow,
   type Selection,
@@ -445,4 +451,84 @@ test("Ryd udtagelser gemmes som bulk-aendringer i samme form som et enkelt gem",
   const sel = selectionFromEntries([{ raceId: "r", riderId: "x", raceRole: "free_role" }, { raceId: "r", riderId: "y", raceRole: null }]);
   assert.deepEqual(sel.riderIds, ["x", "y"]);
   assert.deepEqual(sel.freeRoleIds, ["x"]);
+});
+
+// ── Rettelsesrunde PR #8160 (Codex-fund) ────────────────────────────────────
+
+function squad(ids: string[], captain: string | null = null): Selection {
+  const base: Selection = { ...EMPTY_SELECTION, riderIds: ids, freeRoleIds: [] };
+  return captain ? setRiderRole(base, captain, "captain") : base;
+}
+
+test("Ryd udtagelser (P1): Fortryd stiller spillerens UGEMTE kladde tilbage, ikke den gemte trup", () => {
+  const saved = squad(["a", "b", "t"], "a");
+  const draft = squad(["a", "c", "t"], "c"); // ugemt: b ud, c ind og kaptajn
+  const step = applyPageClear(draft, saved, ["t"]);
+  assert.deepEqual(step.sel.riderIds, ["t"], "rydningen viser kun den Train now-laaste");
+  assert.equal(step.before, draft, "kladden foer rydningen huskes");
+  const back = undoPageClear(step.before, saved);
+  assert.equal(back, draft, "Fortryd giver den ugemte kladde tilbage");
+  assert.equal(selectionDirty(back, saved), true, "den er stadig ugemt efter Fortryd");
+  // Uden en kladde foer rydningen (fx ny flade) falder Fortryd tilbage til den gemte trup.
+  assert.equal(undoPageClear(null, saved), saved);
+});
+
+test("Ryd udtagelser (P1): den huskede kladde slettes aldrig, mens rydningen vises", () => {
+  assert.equal(draftCacheAction({ ready: true, clearShown: true, dirty: true }), "keep");
+  assert.equal(draftCacheAction({ ready: true, clearShown: true, dirty: false }), "keep");
+  assert.equal(draftCacheAction({ ready: false, clearShown: false, dirty: false }), "keep", "ikke klar: roer intet");
+  // Efter Fortryd er den gendannede kladde dirty og huskes igen; en ren flade glemmer.
+  assert.equal(draftCacheAction({ ready: true, clearShown: false, dirty: true }), "remember");
+  assert.equal(draftCacheAction({ ready: true, clearShown: false, dirty: false }), "forget");
+});
+
+test("Ryd udtagelser (P1): gemmet afstemmes mod det SENDTE loeb og den sendte udtagelse", () => {
+  const entries = [
+    { raceId: "r1", riderId: "a", raceRole: "captain" },
+    { raceId: "r1", riderId: "t", raceRole: "hunter" },
+    { raceId: "r2", riderId: "b", raceRole: "captain" },
+  ];
+  const { changes, selections } = clearSubmission(entries, ["r1", "r2"], { r1: { riderIds: ["t"] } });
+  assert.deepEqual(changes, clearChanges(entries, ["r1", "r2"], { r1: { riderIds: ["t"] } }), "samme body som foer");
+  const sentR1 = selections.get("r1")!;
+  assert.deepEqual(sentR1.riderIds, ["t"]);
+  assert.equal(sentR1.hunterId, "t", "den laaste rytters rolle sendes med");
+
+  // Uaendret flade: den sendte trup er nu den gemte, intet er ugemt.
+  const same = settleClearSave({ raceId: "r1", sel: sentR1 }, { raceId: "r1", sel: sentR1 });
+  assert.deepEqual(same, { mine: true, saved: sentR1, dirty: false });
+
+  // Spilleren tilfoejede en rytter, mens kaldet koerte: aendringen forbliver ugemt.
+  const edited = squad(["t", "x"]);
+  const kept = settleClearSave({ raceId: "r1", sel: edited }, { raceId: "r1", sel: sentR1 });
+  assert.equal(kept.mine, true);
+  if (kept.mine) {
+    assert.equal(kept.saved, sentR1, "det gemte er det SENDTE, ikke det fladen viser");
+    assert.equal(kept.dirty, true, "aendringen lavet imens er stadig ugemt");
+  }
+
+  // Spilleren skiftede loeb imens: et andet loebs flade maerkes aldrig som gemt.
+  assert.deepEqual(settleClearSave({ raceId: "r3", sel: squad(["c"]) }, { raceId: "r1", sel: sentR1 }), { mine: false });
+});
+
+test("Ryd udtagelser (P2): kladden holdes altid inden for ét atomisk kald", () => {
+  const ids = Array.from({ length: 70 }, (_, i) => `r${i + 1}`);
+  const first = capClearable(ids, 0, 60);
+  assert.equal(first.ids.length, 60, "kun op til loftet");
+  assert.deepEqual(first.ids.slice(0, 2), ["r1", "r2"], "de foerste i listens raekkefoelge");
+  assert.equal(first.capped, true, "knappen siger, at resten venter");
+
+  // Kladden er fuld: intet mere kan laegges i, foer den er gemt eller fortrudt.
+  const full = capClearable(ids.slice(60), 60, 60);
+  assert.deepEqual(full, { ids: [], capped: true });
+
+  // Delvis kladde: kun resten af pladsen.
+  assert.equal(capClearable(ids, 55, 60).ids.length, 5);
+
+  // Under loftet: alt, intet loft at naevne.
+  assert.deepEqual(capClearable(["a", "b"], 0, 60), { ids: ["a", "b"], capped: false });
+
+  // Det der gemmes er ét kald med hoejst loftet af aendringer.
+  const entries = first.ids.map((raceId) => ({ raceId, riderId: "a", raceRole: null }));
+  assert.equal(clearSubmission(entries, first.ids).changes.length, 60);
 });
