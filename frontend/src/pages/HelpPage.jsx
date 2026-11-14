@@ -382,6 +382,9 @@ const SECTION_DEFS = [
       // frivillige knap uden bonus. Står EFTER trainToday, fordi den erstatter den
       // ved sæson 4-skiftet — rækkefølgen læses som "sådan er det nu, sådan bliver det".
       { id: "runDayNow", kind: "text" },
+      // #7737: Traen nu-tvillingerne (HELP_BLOCK_FLAGS); begge kun i loebsdags-modellen, som runDayNow.
+      { id: "trainNowBeta", kind: "text", flag: "training_tick_per_race_day" },
+      { id: "trainNowInstant", kind: "text", flag: "training_tick_per_race_day" },
       // #4164: a race replaces the day's session rather than adding to it, and
       // it settles once per day no matter how many stages were ridden. Asked in
       // #dansk-snak 24/8 and unanswerable from the page as it stood.
