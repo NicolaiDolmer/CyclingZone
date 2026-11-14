@@ -1,0 +1,14 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "org.cyclingzone.app",
+      "sha256_cert_fingerprints": [
+        "REPLACE_WITH_SHA256_OF_PLAY_APP_SIGNING_KEY_1",
+        "REPLACE_WITH_SHA256_OF_PLAY_APP_SIGNING_KEY_2",
+        "REPLACE_WITH_SHA256_OF_PLAY_APP_SIGNING_KEY_3"
+      ]
+    }
+  }
+]

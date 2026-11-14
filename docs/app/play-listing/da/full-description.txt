@@ -1,0 +1,17 @@
+Cycling Zone er et cykelmanagerspil bygget til den lange bane. Byg et hold, byd på ryttere mod andre managere i live-auktioner, og kør en hel sæson.
+
+Det gør du
+- Byg dit hold. Klatrere til bjergene, sprintere til fladen og en kaptajn at bygge omkring.
+- Byd i live-auktioner. Kæmp om ryttere i realtid. Læs rummet, time dit bud og betal ikke for meget.
+- Udvikl dine ryttere. Træn dem, så deres styrker bliver skarpere, og få unge talenter op gennem dit akademi.
+- Læg din taktik. Vælg din kaptajn, send ryttere op ad vejen, og bestem hvem der jager, og hvem der gemmer kræfterne til målstregen.
+- Kør sæsonen. Følg dit hold gennem etapeløb og endagsløb, byg derefter videre til næste sæson og klatr op gennem divisionerne.
+
+Fair fra grunden
+Spillet skal være lige for alle. Du kan ikke betale dig til bedre ryttere, hurtigere træning eller bedre resultater.
+
+Bygget i det åbne
+Cycling Zone er i åben beta. Jeg bygger det alene, sæson for sæson, og din feedback afgør, hvad der bygges næste gang. Kom ind på Discord og fortæl mig, hvad du synes.
+
+Ét spil, overalt
+Denne app er det samme spil som cyclingzone.org. Dit hold, dine ryttere og din fremgang følger din konto, på din telefon og på din computer. Du tilmelder dig med din e-mail.
