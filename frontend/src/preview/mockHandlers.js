@@ -3,7 +3,7 @@
 // referencer (CORS/fulfill bliver i fixtures.js). Datakilden er seedData.js, så
 // begge konsumenter serverer præcis det samme.
 import { previewPlannerBoard } from "./plannerMock.js";
-import { isWorkbenchPreview, PLANNING_SEASON_SEED, PLANNING_STAGE_PROFILES, planningSelectionSeed } from "./planningWorkbenchMock.ts"; // #7535
+import { isWorkbenchPreview, PLANNING_SEASON_SEED, PLANNING_STAGE_PROFILES, PLANNING_RIDER_ROWS, PLANNING_SEASON_LOAD, planningSelectionSeed } from "./planningWorkbenchMock.ts"; // #7535
 import { previewPotentialEstimateEnabled, previewProjection, previewReport } from "./potentialEstimateMock.ts";
 import { raceHasReportableResults } from "../lib/raceResultVisibility.js";
 import { FORUM_CATEGORY_ORDER } from "../components/forum/forumCategories.js";
@@ -226,7 +226,7 @@ export function restRows(table, requestUrl = "") {
       const idIn = decodeURIComponent(url.search).match(/[?&]id=in\.\(([^)]*)\)/);
       if (idIn) {
         const ids = new Set(idIn[1].split(",").map(s => s.trim().replace(/^"|"$/g, "")).filter(Boolean));
-        return RIDERS.filter(rider => ids.has(rider.id));
+        return [...RIDERS, ...PLANNING_RIDER_ROWS].filter(rider => ids.has(rider.id)); // #7535: planlaegningssidens ryttere
       }
       if (url.search.includes("team_id=eq.team-e2e")) {
         return RIDERS.filter(rider => rider.team_id === TEST_TEAM.id);
@@ -1509,7 +1509,7 @@ export function apiResponse(pathname, search = "") {
     return seasonNumber === String(SEED_CALENDAR_S2.season.number) ? SEED_CALENDAR_S2 : SEED_CALENDAR;
   }
   if (pathname.endsWith("/api/races/distribution/browse")) return SEED_BROWSE;
-  if (pathname.endsWith("/api/races/distribution")) return SEED_DISTRIBUTION;
+  if (pathname.endsWith("/api/races/distribution")) return isWorkbenchPreview() ? { ...SEED_DISTRIBUTION, seasonLoadByRider: PLANNING_SEASON_LOAD } : SEED_DISTRIBUTION; // #7535
   if (pathname.endsWith("/api/races/strategy")) return SEED_STRATEGY;
   // S5: udtagelses-panel (RaceSelectionPanel + HunterExplainer). /api/races/:id/selection.
   if (/\/api\/races\/[^/]+\/selection$/.test(pathname)) {

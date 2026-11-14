@@ -6,7 +6,9 @@
 // rute-match, form og traethed. Resten staar i desktop-tabellen. Ingen vandret scroll paa mobil.
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { SortableTh, Select, RiderNameCell, RiderBadges, BestRoleTag, TerrainTypeGlyph } from "./primitives.ts";
+import { SortableTh, Select, RiderNameCell, RiderBadges, BestRoleTag, TerrainTypeGlyph, Flag, isU23, injuryTimeLeft, formatDate } from "./primitives.ts";
+import { injuryFitAgainDate } from "../../lib/injuryExplain.ts";
+import type { RiderDetail, SeasonLoad } from "../../lib/planningWorkbenchData.ts";
 import {
   availableRoles,
   roleOf,
@@ -23,12 +25,22 @@ const CHIP =
   "inline-flex items-center justify-center text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded shrink-0";
 const NEUTRAL = "bg-cz-subtle text-cz-2 border border-cz-border";
 
-function StatusCell({ row }: { row: SquadRow }) {
+function StatusCell({ row, detail, seasonYear }: { row: SquadRow; detail?: RiderDetail; seasonYear: number | null }) {
   const { t } = useTranslation("planning");
-  const badges = [row.injured && "injured", row.outgoing && "outgoing"];
+  const { t: tRider } = useTranslation("rider");
+  // U23 som paa holdsiden (RiderBadges "u23", samme aldersregel); skadet med "Rask igen <dato>" som paa rytterprofilen.
+  const u23 = detail ? isU23(detail.birthdate, seasonYear) : false;
+  const badges = [u23 && "u23", row.injured && "injured", row.outgoing && "outgoing"];
+  const fitAgain = row.injured && detail ? injuryFitAgainDate(detail.injuredUntil) : null;
+  const approx = detail ? injuryTimeLeft({ injured_until: detail.injuredUntil, injury_race_days_left: detail.injuryRaceDaysLeft }).unit === "race_day" : false;
   return (
     <span className="inline-flex flex-wrap items-center gap-1">
       <RiderBadges badges={badges} />
+      {fitAgain && (
+        <span className="whitespace-nowrap text-2xs text-cz-3" data-testid="planning-fit-again">
+          {tRider(approx ? "condition.fitAgainApprox" : "condition.fitAgain", { date: formatDate(fitAgain, "medium") })}
+        </span>
+      )}
       {row.overAge && <span className={`${CHIP} ${NEUTRAL}`}>{t("status.overAge")}</span>}
       {row.trainNowLocked && <span className={`${CHIP} ${NEUTRAL}`}>{t("status.trainNow")}</span>}
       {row.busyIn && (
@@ -65,6 +77,11 @@ interface SquadTableProps {
   sprintLeaderAllowed: boolean;
   onToggle: (riderId: string) => void;
   onRole: (riderId: string, role: RoleKey) => void;
+  /** Nation, foedselsdato og skadesdato pr. rytter (riders + rider_condition). */
+  details?: Map<string, RiderDetail>;
+  /** Saeson-belastning pr. rytter, samme tal som rytter-chippen paa /planning. */
+  seasonLoad?: Record<string, SeasonLoad>;
+  seasonYear?: number | null;
 }
 
 export default function SquadTable({
@@ -78,8 +95,12 @@ export default function SquadTable({
   sprintLeaderAllowed,
   onToggle,
   onRole,
+  details,
+  seasonLoad,
+  seasonYear = null,
 }: SquadTableProps) {
   const { t } = useTranslation("planning");
+  const { t: tRaces } = useTranslation("races");
   const picked = new Set(selection.riderIds);
   const atMax = selection.riderIds.length >= max;
   const roles = availableRoles(sprintLeaderAllowed);
@@ -134,6 +155,8 @@ export default function SquadTable({
             // En Train now-laast rytter kan hverken tages ind eller ud (serveren afviser begge).
             const disabled = readOnly || row.trainNowLocked || (!checked && (!row.selectable || atMax));
             const dim = !row.selectable && !checked;
+            const detail = details?.get(row.id);
+            const load = seasonLoad?.[row.id] ?? null;
             return (
               <tr
                 key={row.id}
@@ -166,9 +189,24 @@ export default function SquadTable({
                     </label>
                     <div className="min-w-0 pt-2.5 sm:pt-0">
                       {/* Navnet brydes kun paa mobil; paa pc staar det paa én linje som paa de nuvaerende sider. */}
-                      <RiderNameCell id={row.id} name={row.name} wrap className="text-[13.5px] font-medium text-cz-1 hover:text-cz-accent-t sm:whitespace-nowrap" />
+                      {/* Navnecellens faste raekkefoelge (TASTE P12): nation, navn, derefter status. Belastningen
+                          staar ved navnet som paa rytter-chippen paa /planning. */}
+                      <span className="inline-flex max-w-full items-center gap-1.5">
+                        {detail?.nationality && <Flag code={detail.nationality} className="shrink-0 text-[11px]" />}
+                        <RiderNameCell id={row.id} name={row.name} wrap className="text-[13.5px] font-medium text-cz-1 hover:text-cz-accent-t sm:whitespace-nowrap">
+                          {load != null && load.raceDays > 0 && (
+                            <span
+                              className="whitespace-nowrap font-mono text-3xs tabular-nums text-cz-3"
+                              data-testid="planning-season-load"
+                              title={tRaces("racehub.pool.loadTitle", { races: load.races, days: load.raceDays })}
+                            >
+                              {tRaces("racehub.pool.loadShort", { days: load.raceDays })}
+                            </span>
+                          )}
+                        </RiderNameCell>
+                      </span>
                       <div className="mt-1 sm:hidden">
-                        <StatusCell row={row} />
+                        <StatusCell row={row} detail={detail} seasonYear={seasonYear} />
                       </div>
                       {checked && !readOnly && (
                         <div className="mt-1.5 sm:hidden">
@@ -179,7 +217,7 @@ export default function SquadTable({
                   </div>
                 </td>
                 <td className="hidden px-2 py-[7px] text-left sm:table-cell">
-                  <StatusCell row={row} />
+                  <StatusCell row={row} detail={detail} seasonYear={seasonYear} />
                 </td>
                 <td className="hidden px-2 py-[7px] text-left sm:table-cell">
                   {checked ? (

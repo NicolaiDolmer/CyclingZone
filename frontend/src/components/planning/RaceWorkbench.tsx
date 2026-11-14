@@ -23,7 +23,7 @@ import {
 import RouteProfile from "./RouteProfile.tsx";
 import SquadTable from "./SquadTable.tsx";
 import { ReadinessMark } from "./planningUi.tsx";
-import { loadRaceSelection, saveRaceSelection, setRaceWithdrawal, loadStageProfiles, type StageProfileRow } from "../../lib/planningWorkbenchData.ts";
+import { loadRaceSelection, saveRaceSelection, setRaceWithdrawal, loadStageProfiles, type StageProfileRow, type RiderDetail, type SeasonLoad } from "../../lib/planningWorkbenchData.ts";
 import { deadlineCountdown } from "../../lib/selectionReminder.ts";
 import {
   DEFAULT_SQUAD_SORT,
@@ -82,6 +82,12 @@ interface RaceWorkbenchProps {
   allRaces: SeasonRace[];
   entries: SeasonEntry[];
   withdrawn: Set<string>;
+  /** Nation, foedselsdato og skade pr. rytter (tom indtil hentet). */
+  riderDetails?: Map<string, RiderDetail>;
+  /** Saeson-belastning pr. rytter, samme tal som /planning (tom indtil hentet). */
+  seasonLoad?: Record<string, SeasonLoad>;
+  /** Saesonens referenceaar til U23 (null = ukendt, intet maerke). */
+  seasonYear?: number | null;
   profileHidden: boolean;
   onToggleProfileHidden: () => void;
   onDirtyChange?: (dirty: boolean) => void;
@@ -98,7 +104,20 @@ interface SaveError {
 type SelectionResponse = any;
 
 const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(function RaceWorkbench(
-  { race, allRaces, entries, withdrawn, profileHidden, onToggleProfileHidden, onDirtyChange, onSaved, onWithdrawnChange },
+  {
+    race,
+    allRaces,
+    entries,
+    withdrawn,
+    riderDetails,
+    seasonLoad,
+    seasonYear = null,
+    profileHidden,
+    onToggleProfileHidden,
+    onDirtyChange,
+    onSaved,
+    onWithdrawnChange,
+  },
   ref,
 ) {
   const { t, i18n } = useTranslation("planning");
@@ -447,6 +466,9 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
               sprintLeaderAllowed={sprintLeaderAllowed}
               onToggle={toggle}
               onRole={setRole}
+              details={riderDetails}
+              seasonLoad={seasonLoad}
+              seasonYear={seasonYear}
             />
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-cz-border px-4 py-1.5">
               <p className="py-1 font-data text-xs tabular-nums text-cz-3">

@@ -3,6 +3,8 @@
 //   GET /api/races/selection/season   saesonmatrixen: loeb, entries, afmeldinger, loebsdag til dato
 //   GET /api/races/:id/selection      ryttere med rute-match, form, traethed, skade og binding
 //   PUT /api/races/:id/selection      gem (samme guards som overalt ellers)
+//   GET /api/races/distribution       kun seasonLoadByRider (samme tal som dagvisningens rytter-chip)
+//   riders + rider_condition          nation, foedselsdato og skadesdato (som rytter-hoverkortet)
 // Etape-profiler (ruteprofil og etapetyper) laeses som paa loebssiden fra race_stage_profiles.
 import { authHeaders } from "./supabase";
 import { apiFetch } from "./apiFetch.ts";
@@ -39,6 +41,65 @@ export async function saveRaceSelection(raceId: string, body: unknown) {
 /** Afmeld (withdraw = true) eller deltag igen: samme endpoint og samme guards som loebstavlens knap. */
 export async function setRaceWithdrawal(raceId: string, withdraw: boolean) {
   return authed(`/api/races/${encodeURIComponent(raceId)}/withdrawal`, { method: withdraw ? "POST" : "DELETE" });
+}
+
+/** Rytterens nation, foedselsdato og skade; samme kolonner som rytter-hoverkortet laeser. */
+export interface RiderDetail {
+  nationality: string | null;
+  birthdate: string | null;
+  injuredUntil: string | null;
+  injuryRaceDaysLeft: number | null;
+}
+
+/**
+ * Nation-flag, U23 og skadesdato til trup-tabellen. Udtagelses-endpointet sender kun "skadet ja/nej",
+ * saa siden laeser det samme som hoverkortet og holdsiden (riders + rider_condition). Fejl giver et tomt
+ * kort: tabellen virker uden, den mangler blot flag, U23 og datoen.
+ */
+export async function loadRiderDetails(riderIds: string[]): Promise<Map<string, RiderDetail>> {
+  const out = new Map<string, RiderDetail>();
+  if (!riderIds.length) return out;
+  try {
+    const { data, error } = await (supabase as any)
+      .from("riders")
+      // pagination-safe: ét holds ryttere (maks ~30), langt under PostgREST's graense.
+      .select("id, nationality_code, birthdate, rider_condition(injured_until, injury_race_days_left)")
+      .in("id", riderIds);
+    if (error) return out;
+    for (const row of data ?? []) {
+      const embed = row.rider_condition;
+      const cond = (Array.isArray(embed) ? embed[0] : embed) ?? null;
+      out.set(row.id, {
+        nationality: row.nationality_code ?? null,
+        birthdate: row.birthdate ?? null,
+        injuredUntil: cond?.injured_until ?? null,
+        injuryRaceDaysLeft: cond?.injury_race_days_left ?? null,
+      });
+    }
+  } catch {
+    // catch-ok: flag, U23 og skadesdato er detaljer oven paa tabellen; mangler de, vises raekken uden.
+  }
+  return out;
+}
+
+/** Saeson-belastning pr. rytter (loeb og loebsdage tilmeldt i saesonen). */
+export interface SeasonLoad {
+  races: number;
+  raceDays: number;
+}
+
+/**
+ * Samme tal som rytter-chippen paa /planning (dagvisningen): serverens seasonLoadByRider fra
+ * GET /api/races/distribution. Det regnes aldrig om i klienten. Fejl giver et tomt kort.
+ */
+export async function loadSeasonLoad(): Promise<Record<string, SeasonLoad>> {
+  try {
+    const res = await authed("/api/races/distribution");
+    if (!res.ok || !res.data || typeof res.data.seasonLoadByRider !== "object" || !res.data.seasonLoadByRider) return {};
+    return res.data.seasonLoadByRider as Record<string, SeasonLoad>;
+  } catch {
+    return {};
+  }
 }
 
 // Etapeprofilerne aendrer sig ikke mens siden er aaben; ét opslag pr. loeb er nok.

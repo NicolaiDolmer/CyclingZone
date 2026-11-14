@@ -23,6 +23,10 @@ import {
   forgetSelectionDraft as forgetSelectionDraftBase,
   reconcileSelectionDraft as reconcileSelectionDraftBase,
 } from "../../lib/raceSelectionDraft.js";
+import { Flag as FlagBase } from "../Flag.jsx";
+import { isU23 as isU23Base } from "../../lib/riderAge.js";
+import { injuryTimeLeft as injuryTimeLeftBase } from "../../lib/training.js";
+import { formatDate as formatDateBase } from "../../lib/intl.js";
 import { useReloadBlock as useReloadBlockBase, RELOAD_BLOCK_REASONS as RELOAD_BLOCK_REASONS_BASE } from "../../lib/reloadGate.js";
 
 type AnyComponent = (props: any) => any;
@@ -45,6 +49,7 @@ export const RiderNameCell: AnyComponent = RiderNameCellBase as any;
 export const RiderBadges: AnyComponent = RiderBadgesBase as any;
 export const BestRoleTag: AnyComponent = BestRoleTagBase as any;
 export const TerrainTypeGlyph: AnyComponent = TerrainTypeGlyphBase as any;
+export const Flag: AnyComponent = FlagBase as any;
 export const StageProfileCard: AnyComponent = StageProfileCardBase as any;
 export const LegacyStageProfileCard: AnyComponent = LegacyStageProfileCardBase as any;
 
@@ -53,6 +58,12 @@ export const statusBadgeClass: (state: string, opts?: { emphasis?: boolean }) =>
 export const hasRouteData: (profile: unknown) => boolean = hasRouteDataBase as any;
 export const riderBestRole: (flat: Record<string, unknown>) => { rating: number | null; role: string | null } = riderBestRoleBase as any;
 export const validateSelectionClient: (args: Record<string, unknown>) => string[] = validateSelectionClientBase as any;
+export const isU23: (birthdate: string | null, seasonYear: number | null) => boolean = isU23Base as any;
+export const injuryTimeLeft: (condition: { injured_until?: string | null; injury_race_days_left?: number | null }) => {
+  count: number;
+  unit: "race_day" | "calendar_day";
+} = injuryTimeLeftBase as any;
+export const formatDate: (value: string, style?: string) => string = formatDateBase as any;
 export const useReloadBlock: (active: boolean, reason?: string) => void = useReloadBlockBase as any;
 export const RELOAD_BLOCK_REASONS: { DIRTY: string } = RELOAD_BLOCK_REASONS_BASE as any;
 

@@ -20,7 +20,8 @@ import UnsavedBar from "../components/planning/UnsavedBar.tsx";
 import SelectionDeadlineReminder from "../components/planning/SelectionDeadlineReminder.tsx";
 import { useSelectionReminder, refreshSelectionReminder } from "../hooks/useSelectionReminder.ts";
 import { usePlanningWorkbenchFlag } from "../lib/usePlanningWorkbenchFlag.ts";
-import { loadSeasonOverview, loadRaceTerrain } from "../lib/planningWorkbenchData.ts";
+import { seasonReferenceYear } from "../lib/riderAge.js";
+import { loadSeasonOverview, loadRaceTerrain, loadRiderDetails, loadSeasonLoad, type RiderDetail, type SeasonLoad } from "../lib/planningWorkbenchData.ts";
 import {
   addDays,
   copenhagenToday,
@@ -46,6 +47,7 @@ interface SeasonResponse {
   season?: { number?: number } | null;
   races?: SeasonRace[];
   entries?: SeasonEntry[];
+  riders?: { id: string }[];
   dayDates?: DayDate[];
   withdrawnRaceIds?: string[];
 }
@@ -96,6 +98,9 @@ function Workbench() {
   const [load, setLoad] = useState<{ state: "loading" | "error" | "ready"; payload: SeasonResponse | null }>({ state: "loading", payload: null });
   const [entries, setEntries] = useState<SeasonEntry[]>([]);
   const [terrain, setTerrain] = useState<Map<string, string[]>>(() => new Map());
+  // Flag, U23 og skadesdato (riders + rider_condition) og saeson-belastningen (samme tal som /planning).
+  const [riderDetails, setRiderDetails] = useState<Map<string, RiderDetail>>(() => new Map());
+  const [seasonLoad, setSeasonLoad] = useState<Record<string, SeasonLoad>>({});
   // Ugeoversigten staar fremme som i wireframet (#7535); spillerens eget valg huskes derefter.
   const [showWeek, setShowWeek] = useState(() => readPref("week", true));
   const [showList, setShowList] = useState(() => readPref("list", true));
@@ -141,6 +146,33 @@ function Workbench() {
     [payload, rejoined, withdrawnHere],
   );
   const counts = useMemo(() => pickedCounts(entries), [entries]);
+  // U23 foelger saesonens referenceaar, samme regel som holdsiden (riderAge.js).
+  const seasonYear = useMemo(() => seasonReferenceYear(Number(payload?.season?.number)) as number | null, [payload]);
+
+  const riderIdKey = (payload?.riders ?? []).map((r) => r.id).join(",");
+  useEffect(() => {
+    if (!riderIdKey) return undefined;
+    let cancelled = false;
+    loadRiderDetails(riderIdKey.split(",")).then((map) => {
+      if (!cancelled) setRiderDetails(map);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [riderIdKey]);
+
+  // Belastningen hentes igen efter hvert gem, ligesom dagvisningen henter brættet igen.
+  const [loadVersion, setLoadVersion] = useState(0);
+  useEffect(() => {
+    if (load.state !== "ready") return undefined;
+    let cancelled = false;
+    loadSeasonLoad().then((next) => {
+      if (!cancelled) setSeasonLoad(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [load.state, loadVersion]);
 
   // Etape-striben i listen og ugeoversigten hentes for de kommende loeb (forbi-loeb vises ikke som standard).
   useEffect(() => {
@@ -261,6 +293,7 @@ function Workbench() {
     setEntries((cur) => replaceRaceEntries(cur, raceId, next));
     setRejoined((cur) => new Set(cur).add(raceId));
     refreshSelectionReminder();
+    setLoadVersion((v) => v + 1);
   }, []);
   const onWithdrawnChange = useCallback((raceId: string, isOut: boolean) => {
     setWithdrawnHere((cur) => {
@@ -420,6 +453,9 @@ function Workbench() {
                 allRaces={allRaces}
                 entries={entries}
                 withdrawn={withdrawn}
+                riderDetails={riderDetails}
+                seasonLoad={seasonLoad}
+                seasonYear={seasonYear}
                 profileHidden={profileHidden}
                 onToggleProfileHidden={toggleProfile}
                 onDirtyChange={setDirty}

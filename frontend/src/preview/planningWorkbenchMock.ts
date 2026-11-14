@@ -181,3 +181,25 @@ export function planningSelectionSeed(raceId: string) {
       : null,
   };
 }
+
+// Nation, foedselsdato og skade (riders + rider_condition), som trup-tabellen laeser direkte.
+// Opdigtet: to ryttere er U23 i saeson 5, den skadede har en rask-igen-dato om fire dage.
+const NATIONS = ["et", "co", "cn", "be", "co", "ma", "se", "cn", "de", "es", "tn", "be", "es", "ar", "kr", "es"];
+const BORN: Record<string, string> = { "wb-r03": "2009-03-14", "wb-r12": "2008-07-02" };
+export const PLANNING_RIDER_ROWS = RIDER_DEFS.map(([id, , , , , , injured], i) => ({
+  id,
+  nationality_code: NATIONS[i] ?? null,
+  birthdate: BORN[id] ?? "1998-05-20",
+  rider_condition: { injured_until: injured ? day(3) : null, injury_race_days_left: null },
+}));
+
+/** Saeson-belastning (GET /api/races/distribution, seasonLoadByRider) ud fra seedets egne udtagelser. */
+export const PLANNING_SEASON_LOAD: Record<string, { races: number; raceDays: number }> = {};
+for (const [raceId, ids] of Object.entries(PICKS)) {
+  const race = RACES.find((r) => r.id === raceId);
+  const days = race ? race.gameDayEnd - race.gameDayStart + 1 : 1;
+  for (const id of ids) {
+    const cur = PLANNING_SEASON_LOAD[id] ?? { races: 0, raceDays: 0 };
+    PLANNING_SEASON_LOAD[id] = { races: cur.races + 1, raceDays: cur.raceDays + days };
+  }
+}
