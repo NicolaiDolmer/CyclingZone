@@ -49,7 +49,8 @@ test("tvillingerne er gatet paa Traen nu-kontakten, og kontakten er spiller-synl
   const gates = HELP_BLOCK_FLAGS.dailytraining as Record<string, { flag: string; when: boolean }>;
   assert.deepEqual(gates.trainNowBeta, { flag: FLAG, when: false });
   assert.deepEqual(gates.trainNowInstant, { flag: FLAG, when: true });
-  assert.ok(helpGateFlagKeys().includes(FLAG));
+  const gateKeys: string[] = helpGateFlagKeys();
+  assert.ok(gateKeys.includes(FLAG));
 });
 
 test("ikke-beta ser beta-teksten, beta-tester og 'on' ser teksten for alle, aldrig begge", () => {
