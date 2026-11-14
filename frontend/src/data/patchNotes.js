@@ -8,7 +8,6 @@ export const PATCHES = [
       "audience": "player",
       "rollout": "live",
       "topic": "Races",
-      "flag": "ranking_shadow_decoupled_6765",
       "en": {
         "title": "Rankings update within a minute",
         "body": "The rider rankings, team standings and the dashboard's top 5 now update about a minute after a stage finishes, instead of after 15 minutes or more. The team standings also show when they were last updated."
