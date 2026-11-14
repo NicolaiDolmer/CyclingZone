@@ -14,8 +14,10 @@ import {
   loadLockedSalesForTeam,
   notifySellerSaleEscrowReleased,
   SALE_ESCROW_FORCE_BLOCKED_ERROR,
+  saleEscrowTransitionGuard,
   soldRiderIds,
 } from "./saleEscrowView6181.js";
+import { PLAYER_VISIBLE_BINARY_FLAG_KEYS } from "./stageFlagCatalog.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (rel) => readFileSync(join(__dirname, rel), "utf8");
@@ -282,6 +284,25 @@ test("countHeldSaleEscrowsForForce: taeller holdte; manglende tabel = 0; laesefe
   assert.match(SALE_ESCROW_FORCE_BLOCKED_ERROR, /tvinges igennem, mens der står låste salg/);
 });
 
+test("countHeldSaleEscrowsForForce: kaster klienten, spaerrer svaret stadig (catch-grenen, fail-closed)", async (t) => {
+  t.mock.method(console, "error", () => {});
+  const throwsOnFrom = { from() { throw new Error("transport nede"); } };
+  const rejects = {
+    from() {
+      const q = {
+        select() { return q; },
+        eq() { return q; },
+        then(_resolve, reject) { return Promise.reject(new Error("socket hang up")).then(undefined, reject); },
+      };
+      return q;
+    },
+  };
+  assert.equal(await countHeldSaleEscrowsForForce(throwsOnFrom), 1, "synkront kast skal afvise force");
+  assert.equal(await countHeldSaleEscrowsForForce(rejects), 1, "afvist promise skal afvise force");
+  assert.deepEqual(await saleEscrowTransitionGuard(throwsOnFrom, { execute: true }), { blocked: true, held: 1 });
+  assert.deepEqual(await saleEscrowTransitionGuard(rejects, { execute: true }), { blocked: true, held: 1 });
+});
+
 // ── Koblingerne i delte filer (kilde-tjek, samme moenster som seasonTransitionRoute.test.js) ──
 
 const api = read("../routes/api.js");
@@ -302,6 +323,20 @@ test("POST /admin/season-transition: force afvises med 409, mens der staar laast
   assert.ok(count > 0, "force-grenen skal taelle holdte escrows");
   assert.ok(count < forceLog, "spaerren skal ligge foer force-loggen og selve skiftet");
   assert.match(block, /status\(409\)\.json\(\{ error: SALE_ESCROW_FORCE_BLOCKED_ERROR, code: "held_sale_escrows"/);
+});
+
+test("PATCH /admin/feature-flags: beta afvises for binaere noegler, som for boolean-raekker (#6181)", () => {
+  const m = api.match(/router\.patch\("\/admin\/feature-flags\/:key"[\s\S]*?\n\}\);/);
+  assert.ok(m, "flag-handleren mangler");
+  const block = m[0];
+  const binaryCheck = block.indexOf("PLAYER_VISIBLE_BINARY_FLAG_KEYS.includes(key)");
+  const upsert = block.indexOf('from("app_config").upsert(');
+  assert.ok(binaryCheck > 0, "handleren skal kende de binaere noegler");
+  assert.ok(upsert > 0 && binaryCheck < upsert, "afvisningen skal ligge foer skrivningen");
+  assert.match(block, /PLAYER_VISIBLE_BINARY_FLAG_KEYS\.includes\(key\) && stage === "beta"/);
+  assert.match(block, /status\(409\)\.json\(\{\s*error: [^}]*errorCode: "flag_binary_only"/);
+  assert.match(api, /import \{[^}]*\bPLAYER_VISIBLE_BINARY_FLAG_KEYS\b[^}]*\} from "\.\.\/lib\/stageFlagCatalog\.js"/);
+  assert.ok(PLAYER_VISIBLE_BINARY_FLAG_KEYS.includes("sale_escrow_enabled"), "pengelaasen er binaer: beta betyder slukket");
 });
 
 // Spaerrens adfaerd proeves i saleEscrow6181.saesonskifte.test.js.
