@@ -35,12 +35,7 @@
       "title": "Show the whole season",
       "description": "There are no upcoming races in this view. The whole season lets you plan ahead.",
       "action": "Show whole season"
-    },
-    "clear": "Clear squads",
-    "clearTitle": "{count, plural, one {Clears the squad in the race shown. Nothing is saved until you press Save.} other {Clears the squads in the # races shown. Nothing is saved until you press Save.}}",
-    "clearNone": "No squads to clear in the races shown",
-    "clearCapped": "Clears the squads in the first {count} of the races shown. One save holds at most {max} races, so save these, then clear the rest.",
-    "clearFull": "One save holds at most {max} races. Save or undo the cleared races before you clear more."
+    }
   },
   "status": {
     "ready": "Ready",
@@ -121,13 +116,48 @@
     "discard": "Discard",
     "saveAndOpen": "Save and open"
   },
-  "clearBar": {
-    "text": "{count, plural, one {Squad cleared in # race.} other {Squads cleared in # races.}}",
-    "note": "Nothing is saved until you save. The assistant picks empty squads when the race runs.",
-    "undo": "Undo",
-    "save": "Save",
-    "error": "Nothing was saved. {error}",
-    "errorIn": "Nothing was saved because of {race}: {error}"
+  "bulk": {
+    "menu": "Actions",
+    "scopeLabel": "Applies to",
+    "scope": {
+      "next": "Next race",
+      "nextNamed": "Next race: {race}",
+      "checked": "{count, plural, one {Ticked race (#)} other {Ticked races (#)}}",
+      "shown": "Shown races ({count})",
+      "season": "Whole season ({count})",
+      "pick": "Tick races in the list"
+    },
+    "auto": "Let the assistant pick",
+    "autoHint": "Fills the open places. Your own picks stay.",
+    "clear": "Remove squads",
+    "clearHint": "Takes the riders out. The races stay on the calendar.",
+    "withdraw": "Withdraw",
+    "withdrawHint": "The team does not start and can lose the race.",
+    "nothing": "Nothing to change in these races",
+    "capped": "One save holds at most {max} races, so only the first ones are taken. Save them, then do the rest.",
+    "checkedCount": "{count, plural, one {# race ticked} other {# races ticked}}",
+    "untick": "Clear ticks",
+    "assistError": "The assistant could not pick. Nothing was changed. {error}",
+    "assistNone": "The assistant found no free riders for these races. Nothing was changed.",
+    "draft": {
+      "label": "Draft",
+      "title": "Draft.",
+      "note": "Nothing is saved until you save.",
+      "auto": "{count, plural, one {Squad picked in # race} other {Squads picked in # races}}, {riders, plural, one {# rider added} other {# riders added}}",
+      "clear": "{count, plural, one {Squad removed in # race} other {Squads removed in # races}}",
+      "withdraw": "{count, plural, one {Withdrawn from # race: the team does not start} other {Withdrawn from # races: the team does not start}}",
+      "undo": "Undo",
+      "save": "Save",
+      "mark": "Draft",
+      "open": {
+        "auto": "The assistant's squad for this race is in the draft. The squad below is the saved one until you save.",
+        "clear": "This race's squad is removed in the draft. The squad below is the saved one until you save.",
+        "withdraw": "This race is withdrawn in the draft. Nothing changes until you save."
+      },
+      "error": "Nothing was saved. {error}",
+      "errorIn": "Nothing was saved because of {race}: {error}",
+      "errorWithdraw": "The squads were saved. The withdrawals were not saved: {error}"
+    }
   },
   "error": {
     "title": "Planning could not load",

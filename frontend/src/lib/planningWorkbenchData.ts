@@ -3,7 +3,9 @@
 //   GET /api/races/selection/season   saesonmatrixen: loeb, entries, afmeldinger, loebsdag til dato
 //   GET /api/races/:id/selection      ryttere med rute-match, form, traethed, skade og binding
 //   PUT /api/races/:id/selection      gem (samme guards som overalt ellers)
-//   PUT /api/races/selection/bulk     gem af "Ryd udtagelser" over flere loeb (samme regler, ét kald)
+//   PUT /api/races/selection/bulk     gem af Handlinger-kladden over flere loeb (samme regler, ét kald)
+//   POST /api/races/selection/auto/propose   assistentens forslag til mange loeb (laeser kun)
+//   POST /api/races/withdrawals/bulk  afmelding af mange loeb (alt eller intet)
 //   GET /api/races/distribution       kun seasonLoadByRider (samme tal som dagvisningens rytter-chip)
 //   riders + rider_condition          nation, foedselsdato og skadesdato (som rytter-hoverkortet)
 // Etape-profiler (ruteprofil og etapetyper) laeses som paa loebssiden fra race_stage_profiles.
@@ -41,11 +43,34 @@ export async function saveRaceSelection(raceId: string, body: unknown) {
 
 /**
  * Gem flere loebs udtagelse i ét kald (PUT /api/races/selection/bulk): samme regler som et enkelt gem,
- * og alt eller intet pr. kald. Bruges af "Ryd udtagelser", naar spilleren gemmer kladden.
+ * og alt eller intet pr. kald. Bruges af Handlinger-kladden, naar spilleren gemmer den.
  */
 export const SELECTION_BULK_MAX = 60; // serverens loft pr. kald
 export async function saveRaceSelectionsBulk(changes: Array<Record<string, unknown>>) {
   return authed("/api/races/selection/bulk", { method: "PUT", body: JSON.stringify({ changes }) });
+}
+
+/**
+ * "Lad assistenten udtage" over mange loeb (POST /api/races/selection/auto/propose): assistentens
+ * trup pr. loeb med samme regler som assistenten for ét loeb. Kaldet LAESER kun; forslaget er en
+ * kladde, som spilleren selv gemmer med masse-gemmet. `overrides` er kladdens trupper, som assistenten
+ * skal regne med (et ryddet loeb binder ingen ryttere).
+ */
+export async function proposeAssistantSquads(raceIds: string[], overrides: Record<string, Array<{ rider_id: string; race_role: string | null }>>) {
+  // Preview-mocken har ingen server: forslaget regnes paa seedet (aldrig i et prod-build).
+  if (import.meta.env.VITE_PREVIEW_MOCK) {
+    const { previewAssistantProposals } = await import("../preview/planningWorkbenchMock.ts");
+    return { ok: true, status: 200, data: previewAssistantProposals(raceIds, overrides) } as ApiResult;
+  }
+  return authed("/api/races/selection/auto/propose", { method: "POST", body: JSON.stringify({ race_ids: raceIds, overrides }) });
+}
+
+/**
+ * "Afmeld" over mange loeb (POST /api/races/withdrawals/bulk): alt eller intet i ét kald, samme guards
+ * som afmeldingen af ét loeb. `dryRun` kontrollerer kun (intet skrives).
+ */
+export async function withdrawRacesBulk(raceIds: string[], dryRun = false) {
+  return authed("/api/races/withdrawals/bulk", { method: "POST", body: JSON.stringify({ race_ids: raceIds, dry_run: dryRun }) });
 }
 
 /** Afmeld (withdraw = true) eller deltag igen: samme endpoint og samme guards som loebstavlens knap. */

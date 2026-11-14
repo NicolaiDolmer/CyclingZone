@@ -5,7 +5,8 @@
 //
 // Findes KUN bag kontakten planning_workbench (off|beta|on, standard off). Slukket: ruten sender
 // videre til den nuvaerende planlaegningsside, som er uroert. Siden henter og gemmer gennem de
-// eksisterende endpoints (se lib/planningWorkbenchData.ts); der er ingen nye skrive-endpoints.
+// eksisterende endpoints (se lib/planningWorkbenchData.ts). Handlinger-menuen (variant B) har to nye
+// kald: assistentens forslag til mange loeb (laeser kun) og afmelding af mange loeb (alt eller intet).
 //
 // Layout: T2 wide data (cap 1600 px). Spec: docs/superpowers/specs/2026-11-02-planning-workbench-design.md
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -16,7 +17,8 @@ import { PageHeader, Button, EmptyState, ErrorState, SkeletonLines, PageLoader, 
 import WeekBoard from "../components/planning/WeekBoard.tsx";
 import RaceList from "../components/planning/RaceList.tsx";
 import RaceWorkbench, { type RaceWorkbenchHandle } from "../components/planning/RaceWorkbench.tsx";
-import UnsavedBar, { ClearDraftBar } from "../components/planning/UnsavedBar.tsx";
+import UnsavedBar from "../components/planning/UnsavedBar.tsx";
+import { BulkMenu, BulkDraftBar, BulkRowMark, BulkOpenRaceNote, CheckedCount, type BulkPlan } from "../components/planning/BulkActions.tsx";
 import SelectionDeadlineReminder from "../components/planning/SelectionDeadlineReminder.tsx";
 import { useSelectionReminder, refreshSelectionReminder } from "../hooks/useSelectionReminder.ts";
 import { usePlanningWorkbenchFlag } from "../lib/usePlanningWorkbenchFlag.ts";
@@ -27,18 +29,31 @@ import {
   loadRiderDetails,
   loadSeasonLoad,
   saveRaceSelectionsBulk,
+  proposeAssistantSquads,
+  withdrawRacesBulk,
   SELECTION_BULK_MAX,
   type RiderDetail,
   type SeasonLoad,
 } from "../lib/planningWorkbenchData.ts";
 import {
   addDays,
-  capClearable,
-  clearSubmission,
-  clearableRaceIds,
+  actionTargets,
+  capToRoom,
+  createBulkStore,
   createWriteGate,
-  entriesAfterClear,
+  draftSummary,
+  entriesFromSelection,
+  entriesWithDraft,
   raceSwitchStep,
+  scopeRaces,
+  withdrawnWithDraft,
+  BULK_KINDS,
+  BULK_SCOPES,
+  EMPTY_DRAFT,
+  type BulkFailure,
+  type BulkKind,
+  type BulkScope,
+  type BulkStore,
   type TrainNowLocks,
   type WriteGate,
   copenhagenToday,
@@ -56,7 +71,6 @@ import {
   type RaceScope,
   type SeasonEntry,
   type SeasonRace,
-  type Selection,
 } from "../lib/planningWorkbench.ts";
 
 // Saesonmatrixens svar (GET /api/races/selection/season); siden laeser kun de felter den kender.
@@ -126,18 +140,21 @@ function Workbench() {
   const [showList, setShowList] = useState(() => readPref("list", true));
   const [profileHidden, setProfileHidden] = useState(() => readPref("profileHidden", false));
   const [profileFull, setProfileFull] = useState(() => readPref("profileFull", false));
-  // "Ryd udtagelser" (ejer 14/11): de ryddede loeb er en kladde, indtil spilleren gemmer eller fortryder.
-  const [clearDraft, setClearDraft] = useState<Set<string>>(() => new Set());
-  const [clearError, setClearError] = useState<string | null>(null);
-  // Sidens skrive-laas: ÉT sted ejer "der er et skrivekald i gang" (fladens gem, afmeld, masse-gem).
-  // Alle veje der sender eller anvender noget (gem, masse-gem, Ryd, Fortryd, loebsskift) laeser den,
+  // Sidens skrive-laas: ÉT sted ejer "der er et kald i gang" (fladens gem, afmeld, masse-gem, assistenten).
+  // Alle veje der sender eller anvender noget (gem, Handlinger, Fortryd, Gem, loebsskift) laeser den,
   // og kun det kald der tog den, kan slippe den.
   const [gate] = useState<WriteGate>(() => createWriteGate());
   const writing = useSyncExternalStore(gate.subscribe, gate.current);
-  const clearBusy = writing === "bulk";
-  // Spillerens ugemte kladde FOER rydningen, pr. loeb: overlever et skift af loeb, saa Fortryd altid kan
-  // stille den tilbage (den delte kladde-hukommelse har kun plads til ét loeb).
-  const [clearBefore, setClearBefore] = useState<Map<string, Selection>>(() => new Map());
+  // "Handlinger" (ejer 14/11, variant B): kladden over mange loeb, indtil spilleren gemmer eller fortryder.
+  const [bulk] = useState<BulkStore>(() =>
+    createBulkStore({ gate, api: { propose: proposeAssistantSquads, saveSelections: saveRaceSelectionsBulk, withdraw: withdrawRacesBulk } }),
+  );
+  const bulkState = useSyncExternalStore(bulk.subscribe, bulk.get);
+  const draft = bulkState.stack[bulkState.stack.length - 1] ?? EMPTY_DRAFT;
+  const [bulkScope, setBulkScope] = useState<BulkScope>("next");
+  const [checked, setChecked] = useState<Set<string>>(() => new Set());
+  // Et afmeldt aabent loeb hentes igen (fladen monteres paa ny), naar kladdens afmelding er gemt.
+  const [workbenchVersion, setWorkbenchVersion] = useState(0);
   const [scope, setScope] = useState<RaceScope>("next7");
   const [showPast, setShowPast] = useState(false);
   const [weekMonday, setWeekMonday] = useState<string | null>(null);
@@ -180,8 +197,9 @@ function Workbench() {
     [payload, rejoined, withdrawnHere],
   );
   const locks = useMemo<TrainNowLocks>(() => payload?.trainNowLockByRace ?? {}, [payload]);
-  // Listen og ugeoversigten viser kladden: et ryddet loeb staar som 0/6, foer noget er gemt.
-  const shownEntries = useMemo(() => entriesAfterClear(entries, clearDraft, locks), [entries, clearDraft, locks]);
+  // Listen og ugeoversigten viser kladden: et ryddet loeb staar som 0/6, et afmeldt som afmeldt, foer noget er gemt.
+  const shownEntries = useMemo(() => entriesWithDraft(entries, draft, locks), [entries, draft, locks]);
+  const shownWithdrawn = useMemo(() => withdrawnWithDraft(withdrawn, draft), [withdrawn, draft]);
   const counts = useMemo(() => pickedCounts(shownEntries), [shownEntries]);
   // U23 foelger saesonens referenceaar, samme regel som holdsiden (riderAge.js).
   const seasonYear = useMemo(() => seasonReferenceYear(Number(payload?.season?.number)) as number | null, [payload]);
@@ -231,8 +249,8 @@ function Workbench() {
   const requestedId = searchParams.get("race");
   const fallback = useMemo(() => {
     const upcoming = listRaces.length ? listRaces : allRaces.filter((r) => !isRacePast(r));
-    return upcoming.find((r) => raceReadiness(r, counts.get(r.id) ?? 0, withdrawn).state === "missing") ?? upcoming[0] ?? null;
-  }, [allRaces, listRaces, counts, withdrawn]);
+    return upcoming.find((r) => raceReadiness(r, counts.get(r.id) ?? 0, shownWithdrawn).state === "missing") ?? upcoming[0] ?? null;
+  }, [allRaces, listRaces, counts, shownWithdrawn]);
   const selected: SeasonRace | null = allRaces.find((r) => r.id === requestedId) ?? fallback;
   // Foerste gang lander spilleren paa fallback-loebet; derefter staar valget i adressen og hopper aldrig, naar en trup gemmes.
   useEffect(() => {
@@ -308,17 +326,17 @@ function Workbench() {
     }
   }, [selected]);
 
-  // Browserens egen advarsel ved luk/genindlaes, saa en ugemt trup aldrig forsvinder tavst.
-  const hasClearDraft = clearDraft.size > 0;
+  // Browserens egen advarsel ved luk/genindlaes, saa en ugemt trup eller kladde aldrig forsvinder tavst.
+  const hasDraft = draft.kinds.size > 0;
   useEffect(() => {
-    if (!dirty && !hasClearDraft) return undefined;
+    if (!dirty && !hasDraft) return undefined;
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = "";
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [dirty, hasClearDraft]);
+  }, [dirty, hasDraft]);
 
   const pendingRace = pendingId ? allRaces.find((r) => r.id === pendingId) : null;
   const stay = () => setPendingId(null);
@@ -339,101 +357,89 @@ function Workbench() {
     }
   };
 
-  const dropFromClear = useCallback((raceIds: Iterable<string>) => {
-    const drop = new Set(raceIds);
-    setClearDraft((cur) => {
-      if (![...cur].some((id) => drop.has(id))) return cur;
-      return new Set([...cur].filter((id) => !drop.has(id)));
-    });
-  }, []);
-
-  const forgetClearBefore = useCallback((raceIds: Iterable<string>) => {
-    const drop = [...raceIds];
-    setClearBefore((cur) => {
-      if (!drop.some((id) => cur.has(id))) return cur;
-      const next = new Map(cur);
-      for (const id of drop) next.delete(id);
-      return next;
-    });
-  }, []);
-  const onClearBefore = useCallback((raceId: string, before: Selection | null) => {
-    if (!before) {
-      forgetClearBefore([raceId]);
-      return;
-    }
-    setClearBefore((cur) => new Map(cur).set(raceId, before));
-  }, [forgetClearBefore]);
+  // Spilleren har selv taget over paa fladen (aendret, gemt eller afmeldt): loebet forlader kladden.
+  const dropFromDraft = useCallback((raceId: string) => bulk.drop([raceId]), [bulk]);
 
   const onSaved = useCallback((raceId: string, next: SeasonEntry[]) => {
     setEntries((cur) => replaceRaceEntries(cur, raceId, next));
     setRejoined((cur) => new Set(cur).add(raceId));
-    dropFromClear([raceId]);
+    bulk.drop([raceId]);
     refreshSelectionReminder();
     setLoadVersion((v) => v + 1);
-  }, [dropFromClear]);
-  const onLeaveClear = useCallback((raceId: string) => dropFromClear([raceId]), [dropFromClear]);
+  }, [bulk]);
 
-  // "Ryd udtagelser": de VISTE loeb (efter filteret) ryddes som en kladde. Intet gemmes her.
-  // Rydning og Fortryd er kladder, men de anvendes aldrig midt i et skrivekald (knapperne er laast,
-  // og fladen venter selv med at vise dem, til kaldet er faerdigt).
-  const clearShown = (ids: string[]) => {
-    if (!ids.length || gate.current()) return;
-    setClearError(null);
-    setClearDraft((cur) => new Set([...cur, ...ids]));
+  // ── Handlinger (variant B) ─────────────────────────────────────────────────
+  // Omfanget og hvad hver handling ville aendre lige nu, i kladdens visning og inden for ét gems loft.
+  const scopeCtx = useMemo(() => ({ allRaces, listRaces, checked, withdrawn: shownWithdrawn }), [allRaces, listRaces, checked, shownWithdrawn]);
+  const scopeCounts = useMemo(
+    () => Object.fromEntries(BULK_SCOPES.map((s) => [s, scopeRaces(s, scopeCtx).length])) as Record<BulkScope, number>,
+    [scopeCtx],
+  );
+  const nextName = useMemo(() => scopeRaces("next", scopeCtx)[0]?.name ?? null, [scopeCtx]);
+  const plans = useMemo(() => {
+    const races = scopeRaces(bulkScope, scopeCtx);
+    return Object.fromEntries(
+      BULK_KINDS.map((kind) => {
+        const targets = actionTargets(kind, races, { entries: shownEntries, withdrawn: shownWithdrawn, locks });
+        const cap = capToRoom(targets.map((r) => r.id), draft, SELECTION_BULK_MAX);
+        return [kind, { ids: cap.ids, count: cap.ids.length, capped: cap.capped }];
+      }),
+    ) as Record<BulkKind, BulkPlan & { ids: string[] }>;
+  }, [bulkScope, scopeCtx, shownEntries, shownWithdrawn, locks, draft]);
+
+  // En handling lander i kladden; assistenten spoerges gennem sidens skrive-laas (det laeser kun).
+  const runAction = async (kind: BulkKind) => {
+    const outcome = await bulk.run(kind, plans[kind].ids, { entries, locks, withdrawn });
+    if (outcome === "done" && bulkScope === "checked") setChecked(new Set());
   };
-  const undoClear = () => {
-    if (gate.current()) return;
-    setClearError(null);
-    setClearDraft(new Set());
-  };
-  // Gem kladden: ÉT atomisk kald, alt eller intet (PLANNING_CENTER_RULES §1). Kladden kan aldrig vokse
-  // ud over serverens loft pr. kald (capClearable), saa den deles aldrig i flere uafhaengige gem.
-  // Kaldet holder sidens skrive-laas, til den aabne flade har afstemt og hentet sin tilgaengelighed.
-  const saveClear = async () => {
-    const ids = [...clearDraft];
-    if (!ids.length) return;
-    // Oejebliksbilledet af det der SENDES; svaret afstemmes mod det, ikke mod siden naar svaret kommer.
-    const { changes, selections } = clearSubmission(entries, ids, locks);
-    await gate.run("bulk", async () => {
-      setClearError(null);
-      try {
-        const res = await saveRaceSelectionsBulk(changes);
-        if (!res.ok) {
-          const body = res.data ?? {};
-          const conflict = Array.isArray(body.conflicts) ? body.conflicts[0] : null;
-          const message = conflict
-            ? tr("selection.errors.selection_rider_bound_named", { rider: conflict.rider_name ?? "", race: conflict.race_name ?? conflict.bound_race_name ?? "" })
-            : tr([`selection.errors.${body.error || "generic"}`, "selection.errors.generic"]);
-          const failed = allRaces.find((r) => r.id === body.race_id);
-          setClearError(failed ? t("clearBar.errorIn", { race: failed.name, error: message }) : t("clearBar.error", { error: message }));
-          return;
-        }
-        const saved = new Set(ids);
-        setEntries((cur) => entriesAfterClear(cur, saved, locks));
-        // Den aabne flade afstemmer selv sit eget loeb mod det sendte; de andre sendte loebs huskede
-        // kladder er nu foraeldede og glemmes.
-        const view = workbenchRef.current;
-        for (const id of ids) {
-          const submitted = selections.get(id);
-          if (!(submitted && view?.markSaved(id, submitted))) forgetSelectionDraft(id);
-        }
-        forgetClearBefore(ids);
-        dropFromClear(ids);
-        refreshSelectionReminder();
-        setLoadVersion((v) => v + 1);
-        // Ryttere bundet i et ryddet loeb er nu fri: den aabne flade henter deres tilgaengelighed igen.
-        await view?.refreshAvailability();
-      } catch {
-        setClearError(t("clearBar.error", { error: tr("selection.errors.generic") }));
-      }
+  const toggleCheck = useCallback((id: string) => {
+    setChecked((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
     });
+  }, []);
+
+  // Gem kladden: trupperne i ét atomisk kald og afmeldingerne i ét (alt eller intet, PLANNING_CENTER_RULES
+  // §1). Kaldet holder sidens skrive-laas, til den aabne flade har afstemt og hentet sin tilgaengelighed.
+  const saveDraft = () =>
+    bulk.save({ entries, locks }, async ({ selections, withdrawn: out }) => {
+      setEntries((cur) => {
+        let next = cur;
+        for (const [raceId, sel] of selections) next = replaceRaceEntries(next, raceId, entriesFromSelection(raceId, sel));
+        return next;
+      });
+      if (out.length) {
+        setWithdrawnHere((cur) => new Set([...cur, ...out]));
+        setRejoined((cur) => new Set([...cur].filter((id) => !out.includes(id))));
+      }
+      // Den aabne flade afstemmer selv sit eget loeb mod det sendte; de andre loebs huskede kladder er foraeldede.
+      const view = workbenchRef.current;
+      for (const [raceId, sel] of selections) if (!view?.markSaved(raceId, sel)) forgetSelectionDraft(raceId);
+      for (const raceId of out) forgetSelectionDraft(raceId);
+      if (selectedId && out.includes(selectedId)) setWorkbenchVersion((v) => v + 1);
+      refreshSelectionReminder();
+      setLoadVersion((v) => v + 1);
+      // Ryttere bundet i et ryddet loeb er nu fri: den aabne flade henter deres tilgaengelighed igen.
+      await view?.refreshAvailability();
+    });
+
+  const failureText = (failure: BulkFailure): string => {
+    const body = failure.body ?? {};
+    const conflict = Array.isArray(body.conflicts) ? body.conflicts[0] : null;
+    const message = conflict
+      ? tr("selection.errors.selection_rider_bound_named", { rider: conflict.rider_name ?? "", race: conflict.race_name ?? conflict.bound_race_name ?? "" })
+      : tr([`selection.errors.${body.error || "generic"}`, "selection.errors.generic"]);
+    if (failure.step === "assist") return t("bulk.assistError", { error: message });
+    if (failure.partial) return t("bulk.draft.errorWithdraw", { error: message });
+    const failed = allRaces.find((r) => r.id === body.race_id);
+    return failed ? t("bulk.draft.errorIn", { race: failed.name, error: message }) : t("bulk.draft.error", { error: message });
   };
+  const bulkMessage = bulkState.failure ? failureText(bulkState.failure) : bulkState.emptyAssist ? t("bulk.assistNone") : null;
 
   const onWithdrawnChange = useCallback((raceId: string, isOut: boolean) => {
-    if (isOut) {
-      dropFromClear([raceId]);
-      forgetClearBefore([raceId]);
-    }
+    bulk.drop([raceId]);
     setWithdrawnHere((cur) => {
       const next = new Set(cur);
       if (isOut) next.add(raceId);
@@ -447,7 +453,7 @@ function Workbench() {
       return next;
     });
     refreshSelectionReminder();
-  }, [dropFromClear, forgetClearBefore]);
+  }, [bulk]);
   // Samme fristboks som /planning: hvilke trupper mangler, og hvor lang tid er der til start.
   const { reminder } = useSelectionReminder();
   const toggleWeek = () => {
@@ -466,12 +472,9 @@ function Workbench() {
     setProfileFull(!profileFull);
     writePref("profileFull", !profileFull);
   };
-  // Det "Ryd udtagelser" ville rydde lige nu: de viste loeb, der stadig har ryttere i kladden, kun op
-  // til serverens loft for ét gem (saa kladden altid kan gemmes i ét atomisk kald).
-  const clearPlan = capClearable(clearableRaceIds(listRaces, shownEntries, withdrawn, locks), clearDraft.size, SELECTION_BULK_MAX);
 
   const upcomingNeed = allRaces.filter(
-    (r) => !isRacePast(r) && (raceStartDate(r, dates) ?? "9999") <= addDays(today, 8) && raceReadiness(r, counts.get(r.id) ?? 0, withdrawn).state === "missing",
+    (r) => !isRacePast(r) && (raceStartDate(r, dates) ?? "9999") <= addDays(today, 8) && raceReadiness(r, counts.get(r.id) ?? 0, shownWithdrawn).state === "missing",
   ).length;
   const subtitle =
     load.state === "ready"
@@ -552,7 +555,7 @@ function Workbench() {
             dates={dates}
             monday={activeMonday}
             counts={counts}
-            withdrawn={withdrawn}
+            withdrawn={shownWithdrawn}
             terrain={terrain}
             selectedId={selected?.id}
             onSelect={requestSelect}
@@ -571,9 +574,16 @@ function Workbench() {
             onSaveAndOpen={saveAndOpen}
           />
         )}
-        {hasClearDraft && (
-          <ClearDraftBar count={clearDraft.size} busy={clearBusy} locked={writing !== null} error={clearError} onUndo={undoClear} onSave={saveClear} />
-        )}
+        <BulkDraftBar
+          summary={draftSummary(draft, entries)}
+          hasDraft={hasDraft}
+          busy={writing === "bulk"}
+          locked={writing !== null}
+          message={bulkMessage}
+          messageTone={bulkState.failure ? "danger" : "neutral"}
+          onUndo={() => bulk.undo()}
+          onSave={saveDraft}
+        />
         <div className={`grid items-start gap-3.5 ${showList ? "lg:grid-cols-[296px_minmax(0,1fr)]" : ""}`}>
           {showList && (
             <RaceList
@@ -581,7 +591,7 @@ function Workbench() {
               allRaces={allRaces}
               dates={dates}
               counts={counts}
-              withdrawn={withdrawn}
+              withdrawn={shownWithdrawn}
               terrain={terrain}
               selectedId={selected?.id}
               onSelect={requestSelect}
@@ -590,22 +600,36 @@ function Workbench() {
               showPast={showPast}
               onShowPast={setShowPast}
               today={today}
-              clearCount={clearPlan.ids.length}
-              clearCapped={clearPlan.capped}
-              clearMax={SELECTION_BULK_MAX}
-              clearLocked={writing !== null}
-              onClear={() => clearShown(clearPlan.ids)}
+              headerAction={
+                <>
+                  {bulkScope === "checked" && <CheckedCount count={checked.size} onClear={() => setChecked(new Set())} />}
+                  <BulkMenu
+                    scope={bulkScope}
+                    onScope={setBulkScope}
+                    scopeCounts={scopeCounts}
+                    nextName={nextName}
+                    plans={plans}
+                    max={SELECTION_BULK_MAX}
+                    locked={writing !== null}
+                    assisting={writing === "assist"}
+                    onRun={runAction}
+                  />
+                </>
+              }
+              checks={bulkScope === "checked" ? { checked, onToggle: toggleCheck } : null}
+              rowMark={(raceId: string) => <BulkRowMark kind={draft.kinds.get(raceId) ?? null} />}
             />
           )}
           <div ref={anchorRef} className="min-w-0 scroll-mt-4">
+            {selected && <BulkOpenRaceNote kind={draft.kinds.get(selected.id) ?? null} />}
             {selected ? (
               <RaceWorkbench
-                key={selected.id}
+                key={`${selected.id}:${workbenchVersion}`}
                 ref={workbenchRef}
                 race={selected}
                 allRaces={allRaces}
                 entries={shownEntries}
-                withdrawn={withdrawn}
+                withdrawn={shownWithdrawn}
                 riderDetails={riderDetails}
                 seasonLoad={seasonLoad}
                 seasonYear={seasonYear}
@@ -613,11 +637,8 @@ function Workbench() {
                 onToggleProfileHidden={toggleProfile}
                 profileFull={profileFull}
                 onToggleProfileFull={toggleProfileFull}
-                pendingClear={clearDraft.has(selected.id)}
-                onLeaveClear={onLeaveClear}
+                onEdit={dropFromDraft}
                 gate={gate}
-                clearBefore={clearBefore.get(selected.id) ?? null}
-                onClearBefore={onClearBefore}
                 onDirtyChange={setDirty}
                 onSaved={onSaved}
                 onWithdrawnChange={onWithdrawnChange}

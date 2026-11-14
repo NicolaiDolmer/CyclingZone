@@ -11,7 +11,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { saleEscrowTransitionGuard } from "./saleEscrowView6181.js";
+import { saleEscrowTransitionGuard, SALE_ESCROW_FORCE_BLOCKED_ERROR } from "./saleEscrowView6181.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -64,4 +64,132 @@ test("scriptet kalder spaerren og stopper, foer skiftet koerer", () => {
   const run = src.indexOf("await transitionToNextSeason(");
   assert.ok(guard > 0 && guard < run, "spaerren skal ligge foer skiftet");
   assert.match(src.slice(guard, run), /if \(saleEscrowGuard\.blocked\) \{\n\s*console\.error\([^\n]*\);\n\s*process\.exit\(1\);\n\}/);
+});
+
+// ── Dommens manglende veje: manuel saesonstart og manuel saesonafslutning ──
+// Den aegte rute-krop fra routes/api.js koeres med den aegte spaerre og en lille
+// supabase-attrap. Foerste skrivning (start) og claim'et (afslutning) er vagtposter:
+// en spaerret anmodning maa aldrig naa dem.
+
+const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+const API_SRC = readFileSync(join(__dirname, "../routes/api.js"), "utf8").replace(/\r\n/g, "\n");
+
+/** @param {string} route @param {string[]} names */
+function routeHandler(route, names) {
+  const start = API_SRC.indexOf(`router.post("${route}"`);
+  assert.ok(start > 0, `ruten ${route} findes ikke`);
+  const bodyStart = API_SRC.indexOf("async (req, res) => {", start) + "async (req, res) => {".length;
+  return new AsyncFunction("req", "res", ...names, API_SRC.slice(bodyStart, API_SRC.indexOf("\n});", bodyStart)));
+}
+
+/** Saesoner + sale_escrows + app_config (kontakten), som ruterne og spaerren laeser dem. */
+function seasonDb({ status, held = 0, escrowError = null, flag = "off" }) {
+  const reads = [];
+  const season = { id: "s5", number: 5, status, start_date: null, end_date: null };
+  return {
+    reads,
+    from(table) {
+      reads.push(table);
+      if (table === "sale_escrows") return escrowCount({ held, error: escrowError }).from(table);
+      if (table === "app_config") {
+        const q = { select: () => q, eq: () => q, maybeSingle: async () => ({ data: { value: flag }, error: null }) };
+        return q;
+      }
+      if (table === "races") return { select: () => ({ eq: async () => ({ data: [], error: null }) }) };
+      // seasons: .single() giver saesonen; et head-count (aktive saesoner) giver 0.
+      const q = {
+        select: () => q,
+        eq: () => q,
+        single: async () => ({ data: season, error: null }),
+        then: (resolve, reject) => Promise.resolve({ count: 0, error: null }).then(resolve, reject),
+      };
+      return q;
+    },
+  };
+}
+
+function captureRes() {
+  const out = { status: 200, body: undefined };
+  out.res = { status(v) { out.status = v; return out.res; }, json(v) { out.body = v; return out.res; } };
+  return out;
+}
+
+const REACHED_FIRST_WRITE = new Error("vagtpost: foerste skrivning naaet");
+
+// Fast ur (samme harness som seasonTransitionReadiness.training.test.js): handlerne
+// laeser `new Date()`, saa prøverne giver `Date` ind og aldrig afhaenger af vaeguret.
+const FIXED_NOW = "2026-11-14T12:00:00.000Z";
+class FixedDate extends Date { constructor(...args) { super(...(args.length ? args : [FIXED_NOW])); } }
+
+/** Manuel saesonstart: stopper ved spaerren, eller naar foerste skrivning (ensureSeasonStandings). */
+async function runManualStart(dbOpts) {
+  const supabase = seasonDb({ status: "upcoming", ...dbOpts });
+  const handler = routeHandler("/admin/seasons/:id/start", ["supabase", "Date", "ensureSeasonStandings", "captureApiRouteError", "saleEscrowTransitionGuard", "SALE_ESCROW_FORCE_BLOCKED_ERROR"]);
+  let wrote = false;
+  const out = captureRes();
+  await handler({ params: { id: "s5" } }, out.res, supabase, FixedDate,
+    async () => { wrote = true; throw REACHED_FIRST_WRITE; },
+    (e) => { if (e !== REACHED_FIRST_WRITE) throw e; },
+    saleEscrowTransitionGuard, SALE_ESCROW_FORCE_BLOCKED_ERROR);
+  return { ...out, wrote, reads: supabase.reads };
+}
+
+/** Manuel saesonafslutning: stopper ved spaerren, eller naar claim'et (foer alt irreversibelt). */
+async function runManualEnd(dbOpts) {
+  const supabase = seasonDb({ status: "active", ...dbOpts });
+  const handler = routeHandler("/admin/seasons/:id/end", ["supabase", "Date", "assessSeasonEndBlockers", "assessFinalTrainingDateSettlement", "claimSeasonEndOrReject", "captureApiRouteError", "saleEscrowTransitionGuard", "SALE_ESCROW_FORCE_BLOCKED_ERROR"]);
+  let claimed = false;
+  let settlementNow = null;
+  const out = captureRes();
+  await handler({ params: { id: "s5" } }, out.res, supabase, FixedDate,
+    async () => ({ blocked: false }),
+    async ({ now }) => { settlementNow = now; return { blocked: false }; },
+    async () => { claimed = true; return false; },
+    (e) => { throw e; },
+    saleEscrowTransitionGuard, SALE_ESCROW_FORCE_BLOCKED_ERROR);
+  return { ...out, claimed, settlementNow, reads: supabase.reads };
+}
+
+for (const [label, run, sentinel] of [
+  ["manuel saesonstart", runManualStart, "wrote"],
+  ["manuel saesonafslutning", runManualEnd, "claimed"],
+]) {
+  test(`${label}: een holdt laas giver 409 og naar aldrig ${sentinel === "wrote" ? "foerste skrivning" : "claim'et"}`, async () => {
+    const r = await run({ held: 1 });
+    assert.equal(r[sentinel], false);
+    assert.equal(r.status, 409);
+    assert.deepEqual(r.body, { error: SALE_ESCROW_FORCE_BLOCKED_ERROR, code: "held_sale_escrows", held_sale_escrows: 1 });
+  });
+
+  test(`${label}: laesefejl paa sale_escrows stopper (fail-closed)`, async () => {
+    const r = await run({ escrowError: { code: "XX000", message: "boom" } });
+    assert.equal(r[sentinel], false);
+    assert.equal(r.status, 409);
+    assert.equal(r.body.code, "held_sale_escrows");
+  });
+
+  test(`${label}: kontakten slukket og 0 laase er uaendret (koerer videre)`, async () => {
+    const r = await run({ held: 0, flag: "off" });
+    assert.equal(r[sentinel], true);
+    assert.notEqual(r.status, 409);
+    assert.ok(!r.reads.includes("app_config"), "spaerren afhaenger af laasene, ikke af kontakten");
+  });
+
+  test(`${label}: tabellen findes ikke (laasen aldrig bygget) er uaendret`, async () => {
+    const r = await run({ escrowError: { code: "42P01", message: "missing" } });
+    assert.equal(r[sentinel], true);
+    assert.notEqual(r.status, 409);
+  });
+
+  test(`${label}: en holdt laas stopper ogsaa, selv om kontakten er slukket igen`, async () => {
+    const r = await run({ held: 2, flag: "off" });
+    assert.equal(r[sentinel], false);
+    assert.equal(r.body.held_sale_escrows, 2);
+  });
+}
+
+test("manuel saesonafslutning: handleren koerer paa det faste ur, ikke vaeguret", async () => {
+  const r = await runManualEnd({ held: 0 });
+  assert.ok(r.settlementNow instanceof Date);
+  assert.equal(r.settlementNow.toISOString(), FIXED_NOW);
 });

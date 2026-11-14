@@ -2,6 +2,7 @@
 // senere uger er foldet til en linje ("Uge 46 · 7 loeb · 5 mangler"). Raekken viser navn, dato,
 // klasse, etapeantal, etape-stribe, advarsel om faelles loebsdage og klar-maerke.
 import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronDownIcon, ChevronRightIcon, Button, EmptyState, FlagIcon } from "./primitives.ts";
 import {
@@ -54,6 +55,8 @@ function RaceRow({
   selected,
   dates,
   onSelect,
+  check = null,
+  mark = null,
 }: {
   race: SeasonRace;
   readiness: Readiness;
@@ -62,20 +65,24 @@ function RaceRow({
   selected: boolean;
   dates: Map<number, string>;
   onSelect: (id: string) => void;
+  /** Handlinger-menuens "Kryds loeb af i listen": et flueben foran raekken. */
+  check?: { checked: boolean; onToggle: () => void } | null;
+  /** "Kladde"-maerket, naar loebet er i Handlinger-kladden. */
+  mark?: ReactNode;
 }) {
   const { t, i18n } = useTranslation("planning");
   const { t: tr } = useTranslation("races");
   const start = raceStartDate(race, dates);
   const cls = tr(`classOption.${race.raceClass}`, { defaultValue: String(race.raceClass ?? "") });
-  return (
+  const row = (
     <button
       type="button"
       onClick={() => onSelect(race.id)}
       aria-pressed={selected}
       data-testid="planning-race-row"
-      className={`grid w-full grid-cols-[minmax(0,1fr)_auto] gap-2 border-b border-cz-border px-3.5 py-2.5 text-left last:border-b-0 ${
-        selected ? "bg-cz-subtle" : "hover:bg-cz-subtle"
-      }`}
+      className={`grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 py-2.5 pr-3.5 text-left ${
+        check ? "pl-1" : "border-b border-cz-border pl-3.5 last:border-b-0"
+      } ${selected ? "bg-cz-subtle" : "hover:bg-cz-subtle"}`}
     >
       <span className="min-w-0">
         <span className="block truncate text-[13.5px] font-medium text-cz-1">{race.name}</span>
@@ -97,8 +104,27 @@ function RaceRow({
           </span>
         )}
       </span>
-      <span className="self-start"><ReadinessBadge readiness={readiness} /></span>
+      <span className="flex flex-col items-end gap-1 self-start">
+        <ReadinessBadge readiness={readiness} />
+        {mark}
+      </span>
     </button>
+  );
+  if (!check) return row;
+  return (
+    <div className={`flex border-b border-cz-border last:border-b-0 ${selected ? "bg-cz-subtle" : ""}`}>
+      <label className="flex min-h-11 min-w-11 shrink-0 cursor-pointer justify-center pt-3 sm:min-h-0 sm:min-w-9">
+        <input
+          type="checkbox"
+          checked={check.checked}
+          onChange={check.onToggle}
+          aria-label={race.name}
+          className="h-4 w-4 accent-cz-accent"
+          data-testid="planning-race-check"
+        />
+      </label>
+      {row}
+    </div>
   );
 }
 
@@ -116,14 +142,12 @@ interface RaceListProps {
   showPast: boolean;
   onShowPast: (value: boolean) => void;
   today: string;
-  /** Antal viste loeb "Ryd udtagelser" kan rydde (0 = knappen er slaaet fra). */
-  clearCount: number;
-  /** Der er flere ryddelige loeb, end ét gem kan rumme: knappen siger det aerligt (loftet er clearMax). */
-  clearCapped?: boolean;
-  clearMax?: number;
-  /** Et skrivekald koerer (sidens skrive-laas): en rydning venter, til det er faerdigt. */
-  clearLocked?: boolean;
-  onClear: () => void;
+  /** Handlinger-knappen (variant B) i hovedet. */
+  headerAction?: ReactNode;
+  /** "Kryds loeb af i listen": flueben foran raekkerne. */
+  checks?: { checked: Set<string>; onToggle: (id: string) => void } | null;
+  /** Maerke ved et loeb i Handlinger-kladden. */
+  rowMark?: (raceId: string) => ReactNode;
 }
 
 export default function RaceList({
@@ -140,11 +164,9 @@ export default function RaceList({
   showPast,
   onShowPast,
   today,
-  clearCount,
-  clearCapped = false,
-  clearMax = 0,
-  clearLocked = false,
-  onClear,
+  headerAction = null,
+  checks = null,
+  rowMark,
 }: RaceListProps) {
   const { t } = useTranslation("planning");
   const groups = useMemo(() => groupRacesByWeek(races, dates), [races, dates]);
@@ -168,25 +190,7 @@ export default function RaceList({
             />
             {t("raceList.showPast")}
           </label>
-          {/* Rydder de viste loebs udtagelser som en kladde (ejer 14/11): intet gemmes foer Gem i bjaelken. */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClear}
-            disabled={clearCount === 0 || clearLocked}
-            title={
-              clearCapped
-                ? clearCount > 0
-                  ? t("raceList.clearCapped", { count: clearCount, max: clearMax })
-                  : t("raceList.clearFull", { max: clearMax })
-                : clearCount > 0
-                  ? t("raceList.clearTitle", { count: clearCount })
-                  : t("raceList.clearNone")
-            }
-            data-testid="planning-clear-shown"
-          >
-            {t("raceList.clear")}
-          </Button>
+          {headerAction}
         </div>
       </header>
 
@@ -233,6 +237,8 @@ export default function RaceList({
                     readiness={raceReadiness(race, counts.get(race.id) ?? 0, withdrawn)}
                     overlaps={overlappingRaces(race, allRaces, withdrawn)}
                     onSelect={onSelect}
+                    check={checks ? { checked: checks.checked.has(race.id), onToggle: () => checks.onToggle(race.id) } : null}
+                    mark={rowMark?.(race.id)}
                   />
                 ))}
             </section>

@@ -35,12 +35,7 @@
       "title": "Affiche toute la saison",
       "description": "Aucune course à venir dans cette vue. Avec toute la saison, tu peux planifier à l'avance.",
       "action": "Afficher toute la saison"
-    },
-    "clear": "Vider les équipes",
-    "clearTitle": "{count, plural, one {Vide l'équipe de la course affichée. Rien n'est enregistré avant que tu appuies sur Enregistrer.} other {Vide les équipes des # courses affichées. Rien n'est enregistré avant que tu appuies sur Enregistrer.}}",
-    "clearNone": "Aucune équipe à vider dans les courses affichées",
-    "clearCapped": "Vide les équipes des {count} premières courses affichées. Un enregistrement contient au plus {max} courses : enregistre-les, puis vide le reste.",
-    "clearFull": "Un enregistrement contient au plus {max} courses. Enregistre ou annule les courses vidées avant d'en vider d'autres."
+    }
   },
   "status": {
     "ready": "Prêt",
@@ -121,13 +116,48 @@
     "discard": "Annuler",
     "saveAndOpen": "Enregistrer et ouvrir"
   },
-  "clearBar": {
-    "text": "{count, plural, one {Équipe vidée dans # course.} other {Équipes vidées dans # courses.}}",
-    "note": "Rien n'est enregistré avant que tu enregistres. L'assistant compose les équipes vides quand la course a lieu.",
-    "undo": "Annuler",
-    "save": "Enregistrer",
-    "error": "Rien n'a été enregistré. {error}",
-    "errorIn": "Rien n'a été enregistré à cause de {race} : {error}"
+  "bulk": {
+    "menu": "Actions",
+    "scopeLabel": "S'applique à",
+    "scope": {
+      "next": "Prochaine course",
+      "nextNamed": "Prochaine course : {race}",
+      "checked": "{count, plural, one {Course cochée (#)} other {Courses cochées (#)}}",
+      "shown": "Courses affichées ({count})",
+      "season": "Toute la saison ({count})",
+      "pick": "Coche des courses dans la liste"
+    },
+    "auto": "Laisser l'assistant choisir",
+    "autoHint": "Remplit les places libres. Tes choix restent.",
+    "clear": "Retirer les sélections",
+    "clearHint": "Retire les coureurs. Les courses restent au calendrier.",
+    "withdraw": "Se désinscrire",
+    "withdrawHint": "L'équipe ne prend pas le départ et peut perdre la course.",
+    "nothing": "Rien à changer dans ces courses",
+    "capped": "Un enregistrement contient au plus {max} courses, seules les premières sont prises. Enregistre-les, puis fais le reste.",
+    "checkedCount": "{count, plural, one {# course cochée} other {# courses cochées}}",
+    "untick": "Tout décocher",
+    "assistError": "L'assistant n'a pas pu choisir. Rien n'a changé. {error}",
+    "assistNone": "L'assistant n'a trouvé aucun coureur libre pour ces courses. Rien n'a changé.",
+    "draft": {
+      "label": "Brouillon",
+      "title": "Brouillon.",
+      "note": "Rien n'est enregistré avant que tu enregistres.",
+      "auto": "{count, plural, one {Équipe choisie dans # course} other {Équipes choisies dans # courses}}, {riders, plural, one {# coureur ajouté} other {# coureurs ajoutés}}",
+      "clear": "{count, plural, one {Sélection retirée dans # course} other {Sélections retirées dans # courses}}",
+      "withdraw": "{count, plural, one {Désinscrit de # course : l'équipe ne prend pas le départ} other {Désinscrit de # courses : l'équipe ne prend pas le départ}}",
+      "undo": "Annuler",
+      "save": "Enregistrer",
+      "mark": "Brouillon",
+      "open": {
+        "auto": "L'équipe de l'assistant pour cette course est dans le brouillon. L'équipe ci-dessous est celle enregistrée jusqu'à ce que tu enregistres.",
+        "clear": "La sélection de cette course est retirée dans le brouillon. L'équipe ci-dessous est celle enregistrée jusqu'à ce que tu enregistres.",
+        "withdraw": "Cette course est désinscrite dans le brouillon. Rien ne change avant que tu enregistres."
+      },
+      "error": "Rien n'a été enregistré. {error}",
+      "errorIn": "Rien n'a été enregistré à cause de {race} : {error}",
+      "errorWithdraw": "Les sélections ont été enregistrées. Les désinscriptions n'ont pas été enregistrées : {error}"
+    }
   },
   "error": {
     "title": "La planification n'a pas pu se charger",
