@@ -12,7 +12,10 @@
 // Rene funktioner her (node --test-venlige), React-wiringen bor i
 // Layout.jsx (nav-prikken) + RoadmapPage.jsx (prikken på det enkelte punkt).
 
-export const LAST_SEEN_KEY = "cz_roadmap_last_seen";
+import { markSeen, SEEN_MARKER_LOCAL_KEYS } from "./seenMarkers6515.ts";
+
+// #6515: nøglen bor nu i seenMarkers6515.ts (uændret værdi).
+export const LAST_SEEN_KEY = SEEN_MARKER_LOCAL_KEYS.roadmap; // "cz_roadmap_last_seen"
 
 export interface RoadmapItemLike {
   created_at?: string | null;
@@ -67,11 +70,9 @@ export function readLastSeenRoadmap(): string | null {
   }
 }
 
+// #6515: markøren rykker kun frem og sendes op på brugeren (lib/seenMarkers6515.ts),
+// så prikken følger spilleren på tværs af enheder. Udlogget: kun localStorage, som før.
 export function writeLastSeenRoadmap(date: string | null | undefined): void {
   if (!date) return;
-  try {
-    localStorage.setItem(LAST_SEEN_KEY, date);
-  } catch {
-    /* ignore — samme fail-silent som writeLastSeenPatchNotes */
-  }
+  markSeen("roadmap", date);
 }

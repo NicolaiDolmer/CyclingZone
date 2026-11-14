@@ -5,6 +5,7 @@ import {
   effectiveRollout, filterByRollout,
 } from "../lib/patchNotes.js";
 import { loadAnonymousFlags } from "../lib/featureStage.ts";
+import { useSeenMarkersSynced } from "../lib/seenMarkers6515.ts"; // #6515
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import { documentLang } from "../i18n/languages.js";
 import { intlLocale } from "../lib/intlLocale.ts";
@@ -107,9 +108,10 @@ export default function PatchNotesPage() {
     [flat, lang, category, query, rolloutMode, liveFlags],
   );
 
-  const [lastSeen] = useState(() => {
+  const [lastSeen, setLastSeen] = useState(() => {
     try { return localStorage.getItem(LAST_SEEN_KEY); } catch { return null; }
   });
+  useSeenMarkersSynced("patch_notes", setLastSeen); // #6515: set paa en anden enhed = ikke "ny"
   const newDays = useMemo(
     () => computeNewDays(days.map((d) => d.date), lastSeen),
     [days, lastSeen],

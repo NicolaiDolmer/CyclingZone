@@ -6,6 +6,8 @@
 // Henter IKKE hele changelog'en (~945 KB) — kun den ultra-lette
 // patch-notes-meta.json ({version, date} for nyeste patch), emitteret af
 // vite-plugins/patch-notes-json.js ved siden af patch-notes.json.
+import { markSeen, SEEN_MARKER_LOCAL_KEYS } from "./seenMarkers6515.ts";
+
 export const PATCH_NOTES_META_URL = "/patch-notes-meta.json";
 
 // MÅ matche LAST_SEEN_KEY i src/pages/PatchNotesPage.jsx præcis — samme
@@ -13,7 +15,7 @@ export const PATCH_NOTES_META_URL = "/patch-notes-meta.json";
 // dette issue (dens egen useEffect sætter allerede nøglen til nyeste dato,
 // hver gang siden åbnes), så nøglen er duplikeret her i stedet for delt via
 // import, for at holde ændringen ude af den fil.
-export const LAST_SEEN_KEY = "cz_patchnotes_last_seen";
+export const LAST_SEEN_KEY = SEEN_MARKER_LOCAL_KEYS.patch_notes; // "cz_patchnotes_last_seen"
 
 /** Henter {version, date} for nyeste patch. Kaster ved HTTP-fejl/ugyldig form. */
 export async function loadPatchNotesMeta(url = PATCH_NOTES_META_URL, fetchImpl = fetch) {
@@ -44,9 +46,11 @@ export function readLastSeenPatchNotes() {
   try { return localStorage.getItem(LAST_SEEN_KEY); } catch { return null; }
 }
 
+// #6515: markøren rykker kun frem og sendes op på brugeren (lib/seenMarkers6515.ts),
+// så prikken følger spilleren på tværs af enheder. Udlogget: kun localStorage, som før.
 export function writeLastSeenPatchNotes(date) {
   if (!date) return;
-  try { localStorage.setItem(LAST_SEEN_KEY, date); } catch { /* ignore */ }
+  markSeen("patch_notes", date);
 }
 
 /** `to` → ulæst-boolean-kortet NavItem slår op i — samme recipe som buildNavBadgeCounts. */
