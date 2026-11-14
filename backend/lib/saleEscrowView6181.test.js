@@ -9,6 +9,7 @@ import {
   buildSaleLockedSellerNotification,
   countHeldSaleEscrowsForForce,
   daysUntil,
+  deliveredRiderIds,
   isSaleLockedForDeal,
   loadLockedSalesForTeam,
   notifySellerSaleEscrowReleased,
@@ -101,8 +102,27 @@ test("daysUntil: hele kalenderdage i dansk tid, i dag = 0, aldrig negativ", () =
   assert.equal(daysUntil("2026-11-15T18:00:00Z", NOW), 2);
   assert.equal(daysUntil("2026-11-13T22:30:00Z", NOW), 0); // 23:30 dansk tid samme dag
   assert.equal(daysUntil("2026-11-13T23:30:00Z", NOW), 1); // 00:30 dansk tid naeste dag
-  assert.equal(daysUntil("2026-11-10T18:00:00Z", NOW), 0);
+  assert.equal(daysUntil("2026-11-13T05:00:00Z", NOW), 0, "etapen koerte tidligere i dag: stadig i dag");
   assert.equal(daysUntil(null, NOW), null);
+});
+
+test("#6181 punkt 8: sidste etape laa foer i dag (koert, ikke gjort faerdigt) = null, aldrig 'i dag'", () => {
+  assert.equal(daysUntil("2026-11-10T18:00:00Z", NOW), null);
+  assert.equal(daysUntil("2026-11-12T22:59:00Z", NOW), null, "23:59 dansk tid i gaar");
+  assert.equal(daysUntil("2026-11-12T23:00:00Z", NOW), 0, "00:00 dansk tid i dag");
+});
+
+test("#6181 punkt 8: loadLockedSalesForTeam viser loebets navn uden dage, naar sidste etape laa foer i dag", async () => {
+  const w = world();
+  // Loeb To er koert (sidste etape i gaar), men endnu ikke gjort faerdigt.
+  w.race_stage_schedule = w.race_stage_schedule.filter((s) => s.race_id !== "race-2");
+  w.race_stage_schedule.push({ race_id: "race-2", scheduled_at: "2026-11-12T19:00:00Z" });
+  const result = await loadLockedSalesForTeam(fakeSupabase(w), SELLER, { now: NOW });
+  const [a, b] = result.sales;
+  assert.deepEqual(b.race, { id: "race-2", name: "Loeb To" }, "loebets navn vises stadig");
+  assert.equal(b.daysLeft, null, "ingen 'slutter i dag'");
+  assert.equal(a.daysLeft, 2, "et loeb, der stadig koerer, er uaendret");
+  assert.equal(result.total, 1250000 + 640000, "beloebene er uaendrede");
 });
 
 test("loadLockedSalesForTeam: kun eget holds holdte salg, med rytter, loeb og dage tilbage", async () => {
@@ -214,6 +234,44 @@ test("notifySellerSaleEscrowReleased: kaster aldrig (pengene er allerede flyttet
   assert.equal(await notifySellerSaleEscrowReleased(broken, world().sale_escrows[0], { notifyTeamOwner: async () => {} }), false);
   const supabase = fakeSupabase(world());
   assert.equal(await notifySellerSaleEscrowReleased(supabase, world().sale_escrows[0], { notifyTeamOwner: async () => { throw new Error("down"); } }), false);
+});
+
+test("#6181 punkt 7: deliveredRiderIds tager det varige bevis eller maalholdet, aldrig en mistet rytter", () => {
+  const escrow = { rider_ids: ["x", "y"], target_team_ids: [BUYER, SELLER], delivered_rider_ids: ["x"] };
+  assert.deepEqual(deliveredRiderIds(escrow, ["x", "y"], new Map([["x", { team_id: "team-c" }], ["y", { team_id: null }]])), ["x"], "x er leveret og solgt videre; y er mistet");
+  assert.deepEqual(deliveredRiderIds({ ...escrow, delivered_rider_ids: [] }, ["x", "y"], new Map([["x", { team_id: BUYER }], ["y", { team_id: BUYER }]])), ["x"]);
+  assert.deepEqual(deliveredRiderIds({ ...escrow, delivered_rider_ids: [] }, ["x"], new Map()), []);
+});
+
+test("#6181 punkt 7: onlyDelivered naevner kun saelgerens ryttere, der har skiftet hold", async () => {
+  const w = world();
+  // Bytte: Hold A afgiver r1 (leveret til Hold B) og skulle have r5 (mistet).
+  const swap = { id: "s1", deal_type: "swap", payer_team_id: BUYER, payee_team_id: SELLER, amount: 300000, rider_ids: ["r1", "r5"], target_team_ids: [BUYER, SELLER], delivered_rider_ids: [], status: "released" };
+  w.riders = [{ id: "r1", firstname: "Rytter", lastname: "En", team_id: BUYER }, { id: "r5", firstname: "Rytter", lastname: "Fem", team_id: null }];
+  const sent = [];
+  assert.equal(await notifySellerSaleEscrowReleased(fakeSupabase(w), swap, { notifyTeamOwner: async (args) => { sent.push(args); }, onlyDelivered: true }), true);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].teamId, SELLER);
+  assert.deepEqual(sent[0].metadata.messageParams, { riderName: "Rytter En", amount: 300000 });
+  assert.match(sent[0].message, /Rytter En has changed teams\. .* CZ\$ is now in your balance\./, "samme godkendte tekst som ved holdskiftet");
+});
+
+test("#6181 punkt 7: onlyDelivered og saelgerens rytter er IKKE flyttet = ingen besked (teksten ville vaere forkert)", async () => {
+  const w = world();
+  // Omvendt: Hold A's r1 er mistet, Hold B's r5 er leveret til Hold A.
+  const swap = { id: "s1", deal_type: "swap", payer_team_id: BUYER, payee_team_id: SELLER, amount: 300000, rider_ids: ["r1", "r5"], target_team_ids: [BUYER, SELLER], delivered_rider_ids: ["r5"], status: "released" };
+  w.riders = [{ id: "r1", firstname: "Rytter", lastname: "En", team_id: null }, { id: "r5", firstname: "Rytter", lastname: "Fem", team_id: SELLER }];
+  const sent = [];
+  assert.equal(await notifySellerSaleEscrowReleased(fakeSupabase(w), swap, { notifyTeamOwner: async (args) => { sent.push(args); }, onlyDelivered: true }), false);
+  assert.deepEqual(sent, []);
+});
+
+test("#6181 punkt 7: uden onlyDelivered er holdskiftets besked uaendret (rytterens hold slaas ikke op)", async () => {
+  const w = world();
+  w.riders = [{ id: "r1", firstname: "Rytter", lastname: "En", team_id: null }];
+  const sent = [];
+  assert.equal(await notifySellerSaleEscrowReleased(fakeSupabase(w), w.sale_escrows[0], { notifyTeamOwner: async (args) => { sent.push(args); } }), true);
+  assert.deepEqual(sent[0].metadata.messageParams, { riderName: "Rytter En", amount: 1250000 });
 });
 
 test("countHeldSaleEscrowsForForce: taeller holdte; manglende tabel = 0; laesefejl afviser force", async () => {

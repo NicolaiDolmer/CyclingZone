@@ -1111,6 +1111,126 @@ test("#6181 Codex P1: udbetalings-beskeden faar afregningstidspunktet med hele v
   assert.equal((await releasedNotes(db2)).length, 1);
 });
 
+// ── #6181 dommerens punkt 7: admin frigiver et fastlaast bytte ─────────────────
+
+/** Byttet sidder fast den anden vej: Hold B's r2 er leveret til Hold A, Hold A's r1 er mistet. */
+async function stuckSwapSellerRiderLost(db, supabase) {
+  await park(db, RIDER.r1, TEAM.B);
+  await park(db, RIDER.r2, TEAM.A);
+  await payBoth(supabase, await saleEscrowPayment(supabase, { parked: true, dealType: "swap", dealId: DEAL.s1, riderIds: [RIDER.r1, RIDER.r2], targetTeamIds: [TEAM.B, TEAM.A] }), swapLegs(DEAL.s1, 40_000));
+  await flushParkedRider(supabase, { id: RIDER.r2, team_id: TEAM.B, pending_team_id: TEAM.A }, FLUSH_OPTS);
+  await db.query("UPDATE riders SET team_id = NULL, pending_team_id = NULL WHERE id = $1", [RIDER.r1]);
+  const [listed] = await listHeldSaleEscrowsForAdmin(supabase);
+  assert.equal(listed.action, "stuck");
+  return listed.id;
+}
+
+test("#6181 punkt 7: admin-frigivelse sender saelgerens udbetalings-besked een gang, efter pengene er flyttet", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  const escrowId = await stuckSwap(db, supabase);
+  /** @type {Array<{ escrow: any, opts: any, sellerBalance: number }>} */
+  const calls = [];
+  const notifyReleased = async (_s, escrow, opts) => { calls.push({ escrow, opts, sellerBalance: await balance(db, TEAM.A) }); };
+
+  const released = await resolveStuckSaleEscrow(supabase, { escrowId, outcome: "release", adminUserId: null, now: new Date(FLUSHED_AT), notifyReleased });
+  assert.equal(released.status, "released");
+  assert.equal(calls.length, 1, "praecis een besked");
+  assert.equal(calls[0].sellerBalance, START + 40_000, "beskeden kommer efter udbetalingen");
+  assert.equal(calls[0].escrow.id, escrowId);
+  assert.equal(calls[0].escrow.payee_team_id, TEAM.A, "til modtageren af pengene");
+  assert.equal(Number(calls[0].escrow.amount), 40_000);
+  assert.equal(calls[0].opts.onlyDelivered, true, "kun ryttere, der har skiftet hold, naevnes");
+  assert.equal(calls[0].opts.now.toISOString(), FLUSHED_AT, "afregningstidspunktet, ikke systemets ur");
+
+  // En gentagelse er 'already_settled': ingen ny besked.
+  assert.equal((await resolveStuckSaleEscrow(supabase, { escrowId, outcome: "release", adminUserId: null, now: new Date(FLUSHED_AT), notifyReleased })).status, "already_settled");
+  assert.equal(calls.length, 1);
+});
+
+test("#6181 punkt 7: admin-frigivelse gennem den rigtige besked-tjeneste: saelgeren faar holdskiftets tekst med den flyttede rytter", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  await withOwners(db);
+  const escrowId = await stuckSwap(db, supabase);
+  const before = (await releasedNotes(db)).length;
+  assert.equal((await resolveStuckSaleEscrow(supabase, { escrowId, outcome: "release", adminUserId: null, now: new Date(FLUSHED_AT) })).status, "released");
+  const sent = (await releasedNotes(db)).slice(before);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].user_id, USER.A, "kun saelgeren (modtageren)");
+  assert.equal(sent[0].related_id, escrowId);
+  assert.equal(sent[0].metadata.titleCode, "notif.saleEscrow.releasedTitle");
+  assert.deepEqual(sent[0].metadata.messageParams, { riderName: "Rytter En", amount: 40_000 }, "r1 er Hold A's rytter, og han er flyttet");
+});
+
+test("#6181 punkt 7: er saelgerens rytter ikke flyttet, sendes ingen 'har skiftet hold'-besked, men pengene udbetales", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  await withOwners(db);
+  const escrowId = await stuckSwapSellerRiderLost(db, supabase);
+  assert.equal((await resolveStuckSaleEscrow(supabase, { escrowId, outcome: "release", adminUserId: null, now: new Date(FLUSHED_AT) })).status, "released");
+  assert.equal(await balance(db, TEAM.A), START + 40_000, "udbetalingen er sket");
+  assert.deepEqual(await releasedNotes(db), [], "teksten ville vaere forkert, saa den sendes ikke");
+});
+
+test("#6181 punkt 7: refusion, 'not_stuck' og en RPC-fejl giver ingen udbetalings-besked", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  const escrowId = await stuckSwap(db, supabase);
+  const notify = countingNotify();
+  assert.equal((await resolveStuckSaleEscrow(supabase, { escrowId, outcome: "refund", adminUserId: null, now: new Date(FLUSHED_AT), notifyReleased: notify.fn })).status, "refunded");
+  assert.deepEqual(notify.sent, [], "refusion: ingen 'pengene er paa din saldo'");
+
+  const db2 = await database();
+  await setFlag(db2, "on");
+  const supabase2 = adapter(db2);
+  await heldTransfer(db2, supabase2, 30_000);
+  const [held] = await listHeldSaleEscrowsForAdmin(supabase2);
+  assert.equal((await resolveStuckSaleEscrow(supabase2, { escrowId: held.id, outcome: "release", adminUserId: null, now: new Date(FLUSHED_AT), notifyReleased: notify.fn })).status, "not_stuck");
+  const failing = { ...supabase2, rpc: async () => ({ data: null, error: { code: "XX000", message: "nede" } }) };
+  await assert.rejects(() => resolveStuckSaleEscrow(failing, { escrowId: held.id, outcome: "release", adminUserId: null, notifyReleased: notify.fn }), /nede/);
+  assert.deepEqual(notify.sent, []);
+});
+
+test("#6181 punkt 7: en fejlet besked (ogsaa et fejlet escrow-opslag) vaelter aldrig admin-udbetalingen", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  const escrowId = await stuckSwap(db, supabase);
+  const released = await resolveStuckSaleEscrow(supabase, { escrowId, outcome: "release", adminUserId: null, now: new Date(FLUSHED_AT), notifyReleased: async () => { throw new Error("beskedtjenesten er nede"); } });
+  assert.equal(released.status, "released");
+  assert.equal(await balance(db, TEAM.A), START + 40_000);
+
+  const db2 = await database();
+  await setFlag(db2, "on");
+  const supabase2 = adapter(db2);
+  const escrowId2 = await stuckSwap(db2, supabase2);
+  const notify = countingNotify();
+  const brokenRead = { ...supabase2, from: (table) => (table === "sale_escrows"
+    ? { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: { code: "XX000", message: "laesefejl" } }) }) }) }
+    : supabase2.from(table)) };
+  assert.equal((await resolveStuckSaleEscrow(brokenRead, { escrowId: escrowId2, outcome: "release", adminUserId: null, now: new Date(FLUSHED_AT), notifyReleased: notify.fn })).status, "released");
+  assert.deepEqual(notify.sent, []);
+  assert.equal(await balance(db2, TEAM.A), START + 40_000);
+});
+
+test("#6181 punkt 7: kontakten roeres ikke; slukket bliver slukket, og en laas fra en taendt periode afgoeres som foer", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  const escrowId = await stuckSwap(db, supabase);
+  await setFlag(db, "off");
+  const notify = countingNotify();
+  assert.equal((await resolveStuckSaleEscrow(supabase, { escrowId, outcome: "release", adminUserId: null, now: new Date(FLUSHED_AT), notifyReleased: notify.fn })).status, "released");
+  assert.deepEqual(notify.sent, [escrowId], "saelgeren faar besked om sine laaste penge, ogsaa efter et sluk");
+  assert.equal(await isSaleEscrowEnabled(supabase), false, "kontakten er stadig slukket");
+  assert.equal((await one(db, "SELECT value FROM app_config WHERE key = $1", [SALE_ESCROW_FLAG_KEY])).value, "off");
+});
+
 test("#6181: udbetalings-beskeden gennem den rigtige notifyTeamOwner: een besked til saelgerens bruger, ogsaa efter heal-sweepet", async () => {
   const db = await database();
   await setFlag(db, "on");
