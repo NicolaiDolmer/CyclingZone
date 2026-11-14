@@ -34,6 +34,19 @@ import {
   buildSquadRows,
   availableRoles,
   EMPTY_SELECTION,
+  clearableRaceIds,
+  entriesAfterClear,
+  selectionFromEntries,
+  clearChanges,
+  clearSubmission,
+  capClearable,
+  applyPageClear,
+  undoPageClear,
+  draftCacheAction,
+  settleClearSave,
+  createWriteGate,
+  pageClearStep,
+  raceSwitchStep,
   type SeasonRace,
   type SquadRow,
   type Selection,
@@ -394,4 +407,296 @@ test("clearSquad: alle ud, men en laast rytter beholder plads og rolle", () => {
   assert.deepEqual(cleared.freeRoleIds, []);
   assert.deepEqual(clearSquad(start).riderIds, []);
   assert.deepEqual(start.riderIds, ["a", "b", "c"], "kladden aendres ikke i stedet");
+});
+
+test("Ryd udtagelser: kun viste, kommende, aabne loeb med ryttere der kan tages ud", () => {
+  const races = [
+    race("open", 1, 1),
+    race("empty", 2, 2),
+    race("locked", 3, 3, { lineupLocked: true }),
+    race("past", 1, 1, { status: "completed" }),
+    race("out", 4, 4),
+    race("onlyLocked", 5, 5),
+  ];
+  const entries = [
+    { raceId: "open", riderId: "a", raceRole: "captain" },
+    { raceId: "locked", riderId: "a", raceRole: null },
+    { raceId: "past", riderId: "a", raceRole: null },
+    { raceId: "out", riderId: "a", raceRole: null },
+    { raceId: "onlyLocked", riderId: "t", raceRole: "captain" },
+  ];
+  const ids = clearableRaceIds(races, entries, new Set(["out"]), { onlyLocked: { riderIds: ["t"] } });
+  assert.deepEqual(ids, ["open"]);
+});
+
+test("Ryd udtagelser som kladde: de ryddede loeb beholder kun Train now-laaste ryttere, andre loeb er uroerte", () => {
+  const entries = [
+    { raceId: "r1", riderId: "a", raceRole: "captain" },
+    { raceId: "r1", riderId: "t", raceRole: "hunter" },
+    { raceId: "r2", riderId: "b", raceRole: "captain" },
+  ];
+  const shown = entriesAfterClear(entries, new Set(["r1"]), { r1: { riderIds: ["t"] } });
+  assert.deepEqual(shown, [entries[1], entries[2]]);
+  assert.equal(entriesAfterClear(entries, new Set()), entries, "ingen kladde: samme liste");
+});
+
+test("Ryd udtagelser gemmes som bulk-aendringer i samme form som et enkelt gem", () => {
+  const entries = [
+    { raceId: "r1", riderId: "a", raceRole: "hunter" },
+    { raceId: "r1", riderId: "t", raceRole: "captain" },
+    { raceId: "r2", riderId: "b", raceRole: "captain" },
+  ];
+  const changes = clearChanges(entries, ["r1", "r2"], { r1: { riderIds: ["t"] } });
+  assert.deepEqual(changes, [
+    { raceId: "r1", rider_ids: ["t"], captain_id: "t", sprint_captain_id: null, hunter_id: null, free_role_ids: [], co_captain_id: null },
+    { raceId: "r2", rider_ids: [], captain_id: null, sprint_captain_id: null, hunter_id: null, free_role_ids: [], co_captain_id: null },
+  ]);
+  const sel = selectionFromEntries([{ raceId: "r", riderId: "x", raceRole: "free_role" }, { raceId: "r", riderId: "y", raceRole: null }]);
+  assert.deepEqual(sel.riderIds, ["x", "y"]);
+  assert.deepEqual(sel.freeRoleIds, ["x"]);
+});
+
+// ── Rettelsesrunde PR #8160 (Codex-fund) ────────────────────────────────────
+
+function squad(ids: string[], captain: string | null = null): Selection {
+  const base: Selection = { ...EMPTY_SELECTION, riderIds: ids, freeRoleIds: [] };
+  return captain ? setRiderRole(base, captain, "captain") : base;
+}
+
+test("Ryd udtagelser (P1): Fortryd stiller spillerens UGEMTE kladde tilbage, ikke den gemte trup", () => {
+  const saved = squad(["a", "b", "t"], "a");
+  const draft = squad(["a", "c", "t"], "c"); // ugemt: b ud, c ind og kaptajn
+  const step = applyPageClear(draft, saved, ["t"]);
+  assert.deepEqual(step.sel.riderIds, ["t"], "rydningen viser kun den Train now-laaste");
+  assert.equal(step.before, draft, "kladden foer rydningen huskes");
+  const back = undoPageClear(step.before, saved);
+  assert.equal(back, draft, "Fortryd giver den ugemte kladde tilbage");
+  assert.equal(selectionDirty(back, saved), true, "den er stadig ugemt efter Fortryd");
+  // Uden en kladde foer rydningen (fx ny flade) falder Fortryd tilbage til den gemte trup.
+  assert.equal(undoPageClear(null, saved), saved);
+});
+
+test("Ryd udtagelser (P1): den huskede kladde slettes aldrig, mens rydningen vises", () => {
+  assert.equal(draftCacheAction({ ready: true, clearShown: true, dirty: true }), "keep");
+  assert.equal(draftCacheAction({ ready: true, clearShown: true, dirty: false }), "keep");
+  assert.equal(draftCacheAction({ ready: false, clearShown: false, dirty: false }), "keep", "ikke klar: roer intet");
+  // Efter Fortryd er den gendannede kladde dirty og huskes igen; en ren flade glemmer.
+  assert.equal(draftCacheAction({ ready: true, clearShown: false, dirty: true }), "remember");
+  assert.equal(draftCacheAction({ ready: true, clearShown: false, dirty: false }), "forget");
+});
+
+test("Ryd udtagelser (P1): gemmet afstemmes mod det SENDTE loeb og den sendte udtagelse", () => {
+  const entries = [
+    { raceId: "r1", riderId: "a", raceRole: "hunter" },
+    { raceId: "r1", riderId: "t", raceRole: "captain" },
+    { raceId: "r2", riderId: "b", raceRole: "captain" },
+  ];
+  const { changes, selections } = clearSubmission(entries, ["r1", "r2"], { r1: { riderIds: ["t"] } });
+  assert.deepEqual(changes, clearChanges(entries, ["r1", "r2"], { r1: { riderIds: ["t"] } }), "samme body som foer");
+  const sentR1 = selections.get("r1")!;
+  assert.deepEqual(sentR1.riderIds, ["t"]);
+  assert.equal(sentR1.captainId, "t", "den laaste rytters rolle sendes med");
+
+  // Uaendret flade: den sendte trup er nu den gemte, intet er ugemt.
+  const same = settleClearSave({ raceId: "r1", sel: sentR1 }, { raceId: "r1", sel: sentR1 });
+  assert.deepEqual(same, { mine: true, saved: sentR1, dirty: false });
+
+  // Spilleren tilfoejede en rytter, mens kaldet koerte: aendringen forbliver ugemt.
+  const edited = squad(["t", "x"]);
+  const kept = settleClearSave({ raceId: "r1", sel: edited }, { raceId: "r1", sel: sentR1 });
+  assert.equal(kept.mine, true);
+  if (kept.mine) {
+    assert.equal(kept.saved, sentR1, "det gemte er det SENDTE, ikke det fladen viser");
+    assert.equal(kept.dirty, true, "aendringen lavet imens er stadig ugemt");
+  }
+
+  // Spilleren skiftede loeb imens: et andet loebs flade maerkes aldrig som gemt.
+  assert.deepEqual(settleClearSave({ raceId: "r3", sel: squad(["c"]) }, { raceId: "r1", sel: sentR1 }), { mine: false });
+});
+
+test("Ryd udtagelser: et loeb hvor de laaste ryttere ville staa uden kaptajn, ryddes ikke (ét afvist loeb ville afvise hele kaldet)", () => {
+  const races = [race("noLeader", 1, 1), race("lockedCaptain", 2, 2), race("plain", 3, 3)];
+  const entries = [
+    { raceId: "noLeader", riderId: "c", raceRole: "captain" },
+    { raceId: "noLeader", riderId: "t", raceRole: "hunter" },
+    { raceId: "lockedCaptain", riderId: "a", raceRole: "hunter" },
+    { raceId: "lockedCaptain", riderId: "k", raceRole: "captain" },
+    { raceId: "plain", riderId: "a", raceRole: "captain" },
+  ];
+  const locks = { noLeader: { riderIds: ["t"] }, lockedCaptain: { riderIds: ["k"] } };
+  assert.deepEqual(clearableRaceIds(races, entries, new Set(), locks), ["lockedCaptain", "plain"]);
+  // Det der sendes for de ryddelige loeb er en gyldig trup: tom, eller med den laaste kaptajn.
+  const { selections } = clearSubmission(entries, ["lockedCaptain", "plain"], locks);
+  assert.equal(selections.get("lockedCaptain")!.captainId, "k");
+  assert.deepEqual(selections.get("plain")!.riderIds, []);
+});
+
+test("Ryd udtagelser (P2): kladden holdes altid inden for ét atomisk kald", () => {
+  const ids = Array.from({ length: 70 }, (_, i) => `r${i + 1}`);
+  const first = capClearable(ids, 0, 60);
+  assert.equal(first.ids.length, 60, "kun op til loftet");
+  assert.deepEqual(first.ids.slice(0, 2), ["r1", "r2"], "de foerste i listens raekkefoelge");
+  assert.equal(first.capped, true, "knappen siger, at resten venter");
+
+  // Kladden er fuld: intet mere kan laegges i, foer den er gemt eller fortrudt.
+  const full = capClearable(ids.slice(60), 60, 60);
+  assert.deepEqual(full, { ids: [], capped: true });
+
+  // Delvis kladde: kun resten af pladsen.
+  assert.equal(capClearable(ids, 55, 60).ids.length, 5);
+
+  // Under loftet: alt, intet loft at naevne.
+  assert.deepEqual(capClearable(["a", "b"], 0, 60), { ids: ["a", "b"], capped: false });
+
+  // Det der gemmes er ét kald med hoejst loftet af aendringer.
+  const entries = first.ids.map((raceId) => ({ raceId, riderId: "a", raceRole: null }));
+  assert.equal(clearSubmission(entries, first.ids).changes.length, 60);
+});
+
+// ── Rettelsesrunde 2 PR #8160: én skrive-laas for alle skrivekald ───────────
+// Styrede loefter: testen bestemmer selv, hvornaar et kald "naar serveren", saa raekkefoelgen er
+// praecis den Codex beskrev. Ingen sleep, intet vaegur.
+
+function deferred<T = void>() {
+  let resolve!: (value: T) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+/** En falsk server: et skrivekald laegges foerst ind, naar testen slipper dets loefte (sidst ankomne vinder). */
+function fakeServer(initial: Record<string, Selection>) {
+  const rows = new Map(Object.entries(initial));
+  const calls: string[] = [];
+  return {
+    rows,
+    calls,
+    put(raceId: string, sel: Selection, arrive: Promise<void>) {
+      calls.push(`put:${raceId}`);
+      return arrive.then(() => {
+        rows.set(raceId, sel);
+        return true;
+      });
+    },
+    bulk(selections: Map<string, Selection>, arrive: Promise<void>) {
+      calls.push(`bulk:${[...selections.keys()].join(",")}`);
+      return arrive.then(() => {
+        for (const [raceId, sel] of selections) rows.set(raceId, sel);
+        return true;
+      });
+    },
+  };
+}
+
+test("skrive-laas (P1, Codex runde 2): Ryd udtagelser under et koerende gem kan ikke slippe laasen eller sende et masse-gem samtidig", async () => {
+  const gate = createWriteGate();
+  const saved = squad(["a", "b"], "a");
+  const draft = squad(["a", "b", "c"], "a");
+  const server = fakeServer({ r1: saved });
+
+  // 1. Det almindelige gem af r1 koerer (svaret er ikke kommet endnu).
+  const firstArrives = deferred();
+  const firstSave = gate.run("save", () => server.put("r1", draft, firstArrives.promise));
+  assert.equal(gate.current(), "save");
+
+  // 2. Manageren trykker "Ryd udtagelser": fladen venter med at anvende rydningen.
+  const view = { ready: true, pendingClear: true, clearShown: false };
+  assert.equal(pageClearStep({ ...view, writing: gate.current() }), "wait", "rydningen anvendes ikke midt i et gem");
+  // Selv hvis en kladde anvendes og fortrydes, roeres laasen ikke: kun gem-kaldet selv kan slippe den.
+  applyPageClear(draft, saved, []);
+  undoPageClear(draft, saved);
+  assert.equal(gate.current(), "save", "at anvende en kladde slipper aldrig laasen");
+
+  // 3. Masse-gemmet for samme loeb forsoeges: intet sendes, mens gemmet koerer.
+  let bulkSent = false;
+  const blocked = await gate.run("bulk", async () => {
+    bulkSent = true;
+    return server.bulk(new Map([["r1", squad([])]]), Promise.resolve());
+  });
+  assert.deepEqual(blocked, { ran: false });
+  assert.equal(bulkSent, false);
+  assert.deepEqual(server.calls, ["put:r1"], "kun det foerste gem er sendt");
+
+  // 4. Det foerste gem bliver faerdigt (sidst, som i Codex' raekkefoelge): laasen slippes nu.
+  firstArrives.resolve();
+  assert.deepEqual(await firstSave, { ran: true, value: true });
+  assert.equal(gate.current(), null);
+  assert.deepEqual(server.rows.get("r1"), draft);
+
+  // 5. Rydningen anvendes foerst nu, som en ugemt kladde oven paa det gemte (ejerens valg: Gem eller Fortryd).
+  assert.equal(pageClearStep({ ...view, writing: gate.current() }), "apply");
+  const shown = applyPageClear(draft, draft, []).sel;
+  assert.equal(selectionDirty(shown, server.rows.get("r1")!), true, "siden viser rydningen som UGEMT, ikke gemt");
+
+  // 6. Masse-gemmet sendes efter gemmet; serveren ender med det, siden viser som gemt.
+  const bulkArrives = deferred();
+  const bulk = gate.run("bulk", () => server.bulk(new Map([["r1", shown]]), bulkArrives.promise));
+  assert.equal(gate.current(), "bulk");
+  bulkArrives.resolve();
+  assert.equal((await bulk).ran, true);
+  assert.deepEqual(server.calls, ["put:r1", "bulk:r1"], "kaldene krydser aldrig");
+  assert.deepEqual(server.rows.get("r1"), shown);
+});
+
+test("skrive-laas: Fortryd venter ogsaa paa et koerende kald (masse-gem eller afmeld)", async () => {
+  const gate = createWriteGate();
+  const arrives = deferred();
+  const running = gate.run("bulk", () => arrives.promise);
+  const shownClear = { ready: true, pendingClear: false, clearShown: true };
+  assert.equal(pageClearStep({ ...shownClear, writing: gate.current() }), "wait");
+  arrives.resolve();
+  await running;
+  assert.equal(pageClearStep({ ...shownClear, writing: gate.current() }), "undo");
+  // Ikke klar (fladen henter), eller intet at goere: ingen handling.
+  assert.equal(pageClearStep({ ready: false, pendingClear: true, clearShown: false, writing: null }), "none");
+  assert.equal(pageClearStep({ ready: true, pendingClear: true, clearShown: true, writing: "save" }), "none");
+});
+
+test("skrive-laas: et dobbeltklik sender kun ét kald, ogsaa foer siden naar at tegne igen", async () => {
+  const gate = createWriteGate();
+  const arrives = deferred();
+  let sent = 0;
+  const task = () => {
+    sent += 1;
+    return arrives.promise;
+  };
+  // To klik i samme tik: laasen tages synkront i det foerste.
+  const first = gate.run("save", task);
+  const second = gate.run("save", task);
+  assert.deepEqual(await second, { ran: false });
+  assert.equal(sent, 1);
+  arrives.resolve();
+  assert.equal((await first).ran, true);
+});
+
+test("skrive-laas: et kald der fejler, slipper laasen og melder fejlen videre", async () => {
+  const gate = createWriteGate();
+  const seen: Array<string | null> = [];
+  const unsubscribe = gate.subscribe(() => seen.push(gate.current()));
+  const failing = deferred();
+  const run = gate.run("withdraw", () => failing.promise);
+  failing.reject(new Error("net"));
+  await assert.rejects(run, /net/);
+  assert.equal(gate.current(), null, "laasen haenger aldrig efter en fejl");
+  assert.deepEqual(seen, ["withdraw", null], "abonnenter hoerer baade tag og slip");
+  unsubscribe();
+  await gate.run("save", async () => true);
+  assert.deepEqual(seen, ["withdraw", null], "et afmeldt abonnement kaldes ikke");
+});
+
+test("skrive-laas: et loebsskift under et kald saettes i koe, saa svaret aldrig lander paa en anden flade", async () => {
+  const gate = createWriteGate();
+  const arrives = deferred();
+  const running = gate.run("save", () => arrives.promise);
+  assert.equal(raceSwitchStep({ same: false, writing: gate.current(), dirty: true }), "queue");
+  assert.equal(raceSwitchStep({ same: false, writing: gate.current(), dirty: false }), "queue");
+  arrives.resolve();
+  await running;
+  // Efter kaldet: ugemt kladde aabner bjaelken (et fejlet gem), ellers skiftes der.
+  assert.equal(raceSwitchStep({ same: false, writing: gate.current(), dirty: true }), "ask");
+  assert.equal(raceSwitchStep({ same: false, writing: gate.current(), dirty: false }), "go");
+  assert.equal(raceSwitchStep({ same: true, writing: "bulk", dirty: true }), "none");
 });

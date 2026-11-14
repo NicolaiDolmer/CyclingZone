@@ -35,7 +35,12 @@
       "title": "Show the whole season",
       "description": "There are no upcoming races in this view. The whole season lets you plan ahead.",
       "action": "Show whole season"
-    }
+    },
+    "clear": "Clear squads",
+    "clearTitle": "{count, plural, one {Clears the squad in the race shown. Nothing is saved until you press Save.} other {Clears the squads in the # races shown. Nothing is saved until you press Save.}}",
+    "clearNone": "No squads to clear in the races shown",
+    "clearCapped": "Clears the squads in the first {count} of the races shown. One save holds at most {max} races, so save these, then clear the rest.",
+    "clearFull": "One save holds at most {max} races. Save or undo the cleared races before you clear more."
   },
   "status": {
     "ready": "Ready",
@@ -104,7 +109,9 @@
     "showStage": "Show stage {n}",
     "hide": "Hide profile",
     "show": "Show profile",
-    "unavailable": "No route data for this stage yet."
+    "unavailable": "No route data for this stage yet.",
+    "showFull": "Show full profile",
+    "hideFull": "Hide full profile"
   },
   "unsavedBar": {
     "label": "Unsaved changes",
@@ -113,6 +120,14 @@
     "stay": "Stay here",
     "discard": "Discard",
     "saveAndOpen": "Save and open"
+  },
+  "clearBar": {
+    "text": "{count, plural, one {Squad cleared in # race.} other {Squads cleared in # races.}}",
+    "note": "Nothing is saved until you save. The assistant picks empty squads when the race runs.",
+    "undo": "Undo",
+    "save": "Save",
+    "error": "Nothing was saved. {error}",
+    "errorIn": "Nothing was saved because of {race}: {error}"
   },
   "error": {
     "title": "Planning could not load",

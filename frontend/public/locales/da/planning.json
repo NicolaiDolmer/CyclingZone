@@ -35,7 +35,12 @@
       "title": "Vis hele sæsonen",
       "description": "Der er ingen kommende løb i denne visning. Hele sæsonen lader dig planlægge frem.",
       "action": "Vis hele sæsonen"
-    }
+    },
+    "clear": "Ryd udtagelser",
+    "clearTitle": "{count, plural, one {Rydder udtagelsen i det viste løb. Intet gemmes, før du trykker Gem.} other {Rydder udtagelserne i de # viste løb. Intet gemmes, før du trykker Gem.}}",
+    "clearNone": "Ingen udtagelser at rydde i de viste løb",
+    "clearCapped": "Rydder udtagelserne i de første {count} af de viste løb. Ét gem kan højst rumme {max} løb, så gem dem, og ryd derefter resten.",
+    "clearFull": "Ét gem kan højst rumme {max} løb. Gem eller fortryd de ryddede løb, før du rydder flere."
   },
   "status": {
     "ready": "Klar",
@@ -104,7 +109,9 @@
     "showStage": "Vis etape {n}",
     "hide": "Skjul profil",
     "show": "Vis profil",
-    "unavailable": "Ingen rutedata for denne etape endnu."
+    "unavailable": "Ingen rutedata for denne etape endnu.",
+    "showFull": "Vis fuld profil",
+    "hideFull": "Skjul fuld profil"
   },
   "unsavedBar": {
     "label": "Ikke gemte ændringer",
@@ -113,6 +120,14 @@
     "stay": "Bliv her",
     "discard": "Kassér",
     "saveAndOpen": "Gem og åbn"
+  },
+  "clearBar": {
+    "text": "{count, plural, one {Udtagelsen er ryddet i # løb.} other {Udtagelserne er ryddet i # løb.}}",
+    "note": "Intet er gemt, før du gemmer. Assistenten udtager tomme trupper, når løbet køres.",
+    "undo": "Fortryd",
+    "save": "Gem",
+    "error": "Intet blev gemt. {error}",
+    "errorIn": "Intet blev gemt på grund af {race}: {error}"
   },
   "error": {
     "title": "Planlægningen kunne ikke indlæses",

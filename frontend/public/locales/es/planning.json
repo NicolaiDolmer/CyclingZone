@@ -35,7 +35,12 @@
       "title": "Muestra toda la temporada",
       "description": "No hay carreras próximas en esta vista. Con toda la temporada puedes planificar con antelación.",
       "action": "Mostrar toda la temporada"
-    }
+    },
+    "clear": "Vaciar equipos",
+    "clearTitle": "{count, plural, one {Vacía el equipo de la carrera mostrada. No se guarda nada hasta que pulses Guardar.} other {Vacía los equipos de las # carreras mostradas. No se guarda nada hasta que pulses Guardar.}}",
+    "clearNone": "No hay equipos que vaciar en las carreras mostradas",
+    "clearCapped": "Vacía los equipos de las primeras {count} carreras mostradas. Un guardado admite como máximo {max} carreras: guarda estas y luego vacía el resto.",
+    "clearFull": "Un guardado admite como máximo {max} carreras. Guarda o deshaz las carreras vaciadas antes de vaciar más."
   },
   "status": {
     "ready": "Listo",
@@ -104,7 +109,9 @@
     "showStage": "Mostrar etapa {n}",
     "hide": "Ocultar perfil",
     "show": "Mostrar perfil",
-    "unavailable": "Todavía no hay datos del recorrido para esta etapa."
+    "unavailable": "Todavía no hay datos del recorrido para esta etapa.",
+    "showFull": "Ver perfil completo",
+    "hideFull": "Ocultar perfil completo"
   },
   "unsavedBar": {
     "label": "Cambios sin guardar",
@@ -113,6 +120,14 @@
     "stay": "Quedarme aquí",
     "discard": "Descartar",
     "saveAndOpen": "Guardar y abrir"
+  },
+  "clearBar": {
+    "text": "{count, plural, one {Equipo vaciado en # carrera.} other {Equipos vaciados en # carreras.}}",
+    "note": "No se guarda nada hasta que guardes. El asistente elige los equipos vacíos cuando se corre la carrera.",
+    "undo": "Deshacer",
+    "save": "Guardar",
+    "error": "No se guardó nada. {error}",
+    "errorIn": "No se guardó nada por {race}: {error}"
   },
   "error": {
     "title": "No se pudo cargar la planificación",

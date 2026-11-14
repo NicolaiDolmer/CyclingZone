@@ -412,6 +412,213 @@ const ROLE_FROM_ENTRY: Record<string, RoleKey> = {
   luxury_helper: "luxury_helper",
 };
 
+// ── "Ryd udtagelser" over de viste loeb (kladde) ────────────────────────────
+
+/** Train now-laaste ryttere pr. loeb, som saesonmatrixen sender dem (trainNowLockByRace). */
+export type TrainNowLocks = Record<string, { riderIds?: string[] } | undefined>;
+
+/**
+ * De viste loeb "Ryd udtagelser" kan rydde: kommende, ikke laaste, ikke afmeldte, med mindst én
+ * rytter der kan tages ud (Train now-laaste bliver staaende, saa et loeb med kun dem er ikke ryddeligt).
+ */
+export function clearableRaceIds(
+  races: SeasonRace[],
+  entries: SeasonEntry[],
+  withdrawn: Set<string> = new Set(),
+  locks: TrainNowLocks = {},
+): string[] {
+  return races
+    .filter((race) => !isRacePast(race) && !race.lineupLocked && !withdrawn.has(race.id))
+    .filter((race) => {
+      const locked = new Set(locks[race.id]?.riderIds ?? []);
+      const own = entries.filter((e) => e.raceId === race.id);
+      if (!own.some((e) => !locked.has(e.riderId))) return false;
+      // Det der bliver tilbage, skal kunne gemmes: serveren kraever en kaptajn, saa snart truppen ikke
+      // er tom. Bliver der laaste ryttere uden en laast kaptajn, ville hele det atomiske kald afvises;
+      // saadan et loeb ryddes derfor ikke (spilleren rydder det selv paa fladen).
+      const kept = own.filter((e) => locked.has(e.riderId));
+      return kept.length === 0 || kept.some((e) => e.raceRole === "captain");
+    })
+    .map((race) => race.id);
+}
+
+/** Entries som kladden viser dem: de ryddede loeb beholder kun deres Train now-laaste ryttere (med rolle). */
+export function entriesAfterClear(entries: SeasonEntry[], raceIds: Set<string>, locks: TrainNowLocks = {}): SeasonEntry[] {
+  if (!raceIds.size) return entries;
+  return entries.filter((e) => !raceIds.has(e.raceId) || (locks[e.raceId]?.riderIds ?? []).includes(e.riderId));
+}
+
+/** En udtagelse bygget af saesonmatrixens entries for ét loeb (roller foelger med). */
+export function selectionFromEntries(entries: SeasonEntry[]): Selection {
+  let sel: Selection = { ...EMPTY_SELECTION, riderIds: entries.map((e) => e.riderId), freeRoleIds: [] };
+  for (const e of entries) {
+    const role = e.raceRole ? ROLE_FROM_ENTRY[e.raceRole] : undefined;
+    if (role) sel = setRiderRole(sel, e.riderId, role);
+  }
+  return sel;
+}
+
+/**
+ * Body til PUT /api/races/selection/bulk for de ryddede loeb: hvert loeb gemmes med de ryttere der
+ * bliver (kun Train now-laaste, som serveren ikke lader tage ud). Samme form som et enkelt gem.
+ */
+export function clearChanges(entries: SeasonEntry[], raceIds: string[], locks: TrainNowLocks = {}): Array<Record<string, unknown>> {
+  return clearSubmission(entries, raceIds, locks).changes;
+}
+
+/**
+ * Det et gem af rydningen SENDER: body til bulk-kaldet og, pr. loeb, den udtagelse serveren gemmer.
+ * Svaret afstemmes mod dette oejebliksbillede, aldrig mod det siden viser, naar svaret kommer.
+ */
+export function clearSubmission(
+  entries: SeasonEntry[],
+  raceIds: string[],
+  locks: TrainNowLocks = {},
+): { changes: Array<Record<string, unknown>>; selections: Map<string, Selection> } {
+  const keep = entriesAfterClear(entries, new Set(raceIds), locks);
+  const selections = new Map<string, Selection>();
+  const changes = raceIds.map((raceId) => {
+    const sel = selectionFromEntries(keep.filter((e) => e.raceId === raceId));
+    selections.set(raceId, sel);
+    return { raceId, ...toPutBody(sel, sel.luxuryHelperId != null) };
+  });
+  return { changes, selections };
+}
+
+/**
+ * "Ryd udtagelser" gemmes altid i ÉT atomisk kald (PLANNING_CENTER_RULES §1: alt eller intet), og
+ * serveren tager hoejst `max` loeb pr. kald. Kladden fyldes derfor kun op til loftet, med de foerste
+ * ryddelige loeb i listens raekkefoelge. `capped` siger, at der var flere, end loftet gav plads til.
+ */
+export function capClearable(clearable: string[], draftSize: number, max: number): { ids: string[]; capped: boolean } {
+  const room = Math.max(0, max - draftSize);
+  return { ids: clearable.slice(0, room), capped: clearable.length > room };
+}
+
+/**
+ * Sidens rydning rammer det aabne loeb: fladen viser den ryddede trup (Train now-laaste bliver, med
+ * rolle fra den gemte trup), og kladden FOER rydningen huskes, saa Fortryd kan stille netop den tilbage.
+ */
+export function applyPageClear(current: Selection, saved: Selection, lockedIds: Iterable<string>): { sel: Selection; before: Selection } {
+  return { sel: clearSquad(saved, lockedIds), before: current };
+}
+
+/** Fortryd paa siden: den kladde spilleren havde foer rydningen, ellers den gemte trup. */
+export function undoPageClear(before: Selection | null, saved: Selection): Selection {
+  return before ?? saved;
+}
+
+/**
+ * Hvad fladen goer med den huskede kladde (localStorage). Mens sidens rydning vises, roeres den ikke:
+ * rydningen er kun en kladde, og spillerens egen ugemte trup skal overleve et Fortryd.
+ */
+export function draftCacheAction({ ready, clearShown, dirty }: { ready: boolean; clearShown: boolean; dirty: boolean }): "keep" | "remember" | "forget" {
+  if (!ready || clearShown) return "keep";
+  return dirty ? "remember" : "forget";
+}
+
+/**
+ * Et gemt bulk-kald afstemmes mod det loeb og den udtagelse der blev SENDT. Et andet loeb end det
+ * fladen viser roeres ikke; aendringer lavet mens kaldet koerte, forbliver ugemte (dirty).
+ */
+export function settleClearSave(
+  view: { raceId: string; sel: Selection },
+  submitted: { raceId: string; sel: Selection },
+): { mine: false } | { mine: true; saved: Selection; dirty: boolean } {
+  if (view.raceId !== submitted.raceId) return { mine: false };
+  return { mine: true, saved: submitted.sel, dirty: selectionDirty(view.sel, submitted.sel) };
+}
+
+// ── Skrive-laasen: ÉT sted ejer "der er et skrivekald i gang" ───────────────
+
+/** Hvilket skrivekald der koerer: fladens gem, en afmelding/deltag igen, eller sidens masse-gem. */
+export type WriteKind = "save" | "withdraw" | "bulk";
+
+export type WriteResult<T> = { ran: true; value: T } | { ran: false };
+
+/**
+ * Siden har én skrive-laas for alle sine skrivekald (gem, afmeld, masse-gem). Laasen tages synkront
+ * (et dobbeltklik kan aldrig sende to kald), og den slippes KUN af det kald, der tog den, naar det er
+ * faerdigt (ogsaa ved fejl). Intet andet kan slippe den: hverken en kladde, der anvendes, en
+ * fortrydelse eller fladens visnings-tilstand. Alle veje, der sender eller anvender noget, laeser den.
+ */
+export interface WriteGate {
+  /** Det kald, der holder laasen lige nu, eller null. */
+  current: () => WriteKind | null;
+  /** Til useSyncExternalStore: kaldes hver gang laasen tages eller slippes. */
+  subscribe: (listener: () => void) => () => void;
+  /** Koer `task` med laasen. Holdes den allerede, sendes intet (`ran: false`). */
+  run: <T>(kind: WriteKind, task: () => Promise<T>) => Promise<WriteResult<T>>;
+}
+
+export function createWriteGate(): WriteGate {
+  let held: WriteKind | null = null;
+  const listeners = new Set<() => void>();
+  const notify = () => {
+    for (const listener of [...listeners]) listener();
+  };
+  return {
+    current: () => held,
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    async run(kind, task) {
+      if (held) return { ran: false };
+      held = kind;
+      notify();
+      try {
+        return { ran: true, value: await task() };
+      } finally {
+        held = null;
+        notify();
+      }
+    },
+  };
+}
+
+/**
+ * Hvad fladen goer med sidens rydning lige nu. Mens et skrivekald koerer, VENTER den: en rydning
+ * eller en fortrydelse anvendes foerst, naar kaldet er faerdigt, saa en kladde aldrig kan blandes
+ * ind i (eller loese op for) et gem, der stadig er undervejs.
+ */
+export function pageClearStep({
+  ready,
+  pendingClear,
+  clearShown,
+  writing,
+}: {
+  ready: boolean;
+  pendingClear: boolean;
+  clearShown: boolean;
+  writing: WriteKind | null;
+}): "apply" | "undo" | "wait" | "none" {
+  if (!ready) return "none";
+  const step = pendingClear && !clearShown ? "apply" : !pendingClear && clearShown ? "undo" : "none";
+  return step !== "none" && writing ? "wait" : step;
+}
+
+/**
+ * Et klik paa et andet loeb. Mens et skrivekald koerer, saettes skiftet i koe og udfoeres, naar
+ * kaldet er faerdigt (saa et svar aldrig lander paa en flade, der er skiftet imens). Ugemte
+ * aendringer aabner bjaelken i stedet for at gaa tabt.
+ */
+export function raceSwitchStep({
+  same,
+  writing,
+  dirty,
+}: {
+  same: boolean;
+  writing: WriteKind | null;
+  dirty: boolean;
+}): "none" | "queue" | "ask" | "go" {
+  if (same) return "none";
+  if (writing) return "queue";
+  return dirty ? "ask" : "go";
+}
+
 // ── Trup-tabellen (Squad) ───────────────────────────────────────────────────
 
 export interface SquadRow {

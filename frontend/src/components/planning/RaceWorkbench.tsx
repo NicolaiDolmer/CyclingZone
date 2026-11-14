@@ -2,7 +2,7 @@
 // Alt gemmes gennem det EKSISTERENDE udtagelses-endpoint (PUT /api/races/:id/selection), med
 // samme klient-validering og samme serverfejl som udtagelsespanelet. Intet gemmes af sig selv:
 // "Suggest squad" og "Copy squad from" fylder en kladde som spilleren gennemgaar og selv gemmer.
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Button,
@@ -28,12 +28,17 @@ import { deadlineCountdown } from "../../lib/selectionReminder.ts";
 import {
   DEFAULT_SQUAD_SORT,
   EMPTY_SELECTION,
+  applyPageClear,
   buildSquadRows,
   clearSquad,
   copySquadFrom,
+  draftCacheAction,
+  settleClearSave,
+  undoPageClear,
   entriesFromSelection,
   nextSort,
   overlappingRaces,
+  pageClearStep,
   profileColumns,
   selectionDirty,
   selectionFromServer,
@@ -46,6 +51,7 @@ import {
   type SeasonEntry,
   type SeasonRace,
   type SquadSortKey,
+  type WriteGate,
 } from "../../lib/planningWorkbench.ts";
 
 function formatStart(iso: string | null | undefined, language: string): string | null {
@@ -75,6 +81,15 @@ function hoursUntil(iso: string | null | undefined, nowMs: number): number | nul
 export interface RaceWorkbenchHandle {
   save: () => Promise<boolean>;
   discard: () => void;
+  /**
+   * Sidens "Ryd udtagelser" er gemt for `raceId` med den SENDTE udtagelse. Svarer true, naar det er
+   * fladens eget loeb (fladen styrer saa selv sin huskede kladde); et andet loeb roeres ikke.
+   */
+  markSaved: (raceId: string, submitted: Selection) => boolean;
+  /** Hent rytternes tilgaengelighed (bindinger) igen efter et gem andetsteds; kladden roeres ikke. */
+  refreshAvailability: () => Promise<void>;
+  /** Har fladen ugemte aendringer lige nu (sidens rydning tæller ikke; den har sin egen bjaelke)? */
+  isDirty: () => boolean;
 }
 
 interface RaceWorkbenchProps {
@@ -90,6 +105,25 @@ interface RaceWorkbenchProps {
   seasonYear?: number | null;
   profileHidden: boolean;
   onToggleProfileHidden: () => void;
+  /** Loebssidens fulde ruteprofil i stedet for det kompakte kort ("Vis fuld profil"). */
+  profileFull?: boolean;
+  onToggleProfileFull?: () => void;
+  /** Loebet er ryddet af sidens "Ryd udtagelser" (kladde, intet gemt endnu). */
+  pendingClear?: boolean;
+  /** Spilleren har aendret, gemt eller kasseret loebet selv: det er ikke laengere en del af sidens rydning. */
+  onLeaveClear?: (raceId: string) => void;
+  /**
+   * Sidens skrive-laas (ét sted ejer "der er et skrivekald i gang"). Fladens gem og afmelding koerer
+   * gennem den, og mens den holdes, er fladen laast og venter med at anvende sidens rydning.
+   */
+  gate: WriteGate;
+  /**
+   * Spillerens kladde foer sidens rydning, holdt af siden pr. loeb (overlever et skift af loeb, hvor
+   * fladen afmonteres). Er loebet ikke laengere i rydningen, er det kladden der skal gendannes.
+   */
+  clearBefore?: Selection | null;
+  /** Fladen melder kladden foer rydningen (eller null: den er brugt eller ikke laengere relevant). */
+  onClearBefore?: (raceId: string, before: Selection | null) => void;
   onDirtyChange?: (dirty: boolean) => void;
   onSaved?: (raceId: string, entries: SeasonEntry[]) => void;
   onWithdrawnChange?: (raceId: string, withdrawn: boolean) => void;
@@ -114,6 +148,13 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     seasonYear = null,
     profileHidden,
     onToggleProfileHidden,
+    profileFull = false,
+    onToggleProfileFull,
+    pendingClear = false,
+    onLeaveClear,
+    gate,
+    clearBefore = null,
+    onClearBefore,
     onDirtyChange,
     onSaved,
     onWithdrawnChange,
@@ -127,18 +168,30 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
   const [saved, setSaved] = useState<Selection>(EMPTY_SELECTION);
   const [sel, setSel] = useState<Selection>(EMPTY_SELECTION);
   const [sort, setSort] = useState(DEFAULT_SQUAD_SORT);
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  // Visningen af sidste gem (besked). "Gemmer" er IKKE en visnings-tilstand: det er sidens skrive-laas,
+  // som kun det kald der tog den kan slippe (en anvendt kladde kan derfor aldrig loese noget op).
+  const [saveState, setSaveState] = useState<"idle" | "saved" | "error">("idle");
+  const writing = useSyncExternalStore(gate.subscribe, gate.current);
+  const locked = writing !== null;
+  const saving = writing === "save";
+  const withdrawBusy = writing === "withdraw";
   const [saveError, setSaveError] = useState<SaveError | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [copyOpen, setCopyOpen] = useState(false);
   const [profiles, setProfiles] = useState<StageProfileRow[]>([]);
   const [profilesLoading, setProfilesLoading] = useState(true);
-  const [withdrawBusy, setWithdrawBusy] = useState(false);
+  // Viser fladen sidens rydning lige nu (kladden er "ryd", ikke spillerens egne aendringer)?
+  const [clearShown, setClearShown] = useState(false);
+  // Spillerens kladde FOER sidens rydning: Fortryd stiller den tilbage (ikke den gemte trup).
+  const beforeClear = useRef<Selection | null>(null);
   const generation = useRef(0);
-  const latest = useRef<{ sel: Selection; saved: Selection; readOnly: boolean; clientErrors: string[]; sprintLeaderAllowed: boolean; size: { min: number; max: number } } | null>(null);
+  const latest = useRef<{ ready: boolean; sel: Selection; saved: Selection; readOnly: boolean; clientErrors: string[]; sprintLeaderAllowed: boolean; size: { min: number; max: number }; clearShown: boolean } | null>(null);
 
   const dirty = state === "ready" && selectionDirty(sel, saved);
-  useReloadBlock(dirty || saveState === "saving", RELOAD_BLOCK_REASONS.DIRTY);
+  useReloadBlock(dirty || locked, RELOAD_BLOCK_REASONS.DIRTY);
+  // Sidens rydning, som load() ser den (load er bundet til loebet alene og maa ikke genkoere ved hvert skift).
+  const pageClear = useRef({ pendingClear, clearBefore, onClearBefore });
+  pageClear.current = { pendingClear, clearBefore, onClearBefore };
 
   const load = useCallback(async () => {
     const gen = ++generation.current;
@@ -150,6 +203,8 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     setSort(DEFAULT_SQUAD_SORT);
     setSel(EMPTY_SELECTION);
     setSaved(EMPTY_SELECTION);
+    setClearShown(false);
+    beforeClear.current = null;
     setProfilesLoading(true);
     loadStageProfiles(race.id).then((rows) => {
       if (gen !== generation.current) return;
@@ -168,9 +223,13 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
       const server = body.withdrawn && !body.did_not_start && !body.lineup_locked ? null : body.selection;
       const initial = selectionFromServer(server);
       // Et ugemt udkast overlever en navigation vaek fra siden (kladden er ikke gemt, men heller ikke tabt).
-      const draft = readSelectionDraft(race.id);
+      // Er sidens rydning fortrudt, mens loebet ikke var aabent, er det kladden FOER rydningen, der gendannes.
+      const page = pageClear.current;
+      const kept = !page.pendingClear ? page.clearBefore : null;
+      const draft = kept ?? readSelectionDraft(race.id);
       const restored: Selection = draft ? reconcileSelectionDraft(draft, body.riders) : initial;
       const wasRestored = draft != null && selectionDirty(restored, initial);
+      if (kept) page.onClearBefore?.(race.id, null);
       setData(body);
       setSaved(initial);
       setSel(wasRestored ? restored : initial);
@@ -188,15 +247,51 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     };
   }, [load]);
 
+  // Sidens rydning er sidens egen kladde: den aabner ikke bjaelken ved skift af loeb (den gaelder
+  // stadig, til den gemmes eller fortrydes i sin egen bjaelke).
   useEffect(() => {
-    onDirtyChange?.(dirty);
-  }, [dirty, onDirtyChange]);
+    onDirtyChange?.(dirty && !clearShown);
+  }, [dirty, clearShown, onDirtyChange]);
 
+  // Den huskede kladde roeres ikke, mens sidens rydning vises (rydningen er kun en kladde).
   useEffect(() => {
-    if (state !== "ready") return;
-    if (dirty) rememberSelectionDraft(race.id, sel);
-    else forgetSelectionDraft(race.id);
-  }, [state, dirty, sel, race.id]);
+    const action = draftCacheAction({ ready: state === "ready", clearShown, dirty });
+    if (action === "remember") rememberSelectionDraft(race.id, sel);
+    else if (action === "forget") forgetSelectionDraft(race.id);
+  }, [state, dirty, sel, race.id, clearShown]);
+
+  // "Ryd udtagelser" paa siden: loebet vises ryddet (Train now-laaste bliver, med rolle). Fortryder
+  // spilleren paa siden, stilles den kladde tilbage, som stod der foer rydningen (en ugemt trup er
+  // ikke tabt). Spillerens egne aendringer bryder forbindelsen. Mens et skrivekald koerer, venter
+  // baade rydning og fortrydelse, til kaldet er faerdigt (pageClearStep); de roerer aldrig laasen.
+  const lockedKey = (data?.trainNowLock?.riderIds ?? []).join(",");
+  useEffect(() => {
+    const step = pageClearStep({ ready: state === "ready", pendingClear, clearShown, writing });
+    if (step === "apply") {
+      // Har siden allerede kladden foer rydningen (fladen er monteret igen efter et skift), er det den.
+      const step = applyPageClear(clearBefore ?? sel, saved, lockedKey ? lockedKey.split(",") : []);
+      beforeClear.current = step.before;
+      if (!clearBefore && selectionDirty(sel, saved)) onClearBefore?.(race.id, sel);
+      setSel(step.sel);
+      setClearShown(true);
+      setSaveState("idle");
+      setSaveError(null);
+      setNote(null);
+    } else if (step === "undo") {
+      setSel(undoPageClear(beforeClear.current, saved));
+      beforeClear.current = null;
+      setClearShown(false);
+      onClearBefore?.(race.id, null);
+    }
+  }, [state, pendingClear, clearShown, writing, saved, sel, lockedKey, clearBefore, onClearBefore, race.id]);
+
+  const leaveClear = () => {
+    if (!clearShown) return;
+    beforeClear.current = null;
+    setClearShown(false);
+    onClearBefore?.(race.id, null);
+    onLeaveClear?.(race.id);
+  };
 
   const stageTypes = useMemo(
     () => profiles.map((p) => p.profile_type).filter((type): type is string => typeof type === "string" && type.length > 0),
@@ -239,9 +334,14 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
         : sel.riderIds.length > 0
           ? tr(outlook.kind === "assistantFills" ? "selection.partialHint" : "selection.partialHintShort", { open: outlook.open, free: outlook.free })
           : null;
-  const blockReason = dirty && clientErrors.length ? tr(`selection.errors.${clientErrors[0]}`, { min: size.min, max: size.max }) : null;
+  // Et loeb i sidens rydning gemmes fra bjaelken (som /planning's "Ryd udtagelse"), saa fladens egen
+  // kaptajn-regel for "Gem trup" vises ikke som en fejl her.
+  const blockReason = dirty && !clearShown && clientErrors.length ? tr(`selection.errors.${clientErrors[0]}`, { min: size.min, max: size.max }) : null;
 
   const edit = (next: Selection) => {
+    // Mens et skrivekald koerer, aendres kladden ikke: svaret afstemmes altid mod det, der blev sendt.
+    if (gate.current()) return;
+    leaveClear();
     setSel(next);
     setSaveState("idle");
     setSaveError(null);
@@ -262,77 +362,125 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
 
   const setRole = (riderId: string, role: RoleKey) => edit(setRiderRole(sel, riderId, role));
 
+  // Gem koerer gennem sidens skrive-laas: holdes den (et andet gem, en afmelding, sidens masse-gem
+  // eller et dobbeltklik), sendes intet. Det SENDTE oejebliksbillede er det, der bliver det gemte.
   const save = useCallback(async () => {
     const current = latest.current;
     if (!current || current.readOnly || current.clientErrors.length > 0) return false;
-    setSaveState("saving");
-    setSaveError(null);
-    try {
-      const res = await saveRaceSelection(race.id, toPutBody(current.sel, current.sprintLeaderAllowed));
-      if (!res.ok) {
-        const body = res.data ?? {};
-        const conflict = Array.isArray(body.conflicts) ? body.conflicts[0] : null;
+    const result = await gate.run("save", async () => {
+      setSaveError(null);
+      try {
+        const res = await saveRaceSelection(race.id, toPutBody(current.sel, current.sprintLeaderAllowed));
+        if (!res.ok) {
+          const body = res.data ?? {};
+          const conflict = Array.isArray(body.conflicts) ? body.conflicts[0] : null;
+          setSaveState("error");
+          setSaveError(
+            conflict
+              ? { code: "selection_rider_bound_named", params: { rider: conflict.rider_name ?? "", race: conflict.race_name ?? conflict.bound_race_name ?? "" } }
+              : { code: body.error || "generic", params: { min: current.size.min, max: current.size.max } },
+          );
+          return false;
+        }
+        setSaved(current.sel);
+        setData((d: SelectionResponse) => (d ? { ...d, withdrawn: false } : d)); // et gem melder holdet til igen
+        setSaveState("saved");
+        beforeClear.current = null;
+        setClearShown(false); // et gem af en ryddet trup er gemt; siden fjerner loebet fra sin rydning (onSaved)
+        onClearBefore?.(race.id, null);
+        onSaved?.(race.id, entriesFromSelection(race.id, current.sel));
+        return true;
+      } catch {
         setSaveState("error");
-        setSaveError(
-          conflict
-            ? { code: "selection_rider_bound_named", params: { rider: conflict.rider_name ?? "", race: conflict.race_name ?? conflict.bound_race_name ?? "" } }
-            : { code: body.error || "generic", params: { min: current.size.min, max: current.size.max } },
-        );
+        setSaveError({ code: "generic", params: {} });
         return false;
       }
-      setSaved(current.sel);
-      setData((d: SelectionResponse) => (d ? { ...d, withdrawn: false } : d)); // et gem melder holdet til igen
-      setSaveState("saved");
-      onSaved?.(race.id, entriesFromSelection(race.id, current.sel));
-      return true;
-    } catch {
-      setSaveState("error");
-      setSaveError({ code: "generic", params: {} });
-      return false;
-    }
-  }, [race.id, onSaved]);
+    });
+    return result.ran ? result.value : false;
+  }, [gate, race.id, onSaved, onClearBefore]);
 
   const discard = useCallback(() => {
-    if (!latest.current) return;
+    if (!latest.current || gate.current()) return;
     forgetSelectionDraft(race.id);
     setSel(latest.current.saved);
     setSaveState("idle");
     setSaveError(null);
     setNote(null);
+    // Kassér paa et ryddet loeb fortryder rydningen for netop dette loeb.
+    if (latest.current.clearShown) {
+      beforeClear.current = null;
+      setClearShown(false);
+      onClearBefore?.(race.id, null);
+      onLeaveClear?.(race.id);
+    }
+  }, [gate, race.id, onLeaveClear, onClearBefore]);
+
+  // Afstemningen sker mod det SENDTE (loebs-id + udtagelse), ikke mod det fladen viser nu: et andet
+  // loeb roeres ikke, og aendringer lavet mens kaldet koerte, forbliver en ugemt kladde.
+  const markSaved = useCallback((raceId: string, submitted: Selection) => {
+    const current = latest.current;
+    if (!current || !current.ready) return false;
+    const result = settleClearSave({ raceId: race.id, sel: current.sel }, { raceId, sel: submitted });
+    if (!result.mine) return false;
+    beforeClear.current = null;
+    setSaved(result.saved);
+    setClearShown(false);
+    setSaveError(null);
+    if (!result.dirty) {
+      forgetSelectionDraft(race.id);
+      setSaveState("saved");
+    }
+    return true;
   }, [race.id]);
 
-  latest.current = { sel, saved, readOnly, clientErrors, sprintLeaderAllowed, size };
-  useImperativeHandle(ref, () => ({ save, discard }), [save, discard]);
+  // Et gem af andre loeb kan frigive ryttere, der stod som bundet her: hent kun rytterlisten igen.
+  const refreshAvailability = useCallback(async () => {
+    const gen = generation.current;
+    try {
+      const res = await loadRaceSelection(race.id);
+      if (gen !== generation.current || !res.ok || !res.data) return;
+      setData(res.data);
+    } catch {
+      // catch-ok: tilgaengeligheden er blot den forrige, til fladen hentes igen; intet er tabt.
+    }
+  }, [race.id]);
+
+  const isDirty = useCallback(() => {
+    const current = latest.current;
+    return !!current && current.ready && !current.clearShown && selectionDirty(current.sel, current.saved);
+  }, []);
+
+  latest.current = { ready: state === "ready", sel, saved, readOnly, clientErrors, sprintLeaderAllowed, size, clearShown };
+  useImperativeHandle(ref, () => ({ save, discard, markSaved, refreshAvailability, isDirty }), [save, discard, markSaved, refreshAvailability, isDirty]);
 
   // Afmeld / deltag igen: samme endpoint, samme guards og samme tekster som loebstavlen paa /planning.
   // En afmelding smider en ugemt kladde (som tavlen), og fladen genindlaeses fra serveren bagefter.
-  const toggleWithdrawal = async (withdraw: boolean) => {
-    setWithdrawBusy(true);
-    setSaveError(null);
-    try {
-      const res = await setRaceWithdrawal(race.id, withdraw);
-      if (!res.ok) {
-        const body = res.data ?? {};
-        // "Deltag igen" kan afvises fordi en rytter nu koerer et overlappende loeb: vis hvem og hvor (som et gem).
-        const conflict = Array.isArray(body.conflicts) ? body.conflicts[0] : null;
+  // Kaldet holder sidens skrive-laas, til fladen er hentet igen (saa intet anvendes paa en gammel flade).
+  const toggleWithdrawal = (withdraw: boolean) =>
+    gate.run("withdraw", async () => {
+      setSaveError(null);
+      try {
+        const res = await setRaceWithdrawal(race.id, withdraw);
+        if (!res.ok) {
+          const body = res.data ?? {};
+          // "Deltag igen" kan afvises fordi en rytter nu koerer et overlappende loeb: vis hvem og hvor (som et gem).
+          const conflict = Array.isArray(body.conflicts) ? body.conflicts[0] : null;
+          setSaveState("error");
+          setSaveError(
+            conflict
+              ? { code: "selection_rider_bound_named", params: { rider: conflict.rider_name ?? "", race: conflict.race_name ?? conflict.bound_race_name ?? "" } }
+              : { code: body.error || "generic", params: { min: size.min, max: size.max } },
+          );
+          return;
+        }
+        if (withdraw) forgetSelectionDraft(race.id);
+        onWithdrawnChange?.(race.id, withdraw);
+        await load();
+      } catch {
         setSaveState("error");
-        setSaveError(
-          conflict
-            ? { code: "selection_rider_bound_named", params: { rider: conflict.rider_name ?? "", race: conflict.race_name ?? conflict.bound_race_name ?? "" } }
-            : { code: body.error || "generic", params: { min: size.min, max: size.max } },
-        );
-        return;
+        setSaveError({ code: "generic", params: {} });
       }
-      if (withdraw) forgetSelectionDraft(race.id);
-      onWithdrawnChange?.(race.id, withdraw);
-      await load();
-    } catch {
-      setSaveState("error");
-      setSaveError({ code: "generic", params: {} });
-    } finally {
-      setWithdrawBusy(false);
-    }
-  };
+    });
 
   const clearSelection = () => {
     // Kun en kladde: intet gemmes foer spilleren selv trykker Gem (laaste Train now-ryttere bliver staaende).
@@ -373,7 +521,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     canWithdraw || (isWithdrawn && !readOnly) ? (
       <div className="flex flex-wrap items-center gap-1">
         {canWithdraw && sel.riderIds.length > 0 && (
-          <Button variant="ghost" size="sm" onClick={clearSelection} disabled={saveState === "saving" || withdrawBusy}>
+          <Button variant="ghost" size="sm" onClick={clearSelection} disabled={locked}>
             {tr("racehub.column.clearSelection")}
           </Button>
         )}
@@ -382,7 +530,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
           size="sm"
           onClick={() => toggleWithdrawal(!isWithdrawn)}
           loading={withdrawBusy}
-          disabled={saveState === "saving" || withdrawBusy}
+          disabled={locked}
           data-testid="planning-withdraw"
         >
           {isWithdrawn ? tr("racehub.column.reenter") : tr("racehub.column.withdraw")}
@@ -434,6 +582,8 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
           loading={profilesLoading}
           hidden={profileHidden}
           onToggleHidden={onToggleProfileHidden}
+          full={profileFull}
+          onToggleFull={onToggleProfileFull}
           hasClassifications={race.stages > 1}
         />
         {rows.length === 0 ? (
@@ -462,7 +612,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
               onSort={(key: SquadSortKey) => setSort((current) => nextSort(current, key))}
               profileCols={profileCols}
               max={size.max}
-              readOnly={readOnly || saveState === "saving"}
+              readOnly={readOnly || locked}
               sprintLeaderAllowed={sprintLeaderAllowed}
               onToggle={toggle}
               onRole={setRole}
@@ -516,18 +666,18 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
         </div>
         {state === "ready" && !readOnly && (
           <div className="relative flex flex-wrap items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setCopyOpen((v) => !v)} aria-expanded={copyOpen} disabled={saveState === "saving"}>
+            <Button variant="secondary" size="sm" onClick={() => setCopyOpen((v) => !v)} aria-expanded={copyOpen} disabled={locked}>
               {t("race.copyFrom")}
             </Button>
-            <Button variant="secondary" size="sm" onClick={suggest} disabled={saveState === "saving" || rows.length === 0}>
+            <Button variant="secondary" size="sm" onClick={suggest} disabled={locked || rows.length === 0}>
               {t("race.suggest")}
             </Button>
             {dirty && (
-              <Button variant="ghost" size="sm" onClick={discard} disabled={saveState === "saving"}>
+              <Button variant="ghost" size="sm" onClick={discard} disabled={locked}>
                 {t("race.discard")}
               </Button>
             )}
-            <Button variant="primary" size="sm" onClick={save} loading={saveState === "saving"} disabled={!dirty || clientErrors.length > 0}>
+            <Button variant="primary" size="sm" onClick={save} loading={saving} disabled={!dirty || locked || clientErrors.length > 0}>
               {t("race.save")}
             </Button>
             {copyOpen && (

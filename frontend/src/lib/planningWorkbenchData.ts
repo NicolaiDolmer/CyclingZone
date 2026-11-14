@@ -3,6 +3,7 @@
 //   GET /api/races/selection/season   saesonmatrixen: loeb, entries, afmeldinger, loebsdag til dato
 //   GET /api/races/:id/selection      ryttere med rute-match, form, traethed, skade og binding
 //   PUT /api/races/:id/selection      gem (samme guards som overalt ellers)
+//   PUT /api/races/selection/bulk     gem af "Ryd udtagelser" over flere loeb (samme regler, ét kald)
 //   GET /api/races/distribution       kun seasonLoadByRider (samme tal som dagvisningens rytter-chip)
 //   riders + rider_condition          nation, foedselsdato og skadesdato (som rytter-hoverkortet)
 // Etape-profiler (ruteprofil og etapetyper) laeses som paa loebssiden fra race_stage_profiles.
@@ -36,6 +37,15 @@ export async function loadRaceSelection(raceId: string) {
 
 export async function saveRaceSelection(raceId: string, body: unknown) {
   return authed(`/api/races/${encodeURIComponent(raceId)}/selection`, { method: "PUT", body: JSON.stringify(body) });
+}
+
+/**
+ * Gem flere loebs udtagelse i ét kald (PUT /api/races/selection/bulk): samme regler som et enkelt gem,
+ * og alt eller intet pr. kald. Bruges af "Ryd udtagelser", naar spilleren gemmer kladden.
+ */
+export const SELECTION_BULK_MAX = 60; // serverens loft pr. kald
+export async function saveRaceSelectionsBulk(changes: Array<Record<string, unknown>>) {
+  return authed("/api/races/selection/bulk", { method: "PUT", body: JSON.stringify({ changes }) });
 }
 
 /** Afmeld (withdraw = true) eller deltag igen: samme endpoint og samme guards som loebstavlens knap. */
