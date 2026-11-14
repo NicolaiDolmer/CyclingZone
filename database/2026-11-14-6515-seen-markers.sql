@@ -21,7 +21,8 @@
 -- (42703/PGRST204 haandteres).
 --
 -- RLS: uaendret fra #7778 (enabled, INGEN policy, kun service_role). Ingen nye
--- grants; klienten laeser/skriver aldrig tabellen direkte.
+-- tabel-grants; klienten laeser/skriver aldrig tabellen direkte. De to nye
+-- funktioner er SECURITY INVOKER og kun kaldbare af service_role.
 --
 -- POST-VERIFY (read-only, efter apply):
 --   1. SELECT data_type, is_nullable, column_default FROM information_schema.columns
@@ -30,8 +31,12 @@
 --   2. SELECT relrowsecurity FROM pg_class WHERE oid = 'public.user_ui_prefs'::regclass;  -- true
 --   3. SELECT grantee, privilege_type FROM information_schema.role_table_grants
 --       WHERE table_schema = 'public' AND table_name = 'user_ui_prefs';  -- kun service_role (+ postgres)
+--   4. SELECT r, has_function_privilege(r, 'public.merge_seen_markers_6515(uuid,jsonb)', 'EXECUTE')
+--       FROM unnest(ARRAY['anon','authenticated','service_role']) r;  -- false, false, true
 --
--- Rollback: ALTER TABLE public.user_ui_prefs DROP COLUMN IF EXISTS seen_markers;
+-- Rollback: DROP FUNCTION IF EXISTS public.merge_seen_markers_6515(uuid, jsonb);
+--           DROP FUNCTION IF EXISTS public.seen_markers_newest_6515(jsonb, jsonb);
+--           ALTER TABLE public.user_ui_prefs DROP COLUMN IF EXISTS seen_markers;
 --
 -- Refs #6515
 -- data-api-access: {"table":"public.user_ui_prefs","roles":{"anon":[],"authenticated":[],"service_role":["SELECT","INSERT","UPDATE","DELETE"]},"reason":"Per-user display choices and seen markers; only the backend /api/me/ui-prefs and /api/me/seen-markers routes read and write them"}
@@ -58,6 +63,62 @@ $$;
 COMMENT ON COLUMN public.user_ui_prefs.seen_markers IS
   '#6515: when the user last saw patch notes / roadmap (keys in backend/lib/seenMarkers6515.js). '
   'Markers only move forward; the client keeps a fast local copy.';
+
+-- Fletning pr. markør: den nyeste værdi vinder. Byte-orden (COLLATE "C"), så
+-- sammenligningen er den samme som klientens og backendens strengsammenligning
+-- i JavaScript; en sprog-sortering kunne vende rækkefølgen af to tidsstempler.
+-- En ikke-streng i den gemte række tæller som fraværende.
+CREATE OR REPLACE FUNCTION public.seen_markers_newest_6515(p_current jsonb, p_patch jsonb)
+RETURNS jsonb
+LANGUAGE sql IMMUTABLE SECURITY INVOKER SET search_path = pg_catalog, public
+AS $$
+  SELECT COALESCE(p_current, '{}'::jsonb) || COALESCE((
+    SELECT jsonb_object_agg(p.key, p.value)
+    FROM jsonb_each(COALESCE(p_patch, '{}'::jsonb)) AS p(key, value)
+    WHERE jsonb_typeof(p.value) = 'string'
+      AND (jsonb_typeof(p_current -> p.key) IS DISTINCT FROM 'string'
+           OR (p.value #>> '{}') COLLATE "C" > (p_current ->> p.key) COLLATE "C")
+  ), '{}'::jsonb)
+$$;
+
+-- Atomisk skrivning (Codex-fund på PR #8169): før læste backenden rækken, flettede
+-- i Node og skrev hele objektet tilbage, så to samtidige kald for samme bruger
+-- kunne overskrive hinanden (fx patch notes og roadmap mod en tom række, eller en
+-- ældre værdi oven i en nyere). Nu flettes der i én INSERT ... ON CONFLICT DO
+-- UPDATE mod den aktuelle række; Postgres låser rækken, og det andet kald fletter
+-- oven i det første. Intet skrives, når intet rykker frem. Returnerer rækkens
+-- markører efter kaldet.
+CREATE OR REPLACE FUNCTION public.merge_seen_markers_6515(p_user_id uuid, p_patch jsonb)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_markers jsonb;
+BEGIN
+  IF p_patch IS NULL OR jsonb_typeof(p_patch) <> 'object' THEN
+    RAISE EXCEPTION 'p_patch must be a json object' USING ERRCODE = '22023';
+  END IF;
+
+  INSERT INTO public.user_ui_prefs AS cur (user_id, seen_markers)
+  VALUES (p_user_id, public.seen_markers_newest_6515('{}'::jsonb, p_patch))
+  ON CONFLICT (user_id) DO UPDATE
+    SET seen_markers = public.seen_markers_newest_6515(cur.seen_markers, EXCLUDED.seen_markers),
+        updated_at = now()
+    WHERE public.seen_markers_newest_6515(cur.seen_markers, EXCLUDED.seen_markers) IS DISTINCT FROM cur.seen_markers
+  RETURNING cur.seen_markers INTO v_markers;
+
+  IF v_markers IS NULL THEN
+    -- Intet rykkede frem (rækken er låst af ON CONFLICT): læs den gemte tilstand.
+    SELECT cur.seen_markers INTO v_markers FROM public.user_ui_prefs AS cur WHERE cur.user_id = p_user_id;
+  END IF;
+  RETURN COALESCE(v_markers, '{}'::jsonb);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.seen_markers_newest_6515(jsonb, jsonb) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.seen_markers_newest_6515(jsonb, jsonb) TO service_role;
+REVOKE ALL ON FUNCTION public.merge_seen_markers_6515(uuid, jsonb) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.merge_seen_markers_6515(uuid, jsonb) TO service_role;
 
 NOTIFY pgrst, 'reload schema';
 

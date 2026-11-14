@@ -9,7 +9,9 @@
 // Værdien er en dato/tidsstempel-streng ("sidst set op til og med"). En markør
 // kan kun rykke frem: serveren gemmer altid den nyeste af den gemte og den
 // indsendte værdi. Så kan en enhed med en gammel lokal kopi aldrig hive en anden
-// enheds nyere markør tilbage og få sete prikker til at dukke op igen.
+// enheds nyere markør tilbage og få sete prikker til at dukke op igen. Fletningen
+// sker atomisk i databasen (public.merge_seen_markers_6515), så to samtidige kald
+// heller ikke kan overskrive hinanden.
 
 /** Markørernes navne. Tilføj kun et navn når en flade faktisk læser det. */
 export const SEEN_MARKER_KEYS = Object.freeze(["patch_notes", "roadmap"]);
@@ -24,15 +26,6 @@ export function isValidSeenMarker(value) {
   if (typeof value !== "string" || value.length > MAX_MARKER_LENGTH) return false;
   if (!MARKER_PATTERN.test(value)) return false;
   return !Number.isNaN(Date.parse(value.replace(" ", "T")));
-}
-
-/** Den nyeste af to markører; en ugyldig eller tom tæller som fraværende. */
-export function laterSeenMarker(a, b) {
-  const okA = isValidSeenMarker(a);
-  const okB = isValidSeenMarker(b);
-  if (!okA) return okB ? b : null;
-  if (!okB) return a;
-  return b > a ? b : a;
 }
 
 /**
@@ -77,31 +70,16 @@ export function sanitizeSeenMarkersPatch(body) {
 }
 
 /**
- * Flet: for hver markør vinder den nyeste. Returnerer også om noget rykkede.
- * @param {Record<string, string>} current
- * @param {Record<string, string>} patch
- */
-export function mergeSeenMarkers(current, patch) {
-  const merged = { ...publicSeenMarkers(current) };
-  let changed = false;
-  for (const [key, value] of Object.entries(publicSeenMarkers(patch))) {
-    const next = laterSeenMarker(merged[key], value);
-    if (next !== merged[key]) {
-      merged[key] = next;
-      changed = true;
-    }
-  }
-  return { merged, changed };
-}
-
-/**
- * Tabellen eller kolonnen findes ikke endnu (backend deployet før migrationen):
- * 42P01/42703 fra Postgres eller PGRST205/PGRST204 fra PostgREST's schema-cache.
+ * Tabellen, kolonnen eller fletnings-funktionen findes ikke endnu (backend
+ * deployet før migrationen): 42P01/42703/42883 fra Postgres eller
+ * PGRST205/PGRST204/PGRST202 fra PostgREST's schema-cache.
  * @param {{ code?: string, message?: string } | null | undefined} error
  */
 export function isMissingSeenMarkersStorage(error) {
   if (!error) return false;
-  if (["42P01", "42703", "PGRST205", "PGRST204"].includes(String(error.code ?? ""))) return true;
+  if (["42P01", "42703", "PGRST205", "PGRST204", "PGRST202"].includes(String(error.code ?? ""))) return true;
+  // 42883 (ukendt funktion) kun når det er netop vores: en anden manglende
+  // funktion er en rigtig fejl og skal kastes, ikke skjules som "ikke klar".
   const message = String(error.message ?? "");
   return /user_ui_prefs|seen_markers/.test(message) && /does not exist|schema cache|could not find/i.test(message);
 }
@@ -127,25 +105,23 @@ export async function readSeenMarkers(supabase, userId) {
 }
 
 /**
- * Læs, flet (nyeste vinder) og skriv kun hvis noget rykkede frem. Rører kun
- * kolonnen seen_markers, så visningsvalgene i prefs (#7778) står urørt.
+ * Flet (nyeste vinder) atomisk i databasen: én INSERT ... ON CONFLICT DO UPDATE
+ * i public.merge_seen_markers_6515 mod den aktuelle række. Før læste vi rækken
+ * her, flettede i Node og skrev hele objektet tilbage; to samtidige kald for
+ * samme bruger kunne så overskrive hinanden. Rører kun kolonnen seen_markers,
+ * så visningsvalgene i prefs (#7778) står urørt. Skriver intet, når intet rykker.
  * @param {any} supabase service-role klient
  * @param {string} userId
  * @param {Record<string, string>} patch allerede tjekket af sanitizeSeenMarkersPatch
- * @param {() => string} [nowIso]
  * @returns {Promise<{ markers: Record<string, string>, available: boolean }>}
  */
-export async function writeSeenMarkers(supabase, userId, patch, nowIso = () => new Date().toISOString()) {
-  const current = await readSeenMarkers(supabase, userId);
-  if (!current.available) return current;
-  const { merged, changed } = mergeSeenMarkers(current.markers, patch);
-  if (!changed) return { markers: merged, available: true };
-  const { error } = await supabase
-    .from("user_ui_prefs")
-    .upsert({ user_id: userId, seen_markers: merged, updated_at: nowIso() }, { onConflict: "user_id" });
+export async function writeSeenMarkers(supabase, userId, patch) {
+  const clean = publicSeenMarkers(patch);
+  if (!Object.keys(clean).length) return readSeenMarkers(supabase, userId);
+  const { data, error } = await supabase.rpc("merge_seen_markers_6515", { p_user_id: userId, p_patch: clean });
   if (error) {
     if (isMissingSeenMarkersStorage(error)) return { markers: {}, available: false };
     throw error;
   }
-  return { markers: merged, available: true };
+  return { markers: publicSeenMarkers(data), available: true };
 }

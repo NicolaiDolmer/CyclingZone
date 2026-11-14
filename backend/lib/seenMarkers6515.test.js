@@ -1,15 +1,15 @@
-// #6515 · Sidst set patch notes/roadmap paa brugeren: validering, nyeste-vinder-flet og lager.
+// #6515 · Sidst set patch notes/roadmap paa brugeren: validering og lager.
+// Selve nyeste-vinder-fletningen sker atomisk i databasen og proeves mod en rigtig
+// Postgres i seenMarkers6515.pglite.test.js.
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  SEEN_MARKER_KEYS, isValidSeenMarker, laterSeenMarker, publicSeenMarkers, sanitizeSeenMarkersPatch,
-  mergeSeenMarkers, isMissingSeenMarkersStorage, readSeenMarkers, writeSeenMarkers,
+  SEEN_MARKER_KEYS, isValidSeenMarker, publicSeenMarkers, sanitizeSeenMarkersPatch,
+  isMissingSeenMarkersStorage, readSeenMarkers, writeSeenMarkers,
 } from "./seenMarkers6515.js";
 
-const NOW = () => "2026-11-14T12:00:00.000Z";
-
-function fakeSupabase({ row = null, readError = null, writeError = null } = {}) {
-  const calls = { selects: [], upserts: [] };
+function fakeSupabase({ row = null, readError = null, rpcResult = {}, rpcError = null } = {}) {
+  const calls = { selects: [], rpcs: [], upserts: 0 };
   return {
     calls,
     from(table) {
@@ -18,11 +18,12 @@ function fakeSupabase({ row = null, readError = null, writeError = null } = {}) 
         select(cols) { calls.selects.push(cols); return this; },
         eq() { return this; },
         limit: async () => ({ data: readError ? null : (row ? [row] : []), error: readError }),
-        upsert: async (value, opts) => {
-          calls.upserts.push({ value, opts });
-          return { error: writeError };
-        },
+        upsert: async () => { calls.upserts += 1; return { error: null }; },
       };
+    },
+    rpc: async (name, args) => {
+      calls.rpcs.push({ name, args });
+      return { data: rpcError ? null : rpcResult, error: rpcError };
     },
   };
 }
@@ -43,14 +44,6 @@ test("isValidSeenMarker: patch-dato og PostgREST-tidsstempel godkendes, alt ande
   assert.equal(isValidSeenMarker(`2026-11-14${"0".repeat(60)}`), false);
 });
 
-test("laterSeenMarker: nyeste vinder, ugyldig taeller som fravaerende", () => {
-  assert.equal(laterSeenMarker("2026-11-10", "2026-11-14"), "2026-11-14");
-  assert.equal(laterSeenMarker("2026-11-14", "2026-11-10"), "2026-11-14");
-  assert.equal(laterSeenMarker(undefined, "2026-11-10"), "2026-11-10");
-  assert.equal(laterSeenMarker("2026-11-10", "junk"), "2026-11-10");
-  assert.equal(laterSeenMarker(null, undefined), null);
-});
-
 test("publicSeenMarkers: kun kendte noegler med gyldig vaerdi", () => {
   assert.deepEqual(publicSeenMarkers({ patch_notes: "2026-11-14", roadmap: "x", other: "2026-11-14" }), { patch_notes: "2026-11-14" });
   assert.deepEqual(publicSeenMarkers(null), {});
@@ -66,21 +59,6 @@ test("sanitize: gyldige markoerer gaar igennem, resten afvises med errorCode", (
   assert.equal(sanitizeSeenMarkersPatch(null).reason, "seen_markers_invalid_payload");
 });
 
-test("merge: en aeldre markoer kan aldrig hive en nyere tilbage", () => {
-  const { merged, changed } = mergeSeenMarkers({ patch_notes: "2026-11-14" }, { patch_notes: "2026-11-01" });
-  assert.deepEqual(merged, { patch_notes: "2026-11-14" });
-  assert.equal(changed, false);
-});
-
-test("merge: nyere markoer rykker frem, andre markoerer staar urort", () => {
-  const { merged, changed } = mergeSeenMarkers(
-    { patch_notes: "2026-11-01", roadmap: "2026-10-01T00:00:00+00:00" },
-    { patch_notes: "2026-11-14" },
-  );
-  assert.deepEqual(merged, { patch_notes: "2026-11-14", roadmap: "2026-10-01T00:00:00+00:00" });
-  assert.equal(changed, true);
-});
-
 test("read: ingen raekke = tomt objekt, laeser kun seen_markers-kolonnen", async () => {
   const sb = fakeSupabase();
   assert.deepEqual(await readSeenMarkers(sb, "u1"), { markers: {}, available: true });
@@ -93,34 +71,34 @@ test("read: manglende kolonne/tabel giver available=false, anden fejl kastes", a
   await assert.rejects(() => readSeenMarkers(fakeSupabase({ readError: { code: "XX000", message: "boom" } }), "u1"));
 });
 
-test("write: to enheder samme bruger, telefonens nyere markoer overlever computerens aeldre", async () => {
-  // Telefonen har allerede gemt den nyeste note; computeren sender sin gamle lokale kopi.
+test("write: eet atomisk databasekald med kun de kendte markoerer, ingen laes-saa-skriv", async () => {
+  const sb = fakeSupabase({ rpcResult: { patch_notes: "2026-11-14", roadmap: "2026-10-01T00:00:00+00:00", junk: 1 } });
+  const out = await writeSeenMarkers(sb, "u1", { patch_notes: "2026-11-14" });
+  assert.deepEqual(sb.calls.rpcs, [{ name: "merge_seen_markers_6515", args: { p_user_id: "u1", p_patch: { patch_notes: "2026-11-14" } } }]);
+  assert.deepEqual(sb.calls.selects, [], "ingen forudgaaende laesning");
+  assert.equal(sb.calls.upserts, 0, "ingen hel-objekt-upsert");
+  // Svaret er raekkens tilstand efter fletningen, kun kendte markoerer.
+  assert.deepEqual(out, { markers: { patch_notes: "2026-11-14", roadmap: "2026-10-01T00:00:00+00:00" }, available: true });
+});
+
+test("write: funktionen findes ikke endnu (PGRST202 / 42883 for netop den) = available false", async () => {
+  for (const rpcError of [
+    { code: "PGRST202", message: "Could not find the function public.merge_seen_markers_6515(p_patch, p_user_id) in the schema cache" },
+    { code: "42883", message: "function public.merge_seen_markers_6515(uuid, jsonb) does not exist" },
+  ]) {
+    assert.deepEqual(await writeSeenMarkers(fakeSupabase({ rpcError }), "u1", { roadmap: "2026-10-01T00:00:00+00:00" }), { markers: {}, available: false });
+  }
+});
+
+test("write: en anden manglende funktion eller databasefejl kastes (ruten svarer 500, klienten beholder sin lokale kopi)", async () => {
+  await assert.rejects(() => writeSeenMarkers(fakeSupabase({ rpcError: { code: "XX000", message: "boom" } }), "u1", { patch_notes: "2026-11-14" }));
+  await assert.rejects(() => writeSeenMarkers(fakeSupabase({ rpcError: { code: "42883", message: "function public.other_fn(text) does not exist" } }), "u1", { patch_notes: "2026-11-14" }));
+});
+
+test("write: intet gyldigt i patchen = ingen skrivning, kun laesning", async () => {
   const sb = fakeSupabase({ row: { seen_markers: { patch_notes: "2026-11-14" } } });
-  const out = await writeSeenMarkers(sb, "u1", { patch_notes: "2026-11-01" }, NOW);
-  assert.deepEqual(out, { markers: { patch_notes: "2026-11-14" }, available: true });
-  assert.equal(sb.calls.upserts.length, 0, "intet rykkede frem, saa intet skrives");
-});
-
-test("write: ny markoer upsertes paa user_id og roerer kun seen_markers (ikke prefs)", async () => {
-  const sb = fakeSupabase({ row: { seen_markers: { roadmap: "2026-10-01T00:00:00+00:00" } } });
-  const out = await writeSeenMarkers(sb, "u1", { patch_notes: "2026-11-14" }, NOW);
-  assert.deepEqual(out.markers, { roadmap: "2026-10-01T00:00:00+00:00", patch_notes: "2026-11-14" });
-  assert.deepEqual(sb.calls.upserts, [{
-    value: { user_id: "u1", seen_markers: { roadmap: "2026-10-01T00:00:00+00:00", patch_notes: "2026-11-14" }, updated_at: "2026-11-14T12:00:00.000Z" },
-    opts: { onConflict: "user_id" },
-  }]);
-  assert.equal("prefs" in sb.calls.upserts[0].value, false);
-});
-
-test("write: manglende kolonne skriver intet", async () => {
-  const sb = fakeSupabase({ readError: { code: "PGRST204" } });
-  assert.deepEqual(await writeSeenMarkers(sb, "u1", { roadmap: "2026-10-01T00:00:00+00:00" }), { markers: {}, available: false });
-  assert.equal(sb.calls.upserts.length, 0);
-});
-
-test("write: fejl ved upsert kastes (ruten svarer 500, klienten beholder sin lokale kopi)", async () => {
-  const sb = fakeSupabase({ writeError: { code: "XX000", message: "boom" } });
-  await assert.rejects(() => writeSeenMarkers(sb, "u1", { patch_notes: "2026-11-14" }, NOW));
+  assert.deepEqual(await writeSeenMarkers(sb, "u1", { patch_notes: "junk" }), { markers: { patch_notes: "2026-11-14" }, available: true });
+  assert.deepEqual(sb.calls.rpcs, []);
 });
 
 test("isMissingSeenMarkersStorage", () => {
