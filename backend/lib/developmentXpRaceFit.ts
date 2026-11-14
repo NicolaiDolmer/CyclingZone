@@ -28,15 +28,23 @@ import {
 
 /**
  * Hvilke etaper passer hvilken primær type ("hjemmebane"). Data, ikke kode: ejerens
- * svar på de åbne spørgsmål (typer uden hjemmebane, grænse-etaper) bliver nye rækker
- * her. Følger det, spillet allerede siger om, hvem etaperne er lavet til.
+ * otte rækker (svar 13/11 på #6110). Alle otte primære typer har nu en hjemmebane;
+ * klassementsrytteren deler bjerg med klatreren og enkeltstart med enkeltstartsrytteren,
+ * udbryderen deler kuperet og småkuperet med puncheuren, og rouleuren har kun flad.
+ * Grænse-etaperne er placeret: småkuperet hos puncheuren og udbryderen, grus hos
+ * brostensrytteren, holdtidskørsel hos enkeltstartsrytteren.
+ * Stadig åbne og ejerens: mellembjerg står ikke i nogen række (S16), og klassikeren
+ * tæller ikke for udbryderen (S17). Et svar bliver en ny række her, ikke ny kode.
  */
 export const XP_RACE_FIT_HOME_STAGES: Readonly<Record<string, readonly string[]>> = Object.freeze({
   climber: Object.freeze(["mountain", "high_mountain"]),
   sprinter: Object.freeze(["flat"]),
-  puncheur: Object.freeze(["hilly", "classic"]),
-  tt: Object.freeze(["itt", "itt_hilly"]),
-  brostensrytter: Object.freeze(["cobbles"]),
+  puncheur: Object.freeze(["hilly", "classic", "rolling"]),
+  tt: Object.freeze(["itt", "itt_hilly", "ttt"]),
+  brostensrytter: Object.freeze(["cobbles", "gravel"]),
+  gc: Object.freeze(["mountain", "high_mountain", "itt", "itt_hilly"]),
+  baroudeur: Object.freeze(["hilly", "rolling"]),
+  rouleur: Object.freeze(["flat"]),
 });
 
 /** Passer etapen rytterens primære type? Den sekundære type tæller ikke (ejer 13/11). */

@@ -163,11 +163,14 @@ Reglerne står, oversat til XP: en løbsdag er en hård dag plus et tillæg i et
 |---|---|
 | Klatrer | Bjerg, højbjerg |
 | Sprinter | Flad |
-| Puncheur | Kuperet, classic |
-| Enkeltstartsrytter | Enkeltstart, bakket enkeltstart |
-| Brostensrytter | Brosten |
+| Puncheur | Kuperet, klassiker, småkuperet |
+| Enkeltstartsrytter | Enkeltstart, bakket enkeltstart, holdtidskørsel |
+| Brostensrytter | Brosten, grus |
+| Klassementsrytter | Bjerg, højbjerg, enkeltstart, bakket enkeltstart |
+| Udbryder | Kuperet, småkuperet |
+| Rouleur | Flad |
 
-Tabellen er data i `developmentXpRaceFit.ts`. Åbne spørgsmål til ejeren: hjemmebane til klassementsrytter, udbryder og rouleur (S12), grænse-etaperne småkuperet, grus og holdtidskørsel (S13) og fordelingen samme procent mod samme XP (S15). Svarene bliver nye rækker eller et ord i dommerens prøve, ikke ny kode. Den nye prøvekørsel (#7757) skal lære R15b, før den måler.
+Tabellen er data i `developmentXpRaceFit.ts`: ejerens otte rækker (svar 13/11 på #6110). Lukket af ejeren 13/11: hjemmebane til klassementsrytter, udbryder og rouleur (S12; rouleuren "kun flad"), grænse-etaperne småkuperet, grus og holdtidskørsel (S13) og fordelingen med samme procent i etapens evner (S15). Stadig åbne og ejerens: mellembjerg står ikke i nogen række (S16), og klassikeren tæller ikke for udbryderen (S17). Svarene bliver nye rækker eller et ord i dommerens prøve, ikke ny kode. Den nye prøvekørsel (#7757) skal lære R15b, før den måler.
 
 Udgået rytter får basis (S16), fri rolle er halvt af hver (S17). Løb skal fortsat slå træning i etapens evner (D2, G1). Fordi potentialet giver XP, afhænger løbsdagens udbytte af potentialet. Det skal ses sammen med catch-up, når #6950 besluttes.
 
