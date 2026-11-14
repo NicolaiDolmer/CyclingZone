@@ -126,3 +126,13 @@ test("#6569 DashboardPage kalder useTodayStages paa topniveau (foer early-return
   assert.ok(hookIdx < page.indexOf("return <AuthLoading"), "hook skal staa foer loading-early-return");
   assert.match(page, /\{\(loading \|\| team\) && <TodayStagesStrip stages=\{todayStages\} \/>\}/);
 });
+
+// #8152: det valgfrie profil-opslag afventes sammen med vinder og tilmeldte; et
+// fejlet opslag maa ikke forsinke dem via bibliotekets egne gentagelser.
+test("#8152 useTodayStages: det valgfrie profil-opslag slaar gentagelser fra, de noedvendige opslag goer det ikke", () => {
+  const profileRead = hookSource.match(/const readTodayProfiles = [\s\S]*?;\r?\n/);
+  assert.ok(profileRead, "kunne ikke finde readTodayProfiles i useTodayStages.js");
+  assert.match(profileRead[0], /\.retry\(false\)/, "profil-opslaget skal have .retry(false), ellers venter vinder og tilmeldte paa bibliotekets gentagelser ved 503");
+  const withoutProfileRead = hookSource.replace(profileRead[0], "");
+  assert.doesNotMatch(withoutProfileRead, /\.retry\(false\)/, "kun det valgfrie profil-opslag aendres her; fælles beslutning for resten hoerer under #8152 punkt 2");
+});

@@ -14,8 +14,10 @@ import { planRaceResultQueries } from "../lib/raceWinnerResultType.ts";
 const TODAY_PROFILE_BASE_COLUMNS = "race_id, stage_number, profile_type, distance_km, elevation_gain_m, climbs, sectors";
 // pagination-safe: filtreret paa MINE dagens race_id'er, hoejst en raekke pr. etape.
 // elevation_profile staar endnu ikke i de genererede typer, derfor any-cast.
+// #8152: profilen er valgfri og afventes sammen med vinder og tilmeldte, saa
+// bibliotekets egne gentagelser ved 503 maa ikke forsinke dem. Kun dette opslag.
 const readTodayProfiles = (cols, raceIds, signal) => /** @type {any} */ (supabase)
-  .from("race_stage_profiles").select(cols).in("race_id", raceIds).abortSignal(signal);
+  .from("race_stage_profiles").select(cols).in("race_id", raceIds).abortSignal(signal).retry(false);
 const TODAY_PROFILE_COLUMNS = `${TODAY_PROFILE_BASE_COLUMNS}, elevation_profile`;
 
 // #3915 — "Today's stages" dashboard strip: data-hentning for DIT holds
