@@ -11106,19 +11106,19 @@ router.put("/me/ui-prefs", requireAuth, marketWriteLimiter, async (req, res) => 
 router.get("/me/seen-markers", requireAuth, presencePulseLimiter, async (req, res) => {
   try { res.json(await readSeenMarkers(supabase, req.user.id)); } catch (err) {
     captureException(err, { tags: { route: "me_seen_markers_get" } });
-    res.status(500).json({ error: "Could not read seen markers", errorCode: "seen_markers_read_failed" });
+    res.status(500).json({ error: "Could not read seen markers", reason: "seen_markers_read_failed" });
   }
 });
 router.put("/me/seen-markers", requireAuth, presencePulseLimiter, async (req, res) => {
   const checked = sanitizeSeenMarkersPatch(req.body);
-  if (!checked.ok) return res.status(400).json({ error: checked.error, errorCode: checked.errorCode });
+  if (!checked.ok) return res.status(400).json({ error: checked.error, reason: checked.reason });
   try {
     const out = await writeSeenMarkers(supabase, req.user.id, checked.patch);
-    if (!out.available) return res.status(503).json({ error: "Seen markers are not available yet", errorCode: "seen_markers_unavailable" });
+    if (!out.available) return res.status(503).json({ error: "Seen markers are not available yet", reason: "seen_markers_unavailable" });
     res.json({ ok: true, ...out });
   } catch (err) {
     captureException(err, { tags: { route: "me_seen_markers_put" } });
-    res.status(500).json({ error: "Could not save seen markers", errorCode: "seen_markers_write_failed" });
+    res.status(500).json({ error: "Could not save seen markers", reason: "seen_markers_write_failed" });
   }
 });
 

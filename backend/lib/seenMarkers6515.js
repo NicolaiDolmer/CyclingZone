@@ -53,23 +53,25 @@ export function publicSeenMarkers(stored) {
 
 /**
  * Tjek et PUT-body ({ markers: { key: value } }).
+ * Fejl bærer `reason`, ikke `errorCode`: kaldet kører i baggrunden og vises
+ * aldrig for spilleren, så der er ingen spillertekst at oversætte.
  * @param {unknown} body
- * @returns {{ ok: true, patch: Record<string, string> } | { ok: false, errorCode: string, error: string }}
+ * @returns {{ ok: true, patch: Record<string, string> } | { ok: false, reason: string, error: string }}
  */
 export function sanitizeSeenMarkersPatch(body) {
   const markers = body && typeof body === "object" ? /** @type {any} */ (body).markers : null;
   if (!markers || typeof markers !== "object" || Array.isArray(markers)) {
-    return { ok: false, errorCode: "seen_markers_invalid_payload", error: "markers must be an object" };
+    return { ok: false, reason: "seen_markers_invalid_payload", error: "markers must be an object" };
   }
   const keys = Object.keys(markers);
-  if (!keys.length) return { ok: false, errorCode: "seen_markers_invalid_payload", error: "markers must not be empty" };
+  if (!keys.length) return { ok: false, reason: "seen_markers_invalid_payload", error: "markers must not be empty" };
   const unknown = keys.filter((k) => !SEEN_MARKER_KEYS.includes(k));
   if (unknown.length) {
-    return { ok: false, errorCode: "seen_markers_unknown_keys", error: `Unknown marker keys: ${unknown.join(", ")}` };
+    return { ok: false, reason: "seen_markers_unknown_keys", error: `Unknown marker keys: ${unknown.join(", ")}` };
   }
   const invalid = keys.filter((k) => !isValidSeenMarker(markers[k]));
   if (invalid.length) {
-    return { ok: false, errorCode: "seen_markers_invalid_value", error: `Invalid value for: ${invalid.join(", ")}` };
+    return { ok: false, reason: "seen_markers_invalid_value", error: `Invalid value for: ${invalid.join(", ")}` };
   }
   return { ok: true, patch: Object.fromEntries(keys.map((k) => [k, markers[k]])) };
 }

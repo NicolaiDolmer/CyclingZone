@@ -59,11 +59,11 @@ test("publicSeenMarkers: kun kendte noegler med gyldig vaerdi", () => {
 
 test("sanitize: gyldige markoerer gaar igennem, resten afvises med errorCode", () => {
   assert.deepEqual(sanitizeSeenMarkersPatch({ markers: { patch_notes: "2026-11-14" } }), { ok: true, patch: { patch_notes: "2026-11-14" } });
-  assert.equal(sanitizeSeenMarkersPatch({ markers: { forum: "2026-11-14" } }).errorCode, "seen_markers_unknown_keys");
-  assert.equal(sanitizeSeenMarkersPatch({ markers: { roadmap: "soon" } }).errorCode, "seen_markers_invalid_value");
-  assert.equal(sanitizeSeenMarkersPatch({ markers: {} }).errorCode, "seen_markers_invalid_payload");
-  assert.equal(sanitizeSeenMarkersPatch({ markers: ["2026-11-14"] }).errorCode, "seen_markers_invalid_payload");
-  assert.equal(sanitizeSeenMarkersPatch(null).errorCode, "seen_markers_invalid_payload");
+  assert.equal(sanitizeSeenMarkersPatch({ markers: { forum: "2026-11-14" } }).reason, "seen_markers_unknown_keys");
+  assert.equal(sanitizeSeenMarkersPatch({ markers: { roadmap: "soon" } }).reason, "seen_markers_invalid_value");
+  assert.equal(sanitizeSeenMarkersPatch({ markers: {} }).reason, "seen_markers_invalid_payload");
+  assert.equal(sanitizeSeenMarkersPatch({ markers: ["2026-11-14"] }).reason, "seen_markers_invalid_payload");
+  assert.equal(sanitizeSeenMarkersPatch(null).reason, "seen_markers_invalid_payload");
 });
 
 test("merge: en aeldre markoer kan aldrig hive en nyere tilbage", () => {
