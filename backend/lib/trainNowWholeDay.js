@@ -26,10 +26,28 @@
 import { TRAIN_NOW_LOCK_TABLE, loadTrainNowFrozenDateEntries } from "./trainNowLock.js";
 import { isTrainingReservationHeldError } from "./dailyTrainingEngine.js";
 import { loadTrainNowBonusRiderIds } from './trainNowBonus7737.ts';
+import { createTrainNowPressMemory } from "./trainNowPressMemory.js";
 
 
 // #7982: the press times its steps; without a timer every step just runs.
-const UNTIMED = { step: (_name, fn) => fn() };
+const UNTIMED = { step: (_name, fn) => fn(), note: () => {} };
+
+/**
+ * #7982 trin 4a: milliseconds of the parts of one day field (fetch, count, save), for the
+ * press's private timing line. The engine calls `lap(part)` when a part ends. Only numbers.
+ */
+export function createDayPartTimer({ clock = () => performance.now() } = {}) {
+  let at = clock();
+  const laps = [];
+  return {
+    laps,
+    lap(part) {
+      const now = clock();
+      laps.push([part, Math.round(now - at)]);
+      at = now;
+    },
+  };
+}
 
 const sortedDays = (gameDays) => [...new Set(gameDays ?? [])].filter(Number.isInteger).sort((a, b) => a - b);
 const slotsOf = (map, id) => (map instanceof Map ? map.get(id) : map?.[id]) ?? [];
@@ -153,7 +171,11 @@ export async function settleWholeDayPress({
   }
 
   const settledDays = [];
+  // #7982 trin 4a: what this press remembers between its day fields. It lives as long as this
+  // call: a new press, another team or the evening run never sees it.
+  const pressMemory = createTrainNowPressMemory();
   for (const [index, { gameDay, riderIds }] of plan.runs.entries()) {
+    const parts = createDayPartTimer();
     try {
       await timing.step(`run_day_${index + 1}`, () => runDay({
         supabase, teamId: team.id, seasonId: season.id, seasonNumber: season.number,
@@ -163,6 +185,8 @@ export async function settleWholeDayPress({
         // #7982 trin 3: the engine sends its independent reads at once for the press only.
         pressReads: true,
         ...(instant ? { instantPress: true } : {}),
+        // #7982 trin 4a: fetch once, count every day field in the server, save as before.
+        pressMemory, pressRuns: plan.runs, pressTimer: parts,
       }));
     } catch (err) {
       // #6839: the evening run holds this race day; it settles the rest.
@@ -170,6 +194,9 @@ export async function settleWholeDayPress({
         return { status: 409, body: { error: "training_in_progress", tickDate, settledGameDays: settledDays, locked: true } };
       }
       throw err;
+    } finally {
+      // #7982 trin 4a: fetch, count and save inside the day field, in the same timing line.
+      for (const [part, ms] of parts.laps) timing.note?.(`run_day_${index + 1}_${part}_ms`, ms);
     }
     settledDays.push(gameDay);
   }

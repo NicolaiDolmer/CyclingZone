@@ -180,6 +180,11 @@ const BASELINE = {
   "backend/lib/aiTeamTrimHealSweep.js": 0,
   "backend/lib/academyHealSweep.js": 1,
   "backend/lib/academyGraduationSweep.js": 1,
+  // #7982 (14/11): den uafhaengige dommers proeve-harness (kun proever, aldrig
+  // prod-kode). Udgave 2 koerer et tryk uden afbrydelsen og sluger med vilje dets
+  // fejl for at notere spoergsmaalene. Filen er dommerens og maa ikke rettes
+  // (git-blob kontrolleres), derfor baseline her i stedet for en markoer.
+  "backend/lib/trainNowSameResult7982.harness.js": 1,
 };
 
 // ── Main ──────────────────────────────────────────────────────────────────────

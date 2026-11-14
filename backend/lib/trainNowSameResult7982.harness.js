@@ -8,6 +8,24 @@
 // samme tid, og (e) en cache der ikke maa leve videre til naeste tryk. De 15 oprindelige scenarier
 // er uaendrede og giver praecis samme fingeraftryk som i trin 2's facit.
 //
+// Udgave til trin 4a (13/11), frosset fra main EFTER trin 3 og FOER trin 4a's foerste kodelinje.
+// Trin 4a lader serveren regne datoens fem dag-felter fra ÉN indlaesning. Nyt i saettet:
+// (f) seks scenarier mere: loebsryttere bundet til et loeb paa loebsdage uden etape (hullet fra
+//     dommen over trin 3), og aftenkoerslen, der tager datoen midt i et tryk;
+// (g) stedfortraederen kan svare i OMVENDT raekkefoelge og med noeglerne i databasens (jsonb)
+//     raekkefoelge: resultatet maa ikke afhaenge af nogen af delene;
+// (h) reglerne for, hvilke laesninger der maa forsvinde i trin 4a (compareToFacit nederst);
+// (i) en genregistrering af en dato, der allerede er registreret, taeller ikke som en skrivning
+//     (den aendrer intet; bevist mod rigtig PostgreSQL i trainNowDatabaseSvar7982.integration.test.js).
+//
+// Udgave 2 til trin 4a (13/11, efter dommerens afgoerelse om PR #8148, se afgoerelse-proever.md):
+// (j) et AFBRUDT tryk maa hente loebs-opslagene for alle datoens loebsdage foer foerste gemme-kald,
+//     ogsaa dem, det gamle tryk aldrig naaede, fordi det blev afbrudt ("uafbrudt" i facit);
+// (k) i "fejl_i_hver_laesning" skal hver laesning FOER foerste gemme-kald stadig findes og proeves;
+//     laesninger efter maa forsvinde (gulvet paa 100 laesninger i proevefilen er vaek);
+// (l) gemme-kaldets vaern mod en frigivet rytter (karantaene) og karantaenens bevis, som databasen
+//     skriver dem, og et scenarie, hvor en rytter frigives lige foer et gemme-kald.
+//
 // Hvad den goer: koerer et fast saet scenarier gennem de TO offentlige indgange
 //   runTrainNow (trykket, kaldt som ruten kalder det) og runTeamTrainingDay (aftenkoerslen)
 // mod en database-stedfortraeder, der (a) svarer ud fra en tilstand i hukommelsen, (b) optager
@@ -244,7 +262,23 @@ export const NEVER_WRITTEN_BY_PRESS = Object.freeze(new Set([
 ]));
 class InjectedFailure extends Error {}
 
-export function createFake(state, { failRpc = null, fail = null } = {}) {
+// PostgreSQL gemmer jsonb med noeglerne sorteret: kortest foerst, derefter efter tegn. Saadan
+// kommer de ogsaa tilbage. Stedfortraederen kan svare paa samme maade (se jsonbOrden).
+export const jsonbOrder = (value) => {
+  if (Array.isArray(value)) return value.map(jsonbOrder);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.keys(value).sort((a, b) => a.length - b.length || (a < b ? -1 : a > b ? 1 : 0)).map((key) => [key, jsonbOrder(value[key])]));
+};
+
+/**
+ * @param {object} state
+ * @param {{failRpc?: Function|null, fail?: Function|null, omvendt?: boolean, jsonbOrden?: boolean}} [options]
+ *   omvendt: af de kald, der er sendt samtidig, faar det SIDST sendte svar foerst, og hvert svar
+ *   kommer for sig (et rigtigt netvaerk lover ingen raekkefoelge). jsonbOrden: alle svar har
+ *   noeglerne i databasens raekkefoelge.
+ */
+export function createFake(state, { failRpc = null, fail = null, omvendt = false, jsonbOrden = false } = {}) {
+  const ctx = { tryk: 0 }; // > 0 mens et tryk er undervejs (se press)
   const log = []; // hvert kald i raekkefoelge
   const unsupported = []; // noget stedfortraederen ikke kender: saa er proeven ugyldig
   // "Runder": kald, der sendes af sted samtidig (fx i én Promise.all), faar svar i samme runde.
@@ -252,12 +286,18 @@ export function createFake(state, { failRpc = null, fail = null } = {}) {
   // derfor det antal gange, koden staar og venter paa databasen efter hinanden (maaletal for trin 3).
   let round = 1; let waiting = [];
   const deliver = (result) => new Promise((resolve) => {
-    if (!waiting.length) setImmediate(() => { const batch = waiting; waiting = []; round += 1; for (const done of batch) done(); });
-    waiting.push(() => resolve(result));
+    if (!waiting.length) setImmediate(() => {
+      const batch = waiting; waiting = []; round += 1;
+      if (!omvendt) { for (const done of batch) done(); return; }
+      const next = () => { const done = batch.pop(); if (!done) return; done(); if (batch.length) setImmediate(next); };
+      next();
+    });
+    waiting.push(() => resolve(jsonbOrden ? jsonbOrder(result) : result));
   });
   // `after` = antal skrivninger og funktionskald FOER dette kald (for en laesning: hvilket mellemrum den ligger i).
+  // En genregistrering (`gen`) taeller ikke: den aendrer intet i databasen.
   let nonReads = 0;
-  const record = (entry) => { entry.round = round; entry.after = nonReads; if (entry.kind !== "read") nonReads += 1; log.push(entry); return entry; };
+  const record = (entry) => { entry.round = round; entry.after = nonReads; if (ctx.tryk > 0) entry.tryk = true; if (entry.kind !== "read" && !entry.gen) nonReads += 1; log.push(entry); return entry; };
   // Dommerens fejl-indsproejtning: `fail({ entry, index, state })` svarer "error" (databasen svarer med
   // en fejl), "throw" (kaldet kaster, fx et netvaerk der falder ud) eller intet. Kaldet er allerede
   // optaget, saa det taeller med; det udfoeres ikke.
@@ -351,6 +391,26 @@ export function createFake(state, { failRpc = null, fail = null } = {}) {
     }).map((s) => ({ raceId: s.race_id, stageNumber: s.stage_number, gameDay: s.game_day }));
   };
   const raise = (message, code = "P0001") => ({ data: null, error: { code, message } });
+  // Karantaene, som databasen goer det: kun ryttere, der ikke allerede er i karantaene eller afregnet;
+  // et bevis pr. rytter; datoens mangler = karantaene-beviserne (uden tilstandene) + afregningernes mangler;
+  // status "partial", indtil alle andre har alle fem dag-felter, saa "needs_reconciliation".
+  const quarantine = (work, riderIds, reason, now, args) => {
+    const settled = (rid) => state.training_condition_settlements.some((row) => row.rider_id === rid && row.season_id === args.p_season_id && row.tick_date === args.p_tick_date);
+    const added = [...new Set(riderIds)].filter((rid) => !work.quarantined_rider_ids.includes(rid) && !settled(rid)).sort();
+    if (!added.length) return [];
+    const evidence = added.map((rid) => ({ rider_id: rid, kind: "quarantined", reason, condition_applied: false, at: now,
+      applied_receipt_days: state.training_rider_ticks.filter((row) => row.rider_id === rid && row.season_id === args.p_season_id && row.tick_date === args.p_tick_date).map((row) => row.game_day).sort((a, b) => a - b),
+      opening_condition: structuredClone(work.opening_conditions?.[rid] ?? null), current_condition: structuredClone(state.rider_condition.find((row) => row.rider_id === rid) ?? null) }));
+    work.quarantined_rider_ids = [...work.quarantined_rider_ids, ...added];
+    work.quarantine_evidence = [...(work.quarantine_evidence ?? []), ...evidence];
+    const fromSettlements = state.training_condition_settlements.filter((row) => row.season_id === args.p_season_id && row.tick_date === args.p_tick_date && work.expected_rider_ids.includes(row.rider_id)).flatMap((row) => row.missing_evidence.map((e) => ({ ...e, rider_id: row.rider_id })));
+    work.missing_evidence = [...work.quarantine_evidence.map(({ opening_condition: _o, current_condition: _c, ...e }) => e), ...fromSettlements];
+    const active = work.expected_rider_ids.filter((rid) => !work.quarantined_rider_ids.includes(rid));
+    const receipts = state.training_rider_ticks.filter((row) => row.season_id === args.p_season_id && row.tick_date === args.p_tick_date && active.includes(row.rider_id)).length;
+    work.status = receipts === active.length * 5 ? "needs_reconciliation" : "partial";
+    work.updated_at = now;
+    return added;
+  };
 
   const RPCS = {
     train_now_date_context(args) {
@@ -391,8 +451,8 @@ export function createFake(state, { failRpc = null, fail = null } = {}) {
       let work = workOf(args);
       if (!work) {
         work = { team_id: args.p_team_id, season_id: args.p_season_id, tick_date: args.p_tick_date, game_days: [...args.p_game_days],
-          expected_rider_ids: [...args.p_expected_rider_ids], deadline_at: args.p_deadline_at, registered_at: args.p_registered_at, status: "pending",
-          quarantined_rider_ids: [], departed_rider_ids: [], missing_evidence: [],
+          expected_rider_ids: [...args.p_expected_rider_ids], deadline_at: args.p_deadline_at, created_at: args.p_registered_at, updated_at: args.p_registered_at, status: "pending",
+          quarantined_rider_ids: [], quarantine_evidence: [], missing_evidence: [],
           opening_conditions: Object.fromEntries(state.rider_condition.filter((row) => args.p_expected_rider_ids.includes(row.rider_id)).map((row) => [row.rider_id, structuredClone(row)])) };
         state.training_date_work.push(work);
       }
@@ -400,21 +460,36 @@ export function createFake(state, { failRpc = null, fail = null } = {}) {
     },
     quarantine_training_date_riders(args) {
       const work = workOf(args);
-      work.quarantined_rider_ids = [...new Set([...work.quarantined_rider_ids, ...args.p_rider_ids])];
-      return { data: { work: structuredClone(work) }, error: null };
+      const added = quarantine(work, args.p_rider_ids, args.p_reason, args.p_now, args);
+      return { data: { quarantined_rider_ids: added, work_status: work.status, work: structuredClone(work) }, error: null };
     },
     depart_training_date_riders(args) {
       const work = workOf(args);
-      const departed = args.p_rider_ids.filter((rid) => state.riders.find((row) => row.id === rid)?.team_id == null);
-      work.expected_rider_ids = work.expected_rider_ids.filter((rid) => !departed.includes(rid));
-      work.departed_rider_ids = [...new Set([...work.departed_rider_ids, ...departed])];
-      return { data: { departed_rider_ids: departed, work: structuredClone(work) }, error: null };
+      const settled = (rid) => state.training_condition_settlements.some((row) => row.rider_id === rid && row.season_id === args.p_season_id && row.tick_date === args.p_tick_date);
+      const left = (rid) => { const r = state.riders.find((row) => row.id === rid); return Boolean(r) && r.team_id == null; };
+      const added = [...new Set(args.p_rider_ids)].filter((rid) => !work.quarantined_rider_ids.includes(rid) && !settled(rid) && left(rid)).sort();
+      if (!added.length) return { data: { departed_rider_ids: [], work_status: work.status }, error: null };
+      const evidence = added.map((rid) => ({ rider_id: rid, kind: "departed", reason: "left_team", at: args.p_now,
+        applied_receipt_days: state.training_rider_ticks.filter((row) => row.rider_id === rid && row.season_id === args.p_season_id && row.tick_date === args.p_tick_date).map((row) => row.game_day).sort((a, b) => a - b),
+        opening_condition: structuredClone(work.opening_conditions?.[rid] ?? null) }));
+      work.quarantined_rider_ids = [...work.quarantined_rider_ids, ...added];
+      work.departure_evidence = [...(work.departure_evidence ?? []), ...evidence];
+      const missing = state.training_condition_settlements.filter((row) => row.season_id === args.p_season_id && row.tick_date === args.p_tick_date && work.expected_rider_ids.includes(row.rider_id)).flatMap((row) => row.missing_evidence.map((e) => ({ ...e, rider_id: row.rider_id })))
+        .concat((work.quarantine_evidence ?? []).map(({ opening_condition: _o, current_condition: _c, ...e }) => e));
+      const active = work.expected_rider_ids.filter((rid) => !work.quarantined_rider_ids.includes(rid));
+      const receipts = state.training_rider_ticks.filter((row) => row.season_id === args.p_season_id && row.tick_date === args.p_tick_date && active.includes(row.rider_id)).length;
+      if (receipts === active.length * 5) work.status = missing.length ? "needs_reconciliation" : "complete";
+      work.missing_evidence = missing; work.updated_at = args.p_now;
+      return { data: { departed_rider_ids: added, work_status: work.status, work: structuredClone(work) }, error: null };
     },
     freeze_train_now_date_entries(args) {
       return { data: args.p_rider_ids.map((rider_id) => {
         const lock = state.training_train_now_locks.find((row) => row.rider_id === rider_id && row.tick_date === args.p_tick_date);
         if (!lock) return { rider_id, slots: null };
-        lock.instant_entry_snapshot ??= { slots: openSlots(rider_id, args.p_tick_date) };
+        if (lock.instant_entry_snapshot == null) {
+          lock.instant_entry_snapshot = { raceIds: state.race_entries.filter((row) => row.rider_id === rider_id).map((row) => row.race_id).sort(), slots: openSlots(rider_id, args.p_tick_date) };
+          lock.instant_game_days = [...(workOf(args)?.game_days ?? [])];
+        }
         return { rider_id, slots: structuredClone(lock.instant_entry_snapshot.slots) };
       }), error: null };
     },
@@ -432,6 +507,12 @@ export function createFake(state, { failRpc = null, fail = null } = {}) {
       const fresh = reports.filter((r) => !work.quarantined_rider_ids.includes(r.rider_id) && !hasTick(r.rider_id, args.p_game_day)).map((r) => r.rider_id);
       if (!fresh.length) return { data: { already_ran: true, report: oldRun?.report ?? null, work_status: work.status }, error: null };
       const instant = new Set(state.training_train_now_locks.filter((row) => row.tick_date === args.p_tick_date && row.instant_at != null).map((row) => row.rider_id));
+      const unsafe = fresh.filter((rid) => { const r = state.riders.find((row) => row.id === rid); return !r || r.team_id == null || r.is_retired === true || !(rid in (work.opening_conditions ?? {})); });
+      if (unsafe.length) {
+        quarantine(work, unsafe, "unsafe_current_state", args.p_now, args);
+        for (const rid of unsafe) fresh.splice(fresh.indexOf(rid), 1);
+        if (!fresh.length) return { data: { already_ran: true, report: oldRun?.report ?? { riders: [], condition_per_date: true }, work_status: work.status, quarantined_rider_ids: unsafe }, error: null };
+      }
       const final = args.p_game_day === Math.max(...work.game_days);
       const ticksOnDate = (rid) => state.training_rider_ticks.filter((row) => row.rider_id === rid && row.season_id === args.p_season_id && row.tick_date === args.p_tick_date && work.game_days.includes(row.game_day)).map((row) => row.game_day).sort((a, b) => a - b);
       for (const rid of fresh) {
@@ -480,7 +561,8 @@ export function createFake(state, { failRpc = null, fail = null } = {}) {
       if (oldRun) oldRun.report = report;
       else state.training_day_runs.push({ team_id: args.p_team_id, season_id: args.p_season_id, squad: args.p_squad, game_day: args.p_game_day, tick_date: args.p_tick_date, executed_by: args.p_executed_by, bonus_applied: false, report });
       const count = state.training_rider_ticks.filter((row) => row.season_id === args.p_season_id && row.tick_date === args.p_tick_date && active.includes(row.rider_id)).length;
-      const missing = state.training_condition_settlements.filter((row) => row.season_id === args.p_season_id && row.tick_date === args.p_tick_date && work.expected_rider_ids.includes(row.rider_id)).flatMap((row) => row.missing_evidence.map((e) => ({ ...e, rider_id: row.rider_id })));
+      const missing = state.training_condition_settlements.filter((row) => row.season_id === args.p_season_id && row.tick_date === args.p_tick_date && work.expected_rider_ids.includes(row.rider_id)).flatMap((row) => row.missing_evidence.map((e) => ({ ...e, rider_id: row.rider_id })))
+        .concat((work.quarantine_evidence ?? []).map(({ opening_condition: _o, current_condition: _c, ...e }) => e));
       work.status = count === active.length * work.game_days.length ? (missing.length ? "needs_reconciliation" : "complete") : "partial";
       work.missing_evidence = missing; work.updated_at = args.p_now;
       return { data: { already_ran: false, applied_rider_ids: fresh, report: structuredClone(report), work_status: work.status }, error: null };
@@ -491,7 +573,9 @@ export function createFake(state, { failRpc = null, fail = null } = {}) {
   async function rpc(name, args) {
     rpcCalls += 1;
     const base = name.replace(/^try_/, "");
-    const entry = record({ kind: READ_ONLY_RPCS.has(base) ? "read" : "rpc", target: name, payload: canon(args) });
+    // Datoen er allerede registreret: kaldet svarer med den registrering, der staar, og skriver intet.
+    const gen = base === "register_training_date_work" && Boolean(workOf(args));
+    const entry = record({ kind: READ_ONLY_RPCS.has(base) ? "read" : "rpc", target: name, payload: canon(args), ...(gen ? { gen: true } : {}) });
     if (failRpc?.({ name, base, args, n: rpcCalls, state })) { await deliver(null); throw new Error(`dommer-fejlinjektion: ${name}`); }
     let failed;
     try { failed = injected(entry); } catch (err) { await deliver(null); throw err; }
@@ -500,7 +584,7 @@ export function createFake(state, { failRpc = null, fail = null } = {}) {
     if (!impl) { unsupported.push(`rpc:${name}`); return deliver({ data: null, error: { code: "PGRST202", message: `Could not find the function public.${name} in the schema cache` } }); }
     return deliver(impl(structuredClone(args)));
   }
-  return { supabase: { from: builder, rpc }, log, unsupported, deliver };
+  return { supabase: { from: builder, rpc }, log, unsupported, deliver, ctx };
 }
 
 // ── De to indgange ────────────────────────────────────────────────────────────────────────────
@@ -509,11 +593,12 @@ const teamOf = (state) => structuredClone(state.teams[0]);
 
 /** Trykket, kaldt som ruten kalder det (plus fast `now` og en stille logger). */
 export function press(state, fake, { now = PRESS_AT, isBetaTester = true, confirm = true, season = SEASON, team = teamOf(state) } = {}) {
+  fake.ctx.tryk += 1;
   return runTrainNow({
     supabase: fake.supabase, team, season, isBetaTester, now, logger: QUIET,
     loadDaySpans: async () => new Map(),
     confirmedShortRaceIds: confirm ? state.races.map((row) => row.id) : [],
-  });
+  }).finally(() => { fake.ctx.tryk -= 1; });
 }
 
 /** Aftenkoerslen for holdet: ét kald pr. loebsdag, som sweepen goer. Klar-listen regnes her af tilstanden. */
@@ -536,7 +621,7 @@ export async function sweep(state, fake, { now = EVENING_AT, tickDate = DATE1, d
     out.push(await runTeamTrainingDay({
       supabase: fake.supabase, teamId: TEAM, seasonId: SEASON.id, seasonNumber: SEASON.number, now, tickDateOverride: tickDate, gameDay,
       dateGameDays: days, executedBy: "assistant", eligibleRiderIds: eligible, unresolvedSlotsByRider: unresolved,
-      deadlineAt: `${tickDate}T23:00:00.000Z`, deadlineReached,
+      deadlineAt: new Date(Date.parse(`${tickDate}T00:00:00Z`) + 25 * 3600 * 1000).toISOString(), deadlineReached,
     }).then((r) => ({ alreadyRan: r.alreadyRan, gameDay: r.gameDay, workStatus: r.workStatus ?? null, riders: (r.report?.riders ?? []).length }),
       (err) => ({ error: String(err.message) })));
   }
@@ -611,7 +696,7 @@ export const SCENARIOS = {
   } },
   // Afvisninger. Hvert trin starter fra frisk tilstand; intet maa blive skrevet.
   afvisninger: { seed: { count: 8, entered: [1] }, async run(_s, _f, out, fresh) {
-    const tryIt = async (label, seedPatch, opts = {}, mutate = () => {}) => { const { state, fake } = fresh(seedPatch); mutate(state); await step(out, label, async () => ({ ...(await press(state, fake, opts(state))), writes: fake.log.filter((e) => e.kind !== "read").length }), fake); };
+    const tryIt = async (label, seedPatch, opts = {}, mutate = () => {}) => { const { state, fake } = fresh(seedPatch); mutate(state); await step(out, label, async () => ({ ...(await press(state, fake, opts(state))), writes: fake.log.filter((e) => e.kind !== "read" && !e.gen).length }), fake); };
     const none = () => ({});
     await tryIt("kontakt slukket", { flags: { training_train_now: "off" } }, none);
     await tryIt("kontakt beta, ikke beta-spiller", { flags: { training_train_now: "beta" } }, () => ({ isBetaTester: false }));
@@ -635,7 +720,7 @@ const tablesOf = (state) => { const { __failed: _f, __commits: _c, __held: _h, .
 /** Fingeraftryk af hele tilstanden (alle tabeller). */
 export const stateDigest = (state) => digest(tablesOf(state));
 /** Fingeraftryk af alle skrivninger og funktionskald i en stedfortraeders log, i raekkefoelge. */
-export const writesDigest = (log) => digest(log.filter((entry) => entry.kind !== "read").map(({ round: _round, after: _after, ...entry }) => entry));
+export const writesDigest = (log) => digest(log.filter((entry) => entry.kind !== "read" && !entry.gen && !entry.holdt).map(({ round: _round, after: _after, ...entry }) => entry));
 const doubleDayFields = (state) => state.training_rider_ticks.length - new Set(state.training_rider_ticks.map((row) => `${row.rider_id}|${row.game_day}`)).size;
 // Svaret paa et tryk som ét ord: statuskode (og fejlnavn), eller "kast". Fejlteksten er ikke med:
 // hvilken laesning der naar at fejle foerst, maa aendre sig, naar laesninger sendes samtidig.
@@ -682,7 +767,7 @@ Object.assign(SCENARIOS, {
   // Forrang mellem afvisninger: gaelder to grunde paa én gang, vinder den, der tjekkes foerst i dag.
   // Hvert trin starter fra frisk tilstand; intet maa blive skrevet.
   afvisninger_forrang: { seed: { count: 8, entered: [1] }, async run(_s, _f, out, fresh) {
-    const tryIt = async (label, seedPatch, opts = () => ({}), mutate = () => {}) => { const { state, fake } = fresh(seedPatch); mutate(state); await step(out, label, async () => ({ ...(await press(state, fake, opts(state))), writes: fake.log.filter((e) => e.kind !== "read").length }), fake); };
+    const tryIt = async (label, seedPatch, opts = () => ({}), mutate = () => {}) => { const { state, fake } = fresh(seedPatch); mutate(state); await step(out, label, async () => ({ ...(await press(state, fake, opts(state))), writes: fake.log.filter((e) => e.kind !== "read" && !e.gen).length }), fake); };
     const settled = (state) => { state.training_date_work.push({ team_id: TEAM, season_id: SEASON.id, tick_date: DATE1, status: "complete", game_days: DAYS1, expected_rider_ids: [], quarantined_rider_ids: [], opening_conditions: {} }); };
     const earlierOpen = (state) => { state.training_date_work.push({ team_id: TEAM, season_id: SEASON.id, tick_date: "2026-11-08", status: "partial", game_days: [36, 37, 38, 39, 40], expected_rider_ids: [], quarantined_rider_ids: [], opening_conditions: {} }); };
     const noStageToday = (state) => { state.race_stage_schedule = state.race_stage_schedule.filter((row) => !row.scheduled_at.startsWith(DATE1)); };
@@ -732,7 +817,8 @@ Object.assign(SCENARIOS, {
     const clean = fresh();
     await answerOf(press(clean.state, clean.fake));
     const counts = new Map();
-    const slots = clean.fake.log.filter((entry) => entry.kind === "read").map((entry) => readSlotKey(entry, counts));
+    const firstCommit = clean.fake.log.findIndex((entry) => entry.kind === "rpc" && entry.target.endsWith("commit_training_date_tick"));
+    const slots = clean.fake.log.map((entry, index) => ({ entry, index })).filter(({ entry }) => entry.kind === "read").map(({ entry, index }) => ({ ...readSlotKey(entry, counts), early: index < firstCommit }));
     for (const mode of ["error", "throw"]) {
       await step(out, mode === "error" ? "databasen svarer med en fejl" : "kaldet kaster", async () => {
         const result = {};
@@ -742,7 +828,7 @@ Object.assign(SCENARIOS, {
           const svar = await answerOf(press(state, fake));
           const efterFejl = stateDigest(state);
           const nytTryk = await answerOf(press(state, fake));
-          result[slot.key] = { ramt: fired, svar, ...(slot.fixed ? {} : { efterFejl }), nytTryk, efterNytTryk: stateDigest(state) };
+          result[slot.key] = { ramt: fired, svar, ...(slot.fixed ? {} : { efterFejl }), nytTryk, efterNytTryk: stateDigest(state), ...(slot.early ? { foerFoersteGemmeKald: true } : {}) };
         }
         return result;
       });
@@ -753,7 +839,7 @@ Object.assign(SCENARIOS, {
   database_falder_ud: { seed: FAULT, async run(_s, _f, out, fresh) {
     const clean = fresh();
     await answerOf(press(clean.state, clean.fake));
-    const points = clean.fake.log.filter((entry) => entry.kind !== "read").length;
+    const points = clean.fake.log.filter((entry) => entry.kind !== "read" && !entry.gen).length;
     // Tredje udgave: kontakterne svarer stadig, saa trykket naar forbi de foerste tjek, foer alt andet kaster.
     for (const [label, mode, spared] of [["alt svarer med fejl", "error", null], ["alt kaster", "throw", null], ["alt undtagen kontakterne kaster", "throw", "app_config"]]) {
       await step(out, label, async () => {
@@ -762,7 +848,7 @@ Object.assign(SCENARIOS, {
           let down = true;
           const { state, fake } = fresh({}, { fail: ({ entry }) => (down && entry.after >= j && entry.target !== spared ? mode : null) });
           const svar = await answerOf(press(state, fake));
-          const efterFejl = stateDigest(state); const skrevet = fake.log.filter((entry) => entry.kind !== "read" && entry.after < j).length;
+          const efterFejl = stateDigest(state); const skrevet = fake.log.filter((entry) => entry.kind !== "read" && !entry.gen && entry.after < j).length;
           down = false;
           const nytTryk = await answerOf(press(state, fake));
           result[`efter skrivning nr. ${String(j).padStart(2, "0")}`] = { gikIgennem: svar === "200", skrevetFoerFejlen: skrevet, efterFejl, nytTryk, efterNytTryk: stateDigest(state) };
@@ -773,7 +859,7 @@ Object.assign(SCENARIOS, {
   } },
 });
 
-const HELD = ({ base, state }) => state.__held === true && base === "register_training_date_work";
+const HELD = ({ base, state }) => state.__held === true && (base === "register_training_date_work" || base === "commit_training_date_tick");
 
 // ── Trin 3: hver laesning ser samme database som foer ─────────────────────────────────────────
 // Mellem to skrivninger (eller funktionskald) ligger et mellemrum. Laesninger maa bytte plads og
@@ -783,8 +869,9 @@ const HELD = ({ base, state }) => state.__held === true && base === "register_tr
 // og et fingeraftryk af spoergsmaalene.
 export function readIntervals(entries) {
   const out = []; let current = new Map();
-  const close = (before) => { out.push({ foer: before, tabeller: [...new Set(current.values())].sort(), spoergsmaal: current.size, hash: digest([...current.keys()].sort()) }); current = new Map(); };
+  const close = (before) => { out.push({ foer: before, tabeller: [...new Set(current.values())].sort(), spoergsmaal: current.size, hash: digest([...current.keys()].sort()), noegler: [...current.keys()].sort() }); current = new Map(); };
   for (const entry of entries) {
+    if (entry.kind !== "read" && (entry.gen || entry.holdt)) continue;
     if (entry.kind !== "read") { close(`${entry.kind === "write" ? `${entry.op} ` : ""}${entry.target}`); continue; }
     if (!NEVER_WRITTEN_BY_PRESS.has(entry.target)) current.set(`${entry.target}|${digest(entry.filters ?? entry.payload ?? null)}`, entry.target);
   }
@@ -804,16 +891,16 @@ export const UNHANDLED_REJECTIONS = [];
 process.on("unhandledRejection", (reason) => { UNHANDLED_REJECTIONS.push(String(reason?.message ?? reason).slice(0, 200)); });
 
 /** Koer ét scenarie og returnér alt, der blev optaget. */
-export async function runScenario(name) {
+export async function runScenario(name, mode = {}) {
   const scenario = SCENARIOS[name];
   const fakes = [];
   const fresh = (seedPatch = {}, { fail = null } = {}) => {
     const state = seedState({ ...scenario.seed, ...seedPatch });
-    const fake = createFake(state, { failRpc: (ctx) => scenario.fail?.(ctx) === true, fail });
+    const fake = createFake(state, { failRpc: (ctx) => scenario.fail?.(ctx) === true, fail, ...mode });
     // "Aftenkoerslen holder datoen": databasens proev-laas svarer optaget.
     const realRpc = fake.supabase.rpc;
     fake.supabase.rpc = async (rpcName, args) => (HELD({ base: rpcName.replace(/^try_/, ""), state }) && rpcName.startsWith("try_")
-      ? (fake.log.push({ kind: "rpc", target: rpcName, payload: canon(args), round: 0 }), fake.deliver({ data: { held: true }, error: null })) : realRpc(rpcName, args));
+      ? (fake.log.push({ kind: "rpc", target: rpcName, payload: canon(args), round: 0, holdt: true, ...(fake.ctx.tryk > 0 ? { tryk: true } : {}) }), fake.deliver({ data: { held: true }, error: null })) : realRpc(rpcName, args));
     fakes.push({ state, fake });
     return { state, fake };
   };
@@ -822,7 +909,7 @@ export async function runScenario(name) {
   const marks = [];
   const mark = () => marks.push(fakes.reduce((sum, x) => sum + x.fake.log.length, 0));
   // Kald pr. trin: loggens laengde foer og efter hvert trin (kun hovedtilstanden taeller pr. trin).
-  const counting = new Proxy(steps, { get(target, prop) { if (prop === "push") return (item) => { const own = item.fake ? item.fake.log : main.fake.log.slice(main.lastLen ?? 0); item.calls = countCalls(own); item.reads = readIntervals(own); main.lastLen = main.fake.log.length; mark(); return target.push(item); }; return target[prop]; } });
+  const counting = new Proxy(steps, { get(target, prop) { if (prop === "push") return (item) => { const own = item.fake ? item.fake.log : main.fake.log.slice(main.lastLen ?? 0); item.calls = countCalls(own); item.reads = readIntervals(own); item.tryk = own.some((entry) => entry.tryk === true); main.lastLen = main.fake.log.length; mark(); return target.push(item); }; return target[prop]; } });
   // Motoren skriver advarsler direkte til konsollen (fx manglende private parametre). De er ikke en
   // del af resultatet; de samles her, saa en testkoersel ikke drukner i dem.
   const notes = new Set();
@@ -832,21 +919,31 @@ export async function runScenario(name) {
   // Giv et loefte uden ejer tid til at melde sig, foer scenariet goeres op.
   await new Promise((resolve) => { setImmediate(resolve); });
   const log = fakes.flatMap((x) => x.fake.log);
+  // Scenarier, der afbryder eller standser et tryk: det samme tryk koeres én gang uden afbrydelsen, og
+  // dets spoergsmaal gemmes. Et afbrudt tryk maa hente dem foer foerste gemme-kald (se compareReadSteps).
+  let uafbrudt = [];
+  if (typeof scenario.fail === "function") {
+    const state = seedState(scenario.seed); const fake = createFake(state, mode);
+    for (const key of Object.keys(saved)) console[key] = () => {};
+    try { await press(state, fake).catch(() => {}); } finally { Object.assign(console, saved); }
+    uafbrudt = [...new Set(readIntervals(fake.log).flatMap((interval) => interval.noegler))].sort();
+  }
   const { __failed: _f, __commits: _c, __held: _h, ...tables } = main.state;
   return {
     steps: steps.map(({ label, response }) => ({ label, response })),
-    writes: main.fake.log.filter((entry) => entry.kind !== "read").map(({ round: _round, after: _after, ...entry }) => entry),
-    reads: steps.map(({ label, reads, response }) => ({ label, mellemrum: response?.status >= 400 ? "afvist tryk: laesningernes plads fryses ikke (det maa laese mere end foer, aldrig skrive)" : reads })),
+    writes: main.fake.log.filter((entry) => entry.kind !== "read" && !entry.holdt).map(({ round: _round, after: _after, ...entry }) => entry),
+    reads: steps.map(({ label, reads, response, tryk }) => ({ label, tryk, mellemrum: response?.status >= 400 ? "afvist tryk: laesningernes plads fryses ikke (det maa laese mere end foer, aldrig skrive)" : reads })),
     sharedWriteRounds: scenario.concurrent ? [] : fakes.flatMap((x) => sharedWriteRounds(x.fake.log)),
     finalState: Object.fromEntries(Object.keys(tables).sort().map((table) => [table, canon(tables[table])])),
     calls: { perStep: steps.map(({ label, calls }) => ({ label, ...calls })), total: countCalls(log) },
+    uafbrudt,
     unsupported: [...new Set(fakes.flatMap((x) => x.fake.unsupported))],
     consoleNotes: [...notes],
   };
 }
 
 export function countCalls(entries) {
-  const out = { total: entries.length, reads: 0, writes: 0, rpc: 0, rounds: new Set(entries.map((entry) => entry.round)).size, byTarget: {} };
+  const out = { total: entries.length, reads: 0, writes: 0, rpc: 0, gen: entries.filter((entry) => entry.gen === true).length, rounds: new Set(entries.map((entry) => entry.round)).size, byTarget: {} };
   for (const entry of entries) {
     if (entry.kind === "read") out.reads += 1; else if (entry.kind === "write") out.writes += 1; else out.rpc += 1;
     const key = `${entry.kind}:${entry.target}`;
@@ -877,8 +974,9 @@ function fullFingerprint(run) {
   return {
     steps: run.steps,
     reads: run.reads,
+    uafbrudt: run.uafbrudt ?? [],
     writes: run.writes.map((entry) => {
-      const base = { kind: entry.kind, target: entry.target, ...(entry.op ? { op: entry.op } : {}), ...(entry.filters ? { filters: entry.filters } : {}), ...(entry.options ? { options: entry.options } : {}) };
+      const base = { kind: entry.kind, target: entry.target, ...(entry.op ? { op: entry.op } : {}), ...(entry.filters ? { filters: entry.filters } : {}), ...(entry.options ? { options: entry.options } : {}), ...(entry.gen ? { gen: true } : {}), ...(entry.tryk ? { tryk: true } : {}) };
       if (entry.kind === "rpc") {
         const args = {};
         for (const [key, value] of Object.entries(entry.payload ?? {})) {
@@ -912,3 +1010,158 @@ export function firstDifference(expected, actual, path = "") {
   for (const key of Object.keys(actual)) if (!(key in expected)) return { path: `${path}.${key}`, expected: "(findes ikke i facit)", actual: actual[key] };
   return null;
 }
+
+// ── Trin 4a: seks scenarier mere ──────────────────────────────────────────────────────────────
+// En loebsrytter er "bundet" til sit loeb paa hver loebsdag i loebets spaend, ogsaa de dage hvor
+// der ingen etape er. Paa saadan en dag laeser motoren, om rytteren har en etape paa datoen, og den
+// laesning behoever svaret fra bindingen. Ingen af de oprindelige scenarier havde en bundet rytter.
+const bind = (state, days) => {
+  for (const entry of state.race_entries.filter((row) => row.race_id === RACE)) {
+    for (const game_day of days) {
+      if (!state.race_entry_days.some((row) => row.rider_id === entry.rider_id && row.game_day === game_day)) {
+        state.race_entry_days.push({ race_id: RACE, rider_id: entry.rider_id, team_id: TEAM, season_id: SEASON.id, game_day });
+      }
+    }
+  }
+};
+const AFTER_STAGE = new Date("2026-11-09T17:30:00Z");
+Object.assign(SCENARIOS, {
+  // Loebsrytterne er bundet paa alle datoens loebsdage; etapen er ikke koert endnu (beta-tryk).
+  bundet_etape_ikke_koert: { seed: BIG, async run(s, f, out) { bind(s, [41, 42, 43, 44, 45]); await step(out, "tryk", () => press(s, f)); } },
+  // Samme, men etapen er koert: hvem koerte en etape paa datoen?
+  bundet_etape_koert: { seed: { ...BIG, stageRun: true }, async run(s, f, out) { bind(s, [41, 42, 44, 45]); await step(out, "tryk", () => press(s, f, { now: AFTER_STAGE })); } },
+  // Som forrige, plus tre ryttere med en etape dagen foer (spillerens regel "dagen efter en etape").
+  bundet_og_etape_dagen_foer: { seed: { ...BIG, stageRun: true }, async run(s, f, out) {
+    bind(s, [41, 42, 44, 45]);
+    [2, 9, 14].forEach((n, i) => s.race_results.push({ id: id(7900 + i), race_id: FILLER, stage_number: 1, rider_id: rider(n), result_type: "stage", rank: i + 1, imported_at: "2026-11-08T16:00:00Z" }));
+    await step(out, "tryk", () => press(s, f, { now: AFTER_STAGE }));
+  } },
+  // Bundne loebsryttere, almindeligt tryk (uden straks-traening).
+  almindeligt_tryk_bundet: { seed: { ...BIG, stageRun: true }, async run(s, f, out) { bind(s, [41, 42, 44, 45]); await step(out, "tryk", () => press(s, f, { now: AFTER_STAGE, isBetaTester: false })); } },
+  // Holdets etape ligger paa datoens FOERSTE loebsdag, saa loebsdagens laesninger sker i dag-felt 1.
+  etape_paa_datoens_foerste_loebsdag: { seed: { ...BIG, stageRun: true }, async run(s, f, out) {
+    for (const table of ["race_stage_schedule", "training_race_loads", "race_entry_days"]) for (const row of s[table]) if (row.race_id === RACE && row.game_day === 43) row.game_day = 41;
+    bind(s, [42, 43, 44, 45]);
+    await step(out, "tryk", () => press(s, f, { now: AFTER_STAGE }));
+  } },
+  // Aftenkoerslen tager datoen, lige efter trykket har gemt sit andet dag-felt. Trykket skal standse
+  // med samme svar som foer, uden at gemme mere; et nyt tryk og aftenkoerslen goer datoen faerdig.
+  aftenkoerslen_tager_datoen_midt_i_trykket: { seed: { count: 14, entered: [2, 5] },
+    fail: ({ base, state }) => { if (base === "commit_training_date_tick" && !state.__failed && (state.__commits = (state.__commits ?? 0) + 1) === 2) { state.__failed = true; state.__held = true; } return false; },
+    async run(s, f, out) {
+      await step(out, "tryk der standses", () => press(s, f));
+      s.__held = false;
+      await step(out, "nyt tryk", () => press(s, f, { now: new Date("2026-11-09T06:02:00Z") }));
+      finishRace(s); await step(out, "aftenkoersel", () => sweep(s, f));
+    } },
+});
+
+// ── Trin 4a: hvad maa aendre sig, og hvad maa ikke ────────────────────────────────────────────
+// Trin 4a henter én gang og regner datoens fem dag-felter i serveren. Derfor forsvinder laesninger
+// EFTER det foerste gemme-kald. Alt andet er som foer:
+//   svar            ens (i "fejl_i_hver_laesning" maa en laesning, der er vaek, mangle; de andre er ens);
+//   skrivninger     ens, i raekkefoelge. Undtaget er trykkets genregistreringer af en dato, der
+//                   allerede er registreret: de maa blive faerre, aldrig flere, aldrig i ny raekkefoelge;
+//   sluttilstand    ens;
+//   laesninger      FOER foerste gemme-kald: praecis som foer, i samme mellemrum. En laesning fra
+//                   senere i trykket maa flytte hen foran foerste gemme-kald, hvis den er i en tabel,
+//                   trykket ikke selv skriver i. EFTER foerste gemme-kald: ingen ny laesning, og ingen
+//                   laesning i et andet mellemrum end foer; de maa forsvinde;
+//   aftenkoerslen   praecis som foer, ogsaa hver laesning og hver genregistrering.
+export const PRESS_WRITTEN_TABLES = Object.freeze(new Set([
+  "rider_derived_abilities", "rider_condition", "training_rider_ticks", "training_day_runs", "training_date_work",
+  "training_condition_settlements", "training_race_loads", "training_train_now_locks", "rider_derived_ability_history",
+  "rider_ability_race_day_history", "rider_training_scores", "training_condition_timeout_outbox",
+]));
+const isCommitBoundary = (label) => String(label).endsWith("commit_training_date_tick");
+const tableOfKey = (key) => key.split("|")[0];
+const pressGen = (entry) => entry.gen === true && entry.tryk === true;
+
+function compareWrites(expected, actual) {
+  const diff = firstDifference(expected.filter((entry) => !pressGen(entry)), actual.filter((entry) => !pressGen(entry)), "writes");
+  if (diff) return diff;
+  const before = expected.filter(pressGen).map((entry) => JSON.stringify(entry));
+  let at = 0;
+  for (const [i, entry] of actual.filter(pressGen).map((x) => JSON.stringify(x)).entries()) {
+    const found = before.indexOf(entry, at);
+    if (found === -1) return { path: `writes (trykkets genregistrering nr. ${i + 1})`, expected: "en genregistrering, facit ogsaa har, i samme raekkefoelge (de maa blive faerre, aldrig flere)", actual: JSON.parse(entry) };
+    at = found + 1;
+  }
+  return null;
+}
+
+function compareReadSteps(expected, actual, uninterrupted = []) {
+  if (expected.length !== actual.length) return { path: "reads.length", expected: expected.length, actual: actual.length };
+  for (let i = 0; i < expected.length; i += 1) {
+    const e = expected[i], a = actual[i], path = `reads[${i}]`;
+    if (e.label !== a.label || Boolean(e.tryk) !== Boolean(a.tryk)) return { path: `${path}.label`, expected: [e.label, Boolean(e.tryk)], actual: [a.label, Boolean(a.tryk)] };
+    const E = e.mellemrum, A = a.mellemrum;
+    const firstE = Array.isArray(E) ? E.findIndex((x) => isCommitBoundary(x.foer)) : -1;
+    const firstA = Array.isArray(A) ? A.findIndex((x) => isCommitBoundary(x.foer)) : -1;
+    // En aftenkoersel, et afvist tryk og et tryk uden gemme-kald: praecis som foer.
+    if (!e.tryk || !Array.isArray(E) || !Array.isArray(A) || firstE === -1 || firstA === -1) { const d = firstDifference(E, A, `${path}.mellemrum`); if (d) return d; continue; }
+    if (firstE !== firstA) return { path: `${path}.mellemrum (antal skrivninger foer foerste gemme-kald)`, expected: firstE, actual: firstA };
+    for (let k = 0; k < firstE; k += 1) { const d = firstDifference(E[k], A[k], `${path}.mellemrum[${k}]`); if (d) return d; }
+    const gone = E[firstE].noegler.filter((key) => !A[firstE].noegler.includes(key));
+    if (gone.length) return { path: `${path}.mellemrum[${firstE}] (foer foerste gemme-kald)`, expected: "alle laesninger fra foer", actual: `mangler ${gone[0]}` };
+    // "Senere i trykket": det, facit-trykket selv spurgte om efter foerste gemme-kald, og (for et afbrudt
+    // tryk) det, et uafbrudt tryk fra samme udgangstilstand spoerger om. Ingen kode kan vide foer foerste
+    // gemme-kald, at et senere gemme-kald fejler.
+    const later = new Set([...E.slice(firstE + 1).flatMap((x) => x.noegler), ...uninterrupted]);
+    for (const key of A[firstE].noegler.filter((x) => !E[firstE].noegler.includes(x))) {
+      if (!later.has(key) || PRESS_WRITTEN_TABLES.has(tableOfKey(key))) return { path: `${path}.mellemrum[${firstE}] (foer foerste gemme-kald)`, expected: "ingen ny laesning (kun en laesning fra senere i trykket, i en tabel trykket ikke selv skriver i, maa flytte herhen)", actual: key };
+    }
+    if (E.length !== A.length) return { path: `${path}.mellemrum.length (skrivninger efter foerste gemme-kald)`, expected: E.length, actual: A.length };
+    for (let k = firstE + 1; k < E.length; k += 1) {
+      if (E[k].foer !== A[k].foer) return { path: `${path}.mellemrum[${k}].foer`, expected: E[k].foer, actual: A[k].foer };
+      const added = A[k].noegler.filter((key) => !E[k].noegler.includes(key));
+      if (added.length) return { path: `${path}.mellemrum[${k}] (efter foerste gemme-kald)`, expected: "ingen ny laesning og ingen laesning flyttet hertil", actual: added[0] };
+    }
+  }
+  return null;
+}
+
+function compareFaultSteps(expected, actual) {
+  if (expected.length !== actual.length) return { path: "steps.length", expected: expected.length, actual: actual.length };
+  for (let i = 0; i < expected.length; i += 1) {
+    if (expected[i].label !== actual[i].label) return { path: `steps[${i}].label`, expected: expected[i].label, actual: actual[i].label };
+    const E = expected[i].response, A = actual[i].response;
+    const questions = new Set(Object.keys(E).map((key) => key.split(" | ").slice(1, 3).join(" | ")));
+    // En laesning foer foerste gemme-kald skal stadig findes og vaere proevet med fejl (regel R4).
+    for (const key of Object.keys(E)) if (E[key].foerFoersteGemmeKald === true && !(key in A)) return { path: "steps[" + i + "].response." + key, expected: "laesningen ligger foer foerste gemme-kald og skal stadig findes", actual: "(mangler)" };
+    for (const key of Object.keys(A)) {
+      if (key in E) { const d = firstDifference(E[key], A[key], `steps[${i}].response.${key}`); if (d) return d; continue; }
+      const [, table, question] = key.split(" | ");
+      if (PRESS_WRITTEN_TABLES.has(table) || !questions.has(`${table} | ${question}`)) return { path: `steps[${i}].response.${key}`, expected: "(findes ikke i facit: en ny laesning, eller en laesning flyttet til et andet mellemrum)", actual: A[key] };
+    }
+  }
+  return null;
+}
+
+/** Foerste afvigelse fra facit efter reglerne for trin 4a (se ovenfor). null = bestaaet. */
+export function compareToFacit(expected, actual, name) {
+  const steps = name === "fejl_i_hver_laesning" ? compareFaultSteps(expected.steps, actual.steps) : firstDifference(expected.steps, actual.steps, "steps");
+  if (steps) return { part: "steps", ...steps };
+  const writes = compareWrites(expected.writes, actual.writes);
+  if (writes) return { part: "writes", ...writes };
+  const finalState = firstDifference(expected.finalState, actual.finalState, "finalState");
+  if (finalState) return { part: "finalState", ...finalState };
+  const reads = compareReadSteps(expected.reads, actual.reads, expected.uafbrudt ?? []);
+  return reads ? { part: "reads", ...reads } : null;
+}
+
+// ── Trin 4a, udgave 2: en rytter frigives midt i et tryk ──────────────────────────────────────
+// Lige foer trykkets ANDET gemme-kald frigives en rytter fra holdet. Baade det gamle og det nye tryk har
+// da allerede regnet dag-feltet med ham; databasens gemme-funktion saetter ham i karantaene og gemmer
+// resten. Derefter skal trykket goere datoen faerdig for de andre, og aftenkoerslen maa ikke aendre noget.
+// (Frigives han i stedet lige EFTER et gemme-kald, opdager det gamle tryk det ved naeste laesning og tager
+// ham stille ud; det nye tryk opdager det ved naeste gemme-kald. Den forskel proeves for sig i proevefilen.)
+export const RELEASED = rider(7);
+Object.assign(SCENARIOS, {
+  rytter_frigives_foer_andet_gemme_kald: { seed: { count: 14, entered: [2, 5] },
+    fail: ({ base, state }) => { if (base === "commit_training_date_tick" && !state.__failed && (state.__commits = (state.__commits ?? 0) + 1) === 2) { state.__failed = true; state.riders.find((row) => row.id === RELEASED).team_id = null; } return false; },
+    async run(s, f, out) {
+      await step(out, "tryk", () => press(s, f));
+      finishRace(s); await step(out, "aftenkoersel", () => sweep(s, f));
+    } },
+});
