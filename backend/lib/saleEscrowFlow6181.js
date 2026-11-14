@@ -659,8 +659,10 @@ export async function resolveStuckSaleEscrow(supabase, { escrowId, outcome, admi
  */
 async function notifySellerAfterAdminRelease(supabase, escrowId, notifyReleased, now) {
   try {
-    const { data: escrow, error } = await supabase.from("sale_escrows").select(ESCROW_COLUMNS).eq("id", escrowId).maybeSingle();
+    // id er PRIMARY KEY: hoejst een raekke (limit(1) som i saleEscrowStatusForDeal).
+    const { data, error } = await supabase.from("sale_escrows").select(ESCROW_COLUMNS).eq("id", escrowId).limit(1);
     if (error) throw new Error(error.message);
+    const escrow = Array.isArray(data) ? data[0] : undefined;
     if (!escrow) throw new Error("escrow'en blev ikke fundet efter udbetalingen");
     await notifySellerReleased(supabase, escrow, notifyReleased, now, { onlyDelivered: true });
   } catch (err) {

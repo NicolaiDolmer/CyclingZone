@@ -1211,7 +1211,7 @@ test("#6181 punkt 7: en fejlet besked (ogsaa et fejlet escrow-opslag) vaelter al
   const escrowId2 = await stuckSwap(db2, supabase2);
   const notify = countingNotify();
   const brokenRead = { ...supabase2, from: (table) => (table === "sale_escrows"
-    ? { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: { code: "XX000", message: "laesefejl" } }) }) }) }
+    ? { select: () => ({ eq: () => ({ limit: async () => ({ data: null, error: { code: "XX000", message: "laesefejl" } }) }) }) }
     : supabase2.from(table)) };
   assert.equal((await resolveStuckSaleEscrow(brokenRead, { escrowId: escrowId2, outcome: "release", adminUserId: null, now: new Date(FLUSHED_AT), notifyReleased: notify.fn })).status, "released");
   assert.deepEqual(notify.sent, []);
