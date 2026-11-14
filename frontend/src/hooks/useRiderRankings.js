@@ -1,18 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase, authHeaders } from "../lib/supabase";
+import { supabase } from "../lib/supabase";
 import { fetchAllRows } from "../lib/supabasePagination";
 import { pickResultsSeason } from "../lib/seasonReference.js";
 import { fetchRiderRankings } from "../lib/rankingsApi.ts";
-import { apiFetch } from "../lib/apiFetch.ts";
 import { startFreshnessProbe } from "../lib/rankingFreshness.ts";
-
 // #7664: tidspunktet for "Opdateret kl." (null = ingen linje, fx kontakten slukket).
-async function loadRankingFreshness() {
-  const headers = await authHeaders({ json: false });
-  if (!headers) return null;
-  const response = await apiFetch("/api/rankings/freshness", { headers }, { source: "rankings-freshness" });
-  return response.ok ? response.data : null;
-}
+import { loadRankingFreshness } from "../lib/rankingFreshnessApi.ts";
 
 // Rytter-rangliste for den aktive sæson (#2175). Erstatter den gamle client-agg
 // der hentede ALLE ~38k race_results til browseren og aggregerede der (én fejlet

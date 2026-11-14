@@ -42,7 +42,7 @@ import {
 import { fetchSeasonTransitionBoundary } from "../lib/seasonTransitionBoundary.js";
 import { applyNameSearch } from "../lib/riderNameSearch.js";
 import { splitGcWinsSafe } from "../lib/dashboardRiderRankingGcSplit.js";
-import { createRankingFreshnessRouter, createRankingReadClient, rankingReadMiddleware, readDashboardTopRiders7664 } from "../lib/rankingRead7664.js"; // #7664
+import { createRankingFreshnessRouter, createRankingReadClient, rankingReadWithFallback7664, readDashboardTopRiders7664, withShadowFallbackReport } from "../lib/rankingRead7664.js"; // #7664
 import { handleAluntaWebhook } from "../lib/aluntaWebhook.js";
 import { handleEmailUnsubscribe } from "../lib/emailUnsubRoute.js";
 import { handleResendWebhook } from "../lib/resendWebhook.js";
@@ -1004,13 +1004,13 @@ async function requireAuth(req, res, next) {
 }
 
 router.use("/rankings", createRankingFreshnessRouter({ supabase, requireAuth, reportError: captureException })); // #7664
-router.use("/rankings", rankingReadMiddleware(supabase, { captureExceptionFn: captureException }), createRankingsRouter({ // #7664: kontakt slukket = samme tabeller
-  supabase: createRankingReadClient(supabase), requireAuth, reportError: captureException,
+router.use("/rankings", rankingReadWithFallback7664(supabase, createRankingsRouter({ // #7664: kontakt slukket = samme tabeller; fejl i de nye -> de gamle
+  supabase: createRankingReadClient(supabase), requireAuth, reportError: withShadowFallbackReport(captureException),
   viewerClient: (authorization) => createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
     global: { headers: { Authorization: authorization }, fetch: createSupabaseFetchWithRetry() }, // #7917
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   }),
-}));
+}), { captureExceptionFn: captureException }));
 router.use("/feature-flags", createFeatureFlagsRouter({ supabase, requireAuth, isViewerBetaTester, reportError: captureException })); // #4948
 router.use(createFirstRaceCardRouter({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, reportError: captureException })); // #1140
 router.use(createRaceLibraryV2Router({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, reportError: captureException })); // #6514

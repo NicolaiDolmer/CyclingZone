@@ -274,6 +274,11 @@ dagens RPC uden rapport), og forsiden bruger dagens `dashboard_rider_ranking`-RP
 500-svar). Rækkefølge: point faldende, rækker uden point (NULL) efter 0, lige
 point afgøres af rytter-id som på rytterranglisten (dagens RPC: laveste
 resultat-id).
+Nødvej for ruterne (#7664 opfølgning 14/11): ender en rangliste-rute i et 5xx-svar efter at have
+læst en skyggetabel, sendes svaret ikke; ruten køres én gang til mod matviews, og spilleren får
+det svar. Efter en skyggefejl (ruter eller forsiden) læses matviews i 5 minutter (ingen
+"Opdateret kl." i vinduet), og Sentry får højst én rapport pr. vindue pr. backend-proces.
+Slukket kontakt: routeren køres direkte som før; intet svar opfanges.
 Holdevindue: mens kilden er skyggen, kører cron/vækkeur ikke den fulde
 matview-genberegning, før den ældste ventende ændring er 15 minutter gammel;
 træningens udskydelsesloft forlænges med samme 15 minutter. Tvungne
@@ -282,8 +287,9 @@ samme 15 minutter lagt til, kun mens kilden er skyggen. Med kontakten slukket er
 holdevinduet 0, og alle grænser er som ovenfor. `/api/rankings/freshness`
 returnerer `current_as_of` (nu ved tom kø, ellers den ældste ventende ændrings
 tidspunkt) kun når kilden er skyggen; frontendens "Opdateret kl." vises kun da,
-kun på rytterranglisten (holdranglistens point kommer fra `season_standings`, som
-tidspunktet ikke beskriver), i Europe/Copenhagen-tid, og kun når opslaget,
+på rytterranglisten og (ejer-valg 14/11) holdranglisten, hvor det beskriver
+holdkonkurrence, podier, præmier og forløbsgrafen (pointkolonnen kommer fra
+`season_standings`, som skrives ved finaliseringen), i Europe/Copenhagen-tid, og kun når opslaget,
 der startes før tallene læses, har svaret, inden tallene er hentet.
 
 **Concurrent RPC-overloads (#5692, separat SQL-forberedelse):**

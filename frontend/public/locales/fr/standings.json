@@ -3,6 +3,9 @@
   "season": "Saison {n}",
   "seasonTooltip": "Saison en cours. Le classement est remis à zéro à chaque saison.",
   "noActiveSeason": "Aucune saison en cours",
+  "rankings": {
+    "updatedAt": "Mis à jour à {time}"
+  },
   "loadError": "Impossible de charger le classement. Réessaie.",
   "strengthLoadError": "Impossible de charger la force des effectifs. Réessayez.",
   "retry": "Réessayer",
