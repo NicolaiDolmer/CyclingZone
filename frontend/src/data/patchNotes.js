@@ -1,5 +1,30 @@
 export const PATCHES = [
 {
+  "version": "7.446",
+  "date": "2026-11-14",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Races",
+      "flag": "ranking_shadow_decoupled_6765",
+      "en": {
+        "title": "Rankings update within a minute",
+        "body": "The rider rankings, team standings and the dashboard's top 5 now update about a minute after a stage finishes, instead of after 15 minutes or more. The team standings also show when they were last updated."
+      },
+      "da": {
+        "title": "Ranglisterne opdateres inden for et minut",
+        "body": "Rytterranglisten, holdranglisten og forsidens top 5 opdateres nu cirka et minut efter en etape, i stedet for efter 15 minutter eller mere. Holdranglisten viser også, hvornår den sidst blev opdateret."
+      },
+      "refs": [
+        7664,
+        7139
+      ]
+    }
+  ]
+},
+{
   "version": "7.445",
   "date": "2026-11-14",
   "changes": [
