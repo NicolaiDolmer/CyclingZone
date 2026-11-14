@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import * as backend from "./stagePlan.ts";
 import * as frontend from "../../frontend/src/components/race/StagePlanModel.ts";
-import { STAGE_PLAN_HUNT_FALLBACK_EVENT, STAGE_PLAN_ORDER_KIND, advanceStagePlan, createStagePlanRuntime, stagePlanCurrentTasks, stagePlanHuntWindows7855, stagePlanOrderFromRow, stagePlanRouteFromV4 } from "./stagePlanEngine.ts";
+import { STAGE_PLAN_HUNT_FALLBACK_EVENT, STAGE_PLAN_ORDER_KIND, advanceStagePlan, advanceStagePlanAtFinish, createStagePlanRuntime, stagePlanCurrentTasks, stagePlanHuntWindows7855, stagePlanLoadEfforts, stagePlanOrderFromRow, stagePlanRouteFromV4 } from "./stagePlanEngine.ts";
 import { withStagePlan } from "./stagePlanApi.js";
 import { jerseyHuntersForPassage7855 } from "./engine/v4/mechanics/jerseyHunt7855.ts";
 import type { EngineState, Entrant, RouteV2, Segment, TeamOrder } from "./engine/v4/types.ts";
@@ -187,6 +187,104 @@ test("#7855 reviewfund 2: jaegeren kaemper kun om passager paa sin egen straekni
   assert.deepEqual(hunters(60), ["a"]);
   assert.deepEqual(hunters(45), []);
   assert.deepEqual(jerseyHuntersForPassage7855(tasks, "sprint", () => true), ["a", "b"], "uden straekninger: som foer");
+});
+
+// #7855 valg 3, hul 1 og 2 (ejer 13/11 "Samme pris", 14/11 "Som rent udbrud"): prisen foelger det,
+// han faktisk koerte paa udbrudsleddet. Feltet er opdigtet: "h" er hjaelperen, "x" en anden rytter.
+const HOLE_RIDERS = { h: { team_id: "t", role: "helper", effort: "normal" }, x: { team_id: "u", role: "hunter", effort: "normal" } } as unknown as Record<string, Entrant>;
+const ESCAPE = (ids: string[]) => ({ id: "brk", rider_ids: ids, gap_seconds: 0, kind: "breakaway", origin: "breakaway" });
+const FIELD = (ids: string[]) => ({ id: "pel", rider_ids: ids, gap_seconds: 60, kind: "peloton" });
+const holeState = (groups: unknown[], passages: unknown[] = []) => ({
+  groups,
+  riders: { h: { rider_id: "h", status: "racing" }, x: { rider_id: "x", status: "racing" } },
+  stage_passages: passages,
+}) as unknown as EngineState;
+const sprintAt = (km: number, hunters: string[]) => ({ kind: "sprint", index: 0, km, hunters });
+const holeRoute = (sprintKm: number) => ({ distance_km: 100, profile_type: "flat", waypoints: [{ kind: "sprint", index: 0, name: "S", km: sprintKm }, { kind: "finish", index: 0, name: "F", km: 100 }] }) as unknown as RouteV2;
+const holeRun = (legs: unknown, route: RouteV2) => createStagePlanRuntime(ORDER(legs), route, HOLE_RIDERS, { jerseyHunt7855: true })!;
+const WHEN_DROPPED = { task: "ride_in", from: { at: "dropped" } };
+
+test("#7855 hul 2: en tidlig spurt jaget fra feltet taeller, ogsaa naar han ved samme graense skifter til 'naar han er sat'", () => {
+  const route = holeRoute(10);
+  const ride = (legs: unknown, hunters: string[]) => {
+    const rt = holeRun(legs, route);
+    advanceStagePlan(rt, { state: holeState([FIELD(["h", "x"])]), segment: SEG(0, 50), segmentIndex: 0, entrants: HOLE_RIDERS });
+    // Udbruddet gik uden ham; spurten ved km 10 er koert i feltet.
+    advanceStagePlan(rt, { state: holeState([ESCAPE(["x"]), FIELD(["h"])], [sprintAt(10, hunters)]), segment: SEG(50, 100), segmentIndex: 1, entrants: HOLE_RIDERS });
+    advanceStagePlanAtFinish(rt, { state: holeState([ESCAPE(["x"]), FIELD(["h"])], [sprintAt(10, hunters)]), segment: SEG(50, 100), entrants: HOLE_RIDERS });
+    return rt;
+  };
+  const both = ride([{ task: "breakaway", hunt: "hunt_points" }, WHEN_DROPPED], ["h"]);
+  assert.equal(stagePlanCurrentTasks(both)["h"], "ride_in", "han skiftede til leddet 'naar han er sat' ved samme graense");
+  const alone = ride([{ task: "hunt_points" }, WHEN_DROPPED], ["h"]);
+  assert.deepEqual(stagePlanLoadEfforts(both), stagePlanLoadEfforts(alone), "samme pris som 'Hent point' alene (ejer 13/11)");
+  assert.equal(stagePlanLoadEfforts(both)["h"], backend.TASK_EFFORT.hunt_points, "aldrig billigere end Haard (ejer 7/11)");
+  // Koerte han ikke efter spurten, er der ingen jagt fra feltet at prissaette.
+  const noChase = ride([{ task: "breakaway", hunt: "hunt_points" }, WHEN_DROPPED], []);
+  const plain = ride([{ task: "breakaway" }, WHEN_DROPPED], []);
+  assert.deepEqual(stagePlanLoadEfforts(noChase), stagePlanLoadEfforts(plain), "ingen ny pris for noget, han ikke gjorde");
+});
+
+test("#7855 hul 1: kommer han med i et sent dannet udbrud uden at jage fra feltet, betaler han som rent udbrud", () => {
+  const legs = [{ task: "breakaway", hunt: "hunt_points" }];
+  const ride = (sprintKm: number, plan: unknown = legs) => {
+    const rt = holeRun(plan, holeRoute(sprintKm));
+    advanceStagePlan(rt, { state: holeState([FIELD(["h", "x"])]), segment: SEG(0, 40), segmentIndex: 0, entrants: HOLE_RIDERS });
+    // Ved km 40 er der endnu intet udbrud; han sidder i feltet.
+    advanceStagePlan(rt, { state: holeState([FIELD(["h", "x"])], sprintKm <= 40 ? [sprintAt(sprintKm, ["h"])] : []), segment: SEG(40, 80), segmentIndex: 1, entrants: HOLE_RIDERS });
+    // Ved km 80 ligger han i udbruddet.
+    const passages = [sprintAt(sprintKm, ["h"])];
+    advanceStagePlan(rt, { state: holeState([ESCAPE(["h"]), FIELD(["x"])], sprintKm <= 80 ? passages : []), segment: SEG(80, 100), segmentIndex: 2, entrants: HOLE_RIDERS });
+    advanceStagePlanAtFinish(rt, { state: holeState([ESCAPE(["h"]), FIELD(["x"])], passages), segment: SEG(80, 100), entrants: HOLE_RIDERS });
+    return stagePlanLoadEfforts(rt)["h"];
+  };
+  const pure = ride(90, [{ task: "breakaway" }]);
+  assert.equal(pure, backend.TASK_EFFORT.breakaway);
+  // Spurten koert fra udbruddet, efter det blev dannet: samme trin som rent udbrud (spurten selv koster oveni, valg C).
+  assert.equal(ride(90), pure, "spurten efter han kom med");
+  assert.equal(ride(80), pure, "spurten paa graensen, hvor han ligger i udbruddet");
+  // Uden for ejerens svar (dommerens nye spoergsmaal): jagede han en spurt fra feltet, foer udbruddet
+  // blev dannet, taeller jagten som foer.
+  assert.equal(ride(30), backend.TASK_EFFORT.hunt_points, "en spurt jaget fra feltet, foer han kom med");
+});
+
+// #7855 runde 1 (dommeren 14/11): motoren afgoer passagerne sidst i segmentet, paa gruppebilledet ved
+// segmentets slut. Ligger han i udbruddet dér, koerte han spurten i udbruddet, ogsaa naar udbruddet
+// blev dannet i samme segment, og ogsaa i etapens sidste segment (finalens opslag).
+test("#7855 hul 1, samme stykke: spurten i segmentet, hvor udbruddet dannes, koert i udbruddet, koster som rent udbrud", () => {
+  const ride = (plan: unknown, lastSegment: boolean) => {
+    const rt = holeRun(plan, holeRoute(lastSegment ? 90 : 60));
+    advanceStagePlan(rt, { state: holeState([FIELD(["h", "x"])]), segment: SEG(0, 40), segmentIndex: 0, entrants: HOLE_RIDERS });
+    advanceStagePlan(rt, { state: holeState([FIELD(["h", "x"])]), segment: SEG(40, 80), segmentIndex: 1, entrants: HOLE_RIDERS });
+    // Ved km 80 sidder han stadig i feltet, naar spurten ligger i sidste segment; ellers er han kommet med.
+    const at80 = lastSegment ? [FIELD(["h", "x"])] : [ESCAPE(["h"]), FIELD(["x"])];
+    const midPassages = lastSegment ? [] : [sprintAt(60, ["h"])];
+    advanceStagePlan(rt, { state: holeState(at80, midPassages), segment: SEG(80, 100), segmentIndex: 2, isLastSegment: true, entrants: HOLE_RIDERS });
+    // Ved maal ligger han i udbruddet (dannet i samme segment som spurten).
+    const finishPassages = lastSegment ? [sprintAt(90, ["h"])] : midPassages;
+    advanceStagePlanAtFinish(rt, { state: holeState([ESCAPE(["h"]), FIELD(["x"])], finishPassages), segment: SEG(80, 100), entrants: HOLE_RIDERS });
+    return stagePlanLoadEfforts(rt)["h"];
+  };
+  for (const lastSegment of [false, true]) {
+    const pure = ride([{ task: "breakaway" }], lastSegment);
+    assert.equal(pure, backend.TASK_EFFORT.breakaway);
+    assert.equal(ride([{ task: "breakaway", hunt: "hunt_points" }], lastSegment), pure, lastSegment ? "samme stykke i etapens sidste segment" : "samme stykke midt paa etapen");
+  }
+});
+
+test("#7855 sidste segment: en spurt jaget fra feltet i etapens sidste segment taeller i 'samme pris' (finalens opslag)", () => {
+  const ride = (plan: unknown) => {
+    const rt = holeRun(plan, holeRoute(90));
+    advanceStagePlan(rt, { state: holeState([FIELD(["h", "x"])]), segment: SEG(0, 50), segmentIndex: 0, entrants: HOLE_RIDERS });
+    // Udbruddet gik uden ham; spurten ved km 90 er endnu ikke koert ved graensen.
+    advanceStagePlan(rt, { state: holeState([ESCAPE(["x"]), FIELD(["h"])]), segment: SEG(50, 100), segmentIndex: 1, isLastSegment: true, entrants: HOLE_RIDERS });
+    advanceStagePlanAtFinish(rt, { state: holeState([ESCAPE(["x"]), FIELD(["h"])], [sprintAt(90, ["h"])]), segment: SEG(50, 100), entrants: HOLE_RIDERS });
+    return stagePlanLoadEfforts(rt)["h"];
+  };
+  const both = ride([{ task: "breakaway", hunt: "hunt_points" }]);
+  assert.equal(both, ride([{ task: "hunt_points" }]), "samme pris som 'Hent point' alene (ejer 13/11)");
+  assert.equal(both, backend.TASK_EFFORT.hunt_points, "aldrig billigere end Haard (ejer 7/11)");
+  assert.notEqual(both, ride([{ task: "breakaway" }]), "jagten fra feltet koster mere end rent udbrud");
 });
 
 test("#7855 paritet: frontendens kopi giver samme svar, slukket og taendt", () => {
