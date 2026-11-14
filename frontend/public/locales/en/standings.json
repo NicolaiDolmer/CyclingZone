@@ -3,6 +3,9 @@
   "season": "Season {n}",
   "seasonTooltip": "Current season. Standings reset each season.",
   "noActiveSeason": "No active season",
+  "rankings": {
+    "updatedAt": "Updated {time}"
+  },
   "loadError": "Couldn't load the standings. Please try again.",
   "strengthLoadError": "Couldn't load squad strength. Please try again.",
   "retry": "Try again",

@@ -3,6 +3,9 @@
   "season": "Sæson {n}",
   "seasonTooltip": "Nuværende sæson. Ranglisten nulstilles hver sæson.",
   "noActiveSeason": "Ingen aktiv sæson",
+  "rankings": {
+    "updatedAt": "Opdateret kl. {time}"
+  },
   "loadError": "Kunne ikke indlæse ranglisten. Prøv igen.",
   "strengthLoadError": "Kunne ikke hente truppernes styrke. Prøv igen.",
   "retry": "Prøv igen",
