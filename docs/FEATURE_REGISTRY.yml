@@ -1604,14 +1604,14 @@ features:
     area: stats
     title_en: Independent ranking shadow pass
     title_da: Uafhængigt rangliste-skyggepas
-    state: building
+    state: live
     flag: ranking_shadow_decoupled_6765
     ssot: docs/GAME_INVARIANTS.md
     epic: 6765
-    verified: 2026-11-13
-    decision: goer-faerdigt
-    decide_by: 2026-11-16
-    note: 'OFF seed; ranking_shadow_decoupled_6765 off i prod 13/11.'
+    verified: 2026-11-14
+    decision: taend
+    decide_by: 2026-11-28
+    note: 'On 14/11 17:18 efter ejer-go (#7664), læst tilbage i prod; rangliste-læserne bruger skyggetabellerne (#8140, #8161). Ventetid efter et etaperesultat ikke målt endnu.'
 
   - id: train-now-bonus
     area: training

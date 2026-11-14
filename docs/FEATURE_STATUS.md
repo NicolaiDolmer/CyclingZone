@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-149 poster: live 115 · beta 2 · dormant 10 · building 12 · spec 1 · idea 2 · retired 7. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+149 poster: live 116 · beta 2 · dormant 10 · building 11 · spec 1 · idea 2 · retired 7. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -125,13 +125,12 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## stats
 
-**live:** Calendar race card and race history library (`race-library-v2`) 2026-11-03
+**live:** Calendar race card and race history library (`race-library-v2`) 2026-11-03 · Independent ranking shadow pass (`ranking-shadow-decoupled`) 2026-11-14
 
 **arkiv:** `profiles` · `results-archive` · `standings-and-rankings`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
-|Independent ranking shadow pass (`ranking-shadow-decoupled`)|building|`ranking_shadow_decoupled_6765`|[GAME_INVARIANTS](GAME_INVARIANTS.md)|#6765|2026-11-13|OFF seed; ranking_shadow_decoupled_6765 off i prod 13/11.|
 |Hall of Fame (`hall-of-fame`)|retired|-|-|#2359|2026-09-06|Redirecter til /standings.|
 
 ## onboarding
