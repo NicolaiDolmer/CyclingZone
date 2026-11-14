@@ -591,15 +591,22 @@ test("Handlinger: kladden holdes altid inden for ét atomisk kald (loftet pr. ge
 });
 
 test("Handlinger: gemmet afstemmes mod det SENDTE loeb og den sendte udtagelse", () => {
+  const old = squad(["a", "b", "t"], "a");
   const sent = squad(["t"], "t");
-  assert.deepEqual(settleBulkSave({ raceId: "r1", sel: sent }, { raceId: "r1", sel: sent }), { mine: true, saved: sent, dirty: false });
-  const kept = settleBulkSave({ raceId: "r1", sel: squad(["t", "x"]) }, { raceId: "r1", sel: sent });
+  // Codex P1: fladen viste den gemte trup (ren). Efter gemmet viser den det sendte og er stadig ren,
+  // saa den gamle trup aldrig huskes som en kladde, der kan overskrive gemmet.
+  const clean = settleBulkSave({ raceId: "r1", sel: old, saved: old }, { raceId: "r1", sel: sent });
+  assert.deepEqual(clean, { mine: true, saved: sent, sel: sent, dirty: false });
+  // Spillerens egne ugemte aendringer bliver staaende som ugemte.
+  const edited = squad(["a", "x"], "a");
+  const kept = settleBulkSave({ raceId: "r1", sel: edited, saved: old }, { raceId: "r1", sel: sent });
   assert.equal(kept.mine, true);
   if (kept.mine) {
     assert.equal(kept.saved, sent, "det gemte er det SENDTE, ikke det fladen viser");
-    assert.equal(kept.dirty, true, "en aendring lavet imens er stadig ugemt");
+    assert.equal(kept.sel, edited, "spillerens egne aendringer roeres ikke");
+    assert.equal(kept.dirty, true);
   }
-  assert.deepEqual(settleBulkSave({ raceId: "r3", sel: squad(["c"]) }, { raceId: "r1", sel: sent }), { mine: false });
+  assert.deepEqual(settleBulkSave({ raceId: "r3", sel: squad(["c"]), saved: squad(["c"]) }, { raceId: "r1", sel: sent }), { mine: false });
 });
 
 // ── Kladdens tilstand med styrede loefter ───────────────────────────────────

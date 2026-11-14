@@ -347,9 +347,10 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
   const markSaved = useCallback((raceId: string, submitted: Selection) => {
     const current = latest.current;
     if (!current || !current.ready) return false;
-    const result = settleBulkSave({ raceId: race.id, sel: current.sel }, { raceId, sel: submitted });
+    const result = settleBulkSave({ raceId: race.id, sel: current.sel, saved: current.saved }, { raceId, sel: submitted });
     if (!result.mine) return false;
     setSaved(result.saved);
+    setSel(result.sel);
     setSaveError(null);
     if (!result.dirty) {
       forgetSelectionDraft(race.id);

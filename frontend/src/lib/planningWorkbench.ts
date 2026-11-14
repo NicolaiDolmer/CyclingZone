@@ -647,14 +647,17 @@ export function draftSubmission(
 
 /**
  * Et gemt masse-kald afstemmes mod det loeb og den udtagelse der blev SENDT. Et andet loeb end det
- * fladen viser roeres ikke; aendringer lavet mens kaldet koerte, forbliver ugemte (dirty).
+ * fladen viser roeres ikke. Var fladen ren (den viste den gemte trup), viser den nu det sendte, saa en
+ * gammel trup aldrig bliver staaende som en ugemt kladde, der kan overskrive gemmet (Codex P1).
+ * Spillerens egne ugemte aendringer bliver staaende som ugemte (dirty).
  */
 export function settleBulkSave(
-  view: { raceId: string; sel: Selection },
+  view: { raceId: string; sel: Selection; saved: Selection },
   submitted: { raceId: string; sel: Selection },
-): { mine: false } | { mine: true; saved: Selection; dirty: boolean } {
+): { mine: false } | { mine: true; saved: Selection; sel: Selection; dirty: boolean } {
   if (view.raceId !== submitted.raceId) return { mine: false };
-  return { mine: true, saved: submitted.sel, dirty: selectionDirty(view.sel, submitted.sel) };
+  const sel = selectionDirty(view.sel, view.saved) ? view.sel : submitted.sel;
+  return { mine: true, saved: submitted.sel, sel, dirty: selectionDirty(sel, submitted.sel) };
 }
 
 /** Svaret fra et af kladdens kald (samme form som planningWorkbenchData's ApiResult). */
