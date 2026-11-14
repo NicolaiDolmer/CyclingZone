@@ -191,19 +191,18 @@ export default function SquadTable({
                       {/* Navnet brydes kun paa mobil; paa pc staar det paa én linje som paa de nuvaerende sider. */}
                       {/* Navnecellens faste raekkefoelge (TASTE P12): nation, navn, derefter status. Belastningen
                           staar ved navnet som paa rytter-chippen paa /planning. */}
-                      <span className="inline-flex max-w-full items-center gap-1.5">
+                      <span className="inline-flex max-w-full flex-wrap items-center gap-x-1.5 sm:flex-nowrap sm:whitespace-nowrap">
                         {detail?.nationality && <Flag code={detail.nationality} className="shrink-0 text-[11px]" />}
-                        <RiderNameCell id={row.id} name={row.name} wrap className="text-[13.5px] font-medium text-cz-1 hover:text-cz-accent-t sm:whitespace-nowrap">
-                          {load != null && load.raceDays > 0 && (
-                            <span
-                              className="whitespace-nowrap font-mono text-3xs tabular-nums text-cz-3"
-                              data-testid="planning-season-load"
-                              title={tRaces("racehub.pool.loadTitle", { races: load.races, days: load.raceDays })}
-                            >
-                              {tRaces("racehub.pool.loadShort", { days: load.raceDays })}
-                            </span>
-                          )}
-                        </RiderNameCell>
+                        <RiderNameCell id={row.id} name={row.name} wrap className="text-[13.5px] font-medium text-cz-1 hover:text-cz-accent-t sm:whitespace-nowrap" />
+                        {load != null && load.raceDays > 0 && (
+                          <span
+                            className="shrink-0 whitespace-nowrap font-mono text-3xs tabular-nums text-cz-3"
+                            data-testid="planning-season-load"
+                            title={tRaces("racehub.pool.loadTitle", { races: load.races, days: load.raceDays })}
+                          >
+                            {tRaces("racehub.pool.loadShort", { days: load.raceDays })}
+                          </span>
+                        )}
                       </span>
                       <div className="mt-1 sm:hidden">
                         <StatusCell row={row} detail={detail} seasonYear={seasonYear} />

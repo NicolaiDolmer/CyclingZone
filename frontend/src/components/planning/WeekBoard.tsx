@@ -2,7 +2,7 @@
 // ligger i hver sin bane, saa overlap er synligt med det samme. Hver bar viser loebets korte navn,
 // etape-striben og "x/6" valgte; klik vaelger loebet. Et gitter med 7 kolonner; paa mobil scroller
 // tidslinjen vandret inde i kortet (wireframet), saa navnene kan laeses uden at siden bliver bredere.
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronLeftIcon, ChevronRightIcon, Button } from "./primitives.ts";
 import { layoutWeek, raceReadiness, isoWeekNumber, addDays, gameDaysOnDate, gameDaySpan, raceDayLabelKey, type SeasonRace } from "../../lib/planningWorkbench.ts";
@@ -38,6 +38,14 @@ export default function WeekBoard({
   const { t, i18n } = useTranslation("planning");
   const layout = useMemo(() => layoutWeek(races, dates, monday), [races, dates, monday]);
   const week = isoWeekNumber(monday);
+  // Paa mobil scroller tidslinjen; det valgte loebs bar bringes i syne, saa ugen ikke aabner paa tomme dage.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const box = scrollRef.current;
+    if (!box || box.scrollWidth <= box.clientWidth) return;
+    const bar = box.querySelector<HTMLElement>('button[aria-pressed="true"]') ?? box.querySelector<HTMLElement>("button");
+    box.scrollLeft = bar ? Math.max(0, bar.offsetLeft - 16) : 0;
+  }, [selectedId, monday]);
   const range = `${formatShortDate(monday, i18n.language, false)} - ${formatShortDate(addDays(monday, 6), i18n.language, false)}`;
 
   return (
@@ -73,7 +81,7 @@ export default function WeekBoard({
 
       {/* Mobil: tidslinjen scroller vandret inde i kortet (som wireframet paa 375), saa et loebsnavn i
           en bar paa én dag kan laeses; siden selv bliver aldrig bredere end skaermen. Fra sm passer ugen. */}
-      <div className="overflow-x-auto px-4 pb-4 pt-3" data-testid="planning-week-board-scroll">
+      <div ref={scrollRef} className="relative overflow-x-auto px-4 pb-4 pt-3" data-testid="planning-week-board-scroll">
         <div
           className="grid min-w-[44rem] gap-x-1 gap-y-1.5 sm:min-w-0"
           style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}
