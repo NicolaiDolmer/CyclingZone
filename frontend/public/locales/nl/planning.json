@@ -35,7 +35,10 @@
       "title": "Toon het hele seizoen",
       "description": "Er zijn geen komende koersen in deze weergave. Met het hele seizoen kun je vooruit plannen.",
       "action": "Heel seizoen tonen"
-    }
+    },
+    "clear": "Selecties wissen",
+    "clearTitle": "{count, plural, one {Wist de selectie in de getoonde koers. Er wordt niets opgeslagen tot je op Opslaan drukt.} other {Wist de selecties in de # getoonde koersen. Er wordt niets opgeslagen tot je op Opslaan drukt.}}",
+    "clearNone": "Geen selecties om te wissen in de getoonde koersen"
   },
   "status": {
     "ready": "Klaar",
@@ -104,7 +107,9 @@
     "showStage": "Toon rit {n}",
     "hide": "Profiel verbergen",
     "show": "Profiel tonen",
-    "unavailable": "Nog geen parcoursgegevens voor deze rit."
+    "unavailable": "Nog geen parcoursgegevens voor deze rit.",
+    "showFull": "Volledig profiel tonen",
+    "hideFull": "Volledig profiel verbergen"
   },
   "unsavedBar": {
     "label": "Niet-opgeslagen wijzigingen",
@@ -113,6 +118,14 @@
     "stay": "Blijf hier",
     "discard": "Negeren",
     "saveAndOpen": "Opslaan en openen"
+  },
+  "clearBar": {
+    "text": "{count, plural, one {Selectie gewist in # koers.} other {Selecties gewist in # koersen.}}",
+    "note": "Er wordt niets opgeslagen tot je opslaat.",
+    "undo": "Ongedaan maken",
+    "save": "Opslaan",
+    "error": "Er is niets opgeslagen. {error}",
+    "errorIn": "Er is niets opgeslagen door {race}: {error}"
   },
   "error": {
     "title": "De planning kon niet laden",

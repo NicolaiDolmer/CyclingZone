@@ -75,6 +75,8 @@ function hoursUntil(iso: string | null | undefined, nowMs: number): number | nul
 export interface RaceWorkbenchHandle {
   save: () => Promise<boolean>;
   discard: () => void;
+  /** Sidens "Ryd udtagelser" er gemt: den ryddede kladde er nu den gemte trup. */
+  markSaved: () => void;
 }
 
 interface RaceWorkbenchProps {
@@ -90,6 +92,13 @@ interface RaceWorkbenchProps {
   seasonYear?: number | null;
   profileHidden: boolean;
   onToggleProfileHidden: () => void;
+  /** Loebssidens fulde ruteprofil i stedet for det kompakte kort ("Vis fuld profil"). */
+  profileFull?: boolean;
+  onToggleProfileFull?: () => void;
+  /** Loebet er ryddet af sidens "Ryd udtagelser" (kladde, intet gemt endnu). */
+  pendingClear?: boolean;
+  /** Spilleren har aendret, gemt eller kasseret loebet selv: det er ikke laengere en del af sidens rydning. */
+  onLeaveClear?: (raceId: string) => void;
   onDirtyChange?: (dirty: boolean) => void;
   onSaved?: (raceId: string, entries: SeasonEntry[]) => void;
   onWithdrawnChange?: (raceId: string, withdrawn: boolean) => void;
@@ -114,6 +123,10 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     seasonYear = null,
     profileHidden,
     onToggleProfileHidden,
+    profileFull = false,
+    onToggleProfileFull,
+    pendingClear = false,
+    onLeaveClear,
     onDirtyChange,
     onSaved,
     onWithdrawnChange,
@@ -134,8 +147,10 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
   const [profiles, setProfiles] = useState<StageProfileRow[]>([]);
   const [profilesLoading, setProfilesLoading] = useState(true);
   const [withdrawBusy, setWithdrawBusy] = useState(false);
+  // Viser fladen sidens rydning lige nu (kladden er "ryd", ikke spillerens egne aendringer)?
+  const [clearShown, setClearShown] = useState(false);
   const generation = useRef(0);
-  const latest = useRef<{ sel: Selection; saved: Selection; readOnly: boolean; clientErrors: string[]; sprintLeaderAllowed: boolean; size: { min: number; max: number } } | null>(null);
+  const latest = useRef<{ sel: Selection; saved: Selection; readOnly: boolean; clientErrors: string[]; sprintLeaderAllowed: boolean; size: { min: number; max: number }; clearShown: boolean } | null>(null);
 
   const dirty = state === "ready" && selectionDirty(sel, saved);
   useReloadBlock(dirty || saveState === "saving", RELOAD_BLOCK_REASONS.DIRTY);
@@ -150,6 +165,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     setSort(DEFAULT_SQUAD_SORT);
     setSel(EMPTY_SELECTION);
     setSaved(EMPTY_SELECTION);
+    setClearShown(false);
     setProfilesLoading(true);
     loadStageProfiles(race.id).then((rows) => {
       if (gen !== generation.current) return;
@@ -188,15 +204,40 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     };
   }, [load]);
 
+  // Sidens rydning er sidens egen kladde: den aabner ikke bjaelken ved skift af loeb (den gaelder
+  // stadig, til den gemmes eller fortrydes i sin egen bjaelke).
   useEffect(() => {
-    onDirtyChange?.(dirty);
-  }, [dirty, onDirtyChange]);
+    onDirtyChange?.(dirty && !clearShown);
+  }, [dirty, clearShown, onDirtyChange]);
 
   useEffect(() => {
-    if (state !== "ready") return;
+    if (state !== "ready" || clearShown) return;
     if (dirty) rememberSelectionDraft(race.id, sel);
     else forgetSelectionDraft(race.id);
-  }, [state, dirty, sel, race.id]);
+  }, [state, dirty, sel, race.id, clearShown]);
+
+  // "Ryd udtagelser" paa siden: loebet vises ryddet (Train now-laaste bliver, med rolle). Fortryder
+  // spilleren paa siden, stilles den gemte trup tilbage. Spillerens egne aendringer bryder forbindelsen.
+  const lockedKey = (data?.trainNowLock?.riderIds ?? []).join(",");
+  useEffect(() => {
+    if (state !== "ready") return;
+    if (pendingClear && !clearShown) {
+      setSel(clearSquad(saved, lockedKey ? lockedKey.split(",") : []));
+      setClearShown(true);
+      setSaveState("idle");
+      setSaveError(null);
+      setNote(null);
+    } else if (!pendingClear && clearShown) {
+      setSel(saved);
+      setClearShown(false);
+    }
+  }, [state, pendingClear, clearShown, saved, lockedKey]);
+
+  const leaveClear = () => {
+    if (!clearShown) return;
+    setClearShown(false);
+    onLeaveClear?.(race.id);
+  };
 
   const stageTypes = useMemo(
     () => profiles.map((p) => p.profile_type).filter((type): type is string => typeof type === "string" && type.length > 0),
@@ -242,6 +283,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
   const blockReason = dirty && clientErrors.length ? tr(`selection.errors.${clientErrors[0]}`, { min: size.min, max: size.max }) : null;
 
   const edit = (next: Selection) => {
+    leaveClear();
     setSel(next);
     setSaveState("idle");
     setSaveError(null);
@@ -283,6 +325,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
       setSaved(current.sel);
       setData((d: SelectionResponse) => (d ? { ...d, withdrawn: false } : d)); // et gem melder holdet til igen
       setSaveState("saved");
+      setClearShown(false); // et gem af en ryddet trup er gemt; siden fjerner loebet fra sin rydning (onSaved)
       onSaved?.(race.id, entriesFromSelection(race.id, current.sel));
       return true;
     } catch {
@@ -299,10 +342,24 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     setSaveState("idle");
     setSaveError(null);
     setNote(null);
+    // Kassér paa et ryddet loeb fortryder rydningen for netop dette loeb.
+    if (latest.current.clearShown) {
+      setClearShown(false);
+      onLeaveClear?.(race.id);
+    }
+  }, [race.id, onLeaveClear]);
+
+  const markSaved = useCallback(() => {
+    if (!latest.current) return;
+    forgetSelectionDraft(race.id);
+    setSaved(latest.current.sel);
+    setClearShown(false);
+    setSaveError(null);
+    setSaveState("saved");
   }, [race.id]);
 
-  latest.current = { sel, saved, readOnly, clientErrors, sprintLeaderAllowed, size };
-  useImperativeHandle(ref, () => ({ save, discard }), [save, discard]);
+  latest.current = { sel, saved, readOnly, clientErrors, sprintLeaderAllowed, size, clearShown };
+  useImperativeHandle(ref, () => ({ save, discard, markSaved }), [save, discard, markSaved]);
 
   // Afmeld / deltag igen: samme endpoint, samme guards og samme tekster som loebstavlen paa /planning.
   // En afmelding smider en ugemt kladde (som tavlen), og fladen genindlaeses fra serveren bagefter.
@@ -434,6 +491,8 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
           loading={profilesLoading}
           hidden={profileHidden}
           onToggleHidden={onToggleProfileHidden}
+          full={profileFull}
+          onToggleFull={onToggleProfileFull}
           hasClassifications={race.stages > 1}
         />
         {rows.length === 0 ? (

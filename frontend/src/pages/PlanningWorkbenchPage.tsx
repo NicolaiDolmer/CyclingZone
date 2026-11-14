@@ -12,18 +12,31 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, Navigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { PageHeader, Button, EmptyState, ErrorState, SkeletonLines, PageLoader, CalendarIcon, FlagIcon, buttonClass } from "../components/planning/primitives.ts";
+import { PageHeader, Button, EmptyState, ErrorState, SkeletonLines, PageLoader, CalendarIcon, FlagIcon, buttonClass, forgetSelectionDraft } from "../components/planning/primitives.ts";
 import WeekBoard from "../components/planning/WeekBoard.tsx";
 import RaceList from "../components/planning/RaceList.tsx";
 import RaceWorkbench, { type RaceWorkbenchHandle } from "../components/planning/RaceWorkbench.tsx";
-import UnsavedBar from "../components/planning/UnsavedBar.tsx";
+import UnsavedBar, { ClearDraftBar } from "../components/planning/UnsavedBar.tsx";
 import SelectionDeadlineReminder from "../components/planning/SelectionDeadlineReminder.tsx";
 import { useSelectionReminder, refreshSelectionReminder } from "../hooks/useSelectionReminder.ts";
 import { usePlanningWorkbenchFlag } from "../lib/usePlanningWorkbenchFlag.ts";
 import { seasonReferenceYear } from "../lib/riderAge.js";
-import { loadSeasonOverview, loadRaceTerrain, loadRiderDetails, loadSeasonLoad, type RiderDetail, type SeasonLoad } from "../lib/planningWorkbenchData.ts";
+import {
+  loadSeasonOverview,
+  loadRaceTerrain,
+  loadRiderDetails,
+  loadSeasonLoad,
+  saveRaceSelectionsBulk,
+  SELECTION_BULK_MAX,
+  type RiderDetail,
+  type SeasonLoad,
+} from "../lib/planningWorkbenchData.ts";
 import {
   addDays,
+  clearChanges,
+  clearableRaceIds,
+  entriesAfterClear,
+  type TrainNowLocks,
   copenhagenToday,
   dateIndex,
   groupRacesByWeek,
@@ -50,6 +63,7 @@ interface SeasonResponse {
   riders?: { id: string }[];
   dayDates?: DayDate[];
   withdrawnRaceIds?: string[];
+  trainNowLockByRace?: TrainNowLocks;
 }
 
 // Det spilleren sidst valgte huskes pr. browser (aldrig noget der skal overleve en ny enhed).
@@ -92,6 +106,7 @@ export default function PlanningWorkbenchPage() {
 
 function Workbench() {
   const { t } = useTranslation("planning");
+  const { t: tr } = useTranslation("races");
   const [searchParams, setSearchParams] = useSearchParams();
   const today = useMemo(() => copenhagenToday(), []);
 
@@ -105,6 +120,11 @@ function Workbench() {
   const [showWeek, setShowWeek] = useState(() => readPref("week", true));
   const [showList, setShowList] = useState(() => readPref("list", true));
   const [profileHidden, setProfileHidden] = useState(() => readPref("profileHidden", false));
+  const [profileFull, setProfileFull] = useState(() => readPref("profileFull", false));
+  // "Ryd udtagelser" (ejer 14/11): de ryddede loeb er en kladde, indtil spilleren gemmer eller fortryder.
+  const [clearDraft, setClearDraft] = useState<Set<string>>(() => new Set());
+  const [clearBusy, setClearBusy] = useState(false);
+  const [clearError, setClearError] = useState<string | null>(null);
   const [scope, setScope] = useState<RaceScope>("next7");
   const [showPast, setShowPast] = useState(false);
   const [weekMonday, setWeekMonday] = useState<string | null>(null);
@@ -145,7 +165,10 @@ function Workbench() {
     () => new Set<string>([...(payload?.withdrawnRaceIds ?? []), ...withdrawnHere].filter((id) => !rejoined.has(id))),
     [payload, rejoined, withdrawnHere],
   );
-  const counts = useMemo(() => pickedCounts(entries), [entries]);
+  const locks = useMemo<TrainNowLocks>(() => payload?.trainNowLockByRace ?? {}, [payload]);
+  // Listen og ugeoversigten viser kladden: et ryddet loeb staar som 0/6, foer noget er gemt.
+  const shownEntries = useMemo(() => entriesAfterClear(entries, clearDraft, locks), [entries, clearDraft, locks]);
+  const counts = useMemo(() => pickedCounts(shownEntries), [shownEntries]);
   // U23 foelger saesonens referenceaar, samme regel som holdsiden (riderAge.js).
   const seasonYear = useMemo(() => seasonReferenceYear(Number(payload?.season?.number)) as number | null, [payload]);
 
@@ -260,15 +283,16 @@ function Workbench() {
   }, [selected]);
 
   // Browserens egen advarsel ved luk/genindlaes, saa en ugemt trup aldrig forsvinder tavst.
+  const hasClearDraft = clearDraft.size > 0;
   useEffect(() => {
-    if (!dirty) return undefined;
+    if (!dirty && !hasClearDraft) return undefined;
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = "";
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [dirty]);
+  }, [dirty, hasClearDraft]);
 
   const pendingRace = pendingId ? allRaces.find((r) => r.id === pendingId) : null;
   const stay = () => setPendingId(null);
@@ -289,13 +313,73 @@ function Workbench() {
     }
   };
 
+  const dropFromClear = useCallback((raceIds: Iterable<string>) => {
+    const drop = new Set(raceIds);
+    setClearDraft((cur) => {
+      if (![...cur].some((id) => drop.has(id))) return cur;
+      return new Set([...cur].filter((id) => !drop.has(id)));
+    });
+  }, []);
+
   const onSaved = useCallback((raceId: string, next: SeasonEntry[]) => {
     setEntries((cur) => replaceRaceEntries(cur, raceId, next));
     setRejoined((cur) => new Set(cur).add(raceId));
+    dropFromClear([raceId]);
     refreshSelectionReminder();
     setLoadVersion((v) => v + 1);
-  }, []);
+  }, [dropFromClear]);
+  const onLeaveClear = useCallback((raceId: string) => dropFromClear([raceId]), [dropFromClear]);
+
+  // "Ryd udtagelser": de VISTE loeb (efter filteret) ryddes som en kladde. Intet gemmes her.
+  const clearShown = (ids: string[]) => {
+    if (!ids.length) return;
+    setClearError(null);
+    setClearDraft((cur) => new Set([...cur, ...ids]));
+  };
+  const undoClear = () => {
+    setClearError(null);
+    setClearDraft(new Set());
+  };
+  // Gem kladden: samme regler som et enkelt gem, alt eller intet pr. kald (serverens loft pr. kald).
+  const saveClear = async () => {
+    const ids = [...clearDraft];
+    if (!ids.length) return;
+    setClearBusy(true);
+    setClearError(null);
+    const done: string[] = [];
+    try {
+      for (let i = 0; i < ids.length; i += SELECTION_BULK_MAX) {
+        const chunk = ids.slice(i, i + SELECTION_BULK_MAX);
+        const res = await saveRaceSelectionsBulk(clearChanges(entries, chunk, locks));
+        if (!res.ok) {
+          const body = res.data ?? {};
+          const conflict = Array.isArray(body.conflicts) ? body.conflicts[0] : null;
+          const message = conflict
+            ? tr("selection.errors.selection_rider_bound_named", { rider: conflict.rider_name ?? "", race: conflict.race_name ?? conflict.bound_race_name ?? "" })
+            : tr([`selection.errors.${body.error || "generic"}`, "selection.errors.generic"]);
+          const failed = allRaces.find((r) => r.id === body.race_id);
+          setClearError(failed ? t("clearBar.errorIn", { race: failed.name, error: message }) : t("clearBar.error", { error: message }));
+          break;
+        }
+        done.push(...chunk);
+      }
+    } catch {
+      setClearError(t("clearBar.error", { error: tr("selection.errors.generic") }));
+    }
+    if (done.length) {
+      const saved = new Set(done);
+      setEntries((cur) => entriesAfterClear(cur, saved, locks));
+      for (const id of done) forgetSelectionDraft(id);
+      if (selected && saved.has(selected.id)) workbenchRef.current?.markSaved();
+      dropFromClear(done);
+      refreshSelectionReminder();
+      setLoadVersion((v) => v + 1);
+    }
+    setClearBusy(false);
+  };
+
   const onWithdrawnChange = useCallback((raceId: string, isOut: boolean) => {
+    if (isOut) dropFromClear([raceId]);
     setWithdrawnHere((cur) => {
       const next = new Set(cur);
       if (isOut) next.add(raceId);
@@ -309,7 +393,7 @@ function Workbench() {
       return next;
     });
     refreshSelectionReminder();
-  }, []);
+  }, [dropFromClear]);
   // Samme fristboks som /planning: hvilke trupper mangler, og hvor lang tid er der til start.
   const { reminder } = useSelectionReminder();
   const toggleWeek = () => {
@@ -324,6 +408,12 @@ function Workbench() {
     setProfileHidden(!profileHidden);
     writePref("profileHidden", !profileHidden);
   };
+  const toggleProfileFull = () => {
+    setProfileFull(!profileFull);
+    writePref("profileFull", !profileFull);
+  };
+  // Det "Ryd udtagelser" ville rydde lige nu: de viste loeb, der stadig har ryttere i kladden.
+  const clearable = clearableRaceIds(listRaces, shownEntries, withdrawn, locks);
 
   const upcomingNeed = allRaces.filter(
     (r) => !isRacePast(r) && (raceStartDate(r, dates) ?? "9999") <= addDays(today, 8) && raceReadiness(r, counts.get(r.id) ?? 0, withdrawn).state === "missing",
@@ -426,6 +516,9 @@ function Workbench() {
             onSaveAndOpen={saveAndOpen}
           />
         )}
+        {hasClearDraft && (
+          <ClearDraftBar count={clearDraft.size} busy={clearBusy} error={clearError} onUndo={undoClear} onSave={saveClear} />
+        )}
         <div className={`grid items-start gap-3.5 ${showList ? "lg:grid-cols-[320px_minmax(0,1fr)]" : ""}`}>
           {showList && (
             <RaceList
@@ -442,6 +535,8 @@ function Workbench() {
               showPast={showPast}
               onShowPast={setShowPast}
               today={today}
+              clearCount={clearable.length}
+              onClear={() => clearShown(clearable)}
             />
           )}
           <div ref={anchorRef} className="min-w-0 scroll-mt-4">
@@ -451,13 +546,17 @@ function Workbench() {
                 ref={workbenchRef}
                 race={selected}
                 allRaces={allRaces}
-                entries={entries}
+                entries={shownEntries}
                 withdrawn={withdrawn}
                 riderDetails={riderDetails}
                 seasonLoad={seasonLoad}
                 seasonYear={seasonYear}
                 profileHidden={profileHidden}
                 onToggleProfileHidden={toggleProfile}
+                profileFull={profileFull}
+                onToggleProfileFull={toggleProfileFull}
+                pendingClear={clearDraft.has(selected.id)}
+                onLeaveClear={onLeaveClear}
                 onDirtyChange={setDirty}
                 onSaved={onSaved}
                 onWithdrawnChange={onWithdrawnChange}

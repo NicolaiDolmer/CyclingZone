@@ -116,6 +116,9 @@ interface RaceListProps {
   showPast: boolean;
   onShowPast: (value: boolean) => void;
   today: string;
+  /** Antal viste loeb "Ryd udtagelser" kan rydde (0 = knappen er slaaet fra). */
+  clearCount: number;
+  onClear: () => void;
 }
 
 export default function RaceList({
@@ -132,6 +135,8 @@ export default function RaceList({
   showPast,
   onShowPast,
   today,
+  clearCount,
+  onClear,
 }: RaceListProps) {
   const { t } = useTranslation("planning");
   const groups = useMemo(() => groupRacesByWeek(races, dates), [races, dates]);
@@ -145,15 +150,28 @@ export default function RaceList({
     <aside aria-label={t("raceList.title")} data-testid="planning-race-list" className="rounded-cz border border-cz-border bg-cz-card">
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-cz-border bg-cz-subtle px-3.5 py-2">
         <ScopeSwitch scope={scope} onScope={onScope} />
-        <label className="flex min-h-11 cursor-pointer items-center gap-2 text-xs text-cz-2 sm:min-h-0">
-          <input
-            type="checkbox"
-            checked={showPast}
-            onChange={(e) => onShowPast(e.target.checked)}
-            className="accent-cz-accent"
-          />
-          {t("raceList.showPast")}
-        </label>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <label className="flex min-h-11 cursor-pointer items-center gap-2 text-xs text-cz-2 sm:min-h-0">
+            <input
+              type="checkbox"
+              checked={showPast}
+              onChange={(e) => onShowPast(e.target.checked)}
+              className="accent-cz-accent"
+            />
+            {t("raceList.showPast")}
+          </label>
+          {/* Rydder de viste loebs udtagelser som en kladde (ejer 14/11): intet gemmes foer Gem i bjaelken. */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClear}
+            disabled={clearCount === 0}
+            title={clearCount > 0 ? t("raceList.clearTitle", { count: clearCount }) : t("raceList.clearNone")}
+            data-testid="planning-clear-shown"
+          >
+            {t("raceList.clear")}
+          </Button>
+        </div>
       </header>
 
       {races.length === 0 ? (

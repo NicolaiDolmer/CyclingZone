@@ -412,6 +412,58 @@ const ROLE_FROM_ENTRY: Record<string, RoleKey> = {
   luxury_helper: "luxury_helper",
 };
 
+// ── "Ryd udtagelser" over de viste loeb (kladde) ────────────────────────────
+
+/** Train now-laaste ryttere pr. loeb, som saesonmatrixen sender dem (trainNowLockByRace). */
+export type TrainNowLocks = Record<string, { riderIds?: string[] } | undefined>;
+
+/**
+ * De viste loeb "Ryd udtagelser" kan rydde: kommende, ikke laaste, ikke afmeldte, med mindst én
+ * rytter der kan tages ud (Train now-laaste bliver staaende, saa et loeb med kun dem er ikke ryddeligt).
+ */
+export function clearableRaceIds(
+  races: SeasonRace[],
+  entries: SeasonEntry[],
+  withdrawn: Set<string> = new Set(),
+  locks: TrainNowLocks = {},
+): string[] {
+  return races
+    .filter((race) => !isRacePast(race) && !race.lineupLocked && !withdrawn.has(race.id))
+    .filter((race) => {
+      const locked = new Set(locks[race.id]?.riderIds ?? []);
+      return entries.some((e) => e.raceId === race.id && !locked.has(e.riderId));
+    })
+    .map((race) => race.id);
+}
+
+/** Entries som kladden viser dem: de ryddede loeb beholder kun deres Train now-laaste ryttere (med rolle). */
+export function entriesAfterClear(entries: SeasonEntry[], raceIds: Set<string>, locks: TrainNowLocks = {}): SeasonEntry[] {
+  if (!raceIds.size) return entries;
+  return entries.filter((e) => !raceIds.has(e.raceId) || (locks[e.raceId]?.riderIds ?? []).includes(e.riderId));
+}
+
+/** En udtagelse bygget af saesonmatrixens entries for ét loeb (roller foelger med). */
+export function selectionFromEntries(entries: SeasonEntry[]): Selection {
+  let sel: Selection = { ...EMPTY_SELECTION, riderIds: entries.map((e) => e.riderId), freeRoleIds: [] };
+  for (const e of entries) {
+    const role = e.raceRole ? ROLE_FROM_ENTRY[e.raceRole] : undefined;
+    if (role) sel = setRiderRole(sel, e.riderId, role);
+  }
+  return sel;
+}
+
+/**
+ * Body til PUT /api/races/selection/bulk for de ryddede loeb: hvert loeb gemmes med de ryttere der
+ * bliver (kun Train now-laaste, som serveren ikke lader tage ud). Samme form som et enkelt gem.
+ */
+export function clearChanges(entries: SeasonEntry[], raceIds: string[], locks: TrainNowLocks = {}): Array<Record<string, unknown>> {
+  const keep = entriesAfterClear(entries, new Set(raceIds), locks);
+  return raceIds.map((raceId) => {
+    const sel = selectionFromEntries(keep.filter((e) => e.raceId === raceId));
+    return { raceId, ...toPutBody(sel, sel.luxuryHelperId != null) };
+  });
+}
+
 // ── Trup-tabellen (Squad) ───────────────────────────────────────────────────
 
 export interface SquadRow {

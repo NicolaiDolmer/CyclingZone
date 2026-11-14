@@ -35,7 +35,10 @@
       "title": "Affiche toute la saison",
       "description": "Aucune course à venir dans cette vue. Avec toute la saison, tu peux planifier à l'avance.",
       "action": "Afficher toute la saison"
-    }
+    },
+    "clear": "Vider les équipes",
+    "clearTitle": "{count, plural, one {Vide l'équipe de la course affichée. Rien n'est enregistré avant que tu appuies sur Enregistrer.} other {Vide les équipes des # courses affichées. Rien n'est enregistré avant que tu appuies sur Enregistrer.}}",
+    "clearNone": "Aucune équipe à vider dans les courses affichées"
   },
   "status": {
     "ready": "Prêt",
@@ -104,7 +107,9 @@
     "showStage": "Afficher l'étape {n}",
     "hide": "Masquer le profil",
     "show": "Afficher le profil",
-    "unavailable": "Pas encore de données de parcours pour cette étape."
+    "unavailable": "Pas encore de données de parcours pour cette étape.",
+    "showFull": "Afficher le profil complet",
+    "hideFull": "Masquer le profil complet"
   },
   "unsavedBar": {
     "label": "Modifications non enregistrées",
@@ -113,6 +118,14 @@
     "stay": "Rester ici",
     "discard": "Annuler",
     "saveAndOpen": "Enregistrer et ouvrir"
+  },
+  "clearBar": {
+    "text": "{count, plural, one {Équipe vidée dans # course.} other {Équipes vidées dans # courses.}}",
+    "note": "Rien n'est enregistré avant que tu enregistres.",
+    "undo": "Annuler",
+    "save": "Enregistrer",
+    "error": "Rien n'a été enregistré. {error}",
+    "errorIn": "Rien n'a été enregistré à cause de {race} : {error}"
   },
   "error": {
     "title": "La planification n'a pas pu se charger",

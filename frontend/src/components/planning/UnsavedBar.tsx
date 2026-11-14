@@ -44,3 +44,51 @@ export default function UnsavedBar({
     </div>
   );
 }
+
+/**
+ * Samme bjaelke for "Ryd udtagelser" (ejer 14/11): de viste loeb er ryddet som en kladde. Intet er
+ * vaek foer spilleren gemmer; "Fortryd" stiller alle loeb tilbage, som de var.
+ */
+export function ClearDraftBar({
+  count,
+  busy,
+  error,
+  onUndo,
+  onSave,
+}: {
+  count: number;
+  busy: boolean;
+  error?: string | null;
+  onUndo: () => void;
+  onSave: () => void;
+}) {
+  const { t } = useTranslation("planning");
+  return (
+    <div
+      role="region"
+      aria-label={t("unsavedBar.label")}
+      data-testid="planning-clear-bar"
+      className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-cz border border-cz-border bg-cz-card px-4 py-2.5"
+    >
+      <div className="min-w-0 text-[13px]">
+        <p className="text-cz-1">
+          <span className="font-semibold">{t("clearBar.text", { count })}</span>
+          <span className="text-cz-2"> {t("clearBar.note")}</span>
+        </p>
+        {error && (
+          <p className="mt-0.5 text-xs text-cz-danger" role="alert">
+            {error}
+          </p>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="secondary" size="sm" onClick={onUndo} disabled={busy} data-testid="planning-clear-undo">
+          {t("clearBar.undo")}
+        </Button>
+        <Button variant="secondary" size="sm" onClick={onSave} loading={busy} data-testid="planning-clear-save">
+          {t("clearBar.save")}
+        </Button>
+      </div>
+    </div>
+  );
+}
