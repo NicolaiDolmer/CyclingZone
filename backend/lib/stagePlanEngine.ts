@@ -111,11 +111,18 @@ export type StagePlanRuntime = {
   huntFallback7855?: string[];
   /**
    * #7855 valg 3 (ejer 13/11, "Samme pris", KUN kontakten): hjaelpere med "Gaa i udbrud + Hent point"
-   * (`eligible`), og dem af dem, der ikke kom med i udbruddet og derfor jagede fra feltet (`fromField`).
-   * Udeladt = ingen saadan rytter (bit-identisk).
+   * (`eligible`), og dem af dem, der faktisk koerte efter en spurt fra feltet paa udbrudsleddet
+   * (`fromField`, se noteHuntFromField7855). Udeladt = ingen saadan rytter (bit-identisk).
    */
-  missedBreakHunt7855?: { eligible: ReadonlySet<string>; fromField: Set<string> };
+  missedBreakHunt7855?: MissedBreakHunt7855;
 };
+
+/**
+ * #7855 valg 3 + hul 1 og 2 (ejer 13/11 "Samme pris", 14/11 "Som rent udbrud"): hvad
+ * prisen husker mellem segmentgraenserne. `passagesSeen`: hvor mange af etapens passager der
+ * allerede er laest. `segmentIndex`: det segment, motoren senest startede.
+ */
+type MissedBreakHunt7855 = { eligible: ReadonlySet<string>; fromField: Set<string>; passagesSeen: number; segmentIndex: number };
 
 /**
  * #7635: hvad "sat"-reglen husker mellem segmentgraenserne (kun med kontakten).
@@ -228,9 +235,51 @@ export function createStagePlanRuntime(
   // kun hjaelperen og kun "Hent point" paa udbrudsleddet; kun traetheden efter etapen aendres.
   if (opts.jerseyHunt7855 === true) {
     const eligible = riderIds.filter((id) => entrants[id]?.role === "helper" && legs.get(id)![0].task === "breakaway" && legs.get(id)![0].hunt === "hunt_points");
-    if (eligible.length > 0) rt.missedBreakHunt7855 = { eligible: new Set(eligible), fromField: new Set() };
+    if (eligible.length > 0) rt.missedBreakHunt7855 = { eligible: new Set(eligible), fromField: new Set(), passagesSeen: 0, segmentIndex: 0 };
   }
   return rt;
+}
+
+/**
+ * #7855 (KUN kontakten): etapens indlagte spurter, motoren har afgjort siden sidste opslag.
+ * Passagerne laegges til i koereraekkefoelge, saa de nye er altid dem efter `passagesSeen`.
+ */
+type SprintPassage7855 = { km: number; hunters?: readonly string[] };
+function takeNewSprints7855(missed: MissedBreakHunt7855, state: EngineState): ReadonlyArray<SprintPassage7855> {
+  const all = state.stage_passages ?? [];
+  const fresh = all.slice(missed.passagesSeen).filter((p) => p.kind === "sprint");
+  missed.passagesSeen = all.length;
+  return fresh;
+}
+
+/**
+ * #7855 valg 3 + hul 1 og 2 (ejer 13/11 "Samme pris", 14/11 "Som rent udbrud"): prisen foelger
+ * det, han faktisk gjorde paa udbrudsleddet, ikke hvor han sad ved et bestemt punkt. Han jagede
+ * fra feltet, naar han koerte efter en indlagt spurt i det segment, der lige er koert, paa
+ * udbrudsleddet med jagt, uden at have vaeret i udbruddet foer:
+ *  - hul 2: ogsaa naar han skifter til et led "naar han er sat" ved samme graense; spurten er
+ *    koert paa udbrudsleddet og taeller (leddet han koerte segmentet paa, ikke det naeste).
+ *  - hul 1: kom han med i et sent dannet udbrud uden at jage en spurt fra feltet, er der intet
+ *    at taelle; han betaler som rent udbrud plus de spurter, han koerte efter (valg C).
+ * Hvor han laa ved spurten, laeses paa gruppebillederne ved segmentgraenserne lige foer og lige
+ * efter den (de samme billeder som motorens groupSnapshots). Ligger spurten paa selve graensen,
+ * eller i etapens foerste segment (intet billede fra foer), afgoer billedet efter alene.
+ * Uden for ejerens svar (uaendret som foer): en rytter, der har vaeret i udbruddet og er hentet
+ * (dommerens S7), noteres aldrig her. Kun noteret; loebet er uaendret (se stagePlanLoadEfforts).
+ */
+function noteHuntFromField7855(
+  missed: MissedBreakHunt7855,
+  riderId: string,
+  args: { legDuringSegment: ResolvedLeg; sprints: ReadonlyArray<SprintPassage7855>; segmentEndKm: number; wasInEscape: boolean; inEscapeNow: boolean; firstSegment: boolean },
+): void {
+  if (!missed.eligible.has(riderId) || args.wasInEscape) return;
+  if (args.legDuringSegment.task !== "breakaway" || args.legDuringSegment.hunt === null) return;
+  const chased = args.sprints.filter((p) => (p.hunters ?? []).includes(riderId));
+  if (chased.length === 0) return;
+  // Han har ikke vaeret i udbruddet ved segmentets start (wasInEscape), saa billedet foer viser
+  // ham i feltet; spurten var kun koert foran feltet, naar billedet efter er det eneste, der gaelder.
+  const ahead = args.inEscapeNow && chased.every((p) => args.firstSegment || p.km >= args.segmentEndKm);
+  if (!ahead) missed.fromField.add(riderId);
 }
 
 function isEscape(group: RaceGroup): boolean {
@@ -421,12 +470,20 @@ export function advanceStagePlan(
     return fromKm <= switchPointKm(next.task) || huntHasPassageHere(next, fromKm, segment.to_km);
   };
   const holdsForHunt = (leg: ResolvedLeg, nextFromKm: number) => huntHasPassageHere(leg, leg.fromKm ?? 0, nextFromKm);
+  // #7855 valg 3 + hul 1 og 2: spurterne i segmentet, der lige er koert (tom uden kontakten).
+  const missed = rt.missedBreakHunt7855;
+  const sprints = missed ? takeNewSprints7855(missed, state) : [];
+  const firstSegmentDone = segmentIndex === 1;
+  if (missed) missed.segmentIndex = segmentIndex;
   for (const riderId of rt.riderIds) {
     if (state.riders[riderId]?.status !== "racing") continue;
     const legs = rt.legs.get(riderId)!;
     const cur = rt.current.get(riderId) ?? 0;
     const group = groupOf(state.groups, riderId);
     const inEscape = group !== undefined && isEscape(group);
+    if (missed && sprints.length > 0) {
+      noteHuntFromField7855(missed, riderId, { legDuringSegment: legs[cur], sprints, segmentEndKm: segment.from_km, wasInEscape: rt.everInEscape.has(riderId), inEscapeNow: inEscape, firstSegment: firstSegmentDone });
+    }
     if (inEscape) rt.everInEscape.add(riderId);
 
     const droppedIdx = legs.findIndex((l) => l.fromDropped);
@@ -449,13 +506,6 @@ export function advanceStagePlan(
         next += 1;
         reason = legs[next].routeReason;
       }
-    }
-    // #7855 valg 3: koerer han segmentet paa udbrudsleddet med jagt uden nogensinde at have vaeret i
-    // udbruddet, jager han fra feltet. Kun noteret; loebet er uaendret (se stagePlanLoadEfforts).
-    const missed = rt.missedBreakHunt7855;
-    if (missed && !atStart && missed.eligible.has(riderId) && !inEscape && !rt.everInEscape.has(riderId)) {
-      const legNow = legs[next !== cur && reason !== null ? next : cur];
-      if (legNow.task === "breakaway" && legNow.hunt !== null) missed.fromField.add(riderId);
     }
     if (next === cur || reason === null) continue;
     rt.current.set(riderId, next);
@@ -483,10 +533,17 @@ export function advanceStagePlanAtFinish(
 ): { events: TimelineEvent[]; entrants: Record<string, Entrant> } | null {
   const { state, segment, entrants } = args;
   const events: TimelineEvent[] = [];
+  // #7855 valg 3 + hul 1 og 2: spurterne i etapens sidste segment er afgjort nu (foer finalen).
+  const missed = rt.missedBreakHunt7855;
+  const sprints = missed ? takeNewSprints7855(missed, state) : [];
   for (const riderId of rt.riderIds) {
     if (state.riders[riderId]?.status !== "racing") continue;
     const legs = rt.legs.get(riderId)!;
     const cur = rt.current.get(riderId) ?? 0;
+    if (missed && sprints.length > 0) {
+      const group = groupOf(state.groups, riderId);
+      noteHuntFromField7855(missed, riderId, { legDuringSegment: legs[cur], sprints, segmentEndKm: segment.to_km, wasInEscape: rt.everInEscape.has(riderId), inEscapeNow: group !== undefined && isEscape(group), firstSegment: missed.segmentIndex === 0 });
+    }
     let next = cur;
     while (next + 1 < legs.length && legs[next + 1].fromKm !== null && (legs[next + 1].fromKm as number) <= segment.to_km) next += 1;
     if (next === cur) continue;
@@ -577,8 +634,9 @@ export function stagePlanLoadEfforts(rt: StagePlanRuntime): Record<string, Effor
     const legs = rt.legs.get(riderId)!;
     let best: EffortLevel = legs[0].effort;
     for (const idx of rt.ridden.get(riderId) ?? []) if (EFFORT_RANK[legs[idx].effort] > EFFORT_RANK[best]) best = legs[idx].effort;
-    // #7855 valg 3 (ejer 13/11, "Samme pris"): jagten fra feltet efter et misset udbrud koster det
-    // samme som "Hent point" alene, saa den taeller med jagt-opgavens indsats.
+    // #7855 valg 3 (ejer 13/11, "Samme pris"): jagten fra feltet paa udbrudsleddet koster det samme
+    // som "Hent point" alene, saa den taeller med jagt-opgavens indsats. Kom han med uden at jage
+    // fra feltet (hul 1, ejer 14/11 "Som rent udbrud"), er han ikke noteret og betaler som rent udbrud.
     if (rt.missedBreakHunt7855?.fromField.has(riderId)) {
       const huntEffort = TASK_EFFORT[legs[0].hunt as StagePlanTask] as EffortLevel;
       if (EFFORT_RANK[huntEffort] > EFFORT_RANK[best]) best = huntEffort;
