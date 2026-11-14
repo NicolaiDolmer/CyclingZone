@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11 · slet `backup_5902_20261112_*` ~26/11 · slet `backup_8078/8080/8099_20261113_*` ~27/11.
 >
-> **🎯 Next action (14/11):** PC1: dom over Træn nu trin 3, så #8148 (kun farten mangler; #8165 merget). Kort venter: #8168 auto-pris pengevagt (+ #8016), #8163 sælgers penge, #8167 planlægning B, #7801 svartid (note godkendt). #8153 design godkendt (specs/2026-11-14-8153), ikke bygget. #7855: S2/S3, navn, note mangler. **TÆNDT 14/11 17:18:** `ranking_shadow_decoupled_6765`, ranglister på ca. 1 min (#7664, note 7.446 live, #7139 lukket). **Merget 14/11:** 14 PR'er, se #7911. **Åbent:** #8101 · #8097. **Man 16/11:** auto-kalender, private grene, Discord-valg (#8149), doctor-tjek #8162, motor: #7644. **#8071:** `private-handoffs/2026-11-13-trup-tabel-design/LAES-FOERST.md`.
+> **🎯 Next action (14/11):** PC1: dom over Træn nu trin 3, så #8148 (kun farten mangler). #8168 auto-pris pengevagt rettes efter dom (+ #8016). #6181 går direkte til alle (ejer); mangler Hjælp + note. #7535 B merget; ejer ser siden før beta. #7801: Træning for langsom tændt, ret + mål. #8153 design klar (specs/2026-11-14-8153). #7855: S2/S3, navn, note mangler. **TÆNDT 14/11 17:18:** `ranking_shadow_decoupled_6765`, ranglister på ca. 1 min (#7664, #7139 lukket). **Merget 14/11:** 16 PR'er, se #7911. **Åbent:** #8101 · #8097. **Man 16/11:** auto-kalender, private grene, Discord-valg (#8149), doctor-tjek #8162, motor: #7644. **#8071:** `private-handoffs/2026-11-13-trup-tabel-design/LAES-FOERST.md`.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** Dolmer PC 14/11: bølge 3 (#8168, #8163, #8167, #7801).
+> **🤖 Working agent:** Dolmer PC 14/11: rettelsesrunde #8168.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
