@@ -20,7 +20,7 @@ import { authHeaders, supabase } from "../../lib/supabase";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import { formatNumber } from "../../lib/intl.js";
 import {
-  NO_LOCKED_SALES, endsInKey, lockedSalesFromResponse, lockedSalesShareKey, nextLockedSales,
+  NO_LOCKED_SALES, canReuseShared, endsInKey, lockedSalesFromResponse, lockedSalesShareKey, nextLockedSales,
   type LockedSales, type LockedSalesSnapshot,
 } from "./lockedSalesModel.ts";
 
@@ -48,16 +48,26 @@ async function fetchLockedSales(headers: Record<string, string>): Promise<Locked
   }
 }
 
-async function loadLockedSales(refreshKey: unknown): Promise<void> {
+// Kun det nyeste kald maa vise sit svar: et forsinket svar fra et aeldre kald (fx en
+// bruger, der lige er logget ud) maa aldrig overskrive det nyere (lokal Codex P1).
+let generation = 0;
+
+async function loadLockedSales(refreshKey: unknown, { fresh = false }: { fresh?: boolean } = {}): Promise<void> {
   const [{ data }, headers] = await Promise.all([supabase.auth.getSession(), authHeaders({ json: false })]);
   const userId = data.session?.user?.id;
   if (!userId || !headers) return;
   const key = lockedSalesShareKey(userId, refreshKey);
   const now = Date.now();
-  if (!shared || shared.key !== key || now - shared.at >= SHARE_WINDOW_MS) {
-    shared = { key, at: now, promise: fetchLockedSales(headers) };
-  }
-  latest = nextLockedSales(latest, userId, await shared.promise);
+  const entry = shared && canReuseShared(shared, key, now, SHARE_WINDOW_MS, fresh)
+    ? shared
+    : { key, at: now, promise: fetchLockedSales(headers) };
+  shared = entry;
+  const gen = ++generation;
+  const fetched = await entry.promise;
+  if (gen !== generation) return;
+  const { data: current } = await supabase.auth.getSession();
+  if (gen !== generation || current.session?.user?.id !== userId) return;
+  latest = nextLockedSales(latest, userId, fetched);
   for (const listener of listeners) listener(latest.data);
 }
 
@@ -76,12 +86,14 @@ export function useLockedSales(refreshKey: unknown): LockedSales {
   useEffect(() => {
     if (refreshKey == null) return undefined;
     const refresh = () => { void loadLockedSales(refreshKey); };
+    // En ny besked kan betyde et nyt laast salg eller en refusion: hent altid paa ny.
+    const refreshFresh = () => { void loadLockedSales(refreshKey, { fresh: true }); };
     refresh();
     window.addEventListener("focus", refresh);
-    window.addEventListener(LOCKED_SALES_REFRESH_EVENT, refresh);
+    window.addEventListener(LOCKED_SALES_REFRESH_EVENT, refreshFresh);
     return () => {
       window.removeEventListener("focus", refresh);
-      window.removeEventListener(LOCKED_SALES_REFRESH_EVENT, refresh);
+      window.removeEventListener(LOCKED_SALES_REFRESH_EVENT, refreshFresh);
     };
   }, [refreshKey, pathname]);
   return state;

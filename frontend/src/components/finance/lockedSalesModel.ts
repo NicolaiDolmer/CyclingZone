@@ -36,6 +36,17 @@ export function lockedSalesShareKey(userId: string, refreshKey: unknown): string
   return `${userId}:${String(refreshKey)}`;
 }
 
+/**
+ * Maa et kald genbruge det delte svar? Kun samme noegle inden for vinduet. En besked
+ * om et nyt laast salg eller en refusion (fresh) henter altid paa ny, ogsaa selv om
+ * saldoen er den samme (lokal Codex P2).
+ */
+export function canReuseShared(
+  shared: { key: string; at: number } | null, key: string, nowMs: number, windowMs: number, fresh: boolean,
+): boolean {
+  return !fresh && shared !== null && shared.key === key && nowMs - shared.at < windowMs;
+}
+
 export interface LockedSalesSnapshot {
   userId: string;
   data: LockedSales;

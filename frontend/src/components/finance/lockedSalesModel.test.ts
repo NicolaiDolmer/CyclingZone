@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { NO_LOCKED_SALES, endsInKey, lockedSalesFromResponse, lockedSalesShareKey, nextLockedSales } from "./lockedSalesModel.ts";
+import { NO_LOCKED_SALES, canReuseShared, endsInKey, lockedSalesFromResponse, lockedSalesShareKey, nextLockedSales } from "./lockedSalesModel.ts";
 import { isHelpBlockVisible } from "../../pages/helpFlagGates.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -42,6 +42,15 @@ test("lockedSalesShareKey (Codex P1): to brugere med samme saldo deler aldrig sv
   assert.match(component, /const key = lockedSalesShareKey\(userId, refreshKey\);/, "komponenten bruger den proevede noegle");
 });
 
+test("canReuseShared: kun samme noegle inden for vinduet, og aldrig ved en ny besked", () => {
+  const shared = { key: lockedSalesShareKey("bruger-a", 500), at: 1_000 };
+  assert.equal(canReuseShared(shared, shared.key, 2_000, 5_000, false), true);
+  assert.equal(canReuseShared(shared, shared.key, 2_000, 5_000, true), false, "fresh henter altid paa ny");
+  assert.equal(canReuseShared(shared, lockedSalesShareKey("bruger-b", 500), 2_000, 5_000, false), false);
+  assert.equal(canReuseShared(shared, shared.key, 6_000, 5_000, false), false, "udloebet vindue");
+  assert.equal(canReuseShared(null, shared.key, 2_000, 5_000, false), false);
+});
+
 test("nextLockedSales: en fejl beholder det sidst kendte svar; kun et gyldigt svar aendrer visningen", () => {
   const locked = lockedSalesFromResponse({ sales: [SALE] });
   const first = nextLockedSales(null, "bruger-a", locked);
@@ -55,7 +64,9 @@ test("menuen opdaterer sig selv: ved sideskift, fokus og ny besked, og alle sted
   const component = src("./LockedSaleEscrows.tsx");
   assert.match(component, /\}, \[refreshKey, pathname\]\);/, "sideskift henter igen");
   assert.match(component, /window\.addEventListener\("focus", refresh\);/);
-  assert.match(component, /window\.addEventListener\(LOCKED_SALES_REFRESH_EVENT, refresh\);/);
+  assert.match(component, /window\.addEventListener\(LOCKED_SALES_REFRESH_EVENT, refreshFresh\);/);
+  assert.match(component, /const refreshFresh = \(\) => \{ void loadLockedSales\(refreshKey, \{ fresh: true \}\); \};/, "en ny besked genbruger aldrig det delte svar");
+  assert.match(component, /if \(gen !== generation \|\| current\.session\?\.user\?\.id !== userId\) return;/, "et forsinket svar fra en anden session vises aldrig");
   assert.match(component, /for \(const listener of listeners\) listener\(latest\.data\);/, "hvert svar gaar til alle steder paa skaermen");
   assert.match(component, /return res\.ok \? lockedSalesFromResponse\(res\.data\) : null;/, "en fejl er ikke 'intet laast'");
   const layout = src("../Layout.jsx").replace(/\r\n/g, "\n");
