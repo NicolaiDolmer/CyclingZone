@@ -126,7 +126,7 @@ async function shadowRebuildFinished(supabase) {
 }
 
 /** @typedef {{ source: "legacy"|"shadow", currentAsOf: string|null }} RankingReadSource */
-/** @typedef {(error: Error, context: { tags: Record<string, string> }) => void} CaptureFn */
+/** @typedef {(error: Error, context: { tags: Record<string, string>, [extra: string]: unknown }) => void} CaptureFn */
 
 /**
  * Hvilken kilde rangliste-ruterne skal laese nu.
