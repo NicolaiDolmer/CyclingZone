@@ -34,6 +34,10 @@ import {
   buildSquadRows,
   availableRoles,
   EMPTY_SELECTION,
+  clearableRaceIds,
+  entriesAfterClear,
+  selectionFromEntries,
+  clearChanges,
   type SeasonRace,
   type SquadRow,
   type Selection,
@@ -394,4 +398,51 @@ test("clearSquad: alle ud, men en laast rytter beholder plads og rolle", () => {
   assert.deepEqual(cleared.freeRoleIds, []);
   assert.deepEqual(clearSquad(start).riderIds, []);
   assert.deepEqual(start.riderIds, ["a", "b", "c"], "kladden aendres ikke i stedet");
+});
+
+test("Ryd udtagelser: kun viste, kommende, aabne loeb med ryttere der kan tages ud", () => {
+  const races = [
+    race("open", 1, 1),
+    race("empty", 2, 2),
+    race("locked", 3, 3, { lineupLocked: true }),
+    race("past", 1, 1, { status: "completed" }),
+    race("out", 4, 4),
+    race("onlyLocked", 5, 5),
+  ];
+  const entries = [
+    { raceId: "open", riderId: "a", raceRole: "captain" },
+    { raceId: "locked", riderId: "a", raceRole: null },
+    { raceId: "past", riderId: "a", raceRole: null },
+    { raceId: "out", riderId: "a", raceRole: null },
+    { raceId: "onlyLocked", riderId: "t", raceRole: "captain" },
+  ];
+  const ids = clearableRaceIds(races, entries, new Set(["out"]), { onlyLocked: { riderIds: ["t"] } });
+  assert.deepEqual(ids, ["open"]);
+});
+
+test("Ryd udtagelser som kladde: de ryddede loeb beholder kun Train now-laaste ryttere, andre loeb er uroerte", () => {
+  const entries = [
+    { raceId: "r1", riderId: "a", raceRole: "captain" },
+    { raceId: "r1", riderId: "t", raceRole: "hunter" },
+    { raceId: "r2", riderId: "b", raceRole: "captain" },
+  ];
+  const shown = entriesAfterClear(entries, new Set(["r1"]), { r1: { riderIds: ["t"] } });
+  assert.deepEqual(shown, [entries[1], entries[2]]);
+  assert.equal(entriesAfterClear(entries, new Set()), entries, "ingen kladde: samme liste");
+});
+
+test("Ryd udtagelser gemmes som bulk-aendringer i samme form som et enkelt gem", () => {
+  const entries = [
+    { raceId: "r1", riderId: "a", raceRole: "captain" },
+    { raceId: "r1", riderId: "t", raceRole: "hunter" },
+    { raceId: "r2", riderId: "b", raceRole: "captain" },
+  ];
+  const changes = clearChanges(entries, ["r1", "r2"], { r1: { riderIds: ["t"] } });
+  assert.deepEqual(changes, [
+    { raceId: "r1", rider_ids: ["t"], captain_id: null, sprint_captain_id: null, hunter_id: "t", free_role_ids: [], co_captain_id: null },
+    { raceId: "r2", rider_ids: [], captain_id: null, sprint_captain_id: null, hunter_id: null, free_role_ids: [], co_captain_id: null },
+  ]);
+  const sel = selectionFromEntries([{ raceId: "r", riderId: "x", raceRole: "free_role" }, { raceId: "r", riderId: "y", raceRole: null }]);
+  assert.deepEqual(sel.riderIds, ["x", "y"]);
+  assert.deepEqual(sel.freeRoleIds, ["x"]);
 });
