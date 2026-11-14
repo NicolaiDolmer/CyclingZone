@@ -10,7 +10,9 @@ Rigtige skærmbilleder taget med Billedstationen (`scripts/pr-shots.mjs`, lokal 
 |-|-|
 | `7535-current/` | Nuværende sider, 1440 og 390: `planning-*` (Holdudtagelse, dagvisning), `planning-view-season-*` (sæsonvisning med matrix), `planning-tab-form-*` (Formplan/peaks), `planning-tab-strategy-*`, `planning-tab-calendar-*`, `races-<id>-*` (løbssiden for samme løb) |
 | `7535-new/` | Ny side før nattens rettelser, 1440 og 390 (`planning-workbench-*`), kontakten slået til med en mock af `/api/feature-flags` |
+| `7535-new3/` | Ny side efter rettelsen af ugetavlen på 390 |
 | `7535-new2/` | Ny side efter nattens rettelser, samme opsætning |
+| `pr-screens/7535/natten-*` (i repoet) | Lokal preview-mock med opdigtede navne: nuværende `/planning` og ny side, 1440 og 390, samt de to annoterede ark `natten-sammenligning-pc-1440.png` og `natten-sammenligning-mobil-390.png` (wireframe, nuværende, ny) |
 
 Wireframet er den klikbare prototype; billederne af den ligger i repoet: `pr-screens/7535/prototype-desktop-1440.png` og `prototype-mobile-375.png`. Billeder til PR'en med opdigtede navne (preview-seed) ligger i `pr-screens/7535/`.
 
@@ -30,7 +32,7 @@ Forkortelser i tabellen: **WF** = wireframe/prototype, **Dag** = Holdudtagelse d
 | "Næste 7 dage / Hele sæsonen", "Vis tidligere" | Ja | - | Ja | ens |
 | Andre divisioners løb (Min division / Andre divisioner) | Nej (hører til løbssiden) | Dag: ja | Nej | afvigelse efter spec'en: andre holds opstillinger hører til løbssiden |
 | Fristboks "Trup mangler" med nedtælling | - | Dag/Sæson/Form: ja, øverst | Før: nej. **Nu: samme boks og samme data øverst** | ens (rettet) |
-| Ugetavlen på 390: smal bar kan afkorte navn og x/6 | - | - | Kendt, ikke rettet | dårligere, **ikke nået** |
+| Ugetavlen på 390 | Tidslinje der scroller vandret (prototype 375) | - | Før: barerne stak ud over skærmen (siden blev bredere end 390, målt på det rigtige billede). **Nu: ingen vandret scroll (målt 390), x/N står altid**, men et løbsnavn i en bar på én dag afkortes til forbogstavet | ens på bredde (rettet); dårligere på navne, **ikke nået** (løsningen er et designvalg: kortnavn, to linjer eller kun liste på mobil) |
 | Tom / indlæser / fejl | - | Ja | Ja (tom med handling, skelet, fejl med "Prøv igen") | ens |
 
 ## Løbshoved og bjælken for ugemte ændringer
@@ -104,5 +106,5 @@ Trin 1, ikke nået i nat (dårligere end en nuværende side eller wireframet):
 - Nation-flag i navnecellen.
 - Sæsonmatrixen (rytter × løbsdag med udtagelser, rute-match, form og peak, belastning, "Kun problemer") har ingen modpart; den bør være et eget punkt i planen.
 - "Ryd dag" / "Ryd alt" over flere løb.
-- Ugetavlen på 390 kan afkorte navn og x/6 i smalle barer.
+- Ugetavlen på 390: navnet i en bar på én dag afkortes til forbogstavet (siden holder sig nu inden for skærmen).
 - Fuld ruteprofil med højdeakse og navngivne stigninger som på løbssiden.
