@@ -1,5 +1,45 @@
 export const PATCHES = [
 {
+  "version": "7.445",
+  "date": "2026-11-14",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Dashboard",
+      "en": {
+        "title": "Today's stages loads faster",
+        "body": "The dashboard's Today's stages card now shows the winner and number of entries right away, even when stage profile data is slow or unavailable."
+      },
+      "da": {
+        "title": "Dagens etaper vises hurtigere",
+        "body": "Forsidens kort Dagens etaper viser nu vinder og antal tilmeldte med det samme, også når etapeprofilerne er langsomme eller ikke kan hentes."
+      },
+      "refs": [
+        8152
+      ]
+    },
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Races",
+      "en": {
+        "title": "Race story names the right group",
+        "body": "Race story: the report no longer calls the group at the finish line the chasers by mistake in rare cases."
+      },
+      "da": {
+        "title": "Løbsfilmen nævner den rigtige gruppe",
+        "body": "Løbsfilmen: referatet kalder ikke længere i sjældne tilfælde gruppen ved målstregen for forfølgerne ved en fejl."
+      },
+      "refs": [
+        8124
+      ]
+    }
+  ]
+},
+{
   "version": "7.444",
   "date": "2026-11-13",
   "changes": [
