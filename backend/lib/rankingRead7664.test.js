@@ -13,9 +13,9 @@ import express from "express";
 import { PGlite } from "@electric-sql/pglite";
 import {
   SHADOW_READ_TABLES, SHADOW_READ_MAX_LAG_S, SOURCE_CACHE_TTL_MS, LEGACY_HOLD_MS_7664,
-  resolveRankingReadSource, rankingReadMiddleware, createRankingReadClient, createRankingFreshnessRouter,
+  resolveRankingReadSource, rankingReadWithFallback7664, withShadowFallbackReport, createRankingReadClient, createRankingFreshnessRouter,
   currentRankingReadSource, pickDashboardTopRiders, readDashboardTopRiders7664, __resetRankingReadCacheForTests,
-  DASHBOARD_SHADOW_TIMEOUT_MS,
+  DASHBOARD_SHADOW_TIMEOUT_MS, SHADOW_FALLBACK_WINDOW_MS,
 } from "./rankingRead7664.js";
 import { clearFlagStageCache } from "./featureStage.js";
 import { refreshRankingMatviewsGated, __resetRankingRefreshStateForTests } from "./refreshRankingMatviews.js";
@@ -126,10 +126,10 @@ async function routeTables(flags, options = {}) {
   const app = express();
   const requireAuth = (req, res, next) => { req.user = { id: "u" }; next(); };
   app.use("/rankings", createRankingFreshnessRouter({ supabase: client, requireAuth, reportError: () => {}, now: () => NOW }));
-  app.use("/rankings", rankingReadMiddleware(client, { now: () => NOW }), createRankingsRouter({
-    supabase: createRankingReadClient(client), requireAuth, reportError: (e) => { throw e; },
+  app.use("/rankings", rankingReadWithFallback7664(client, createRankingsRouter({
+    supabase: createRankingReadClient(client), requireAuth, reportError: withShadowFallbackReport((e) => { throw e; }),
     viewerClient: () => client, isViewerBetaTester: async () => false,
-  }));
+  }), { now: () => NOW }));
   const server = app.listen(0);
   const base = `http://127.0.0.1:${server.address().port}/rankings`;
   const perRoute = {};
@@ -168,6 +168,261 @@ test("#7664 off = the exact tables of today, route by route; on = shadow tables,
     [path, tables.map((name) => SHADOW_READ_TABLES[name] ?? name)]));
   assert.deepEqual(on.perRoute, mapped);
   assert.deepEqual(on.freshness, { source: "shadow", current_as_of: new Date(NOW).toISOString() });
+});
+
+// ---------------------------------------------------------------------------
+// Nødvej: a table-level fake. Each table answers with its rows, or with a
+// non-transient PostgREST error when it is in `fail`. Reads of the tables in
+// `gate` wait until the test opens the gate (to make requests overlap).
+function tableClient({ flags = {}, rows = {}, fail = new Set(), gate = null } = {}) {
+  const reads = [];
+  const answer = (table) => (fail.has(table)
+    ? { data: null, error: { message: `relation "${table}" does not exist`, code: "42P01" }, count: null, status: 404 }
+    : { data: (rows[table] || []).map((row) => ({ ...row })), error: null, count: (rows[table] || []).length, status: 200 });
+  const builder = (table) => {
+    const b = {
+      select: () => b, eq: (_column, key) => { b._key = key; return b; }, in: () => b, or: () => b, order: () => b,
+      limit: () => b, range: () => b, not: () => b, abortSignal: () => b,
+      maybeSingle: async () => (table === "app_config"
+        ? { data: b._key in flags ? { value: flags[b._key] } : null, error: null }
+        : answer(table)),
+      then: (resolve, reject) => (gate?.tables.has(table) ? gate.open.then(() => answer(table)) : Promise.resolve(answer(table)))
+        .then(resolve, reject),
+    };
+    return b;
+  };
+  return {
+    reads,
+    from(table) { if (table !== "app_config") reads.push(table); return builder(table); },
+    async rpc(name) {
+      if (name === "get_ranking_shadow_read_ready") return { data: { ready: true }, error: null };
+      if (name === "get_ranking_shadow_metrics") return { data: { queue_length: 0, oldest_age_s: null }, error: null };
+      return { data: null, error: null };
+    },
+  };
+}
+
+// Distinct rows per table, so an answer shows which table it came from.
+const LEGACY_ROWS = {
+  rider_rankings_mv: [{ season_id: SEASON, rider_id: RIDER, points: 11 }],
+  team_standings_ext_mv: [{ season_id: SEASON, team_id: TEAM, comp_wins: 1, comp_podiums: 2, podiums: 3, prize_earned: 4 }],
+  team_race_points_mv: [{ team_id: TEAM, race_id: RIDER, race_points: 5 }],
+  global_rank_mv: [{ team_id: TEAM, global_rank: 1 }],
+};
+const SHADOW_ROWS = {
+  ranking_rider_season: [{ season_id: SEASON, rider_id: RIDER, points: 99 }],
+  ranking_team_season_ext: [{ season_id: SEASON, team_id: TEAM, comp_wins: 9, comp_podiums: 9, podiums: 9, prize_earned: 9 }],
+  ranking_team_race_points: [{ team_id: TEAM, race_id: RIDER, race_points: 9 }],
+};
+const ROUTES = [
+  `/global`, `/global?team_id=${TEAM}`, `/riders?season_id=${SEASON}`, `/riders?season_id=${SEASON}&top=5`,
+  `/riders?season_id=${SEASON}&rider_ids=${RIDER}`, `/standings?season_id=${SEASON}`, `/honours?season_id=${SEASON}`,
+  `/race-points?season_id=${SEASON}`, `/race-points?race_ids=${RIDER}`, `/race-count?team_id=${TEAM}`,
+  `/riders?season_id=not-a-season`,
+];
+
+// mode "today": the rankings router exactly as before #7664 (raw client, raw
+// reportError, nothing in front). mode "7664": as api.js mounts it now.
+async function withApp(client, { mode, now = () => NOW }, run) {
+  const reported = [], captured = [];
+  const requireAuth = (req, res, next) => { req.user = { id: "u" }; next(); };
+  const report = (error) => reported.push(error?.message ?? String(error));
+  const routerOptions = { requireAuth, viewerClient: () => client, isViewerBetaTester: async () => false };
+  const app = express();
+  if (mode === "today") {
+    app.use("/rankings", createRankingsRouter({ ...routerOptions, supabase: client, reportError: report }));
+  } else {
+    const captureExceptionFn = (error, context) => captured.push({ message: error.message, context });
+    app.use("/rankings", createRankingFreshnessRouter({ supabase: client, requireAuth, reportError: captureExceptionFn, now }));
+    app.use("/rankings", rankingReadWithFallback7664(client, createRankingsRouter({
+      ...routerOptions, supabase: createRankingReadClient(client), reportError: withShadowFallbackReport(report),
+    }), { now, captureExceptionFn }));
+  }
+  const server = app.listen(0);
+  const base = `http://127.0.0.1:${server.address().port}/rankings`;
+  const get = async (path) => {
+    client.reads.length = 0;
+    const response = await fetch(base + path);
+    return {
+      status: response.status, body: await response.text(),
+      contentType: response.headers.get("content-type"), cacheControl: response.headers.get("cache-control"),
+      reads: [...client.reads],
+    };
+  };
+  try { return await run({ get, base, reported, captured }); } finally { server.close(); }
+}
+
+async function everyRoute(client, mode) {
+  return withApp(client, { mode }, async ({ get, reported, captured }) => {
+    const answers = {};
+    for (const path of ROUTES) answers[path] = await get(path);
+    return { answers, reported: [...reported], captured: [...captured] };
+  });
+}
+
+test("#7664 nødvej, switch off: every route answers exactly as the router did before #7664, also when a table fails", async () => {
+  const scenarios = [new Set(), ...Object.keys(LEGACY_ROWS).map((table) => new Set([table])), new Set(Object.values(SHADOW_READ_TABLES))];
+  for (const fail of scenarios) {
+    const options = { rows: { ...LEGACY_ROWS, ...SHADOW_ROWS }, fail };
+    reset();
+    const today = await everyRoute(tableClient(options), "today");
+    reset();
+    const now7664 = await everyRoute(tableClient(options), "7664");
+    // Same status, body, headers, tables read and error reports, route by route.
+    assert.deepEqual(now7664.answers, today.answers, [...fail].join(","));
+    assert.deepEqual(now7664.reported, today.reported, [...fail].join(","));
+    assert.deepEqual(now7664.captured, [], "off never reports a fallback");
+  }
+  // The reference really does fail: a failing table is a 500 with one report.
+  reset();
+  const broken = await everyRoute(tableClient({ rows: LEGACY_ROWS, fail: new Set(["team_standings_ext_mv"]) }), "today");
+  assert.equal(broken.answers[`/standings?season_id=${SEASON}`].status, 500);
+  assert.equal(broken.reported.length, 1);
+});
+
+test("#7664 nødvej, switch on: a failing shadow table gives the old tables' answer, not an error", async () => {
+  // Reference: what the old tables answer (switch off).
+  reset();
+  const legacy = await everyRoute(tableClient({ rows: LEGACY_ROWS }), "today");
+  for (const shadowTable of Object.values(SHADOW_READ_TABLES)) {
+    if (shadowTable === "ranking_youth_rider_season") continue; // youth routes are behind their own switch
+    const legacyTable = Object.keys(SHADOW_READ_TABLES).find((name) => SHADOW_READ_TABLES[name] === shadowTable);
+    for (const path of ROUTES.filter((route) => legacy.answers[route].reads.includes(legacyTable))) {
+      reset();
+      const client = tableClient({ flags: BOTH_ON, rows: { ...LEGACY_ROWS, ...SHADOW_ROWS }, fail: new Set([shadowTable]) });
+      await withApp(client, { mode: "7664" }, async ({ get, reported, captured }) => {
+        const answer = await get(path);
+        assert.equal(answer.status, 200, path);
+        assert.deepEqual({ ...answer, reads: undefined }, { ...legacy.answers[path], reads: undefined }, path);
+        // The shadow read failed first, then the old tables answered.
+        assert.ok(answer.reads.indexOf(shadowTable) < answer.reads.lastIndexOf(legacyTable), `${path}: ${answer.reads}`);
+        assert.deepEqual(reported, [], "the player's error report is replaced by the fallback report");
+        assert.equal(captured.length, 1);
+        assert.match(captured[0].message, new RegExp(shadowTable));
+        assert.deepEqual(captured[0].context.tags, { lib: "rankingRead7664", path: "route" });
+        assert.equal(captured[0].context.fallback, "legacy_tables");
+      });
+    }
+  }
+});
+
+test("#7664 nødvej: one report per window; the window reads the old tables and hides 'Opdateret kl.'", async () => {
+  reset();
+  let t = NOW;
+  const client = tableClient({ flags: BOTH_ON, rows: { ...LEGACY_ROWS, ...SHADOW_ROWS }, fail: new Set(["ranking_team_season_ext"]) });
+  await withApp(client, { mode: "7664", now: () => t }, async ({ get, base, captured }) => {
+    const path = `/standings?season_id=${SEASON}`;
+    assert.equal((await (await fetch(base + "/freshness")).json()).source, "shadow");
+    const first = await get(path);
+    assert.equal(first.status, 200);
+    assert.deepEqual(first.reads, ["ranking_team_season_ext", "team_standings_ext_mv"]);
+    assert.equal(captured.length, 1);
+
+    // Inside the window: straight to the old tables, no new report, no time line.
+    t += SHADOW_FALLBACK_WINDOW_MS - 1;
+    for (let i = 0; i < 3; i += 1) {
+      const again = await get(path);
+      assert.equal(again.status, 200);
+      assert.deepEqual(again.reads, ["team_standings_ext_mv"]);
+    }
+    assert.deepEqual(await (await fetch(base + "/freshness")).json(), { source: "legacy", current_as_of: null });
+    assert.equal(captured.length, 1);
+
+    // After the window the new tables are tried again; still failing = one new report.
+    t += 2;
+    const later = await get(path);
+    assert.equal(later.status, 200);
+    assert.deepEqual(later.reads, ["ranking_team_season_ext", "team_standings_ext_mv"]);
+    assert.equal(captured.length, 2);
+  });
+});
+
+test("#7664 nødvej: overlapping failing requests all get an answer and give one report; the next counts the rest", async () => {
+  reset();
+  let t = NOW;
+  let openGate;
+  const gate = { tables: new Set(["ranking_team_season_ext"]), open: new Promise((resolve) => { openGate = resolve; }) };
+  const client = tableClient({ flags: BOTH_ON, rows: { ...LEGACY_ROWS, ...SHADOW_ROWS }, fail: new Set(["ranking_team_season_ext"]), gate });
+  await withApp(client, { mode: "7664", now: () => t }, async ({ base, captured }) => {
+    const path = `/standings?season_id=${SEASON}`;
+    const pending = Array.from({ length: 3 }, () => fetch(base + path));
+    // Wait until all three are inside the shadow read, then let them fail together.
+    for (let i = 0; i < 500 && client.reads.filter((name) => name === "ranking_team_season_ext").length < 3; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 2));
+    }
+    assert.equal(client.reads.filter((name) => name === "ranking_team_season_ext").length, 3);
+    openGate();
+    const responses = await Promise.all(pending);
+    assert.deepEqual(responses.map((response) => response.status), [200, 200, 200]);
+    for (const response of responses) assert.deepEqual(JSON.parse(await response.text()).data, LEGACY_ROWS.team_standings_ext_mv);
+    assert.equal(captured.length, 1);
+    assert.equal(captured[0].context.suppressed_since_last_report, 0);
+
+    t += SHADOW_FALLBACK_WINDOW_MS + 1;
+    await fetch(base + path);
+    assert.equal(captured.length, 2);
+    assert.equal(captured[1].context.suppressed_since_last_report, 2);
+  });
+});
+
+test("#7664 nødvej: old tables failing too, a non-shadow failure and a bad query behave as today", async () => {
+  // Shadow and old table both fail: today's 500 and today's report, plus one fallback report.
+  reset();
+  let client = tableClient({ flags: BOTH_ON, rows: LEGACY_ROWS, fail: new Set(["ranking_team_season_ext", "team_standings_ext_mv"]) });
+  await withApp(client, { mode: "7664" }, async ({ get, reported, captured }) => {
+    const answer = await get(`/standings?season_id=${SEASON}`);
+    assert.equal(answer.status, 500);
+    assert.equal(answer.body, JSON.stringify({ error: "Unable to load rankings" }));
+    assert.deepEqual(answer.reads, ["ranking_team_season_ext", "team_standings_ext_mv"]);
+    assert.deepEqual(reported, ['relation "team_standings_ext_mv" does not exist']);
+    assert.equal(captured.length, 1);
+  });
+  // A table without a shadow (global_rank_mv) fails with the switch on: no second
+  // run, today's 500 and today's report.
+  reset();
+  client = tableClient({ flags: BOTH_ON, rows: LEGACY_ROWS, fail: new Set(["global_rank_mv"]) });
+  await withApp(client, { mode: "7664" }, async ({ get, reported, captured }) => {
+    const answer = await get(`/global`);
+    assert.equal(answer.status, 500);
+    assert.deepEqual(answer.reads, ["global_rank_mv"]);
+    assert.equal(reported.length, 1);
+    assert.deepEqual(captured, []);
+    const bad = await get(`/riders?season_id=not-a-season`);
+    assert.equal(bad.status, 400);
+    assert.deepEqual(bad.reads, []);
+  });
+  // Healthy shadow: the shadow rows, no fallback, no report.
+  reset();
+  client = tableClient({ flags: BOTH_ON, rows: { ...LEGACY_ROWS, ...SHADOW_ROWS } });
+  await withApp(client, { mode: "7664" }, async ({ get, reported, captured }) => {
+    const answer = await get(`/standings?season_id=${SEASON}`);
+    assert.equal(answer.status, 200);
+    assert.deepEqual(JSON.parse(answer.body).data, SHADOW_ROWS.ranking_team_season_ext);
+    assert.deepEqual(answer.reads, ["ranking_team_season_ext"]);
+    assert.deepEqual(reported, []);
+    assert.deepEqual(captured, []);
+  });
+});
+
+test("#7664 dashboard: one report per window, the rest counted in the next report", async () => {
+  reset();
+  let t = NOW;
+  const client = honestClient(poolTables({ poolSize: 50, points: (i) => i }).tables, { failOn: "ranking_rider_season" });
+  const captured = [];
+  const call = () => readDashboardTopRiders7664(client, {
+    seasonId: SEASON, leagueDivisionId: 1, source: SHADOW, now: () => t,
+    captureExceptionFn: (error, context) => captured.push({ error, context }),
+  });
+  assert.equal(await call(), null);
+  assert.equal(await call(), null);
+  assert.equal(captured.length, 1);
+  // The failure also holds the source on the old tables for the window.
+  assert.equal((await resolveRankingReadSource(client, { now: () => t })).source, "legacy");
+  t += SHADOW_FALLBACK_WINDOW_MS;
+  assert.equal(await call(), null);
+  assert.equal(captured.length, 2);
+  assert.equal(captured[1].context.suppressed_since_last_report, 1);
+  assert.deepEqual(captured[1].context.tags, { lib: "rankingRead7664", path: "dashboard-top" });
 });
 
 test("#7664 dashboard: legacy returns null without a query; ranking order is points, then rider id", async () => {
