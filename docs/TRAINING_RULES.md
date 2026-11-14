@@ -433,6 +433,50 @@ run (`trainNowInstantConfirm`). Short-race warnings (#6740) are unchanged; when 
 the instant body is shown above the short-race warnings and the existing short-race title and
 "Train anyway" button are kept. With `instant` off nothing on the page changes.
 
+### Træn nu for alle: reglen spilleren møder (#7737, til dørs-pakken 14/11)
+
+Det her er reglen, som den står i Hjælp (`dailytraining.trainNowInstant`, fem sprog), og som
+gælder for alle, når `training_train_now_instant` er `"on"`. Ingen ny mekanik; sektionerne ovenfor
+er den tekniske kontrakt.
+
+- **Trykket virker straks.** Træn nu udfører dagens ledige træningsfelter i det øjeblik, manageren
+  trykker. Form og træthed opdateres med det samme, og dagens løb bruger den opdaterede tilstand.
+- **Et løb beholder sit felt.** Et løbsfelt afregnes først efter løbet og giver hverken belastning
+  eller restitution før løbet (se "Open race slot before the race" ovenfor). Aftenens slutresultat
+  for datoen er det samme, som hvis manageren ikke havde trykket.
+- **Aldrig dobbelt.** Ingen rytter får træning to gange for samme felt, og aftenkørslen træner
+  aldrig en rytter, trykket allerede har trænet.
+- **Hvad trykket låser.** Ryttere i trykket kan ikke tilmeldes nye løb i dag og kan ikke tages ud af
+  dagens løb, og dagens træningsplan er låst. Ryttere, der købes eller rykkes op efter trykket, kan
+  stadig køre i dag. Senere datoer kan planlægges som normalt.
+- **Uden tryk ændres intet.** Trykker manageren ikke, kører træningen automatisk efter dagens løb som
+  hidtil.
+- **Stemplet vinder over kontakten.** Et tryk, der er gået igennem som øjeblikkeligt, følges resten
+  af datoen, også hvis kontakten slukkes bagefter.
+- **Ingen bonus i reglen.** Bonussen er en separat kontakt (`training_train_now_bonus`, #7741) og
+  indgår ikke i teksten for alle.
+
+**Hjælp følger kontakten selv.** `HELP_BLOCK_FLAGS.dailytraining` (`frontend/src/pages/helpFlagGates.js`)
+viser `trainNowBeta` (dagens tekst med beta-forbeholdet), når kontakten er off for viewer'en, og
+`trainNowInstant` (samme regel uden forbeholdet), når den er on for viewer'en: beta-testere nu,
+alle ved `"on"`. Svaret kommer fra `GET /api/feature-flags`; kontakten står i
+`PLAYER_VISIBLE_FLAG_KEYS`. Vogtet af `frontend/src/pages/HelpPage.trainNow.test.ts`.
+
+**Roadmap følger kontakten selv.** Det stemte roadmap-punkt bærer `flag_key =
+'training_train_now_instant'` (koblet af `database/2026-11-12-8051-roadmap-pakke.sql`; den tomme
+dublet er arkiveret). Triggeren `app_config_sync_roadmap` sætter det til leveret med dato, når
+kontakten sættes til `"on"`. Verificeret read-only mod prod 14/11: koblingen findes, punktet står
+"i gang" med beta-dato, triggeren er aktiv. `scripts/roadmap-flip.mjs` skal derfor ikke køres for
+tændingen.
+
+**Tænding er ét skridt (ejer-go).** Forudsætningen er svartiden på trykket (#7982, eget spor). I samme
+skridt: `app_config.training_train_now_instant` sættes til `"on"`; `train-now-instant` i
+`docs/FEATURE_REGISTRY.yml` til live og `docs/FEATURE_STATUS.md` regenereres; patch noten "beta til
+live" lægges i `frontend/src/data/patchNotes.js` (udkast EN/DA i PR'en for til dørs-pakken).
+Hjælp og roadmap skifter af sig selv. Rul tilbage: kontakten til `"beta"` (Hjælp skifter tilbage
+af sig selv; roadmap-punktet bliver stående som leveret, fordi triggeren aldrig flytter et leveret
+punkt, og skal i så fald rettes særskilt).
+
 ## Aktuel S4-status (read-only prodmåling 28/9)
 
 `training_tick_per_race_day` og `race_day_development_enabled` er begge `on`.
