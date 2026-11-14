@@ -53,6 +53,7 @@ import {
   type RaceScope,
   type SeasonEntry,
   type SeasonRace,
+  type Selection,
 } from "../lib/planningWorkbench.ts";
 
 // Saesonmatrixens svar (GET /api/races/selection/season); siden laeser kun de felter den kender.
@@ -126,6 +127,11 @@ function Workbench() {
   const [clearDraft, setClearDraft] = useState<Set<string>>(() => new Set());
   const [clearBusy, setClearBusy] = useState(false);
   const [clearError, setClearError] = useState<string | null>(null);
+  // Spillerens ugemte kladde FOER rydningen, pr. loeb: overlever et skift af loeb, saa Fortryd altid kan
+  // stille den tilbage (den delte kladde-hukommelse har kun plads til ét loeb).
+  const [clearBefore, setClearBefore] = useState<Map<string, Selection>>(() => new Map());
+  // Arbejdsfladen gemmer eller afmelder lige nu: masse-gemmet venter (kaldene maa ikke krydse).
+  const [workbenchBusy, setWorkbenchBusy] = useState(false);
   const [scope, setScope] = useState<RaceScope>("next7");
   const [showPast, setShowPast] = useState(false);
   const [weekMonday, setWeekMonday] = useState<string | null>(null);
@@ -322,6 +328,23 @@ function Workbench() {
     });
   }, []);
 
+  const forgetClearBefore = useCallback((raceIds: Iterable<string>) => {
+    const drop = [...raceIds];
+    setClearBefore((cur) => {
+      if (!drop.some((id) => cur.has(id))) return cur;
+      const next = new Map(cur);
+      for (const id of drop) next.delete(id);
+      return next;
+    });
+  }, []);
+  const onClearBefore = useCallback((raceId: string, before: Selection | null) => {
+    if (!before) {
+      forgetClearBefore([raceId]);
+      return;
+    }
+    setClearBefore((cur) => new Map(cur).set(raceId, before));
+  }, [forgetClearBefore]);
+
   const onSaved = useCallback((raceId: string, next: SeasonEntry[]) => {
     setEntries((cur) => replaceRaceEntries(cur, raceId, next));
     setRejoined((cur) => new Set(cur).add(raceId));
@@ -345,7 +368,7 @@ function Workbench() {
   // ud over serverens loft pr. kald (capClearable), saa den deles aldrig i flere uafhaengige gem.
   const saveClear = async () => {
     const ids = [...clearDraft];
-    if (!ids.length) return;
+    if (!ids.length || workbenchBusy) return;
     // Oejebliksbilledet af det der SENDES; svaret afstemmes mod det, ikke mod siden naar svaret kommer.
     const { changes, selections } = clearSubmission(entries, ids, locks);
     setClearBusy(true);
@@ -371,6 +394,9 @@ function Workbench() {
         const submitted = selections.get(id);
         if (!(submitted && view?.markSaved(id, submitted))) forgetSelectionDraft(id);
       }
+      // Ryttere bundet i et ryddet loeb er nu fri: den aabne flade henter deres tilgaengelighed igen.
+      view?.refreshAvailability();
+      forgetClearBefore(ids);
       dropFromClear(ids);
       refreshSelectionReminder();
       setLoadVersion((v) => v + 1);
@@ -382,7 +408,10 @@ function Workbench() {
   };
 
   const onWithdrawnChange = useCallback((raceId: string, isOut: boolean) => {
-    if (isOut) dropFromClear([raceId]);
+    if (isOut) {
+      dropFromClear([raceId]);
+      forgetClearBefore([raceId]);
+    }
     setWithdrawnHere((cur) => {
       const next = new Set(cur);
       if (isOut) next.add(raceId);
@@ -396,7 +425,7 @@ function Workbench() {
       return next;
     });
     refreshSelectionReminder();
-  }, [dropFromClear]);
+  }, [dropFromClear, forgetClearBefore]);
   // Samme fristboks som /planning: hvilke trupper mangler, og hvor lang tid er der til start.
   const { reminder } = useSelectionReminder();
   const toggleWeek = () => {
@@ -521,7 +550,7 @@ function Workbench() {
           />
         )}
         {hasClearDraft && (
-          <ClearDraftBar count={clearDraft.size} busy={clearBusy} error={clearError} onUndo={undoClear} onSave={saveClear} />
+          <ClearDraftBar count={clearDraft.size} busy={clearBusy} locked={workbenchBusy} error={clearError} onUndo={undoClear} onSave={saveClear} />
         )}
         <div className={`grid items-start gap-3.5 ${showList ? "lg:grid-cols-[296px_minmax(0,1fr)]" : ""}`}>
           {showList && (
@@ -564,6 +593,9 @@ function Workbench() {
                 pendingClear={clearDraft.has(selected.id)}
                 onLeaveClear={onLeaveClear}
                 saveLocked={clearBusy}
+                clearBefore={clearBefore.get(selected.id) ?? null}
+                onClearBefore={onClearBefore}
+                onBusyChange={setWorkbenchBusy}
                 onDirtyChange={setDirty}
                 onSaved={onSaved}
                 onWithdrawnChange={onWithdrawnChange}

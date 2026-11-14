@@ -84,6 +84,8 @@ export interface RaceWorkbenchHandle {
    * fladens eget loeb (fladen styrer saa selv sin huskede kladde); et andet loeb roeres ikke.
    */
   markSaved: (raceId: string, submitted: Selection) => boolean;
+  /** Hent rytternes tilgaengelighed (bindinger) igen efter et gem andetsteds; kladden roeres ikke. */
+  refreshAvailability: () => void;
 }
 
 interface RaceWorkbenchProps {
@@ -106,8 +108,17 @@ interface RaceWorkbenchProps {
   pendingClear?: boolean;
   /** Spilleren har aendret, gemt eller kasseret loebet selv: det er ikke laengere en del af sidens rydning. */
   onLeaveClear?: (raceId: string) => void;
-  /** Sidens rydning er ved at blive gemt: et enkelt gem venter, saa de to kald aldrig krydser hinanden. */
+  /** Sidens rydning er ved at blive gemt: et enkelt gem og en afmelding venter, saa kaldene aldrig krydser. */
   saveLocked?: boolean;
+  /**
+   * Spillerens kladde foer sidens rydning, holdt af siden pr. loeb (overlever et skift af loeb, hvor
+   * fladen afmonteres). Er loebet ikke laengere i rydningen, er det kladden der skal gendannes.
+   */
+  clearBefore?: Selection | null;
+  /** Fladen melder kladden foer rydningen (eller null: den er brugt eller ikke laengere relevant). */
+  onClearBefore?: (raceId: string, before: Selection | null) => void;
+  /** Fladen gemmer eller afmelder lige nu: sidens masse-gem venter saa. */
+  onBusyChange?: (busy: boolean) => void;
   onDirtyChange?: (dirty: boolean) => void;
   onSaved?: (raceId: string, entries: SeasonEntry[]) => void;
   onWithdrawnChange?: (raceId: string, withdrawn: boolean) => void;
@@ -137,6 +148,9 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     pendingClear = false,
     onLeaveClear,
     saveLocked = false,
+    clearBefore = null,
+    onClearBefore,
+    onBusyChange,
     onDirtyChange,
     onSaved,
     onWithdrawnChange,
@@ -166,6 +180,9 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
 
   const dirty = state === "ready" && selectionDirty(sel, saved);
   useReloadBlock(dirty || saveState === "saving", RELOAD_BLOCK_REASONS.DIRTY);
+  // Sidens rydning, som load() ser den (load er bundet til loebet alene og maa ikke genkoere ved hvert skift).
+  const pageClear = useRef({ pendingClear, clearBefore, onClearBefore });
+  pageClear.current = { pendingClear, clearBefore, onClearBefore };
 
   const load = useCallback(async () => {
     const gen = ++generation.current;
@@ -197,9 +214,13 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
       const server = body.withdrawn && !body.did_not_start && !body.lineup_locked ? null : body.selection;
       const initial = selectionFromServer(server);
       // Et ugemt udkast overlever en navigation vaek fra siden (kladden er ikke gemt, men heller ikke tabt).
-      const draft = readSelectionDraft(race.id);
+      // Er sidens rydning fortrudt, mens loebet ikke var aabent, er det kladden FOER rydningen, der gendannes.
+      const page = pageClear.current;
+      const kept = !page.pendingClear ? page.clearBefore : null;
+      const draft = kept ?? readSelectionDraft(race.id);
       const restored: Selection = draft ? reconcileSelectionDraft(draft, body.riders) : initial;
       const wasRestored = draft != null && selectionDirty(restored, initial);
+      if (kept) page.onClearBefore?.(race.id, null);
       setData(body);
       setSaved(initial);
       setSel(wasRestored ? restored : initial);
@@ -237,8 +258,10 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
   useEffect(() => {
     if (state !== "ready") return;
     if (pendingClear && !clearShown) {
-      const step = applyPageClear(sel, saved, lockedKey ? lockedKey.split(",") : []);
+      // Har siden allerede kladden foer rydningen (fladen er monteret igen efter et skift), er det den.
+      const step = applyPageClear(clearBefore ?? sel, saved, lockedKey ? lockedKey.split(",") : []);
       beforeClear.current = step.before;
+      if (!clearBefore && selectionDirty(sel, saved)) onClearBefore?.(race.id, sel);
       setSel(step.sel);
       setClearShown(true);
       setSaveState("idle");
@@ -248,13 +271,15 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
       setSel(undoPageClear(beforeClear.current, saved));
       beforeClear.current = null;
       setClearShown(false);
+      onClearBefore?.(race.id, null);
     }
-  }, [state, pendingClear, clearShown, saved, sel, lockedKey]);
+  }, [state, pendingClear, clearShown, saved, sel, lockedKey, clearBefore, onClearBefore, race.id]);
 
   const leaveClear = () => {
     if (!clearShown) return;
     beforeClear.current = null;
     setClearShown(false);
+    onClearBefore?.(race.id, null);
     onLeaveClear?.(race.id);
   };
 
@@ -348,6 +373,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
       setSaveState("saved");
       beforeClear.current = null;
       setClearShown(false); // et gem af en ryddet trup er gemt; siden fjerner loebet fra sin rydning (onSaved)
+      onClearBefore?.(race.id, null);
       onSaved?.(race.id, entriesFromSelection(race.id, current.sel));
       return true;
     } catch {
@@ -355,7 +381,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
       setSaveError({ code: "generic", params: {} });
       return false;
     }
-  }, [race.id, onSaved]);
+  }, [race.id, onSaved, onClearBefore]);
 
   const discard = useCallback(() => {
     if (!latest.current) return;
@@ -368,9 +394,10 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     if (latest.current.clearShown) {
       beforeClear.current = null;
       setClearShown(false);
+      onClearBefore?.(race.id, null);
       onLeaveClear?.(race.id);
     }
-  }, [race.id, onLeaveClear]);
+  }, [race.id, onLeaveClear, onClearBefore]);
 
   // Afstemningen sker mod det SENDTE (loebs-id + udtagelse), ikke mod det fladen viser nu: et andet
   // loeb roeres ikke, og aendringer lavet mens kaldet koerte, forbliver en ugemt kladde.
@@ -390,12 +417,32 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     return true;
   }, [race.id]);
 
+  // Et gem af andre loeb kan frigive ryttere, der stod som bundet her: hent kun rytterlisten igen.
+  const refreshAvailability = useCallback(async () => {
+    const gen = generation.current;
+    try {
+      const res = await loadRaceSelection(race.id);
+      if (gen !== generation.current || !res.ok || !res.data) return;
+      setData(res.data);
+    } catch {
+      // catch-ok: tilgaengeligheden er blot den forrige, til fladen hentes igen; intet er tabt.
+    }
+  }, [race.id]);
+
   latest.current = { ready: state === "ready", sel, saved, readOnly, clientErrors, sprintLeaderAllowed, size, clearShown, saveLocked };
-  useImperativeHandle(ref, () => ({ save, discard, markSaved }), [save, discard, markSaved]);
+  useImperativeHandle(ref, () => ({ save, discard, markSaved, refreshAvailability }), [save, discard, markSaved, refreshAvailability]);
+
+  // Fladens egne skrivninger (gem, afmeld) og sidens masse-gem maa aldrig krydse hinanden.
+  const busy = saveState === "saving" || withdrawBusy;
+  useEffect(() => {
+    onBusyChange?.(busy);
+  }, [busy, onBusyChange]);
+  useEffect(() => () => onBusyChange?.(false), [onBusyChange]);
 
   // Afmeld / deltag igen: samme endpoint, samme guards og samme tekster som loebstavlen paa /planning.
   // En afmelding smider en ugemt kladde (som tavlen), og fladen genindlaeses fra serveren bagefter.
   const toggleWithdrawal = async (withdraw: boolean) => {
+    if (saveLocked) return;
     setWithdrawBusy(true);
     setSaveError(null);
     try {
@@ -471,7 +518,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
           size="sm"
           onClick={() => toggleWithdrawal(!isWithdrawn)}
           loading={withdrawBusy}
-          disabled={saveState === "saving" || withdrawBusy}
+          disabled={saveState === "saving" || withdrawBusy || saveLocked}
           data-testid="planning-withdraw"
         >
           {isWithdrawn ? tr("racehub.column.reenter") : tr("racehub.column.withdraw")}

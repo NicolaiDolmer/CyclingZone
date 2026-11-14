@@ -52,12 +52,15 @@ export default function UnsavedBar({
 export function ClearDraftBar({
   count,
   busy,
+  locked = false,
   error,
   onUndo,
   onSave,
 }: {
   count: number;
   busy: boolean;
+  /** Arbejdsfladen gemmer eller afmelder lige nu: Gem venter, saa kaldene aldrig krydser. */
+  locked?: boolean;
   error?: string | null;
   onUndo: () => void;
   onSave: () => void;
@@ -85,7 +88,7 @@ export function ClearDraftBar({
         <Button variant="secondary" size="sm" onClick={onUndo} disabled={busy} data-testid="planning-clear-undo">
           {t("clearBar.undo")}
         </Button>
-        <Button variant="secondary" size="sm" onClick={onSave} loading={busy} data-testid="planning-clear-save">
+        <Button variant="secondary" size="sm" onClick={onSave} loading={busy} disabled={locked} data-testid="planning-clear-save">
           {t("clearBar.save")}
         </Button>
       </div>

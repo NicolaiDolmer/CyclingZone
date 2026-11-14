@@ -431,7 +431,13 @@ export function clearableRaceIds(
     .filter((race) => !isRacePast(race) && !race.lineupLocked && !withdrawn.has(race.id))
     .filter((race) => {
       const locked = new Set(locks[race.id]?.riderIds ?? []);
-      return entries.some((e) => e.raceId === race.id && !locked.has(e.riderId));
+      const own = entries.filter((e) => e.raceId === race.id);
+      if (!own.some((e) => !locked.has(e.riderId))) return false;
+      // Det der bliver tilbage, skal kunne gemmes: serveren kraever en kaptajn, saa snart truppen ikke
+      // er tom. Bliver der laaste ryttere uden en laast kaptajn, ville hele det atomiske kald afvises;
+      // saadan et loeb ryddes derfor ikke (spilleren rydder det selv paa fladen).
+      const kept = own.filter((e) => locked.has(e.riderId));
+      return kept.length === 0 || kept.some((e) => e.raceRole === "captain");
     })
     .map((race) => race.id);
 }

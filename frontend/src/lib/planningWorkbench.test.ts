@@ -439,13 +439,13 @@ test("Ryd udtagelser som kladde: de ryddede loeb beholder kun Train now-laaste r
 
 test("Ryd udtagelser gemmes som bulk-aendringer i samme form som et enkelt gem", () => {
   const entries = [
-    { raceId: "r1", riderId: "a", raceRole: "captain" },
-    { raceId: "r1", riderId: "t", raceRole: "hunter" },
+    { raceId: "r1", riderId: "a", raceRole: "hunter" },
+    { raceId: "r1", riderId: "t", raceRole: "captain" },
     { raceId: "r2", riderId: "b", raceRole: "captain" },
   ];
   const changes = clearChanges(entries, ["r1", "r2"], { r1: { riderIds: ["t"] } });
   assert.deepEqual(changes, [
-    { raceId: "r1", rider_ids: ["t"], captain_id: null, sprint_captain_id: null, hunter_id: "t", free_role_ids: [], co_captain_id: null },
+    { raceId: "r1", rider_ids: ["t"], captain_id: "t", sprint_captain_id: null, hunter_id: null, free_role_ids: [], co_captain_id: null },
     { raceId: "r2", rider_ids: [], captain_id: null, sprint_captain_id: null, hunter_id: null, free_role_ids: [], co_captain_id: null },
   ]);
   const sel = selectionFromEntries([{ raceId: "r", riderId: "x", raceRole: "free_role" }, { raceId: "r", riderId: "y", raceRole: null }]);
@@ -484,15 +484,15 @@ test("Ryd udtagelser (P1): den huskede kladde slettes aldrig, mens rydningen vis
 
 test("Ryd udtagelser (P1): gemmet afstemmes mod det SENDTE loeb og den sendte udtagelse", () => {
   const entries = [
-    { raceId: "r1", riderId: "a", raceRole: "captain" },
-    { raceId: "r1", riderId: "t", raceRole: "hunter" },
+    { raceId: "r1", riderId: "a", raceRole: "hunter" },
+    { raceId: "r1", riderId: "t", raceRole: "captain" },
     { raceId: "r2", riderId: "b", raceRole: "captain" },
   ];
   const { changes, selections } = clearSubmission(entries, ["r1", "r2"], { r1: { riderIds: ["t"] } });
   assert.deepEqual(changes, clearChanges(entries, ["r1", "r2"], { r1: { riderIds: ["t"] } }), "samme body som foer");
   const sentR1 = selections.get("r1")!;
   assert.deepEqual(sentR1.riderIds, ["t"]);
-  assert.equal(sentR1.hunterId, "t", "den laaste rytters rolle sendes med");
+  assert.equal(sentR1.captainId, "t", "den laaste rytters rolle sendes med");
 
   // Uaendret flade: den sendte trup er nu den gemte, intet er ugemt.
   const same = settleClearSave({ raceId: "r1", sel: sentR1 }, { raceId: "r1", sel: sentR1 });
@@ -509,6 +509,23 @@ test("Ryd udtagelser (P1): gemmet afstemmes mod det SENDTE loeb og den sendte ud
 
   // Spilleren skiftede loeb imens: et andet loebs flade maerkes aldrig som gemt.
   assert.deepEqual(settleClearSave({ raceId: "r3", sel: squad(["c"]) }, { raceId: "r1", sel: sentR1 }), { mine: false });
+});
+
+test("Ryd udtagelser: et loeb hvor de laaste ryttere ville staa uden kaptajn, ryddes ikke (ét afvist loeb ville afvise hele kaldet)", () => {
+  const races = [race("noLeader", 1, 1), race("lockedCaptain", 2, 2), race("plain", 3, 3)];
+  const entries = [
+    { raceId: "noLeader", riderId: "c", raceRole: "captain" },
+    { raceId: "noLeader", riderId: "t", raceRole: "hunter" },
+    { raceId: "lockedCaptain", riderId: "a", raceRole: "hunter" },
+    { raceId: "lockedCaptain", riderId: "k", raceRole: "captain" },
+    { raceId: "plain", riderId: "a", raceRole: "captain" },
+  ];
+  const locks = { noLeader: { riderIds: ["t"] }, lockedCaptain: { riderIds: ["k"] } };
+  assert.deepEqual(clearableRaceIds(races, entries, new Set(), locks), ["lockedCaptain", "plain"]);
+  // Det der sendes for de ryddelige loeb er en gyldig trup: tom, eller med den laaste kaptajn.
+  const { selections } = clearSubmission(entries, ["lockedCaptain", "plain"], locks);
+  assert.equal(selections.get("lockedCaptain")!.captainId, "k");
+  assert.deepEqual(selections.get("plain")!.riderIds, []);
 });
 
 test("Ryd udtagelser (P2): kladden holdes altid inden for ét atomisk kald", () => {
