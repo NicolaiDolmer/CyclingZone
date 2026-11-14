@@ -1,8 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "../lib/supabase";
+import { supabase, authHeaders } from "../lib/supabase";
 import { fetchAllRows } from "../lib/supabasePagination";
 import { pickResultsSeason } from "../lib/seasonReference.js";
 import { fetchRiderRankings } from "../lib/rankingsApi.ts";
+import { apiFetch } from "../lib/apiFetch.ts";
+import { startFreshnessProbe } from "../lib/rankingFreshness.ts";
+
+// #7664: tidspunktet for "Opdateret kl." (null = ingen linje, fx kontakten slukket).
+async function loadRankingFreshness() {
+  const headers = await authHeaders({ json: false });
+  if (!headers) return null;
+  const response = await apiFetch("/api/rankings/freshness", { headers }, { source: "rankings-freshness" });
+  return response.ok ? response.data : null;
+}
 
 // Rytter-rangliste for den aktive sæson (#2175). Erstatter den gamle client-agg
 // der hentede ALLE ~38k race_results til browseren og aggregerede der (én fejlet
@@ -26,10 +36,14 @@ export function useRiderRankings() {
   const [season, setSeason] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [updatedAt, setUpdatedAt] = useState(/** @type {string | null} */ (null));
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    // #7664: startes FOER tallene laeses; bruges kun hvis svaret er kommet,
+    // naar tallene er hentet (se lib/rankingFreshness.ts). Blokerer intet.
+    const freshness = startFreshnessProbe(loadRankingFreshness);
     try {
       // #4225: hentede før med `.eq("status","active").single()`. Mellem to
       // sæsoner findes ingen aktiv række — prod 25/8 havde S1+S2 completed og S3
@@ -47,7 +61,7 @@ export function useRiderRankings() {
       if (seasonErr) throw seasonErr;
       const seasonData = pickResultsSeason(seasonRows);
       setSeason(seasonData);
-      if (!seasonData) { setRiders([]); return; }
+      if (!seasonData) { setRiders([]); setUpdatedAt(null); return; }
 
       // Færdig-aggregerede stats (kun ryttere med resultater i sæsonen) + lette
       // display/hold-felter (ferske). is_retired=false spejler den gamle
@@ -96,9 +110,11 @@ export function useRiderRankings() {
         });
       }
       setRiders(rows);
+      setUpdatedAt(freshness.settled());
     } catch (e) {
       setError(e);
       setRiders([]);
+      setUpdatedAt(null);
     } finally {
       setLoading(false);
     }
@@ -111,5 +127,5 @@ export function useRiderRankings() {
   // igangværende sæson. `season === null` er ikke stale, det er "ingen data".
   const isStale = Boolean(season) && season.status !== "active";
 
-  return { riders, season, isStale, loading, error, reload: load };
+  return { riders, season, isStale, loading, error, reload: load, updatedAt };
 }

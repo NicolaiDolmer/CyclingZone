@@ -53,6 +53,7 @@ import { createRankingRefreshQueue } from "./rankingRefreshQueue.ts";
 import { getRankingRefreshWorkState, runRankingRefreshWork } from "./rankingRefreshWork.ts";
 import { runRankingShadowPass } from "./rankingShadowPass.ts";
 import { rankingShadowDecoupled6765Enabled } from "./rankingShadowDecoupled6765Flag.ts";
+import { LEGACY_HOLD_MS_7664, resolveRankingReadSource } from "./rankingRead7664.js";
 
 export const SETTLEMENT_WINDOW_START_HOUR = 20;
 export const SETTLEMENT_OVERNIGHT_END_HOUR = 3;
@@ -170,7 +171,7 @@ export function __resetRankingRefreshStateForTests() {
 // tilbage, ellers refreshRankingMatviewsSafe's true/false.
 async function rankingRefreshGateState(
   supabase,
-  { now = new Date(), maxDeferMs = MAX_DEFER_MS, logger = console } = {},
+  { now = new Date(), maxDeferMs = MAX_DEFER_MS, logger = console, legacyHold = null } = {},
 ) {
   let work;
   try { work = await getRankingRefreshWorkState(supabase, now); }
@@ -179,6 +180,13 @@ async function rankingRefreshGateState(
     logger.warn?.('[ranking-refresh] work state unavailable; snapshot preserved'); return 'unavailable';
   }
   if (!work.pending) return 'clean';
+  // #7664: while readers use the shadow tables, collect changes before a full pass.
+  const legacyHoldMs = legacyHold ? await legacyHold() : 0;
+  if (legacyHoldMs > 0 && work.pendingAgeMs < legacyHoldMs) {
+    logger.log?.("[ranking-refresh] held: shadow tables serve reads (#7664)");
+    return "deferred";
+  }
+  maxDeferMs += legacyHoldMs;
   let settling = false;
   const dates = settlementDatesToCheck(now);
   if (dates.length) {
@@ -208,11 +216,13 @@ export function refreshRankingMatviewsGated(supabase, options = {}) {
 
 async function refreshRankingMatviewsGatedLegacy(
   supabase,
-  { captureExceptionFn, now = new Date(), clock = () => Date.now(), maxDeferMs = MAX_DEFER_MS, logger = console, heartbeatNowFn = () => new Date(), testNowFn, independentShadow } = {},
+  { captureExceptionFn, now = new Date(), clock = () => Date.now(), maxDeferMs = MAX_DEFER_MS, logger = console, heartbeatNowFn = () => new Date(), testNowFn, independentShadow, legacyHoldMs } = {},
 ) {
   const requestedAt = clock();
   void heartbeatNowFn; // Completion time is authoritative in SQL; retain option compatibility.
-  const gateOptions = { now, clock, maxDeferMs, logger };
+  // #7664: hold only while the readers actually use the shadow tables.
+  const legacyHold = legacyHoldMs !== undefined ? async () => legacyHoldMs : independentShadow ? async () => ((await resolveRankingReadSource(supabase, { captureExceptionFn, now: () => now.getTime() + Math.max(0, clock() - requestedAt) })).source === "shadow" ? LEGACY_HOLD_MS_7664 : 0) : null;
+  const gateOptions = { now, clock, maxDeferMs, logger, legacyHold };
   const gateState = await rankingRefreshGateState(supabase, gateOptions);
   if (gateState === 'unavailable') return false;
   if (gateState === 'clean' && !independentShadow) {

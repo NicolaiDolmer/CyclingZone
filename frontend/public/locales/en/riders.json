@@ -77,6 +77,7 @@
     "season": "Season {n}",
     "noActiveSeason": "No active season",
     "completedSeasonNote": "· Completed season. The new season has not started yet.",
+    "updatedAt": "Updated {time}",
     "ridersCount": "{count} riders",
     "filterIndicator": "Showing Division {division}",
     "divisionFilterLabel": "Filter by division",

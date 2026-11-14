@@ -12,6 +12,7 @@ import { formatNumber } from "../lib/intl";
 import { riderNameMatches } from "../lib/riderNameSearch";
 import { compareNationality, getCountryCode3 } from "../lib/countryUtils";
 import { useRiderRankings } from "../hooks/useRiderRankings";
+import UpdatedAtLine from "../components/rankings/UpdatedAtLine.tsx"; // #7664
 import { filterByDivisionPool, ALL_POOLS_VALUE } from "../lib/resultsFilter";
 import { resolveDivisionSelectionFromParams, ALL_DIVISIONS_VALUE } from "../lib/riderRankingDivisionLink";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
@@ -117,7 +118,7 @@ export default function RiderRankingsPage() {
   // #2175: rangliste-data (sæson + færdig-aggregerede rytter-stats) kommer fra
   // useRiderRankings — ÉN let query mod rider_rankings_mv + display-join i stedet
   // for den gamle client-agg over ~38k race_results. error → fejl-UI, ikke spinner.
-  const { riders, season, isStale, loading, error, reload } = useRiderRankings();
+  const { riders, season, isStale, loading, error, reload, updatedAt } = useRiderRankings();
   // #3071 → #4225: alderen må IKKE længere udledes af ranglistens sæson. De to
   // faldt sammen så længe ranglisten altid viste den aktive sæson, men #4225 lader
   // den vise sidste AFSLUTTEDE sæson i mellemrummet mellem to sæsoner. Gjorde vi
@@ -396,6 +397,7 @@ export default function RiderRankingsPage() {
         {isStale && (
           <span className="ms-2 text-cz-3">{t("rankings.completedSeasonNote")}</span>
         )}
+        {!isStale && <UpdatedAtLine at={updatedAt} />}{/* #7664: kun naar de nye tabeller laeses */}
         {/* #3507 — tydelig filter-indikator når man er landet her via
             dashboardets division-scopede "Fuld rangliste →"-link (eller har
             valgt en division manuelt), så det er soleklart at listen IKKE er
