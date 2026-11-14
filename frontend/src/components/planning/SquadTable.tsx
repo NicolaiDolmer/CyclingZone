@@ -35,7 +35,9 @@ function StatusCell({ row, detail, seasonYear, compact = false }: { row: SquadRo
   const fitAgain = row.injured && detail ? injuryFitAgainDate(detail.injuredUntil) : null;
   const approx = detail ? injuryTimeLeft({ injured_until: detail.injuredUntil, injury_race_days_left: detail.injuryRaceDaysLeft }).unit === "race_day" : false;
   return (
-    <span className="inline-flex flex-wrap items-center gap-1">
+    // Paa pc staar maerker og "Rask igen <dato>" paa én linje (ejer 14/11): en dato under maerket eller
+    // over flere linjer gjorde raekken hoejere end de andre. Paa mobil maa de bryde under navnet.
+    <span className="inline-flex flex-wrap items-center gap-1 sm:flex-nowrap">
       <RiderBadges badges={badges} />
       {/* Altid én linje (ejer 14/11): en dato over flere linjer gjorde raekken hoejere end de andre. */}
       {fitAgain && (

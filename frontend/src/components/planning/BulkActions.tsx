@@ -163,7 +163,8 @@ export function BulkMenu({ scope, onScope, scopeCounts, nextName, plans, max, lo
         {t("bulk.menu")}
       </Button>
       {open && !sheet && (
-        <div className="absolute end-0 top-full z-dropdown mt-2 w-80 max-w-[calc(100vw-2rem)]">
+        // Svaever ud over arbejdsfladen til hoejre (listen er kun 296 px bred), som i designet.
+        <div className="absolute start-0 top-full z-dropdown mt-2 w-80 max-w-[calc(100vw-2rem)]">
           <Menu aria-label={t("bulk.menu")} className="max-h-[80vh] w-full overflow-y-auto" data-testid="planning-bulk-panel">
             {body}
           </Menu>
