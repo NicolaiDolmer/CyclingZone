@@ -26,7 +26,6 @@ import {
 import { Flag as FlagBase } from "../Flag.jsx";
 import { isU23 as isU23Base } from "../../lib/riderAge.js";
 import { injuryTimeLeft as injuryTimeLeftBase } from "../../lib/training.js";
-import { formatDate as formatDateBase } from "../../lib/intl.js";
 import { useReloadBlock as useReloadBlockBase, RELOAD_BLOCK_REASONS as RELOAD_BLOCK_REASONS_BASE } from "../../lib/reloadGate.js";
 
 type AnyComponent = (props: any) => any;
@@ -63,7 +62,6 @@ export const injuryTimeLeft: (condition: { injured_until?: string | null; injury
   count: number;
   unit: "race_day" | "calendar_day";
 } = injuryTimeLeftBase as any;
-export const formatDate: (value: string, style?: string) => string = formatDateBase as any;
 export const useReloadBlock: (active: boolean, reason?: string) => void = useReloadBlockBase as any;
 export const RELOAD_BLOCK_REASONS: { DIRTY: string } = RELOAD_BLOCK_REASONS_BASE as any;
 

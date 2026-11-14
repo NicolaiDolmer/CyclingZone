@@ -12,6 +12,8 @@ Rigtige skærmbilleder taget med Billedstationen (`scripts/pr-shots.mjs`, lokal 
 | `7535-new/` | Ny side før nattens rettelser, 1440 og 390 (`planning-workbench-*`), kontakten slået til med en mock af `/api/feature-flags` |
 | `7535-new3/` | Ny side efter rettelsen af ugetavlen på 390 |
 | `7535-new2/` | Ny side efter nattens rettelser, samme opsætning |
+| `7535-new5/` | Ny side efter opfølgningsrunde 1 (14/11): flag, U23, rask-igen-dato, belastning, ugetavlen på 390 |
+| `pr-screens/7535/runde1-*` (i repoet) | Preview-mock efter runde 1: `runde1-ny-1440.png`, `runde1-ny-390.png` og arkene `runde1-sammenligning-pc-1440.png`, `runde1-sammenligning-mobil-390.png` (wireframe, nuværende, ny) |
 | `pr-screens/7535/natten-*` (i repoet) | Lokal preview-mock med opdigtede navne: nuværende `/planning` og ny side, 1440 og 390, samt de to annoterede ark `natten-sammenligning-pc-1440.png` og `natten-sammenligning-mobil-390.png` (wireframe, nuværende, ny) |
 
 Wireframet er den klikbare prototype; billederne af den ligger i repoet: `pr-screens/7535/prototype-desktop-1440.png` og `prototype-mobile-375.png`. Billeder til PR'en med opdigtede navne (preview-seed) ligger i `pr-screens/7535/`.
@@ -32,7 +34,7 @@ Forkortelser i tabellen: **WF** = wireframe/prototype, **Dag** = Holdudtagelse d
 | "Næste 7 dage / Hele sæsonen", "Vis tidligere" | Ja | - | Ja | ens |
 | Andre divisioners løb (Min division / Andre divisioner) | Nej (hører til løbssiden) | Dag: ja | Nej | afvigelse efter spec'en: andre holds opstillinger hører til løbssiden |
 | Fristboks "Trup mangler" med nedtælling | - | Dag/Sæson/Form: ja, øverst | Før: nej. **Nu: samme boks og samme data øverst** | ens (rettet) |
-| Ugetavlen på 390 | Tidslinje der scroller vandret (prototype 375) | - | Før: barerne stak ud over skærmen (siden blev bredere end 390, målt på det rigtige billede). **Nu: ingen vandret scroll (målt 390), x/N står altid**, men et løbsnavn i en bar på én dag afkortes til forbogstavet | ens på bredde (rettet); dårligere på navne, **ikke nået** (løsningen er et designvalg: kortnavn, to linjer eller kun liste på mobil) |
+| Ugetavlen på 390 | Tidslinje der scroller vandret (prototype 375) | - | Før: barerne stak ud over skærmen; derefter afkortet til forbogstavet. **Nu (runde 1): tidslinjen scroller vandret inde i kortet som wireframet** (siden selv er stadig 390, målt), åbner ved det valgte løb, og navnene kan læses | ens med WF (rettet) |
 | Tom / indlæser / fejl | - | Ja | Ja (tom med handling, skelet, fejl med "Prøv igen") | ens |
 
 ## Løbshoved og bjælken for ugemte ændringer
@@ -47,14 +49,14 @@ Forkortelser i tabellen: **WF** = wireframe/prototype, **Dag** = Holdudtagelse d
 | Ugemt-markør + bjælke "Bliv / Kassér / Gem og åbn" | Ja | Dag: nej (gemmer pr. klik) | Ja | ens med WF |
 | Låst løb siger hvorfor | - | Dag: ja | Ja | ens |
 | Payback-advarsel | Nej | Dag: ja | Nej | dårligere: **trin 3** (Peak form), se nederst |
-| Ryd dag / Ryd alt (hele sæsonen) | Nej | Dag: ja | Nej | dårligere, **ikke nået**; masse-handlinger over flere løb bør designes, ikke kopieres |
+| Ryd dag / Ryd alt (hele sæsonen) | Nej | Dag: ja | Nej | dårligere, **ikke nået**: endpointene og "Ryd alt"-dialogen kan genbruges uændret, men ejeren skal vælge (a) hvor knapperne står på en side uden "dag"-kolonner, og (b) om en masse-rydning må gemme med det samme på en side hvor alt andet er en kladde |
 
 ## Ruteprofil
 
 | Punkt | Wireframe | Nuværende side | Ny side | Dom |
 |-|-|-|-|-|
 | Profil for løbet, etape 1 først, pile + prikker | Ja | Dag: nej; Løb: stor profil med højdeakse, stigningsnavne og stigningsprocent-farver | Ja, løbssidens kompakte kort med stat-linje og terræn-mærker | bedre end Dag, ens med WF |
-| Højdeakse, navngivne stigninger | Nej | Løb: ja | Nej (kompakt), linket til løbssiden er ét klik væk | dårligere end Løb, **ikke nået** (en fuld profil på planlægningssiden er et designvalg til ejeren) |
+| Højdeakse, navngivne stigninger | Nej | Løb: ja | Nej (kompakt), linket til løbssiden er ét klik væk | dårligere end Løb, **ikke nået**: ejeren skal vælge om planlægningssiden skal have løbssidens fulde profil (fylder en skærmhøjde) eller en "vis fuld profil"-knap; komponenten findes |
 | Skjul profil (huskes) | Ja | - | Ja | ens |
 | Endagsløb: ingen pile/prikker | Ja | - | Ja | ens |
 
@@ -64,14 +66,14 @@ Forkortelser i tabellen: **WF** = wireframe/prototype, **Dag** = Holdudtagelse d
 |-|-|-|-|-|
 | Vælg (afkrydsning, max), rolle ved valg | Ja | Dag: træk/klik på chip, ordre-menu | Ja | ens |
 | Rytternavn på én linje på pc | Ja | Ja | Før: navne brød over to linjer ved 1440. **Nu: én linje på pc**, brydes kun på mobil | ens (rettet) |
-| Nation-flag i navnecellen (TASTE P12) | Nej | Form: ja; Dag: nej | Nej | dårligere end Form, **ikke nået** (selection-endpointet sender ikke nation) |
+| Nation-flag i navnecellen (TASTE P12) | Nej | Form: ja; Dag: nej | **Nu (runde 1): rigtigt flag før navnet** (spillets `Flag`, læst fra `riders.nationality_code` som rytter-hoverkortet) | ens med Form (rettet) |
 | Status: skadet, udgående, for gammel, trænet i dag, "I <løb>" | U23, I <løb> | Dag: "Låst · kører <løb>" | Ja. Før: "I <løb>" i versaler, afkortet efter få tegn. **Nu: almindelig skrift, længere før afkortning, fuld tekst i titlen** | ens (rettet) |
-| U23-mærke | Ja | Form: alder | Nej (endpointet sender ikke fødselsdato) | dårligere end WF, **ikke nået** (kræver endpoint-udvidelse) |
-| Skadet "tilbage 9 nov" | Ja | Nej | Nej (endpointet sender kun ja/nej) | dårligere end WF, **ikke nået** |
+| U23-mærke | Ja | Form: alder | **Nu (runde 1): spillets U23-mærke i status** (samme aldersregel som holdsiden, fødselsdato fra `riders`) | ens med WF (rettet) |
+| Skadet "tilbage 9 nov" | Ja | Nej | **Nu (runde 1): "SKD" + "Rask igen (ca.) <dato>"**, rytterprofilens tekst og regel (`rider_condition.injured_until`) | ens med WF (rettet) |
 | Type-kolonne | Ja | Form: ja | Rollemærke ved rating | ens |
 | Rating, Form, Træthed (tal + lille bjælke), Rute-match, kolonne pr. rutetype | Ja | Dag: rute-match + form | Ja, alle sorterer | bedre end Dag |
-| "Efter løbet" (forventet træthed) | Ja | Nej | Nej | dårligere end WF, **ikke nået**: kræver motorens condition-model via et nyt læse-endpoint (hard rule 36, eget designet skridt) |
-| Sæson-belastning pr. rytter (løbsdage tilmeldt i sæsonen) | Nej | Dag: ja (rytter-chip) | Nej | dårligere end Dag, **ikke nået** (tallet kommer fra serveren; må ikke gen-regnes i klienten med en anden definition) |
+| "Efter løbet" (forventet træthed) | Ja | Nej | Nej | dårligere end WF, **ikke nået**: tallet findes ingen steder i spillet i dag; det kræver motorens træthedsmodel bag et nyt læse-endpoint (hard rule 36). Ejeren skal vælge om det bygges som eget skridt, eller kolonnen udgår af trin 1 |
+| Sæson-belastning pr. rytter (løbsdage tilmeldt i sæsonen) | Nej | Dag: ja (rytter-chip) | **Nu (runde 1): "16d" ved navnet med samme titel**; serverens eget tal (`seasonLoadByRider` fra `GET /api/races/distribution`, samme kald som Dag), hentes igen efter gem | ens med Dag (rettet) |
 | Én linje der forklarer rute-match og form | "Pick riders and give them a role · every column sorts" | Dag: ja | Før: nej. **Nu: samme linje som Dag** | ens (rettet) |
 | Mobil 390: navn + rute-match, form, træthed (D-047), ingen vandret scroll | Bundark (trin 3) | Dag: stakket, kolonner pr. løb | Stakket liste så arbejdsflade, tre tal-kolonner | ens med D-047; bundark er trin 3 |
 
@@ -79,9 +81,9 @@ Forkortelser i tabellen: **WF** = wireframe/prototype, **Dag** = Holdudtagelse d
 
 | # | Afvigelse | Dom |
 |-|-|-|
-| 1 | "After race" ikke med | Dårligere end WF; kræver nyt læse-endpoint fra motorens model. Mangler før afløsning |
-| 2 | Skadesdato vises ikke | Dårligere end WF; kræver endpoint-udvidelse. Mangler før afløsning |
-| 3 | U23-mærke vises ikke | Dårligere end WF; kræver fødselsdato i endpointet. Mangler før afløsning |
+| 1 | "After race" ikke med | Dårligere end WF; kræver nyt læse-endpoint fra motorens model og et ejer-valg. Mangler før afløsning |
+| 2 | Skadesdato vises ikke | Rettet i runde 1 ("Rask igen <dato>") |
+| 3 | U23-mærke vises ikke | Rettet i runde 1 |
 | 4 | Ingen Squad / Tactics / Peak form-kontrol | Korrekt: en kontrol med to døde valg ville være opdigtet (P11). Kommer med trin 2 og 3 |
 | 5 | Firkantet mærke i stedet for venstre-kant | Accepteret: TASTE forbyder venstre-bjælker |
 | 6 | Ugeoversigt som 7-kolonners gitter | Accepteret: virker på 375 px uden vandret scroll |
@@ -99,12 +101,11 @@ Trin 2 (Tactics): rytternes plan langs ruten (løbssidens `StagePlanBoard`), Hol
 
 Trin 3 (Peak form + mobil-ark): Formplan-fanens peaks (mål, "hvad den er værd", assistentens udkast, acceptér/nulstil), payback-advarslen ved løbet, bundarket på mobil.
 
-Trin 1, ikke nået i nat (dårligere end en nuværende side eller wireframet):
+Trin 1, ikke nået (dårligere end en nuværende side eller wireframet), efter opfølgningsrunde 1 (14/11):
 
-- "Efter løbet", skadesdato og U23-mærke (kræver endpoint-udvidelser).
-- Sæson-belastning pr. rytter (Dag-visningens rytter-chip).
-- Nation-flag i navnecellen.
+- "Efter løbet" (forventet træthed): kræver motorens træthedsmodel bag et nyt læse-endpoint. Ejer-valg: eget skridt, eller kolonnen udgår af trin 1.
+- "Ryd dag" / "Ryd alt" over flere løb: endpoints og dialog findes. Ejer-valg: placering, og om en masse-rydning må gemme straks på en side hvor alt andet er en kladde.
+- Fuld ruteprofil med højdeakse og navngivne stigninger som på løbssiden: komponenten findes. Ejer-valg: fuld profil på siden eller en "vis fuld profil"-knap.
 - Sæsonmatrixen (rytter × løbsdag med udtagelser, rute-match, form og peak, belastning, "Kun problemer") har ingen modpart; den bør være et eget punkt i planen.
-- "Ryd dag" / "Ryd alt" over flere løb.
-- Ugetavlen på 390: navnet i en bar på én dag afkortes til forbogstavet (siden holder sig nu inden for skærmen).
-- Fuld ruteprofil med højdeakse og navngivne stigninger som på løbssiden.
+
+Rettet i runde 1: ugetavlen på 390 (vandret scroll i kortet som wireframet), nation-flag, U23-mærke, skadesdato ("Rask igen"), sæson-belastning pr. rytter.

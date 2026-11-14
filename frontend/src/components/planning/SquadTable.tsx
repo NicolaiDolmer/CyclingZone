@@ -6,7 +6,8 @@
 // rute-match, form og traethed. Resten staar i desktop-tabellen. Ingen vandret scroll paa mobil.
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { SortableTh, Select, RiderNameCell, RiderBadges, BestRoleTag, TerrainTypeGlyph, Flag, isU23, injuryTimeLeft, formatDate } from "./primitives.ts";
+import { SortableTh, Select, RiderNameCell, RiderBadges, BestRoleTag, TerrainTypeGlyph, Flag, isU23, injuryTimeLeft } from "./primitives.ts";
+import { formatShortDate } from "./planningUi.tsx";
 import { injuryFitAgainDate } from "../../lib/injuryExplain.ts";
 import type { RiderDetail, SeasonLoad } from "../../lib/planningWorkbenchData.ts";
 import {
@@ -27,7 +28,7 @@ const NEUTRAL = "bg-cz-subtle text-cz-2 border border-cz-border";
 
 function StatusCell({ row, detail, seasonYear }: { row: SquadRow; detail?: RiderDetail; seasonYear: number | null }) {
   const { t } = useTranslation("planning");
-  const { t: tRider } = useTranslation("rider");
+  const { t: tRider, i18n } = useTranslation("rider");
   // U23 som paa holdsiden (RiderBadges "u23", samme aldersregel); skadet med "Rask igen <dato>" som paa rytterprofilen.
   const u23 = detail ? isU23(detail.birthdate, seasonYear) : false;
   const badges = [u23 && "u23", row.injured && "injured", row.outgoing && "outgoing"];
@@ -37,8 +38,8 @@ function StatusCell({ row, detail, seasonYear }: { row: SquadRow; detail?: Rider
     <span className="inline-flex flex-wrap items-center gap-1">
       <RiderBadges badges={badges} />
       {fitAgain && (
-        <span className="whitespace-nowrap text-2xs text-cz-3" data-testid="planning-fit-again">
-          {tRider(approx ? "condition.fitAgainApprox" : "condition.fitAgain", { date: formatDate(fitAgain, "medium") })}
+        <span className="max-w-[7.5rem] text-2xs leading-tight text-cz-3" data-testid="planning-fit-again">
+          {tRider(approx ? "condition.fitAgainApprox" : "condition.fitAgain", { date: formatShortDate(fitAgain, i18n.language, false) })}
         </span>
       )}
       {row.overAge && <span className={`${CHIP} ${NEUTRAL}`}>{t("status.overAge")}</span>}
@@ -190,10 +191,12 @@ export default function SquadTable({
                     <div className="min-w-0 pt-2.5 sm:pt-0">
                       {/* Navnet brydes kun paa mobil; paa pc staar det paa én linje som paa de nuvaerende sider. */}
                       {/* Navnecellens faste raekkefoelge (TASTE P12): nation, navn, derefter status. Belastningen
-                          staar ved navnet som paa rytter-chippen paa /planning. */}
-                      <span className="inline-flex max-w-full flex-wrap items-center gap-x-1.5 sm:flex-nowrap sm:whitespace-nowrap">
-                        {detail?.nationality && <Flag code={detail.nationality} className="shrink-0 text-[11px]" />}
-                        <RiderNameCell id={row.id} name={row.name} wrap className="text-[13.5px] font-medium text-cz-1 hover:text-cz-accent-t sm:whitespace-nowrap" />
+                          staar ved navnet som paa rytter-chippen paa /planning og gaar under navnet, naar tabellen er trang. */}
+                      <span className="inline-flex max-w-full flex-wrap items-center gap-x-1.5">
+                        <span className="inline-flex min-w-0 items-center gap-1.5">
+                          {detail?.nationality && <Flag code={detail.nationality} className="shrink-0 text-[11px]" />}
+                          <RiderNameCell id={row.id} name={row.name} wrap className="text-[13.5px] font-medium text-cz-1 hover:text-cz-accent-t sm:whitespace-nowrap" />
+                        </span>
                         {load != null && load.raceDays > 0 && (
                           <span
                             className="shrink-0 whitespace-nowrap font-mono text-3xs tabular-nums text-cz-3"
