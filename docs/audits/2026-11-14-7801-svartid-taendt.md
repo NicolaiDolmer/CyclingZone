@@ -68,3 +68,39 @@ Grænsen er 3 s pr. kald (`SLOW_MS`). Kvarter-reglen kræver mindst 3 langsomme 
 1. **Træning (`backend/lib/riderFatigueNow.js`, `fatigueOutlookForTeam`):** regn ikke aftenens prognose inde i `/training/me`. Enten (a) skønnet for i morgen tages fra prognose-ruten, som siden allerede henter (`routes/trainingPrograms.js:354`), eller (b) prognosen startes samtidig med de andre opslag og deler deres opslag. Mål: højst ca. 12 kald og samme svartid som hold uden en etape i morgen (ca. 0,4 s lokalt). Risiko: skønnet ved start for i morgen skal stadig være det tal, Fable-dommens prøver forventer. Kør prøvesættene for "samme tal" og "slukket uændret" igen.
 2. **Auto-udfyld (`fatigueByRiderForRaces`):** brug den samlede vej (`prepareFatigueNowView`), som `raceFatigueNowForSurface` allerede gør: hent alle løbs starttider på én gang og læs datoens belastninger én gang. Lav risiko, for kernen og tallene er de samme.
 3. Kør målingen igen efter 1 og 2 (samme metode, uden for HH:57 til HH:03), før tænd-kortet laves.
+
+## Efter rettelsen (gren `perf/7801-traethed-nu-svartid`, målt 14/11 kl. 22:29 til 22:36)
+
+**Konklusion:** Auto-udfyld er rettet: 3 løb går fra 37 til 14 kald og fra ca. 3,0 til 0,6 s. Træning for et hold med en etape i morgen er hurtigere, men ikke nok: 34 til 32 kald og ca. 2,3 til 1,8 s lokalt. Målet (ca. 12 kald og samme tid som et hold uden etape i morgen) er **ikke nået**. Resten af tiden ligger i selve prognosens opslag efter hinanden (`trainingWeekPlanForecast.js`), som denne rettelse ikke måtte ændre.
+
+**Hvad er rettet:**
+
+1. Træning (`fatigueOutlookForTeam`): prognosen venter ikke længere på tallet nu. Den startes, så snart rytternes næste etape er kendt, og kører samtidig med tallet. Tallet, den næste etape og prognosen deler én klient til kaldet (`sharedReadsClient`): en læsning, der allerede er svaret uden fejl i samme kald, sendes ikke igen (kontakterne for Form og træthed 2.0, Træthed lige nu og lægeopslaget). Fejl huskes aldrig, og intet lever ud over kaldet. Slukket kontakt bruger den uændrede vej.
+2. Auto-udfyld (`fatigueByRiderForRaces`): den gamle vej ét løb ad gangen er væk. Alle løbs starttider hentes samtidig, evner, kontakter og lægeopslag læses én gang for alle løb, og datoens opslag deles af løb på samme dato (`prepareFatigueNowView`, samme som udtagelsen).
+
+**Metode:** samme script og samme regler som ovenfor (kun læsning, 0 blokerede skrivninger i begge kørsler, kontakten tvunget tændt kun i processen, `app_config` ikke rørt, 20 gentagelser efter 2 opvarmninger). Kun de to flader, rettelsen rører. Gammel og ny kode er målt lige efter hinanden mod samme hold, så nettet er så ens som muligt. Klokken 22:29 var dagens etaper afregnet, så udvalget gav kun tre hold (ingen havde en etape i dag), og ét af dem havde en etape i morgen.
+
+| Flade | Hold (trup) | Kald før → efter | Tændt før, median / værst | Tændt efter, median / værst |
+|---|---|---|---|---|
+| **Træning**, etape i morgen | T3 (52) | 34 → 32 | 2256 / 2706 ms | **1769 / 2279 ms** |
+| Træning, ingen etape i morgen | T1 (1) | 11 → 11 | 428 / 510 ms | 534 / 780 ms |
+| | T2 (7) | 11 → 11 | 446 / 501 ms | 500 / 885 ms |
+| **Auto-udfyld, 1 løb** | T3 | 13 → 10 | 1408 / 2016 ms | **577 / 766 ms** |
+| **Auto-udfyld, 3 løb** | T3 | 37 → 14 | 3044 / 4080 ms | **600 / 995 ms** |
+
+Slukket var 2 kald i alle rækker, før og efter. T1 og T2 har samme kald før og efter; forskellen i tid er nettet (den nye kode blev målt først).
+
+**Dommerens verdener (opdigtede, `dommer7801RestByg.harness.mjs`), kald / ventetider tændt:**
+
+| Flade | Før (main 14/11) | Efter |
+|---|---|---|
+| Træning, hold med etape i morgen | 48-49 / 28 | 39-40 / 20 |
+| Træning, Træn nu trykket (hold A) | 30 / 18 | 23 / 12 |
+| Auto-udfyld, 5 løb | 36-39 / 33-36 | 15-16 / 4-5 |
+| Auto-udfyld, 5 løb, Træn nu trykket | 69 / 64 | 48 / 20 |
+
+Ventetider er antallet af gange, visningen venter på databasen efter hinanden; det er dem, der koster tid.
+
+**Hvorfor Træning ikke når målet:** om aftenen, når datoen er afregnet, er prognosen ca. 21 kald, de fleste efter hinanden (dagens løbsdage, truppen, planer, regler og kontakter for programceller og katalog). Kun 2 af dem er de samme som tallets opslag. Om dagen, før afregningen, deles flere (dommerens verdener: 9 færre kald), men det er ikke målt mod prod i dag. Målet kræver enten, at prognosens egne opslag sendes samtidig i `trainingWeekPlanForecast.js`, eller at skønnet for i morgen tages fra prognose-ruten på siden. Det sidste ændrer, hvad `/training/me` svarer, og bryder dommerens prøve for skønnet i morgen.
+
+**Ikke målt efter rettelsen:** Træning midt på dagen (før datoens afregning) og hold med en etape i dag; auto-udfyld til mere end 3 løb; de øvrige flader (udtagelse, Race Hub, rytterkort, regelpanel), hvis kald dommerens prøver holder uændrede eller lavere.
