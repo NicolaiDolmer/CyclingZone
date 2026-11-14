@@ -128,11 +128,19 @@ const fpLinks = (fps) =>
 const REAL_A = Array(32).fill("AB").join(":");
 const REAL_B = Array(32).fill("0F").join(":");
 
-test("#6584: repoets skabelon giver en navngiven advarsel, ikke groent og ikke roedt", () => {
-  const body = readFileSync(new URL("../frontend/public/.well-known/assetlinks.json", import.meta.url), "utf8");
-  const status = assetLinksFingerprintStatus(body);
+test("#6584: kun pladsholdere giver en navngiven advarsel, ikke groent og ikke roedt", () => {
+  const status = assetLinksFingerprintStatus(fpLinks(["REPLACE_WITH_A_1", "REPLACE_WITH_A_2", "REPLACE_WITH_A_3"]));
   assert.equal(status.failure, null, "skal ikke goere main roed foer ejeren har fingeraftrykkene");
   assert.match(status.warning, /^ASSETLINKS_PLACEHOLDER:/);
+});
+
+// Repoets fil maa enten vaere skabelonen (advarsel) eller have aegte aftryk (groent), aldrig roed.
+// Codex P2 (#8059): testen maa ikke kraeve, at pladsholderne bliver staaende.
+test("#6584: repoets assetlinks.json goer aldrig tjekket roedt", () => {
+  const body = readFileSync(new URL("../frontend/public/.well-known/assetlinks.json", import.meta.url), "utf8");
+  const status = assetLinksFingerprintStatus(body);
+  assert.equal(status.failure, null);
+  assert.ok(status.warning === null || /^ASSETLINKS_PLACEHOLDER:/.test(status.warning));
 });
 
 test("#6584: pladsholder bliver roed, naar ASSETLINKS_REQUIRE_FINGERPRINT er sat", () => {
