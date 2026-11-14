@@ -17,11 +17,12 @@
 
 ## Rækkefølge (ejer 9/11, perioder 10/11 #7971)
 
-1. **Træning, denne uge:** Træn nu i beta (løbsfeltet giver først træthed efter løbet, #7970), så bonus 15 % #7741 på eget kort. XP + potentiale #6110 med #7739 (flere point samme dag), #3924 og #7627. Trøjemål #5573. Pengelås #2176/#6181: købernes del on for alle siden 12/11, sælgers del (sale_escrow_enabled) slukket til ejerens eget tænd-kort. Træn nu-svartid #7982: trin 1, 1b, 2 merget. XP #8041, trøjejagt #8052 merget slukket. #7801, #7715. Næste uge: #7947 (med #4342, #6176), #5950, #6490.
-2. **Taktik, denne uge (Codex):** holdplan og pris i træthed #7864/#7980 (i beta), tidlige angreb #7884 (ejer 11/11: ægte langt angreb, alle ryttere, valg via stigningens navn; design + baseline før byg), #7638, #7373, genbrug #7880, planlægningsside/Standarder #7535; Hard/Normal/Easy #7738 efter måling.
-3. **Løbssiden, denne uge #7778 (trin 1 af 5, slukket):** med #7861, #7868, #6365, #6513. Indsatskortet #5101 (+#7754) og bjergudbrud #6912 næste uge.
-4. **Weboplevelse 5x (ejer 11/11, milestone Web 5x, Modern Web Guidance 1.0.0+ er krav):** #6494 cache (#8102 grundlag merget, kun Global Rank) → #8012 React Compiler → #8008 ét dashboard-kald (+#8005) → #8009 prefetch → #7993 kvalitetssystem → #7999 bundle-diet → #7995/#7997/#7996/#7998 → Google Play #6584. Løbende #7990, #6916.
-5. **Så:** første dage for nye (efter taktik), forsiden #7626, #7932 (trupper, alder).
+1. **Næste uge, først (ejer 13/11): XP og trøjejagt til tænding.** XP #6110 og trøjejagt #7855 (merget slukket): Fable-gentjek, så ejerens tænd-kort.
+2. **Træning, denne uge:** Træn nu i beta, så bonus 15 % #7741 på eget kort. #7739, #3924 og #7627 følger XP. Trøjemål #5573. Pengelås #2176/#6181: købernes del on for alle siden 12/11, sælgers del slukket til ejerens eget tænd-kort (visning #8138 merget). Træn nu-svartid #7982: trin 1-3 merget. #7801, #7715. Næste uge: #7947, #5950, #6490.
+3. **Taktik, denne uge (Codex):** holdplan og pris i træthed #7864/#7980 (i beta), tidlige angreb #7884 (ejer 11/11: ægte langt angreb, alle ryttere, valg via stigningens navn; design + baseline før byg), #7638, #7373, genbrug #7880, planlægningsside/Standarder #7535; Hard/Normal/Easy #7738 efter måling.
+4. **Løbssiden, denne uge #7778 (trin 1 af 5, slukket):** med #7861, #7868, #6365, #6513. Indsatskortet #5101 (+#7754) og bjergudbrud #6912 næste uge.
+5. **Weboplevelse 5x (ejer 11/11, milestone Web 5x, Modern Web Guidance 1.0.0+ er krav):** #6494 cache (#8102 grundlag merget, kun Global Rank) → #8012 React Compiler → #8008 ét dashboard-kald (+#8005) → #8009 prefetch → #7993 kvalitetssystem → #7999 bundle-diet → #7995/#7997/#7996/#7998 → Google Play #6584. Løbende #7990, #6916.
+6. **Så:** første dage for nye (efter taktik), forsiden #7626, #7932 (trupper, alder).
 - **Ranglisten, uge 47 (milestone):** #7664 → #8003 → #7139 (målt 11/11: ~13 min ventetid + ~5 min beregning).
 - **Før 28/11:** skiftet afprøves på en kopi #7325, graduering/salg #7323.
 - **Motor:** #6912, #7899, #7645, #7902.
