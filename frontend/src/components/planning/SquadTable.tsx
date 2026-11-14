@@ -194,7 +194,7 @@ export default function SquadTable({
                           staar ved navnet som paa rytter-chippen paa /planning og gaar under navnet, naar tabellen er trang. */}
                       <span className="inline-flex max-w-full flex-wrap items-center gap-x-1.5">
                         <span className="inline-flex min-w-0 items-center gap-1.5">
-                          {detail?.nationality && <Flag code={detail.nationality} className="shrink-0 text-[11px]" />}
+                          {detail?.nationality && <Flag code={detail.nationality} className="shrink-0 text-2xs" />}
                           <RiderNameCell id={row.id} name={row.name} wrap className="text-[13.5px] font-medium text-cz-1 hover:text-cz-accent-t sm:whitespace-nowrap" />
                         </span>
                         {load != null && load.raceDays > 0 && (
