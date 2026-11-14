@@ -293,8 +293,15 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     try {
       const res = await setRaceWithdrawal(race.id, withdraw);
       if (!res.ok) {
+        const body = res.data ?? {};
+        // "Deltag igen" kan afvises fordi en rytter nu koerer et overlappende loeb: vis hvem og hvor (som et gem).
+        const conflict = Array.isArray(body.conflicts) ? body.conflicts[0] : null;
         setSaveState("error");
-        setSaveError({ code: res.data?.error || "generic", params: { min: size.min, max: size.max } });
+        setSaveError(
+          conflict
+            ? { code: "selection_rider_bound_named", params: { rider: conflict.rider_name ?? "", race: conflict.race_name ?? conflict.bound_race_name ?? "" } }
+            : { code: body.error || "generic", params: { min: size.min, max: size.max } },
+        );
         return;
       }
       if (withdraw) forgetSelectionDraft(race.id);
@@ -341,6 +348,28 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     edit(selection);
     setNote(skipped > 0 ? t("race.copied", { name: source.race.name, skipped }) : t("race.copiedAll", { name: source.race.name }));
   };
+
+  // Samme to handlinger som loebstavlens fod paa /planning: ryd udtagelsen og afmeld / deltag igen.
+  const raceActions =
+    canWithdraw || (isWithdrawn && !readOnly) ? (
+      <div className="flex flex-wrap items-center gap-1">
+        {canWithdraw && sel.riderIds.length > 0 && (
+          <Button variant="ghost" size="sm" onClick={clearSelection} disabled={saveState === "saving" || withdrawBusy}>
+            {tr("racehub.column.clearSelection")}
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => toggleWithdrawal(!isWithdrawn)}
+          loading={withdrawBusy}
+          disabled={saveState === "saving" || withdrawBusy}
+          data-testid="planning-withdraw"
+        >
+          {isWithdrawn ? tr("racehub.column.reenter") : tr("racehub.column.withdraw")}
+        </Button>
+      </div>
+    ) : null;
 
   let body;
   if (state === "loading") {
@@ -400,6 +429,8 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
                 </Button>
               }
             />
+            {/* Afmeld / deltag igen er loebets handlinger og staar ogsaa her, selv uden ryttere i tabellen. */}
+            {raceActions && <div className="mt-3 flex justify-end">{raceActions}</div>}
           </div>
         ) : (
           <>
@@ -421,26 +452,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
               <p className="py-1 font-data text-xs tabular-nums text-cz-3">
                 {t("squad.count", { shown: rows.length, selected: sel.riderIds.length, max: size.max })}
               </p>
-              {/* Samme to handlinger som loebstavlens fod paa /planning: ryd udtagelsen og afmeld holdet. */}
-              {(canWithdraw || (isWithdrawn && !readOnly)) && (
-                <div className="flex flex-wrap items-center gap-1">
-                  {canWithdraw && sel.riderIds.length > 0 && (
-                    <Button variant="ghost" size="sm" onClick={clearSelection} disabled={saveState === "saving" || withdrawBusy}>
-                      {tr("racehub.column.clearSelection")}
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => toggleWithdrawal(!isWithdrawn)}
-                    loading={withdrawBusy}
-                    disabled={saveState === "saving" || withdrawBusy}
-                    data-testid="planning-withdraw"
-                  >
-                    {isWithdrawn ? tr("racehub.column.reenter") : tr("racehub.column.withdraw")}
-                  </Button>
-                </div>
-              )}
+              {raceActions}
             </div>
           </>
         )}
