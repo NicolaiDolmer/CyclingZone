@@ -204,6 +204,8 @@ export async function getResultWebhooksAndLabel(leagueDivisionId) {
  * @param {{fetchFn?: typeof fetch, sleepFn?: Function, captureExceptionFn?: Function, enqueueOnFailure?: boolean, enqueueWebhookFn?: Function}} [opts]
  *   `enqueueOnFailure:false` bruges af outbox-drainens EGEN dead-alarm, så en
  *   fejlende alarm ikke lægger sig selv i outbox'en igen (uendelig vækst).
+ * @returns {Promise<boolean>} true når beskeden er afleveret eller lagt i outbox'en,
+ *   ellers false (#8101). Kaster stadig aldrig; kaldere der ignorerer svaret er uændrede.
  */
 export async function sendWebhook(webhookUrl, payload, {
   fetchFn = fetch,
@@ -212,8 +214,8 @@ export async function sendWebhook(webhookUrl, payload, {
   enqueueOnFailure = true,
   enqueueWebhookFn = enqueueWebhook,
 } = {}) {
-  if (!webhookUrl) return;
-  if (liveDiscordBlocked("webhook-post")) return;
+  if (!webhookUrl) return false;
+  if (liveDiscordBlocked("webhook-post")) return false;
   try {
     const safeWebhookUrl = assertDiscordWebhookUrl(webhookUrl);
     // #2882: kø'et pr. URL, så samtidige kaldere (overlappende cron-ticks,
@@ -270,15 +272,18 @@ export async function sendWebhook(webhookUrl, payload, {
           console.log(
             `📮 Discord webhook lagt i outbox efter ${result.attempts} forsøg (${statusLabel}) — genforsøges af drain-cronen`
           );
+          return true;
         }
       }
     }
+    return result.ok === true;
   } catch (err) {
     // best-effort: fejl i selve URL-safety-tjekket (assertDiscordWebhookUrl)
     // lander her og må ikke vælte kalderen. Den egentlige HTTP-levering
     // (inkl. retry på 429/5xx/netværk) sker i attemptWebhookDelivery ovenfor
     // og kaster IKKE — den slags fejl rammer derfor ikke denne catch længere.
     console.error("Discord webhook error:", err.message);
+    return false;
   }
 }
 

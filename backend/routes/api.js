@@ -517,6 +517,7 @@ import { generateRaceStageProfiles, toStageProfileRow } from "../lib/raceStagePr
 import { checkAchievements, getAchievementProgressMap } from "../lib/achievementEngine.js";
 import { captureException, setSentryUser } from "../lib/sentry.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
+import { markActionTiming } from "../lib/actionTimingMonitor8101.js"; // #8101
 import { buildAttributionRow } from "../lib/signupAttribution.js";
 import { recordIdentityEvent } from "../lib/identityTelemetry.js";
 import { aggregateAttribution } from "../lib/attributionDashboard.js";
@@ -10118,6 +10119,9 @@ router.put("/teams/my", requireAuth, marketWriteLimiter, async (req, res) => {
     // #679: persist first-touch acquisition source on the FIRST team-create
     // (signup). Best-effort + fire-and-forget — must never block or fail signup.
     if (result.created) {
+      // #8101: kun en rigtig oprettelse måles som "Opret hold"; profil-gem på
+      // samme rute måles for sig uden alarm. Ingen databasekald, kaster aldrig.
+      markActionTiming(res, "team_create");
       const attributionRow = buildAttributionRow(req.user.id, req.body?.attribution);
       if (attributionRow) {
         supabase

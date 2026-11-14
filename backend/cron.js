@@ -96,6 +96,7 @@ import { runOwnershipInvariantWatch } from "./lib/ownershipInvariantWatch.ts";
 import { runRiderDoubleBookingWatch } from "./lib/riderDoubleBookingWatch.js";
 import { runSquadEntryGateWatch } from "./lib/squadEntryGate.js"; // #6489
 import { buildAlertSignature, shouldAlertOnChange } from "./lib/opsAlertDedupe.js";
+import { configureActionTimingFlush, FLUSH_INTERVAL_MS as ACTION_TIMING_FLUSH_MS } from "./lib/actionTimingMonitor8101.js"; // #8101
 import { runTrainingSlotHealthWatch } from "./lib/trainingSlotHealthWatch.js"; // #3639
 import { runEmailWelcomeSweep } from "./lib/emailWelcomeSweep.js"; // #2725
 import { runEmailDay1Sweep } from "./lib/emailDay1Sweep.js"; // #2725
@@ -2450,6 +2451,12 @@ export function startCron() {
   setInterval(
     trackedTick("cron heartbeat sweep", monitorCron("cron-heartbeat-sweep", runCronHeartbeatSweepCronTick, CRON_MONITOR_5MIN)),
     5 * 60 * 1000
+  );
+
+  // #8101 — svartids-loft: gem kvarterets målinger og alarmér Discord #ops (se lib/actionTimingMonitor8101.js).
+  setInterval(
+    trackedTick("action-timing-flush", monitorCron("action-timing-flush", configureActionTimingFlush({ supabase, sendWebhookFn: sendOpsWebhook, getOpsWebhookFn: getOpsWebhook, captureExceptionFn: sentryCapture }), CRON_MONITOR_15MIN)),
+    ACTION_TIMING_FLUSH_MS
   );
 
   // Run immediately on start

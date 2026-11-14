@@ -31,6 +31,7 @@ import { createComebackRouter } from "./routes/comeback.js"; // #5643
 import { createBoardVerdictRouter } from "./routes/boardVerdict.js"; // #5753
 import { createPublicStageRouteRouter } from "./routes/publicStageRoute.js"; // #6574
 import { startCron, awaitCronsIdle, getCronInFlight, stopCronScheduling } from "./cron.js";
+import { createActionTimingMiddleware, flushActionTimingOnShutdown } from "./lib/actionTimingMonitor8101.js"; // #8101
 import { startDirectDbProbe, stopDirectDbProbe, closeDirectDbLine } from "./lib/directDbProbe.ts"; // #8143
 
 const app = express();
@@ -42,6 +43,8 @@ const PORT = process.env.PORT || 3001;
 // Railway/Vercel terminate TLS upstream; trust the first proxy hop so req.ip
 // reflects the real client (X-Forwarded-For) for rate-limit key fallback.
 app.set("trust proxy", 1);
+// #8101: svartid for de ti vigtigste handlinger. Først, så hele serverens tid tæller.
+app.use(createActionTimingMiddleware());
 
 // Security-hardening (2026-06-20): eksplicit HSTS bag Railway/Vercel-TLS. Defense-in-depth
 // — instruerer browsere til at tvinge HTTPS i 1 år (inkl. subdomæner) selv hvis et
@@ -162,6 +165,7 @@ async function gracefulShutdown(signal) {
   } else {
     console.log("[shutdown] alle cron-ticks afsluttet");
   }
+  await flushActionTimingOnShutdown(); // #8101: gem det igangværende kvarters svartider
   // #8143: den direkte linjes pulje lukkes pænt, efter baggrundsjobbene.
   await closeDirectDbLine();
   process.exit(0);
