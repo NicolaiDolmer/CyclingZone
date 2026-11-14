@@ -121,7 +121,7 @@
   },
   "clearBar": {
     "text": "{count, plural, one {Udtagelsen er ryddet i # løb.} other {Udtagelserne er ryddet i # løb.}}",
-    "note": "Intet er gemt, før du gemmer.",
+    "note": "Intet er gemt, før du gemmer. Assistenten udtager tomme trupper, når løbet køres.",
     "undo": "Fortryd",
     "save": "Gem",
     "error": "Intet blev gemt. {error}",

@@ -121,7 +121,7 @@
   },
   "clearBar": {
     "text": "{count, plural, one {Selectie gewist in # koers.} other {Selecties gewist in # koersen.}}",
-    "note": "Er wordt niets opgeslagen tot je opslaat.",
+    "note": "Er wordt niets opgeslagen tot je opslaat. De assistent kiest lege selecties wanneer de koers wordt verreden.",
     "undo": "Ongedaan maken",
     "save": "Opslaan",
     "error": "Er is niets opgeslagen. {error}",

@@ -519,7 +519,7 @@ function Workbench() {
         {hasClearDraft && (
           <ClearDraftBar count={clearDraft.size} busy={clearBusy} error={clearError} onUndo={undoClear} onSave={saveClear} />
         )}
-        <div className={`grid items-start gap-3.5 ${showList ? "lg:grid-cols-[320px_minmax(0,1fr)]" : ""}`}>
+        <div className={`grid items-start gap-3.5 ${showList ? "lg:grid-cols-[296px_minmax(0,1fr)]" : ""}`}>
           {showList && (
             <RaceList
               races={listRaces}

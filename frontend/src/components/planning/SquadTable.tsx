@@ -4,7 +4,7 @@
 //
 // Mobil (D-047, 640 px og smalere): navnecellen (med afkrydsning og rolle) + de tre kolonner
 // rute-match, form og traethed. Resten staar i desktop-tabellen. Ingen vandret scroll paa mobil.
-import type { ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { SortableTh, Select, RiderNameCell, RiderBadges, BestRoleTag, TerrainTypeGlyph, Flag, isU23, injuryTimeLeft } from "./primitives.ts";
 import { formatShortDate } from "./planningUi.tsx";
@@ -26,7 +26,7 @@ const CHIP =
   "inline-flex items-center justify-center text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded shrink-0";
 const NEUTRAL = "bg-cz-subtle text-cz-2 border border-cz-border";
 
-function StatusCell({ row, detail, seasonYear }: { row: SquadRow; detail?: RiderDetail; seasonYear: number | null }) {
+function StatusCell({ row, detail, seasonYear, compact = false }: { row: SquadRow; detail?: RiderDetail; seasonYear: number | null; compact?: boolean }) {
   const { t } = useTranslation("planning");
   const { t: tRider, i18n } = useTranslation("rider");
   // U23 som paa holdsiden (RiderBadges "u23", samme aldersregel); skadet med "Rask igen <dato>" som paa rytterprofilen.
@@ -38,7 +38,7 @@ function StatusCell({ row, detail, seasonYear }: { row: SquadRow; detail?: Rider
     <span className="inline-flex flex-wrap items-center gap-1">
       <RiderBadges badges={badges} />
       {fitAgain && (
-        <span className="max-w-[7.5rem] text-2xs leading-tight text-cz-3" data-testid="planning-fit-again">
+        <span className={`${compact ? "max-w-[5.5rem]" : "max-w-[7.5rem]"} text-2xs leading-tight text-cz-3`} data-testid="planning-fit-again">
           {tRider(approx ? "condition.fitAgainApprox" : "condition.fitAgain", { date: formatShortDate(fitAgain, i18n.language, false) })}
         </span>
       )}
@@ -47,7 +47,7 @@ function StatusCell({ row, detail, seasonYear }: { row: SquadRow; detail?: Rider
       {row.busyIn && (
         // Hele "I <loeb>" i almindelig skrift; kun et meget langt navn afkortes (titlen har resten).
         <span
-          className="inline-block max-w-[11rem] truncate rounded border border-cz-border bg-cz-subtle px-1.5 py-0.5 text-2xs leading-none text-cz-2"
+          className={`inline-block ${compact ? "max-w-[4.5rem]" : "max-w-[6.5rem]"} truncate rounded border border-cz-border bg-cz-subtle px-1.5 py-0.5 text-2xs leading-none text-cz-2`}
           title={t("status.busyTitle", { race: row.busyIn })}
         >
           {t("status.busy", { race: row.busyIn })}
@@ -57,11 +57,11 @@ function StatusCell({ row, detail, seasonYear }: { row: SquadRow; detail?: Rider
   );
 }
 
-function FatigueCell({ value }: { value: number | null }) {
+function FatigueCell({ value, compact }: { value: number | null; compact: boolean }) {
   if (value == null) return <span className="text-cz-3">-</span>;
   return (
     <span className="inline-flex items-center justify-end gap-1.5 whitespace-nowrap">
-      <span aria-hidden="true" className="hidden h-1 bg-cz-3/50 sm:block" style={{ width: `${Math.max(2, Math.min(36, value * 0.36))}px` }} />
+      {!compact && <span aria-hidden="true" className="hidden h-1 bg-cz-3/50 sm:block" style={{ width: `${Math.max(2, Math.min(20, value * 0.2))}px` }} />}
       <span className="tabular-nums">{value}</span>
     </span>
   );
@@ -108,6 +108,39 @@ export default function SquadTable({
   const bestMatch = bestOf(rows, (r) => r.routeMatch);
   const bestByProfile = Object.fromEntries(profileCols.map((c) => [c.profileType, bestOf(rows, (r) => r.byProfile[c.profileType] ?? null)]));
 
+  // Uden vandret scroll paa pc (ejer 14/11): har tabellen ikke plads i kortet (fx et etapeloeb med
+  // mange rutetyper ved siden af loebslisten), falder pynten vaek, foerst traethedsbjaelken og
+  // rollemaerket ved ratingen. Tallene staar altid. Bredden med pynt huskes, saa den kommer igen,
+  // naar der bliver plads (fx naar loebslisten skjules).
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [compact, setCompact] = useState(false);
+  const fullWidth = useRef(0);
+  const shape = `${rows.length}|${profileCols.map((c) => c.profileType).join(",")}`;
+  useLayoutEffect(() => {
+    const box = wrapRef.current;
+    const table = box?.firstElementChild as HTMLElement | null;
+    if (!box || !table) return undefined;
+    const check = () => {
+      if (!compact) {
+        if (table.scrollWidth > box.clientWidth + 1) {
+          fullWidth.current = table.scrollWidth;
+          setCompact(true);
+        }
+      } else if (box.clientWidth >= fullWidth.current) {
+        setCompact(false);
+      }
+    };
+    check();
+    if (typeof ResizeObserver === "undefined") return undefined;
+    const ro = new ResizeObserver(check);
+    ro.observe(box);
+    return () => ro.disconnect();
+  }, [compact, shape]);
+
+  // Luft til kortets kant (ejer 14/11): foerste og sidste kolonne faar kortets egen indrykning paa pc,
+  // saa Traethed (eller den sidste rutetype) aldrig staar helt ude ved kanten.
+  const lastKey: SquadSortKey = profileCols.length ? (`profile:${profileCols[profileCols.length - 1].profileType}` as SquadSortKey) : "fatigue";
+  const edge = (key: SquadSortKey) => (key === "pick" ? (compact ? "sm:ps-3" : "sm:ps-4") : key === lastKey ? "sm:pe-4" : "");
   const th = (
     key: SquadSortKey,
     label: ReactNode,
@@ -120,19 +153,19 @@ export default function SquadTable({
       sortDir={sort.dir}
       onSort={onSort}
       title={title}
-      className={`px-1.5 py-2 font-data text-2xs font-semibold uppercase tracking-normal text-cz-3 sm:px-2 sm:tracking-widest ${numeric ? "text-right" : "text-left"} bg-cz-subtle ${hideMobile ? "hidden sm:table-cell" : ""}`}
+      className={`px-1.5 py-2 font-data text-2xs font-semibold uppercase tracking-normal text-cz-3 sm:px-1.5 sm:tracking-wide ${numeric ? "text-right" : "text-left"} bg-cz-subtle ${hideMobile ? "hidden sm:table-cell" : ""} ${edge(key)}`}
     >
       {label}
     </SortableTh>
   );
 
   return (
-    <div className="overflow-x-clip sm:overflow-x-auto" data-testid="planning-squad-table">
+    <div ref={wrapRef} className="overflow-x-clip sm:overflow-x-auto" data-testid="planning-squad-table" data-compact={compact ? "true" : undefined}>
       <table data-sortable className="w-full border-collapse">
         <thead>
           {/* Hver kolonne sorterer: th() bygger en SortableTh med onSort (guard: tableSortIntent.test.js). */}
           <tr>
-            {th("pick", t("squad.pick"), { numeric: false, hideMobile: true })}
+            {th("pick", compact ? <span className="sr-only">{t("squad.pick")}</span> : t("squad.pick"), { numeric: false, hideMobile: true, title: t("squad.pick") })}
             {th("name", t("squad.rider"), { numeric: false, hideMobile: false })}
             {th("status", t("squad.status"), { numeric: false })}
             {th("role", t("squad.role"), { numeric: false })}
@@ -140,10 +173,11 @@ export default function SquadTable({
             {th("routeMatch", t("squad.routeMatch"), { hideMobile: false })}
             {th("form", t("squad.form"), { hideMobile: false })}
             {th("fatigue", t("squad.fatigue"), { hideMobile: false })}
+            {/* Rutetypen som ikon (navnet staar i ikonets titel), saa kolonnerne er smalle nok til kortet. */}
             {profileCols.map((c) =>
               th(`profile:${c.profileType}` as SquadSortKey, (
                 <span className="inline-flex flex-col items-end gap-0.5">
-                  <TerrainTypeGlyph profileType={c.profileType} size={14} showLabel labelClassName="text-3xs" />
+                  <TerrainTypeGlyph profileType={c.profileType} size={14} />
                   <span className="tabular-nums">{`×${c.count}`}</span>
                 </span>
               )),
@@ -162,9 +196,10 @@ export default function SquadTable({
               <tr
                 key={row.id}
                 data-testid="planning-squad-row"
-                className={`border-t border-cz-border ${checked ? "bg-cz-subtle" : ""} ${dim ? "text-cz-3" : ""}`}
+                // Samme mindstehoejde paa pc for raekker med og uden rollevaelger (ejer 14/11: jaevne raekker).
+                className={`border-t border-cz-border sm:h-[46px] ${checked ? "bg-cz-subtle" : ""} ${dim ? "text-cz-3" : ""}`}
               >
-                <td className="hidden px-2 py-[7px] sm:table-cell">
+                <td className={`hidden px-1.5 py-[7px] sm:table-cell ${edge("pick")}`}>
                   <label className={`flex h-11 w-11 items-center justify-center sm:h-auto sm:w-auto ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
                     <input
                       type="checkbox"
@@ -176,7 +211,7 @@ export default function SquadTable({
                     />
                   </label>
                 </td>
-                <td className="w-full px-1.5 py-[7px] text-left sm:w-auto sm:px-2">
+                <td className="w-full px-1.5 py-[7px] text-left sm:w-auto">
                   <div className="flex items-start gap-1 sm:block">
                     <label className={`-ms-2 flex h-11 w-11 shrink-0 items-center justify-center sm:hidden ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
                       <input
@@ -192,7 +227,8 @@ export default function SquadTable({
                       {/* Navnet brydes kun paa mobil; paa pc staar det paa én linje som paa de nuvaerende sider. */}
                       {/* Navnecellens faste raekkefoelge (TASTE P12): nation, navn, derefter status. Belastningen
                           staar ved navnet som paa rytter-chippen paa /planning og gaar under navnet, naar tabellen er trang. */}
-                      <span className="inline-flex max-w-full flex-wrap items-center gap-x-1.5">
+                      {/* Paa pc staar belastningen altid paa navnets linje, saa lange navne ikke giver ujaevne raekker. */}
+                      <span className="inline-flex max-w-full flex-wrap items-center gap-x-1.5 sm:flex-nowrap">
                         <span className="inline-flex min-w-0 items-center gap-1.5">
                           {detail?.nationality && <Flag code={detail.nationality} className="shrink-0 text-2xs" />}
                           <RiderNameCell id={row.id} name={row.name} wrap className="text-[13.5px] font-medium text-cz-1 hover:text-cz-accent-t sm:whitespace-nowrap" />
@@ -218,36 +254,36 @@ export default function SquadTable({
                     </div>
                   </div>
                 </td>
-                <td className="hidden px-2 py-[7px] text-left sm:table-cell">
-                  <StatusCell row={row} detail={detail} seasonYear={seasonYear} />
+                <td className="hidden px-1.5 py-[7px] text-left sm:table-cell">
+                  <StatusCell row={row} detail={detail} seasonYear={seasonYear} compact={compact} />
                 </td>
-                <td className="hidden px-2 py-[7px] text-left sm:table-cell">
+                <td className="hidden px-1.5 py-[7px] text-left sm:table-cell">
                   {checked ? (
                     readOnly ? (
                       <span className="text-[13px] text-cz-2">{t(`role.${roleOf(selection, row.id)}`)}</span>
                     ) : (
-                      <RoleSelect row={row} selection={selection} roles={roles} onRole={onRole} />
+                      <RoleSelect row={row} selection={selection} roles={roles} onRole={onRole} className={compact ? "min-w-[7.25rem]" : undefined} />
                     )
                   ) : (
                     <span className="text-cz-3">-</span>
                   )}
                 </td>
-                <td className="hidden px-2 py-[7px] text-right font-data text-[13px] tabular-nums sm:table-cell">
+                <td className="hidden px-1.5 py-[7px] text-right font-data text-[13px] tabular-nums sm:table-cell">
                   {row.rating != null ? (
                     <span className="inline-flex items-center justify-end gap-1.5">
                       <span>{row.rating}</span>
-                      {row.ratingRole && <BestRoleTag role={row.ratingRole} />}
+                      {row.ratingRole && !compact && <BestRoleTag role={row.ratingRole} />}
                     </span>
                   ) : (
                     <span className="text-cz-3">-</span>
                   )}
                 </td>
-                <td className={`whitespace-nowrap px-1.5 py-[7px] text-right font-data text-[13px] tabular-nums sm:px-2 ${row.selectable && row.routeMatch != null && row.routeMatch === bestMatch ? "font-semibold text-cz-accent-t" : ""}`}>
+                <td className={`whitespace-nowrap px-1.5 py-[7px] text-right font-data text-[13px] tabular-nums ${row.selectable && row.routeMatch != null && row.routeMatch === bestMatch ? "font-semibold text-cz-accent-t" : ""}`}>
                   {row.routeMatch ?? <span className="text-cz-3">-</span>}
                 </td>
-                <td className="whitespace-nowrap px-1.5 py-[7px] text-right font-data text-[13px] tabular-nums sm:px-2">{row.form ?? <span className="text-cz-3">-</span>}</td>
-                <td className="whitespace-nowrap px-1.5 py-[7px] text-right font-data text-[13px] tabular-nums sm:px-2">
-                  <FatigueCell value={row.fatigue} />
+                <td className="whitespace-nowrap px-1.5 py-[7px] text-right font-data text-[13px] tabular-nums">{row.form ?? <span className="text-cz-3">-</span>}</td>
+                <td className={`whitespace-nowrap px-1.5 py-[7px] text-right font-data text-[13px] tabular-nums ${edge("fatigue")}`}>
+                  <FatigueCell value={row.fatigue} compact={compact} />
                 </td>
                 {profileCols.map((c) => {
                   const v = row.byProfile[c.profileType] ?? null;
@@ -255,7 +291,7 @@ export default function SquadTable({
                   return (
                     <td
                       key={c.profileType}
-                      className={`hidden px-2 py-[7px] text-right font-data text-[13px] tabular-nums sm:table-cell ${best ? "font-semibold text-cz-accent-t" : ""}`}
+                      className={`hidden px-1.5 py-[7px] text-right font-data text-[13px] tabular-nums sm:table-cell ${edge(`profile:${c.profileType}` as SquadSortKey)} ${best ? "font-semibold text-cz-accent-t" : ""}`}
                     >
                       {v ?? <span className="text-cz-3">-</span>}
                     </td>
@@ -275,7 +311,7 @@ function RoleSelect({
   selection,
   roles,
   onRole,
-  className = "min-w-[8.5rem]",
+  className = "min-w-[8rem]",
 }: {
   row: SquadRow;
   selection: Selection;

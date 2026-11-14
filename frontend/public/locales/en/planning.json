@@ -121,7 +121,7 @@
   },
   "clearBar": {
     "text": "{count, plural, one {Squad cleared in # race.} other {Squads cleared in # races.}}",
-    "note": "Nothing is saved until you save.",
+    "note": "Nothing is saved until you save. The assistant picks empty squads when the race runs.",
     "undo": "Undo",
     "save": "Save",
     "error": "Nothing was saved. {error}",

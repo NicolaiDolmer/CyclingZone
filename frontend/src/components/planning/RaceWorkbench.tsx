@@ -280,7 +280,9 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
         : sel.riderIds.length > 0
           ? tr(outlook.kind === "assistantFills" ? "selection.partialHint" : "selection.partialHintShort", { open: outlook.open, free: outlook.free })
           : null;
-  const blockReason = dirty && clientErrors.length ? tr(`selection.errors.${clientErrors[0]}`, { min: size.min, max: size.max }) : null;
+  // Et loeb i sidens rydning gemmes fra bjaelken (som /planning's "Ryd udtagelse"), saa fladens egen
+  // kaptajn-regel for "Gem trup" vises ikke som en fejl her.
+  const blockReason = dirty && !clearShown && clientErrors.length ? tr(`selection.errors.${clientErrors[0]}`, { min: size.min, max: size.max }) : null;
 
   const edit = (next: Selection) => {
     leaveClear();

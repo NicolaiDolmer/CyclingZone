@@ -121,7 +121,7 @@
   },
   "clearBar": {
     "text": "{count, plural, one {Equipo vaciado en # carrera.} other {Equipos vaciados en # carreras.}}",
-    "note": "No se guarda nada hasta que guardes.",
+    "note": "No se guarda nada hasta que guardes. El asistente elige los equipos vacíos cuando se corre la carrera.",
     "undo": "Deshacer",
     "save": "Guardar",
     "error": "No se guardó nada. {error}",

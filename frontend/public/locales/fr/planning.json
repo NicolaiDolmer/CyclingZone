@@ -121,7 +121,7 @@
   },
   "clearBar": {
     "text": "{count, plural, one {Équipe vidée dans # course.} other {Équipes vidées dans # courses.}}",
-    "note": "Rien n'est enregistré avant que tu enregistres.",
+    "note": "Rien n'est enregistré avant que tu enregistres. L'assistant compose les équipes vides quand la course a lieu.",
     "undo": "Annuler",
     "save": "Enregistrer",
     "error": "Rien n'a été enregistré. {error}",

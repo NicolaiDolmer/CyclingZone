@@ -116,14 +116,15 @@ export default function WeekBoard({
                 aria-pressed={selected}
                 title={`${race.name} · ${t(raceDayLabelKey(race), { day: gameDaySpan(race.gameDayStart, race.gameDayEnd), days: gameDaySpan(race.gameDayStart, race.gameDayEnd) })}`}
                 style={{ gridColumn: `${startCol + 1} / ${endCol + 2}`, gridRow: lane + 2 }}
-                className={`flex min-w-0 items-center gap-1 overflow-hidden rounded-cz border px-1 py-1.5 text-left text-xs transition-colors sm:gap-2 sm:px-2 ${
+                className={`flex min-w-0 flex-col items-start gap-0.5 overflow-hidden rounded-cz border px-1.5 py-1.5 text-left text-xs transition-colors sm:flex-row sm:items-center sm:gap-2 sm:px-2 ${
                   selected ? "border-cz-3 bg-cz-subtle" : "border-cz-border bg-cz-card hover:bg-cz-subtle"
                 }`}
               >
                 <span className="hidden sm:inline-flex">
                   <ReadinessMark state={readiness.state} />
                 </span>
-                <span className="min-w-0 flex-1 truncate font-semibold text-cz-1">{race.name}</span>
+                {/* Mobil: hele navnet over flere linjer og "x/6" under (ejer 14/11: ikke "Giro del Pi..."). Fra sm: én linje. */}
+                <span className="w-full min-w-0 font-semibold leading-tight text-cz-1 [overflow-wrap:anywhere] sm:w-auto sm:flex-1 sm:truncate">{race.name}</span>
                 {/* Navnet har forrang: i en bar paa én dag fylder etape-striben navnet vaek ("V."), saa den vises
                     kun naar baren spaender over flere dage (striben staar altid i loebslisten). */}
                 {endCol > startCol && (
