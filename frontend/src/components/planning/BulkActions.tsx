@@ -267,7 +267,7 @@ export function BulkMenuB({ bulk, defaultOpen = false }: { bulk: BulkController;
       </Button>
       {open && (
         // Computer: svaevende menu under knappen. Telefon: ark fra bunden (TASTE P18).
-        <div className="fixed inset-x-0 bottom-0 z-overlay sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80">
+        <div className="fixed inset-x-0 bottom-0 z-overlay sm:absolute sm:inset-x-auto sm:bottom-auto sm:left-0 sm:top-full sm:mt-2 sm:w-80">
           <Menu className="max-h-[85vh] w-full overflow-y-auto">
             <p className="px-2.5 pb-1 pt-1.5 font-data text-2xs uppercase tracking-wide text-cz-3">{t("bulk.scopeLabel")}</p>
             <div role="group" aria-label={t("bulk.scopeLabel")}>
