@@ -37,8 +37,9 @@ function StatusCell({ row, detail, seasonYear, compact = false }: { row: SquadRo
   return (
     <span className="inline-flex flex-wrap items-center gap-1">
       <RiderBadges badges={badges} />
+      {/* Altid én linje (ejer 14/11): en dato over flere linjer gjorde raekken hoejere end de andre. */}
       {fitAgain && (
-        <span className={`${compact ? "max-w-[5.5rem]" : "max-w-[7.5rem]"} text-2xs leading-tight text-cz-3`} data-testid="planning-fit-again">
+        <span className="whitespace-nowrap text-2xs leading-tight text-cz-3" data-testid="planning-fit-again">
           {tRider(approx ? "condition.fitAgainApprox" : "condition.fitAgain", { date: formatShortDate(fitAgain, i18n.language, false) })}
         </span>
       )}

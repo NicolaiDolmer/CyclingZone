@@ -35,12 +35,7 @@
       "title": "Muestra toda la temporada",
       "description": "No hay carreras próximas en esta vista. Con toda la temporada puedes planificar con antelación.",
       "action": "Mostrar toda la temporada"
-    },
-    "clear": "Vaciar equipos",
-    "clearTitle": "{count, plural, one {Vacía el equipo de la carrera mostrada. No se guarda nada hasta que pulses Guardar.} other {Vacía los equipos de las # carreras mostradas. No se guarda nada hasta que pulses Guardar.}}",
-    "clearNone": "No hay equipos que vaciar en las carreras mostradas",
-    "clearCapped": "Vacía los equipos de las primeras {count} carreras mostradas. Un guardado admite como máximo {max} carreras: guarda estas y luego vacía el resto.",
-    "clearFull": "Un guardado admite como máximo {max} carreras. Guarda o deshaz las carreras vaciadas antes de vaciar más."
+    }
   },
   "status": {
     "ready": "Listo",
@@ -121,13 +116,48 @@
     "discard": "Descartar",
     "saveAndOpen": "Guardar y abrir"
   },
-  "clearBar": {
-    "text": "{count, plural, one {Equipo vaciado en # carrera.} other {Equipos vaciados en # carreras.}}",
-    "note": "No se guarda nada hasta que guardes. El asistente elige los equipos vacíos cuando se corre la carrera.",
-    "undo": "Deshacer",
-    "save": "Guardar",
-    "error": "No se guardó nada. {error}",
-    "errorIn": "No se guardó nada por {race}: {error}"
+  "bulk": {
+    "menu": "Acciones",
+    "scopeLabel": "Se aplica a",
+    "scope": {
+      "next": "Próxima carrera",
+      "nextNamed": "Próxima carrera: {race}",
+      "checked": "{count, plural, one {Carrera marcada (#)} other {Carreras marcadas (#)}}",
+      "shown": "Carreras mostradas ({count})",
+      "season": "Toda la temporada ({count})",
+      "pick": "Marca carreras en la lista"
+    },
+    "auto": "Que elija el asistente",
+    "autoHint": "Rellena las plazas libres. Tus elecciones se quedan.",
+    "clear": "Quitar equipos",
+    "clearHint": "Saca a los corredores. Las carreras siguen en el calendario.",
+    "withdraw": "Retirar",
+    "withdrawHint": "El equipo no toma la salida y puede perder la carrera.",
+    "nothing": "Nada que cambiar en estas carreras",
+    "capped": "Un guardado admite como máximo {max} carreras, así que solo se toman las primeras. Guárdalas y luego haz el resto.",
+    "checkedCount": "{count, plural, one {# carrera marcada} other {# carreras marcadas}}",
+    "untick": "Quitar marcas",
+    "assistError": "El asistente no pudo elegir. No se ha cambiado nada. {error}",
+    "assistNone": "El asistente no encontró corredores libres para estas carreras. No se ha cambiado nada.",
+    "draft": {
+      "label": "Borrador",
+      "title": "Borrador.",
+      "note": "No se guarda nada hasta que guardes.",
+      "auto": "{count, plural, one {Equipo elegido en # carrera} other {Equipos elegidos en # carreras}}, {riders, plural, one {# corredor añadido} other {# corredores añadidos}}",
+      "clear": "{count, plural, one {Equipo quitado en # carrera} other {Equipos quitados en # carreras}}",
+      "withdraw": "{count, plural, one {Retirado de # carrera: el equipo no toma la salida} other {Retirado de # carreras: el equipo no toma la salida}}",
+      "undo": "Deshacer",
+      "save": "Guardar",
+      "mark": "Borrador",
+      "open": {
+        "auto": "El equipo del asistente para esta carrera está en el borrador. El equipo de abajo es el guardado hasta que guardes.",
+        "clear": "El equipo de esta carrera está quitado en el borrador. El equipo de abajo es el guardado hasta que guardes.",
+        "withdraw": "Esta carrera está retirada en el borrador. Nada cambia hasta que guardes."
+      },
+      "error": "No se guardó nada. {error}",
+      "errorIn": "No se guardó nada por {race}: {error}",
+      "errorWithdraw": "Los equipos se guardaron. Las retiradas no se guardaron: {error}"
+    }
   },
   "error": {
     "title": "No se pudo cargar la planificación",

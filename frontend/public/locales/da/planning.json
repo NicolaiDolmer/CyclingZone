@@ -35,12 +35,7 @@
       "title": "Vis hele sæsonen",
       "description": "Der er ingen kommende løb i denne visning. Hele sæsonen lader dig planlægge frem.",
       "action": "Vis hele sæsonen"
-    },
-    "clear": "Ryd udtagelser",
-    "clearTitle": "{count, plural, one {Rydder udtagelsen i det viste løb. Intet gemmes, før du trykker Gem.} other {Rydder udtagelserne i de # viste løb. Intet gemmes, før du trykker Gem.}}",
-    "clearNone": "Ingen udtagelser at rydde i de viste løb",
-    "clearCapped": "Rydder udtagelserne i de første {count} af de viste løb. Ét gem kan højst rumme {max} løb, så gem dem, og ryd derefter resten.",
-    "clearFull": "Ét gem kan højst rumme {max} løb. Gem eller fortryd de ryddede løb, før du rydder flere."
+    }
   },
   "status": {
     "ready": "Klar",
@@ -121,13 +116,48 @@
     "discard": "Kassér",
     "saveAndOpen": "Gem og åbn"
   },
-  "clearBar": {
-    "text": "{count, plural, one {Udtagelsen er ryddet i # løb.} other {Udtagelserne er ryddet i # løb.}}",
-    "note": "Intet er gemt, før du gemmer. Assistenten udtager tomme trupper, når løbet køres.",
-    "undo": "Fortryd",
-    "save": "Gem",
-    "error": "Intet blev gemt. {error}",
-    "errorIn": "Intet blev gemt på grund af {race}: {error}"
+  "bulk": {
+    "menu": "Handlinger",
+    "scopeLabel": "Gælder",
+    "scope": {
+      "next": "Næste løb",
+      "nextNamed": "Næste løb: {race}",
+      "checked": "{count, plural, one {Afkrydset løb (#)} other {Afkrydsede løb (#)}}",
+      "shown": "Viste løb ({count})",
+      "season": "Hele sæsonen ({count})",
+      "pick": "Kryds løb af i listen"
+    },
+    "auto": "Lad assistenten udtage",
+    "autoHint": "Fylder de tomme pladser. Dine egne valg bliver.",
+    "clear": "Fjern udtagelser",
+    "clearHint": "Tager rytterne ud. Løbene bliver i kalenderen.",
+    "withdraw": "Afmeld",
+    "withdrawHint": "Holdet stiller ikke til start og kan miste løbet.",
+    "nothing": "Intet at ændre i disse løb",
+    "capped": "Ét gem rummer højst {max} løb, så kun de første tages med. Gem dem, og tag så resten.",
+    "checkedCount": "{count, plural, one {# løb valgt} other {# løb valgt}}",
+    "untick": "Fjern flueben",
+    "assistError": "Assistenten kunne ikke udtage. Intet er ændret. {error}",
+    "assistNone": "Assistenten fandt ingen ledige ryttere til disse løb. Intet er ændret.",
+    "draft": {
+      "label": "Kladde",
+      "title": "Kladde.",
+      "note": "Intet er gemt, før du gemmer.",
+      "auto": "{count, plural, one {Trup udtaget i # løb} other {Trupper udtaget i # løb}}, {riders, plural, one {# rytter sat ind} other {# ryttere sat ind}}",
+      "clear": "{count, plural, one {Udtagelsen fjernet i # løb} other {Udtagelserne fjernet i # løb}}",
+      "withdraw": "{count, plural, one {Afmeldt # løb: holdet stiller ikke til start} other {Afmeldt # løb: holdet stiller ikke til start}}",
+      "undo": "Fortryd",
+      "save": "Gem",
+      "mark": "Kladde",
+      "open": {
+        "auto": "Assistentens trup til dette løb ligger i kladden. Truppen herunder er den gemte, indtil du gemmer.",
+        "clear": "Udtagelsen til dette løb er fjernet i kladden. Truppen herunder er den gemte, indtil du gemmer.",
+        "withdraw": "Løbet er afmeldt i kladden. Intet ændres, før du gemmer."
+      },
+      "error": "Intet blev gemt. {error}",
+      "errorIn": "Intet blev gemt på grund af {race}: {error}",
+      "errorWithdraw": "Trupperne blev gemt. Afmeldingerne blev ikke gemt: {error}"
+    }
   },
   "error": {
     "title": "Planlægningen kunne ikke indlæses",
