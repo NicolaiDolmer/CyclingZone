@@ -2435,8 +2435,7 @@
     "TS2741": 3
   },
   "src/pages/PlanningHubPage.jsx": {
-    "TS2345": 1,
-    "TS2741": 1
+    "TS2345": 1
   },
   "src/pages/PrivacyPolicyPage.jsx": {
     "TS2339": 8
@@ -2789,8 +2788,7 @@
     "TS2345": 1
   },
   "src/preview/mockHandlers.test.js": {
-    "TS18047": 2,
-    "TS2339": 17
+    "TS18047": 2
   },
   "src/preview/plannerMock.js": {
     "TS18047": 13,

@@ -1,0 +1,135 @@
+{
+  "title": "Planlægning",
+  "subtitle": {
+    "season": "Sæson {number}",
+    "needSquad": "{count, plural, one {# løb mangler en trup de næste 8 dage} other {# løb mangler en trup de næste 8 dage}}",
+    "allReady": "Alle løb de næste 8 dage har en fuld trup"
+  },
+  "toggles": {
+    "weekBoard": "Ugeoversigt",
+    "raceList": "Løbsliste"
+  },
+  "monthCalendar": "Månedskalender",
+  "weekBoard": {
+    "title": "Ugeoversigt",
+    "prev": "Forrige uge",
+    "next": "Næste uge",
+    "week": "Uge {week}",
+    "empty": "Ingen løb i denne uge. Brug pilene til at finde det næste.",
+    "raceDaysShort": "LD {days}"
+  },
+  "raceList": {
+    "title": "Løbsliste",
+    "scopeLabel": "Vis løb",
+    "scopeNext7": "Næste 7 dage",
+    "scopeSeason": "Hele sæsonen",
+    "showPast": "Vis tidligere",
+    "weekLabel": "Uge {week}",
+    "weekSummary": "Uge {week} · {count, plural, one {# løb} other {# løb}} · {missing, plural, =0 {alle klar} other {# mangler}}",
+    "raceDay": "Løbsdag {day}",
+    "raceDays": "Løbsdage {days}",
+    "stages": "{count, plural, one {# etape} other {# etaper}}",
+    "oneDay": "Endagsløb",
+    "sharesDays": "Deler løbsdage med {races}",
+    "empty": {
+      "title": "Vis hele sæsonen",
+      "description": "Der er ingen kommende løb i denne visning. Hele sæsonen lader dig planlægge frem.",
+      "action": "Vis hele sæsonen"
+    }
+  },
+  "status": {
+    "ready": "Klar",
+    "missing": "{count, plural, one {# mangler} other {# mangler}}",
+    "locked": "Låst",
+    "withdrawn": "Afmeldt",
+    "busy": "I {race}",
+    "busyTitle": "Udtaget til {race}, som deler løbsdage",
+    "overAge": "For gammel",
+    "trainNow": "Trænet i dag"
+  },
+  "race": {
+    "unsaved": "Ikke gemt",
+    "starts": "Starter {when}",
+    "picked": "{picked} af {max} valgt",
+    "copyFrom": "Kopiér trup fra…",
+    "suggest": "Foreslå trup",
+    "discard": "Kassér ændringer",
+    "save": "Gem trup",
+    "saved": "Truppen er gemt.",
+    "suggested": "Forslag til trup. Gennemgå den og gem, når du er tilfreds.",
+    "copied": "Kopieret fra {name}. {skipped, plural, one {# rytter blev sprunget over (optaget, skadet eller ikke tilgængelig).} other {# ryttere blev sprunget over (optaget, skadet eller ikke tilgængelige).}}",
+    "copiedAll": "Kopieret fra {name}. Gennemgå og gem.",
+    "locked": "Løbet er startet, så truppen er låst.",
+    "withdrawn": "Dit hold har meldt fra til dette løb. At gemme en trup melder det til igen.",
+    "restored": "Dine ikke gemte ændringer er genskabt."
+  },
+  "copy": {
+    "title": "Kopiér trup fra",
+    "none": "Intet andet løb har en trup endnu.",
+    "riders": "{count, plural, one {# rytter} other {# ryttere}}"
+  },
+  "squad": {
+    "pick": "Vælg",
+    "rider": "Rytter",
+    "status": "Status",
+    "role": "Rolle",
+    "rating": "Rating",
+    "routeMatch": "Rutematch",
+    "form": "Form",
+    "fatigue": "Træthed",
+    "pickRider": "Vælg {name}",
+    "roleFor": "Rolle for {name}",
+    "count": "Viser {shown} ryttere · {selected} af {max} valgt",
+    "empty": {
+      "title": "Hent rytterne igen",
+      "description": "Dit hold har ingen ryttere til rådighed til dette løb lige nu."
+    }
+  },
+  "role": {
+    "captain": "Kaptajn",
+    "co_captain": "Delt kaptajn",
+    "sprint_captain": "Spurtkaptajn",
+    "hunter": "Udbrudsjæger",
+    "free_role": "Fri rolle",
+    "luxury_helper": "Luksushjælper",
+    "rider": "Kun rytter"
+  },
+  "profile": {
+    "title": "Ruteprofil",
+    "prevStage": "Forrige etape",
+    "nextStage": "Næste etape",
+    "stageOf": "Etape {n} af {total}",
+    "oneDay": "Endagsløb",
+    "stages": "Etaper",
+    "showStage": "Vis etape {n}",
+    "hide": "Skjul profil",
+    "show": "Vis profil",
+    "unavailable": "Ingen rutedata for denne etape endnu."
+  },
+  "unsavedBar": {
+    "label": "Ikke gemte ændringer",
+    "text": "Ikke gemte ændringer i {race}.",
+    "next": "Åbner {race}.",
+    "stay": "Bliv her",
+    "discard": "Kassér",
+    "saveAndOpen": "Gem og åbn"
+  },
+  "error": {
+    "title": "Planlægningen kunne ikke indlæses",
+    "description": "Intet er tabt. Dine gemte trupper er i sikkerhed.",
+    "retry": "Prøv igen"
+  },
+  "notOpen": {
+    "title": "Åbn planlægningssiden",
+    "description": "Løbsplanlægningen åbner, når sæsonen er startet.",
+    "action": "Tilbage til planlægning"
+  },
+  "noRaces": {
+    "title": "Tjek kalenderen",
+    "description": "Der er endnu ingen løb til din division i denne sæson."
+  },
+  "noSelection": {
+    "title": "Vælg et løb at planlægge",
+    "description": "Vælg et løb på listen for at sætte dets trup."
+  }
+}

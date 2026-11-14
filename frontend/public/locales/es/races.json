@@ -490,7 +490,8 @@
     "tabSelection": "Selección del equipo",
     "tabForm": "Plan de forma",
     "tabStrategy": "Estrategia",
-    "tabCalendar": "Calendario"
+    "tabCalendar": "Calendario",
+    "tryWorkbench": "Prueba la nueva página de planificación"
   },
   "seasonView": {
     "toggleSeason": "Temporada",

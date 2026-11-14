@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-148 poster: live 115 · beta 2 · dormant 10 · building 11 · spec 1 · idea 2 · retired 7. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+149 poster: live 115 · beta 2 · dormant 10 · building 12 · spec 1 · idea 2 · retired 7. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -13,9 +13,9 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## race-engine
 
-**live:** Luxury helper (`luxury-helper-role`) 2026-11-02 · All out on the decisive climb (`race-all-out-7280`) 2026-11-02 · Day form with causes (`race-day-form-6649`) 2026-10-30 · Day form in words after the stage (`race-day-words-7725`) 2026-11-08 · Descent attacks respect the rider's task (`race-descent-task-7380`) 2026-11-01 · Stage plan 10 km switch (`race-final-km-boundary-7383`) 2026-10-31 · Stage intention choice (`race-intention-choice`) 2026-11-02 · Time trials without the extra day roll (`race-itt-no-day-roll-7726`) 2026-11-06 · Saving effort in individual time trials (`race-itt-save-7332`) 2026-11-01 · Time trial terrain weight (`race-itt-terrain-6595`) 2026-10-31 · The chase is decided by the teams chasing (`race-team-chase-7730`) 2026-11-06
+**live:** Luxury helper (`luxury-helper-role`) 2026-11-02 · All out on the decisive climb (`race-all-out-7280`) 2026-11-02 · Day form in words after the stage (`race-day-words-7725`) 2026-11-08 · Descent attacks respect the rider's task (`race-descent-task-7380`) 2026-11-01 · Stage plan 10 km switch (`race-final-km-boundary-7383`) 2026-10-31 · Stage intention choice (`race-intention-choice`) 2026-11-02 · Time trials without the extra day roll (`race-itt-no-day-roll-7726`) 2026-11-06 · Saving effort in individual time trials (`race-itt-save-7332`) 2026-11-01 · Time trial terrain weight (`race-itt-terrain-6595`) 2026-10-31 · The chase is decided by the teams chasing (`race-team-chase-7730`) 2026-11-06
 
-**arkiv:** `form-and-fatigue` · `race-engine-profile-hills` · `race-engine-s5-profiles` · `race-engine-v3` · `race-engine-v3-scoring` · `race-engine-v4` · `race-finalize-resumable` · `race-form-peaks` · `race-notify-outbox` · `team-selection-and-roles`
+**arkiv:** `form-and-fatigue` · `race-day-form-6649` · `race-engine-profile-hills` · `race-engine-s5-profiles` · `race-engine-v3` · `race-engine-v3-scoring` · `race-engine-v4` · `race-finalize-resumable` · `race-form-peaks` · `race-notify-outbox` · `team-selection-and-roles`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
@@ -62,9 +62,9 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## training
 
-**live:** Race date as full training day (`condition-v2-race-date-training-day`) 2026-11-04 · Development curve B (`development-curve-b`) 2026-10-30 · Same potential band everywhere (`potential-single-number`) 2026-11-04 · Race day as a hard training day (`race-day-role-yield`) 2026-11-01 · Train now B (`train-now-whole-day`) 2026-11-02 · Bulk training day (`training-bulk-day`) 2026-11-02 · Training catalog v3 (`training-catalog-v3`) 2026-10-30 · Train now (no bonus) (`training-train-now`) 2026-11-13
+**live:** Race date as full training day (`condition-v2-race-date-training-day`) 2026-11-04 · Same potential band everywhere (`potential-single-number`) 2026-11-04 · Race day as a hard training day (`race-day-role-yield`) 2026-11-01 · Train now B (`train-now-whole-day`) 2026-11-02 · Bulk training day (`training-bulk-day`) 2026-11-02 · Train now (no bonus) (`training-train-now`) 2026-11-13
 
-**arkiv:** `ability-cap-per-date` · `condition-model-v2` · `daily-training` · `peak-planner` · `season-fatigue-reset` · `training-condition-per-date` · `training-daily-receipt` · `training-decision-card` · `training-fatigue-rules` · `training-groups` · `training-hard-sessions-cobbles-echelon-attack` · `training-mobile-table` · `training-program-cells` · `training-programs` · `training-score` · `training-tick-per-race-day` · `training-tick-system`
+**arkiv:** `ability-cap-per-date` · `condition-model-v2` · `daily-training` · `development-curve-b` · `peak-planner` · `season-fatigue-reset` · `training-catalog-v3` · `training-condition-per-date` · `training-daily-receipt` · `training-decision-card` · `training-fatigue-rules` · `training-groups` · `training-hard-sessions-cobbles-echelon-attack` · `training-mobile-table` · `training-program-cells` · `training-programs` · `training-score` · `training-tick-per-race-day` · `training-tick-system`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
@@ -80,9 +80,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## academy
 
-**live:** Academy reminders (`academy-pull-reminder`) 2026-10-30
-
-**arkiv:** `academy` · `academy-intake-pull` · `academy-sunday-drip` · `intake-offer-expiry` · `promotion-pending` · `scout-system`
+**arkiv:** `academy` · `academy-intake-pull` · `academy-pull-reminder` · `academy-sunday-drip` · `intake-offer-expiry` · `promotion-pending` · `scout-system`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
@@ -97,6 +95,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
 |Auto-generated season calendar (`auto-calendar`)|building|-|[CALENDAR_RULES](CALENDAR_RULES.md)|-|2026-11-13|Ingen række i prod (= off). Ejer 13/11: spørg igen mandag 16/11.|
+|One planning page (`planning-workbench`)|building|-|[PLANNING_CENTER_RULES](PLANNING_CENTER_RULES.md)|#7535|2026-11-14|Kontakt planning_workbench ikke seedet = slukket.|
 |Season documentary (LLM) (`season-documentary-llm`)|building|`season_documentary_llm_enabled`|-|-|2026-09-06|-|
 |Automatic season transition cron (`season-auto-transition`)|retired|-|[SEASON_CUTOVER_RUNBOOK](SEASON_CUTOVER_RUNBOOK.md)|#1155|2026-10-17|Fjernet 17/10 (#6796); sæsonskiftet er manuelt.|
 

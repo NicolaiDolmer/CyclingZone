@@ -62,6 +62,7 @@ const INLINE_EXEMPT = new Set([
   "forum", // ForumPage + ForumPostPage — ready-gate
   "results", // ResultaterPage — ready-gate
   "calendar", // CalendarPage (tab i PlanningHubPage) — ready-gate
+  "planning", // PlanningWorkbenchPage (#7535, bag kontakten planning_workbench) — ready-gate i App.jsx
   "pro", // ProUpgradePage — ready-gate
   "watchlist", // WatchlistPage — ready-gate
   "staffOverview", // StaffOverviewPage (tab i KlubPage) — ready-gate

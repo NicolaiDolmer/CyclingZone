@@ -1,0 +1,135 @@
+{
+  "title": "Planning",
+  "subtitle": {
+    "season": "Seizoen {number}",
+    "needSquad": "{count, plural, one {# koers heeft een selectie nodig in de komende 8 dagen} other {# koersen hebben een selectie nodig in de komende 8 dagen}}",
+    "allReady": "Alle koersen in de komende 8 dagen hebben een volledige selectie"
+  },
+  "toggles": {
+    "weekBoard": "Weekoverzicht",
+    "raceList": "Koerslijst"
+  },
+  "monthCalendar": "Maandkalender",
+  "weekBoard": {
+    "title": "Weekoverzicht",
+    "prev": "Vorige week",
+    "next": "Volgende week",
+    "week": "Week {week}",
+    "empty": "Geen koersen deze week. Gebruik de pijlen om de volgende te vinden.",
+    "raceDaysShort": "KD {days}"
+  },
+  "raceList": {
+    "title": "Koerslijst",
+    "scopeLabel": "Koersen tonen",
+    "scopeNext7": "Komende 7 dagen",
+    "scopeSeason": "Heel seizoen",
+    "showPast": "Afgelopen tonen",
+    "weekLabel": "Week {week}",
+    "weekSummary": "Week {week} · {count, plural, one {# koers} other {# koersen}} · {missing, plural, =0 {alles klaar} other {# ontbreken}}",
+    "raceDay": "Koersdag {day}",
+    "raceDays": "Koersdagen {days}",
+    "stages": "{count, plural, one {# rit} other {# ritten}}",
+    "oneDay": "Eendagskoers",
+    "sharesDays": "Deelt koersdagen met {races}",
+    "empty": {
+      "title": "Toon het hele seizoen",
+      "description": "Er zijn geen komende koersen in deze weergave. Met het hele seizoen kun je vooruit plannen.",
+      "action": "Heel seizoen tonen"
+    }
+  },
+  "status": {
+    "ready": "Klaar",
+    "missing": "{count, plural, one {# ontbreekt} other {# ontbreken}}",
+    "locked": "Vergrendeld",
+    "withdrawn": "Afgemeld",
+    "busy": "In {race}",
+    "busyTitle": "Geselecteerd voor {race}, die koersdagen deelt",
+    "overAge": "Te oud",
+    "trainNow": "Vandaag getraind"
+  },
+  "race": {
+    "unsaved": "Niet opgeslagen",
+    "starts": "Start {when}",
+    "picked": "{picked} van {max} gekozen",
+    "copyFrom": "Selectie kopiëren van…",
+    "suggest": "Selectie voorstellen",
+    "discard": "Wijzigingen negeren",
+    "save": "Selectie opslaan",
+    "saved": "Selectie opgeslagen.",
+    "suggested": "Voorgestelde selectie. Bekijk haar en sla op als je tevreden bent.",
+    "copied": "Gekopieerd van {name}. {skipped, plural, one {# renner is overgeslagen (bezet, geblesseerd of niet beschikbaar).} other {# renners zijn overgeslagen (bezet, geblesseerd of niet beschikbaar).}}",
+    "copiedAll": "Gekopieerd van {name}. Bekijk en sla op.",
+    "locked": "De koers is gestart, dus de selectie is vergrendeld.",
+    "withdrawn": "Je team heeft zich afgemeld voor deze koers. Een selectie opslaan meldt het weer aan.",
+    "restored": "Je niet-opgeslagen wijzigingen zijn hersteld."
+  },
+  "copy": {
+    "title": "Selectie kopiëren van",
+    "none": "Geen andere koers heeft al een selectie.",
+    "riders": "{count, plural, one {# renner} other {# renners}}"
+  },
+  "squad": {
+    "pick": "Kies",
+    "rider": "Renner",
+    "status": "Status",
+    "role": "Rol",
+    "rating": "Rating",
+    "routeMatch": "Parcoursmatch",
+    "form": "Vorm",
+    "fatigue": "Vermoeidheid",
+    "pickRider": "Kies {name}",
+    "roleFor": "Rol van {name}",
+    "count": "{shown} renners getoond · {selected} van {max} gekozen",
+    "empty": {
+      "title": "Laad de renners opnieuw",
+      "description": "Op dit moment zijn er geen renners van je team beschikbaar voor deze koers."
+    }
+  },
+  "role": {
+    "captain": "Kopman",
+    "co_captain": "Gedeelde kopman",
+    "sprint_captain": "Sprintkopman",
+    "hunter": "Ontsnappingsjager",
+    "free_role": "Vrije rol",
+    "luxury_helper": "Luxeknecht",
+    "rider": "Alleen renner"
+  },
+  "profile": {
+    "title": "Parcoursprofiel",
+    "prevStage": "Vorige rit",
+    "nextStage": "Volgende rit",
+    "stageOf": "Rit {n} van {total}",
+    "oneDay": "Eendagskoers",
+    "stages": "Ritten",
+    "showStage": "Toon rit {n}",
+    "hide": "Profiel verbergen",
+    "show": "Profiel tonen",
+    "unavailable": "Nog geen parcoursgegevens voor deze rit."
+  },
+  "unsavedBar": {
+    "label": "Niet-opgeslagen wijzigingen",
+    "text": "Niet-opgeslagen wijzigingen in {race}.",
+    "next": "{race} wordt geopend.",
+    "stay": "Blijf hier",
+    "discard": "Negeren",
+    "saveAndOpen": "Opslaan en openen"
+  },
+  "error": {
+    "title": "De planning kon niet laden",
+    "description": "Er is niets verloren gegaan. Je opgeslagen selecties zijn veilig.",
+    "retry": "Opnieuw proberen"
+  },
+  "notOpen": {
+    "title": "Open de planningspagina",
+    "description": "De koersplanning opent zodra het seizoen is gestart.",
+    "action": "Terug naar planning"
+  },
+  "noRaces": {
+    "title": "Bekijk de kalender",
+    "description": "Dit seizoen zijn er nog geen koersen voor jouw divisie."
+  },
+  "noSelection": {
+    "title": "Kies een koers om te plannen",
+    "description": "Kies een koers uit de lijst om de selectie in te stellen."
+  }
+}

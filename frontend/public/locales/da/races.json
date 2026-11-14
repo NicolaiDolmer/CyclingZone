@@ -473,7 +473,8 @@
     "tabSelection": "Holdudtagelse",
     "tabForm": "Formplan",
     "tabStrategy": "Strategi",
-    "tabCalendar": "Kalender"
+    "tabCalendar": "Kalender",
+    "tryWorkbench": "Prøv den nye planlægningsside"
   },
   "seasonView": {
     "toggleSeason": "Sæson",

@@ -352,6 +352,18 @@ features:
     decide_by: 2026-11-21
     note: Kontakt fatigue_now_7801 findes ikke i prod app_config (13/11) = slukket; ejer tænder.
 
+  - id: planning-workbench
+    area: season
+    title_en: One planning page
+    title_da: Én planlægningsside (ugeoversigt, løbsliste, trup)
+    state: building
+    ssot: docs/PLANNING_CENTER_RULES.md
+    epic: 7535
+    verified: 2026-11-14
+    note: Kontakt planning_workbench ikke seedet = slukket.
+    decision: ejer-beslutning
+    decide_by: 2026-11-28
+
   - id: luxury-helper-role
     area: race-engine
     title_en: Luxury helper

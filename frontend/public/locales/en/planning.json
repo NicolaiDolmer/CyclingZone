@@ -1,0 +1,135 @@
+{
+  "title": "Planning",
+  "subtitle": {
+    "season": "Season {number}",
+    "needSquad": "{count, plural, one {# race needs a squad in the next 8 days} other {# races need a squad in the next 8 days}}",
+    "allReady": "Every race in the next 8 days has a full squad"
+  },
+  "toggles": {
+    "weekBoard": "Week board",
+    "raceList": "Race list"
+  },
+  "monthCalendar": "Month calendar",
+  "weekBoard": {
+    "title": "Week board",
+    "prev": "Previous week",
+    "next": "Next week",
+    "week": "Week {week}",
+    "empty": "No races this week. Use the arrows to find the next one.",
+    "raceDaysShort": "RD {days}"
+  },
+  "raceList": {
+    "title": "Race list",
+    "scopeLabel": "Show races",
+    "scopeNext7": "Next 7 days",
+    "scopeSeason": "Whole season",
+    "showPast": "Show past",
+    "weekLabel": "Week {week}",
+    "weekSummary": "Week {week} · {count, plural, one {# race} other {# races}} · {missing, plural, =0 {all ready} other {# missing}}",
+    "raceDay": "Race day {day}",
+    "raceDays": "Race days {days}",
+    "stages": "{count, plural, one {# stage} other {# stages}}",
+    "oneDay": "One-day",
+    "sharesDays": "Shares race days with {races}",
+    "empty": {
+      "title": "Show the whole season",
+      "description": "There are no upcoming races in this view. The whole season lets you plan ahead.",
+      "action": "Show whole season"
+    }
+  },
+  "status": {
+    "ready": "Ready",
+    "missing": "{count, plural, one {# missing} other {# missing}}",
+    "locked": "Locked",
+    "withdrawn": "Withdrawn",
+    "busy": "In {race}",
+    "busyTitle": "Picked for {race}, which shares race days",
+    "overAge": "Over age",
+    "trainNow": "Trained today"
+  },
+  "race": {
+    "unsaved": "Unsaved",
+    "starts": "Starts {when}",
+    "picked": "{picked} of {max} picked",
+    "copyFrom": "Copy squad from…",
+    "suggest": "Suggest squad",
+    "discard": "Discard changes",
+    "save": "Save squad",
+    "saved": "Squad saved.",
+    "suggested": "Suggested squad. Review it and save when you are happy.",
+    "copied": "Copied from {name}. {skipped, plural, one {# rider was skipped (busy, injured or unavailable).} other {# riders were skipped (busy, injured or unavailable).}}",
+    "copiedAll": "Copied from {name}. Review it and save.",
+    "locked": "This race has started, so the squad is locked.",
+    "withdrawn": "Your team has withdrawn from this race. Saving a squad enters it again.",
+    "restored": "Restored your unsaved changes."
+  },
+  "copy": {
+    "title": "Copy squad from",
+    "none": "No other race has a squad yet.",
+    "riders": "{count, plural, one {# rider} other {# riders}}"
+  },
+  "squad": {
+    "pick": "Pick",
+    "rider": "Rider",
+    "status": "Status",
+    "role": "Role",
+    "rating": "Rating",
+    "routeMatch": "Route match",
+    "form": "Form",
+    "fatigue": "Fatigue",
+    "pickRider": "Pick {name}",
+    "roleFor": "Role for {name}",
+    "count": "Showing {shown} riders · {selected} of {max} picked",
+    "empty": {
+      "title": "Reload the riders",
+      "description": "No riders are available to your team for this race right now."
+    }
+  },
+  "role": {
+    "captain": "Captain",
+    "co_captain": "Shared captain",
+    "sprint_captain": "Sprint captain",
+    "hunter": "Breakaway hunter",
+    "free_role": "Free role",
+    "luxury_helper": "Luxury helper",
+    "rider": "Rider only"
+  },
+  "profile": {
+    "title": "Route profile",
+    "prevStage": "Previous stage",
+    "nextStage": "Next stage",
+    "stageOf": "Stage {n} of {total}",
+    "oneDay": "One-day race",
+    "stages": "Stages",
+    "showStage": "Show stage {n}",
+    "hide": "Hide profile",
+    "show": "Show profile",
+    "unavailable": "No route data for this stage yet."
+  },
+  "unsavedBar": {
+    "label": "Unsaved changes",
+    "text": "Unsaved changes in {race}.",
+    "next": "Opening {race}.",
+    "stay": "Stay here",
+    "discard": "Discard",
+    "saveAndOpen": "Save and open"
+  },
+  "error": {
+    "title": "Planning could not load",
+    "description": "Nothing was lost. Your saved squads are safe.",
+    "retry": "Try again"
+  },
+  "notOpen": {
+    "title": "Open the planning page",
+    "description": "Race planning opens when the season has started.",
+    "action": "Back to planning"
+  },
+  "noRaces": {
+    "title": "Check the calendar",
+    "description": "This season has no races for your division yet."
+  },
+  "noSelection": {
+    "title": "Pick a race to plan",
+    "description": "Choose a race from the list to set its squad."
+  }
+}

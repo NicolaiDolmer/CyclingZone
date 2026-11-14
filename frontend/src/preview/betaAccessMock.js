@@ -53,6 +53,7 @@ let flags = [
   { key: "rider_why_button", area: "race-day", label: "Hvorfor?-knappen ved rytterne (Your day)", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
   { key: "talent_marks_7879", area: "squad", label: "Talentmærker ved rytternavne (Toptalent, Næste generation)", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
   { key: "rider_hover_card", area: "squad", label: "Hover-miniprofil på ryttere", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
+  { key: "planning_workbench", area: "race-day", label: "Ny planlægningsside (/planning/workbench)", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
   { key: "day_words_7725", area: "race-engine", label: "Dagsform i ord efter etapen", stage: "off", raw_value: "off", boolean_only: false, configured: true, unknown_value: false },
   { key: "fatigue_now_7801", area: "training", label: "Træthed lige nu — flader og regler", stage: "off", raw_value: "off", boolean_only: false, configured: true, unknown_value: false },
 ];
@@ -91,6 +92,7 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "talent_marks_7879", // #7879
   "tactics_ready_7864", // Missing stage keeps this preview feature off.
   "rider_hover_card", // #2009
+  "planning_workbench", // #7535
   "ability_cap_per_date_enabled", // #6110 Hjaelp
   "training_decision_card", // #6110 Hjaelp
   "training_catalog_v3", // #5319 vaelgere + Hjaelp
