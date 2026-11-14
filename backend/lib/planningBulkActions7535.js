@@ -29,13 +29,12 @@ import { loadTeamStrategy } from "./raceStrategy.js";
 import { pickAutoSelection } from "./selectionAutoFill.js";
 import { selectionSizeForRace } from "./raceAutopick.js";
 import { isRaceEngineV2Enabled } from "./raceEngineFlag.js";
+import { fetchAllRows } from "./supabasePagination.js";
 
 /** Samme loft pr. kald som PUT /races/selection/bulk (SELECTION_BULK_MAX i routes/api.js). */
 export const PLANNING_BULK_MAX = 60;
 
 const RACE_COLUMNS = "id, name, race_type, race_class, stages, stages_completed, status, league_division_id, season_id, scheduled_for, squad";
-// Roller der kun kan have én indehaver pr. hold i et loeb.
-const SINGLE_ROLES = new Set(["captain", "co_captain", "sprint_captain", "hunter", "luxury_helper"]);
 
 function bad(status, error, extra = {}) {
   return { status, body: { error, ...extra } };
@@ -227,6 +226,7 @@ export function planningBulkDeps7535({ supabase, team }) {
     },
     loadLockedIds: (ids, at) => loadLockedRaceIds({ supabase, raceIds: ids, now: at }),
     async loadTeamEntries(ids) {
+      // pagination-safe: ét holds trupper i hoejst PLANNING_BULK_MAX loeb (én trup pr. loeb), langt under 1000
       const { data, error } = await supabase.from("race_entries").select("race_id, rider_id, race_role").eq("team_id", teamId).in("race_id", ids);
       if (error) throw new Error(`race_entries (planning bulk): ${error.message}`);
       const out = new Map();
@@ -237,8 +237,8 @@ export function planningBulkDeps7535({ supabase, team }) {
       return out;
     },
     async loadWindows(ids) {
-      const { data, error } = await supabase.from("race_stage_schedule").select("race_id, scheduled_at, game_day").in("race_id", ids);
-      if (error) throw new Error(`race_stage_schedule (planning bulk): ${error.message}`);
+      // Mange etapeloeb x etaper kan naa 1000-raekkers loftet: hentes i sider med stabil orden.
+      const data = await fetchAllRows(() => supabase.from("race_stage_schedule").select("race_id, scheduled_at, game_day").in("race_id", ids).order("race_id").order("stage_number"));
       const rowsByRace = new Map();
       for (const s of data || []) {
         if (!rowsByRace.has(s.race_id)) rowsByRace.set(s.race_id, []);
@@ -250,7 +250,9 @@ export function planningBulkDeps7535({ supabase, team }) {
     // Kandidat-puljen til ét loeb: PRAECIS de opslag og filtre /selection/auto bruger (api.js).
     async loadAssistantContext({ race, ownIds }) {
       const [{ data: teamRiders, error: ridersErr }, { data: stageProfiles, error: profErr }] = await Promise.all([
+        // pagination-safe: ét holds ryttere (samme opslag som /selection/auto), langt under 1000
         applyRiderEligibilityFilter(supabase.from("riders").select("id").eq("team_id", teamId), { squad: raceSquadOf(race), seasonNumber: await loadRaceSeasonNumber({ supabase, race }) }),
+        // pagination-safe: ét loebs etaper
         supabase.from("race_stage_profiles").select(ROUTE_MATCH_STAGE_COLUMNS).eq("race_id", race.id).order("stage_number", { ascending: true }),
       ]);
       if (ridersErr) throw new Error(`riders (planning bulk): ${ridersErr.message}`);
