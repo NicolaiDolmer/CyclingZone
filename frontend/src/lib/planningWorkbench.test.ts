@@ -37,16 +37,27 @@ import {
   clearableRaceIds,
   entriesAfterClear,
   selectionFromEntries,
-  clearChanges,
-  clearSubmission,
-  capClearable,
-  applyPageClear,
-  undoPageClear,
-  draftCacheAction,
-  settleClearSave,
+  settleBulkSave,
   createWriteGate,
-  pageClearStep,
   raceSwitchStep,
+  addToDraft,
+  actionTargets,
+  capToRoom,
+  createBulkStore,
+  draftOverrides,
+  draftSubmission,
+  draftSummary,
+  entriesWithDraft,
+  scopeRaces,
+  withdrawnWithDraft,
+  BULK_KINDS,
+  BULK_SCOPES,
+  EMPTY_DRAFT,
+  type BulkApi,
+  type BulkCallResult,
+  type BulkDraft,
+  type BulkKind,
+  type BulkScope,
   type SeasonRace,
   type SquadRow,
   type Selection,
@@ -409,7 +420,7 @@ test("clearSquad: alle ud, men en laast rytter beholder plads og rolle", () => {
   assert.deepEqual(start.riderIds, ["a", "b", "c"], "kladden aendres ikke i stedet");
 });
 
-test("Ryd udtagelser: kun viste, kommende, aabne loeb med ryttere der kan tages ud", () => {
+test("Fjern udtagelser: kun kommende, aabne loeb med ryttere der kan tages ud", () => {
   const races = [
     race("open", 1, 1),
     race("empty", 2, 2),
@@ -429,7 +440,7 @@ test("Ryd udtagelser: kun viste, kommende, aabne loeb med ryttere der kan tages 
   assert.deepEqual(ids, ["open"]);
 });
 
-test("Ryd udtagelser som kladde: de ryddede loeb beholder kun Train now-laaste ryttere, andre loeb er uroerte", () => {
+test("Fjern udtagelser: de ryddede loeb beholder kun Train now-laaste ryttere, andre loeb er uroerte", () => {
   const entries = [
     { raceId: "r1", riderId: "a", raceRole: "captain" },
     { raceId: "r1", riderId: "t", raceRole: "hunter" },
@@ -438,83 +449,12 @@ test("Ryd udtagelser som kladde: de ryddede loeb beholder kun Train now-laaste r
   const shown = entriesAfterClear(entries, new Set(["r1"]), { r1: { riderIds: ["t"] } });
   assert.deepEqual(shown, [entries[1], entries[2]]);
   assert.equal(entriesAfterClear(entries, new Set()), entries, "ingen kladde: samme liste");
-});
-
-test("Ryd udtagelser gemmes som bulk-aendringer i samme form som et enkelt gem", () => {
-  const entries = [
-    { raceId: "r1", riderId: "a", raceRole: "hunter" },
-    { raceId: "r1", riderId: "t", raceRole: "captain" },
-    { raceId: "r2", riderId: "b", raceRole: "captain" },
-  ];
-  const changes = clearChanges(entries, ["r1", "r2"], { r1: { riderIds: ["t"] } });
-  assert.deepEqual(changes, [
-    { raceId: "r1", rider_ids: ["t"], captain_id: "t", sprint_captain_id: null, hunter_id: null, free_role_ids: [], co_captain_id: null },
-    { raceId: "r2", rider_ids: [], captain_id: null, sprint_captain_id: null, hunter_id: null, free_role_ids: [], co_captain_id: null },
-  ]);
   const sel = selectionFromEntries([{ raceId: "r", riderId: "x", raceRole: "free_role" }, { raceId: "r", riderId: "y", raceRole: null }]);
   assert.deepEqual(sel.riderIds, ["x", "y"]);
   assert.deepEqual(sel.freeRoleIds, ["x"]);
 });
 
-// ── Rettelsesrunde PR #8160 (Codex-fund) ────────────────────────────────────
-
-function squad(ids: string[], captain: string | null = null): Selection {
-  const base: Selection = { ...EMPTY_SELECTION, riderIds: ids, freeRoleIds: [] };
-  return captain ? setRiderRole(base, captain, "captain") : base;
-}
-
-test("Ryd udtagelser (P1): Fortryd stiller spillerens UGEMTE kladde tilbage, ikke den gemte trup", () => {
-  const saved = squad(["a", "b", "t"], "a");
-  const draft = squad(["a", "c", "t"], "c"); // ugemt: b ud, c ind og kaptajn
-  const step = applyPageClear(draft, saved, ["t"]);
-  assert.deepEqual(step.sel.riderIds, ["t"], "rydningen viser kun den Train now-laaste");
-  assert.equal(step.before, draft, "kladden foer rydningen huskes");
-  const back = undoPageClear(step.before, saved);
-  assert.equal(back, draft, "Fortryd giver den ugemte kladde tilbage");
-  assert.equal(selectionDirty(back, saved), true, "den er stadig ugemt efter Fortryd");
-  // Uden en kladde foer rydningen (fx ny flade) falder Fortryd tilbage til den gemte trup.
-  assert.equal(undoPageClear(null, saved), saved);
-});
-
-test("Ryd udtagelser (P1): den huskede kladde slettes aldrig, mens rydningen vises", () => {
-  assert.equal(draftCacheAction({ ready: true, clearShown: true, dirty: true }), "keep");
-  assert.equal(draftCacheAction({ ready: true, clearShown: true, dirty: false }), "keep");
-  assert.equal(draftCacheAction({ ready: false, clearShown: false, dirty: false }), "keep", "ikke klar: roer intet");
-  // Efter Fortryd er den gendannede kladde dirty og huskes igen; en ren flade glemmer.
-  assert.equal(draftCacheAction({ ready: true, clearShown: false, dirty: true }), "remember");
-  assert.equal(draftCacheAction({ ready: true, clearShown: false, dirty: false }), "forget");
-});
-
-test("Ryd udtagelser (P1): gemmet afstemmes mod det SENDTE loeb og den sendte udtagelse", () => {
-  const entries = [
-    { raceId: "r1", riderId: "a", raceRole: "hunter" },
-    { raceId: "r1", riderId: "t", raceRole: "captain" },
-    { raceId: "r2", riderId: "b", raceRole: "captain" },
-  ];
-  const { changes, selections } = clearSubmission(entries, ["r1", "r2"], { r1: { riderIds: ["t"] } });
-  assert.deepEqual(changes, clearChanges(entries, ["r1", "r2"], { r1: { riderIds: ["t"] } }), "samme body som foer");
-  const sentR1 = selections.get("r1")!;
-  assert.deepEqual(sentR1.riderIds, ["t"]);
-  assert.equal(sentR1.captainId, "t", "den laaste rytters rolle sendes med");
-
-  // Uaendret flade: den sendte trup er nu den gemte, intet er ugemt.
-  const same = settleClearSave({ raceId: "r1", sel: sentR1 }, { raceId: "r1", sel: sentR1 });
-  assert.deepEqual(same, { mine: true, saved: sentR1, dirty: false });
-
-  // Spilleren tilfoejede en rytter, mens kaldet koerte: aendringen forbliver ugemt.
-  const edited = squad(["t", "x"]);
-  const kept = settleClearSave({ raceId: "r1", sel: edited }, { raceId: "r1", sel: sentR1 });
-  assert.equal(kept.mine, true);
-  if (kept.mine) {
-    assert.equal(kept.saved, sentR1, "det gemte er det SENDTE, ikke det fladen viser");
-    assert.equal(kept.dirty, true, "aendringen lavet imens er stadig ugemt");
-  }
-
-  // Spilleren skiftede loeb imens: et andet loebs flade maerkes aldrig som gemt.
-  assert.deepEqual(settleClearSave({ raceId: "r3", sel: squad(["c"]) }, { raceId: "r1", sel: sentR1 }), { mine: false });
-});
-
-test("Ryd udtagelser: et loeb hvor de laaste ryttere ville staa uden kaptajn, ryddes ikke (ét afvist loeb ville afvise hele kaldet)", () => {
+test("Fjern udtagelser: et loeb hvor de laaste ryttere ville staa uden kaptajn, ryddes ikke (ét afvist loeb ville afvise hele kaldet)", () => {
   const races = [race("noLeader", 1, 1), race("lockedCaptain", 2, 2), race("plain", 3, 3)];
   const entries = [
     { raceId: "noLeader", riderId: "c", raceRole: "captain" },
@@ -526,36 +466,151 @@ test("Ryd udtagelser: et loeb hvor de laaste ryttere ville staa uden kaptajn, ry
   const locks = { noLeader: { riderIds: ["t"] }, lockedCaptain: { riderIds: ["k"] } };
   assert.deepEqual(clearableRaceIds(races, entries, new Set(), locks), ["lockedCaptain", "plain"]);
   // Det der sendes for de ryddelige loeb er en gyldig trup: tom, eller med den laaste kaptajn.
-  const { selections } = clearSubmission(entries, ["lockedCaptain", "plain"], locks);
+  const draft = addToDraft(EMPTY_DRAFT, "clear", ["lockedCaptain", "plain"]);
+  const { selections } = draftSubmission(entries, draft, locks);
   assert.equal(selections.get("lockedCaptain")!.captainId, "k");
   assert.deepEqual(selections.get("plain")!.riderIds, []);
 });
 
-test("Ryd udtagelser (P2): kladden holdes altid inden for ét atomisk kald", () => {
-  const ids = Array.from({ length: 70 }, (_, i) => `r${i + 1}`);
-  const first = capClearable(ids, 0, 60);
-  assert.equal(first.ids.length, 60, "kun op til loftet");
-  assert.deepEqual(first.ids.slice(0, 2), ["r1", "r2"], "de foerste i listens raekkefoelge");
-  assert.equal(first.capped, true, "knappen siger, at resten venter");
+// ── Handlinger-menuen (variant B, ejer 14/11) ───────────────────────────────
+// Fast kalender og fast ur (TODAY), saa "naeste 7 dage" og "naeste loeb" altid er de samme.
 
-  // Kladden er fuld: intet mere kan laegges i, foer den er gemt eller fortrudt.
-  const full = capClearable(ids.slice(60), 60, 60);
-  assert.deepEqual(full, { ids: [], capped: true });
+function squad(ids: string[], captain: string | null = null): Selection {
+  const base: Selection = { ...EMPTY_SELECTION, riderIds: ids, freeRoleIds: [] };
+  return captain ? setRiderRole(base, captain, "captain") : base;
+}
 
-  // Delvis kladde: kun resten af pladsen.
-  assert.equal(capClearable(ids, 55, 60).ids.length, 5);
+const TODAY = "2026-11-02";
+const CAL = dateIndex([
+  { gameDay: 27, date: "2026-11-02" },
+  { gameDay: 28, date: "2026-11-03" },
+  { gameDay: 29, date: "2026-11-04" },
+  { gameDay: 30, date: "2026-11-05" },
+  { gameDay: 31, date: "2026-11-16" },
+  { gameDay: 32, date: "2026-11-17" },
+]);
+// done: koert · started: laast (kører) · full: fuld trup · part: 2 af 6 · empty: tom · out: afmeldt · late: om to uger
+const RACES = [
+  race("done", 27, 27, { status: "completed" }),
+  race("started", 27, 27, { lineupLocked: true }),
+  race("full", 28, 28),
+  race("part", 29, 29),
+  race("empty", 30, 30),
+  race("out", 30, 30),
+  race("late", 31, 32),
+];
+const SAVED = [
+  ...["a", "b", "c", "d", "e", "f"].map((id, i) => ({ raceId: "full", riderId: id, raceRole: i === 0 ? "captain" : null })),
+  { raceId: "part", riderId: "g", raceRole: "captain" },
+  { raceId: "part", riderId: "h", raceRole: null },
+  { raceId: "started", riderId: "z", raceRole: "captain" },
+  { raceId: "out", riderId: "y", raceRole: "captain" },
+];
+const OUT = new Set(["out"]);
+const LIST = visibleRaces(RACES, CAL, { scope: "next7", showPast: false, today: TODAY });
 
-  // Under loftet: alt, intet loft at naevne.
-  assert.deepEqual(capClearable(["a", "b"], 0, 60), { ids: ["a", "b"], capped: false });
+function ctxFor(checked: string[] = [], draft: BulkDraft = EMPTY_DRAFT) {
+  const withdrawn = withdrawnWithDraft(OUT, draft);
+  return {
+    scope: { allRaces: RACES, listRaces: LIST, checked: new Set(checked), withdrawn },
+    view: { entries: entriesWithDraft(SAVED, draft), withdrawn },
+  };
+}
+const ids = (races: SeasonRace[]) => races.map((r) => r.id);
 
-  // Det der gemmes er ét kald med hoejst loftet af aendringer.
-  const entries = first.ids.map((raceId) => ({ raceId, riderId: "a", raceRole: null }));
-  assert.equal(clearSubmission(entries, first.ids).changes.length, 60);
+test("Handlinger: hvert omfang daekker de rigtige loeb (kun kommende, i kalenderens raekkefoelge)", () => {
+  const { scope } = ctxFor(["late", "part", "done"]);
+  assert.deepEqual(ids(scopeRaces("next", scope)), ["full"], "naeste loeb springer koerte, startede og afmeldte over");
+  assert.deepEqual(ids(scopeRaces("checked", scope)), ["part", "late"], "afkrydsede, kommende, i kalender-raekkefoelge");
+  assert.deepEqual(ids(scopeRaces("shown", scope)), ["started", "full", "part", "empty", "out"], "de viste: naeste 7 dage efter fast ur");
+  assert.deepEqual(ids(scopeRaces("season", scope)), ["started", "full", "part", "empty", "out", "late"]);
+  assert.deepEqual(BULK_SCOPES, ["next", "checked", "shown", "season"]);
 });
 
-// ── Rettelsesrunde 2 PR #8160: én skrive-laas for alle skrivekald ───────────
-// Styrede loefter: testen bestemmer selv, hvornaar et kald "naar serveren", saa raekkefoelgen er
-// praecis den Codex beskrev. Ingen sleep, intet vaegur.
+test("Handlinger: hver handling x hvert omfang rammer kun de loeb, den faktisk aendrer", () => {
+  const { scope, view } = ctxFor(["part", "late", "started"]);
+  const expected: Record<BulkScope, Record<BulkKind, string[]>> = {
+    next: { auto: [], clear: ["full"], withdraw: ["full"] },
+    checked: { auto: ["part", "late"], clear: ["part"], withdraw: ["part", "late"] },
+    shown: { auto: ["part", "empty"], clear: ["full", "part"], withdraw: ["full", "part", "empty"] },
+    season: { auto: ["part", "empty", "late"], clear: ["full", "part"], withdraw: ["full", "part", "empty", "late"] },
+  };
+  for (const s of BULK_SCOPES) {
+    for (const kind of BULK_KINDS) {
+      const got = ids(actionTargets(kind, scopeRaces(s, scope), view));
+      assert.deepEqual(got, expected[s][kind], `${kind} i ${s}`);
+    }
+  }
+});
+
+test("Handlinger: kladden viser ryddede loeb tomme, afmeldte som afmeldt og assistentens trup sat ind", () => {
+  const auto = new Map([["empty", [{ raceId: "empty", riderId: "q", raceRole: "captain" }]]]);
+  let draft = addToDraft(EMPTY_DRAFT, "clear", ["part"]);
+  draft = addToDraft(draft, "withdraw", ["full"]);
+  draft = addToDraft(draft, "auto", ["empty"], auto);
+  const view = entriesWithDraft(SAVED, draft);
+  const counts = pickedCounts(view);
+  assert.equal(counts.get("part") ?? 0, 0);
+  assert.equal(counts.get("full") ?? 0, 0, "et afmeldt loeb i kladden staar uden ryttere");
+  assert.equal(counts.get("empty"), 1);
+  assert.deepEqual([...withdrawnWithDraft(OUT, draft)].sort(), ["full", "out"]);
+  assert.deepEqual(draftSummary(draft, SAVED), { auto: 1, added: 1, clear: 1, withdraw: 1 });
+  // Kladden er ny for hver handling: den forrige er uroert (Fortryd kan stille den tilbage).
+  assert.equal(EMPTY_DRAFT.kinds.size, 0);
+});
+
+test("Handlinger: Gem sender trupperne som masse-gem (samme form som et enkelt gem) og afmeldingerne for sig", () => {
+  const auto = new Map([["empty", [{ raceId: "empty", riderId: "q", raceRole: "captain" }, { raceId: "empty", riderId: "r", raceRole: null }]]]);
+  let draft = addToDraft(EMPTY_DRAFT, "auto", ["empty"], auto);
+  draft = addToDraft(draft, "clear", ["part"]);
+  draft = addToDraft(draft, "withdraw", ["late"]);
+  const sub = draftSubmission(SAVED, draft);
+  assert.deepEqual(sub.changes, [
+    { raceId: "empty", rider_ids: ["q", "r"], captain_id: "q", sprint_captain_id: null, hunter_id: null, free_role_ids: [], co_captain_id: null },
+    { raceId: "part", rider_ids: [], captain_id: null, sprint_captain_id: null, hunter_id: null, free_role_ids: [], co_captain_id: null },
+  ]);
+  assert.deepEqual(sub.withdrawIds, ["late"]);
+  assert.deepEqual(sub.selections.get("empty")!.riderIds, ["q", "r"]);
+  // Assistenten regner med kladden: et ryddet loeb binder ingen; afmeldinger i kladden er ikke med.
+  assert.deepEqual(draftOverrides(SAVED, draft), {
+    empty: [{ rider_id: "q", race_role: "captain" }, { rider_id: "r", race_role: null }],
+    part: [],
+  });
+});
+
+test("Handlinger: kladden holdes altid inden for ét atomisk kald (loftet pr. gem)", () => {
+  const many = Array.from({ length: 70 }, (_, i) => `r${i + 1}`);
+  const first = capToRoom(many, EMPTY_DRAFT, 60);
+  assert.equal(first.ids.length, 60, "kun op til loftet");
+  assert.deepEqual(first.ids.slice(0, 2), ["r1", "r2"], "de foerste i kalenderens raekkefoelge");
+  assert.equal(first.capped, true, "menuen siger, at resten venter");
+  const full = addToDraft(EMPTY_DRAFT, "clear", first.ids);
+  // Kladden er fuld: kun loeb der allerede er i den, kan faa en anden handling.
+  assert.deepEqual(capToRoom(["r1", "r61"], full, 60), { ids: ["r1"], capped: true });
+  assert.deepEqual(capToRoom(["a", "b"], EMPTY_DRAFT, 60), { ids: ["a", "b"], capped: false });
+});
+
+test("Handlinger: gemmet afstemmes mod det SENDTE loeb og den sendte udtagelse", () => {
+  const old = squad(["a", "b", "t"], "a");
+  const sent = squad(["t"], "t");
+  // Codex P1: fladen viste den gemte trup (ren). Efter gemmet viser den det sendte og er stadig ren,
+  // saa den gamle trup aldrig huskes som en kladde, der kan overskrive gemmet.
+  const clean = settleBulkSave({ raceId: "r1", sel: old, saved: old }, { raceId: "r1", sel: sent });
+  assert.deepEqual(clean, { mine: true, saved: sent, sel: sent, dirty: false });
+  // Spillerens egne ugemte aendringer bliver staaende som ugemte.
+  const edited = squad(["a", "x"], "a");
+  const kept = settleBulkSave({ raceId: "r1", sel: edited, saved: old }, { raceId: "r1", sel: sent });
+  assert.equal(kept.mine, true);
+  if (kept.mine) {
+    assert.equal(kept.saved, sent, "det gemte er det SENDTE, ikke det fladen viser");
+    assert.equal(kept.sel, edited, "spillerens egne aendringer roeres ikke");
+    assert.equal(kept.dirty, true);
+  }
+  assert.deepEqual(settleBulkSave({ raceId: "r3", sel: squad(["c"]), saved: squad(["c"]) }, { raceId: "r1", sel: sent }), { mine: false });
+});
+
+// ── Kladdens tilstand med styrede loefter ───────────────────────────────────
+// Testen bestemmer selv, hvornaar et kald "naar serveren". Ingen sleep, intet vaegur.
 
 function deferred<T = void>() {
   let resolve!: (value: T) => void;
@@ -567,93 +622,208 @@ function deferred<T = void>() {
   return { promise, resolve, reject };
 }
 
-/** En falsk server: et skrivekald laegges foerst ind, naar testen slipper dets loefte (sidst ankomne vinder). */
-function fakeServer(initial: Record<string, Selection>) {
-  const rows = new Map(Object.entries(initial));
-  const calls: string[] = [];
-  return {
-    rows,
-    calls,
-    put(raceId: string, sel: Selection, arrive: Promise<void>) {
-      calls.push(`put:${raceId}`);
-      return arrive.then(() => {
-        rows.set(raceId, sel);
-        return true;
-      });
-    },
-    bulk(selections: Map<string, Selection>, arrive: Promise<void>) {
-      calls.push(`bulk:${[...selections.keys()].join(",")}`);
-      return arrive.then(() => {
-        for (const [raceId, sel] of selections) rows.set(raceId, sel);
-        return true;
-      });
-    },
+type Call = { kind: string; args: unknown; done: ReturnType<typeof deferred<BulkCallResult>> };
+
+/** En falsk server: hvert kald venter, til testen svarer paa det. */
+function fakeApi() {
+  const calls: Call[] = [];
+  const make = (kind: string) => (...args: unknown[]) => {
+    const done = deferred<BulkCallResult>();
+    calls.push({ kind, args, done });
+    return done.promise;
   };
+  const api: BulkApi = { propose: make("propose"), saveSelections: make("save"), withdraw: make("withdraw") };
+  return { api, calls };
 }
 
-test("skrive-laas (P1, Codex runde 2): Ryd udtagelser under et koerende gem kan ikke slippe laasen eller sende et masse-gem samtidig", async () => {
+const proposal = (raceId: string, riders: string[]) => ({ race_id: raceId, entries: riders.map((r, i) => ({ rider_id: r, race_role: i === 0 ? "captain" : "helper" })) });
+const CTX = { entries: SAVED, withdrawn: OUT };
+
+test("Handlinger: assistenten spoerges gennem skrive-laasen og lander som kladde; intet gemmes", async () => {
   const gate = createWriteGate();
-  const saved = squad(["a", "b"], "a");
-  const draft = squad(["a", "b", "c"], "a");
-  const server = fakeServer({ r1: saved });
-
-  // 1. Det almindelige gem af r1 koerer (svaret er ikke kommet endnu).
-  const firstArrives = deferred();
-  const firstSave = gate.run("save", () => server.put("r1", draft, firstArrives.promise));
-  assert.equal(gate.current(), "save");
-
-  // 2. Manageren trykker "Ryd udtagelser": fladen venter med at anvende rydningen.
-  const view = { ready: true, pendingClear: true, clearShown: false };
-  assert.equal(pageClearStep({ ...view, writing: gate.current() }), "wait", "rydningen anvendes ikke midt i et gem");
-  // Selv hvis en kladde anvendes og fortrydes, roeres laasen ikke: kun gem-kaldet selv kan slippe den.
-  applyPageClear(draft, saved, []);
-  undoPageClear(draft, saved);
-  assert.equal(gate.current(), "save", "at anvende en kladde slipper aldrig laasen");
-
-  // 3. Masse-gemmet for samme loeb forsoeges: intet sendes, mens gemmet koerer.
-  let bulkSent = false;
-  const blocked = await gate.run("bulk", async () => {
-    bulkSent = true;
-    return server.bulk(new Map([["r1", squad([])]]), Promise.resolve());
-  });
-  assert.deepEqual(blocked, { ran: false });
-  assert.equal(bulkSent, false);
-  assert.deepEqual(server.calls, ["put:r1"], "kun det foerste gem er sendt");
-
-  // 4. Det foerste gem bliver faerdigt (sidst, som i Codex' raekkefoelge): laasen slippes nu.
-  firstArrives.resolve();
-  assert.deepEqual(await firstSave, { ran: true, value: true });
+  const { api, calls } = fakeApi();
+  const store = createBulkStore({ gate, api });
+  const running = store.run("auto", ["part", "empty"], CTX);
+  assert.equal(gate.current(), "assist");
+  assert.deepEqual(calls[0].args, [["part", "empty"], {}]);
+  calls[0].done.resolve({ ok: true, data: { proposals: [proposal("part", ["g", "h", "i"]), proposal("empty", ["j", "k"])] } });
+  assert.equal(await running, "done");
   assert.equal(gate.current(), null);
-  assert.deepEqual(server.rows.get("r1"), draft);
-
-  // 5. Rydningen anvendes foerst nu, som en ugemt kladde oven paa det gemte (ejerens valg: Gem eller Fortryd).
-  assert.equal(pageClearStep({ ...view, writing: gate.current() }), "apply");
-  const shown = applyPageClear(draft, draft, []).sel;
-  assert.equal(selectionDirty(shown, server.rows.get("r1")!), true, "siden viser rydningen som UGEMT, ikke gemt");
-
-  // 6. Masse-gemmet sendes efter gemmet; serveren ender med det, siden viser som gemt.
-  const bulkArrives = deferred();
-  const bulk = gate.run("bulk", () => server.bulk(new Map([["r1", shown]]), bulkArrives.promise));
-  assert.equal(gate.current(), "bulk");
-  bulkArrives.resolve();
-  assert.equal((await bulk).ran, true);
-  assert.deepEqual(server.calls, ["put:r1", "bulk:r1"], "kaldene krydser aldrig");
-  assert.deepEqual(server.rows.get("r1"), shown);
+  assert.deepEqual([...store.draft().kinds], [["part", "auto"], ["empty", "auto"]]);
+  assert.deepEqual(calls.map((c) => c.kind), ["propose"], "intet gem er sendt");
+  // "helper" er ingen rolle i kladden (samme som saesonmatrixen).
+  assert.deepEqual(store.draft().auto.get("part")!.map((e) => e.raceRole), ["captain", null, null]);
 });
 
-test("skrive-laas: Fortryd venter ogsaa paa et koerende kald (masse-gem eller afmeld)", async () => {
+test("Handlinger: Fortryd gendanner kladden fra foer den seneste handling, ogsaa efter to handlinger i traek", async () => {
   const gate = createWriteGate();
-  const arrives = deferred();
-  const running = gate.run("bulk", () => arrives.promise);
-  const shownClear = { ready: true, pendingClear: false, clearShown: true };
-  assert.equal(pageClearStep({ ...shownClear, writing: gate.current() }), "wait");
-  arrives.resolve();
-  await running;
-  assert.equal(pageClearStep({ ...shownClear, writing: gate.current() }), "undo");
-  // Ikke klar (fladen henter), eller intet at goere: ingen handling.
-  assert.equal(pageClearStep({ ready: false, pendingClear: true, clearShown: false, writing: null }), "none");
-  assert.equal(pageClearStep({ ready: true, pendingClear: true, clearShown: true, writing: "save" }), "none");
+  const { api, calls } = fakeApi();
+  const store = createBulkStore({ gate, api });
+  const first = store.run("auto", ["part", "empty"], CTX);
+  calls[0].done.resolve({ ok: true, data: { proposals: [proposal("part", ["g", "h", "i"]), proposal("empty", ["j", "k"])] } });
+  await first;
+  const afterAuto = store.draft();
+  // To handlinger efter hinanden: rydningen af "part" afloeser assistentens trup (sidste handling vinder).
+  assert.equal(await store.run("clear", ["part", "full"], CTX), "done");
+  assert.deepEqual([...store.draft().kinds], [["part", "clear"], ["empty", "auto"], ["full", "clear"]]);
+  assert.equal(store.draft().auto.has("part"), false);
+  assert.deepEqual(draftSummary(store.draft(), SAVED), { auto: 1, added: 2, clear: 2, withdraw: 0 });
+  assert.equal(store.undo(), true);
+  assert.equal(store.draft(), afterAuto, "Fortryd giver praecis kladden fra foer");
+  assert.equal(store.undo(), true);
+  assert.equal(store.draft().kinds.size, 0, "og saa den tomme kladde");
+  assert.equal(store.undo(), false, "intet at fortryde");
 });
+
+test("Handlinger: et afmeldt loeb faar aldrig en trup af assistenten (gemt eller i kladden)", async () => {
+  const gate = createWriteGate();
+  const { api, calls } = fakeApi();
+  const store = createBulkStore({ gate, api });
+  await store.run("withdraw", ["empty"], CTX);
+  // Menuen tilbyder ikke assistenten for afmeldte loeb ...
+  const { scope, view } = ctxFor([], store.draft());
+  assert.deepEqual(ids(actionTargets("auto", scopeRaces("season", scope), view)), ["part", "late"]);
+  // ... og svarer serveren alligevel med et forslag til et afmeldt loeb, laegges det aldrig i kladden.
+  const running = store.run("auto", ["part", "empty", "out"], CTX);
+  calls[0].done.resolve({ ok: true, data: { proposals: [proposal("part", ["g", "h", "i"]), proposal("empty", ["j"]), proposal("out", ["y"])] } });
+  assert.equal(await running, "done");
+  assert.equal(store.draft().kinds.get("empty"), "withdraw", "afmeldingen i kladden bliver staaende");
+  assert.equal(store.draft().kinds.has("out"), false, "det gemt afmeldte loeb faar intet");
+  assert.deepEqual([...store.draft().auto.keys()], ["part"]);
+});
+
+test("Handlinger: mens et gem koerer, kan hverken en handling, Fortryd eller et nyt Gem sendes", async () => {
+  const gate = createWriteGate();
+  const { api, calls } = fakeApi();
+  const store = createBulkStore({ gate, api });
+  await store.run("clear", ["part"], CTX);
+  const before = store.draft();
+  const saving = store.save(CTX);
+  assert.equal(gate.current(), "bulk");
+  assert.equal(await store.run("withdraw", ["full"], CTX), "busy", "handlingen venter");
+  assert.equal(await store.run("auto", ["empty"], CTX), "busy", "assistenten spoerges ikke");
+  assert.equal(store.undo(), false, "Fortryd venter");
+  assert.equal(await store.save(CTX), "busy", "et dobbeltklik paa Gem sender intet");
+  assert.equal(store.draft(), before, "kladden er uroert imens");
+  assert.deepEqual(calls.map((c) => c.kind), ["save"]);
+  calls[0].done.resolve({ ok: true });
+  assert.equal(await saving, "saved");
+  assert.equal(store.draft().kinds.size, 0);
+  // Efter gemmet virker handlingerne igen.
+  assert.equal(await store.run("withdraw", ["full"], CTX), "done");
+});
+
+test("Handlinger: mens assistenten regner, kan Gem ikke sendes, og fladens gem venter ogsaa", async () => {
+  const gate = createWriteGate();
+  const { api, calls } = fakeApi();
+  const store = createBulkStore({ gate, api });
+  await store.run("clear", ["part"], CTX);
+  const running = store.run("auto", ["empty"], CTX);
+  assert.equal(await store.save(CTX), "busy");
+  assert.deepEqual(await gate.run("save", async () => true), { ran: false }, "fladens gem sendes ikke midt i assistentens kald");
+  calls[0].done.resolve({ ok: true, data: { proposals: [proposal("empty", ["j", "k"])] } });
+  assert.equal(await running, "done");
+  assert.deepEqual(calls.map((c) => c.kind), ["propose"]);
+});
+
+test("Handlinger: Gem er alt eller intet; et afvist masse-gem efterlader hele kladden og intet afmeldes", async () => {
+  const gate = createWriteGate();
+  const { api, calls } = fakeApi();
+  const store = createBulkStore({ gate, api });
+  await store.run("clear", ["part"], CTX);
+  await store.run("withdraw", ["late"], CTX);
+  const draft = store.draft();
+  let saved = false;
+  const saving = store.save(CTX, () => {
+    saved = true;
+  });
+  // Foerst kontrolleres afmeldingerne uden at skrive ...
+  assert.deepEqual(calls[0].args, [["late"], true]);
+  calls[0].done.resolve({ ok: true });
+  await new Promise((r) => setImmediate(r));
+  // ... saa afvises masse-gemmet: intet afmeldes bagefter.
+  assert.equal(calls[1].kind, "save");
+  calls[1].done.resolve({ ok: false, data: { error: "selection_race_started", race_id: "part" } });
+  assert.equal(await saving, "failed");
+  assert.deepEqual(calls.map((c) => c.kind), ["withdraw", "save"], "ingen rigtig afmelding efter et afvist gem");
+  assert.equal(store.draft(), draft, "hele kladden er der stadig");
+  assert.equal(saved, false);
+  assert.deepEqual(store.get().failure, { step: "save", partial: false, body: { error: "selection_race_started", race_id: "part" } });
+});
+
+test("Handlinger: fejler afmeldingen efter et gemt masse-gem, siger kladden det aerligt og beholder kun afmeldingerne", async () => {
+  const gate = createWriteGate();
+  const { api, calls } = fakeApi();
+  const store = createBulkStore({ gate, api });
+  await store.run("clear", ["part"], CTX);
+  await store.run("withdraw", ["late"], CTX);
+  const seen: string[][] = [];
+  const saving = store.save(CTX, ({ selections, withdrawn }) => {
+    seen.push([...selections.keys(), ...withdrawn]);
+  });
+  calls[0].done.resolve({ ok: true });
+  await new Promise((r) => setImmediate(r));
+  calls[1].done.resolve({ ok: true });
+  await new Promise((r) => setImmediate(r));
+  assert.deepEqual(calls[2].args, [["late"], false]);
+  calls[2].done.resolve({ ok: false, data: { error: "selection_race_started", race_id: "late" } });
+  assert.equal(await saving, "partial");
+  assert.deepEqual([...store.draft().kinds], [["late", "withdraw"]], "kun afmeldingen venter stadig");
+  assert.equal(store.get().failure?.partial, true);
+  assert.deepEqual(seen, [["part"]], "siden afstemmer de gemte trupper");
+});
+
+test("Handlinger: et helt gem afstemmer siden og toemmer kladden; assistenten regner med kladden", async () => {
+  const gate = createWriteGate();
+  const { api, calls } = fakeApi();
+  const store = createBulkStore({ gate, api });
+  await store.run("clear", ["full"], CTX);
+  const running = store.run("auto", ["part"], CTX);
+  assert.deepEqual(calls[0].args, [["part"], { full: [] }], "det ryddede loeb binder ingen ryttere");
+  calls[0].done.resolve({ ok: true, data: { proposals: [proposal("part", ["g", "h", "a"])] } });
+  await running;
+  let saw: { selections: string[]; withdrawn: string[] } | null = null;
+  const saving = store.save(CTX, async ({ selections, withdrawn }) => {
+    assert.equal(gate.current(), "bulk", "siden afstemmer inden for laasen");
+    saw = { selections: [...selections.keys()], withdrawn };
+  });
+  assert.equal(calls[1].kind, "save", "ingen afmeldinger: ingen kontrol foerst");
+  calls[1].done.resolve({ ok: true });
+  assert.equal(await saving, "saved");
+  assert.deepEqual(saw, { selections: ["full", "part"], withdrawn: [] });
+  assert.equal(store.draft().kinds.size, 0);
+  assert.equal(gate.current(), null);
+});
+
+test("Handlinger: spillerens eget valg paa fladen tager loebet ud af kladden, ogsaa i Fortryd-historikken", async () => {
+  const gate = createWriteGate();
+  const { api } = fakeApi();
+  const store = createBulkStore({ gate, api });
+  await store.run("clear", ["part"], CTX);
+  await store.run("withdraw", ["full"], CTX);
+  store.drop(["part"]);
+  assert.deepEqual([...store.draft().kinds], [["full", "withdraw"]]);
+  assert.equal(store.undo(), true);
+  assert.equal(store.draft().kinds.size, 0, "rydningen af det loeb kommer ikke igen med Fortryd");
+});
+
+test("Handlinger: assistenten uden ledige ryttere eller med en fejl aendrer intet og siger det", async () => {
+  const gate = createWriteGate();
+  const { api, calls } = fakeApi();
+  const store = createBulkStore({ gate, api });
+  const none = store.run("auto", ["part"], CTX);
+  calls[0].done.resolve({ ok: true, data: { proposals: [], skipped: [{ race_id: "part", reason: "selection_no_eligible_riders" }] } });
+  assert.equal(await none, "empty");
+  assert.equal(store.get().emptyAssist, true);
+  assert.equal(store.draft().kinds.size, 0);
+  const failing = store.run("auto", ["part"], CTX);
+  calls[1].done.resolve({ ok: false, data: { error: "selection_flag_disabled" } });
+  assert.equal(await failing, "failed");
+  assert.equal(store.get().failure?.step, "assist");
+  assert.equal(store.draft().kinds.size, 0);
+});
+
+// ── Skrive-laasen (PR #8160) ────────────────────────────────────────────────
 
 test("skrive-laas: et dobbeltklik sender kun ét kald, ogsaa foer siden naar at tegne igen", async () => {
   const gate = createWriteGate();

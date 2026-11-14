@@ -113,6 +113,7 @@ import {
 // #5301: afmeldings-opslag som ALLE læseflader deler, så "har entries" aldrig igen
 // forveksles med "stiller op" (race_entries bevares bevidst ved afmelding, #4306).
 import { findRejoinConflicts, loadWithdrawnPairs, loadWithdrawnRaceIdsForTeam, withdrawalKey, splitWithdrawals, DID_NOT_START_REASON } from "../lib/raceWithdrawal.js";
+import { planningBulkRoute7535, proposeAssistantSquads7535, withdrawRacesBulk7535 } from "../lib/planningBulkActions7535.js"; // #7535
 import { loadTeamsInStartedField } from "../lib/raceStartOutlook.js"; // #6740
 import { planningDidNotStart } from "../lib/planningDidNotStart.ts"; // #7518
 import { teamDistributionColumns } from "../lib/raceDistributionColumns.ts"; // #7553
@@ -6341,6 +6342,12 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
     res.status(500).json({ error: err.message });
   }
 });
+
+// #7535: planlaegningssidens Handlinger-menu. Assistentens forslag til mange loeb (laeser kun) og
+// afmelding af mange loeb (alt eller intet). Reglerne bor i lib/planningBulkActions7535.js.
+const planningBulkCtx7535 = { supabase, isViewerBetaTester, captureException, invalidateNamespace };
+router.post("/races/selection/auto/propose", requireAuth, marketWriteLimiter, planningBulkRoute7535(proposeAssistantSquads7535, planningBulkCtx7535));
+router.post("/races/withdrawals/bulk", requireAuth, marketWriteLimiter, planningBulkRoute7535(withdrawRacesBulk7535, planningBulkCtx7535));
 
 // POST /api/races/:raceId/selection/auto — #2180 one-click "auto-udtag" (indbakke-
 // knappen på 36t-varslet, selectionWarningSweep.js). Assistenten bygger + gemmer

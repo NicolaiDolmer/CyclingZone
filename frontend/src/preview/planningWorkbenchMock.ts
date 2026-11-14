@@ -193,6 +193,43 @@ export const PLANNING_RIDER_ROWS = RIDER_DEFS.map(([id, , , , , , injured], i) =
   rider_condition: { injured_until: injured ? day(3) : null, injury_race_days_left: null },
 }));
 
+/**
+ * "Lad assistenten udtage" i preview-mocken (POST /api/races/selection/auto/propose har ingen server
+ * her). Samme form som serverens svar: egne valg bliver, de tomme pladser fyldes med de bedst egnede
+ * raske ryttere, der ikke er optaget i et loeb paa samme loebsdage. Kun en troværdig efterligning til
+ * billederne; den rigtige assistent er serverens.
+ */
+export function previewAssistantProposals(raceIds: string[], overrides: Record<string, Array<{ rider_id: string; race_role: string | null }>> = {}) {
+  const current = new Map<string, string[]>(RACES.map((r) => [r.id, overrides[r.id]?.map((e) => e.rider_id) ?? PICKS[r.id] ?? []]));
+  const ordered = RACES.filter((r) => raceIds.includes(r.id)).sort((a, b) => a.gameDayStart - b.gameDayStart);
+  const proposals: Array<{ race_id: string; entries: Array<{ rider_id: string; race_role: string | null }>; added: number }> = [];
+  const skipped: Array<{ race_id: string; reason: string }> = [];
+  for (const race of ordered) {
+    const own = overrides[race.id] ?? (PICKS[race.id] ?? []).map((id, i) => ({ rider_id: id, race_role: i === 0 ? "captain" : null }));
+    const need = race.sizeMax - own.length;
+    if (need <= 0) {
+      skipped.push({ race_id: race.id, reason: "selection_full" });
+      continue;
+    }
+    const types = RACE_DEFS.find((d) => d[0] === race.id)?.[3] ?? ["flat"];
+    const mine = new Set(own.map((e) => e.rider_id));
+    const busy = new Set(RACES.filter((o) => overlaps(race, o)).flatMap((o) => current.get(o.id) ?? []));
+    const fills = RIDER_DEFS.filter(([id, , , , , , injured]) => !injured && !mine.has(id) && !busy.has(id))
+      .map(([id, , , ab]) => ({ id, fit: types.reduce((s, t) => s + fitFor(ab, t), 0) / types.length }))
+      .sort((a, b) => b.fit - a.fit || a.id.localeCompare(b.id))
+      .slice(0, need);
+    if (!fills.length) {
+      skipped.push({ race_id: race.id, reason: "selection_no_eligible_riders" });
+      continue;
+    }
+    const entries = [...own, ...fills.map((f) => ({ rider_id: f.id, race_role: "helper" as string | null }))];
+    if (!entries.some((e) => e.race_role === "captain")) entries[own.length].race_role = "captain";
+    current.set(race.id, entries.map((e) => e.rider_id));
+    proposals.push({ race_id: race.id, entries, added: fills.length });
+  }
+  return { ok: true, proposals, skipped };
+}
+
 /** Saeson-belastning (GET /api/races/distribution, seasonLoadByRider) ud fra seedets egne udtagelser. */
 export const PLANNING_SEASON_LOAD: Record<string, { races: number; raceDays: number }> = {};
 for (const [raceId, ids] of Object.entries(PICKS)) {
