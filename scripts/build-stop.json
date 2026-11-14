@@ -1384,6 +1384,11 @@
       "issue": 7971,
       "reason": "Ejer-go 10/11 (PC1-session): roadmap-admin uden hop til toppen, vendt graf, samlet score og faste kategorier",
       "since": "2026-11-10"
+    },
+    {
+      "issue": 6515,
+      "reason": "Ejer-go 14/11 (Claude Code, Dolmer PC, go/no go-liste): gule prikker for patch notes og roadmap følger brugeren; Discord-løfte #6947",
+      "since": "2026-11-14"
     }
   ]
 }
