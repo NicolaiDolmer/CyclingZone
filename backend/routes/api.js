@@ -18,7 +18,7 @@ import { createTrainingProgramsRouter } from "./trainingPrograms.js"; // #4629
 import { createTrainingGroupsRouter } from "./trainingGroups.js"; // #6000
 import { createAdminRoadmapRouter } from "./adminRoadmap.js";
 import { createAdminSaleEscrowsRouter } from "./adminSaleEscrows.js";
-import { loadLockedSalesForTeam, countHeldSaleEscrowsForForce, SALE_ESCROW_FORCE_BLOCKED_ERROR } from "../lib/saleEscrowView6181.js"; // #6181
+import { loadLockedSalesForTeam, countHeldSaleEscrowsForForce, saleEscrowTransitionGuard, SALE_ESCROW_FORCE_BLOCKED_ERROR } from "../lib/saleEscrowView6181.js"; // #6181
 import { createTrainingFatigueRulesRouter } from "./trainingFatigueRules.js"; // #4854
 import { stripProgramFromWeekDays } from "../lib/trainingPrograms.js"; // #4629
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
@@ -12364,6 +12364,9 @@ router.post("/admin/seasons/:id/start", requireAdmin, adminWriteLimiter, async (
     if ((activeCount || 0) > 0) {
       return res.status(400).json({ error: "Der findes allerede en aktiv sæson" });
     }
+    // #6181 (ejer 13/11, fast regel): ingen manuel saesonstart (loen) forbi laaste salg.
+    const saleEscrowGuard = await saleEscrowTransitionGuard(supabase, { execute: true });
+    if (saleEscrowGuard.blocked) return res.status(409).json({ error: SALE_ESCROW_FORCE_BLOCKED_ERROR, code: "held_sale_escrows", held_sale_escrows: saleEscrowGuard.held });
 
     const standings = await ensureSeasonStandings(seasonId);
 
@@ -12486,6 +12489,9 @@ router.post("/admin/seasons/:id/end", requireAdmin, adminWriteLimiter, async (re
     if (trainingSettlement.blocked) {
       return res.status(400).json({ error: trainingSettlement.detail, training_settlement: trainingSettlement });
     }
+    // #6181 (ejer 13/11, fast regel): ingen manuel saesonafslutning forbi laaste salg; foer claim'et.
+    const saleEscrowGuard = await saleEscrowTransitionGuard(supabase, { execute: true });
+    if (saleEscrowGuard.blocked) return res.status(409).json({ error: SALE_ESCROW_FORCE_BLOCKED_ERROR, code: "held_sale_escrows", held_sale_escrows: saleEscrowGuard.held });
     // #2847 · DB-niveau-garanti mod concurrent dobbelt-POST. De foregående checks
     // (status/pending-results/blockers) er check-then-act uden constraint — to
     // samtidige requests kan begge bestå dem og begge nå hertil. Herfra og ned er

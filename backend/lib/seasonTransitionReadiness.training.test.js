@@ -171,7 +171,7 @@ for (const scenario of ['complete', 'pending', 'partial', 'missing', 'read_error
     const bodyStart = source.indexOf('async (req, res) => {', start) + 'async (req, res) => {'.length;
     const bodyEnd = source.indexOf('\n});', bodyStart);
     const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
-    const handler = new AsyncFunction('req', 'res', 'supabase', 'Date', 'assessSeasonEndBlockers', 'assessFinalTrainingDateSettlement', 'claimSeasonEndOrReject', 'captureApiRouteError', source.slice(bodyStart, bodyEnd));
+    const handler = new AsyncFunction('req', 'res', 'supabase', 'Date', 'assessSeasonEndBlockers', 'assessFinalTrainingDateSettlement', 'claimSeasonEndOrReject', 'captureApiRouteError', 'saleEscrowTransitionGuard', source.slice(bodyStart, bodyEnd));
     const fixture = client(scenario === 'read_error' ? 'riders' : null);
     const supabase = { from(table) {
       if (table === 'seasons') {
@@ -186,7 +186,7 @@ for (const scenario of ['complete', 'pending', 'partial', 'missing', 'read_error
     const res = { status(value) { status = value; return res; }, json(value) { response = value; return res; } };
     await handler({ params: { id: season.id } }, res, supabase, FixedDate,
       async () => ({ blocked: false }), readiness.assessFinalTrainingDateSettlement,
-      async () => { claimed = true; return false; }, () => {});
+      async () => { claimed = true; return false; }, () => {}, async () => ({ blocked: false, held: 0 }));
     assert.equal(claimed, scenario === 'complete');
     if (scenario !== 'complete') {
       assert.equal(status, scenario === 'read_error' ? 500 : 400);
@@ -241,7 +241,7 @@ test('#6924: season-end API at 18:00 with no registrations reaches the claim', a
   const start = source.indexOf('router.post("/admin/seasons/:id/end"');
   const bodyStart = source.indexOf('async (req, res) => {', start) + 'async (req, res) => {'.length;
   const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
-  const handler = new AsyncFunction('req', 'res', 'supabase', 'Date', 'assessSeasonEndBlockers', 'assessFinalTrainingDateSettlement', 'claimSeasonEndOrReject', 'captureApiRouteError', source.slice(bodyStart, source.indexOf('\n});', bodyStart)));
+  const handler = new AsyncFunction('req', 'res', 'supabase', 'Date', 'assessSeasonEndBlockers', 'assessFinalTrainingDateSettlement', 'claimSeasonEndOrReject', 'captureApiRouteError', 'saleEscrowTransitionGuard', source.slice(bodyStart, source.indexOf('\n});', bodyStart)));
   const fixture = client();
   const supabase = { from(table) {
     if (table === 'seasons') {
@@ -255,7 +255,7 @@ test('#6924: season-end API at 18:00 with no registrations reaches the claim', a
   let claimed = false;
   const res = { status() { return res; }, json() { return res; } };
   await handler({ params: { id: season.id } }, res, supabase, FixedDate, async () => ({ blocked: false }),
-    readiness.assessFinalTrainingDateSettlement, async () => { claimed = true; return false; }, () => {});
+    readiness.assessFinalTrainingDateSettlement, async () => { claimed = true; return false; }, () => {}, async () => ({ blocked: false, held: 0 }));
   assert.equal(claimed, true);
 });
 test('#6924: active-source transition at 18:00 reaches its first write before the evening run', async () => {
