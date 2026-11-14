@@ -58,11 +58,20 @@ export const SHADOW_FALLBACK_WINDOW_MS = 5 * 60 * 1000;
 /** @type {Readonly<RankingReadSource>} */
 const LEGACY = Object.freeze({ source: "legacy", currentAsOf: null });
 let sourceCache = new WeakMap();
+// Nødvejens hold pr. klient (udloebstid), gemt for sig selv: et kildeopslag,
+// der allerede var i gang, da holdet blev sat, maa ikke kunne overskrive det.
+let fallbackHoldUntil = new WeakMap();
 let fallbackReport = { lastAt: -Infinity, suppressed: 0 };
 
 export function __resetRankingReadCacheForTests() {
   sourceCache = new WeakMap();
+  fallbackHoldUntil = new WeakMap();
   fallbackReport = { lastAt: -Infinity, suppressed: 0 };
+}
+
+/** Holder nødvejen kildevalget paa de gamle tabeller lige nu? */
+function fallbackHoldActive(supabase, at) {
+  return (fallbackHoldUntil.get(supabase) ?? -Infinity) > at;
 }
 
 /** Supabase-fejl er ofte et objekt med `message`, ikke en Error. */
@@ -83,7 +92,9 @@ function toError(error) {
 function noteShadowFallback(supabase, error, path, { now = Date.now, captureExceptionFn } = {}) {
   const at = now();
   if (supabase && typeof supabase === "object") {
-    sourceCache.set(supabase, { value: LEGACY, expiresAt: at + SHADOW_FALLBACK_WINDOW_MS });
+    fallbackHoldUntil.set(supabase, at + SHADOW_FALLBACK_WINDOW_MS);
+    // Efter holdet slaas kilden op paa ny i stedet for at genbruge et gammelt valg.
+    sourceCache.delete(supabase);
   }
   if (at - fallbackReport.lastAt < SHADOW_FALLBACK_WINDOW_MS) {
     fallbackReport.suppressed += 1;
@@ -138,6 +149,7 @@ async function shadowRebuildFinished(supabase) {
  */
 export async function resolveRankingReadSource(supabase, { now = Date.now, captureExceptionFn } = {}) {
   if (!supabase?.from || !supabase?.rpc) return LEGACY;
+  if (fallbackHoldActive(supabase, now())) return LEGACY;
   const hit = sourceCache.get(supabase);
   if (hit && hit.expiresAt > now()) return hit.value;
   /** @type {RankingReadSource} */
@@ -160,6 +172,9 @@ export async function resolveRankingReadSource(supabase, { now = Date.now, captu
     });
     value = LEGACY;
   }
+  // Blev nødvejens hold sat, mens opslaget kørte, vinder holdet, og opslagets
+  // svar gemmes ikke.
+  if (fallbackHoldActive(supabase, now())) return LEGACY;
   sourceCache.set(supabase, { value, expiresAt: now() + SOURCE_CACHE_TTL_MS });
   return value;
 }

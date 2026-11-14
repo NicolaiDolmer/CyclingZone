@@ -425,6 +425,79 @@ test("#7664 dashboard: one report per window, the rest counted in the next repor
   assert.deepEqual(captured[1].context.tags, { lib: "rankingRead7664", path: "dashboard-top" });
 });
 
+// Both switches on, a shadow table that fails, and shadow-metrics lookups that
+// wait until the test releases them (one gate per call), so two concurrent
+// source lookups can be finished in a chosen order. No wall clock, no sleep.
+function gatedClient({ failTable }) {
+  const client = recordingClient({ flags: BOTH_ON });
+  const baseFrom = client.from.bind(client);
+  const gates = [];
+  return Object.assign(client, {
+    gates,
+    async rpc(name) {
+      client.rpcs.push(name);
+      if (name === "get_ranking_shadow_read_ready") return { data: { ready: true }, error: null };
+      if (name === "get_ranking_shadow_metrics") {
+        return new Promise((resolve) => gates.push(() => resolve({ data: { queue_length: 0, oldest_age_s: null }, error: null })));
+      }
+      return { data: null, error: null };
+    },
+    from(table) {
+      const b = baseFrom(table);
+      if (table === failTable) {
+        b.then = (resolve, reject) => Promise.resolve({ data: null, error: { message: "shadow table broken" } }).then(resolve, reject);
+      }
+      return b;
+    },
+  });
+}
+
+test("#7664 nødvej: a source lookup that started before the hold cannot overwrite it", async () => {
+  reset();
+  let t = NOW;
+  const now = () => t;
+  const client = gatedClient({ failTable: "ranking_rider_season" });
+  const freshness = async () => {
+    const app = express();
+    app.use("/rankings", createRankingFreshnessRouter({ supabase: client, requireAuth: (req, res, next) => next(), reportError: () => {}, now }));
+    const server = app.listen(0);
+    try {
+      return await (await fetch(`http://127.0.0.1:${server.address().port}/rankings/freshness`)).json();
+    } finally { server.close(); }
+  };
+  // Cold cache: two lookups start together and both wait on the queue metrics.
+  const slow = resolveRankingReadSource(client, { now });
+  const fast = resolveRankingReadSource(client, { now });
+  for (let turns = 0; client.gates.length < 2; turns += 1) {
+    assert.ok(turns < 100, "both lookups should reach the metrics call");
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  // The second lookup finishes first and picks the shadow tables.
+  client.gates[1]();
+  assert.equal((await fast).source, "shadow");
+  // A shadow read fails: the hold on the old tables starts now.
+  assert.equal(await readDashboardTopRiders7664(client, { seasonId: SEASON, leagueDivisionId: null, source: SHADOW, now }), null);
+  // The lookup that started before the hold finishes afterwards.
+  client.gates[0]();
+  await slow;
+  // The hold wins: old tables, no "Opdateret kl.", no new lookup.
+  const rpcsBefore = client.rpcs.length;
+  assert.equal((await resolveRankingReadSource(client, { now })).source, "legacy");
+  assert.deepEqual(await freshness(), { source: "legacy", current_as_of: null });
+  t += SHADOW_FALLBACK_WINDOW_MS - 1;
+  assert.equal((await resolveRankingReadSource(client, { now })).source, "legacy");
+  assert.equal(client.rpcs.length, rpcsBefore);
+  // Once the window is over, the source is looked up again.
+  t += 1;
+  const after = resolveRankingReadSource(client, { now });
+  for (let turns = 0; client.gates.length < 3; turns += 1) {
+    assert.ok(turns < 100, "the lookup after the window should reach the metrics call");
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  client.gates[2]();
+  assert.equal((await after).source, "shadow");
+});
+
 test("#7664 dashboard: legacy returns null without a query; ranking order is points, then rider id", async () => {
   reset();
   const client = recordingClient();
