@@ -18,6 +18,7 @@ import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwners
 import { buildRiderValueSnapshot, updateDealWithValueSnapshot } from "./dealValueSnapshot.js";
 import { isMarketBetaMode2176 } from "./marketBeta2176.ts";
 import { saleEscrowPayment, saleEscrowStatusForDeal, squadRestoreImage } from "./saleEscrowFlow6181.js";
+import { isSaleLockedForDeal, buildSaleLockedSellerNotification } from "./saleEscrowView6181.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
 import { resolvePendingGraduationOnSale } from "./academyGraduation.js";
 import { seniorSquadPatch } from "./squads.js";
@@ -758,7 +759,11 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     riderName: `${rider.firstname} ${rider.lastname}`, price, deferred: deferRegistration, riderId: rider.id,
   });
   await notifyTeamOwner(offer.buyer_team_id, completedPayload.type, completedPayload.title, completedPayload.message, offer.id, completedPayload.metadata);
-  await notifyTeamOwner(offer.seller_team_id, completedPayload.type, completedPayload.title, completedPayload.message, offer.id, completedPayload.metadata);
+  // #6181: er saelgers penge laast til holdskiftet, siger saelgerens besked det.
+  const sellerPayload = (await isSaleLockedForDeal(supabase, { parked: deferRegistration, dealType: "transfer", dealId: offer.id }))
+    ? { ...completedPayload, ...buildSaleLockedSellerNotification({ riderName: `${rider.firstname} ${rider.lastname}`, price, riderId: rider.id, titleCode: "notif.transfer.completed.title" }) }
+    : completedPayload;
+  await notifyTeamOwner(offer.seller_team_id, sellerPayload.type, sellerPayload.title, sellerPayload.message, offer.id, sellerPayload.metadata);
 
   await notifyIfContractExpiresThisSeason({
     supabase, teamId: offer.buyer_team_id, seasonNumber: activeSeasonNumber,

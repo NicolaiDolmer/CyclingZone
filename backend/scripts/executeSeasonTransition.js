@@ -12,6 +12,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { transitionToNextSeason } from "../lib/seasonTransition.js";
 import { FIRST_PROMOTION_RELEGATION_SEASON } from "../lib/economyConstants.js";
+import { saleEscrowTransitionGuard, SALE_ESCROW_FORCE_BLOCKED_ERROR } from "../lib/saleEscrowView6181.js";
 
 const arg = (n, d) => {
   const hit = process.argv.find((a) => a.startsWith(`--${n}=`));
@@ -58,6 +59,14 @@ console.warn(
 );
 if (EXECUTE && !seasonEndVerified) {
   console.warn(`⚠️  --execute kører ALLIGEVEL (scriptet er ugatet) — Ctrl+C nu hvis dette er en fejl.`);
+}
+
+// #6181 (ejer 13/11, fast regel): heller ikke dette ugatede script maa koere et
+// skifte, mens der staar laaste salg; ellers koerer loennen foer saelgers udbetaling.
+const saleEscrowGuard = await saleEscrowTransitionGuard(supabase, { execute: EXECUTE });
+if (saleEscrowGuard.blocked) {
+  console.error(`❌ ${SALE_ESCROW_FORCE_BLOCKED_ERROR}`);
+  process.exit(1);
 }
 
 const result = await transitionToNextSeason({

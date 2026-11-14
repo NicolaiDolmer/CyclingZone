@@ -284,6 +284,10 @@
         "title": "Transfers tijdens een lopende etappekoers",
         "text": "Als een renner wordt verhandeld (transfer, ruil of veiling) terwijl hij halverwege een lopende etappekoers zit, worden de deal en de betaling direct afgerond, maar hij rijdt de koers uit voor zijn verkopende team en sluit zich direct na de finish bij zijn nieuwe team aan. Zijn profiel toont ondertussen het komende team, en hij kan niet opnieuw worden verhandeld tot de overgang is voltooid. Koersen die nog niet zijn begonnen, worden niet geraakt: de renner verhuist direct. Een koersdag die al voor het vorige team is gebruikt, blijft na de overgang bezet. Hij kan zich inschrijven voor koersen op latere koersdagen."
       },
+      "midRaceTransfersEscrow": {
+        "title": "Transfers tijdens een lopende etappekoers",
+        "text": "Als een renner wordt verhandeld (transfer, ruil of veiling) terwijl hij halverwege een lopende etappekoers zit, betaalt de koper direct, maar het geld van de verkoper staat vast tot de renner van ploeg wisselt. Hij rijdt de koers uit voor zijn verkopende team en sluit zich direct na de finish bij zijn nieuwe team aan, en op dat moment wordt het geld aan de verkoper uitbetaald. Tot dan staat het bedrag als vast onder het saldo en bij Financiën onder Vast tot de ploegwissel. Zijn profiel toont ondertussen het komende team, en hij kan niet opnieuw worden verhandeld tot de overgang is voltooid. Wordt hij vrijgegeven voordat hij van ploeg wisselt, dan krijgt de koper het geld terug. Koersen die nog niet zijn begonnen, worden niet geraakt: de renner verhuist en de verkoper wordt direct betaald. Een koersdag die al voor het vorige team is gebruikt, blijft na de overgang bezet. Hij kan zich inschrijven voor koersen op latere koersdagen."
+      },
       "negotiation": {
         "title": "Heen-en-weer onderhandelen",
         "text": "Onderhandelen kan onbeperkt doorgaan. De verkoper stuurt een tegenbod, de koper kan het tegenbod accepteren, een nieuwe aanbieding doen of zich terugtrekken. De rondeteller laat zien hoe ver je in de onderhandeling bent."

@@ -733,15 +733,19 @@ krediteres først når rytteren faktisk skifter hold. Ved øjeblikkeligt skifte 
 | Refusion | frigives en solgt, ventende rytter (pension, kontraktudløb), får køberen pengene tilbage. I refusionens transaktion gendannes trup, kontrakt og graduering, tilmeldinger på et andet hold end rytterens ryddes, handlens status sættes (transfer og bytte `withdrawn`, auktion `cancelled`), og begge parter får besked præcis én gang | `refundSaleEscrowsForReleasedRiders`, triggeren `sale_escrow_restore_on_refund` |
 | Sikkerhedsnet | heal-sweepet afregner enhver holdt escrow, der kan afregnes, også efter at kontakten er slukket igen; beta-reset gør det samme | `reconcileHeldSaleEscrows` |
 | Vagter | sæsonskiftet venter på holdte escrows (`no_deferred_transfers`); invariant H i `ownershipInvariantWatch` melder en escrow, der ikke er afregnet efter 48 t uden et aktivt løb | `seasonTransitionReadiness.js`, `ownershipInvariantWatch.ts` |
+| Fast regel: intet tvunget sæsonskifte | et sæsonskifte tvinges aldrig igennem, mens der står låste salg (ejer 13/11). `POST /api/admin/season-transition` med `force` afvises med 409 `held_sale_escrows`, så længe en escrow er holdt; kan tabellen ikke læses, afvises force også | `countHeldSaleEscrowsForForce` (`saleEscrowView6181.js`) |
+| Visning (udgave A, ejer 13/11) | saldoen er det, holdet kan bruge; under den står "+X CZ$ låst" i menuen, på dashboardets saldokort og på Økonomis saldokort. Økonomi viser boksen "Låst til holdskifte" med én linje pr. salg: rytter, løb, hvor mange dage løbet har tilbage, beløb og "Udbetales, når rytteren skifter hold". Kilde: `GET /api/me/locked-sales` (eget hold). Intet låst = intet vist | `saleEscrowView6181.js`, `LockedSaleEscrows.tsx` |
+| Beskeder til sælgeren | ved en låst transfer eller auktion: "X er solgt for Y CZ$. Pengene er låst og udbetales, når han skifter hold efter sit etapeløb." Ved udbetalingen: "X har skiftet hold. Y CZ$ er nu på din saldo." Er handlen ikke låst, er beskederne de samme som før | `isSaleLockedForDeal`, `notifySellerSaleEscrowReleased` |
+| Hjælp | `transfers.midRaceTransfers` (sælger betales straks) vises med kontakten slukket, tvillingen `midRaceTransfersEscrow` med kontakten tændt | `helpFlagGates.js` |
 | Gentagelse | en handel med en escrow betales aldrig igen af den gamle sti; er escrow'en refunderet, er handlen annulleret (rytteren flyttes ikke, ingen betaler). Databasen afviser en sælger-kredit efter en refusion under holdlåsen | `saleEscrowStatusForDeal`, `2026-11-07-6181-sale-escrow-m2-guards.sql` |
 | Beta-nulstilling | stopper, før noget røres, hvis der findes fastlåste bytter, så en senere refusion ikke lægger gammel betaling oven i den nye startsaldo | `betaResetService.js` |
 | Fastlåst bytte | én rytter leveret, den anden mistet: heal-sweepet kan ikke afregne det. Admin afgør det med `GET /api/admin/sale-escrows` og `POST /api/admin/sale-escrows/:id/resolve` (`release` krediterer modtageren, `refund` giver betaleren beløbet tilbage; ingen rytter flyttes) | `resolveStuckSaleEscrow`, `resolve_stuck_sale_escrow` |
 
 Nuværende parkeringer får ingen tilbagevirkning: sælgeren af en handel fra før kontakten blev
-tændt, er allerede krediteret. Visning af låste penge og hjælpetekster kommer i PR 4.
+tændt, er allerede krediteret. Visning, beskeder og hjælp står i tabellen ovenfor.
 
-Målt 30/8: **0 ryttere står parkeret** (`select count(*) from riders where pending_team_id
-is not null`). Heal-sweepen tjekkede sidst ind 20:46:20 UTC med forventet kadence 300 sek.
+Målt 13/11: **1 rytter står parkeret** (`select count(*) from riders where pending_team_id
+is not null`; 30/8 var det 0). Heal-sweepen tjekkede sidst ind 20:46:20 UTC med forventet kadence 300 sek.
 
 Sweepen findes fordi flushen kun kaldes fra ét sted: Vasco Fernandes stod parkeret
 22/6→4/8 (over 40 dage) med en betalt, aldrig-leveret handel, og spilleren rapporterede det

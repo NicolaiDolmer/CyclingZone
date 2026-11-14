@@ -269,6 +269,9 @@ where a.status in ('active','extended')
 ```
 Er mængden **tom**: kør med `force=true` — men KUN efter at preview har vist alle andre checks grønne, og force-begrundelsen er "aktive auktioner uden pensions-risiko-ryttere, bevidst accepteret" (audit-logges automatisk). Er den **ikke tom**: krydstjek navnene mod #2700-varslets deterministiske pensionsliste (30 ryttere); auktioner på ryttere DER pensioneres annulleres via admin (`cancelAuctionByAdmin`) først, eller vent på deres udløb. NB: finaliserings-guarden (#2918-koden) fanger efterladte tilfælde, men proaktiv annullering er pænere for køberen.
 
+**Fast regel (ejer 13/11, #6181): et sæsonskifte tvinges aldrig igennem, mens der står låste salg.** Ellers kører lønnen, før sælgeren har fået sine penge. Endpointet afviser `force=true` med 409 `held_sale_escrows`, så længe `sale_escrows` har en række med status `held`. Lad heal-sweepet afregne dem (rytteren skifter hold, eller køberen får pengene tilbage), og afgør fastlåste bytter via `GET /api/admin/sale-escrows`.
+Spærren ligger i indgangene, ikke i selve skiftet (`transitionToNextSeason`): admin-endpointets force-gren og scriptet `backend/scripts/executeSeasonTransition.js` (via `saleEscrowTransitionGuard`). Den fulde genstart (`relaunchOrchestrator.js`) kalder skiftet direkte, men kører en fuld beta-nulstilling først, som afregner låsene og stopper ved fastlåste bytter. **En ny indgang til sæsonskiftet skal kalde `saleEscrowTransitionGuard` (eller `countHeldSaleEscrowsForForce`), før skiftet kører.**
+
 **5b-bis. Browser-timeout er IKKE en fejl (#2921).** Railways proxy lukker forbindelsen efter 5 minutter uden datatransfer, så UI'et kan vise en fejl mens serveren arbejder videre. **Klik ALDRIG igen på baggrund af et rødt svar alene** — verificér først i SQL:
 
 ```sql

@@ -36,6 +36,8 @@ import {
   squadRestoreImage,
 } from "./saleEscrowFlow6181.js";
 import { flushParkedRider } from "./stageRaceTransferDefer.js";
+import { notifySellerSaleEscrowReleased } from "./saleEscrowView6181.js";
+import { notifyTeamOwner } from "./notificationService.js";
 import { seniorSquadPatch } from "./squads.js";
 import { runFullBetaReset } from "./betaResetService.js";
 import { MIGRATIONS, SCHEMA } from "./__fixtures__/saleEscrow6181Schema.js";
@@ -120,9 +122,11 @@ function adapter(db, { log = [] } = {}) {
       is(col, v) { assert.equal(v, null); where.push(`${col} IS NULL`); return chain; },
       not(col, op, v) { assert.equal(op, "is"); assert.equal(v, null); where.push(`${col} IS NOT NULL`); return chain; },
       gt(col, v) { where.push(`${col} > ${param(v)}`); return chain; },
+      gte(col, v) { where.push(`${col} >= ${param(v)}`); return chain; },
       order() { return chain; },
       limit() { return chain; },
       maybeSingle() { single = true; return run(); },
+      single() { single = true; return run(); },
       then(resolve, reject) { return run().then(resolve, reject); },
     };
     return chain;
@@ -133,7 +137,19 @@ function adapter(db, { log = [] } = {}) {
         select: (cols) => query(table, "select").select(cols),
         update: (patch) => query(table, "update", patch),
         delete: () => query(table, "delete"),
-        insert: async () => ({ data: null, error: null }),
+        // #6181: beskeder skrives rigtigt, saa den rigtige notifyTeamOwner kan proeves her.
+        insert: async (row) => {
+          if (table !== "notifications") return { data: null, error: null };
+          log.push({ table, action: "insert" });
+          const cols = Object.keys(row);
+          const values = cols.map((c) => (row[c] !== null && typeof row[c] === "object" ? JSON.stringify(row[c]) : row[c]));
+          try {
+            await db.query(`INSERT INTO notifications(${cols.join(", ")}) VALUES (${cols.map((_, i) => `$${i + 1}`).join(", ")})`, values);
+            return { data: null, error: null };
+          } catch (e) {
+            return pgError(e);
+          }
+        },
       };
     },
     async rpc(name, args) {
@@ -931,4 +947,188 @@ test("tjekliste 6: fuld beta-nulstilling stopper foer noget roeres, hvis et bytt
   await assert.rejects(() => runFullBetaReset(supabase), /fastlaast/);
   assert.equal(await balance(db, TEAM.A), balanceBefore);
   assert.equal((await rider(db, RIDER.r2)).pending_team_id, TEAM.A, "intet er roert");
+});
+
+// ── #6181: saelgerens udbetalings-besked (dommerens B10 og B11) ───────────────
+const RELEASED_CODE = "notif.saleEscrow.releasedMessage";
+/** Taellende beskedfunktion: husker hvilke escrows der fik en udbetalings-besked. */
+function countingNotify() {
+  /** @type {string[]} */
+  const sent = [];
+  return { sent, fn: async (_supabase, escrow) => { sent.push(escrow.id); } };
+}
+/** settle_sale_escrow svarer det givne; alt andet gaar til databasen. */
+const settleAnswers = (supabase, answer) => ({
+  ...supabase,
+  async rpc(name, args) {
+    return name === "settle_sale_escrow" ? answer : supabase.rpc(name, args);
+  },
+});
+async function heldTransfer(db, supabase, price) {
+  await park(db, RIDER.r1, TEAM.B);
+  await db.query("INSERT INTO transfer_offers(id, status) VALUES ($1, 'accepted')", [DEAL.t1]);
+  await payBoth(supabase, await saleEscrowPayment(supabase, { parked: true, dealType: "transfer", dealId: DEAL.t1, riderIds: [RIDER.r1], targetTeamIds: [TEAM.B] }), transferLegs(DEAL.t1, price));
+}
+const withOwners = (db) => db.query("UPDATE teams SET user_id = CASE id WHEN $1::uuid THEN $3::uuid WHEN $2::uuid THEN $4::uuid END WHERE id IN ($1, $2)", [TEAM.A, TEAM.B, USER.A, USER.B]);
+const releasedNotes = async (db) => (await notifications(db)).filter((n) => n.metadata?.messageCode === RELEASED_CODE);
+
+test("#6181 B10: flushen sender udbetalings-beskeden een gang og kun efter 'released'", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  await heldTransfer(db, supabase, 60_000);
+  const parked = { id: RIDER.r1, pending_team_id: TEAM.B };
+
+  for (const answer of [
+    { data: { status: "already_settled" }, error: null },
+    { data: { status: "not_deliverable" }, error: null },
+    { data: null, error: { code: "XX000", message: "settle fejlede" } },
+  ]) {
+    const notify = countingNotify();
+    await releaseSaleEscrowForFlush(settleAnswers(supabase, answer), parked, { flushedAt: FLUSHED_AT, notifyReleased: notify.fn });
+    assert.deepEqual(notify.sent, [], `svar ${answer.data?.status ?? answer.error.message}: ingen besked`);
+  }
+  assert.equal(await balance(db, TEAM.A), START, "intet udbetalt endnu");
+
+  const notify = countingNotify();
+  let sellerBalanceAtNotice = null;
+  const res = await releaseSaleEscrowForFlush(supabase, parked, {
+    flushedAt: FLUSHED_AT,
+    notifyReleased: async (s, escrow) => { sellerBalanceAtNotice = await balance(db, TEAM.A); await notify.fn(s, escrow); },
+  });
+  assert.deepEqual(res, { data: [{ id: RIDER.r1 }], error: null });
+  assert.equal(notify.sent.length, 1, "praecis een besked");
+  assert.equal(sellerBalanceAtNotice, START + 60_000, "beskeden kommer efter udbetalingen");
+
+  const again = countingNotify();
+  assert.equal(await releaseSaleEscrowForFlush(supabase, parked, { flushedAt: FLUSHED_AT, notifyReleased: again.fn }), null);
+  assert.deepEqual(again.sent, [], "intet holdt tilbage: ingen ny besked");
+});
+
+test("#6181 B10: en fejlet besked vaelter ikke udbetalingen", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  await heldTransfer(db, supabase, 30_000);
+  const res = await releaseSaleEscrowForFlush(supabase, { id: RIDER.r1, pending_team_id: TEAM.B }, {
+    flushedAt: FLUSHED_AT,
+    notifyReleased: async () => { throw new Error("beskedtjenesten er nede"); },
+  });
+  assert.deepEqual(res, { data: [{ id: RIDER.r1 }], error: null });
+  assert.equal(await balance(db, TEAM.A), START + 30_000);
+});
+
+test("#6181 B11: reconcile sender kun udbetalings-besked ved 'released'; to koersler giver een besked i alt", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  await park(db, RIDER.r1, TEAM.B);
+  await park(db, RIDER.r3, TEAM.C);
+  await payBoth(supabase, await saleEscrowPayment(supabase, { parked: true, dealType: "transfer", dealId: DEAL.t1, riderIds: [RIDER.r1], targetTeamIds: [TEAM.B] }), transferLegs(DEAL.t1, 200_000));
+  await payBoth(supabase, await saleEscrowPayment(supabase, { parked: true, dealType: "transfer", dealId: DEAL.t2, riderIds: [RIDER.r3], targetTeamIds: [TEAM.C] }), transferLegs(DEAL.t2, 70_000, { buyer: TEAM.C }));
+  await setFlag(db, "off");
+  assert.equal(await flushParkedRider(supabase, { id: RIDER.r1, team_id: TEAM.A, pending_team_id: TEAM.B }, FLUSH_OPTS), true);
+  await db.query("UPDATE riders SET pending_team_id = NULL WHERE id = $1", [RIDER.r3]);
+
+  const notify = countingNotify();
+  const first = await reconcileHeldSaleEscrows({ supabase, now: new Date(FLUSHED_AT), notifyReleased: notify.fn });
+  assert.equal(first.released, 1);
+  assert.equal(first.refunded, 1);
+  const released = await one(db, "SELECT id FROM sale_escrows WHERE status = 'released'");
+  assert.deepEqual(notify.sent, [released.id], "kun den udbetalte faar beskeden, ikke den refunderede");
+
+  await reconcileHeldSaleEscrows({ supabase, now: new Date(FLUSHED_AT), notifyReleased: notify.fn });
+  assert.deepEqual(notify.sent, [released.id], "to koersler efter hinanden: een besked i alt");
+});
+
+test("#6181 B11: reconcile sender ingen besked, naar settle svarer 'already_settled', og en fejlet besked vaelter intet", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  await heldTransfer(db, supabase, 40_000);
+  await setFlag(db, "off");
+  assert.equal(await flushParkedRider(supabase, { id: RIDER.r1, team_id: TEAM.A, pending_team_id: TEAM.B }, FLUSH_OPTS), true);
+
+  const notify = countingNotify();
+  const settled = await reconcileHeldSaleEscrows({ supabase: settleAnswers(supabase, { data: { status: "already_settled" }, error: null }), now: new Date(FLUSHED_AT), notifyReleased: notify.fn });
+  assert.equal(settled.released, 0);
+  assert.deepEqual(notify.sent, []);
+
+  const result = await reconcileHeldSaleEscrows({ supabase, now: new Date(FLUSHED_AT), notifyReleased: async () => { throw new Error("nede"); } });
+  assert.deepEqual({ released: result.released, failed: result.failed }, { released: 1, failed: 0 });
+  assert.equal(await balance(db, TEAM.A), START + 40_000);
+});
+
+test("#6181 B11: refusion ved pension giver kun de to refusionsbeskeder, aldrig 'pengene er paa din saldo'", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  await withOwners(db);
+  await heldTransfer(db, supabase, 50_000);
+  await db.query("UPDATE riders SET team_id = NULL, pending_team_id = NULL WHERE id = $1", [RIDER.r1]);
+  assert.deepEqual(await refundSaleEscrowsForReleasedRiders(supabase, [RIDER.r1], { now: new Date(FLUSHED_AT), sourcePath: "test" }), { refunded: 1, failed: 0 });
+  const codes = (await notifications(db)).map((n) => n.metadata?.messageCode).sort();
+  assert.deepEqual(codes, ["notif.saleEscrowRefund.buyerMessage", "notif.saleEscrowRefund.sellerMessage"]);
+});
+
+test("#6181 Codex P1: udbetalings-beskeden faar afregningstidspunktet med hele vejen til den rigtige notifyTeamOwner", async () => {
+  /** Den rigtige beskedfunktion, men med et oeje paa hvilket ur den faar. */
+  const watched = () => {
+    /** @type {any[]} */
+    const clocks = [];
+    const fn = (s, escrow, opts) => notifySellerSaleEscrowReleased(s, escrow, {
+      ...opts,
+      notifyTeamOwner: async (args) => { clocks.push(args.now); return notifyTeamOwner(args); },
+    });
+    return { clocks, fn };
+  };
+
+  // Flushen: flushedAt.
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  await withOwners(db);
+  await heldTransfer(db, supabase, 60_000);
+  const flush = watched();
+  await releaseSaleEscrowForFlush(supabase, { id: RIDER.r1, pending_team_id: TEAM.B }, { flushedAt: FLUSHED_AT, notifyReleased: flush.fn });
+  assert.equal(flush.clocks.length, 1);
+  assert.ok(flush.clocks[0] instanceof Date, "et fast ur, ikke systemets");
+  assert.equal(flush.clocks[0].toISOString(), FLUSHED_AT);
+  assert.equal((await releasedNotes(db)).length, 1, "beskeden er skrevet gennem den rigtige tjeneste");
+
+  // Heal-sweepet: dets eget now.
+  const db2 = await database();
+  await setFlag(db2, "on");
+  const supabase2 = adapter(db2);
+  await withOwners(db2);
+  await heldTransfer(db2, supabase2, 40_000);
+  await setFlag(db2, "off");
+  assert.equal(await flushParkedRider(supabase2, { id: RIDER.r1, team_id: TEAM.A, pending_team_id: TEAM.B }, FLUSH_OPTS), true);
+  const sweepAt = new Date("2026-11-09T04:00:00.000Z");
+  const sweep = watched();
+  assert.equal((await reconcileHeldSaleEscrows({ supabase: supabase2, now: sweepAt, notifyReleased: sweep.fn })).released, 1);
+  assert.deepEqual(sweep.clocks, [sweepAt]);
+  assert.equal((await releasedNotes(db2)).length, 1);
+});
+
+test("#6181: udbetalings-beskeden gennem den rigtige notifyTeamOwner: een besked til saelgerens bruger, ogsaa efter heal-sweepet", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  await withOwners(db);
+  await heldTransfer(db, supabase, 60_000);
+  const escrowId = (await one(db, "SELECT id FROM sale_escrows")).id;
+
+  assert.equal(await flushParkedRider(supabase, { id: RIDER.r1, firstname: "Rytter", lastname: "En", team_id: TEAM.A, pending_team_id: TEAM.B }, FLUSH_OPTS), true);
+  assert.equal(await balance(db, TEAM.A), START + 60_000);
+  const sent = await releasedNotes(db);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].user_id, USER.A, "kun saelgeren");
+  assert.equal(sent[0].type, "transfer_offer_accepted");
+  assert.equal(sent[0].related_id, escrowId);
+  assert.equal(sent[0].metadata.titleCode, "notif.saleEscrow.releasedTitle");
+  assert.deepEqual(sent[0].metadata.messageParams, { riderName: "Rytter En", amount: 60_000 });
+
+  await reconcileHeldSaleEscrows({ supabase, now: new Date(FLUSHED_AT) });
+  assert.equal((await releasedNotes(db)).length, 1, "heal-sweepet sender ikke igen");
 });

@@ -6,6 +6,7 @@ import { startPresenceHeartbeat, readOnlineCountFromPresence } from "../lib/pres
 import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej (afløser den lokale expireSessionIfRejected, se #5233 fund 2)
 import { subscribeAuthedChannel } from "../lib/realtimeChannel";
 import { formatNumber } from "../lib/intl";
+import { LockedSalesLine, LOCKED_SALES_REFRESH_EVENT } from "./finance/LockedSaleEscrows.tsx"; // #6181
 import { ACTIVE_SURVEY_SLUG } from "../lib/survey.js"; // #4943
 import SetupWizardModal from "./SetupWizardModal";
 import { lazyWithRetry } from "../lib/lazyWithRetry.js";
@@ -409,6 +410,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
           <p className="text-cz-accent font-mono font-bold text-sm leading-tight" title={t("sidebar.balanceTooltip")}>
             {formatNumber(balance)} CZ$
           </p>
+          <LockedSalesLine refreshKey={balance} className="text-cz-sidebar-2 text-3xs mt-0.5" />
           {team?.division != null && (
             <p className="text-cz-sidebar-3 text-3xs mt-0.5" title={t("sidebar.divisionTooltip")}>{t("sidebar.division", { division: team.division })}</p>
           )}
@@ -759,7 +761,9 @@ export default function Layout() {
     // tomt tilbage midt i auth-init.
     return subscribeAuthedChannel("layout-notifs-v2", channel =>
       channel.on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${session.user.id}` },
-        async () => {
+        async (payload) => {
+          // #6181: et laast salg eller en refusion giver en NY besked, ikke en ny saldo. "Markeret som laest" aendrer intet laast.
+          if (payload?.eventType === "INSERT") window.dispatchEvent(new Event(LOCKED_SALES_REFRESH_EVENT));
           setUnread(await fetchUnreadCount(session.user.id));
           const { data: t } = await supabase.from("teams").select("balance").eq("user_id", session.user.id).maybeSingle();
           if (t) setBalance(t.balance);

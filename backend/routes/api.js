@@ -18,6 +18,7 @@ import { createTrainingProgramsRouter } from "./trainingPrograms.js"; // #4629
 import { createTrainingGroupsRouter } from "./trainingGroups.js"; // #6000
 import { createAdminRoadmapRouter } from "./adminRoadmap.js";
 import { createAdminSaleEscrowsRouter } from "./adminSaleEscrows.js";
+import { loadLockedSalesForTeam, countHeldSaleEscrowsForForce, SALE_ESCROW_FORCE_BLOCKED_ERROR } from "../lib/saleEscrowView6181.js"; // #6181
 import { createTrainingFatigueRulesRouter } from "./trainingFatigueRules.js"; // #4854
 import { stripProgramFromWeekDays } from "../lib/trainingPrograms.js"; // #4629
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
@@ -14267,6 +14268,14 @@ router.get("/finance/loans", requireAuth, async (req, res) => {
   } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
+// GET /api/me/locked-sales — #6181: saelgers laaste salgspenge for eget hold (menu, dashboard, Oekonomi)
+router.get("/me/locked-sales", requireAuth, presencePulseLimiter, async (req, res) => {
+  try {
+    if (!req.team) return res.json({ total: 0, sales: [] });
+    res.json(await loadLockedSalesForTeam(supabase, req.team.id));
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
+});
+
 // POST /api/finance/loans — optag nyt finanslån
 router.post("/finance/loans", requireAuth, marketWriteLimiter, async (req, res) => {
   try {
@@ -15000,6 +15009,11 @@ router.post("/admin/season-transition", requireAdmin, adminWriteLimiter, async (
           error: TRANSITION_BLOCKED_ERROR,
           readiness,
         });
+      }
+      // #6181 (ejer 13/11, fast regel): force kan aldrig tvinge et skifte forbi laaste salg.
+      const heldSaleEscrows = !readiness.ready && force ? await countHeldSaleEscrowsForForce(supabase) : 0;
+      if (heldSaleEscrows > 0) {
+        return res.status(409).json({ error: SALE_ESCROW_FORCE_BLOCKED_ERROR, code: "held_sale_escrows", held_sale_escrows: heldSaleEscrows, readiness });
       }
       if (!readiness.ready && force) {
         beforeTransitionWrites = async () => {

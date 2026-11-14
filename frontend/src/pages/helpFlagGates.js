@@ -93,6 +93,11 @@ export const HELP_BLOCK_FLAGS = Object.freeze({
     ceilingReached: CURVE_B_OFF,
     ceilingReachedCurveB: CURVE_B_ON,
   }),
+  // #6181: med saelgers pengelaas taendt betales saelgeren foerst ved holdskiftet.
+  transfers: Object.freeze({
+    midRaceTransfers: Object.freeze({ flag: "sale_escrow_enabled", when: false }),
+    midRaceTransfersEscrow: Object.freeze({ flag: "sale_escrow_enabled", when: true }),
+  }),
   facilities: Object.freeze({
     hireChiefScout: POTENTIAL_ESTIMATE_OFF,
     hireChiefScoutEstimate: POTENTIAL_ESTIMATE_ON,

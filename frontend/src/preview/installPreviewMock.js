@@ -11,6 +11,7 @@ import { plannerMockRoute } from "./plannerMock.js";
 import { scoutingMockRoute } from "./scoutingMock.js";
 import { previewEstimate, previewPotentialEstimateEnabled } from "./potentialEstimateMock.ts";
 import { contractsBatchMockRoute } from "./contractsBatchMock.ts"; // #6855
+import { previewLockedSalesPayload } from "./lockedSalesMock.ts"; // #6181
 import { boardMeetingMockRoute } from "./boardMeetingMock.js";
 import { betaAccessMockRoute } from "./betaAccessMock.js"; // #5259
 import { trainingProgramsMockRoute, previewSingleRaceDay, PREVIEW_TRAINING_PROGRAMS } from "./trainingProgramsMock.js"; // #4629
@@ -330,6 +331,9 @@ export function installPreviewMock() {
       if (method === "POST" && /\/api\/development\/transition\/dismiss$/.test(url)) {
         return jsonResponse({ ok: true });
       }
+
+      // #6181: saelgers laaste salg (tomt som standard; ?lockedSales=on viser to).
+      if (method === "GET" && /\/api\/me\/locked-sales$/.test(url)) return jsonResponse(previewLockedSalesPayload());
 
       // #6855: Kontrakter-fanens quote + batch-forlængelse.
       if (/\/api\/riders\/extend-contracts/.test(url)) {

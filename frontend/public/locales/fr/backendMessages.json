@@ -84,6 +84,11 @@
       "sellerTitle": "Transaction annulée",
       "sellerMessage": "{riders} n'a pas changé d'équipe, donc les {amount} CZ$ de la transaction sont retournés à l'autre équipe."
     },
+    "saleEscrow": {
+      "lockedMessage": "{riderName} est vendu pour {price} CZ$. L'argent est bloqué et versé quand il change d'équipe après sa course par étapes.",
+      "releasedTitle": "Vente versée",
+      "releasedMessage": "{riderName} a changé d'équipe. {amount} CZ$ sont maintenant sur ton solde."
+    },
     "admin": {
       "feedbackReply": {
         "title": "Réponse à ton message"

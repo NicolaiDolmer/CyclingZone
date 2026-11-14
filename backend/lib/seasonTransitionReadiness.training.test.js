@@ -348,7 +348,7 @@ test('settlement does not use a second conflicting deps.now clock', async () => 
 
 // Run the real route body and the real transition prefix together: the write
 // sentinel starts exactly where the production transition's first writes begin.
-for (const scenario of ['pending', 'partial', 'missing', 'complete', 'dry_run', 'audit_error']) {
+for (const scenario of ['pending', 'partial', 'missing', 'complete', 'dry_run', 'audit_error', 'held_sale_escrows']) {
   test(`forced transition audit follows settlement: ${scenario}`, async () => {
     if (scenario === 'pending' || scenario === 'partial') {
       await db.query('UPDATE training_date_work SET status=$1 WHERE team_id=$2', [scenario, 'b']);
@@ -362,7 +362,7 @@ for (const scenario of ['pending', 'partial', 'missing', 'complete', 'dry_run', 
     const handler = new AsyncFunction('req', 'res', 'supabase', 'Date', 'assessTransitionReadiness',
       'transitionToNextSeason', 'formatForceOverrideDescription', 'TRANSITION_BLOCKED_ERROR',
       'ADMIN_ACTION_TYPE', 'captureException', 'logTransitionPhaseSafe', 'TRANSITION_PHASE_STATUS',
-      'captureApiRouteError', 'runValuesAfterTransition', routeSource.slice(bodyStart, bodyEnd));
+      'captureApiRouteError', 'runValuesAfterTransition', 'countHeldSaleEscrowsForForce', 'SALE_ESCROW_FORCE_BLOCKED_ERROR', routeSource.slice(bodyStart, bodyEnd));
     const transitionSource = readFileSync(new URL('./seasonTransition.js', import.meta.url), 'utf8');
     const transitionStart = transitionSource.indexOf('export async function transitionToNextSeason(');
     const prefix = transitionSource.slice(transitionStart, transitionSource.indexOf('  const log = [];', transitionStart))
@@ -398,7 +398,8 @@ for (const scenario of ['pending', 'partial', 'missing', 'complete', 'dry_run', 
       readiness.formatForceOverrideDescription, readiness.TRANSITION_BLOCKED_ERROR,
       { MANUAL_OVERRIDE: 'manual_override' }, () => {},
       async () => { audit.push({ action_type: 'failed' }); }, { FAILED: 'failed' }, () => {},
-      async () => { valueRuns++; return { ran: false }; });
+      async () => { valueRuns++; return { ran: false }; },
+      async () => (scenario === 'held_sale_escrows' ? 2 : 0), 'held sale escrows block force'); // #6181
     if (['pending', 'partial', 'missing'].includes(scenario)) {
       assert.equal(status, 400);
       assert.equal(response.error, guardDetail);
@@ -412,6 +413,13 @@ for (const scenario of ['pending', 'partial', 'missing', 'complete', 'dry_run', 
       assert.equal(transitionWrites, 1);
       // #5842 (ejer 25/10): værdierne startes straks efter et fuldført skifte.
       assert.equal(valueRuns, 1);
+    } else if (scenario === 'held_sale_escrows') {
+      // #6181 (ejer 13/11): force kan aldrig tvinge et skifte forbi laaste salg.
+      assert.equal(status, 409);
+      assert.equal(response.code, 'held_sale_escrows');
+      assert.equal(audit.length, 0);
+      assert.equal(transitionWrites, 0);
+      assert.equal(settlementReads, 0);
     } else if (scenario === 'dry_run') {
       assert.equal(status, 200);
       assert.equal(audit.length, 0);
