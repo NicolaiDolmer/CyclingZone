@@ -1,7 +1,7 @@
 // #7535 · Ugeoversigten (week board): ugen paa tvaers af loebsdage. Loeb der deler loebsdage
 // ligger i hver sin bane, saa overlap er synligt med det samme. Hver bar viser loebets korte navn,
-// etape-striben og "x/6" valgte; klik vaelger loebet. Et gitter med 7 kolonner skalerer ned til
-// 375 px uden vandret scroll (en bar kan blive smal, navnet afkortes).
+// etape-striben og "x/6" valgte; klik vaelger loebet. Et gitter med 7 kolonner; paa mobil scroller
+// tidslinjen vandret inde i kortet (wireframet), saa navnene kan laeses uden at siden bliver bredere.
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronLeftIcon, ChevronRightIcon, Button } from "./primitives.ts";
@@ -71,9 +71,11 @@ export default function WeekBoard({
         </div>
       </header>
 
-      <div className="px-4 pb-4 pt-3">
+      {/* Mobil: tidslinjen scroller vandret inde i kortet (som wireframet paa 375), saa et loebsnavn i
+          en bar paa én dag kan laeses; siden selv bliver aldrig bredere end skaermen. Fra sm passer ugen. */}
+      <div className="overflow-x-auto px-4 pb-4 pt-3" data-testid="planning-week-board-scroll">
         <div
-          className="grid gap-x-1 gap-y-1.5"
+          className="grid min-w-[44rem] gap-x-1 gap-y-1.5 sm:min-w-0"
           style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}
         >
           {layout.days.map((day, i) => (
