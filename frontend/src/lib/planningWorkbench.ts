@@ -529,6 +529,96 @@ export function settleClearSave(
   return { mine: true, saved: submitted.sel, dirty: selectionDirty(view.sel, submitted.sel) };
 }
 
+// ── Skrive-laasen: ÉT sted ejer "der er et skrivekald i gang" ───────────────
+
+/** Hvilket skrivekald der koerer: fladens gem, en afmelding/deltag igen, eller sidens masse-gem. */
+export type WriteKind = "save" | "withdraw" | "bulk";
+
+export type WriteResult<T> = { ran: true; value: T } | { ran: false };
+
+/**
+ * Siden har én skrive-laas for alle sine skrivekald (gem, afmeld, masse-gem). Laasen tages synkront
+ * (et dobbeltklik kan aldrig sende to kald), og den slippes KUN af det kald, der tog den, naar det er
+ * faerdigt (ogsaa ved fejl). Intet andet kan slippe den: hverken en kladde, der anvendes, en
+ * fortrydelse eller fladens visnings-tilstand. Alle veje, der sender eller anvender noget, laeser den.
+ */
+export interface WriteGate {
+  /** Det kald, der holder laasen lige nu, eller null. */
+  current: () => WriteKind | null;
+  /** Til useSyncExternalStore: kaldes hver gang laasen tages eller slippes. */
+  subscribe: (listener: () => void) => () => void;
+  /** Koer `task` med laasen. Holdes den allerede, sendes intet (`ran: false`). */
+  run: <T>(kind: WriteKind, task: () => Promise<T>) => Promise<WriteResult<T>>;
+}
+
+export function createWriteGate(): WriteGate {
+  let held: WriteKind | null = null;
+  const listeners = new Set<() => void>();
+  const notify = () => {
+    for (const listener of [...listeners]) listener();
+  };
+  return {
+    current: () => held,
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    async run(kind, task) {
+      if (held) return { ran: false };
+      held = kind;
+      notify();
+      try {
+        return { ran: true, value: await task() };
+      } finally {
+        held = null;
+        notify();
+      }
+    },
+  };
+}
+
+/**
+ * Hvad fladen goer med sidens rydning lige nu. Mens et skrivekald koerer, VENTER den: en rydning
+ * eller en fortrydelse anvendes foerst, naar kaldet er faerdigt, saa en kladde aldrig kan blandes
+ * ind i (eller loese op for) et gem, der stadig er undervejs.
+ */
+export function pageClearStep({
+  ready,
+  pendingClear,
+  clearShown,
+  writing,
+}: {
+  ready: boolean;
+  pendingClear: boolean;
+  clearShown: boolean;
+  writing: WriteKind | null;
+}): "apply" | "undo" | "wait" | "none" {
+  if (!ready) return "none";
+  const step = pendingClear && !clearShown ? "apply" : !pendingClear && clearShown ? "undo" : "none";
+  return step !== "none" && writing ? "wait" : step;
+}
+
+/**
+ * Et klik paa et andet loeb. Mens et skrivekald koerer, saettes skiftet i koe og udfoeres, naar
+ * kaldet er faerdigt (saa et svar aldrig lander paa en flade, der er skiftet imens). Ugemte
+ * aendringer aabner bjaelken i stedet for at gaa tabt.
+ */
+export function raceSwitchStep({
+  same,
+  writing,
+  dirty,
+}: {
+  same: boolean;
+  writing: WriteKind | null;
+  dirty: boolean;
+}): "none" | "queue" | "ask" | "go" {
+  if (same) return "none";
+  if (writing) return "queue";
+  return dirty ? "ask" : "go";
+}
+
 // ── Trup-tabellen (Squad) ───────────────────────────────────────────────────
 
 export interface SquadRow {

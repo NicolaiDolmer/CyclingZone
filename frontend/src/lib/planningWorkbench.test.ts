@@ -44,6 +44,9 @@ import {
   undoPageClear,
   draftCacheAction,
   settleClearSave,
+  createWriteGate,
+  pageClearStep,
+  raceSwitchStep,
   type SeasonRace,
   type SquadRow,
   type Selection,
@@ -548,4 +551,152 @@ test("Ryd udtagelser (P2): kladden holdes altid inden for ét atomisk kald", () 
   // Det der gemmes er ét kald med hoejst loftet af aendringer.
   const entries = first.ids.map((raceId) => ({ raceId, riderId: "a", raceRole: null }));
   assert.equal(clearSubmission(entries, first.ids).changes.length, 60);
+});
+
+// ── Rettelsesrunde 2 PR #8160: én skrive-laas for alle skrivekald ───────────
+// Styrede loefter: testen bestemmer selv, hvornaar et kald "naar serveren", saa raekkefoelgen er
+// praecis den Codex beskrev. Ingen sleep, intet vaegur.
+
+function deferred<T = void>() {
+  let resolve!: (value: T) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+/** En falsk server: et skrivekald laegges foerst ind, naar testen slipper dets loefte (sidst ankomne vinder). */
+function fakeServer(initial: Record<string, Selection>) {
+  const rows = new Map(Object.entries(initial));
+  const calls: string[] = [];
+  return {
+    rows,
+    calls,
+    put(raceId: string, sel: Selection, arrive: Promise<void>) {
+      calls.push(`put:${raceId}`);
+      return arrive.then(() => {
+        rows.set(raceId, sel);
+        return true;
+      });
+    },
+    bulk(selections: Map<string, Selection>, arrive: Promise<void>) {
+      calls.push(`bulk:${[...selections.keys()].join(",")}`);
+      return arrive.then(() => {
+        for (const [raceId, sel] of selections) rows.set(raceId, sel);
+        return true;
+      });
+    },
+  };
+}
+
+test("skrive-laas (P1, Codex runde 2): Ryd udtagelser under et koerende gem kan ikke slippe laasen eller sende et masse-gem samtidig", async () => {
+  const gate = createWriteGate();
+  const saved = squad(["a", "b"], "a");
+  const draft = squad(["a", "b", "c"], "a");
+  const server = fakeServer({ r1: saved });
+
+  // 1. Det almindelige gem af r1 koerer (svaret er ikke kommet endnu).
+  const firstArrives = deferred();
+  const firstSave = gate.run("save", () => server.put("r1", draft, firstArrives.promise));
+  assert.equal(gate.current(), "save");
+
+  // 2. Manageren trykker "Ryd udtagelser": fladen venter med at anvende rydningen.
+  const view = { ready: true, pendingClear: true, clearShown: false };
+  assert.equal(pageClearStep({ ...view, writing: gate.current() }), "wait", "rydningen anvendes ikke midt i et gem");
+  // Selv hvis en kladde anvendes og fortrydes, roeres laasen ikke: kun gem-kaldet selv kan slippe den.
+  applyPageClear(draft, saved, []);
+  undoPageClear(draft, saved);
+  assert.equal(gate.current(), "save", "at anvende en kladde slipper aldrig laasen");
+
+  // 3. Masse-gemmet for samme loeb forsoeges: intet sendes, mens gemmet koerer.
+  let bulkSent = false;
+  const blocked = await gate.run("bulk", async () => {
+    bulkSent = true;
+    return server.bulk(new Map([["r1", squad([])]]), Promise.resolve());
+  });
+  assert.deepEqual(blocked, { ran: false });
+  assert.equal(bulkSent, false);
+  assert.deepEqual(server.calls, ["put:r1"], "kun det foerste gem er sendt");
+
+  // 4. Det foerste gem bliver faerdigt (sidst, som i Codex' raekkefoelge): laasen slippes nu.
+  firstArrives.resolve();
+  assert.deepEqual(await firstSave, { ran: true, value: true });
+  assert.equal(gate.current(), null);
+  assert.deepEqual(server.rows.get("r1"), draft);
+
+  // 5. Rydningen anvendes foerst nu, som en ugemt kladde oven paa det gemte (ejerens valg: Gem eller Fortryd).
+  assert.equal(pageClearStep({ ...view, writing: gate.current() }), "apply");
+  const shown = applyPageClear(draft, draft, []).sel;
+  assert.equal(selectionDirty(shown, server.rows.get("r1")!), true, "siden viser rydningen som UGEMT, ikke gemt");
+
+  // 6. Masse-gemmet sendes efter gemmet; serveren ender med det, siden viser som gemt.
+  const bulkArrives = deferred();
+  const bulk = gate.run("bulk", () => server.bulk(new Map([["r1", shown]]), bulkArrives.promise));
+  assert.equal(gate.current(), "bulk");
+  bulkArrives.resolve();
+  assert.equal((await bulk).ran, true);
+  assert.deepEqual(server.calls, ["put:r1", "bulk:r1"], "kaldene krydser aldrig");
+  assert.deepEqual(server.rows.get("r1"), shown);
+});
+
+test("skrive-laas: Fortryd venter ogsaa paa et koerende kald (masse-gem eller afmeld)", async () => {
+  const gate = createWriteGate();
+  const arrives = deferred();
+  const running = gate.run("bulk", () => arrives.promise);
+  const shownClear = { ready: true, pendingClear: false, clearShown: true };
+  assert.equal(pageClearStep({ ...shownClear, writing: gate.current() }), "wait");
+  arrives.resolve();
+  await running;
+  assert.equal(pageClearStep({ ...shownClear, writing: gate.current() }), "undo");
+  // Ikke klar (fladen henter), eller intet at goere: ingen handling.
+  assert.equal(pageClearStep({ ready: false, pendingClear: true, clearShown: false, writing: null }), "none");
+  assert.equal(pageClearStep({ ready: true, pendingClear: true, clearShown: true, writing: "save" }), "none");
+});
+
+test("skrive-laas: et dobbeltklik sender kun ét kald, ogsaa foer siden naar at tegne igen", async () => {
+  const gate = createWriteGate();
+  const arrives = deferred();
+  let sent = 0;
+  const task = () => {
+    sent += 1;
+    return arrives.promise;
+  };
+  // To klik i samme tik: laasen tages synkront i det foerste.
+  const first = gate.run("save", task);
+  const second = gate.run("save", task);
+  assert.deepEqual(await second, { ran: false });
+  assert.equal(sent, 1);
+  arrives.resolve();
+  assert.equal((await first).ran, true);
+});
+
+test("skrive-laas: et kald der fejler, slipper laasen og melder fejlen videre", async () => {
+  const gate = createWriteGate();
+  const seen: Array<string | null> = [];
+  const unsubscribe = gate.subscribe(() => seen.push(gate.current()));
+  const failing = deferred();
+  const run = gate.run("withdraw", () => failing.promise);
+  failing.reject(new Error("net"));
+  await assert.rejects(run, /net/);
+  assert.equal(gate.current(), null, "laasen haenger aldrig efter en fejl");
+  assert.deepEqual(seen, ["withdraw", null], "abonnenter hoerer baade tag og slip");
+  unsubscribe();
+  await gate.run("save", async () => true);
+  assert.deepEqual(seen, ["withdraw", null], "et afmeldt abonnement kaldes ikke");
+});
+
+test("skrive-laas: et loebsskift under et kald saettes i koe, saa svaret aldrig lander paa en anden flade", async () => {
+  const gate = createWriteGate();
+  const arrives = deferred();
+  const running = gate.run("save", () => arrives.promise);
+  assert.equal(raceSwitchStep({ same: false, writing: gate.current(), dirty: true }), "queue");
+  assert.equal(raceSwitchStep({ same: false, writing: gate.current(), dirty: false }), "queue");
+  arrives.resolve();
+  await running;
+  // Efter kaldet: ugemt kladde aabner bjaelken (et fejlet gem), ellers skiftes der.
+  assert.equal(raceSwitchStep({ same: false, writing: gate.current(), dirty: true }), "ask");
+  assert.equal(raceSwitchStep({ same: false, writing: gate.current(), dirty: false }), "go");
+  assert.equal(raceSwitchStep({ same: true, writing: "bulk", dirty: true }), "none");
 });
