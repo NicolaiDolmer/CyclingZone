@@ -310,7 +310,6 @@ export function deliveredRiderIds(escrow, ids, ridersById) {
  * Kaldes efter et settle med status 'released'. Kaster aldrig: pengene er allerede
  * flyttet, og en manglende besked maa ikke ligne en fejlet udbetaling.
  *
- * @param {any} supabase
  * onlyDelivered (admin-afgoerelsen af et fastlaast bytte, dommerens punkt 7): teksten
  * siger "X har skiftet hold", saa kun saelgerens ryttere, der faktisk er leveret,
  * naevnes. Er ingen af dem leveret, sendes intet, for teksten ville vaere forkert
