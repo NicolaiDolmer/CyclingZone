@@ -38,7 +38,7 @@ Kontakt `release_defer_8153`, binær, seed "off". Kontrakt til frontend: release
 
 ## S7. #8153 Frigivelse venter, frontend (byg)
 
-Issue-nummer i bølgen: #6504 (frigivelse). Ekstra linje i bekræftelsen og mærke "Leaves after {race}" i `RiderManageActions.jsx` og `TeamPage.jsx`; hook der læser `GET /api/me/pending-releases` (mønster `LockedSaleEscrows.tsx`), mocket efter kontrakten i S6. Tekster i NYT namespace `frontend/public/locales/{en,da,es,fr,nl}/pendingRelease.json` (EN og DA ordret fra designet). Rører ikke `help.json` eller `rider.json`.
+Ekstra linje i bekræftelsen og mærke "Leaves after {race}" i `RiderManageActions.jsx` og `TeamPage.jsx`; hook der læser `GET /api/me/pending-releases` (mønster `LockedSaleEscrows.tsx`), mocket efter kontrakten i S6. Tekster i NYT namespace `frontend/public/locales/{en,da,es,fr,nl}/pendingRelease.json` (EN og DA ordret fra designet). Rører ikke `help.json` eller `rider.json`.
 
 ## S8. #2176 Beta-sætningen ud (byg, draft til tændingsdagen)
 
