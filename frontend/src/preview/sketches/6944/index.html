@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sketch #6944 academy age group</title>
+<!--
+  Levende skitse til #6944. Statisk, ingen build, ingen netvaerk: aabn filen direkte i en browser.
+  Parametre: ?v=now|a|b|c  ?state=default|changed|saved|empty  ?theme=light|dark  ?lang=en|da  ?w=<px> (kun til billeder)
+  Klik i skitsen virker (valg, gem). Data er opfundne eksempler (Rytter A-L, Hold A). Ingen rigtige spillere,
+  hold eller balancetal. Antal rækker i optags-udsnittet er et illustrativt udsnit, ikke motorens fordeling.
+-->
+<style>
+:root{
+  --bg-body:#f4f2ec;--bg-card:#fcfbf7;--bg-subtle:#ece9e1;--border:#e5e0d5;--border-strong:#827f96;
+  --text-1:#0e0f15;--text-2:#4c4a5e;--text-3:#67657e;--accent:232 197 71;--accent-t:160 120 0;--on-accent:#1a1f38;
+  --success:21 119 47;--danger:168 30 30;--info:26 71 192;--radius:5px;
+  --font-sans:'DM Sans',system-ui,-apple-system,sans-serif;--font-data:'Inter Tight',system-ui,sans-serif;
+  --font-display:'Bebas Neue',Impact,'Arial Narrow',sans-serif;
+}
+[data-theme="dark"]{
+  --bg-body:#0e0f15;--bg-card:#161824;--bg-subtle:#14161e;--border:#2a2d3a;--border-strong:#6a6e86;
+  --text-1:#ededf2;--text-2:#9da0b3;--text-3:#888ba0;--accent-t:255 217 102;--success:95 217 138;--danger:251 132 132;--info:122 176 251;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg-body);color:var(--text-1);font:14px/1.45 var(--font-sans);-webkit-font-smoothing:antialiased}
+.num{font-family:var(--font-data);font-variant-numeric:tabular-nums}
+.outer{padding:16px}
+.page{max-width:896px;margin:0 auto}
+.sketch-bar{max-width:896px;margin:0 auto 16px;display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;padding:8px 12px;border:1px dashed var(--border-strong);border-radius:var(--radius);font-size:12px;color:var(--text-2)}
+.sketch-bar a{color:rgb(var(--accent-t));text-decoration:none;margin-right:6px}
+.sketch-bar a.on{font-weight:700;text-decoration:underline}
+h1{font:400 34px/1 var(--font-display);letter-spacing:.02em;margin:0 0 4px}
+.sub{color:var(--text-2);font-size:13px;margin:0 0 20px}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius)}
+.sh{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 12px;margin:24px 0 8px}
+.sh h2{margin:0;font:400 22px/1 var(--font-display);letter-spacing:.03em}
+.sh .meta{font-size:12px;color:var(--text-3)}
+.pad{padding:16px;display:grid;gap:16px}
+.intro{margin:0;font-size:12px;color:var(--text-2)}
+/* eksisterende felter (uaendret) */
+.fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+label.f{display:block;font-size:12px;font-weight:600;margin-bottom:4px}
+.sel{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--border-strong);border-radius:var(--radius);background:var(--bg-card);min-height:36px;padding:0 12px;font-size:13px;color:var(--text-1)}
+.sel.off{color:var(--text-3)}
+.sel svg{width:14px;height:14px;stroke:var(--text-3);fill:none;stroke-width:2}
+.fhelp{font-size:12px;color:var(--text-3);margin:4px 0 0}
+/* alders-blok */
+.agebox{border-top:1px solid var(--border);padding-top:16px;display:grid;gap:12px}
+.agebox .t{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;align-items:baseline}
+.agebox .t b{font-size:13px}
+.agebox .t span{font-size:12px;color:var(--text-2)}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.tile{all:unset;box-sizing:border-box;display:grid;gap:6px;align-content:start;padding:12px;border:1px solid var(--border-strong);border-radius:var(--radius);background:var(--bg-card);color:var(--text-1)}
+button.tile{cursor:pointer;min-height:44px}
+button.tile:focus-visible,.seg button:focus-visible,.opt:focus-visible,.btn:focus-visible{outline:2px solid rgb(var(--accent-t));outline-offset:2px}
+.tile[aria-pressed="true"]{background:var(--bg-subtle);box-shadow:inset 0 -2px 0 rgb(var(--accent))}
+.tile[aria-pressed="false"]{color:var(--text-3);border-style:dashed}
+.tile .age{font:700 28px/1 var(--font-data);font-variant-numeric:tabular-nums;display:flex;justify-content:space-between;align-items:center}
+.tile .age small{font:600 11px var(--font-sans);letter-spacing:.04em;text-transform:uppercase;color:var(--text-3)}
+.tile .ln{font-size:12px;color:var(--text-2)}
+.tile[aria-pressed="false"] .ln{color:var(--text-3)}
+.tile .join{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text-2)}
+.lvl{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-2)}
+.lvl i{width:8px;height:8px;border-radius:50%;border:1px solid var(--border-strong);display:inline-block}
+.lvl i.on{background:rgb(var(--accent));border-color:rgb(var(--accent-t))}
+.lvl em{font-style:normal;margin-left:4px}
+.tick{width:16px;height:16px;border-radius:3px;border:1px solid var(--border-strong);display:inline-flex;align-items:center;justify-content:center}
+.tile[aria-pressed="true"] .tick{background:rgb(var(--accent));border-color:rgb(var(--accent-t))}
+.tick svg{width:12px;height:12px;stroke:var(--on-accent);stroke-width:3;fill:none;opacity:0}
+.tile[aria-pressed="true"] .tick svg{opacity:1}
+.err{font-size:12px;color:rgb(var(--danger));margin:0;display:flex;gap:6px;align-items:center}
+.err::before{content:"";width:12px;height:12px;flex:none;background:currentColor;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v6M12 16.5v.01'/%3E%3C/svg%3E") center/contain no-repeat}
+/* variant B: segment */
+.seg{display:grid;grid-template-columns:1.4fr repeat(4,1fr);border:1px solid var(--border-strong);border-radius:var(--radius);overflow:hidden}
+.seg button{all:unset;box-sizing:border-box;cursor:pointer;padding:8px 12px;min-height:56px;display:flex;flex-direction:column;justify-content:center;gap:2px;background:var(--bg-card);color:var(--text-2);font-size:12px}
+.seg button+button{border-left:1px solid var(--border-strong)}
+.seg button b{font:700 18px/1.1 var(--font-data);font-variant-numeric:tabular-nums;color:var(--text-1)}
+.seg button.mixb b{font:700 14px/1.1 var(--font-sans)}
+.seg button[aria-checked="true"]{background:var(--bg-subtle);box-shadow:inset 0 -2px 0 rgb(var(--accent))}
+/* variant C: baand */
+.opts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.opt{all:unset;box-sizing:border-box;cursor:pointer;display:grid;gap:6px;align-content:start;padding:12px;border:1px solid var(--border-strong);border-radius:var(--radius);background:var(--bg-card);min-height:44px}
+.opt[aria-checked="true"]{background:var(--bg-subtle);box-shadow:inset 0 -2px 0 rgb(var(--accent))}
+.opt h3{margin:0;font:400 22px/1 var(--font-display);letter-spacing:.03em}
+.opt p{margin:0;font-size:12px;color:var(--text-2)}
+/* foersteregel + knap */
+.foot{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;border-top:1px solid var(--border);padding-top:12px}
+.foot .st{font-size:12px;color:var(--text-2);display:grid;gap:2px;min-width:0}
+.foot .st .p{color:var(--text-3)}
+.btn{min-height:36px;padding:0 16px;border-radius:var(--radius);font:600 13px var(--font-sans);cursor:pointer;border:1px solid var(--border-strong);background:transparent;color:var(--text-1)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+/* optags-udsnit */
+.strip{padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;display:flex;flex-wrap:wrap;gap:4px 16px;align-items:baseline}
+.strip b{font-variant-numeric:tabular-nums}
+.note{font-size:12px;color:var(--text-3);margin:8px 0 0}
+.row{display:grid;grid-template-columns:minmax(0,2fr) 56px minmax(0,1.2fr) minmax(0,1.2fr) minmax(0,1fr);gap:12px;padding:10px 16px;align-items:center;border-bottom:1px solid var(--border)}
+.row:last-child{border-bottom:0}
+.row.hd{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;padding:8px 16px;background:var(--bg-subtle)}
+.row .nm{font-weight:700;display:flex;align-items:center;gap:8px;min-width:0}
+.row .meta{font-size:12px;color:var(--text-2);font-weight:400}
+.row .lb{display:none}
+.flag{width:20px;height:14px;border:1px solid var(--border);flex:none;display:block}
+.tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-2)}
+.tag.u23{border-color:rgb(var(--accent-t));color:rgb(var(--accent-t))}
+.empty{padding:20px 16px;font-size:13px;color:var(--text-2)}
+.cmp{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px}
+@media(max-width:700px){
+  .outer{padding:12px 16px}
+  .fields{grid-template-columns:1fr}
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .opts{grid-template-columns:1fr}
+  .seg{grid-template-columns:repeat(2,1fr)}
+  .seg button+button{border-left:0}
+  .seg button{border-top:1px solid var(--border-strong)}
+  .seg button:nth-child(-n+2){border-top:0}
+  .seg button:nth-child(even){border-left:1px solid var(--border-strong)}
+  .seg button.mixb{grid-column:1/-1;border-left:0}
+  .seg button.mixb+button{border-left:0}
+  .row{grid-template-columns:1fr auto;gap:4px 12px}
+  .row.hd{display:none}
+  .row .c-age{grid-column:2;grid-row:1;text-align:right}
+  .row .c-start,.row .c-yrs,.row .c-join{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text-2)}
+  .row .lb{display:inline;color:var(--text-3)}
+  .foot .btn{width:100%;min-height:44px}
+}
+</style>
+</head>
+<body>
+<div class ="outer">
+<div class ="sketch-bar" id="bar"></div>
+<div class ="page" id="app"></div>
+</div>
+<script>
+(function(){
+  var q=new URLSearchParams(location.search);
+  var V=q.get('v')||'b', LANG=q.get('lang')||'en', STATE=q.get('state')||'default', THEME=q.get('theme')||'light';
+  document.documentElement.setAttribute('data-theme',THEME);
+  document.documentElement.lang=LANG;
+  if(q.get('w')) document.body.style.width=q.get('w')+'px';
+
+  var AGES=[16,17,18,19];
+  // Fast ur: sondag 15/11-2026. Aendringer traeder i kraft efter 14 dage.
+  var EFFECTIVE={en:'29 Nov',da:'29. nov.'};
+
+  var T={
+   en:{
+    sk:'Variant',vNow:'Today',vA:'A: pick ages',vB:'B: pick a focus age',vC:'C: two age bands',
+    title:'Academy',sub:'Sign young talent for your U23 and junior teams, and follow what your youth work earns.',
+    ph:'Academy profile',pm:'Level 3 · 5 candidates a week',
+    intro:'Shape who turns up in your weekly intake. A change applies after 14 days.',
+    origin:'Nationality or region',type:'Rider type',extra:'Extra choice',vOrigin:'Denmark',vType:'Climber',vExtra:'None',
+    ageH:'Age',
+    helpA:'Pick the ages your intake is drawn from. Ages you leave out do not show up.',
+    helpB:'Pick the age your intake leans towards. Other ages still show up, just less often.',
+    helpC:'Pick the age band your intake leans towards. The other band still shows up, just less often.',
+    mix:'Mixed',mixS:'Default: all ages, most are 16',
+    many:'Many',some:'Some',few:'Few',none:'None',
+    junior:'Junior team',u23:'U23 team',
+    t16:'Longest runway, lowest start',t17:'Long runway, low start',t18:'Shorter runway, higher start',t19:'Ready soonest, highest start',
+    rule:'The junior team takes riders aged 18 or younger. A 19-year-old always joins your U23 team.',
+    bandY:'Younger, 16 to 17',bandYD:'Longer runway, lower start. Mostly fills your junior team.',
+    bandO:'Older, 18 to 19',bandOD:'Higher start, ready sooner. 19-year-olds go to your U23 team.',
+    bandM:'Mixed',bandMD:'Default: all ages, most are 16.',
+    errEmpty:'Pick at least one age.',
+    active:'Active: {p}',pending:'Pending from {d}: {p}',delay:'A change applies after 14 days.',save:'Save profile',saved:'Saved. Your next intake after {d} follows this.',
+    ih:'This week’s intake, with your choice',im:'Preview',
+    iNote:'Preview with invented riders. The real intake follows your saved profile.',
+    sj:'{j} for the junior team, {u} for the U23 team.',
+    cR:'Rider',cA:'Age',cS:'Start',cY:'Youth seasons',cJ:'Joins',
+    startL:'Lowest',start2:'Low',start3:'Higher',start4:'Highest',
+    rider:'Rider',
+    nowNote:'Today you choose nationality and type, but not age. Intake ages are not up to you.',
+    all:'All ages',onlyE:'No ages selected, no preview.',
+    ageWord:'y/o'
+   },
+   da:{
+    sk:'Variant',vNow:'I dag',vA:'A: vælg aldre',vB:'B: vælg et fokus-alder',vC:'C: to aldersbånd',
+    title:'Akademi',sub:'Signer unge talenter til din U23- og juniortrup, og følg hvad dit ungdomsarbejde giver.',
+    ph:'Akademiprofil',pm:'Niveau 3 · 5 kandidater om ugen',
+    intro:'Præg hvem der dukker op i dit ugentlige optag. En ændring gælder efter 14 dage.',
+    origin:'Nationalitet eller region',type:'Ryttertype',extra:'Ekstra valg',vOrigin:'Danmark',vType:'Klatrer',vExtra:'Ingen',
+    ageH:'Alder',
+    helpA:'Vælg de aldre dit optag trækkes fra. Aldre du fravælger, dukker ikke op.',
+    helpB:'Vælg den alder dit optag hælder mod. Andre aldre dukker stadig op, bare sjældnere.',
+    helpC:'Vælg det aldersbånd dit optag hælder mod. Det andet bånd dukker stadig op, bare sjældnere.',
+    mix:'Blandet',mixS:'Standard: alle aldre, flest 16-årige',
+    many:'Mange',some:'Nogle',few:'Få',none:'Ingen',
+    junior:'Juniortrup',u23:'U23-trup',
+    t16:'Længst tid, laveste start',t17:'Lang tid, lav start',t18:'Kortere tid, højere start',t19:'Klar hurtigst, højeste start',
+    rule:'Juniortruppen tager ryttere på 18 år eller yngre. En 19-årig kommer altid på din U23-trup.',
+    bandY:'Yngre, 16 til 17',bandYD:'Længere tid, lavere start. Fylder mest din juniortrup.',
+    bandO:'Ældre, 18 til 19',bandOD:'Højere start, klar hurtigere. 19-årige kommer på din U23-trup.',
+    bandM:'Blandet',bandMD:'Standard: alle aldre, flest 16-årige.',
+    errEmpty:'Vælg mindst én alder.',
+    active:'Aktiv: {p}',pending:'Venter fra {d}: {p}',delay:'En ændring gælder efter 14 dage.',save:'Gem profil',saved:'Gemt. Dit næste optag efter {d} følger dette.',
+    ih:'Ugens optag, med dit valg',im:'Forhåndsvisning',
+    iNote:'Forhåndsvisning med opdigtede ryttere. Det rigtige optag følger din gemte profil.',
+    sj:'{j} til juniortruppen, {u} til U23-truppen.',
+    cR:'Rytter',cA:'Alder',cS:'Start',cY:'Ungdomssæsoner',cJ:'Kommer på',
+    startL:'Lavest',start2:'Lav',start3:'Højere',start4:'Højest',
+    rider:'Rytter',
+    nowNote:'I dag vælger du nationalitet og type, men ikke alder. Optagets aldre bestemmer du ikke.',
+    all:'Alle aldre',onlyE:'Ingen aldre valgt, ingen forhåndsvisning.',
+    ageWord:'år'
+   }
+  };
+  var L=T[LANG]||T.en;
+  function fill(s,o){return s.replace(/\{(\w+)\}/g,function(_,k){return o[k]})}
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+
+  // Opfundne kandidater. "start" er kvalitativ (1 lavest til 4 hoejest), ingen tal.
+  var NATS=['dk','nl','be','fr','it','de'];
+  var TYPES=[{en:'Climber',da:'Klatrer'},{en:'Sprinter',da:'Sprinter'},{en:'Rouleur',da:'Rouleur'},{en:'Puncheur',da:'Puncheur'}];
+  var POOL=[];
+  (function(){var i,k=0;for(i=0;i<24;i++){POOL.push({n:String.fromCharCode(65+i),age:16+Math.floor(i/6),nat:NATS[(i*5+2)%6],type:TYPES[(i*3+1)%4]});k++}})();
+  function flag(c){
+    var s={
+     dk:'<rect width="20" height="14" fill="#c8102e"/><rect x="6" width="2.6" height="14" fill="#fff"/><rect y="5.7" width="20" height="2.6" fill="#fff"/>',
+     nl:'<rect width="20" height="14" fill="#fff"/><rect width="20" height="4.7" fill="#ae1c28"/><rect y="9.3" width="20" height="4.7" fill="#21468b"/>',
+     be:'<rect width="20" height="14" fill="#fdda24"/><rect width="6.7" height="14" fill="#000"/><rect x="13.3" width="6.7" height="14" fill="#ef3340"/>',
+     fr:'<rect width="20" height="14" fill="#fff"/><rect width="6.7" height="14" fill="#0055a4"/><rect x="13.3" width="6.7" height="14" fill="#ef4135"/>',
+     it:'<rect width="20" height="14" fill="#fff"/><rect width="6.7" height="14" fill="#009246"/><rect x="13.3" width="6.7" height="14" fill="#ce2b37"/>',
+     de:'<rect width="20" height="14" fill="#dd0000"/><rect width="20" height="4.7" fill="#000"/><rect y="9.3" width="20" height="4.7" fill="#ffce00"/>'
+    }[c];
+    return '<svg class ="flag" viewBox="0 0 20 14" aria-hidden="true">'+s+'</svg>';
+  }
+
+  // Kvalitative niveauer pr. alder (0 ingen, 1 faa, 2 nogle, 3 mange).
+  var MIX={16:3,17:2,18:2,19:1};
+  function levelsFor(){
+    var o={},i;
+    if(V==='a'){ for(i=0;i<4;i++) o[AGES[i]]=st.ages.indexOf(AGES[i])>-1?MIX[AGES[i]]:0; return o; }
+    if(V==='b'){
+      if(st.focus==='mix') return {16:3,17:2,18:2,19:1};
+      for(i=0;i<4;i++) o[AGES[i]]=(AGES[i]===st.focus)?3:1; return o;
+    }
+    if(V==='c'){
+      if(st.band==='mix') return {16:3,17:2,18:2,19:1};
+      return st.band==='young'?{16:3,17:3,18:1,19:1}:{16:1,17:1,18:3,19:3};
+    }
+    return {16:2,17:2,18:2,19:2};
+  }
+  var st={ages:[16,17,18,19],focus:'mix',band:'mix',saved:false};
+  var DEFAULT={ages:[16,17,18,19],focus:'mix',band:'mix'};
+  if(STATE==='changed'||STATE==='saved'){ st.ages=[16,17]; st.focus=17; st.band='young'; }
+  if(STATE==='saved') st.saved=true;
+  if(STATE==='empty') st.ages=[];
+
+  function describe(){
+    if(V==='a') return st.ages.length===4?L.all:st.ages.join(', ');
+    if(V==='b') return st.focus==='mix'?L.mix:(L.ageH+' '+st.focus);
+    if(V==='c') return st.band==='mix'?L.mix:(st.band==='young'?L.bandY:L.bandO);
+    return '';
+  }
+  function isDirty(){
+    if(V==='a') return st.ages.length!==4;
+    if(V==='b') return st.focus!=='mix';
+    if(V==='c') return st.band!=='mix';
+    return false;
+  }
+
+  var WORD=function(n){return [L.none,L.few,L.some,L.many][n]};
+  function dots(n){var h='<span class ="lvl" role="img" aria-label="'+esc(WORD(n))+'">',i;for(i=1;i<=3;i++)h+='<i class ="'+(i<=n?'on':'')+'"></i>';return h+'<em>'+esc(WORD(n))+'</em></span>'}
+  function tileBody(a,lv){
+    return '<span class ="age"><span>'+a+' <small>'+L.ageWord+'</small></span>'+(V==='a'?'<span class ="tick"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>':'')+'</span>'+
+      dots(lv)+
+      '<span class ="ln">'+esc(L['t'+a])+'</span>'+
+      '<span class ="join">'+(a<=18?L.junior:L.u23)+'</span>';
+  }
+  function tiles(lv){
+    var h='<div class ="tiles">',i,a;
+    for(i=0;i<4;i++){a=AGES[i];
+      if(V==='a'){
+        var on=st.ages.indexOf(a)>-1;
+        h+='<button type="button" class ="tile" data-age="'+a+'" aria-pressed="'+on+'">'+tileBody(a,lv[a])+'</button>';
+      } else h+='<div class ="tile" role="group" aria-label="'+a+'">'+tileBody(a,lv[a])+'</div>';
+    }
+    return h+'</div>';
+  }
+
+  function ageBlock(){
+    var lv=levelsFor(),h='<div class ="agebox"><div class ="t"><b>'+L.ageH+'</b><span>'+L.rule+'</span></div>';
+    if(V==='a'){
+      h+='<p class ="intro">'+L.helpA+'</p>'+tiles(lv);
+      if(!st.ages.length) h+='<p class ="err" role="alert">'+L.errEmpty+'</p>';
+    }
+    if(V==='b'){
+      h+='<p class ="intro">'+L.helpB+'</p><div class ="seg" role="radiogroup" aria-label="'+L.ageH+'">'+
+        '<button type="button" class ="mixb" role="radio" data-focus="mix" aria-checked="'+(st.focus==='mix')+'"><b>'+L.mix+'</b><span>'+L.mixS+'</span></button>';
+      AGES.forEach(function(a){h+='<button type="button" role="radio" data-focus="'+a+'" aria-checked="'+(st.focus===a)+'"><b>'+a+'</b><span>'+(a<=18?L.junior:L.u23)+'</span></button>'});
+      h+='</div>'+tiles(lv);
+    }
+    if(V==='c'){
+      h+='<p class ="intro">'+L.helpC+'</p><div class ="opts" role="radiogroup" aria-label="'+L.ageH+'">'+
+        [['mix',L.bandM,L.bandMD],['young',L.bandY,L.bandYD],['old',L.bandO,L.bandOD]].map(function(o){
+          return '<button type="button" class ="opt" role="radio" data-band="'+o[0]+'" aria-checked="'+(st.band===o[0])+'"><h3>'+o[1]+'</h3><p>'+o[2]+'</p></button>'}).join('')+'</div>'+tiles(lv);
+    }
+    return h+'</div>';
+  }
+
+  // Illustrativt udsnit paa seks raekker: fordel efter niveau (stoerste rest), vis de foerste i puljen.
+  function sample(){
+    var lv=levelsFor(),tot=0,a,cnt={},rem=[],used=0,out=[];
+    AGES.forEach(function(x){tot+=lv[x]});
+    if(!tot) return [];
+    AGES.forEach(function(x){var e=6*lv[x]/tot;cnt[x]=Math.floor(e);used+=cnt[x];rem.push({a:x,r:e-cnt[x]})});
+    rem.sort(function(p,r){return r.r-p.r});
+    for(var i=0;used<6;i++,used++) cnt[rem[i%4].a]++;
+    AGES.forEach(function(x){var k=0;POOL.forEach(function(p){if(p.age===x&&k<cnt[x]){out.push(p);k++}});
+    });
+    return out.sort(function(p,r){return p.age-r.age});
+  }
+  function startLabel(a){return [L.startL,L.start2,L.start3,L.start4][a-16]}
+  function intake(){
+    var rows=sample(),h='<div class ="sh"><h2>'+L.ih+'</h2><span class ="meta">'+L.im+'</span></div><div class ="card" style="overflow:hidden">';
+    if(!rows.length) return h+'<div class ="empty">'+L.onlyE+'</div></div>';
+    var j=rows.filter(function(r){return r.age<=18}).length,u=rows.length-j;
+    h+='<div class ="strip"><span>'+fill(L.sj,{j:'<b>'+j+'</b>',u:'<b>'+u+'</b>'})+'</span></div>';
+    h+='<div class ="row hd"><span>'+L.cR+'</span><span>'+L.cA+'</span><span>'+L.cS+'</span><span>'+L.cY+'</span><span>'+L.cJ+'</span></div>';
+    rows.forEach(function(r){
+      h+='<div class ="row"><div class ="nm">'+flag(r.nat)+'<span>'+L.rider+' '+r.n+'<div class ="meta">'+esc(r.type[LANG]||r.type.en)+'</div></span></div>'+
+        '<div class ="c-age num"><b>'+r.age+'</b></div>'+
+        '<div class ="c-start"><span class ="lb">'+L.cS+'</span><span>'+startLabel(r.age)+'</span></div>'+
+        '<div class ="c-yrs num"><span class ="lb">'+L.cY+'</span><span>'+(23-r.age)+'</span></div>'+
+        '<div class ="c-join"><span class ="lb">'+L.cJ+'</span><span class ="tag '+(r.age<=18?'':'u23')+'">'+(r.age<=18?L.junior:L.u23)+'</span></div></div>';
+    });
+    return h+'</div><p class ="note">'+L.iNote+'</p>';
+  }
+
+  function chevron(){return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>'}
+  function card(){
+    var dirty=isDirty()&&V!=='now', empty=(V==='a'&&!st.ages.length);
+    var h='<div class ="sh"><h2>'+L.ph+'</h2><span class ="meta">'+L.pm+'</span></div><div class ="card pad">'+
+      '<p class ="intro">'+L.intro+'</p><div class ="fields">'+
+      '<div><label class ="f">'+L.origin+'</label><div class ="sel">'+L.vOrigin+chevron()+'</div></div>'+
+      '<div><label class ="f">'+L.type+'</label><div class ="sel">'+L.vType+chevron()+'</div></div>'+
+      '<div><label class ="f">'+L.extra+'</label><div class ="sel off">'+L.vExtra+chevron()+'</div></div></div>';
+    if(V!=='now') h+=ageBlock();
+    h+='<div class ="foot"><div class ="st"><span>'+fill(L.active,{p:L.vOrigin+' · '+L.vType+(V==='now'?'':' · '+L.mix)})+'</span>';
+    if(st.saved&&V!=='now') h+='<span class ="p">'+fill(L.pending,{d:EFFECTIVE[LANG],p:L.vOrigin+' · '+L.vType+' · '+describe()})+'</span>';
+    else h+='<span class ="p">'+L.delay+'</span>';
+    h+='</div><button type="button" class ="btn" id="save" '+((V==='now'||!dirty||empty||st.saved)?'disabled':'')+'>'+L.save+'</button></div>';
+    if(st.saved&&V!=='now') h+='<p class ="intro" role="status">'+fill(L.saved,{d:EFFECTIVE[LANG]})+'</p>';
+    if(V==='now') h+='<p class ="intro">'+L.nowNote+'</p>';
+    return h+'</div>';
+  }
+
+  function render(){
+    var bar='<b>#6944</b>'+['now','a','b','c'].map(function(v){
+      var u=new URLSearchParams(q);u.set('v',v);u.delete('state');
+      return '<a href="?'+u.toString()+'" class ="'+(v===V?'on':'')+'">'+L['v'+v.charAt(0).toUpperCase()+v.slice(1)]+'</a>';
+    }).join('');
+    document.getElementById('bar').innerHTML=bar;
+    document.getElementById('app').innerHTML='<h1>'+L.title+'</h1><p class ="sub">'+L.sub+'</p>'+card()+intake();
+    bind();
+  }
+  function bind(){
+    var app=document.getElementById('app');
+    Array.prototype.forEach.call(app.querySelectorAll('[data-age]'),function(b){b.onclick=function(){
+      var a=+b.getAttribute('data-age'),i=st.ages.indexOf(a);
+      if(i>-1)st.ages.splice(i,1);else{st.ages.push(a);st.ages.sort()}
+      st.saved=false;render();};});
+    Array.prototype.forEach.call(app.querySelectorAll('[data-focus]'),function(b){b.onclick=function(){
+      var f=b.getAttribute('data-focus');st.focus=f==='mix'?'mix':+f;st.saved=false;render();};});
+    Array.prototype.forEach.call(app.querySelectorAll('[data-band]'),function(b){b.onclick=function(){
+      st.band=b.getAttribute('data-band');st.saved=false;render();};});
+    var s=document.getElementById('save');
+    if(s) s.onclick=function(){st.saved=true;render();};
+  }
+  render();
+})();
+</script>
+</body>
+</html>
