@@ -61,6 +61,8 @@ export interface StagePageV2Props {
   hideNav?: boolean;
   /** #7778: v6 har taktik-knappen i loebshovedet (valg 8); default false = uaendret. */
   hideTacticsAction?: boolean;
+  /** #7865: v6 viser planen mod det der skete i Taktik (valg 11); default false = uaendret. */
+  hideOrdersRecap?: boolean;
 }
 
 export default function StagePageV2(props: StagePageV2Props) {
@@ -68,7 +70,7 @@ export default function StagePageV2(props: StagePageV2Props) {
     isStageRace, totalStages, stagesCompleted, raceFinished, selectedStage, todayStage, onSelectStage,
     activeTab, onChangeTab, onOpenTactics, profileByStage, schedule, timeLabelFor, results, stagePointRows, stageLoaded, stageErrorSlot,
     myTeamId, stageRoles, careerEvents, dnfRows = [], standingsSlot, teamSlot, tacticsSlot, emptyStageSlot, nowMs, raceId = null,
-    hideNav = false, hideTacticsAction = false,
+    hideNav = false, hideTacticsAction = false, hideOrdersRecap = false,
   } = props;
   const { t } = useTranslation("races");
 
@@ -192,7 +194,7 @@ export default function StagePageV2(props: StagePageV2Props) {
           storyError={storyError}
         />
       )}
-      {activeTab === "stage" && phase === "after" && (ranTimeline?.timeline_version ?? 1) >= 2 && (
+      {activeTab === "stage" && phase === "after" && !hideOrdersRecap && (ranTimeline?.timeline_version ?? 1) >= 2 && (
         <div data-race-section="orders"><StageOrdersRecap raceId={raceId} stageNumber={selectedStage} riderIds={ownStageRiders} nameOf={nameOfRider} profileType={profileByStage[selectedStage]?.profile_type ?? null} stageRoles={stageRoles} ranAt={ranTimeline?.created_at ?? null} teamOrders={knownOrders?.value ?? null} /></div>
       )}
       {activeTab === "standings" && <div data-race-section="standings">{standingsSlot}</div>}

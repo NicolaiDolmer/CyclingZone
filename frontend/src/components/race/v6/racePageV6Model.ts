@@ -58,3 +58,29 @@ export function tacticsCta({
   const progress = tacticsProgress(riders, overrides, stage);
   return { stage, locksAt, done: progress.done, total: progress.total };
 }
+
+/**
+ * #7865: Taktik-fanens etape. `requested` er den seneste eksplicitte navigation
+ * (Taktiks egen stribe eller hovedets guld-knap; siden ejer den og nulstiller den,
+ * når fanen forlades). Uden den åbner fanen på etapen guld-knappen nævner, ellers
+ * på den valgte etape. Den sidste handling vinder altid, så guld-knappen åbner
+ * editoren, også når en kørt etape står valgt i striben.
+ */
+export function v6TacticsStage({ requested, ctaStage, selectedStage }: { requested: number | null | undefined; ctaStage: number | null | undefined; selectedStage: number }): number {
+  return requested ?? ctaStage ?? selectedStage;
+}
+
+/** En etapes resultater, som siden henter dem pr. etape (stageFetchState). */
+export type StageResultsState = "loaded" | "loading" | "failed";
+
+/**
+ * #7865: planen mod det der skete bygger på etapens resultater (placeringer og egne
+ * ryttere). null = ingen sammenligning (fanen er ikke Taktik, eller etapen er ikke kørt);
+ * ellers etapens hentetilstand. Uden kendt tilstand (ældre kald) regnes den for hentet.
+ */
+export function v6TacticsResults({ activeTab, stage, stagesCompleted, stateFor }: {
+  activeTab: RacePageV6Tab; stage: number; stagesCompleted: number; stateFor?: ((n: number) => StageResultsState) | null;
+}): StageResultsState | null {
+  if (activeTab !== "tactics" || stage > stagesCompleted) return null;
+  return stateFor ? stateFor(stage) : "loaded";
+}
