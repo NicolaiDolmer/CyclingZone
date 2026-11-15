@@ -2,8 +2,9 @@
 //
 // Foer trin 4a laeste hvert dag-felt loebsbelastningen (training_race_loads) igen, saa en straks-
 // rytters FORELOEBIGE form og traethed talte en etape med, der blev afgjort, mens trykket koerte.
-// Trin 4a tog belastningen fra trykkets hukommelse og tabte den. Rettelsen laeser belastningen igen i
-// det dag-felt, der skriver det foreloebige tal (kun for det tal).
+// Trin 4a tog belastningen fra trykkets hukommelse og tabte den. Rettelsen stiller dag-feltets eget
+// spoergsmaal om belastningen igen i det dag-felt, der skriver det foreloebige tal; har bogen aendret
+// sig, siden trykket hentede, traeder hukommelsen til side, og dag-feltet laeser alt som foer.
 //
 // Proeven afgoer etapen efter trykkets gemme-kald nr. 1, 2 og 4 og sammenligner med mains motor.
 // "Mains motor" er samme tryk, hvor hvert dag-felt laeser alt selv (runDay uden trykkets hukommelse):
@@ -16,7 +17,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { runTrainNow } from "./trainNow.js";
 import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
-import { SCENARIOS, seedState, createFake, finishRace, canon, digest, PRESS_AT, SEASON, RACE } from "./trainNowSameResult7982.harness.js";
+import { SCENARIOS, seedState, createFake, finishRace, canon, digest, PRESS_AT, SEASON, RACE, TEAM, DATE1, DAYS1 } from "./trainNowSameResult7982.harness.js";
 
 const QUIET = { info() {}, warn() {}, error() {}, log() {} };
 const isCommit = (name) => name.replace(/^try_/, "") === "commit_training_date_tick";
@@ -32,14 +33,31 @@ async function quietly(fn) {
  * Ét tryk som ruten kalder det (som harnessets press), hvor etapen afgoeres lige efter gemme-kald
  * nr. `settleAfter` (null: ingen etape). `runDay` udeladt = grenens motor med trykkets hukommelse.
  */
-async function pressWithStage(seed, { settleAfter = null, runDay = undefined, isBetaTester = true } = {}) {
+async function pressWithStage(seed, { settleAfter = null, runDay = undefined, isBetaTester = true, raceSession = false, retryOnThrow = false } = {}) {
   const state = seedState(seed);
   const fake = createFake(state);
   const realRpc = fake.supabase.rpc;
   let commits = 0;
+  let inSession = false;
   fake.supabase.rpc = async (name, args) => {
     const result = await realRpc(name, args);
-    if (isCommit(name) && (commits += 1) === settleAfter) finishRace(state);
+    if (!inSession && isCommit(name) && (commits += 1) === settleAfter) {
+      finishRace(state);
+      // #8195: delkoerslen afregner loebets session lige efter etapen, midt i trykket (som
+      // runRaceSessionSettlement kalder motoren: kun loebets loebsdag, kun loebets ryttere).
+      if (raceSession) {
+        inSession = true;
+        const ids = state.race_entries.filter((row) => row.race_id === RACE).map((row) => row.rider_id);
+        try {
+          await runTeamTrainingDay({
+            supabase: fake.supabase, teamId: TEAM, seasonId: SEASON.id, seasonNumber: SEASON.number, now: PRESS_AT,
+            tickDateOverride: DATE1, gameDay: 43, dateGameDays: DAYS1, executedBy: "assistant", eligibleRiderIds: ids,
+            unresolvedSlotsByRider: {}, deadlineAt: new Date(Date.parse(`${DATE1}T00:00:00Z`) + 25 * 3600 * 1000).toISOString(),
+            deadlineReached: false, raceSessionRiderIds: new Set(ids),
+          });
+        } finally { inSession = false; }
+      }
+    }
     return result;
   };
   fake.ctx.tryk += 1;
@@ -47,12 +65,19 @@ async function pressWithStage(seed, { settleAfter = null, runDay = undefined, is
     supabase: fake.supabase, team: structuredClone(state.teams[0]), season: SEASON, isBetaTester, now: PRESS_AT, logger: QUIET,
     loadDaySpans: async () => new Map(), confirmedShortRaceIds: state.races.map((row) => row.id),
     ...(runDay ? { runDay } : {}),
-  }));
+  })).catch((err) => ({ status: `kast: ${err.message}` }));
   const provisional = fake.log.filter((entry) => entry.kind === "rpc" && isCommit(entry.target))
     .flatMap((entry) => (entry.payload?.p_conditions ?? []).filter((row) => row.provisional === true)
       .map((row) => ({ game_day: entry.payload.p_game_day, rider_id: row.rider_id, form: row.form, fatigue: row.fatigue })));
+  let retry = null;
+  if (retryOnThrow && typeof response.status === "string") {
+    retry = await quietly(() => runTrainNow({
+      supabase: fake.supabase, team: structuredClone(state.teams[0]), season: SEASON, isBetaTester, now: new Date(PRESS_AT.getTime() + 60_000), logger: QUIET,
+      loadDaySpans: async () => new Map(), confirmedShortRaceIds: state.races.map((row) => row.id),
+    })).catch((err) => ({ status: `kast: ${err.message}` }));
+  }
   return {
-    status: response.status, provisional: canon(provisional), commits, state,
+    status: response.status, retryStatus: retry?.status ?? null, provisional: canon(provisional), commits, state,
     raceLoadReads: fake.log.filter((entry) => entry.kind === "read" && entry.target === "training_race_loads").length,
     reads: fake.log.filter((entry) => entry.kind === "read").length, calls: fake.log.length,
   };
@@ -116,3 +141,36 @@ test("mains motor laeser belastningen i hvert dag-felt (det, trin 4a erstattede 
     for (const settleAfter of [1, 2, 4]) console.log(`settle ${settleAfter}`, JSON.stringify((await pressWithStage(BIG, { settleAfter })).provisional));
   }
 });
+
+// #8195 (delkoerslen efter etapen, bag slukket kontakt): gemmer den loebets session midt i trykket,
+// mangler trykkets hukommelse den nye kvittering. Efter gemme-kald nr. 4 opdager det foreloebige
+// dag-felt det (belastningen er aendret) og laeser alt som foer: trykket ender som paa main. Efter
+// gemme-kald nr. 1 og 2 kommer et dag-felt foer det, og databasen afviser dets gemme-kald
+// ("receipt snapshot changed"): intet gemmes, trykket svarer med en fejl, og et nyt tryk goer datoen
+// faerdig. Det er dommens fund 4 (LAVT), som nu ogsaa kan ramme via delkoerslen. Proeven laaser, at
+// intet forkert bliver staaende: efter det nye tryk er alle tabeller som efter mains ene tryk.
+const RACE_TABLES = ["rider_derived_abilities", "rider_condition", "training_rider_ticks", "training_condition_settlements", "training_race_loads", "training_date_work"];
+test("#8195: loebets session afregnes efter etapen midt i trykket (efter gemme-kald nr. 4): trykket ender som med mains motor", async () => {
+  const branch = await pressWithStage(BIG, { settleAfter: 4, raceSession: true });
+  const main = await pressWithStage(BIG, { settleAfter: 4, raceSession: true, runDay: mainEngine });
+  assert.equal(main.status, 200);
+  assert.equal(branch.status, 200);
+  assert.ok(main.state.training_rider_ticks.some((row) => row.report?.race_session_7982 === true), "delkoerslen skrev loebets session");
+  assert.deepEqual(branch.provisional, main.provisional);
+  for (const table of RACE_TABLES) assert.equal(digest(branch.state[table]), digest(main.state[table]), `${table} er som med mains motor`);
+});
+for (const settleAfter of [1, 2]) {
+  test(`#8195: loebets session midt i trykket (efter gemme-kald nr. ${settleAfter}): databasen afviser, intet forkert gemmes, og et nyt tryk ender som mains`, async () => {
+    const branch = await pressWithStage(BIG, { settleAfter, raceSession: true, retryOnThrow: true });
+    const main = await pressWithStage(BIG, { settleAfter, raceSession: true, runDay: mainEngine });
+    assert.equal(main.status, 200, "mains motor laeser kvitteringerne igen og gaar igennem");
+    assert.match(String(branch.status), /receipt snapshot changed/, "grenens tryk afvises af databasen (fund 4)");
+    assert.equal(branch.retryStatus, 200, "det nye tryk gaar igennem");
+    // Tidsstempler kommer fra det nye tryks oejeblik; alt andet skal vaere som efter mains ene tryk.
+    const untimed = (value) => (Array.isArray(value) ? value.map(untimed) : value && typeof value === "object"
+      ? Object.fromEntries(Object.entries(value).filter(([key]) => key !== "at" && !key.endsWith("_at")).map(([key, item]) => [key, untimed(item)])) : value);
+    for (const table of RACE_TABLES) {
+      assert.equal(digest(untimed(branch.state[table])), digest(untimed(main.state[table])), `${table} er som efter mains ene tryk (tidsstempler undtaget)`);
+    }
+  });
+}
