@@ -41,7 +41,10 @@ async function pressOnce(name) {
 // Lofterne. Tallet i kommentaren er main efter trin 3 (stedfortraeder, kold kontakt-cache).
 const CASES = [
   // [scenarie, ventetider i alt, ventetider efter foerste gemme-kald, kald i alt]
-  ["stort_hold_beta_tryk", 46 /* 78 */, 9 /* 41 */, 90 /* 144 */],
+  // Kald hævet 90 -> 91: ejeren godkendte 15/11 én ekstra læsning af training_race_loads i et
+  // dag-felt med en straks-rytter, så de foreløbige tal er som på main (Fable-dommens fund 1).
+  // Main læser løbsbelastningen 6 gange pr. tryk.
+  ["stort_hold_beta_tryk", 46 /* 78 */, 9 /* 41 */, 91 /* 144 */],
   ["stort_hold_almindeligt_tryk", 44 /* 76 */, 9 /* 41 */, 88 /* 141 */],
   ["lille_hold_uden_loeb", 38 /* 64 */, 9 /* 34 */, 82 /* 129 */],
   ["bundet_etape_koert", 52 /* 96 */, 9 /* 59 */, 125 /* 167 */],

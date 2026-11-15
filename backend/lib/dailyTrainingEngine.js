@@ -743,6 +743,30 @@ async function commitTrainingDateTick({
 }
 
 /**
+ * #7737: on the last free race day of an instant press every other race day of the date has the
+ * stamped rider's receipt or is an open race slot: his form and fatigue are then counted now
+ * (provisionally). One rule for computeTrainingDayTick and the press (pressProvisionalRiderIds).
+ */
+function countsProvisionalNow({ instantRider, instantPress, settlesCondition, dateDays, raceDay, dateReceiptOn, unresolvedSlots }) {
+  return instantRider && instantPress && !settlesCondition
+    && dateDays.every(day => day === raceDay || dateReceiptOn(day) || unresolvedSlots.some(slot => Number(slot.gameDay) === day));
+}
+
+/**
+ * #7982 trin 4a: the stamped riders a later day field of the press counts provisionally (the
+ * same rule and inputs as computeTrainingDayTick). Their race loads are read again for that count.
+ */
+function pressProvisionalRiderIds({ riderIds, plan, instantPress, dateDays, raceDay, unresolvedSlotsByRider }) {
+  return riderIds.filter((riderId) => {
+    if (!plan.instantRiderIds.has(riderId)) return false;
+    const dateReceiptOn = (day) => plan.dateReceipts.find((row) => row.rider_id === riderId && row.game_day === day);
+    const settlesCondition = dateDays.filter((day) => day !== raceDay && dateReceiptOn(day)).length === dateDays.length - 1;
+    const unresolvedSlots = (unresolvedSlotsByRider instanceof Map ? unresolvedSlotsByRider.get(riderId) : unresolvedSlotsByRider?.[riderId]) ?? [];
+    return countsProvisionalNow({ instantRider: true, instantPress, settlesCondition, dateDays, raceDay, dateReceiptOn, unresolvedSlots });
+  });
+}
+
+/**
  * #7982 trin 4a: which riders a later day field of the press trains, from what the press holds.
  * The same selection steps as a day field that reads (eligible, not waiting, no receipt yet).
  * Returns null when the press does not hold every rider this day field needs at every step, or
@@ -823,6 +847,19 @@ async function runPressDayFromMemory({
     supabase, teamId, seasonId, raceDay, riderIds, dateGameDays, conditionPerDate: true,
     raceDayDevelopmentOn: held.raceDayDevelopmentOn, raceRoleYield: held.raceRoleYield,
   });
+  // #7737 + #7982: a stage may be settled since the press fetched. Every day field before trin
+  // 4a read the race loads, so a provisional count saw it: read them again for the riders this
+  // day field counts provisionally (one read, the day field's own as before; none when it
+  // counts nobody provisionally). Only that count uses it.
+  const provisionalIds = pressProvisionalRiderIds({ riderIds, plan, instantPress, dateDays, raceDay, unresolvedSlotsByRider });
+  let provisionalLoadRows = null;
+  if (provisionalIds.length) {
+    const { data, error } = await supabase.from('training_race_loads').select('*')
+      .eq('season_id', seasonId).eq('tick_date', tickDate).in('rider_id', riderIds);
+    if (error) throw new Error(`race condition ledger load: ${error.message}`);
+    assertRaceLoadsOpen(data ?? [], dateDays);
+    provisionalLoadRows = canonicalRaceLoads(data ?? []);
+  }
   const input = {
     ...held, ...frame, raceDay, now, unresolvedSlotsByRider,
     riders: plan.riders, dateWork: plan.dateWork, dateReceipts: plan.dateReceipts,
@@ -833,7 +870,7 @@ async function runPressDayFromMemory({
     raceDayResult: race.raceDayResult, boundRiderIds: race.boundRiderIds, racedRiderIds: race.racedRiderIds,
     racedRiderProfileByRider: race.racedRiderProfileByRider, raceDayEffortByRider: race.raceDayEffortByRider,
     raceDayRoleByRiderMap: race.raceDayRoleByRiderMap, stageOnDateRiderIds: race.stageOnDateRiderIds,
-    stageYesterdayRiderIds: new Set(),
+    stageYesterdayRiderIds: new Set(), provisionalLoadRows,
   };
   pressTimer?.lap("load");
   const tick = computeTrainingDayTick(input);
@@ -1681,6 +1718,8 @@ export function computeTrainingDayTick(input) {
     racedRiderProfileByRider, raceDayEffortByRider, raceDayRoleByRiderMap, programsOn, catalogV3On,
     stageOnDateRiderIds, fatigueRules, stageYesterdayRiderIds, trainingFacilityTier, trainingStaff,
     teamMedicalBonus, illnessOn, illnessHistoryByRider,
+    // #7982 trin 4a: only a later day field of the press passes these (canonical rows, read now).
+    provisionalLoadRows = null,
   } = input;
   const settlingRiderIds = new Set();
   const abilityByRider = new Map((abilityRows ?? []).map((a) => [a.rider_id, a]));
@@ -2024,14 +2063,17 @@ export function computeTrainingDayTick(input) {
     // "sluk udviklingen for S3" umulig før dette split.
     // #7737: on the last free race day of an instant press every missing race day is an open
     // race slot. His form and fatigue are then counted now, with the stage load still to come.
-    const provisionalNow = instantRider && instantPress && !settlesCondition
-      && dateDays.every(day => day === raceDay || dateReceiptOn(day) || unresolvedSlots.some(slot => Number(slot.gameDay) === day));
+    const provisionalNow = countsProvisionalNow({ instantRider, instantPress, settlesCondition, dateDays, raceDay, dateReceiptOn, unresolvedSlots });
     const conditionCounted = settlesCondition || provisionalNow;
-    const hasLoadOn = (day) => canonicalLoadRows.some(load=>load.rider_id===rider.id&&load.game_day===day);
+    // #7982 trin 4a: a later day field of the press reads the stamped riders' race loads again
+    // for this provisional count (provisionalLoadRows), as every day field did before; nothing
+    // else in the day field uses that read. Without it (every other path) the day field's own.
+    const countLoadRows = provisionalNow && provisionalLoadRows ? provisionalLoadRows : canonicalLoadRows;
+    const hasLoadOn = (day) => countLoadRows.some(load=>load.rider_id===rider.id&&load.game_day===day);
     const settleIntensities = !conditionCounted ? null : instantRider
       ? dateDays.map(day => day === raceDay ? effectiveIntensity : hasLoadOn(day) ? 'race' : dateReceiptOn(day)?.report?.intensity ?? 'race')
-      : [...priorDateReports.map(report=>canonicalLoadRows.some(load=>load.rider_id===rider.id&&load.game_day===report.game_day)?'race':report.intensity),effectiveIntensity];
-    const settleRaceLoads = conditionCounted ? dateDays.map(day => Number(canonicalLoadRows.find(row => row.rider_id === rider.id && row.game_day === day)?.load ?? 0)) : null;
+      : [...priorDateReports.map(report=>countLoadRows.some(load=>load.rider_id===rider.id&&load.game_day===report.game_day)?'race':report.intensity),effectiveIntensity];
+    const settleRaceLoads = conditionCounted ? dateDays.map(day => Number(countLoadRows.find(row => row.rider_id === rider.id && row.game_day === day)?.load ?? 0)) : null;
     // #7737 (ejer 10/11): et aabent loebsfelt i den foreloebige opgoerelse giver hverken
     // belastning eller restitution, foer loebet er koert. Aftenens opgoerelse har ingen aabne felter.
     const pendingRaceSlots = provisionalNow && !settlesCondition
