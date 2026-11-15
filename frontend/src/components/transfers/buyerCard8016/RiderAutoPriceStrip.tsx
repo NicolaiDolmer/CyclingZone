@@ -32,13 +32,14 @@ function readAutoPrice(rows: unknown, riderId: string): number | null {
   return null;
 }
 
-export default function RiderAutoPriceStrip({ riderId }: { riderId: string }) {
+export default function RiderAutoPriceStrip({ riderId }: { riderId: string | undefined }) {
   const { t, ready } = useTranslation("transfers");
   const [autoPrice, setAutoPrice] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     setAutoPrice(null);
+    if (!riderId) return;
     (async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();

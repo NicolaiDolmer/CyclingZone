@@ -2064,7 +2064,7 @@ export default function RiderStatsPage() {
                     {watchlistError}
                   </div>
                 )}
-                {transferListing && !isMyRider && <RiderAutoPriceStrip riderId={rider.id} />}
+                {transferListing && !isMyRider && <RiderAutoPriceStrip riderId={id} />}
                 {pendingOfferOnRider && (
                   <button type="button" onClick={() => navigate("/transfers")}
                     className="w-full flex items-center justify-between gap-3 px-3 py-2.5 bg-cz-accent/8
