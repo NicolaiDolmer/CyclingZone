@@ -1,5 +1,28 @@
 export const PATCHES = [
 {
+  "version": "7.448",
+  "date": "2026-11-15",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Inbox",
+      "en": {
+        "title": "Inbox line opens the latest stage",
+        "body": "The combined inbox line for a stage race now opens the latest stage that was ridden."
+      },
+      "da": {
+        "title": "Indbakke-linjen åbner seneste etape",
+        "body": "Den samlede indbakke-linje for et etapeløb åbner nu den senest kørte etape."
+      },
+      "refs": [
+        7868
+      ]
+    }
+  ]
+},
+{
   "version": "7.447",
   "date": "2026-11-14",
   "changes": [
