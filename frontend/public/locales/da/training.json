@@ -640,6 +640,19 @@
     "retry": "Prøv igen",
     "emptyAction": "Gå til dagens træning"
   },
+  "raceSource": {
+    "heading": "Hvor fremgangen kom fra",
+    "training": "Træning",
+    "race": "Løb",
+    "total": "I alt",
+    "ability": "Evne",
+    "whole": "+{count} hel",
+    "barLabel": "Træning {training}, løb {race}",
+    "foot": "Fremgangen fra løb er allerede med i dagens sum.",
+    "shareToday": "Løb gav {percent}% af holdets fremgang i dag",
+    "shareDate": "Løb gav {percent}% af holdets fremgang denne dag",
+    "shareBar": "Træning {training}%, løb {race}%"
+  },
   "forecast": {
     "label": "Træthed i aften",
     "value": "ca. {value}",
