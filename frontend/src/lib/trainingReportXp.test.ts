@@ -1,0 +1,158 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  barSegments, buildMonthView, buildTodayView, filterMonthRiders, filterTodayRiders, hasXpFields,
+  raceShare, stripWindow, xpBySource, xpDays, xpOfPrice, TIRED_FATIGUE,
+  type XpActivity, type XpReceipt, type XpRiderReceipt,
+} from "./trainingReportXp.ts";
+import { buildXpReportFixture, XP_FIXTURE_LAST_DATE } from "../components/training/reportXp/xpReportFixture.ts";
+
+const slot = (over: Partial<XpActivity>): XpActivity => ({ rider_id: "a", game_day: 0, ...over });
+function rider(id: string, activities: XpActivity[], over: Partial<XpRiderReceipt> = {}): XpRiderReceipt {
+  return {
+    rider_id: id, name: id, activities, receipt_status: "complete", gains: {}, gains_detail: {}, gain_percent: {},
+    progress_before: {}, trained_now: null, form_before: 50, fatigue_before: 10, form: 52, fatigue: 14, ...over,
+  };
+}
+const receipt = (date: string, riders: XpRiderReceipt[]): XpReceipt => ({
+  tick_date: date, receipt_status: "complete", game_days: [0, 1, 2, 3, 4], expected_game_days: null, trained_now_slots: [],
+  report: { riders, condition_settled: true },
+});
+
+test("hasXpFields is false for today's payload and true once a slot carries xp", () => {
+  assert.equal(hasXpFields([{ report: { riders: [{ activities: [slot({ gains: { sprint: 1 } })] }] } }]), false);
+  assert.equal(hasXpFields([]), false);
+  assert.equal(hasXpFields(null), false);
+  assert.equal(hasXpFields([{ report: { riders: [{ activities: [slot({ xp: { sprint: 3 } })] }] } }]), true);
+});
+
+test("xpBySource splits XP by the kind of slot and ignores junk", () => {
+  const split = xpBySource([
+    slot({ xp: { sprint: 4, flat: 2 } }),
+    slot({ race_day: true, xp: { sprint: 3, endurance: 5 } }),
+    slot({ xp: { sprint: -2, flat: Number.NaN } }),
+  ]);
+  assert.deepEqual(split, { sprint: { training: 4, race: 3 }, flat: { training: 2, race: 0 }, endurance: { training: 0, race: 5 } });
+});
+
+test("raceShare never rounds a source away and is null without a race", () => {
+  assert.equal(raceShare(10, 0), null);
+  assert.equal(raceShare(0, 0), null);
+  assert.equal(raceShare(0, 7), 100);
+  assert.equal(raceShare(1000, 1), 1);
+  assert.equal(raceShare(1, 1000), 99);
+  assert.equal(raceShare(20, 80), 80);
+});
+
+test("barSegments: before today, training and race as shares of the price", () => {
+  // No point bought: 10 of 40 XP now, 6 of them today (4 training, 2 race).
+  assert.deepEqual(barSegments({ xp: 10, price: 40 }, 4, 2, false), { before: 4 / 40, training: 4 / 40, race: 2 / 40 });
+  // A point bought today: the bar starts over and only today's remainder shows.
+  const bought = barSegments({ xp: 3, price: 30 }, 0, 9, true)!;
+  assert.equal(bought.before, 0);
+  assert.equal(bought.training, 0);
+  assert.equal(bought.race, 3 / 30);
+  assert.equal(barSegments(null, 1, 1, false), null);
+  assert.equal(barSegments({ xp: 1, price: 0 }, 1, 1, false), null);
+});
+
+test("xpOfPrice never rounds up to a point that has not landed", () => {
+  assert.deepEqual(xpOfPrice({ xp: 29.9, price: 30 }), { xp: 29, price: 30 });
+  assert.deepEqual(xpOfPrice({ xp: 12.4, price: 30.2 }), { xp: 12, price: 30 });
+});
+
+test("stripWindow keeps the latest seven, or the seven ending at an older pick", () => {
+  const days = Array.from({ length: 12 }, (_, i) => i);
+  assert.deepEqual(stripWindow(days, 11), [5, 6, 7, 8, 9, 10, 11]);
+  assert.deepEqual(stripWindow(days, 7), [5, 6, 7, 8, 9, 10, 11]);
+  assert.deepEqual(stripWindow(days, 3), [0, 1, 2, 3]);
+  assert.deepEqual(stripWindow([1, 2], 0), [1, 2]);
+});
+
+test("buildTodayView: totals, filters, a single point names its ability", () => {
+  const runs = [
+    receipt("2026-11-02", [
+      rider("Ada", [slot({ xp: { sprint: 5 } }), slot({ race_day: true, xp: { sprint: 3, flat: 2 } })],
+        { gains: { sprint: 1 }, gains_detail: { sprint: { from: 54, to: 55 } }, xp_bar: { sprint: { xp: 2, price: 40 }, flat: { xp: 9, price: 30 } } }),
+      rider("Bo", [slot({ xp: { tempo: 4 } }), slot({ intensity: "rest" })]),
+      rider("Cy", [slot({ race_day: true, xp: { flat: 6 } })], { gains: { flat: 2, tempo: 1 } }),
+    ]),
+    receipt("2026-11-01", [rider("Ada", [slot({ xp: { sprint: 10 } })])]),
+  ];
+  const view = buildTodayView(runs, null, { scoreOf: (_id, _d, a) => (a.race_day ? null : 60) })!;
+  assert.equal(view.date, "2026-11-02");
+  assert.equal(view.previous, "2026-11-01");
+  assert.equal(view.next, null);
+  assert.equal(view.xp, 20);
+  assert.equal(view.xp30, 30);
+  assert.equal(view.points, 4);
+  assert.equal(view.pointRiders, 2);
+  assert.equal(view.racePercent, raceShare(9, 11));
+  assert.deepEqual(view.counts, { all: 3, gained: 2, raced: 2, notRaced: 1 });
+  assert.deepEqual(view.riders.map(r => r.id), ["Cy", "Ada", "Bo"]);
+  const ada = view.riders.find(r => r.id === "Ada")!;
+  assert.equal(ada.pointAbility, "sprint");
+  assert.equal(view.riders[0].pointAbility, null);
+  assert.deepEqual(ada.sessions.map(s => s.kind), ["training", "race"]);
+  assert.equal(ada.sessions[1].score, null);
+  assert.equal(ada.sessionScore, 60);
+  const sprint = ada.abilities[0];
+  assert.equal(sprint.key, "sprint");
+  assert.deepEqual([sprint.from, sprint.to, sprint.training, sprint.race], [54, 55, 5, 3]);
+  assert.equal(sprint.segments!.before, 0);
+  assert.deepEqual(filterTodayRiders(view.riders, "notRaced").map(r => r.id), ["Bo"]);
+  assert.deepEqual(filterTodayRiders(view.riders, "gained").map(r => r.id), ["Cy", "Ada"]);
+  const older = buildTodayView(runs, "2026-11-01")!;
+  assert.equal(older.next, "2026-11-02");
+  assert.equal(older.racePercent, null);
+});
+
+test("buildTodayView is null without receipts", () => {
+  assert.equal(buildTodayView([], null), null);
+  assert.equal(buildMonthView([]), null);
+});
+
+test("buildMonthView: per-day sums, the closest next point and tired riders", () => {
+  const runs = [
+    receipt("2026-11-02", [
+      rider("Ada", [slot({ race_day: true, xp: { flat: 4 } })], { fatigue: TIRED_FATIGUE, xp_bar: { flat: { xp: 9, price: 10 }, sprint: { xp: 5, price: 50 } } }),
+      rider("Bo", [slot({ xp: { tempo: 2 } })], { fatigue: 5, xp_bar: { tempo: { xp: 1, price: 30 } } }),
+    ]),
+    receipt("2026-11-01", [rider("Ada", [slot({ xp: { flat: 6 } })], { gains: { flat: 1 } })]),
+  ];
+  const view = buildMonthView(runs)!;
+  assert.deepEqual(view.days.map(d => [d.date, d.training, d.race, d.points]), [["2026-11-01", 6, 0, 1], ["2026-11-02", 2, 4, 0]]);
+  assert.equal(view.xp, 12);
+  assert.equal(view.points, 1);
+  assert.equal(view.tired, 1);
+  const ada = view.riders.find(r => r.id === "Ada")!;
+  assert.deepEqual(ada.spark, [6, 4]);
+  assert.deepEqual(ada.next, { key: "flat", xp: 9, price: 10 });
+  assert.equal(ada.fatigue, TIRED_FATIGUE);
+  const bo = view.riders.find(r => r.id === "Bo")!;
+  assert.deepEqual(bo.spark, [0, 2]);
+  assert.deepEqual(filterMonthRiders(view.riders, "closest").map(r => r.id), ["Ada", "Bo"]);
+  assert.deepEqual(filterMonthRiders(view.riders, "tired").map(r => r.id), ["Ada"]);
+});
+
+test("the month view never estimates days to the next point (H6b)", () => {
+  const view = buildMonthView(buildXpReportFixture().receipts)!;
+  for (const r of view.riders) assert.deepEqual(Object.keys(r.next ?? {}).sort(), r.next ? ["key", "price", "xp"] : []);
+});
+
+test("the preview fixture is deterministic and complete", () => {
+  const a = buildXpReportFixture(), b = buildXpReportFixture();
+  assert.deepEqual(a.receipts, b.receipts);
+  assert.equal(a.receipts.length, 30);
+  assert.equal(a.receipts[0].tick_date, XP_FIXTURE_LAST_DATE);
+  assert.equal(hasXpFields(a.receipts), true);
+  const days = xpDays(a.receipts);
+  assert.ok(days.some(d => d.race > 0) && days.some(d => d.training > 0));
+  const today = buildTodayView(a.receipts, null, { nations: a.nations })!;
+  assert.ok(today.riders.every(r => typeof r.nation === "string"));
+  assert.ok(today.riders.some(r => r.points > 0));
+  // Bars never show a whole point that has not been bought.
+  for (const r of today.riders) for (const ab of r.abilities) {
+    if (ab.bar) assert.ok(ab.bar.xp < ab.bar.price, `${r.id} ${ab.key}`);
+  }
+});
