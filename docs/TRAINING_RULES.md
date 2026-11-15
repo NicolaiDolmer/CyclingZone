@@ -1408,3 +1408,14 @@ Kald-tallet er hævet fra 15/9's 27.200 af to grunde, og **varigheden er uændre
 **Deadline (ejer 6/9, ordret): "skiftet til det nye træningssystem senest sker til sæson 4 starten"**, dvs. live 28/9 2026; kalender-delen skal før S4-genereringen.
 
 **Fuldt design, faseplan og de konkrete brud pr. fil:linje:** [`docs/superpowers/specs/2026-09-06-traening-pr-loebsdag-og-traeningsscore-design.md`](superpowers/specs/2026-09-06-traening-pr-loebsdag-og-traeningsscore-design.md). Kortlægningen bag den er session-workflow 6/9 (fire lanes: tick, kalender, score, flader + kritiker), verificeret mod `main` og prod.
+
+### 13.5 Løbets session afregnes efter etapen (#7982, ejer 15/11; bag slukket kontakt)
+
+Kontakt `training_settle_race_session` (binær; kun "on" tænder, seedet "off"). Design: [`docs/superpowers/specs/2026-11-15-7982-afregning-efter-etapen-design.md`](superpowers/specs/2026-11-15-7982-afregning-efter-etapen-design.md).
+
+- **Hvad:** når en etape er afgjort, kører motoren KUN den session (løbsdag), løbet ligger i, for løbets ryttere. To etaper samme dato: efter hver etape. De andre sessioner kører kl. 20 eller ved Træn nu som i dag. Hovedkontakten `daily_training_enabled` gælder også her.
+- **Uden for rækkefølgen:** løbssessionen gemmes før datoens tidligere sessioner. Datoen lukkes stadig præcis én gang, på rytterens sidste manglende session.
+- **Ingen foreløbig kondition:** løbssessionen skriver ikke form og træthed i `rider_condition`; den står på datoens åbning til datoen lukker. Alle læsere (motorens etapestart, træthedsvisningen, tidsgrænse-varslet) lægger allerede datoens ubrugte etapebelastninger fra `training_race_loads` oven på åbningen, så en etape tæller præcis én gang (Fable-dom 15/11).
+- **Kvitteringerne:** `training_rider_ticks.settled_at` er det faktiske gemmetidspunkt. Kvitteringens `progress_before/after` og hvilken kvittering der bærer datoens form og træthed, følger gemmerækkefølgen; visningen skal tegne efter sessionsrækkefølgen. Evnepoint er ens; fremgangen mod næste point kan afvige højst 1/1000 point. Udviklingshistorikken tager det senest gemte løbsdagsbillede som datoens slut.
+- **Datoregnskab:** datoen registreres ved første løbssession (som ved et Træn nu-tryk).
+- **Før tænding:** `proRiderHistory.js` sorterer uden `created_at`; prøvekørsel mod prod-billede; Træn nu-frontend efter ejerens retning på #7982.

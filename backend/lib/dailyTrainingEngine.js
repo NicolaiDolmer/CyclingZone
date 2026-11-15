@@ -506,6 +506,8 @@ export async function runTeamTrainingDay({
   instantPress = false,
   // #7982 trin 3: only the train-now press sends its independent reads at once (readTogether).
   pressReads = false,
+  // #7982 (afregning efter etapen): riders whose race session settles now, at their stage. null = never.
+  raceSessionRiderIds = null,
 }) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!teamId) throw new Error("teamId required");
@@ -743,6 +745,8 @@ export async function runTeamTrainingDay({
     if ([...trainNowBonusRiderIds].some(id => !instantRiderIds.has(id))) {
       throw new Error('Train-now bonus publication incomplete; retry the original press');
     }
+    // #7982: a race session settled at its stage fills the date out of order, like a stamped rider.
+    for (const id of raceSessionRiderIds ?? []) instantRiderIds.add(id);
     // #7737: a stamped rider only waits on the race day his open slot sits on.
     if(!deadlineReached) riders=riders.filter(rider=>{
       const open=(unresolvedSlotsByRider instanceof Map ? unresolvedSlotsByRider.get(rider.id) : unresolvedSlotsByRider[rider.id]);
@@ -753,6 +757,8 @@ export async function runTeamTrainingDay({
       .eq('season_id',seasonId).in('game_day',dateDays).in('rider_id',riders.map(rider=>rider.id));
     if(receiptError) throw new Error(`training rider receipts: ${receiptError.message}`);
     dateReceipts=receipts??[];
+    // #7982: the receipt decides, never the switch: a date begun with an early race session ends that way.
+    for (const row of dateReceipts) if (row.tick_date===tickDate && row.report?.race_session_7982===true) instantRiderIds.add(row.rider_id);
     riders=riders.filter(rider=>!dateReceipts.some(receipt=>receipt.rider_id===rider.id&&receipt.game_day===raceDay));
     if(!riders.length) return {alreadyRan:true,tickDate,gameDay:raceDay,squad:squadKey,report:{riders:[],condition_per_date:true,partial:dateWork.status!=='complete'}};
   }
@@ -1460,6 +1466,9 @@ export async function runTeamTrainingDay({
     // "sluk udviklingen for S3" umulig før dette split.
     // #7737: on the last free race day of an instant press every missing race day is an open
     // race slot. His form and fatigue are then counted now, with the stage load still to come.
+    // #7982 (Fable-dom 15/11): the race session writes NO provisional condition. rider_condition stays
+    // the date's opening, and every reader already adds the date's unconsumed stage loads on top
+    // (riderFatigueNow), so a provisional value would count the stage twice. Closing is unchanged.
     const provisionalNow = instantRider && instantPress && !settlesCondition
       && dateDays.every(day => day === raceDay || dateReceiptOn(day) || unresolvedSlots.some(slot => Number(slot.gameDay) === day));
     const conditionCounted = settlesCondition || provisionalNow;
@@ -1738,6 +1747,7 @@ export async function runTeamTrainingDay({
     reportRiders.push({
       rider_id: rider.id,
       ...(trainNowBonusRiderIds.has(rider.id) ? { train_now_bonus: true } : {}),
+      ...(raceSessionRiderIds?.has(rider.id) ? { race_session_7982: true } : {}),
       name: `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim(),
       ...(conditionPerDate ? { condition_before_date: conditionBeforeDate,condition_observed:cond,recovery_before_date:recoveryBeforeDate } : {}),
       ...(instantRider ? { expected_date_receipt_days: dateReceipts

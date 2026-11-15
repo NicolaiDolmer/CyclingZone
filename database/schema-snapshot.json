@@ -4082,7 +4082,8 @@
         "tick_date",
         "team_id",
         "report",
-        "created_at"
+        "created_at",
+        "settled_at"
       ]
     },
     "training_slot_health_daily": {
