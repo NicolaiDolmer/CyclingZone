@@ -25,10 +25,24 @@
 --
 -- Omfang: kun AKTIVE maal: mandater med status 'active' for den aktive saeson,
 -- og holdets 'completed' 1yr-plan. Kun elementer med source 'bonus_offer' og
--- type 'monument_podium'. Tilbuddet findes via bonus_offer_id; aeldre maal
--- uden id matches paa holdets seneste accepterede monument-tilbud (lag 6).
+-- type 'monument_podium'.
+--
+-- KUN SAENKNING: scriptet retter et maal, naar den gemte baseline findes, er
+-- et heltal, og den korrekte baseline er MINDRE end den gemte. Det haever
+-- aldrig en baseline og tilfoejer aldrig en baseline til et maal uden en.
+--
+-- MATCH PAA TILBUD (kolonnen match_kind):
+--   'offer_id' = maalet har bonus_offer_id, og tilbuddet findes paa det id.
+--   'fallback' = aeldre maal uden id; matches paa holdets seneste accepterede
+--                monument-tilbud (lag 6) med resolved_at >= den aktive saesons
+--                start_date (tilbud fra tidligere saesoner tages ikke med).
+-- BLOK 1 viser begge slags. BLOK 2 skriver KUN raekker med match_kind
+-- 'offer_id'; fallback-raekker vurderes manuelt ud fra BLOK 1.
 -- Findes intet accepteret tilbud, er correct_baseline NULL og elementet roeres
 -- ikke (vises i BLOK 1 til manuel vurdering).
+--
+-- BLOK 1b taeller afsluttede 1yr-boards med aktivt monument-bonusmaal og
+-- plan_start_season_number NULL (opfoelgning, intet rettes her).
 --
 -- HOLD BLOK 1 OG BLOK 2'S BEREGNING ENS. De to CTE-kaeder er bevidst
 -- identiske; en aendring i den ene skal ogsaa i den anden.
@@ -37,11 +51,12 @@
 
 -- =============================================================================
 -- BLOK 1 · REN SELECT (ingen skrivning). Lister beroerte aktive bonusmaal med
--- gemt og korrekt baseline. needs_repair = true er de rækker BLOK 2 retter.
+-- gemt og korrekt baseline. needs_repair = true er de rækker BLOK 2 retter
+-- (would_lower OG match_kind = 'offer_id').
 -- =============================================================================
 
 WITH active_season AS (
-  SELECT id, number
+  SELECT id, number, start_date
   FROM seasons
   WHERE status = 'active'
   ORDER BY number DESC
@@ -90,17 +105,25 @@ goal_rows AS (
     AND g.goal->>'type' = 'monument_podium'
 ),
 with_offer AS (
-  SELECT gr.*, o.offer_id, o.resolved_at
+  SELECT gr.*,
+         CASE WHEN gr.goal->>'bonus_offer_id' IS NOT NULL THEN 'offer_id' ELSE 'fallback' END AS match_kind,
+         o.offer_id,
+         o.resolved_at
   FROM goal_rows gr
   LEFT JOIN LATERAL (
     SELECT c.id AS offer_id, c.resolved_at
     FROM board_consequences c
+    CROSS JOIN active_season s
     WHERE c.team_id = gr.team_id
       AND c.layer = 6
       AND c.status = 'accepted'
       AND (
         (gr.goal->>'bonus_offer_id' IS NOT NULL AND c.id::text = gr.goal->>'bonus_offer_id')
-        OR (gr.goal->>'bonus_offer_id' IS NULL AND c.payload->>'extra_goal_type' = 'monument_podium')
+        -- Fallback (maal uden id): kun et tilbud accepteret i DEN AKTIVE saeson.
+        OR (gr.goal->>'bonus_offer_id' IS NULL
+            AND c.payload->>'extra_goal_type' = 'monument_podium'
+            AND s.start_date IS NOT NULL
+            AND c.resolved_at >= s.start_date)
       )
     ORDER BY c.resolved_at DESC NULLS LAST
     LIMIT 1
@@ -124,6 +147,10 @@ window_seasons AS (
 ),
 corrected AS (
   SELECT w.*,
+         -- Sikker cast: kun et rent ikke-negativt heltal; alt andet = NULL (roeres ikke).
+         CASE WHEN (w.goal->>'baseline') ~ '^[0-9]{1,9}$'
+              THEN (w.goal->>'baseline')::int
+         END AS stored_baseline_int,
          CASE WHEN w.resolved_at IS NULL THEN NULL ELSE (
            SELECT count(*)::int
            FROM race_results rr
@@ -142,21 +169,83 @@ SELECT store,
        row_id,
        team_id,
        ord                         AS goal_position,
+       match_kind,
        offer_id,
        resolved_at                 AS accepted_at,
        goal->>'baseline'           AS stored_baseline,
        correct_baseline,
+       -- Kun SAENKNING taeller: gemt baseline findes, er et heltal og er for hoej.
        (correct_baseline IS NOT NULL
-         AND (goal->>'baseline') IS DISTINCT FROM correct_baseline::text) AS needs_repair
+         AND stored_baseline_int IS NOT NULL
+         AND correct_baseline < stored_baseline_int) AS would_lower,
+       -- BLOK 2 skriver KUN would_lower-raekker med match paa tilbuds-id.
+       (match_kind = 'offer_id'
+         AND correct_baseline IS NOT NULL
+         AND stored_baseline_int IS NOT NULL
+         AND correct_baseline < stored_baseline_int) AS needs_repair
 FROM corrected
 ORDER BY team_id, store, ord;
 
 
 -- =============================================================================
+-- BLOK 1b · REN SELECT (ingen skrivning). Afsluttede 1yr-boards med et aktivt
+-- monument-bonusmaal, hvor plan_start_season_number er NULL. Baseline-stien
+-- falder tilbage til den aktive saeson; weekend-/saesonslut-evalueringen
+-- (boardWeekendFinalization.js, economyEngine.js) sender plan-start UDEN
+-- fallback. Tallet er grundlag for opfoelgning; scriptet retter det ikke.
+-- =============================================================================
+
+WITH active_season AS (
+  SELECT id, number
+  FROM seasons
+  WHERE status = 'active'
+  ORDER BY number DESC
+  LIMIT 1
+),
+one_yr_null_start AS (
+  SELECT bp.id,
+         bp.team_id,
+         CASE jsonb_typeof(bp.current_goals)
+           WHEN 'array'  THEN bp.current_goals
+           WHEN 'string' THEN (bp.current_goals #>> '{}')::jsonb
+           ELSE '[]'::jsonb
+         END AS goals
+  FROM board_profiles bp
+  WHERE bp.plan_type = '1yr'
+    AND bp.negotiation_status = 'completed'
+    AND bp.plan_start_season_number IS NULL
+)
+SELECT count(*) AS boards_with_null_plan_start
+FROM one_yr_null_start b
+WHERE EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements(
+          CASE WHEN jsonb_typeof(b.goals) = 'array' THEN b.goals ELSE '[]'::jsonb END
+        ) g(goal)
+        WHERE g.goal->>'source' = 'bonus_offer'
+          AND g.goal->>'type' = 'monument_podium'
+      )
+   OR EXISTS (
+        SELECT 1
+        FROM board_mandates m
+        CROSS JOIN active_season s
+        CROSS JOIN LATERAL jsonb_array_elements(
+          CASE WHEN jsonb_typeof(m.goals) = 'array' THEN m.goals ELSE '[]'::jsonb END
+        ) g(goal)
+        WHERE m.team_id = b.team_id
+          AND m.status = 'active'
+          AND m.season_number = s.number
+          AND g.goal->>'source' = 'bonus_offer'
+          AND g.goal->>'type' = 'monument_podium'
+      );
+
+
+-- =============================================================================
 -- BLOK 2 · UPDATE (SKRIVER TIL PROD). KUN EFTER EJERENS ORD.
 --
--- Koeres som EEN samlet koersel. Idempotent: kun elementer hvor gemt baseline
--- afviger fra den korrekte skrives, og hver skrivning er compare-and-swap paa
+-- Koeres som EEN samlet koersel. Idempotent: kun elementer med match paa
+-- tilbuds-id, hvor gemt baseline er et heltal STOERRE end den korrekte,
+-- skrives (aldrig haevning, aldrig ny baseline), og hver skrivning er compare-and-swap paa
 -- den gemte vaerdi, saa en anden koersel (eller en samtidig skriver) rammer 0
 -- rækker. Foer-vaerdierne arkiveres i backup_8188_bonus_baseline (rule 38).
 -- Mandatets updated_at rykkes altid frem, saa appens optimistiske laas
@@ -168,7 +257,7 @@ BEGIN;
 
 CREATE TEMP TABLE fix_8188 ON COMMIT DROP AS
 WITH active_season AS (
-  SELECT id, number
+  SELECT id, number, start_date
   FROM seasons
   WHERE status = 'active'
   ORDER BY number DESC
@@ -217,17 +306,25 @@ goal_rows AS (
     AND g.goal->>'type' = 'monument_podium'
 ),
 with_offer AS (
-  SELECT gr.*, o.offer_id, o.resolved_at
+  SELECT gr.*,
+         CASE WHEN gr.goal->>'bonus_offer_id' IS NOT NULL THEN 'offer_id' ELSE 'fallback' END AS match_kind,
+         o.offer_id,
+         o.resolved_at
   FROM goal_rows gr
   LEFT JOIN LATERAL (
     SELECT c.id AS offer_id, c.resolved_at
     FROM board_consequences c
+    CROSS JOIN active_season s
     WHERE c.team_id = gr.team_id
       AND c.layer = 6
       AND c.status = 'accepted'
       AND (
         (gr.goal->>'bonus_offer_id' IS NOT NULL AND c.id::text = gr.goal->>'bonus_offer_id')
-        OR (gr.goal->>'bonus_offer_id' IS NULL AND c.payload->>'extra_goal_type' = 'monument_podium')
+        -- Fallback (maal uden id): kun et tilbud accepteret i DEN AKTIVE saeson.
+        OR (gr.goal->>'bonus_offer_id' IS NULL
+            AND c.payload->>'extra_goal_type' = 'monument_podium'
+            AND s.start_date IS NOT NULL
+            AND c.resolved_at >= s.start_date)
       )
     ORDER BY c.resolved_at DESC NULLS LAST
     LIMIT 1
@@ -251,6 +348,10 @@ window_seasons AS (
 ),
 corrected AS (
   SELECT w.*,
+         -- Sikker cast: kun et rent ikke-negativt heltal; alt andet = NULL (roeres ikke).
+         CASE WHEN (w.goal->>'baseline') ~ '^[0-9]{1,9}$'
+              THEN (w.goal->>'baseline')::int
+         END AS stored_baseline_int,
          CASE WHEN w.resolved_at IS NULL THEN NULL ELSE (
            SELECT count(*)::int
            FROM race_results rr
@@ -265,12 +366,14 @@ corrected AS (
          ) END AS correct_baseline
   FROM with_offer w
 )
-SELECT store, row_id, team_id, ord, offer_id,
+SELECT store, row_id, team_id, ord, match_kind, offer_id,
        goal->>'baseline' AS stored_baseline,
        correct_baseline
 FROM corrected
-WHERE correct_baseline IS NOT NULL
-  AND (goal->>'baseline') IS DISTINCT FROM correct_baseline::text;
+WHERE match_kind = 'offer_id'
+  AND correct_baseline IS NOT NULL
+  AND stored_baseline_int IS NOT NULL
+  AND correct_baseline < stored_baseline_int;
 
 -- Arkiv af foer-vaerdier (hele raekkens maal-array), en raekke pr. lager+raekke.
 CREATE TABLE IF NOT EXISTS backup_8188_bonus_baseline (

@@ -24,8 +24,45 @@ function readPath(row, path) {
   return String(path).split(".").reduce((value, key) => (value == null ? undefined : value[key]), row);
 }
 
-function makeQueryBuilder(rows, { mode = "select", patch = null } = {}) {
+// Splitter en PostgREST-select paa kommaer i yderste niveau, saa
+// "rank, races!inner(season_id, squad)" bliver to felter.
+function splitTopLevel(columns) {
+  const parts = [];
+  let depth = 0;
+  let current = "";
+  for (const ch of String(columns)) {
+    if (ch === "(") depth += 1;
+    if (ch === ")") depth -= 1;
+    if (ch === "," && depth === 0) {
+      parts.push(current.trim());
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  if (current.trim()) parts.push(current.trim());
+  return parts;
+}
+
+// Returnerer KUN de valgte kolonner (som PostgREST), saa en kolonne der
+// mangler i select'en ogsaa mangler i resultatet. Indlejrede relationer
+// ("races!inner(...)", "team:team_id(...)") beholdes hele.
+function projectRow(row, columns) {
+  if (columns == null || String(columns).trim() === "*") return { ...row };
+  const out = {};
+  for (const item of splitTopLevel(columns)) {
+    const head = item.includes("(") ? item.slice(0, item.indexOf("(")) : item;
+    const [aliasPart, sourcePart] = head.includes(":") ? head.split(":") : [head, head];
+    const key = aliasPart.split("!")[0].trim();
+    const source = sourcePart.split("!")[0].trim();
+    out[key] = row[key] !== undefined ? row[key] : row[source];
+  }
+  return out;
+}
+
+function makeQueryBuilder(rows, { mode = "select", patch = null, columns = null } = {}) {
   let filtered = [...rows];
+  let selected = columns;
   const keep = (predicate) => {
     filtered = filtered.filter(predicate);
     return builder;
@@ -54,18 +91,21 @@ function makeQueryBuilder(rows, { mode = "select", patch = null } = {}) {
       filtered = filtered.slice(0, n);
       return builder;
     },
-    select: () => builder,
+    select(cols) {
+      selected = cols;
+      return builder;
+    },
     apply() {
       if (mode !== "update") return;
       for (const row of filtered) Object.assign(row, patch);
     },
-    maybeSingle: async () => {
+    result() {
       builder.apply();
-      return { data: filtered[0] ?? null, error: null };
+      return filtered.map((row) => projectRow(row, selected));
     },
+    maybeSingle: async () => ({ data: builder.result()[0] ?? null, error: null }),
     then(resolve, reject) {
-      builder.apply();
-      return Promise.resolve({ data: filtered, error: null }).then(resolve, reject);
+      return Promise.resolve({ data: builder.result(), error: null }).then(resolve, reject);
     },
   };
   return builder;
@@ -76,7 +116,7 @@ function makeSupabase(tables) {
     from(table) {
       const rows = tables[table] || (tables[table] = []);
       return {
-        select: () => makeQueryBuilder(rows),
+        select: (columns) => makeQueryBuilder(rows, { columns }),
         update: (patch) => makeQueryBuilder(rows, { mode: "update", patch }),
       };
     },
@@ -207,6 +247,23 @@ test("#8188 uden plan_start_season_number paa 1yr-boardet maales i den aktive sa
   });
 
   assert.equal(result.goal.baseline, 1);
+});
+
+test("#8188 plan-start fra 1yr-boardet (2) bruges, ikke den aktive saesons fallback (3)", async () => {
+  // Plan-cyklussen startede i s2, saa vinduet er s2 + s3: baseline = 2.
+  // Henter loadCompletedOneYearBoard ikke plan_start_season_number, falder
+  // baselinen tilbage til den aktive saeson (3) og bliver 1; saa fejler prøven.
+  const state = tables({ planStartSeasonNumber: 2 });
+  const supabase = makeSupabase(state);
+
+  const result = await applyAcceptedBonusGoal({
+    supabase, teamId: TEAM_ID, offerId: OFFER_ID, extraGoal: MONUMENT_GOAL,
+    isMandateModelEnabled: async () => true,
+  });
+
+  assert.equal(result.goal.baseline, 2, "baseline = s2- og s3-podierne i plan-cyklussen");
+  const mandateGoal = state.board_mandates[0].goals.find((g) => g.source === "bonus_offer");
+  assert.equal(mandateGoal.baseline, 2);
 });
 
 test("#8188 baseline-stien sender cyklusvinduet videre til goal-konteksten", async () => {
