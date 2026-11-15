@@ -16,6 +16,10 @@ import { copenhagenDayKey } from "./raceCentre.js";
 import { seasonReceiptState, seasonReceiptView, SEASON_RECEIPT_UNKNOWN } from "./trainingReport.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { aggregateTrainingRuns } from "./trainingDailyReceipt.ts";
+import { fetchPlayerFeatureFlags } from "./playerFeatureFlags.js";
+
+// #6490 trin b1: binær kontakt (kun "on" tænder; serveren svarer false på "beta").
+export const TRAINING_HISTORY_FROM_TICKS_FLAG_KEY = "training_history_from_ticks_6490";
 
 // Vinduet historikken dækker (dage tilbage). Matcher idx_training_day_runs_team_date.
 export const HISTORY_DAYS = 30;
@@ -65,6 +69,8 @@ export function useTrainingHistory() {
     setLoading(true);
     setError(false);
     let activeStart = null;
+    // #6490: kontakten hentes samtidig med resten; fejl = {} = den gamle læsevej.
+    const flagsPromise = fetchPlayerFeatureFlags();
     try {
       const user = await getAuthedUser();
       if (!user) { setRuns([]); setRawRuns([]); setSeasonRuns([]); setRawSeasonRuns([]); setSeasonState(SEASON_RECEIPT_UNKNOWN); return; }
@@ -97,8 +103,12 @@ export function useTrainingHistory() {
 
       // RLS begrænser allerede til egne hold; team_id-filteret holder query'et
       // på det aktive hold (samme indeks (team_id, tick_date DESC)).
-      const data = await fetchAllRows(() => supabase
-        .from("training_day_runs")
+      // #6490 trin b1: med kontakten tændt kommer rytterne fra kvitteringerne via
+      // training_history_runs (samme rækker, kolonner og ejerskabstjek som RLS).
+      const fromTicks = (await flagsPromise)?.[TRAINING_HISTORY_FROM_TICKS_FLAG_KEY] === true;
+      const data = await fetchAllRows(() => (fromTicks
+        ? supabase.rpc("training_history_runs", { p_team_id: myTeam.id, p_since: since })
+        : supabase.from("training_day_runs"))
         .select("id, season_id, squad, game_day, created_at, tick_date, executed_by, bonus_applied, report")
         .eq("team_id", myTeam.id)
         .gte("tick_date", since)

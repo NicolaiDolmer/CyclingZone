@@ -102,6 +102,7 @@ import {
 import { cancelAuctionByAdmin } from "../lib/auctionCancellation.js";
 import { deleteRiderWithCleanup } from "../lib/riderCleanupDeletion.js";
 import { fetchAllRows, fetchAllRowsChunkedIn, SUPABASE_IN_CHUNK_SIZE } from "../lib/supabasePagination.js";
+import { isTrainingHistoryFromTicksEnabled, TRAINING_HISTORY_RUNS_RPC } from "../lib/trainingHistoryFromTicks6490.js"; // #6490
 // #5330 — seniorlæserne af race_pool. Se backend/lib/racePoolCatalog.js.
 import {
   fetchRacePoolWithSquad,
@@ -3175,12 +3176,15 @@ router.get("/training/me", requireAuth, async (req, res) => {
     const trainingScoreSince = copenhagenDateString(
       new Date(Date.now() - TRAINING_SCORE_VIEW.windowDays * 86_400_000),
     );
+    // #6490 trin b2: med kontakten tændt kommer rytterne fra kvitteringerne (samme rækker og kolonner).
+    const historyFromTicks = activeSeasonId ? await isTrainingHistoryFromTicksEnabled(supabase) : false;
     const [
       todayRunResult, conditionResult, progressResult, weekPlanResult, racingToday, scoreResult, fatigueStreaks,
     ] = await Promise.all([
       activeSeasonId
-        ? fetchAllRows(() => supabase
-            .from("training_day_runs")
+        ? fetchAllRows(() => (historyFromTicks
+            ? supabase.rpc(TRAINING_HISTORY_RUNS_RPC, { p_team_id: teamId, p_since: todayDate })
+            : supabase.from("training_day_runs"))
             // #5915: all date activities feed the receipt; keep latestRun for old clients.
             .select("id, season_id, squad, game_day, executed_by, bonus_applied, report, tick_date, created_at")
             .eq("team_id", teamId)

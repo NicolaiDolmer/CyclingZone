@@ -66,6 +66,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "training_groups", area: "training", label: "Træningsgrupper" },
   // #5319: træningskatalog v3 (5 nye hårde sessioner), seedet off. Flip er ejer-only.
   { key: "training_catalog_v3", area: "training", label: "Træningskatalog v3 (nye hårde sessioner)" },
+  // #6490: træningshistorikken læser rytterne fra kvitteringerne. Seedet off; kun "on" tænder. Ejer-only flip.
+  { key: "training_history_from_ticks_6490", area: "training", label: "Træningshistorik fra kvitteringerne" },
   { key: "peak_planner_enabled", area: "training", label: "Form-planlægger" },
   // #7536: motoren laeser kun "on" (beta = off); Hjaelp-blokken foelger samme svar.
   { key: "condition_v2_race_date_training_day", area: "training", label: "Træning på løbsdato vejer et helt døgn" },
@@ -326,6 +328,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "training_train_now_instant",
   // #6181: Hjaelp siger, hvornaar saelgeren faar pengene, paa dette flag (binaert, som pengelaasen).
   "sale_escrow_enabled",
+  // #6490: traeningssiden vaelger laesevej paa dette flag (binaert, som backend og peak-signalet).
+  "training_history_from_ticks_6490",
 ]);
 
 // #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,
@@ -333,4 +337,4 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
 // en flade aldrig beskriver en model motoren ikke koerer for beta-gruppen.
 // #7536: condition_v2_race_date_training_day laeses ogsaa kun som "on" af motoren
 // (conditionModelV2Flag.isRaceDateTrainingDayEnabled).
-export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801", "sale_escrow_enabled"]);
+export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801", "sale_escrow_enabled", "training_history_from_ticks_6490"]);
