@@ -97,6 +97,66 @@ test("prisen: stiger med evnen, er endelig til 99, og kun evnen tæller", () => 
   assert.equal(xpPriceForNextPoint(Number.NaN, params), xpPriceForNextPoint(0, params));
 });
 
+// ── R16 prisbund (ejervalg A 14/11): kun bunden bliver dyrere ─────────────────
+const FLOOR = Object.freeze({ belowLevel: 30, minCost: 18 });
+const withFloor = validateDevelopmentXpParams({ ...RAW, price: { ...RAW.price, floor: FLOOR } }) as DevelopmentXpParams;
+
+test("prisbund: uden feltet er prislisten og params' form nøjagtig som før", () => {
+  assert.equal("floor" in params.price, false, "ingen bund på params uden bund");
+  assert.deepEqual(Object.keys(params.price), ["base", "exponent"]);
+  for (let level = 0; level <= 99; level++) {
+    assert.equal(xpPriceForNextPoint(level, params), RAW.price.base * Math.pow(1 - level / 100, -RAW.price.exponent), `evne ${level}`);
+  }
+});
+
+test("prisbund: under grænsen koster et point mindst bunden, midte og top er urørt", () => {
+  assert.ok(withFloor, "gyldig bund giver gyldige params");
+  assert.ok(Object.isFrozen(withFloor.price.floor));
+  assert.deepEqual(withFloor.price.floor, FLOOR);
+  for (let level = 0; level <= 99; level++) {
+    const formula = xpPriceForNextPoint(level, params);
+    const floored = xpPriceForNextPoint(level, withFloor);
+    if (level < FLOOR.belowLevel) assert.equal(floored, Math.max(formula, FLOOR.minCost), `evne ${level}: max(formel, bund)`);
+    else assert.equal(floored, formula, `evne ${level}: formlens egen pris`);
+  }
+  assert.equal(xpPriceForNextPoint(0, withFloor), FLOOR.minCost, "bunden binder nederst");
+  assert.ok(xpPriceForNextPoint(0, withFloor) > xpPriceForNextPoint(0, params), "lave evner bliver dyrere");
+  assert.equal(xpPriceForNextPoint(-5, withFloor), FLOOR.minCost, "klippet til 0, stadig bunden");
+});
+
+test("prisbund: prisen falder aldrig, når evnen stiger", () => {
+  let previous = 0;
+  for (let level = 0; level <= 99; level++) {
+    const price = xpPriceForNextPoint(level, withFloor);
+    assert.ok(Number.isFinite(price) && price >= previous, `evne ${level}`);
+    previous = price;
+  }
+});
+
+test("prisbund: ugyldig bund gør hele params ugyldige (fail-safe)", () => {
+  const floor = (f: unknown) => tweak({ price: { ...RAW.price, floor: f } });
+  for (const f of [null, 7, "x", [], {}]) assert.equal(floor(f), null, `bund ${JSON.stringify(f)}`);
+  assert.equal(floor({ belowLevel: 30 }), null, "mangler minCost");
+  assert.equal(floor({ minCost: 18 }), null, "mangler belowLevel");
+  assert.equal(floor({ belowLevel: 0, minCost: 18 }), null, "grænse over 0");
+  assert.equal(floor({ belowLevel: 100, minCost: 18 }), null, "grænse højst 99");
+  assert.equal(floor({ belowLevel: 30, minCost: 0 }), null, "bund over 0");
+  assert.equal(floor({ belowLevel: 30, minCost: Number.NaN }), null);
+  // En bund over formlens pris ved grænsen ville gøre et højere niveau billigere.
+  assert.equal(floor({ belowLevel: 30, minCost: xpPriceForNextPoint(30, params) * 1.01 }), null, "prisen må ikke falde ved grænsen");
+  assert.ok(floor({ belowLevel: 30, minCost: xpPriceForNextPoint(30, params) }), "lige ved grænsen er tilladt");
+});
+
+test("prisbund: købet bruger bunden, så lave evner køber færre point på samme XP", () => {
+  const xp = 60;
+  const without = buyPoints({ level: 5, xp }, params);
+  const floored = buyPoints({ level: 5, xp }, withFloor);
+  assert.ok(floored.points < without.points, `${floored.points} < ${without.points}`);
+  assert.equal(floored.points, Math.floor(xp / FLOOR.minCost));
+  // Over grænsen er købet det samme.
+  assert.deepEqual(buyPoints({ level: 50, bar: 0.4, xp: 200 }, withFloor), buyPoints({ level: 50, bar: 0.4, xp: 200 }, params));
+});
+
 test("alder: fuld til kurven falder, aldrig over 1, mentale evner længst", () => {
   assert.equal(xpAgeShare(19, params), 1);
   assert.equal(xpAgeShare(28, params), 1);
