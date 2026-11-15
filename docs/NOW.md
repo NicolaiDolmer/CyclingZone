@@ -9,7 +9,7 @@
 > **🎯 Next action (15/11 aften):** #8195 (#7982) merget slukket 15/11; tændes KUN sammen med `fatigue_now_7801` (ejer; luk Fable-fund A først, #7801). #8148 merget: mål tryk 16/11. XP #6110 godkendt privat; før tænding `_nocap`, Infisical-nøgle, Fable. #6181: se første `sale_escrows`. #8020: egen session (ejer). #8014 merges som plan; #7884 byg venter. Motor-dom: privat kort sendt. #7644 IKKE klar. **TÆNDT 15/11:** `sale_escrow_enabled`. **Nye:** #8198 · #8199. **Man 16/11:** auto-kalender, private grene, #8149, #8162. **#8071:** `private-handoffs/2026-11-13-trup-tabel-design/LAES-FOERST.md`.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** Ingen aktiv session. Senest Dolmer PC 15-16/11: #8195, #8202, #8148, #8203, #8204, #8179 merget; `sale_escrow_enabled` tændt; `auto_accept_enabled` tændt for alle; #8210 XP-rapport kladde; #8207 hooks uanset mappe merget `68756e4b`, rest #8209 (kræver build-stop-go).
+> **🤖 Working agent:** Ingen aktiv session. Senest 15-16/11: #8195, #8202, #8148, #8203, #8204, #8179, #8207 merget; `sale_escrow_enabled` + `auto_accept_enabled` tændt; #8210 XP-kladde; hooks-rest #8209.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
