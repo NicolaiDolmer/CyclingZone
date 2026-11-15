@@ -155,7 +155,8 @@ export function useDashboardData(options: DashboardOptions) {
   const context = useDataScope();
   const { runtime, scope, team, ready } = context;
   const client = runtime.client;
-  const viewer = ready && scope.viewerId !== null;
+  // Viewer-only modules start on the session, like the legacy loadAll; they do not wait for the team read.
+  const viewer = scope.ready && scope.viewerId !== null;
   // Signed out: the team bootstrap never runs, so `ready` stays false; settle on the scope instead.
   const signedOut = scope.ready && scope.viewerId === null;
   const keep = sameScopePlaceholder(scope);

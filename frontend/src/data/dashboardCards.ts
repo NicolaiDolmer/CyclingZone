@@ -72,11 +72,11 @@ export function useCareerFirstsData(): Row[] | null {
 
 /** #3746/#3803: one-off development transition panel. null = inactive/loading. */
 export function useDevTransitionData() {
-  const { runtime, scope, ready } = useDataScope();
+  const { runtime, scope } = useDataScope();
   const key = viewerKey(scope, "dashboard:dev-transition");
   const query = useQuery({
     queryKey: key,
-    enabled: ready && scope.viewerId !== null,
+    enabled: scope.ready && scope.viewerId !== null,
     queryFn: async ({ signal }): Promise<Row | null> => {
       const revision = await runtime.beforeRead(signal);
       const res = await apiFetch("/api/development/transition", { signal, headers: await scopedHeaders(runtime, scope, false) });
@@ -104,12 +104,12 @@ export function useDevTransitionData() {
 /** #4943: the newest open survey the viewer has neither completed nor dismissed. `hide` clears
  * the cached invite too, so a dismissed card does not return from cache on the next visit. */
 export function useSurveyInviteData(): { survey: Row | null; hide: () => void } {
-  const { runtime, scope, ready } = useDataScope();
+  const { runtime, scope } = useDataScope();
   const viewerId = scope.viewerId;
   const key = viewerKey(scope, "dashboard:survey-invite");
   const query = useQuery({
     queryKey: key,
-    enabled: ready && viewerId !== null,
+    enabled: scope.ready && viewerId !== null,
     queryFn: async ({ signal }): Promise<Row | null> => {
       const revision = await runtime.beforeRead(signal);
       // The close filter sits in the query itself, before order/limit, so an expired newest
