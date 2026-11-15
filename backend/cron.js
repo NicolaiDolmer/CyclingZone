@@ -40,7 +40,7 @@ import { deliverRaceResultNotify, RACE_RESULT_MESSAGE_TYPE } from "./lib/raceNot
 import { isRaceNotifyOutboxEnabled } from "./lib/raceNotifyOutboxFlag.js"; // #3624
 import { runPushSweepOnce } from "./lib/pushService.js"; // #6590
 import { flushDmRunGuard } from "./lib/discordDmRateGuard.js"; // #2571
-import { makeBoardDmNotifier } from "./lib/boardDmMirror.js"; // #2619
+import { makeBoardDmNotifier, makeInAppBoardNotifier } from "./lib/boardDmMirror.js"; // #2619, #8196
 import { syncAllDivisionRoles } from "./lib/discordRoleSync.js";
 import { processSquadEnforcementCron } from "./lib/squadEnforcement.js";
 import { runSelectionWarningSweep } from "./lib/selectionWarningSweep.js"; // #2180
@@ -430,16 +430,15 @@ async function runBoardMandateAutoAcceptCron() {
 // ─── Board Mid-Season Review (S-02g) ────────────────────────────────────────
 // Når race_days_completed krydser midpoint (= floor(race_days_total/2)) tjekker cron
 // hver human team. Hvis satisfaction <50 ELLER ≥50% mål 'behind' → fyrer board_critical-banner.
-// Idempotens: per-board-per-season notif-dedupe via title-match + related_id.
+// Idempotens (#8196): maerket board_profiles.mid_season_notified_season, ikke indbakke-raekken.
+// Beskeden sendes kun i spillet (ejer 15/11): ingen Discord-DM og derfor ingen DM-vagt her.
+const notifyMidSeasonInApp = makeInAppBoardNotifier({ notifyUser: notifyUserShared, supabase });
 
 async function runMidSeasonReviewCron() {
-  // #2571: se flushDmRunGuard-kaldet i runBoardAutoAcceptCron ovenfor.
-  flushDmRunGuard(["board_update", "board_critical"]);
   try {
     const result = await processMidSeasonReviewCron({
       supabase,
-      // #8196 (ejer 15/11): midtsaeson-beskeden sendes kun i spillet, ikke som Discord-DM.
-      notifyUser: notifyUserShared,
+      notifyUser: notifyMidSeasonInApp,
       captureExceptionFn: sentryCapture,
       now: new Date(),
     });

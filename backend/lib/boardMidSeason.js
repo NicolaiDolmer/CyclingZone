@@ -186,6 +186,7 @@ export async function processMidSeasonReviewCron({
         activeLoanCount: loanCountByTeam.get(team.id) || 0,
         notifyUser,
         now,
+        captureExceptionFn,
         deps,
       });
       if (result.banner_sent) summary.banners_sent += 1;
@@ -215,6 +216,7 @@ async function processTeamMidSeason({
   activeLoanCount = 0,
   notifyUser,
   now,
+  captureExceptionFn,
   deps = {},
 }) {
   if (!team.user_id) return { banner_sent: false };
@@ -232,6 +234,8 @@ async function processTeamMidSeason({
     .eq("plan_type", "1yr");
   if (boardsError && isMissingMarkerColumn(boardsError)) {
     markerAvailable = false;
+    // Synligt, saa en migration, der aldrig blev koert, ikke gemmer sig bag faldvejen.
+    console.warn(`  ⚠️  mid-season: ${MID_SEASON_MARKER_COLUMN} mangler, bruger gammelt gentagelsesvaern (#8196)`);
     ({ data: boards, error: boardsError } = await supabase
       .from("board_profiles")
       .select(BOARD_SELECT)
@@ -282,7 +286,13 @@ async function processTeamMidSeason({
       .from("board_profiles")
       .update({ [MID_SEASON_MARKER_COLUMN]: activeSeason.number })
       .eq("id", board.id);
-    if (error) console.error(`  ⚠️  mid-season marker failed for board ${board.id}:`, error.message);
+    if (error) {
+      // Leveret, men uden maerke: naeste koersel saetter det via "beskeden findes allerede".
+      console.error(`  ⚠️  mid-season marker failed for board ${board.id}:`, error.message);
+      captureExceptionFn?.(new Error(`mid-season marker failed: ${error.message}`), {
+        tags: { cron: "board mid-season", stage: "marker" },
+      });
+    }
   };
   if (markerAvailable && Number(board[MID_SEASON_MARKER_COLUMN]) === Number(activeSeason.number)) {
     return { banner_sent: false };
@@ -425,8 +435,7 @@ function countBehindGoals({ goals, standing, team, divisionManagerCount, finance
   }).length;
 }
 
-// #2520: board_critical-beskeden mirror'es til Discord DM (notifyBoardUpdateDM
-// via cron.js' notifyUserWithBoardDM) → spillervendt, skal være på engelsk.
+// #2520: spillervendt tekst, skal være på engelsk. #8196: sendes kun i spillet (ingen DM).
 function buildMidSeasonMessage({ reason, satisfaction }) {
   const intro = reason === "low_satisfaction"
     ? `The board is concerned. Satisfaction is down to ${Math.round(satisfaction)}.`

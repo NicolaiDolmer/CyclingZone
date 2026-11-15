@@ -4,7 +4,7 @@
  * `notifyUserWithBoardDM` (cron.js) spejlede `board_update`/`board_critical` til
  * en Discord-DM for HVER cron-tick, uafhængigt af om `notifyUser` faktisk
  * oprettede en ny in-app-notifikation eller ramte 24h-dedup'en. Board-crons
- * (`runBoardAutoAcceptCron` + `runMidSeasonReviewCron`) kører hvert 30. minut, så
+ * (`runBoardAutoAcceptCron`; `runMidSeasonReviewCron` sender siden #8196 kun i spillet) kører hvert 30. minut, så
  * en linket bruger med en pending board-plan ville få samme "📋 Board Update"-DM
  * hver halve time indtil planen blev indsendt (DM-spam). Samtidig så #2571-rate-
  * guarden en permanent 100%-skip-streak når den eneste due modtager var ulinket
@@ -33,6 +33,14 @@ const BOARD_DM_TYPES = new Set(["board_update", "board_critical"]);
  * @param {object}   deps.supabase            - Supabase service-role-klient.
  * @returns {(args: object) => Promise<object>} notifyUserWithBoardDM(args)
  */
+/**
+ * #8196: besked KUN i spillet (ingen Discord-DM), men med samme kobling som
+ * DM-udgaven: klienten laegges paa, fordi notificationService.notifyUser kraever den.
+ */
+export function makeInAppBoardNotifier({ notifyUser, supabase }) {
+  return (args) => notifyUser({ supabase, ...args });
+}
+
 export function makeBoardDmNotifier({ notifyUser, notifyBoardUpdateDM, supabase }) {
   return async (args) => {
     const result = await notifyUser({ supabase, ...args });

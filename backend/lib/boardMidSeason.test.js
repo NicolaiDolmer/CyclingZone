@@ -869,6 +869,9 @@ function makeFakeSupabase(state) {
 // #8196 — en slettet midtsaeson-besked maa ikke sendes igen
 // =====================================================================
 
+// Fast ur (AGENTS regel 16): proeverne maa ikke laese vaegurets tid.
+const NOW_8196 = new Date("2026-11-15T12:00:00Z");
+
 function makeNotifier8196(state, sent) {
   return async (args) => {
     sent.push({ ...args });
@@ -890,13 +893,13 @@ test("#8196: slettes beskeden i indbakken, sender naeste koersel den IKKE igen",
   const supabase = makeFakeSupabase(state);
   const notifyUser = makeNotifier8196(state, sent);
 
-  const first = await processMidSeasonReviewCron({ supabase, notifyUser });
+  const first = await processMidSeasonReviewCron({ supabase, notifyUser, now: NOW_8196 });
   assert.equal(first.banners_sent, 1);
   assert.equal(Number(state.board_profiles[0].mid_season_notified_season), 5, "maerket saettes paa boardet");
 
   state.notifications.length = 0; // spilleren sletter beskeden
 
-  const second = await processMidSeasonReviewCron({ supabase, notifyUser });
+  const second = await processMidSeasonReviewCron({ supabase, notifyUser, now: NOW_8196 });
   assert.equal(second.banners_sent, 0);
   assert.equal(sent.length, 1, "ingen ny besked efter sletning");
 });
@@ -914,12 +917,12 @@ test("#8196: en besked sendt foer rettelsen faar maerket sat, saa en senere slet
   const supabase = makeFakeSupabase(state);
   const notifyUser = makeNotifier8196(state, sent);
 
-  await processMidSeasonReviewCron({ supabase, notifyUser });
+  await processMidSeasonReviewCron({ supabase, notifyUser, now: NOW_8196 });
   assert.equal(sent.length, 0);
   assert.equal(Number(state.board_profiles[0].mid_season_notified_season), 5);
 
   state.notifications.length = 0;
-  await processMidSeasonReviewCron({ supabase, notifyUser });
+  await processMidSeasonReviewCron({ supabase, notifyUser, now: NOW_8196 });
   assert.equal(sent.length, 0, "ingen ny besked efter sletning");
 });
 
@@ -928,7 +931,7 @@ test("#8196: et maerke fra en tidligere saeson spaerrer ikke for denne saesons b
   const state = makeMidSeasonState({ raceDaysCompleted: 30, raceDaysTotal: 60, boardSatisfaction: 40 });
   state.board_profiles[0].mid_season_notified_season = 4;
   const supabase = makeFakeSupabase(state);
-  const summary = await processMidSeasonReviewCron({ supabase, notifyUser: makeNotifier8196(state, sent) });
+  const summary = await processMidSeasonReviewCron({ supabase, notifyUser: makeNotifier8196(state, sent), now: NOW_8196 });
   assert.equal(summary.banners_sent, 1);
 });
 
@@ -950,8 +953,48 @@ test("#8196: mangler kolonnen endnu (migration ikke koert), virker koerslen som 
     };
     return builder;
   };
-  const summary = await processMidSeasonReviewCron({ supabase, notifyUser: makeNotifier8196(state, sent) });
+  const summary = await processMidSeasonReviewCron({ supabase, notifyUser: makeNotifier8196(state, sent), now: NOW_8196 });
   assert.equal(summary.errors, 0);
   assert.equal(summary.banners_sent, 1);
   assert.equal(state.board_profiles[0].mid_season_notified_season, undefined, "ingen skrivning til en kolonne, der ikke findes");
+});
+
+test("#8196: bliver beskeden IKKE leveret, saettes maerket ikke", async () => {
+  const state = makeMidSeasonState({ raceDaysCompleted: 30, raceDaysTotal: 60, boardSatisfaction: 40 });
+  const supabase = makeFakeSupabase(state);
+  const summary = await processMidSeasonReviewCron({
+    supabase,
+    notifyUser: async () => ({ delivered: false, deduped: true }),
+    now: NOW_8196,
+  });
+  assert.equal(summary.banners_sent, 0);
+  assert.equal(state.board_profiles[0].mid_season_notified_season ?? null, null);
+});
+
+test("#8196: besked-funktionen kun til spillet laegger klienten paa (uden den kaster notifyUser)", async () => {
+  const { makeInAppBoardNotifier } = await import("./boardDmMirror.js");
+  const calls = [];
+  const supabase = { marker: "klient" };
+  const notify = makeInAppBoardNotifier({
+    notifyUser: async (args) => { calls.push(args); return { delivered: true }; },
+    supabase,
+  });
+  const result = await notify({ userId: "u1", type: "board_critical", title: "t" });
+  assert.equal(result.delivered, true);
+  assert.equal(calls[0].supabase, supabase, "klienten skal med i kaldet");
+  assert.equal(calls[0].userId, "u1");
+});
+
+test("#8196: cron.js bruger besked-funktionen kun til spillet for midtsaeson-koerslen", async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("../cron.js", import.meta.url), "utf8");
+  const start = src.indexOf("async function runMidSeasonReviewCron()");
+  assert.ok(start > 0, "runMidSeasonReviewCron findes");
+  const body = src.slice(start, start + 900);
+  assert.ok(body.includes("notifyUser: notifyMidSeasonInApp"), "midtsaeson-koerslen bruger besked-funktionen kun til spillet");
+  assert.ok(!body.includes("notifyUserWithBoardDM"), "ingen Discord-DM for midtsaeson-beskeden");
+  assert.ok(
+    src.includes("const notifyMidSeasonInApp = makeInAppBoardNotifier({ notifyUser: notifyUserShared, supabase });"),
+    "besked-funktionen faar klienten med"
+  );
 });

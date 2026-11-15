@@ -28,6 +28,9 @@
 
 BEGIN;
 
+-- #6342: en migration maa aldrig holde spillerlaesninger tilbage; giv op efter 3 s.
+SET LOCAL lock_timeout = '3s';
+
 ALTER TABLE public.board_profiles
   ADD COLUMN IF NOT EXISTS mid_season_notified_season integer;
 
