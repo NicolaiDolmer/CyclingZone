@@ -1163,6 +1163,10 @@ jobs:
       # ikke-versioneret). Testen fanger ogsaa nye scripts med raa `worktree remove`.
       - name: Test unsafe-delete guard (#7837)
         run: node --test scripts/unsafe-delete-guard.test.mjs
+      # #8206: hook-kommandoer i .claude/settings.json skal bruge "$CLAUDE_PROJECT_DIR/...";
+      # en relativ sti gav exit 127 fra frontend/ eller et andet worktree, og vagterne koerte ikke.
+      - name: Test hooks run from any working directory (#8206)
+        run: node --test scripts/hook-paths.test.mjs
       # #7837 (Codex-review #7839): arkivet gemmer staged og ikke-staged arbejde, upushede
       # commits uanset base-ref, og giver Ok=false ved enhver ukendt git-status.
       - name: Test worktree archive (#7837)

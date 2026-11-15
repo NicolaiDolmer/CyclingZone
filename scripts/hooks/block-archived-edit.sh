@@ -43,7 +43,11 @@ NORMALISED=$(printf '%s' "$FILE_PATH" | tr '\\' '/')
 # Try multiple repo-root forms: git-rev-parse output and `pwd` (Git Bash maps
 # C:\ to /c/, so both forms can appear in incoming JSON depending on caller).
 REPO_ROOTS=()
-GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null | tr '\\' '/')
+# #8206: kommandoens mappe (hook-inputtets cwd), ellers hookens eget repo.
+# shellcheck source=lib/hook-cwd.sh
+. "$SCRIPT_DIR/lib/hook-cwd.sh"
+hook_enter_cwd "$INPUT"
+GIT_ROOT=$(hook_repo_root 2>/dev/null | tr '\\' '/')
 [ -n "$GIT_ROOT" ] && REPO_ROOTS+=("$GIT_ROOT")
 PWD_ROOT=$(pwd 2>/dev/null | tr '\\' '/')
 [ -n "$PWD_ROOT" ] && REPO_ROOTS+=("$PWD_ROOT")

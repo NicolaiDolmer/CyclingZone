@@ -34,12 +34,17 @@
 
 set -u
 
-# Kun i hoved-checkoutet. I et linked worktree er .git en FIL ("gitdir: ...").
-# Dér er sessionen allerede isoleret, og så blander vi os ikke.
-[ -f .git ] && exit 0
-[ -d .git ] || exit 0
-
 INPUT=$(cat 2>/dev/null || true)
+
+# #8206: vurder den mappe kommandoen koerer i (inputtets cwd), ikke hook-processens
+# cwd, og gaa til dens git-rod, saa en undermappe (frontend/) ogsaa daekkes.
+# shellcheck source=lib/hook-cwd.sh
+. "$(dirname "$0")/lib/hook-cwd.sh"
+hook_enter_cwd "$INPUT"
+# Kun i hoved-checkoutet. I et linked worktree er .git en FIL ("gitdir: ...").
+# Dér er sessionen allerede isoleret, og så blander vi os ikke. Hvilket checkout
+# et segment rammer, afgøres pr. segment nedenfor (cd <dir>, git -C <dir>), saa
+# `git -C C:/Dev/CyclingZone switch x` fra et worktree ogsaa fanges (review #8207).
 
 case "$INPUT" in
   *'"tool_name":"Bash"'*|*'"tool_name": "Bash"'*) ;;
@@ -68,32 +73,113 @@ process.stdin.on("end", () => {
   }
   if (!cmd) process.exit(0);
 
+  const fs = require("fs");
+  const path = require("path");
+  const { execFileSync } = require("child_process");
+  const unquote = (t) => t.replace(/^["\x27]|["\x27]$/g, "");
+  // Git Bash-stier (/c/dev/x) -> C:/dev/x paa Windows.
+  const native = (p) => {
+    const m = process.platform === "win32" && String(p).match(/^\/([a-zA-Z])(\/.*)?$/);
+    return m ? `${m[1].toUpperCase()}:${m[2] || "/"}` : p;
+  };
+  // Vercel Security Review #8207: et mappe-argument med shell-ekspansion ($PWD, ~,
+  // `...`, %X%) eller en mappe der ikke findes, er UKENDT. Saa beholdes den kendte
+  // mappe (fail-closed), i stedet for at en uopslaaelig sti tolkes som "ikke hovedmappen".
+  // Review #8207: en ukendt mappe kan vaere hovedmappen ($CLAUDE_PROJECT_DIR, ~, $(...)).
+  // Saa blokeres et senere branch-skift i kommandoen (fail-closed), ogsaa i et worktree.
+  let unresolved = false;
+  const at = (base, p) => {
+    const raw = unquote(p);
+    if (/[$`~%*?]/.test(raw)) { unresolved = true; return base; }
+    const abs = path.resolve(base, native(raw));
+    try { if (fs.statSync(abs).isDirectory()) return abs; } catch {}
+    unresolved = true;
+    return base;
+  };
+  // Hoved-checkout = git-roden for mappen har en .git-MAPPE (linked worktree: fil).
+  const isMainCheckout = (dir) => {
+    try {
+      const top = execFileSync("git", ["-C", dir, "rev-parse", "--show-toplevel"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+      return !!top && fs.statSync(path.join(top, ".git")).isDirectory();
+    } catch { return false; }
+  };
+
   // Del kommandoen i segmenter, så "cd x && git checkout y" også fanges.
-  const segments = cmd.split(/&&|\|\||[;\n|]/);
+  // Indlejret bash -c "..." / sh -c "..." pakkes ud, saa dens segmenter ogsaa ses.
+  const flat = cmd.replace(/\b(?:bash|sh)\s+-l?c\s+("([^"\\]|\\.)*"|\x27[^\x27]*\x27)/g, (_, q) => " ; " + q.slice(1, -1).replace(/\\"/g, "\"") + " ; ");
+  const segments = flat.split(/&&|\|\||[;\n|]/);
+  // Kandidat-mapper (Vercel Security Review #8207, tredje runde): sporingen af cd/-C/
+  // --work-tree maa kun TILFOEJE blokeringer, aldrig fjerne dem. Et segment blokeres,
+  // hvis BLOT EN kandidat er hovedmappen: kommandoens startmappe, enhver mappe et
+  // tidligere cd naaede (ogsaa i en subshell), -C, --work-tree, --git-dir og
+  // GIT_DIR/GIT_WORK_TREE. Saa er vagten mindst lige saa streng som foer #8207.
+  const start = process.cwd();
+  const seen = [start];
+  let dir = start;
+  const stripGit = (p) => p.replace(/[\\/]\.git[\\/]?$/, "");
 
   for (const seg of segments) {
-    const s = seg.trim();
-    const m = s.match(/(?:^|\s)git\s+(?:-[^\s]+\s+)*(checkout|switch)\b(.*)$/);
-    if (!m) continue;
-
-    const rest = (m[2] || "").trim();
-
-    // "--" markerer filgendannelse: git checkout -- fil, git checkout HEAD -- fil
-    if (/(^|\s)--(\s|$)/.test(rest)) continue;
-
-    const tokens = rest.split(/\s+/).filter(Boolean);
-    // Første token der ikke er et flag, er målet.
-    const target = tokens.find((t) => !t.startsWith("-"));
-
-    // Nye branches: -b / -c bærer altid et skift med sig.
-    const createsBranch = tokens.some((t) => t === "-b" || t === "-c" || t === "-B" || t === "-C");
-
-    if (!target && !createsBranch) continue;          // fx bart "git switch" -> git fejler selv
-    if (!createsBranch && target === "main") continue; // hjempositionen er tilladt
-    if (!createsBranch && target === ".") continue;    // git checkout . er filgendannelse
-
-    console.log(JSON.stringify({ blocked: true, target: target || "(ny branch)", segment: s }));
-    process.exit(0);
+    // Subshell/gruppe: parenteser og klammer fjernes.
+    const s = seg.trim().replace(/^[({]+\s*/, "").replace(/\s*[)}]+$/, "");
+    // cd [--] [-flag] <sti> [2>/dev/null ...]: ekstra tokens efter stien er tilladt (review #8207).
+    const cd = s.match(/^(?:cd|pushd|Set-Location|sl)\s+(?:--\s+)?(?:-[A-Za-z]+\s+)*("[^"]*"|\x27[^\x27]*\x27|[^\s;&|]+)(?:\s+.*)?$/);
+    // Ingen continue: resten af segmentet tjekkes ogsaa, fx $(git switch x) efter stien (Vercel #8207).
+    if (cd) { dir = at(dir, cd[1]); seen.push(dir); }
+    // export GIT_DIR=... / GIT_WORK_TREE=...: gaelder resten af kommandoen.
+    const exp = s.match(/^export\s+(?:GIT_DIR|GIT_WORK_TREE)=("[^"]*"|\x27[^\x27]*\x27|\S+)/);
+    if (exp) seen.push(at(dir, stripGit(unquote(exp[1]))));
+    // [VAR=x ...] [sudo/env ...] git [globale flag] (checkout|switch) <rest>
+    // Hvert token der ligner git proeves (review #8207: "sudo -u git git checkout x").
+    const toks = s.match(/"[^"]*"|\x27[^\x27]*\x27|\S+/g) || [];
+    // Vercel #8207: HVER git-kommando i segmentet vurderes for sig (en tilladt
+    // $(git checkout -- fil) maa ikke skjule et forbudt skift senere i segmentet).
+    // Hver kommandos argumenter slutter ved naeste git-token eller ved ) / backtick.
+    const isGitTok = (t) => /(^|[\\/(`])git(\.exe)?$/i.test(unquote(t));
+    for (let gi = 0; gi < toks.length; gi++) {
+      if (!isGitTok(toks[gi])) continue;
+      const c = [...seen, dir];
+      for (const t of toks.slice(0, gi)) {
+        const env = t.match(/^(?:GIT_DIR|GIT_WORK_TREE)=(.+)$/);
+        if (env) c.push(at(dir, stripGit(unquote(env[1]))));
+      }
+      let segDir = dir, j = gi + 1;
+      while (j < toks.length && toks[j].startsWith("-")) {
+        const eq = toks[j].match(/^--(?:work-tree|git-dir)=(.+)$/);
+        if (toks[j] === "-C" && j + 1 < toks.length) { segDir = at(segDir, toks[j + 1]); c.push(segDir); j += 2; }
+        else if (eq) { c.push(at(segDir, stripGit(unquote(eq[1])))); j += 1; }
+        else if ((toks[j] === "--work-tree" || toks[j] === "--git-dir") && j + 1 < toks.length) { c.push(at(segDir, stripGit(unquote(toks[j + 1])))); j += 2; }
+        else if (toks[j] === "-c" && j + 1 < toks.length) j += 2;
+        else j += 1;
+      }
+      if (toks[j] !== "checkout" && toks[j] !== "switch") continue;
+      if (!unresolved && !c.some(isMainCheckout)) continue;
+      const tokens = [];
+      for (let k = j + 1; k < toks.length; k++) {
+        // Kun $( eller backtick starter en ny kommando; et argument som "git" eller
+        // "feature/git" er et branchnavn, ikke en ny git (Vercel #8207).
+        // Review #8207: staar substitutionen hvor maalet skulle vaere (git switch $(cat f)),
+        // er maalet ukendt; det blokeres (fail-closed), som paa main.
+        if (/^(\$\(|`)/.test(toks[k])) {
+          if (!tokens.some((t) => !t.startsWith("-"))) tokens.push("(ukendt maal)");
+          break;
+        }
+        const cut = toks[k].search(/[)`]/);
+        const t = unquote(cut >= 0 ? toks[k].slice(0, cut) : toks[k]);
+        if (t) tokens.push(t);
+        if (cut >= 0) break;
+      }
+      // "--" markerer filgendannelse: git checkout -- fil, git checkout HEAD -- fil
+      if (tokens.includes("--")) continue;
+      // Første token der ikke er et flag, er målet ("main" == main).
+      const target = tokens.find((t) => !t.startsWith("-"));
+      // Nye branches: -b / -c bærer altid et skift med sig.
+      const createsBranch = tokens.some((t) => t === "-b" || t === "-c" || t === "-B" || t === "-C");
+      if (!target && !createsBranch) continue;          // fx bart "git switch" -> git fejler selv
+      if (!createsBranch && target === "main") continue; // hjempositionen er tilladt
+      if (!createsBranch && target === ".") continue;    // git checkout . er filgendannelse
+      console.log(JSON.stringify({ blocked: true, target: target || "(ny branch)", segment: s }));
+      process.exit(0);
+    }
   }
   process.exit(0);
 });

@@ -15,6 +15,10 @@
 set -u
 
 INPUT=$(cat 2>/dev/null || true)
+# #8206: koer i den mappe kommandoen koerer i (hook-inputtets cwd), ikke hook-processens.
+# shellcheck source=lib/hook-cwd.sh
+. "$(dirname "$0")/lib/hook-cwd.sh"
+hook_enter_cwd "$INPUT"
 
 # Bail-out: kun Bash tool-calls
 case "$INPUT" in
@@ -61,6 +65,9 @@ PUSH_DIR="$2"
 if [ -n "$PUSH_DIR" ]; then cd "$PUSH_DIR" 2>/dev/null || return 0; fi
 
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
+# #8206 (review #8207): fil-listerne nedenfor er relative til roden; fra frontend/
+# fejlede [ -f "$f" ] for hver fil, og et forældet preflight slap igennem.
+cd "$(git rev-parse --show-toplevel 2>/dev/null)" 2>/dev/null || return 0
 
 # Review #7907: samme vurdering som CI-vagten. Koden paa vej til main/master kommer
 # fra den lokale branch, og et eksplicit feature-maal er et PR-push, ogsaa fra main.

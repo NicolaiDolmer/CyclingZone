@@ -342,6 +342,10 @@
   ],
   "cleanupList": [
     {
+      "issue": 8206,
+      "why": "Interne hook-vagter (secret, sletning, branch, preflight) blev stille sprunget over, naar cwd ikke var repo-roden; ejer-go 15/11 i hook-sessionen: 'Ja, cleanupList (Anbefalet)', og i hovedsessionen: 'Ja, paa listen'. PR #8207"
+    },
+    {
       "issue": 8001,
       "why": "Intern Discord-formatter: bevar eksisterende patchnote-tekst ved indlejret spoergsmaalstegn; ejer-go 11/11 i Codex-koeen, plan paa #8001 kommentar 6798588808"
     },
