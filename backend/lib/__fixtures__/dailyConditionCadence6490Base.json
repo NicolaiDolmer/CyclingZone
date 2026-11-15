@@ -1,0 +1,70 @@
+{
+  "mergeBase": "135a4824eae7e03fc8da5dbf2c45d4366357cd72",
+  "generatedFrom": "backend/lib/dailyTrainingEngine.js guard at the merge-base (whole report)",
+  "results": [
+    {
+      "case": 0,
+      "throws": false
+    },
+    {
+      "case": 1,
+      "throws": false
+    },
+    {
+      "case": 2,
+      "throws": false
+    },
+    {
+      "case": 3,
+      "throws": true
+    },
+    {
+      "case": 4,
+      "throws": true
+    },
+    {
+      "case": 5,
+      "throws": true
+    },
+    {
+      "case": 6,
+      "throws": true
+    },
+    {
+      "case": 7,
+      "throws": true
+    },
+    {
+      "case": 8,
+      "throws": true
+    },
+    {
+      "case": 9,
+      "throws": true
+    },
+    {
+      "case": 10,
+      "throws": true
+    },
+    {
+      "case": 11,
+      "throws": true
+    },
+    {
+      "case": 12,
+      "throws": true
+    },
+    {
+      "case": 13,
+      "throws": true
+    },
+    {
+      "case": 14,
+      "throws": true
+    },
+    {
+      "case": 15,
+      "throws": true
+    }
+  ]
+}
