@@ -26,7 +26,7 @@ export default function V6ResultsControls({ state, onChange, hasMyTeam, shown, t
   const filtering = isFiltering(state);
   return (
     <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2" data-results-controls="">
-      <span className="relative inline-flex min-w-0 flex-1 items-center sm:max-w-72">
+      <span className="relative inline-flex min-w-0 basis-full items-center sm:max-w-72 sm:flex-1 sm:basis-auto">
         <SearchIcon size={14} aria-hidden="true" className="pointer-events-none absolute start-2.5 text-cz-3" />
         <input
           type="search"
