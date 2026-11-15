@@ -154,7 +154,7 @@ import {
 import * as transferNotif from "../lib/transferNotifications.js";
 import { withdrawCounterOffer, claimCounterForAccept, buildCounterOfferWithdrawnNotification } from "../lib/counterOfferWithdraw.js"; // #6463
 import { getParkedRiderReleaseIssue, getParkedRiderTradeIssue } from "../lib/parkedRiderGuard6181.js"; // #6181
-import { releaseDeferContext8153, orderPendingRelease, countPendingReleasesForTeam, getPendingReleaseTradeIssue, loadPendingReleasesForTeam, countPendingReleasesForTransition, PENDING_RELEASE_FORCE_BLOCKED_ERROR } from "../lib/riderReleaseDefer8153.js"; // #8153
+import { releaseDeferContext8153, orderPendingRelease, countPendingReleasesForTeam, getPendingReleaseTradeIssue, loadPendingReleasesForTeam, countPendingReleasesForTransition, PENDING_RELEASE_FORCE_BLOCKED_ERROR, PENDING_RELEASE_SQUAD_CODE, getPendingReleaseSquadIssue, pendingReleaseSquadResponse } from "../lib/riderReleaseDefer8153.js"; // #8153
 import { countSellerAuctionOutgoing, checkAutoAcceptMutation, isAutoAcceptEnabled, getListingPriceUpdateErrorResponse, getOfferAutoAcceptIssue, registerAutoAcceptRoutes, releaseRiderUnderTeamLock } from "../lib/autoAccept2176.js"; // #2176
 import { sanitizeDmPrefs } from "../lib/discordDmPrefs.js";
 import { readUiPrefs, sanitizeUiPrefsPatch, writeUiPrefs } from "../lib/userUiPrefs.js"; // #7778
@@ -19679,6 +19679,10 @@ router.post("/academy/promote", requireAuth, marketWriteLimiter, async (req, res
     if (msg === "rider_not_found") return res.status(404).json({ error: msg });
     if (msg === "not_owned") return res.status(403).json({ error: msg });
     if (["not_academy", "squad_cap_violation"].includes(msg)) return res.status(409).json({ error: msg });
+    if (msg === PENDING_RELEASE_SQUAD_CODE) { // #8153: vagten paa riders afviste trupskiftet
+      const issue = await pendingReleaseSquadResponse(supabase, req.body?.riderId);
+      return res.status(issue.status).json(issue.body);
+    }
     captureException(err);
     res.status(500).json({ error: msg });
   }
@@ -19700,6 +19704,10 @@ router.post("/academy/demote", requireAuth, marketWriteLimiter, async (req, res)
       .from("seasons").select("number").eq("status", "active").maybeSingle();
     const seasonNumber = season?.number ?? 1;
 
+    // #8153: en rytter, hvis frigivelse venter, koerer etapeloebet faerdigt som senior. Slukket = null.
+    const pendingIssue = await getPendingReleaseSquadIssue(supabase, riderId);
+    if (pendingIssue) return res.status(pendingIssue.status).json(pendingIssue.body);
+
     const result = await demoteAcademyRider(supabase, {
       teamId: req.team.id,
       riderId,
@@ -19713,6 +19721,10 @@ router.post("/academy/demote", requireAuth, marketWriteLimiter, async (req, res)
     // age/market/listed/cap/full → 409 (forventede bruger-tilstande, ikke Sentry-larm).
     if (["already_academy", "not_u23", "rider_on_market", "rider_listed", "academy_full"].includes(msg)) {
       return res.status(409).json({ error: msg });
+    }
+    if (msg === PENDING_RELEASE_SQUAD_CODE) { // #8153: vagten paa riders afviste nedrykningen
+      const issue = await pendingReleaseSquadResponse(supabase, req.body?.riderId);
+      return res.status(issue.status).json(issue.body);
     }
     captureException(err);
     res.status(500).json({ error: msg });

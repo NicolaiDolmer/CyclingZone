@@ -20,6 +20,7 @@ import {
   countActivePendingReleases,
 } from "./riderReleaseDefer8153.js";
 import { executePendingReleasesForRace, runPendingReleaseHealSweep } from "./deferredTransferHealSweep.js";
+import { demote as demoteAcademyRider, handleMoveSquadRequest } from "./academyTransfer.js";
 
 const MIGRATION = "2026-11-15-8153-pending-rider-releases.sql";
 const id = (n) => `00000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
@@ -162,6 +163,54 @@ test("SQL: har rytteren forladt holdet ad en anden vej, lukkes bestillingen uden
     ALTER TABLE riders ENABLE TRIGGER riders_pending_release_guard_8153;`);
   assert.equal((await execute(db, releaseId)).status, "cancelled_by_system");
   assert.equal((await state(db)).owner, OTHER);
+});
+
+// Den rigtige nedrykning (demote_rider_to_academy, #5917) og dens taellefunktion
+// (#5432) paa fixturens riders, med de kolonner og tabeller de laeser.
+async function withDemoteRpc(db) {
+  const count = (await file("2026-09-24-5432-squad-caps-rpc.sql"))
+    .match(/CREATE OR REPLACE FUNCTION public\.count_team_squad_members\([\s\S]*?\n\$\$;/);
+  const demote = (await file("2026-10-10-5917-demote-allow-listed.sql"))
+    .match(/CREATE OR REPLACE FUNCTION public\.demote_rider_to_academy\([\s\S]*?\n\$\$;/);
+  assert.ok(count && demote, "nedryknings-RPC'en findes i migrationerne");
+  await db.exec(`ALTER TABLE riders ADD COLUMN IF NOT EXISTS birthdate date DEFAULT '2005-06-01';
+    CREATE TABLE IF NOT EXISTS races(id uuid PRIMARY KEY, status text, stages_completed integer DEFAULT 0);
+    CREATE TABLE IF NOT EXISTS race_entries(race_id uuid, rider_id uuid);`);
+  await db.exec(count[0]);
+  await db.exec(demote[0]);
+}
+const demoteRider = async (db, riderId) =>
+  (await one(db, "SELECT public.demote_rider_to_academy($1,$2,1000,2,3,2026,'u23',10,22) AS r", [TEAM, riderId])).r;
+const riderShape = (db, riderId) =>
+  one(db, "SELECT team_id, is_academy, squad FROM riders WHERE id=$1", [riderId]);
+
+test("SQL: nedrykning til akademiet afvises, mens frigivelsen venter, og tillades uden", async (t) => {
+  const db = await database(t);
+  await withDemoteRpc(db);
+  const free = id(103);
+  await db.exec(`INSERT INTO riders(id, team_id) VALUES('${free}','${TEAM}')`);
+  await order(db);
+  // Med en aktiv bestilling: den rigtige RPC afvises af vagten, og rytteren er uroert senior.
+  await assert.rejects(demoteRider(db, RIDER), /rider_pending_release_8153: .*cannot change squad/);
+  assert.deepEqual(await riderShape(db, RIDER), { team_id: TEAM, is_academy: false, squad: "senior" });
+  // Ethvert andet trupskifte paa rytteren afvises ogsaa (fx en direkte opdatering).
+  await assert.rejects(db.exec(`UPDATE riders SET squad='u23' WHERE id='${RIDER}'`), /rider_pending_release_8153/);
+  await assert.rejects(db.exec(`UPDATE riders SET is_academy=true WHERE id='${RIDER}'`), /rider_pending_release_8153/);
+  // Uden bestilling: samme RPC flytter holdkammeraten ned som i dag.
+  assert.equal((await demoteRider(db, free)).ok, true);
+  assert.deepEqual(await riderShape(db, free), { team_id: TEAM, is_academy: true, squad: "u23" });
+});
+
+test("SQL: en udfoert frigivelse efterlader ingen akademirytter uden hold", async (t) => {
+  const db = await database(t);
+  const { release_id: releaseId } = await order(db);
+  // Kun en superbruger-sti uden vagten kan goere ham til akademirytter imens.
+  await db.exec(`ALTER TABLE riders DISABLE TRIGGER riders_pending_release_guard_8153;
+    UPDATE riders SET is_academy=true, squad='u23' WHERE id='${RIDER}';
+    ALTER TABLE riders ENABLE TRIGGER riders_pending_release_guard_8153;`);
+  assert.equal((await execute(db, releaseId)).status, "executed");
+  assert.deepEqual(await riderShape(db, RIDER), { team_id: null, is_academy: false, squad: "senior" });
+  assert.equal(Number((await one(db, "SELECT count(*) AS n FROM riders WHERE team_id IS NULL AND (is_academy OR squad <> 'senior')")).n), 0);
 });
 
 test("SQL: kun service_role kan kalde funktionerne; tabellen er lukket for klienten", async (t) => {
@@ -371,7 +420,7 @@ test("JS: en rytter i et andet aktivt etapeloeb venter, til ogsaa det er slut", 
 
 test("JS: et enkeltdagsloeb slaar aldrig tabellen op", async () => {
   const sb = fakeSupabase({});
-  assert.deepEqual(await executePendingReleasesForRace(sb, { id: RACE, race_type: "single" }), { executed: 0, failed: 0, errors: [] });
+  assert.deepEqual(await executePendingReleasesForRace(sb, { id: RACE, race_type: "single" }, { now: new Date(LATER) }), { executed: 0, failed: 0, errors: [] });
   assert.equal(sb.log.from.length, 0);
 });
 
@@ -406,4 +455,44 @@ test("JS: GET /me/pending-releases-kontrakten og saesonskifte-spaerren", async (
   assert.deepEqual(await loadPendingReleasesForTeam(missing, TEAM), []);
   const broken = { from() { throw new Error("boom"); } };
   assert.equal(await countPendingReleasesForTransition(broken), 1);
+});
+
+// ── Trupskifte (nedrykning) med en ventende frigivelse ───────────────────────
+
+test("JS: trup-ruten afviser et trupskifte, mens frigivelsen venter; slukket kontakt flytter som i dag", async () => {
+  let moved = 0;
+  const move = async () => { moved += 1; return { riderId: RIDER, action: "demoted" }; };
+  const on = fakeSupabase({ ...flagOn, ...activeRace, pending_rider_releases: [pendingRow()] });
+  const blocked = await handleMoveSquadRequest(on, { teamId: TEAM, riderId: RIDER, body: { squad: "u23" }, seasonNumber: 2, move });
+  assert.equal(blocked.status, 409);
+  assert.equal(blocked.body.errorCode, "rider_pending_release_squad");
+  assert.deepEqual(blocked.body.errorParams, { race: "Tour Test" });
+  assert.equal(moved, 0, "flytningen koeres aldrig");
+  // Slukket: ingen opslag i tabellen, og flytningen koerer som i dag.
+  const off = fakeSupabase({ ...activeRace, pending_rider_releases: [pendingRow()] });
+  const ok = await handleMoveSquadRequest(off, { teamId: TEAM, riderId: RIDER, body: { squad: "u23" }, seasonNumber: 2, move });
+  assert.equal(ok.status, 200);
+  assert.equal(moved, 1);
+  assert.ok(!off.log.from.includes("pending_rider_releases"), "slukket laeser aldrig tabellen");
+});
+
+test("JS: afviser vagten i databasen nedrykningen, bliver det til 409 med loebets navn (ikke 500)", async () => {
+  const sb = fakeSupabase({
+    ...activeRace,
+    riders: [{ id: RIDER, team_id: TEAM, firstname: "Test", lastname: "Rider", is_academy: false, birthdate: "2005-06-01", salary: 1000, contract_length: 2, contract_end_season: 3 }],
+    pending_rider_releases: [pendingRow()],
+  });
+  sb.rpcHandlers.demote_rider_to_academy = () => ({ data: null, error: { code: "P0001", message: `rider_pending_release_8153: rider ${RIDER} is leaving his team after a stage race and cannot change squad` } });
+  await assert.rejects(
+    demoteAcademyRider(sb, { teamId: TEAM, riderId: RIDER, seasonNumber: 2, targetSquad: "u23", now: new Date(NOW), notify: async () => assert.fail("ingen besked") }),
+    { message: "rider_pending_release_squad" },
+  );
+  // Samme fejl gennem trup-ruten (kontakten slukket, saa kun vagten i databasen stopper den).
+  const res = await handleMoveSquadRequest(sb, {
+    teamId: TEAM, riderId: RIDER, body: { squad: "u23" }, seasonNumber: 2,
+    move: async () => { throw new Error("rider_pending_release_squad"); },
+  });
+  assert.equal(res.status, 409);
+  assert.equal(res.body.errorCode, "rider_pending_release_squad");
+  assert.deepEqual(res.body.errorParams, { race: "Tour Test" });
 });

@@ -37,6 +37,7 @@
     "rider_pending_transfer_release": "Este ciclista está vendido y espera para unirse a su nuevo equipo, así que no puedes liberarlo",
     "rider_pending_transfer_trade": "Este ciclista ya está vendido y espera para unirse a su nuevo equipo, así que no se puede volver a vender",
     "rider_pending_release_trade": "Este ciclista dejará tu equipo después de {race} y no se puede traspasar.",
+    "rider_pending_release_squad": "Este ciclista dejará tu equipo después de {race} y no puede cambiar de plantilla.",
     "rider_release_already_pending": "La liberación de este ciclista ya está solicitada. Dejará tu equipo después de {race}.",
     "selection_rider_leaving": "Un ciclista con la liberación solicitada no puede ser seleccionado para carreras posteriores a su vuelta por etapas actual.",
     "invalid_start_price": "Precio de salida no válido",

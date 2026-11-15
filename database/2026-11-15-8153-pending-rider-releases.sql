@@ -27,13 +27,15 @@
 --      (team_id, kontraktfelter), og aabne salgsopslag lukkes. Ejerskabsloggen
 --      skrives af den eksisterende trigger trg_record_rider_team_exit ('release').
 --      Backenden rydder bagefter fremtidige loebstilmeldinger og sender beskeden.
---   5. Vagt paa riders: et holdskifte (team_id eller pending_team_id) afvises,
---      mens rytteren har en aktiv raekke. Det er det faelles stop for salg, bytte
---      og auktion, uanset hvilken RPC eller backend-sti der proever; backenden
---      afviser allerede ved indgangen med en forklaring (409). Udfoerelsen
---      markerer raekken executed i samme transaktion, foer rytteren flyttes, saa
---      vagten slipper den igennem. Med slukket kontakt findes ingen raekker, og
---      vagten finder intet.
+--   5. Vagt paa riders: et holdskifte (team_id eller pending_team_id) og et
+--      trupskifte (is_academy eller squad) afvises, mens rytteren har en aktiv
+--      raekke. Det er det faelles stop for salg, bytte, auktion og nedrykning til
+--      akademiet (demote_rider_to_academy, /academy/demote, /riders/:id/squad),
+--      uanset hvilken RPC eller backend-sti der proever; backenden afviser
+--      allerede ved indgangen med en forklaring (409). Udfoerelsen markerer
+--      raekken executed i samme transaktion, foer rytteren flyttes, saa vagten
+--      slipper den igennem. Med slukket kontakt findes ingen raekker, og vagten
+--      finder intet.
 --
 -- Laaseraekkefoelge (samme som auto_accept_release_rider og settle_sale_escrow):
 -- holdlaasen (pg_advisory_xact_lock, samme noegle som increment_balance_with_audit),
@@ -124,7 +126,13 @@ AS $$
 BEGIN
   IF EXISTS (SELECT 1 FROM public.pending_rider_releases p
               WHERE p.rider_id = NEW.id AND p.status = 'pending') THEN
-    RAISE EXCEPTION 'rider_pending_release_8153: rider % is leaving his team after a stage race', NEW.id
+    IF OLD.team_id IS DISTINCT FROM NEW.team_id OR OLD.pending_team_id IS DISTINCT FROM NEW.pending_team_id THEN
+      RAISE EXCEPTION 'rider_pending_release_8153: rider % is leaving his team after a stage race', NEW.id
+        USING ERRCODE = 'P0001';
+    END IF;
+    -- Trupskifte (fx nedrykning til akademiet): han skal koere loebet faerdigt som
+    -- seniorrytter, og udfoerelsen maa ikke efterlade en akademirytter uden hold.
+    RAISE EXCEPTION 'rider_pending_release_8153: rider % is leaving his team after a stage race and cannot change squad', NEW.id
       USING ERRCODE = 'P0001';
   END IF;
   RETURN NEW;
@@ -135,9 +143,10 @@ REVOKE ALL ON FUNCTION public.pending_rider_release_guard_8153() FROM PUBLIC, an
 
 DROP TRIGGER IF EXISTS riders_pending_release_guard_8153 ON public.riders;
 CREATE TRIGGER riders_pending_release_guard_8153
-  BEFORE UPDATE OF team_id, pending_team_id ON public.riders
+  BEFORE UPDATE OF team_id, pending_team_id, is_academy, squad ON public.riders
   FOR EACH ROW
-  WHEN (OLD.team_id IS DISTINCT FROM NEW.team_id OR OLD.pending_team_id IS DISTINCT FROM NEW.pending_team_id)
+  WHEN (OLD.team_id IS DISTINCT FROM NEW.team_id OR OLD.pending_team_id IS DISTINCT FROM NEW.pending_team_id
+        OR OLD.is_academy IS DISTINCT FROM NEW.is_academy OR OLD.squad IS DISTINCT FROM NEW.squad)
   EXECUTE FUNCTION public.pending_rider_release_guard_8153();
 
 -- 3. Bestillingen ----------------------------------------------------------
@@ -303,9 +312,13 @@ BEGIN
      SET status = 'executed', executed_at = p_now
    WHERE id = p.id;
 
+  -- Som dagens frigivelser (auto_accept_release_rider + akademi-frigivelsen):
+  -- holdet og kontrakten ryddes, og en fri rytter er altid senior uden akademi
+  -- (squad og is_academy sammen, som seniorSquadPatch og graduerings-frigivelsen).
   UPDATE public.riders
      SET team_id = NULL, pending_team_id = NULL, salary = NULL,
-         contract_length = NULL, contract_end_season = NULL, acquired_at = NULL
+         contract_length = NULL, contract_end_season = NULL, acquired_at = NULL,
+         is_academy = false, squad = 'senior'
    WHERE id = r.id;
 
   UPDATE public.transfer_listings SET status = 'withdrawn'

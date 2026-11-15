@@ -37,6 +37,7 @@
     "rider_pending_transfer_release": "Rytteren er solgt og venter på at skifte hold, så du kan ikke fyre rytteren",
     "rider_pending_transfer_trade": "Rytteren er allerede solgt og venter på at skifte hold, så rytteren kan ikke sælges igen",
     "rider_pending_release_trade": "Rytteren forlader dit hold efter {race} og kan ikke handles.",
+    "rider_pending_release_squad": "Rytteren forlader dit hold efter {race} og kan ikke skifte trup.",
     "rider_release_already_pending": "Frigivelsen af rytteren er allerede bestilt. Han forlader dit hold efter {race}.",
     "selection_rider_leaving": "En rytter, hvis frigivelse er bestilt, kan ikke udtages til løb efter hans igangværende etapeløb.",
     "invalid_start_price": "Ugyldig startpris",

@@ -178,6 +178,76 @@ export async function getPendingReleaseTradeIssue(supabase, riderId) {
   }
 }
 
+// ── Trupskifte (nedrykning til akademiet m.fl.) ──────────────────────────────
+// Vagten paa riders afviser ogsaa is_academy/squad-skift for en rytter med en aktiv
+// bestilling. Han skal koere loebet faerdigt som seniorrytter, og udfoerelsen maa
+// ikke efterlade en akademirytter uden hold.
+
+/** Fejlkoden, academyTransfer kaster, naar vagten afviste et trupskifte. */
+export const PENDING_RELEASE_SQUAD_CODE = "rider_pending_release_squad";
+
+/**
+ * Kom fejlen fra vagten riders_pending_release_guard_8153?
+ * @param {unknown} err
+ */
+export function isPendingReleaseGuardError(err) {
+  return /rider_pending_release_8153/.test(errorMessage(err ?? ""));
+}
+
+/**
+ * 409-svaret, naar en rytter med en aktiv bestilling forsoeges flyttet til en anden trup.
+ * @param {string|null|undefined} raceName
+ */
+export function pendingReleaseSquadIssue(raceName) {
+  return {
+    status: 409,
+    body: {
+      error: `This rider is leaving your team after ${raceName ?? "the stage race"} and can't change squad.`,
+      errorCode: PENDING_RELEASE_SQUAD_CODE,
+      errorParams: { race: raceName ?? "" },
+    },
+  };
+}
+
+/**
+ * Forklaringen ved indgangen til trup-ruterne. Slukket kontakt: null uden opslag i
+ * tabellen. En laesefejl giver null: vagten i databasen er den haarde graense.
+ *
+ * @param {any} supabase
+ * @param {string|null|undefined} riderId
+ * @returns {Promise<null | { status: number, body: object }>}
+ */
+export async function getPendingReleaseSquadIssue(supabase, riderId) {
+  if (!riderId) return null;
+  try {
+    if (!(await isReleaseDeferEnabled(supabase, { fresh: false }))) return null;
+    const pending = await getPendingReleaseForRider(supabase, riderId);
+    return pending ? pendingReleaseSquadIssue(pending.raceName) : null;
+  } catch (err) {
+    // best-effort-forklaring: vagten riders_pending_release_guard_8153 afviser stadig selve trupskiftet.
+    console.error(`[pendingRelease8153] trup-vagten kunne ikke laese bestillingen (${riderId}): ${errorMessage(err)}`);
+    return null;
+  }
+}
+
+/**
+ * Svaret, naar vagten i databasen allerede har afvist skiftet. Raekken findes, saa
+ * den slaas op uanset kontakten (kun for loebets navn); en fejl giver teksten uden navn.
+ *
+ * @param {any} supabase
+ * @param {string|null|undefined} riderId
+ */
+export async function pendingReleaseSquadResponse(supabase, riderId) {
+  if (!riderId) return pendingReleaseSquadIssue(null);
+  try {
+    const pending = await getPendingReleaseForRider(supabase, riderId);
+    return pendingReleaseSquadIssue(pending?.raceName ?? null);
+  } catch {
+    // best-effort: kun loebets navn mangler; afvisningen er allerede sket i databasen.
+    return pendingReleaseSquadIssue(null);
+  }
+}
+
 /**
  * Antal aktive bestillinger for holdet (afgaaende i gulvtjekket ved bestilling).
  * @param {any} supabase
