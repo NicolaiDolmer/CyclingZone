@@ -97,5 +97,13 @@
     },
     "error": "L'historique des courses n'a pas pu se charger. Rien n'a été perdu.",
     "retry": "Réessayer"
+  },
+  "raceResultsV6": {
+    "searchLabel": "Rechercher dans le résultat par coureur ou équipe",
+    "searchPlaceholder": "Rechercher un coureur ou une équipe",
+    "clearSearch": "Effacer la recherche",
+    "myTeam": "Mon équipe",
+    "matchCount": "{shown} sur {total}",
+    "noMatch": "Aucun coureur ni aucune équipe ne correspond à cette recherche."
   }
 }

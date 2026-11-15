@@ -97,5 +97,13 @@
     },
     "error": "No se pudo cargar el historial de carreras. No se ha perdido nada.",
     "retry": "Reintentar"
+  },
+  "raceResultsV6": {
+    "searchLabel": "Buscar en el resultado por corredor o equipo",
+    "searchPlaceholder": "Buscar corredor o equipo",
+    "clearSearch": "Borrar búsqueda",
+    "myTeam": "Mi equipo",
+    "matchCount": "Mostrando {shown} de {total}",
+    "noMatch": "Ningún corredor o equipo coincide con la búsqueda."
   }
 }

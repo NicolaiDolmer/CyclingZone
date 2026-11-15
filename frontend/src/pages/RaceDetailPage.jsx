@@ -86,6 +86,8 @@ import { defaultStage, resolveV2Tab, todaysStages } from "../components/race/sta
 import { fetchStageProfiles } from "../components/race/stagePageV2/stageProfilesQuery.ts"; // #6570
 import { useRacePageV6Enabled } from "../components/race/v6/racePageV6Flag.ts"; // #7778
 import { resolveV6Tab, tacticsCta } from "../components/race/v6/racePageV6Model.ts"; // #7778
+import V6ResultsControls, { V6ResultsNoMatch } from "../components/race/v6/V6ResultsControls.tsx"; // #7860
+import { EMPTY_RESULTS_CONTROLS, filterResultRows, isFiltering } from "../components/race/v6/resultsControlsModel.ts"; // #7860
 
 // #3914: FinalKilometrePlayback vises nu bag en stille knap (StoryOfTheStage-
 // Section, "The Final Kilometre") i stedet for altid-øverst — lazy-loadet
@@ -2100,7 +2102,7 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
               </TabList>
             </Tabs>
             {v6Layout.loaded
-              ? <ResultTable title={title} rows={rows} highlightWinner={classTab === "team"} highlightTeamId={myTeamId} myOwnTeamId={myOwnTeamId} moments={moments} stageNumber={stage} pointsTotalByRider={pointsTotalMapForKey(stagePointsTotals, classTab)} raceId={raceId} participationHistory={participationHistory} dnfRows={dnfRows} defaultLimit={25} headerControl={v6Layout.teamFilter} />
+              ? <ResultTable title={title} rows={rows} highlightWinner={classTab === "team"} highlightTeamId={myTeamId} myOwnTeamId={myOwnTeamId} moments={moments} stageNumber={stage} pointsTotalByRider={pointsTotalMapForKey(stagePointsTotals, classTab)} raceId={raceId} participationHistory={participationHistory} dnfRows={dnfRows} defaultLimit={25} headerControl={v6Layout.teamFilter} searchable />
               : <Section><SkeletonLines lines={10} /></Section>}
             {v6Layout.loaded && passageGroups.length > 0 && <PassageList groups={passageGroups} t={t} />}
           </div>
@@ -2327,28 +2329,36 @@ function ResultEntityCell({ row, highlightWinner, isMine, t, moments, stageNumbe
  *   participationHistory?: import("../lib/raceParticipationMarkers.ts").StageParticipationHistory | null,
  *   dnfRows?: any[],
  *   headerControl?: any,
+ *   searchable?: boolean,
  * }} props
  */
-function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = null, myOwnTeamId = null, defaultLimit = 10, moments = [], stageNumber = null, pointsTotalByRider = undefined, raceId = undefined, participationHistory = null, dnfRows = [], headerControl = null }) {
+function ResultTable({ title, rows: allRows, highlightWinner = false, highlightTeamId = null, myOwnTeamId = null, defaultLimit = 10, moments = [], stageNumber = null, pointsTotalByRider = undefined, raceId = undefined, participationHistory = null, dnfRows: allDnfRows = [], headerControl = null, searchable = false }) {
   const { t } = useTranslation("races");
   const [expanded, setExpanded] = useState(false);
+  // #7860: søgning og "Mit hold" kun i v6 (searchable). Uden filter er listen uændret;
+  // kolonnerne afgøres af hele listen, så de ikke hopper mens man søger.
+  const [controls, setControls] = useState(EMPTY_RESULTS_CONTROLS);
+  const filtering = searchable && isFiltering(controls);
+  const rows = filtering ? filterResultRows(allRows, controls, myOwnTeamId) : allRows;
+  const dnfRows = filtering ? filterResultRows(allDnfRows, controls, myOwnTeamId) : allDnfRows;
+  const allCount = allRows.length + (allDnfRows?.length ?? 0);
   // #3913: points_earned er PRÆMIEpoint for at ramme podiet i DENNE klassement
   // (fx top-3 i point- eller bjergkonkurrencen), ikke antallet af trøje-point
   // rytteren faktisk har samlet i jagten på trøjen. Uden kolonneoverskrifter
   // læste spillere dette tal som trøje-stillingen — se #3913. Kolonnen hedder
   // nu eksplicit "Præmiepoint" og er nedtonet i styling.
-  const showPoints = rows.some(r => (r.points_earned ?? 0) > 0);
+  const showPoints = allRows.some(r => (r.points_earned ?? 0) > 0);
   // #3519: mountain/points-klassementernes FAKTISKE løbende total (sprint_points/
   // kom_points summeret pr. rytter, raceClassificationTotals.js) — DETTE er
   // tallet der forklarer rangordenen i point-/bjergkonkurrencen, altså trøje-
   // point. Vises nu som "Trøjepoint", med den fremhævede accent-styling der
   // tidligere fejlagtigt sad på præmiepoint-kolonnen (#3913).
-  const showPointsTotal = pointsTotalByRider != null && rows.some(r => (pointsTotalByRider.get(r.rider_id) ?? 0) > 0);
+  const showPointsTotal = pointsTotalByRider != null && allRows.some(r => (pointsTotalByRider.get(r.rider_id) ?? 0) > 0);
   // Gap-kolonne kun når motoren har skrevet tider (stage/gc fra Race Engine v2);
   // gamle PCM-løb og point/bjerg/ungdom/hold-klassementer har tom finish_time.
-  const showTime = rows.some(r => r.finish_time);
+  const showTime = allRows.some(r => r.finish_time);
   // Holdklassement (rider_id=null) har ingen rytter-team-kolonne at vise.
-  const showTeamCol = rows.some(r => resultEntity(r).kind === "rider");
+  const showTeamCol = allRows.some(r => resultEntity(r).kind === "rider");
   // #2081 (Discord-ønske): top-10 default + "Show all N"-knap, når feltet er stort.
   // #7411: udgaaede (DNF) staar nederst og taeller med i "Show all N"; i den
   // foldede visning erstattes de af én linje, der folder tabellen ud.
@@ -2357,7 +2367,7 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
   const dnsCount = (dnfRows || []).filter((d) => d.status === "dns").length;
   const didNotFinishCount = dnfCount - dnsCount;
   const totalCount = rows.length + dnfCount;
-  const collapsible = totalCount > defaultLimit;
+  const collapsible = !filtering && totalCount > defaultLimit; // #7860: et filtreret udsnit vises helt
   const collapsed = collapsible && !expanded;
   const visibleRows = collapsed ? rows.slice(0, defaultLimit) : rows;
   const showDnfRows = dnfCount > 0 && !collapsed;
@@ -2382,8 +2392,11 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
           ? <span className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2">{headerControl}{showAllButton}</span>
           : showAllButton}
       />
+      {searchable && allCount > 0 && (
+        <V6ResultsControls state={controls} onChange={setControls} hasMyTeam={myOwnTeamId != null} shown={totalCount} total={allCount} />
+      )}
       {totalCount === 0 ? (
-        <p className="text-center text-cz-3 text-sm py-6">{t("detail.noResults")}</p>
+        filtering ? <V6ResultsNoMatch /> : <p className="text-center text-cz-3 text-sm py-6">{t("detail.noResults")}</p>
       ) : (
         <div className={WRAP}>
           <div className={SCROLLER}>
