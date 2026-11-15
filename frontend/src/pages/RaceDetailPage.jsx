@@ -1468,7 +1468,8 @@ export default function RaceDetailPage() {
 
           <Suspense fallback={null}>
             {v6
-              ? <RacePageV6 {...stagePageProps} activeTab={v6Tab} renderResults={renderV6Results} />
+              ? <RacePageV6 {...stagePageProps} activeTab={v6Tab} renderResults={renderV6Results} tacticsStageRequest={v2TacticsStage} loadStage={startStageFetch}
+                  stageStateFor={(n) => stageFetchState(n, { loaded: loadedStages, failed: failedStages })} stageErrorFor={stageLoadErrorFor} />
               : stagePageV2El}
           </Suspense>
         </div>

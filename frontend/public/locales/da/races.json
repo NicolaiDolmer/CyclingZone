@@ -32,6 +32,28 @@
       "notRiddenTitle": "Gør klar til etape {number}",
       "notRiddenHint": "Resultaterne står her, når etapen er kørt.",
       "openStage": "Se etapen"
+    },
+    "tacticsAfter": {
+      "title": "Din plan mod det der skete",
+      "metaStage": "Etape {number}",
+      "metaRace": "Løbet",
+      "intro": "Hvert trin i din plan ved siden af det, etapens optegnelse viser. Et trin uden noget i optegnelsen står som ikke set. Det betyder ikke, at det mislykkedes.",
+      "colPlan": "Din plan",
+      "colRecord": "Det optegnelsen viser",
+      "step": "Trin {number}",
+      "km": "km {km}",
+      "noRiders": "Ingen af dine ryttere kørte denne etape.",
+      "noOrders": "Din plan for etapen kunne ikke hentes. Prøv igen senere.",
+      "mark": {
+        "notSeen": "Ikke set i optegnelsen",
+        "notReached": "Ikke nået"
+      },
+      "line": {
+        "attackFoot": "Angriber ved foden af sidste stigning",
+        "attackFootNamed": "Angriber ved foden af {climb}",
+        "attackHeld": "Holder angrebet til toppen",
+        "attackCracked": "Løber tør efter angrebet og bliver sat"
+      }
     }
   },
   "stagePlanReady": {
