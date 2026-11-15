@@ -56,6 +56,7 @@ import { resolveCalendarRaceDayTarget } from "./trainingRaceDayTick.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { isTrainingConditionPerDateEnabled } from './trainingDateConditionFlag.js';
 import { isLegacyCalendarTickTeam, runNormalizedTrainingDateSweep } from './trainingDateClose.js';
+import { startRaceSessionSettlementAfterStages } from './trainingSettleRaceSession7982.js';
 
 /**
  * Fjern den indlejrede `races`-join fra etape-rækkerne, så resten af filen ser
@@ -1116,7 +1117,13 @@ async function runTrainingDayCloseSweepGuarded({
 export function startTrainingDayCloseAfterStages({
   supabase, stagesRan, captureExceptionFn = null, clock = () => new Date(),
   runSweep = runTrainingDayCloseSweep, logger = console,
+  // #7982: loebets session afregnes straks efter etapen (egen slukket kontakt, egen catch).
+  settleRaceSession = startRaceSessionSettlementAfterStages,
 }) {
+  // Startes kun naar aftenkoerslen ikke koerer; den samler alt op, der mangler.
+  if (stagesRan > 0 && supabase?.from && !sweepRunning) {
+    settleRaceSession({ supabase, stagesRan, clock, logger, captureExceptionFn, loadDaySpans: loadDayCloseSpans });
+  }
   if (!(stagesRan > 0) || !supabase?.from || sweepRunning) return null;
   const now = clock();
   if (!shouldSweepNow(now)) return null;

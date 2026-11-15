@@ -75,3 +75,16 @@ test("race-day snapshots cannot pull the final date state back to the first gain
     source:"daily_training",game_day,abilities:{tempo:54+game_day}}));
   assert.equal(receipt.mergeDevelopmentSnapshots([],rows)[0].abilities.tempo,57);
 });
+
+test("#7982: det senest gemte loebsdags-billede er datoens slut-tilstand; samme gemmetid gaelder loebsdagen", () => {
+  const day = "2026-11-09";
+  const raceSessionFirst = [
+    { snapshot_date: day, season_number: 5, source: "daily_training", game_day: 45, abilities: { tempo: 51 }, created_at: "2026-11-09T14:05:00Z" },
+    { snapshot_date: day, season_number: 5, source: "daily_training", game_day: 44, abilities: { tempo: 53 }, created_at: "2026-11-09T19:00:00Z" },
+  ];
+  assert.equal(receipt.mergeDevelopmentSnapshots([], raceSessionFirst)[0].abilities.tempo, 53, "aftenens senere gemning vinder over loebssessionen kl. 15");
+  const sameCommit = raceSessionFirst.map((r) => ({ ...r, created_at: "2026-11-09T19:00:00Z" }));
+  assert.equal(receipt.mergeDevelopmentSnapshots([], sameCommit)[0].abilities.tempo, 51, "samme gemmetid: seneste loebsdag som foer");
+  const withoutTime = raceSessionFirst.map((r) => { const copy = { ...r }; delete copy.created_at; return copy; });
+  assert.equal(receipt.mergeDevelopmentSnapshots([], withoutTime)[0].abilities.tempo, 51, "uden gemmetid: seneste loebsdag som foer");
+});

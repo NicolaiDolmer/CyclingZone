@@ -10,6 +10,15 @@ import { fetchAllRows } from "./supabasePagination.js";
 const priority = { daily_training: 3, race_development: 3, season_transition: 2, baseline: 1 };
 export const DEVELOPMENT_HISTORY_LIMIT = 200;
 
+// #7982: en loebssession kan gemme en senere loebsdag FOER datoens tidligere sessioner (fx
+// loebet er dagens sidste session og afregnes ved etapen kl. 15, resten kl. 20). Traeningen
+// bygger altid paa de aktuelle evner, saa det senest GEMTE loebsdags-billede er datoens sande
+// slut-tilstand. Gemt i samme transaktion (samme created_at) gaelder loebsdagen som foer.
+function savedLater(row, previous) {
+  if (row.game_day == null || previous.game_day == null || !row.created_at || !previous.created_at) return 0;
+  return Math.sign(Date.parse(row.created_at) - Date.parse(previous.created_at)) || 0;
+}
+
 export function mergeDevelopmentSnapshots(calendarRows, raceDayRows) {
   const byDate = new Map();
   for (const row of [...(calendarRows ?? []), ...(raceDayRows ?? [])]) {
@@ -18,6 +27,7 @@ export function mergeDevelopmentSnapshots(calendarRows, raceDayRows) {
     const difference = !previous ? 1
       : (row.season_number ?? -1) - (previous.season_number ?? -1)
         || (priority[row.source] ?? 0) - (priority[previous.source] ?? 0)
+        || savedLater(row, previous)
         || (row.game_day ?? -1) - (previous.game_day ?? -1);
     if (difference > 0) byDate.set(row.snapshot_date, row);
   }
@@ -31,7 +41,7 @@ export async function loadRaceDayHistory(supabase, riderId, { since = null } = {
   // schema-columns-ok: introduced in database/2026-09-14-4846-training-tick-game-day.sql.
   return fetchAllRows(() => {
     let query = supabase.from("rider_ability_race_day_history")
-      .select("id, snapshot_date, season_number, source, game_day, abilities")
+      .select("id, snapshot_date, season_number, source, game_day, abilities, created_at")
       .eq("rider_id", riderId).order("snapshot_date", { ascending: false })
       .order("id", { ascending: true });
     if (since) query = query.gte("snapshot_date", since);
