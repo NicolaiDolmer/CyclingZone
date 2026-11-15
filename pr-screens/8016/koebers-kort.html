@@ -120,7 +120,7 @@ label.f{display:block;font-size:12px;font-weight:600;margin-bottom:4px}
 </style>
 </head>
 <body>
-<div class ="wrap" id="app"></div>
+<div class="wrap" id="app"></div>
 <script>
 (function(){
   var q=new URLSearchParams(location.search);
@@ -223,34 +223,34 @@ label.f{display:block;font-size:12px;font-weight:600;margin-bottom:4px}
   function bidErr(v){ if(!(v>0))return L.errZero; if(v>=AUTO)return fill(L.errBid,{p:fmt(AUTO)}); return ''}
   function aucErr(v){ if(!(v>0))return L.errZero; if(v<AUTO)return fill(L.errAuc,{p:fmt(AUTO)}); return ''}
 
-  function autoBar(){return '<div class ="auto" data-testid="auto-price"><div><div class ="k">'+L.autoPrice+'</div><div class ="v">'+fmt(AUTO)+'</div></div><div class ="why">'+L.autoWhyA+'</div></div>'}
+  function autoBar(){return '<div class="auto" data-testid="auto-price"><div><div class="k">'+L.autoPrice+'</div><div class="v">'+fmt(AUTO)+'</div></div><div class="why">'+L.autoWhyA+'</div></div>'}
 
-  function rowCtx(){return '<div class ="card" style="overflow:hidden"><div class ="row"><div><div class ="nm">Rytter A</div><div class ="meta">'+L.seller+': Team B</div></div>'+
-    '<div><div class ="lbl">'+L.listPrice+'</div><div class ="num"><b>'+fmt(ASK)+'</b></div></div>'+
-    '<div><div class ="lbl">'+L.autoPrice+'</div><div class ="num"><b>'+fmt(AUTO)+'</b></div></div>'+
-    '<div><div class ="lbl">'+L.age+'</div><div class ="num"><b>27</b></div></div></div><div class ="expand">'}
+  function rowCtx(){return '<div class="card" style="overflow:hidden"><div class="row"><div><div class="nm">Rytter A</div><div class="meta">'+L.seller+': Team B</div></div>'+
+    '<div><div class="lbl">'+L.listPrice+'</div><div class="num"><b>'+fmt(ASK)+'</b></div></div>'+
+    '<div><div class="lbl">'+L.autoPrice+'</div><div class="num"><b>'+fmt(AUTO)+'</b></div></div>'+
+    '<div><div class="lbl">'+L.age+'</div><div class="num"><b>27</b></div></div></div><div class="expand">'}
   function rowEnd(){return '</div></div>'}
 
   function confirmBox(kind,amt){
     var isA=kind==='auc';
-    return '<div class ="dlg" role="dialog" aria-label="'+esc(isA?L.cfTitleAuc:L.cfTitleBid)+'" data-testid="confirm"><h4>'+(isA?L.cfTitleAuc:L.cfTitleBid)+'</h4><dl>'+
-      '<dt>'+L.cfKind+'</dt><dd><span class ="tag '+(isA?'auc':'')+'">'+(isA?L.cfKindAuc:L.cfKindBid)+'</span></dd>'+
-      '<dt>'+L.cfAmount+'</dt><dd class ="num"><b>'+fmt(amt)+'</b></dd>'+
+    return '<div class="dlg" role="dialog" aria-label="'+esc(isA?L.cfTitleAuc:L.cfTitleBid)+'" data-testid="confirm"><h4>'+(isA?L.cfTitleAuc:L.cfTitleBid)+'</h4><dl>'+
+      '<dt>'+L.cfKind+'</dt><dd><span class="tag '+(isA?'auc':'')+'">'+(isA?L.cfKindAuc:L.cfKindBid)+'</span></dd>'+
+      '<dt>'+L.cfAmount+'</dt><dd class="num"><b>'+fmt(amt)+'</b></dd>'+
       (isA?'<dt>'+L.cfLen+'</dt><dd>'+durLabel()+'</dd>':'')+
       '<dt>'+L.cfAfter+'</dt><dd>'+(isA?L.cfAfterAuc:L.cfAfterBid)+'</dd></dl>'+
-      '<div class ="acts"><button class ="btn" data-act="cfNo">'+L.cfNo+'</button><button class ="btn primary" data-act="cfOk">'+L.cfOk+'</button></div></div>'}
+      '<div class="acts"><button class="btn" data-act="cfNo">'+L.cfNo+'</button><button class="btn primary" data-act="cfOk">'+L.cfOk+'</button></div></div>'}
   function doneBox(kind,amt){
     var isA=kind==='auc';
-    return '<div class ="done" role="status" data-testid="done"><b>'+(isA?L.doneAucT:L.doneBidT)+'</b>'+
+    return '<div class="done" role="status" data-testid="done"><b>'+(isA?L.doneAucT:L.doneBidT)+'</b>'+
       (isA?fill(L.doneAuc,{a:fmt(amt),l:durLabel()}):fill(L.doneBid,{a:fmt(amt)}))+'</div>'}
 
-  function durSelect(id){return '<div><label class ="f" for="'+id+'">'+L.dur+'</label><div class ="inp"><select id="'+id+'" data-f="dur"><option value="d1"'+(st.dur==='d1'?' selected':'')+'>'+L.d1+'</option><option value="d2"'+(st.dur==='d2'?' selected':'')+'>'+L.d2+'</option><option value="d3"'+(st.dur==='d3'?' selected':'')+'>'+L.d3+'</option></select></div></div>'}
+  function durSelect(id){return '<div><label class="f" for="'+id+'">'+L.dur+'</label><div class="inp"><select id="'+id+'" data-f="dur"><option value="d1"'+(st.dur==='d1'?' selected':'')+'>'+L.d1+'</option><option value="d2"'+(st.dur==='d2'?' selected':'')+'>'+L.d2+'</option><option value="d3"'+(st.dur==='d3'?' selected':'')+'>'+L.d3+'</option></select></div></div>'}
 
   /* ---------- I DAG ---------- */
   function now(){
-    return rowCtx()+'<div class ="card now" data-testid="now"><span class ="tag">'+L.nowBefore+'</span><small>'+L.nowAuto+' '+fmt(AUTO)+'</small>'+
-      '<div class ="r"><div class ="inp"><input class ="num" value="'+fmt(ASK).replace(' CZ$','')+'" aria-label="amount"></div><button class ="btn primary">'+L.nowSend+'</button></div>'+
-      '<button class ="btn" style="width:100%">'+L.nowStart+'</button><small>'+L.nowTiny+'</small></div>'+rowEnd()}
+    return rowCtx()+'<div class="card now" data-testid="now"><span class="tag">'+L.nowBefore+'</span><small>'+L.nowAuto+' '+fmt(AUTO)+'</small>'+
+      '<div class="r"><div class="inp"><input class="num" value="'+fmt(ASK).replace(' CZ$','')+'" aria-label="amount"></div><button class="btn primary">'+L.nowSend+'</button></div>'+
+      '<button class="btn" style="width:100%">'+L.nowStart+'</button><small>'+L.nowTiny+'</small></div>'+rowEnd()}
 
   /* ---------- A ---------- */
   function varA(){
@@ -258,17 +258,17 @@ label.f{display:block;font-size:12px;font-weight:600;margin-bottom:4px}
     var ae=(STATE==='error'||st.touchedAuc)?aucErr(st.auc):'';
     var bidOk=!bidErr(st.bid), aucOk=!aucErr(st.auc);
     var diff=AUTO-st.bid;
-    var h=rowCtx()+autoBar()+'<div class ="two">'+
-     '<section class ="card opt" aria-labelledby="oa-b">'+
-       '<h3 id="oa-b">'+L.bidTitle+'</h3><p class ="d">'+L.bidDesc+'</p><ul>'+L.bidFine.map(function(x){return'<li>'+x+'</li>'}).join('')+'</ul>'+
-       '<div class ="spacer"></div><div><label class ="f" for="a-bid">'+L.bidField+'</label><div class ="inp"><input id="a-bid" class ="num" inputmode="numeric" data-f="bid" value="'+fmt(st.bid).replace(' CZ$','')+'" aria-describedby="a-bid-m"><span class ="cur">CZ$</span></div>'+
-       '<div id="a-bid-m" aria-live="polite">'+(be?'<p class ="err">'+be+'</p>':(bidOk?'<p class ="ok">'+fill(L.okBid,{d:fmt(diff)})+'</p>':''))+'</div></div>'+
-       '<button class ="btn" data-act="bid"'+(be?' aria-disabled="true"':'')+'>'+L.bidBtn+'</button></section>'+
-     '<section class ="card opt" aria-labelledby="oa-a"><h3 id="oa-a">'+L.aucTitle+'</h3><p class ="d">'+L.aucDesc+'</p><ul>'+L.aucFine.map(function(x){return'<li>'+x+'</li>'}).join('')+'</ul>'+
-       '<div class ="spacer"></div><div><label class ="f" for="a-auc">'+L.aucField+'</label><div class ="inp"><input id="a-auc" class ="num" inputmode="numeric" data-f="auc" value="'+fmt(st.auc).replace(' CZ$','')+'" aria-describedby="a-auc-m"><span class ="cur">CZ$</span></div>'+
-       '<div id="a-auc-m" aria-live="polite">'+(ae?'<p class ="err">'+ae+'</p>':(aucOk?'<p class ="ok">'+L.okAuc+'</p>':''))+'</div></div>'+
+    var h=rowCtx()+autoBar()+'<div class="two">'+
+     '<section class="card opt" aria-labelledby="oa-b">'+
+       '<h3 id="oa-b">'+L.bidTitle+'</h3><p class="d">'+L.bidDesc+'</p><ul>'+L.bidFine.map(function(x){return'<li>'+x+'</li>'}).join('')+'</ul>'+
+       '<div class="spacer"></div><div><label class="f" for="a-bid">'+L.bidField+'</label><div class="inp"><input id="a-bid" class="num" inputmode="numeric" data-f="bid" value="'+fmt(st.bid).replace(' CZ$','')+'" aria-describedby="a-bid-m"><span class="cur">CZ$</span></div>'+
+       '<div id="a-bid-m" aria-live="polite">'+(be?'<p class="err">'+be+'</p>':(bidOk?'<p class="ok">'+fill(L.okBid,{d:fmt(diff)})+'</p>':''))+'</div></div>'+
+       '<button class="btn" data-act="bid"'+(be?' aria-disabled="true"':'')+'>'+L.bidBtn+'</button></section>'+
+     '<section class="card opt" aria-labelledby="oa-a"><h3 id="oa-a">'+L.aucTitle+'</h3><p class="d">'+L.aucDesc+'</p><ul>'+L.aucFine.map(function(x){return'<li>'+x+'</li>'}).join('')+'</ul>'+
+       '<div class="spacer"></div><div><label class="f" for="a-auc">'+L.aucField+'</label><div class="inp"><input id="a-auc" class="num" inputmode="numeric" data-f="auc" value="'+fmt(st.auc).replace(' CZ$','')+'" aria-describedby="a-auc-m"><span class="cur">CZ$</span></div>'+
+       '<div id="a-auc-m" aria-live="polite">'+(ae?'<p class="err">'+ae+'</p>':(aucOk?'<p class="ok">'+L.okAuc+'</p>':''))+'</div></div>'+
        durSelect('a-dur')+
-       '<button class ="btn primary" data-act="auc"'+(ae?' aria-disabled="true"':'')+'>'+L.aucBtn+'</button></section></div>';
+       '<button class="btn primary" data-act="auc"'+(ae?' aria-disabled="true"':'')+'>'+L.aucBtn+'</button></section></div>';
     if(st.confirm)h+=confirmBox(st.confirm,st.confirm==='auc'?st.auc:st.bid);
     if(st.done)h+=doneBox(st.done,st.done==='auc'?st.auc:st.bid);
     return h+rowEnd()}
@@ -280,39 +280,39 @@ label.f{display:block;font-size:12px;font-weight:600;margin-bottom:4px}
     var e=(STATE==='error'||st['touched'+(isA?'Auc':'Bid')])?(isA?aucErr(v):bidErr(v)):'';
     var ok=!(isA?aucErr(v):bidErr(v));
     var offerSwitch='';
-    if(e&&!isA&&v>=AUTO)offerSwitch='<button class ="btn" data-act="toAuc" style="margin-top:8px">'+L.switchToAuc+'</button>';
-    if(e&&isA&&v>0&&v<AUTO)offerSwitch='<button class ="btn" data-act="toBid" style="margin-top:8px">'+L.switchToBid+'</button>';
+    if(e&&!isA&&v>=AUTO)offerSwitch='<button class="btn" data-act="toAuc" style="margin-top:8px">'+L.switchToAuc+'</button>';
+    if(e&&isA&&v>0&&v<AUTO)offerSwitch='<button class="btn" data-act="toBid" style="margin-top:8px">'+L.switchToBid+'</button>';
     var h=rowCtx()+autoBar()+
-     '<div class ="card one"><div class ="seg" role="radiogroup" aria-label="'+esc(L.bidTitle+' / '+L.aucTitle)+'">'+
+     '<div class="card one"><div class="seg" role="radiogroup" aria-label="'+esc(L.bidTitle+' / '+L.aucTitle)+'">'+
        '<button role="radio" aria-checked="'+(!isA)+'" data-act="modeBid"><b>'+L.segBid+'</b><span>'+L.segBidS+'</span></button>'+
        '<button role="radio" aria-checked="'+isA+'" data-act="modeAuc"><b>'+L.segAuc+'</b><span>'+L.segAucS+'</span></button></div>'+
-     '<div><label class ="f" for="b-f">'+(isA?L.oneAuc:L.oneBid)+'</label><div class ="inp"><input id="b-f" class ="num" inputmode="numeric" data-f="'+(isA?'auc':'bid')+'" value="'+fmt(v).replace(' CZ$','')+'" aria-describedby="b-m"><span class ="cur">CZ$</span></div>'+
-       '<div id="b-m" aria-live="polite">'+(e?'<p class ="err">'+e+'</p>':(ok?'<p class ="ok">'+(isA?L.okAuc:fill(L.okBid,{d:fmt(AUTO-v)}))+'</p>':''))+offerSwitch+'</div></div>'+
+     '<div><label class="f" for="b-f">'+(isA?L.oneAuc:L.oneBid)+'</label><div class="inp"><input id="b-f" class="num" inputmode="numeric" data-f="'+(isA?'auc':'bid')+'" value="'+fmt(v).replace(' CZ$','')+'" aria-describedby="b-m"><span class="cur">CZ$</span></div>'+
+       '<div id="b-m" aria-live="polite">'+(e?'<p class="err">'+e+'</p>':(ok?'<p class="ok">'+(isA?L.okAuc:fill(L.okBid,{d:fmt(AUTO-v)}))+'</p>':''))+offerSwitch+'</div></div>'+
      (isA?durSelect('b-dur'):'')+
-     '<div class ="sum"><span>'+(isA?L.sumAuc:L.sumBid)+' <span class ="num"><b>'+fmt(v)+'</b></span></span><span class ="what">'+(isA?L.sumAucD:L.sumBidD)+'</span></div>'+
-     '<button class ="btn primary" data-act="'+(isA?'auc':'bid')+'"'+(e?' aria-disabled="true"':'')+'>'+(isA?L.aucBtn:L.bidBtn)+'</button></div>';
+     '<div class="sum"><span>'+(isA?L.sumAuc:L.sumBid)+' <span class="num"><b>'+fmt(v)+'</b></span></span><span class="what">'+(isA?L.sumAucD:L.sumBidD)+'</span></div>'+
+     '<button class="btn primary" data-act="'+(isA?'auc':'bid')+'"'+(e?' aria-disabled="true"':'')+'>'+(isA?L.aucBtn:L.bidBtn)+'</button></div>';
     if(st.confirm)h+=confirmBox(st.confirm,st.confirm==='auc'?st.auc:st.bid);
     if(st.done)h+=doneBox(st.done,st.done==='auc'?st.auc:st.bid);
     return h+rowEnd()}
 
   /* ---------- RYTTERSIDE ---------- */
   function rider(){
-    return '<div class ="card hero"><div class ="top"><div><div class ="tag auc" style="margin-bottom:8px">'+L.riderOn+'</div><h2>Rytter A</h2><div class ="meta" style="color:var(--text-2);font-size:13px">'+L.riderSeller+'</div></div></div>'+
-      '<div class ="stats"><div><div class ="lbl">'+L.age+'</div><div class ="val">27</div></div><div><div class ="lbl">'+L.uci+'</div><div class ="val">412</div></div><div><div class ="lbl">'+L.value+'</div><div class ="val">'+fmt(1720000)+'</div></div><div><div class ="lbl">'+L.contract+'</div><div class ="val">2</div></div></div></div>'+
-      '<div class ="card listing-strip" style="border-left:2px solid rgb(var(--accent))" data-testid="rider-auto-price">'+
-       '<div><div class ="k">'+L.riderAskLbl+'</div><div class ="big">'+fmt(ASK)+'</div></div>'+
-       '<div><div class ="k">'+L.riderAutoLbl+'</div><div class ="big">'+fmt(AUTO)+'</div><div class ="t" style="margin-top:4px">'+fill(L.riderAutoTxt,{p:fmt(AUTO)})+'</div></div>'+
-       '<button class ="btn primary" data-act="open">'+L.riderBtn+'</button></div>'}
+    return '<div class="card hero"><div class="top"><div><div class="tag auc" style="margin-bottom:8px">'+L.riderOn+'</div><h2>Rytter A</h2><div class="meta" style="color:var(--text-2);font-size:13px">'+L.riderSeller+'</div></div></div>'+
+      '<div class="stats"><div><div class="lbl">'+L.age+'</div><div class="val">27</div></div><div><div class="lbl">'+L.uci+'</div><div class="val">412</div></div><div><div class="lbl">'+L.value+'</div><div class="val">'+fmt(1720000)+'</div></div><div><div class="lbl">'+L.contract+'</div><div class="val">2</div></div></div></div>'+
+      '<div class="card listing-strip" style="border-left:2px solid rgb(var(--accent))" data-testid="rider-auto-price">'+
+       '<div><div class="k">'+L.riderAskLbl+'</div><div class="big">'+fmt(ASK)+'</div></div>'+
+       '<div><div class="k">'+L.riderAutoLbl+'</div><div class="big">'+fmt(AUTO)+'</div><div class="t" style="margin-top:4px">'+fill(L.riderAutoTxt,{p:fmt(AUTO)})+'</div></div>'+
+       '<button class="btn primary" data-act="open">'+L.riderBtn+'</button></div>'}
 
   function bar(){
-    function lk(k,v,t){var p=new URLSearchParams(location.search);p.set(k,v);p.delete('state');return '<a href="?'+p+'" class ="'+(((k==='v'&&V===v)||(k==='view'&&VIEW===v))?'on':'')+'">'+t+'</a>'}
-    return '<div class ="sketch-bar"><span>#8016 sketch, fictional data (Rytter A, Team A/B)</span><span>'+L.sketchVariant+': '+lk('v','now',L.vNow)+lk('v','a',L.vA)+lk('v','b',L.vB)+'</span><span>'+L.sketchView+': '+lk('view','card',L.cardView)+lk('view','rider',L.riderView)+'</span><span>'+lk('theme',THEME==='dark'?'light':'dark',THEME==='dark'?'light':'dark')+lk('lang',LANG==='en'?'da':'en',LANG==='en'?'DA':'EN')+'</span></div>'}
+    function lk(k,v,t){var p=new URLSearchParams(location.search);p.set(k,v);p.delete('state');return '<a href="?'+p+'" class="'+(((k==='v'&&V===v)||(k==='view'&&VIEW===v))?'on':'')+'">'+t+'</a>'}
+    return '<div class="sketch-bar"><span>#8016 sketch, fictional data (Rytter A, Team A/B)</span><span>'+L.sketchVariant+': '+lk('v','now',L.vNow)+lk('v','a',L.vA)+lk('v','b',L.vB)+'</span><span>'+L.sketchView+': '+lk('view','card',L.cardView)+lk('view','rider',L.riderView)+'</span><span>'+lk('theme',THEME==='dark'?'light':'dark',THEME==='dark'?'light':'dark')+lk('lang',LANG==='en'?'da':'en',LANG==='en'?'DA':'EN')+'</span></div>'}
 
   function render(){
     var app=document.getElementById('app');
     var body;
-    if(VIEW==='rider')body='<h1>'+L.riderView+'</h1><p class ="sub">'+L.riderAutoLbl+' '+fmt(AUTO)+'</p>'+rider();
-    else body='<h1>'+L.cardView+'</h1><p class ="sub">'+(V==='now'?L.vNow:V==='a'?L.vA:L.vB)+'</p>'+(V==='now'?now():V==='a'?varA():varB());
+    if(VIEW==='rider')body='<h1>'+L.riderView+'</h1><p class="sub">'+L.riderAutoLbl+' '+fmt(AUTO)+'</p>'+rider();
+    else body='<h1>'+L.cardView+'</h1><p class="sub">'+(V==='now'?L.vNow:V==='a'?L.vA:L.vB)+'</p>'+(V==='now'?now():V==='a'?varA():varB());
     app.innerHTML=(q.get('chrome')==='0'?'':bar())+body;
   }
   function num(s){return Number(String(s).replace(/[^\d]/g,''))||0}
