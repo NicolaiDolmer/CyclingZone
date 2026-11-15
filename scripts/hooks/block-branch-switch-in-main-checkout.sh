@@ -103,27 +103,41 @@ process.stdin.on("end", () => {
   // Indlejret bash -c "..." / sh -c "..." pakkes ud, saa dens segmenter ogsaa ses.
   const flat = cmd.replace(/\b(?:bash|sh)\s+-l?c\s+("([^"\\]|\\.)*"|\x27[^\x27]*\x27)/g, (_, q) => " ; " + q.slice(1, -1).replace(/\\"/g, "\"") + " ; ");
   const segments = flat.split(/&&|\|\||[;\n|]/);
-  let dir = process.cwd();
+  // Kandidat-mapper (Vercel Security Review #8207, tredje runde): sporingen af cd/-C/
+  // --work-tree maa kun TILFOEJE blokeringer, aldrig fjerne dem. Et segment blokeres,
+  // hvis BLOT EN kandidat er hovedmappen: kommandoens startmappe, enhver mappe et
+  // tidligere cd naaede (ogsaa i en subshell), -C, --work-tree, --git-dir og
+  // GIT_DIR/GIT_WORK_TREE. Saa er vagten mindst lige saa streng som foer #8207.
+  const start = process.cwd();
+  const seen = [start];
+  let dir = start;
+  const stripGit = (p) => p.replace(/[\\/]\.git[\\/]?$/, "");
 
   for (const seg of segments) {
-    // Subshell/gruppe: "(cd x && git checkout y)" -> parenteser og klammer fjernes.
+    // Subshell/gruppe: parenteser og klammer fjernes.
     const s = seg.trim().replace(/^[({]+\s*/, "").replace(/\s*[)}]+$/, "");
     const cd = s.match(/^(?:cd|pushd|Set-Location|sl)\s+(?:-[A-Za-z]+\s+)*("[^"]*"|\x27[^\x27]*\x27|\S+)\s*$/);
-    if (cd) { dir = at(dir, cd[1]); continue; }
-    // git [globale flag, fx -C <dir>, -c k=v, --no-pager] (checkout|switch) <rest>
+    if (cd) { dir = at(dir, cd[1]); seen.push(dir); continue; }
+    // [VAR=x ...] git [globale flag] (checkout|switch) <rest>
     const toks = s.match(/"[^"]*"|\x27[^\x27]*\x27|\S+/g) || [];
-    const gi = toks.indexOf("git");
+    const gi = toks.findIndex((t) => /(^|[\\/])git(\.exe)?$/i.test(unquote(t)));
     if (gi < 0) continue;
+    const cands = [...seen, dir];
+    for (const t of toks.slice(0, gi)) {
+      const env = t.match(/^(?:GIT_DIR|GIT_WORK_TREE)=(.+)$/);
+      if (env) cands.push(at(dir, stripGit(unquote(env[1]))));
+    }
     let segDir = dir, i = gi + 1;
     while (i < toks.length && toks[i].startsWith("-")) {
-      if (toks[i] === "-C" && i + 1 < toks.length) { segDir = at(segDir, toks[i + 1]); i += 2; }
-      else if (/^--work-tree=/.test(toks[i])) { segDir = at(segDir, toks[i].slice(12)); i += 1; }
-      else if (toks[i] === "--work-tree" && i + 1 < toks.length) { segDir = at(segDir, toks[i + 1]); i += 2; }
+      const eq = toks[i].match(/^--(?:work-tree|git-dir)=(.+)$/);
+      if (toks[i] === "-C" && i + 1 < toks.length) { segDir = at(segDir, toks[i + 1]); cands.push(segDir); i += 2; }
+      else if (eq) { cands.push(at(segDir, stripGit(unquote(eq[1])))); i += 1; }
+      else if ((toks[i] === "--work-tree" || toks[i] === "--git-dir") && i + 1 < toks.length) { cands.push(at(segDir, stripGit(unquote(toks[i + 1])))); i += 2; }
       else if (toks[i] === "-c" && i + 1 < toks.length) i += 2;
       else i += 1;
     }
     if (toks[i] !== "checkout" && toks[i] !== "switch") continue;
-    if (!isMainCheckout(segDir)) continue;
+    if (!cands.some(isMainCheckout)) continue;
     const m = [null, toks[i], toks.slice(i + 1).join(" ")];
 
     const rest = (m[2] || "").trim();

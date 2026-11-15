@@ -114,7 +114,19 @@ test('branch-vagten vurderer kommandoens mappe (input-cwd), ogsaa fra en underma
   });
   assert.equal(callCmd(wt, `git -C "${main}" switch -c feature-x`).status, 2);
   assert.equal(callCmd(wt, `cd "${main}" && git checkout -b feature-y`).status, 2);
-  assert.equal(callCmd(main, `git -C "${wt}" switch -c feature-z`).status, 0);
+  // Startmappen er altid en kandidat: fra hovedmappen blokeres et skift, ogsaa via -C mod
+  // et worktree (samme som paa main foer #8207; sporing maa kun tilfoeje blokeringer).
+  assert.equal(callCmd(main, `git -C "${wt}" switch -c feature-z`).status, 2);
+  // Vercel Security Review #8207, runde 3: subshell-cd laekker ikke ud, --work-tree/--git-dir,
+  // GIT_DIR/GIT_WORK_TREE og git.exe kan ikke flytte vurderingen vaek fra hovedmappen.
+  assert.equal(callCmd(main, `(cd "${wt}") && git switch -c feature-l`).status, 2);
+  assert.equal(callCmd(main, `git --work-tree="${wt}" switch -c feature-t`).status, 2);
+  assert.equal(callCmd(wt, `GIT_WORK_TREE="${main}" GIT_DIR="${main}/.git" git switch -c feature-e`).status, 2);
+  assert.equal(callCmd(wt, `git --git-dir="${main}/.git" switch -c feature-g`).status, 2);
+  assert.equal(callCmd(wt, `git.exe -C "${main}" switch -c feature-x2`).status, 2);
+  // Almindeligt arbejde i et worktree er stadig frit.
+  assert.equal(callCmd(wt, 'git switch -c feature-ok').status, 0);
+  assert.equal(callCmd(join(wt, 'frontend'), 'git checkout -b feature-ok2').status, 0);
   assert.equal(callCmd(join(main, 'frontend'), 'git checkout -- x.txt').status, 0);
   // Review #8207, runde 2: subshell, bash -c og --work-tree maa heller ikke slippe igennem.
   assert.equal(callCmd(wt, `(cd "${main}" && git checkout -b feature-s)`).status, 2);
