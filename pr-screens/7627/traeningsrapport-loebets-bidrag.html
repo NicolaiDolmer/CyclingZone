@@ -116,7 +116,7 @@ h1{font:400 28px/1 var(--font-display);letter-spacing:.02em;margin:0 0 4px}
 </style>
 </head>
 <body>
-<div class ="wrap" id="app"></div>
+<div class="wrap" id="app"></div>
 <script>
 (function(){
   var q=new URLSearchParams(location.search);
@@ -200,64 +200,64 @@ h1{font:400 28px/1 var(--font-display);letter-spacing:.02em;margin:0 0 4px}
 
   function actList(r){
     var showGain=(V==='a');
-    return '<ol class ="acts">'+r.acts.map(function(a,i){
+    return '<ol class="acts">'+r.acts.map(function(a,i){
       var d=a.k==='r'?fill(L.raceDay,{n:a.day}):fill(L.act,{n:i+1});
       var g='';
       if(showGain){
         var ks=ORDER.filter(function(k){return a.d[k]});
-        g='<div class ="g" data-testid="activity-gain">'+ks.map(function(k){return '<span><b>+'+fmt(a.d[k])+'%</b> '+AB[k]+'</span>'}).join('')+'</div>';
+        g='<div class="g" data-testid="activity-gain">'+ks.map(function(k){return '<span><b>+'+fmt(a.d[k])+'%</b> '+AB[k]+'</span>'}).join('')+'</div>';
       }
-      return '<li'+(a.k==='r'&&V!=='now'?' class ="rc"':'')+'><p class ="d" style="margin:0">'+d+'</p><p class ="n" style="margin:4px 0 0">'+nameOf(a)+'</p>'+
-        (a.k==='t'?'<p class ="i" style="margin:0">'+L.intens[a.int]+'</p>':'')+g+'</li>';
+      return '<li'+(a.k==='r'&&V!=='now'?' class="rc"':'')+'><p class="d" style="margin:0">'+d+'</p><p class="n" style="margin:4px 0 0">'+nameOf(a)+'</p>'+
+        (a.k==='t'?'<p class="i" style="margin:0">'+L.intens[a.int]+'</p>':'')+g+'</li>';
     }).join('')+'</ol>';
   }
   function wholeBlock(r,a){
     var w=wholeOf(a);
     var body=w.length?w.map(function(x){
-      var rc=(V==='a'&&x.r>0)?'<span class ="from-race">'+fill(L.viaRace,{p:fmt(x.r)})+'</span>':'';
-      return '<div class ="line"><span style="font-weight:600">'+AB[x.k]+'</span><span class ="num" style="display:flex;gap:12px;align-items:baseline">'+rc+
-        '<span class ="dim">+'+fmt(x.all)+'%</span><b>'+fmt(r.lvl[x.k])+' &rarr; '+fmt(r.lvl[x.k]+x.whole)+'</b></span></div>';
-    }).join(''):'<p class ="line small" style="margin:0">'+L.noWhole+'</p>';
-    return '<div class ="blk"><p class ="meta" style="margin:0 0 4px">'+L.wholeH+'</p>'+body+'</div>';
+      var rc=(V==='a'&&x.r>0)?'<span class="from-race">'+fill(L.viaRace,{p:fmt(x.r)})+'</span>':'';
+      return '<div class="line"><span style="font-weight:600">'+AB[x.k]+'</span><span class="num" style="display:flex;gap:12px;align-items:baseline">'+rc+
+        '<span class="dim">+'+fmt(x.all)+'%</span><b>'+fmt(r.lvl[x.k])+' &rarr; '+fmt(r.lvl[x.k]+x.whole)+'</b></span></div>';
+    }).join(''):'<p class="line small" style="margin:0">'+L.noWhole+'</p>';
+    return '<div class="blk"><p class="meta" style="margin:0 0 4px">'+L.wholeH+'</p>'+body+'</div>';
   }
   function progBlock(r,a){
     var p=a.rows.filter(function(x){return !x.whole});
     if(!p.length)return '';
-    return '<div class ="blk"><p class ="meta" style="margin:0 0 4px">'+L.progH+'</p><div class ="cols2">'+p.map(function(x){
-      var rc=(V==='a'&&x.r>0)?' <span class ="from-race">'+fill(L.viaRace,{p:fmt(x.r)})+'</span>':'';
-      return '<div class ="line l"><span class ="dim" style="color:var(--text-2)">'+AB[x.k]+'</span><span class ="num">'+rc+' +'+fmt(x.all)+'%</span></div>';
+    return '<div class="blk"><p class="meta" style="margin:0 0 4px">'+L.progH+'</p><div class="cols2">'+p.map(function(x){
+      var rc=(V==='a'&&x.r>0)?' <span class="from-race">'+fill(L.viaRace,{p:fmt(x.r)})+'</span>':'';
+      return '<div class="line l"><span class="dim" style="color:var(--text-2)">'+AB[x.k]+'</span><span class="num">'+rc+' +'+fmt(x.all)+'%</span></div>';
     }).join('')+'</div></div>';
   }
   function srcTable(a){
     var rows=a.rows;
     var max=Math.max.apply(null,rows.map(function(x){return x.all}));
-    return '<div class ="blk" data-testid="source-table"><p class ="meta" style="margin:0 0 6px">'+L.srcH+'</p>'+
-      '<div class ="key"><span class ="t">'+L.kTrain+'</span><span class ="rc">'+L.kRace+'</span></div>'+
-      '<div class ="src hd"><span>'+L.cAbility+'</span><span class ="barh"></span><span class ="r">'+L.cT+'</span><span class ="r">'+L.cR+'</span><span class ="r">'+L.cAll+'</span></div>'+
+    return '<div class="blk" data-testid="source-table"><p class="meta" style="margin:0 0 6px">'+L.srcH+'</p>'+
+      '<div class="key"><span class="t">'+L.kTrain+'</span><span class="rc">'+L.kRace+'</span></div>'+
+      '<div class="src hd"><span>'+L.cAbility+'</span><span class="barh"></span><span class="r">'+L.cT+'</span><span class="r">'+L.cR+'</span><span class="r">'+L.cAll+'</span></div>'+
       rows.map(function(x){
         var wt=Math.round(x.t/max*100),wr=Math.round(x.r/max*100);
-        return '<div class ="src"><span style="font-weight:600">'+AB[x.k]+(x.whole?'<span class ="whole">'+fill(L.wholeTag,{n:x.whole})+'</span>':'')+'</span>'+
-          '<span class ="bar" role="img" aria-label="'+esc(L.cT+' '+x.t+'%, '+L.cR+' '+x.r+'%')+'"><i class ="t" style="width:'+wt+'%"></i><i class ="rc" style="width:'+wr+'%"></i></span>'+
-          '<span class ="r dim">'+(x.t?'+'+fmt(x.t)+'%':'0')+'</span><span class ="r" style="'+(x.r?'color:rgb(var(--accent-t));font-weight:600':'color:var(--text-3)')+'">'+(x.r?'+'+fmt(x.r)+'%':'0')+'</span>'+
-          '<span class ="r" style="font-weight:600">+'+fmt(x.all)+'%</span></div>';
-      }).join('')+'<p class ="foot">'+L.expandNote+'</p></div>';
+        return '<div class="src"><span style="font-weight:600">'+AB[x.k]+(x.whole?'<span class="whole">'+fill(L.wholeTag,{n:x.whole})+'</span>':'')+'</span>'+
+          '<span class="bar" role="img" aria-label="'+esc(L.cT+' '+x.t+'%, '+L.cR+' '+x.r+'%')+'"><i class="t" style="width:'+wt+'%"></i><i class="rc" style="width:'+wr+'%"></i></span>'+
+          '<span class="r dim">'+(x.t?'+'+fmt(x.t)+'%':'0')+'</span><span class="r" style="'+(x.r?'color:rgb(var(--accent-t));font-weight:600':'color:var(--text-3)')+'">'+(x.r?'+'+fmt(x.r)+'%':'0')+'</span>'+
+          '<span class="r" style="font-weight:600">+'+fmt(x.all)+'%</span></div>';
+      }).join('')+'<p class="foot">'+L.expandNote+'</p></div>';
   }
   function devCell(a){
     var w=wholeOf(a);
-    if(!w.length)return '<span class ="dim">'+L.noWhole+'</span>';
-    return '<span style="display:flex;flex-wrap:wrap;gap:4px 12px">'+w.map(function(x){return '<span><span class ="pt">+'+fmt(x.whole)+'</span> '+AB[x.k]+'</span>'}).join('')+'</span>';
+    if(!w.length)return '<span class="dim">'+L.noWhole+'</span>';
+    return '<span style="display:flex;flex-wrap:wrap;gap:4px 12px">'+w.map(function(x){return '<span><span class="pt">+'+fmt(x.whole)+'</span> '+AB[x.k]+'</span>'}).join('')+'</span>';
   }
   function raceCol(a){
     var s=share(a);
-    return '<span class ="rshare mini" data-testid="row-race-share"><span class ="bar" role="img" aria-label="'+esc(L.colRace+' '+s+'%')+'"><i class ="rc" style="width:'+s+'%"></i></span><b>'+(s?s+'%':'0')+'</b></span>';
+    return '<span class="rshare mini" data-testid="row-race-share"><span class="bar" role="img" aria-label="'+esc(L.colRace+' '+s+'%')+'"><i class="rc" style="width:'+s+'%"></i></span><b>'+(s?s+'%':'0')+'</b></span>';
   }
   function row(r,i){
     var a=AGG[i],isOpen=open[r.id],race=(V==='c');
-    var h='<div class ="rrow"><button class ="rbtn cols'+(race?' race':'')+'" aria-expanded="'+isOpen+'" data-id="'+r.id+'">'+
-      '<span class ="rname">'+r.name+'</span><span class ="dev small">'+devCell(a)+'</span>'+(race?raceCol(a):'')+
-      '<span class ="num small" style="text-align:right">'+r.fat[0]+' &rsaquo; '+r.fat[1]+'</span></button>';
+    var h='<div class="rrow"><button class="rbtn cols'+(race?' race':'')+'" aria-expanded="'+isOpen+'" data-id="'+r.id+'">'+
+      '<span class="rname">'+r.name+'</span><span class="dev small">'+devCell(a)+'</span>'+(race?raceCol(a):'')+
+      '<span class="num small" style="text-align:right">'+r.fat[0]+' &rsaquo; '+r.fat[1]+'</span></button>';
     if(isOpen){
-      h+='<div class ="detail" data-testid="rider-details">'+actList(r);
+      h+='<div class="detail" data-testid="rider-details">'+actList(r);
       if(V==='b')h+=srcTable(a);
       else h+=wholeBlock(r,a)+progBlock(r,a);
       h+='</div>';
@@ -265,23 +265,23 @@ h1{font:400 28px/1 var(--font-display);letter-spacing:.02em;margin:0 0 4px}
     return h+'</div>';
   }
   function tiles(){
-    var t='<div class ="tiles'+(V==='c'?' four':'')+'">'+
-      '<div><p class ="big" style="margin:0">'+points+'</p><p class ="lbl" style="margin:0">'+L.whole+'</p></div>'+
-      '<div><p class ="mid" style="margin:0">'+RIDERS.length+' / '+RIDERS.length+'</p><p class ="lbl" style="margin:0">'+L.riders+'</p></div>'+
-      '<div><p class ="mid" style="margin:0">5 / 5</p><p class ="lbl" style="margin:0">'+L.slots+'</p></div>';
-    if(V==='c')t+='<div data-testid="tile-race"><p class ="mid" style="margin:0">'+dayShare+'%</p><p class ="lbl" style="margin:0">'+L.fromRace+'</p></div>';
+    var t='<div class="tiles'+(V==='c'?' four':'')+'">'+
+      '<div><p class="big" style="margin:0">'+points+'</p><p class="lbl" style="margin:0">'+L.whole+'</p></div>'+
+      '<div><p class="mid" style="margin:0">'+RIDERS.length+' / '+RIDERS.length+'</p><p class="lbl" style="margin:0">'+L.riders+'</p></div>'+
+      '<div><p class="mid" style="margin:0">5 / 5</p><p class="lbl" style="margin:0">'+L.slots+'</p></div>';
+    if(V==='c')t+='<div data-testid="tile-race"><p class="mid" style="margin:0">'+dayShare+'%</p><p class="lbl" style="margin:0">'+L.fromRace+'</p></div>';
     return t+'</div>';
   }
   function strip(){
-    return '<div class ="strip" data-testid="day-strip"><span>'+fill(L.dayRace,{p:'<b>'+dayShare+'</b>'})+'</span>'+
-      '<span class ="bar" role="img" aria-label="'+esc(L.kTrain+' '+(100-dayShare)+'%, '+L.kRace+' '+dayShare+'%')+'"><i class ="t" style="width:'+(100-dayShare)+'%"></i><i class ="rc" style="width:'+dayShare+'%"></i></span></div>';
+    return '<div class="strip" data-testid="day-strip"><span>'+fill(L.dayRace,{p:'<b>'+dayShare+'</b>'})+'</span>'+
+      '<span class="bar" role="img" aria-label="'+esc(L.kTrain+' '+(100-dayShare)+'%, '+L.kRace+' '+dayShare+'%')+'"><i class="t" style="width:'+(100-dayShare)+'%"></i><i class="rc" style="width:'+dayShare+'%"></i></span></div>';
   }
   function receipt(){
     var race=(V==='c');
-    return '<section class ="card" data-testid="daily-training-receipt">'+
-      '<div class ="sec-h"><h2>'+L.date+'</h2><span class ="meta">'+L.settled+'</span></div>'+
-      '<p class ="note">'+L.note+'</p>'+tiles()+(V==='c'?strip():'')+
-      '<div class ="cols head'+(race?' race':'')+'"><span>'+L.colRider+'</span><span class ="dev">'+L.colDev+'</span>'+(race?'<span class ="rshare">'+L.colRace+'</span>':'')+'<span style="text-align:right">'+L.colFat+'</span></div>'+
+    return '<section class="card" data-testid="daily-training-receipt">'+
+      '<div class="sec-h"><h2>'+L.date+'</h2><span class="meta">'+L.settled+'</span></div>'+
+      '<p class="note">'+L.note+'</p>'+tiles()+(V==='c'?strip():'')+
+      '<div class="cols head'+(race?' race':'')+'"><span>'+L.colRider+'</span><span class="dev">'+L.colDev+'</span>'+(race?'<span class="rshare">'+L.colRace+'</span>':'')+'<span style="text-align:right">'+L.colFat+'</span></div>'+
       RIDERS.map(row).join('')+'</section>';
   }
   var DESC={
@@ -297,17 +297,17 @@ h1{font:400 28px/1 var(--font-display);letter-spacing:.02em;margin:0 0 4px}
   function nav(){
     var vs=['now','a','b','c'],lbl={now:L.about.now,a:L.about.a,b:L.about.b,c:L.about.c};
     function u(p){var s=new URLSearchParams(q);Object.keys(p).forEach(function(k){s.set(k,p[k])});return '?'+s.toString()}
-    return '<div class ="sketch-bar"><span><b>#7627</b></span><span>'+vs.map(function(v){return '<a href="'+u({v:v})+'"'+(v===V?' class ="on"':'')+'>'+lbl[v]+'</a>'}).join('')+'</span>'+
-      '<span><a href="'+u({lang:'en'})+'"'+(LANG==='en'?' class ="on"':'')+'>EN</a><a href="'+u({lang:'da'})+'"'+(LANG==='da'?' class ="on"':'')+'>DA</a></span>'+
-      '<span><a href="'+u({theme:'light'})+'"'+(THEME==='light'?' class ="on"':'')+'>light</a><a href="'+u({theme:'dark'})+'"'+(THEME==='dark'?' class ="on"':'')+'>dark</a></span>'+
+    return '<div class="sketch-bar"><span><b>#7627</b></span><span>'+vs.map(function(v){return '<a href="'+u({v:v})+'"'+(v===V?' class="on"':'')+'>'+lbl[v]+'</a>'}).join('')+'</span>'+
+      '<span><a href="'+u({lang:'en'})+'"'+(LANG==='en'?' class="on"':'')+'>EN</a><a href="'+u({lang:'da'})+'"'+(LANG==='da'?' class="on"':'')+'>DA</a></span>'+
+      '<span><a href="'+u({theme:'light'})+'"'+(THEME==='light'?' class="on"':'')+'>light</a><a href="'+u({theme:'dark'})+'"'+(THEME==='dark'?' class="on"':'')+'>dark</a></span>'+
       '<span><a href="'+u({open:'first'})+'">first</a><a href="'+u({open:'all'})+'">all</a><a href="'+u({open:'none'})+'">none</a></span></div>';
   }
   function about(){
     var d=DESC[LANG][V];
-    return '<div class ="card" style="margin-top:16px"><p class ="meta" style="margin:0 0 4px">'+L.about[V]+'</p><p style="margin:0 0 4px;font-weight:600">'+d[0]+'</p><p style="margin:0 0 4px;font-size:12px;color:var(--text-2)">'+d[1]+'</p>'+(d[2]?'<p style="margin:0;font-size:12px;color:var(--text-2)">'+d[2]+'</p>':'')+'</div>';
+    return '<div class="card" style="margin-top:16px"><p class="meta" style="margin:0 0 4px">'+L.about[V]+'</p><p style="margin:0 0 4px;font-weight:600">'+d[0]+'</p><p style="margin:0 0 4px;font-size:12px;color:var(--text-2)">'+d[1]+'</p>'+(d[2]?'<p style="margin:0;font-size:12px;color:var(--text-2)">'+d[2]+'</p>':'')+'</div>';
   }
   function render(){
-    document.getElementById('app').innerHTML=nav()+'<h1>#7627</h1><p class ="sub">'+L.title+'</p>'+receipt()+about();
+    document.getElementById('app').innerHTML=nav()+'<h1>#7627</h1><p class="sub">'+L.title+'</p>'+receipt()+about();
     Array.prototype.forEach.call(document.querySelectorAll('.rbtn'),function(b){
       b.addEventListener('click',function(){var id=b.getAttribute('data-id');open[id]=!open[id];render()});
     });
