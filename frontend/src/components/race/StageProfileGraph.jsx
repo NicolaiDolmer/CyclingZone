@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { buildProfileSeries, waypointsFor, gradientBand, GRADIENT_BAND_TOKEN } from "../../lib/stageRouteProfile.js";
 
@@ -42,6 +42,20 @@ export default function StageProfileGraph({
   heightClass = "h-auto",
 }) {
   const { t } = useTranslation("races");
+  // #6365: SVG-tekst skaleres med viewBox'en, så en fast tekststørrelse blev meget lille
+  // på en mobilskærm. Vi måler den renderede bredde og regner tekststørrelsen tilbage til
+  // en læsbar skærmstørrelse; på smalle skærme udgår de tætteste mærkater (readouten
+  // under grafen bærer de samme tal).
+  const [node, setNode] = useState(/** @type {SVGSVGElement | null} */ (null));
+  const [renderedW, setRenderedW] = useState(0);
+  useEffect(() => {
+    if (!node || typeof ResizeObserver === "undefined") return undefined;
+    const measure = () => setRenderedW(node.getBoundingClientRect().width);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(node);
+    return () => ro.disconnect();
+  }, [node]);
   // #4107 (ejer-låst 23/8): FAST højdeskala pr. profile_type — buildProfileSeries
   // afgør selv loftet ud fra profilens type. Intet yMax-prop længere: en
   // fælles/etape-overstyret skala var netop det direktivet fjerner ("ingen
@@ -55,9 +69,58 @@ export default function StageProfileGraph({
   const dims = DEFAULT_DIMS[tier] ?? DEFAULT_DIMS.compact;
   const W = width ?? dims.width;
   const H = height ?? dims.height;
-  const p = PAD[tier] ?? PAD.compact;
+  // u = hvor mange viewBox-enheder 1 skærm-px fylder. Tekst sættes til mindst 10 skærm-px.
+  const u = !mini && renderedW > 0 ? Math.max(1, W / renderedW) : 1;
+  const narrow = u > 1.3;
+  const fs = 10 * u;
+  const textStyle = { fontSize: fs };
+  const chipH = 12 * u;
+  const basePad = PAD[tier] ?? PAD.compact;
+  // Smal + fuld (#6365): en hel stigningstekst (skilt, navn, højde) fylder blockH. Teksterne
+  // lægges i højst to rækker, og en række rykkes en HEL blok ned, så skilt og navn aldrig
+  // overlapper. En tekst, der ikke kan stå frit i nogen af rækkerne, viser kun sit skilt:
+  // readouten under grafen bærer navn og højde.
+  const blockH = chipH + fs * 3;
+  const padL = Math.ceil(fs * 2.4);
+  const padR = Math.ceil(fs * 1.2);
+  const labelRows = [];
+  const labelWidths = [];
+  if (narrow && full) {
+    const rowEnd = [-Infinity, -Infinity];
+    const distance = Number(profile.distance_km);
+    for (const c of /** @type {any[]} */ (series.climbs)) {
+      const cx = padL + (c.crest_km / distance) * (W - padL - padR);
+      const lw = Math.max(String(c.name || "").length * fs * 0.68, fs * 5);
+      const x0 = cx > W - padR - 64 || cx + lw / 2 > W - padR ? W - padR - lw
+        : cx < padL + 64 || cx - lw / 2 < padL ? padL : cx - lw / 2;
+      const row = rowEnd.findIndex((end) => x0 >= end + fs);
+      if (row >= 0) rowEnd[row] = x0 + lw;
+      labelRows.push(row);
+      labelWidths.push(lw);
+    }
+  }
+  const rowStep = labelRows.includes(1) ? blockH : 0;
+  // Kompakt (uden navne og højdeakse) skal kun have plads til kategori-skiltet og km-akse.
+  const p = narrow
+    ? (full
+      ? {
+          l: padL,
+          r: padR,
+          t: Math.ceil(4 + rowStep + blockH + 8),
+          b: Math.ceil(fs * 3.2),
+        }
+      : {
+          l: basePad.l,
+          r: Math.ceil(fs * 1.2),
+          t: Math.ceil(4 + chipH + 8),
+          b: Math.ceil(fs + 21),
+        })
+    : basePad;
   const plotW = W - p.l - p.r;
-  const plotH = H - p.t - p.b;
+  // Smal skærm + fuld graf: tegningen gøres højere i viewBox'en, så selve kurven stadig
+  // får en brugbar skærmhøjde når tekstpladsen er regnet op.
+  const Hv = narrow && full ? p.t + p.b + Math.max(H - basePad.t - basePad.b, 110 * u) : H;
+  const plotH = Hv - p.t - p.b;
   const D = Number(profile.distance_km);
   const top = series.maxY * 1.12;
   const X = (km) => p.l + (km / D) * plotW;
@@ -66,8 +129,18 @@ export default function StageProfileGraph({
 
   const points = series.xs.map((x, i) => `${X(x).toFixed(1)},${Y(series.ys[i]).toFixed(1)}`).join(" ");
   const sectors = Array.isArray(profile.sectors) ? profile.sectors : [];
-  const kmStep = D > 200 ? 40 : D > 60 ? 20 : D > 20 ? 5 : 1;
-  const gridStep = top > 3000 ? 1000 : top > 1200 ? 500 : top > 400 ? 200 : 100;
+  const baseKmStep = D > 200 ? 40 : D > 60 ? 20 : D > 20 ? 5 : 1;
+  // Smal skærm: færre km-mærker, så tallene ikke løber sammen.
+  const minTickGap = fs * 3.4;
+  const kmStep = narrow
+    ? baseKmStep * Math.max(1, Math.ceil(minTickGap / ((baseKmStep / D) * plotW)))
+    : baseKmStep;
+  let gridStep = top > 3000 ? 1000 : top > 1200 ? 500 : top > 400 ? 200 : 100;
+  // Højdemærkerne må ikke ligge tættere end teksten er høj (gælder kun den hævede tekst).
+  const GRID_STEPS = [100, 200, 500, 1000, 2000, 5000];
+  while (narrow && (gridStep / top) * plotH < fs * 1.7 && gridStep < GRID_STEPS[GRID_STEPS.length - 1]) {
+    gridStep = GRID_STEPS.find((s) => s > gridStep) ?? GRID_STEPS[GRID_STEPS.length - 1];
+  }
   const gridLines = [];
   for (let m = gridStep; m <= top; m += gridStep) gridLines.push(m);
   const kmTicks = [];
@@ -81,7 +154,8 @@ export default function StageProfileGraph({
 
   return (
     <svg
-      viewBox={`0 0 ${W} ${H}`}
+      viewBox={`0 0 ${W} ${Hv}`}
+      ref={setNode}
       className={`block w-full ${heightClass} overflow-visible`}
       preserveAspectRatio={mini ? "none" : undefined}
       role={mini ? undefined : "img"}
@@ -105,7 +179,7 @@ export default function StageProfileGraph({
       {full && gridLines.map((m) => (
         <g key={`g${m}`}>
           <line x1={p.l} y1={Y(m)} x2={W - p.r} y2={Y(m)} stroke="var(--text-3)" strokeOpacity="0.2" strokeWidth="0.5" />
-          <text x={p.l - 6} y={Y(m) + 3} textAnchor="end" className="text-3xs fill-cz-3 font-mono" fontSize="10">{m}</text>
+          <text x={p.l - 6} y={Y(m) + fs * 0.3} textAnchor="end" className="text-3xs fill-cz-3 font-mono" style={textStyle}>{m}</text>
         </g>
       ))}
 
@@ -149,15 +223,18 @@ export default function StageProfileGraph({
         const cx = X(c.crest_km);
         const crestIdx = Math.round((c.crest_km / D) * (series.xs.length - 1));
         const cy = Y(series.ys[crestIdx]);
-        const labelY = (full ? 10 : 4) + (full ? i % 2 : 0) * 30;
-        const w = c.category === "HC" ? 20 : 13;
+        const labelRow = labelRows[i] ?? 0;
+        const showText = full && labelRow >= 0;
+        const labelY = narrow ? 4 + Math.max(labelRow, 0) * rowStep : (full ? 10 : 4) + (full ? i % 2 : 0) * 30;
+        const w = (c.category === "HC" ? 20 : 13) * (narrow ? u : 1);
         // Label-ankeret trækkes ind ved kanterne. En summit-finish har
         // crest_km === distance_km, så dens navn ville ellers centreres PÅ
         // grafens højre kant og løbe ~40 px udenfor — og det er præcis de
         // etaper hvor stigningen er dagens historie.
         const EDGE = 64;
-        const nearEnd = cx > W - p.r - EDGE;
-        const nearStart = cx < p.l + EDGE;
+        const halfW = (labelWidths[i] ?? 0) / 2;
+        const nearEnd = cx > W - p.r - EDGE || cx + halfW > W - p.r;
+        const nearStart = cx < p.l + EDGE || cx - halfW < p.l;
         const textAnchor = nearEnd ? "end" : nearStart ? "start" : "middle";
         const textX = nearEnd ? W - p.r : nearStart ? p.l : cx;
         // Point-mærkatet sidder normalt til højre for chippen; ved højre kant
@@ -166,31 +243,31 @@ export default function StageProfileGraph({
         const ptsAnchor = nearEnd ? "end" : "start";
         return (
           <g key={`lbl${i}`}>
-            <line x1={cx} y1={cy} x2={cx} y2={labelY + (full ? 30 : 14)}
+            <line x1={cx} y1={cy} x2={cx} y2={labelY + (narrow ? chipH + (showText ? fs * 1.5 : 2) : full ? 30 : 14)}
               stroke="var(--text-3)" strokeOpacity="0.55" strokeWidth="0.6" strokeDasharray="2 2" />
-            <rect x={cx - w / 2} y={labelY} width={w} height={12} rx="1" fill={catFill(c.category)} />
-            <text x={cx} y={labelY + 8.8} textAnchor="middle" className="text-3xs" fontSize="10" fontWeight="700" fill={catText(c.category)}>
+            <rect x={cx - w / 2} y={labelY} width={w} height={chipH} rx="1" fill={catFill(c.category)} />
+            <text x={cx} y={labelY + chipH * 0.73} textAnchor="middle" className="text-3xs" style={textStyle} fontWeight="700" fill={catText(c.category)}>
               {c.category}
             </text>
-            {full && (
+            {showText && (
               <>
                 {hasClassifications && (
-                  <text x={ptsX} y={labelY + 9} textAnchor={ptsAnchor} fontSize="10" className="text-3xs font-mono"
+                  <text x={ptsX} y={labelY + 9} textAnchor={ptsAnchor} style={textStyle} className="text-3xs font-mono" display={narrow ? "none" : undefined}
                     fill="rgb(var(--jersey-mountain-bg))">
                     {waypoints.find((wp) => wp.kind === "kom" && wp.index === i)?.points}p
                   </text>
                 )}
-                <text x={textX} y={labelY + 22} textAnchor={textAnchor} fontSize="10" fontWeight="600"
-                  className="text-3xs fill-cz-1" style={{ letterSpacing: "0.05em" }}>
+                <text x={textX} y={narrow ? labelY + chipH + fs * 1.2 : labelY + 22} textAnchor={textAnchor} fontWeight="600"
+                  className="text-3xs fill-cz-1" style={{ ...textStyle, letterSpacing: "0.05em" }}>
                   {(c.name || "").toUpperCase()}
                 </text>
                 {/* Højde ved toppen (#4107 pkt. 1: "kategori-skilt + navn + højde +
                     længde/% ved toppen") — cy er allerede den PIXEL-transformerede
                     Y, den ægte meterhøjde er series.ys[crestIdx] før Y()-transformen. */}
-                <text x={textX} y={labelY + 31} textAnchor={textAnchor} fontSize="10" className="text-3xs fill-cz-2 font-mono">
+                <text x={textX} y={narrow ? labelY + chipH + fs * 2.4 : labelY + 31} textAnchor={textAnchor} style={textStyle} className="text-3xs fill-cz-2 font-mono">
                   {t("detail.route.waypoint.altitude", { m: Math.round(series.ys[crestIdx]) })}
-                  {" · "}
-                  {t("detail.route.waypoint.gradient", {
+                  {!narrow && " · "}
+                  {!narrow && t("detail.route.waypoint.gradient", {
                     length: c.length_km.toFixed(1), gradient: c.avg_gradient.toFixed(1),
                   })}
                 </text>
@@ -206,7 +283,7 @@ export default function StageProfileGraph({
           {kmTicks.map((k) => (
             <g key={`km${k}`}>
               <line x1={X(k)} y1={axisY} x2={X(k)} y2={axisY + 4} stroke="var(--text-3)" strokeOpacity="0.5" strokeWidth="0.7" />
-              <text x={X(k)} y={axisY + 15} textAnchor="middle" fontSize="10" className="text-3xs fill-cz-3 font-mono">{k}</text>
+              <text x={X(k)} y={axisY + 5 + fs} textAnchor="middle" style={textStyle} className="text-3xs fill-cz-3 font-mono">{k}</text>
             </g>
           ))}
           {waypoints.map((w) => {
@@ -229,7 +306,7 @@ export default function StageProfileGraph({
                     className={onWaypointSelect ? "cursor-pointer" : undefined}
                     onClick={pick(w)} onMouseEnter={pick(w)} />
                   {full && hasClassifications && (
-                    <text x={X(w.km) + 8} y={axisY - 8} fontSize="10" className="text-3xs font-mono"
+                    <text x={X(w.km) + 8} y={axisY - 8} style={textStyle} className="text-3xs font-mono" display={narrow ? "none" : undefined}
                       fill="rgb(var(--jersey-points-bg))">
                       {t("detail.route.sprintMarker", { points: w.points, bonus: w.bonus })}
                     </text>

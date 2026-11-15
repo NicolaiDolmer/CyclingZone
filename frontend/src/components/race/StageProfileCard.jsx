@@ -44,18 +44,18 @@ export default function StageProfileCard({ profile, stageLabel, passages = [], t
         </p>
         <div className="flex gap-4">
           <div className="text-end">
-            <b className="block font-display text-xl text-cz-1 leading-none">{formatNumber(profile.distance_km)}</b>
+            <b className="block font-data tabular-nums text-xl text-cz-1 leading-none">{formatNumber(profile.distance_km)}</b>
             <span className="text-cz-3 text-3xs tracking-widest">{t("detail.route.stats.km")}</span>
           </div>
           {profile.elevation_gain_m > 0 && (
             <div className="text-end">
-              <b className="block font-display text-xl text-cz-1 leading-none">{formatNumber(profile.elevation_gain_m)}</b>
+              <b className="block font-data tabular-nums text-xl text-cz-1 leading-none">{formatNumber(profile.elevation_gain_m)}</b>
               <span className="text-cz-3 text-3xs tracking-widest">{t("detail.route.stats.elevation")}</span>
             </div>
           )}
           {waypoints.some((w) => w.kind === "kom") && (
             <div className="text-end">
-              <b className="block font-display text-xl text-cz-1 leading-none">
+              <b className="block font-data tabular-nums text-xl text-cz-1 leading-none">
                 {waypoints.filter((w) => w.kind === "kom").length}
               </b>
               <span className="text-cz-3 text-3xs tracking-widest">{t("detail.route.stats.climbs")}</span>
