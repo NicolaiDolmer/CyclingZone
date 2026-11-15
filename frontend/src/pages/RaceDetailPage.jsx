@@ -1461,7 +1461,7 @@ export default function RaceDetailPage() {
                   <HeroStatBlock key={b.label} label={b.label} value={b.value} sub={b.sub} last={i === statBlocks.length - 1} />
                 ))}
               </div>
-              <div data-race-hero-action className="flex w-full flex-wrap items-center justify-end gap-x-4 gap-y-2 sm:ms-auto sm:w-auto">
+              <div data-race-hero-action className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 sm:ms-auto sm:w-auto sm:justify-end">
                 <p className="m-0 font-data text-sm tabular-nums text-cz-2">
                   {v6Cta.locksAt
                     ? t(race.race_type === "stage_race" ? "racePageV6.hero.stageLocks" : "racePageV6.hero.locks", {
