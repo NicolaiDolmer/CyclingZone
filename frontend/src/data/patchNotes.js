@@ -4,7 +4,7 @@ export const PATCHES = [
   "date": "2026-11-15",
   "changes": [
     {
-      "category": "changed",
+      "category": "improved",
       "audience": "player",
       "rollout": "live",
       "topic": "Transfers",
