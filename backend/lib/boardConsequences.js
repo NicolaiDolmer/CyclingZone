@@ -17,6 +17,7 @@ import { STAR_RIDER_MARKET_VALUE } from "./economyConstants.js";
 import { tierSupportsRaceScope } from "./boardConstants.js";
 import { STAR_BAND_THRESHOLD } from "./reputationConstants.js";
 import { isReputationReadEnabled, readReputationStage } from "./reputationFlag.js";
+import { isParkedTeam } from "./managerParking.js";
 
 const SATISFACTION_THRESHOLDS = {
   SALARY_CAP: 40,
@@ -470,6 +471,19 @@ export async function evaluateAndApplyConsequences({
   ensureSupabase(supabase);
   if (!team?.id || !board?.id) {
     return { applied: [], skipped: [] };
+  }
+
+  // #5902 · Sidste værn: et parkeret hold (#4592) får ingen bestyrelsesdom og
+  // ingen konsekvenser. Begge kaldere sorterer allerede parkerede hold fra
+  // (processTeamSeasonEnd og den ugentlige kørsel), men dette er den ENESTE
+  // funktion, der opretter rækker i board_consequences, tvangssalgslister og
+  // de tilhørende beskeder, så reglen håndhæves også her. Intet læses og intet
+  // skrives: eksisterende aktive rækker står urørte (bestyrelsen er frosset,
+  // ikke nulstillet). Kalderen skal have parked_at med i holdets select;
+  // mangler feltet, tæller holdet som ikke parkeret (samme regel som
+  // managerParking.isParkedTeam).
+  if (isParkedTeam(team)) {
+    return { applied: [], skipped: [{ layer: null, reason: "parked_team" }] };
   }
 
   const applied = [];

@@ -10,6 +10,7 @@ import {
 } from "./dailyTrainingEngine.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { TRAINING_TICK_PER_RACE_DAY_FLAG_KEY } from "./trainingTickRaceDayFlag.js";
+import { applyJsonArrowProjection } from "./__fixtures__/postgrestJsonProjection.js";
 
 // ── Pure helper ──────────────────────────────────────────────────────────────
 
@@ -65,7 +66,8 @@ function createMockSupabase(state) {
     });
     const next = (f) => builder(table, op, [...filters, f], patch);
     const obj = {
-      select: () => builder(table, "select", filters, patch),
+      // #6490: JSON-projektioner (alias:kolonne->noegle) gives som PostgREST.
+      select: (cols) => builder(table, "select", [...filters, ["__cols", cols, "meta"]], patch),
       eq: (c, v) => next([c, v, "eq"]),
       is: (c, v) => next([c, v, "eq"]),
       in: (c, v) => next([c, v, "in"]),
@@ -115,6 +117,7 @@ function createMockSupabase(state) {
           const lim = filters.find((f) => f[0] === "__limit")?.[1];
           if (ord) rows = [...rows].sort((a, b) => (ord.asc ? 1 : -1) * (Number(a[ord.col]) - Number(b[ord.col])));
           if (Number.isFinite(lim)) rows = rows.slice(0, lim);
+          rows = applyJsonArrowProjection(rows, filters.find((f) => f[0] === "__cols")?.[1]);
           result = { data: rows, error: null };
         }
         return Promise.resolve(result).then(resolve, reject);

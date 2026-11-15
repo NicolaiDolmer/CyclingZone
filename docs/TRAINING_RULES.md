@@ -241,6 +241,17 @@ Ny kode må ikke bruge containment (`@>`) på `report->'riders'`: læs fra
 `rider_training_seen`. Gendannelse: `database/manual/2026-10-15-6490-recreate-
 training-report-riders-gin.sql`.
 
+Ny rytters starttilstand (#8089, ejer 13/11): førstegangstilstanden er én fast
+starttilstand, `NEW_RIDER_START_CONDITION` i `backend/lib/riderCondition.js`:
+form som før og en fast lav træthed (ikke nul), så en ny rytter ikke taber form
+de første dage på normal træning. Den er ens for køb fra puljen, fri agent og
+akademi-optag, og fordi alle veje går gennem samme trigger, også for starttrupper
+og nye AI-hold. De tre databasefunktioner (triggeren, datoens registrering og
+kompensationen) og kodens reserver for en rytter uden tilstand bruger samme tal
+(`database/2026-11-13-8089-ny-rytter-starttilstand.sql`). Ryttere, der allerede
+har en tilstand, røres ikke; ingen bagudrettelse. Sæsonstartens træthed
+(`SEASON_FATIGUE_RESET`) er en separat konstant.
+
 Driftalarmen skelner via sit gemte bevis mellem utilgængelige ryttere/starttilstande
 og manglende løbsaktivitet. Et begrænset udsnit serialiseres, så årsagen kan læses
 i Sentry. Leveringens varige genforsøg består. Ingen balancerater ændres.
@@ -261,7 +272,7 @@ Forudsætning: `training_tick_per_race_day` skal være aktivt for motoren, før 
 
 **#7801 (ejer 6/11, bag `fatigue_now_7801`, ikke seedet = slukket, kun "on" tænder; kræver `condition_model_v2`):** træthedsgrænsen (auto-hvile/let/restitution) vurderes på trætheden lige nu før feltet, altså åbningen plus datoens kørte etaper på tidligere løbsdage, i stedet for datoens starttilstand. Skadesrullet sker stadig én gang ved afregningen, men risikoen regnes pr. felt på trætheden lige nu før feltet. Prognosen ("Træthed i aften") bruger samme tal (I5). Slukket = reglen ovenfor uændret, bevist mod en frossen digest fra merge-basen. Dagens træningspas tæller først med ved afregningen, både i fladernes tal og i motoren.
 
-Flader og assistent under `fatigue_now_7801`: Træningssiden viser trætheden lige nu (åbningen plus datoens kørte etaper, hver med sin belastning og sin restitution), og for en rytter med en næste etape i dag eller i morgen en ekstra linje med skønnet ved den etapes start. Skønnet rækker aldrig længere frem end næste etape (ejerens punkt 4), og til en etape i morgen er det samme tal som "Træthed i aften". Assistentens udtagelse (Race Hubs Auto-udfyld og forhåndsvisning, løbsstart) regner trætheden fra starten af løbets første etape, aldrig efter uret på det tidspunkt, knappen trykkes: kun etaper på samme dato som den start, og kun løbsdage før den, tæller med, så udtagelsen er den samme, uanset hvornår den køres. Kan det levende tal ikke læses, falder flader og udtagelse tilbage på åbningen. Hjælp (`dailytraining.fatigueNow` og tvillingen `fatigueLimitNow` til `fatigueLimit`) følger kontakten og kæden til `condition_model_v2` via `GET /api/feature-flags`; slukket viser Hjælp den gamle tekst om datoens start.
+Flader og assistent under `fatigue_now_7801`: Træningssiden viser trætheden lige nu (åbningen plus datoens kørte etaper, hver med sin belastning og sin restitution), og for en rytter med en næste etape i dag eller i morgen en ekstra linje med skønnet ved den etapes start. Skønnet rækker aldrig længere frem end næste etape (ejerens punkt 4), og til en etape i morgen er det samme tal som "Træthed i aften". Assistentens udtagelse (Race Hubs Auto-udfyld og forhåndsvisning, løbsstart) regner trætheden fra starten af løbets første etape, aldrig efter uret på det tidspunkt, knappen trykkes: kun etaper på samme dato som den start, og kun løbsdage før den, tæller med, så udtagelsen er den samme, uanset hvornår den køres. Kan det levende tal ikke læses, viser fladerne (Træningssiden, Udtagelsen, løbets Hold-fane og rytterkortet) en streg i stedet for et tal, og træningssidens skøn ved start og skadesrisiko udelades også; assistentens udtagelse og motoren bruger åbningen. Hjælp (`dailytraining.fatigueNow` og tvillingen `fatigueLimitNow` til `fatigueLimit`) følger kontakten og kæden til `condition_model_v2` via `GET /api/feature-flags`; slukket viser Hjælp den gamle tekst om datoens start.
 
 **#5928 (ejer 15/10, kun `s5_profiles_v1`):** etapens belastning i datoens slot vokser med etapens plads i etapeløbet og med rytterens reelle arbejde (se [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)). Afregningen, restitutionen pr. dato og managerens valg af træning på GT-datoerne er uændrede; hård træning oven på en trættende GT koster som altid (træthed, form, skaderisiko over grænsen).
 
@@ -421,6 +432,50 @@ confirmation "Train before today's races?" only when at least one of today's rac
 run (`trainNowInstantConfirm`). Short-race warnings (#6740) are unchanged; when both apply,
 the instant body is shown above the short-race warnings and the existing short-race title and
 "Train anyway" button are kept. With `instant` off nothing on the page changes.
+
+### Træn nu for alle: reglen spilleren møder (#7737, til dørs-pakken 14/11)
+
+Det her er reglen, som den står i Hjælp (`dailytraining.trainNowInstant`, fem sprog), og som
+gælder for alle, når `training_train_now_instant` er `"on"`. Ingen ny mekanik; sektionerne ovenfor
+er den tekniske kontrakt.
+
+- **Trykket virker straks.** Træn nu udfører dagens ledige træningsfelter i det øjeblik, manageren
+  trykker. Form og træthed opdateres med det samme, og dagens løb bruger den opdaterede tilstand.
+- **Et løb beholder sit felt.** Et løbsfelt afregnes først efter løbet og giver hverken belastning
+  eller restitution før løbet (se "Open race slot before the race" ovenfor). Aftenens slutresultat
+  for datoen er det samme, som hvis manageren ikke havde trykket.
+- **Aldrig dobbelt.** Ingen rytter får træning to gange for samme felt, og aftenkørslen træner
+  aldrig en rytter, trykket allerede har trænet.
+- **Hvad trykket låser.** Ryttere i trykket kan ikke tilmeldes nye løb i dag og kan ikke tages ud af
+  dagens løb, og dagens træningsplan er låst. Ryttere, der købes eller rykkes op efter trykket, kan
+  stadig køre i dag. Senere datoer kan planlægges som normalt.
+- **Uden tryk ændres intet.** Trykker manageren ikke, kører træningen automatisk efter dagens løb som
+  hidtil.
+- **Stemplet vinder over kontakten.** Et tryk, der er gået igennem som øjeblikkeligt, følges resten
+  af datoen, også hvis kontakten slukkes bagefter.
+- **Ingen bonus i reglen.** Bonussen er en separat kontakt (`training_train_now_bonus`, #7741) og
+  indgår ikke i teksten for alle.
+
+**Hjælp følger kontakten selv.** `HELP_BLOCK_FLAGS.dailytraining` (`frontend/src/pages/helpFlagGates.js`)
+viser `trainNowBeta` (dagens tekst med beta-forbeholdet), når kontakten er off for viewer'en, og
+`trainNowInstant` (samme regel uden forbeholdet), når den er on for viewer'en: beta-testere nu,
+alle ved `"on"`. Svaret kommer fra `GET /api/feature-flags`; kontakten står i
+`PLAYER_VISIBLE_FLAG_KEYS`. Vogtet af `frontend/src/pages/HelpPage.trainNow.test.ts`.
+
+**Roadmap følger kontakten selv.** Det stemte roadmap-punkt bærer `flag_key =
+'training_train_now_instant'` (koblet af `database/2026-11-12-8051-roadmap-pakke.sql`; den tomme
+dublet er arkiveret). Triggeren `app_config_sync_roadmap` sætter det til leveret med dato, når
+kontakten sættes til `"on"`. Verificeret read-only mod prod 14/11: koblingen findes, punktet står
+"i gang" med beta-dato, triggeren er aktiv. `scripts/roadmap-flip.mjs` skal derfor ikke køres for
+tændingen.
+
+**Tænding er ét skridt (ejer-go).** Forudsætningen er svartiden på trykket (#7982, eget spor). I samme
+skridt: `app_config.training_train_now_instant` sættes til `"on"`; `train-now-instant` i
+`docs/FEATURE_REGISTRY.yml` til live og `docs/FEATURE_STATUS.md` regenereres; patch noten "beta til
+live" lægges i `frontend/src/data/patchNotes.js` (udkast EN/DA i PR'en for til dørs-pakken).
+Hjælp og roadmap skifter af sig selv. Rul tilbage: kontakten til `"beta"` (Hjælp skifter tilbage
+af sig selv; roadmap-punktet bliver stående som leveret, fordi triggeren aldrig flytter et leveret
+punkt, og skal i så fald rettes særskilt).
 
 ## Aktuel S4-status (read-only prodmåling 28/9)
 
@@ -1296,6 +1351,8 @@ RPC'er er uændrede. Statuspolling afbryder timeoutede kald og holder ét kald a
 unmount afbryder også. Under backend-før-migration-vinduet bruges kun ved manglende try-RPC (`PGRST202`) den gamle ventende RPC; held-adfærden kræver anvendt migration og opdateret schema-cache.
 
 **Train now = hele dagen, B fase 1 (#6461, kontakten fjernet 2/11).** Klikket afregner hele datoen for hver rytter, hvis dato er kendt: en rytter uden åbent løbsslot (intet løb, eller løbet er kørt) får alle 5 løbsdage inkl. datoens ene tilstandsafregning. En løbsrytter med et løb, der ikke er kørt, venter som før: træning før løbet ville give ham evner, som løbet læser (en fordel af klik-tidspunktet, I1). Tilstanden skrives stadig én gang pr. rytter pr. dato, og løbet køres på datoens starttilstand. Fælles lås: klikket mærker låserækken (`whole_day_at`) før afregningen, og databasen dropper en udtagelse af en mærket rytter i et løb med en etape tilbage på datoen (`database/2026-10-25-6461-train-now-whole-day.sql`). Løbsrytternes træning i klikket er fase 2 (kræver RPC og den kronologiske dagsmodel fra #6984). Før tænding: løbsstartens autofyld skal bruge de rækker, databasen faktisk skrev (en droppet række må ikke komme med i feltet). Kode: `backend/lib/trainNowWholeDay.js`.
+
+**Trykkets egen læser (#7982, ejer-valg A 12/11).** Trykkets tre friske læsninger (før lås, efter lås, efter freeze) bruger `loadTrainNowDateContext` (`backend/lib/trainNowDateContext.js`): ét databasekald pr. læsning (`train_now_date_context`, read-only, kun service_role) med hele sæsonens kalender og kun holdets egne ryttere og deres bindinger. Samme regler og samme svar som sweepens `loadTrainingDateContext`, som er uændret. Mangler funktionen (deploy-vinduet), bruges den gamle læser; andre fejl stopper trykket. Hvert tryk logger én privat `[train-now-timing]`-linje med tid pr. trin, uden hold- eller rytter-id.
 
 ### 13.3c Fast udbytte pr. dato uanset sæsonens længde (#6711, ejer-go 16/10)
 

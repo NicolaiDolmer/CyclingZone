@@ -25,7 +25,7 @@
 
 import { loadInstantConditions } from "./trainNowInstantCondition7737.js";
 import { settleTrainingDateCondition } from "./trainingDateCondition.js";
-import { CONDITION_CONFIG, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
+import { CONDITION_CONFIG, RACE_DAY_ENGINE_RECOVERY_CONFIG, NEW_RIDER_START_CONDITION } from "./riderCondition.js";
 import { raceConditionLoads } from "./raceFatigue.js";
 import { resolveDayProgram, programSlotForRaceDay, weekDaysHaveSessions } from "./trainingPrograms.js";
 import { resolveProgram } from "./dailyTraining.js";
@@ -92,7 +92,7 @@ export function forecastRiderFatigue({ riderId, dateStr, opening, slots, recover
   try {
     const settled = settleTrainingDateCondition({
       riderId, dateStr,
-      condition: { fatigue: Number(opening?.fatigue ?? 0), form: Number(opening?.form ?? 50) },
+      condition: { fatigue: Number(opening?.fatigue ?? NEW_RIDER_START_CONDITION.fatigue), form: Number(opening?.form ?? NEW_RIDER_START_CONDITION.form) },
       intensities: slots.map((slot) => slot.intensity),
       raceLoads: slots.map((slot) => (slot.intensity === "race" ? Number(slot.raceLoad ?? 0) : 0)),
       recoveryAbility,
@@ -127,7 +127,8 @@ export function buildTeamFatigueForecast({
   const recoveryConfig = raceDayEngineOn ? RACE_DAY_ENGINE_RECOVERY_CONFIG : {};
   const out = {};
   for (const rider of riders ?? []) {
-    const cond = conditionByRider.get(rider.id) ?? { form: 50, fatigue: 0 };
+    // #8089: rytter uden tilstand regnes fra samme start, som databasen giver ham.
+    const cond = conditionByRider.get(rider.id) ?? NEW_RIDER_START_CONDITION;
     const opening = openingByRider.get(rider.id) ?? cond;
     const plan = planByRider.get(rider.id) ?? null;
     const program = resolveProgram(plan, rider.primary_type);
@@ -214,6 +215,13 @@ async function rows(query, label) {
   return data ?? [];
 }
 
+// Et opslags udfald som vaerdi: et opslag, der er sendt men ikke bruges, kan ikke vaelte noget.
+const settle = (promise) => Promise.resolve(promise).then((value) => ({ ok: true, value }), (error) => ({ ok: false, error }));
+const unwrap = (outcome) => {
+  if (!outcome.ok) throw outcome.error;
+  return outcome.value;
+};
+
 // ── I/O: hele holdets prognose for i dag ─────────────────────────────────────
 // Returnerer { available, reason?, tickDate, riders: { <id>: { fatigue, band } } }.
 // `settled: true` naar datoen allerede er gjort op; saa er tallet aftenens
@@ -225,15 +233,32 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
   if (!team?.league_division_id) return { ...base, available: false, reason: "no_division" };
   if (!(await isTrainingConditionPerDateEnabled(supabase))) return { ...base, available: false, reason: "condition_per_date_off" };
 
-  const close = await resolveDayCloseStatus({ supabase, seasonId, now, divisionId: team.league_division_id });
+  // #7801 svartid: opslag, der ikke afhaenger af hinanden, sendes i samme runde. Hvert svar
+  // gemmes som udfald (settle), saa et opslag, der ikke bruges, aldrig kan vaelte forecasten,
+  // og saa en fejl rejses paa praecis samme sted og i samme raekkefoelge som foer (unwrap).
+  const closeP = settle(resolveDayCloseStatus({ supabase, seasonId, now, divisionId: team.league_division_id }));
+  // pagination-safe: one team roster (senior + academy), far below the 1000-row cap.
+  const ridersP = settle(rows(supabase.from("riders").select("id, primary_type").eq("team_id", team.id).eq("is_retired", false), "forecast riders"));
+  const conditionModelV2P = settle(isConditionModelV2Enabled(supabase)); // #6984 (I5)
+
+  const close = unwrap(await closeP);
   const dateGameDays = [...new Set((close.gameDays ?? []).map(Number).filter(Number.isFinite))].sort((a, b) => a - b);
   if (dateGameDays.length !== FORECAST_SLOTS) return { ...base, available: false, reason: "no_full_date" };
 
-  // pagination-safe: one team roster (senior + academy), far below the 1000-row cap.
-  const riders = await rows(supabase.from("riders").select("id, primary_type").eq("team_id", team.id).eq("is_retired", false), "forecast riders");
+  const riders = unwrap(await ridersP);
   const riderIds = riders.map((rider) => rider.id);
   if (!riderIds.length) return { ...base, available: true, riders: {} };
 
+  // Modellens svar er kommet med i foerste runde. Lægeopslag og kontakter, der kun bruges under
+  // modellen, sendes nu sammen med resten; er modellen slukket (eller kan ikke laeses), sendes de ikke.
+  const modelOutcome = await conditionModelV2P;
+  const modelOn = modelOutcome.ok && !!modelOutcome.value;
+  const medicalBonusP = modelOn ? settle(loadTeamMedicalBonus(supabase, team.id)) : null;
+  const raceDateTrainingDayP = modelOn ? settle(isRaceDateTrainingDayEnabled(supabase)) : null; // #7536
+  const fatigueNowP = modelOn ? settle(isFatigueNow7801Enabled(supabase)) : null; // #7801, samme gate som motoren
+  // Motorens regler og straks-tilstandene afhaenger kun af holdet og datoen: de sendes med.
+  const rulesP = fatigueRulesForForecast(supabase, team.id, riderIds, tickDate);
+  const instantP = settle(loadInstantConditions({ supabase, riderIds, tickDate, failOpenWhenOff: true }));
   const [conditions, abilities, plans, weekRows, receipts, loads, workRows, entryDays, raceDayEngineOn, cellsOn, catalogV3] = await Promise.all([
     rows(supabase.from("rider_condition").select("*").in("rider_id", riderIds), "forecast condition"),
     rows(supabase.from("rider_derived_abilities").select("rider_id, recovery").in("rider_id", riderIds), "forecast recovery"),
@@ -251,7 +276,7 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     catalogV3GateForTeam(supabase, team.id),
   ]);
 
-  const instant = await loadInstantConditions({ supabase, riderIds, tickDate, failOpenWhenOff: true });
+  const instant = unwrap(await instantP);
   const openingByRider = new Map(Object.entries(workRows[0]?.opening_conditions ?? {}));
   for (const [id, opening] of instant.openingByRider) openingByRider.set(id, opening);
   const work = workRows[0] ?? null;
@@ -287,12 +312,12 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     : [[], [], new Map()];
   const { plannedStages, boundRiderIdsByGameDay } = forecastBindingsFromEntryDays({ entryDays, schedule, profiles, exits });
 
-  const { fatigueRules, stageYesterdayRiderIds } = await fatigueRulesForForecast(supabase, team.id, riderIds, tickDate);
+  const { fatigueRules, stageYesterdayRiderIds } = await rulesP;
   // #6984 (I5): prognosen regner med samme model som aftenens opgoerelse.
-  const conditionModelV2 = await isConditionModelV2Enabled(supabase);
-  const medicalBonus = conditionModelV2 ? await loadTeamMedicalBonus(supabase, team.id) : 0;
-  const raceDateTrainingDay = conditionModelV2 ? await isRaceDateTrainingDayEnabled(supabase) : false; // #7536
-  const fatigueNow = conditionModelV2 ? await isFatigueNow7801Enabled(supabase) : false; // #7801, samme gate som motoren
+  const conditionModelV2 = unwrap(modelOutcome);
+  const medicalBonus = conditionModelV2 ? unwrap(await medicalBonusP) : 0;
+  const raceDateTrainingDay = conditionModelV2 ? unwrap(await raceDateTrainingDayP) : false; // #7536
+  const fatigueNow = conditionModelV2 ? unwrap(await fatigueNowP) : false; // #7801, samme gate som motoren
   const forecast = buildTeamFatigueForecast({
     conditionModelV2,
     fatigueNow,

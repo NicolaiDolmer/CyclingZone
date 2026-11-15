@@ -1,0 +1,27 @@
+# Signeringsnoegler og byggeoutput maa ALDRIG ligge i repoet (Play App Signing, #6584).
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+keystore.properties
+signing.properties
+.env*
+
+# Bubblewrap genererer hele Android-projektet og bygger her.
+app/
+gradle/
+build/
+.gradle/
+*.aab
+*.apk
+*.idsig
+gradlew
+gradlew.bat
+settings.gradle
+build.gradle
+gradle.properties
+local.properties
+store_icon.png
+manifest-checksum.txt

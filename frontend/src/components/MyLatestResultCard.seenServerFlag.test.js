@@ -28,7 +28,7 @@ test("#2593 badge-state afledes af race.seen (server), ikke af et localStorage-f
   );
   assert.match(
     source,
-    /setIsNew\(!race\.seen\)/,
+    /Boolean\(race\?\.id && !race\.seen\)/,
     "isNew skal afledes af det server-leverede race.seen-felt",
   );
 });

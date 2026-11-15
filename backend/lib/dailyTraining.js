@@ -15,6 +15,8 @@ import { computeTrainingScore, TRAINING_SCORE_CONFIG } from "./trainingScore.js"
 import { curveBBase, curveBCapSoftness, curveBSoftCeiling } from "./developmentCurveB.ts";
 import { blendCurveBTransition } from "./developmentCurveBTransition7382.ts"; // #7382 blød overgang
 import { developmentXpAbilityDelta, developmentXpTick, XP_RACE_DAY_FOCUS } from "./developmentXp.ts"; // #6110 XP, kun med `developmentXp`
+import { developmentXpDayVariation } from "./developmentXpVariation.ts"; // #6110 dagsvariation, kun i XP-grenen
+import { developmentXpRaceFitFloor } from "./developmentXpRaceFit.ts"; // #6110 R15b, kun i XP-grenen
 import { TRAIN_NOW_BONUS_FACTOR } from './trainNowBonus7737.ts';
 
 export const DAILY_TRAINING_CONFIG = Object.freeze({
@@ -161,9 +163,10 @@ export function dailyAbilityDelta({
   // #3564: validerede kurve B-params (developmentCurveB.ts). Udeladt/null = dagens model, bit-identisk.
   curveB = null,
   developmentXp = null, // #6110: validerede XP-params (developmentXpFlag.ts). Udeladt/null = dagens model, bit-identisk.
+  xpYieldMult = 1, // #6110: loebsdagens tillaeg for evnen, kun i XP-grenen (laegges oven paa loebsdags-gulvet)
 }) {
   // #6110: XP-modellen giver XP (ikke en andel af et point) og kender intet loft (B4).
-  if (developmentXp) return developmentXpAbilityDelta({ ability, age, potentiale, program, primaryType, secondaryType, staff, facilityTier, riderLevel, academyRateMult, trainingCfg, budgetDivisor }, developmentXp);
+  if (developmentXp) return developmentXpAbilityDelta({ ability, age, potentiale, program, primaryType, secondaryType, staff, facilityTier, riderLevel, academyRateMult, trainingCfg, budgetDivisor, yieldMult: xpYieldMult }, developmentXp);
   const gap = Math.max(0, (cap ?? current) - current);
   if (gap === 0) return 0;
   const mult = abilityMult(ability, program, trainingCfg);
@@ -280,6 +283,8 @@ export function applyDailyTick({
   developmentScore = null, abilityYieldMult = null,
   developmentXp = null, // #6110: XP-modellen erstatter evne-loopet. Udeladt/null = bit-identisk.
   trainNowBonus = false,
+  // #6110 R15b: { profileType, catalogV3 } fra withRaceDayRoleYieldXp, kun under XP. Laeses kun i XP-grenen.
+  xpRaceDayFit = null,
 }) {
   const cfg = DAILY_TRAINING_CONFIG;
   const trainNowBonusFactor = trainNowBonus === true && program?.intensity !== 'rest'
@@ -323,11 +328,26 @@ export function applyDailyTick({
   // Loebsdag: loebets tillaeg kun i etapens profil-evner; off-fokus faar basis (offFocusDevMult).
   const scoreBOffFocusMult = Number.isFinite(scoreB?.offFocusDevMult) && scoreB.offFocusDevMult >= 0 ? scoreB.offFocusDevMult : scoreB?.devMult;
   // #6110: XP-grenen. Scoren og stoejen ovenfor er uaendrede; loebsdagens tillaeg ganges paa XP'en.
-  if (developmentXp) return { ...developmentXpTick({ abilities, progress, maxPointsPerTick: Number.isFinite(hardDailyCap) ? hardDailyCap : Infinity,
-    xpFor: (ability) => dailyAbilityDelta({ ability, age, program, potentiale, staff, facilityTier, riderLevel, academyRateMult, primaryType, secondaryType, trainingCfg, budgetDivisor, developmentXp })
-      * (abilityYieldMult?.[ability] > 0 ? abilityYieldMult[ability] : 1)
-      * trainNowBonusFactor }, developmentXp),
-  trainingScore, noise, status: noise > 1.05 ? "over" : noise < 0.95 ? "under" : "normal" };
+  // Dagsvariationen (spec §5.2, ejer 7/11) er pr. (rytter, DATO), ikke pr. tick-seed: alle
+  // ticks paa en dato deler den, ogsaa paa loebsdags-aksen. Uden variationsfelter er den 1.
+  if (developmentXp) {
+    const xpVariation = developmentXpDayVariation({ riderId, dateStr }, developmentXp.variation);
+    // #6110 R9 (ejer 7/11 + 12/11): under XP bremser kun prisen. Den gamle regel om
+    // +1 pr. loebsdag (hardDailyCap) gaelder kun dagens model og klipper ikke XP-koebet.
+    const dayXpFor = (ability) => dailyAbilityDelta({ ability, age, program, potentiale, staff, facilityTier, riderLevel, academyRateMult, primaryType, secondaryType, trainingCfg, budgetDivisor, developmentXp,
+      xpYieldMult: abilityYieldMult?.[ability] > 0 ? abilityYieldMult[ability] : 1 });
+    // #6110 R15b (ejer 13/11): paa en etape, der passer rytterens primaere type, loeftes
+    // loebsdagen op til hans bedste haarde pas. Foer udsvinget, saa loeftet faar dagens udsving.
+    const raceFitDay = xpRaceDayFit ? developmentXpRaceFitFloor({
+      day: Object.fromEntries(VISIBLE_ABILITIES.filter((a) => Number.isFinite(Number(abilities?.[a] ?? 0))).map((a) => [a, dayXpFor(a)])),
+      program, fit: xpRaceDayFit, academyRateMult,
+      rider: { age, potentiale, primaryType, secondaryType, staff, facilityTier, riderLevel, trainingCfg, budgetDivisor },
+    }, developmentXp) : null;
+    return { ...developmentXpTick({ abilities, progress,
+      xpFor: (ability) => (raceFitDay ? raceFitDay[ability] ?? 0 : dayXpFor(ability))
+        * trainNowBonusFactor * xpVariation }, developmentXp),
+    trainingScore, noise, status: noise > 1.05 ? "over" : noise < 0.95 ? "under" : "normal" };
+  }
 
   for (const ability of VISIBLE_ABILITIES) {
     const current = Number(nextAbilities[ability] ?? 0);

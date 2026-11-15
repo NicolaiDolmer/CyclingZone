@@ -27,6 +27,11 @@
 //    der kastes, så datoen prøves igen.
 //  - Catch-up via løb (race_day_catchup_enabled) er ikke udtrykt i XP endnu (#6950).
 //    Samme regel: der kastes, så de to aldrig kører sammen.
+//  - Dato-loftet (ability_cap_per_date_enabled, #6210): gælder kun kurve B og dagens
+//    model. Under XP er der intet +1-loft pr. evne pr. dato; kun prisen bremser (#7739).
+//  - Gemt bjælke-fremgang udbetales helt på tændingsnatten (ejer 12/11, #6110 R10).
+//    Der findes ingen dryp-regel: overgangsvinduet (development_xp_transition_cap_dates)
+//    er fjernet, og en sådan nøgle i app_config læses ikke.
 //
 // Kalderen (dailyTrainingEngine.js) sender resultatet som `developmentXp` ind i
 // applyDailyTick. null = dagens model, bit-identisk (frossen golden i
@@ -38,6 +43,7 @@ import { readPrivateConfigEntry, PRIVATE_CONFIG_KEYS } from "./privateConfig.ts"
 import { TRAINING_CONFIG } from "./training.js";
 import { raceDayRoleBaseProgram, raceDayRoleYieldMultipliers, withRaceDayRoleYield } from "./raceDayRoleYield5950.js";
 import { type DevelopmentXpParams } from "./developmentXp.ts";
+import { type XpRaceDayFit } from "./developmentXpRaceFit.ts";
 
 export const DEVELOPMENT_XP_FLAG_KEY = "development_xp_model";
 export const DEVELOPMENT_XP_FROM_DATE_KEY = "development_xp_from_date";
@@ -107,7 +113,7 @@ export async function readDevelopmentXpParams({
  */
 export async function loadDevelopmentXp({
   supabase, tickDate, log = console, strict = false, now = Date.now,
-  developmentScoreB = null, raceCatchUp = null, capPerDateOn = false,
+  developmentScoreB = null, raceCatchUp = null,
 }: {
   supabase: DbClient;
   tickDate: string | null | undefined;
@@ -116,14 +122,10 @@ export async function loadDevelopmentXp({
   now?: () => number;
   developmentScoreB?: unknown;
   raceCatchUp?: unknown;
-  /** ability_cap_per_date_enabled. XP kræver maks +1 pr. dato (spec §4.3); uden er det dagens model. */
-  capPerDateOn?: boolean;
 }): Promise<DevelopmentXpParams | null> {
+  // #7739 (ejer 7/11): XP kender intet +1-loft pr. dato, så ability_cap_per_date_enabled
+  // er ikke længere en betingelse. Kontakten bliver on for kurve B.
   if (!(await isDevelopmentXpEnabled(supabase, { strict }))) return null;
-  if (!capPerDateOn) {
-    log?.warn?.(`${LOG_TAG} ${DEVELOPMENT_XP_FLAG_KEY} is on, but ability_cap_per_date_enabled is off - XP requires max +1 per date, running today's model`);
-    return null;
-  }
   const fromDate = await readDevelopmentXpFromDate(supabase, { strict, log });
   if (!fromDate) {
     log?.warn?.(`${LOG_TAG} ${DEVELOPMENT_XP_FLAG_KEY} is on, but ${DEVELOPMENT_XP_FROM_DATE_KEY} is missing or invalid - running today's model`);
@@ -151,21 +153,30 @@ export async function loadDevelopmentXp({
  * er bit-identisk med i dag. Tændt = som 10-sæsoners-kørslen: hård basisdag og
  * tillægget regnet med løbsdagens off-fokus-andel fra XP-params, så tillægget
  * lægger det samme oven i, uanset hvor stor off-fokus-andelen er.
+ *
+ * #6110 R15b (ejer 13/11): tændt bærer kaldet også etapen og holdets katalog
+ * (`catalogV3`) med til tick'et som `xpRaceDayFit`, så applyDailyTick kan løfte en
+ * løbsdag, der passer rytteren, op til hans bedste hårde pas (developmentXpRaceFit.ts).
+ * Slukket læses `catalogV3` ikke, og intet nyt felt siver ind i den gamle model.
  */
 export function withRaceDayRoleYieldXp(
   developmentXp: DevelopmentXpParams | null | undefined,
   extraTickArgs: Record<string, unknown>,
-  { params = null, profileType = null, role = null }: { params?: any; profileType?: string | null; role?: string | null } = {},
+  { params = null, profileType = null, role = null, catalogV3 = false }: {
+    params?: any; profileType?: string | null; role?: string | null; catalogV3?: boolean;
+  } = {},
 ): Record<string, unknown> {
   // JS-hjaelperne udleder typer af deres null-standardvaerdier; cast holder kaldet
   // uaendret i runtime (typecheck-fejl paa main efter #7843).
   if (!developmentXp) return withRaceDayRoleYield(extraTickArgs, { params, profileType, role } as any);
-  if (!params) return extraTickArgs;
+  const xpRaceDayFit: XpRaceDayFit = { profileType: profileType ?? null, catalogV3: catalogV3 === true };
+  // Uden rolletillaeg er programmet og tillaegget som i dag; R15b gaelder stadig (alle roller).
+  if (!params) return { ...extraTickArgs, xpRaceDayFit };
   const trainingCfg = {
     ...TRAINING_CONFIG,
     offFocusMult: developmentXp.raceOffFocusShare * TRAINING_CONFIG.focusGrowthMult.hard,
   };
   const program = raceDayRoleBaseProgram(profileType as any, { role, roleDrivesBaseDay: params.roleDrivesBaseDay === true, trainingCfg } as any);
   const abilityYieldMult = raceDayRoleYieldMultipliers({ params, profileType, role, program, trainingCfg } as any);
-  return { ...extraTickArgs, program, abilityYieldMult };
+  return { ...extraTickArgs, program, abilityYieldMult, xpRaceDayFit };
 }

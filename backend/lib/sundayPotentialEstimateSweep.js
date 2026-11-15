@@ -22,28 +22,33 @@ import {
 const processState = { cleanRunDate: null };
 
 // `gte 1` frem for "not null": talent_ceiling har CHECK 1-99, og NULL falder fra.
-async function loadOwnRiders(supabase, teamId) {
+// Under XP-modellen (#7684) er det sande tal forventet topniveau, som writeren selv
+// regner; så må filteret ikke smide ryttere uden talent_ceiling væk.
+const withCeiling = (query, xp) => (xp ? query : query.gte("talent_ceiling", 1));
+
+async function loadOwnRiders(supabase, teamId, xp) {
   // schema-columns-ok: talent_ceiling kommer fra 2026-11-04-6110-potential-estimates.sql, snapshottet er ældre
-  return fetchAllRows(() => supabase
-    .from("riders").select(ESTIMATE_RIDER_COLUMNS).eq("team_id", teamId).gte("talent_ceiling", 1).order("id"));
+  return fetchAllRows(() => withCeiling(supabase
+    .from("riders").select(ESTIMATE_RIDER_COLUMNS).eq("team_id", teamId), xp).order("id"));
 }
 
 // Fremmede ryttere holdet ved noget om: en gemt række eller et kig. Kiggene er med,
 // fordi et skøn der ikke blev skrevet ved selve kigget, ellers aldrig ville komme.
-async function loadForeignRiders(supabase, teamId, ownIds) {
+async function loadForeignRiders(supabase, teamId, ownIds, xp) {
   const [stored, actions] = await Promise.all([
     fetchAllRows(() => supabase.from(POTENTIAL_ESTIMATES_TABLE).select("rider_id").eq("team_id", teamId).order("rider_id")),
     fetchAllRows(() => supabase.from("scout_actions").select("id, rider_id").eq("team_id", teamId).order("id")),
   ]);
   const ids = [...new Set([...stored, ...actions].map((row) => row.rider_id))].filter((id) => !ownIds.has(id));
   // schema-columns-ok: talent_ceiling kommer fra 2026-11-04-6110-potential-estimates.sql, snapshottet er ældre
-  return fetchAllRowsChunkedIn(ids, (chunk) => supabase
-    .from("riders").select(ESTIMATE_RIDER_COLUMNS).in("id", chunk).gte("talent_ceiling", 1).order("id"));
+  return fetchAllRowsChunkedIn(ids, (chunk) => withCeiling(supabase
+    .from("riders").select(ESTIMATE_RIDER_COLUMNS).in("id", chunk), xp).order("id"));
 }
 
 async function sweepTeam({ supabase, teamId, config, now }) {
-  const own = await loadOwnRiders(supabase, teamId);
-  const foreign = await loadForeignRiders(supabase, teamId, new Set(own.map((rider) => rider.id)));
+  const xp = Boolean(config.developmentXp);
+  const own = await loadOwnRiders(supabase, teamId, xp);
+  const foreign = await loadForeignRiders(supabase, teamId, new Set(own.map((rider) => rider.id)), xp);
   return writeTeamEstimates({ supabase, teamId, riders: [...own, ...foreign], trigger: "sunday", config, now });
 }
 
@@ -57,7 +62,7 @@ export async function runSundayPotentialEstimateSweep({ supabase, now = new Date
   if (copenhagenHour(now) < SUNDAY_VALUE_FROM_HOUR) return { ran: false, runDate, skipped: "before_window" };
   if (state.cleanRunDate === runDate) return { ran: false, runDate, skipped: "already_ran" };
 
-  const config = await loadEstimateWriteConfig(supabase);
+  const config = await loadEstimateWriteConfig(supabase, { now });
   if (!config.enabled) return { ran: false, runDate, skipped: config.reason };
 
   const teamIds = await loadEstimateTeamIds(supabase);

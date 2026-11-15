@@ -34,7 +34,7 @@
 
 import { fetchAllRows } from "./supabasePagination.js";
 import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
-import { academyPlacementSquad, squadCapRpcArgs } from "./squads.js";
+import { academyIntakePlacementSquads, squadCapRpcArgs } from "./squads.js";
 
 const NOOP = () => {};
 
@@ -77,13 +77,23 @@ export async function flushPendingAcademySigning(supabase, rider, { notifyTeamOw
   // Uden en aktiv sæson kan sæsonalderen ikke regnes ud. Rytteren bliver hellere
   // stående som ventende end at blive gættet ned i junior-truppen (CodeRabbit).
   if (!Number.isFinite(seasonNumber)) return false;
-  const squad = academyPlacementSquad(rider.birthdate, seasonNumber);
-  const { data, error } = await supabase.rpc("flush_pending_academy_signing", {
-    p_team_id: rider.team_id,
-    p_rider_id: rider.id,
-    ...squadCapRpcArgs(squad),
-  });
-  if (error) throw new Error(`flushPendingAcademySigning: flip fejlede (${rider.id}): ${error.message}`);
+  // #6155 (Codex P1): samme trup-rækkefølge som selve hentningen
+  // (academyIntake.js): er junior-truppen fuld, og passer rytteren i U23, lander
+  // han dér. Uden den ville en betalt, udskudt hentning blive hængende som
+  // ventende, selv om U23 har plads. Kun "academy_full" prøver næste trup;
+  // "not_pending" og alle fejl stopper straks.
+  /** @type {any} */
+  let data = null;
+  for (const squad of academyIntakePlacementSquads(rider.birthdate, seasonNumber)) {
+    const res = await supabase.rpc("flush_pending_academy_signing", {
+      p_team_id: rider.team_id,
+      p_rider_id: rider.id,
+      ...squadCapRpcArgs(squad),
+    });
+    if (res.error) throw new Error(`flushPendingAcademySigning: flip fejlede (${rider.id}): ${res.error.message}`);
+    data = res.data;
+    if (data?.code !== "academy_full") break;
+  }
   if (data?.ok !== true) {
     if (FLUSH_NOT_NOW.has(data?.code)) return false;
     throw new Error(`flushPendingAcademySigning: uventet svar (${rider.id}): ${JSON.stringify(data)}`);

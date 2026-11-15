@@ -102,7 +102,10 @@ test("ét gem rammer begge endpoints for den åbne etape", () => {
   assert.match(source, /diffToOverrides\(\{ matrix: normalize\(draftSnapshot\), riders \}\)/);
   assert.match(source, /\/api\/races\/\$\{raceId\}\/stage-roles/);
   // #6647: ordren gemmes med intentionens indsats, ikke rollens "normal".
-  assert.match(source, /saveTacticsCard\(\{ raceId, stage, order: withoutRoadOrders\(withIntentionEfforts\(orderSnapshot, /); // #7317
+  // #8013 g: paa en kopi-etape er det kildeetapens ordre (ordersStage), ellers den aabne etape.
+  assert.match(source, /saveTacticsCard\(\{ raceId, stage: ordersStage, order: withoutRoadOrders\(withIntentionEfforts\(ordersStageSnapshot, /); // #7317
+  assert.match(source, /const ordersStage = fillSource \?\? stage;/);
+  assert.match(source, /const ordersStageSnapshot = fillSource === undefined \? orderSnapshot : /);
   // Ordrerne gemmes EFTER intentionen (runTacticsSave: putRoles foer putOrders), saa
   // en afvist intention (400) ikke efterlader en halvt gemt dag.
   const rolesAt = source.indexOf("/stage-roles`");
@@ -250,5 +253,25 @@ test("#7332 enkeltstart: tre trin, gamle valg vises som save, kopi og gem skrive
   assert.match(source, /: effortForStage\(intentionFor\(\{ matrix: draftMatrix, stageNumber: activeStage, riderId: rider\.rider_id \}\), stageProfileType\)\);/);
   // Kopi kender maal-etapens profil; ordren gemmes med den normaliserede indsats.
   assert.match(source, /copyStageIntentions\(\{ matrix: m, fromStage: activeStage, toStage: nextStage, riders, fromProfileType: profileTypeOfStage\(activeStage\), toProfileType: profileTypeOfStage\(nextStage\) \}\)/);
-  assert.match(source, /withIntentionEfforts\(orderSnapshot, \(riderId\) => effortForStage\(intentionFor\(/);
+  assert.match(source, /withIntentionEfforts\(ordersStageSnapshot, \(riderId\) => effortForStage\(intentionFor\(/);
+});
+
+test("#8013 b: delstatus efter fill beholder de faktiske kvitteringer for roller og ordrer", () => {
+  assert.doesNotMatch(source, /roles: "failed", orders: "failed"/);
+  assert.match(source, /setSaveOutcome\(\{ \.\.\.outcome, status: combined \}\);/);
+  // Kun "saved", naar intet mangler; ellers delvist eller fejlet.
+  assert.match(source, /const combined = pending \? \(someSaved \? "partial" : "failed"\) : "saved";/);
+});
+
+test("#8013 g: gem fra en kopi-etape sender kildeetapens beskidte ordrer foer fill", () => {
+  assert.match(source, /const fillSource = bulkSnapshot\[stage\];/);
+  // Kildens ordre er beskidt mod sin egen kvittering, eller dens intention er aendret.
+  assert.match(source, /JSON\.stringify\(ordersStageSnapshot\) !== JSON\.stringify\(initialOrdersByStage\[fillSource\]\) \|\| stages\.includes\(fillSource\)/);
+  // Kvitteringen lander paa kildeetapen, og fill koerer kun efter et helt gemt forloeb.
+  assert.match(source, /\[ordersStage\]: outcome\.parts\.orders === "saved" \? ordersStageSnapshot : null/);
+  assert.match(source, /if \(outcome\.status !== "saved" \|\| !Object\.keys\(bulkSnapshot\)\.length\) \{/);
+});
+
+test("#7864: kopi-knappen bruger flertal ved flere etaper og ental ved en", () => {
+  assert.match(source, /sameTypePlans\.length === 1\s*\? t\("intention\.copyToStage", \{ number: sameTypePlans\[0\]\.stage \}\)\s*: t\("intention\.copyToStages", \{ numbers: /);
 });

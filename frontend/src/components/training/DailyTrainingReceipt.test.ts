@@ -70,3 +70,15 @@ test('#7745 a date whose development is not known yet lists everyone', () => {
   assert.match(html,/Bo Holm/);
   assert.doesNotMatch(html,/daily-receipt-points-meta/);
 });
+
+test('#8025 a trained-now date says one thing: one note, and a dash that explains itself', () => {
+  const trainedRider = { ...rider('r1','Ada Pedersen',{positioning:1},{}), receipt_status:'pending', fatigue:null, form:null,
+    trained_now:{ gains:{positioning:1}, gains_detail:{}, gain_percent:{} } };
+  const html = render({ run:{ ...settled, receipt_status:'pending', trained_now_slots:[0], report:{ condition_settled:false, riders:[trainedRider] } } });
+  assert.equal(html.split('dailyReceipt.note.trainedNow').length - 1, 1, 'the trained-now note appears once, not next to a second note');
+  assert.doesNotMatch(html,/dailyReceipt\.note\.pending/);
+  assert.match(html,/data-testid="daily-receipt-condition-later"/);
+  assert.match(html,/title="dailyReceipt\.conditionLater"/);
+  assert.match(html,/dailyReceipt\.activitiesRecorded/);
+  assert.doesNotMatch(render({ run:settled }),/daily-receipt-condition-later/, 'a settled date shows numbers, not the dash hint');
+});

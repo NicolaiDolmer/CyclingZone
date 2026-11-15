@@ -18,6 +18,7 @@ import { createTrainingProgramsRouter } from "./trainingPrograms.js"; // #4629
 import { createTrainingGroupsRouter } from "./trainingGroups.js"; // #6000
 import { createAdminRoadmapRouter } from "./adminRoadmap.js";
 import { createAdminSaleEscrowsRouter } from "./adminSaleEscrows.js";
+import { loadLockedSalesForTeam, countHeldSaleEscrowsForForce, saleEscrowTransitionGuard, SALE_ESCROW_FORCE_BLOCKED_ERROR } from "../lib/saleEscrowView6181.js"; // #6181
 import { createTrainingFatigueRulesRouter } from "./trainingFatigueRules.js"; // #4854
 import { stripProgramFromWeekDays } from "../lib/trainingPrograms.js"; // #4629
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
@@ -41,6 +42,7 @@ import {
 import { fetchSeasonTransitionBoundary } from "../lib/seasonTransitionBoundary.js";
 import { applyNameSearch } from "../lib/riderNameSearch.js";
 import { splitGcWinsSafe } from "../lib/dashboardRiderRankingGcSplit.js";
+import { createRankingFreshnessRouter, createRankingReadClient, rankingReadWithFallback7664, readDashboardTopRiders7664, withShadowFallbackReport } from "../lib/rankingRead7664.js"; // #7664
 import { handleAluntaWebhook } from "../lib/aluntaWebhook.js";
 import { handleEmailUnsubscribe } from "../lib/emailUnsubRoute.js";
 import { handleResendWebhook } from "../lib/resendWebhook.js";
@@ -100,6 +102,7 @@ import {
 import { cancelAuctionByAdmin } from "../lib/auctionCancellation.js";
 import { deleteRiderWithCleanup } from "../lib/riderCleanupDeletion.js";
 import { fetchAllRows, fetchAllRowsChunkedIn, SUPABASE_IN_CHUNK_SIZE } from "../lib/supabasePagination.js";
+import { isTrainingHistoryFromTicksEnabled, TRAINING_HISTORY_RUNS_RPC } from "../lib/trainingHistoryFromTicks6490.js"; // #6490
 // #5330 — seniorlæserne af race_pool. Se backend/lib/racePoolCatalog.js.
 import {
   fetchRacePoolWithSquad,
@@ -111,6 +114,7 @@ import {
 // #5301: afmeldings-opslag som ALLE læseflader deler, så "har entries" aldrig igen
 // forveksles med "stiller op" (race_entries bevares bevidst ved afmelding, #4306).
 import { findRejoinConflicts, loadWithdrawnPairs, loadWithdrawnRaceIdsForTeam, withdrawalKey, splitWithdrawals, DID_NOT_START_REASON } from "../lib/raceWithdrawal.js";
+import { planningBulkRoute7535, proposeAssistantSquads7535, withdrawRacesBulk7535 } from "../lib/planningBulkActions7535.js"; // #7535
 import { loadTeamsInStartedField } from "../lib/raceStartOutlook.js"; // #6740
 import { planningDidNotStart } from "../lib/planningDidNotStart.ts"; // #7518
 import { teamDistributionColumns } from "../lib/raceDistributionColumns.ts"; // #7553
@@ -130,7 +134,7 @@ import {
 } from "../lib/marketPause.js";
 import { resolveProxyBids } from "../lib/proxyBidding.js";
 import { marketGateResponse6181, canAffordAutoBid6181, canAffordAutoBidScoped2176, syncBidLeader6181, applySellerOutgoingAuctions6181, auctionStartCommitmentResponse6181, readBidContext6181, isLoweredProxy6181 } from "../lib/marketCommitment6181.js"; // #6181 PR 5
-import { projectAutoAcceptListings2176, projectAutoAcceptOffers2176, readMarketFlag2176, isMarketProtectionEnabled2176, isMarketBetaMode2176 } from "../lib/marketBeta2176.ts";
+import { projectAutoAcceptListings2176, projectAutoAcceptOffers2176, readMarketFlag2176, isMarketProtectionEnabled2176, isMarketAtomicPayments2176 } from "../lib/marketBeta2176.ts";
 import { releaseFeeAvailableResponse6181 } from "../lib/releaseFeeGate6181.js"; // #6181 dommer-fund
 import {
   createLoan,
@@ -151,8 +155,11 @@ import {
 import * as transferNotif from "../lib/transferNotifications.js";
 import { withdrawCounterOffer, claimCounterForAccept, buildCounterOfferWithdrawnNotification } from "../lib/counterOfferWithdraw.js"; // #6463
 import { getParkedRiderReleaseIssue, getParkedRiderTradeIssue } from "../lib/parkedRiderGuard6181.js"; // #6181
+import { releaseDeferContext8153, orderPendingRelease, countPendingReleasesForTeam, getPendingReleaseTradeIssue, loadPendingReleasesForTeam, countPendingReleasesForTransition, PENDING_RELEASE_FORCE_BLOCKED_ERROR, PENDING_RELEASE_SQUAD_CODE, getPendingReleaseSquadIssue, pendingReleaseSquadResponse } from "../lib/riderReleaseDefer8153.js"; // #8153
 import { countSellerAuctionOutgoing, checkAutoAcceptMutation, isAutoAcceptEnabled, getListingPriceUpdateErrorResponse, getOfferAutoAcceptIssue, registerAutoAcceptRoutes, releaseRiderUnderTeamLock } from "../lib/autoAccept2176.js"; // #2176
 import { sanitizeDmPrefs } from "../lib/discordDmPrefs.js";
+import { readUiPrefs, sanitizeUiPrefsPatch, writeUiPrefs } from "../lib/userUiPrefs.js"; // #7778
+import { readSeenMarkers, sanitizeSeenMarkersPatch, writeSeenMarkers } from "../lib/seenMarkers6515.js"; // #6515
 import {
   notifyNewAuction,
   notifyOutbid,
@@ -239,7 +246,7 @@ import { withEventPlaces } from "../lib/raceTimeline.js"; // #6350
 import { meanPhysiology, BENCHMARK_FIELDS } from "../lib/physiologyBenchmark.js";
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
 import { getScoutState, startTargetAssignment, startMission, cancelAssignment, loadScout, loadScoutHistory } from "../lib/scoutAssignmentService.js";
-import { recordScoutLooks } from "../lib/potentialEstimateWriter.js"; // #7685
+import { recordScoutLooks, loadEstimateDevelopmentXp } from "../lib/potentialEstimateWriter.js"; // #7685, #6110 F1
 import {
   buildTypeCeilingBands, buildVerdict, scoutPrecisionInfo,
   buildTypePrognosisBands, roleCeilRating, ratingFromAbilities,
@@ -251,8 +258,10 @@ import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitio
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
 import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
 import {
-  STAGE_FLAGS, findStageFlag, isValidFlagStage, isUnknownStageValue, normalizeStageValue,
+  STAGE_FLAGS, findStageFlag, isValidFlagStage, normalizeStageValue,
+  PLAYER_VISIBLE_BINARY_FLAG_KEYS, // #6181
 } from "../lib/stageFlagCatalog.js";
+import { adminFlagView } from "../lib/adminFlagView6181.js"; // #6181
 import {
   BETA_REQUEST_STATUS, decideBetaRequest, isBetaRequestsMissing, listBetaAccess, readBetaAccess,
   requestBetaAccess, setBetaTester, withdrawBetaAccess,
@@ -273,7 +282,6 @@ import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "../lib/raceDayDevelopmentFlag.js"
 import { TRAINING_SCORE_VISIBLE_FLAG_KEY, TRAINING_DAILY_RECEIPT_FLAG_KEY } from "../lib/trainingScoreFlag.js";
 import { trainingRunResponse } from "../lib/trainingRunResponse.ts";
 import { createFirstRaceCardRouter } from "./firstRaceCard.js"; // #1140
-import { createBreakawayOutlookRouter } from "./breakawayOutlook.js"; // #6912 B
 import { createRaceLibraryV2Router } from "../lib/raceLibraryV2Flag.js"; // #6514
 import { createPushRouter } from "./pushRoutes.ts"; // #6590
 import { TRAINING_MOBILE_TABLE_FLAG_KEY } from "../lib/trainingMobileTableFlag.js";
@@ -286,7 +294,7 @@ import { buildYouthSquadsPayload, YOUTH_SQUAD_ROSTER_COLUMNS } from "../lib/yout
 import { buildTrainingScoreView, TRAINING_SCORE_VIEW } from "../lib/trainingScore.js";
 import { loadRacingTodayByRider } from "../lib/racingTodayLookup.js";
 import { computeRiderValueTrend } from "../lib/riderValueTrend.js";
-import { saveSelection, getSelectionContext, prepareSelectionChange, saveSelectionBulk, classifyBulkSelectionConflicts, roleFor as selectionRoleFor, raceAllowsCoCaptain } from "../lib/raceSelection.js";
+import { saveSelection, getSelectionContext, getSelectionContextsForRaces, prepareSelectionChange, saveSelectionBulk, classifyBulkSelectionConflicts, roleFor as selectionRoleFor, raceAllowsCoCaptain, ridersAtOpeningFatigue } from "../lib/raceSelection.js";
 import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { resolveWriteScope } from "../lib/stageRolesWriteScope.ts"; // #6095
@@ -517,6 +525,7 @@ import { generateRaceStageProfiles, toStageProfileRow } from "../lib/raceStagePr
 import { checkAchievements, getAchievementProgressMap } from "../lib/achievementEngine.js";
 import { captureException, setSentryUser } from "../lib/sentry.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
+import { markActionTiming } from "../lib/actionTimingMonitor8101.js"; // #8101
 import { buildAttributionRow } from "../lib/signupAttribution.js";
 import { recordIdentityEvent } from "../lib/identityTelemetry.js";
 import { aggregateAttribution } from "../lib/attributionDashboard.js";
@@ -586,6 +595,7 @@ import {
 import { selectionSizeForRace, MIN_RACE_ENTRIES } from "../lib/raceAutopick.js";
 import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
 import { fatigueByRiderNow, fatigueByRiderForRaces, fatigueOutlookForTeam, openingFatigueMap } from "../lib/riderFatigueNow.js"; // #7801
+import { riderCardFatigueNow7801 } from "../lib/riderCardFatigueNow7801.js"; // #7801
 import { REGISTRY_ABILITY_KEYS } from "../lib/abilityRegistry.js";
 import { selectInChunks } from "../lib/dbChunk.js";
 import { terrainBucket, raceTerrainBucket } from "../lib/raceTerrain.js";
@@ -999,16 +1009,16 @@ async function requireAuth(req, res, next) {
   next();
 }
 
-router.use("/rankings", createRankingsRouter({
-  supabase, requireAuth, reportError: captureException,
+router.use("/rankings", createRankingFreshnessRouter({ supabase, requireAuth, reportError: captureException })); // #7664
+router.use("/rankings", rankingReadWithFallback7664(supabase, createRankingsRouter({ // #7664: kontakt slukket = samme tabeller; fejl i de nye -> de gamle
+  supabase: createRankingReadClient(supabase), requireAuth, reportError: withShadowFallbackReport(captureException),
   viewerClient: (authorization) => createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
     global: { headers: { Authorization: authorization }, fetch: createSupabaseFetchWithRetry() }, // #7917
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   }),
-}));
+}), { captureExceptionFn: captureException }));
 router.use("/feature-flags", createFeatureFlagsRouter({ supabase, requireAuth, isViewerBetaTester, reportError: captureException })); // #4948
 router.use(createFirstRaceCardRouter({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, reportError: captureException })); // #1140
-router.use(createBreakawayOutlookRouter({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, reportError: captureException })); // #6912 B
 router.use(createRaceLibraryV2Router({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, reportError: captureException })); // #6514
 router.use("/push", createPushRouter({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, writeLimiter: marketWriteLimiter, reportError: captureException })); // #6590
 // #4629: traeningsprogrammer (beta). Monteret HER, foer `/training/:riderId`, saa
@@ -1578,6 +1588,18 @@ router.get("/riders/:id/history", requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/riders/:id/fatigue-now — #7801: rytterkortets træthed lige nu (egne ryttere,
+// samme kerne som Træningssiden). Slukket kontakt: { enabled: false }.
+router.get("/riders/:id/fatigue-now", requireAuth, presencePulseLimiter, async (req, res) => {
+  if (!UUID_RE.test(req.params.id)) return res.status(400).json({ error: "Ugyldigt rytter-id" });
+  try {
+    res.json(await riderCardFatigueNow7801({ supabase, riderId: req.params.id, teamId: req.team?.id ?? null }));
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: "fatigue_now_failed" });
+  }
+});
+
 // GET /api/riders/:id/interest — Interesse-fanen (#2000): scoutet-af + feed.
 // Aggregering + privacy-kontrakt (team-navne kun til ejeren, watchlist altid
 // anonym, ejerholdet filtreret ud) i lib/riderInterest.js. Følger/visninger
@@ -1940,13 +1962,15 @@ router.get("/riders/:id/release-quote", requireAuth, async (req, res) => {
   if (parkedIssue) return res.status(parkedIssue.status).json(parkedIssue.body);
   const auctionGuard = await assertRiderNotOnActiveAuction(rider.id);
   if (auctionGuard.error) return res.status(auctionGuard.error.status).json(auctionGuard.error.body);
+  const releaseDefer = await releaseDeferContext8153(supabase, rider.id); // #8153: null = slukket, svaret som i dag
+  if (releaseDefer?.issue) return res.status(releaseDefer.issue.status).json(releaseDefer.issue.body);
   const currentSeason = await getActiveSeasonNumber();
   const fee = computeReleaseBuyoutFee({
     salary: rider.salary,
     contractEndSeason: rider.contract_end_season,
     currentSeason,
   });
-  res.json({ fee, balance: req.team.balance ?? 0, affordable: (req.team.balance ?? 0) >= fee });
+  res.json({ fee, balance: req.team.balance ?? 0, affordable: (req.team.balance ?? 0) >= fee, ...(releaseDefer ? { pendingRace: releaseDefer.pendingRace } : {}) });
 });
 
 // GET /api/riders/:id/extend-quote — preview af den genforhandlede løn + ny udløbssæson
@@ -2064,6 +2088,8 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
   if (parkedIssue) return res.status(parkedIssue.status).json(parkedIssue.body);
   const auctionGuard = await assertRiderNotOnActiveAuction(rider.id);
   if (auctionGuard.error) return res.status(auctionGuard.error.status).json(auctionGuard.error.body);
+  const releaseDefer = await releaseDeferContext8153(supabase, rider.id); // #8153: null = slukket, alt som i dag
+  if (releaseDefer?.issue) return res.status(releaseDefer.issue.status).json(releaseDefer.issue.body);
 
   const { data: season } = await supabase
     .from("seasons").select("id, number").eq("status", "active").maybeSingle();
@@ -2100,7 +2126,7 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
   releaseTeamState.at_risk_count = releaseAtRiskRiders.length;
   const releaseMarketGateApplied = await applySellerOutgoingAuctions6181(supabase, releaseTeamState, rider.id, { seasonNumber: currentSeason }); // #6181 PR 5
 
-  const releaseRiskViolation = getSquadRiskViolation(releaseTeamState, { outgoingCount: 1 + (releaseMarketGateApplied ? 0 : await countSellerAuctionOutgoing(supabase, req.team.id, { skipRiderIds: [rider.id, ...releaseAtRiskRiders.map((r) => r.id)] })) }); // #2176: only fallback when M3 did not count it
+  const releaseRiskViolation = getSquadRiskViolation(releaseTeamState, { outgoingCount: 1 + (releaseDefer ? await countPendingReleasesForTeam(supabase, req.team.id, { excludeRiderIds: releaseAtRiskRiders.map((r) => r.id) }) : 0) + (releaseMarketGateApplied ? 0 : await countSellerAuctionOutgoing(supabase, req.team.id, { skipRiderIds: [rider.id, ...releaseAtRiskRiders.map((r) => r.id)] })) }); // #2176: only fallback when M3 did not count it
   if (releaseRiskViolation) {
     return res.status(409).json({
       error: `You can't drop below ${releaseRiskViolation.minRiders} riders once contract expiry and retirement risk at the next season change are counted`,
@@ -2131,7 +2157,13 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
       related_entity_id: rider.id,
     },
   };
-  const lockedRelease = await releaseRiderUnderTeamLock(supabase, { riderId: rider.id, teamId: req.team.id, atRiskRiders: releaseAtRiskRiders, marketBeta: await isMarketBetaMode2176(supabase), fee, feePayload: releaseFeePayment2176.payload }); // #2176: under holdlåsen, slukket = null
+  if (releaseDefer?.pendingRace) { // #8153: rytteren koerer et etapeloeb -> bestil; gebyret nu, holdskiftet efter sidste etape
+    const ordered = await orderPendingRelease(supabase, { riderId: rider.id, teamId: req.team.id, race: releaseDefer.pendingRace, fee, feePayload: releaseFeePayment2176.payload, orderedBy: req.user.id, atRiskRiders: releaseAtRiskRiders, riderName: `${rider.firstname} ${rider.lastname}` });
+    if (ordered.error) return res.status(ordered.error.status).json(ordered.error.body);
+    invalidateNamespace("riders");
+    return res.json(ordered.data);
+  }
+  const lockedRelease = await releaseRiderUnderTeamLock(supabase, { riderId: rider.id, teamId: req.team.id, atRiskRiders: releaseAtRiskRiders, marketBeta: await isMarketAtomicPayments2176(supabase), fee, feePayload: releaseFeePayment2176.payload }); // #2176: under holdlåsen, slukket = null
   if (lockedRelease?.error) return res.status(lockedRelease.error.status).json(lockedRelease.error.body);
   const { data: released } = lockedRelease ?? await supabase
     .from("riders")
@@ -2264,7 +2296,7 @@ router.post("/riders/:id/academy-release", requireAuth, marketWriteLimiter, asyn
       related_entity_id: rider.id,
     },
   };
-  const lockedAcademyRelease = await releaseRiderUnderTeamLock(supabase, { riderId: rider.id, teamId: req.team.id, academy: true, marketBeta: await isMarketBetaMode2176(supabase), fee, feePayload: academyReleaseFeePayment2176.payload });
+  const lockedAcademyRelease = await releaseRiderUnderTeamLock(supabase, { riderId: rider.id, teamId: req.team.id, academy: true, marketBeta: await isMarketAtomicPayments2176(supabase), fee, feePayload: academyReleaseFeePayment2176.payload });
   if (lockedAcademyRelease?.error) return res.status(lockedAcademyRelease.error.status).json(lockedAcademyRelease.error.body);
   const { data: released, error: releaseErr } = lockedAcademyRelease ?? await supabase
     .from("riders")
@@ -2470,7 +2502,7 @@ router.post("/scouting/estimates", requireAuth, presencePulseLimiter, async (req
     // Caps forlader stadig ALDRIG serveren (#1162): kun det maskerede bånd gør.
     // #3014 · ids kan have op til 500 rytter-ids (grænsen ovenfor) — 500 UUID'er
     // ≈ 18,5 KB, over PostgRESTs ~16 KB URL-længde-cap. Chunket via fetchAllRowsChunkedIn.
-    const [{ state }, scout, riders, abilityRows, seasonNumber] = await Promise.all([
+    const [{ state }, scout, riders, abilityRows, seasonNumber, prognosisXp] = await Promise.all([
       loadScoutState(req.team.id),
       loadScout(req.team.id, supabase),
       fetchAllRowsChunkedIn(ids, (chunk) => supabase
@@ -2478,12 +2510,13 @@ router.post("/scouting/estimates", requireAuth, presencePulseLimiter, async (req
       fetchAllRowsChunkedIn(ids, (chunk) => supabase
         .from("rider_derived_abilities").select("*").in("rider_id", chunk).order("rider_id")),
       getActiveSeasonNumber(),
+      loadEstimateDevelopmentXp(supabase), // #6110 F1: null = prognosen som foer
     ]);
     const abilitiesByRider = new Map((abilityRows ?? []).map((row) => [row.rider_id, row]));
     const academyPrognoses = await loadAcademyPrognoses(supabase, {
       enabled: (riders ?? []).some((r) => r.team_id === req.team.id && r.is_academy)
         && await isAcademyKnowledgeEnabled(supabase), teamId: req.team.id,
-      riders: riders ?? [], abilitiesByRider, seasonNumber, scout,
+      riders: riders ?? [], abilitiesByRider, seasonNumber, scout, developmentXp: prognosisXp,
     });
     // #3213: holdets ægte spejder driver rest-båndets gulv (#2244) — uden den
     // faldt beregningen tavst tilbage til DEFAULT_SCOUT for alle hold.
@@ -2517,6 +2550,7 @@ router.post("/scouting/estimates", requireAuth, presencePulseLimiter, async (req
             riderId: rider.id,
             teamId: req.team.id,
             scout,
+            developmentXp: prognosisXp,
           });
           // #6853: én regel for hvilken rolle der vises (potentialDisplayBand.js).
           const band = displayPotentialBand(bands, rider.primary_type);
@@ -2599,10 +2633,11 @@ router.get("/development/transition", requireAuth, async (req, res) => {
     }
     if (!backupRows?.length) return res.json({ active: false });
 
-    const [{ data: abilityRows, error: abErr }, seasonNumber, scout] = await Promise.all([
+    const [{ data: abilityRows, error: abErr }, seasonNumber, scout, prognosisXp] = await Promise.all([
       supabase.from("rider_derived_abilities").select("*").in("rider_id", ids),
       getActiveSeasonNumber(),
       loadScout(req.team.id, supabase),
+      loadEstimateDevelopmentXp(supabase), // #6110 F1
     ]);
     if (abErr) throw new Error(`rider_derived_abilities (transition): ${abErr.message}`);
 
@@ -2625,7 +2660,7 @@ router.get("/development/transition", requireAuth, async (req, res) => {
         nowAbilities: ab, age,
         primaryType: rider.primary_type, secondaryType: rider.secondary_type,
         potentiale: rider.potentiale,
-        level: SCOUTING_CONFIG.maxLevel, riderId: rider.id, teamId: req.team.id, scout,
+        level: SCOUTING_CONFIG.maxLevel, riderId: rider.id, teamId: req.team.id, scout, developmentXp: prognosisXp,
       });
       const band = bands.find((x) => x.key === rider.primary_type) ?? null;
       if (before.captured_at && (!capturedAt || before.captured_at > capturedAt)) capturedAt = before.captured_at;
@@ -2855,10 +2890,11 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
       .from("rider_derived_abilities").select("*").eq("rider_id", rider.id).maybeSingle();
     if (abErr) throw new Error(abErr.message);
 
+    const prognosisXp = await loadEstimateDevelopmentXp(supabase); // #6110 F1: null = prognosen som foer
     const academyPrognoses = await loadAcademyPrognoses(supabase, {
       enabled: own && rider.is_academy && await isAcademyKnowledgeEnabled(supabase), teamId: req.team.id,
       riders: [rider], abilitiesByRider: new Map([[rider.id, ab]]),
-      seasonNumber: await getActiveSeasonNumber(), scout,
+      seasonNumber: await getActiveSeasonNumber(), scout, developmentXp: prognosisXp,
     });
     if (academyPrognoses.has(rider.id)) {
       return res.json({ own: true, ...academyEstimate(academyPrognoses.get(rider.id)) });
@@ -2880,7 +2916,7 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
       // scoutede potentiale-interval (bias + halvbredde, se scoutingReport.js).
       types = buildTypePrognosisBands({
         nowAbilities: ab, age, primaryType: rider.primary_type, secondaryType: rider.secondary_type,
-        potentiale: rider.potentiale, level, riderId: rider.id, teamId: req.team.id, scout,
+        potentiale: rider.potentiale, level, riderId: rider.id, teamId: req.team.id, scout, developmentXp: prognosisXp,
       }).map((t) => ({
         ...t,
         // #3746: `ceilLo/ceilHi` er en ALIAS for prognose-båndet (kompatibilitet
@@ -3152,12 +3188,15 @@ router.get("/training/me", requireAuth, async (req, res) => {
     const trainingScoreSince = copenhagenDateString(
       new Date(Date.now() - TRAINING_SCORE_VIEW.windowDays * 86_400_000),
     );
+    // #6490 trin b2: med kontakten tændt kommer rytterne fra kvitteringerne (samme rækker og kolonner).
+    const historyFromTicks = activeSeasonId ? await isTrainingHistoryFromTicksEnabled(supabase) : false;
     const [
       todayRunResult, conditionResult, progressResult, weekPlanResult, racingToday, scoreResult, fatigueStreaks,
     ] = await Promise.all([
       activeSeasonId
-        ? fetchAllRows(() => supabase
-            .from("training_day_runs")
+        ? fetchAllRows(() => (historyFromTicks
+            ? supabase.rpc(TRAINING_HISTORY_RUNS_RPC, { p_team_id: teamId, p_since: todayDate })
+            : supabase.from("training_day_runs"))
             // #5915: all date activities feed the receipt; keep latestRun for old clients.
             .select("id, season_id, squad, game_day, executed_by, bonus_applied, report, tick_date, created_at")
             .eq("team_id", teamId)
@@ -3249,14 +3288,19 @@ router.get("/training/me", requireAuth, async (req, res) => {
     // næste etape. Slukket = null og felterne præcis som i dag.
     const fatigueOutlook = await fatigueOutlookForTeam({
       supabase, team: req.team, seasonId: activeSeasonId, conditions: conditionResult.data,
-      abilityByRider: new Map((progressResult.data ?? []).map((r) => [r.rider_id, r])),
+      // #7801: fejlede evneopslaget, læser trætheden selv evnerne frem for standard-restitution.
+      abilityByRider: progressResult.error ? null : new Map((progressResult.data ?? []).map((r) => [r.rider_id, r])),
     });
     for (const row of conditionResult.data ?? []) {
       const plan = state.plans[row.rider_id] ?? null;
       const program = resolveProgram(plan, primaryTypeByRider.get(row.rider_id) ?? null);
       const outlook = fatigueOutlook?.get(row.rider_id) ?? null;
       const fatigue = outlook ? outlook.fatigue : row.fatigue;
-      const risk = injuryRisk({ intensity: program.intensity, fatigue: Number(fatigue ?? 0) });
+      // #8054: ukendt træthed lige nu ("—") giver ingen skadesrisiko frem for risikoen ved 0.
+      // Fladerne tåler null (højrisiko-markering og dagens beslutning springer rytteren over).
+      const risk = outlook && fatigue == null
+        ? null
+        : injuryRisk({ intensity: program.intensity, fatigue: Number(fatigue ?? 0) });
       condition[row.rider_id] = {
         form: outlook?.form ?? row.form,
         fatigue,
@@ -4942,7 +4986,8 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
       }
     }
     // #6984 M4 + M8: holdlægens ord (kun condition_model_v2; null = intet vises).
-    const doctor = eligible ? await loadDoctorReportForSelection({ supabase, race, teamId: req.team.id, riders: ctx.riders }) : null;
+    // #7801: lægen lægger selv datoens etaper oveni, så den får morgenens træthed.
+    const doctor = eligible ? await loadDoctorReportForSelection({ supabase, race, teamId: req.team.id, riders: ridersAtOpeningFatigue(ctx) }) : null;
     // #6959: trup-låsen (samme regel som taktikken) så panelet kan vise den, også i en pause.
     const lineupLocked = await isRaceLineupLockedNow({ supabase, race, now: new Date() });
     // #6321: klienten skal kende v3-gaten, saa den aldrig afviser et gem serveren accepterer (#4295).
@@ -5598,8 +5643,10 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
     }
 
     const columns = [];
-    for (const race of cols) {
-      const ctx = await getSelectionContext({ supabase, race, teamId: req.team.id });
+    // #7801: alle kolonner i ét kald, saa trætheden lige nu ikke koster en række opslag pr. kolonne.
+    const ctxByCol = await getSelectionContextsForRaces({ supabase, races: cols, teamId: req.team.id });
+    for (const [colIndex, race] of cols.entries()) {
+      const ctx = ctxByCol[colIndex];
       const profTypes = profTypesByRace.get(race.id) || [];
       // Frys (#1825): et igangværende etapeløb (stages_completed>0) har låst trup —
       // board'et viser "Lineup locked" og deaktiverer redigering. bindingWindow bruges
@@ -6313,6 +6360,12 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
     res.status(500).json({ error: err.message });
   }
 });
+
+// #7535: planlaegningssidens Handlinger-menu. Assistentens forslag til mange loeb (laeser kun) og
+// afmelding af mange loeb (alt eller intet). Reglerne bor i lib/planningBulkActions7535.js.
+const planningBulkCtx7535 = { supabase, isViewerBetaTester, captureException, invalidateNamespace };
+router.post("/races/selection/auto/propose", requireAuth, marketWriteLimiter, planningBulkRoute7535(proposeAssistantSquads7535, planningBulkCtx7535));
+router.post("/races/withdrawals/bulk", requireAuth, marketWriteLimiter, planningBulkRoute7535(withdrawRacesBulk7535, planningBulkCtx7535));
 
 // POST /api/races/:raceId/selection/auto — #2180 one-click "auto-udtag" (indbakke-
 // knappen på 36t-varslet, selectionWarningSweep.js). Assistenten bygger + gemmer
@@ -7553,6 +7606,8 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
     }
     return res.status(409).json({ error: "This rider was won at auction and is awaiting transfer to the new team", errorCode: "rider_pending_transfer_auction" });
   }
+  const auctionPendingReleaseIssue = await getPendingReleaseTradeIssue(supabase, rider.id); // #8153
+  if (auctionPendingReleaseIssue) return res.status(auctionPendingReleaseIssue.status).json(auctionPendingReleaseIssue.body);
 
   // Allow auction if:
   // 1. Rider is on manager's own team, OR
@@ -7785,7 +7840,7 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
       is_flash: flash_auction,
     };
   let created2176 = null;
-  if (await isMarketBetaMode2176(supabase)) {
+  if (await isMarketAtomicPayments2176(supabase)) {
     const attempt = await supabase.rpc("create_market_auction_2176", { p_auction: auctionData2176, p_expected_owner: rider.team_id ?? null, p_min_riders: SELLER_SQUAD_FLOOR, p_at_risk_rider_ids: sellerFloorRiskIds(auctionAtRiskRiders2176) });
     if (attempt.error) created2176 = { data: null, error: attempt.error };
     else if (attempt.data?.status === "created") created2176 = { data: attempt.data.auction, error: null };
@@ -8609,6 +8664,8 @@ router.post("/transfers", requireAuth, marketWriteLimiter, async (req, res) => {
     return res.status(409).json({ error: "This rider has retired and can't be listed for sale", errorCode: "rider_retired_listing" });
   const parkedListingIssue = getParkedRiderTradeIssue(rider); // #6181
   if (parkedListingIssue) return res.status(parkedListingIssue.status).json(parkedListingIssue.body);
+  const listingPendingReleaseIssue = await getPendingReleaseTradeIssue(supabase, rider.id); // #8153
+  if (listingPendingReleaseIssue) return res.status(listingPendingReleaseIssue.status).json(listingPendingReleaseIssue.body);
   // #3650 (ejer-løfte i Discord 11/8): akademiryttere må NU listes direkte —
   // #1824's is_academy-GUARD er fjernet HER (blokerer stadig auktion, se POST
   // /auctions). Ingen manuel graduation krævet længere: salget graduerer
@@ -8870,6 +8927,8 @@ router.post("/transfers/offer", requireAuth, marketWriteLimiter, async (req, res
   if (rider.is_retired) return res.status(409).json({ error: "Rytteren er pensioneret og kan ikke handles", errorCode: "rider_retired_trade" });
   const parkedOfferIssue = getParkedRiderTradeIssue(rider); // #6181
   if (parkedOfferIssue) return res.status(parkedOfferIssue.status).json(parkedOfferIssue.body);
+  const offerPendingReleaseIssue = await getPendingReleaseTradeIssue(supabase, rider.id); // #8153
+  if (offerPendingReleaseIssue) return res.status(offerPendingReleaseIssue.status).json(offerPendingReleaseIssue.body);
   if (rider.team_id === req.team.id) return res.status(400).json({ error: "You can't bid on your own rider", errorCode: "cannot_bid_own_rider" });
 
   const { data: sellerTeam } = await supabase
@@ -9349,6 +9408,8 @@ router.post("/transfers/:id/offer", requireAuth, marketWriteLimiter, async (req,
     return res.status(404).json({ error: "Listing ikke fundet", errorCode: "listing_unavailable" });
   const parkedListingOfferIssue = getParkedRiderTradeIssue(listing.rider); // #6181
   if (parkedListingOfferIssue) return res.status(parkedListingOfferIssue.status).json(parkedListingOfferIssue.body);
+  const listingOfferPendingReleaseIssue = await getPendingReleaseTradeIssue(supabase, listing.rider_id ?? listing.rider?.id); // #8153
+  if (listingOfferPendingReleaseIssue) return res.status(listingOfferPendingReleaseIssue.status).json(listingOfferPendingReleaseIssue.body);
   if (listing.seller_team_id === req.team.id)
     return res.status(400).json({ error: "You can't bid on your own listing", errorCode: "cannot_bid_own_listing" });
   const { data: listingSeller } = await supabase
@@ -9475,6 +9536,8 @@ router.post("/transfers/swaps", requireAuth, marketWriteLimiter, async (req, res
     return res.status(404).json({ error: "Target rider not found or has no team", errorCode: "target_rider_not_found" });
   if (requested.is_retired)
     return res.status(409).json({ error: "The target rider has retired and can't be traded", errorCode: "target_rider_retired" });
+  const swapPendingReleaseIssue = (await getPendingReleaseTradeIssue(supabase, offered_rider_id)) ?? (await getPendingReleaseTradeIssue(supabase, requested_rider_id)); // #8153
+  if (swapPendingReleaseIssue) return res.status(swapPendingReleaseIssue.status).json(swapPendingReleaseIssue.body);
   if (requested.team_id === req.team.id)
     return res.status(400).json({ error: "Du kan ikke bytte med dig selv", errorCode: "cannot_swap_self" });
   const { data: requestedTeam } = await supabase
@@ -10094,6 +10157,9 @@ router.put("/teams/my", requireAuth, marketWriteLimiter, async (req, res) => {
     // #679: persist first-touch acquisition source on the FIRST team-create
     // (signup). Best-effort + fire-and-forget — must never block or fail signup.
     if (result.created) {
+      // #8101: kun en rigtig oprettelse måles som "Opret hold"; profil-gem på
+      // samme rute måles for sig uden alarm. Ingen databasekald, kaster aldrig.
+      markActionTiming(res, "team_create");
       const attributionRow = buildAttributionRow(req.user.id, req.body?.attribution);
       if (attributionRow) {
         supabase
@@ -11034,6 +11100,53 @@ router.patch("/me/discord-dm-prefs", requireAuth, marketWriteLimiter, async (req
     .eq("id", req.user.id);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ ok: true, dm_prefs: merged });
+});
+
+// #7778 · Visningsvalg gemt paa brugeren (fx "Skjul rute" paa loebssiden), saa
+// valget foelger spilleren paa tvaers af etaper, sider og enheder. Kun noegler paa
+// allowlisten i lib/userUiPrefs.js. `available: false` = tabellen er ikke
+// migreret endnu; klienten bruger saa sin lokale kopi.
+router.get("/me/ui-prefs", requireAuth, presencePulseLimiter, async (req, res) => {
+  try {
+    const out = await readUiPrefs(supabase, req.user.id);
+    res.json(out);
+  } catch (err) {
+    captureException(err, { tags: { route: "me_ui_prefs_get" } });
+    res.status(500).json({ error: "Could not read display choices", errorCode: "ui_prefs_read_failed" });
+  }
+});
+
+router.put("/me/ui-prefs", requireAuth, marketWriteLimiter, async (req, res) => {
+  const checked = sanitizeUiPrefsPatch(req.body);
+  if (!checked.ok) return res.status(400).json({ error: checked.error, errorCode: checked.errorCode });
+  try {
+    const out = await writeUiPrefs(supabase, req.user.id, checked.patch);
+    if (!out.available) return res.status(503).json({ error: "Display choices are not available yet", errorCode: "ui_prefs_unavailable" });
+    res.json({ ok: true, ...out });
+  } catch (err) {
+    captureException(err, { tags: { route: "me_ui_prefs_put" } });
+    res.status(500).json({ error: "Could not save display choices", errorCode: "ui_prefs_write_failed" });
+  }
+});
+
+// #6515 · Sidst set patch notes/roadmap paa brugeren (nyeste vinder), saa den gule prik foelger spilleren paa tvaers af enheder.
+router.get("/me/seen-markers", requireAuth, presencePulseLimiter, async (req, res) => {
+  try { res.json(await readSeenMarkers(supabase, req.user.id)); } catch (err) {
+    captureException(err, { tags: { route: "me_seen_markers_get" } });
+    res.status(500).json({ error: "Could not read seen markers", reason: "seen_markers_read_failed" });
+  }
+});
+router.put("/me/seen-markers", requireAuth, presencePulseLimiter, async (req, res) => {
+  const checked = sanitizeSeenMarkersPatch(req.body);
+  if (!checked.ok) return res.status(400).json({ error: checked.error, reason: checked.reason });
+  try {
+    const out = await writeSeenMarkers(supabase, req.user.id, checked.patch);
+    if (!out.available) return res.status(503).json({ error: "Seen markers are not available yet", reason: "seen_markers_unavailable" });
+    res.json({ ok: true, ...out });
+  } catch (err) {
+    captureException(err, { tags: { route: "me_seen_markers_put" } });
+    res.status(500).json({ error: "Could not save seen markers", reason: "seen_markers_write_failed" });
+  }
 });
 
 // PUT /api/me/username — skift brugernavn for den aktuelle bruger (#1746).
@@ -12306,6 +12419,9 @@ router.post("/admin/seasons/:id/start", requireAdmin, adminWriteLimiter, async (
     if ((activeCount || 0) > 0) {
       return res.status(400).json({ error: "Der findes allerede en aktiv sæson" });
     }
+    // #6181 (ejer 13/11, fast regel): ingen manuel saesonstart (loen) forbi laaste salg.
+    const saleEscrowGuard = await saleEscrowTransitionGuard(supabase, { execute: true });
+    if (saleEscrowGuard.blocked) return res.status(409).json({ error: SALE_ESCROW_FORCE_BLOCKED_ERROR, code: "held_sale_escrows", held_sale_escrows: saleEscrowGuard.held });
 
     const standings = await ensureSeasonStandings(seasonId);
 
@@ -12428,6 +12544,9 @@ router.post("/admin/seasons/:id/end", requireAdmin, adminWriteLimiter, async (re
     if (trainingSettlement.blocked) {
       return res.status(400).json({ error: trainingSettlement.detail, training_settlement: trainingSettlement });
     }
+    // #6181 (ejer 13/11, fast regel): ingen manuel saesonafslutning forbi laaste salg; foer claim'et.
+    const saleEscrowGuard = await saleEscrowTransitionGuard(supabase, { execute: true });
+    if (saleEscrowGuard.blocked) return res.status(409).json({ error: SALE_ESCROW_FORCE_BLOCKED_ERROR, code: "held_sale_escrows", held_sale_escrows: saleEscrowGuard.held });
     // #2847 · DB-niveau-garanti mod concurrent dobbelt-POST. De foregående checks
     // (status/pending-results/blockers) er check-then-act uden constraint — to
     // samtidige requests kan begge bestå dem og begge nå hertil. Herfra og ned er
@@ -13798,6 +13917,10 @@ router.get("/dashboard/rider-ranking", requireAuth, cached({
       .from("seasons").select("id").eq("status", "active").maybeSingle();
     if (seasonError) throw seasonError;
     if (!season) return res.json({ riders: [] });
+    // #7664: kontakten taendt -> samme tabel og omfang som "Fuld rangliste"; slukket eller fejl i
+    // den nye vej -> null (fejlen rapporteres til Sentry), og dagens RPC nedenfor bruges.
+    const shadowRiders = await readDashboardTopRiders7664(supabase, { seasonId: season.id, leagueDivisionId: req.team.league_division_id ?? null, captureExceptionFn: captureException });
+    if (shadowRiders) return res.json({ riders: shadowRiders });
 
     // Aggregeringen kører nu i Postgres via dashboard_rider_ranking-RPC'en
     // (database/2026-07-19-dashboard-rider-ranking-rpc.sql). Før hentede vi ALLE
@@ -14204,6 +14327,22 @@ router.get("/finance/loans", requireAuth, async (req, res) => {
       debt_ceiling: configs[0]?.debt_ceiling,
     });
   } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/me/locked-sales — #6181: saelgers laaste salgspenge for eget hold (menu, dashboard, Oekonomi)
+router.get("/me/locked-sales", requireAuth, presencePulseLimiter, async (req, res) => {
+  try {
+    if (!req.team) return res.json({ total: 0, sales: [] });
+    res.json(await loadLockedSalesForTeam(supabase, req.team.id));
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/me/pending-releases — #8153: holdets ventende frigivelser (maerket "Leaves after {race}")
+router.get("/me/pending-releases", requireAuth, presencePulseLimiter, async (req, res) => {
+  try {
+    if (!req.team) return res.json([]);
+    res.json(await loadPendingReleasesForTeam(supabase, req.team.id));
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); /* swallow-ok: captureApiRouteError capturer til Sentry */ }
 });
 
 // POST /api/finance/loans — optag nyt finanslån
@@ -14940,6 +15079,13 @@ router.post("/admin/season-transition", requireAdmin, adminWriteLimiter, async (
           readiness,
         });
       }
+      // #6181 (ejer 13/11, fast regel): force kan aldrig tvinge et skifte forbi laaste salg.
+      const pendingReleases8153 = !readiness.ready && force && readiness.checks?.no_deferred_transfers?.ok === false ? await countPendingReleasesForTransition(supabase) : 0; // #8153: samme faste regel
+      if (pendingReleases8153 > 0) return res.status(409).json({ error: PENDING_RELEASE_FORCE_BLOCKED_ERROR, code: "pending_rider_releases", pending_rider_releases: pendingReleases8153, readiness });
+      const heldSaleEscrows = !readiness.ready && force ? await countHeldSaleEscrowsForForce(supabase) : 0;
+      if (heldSaleEscrows > 0) {
+        return res.status(409).json({ error: SALE_ESCROW_FORCE_BLOCKED_ERROR, code: "held_sale_escrows", held_sale_escrows: heldSaleEscrows, readiness });
+      }
       if (!readiness.ready && force) {
         beforeTransitionWrites = async () => {
           const { error: forceLogError } = await supabase.from("admin_log").insert({
@@ -15632,23 +15778,9 @@ router.get("/admin/feature-flags", requireAdmin, async (req, res) => {
 
     const byKey = new Map((data ?? []).map((row) => [row.key, row]));
     res.json({
-      flags: STAGE_FLAGS.map((flag) => {
-        const row = byKey.get(flag.key);
-        const raw = row ? row.value : null;
-        return {
-          ...flag,
-          // Raekken findes ikke = "off", praecis som evaluateFlagStage laeser
-          // den. Tavlen maa aldrig vise noget andet end det spilleren faar.
-          stage: normalizeStageValue(raw),
-          raw_value: raw,
-          // Boolean-flag er on/off i det gamle skema: tavlen viser dem, men
-          // uden "beta" som valg — accept-kriteriet i #5259.
-          boolean_only: typeof raw === "boolean",
-          configured: Boolean(row),
-          unknown_value: isUnknownStageValue(raw),
-          updated_at: row?.updated_at ?? null,
-        };
-      }),
+      // Tavlen maa aldrig vise noget andet end det spilleren faar; binaere
+      // noegler og boolean-raekker vises uden "beta" (#5259, #6181).
+      flags: STAGE_FLAGS.map((flag) => adminFlagView(flag, byKey.get(flag.key))),
     });
   } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
@@ -15673,6 +15805,11 @@ router.patch("/admin/feature-flags/:key", requireAdmin, adminWriteLimiter, async
       return res.status(400).json({
         error: "stage must be off, beta or on", errorCode: "flag_invalid_stage",
       });
+    }
+    // #6181: binaere noegler laeses kun som "on"; "beta" ville stille betyde slukket for alle.
+    // Samme svar som boolean-raekkerne nedenfor (genbruger deres oversaettelse).
+    if (PLAYER_VISIBLE_BINARY_FLAG_KEYS.includes(key) && stage === "beta") {
+      return res.status(409).json({ error: "This flag is on/off only and has no beta stage", errorCode: "flag_boolean_only" });
     }
 
     // Een laesning, to formaal: det forrige stadie til admin_log, og om raekken
@@ -19013,9 +19150,9 @@ router.get("/academy/me", requireAuth, async (req, res) => {
     // #3746/#3213: prognose-motoren kræver sæson-alder + holdets ÆGTE spejder
     // (samme mønster som estimates/scouting-report-ruterne, der begge sender
     // scout eksplicit) — én hentning hver, genbruges for alle kandidater.
-    const [prognosisSeasonNumber, prognosisScout] = candidateIds.length > 0
-      ? await Promise.all([getActiveSeasonNumber(), loadScout(teamId, supabase)])
-      : [null, null];
+    const [prognosisSeasonNumber, prognosisScout, prognosisXp] = candidateIds.length > 0
+      ? await Promise.all([getActiveSeasonNumber(), loadScout(teamId, supabase), loadEstimateDevelopmentXp(supabase)]) // #6110 F1
+      : [null, null, null];
 
     // #1748 (b): en 'offered' intake-kandidat der i mellemtiden er blevet anskaffet
     // ad en anden vej (vundet på ungdomsauktion af et andet hold → is_academy=true /
@@ -19061,6 +19198,7 @@ router.get("/academy/me", requireAuth, async (req, res) => {
           riderId: row.rider_id,
           teamId,
           scout: prognosisScout,
+          developmentXp: prognosisXp,
         });
         const band = bands.find((b) => b.key === potRow.primary_type) ?? null;
         if (band && band.progLo != null) {
@@ -19532,6 +19670,10 @@ router.post("/academy/promote", requireAuth, marketWriteLimiter, async (req, res
     if (msg === "rider_not_found") return res.status(404).json({ error: msg });
     if (msg === "not_owned") return res.status(403).json({ error: msg });
     if (["not_academy", "squad_cap_violation"].includes(msg)) return res.status(409).json({ error: msg });
+    if (msg === PENDING_RELEASE_SQUAD_CODE) { // #8153: vagten paa riders afviste trupskiftet
+      const issue = await pendingReleaseSquadResponse(supabase, req.body?.riderId);
+      return res.status(issue.status).json(issue.body);
+    }
     captureException(err);
     res.status(500).json({ error: msg });
   }
@@ -19553,6 +19695,10 @@ router.post("/academy/demote", requireAuth, marketWriteLimiter, async (req, res)
       .from("seasons").select("number").eq("status", "active").maybeSingle();
     const seasonNumber = season?.number ?? 1;
 
+    // #8153: en rytter, hvis frigivelse venter, koerer etapeloebet faerdigt som senior. Slukket = null.
+    const pendingIssue = await getPendingReleaseSquadIssue(supabase, riderId);
+    if (pendingIssue) return res.status(pendingIssue.status).json(pendingIssue.body);
+
     const result = await demoteAcademyRider(supabase, {
       teamId: req.team.id,
       riderId,
@@ -19566,6 +19712,10 @@ router.post("/academy/demote", requireAuth, marketWriteLimiter, async (req, res)
     // age/market/listed/cap/full → 409 (forventede bruger-tilstande, ikke Sentry-larm).
     if (["already_academy", "not_u23", "rider_on_market", "rider_listed", "academy_full"].includes(msg)) {
       return res.status(409).json({ error: msg });
+    }
+    if (msg === PENDING_RELEASE_SQUAD_CODE) { // #8153: vagten paa riders afviste nedrykningen
+      const issue = await pendingReleaseSquadResponse(supabase, req.body?.riderId);
+      return res.status(issue.status).json(issue.body);
     }
     captureException(err);
     res.status(500).json({ error: msg });

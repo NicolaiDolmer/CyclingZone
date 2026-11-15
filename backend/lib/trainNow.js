@@ -34,7 +34,7 @@ import { copenhagenDateString, copenhagenWeekdayKey } from "./copenhagenTime.js"
 import { evaluateFlagStage, readFlagStage } from "./featureStage.js";
 import { isTrainingConditionPerDateEnabled } from "./trainingDateConditionFlag.js";
 import {
-  loadTrainingDateContext, resolveTrainingDateReadiness, trainingDateBounds, loadSeasonBridgeBounds, nextCivilDate, isTrainingDateTeam,
+  resolveTrainingDateReadiness, trainingDateBounds, loadSeasonBridgeBounds, nextCivilDate, isTrainingDateTeam,
 } from "./trainingDateReadiness.js";
 import { registerTrainingDateWork } from "./trainingDateClose.js";
 import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
@@ -48,6 +48,9 @@ import { loadSpentRaceDays } from "./raceSpentDays.js"; // #6740
 import { loadWithdrawnRaceIdsForTeam } from "./raceWithdrawal.js"; // #6740
 import { settleWholeDayPress } from "./trainNowWholeDay.js"; // #6461 B
 import { TRAIN_NOW_BONUS_FLAG_KEY } from './trainNowBonus7737.ts';
+import { loadTrainNowDateContext } from "./trainNowDateContext.js"; // #7982
+import { CACHE_OWNER_CLIENT } from "./privateConfig.ts"; // #7982 step 2
+import { randomUUID } from "node:crypto";
 
 export const TRAIN_NOW_FLAG_KEY = "training_train_now";
 // #7737: the press trains a race rider's free race days straight away. "on" turns it on for
@@ -76,6 +79,21 @@ async function checked(query, label) {
   const { data, error } = await query;
   if (error) throw new Error(`${label}: ${error.message ?? error}`);
   return data;
+}
+
+/**
+ * #7982 step 3: a group of the press's reads that do not depend on each other. All are
+ * sent at once and the group waits for every one of them, so no promise is left without
+ * an owner. Each answer comes back as a getter that throws that read's failure where the
+ * press uses it, so the checks keep their order and a failed read stops the press before
+ * its next write.
+ */
+async function settleTogether(reads) {
+  const settled = await Promise.allSettled(reads.map((read) => (async () => read())()));
+  return settled.map((result) => () => {
+    if (result.status === "rejected") throw result.reason;
+    return result.value;
+  });
 }
 
 
@@ -124,26 +142,33 @@ async function hasOpenEarlierDate({ supabase, teamId, seasonId, tickDate }) {
 
 // #7505: drop the races the team cannot be in. Throws on a read error (the caller
 // decides between best-effort and fail closed).
-async function filterRacesTeamCanJoin({ supabase, team, races }) {
+async function filterRacesTeamCanJoin({ supabase, team, races, together = false }) {
   if (!races.length) return [];
   const started = races.filter((race) => (Number(race.stages_completed) || 0) > 0);
   const enteredStartedIds = new Set();
-  if (started.length) {
+  const readStartedEntries = async () => {
+    if (!started.length) return;
     // pagination-safe: one team's entries in today's started races (a few squads of <= 9).
     const entries = await checked(supabase.from("race_entries").select("race_id")
       .eq("team_id", team.id).in("race_id", started.map((race) => race.id)), "today's started race entries");
     for (const row of entries ?? []) enteredStartedIds.add(row.race_id);
-  }
-  // One existence read per squad that still matters (no roster scan).
+  };
+  // One existence read per squad that still matters (no roster scan). A started race is
+  // never asked about, so these reads do not depend on the entries read above.
+  const squads = [...new Set(races.filter((race) => !started.includes(race)).map(raceSquadOf))];
   const squadHasRiders = new Map();
-  for (const race of races) {
-    if (enteredStartedIds.has(race.id) || started.includes(race)) continue;
-    const squad = raceSquadOf(race);
-    if (squadHasRiders.has(squad)) continue;
+  const readSquad = async (squad) => {
     const riders = await checked(applyRosterVisibilityFilter(
       supabase.from("riders").select("id").eq("team_id", team.id), { squad },
     ).limit(1), "squad riders");
     squadHasRiders.set(squad, (riders ?? []).length > 0);
+  };
+  // #7982 step 3: the press (`together`) sends them at once; the status reads them one by one, as before.
+  if (together) {
+    await Promise.all([readStartedEntries(), ...squads.map(readSquad)]);
+  } else {
+    await readStartedEntries();
+    for (const squad of squads) await readSquad(squad);
   }
   return races.filter((race) => {
     if (started.includes(race)) return enteredStartedIds.has(race.id);
@@ -161,7 +186,7 @@ async function filterRacesTeamCanJoin({ supabase, team, races }) {
  * team is entered in, or can still enter, is always kept (the short-race warning
  * below depends on that).
  */
-export async function loadTodayRacesForTeam({ supabase, team, tickDate, strict = false }) {
+export async function loadTodayRacesForTeam({ supabase, team, tickDate, strict = false, together = false }) {
   try {
     const { start, end } = trainingDateBounds(tickDate);
     const stages = await checked(supabase.from("race_stage_schedule").select("race_id, stage_number")
@@ -177,7 +202,7 @@ export async function loadTodayRacesForTeam({ supabase, team, tickDate, strict =
       .in("id", raceIds), "today's races");
     const inPool = (races ?? []).filter((race) => race.league_division_id != null
       && race.league_division_id === teamPoolIdForSquad(team, race.squad ?? "senior"));
-    const reachable = await filterRacesTeamCanJoin({ supabase, team, races: inPool });
+    const reachable = await filterRacesTeamCanJoin({ supabase, team, races: inPool, together });
     return reachable
       .map((race) => ({
         id: race.id, name: race.name ?? null,
@@ -277,7 +302,7 @@ export async function loadTrainNowShortRaces({ supabase, team, todayRaces, tickD
  * and the route answers 500 train_now_failed (logged). Never fail open here (review #6742).
  */
 async function defaultLoadShortRaces({ supabase, team, tickDate }) {
-  const todayRaces = await loadTodayRacesForTeam({ supabase, team, tickDate, strict: true });
+  const todayRaces = await loadTodayRacesForTeam({ supabase, team, tickDate, strict: true, together: true });
   return loadTrainNowShortRaces({ supabase, team, todayRaces, tickDate, strict: true });
 }
 
@@ -310,13 +335,169 @@ export async function loadTrainNowStatus({ supabase, team, seasonId, isBetaTeste
 }
 
 /**
- * The press. Returns { status, body } so the route stays a thin adapter.
- * DI hooks keep it testable without Postgres; defaults are the sweep's own functions.
+ * #7982 part 1: wall time of every step of one press, for the private server log. The
+ * line carries a random request id, step names and milliseconds only: no token, no
+ * team or rider id, no payload. Nothing is switched on for it (no tracing, no flag).
  */
-export async function runTrainNow({
-  supabase, team, season, now = new Date(), isBetaTester = false,
+export function createTrainNowTiming({ clock = () => performance.now(), requestId = randomUUID().slice(0, 8) } = {}) {
+  const startedAt = clock();
+  const steps = [];
+  const notes = [];
+  return {
+    async step(name, fn) {
+      const at = clock();
+      try {
+        return await fn();
+      } finally {
+        steps.push([name, Math.round(clock() - at)]);
+      }
+    },
+    note(name, value) { notes.push([name, value]); },
+    line(status) {
+      const parts = [`req=${requestId}`, `status=${status}`, `total_ms=${Math.round(clock() - startedAt)}`,
+        ...notes.map(([name, value]) => `${name}=${value}`), ...steps.map(([name, ms]) => `${name}_ms=${ms}`)];
+      return `[train-now-timing] ${parts.join(" ")}`;
+    },
+  };
+}
+
+// A no-op stand-in so the settle step can time itself without knowing whether it is timed.
+export const NO_TRAIN_NOW_TIMING = Object.freeze({ step: (_name, fn) => fn(), note: () => {}, line: () => "" });
+
+// #7982 step 2: the tables one press never writes, neither itself nor through the database
+// functions it calls. Switches, private parameters, the team, its facilities, staff and
+// training rules, the plans (locked by the press itself, createTrainNowPlanLock) and the
+// season's race list (the only races query a press repeats; a stage that runs reaches the
+// press through results and the date context, never through this list).
+// Everything a day field writes (abilities, condition, receipts, runs, the date, the race
+// loads, the locks), the race bindings and results, and the riders (a release during the
+// press must still show) are read fresh every time, exactly as before.
+export const PRESS_CACHED_TABLES = Object.freeze(new Set([
+  "app_config", "private_config", "teams", "team_facilities", "team_staff",
+  "team_training_rules", "training_groups", "training_plans", "training_week_plans", "races",
+]));
+// The database functions a press calls. None of them writes a cached table (checked
+// against their SQL); any other function call empties the cache, to be safe.
+const PRESS_FUNCTIONS_WITHOUT_CACHED_WRITES = new Set([
+  "train_now_date_context", "find_spent_race_days", "register_training_date_work",
+  "quarantine_training_date_riders", "depart_training_date_riders", "freeze_train_now_date_entries",
+  "publish_train_now_bonus_press", "commit_training_date_tick",
+]);
+const PRESS_READ_METHODS = new Set([
+  "select", "eq", "neq", "is", "in", "gt", "gte", "lt", "lte", "not", "or", "contains", "overlaps",
+  "match", "filter", "like", "ilike", "order", "limit", "range", "maybeSingle", "single",
+]);
+const plainArg = (value) => value == null || ["string", "number", "boolean"].includes(typeof value)
+  || (Array.isArray(value) ? value.every(plainArg)
+    : typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype && Object.values(value).every(plainArg));
+
+/**
+ * #7982 step 2: one read cache per press. A query on a cached table is sent once per
+ * press; the five day fields and the checks before them get a copy of that answer.
+ * Every other table, every write and every database function goes straight to the
+ * database as before. A failed read is never reused. A write to a cached table, or a
+ * database function the press does not normally call, empties the cache.
+ * The cache dies with the press, so a switch read for one press never reaches the next.
+ * #7982 step 3, now that a press sends reads at once: a write empties the cache again when
+ * it is done (a read sent while it was on its way may hold the old value); a query keeps
+ * the values it was asked with, as the client does; and, as on the client, a query has no
+ * `catch` or `finally` (they never count as a write).
+ */
+export function createPressReadCache(supabase) {
+  const answers = new Map();
+  const clearWhenDone = (pending) => Promise.resolve(pending).then((result) => {
+    answers.clear();
+    return result;
+  }, (err) => {
+    answers.clear();
+    throw err;
+  });
+  const cachedFrom = (table) => {
+    const ops = [];
+    const replay = () => ops.reduce((query, [name, args]) => query[name](...args), supabase.from(table));
+    const run = () => {
+      const isRead = ops.every(([name, args]) => PRESS_READ_METHODS.has(name) && args.every(plainArg));
+      if (!isRead) {
+        if (!ops.some(([name]) => !PRESS_READ_METHODS.has(name))) return Promise.resolve(replay());
+        answers.clear();
+        return clearWhenDone(replay());
+      }
+      const key = JSON.stringify([table, ops]);
+      let answer = answers.get(key);
+      if (!answer) {
+        const forget = () => { if (answers.get(key) === answer) answers.delete(key); };
+        answer = Promise.resolve(replay()).then((result) => {
+          if (result?.error) forget();
+          return result;
+        }, (err) => {
+          forget();
+          throw err;
+        });
+        answers.set(key, answer);
+      }
+      return answer.then((result) => (result?.error ? result : structuredClone(result)));
+    };
+    const query = new Proxy({}, {
+      get(_target, prop) {
+        if (prop === "then") return (resolve, reject) => run().then(resolve, reject);
+        if (typeof prop === "symbol" || prop === "catch" || prop === "finally") return undefined;
+        return (...args) => { ops.push([prop, args.every(plainArg) ? structuredClone(args) : args]); return query; };
+      },
+    });
+    return query;
+  };
+  // A database function the press does not normally call: empty the cache when it is sent and when it is done.
+  const clearAroundCall = (call) => {
+    if (call === null || (typeof call !== "object" && typeof call !== "function")) return clearWhenDone(call);
+    const wrapped = new Proxy(call, {
+      get(target, prop) {
+        if (prop === "then") return (resolve, reject) => clearWhenDone(target).then(resolve, reject);
+        const value = Reflect.get(target, prop, target);
+        if (typeof value !== "function") return value;
+        return (...args) => { const next = value.apply(target, args); return next === target ? wrapped : next; };
+      },
+    });
+    return wrapped;
+  };
+  return new Proxy(supabase, {
+    get(target, prop) {
+      // The server's own private-parameter cache stays on the real client (privateConfig.ts).
+      if (prop === CACHE_OWNER_CLIENT) return target;
+      if (prop === "from") return (table) => (PRESS_CACHED_TABLES.has(table) ? cachedFrom(table) : target.from(table));
+      if (prop === "rpc" && typeof target.rpc === "function") {
+        return (name, ...rest) => {
+          if (PRESS_FUNCTIONS_WITHOUT_CACHED_WRITES.has(String(name).replace(/^try_/, ""))) return target.rpc(name, ...rest);
+          answers.clear();
+          return clearAroundCall(target.rpc(name, ...rest));
+        };
+      }
+      const value = Reflect.get(target, prop, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+}
+
+/**
+ * The press. Returns { status, body } so the route stays a thin adapter.
+ * DI hooks keep it testable without Postgres; defaults are the sweep's own functions,
+ * except the context reader (#7982: the press's own one-team reader).
+ */
+export async function runTrainNow({ timing = createTrainNowTiming(), logger = console, ...args }) {
+  let status = "error";
+  try {
+    const result = await runTrainNowSteps({ ...args, timing });
+    status = result?.status ?? "error";
+    return result;
+  } finally {
+    // Logging must never change the press's answer.
+    try { logger?.info?.(timing.line(status)); } catch { /* best-effort: a log line never fails a press */ }
+  }
+}
+
+async function runTrainNowSteps({
+  supabase: client, team, season, now = new Date(), isBetaTester = false,
   runDay = runTeamTrainingDay,
-  loadContext = loadTrainingDateContext,
+  loadContext = loadTrainNowDateContext,
   registerWork = registerTrainingDateWork,
   loadDaySpans,
   // #6740 (review #6742): the warning is re-checked HERE on every first press, not only
@@ -324,10 +505,18 @@ export async function runTrainNow({
   // races it showed: a race that fell below the floor since then is asked about again.
   confirmedShortRaceIds = [],
   loadShortRaces = defaultLoadShortRaces,
+  timing,
 }) {
   if (!team?.id) return { status: 400, body: { error: "no_team" } };
-  if (!await isTrainNowEnabled(supabase, { isBetaTester })) return { status: 404, body: { error: "not_found" } };
-  if (!await isTrainingConditionPerDateEnabled(supabase)) return { status: 409, body: { error: "train_now_requires_date_settlement" } };
+  // #7982 step 2: from here every read and write of the press goes through its own read
+  // cache. The stage gate alone keeps the server's short flag cache on the real client.
+  const supabase = createPressReadCache(client);
+  const gate = await timing.step("gates", async () => {
+    if (!await isTrainNowEnabled(client, { isBetaTester })) return { status: 404, body: { error: "not_found" } };
+    if (!await isTrainingConditionPerDateEnabled(supabase)) return { status: 409, body: { error: "train_now_requires_date_settlement" } };
+    return null;
+  });
+  if (gate) return gate;
   if (!season?.id) return { status: 409, body: { error: "no_active_season" } };
   // #6536 (Codex): et parkeret hold traener ikke, heller ikke paa managerens tryk.
   if (team.parked_at != null) return { status: 409, body: { error: "team_parked" } };
@@ -335,33 +524,59 @@ export async function runTrainNow({
   if (typeof loadDaySpans !== "function") throw new Error("loadDaySpans required");
 
   const tickDate = copenhagenDateString(now);
-  const existingWork = await loadTeamDateWork({ supabase, teamId: team.id, seasonId: season.id, tickDate });
+  // #7982: the three fresh reads stay three reads, each timed; the reader says which one answered.
+  let reads = 0;
+  const readContext = () => {
+    const n = ++reads;
+    return timing.step(`context_${n}`, () => loadContext({
+      supabase, season, tickDate, loadDaySpans, registeredTeamIds: [team.id],
+      onReader: (reader) => timing.note(`reader_${n}`, reader),
+    }));
+  };
+  // #7982 step 3: the reads every press past the first checks makes are sent at once
+  // (settleTogether) and decided below in the same order as before.
+  const [workOf, earlierOf, locksOf, contextOf, instantOf] = await settleTogether([
+    () => timing.step("date_work", () => loadTeamDateWork({ supabase, teamId: team.id, seasonId: season.id, tickDate })),
+    () => timing.step("earlier_date", () => hasOpenEarlierDate({ supabase, teamId: team.id, seasonId: season.id, tickDate })),
+    () => timing.step("locks_read", () => loadTeamTrainNowLocks({ supabase, teamId: team.id, tickDate })),
+    () => readContext(),
+    () => timing.step("instant_flags", () => isTrainNowInstantEnabled(supabase, { isBetaTester })),
+  ]);
+  const existingWork = workOf();
   if (SETTLED_STATUSES.has(existingWork?.status)) {
     return { status: 409, body: { error: "date_settled", tickDate } };
   }
-  if (await hasOpenEarlierDate({ supabase, teamId: team.id, seasonId: season.id, tickDate })) {
+  if (earlierOf()) {
     return { status: 409, body: { error: "previous_date_open", tickDate } };
   }
+  const existingLocks = locksOf();
+  const instant = instantOf();
+  // Second group: the short-race warning (a first press only), the bridge dates (a date
+  // not registered yet) and the bonus switch (only with instant training on).
+  const [shortRacesOf, bridgeOf, bonusOf] = await settleTogether([
+    () => (existingLocks.length ? [] : timing.step("short_races", () => loadShortRaces({ supabase, team, tickDate }))),
+    () => (existingWork ? false : timing.step("bridge_check", () => hasUnregisteredEarlierBridgeDate({ supabase, team, season, tickDate, context: contextOf() }))),
+    () => (instant ? timing.step("bonus_flag", () => isTrainNowBonusEnabled(supabase)) : false),
+  ]);
 
   // #6740: a first press with a race below the floor needs the explicit yes for exactly
   // the races below the floor NOW. A repeated press (locks already written) decides
   // nothing new and is never asked again.
-  const existingLocks = await loadTeamTrainNowLocks({ supabase, teamId: team.id, tickDate });
   if (!existingLocks.length) {
-    const shortRaces = await loadShortRaces({ supabase, team, tickDate });
+    const shortRaces = shortRacesOf();
     const confirmed = new Set(Array.isArray(confirmedShortRaceIds) ? confirmedShortRaceIds : []);
     if (shortRaces.some((race) => !confirmed.has(race.id))) {
       return { status: 409, body: { error: "short_races_confirm", tickDate, shortRaces } };
     }
   }
 
-  const context = await loadContext({ supabase, season, tickDate, loadDaySpans, registeredTeamIds: [team.id] });
+  const context = contextOf();
   const days = existingWork?.game_days ?? context.gameDaysByDivision.get(team.league_division_id);
   if (!days?.length) return { status: 409, body: { error: "no_race_day_today", tickDate } };
   // #7282: an earlier bridge date without registered work is still to be caught up by
   // the sweep. Registering any later date first (a bridge date or a race date) would stop
   // it keeping that date's opening snapshot.
-  if (!existingWork && await hasUnregisteredEarlierBridgeDate({ supabase, team, season, tickDate, context })) {
+  if (!existingWork && bridgeOf()) {
     return { status: 409, body: { error: "previous_date_open", tickDate } };
   }
 
@@ -377,9 +592,9 @@ export async function runTrainNow({
 
   // 1) Register the date exactly as the sweep does (frozen roster + opening
   //    condition). Before the lock, so a failed registration leaves no lock behind.
-  const work = existingWork ?? await registerWork({
+  const work = existingWork ?? await timing.step("register", () => registerWork({
     supabase, teamId: team.id, seasonId: season.id, tickDate, gameDays: days, riderIds: currentIds, now, nonBlocking: true,
-  });
+  }));
 
   if (work?.held === true) {
     return { status: 409, body: { error: "training_in_progress", tickDate, settledGameDays: [], locked: false } };
@@ -389,8 +604,27 @@ export async function runTrainNow({
   //    are frozen (#6139: per rider). Idempotent per rider + date (I2); a repeated
   //    press keeps the first time. A failure after this point keeps the lock; a retry resumes.
   const pressedAt = now.toISOString();
-  const instant = await isTrainNowInstantEnabled(supabase, { isBetaTester });
-  const bonusChoice = instant && await isTrainNowBonusEnabled(supabase);
+  const bonusChoice = instant && bonusOf();
+  await timing.step("lock_write", () => writePressLocks({ supabase, team, season, tickDate, work, currentIds, pressedAt, bonusChoice, existingLocks }));
+
+  // 3) Who can settle now? Read the entries AGAIN after the lock, so a selection
+  //    saved during the press cannot make an entered rider look free. Then the
+  //    sweep's own readiness rule, before the deadline.
+  const locked = await readContext();
+  const lockedIds = new Set(locked.riders.filter((rider) => rider.team_id === team.id).map((rider) => rider.id));
+  const quarantined = new Set(work.quarantined_rider_ids ?? []);
+  const available = work.expected_rider_ids.filter((id) => !quarantined.has(id)
+    && currentIds.includes(id) && lockedIds.has(id)
+    && (work.opening_conditions === undefined || work.opening_conditions?.[id]));
+  const readiness = resolveTrainingDateReadiness({ ...locked, tickDate, now, riderIds: available });
+  // #6461 B: the press always settles the whole known date per rider.
+  // #7737: with the switch on, a race rider's free race days settle now as well.
+  return settleWholeDayPress({ supabase, team, season, now, tickDate, work, available, readiness, pressedAt, runDay, instant, timing,
+    readReadiness: async () => resolveTrainingDateReadiness({ ...await readContext(), tickDate, now, riderIds: available }) });
+}
+
+// 2) of the press, unchanged (#7982 only moved it out to time it as one step).
+async function writePressLocks({ supabase, team, season, tickDate, work, currentIds, pressedAt, bonusChoice, existingLocks }) {
   if (bonusChoice && !existingLocks.length) {
     const quarantined = new Set(work.quarantined_rider_ids ?? []);
     const initialAvailable = work.expected_rider_ids.filter(id => currentIds.includes(id)
@@ -409,21 +643,6 @@ export async function runTrainNow({
   );
   if (lockError) throw new Error(`train-now lock: ${lockError.message ?? lockError}`);
   }
-
-  // 3) Who can settle now? Read the entries AGAIN after the lock, so a selection
-  //    saved during the press cannot make an entered rider look free. Then the
-  //    sweep's own readiness rule, before the deadline.
-  const locked = await loadContext({ supabase, season, tickDate, loadDaySpans, registeredTeamIds: [team.id] });
-  const lockedIds = new Set(locked.riders.filter((rider) => rider.team_id === team.id).map((rider) => rider.id));
-  const quarantined = new Set(work.quarantined_rider_ids ?? []);
-  const available = work.expected_rider_ids.filter((id) => !quarantined.has(id)
-    && currentIds.includes(id) && lockedIds.has(id)
-    && (work.opening_conditions === undefined || work.opening_conditions?.[id]));
-  const readiness = resolveTrainingDateReadiness({ ...locked, tickDate, now, riderIds: available });
-  // #6461 B: the press always settles the whole known date per rider.
-  // #7737: with the switch on, a race rider's free race days settle now as well.
-  return settleWholeDayPress({ supabase, team, season, now, tickDate, work, available, readiness, pressedAt, runDay, instant,
-    readReadiness: async () => resolveTrainingDateReadiness({ ...await loadContext({ supabase, season, tickDate, loadDaySpans, registeredTeamIds: [team.id] }), tickDate, now, riderIds: available }) });
 }
 
 // Stable comparison of one weekday cell (key order independent).

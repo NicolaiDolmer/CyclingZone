@@ -113,6 +113,45 @@ test("flushPendingAcademySigning: mål-truppen fuld → forbliver pending, ingen
   assert.equal(supa._spy.notifies.length, 0);
 });
 
+test("#6155 flushPendingAcademySigning: fuld junior-trup + plads i U23 → den udskudte hentning lander på U23", async () => {
+  const supa = makeSupabase({ squadCounts: { T1: { junior: SQUAD_CAPS.junior, u23: 0 } } });
+  const flushed = await flushPendingAcademySigning(
+    supa,
+    // 17 år i sæson 1 → junior først, U23 som næste trup med plads
+    { id: "R1", firstname: "A", lastname: "B", team_id: "T1", birthdate: `${LAUNCH_REFERENCE_YEAR - 17}-05-01` },
+    { notifyTeamOwner: supa._notify, seasonNumber: 1 }
+  );
+  assert.equal(flushed, true);
+  assert.deepEqual(supa._spy.rpcCalls.map((c) => c.args.p_squad), ["junior", "u23"]);
+  assert.equal(supa._spy.rpcCalls[1].args.p_squad_cap, SQUAD_CAPS.u23);
+  assert.deepEqual(supa._spy.updates, [{ riderId: "R1", squad: "u23" }]);
+  assert.equal(supa._spy.notifies.length, 1);
+});
+
+test("#6155 flushPendingAcademySigning: junior OG U23 fulde → forbliver ventende, ingen flip, ingen notif", async () => {
+  const supa = makeSupabase({ squadCounts: { T1: { junior: SQUAD_CAPS.junior, u23: SQUAD_CAPS.u23 } } });
+  const flushed = await flushPendingAcademySigning(
+    supa,
+    { id: "R1", firstname: "A", lastname: "B", team_id: "T1", birthdate: `${LAUNCH_REFERENCE_YEAR - 17}-05-01` },
+    { notifyTeamOwner: supa._notify, seasonNumber: 1 }
+  );
+  assert.equal(flushed, false);
+  assert.equal(supa._spy.rpcCalls.length, 2);
+  assert.equal(supa._spy.updates.length, 0);
+  assert.equal(supa._spy.notifies.length, 0);
+});
+
+test("#6155 flushPendingAcademySigning: 'not_pending' prøver ikke næste trup", async () => {
+  const supa = makeSupabase({ alreadyFlushedIds: ["R1"] });
+  const flushed = await flushPendingAcademySigning(
+    supa,
+    { id: "R1", firstname: "A", lastname: "B", team_id: "T1", birthdate: `${LAUNCH_REFERENCE_YEAR - 17}-05-01` },
+    { notifyTeamOwner: supa._notify, seasonNumber: 1 }
+  );
+  assert.equal(flushed, false);
+  assert.equal(supa._spy.rpcCalls.length, 1);
+});
+
 test("#5432 flushPendingAcademySigning: en fyldt ANDEN trup låser ikke flippet (den gamle cap talte hele akademiet)", async () => {
   const supa = makeSupabase({ squadCounts: { T1: { u23: SQUAD_CAPS.u23 } } });
   const flushed = await flushPendingAcademySigning(

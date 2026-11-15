@@ -487,6 +487,10 @@ export type StagePassage = {
   // #7855 (ADDITIVT og VALGFRIT, kun kontakten jersey_hunt_7855): ryttere der koerte efter netop denne passage
   // som etapeplanens opgave. Udeladt = ingen (som foer). Skrives ikke til race_stage_passages.
   hunters?: string[];
+  // #7855 (ejer 12/11 valg C, kun kontakten): de af `hunters`, som opgaven fik til at koere med (de ville
+  // ellers ikke have kaempet om passagen i deres gruppe). Traetheden laeser det (raceFatigue.stageWorkExposure).
+  // Udeladt = ingen. Skrives ikke til race_stage_passages.
+  hunt_work_7855?: string[];
 };
 
 /** Etapens samlede udbytte pr. rytter — spejler racePassages' `perRider`-map. */
@@ -844,6 +848,9 @@ export type SegmentHookContext = {
   stagePlanTasks?: Readonly<Record<string, import("../../stagePlan.ts").StagePlanTask>>;
   // #7855 (KUN kontakten jersey_hunt_7855): hver jaegers straekning (stagePlanEngine.stagePlanHuntWindows7855). Udeladt = ingen jaegere.
   stagePlanHuntWindows7855?: Readonly<Record<string, { fromKm: number; toKm: number }>>;
+  // #7855 (KUN kontakten): hver jaegers jagt-opgave i segmentet (stagePlanEngine.stagePlanHuntTasks7855), ogsaa
+  // udbrudsleddets jagt (valg A). Udeladt = ingen jaegere.
+  stagePlanHuntTasks7855?: Readonly<Record<string, import("../../stagePlan.ts").StagePlanTask>>;
   // #5978 (ADDITIVT og VALGFRIT, KUN orders_gc_v3): hjulsidderne ud fra tilstanden
   // ved segmentets start, samme saet som tempoet blev regnet paa (breakaway.ts).
   ownRidersOnWheel?: ReadonlyArray<{ team_id: string; group_id: string; rider_ids: string[]; protected_rider_id: string }>;

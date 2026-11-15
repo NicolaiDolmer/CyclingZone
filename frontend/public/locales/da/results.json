@@ -88,5 +88,13 @@
     },
     "error": "Løbshistorikken kunne ikke hentes. Intet er gået tabt.",
     "retry": "Prøv igen"
+  },
+  "raceResultsV6": {
+    "searchLabel": "Søg i resultatet efter rytter eller hold",
+    "searchPlaceholder": "Søg rytter eller hold",
+    "clearSearch": "Ryd søgning",
+    "myTeam": "Mit hold",
+    "matchCount": "Viser {shown} af {total}",
+    "noMatch": "Ingen rytter eller hold matcher søgningen."
   }
 }

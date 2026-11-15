@@ -23,6 +23,7 @@ import { resolveThresholds, DAY_MS } from "./boardNegotiationThresholds.js";
 import { MandateSignConflictError, signMandate } from "./boardMandateMeeting.js";
 import { isBoardMandateModelEnabled } from "./boardMandateFlag.js";
 import { MANDATE_OPENED_TITLE_CODE, isMandateSeasonEnded, notifyMandateOpened } from "./boardMandateEngine.js";
+import { isParkedTeam } from "./managerParking.js";
 
 /**
  * Cron-entry: tjek alle `proposed` mandater og send reminders / auto-sign
@@ -32,7 +33,7 @@ import { MANDATE_OPENED_TITLE_CODE, isMandateSeasonEnded, notifyMandateOpened } 
  * @param {object} args.supabase
  * @param {Function} args.notifyUser
  * @param {Date} [args.now]
- * @returns {Promise<{ mandates_checked: number, reminders_sent: number, auto_accepted: number, errors: number }>}
+ * @returns {Promise<{ mandates_checked: number, reminders_sent: number, auto_accepted: number, lapsed_ended_season: number, errors: number, parked_teams_skipped: number }>}
  */
 export async function processMandateAutoAcceptCron({
   supabase,
@@ -43,7 +44,8 @@ export async function processMandateAutoAcceptCron({
   if (!supabase?.from) throw new Error("Supabase client is required");
   if (typeof notifyUser !== "function") throw new Error("notifyUser is required");
 
-  const summary = { mandates_checked: 0, reminders_sent: 0, auto_accepted: 0, lapsed_ended_season: 0, errors: 0 };
+  // #8110 · parked_teams_skipped: parkerede hold med et åbent forslag, sprunget helt over.
+  const summary = { mandates_checked: 0, reminders_sent: 0, auto_accepted: 0, lapsed_ended_season: 0, errors: 0, parked_teams_skipped: 0 };
 
   // Kill-switch: samme fail-safe-disciplin som alle andre mandat-indgange.
   // Ingen isBetaTester-parameter her — cronen kører for HELE populationen og
@@ -57,16 +59,34 @@ export async function processMandateAutoAcceptCron({
   if (!proposedMandates?.length) return summary;
 
   const teamIds = [...new Set(proposedMandates.map((m) => m.team_id).filter(Boolean))];
-  const { data: teams, error: teamsError } = await supabase
+  const { data: fetchedTeams, error: teamsError } = await supabase
     .from("teams")
-    .select("id, user_id, name, team_dna_key")
+    // #8110 · `parked_at` SKAL med: isParkedTeam læser et manglende felt som
+    // "ikke parkeret", så uden kolonnen ville filteret nedenfor åbne igen.
+    .select("id, user_id, name, team_dna_key, parked_at")
     .in("id", teamIds);
   if (teamsError) throw teamsError;
-  const teamById = new Map((teams || []).map((t) => [t.id, t]));
+
+  // #8110 · Parkerede hold (#4592) er HELT ude af årsmødet: ingen påmindelse,
+  // ingen underskrift på holdets vegne, ingen åbnings-notits og intet udløb af
+  // forslaget. Ejer-beslutning 4/10 (#5902, A): bestyrelsen fryses, mens holdet
+  // er parkeret. Samme sandhed og filter som den ugentlige kørsel (#8068) og
+  // halvsæson-tjekket (#8103): managerParking.isParkedTeam på det aktuelle
+  // teams.parked_at. Forslaget står urørt, til holdet vender tilbage.
+  //
+  // Fail-closed: kan parkeringen ikke aflæses (feltet mangler i en række),
+  // fejler hele kørslen synligt FØR noget sendes eller underskrives.
+  if ((fetchedTeams || []).some((team) => team?.parked_at === undefined)) {
+    throw new Error("mandate auto-accept: teams.parked_at mangler i hold-opslaget, intet sendt (#8110 fail-closed)");
+  }
+  const teams = (fetchedTeams || []).filter((/** @type {{ parked_at?: string|null }} */ team) => !isParkedTeam(team));
+  summary.parked_teams_skipped = (fetchedTeams || []).length - teams.length;
+  // Et parkeret holds mandat finder intet hold her og springes over i løkken.
+  const teamById = new Map(teams.map((t) => [t.id, t]));
 
   const lastSeenByUserId = await loadLastSeenByUserId({
     supabase,
-    userIds: (teams || []).map((t) => t.user_id).filter(Boolean),
+    userIds: teams.map((t) => t.user_id).filter(Boolean),
   });
 
   // #6773 · Ét sæson-opslag pr. sæson pr. kørsel, ikke pr. mandat.

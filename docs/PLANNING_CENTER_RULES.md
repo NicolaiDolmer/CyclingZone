@@ -31,6 +31,8 @@ Planning Center er den flade hvor en manager beslutter **hvem der kører hvad, h
 | `PUT /races/selection/bulk` | Z1-matrixen — atomart, hele diffen i ét kald | samme limiter, ét kald |
 | `POST /races/:raceId/selection/auto` | auto-udfyld pr. løb | samme |
 | `POST /races/distribution/regenerate` · `/clear` | sæson-brede operationer | samme |
+| `POST /races/selection/auto/propose` | planlægningssidens "Lad assistenten udtage" over mange løb (#7535) — **læser kun**; samme regler som `/selection/auto`, egne valg bliver, forslaget gemmes via bulk | samme, ét kald |
+| `POST /races/withdrawals/bulk` | planlægningssidens "Afmeld" over mange løb (#7535) — atomart (én upsert), `dry_run` kontrollerer uden at skrive | samme, ét kald |
 
 **Bulk er atomart.** Enten går hele planen ind, eller ingen af den. Delvis succes findes ikke — spilleren må aldrig se halvdelen af sit arbejde gemt. Bulk-vejen orkestrerer kun; valideringen (binding, trupgrænse, tilgængelighed) er den samme som enkelt-endpointets.
 

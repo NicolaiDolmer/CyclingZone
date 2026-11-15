@@ -22,6 +22,14 @@
     {
       "cacheKeyPrefix": "authenticated_security_definer_function_executable_public_offered_intake_rider_ids_",
       "note": "offered_intake_rider_ids() — saet-udgaven af is_offered_intake_rider (#6341), kaldt EN gang pr. query fra 'Public read riders'-RLS-policyen. Skal vaere SECURITY DEFINER (academy_intake_owner_read begraenser authenticated til eget hold; en raa subquery ville laekke andre holds kandidater) og authenticated SKAL have EXECUTE, ellers fejler al indlogget laesning af riders med 42501. Returnerer kun rytter-id'er der allerede er skjult; ingen personhenfoerbare data. anon har IKKE EXECUTE."
+    },
+    {
+      "cacheKeyPrefix": "authenticated_security_definer_function_executable_public_training_history_runs_",
+      "note": "training_history_runs(uuid,date) (#6490, database/2026-11-15-6490-training-history-runs.sql) — read-only traeningshistorik for kalderens EGET hold. Skal vaere SECURITY DEFINER: kvitteringerne (training_rider_ticks) og datoregistret (training_date_work) har RLS uden policies, saa klienten ikke kan laese dem direkte. Ejerskabstjekket spejler RLS-politikken training_day_runs_select (teams.user_id = auth.uid(), ellers ingen raekker); service_role faar holdets raekker. anon har IKKE EXECUTE. Ingen skrivning. Forventet WARN efter apply."
+    },
+    {
+      "cacheKeyPrefix": "function_search_path_mutable_public_training_runs_from_ticks_6490_",
+      "note": "training_runs_from_ticks_6490(uuid[],date,date,boolean) (#6490, database/2026-11-15-6490-training-history-runs.sql) — UDEN SET search_path med vilje (Fable-dom 15/11, fund 3): en funktion med SET inlines aldrig, og inlining gav maalt ca. 150 ms mindre svartid for traeningssiden (lokal PG, PR #8174). Sikker uden: LANGUAGE sql STABLE SECURITY INVOKER (kalderens egne rettigheder), kun service_role har EXECUTE (REVOKE fra PUBLIC/anon/authenticated), ingen skrivning, og kroppen navngiver alle tabeller og funktioner med skema (public./pg_catalog.; prooeven 'rights and shape' i trainingHistoryRuns6490.integration.test.js haandhaever det). Den eneste klient-vej, training_history_runs, er SECURITY DEFINER med SET search_path=public,pg_temp, saa den inlinede krop koerer med fast search_path. Forventet WARN efter apply."
     }
   ]
 }

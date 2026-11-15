@@ -3,6 +3,7 @@
 // referencer (CORS/fulfill bliver i fixtures.js). Datakilden er seedData.js, så
 // begge konsumenter serverer præcis det samme.
 import { previewPlannerBoard } from "./plannerMock.js";
+import { isWorkbenchPreview, PLANNING_SEASON_SEED, PLANNING_STAGE_PROFILES, PLANNING_RIDER_ROWS, PLANNING_SEASON_LOAD, planningSelectionSeed } from "./planningWorkbenchMock.ts"; // #7535
 import { previewPotentialEstimateEnabled, previewProjection, previewReport } from "./potentialEstimateMock.ts";
 import { raceHasReportableResults } from "../lib/raceResultVisibility.js";
 import { FORUM_CATEGORY_ORDER } from "../components/forum/forumCategories.js";
@@ -225,7 +226,7 @@ export function restRows(table, requestUrl = "") {
       const idIn = decodeURIComponent(url.search).match(/[?&]id=in\.\(([^)]*)\)/);
       if (idIn) {
         const ids = new Set(idIn[1].split(",").map(s => s.trim().replace(/^"|"$/g, "")).filter(Boolean));
-        return RIDERS.filter(rider => ids.has(rider.id));
+        return [...RIDERS, ...PLANNING_RIDER_ROWS].filter(rider => ids.has(rider.id)); // #7535: planlaegningssidens ryttere
       }
       if (url.search.includes("team_id=eq.team-e2e")) {
         return RIDERS.filter(rider => rider.team_id === TEST_TEAM.id);
@@ -357,7 +358,13 @@ export function restRows(table, requestUrl = "") {
       const idMatch = url.search.match(/race_id=eq\.([^&]+)/);
       if (idMatch) {
         const id = decodeURIComponent(idMatch[1]);
-        return SEED_STAGE_PROFILES.filter(p => p.race_id === id);
+        return [...SEED_STAGE_PROFILES, ...PLANNING_STAGE_PROFILES].filter(p => p.race_id === id);
+      }
+      // #7535: planlaegningssiden henter etapetyperne for flere loeb i ét kald (race_id=in.(a,b,c)).
+      const profileIn = decodeURIComponent(url.search).match(/race_id=in\.\(([^)]*)\)/);
+      if (profileIn) {
+        const ids = new Set(profileIn[1].split(",").map(s => s.trim().replace(/^"|"$/g, "")));
+        return [...SEED_STAGE_PROFILES, ...PLANNING_STAGE_PROFILES].filter(p => ids.has(p.race_id));
       }
       return SEED_STAGE_PROFILES;
     }
@@ -999,7 +1006,8 @@ export function apiResponse(pathname, search = "") {
   if (pathname.endsWith("/api/rankings/race-count")) {
     return { count: SEED_TEAM_RACE_POINTS_MV.filter(row => row.team_id === rankingQuery.get("team_id")).length };
   }
-  if (pathname.endsWith("/api/races/selection/season")) return SEASON_MATRIX_SEED;
+  // #7535: planlaegningssiden (/planning/workbench) faar sit eget saesonseed; alt andet er uaendret.
+  if (pathname.endsWith("/api/races/selection/season")) return isWorkbenchPreview() ? PLANNING_SEASON_SEED : SEASON_MATRIX_SEED;
 
   // Før de generiske endsWith-grene: managerprofilen bærer et id i pathen.
   const managerMatch = pathname.match(/\/api\/managers\/([^/]+)$/);
@@ -1501,10 +1509,13 @@ export function apiResponse(pathname, search = "") {
     return seasonNumber === String(SEED_CALENDAR_S2.season.number) ? SEED_CALENDAR_S2 : SEED_CALENDAR;
   }
   if (pathname.endsWith("/api/races/distribution/browse")) return SEED_BROWSE;
-  if (pathname.endsWith("/api/races/distribution")) return SEED_DISTRIBUTION;
+  if (pathname.endsWith("/api/races/distribution")) return isWorkbenchPreview() ? { ...SEED_DISTRIBUTION, seasonLoadByRider: PLANNING_SEASON_LOAD } : SEED_DISTRIBUTION; // #7535
   if (pathname.endsWith("/api/races/strategy")) return SEED_STRATEGY;
   // S5: udtagelses-panel (RaceSelectionPanel + HunterExplainer). /api/races/:id/selection.
-  if (/\/api\/races\/[^/]+\/selection$/.test(pathname)) return SEED_SELECTION;
+  if (/\/api\/races\/[^/]+\/selection$/.test(pathname)) {
+    const planning = isWorkbenchPreview() ? planningSelectionSeed(pathname.split("/").slice(-2)[0]) : null; // #7535
+    return planning ?? SEED_SELECTION;
+  }
   // #6993: race-done-1's loebslog + historie (etapesidens "How it unfolded" og vejret).
   // Kun det loeb; andre loeb har ingen log i preview, som foer.
   if (/\/api\/races\/race-done-1\/timeline$/.test(pathname) && new URLSearchParams(search).get("stage") === "1") {

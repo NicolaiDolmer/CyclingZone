@@ -4,11 +4,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   orderWithoutJerseyHunt,
+  setLegTask,
   setRiderPlan,
   stagePlanOutcomes,
   stagePlanRecap,
   stagePlanRouteFromRaw,
   taskOptions,
+  validateStagePlanLegs,
   withJerseyHunt7855,
   type StagePlanLeg,
 } from "./StagePlanModel.ts";
@@ -55,12 +57,25 @@ test("#7855 valg: slukket findes opgaverne ikke; taendt kun hvor straekningen ha
   const off = taskOptions([{ task: "stay_sheltered" }], 0, "helper", OFF);
   assert.ok(!off.includes("hunt_points") && !off.includes("hunt_kom"));
   const on = taskOptions([{ task: "stay_sheltered" }], 0, "helper", ON);
-  assert.ok(on.includes("hunt_points") && on.includes("hunt_kom"));
+  // #7855 valg 1 (ejer 13/11, "Kun sammen med udbrud"): "Hent bjergpoint" tilbydes ikke som eget led.
+  assert.ok(on.includes("hunt_points") && !on.includes("hunt_kom"));
   // Efter Col C er spurten passeret og der er ingen stigning tilbage.
   const late = taskOptions([{ task: "stay_sheltered" }, { task: "tempo", from: { at: "kom", kom_index: 1 } }], 1, "helper", ON);
   assert.ok(!late.includes("hunt_points") && !late.includes("hunt_kom"));
   // Kaptajnen koerer for klassementet.
   assert.ok(!taskOptions([{ task: "stay_sheltered" }], 0, "captain", ON).some((t) => t === "hunt_points" || t === "hunt_kom"));
+});
+
+test("#7855 Codex-review: skiftes udbrudsleddet med jagt til en anden opgave, foelger jagten ikke med", () => {
+  const saved: StagePlanLeg[] = [{ task: "breakaway", hunt: "hunt_points" }];
+  assert.equal(validateStagePlanLegs(saved, "helper", ON), null);
+  const offered = taskOptions(saved, 0, "helper", ON);
+  assert.ok(offered.includes("tempo"));
+  const next = setLegTask(saved, 0, "tempo", "helper", ON);
+  assert.deepEqual(next, [{ task: "tempo" }]);
+  assert.equal(validateStagePlanLegs(next, "helper", ON), null);
+  // Tilbage til udbrud: jagten er vaek (spilleren vaelger den selv igen).
+  assert.deepEqual(setLegTask(next, 0, "breakaway", "helper", ON), [{ task: "breakaway" }]);
 });
 
 const legs: StagePlanLeg[] = [{ task: "hunt_kom" }, { task: "ride_in", from: { at: "kom", kom_index: 1 } }];

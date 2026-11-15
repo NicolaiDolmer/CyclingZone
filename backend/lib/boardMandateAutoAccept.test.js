@@ -8,6 +8,7 @@ import { processMandateAutoAcceptCron } from "./boardMandateAutoAccept.js";
 // alt — samme tabel-sæt som boardMandateMeeting.test.js's mock. ────────────
 function makeCronSupabase({
   flagValue = "on", mandates = [], teams = [], users = [], notifications = [], boardMembers = [], seasons = [],
+  omitParkedAt = false,
 } = {}) {
   const state = { mandates: [...mandates], events: [], boardProfiles: [], notificationQueries: [], notifications: [...notifications], stampUpdates: [] };
 
@@ -65,7 +66,14 @@ function makeCronSupabase({
           },
         };
       }
-      if (table === "teams") return { select: () => selectChain(teams) };
+      // #8110 · Postgres leverer altid parked_at; et fixture uden feltet får null.
+      // omitParkedAt simulerer et opslag, hvor kolonnen ikke kom med.
+      if (table === "teams") {
+        const rows = omitParkedAt
+          ? teams.map(({ parked_at: _omit, ...rest }) => rest)
+          : teams.map((t) => ({ parked_at: null, ...t }));
+        return { select: () => selectChain(rows) };
+      }
       if (table === "users") return { select: () => selectChain(users) };
       if (table === "teams_single") return null;
       // Tabeller signMandate/buildBoardRoomPayload rører ved fuld underskrift —
@@ -147,7 +155,7 @@ test("processMandateAutoAcceptCron: kill-switch off → no-op, ingen queries udo
   const supabase = makeCronSupabase({ flagValue: "off" });
   const notified = [];
   const result = await processMandateAutoAcceptCron({ supabase, notifyUser: makeNotifyUser(notified) });
-  assert.deepEqual(result, { mandates_checked: 0, reminders_sent: 0, auto_accepted: 0, lapsed_ended_season: 0, errors: 0 });
+  assert.deepEqual(result, { mandates_checked: 0, reminders_sent: 0, auto_accepted: 0, lapsed_ended_season: 0, errors: 0, parked_teams_skipped: 0 });
   assert.equal(notified.length, 0);
 });
 
@@ -298,7 +306,7 @@ test("#4839 processMandateAutoAcceptCron: off → stadig no-op, også som motor-
   });
   const notified = [];
   const result = await processMandateAutoAcceptCron({ supabase, notifyUser: makeNotifyUser(notified) });
-  assert.deepEqual(result, { mandates_checked: 0, reminders_sent: 0, auto_accepted: 0, lapsed_ended_season: 0, errors: 0 });
+  assert.deepEqual(result, { mandates_checked: 0, reminders_sent: 0, auto_accepted: 0, lapsed_ended_season: 0, errors: 0, parked_teams_skipped: 0 });
   assert.equal(supabase._state.mandates[0].status, "proposed");
 });
 
@@ -640,4 +648,92 @@ test("#6946 en anden fejl end manglende stempel-kolonne kastes stadig", async ()
     return { ...api, select: () => failed };
   };
   await assert.rejects(() => processMandateAutoAcceptCron({ supabase, notifyUser: async () => ({ delivered: true }), now }));
+});
+
+// ── #8110 · Bestyrelsen er frosset for parkerede hold (#5902, A) ──────────────
+// Prod siden 28/10: parkerede hold fik "Last chance", "The board signed your
+// annual mandate for you" og "The board is waiting for your annual mandate".
+// Samme filter som #8068/#8103: managerParking.isParkedTeam på teams.parked_at.
+
+const PARKED_AT = "2026-10-25T03:00:00Z";
+
+function parkedMandateFixture({ days, extraTeams = [], extraMandates = [], omitParkedAt = false }) {
+  const openedAt = new Date("2026-10-28T10:00:00Z");
+  return {
+    now: new Date(openedAt.getTime() + days * 24 * 60 * 60 * 1000 + 1000),
+    supabase: makeCronSupabase({
+      flagValue: "on",
+      mandates: [
+        {
+          id: "m-parked", team_id: "t-parked", season_number: 6, status: "proposed", focus: "balanced",
+          goals: [{ type: "top_n_finish", target: 4, satisfaction_bonus: 10, satisfaction_penalty: 6 }],
+          adjustments_allowed: 2, proposed_at: openedAt.toISOString(), auto_accept_deadline: null,
+          source: { negotiation_power: { counteroffer_generosity: 1.0 } },
+        },
+        ...extraMandates.map((m) => ({ ...m, proposed_at: openedAt.toISOString() })),
+      ],
+      teams: [{ id: "t-parked", user_id: "u-parked", name: "Hold A", team_dna_key: null, parked_at: PARKED_AT }, ...extraTeams],
+      users: [{ id: "u-parked", last_seen: null }, ...extraTeams.map((t) => ({ id: t.user_id, last_seen: null }))],
+      omitParkedAt,
+    }),
+  };
+}
+
+test("#8110 parkeret hold, dag 2: ingen 'The board is waiting for your annual mandate'", async () => {
+  const { supabase, now } = parkedMandateFixture({ days: 2 });
+  const notified = [];
+  const result = await processMandateAutoAcceptCron({ supabase, notifyUser: makeNotifyUser(notified), now });
+  assert.equal(notified.length, 0, "et parkeret hold får ingen T-3-påmindelse");
+  assert.equal(result.reminders_sent, 0);
+  assert.equal(result.parked_teams_skipped, 1);
+  assert.equal(supabase._state.stampUpdates.length, 0, "intet stempel på et parkeret holds mandat");
+});
+
+test("#8110 parkeret hold, dag 4: ingen 'Last chance: sign your annual mandate'", async () => {
+  const { supabase, now } = parkedMandateFixture({ days: 4 });
+  const notified = [];
+  const result = await processMandateAutoAcceptCron({ supabase, notifyUser: makeNotifyUser(notified), now });
+  assert.equal(notified.length, 0, "et parkeret hold får ingen kritisk T-1-påmindelse");
+  assert.equal(result.reminders_sent, 0);
+  assert.equal(result.parked_teams_skipped, 1);
+});
+
+test("#8110 parkeret hold, dag 5: bestyrelsen underskriver IKKE, og der sendes ingen besked", async () => {
+  const { supabase, now } = parkedMandateFixture({ days: 5 });
+  const notified = [];
+  const result = await processMandateAutoAcceptCron({ supabase, notifyUser: makeNotifyUser(notified), now });
+  assert.equal(result.auto_accepted, 0);
+  assert.equal(notified.length, 0, "ingen 'The board signed your annual mandate for you'");
+  assert.equal(supabase._state.mandates[0].status, "proposed", "forslaget står urørt, til holdet vender tilbage");
+  assert.equal(supabase._state.events.length, 0, "ingen bestyrelses-hændelse fra en underskrift");
+});
+
+test("#8110 et aktivt hold i samme kørsel får sin påmindelse som før", async () => {
+  const { supabase, now } = parkedMandateFixture({
+    days: 4,
+    extraTeams: [{ id: "t-active", user_id: "u-active", name: "Hold B", team_dna_key: null, parked_at: null }],
+    extraMandates: [{ id: "m-active", team_id: "t-active", season_number: 6, status: "proposed", auto_accept_deadline: null }],
+  });
+  const notified = [];
+  const result = await processMandateAutoAcceptCron({ supabase, notifyUser: makeNotifyUser(notified), now });
+  assert.deepEqual(notified.map((n) => n.userId), ["u-active"]);
+  assert.equal(notified[0].metadata.titleCode, "notif.boardMandateT1Reminder.title");
+  assert.equal(result.reminders_sent, 1);
+  assert.equal(result.parked_teams_skipped, 1);
+});
+
+test("#8110 kan parkeringen ikke aflæses (parked_at mangler i opslaget), fejler kørslen og sender intet", async () => {
+  const { supabase, now } = parkedMandateFixture({
+    days: 5,
+    omitParkedAt: true,
+    extraTeams: [{ id: "t-active", user_id: "u-active", name: "Hold B", team_dna_key: null }],
+    extraMandates: [{ id: "m-active", team_id: "t-active", season_number: 6, status: "proposed", auto_accept_deadline: null }],
+  });
+  const notified = [];
+  await assert.rejects(
+    processMandateAutoAcceptCron({ supabase, notifyUser: makeNotifyUser(notified), now }),
+    /parked_at/
+  );
+  assert.equal(notified.length, 0, "ingen besked, når parkeringen ikke kan aflæses");
+  assert.ok(supabase._state.mandates.every((m) => m.status === "proposed"), "intet underskrevet");
 });

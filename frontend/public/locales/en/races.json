@@ -1,18 +1,75 @@
 {
+  "racePageV6": {
+    "tab": {
+      "results": "Results",
+      "stage": "Stage",
+      "story": "Story",
+      "standings": "Standings",
+      "tactics": "Tactics",
+      "team": "Team"
+    },
+    "hero": {
+      "stageLocks": "Stage {number} locks at {time} · {countdown}",
+      "locks": "Locks at {time} · {countdown}",
+      "notScheduled": "Stage {number} has no start time yet"
+    },
+    "route": {
+      "aria": "Stage route",
+      "km": "{km} km",
+      "gain": "{gain} m climbing",
+      "climbs": "{count, plural, one {# climb} other {# climbs}}",
+      "hide": "Hide route",
+      "show": "Show route",
+      "saved": "Saved",
+      "savedHere": "Saved on this device",
+      "notSaved": "Not saved",
+      "profileTitle": "The route"
+    },
+    "yourDay": {
+      "title": "Your day"
+    },
+    "results": {
+      "notRiddenTitle": "Get ready for stage {number}",
+      "notRiddenHint": "Results show here once the stage has been ridden.",
+      "openStage": "See the stage"
+    },
+    "tacticsAfter": {
+      "title": "Your plan against what happened",
+      "metaStage": "Stage {number}",
+      "metaRace": "The race",
+      "intro": "Each step of your plan next to what the stage record shows. A step with nothing in the record is marked not seen. That does not mean it failed.",
+      "colPlan": "Your plan",
+      "colRecord": "What the record shows",
+      "step": "Step {number}",
+      "km": "km {km}",
+      "noRiders": "None of your riders rode this stage.",
+      "noOrders": "Your plan for this stage could not be loaded. Try again later.",
+      "mark": {
+        "notSeen": "Not seen in the record",
+        "notReached": "Not reached"
+      },
+      "line": {
+        "attackFoot": "Attacks at the foot of the last climb",
+        "attackFootNamed": "Attacks at the foot of {climb}",
+        "attackHeld": "Holds the attack to the top",
+        "attackCracked": "Runs empty after the attack and is dropped"
+      }
+    }
+  },
   "stagePlanReady": {
     "gc": {
       "name": "Ride for GC",
-      "description": "Everyone rides for your GC leader and keeps him out of trouble.",
+      "description": "The domestiques ride for your GC leader. A shared captain rides the same plan, a free role rides his own race.",
       "named": "Ride for GC with {name}"
     },
     "stage": {
       "name": "Stage win",
-      "description": "The team works for the rider who suits today's route best.",
+      "description": "The domestiques work for the rider who suits today's route best.",
       "named": "Stage win for {name}"
     },
     "sprint": {
       "name": "Sprint",
-      "description": "The team saves him for the finish, with a train in the last km.",
+      "description": "The team saves him for the finish, with a train in the last 10 km.",
       "named": "Sprint for {name}"
     },
     "break": {
@@ -21,7 +78,7 @@
     },
     "save": {
       "name": "Save the legs",
-      "description": "Everyone rides in. Lowest fatigue tonight."
+      "description": "Everyone rides in. The lightest of the five plans."
     },
     "price": {
       "easy": "Easy",
@@ -438,7 +495,8 @@
     "tabSelection": "Team selection",
     "tabForm": "Form plan",
     "tabStrategy": "Strategy",
-    "tabCalendar": "Calendar"
+    "tabCalendar": "Calendar",
+    "tryWorkbench": "Try the new planning page"
   },
   "seasonView": {
     "toggleSeason": "Season",
@@ -697,17 +755,6 @@
     },
     "hunterExplainer": {
       "dayLine": "Your hunter tries to get into the morning breakaway. Whether it stays away is decided by the peloton on the day.",
-      "outlook": {
-        "about": "Engine forecast: the breakaway stays away about {k} in {n} times.",
-        "under": "Engine forecast: the breakaway stays away less than {k} in {n} times.",
-        "over": "Engine forecast: the breakaway stays away more than {k} in {n} times.",
-        "stage": "Stage {stage}",
-        "reason": {
-          "nobodyChases": "Few teams have a reason to chase it.",
-          "fewChase": "One or two teams usually have a reason to chase it.",
-          "manyChase": "Several teams usually have a reason to chase it."
-        }
-      },
       "candidatesHint": "Ranked by aggression: the urge to attack and commit to a move.",
       "noCandidates": "Pick riders for this race to see your best hunters.",
       "aggression": "Aggression",
@@ -1093,6 +1140,7 @@
     "line": "Default {role}. Today: {today}.",
     "riderAbandoned": "Out of the race",
     "copyToStage": "Copy to stage {number}",
+    "copyToStages": "Copy to stages {numbers}",
     "save": "Save stage {number}",
     "saveRaceDay": "Save race day",
     "saving": "Saving…",
@@ -1723,6 +1771,10 @@
         "all_out_cracked": "{rider} goes all out and runs empty on the last climb.",
         "attack_gain": "{rider} attacks on the last climb and gains time.",
         "attack_cracked": "{rider} attacks and runs empty on the last climb.",
+        "climb_attack_start": "{rider} attacks at the foot of the last climb.",
+        "climb_attack_start_named": "{rider} attacks at the foot of {climb}.",
+        "climb_attack_held": "{rider} holds the attack to the top and has gained time on the climb.",
+        "climb_attack_cracked": "{rider} has run empty after the attack and is dropped.",
         "bad_day_fatigue": "{rider} had a bad day. The hard days before caught up with him.",
         "bad_day_form": "{rider} had a bad day. He was short of form.",
         "bad_day_illness": "{rider} had a bad day. He was feeling ill.",

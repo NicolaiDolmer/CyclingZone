@@ -1,10 +1,11 @@
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
-import { Card, Section, SectionHeader, SectionAction, StatusBadge, ClockIcon, TrophyIcon, SkeletonLines } from "./ui/index.js";
+import { Card, Section, SectionHeader, SectionAction, StatusBadge, ClockIcon, TrophyIcon, Skeleton, SkeletonLines } from "./ui/index.js";
 import TerrainTypeGlyph from "./race/TerrainTypeGlyph.jsx";
 import StageProfileGraph from "./race/StageProfileGraph.jsx";
 import { hasRouteData } from "../lib/stageRouteProfile.js";
 import { formatLocalTime } from "../lib/intl.js";
+import { secondaryLineKind } from "../lib/dashboardTodayStages.js";
 
 // #3915 — dashboardets "Today's stages"-strip. SELVSTÆNDIG komponentfil,
 // selv-hentende (kun teamId som prop) med vilje — samme mønster som
@@ -58,6 +59,8 @@ function TodayStageCard({ card, t }) {
   // farvede streg-ikon som resten af appen), som er ærligt en
   // kategori-glyf og aldrig har påstået at være målt elevation.
   const hasRoute = hasRouteData(profile);
+  // #8097: mangler data, vises ingen linje (aldrig en paastand om stillingen).
+  const secondaryLine = secondaryLineKind(card);
   const raceHref = `/races/${raceId}${stageNumber ? `?stage=${stageNumber}` : ""}`;
   const stageLabel = isStageRace
     ? t("races:raceCentre.stageLabel", { number: stageNumber, total: totalStages })
@@ -101,7 +104,7 @@ function TodayStageCard({ card, t }) {
             </span>
           )}
           {state === "finished" && (
-            winnerName ? (
+            card.enriching ? <Skeleton className="h-3 w-3/4" /> : card.detailsUnavailable ? null : winnerName ? (
               <>
                 <TrophyIcon size={13} aria-hidden="true" className="shrink-0 text-cz-3" />
                 <span className="truncate">{t("dashboard:todayStages.winner", { name: winnerName })}</span>
@@ -114,11 +117,10 @@ function TodayStageCard({ card, t }) {
 
         {/* Sekundær linje: samlet placering (etapeløb) eller antal tilmeldte (endagsløb). */}
         <p className="mt-2 font-data text-2xs uppercase tracking-[.08em] tabular-nums text-cz-3">
-          {isStageRace
-            ? (standing
-              ? t("dashboard:todayStages.standing", { rank: standing.rank, total: standing.total })
-              : t("dashboard:todayStages.standingPending"))
-            : t("dashboard:todayStages.entries", { count: entryCount ?? 0 })}
+          {secondaryLine === "skeleton" && <Skeleton className="h-3 w-3/4" />}
+          {secondaryLine === "standing" && t("dashboard:todayStages.standing", { rank: standing.rank, total: standing.total })}
+          {secondaryLine === "standingPending" && t("dashboard:todayStages.standingPending")}
+          {secondaryLine === "entries" && t("dashboard:todayStages.entries", { count: entryCount ?? 0 })}
         </p>
       </Card>
     </Link>

@@ -1,0 +1,30 @@
+<!doctype html><html lang="da"><head><meta charset="utf-8"><style>
+body{margin:0;padding:28px;background:#fff;color:#16181d;font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;width:1100px}
+h1{font-size:18px;margin:0 0 6px;font-weight:650}
+.lead{margin:0 0 18px;color:#4b5160;max-width:1040px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.col{border:1px solid #d9dce3;border-radius:5px;padding:16px 18px}
+h2{font-size:15px;margin:0;font-weight:650}
+.sub{margin:2px 0 14px;color:#6a7080;font-size:12.5px}
+.step{margin-bottom:16px}
+.steplabel{font-size:12px;color:#6a7080;margin-bottom:4px}
+.select{border:1px solid #c9cdd6;border-radius:5px;padding:6px 10px;width:300px;display:flex;justify-content:space-between}
+.chev{color:#8a90a0}
+.menu{list-style:none;margin:4px 0 0;padding:4px 0;border:1px solid #c9cdd6;border-radius:5px;width:320px}
+.menu li{padding:4px 10px;display:flex;justify-content:space-between;align-items:center}
+.menu li.gone{background:#fdecec;color:#9b1c1c;outline:2px solid #d33;outline-offset:-2px}
+.menu li.gone .lbl{text-decoration:line-through}
+.tag{font-size:11px;text-decoration:none;display:inline-block;background:#d33;color:#fff;border-radius:3px;padding:0 6px;margin-left:8px}
+.after .menu{border-color:#2f7d4f}
+.note{margin-top:18px;padding:10px 14px;border:1px solid #e3c55a;background:#fff8e1;border-radius:5px;font-size:13px}
+.note b{font-weight:650}
+</style></head><body>
+<h1>#7855 valg 1 (ejer 13/11, "Kun sammen med udbrud"): etapeplanens valgliste, før og efter</h1>
+<p class="lead">Lokal efterligning, ikke et skærmbillede fra prod. Hjælper på en bjergetape med Col B, en indlagt spurt og Col C; kontakten <code>jersey_hunt_7855</code> slået til (i prod er den slukket). Listerne er beregnet med <code>StagePlanModel.taskOptions</code> fra main og fra grenen, med de danske tekster fra <code>races.json</code>. Ingen ny tekst.</p>
+<div class="grid"><section class="col"><h2>Før (main)</h2><p class="sub">Hent bjergpoint kan vælges som eget led, også fra feltet.</p>
+  <div class="step"><div class="steplabel">Trin 1 · fra start</div><div class="select">Bliv i læ <span class="chev">▾</span></div><ul class="menu"><li class=""><span class="lbl">Gå i udbrud</span></li><li class=""><span class="lbl">Bliv i læ</span></li><li class=""><span class="lbl">Hold lederen fremme</span></li><li class=""><span class="lbl">Kør tempo</span></li><li class=""><span class="lbl">Sprinttog</span></li><li class=""><span class="lbl">Grupetto</span></li><li class=""><span class="lbl">Kør roligt i mål</span></li><li class=""><span class="lbl">Hent point i spurterne · Hård</span></li><li class="gone"><span class="lbl">Hent bjergpoint · Hård</span><span class="tag">fjernes</span></li></ul></div>
+  <div class="step"><div class="steplabel">Trin 2 · fra toppen af Col B</div><div class="select">Kør tempo <span class="chev">▾</span></div><ul class="menu"><li class=""><span class="lbl">Hold lederen fremme</span></li><li class=""><span class="lbl">Kør tempo</span></li><li class=""><span class="lbl">Sprinttog</span></li><li class=""><span class="lbl">Grupetto</span></li><li class=""><span class="lbl">Kør roligt i mål</span></li><li class=""><span class="lbl">Hent point i spurterne · Hård</span></li><li class="gone"><span class="lbl">Hent bjergpoint · Hård</span><span class="tag">fjernes</span></li></ul></div></section><div class="after"><section class="col"><h2>Efter (denne PR)</h2><p class="sub">Hent bjergpoint er væk fra listen. Hent point i spurterne er uændret.</p>
+  <div class="step"><div class="steplabel">Trin 1 · fra start</div><div class="select">Bliv i læ <span class="chev">▾</span></div><ul class="menu"><li class=""><span class="lbl">Gå i udbrud</span></li><li class=""><span class="lbl">Bliv i læ</span></li><li class=""><span class="lbl">Hold lederen fremme</span></li><li class=""><span class="lbl">Kør tempo</span></li><li class=""><span class="lbl">Sprinttog</span></li><li class=""><span class="lbl">Grupetto</span></li><li class=""><span class="lbl">Kør roligt i mål</span></li><li class=""><span class="lbl">Hent point i spurterne · Hård</span></li></ul></div>
+  <div class="step"><div class="steplabel">Trin 2 · fra toppen af Col B</div><div class="select">Kør tempo <span class="chev">▾</span></div><ul class="menu"><li class=""><span class="lbl">Hold lederen fremme</span></li><li class=""><span class="lbl">Kør tempo</span></li><li class=""><span class="lbl">Sprinttog</span></li><li class=""><span class="lbl">Grupetto</span></li><li class=""><span class="lbl">Kør roligt i mål</span></li><li class=""><span class="lbl">Hent point i spurterne · Hård</span></li></ul></div></section></div></div>
+<div class="note"><b>Åbent for ejeren:</b> valget "Gå i udbrud + Hent bjergpoint" (jagten på udbrudsleddet) findes i reglerne, men har ingen flade endnu. Navnet på valget er ny spillertekst og kræver ejerens ordlyd, så indtil da kan bjergjagt ikke vælges på skærmen.</div>
+</body></html>

@@ -93,6 +93,7 @@ function context(supabase, extra = {}) {
     buildTypePrognosisBands: legacy("buildTypePrognosisBands"),
     buildTypeCeilingBands: legacy("buildTypeCeilingBands"),
     projectCeilingBand: legacy("projectCeilingBand"),
+    loadEstimateDevelopmentXp: legacy("loadEstimateDevelopmentXp"), // #6110 F1
     ...extra,
   };
 }
@@ -120,6 +121,7 @@ const legacyEstimates = {
   buildScoutEstimate: () => ({ lo: 3, hi: 4, level: 2 }),
   buildTypePrognosisBands: () => [],
   displayPotentialBand: () => null,
+  loadEstimateDevelopmentXp: async () => null, // #6110 F1: XP-modellen slukket
 };
 
 const touchedEstimates = (supabase) => supabase.reads.filter((table) => ESTIMATE_TABLES.includes(table));

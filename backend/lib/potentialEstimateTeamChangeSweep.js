@@ -31,14 +31,18 @@ export const TEAM_CHANGE_LOOKBACK_HOURS = 6;
  *   changed?: number, kept?: number, failedTeams?: number, firstError?: string }>}
  */
 export async function runPotentialEstimateTeamChangeSweep({ supabase, now = new Date(), lookbackHours = TEAM_CHANGE_LOOKBACK_HOURS }) {
-  const config = await loadEstimateWriteConfig(supabase);
+  const config = await loadEstimateWriteConfig(supabase, { now });
   if (!config.enabled) return { ran: false, skipped: config.reason };
 
   const since = new Date(now.getTime() - lookbackHours * 3600 * 1000).toISOString();
   // `gte 1` frem for "not null": talent_ceiling har CHECK 1-99, og NULL falder fra.
+  // Under XP-modellen (#7684) regner writeren det sande tal selv (forventet
+  // topniveau), så ryttere uden talent_ceiling må ikke falde fra.
   // schema-columns-ok: talent_ceiling kommer fra 2026-11-04-6110-potential-estimates.sql, snapshottet er ældre
-  const moved = await fetchAllRows(() => supabase
-    .from("riders").select(ESTIMATE_RIDER_COLUMNS).gte("acquired_at", since).gte("talent_ceiling", 1).order("id"));
+  const moved = await fetchAllRows(() => {
+    const query = supabase.from("riders").select(ESTIMATE_RIDER_COLUMNS).gte("acquired_at", since);
+    return (config.developmentXp ? query : query.gte("talent_ceiling", 1)).order("id");
+  });
   const ridersByTeam = new Map();
   for (const rider of moved) {
     if (!rider.team_id) continue;

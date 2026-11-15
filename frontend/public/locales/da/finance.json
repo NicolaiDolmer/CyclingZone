@@ -45,7 +45,14 @@
     "label": "Balance",
     "division": "Division {division}",
     "available": "{value} CZ$ tilgængelig",
-    "lockedInBids": "{value} CZ$ låst i bud"
+    "lockedInBids": "{value} CZ$ låst i bud",
+    "lockedSales": "+{value} CZ$ låst"
+  },
+  "lockedSalesBox": {
+    "heading": "Låst til holdskifte",
+    "payout": "Udbetales, når rytteren skifter hold",
+    "endsIn": "{count, plural, one {slutter om # dag} other {slutter om # dage}}",
+    "endsToday": "slutter i dag"
   },
   "debt": {
     "label": "Total gæld",

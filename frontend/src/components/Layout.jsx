@@ -6,6 +6,7 @@ import { startPresenceHeartbeat, readOnlineCountFromPresence } from "../lib/pres
 import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej (afløser den lokale expireSessionIfRejected, se #5233 fund 2)
 import { subscribeAuthedChannel } from "../lib/realtimeChannel";
 import { formatNumber } from "../lib/intl";
+import { LockedSalesLine, LOCKED_SALES_REFRESH_EVENT } from "./finance/LockedSaleEscrows.tsx"; // #6181
 import { ACTIVE_SURVEY_SLUG } from "../lib/survey.js"; // #4943
 import SetupWizardModal from "./SetupWizardModal";
 import { lazyWithRetry } from "../lib/lazyWithRetry.js";
@@ -38,6 +39,7 @@ import {
 import {
   isRoadmapUnread, readLastSeenRoadmap, latestRoadmapCreatedAt,
 } from "../lib/roadmapUnread.ts"; // #5673: samme prik-recipe som patch notes
+import { syncSeenMarkers } from "../lib/seenMarkers6515.ts"; // #6515: prikkerne foelger brugeren
 import ProBadge from "./ProBadge";
 import { useSubscription } from "../lib/useSubscription";
 import { getAttributionForBackend, sanitizeAttributionForBackend } from "../lib/attribution";
@@ -409,6 +411,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
           <p className="text-cz-accent font-mono font-bold text-sm leading-tight" title={t("sidebar.balanceTooltip")}>
             {formatNumber(balance)} CZ$
           </p>
+          <LockedSalesLine refreshKey={balance} className="text-cz-sidebar-2 text-3xs mt-0.5" />
           {team?.division != null && (
             <p className="text-cz-sidebar-3 text-3xs mt-0.5" title={t("sidebar.divisionTooltip")}>{t("sidebar.division", { division: team.division })}</p>
           )}
@@ -530,6 +533,7 @@ export default function Layout() {
   // stedet for den statiske patch-notes-meta.json.
   const [roadmapLatestDate, setRoadmapLatestDate]       = useState(null);
   const [roadmapUnread, setRoadmapUnread]               = useState(false);
+  const [seenSync, setSeenSync]                         = useState(0); // #6515: bumpes naar brugerens markoerer er flettet ind
   // #4118/#3451: gul prik ved "Forum" i navigationen — samme prik-recipe som
   // Patch Notes, men serverdrevet (forumUnread kommer fra
   // GET /api/forum/unread-status, ikke en lokal dato-sammenligning).
@@ -759,7 +763,9 @@ export default function Layout() {
     // tomt tilbage midt i auth-init.
     return subscribeAuthedChannel("layout-notifs-v2", channel =>
       channel.on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${session.user.id}` },
-        async () => {
+        async (payload) => {
+          // #6181: et laast salg eller en refusion giver en NY besked, ikke en ny saldo. "Markeret som laest" aendrer intet laast.
+          if (payload?.eventType === "INSERT") window.dispatchEvent(new Event(LOCKED_SALES_REFRESH_EVENT));
           setUnread(await fetchUnreadCount(session.user.id));
           const { data: t } = await supabase.from("teams").select("balance").eq("user_id", session.user.id).maybeSingle();
           if (t) setBalance(t.balance);
@@ -837,7 +843,15 @@ export default function Layout() {
     } else {
       setPatchNotesUnread(isPatchNotesUnread(patchNotesLatestDate, readLastSeenPatchNotes()));
     }
-  }, [patchNotesLatestDate, location.pathname]);
+  }, [patchNotesLatestDate, location.pathname, seenSync]);
+
+  // #6515: hent brugerens "sidst set" fra serveren (venter aldrig; fejl = lokal kopi som foer).
+  useEffect(() => {
+    if (!session) return;
+    let active = true;
+    syncSeenMarkers().then((changed) => { if (active && changed) setSeenSync((n) => n + 1); });
+    return () => { active = false; };
+  }, [session]);
 
   // #5673: henter kun `created_at` for det nyeste roadmap-punkt (ikke hele
   // listen — den fulde items-hentning bor i RoadmapPage.jsx), uafhængig af
@@ -870,7 +884,7 @@ export default function Layout() {
     } else {
       setRoadmapUnread(isRoadmapUnread(roadmapLatestDate, readLastSeenRoadmap()));
     }
-  }, [roadmapLatestDate, location.pathname]);
+  }, [roadmapLatestDate, location.pathname, seenSync]);
 
   useEffect(() => {
     if (!session) return;

@@ -21,17 +21,17 @@ import { DataTable, EmptyState, BikeIcon } from "./ui";
 // #3979/#3721 (ejer-beslutning 19/8, "Begge, A foerst" superseded samme
 // eftermiddag af "bundles med #3798, en stor opdatering") — holdsidens LETTE
 // udviklings-tabel. Variant B fra mockuppen: rating (nu) ved siden af
-// prognose ("lo-hi", #3746) og loft, sortérbar, INGEN pace-kolonne (#3564 er
+// prognose ("lo-hi", #3746), sortérbar, INGEN pace-kolonne (#3564 er
 // ikke bygget endnu — se issuets kommentar 19/8 15:17).
 //
 // Data genbruges 1:1 fra useScouting() (samme hook som ScoutablePotentiale/
 // SquadTab bruger) — ingen nyt endpoint, ingen ny hente-logik. Estimatet
-// leverer { now, prog:{lo,hi}, loft } for egne ryttere (isOwn ⇒ maxLevel,
+// leverer { now, prog:{lo,hi} } for egne ryttere (isOwn ⇒ maxLevel,
 // backend/routes/api.js's POST /api/scouting/estimates). Ryttere uden bånd
 // (defensiv gren — mangler primary_type/evne-data, se ScoutablePotentiale.jsx's
 // samme fallback) viser rating alene + "no forecast yet" i muted, INGEN
-// tankestreg i selve teksten (kun den kanoniske "—"-tomværdi-glyf i Loft-
-// cellen, tilladt per tone-check-em-dash.mjs's tomværdi-undtagelse).
+// tankestreg i selve teksten. Ejer 9/11 (#7932): rytteres lofter vises ikke,
+// så tabellen har ingen Loft-kolonne.
 //
 // `riders` = holdets NUVÆRENDE senior+akademi-trup (TeamPage.jsx's
 // `currentRiders`, samme array SquadTab/TeamStatsTab allerede får).
@@ -47,7 +47,7 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
 
   // Samme batched request-mønster som ScoutablePotentiale (useScouting.js's
   // requestEstimates dedupliker + batcher selv) — men denne tabel renderer
-  // ikke ScoutablePotentiale pr. række (egen lo-hi/loft-visning), så den skal
+  // ikke ScoutablePotentiale pr. række (egen lo-hi-visning), så den skal
   // selv bede om estimaterne for hele truppen når fanen mountes.
   useEffect(() => {
     if (riderIds.length > 0) scouting.requestEstimates(riderIds);
@@ -71,8 +71,7 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
     const academyPrognosis = estimate?.academyPrognosis;
     const band = academyPrognosis ? academyPrognosis.band : (estimate && !estimate.hidden ? (estimate.prog ?? estimate.ceil) : null);
     const hasBand = Boolean(band && Number.isFinite(band.lo) && Number.isFinite(band.hi));
-    const loft = !academyPrognosis && estimate && !estimate.hidden && Number.isFinite(estimate.loft) ? estimate.loft : null;
-    const estimateView = potentialViewOf(estimate); // #6110: tal + ord afløser bånd og loft
+    const estimateView = potentialViewOf(estimate); // #6110: tal + ord afløser båndet
     return {
       ...r,
       _age: getRiderAge(r.birthdate, seasonYear),
@@ -82,10 +81,6 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
       _potential: potentialFromEstimate(estimate), // #6853: rolle + typeboks
       _estimateView: estimateView,
       _progHi: estimateView ? potentialViewValue(estimateView) : hasBand ? band.hi : null,
-      _loft: loft,
-      // #4039: samme forbi-peak-dæmpning som hero/scouting-fanen — loftet er
-      // stadig absolut, kun forklaringen (tooltip) skifter.
-      _pastPeak: estimate?.pastPeak === true,
     };
   }), [riders, scouting, seasonYear]);
 
@@ -122,7 +117,7 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
       render: (r) => <span className="text-cz-2">{r._age ?? "—"}</span>,
     },
     // Tester-feedback 20/8 (#3798): uden typen skal spilleren gætte hvilken
-    // rolle prognosen/loftet gælder. Samme kanoniske kolonne som SquadTab
+    // rolle prognosen gælder. Samme kanoniske kolonne som SquadTab
     // (ejer 25/7: typen står ALTID i sin egen kolonne, aldrig i navnecellen).
     {
       key: "type",
@@ -162,24 +157,7 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
         <span className="text-cz-3 text-xs whitespace-nowrap">{t("development.noForecast")}</span>
       )),
     },
-    {
-      key: "ceiling",
-      header: <span title={t("development.headers.ceilingTitle")}>{t("development.headers.ceiling")}</span>,
-      sortKey: "_loft",
-      numeric: true,
-      compact: true,
-      // #4039: samme forbi-peak-dæmpning i tooltippen som hero/scouting-fanen —
-      // tallet er uændret, kun forklaringen af HVORFOR skifter.
-      render: (r) => (
-        <span
-          className="font-mono tabular-nums text-cz-2"
-          title={r._loft != null && r._pastPeak ? t("rider:scouting.loftPastPeakTitle", { value: r._loft }) : undefined}
-        >
-          {r._loft ?? "—"}
-        </span>
-      ),
-    },
-  ].filter((column) => !(estimateMode && column.key === "ceiling"));
+  ];
 
   if (riders.length === 0) {
     return (
@@ -197,8 +175,8 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
       columns={columns}
       rows={rows}
       rowKey={(r) => r.id}
-      /* D-047 (#5102): udvikling handler om nu, forventet og loft. */
-      mobileDefaults={estimateMode ? ["rating", "projected", "type"] : ["rating", "projected", "ceiling"]}
+      /* D-047 (#5102): udvikling handler om nu og forventet. */
+      mobileDefaults={["rating", "projected", "type"]}
       dense
       rowProps={(r) => ({ onClick: () => navigate(`/riders/${r.id}`), className: "cursor-pointer" })}
       sort={sort}

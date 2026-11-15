@@ -15,6 +15,7 @@ import { incrementBalanceWithAudit, DUPLICATE_VIOLATION_CODE } from "./balanceRp
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
 import { saleEscrowPayment, saleEscrowStatusForDeal, squadRestoreImage } from "./saleEscrowFlow6181.js";
+import { isSaleLockedForDeal } from "./saleEscrowView6181.js";
 import { contractOnAcquirePatch, computeFrozenSalary } from "./contractSeed.js";
 import { notifyIfContractExpiresThisSeason, buildKeyedNotification, notifyAndClearWatchlistForRiders } from "./notificationService.js";
 import { ACADEMY } from "./academyFlag.js";
@@ -1564,6 +1565,8 @@ async function finalizeAuctionRecord({
     // Modtageren har allerede fået hele historien via købs-beskeden, så
     // sælger-beskeden er ren støj i det tilfælde.
     if (auction.seller_team_id && auction.seller_team_id !== effectiveBidderId) {
+      // #6181: er saelgers penge laast til holdskiftet, siger saelgerens besked det.
+      const sellerLocked = sellerOwned && await isSaleLockedForDeal(supabase, { parked: deferTeamChange, dealType: "auction", dealId: auction.id });
       await auctionNotify(
         notifyTeamOwner,
         auction.seller_team_id,
@@ -1572,8 +1575,10 @@ async function finalizeAuctionRecord({
         "auction_sold",
         {
           titleCode: "notif.auction.soldTitle",
-          messageCode: sellerOwned ? "notif.auction.soldMessage" : "notif.auction.boughtMessage",
-          messageParams: { rider: `${auction.rider.firstname} ${auction.rider.lastname}`, price },
+          messageCode: sellerLocked ? "notif.saleEscrow.lockedMessage" : sellerOwned ? "notif.auction.soldMessage" : "notif.auction.boughtMessage",
+          messageParams: sellerLocked
+            ? { riderName: `${auction.rider.firstname} ${auction.rider.lastname}`, price }
+            : { rider: `${auction.rider.firstname} ${auction.rider.lastname}`, price },
         },
         auction.id,
         { riderId: auction.rider.id }

@@ -97,5 +97,13 @@
     },
     "error": "De koershistorie kon niet laden. Er is niets verloren gegaan.",
     "retry": "Opnieuw proberen"
+  },
+  "raceResultsV6": {
+    "searchLabel": "Zoek in de uitslag op renner of ploeg",
+    "searchPlaceholder": "Zoek renner of ploeg",
+    "clearSearch": "Zoekopdracht wissen",
+    "myTeam": "Mijn ploeg",
+    "matchCount": "{shown} van {total}",
+    "noMatch": "Geen renner of ploeg komt overeen met die zoekopdracht."
   }
 }

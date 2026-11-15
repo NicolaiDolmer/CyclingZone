@@ -58,6 +58,13 @@ export const RACE_DAY_ENGINE_RECOVERY_CONFIG = Object.freeze({
   recoveryFraction: 0.15,
 });
 
+// #8089: den ene fælles starttilstand for en ny rytter uden tilstand (køb fra
+// puljen, fri agent, akademi-optag). Databasen skriver samme tal ved første
+// tilstand (initialize_first_use_rider_condition m.fl.); kodens reserver for en
+// rytter uden række bruger denne, så prognose og afregning følger databasen.
+// Bevidst adskilt fra sæsonstartens SEASON_FATIGUE_RESET (seasonFatigueReset.js).
+export const NEW_RIDER_START_CONDITION = Object.freeze({ form: 50, fatigue: 20 });
+
 export function nextForm({ form, fatigue }) {
   const cfg = CONDITION_CONFIG;
   const fo = Number(form);

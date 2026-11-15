@@ -455,7 +455,7 @@ følge kontakten efter apply; den ændrer aldrig en eksisterende værdi. Aktiver
 - Den beta-afgrænsede finance-trigger stopper diskretionære debiteringer, der ville bruge en eksisterende auktionsbinding. Anlæg og staff-fratrædelse debiterer før aktivændringen; obligatoriske løn-/driftsbetalinger beholder deres regler. Ansættelse får intet nyt køb/gebyr.
 - Ungdomsauktionens betaling er afregning af en eksisterende binding, ikke et nyt akademikøb. Dens kanoniske auktionspostering er derfor undtaget fra den diskretionære guard i både senior- og akademiplaceringen; ny intake er stadig beskyttet.
 - Direkte Data API-læsning af `transfer_listings` kræver login og er begrænset til de hidtidige seks offentlige kolonner. Anonyme har ingen læseadgang; appens direkte forbrugere ligger bag login. `auto_accept_price` læses kun af serverrollen og vises gennem den brugerafhængige API-projektion, også hvis en klient selv vælger kolonner eller filtre.
-- `on` beholder den globale M3-kontrakt; `off`/manglende beholder de gamle stier. Ingen migration ændrer kontaktværdier. Auto-accept kræver M3-transport (`on`/`true`/`beta`); escrow er fortsat sin egen binære kontakt.
+- `on` beholder den globale M3-kontrakt; `off`/manglende beholder de gamle stier. Pengevagten og de atomiske betalinger ovenfor følger `market_atomic_payments_2176()`: ved global M3 gælder de både med auto-accept `beta` og `on`, så tænding for alle fjerner ingen pengebeskyttelse; auto-accept `off` beholder de gamle stier (#2176, 14/11). Ingen migration ændrer kontaktværdier. Auto-accept kræver M3-transport (`on`/`true`/`beta`); escrow er fortsat sin egen binære kontakt.
 - Liste-/tilbudsdata projiceres pr. bruger med private HTTP-cache-headere. Listing-cachen bruger præcis samme auth-header som requesten og invalideres ved ændringer; gamle requests kan ikke genfylde en ryddet cache.
 - Bevis: faktiske migrationer i `marketBeta2176*.pglite.test.js`; uafhængige PG17-forbindelser i `marketBeta2176.pg17.test.js`. Lokal test er opt-in med `AUTO_ACCEPT_PG_BIN`, ikke produktionsevidens.
 
@@ -733,19 +733,41 @@ krediteres først når rytteren faktisk skifter hold. Ved øjeblikkeligt skifte 
 | Refusion | frigives en solgt, ventende rytter (pension, kontraktudløb), får køberen pengene tilbage. I refusionens transaktion gendannes trup, kontrakt og graduering, tilmeldinger på et andet hold end rytterens ryddes, handlens status sættes (transfer og bytte `withdrawn`, auktion `cancelled`), og begge parter får besked præcis én gang | `refundSaleEscrowsForReleasedRiders`, triggeren `sale_escrow_restore_on_refund` |
 | Sikkerhedsnet | heal-sweepet afregner enhver holdt escrow, der kan afregnes, også efter at kontakten er slukket igen; beta-reset gør det samme | `reconcileHeldSaleEscrows` |
 | Vagter | sæsonskiftet venter på holdte escrows (`no_deferred_transfers`); invariant H i `ownershipInvariantWatch` melder en escrow, der ikke er afregnet efter 48 t uden et aktivt løb | `seasonTransitionReadiness.js`, `ownershipInvariantWatch.ts` |
+| Fast regel: intet tvunget sæsonskifte | et sæsonskifte tvinges aldrig igennem, mens der står låste salg (ejer 13/11). `POST /api/admin/season-transition` med `force` afvises med 409 `held_sale_escrows`, så længe en escrow er holdt; kan tabellen ikke læses, afvises force også | `countHeldSaleEscrowsForForce` (`saleEscrowView6181.js`) |
+| Visning (udgave A, ejer 13/11) | saldoen er det, holdet kan bruge; under den står "+X CZ$ låst" i menuen, på dashboardets saldokort og på Økonomis saldokort. Økonomi viser boksen "Låst til holdskifte" med én linje pr. salg: rytter, løb, hvor mange dage løbet har tilbage, beløb og "Udbetales, når rytteren skifter hold". Kilde: `GET /api/me/locked-sales` (eget hold). Intet låst = intet vist | `saleEscrowView6181.js`, `LockedSaleEscrows.tsx` |
+| Beskeder til sælgeren | ved en låst transfer eller auktion: "X er solgt for Y CZ$. Pengene er låst og udbetales, når han skifter hold efter sit etapeløb." Ved udbetalingen: "X har skiftet hold. Y CZ$ er nu på din saldo." Samme besked sendes, når admin frigiver et fastlåst bytte (`release`), og nævner kun sælgerens ryttere, der faktisk har skiftet hold. Undtagelse: er ingen af sælgerens egne ryttere leveret, udbetales pengene uden besked (teksten ville være forkert). Refusion giver ingen udbetalingsbesked. Er handlen ikke låst, er beskederne de samme som før | `isSaleLockedForDeal`, `notifySellerSaleEscrowReleased` (`onlyDelivered`) |
+| Hjælp | `transfers.midRaceTransfers` (sælger betales straks) vises med kontakten slukket, tvillingen `midRaceTransfersEscrow` med kontakten tændt | `helpFlagGates.js` |
 | Gentagelse | en handel med en escrow betales aldrig igen af den gamle sti; er escrow'en refunderet, er handlen annulleret (rytteren flyttes ikke, ingen betaler). Databasen afviser en sælger-kredit efter en refusion under holdlåsen | `saleEscrowStatusForDeal`, `2026-11-07-6181-sale-escrow-m2-guards.sql` |
 | Beta-nulstilling | stopper, før noget røres, hvis der findes fastlåste bytter, så en senere refusion ikke lægger gammel betaling oven i den nye startsaldo | `betaResetService.js` |
-| Fastlåst bytte | én rytter leveret, den anden mistet: heal-sweepet kan ikke afregne det. Admin afgør det med `GET /api/admin/sale-escrows` og `POST /api/admin/sale-escrows/:id/resolve` (`release` krediterer modtageren, `refund` giver betaleren beløbet tilbage; ingen rytter flyttes) | `resolveStuckSaleEscrow`, `resolve_stuck_sale_escrow` |
+| Fastlåst bytte | én rytter leveret, den anden mistet: heal-sweepet kan ikke afregne det. Admin afgør det med `GET /api/admin/sale-escrows` og `POST /api/admin/sale-escrows/:id/resolve` (`release` krediterer modtageren, `refund` giver betaleren beløbet tilbage; ingen rytter flyttes). Efter en `release` får modtageren (sælgeren) udbetalingsbeskeden "X har skiftet hold. Y CZ$ er nu på din saldo." med kun de af sælgerens ryttere, der er leveret; er sælgerens egen rytter ikke leveret, udbetales der uden besked. Beskeden er best-effort og ændrer aldrig afgørelsen | `resolveStuckSaleEscrow`, `resolve_stuck_sale_escrow`, `notifySellerAfterAdminRelease` |
 
 Nuværende parkeringer får ingen tilbagevirkning: sælgeren af en handel fra før kontakten blev
-tændt, er allerede krediteret. Visning af låste penge og hjælpetekster kommer i PR 4.
+tændt, er allerede krediteret. Visning, beskeder og hjælp står i tabellen ovenfor.
 
-Målt 30/8: **0 ryttere står parkeret** (`select count(*) from riders where pending_team_id
-is not null`). Heal-sweepen tjekkede sidst ind 20:46:20 UTC med forventet kadence 300 sek.
+Målt 13/11: **1 rytter står parkeret** (`select count(*) from riders where pending_team_id
+is not null`; 30/8 var det 0). Heal-sweepen tjekkede sidst ind 20:46:20 UTC med forventet kadence 300 sek.
 
 Sweepen findes fordi flushen kun kaldes fra ét sted: Vasco Fernandes stod parkeret
 22/6→4/8 (over 40 dage) med en betalt, aldrig-leveret handel, og spilleren rapporterede det
 selv i Discord (#3330, `deferredTransferHealSweep.js:1-22`).
+
+### 10.1 Frigivelse midt i et etapeløb venter (#8153, bag kontakten `release_defer_8153`, slukket)
+
+Slukket (seed `off`; kun `on` tænder, `beta` tæller som slukket) frigives en rytter straks som i dag. Tændt: fyrer holdet en seniorrytter, der kører et aktivt etapeløb (samme afgrænsning som tabellen ovenfor, og holdet er ikke afmeldt løbet), bestilles frigivelsen i stedet. Rytteren kører løbet færdigt og forlader holdet efter sidste etape.
+
+| Element | Regel | Fil |
+|---|---|---|
+| Bestilling | `POST /riders/:id/release` opretter én aktiv række i `pending_rider_releases`; `team_id` rører sig ikke. Prisoverslaget (`release-quote`) viser `pendingRace` | `riderReleaseDefer8153.js` `orderPendingRelease`, RPC `order_rider_release_8153` |
+| Gebyr | samme buyout-gebyr som en almindelig frigivelse trækkes straks, i samme transaktion som rækken, med nøglen `rider_release_pending:<række-id>`. Saldo minus bundne penge skal kunne bære det | `order_rider_release_8153` |
+| Endelig | en bestilling kan ikke fortrydes, og gebyret refunderes ikke. En ny bestilling på samme rytter afvises (409 `rider_release_already_pending`) | samme |
+| Truppen | rytteren tæller i truppen, til han er væk. I gulvtjekket ved næste frigivelse tæller holdets ventende frigivelser som afgående | `countPendingReleasesForTeam`, `order_rider_release_8153` |
+| Udførelse | ved løbets finalisering frigives rytteren som ved en almindelig frigivelse (hold og kontrakt ryddes, han står som senior uden akademi), åbne salgsopslag lukkes, fremtidige løbstilmeldinger ryddes, og holdet får besked. Kører han et andet aktivt etapeløb, venter den til også det er slut | `executePendingReleasesForRace` (`raceRunner.js`), RPC `execute_pending_rider_release_8153` |
+| Sikkerhedsnet | heal-sweepet (hvert 300. sekund) udfører enhver bestilling, hvis løb er slut, også med kontakten slukket. Har rytteren forladt holdet ad en anden vej, lukkes rækken som `cancelled_by_system` uden at røre ham | `runPendingReleaseHealSweep` |
+| Spærret imens | salg, transferliste, tilbud, bytte og auktion (409 `rider_pending_release_trade`); trupskifte, fx nedrykning til akademiet (409 `rider_pending_release_squad`); udtagelse til løb efter det igangværende (409 `selection_rider_leaving`). Ved bestillingen lukkes åbne opslag og tilbud på ham | `getPendingReleaseTradeIssue`, `getPendingReleaseSquadIssue`, `getPendingReleaseSelectionIssue` |
+| Hård grænse | triggeren `riders_pending_release_guard_8153` afviser ethvert skift af `team_id`, `pending_team_id`, `is_academy` eller `squad`, mens rytteren har en aktiv række, uanset sti | `database/2026-11-15-8153-pending-rider-releases.sql` |
+| Sæsonskifte | venter på ventende frigivelser; `force` afvises med 409 `pending_rider_releases`, så længe der står nogen | `seasonTransitionReadiness.js`, `countPendingReleasesForTransition` |
+| Visning | `GET /api/me/pending-releases` giver holdets ventende frigivelser med løbets navn | `loadPendingReleasesForTeam` |
+| Beta-nulstilling | tømmer tabellen, før rytterne flyttes | `betaResetService.js` |
 
 ---
 

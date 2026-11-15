@@ -11,12 +11,15 @@ import { plannerMockRoute } from "./plannerMock.js";
 import { scoutingMockRoute } from "./scoutingMock.js";
 import { previewEstimate, previewPotentialEstimateEnabled } from "./potentialEstimateMock.ts";
 import { contractsBatchMockRoute } from "./contractsBatchMock.ts"; // #6855
+import { previewLockedSalesPayload } from "./lockedSalesMock.ts"; // #6181
 import { boardMeetingMockRoute } from "./boardMeetingMock.js";
 import { betaAccessMockRoute } from "./betaAccessMock.js"; // #5259
 import { trainingProgramsMockRoute, previewSingleRaceDay, PREVIEW_TRAINING_PROGRAMS } from "./trainingProgramsMock.js"; // #4629
 import { trainingGroupsMockRoute } from "../components/training/groups/trainingGroupsPreviewMock.ts"; // #6000
 import { trainingFatigueRulesMockRoute } from "./trainingFatigueRulesMock.js"; // #4854
+import { withFatigueNowPreview } from "./fatigueNow7801PreviewMock.ts"; // #7801
 import { trainingReceiptMock } from "./trainingReceiptMock.ts";
+import { isWorkbenchPreview } from "./planningWorkbenchMock.ts"; // #7535
 import { trainNowPreviewRoute, trainNowSelectionPreview, trainNowBoardPreview, trainNowSeasonPreview } from "../components/training/TrainNowPreviewMock.ts"; // #4847/#6139/#6383
 import { raceStartBoardPreview, raceStartPreviewNotifications } from "./raceStartPreviewMock.ts"; // #6740
 import {
@@ -161,7 +164,7 @@ export function installPreviewMock() {
   applyNoActiveSeasonParam();
   const realFetch = window.fetch.bind(window);
 
-  window.fetch = async (input, init = {}) => {
+  const mockFetch = async (input, init = {}) => {
     const url = typeof input === "string" ? input : (input && input.url) || "";
     const method = (
       (init && init.method) ||
@@ -328,6 +331,9 @@ export function installPreviewMock() {
       if (method === "POST" && /\/api\/development\/transition\/dismiss$/.test(url)) {
         return jsonResponse({ ok: true });
       }
+
+      // #6181: saelgers laaste salg (tomt som standard; ?lockedSales=on viser to).
+      if (method === "GET" && /\/api\/me\/locked-sales$/.test(url)) return jsonResponse(previewLockedSalesPayload());
 
       // #6855: Kontrakter-fanens quote + batch-forlængelse.
       if (/\/api\/riders\/extend-contracts/.test(url)) {
@@ -558,6 +564,10 @@ export function installPreviewMock() {
       if (/\/api\//.test(url)) {
         if (method !== "GET") return jsonResponse({ ok: true });
         const parsed = new URL(url, window.location.origin);
+        // #7535: planlaegningssiden har sit eget seed og foelger ikke Train now-/luksushjaelper-tilstandene.
+        if (isWorkbenchPreview() && /\/api\/races\/(selection\/season|[^/]+\/selection)$/.test(parsed.pathname)) {
+          return jsonResponse(apiResponse(parsed.pathname, parsed.search));
+        }
         // #6139: udtagelsen foelger Train now-tilstanden (?trainNow=locked eller et tryk).
         if (/\/api\/races\/[^/]+\/selection$/.test(parsed.pathname)) {
           const selection = trainNowSelectionPreview(apiResponse(parsed.pathname, parsed.search));
@@ -585,6 +595,12 @@ export function installPreviewMock() {
 
     // Alt andet (Vite-assets, HMR, WebSocket-upgrades) → ægte fetch.
     return realFetch(input, init);
+  };
+  // #7801 rest-byg: ?fatigueNow=on|unknown viser fladerne med kontakten taendt (uden param: uaendret).
+  window.fetch = async (input, init = {}) => {
+    const url = typeof input === "string" ? input : (input && input.url) || "";
+    const method = ((init && init.method) || (typeof input !== "string" && input && input.method) || "GET").toUpperCase();
+    return withFatigueNowPreview(url, method, await mockFetch(input, init));
   };
 
   console.info("[preview-mock] aktiv — seed-data serveres lokalt, prod røres ikke.");

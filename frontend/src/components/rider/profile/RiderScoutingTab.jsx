@@ -61,8 +61,8 @@ function Eyebrow({ children }) {
 //
 // #3666: ABSOLUT, ikke en populations-percentil. Det var 0,99 som et bart tal i
 // bredde-udtrykket før. Værdien er den samme, men grunden til den skal stå et
-// sted: baren viser en MAGNITUDE (og et loft, som går højere end nogen nuværende
-// rating), så den må ikke skaleres efter hvor bestanden tilfældigvis ligger —
+// sted: baren viser en MAGNITUDE (og prognosebåndet, som kan ligge højere end
+// nogen nuværende rating), så den må ikke skaleres efter hvor bestanden tilfældigvis ligger —
 // ellers flytter en rytters bar sig fordi ANDRE ryttere har ændret sig, hvilket
 // er præcis den egenskab omlægningen fjernede fra selve ratingen.
 //
@@ -72,9 +72,8 @@ function Eyebrow({ children }) {
 // modsigelse: radaren sammenligner otte rollers FORM mod hinanden på én
 // rytter, hvor et fælles LINEÆRT 0-99-domæne enten ville klemme polygonen
 // sammen til en prik for de fleste (spændet mellem en typisk lav akse og
-// spillets loft er en faktor ~28) eller klampe toppen falsk. Baren her
-// sammenligner niveau mod loft på én lineær akse hvor loftet skal kunne
-// være med, og der er kun én værdi pr. rytter, ikke otte samtidig, så
+// toppen er en faktor ~28) eller klampe toppen falsk. Baren her
+// sammenligner niveau mod prognosebåndet på én lineær akse, og der er kun én værdi pr. rytter, ikke otte samtidig, så
 // samme spænd-problem opstår ikke her.
 const BAR_SCALE_MAX = 99;
 const barPct = (v) => `${(Math.max(0, Math.min(BAR_SCALE_MAX, v)) / BAR_SCALE_MAX) * 100}%`;
@@ -416,13 +415,11 @@ export default function RiderScoutingTab({ rider, scouting }) {
   }
 
   // FØR: uscoutet, ikke-egen rytter — intet potentiale, kun invitationen.
+  // Ejer 12/11 (#7932): Scout-knappen er budskabet; ingen overskrift "Ikke scoutet".
   if (report.hidden || estimateView?.hidden) {
     return (
       <SectionCard>
         <Eyebrow>{t("profile.scouting.eyebrowOther")}</Eyebrow>
-        <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mt-2">
-          {t("profile.scouting.notScoutedTitle")}
-        </h3>
         <p className="text-cz-2 text-[12.5px] leading-[1.55] mt-2 mb-3 max-w-prose">
           {t("profile.scouting.notScoutedBody")}
         </p>

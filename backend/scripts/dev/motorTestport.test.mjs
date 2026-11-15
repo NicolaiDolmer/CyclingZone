@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { privateMinCellTeamStages, assertPrivateOutDir, assertSameRaceSelection, assertSameRun, budgetStop, buildReportMeta, collectCard, loadThresholds, latestDryRunJson, resolveReportThresholds, resolveThresholdsFile, main, parseArgs, parseIdsText, planTasks, raceIdsFromDir, runPool, selectRaceIds, splitByStartField, tourDryRunArgs } from "./motorTestport.mjs";
+import { privateMinCellTeamStages, assertPrivateOutDir, assertSameRaceSelection, assertSameRun, budgetStop, buildReportMeta, collectCard, loadThresholds, latestDryRunJson, resolveReportThresholds, resolveThresholdsFile, main, parseArgs, parseIdsText, planTasks, raceIdsFromDir, runPool, selectRaceIds, splitByStartField, tourDryRunArgs, SWITCH_DIRS, childEnv, mergeSwitchDryRuns, switchCandidateLabel, taskSteps, withSwitchGateScope } from "./motorTestport.mjs";
 
 /** Et syntetisk tourDryRun-scorecard (ingen motor-tal). */
 const scorecard = (id, revision) => JSON.stringify({
@@ -544,4 +544,95 @@ test("#6912: lokal privat taerskelfil findes relativt til repo-root, uanset cwd"
   const local = path.join("balance-internals", "motor-testport-thresholds.json");
   const shared = path.join("drive", "CyclingZone-context", local);
   assert.equal(defaultThresholdsPath({ repoRoot: "repo", oneDrive: "drive", exists: p => p === path.join("repo", local) || p === shared }), local);
+});
+
+// ── #7884 (B8): en kontakt som kandidat ─────────────────────────────────────
+
+test("#7884 parseArgs: --candidate-switch giver samme revision paa begge sider og et kandidatnavn", () => {
+  const o = parseArgs(["--candidate-switch=CZ_LONG_ATTACK_7884"], { defaultBaseline: "s5_profiles_v3", now: NOW });
+  assert.equal(o.baseline, "s5_profiles_v3");
+  assert.equal(o.candidate, switchCandidateLabel("s5_profiles_v3", "CZ_LONG_ATTACK_7884"));
+  assert.equal(o.candidate, "s5_profiles_v3+CZ_LONG_ATTACK_7884");
+  assert.equal(o.candidateSwitch, "CZ_LONG_ATTACK_7884");
+  assert.equal(parseArgs(["--candidate-switch=CZ_X", "--candidate=r", "--baseline=r"], { now: NOW }).candidate, "r+CZ_X", "samme --candidate som --baseline er tilladt");
+  assert.equal(parseArgs(["--candidate=c"], { defaultBaseline: "b", now: NOW }).candidateSwitch, null, "uden flaget: ingen kontakt");
+  assert.throws(() => parseArgs(["--candidate-switch=long_attack"], { defaultBaseline: "b" }), /CZ_/);
+  assert.throws(() => parseArgs(["--candidate-switch=CZ_X;rm"], { defaultBaseline: "b" }), /CZ_/);
+  assert.throws(() => parseArgs(["--candidate-switch=CZ_X", "--candidate=other"], { defaultBaseline: "b" }), /SAMME revision/);
+  assert.throws(() => parseArgs(["--candidate-switch=CZ_X"], { defaultBaseline: null }), /baseline/);
+});
+
+test("#7884 childEnv: kontakten slukkes altid for baseline (ogsaa fra shellen) og taendes kun for kandidaten", () => {
+  const base = { PATH: "p", CZ_X: "1", CZ_OTHER: "1" };
+  assert.deepEqual(childEnv(base, "CZ_X", false), { PATH: "p", CZ_OTHER: "1" });
+  assert.deepEqual(childEnv(base, "CZ_X", true), { PATH: "p", CZ_X: "1", CZ_OTHER: "1" });
+  assert.deepEqual(childEnv({ PATH: "p" }, "CZ_X", true), { PATH: "p", CZ_X: "1" });
+  assert.deepEqual(childEnv(base, null, true), base, "uden kontakt: miljoeet uaendret");
+  assert.equal(base.CZ_X, "1", "det kaldende miljoe muteres aldrig");
+});
+
+test("#7884 planTasks: med en kontakt koeres hvert loeb to gange i raekkefoelge, og kun den foerste gemmer cachen", () => {
+  const opts = { candidate: "rev+CZ_X", baseline: "rev", candidateSwitch: "CZ_X", seeds: 2, bench: true, benchOnly: false, benchScope: "all" };
+  const tasks = planTasks({ raceIds: ["r1"], opts, outDir: "OUT" });
+  const race = tasks.find((t) => t.kind === "race");
+  assert.equal(race.args, undefined);
+  assert.equal(race.steps.length, 2);
+  const [off, on] = race.steps;
+  assert.deepEqual([off.env, on.env], [{ switchName: "CZ_X", on: false }, { switchName: "CZ_X", on: true }]);
+  for (const s of race.steps) {
+    assert.ok(s.args.includes("--revision=rev") && s.args.includes("--compare=none"), "samme revision, én koersel pr. trin");
+    assert.ok(s.args.includes(`--cache=${path.join("OUT", "races", "r1", "cache.json")}`), "begge trin laeser samme cache");
+  }
+  assert.ok(off.args.includes(`--out-dir=${path.join("OUT", "races", "r1", SWITCH_DIRS.off)}`));
+  assert.ok(on.args.includes(`--out-dir=${path.join("OUT", "races", "r1", SWITCH_DIRS.on)}`));
+  assert.ok(off.args.some((x) => x.startsWith("--save-cache")), "slukket henter og gemmer");
+  assert.ok(!on.args.some((x) => x.startsWith("--save-cache")), "taendt overskriver aldrig cachen");
+  const bench = tasks.filter((t) => t.kind === "bench");
+  assert.deepEqual(bench.map((t) => t.id), ["bench:rev", "bench:rev+CZ_X"]);
+  for (const b of bench) assert.ok(b.args.includes("--revision=rev"), "benchen koerer baseline-revisionen paa begge sider");
+  assert.deepEqual(bench.map((t) => t.env), [{ switchName: "CZ_X", on: false }, { switchName: "CZ_X", on: true }]);
+  // Uden kontakt: opgaverne har samme form som foer (ét trin, ingen env).
+  const plain = planTasks({ raceIds: ["r1"], opts: { ...opts, candidate: "c", candidateSwitch: null }, outDir: "OUT" });
+  assert.ok(plain.every((t) => t.steps === undefined && t.env === undefined && Array.isArray(t.args)));
+});
+
+test("#7884 taskSteps: ét trin uden kontakt, to trin med hver sit miljoe", () => {
+  const env = { PATH: "p", CZ_X: "1" };
+  assert.deepEqual(taskSteps({ args: ["a"] }, env), [{ args: ["a"], env }]);
+  const steps = taskSteps({ steps: [{ args: ["off"], env: { switchName: "CZ_X", on: false } }, { args: ["on"], env: { switchName: "CZ_X", on: true } }] }, env);
+  assert.deepEqual(steps.map((s) => [s.args[0], s.env.CZ_X ?? null]), [["off", null], ["on", "1"]]);
+});
+
+test("#7884 mergeSwitchDryRuns + collectCard: slukket og taendt bliver to revisioner paa samme kort", () => {
+  const merged = mergeSwitchDryRuns(JSON.parse(scorecard("r", "rev")), JSON.parse(scorecard("r", "rev")), "rev+CZ_X");
+  assert.deepEqual(merged.runs.map((r) => r.revision), ["rev", "rev+CZ_X"]);
+  assert.equal(mergeSwitchDryRuns(null, JSON.parse(scorecard("r", "rev")), "x"), null);
+  const root = mkdtempSync(path.join(tmpdir(), "testport-"));
+  try {
+    const out = path.join(root, "balance-internals", "run");
+    for (const id of ["ok", "half"]) for (const d of Object.values(SWITCH_DIRS)) mkdirSync(path.join(out, "races", id, d), { recursive: true });
+    writeFileSync(path.join(out, "ids.txt"), "ok\nhalf\n");
+    for (const d of Object.values(SWITCH_DIRS)) writeFileSync(path.join(out, "races", "ok", d, "loeb-2026-11-12-08-00.json"), scorecard("ok", "rev"));
+    writeFileSync(path.join(out, "races", "half", SWITCH_DIRS.off, "loeb-2026-11-12-08-00.json"), scorecard("half", "rev"));
+    const card = collectCard({ outDir: out, baseline: "rev", candidate: "rev+CZ_X", meta: { benchScope: "all", candidateSwitch: "CZ_X" } });
+    assert.equal(card.races, 1);
+    assert.deepEqual(card.meta.missingScorecards, ["half (intet scorecard taendt)"], "en manglende taendt koersel er en fejl, aldrig stille");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("#7884 withSwitchGateScope: en kontakt paa v3 er en v3-kandidat; aeldre revisioner uaendret", () => {
+  const card = { v3Gates: { applies: false, candidate: { blocked: true } } };
+  assert.equal(withSwitchGateScope(card, "s5_profiles_v3").v3Gates.applies, true);
+  assert.equal(withSwitchGateScope(card, "s5_profiles_v2").v3Gates.applies, false);
+  assert.equal(card.v3Gates.applies, false, "kortet muteres ikke");
+  assert.deepEqual(withSwitchGateScope({}, "s5_profiles_v3"), {});
+});
+
+test("#7884 assertSameRun: kontakt som kandidat er en anden koersel end uden", () => {
+  const prev = { candidate: "rev+CZ_X", baseline: "rev", seeds: 2, benchScope: "all", candidateSwitch: "CZ_X" };
+  assert.doesNotThrow(() => assertSameRun(prev, { ...prev }, "OUT"));
+  assert.throws(() => assertSameRun(prev, { ...prev, candidateSwitch: "CZ_Y" }, "OUT"), /anden koersel/);
+  assert.throws(() => assertSameRun({ ...prev, candidateSwitch: undefined }, { ...prev }, "OUT"), /anden koersel/);
 });

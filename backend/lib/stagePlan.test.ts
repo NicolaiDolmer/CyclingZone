@@ -11,6 +11,10 @@ import {
   stagePlanRouteFromRaw,
   suggestStagePlan,
   validateStagePlanLegs,
+  legHuntTask,
+  planHasJerseyHunt,
+  planWithoutJerseyHunt,
+  withJerseyHunt7855,
   type StagePlanLeg,
   type StagePlanRole,
   type StagePlanRoute,
@@ -182,4 +186,56 @@ test("#7369: lederen foelger med paa dagens sidste stigning, ellers koerer han f
     { task: "stay_sheltered" },
     { task: "follow_moves", from: { at: "kom", kom_index: 0 } },
   ]);
+});
+
+// #7855 (ejer 12/11 valg A): udbrud og troejejagt sammen fra start, som en tilfoejelse til udbrudsleddet.
+const HUNT_RAW = {
+  distance_km: 170,
+  profile_type: "mountain",
+  climbs: [{ name: "Col A", crest_km: 40, category: "2" }, { name: "Col B", crest_km: 110, category: "1" }],
+  sprints: [{ name: "Spurt", km: 80, kind: "intermediate" }],
+};
+const HUNT_OFF = stagePlanRouteFromRaw(HUNT_RAW);
+const HUNT_ON = withJerseyHunt7855(HUNT_OFF, true);
+
+test("#7855 valg A: udbrud + jagt fra start er gyldigt med kontakten, og kun dér", () => {
+  assert.equal(validateStagePlanLegs([{ task: "breakaway", hunt: "hunt_kom" }], "helper", HUNT_ON), null);
+  assert.equal(validateStagePlanLegs([{ task: "breakaway", hunt: "hunt_points" }], "sprint_captain", HUNT_ON), null);
+  assert.equal(validateStagePlanLegs([{ task: "breakaway", hunt: "hunt_kom" }, { task: "ride_in", from: { at: "dropped" } }], "free_role", HUNT_ON), null);
+  // Jagten gaelder udbrudsleddets straekning: frem til Col A er der en top (Col A selv), men ingen spurt.
+  assert.equal(validateStagePlanLegs([{ task: "breakaway", hunt: "hunt_kom" }, { task: "ride_in", from: { at: "kom", kom_index: 0 } }], "helper", HUNT_ON), null);
+  assert.equal(validateStagePlanLegs([{ task: "breakaway", hunt: "hunt_points" }, { task: "ride_in", from: { at: "kom", kom_index: 0 } }], "helper", HUNT_ON), "stage_plan_hunt_no_sprint");
+  // Slukket findes jagten ikke (som opgaverne).
+  assert.equal(validateStagePlanLegs([{ task: "breakaway", hunt: "hunt_kom" }], "helper", HUNT_OFF), "stage_plan_unknown_task");
+});
+
+test("#7855 valg A: reglerne for jagten paa udbrudsleddet (hver har sin fejlkode)", () => {
+  assert.equal(validateStagePlanLegs([{ task: "stay_sheltered", hunt: "hunt_kom" }], "helper", HUNT_ON), "stage_plan_hunt_needs_breakaway");
+  assert.equal(validateStagePlanLegs([{ task: "tempo" }, { task: "shelter_leader", from: { at: "kom", kom_index: 0 }, hunt: "hunt_kom" }], "helper", HUNT_ON), "stage_plan_hunt_needs_breakaway");
+  assert.equal(validateStagePlanLegs([{ task: "breakaway", hunt: "tempo" }], "helper", HUNT_ON), "stage_plan_invalid_leg");
+  assert.equal(validateStagePlanLegs([{ task: "breakaway", hunt: null }], "helper", HUNT_ON), "stage_plan_invalid_leg");
+  assert.equal(validateStagePlanLegs([{ task: "breakaway", hunt: "hunt_kom", extra: 1 }], "helper", HUNT_ON), "stage_plan_invalid_leg");
+  // Rollen skal maatte faa jagten: kaptajner aldrig, sprinterkaptajnen kun point.
+  assert.equal(validateStagePlanLegs([{ task: "breakaway", hunt: "hunt_kom" }], "captain", HUNT_ON), "stage_plan_task_not_for_role");
+  assert.equal(validateStagePlanLegs([{ task: "breakaway", hunt: "hunt_kom" }], "sprint_captain", HUNT_ON), "stage_plan_task_not_for_role");
+  // Udbrud kan stadig kun vaere foerste opgave, ogsaa med jagt.
+  assert.equal(validateStagePlanLegs([{ task: "tempo" }, { task: "breakaway", from: { at: "kom", kom_index: 0 }, hunt: "hunt_kom" }], "helper", HUNT_ON), "stage_plan_breakaway_not_first");
+  // En rute uden stigning med top foer maal har intet at jage.
+  const flat = withJerseyHunt7855(stagePlanRouteFromRaw({ distance_km: 150, profile_type: "flat", climbs: [], sprints: [{ km: 70, kind: "intermediate" }] }), true);
+  assert.equal(validateStagePlanLegs([{ task: "breakaway", hunt: "hunt_kom" }], "helper", flat), "stage_plan_hunt_no_climb");
+  assert.equal(validateStagePlanLegs([{ task: "breakaway", hunt: "hunt_points" }], "helper", flat), null);
+});
+
+test("#7855 valg A: normalisering, udledte ordre-felter og tilbagefald", () => {
+  const legs: StagePlanLeg[] = [{ task: "breakaway", hunt: "hunt_kom" }, { task: "ride_in", from: { at: "dropped" } }];
+  assert.deepEqual(normalizeStagePlanLegs(legs), legs);
+  assert.deepEqual(normalizeStagePlanLegs([{ task: "tempo" }]), [{ task: "tempo" }], "uden jagt: samme form som foer");
+  assert.deepEqual(legacyOrderFromPlan(legs), { effort: "normal", try_break: true, leadout: false }, "udbrudsforsoeget som foer");
+  assert.equal(planHasJerseyHunt(legs), true);
+  assert.equal(legHuntTask(legs[0]), "hunt_kom");
+  assert.equal(legHuntTask({ task: "hunt_points" }), "hunt_points");
+  assert.equal(legHuntTask({ task: "breakaway" }), null);
+  const fallback = planWithoutJerseyHunt(legs);
+  assert.deepEqual(fallback, [{ task: "breakaway" }, { task: "ride_in", from: { at: "dropped" } }]);
+  assert.equal(validateStagePlanLegs(fallback, "helper", HUNT_OFF), null, "tilbagefaldet er gyldigt slukket");
 });

@@ -32,8 +32,13 @@ export function focusProgress(focus, progressForRider) {
     if (best == null || frac > best.frac) best = { ability, frac };
   }
   if (best == null) return null;
-  const clamped = Math.max(0, Math.min(0.999, best.frac));
-  return { ability: best.ability, pct: Math.round(clamped * 100) };
+  return { ability: best.ability, pct: progressPct(best.frac) };
+}
+
+// Én regel for viste fremdrifts-procenter (0..99): et point der ikke er landet
+// læses aldrig som "100 %". Bruges af både fokus-momentet og kvitterings-baren.
+export function progressPct(rawFrac) {
+  return Math.min(99, Math.round(Math.max(0, rawFrac) * 100));
 }
 
 // ── #3709 trin 1: kvitteringen (point pr. SÆSON) ────────────────────────────────
@@ -320,7 +325,7 @@ export function abilityReceipt(abilityKeys, { abilities, progress, capped, seaso
     // læses som gået i stå. Point landes af den daglige kørsel, ikke af baren.
     const pct = locked || !Number.isFinite(rawFrac)
       ? null
-      : Math.min(99, Math.round(Math.max(0, rawFrac) * 100));
+      : progressPct(rawFrac);
     return {
       ability,
       value: Number.isFinite(rawValue) ? rawValue : null,

@@ -4,7 +4,8 @@ export type FatigueFallback = "light" | "recovery" | "rest";
 export const FATIGUE_FALLBACKS: readonly FatigueFallback[] = ["light", "recovery", "rest"];
 
 export type RuleView = { threshold: number | null; fallback: string | null; recoveryAfterStage: boolean | null };
-export type RosterRider = { id: string; name: string; fatigue: number };
+// #7801: null = tallet lige nu kunne ikke regnes (serveren sender ikke morgenens tal).
+export type RosterRider = { id: string; name: string; fatigue: number | null };
 export type RecentHit = {
   date: string; gameDay: number | null; riderId: string;
   kind: "fatigue" | "after_stage"; fallback: FatigueFallback; fatigue: number; threshold: number | null;
@@ -54,13 +55,19 @@ export function effectiveLimit(
 }
 
 // Hvor mange ryttere er OVER deres graense lige nu (traethed efter seneste opgoerelse).
+// #7801: null = ukendt (fladen viser en streg), naar mindst én rytter under en graense
+// mangler sit tal. En rytter uden graense med ukendt tal aendrer ikke taelleren.
 export function ridersOverLimit(
   roster: RosterRider[], team: RuleView | null | undefined, riders: Record<string, RuleView>,
-): number {
-  return roster.filter((r) => {
+): number | null {
+  let count = 0;
+  for (const r of roster) {
     const limit = effectiveLimit(team, riders[r.id]);
-    return limit != null && r.fatigue > limit.threshold;
-  }).length;
+    if (limit == null) continue;
+    if (r.fatigue == null) return null;
+    if (r.fatigue > limit.threshold) count += 1;
+  }
+  return count;
 }
 
 // Ugestriben: én celle pr. dato; flere loebsdage samme dato for samme rytter

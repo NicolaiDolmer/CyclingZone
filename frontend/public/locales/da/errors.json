@@ -36,6 +36,10 @@
     "rider_on_auction_release": "Rytteren ligger på auktion lige nu og kan ikke fyres. Vent til auktionen er slut",
     "rider_pending_transfer_release": "Rytteren er solgt og venter på at skifte hold, så du kan ikke fyre rytteren",
     "rider_pending_transfer_trade": "Rytteren er allerede solgt og venter på at skifte hold, så rytteren kan ikke sælges igen",
+    "rider_pending_release_trade": "Rytteren forlader dit hold efter {race} og kan ikke handles.",
+    "rider_pending_release_squad": "Rytteren forlader dit hold efter {race} og kan ikke skifte trup.",
+    "rider_release_already_pending": "Frigivelsen af rytteren er allerede bestilt. Han forlader dit hold efter {race}.",
+    "selection_rider_leaving": "Rytterens frigivelse er bestilt. Han kan ikke udtages til løb efter sit igangværende etapeløb.",
     "invalid_start_price": "Ugyldig startpris",
     "invalid_offer_amount": "Ugyldigt beløb",
     "invalid_loan_amount": "Ugyldigt beløb",
@@ -303,6 +307,12 @@
     "contract_batch_salary_cap": "Forlængelserne ville tage holdets samlede løn over bestyrelsens loft på {cap} CZ$. Intet er ændret",
     "contract_batch_write_failed": "Noget gik galt, da en kontrakt skulle gemmes. Intet er ændret",
     "contract_batch_partial": "Nogle kontrakter ændrede sig undervejs, og ikke alt kunne rulles tilbage. Tjek rytterne nedenfor",
-    "team_lookup_failed": "Serveren returnerede en fejl. Prøv igen om lidt"
+    "team_lookup_failed": "Serveren returnerede en fejl. Prøv igen om lidt",
+    "ui_prefs_invalid_payload": "Valget kunne ikke gemmes. Genindlæs siden, og prøv igen.",
+    "ui_prefs_unknown_keys": "Valget kunne ikke gemmes. Genindlæs siden, og prøv igen.",
+    "ui_prefs_invalid_value": "Valget kunne ikke gemmes. Genindlæs siden, og prøv igen.",
+    "ui_prefs_read_failed": "Dine visningsvalg kunne ikke hentes. Siden bruger sine standardvalg.",
+    "ui_prefs_unavailable": "Dit visningsvalg gemmes indtil videre kun på denne enhed.",
+    "ui_prefs_write_failed": "Dit visningsvalg kunne ikke gemmes. Prøv igen om lidt."
   }
 }

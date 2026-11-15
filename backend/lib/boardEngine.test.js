@@ -1476,6 +1476,7 @@ function makeAutoAcceptState({
       is_bank: false,
       is_frozen: false,
       is_test_account: false,
+      parked_at: null, // #8110 · Postgres leverer altid feltet
       division: 3,
       balance: 800000,
       sponsor_income: 240000,

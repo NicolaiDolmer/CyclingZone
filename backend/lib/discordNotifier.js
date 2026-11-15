@@ -27,6 +27,7 @@ import { attemptWebhookDelivery } from "./discordWebhookDelivery.js";
 import { enqueueWebhook, processWebhookOutboxDrain } from "./discordWebhookOutbox.js";
 import { enqueueRaceNotify, processRaceNotifyOutboxDrain } from "./raceNotifyOutbox.js"; // #3624
 import { serializeByUrl } from "./discordWebhookQueue.js";
+import { isDiscordPlayerDmEnabled } from "./discordPlayerDmSwitch.js"; // #8149
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, "../.env"), quiet: true });
@@ -203,6 +204,8 @@ export async function getResultWebhooksAndLabel(leagueDivisionId) {
  * @param {{fetchFn?: typeof fetch, sleepFn?: Function, captureExceptionFn?: Function, enqueueOnFailure?: boolean, enqueueWebhookFn?: Function}} [opts]
  *   `enqueueOnFailure:false` bruges af outbox-drainens EGEN dead-alarm, så en
  *   fejlende alarm ikke lægger sig selv i outbox'en igen (uendelig vækst).
+ * @returns {Promise<boolean>} true når beskeden er afleveret eller lagt i outbox'en,
+ *   ellers false (#8101). Kaster stadig aldrig; kaldere der ignorerer svaret er uændrede.
  */
 export async function sendWebhook(webhookUrl, payload, {
   fetchFn = fetch,
@@ -211,8 +214,8 @@ export async function sendWebhook(webhookUrl, payload, {
   enqueueOnFailure = true,
   enqueueWebhookFn = enqueueWebhook,
 } = {}) {
-  if (!webhookUrl) return;
-  if (liveDiscordBlocked("webhook-post")) return;
+  if (!webhookUrl) return false;
+  if (liveDiscordBlocked("webhook-post")) return false;
   try {
     const safeWebhookUrl = assertDiscordWebhookUrl(webhookUrl);
     // #2882: kø'et pr. URL, så samtidige kaldere (overlappende cron-ticks,
@@ -269,15 +272,18 @@ export async function sendWebhook(webhookUrl, payload, {
           console.log(
             `📮 Discord webhook lagt i outbox efter ${result.attempts} forsøg (${statusLabel}) — genforsøges af drain-cronen`
           );
+          return true;
         }
       }
     }
+    return result.ok === true;
   } catch (err) {
     // best-effort: fejl i selve URL-safety-tjekket (assertDiscordWebhookUrl)
     // lander her og må ikke vælte kalderen. Den egentlige HTTP-levering
     // (inkl. retry på 429/5xx/netværk) sker i attemptWebhookDelivery ovenfor
     // og kaster IKKE — den slags fejl rammer derfor ikke denne catch længere.
     console.error("Discord webhook error:", err.message);
+    return false;
   }
 }
 
@@ -300,6 +306,18 @@ export const sendOpsWebhook = makeSendOpsWebhook(sendWebhook);
 // and recipient must have "Allow DMs from server members" enabled.
 
 const DISCORD_API = "https://discord.com/api/v10";
+
+// #8149: hovedafbryderen for bottens private beskeder (se discordPlayerDmSwitch.js).
+// Læses først i sendDM, drainDiscordDmOutbox og sendTestDM. Udskiftelig kun i
+// tests, så de ikke rammer netværket gennem modulets egen supabase-klient.
+let playerDmEnabled = () => isDiscordPlayerDmEnabled(supabase);
+
+/** Kun til tests: erstat kontakt-læseren. Returnerer en funktion der gendanner. */
+export function __setPlayerDmSwitchForTests(fn) {
+  const previous = playerDmEnabled;
+  playerDmEnabled = fn;
+  return () => { playerDmEnabled = previous; };
+}
 
 // Bot-token kan komme under to navne: production-Railway sætter historisk
 // DISCORD_BOT_TOKEN, mens den kanoniske MCP/scripts-konvention (og
@@ -398,6 +416,9 @@ async function postDm(channelId, botToken, payload) {
  *   udfald i stedet for at antage levering blot fordi en modtager blev fundet.
  */
 export async function sendDM(discordId, payload) {
+  // #8149: hovedafbryderen allerførst. Slukket = ingen privat besked, ingen
+  // outbox-række og ingen token-advarsel pr. kald (botten kan være fjernet).
+  if (!(await playerDmEnabled())) return false;
   // Live-guard FØR token-tjekket: i et blokeret miljø skal en DM droppes stille
   // (én procesvid advarsel), ikke udløse per-kald token-warns eller outbox-kø.
   if (liveDiscordBlocked("DM")) return false;
@@ -526,6 +547,11 @@ async function recordDeadConnection(discordId) {
  * alarmerer aggregeret via webhook + Sentry (forward-guard mod tavs DM-død).
  */
 export async function drainDiscordDmOutbox({ now = new Date() } = {}) {
+  // #8149: slukket kontakt = ingen gentagelser. Rækkerne røres ikke (ingen
+  // markeres døde, ingen død-alarm), så intet går tabt, hvis den tændes igen.
+  if (!(await playerDmEnabled())) {
+    return { processed: 0, sent: 0, rescheduled: 0, dead: 0, skippedReason: "discord_player_dm_off" };
+  }
   const botToken = getBotToken();
   if (!botToken) {
     // Token-mangel fanges allerede af runDiscordBotTokenCheck — skip stille her.
@@ -676,6 +702,8 @@ export async function notifyDiscordDM({ teamId = null, userId = null, type, titl
     console.info("[discord-dm:no-recipient]", { teamId, userId, type });
     // #2571: aggregeret rate-guard — no-op medmindre kalderen er en cron-tick
     // (cronRun:true). Se discordDmRateGuard.js for hvorfor/hvordan.
+    // #8149: med slukket hovedafbryder tælles intet (se nedenfor), heller ikke her.
+    if (cronRun && !(await playerDmEnabled())) return;
     recordDmAttempt({ type, skipped: true, cronRun });
     return;
   }
@@ -692,6 +720,10 @@ export async function notifyDiscordDM({ teamId = null, userId = null, type, titl
   // reel sendDM-fejl (udløbet token, bot fjernet, API-nedbrud) skal tælle som
   // skip, ikke fejlagtigt som "leveret".
   const delivered = await sendDM(recipient.discordId, buildPayload(recipient.language));
+  // #8149: en slukket hovedafbryder er et bevidst valg ligesom muted, ikke et
+  // fejlet leveringsforsøg. Tælles den, ville rate-guarden fyre en falsk
+  // "alle DM'er skippet"-alarm efter tre cron-kørsler. Læsningen er husket.
+  if (!delivered && cronRun && !(await playerDmEnabled())) return;
   recordDmAttempt({ type, skipped: !delivered, cronRun });
 }
 
@@ -700,6 +732,10 @@ export async function notifyDiscordDM({ teamId = null, userId = null, type, titl
  * suitable for displaying to the manager in ProfilePage.
  */
 export async function sendTestDM(discordId, { language = DEFAULT_LANGUAGE } = {}) {
+  // #8149: slukket = en venlig fejl i spillerens sprog i stedet for en besked.
+  if (!(await playerDmEnabled())) {
+    throw new Error(renderDmText({ code: "discord.dm.testPaused" }, language));
+  }
   const botToken = getBotToken();
   if (!botToken) throw new Error("DISCORD_BOT_TOKEN/DISCORD_TOKEN er ikke sat på serveren");
   if (!discordId) throw new Error("Intet Discord-ID");

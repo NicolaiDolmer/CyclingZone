@@ -145,7 +145,7 @@
     "signature_rider": "Tæller ryttere som bestyrelsen anerkender som stjerneryttere. Når omdømme er slået til, læser den samme optjente omdømmeværdi som rytterfladerne viser.",
     "top_n_finish": "Vurderes på din slutplacering i planens SIDSTE sæson, ikke et gennemsnit over planens sæsoner.",
     "u25_development_delta": "Den gennemsnitlige stat-point-gevinst pr. U25-rytter pr. sæson. Udvikl unge ryttere, så deres stats stiger over sæsonen.",
-    "sponsor_growth": "Sammenligner din sponsors sæson-udbetaling (kontrakt-base, forholdsmæssig hvis dit hold kom til midt i sæsonen, plus løbsdags-indtægt) mellem denne sæson og planens første sæson. Engangsbonusser (signering, resultater, mål) tælles ikke med. Vises først fra planens anden sæson, når der findes et rigtigt grundlag at måle fra."
+    "sponsor_growth": "Sammenligner din sponsors sæson-udbetaling (kontrakt-base, forholdsmæssig hvis dit hold kom til midt i sæsonen, plus løbsdags-indtægt) mellem denne sæson og holdets første afsluttede sæson i planen med sponsorindtægt. Engangsbonusser (signering, resultater, mål) tælles ikke med. Vises først, når sådan en sæson findes, og en sæson uden sponsorindtægt bliver ikke målt."
   },
   "drivers": {
     "heading": "Hvad vægter dette board?",
@@ -2026,7 +2026,7 @@
       "min_national_riders": "ryttere fra målets land på dit hold lige nu.",
       "min_riders": "ryttere på dit hold lige nu.",
       "no_outstanding_debt": "din saldo minus aktive lån. Målet er nået, hvis det er nul eller mere ved sæsonens slutning.",
-      "sponsor_growth": "stigningen i sponsorens sæsonudbetaling siden planens første sæson, i procent.",
+      "sponsor_growth": "stigningen i sponsorens sæsonudbetaling siden holdets første sæson i planen med sponsorindtægt, i procent.",
       "monument_podium": "top 3-placeringer i Monuments, eller i klassikere når målet nævner dem. Et bonusmål tælles fra accepten.",
       "signature_rider": "ryttere med højt omdømme på dit hold. Et bonusmål tælles fra accepten.",
       "jersey_wins": "point-, bjerg- og ungdomstrøjer vundet i etapeløb.",

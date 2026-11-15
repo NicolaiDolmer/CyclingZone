@@ -48,6 +48,7 @@ import { loadPatches } from "../lib/patchNotes.js";
 import {
   isRoadmapItemNew, latestRoadmapCreatedAt, readLastSeenRoadmap, writeLastSeenRoadmap,
 } from "../lib/roadmapUnread.ts"; // #5673: gul prik ved nye punkter
+import { useSeenMarkersSynced } from "../lib/seenMarkers6515.ts"; // #6515
 import { PageHeader, Checkbox, Input, Tabs, TabList, Tab, TabPanel } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import PlanTab from "../components/roadmap/PlanTab.tsx";
@@ -125,7 +126,8 @@ export default function RoadmapPage() {
   const [betaState, setBetaState] = useState(null);
   // #5673: lastSeen SOM DEN VAR ved ankomst, fanget ÉN gang ved mount, FØR
   // hentningen nedenfor overskriver nøglen. Prikkerne bliver stående dette besøg.
-  const [lastSeenBeforeVisit] = useState(() => readLastSeenRoadmap());
+  const [lastSeenBeforeVisit, setLastSeenBeforeVisit] = useState(() => readLastSeenRoadmap());
+  useSeenMarkersSynced("roadmap", setLastSeenBeforeVisit); // #6515: set paa en anden enhed = ingen prik
   const [onlyUnratedPref, setOnlyUnratedPref] = useState(() => readOnlyUnrated());
   const [votes, setVotes] = useState(() => new Map());
   const [votesLoaded, setVotesLoaded] = useState(false);

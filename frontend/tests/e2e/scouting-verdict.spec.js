@@ -105,7 +105,9 @@ test("#1543 uscoutet RIVAL-rytter viser intet potentiale — hverken bånd, tal 
   // rytter igen, tester resten af denne spec ingenting.
   await expect(page.getByRole("heading", { level: 1 })).not.toHaveText(/Ada Pedersen/i);
 
-  await expect(page.getByText(/Ikke scoutet/i).first()).toBeVisible();
+  // #7932 (ejer 12/11): uscoutet viser kun Scout-knappen, aldrig teksten "Ikke scoutet".
+  await expect(page.getByRole("button", { name: /Scout|Send spejder/i }).first()).toBeVisible();
+  await expect(page.getByText(/Ikke scoutet/i)).toHaveCount(0);
   await expect(page.locator("[data-type]")).toHaveCount(0);
   await expect(page.getByText(/Fuldt scoutet|Delvist scoutet|Knap nok scoutet/)).toHaveCount(0);
   // Intet gratis lo-hi-spænd må slippe ud før et scout-slot er brugt.

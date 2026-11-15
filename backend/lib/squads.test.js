@@ -15,9 +15,11 @@ import {
   isSquad, isYouthSquad, squadForSeasonAge, squadForSeason, squadForReferenceYear,
   capForSquad, wouldExceedSquadCap, hasOutgrownSquad, transitionForRider, seniorSquadPatch,
   squadCapRpcArgs, fitsSquadAge, squadMoveDirection, academyPlacementSquad, ACADEMY_SQUAD_WHEN_AGE_UNKNOWN,
+  academyIntakePlacementSquads,
   SQUAD_SCOPED_RELATIONS, SQUAD_COLUMN, isSeniorSquadRow, onlySeniorSquadRows,
   scopeToSeniorSquad, withSeniorSquadScope,
 } from "./squads.js";
+import { readFileSync } from "node:fs";
 import { ageForSeason, LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
 import { SENIOR_SQUAD_OR_FILTER } from "./racePoolCatalog.js";
 
@@ -226,6 +228,37 @@ test("academyPlacementSquad: sæsonalder → ungdomstrup, aldrig null og aldrig 
   assert.equal(academyPlacementSquad(`${year - 30}-06-01`, seasonNumber), "u23", "vokset ud → u23 + Graduation Day, ikke senior");
   assert.equal(academyPlacementSquad(null, seasonNumber), ACADEMY_SQUAD_WHEN_AGE_UNKNOWN);
   assert.equal(ACADEMY_SQUAD_WHEN_AGE_UNKNOWN, "junior");
+});
+
+test("#6155 academyIntakePlacementSquads: et talent i junior-alder kan også lande på U23", () => {
+  const seasonNumber = 2;
+  const year = LAUNCH_REFERENCE_YEAR + 1;
+  const juniorAge = `${year - SQUAD_MAX_AGE.junior}-06-01`;
+  assert.deepEqual(academyIntakePlacementSquads(juniorAge, seasonNumber), ["junior", "u23"]);
+  assert.deepEqual(academyIntakePlacementSquads(`${year - 16}-06-01`, seasonNumber), ["junior", "u23"]);
+  // Aldersplaceringen kommer altid først, så en junior med plads aldrig ryger på U23.
+  assert.equal(academyIntakePlacementSquads(juniorAge, seasonNumber)[0], academyPlacementSquad(juniorAge, seasonNumber));
+});
+
+test("#6155 academyIntakePlacementSquads: U23-alder (og 23+) har kun U23, aldrig senior", () => {
+  const seasonNumber = 2;
+  const year = LAUNCH_REFERENCE_YEAR + 1;
+  assert.deepEqual(academyIntakePlacementSquads(`${year - SQUAD_MAX_AGE.junior - 1}-06-01`, seasonNumber), ["u23"]);
+  assert.deepEqual(academyIntakePlacementSquads(`${year - SQUAD_MAX_AGE.u23}-06-01`, seasonNumber), ["u23"]);
+  assert.deepEqual(academyIntakePlacementSquads(`${year - 30}-06-01`, seasonNumber), ["u23"]);
+});
+
+test("#6155 academyIntakePlacementSquads: ukendt fødselsdato giver kun junior (intet gæt opad); ukendt sæson kaster", () => {
+  assert.deepEqual(academyIntakePlacementSquads(null, 2), [ACADEMY_SQUAD_WHEN_AGE_UNKNOWN]);
+  assert.deepEqual(academyIntakePlacementSquads("ikke-en-dato", 2), [ACADEMY_SQUAD_WHEN_AGE_UNKNOWN]);
+  assert.throws(() => academyIntakePlacementSquads("2005-06-01", null), /season_required/);
+});
+
+test("#6155 drift: frontendens U23-aldersgrænse (squadCaps.ts) er identisk med SQUAD_MAX_AGE.u23", () => {
+  const source = readFileSync(new URL("../../frontend/src/lib/squadCaps.ts", import.meta.url), "utf8");
+  const m = /export const U23_MAX_SEASON_AGE\s*=\s*(\d+)\s*;/.exec(source);
+  assert.ok(m, "squadCaps.ts skal definere U23_MAX_SEASON_AGE som et heltal");
+  assert.equal(Number(m[1]), SQUAD_MAX_AGE.u23);
 });
 
 test("academyPlacementSquad: ukendt SÆSON er en kaldefejl (kaster), ikke en ukendt alder", () => {

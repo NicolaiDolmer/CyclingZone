@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fetchAllRowsChunkedIn, fetchAllRows } from '../../lib/supabasePagination.js';
-import { buildRecoveryManifest, loadRecoveryInputs, parseArgs } from './prepare6061TrainingRecovery.mjs';
+import { buildRecoveryManifest, loadRecoveryInputs, parseArgs, outputDirectory } from './prepare6061TrainingRecovery.mjs';
 import { simulateRiderRepair } from './repair5912LostTraining.mjs';
 import { isTrainingCellsEnabledForTeam } from '../../lib/trainingWeekPlanCellsFlag.js';
 import { resolveDayProgram, programSlotForRaceDay, weekDaysHaveSessions } from '../../lib/trainingPrograms.js';
@@ -156,7 +156,8 @@ async function main(){
  if(changed.length)throw new Error(`Source changed during calculation (${changed.join(',')}); repeat dry-run`);
  result.source_scope=scope;result.source_hashes=hashesBefore;
  const payload=serializeApplyPayload(buildApplyPayload(result,{scope,sourceHashes:hashesBefore}));
- const directory=resolve(fileURLToPath(new URL('../../..',import.meta.url)),'balance-internals','6061');
+ if(opts.team)result.case_filter={team_id:opts.team,tick_date:opts.tickDate};
+ const directory=outputDirectory(fileURLToPath(new URL('../../..',import.meta.url)),opts);
  mkdirSync(directory,{recursive:true});
  writeFileSync(resolve(directory,'compensation-current-plans.json'),JSON.stringify(result,null,2));
  writeFileSync(resolve(directory,'compensation-inputs.json'),JSON.stringify({state,fullRiders,abilityRows,seasons,teamContexts,stageBySlot,boundBySlot,selections},null,2));

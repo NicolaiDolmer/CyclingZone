@@ -1,21 +1,20 @@
-import AcademyPrognosisCell from "../components/rider/AcademyPrognosisCell";
 // AcademyPage — Akademi (#1308, UX-rework #2796).
 //
-// Fire sektioner:
-//   • Graduering — akademiryttere der er vokset ud og skal promoveres/sælges/slippes.
-//   • Intake — kandidater med potentiale-estimat, signeringspris og udløbsfrist.
-//   • Roster — signerede akademi-ryttere i en sorterbar tabel.
+// Sektioner:
+//   • Graduering — banner til Graduation Day, når nogen er vokset ud af sin trup.
+//   • Intake — kandidater med potentiale, signeringspris og udløbsfrist.
+//   • Ungdomstrupperne — to links til U23- og Juniorsiden med antal/plads.
 //   • Regnskab — AcademyPnl.
 //
-// #2796 (Discord 22/7, @knud_r_flink: "akademi siden trænger til lidt kærlighed"):
-// siden var den eneste rytter-flade der stod uden for design-systemet — hånd-
-// rullet tabel uden sortering, ingen ryttertype, ingen markedsværdi, og både
-// intake- og gradueringskort bad om irreversible valg uden at vise pris eller
-// frist. Den bruger nu de samme primitiver som auktions-/rytter-/holdsiden
-// (useTableSort, NationCell, RiderTypeBadge, RiderBadges, Card, Button,
-// EmptyState, PageLoader), så akademiet ser ud og opfører sig som resten af
-// appen. #3045: rosteret migreret videre fra Table/Tr/Th/Td til den kanoniske
-// DataTable (sticky navnekolonne + mobil-fold — se rosterColumns).
+// #6155 (ejer 4/10 + 9/11, #7932): der findes intet akademihold. En rytter hører
+// kun til senior, U23 eller junior, og de to ungdomstrupper har deres egne sider
+// (youth_squad_pages). Akademiets egen rytterliste (rosteret med Promovér/Fyr)
+// er derfor fjernet; flyt og fyring sker på rytterprofilen (RiderManageActions,
+// "Move squad" + Release), præcis som for alle andre ryttere.
+//
+// #2796 (Discord 22/7): intake- og gradueringskortene bruger de samme
+// primitiver som resten af appen (NationCell, RiderTypeBadge, Card, Button,
+// EmptyState, PageLoader).
 //
 // Flag-gated: siden er kun tilgængelig via nav når enabled=true (se Layout.jsx).
 // Hvis nogen alligevel navigerer hertil med flag slukket, vises en graceful
@@ -26,33 +25,22 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useAcademy } from "../lib/useAcademy.js";
-import ScoutablePotentiale from "../components/rider/ScoutablePotentiale.jsx";
-import { useScouting } from "../lib/useScouting.js";
-import RiderLink from "../components/RiderLink.jsx";
 import NationCell from "../components/rider/NationCell.jsx";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge.jsx";
-import RiderBadges from "../components/rider/RiderBadges.jsx";
-import { AcademyTransferConfirmModal } from "../components/AcademyTransferConfirmModal.jsx";
-import { AcademyReleaseConfirmModal } from "../components/AcademyReleaseConfirmModal.jsx";
 import AcademyPnl from "../components/AcademyPnl.jsx";
 import AcademyProfileCard from "../components/AcademyProfileCard.tsx"; // #6666
 import {
-  Card, Button, EmptyState, PageLoader, ErrorState, PageHeader, DataTable,
+  Card, Button, EmptyState, PageLoader, ErrorState, PageHeader,
   Section, SectionHeader, SectionAction,
 } from "../components/ui";
-import { projectSeniorSalary, getRiderMarketValue } from "../lib/marketValues.js";
-import { keepsExistingContractOnPromote } from "../lib/academyPromoteContract.js";
+import { getRiderMarketValue } from "../lib/marketValues.js";
 import { formatNumber } from "../lib/intl.js";
-import { getRiderAge } from "../lib/riderAge.js";
-import { riderShortName } from "../lib/riderName.ts";
+import { ageForSeason, getRiderAge } from "../lib/riderAge.js";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
-import { useTableSort } from "../lib/useTableSort.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
-import { scoutSortValue } from "../lib/scouting.js";
-import { potentialViewOf } from "../lib/potentialEstimateDisplay";
 import { useYouthSquadPages } from "../lib/useYouthSquadPages.ts"; // #5519
-import { academyTargetSquad, isSquadFull, squadCapRows, SQUAD_CAPS } from "../lib/squadCaps.ts"; // #5568
-import { GiftIcon } from "../components/ui/icons/index.jsx";
+import { academyLandingSquad, academyTargetSquad, squadCapRows, SQUAD_CAPS } from "../lib/squadCaps.ts"; // #5568, #6155
+import { ChevronRightIcon, GiftIcon } from "../components/ui/icons/index.jsx";
 import { ABILITY_KEYS, ABILITY_SHORT, flattenAbilities } from "../lib/abilities.js"; // #6666
 import { riderOverallRating } from "../lib/riderRating.js";
 import { statPlateStyle } from "../lib/statColor.js";
@@ -61,12 +49,6 @@ import { statPlateStyle } from "../lib/statColor.js";
 const BOARD_GIFT_SOURCE = "board_gift";
 // #6155: kun kandidater hentet med knappen har en symbolsk startværdi.
 const PULL_SOURCE = "pull";
-
-// #6110: skønnet slår prognosen, når serveren sender det.
-function rosterPotentialSort(prognosis, estimate) {
-  if (!prognosis || potentialViewOf(estimate)) return scoutSortValue(estimate);
-  return prognosis.band ? (prognosis.band.lo + prognosis.band.hi) / 2 : null;
-}
 
 // #2796: var hardkodet Intl.NumberFormat("en-US") midt på en side der ellers
 // bruger den locale-bevidste formatNumber — en dansk bruger så "45,000 CZ$" i
@@ -98,43 +80,18 @@ function daysUntil(deadline) {
   return Math.ceil(ms / 86_400_000);
 }
 
-// Sorterings-accessors for roster-tabellen. Modul-konstant, så useTableSort ikke
-// re-sorterer på hver render (ny objekt-reference ville invalidere memo'en).
-const ROSTER_ACCESSORS = {
-  nationality_code: (r) => r.nationality_code,
-  name: (r) => `${r.lastname ?? ""} ${r.firstname ?? ""}`.trim(),
-  primary_type: (r) => r.primary_type,
-  // #3071: modul-konstant kan ikke se komponentens seasonYear-state — men
-  // alders-SORTERING er ordinalt uafhængig af referenceåret (samme offset for
-  // alle ryttere), så vi sorterer på det negerede fødselsår i stedet (ældre
-  // fødselsår = højere alder). Ingen wall-clock involveret.
-  age: (r) => (r.birthdate ? -new Date(r.birthdate).getFullYear() : null),
-  potential: (r) => r._potMid,
-  market_value: (r) => getRiderMarketValue(r),
-  salary: (r) => (r.salary == null ? null : Number(r.salary)),
-  contract_end_season: (r) => r.contract_end_season,
-};
-// Numeriske kolonner starter faldende ved første klik — "vis mig de dyreste"
-// er det forventede første klik, ikke "vis mig de billigste".
-const ROSTER_DESC_FIRST = new Set(["age", "potential", "market_value", "salary", "contract_end_season"]);
-
-// #6666 (ejer-beslutning 15/10 punkt 2): prognosen læres gennem træning. Før de
-// første træningsdage er der intet bånd, kun hvor langt der er til et første bud;
-// derefter et bånd i rating-point, der snævrer ind (groft → skarpere → endeligt).
+// #6155: én række pr. ungdomstrup i "Dine ungdomstrupper" (link til trupsiden).
+const SQUAD_PAGE_PATH = { u23: "/squads/u23", junior: "/squads/junior" };
 
 export default function AcademyPage() {
   const { t } = useTranslation("academy");
-  // #3045: mobil-fold-tekst for ryttertype (samme namespace som /riders' #2849 bølge 2).
-  const { t: tTypes } = useTranslation("riderTypes");
-  const scouting = useScouting();
-  // #3071: sæson-referenceår til alders-visning (intake/roster) — se riderAge.js.
+  // #3071: sæson-referenceår til alders-visning (intake) — se riderAge.js.
   const seasonYear = useActiveSeasonYear();
-  // #5519: med U23/Junior-siderne tændt forsvinder Youth squads-kortet (3a).
+  // #5519: med U23/Junior-siderne tændt erstatter links Youth squads-kortet (3a).
   const youthSquadPagesOn = useYouthSquadPages();
   const {
-    enabled, squads, seniorCount, seniorMax, roster, intake, graduations, balance,
-    intakePull, loading, error, signCandidate, rejectCandidate, promoteRider,
-    fetchReleaseQuote, releaseRider,
+    enabled, squads, intake, graduations, balance,
+    intakePull, loading, error, signCandidate, rejectCandidate,
     pullIntake, academyProfile, saveProfile,
   } = useAcademy();
   // #5844: bestyrelsens gave-kuld ("A thank-you from the board") vises i sin
@@ -151,197 +108,13 @@ export default function AcademyPage() {
   const [pullBusy, setPullBusy] = useState(false);
   const [pullError, setPullError] = useState(null);
 
-  // #932 S7: promote-bekræftelse (akademi → senior). Konsekvens-bevidst: viser
-  // senior-cap-effekt + projiceret senior-løn. { riderId, riderName, newSalary } | null.
-  const [promoteConfirm, setPromoteConfirm] = useState(null);
-
-  // #4009: fyr-bekræftelse (akademi-rytter forlader akademiet, samme
-  // buyout-gebyr som senior-fyring). { riderId, riderName, fee, balance,
-  // affordable } | null. fee/balance/affordable er null indtil quoten er hentet.
-  const [releaseConfirm, setReleaseConfirm] = useState(null);
-  const [releaseBusy, setReleaseBusy] = useState(false);
-
   // #5568: pladserne tælles PR. UNGDOMSTRUP (U23 / junior) mod squadCaps.ts.
-  // En kandidat spærres kun når DEN trup han lander i er fuld. Før spærrede det
-  // flade akademi-loft alle signeringer for et hold med 8 akademiryttere.
+  // #6155: en kandidat spærres kun, når ALLE de trupper han kan lande i er fulde
+  // (academyLandingSquad: fuld juniortrup → U23, når han er ung nok og der er plads).
   const squadCounts = { u23: squads?.u23?.used ?? null, junior: squads?.junior?.used ?? null };
   const squadRows = squadCapRows(squadCounts);
-  // Senior-truppen er fuld → promote blokeres (en op-rykning ville sprænge cap'en).
-  const seniorFull = seniorCount >= seniorMax;
 
-  // #1162-mønstret fra holdsiden: dekorér med estimat-midtpunktet, så
-  // potentiale-kolonnen kan sorteres uden det server-skjulte rå potentiale.
-  // #6666: med Optag 2.0 kommer prognosen fra akademiets eget kendskab
-  // (træningsdage på holdet), ikke fra scouting-estimatet.
-  const rosterRows = useMemo(
-    () => roster.map((r) => ({
-      ...r,
-      _potMid: rosterPotentialSort(r.prognosis, scouting.estimateFor(r.id)),
-    })),
-    [roster, scouting],
-  );
-  const { rows: sortedRoster, sort, sortDir, handleSort } = useTableSort(
-    rosterRows,
-    ROSTER_ACCESSORS,
-    { descFirstKeys: ROSTER_DESC_FIRST },
-  );
-
-  // #3045 — rosteret migreret fra den hånd-rullede Table/Tr/Th/Td (ingen sticky
-  // navnekolonne, ingen fold-mekanisme — den var den eneste rytterflade der stod
-  // uden for den kanoniske DataTable/T2-recipe) til DataTable. Portræt-kolonne-
-  // kontrakten her: Type + Værdi følger navnet ind i mobil-underlinjen. Akademiet
-  // har INGEN rating-kolonne (evnerne hentes ikke til rosteret — unge, uformede
-  // ryttere vurderes på potentiale, ikke aktuel rating), så Potentiale erstatter
-  // Rating som kvalitetssignalet — men forbliver en almindelig (ikke-foldet)
-  // kolonne, fordi ScoutablePotentiale er et scoutet stjerne-bånd uden en kort,
-  // meningsfuld tekst-repræsentation til underlinjen (se PR-beskrivelsen).
-  //
-  // Navnecellen tegnes af EEN funktion, saa desktop-formen og mobilens korte
-  // form (#5383) ikke kan drive fra hinanden i alt ANDET end selve navnet.
-  const renderRosterName = (r, displayName) => {
-    // Forkortelsen er et PLADSVALG paa skaermen, ikke en omdoebning: linkets
-    // tilgaengelige navn er altid det fulde navn (#5383).
-    const fullName = `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim();
-    const abbreviated = Boolean(fullName) && displayName !== fullName;
-    return (
-      <>
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <RiderLink
-            id={r.id}
-            className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors"
-            aria-label={abbreviated ? fullName : undefined}
-            title={abbreviated ? fullName : undefined}
-          >
-            {displayName}
-          </RiderLink>
-          <RiderBadges badges={["academy"]} />
-        </div>
-        {actionErrors[r.id] && <p className="text-xs text-cz-danger mt-1 whitespace-normal">{actionErrors[r.id]}</p>}
-      </>
-    );
-  };
-
-  const rosterColumns = [
-    {
-      key: "nation",
-      header: t("colNation"),
-      sortKey: "nationality_code",
-      render: (r) => <NationCell code={r.nationality_code} />,
-    },
-    {
-      key: "name",
-      header: t("colRider"),
-      sticky: true,
-      sortKey: "name",
-      render: (r) => renderRosterName(r, `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim()),
-      // #5383: paa mobil staar navnet i den korte form (#5350, ejer-valgt
-      // 18/9) saa det bliver paa EEN linje i den smalle navnekolonne.
-      renderShort: (r) => renderRosterName(r, riderShortName(r)),
-    },
-    {
-      key: "type",
-      header: t("colType"),
-      sortKey: "primary_type",
-      fold: true,
-      // #5383: KORT type-etiket i mobilens meta-linje — se samme kommentar i
-      // RidersPage.jsx. `riderTypes.short.*` er eksisterende copy; desktopens
-      // type-badge nedenfor er uaendret.
-      foldValue: (r) => {
-        if (!r.primary_type) return "";
-        const primary = tTypes(`short.${r.primary_type}`);
-        const hasSecondary = r.secondary_type && r.secondary_type !== r.primary_type;
-        return hasSecondary ? `${primary}/${tTypes(`short.${r.secondary_type}`)}` : primary;
-      },
-      render: (r) => <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} />,
-    },
-    {
-      key: "age",
-      header: t("colAge"),
-      numeric: true,
-      sortKey: "age",
-      render: (r) => getRiderAge(r.birthdate, seasonYear) ?? "–",
-    },
-    {
-      key: "potential",
-      header: t("potential"),
-      sortKey: "potential",
-      // #2796: labelAsTitle — stjernerne bærer informationen, den kvalitative
-      // tekst ligger i tooltip'en.
-      render: (r) => (
-        <ScoutablePotentiale rider={r} scouting={scouting} labelAsTitle
-          legacy={r.prognosis ? <AcademyPrognosisCell prognosis={r.prognosis} /> : null} />
-      ),
-    },
-    {
-      key: "value",
-      header: t("colValue"),
-      numeric: true,
-      sortKey: "market_value",
-      fold: true,
-      foldValue: (r) => formatMoney(getRiderMarketValue(r)),
-      render: (r) => formatMoney(getRiderMarketValue(r)),
-    },
-    {
-      key: "salary",
-      header: t("colSalary"),
-      numeric: true,
-      sortKey: "salary",
-      render: (r) => formatMoney(r.salary),
-    },
-    {
-      key: "contract",
-      header: t("colContract"),
-      sortKey: "contract_end_season",
-      render: (r) => (r.contract_end_season != null ? t("contractUntil", { season: r.contract_end_season }) : "–"),
-    },
-    // #932 S7: promote-handlingen lever HER (på akademi-rosteret), ikke på
-    // holdsiden. Blokeres når senior-truppen er fuld.
-    // #4009: Fyr sidder ved siden af Promovér — samme handling som ELLERS kun
-    // var tilgængelig via gradueringsvinduet (ryttere ≥22). Ejer-ja 20/8:
-    // fyring skal virke på alle ryttere, ikke kun graduerede.
-    // #4628: raekkeknapper er ALTID secondary (T2: "row action buttons are
-    // secondary sm, never gold in rows") — Promovér var primary og blev
-    // tvunget om af kittet med et console.error (#4625/#4657). Fyr var en
-    // roed outline-knap, altsaa en indrammet danger-flade i hver eneste
-    // raekke; den er nu en destruktiv TEKST-handling (ghost + --danger),
-    // saa raekken har én indrammet knap og roedt kun som farve.
-    // En rigtig handlings-menu (Dropdown) er fravalgt her: DataTable's WRAP er
-    // overflow-hidden og SCROLLER overflow-x-auto, saa et absolut placeret
-    // panel i en raekke ville blive klippet af tabellens egen scroller.
-    {
-      key: "action",
-      header: t("colAction"),
-      render: (r) => {
-        const busy = actionState[r.id] != null;
-        return (
-          /* #5102/D-047: flex-wrap saa Fremryk/Fyr stables paa mobil i stedet
-             for at presse navnekolonnen sammen. */
-          <div className="flex flex-wrap items-center justify-end gap-1.5">
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => handlePromote(r)}
-              disabled={busy || seniorFull}
-              loading={actionState[r.id] === "promoting"}
-              title={seniorFull ? t("promoteSeniorFullTooltip") : undefined}
-            >
-              {t("promoteBtn")}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-cz-danger hover:text-cz-danger"
-              onClick={() => handleReleaseOpen(r)}
-              disabled={busy}
-            >
-              {t("releaseBtn")}
-            </Button>
-          </div>
-        );
-      },
-    },
-  ];
-
+  // #6155: kun signeringens fejl er tilbage; flyt/fyr sker på rytterprofilen.
   function mapActionError(err) {
     if (err === "academy_full") return t("error.academyFull");
     if (err === "not_offered") return t("error.notOffered");
@@ -352,11 +125,6 @@ export default function AcademyPage() {
     if (err === "already_assigned") return t("error.alreadyAssigned");
     // #4213: stale tilbud — rytteren er i mellemtiden ejet af et andet hold.
     if (err === "rider_owned") return t("error.riderOwned");
-    if (err === "squad_cap_violation") return t("error.squadFull");
-    // #4009: fyr-specifikke fejl fra /api/riders/:id/academy-release.
-    if (err === "rider_on_auction_release") return t("error.riderOnAuction");
-    if (err === "cannot_afford_release") return t("error.cannotAffordRelease");
-    if (err === "rider_state_changed" || err === "rider_not_academy") return t("error.riderStateChanged");
     return t("error.generic");
   }
 
@@ -389,73 +157,6 @@ export default function AcademyPage() {
       setPullError(t("intakePull.errorFailed"));
     }
     setPullBusy(false);
-  }
-
-  // Åbn promote-bekræftelse (#932 S7) — selve op-rykningen sker i confirmPromote.
-  function handlePromote(rider) {
-    setActionErrors(prev => ({ ...prev, [rider.id]: null }));
-    setPromoteConfirm({
-      riderId: rider.id,
-      riderName: `${rider.firstname} ${rider.lastname}`.trim(),
-      // #2796: dialogen viste engang 161 CZ$ for ENHVER rytter, fordi to
-      // korrekte defaults ramte samtidig (manglende division → global sats,
-      // manglende current_production_value → base-fallback 1000). #3989 fjernede
-      // division-benet strukturelt; rytterens current_production_value SKAL
-      // stadig være i payloaden, ellers rammer base-fallbacken igen.
-      // #3620: har rytteren allerede en kontrakt, regenereres den ikke, så
-      // lønnen ændrer sig ikke. Så viser vi den rigtige løn i stedet for en
-      // projektion der aldrig bliver skrevet.
-      newSalary: keepsExistingContractOnPromote(rider)
-        ? rider.salary
-        : projectSeniorSalary(rider),
-      keepsContract: keepsExistingContractOnPromote(rider),
-    });
-  }
-
-  async function confirmPromote() {
-    if (!promoteConfirm) return;
-    const riderId = promoteConfirm.riderId;
-    setActionState(prev => ({ ...prev, [riderId]: "promoting" }));
-    setActionErrors(prev => ({ ...prev, [riderId]: null }));
-    const result = await promoteRider(riderId);
-    if (result.ok) {
-      setPromoteConfirm(null);
-    } else {
-      setActionErrors(prev => ({ ...prev, [riderId]: mapActionError(result.error) }));
-      setPromoteConfirm(null);
-    }
-    setActionState(prev => ({ ...prev, [riderId]: null }));
-  }
-
-  // #4009: Åbn fyr-bekræftelse — henter gebyr-quoten (samme formel som
-  // senior-fyring) FØR dialogen viser bekræft-knappen aktiv, samme
-  // speed-bump-mønster som rytterprofilens/holdsidens Fyr-panel.
-  async function handleReleaseOpen(rider) {
-    setActionErrors(prev => ({ ...prev, [rider.id]: null }));
-    setReleaseConfirm({
-      riderId: rider.id,
-      riderName: `${rider.firstname} ${rider.lastname}`.trim(),
-      fee: null,
-      balance: null,
-      affordable: null,
-    });
-    const { ok, data } = await fetchReleaseQuote(rider.id);
-    setReleaseConfirm(prev => (prev && prev.riderId === rider.id
-      ? { ...prev, fee: ok ? data.fee : 0, balance: ok ? data.balance : null, affordable: ok ? data.affordable : false }
-      : prev));
-  }
-
-  async function confirmRelease() {
-    if (!releaseConfirm) return;
-    const riderId = releaseConfirm.riderId;
-    setReleaseBusy(true);
-    setActionErrors(prev => ({ ...prev, [riderId]: null }));
-    const result = await releaseRider(riderId);
-    setReleaseBusy(false);
-    setReleaseConfirm(null);
-    if (!result.ok) {
-      setActionErrors(prev => ({ ...prev, [riderId]: mapActionError(result.error) }));
-    }
   }
 
   // Loading — PageLoader reserverer højde (#1794 CLS).
@@ -519,14 +220,20 @@ export default function AcademyPage() {
     // så kortet ikke spejler en økonomi-regel der kan drive fra hinanden.
     const fee = item.signingFee;
     const tooExpensive = fee != null && balance != null && fee > balance;
-    // #5568: spær kun mod loftet i den trup han lander i. targetSquad
-    // kommer fra backend (samme valg som signeringen); mangler det,
-    // afgør sæsonalderen det med samme regel.
+    // #5568: targetSquad (aldersplaceringen) kommer fra backend, samme valg
+    // som signeringen; mangler det, afgør sæsonalderen det med samme regel.
+    // #6155: er hans trup fuld, lander han på U23, når han er ung nok og der
+    // er plads (academyLandingSquad, spejl af signeringens prøve-rækkefølge).
     const targetSquad = item.targetSquad ?? academyTargetSquad(rider.birthdate, seasonYear);
-    const isFull = isSquadFull(targetSquad, squadCounts);
-    const fullTooltip = targetSquad === "junior"
-      ? t("fullTooltipJunior", { max: SQUAD_CAPS.junior })
-      : t("fullTooltipU23", { max: SQUAD_CAPS.u23 });
+    const landing = academyLandingSquad(targetSquad, ageForSeason(rider.birthdate, seasonYear), squadCounts);
+    const isFull = landing.full;
+    const blockedBoth = isFull && landing.options.length > 1;
+    const fullTooltip = blockedBoth
+      ? t("fullTooltipBoth")
+      : targetSquad === "junior"
+        ? t("fullTooltipJunior", { max: SQUAD_CAPS.junior })
+        : t("fullTooltipU23", { max: SQUAD_CAPS.u23 });
+    const fullNote = blockedBoth ? t("fullNoteBoth") : targetSquad === "junior" ? t("fullNoteJunior") : t("fullNoteU23");
 
     return (
       <Card key={item.intakeId} className="p-4 flex flex-col gap-3">
@@ -535,9 +242,8 @@ export default function AcademyPage() {
             via RLS (database/2026-06-22-hide-intake-riders-from-db.sql,
             #1743), så /riders/:id ville altid give "rider not found" for
             netop denne rytter, uanset hvilket hold der klikker. Navnet er
-            derfor almindelig tekst indtil kandidaten er signeret/afvist —
-            roster- og gradueringssektionerne linker fortsat (de ryttere er
-            ikke længere 'offered' og er derfor synlige). */}
+            derfor almindelig tekst indtil kandidaten er signeret/afvist; på
+            U23-/Juniorsiden linker han som alle andre. */}
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="font-semibold text-sm leading-snug truncate text-cz-1">
@@ -640,6 +346,12 @@ export default function AcademyPage() {
           <p className="text-3xs text-cz-3">{t("intakePull.valuationNote")}</p>
         )}
 
+        {/* #6155: juniortruppen er fuld, men U23 har plads: sig hvor han kommer hen,
+            FØR det irreversible klik. */}
+        {landing.movedToU23 && (
+          <p className="text-xs text-cz-2" data-testid="intake-lands-u23">{t("landsOnU23")}</p>
+        )}
+
         {/* Fejlbesked */}
         {err && <p className="text-xs text-cz-danger">{err}</p>}
 
@@ -663,9 +375,7 @@ export default function AcademyPage() {
 
         {/* Blokerings-forklaring under knapperne */}
         {isFull && !err && (
-          <p className="text-3xs text-cz-3 text-center">
-            {targetSquad === "junior" ? t("fullNoteJunior") : t("fullNoteU23")}
-          </p>
+          <p className="text-3xs text-cz-3 text-center">{fullNote}</p>
         )}
         {!isFull && tooExpensive && !err && (
           <p className="text-3xs text-cz-danger text-center">{t("error.insufficientBalance")}</p>
@@ -674,11 +384,9 @@ export default function AcademyPage() {
     );
   };
 
-  // #3454: T1 (max-w-4xl) → T2 (max-w-[1600px]) — akademiets roster bruger
-  // allerede den kanoniske DataTable (#3045, T2-recipen), men sad klemt i en
-  // T1-container med spildt whitespace i siderne (ejer-direktiv 6/8, samme
-  // fejlklasse som #1675/#1186/#2446). Layout.jsx's WIDE_CONTENT_ROUTES
-  // matcher (se Layout.jsx), så shellen giver nu fuld bredde til denne cap.
+  // #3454: T2 (max-w-[1600px]). Layout.jsx's WIDE_CONTENT_ROUTES matcher
+  // /academy, så shellen giver fuld bredde til denne cap; kandidatkortene står
+  // i et tre-kolonne-grid og regnskabet i to kolonner.
   return (
     <div className="max-w-[1600px] mx-auto">
       {/* Saldo + slot-tæller er ren status-tekst (intet Select/Button) — samme
@@ -824,56 +532,56 @@ export default function AcademyPage() {
         <AcademyProfileCard profile={academyProfile} onSave={saveProfile} />
       )}
 
-      {/* ROSTER-sektion — #3045: DataTable (T2-recipen), sticky navnekolonne +
-          Type/Værdi foldet ind i portræt-underlinjen (se rosterColumns). */}
-      <section>
-        <SectionHeader title={t("rosterHeading")} />
-
-        {roster.length === 0 ? (
-          <EmptyState
-            title={t("emptyRosterTitle")}
-            description={t("emptyRoster")}
-            action={
-              <Link to="/auctions" className={buttonClass({ variant: "secondary", size: "sm" })}>
-                {t("emptyAction")}
-              </Link>
-            }
-          />
-        ) : (
-          <DataTable
-            label={t("rosterHeading")}
-            columns={rosterColumns}
-            rows={sortedRoster}
-            rowKey={(r) => r.id}
-            /* D-047 (#5102): en akademirytter vurderes paa potentiale og alder
-               (hvornaar han kan fremrykkes), og raekkens handling
-               ("Fremryk / Fyr") er den tredje — sidens primaere handling maa
-               ikke ligge bag "Fuld tabel" paa mobil. Vaerdien er allerede
-               foldet ind i navnets underlinje (`fold: true`), og loen er eet
-               chip-tryk vaek. */
-            mobileDefaults={["potential", "age", "action"]}
-            sort={sort}
-            sortDir={sortDir}
-            onSort={handleSort}
-          />
-        )}
-      </section>
+      {/* UNGDOMSTRUP-links — #6155 (ejer 4/10, forslag A): akademiets egen rytterliste er væk. Der
+          findes intet akademihold; de signerede talenter står på U23- eller
+          juniorholdet, så siden peger derhen med antal/plads pr. trup (samme
+          squadCapRows som headeren). Rækkerne er links, ingen knapper: sidens
+          eneste guld-knap er stadig ugens hentning (TASTE §3). */}
+      {youthSquadPagesOn && (
+      <Section data-testid="academy-squad-links">
+        <SectionHeader title={t("squadLinks.title")} />
+        <p className="mb-2 text-xs text-cz-2">{t("squadLinks.description")}</p>
+        <div className="divide-y divide-cz-border">
+          {squadRows.map((row) => (
+            <Link
+              key={row.squad}
+              to={SQUAD_PAGE_PATH[row.squad]}
+              className="group py-[13px] flex items-center justify-between gap-3 hover:bg-cz-subtle -mx-2 px-2 rounded-cz transition-colors"
+              data-testid={`academy-squad-link-${row.squad}`}
+            >
+              <span className="min-w-0">
+                <span className="block text-[13.5px] font-medium text-cz-1 group-hover:text-cz-accent-t">
+                  {t(`squadLinks.${row.squad}`)}
+                </span>
+                {row.full && (
+                  <span className="block text-xs text-cz-warning mt-0.5">{t("squadLinks.full")}</span>
+                )}
+              </span>
+              <span className="shrink-0 flex items-center gap-2">
+                <span className={`font-data text-sm tabular-nums ${row.full ? "text-cz-warning" : "text-cz-2"}`}>
+                  {t("squadLinks.count", { used: row.used, max: row.max })}
+                </span>
+                <ChevronRightIcon size={14} className="text-cz-3" aria-hidden="true" />
+              </span>
+            </Link>
+          ))}
+        </div>
+      </Section>
+      )}
 
       {/* YOUTH SQUADS-kort (#4618, slice 0 af epic #2492) — "Kommer snart"-rammen
           for Junior team og U23 team, jf. docs/YOUTH_RULES.md §3 og artboard 3b
-          (docs/design/youth-tiers/HANDOFF.md beslutning 10). Lægges UNDER
-          roster-kortet, ikke over (fold-disciplin, PAGE_TEMPLATES.md). Ingen
+          (docs/design/youth-tiers/HANDOFF.md beslutning 10). Ingen
           nye nav-punkter, ingen tomme tabeller, ingen tal — kun en pille
           (FacilityTrackCard-mønstret) + én sætning pr. trup + ét roadmap-link
-          (P11 "ingenting opdigtet", TASTE.md). Dagens akademi-ryttere forbliver
-          én samlet trup ("Academy roster" ovenfor) indtil slice 1.
+          (P11 "ingenting opdigtet", TASTE.md).
           Beskrivelseslinjen er en fuld sætning, ikke en meta-label, så den
           IKKE bruger PAGE_TEMPLATES' uppercase-11px-meta-stil (den stil er til
           korte labels/tal, ikke løbende tekst) — samme valg som
           FacilityTrackCard's egen "coming soon"-linje (text-xs text-cz-2).
           #5519 (artboard 3a): med kontakten youth_squad_pages tændt ER
           trupperne ægte og bor i menuen lige efter My Team, så kortet
-          forsvinder. Slukket = dagens visning uændret. */}
+          forsvinder (og #6155's links ovenfor tager over). Slukket = kortet. */}
       {!youthSquadPagesOn && (
       <Section>
         <SectionHeader
@@ -902,36 +610,6 @@ export default function AcademyPage() {
       {/* Akademi-regnskab (#2485) — P&L for udvikl-og-sælg. */}
       <AcademyPnl />
       </div>
-
-      {/* Promote-bekræftelse (#932 S7) — senior-cap-effekt + projiceret senior-løn. */}
-      <AcademyTransferConfirmModal
-        show={!!promoteConfirm}
-        direction="promote"
-        riderName={promoteConfirm?.riderName}
-        newSalary={promoteConfirm?.newSalary}
-        keepsContract={!!promoteConfirm?.keepsContract}
-        capLabel={`${seniorCount} / ${seniorMax}`}
-        capAfterLabel={`${seniorCount + 1} / ${seniorMax}`}
-        busy={promoteConfirm ? actionState[promoteConfirm.riderId] === "promoting" : false}
-        onCancel={() => {
-          if (promoteConfirm && actionState[promoteConfirm.riderId] === "promoting") return;
-          setPromoteConfirm(null);
-        }}
-        onConfirm={confirmPromote}
-      />
-
-      {/* Fyr-bekræftelse (#4009) — buyout-gebyr som speed-bump, samme formel
-          som senior-fyring. */}
-      <AcademyReleaseConfirmModal
-        show={!!releaseConfirm}
-        riderName={releaseConfirm?.riderName}
-        fee={releaseConfirm?.fee}
-        balance={releaseConfirm?.balance}
-        affordable={releaseConfirm?.affordable}
-        busy={releaseBusy}
-        onCancel={() => { if (!releaseBusy) setReleaseConfirm(null); }}
-        onConfirm={confirmRelease}
-      />
     </div>
   );
 }

@@ -45,7 +45,14 @@
     "label": "Solde",
     "division": "Division {division}",
     "available": "{value} CZ$ disponibles",
-    "lockedInBids": "{value} CZ$ bloqués dans des enchères"
+    "lockedInBids": "{value} CZ$ bloqués dans des enchères",
+    "lockedSales": "+{value} CZ$ bloqués"
+  },
+  "lockedSalesBox": {
+    "heading": "Bloqué jusqu'au changement d'équipe",
+    "payout": "Versé quand le coureur change d'équipe",
+    "endsIn": "{count, plural, one {se termine dans # jour} other {se termine dans # jours}}",
+    "endsToday": "se termine aujourd'hui"
   },
   "debt": {
     "label": "Dette totale",

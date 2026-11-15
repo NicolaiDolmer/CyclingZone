@@ -84,6 +84,11 @@
       "sellerTitle": "Deal geannuleerd",
       "sellerMessage": "{riders} is niet van ploeg gewisseld, dus de {amount} CZ$ van de deal zijn terug naar de andere ploeg."
     },
+    "saleEscrow": {
+      "lockedMessage": "{riderName} is verkocht voor {price} CZ$. Het geld staat vast en wordt uitbetaald zodra hij na zijn etappekoers van ploeg wisselt.",
+      "releasedTitle": "Verkoop uitbetaald",
+      "releasedMessage": "{riderName} is van ploeg gewisseld. {amount} CZ$ staat nu op je saldo."
+    },
     "admin": {
       "feedbackReply": {
         "title": "Antwoord op je bericht"
@@ -710,6 +715,14 @@
       "title": "De renner is aangekomen",
       "message": "{riderName} heeft zich bij je team aangesloten. {reason, select, tourFinished {{raceName} is afgelopen.} tourFinishedUnnamed {Zijn etappekoers is afgelopen.} dealCompleted {Zijn deal is nu afgerond.} other {}}"
     },
+    "riderReleasePending": {
+      "title": "Vrijgave aangevraagd",
+      "message": "{rider} wordt vrijgegeven na {race}. De vergoeding van {fee} CZ$ is afgeschreven."
+    },
+    "riderReleaseExecuted": {
+      "title": "Renner vrijgegeven",
+      "message": "{rider} heeft je ploeg verlaten."
+    },
     "squadEnforced": {
       "title": "Selectiegrootte afgedwongen",
       "message": "{purchasedCount, plural, =0 {} one {Automatisch # renner gekocht: {purchasedNames}\n} other {Automatisch # renners gekocht: {purchasedNames}\n}}{deferredCount, plural, =0 {} one {# renner sluit zich bij het team aan zodra zijn lopende etappekoers is afgelopen: {deferredNames}\n} other {# renners sluiten zich bij het team aan zodra hun lopende etappekoers is afgelopen: {deferredNames}\n}}{soldCount, plural, =0 {} one {Automatisch # renner verkocht: {soldNames}\n} other {Automatisch # renners verkocht: {soldNames}\n}}{salesDeferredCount, plural, =0 {} one {# renner in een lopende etappekoers wordt in plaats daarvan na de koers verkocht\n} other {# renners in een lopende etappekoers worden in plaats daarvan na de koers verkocht\n}}Boete: {fine} CZ$ · Aftrek: {points} punten"
@@ -806,7 +819,8 @@
       "transferRejected": "Je aanbieding voor {rider} is afgewezen.",
       "watchlistRiderAuction": "Een renner van je volglijst staat in veiling: {rider}.",
       "testTitle": "Discord-DM werkt",
-      "testDescription": "Je ontvangt nu DM's van Cycling Zone over veilingen, transfers en updates van het bestuur."
+      "testDescription": "Je ontvangt nu DM's van Cycling Zone over veilingen, transfers en updates van het bestuur.",
+      "testPaused": "Ik heb Discord-berichten voorlopig uitgezet, dus er is geen testbericht verstuurd."
     }
   },
   "push": {

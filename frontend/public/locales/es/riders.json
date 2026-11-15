@@ -77,6 +77,7 @@
     "season": "Temporada {n}",
     "noActiveSeason": "Sin temporada activa",
     "completedSeasonNote": "· Temporada terminada. La nueva temporada aún no ha empezado.",
+    "updatedAt": "Actualizado a las {time}",
     "ridersCount": "{count} ciclistas",
     "filterIndicator": "Mostrando la División {division}",
     "divisionFilterLabel": "Filtrar por división",

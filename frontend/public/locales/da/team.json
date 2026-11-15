@@ -5,7 +5,7 @@
     "ridersCount": "{count}/{cap} senior-ryttere",
     "youthSquadCounts": "+{u23} U23 · +{junior} juniorer",
     "seniorCapTooltip": "Trup-cap er {cap} senior-ryttere. Akademiryttere tæller ikke med.",
-    "youthSquadCountsTooltip": "U23- og juniorryttere har deres egne trup-lofter (12 og 10) og tæller ikke med i senior-cap'en.",
+    "youthSquadCountsTooltip": "U23- og juniorryttere har deres egne trup-lofter og tæller ikke med i senior-cap'en.",
     "incomingCount": "+{count} indgående",
     "outgoingCount": "-{count} udgående",
     "salaryPerSeason": "Løn/sæson: {value} CZ$",
@@ -45,9 +45,7 @@
   "development": {
     "headers": {
       "projected": "Prognose",
-      "projectedTitle": "Prognoseret rating-interval for hans primære rolle, baseret på din træning. Sorteret på det høje tal.",
-      "ceiling": "Loft",
-      "ceilingTitle": "Det teoretisk højeste niveau rollen kan nå. Ikke justeret for hvordan du træner ham."
+      "projectedTitle": "Prognoseret rating-interval for hans primære rolle, baseret på din træning. Sorteret på det høje tal."
     },
     "noForecast": "Ingen prognose endnu"
   },
@@ -88,7 +86,7 @@
       "value": "Værdi",
       "salary": "Løn",
       "potential": "Potentiale",
-      "potentialTitle": "Det forventede niveau han realistisk er på vej mod med din træning. Ikke det samme som rollens loft (det teoretisk højeste for hans rolle) - hold musen over tallet for begge.",
+      "potentialTitle": "Det forventede niveau han realistisk er på vej mod med din træning.",
       "badges": "Status",
       "age": "Alder",
       "popularity": "Popularitet",

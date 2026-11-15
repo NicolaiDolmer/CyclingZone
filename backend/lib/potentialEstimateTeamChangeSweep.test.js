@@ -6,6 +6,10 @@ import assert from "node:assert/strict";
 import { POTENTIAL_ESTIMATE_PARAMS_KEY, POTENTIAL_ESTIMATES_TABLE } from "./potentialEstimateWriter.js";
 import { runPotentialEstimateTeamChangeSweep, runPotentialEstimateTeamChangeTick } from "./potentialEstimateTeamChangeSweep.js";
 import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
+import { validateDevelopmentXpParams } from "./developmentXp.ts";
+import { expectedTopRating } from "./developmentXpExpectedTop.ts";
+import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
+import { ageForSeason } from "./riderSeasonAge.js";
 
 const PARAMS = Object.freeze({
   salt: "test",
@@ -86,6 +90,42 @@ test("rytter uden talent_ceiling, uden hold eller uden for vinduet springes over
   });
   assert.equal((await run(sb)).riders, 0);
   assert.equal(estimates(sb).length, 0);
+});
+
+test("XP: holdskiftet skriver over forventet topniveau, også uden talent_ceiling (#7684)", async () => {
+  // Syntetiske XP-tal, ikke kalibreringen (privat, hard rule 17).
+  const xpRaw = {
+    price: { base: 10, exponent: 2 },
+    potentialXp: [{ at: 1, value: 10 }, { at: 3, value: 30 }, { at: 6, value: 90 }],
+    ageShare: {
+      physical: [{ at: 28, value: 1 }, { at: 32, value: 0.5 }, { at: 36, value: 0.1 }],
+      mental: [{ at: 32, value: 1 }, { at: 36, value: 0.5 }, { at: 40, value: 0.2 }],
+    },
+    offFocusShare: 0.1,
+    raceOffFocusShare: 0.2,
+    typeShare: { signatur: 1, sekundaer: 0.8, haandvaerk: 0.5, andenRolle: 0.3, svaghed: 0.1 },
+  };
+  const abilities = Object.fromEntries(VISIBLE_ABILITIES.map((a) => [a, 45]));
+  const sb = client({
+    app_config: [
+      { key: "potential_estimate_writes", value: "on" },
+      { key: "development_xp_model", value: "on" },
+      { key: "development_xp_from_date", value: "2026-11-05" },
+    ],
+    private_config: [
+      { key: POTENTIAL_ESTIMATE_PARAMS_KEY, value: PARAMS },
+      { key: "development_xp_params", value: xpRaw },
+    ],
+    seasons: [{ id: "s1", number: 1, status: "active" }],
+    riders: [rider({ talent_ceiling: null, potentiale: 4, birthdate: "2005-06-01", primary_type: "climber", secondary_type: "puncheur" })],
+    rider_derived_abilities: [{ rider_id: "r1", ...abilities }],
+    scout_actions: [{ id: "a1", team_id: "t1", rider_id: "r1" }],
+  });
+  assert.equal((await run(sb)).written, 1);
+  const truth = expectedTopRating({
+    id: "r1", abilities, age: ageForSeason("2005-06-01", 1), potentiale: 4, primaryType: "climber", secondaryType: "puncheur",
+  }, validateDevelopmentXpParams(xpRaw));
+  assert.equal(estimates(sb)[0].ceiling_at_write, truth);
 });
 
 test("AI-hold får intet skøn", async () => {

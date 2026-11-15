@@ -29,25 +29,14 @@ function harness(name: string, apiRows: unknown[], fail = false) {
     useCallback: (fn: unknown) => fn, useEffect: () => {}, supabase, pickResultsSeason,
     fetchAllRows: (build: () => { table: string }) => Promise.resolve(tables[build().table]),
     fetchGlobalRanks: fetchRows, fetchRiderRankings: fetchRows,
+    // #7664: the freshness probe is started before the numbers and read after them.
+    startFreshnessProbe: () => ({ settled: () => "2026-11-13T13:07:00.000Z" }),
+    loadRankingFreshness: async () => null,
   });
   return { hook: hook(), states };
 }
 
-test("global hook joins API aggregates with snapshots and hides inactive teams", async () => {
-  const f = harness("useGlobalRank", [
-    { team_id: "team", name: "Team", division: 1, global_rank: "2", global_points: "100", active_recent: true },
-    { team_id: "inactive", active_recent: false },
-  ]);
-  await f.hook.reload();
-  const rows = f.states[0] as Record<string, unknown>[];
-  assert.equal(rows.length, 1);
-  assert.equal(rows[0].global_rank, 2);
-  assert.equal(rows[0].movement, 3);
-  assert.equal(rows[0].places_gained, 6);
-  assert.equal(f.states[3], false);
-  assert.equal(f.states[4], null);
-});
-
+// #6494: Global Rank læser nu via frontend/src/data (globalRankData.test.ts dækker sammenføjningen).
 test("rider hook preserves numeric stats, names and wins from API data", async () => {
   const f = harness("useRiderRankings", [{ rider_id: "rider", points: "80", stage_wins: "2", gc_wins: "1" }]);
   await f.hook.reload();
@@ -57,14 +46,16 @@ test("rider hook preserves numeric stats, names and wins from API data", async (
   assert.equal(rows[0].points, 80);
   assert.equal(rows[0].total_wins, 3);
   assert.equal(f.states[2], false);
+  assert.equal(f.states[4], "2026-11-13T13:07:00.000Z", "#7664: the time follows every load of the numbers");
 });
 
-for (const name of ["useGlobalRank", "useRiderRankings"]) {
+for (const name of ["useRiderRankings"]) {
   test(`${name}: API failures clear results and finish loading`, async () => {
     const f = harness(name, [], true);
     await f.hook.reload();
     assert.equal((f.states[0] as unknown[]).length, 0);
-    assert.match((f.states.at(-1) as Error).message, /endpoint unavailable/);
-    assert.equal(f.states.at(-2), false);
+    assert.match((f.states[3] as Error).message, /endpoint unavailable/);
+    assert.equal(f.states[2], false);
+    assert.equal(f.states[4], null, "#7664: no time without numbers");
   });
 }

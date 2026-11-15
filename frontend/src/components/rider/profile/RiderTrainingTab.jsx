@@ -19,7 +19,7 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { focusAbilitiesFor, injuryTimeLeft } from "../../../lib/training.js";
+import { focusAbilitiesFor, injuryTimeLeft, profileFatigueValue } from "../../../lib/training.js";
 import { useTrainingCatalogV3 } from "../../../lib/useTrainingCatalogV3.ts"; // #5319
 import {
   riderHistoryFromRuns, breakthroughJumps, isBreakthrough,
@@ -449,7 +449,8 @@ function FormCard({ riderId, condition, t }) {
     );
   }
   const form = condition.form ?? 0;
-  const fatigue = condition.fatigue ?? 0;
+  // #7801: ukendt traethed lige nu (kontakten taendt) = streg og tom bjaelke, aldrig 0.
+  const fatigue = profileFatigueValue(condition);
   // #5462: loebsdage naar backenden har skrevet dem, ellers kalenderdage som foer.
   const injury = injuryTimeLeft(condition);
   const days = injury.count;
@@ -471,10 +472,10 @@ function FormCard({ riderId, condition, t }) {
         <div>
           <div className="flex justify-between mb-1.5">
             <span className="text-[12px] text-cz-2">{t("condition.fatigue")}</span>
-            <span className={`font-mono font-bold text-[13px] ${fatigueColor(fatigue)}`}>{fatigue}</span>
+            <span className={`font-mono font-bold text-[13px] ${fatigue === null ? "text-cz-3" : fatigueColor(fatigue)}`}>{fatigue ?? "—"}</span>
           </div>
           <div className="relative h-1.5 bg-cz-subtle rounded-full" aria-hidden="true">
-            <div className="absolute left-0 top-0 h-full rounded-full bg-cz-warning/80" style={{ width: `${clamp(fatigue)}%` }} />
+            <div className="absolute left-0 top-0 h-full rounded-full bg-cz-warning/80" style={{ width: `${fatigue === null ? 0 : clamp(fatigue)}%` }} />
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-0.5">

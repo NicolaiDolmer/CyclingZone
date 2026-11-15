@@ -1,7 +1,9 @@
 import { useMemo } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { PageHeader, Tabs, TabList, Tab, ChevronLeftIcon } from "../components/ui";
+import { buttonClass } from "../components/ui/buttonStyles.js";
+import { usePlanningWorkbenchFlag } from "../lib/usePlanningWorkbenchFlag.ts"; // #7535
 import RaceHubBoard from "../components/racehub/RaceHubBoard.jsx";
 import SeasonView from "../components/racehub/SeasonView.jsx";
 import SeasonDayToggle from "../components/racehub/SeasonDayToggle.jsx";
@@ -56,6 +58,7 @@ export default function PlanningHubPage() {
   // #4983: samme kilde som nav-markeringen (Layout.jsx) — boksen her viser
   // hvilke trupper der mangler og hvor lang tid der er til fristen.
   const { reminder: selectionReminder } = useSelectionReminder();
+  const workbenchEnabled = usePlanningWorkbenchFlag();
 
   // URL'en ER fane-tilstanden (#3102 etape 2-læringen) — ingen useState-kopi,
   // så browserens tilbage/frem flytter fanen med.
@@ -120,7 +123,16 @@ export default function PlanningHubPage() {
           fundet"-fallback giver en escape hvis manageren står på en anden
           fane) — samme afvejning som da den boede på RacesPage. */}
       <OnboardingTour pageKey="races" steps={racesTourSteps} />
-      <PageHeader title={t("hub.title")} />
+      {/* #7535: knappen findes kun naar kontakten planning_workbench er taendt for spilleren (beta foerst). */}
+      <PageHeader
+        title={t("hub.title")}
+        // @ts-ignore: PageHeader udleder actions som null-only fra sin default
+        actions={workbenchEnabled === true ? (
+          <Link to="/planning/workbench" className={buttonClass({ variant: "secondary", size: "sm" })}>
+            {t("hub.tryWorkbench")}
+          </Link>
+        ) : null}
+      />
 
       {/* #4983: paamindelsen staar OEVERST paa fladen, foer fanerne — den
           gaelder alle fire faner, og den er grunden til at manageren blev

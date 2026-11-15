@@ -68,26 +68,15 @@ import { potentialViewOf } from "../../lib/potentialEstimateDisplay";
 // med din træning", ikke "hvor højt kan han teoretisk nå". Tooltip-copyen er
 // derfor en title/subtitle-parre ("Projected level" / "Where he realistically
 // lands with your training") frem for ét loft-sprogs sætning.
-// Overgangs-designet (ejer 18/8): rollens loft vises SAMMEN MED prognosen, så
-// det tal spillerne kendte før trin 7 ikke opleves som slettet. I store
-// kontekster (large: hero/detalje) står loftet synligt som dæmpet suffiks; i
-// tætte tabeller bor det i tooltip'en, hvor labelen i forvejen flyttede hen
-// (#2796). Loftet kommer fra serveren (`estimate.loft`, roleCeilRating) og er
-// rolle+alder-bestemt — intet rytter-hemmeligt (#1162 holder).
-function PotentialBand({ band, role, loft, pastPeak, label, large, t }) {
+// Ejer 9/11 (#7932): rytteres lofter vises ikke nogen steder, hverken som suffiks
+// eller i tooltip'en. Båndet står alene.
+function PotentialBand({ band, role, label, large, t }) {
   const roleName = role ? t(`riderTypes:types.${role}`) : null;
   const bandTitle = roleName
     ? t("rider:scouting.potentialBandTitle", { role: roleName, lo: band.lo, hi: band.hi })
     : null;
   const bandSubtitle = roleName ? t("rider:scouting.potentialBandSubtitle") : null;
-  // #4039: forbi-peak dæmper FORKLARINGEN, ikke tallet — samme loft, anden
-  // begrundelse for hvorfor han ikke længere klatrer mod det (ejer 20/8).
-  const loftTitle = Number.isFinite(loft)
-    ? (pastPeak
-      ? t("rider:scouting.loftPastPeakTitle", { value: loft })
-      : (roleName ? t("rider:scouting.loftTitle", { role: roleName, value: loft }) : null))
-    : null;
-  const title = [label, bandTitle, bandSubtitle, loftTitle].filter(Boolean).join(" · ") || undefined;
+  const title = [label, bandTitle, bandSubtitle].filter(Boolean).join(" · ") || undefined;
   return (
     <span
       title={title}
@@ -95,11 +84,6 @@ function PotentialBand({ band, role, loft, pastPeak, label, large, t }) {
       data-potential-band={`${band.lo}-${band.hi}`}
     >
       {band.lo === band.hi ? band.lo : `${band.lo}–${band.hi}`}
-      {large && Number.isFinite(loft) && (
-        <span className="ms-1.5 text-[12px] text-cz-3 font-normal" data-potential-loft={loft}>
-          · {pastPeak ? t("rider:scouting.loftPastPeakShort", { value: loft }) : t("rider:scouting.loftShort", { value: loft })}
-        </span>
-      )}
     </span>
   );
 }
@@ -109,7 +93,7 @@ function PotentialBand({ band, role, loft, pastPeak, label, large, t }) {
 // flag) er alt herunder uændret. `legacy` er kaldstedets egen gamle visning, så en
 // flade kan få estimatet hentet uden at ændre sig, mens flaget er slukket.
 // `estimateSize` og `showLooks` gælder kun tal + ord.
-export default function ScoutablePotentiale({ rider, scouting, showScout = false, large = false, labelAsTitle = true, hideLevel = false, estimateSize = /** @type {"cell" | "hero" | "report"} */ ("cell"), showLooks = false, hideNotScouted = false, legacy = /** @type {import("react").ReactNode} */ (null) }) {
+export default function ScoutablePotentiale({ rider, scouting, showScout = false, large = false, labelAsTitle = true, hideLevel = false, estimateSize = /** @type {"cell" | "hero" | "report"} */ ("cell"), showLooks = false, legacy = /** @type {import("react").ReactNode} */ (null) }) {
   const { t } = useTranslation();
   const {
     maxLevel, scout, scoutingId, slots, requestEstimates, estimateFor,
@@ -223,29 +207,29 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
     </button>
   );
 
-  // #7951: rytterprofilen siger det ikke to gange; Scout-knappen er budskabet.
-  const notScoutedHidden = hideNotScouted && Boolean(scoutButton);
+  // Ejer 12/11 (#7932): en uscoutet rytter viser kun Scout-knappen, aldrig
+  // teksten "Ikke scoutet". Uden knap (fx hos andre) står en tankestreg.
+  const hasAction = Boolean(pendingBadge || scoutButton);
 
   if (view) {
     return (
       <PotentialEstimate
         view={view}
         size={estimateSize}
-        hideUnscoutedLabel={notScoutedHidden}
         sub={showLooks && !view.hidden && level > 0 ? t("rider:potentialEstimate.scoutedTimes", { count: level }) : null}
-        action={view.hidden && view.reason === "learning" ? null : <>{pendingBadge}{scoutButton}{scoutErrorBadge}</>}
+        action={view.hidden && view.reason === "learning"
+          ? null
+          : hasAction || scoutErrorBadge ? <>{pendingBadge}{scoutButton}{scoutErrorBadge}</> : null}
       />
     );
   }
 
   if (hidden) {
+    if (!hasAction) {
+      return <span className="text-cz-3" title={t("rider:scouting.scoutToReveal")}>—</span>;
+    }
     return (
       <span className="inline-flex items-center gap-2 flex-wrap">
-        {!notScoutedHidden && (
-          <span className="text-cz-3 text-xs sm:whitespace-nowrap" title={t("rider:scouting.scoutToReveal")}>
-            {t("rider:scouting.notScouted")}
-          </span>
-        )}
         {pendingBadge}
         {scoutButton}
         {scoutErrorBadge}
@@ -267,7 +251,7 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
   if (band) {
     return (
       <span className="inline-flex items-center gap-2 flex-wrap">
-        <PotentialBand band={band} role={estimate.role} loft={estimate.loft} pastPeak={estimate.pastPeak === true}
+        <PotentialBand band={band} role={estimate.role}
           label={labelAsTitle ? label : null} large={large} t={t} />
         {/* #6853: typeboksen når tallet er rollen med højest potentiale. */}
         {potentialFromEstimate(estimate)?.showRole && (

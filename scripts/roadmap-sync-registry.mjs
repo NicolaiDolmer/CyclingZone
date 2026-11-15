@@ -8,6 +8,8 @@
 // Idempotent paa flag_key: findes der allerede et punkt med samme flag_key -
 // uanset status, ogsaa archived - roeres intet. Teksten paa et eksisterende
 // punkt opdateres heller ikke; det er adminens felt efter oprettelsen.
+// Findes et ikke-arkiveret punkt uden flag_key med issue_ref = postens epic,
+// oprettes intet heller (#8129): det er samme opgave, og den skal kobles.
 //
 // EJER-GATE: punktet oprettes SKJULT (approved = false, publish_on_beta = true).
 // Triggeren roadmap_items_sync_publish (database/2026-10-15-6693-roadmap-sync-
@@ -83,11 +85,12 @@ export function itemFromEntry(e, sortOrder = SORT_STEP) {
 /**
  * Ren planlaegger: ingen I/O. Nye punkter laegges sidst i planen (efter den
  * hoejeste eksisterende sort_order), i registrets raekkefoelge.
- * @param {{ entries: Array<Record<string,string>>, existingFlagKeys: Iterable<string>, maxSortOrder?: number }} args
+ * @param {{ entries: Array<Record<string,string>>, existingFlagKeys: Iterable<string>, existingIssueRefs?: Iterable<number>, maxSortOrder?: number }} args
  * @returns {{ inserts: object[], skipped: Array<{ id: string, reason: string }> }}
  */
-export function planSync({ entries, existingFlagKeys, maxSortOrder = 0 }) {
+export function planSync({ entries, existingFlagKeys, existingIssueRefs = [], maxSortOrder = 0 }) {
   const taken = new Set(existingFlagKeys);
+  const handRefs = new Set([...existingIssueRefs].map(Number));
   const inserts = [];
   const skipped = [];
   let nextSort = (Number.isFinite(maxSortOrder) ? maxSortOrder : 0) + SORT_STEP;
@@ -105,6 +108,12 @@ export function planSync({ entries, existingFlagKeys, maxSortOrder = 0 }) {
       continue;
     }
     if (taken.has(e.flag)) continue;
+    // #8129: et haandlavet punkt for samme opgave (issue_ref = epic, uden flag_key)
+    // maa ikke faa en tom dublet ved siden af sig; det kobles i admin i stedet.
+    if (e.epic && handRefs.has(Number(e.epic))) {
+      skipped.push({ id: e.id, reason: `punkt for #${e.epic} findes uden kontakt: kobl ${e.flag} paa det i admin` });
+      continue;
+    }
     taken.add(e.flag);
     inserts.push({ id: e.id, row: itemFromEntry(e, nextSort) });
     nextSort += SORT_STEP;
@@ -156,11 +165,12 @@ async function main() {
 
   // Lille tabel (et par hundrede raekker): alt hentes, saa planen kender baade
   // optagne flag_key og den hoejeste sort_order.
-  const existing = await db.from("roadmap_items").select("flag_key, sort_order");
+  const existing = await db.from("roadmap_items").select("flag_key, sort_order, issue_ref, status");
   if (existing.error) throw new Error(`roadmap_items: ${existing.error.message}`);
   const plan = planSync({
     entries,
     existingFlagKeys: existing.data.map((r) => r.flag_key).filter(Boolean),
+    existingIssueRefs: existing.data.filter((r) => !r.flag_key && r.status !== "archived" && r.issue_ref != null).map((r) => r.issue_ref),
     maxSortOrder: existing.data.reduce((m, r) => Math.max(m, Number(r.sort_order) || 0), 0),
   });
   console.log(formatPlan(plan, args));

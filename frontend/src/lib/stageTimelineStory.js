@@ -47,7 +47,8 @@ export const MAX_STORY_EVENTS = 5;
 export function selectStoryEvents(events = []) {
   const candidates = (events || [])
     .filter((event) => !(event?.type === "finale_attack" && event.params?.kind === "stage_decided"))
-    .map((event, i) => ({ event, weight: STORY_EVENT_WEIGHTS[event?.type] ?? 0, i }))
+    // #7965: angrebs-linjen ved foden følger sit udfald: den kommer kun med, når udfaldet gør (en anelse lavere vægt).
+    .map((event, i) => ({ event, weight: (STORY_EVENT_WEIGHTS[event?.type] ?? 0) - (event?.climb_phase === "attack" ? 0.5 : 0), i }))
     .filter((c) => c.weight > 0);
 
   if (!candidates.length) return [];

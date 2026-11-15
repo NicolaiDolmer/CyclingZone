@@ -150,8 +150,8 @@ function StaticFilm({ profile, built, distanceKm, riderNameById, teamNameById, o
 
 export default function TimelineFilmPlayer({ open, onClose, timeline, profile, distanceKm, riderNameById, teamNameById, stageLabel, ownRiderIds, effortByRider, startlist }) {
   const { t } = useTranslation("races");
-  const splitProps = { events: timeline?.events, ownRiderIds, effortByRider, timelineVersion: timeline?.timeline_version };
-  const built = buildFilmTimeline({ events: timeline?.events, distanceKm, ownRiderIds, effortByRider, profileType: profile?.profile_type ?? null, timelineVersion: timeline?.timeline_version, startlist }); // #6469: effortByRider
+  const splitProps = { events: timeline?.events, ownRiderIds, effortByRider, timelineVersion: timeline?.timeline_version, climbs: profile?.climbs };
+  const built = buildFilmTimeline({ events: timeline?.events, distanceKm, ownRiderIds, effortByRider, profileType: profile?.profile_type ?? null, timelineVersion: timeline?.timeline_version, startlist, climbs: profile?.climbs }); // #6469: effortByRider, #7965: stigningens fod
   const profileDistanceKm = Number(profile?.distance_km);
   const resolvedDistanceKm = distanceKm ?? (Number.isFinite(profileDistanceKm) ? profileDistanceKm : null) ?? built.distanceKm ?? 0;
   // window.matchMedia er ikke reaktiv her — samme konvention som FinalKilometre-

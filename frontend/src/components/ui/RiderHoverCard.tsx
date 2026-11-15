@@ -40,14 +40,17 @@ import { stageOrdersRecap } from "../stageOrders/stageOrdersRecap.ts";
 import type { TeamOrdersContext } from "../stageOrders/stageOrdersRecap.ts";
 import { reportActionFailure } from "../../lib/actionTelemetry.js";
 import { deriveRaceStatus } from "../../lib/raceHubLogic.js";
-import { supabase } from "../../lib/supabase.ts";
+import { authHeaders, supabase } from "../../lib/supabase.ts";
+import { apiFetch } from "../../lib/apiFetch.ts";
 import {
   RECENT_WINDOW_DAYS, buildRiderHoverCardModel, canHover, placeHoverCard, summarizeRecentResults,
 } from "../../lib/riderHoverCardModel.ts";
 import type {
   HoverCardPlan, HoverCardRaceInput, HoverCardRecent, HoverCardRiderRow, JerseyDayType, RiderHoverCardModel,
 } from "../../lib/riderHoverCardModel.ts";
-import { RIDER_HOVER_CARD_FLAG_KEY, useRiderOverlaysEnabled } from "../rider/RiderNameIcon.tsx";
+import { RIDER_HOVER_CARD_FLAG_KEY, riderCardFatigueNowEnabled, useRiderOverlaysEnabled } from "../rider/RiderNameIcon.tsx";
+import { fetchRiderCardFatigueNow, riderCardFatigue } from "../../lib/riderCardFatigueNow.ts";
+import type { FatigueNowResult } from "../../lib/riderCardFatigueNow.ts";
 
 export { RIDER_HOVER_CARD_FLAG_KEY };
 /** Bagudkompatibelt navn for kontakten (samme abonnement som ikonet). */
@@ -74,7 +77,10 @@ export type RiderCardData = {
   row: HoverCardRiderRow;
   userId: string | null;
   market: { inAuction: boolean; listed: boolean };
+  /** fatigue = rider_condition (morgenens tal); med fatigueLive erstattes det af tallet lige nu. */
   condition: { form: number | null; fatigue: number | null; injured: boolean };
+  /** #7801: egen rytter og kontakten fatigue_now_7801 taendt (ifoelge ikonets flag-svar). */
+  fatigueLive: boolean;
   race: HoverCardRaceInput | null;
   recent: HoverCardRecent | null;
   onWatchlist: boolean | null;
@@ -102,6 +108,44 @@ async function loadPlan(raceId: string, riderId: string, nextStage: number): Pro
     // catch-ok: planen er en ekstra linje; kortet vises uden den.
     return null;
   }
+}
+
+const API = import.meta.env.VITE_API_URL;
+
+/**
+ * #7801: med kontakten fatigue_now_7801 (laest fra ikonets flag-svar) kommer en egen rytters
+ * traethed fra serveren, samme tal som Traeningssiden. Kaldet koerer EFTER kortet er tegnet og
+ * huskes et minut; slukket = intet kald (lib/riderCardFatigueNow.ts).
+ */
+const fatigueNowCache = new Map<string, { at: number; promise: Promise<FatigueNowResult> }>();
+
+function loadFatigueNow(riderId: string): Promise<FatigueNowResult> {
+  const hit = fatigueNowCache.get(riderId);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.promise;
+  const promise = fetchRiderCardFatigueNow({
+    riderId,
+    enabled: true,
+    apiBase: API ?? "",
+    getHeaders: () => authHeaders({ json: false }) as Promise<Record<string, string> | null>,
+    fetcher: (url, init) => apiFetch(url, init),
+  });
+  // Kun et tal huskes; en streg proeves igen ved naeste aabning.
+  void promise.then((r) => { if (!r || r.fatigue === null) fatigueNowCache.delete(riderId); });
+  fatigueNowCache.set(riderId, { at: Date.now(), promise });
+  return promise;
+}
+
+function useLiveFatigue(riderId: string, data: RiderCardData | null): number | null {
+  const live = data?.fatigueLive === true;
+  const [result, setResult] = useState<{ riderId: string; value: FatigueNowResult } | null>(null);
+  useEffect(() => {
+    if (!live) return undefined;
+    let alive = true;
+    loadFatigueNow(riderId).then((value) => { if (alive) setResult({ riderId, value }); });
+    return () => { alive = false; };
+  }, [riderId, live]);
+  const current = result && result.riderId === riderId ? result.value : "pending";
+  return riderCardFatigue(data?.condition.fatigue ?? null, live, current);
 }
 
 async function fetchRiderCard(riderId: string, viewerTeamId: string | null): Promise<RiderCardData | null> {
@@ -139,6 +183,8 @@ async function fetchRiderCard(riderId: string, viewerTeamId: string | null): Pro
 
   const condEmbed = (row as Record<string, unknown>).rider_condition as Loose;
   const cond = (Array.isArray(condEmbed) ? condEmbed[0] : condEmbed) ?? null;
+  // #7801: kun egne ryttere viser traethed; tallet lige nu hentes foerst efter visning (CardBody).
+  const ownRider = viewerTeamId !== null && String(row.team_id ?? "") === String(viewerTeamId);
   const entry = (entries ?? []).find((e) => e?.race
     && deriveRaceStatus(e.race.status, Number(e.race.stages_completed), Number(e.race.stages)) === "live");
   const race = entry?.race ?? null;
@@ -175,6 +221,7 @@ async function fetchRiderCard(riderId: string, viewerTeamId: string | null): Pro
       fatigue: cond?.fatigue ?? null,
       injured: cond?.injured_until ? injuryTimeLeft(cond).count > 0 : false,
     },
+    fatigueLive: ownRider && riderCardFatigueNowEnabled(),
     race: raceInput,
     recent: recentRows ? summarizeRecentResults(recentRows) : null,
     onWatchlist: userId ? (watch ?? []).length > 0 : null,
@@ -198,6 +245,7 @@ export function loadRiderCard(riderId: string, viewerTeamId: string | null): Pro
 
 export function forgetRiderCard(riderId: string) {
   for (const key of cardCache.keys()) if (key.startsWith(`${riderId}|`)) cardCache.delete(key);
+  fatigueNowCache.delete(riderId);
 }
 
 /** Oenskeliste til/fra med samme raekker som rytterdatabasen (ingen ny backend). */
@@ -504,6 +552,7 @@ function CardBody({ riderId, extra, titleId, sheet, onNavigate }: {
   const { status, data, viewerTeamId, reload } = useRiderCardData(riderId);
   const [watchBusy, setWatchBusy] = useState(false);
   const [watchFailed, setWatchFailed] = useState(false);
+  const fatigue = useLiveFatigue(riderId, data);
   if (status === "loading" && !data) {
     return <p className="py-6 text-center text-xs text-cz-3">{t("common:actions.loading")}</p>;
   }
@@ -512,7 +561,7 @@ function CardBody({ riderId, extra, titleId, sheet, onNavigate }: {
     seasonYear,
     activeSeasonNumber: seasonYear === null ? null : seasonNumberFromReferenceYear(seasonYear),
     market: data.market,
-    condition: data.condition,
+    condition: { ...data.condition, fatigue },
     race: data.race,
     recent: data.recent,
     plan: data.plan,

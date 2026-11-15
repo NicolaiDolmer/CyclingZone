@@ -54,13 +54,14 @@ test("en rytter uden felterne behandles som kontraktløs", () => {
 // Kilde-parity: reglen må ikke få en fjerde kopi. Begge flader der åbner
 // promote-modalen skal kalde helperen — ikke gentage betingelsen.
 // #5748: rytterprofilens og My Teams oprykning sker nu i den delte MoveSquadDialog.
-test("begge promote-flader bruger den delte betingelse", () => {
-  const academyPage = read("../pages/AcademyPage.jsx");
+// #6155: akademisidens egen Promovér-knap er fjernet med rytterlisten, så
+// MoveSquadDialog er den eneste promote-flade tilbage.
+test("promote-fladen bruger den delte betingelse", () => {
   const moveDialog = read("../components/MoveSquadDialog.tsx");
-  for (const [name, src] of [["AcademyPage", academyPage], ["MoveSquadDialog", moveDialog]]) {
-    assert.match(src, /keepsExistingContractOnPromote/, `${name} skal bruge den delte betingelse`);
-    assert.match(src, /keepsContract/, `${name} skal give modalen flaget`);
-  }
+  assert.match(moveDialog, /keepsExistingContractOnPromote/, "MoveSquadDialog skal bruge den delte betingelse");
+  assert.match(moveDialog, /keepsContract/, "MoveSquadDialog skal give modalen flaget");
+  const academyPage = read("../pages/AcademyPage.jsx");
+  assert.doesNotMatch(academyPage, /AcademyTransferConfirmModal/, "akademisiden må ikke få sin egen promote-flade igen (#6155)");
 });
 
 test("modalen vaelger note ud fra flaget, ikke ubetinget", () => {

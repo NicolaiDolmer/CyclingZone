@@ -131,6 +131,7 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     training_fatigue_rules: false,
     season_matrix_mobile: false,
     training_groups: false,
+    training_history_from_ticks_6490: false,
     rider_best_role_display: false,
     training_programs: false,
     development_curve_b: false,
@@ -155,10 +156,14 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     stage_plan_dropped_front_7635: false,
     tactics_ready_7864: false,
     rider_why_button: false,
+    race_page_v6: false,
     talent_marks_7879: false,
     rider_hover_card: false,
     day_words_7725: false,
     fatigue_now_7801: false,
+    planning_workbench: false,
+    training_train_now_instant: false,
+    sale_escrow_enabled: false, // #6181
   });
   assert.equal(f.betaLookups(), 0, "en anonym forespoergsel maa ikke slaa en bruger op");
 });
@@ -201,6 +206,7 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
     training_fatigue_rules: false,
     season_matrix_mobile: false,
     training_groups: false,
+    training_history_from_ticks_6490: false,
     rider_best_role_display: false,
     training_programs: false,
     development_curve_b: false,
@@ -225,10 +231,14 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
     stage_plan_dropped_front_7635: false,
     tactics_ready_7864: false,
     rider_why_button: false,
+    race_page_v6: false,
     talent_marks_7879: false,
     rider_hover_card: false,
     day_words_7725: false,
     fatigue_now_7801: false,
+    planning_workbench: false,
+    training_train_now_instant: false,
+    sale_escrow_enabled: false, // #6181
   });
 });
 
@@ -279,6 +289,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     training_fatigue_rules: false,
     season_matrix_mobile: false,
     training_groups: false,
+    training_history_from_ticks_6490: false,
     rider_best_role_display: false,
     training_programs: false,
     development_curve_b: false,
@@ -303,10 +314,14 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     stage_plan_dropped_front_7635: false,
     tactics_ready_7864: false,
     rider_why_button: false,
+    race_page_v6: false,
     talent_marks_7879: false,
     rider_hover_card: false,
     day_words_7725: false,
     fatigue_now_7801: false,
+    planning_workbench: false,
+    training_train_now_instant: false,
+    sale_escrow_enabled: false, // #6181
   });
   assert.deepEqual(await readPlayerFeatureFlags(supabase, { isBetaTester: true }), {
     auto_accept_enabled: false,
@@ -318,6 +333,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     training_fatigue_rules: false,
     season_matrix_mobile: false,
     training_groups: false,
+    training_history_from_ticks_6490: false,
     rider_best_role_display: false,
     training_programs: false,
     development_curve_b: false,
@@ -342,10 +358,14 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     stage_plan_dropped_front_7635: false,
     tactics_ready_7864: false,
     rider_why_button: false,
+    race_page_v6: false,
     talent_marks_7879: false,
     rider_hover_card: false,
     day_words_7725: false,
     fatigue_now_7801: false,
+    planning_workbench: false,
+    training_train_now_instant: false,
+    sale_escrow_enabled: false, // #6181
   });
 });
 

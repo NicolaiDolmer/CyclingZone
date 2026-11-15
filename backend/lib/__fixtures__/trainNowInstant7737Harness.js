@@ -6,6 +6,7 @@ import { createHash } from "node:crypto";
 import { runTeamTrainingDay } from "../dailyTrainingEngine.js";
 import { runTrainNow } from "../trainNow.js";
 import { resolveTrainingDateReadiness, trainingDateDeadline } from "../trainingDateReadiness.js";
+import { applyJsonArrowProjection } from "./postgrestJsonProjection.js";
 
 export const TEAM = "team-a";
 export const SEASON = { id: "season-1", number: 5 };
@@ -63,8 +64,9 @@ export function createFake(state, { failRead = null } = {}) {
       if (limit != null) out = out.slice(0, limit);
       return { data: out, error: null };
     };
+    let cols = null; // #6490: JSON-projektioner (alias:kolonne->noegle) gives som PostgREST.
     const run = () => {
-      if (!write) return rows();
+      if (!write) { const r = rows(); return r.data ? { ...r, data: applyJsonArrowProjection(r.data, cols) } : r; }
       log.push({ write: write.kind, table, payload: write.payload });
       const { data: hit } = rows();
       if (write.kind === "update") for (const row of hit ?? []) Object.assign(row, write.payload);
@@ -75,7 +77,7 @@ export function createFake(state, { failRead = null } = {}) {
       return { data: hit ?? [], error: null };
     };
     const q = {
-      select() { return q; }, order() { return q; }, or() { return q; },
+      select(c) { cols = c; return q; }, order() { return q; }, or() { return q; },
       eq(col, val) { filters.push((row) => row[col] === val); return q; },
       neq(col, val) { filters.push((row) => row[col] !== val); return q; },
       is(col, val) { filters.push((row) => (row[col] ?? null) === val); return q; },

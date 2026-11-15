@@ -76,6 +76,19 @@ function isMilestoneGoalMet(milestone, { standing, team, context = {} } = {}) {
 }
 
 /**
+ * #7964 · Mangler sponsor_growth-målet sit målegrundlag? Samme betingelse som
+ * evaluateGoalProgress' awaiting_data-gren for sponsor_growth (boardGoals.js):
+ * intet afsluttet plan-år med sponsortal at sammenligne med, eller ingen måling
+ * af indeværende sæson. Kun sponsor_growth; øvrige måltyper er uændrede.
+ */
+function isSponsorGrowthUnmeasurable(goal, context = {}) {
+  if (goal?.type !== "sponsor_growth") return false;
+  const baseline = context?.sponsorGrowthBaselineIncome;
+  const current = context?.sponsorGrowthCurrentIncome;
+  return !(Number(baseline) > 0) || current == null;
+}
+
+/**
  * Fælles kvitterings-form for BÅDE rettidig og tidlig milepæls-afgørelse
  * (spec §3.1 punkt 4 / addendum A7). `isEarly` afgør kun `achieved_early` +
  * `slot_open` + hvilken beat-nøgle formanden taler med — regnestykket
@@ -129,6 +142,10 @@ export function evaluateDueMilestones({
   return (milestones || [])
     .filter((milestone) => milestone?.status === "pending"
       && Number(milestone?.target_season_number) === season)
+    // #7964 (ejer 12/11): "kan ikke måles" er ikke "fejlet". En sponsor-vækst-
+    // milepæl uden målegrundlag får ingen afgørelse (ingen status, intet
+    // tillidsslag) i stedet for at blive dømt misset.
+    .filter((milestone) => !isSponsorGrowthUnmeasurable(milestone?.goal, context))
     .map((milestone) => buildMilestoneOutcome(milestone, {
       met: isMilestoneGoalMet(milestone, { standing, team, context }),
       isEarly: false,

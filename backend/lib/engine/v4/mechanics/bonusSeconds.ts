@@ -53,7 +53,7 @@ import { komPassageEvent, intermediateSprintEvent } from "../timeline.ts";
 import { BONUS_SECONDS_EXTRA_TUNING } from "../tuning.ts";
 import { komHunterSet } from "./komJersey6937.ts"; // #6937 B1
 import { intermediateSprintLeaderV3 } from "./pointsJersey2757.ts";
-import { jerseyHuntersForPassage7855, passageHuntersField7855, withJerseyHunters7855 } from "./jerseyHunt7855.ts"; // #7855
+import { jerseyHuntersForPassage7855, passageHuntersField7855 } from "./jerseyHunt7855.ts"; // #7855
 import type { BonusSecondsTuning } from "../types.ts";
 import { compareIds } from "../../../compareIds.ts";
 
@@ -181,7 +181,60 @@ export type PassageContest = {
   // for dagens udbrud, ogsaa som troejefoerer, og passerer bag gruppens oevrige ryttere i
   // tilfaeldig orden (evnen afgoer ikke en top de ikke koerer om). Udeladt = #7155.
   rollOverBehindGroup?: boolean;
+  // #7855 (KUN kontakten jersey_hunt_7855, ejer 12/11 valg B): ryttere med troejejagten i
+  // etapeplanen. De kaemper i enhver gruppe og slaar dem, der ikke koerer med; mod gruppens
+  // oevrige kaempende afgoer evnen. I en gruppe med en saadan jaeger mister #6937-bjergjaegerne
+  // deres forreste plads (ogsaa dér afgoer evnen). Udeladt = ingen jaegere, bit-identisk.
+  jerseyHuntIds7855?: ReadonlySet<string>;
 };
+
+type ContestRow = { riderId: string; gap: number; natural: boolean; hunter: boolean; behindRollsOver: boolean };
+
+/**
+ * Hvem kaemper om passagen af sig selv (uden troejejagten, #7855)? Ingen rng: samme svar som
+ * computePassageOrder bruger, og jerseyHuntMadeToContest7855 kan spoerge uden at roere stroemmen.
+ */
+function contestRows(state: EngineState, entrants: Readonly<Record<string, Entrant>>, contest: PassageContest | undefined): ContestRow[] {
+  const groupOf = liveGroupByRider(state);
+  const rows: ContestRow[] = [];
+  for (const rider of Object.values(state.riders)) {
+    if (rider.status === "abandoned") continue;
+    const entrant = entrants[rider.rider_id];
+    const group = groupOf.get(rider.rider_id);
+    // Kaemper han om passagen? En lille gruppe koerer samlet; i feltet kun
+    // pointjaegerne og troejefoereren. Resten ruller igennem BAG kaemperne i
+    // samme gruppe (de passerer stadig stregen, saa restpladser uddeles).
+    // #6937 B2 (KUN s5_profiles_v3): i en lille favoritgruppe (ikke dagens udbrud)
+    // ruller kaptajnerne over toppen; de kaemper kun som troejefoerer.
+    const smallGroup = (group?.size ?? Number.MAX_SAFE_INTEGER) <= (contest?.openContestMaxGroupSize ?? 0);
+    // #6937 B2 strammet (KUN s5_profiles_v3): i enhver gruppe uden for dagens udbrud.
+    const behind = contest?.rollOverBehindGroup === true;
+    const rollsOver = (smallGroup || behind)
+      && group?.escape !== true
+      && (contest?.smallGroupRollOverRoles ?? []).includes(String(entrant?.role ?? ""));
+    const hunter = contest?.komHunterIds?.has(rider.rider_id) === true; // #6937 B1
+    const natural = !contest
+      || (smallGroup && !rollsOver)
+      || contest.contenderRoles.includes(String(entrant?.role ?? ""))
+      || (contest.jerseyLeaderId != null && contest.jerseyLeaderId === rider.rider_id && !(behind && rollsOver))
+      || hunter;
+    rows.push({ riderId: rider.rider_id, gap: group?.gap ?? Number.MAX_SAFE_INTEGER, natural, hunter, behindRollsOver: behind && rollsOver });
+  }
+  return rows;
+}
+
+/**
+ * #7855 valg C: jaegerne (contest.jerseyHuntIds7855) som opgaven fik til at koere med om passagen,
+ * dvs. dem der ellers ikke ville have kaempet om den i deres gruppe. rider_id-orden.
+ */
+export function jerseyHuntMadeToContest7855(state: EngineState, entrants: Readonly<Record<string, Entrant>>, contest: PassageContest): string[] {
+  const hunt = contest.jerseyHuntIds7855;
+  if (!hunt?.size) return [];
+  return contestRows(state, entrants, contest)
+    .filter((r) => hunt.has(r.riderId) && !r.natural)
+    .map((r) => r.riderId)
+    .sort(compareIds);
+}
 
 /**
  * #6937 B2 (KUN s5_profiles_v3): kaptajnerne i en favoritgruppe spurter ikke om
@@ -225,44 +278,30 @@ export function computePassageOrder(
     contest?: PassageContest;
   },
 ): string[] {
-  const groupOf = liveGroupByRider(state);
   const contest = args.contest;
+  const rows = contestRows(state, entrants, contest);
+  // #7855 valg B: grupperne (samme noegle som sorteringen: afstanden) med en jaeger fra etapeplanen.
+  const hunt = contest?.jerseyHuntIds7855;
+  const huntedGaps = hunt?.size ? new Set(rows.filter((r) => hunt.has(r.riderId)).map((r) => r.gap)) : null;
   const scored: Array<{ riderId: string; gap: number; contends: boolean; first: boolean; back: boolean; score: number }> = [];
-  for (const rider of Object.values(state.riders)) {
-    if (rider.status === "abandoned") continue;
-    const entrant = entrants[rider.rider_id];
-    const abilities = entrant?.abilities;
+  for (const row of rows) {
+    const abilities = entrants[row.riderId]?.abilities;
     let base = 0;
     if (abilities) {
       for (const key of Object.keys(args.qualityWeights) as AbilityKey[]) {
         base += (args.qualityWeights[key] ?? 0) * normAbility(abilities[key]);
       }
     }
-    const noise = gaussian(rngFor(args.stream, rider.rider_id), 0, args.noiseSd);
-    const group = groupOf.get(rider.rider_id);
-    // Kaemper han om passagen? En lille gruppe koerer samlet; i feltet kun
-    // pointjaegerne og troejefoereren. Resten ruller igennem BAG kaemperne i
-    // samme gruppe (de passerer stadig stregen, saa restpladser uddeles).
-    // #6937 B2 (KUN s5_profiles_v3): i en lille favoritgruppe (ikke dagens udbrud)
-    // ruller kaptajnerne over toppen; de kaemper kun som troejefoerer.
-    const smallGroup = (group?.size ?? Number.MAX_SAFE_INTEGER) <= (contest?.openContestMaxGroupSize ?? 0);
-    // #6937 B2 strammet (KUN s5_profiles_v3): i enhver gruppe uden for dagens udbrud.
-    const behind = contest?.rollOverBehindGroup === true;
-    const rollsOver = (smallGroup || behind)
-      && group?.escape !== true
-      && (contest?.smallGroupRollOverRoles ?? []).includes(String(entrant?.role ?? ""));
-    const hunter = contest?.komHunterIds?.has(rider.rider_id) === true; // #6937 B1
-    const contends = !contest
-      || (smallGroup && !rollsOver)
-      || contest.contenderRoles.includes(String(entrant?.role ?? ""))
-      || (contest.jerseyLeaderId != null && contest.jerseyLeaderId === rider.rider_id && !(behind && rollsOver))
-      || hunter;
-    const back = behind && rollsOver && !contends;
+    const noise = gaussian(rngFor(args.stream, row.riderId), 0, args.noiseSd);
+    // #7855 valg B: jaegeren kaemper, men staar ikke forrest; i hans gruppe afgoer evnen ogsaa
+    // mellem #6937-bjergjaegerne og de oevrige kaempende.
+    const contends = row.natural || hunt?.has(row.riderId) === true;
+    const back = row.behindRollsOver && !contends;
     scored.push({
-      riderId: rider.rider_id,
-      gap: group?.gap ?? Number.MAX_SAFE_INTEGER,
+      riderId: row.riderId,
+      gap: row.gap,
       contends,
-      first: hunter,
+      first: row.hunter && !(huntedGaps?.has(row.gap) ?? false),
       back,
       score: back ? noise : base + noise,
     });
@@ -359,8 +398,9 @@ export const passagesHook = (state: EngineState, ctx: SegmentHookContext): Segme
   const passages: StagePassage[] = [];
   for (const wp of waypoints) {
     const isKom = wp.kind === "kom";
-    // #7855 (slukket): etapeplanens jaegere paa denne art passage (tom uden kontakten).
-    const hunters7855 = jerseyHuntersForPassage7855(ctx.stagePlanTasks, isKom ? "kom" : "sprint", (id) => state.riders[id] !== undefined && state.riders[id].status !== "abandoned", { km: wp.km, windows: ctx.stagePlanHuntWindows7855 });
+    // #7855 (slukket): etapeplanens jaegere paa denne art passage (tom uden kontakten). Jagten, ikke
+    // opgaven: en udbrudsrytter med jagt (valg A) har opgaven "breakaway" og jagten her.
+    const hunters7855 = jerseyHuntersForPassage7855(ctx.stagePlanHuntTasks7855, isKom ? "kom" : "sprint", (id) => state.riders[id] !== undefined && state.riders[id].status !== "abandoned", { km: wp.km, windows: ctx.stagePlanHuntWindows7855 });
     const category = isKom ? (wp.category ?? null) : null;
     const pointScale = isKom ? komPointScale(category, false) : extra.intermediateSprintPoints;
     const qualityWeights = isKom
@@ -368,21 +408,22 @@ export const passagesHook = (state: EngineState, ctx: SegmentHookContext): Segme
         ? extra.komQualityWeightsSmall
         : extra.komQualityWeightsBig)
       : extra.intermediateSprintQualityWeights;
+    const contest: PassageContest = {
+      contenderRoles: isKom ? extra.komContenderRoles : extra.intermediateSprintContenderRoles,
+      openContestMaxGroupSize: extra.passageOpenContestMaxGroupSize,
+      // #2757 G18 (KUN s5_profiles_v3): en klassementskaptajn forsvarer ikke pointtroejen i spurterne.
+      jerseyLeaderId: (isKom ? ctx.jerseyLeaders?.kom : ctx.s5ProfilesV3 === true ? intermediateSprintLeaderV3(ctx.jerseyLeaders?.points, entrants) : ctx.jerseyLeaders?.points) ?? null,
+      // #6937 B2 (KUN s5_profiles_v3, ejer 24/10 valg A): kun bjergtoppe undervejs;
+      // topankomsten afgoeres af maalordenen og er uaendret.
+      ...(isKom && ctx.s5ProfilesV3 === true ? { smallGroupRollOverRoles: KOM_FAVOURITE_ROLL_OVER_ROLES, komHunterIds: komHunterSet(ctx.jerseyLeaders, entrants, ctx.gcContext), rollOverBehindGroup: true } : {}),
+      // #7855 (slukket, ejer 12/11 valg B): jaegerne med opgaven kaemper i deres gruppe; evnen afgoer mod de oevrige kaempende.
+      ...(hunters7855.length ? { jerseyHuntIds7855: new Set(hunters7855) } : {}),
+    };
     const order = computePassageOrder(state, entrants, rngFor, {
       stream: `passage:${wp.kind}:${wp.index}`,
       qualityWeights,
       noiseSd: isKom ? extra.komNoiseSd : extra.intermediateSprintNoiseSd,
-      contest: {
-        contenderRoles: isKom ? extra.komContenderRoles : extra.intermediateSprintContenderRoles,
-        openContestMaxGroupSize: extra.passageOpenContestMaxGroupSize,
-        // #2757 G18 (KUN s5_profiles_v3): en klassementskaptajn forsvarer ikke pointtroejen i spurterne.
-        jerseyLeaderId: (isKom ? ctx.jerseyLeaders?.kom : ctx.s5ProfilesV3 === true ? intermediateSprintLeaderV3(ctx.jerseyLeaders?.points, entrants) : ctx.jerseyLeaders?.points) ?? null,
-        // #6937 B2 (KUN s5_profiles_v3, ejer 24/10 valg A): kun bjergtoppe undervejs;
-        // topankomsten afgoeres af maalordenen og er uaendret.
-        ...(isKom && ctx.s5ProfilesV3 === true ? { smallGroupRollOverRoles: KOM_FAVOURITE_ROLL_OVER_ROLES, komHunterIds: komHunterSet(ctx.jerseyLeaders, entrants, ctx.gcContext), rollOverBehindGroup: true } : {}),
-        // #7855 (slukket): jaegerne med opgaven kaemper forrest i deres gruppe (jerseyHunt7855.ts).
-        ...(hunters7855.length ? { komHunterIds: withJerseyHunters7855(isKom && ctx.s5ProfilesV3 === true ? komHunterSet(ctx.jerseyLeaders, entrants, ctx.gcContext) : undefined, hunters7855) } : {}),
-      },
+      contest,
     });
     const passage = buildPassage({
       kind: wp.kind as StagePassage["kind"],
@@ -396,7 +437,8 @@ export const passagesHook = (state: EngineState, ctx: SegmentHookContext): Segme
       // giver point, aldrig sekunder (#2413's scope).
       bonusScale: isKom ? [] : tuning.bonusSeconds.intermediateSeconds,
     });
-    if (passage) passages.push({ ...passage, ...passageHuntersField7855(hunters7855) }); // #7855: tom = samme objekt-form
+    // #7855: tom = samme objekt-form. Valg C: dem opgaven fik til at koere med, betaler arbejdet.
+    if (passage) passages.push({ ...passage, ...passageHuntersField7855(hunters7855, hunters7855.length ? jerseyHuntMadeToContest7855(state, entrants, contest) : []) });
   }
   if (passages.length === 0) return { state, events: [] };
 

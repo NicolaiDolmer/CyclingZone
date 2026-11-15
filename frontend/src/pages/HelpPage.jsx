@@ -150,6 +150,7 @@ const SECTION_DEFS = [
       { id: "receiveAndReply", kind: "text" },
       { id: "finalConfirmation", kind: "text" },
       { id: "midRaceTransfers", kind: "text" },
+      { id: "midRaceTransfersEscrow", kind: "text" }, // #6181: tvillingen, se HELP_BLOCK_FLAGS
       { id: "negotiation", kind: "text" },
       { id: "privacy", kind: "text" },
       { id: "archiveCompleted", kind: "text" },
@@ -381,6 +382,9 @@ const SECTION_DEFS = [
       // frivillige knap uden bonus. Står EFTER trainToday, fordi den erstatter den
       // ved sæson 4-skiftet — rækkefølgen læses som "sådan er det nu, sådan bliver det".
       { id: "runDayNow", kind: "text" },
+      // #7737: Traen nu-tvillingerne (HELP_BLOCK_FLAGS); begge kun i loebsdags-modellen, som runDayNow.
+      { id: "trainNowBeta", kind: "text", flag: "training_tick_per_race_day" },
+      { id: "trainNowInstant", kind: "text", flag: "training_tick_per_race_day" },
       // #4164: a race replaces the day's session rather than adding to it, and
       // it settles once per day no matter how many stages were ridden. Asked in
       // #dansk-snak 24/8 and unanswerable from the page as it stood.
@@ -532,6 +536,8 @@ const SECTION_DEFS = [
       { id: "stageTactics", kind: "text" },
       // #6746: ét sandt afsnit om indsatstrinnene (fem trin; kontakten fjernet, #6641).
       { id: "effortSteps", kind: "text" },
+      // #7864: holdplaner og prisord; vises foerst med samme kontakt som holdplanerne selv.
+      { id: "teamPlans", kind: "text", flag: "tactics_ready_7864" },
       { id: "strategy", kind: "text" },
       { id: "breakaway", kind: "text" },
       { id: "ordersGc", kind: "text" }, // #6067: orders_gc_v1

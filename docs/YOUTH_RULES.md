@@ -93,6 +93,8 @@ Intake (tilbud)  →  Junior team 16-18  →  U23 team 19-22  →  Senior team 2
 | Regel | Beslutning | Kilde |
 |---|---|---|
 | Akademiet er en paraply, ikke en trup | Der findes ikke en fjerde "akademi-trup". Akademi-siden viser intake, Graduation Day og regnskab; Junior team og U23 team er egne sider i Klubhus-navigationen (§2.6, ejer 2/9 handoff, amenderer svar 1's "én side") | ejer 2/9, svar 1 (A+B) + handoff 2/9 |
+| Akademi-siden har ingen rytterliste | **BYGGET (#6155, ejer 4/10 + 9/11):** sektionen "Academy roster"/"Akademihold" er fjernet. Siden viser optag, Graduation-banner, profilkort, regnskab og to links til U23-siden og Juniorsiden med antal/plads (`squadCapRows`). Flyt og fyring sker på rytterprofilen ("Move squad" + Release) | ejer 4/10 (#6155) + 9/11 (#7932) |
+| Hentet talent og fuld juniortrup | **BYGGET (#6155, ejer 9/11):** et signeret intake-talent (også bestyrelsens gave-kuld) placeres efter alder (`academyPlacementSquad`). Er juniortruppen fuld, lander han på U23, når hans sæsonalder er højst U23's aldersloft og U23 har plads; manageren skal ikke først flytte en rytter. Prøve-rækkefølgen bor i `squads.js` `academyIntakePlacementSquads` (junior, så U23); `signAcademyCandidate` går kun videre ved `academy_full`, som RPC'en afviser før enhver skrivning og debitering. Ukendt fødselsdato giver kun junior (intet gæt opad); en U23-alder prøver aldrig junior. Frontend-spejlet er `academyLandingSquad` i `squadCaps.ts`: kortet spærres kun, når alle mulige trupper er fulde, og siger at han kommer på U23-holdet. Senior-trinnet og grænserne 30/30/30/60 er #8034 | ejer 9/11 (#7932) |
 | 16-årige | Alle ryttere i juniortruppen (16-18) må køre juniorløb (ejer 24/9) | ejer 24/9, #5645 |
 | Junior team | Sæsonalder 16-18. Bliver rytteren 19, skal han ud | ejer 2/9, svar 2 ("junior max 18") |
 | U23 team | Sæsonalder 19-22. Bliver rytteren 23, skal han ud | ejer 2/9, svar 2; matcher `isU23ForSeason` |
@@ -199,7 +201,7 @@ Indtil tier-modellen findes, må spillet vise strukturen, men aldrig lade som om
 |---|---|
 | Hvor | På Akademi-siden (`frontend/src/pages/AcademyPage.jsx`), inde i sidens eksisterende layout. Ingen nye nav-punkter, ingen tomme sider |
 | Hvad | Ét section card "Youth squads" med to rækker: Junior team og U23 team. Hver række har "Coming soon"-pillen (samme komponent-mønster som `frontend/src/components/klub/FacilityTrackCard.jsx`), én sætning om hvad der kommer, og link til roadmappen |
-| Dagens akademi-ryttere | Vises som i dag som én samlet trup ("Academy roster") indtil slice 1 flytter dem til Junior/U23 efter alder |
+| Dagens akademi-ryttere | Historisk: viste som én samlet trup ("Academy roster") indtil slice 1. **Afløst (#6155):** listen er fjernet; med trupsiderne tændt peger Akademi-siden på U23- og Juniorsiden (§2.1) |
 | Aldrig falske data | Ingen mock-ryttere, ingen fiktive ranglister, ingen tomme tabeller med kolonner. En pille + en sætning + et link |
 | Fold-disciplin | `PAGE_TEMPLATES.md`: kortet lægger sig UNDER roster-kortet, ikke over. Sidehoved + maks 2 kort før 1000 px |
 | Copy | EN først, DA under, ingen em-dash. "Coming soon" bruges KUN om noget der reelt er planlagt (epic #2492), aldrig som fallback ved fejl (#2796-læringen i `AcademyPage.jsx:21`) |

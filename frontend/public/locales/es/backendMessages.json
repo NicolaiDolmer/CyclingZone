@@ -84,6 +84,11 @@
       "sellerTitle": "Operación cancelada",
       "sellerMessage": "{riders} no cambió de equipo, así que los {amount} CZ$ de la operación volvieron al otro equipo."
     },
+    "saleEscrow": {
+      "lockedMessage": "{riderName} se ha vendido por {price} CZ$. El dinero está bloqueado y se paga cuando cambie de equipo tras su carrera por etapas.",
+      "releasedTitle": "Venta pagada",
+      "releasedMessage": "{riderName} ha cambiado de equipo. {amount} CZ$ ya están en tu saldo."
+    },
     "admin": {
       "feedbackReply": {
         "title": "Respuesta a tu mensaje"
@@ -710,6 +715,14 @@
       "title": "El ciclista ha llegado",
       "message": "{riderName} se ha unido a tu equipo. {reason, select, tourFinished {{raceName} ha terminado.} tourFinishedUnnamed {Su carrera por etapas ha terminado.} dealCompleted {Su trato ya está completado.} other {}}"
     },
+    "riderReleasePending": {
+      "title": "Liberación solicitada",
+      "message": "{rider} será liberado después de {race}. Se ha cobrado la tarifa de {fee} CZ$."
+    },
+    "riderReleaseExecuted": {
+      "title": "Ciclista liberado",
+      "message": "{rider} ha dejado tu equipo."
+    },
     "squadEnforced": {
       "title": "Tamaño de plantilla aplicado",
       "message": "{purchasedCount, plural, =0 {} one {Compra automática de # ciclista: {purchasedNames}\n} other {Compra automática de # ciclistas: {purchasedNames}\n}}{deferredCount, plural, =0 {} one {# ciclista se unirá al equipo cuando termine su carrera por etapas en curso: {deferredNames}\n} other {# ciclistas se unirán al equipo cuando termine su carrera por etapas en curso: {deferredNames}\n}}{soldCount, plural, =0 {} one {Venta automática de # ciclista: {soldNames}\n} other {Venta automática de # ciclistas: {soldNames}\n}}{salesDeferredCount, plural, =0 {} one {# ciclista en una carrera por etapas en curso se venderá después de la carrera\n} other {# ciclistas en una carrera por etapas en curso se venderán después de la carrera\n}}Multa: {fine} CZ$ · Deducción: {points} puntos"
@@ -806,7 +819,8 @@
       "transferRejected": "Tu oferta por {rider} ha sido rechazada.",
       "watchlistRiderAuction": "Un ciclista de tu lista de seguimiento está en subasta: {rider}.",
       "testTitle": "Los MD de Discord funcionan",
-      "testDescription": "A partir de ahora recibirás MD de Cycling Zone sobre subastas, fichajes y novedades de la directiva."
+      "testDescription": "A partir de ahora recibirás MD de Cycling Zone sobre subastas, fichajes y novedades de la directiva.",
+      "testPaused": "He desactivado los mensajes de Discord por ahora, así que no se ha enviado ningún mensaje de prueba."
     }
   },
   "push": {

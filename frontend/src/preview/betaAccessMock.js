@@ -53,8 +53,11 @@ let flags = [
   { key: "rider_why_button", area: "race-day", label: "Hvorfor?-knappen ved rytterne (Your day)", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
   { key: "talent_marks_7879", area: "squad", label: "Talentmærker ved rytternavne (Toptalent, Næste generation)", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
   { key: "rider_hover_card", area: "squad", label: "Hover-miniprofil på ryttere", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
+  { key: "planning_workbench", area: "race-day", label: "Ny planlægningsside (/planning/workbench)", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
   { key: "day_words_7725", area: "race-engine", label: "Dagsform i ord efter etapen", stage: "off", raw_value: "off", boolean_only: false, configured: true, unknown_value: false },
   { key: "fatigue_now_7801", area: "training", label: "Træthed lige nu — flader og regler", stage: "off", raw_value: "off", boolean_only: false, configured: true, unknown_value: false },
+  { key: "sale_escrow_enabled", area: "market", label: "Pengelås — sælgers penge låses til holdskiftet", stage: "off", raw_value: "off", boolean_only: false, configured: true, unknown_value: false },
+  { key: "training_history_from_ticks_6490", area: "training", label: "Træningshistorik fra kvitteringerne", stage: "off", raw_value: "off", boolean_only: false, configured: true, unknown_value: false },
 ];
 
 function readBody(init) {
@@ -87,9 +90,11 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "potential_estimate_display", // #7684 (flader + Hjaelp i byggetrin 6)
   "champion_jerseys_7824", // #7824
   "rider_why_button", // #7717
+  "race_page_v6", // #7778 (off; ?racePageV6=on paa preview)
   "talent_marks_7879", // #7879
   "tactics_ready_7864", // Missing stage keeps this preview feature off.
   "rider_hover_card", // #2009
+  "planning_workbench", // #7535
   "ability_cap_per_date_enabled", // #6110 Hjaelp
   "training_decision_card", // #6110 Hjaelp
   "training_catalog_v3", // #5319 vaelgere + Hjaelp
@@ -98,10 +103,13 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "stage_plan_dropped_front_7635", // #7636 etapeplanens resume
   "day_words_7725", // #7725 Hjaelp
   "fatigue_now_7801", // #7801 Hjaelp
+  "training_train_now_instant", // #8031 (kun patch-noten om Traen nu-kvitteringen)
+  "sale_escrow_enabled", // #6181 Hjaelp (binaert, som pengelaasen)
+  "training_history_from_ticks_6490", // #6490 traeningssidens laesevej (binaert)
 ];
 
 // Spejler PLAYER_VISIBLE_BINARY_FLAG_KEYS i backenden: "beta" er off.
-const BINARY_FLAG_KEYS = ["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801"];
+const BINARY_FLAG_KEYS = ["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801", "sale_escrow_enabled", "training_history_from_ticks_6490"];
 
 // #5319: træningskatalog v3 er OFF på preview (som i prod), men kan tændes med
 // ?catalogV3=on for at se de nye sessioner i vælgerne. Huskes i localStorage
@@ -132,8 +140,26 @@ function previewChampionJerseysEnabled() {
 // Læses ved indlæsning, så parameteren virker, før en side omskriver URL'en.
 previewChampionJerseysEnabled();
 
+// #7778: løbssiden v6 er OFF på preview (som i prod), men ?racePageV6=on viser
+// den nye ramme; ?racePageV6=off slukker igen. Huskes i localStorage.
+function previewRacePageV6Enabled() {
+  try {
+    const param = new URLSearchParams(window.location.search).get("racePageV6");
+    if (param === "on") localStorage.setItem("cz_mock_race_page_v6", "1");
+    if (param === "off") localStorage.setItem("cz_mock_race_page_v6", "0");
+    return localStorage.getItem("cz_mock_race_page_v6") === "1";
+  } catch {
+    return false;
+  }
+}
+previewRacePageV6Enabled();
+
+// #7778: visningsvalg på brugeren (GET/PUT /api/me/ui-prefs), i hukommelsen.
+let uiPrefs = {};
+
 function playerFlags() {
   return Object.fromEntries(PLAYER_VISIBLE_FLAG_KEYS.map((key) => {
+    if (key === "race_page_v6") return [key, previewRacePageV6Enabled()];
     if (key === "training_catalog_v3") return [key, previewCatalogV3Enabled()];
     if (key === "champion_jerseys_7824") return [key, previewChampionJerseysEnabled()];
     if (key === "potential_estimate_display") return [key, previewPotentialEstimateEnabled()];
@@ -147,6 +173,16 @@ export function betaAccessMockRoute(url, method, init) {
   if (/\/api\/me\/beta-access$/.test(url) && method === "GET") return json(playerState);
 
   if (/\/api\/feature-flags(\?.*)?$/.test(url) && method === "GET") return json({ flags: playerFlags() });
+
+  if (/\/api\/me\/ui-prefs$/.test(url) && method === "GET") return json({ prefs: uiPrefs, available: true });
+  if (/\/api\/me\/ui-prefs$/.test(url) && method === "PUT") {
+    const prefs = readBody(init).prefs;
+    if (!prefs || typeof prefs !== "object" || typeof prefs.race_route_hidden !== "boolean") {
+      return json({ error: "Invalid value for: race_route_hidden", errorCode: "ui_prefs_invalid_value" }, 400);
+    }
+    uiPrefs = { ...uiPrefs, race_route_hidden: prefs.race_route_hidden };
+    return json({ ok: true, prefs: uiPrefs, available: true });
+  }
 
   if (/\/api\/me\/beta-access\/request$/.test(url) && method === "POST") {
     playerState = {

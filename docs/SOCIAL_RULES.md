@@ -167,6 +167,13 @@ En DM sendes kun hvis **alle fem** er opfyldt. Rækkefølgen er den faktiske i `
 Gate 5 **fejler åbent**: en manglende nøgle, et manglende prefs-objekt eller en type uden toggle
 giver alle `true`. Kun en eksplicit `false` slukker.
 
+**Global hovedafbryder (#8149):** `app_config.discord_player_dm` (`on` | `off`, seedet `on`) læses
+allerførst i `sendDM`, `drainDiscordDmOutbox`, `sendTestDM` og `runDiscordRaceDigestSweep`
+(`discordPlayerDmSwitch.js`). `off` stopper alle private beskeder fra botten, udbakkens gentagelser
+(rækkerne røres ikke), testknappen (venlig fejl) og løbsresuméet (ingen logrækker), og tæller ikke
+i rate-guarden. Husket i op til et minut; ved læsefejl gælder sidst kendte værdi, ved opstart `on`.
+Kanal-webhooks, ejerens alarmer og divisionsrollerne er uden for kontakten. Slukning er ejerens kør.
+
 ### 4.2 De ni DM-typer og de seks præference-nøgler
 
 Der findes **9 DM-typer** i dag. Talt som de `type`-værdier der når `notifyDiscordDM`

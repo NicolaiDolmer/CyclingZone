@@ -103,6 +103,23 @@ test("planSync: to poster med samme flag giver kun eet punkt", () => {
   assert.deepEqual(plan.inserts.map((p) => p.id), ["a"]);
 });
 
+test("planSync: et ukoblet punkt for samme opgave (issue_ref = epic) faar ingen dublet (#8129)", () => {
+  const entries = [
+    entry({ id: "tactics", flag: "tactics_ready", epic: "7864" }),
+    entry({ id: "other", flag: "other_flag", epic: "9001" }),
+    entry({ id: "no-epic", flag: "no_epic_flag" }),
+  ];
+  const plan = planSync({ entries, existingFlagKeys: [], existingIssueRefs: [7864] });
+  assert.deepEqual(plan.inserts.map((p) => p.id), ["other", "no-epic"]);
+  assert.deepEqual(plan.skipped.map((s) => s.id), ["tactics"]);
+  assert.match(plan.skipped[0].reason, /#7864.*tactics_ready/);
+  // Er kontakten allerede koblet, springes posten tavst over som foer.
+  const linked = planSync({ entries, existingFlagKeys: ["tactics_ready"], existingIssueRefs: [7864] });
+  assert.deepEqual(linked.skipped, []);
+  // Uden existingIssueRefs er adfaerden uaendret.
+  assert.equal(planSync({ entries, existingFlagKeys: [] }).inserts.length, 3);
+});
+
 test("formatPlan skelner dry-run fra apply", () => {
   const plan = planSync({ entries: [entry({})], existingFlagKeys: [] });
   assert.match(formatPlan(plan, { apply: false }), /dry-run/);

@@ -2,9 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   kmToX, xToKm, buildFilmTimeline, eventsPlayedUpTo, describeEvent, climbMarkerHeight, altitudeAtKm,
-  collectRiderIds, storyEventsWithCauses,
+  collectRiderIds, storyEventsWithCauses, filmKmValue,
 } from "./stageTimelineFilm.js";
 import { buildProfileSeries } from "./stageRouteProfile.js";
+import { selectStoryEvents } from "./stageTimelineStory.js";
 import {
   MOUNTAIN_TIMELINE, BREAKAWAY_WIN_TIMELINE, MOUNTAIN_STAGE_PROFILE, BUNCH_SPRINT_STAGE_PROFILE,
   riderNameByIdFixture,
@@ -699,5 +700,125 @@ test("#6469 context: authoritative time-trial profile suppresses impossible brea
     assert.deepEqual(built.gapCurve, [], profileType);
     const story = storyEventsWithCauses(events, events, { profileType, ownRiderIds: ["rider-1"], effortByRider: new Map([["rider-1", "all_out"]]) });
     assert.equal(story.some(e => /^breakaway_/.test(String(e?.type ?? "")) || e?.type === "order_impact"), false, profileType);
+  }
+});
+
+/// ── #7965: angreb paa sidste stigning er to linjer: angrebet ved foden, udfaldet hvor motoren stemplede det ──
+
+const SUMMIT_EVENTS = [
+  { km: 0, type: "stage_start", params: { profile_type: "mountain", field_count: 100, distance_km: 170 } },
+  { km: 140, type: "gap_update", params: { group_id: "peloton-0", gap_seconds: 60 } },
+  { km: 170, type: "all_out_gain", params: { rider_id: "rider-1", exact_km: 170, exact_time: 17441.78 }, exact_km: 170 },
+  { km: 170, type: "all_out_cracked", params: { rider_id: "rider-2", exact_km: 160.05, exact_time: 15490.94 } },
+  { km: 170, type: "finish", params: { top: [{ rider_id: "rider-1", rank: 1 }] } },
+];
+const SUMMIT_CLIMBS = [{ crest_km: 170, length_km: 14, name: "Col du Test" }];
+const SUMMIT_NAMES = () => new Map([["rider-1", "Ada Pedersen"], ["rider-2", "Bo Hansen"]]);
+const describeSummit = (/** @type {any} */ e) => describeEvent(e, { riderNameById: SUMMIT_NAMES() });
+
+test("#7965: filmen viser angrebet ved foden UDEN resultat og navngiver stigningen", () => {
+  const built = buildFilmTimeline({ events: SUMMIT_EVENTS, distanceKm: 170, timelineVersion: 2, climbs: SUMMIT_CLIMBS });
+  for (const [type, rider] of [["all_out_gain", "Ada Pedersen"], ["all_out_cracked", "Bo Hansen"]]) {
+    const line = /** @type {any} */ (/** @type {any[]} */ (built.feedEvents).find((e) => e.type === type && e.climb_phase === "attack"));
+    assert.equal(line.km_span, undefined);
+    assert.equal(line.km, 156);
+    assert.equal(filmKmValue(line, (v) => String(v)), "156");
+    assert.deepEqual(describeSummit(line), { key: "climb_attack_start_named", params: { rider, climb: "Col du Test" } });
+  }
+});
+
+test("#7965: uden kendt stigningsnavn staar der 'den sidste stigning'", () => {
+  const built = buildFilmTimeline({ events: SUMMIT_EVENTS, distanceKm: 170, timelineVersion: 2, climbs: [{ crest_km: 170, length_km: 14 }] });
+  const line = /** @type {any} */ (/** @type {any[]} */ (built.feedEvents).find((e) => e.type === "all_out_gain" && e.climb_phase === "attack"));
+  assert.deepEqual(describeSummit(line), { key: "climb_attack_start", params: { rider: "Ada Pedersen" } });
+});
+
+test("#7965: knaekket staar ved motorens ægte km og tid, 'holdt' ved toppen, begge efter angrebet", () => {
+  const built = buildFilmTimeline({ events: SUMMIT_EVENTS, distanceKm: 170, timelineVersion: 2, climbs: SUMMIT_CLIMBS });
+  const feed = /** @type {any[]} */ (built.feedEvents);
+  const idx = (type, phase) => feed.findIndex((e) => e.type === type && e.climb_phase === phase);
+  const cracked = feed[idx("all_out_cracked", "outcome")];
+  const held = feed[idx("all_out_gain", "outcome")];
+  assert.equal(cracked.km, 160.05);
+  assert.equal(cracked.race_time_s, 15490.94);
+  assert.deepEqual(describeSummit(cracked), { key: "climb_attack_cracked", params: { rider: "Bo Hansen" } });
+  assert.equal(held.km, 170);
+  assert.equal(held.race_time_s, 17441.78);
+  assert.deepEqual(describeSummit(held), { key: "climb_attack_held", params: { rider: "Ada Pedersen" } });
+  assert.ok(idx("all_out_cracked", "attack") < idx("all_out_cracked", "outcome"));
+  assert.ok(idx("all_out_gain", "attack") < idx("all_out_gain", "outcome"));
+  assert.ok(idx("all_out_gain", "outcome") < feed.findIndex((e) => e.type === "finish"));
+  const kms = feed.map((e) => e.km);
+  assert.deepEqual(kms, [...kms].sort((a, b) => a - b), "kronologisk");
+  assert.ok(feed.every((e) => !e.km_span), "aldrig interval");
+});
+
+test("#7965: ingen af de nye tekster siger et antal sekunder eller en tid", () => {
+  const built = buildFilmTimeline({ events: SUMMIT_EVENTS, distanceKm: 170, timelineVersion: 2, climbs: SUMMIT_CLIMBS });
+  for (const e of /** @type {any[]} */ (built.feedEvents).filter((x) => x.climb_phase)) {
+    const described = describeSummit(e);
+    assert.deepEqual(Object.keys(described.params).sort(), described.params.climb ? ["climb", "rider"] : ["rider"]);
+  }
+});
+
+test("#7965: Angrib-teksten er den samme for angreb og udfald (opgaven slaas op ved toppen)", () => {
+  // Planen skifter fra tempo til angreb midt paa stigningen: begge linjer slaas op ved toppen (170), ikke foden eller knaekket.
+  const looked = [];
+  const effortByRider = { get: () => "all_out", taskAt: (_events, _id, km) => { looked.push(km); return km >= 165 ? "attack" : "tempo"; } };
+  const built = buildFilmTimeline({ events: SUMMIT_EVENTS, distanceKm: 170, timelineVersion: 2, climbs: SUMMIT_CLIMBS, ownRiderIds: ["rider-1", "rider-2"], effortByRider });
+  const lines = /** @type {any[]} */ (/** @type {any[]} */ (built.feedEvents).filter((e) => e.climb_phase));
+  assert.equal(lines.length, 4);
+  assert.ok(lines.every((e) => e.params.task === "attack"));
+  assert.ok(looked.every((km) => km === 170), `opslag ved toppen: ${looked}`);
+});
+
+test("#7965: historien viser angreb og udfald i kronologisk orden", () => {
+  const built = buildFilmTimeline({ events: SUMMIT_EVENTS, distanceKm: 170, timelineVersion: 2, climbs: SUMMIT_CLIMBS });
+  const story = /** @type {any[]} */ (storyEventsWithCauses(selectStoryEvents(built.events), built.events, {}));
+  const own = story.filter((e) => e.climb_phase).map((e) => `${e.type}:${e.climb_phase}@${e.km}`);
+  assert.deepEqual(own, ["all_out_gain:attack@156", "all_out_cracked:attack@156", "all_out_cracked:outcome@160.05", "all_out_gain:outcome@170"]);
+  const kms = story.map((e) => e.km);
+  assert.deepEqual(kms, [...kms].sort((a, b) => a - b));
+});
+
+test("#7965: presser pladsen, tabes angrebs-linjen foer udfaldet (aldrig et angreb uden sit udfald)", () => {
+  const crowded = [
+    { type: "finish", km: 170, params: {} },
+    { type: "gc_change", km: 170, params: {} },
+    { type: "finale_attack", km: 169, params: { rider_id: "rider-3" } },
+    { type: "breakaway_survived", km: 170, params: {} },
+    { type: "all_out_gain", km: 156, climb_phase: "attack", params: { rider_id: "rider-1" } },
+    { type: "all_out_gain", km: 170, climb_phase: "outcome", params: { rider_id: "rider-1" } },
+  ];
+  const picked = /** @type {any[]} */ (selectStoryEvents(crowded));
+  assert.equal(picked.length, 5);
+  assert.ok(picked.some((e) => e.climb_phase === "outcome"));
+  assert.ok(!picked.some((e) => e.climb_phase === "attack"));
+});
+
+test("#7965: etape uden topankomst giver bit-identisk film", () => {
+  const events = SUMMIT_EVENTS.map((e) => (e.type === "all_out_gain" ? { km: 160, type: e.type, params: { rider_id: "rider-1" } } : e.type === "all_out_cracked" ? { km: 160, type: e.type, params: e.params } : e));
+  const flat = events.map((e) => (e.type === "finish" ? { ...e, km: 182 } : e));
+  const withClimbs = buildFilmTimeline({ events: flat, distanceKm: 182, timelineVersion: 2, climbs: [{ crest_km: 160, length_km: 9 }] });
+  const without = buildFilmTimeline({ events: flat, distanceKm: 182, timelineVersion: 2 });
+  assert.deepEqual(withClimbs, without);
+  assert.ok(/** @type {any[]} */ (withClimbs.events).every((e) => !e.climb_phase));
+});
+
+test("#7965: de fire nye tekstnoegler findes paa alle fem sprog og indeholder kun {rider}/{climb}", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { dirname, join } = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const localesDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "public", "locales");
+  for (const lang of ["en", "da", "fr", "es", "nl"]) {
+    const doc = JSON.parse(readFileSync(join(localesDir, lang, "races.json"), "utf8"));
+    for (const key of ["climb_attack_start", "climb_attack_start_named", "climb_attack_held", "climb_attack_cracked"]) {
+      const text = doc.detail.film.event[key];
+      assert.ok(text, `${lang}: ${key}`);
+      assert.ok(text.includes("{rider}"), `${lang}: ${key} {rider}`);
+      assert.deepEqual([...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).filter((v) => v !== "rider" && v !== "climb"), [], `${lang}: ${key}`);
+      assert.equal(/\d|—/.test(text), false, `${lang}: ${key} har ingen tal og ingen em-dash`);
+    }
+    assert.ok(doc.detail.film.event.climb_attack_start_named.includes("{climb}"), `${lang}: climb`);
   }
 });

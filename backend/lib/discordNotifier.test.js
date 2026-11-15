@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { resolveDmTargetFromInput } from "./discordDmTarget.js";
-import { notifyBoardUpdateDM, notifyAuctionWon, notifyDiscordDM, notifyPlayerFeedback, sendWebhook, isLiveDiscordAllowed, getBotToken, __buildEmbedForTests } from "./discordNotifier.js";
+import { notifyBoardUpdateDM, notifyAuctionWon, notifyDiscordDM, notifyPlayerFeedback, sendWebhook, isLiveDiscordAllowed, getBotToken, __buildEmbedForTests, __setPlayerDmSwitchForTests } from "./discordNotifier.js";
 import { DISCORD_EMBED_LIMITS } from "./discordEmbedLimits.js";
 import { flushDmRunGuard, __resetDmRunGuardForTests } from "./discordDmRateGuard.js";
 import { __resetWebhookQueueForTests } from "./discordWebhookQueue.js";
@@ -12,6 +12,11 @@ import { __resetWebhookQueueForTests } from "./discordWebhookQueue.js";
 // ville aldrig nå deres injicerede fetchFn. Guard-adfærden selv testes eksplicit
 // i "live-guard"-blokken nederst (som fjerner denne env-var igen midlertidigt).
 process.env.DISCORD_LIVE_MESSAGING = "allow";
+
+// #8149: hovedafbryderen står på on som i prod. Uden denne linje ville sendDM
+// læse app_config gennem modulets egen supabase-klient (netværk). Kontakten
+// selv testes i discordPlayerDmSwitch.test.js.
+__setPlayerDmSwitchForTests(async () => true);
 
 function makeCaptureSpy() {
   const calls = [];
@@ -502,6 +507,34 @@ test("sendWebhook — 429 overlever alle forsøg → lagt i outbox (#3545), inge
   assert.deepEqual(enqueued[0].payload, { embeds: [{ title: "Koerse van Nokere" }] });
   assert.equal(enqueued[0].lastStatus, 429);
   assert.equal(captureExceptionFn.calls.length, 0, "beskeden er ikke tabt endnu — outbox'en har den");
+});
+
+// #8101: svaret skelner en afleveret (eller outbox-parkeret) besked fra en tabt,
+// så svartids-alarmen kun bruger sit vindue, når beskeden faktisk er nået frem.
+test("sendWebhook svarer true ved levering eller outbox, false når beskeden er tabt (#8101)", async () => {
+  const quiet = { sleepFn: noSleep, captureExceptionFn: makeCaptureSpy() };
+  const okFetch = makeFetchSequence([{ status: 204 }]).fetchFn;
+  assert.equal(await sendWebhook(RESULT_WEBHOOK, { embeds: [] }, { ...quiet, fetchFn: okFetch }), true);
+
+  const failing = () => makeFetchSequence([{ status: 503 }]).fetchFn;
+  assert.equal(
+    await sendWebhook(RESULT_WEBHOOK, { embeds: [] }, { ...quiet, fetchFn: failing(), enqueueWebhookFn: async () => ({ enqueued: true }) }),
+    true,
+    "lagt i outbox = afleveret senere"
+  );
+  assert.equal(
+    await sendWebhook(RESULT_WEBHOOK, { embeds: [] }, { ...quiet, fetchFn: failing(), enqueueWebhookFn: async () => ({ enqueued: false }) }),
+    false,
+    "outbox'en kunne ikke tage den"
+  );
+  assert.equal(
+    await sendWebhook(RESULT_WEBHOOK, { embeds: [] }, { ...quiet, fetchFn: failing(), enqueueOnFailure: false }),
+    false
+  );
+  const deadFetch = makeFetchSequence([{ status: 404 }]).fetchFn;
+  assert.equal(await sendWebhook(RESULT_WEBHOOK, { embeds: [] }, { ...quiet, fetchFn: deadFetch }), false, "permanent fejl");
+  assert.equal(await sendWebhook("https://example.com/not-discord", { embeds: [] }, { ...quiet, fetchFn: okFetch }), false, "ugyldig URL");
+  assert.equal(await sendWebhook(null, { embeds: [] }, quiet), false, "ingen URL");
 });
 
 // Hændelsen 7/8 22:21-22:23 i ren form: Discord svarer 503 i hele inline-vinduet

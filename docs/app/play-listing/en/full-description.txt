@@ -1,0 +1,17 @@
+Cycling Zone is a cycling manager built for the long game. Build a team, bid on riders against other managers in live auctions, and race a full season.
+
+What you do
+- Build your team. Climbers for the mountains, sprinters for the flat, a captain to build around.
+- Bid in live auctions. Compete for riders in real time. Read the room, time your bid, do not overpay.
+- Develop your riders. Train them to sharpen their strengths and bring young talent up through your academy.
+- Set your tactics. Pick your captain, send riders up the road, and decide who chases and who saves their legs for the finish.
+- Race the season. Follow your team through stage races and one-day races, then build for the next season and climb the divisions.
+
+Fair by design
+The game must be fair for everyone. You cannot pay for better riders, faster training or better results.
+
+Built in the open
+Cycling Zone is in open beta. I make it on my own, season by season, and your feedback decides what gets built next. Come to the Discord and tell me what you think.
+
+One game, everywhere
+This app is the same game as cyclingzone.org. Your team, your riders and your progress follow your account, on your phone and on your computer. You sign up with your email.

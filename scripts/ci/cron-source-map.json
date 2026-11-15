@@ -222,6 +222,10 @@
       "backend/lib/cronHeartbeat.js",
       "backend/lib/discordNotifier.js"
     ],
+    "action-timing-flush": [
+      "backend/lib/actionTimingMonitor8101.js",
+      "backend/lib/discordNotifier.js"
+    ],
     "sunday-value-refresh": [
       "backend/lib/sundayValueSweep.js"
     ],

@@ -45,7 +45,7 @@ export default function FatigueRuleSummary({
         {isSet && (
           <>
             {" · "}
-            <b className="font-semibold tabular-nums text-cz-1">{t("fatigueRule.summaryToday", { count })}</b>
+            <b className="font-semibold tabular-nums text-cz-1">{count == null ? "—" : t("fatigueRule.summaryToday", { count })}</b>
           </>
         )}
       </span>

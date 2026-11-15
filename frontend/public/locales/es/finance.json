@@ -45,7 +45,14 @@
     "label": "Saldo",
     "division": "División {division}",
     "available": "{value} CZ$ disponibles",
-    "lockedInBids": "{value} CZ$ bloqueados en pujas"
+    "lockedInBids": "{value} CZ$ bloqueados en pujas",
+    "lockedSales": "+{value} CZ$ bloqueados"
+  },
+  "lockedSalesBox": {
+    "heading": "Bloqueado hasta el cambio de equipo",
+    "payout": "Se paga cuando el ciclista cambie de equipo",
+    "endsIn": "{count, plural, one {termina en # día} other {termina en # días}}",
+    "endsToday": "termina hoy"
   },
   "debt": {
     "label": "Deuda total",

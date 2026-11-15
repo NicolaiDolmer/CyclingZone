@@ -211,6 +211,17 @@ export function injuryTimeLeft(condition, today = new Date()) {
   };
 }
 
+// #7801: traetheden rytterprofilens "Form & restitution" viser (fra /api/training/me).
+// Med kontakten fatigue_now_7801 sender serveren feltet `fatigue_at_start`; er tallet
+// lige nu da ukendt (null), er svaret null = en streg, aldrig 0. Uden kontakten som foer
+// (manglende tal = 0), saa slukket er uaendret.
+export function profileFatigueValue(condition) {
+  const fatigue = condition?.fatigue;
+  if (fatigue != null) return fatigue;
+  const live = condition != null && Object.prototype.hasOwnProperty.call(condition, "fatigue_at_start");
+  return live ? null : 0;
+}
+
 // #5462: hvilken NØGLE i `training`-namespacet skal skade-badget bruge? Ren
 // funktion, saa alle traenings-flader (roster-raekken, rapport-raekken, mobil-kortet)
 // vaelger ens — og saa valget kan faeldes af en test uden at rendere React.

@@ -3,6 +3,9 @@
   "season": "Temporada {n}",
   "seasonTooltip": "Temporada actual. La clasificación se reinicia cada temporada.",
   "noActiveSeason": "Sin temporada activa",
+  "rankings": {
+    "updatedAt": "Actualizado a las {time}"
+  },
   "loadError": "No se pudo cargar la clasificación. Inténtalo de nuevo.",
   "strengthLoadError": "No se pudo cargar la fuerza de las plantillas. Inténtalo de nuevo.",
   "retry": "Reintentar",

@@ -711,8 +711,7 @@
   "src/components/SeasonFinanceReportPanel.jsx": {
     "TS2322": 2,
     "TS2339": 11,
-    "TS2345": 5,
-    "TS2739": 1
+    "TS2345": 5
   },
   "src/components/SeasonHonours.jsx": {
     "TS18047": 2,
@@ -882,7 +881,7 @@
   },
   "src/components/admin/sections/FeatureFlagBoardSection.jsx": {
     "TS18046": 2,
-    "TS2339": 5
+    "TS2339": 1
   },
   "src/components/admin/shared/useAdminAuth.js": {
     "TS2322": 1
@@ -1310,10 +1309,6 @@
     "TS2322": 1,
     "TS2339": 3
   },
-  "src/hooks/useGlobalRank.js": {
-    "TS18047": 2,
-    "TS2345": 4
-  },
   "src/hooks/useHeroAgonyMoment.js": {
     "TS2322": 3,
     "TS2339": 1,
@@ -1359,7 +1354,6 @@
     "TS2769": 1
   },
   "src/hooks/useTodayStages.js": {
-    "TS2322": 1,
     "TS2339": 1,
     "TS2345": 1,
     "TS2532": 1
@@ -2220,11 +2214,9 @@
     "TS2810": 1
   },
   "src/pages/AcademyPage.jsx": {
-    "TS2322": 5,
-    "TS2339": 16,
+    "TS2322": 4,
+    "TS2339": 2,
     "TS2345": 1,
-    "TS2353": 2,
-    "TS2698": 2,
     "TS2741": 2
   },
   "src/pages/ActivityPage.jsx": {
@@ -2326,11 +2318,11 @@
     "TS2741": 3
   },
   "src/pages/DashboardPage.jsx": {
-    "TS18046": 5,
+    "TS18046": 3,
     "TS18047": 9,
     "TS2322": 23,
-    "TS2339": 132,
-    "TS2345": 19,
+    "TS2339": 129,
+    "TS2345": 17,
     "TS2353": 1,
     "TS2362": 3,
     "TS2363": 3,
@@ -2371,8 +2363,6 @@
   },
   "src/pages/GlobalRankPage.jsx": {
     "TS2322": 3,
-    "TS2339": 9,
-    "TS2345": 2,
     "TS2739": 1,
     "TS2741": 2
   },
@@ -2442,8 +2432,7 @@
     "TS2741": 3
   },
   "src/pages/PlanningHubPage.jsx": {
-    "TS2345": 1,
-    "TS2741": 1
+    "TS2345": 1
   },
   "src/pages/PrivacyPolicyPage.jsx": {
     "TS2339": 8
@@ -2793,11 +2782,10 @@
   },
   "src/preview/installPreviewMock.js": {
     "TS2339": 5,
-    "TS2345": 11
+    "TS2345": 1
   },
   "src/preview/mockHandlers.test.js": {
-    "TS18047": 2,
-    "TS2339": 17
+    "TS18047": 2
   },
   "src/preview/plannerMock.js": {
     "TS18047": 13,

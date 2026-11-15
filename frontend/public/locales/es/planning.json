@@ -1,0 +1,180 @@
+{
+  "title": "Planificación",
+  "subtitle": {
+    "season": "Temporada {number}",
+    "needSquad": "{count, plural, one {# carrera necesita equipo en los próximos 8 días} other {# carreras necesitan equipo en los próximos 8 días}}",
+    "allReady": "Todas las carreras de los próximos 8 días tienen equipo completo"
+  },
+  "toggles": {
+    "weekBoard": "Vista semanal",
+    "raceList": "Lista de carreras"
+  },
+  "monthCalendar": "Calendario mensual",
+  "weekBoard": {
+    "title": "Vista semanal",
+    "prev": "Semana anterior",
+    "next": "Semana siguiente",
+    "week": "Semana {week}",
+    "empty": "No hay carreras esta semana. Usa las flechas para buscar la siguiente.",
+    "raceDaysShort": "DC {days}"
+  },
+  "raceList": {
+    "title": "Lista de carreras",
+    "scopeLabel": "Mostrar carreras",
+    "scopeNext7": "Próximos 7 días",
+    "scopeSeason": "Toda la temporada",
+    "showPast": "Mostrar pasadas",
+    "weekLabel": "Semana {week}",
+    "weekSummary": "Semana {week} · {count, plural, one {# carrera} other {# carreras}} · {missing, plural, =0 {todo listo} other {# por completar}}",
+    "raceDay": "Día de carrera {day}",
+    "raceDays": "Días de carrera {days}",
+    "stages": "{count, plural, one {# etapa} other {# etapas}}",
+    "oneDay": "Clásica",
+    "sharesDays": "Comparte días de carrera con {races}",
+    "empty": {
+      "title": "Muestra toda la temporada",
+      "description": "No hay carreras próximas en esta vista. Con toda la temporada puedes planificar con antelación.",
+      "action": "Mostrar toda la temporada"
+    }
+  },
+  "status": {
+    "ready": "Listo",
+    "missing": "{count, plural, one {Falta #} other {Faltan #}}",
+    "locked": "Bloqueado",
+    "withdrawn": "Retirado",
+    "busy": "En {race}",
+    "busyTitle": "Elegido para {race}, que comparte días de carrera",
+    "overAge": "Fuera de edad",
+    "trainNow": "Entrenó hoy"
+  },
+  "race": {
+    "unsaved": "Sin guardar",
+    "starts": "Sale {when}",
+    "picked": "{picked} de {max} elegidos",
+    "copyFrom": "Copiar equipo de…",
+    "suggest": "Sugerir equipo",
+    "discard": "Descartar cambios",
+    "save": "Guardar equipo",
+    "saved": "Equipo guardado.",
+    "suggested": "Equipo sugerido. Revísalo y guárdalo cuando estés conforme.",
+    "copied": "Copiado de {name}. {skipped, plural, one {Se omitió # corredor (ocupado, lesionado o no disponible).} other {Se omitieron # corredores (ocupados, lesionados o no disponibles).}}",
+    "copiedAll": "Copiado de {name}. Revísalo y guárdalo.",
+    "locked": "La carrera ya ha empezado, así que el equipo está bloqueado.",
+    "withdrawn": "Tu equipo se ha retirado de esta carrera. Al guardar un equipo se vuelve a inscribir.",
+    "restored": "Se han recuperado tus cambios sin guardar."
+  },
+  "copy": {
+    "title": "Copiar equipo de",
+    "none": "Ninguna otra carrera tiene equipo todavía.",
+    "riders": "{count, plural, one {# corredor} other {# corredores}}"
+  },
+  "squad": {
+    "pick": "Elegir",
+    "rider": "Corredor",
+    "status": "Estado",
+    "role": "Rol",
+    "rating": "Valoración",
+    "routeMatch": "Encaje con el recorrido",
+    "form": "Forma",
+    "fatigue": "Fatiga",
+    "pickRider": "Elegir a {name}",
+    "roleFor": "Rol de {name}",
+    "count": "Mostrando {shown} corredores · {selected} de {max} elegidos",
+    "empty": {
+      "title": "Vuelve a cargar los corredores",
+      "description": "Ahora mismo tu equipo no tiene corredores disponibles para esta carrera."
+    }
+  },
+  "role": {
+    "captain": "Jefe de filas",
+    "co_captain": "Jefe de filas compartido",
+    "sprint_captain": "Jefe de filas de sprint",
+    "hunter": "Cazador de escapadas",
+    "free_role": "Rol libre",
+    "luxury_helper": "Gregario de lujo",
+    "rider": "Solo corredor"
+  },
+  "profile": {
+    "title": "Perfil del recorrido",
+    "prevStage": "Etapa anterior",
+    "nextStage": "Etapa siguiente",
+    "stageOf": "Etapa {n} de {total}",
+    "oneDay": "Carrera de un día",
+    "stages": "Etapas",
+    "showStage": "Mostrar etapa {n}",
+    "hide": "Ocultar perfil",
+    "show": "Mostrar perfil",
+    "unavailable": "Todavía no hay datos del recorrido para esta etapa.",
+    "showFull": "Ver perfil completo",
+    "hideFull": "Ocultar perfil completo"
+  },
+  "unsavedBar": {
+    "label": "Cambios sin guardar",
+    "text": "Cambios sin guardar en {race}.",
+    "next": "Se abrirá {race}.",
+    "stay": "Quedarme aquí",
+    "discard": "Descartar",
+    "saveAndOpen": "Guardar y abrir"
+  },
+  "bulk": {
+    "menu": "Acciones",
+    "scopeLabel": "Se aplica a",
+    "scope": {
+      "next": "Próxima carrera",
+      "nextNamed": "Próxima carrera: {race}",
+      "checked": "{count, plural, one {Carrera marcada (#)} other {Carreras marcadas (#)}}",
+      "shown": "Carreras mostradas ({count})",
+      "season": "Toda la temporada ({count})",
+      "pick": "Marca carreras en la lista"
+    },
+    "auto": "Que elija el asistente",
+    "autoHint": "Rellena las plazas libres. Tus elecciones se quedan.",
+    "clear": "Quitar equipos",
+    "clearHint": "Saca a los corredores. Las carreras siguen en el calendario.",
+    "withdraw": "Retirar",
+    "withdrawHint": "El equipo no toma la salida y puede perder la carrera.",
+    "nothing": "Nada que cambiar en estas carreras",
+    "capped": "Un guardado admite como máximo {max} carreras, así que solo se toman las primeras. Guárdalas y luego haz el resto.",
+    "checkedCount": "{count, plural, one {# carrera marcada} other {# carreras marcadas}}",
+    "untick": "Quitar marcas",
+    "assistError": "El asistente no pudo elegir. No se ha cambiado nada. {error}",
+    "assistNone": "El asistente no encontró corredores libres para estas carreras. No se ha cambiado nada.",
+    "draft": {
+      "label": "Borrador",
+      "title": "Borrador.",
+      "note": "No se guarda nada hasta que guardes.",
+      "auto": "{count, plural, one {Equipo elegido en # carrera} other {Equipos elegidos en # carreras}}, {riders, plural, one {# corredor añadido} other {# corredores añadidos}}",
+      "clear": "{count, plural, one {Equipo quitado en # carrera} other {Equipos quitados en # carreras}}",
+      "withdraw": "{count, plural, one {Retirado de # carrera: el equipo no toma la salida} other {Retirado de # carreras: el equipo no toma la salida}}",
+      "undo": "Deshacer",
+      "save": "Guardar",
+      "mark": "Borrador",
+      "open": {
+        "auto": "El equipo del asistente para esta carrera está en el borrador. El equipo de abajo es el guardado hasta que guardes.",
+        "clear": "El equipo de esta carrera está quitado en el borrador. El equipo de abajo es el guardado hasta que guardes.",
+        "withdraw": "Esta carrera está retirada en el borrador. Nada cambia hasta que guardes."
+      },
+      "error": "No se guardó nada. {error}",
+      "errorIn": "No se guardó nada por {race}: {error}",
+      "errorWithdraw": "Los equipos se guardaron. Las retiradas no se guardaron: {error}"
+    }
+  },
+  "error": {
+    "title": "No se pudo cargar la planificación",
+    "description": "No se ha perdido nada. Tus equipos guardados están a salvo.",
+    "retry": "Reintentar"
+  },
+  "notOpen": {
+    "title": "Abre la página de planificación",
+    "description": "La planificación de carreras se abre cuando empieza la temporada.",
+    "action": "Volver a planificación"
+  },
+  "noRaces": {
+    "title": "Consulta el calendario",
+    "description": "Esta temporada todavía no hay carreras para tu división."
+  },
+  "noSelection": {
+    "title": "Elige una carrera para planificar",
+    "description": "Elige una carrera de la lista para fijar su equipo."
+  }
+}

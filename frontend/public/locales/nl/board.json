@@ -145,7 +145,7 @@
     "signature_rider": "Telt renners die het bestuur als sterrenrenners herkent. Met reputatie ingeschakeld leest dit dezelfde verdiende reputatiewaarde die op de rennersschermen staat.",
     "top_n_finish": "Beoordeeld op je eindstand in het laatste seizoen van het plan, niet op een gemiddelde over de seizoenen van het plan.",
     "u25_development_delta": "De gemiddelde winst aan vaardigheidspunten per U25-renner per seizoen. Ontwikkel jonge renners zodat hun vaardigheden over het seizoen stijgen.",
-    "sponsor_growth": "Vergelijkt de seizoensuitbetaling van je sponsor (contractbasis, naar rato als je team midden in het seizoen instapte, plus inkomsten per koersdag) tussen dit seizoen en het eerste seizoen van het plan. Eenmalige bonussen (tekenen, resultaten, doelen) tellen niet mee. Alleen getoond vanaf het tweede seizoen van het plan, zodra er een echt basisseizoen bestaat."
+    "sponsor_growth": "Vergelijkt de seizoensuitbetaling van je sponsor (contractbasis, naar rato als je team midden in het seizoen instapte, plus inkomsten per koersdag) tussen dit seizoen en het eerste afgeronde seizoen van het plan waarin je team sponsorinkomsten had. Eenmalige bonussen (tekenen, resultaten, doelen) tellen niet mee. Alleen getoond zodra zo'n seizoen bestaat, en een seizoen zonder sponsorinkomsten wordt niet gemeten."
   },
   "drivers": {
     "heading": "Wat drijft dit bestuur?",
@@ -2026,7 +2026,7 @@
       "min_national_riders": "renners uit het land van het doel die nu in je team zitten.",
       "min_riders": "renners die nu in je team zitten.",
       "no_outstanding_debt": "je saldo min actieve leningen. Het doel is gehaald als dat aan het eind van het seizoen nul of meer is.",
-      "sponsor_growth": "de stijging van de seizoensuitbetaling van je sponsor sinds het eerste seizoen van het plan, in procenten.",
+      "sponsor_growth": "de stijging van de seizoensuitbetaling van je sponsor sinds het eerste seizoen van het plan waarin je team sponsorinkomsten had, in procenten.",
       "monument_podium": "top-3-plaatsen in Monuments, of in klassiekers als het doel die noemt. Een bonusdoel telt vanaf acceptatie.",
       "signature_rider": "renners met grote naamsbekendheid in je team. Een bonusdoel telt vanaf acceptatie.",
       "jersey_wins": "punten-, berg- en jongerentruien gewonnen in etappekoersen.",

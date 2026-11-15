@@ -1,18 +1,75 @@
 {
+  "racePageV6": {
+    "tab": {
+      "results": "Resultater",
+      "stage": "Etape",
+      "story": "Historie",
+      "standings": "Stillinger",
+      "tactics": "Taktik",
+      "team": "Hold"
+    },
+    "hero": {
+      "stageLocks": "Etape {number} låses kl. {time} · {countdown}",
+      "locks": "Låses kl. {time} · {countdown}",
+      "notScheduled": "Etape {number} har ingen starttid endnu"
+    },
+    "route": {
+      "aria": "Etapens rute",
+      "km": "{km} km",
+      "gain": "{gain} m stigning",
+      "climbs": "{count, plural, one {# stigning} other {# stigninger}}",
+      "hide": "Skjul rute",
+      "show": "Vis rute",
+      "saved": "Gemt",
+      "savedHere": "Gemt på denne enhed",
+      "notSaved": "Ikke gemt",
+      "profileTitle": "Ruten"
+    },
+    "yourDay": {
+      "title": "Din dag"
+    },
+    "results": {
+      "notRiddenTitle": "Gør klar til etape {number}",
+      "notRiddenHint": "Resultaterne står her, når etapen er kørt.",
+      "openStage": "Se etapen"
+    },
+    "tacticsAfter": {
+      "title": "Din plan mod det der skete",
+      "metaStage": "Etape {number}",
+      "metaRace": "Løbet",
+      "intro": "Hvert trin i din plan ved siden af det, etapens optegnelse viser. Et trin uden noget i optegnelsen står som ikke set. Det betyder ikke, at det mislykkedes.",
+      "colPlan": "Din plan",
+      "colRecord": "Det optegnelsen viser",
+      "step": "Trin {number}",
+      "km": "km {km}",
+      "noRiders": "Ingen af dine ryttere kørte denne etape.",
+      "noOrders": "Din plan for etapen kunne ikke hentes. Prøv igen senere.",
+      "mark": {
+        "notSeen": "Ikke set i optegnelsen",
+        "notReached": "Ikke nået"
+      },
+      "line": {
+        "attackFoot": "Angriber ved foden af sidste stigning",
+        "attackFootNamed": "Angriber ved foden af {climb}",
+        "attackHeld": "Holder angrebet til toppen",
+        "attackCracked": "Løber tør efter angrebet og bliver sat"
+      }
+    }
+  },
   "stagePlanReady": {
     "gc": {
       "name": "Kør for klassementet",
-      "description": "Alle kører for klassementsrytteren og holder ham ude af problemer.",
+      "description": "Hjælperne kører for klassementsrytteren. En delt kaptajn kører samme plan, en fri rolle sit eget løb.",
       "named": "Kør for klassementet med {name}"
     },
     "stage": {
       "name": "Etapesejr",
-      "description": "Holdet kører for den rytter, der passer bedst til dagens rute.",
+      "description": "Hjælperne kører for den rytter, der passer bedst til dagens rute.",
       "named": "Etapesejr til {name}"
     },
     "sprint": {
       "name": "Spurt",
-      "description": "Holdet sparer spurteren til målet og kører spurttog den sidste kilometer.",
+      "description": "Holdet sparer spurteren til målet og kører spurttog de sidste 10 km.",
       "named": "Spurt til {name}"
     },
     "break": {
@@ -21,7 +78,7 @@
     },
     "save": {
       "name": "Spar benene",
-      "description": "Alle kører roligt i mål. Mindst træthed i aften."
+      "description": "Alle kører roligt i mål. Den letteste af de fem planer."
     },
     "price": {
       "easy": "Let",
@@ -438,7 +495,8 @@
     "tabSelection": "Holdudtagelse",
     "tabForm": "Formplan",
     "tabStrategy": "Strategi",
-    "tabCalendar": "Kalender"
+    "tabCalendar": "Kalender",
+    "tryWorkbench": "Prøv den nye planlægningsside"
   },
   "seasonView": {
     "toggleSeason": "Sæson",
@@ -697,17 +755,6 @@
     },
     "hunterExplainer": {
       "dayLine": "Jægeren prøver at komme med i morgenudbruddet. Om det holder hjem, afgøres af feltet på dagen.",
-      "outlook": {
-        "about": "Motorens bud: udbruddet holder hjem cirka {k} af {n} gange.",
-        "under": "Motorens bud: udbruddet holder hjem under {k} af {n} gange.",
-        "over": "Motorens bud: udbruddet holder hjem over {k} af {n} gange.",
-        "stage": "Etape {stage}",
-        "reason": {
-          "nobodyChases": "Få hold har grund til at jage det.",
-          "fewChase": "Et eller to hold har som regel grund til at jage det.",
-          "manyChase": "Flere hold har som regel grund til at jage det."
-        }
-      },
       "candidatesHint": "Rangeret efter aggression: lysten til at angribe og satse på et ryk.",
       "noCandidates": "Vælg ryttere til løbet for at se dine bedste jægere.",
       "aggression": "Aggression",
@@ -1093,6 +1140,7 @@
     "line": "Standard: {role}. I dag: {today}.",
     "riderAbandoned": "Udgået af løbet",
     "copyToStage": "Kopiér til etape {number}",
+    "copyToStages": "Kopiér til etaperne {numbers}",
     "save": "Gem etape {number}",
     "saveRaceDay": "Gem løbsdagen",
     "saving": "Gemmer…",
@@ -1723,6 +1771,10 @@
         "all_out_cracked": "{rider} kører alt ud og kører sig tom på den sidste stigning.",
         "attack_gain": "{rider} angriber på den sidste stigning og vinder tid.",
         "attack_cracked": "{rider} angriber og kører sig tom på den sidste stigning.",
+        "climb_attack_start": "{rider} angriber ved foden af den sidste stigning.",
+        "climb_attack_start_named": "{rider} angriber ved foden af {climb}.",
+        "climb_attack_held": "{rider} holder angrebet til toppen og har vundet tid på stigningen.",
+        "climb_attack_cracked": "{rider} er løbet tør efter angrebet og bliver sat.",
         "bad_day_fatigue": "{rider} havde en dårlig dag. De hårde dage før sad i benene.",
         "bad_day_form": "{rider} havde en dårlig dag. Formen var der ikke.",
         "bad_day_illness": "{rider} havde en dårlig dag. Han følte sig syg.",

@@ -45,7 +45,14 @@
     "label": "Balance",
     "division": "Division {division}",
     "available": "{value} CZ$ available",
-    "lockedInBids": "{value} CZ$ locked in bids"
+    "lockedInBids": "{value} CZ$ locked in bids",
+    "lockedSales": "+{value} CZ$ locked"
+  },
+  "lockedSalesBox": {
+    "heading": "Locked until transfer",
+    "payout": "Paid out when the rider changes teams",
+    "endsIn": "{count, plural, one {ends in # day} other {ends in # days}}",
+    "endsToday": "ends today"
   },
   "debt": {
     "label": "Total debt",

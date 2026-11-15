@@ -156,6 +156,7 @@ import { loadEligibleEntries } from "./raceEntriesLoader.js";
 import { flushDeferredTransfersForRace, filterEligibleEntriesKeepingParked } from "./stageRaceTransferDefer.js";
 // #4423: flush udskudte akademi-optagelser ved løbs-finalisering (spejler #1995 ovenfor).
 import { flushDeferredAcademySigningsForRace } from "./academySigningDefer.js";
+import { executePendingReleasesForRace } from "./deferredTransferHealSweep.js"; // #8153
 import { requestRankingMatviewRefresh } from "./refreshRankingMatviews.js"; // #5911: gated + samlet
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 import { notifyAssistantFilledSquad } from "./assistantFilledSquadNotification.js";
@@ -201,6 +202,23 @@ async function flushDeferredTransfersSafe({ supabase, race }) {
     }
   } catch (err) {
     console.error(`  ⚠️  deferred-transfer flush fejlede for race ${race.id} (#1995, ikke-fatal):`, err.message);
+  }
+}
+
+// #8153: udfoer ventende frigivelser for loebet (bestilt midt i loebet, gebyret er
+// allerede betalt). Samme sted og samme robusthed som flushen ovenfor: idempotent,
+// uden kontakt (en bestilling skal altid udfoeres), og en fejl vaelter ikke
+// finaliseringen; heal-sweepet tager bestillingen ved naeste koersel.
+async function executePendingReleasesSafe({ supabase, race }) {
+  try {
+    const notifyTeamOwner = (teamId, type, title, message, relatedId = null, metadata = null) =>
+      notifyTeamOwnerShared({ supabase, teamId, type, title, message, relatedId, metadata });
+    const { executed, failed } = await executePendingReleasesForRace(supabase, race, { notifyTeamOwner });
+    if (executed > 0) console.log(`  👋 ${executed} ventende frigivelse(r) udført efter ${race.name || race.id} (#8153)`);
+    if (failed > 0) captureException(new Error(`pending releases failed for race ${race.id}: ${failed}`), { tags: { flow: "race-run", stage: "pending-release-8153" }, raceId: race.id });
+  } catch (err) {
+    console.error(`  ⚠️  ventende frigivelser fejlede for race ${race.id} (#8153, ikke-fatal):`, err.message);
+    captureException(err, { tags: { flow: "race-run", stage: "pending-release-8153" }, raceId: race.id });
   }
 }
 
@@ -2898,6 +2916,7 @@ export async function simulateRace({
 
   // #1995: løbet er finaliseret → flush parkerede holdskifter for deltagerne.
   await flushDeferredTransfersSafe({ supabase, race });
+  await executePendingReleasesSafe({ supabase, race }); // #8153
   // #4423: løbet er finaliseret → flush udskudte akademi-optagelser for deltagerne.
   await flushDeferredAcademySigningsSafe({ supabase, race });
 
@@ -3456,8 +3475,8 @@ export async function simulateStageByIndex({
   // hvilket ER kill-switchen: slukkes flaget midt i et etapeløb, kører næste
   // etape v3, og klassementet akkumuleres uændret fra race_results.
   checkV4Enabled = isRaceEngineV4Enabled,
-  // #6912 B: injectable, default den ægte resolveRaceEngineV4. Udbrudsprognosen
-  // (breakawayOutlook.js) pakker motoren ind i dryRun for at fange etapens input.
+  // #6912 B: injectable, default den ægte resolveRaceEngineV4. Udbrudsbuddet, der
+  // brugte den, er fjernet 13/11; sømmen står, da den ikke ændrer motorens kørsel.
   resolveV4Engine = resolveRaceEngineV4,
   // #5955: injectable, default binder/læser races.engine_rules_revision (kun under v4).
   bindRulesRevision = bindRaceRulesRevision,
@@ -4289,6 +4308,7 @@ export async function simulateStageByIndex({
   // #1995: løbet er finaliseret → flush parkerede holdskifter for deltagerne.
   // Idempotent, så den kører også i recovery-genkørsel (ingen finalizationPending-guard).
   await flushDeferredTransfersSafe({ supabase, race });
+  await executePendingReleasesSafe({ supabase, race }); // #8153
   // #4423: løbet er finaliseret → flush udskudte akademi-optagelser for deltagerne.
   await flushDeferredAcademySigningsSafe({ supabase, race });
   }); // ── #4147: slut på "status-flush"-trinnet ───────────────────────────────────

@@ -49,7 +49,7 @@ for (const width of [1440, 375]) {
           rider_derived_abilities: rider.rider_derived_abilities }],
       }));
       await login(page);
-      for (const [surface, path] of [["team", "/team"], ["development", "/team?tab=development"], ["hero", "/riders/rider-1"], ["scouting", "/riders/rider-1?tab=scouting"], ["academy", "/academy"], ["training", "/training?tab=development"], ["graduation", "/academy/graduation"]]) {
+      for (const [surface, path] of [["team", "/team"], ["development", "/team?tab=development"], ["hero", "/riders/rider-1"], ["scouting", "/riders/rider-1?tab=scouting"], ["training", "/training?tab=development"], ["graduation", "/academy/graduation"]]) {
         await test.step(surface, async () => {
           await page.goto(path);
           if (surface === "development") await expect(page.getByRole("tab", { name: /^(Development|Udvikling)$/i })).toHaveAttribute("aria-selected", "true");
@@ -58,7 +58,8 @@ for (const width of [1440, 375]) {
             await expect(chip).toBeVisible();
             if (await chip.getAttribute("aria-pressed") !== "true") await chip.click();
           }
-          if (!before || surface === "academy") {
+          // #6155: /academy har ingen rytterliste længere, så den er ikke en flade her.
+          if (!before) {
             const cells = page.getByTestId(surface === "scouting"
               ? "academy-scouting-band"
               : stage.band ? "academy-prognosis-band" : "academy-prognosis-learning");

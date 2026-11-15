@@ -5,7 +5,9 @@
 // ellers en dateret ".snapshots-6110-*"-mappe her (git-ignoreret, committes ALDRIG).
 //
 // Skriver:
-//   riders.json     levende ryttere { id, age, potentiale, team_id, rating }
+//   riders.json     levende ryttere { id, age, birthdate, potentiale, team_id, rating }
+//                   (age = kalenderalder; sæson-alder regnes af birthdate + meta.season_number)
+//   meta.json       { measured_at_utc, season_number, ... }
 //   knowledge.json  ét element pr. (hold, rytter) som holdet ved noget om:
 //                   egne ryttere { own, trainingDates, coachTier, facilityTier }
 //                   scoutede ryttere { own:false, looks, bestScoutTier }
@@ -74,7 +76,10 @@ const riders = ridersRaw
   .filter((r) => r.potentiale != null)
   .map((r) => ({
     id: r.id,
+    // `age` er kalenderalder (harnessens forenkling). birthdate følger med, så
+    // potentialeTo99DryRun6110.mjs kan regne spillets sæson-alder (#3564).
     age: ageOn(r.birthdate, measuredAt),
+    birthdate: r.birthdate ?? null,
     potentiale: Number(r.potentiale),
     team_id: r.team_id,
     rating: r.best_role_rating ?? null,
@@ -142,5 +147,9 @@ for (const [key, n] of looks) {
   knowledge.push({ team_id: teamId, rider_id: riderId, own: false, looks: n, bestScoutTier: scoutTierByTeam.get(teamId) ?? null });
 }
 fs.writeFileSync(path.join(OUT_DIR, "knowledge.json"), JSON.stringify(knowledge));
-fs.writeFileSync(path.join(OUT_DIR, "meta.json"), JSON.stringify({ measured_at_utc: measuredAt.toISOString(), riders: riders.length, knowledge_rows: knowledge.length, ticks_read: ticks.length }, null, 2));
+// Den aktive sæsons nummer, så snapshot-forbrugere kan regne sæson-alder (#3564).
+const { data: activeSeason, error: seasonError } = await sb.from("seasons").select("number").eq("status", "active").maybeSingle();
+if (seasonError) throw new Error(`seasons: ${seasonError.message}`);
+const seasonNumber = Number.isFinite(activeSeason?.number) ? activeSeason.number : null;
+fs.writeFileSync(path.join(OUT_DIR, "meta.json"), JSON.stringify({ measured_at_utc: measuredAt.toISOString(), season_number: seasonNumber, riders: riders.length, knowledge_rows: knowledge.length, ticks_read: ticks.length }, null, 2));
 console.log(`knowledge.json: ${knowledge.length} (egne + scoutede par)`);

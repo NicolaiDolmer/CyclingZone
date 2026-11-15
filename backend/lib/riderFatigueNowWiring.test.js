@@ -164,6 +164,42 @@ test("fatigueOutlookForTeam tændt: næste etape i dag = tallet lige nu; uden et
   assert.equal(out.get("c").fatigueAtStart, null);
 });
 
+// Codex P2 (#8054): fejler ledger-læsningen, er trætheden lige nu ukendt ("—"). Skønnet ved
+// start af en etape samme dag må ikke blive Number(null) = 0.
+test("fatigueOutlookForTeam tændt, ledger-læsning fejler + etape i dag: skønnet er også ukendt, ikke 0", async () => {
+  const now = new Date("2026-11-04T15:00:00Z");
+  const supabase = fakeSupabase({
+    flag: "on",
+    abilities: [{ rider_id: "a", recovery: 50 }, { rider_id: "c", recovery: 50 }],
+    schedule: [{ race_id: "R", stage_number: 2, game_day: 42, scheduled_at: "2026-11-04T17:00:00Z" }],
+    entryDays: [
+      { rider_id: "a", race_id: "R", game_day: 42, season_id: "s" },
+      { rider_id: "c", race_id: "R", game_day: 42, season_id: "s" },
+    ],
+  });
+  const from = supabase.from.bind(supabase);
+  supabase.from = (table) => {
+    if (table === "training_race_loads") {
+      const failing = { then: (resolve) => resolve({ data: null, error: { message: "ledger nede" } }) };
+      for (const m of ["select", "in", "eq", "lt", "is", "order"]) failing[m] = () => failing;
+      return failing;
+    }
+    return from(table);
+  };
+  const warn = console.warn;
+  console.warn = () => {};
+  let out;
+  try {
+    out = await fatigueOutlookForTeam({ supabase, team: { id: "t" }, seasonId: "s", conditions: CONDITIONS, now });
+  } finally {
+    console.warn = warn;
+  }
+  for (const id of ["a", "c"]) {
+    assert.equal(out.get(id).fatigue, null, `${id}: tallet lige nu er ukendt`);
+    assert.equal(out.get(id).fatigueAtStart, null, `${id}: skønnet ved start er ukendt, ikke 0`);
+  }
+});
+
 test("loadNextStageByRider: tidligste ikke-startede etape; længere frem end i morgen gives intet", async () => {
   const now = new Date("2026-11-04T15:00:00Z");
   const supabase = fakeSupabase({

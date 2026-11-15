@@ -18,6 +18,8 @@ import { KNOWLEDGE_DAYS, knowledgeStage, learningSpeed, loadPullSignedRiderIds, 
 import type { KnowledgeStageKey } from "./academyProspectKnowledge.ts";
 import { loadAcademyProfileState, profileOptions } from "./academyIntakeProfile.ts";
 import type { ResolvedProfile } from "./academyIntakeProfile.ts";
+import { loadEstimateDevelopmentXp } from "./potentialEstimateWriter.js";
+import type { DevelopmentXpParams } from "./developmentXp.ts";
 
 export const PULL_SOURCE = "pull";
 
@@ -85,7 +87,7 @@ export function maskPullCandidate<T extends IntakeItem | null | undefined>(item:
 }
 
 /** Akademirytterens prognose på holdets nuværende kendskabs-niveau. */
-export function rosterPrognosis({ rider, abilities, potRow, daysOnTeam, speed, seasonNumber, teamId, scout }: {
+export function rosterPrognosis({ rider, abilities, potRow, daysOnTeam, speed, seasonNumber, teamId, scout, developmentXp = null }: {
   rider: RosterRider;
   abilities: Row | null | undefined;
   potRow: PotentialeRow | null | undefined;
@@ -94,6 +96,8 @@ export function rosterPrognosis({ rider, abilities, potRow, daysOnTeam, speed, s
   seasonNumber: number;
   teamId: string;
   scout?: unknown;
+  /** #6110 F1: XP-params naar development_xp_model gaelder i dag; null = som foer. */
+  developmentXp?: DevelopmentXpParams | null;
 }): RosterPrognosis {
   const stage = knowledgeStage(daysOnTeam, speed);
   const out: RosterPrognosis = { stage: stage.stage, daysOnTeam, nextStageDays: stage.nextStageDays, band: null };
@@ -112,6 +116,8 @@ export function rosterPrognosis({ rider, abilities, potRow, daysOnTeam, speed, s
     // scoutingReport.js er utypet JS: parametertypen er udledt af dens default
     // (DEFAULT_SCOUT). loadScout-rækken har samme form, så den gives videre uændret.
     scout: scout as Parameters<typeof buildTypePrognosisBands>[0]["scout"],
+    // Samme grund: defaulten null giver parametertypen null; params gives videre uaendret.
+    developmentXp: developmentXp as Parameters<typeof buildTypePrognosisBands>[0]["developmentXp"],
   });
   // #6853: samme rolle-regel som alle andre flader (potentialDisplayBand.js).
   const band = displayPotentialBand(bands, potRow.primary_type) as
@@ -136,7 +142,7 @@ export async function buildIntake2View(supabase: Db, { teamId, roster, intake, s
     .map((item) => item.riderId ?? item.rider?.id)
     .filter(Boolean) as string[];
   const abilityIds = [...new Set([...riderIds, ...pullIds])];
-  const [profileState, staffCtx, scout, daysByRider, pulledIds, potRes, abRes] = await Promise.all([
+  const [profileState, staffCtx, scout, daysByRider, pulledIds, potRes, abRes, developmentXp] = await Promise.all([
     loadAcademyProfileState(supabase, { teamId, now }),
     loadTrainingStaffContext(supabase, teamId),
     riderIds.length > 0 ? loadScout(teamId, supabase) : null,
@@ -148,6 +154,7 @@ export async function buildIntake2View(supabase: Db, { teamId, roster, intake, s
     abilityIds.length > 0
       ? supabase.from("rider_derived_abilities").select("*").in("rider_id", abilityIds).limit(abilityIds.length)
       : { data: [] },
+    riderIds.length > 0 ? loadEstimateDevelopmentXp(supabase, { now: new Date(now) }) : null,
   ]);
   if (potRes.error) throw new Error(`academy-view potentiale: ${potRes.error.message}`);
   if (abRes.error) throw new Error(`academy-view abilities: ${abRes.error.message}`);
@@ -169,6 +176,7 @@ export async function buildIntake2View(supabase: Db, { teamId, roster, intake, s
         seasonNumber,
         teamId,
         scout,
+        developmentXp,
       }),
     })),
     profile: {

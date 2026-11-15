@@ -45,9 +45,7 @@
   "development": {
     "headers": {
       "projected": "Verwacht",
-      "projectedTitle": "Verwachte ratingrange voor zijn hoofdrol, gebaseerd op jouw training. Gesorteerd op de bovengrens.",
-      "ceiling": "Plafond",
-      "ceilingTitle": "De theoretisch hoogste rating die zijn rol kan bereiken. Niet aangepast aan hoe jij hem traint."
+      "projectedTitle": "Verwachte ratingrange voor zijn hoofdrol, gebaseerd op jouw training. Gesorteerd op de bovengrens."
     },
     "noForecast": "Nog geen voorspelling"
   },

@@ -66,6 +66,11 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "training_groups", area: "training", label: "Træningsgrupper" },
   // #5319: træningskatalog v3 (5 nye hårde sessioner), seedet off. Flip er ejer-only.
   { key: "training_catalog_v3", area: "training", label: "Træningskatalog v3 (nye hårde sessioner)" },
+  // #6490: træningshistorikken læser rytterne fra kvitteringerne. Seedet off; kun "on" tænder. Ejer-only flip.
+  { key: "training_history_from_ticks_6490", area: "training", label: "Træningshistorik fra kvitteringerne" },
+  // #6490 trin c: peak-signalet (motorens input) læser fra kvitteringerne. Egen kontakt, seedet off,
+  // binær (kun "on" tænder). Ejer-only flip; se #8180 om rækkeloftet på den gamle læsning.
+  { key: "training_peak_from_ticks_6490", area: "training", label: "Peak-signal fra kvitteringerne (motor)" },
   { key: "peak_planner_enabled", area: "training", label: "Form-planlægger" },
   // #7536: motoren laeser kun "on" (beta = off); Hjaelp-blokken foelger samme svar.
   { key: "condition_v2_race_date_training_day", area: "training", label: "Træning på løbsdato vejer et helt døgn" },
@@ -86,8 +91,10 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "race_day_development_enabled", area: "race-day", label: "Udvikling på løbsdage" },
   // #5124: kun visning (frontend). Beta foerst, ejer 1/10.
   { key: "season_matrix_mobile", area: "season", label: "Sæsonmatrix på mobil — ny visning" },
-  // #6590: web push, seedet off. Kræver VAPID_* på backend. Flip er ejer-only.
+  // #6590: web push, on for alle siden 24/10 (#7153, målt i prod 13/11). Kræver VAPID_* på backend. Flip er ejer-only.
   { key: "push_enabled", area: "notifications", label: "Push-notifikationer" },
+  // #8149: bottens private beskeder til spillere, seedet on. off kun på ejerens kør; beta = on (ingen viewer).
+  { key: "discord_player_dm", area: "notifications", label: "Discord: bottens private beskeder til spillere" },
   // #6570: etapeside 2.0 er nu den eneste etapeside; ingen kode laeser noeglen. Den staar kun
   // tilbage fordi tre beta-noter i patch notes peger paa den (maerket "Now for everyone", se
   // PLAYER_VISIBLE_FLAG_KEYS). Fjernes noeglen eller raekken i app_config, falder de noter
@@ -98,14 +105,16 @@ export const STAGE_FLAGS = Object.freeze([
   // #7003: etapeplan langs ruten (taktik), seedet off. Virker kun i løb på s5_profiles_v3.
   { key: "stage_plan_v1", area: "race-day", label: "Taktik — etapeplan langs ruten" },
   { key: "tactics_ready_7864", area: "race-day", label: "Taktik gjort klar del 1: holdplaner og ordre-pris" },
-  // #6912 B: motorens udbrudsbud i jægerboksen (kort prognose i dryRun). Ikke seedet = off; beta først.
-  { key: "race_breakaway_outlook", area: "race-day", label: "Jægerboks — motorens udbrudsbud" },
   // #7717: Hvorfor?-knappen i "Your day". Kun visning, seedet off.
   { key: "rider_why_button", area: "race-day", label: "Hvorfor?-knappen ved rytterne (Your day)" },
+  // #7778: løbssiden v6 trin 1 (Resultater for en kørt etape). Kun visning, seedet off; beta først.
+  { key: "race_page_v6", area: "race-day", label: "Løbssiden v6 — Resultater for en kørt etape" },
   // #7879: talentmærker ved rytternavne. Kun visning, seedet off.
   { key: "talent_marks_7879", area: "squad", label: "Talentmærker ved rytternavne (Toptalent, Næste generation)" },
   // #2009: hover-miniprofil på rytternavne. Kun visning, seedet off; beta først (ejer 7/11).
   { key: "rider_hover_card", area: "squad", label: "Hover-miniprofil på ryttere" },
+  // #7535: den nye planlægningsside (løbsliste, ugeoversigt, trup-tabel, ruteprofil). Kun visning, beta først.
+  { key: "planning_workbench", area: "race-day", label: "Ny planlægningsside (/planning/workbench)" },
 
   // ── Motorer og batch-jobs (spilleren ser resultatet, ikke kontakten) ──────
   { key: "race_engine_v2_enabled", area: "race-engine", label: "Løbsmotor v2" },
@@ -206,6 +215,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "market_commitment_6181", area: "market", label: "Bud-forpligtelsesgate" }, // #2176: scoped beta, global on; no activation.
   // #6181 PR 3: pengelaas. Kun 'on' taender (beta = slukket, det er penge). Flip er ejer-only.
   { key: "sale_escrow_enabled", area: "market", label: "Pengelås — sælgers penge låses til holdskiftet" },
+  // #8153: frigivelse midt i et etapeløb bestilles og udføres efter sidste etape. Kun 'on' tænder (penge). Ejer-only flip.
+  { key: "release_defer_8153", area: "market", label: "Frigivelse midt i etapeløb venter til løbets slut" },
   { key: "rider_primary_type_from_distribution", area: "squad", label: "Rytter-generator: primær type fra mål-fordelingen" },
   { key: "alunta_reconcile_enabled", area: "billing", label: "Alunta-afstemning" },
 ]);
@@ -306,6 +317,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "tactics_ready_7864",
   // #7717: "Your day" viser Hvorfor?-knappen paa dette flag.
   "rider_why_button",
+  // #7778: loebssiden vaelger v6-rammen (Resultater for en koert etape) paa dette flag.
+  "race_page_v6",
   // #7879: navnecellen, rytterprofilen og Hjaelp viser talentmaerkerne paa dette flag.
   "talent_marks_7879",
   // #2009: rytternavnene viser hover-miniprofilen paa dette flag.
@@ -314,6 +327,14 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "day_words_7725",
   // #7801: Hjaelp viser traethed lige nu og regel-teksten paa dette flag (binaert, som motoren).
   "fatigue_now_7801",
+  // #7535: den nye planlaegningsside (/planning/workbench) findes kun paa dette flag.
+  "planning_workbench",
+  // #8031: beta-noten om Træn nu-kvitteringen skifter til "Now for everyone", naar kontakten er on for alle.
+  "training_train_now_instant",
+  // #6181: Hjaelp siger, hvornaar saelgeren faar pengene, paa dette flag (binaert, som pengelaasen).
+  "sale_escrow_enabled",
+  // #6490: traeningssiden vaelger laesevej paa dette flag (binaert, som backend og peak-signalet).
+  "training_history_from_ticks_6490",
 ]);
 
 // #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,
@@ -321,4 +342,4 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
 // en flade aldrig beskriver en model motoren ikke koerer for beta-gruppen.
 // #7536: condition_v2_race_date_training_day laeses ogsaa kun som "on" af motoren
 // (conditionModelV2Flag.isRaceDateTrainingDayEnabled).
-export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801"]);
+export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801", "sale_escrow_enabled", "training_history_from_ticks_6490"]);

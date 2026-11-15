@@ -37,13 +37,10 @@ test("academy page renders intake candidates, slot counter, and roster", async (
   await expect(page.getByRole("button", { name: /Sign|Signér/i }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: /Reject|Afvis/i }).first()).toBeVisible();
 
-  // Roster-sektion — Jonas Svensson + Luca Morel
-  await expect(page.locator("main")).toContainText(/Roster|roster|Akademihold/i);
-
-  // #1524: akademiryttere er klikbare → rytterprofil (samme som førsteholdet).
-  const riderLink = page.getByRole("link", { name: /Jonas Svensson/i });
-  await expect(riderLink).toBeVisible();
-  await expect(riderLink).toHaveAttribute("href", /\/riders\//);
+  // #6155: intet akademihold. Rytterlisten er væk; siden peger på U23- og
+  // Juniorsiden, når trupsiderne findes (ellers står Coming soon-kortet).
+  await expect(page.locator("main")).not.toContainText(/Academy roster|Akademihold/i);
+  await expect(page.getByRole("link", { name: /Jonas Svensson/i })).toHaveCount(0);
 
   // #2456: fri-agent-butikken er FJERNET — sektionen må ikke rendere længere.
   await expect(page.locator("main")).not.toContainText(/Free youth agents|Frie ungdomsryttere/i);
@@ -67,26 +64,13 @@ test("intake candidates show price and expiry before the irreversible click (#27
   await expect(page.locator("main")).toContainText(/Baroudeur/i);
 });
 
-test("academy roster is a sortable design-system table (#2796)", async ({ page }) => {
+test("academy page has no rider table of its own (#6155)", async ({ page }) => {
   await login(page);
   await page.goto("/academy");
-
-  const table = page.locator("main table[data-sortable]");
-  await expect(table).toBeVisible();
-
-  // Værdi-kolonnen er ny — markedsværdien var ikke på akademi-fladen før.
-  // #3045: i portræt lever værdien i navnecellens fold-underlinje i stedet for
-  // sin egen kolonne, så assertionen er på tabellen som helhed — ikke på et <th>.
-  await expect(table).toContainText(/180[.,]000/);
-
-  // Klik på en sorterbar header sætter aria-sort (den kanoniske Th-mekanisme).
-  // #3045: Værdi-headeren er `fold: true` og dermed skjult under sm-breakpointet,
-  // så sorterings-kontrakten verificeres på den sticky navnekolonne, der er
-  // synlig i ALLE viewports. Vælges en foldet header her, timer klikket ud på
-  // mobile-chromium/webkit mens desktop passerer.
-  const nameHeader = table.locator("th", { hasText: /^(Rider|Rytter)$/ }).first();
-  await nameHeader.click();
-  await expect(nameHeader).toHaveAttribute("aria-sort", /ascending|descending/);
+  await expect(page.getByText(/Emil Kristiansen/i)).toBeVisible();
+  // Akademiets egen sorterbare rytterliste er fjernet: U23- og Juniorsiden
+  // ejer rytterne.
+  await expect(page.locator("main table[data-sortable]")).toHaveCount(0);
 });
 
 test("academy page shows disabled state gracefully when flag is off", async ({ page }) => {

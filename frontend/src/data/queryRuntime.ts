@@ -9,6 +9,12 @@ export interface DataScope {
 export function privateKey(scope: DataScope, resource: string, ...parameters: unknown[]) {
   return ["private", scope.generation, scope.viewerId, scope.teamId, resource, ...parameters] as const;
 }
+/** Viewer-scoped resources that do not depend on the team: the team slot stays null, so the
+ * key is stable while the team bootstrap resolves (no second read), and a real team change
+ * still clears it because the runtime clears every private key on a team switch. */
+export function viewerKey(scope: DataScope, resource: string, ...parameters: unknown[]) {
+  return ["private", scope.generation, scope.viewerId, null, resource, ...parameters] as const;
+}
 export function createDataRuntime() {
   const client = new QueryClient({
     defaultOptions: {
@@ -68,15 +74,18 @@ export function createDataRuntime() {
       });
       return row.promise;
     },
-    async beforeRead(signal: AbortSignal) {
-      if (signal.aborted) throw new DOMException("Read cancelled", "AbortError");
+    /** A read whose transport cannot abort may omit the signal: it then never consumes
+     * Query's signal, so a remount joins the in-flight read instead of starting a second one.
+     * Late results are still fenced by assertReadCurrent. */
+    async beforeRead(signal?: AbortSignal) {
+      if (signal?.aborted) throw new DOMException("Read cancelled", "AbortError");
       if (activeWrites > 0) await new Promise<void>((resolve, reject) => {
-        const release = () => { signal.removeEventListener("abort", abort); resolve(); };
+        const release = () => { signal?.removeEventListener("abort", abort); resolve(); };
         const abort = () => { writeWaiters.delete(release); reject(new DOMException("Read cancelled", "AbortError")); };
         writeWaiters.add(release);
-        signal.addEventListener("abort", abort, { once: true });
+        signal?.addEventListener("abort", abort, { once: true });
       });
-      if (signal.aborted) throw new DOMException("Read cancelled", "AbortError");
+      if (signal?.aborted) throw new DOMException("Read cancelled", "AbortError");
       return readRevision;
     },
     assertReadCurrent(captured: DataScope, revision: number) {

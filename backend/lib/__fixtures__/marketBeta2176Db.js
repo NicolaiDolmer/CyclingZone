@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 import { SCHEMA, ESCROW_SCHEMA } from './autoAccept2176Schema.js';
 const file = name => readFile(new URL('../../../database/'+name, import.meta.url),'utf8');
@@ -39,5 +39,42 @@ export async function prepareBetaDatabase2176(db) {
     INSERT INTO transfer_listings(id,rider_id,seller_team_id,asking_price) VALUES('${id(701)}','${id(101)}','${D}',100000);
     UPDATE app_config SET value='"beta"' WHERE key IN ('auto_accept_enabled','market_commitment_6181');`);
   const migration = await file(BETA); await db.exec(migration); await db.exec(migration);
+  return db;
+}
+
+// #2176: migrations after the beta scope that patch one of the five gated market
+// functions in place. Production already carries them, so the atomic-payments
+// migration must be compared against the definitions they leave behind, not
+// against the older beta-scope text. The guard test in
+// marketAtomicPayments2176.pglite.test.js fails if a migration touching these
+// functions is missing here.
+export const MARKET_ATOMIC_2176 = '2026-11-14-2176-market-atomic-payments.sql';
+export const BETA_SCOPE_2176 = BETA;
+export const PATCHED_AFTER_BETA_2176 = ['2026-11-11-8015-auto-accept-academy-riders.sql'];
+export const GATED_FUNCTIONS_2176 = ['market_discretionary_finance_guard_2176', 'auto_accept_release_paid_2176',
+  'auto_accept_claim_swap_paid', 'market_scout_assignment_2176', 'create_market_auction_2176'];
+export const migrationSource2176 = file;
+
+// Dated top-level migrations (auto-migrate filename order) that mention any of
+// the given function names, from `from` (inclusive) onwards.
+export async function migrationsTouching2176(names, from = BETA) {
+  const dir = new URL('../../../database/', import.meta.url);
+  const dated = (await readdir(dir)).filter(name => /^\d{4}-\d{2}-\d{2}-.+\.sql$/.test(name) && name >= from).sort();
+  const touching = [];
+  for (const name of dated) {
+    const source = await file(name);
+    if (names.some(fn => new RegExp(`\\b${fn}\\b`).test(source))) touching.push(name);
+  }
+  return touching;
+}
+
+export async function prepareProductionDatabase2176(db) {
+  await prepareBetaDatabase2176(db);
+  for (const name of PATCHED_AFTER_BETA_2176) await db.exec(await file(name));
+  return db;
+}
+export async function productionDatabase2176(t) {
+  const db = new PGlite(); t.after(() => db.close());
+  await prepareProductionDatabase2176(db);
   return db;
 }

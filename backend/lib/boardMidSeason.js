@@ -5,14 +5,15 @@
 // hver human team med en aktiv 1yr-plan. Hvis satisfaction < 50 ELLER ≥50% af målbare
 // mål er 'behind'-status → fyrer board_critical-notif til Indbakke 'Skal handles'-tier.
 //
-// Idempotens: vi tjekker eksisterende notification med exact-match titel
-// "Mid-season check (sæson N)" + related_id=board_id + type=board_critical. Ingen
-// time-window-dedup — én fire pr. board pr. sæson. Resten af sæsonen er stabil
+// Idempotens (#8196): board_profiles.mid_season_notified_season = sæsonnummeret, sat når
+// beskeden er leveret. Indbakke-rækken er IKKE sandheden: spilleren kan slette den, og
+// så sendte cronen en ny hvert 30. minut. Én fire pr. board pr. sæson. Resten af sæsonen er stabil
 // indtil næste sæson, hvor ny titel ('sæson N+1') igen vil kunne fyre.
 //
 // Skip-betingelser:
 //   - completed < midpoint
 //   - is_ai/is_bank/is_frozen team
+//   - parkeret hold (teams.parked_at sat, #8099): ingen besked, ingen oplåsning
 //   - 1yr-board mangler eller er pending (ikke completed)
 //
 // #3502 · Der er BEVIDST ingen global transfer_windows.board_negotiation_state-
@@ -35,8 +36,15 @@ import { parseBoardGoals, evaluateGoalProgress } from "./boardGoals.js";
 import { sumRiderSalaries } from "./boardUtils.js";
 import { unlockExtraordinaryRequestForTeam as unlockExtraordinaryRequestForTeamShared } from "./boardMandateEngine.js";
 import { fetchAllRows } from "./supabasePagination.js";
+import { isParkedTeam } from "./managerParking.js";
 
 export const MID_SEASON_TITLE_PREFIX = "Mid-season check";
+export const MID_SEASON_MARKER_COLUMN = "mid_season_notified_season";
+
+function isMissingMarkerColumn(error) {
+  const text = `${error?.code ?? ""} ${error?.message ?? ""}`;
+  return text.includes(MID_SEASON_MARKER_COLUMN) || text.includes("42703");
+}
 
 /**
  * Cron-entry: tjek alle human teams ved midpoint og fyr mid-season-banner ved trigger.
@@ -45,7 +53,7 @@ export const MID_SEASON_TITLE_PREFIX = "Mid-season check";
  * @param {object} args.supabase             — Supabase client
  * @param {Function} args.notifyUser         — fra notificationService.js
  * @param {Date} [args.now]                  — for tests
- * @returns {Promise<{ teams_checked: number, banners_sent: number, errors: number }>}
+ * @returns {Promise<{ teams_checked: number, banners_sent: number, errors: number, parked_teams_skipped: number }>}
  */
 export async function processMidSeasonReviewCron({
   supabase,
@@ -57,7 +65,8 @@ export async function processMidSeasonReviewCron({
   if (!supabase?.from) throw new Error("Supabase client is required");
   if (typeof notifyUser !== "function") throw new Error("notifyUser is required");
 
-  const summary = { teams_checked: 0, banners_sent: 0, errors: 0 };
+  // #8099 · parked_teams_skipped: parkerede hold der er sprunget helt over.
+  const summary = { teams_checked: 0, banners_sent: 0, errors: 0, parked_teams_skipped: 0 };
 
   const { data: activeSeason, error: seasonError } = await supabase
     .from("seasons")
@@ -75,15 +84,34 @@ export async function processMidSeasonReviewCron({
   // 2. Human teams
   // #1237 · balance tilføjet: nettostilling-input til no_outstanding_debt
   // (scoreFinanceHealthGoal, boardUtils.js) — bruges af evaluateMidSeasonTrigger.
+  // #8099 · `parked_at` SKAL med: isParkedTeam læser et manglende felt som
+  // "ikke parkeret", så uden kolonnen ville filteret nedenfor åbne igen.
   const { data: humanTeams, error: teamsError } = await supabase
     .from("teams")
-    .select("id, user_id, name, division, season_1_identity_basis, balance")
+    .select("id, user_id, name, division, season_1_identity_basis, balance, parked_at")
     .eq("is_ai", false)
     .eq("is_bank", false)
     .eq("is_frozen", false)
     .eq("is_test_account", false);
   if (teamsError) throw teamsError;
   if (!humanTeams?.length) return summary;
+
+  // #8099 · Parkerede hold (#4592) er HELT ude af halvsæson-tjekket: ingen
+  // besked og ingen oplåsning af den ekstraordinære forespørgsel. Ejer-regel
+  // 23/9 (#4592) + ejer-beslutning 4/10 (#5902, A): bestyrelsen fryses, mens
+  // holdet er parkeret. Samme sandhed og samme filter som den ugentlige kørsel
+  // (#8068, boardWeekendFinalization.js): managerParking.isParkedTeam på det
+  // aktuelle teams.parked_at, som i en aktiv sæson er præcis "parkeret lige nu".
+  //
+  // Fail-closed: kan parkeringen ikke aflæses (feltet mangler i en række),
+  // fejler hele kørslen synligt FØR noget sendes eller låses op. cron.js
+  // fanger fejlen og sender den til Sentry.
+  if (humanTeams.some((team) => team?.parked_at === undefined)) {
+    throw new Error("mid-season check: teams.parked_at mangler i hold-opslaget, intet sendt (#8099 fail-closed)");
+  }
+  const teams = humanTeams.filter((/** @type {{ parked_at?: string|null }} */ team) => !isParkedTeam(team));
+  summary.parked_teams_skipped = humanTeams.length - teams.length;
+  if (!teams.length) return summary;
 
   // #1237 · aktiv gæld pr. hold (batch), samme mønster som boardWeekendFinalization.js.
   // fetchAllRows: PostgREST's 1000-rækker-loft kan ellers stille miste lån på
@@ -92,7 +120,7 @@ export async function processMidSeasonReviewCron({
     .from("loans")
     .select("id, team_id, amount_remaining")
     .eq("status", "active")
-    .in("team_id", humanTeams.map((t) => t.id))
+    .in("team_id", teams.map((t) => t.id))
     .order("id", { ascending: true }));
   const debtByTeam = new Map();
   const loanCountByTeam = new Map();
@@ -125,6 +153,10 @@ export async function processMidSeasonReviewCron({
   // mål-status). Samme fallback-semantik som loadGoalContextForBoard
   // (boardGoalContext.js): rows uden league_division_id (pre-pulje-data) tælles
   // stadig tier-bredt, prefixet så pulje- og tier-nøgler aldrig kolliderer.
+  // #8099 · Tællingen bruger BEVIDST stadig hele den humane population
+  // (humanTeams, inkl. parkerede), så et aktivt holds relative_rank-mål og
+  // dermed dets besked er præcis som før rettelsen. Kun hvem der tjekkes er
+  // ændret, ikke hvad et aktivt hold måles imod.
   const humanTeamIds = new Set(humanTeams.map((t) => t.id));
   function poolKey(standing) {
     return standing.league_division_id != null
@@ -138,7 +170,7 @@ export async function processMidSeasonReviewCron({
     divisionManagerCounts.set(key, (divisionManagerCounts.get(key) || 0) + 1);
   }
 
-  for (const team of humanTeams) {
+  for (const team of teams) {
     summary.teams_checked += 1;
     try {
       const standing = standingsByTeam.get(team.id) || null;
@@ -154,6 +186,7 @@ export async function processMidSeasonReviewCron({
         activeLoanCount: loanCountByTeam.get(team.id) || 0,
         notifyUser,
         now,
+        captureExceptionFn,
         deps,
       });
       if (result.banner_sent) summary.banners_sent += 1;
@@ -183,16 +216,32 @@ async function processTeamMidSeason({
   activeLoanCount = 0,
   notifyUser,
   now,
+  captureExceptionFn,
   deps = {},
 }) {
   if (!team.user_id) return { banner_sent: false };
 
   // 1yr-plan = den aktive år-til-år-mål-pakke. 3yr/5yr har egne langsigtede mål.
-  const { data: boards, error: boardsError } = await supabase
+  // #8196: "sendt"-maerket bor paa boardet (mid_season_notified_season), ikke i indbakken.
+  // Kolonnen kommer med en migration, der koeres efter merge; mangler den endnu, falder vi
+  // tilbage til den gamle laesning, saa kørslen aldrig vaelter i mellemtiden.
+  const BOARD_SELECT = "id, plan_type, satisfaction, current_goals, negotiation_status, is_baseline";
+  let markerAvailable = true;
+  let { data: boards, error: boardsError } = await supabase
     .from("board_profiles")
-    .select("id, plan_type, satisfaction, current_goals, negotiation_status, is_baseline")
+    .select(`${BOARD_SELECT}, ${MID_SEASON_MARKER_COLUMN}`)
     .eq("team_id", team.id)
     .eq("plan_type", "1yr");
+  if (boardsError && isMissingMarkerColumn(boardsError)) {
+    markerAvailable = false;
+    // Synligt, saa en migration, der aldrig blev koert, ikke gemmer sig bag faldvejen.
+    console.warn(`  ⚠️  mid-season: ${MID_SEASON_MARKER_COLUMN} mangler, bruger gammelt gentagelsesvaern (#8196)`);
+    ({ data: boards, error: boardsError } = await supabase
+      .from("board_profiles")
+      .select(BOARD_SELECT)
+      .eq("team_id", team.id)
+      .eq("plan_type", "1yr"));
+  }
   if (boardsError) throw boardsError;
 
   const board = (boards || []).find((b) =>
@@ -229,7 +278,29 @@ async function processTeamMidSeason({
     .eq("related_id", board.id)
     .limit(1);
   if (notifError) throw notifError;
-  if (existingNotifs?.length) return { banner_sent: false };
+  // #8196: en slettet besked maa aldrig faa cronen til at sende igen. Maerket paa boardet er
+  // sandheden; en eksisterende besked uden maerke (sendt foer #8196) faar maerket sat nu.
+  const markBoardNotified = async () => {
+    if (!markerAvailable) return;
+    const { error } = await supabase
+      .from("board_profiles")
+      .update({ [MID_SEASON_MARKER_COLUMN]: activeSeason.number })
+      .eq("id", board.id);
+    if (error) {
+      // Leveret, men uden maerke: naeste koersel saetter det via "beskeden findes allerede".
+      console.error(`  ⚠️  mid-season marker failed for board ${board.id}:`, error.message);
+      captureExceptionFn?.(new Error(`mid-season marker failed: ${error.message}`), {
+        tags: { cron: "board mid-season", stage: "marker" },
+      });
+    }
+  };
+  if (markerAvailable && Number(board[MID_SEASON_MARKER_COLUMN]) === Number(activeSeason.number)) {
+    return { banner_sent: false };
+  }
+  if (existingNotifs?.length) {
+    await markBoardNotified();
+    return { banner_sent: false };
+  }
 
   // Hent ryttere ved trigger-evaluering — vi har brug for is_u25 + popularity til
   // signature_rider/u25-mål. Holdt minimal: først tjek satisfaction, så lazy-load riders.
@@ -273,6 +344,7 @@ async function processTeamMidSeason({
     relatedId: board.id,
     now,
   });
+  if (result?.delivered) await markBoardNotified();
 
   return { banner_sent: Boolean(result?.delivered) };
 }
@@ -363,8 +435,7 @@ function countBehindGoals({ goals, standing, team, divisionManagerCount, finance
   }).length;
 }
 
-// #2520: board_critical-beskeden mirror'es til Discord DM (notifyBoardUpdateDM
-// via cron.js' notifyUserWithBoardDM) → spillervendt, skal være på engelsk.
+// #2520: spillervendt tekst, skal være på engelsk. #8196: sendes kun i spillet (ingen DM).
 function buildMidSeasonMessage({ reason, satisfaction }) {
   const intro = reason === "low_satisfaction"
     ? `The board is concerned. Satisfaction is down to ${Math.round(satisfaction)}.`

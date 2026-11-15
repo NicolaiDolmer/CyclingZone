@@ -171,7 +171,7 @@ export default function FatigueRulePanel({ rules, className = "", groupException
         </span>
         {limitOn && (
           <span className="basis-full font-data text-2xs tabular-nums text-cz-3 sm:ms-auto sm:basis-auto" data-testid="fatigue-rule-over-now">
-            {t("fatigueRule.overNow", { count: overNow })}
+            {overNow == null ? "—" : t("fatigueRule.overNow", { count: overNow })}
           </span>
         )}
       </div>

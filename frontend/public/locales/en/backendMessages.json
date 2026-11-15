@@ -84,6 +84,11 @@
       "sellerTitle": "Deal cancelled",
       "sellerMessage": "{riders} did not change teams, so the {amount} CZ$ from the deal went back to the other team."
     },
+    "saleEscrow": {
+      "lockedMessage": "{riderName} was sold for {price} CZ$. The money is locked and paid out when he changes teams after his stage race.",
+      "releasedTitle": "Sale paid out",
+      "releasedMessage": "{riderName} has changed teams. {amount} CZ$ is now in your balance."
+    },
     "admin": {
       "feedbackReply": {
         "title": "Reply to your message"
@@ -710,6 +715,14 @@
       "title": "The rider has arrived",
       "message": "{riderName} has joined your team. {reason, select, tourFinished {{raceName} has finished.} tourFinishedUnnamed {His stage race has finished.} dealCompleted {His deal is now completed.} other {}}"
     },
+    "riderReleasePending": {
+      "title": "Release ordered",
+      "message": "{rider} will be released after {race}. The fee of {fee} CZ$ has been charged."
+    },
+    "riderReleaseExecuted": {
+      "title": "Rider released",
+      "message": "{rider} has left your team."
+    },
     "squadEnforced": {
       "title": "Squad size enforced",
       "message": "{purchasedCount, plural, =0 {} one {Auto-purchased # rider: {purchasedNames}\n} other {Auto-purchased # riders: {purchasedNames}\n}}{deferredCount, plural, =0 {} one {# rider will join the team once their ongoing stage race finishes: {deferredNames}\n} other {# riders will join the team once their ongoing stage race finishes: {deferredNames}\n}}{soldCount, plural, =0 {} one {Auto-sold # rider: {soldNames}\n} other {Auto-sold # riders: {soldNames}\n}}{salesDeferredCount, plural, =0 {} one {# rider in an ongoing stage race will be sold after the race instead\n} other {# riders in an ongoing stage race will be sold after the race instead\n}}Fine: {fine} CZ$ · Deduction: {points} points"
@@ -806,7 +819,8 @@
       "transferRejected": "Your offer on {rider} was rejected.",
       "watchlistRiderAuction": "A rider on your watchlist is up for auction: {rider}.",
       "testTitle": "Discord DM works",
-      "testDescription": "You will now receive DMs from Cycling Zone for auctions, transfers and board updates."
+      "testDescription": "You will now receive DMs from Cycling Zone for auctions, transfers and board updates.",
+      "testPaused": "I've switched off Discord messages for now, so no test message was sent."
     }
   },
   "push": {

@@ -36,6 +36,10 @@
     "rider_on_auction_release": "Deze renner zit op dit moment in een veiling en kan niet worden vrijgegeven. Wacht eerst tot de veiling afloopt",
     "rider_pending_transfer_release": "Deze renner is verkocht en wacht op de overstap naar zijn nieuwe ploeg, dus je kunt hem niet vrijgeven",
     "rider_pending_transfer_trade": "Deze renner is al verkocht en wacht op de overstap naar zijn nieuwe ploeg, dus hij kan niet opnieuw worden verkocht",
+    "rider_pending_release_trade": "Deze renner verlaat je ploeg na {race} en kan niet worden verhandeld.",
+    "rider_pending_release_squad": "Deze renner verlaat je ploeg na {race} en kan niet van selectie wisselen.",
+    "rider_release_already_pending": "De vrijgave van deze renner is al aangevraagd. Hij verlaat je ploeg na {race}.",
+    "selection_rider_leaving": "De vrijgave van deze renner is aangevraagd. Hij kan niet worden geselecteerd voor koersen na zijn huidige etappekoers.",
     "invalid_start_price": "Ongeldige startprijs",
     "invalid_offer_amount": "Ongeldig bedrag",
     "invalid_loan_amount": "Ongeldig bedrag",
@@ -303,6 +307,12 @@
     "contract_batch_salary_cap": "Deze verlengingen zouden je totale salaris boven het plafond van het bestuur van {cap} CZ$ brengen. Er is niets gewijzigd",
     "contract_batch_write_failed": "Er ging iets mis bij het opslaan van een contract. Er is niets gewijzigd",
     "contract_batch_partial": "Sommige contracten veranderden tijdens het verlengen en niet alles kon worden teruggedraaid. Controleer de renners hieronder",
-    "team_lookup_failed": "De server gaf een fout. Probeer het zo meteen opnieuw"
+    "team_lookup_failed": "De server gaf een fout. Probeer het zo meteen opnieuw",
+    "ui_prefs_invalid_payload": "Die keuze kon niet worden opgeslagen. Herlaad de pagina en probeer het opnieuw.",
+    "ui_prefs_unknown_keys": "Die keuze kon niet worden opgeslagen. Herlaad de pagina en probeer het opnieuw.",
+    "ui_prefs_invalid_value": "Die keuze kon niet worden opgeslagen. Herlaad de pagina en probeer het opnieuw.",
+    "ui_prefs_read_failed": "Je weergavekeuzes konden niet worden geladen. De pagina gebruikt de standaardinstellingen.",
+    "ui_prefs_unavailable": "Je weergavekeuze wordt voorlopig alleen op dit apparaat bewaard.",
+    "ui_prefs_write_failed": "Je weergavekeuze kon niet worden opgeslagen. Probeer het zo opnieuw."
   }
 }

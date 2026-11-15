@@ -148,57 +148,14 @@ test("jaeger-kortet i rolle-menuen paa Planlaegning har ingen udbrudschance-chip
   await expect(hunterCard.getByText("Udbruds-chance", { exact: false })).toHaveCount(0);
 });
 
-// #6912 B: motorens chance for løbets næste etape, når backend kan stå inde for tallet.
-const OUTLOOK_ROUTE = "**/api/races/" + RACE_ID + "/breakaway-outlook";
+// Udbrudsbuddet (#6912 B) er fjernet 13/11; tidskoersel viser stadig kun TT-linjen.
 const TEAM_TAB_URL = "/races/" + RACE_ID + "?tab=team";
-test("jaeger-boksen viser motorens chance som 'cirka k af n' + aarsag naar backend svarer (#6912 B)", async ({ page }) => {
-  await setup(page);
-  await mockApi(page, OUTLOOK_ROUTE, {
-    available: true, runs: 40, odds: { about: [1, 3] }, chase: { kind: "fewChase" }, profileType: PROFILE.profile_type,
-  });
-  await page.goto(TEAM_TAB_URL);
-  await expect(page.getByTestId("race-selection-panel")).toBeVisible();
-
-  const outlook = page.getByTestId("hunter-breakaway-outlook");
-  await expect(outlook).toHaveText("Motorens bud: udbruddet holder hjem cirka 1 af 3 gange. Et eller to hold har som regel grund til at jage det.");
-  const hunterBox = page.locator("section").filter({ has: page.getByRole("heading", { name: "Vælg din udbrudsjæger" }) }).last();
-  await hunterBox.scrollIntoViewIfNeeded();
-  await hunterBox.screenshot({ path: evidenceShotPath(`docs/screenshots/6912/hunter-box-outlook-${test.info().project.name}-${PHASE}.png`) });
-});
-
-test("etapeloeb: chancen gaelder naeste etape og siger hvilken (#6912 B)", async ({ page }) => {
-  const stageRace = { ...RACE, name: "E2E Stage Race", race_type: "stage_race", stages: 5, stages_completed: 0, status: "scheduled" };
-  await setup(page, { race: stageRace, profiles: Array.from({ length: 5 }, (_, index) => ({ ...STAGE_PROFILE, stage_number: index + 1 })) });
-  await mockApi(page, OUTLOOK_ROUTE, {
-    available: true, runs: 40, odds: { under: [1, 10] }, chase: { kind: "manyChase" }, stageNumber: 1, profileType: PROFILE.profile_type,
-  });
-  await page.goto(TEAM_TAB_URL);
-  await expect(page.getByTestId("race-selection-panel")).toBeVisible();
-  const outlook = page.getByTestId("hunter-breakaway-outlook");
-  await expect(outlook).toHaveText("Etape 1 · Motorens bud: udbruddet holder hjem under 1 af 10 gange. Flere hold har som regel grund til at jage det.");
-  const hunterBox = page.locator("section").filter({ has: page.getByRole("heading", { name: "Vælg din udbrudsjæger" }) }).last();
-  await hunterBox.scrollIntoViewIfNeeded();
-  await hunterBox.screenshot({ path: evidenceShotPath(`docs/screenshots/6912/hunter-box-outlook-stage-${test.info().project.name}-${PHASE}.png`) });
-});
-
-test("jaeger-boksen viser ingen chance naar backend ikke kan staa inde for tallet (#6912 B)", async ({ page }) => {
-  await setup(page);
-  await mockApi(page, OUTLOOK_ROUTE, { available: false, reason: "old_rules" });
-  await page.goto(TEAM_TAB_URL);
-  await expect(page.getByTestId("race-selection-panel")).toBeVisible();
-  await expect(page.getByText("Jægeren prøver at komme med i morgenudbruddet.", { exact: false })).toBeVisible();
-  await expect(page.getByTestId("hunter-breakaway-outlook")).toHaveCount(0);
-});
-
-// Main's TT context must remain authoritative even if a stale API payload says available.
-test("TT context hides breakaway outlook despite stale available response (#6912 B)", async ({ page }) => {
+test("TT context shows the time-trial line in the hunter box (#6912)", async ({ page }) => {
   await setup(page, { race: { ...RACE, name: "E2E Time Trial" }, profiles: [{ ...STAGE_PROFILE, profile_type: "itt" }] });
-  await mockApi(page, OUTLOOK_ROUTE, { available: true, odds: { about: [1, 3] }, chase: { kind: "fewChase" }, profileType: "itt" });
   await page.goto(TEAM_TAB_URL);
   await expect(page.getByTestId("race-selection-panel")).toBeVisible();
   const hunterBox = page.locator("section").filter({ has: page.getByRole("heading", { name: "Vælg din udbrudsjæger" }) }).last();
   const copy = JSON.parse(readFileSync(new URL("../../public/locales/da/races.json", import.meta.url), "utf8"));
   await expect(hunterBox.getByText(copy.racehub.roleCard.hunter.hint.itt, { exact: true })).toBeVisible();
-  await expect(page.getByTestId("hunter-breakaway-outlook")).toHaveCount(0);
   await hunterBox.screenshot({ path: evidenceShotPath(`docs/screenshots/6912/hunter-box-itt-${test.info().project.name}-${PHASE}.png`) });
 });

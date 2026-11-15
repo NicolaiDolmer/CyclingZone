@@ -47,8 +47,8 @@ test("#6570 begge etapeflader viser fejl + Try again for en fejlet etape", () =>
   assert.match(page, /onClick=\{\(\) => retryStageFetch\(n\)\}/);
   // Resultater-fanens etape-visning
   assert.match(page, /stageFetchState\(n, \{ loaded: loadedStages, failed: failedStages \}\) === "failed"/);
-  // Etapeside 2.0
-  assert.match(page, /stageErrorSlot=\{stageFetchState\(v2SelectedStage,/);
+  // Etapeside 2.0 (#7778: props deles nu med v6-rammen som et objekt)
+  assert.match(page, /stageErrorSlot(=\{|: )stageFetchState\(v2SelectedStage,/);
   assert.match(stagePageV2, /stageErrorSlot=\{stageErrorSlot\}/);
   assert.match(stageTabV2, /\{stageErrorSlot \?\? \(/);
 });

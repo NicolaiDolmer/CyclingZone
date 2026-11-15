@@ -169,7 +169,7 @@ test("#4865: auto-accept af en pending 1yr-plan bevarer bonus_offer-målet i cur
         balance: 500000, sponsor_income: 240000, division: 3,
         season_1_identity_basis: null, team_dna_key: "sprint_kommerciel",
         created_at: openedAt,
-        is_ai: false, is_bank: false, is_frozen: false, is_test_account: false,
+        is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, parked_at: null,
       },
     ],
     board_profiles: [

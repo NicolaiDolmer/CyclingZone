@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import {
   buildBoardEvalContext,
   loadGoalContextForBoard,
+  pickSponsorGrowthBaseline,
   prefetchGoalContextSources,
   selectGoalContextSourcesForTeam,
 } from "./boardGoalContext.js";
@@ -413,6 +414,129 @@ test("#3494 · malformet svar (error null, data ikke et array) på sponsor-query
     "samme malformet-data-guard gælder baseline");
 });
 
+// ─── #7964 · baseline = holdets første afsluttede plan-sæson MED sponsortal ───
+//
+// Før: baseline = planens første snapshot-sæson, uanset om den havde
+// sponsor-udbetalinger. En plan der startede i en sæson uden udbetalinger fik
+// baseline 0 → målet stod evigt som "afventer data" og kunne aldrig nås.
+
+test("#7964 · pickSponsorGrowthBaseline springer plan-sæsoner uden sponsortal over", () => {
+  const sponsorBySeasonId = new Map([["s2", 400], ["s3", 450], ["s4", 520]]);
+  assert.deepEqual(
+    pickSponsorGrowthBaseline({ sponsorBySeasonId, planSeasonIds: ["s1", "s2", "s3"], currentSeasonId: "s4" }),
+    { seasonId: "s2", income: 400 },
+  );
+  // En sæson med en nul-sum (fx modposter der udligner hinanden) er heller
+  // ikke et målegrundlag.
+  assert.deepEqual(
+    pickSponsorGrowthBaseline({
+      sponsorBySeasonId: new Map([["s1", 0], ["s2", 300]]),
+      planSeasonIds: ["s1", "s2"],
+      currentSeasonId: "s3",
+    }),
+    { seasonId: "s2", income: 300 },
+  );
+});
+
+test("#7964 · pickSponsorGrowthBaseline måler aldrig mod den indeværende sæson", () => {
+  // Selv hvis den indeværende sæson (fejlagtigt) står i listen, bruges den ikke.
+  assert.deepEqual(
+    pickSponsorGrowthBaseline({
+      sponsorBySeasonId: new Map([["s4", 520]]),
+      planSeasonIds: ["s1", "s4"],
+      currentSeasonId: "s4",
+    }),
+    { seasonId: null, income: null },
+  );
+});
+
+test("#7964 · pickSponsorGrowthBaseline uden nogen sæson med tal giver null (kan ikke måles), aldrig 0", () => {
+  assert.deepEqual(
+    pickSponsorGrowthBaseline({ sponsorBySeasonId: new Map(), planSeasonIds: ["s1", "s2"], currentSeasonId: "s3" }),
+    { seasonId: null, income: null },
+  );
+  assert.deepEqual(
+    pickSponsorGrowthBaseline({ sponsorBySeasonId: new Map([["s3", 500]]), planSeasonIds: [], currentSeasonId: "s3" }),
+    { seasonId: null, income: null },
+  );
+  assert.deepEqual(pickSponsorGrowthBaseline({ sponsorBySeasonId: null }), { seasonId: null, income: null });
+  assert.deepEqual(pickSponsorGrowthBaseline(), { seasonId: null, income: null });
+});
+
+const SPONSOR_PLAN_SNAPSHOTS = [
+  // Plan-vindue fra plan-sæson 1; s4 er indeværende sæson (har endnu ikke et snapshot).
+  { board_id: "b1", season_id: "s1", season_within_plan: 1, season_number: 1, u25_stat_sum: null, u25_count: null },
+  { board_id: "b1", season_id: "s2", season_within_plan: 2, season_number: 2, u25_stat_sum: null, u25_count: null },
+  { board_id: "b1", season_id: "s3", season_within_plan: 3, season_number: 3, u25_stat_sum: null, u25_count: null },
+];
+
+test("#7964 · plan fra sæson 1 med sponsortal først fra sæson 2 → baseline = sæson 2", async () => {
+  const supabase = createFakeSupabase({
+    board_plan_snapshots: SPONSOR_PLAN_SNAPSHOTS,
+    finance_transactions: [
+      // s1: ingen sponsor-udbetalinger (kun en engangsbonus, som ikke tæller).
+      { team_id: "t1", season_id: "s1", reason_code: "sponsor_signing_bonus", amount: 50000 },
+      { team_id: "t1", season_id: "s2", reason_code: "season_start_sponsor", amount: 400000 },
+      { team_id: "t1", season_id: "s2", reason_code: "sponsor_race_day", amount: 10000 },
+      { team_id: "t1", season_id: "s3", reason_code: "season_start_sponsor", amount: 450000 },
+      { team_id: "t1", season_id: "s4", reason_code: "season_start_sponsor", amount: 520000 },
+    ],
+    race_results: [],
+  });
+
+  const ctx = await loadGoalContextForBoard({
+    supabase, teamId: "t1", boardId: "b1", currentSeasonId: "s4",
+    planStartSeasonNumber: 1,
+  });
+
+  assert.equal(ctx.sponsorGrowthBaselineIncome, 410000,
+    "første afsluttede sæson MED tal (s2: base + løbsdag), ikke s1's 0");
+  assert.equal(ctx.sponsorGrowthCurrentIncome, 520000);
+});
+
+test("#7964 · hold der først fik sponsortal senere i planen måles fra sin egen første sæson med tal", async () => {
+  const supabase = createFakeSupabase({
+    board_plan_snapshots: SPONSOR_PLAN_SNAPSHOTS,
+    finance_transactions: [
+      // Holdet kom ind midt i s3 (forholdsmæssig base) — s1 og s2 har intet.
+      { team_id: "t-late", season_id: "s3", reason_code: "midseason_sponsor_prorata", amount: 200000 },
+      { team_id: "t-late", season_id: "s3", reason_code: "sponsor_race_day", amount: 5000 },
+      { team_id: "t-late", season_id: "s4", reason_code: "season_start_sponsor", amount: 300000 },
+      // Et andet holds tidlige tal må ikke give t-late et grundlag i s1/s2.
+      { team_id: "t1", season_id: "s1", reason_code: "season_start_sponsor", amount: 999999 },
+      { team_id: "t1", season_id: "s2", reason_code: "season_start_sponsor", amount: 999999 },
+    ],
+    race_results: [],
+  });
+
+  const ctx = await loadGoalContextForBoard({
+    supabase, teamId: "t-late", boardId: "b1", currentSeasonId: "s4",
+    planStartSeasonNumber: 1,
+  });
+
+  assert.equal(ctx.sponsorGrowthBaselineIncome, 205000, "holdets egen første sæson med tal (s3)");
+  assert.equal(ctx.sponsorGrowthCurrentIncome, 300000);
+});
+
+test("#7964 · ingen afsluttet plan-sæson med sponsortal → baseline null (kan ikke måles)", async () => {
+  const supabase = createFakeSupabase({
+    board_plan_snapshots: SPONSOR_PLAN_SNAPSHOTS,
+    finance_transactions: [
+      // Kun den indeværende sæson har tal — den må aldrig blive sit eget grundlag.
+      { team_id: "t1", season_id: "s4", reason_code: "season_start_sponsor", amount: 520000 },
+    ],
+    race_results: [],
+  });
+
+  const ctx = await loadGoalContextForBoard({
+    supabase, teamId: "t1", boardId: "b1", currentSeasonId: "s4",
+    planStartSeasonNumber: 1,
+  });
+
+  assert.equal(ctx.sponsorGrowthBaselineIncome, null);
+  assert.equal(ctx.sponsorGrowthCurrentIncome, 520000);
+});
+
 // ─── #5182 · prefetch-stien må ikke ændre ÉN eneste værdi ─────────────────────
 
 // Postgres filtrerer på den FULDE række, inkl. embedded resource
@@ -525,6 +649,40 @@ test("#5182 · prefetch-stien giver PRÆCIS samme kontekst som pr.-board-opslage
   assert.equal(viaDb.sponsorGrowthBaselineIncome, 800);
   assert.equal(viaDb.planStartU25StatSum, 100, "u25-baseline fra FØRSTE snapshot i cyklussen");
   assert.equal(viaDb.divisionManagerCount, 1);
+});
+
+test("#7964 · prefetch- og pr.-board-stien vælger samme sponsor-baseline når første plan-sæson er uden tal", async () => {
+  const tables = {
+    board_plan_snapshots: [
+      { id: 1, team_id: "t1", board_id: "b1", season_id: "s-1", season_number: 1, season_within_plan: 1, u25_stat_sum: 10, u25_count: 1 },
+      { id: 2, team_id: "t1", board_id: "b1", season_id: "s-2", season_number: 2, season_within_plan: 2, u25_stat_sum: 20, u25_count: 2 },
+    ],
+    race_results: [],
+    finance_transactions: [
+      { id: 1, team_id: "t1", type: "income", amount: 700, season_id: "s-2", reason_code: FINANCE_REASON.SEASON_START_SPONSOR },
+      { id: 2, team_id: "t1", type: "income", amount: 900, season_id: "s-3", reason_code: FINANCE_REASON.SEASON_START_SPONSOR },
+    ],
+  };
+  const shared = { teamId: "t1", boardId: "b1", currentSeasonId: "s-3", planStartSeasonNumber: 1 };
+
+  const viaDb = await loadGoalContextForBoard({ supabase: makeRelationalFake(tables), ...shared });
+  const supabase = makeRelationalFake(tables);
+  const prefetch = await prefetchGoalContextSources({
+    supabase, teamIds: ["t1"], seasonIds: ["s-1", "s-2", "s-3"],
+  });
+  const viaPrefetch = await loadGoalContextForBoard({
+    supabase,
+    ...shared,
+    prefetched: {
+      snapshots: tables.board_plan_snapshots,
+      sources: selectGoalContextSourcesForTeam(prefetch, "t1"),
+    },
+  });
+
+  assert.deepEqual(viaPrefetch, viaDb);
+  assert.equal(viaDb.sponsorGrowthBaselineIncome, 700, "s-1 har ingen tal → s-2 er grundlaget");
+  assert.equal(viaDb.sponsorGrowthCurrentIncome, 900);
+  assert.equal(viaDb.planStartU25StatSum, 10, "u25-baselinen er uændret: stadig første snapshot");
 });
 
 test("#5182 · en fejlende prefetch-kilde giver samme null-sentinel som en fejlende query", async () => {

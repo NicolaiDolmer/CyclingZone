@@ -9,9 +9,11 @@
 // Tallene her er et SPEJL af backend (samme mønster som rulesNumbers.js):
 //   SQUAD_CAPS                      <- squads.js SQUAD_CAPS
 //   JUNIOR_MAX_SEASON_AGE           <- squads.js SQUAD_MAX_AGE.junior
+//   U23_MAX_SEASON_AGE              <- squads.js SQUAD_MAX_AGE.u23 (#6155)
 //   ACADEMY_SQUAD_WHEN_AGE_UNKNOWN  <- squads.js ACADEMY_SQUAD_WHEN_AGE_UNKNOWN
-// backend/lib/squadCapsDrift.test.js læser denne fil og fejler, hvis et af dem
-// afviger fra backend, og fælder et nyt håndskrevet akademi-loft andre steder.
+// backend/lib/squadCapsDrift.test.js (U23-grænsen: squads.test.js) læser denne
+// fil og fejler, hvis et af dem afviger fra backend, og fælder et nyt
+// håndskrevet akademi-loft andre steder.
 // Skal et loft ændres: ret squads.js og denne fil i samme PR.
 //
 // Ren .ts uden React-import, så node --test kan loade den.
@@ -25,6 +27,9 @@ export const SQUAD_CAPS: Readonly<Record<YouthSquad, number>> = Object.freeze({ 
 
 /** Højeste sæsonalder i junior-truppen. Spejl af squads.js SQUAD_MAX_AGE.junior. */
 export const JUNIOR_MAX_SEASON_AGE = 18;
+
+/** Højeste sæsonalder i U23-truppen. Spejl af squads.js SQUAD_MAX_AGE.u23 (drift-test i squads.test.js). */
+export const U23_MAX_SEASON_AGE = 22;
 
 /** Trup for en akademirytter uden brugbar fødselsdato. Spejl af squads.js. */
 export const ACADEMY_SQUAD_WHEN_AGE_UNKNOWN: YouthSquad = "junior";
@@ -59,6 +64,33 @@ export function isSquadFull(squad: YouthSquad | null | undefined, counts: Partia
   if (!squad || !(squad in SQUAD_CAPS)) return false;
   const used = counts?.[squad];
   return typeof used === "number" && Number.isFinite(used) && used >= SQUAD_CAPS[squad];
+}
+
+/**
+ * Truppen et hentet talent faktisk lander i (#6155, ejer 9/11). Spejl af backend
+ * academyIntakePlacementSquads + signeringens prøve-rækkefølge: aldersplaceringen
+ * først; er den junior og fuld, lander han på U23, når hans sæsonalder er højst
+ * U23_MAX_SEASON_AGE og U23 har plads.
+ *
+ * `full` = alle hans mulige trupper (`options`) er fulde, og kortet spærres.
+ * `squad` er null, når han ikke kan lande nogen steder, eller når truppen er
+ * ukendt (ukendt sæson); en ukendt trup spærrer aldrig. Ukendt sæsonalder giver
+ * ingen U23-mulighed, samme regel som backend (intet gæt opad). Ukendt antal er
+ * "ikke fuld" (isSquadFull), så frontenden aldrig spærrer en spiller der har
+ * plads; RPC'en er den autoritative gate.
+ */
+export function academyLandingSquad(
+  targetSquad: YouthSquad | null | undefined,
+  seasonAge: number | null | undefined,
+  counts: Partial<SquadCounts> | null | undefined,
+): { squad: YouthSquad | null; full: boolean; movedToU23: boolean; options: YouthSquad[] } {
+  if (!targetSquad || !(targetSquad in SQUAD_CAPS)) return { squad: null, full: false, movedToU23: false, options: [] };
+  const options: YouthSquad[] = [targetSquad];
+  if (targetSquad === "junior" && typeof seasonAge === "number" && Number.isFinite(seasonAge) && seasonAge <= U23_MAX_SEASON_AGE) {
+    options.push("u23");
+  }
+  const squad = options.find((s) => !isSquadFull(s, counts)) ?? null;
+  return { squad, full: squad === null, movedToU23: squad !== null && squad !== targetSquad, options };
 }
 
 /** Rækkerne i trup-linjen "U23 5/12 · Junior 3/10", i fast rækkefølge. */

@@ -52,6 +52,7 @@ import { ensureMandateForTeamFormation } from "./boardMandateEngine.js";
 import { readReputationStage, isReputationReadEnabled } from "./reputationFlag.js";
 import { isBoardMandateModelEnabled } from "./boardMandateFlag.js";
 import { DEFAULT_SPONSOR_INCOME } from "./economyEngine.js";
+import { isParkedTeam } from "./managerParking.js";
 
 // #4557 · Tærskel-konstanterne + resolveThresholds flyttet til
 // boardNegotiationThresholds.js så den nye Mandat-årsmøde-cron
@@ -165,7 +166,7 @@ export function resolveNegotiationOpenedAt({ team, pendingBoard, realBoards }) {
  * @param {object} args.supabase             — Supabase client
  * @param {Function} args.notifyUser         — fra notificationService.js
  * @param {Date} [args.now]                  — for tests
- * @returns {Promise<{ teams_checked: number, reminders_sent: number, auto_accepted: number, errors: number }>}
+ * @returns {Promise<{ teams_checked: number, reminders_sent: number, auto_accepted: number, errors: number, parked_teams_skipped: number }>}
  */
 export async function processBoardAutoAcceptCron({
   supabase,
@@ -185,6 +186,8 @@ export async function processBoardAutoAcceptCron({
     reminders_sent: 0,
     auto_accepted: 0,
     errors: 0,
+    // #8110 · parkerede hold sprunget helt over i denne kørsel.
+    parked_teams_skipped: 0,
   };
 
   const { data: activeSeason, error: seasonError } = await supabase
@@ -195,14 +198,30 @@ export async function processBoardAutoAcceptCron({
   if (seasonError) throw seasonError;
   if (!activeSeason) return summary;
 
-  const { data: humanTeams, error: teamsError } = await supabase
+  const { data: fetchedTeams, error: teamsError } = await supabase
     .from("teams")
-    .select("id, user_id, name, balance, sponsor_income, division, season_1_identity_basis, team_dna_key, created_at")
+    // #8110 · `parked_at` SKAL med: isParkedTeam læser et manglende felt som
+    // "ikke parkeret", så uden kolonnen ville filteret nedenfor åbne igen.
+    .select("id, user_id, name, balance, sponsor_income, division, season_1_identity_basis, team_dna_key, created_at, parked_at")
     .eq("is_ai", false)
     .eq("is_bank", false)
     .eq("is_frozen", false)
     .eq("is_test_account", false);
   if (teamsError) throw teamsError;
+
+  // #8110 · Parkerede hold (#4592) er HELT ude af plan-auto-accepten: ingen
+  // påmindelse, ingen auto-accept og ingen board-skrivning. Ejer-beslutning
+  // 4/10 (#5902, A): bestyrelsen fryses, mens holdet er parkeret. Samme sandhed
+  // og filter som den ugentlige kørsel (#8068) og halvsæson-tjekket (#8103):
+  // managerParking.isParkedTeam på det aktuelle teams.parked_at.
+  //
+  // Fail-closed: kan parkeringen ikke aflæses (feltet mangler i en række),
+  // fejler hele kørslen synligt FØR noget sendes eller skrives.
+  if ((fetchedTeams || []).some((team) => team?.parked_at === undefined)) {
+    throw new Error("board auto-accept: teams.parked_at mangler i hold-opslaget, intet sendt (#8110 fail-closed)");
+  }
+  const humanTeams = (fetchedTeams || []).filter((/** @type {{ parked_at?: string|null }} */ team) => !isParkedTeam(team));
+  summary.parked_teams_skipped = (fetchedTeams || []).length - humanTeams.length;
 
   // #3579 · last_seen pr. manager afgør hvilket tærskelsæt holdet får
   // (resolveThresholds). Bevidst en SEPARAT query frem for et embedded

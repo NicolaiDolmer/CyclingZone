@@ -16,8 +16,9 @@ import { applyTransferMarketCommitment6181 } from "./marketCommitment6181.js";
 import { shouldDeferTeamChange } from "./stageRaceTransferDefer.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.ts";
 import { buildRiderValueSnapshot, updateDealWithValueSnapshot } from "./dealValueSnapshot.js";
-import { isMarketBetaMode2176 } from "./marketBeta2176.ts";
+import { isMarketAtomicPayments2176 } from "./marketBeta2176.ts";
 import { saleEscrowPayment, saleEscrowStatusForDeal, squadRestoreImage } from "./saleEscrowFlow6181.js";
+import { isSaleLockedForDeal, buildSaleLockedSellerNotification } from "./saleEscrowView6181.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
 import { resolvePendingGraduationOnSale } from "./academyGraduation.js";
 import { seniorSquadPatch } from "./squads.js";
@@ -629,7 +630,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     deferRegistration, now, acquirePatch: { ...transferContractPatch, ...graduatePatch },
     activeSeasonNumber, maxRiders: buyerState.squad_limits.max, price, dealId: offer.id,
     buyerPayload: transferBuyerPayment.payload, sellerPayload: transferSellerPayment.payload,
-    marketBeta: await isMarketBetaMode2176(supabase),
+    marketBeta: await isMarketAtomicPayments2176(supabase),
     riderRestore: riderRestore ? { [rider.id]: riderRestore } : {},
   });
   if (lockedClaim?.boundary) return failure(409, undefined, "offer_at_auto_accept_price", { errorParams: lockedClaim.boundary.body.errorParams });
@@ -758,7 +759,11 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     riderName: `${rider.firstname} ${rider.lastname}`, price, deferred: deferRegistration, riderId: rider.id,
   });
   await notifyTeamOwner(offer.buyer_team_id, completedPayload.type, completedPayload.title, completedPayload.message, offer.id, completedPayload.metadata);
-  await notifyTeamOwner(offer.seller_team_id, completedPayload.type, completedPayload.title, completedPayload.message, offer.id, completedPayload.metadata);
+  // #6181: er saelgers penge laast til holdskiftet, siger saelgerens besked det.
+  const sellerPayload = (await isSaleLockedForDeal(supabase, { parked: deferRegistration, dealType: "transfer", dealId: offer.id }))
+    ? { ...completedPayload, ...buildSaleLockedSellerNotification({ riderName: `${rider.firstname} ${rider.lastname}`, price, riderId: rider.id, titleCode: "notif.transfer.completed.title" }) }
+    : completedPayload;
+  await notifyTeamOwner(offer.seller_team_id, sellerPayload.type, sellerPayload.title, sellerPayload.message, offer.id, sellerPayload.metadata);
 
   await notifyIfContractExpiresThisSeason({
     supabase, teamId: offer.buyer_team_id, seasonNumber: activeSeasonNumber,
@@ -979,7 +984,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     deferRegistration, now: swapTimestamp,
     offeredPatch: { ...offeredContractPatch, ...offeredGraduatePatch },
     requestedPatch: { ...requestedContractPatch, ...requestedGraduatePatch },
-    marketBeta: await isMarketBetaMode2176(supabase), dealId: swap.id, cash,
+    marketBeta: await isMarketAtomicPayments2176(supabase), dealId: swap.id, cash,
     payment: cash === 0 ? null : { payer_team_id: payerId, payee_team_id: receiverId, amount: absCash,
       payer_payload: swapPayerPayment.payload, payee_payload: swapReceiverPayment.payload,
       rider_restore: Object.fromEntries([offered.id, requested.id].flatMap((id, index) => swapRiderRestore[index] ? [[id, swapRiderRestore[index]]] : [])) },

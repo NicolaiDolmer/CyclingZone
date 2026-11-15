@@ -16,7 +16,7 @@ import { notifyTeamOwner, notifyIfContractExpiresThisSeason } from "./notificati
 import { checkAvailableSpend, INSUFFICIENT_AVAILABLE_BALANCE } from "./availableBalance.js";
 import { deriveForRiderIds } from "./backfillCores.js";
 import { seasonReferenceYear, LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
-import { academyPlacementSquad, squadCapRpcArgs } from "./squads.js";
+import { academyIntakePlacementSquads, squadCapRpcArgs } from "./squads.js";
 import { isMissingSchemaError, signingFeeForSource } from "./academyIntakeSource.ts";
 
 // Deterministisk 32-bit hash (FNV-1a) — samme algoritme som
@@ -554,7 +554,13 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
   //
   // #1483: struktureret metadata så Historik-fanen renderer rytternavnet via
   // backendMessages-i18n i stedet for den rå UUID i description-fallbacken.
-  const { data: acq, error: acqErr } = await supabase.rpc("finalize_academy_acquisition", {
+  //
+  // #6155 (ejer 9/11): aldersplaceringen prøves først. Svarer RPC'en academy_full
+  // for juniortruppen, prøves U23, når talentets alder passer dér
+  // (academyIntakePlacementSquads). academy_full afvises i RPC'en før enhver
+  // skrivning og debitering, så det andet kald er en ren ny prøve.
+  /** @param {"junior"|"u23"} squad */
+  const finalizeAcquisition = (squad) => supabase.rpc("finalize_academy_acquisition", {
     p_team_id: teamId,
     p_rider_id: riderId,
     p_price: fee,
@@ -580,8 +586,20 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
     },
     // #5432: kandidaten tælles mod sin ungdomstrups loft (squads.js), og RPC'en
     // skriver truppen i samme række-skrivning som is_academy.
-    ...squadCapRpcArgs(academyPlacementSquad(rider.birthdate, seasonNumber)),
+    ...squadCapRpcArgs(squad),
   });
+
+  const placementSquads = academyIntakePlacementSquads(rider.birthdate, seasonNumber);
+  let placedSquad = placementSquads[0];
+  /** @type {any} */
+  let acq = null;
+  /** @type {any} */
+  let acqErr = null;
+  for (const squad of placementSquads) {
+    placedSquad = squad;
+    ({ data: acq, error: acqErr } = await finalizeAcquisition(squad));
+    if (acqErr || acq?.code !== "academy_full") break;
+  }
 
   if (acqErr) {
     const issue = readMarketSpendIssue2176(acqErr);
@@ -601,7 +619,7 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
 
   await notifyIfContractExpiresThisSeason({
     supabase, teamId, seasonNumber, now, notify,
-    rider: { ...rider, contract_end_season: contractEndSeason, squad: academyPlacementSquad(rider.birthdate, seasonNumber), is_academy: true },
+    rider: { ...rider, contract_end_season: contractEndSeason, squad: placedSquad, is_academy: true },
   });
 
   // 4. Opdatér academy_intake → signed. #2793: persistér signing-fee'en som
@@ -646,7 +664,7 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
         },
   });
 
-  return { riderId, salary, fee, contractEndSeason, deferred };
+  return { riderId, salary, fee, contractEndSeason, deferred, squad: placedSquad };
 }
 
 /**

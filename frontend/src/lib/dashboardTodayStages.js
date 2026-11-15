@@ -94,3 +94,26 @@ export function mergeStandingRowsByRace(standingRaces, standingResults) {
   });
   return byRace;
 }
+
+// #8097 — hvad stribens sekundaere linje viser. Mangler de ekstra oplysninger
+// (detailsUnavailable), vises INTET: "forkert info fjernes". Teksten om at
+// stillingen ikke er afgjort er kun sand, naar data faktisk er hentet.
+export function secondaryLineKind(card) {
+  if (card.enriching) return "skeleton";
+  if (card.detailsUnavailable) return "none";
+  if (card.isStageRace) return card.standing ? "standing" : "standingPending";
+  return "entries";
+}
+
+// #8097 — fejler profil-kaldet ved en opdatering, beholdes den kendte profil
+// i stedet for at kortet falder tilbage til ikonet.
+export function carryKnownProfiles(cards, previousCards, profilesFailed) {
+  if (!profilesFailed) return cards;
+  return cards.map((card) => {
+    if (card.profile) return card;
+    const known = (previousCards || []).find(
+      (c) => c.raceId === card.raceId && c.stageNumber === card.stageNumber,
+    );
+    return known?.profile ? { ...card, profile: known.profile, profileType: known.profileType ?? card.profileType } : card;
+  });
+}

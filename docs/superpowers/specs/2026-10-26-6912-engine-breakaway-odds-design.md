@@ -1,3 +1,5 @@
+> **Fjernet 13/11:** udbrudsbuddet blev taget ud af koden efter ejerens valg ("Fjern buddet") i PR #8147; koden kan hentes fra #7277 og #7343.
+
 # #6912 B: motor-beregnet udbrudschance i jæger-boksen
 
 > Designbord S7, variant B (ejer 26/10). Variant A (#7271) fjernede "Breakaway odds", fordi tallet kom fra en fast tabel i frontend og ikke fra motoren. Variant B giver en rigtig chance, beregnet af motoren for netop det løb, den etape og det felt.

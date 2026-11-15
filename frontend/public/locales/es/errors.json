@@ -36,6 +36,10 @@
     "rider_on_auction_release": "Este ciclista está ahora en subasta y no se puede liberar. Espera primero a que termine la subasta",
     "rider_pending_transfer_release": "Este ciclista está vendido y espera para unirse a su nuevo equipo, así que no puedes liberarlo",
     "rider_pending_transfer_trade": "Este ciclista ya está vendido y espera para unirse a su nuevo equipo, así que no se puede volver a vender",
+    "rider_pending_release_trade": "Este ciclista dejará tu equipo después de {race} y no se puede traspasar.",
+    "rider_pending_release_squad": "Este ciclista dejará tu equipo después de {race} y no puede cambiar de plantilla.",
+    "rider_release_already_pending": "La liberación de este ciclista ya está solicitada. Dejará tu equipo después de {race}.",
+    "selection_rider_leaving": "La liberación de este ciclista está solicitada. No puede ser seleccionado para carreras posteriores a su vuelta por etapas actual.",
     "invalid_start_price": "Precio de salida no válido",
     "invalid_offer_amount": "Importe no válido",
     "invalid_loan_amount": "Importe no válido",
@@ -303,6 +307,12 @@
     "contract_batch_salary_cap": "Estas ampliaciones llevarían tu salario total por encima del tope de la directiva de {cap} CZ$. No se ha cambiado nada",
     "contract_batch_write_failed": "Algo salió mal al guardar un contrato. No se ha cambiado nada",
     "contract_batch_partial": "Algunos contratos cambiaron durante la ampliación y no todo se pudo deshacer. Revisa los ciclistas de abajo",
-    "team_lookup_failed": "El servidor devolvió un error. Inténtalo de nuevo en breve"
+    "team_lookup_failed": "El servidor devolvió un error. Inténtalo de nuevo en breve",
+    "ui_prefs_invalid_payload": "No se pudo guardar esa opción. Recarga la página e inténtalo de nuevo.",
+    "ui_prefs_unknown_keys": "No se pudo guardar esa opción. Recarga la página e inténtalo de nuevo.",
+    "ui_prefs_invalid_value": "No se pudo guardar esa opción. Recarga la página e inténtalo de nuevo.",
+    "ui_prefs_read_failed": "No se pudieron cargar tus opciones de vista. La página usa las opciones por defecto.",
+    "ui_prefs_unavailable": "Por ahora tu opción de vista se guarda solo en este dispositivo.",
+    "ui_prefs_write_failed": "No se pudo guardar tu opción de vista. Inténtalo de nuevo en un momento."
   }
 }

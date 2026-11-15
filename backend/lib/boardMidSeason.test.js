@@ -696,15 +696,15 @@ test("processMidSeasonReviewCron: relative_rank taeller pulje-baseret (league_di
     teams: [
       {
         id: "team-1", user_id: "user-1", is_ai: false, is_bank: false,
-        is_frozen: false, is_test_account: false, division: 3, name: "Pool A #2",
+        is_frozen: false, is_test_account: false, division: 3, name: "Pool A #2", parked_at: null,
       },
       {
         id: "team-2", user_id: "user-2", is_ai: false, is_bank: false,
-        is_frozen: false, is_test_account: false, division: 3, name: "Pool A #1",
+        is_frozen: false, is_test_account: false, division: 3, name: "Pool A #1", parked_at: null,
       },
       {
         id: "team-3", user_id: "user-3", is_ai: false, is_bank: false,
-        is_frozen: false, is_test_account: false, division: 3, name: "Pool B #1",
+        is_frozen: false, is_test_account: false, division: 3, name: "Pool B #1", parked_at: null,
       },
     ],
     riders: [],
@@ -786,6 +786,7 @@ function makeMidSeasonState({
       division: 3,
       name: "Test Hold",
       season_1_identity_basis: null,
+      parked_at: null,
     }],
     riders: [{ team_id: "team-1", is_u25: true, popularity: 50 }],
     seasons: [{
@@ -863,3 +864,137 @@ function makeFakeSupabase(state) {
   };
   return fake;
 }
+
+// =====================================================================
+// #8196 — en slettet midtsaeson-besked maa ikke sendes igen
+// =====================================================================
+
+// Fast ur (AGENTS regel 16): proeverne maa ikke laese vaegurets tid.
+const NOW_8196 = new Date("2026-11-15T12:00:00Z");
+
+function makeNotifier8196(state, sent) {
+  return async (args) => {
+    sent.push({ ...args });
+    state.notifications.push({
+      id: `notif-${state.notifications.length + 1}`,
+      user_id: args.userId,
+      type: args.type,
+      title: args.title,
+      message: args.message,
+      related_id: args.relatedId,
+    });
+    return { delivered: true, deduped: false };
+  };
+}
+
+test("#8196: slettes beskeden i indbakken, sender naeste koersel den IKKE igen", async () => {
+  const sent = [];
+  const state = makeMidSeasonState({ raceDaysCompleted: 30, raceDaysTotal: 60, boardSatisfaction: 40 });
+  const supabase = makeFakeSupabase(state);
+  const notifyUser = makeNotifier8196(state, sent);
+
+  const first = await processMidSeasonReviewCron({ supabase, notifyUser, now: NOW_8196 });
+  assert.equal(first.banners_sent, 1);
+  assert.equal(Number(state.board_profiles[0].mid_season_notified_season), 5, "maerket saettes paa boardet");
+
+  state.notifications.length = 0; // spilleren sletter beskeden
+
+  const second = await processMidSeasonReviewCron({ supabase, notifyUser, now: NOW_8196 });
+  assert.equal(second.banners_sent, 0);
+  assert.equal(sent.length, 1, "ingen ny besked efter sletning");
+});
+
+test("#8196: en besked sendt foer rettelsen faar maerket sat, saa en senere sletning ikke udloeser en ny", async () => {
+  const sent = [];
+  const state = makeMidSeasonState({ raceDaysCompleted: 30, raceDaysTotal: 60, boardSatisfaction: 40 });
+  state.notifications.push({
+    id: "old-1",
+    user_id: state.teams[0].user_id,
+    type: "board_critical",
+    title: `${MID_SEASON_TITLE_PREFIX} (season 5)`,
+    related_id: state.board_profiles[0].id,
+  });
+  const supabase = makeFakeSupabase(state);
+  const notifyUser = makeNotifier8196(state, sent);
+
+  await processMidSeasonReviewCron({ supabase, notifyUser, now: NOW_8196 });
+  assert.equal(sent.length, 0);
+  assert.equal(Number(state.board_profiles[0].mid_season_notified_season), 5);
+
+  state.notifications.length = 0;
+  await processMidSeasonReviewCron({ supabase, notifyUser, now: NOW_8196 });
+  assert.equal(sent.length, 0, "ingen ny besked efter sletning");
+});
+
+test("#8196: et maerke fra en tidligere saeson spaerrer ikke for denne saesons besked", async () => {
+  const sent = [];
+  const state = makeMidSeasonState({ raceDaysCompleted: 30, raceDaysTotal: 60, boardSatisfaction: 40 });
+  state.board_profiles[0].mid_season_notified_season = 4;
+  const supabase = makeFakeSupabase(state);
+  const summary = await processMidSeasonReviewCron({ supabase, notifyUser: makeNotifier8196(state, sent), now: NOW_8196 });
+  assert.equal(summary.banners_sent, 1);
+});
+
+test("#8196: mangler kolonnen endnu (migration ikke koert), virker koerslen som foer og vaelter ikke", async () => {
+  const sent = [];
+  const state = makeMidSeasonState({ raceDaysCompleted: 30, raceDaysTotal: 60, boardSatisfaction: 40 });
+  const supabase = makeFakeSupabase(state);
+  const realFrom = supabase.from.bind(supabase);
+  supabase.from = (table) => {
+    const builder = realFrom(table);
+    if (table !== "board_profiles") return builder;
+    const realSelect = builder.select.bind(builder);
+    builder.select = (columns) => {
+      if (String(columns).includes("mid_season_notified_season")) {
+        const failing = { eq: () => failing, then: (resolve) => resolve({ data: null, error: { code: "42703", message: "column board_profiles.mid_season_notified_season does not exist" } }) };
+        return failing;
+      }
+      return realSelect(columns);
+    };
+    return builder;
+  };
+  const summary = await processMidSeasonReviewCron({ supabase, notifyUser: makeNotifier8196(state, sent), now: NOW_8196 });
+  assert.equal(summary.errors, 0);
+  assert.equal(summary.banners_sent, 1);
+  assert.equal(state.board_profiles[0].mid_season_notified_season, undefined, "ingen skrivning til en kolonne, der ikke findes");
+});
+
+test("#8196: bliver beskeden IKKE leveret, saettes maerket ikke", async () => {
+  const state = makeMidSeasonState({ raceDaysCompleted: 30, raceDaysTotal: 60, boardSatisfaction: 40 });
+  const supabase = makeFakeSupabase(state);
+  const summary = await processMidSeasonReviewCron({
+    supabase,
+    notifyUser: async () => ({ delivered: false, deduped: true }),
+    now: NOW_8196,
+  });
+  assert.equal(summary.banners_sent, 0);
+  assert.equal(state.board_profiles[0].mid_season_notified_season ?? null, null);
+});
+
+test("#8196: besked-funktionen kun til spillet laegger klienten paa (uden den kaster notifyUser)", async () => {
+  const { makeInAppBoardNotifier } = await import("./boardDmMirror.js");
+  const calls = [];
+  const supabase = { marker: "klient" };
+  const notify = makeInAppBoardNotifier({
+    notifyUser: async (args) => { calls.push(args); return { delivered: true }; },
+    supabase,
+  });
+  const result = await notify({ userId: "u1", type: "board_critical", title: "t" });
+  assert.equal(result.delivered, true);
+  assert.equal(calls[0].supabase, supabase, "klienten skal med i kaldet");
+  assert.equal(calls[0].userId, "u1");
+});
+
+test("#8196: cron.js bruger besked-funktionen kun til spillet for midtsaeson-koerslen", async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("../cron.js", import.meta.url), "utf8");
+  const start = src.indexOf("async function runMidSeasonReviewCron()");
+  assert.ok(start > 0, "runMidSeasonReviewCron findes");
+  const body = src.slice(start, start + 900);
+  assert.ok(body.includes("notifyUser: notifyMidSeasonInApp"), "midtsaeson-koerslen bruger besked-funktionen kun til spillet");
+  assert.ok(!body.includes("notifyUserWithBoardDM"), "ingen Discord-DM for midtsaeson-beskeden");
+  assert.ok(
+    src.includes("const notifyMidSeasonInApp = makeInAppBoardNotifier({ notifyUser: notifyUserShared, supabase });"),
+    "besked-funktionen faar klienten med"
+  );
+});

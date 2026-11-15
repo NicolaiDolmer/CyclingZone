@@ -40,7 +40,7 @@ import { deliverRaceResultNotify, RACE_RESULT_MESSAGE_TYPE } from "./lib/raceNot
 import { isRaceNotifyOutboxEnabled } from "./lib/raceNotifyOutboxFlag.js"; // #3624
 import { runPushSweepOnce } from "./lib/pushService.js"; // #6590
 import { flushDmRunGuard } from "./lib/discordDmRateGuard.js"; // #2571
-import { makeBoardDmNotifier } from "./lib/boardDmMirror.js"; // #2619
+import { makeBoardDmNotifier, makeInAppBoardNotifier } from "./lib/boardDmMirror.js"; // #2619, #8196
 import { syncAllDivisionRoles } from "./lib/discordRoleSync.js";
 import { processSquadEnforcementCron } from "./lib/squadEnforcement.js";
 import { runSelectionWarningSweep } from "./lib/selectionWarningSweep.js"; // #2180
@@ -48,6 +48,7 @@ import { runSeniorStartReminderSweep } from "./lib/seniorStartReminder.js"; // #
 import { createEmergencyLoan } from "./lib/loanEngine.js";
 import { processBoardAutoAcceptCron } from "./lib/boardAutoAccept.js";
 import { processMandateAutoAcceptCron } from "./lib/boardMandateAutoAccept.js";
+import { isParkedTeam } from "./lib/managerParking.js"; // #8110
 import { countStaleActiveMandates } from "./lib/boardMandateEngine.js"; // #6773
 import { processMidSeasonReviewCron } from "./lib/boardMidSeason.js";
 import { processDailySeasonCountCheck } from "./lib/dailySeasonCountCheck.js";
@@ -95,6 +96,7 @@ import { runOwnershipInvariantWatch } from "./lib/ownershipInvariantWatch.ts";
 import { runRiderDoubleBookingWatch } from "./lib/riderDoubleBookingWatch.js";
 import { runSquadEntryGateWatch } from "./lib/squadEntryGate.js"; // #6489
 import { buildAlertSignature, shouldAlertOnChange } from "./lib/opsAlertDedupe.js";
+import { configureActionTimingFlush, FLUSH_INTERVAL_MS as ACTION_TIMING_FLUSH_MS } from "./lib/actionTimingMonitor8101.js"; // #8101
 import { runTrainingSlotHealthWatch } from "./lib/trainingSlotHealthWatch.js"; // #3639
 import { runEmailWelcomeSweep } from "./lib/emailWelcomeSweep.js"; // #2725
 import { runEmailDay1Sweep } from "./lib/emailDay1Sweep.js"; // #2725
@@ -224,17 +226,25 @@ export async function checkDebtWarnings({
   notifyUserFn = notifyUserShared,
   captureExceptionFn = sentryCapture,
 } = {}) {
-  const { data: teams } = await supabaseClient
+  const { data: fetchedTeams, error: teamsError } = await supabaseClient
     .from("teams")
-    .select("id, name, balance, user_id")
+    .select("id, name, balance, user_id, parked_at")
     .eq("is_ai", false)
     .eq("is_bank", false)
     .eq("is_frozen", false)
     .lt("balance", 0);
+  if (teamsError) throw teamsError;
+  // #8110 · Bestyrelsen er frosset for parkerede hold (#5902, A): samme filter
+  // som #8068/#8103, og fail-closed hvis parked_at mangler i opslaget.
+  if ((fetchedTeams || []).some((team) => team?.parked_at === undefined)) {
+    throw new Error("debt warnings: teams.parked_at mangler i hold-opslaget, intet sendt (#8110 fail-closed)");
+  }
+  const teams = (fetchedTeams || []).filter((team) => !isParkedTeam(team));
+  const parkedSkipped = (fetchedTeams || []).length - teams.length;
 
   let sent = 0;
   let errors = 0;
-  for (const team of teams || []) {
+  for (const team of teams) {
     try {
       const result = await notifyUserFn({
         supabase: supabaseClient,
@@ -266,6 +276,7 @@ export async function checkDebtWarnings({
   }
 
   if (sent) console.log(`  ⚠️  Debt warnings sent to ${sent} teams`);
+  if (parkedSkipped) console.log(`  ⏸️  Debt warnings: ${parkedSkipped} parkerede hold sprunget over (#8110)`);
   if (errors) console.error(`  ❌ Debt warnings: ${errors} fejl (per-team try/catch isolerede)`);
 }
 
@@ -369,6 +380,7 @@ async function runBoardAutoAcceptCron() {
       // vinkel som #3502). Billig linje pr. 30. minut, matcher mid-season-mønstret.
       console.log(`🪑 Board auto-accept: ${result.teams_checked} hold tjekket — intet at gøre`);
     }
+    if (result.parked_teams_skipped) console.log(`🪑 Board auto-accept: ${result.parked_teams_skipped} parkerede hold sprunget over (#8110)`);
   } catch (err) {
     // #2389 A2: den ydre catch sluger top-level-fejl (window/season/teams-queries)
     // som processBoardAutoAcceptCron's interne per-team-catch aldrig ser — capture,
@@ -399,6 +411,7 @@ async function runBoardMandateAutoAcceptCron() {
     } else {
       console.log(`📋 Mandate auto-accept: ${result.mandates_checked} mandater tjekket — intet at gøre`);
     }
+    if (result.parked_teams_skipped) console.log(`📋 Mandate auto-accept: ${result.parked_teams_skipped} parkerede hold sprunget over (#8110)`);
     // #6773 · Vagt: aktive mandater fra en afsluttet sæson skal altid være 0.
     const watch = await countStaleActiveMandates(supabase);
     if (watch.stale > 0) {
@@ -417,15 +430,15 @@ async function runBoardMandateAutoAcceptCron() {
 // ─── Board Mid-Season Review (S-02g) ────────────────────────────────────────
 // Når race_days_completed krydser midpoint (= floor(race_days_total/2)) tjekker cron
 // hver human team. Hvis satisfaction <50 ELLER ≥50% mål 'behind' → fyrer board_critical-banner.
-// Idempotens: per-board-per-season notif-dedupe via title-match + related_id.
+// Idempotens (#8196): maerket board_profiles.mid_season_notified_season, ikke indbakke-raekken.
+// Beskeden sendes kun i spillet (ejer 15/11): ingen Discord-DM og derfor ingen DM-vagt her.
+const notifyMidSeasonInApp = makeInAppBoardNotifier({ notifyUser: notifyUserShared, supabase });
 
 async function runMidSeasonReviewCron() {
-  // #2571: se flushDmRunGuard-kaldet i runBoardAutoAcceptCron ovenfor.
-  flushDmRunGuard(["board_update", "board_critical"]);
   try {
     const result = await processMidSeasonReviewCron({
       supabase,
-      notifyUser: notifyUserWithBoardDM,
+      notifyUser: notifyMidSeasonInApp,
       captureExceptionFn: sentryCapture,
       now: new Date(),
     });
@@ -434,6 +447,7 @@ async function runMidSeasonReviewCron() {
         `📣 Mid-season review: ${result.teams_checked} hold tjekket — ${result.banners_sent} banner(e) sendt, ${result.errors} fejl`
       );
     }
+    if (result.parked_teams_skipped) console.log(`📣 Mid-season review: ${result.parked_teams_skipped} parkerede hold sprunget over (#8099/#8110)`);
   } catch (err) {
     // #2389 A2: mirror board auto-accept — top-level-fejl skal captures her.
     console.error("Cron error (mid-season review):", err.message);
@@ -2437,6 +2451,12 @@ export function startCron() {
   setInterval(
     trackedTick("cron heartbeat sweep", monitorCron("cron-heartbeat-sweep", runCronHeartbeatSweepCronTick, CRON_MONITOR_5MIN)),
     5 * 60 * 1000
+  );
+
+  // #8101 — svartids-loft: gem kvarterets målinger og alarmér Discord #ops (se lib/actionTimingMonitor8101.js).
+  setInterval(
+    trackedTick("action-timing-flush", monitorCron("action-timing-flush", configureActionTimingFlush({ supabase, sendWebhookFn: sendOpsWebhook, getOpsWebhookFn: getOpsWebhook, captureExceptionFn: sentryCapture }), CRON_MONITOR_15MIN)),
+    ACTION_TIMING_FLUSH_MS
   );
 
   // Run immediately on start
