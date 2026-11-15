@@ -46,7 +46,7 @@ export default function StageProfileGraph({
   // på en mobilskærm. Vi måler den renderede bredde og regner tekststørrelsen tilbage til
   // en læsbar skærmstørrelse; på smalle skærme udgår de tætteste mærkater (readouten
   // under grafen bærer de samme tal).
-  const [node, setNode] = useState(null);
+  const [node, setNode] = useState(/** @type {SVGSVGElement | null} */ (null));
   const [renderedW, setRenderedW] = useState(0);
   useEffect(() => {
     if (!node || typeof ResizeObserver === "undefined") return undefined;
@@ -76,13 +76,21 @@ export default function StageProfileGraph({
   const textStyle = { fontSize: fs };
   const chipH = 12 * u;
   const basePad = PAD[tier] ?? PAD.compact;
+  // Kompakt (uden navne og højdeakse) skal kun have plads til kategori-skiltet og km-akse.
   const p = narrow
-    ? {
-        l: Math.ceil(fs * 2.4),
-        r: Math.ceil(fs * 1.2),
-        t: Math.ceil(4 + chipH + fs * 3.4 + 8),
-        b: Math.ceil(fs * 3.2),
-      }
+    ? (full
+      ? {
+          l: Math.ceil(fs * 2.4),
+          r: Math.ceil(fs * 1.2),
+          t: Math.ceil(4 + chipH + fs * 3.4 + 8),
+          b: Math.ceil(fs * 3.2),
+        }
+      : {
+          l: basePad.l,
+          r: Math.ceil(fs * 1.2),
+          t: Math.ceil(4 + chipH + 8),
+          b: Math.ceil(fs + 21),
+        })
     : basePad;
   const plotW = W - p.l - p.r;
   const plotH = H - p.t - p.b;
@@ -183,7 +191,7 @@ export default function StageProfileGraph({
         const cx = X(c.crest_km);
         const crestIdx = Math.round((c.crest_km / D) * (series.xs.length - 1));
         const cy = Y(series.ys[crestIdx]);
-        const labelY = narrow ? 4 + (i % 2) * fs * 1.6 : (full ? 10 : 4) + (full ? i % 2 : 0) * 30;
+        const labelY = narrow ? 4 + (full ? i % 2 : 0) * fs * 1.6 : (full ? 10 : 4) + (full ? i % 2 : 0) * 30;
         const w = (c.category === "HC" ? 20 : 13) * (narrow ? u : 1);
         // Label-ankeret trækkes ind ved kanterne. En summit-finish har
         // crest_km === distance_km, så dens navn ville ellers centreres PÅ
