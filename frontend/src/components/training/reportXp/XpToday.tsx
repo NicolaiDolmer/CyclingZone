@@ -166,7 +166,7 @@ export default function XpToday({ view, onPickDate, switcher }: { view: XpTodayV
             sub: view.racePercent != null ? <span className="mt-1 block w-24"><XpBar training={(100 - view.racePercent) / 100} race={view.racePercent / 100} label={t("xpReport.shareLabel", { race: formatNumber(view.racePercent) })} /></span> : undefined },
         ]} />
       </Section>
-      <div className="grid items-start gap-[14px] lg:grid-cols-[minmax(0,1fr)_22.5rem]">
+      <div className="grid items-start gap-[14px] lg:grid-cols-[minmax(0,1fr)_24rem]">
         <Section data-testid="xp-today-list">
           <div className="-mx-1 mb-1 overflow-x-auto px-1 pb-1">
             <Segmented label={t("xpReport.filterLabel")} value={filter} onChange={(v: TodayFilter) => setFilter(v)} className="whitespace-nowrap"

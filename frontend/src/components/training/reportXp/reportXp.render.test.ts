@@ -6,6 +6,7 @@ import { transformSync } from "rolldown/utils";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createInstance } from "i18next";
+import ICU from "i18next-icu";
 import { I18nextProvider } from "react-i18next";
 import { MemoryRouter } from "react-router";
 
@@ -41,7 +42,7 @@ const { buildMonthView, buildTodayView } = await import("../../../lib/trainingRe
 const en = JSON.parse(readFileSync(new URL("../../../../public/locales/en/training.json", import.meta.url), "utf8"));
 const da = JSON.parse(readFileSync(new URL("../../../../public/locales/da/training.json", import.meta.url), "utf8"));
 const i18n = createInstance();
-await i18n.init({ lng: "en", initAsync: false, resources: { en: { training: en, rider: {} } }, fallbackLng: false });
+await i18n.use(ICU).init({ lng: "en", initAsync: false, resources: { en: { training: en, rider: {} } }, fallbackLng: false });
 
 const noSegmentGold = (html: string) => html.replaceAll("cursor-default bg-cz-accent/10 text-cz-accent-t", "");
 const fx = buildXpReportFixture();
@@ -58,6 +59,8 @@ test("Today renders every rider, the panel and the hatched race part, without go
   // Gold only as the canonical Segmented active text (TASTE fork 3, slot 3); never on bars, marks or buttons (#7988).
   assert.doesNotMatch(noSegmentGold(html), /cz-accent/, "no gold on this surface (#7988)");
   assert.doesNotMatch(html, /xpReport\./, "every key has an English text");
+  assert.doesNotMatch(html, /\{[a-z]+\}|\{\{/i, "ICU placeholders are filled");
+  assert.match(html, /\+1 point|\+\d+ points/, "ICU plural renders");
   assert.equal(html.split('aria-pressed="true"').length - 1, 2, "the picked day and the active filter");
 });
 
@@ -68,6 +71,7 @@ test("30 days renders one column per day and never a days-to-go estimate", () =>
   assert.equal((html.match(/aria-label="Open /g) ?? []).length, view.days.length);
   assert.doesNotMatch(noSegmentGold(html), /cz-accent/);
   assert.doesNotMatch(html, /days to|days left|dage til/i);
+  assert.doesNotMatch(html, /\{[a-z]+\}|\{\{/i, "ICU placeholders are filled");
 });
 
 test("the XP keys exist in English and Danish alike", () => {
