@@ -13,7 +13,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { registerHooks } from "node:module";
 import { transformSync } from "rolldown/utils";
-import { createElement } from "react";
+import { createElement, type ComponentType } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { adminFlagView } from "../../../../../backend/lib/adminFlagView6181.js";
@@ -49,29 +49,29 @@ const loader = registerHooks({
     return nextLoad(url, context);
   },
 });
-const { FeatureFlagBoardView } = await import("./FeatureFlagBoardSection.jsx");
+const { FeatureFlagBoardView } = (await import("./FeatureFlagBoardSection.jsx")) as unknown as { FeatureFlagBoardView: ComponentType<Record<string, unknown>> };
 loader.deregister();
 
 const ESCROW_KEY = "sale_escrow_enabled";
-const NON_BINARY_KEY = STAGE_FLAGS.find((f) => !PLAYER_VISIBLE_BINARY_FLAG_KEYS.includes(f.key)).key;
+const NON_BINARY_KEY = STAGE_FLAGS.find((f: { key: string }) => !PLAYER_VISIBLE_BINARY_FLAG_KEYS.includes(f.key))!.key;
 
 /** Svaret endpointet ville give, naar app_config har disse raekker (undefined = ingen raekke). */
-function payload(rows) {
-  return STAGE_FLAGS.map((flag) => adminFlagView(flag, rows[flag.key] === undefined ? null : { value: rows[flag.key], updated_at: null }));
+function payload(rows: Record<string, unknown>) {
+  return STAGE_FLAGS.map((flag: { key: string; area: string; label: string }) => adminFlagView(flag, rows[flag.key] === undefined ? null : { value: rows[flag.key], updated_at: null }));
 }
-function render(rows, props = {}) {
+function render(rows: Record<string, unknown>, props: Record<string, unknown> = {}) {
   return renderToStaticMarkup(createElement(FeatureFlagBoardView, { flags: payload(rows), ...props }));
 }
 /** Knapperne (og deres tekst) i gruppen for et flag. */
-function buttonsFor(html, flagKey) {
-  const label = STAGE_FLAGS.find((f) => f.key === flagKey)?.label ?? "Gammelt flag";
+function buttonsFor(html: string, flagKey: string) {
+  const label = STAGE_FLAGS.find((f: { key: string }) => f.key === flagKey)?.label ?? "Gammelt flag";
   const start = html.indexOf(`aria-label="Stadie for ${label}"`);
   assert.ok(start >= 0, `gruppen for ${flagKey} mangler`);
   const group = html.slice(start, html.indexOf("</div>", start));
   return [...group.matchAll(/<button[^>]*aria-pressed="(true|false)"[^>]*>([^<]*)<\/button>/g)]
     .map((m) => ({ pressed: m[1] === "true", text: m[2] }));
 }
-function rowFor(html, flagKey) {
+function rowFor(html: string, flagKey: string) {
   const at = html.indexOf(`>${flagKey}</p>`);
   assert.ok(at >= 0, `rækken for ${flagKey} mangler`);
   return html.slice(at, html.indexOf("</button></div></div>", at));

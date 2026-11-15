@@ -95,7 +95,7 @@ export default function FeatureFlagBoardSection({ getAuth, onMsg }) {
 
 // #6181: selve visningen er adskilt fra hentning og skrivning, så den kan renderes
 // med rå svar fra GET /api/admin/feature-flags.
-export function FeatureFlagBoardView({ flags, saving = null, onSetStage = () => {} }) {
+export function FeatureFlagBoardView({ flags, saving = null, onSetStage }) {
   if (flags.length === 0) return <p className="text-cz-3 text-sm">Ingen stadie-flag registreret.</p>;
 
   const areas = [...new Set(flags.map(f => f.area))];
@@ -157,7 +157,7 @@ export function FeatureFlagBoardView({ flags, saving = null, onSetStage = () => 
                           type="button"
                           aria-pressed={active}
                           disabled={saving === flag.key || unavailable}
-                          onClick={() => onSetStage(flag, stage)}
+                          onClick={() => onSetStage?.(flag, stage)}
                           className={`text-xs px-2.5 py-1 border rounded transition-all disabled:opacity-40
                             ${active
                               ? STAGE_ACTIVE_CLASS[stage]
