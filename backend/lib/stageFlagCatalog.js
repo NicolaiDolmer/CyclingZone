@@ -210,6 +210,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "market_commitment_6181", area: "market", label: "Bud-forpligtelsesgate" }, // #2176: scoped beta, global on; no activation.
   // #6181 PR 3: pengelaas. Kun 'on' taender (beta = slukket, det er penge). Flip er ejer-only.
   { key: "sale_escrow_enabled", area: "market", label: "Pengelås — sælgers penge låses til holdskiftet" },
+  // #8153: frigivelse midt i et etapeløb bestilles og udføres efter sidste etape. Kun 'on' tænder (penge). Ejer-only flip.
+  { key: "release_defer_8153", area: "market", label: "Frigivelse midt i etapeløb venter til løbets slut" },
   { key: "rider_primary_type_from_distribution", area: "squad", label: "Rytter-generator: primær type fra mål-fordelingen" },
   { key: "alunta_reconcile_enabled", area: "billing", label: "Alunta-afstemning" },
 ]);
