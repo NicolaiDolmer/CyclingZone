@@ -135,6 +135,10 @@ test('branch-vagten vurderer kommandoens mappe (input-cwd), ogsaa fra en underma
   // Vercel Security Review #8207: et skift skjult efter cd/export i samme segment.
   assert.equal(callCmd(main, 'cd frontend $(git switch -c feature-s1)').status, 2);
   assert.equal(callCmd(main, 'export GIT_DIR=x Y=$(git switch -c feature-s2)').status, 2);
+  // Vercel #8207: en tilladt indre git-kommando maa ikke skjule et forbudt ydre skift.
+  assert.equal(callCmd(main, 'X=$(git checkout -- x.txt) git switch -c feature-h1').status, 2);
+  assert.equal(callCmd(main, 'git switch -c feature-h2 $(git checkout main)').status, 2);
+  assert.equal(callCmd(main, 'echo $(git checkout -- x.txt)').status, 0);
   // Almindeligt arbejde i et worktree er stadig frit.
   assert.equal(callCmd(wt, 'git switch -c feature-ok').status, 0);
   assert.equal(callCmd(join(wt, 'frontend'), 'git checkout -b feature-ok2').status, 0);

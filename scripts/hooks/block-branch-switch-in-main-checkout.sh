@@ -126,10 +126,12 @@ process.stdin.on("end", () => {
     // [VAR=x ...] [sudo/env ...] git [globale flag] (checkout|switch) <rest>
     // Hvert token der ligner git proeves (review #8207: "sudo -u git git checkout x").
     const toks = s.match(/"[^"]*"|\x27[^\x27]*\x27|\S+/g) || [];
-    let i = -1, cands = null;
-    for (let gi = 0; gi < toks.length && i < 0; gi++) {
-      // Ogsaa git i en kommando-substitution: $(git og `git.
-      if (!/(^|[\\/(`])git(\.exe)?$/i.test(unquote(toks[gi]))) continue;
+    // Vercel #8207: HVER git-kommando i segmentet vurderes for sig (en tilladt
+    // $(git checkout -- fil) maa ikke skjule et forbudt skift senere i segmentet).
+    // Hver kommandos argumenter slutter ved naeste git-token eller ved ) / backtick.
+    const isGitTok = (t) => /(^|[\\/(`])git(\.exe)?$/i.test(unquote(t));
+    for (let gi = 0; gi < toks.length; gi++) {
+      if (!isGitTok(toks[gi])) continue;
       const c = [...seen, dir];
       for (const t of toks.slice(0, gi)) {
         const env = t.match(/^(?:GIT_DIR|GIT_WORK_TREE)=(.+)$/);
@@ -144,30 +146,28 @@ process.stdin.on("end", () => {
         else if (toks[j] === "-c" && j + 1 < toks.length) j += 2;
         else j += 1;
       }
-      if (toks[j] === "checkout" || toks[j] === "switch") { i = j; cands = c; }
+      if (toks[j] !== "checkout" && toks[j] !== "switch") continue;
+      if (!c.some(isMainCheckout)) continue;
+      const tokens = [];
+      for (let k = j + 1; k < toks.length; k++) {
+        if (isGitTok(toks[k])) break;
+        const cut = toks[k].search(/[)`]/);
+        const t = unquote(cut >= 0 ? toks[k].slice(0, cut) : toks[k]);
+        if (t) tokens.push(t);
+        if (cut >= 0) break;
+      }
+      // "--" markerer filgendannelse: git checkout -- fil, git checkout HEAD -- fil
+      if (tokens.includes("--")) continue;
+      // Første token der ikke er et flag, er målet ("main" == main).
+      const target = tokens.find((t) => !t.startsWith("-"));
+      // Nye branches: -b / -c bærer altid et skift med sig.
+      const createsBranch = tokens.some((t) => t === "-b" || t === "-c" || t === "-B" || t === "-C");
+      if (!target && !createsBranch) continue;          // fx bart "git switch" -> git fejler selv
+      if (!createsBranch && target === "main") continue; // hjempositionen er tilladt
+      if (!createsBranch && target === ".") continue;    // git checkout . er filgendannelse
+      console.log(JSON.stringify({ blocked: true, target: target || "(ny branch)", segment: s }));
+      process.exit(0);
     }
-    if (i < 0) continue;
-    if (!cands.some(isMainCheckout)) continue;
-    const m = [null, toks[i], toks.slice(i + 1).join(" ")];
-
-    const rest = (m[2] || "").trim();
-
-    // "--" markerer filgendannelse: git checkout -- fil, git checkout HEAD -- fil
-    if (/(^|\s)--(\s|$)/.test(rest)) continue;
-
-    const tokens = rest.split(/\s+/).filter(Boolean).map(unquote); // "main" == main
-    // Første token der ikke er et flag, er målet.
-    const target = tokens.find((t) => !t.startsWith("-"));
-
-    // Nye branches: -b / -c bærer altid et skift med sig.
-    const createsBranch = tokens.some((t) => t === "-b" || t === "-c" || t === "-B" || t === "-C");
-
-    if (!target && !createsBranch) continue;          // fx bart "git switch" -> git fejler selv
-    if (!createsBranch && target === "main") continue; // hjempositionen er tilladt
-    if (!createsBranch && target === ".") continue;    // git checkout . er filgendannelse
-
-    console.log(JSON.stringify({ blocked: true, target: target || "(ny branch)", segment: s }));
-    process.exit(0);
   }
   process.exit(0);
 });
