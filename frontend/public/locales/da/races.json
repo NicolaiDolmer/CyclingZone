@@ -11,7 +11,14 @@
     "hero": {
       "stageLocks": "Etape {number} låses kl. {time} · {countdown}",
       "locks": "Låses kl. {time} · {countdown}",
-      "notScheduled": "Etape {number} har ingen starttid endnu"
+      "notScheduled": "Etape {number} har ingen starttid endnu",
+      "gapToLead": "{gap} til føreren"
+    },
+    "strip": {
+      "earlier": "Tidligere etaper",
+      "later": "Senere etaper",
+      "you": "Du #{rank}",
+      "plan": "{done} af {total} klar"
     },
     "route": {
       "aria": "Etapens rute",

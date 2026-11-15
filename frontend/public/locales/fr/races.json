@@ -11,7 +11,14 @@
     "hero": {
       "stageLocks": "L'étape {number} se verrouille à {time} · {countdown}",
       "locks": "Se verrouille à {time} · {countdown}",
-      "notScheduled": "L'étape {number} n'a pas encore d'heure de départ"
+      "notScheduled": "L'étape {number} n'a pas encore d'heure de départ",
+      "gapToLead": "{gap} du leader"
+    },
+    "strip": {
+      "earlier": "Étapes précédentes",
+      "later": "Étapes suivantes",
+      "you": "Toi #{rank}",
+      "plan": "{done} sur {total} faits"
     },
     "route": {
       "aria": "Parcours de l'étape",

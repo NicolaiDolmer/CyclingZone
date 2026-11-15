@@ -85,7 +85,8 @@ import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 import { defaultStage, resolveV2Tab, todaysStages } from "../components/race/stagePageV2/stagePageV2Model.ts"; // #6570
 import { fetchStageProfiles } from "../components/race/stagePageV2/stageProfilesQuery.ts"; // #6570
 import { useRacePageV6Enabled } from "../components/race/v6/racePageV6Flag.ts"; // #7778
-import { resolveV6Tab, tacticsCta } from "../components/race/v6/racePageV6Model.ts"; // #7778
+import { resolveV6Tab, tacticsCta, v6Overall, v6WhenLabel } from "../components/race/v6/racePageV6Model.ts"; // #7778
+import V6RaceHeroCard, { V6_STRIP_RESERVED_CLASS } from "../components/race/v6/V6RaceHeroCard.tsx"; // #7778 udgave E
 import V6ResultsControls, { V6ResultsNoMatch } from "../components/race/v6/V6ResultsControls.tsx"; // #7860
 import { EMPTY_RESULTS_CONTROLS, filterResultRows, isFiltering, mineOnlyFromTeamFilter, sharedMineControls, teamFilterAfterMineToggle } from "../components/race/v6/resultsControlsModel.ts"; // #7860 #7865
 
@@ -1071,6 +1072,8 @@ export default function RaceDetailPage() {
         && String(r.team_id ?? r.rider?.team?.id) === String(myTeamId))
     : [];
   const abandonedCount = squadRiders.filter((r) => r.abandoned).length;
+  // #7778 udgave E: kun under v6 og kun før løbet er slut (bagefter står "Your best").
+  const v6OverallStat = v6 && phase !== "after" ? v6Overall(gcRows, myTeamId) : null;
 
   // profileLabelKey/finaleLabelKey returnerer nøglen UDEN namespace-præfiks
   // ("profileType.rolling"), men strengene bor under `detail.` i races.json.
@@ -1127,6 +1130,13 @@ export default function RaceDetailPage() {
         label: t("racePage.hero.selected"),
         value: String(squadRiders.length),
         sub: t(phase === "during" ? "racePage.hero.squadFrozen" : "racePage.hero.squadLockedIn"),
+      }] : []),
+      // #7778 udgave E: "Samlet" = holdets bedste plads i klassementet og afstanden til
+      // føreren; kun når holdet står i klassementet (v6Overall), ellers udelades tallet.
+      ...(v6OverallStat ? [{
+        label: t("stagePageV2.yourDay.overall"),
+        value: `#${v6OverallStat.rank}`,
+        sub: v6OverallStat.gap ? t("racePageV6.hero.gapToLead", { gap: v6OverallStat.gap }) : (v6OverallStat.rank === 1 ? t("stagePageV2.favourites.leadsOverall") : null),
       }] : []),
       // #7865: med v6's guld-knap står fristen ved knappen i samme række (ikke to gange).
       ...(nextStart && !v6Cta ? [{
@@ -1393,6 +1403,44 @@ export default function RaceDetailPage() {
   );
   // valg 3: bred side, loft 1600 px. #7865: de genbrugte faner står på max-w-5xl inde i RacePageV6.
   const pageWidth = v6 ? "max-w-[1600px]" : "max-w-5xl";
+  const heroMeta = [
+    showsStageCount(race.race_type) ? t("raceType.stages", { count: race.stages }) : null,
+    race.season?.number != null ? t("library.seasonOption", { number: race.season.number }) : null,
+  ].filter(Boolean).join(" · ");
+  const heroTags = (
+    <>
+      {race.race_class && <CategoryTag>{t(`classOption.${race.race_class}`)}</CategoryTag>}
+      <CategoryTag>{race.race_type === "stage_race" ? t("raceType.stageRace") : t("raceType.oneDayShort")}</CategoryTag>
+    </>
+  );
+  // #7778 udgave E: hoved og etapestribe er ét kort (RacePageV6). Ingen statuschip og
+  // ingen sætning øverst (valg 22): status står som ord i talrækken og i etapens celle.
+  // Fristen og den ene guld-knap står i talrækkens række (valg 8).
+  const v6Hero = v6 ? {
+    name: race.name,
+    tags: heroTags,
+    meta: heroMeta,
+    stats: statBlocks,
+    action: v6Cta ? {
+      lock: v6Cta.locksAt
+        ? t(race.race_type === "stage_race" ? "racePageV6.hero.stageLocks" : "racePageV6.hero.locks", {
+          number: v6Cta.stage, time: formatStageTime(v6Cta.locksAt, locale), countdown: countdownText(v6Cta.locksAt, nowMs, t),
+        })
+        : t("racePageV6.hero.notScheduled", { number: v6Cta.stage }),
+      label: race.race_type === "stage_race"
+        ? t("stagePageV2.cta.setTactics", { number: v6Cta.stage, done: v6Cta.done, total: v6Cta.total })
+        : t("stagePageV2.cta.setTacticsOneDay", { done: v6Cta.done, total: v6Cta.total }),
+      onClick: () => openV2Tactics(v6Cta.stage),
+    } : null,
+  } : null;
+  // Udgave E: et klik i striben fra Stillinger eller Hold åbner etapen på dens fane i ét skridt.
+  const openV6Stage = (n, tab) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("stage", String(n));
+    next.set("tab", tab);
+    setV2TacticsStage(null);
+    setSearchParams(next, { replace: true });
+  };
 
   return (
     // #2253: translate="no" — race-resultat-listerne opdaterer live under løb;
@@ -1412,82 +1460,55 @@ export default function RaceDetailPage() {
           {backLabel}
         </Link>
 
-        <section className="bg-cz-card border border-cz-border border-t-2 border-t-cz-accent rounded-cz overflow-hidden px-4 md:px-6 pt-5 pb-5">
-          <div className="flex items-start justify-between gap-4 flex-wrap sm:flex-nowrap">
-            <div className="min-w-0">
-              <h1 className="font-display text-[40px] leading-[.92] uppercase text-cz-1 wrap-break-word">{race.name}</h1>
-              <div className="flex items-center gap-2 flex-wrap mt-2.5">
-                {race.race_class && <CategoryTag>{t(`classOption.${race.race_class}`)}</CategoryTag>}
-                <CategoryTag>{race.race_type === "stage_race" ? t("raceType.stageRace") : t("raceType.oneDayShort")}</CategoryTag>
-                <span className="font-data text-2xs uppercase tracking-[.08em] text-cz-3">
+        {/* #7778 udgave E: under v6 tegnes hovedet af RacePageV6 som ét kort med
+            etapestriben som bund (V6RaceHeroCard). Slukket = hovedet som i dag. */}
+        {!v6 && (
+          <section className="bg-cz-card border border-cz-border border-t-2 border-t-cz-accent rounded-cz overflow-hidden px-4 md:px-6 pt-5 pb-5">
+            <div className="flex items-start justify-between gap-4 flex-wrap sm:flex-nowrap">
+              <div className="min-w-0">
+                <h1 className="font-display text-[40px] leading-[.92] uppercase text-cz-1 wrap-break-word">{race.name}</h1>
+                <div className="flex items-center gap-2 flex-wrap mt-2.5">
+                  {heroTags}
                   {/* #7566: et endagsløb gentager ikke typen fra mærket ved siden af. */}
-                  {[
-                    showsStageCount(race.race_type) ? t("raceType.stages", { count: race.stages }) : null,
-                    race.season?.number != null ? t("library.seasonOption", { number: race.season.number }) : null,
-                  ].filter(Boolean).join(" · ")}
-                </span>
+                  <span className="font-data text-2xs uppercase tracking-[.08em] text-cz-3">{heroMeta}</span>
+                </div>
               </div>
+              {/* #4613: hero'ens højre hjørne bærer nu løbets TILSTAND, ikke en
+                  genvejs-knap. Fanerne lige nedenfor har overtaget navigationen,
+                  så "Hop til resultater"/"Gennemgå taktik" var to knapper der
+                  pegede på noget der nu er ét klik væk. Chippen er ren visning —
+                  sidens ENE guld-primær bor i den aktive fane. */}
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-data text-2xs font-semibold uppercase tracking-[.08em] whitespace-nowrap flex-none ${
+                  statusChip.live
+                    ? "border-cz-danger/30 bg-cz-danger/10 text-cz-danger"
+                    : "border-cz-border bg-cz-subtle text-cz-2"
+                }`}
+              >
+                {statusChip.live && <span className="inline-block w-1.5 h-1.5 rounded-full bg-cz-danger" aria-hidden="true" />}
+                {statusChip.text}
+              </span>
             </div>
-            {/* #4613: hero'ens højre hjørne bærer nu løbets TILSTAND, ikke en
-                genvejs-knap. Fanerne lige nedenfor har overtaget navigationen,
-                så "Hop til resultater"/"Gennemgå taktik" var to knapper der
-                pegede på noget der nu er ét klik væk. Chippen er ren visning —
-                sidens ENE guld-primær bor i den aktive fane. */}
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-data text-2xs font-semibold uppercase tracking-[.08em] whitespace-nowrap flex-none ${
-                statusChip.live
-                  ? "border-cz-danger/30 bg-cz-danger/10 text-cz-danger"
-                  : "border-cz-border bg-cz-subtle text-cz-2"
-              }`}
-            >
-              {statusChip.live && <span className="inline-block w-1.5 h-1.5 rounded-full bg-cz-danger" aria-hidden="true" />}
-              {statusChip.text}
-            </span>
-          </div>
-          {/* #7778 (valg 8): ingen bannere. #7865: tal-rækken og chippen står altid; med v6 og
-              en åben taktik står låse-fristen og sidens ene guld-knap i samme række som
-              tallene (rækken brydes kun på smal skærm), så hovedet ikke bliver højere. */}
-          {!v6Cta && (
             <div className="flex mt-5 pt-4 border-t border-cz-border overflow-x-auto">
               {statBlocks.map((b, i) => (
                 <HeroStatBlock key={b.label} label={b.label} value={b.value} sub={b.sub} last={i === statBlocks.length - 1} />
               ))}
             </div>
-          )}
-          {v6Cta && (
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mt-5 pt-4 border-t border-cz-border">
-              <div className="flex min-w-0 max-w-full overflow-x-auto">
-                {statBlocks.map((b, i) => (
-                  <HeroStatBlock key={b.label} label={b.label} value={b.value} sub={b.sub} last={i === statBlocks.length - 1} />
-                ))}
-              </div>
-              <div data-race-hero-action className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 sm:ms-auto sm:w-auto sm:justify-end">
-                <p className="m-0 font-data text-sm tabular-nums text-cz-2">
-                  {v6Cta.locksAt
-                    ? t(race.race_type === "stage_race" ? "racePageV6.hero.stageLocks" : "racePageV6.hero.locks", {
-                      number: v6Cta.stage, time: formatStageTime(v6Cta.locksAt, locale), countdown: countdownText(v6Cta.locksAt, nowMs, t),
-                    })
-                    : t("racePageV6.hero.notScheduled", { number: v6Cta.stage })}
-                </p>
-                <Button variant="primary" size="md" className="w-full sm:w-auto" onClick={() => openV2Tactics(v6Cta.stage)}>
-                  {race.race_type === "stage_race"
-                    ? t("stagePageV2.cta.setTactics", { number: v6Cta.stage, done: v6Cta.done, total: v6Cta.total })
-                    : t("stagePageV2.cta.setTacticsOneDay", { done: v6Cta.done, total: v6Cta.total })}
-                </Button>
-              </div>
-            </div>
-          )}
-        </section>
+          </section>
+        )}
       </div>
 
-      <div className={`${pageWidth} mx-auto pt-5 px-4 md:px-8 pb-24 md:pb-16`}>
+      <div className={`${pageWidth} mx-auto ${v6 ? "pt-0" : "pt-5"} px-4 md:px-8 pb-24 md:pb-16`}>
         <div className="flex flex-col gap-[14px]">
 
-          <Suspense fallback={null}>
+          {/* Udgave E: mens v6-rammen hentes, står hovedkortet allerede (striben med
+              sin højde reserveret), så hovedet ikke hopper. */}
+          <Suspense fallback={v6Hero ? <V6RaceHeroCard hero={v6Hero} strip={v2IsStageRace && totalStages >= 2 ? <div aria-hidden="true" className={V6_STRIP_RESERVED_CLASS} /> : null} /> : null}>
             {v6
               ? <RacePageV6 {...stagePageProps} activeTab={v6Tab} renderResults={renderV6Results} tacticsStageRequest={v2TacticsStage} loadStage={startStageFetch}
                   stageStateFor={(n) => stageFetchState(n, { loaded: loadedStages, failed: failedStages })} stageErrorFor={stageLoadErrorFor}
-                  renderTactics={(n) => renderTabContent("tactics", { v6Stage: n })} />
+                  renderTactics={(n) => renderTabContent("tactics", { v6Stage: n })}
+                  hero={v6Hero} onOpenStage={openV6Stage} whenLabelFor={(d) => v6WhenLabel(d, nowMs, locale)} />
               : stagePageV2El}
           </Suspense>
         </div>

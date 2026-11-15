@@ -4,6 +4,8 @@ import { tabClass, tabListClass } from "./tabsStyles.js";
 const TabsContext = createContext(null);
 // #5485: `fit` saettes paa TabList og gaelder alle dens faner (se tabsStyles.js).
 const TabListFitContext = createContext(false);
+// #7778 udgave E: `accent` paa TabList = guld-tekst paa den aktive fane (tabsStyles.js).
+const TabListAccentContext = createContext(false);
 
 export function Tabs({ value, onChange, className = "", children }) {
   return (
@@ -15,7 +17,7 @@ export function Tabs({ value, onChange, className = "", children }) {
 
 // #4625 (slice 3 af #4622) — WAI-ARIA tabs-mønsteret i fuld: Left/Right flytter
 // ét tab, Home/End hopper til første/sidste (audit-krav "tastaturnavigation").
-export function TabList({ label, className = "", fit = false, children }) {
+export function TabList({ label, className = "", fit = false, accent = false, children }) {
   const listRef = useRef(null);
   const onKeyDown = (e) => {
     if (!["ArrowRight", "ArrowLeft", "Home", "End"].includes(e.key)) return;
@@ -40,14 +42,18 @@ export function TabList({ label, className = "", fit = false, children }) {
       onKeyDown={onKeyDown}
       className={tabListClass({ className, fit })}
     >
-      <TabListFitContext.Provider value={fit}>{children}</TabListFitContext.Provider>
+      <TabListFitContext.Provider value={fit}>
+        <TabListAccentContext.Provider value={accent}>{children}</TabListAccentContext.Provider>
+      </TabListFitContext.Provider>
     </div>
   );
 }
 
-export function Tab({ value: tabValue, className = "", children }) {
+// #7778: `id` (valgfri) lader et panel pege paa fanen med aria-labelledby.
+export function Tab({ value: tabValue, className = "", id = undefined, children }) {
   const ctx = useContext(TabsContext);
   const fit = useContext(TabListFitContext);
+  const accent = useContext(TabListAccentContext);
   const active = ctx?.value === tabValue;
   const ref = useRef(null);
 
@@ -80,12 +86,13 @@ export function Tab({ value: tabValue, className = "", children }) {
   return (
     <button
       ref={ref}
+      id={id}
       type="button"
       role="tab"
       aria-selected={active}
       tabIndex={active ? 0 : -1}
       onClick={() => ctx?.onChange?.(tabValue)}
-      className={`${tabClass({ active, fit })} ${className}`}
+      className={`${tabClass({ active, fit, accent })} ${className}`}
     >
       {children}
     </button>

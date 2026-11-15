@@ -11,7 +11,14 @@
     "hero": {
       "stageLocks": "Stage {number} locks at {time} · {countdown}",
       "locks": "Locks at {time} · {countdown}",
-      "notScheduled": "Stage {number} has no start time yet"
+      "notScheduled": "Stage {number} has no start time yet",
+      "gapToLead": "{gap} to the lead"
+    },
+    "strip": {
+      "earlier": "Earlier stages",
+      "later": "Later stages",
+      "you": "You #{rank}",
+      "plan": "{done} of {total} done"
     },
     "route": {
       "aria": "Stage route",

@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  RACE_PAGE_V6_TABS, resolveV6Tab, tacticsAfterView, tacticsCta, v6BodyIsWide, v6ResultsPhase, v6Strip, v6Tabs, v6TacticsResults, v6TacticsStage,
+  RACE_PAGE_V6_TABS, resolveV6Tab, tacticsAfterView, tacticsCta, v6BodyIsWide, v6ResultsPhase, v6StageTabFor, v6Strip, v6Tabs, v6TacticsResults, v6TacticsStage,
 } from "./racePageV6Model.ts";
 
 // Linjeskift normaliseres, saa kildeproeverne virker med CRLF-checkout (Windows) og LF (CI).
@@ -67,14 +67,20 @@ test("#7865: hovedets knap afhaenger ikke af den valgte etape (samme indhold uan
   assert.match(detail, /heroProfile \? profileLabelKey\(heroProfile\.profile_type\)/, "terraenet foelger loebets etape");
 });
 
-test("#7865: statuschippen og tal-raekken staar ogsaa med en aaben taktik; fristen og knappen i samme raekke", () => {
+test("udgave E: talraekken, fristen og den ene guld-knap staar i samme raekke af hovedkortet", () => {
   const detail = read("../../../pages/RaceDetailPage.jsx");
-  assert.doesNotMatch(detail, /\{!v6Cta && <span/, "chippen skjules ikke laengere");
-  const v6Row = detail.slice(detail.indexOf("{v6Cta && (\n            <div className=\"flex flex-wrap"), detail.indexOf("</section>"));
-  assert.match(v6Row, /statBlocks\.map/, "tallene staar i raekken med knappen");
-  assert.match(v6Row, /data-race-hero-action/);
-  assert.match(v6Row, /variant="primary"/);
+  const start = detail.indexOf("const v6Hero = v6 ? {");
+  const v6Hero = detail.slice(start, detail.indexOf("} : null;\n", detail.indexOf("} : null,", start) + 1));
+  assert.match(v6Hero, /stats: statBlocks/, "talraekken er sidens egne tal");
+  assert.match(v6Hero, /onClick: \(\) => openV2Tactics\(v6Cta\.stage\)/);
+  assert.doesNotMatch(v6Hero, /statusChip/, "ingen statuschip i v6-hovedet (valg 22)");
   assert.match(detail, /\.\.\.\(nextStart && !v6Cta \? \[/, "fristen staar ikke to gange");
+  const card = read("./V6RaceHeroCard.tsx");
+  const row2 = card.slice(card.indexOf("<HeroStats flush"), card.indexOf("{strip}"));
+  assert.match(row2, /data-race-hero-action/);
+  assert.equal(card.match(/variant="primary"/g)?.length, 1, "een guld-knap");
+  assert.match(card, /border-t-2 border-t-cz-accent/, "T3-heroens guld-streg");
+  assert.doesNotMatch(card, /shadow|bg-cz-danger|text-cz-danger/, "ingen skygge og ingen roed status-pille");
 });
 
 // ── #7865 punkt 2: een etapevaelger ──
@@ -83,11 +89,15 @@ test("#7865: een etapestribe; paa Taktik foelger den Taktik-fanens etape og styr
   assert.deepEqual(v6Strip({ activeTab: "tactics", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 3, target: "tactics" });
   assert.deepEqual(v6Strip({ activeTab: "results", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 1, target: "page" });
   assert.deepEqual(v6Strip({ activeTab: "stage", isStageRace: true, selectedStage: 2, tacticsStage: 3 }), { selected: 2, target: "page" });
-  assert.equal(v6Strip({ activeTab: "standings", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), null);
-  assert.equal(v6Strip({ activeTab: "team", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), null);
+  // Udgave E: striben er hovedkortets bund og staar paa alle faner; fra Stillinger og Hold aabner den etapen.
+  assert.deepEqual(v6Strip({ activeTab: "standings", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 1, target: "open" });
+  assert.deepEqual(v6Strip({ activeTab: "team", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 1, target: "open" });
+  assert.equal(v6StageTabFor(2, 3), "results");
+  assert.equal(v6StageTabFor(4, 3), "stage");
   assert.equal(v6Strip({ activeTab: "tactics", isStageRace: false, selectedStage: 1, tacticsStage: 1 }), null);
   const page = read("./RacePageV6.tsx");
-  assert.equal(page.match(/<StageStripV2 /g)?.length, 1, "kun een stribe i v6-rammen");
+  assert.equal(page.match(/<V6StageStrip /g)?.length, 1, "kun een stribe i v6-rammen");
+  assert.doesNotMatch(page, /<StageStripV2 /);
   const detail = read("../../../pages/RaceDetailPage.jsx");
   assert.match(detail, /renderTactics=\{\(n\) => renderTabContent\("tactics", \{ v6Stage: n \}\)\}/);
   assert.match(detail, /stage=\{v6Stage\}/);
@@ -148,7 +158,7 @@ test("#7865: kun v6's egen resultatvisning er bred; de genbrugte faner staar paa
   for (const tab of ["stage", "standings", "tactics", "team"] as const) assert.equal(v6BodyIsWide({ activeTab: tab, isStageRace: true }), false, tab);
   assert.equal(v6BodyIsWide({ activeTab: "results", isStageRace: false }), false, "endagsloebets resultat er den gamle visning");
   const page = read("./RacePageV6.tsx");
-  assert.match(page, /className="w-full max-w-5xl"/);
+  assert.match(page, /"w-full max-w-5xl"/);
 });
 
 // ── PR #8173-review: Taktik-fanens etape og etapens resultater ──

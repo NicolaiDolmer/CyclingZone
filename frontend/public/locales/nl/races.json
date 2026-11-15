@@ -11,7 +11,14 @@
     "hero": {
       "stageLocks": "Etappe {number} sluit om {time} · {countdown}",
       "locks": "Sluit om {time} · {countdown}",
-      "notScheduled": "Etappe {number} heeft nog geen starttijd"
+      "notScheduled": "Etappe {number} heeft nog geen starttijd",
+      "gapToLead": "{gap} op de leider"
+    },
+    "strip": {
+      "earlier": "Eerdere etappes",
+      "later": "Latere etappes",
+      "you": "Jij #{rank}",
+      "plan": "{done} van {total} klaar"
     },
     "route": {
       "aria": "Parcours van de etappe",

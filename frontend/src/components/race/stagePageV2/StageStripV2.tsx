@@ -14,7 +14,8 @@ export interface StripStage {
   myBest: { rank: number; name: string } | null;
 }
 
-function Mini({ profile, active }: { profile: StageProfile | null; active: boolean }) {
+/** Etapens lille profil. #7778 udgave E genbruger den i v6's etapestribe (V6StageStrip). */
+export function Mini({ profile, active, className = "block h-7 w-full" }: { profile: StageProfile | null; active: boolean; className?: string }) {
   const path = useMemo(() => {
     const s = elevationSeries(profile);
     if (!s) return null;
@@ -29,7 +30,7 @@ function Mini({ profile, active }: { profile: StageProfile | null; active: boole
     return `M0,30 ${pts.join(" ")} L100,30 Z`;
   }, [profile]);
   return (
-    <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="block h-7 w-full" aria-hidden="true">
+    <svg viewBox="0 0 100 30" preserveAspectRatio="none" className={className} aria-hidden="true">
       {path
         ? <path d={path} fill={active ? "rgb(var(--climb-grad-3))" : "var(--text-3)"} fillOpacity={active ? 0.9 : 0.35} />
         : <line x1={0} x2={100} y1={26} y2={26} stroke="var(--text-3)" strokeOpacity={0.5} strokeWidth={2} vectorEffect="non-scaling-stroke" />}
