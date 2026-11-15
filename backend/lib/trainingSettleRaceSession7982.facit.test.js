@@ -21,6 +21,7 @@ import {
   TEAM, SEASON, DIVISION, RACE, DATE1, DAYS1, EVENING_AT, rider,
 } from "./trainNowSameResult7982.harness.js";
 import { runRaceSessionSettlement } from "./trainingSettleRaceSession7982.js";
+import { mergeDevelopmentSnapshots } from "./riderDevelopmentReceipt.js";
 
 const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 export const STAGE_DONE_AT = new Date("2026-11-09T16:30:00Z");
@@ -240,6 +241,43 @@ if (IS_MAIN) {
       assert.deepEqual(plain(earlyReceipts), plain(lateReceipts), "pr. kvittering: gevinster, score, intensitet, status");
       // Kvitteringens oejebliksbilleder: praecis de maalte forskelle.
       assert.deepEqual(receiptFieldsThatDiffer(lateNumbers, earlyNumbers), FACIT_RECEIPT_FIELDS_THAT_DIFFER[name]);
+    });
+  }
+
+  // Fable-dom 15/11, fund 2: facit ovenfor giver ingen evnepoint. Her staar alle ryttere taet paa et
+  // point, saa datoen giver rigtige point. Maalt 15/11: pointene er ens i alle tilfaelde; kun
+  // fremgangen mod naeste point (ability_progress og dens spor i loebsdags-historikken) afviger,
+  // med under 1/1000 point, fordi raekkefoelgen styrer dato-loftet. Laast praecis saadan.
+  const NEAR_POINT = { climbing: 0.97, sprint: 0.98, flat: 0.96, endurance: 0.99, punch: 0.97, tt: 0.97, recovery: 0.98 };
+  const withoutProgress = (rows) => JSON.stringify(rows, (k, v) => (k === "ability_progress" ? undefined : v));
+  const largestNumberGap = (x, y) => {
+    if (typeof x === "number" && typeof y === "number") return Math.abs(x - y);
+    if (!x || typeof x !== "object") return 0;
+    return Math.max(0, ...Object.keys(x).map((k) => largestNumberGap(x[k], y?.[k])));
+  };
+  const totalGains = (n) => n.receipts.reduce((sum, r) => sum + Object.values(r.report.gains ?? {}).reduce((a, g) => a + (Number(g) || 0), 0), 0);
+  for (const [name, spec] of FACIT_CASES) {
+    test(`facit taet paa et point: ${name}`, async () => {
+      const setup = (s) => { spec.setup?.(s); for (const r of s.rider_derived_abilities) r.ability_progress = { ...NEAR_POINT }; };
+      const { late, early, lateNumbers: L, earlyNumbers: E } = await runBoth({ ...spec, setup });
+      assert.ok(totalGains(L) > 0, "datoen giver rigtige evnepoint");
+      assert.equal(totalGains(E), totalGains(L), "samme antal point i alt");
+      assert.equal(withoutProgress(E.abilities), withoutProgress(L.abilities), "evnerne er ens point for point");
+      for (const key of ["condition", "history", "loads", "scores", "settlements", "work"]) {
+        assert.equal(digest(E[key]), digest(L[key]), `${key} er ens`);
+      }
+      assert.ok(largestNumberGap(L.abilities, E.abilities) < 1e-3, "fremgangen afviger hoejst 1/1000 point");
+      // Loebsdags-historikken er billeder i den raekkefoelge, sessionerne blev gemt, saa hvilken
+      // loebsdag et billede staar paa, kan flytte. Det spilleren ser, er laesesidens flettede
+      // historik (mergeDevelopmentSnapshots): den skal vise samme slut-tilstand pr. rytter og dato.
+      // Raekkerne faar created_at i den raekkefoelge, de blev gemt (stedfortraederen saetter ingen).
+      const shownPerRider = (state) => {
+        const rows = state.rider_ability_race_day_history.map((r, i) => ({ ...r, created_at: new Date(Date.UTC(2026, 10, 9, 0, 0, i)).toISOString() }));
+        const ids = [...new Set(rows.map((r) => r.rider_id))].sort();
+        return JSON.stringify(ids.map((id) => [id, mergeDevelopmentSnapshots([], rows.filter((r) => r.rider_id === id)).map((r) => [r.snapshot_date, r.abilities])]));
+      };
+      assert.equal(Object.keys(E.raceDayHistory ?? {}).length, Object.keys(L.raceDayHistory ?? {}).length, "samme antal loebsdags-billeder");
+      assert.equal(shownPerRider(early.state), shownPerRider(late.state), "udviklingshistorikken viser samme slut-tilstand");
     });
   }
 
