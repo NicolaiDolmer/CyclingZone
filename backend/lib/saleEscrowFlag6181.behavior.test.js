@@ -422,7 +422,7 @@ for (const [index, [name, raw, enabled]] of CASES.filter(([, , on]) => !on).entr
     const n = CASES.length + 1 + index; // egen rytter, uden om tabellen for SQL-beviset
     // Saelget, mens kontakten var taendt. (SQL-beviset ovenfor kan have efterladt andre holdte salg.)
     await setDbFlag(db, "on");
-    const lockedBefore = (await loadLockedSalesForTeam(supabase, TEAM.A)).total;
+    const lockedBefore = (await loadLockedSalesForTeam(supabase, TEAM.A, { now: new Date(FLUSHED_AT) })).total;
     assert.equal(await isSaleEscrowEnabled(supabase), true);
     const { rider, deal } = await sellParkedRider(db, supabase, n);
     assert.deepEqual(await escrowRows(db, deal), [{ status: "held", amount: PRICE }]);
@@ -433,7 +433,7 @@ for (const [index, [name, raw, enabled]] of CASES.filter(([, , on]) => !on).entr
     assert.equal(await isSaleEscrowEnabled(supabase), enabled);
 
     // Visningen er ikke bag kontakten: saelgeren ser sit laaste salg, admin ser raekken.
-    const locked = await loadLockedSalesForTeam(supabase, TEAM.A);
+    const locked = await loadLockedSalesForTeam(supabase, TEAM.A, { now: new Date(FLUSHED_AT) });
     assert.equal(locked.total, lockedBefore + PRICE, "laast beloeb vises");
     assert.equal(locked.sales.filter((sale) => sale.amount === PRICE).length >= 1, true);
     const held = (await listHeldSaleEscrowsForAdmin(supabase)).filter((e) => e.deal_id === deal);
@@ -452,7 +452,7 @@ for (const [index, [name, raw, enabled]] of CASES.filter(([, , on]) => !on).entr
     assert.equal(result.failed, 0);
     assert.equal(await balance(db, TEAM.A), sellerHeld + PRICE, "saelger faar pengene");
     assert.deepEqual(await escrowRows(db, deal), [{ status: "released", amount: PRICE }]);
-    assert.equal((await loadLockedSalesForTeam(supabase, TEAM.A)).total, lockedBefore, "intet af dette salg staar laast mere");
+    assert.equal((await loadLockedSalesForTeam(supabase, TEAM.A, { now: new Date(FLUSHED_AT) })).total, lockedBefore, "intet af dette salg staar laast mere");
     // Penge opstaar eller forsvinder aldrig.
     assert.equal(await balance(db, TEAM.A) + await balance(db, TEAM.B) + Number((await one(db, "SELECT coalesce(sum(amount), 0) AS t FROM sale_escrows WHERE status = 'held'")).t), 2 * START);
   });
