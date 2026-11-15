@@ -69,15 +69,15 @@ export function checkChoice({
 export function issueMessage(issue: ChoiceIssue): { key: string; price: number | null } {
   switch (issue.code) {
     case "empty":
-      return { key: "buyerCard8016.errorEmpty", price: null };
+      return { key: "buyerCard.errorEmpty", price: null };
     case "bidFromAutoPrice":
-      return { key: "buyerCard8016.errorBidFromAuto", price: issue.price };
+      return { key: "buyerCard.errorBidFromAuto", price: issue.price };
     case "auctionBelowAutoPrice":
-      return { key: "buyerCard8016.errorAuctionMinimum", price: issue.price };
+      return { key: "buyerCard.errorAuctionMinimum", price: issue.price };
     case "auctionAmountInvalid":
-      return { key: "buyerCard8016.errorAuctionAmount", price: null };
+      return { key: "buyerCard.errorAuctionAmount", price: null };
     case "duration":
-      return { key: "buyerCard8016.errorDuration", price: null };
+      return { key: "buyerCard.errorDuration", price: null };
   }
 }
 
@@ -101,11 +101,11 @@ export function summaryFor({
   hours: string;
   minutes: string;
 }): { key: string; amount: number; length: { hours: number; minutes: number } | null } {
-  if (mode === "bid") return { key: "buyerCard8016.summaryBid", amount, length: null };
-  return { key: "buyerCard8016.summaryAuction", amount, length: lengthParts(hours, minutes) };
+  if (mode === "bid") return { key: "buyerCard.summaryBid", amount, length: null };
+  return { key: "buyerCard.summaryAuction", amount, length: lengthParts(hours, minutes) };
 }
 
 // Den ene guld-knaps tekst foelger valget.
 export function primaryLabelKey(mode: BuyerMode): string {
-  return mode === "bid" ? "buyerCard8016.sendBid" : "buyerCard8016.startAuction";
+  return mode === "bid" ? "buyerCard.sendBid" : "buyerCard.startAuction";
 }
