@@ -10,6 +10,7 @@ import { FINANCE_ACTOR_TYPE, FINANCE_REASON, FINANCE_RELATED_ENTITY } from './ec
 import { getSquadRiskViolation, MIN_RIDERS_FOR_RACE, SELLER_SQUAD_FLOOR, sellerFloorRiskIds } from './marketUtils.js';
 import { computeReleaseBuyoutFee } from './contractSeed.js';
 import { getParkedRiderReleaseIssue } from './parkedRiderGuard6181.js';
+import { releaseDeferContext8153, getPendingReleaseTradeIssue, countPendingReleasesForTeam, orderPendingRelease } from './riderReleaseDefer8153.js'; // #8153: aegte vagter, kontakten er slukket i fixturen
 import { releaseFeeAvailableResponse6181 } from './releaseFeeGate6181.js';
 import { isLateBidTriggerError } from './auctionEngine.js';
 import { buildKeyedNotification } from './notificationKeys.js';
@@ -73,7 +74,7 @@ function fixture({ flag = 'off', autoFlag = 'off', flagError = false, proxyError
         }
         if (table==='app_config') {
           const key = filters.find(([column]) => column === 'key')?.[1];
-          const value = key === 'auto_accept_enabled' ? autoFlag : flag;
+          const value = key === 'auto_accept_enabled' ? autoFlag : key === 'release_defer_8153' ? 'off' : flag; // #8153: egen kontakt, slukket her
           return { data: flagError ? null : {value}, error:flagError ? {message:'flag unavailable'} : null };
         }
         if (table==='auctions') return { data:single ? (filters.some(f=>f[0]==='rider_id') ? null : structuredClone(auction)) : [], count:0,error:null };
@@ -151,6 +152,7 @@ function fixture({ flag = 'off', autoFlag = 'off', flagError = false, proxyError
     fetchOwnProxiesByAuctionId:async()=>new Map(),
     safePauseTransferListingsForAuction:async()=>{},logActivity:async()=>{},notifyNewAuction:async()=>{},
     loadOwnedSeniorRiderForAction:async()=>({rider}),getParkedRiderReleaseIssue,releaseFeeAvailableResponse6181,
+    releaseDeferContext8153,getPendingReleaseTradeIssue,countPendingReleasesForTeam,orderPendingRelease, // #8153
     assertRiderNotOnActiveAuction:async()=>({}),computeReleaseBuyoutFee,
     fetchAtRiskRiders:async()=>[],getSquadRiskViolation,
     buildAtRiskErrorParams:issue=>({minRiders:issue.minRiders}),invalidateNamespace(){},
