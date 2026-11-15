@@ -1,5 +1,28 @@
 export const PATCHES = [
 {
+  "version": "7.449",
+  "date": "2026-11-15",
+  "changes": [
+    {
+      "category": "changed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Transfers",
+      "en": {
+        "title": "Sale money arrives when the rider moves",
+        "body": "When you sell a rider, the money is now held until the rider actually moves to the new team. Until then you cannot spend the money. If the move is cancelled, the buyer gets the money back."
+      },
+      "da": {
+        "title": "Salgssummen kommer, når rytteren skifter",
+        "body": "Når du sælger en rytter, holdes pengene nu tilbage, til rytteren faktisk skifter hold. Indtil da kan du ikke bruge pengene. Bliver skiftet annulleret, får køberen pengene tilbage."
+      },
+      "refs": [
+        6181
+      ]
+    }
+  ]
+},
+{
   "version": "7.448",
   "date": "2026-11-15",
   "changes": [
