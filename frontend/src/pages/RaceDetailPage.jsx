@@ -87,7 +87,6 @@ import { fetchStageProfiles } from "../components/race/stagePageV2/stageProfiles
 import { useRacePageV6Enabled } from "../components/race/v6/racePageV6Flag.ts"; // #7778
 import { resolveV6Tab, tacticsCta, v6Overall, v6WhenLabel } from "../components/race/v6/racePageV6Model.ts"; // #7778
 import V6RaceHeroCard, { V6_STRIP_RESERVED_CLASS } from "../components/race/v6/V6RaceHeroCard.tsx"; // #7778 udgave E
-import V6ResultsControls, { V6ResultsNoMatch } from "../components/race/v6/V6ResultsControls.tsx"; // #7860
 import { EMPTY_RESULTS_CONTROLS, filterResultRows, isFiltering, mineOnlyFromTeamFilter, sharedMineControls, teamFilterAfterMineToggle } from "../components/race/v6/resultsControlsModel.ts"; // #7860 #7865
 
 // #3914: FinalKilometrePlayback vises nu bag en stille knap (StoryOfTheStage-
@@ -102,6 +101,11 @@ const FinalKilometrePlayback = lazyWithRetry(() => import("../components/race/Fi
 const StagePageV2 = lazyWithRetry(() => import("../components/race/stagePageV2/StagePageV2.tsx"));
 // #7778: løbssiden v6 trin 1 bag kontakten race_page_v6 (eget chunk; slukket = uændret side).
 const RacePageV6 = lazyWithRetry(() => import("../components/race/v6/RacePageV6.tsx"));
+// #7860/#7865: soegefeltet i resultaterne vises kun med v6 taendt, saa det ligger i sin egen pakke
+// (loebssidens pakke laa 0,1 KB over loftet). Pladsen holdes, mens det hentes.
+const loadV6ResultsControls = () => import("../components/race/v6/V6ResultsControls.tsx");
+const V6ResultsControls = lazyWithRetry(loadV6ResultsControls);
+const V6ResultsNoMatch = lazyWithRetry(() => loadV6ResultsControls().then((m) => ({ default: m.V6ResultsNoMatch })));
 
 // #959 Etape-resultater V1 — detaljeret pr.-etape-visning.
 //
@@ -2438,10 +2442,12 @@ function ResultTable({ title, rows: allRows, highlightWinner = false, highlightT
       />
       {/* #7865: står også, når et aktivt Mit hold-valg tømmer listen, så det kan slås fra igen. */}
       {searchable && (allCount > 0 || isFiltering(mineControls.shown)) && (
-        <V6ResultsControls state={mineControls.shown} onChange={(next) => setLocalControls(mineControls.change(next))} counting={filtering} hasMyTeam={myOwnTeamId != null} shown={totalCount} total={allCount} />
+        <Suspense fallback={<div aria-hidden="true" className="mb-3 min-h-11" />}>
+          <V6ResultsControls state={mineControls.shown} onChange={(next) => setLocalControls(mineControls.change(next))} counting={filtering} hasMyTeam={myOwnTeamId != null} shown={totalCount} total={allCount} />
+        </Suspense>
       )}
       {totalCount === 0 ? (
-        searchable && isFiltering(mineControls.shown) ? <V6ResultsNoMatch /> : <p className="text-center text-cz-3 text-sm py-6">{t("detail.noResults")}</p>
+        searchable && isFiltering(mineControls.shown) ? <Suspense fallback={null}><V6ResultsNoMatch /></Suspense> : <p className="text-center text-cz-3 text-sm py-6">{t("detail.noResults")}</p>
       ) : (
         <div className={WRAP}>
           <div className={SCROLLER}>
