@@ -2124,7 +2124,7 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
   releaseTeamState.at_risk_count = releaseAtRiskRiders.length;
   const releaseMarketGateApplied = await applySellerOutgoingAuctions6181(supabase, releaseTeamState, rider.id, { seasonNumber: currentSeason }); // #6181 PR 5
 
-  const releaseRiskViolation = getSquadRiskViolation(releaseTeamState, { outgoingCount: 1 + (releaseDefer ? await countPendingReleasesForTeam(supabase, req.team.id) : 0) + (releaseMarketGateApplied ? 0 : await countSellerAuctionOutgoing(supabase, req.team.id, { skipRiderIds: [rider.id, ...releaseAtRiskRiders.map((r) => r.id)] })) }); // #2176: only fallback when M3 did not count it
+  const releaseRiskViolation = getSquadRiskViolation(releaseTeamState, { outgoingCount: 1 + (releaseDefer ? await countPendingReleasesForTeam(supabase, req.team.id, { excludeRiderIds: releaseAtRiskRiders.map((r) => r.id) }) : 0) + (releaseMarketGateApplied ? 0 : await countSellerAuctionOutgoing(supabase, req.team.id, { skipRiderIds: [rider.id, ...releaseAtRiskRiders.map((r) => r.id)] })) }); // #2176: only fallback when M3 did not count it
   if (releaseRiskViolation) {
     return res.status(409).json({
       error: `You can't drop below ${releaseRiskViolation.minRiders} riders once contract expiry and retirement risk at the next season change are counted`,

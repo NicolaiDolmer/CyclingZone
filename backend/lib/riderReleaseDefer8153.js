@@ -292,8 +292,6 @@ export async function countPendingReleasesForTransition(supabase) {
 /**
  * Bestil frigivelsen (POST /riders/:id/release med kontakten taendt og rytteren i
  * et aktivt etapeloeb). Gebyret traekkes i samme transaktion som raekken oprettes.
- *
- * @param {any} supabase
  * Truppens gulv regnes som i auto_accept_release_rider (SELLER_SQUAD_FLOOR og
  * risiko-rytterne); de ventende frigivelser taeller som afgaaende i SQL.
  *
