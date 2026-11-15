@@ -61,6 +61,7 @@ const get = async (query, label) => {
 const [team] = await get(setup.from("teams").select("id, league_division_id").eq("id", teamId).limit(1), "team");
 if (!team) throw new Error("holdet findes ikke");
 const [season] = await get(setup.from("seasons").select("id").eq("status", "active").limit(1), "saeson");
+// pagination-safe: one team roster (senior + academy), far below the 1000-row cap.
 const riderIds = (await get(setup.from("riders").select("id").eq("team_id", teamId).eq("is_retired", false), "ryttere")).map((r) => r.id);
 const conditions = await get(setup.from("rider_condition").select("*").in("rider_id", riderIds), "tilstande");
 const abilities = await get(setup.from("rider_derived_abilities").select("*").in("rider_id", riderIds), "evner");
