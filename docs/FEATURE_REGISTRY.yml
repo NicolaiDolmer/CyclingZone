@@ -649,13 +649,12 @@ features:
     area: market
     title_en: Auto-accept price
     title_da: Auto-accept-pris
-    state: beta
+    state: live
     flag: auto_accept_enabled
     ssot: docs/TRANSFER_MARKET_RULES.md
     epic: 2176
-    verified: 2026-11-12
-    decision: taend
-    decide_by: 2026-11-28
+    verified: 2026-11-15
+    note: Taendt for alle 15/11 efter ejerens "koer" (auto_accept_enabled = on, patch note 7.450, Fable-gentjek foer taending). Foerste auktion startet af en ikke-betatester mangler endnu som bevis.
     roadmap_en: "Set an auto-accept price on a listed rider: when someone hits it, a short public auction starts at once."
     roadmap_da: "Sæt en auto-accept-pris på en listet rytter: rammer nogen den, starter en kort offentlig auktion med det samme."
 
