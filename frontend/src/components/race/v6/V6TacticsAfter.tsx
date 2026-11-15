@@ -62,7 +62,8 @@ function triggerText(t: TFn, climbs: ReadonlyArray<{ index: number; name: string
 
 function endText(t: TFn, climbs: ReadonlyArray<{ index: number; name: string | null; category: string }>, step: PlanStep): string | null {
   const end = step.end;
-  if (!end) return null;
+  // "Til mål" gentager blot linjen over (placeringen eller "kom i mål"), så den udelades.
+  if (!end || end.reason === "finish") return null;
   if (end.reason === "kom") return t("stagePlan.recap.kom", { climb: climbName(t, climbs, end.komIndex) });
   return t(`stagePlan.recap.${end.reason}`, { km: end.km == null ? "—" : Math.round(end.km) });
 }
