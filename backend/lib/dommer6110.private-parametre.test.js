@@ -46,7 +46,7 @@ const TRAEN_NU = 1.15; // ejer 7/11
 // regel i motoren (validPriceFloor), kun i dommerens proeve. Fable-dom 15/11 maalte, at
 // motoren foerst er fri for +3 ved en graense et stykke over denne; ejeren vaelger mellem
 // en hoejere graense og en anden loesning (fx en hoejere bund-pris).
-const LAV_EVNE_GRAENSE = MEGET_LAV_EVNE;
+const LAV_EVNE_GRAENSE = 40; // ejervalg 15/11 (#6110): graensen for lave evner
 
 async function laesParametre() {
   if (!existsSync(FIL)) return null;
