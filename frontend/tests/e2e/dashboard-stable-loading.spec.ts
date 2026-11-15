@@ -273,7 +273,9 @@ test('#8019 the resolved default preserves an explicit or manually selected empt
 test('#8019 a long balance wraps honestly without horizontal page overflow', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.route('**/rest/v1/teams?**', route => {
-    if (new URL(route.request().url()).searchParams.get('select')?.replaceAll(' ', '') !== 'id,balance,division') return route.fallback();
+    // #6494: the market reads the team through the shared viewer bootstrap (select=*, user_id).
+    const params = new URL(route.request().url()).searchParams;
+    if (params.get('select') !== '*' || !params.has('user_id')) return route.fallback();
     return json(route, { ...TEST_TEAM, balance: 123456789012345 });
   });
   await page.goto('/auctions?tab=all');
@@ -303,7 +305,7 @@ test('#8019 completing the last owned auction preserves the initial Mine tab', a
         const changes = (payload.config?.postgres_changes ?? []).map((change: Record<string, unknown>, i: number) => ({ ...change, id: i + 1 }));
         socket.send(JSON.stringify([joinRef, ref, topic, 'phx_reply', { status: 'ok', response: { postgres_changes: changes } }]));
         if (topic === 'realtime:auctions-live') {
-          const auctionChange = changes.find((change: { table: string; event: string }) => change.table === 'auctions' && change.event === 'UPDATE');
+          const auctionChange = changes.find((change: { table: string; event: string }) => change.table === 'auctions' && (change.event === 'UPDATE' || change.event === '*'));
           complete = () => socket.send(JSON.stringify([joinRef, null, topic, 'postgres_changes', {
             ids: [auctionChange.id], data: { schema: 'public', table: 'auctions', type: 'UPDATE',
               commit_timestamp: '2026-11-11T12:01:00Z', columns: [], old_record: owned, record: { ...owned, status: 'completed' } },
