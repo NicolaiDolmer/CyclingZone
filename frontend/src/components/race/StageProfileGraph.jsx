@@ -84,10 +84,11 @@ export default function StageProfileGraph({
   const padL = Math.ceil(fs * 2.4);
   const padR = Math.ceil(fs * 1.2);
   const labelRows = [];
+  const labelWidths = [];
   if (narrow && full) {
     const rowEnd = [-Infinity, -Infinity];
     const distance = Number(profile.distance_km);
-    for (const c of series.climbs) {
+    for (const c of /** @type {any[]} */ (series.climbs)) {
       const cx = padL + (c.crest_km / distance) * (W - padL - padR);
       const lw = Math.max(String(c.name || "").length * fs * 0.68, fs * 5);
       const x0 = cx > W - padR - 64 || cx + lw / 2 > W - padR ? W - padR - lw
@@ -95,6 +96,7 @@ export default function StageProfileGraph({
       const row = rowEnd.findIndex((end) => x0 >= end + fs);
       if (row >= 0) rowEnd[row] = x0 + lw;
       labelRows.push(row);
+      labelWidths.push(lw);
     }
   }
   const rowStep = labelRows.includes(1) ? blockH : 0;
@@ -230,7 +232,7 @@ export default function StageProfileGraph({
         // grafens højre kant og løbe ~40 px udenfor — og det er præcis de
         // etaper hvor stigningen er dagens historie.
         const EDGE = 64;
-        const halfW = narrow ? Math.max(String(c.name || "").length * fs * 0.68, fs * 5) / 2 : 0;
+        const halfW = (labelWidths[i] ?? 0) / 2;
         const nearEnd = cx > W - p.r - EDGE || cx + halfW > W - p.r;
         const nearStart = cx < p.l + EDGE || cx - halfW < p.l;
         const textAnchor = nearEnd ? "end" : nearStart ? "start" : "middle";
