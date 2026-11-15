@@ -32,6 +32,27 @@
       "notRiddenTitle": "Maak je klaar voor etappe {number}",
       "notRiddenHint": "De uitslag staat hier zodra de etappe is gereden.",
       "openStage": "Bekijk de etappe"
+    },
+    "tacticsAfter": {
+      "title": "Jouw plan tegenover wat er gebeurde",
+      "metaStage": "Etappe {number}",
+      "metaRace": "De koers",
+      "intro": "Elke stap van je plan naast wat het verslag van de etappe laat zien. Een stap zonder iets in het verslag staat als niet gezien. Dat betekent niet dat het mislukte.",
+      "colPlan": "Jouw plan",
+      "colRecord": "Wat het verslag laat zien",
+      "step": "Stap {number}",
+      "km": "km {km}",
+      "noRiders": "Geen van je renners reed deze etappe.",
+      "mark": {
+        "notSeen": "Niet gezien in het verslag",
+        "notReached": "Niet bereikt"
+      },
+      "line": {
+        "attackFoot": "Valt aan aan de voet van de laatste klim",
+        "attackFootNamed": "Valt aan aan de voet van {climb}",
+        "attackHeld": "Houdt de aanval vol tot de top",
+        "attackCracked": "Raakt leeg na de aanval en wordt gelost"
+      }
     }
   },
   "stagePlanReady": {

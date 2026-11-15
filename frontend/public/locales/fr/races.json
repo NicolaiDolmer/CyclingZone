@@ -32,6 +32,27 @@
       "notRiddenTitle": "Prépare l'étape {number}",
       "notRiddenHint": "Les résultats s'affichent ici une fois l'étape courue.",
       "openStage": "Voir l'étape"
+    },
+    "tacticsAfter": {
+      "title": "Ton plan face à ce qui s'est passé",
+      "metaStage": "Étape {number}",
+      "metaRace": "La course",
+      "intro": "Chaque phase de ton plan à côté de ce que montre le relevé de l'étape. Une phase sans rien dans le relevé est marquée non vue. Cela ne veut pas dire qu'elle a échoué.",
+      "colPlan": "Ton plan",
+      "colRecord": "Ce que montre le relevé",
+      "step": "Phase {number}",
+      "km": "km {km}",
+      "noRiders": "Aucun de tes coureurs n'a couru cette étape.",
+      "mark": {
+        "notSeen": "Non vu dans le relevé",
+        "notReached": "Pas atteinte"
+      },
+      "line": {
+        "attackFoot": "Attaque au pied de la dernière montée",
+        "attackFootNamed": "Attaque au pied de {climb}",
+        "attackHeld": "Tient l'attaque jusqu'au sommet",
+        "attackCracked": "Se vide après l'attaque et est lâché"
+      }
     }
   },
   "stagePlanReady": {
