@@ -282,6 +282,12 @@ CREATE TABLE IF NOT EXISTS backup_8188_bonus_baseline (
   backed_up_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (store, row_id)
 );
+-- Kun backend: arkivet rummer holds private bestyrelsesmaal. RLS uden policies og ingen
+-- klient-grants, FOER der indsaettes noget (AGENTS regel 31, docs/DATA_API_GRANTS.md).
+-- data-api-access: {"table":"public.backup_8188_bonus_baseline","roles":{"anon":[],"authenticated":[],"service_role":["SELECT","INSERT"]},"reason":"Ops-arkiv af foer-vaerdier; kun backend"}
+ALTER TABLE backup_8188_bonus_baseline ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE backup_8188_bonus_baseline FROM PUBLIC, anon, authenticated, service_role;
+GRANT SELECT, INSERT ON TABLE backup_8188_bonus_baseline TO service_role;
 
 INSERT INTO backup_8188_bonus_baseline (store, row_id, team_id, goals_before, fix_rows)
 SELECT 'board_mandates', m.id::text, m.team_id, m.goals,
