@@ -138,11 +138,11 @@ export function FeatureFlagBoardView({ flags, saving = null, onSetStage }) {
                     {/* #6181: en binær nøgle læses kun som on; en skrevet "beta" er slukket for alle. */}
                     {flag.warning === "beta_reads_as_off" && (
                       <p className="text-cz-warning text-xs mt-0.5">
-                        Der står &quot;beta&quot; i app_config — nøglen er kun til/fra, så den læses som Fra for alle. Vælg Fra eller Til.
+                        Der står &quot;beta&quot; i app_config. Nøglen er kun til/fra, så den læses som Fra for alle. Vælg Fra eller Til.
                       </p>
                     )}
                     {flag.binary
-                      ? <p className="text-cz-3 text-xs mt-0.5">Kun til/fra — intet beta-stadie</p>
+                      ? <p className="text-cz-3 text-xs mt-0.5">Kun til/fra, intet beta-stadie</p>
                       : flag.boolean_only && (
                         <p className="text-cz-3 text-xs mt-0.5">Boolean-flag (gammelt skema) — intet beta-stadie</p>
                       )}
