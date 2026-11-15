@@ -4,6 +4,7 @@ import Button from "../../ui/Button.jsx";
 import { AlertTriangleIcon } from "../../ui/icons/index.jsx";
 import { formatCz } from "../../../lib/marketValues.js";
 import { RETIREMENT_GUARANTEED_AGE, RETIREMENT_WINDOW_START_AGE } from "../../../lib/riderAge.js";
+import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../../lib/reloadGate.js";
 import ConfirmRows from "./ConfirmRows.tsx";
 
 // #8016: bekraeftelsen af et bud paa listen. Samme raekker som auktionens
@@ -25,6 +26,9 @@ export default function BidConfirmDialog8016({
   onConfirm: () => void;
 }) {
   const { t } = useTranslation(["transfers", "auctions"]);
+  // #5159 (B1), som i BidConfirmModal: en aaben bekraeftelse venter paa spillerens
+  // svar, saa et release-drevet reload maa ikke lukke den (heller ikke under afsendelsen).
+  useReloadBlock(true, RELOAD_BLOCK_REASONS.DIALOG);
   const dismiss = () => {
     if (!busy) onCancel();
   };

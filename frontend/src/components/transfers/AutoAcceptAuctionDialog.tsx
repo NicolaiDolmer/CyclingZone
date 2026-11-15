@@ -21,6 +21,7 @@ import {
 } from "../../lib/autoAccept2176.ts";
 import type { AuctionTiming, AutoListing } from "../../lib/autoAccept2176.ts";
 import ConfirmRows from "./buyerCard8016/ConfirmRows.tsx";
+import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 export type { AutoListing } from "../../lib/autoAccept2176.ts";
 type Result = {
   ok: boolean;
@@ -61,6 +62,9 @@ export default function AutoAcceptAuctionDialog({
   onDone,
 }: Props) {
   const { t } = useTranslation("transfers");
+  // #8016: beloebet kommer nu fra kortet, saa fokus staar paa en knap og ikke i et
+  // felt; bekraeftelsen skal selv holde et release-drevet reload ude (#5159 B1).
+  useReloadBlock(true, RELOAD_BLOCK_REASONS.DIALOG);
   const [current, setCurrent] = useState<AutoListing | null>(listing);
   const [pending, setPending] = useState(false),
     [error, setError] = useState("");
