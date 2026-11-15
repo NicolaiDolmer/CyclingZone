@@ -33,14 +33,6 @@ const BOARD_DM_TYPES = new Set(["board_update", "board_critical"]);
  * @param {object}   deps.supabase            - Supabase service-role-klient.
  * @returns {(args: object) => Promise<object>} notifyUserWithBoardDM(args)
  */
-/**
- * #8196: besked KUN i spillet (ingen Discord-DM), men med samme kobling som
- * DM-udgaven: klienten laegges paa, fordi notificationService.notifyUser kraever den.
- */
-export function makeInAppBoardNotifier({ notifyUser, supabase }) {
-  return (args) => notifyUser({ supabase, ...args });
-}
-
 export function makeBoardDmNotifier({ notifyUser, notifyBoardUpdateDM, supabase }) {
   return async (args) => {
     const result = await notifyUser({ supabase, ...args });
@@ -71,4 +63,15 @@ export function makeBoardDmNotifier({ notifyUser, notifyBoardUpdateDM, supabase 
 
     return result;
   };
+}
+
+/**
+ * #8196: besked KUN i spillet (ingen Discord-DM), med samme kobling som DM-udgaven:
+ * klienten lægges på kaldet, fordi notificationService.notifyUser kræver den.
+ *
+ * @param {{ notifyUser: Function, supabase: unknown }} deps
+ * @returns {(args: Record<string, unknown>) => Promise<unknown>}
+ */
+export function makeInAppBoardNotifier({ notifyUser, supabase }) {
+  return (args) => notifyUser({ supabase, ...args });
 }
