@@ -20,7 +20,7 @@ import { adminFlagView } from "../../../../../backend/lib/adminFlagView6181.js";
 import { PLAYER_VISIBLE_BINARY_FLAG_KEYS, STAGE_FLAGS } from "../../../../../backend/lib/stageFlagCatalog.js";
 
 const STUB_PREFIX = "cz-stub:";
-const STUBS = {
+const STUBS: Record<string, string> = {
   useAdminAuth: "export const adminErrorMessage = () => '';",
   apiFetch: "export const apiFetch = async () => ({ ok: true, data: {} });",
 };
