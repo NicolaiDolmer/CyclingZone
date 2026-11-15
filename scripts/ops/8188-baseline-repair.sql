@@ -178,12 +178,27 @@ SELECT store,
        (correct_baseline IS NOT NULL
          AND stored_baseline_int IS NOT NULL
          AND correct_baseline < stored_baseline_int) AS would_lower,
-       -- BLOK 2 skriver KUN would_lower-raekker med match paa tilbuds-id.
+       -- Hoerer maalet til den aktive saesons mandat (eller er profilens spejling af det)?
+       (c.store = 'board_mandates'
+         OR EXISTS (
+           SELECT 1 FROM goal_rows gm
+           WHERE gm.store = 'board_mandates'
+             AND gm.team_id = c.team_id
+             AND gm.goal->>'bonus_offer_id' = c.goal->>'bonus_offer_id'
+         )) AS in_active_mandate,
+       -- BLOK 2 skriver KUN would_lower-raekker med match paa tilbuds-id i den aktive saesons mandat.
        (match_kind = 'offer_id'
          AND correct_baseline IS NOT NULL
          AND stored_baseline_int IS NOT NULL
-         AND correct_baseline < stored_baseline_int) AS needs_repair
-FROM corrected
+         AND correct_baseline < stored_baseline_int
+         AND (c.store = 'board_mandates'
+              OR EXISTS (
+                SELECT 1 FROM goal_rows gm
+                WHERE gm.store = 'board_mandates'
+                  AND gm.team_id = c.team_id
+                  AND gm.goal->>'bonus_offer_id' = c.goal->>'bonus_offer_id'
+              ))) AS needs_repair
+FROM corrected c
 ORDER BY team_id, store, ord;
 
 
@@ -369,11 +384,21 @@ corrected AS (
 SELECT store, row_id, team_id, ord, match_kind, offer_id,
        goal->>'baseline' AS stored_baseline,
        correct_baseline
-FROM corrected
+FROM corrected c
 WHERE match_kind = 'offer_id'
   AND correct_baseline IS NOT NULL
   AND stored_baseline_int IS NOT NULL
-  AND correct_baseline < stored_baseline_int;
+  AND correct_baseline < stored_baseline_int
+  -- Kun den aktive saesons maal: mandatets egne maal, og profilens spejling af netop dem.
+  -- Bonusmaal fra tidligere saesoner, der stadig staar i board_profiles.current_goals,
+  -- roeres ikke (de vises i BLOK 1 med in_active_mandate = false).
+  AND (c.store = 'board_mandates'
+       OR EXISTS (
+         SELECT 1 FROM goal_rows gm
+         WHERE gm.store = 'board_mandates'
+           AND gm.team_id = c.team_id
+           AND gm.goal->>'bonus_offer_id' = c.goal->>'bonus_offer_id'
+       ));
 
 -- Arkiv af foer-vaerdier (hele raekkens maal-array), en raekke pr. lager+raekke.
 CREATE TABLE IF NOT EXISTS backup_8188_bonus_baseline (
