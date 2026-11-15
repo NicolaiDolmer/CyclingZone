@@ -14,6 +14,12 @@
 # hook-input paa stdin) springes over. Ny SHA/nyt issue = ny noegle = vises igen.
 # Uden session_id (fx tests med </dev/null) opfoerer hooken sig som foer.
 
+# #8206: alle stier nedenfor (docs/NOW.md, .claude/run, CLAUDE.md) er relative til
+# repo-roden; hook-cwd kan vaere en undermappe eller ligge uden for repoet.
+# shellcheck source=hooks/lib/hook-cwd.sh
+. "$(dirname "$0")/hooks/lib/hook-cwd.sh"
+HOOK_ROOT=$(hook_repo_root) && cd "$HOOK_ROOT" 2>/dev/null
+
 WARNINGS=()
 KEYS=()
 STOP_ACTIVE=""

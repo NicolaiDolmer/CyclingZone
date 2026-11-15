@@ -933,10 +933,20 @@ export async function handleHook(payload, dir, readPrs = getOpenPrs, now, captur
   if (wave.waveId && /^WAVE-/.test(prompt) && wave.dispatchStarted !== true) updateWave(dir, wave.waveId, current => ({ ...current, dispatchStarted: true }), HOOK_LOCK_ATTEMPTS);
 }
 
+// #8206: som hook koerer scriptet med hook-processens cwd, der kan ligge uden for
+// repoet (scratchpad) eller i et andet worktree. Saa bruges scriptets eget repo i
+// stedet for at fejle; de manuelle kommandoer foelger stadig cwd.
+function hookAwareRunDir(command) {
+  try { return sharedRunDir(process.cwd()); } catch (error) {
+    if (command !== 'hook') throw error;
+    return sharedRunDir(fileURLToPath(new URL('./', import.meta.url)));
+  }
+}
+
 async function cli() {
   const [command, ...args] = process.argv.slice(2);
   const value = flag => { const i = args.indexOf(flag); return i < 0 ? undefined : args[i + 1]; };
-  const dir = value('--run-dir') || sharedRunDir(process.cwd());
+  const dir = value('--run-dir') || hookAwareRunDir(command);
   // Not in 'hook': a hook timeout can kill the process while it holds a boot-keyed lock.
   if (['assert-idle', 'assert-merge-allowed', 'guarded-merge'].includes(command)) await recoverObservedWave(dir, Date.now());
   if (command === 'hook') {

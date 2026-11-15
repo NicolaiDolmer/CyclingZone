@@ -34,12 +34,20 @@
 
 set -u
 
+INPUT=$(cat 2>/dev/null || true)
+
+# #8206: vurder den mappe kommandoen koerer i (inputtets cwd), ikke hook-processens
+# cwd, og gaa til dens git-rod, saa en undermappe (frontend/) ogsaa daekkes.
+# shellcheck source=lib/hook-cwd.sh
+. "$(dirname "$0")/lib/hook-cwd.sh"
+hook_enter_cwd "$INPUT"
+ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+cd "$ROOT" 2>/dev/null || exit 0
+
 # Kun i hoved-checkoutet. I et linked worktree er .git en FIL ("gitdir: ...").
 # Dér er sessionen allerede isoleret, og så blander vi os ikke.
 [ -f .git ] && exit 0
 [ -d .git ] || exit 0
-
-INPUT=$(cat 2>/dev/null || true)
 
 case "$INPUT" in
   *'"tool_name":"Bash"'*|*'"tool_name": "Bash"'*) ;;

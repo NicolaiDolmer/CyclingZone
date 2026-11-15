@@ -27,7 +27,11 @@ BODY_LIMIT="${SESSION_CONTEXT_BODY_LIMIT:-900}"
 COMMENT_LIMIT="${SESSION_CONTEXT_COMMENT_LIMIT:-450}"
 MAX_COMMENTS="${SESSION_CONTEXT_MAX_COMMENTS:-1}"
 
-# 1. Tidlig exit hvis vi ikke er i repo-roden
+# 1. Gaa til repo-roden (#8206: hook-cwd kan vaere en undermappe eller uden for
+#    repoet); tidlig exit hvis NOW.md alligevel ikke findes.
+# shellcheck source=hooks/lib/hook-cwd.sh
+. "$(dirname "$0")/hooks/lib/hook-cwd.sh"
+HOOK_ROOT=$(hook_repo_root) && cd "$HOOK_ROOT" 2>/dev/null
 [ -f "$NOW_MD" ] || exit 0
 
 # 2. Tjek gh er installeret + auth

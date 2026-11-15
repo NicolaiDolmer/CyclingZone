@@ -24,6 +24,15 @@
 
 set -u
 
+# #8206: PreToolUse-varianten skal ramme det worktree, kommandoen koerer i
+# (hook-inputtets cwd), og dets rod, ogsaa fra en undermappe som frontend/.
+INPUT=$(cat 2>/dev/null || true)
+# shellcheck source=lib/hook-cwd.sh
+. "$(dirname "$0")/lib/hook-cwd.sh"
+hook_enter_cwd "$INPUT"
+ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+cd "$ROOT" 2>/dev/null || exit 0
+
 # Kun i et linked worktree er .git en FIL ("gitdir: ..."). I main-repoet er .git en mappe.
 [ -f .git ] || exit 0
 

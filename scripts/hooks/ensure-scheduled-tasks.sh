@@ -12,7 +12,8 @@
 
 set -u
 
-CONFIG_DIR="scripts/scheduled-tasks"
+# #8206: relativt til scriptet, ikke til hook-cwd.
+CONFIG_DIR="$(dirname "$0")/../scheduled-tasks"
 SCHED_DIR="$HOME/.claude/scheduled-tasks"
 
 [ -d "$CONFIG_DIR" ] || exit 0

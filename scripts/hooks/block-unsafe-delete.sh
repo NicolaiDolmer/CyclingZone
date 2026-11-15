@@ -8,6 +8,10 @@
 
 set -u
 INPUT=$(cat 2>/dev/null || true)
+# #8206: koer i den mappe kommandoen koerer i (hook-inputtets cwd), ikke hook-processens.
+# shellcheck source=lib/hook-cwd.sh
+. "$(dirname "$0")/lib/hook-cwd.sh"
+hook_enter_cwd "$INPUT"
 
 # Billig forhaandsfiltrering: kun kommandoer der kan slette eller koere et script.
 case "$INPUT" in
@@ -16,7 +20,10 @@ case "$INPUT" in
 esac
 
 command -v node >/dev/null 2>&1 || exit 0
-ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
-[ -f "$ROOT/scripts/unsafe-delete-guard.mjs" ] || exit 0
-printf '%s' "$INPUT" | node "$ROOT/scripts/unsafe-delete-guard.mjs" hook
+# #8206: vagten ligger ved siden af hooken (ikke fundet via cwd), saa den ogsaa koerer
+# naar kommandoen staar uden for repoet (scratchpad). Relative stier i kommandoen
+# oploeses mod cwd, som hook_enter_cwd har sat til kommandoens mappe.
+GUARD="$(dirname "$0")/../unsafe-delete-guard.mjs"
+[ -f "$GUARD" ] || exit 0
+printf '%s' "$INPUT" | node "$GUARD" hook
 exit $?
