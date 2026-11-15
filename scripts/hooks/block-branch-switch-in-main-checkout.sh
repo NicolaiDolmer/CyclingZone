@@ -150,7 +150,9 @@ process.stdin.on("end", () => {
       if (!c.some(isMainCheckout)) continue;
       const tokens = [];
       for (let k = j + 1; k < toks.length; k++) {
-        if (isGitTok(toks[k])) break;
+        // Kun $( eller backtick starter en ny kommando; et argument som "git" eller
+        // "feature/git" er et branchnavn, ikke en ny git (Vercel #8207).
+        if (/^(\$\(|`)/.test(toks[k])) break;
         const cut = toks[k].search(/[)`]/);
         const t = unquote(cut >= 0 ? toks[k].slice(0, cut) : toks[k]);
         if (t) tokens.push(t);
