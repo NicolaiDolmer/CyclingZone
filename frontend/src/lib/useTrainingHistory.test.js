@@ -90,3 +90,15 @@ test("#4293 hookens 'i dag' er en dansk kalenderdag, ikke en UTC-dag", () => {
     "sammenligningsdatoen skal udledes i Europe/Copenhagen (samme akse som tick_date)",
   );
 });
+
+test("#6490 b1: kontakten vælger læsevej; slukket er den gamle SELECT med samme kolonner, filtre og rækkefølge", () => {
+  // Kun et eksakt true fra /api/feature-flags tænder (serveren svarer false på "beta").
+  assert.match(source, /\?\.\[TRAINING_HISTORY_FROM_TICKS_FLAG_KEY\] === true/);
+  assert.match(source, /TRAINING_HISTORY_FROM_TICKS_FLAG_KEY = "training_history_from_ticks_6490"/);
+  // Begge veje deler resten af kæden: samme kolonner, team-filter, dato-grænse og sortering.
+  const chain = source.slice(source.indexOf("const data = await fetchAllRows("), source.indexOf(".order(\"id\", { ascending: true }));"));
+  assert.match(chain, /rpcClient\.rpc\("training_history_runs", \{ p_team_id: myTeam\.id, p_since: since \}\)/);
+  assert.match(chain, /: supabase\.from\("training_day_runs"\)\)/);
+  assert.match(chain, /\.select\("id, season_id, squad, game_day, created_at, tick_date, executed_by, bonus_applied, report"\)/);
+  assert.match(chain, /\.eq\("team_id", myTeam\.id\)[\s\S]*\.gte\("tick_date", since\)[\s\S]*\.order\("tick_date", \{ ascending: false \}\)[\s\S]*\.order\("game_day", \{ ascending: true \}\)/);
+});

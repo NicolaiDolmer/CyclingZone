@@ -57,6 +57,7 @@ let flags = [
   { key: "day_words_7725", area: "race-engine", label: "Dagsform i ord efter etapen", stage: "off", raw_value: "off", boolean_only: false, configured: true, unknown_value: false },
   { key: "fatigue_now_7801", area: "training", label: "Træthed lige nu — flader og regler", stage: "off", raw_value: "off", boolean_only: false, configured: true, unknown_value: false },
   { key: "sale_escrow_enabled", area: "market", label: "Pengelås — sælgers penge låses til holdskiftet", stage: "off", raw_value: "off", boolean_only: false, configured: true, unknown_value: false },
+  { key: "training_history_from_ticks_6490", area: "training", label: "Træningshistorik fra kvitteringerne", stage: "off", raw_value: "off", boolean_only: false, configured: true, unknown_value: false },
 ];
 
 function readBody(init) {
@@ -104,10 +105,11 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "fatigue_now_7801", // #7801 Hjaelp
   "training_train_now_instant", // #8031 (kun patch-noten om Traen nu-kvitteringen)
   "sale_escrow_enabled", // #6181 Hjaelp (binaert, som pengelaasen)
+  "training_history_from_ticks_6490", // #6490 traeningssidens laesevej (binaert)
 ];
 
 // Spejler PLAYER_VISIBLE_BINARY_FLAG_KEYS i backenden: "beta" er off.
-const BINARY_FLAG_KEYS = ["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801", "sale_escrow_enabled"];
+const BINARY_FLAG_KEYS = ["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801", "sale_escrow_enabled", "training_history_from_ticks_6490"];
 
 // #5319: træningskatalog v3 er OFF på preview (som i prod), men kan tændes med
 // ?catalogV3=on for at se de nye sessioner i vælgerne. Huskes i localStorage

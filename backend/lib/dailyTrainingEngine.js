@@ -570,10 +570,11 @@ export async function runTeamTrainingDay({
       throw new Error('Daily condition requires the complete five-game-day date');
     }
     const { data: dateRuns, error } = await supabase.from('training_day_runs')
-      .select('game_day, tick_date, report').eq('team_id', teamId).eq('season_id', seasonId)
+      // #6490 b2: only the cadence marker is read, never the rider list (same JSON value).
+      .select('game_day, tick_date, condition_per_date:report->condition_per_date').eq('team_id', teamId).eq('season_id', seasonId)
       .eq('squad', squadKey).in('game_day', dateDays);
     if (error) throw new Error(`daily condition reports: ${error.message}`);
-    if((dateRuns??[]).some(row=>row.report?.condition_per_date!==true)) throw new Error('Cannot switch condition cadence during a partially executed date');
+    if((dateRuns??[]).some(row=>row.condition_per_date!==true)) throw new Error('Cannot switch condition cadence during a partially executed date');
   }
   },
   async () => {
