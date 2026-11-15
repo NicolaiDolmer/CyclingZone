@@ -9,7 +9,7 @@
 > **🎯 Next action (15/11 eftermiddag):** #8195 (#7982): Fable-fund rettet, gentjek, så ejerens "merge". Træn nu-retning: kommentar på #7982. XP #6110 godkendt privat; før tænding `_nocap`, Infisical-nøgle, Fable. #6181: se første `sale_escrows`. Motor-dom: egen session. #7644 IKKE klar. #8191, #8179, skitser venter. #8180 ejer-go. **TÆNDT 15/11:** `sale_escrow_enabled`. **Nye issues:** #8198 (beskeder sendes igen ved sletning) · #8199 (delt kaptajn uden kaptajn). **Åbent:** #8101 · #8097. **Man 16/11:** auto-kalender, private grene, Discord-valg (#8149), doctor-tjek #8162, motor: #7644. **#8071:** `private-handoffs/2026-11-13-trup-tabel-design/LAES-FOERST.md`.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** Dolmer PC 15/11 eftermiddag: #8197, #8200, #8201 merget; `sale_escrow_enabled` tændt; #8195 i gang.
+> **🤖 Working agent:** Dolmer PC 15/11 pm: #8197, #8200, #8201 merget; `sale_escrow_enabled` tændt; #8195 i gang.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
