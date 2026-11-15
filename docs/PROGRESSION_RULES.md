@@ -285,3 +285,14 @@ Det sidste niveau er nøjagtig det hul kalenderen havde før [#4176](https://git
 
 Fravalgt 3/10: model A (ren niveau-kurve uden alder). Lave niveauer er billige, så de unge ville stadig være næsten færdige som 21-årige.
 
+### 11.1 XP-modellen: aldersforløb og prisbund (bag `development_xp_model`, slukket)
+
+XP-modellen ([spec 6/11](superpowers/specs/2026-11-06-6110-xp-udvikling-design.md), `backend/lib/developmentXp.ts`) er ikke live. Når den tændes, gælder disse to ejervalg. Tallene står kun privat i `balance-internals/6110/` (hard rule 17); dommerens prøve er `backend/lib/dommer6110.private-parametre.test.js`.
+
+| Regel (ejer) | Hvad det betyder | Hvor |
+|---|---|---|
+| **R5 aldersforløb (12/11 + 14/11):** fuld udvikling til og med 26, et fald hvert år fra 27, og en 31-årig får ca. en fjerdedel af fuld udvikling. Derefter stiger den aldrig igen og bliver aldrig nul. Mentale evner vokser længere end fysiske (R6) | Alder er aldrig en turbo; faldet er gradvist, ikke et brat stop | `ageShare` i de private params; motoren kan formen uden kodeændring |
+| **R16 ingen store spring (12/11), løst med fast prisbund (valg A 14/11):** en evne stiger normalt højst 1 point pr. dato, sjældent 2, aldrig 3 eller mere. Det gælder også løbsdage og enkeltstart, hvor løbsdags-gulvet (R15b) lægger løftet i etapens få evner | Prislisten får en tredje knap, `price.floor { belowLevel, minCost }`: under grænsen koster et point altid mindst bunden. Top og midte er urørt. Uden feltet er prislisten nøjagtig som før. En bund, der ville gøre et højere niveau billigere end et lavere, afvises (hele params ugyldige, motoren falder tilbage) | `xpPriceForNextPoint` + `validateDevelopmentXpParams` |
+
+Prøvekørslen (`backend/scripts/dev/tenSeasonSim6110.mjs`, #7757) læser dagsvariationen samme sted som motoren (`xp.variation`) og regner løbsdage som motoren, inklusive R15b, så R16 også måles på løbsdatoer og enkeltstart, før der tændes.
+
