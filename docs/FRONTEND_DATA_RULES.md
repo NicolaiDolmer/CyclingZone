@@ -16,6 +16,13 @@ SSOT for the incremental #6494 migration onto one data layer (TanStack Query). P
 - Global Rank (`/standings?tab=global`, `globalRankData.ts` + `useGlobalRankData.ts`): read-only, no realtime. The rankings hub loads the tab lazily so the league tab does not load Query.
 - Transfer market (`/transfers`, `marketData.ts`): listings, sent/received/archived offers and swaps, shape validation and ability normalization.
 - Auctions (`/auctions`, `auctionData.ts` + `auctionRealtime.ts`): see below.
+- Dashboard (`/dashboard`, `dashboardData.ts`, `todayStagesData.ts`, `dashboardCards.ts`, policy in `dashboardQueryPolicy.ts`): see below.
+
+## Dashboard resources
+- One key per page-owned resource (`dashboard:core`, `dashboard:season`, `dashboard:auctions`, entries, next stage, squad nudge, training status, season-start counts, season recap, the four optional modules, the three push modules, annual meeting, today's strip and the self-fetching cards: global rank widget, career firsts, development transition, survey invite, first-race card). The transfers card reads the market's `transfer-offers` key, so Dashboard and Transfers share one entry.
+- Module semantics are unchanged (DASHBOARD_RULES.md §3): only the team bootstrap and the core block (incl. an unreachable board status) raise the page error, and only while nothing is known. Every other module settles to its own absent/empty state; known data survives a failed refresh.
+- The live channel (`seasons`, `races`) refreshes exactly the resources the legacy `loadAll` read (`LIVE_RESOURCES`), never the market listings, push modules or cards. Today's strip keeps its existing minute refresh while mounted.
+- Writes (season signup, onboarding dismiss, transition dismiss) use the write barrier. The signup confirmation is written to the cache only from the server's answer. Reads the barrier cancelled before they had data are refetched afterwards.
 
 ## Market resources
 - `auctionData.ts` owns one canonical snapshot for auction rows, current bids/proxies, watchlist and squad availability. `auctionRealtime.ts` synchronously applies whitelisted committed server fields before UI callbacks. Unchanged joins/private fields survive; changed relationship IDs clear stale joins and reconcile the exact auction key. A known bidder with a pending name shows the existing skeleton, never a false no-bids label. Unknown names have one scope-bound lookup per id.
@@ -25,4 +32,4 @@ SSOT for the incremental #6494 migration onto one data layer (TanStack Query). P
 - Watchlist optimism updates the canonical cache and rolls back only the affected rider; reads are cancelled before it changes and reconciled after the write.
 
 ## Incremental boundary
-Pages not listed above are legacy and keep their own loading, including `sharedRequestCache` and `useRealtimeRefetch`. Cross-cutting profile, active-season, scouting and player flags keep their named legacy owners until separately migrated; do not wrap their existing memo caches in a second Query cache. New data modules and tests are TypeScript. Bundle ceilings stay unchanged. No new recurring service cost.
+Pages not listed above are legacy and keep their own loading, including `sharedRequestCache` and `useRealtimeRefetch` (the Dashboard still uses it as its event transport). Cross-cutting owners rendered on the Dashboard stay legacy until separately migrated: `useActionSummary` (Layout nav badges), `useRacePause`, `useNpsPrompt`, `LockedSalesLine` (Layout/Finance), `useForumHighlights` (Forum), `useHeroAgonyMoment` (race page) and `MyLatestResultCard`'s seen-write. Profile, active-season, scouting and player flags keep their named legacy owners too; do not wrap their existing memo caches in a second Query cache. New data modules and tests are TypeScript. Bundle ceilings stay unchanged. No new recurring service cost.

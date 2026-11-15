@@ -19,84 +19,35 @@
 // at springe over (#4496). Tabellerne oprettes af denne PRs egen migration;
 // snapshottet får dem først ved næste refresh efter merge.
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 
-import { supabase } from "../lib/supabase";
+import { useSurveyInviteData } from "../data/dashboardCards.ts";
 import {
   inviteDismissKey,
   inviteDismissedUntil,
-  isInviteDismissed,
-  isSurveyPastClose,
 } from "../lib/survey.js";
 import { ClipboardIcon, XIcon } from "./ui";
 import { buttonClass } from "./ui/buttonStyles.js";
 
 export default function SurveyInviteCard() {
   const { t } = useTranslation("dashboard");
-  const [survey, setSurvey] = useState(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      // Lukketids-filteret sidder i selve forespørgslen (ikke kun i
-      // isSurveyPastClose bagefter): `.limit(1)` tager den NYESTE `open`-række,
-      // og uden filteret her ville en udløbet-men-nyest-oprettet survey vinde
-      // over en ældre survey der stadig er gyldig, og ingen af dem ville vise
-      // et kort (CodeRabbit, denne PR). `.or()` skal stå FØR `.order()`/`.limit()`
-      // for at virke som en filtrering af hvilken række der vindes, ikke en
-      // eftersortering af den ene række der allerede blev valgt.
-      const nowIso = new Date().toISOString();
-      const [{ data: rows }, { data: auth }] = await Promise.all([
-        supabase
-          .from("surveys")
-          .select("id, slug, status, closes_at")
-          .eq("status", "open")
-          .or(`closes_at.is.null,closes_at.gt.${nowIso}`)
-          .order("created_at", { ascending: false })
-          .limit(1),
-        supabase.auth.getUser(),
-      ]);
-      const open = rows?.[0];
-      const uid = auth?.user?.id ?? null;
-      if (cancelled || !open || !uid) return;
-      // Bælte og seler: `.or()` ovenfor bør allerede have udelukket en udløbet
-      // survey, men et ur der er skævt mellem klient og database skal aldrig
-      // kunne vise et kort til et skema der reelt er lukket.
-      if (isSurveyPastClose(open.closes_at)) return;
-
-      let dismissed;
-      try {
-        dismissed = isInviteDismissed(window.localStorage.getItem(inviteDismissKey(open.slug)));
-      } catch {
-        dismissed = false; // privat vindue / blokeret storage: vis kortet
-      }
-      if (dismissed) return;
-
-      const { data: completions } = await supabase
-        .from("survey_completions")
-        .select("user_id")
-        .eq("survey_id", open.id)
-        .eq("user_id", uid)
-        .limit(1);
-      if (cancelled || completions?.[0]) return;
-      setSurvey(open);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // #6494: read through the shared scope; a local dismiss hides it at once.
+  const fetched = useSurveyInviteData();
+  const [hiddenSlug, setHiddenSlug] = useState(null);
+  const survey = fetched && fetched.slug !== hiddenSlug ? fetched : null;
 
   if (!survey) return null;
 
   function dismiss() {
+    if (!survey) return;
     try {
       window.localStorage.setItem(inviteDismissKey(survey.slug), String(inviteDismissedUntil()));
     } catch {
       // Kan ikke huskes uden storage; kortet forsvinder stadig i denne session.
     }
-    setSurvey(null);
+    setHiddenSlug(survey.slug);
   }
 
   return (

@@ -1,12 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
-import { supabase } from "../lib/supabase";
-import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
+import { useDevTransitionData } from "../data/dashboardCards.ts";
 import { Card, ArrowUpIcon } from "./ui";
 import RiderLink from "./RiderLink";
 
-const API = import.meta.env.VITE_API_URL;
 
 // ═══ Overgangs-panelet (trin 7-udrulningen, ejer-design 18/8, #3746/#3803) ═══
 // "Udviklingsvisningen er lagt om" — engangspanel på dashboardet der forklarer
@@ -24,40 +22,14 @@ const API = import.meta.env.VITE_API_URL;
 // et forklaringskort).
 export default function DevTransitionCard() {
   const { t } = useTranslation("dashboard");
-  const [data, setData] = useState(null); // null = loading/inaktiv
+  const { data, dismiss: dismissPanel } = useDevTransitionData(); // null = loading/inaktiv
   const [dismissing, setDismissing] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
-        const res = await apiFetch(`${API}/api/development/transition`, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
-        if (!res.ok) return; // dækker også limited/unauthorized/networkError
-        const body = res.data;
-        if (!cancelled && body?.active) setData(body);
-      } catch { /* silent — panelet er en forklaring, ikke en funktion */ }
-    })();
-    return () => { cancelled = true; };
-  }, []);
 
   if (!data) return null;
 
-  const dismiss = async () => {
+  const dismiss = () => {
     setDismissing(true);
-    // Optimistisk: skjul med det samme; server-persistér i baggrunden.
-    setData(null);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      await apiFetch(`${API}/api/development/transition/dismiss`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-    } catch { /* best-effort — panelet dukker i værste fald op igen */ }
+    void dismissPanel();
   };
 
   const facts = [

@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { supabase } from "../lib/supabase";
+import { useCareerFirstsData } from "../data/dashboardCards.ts";
 import CareerFirstMomentRow from "./CareerFirstMomentRow";
 import { Card } from "./ui";
-import { isHiddenYouthCareerEvent } from "../lib/youthClassification.ts";
 
 // #3398 (Maiden Win Engine) — dashboard-fladen for career-first-momentkort
 // ("MAIDEN VICTORY — Jonas Krogh, 21, wins his first race in club colours").
@@ -19,7 +18,6 @@ import { isHiddenYouthCareerEvent } from "../lib/youthClassification.ts";
 // scope) lever i MyLatestResultCard (samme "din seneste kamp"-datastrøm som
 // allerede driver dens isNew-badge). Dette kort er det VARIGE artefakt.
 // Selve rækkevisningen er DELT med RaceDetailPage.jsx — se CareerFirstMomentRow.jsx.
-const MAX_EVENTS = 3;
 
 // #2593-mønster (localStorage, ikke server-persisteret "seen" — v1-forenkling,
 // se PR-body): et momentkort ses højst ét NYT-badge pr. event-id pr. enhed.
@@ -48,43 +46,9 @@ function markSeen(ids) {
 
 export default function MaidenWinMomentCard() {
   const { t } = useTranslation("dashboard");
-  const [events, setEvents] = useState(null); // null = loading, [] = empty
+  // #6494: null = loading, [] = empty; read through the shared scope.
+  const events = useCareerFirstsData();
   const [seenIds, setSeenIds] = useState(() => readSeenIds());
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        const { data: myTeam } = await supabase.from("teams").select("id").eq("user_id", user.id).maybeSingle();
-        if (!myTeam) return;
-        // pagination-safe: rider_career_events er lav-volumen pr. hold
-        // (career-firsts er sjældne pr. definition) — limit() er alligevel
-        // eksplicit sat for at holde payloaden lille.
-        const { data, error } = await supabase
-          .from("rider_career_events")
-          .select("id, event_type, rider_id, rider_name, team_name, race_id, params, occurred_at, race:race_id(squad)")
-          .eq("team_id", myTeam.id)
-          .order("occurred_at", { ascending: false })
-          // #7031: hent lidt ekstra, så skjulte ungdomstrøje-præstationer ikke tømmer kortet.
-          .limit(MAX_EVENTS * 2);
-        if (cancelled) return;
-        if (error) {
-          // Ærlig degradering: tabellen kan mangle i vinduet mellem merge og
-          // ejerens manuelle migration-apply (#2642-rammerne) — samme holdning
-          // som RaceDetailPage's moments-fetch. Ingen fejlbanner, blot intet kort.
-          console.warn("rider_career_events fetch failed (table may not be migrated yet):", error.message);
-          setEvents([]);
-          return;
-        }
-        setEvents((data || []).filter((e) => !isHiddenYouthCareerEvent(e, e.race?.squad)).slice(0, MAX_EVENTS));
-      } catch {
-        if (!cancelled) setEvents([]);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
 
   useEffect(() => {
     if (!events?.length) return;

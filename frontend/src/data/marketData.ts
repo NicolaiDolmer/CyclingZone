@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiFetch, type ApiFetchResult } from "../lib/apiFetch.ts";
 import { flattenAbilities } from "../lib/abilities.js";
 import { record, rows, parseApiResult, type DataRecord, DataError, readFailurePresentation } from "./apiQuery.ts";
-import { privateKey } from "./queryRuntime.ts";
+import { privateKey, type DataRuntime, type DataScope } from "./queryRuntime.ts";
 import { useDataScope, scopedHeaders, invalidateScope } from "./useDataScope.ts";
 
 export interface MarketRow extends DataRecord { id: string; }
@@ -77,22 +77,33 @@ const EMPTY_ROWS: ListingRow[] = [];
 const EMPTY_GROUPS: OfferGroups = { sent: [], received: [], archivedSent: [], archivedReceived: [] };
 export type MarketPath = `/api/transfers${string}` | `/api/auctions/${string}` | "/api/achievements/check" | "/api/me/onboarding-progress" | "/api/market/auto-accept-config";
 
+/** Scope-fenced GET through apiFetch; failures and malformed bodies throw (never empty success). */
+export async function scopedRead<T>(runtime: DataRuntime, scope: DataScope, path: string, parse: (value: unknown) => T, signal?: AbortSignal): Promise<T> {
+  const revision = await runtime.beforeRead(signal);
+  const result = await apiFetch(path, { signal, headers: await scopedHeaders(runtime, scope, false) });
+  runtime.assertReadCurrent(scope, revision);
+  return parseApiResult(result, parse);
+}
+
+/** The viewer's open/archived transfer offers. Shared by the market and the Dashboard's
+ * transfers card, so navigating between them reuses one cache entry. */
+export function transferOffersQuery(runtime: DataRuntime, scope: DataScope) {
+  return {
+    queryKey: privateKey(scope, "transfer-offers"),
+    queryFn: async ({ signal }: { signal: AbortSignal }): Promise<OfferGroups> => {
+      const data = await scopedRead(runtime, scope, "/api/transfers/my-offers", parseGroups, signal);
+      return { sent: data.sent.map(flatRider), received: data.received.map(flatRider), archivedSent: data.archivedSent.map(flatRider), archivedReceived: data.archivedReceived.map(flatRider) };
+    },
+  };
+}
+
 export function useMarketData() {
   const context = useDataScope();
   const { runtime, scope, team, ready } = context;
-  const read = async <T,>(path: MarketPath, parse: (value: unknown) => T, signal: AbortSignal): Promise<T> => {
-    const revision = await runtime.beforeRead(signal);
-    const result = await apiFetch(path, { signal, headers: await scopedHeaders(runtime, scope, false) });
-    runtime.assertReadCurrent(scope, revision);
-    return parseApiResult(result, parse);
-  };
+  const read = <T,>(path: MarketPath, parse: (value: unknown) => T, signal: AbortSignal): Promise<T> => scopedRead(runtime, scope, path, parse, signal);
   const listingsQuery = useQuery({ queryKey: privateKey(scope, "transfer-listings"), enabled: ready && !!team,
     queryFn: ({ signal }) => read("/api/transfers", listingRows, signal), select: data => data.map(flatRider) }, runtime.client);
-  const offersQuery = useQuery({ queryKey: privateKey(scope, "transfer-offers"), enabled: ready && !!team,
-    queryFn: async ({ signal }) => {
-      const data = await read("/api/transfers/my-offers", parseGroups, signal);
-      return { sent: data.sent.map(flatRider), received: data.received.map(flatRider), archivedSent: data.archivedSent.map(flatRider), archivedReceived: data.archivedReceived.map(flatRider) };
-    } }, runtime.client);
+  const offersQuery = useQuery({ ...transferOffersQuery(runtime, scope), enabled: ready && !!team }, runtime.client);
   const swapsQuery = useQuery({ queryKey: privateKey(scope, "transfer-swaps"), enabled: ready && !!team,
     queryFn: async ({ signal }) => {
       const data = await read("/api/transfers/swaps", parseGroups, signal);

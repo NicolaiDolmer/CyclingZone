@@ -1,13 +1,11 @@
-import { timeoutSignal } from "../lib/timeoutSignal.ts";
-import { retainKnownList } from "../lib/dashboardState.ts";
 import { Skeleton } from "../components/ui/index.js";
 import { useState, useEffect, Fragment } from "react";
+import { useDashboardData } from "../data/dashboardData.ts"; // #6494
+import { useTodayStagesData } from "../data/todayStagesData.ts"; // #6494
+import { useFirstRaceCardData } from "../data/dashboardCards.ts"; // #1140/#6494
 import { useTranslation } from "react-i18next";
-import { useRef } from "react";
 import ReservedBody from "../components/ui/ReservedBody.tsx";
 import AuthLoading from "../components/ui/AuthLoading.tsx";
-import { supabase } from "../lib/supabase";
-import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { isNetworkError } from "../lib/networkErrorGuards.ts"; // #5312/#5322
 import { Link, useNavigate } from "react-router";
 import OnboardingProgressCard from "../components/OnboardingProgressCard";
@@ -15,24 +13,21 @@ import OnboardingCompletionCard from "../components/OnboardingCompletionCard";
 import SurveyInviteCard from "../components/SurveyInviteCard"; // #4943
 import { FinanceForecastBadge } from "../components/FinanceForecastCard";
 import I18nReadyGate from "../components/I18nReadyGate.jsx"; // #4231
-import { computeDashboardSquadStats, fetchSquadCountInputs } from "../lib/dashboardSquadStats";
+import { computeDashboardSquadStats } from "../lib/dashboardSquadStats";
 import { computeSeniorStartWarning } from "../lib/seniorStartWarning.ts";
 // #2182 — rangliste-modulet skal defaulte til spillerens egen division+pulje,
 // ikke hele tieren. Genbruger StandingsPage's rene merge/pulje-match-helpers i
 // stedet for en parallel implementering (samme princip som #3197: "default-
 // konteksten er spillerens egen verden").
-import { mergeStandings } from "../lib/standingsMerge";
 import { computeMyDivisionStandings } from "../lib/dashboardDivStandings.js";
 // #5315 — "Full standings"-linket skal lande på managerens EGEN pulje/gruppe,
 // ikke hele divisionen. Ren helper (unit-testet), genbruger hasPoolSubtabs/
 // ownPoolRow fra computeMyDivisionStandings nedenfor.
 import { buildStandingsLink } from "../lib/standingsLink.ts";
-import { computeOverallBoardSatisfaction } from "../lib/boardUtils";
 import { formatNumber } from "../lib/intl";
 import { LockedSalesLine } from "../components/finance/LockedSaleEscrows.tsx"; // #6181
 import { getEffectiveOfferAmount } from "../lib/offerAmount.js";
-import { dateTextToDayOfYear } from "../lib/raceCalendar";
-import { poolStageTotals, deriveRaceStatus } from "../lib/raceHubLogic.js";
+import { deriveRaceStatus } from "../lib/raceHubLogic.js";
 import { formatCountdown } from "../lib/stageScheduleConfig.js";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import { useActionSummary } from "../hooks/useActionSummary";
@@ -44,7 +39,6 @@ import ForumHighlightsCard from "../components/ForumHighlightsCard";
 import TeamSelectionCtaCard from "../components/TeamSelectionCtaCard";
 import MyLatestResultCard from "../components/MyLatestResultCard";
 import FirstRaceCard from "../components/FirstRaceCard"; // #1140
-import useFirstRaceCard from "../hooks/useFirstRaceCard.js"; // #1140
 import { buildFirstRaceCardModel } from "../lib/firstRaceCardModel.js"; // #1140
 import RacePausedBanner from "../components/race/RacePausedBanner.tsx"; // #6970
 import useRacePause from "../hooks/useRacePause.ts"; // #6970
@@ -56,12 +50,9 @@ import HeroAgonyCard from "../components/HeroAgonyCard";
 // hentende komponentfil (kun teamId som prop), samme isolations-princip som
 // HeroAgonyCard ovenfor — se komponentfilens kommentar.
 import TodayStagesStrip from "../components/TodayStagesStrip";
-import useTodayStages from "../hooks/useTodayStages.js";
 import DevTransitionCard from "../components/DevTransitionCard";
 import MaidenWinMomentCard from "../components/MaidenWinMomentCard";
 import { isFirstRaceMoment } from "../lib/firstRaceMoment.js";
-import { teamNudgeCandidates } from "../lib/dashboardNextRace.ts";
-import { isSquadSelectionMissing } from "../lib/raceSquadSelectionStatus";
 import { pickUpcomingRaces, filterTeamUpcomingRaces } from "../lib/upcomingRaces.ts";
 import RiderLink from "../components/RiderLink";
 import RaceLink from "../components/RaceLink";
@@ -73,11 +64,9 @@ import {
   resolveBoardFeedbackHeadline,
   resolveBoardFeedbackSummary,
   resolveCategoryLabel,
-  hasSignedBoardPlan,
 } from "../lib/boardCopy";
 import DashboardCustomizeMenu from "../components/DashboardCustomizeMenu";
 import AnnualMeetingNudgeCard from "../components/AnnualMeetingNudgeCard"; // #4557 S-M2d
-import { fetchBoardMeeting } from "./annualMeeting/meetingApi";
 import { daysUntil } from "./annualMeeting/meetingFormat";
 import GlobalRankWidget from "../components/GlobalRankWidget";
 import SeasonStartGuideCard from "../components/SeasonStartGuideCard";
@@ -92,8 +81,7 @@ import {
 } from "../lib/contractExpiryNotice";
 import SeasonSignupCard from "../components/SeasonSignupCard"; // [epic #4592 del 3] #452
 import { computeDashboardGoldCta } from "../lib/dashboardGoldCta.js";
-import { resolveSeasonMovement } from "../lib/seasonRecapData.js";
-import { fetchReservedBalance, computeAvailableBalance } from "../lib/availableBalance.js";
+import { computeAvailableBalance } from "../lib/availableBalance.js";
 import { readCachedAcademyNav } from "../lib/academyNavVisibility";
 import { buildRiderRankingLink } from "../lib/riderRankingDivisionLink";
 import {
@@ -107,36 +95,13 @@ import { flushPendingSignup, logFirstEvent, logTeamCreated, logTeamDrafted } fro
 // se komponent-monteringen nederst i filen.
 import NpsPrompt from "../components/NpsPrompt.jsx";
 import { useNpsPrompt } from "../hooks/useNpsPrompt.js";
-import { withActiveSeniorPools } from "../lib/seniorScope.ts";
 
-const API = import.meta.env.VITE_API_URL;
 // Realtime: sæson-fremskridt (race_days_completed) + resultat-afledte tal skal
 // opdatere uden hård reload når et løb finaliseres (#783).
 // #3035: races (72 updates/vindue) erstatter race_results (34k writes/vindue) som
 // finaliserings-signal — hver etape/løbs-afslutning bumper races-rækken, så UX er
 // identisk, men realtime slipper for at WAL-dekode masseskrivningerne.
 const REALTIME_TABLES = ["seasons", "races"];
-
-/**
- * #5322 — loeft et "naaede aldrig serveren"-resultat til sidens fejlflade.
- *
- * apiFetch kaster ikke laengere ved en transportfejl; den returnerer
- * `{ networkError: true }`. De to kald nedenfor ligger i loadAll'ets
- * blokerende Promise.all, hvor en kastet transportfejl FOER #5322 boblede op
- * i loadAll's catch og gav spilleren "kan ikke naa serveren" (#5312). Uden
- * dette ville samme fejl nu falde stille ned i `res.ok`-grenen og vise et
- * halvtomt dashboard uden forklaring. Resultatet kastes som det ER — det
- * baerer baade flaget og den oprindelige exception, saa isNetworkError paa
- * fejlfladen kan klassificere det.
- *
- * Gaelder KUN de blokerende kald. De best-effort-kald der hver styrer sit
- * eget lille kort (DASHBOARD_RULES.md §3: et modul maa aldrig vaelte
- * dashboardet) beholder deres stille fallback.
- */
-function failOnUnreachable(res) {
-  if (res.networkError) throw res;
-  return res;
-}
 
 function isAuctionSeller(auction, teamId) {
   return auction?.seller_team_id === teamId && auction?.rider?.team_id === teamId;
@@ -150,18 +115,8 @@ function getAuctionLeaderId(auction) {
   return null;
 }
 
-// #5301: hvor mange kommende loeb nudgen hoejst gaar igennem, naar de foerste er
-// afmeldte.
-//
-// Tallet er MAALT, ikke gaettet. Lidl-Leffe Pro Drinking (D3) havde 16/9 tre
-// afmeldte loeb i TRAEK - Tour Wallon (16/9), Tour Belge (17/9), Tour des Hauts
-// Plateaux (19/9) - foer Danmark Rundt (19/9), som han faktisk stiller op i. Et
-// loft paa 3 ville have tiet om netop det loeb han skulle mindes om. En spiller
-// der melder fra ofte er praecis den nudgen skal virke for.
-//
-// Prisen bæres KUN af den spiller: loekken stopper ved det foerste loeb der ikke
-// er afmeldt, saa normaltilfaeldet er ét kald - uaendret fra foer #5301.
-const SQUAD_NUDGE_LOOKAHEAD = 5;
+// #6494: the stable empty list for core-derived values before the first read.
+const EMPTY_LIST = /** @type {any[]} */ ([]);
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -172,45 +127,20 @@ export default function DashboardPage() {
   // eneste del der resolver board:-nøgler (resolveBoardFeedback*/resolveCategoryLabel),
   // så den vises først når namespacet er hentet — ellers rå nøgler (useSuspense: false).
   const { ready: boardCopyReady } = useTranslation("board");
-  const [team, setTeam] = useState(null);
-  const [riders, setRiders] = useState([]);
-  const [seniorRosterReady, setSeniorRosterReady] = useState(false);
-  const [pendingIncomingCount, setPendingIncomingCount] = useState(0);
-  const [allAuctions, setAllAuctions] = useState([]);
-  // #3508: reserveret beløb i førende auktionsbud + proxy-max — samme
-  // beregning som FinancePage (lib/availableBalance.js), så header-saldoen
-  // aldrig kan vise et højere disponibelt tal end Finance-siden.
-  const [reservedBalance, setReservedBalance] = useState(0);
-  const [nextRaces, setNextRaces] = useState([]);
-  // #3751 — race-id'er holdet faktisk er tilmeldt (mindst én race_entries-
-  // række). Bruges KUN til at filtrere "Kommende løb"-kortet, ikke nextRaces
-  // selv — squadSelectionMissingRace/nextStageByRace skal fortsat se ALLE
-  // puljens løb (selectableRaces filtrerer allerede korrekt på trup-lås).
-  const [teamRaceIds, setTeamRaceIds] = useState(() => new Set());
-  // #4160 — race_entries hydrerer nu selvstaendigt EFTER foerste maling, saa et
-  // tomt Set betyder to forskellige ting: "ikke hentet endnu" (kortet skal vise
-  // sit skelet) og "hentet, holdet er ikke tilmeldt noget" (kortet skal vise sin
-  // empty-state). Uden flaget ville "Kommende loeb" blinke falsk-tomt ved hvert
-  // load — samme false-empty-faelde som #3510 loeste for recentResults/riderRanking.
-  const [teamRaceIdsLoaded, setTeamRaceIdsLoaded] = useState(false);
-  const [standings, setStandings] = useState([]);
-  // #2182 — league_divisions (alle puljer, ~15 rækker reference-data). Bruges til
-  // at afgøre om egen tier har >1 pulje (hasPoolSubtabs) + puljens label i titlen.
-  const [pools, setPools] = useState([]);
-  const [board, setBoard] = useState(null);
-  // #1830 · board-bred tilfredshed (gnsn. på tværs af alle planer) — samme værdi
-  // som Bestyrelse-sidens drivers-panel, så de to flader ikke divergerer.
-  const [boardSatisfaction, setBoardSatisfaction] = useState(null);
-  const [boardOutlook, setBoardOutlook] = useState(null);
-  // #4557 (S-M2d) · dashboard-genvej til aarsmoedet. Selvstaendigt, IKKE-
-  // blokerende kald (samme moenster som BoardroomPage's egen gold-CTA-tjek) —
-  // svarer {available:false} for alle ikke-beta-hold, saa ingen ekstra
-  // gating er noedvendig her ud over selve svaret.
-  const [annualMeeting, setAnnualMeeting] = useState(null);
-  const [activeOffers, setActiveOffers] = useState([]);
-  const [forecast, setForecast] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [optionalModulesSettled, setOptionalModulesSettled] = useState(false);
+  // #6494: every server resource of the page comes from the shared data layer
+  // (data/dashboardData.ts, keyed per viewer/team). Only UI state lives here.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const [discordNudgeDismissed, setDiscordNudgeDismissed] = useState(
+    () => typeof window !== "undefined" && localStorage.getItem("cz-dashboard-discord-nudge-dismissed") === "1"
+  );
+  // #2439: dismiss er SERVER-persisteret (teams.onboarding_progress_dismissed_at);
+  // sessionStorage er kun den optimistiske UI-state foer server-svaret er hentet.
+  const [onboardingDismissedLocal, setOnboardingDismissed] = useState(
+    () => typeof window !== "undefined" && sessionStorage.getItem("cz-dashboard-onboarding-dismissed") === "1"
+  );
+  const [completionDismissed, setCompletionDismissed] = useState(
+    () => typeof window !== "undefined" && localStorage.getItem("cz-dashboard-onboarding-completion-dismissed") === "1"
+  );
   // #2444/#8022: one mount budget includes core and secondary requests.
   // Ready data latches this same release state early; refresh never re-gates.
   const [initialWaitExpired, setInitialWaitExpired] = useState(false);
@@ -218,486 +148,81 @@ export default function DashboardPage() {
     const timer = setTimeout(() => setInitialWaitExpired(true), 1500);
     return () => clearTimeout(timer);
   }, []);
-  const [cardReady, setCardReady] = useState({ auctions: false, transfers: false });
-  const loadGeneration = useRef(0);
-  const dependentRequests = useRef(new Set());
-  useEffect(() => () => {
-    loadGeneration.current += 1;
-    for (const request of dependentRequests.current) request.abort();
-    dependentRequests.current.clear();
-  }, []);
-  // #3510 — eksplicit fejl-tilstand med retry frem for et tomt, "ingen data"-
-  // udseende dashboard: loadAll fangede tidligere fejl med console.error alene
-  // og faldt igennem til finally { setLoading(false) } → et fuldt tomt dashboard
-  // uden fejlbesked. Samme mønster som StandingsPage/#2175.
-  const [error, setError] = useState(null);
-
-  const [seasonInfo, setSeasonInfo] = useState(null);
-  const [poolStages, setPoolStages] = useState(null); // #1829/#4245: per-pulje etape-tæller
-  const [nextStageByRace, setNextStageByRace] = useState({}); // #1828: live-løb → næste etapes ms-tid
-  const [nowMs, setNowMs] = useState(() => Date.now());
-  const [discordNudgeDismissed, setDiscordNudgeDismissed] = useState(
-    () => typeof window !== "undefined" && localStorage.getItem("cz-dashboard-discord-nudge-dismissed") === "1"
-  );
-  const [showDiscordNudge, setShowDiscordNudge] = useState(false);
-  const [onboardingProgress, setOnboardingProgress] = useState(null);
-  // #2439: dismiss er nu SERVER-persisteret (teams.onboarding_progress_dismissed_at,
-  // via GET/POST /api/me/onboarding-progress) i stedet for det session-scopede
-  // sessionStorage-dismiss fra #1569 — sessionStorage nulstillede sig selv ved
-  // hver ny fane/browser-genstart/enhed, så kortet blev ved med at "spamme"
-  // etablerede spillere hvis completed_count aldrig nåede total_count. Vi
-  // beholder sessionStorage KUN som optimistisk øjeblikkelig UI-state før
-  // server-svaret er hentet (undgår et flash af kortet ved sideload) — den
-  // reelle sandhed kommer fra `dismissed`/`established` i progress-response'en.
-  const [onboardingDismissed, setOnboardingDismissed] = useState(
-    () => typeof window !== "undefined" && sessionStorage.getItem("cz-dashboard-onboarding-dismissed") === "1"
-  );
-  const [completionDismissed, setCompletionDismissed] = useState(
-    () => typeof window !== "undefined" && localStorage.getItem("cz-dashboard-onboarding-completion-dismissed") === "1"
-  );
-
-  // Kanonisk "kræver handling"-summary til "Næste træk"-sektionen (#271 Slice B).
-  const { pending: actionSummary, loading: actionLoading } = useActionSummary();
-  // #1140: server-afgjort "Your first race"-kort (flag first_race_card, preview). null = intet kort.
-  const firstRaceCard = useFirstRaceCard(team?.id);
-  const racePause = useRacePause(); // #6970: pauset = ingen gamle starttider nedenfor
-
-  // #4997 — In-app NPS. Dashboardet er den side alle managere lander på; før
-  // #4997 var prompten kun monteret på Resultater-fanen på egen holdside, og kun
-  // 40 af 262 brugere nåede nogensinde at få den vist. Hook'en gater selv (mindst
-  // 3 afsluttede løbsdage, 90-dages-throttle, allerede-svaret) og renderer intet
-  // før beslutningen er truffet — ingen CLS, ingen blokerende modal, og ingen af
-  // opslagene ligger på den blokerende sti (DASHBOARD_RULES.md §3: et modul må
-  // aldrig kunne vælte dashboardet).
-  const nps = useNpsPrompt({ teamId: team?.id, surface: "dashboard" });
 
   // Dashboard-customize (#1005): vis/skjul moduler, persisteret i localStorage.
   const { isVisible, toggleModule, resetToDefault } = useDashboardLayout();
   const [customizeOpen, setCustomizeOpen] = useState(false);
-  // #3510 — null = ikke hentet endnu (post-first-paint modul), skal vise
-  // loading-skeleton; [] = hentet OG bekræftet tom, skal vise empty-state.
-  // Tidligere defaultede begge til [] direkte, så modulerne viste et falsk
-  // "ingen resultater"-empty-state i round-trip-vinduet ved HVERT load (false-
-  // empty flash) — samme distinktion som MyLatestResultCard allerede laver
-  // korrekt for sit eget null-default (se datakontrakt-kommentaren i den fil).
-  const [recentResults, setRecentResults] = useState(/** @type {Array<Record<string, any>> | null} */ (null));
-  const [riderRanking, setRiderRanking] = useState(/** @type {Array<Record<string, any>> | null} */ (null));
-  // #2466: resultat-push: undefined = ikke hentet, null = fejlet (kortet renderer intet),
-  // { race: null } = ingen finaliserede løb (empty state), ellers payload.
-  // undefined = pending; null = failed/absent. The payload itself settles
-  // presence, so it cannot drift from a separate readiness flag.
-  const [myLatestResult, setMyLatestResult] = useState(/** @type {Record<string, any> | null | undefined} */ (undefined));
-  const myLatestResultSettled = myLatestResult !== undefined;
   const recentResultsVisible = isVisible("recentResults");
   const riderRankingVisible = isVisible("riderRanking");
   const myLatestResultVisible = isVisible("myLatestResult");
   const heroAgonyVisible = isVisible("heroAgony"); // #3397
+  const racePause = useRacePause(); // #6970: pauset = ingen gamle starttider nedenfor
 
-  // #2288 D — "Næste træk"-udvidelse: 3 lette signaler beregnet efter nextRaces/
-  // board er hentet. squadSelectionMissingRace = det næste udtagelige løb HVIS
-  // holdet endnu ikke har lavet en manuel udtagelse til det (samme kilde som
-  // RaceSelectionPanel/saveSelection skriver til: race_entries.is_auto_filled=false).
-  const [squadSelectionMissingRace, setSquadSelectionMissingRace] = useState(null);
-  const [selectionReady, setSelectionReady] = useState(false);
-  const [notTrainedToday, setNotTrainedToday] = useState(false);
-  // D3: "bestyrelsesplan mangler" = forhandling er ÅBEN (ikke sæson-1 baseline-lås)
-  // og ingen plan er forhandlet færdig (negotiation_status='completed' — planer
-  // auto-seedes som 'pending' ved sæson-start, så board non-null er IKKE nok;
-  // samme signal som onboarding-trinnet board_plan_set).
-  const [boardPlanMissing, setBoardPlanMissing] = useState(false);
-  // #2925 — blev /api/board/status overhovedet besvaret? boardPlanMissing=false
-  // betyder ELLERS to vidt forskellige ting ("plan forhandlet" vs. "kaldet
-  // fejlede"), og sæsonstart-guiden må ikke vise et falsk grønt flueben.
-  const [boardStatusLoaded, setBoardStatusLoaded] = useState(false);
-
-  // #2925 — "Season N: kom i gang". Vises kun i sæsonstart-vinduet (dage siden
-  // aktiv sæsons start_date, se lib/seasonStartGuide.js), dismissable pr. sæson.
+  // #2925/#2752/#4387: dismissals huskes lokalt pr. saeson/hold (laeses i effekter, ikke i render).
   const [seasonStartDismissed, setSeasonStartDismissed] = useState(false);
   const [academyEnabled, setAcademyEnabled] = useState(false);
-  const [seasonStartCounts, setSeasonStartCounts] = useState({
-    trainingPlanCount: null, pendingGraduations: null,
-  });
-
-  // #2752/#2361 — "Sæson N er slut"-nudgekortet: samme vindue som sæsonstart-
-  // guiden ovenfor (seasonStartWindowOpen), men eget dismiss (per AFSLUTTET
-  // sæson, ikke per aktiv — se lib/seasonWrapNudge.js). null = intet at vise
-  // endnu (ikke hentet, eller ingen af mit holds rækker fundet).
   const [seasonWrapDismissed, setSeasonWrapDismissed] = useState(false);
-
-  // #4387 — kontrakt-udløbs-advarslen (#1150) kan nu lukkes for resten af
-  // sæsonen. Vi gemmer SÆTTET af rytter-id'er der var udløbende ved lukning,
-  // ikke bare et boolean, så en ny rytter i vinduet siden lukning viser
-  // beskeden igen (se lib/contractExpiryNotice.js). null = intet gemt dismiss
-  // fundet endnu (læses i en effekt, ikke i render — se seasonStartDismissed).
   const [contractExpiryDismissedIds, setContractExpiryDismissedIds] = useState(null);
-  const [completedSeasonRecap, setCompletedSeasonRecap] = useState(null);
-
-  // [epic #4592 del 3] "Tilmeld dig næste sæson" (#452) — status fra
-  // GET /api/season/signup-status: { enabled, eligible, parked, signed_up,
-  // next_season_number }. null = ikke hentet endnu/fejlet → kortet renderer
-  // intet (samme fail-stille-mønster som resten af DASHBOARD_RULES.md §3).
-  // Bevidst INGEN dismiss/localStorage her (til forskel fra SeasonWrapNudge/
-  // SeasonStartGuide ovenfor): dette er et konto-risiko-varsel i samme klasse
-  // som trup-/kontrakt-advarslerne øverst på siden (heller ingen dismiss) —
-  // en manager der er ved at miste sin plads skal blive ved med at se det
-  // indtil hun rent faktisk tilmelder sig, ikke kunne klikke det væk.
-  const [seasonSignupStatus, setSeasonSignupStatus] = useState(null);
+  // [epic #4592 del 3] #452: ingen optimistisk tilmelding, knappen viser sin egen loading.
   const [seasonSignupSubmitting, setSeasonSignupSubmitting] = useState(false);
 
-  // #2925 — sæsonstart-vinduet. Afledt af eksisterende data (aktiv sæsons
-  // start_date), ikke af et nyt flag. `nowMs` tikker allerede hvert minut, så
-  // vinduet lukker af sig selv uden reload og uden urent new Date() i render.
+  // The page stays untyped JS: the typed data layer is cast once at this boundary.
+  const dashboard = /** @type {any} */ (useDashboardData({
+    discordNudgeDismissed,
+    onboardingNeeded: !(onboardingDismissedLocal && completionDismissed),
+    recentResultsVisible,
+    riderRankingVisible,
+    myLatestResultVisible,
+    racePause: Boolean(racePause),
+    nowMs,
+    // #2925: saesonstart-vinduet er afledt af den aktive saesons start_date; nowMs tikker hvert minut.
+    seasonStartWindowOpen: (season) => isSeasonStartWindow(season, new Date(nowMs)),
+    academyEnabled,
+  }));
+  const {
+    team, loading, error, allAuctions, activeOffers, cardReady, teamRaceIds, teamRaceIdsLoaded,
+    forecast, onboardingProgress, seasonSignupStatus, optionalModulesSettled, annualMeeting,
+    nextStageByRace, squadSelectionMissingRace, selectionReady, notTrainedToday,
+    seasonStartCounts, completedSeasonRecap, recentResults, riderRanking, myLatestResult,
+  } = dashboard;
+  const seasonInfo = dashboard.season;
+  const core = dashboard.core;
+  const riders = core?.riders ?? EMPTY_LIST;
+  const seniorRosterReady = core?.seniorRosterReady ?? false;
+  const pendingIncomingCount = core?.pendingIncomingCount ?? 0;
+  const reservedBalance = core?.reservedBalance ?? 0;
+  const nextRaces = core?.nextRaces ?? EMPTY_LIST;
+  const standings = core?.standings ?? EMPTY_LIST;
+  const pools = core?.pools ?? EMPTY_LIST;
+  const poolStages = core?.poolStages ?? null;
+  const board = core?.board ?? null;
+  const boardSatisfaction = core?.boardSatisfaction ?? null;
+  const boardOutlook = core?.boardOutlook ?? null;
+  const boardPlanMissing = core?.boardPlanMissing ?? false;
+  const boardStatusLoaded = core?.boardStatusLoaded ?? false;
+  const showDiscordNudge = Boolean(dashboard.discordStatus && !dashboard.discordStatus.discord_id) && !discordNudgeDismissed;
+  // #2439: server er sandheden: et tidligere dismiss eller et "etableret hold" skjuler kortet.
+  const onboardingDismissed = onboardingDismissedLocal || Boolean(onboardingProgress?.dismissed || onboardingProgress?.established);
+  const myLatestResultSettled = myLatestResult !== undefined;
   const seasonStartWindowOpen = isSeasonStartWindow(seasonInfo, new Date(nowMs));
 
-  // #4160 — opslaget der forudsaetter loadAll'ets id-liste. Det laa foer som
-  // et ekstra `await`-trin MIDT i loadAll og skoed dermed HELE sidens foerste
-  // maling en tur/retur laengere ud. Det fodrer et filter paa "Kommende loeb",
-  // som ikke er sidens hovedindhold, saa det hydrerer nu selvstaendigt. Egen try/catch: DASHBOARD_
-  // RULES.md §3 ("et modul maa aldrig kunne vaelte dashboardet") — en fejl her
-  // maa ikke saette sidens error-state.
-  async function loadDependentRows(teamId, raceIds, generation) {
-    let request;
-    try {
-      request = timeoutSignal(8000);
-      dependentRequests.current.add(request);
-      // #3751: holdets EGNE race_entries — kun for de loeb Dashboard rent
-      // faktisk viser. pagination-safe: dobbelt afgraenset — eet hold
-      // (RLS-scoped team_id) OG hoejst 50 race_id'er (racesRes' .limit(50)),
-      // saa raekketallet er langt under PostgREST's 1000-loft (#3331).
-      const teamRaceEntriesRes = raceIds.length
-        ? await supabase.from("race_entries").select("race_id")
-            .eq("team_id", teamId).in("race_id", raceIds)
-            .abortSignal(request.signal)
-        : { data: [] };
-      if (teamRaceEntriesRes.error) return; // Retain known registrations on timeout/error.
-      // #3751: distinkte race_id'er holdet har mindst een entry i.
-      if (generation === loadGeneration.current) setTeamRaceIds(new Set((teamRaceEntriesRes.data || []).map((e) => e.race_id)));
-    } catch {
-      // best-effort: filteret forbliver ufyldt.
-      // Ingen af delene vaelter siden (DASHBOARD_RULES.md §3).
-    } finally {
-      request?.dispose();
-      dependentRequests.current.delete(request);
-      // Flaget skal saettes OGSAA paa fejlstien: ellers ville "Kommende loeb"
-      // staa med sit skelet for evigt i stedet for at falde tilbage til sin
-      // empty-state, naar opslaget fejlede.
-      if (generation === loadGeneration.current) setTeamRaceIdsLoaded(true);
-    }
-  }
+  // Kanonisk "kræver handling"-summary til "Næste træk"-sektionen (#271 Slice B).
+  const { pending: actionSummary, loading: actionLoading } = useActionSummary();
+  // #1140: server-afgjort "Your first race"-kort (flag first_race_card, preview). null = intet kort.
+  const firstRaceCard = /** @type {any} */ (useFirstRaceCardData());
 
-  // #4160 — fire uafhaengige best-effort-kald der TIDLIGERE laa som fire
-  // serielle `await`'s til sidst i loadAll, EFTER alt hovedindhold var hentet.
-  // Ingen af dem gate'r noget hovedindhold (hver styrer sit eget lille kort),
-  // men fordi de laa inde i loadAll'ets try-blok forsinkede de `setLoading(false)`
-  // med fire fulde tur/retur. Nu: parallelt, uden for den blokerende sti.
-  async function loadOptionalModules(token, generation) {
-    try {
-    if (!token) return;
-    const headers = { Authorization: `Bearer ${token}` };
-    const getJson = async (path) => {
-      try {
-        // #5242: apiFetch — en 429-byge på et af disse fire uafhængige
-        // best-effort-kald skal ikke selv hamre videre; "limited"/"unauthorized"
-        // opfører sig som "intet nyt" (samme som en anden fejl her: modulet
-        // udebliver stille).
-        const res = await apiFetch(`${API}${path}`, { headers });
-        if (generation !== loadGeneration.current || res.limited || res.unauthorized) return null;
-        return res.ok ? res.data : null;
-      } catch {
-        return null; // best-effort
-      }
-    };
-    await Promise.all([
-      // Slice 07g · Forecast-widget.
-      getJson("/api/me/finance-forecast").then((data) => { if (data && generation === loadGeneration.current) setForecast(data); }),
-      // Discord nudge — vises hvis brugeren ikke har discord_id (og ikke har dismissed).
-      discordNudgeDismissed
-        ? Promise.resolve()
-        : getJson("/api/me/discord-status").then((dm) => {
-          if (dm && !dm.discord_id && generation === loadGeneration.current) setShowDiscordNudge(true);
-        }),
-      // Onboarding progress — hentes hvis enten progress- eller completion-kortet
-      // kan blive vist. (Eksisterende managers der har dismisset progress skal
-      // stadig kunne se completion-kortet foerste gang.)
-      (onboardingDismissed && completionDismissed)
-        ? Promise.resolve()
-        : getJson("/api/me/onboarding-progress").then((prog) => {
-          if (!prog || generation !== loadGeneration.current) return;
-          setOnboardingProgress(prog);
-          // #2439: server er sandheden — et tidligere dismiss (andet device/
-          // session) eller et "etableret hold"-flag skal skjule kortet uden at
-          // manageren skal afvise det igen.
-          if (prog.dismissed || prog.established) setOnboardingDismissed(true);
-        }),
-      // [epic #4592 del 3] "Tilmeld dig naeste saeson" (#452) — fejler kaldet,
-      // forbliver seasonSignupStatus null og kortet renderer intet.
-      getJson("/api/season/signup-status").then((data) => { if (data && generation === loadGeneration.current) setSeasonSignupStatus(data); }),
-    ]);
-    } finally {
-      if (generation === loadGeneration.current) setOptionalModulesSettled(true);
-    }
-  }
+  // #4997: In-app NPS. Hook'en gater selv og renderer intet før beslutningen er truffet.
+  const nps = useNpsPrompt({ teamId: team?.id, surface: "dashboard" });
 
-  async function loadAll() {
-    const generation = ++loadGeneration.current;
-    for (const request of dependentRequests.current) request.abort();
-    dependentRequests.current.clear();
-    setError(null);
-    setOptionalModulesSettled(false);
-    let optionalStarted = false;
-    try {
-    // #4160: getSession() laeser den lokale (auto-refreshede) session UDEN en
-    // netvaerkstur; getUser() lavede en ekstra GET /auth/v1/user foran ALT
-    // andet paa siden. session.user baerer samme id, og #1792-vaernet er
-    // uaendret: udloebet/uopfriskelig session => session=null => user=null =>
-    // vi stopper foer user.id. RLS validerer stadig hvert eneste opslag
-    // server-side, saa den fjernede tur var ren latenstid, ikke et vaern.
-    const { data: { session } } = await supabase.auth.getSession();
-    if (generation !== loadGeneration.current) return;
-    const user = session?.user ?? null;
-    // #1792: udløbet/ugyldig session → user=null; stop før user.id (finally rydder loading)
-    if (!user) { return; }
-    const token = session?.access_token;
-
-    // #4160: de fire valgfrie modul-kald afhaenger KUN af tokenet, ikke af hold
-    // eller saeson. De startes derfor med det samme, side om side med resten.
-    //
-    // Resolve optional card presence within the same total mount budget.
-    // A late valid module still follows its established visibility rules.
-    optionalStarted = true;
-    void loadOptionalModules(token, generation);
-
-    // #4160: hold-opslaget og saeson-opslaget afhaenger ikke af hinanden, men
-    // laa i serie (teams -> seasons). Parallelt sparer de en hel tur/retur paa
-    // den blokerende sti foran foerste maling.
-    const [teamResult, { data: activeSeason }] = await Promise.all([
-      supabase.from("teams").select("*").eq("user_id", user.id).maybeSingle(),
-      supabase.from("seasons")
-        .select("id, number, status, start_date, end_date, race_days_total, race_days_completed")
-        .eq("status", "active")
-        .single(),
-    ]);
-    if (generation !== loadGeneration.current) return;
-    if (teamResult.error) throw teamResult.error;
-    const teamData = teamResult.data;
-    if (!teamData) {
-      setTeamRaceIdsLoaded(true);
-      setSelectionReady(true);
-      setCardReady({ auctions: true, transfers: true });
-      return;
-    }
-    setTeam(teamData);
-
-    // Fixed cards reveal independently. Refresh keeps the previous content;
-    // older responses must not overwrite a newer load or an unmounted page.
-    const reveal = (name, request, apply) => {
-      void Promise.resolve(request).then(apply).catch(() => { /* best-effort: retain known data; initial empty state settles below */ }).finally(() => {
-        if (generation === loadGeneration.current) setCardReady(ready => ({ ...ready, [name]: true }));
-      });
-    };
-    reveal("auctions", supabase.from("auctions")
-      .select("id, current_price, calculated_end, status, is_guaranteed_sale, seller_team_id, current_bidder_id, rider:rider_id(firstname, lastname, team_id)")
-      .in("status", ["active", "extended"]), result => {
-        if (generation === loadGeneration.current) setAllAuctions(result.data || []);
-      });
-    reveal("transfers", token
-      ? apiFetch(`${API}/api/transfers/my-offers`, { headers: { Authorization: `Bearer ${token}` } })
-      : Promise.resolve(null), result => {
-        if (generation !== loadGeneration.current) return;
-        const offers = result?.ok ? result.data : null;
-        setActiveOffers([
-          ...(offers?.received || []).map(offer => ({ ...offer, _dir: "received" })),
-          ...(offers?.sent || []).map(offer => ({ ...offer, _dir: "sent" })),
-        ]);
-      });
-
-    const boardStatusPromise = token
-      ? apiFetch(`${API}/api/board/status`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }).then(failOnUnreachable).then((res) => (res.limited || res.unauthorized ? null : (res.ok ? res.data : null)))
-      : Promise.resolve(null);
-
-    // #1829: per-pulje løbsdage-tæller — ALLE løb i managerens egen pulje (inkl. afsluttede),
-    // så vi kan vise kørt/muligt for puljen i stedet for det sæson-globale tal. Klient-side
-    // (races er public-read via RLS); ingen migration.
-    const poolRacesPromise = activeSeason && teamData.league_division_id != null
-      ? supabase.from("races").select("stages, stages_completed, status")
-          .eq("season_id", activeSeason.id).eq("league_division_id", teamData.league_division_id)
-      : Promise.resolve({ data: [] });
-
-    const [teamsRes, ridersRes, squadCountInputs, racesRes, standingsRes, boardStatus, poolRacesRes, poolsRes, reservedBalanceValue] = await Promise.all([
-      // #2182: league_division_id + is_frozen-udelukkelse med — samme
-      // "rigtige hold"-diskriminator (test/frosne, IKKE AI) og select-
-      // udvidelse som StandingsPage.jsx's teamsPromise, så rangliste-modulet
-      // kan pulje-scope. #3506: AI-hold TÆLLES MED (fjernet .eq("is_ai",
-      // false)) — samme scope som Standings-siden (#1718), ellers giver
-      // dashboardets placeringstal et andet resultat end målsiden for samme
-      // hold.
-      supabase.from("teams")
-        .select("id, name, division, is_ai, league_division_id")
-        .eq("is_test_account", false)
-        .eq("is_frozen", false)
-        .order("division")
-        .order("name"),
-      // #1308: akademiryttere tæller ikke mod senior-cap
-      // #2748: pensionerede ryttere tæller ikke med i trup-størrelsen — de
-      // frigives ved sæsonskiftet og kan ikke køre løb. Spejler backend
-      // getTeamMarketState (marketUtils.js).
-      // #1150: contract_end_season med i selectet (samme rækker, ingen ekstra
-      // tur) — driver contractExpiringCount nedenfor (kontraktudløb-varsel).
-      supabase.from("riders").select("id, salary, is_u25, pending_team_id, contract_end_season, squad, is_academy, is_retired")
-        .eq("team_id", teamData.id)
-        .eq("is_academy", false)
-        .eq("is_retired", false),
-      // #1090: pending-in + indgående lån (inkl. window_pending) hentes med
-      // samme diskriminatorer som backend getTeamMarketState — se
-      // fetchSquadCountInputs i lib/dashboardSquadStats.js.
-      fetchSquadCountInputs(supabase, teamData.id),
-      activeSeason
-        ? // #1906: filtrér på holdets egen pulje (league_division_id), så Dashboards
-          // "næste løb" matcher holdudtagelse (RaceHub /api/races/distribution bruger
-          // teamInRacePool). Uden filteret viste Dashboard løb fra ANDRE divisioner som
-          // brugeren ikke kan udtage til. 0 pulje-løse fremtidige løb i prod, så strict
-          // .eq() er ækvivalent med teamInRacePool. Hentet bredt (pulje har ~14 løb) så
-          // den klient-side dato-sortering nedenfor ser alle holdets kommende løb.
-          supabase.from("races").select("*, pool_race:pool_race_id(date_text)")
-            .eq("season_id", activeSeason.id)
-            .eq("league_division_id", teamData.league_division_id)
-            .not("status", "eq", "completed")
-            .order("name").limit(50)
-        : Promise.resolve({ data: [] }),
-      activeSeason
-        // #2182: league_division_id med i team-joinet (samme udvidelse som
-        // StandingsPage.jsx's standingsRes), så rangliste-modulet kan pulje-scope.
-        ? supabase.from("season_standings")
-            .select("*, team:team_id(id, name, division, is_ai, league_division_id)")
-            .eq("season_id", activeSeason.id)
-            .order("total_points", { ascending: false })
-        : Promise.resolve({ data: [] }),
-      boardStatusPromise,
-      poolRacesPromise,
-      // #2182: alle puljer — samme reference-query som StandingsPage/ResultaterPage.
-      // #5648 (Y2): kun senior + ikke-pensionerede puljer (spec-s4-struktur risiko 3).
-      withActiveSeniorPools((scope) => scope(supabase.from("league_divisions").select("id, tier, pool_index, label"))),
-      // #3508: reserveret beløb i førende bud + proxy-max — delt helper med
-      // FinancePage (lib/availableBalance.js), se kommentar ved state-deklarationen.
-      fetchReservedBalance(supabase, teamData.id),
-    ]);
-
-    // #3751: holdets EGNE race_entries — kun for de løb Dashboard rent faktisk
-    // viser (racesRes' <=50 rækker), IKKE holdets fulde entry-historik. race_entries
-    // står på pagination-guardens deny-liste (#3331, PostgREST 1000-rækkers-loft) —
-    // et hold akkumulerer én entries-række pr. rytter pr. løb over sæsoner, så et
-    // uafgrænset `.eq("team_id", …)`-opslag kunne rammes af loftet og give et
-    // FALSK "ikke tilmeldt" for et gammelt hold. `.in("race_id", …)` afgrænser
-    // opslaget til netop de kendte, allerede-hentede løb — sekventiel EFTER
-    // Promise.all'et, da racesRes' id-liste er forudsætningen.
-    // The dependent filter has its own bounded request; ready fixed cards do
-    // not wait for it. ReservedBody holds the upcoming-races list geometry.
-    if (generation !== loadGeneration.current) return;
-    const racesForTeamCheck = (racesRes.data || []).map((r) => r.id);
-    void loadDependentRows(teamData.id, racesForTeamCheck, generation);
-
-    setReservedBalance(reservedBalanceValue || 0);
-    setSeasonInfo(activeSeason || null);
-    setPools(poolsRes.data || []);
-    setPoolStages(poolStageTotals(poolRacesRes.data || []));
-    setRiders(ridersRes.data || []);
-    setSeniorRosterReady(!ridersRes.error);
-    setPendingIncomingCount(squadCountInputs.pendingIncomingCount);
-    // #2328: hold ALLE holdets kommende puljeløb i state (ikke kun top-3) — både
-    // "Kommende løb"-kortets faktiske dagsordning (pickUpcomingRaces nedenfor,
-    // som kræver den ægte race_stage_schedule-tid for hele listen) og holdudtagelses-
-    // CTA'en/squadSelectionMissingRace skal kunne finde det RIGTIGE næste udtagelige
-    // løb blandt ALLE puljens løb, ikke kun de tre der viste-tilfældigt fra den
-    // gamle PCM-dato-sortering.
-    const sortedRaces = [...(racesRes.data || [])]
-      .sort((a, b) => dateTextToDayOfYear(a.pool_race?.date_text) - dateTextToDayOfYear(b.pool_race?.date_text));
-    setNextRaces(sortedRaces);
-    const activePlan = boardStatus?.plans?.["1yr"] || boardStatus?.plans?.["3yr"] || boardStatus?.plans?.["5yr"] || null;
-    setBoard(activePlan?.board || null);
-    // #1830 · tilfredsheds-tallet aggregeres på tværs af ALLE planer (samme delte
-    // helper som Bestyrelse-siden) — ikke kun den første aktive plan, ellers
-    // viste Dashboard 65% mens Bestyrelse viste 67%.
-    setBoardSatisfaction(computeOverallBoardSatisfaction(boardStatus?.plans));
-    setBoardOutlook(activePlan?.outlook || null);
-    const hasNegotiatedPlan = hasSignedBoardPlan(boardStatus?.plans);
-    setBoardPlanMissing(Boolean(boardStatus) && !boardStatus.is_baseline_phase && !hasNegotiatedPlan);
-    setBoardStatusLoaded(Boolean(boardStatus));
-
-    // #3506: AI-hold var tidligere filtreret væk her (før mergeStandings), så
-    // de aldrig indgik i rangberegningen — deraf placerings-mismatchet mod
-    // Standings-siden. AI-hold tælles nu med, samme scope som Standings-siden.
-    const standingsMap = {};
-    (standingsRes.data || []).forEach(s => {
-      standingsMap[s.team_id] = s;
-    });
-    // #2182: genbruger StandingsPage's rene mergeStandings-helper (lib/standingsMerge.js)
-    // i stedet for en parallel hand-rullet merge — samme 0-punkts-fallback-shape,
-    // der bærer team-objektet (inkl. league_division_id) videre til rangliste-filteret.
-    setStandings(mergeStandings(teamsRes.data || [], standingsMap));
-
-    // #1140: OnboardingModal (det redundante 3-korts intro-modal) er konsolideret
-    // væk — OnboardingProgressCard nedenfor er nu den ENESTE kanoniske dashboard-
-    // onboarding-UI. Vi viser ikke længere et separat modal for ny-spillere.
-
-    } catch (e) {
-      console.error("Dashboard load failed:", e);
-      if (generation === loadGeneration.current) setError(e);
-    } finally {
-      if (generation === loadGeneration.current) {
-        setLoading(false);
-        if (!optionalStarted) setOptionalModulesSettled(true);
-      }
-    }
-  }
-
-  useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- loadAll er lokal funktion (ny ref hver render) — kun mount-fetch
-  useRealtimeRefetch("dashboard-live", REALTIME_TABLES, loadAll);
+  // #783/#3035: saeson-fremskridt og loebsfinalisering opdaterer uden hard reload. Kun de
+  // ressourcer den gamle loadAll laeste genhentes; resten har egen friskhed.
+  useRealtimeRefetch("dashboard-live", REALTIME_TABLES, dashboard.refreshLive);
   // #6569: paa topniveau (foer early-return) saa stribens fetch starter naar team er kendt.
-  const todayStages = withoutPausedUpcoming(useTodayStages(team?.id), Boolean(racePause)); // #6970
+  const todayStages = withoutPausedUpcoming(useTodayStagesData(), Boolean(racePause)); // #6970
   const initialDataReady = !loading && optionalModulesSettled && (!team || (!todayStages.loading && selectionReady && (!myLatestResultVisible || myLatestResultSettled)));
   useEffect(() => {
     if (initialDataReady) setInitialWaitExpired(true);
   }, [initialDataReady]);
-
-  // #4557 (S-M2d) · dashboard-genvej til aarsmoedet — udenfor loadAll'ens
-  // Promise.all med vilje (progressiv, aldrig blokerende for resten af
-  // dashboardet, samme princip som meetingApi.js's fetch-helpers selv følger).
-  useEffect(() => {
-    let cancelled = false;
-    fetchBoardMeeting().then((data) => {
-      if (!cancelled && data?.available && data.mandate) setAnnualMeeting(data);
-    });
-    return () => { cancelled = true; };
-  }, []);
-
-  // #1828 + #2171: for "Kommende løb"-kortet henter vi den ægte kalender-tid for
-  // næste etape (game-day-countdown), både for igangværende OG endnu-ikke-startede
-  // løb. #2171 fjernede de forvirrende PCM-datoer (pool_race.date_text) fra kortet;
-  // countdown'en til første/næste etape er den meningsfulde erstatning ("starter om
-  // X dage"), afledt af race_stage_schedule.scheduled_at — ikke af date_text.
-  useEffect(() => {
-    const scheduled = nextRaces.filter((r) => {
-      const s = deriveRaceStatus(r.status, r.stages_completed, r.stages);
-      return s === "live" || s === "scheduled";
-    });
-    if (!scheduled.length || racePause) { setNextStageByRace({}); return undefined; }
-    let cancelled = false;
-    (async () => {
-      const { data } = await supabase.from("race_stage_schedule")
-        .select("race_id, stage_number, scheduled_at").in("race_id", scheduled.map((r) => r.id));
-      if (cancelled) return;
-      const map = {};
-      for (const r of scheduled) {
-        const next = (data || []).find((s) => s.race_id === r.id && s.stage_number === (r.stages_completed ?? 0) + 1);
-        const ms = next ? Date.parse(next.scheduled_at) : NaN;
-        if (Number.isFinite(ms)) map[r.id] = ms;
-      }
-      setNextStageByRace(map);
-    })();
-    return () => { cancelled = true; };
-  }, [nextRaces, racePause]);
 
   // Et minut-tick rækker til en kalender-countdown (vi viser ikke sekunder).
   useEffect(() => {
@@ -705,84 +230,6 @@ export default function DashboardPage() {
     return () => clearInterval(id);
   }, []);
 
-  // #2288 D1 / #3042 — mangler holdudtagelse til det næste udtagelige løb? Bruger
-  // NU samme kontrakt som løbssiden: GET /api/races/:id/selection (det
-  // RaceSelectionPanel selv henter fra) → selection.rider_ids.length vs size.max,
-  // via den delte rene isSquadSelectionMissing (raceSquadSelectionStatus.js).
-  //
-  // Tidligere talte vi selv race_entries filtreret på is_auto_filled=false ("har
-  // manageren manuelt valgt mindst én rytter?"). Det matchede ikke løbssidens
-  // "fuld trup"-begreb (ALLE entries, manuelle + auto-fyldte, mod size.max) — så
-  // en trup raceEntryGenerator havde top-fyldt fuldt automatisk (0 manuelle
-  // entries) blev fejlagtigt vist som "udtagelse mangler" på Dashboard, selvom
-  // løbssiden viste en fuld trup (#3042, Discord-bug 25/7).
-  // #5301: nudgen SPRINGER afmeldte løb over i stedet for at stoppe ved dem.
-  // Endpointet siger nu `withdrawn`, saa nudgen holder op med at bede om en trup
-  // til et løb spilleren har forladt (knud_r_flink 16/9: Tour Wallon, afmeldt ni
-  // dage før). Men den tjekkede kun ÉT løb, saa "tavs ved afmeldt" ville have
-  // skjult et ÆGTE manglende udtag i det NÆSTE løb. Derfor gaas kandidaterne
-  // igennem i kalenderorden indtil ét ikke er afmeldt. Loftet er lavt: nudgen
-  // handler om det nære løb, og hver kandidat koster ét kald.
-  useEffect(() => {
-    let cancelled = false;
-    // #7296: holdets egne løb først (race_entries), kalenderen som fallback med eget loft.
-    const candidates = teamNudgeCandidates(nextRaces, teamRaceIds, SQUAD_NUDGE_LOOKAHEAD);
-    let selectionRequest;
-    if (!teamRaceIdsLoaded || !team?.id) { setSquadSelectionMissingRace(null); return undefined; }
-    if (!candidates.length) { setSquadSelectionMissingRace(null); setSelectionReady(true); return undefined; }
-    (async () => {
-      try {
-      selectionRequest = timeoutSignal(8000);
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) return;
-      for (const race of candidates) {
-        if (cancelled) return;
-        try {
-          const r = await apiFetch(`${API}/api/races/${race.id}/selection`, { signal: selectionRequest.signal, headers: { Authorization: `Bearer ${token}` } });
-          // Fejl/ukendt svar må ikke udløse et falsk "udtagelse mangler" — samme
-          // forsigtighed som den tidligere count===0-only-regel (#2296-regression).
-          // #5242: limited/unauthorized behandles som "ukendt svar" — samme gren.
-          // Her stopper den ogsaa gennemloebet: et ukendt svar er ikke et bevis paa
-          // at loebet er afmeldt, saa vi maa ikke springe det over og nudge om et
-          // senere loeb i stedet.
-          if (!r.ok || r.limited || r.unauthorized || cancelled) return;
-          if (r.data?.withdrawn) continue; // afmeldt — se efter det naeste loeb
-          if (!cancelled) setSquadSelectionMissingRace(isSquadSelectionMissing(r.data) ? race : null);
-          return;
-        } catch { return; /* netværk — nudgen forbliver som den var */ }
-      }
-      // Alle kandidater inden for loftet er afmeldt: intet at minde om.
-      if (!cancelled) setSquadSelectionMissingRace(null);
-      } finally {
-        selectionRequest?.dispose();
-        if (!cancelled) setSelectionReady(true);
-      }
-    })();
-    return () => { cancelled = true; selectionRequest?.abort(); };
-  }, [nextRaces, team?.id, teamRaceIds, teamRaceIdsLoaded]);
-
-  // #2288 D2 — trænede holdet i dag? Letvægts-endpoint, kun training_day_runs.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) return;
-      try {
-        const r = await apiFetch(`${API}/api/training/today-status`, { headers: { Authorization: `Bearer ${token}` } });
-        if (r.ok && !r.limited && !r.unauthorized && !cancelled) {
-          setNotTrainedToday(Boolean(r.data.enabled) && !r.data.ran_today);
-        }
-      } catch { /* best-effort */ }
-    })();
-    return () => { cancelled = true; };
-  }, [team?.id]);
-
-  // #2925 — dismiss huskes PR. SÆSON i localStorage (samme mønster som Discord-
-  // nudgen og completion-kortet). Læsningen ligger i en effekt, ikke i render,
-  // så komponenten forbliver ren. Nøglen bærer sæson-id'et, så et dismiss i
-  // sæson 2 ikke skjuler guiden ved næste sæsonskifte.
   useEffect(() => {
     setSeasonStartDismissed(readSeasonStartDismissed(seasonInfo?.id));
   }, [seasonInfo?.id]);
@@ -793,130 +240,15 @@ export default function DashboardPage() {
     setAcademyEnabled(readCachedAcademyNav());
   }, [team?.id]);
 
-  // #2925 — de to "udført"-signaler der ikke allerede ligger på dashboardet.
-  // Begge er head-count-queries (ingen rækker over tråden) mod tabeller med
-  // ejer-scoped RLS (training_plans_own_select / academy_graduation_owner_read),
-  // og de køres KUN når sæsonstart-vinduet er åbent, så managere uden for
-  // vinduet betaler intet. Tælles på rider_id: begge tabeller har den kolonne,
-  // og en select på en ikke-eksisterende kolonne giver 400 og en tavs null-count
-  // (race_entries-fælden fra #2296).
-  useEffect(() => {
-    if (!seasonStartWindowOpen || !team?.id || !seasonInfo?.id) return undefined;
-    let cancelled = false;
-    (async () => {
-      const [trainingRes, gradRes] = await Promise.all([
-        supabase.from("training_plans")
-          .select("rider_id", { count: "exact", head: true })
-          .eq("team_id", team.id).eq("season_id", seasonInfo.id),
-        academyEnabled
-          ? supabase.from("academy_graduation")
-              .select("rider_id", { count: "exact", head: true })
-              .eq("team_id", team.id).eq("status", "pending")
-          : Promise.resolve({ count: 0 }),
-      ]);
-      if (cancelled) return;
-      // count===null (fejl/ukendt) bevares som null → punktet vises UDEN flueben.
-      setSeasonStartCounts({
-        trainingPlanCount: trainingRes.count ?? null,
-        pendingGraduations: gradRes.count ?? null,
-      });
-    })();
-    return () => { cancelled = true; };
-  }, [seasonStartWindowOpen, team?.id, seasonInfo?.id, academyEnabled]);
-
-  // #2752/#2361 — "Sæson N er slut"-kortets data: min slutstilling i den
-  // AFSLUTTEDE sæson lige før den aktive. Samme vindue/gate som ovenstående
-  // effekt (kun 7 dage efter et sæsonskifte), så managere uden for vinduet
-  // betaler intet. Tre små, MÅLRETTEDE opslag (season-lookup, min egen række,
-  // resten af min division) — ingen af dem ligner #2891-klassens problem.
-  useEffect(() => {
-    if (!seasonStartWindowOpen || !team?.id || !seasonInfo?.id) {
-      setCompletedSeasonRecap(null);
-      return undefined;
-    }
-    let cancelled = false;
-    (async () => {
-      const { data: completedSeason } = await supabase
-        .from("seasons").select("id, number")
-        .eq("status", "completed")
-        .order("number", { ascending: false })
-        .limit(1).maybeSingle();
-      if (cancelled) return;
-      // Kun relevant hvis den seneste completed sæson RENT FAKTISK er den den
-      // aktive sæson efterfulgte — undgår at vise et forældet facit hvis
-      // sæson-numrene af en eller anden grund ikke er fortløbende.
-      if (!completedSeason || completedSeason.number !== seasonInfo.number - 1) {
-        setCompletedSeasonRecap(null);
-        return;
-      }
-
-      const { data: standingsRow } = await supabase
-        .from("season_standings")
-        .select("division, rank_in_division, total_points, stage_wins")
-        .eq("team_id", team.id).eq("season_id", completedSeason.id).maybeSingle();
-      if (cancelled) return;
-      if (!standingsRow) { setCompletedSeasonRecap(null); return; }
-
-      // #2182-mønstret: "rigtige hold" = ikke-AI/test/frosne — samme
-      // diskriminator som resten af dashboardet bruger til holdtællinger.
-      const { data: divTeams } = await supabase
-        .from("season_standings")
-        .select("team_id, team:team_id(is_ai, is_test_account, is_frozen)")
-        .eq("season_id", completedSeason.id)
-        .eq("division", standingsRow.division);
-      if (cancelled) return;
-      const divisionSize = (divTeams || [])
-        .filter(r => !r.team?.is_ai && !r.team?.is_test_account && !r.team?.is_frozen).length;
-
-      // #season-recap-polish (18/8) — samme robuste sti som SeasonEndPage.jsx's
-      // recap-hero (resolveSeasonMovement, seasonRecapData.js): foretrækker en
-      // RIGTIG season_standings-række for seasonInfo (efterfølgersæsonen — den
-      // er allerede verificeret ovenfor til at være DEN sæson completedSeason
-      // overgik til), falder kun tilbage til team.division hvis den rækken
-      // ikke findes endnu. Før kaldte kortet computeSeasonMovement direkte med
-      // team.division — to stier til "samme" tal der kunne drifte fra
-      // hinanden (fx en admin-korrektion af division EFTER transitionen).
-      const { data: nextRow } = await supabase
-        .from("season_standings")
-        .select("division")
-        .eq("team_id", team.id).eq("season_id", seasonInfo.id).maybeSingle();
-      if (cancelled) return;
-
-      setCompletedSeasonRecap({
-        seasonId: completedSeason.id,
-        seasonNumber: completedSeason.number,
-        division: standingsRow.division,
-        divisionSize,
-        rank: standingsRow.rank_in_division,
-        movement: resolveSeasonMovement({
-          finishedDivision: standingsRow.division,
-          nextSeasonStandingDivision: nextRow?.division ?? null,
-          nextSeasonStatus: seasonInfo.status ?? null,
-          currentTeamDivision: team.division,
-        }),
-        points: standingsRow.total_points,
-        wins: standingsRow.stage_wins,
-      });
-    })();
-    return () => { cancelled = true; };
-  }, [seasonStartWindowOpen, team?.id, seasonInfo?.id, seasonInfo?.number, seasonInfo?.status, team?.division]);
-
-  // #2752/#2361 — dismiss huskes PR. AFSLUTTET SÆSON (ikke pr. aktiv, som
-  // seasonStartDismissed ovenfor) — se lib/seasonWrapNudge.js.
   useEffect(() => {
     setSeasonWrapDismissed(readSeasonWrapDismissed(completedSeasonRecap?.seasonId));
   }, [completedSeasonRecap?.seasonId]);
 
-  // #4387 — dismiss for kontrakt-udløbs-advarslen huskes pr. HOLD + aktiv
-  // sæson-nummer (se lib/contractExpiryNotice.js). Læses i en effekt, ikke i
-  // render, samme princip som seasonStartDismissed ovenfor.
   useEffect(() => {
     setContractExpiryDismissedIds(readContractExpiryDismissed(team?.id, seasonInfo?.number));
   }, [team?.id, seasonInfo?.number]);
 
   // #1583: flush en ventende signup når brugeren er authenticated på dashboardet.
-  // Dækker confirm-on-flowet (prod), hvor LoginPage ingen session havde i selve
-  // signup-øjeblikket. No-op hvis ingen ventende markør / manglende consent.
   useEffect(() => {
     if (team?.id) flushPendingSignup();
     // #4321: kerne-rejsens "hold oprettet" (kun nye hold, se logTeamCreated).
@@ -924,7 +256,6 @@ export default function DashboardPage() {
   }, [team?.id, team?.created_at]);
 
   // #1583: onboarding_completed-funnel-event når alle steps er nået (4/4).
-  // logFirstEvent de-dup'er pr. bruger, så eventet kun fyrer én gang.
   useEffect(() => {
     if (!onboardingProgress) return;
     const { completed_count, total_count } = onboardingProgress;
@@ -933,67 +264,14 @@ export default function DashboardPage() {
     }
   }, [onboardingProgress]);
 
-  // #940: team_drafted-funnel-event — fyrer FØRSTE gang manageren har en løbsklar
-  // trup (≥ DRAFTED_SQUAD_THRESHOLD ejede ryttere). riders = ejede ryttere på
-  // holdet nu (samme kilde som ownedNow). logTeamDrafted gater på tærsklen +
-  // de-dup'er pr. bruger via logFirstEvent, så eventet kun lander én gang.
+  // #940: team_drafted-funnel-event — fyrer FØRSTE gang manageren har en løbsklar trup.
   useEffect(() => {
     if (team?.id) logTeamDrafted(riders.length);
   }, [team?.id, riders.length]);
 
-  // #1005: hent de tre push-moduler fra deres aggregat-endpoints — kun når modulet
-  // er synligt, så managere der har skjult dem ikke betaler omkostningen. Endpoints
-  // Cached server-side. Fixed cards reveal independently; only the conditional
-  // latest-result presence participates in the first-layout decision.
-  useEffect(() => {
-    let cancelled = false;
-    let latestRequest;
-    async function loadExtras() {
-      if (!recentResultsVisible && !riderRankingVisible && !myLatestResultVisible) return;
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (cancelled) return;
-      if (!token) { setMyLatestResult(previous => previous ?? null); return; }
-      const headers = { Authorization: `Bearer ${token}` };
-      // Each request settles its own fixed card and retains known data.
-      await Promise.all([
-        recentResultsVisible && (async () => {
-          try {
-            const r = await apiFetch(`${API}/api/dashboard/recent-results`, { headers });
-            if (cancelled) return;
-            setRecentResults(previous => r.ok ? r.data?.races || [] : retainKnownList(previous));
-          } catch { if (!cancelled) setRecentResults(previous => retainKnownList(previous)); }
-        })(),
-        riderRankingVisible && (async () => {
-          try {
-            const r = await apiFetch(`${API}/api/dashboard/rider-ranking`, { headers });
-            if (cancelled) return;
-            setRiderRanking(previous => r.ok ? r.data?.riders || [] : retainKnownList(previous));
-          } catch { if (!cancelled) setRiderRanking(previous => retainKnownList(previous)); }
-        })(),
-        // #2466: "How your team did" — holdets eget seneste løbsresultat.
-        myLatestResultVisible && (async () => {
-          try {
-            latestRequest = timeoutSignal(8000);
-            const r = await apiFetch(`${API}/api/dashboard/my-latest-result`, { headers, signal: latestRequest.signal });
-            if (r.ok && !r.limited && !r.unauthorized && !cancelled) {
-              // race === undefined (fx mock-fallback {}) normaliseres til null →
-              // kortets empty state i stedet for en død boks.
-              setMyLatestResult({ ...r.data, race: r.data.race ?? null });
-            }
-          } catch { /* best-effort: retain an existing result */ }
-          finally { latestRequest?.dispose(); if (!cancelled) setMyLatestResult(previous => previous ?? null); }
-        })(),
-      ]);
-    }
-    loadExtras();
-    return () => { cancelled = true; latestRequest?.abort(); };
-  }, [recentResultsVisible, riderRankingVisible, myLatestResultVisible]);
-
   function dismissDiscordNudge() {
     localStorage.setItem("cz-dashboard-discord-nudge-dismissed", "1");
     setDiscordNudgeDismissed(true);
-    setShowDiscordNudge(false);
   }
 
   function dismissOnboarding() {
@@ -1001,22 +279,8 @@ export default function DashboardPage() {
     sessionStorage.setItem("cz-dashboard-onboarding-dismissed", "1");
     setOnboardingDismissed(true);
     // #2439: persistér SERVER-SIDE (teams.onboarding_progress_dismissed_at) så
-    // dismisset holder på tværs af enheder/sessions — erstatter det rent
-    // session-scopede sessionStorage-dismiss fra #1569, som var rod-årsagen
-    // til at kortet "spammede" etablerede spillere igen og igen.
-    (async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
-        if (!token) return;
-        await apiFetch(`${API}/api/me/onboarding-progress/dismiss`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      } catch {
-        // best-effort — lokal dismiss er allerede anvendt
-      }
-    })();
+    // dismisset holder på tværs af enheder/sessions.
+    void dashboard.dismissOnboardingOnServer();
   }
 
   function dismissSeasonStart() {
@@ -1046,20 +310,7 @@ export default function DashboardPage() {
   async function handleSeasonSignup() {
     setSeasonSignupSubmitting(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) return;
-      const res = await apiFetch(`${API}/api/season/signup`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        setSeasonSignupStatus((prev) => ({
-          ...(prev || {}),
-          signed_up: true,
-          next_season_number: res.data?.next_season_number ?? prev?.next_season_number,
-        }));
-      }
+      await dashboard.submitSeasonSignup();
     } catch {
       // best-effort — kortet forbliver i sin ikke-tilmeldt tilstand, manageren kan prøve igen
     } finally {
@@ -1091,7 +342,7 @@ export default function DashboardPage() {
     <div translate="no" className="max-w-5xl mx-auto">
       <ErrorState
         title={isNetworkError(error) ? t("dashboard:offlineError") : t("dashboard:loadError")}
-        action={<Button size="sm" variant="secondary" onClick={() => { setLoading(true); loadAll(); }}>{t("dashboard:retry")}</Button>}
+        action={<Button size="sm" variant="secondary" onClick={() => { void dashboard.retry(); }}>{t("dashboard:retry")}</Button>}
       />
     </div>
   );
@@ -1153,11 +404,11 @@ export default function DashboardPage() {
   // #3751 — filtreret til holdets EGNE løb først: et hold der tilmelder sig
   // midt i et etapeløb er ikke med i det løb (trup låst), og skal ikke se en
   // nedtælling til det. No-op for etablerede hold (de ER tilmeldt).
-  const displayedRaces = pickUpcomingRaces(
+  const displayedRaces = /** @type {any[]} */ (pickUpcomingRaces(
     filterTeamUpcomingRaces(nextRaces, teamRaceIds), // #7539: + ikke-startede løb
     nextStageByRace,
     3
-  );
+  ));
 
   // My division+pool standings (#2182 — default er spillerens egen division OG
   // pulje, ikke hele tieren; en tier kan have op til 8 puljer, se

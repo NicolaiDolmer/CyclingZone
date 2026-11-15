@@ -114,14 +114,19 @@ test("#5952 dashboard standings read includes persisted team_day rows", () => {
 });
 
 // #6569: stale-while-revalidate + hentning paa DashboardPage-topniveau.
-test("#6569 useTodayStages saetter kun loading:true naar der ingen kort er (ingen skelet-blink pr. minut-tick)", () => {
-  assert.match(hookSource, /setState\(\(s\) => \(s\.cards\.length \? s : \{ \.\.\.s, loading: true \}\)\)/);
-  assert.doesNotMatch(hookSource, /setState\(\(s\) => \(\{ \.\.\.s, loading: true \}\)\)/);
+// #6494: the strip is a Query resource; a refresh keeps the cached cards (previousCards) and
+// never publishes a loading state, so there is no skeleton blink per minute tick.
+test("#6569 useTodayStages: en genhentning beholder de kendte kort og publicerer aldrig loading:true", () => {
+  assert.match(hookSource, /let latest = \{ loading: true, cards: previousCards \};/);
+  assert.match(hookSource, /if \(!latest\.loading\) publish\(latest\);/);
+  const dataSource = readFileSync(join(__dirname, "..", "data", "todayStagesData.ts"), "utf8");
+  assert.match(dataSource, /previousCards: previous\?\.cards \?\? \[\]/);
+  assert.match(dataSource, /refetchInterval: 60_000/);
 });
 
 test("#6569 DashboardPage kalder useTodayStages paa topniveau (foer early-return) og sender state til stribens prop", () => {
   const page = readFileSync(join(__dirname, "../pages/DashboardPage.jsx"), "utf8");
-  const hookIdx = page.indexOf("useTodayStages(team?.id)");
+  const hookIdx = page.indexOf("useTodayStagesData()");
   assert.ok(hookIdx > 0, "hook-kaldet mangler");
   assert.ok(hookIdx < page.indexOf("return <AuthLoading"), "hook skal staa foer loading-early-return");
   assert.match(page, /\{\(loading \|\| team\) && <TodayStagesStrip stages=\{todayStages\} \/>\}/);
