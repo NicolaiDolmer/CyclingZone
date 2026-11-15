@@ -60,7 +60,10 @@ export function useDataScope() {
     scope,
     team: team.data && scope.teamId === team.data.id ? team.data : null,
     ready: scope.ready && team.data !== undefined && scope.teamId === (team.data?.id ?? null),
-    bootstrapLoading: !scope.ready || (viewerId !== null && team.isPending),
+    // Still loading until the scope carries the fetched team: between the team answer and the
+    // setTeam effect `ready` is false, and a page must not read that frame as "settled, no data".
+    bootstrapLoading: !scope.ready || (viewerId !== null && (team.isPending
+      || (team.data !== undefined && scope.teamId !== (team.data?.id ?? null)))),
     error: team.error,
   };
 }
