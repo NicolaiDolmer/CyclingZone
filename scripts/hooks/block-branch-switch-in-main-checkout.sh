@@ -118,16 +118,18 @@ process.stdin.on("end", () => {
     const s = seg.trim().replace(/^[({]+\s*/, "").replace(/\s*[)}]+$/, "");
     // cd [--] [-flag] <sti> [2>/dev/null ...]: ekstra tokens efter stien er tilladt (review #8207).
     const cd = s.match(/^(?:cd|pushd|Set-Location|sl)\s+(?:--\s+)?(?:-[A-Za-z]+\s+)*("[^"]*"|\x27[^\x27]*\x27|[^\s;&|]+)(?:\s+.*)?$/);
-    if (cd) { dir = at(dir, cd[1]); seen.push(dir); continue; }
+    // Ingen continue: resten af segmentet tjekkes ogsaa, fx $(git switch x) efter stien (Vercel #8207).
+    if (cd) { dir = at(dir, cd[1]); seen.push(dir); }
     // export GIT_DIR=... / GIT_WORK_TREE=...: gaelder resten af kommandoen.
     const exp = s.match(/^export\s+(?:GIT_DIR|GIT_WORK_TREE)=("[^"]*"|\x27[^\x27]*\x27|\S+)/);
-    if (exp) { seen.push(at(dir, stripGit(unquote(exp[1])))); continue; }
+    if (exp) seen.push(at(dir, stripGit(unquote(exp[1]))));
     // [VAR=x ...] [sudo/env ...] git [globale flag] (checkout|switch) <rest>
     // Hvert token der ligner git proeves (review #8207: "sudo -u git git checkout x").
     const toks = s.match(/"[^"]*"|\x27[^\x27]*\x27|\S+/g) || [];
     let i = -1, cands = null;
     for (let gi = 0; gi < toks.length && i < 0; gi++) {
-      if (!/(^|[\\/])git(\.exe)?$/i.test(unquote(toks[gi]))) continue;
+      // Ogsaa git i en kommando-substitution: $(git og `git.
+      if (!/(^|[\\/(`])git(\.exe)?$/i.test(unquote(toks[gi]))) continue;
       const c = [...seen, dir];
       for (const t of toks.slice(0, gi)) {
         const env = t.match(/^(?:GIT_DIR|GIT_WORK_TREE)=(.+)$/);

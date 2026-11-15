@@ -132,6 +132,9 @@ test('branch-vagten vurderer kommandoens mappe (input-cwd), ogsaa fra en underma
   assert.equal(callCmd(wt, `cd "${main}" 2>/dev/null && git switch -c feature-n`).status, 2);
   assert.equal(callCmd(wt, `cd -- "${main}" && git switch -c feature-d`).status, 2);
   assert.equal(callCmd(wt, `export GIT_DIR="${main}/.git"; git switch -c feature-v`).status, 2);
+  // Vercel Security Review #8207: et skift skjult efter cd/export i samme segment.
+  assert.equal(callCmd(main, 'cd frontend $(git switch -c feature-s1)').status, 2);
+  assert.equal(callCmd(main, 'export GIT_DIR=x Y=$(git switch -c feature-s2)').status, 2);
   // Almindeligt arbejde i et worktree er stadig frit.
   assert.equal(callCmd(wt, 'git switch -c feature-ok').status, 0);
   assert.equal(callCmd(join(wt, 'frontend'), 'git checkout -b feature-ok2').status, 0);
