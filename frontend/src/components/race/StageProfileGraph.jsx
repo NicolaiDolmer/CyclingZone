@@ -76,13 +76,35 @@ export default function StageProfileGraph({
   const textStyle = { fontSize: fs };
   const chipH = 12 * u;
   const basePad = PAD[tier] ?? PAD.compact;
+  // Smal + fuld (#6365): en hel stigningstekst (skilt, navn, højde) fylder blockH. Teksterne
+  // lægges i højst to rækker, og en række rykkes en HEL blok ned, så skilt og navn aldrig
+  // overlapper. En tekst, der ikke kan stå frit i nogen af rækkerne, viser kun sit skilt:
+  // readouten under grafen bærer navn og højde.
+  const blockH = chipH + fs * 3;
+  const padL = Math.ceil(fs * 2.4);
+  const padR = Math.ceil(fs * 1.2);
+  const labelRows = [];
+  if (narrow && full) {
+    const rowEnd = [-Infinity, -Infinity];
+    const distance = Number(profile.distance_km);
+    for (const c of series.climbs) {
+      const cx = padL + (c.crest_km / distance) * (W - padL - padR);
+      const lw = Math.max(String(c.name || "").length * fs * 0.68, fs * 5);
+      const x0 = cx > W - padR - 64 || cx + lw / 2 > W - padR ? W - padR - lw
+        : cx < padL + 64 || cx - lw / 2 < padL ? padL : cx - lw / 2;
+      const row = rowEnd.findIndex((end) => x0 >= end + fs);
+      if (row >= 0) rowEnd[row] = x0 + lw;
+      labelRows.push(row);
+    }
+  }
+  const rowStep = labelRows.includes(1) ? blockH : 0;
   // Kompakt (uden navne og højdeakse) skal kun have plads til kategori-skiltet og km-akse.
   const p = narrow
     ? (full
       ? {
-          l: Math.ceil(fs * 2.4),
-          r: Math.ceil(fs * 1.2),
-          t: Math.ceil(4 + chipH + fs * 3.4 + 8),
+          l: padL,
+          r: padR,
+          t: Math.ceil(4 + rowStep + blockH + 8),
           b: Math.ceil(fs * 3.2),
         }
       : {
@@ -199,15 +221,18 @@ export default function StageProfileGraph({
         const cx = X(c.crest_km);
         const crestIdx = Math.round((c.crest_km / D) * (series.xs.length - 1));
         const cy = Y(series.ys[crestIdx]);
-        const labelY = narrow ? 4 + (full ? i % 2 : 0) * fs * 1.6 : (full ? 10 : 4) + (full ? i % 2 : 0) * 30;
+        const labelRow = labelRows[i] ?? 0;
+        const showText = full && labelRow >= 0;
+        const labelY = narrow ? 4 + Math.max(labelRow, 0) * rowStep : (full ? 10 : 4) + (full ? i % 2 : 0) * 30;
         const w = (c.category === "HC" ? 20 : 13) * (narrow ? u : 1);
         // Label-ankeret trækkes ind ved kanterne. En summit-finish har
         // crest_km === distance_km, så dens navn ville ellers centreres PÅ
         // grafens højre kant og løbe ~40 px udenfor — og det er præcis de
         // etaper hvor stigningen er dagens historie.
         const EDGE = 64;
-        const nearEnd = cx > W - p.r - EDGE;
-        const nearStart = cx < p.l + EDGE;
+        const halfW = narrow ? Math.max(String(c.name || "").length * fs * 0.68, fs * 5) / 2 : 0;
+        const nearEnd = cx > W - p.r - EDGE || cx + halfW > W - p.r;
+        const nearStart = cx < p.l + EDGE || cx - halfW < p.l;
         const textAnchor = nearEnd ? "end" : nearStart ? "start" : "middle";
         const textX = nearEnd ? W - p.r : nearStart ? p.l : cx;
         // Point-mærkatet sidder normalt til højre for chippen; ved højre kant
@@ -216,13 +241,13 @@ export default function StageProfileGraph({
         const ptsAnchor = nearEnd ? "end" : "start";
         return (
           <g key={`lbl${i}`}>
-            <line x1={cx} y1={cy} x2={cx} y2={labelY + (narrow ? chipH + fs * 1.5 : full ? 30 : 14)}
+            <line x1={cx} y1={cy} x2={cx} y2={labelY + (narrow ? chipH + (showText ? fs * 1.5 : 2) : full ? 30 : 14)}
               stroke="var(--text-3)" strokeOpacity="0.55" strokeWidth="0.6" strokeDasharray="2 2" />
             <rect x={cx - w / 2} y={labelY} width={w} height={chipH} rx="1" fill={catFill(c.category)} />
             <text x={cx} y={labelY + chipH * 0.73} textAnchor="middle" className="text-3xs" style={textStyle} fontWeight="700" fill={catText(c.category)}>
               {c.category}
             </text>
-            {full && (
+            {showText && (
               <>
                 {hasClassifications && (
                   <text x={ptsX} y={labelY + 9} textAnchor={ptsAnchor} style={textStyle} className="text-3xs font-mono" display={narrow ? "none" : undefined}
