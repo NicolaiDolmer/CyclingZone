@@ -216,8 +216,8 @@ export default function StageProfileGraph({
             </text>
             {full && (
               <>
-                {hasClassifications && !narrow && (
-                  <text x={ptsX} y={labelY + 9} textAnchor={ptsAnchor} style={textStyle} className="text-3xs font-mono"
+                {hasClassifications && (
+                  <text x={ptsX} y={labelY + 9} textAnchor={ptsAnchor} style={textStyle} className="text-3xs font-mono" display={narrow ? "none" : undefined}
                     fill="rgb(var(--jersey-mountain-bg))">
                     {waypoints.find((wp) => wp.kind === "kom" && wp.index === i)?.points}p
                   </text>
@@ -270,8 +270,8 @@ export default function StageProfileGraph({
                     stroke={isActive(w) ? "var(--text-1)" : "none"} strokeWidth="1.2"
                     className={onWaypointSelect ? "cursor-pointer" : undefined}
                     onClick={pick(w)} onMouseEnter={pick(w)} />
-                  {full && hasClassifications && !narrow && (
-                    <text x={X(w.km) + 8} y={axisY - 8} style={textStyle} className="text-3xs font-mono"
+                  {full && hasClassifications && (
+                    <text x={X(w.km) + 8} y={axisY - 8} style={textStyle} className="text-3xs font-mono" display={narrow ? "none" : undefined}
                       fill="rgb(var(--jersey-points-bg))">
                       {t("detail.route.sprintMarker", { points: w.points, bonus: w.bonus })}
                     </text>
