@@ -65,7 +65,9 @@ export default function FeatureFlagBoardSection({ getAuth, onMsg }) {
   useEffect(() => { load(); }, [load]);
 
   async function setStage(flag, stage) {
-    if (flag.stage === stage || saving) return;
+    // #6181: en skrevet "beta" i en binær nøgle vises som Fra; Fra skal stadig kunne
+    // vælges, så rækken kan rettes til en værdi modulet forstår.
+    if ((flag.stage === stage && !flag.warning) || saving) return;
     // Et flag i `on` rammer ALLE spillere med det samme. Bekræftelsen er kun
     // på vej OP (mod on) — at slukke eller trække tilbage til beta er den
     // sikre retning og skal ikke bremses.
@@ -88,6 +90,12 @@ export default function FeatureFlagBoardSection({ getAuth, onMsg }) {
   }
 
   if (flags === null) return <p className="text-cz-3 text-sm">Henter flag…</p>;
+  return <FeatureFlagBoardView flags={flags} saving={saving} onSetStage={setStage} />;
+}
+
+// #6181: selve visningen er adskilt fra hentning og skrivning, så den kan renderes
+// med rå svar fra GET /api/admin/feature-flags.
+export function FeatureFlagBoardView({ flags, saving = null, onSetStage = () => {} }) {
   if (flags.length === 0) return <p className="text-cz-3 text-sm">Ingen stadie-flag registreret.</p>;
 
   const areas = [...new Set(flags.map(f => f.area))];
@@ -127,12 +135,20 @@ export default function FeatureFlagBoardSection({ getAuth, onMsg }) {
                         Ukendt værdi i app_config: {JSON.stringify(flag.raw_value)} — læses som Fra
                       </p>
                     )}
-                    {flag.boolean_only && (
-                      <p className="text-cz-3 text-xs mt-0.5">Boolean-flag (gammelt skema) — intet beta-stadie</p>
+                    {/* #6181: en binær nøgle læses kun som on; en skrevet "beta" er slukket for alle. */}
+                    {flag.warning === "beta_reads_as_off" && (
+                      <p className="text-cz-warning text-xs mt-0.5">
+                        Der står &quot;beta&quot; i app_config — nøglen er kun til/fra, så den læses som Fra for alle. Vælg Fra eller Til.
+                      </p>
                     )}
+                    {flag.binary
+                      ? <p className="text-cz-3 text-xs mt-0.5">Kun til/fra — intet beta-stadie</p>
+                      : flag.boolean_only && (
+                        <p className="text-cz-3 text-xs mt-0.5">Boolean-flag (gammelt skema) — intet beta-stadie</p>
+                      )}
                   </div>
                   <div className="flex gap-1 shrink-0 self-start sm:self-auto" role="group" aria-label={`Stadie for ${flag.label}`}>
-                    {["off", "beta", "on"].map(stage => {
+                    {(flag.offered_stages ?? ["off", "beta", "on"]).map(stage => {
                       const active = flag.stage === stage;
                       const unavailable = stage === "beta" && flag.boolean_only;
                       return (
@@ -141,7 +157,7 @@ export default function FeatureFlagBoardSection({ getAuth, onMsg }) {
                           type="button"
                           aria-pressed={active}
                           disabled={saving === flag.key || unavailable}
-                          onClick={() => setStage(flag, stage)}
+                          onClick={() => onSetStage(flag, stage)}
                           className={`text-xs px-2.5 py-1 border rounded transition-all disabled:opacity-40
                             ${active
                               ? STAGE_ACTIVE_CLASS[stage]
