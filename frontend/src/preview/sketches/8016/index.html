@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sketch #8016 buyer card with auto price</title>
+<!--
+  Levende skitse til #8016. Statisk, ingen build, ingen netvaerk: aabn filen direkte i en browser.
+  Parametre: ?v=now|a|b  ?view=card|rider  ?theme=light|dark  ?lang=en|da
+             ?state=default|below|above|error|confirm|done  ?w=<px> (kun til billeder)
+  Data er opfundne eksempler (Rytter A, Hold A/B). Ingen rigtige spillere, hold eller balancetal.
+-->
+<style>
+:root{
+  --bg-body:#f4f2ec;--bg-card:#fcfbf7;--bg-subtle:#ece9e1;--border:#e5e0d5;--border-strong:#827f96;
+  --text-1:#0e0f15;--text-2:#4c4a5e;--text-3:#67657e;--accent:232 197 71;--accent-t:160 120 0;--on-accent:#1a1f38;
+  --success:21 119 47;--danger:168 30 30;--info:26 71 192;--radius:5px;
+  --font-sans:'DM Sans',system-ui,-apple-system,sans-serif;--font-data:'Inter Tight',system-ui,sans-serif;
+  --font-display:'Bebas Neue',Impact,'Arial Narrow',sans-serif;
+}
+[data-theme="dark"]{
+  --bg-body:#0e0f15;--bg-card:#161824;--bg-subtle:#14161e;--border:#2a2d3a;--border-strong:#6a6e86;
+  --text-1:#ededf2;--text-2:#9da0b3;--text-3:#888ba0;--accent-t:255 217 102;--success:95 217 138;--danger:251 132 132;--info:122 176 251;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg-body);color:var(--text-1);font:14px/1.45 var(--font-sans);-webkit-font-smoothing:antialiased}
+.num{font-family:var(--font-data);font-variant-numeric:tabular-nums}
+.wrap{max-width:1440px;margin:0 auto;padding:16px}
+.sketch-bar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding:8px 12px;border:1px dashed var(--border-strong);border-radius:var(--radius);font-size:12px;color:var(--text-2);margin-bottom:16px}
+.sketch-bar a{color:rgb(var(--accent-t));text-decoration:none;margin-right:6px}
+.sketch-bar a.on{font-weight:700;text-decoration:underline}
+h1{font:400 28px/1 var(--font-display);letter-spacing:.02em;margin:0 0 4px}
+.sub{color:var(--text-2);font-size:12px;margin:0 0 16px}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius)}
+/* listing row (kontekst, ikke en del af skitsen) */
+.row{display:grid;grid-template-columns:minmax(0,1.6fr) repeat(3,minmax(0,1fr));gap:12px;padding:12px 16px;align-items:center;border-bottom:1px solid var(--border)}
+.row .lbl{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em}
+.row .nm{font-weight:700}
+.row .meta{font-size:12px;color:var(--text-2)}
+.expand{padding:16px;background:var(--bg-subtle)}
+/* auto-pris-bjaelken */
+.auto{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;padding:12px 16px;margin-bottom:12px;border:1px solid var(--border);border-left:2px solid rgb(var(--accent));border-radius:var(--radius);background:var(--bg-card)}
+.auto .k{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em}
+.auto .v{font:700 28px/1.1 var(--font-data);font-variant-numeric:tabular-nums}
+.auto .why{font-size:13px;color:var(--text-2);flex:1 1 260px}
+.auto .why b{color:var(--text-1)}
+/* fælles felter */
+label.f{display:block;font-size:12px;font-weight:600;margin-bottom:4px}
+.inp{display:flex;align-items:center;border:1px solid var(--border-strong);border-radius:var(--radius);background:var(--bg-card);min-height:44px;padding:0 12px;gap:8px}
+.inp:focus-within{border-color:rgb(var(--accent-t));outline:2px solid rgb(var(--accent)/.45)}
+.inp input,.inp select{flex:1;min-width:0;border:0;background:transparent;color:var(--text-1);font:600 16px var(--font-data);font-variant-numeric:tabular-nums;outline:0;padding:10px 0}
+.inp select{font:500 14px var(--font-sans)}
+.inp .cur{color:var(--text-3);font-size:12px}
+.hint{font-size:12px;color:var(--text-2);margin:6px 0 0}
+.err{font-size:12px;color:rgb(var(--danger));margin:6px 0 0;display:flex;gap:6px}
+.err::before{content:"";width:12px;height:12px;flex:none;margin-top:2px;background:currentColor;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v6M12 16.5v.01'/%3E%3C/svg%3E") center/contain no-repeat}
+.ok{font-size:12px;color:rgb(var(--success));margin:6px 0 0}
+.btn{min-height:44px;padding:0 16px;border-radius:var(--radius);font:600 14px var(--font-sans);cursor:pointer;border:1px solid var(--border-strong);background:transparent;color:var(--text-1);width:100%}
+.btn.primary{background:rgb(var(--accent));border-color:rgb(var(--accent));color:var(--on-accent)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn:focus-visible{outline:2px solid rgb(var(--accent-t));outline-offset:2px}
+.tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px;border:1px solid var(--border-strong);color:var(--text-2)}
+.tag.auc{border-color:rgb(var(--accent-t));color:rgb(var(--accent-t))}
+/* variant A */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.opt{padding:16px;display:flex;flex-direction:column;gap:10px}
+.opt h3{margin:0;font:400 22px/1 var(--font-display);letter-spacing:.03em}
+.opt p.d{margin:0;font-size:13px;color:var(--text-2)}
+.opt ul{margin:0;padding-left:18px;font-size:12px;color:var(--text-2)}
+.opt .spacer{flex:1}
+.opt.active{border-color:var(--border-strong)}
+/* variant B */
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--border-strong);border-radius:var(--radius);overflow:hidden;margin-bottom:12px}
+.seg button{all:unset;box-sizing:border-box;cursor:pointer;padding:10px 14px;min-height:56px;display:flex;flex-direction:column;justify-content:center;gap:2px;background:var(--bg-card);color:var(--text-2)}
+.seg button+button{border-left:1px solid var(--border-strong)}
+.seg button b{font-size:14px;color:var(--text-1)}
+.seg button span{font-size:12px}
+.seg button[aria-checked="true"]{background:var(--bg-subtle);box-shadow:inset 0 -2px 0 rgb(var(--accent))}
+.seg button:focus-visible{outline:2px solid rgb(var(--accent-t));outline-offset:-2px}
+.one{padding:16px;display:grid;gap:12px}
+.sum{border-top:1px solid var(--border);padding-top:10px;font-size:13px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.sum .what{color:var(--text-2)}
+/* bekraeftelse + resultat */
+.dlg{padding:16px;border:1px solid var(--border-strong);border-radius:var(--radius);background:var(--bg-card);display:grid;gap:10px;margin-top:12px}
+.dlg h4{margin:0;font:400 20px/1 var(--font-display);letter-spacing:.03em}
+.dlg dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 16px;font-size:13px}
+.dlg dt{color:var(--text-3)} .dlg dd{margin:0;text-align:right}
+.dlg .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.done{padding:14px 16px;border:1px solid var(--border);border-left:2px solid rgb(var(--success));border-radius:var(--radius);background:var(--bg-card);margin-top:12px;font-size:13px}
+.done b{display:block;font-size:14px;margin-bottom:2px}
+/* "nu" (før) */
+.now{padding:16px;display:grid;gap:8px;max-width:520px}
+.now small{color:var(--text-3);font-size:11px}
+.now .r{display:flex;gap:8px}
+.now .r .inp{flex:1;min-height:36px}
+.now .btn{width:auto;min-height:36px}
+/* rytter-side */
+.hero{padding:0;overflow:hidden}
+.hero::before{content:"";display:block;height:2px;background:rgb(var(--accent))}
+.hero .top{padding:16px;display:flex;flex-wrap:wrap;gap:8px 24px;justify-content:space-between;align-items:end}
+.hero h2{font:400 36px/1 var(--font-display);letter-spacing:.02em;margin:0}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:0;border-top:1px solid var(--border)}
+.stats div{padding:12px 16px;border-right:1px solid var(--border)}
+.stats .lbl{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em}
+.stats .val{font:700 20px var(--font-data);font-variant-numeric:tabular-nums}
+.listing-strip{margin-top:12px;padding:14px 16px;display:grid;grid-template-columns:auto 1fr auto;gap:8px 20px;align-items:center}
+.listing-strip .big{font:700 28px/1.1 var(--font-data);font-variant-numeric:tabular-nums}
+.listing-strip .k{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em}
+.listing-strip .t{font-size:13px;color:var(--text-2)}
+.listing-strip .btn{width:auto;min-width:180px}
+.sec{margin:28px 0 8px;font:400 22px/1 var(--font-display);letter-spacing:.03em}
+@media(max-width:700px){
+  .wrap{padding:12px 16px}
+  .row{grid-template-columns:1fr 1fr}
+  .two{grid-template-columns:1fr}
+  .listing-strip{grid-template-columns:1fr}
+  .listing-strip .btn{width:100%}
+  .auto .v{font-size:26px}
+}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+(function(){
+  var q=new URLSearchParams(location.search);
+  var V=q.get('v')||'a', VIEW=q.get('view')||'card', LANG=q.get('lang')||'en', STATE=q.get('state')||'default';
+  var THEME=q.get('theme')||'light';
+  document.documentElement.setAttribute('data-theme',THEME);
+  document.documentElement.lang=LANG;
+  if(q.get('w')) document.body.style.width=q.get('w')+'px';
+
+  // Opfundet fixture: Rytter A. Beloeb er illustrative.
+  var ASK=1850000, AUTO=1500000, MY_FUNDS=4200000;
+  var T={
+   en:{
+    sketchVariant:'Variant',sketchView:'View',cardView:'Buyer card',riderView:'Rider page',vNow:'Today',vA:'A: two cards',vB:'B: one field',
+    listPrice:'Asking price',autoPrice:'Auto price',seller:'Seller',team:'Team A',
+    autoWhyA:'<b>Bid this or more to start a public auction.</b> Below it, you negotiate with the seller.',
+    autoWhyB:'<b>Bid this or more to start a public auction.</b> Below it, you negotiate with the seller.',
+    bidTitle:'Bid on the transfer list',bidDesc:'A private offer to the seller. The seller can accept, counter or decline.',
+    bidFine:['Stays below the auto price','Money is only taken if the seller accepts','No one else can join'],
+    bidField:'Your offer (CZ$)',bidBtn:'Send bid to seller',
+    aucTitle:'Start an auction',aucDesc:'Opens a public auction with your bid as the first bid. Other managers can bid too.',
+    aucFine:['At least the auto price','Your bid ties up the money while you lead','You choose the length'],
+    aucField:'Your opening bid (CZ$)',aucBtn:'Start auction',dur:'Length',
+    d1:'30 min',d2:'6 hours',d3:'24 hours',
+    segBid:'Bid on the list',segBidS:'Negotiate with the seller',segAuc:'Start auction',segAucS:'Public, others can bid',
+    oneBid:'Your offer (CZ$)',oneAuc:'Your opening bid (CZ$)',
+    sumBid:'Sends a <b>bid to the seller</b>',sumAuc:'Starts a <b>public auction</b>',
+    sumBidD:'Seller can accept, counter or decline.',sumAucD:'Your bid is the first bid. Money is tied up while you lead.',
+    errBid:'Offers from {p} go through an auction. Lower the offer, or choose Start auction.',
+    errAuc:'Minimum {p} to start an auction.',errZero:'Enter an amount.',
+    okBid:'{d} below the auto price. This stays a private bid.',okAuc:'At or above the auto price. This starts a public auction.',
+    switchToAuc:'Start auction with this amount',switchToBid:'Send as bid instead',
+    cfTitleBid:'Send this bid to the seller?',cfTitleAuc:'Start a public auction?',
+    cfKind:'You are',cfKindBid:'sending a bid',cfKindAuc:'starting an auction',cfAmount:'Amount',cfLen:'Length',cfAfter:'Money tied up',
+    cfAfterBid:'None until the seller accepts',cfAfterAuc:'While you lead',
+    cfOk:'Confirm',cfNo:'Back',
+    doneBidT:'Bid sent to the seller',doneBid:'{a} for Rytter A. The seller can accept, counter or decline. No auction is running.',
+    doneAucT:'Auction started',doneAuc:'Public auction for Rytter A, opening bid {a}, ends in {l}. Other managers can bid.',
+    // rytterside
+    riderOn:'On the transfer list',riderAskLbl:'Asking price',riderAutoLbl:'Auto price',
+    riderAutoTxt:'Bid {p} or more to start a public auction for this rider. Lower offers go to the seller.',
+    riderBtn:'Open buyer options',riderSeller:'Listed by Team B',
+    age:'Age',uci:'UCI points',value:'Market value',contract:'Contract',
+    explain:'Notes',
+    nowAuto:'Auto price (starts auction)',nowSend:'Send',nowStart:'Start auction',nowBefore:'Today (before)',
+    nowTiny:'The amount field and Send serve both a bid and an auction. The auto price sits in small print.'
+   },
+   da:{
+    sketchVariant:'Variant',sketchView:'Visning',cardView:'Købers kort',riderView:'Ryttersiden',vNow:'I dag',vA:'A: to kort',vB:'B: ét felt',
+    listPrice:'Udbudspris',autoPrice:'Autopris',seller:'Sælger',team:'Hold A',
+    autoWhyA:'<b>Byd dette eller mere for at starte en offentlig auktion.</b> Under den forhandler du med sælgeren.',
+    autoWhyB:'<b>Byd dette eller mere for at starte en offentlig auktion.</b> Under den forhandler du med sælgeren.',
+    bidTitle:'Byd på transferlisten',bidDesc:'Et privat tilbud til sælgeren. Sælgeren kan acceptere, modbyde eller afvise.',
+    bidFine:['Holder sig under autoprisen','Pengene trækkes først hvis sælgeren accepterer','Ingen andre kan være med'],
+    bidField:'Dit tilbud (CZ$)',bidBtn:'Send bud til sælger',
+    aucTitle:'Start auktion',aucDesc:'Åbner en offentlig auktion med dit bud som første bud. Andre managers kan byde med.',
+    aucFine:['Mindst autoprisen','Dit bud binder pengene mens du fører','Du vælger længden'],
+    aucField:'Dit åbningsbud (CZ$)',aucBtn:'Start auktion',dur:'Længde',
+    d1:'30 min',d2:'6 timer',d3:'24 timer',
+    segBid:'Byd på listen',segBidS:'Forhandl med sælgeren',segAuc:'Start auktion',segAucS:'Offentlig, andre kan byde',
+    oneBid:'Dit tilbud (CZ$)',oneAuc:'Dit åbningsbud (CZ$)',
+    sumBid:'Sender et <b>bud til sælgeren</b>',sumAuc:'Starter en <b>offentlig auktion</b>',
+    sumBidD:'Sælgeren kan acceptere, modbyde eller afvise.',sumAucD:'Dit bud er første bud. Pengene bindes mens du fører.',
+    errBid:'Tilbud fra {p} går gennem en auktion. Sænk tilbuddet, eller vælg Start auktion.',
+    errAuc:'Mindst {p} for at starte auktion.',errZero:'Skriv et beløb.',
+    okBid:'{d} under autoprisen. Det er stadig et privat bud.',okAuc:'På eller over autoprisen. Det starter en offentlig auktion.',
+    switchToAuc:'Start auktion med dette beløb',switchToBid:'Send som bud i stedet',
+    cfTitleBid:'Send dette bud til sælgeren?',cfTitleAuc:'Start en offentlig auktion?',
+    cfKind:'Du',cfKindBid:'sender et bud',cfKindAuc:'starter en auktion',cfAmount:'Beløb',cfLen:'Længde',cfAfter:'Bundne penge',
+    cfAfterBid:'Ingen før sælgeren accepterer',cfAfterAuc:'Mens du fører',
+    cfOk:'Bekræft',cfNo:'Tilbage',
+    doneBidT:'Bud sendt til sælgeren',doneBid:'{a} for Rytter A. Sælgeren kan acceptere, modbyde eller afvise. Ingen auktion kører.',
+    doneAucT:'Auktion startet',doneAuc:'Offentlig auktion på Rytter A, åbningsbud {a}, slutter om {l}. Andre managers kan byde.',
+    riderOn:'På transferlisten',riderAskLbl:'Udbudspris',riderAutoLbl:'Autopris',
+    riderAutoTxt:'Byd {p} eller mere for at starte en offentlig auktion på denne rytter. Lavere tilbud går til sælgeren.',
+    riderBtn:'Åbn købsvalg',riderSeller:'Udbudt af Hold B',
+    age:'Alder',uci:'UCI-point',value:'Markedsværdi',contract:'Kontrakt',
+    explain:'Noter',
+    nowAuto:'Autopris (starter auktion)',nowSend:'Send',nowStart:'Start auktion',nowBefore:'I dag (før)',
+    nowTiny:'Beløbsfeltet og Send bruges både til bud og auktion. Autoprisen står med småt.'
+   }
+  };
+  var L=T[LANG]||T.en;
+  function fmt(n){return new Intl.NumberFormat(LANG==='da'?'da-DK':'en-US').format(n)+' CZ$'}
+  function fill(s,o){return s.replace(/\{(\w+)\}/g,function(_,k){return o[k]})}
+
+  var st={mode:(STATE==='above'||STATE==='error'&&false)?'auc':'bid',bid:1400000,auc:AUTO,dur:'d2',confirm:null,done:null};
+  if(STATE==='below'){st.bid=1400000}
+  if(STATE==='above'){st.mode='auc';st.auc=1600000}
+  if(STATE==='error'){st.bid=1600000;st.auc=1200000;st.errBoth=true}
+  if(STATE==='confirm'){st.mode='auc';st.auc=1600000;st.confirm='auc'}
+  if(STATE==='done'){st.mode='auc';st.auc=1600000;st.done='auc'}
+  if(STATE==='doneBid'){st.mode='bid';st.bid=1400000;st.done='bid'}
+  if(STATE==='confirmBid'){st.bid=1400000;st.confirm='bid'}
+
+  function durLabel(){return L[st.dur]}
+  function el(h){var d=document.createElement('div');d.innerHTML=h.trim();return d.firstChild}
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+
+  function bidErr(v){ if(!(v>0))return L.errZero; if(v>=AUTO)return fill(L.errBid,{p:fmt(AUTO)}); return ''}
+  function aucErr(v){ if(!(v>0))return L.errZero; if(v<AUTO)return fill(L.errAuc,{p:fmt(AUTO)}); return ''}
+
+  function autoBar(){return '<div class="auto" data-testid="auto-price"><div><div class="k">'+L.autoPrice+'</div><div class="v">'+fmt(AUTO)+'</div></div><div class="why">'+L.autoWhyA+'</div></div>'}
+
+  function rowCtx(){return '<div class="card" style="overflow:hidden"><div class="row"><div><div class="nm">Rytter A</div><div class="meta">'+L.seller+': Team B</div></div>'+
+    '<div><div class="lbl">'+L.listPrice+'</div><div class="num"><b>'+fmt(ASK)+'</b></div></div>'+
+    '<div><div class="lbl">'+L.autoPrice+'</div><div class="num"><b>'+fmt(AUTO)+'</b></div></div>'+
+    '<div><div class="lbl">'+L.age+'</div><div class="num"><b>27</b></div></div></div><div class="expand">'}
+  function rowEnd(){return '</div></div>'}
+
+  function confirmBox(kind,amt){
+    var isA=kind==='auc';
+    return '<div class="dlg" role="dialog" aria-label="'+esc(isA?L.cfTitleAuc:L.cfTitleBid)+'" data-testid="confirm"><h4>'+(isA?L.cfTitleAuc:L.cfTitleBid)+'</h4><dl>'+
+      '<dt>'+L.cfKind+'</dt><dd><span class="tag '+(isA?'auc':'')+'">'+(isA?L.cfKindAuc:L.cfKindBid)+'</span></dd>'+
+      '<dt>'+L.cfAmount+'</dt><dd class="num"><b>'+fmt(amt)+'</b></dd>'+
+      (isA?'<dt>'+L.cfLen+'</dt><dd>'+durLabel()+'</dd>':'')+
+      '<dt>'+L.cfAfter+'</dt><dd>'+(isA?L.cfAfterAuc:L.cfAfterBid)+'</dd></dl>'+
+      '<div class="acts"><button class="btn" data-act="cfNo">'+L.cfNo+'</button><button class="btn primary" data-act="cfOk">'+L.cfOk+'</button></div></div>'}
+  function doneBox(kind,amt){
+    var isA=kind==='auc';
+    return '<div class="done" role="status" data-testid="done"><b>'+(isA?L.doneAucT:L.doneBidT)+'</b>'+
+      (isA?fill(L.doneAuc,{a:fmt(amt),l:durLabel()}):fill(L.doneBid,{a:fmt(amt)}))+'</div>'}
+
+  function durSelect(id){return '<div><label class="f" for="'+id+'">'+L.dur+'</label><div class="inp"><select id="'+id+'" data-f="dur"><option value="d1"'+(st.dur==='d1'?' selected':'')+'>'+L.d1+'</option><option value="d2"'+(st.dur==='d2'?' selected':'')+'>'+L.d2+'</option><option value="d3"'+(st.dur==='d3'?' selected':'')+'>'+L.d3+'</option></select></div></div>'}
+
+  /* ---------- I DAG ---------- */
+  function now(){
+    return rowCtx()+'<div class="card now" data-testid="now"><span class="tag">'+L.nowBefore+'</span><small>'+L.nowAuto+' '+fmt(AUTO)+'</small>'+
+      '<div class="r"><div class="inp"><input class="num" value="'+fmt(ASK).replace(' CZ$','')+'" aria-label="amount"></div><button class="btn primary">'+L.nowSend+'</button></div>'+
+      '<button class="btn" style="width:100%">'+L.nowStart+'</button><small>'+L.nowTiny+'</small></div>'+rowEnd()}
+
+  /* ---------- A ---------- */
+  function varA(){
+    var be=(STATE==='error'||st.touchedBid)?bidErr(st.bid):'';
+    var ae=(STATE==='error'||st.touchedAuc)?aucErr(st.auc):'';
+    var bidOk=!bidErr(st.bid), aucOk=!aucErr(st.auc);
+    var diff=AUTO-st.bid;
+    var h=rowCtx()+autoBar()+'<div class="two">'+
+     '<section class="card opt" aria-labelledby="oa-b">'+
+       '<h3 id="oa-b">'+L.bidTitle+'</h3><p class="d">'+L.bidDesc+'</p><ul>'+L.bidFine.map(function(x){return'<li>'+x+'</li>'}).join('')+'</ul>'+
+       '<div class="spacer"></div><div><label class="f" for="a-bid">'+L.bidField+'</label><div class="inp"><input id="a-bid" class="num" inputmode="numeric" data-f="bid" value="'+fmt(st.bid).replace(' CZ$','')+'" aria-describedby="a-bid-m"><span class="cur">CZ$</span></div>'+
+       '<div id="a-bid-m" aria-live="polite">'+(be?'<p class="err">'+be+'</p>':(bidOk?'<p class="ok">'+fill(L.okBid,{d:fmt(diff)})+'</p>':''))+'</div></div>'+
+       '<button class="btn" data-act="bid"'+(be?' aria-disabled="true"':'')+'>'+L.bidBtn+'</button></section>'+
+     '<section class="card opt" aria-labelledby="oa-a"><h3 id="oa-a">'+L.aucTitle+'</h3><p class="d">'+L.aucDesc+'</p><ul>'+L.aucFine.map(function(x){return'<li>'+x+'</li>'}).join('')+'</ul>'+
+       '<div class="spacer"></div><div><label class="f" for="a-auc">'+L.aucField+'</label><div class="inp"><input id="a-auc" class="num" inputmode="numeric" data-f="auc" value="'+fmt(st.auc).replace(' CZ$','')+'" aria-describedby="a-auc-m"><span class="cur">CZ$</span></div>'+
+       '<div id="a-auc-m" aria-live="polite">'+(ae?'<p class="err">'+ae+'</p>':(aucOk?'<p class="ok">'+L.okAuc+'</p>':''))+'</div></div>'+
+       durSelect('a-dur')+
+       '<button class="btn primary" data-act="auc"'+(ae?' aria-disabled="true"':'')+'>'+L.aucBtn+'</button></section></div>';
+    if(st.confirm)h+=confirmBox(st.confirm,st.confirm==='auc'?st.auc:st.bid);
+    if(st.done)h+=doneBox(st.done,st.done==='auc'?st.auc:st.bid);
+    return h+rowEnd()}
+
+  /* ---------- B ---------- */
+  function varB(){
+    var isA=st.mode==='auc';
+    var v=isA?st.auc:st.bid;
+    var e=(STATE==='error'||st['touched'+(isA?'Auc':'Bid')])?(isA?aucErr(v):bidErr(v)):'';
+    var ok=!(isA?aucErr(v):bidErr(v));
+    var offerSwitch='';
+    if(e&&!isA&&v>=AUTO)offerSwitch='<button class="btn" data-act="toAuc" style="margin-top:8px">'+L.switchToAuc+'</button>';
+    if(e&&isA&&v>0&&v<AUTO)offerSwitch='<button class="btn" data-act="toBid" style="margin-top:8px">'+L.switchToBid+'</button>';
+    var h=rowCtx()+autoBar()+
+     '<div class="card one"><div class="seg" role="radiogroup" aria-label="'+esc(L.bidTitle+' / '+L.aucTitle)+'">'+
+       '<button role="radio" aria-checked="'+(!isA)+'" data-act="modeBid"><b>'+L.segBid+'</b><span>'+L.segBidS+'</span></button>'+
+       '<button role="radio" aria-checked="'+isA+'" data-act="modeAuc"><b>'+L.segAuc+'</b><span>'+L.segAucS+'</span></button></div>'+
+     '<div><label class="f" for="b-f">'+(isA?L.oneAuc:L.oneBid)+'</label><div class="inp"><input id="b-f" class="num" inputmode="numeric" data-f="'+(isA?'auc':'bid')+'" value="'+fmt(v).replace(' CZ$','')+'" aria-describedby="b-m"><span class="cur">CZ$</span></div>'+
+       '<div id="b-m" aria-live="polite">'+(e?'<p class="err">'+e+'</p>':(ok?'<p class="ok">'+(isA?L.okAuc:fill(L.okBid,{d:fmt(AUTO-v)}))+'</p>':''))+offerSwitch+'</div></div>'+
+     (isA?durSelect('b-dur'):'')+
+     '<div class="sum"><span>'+(isA?L.sumAuc:L.sumBid)+' <span class="num"><b>'+fmt(v)+'</b></span></span><span class="what">'+(isA?L.sumAucD:L.sumBidD)+'</span></div>'+
+     '<button class="btn primary" data-act="'+(isA?'auc':'bid')+'"'+(e?' aria-disabled="true"':'')+'>'+(isA?L.aucBtn:L.bidBtn)+'</button></div>';
+    if(st.confirm)h+=confirmBox(st.confirm,st.confirm==='auc'?st.auc:st.bid);
+    if(st.done)h+=doneBox(st.done,st.done==='auc'?st.auc:st.bid);
+    return h+rowEnd()}
+
+  /* ---------- RYTTERSIDE ---------- */
+  function rider(){
+    return '<div class="card hero"><div class="top"><div><div class="tag auc" style="margin-bottom:8px">'+L.riderOn+'</div><h2>Rytter A</h2><div class="meta" style="color:var(--text-2);font-size:13px">'+L.riderSeller+'</div></div></div>'+
+      '<div class="stats"><div><div class="lbl">'+L.age+'</div><div class="val">27</div></div><div><div class="lbl">'+L.uci+'</div><div class="val">412</div></div><div><div class="lbl">'+L.value+'</div><div class="val">'+fmt(1720000)+'</div></div><div><div class="lbl">'+L.contract+'</div><div class="val">2</div></div></div></div>'+
+      '<div class="card listing-strip" style="border-left:2px solid rgb(var(--accent))" data-testid="rider-auto-price">'+
+       '<div><div class="k">'+L.riderAskLbl+'</div><div class="big">'+fmt(ASK)+'</div></div>'+
+       '<div><div class="k">'+L.riderAutoLbl+'</div><div class="big">'+fmt(AUTO)+'</div><div class="t" style="margin-top:4px">'+fill(L.riderAutoTxt,{p:fmt(AUTO)})+'</div></div>'+
+       '<button class="btn primary" data-act="open">'+L.riderBtn+'</button></div>'}
+
+  function bar(){
+    function lk(k,v,t){var p=new URLSearchParams(location.search);p.set(k,v);p.delete('state');return '<a href="?'+p+'" class="'+(((k==='v'&&V===v)||(k==='view'&&VIEW===v))?'on':'')+'">'+t+'</a>'}
+    return '<div class="sketch-bar"><span>#8016 sketch, fictional data (Rytter A, Team A/B)</span><span>'+L.sketchVariant+': '+lk('v','now',L.vNow)+lk('v','a',L.vA)+lk('v','b',L.vB)+'</span><span>'+L.sketchView+': '+lk('view','card',L.cardView)+lk('view','rider',L.riderView)+'</span><span>'+lk('theme',THEME==='dark'?'light':'dark',THEME==='dark'?'light':'dark')+lk('lang',LANG==='en'?'da':'en',LANG==='en'?'DA':'EN')+'</span></div>'}
+
+  function render(){
+    var app=document.getElementById('app');
+    var body;
+    if(VIEW==='rider')body='<h1>'+L.riderView+'</h1><p class="sub">'+L.riderAutoLbl+' '+fmt(AUTO)+'</p>'+rider();
+    else body='<h1>'+L.cardView+'</h1><p class="sub">'+(V==='now'?L.vNow:V==='a'?L.vA:L.vB)+'</p>'+(V==='now'?now():V==='a'?varA():varB());
+    app.innerHTML=(q.get('chrome')==='0'?'':bar())+body;
+  }
+  function num(s){return Number(String(s).replace(/[^\d]/g,''))||0}
+  document.addEventListener('input',function(e){
+    var f=e.target.getAttribute&&e.target.getAttribute('data-f');if(!f)return;
+    if(f==='dur'){st.dur=e.target.value;return}
+    var pos=e.target.selectionStart;st[f]=num(e.target.value);st['touched'+(f==='bid'?'Bid':'Auc')]=true;
+    var id=e.target.id;render();var n=document.getElementById(id);if(n){n.focus();try{n.setSelectionRange(n.value.length,n.value.length)}catch(_){}}
+  });
+  document.addEventListener('change',function(e){if(e.target.getAttribute&&e.target.getAttribute('data-f')==='dur'){st.dur=e.target.value;render()}});
+  document.addEventListener('click',function(e){
+    var b=e.target.closest('[data-act]');if(!b)return;var a=b.getAttribute('data-act');
+    if(a==='modeBid'){st.mode='bid';st.done=null;st.confirm=null}
+    else if(a==='modeAuc'){st.mode='auc';st.done=null;st.confirm=null}
+    else if(a==='toAuc'){st.auc=st.bid;st.mode='auc';st.touchedAuc=true}
+    else if(a==='toBid'){st.bid=st.auc;st.mode='bid';st.touchedBid=true}
+    else if(a==='bid'){st.touchedBid=true;if(!bidErr(st.bid))st.confirm='bid'}
+    else if(a==='auc'){st.touchedAuc=true;if(!aucErr(st.auc))st.confirm='auc'}
+    else if(a==='cfNo'){st.confirm=null}
+    else if(a==='cfOk'){st.done=st.confirm;st.confirm=null}
+    else if(a==='open'){location.search='?v='+(V==='now'?'a':V)+'&view=card'+(THEME==='dark'?'&theme=dark':'')+(LANG==='da'?'&lang=da':'');return}
+    render();
+  });
+  render();
+})();
+</script>
+</body>
+</html>
