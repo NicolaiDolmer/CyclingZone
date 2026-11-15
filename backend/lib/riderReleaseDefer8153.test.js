@@ -15,12 +15,11 @@ import {
   getPendingReleaseTradeIssue,
   getPendingReleaseSelectionIssue,
   orderPendingRelease,
-  executePendingReleasesForRace,
-  runPendingReleaseHealSweep,
   loadPendingReleasesForTeam,
   countPendingReleasesForTransition,
   countActivePendingReleases,
 } from "./riderReleaseDefer8153.js";
+import { executePendingReleasesForRace, runPendingReleaseHealSweep } from "./deferredTransferHealSweep.js";
 
 const MIGRATION = "2026-11-15-8153-pending-rider-releases.sql";
 const id = (n) => `00000000-0000-0000-0000-${String(n).padStart(12, "0")}`;

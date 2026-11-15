@@ -156,7 +156,7 @@ import { loadEligibleEntries } from "./raceEntriesLoader.js";
 import { flushDeferredTransfersForRace, filterEligibleEntriesKeepingParked } from "./stageRaceTransferDefer.js";
 // #4423: flush udskudte akademi-optagelser ved løbs-finalisering (spejler #1995 ovenfor).
 import { flushDeferredAcademySigningsForRace } from "./academySigningDefer.js";
-import { executePendingReleasesForRace } from "./riderReleaseDefer8153.js"; // #8153
+import { executePendingReleasesForRace } from "./deferredTransferHealSweep.js"; // #8153
 import { requestRankingMatviewRefresh } from "./refreshRankingMatviews.js"; // #5911: gated + samlet
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 import { notifyAssistantFilledSquad } from "./assistantFilledSquadNotification.js";
