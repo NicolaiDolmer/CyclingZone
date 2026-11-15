@@ -137,7 +137,11 @@ export function useSurveyInviteData(): { survey: Row | null; hide: () => void } 
       return completions?.[0] ? null : open;
     },
   }, runtime.client);
-  const hide = useCallback(() => { runtime.client.setQueryData(key, null); }, [runtime, key]);
+  // Cancel an in-flight refetch first, so its answer cannot bring the dismissed card back.
+  const hide = useCallback(() => {
+    void runtime.client.cancelQueries({ queryKey: key });
+    runtime.client.setQueryData(key, null);
+  }, [runtime, key]);
   return { survey: query.isError ? null : query.data ?? null, hide };
 }
 

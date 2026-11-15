@@ -1,7 +1,7 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { useQuery, notifyManager } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase.ts";
-import { createDataRuntime, viewerKey, type DataRuntime, type DataScope } from "./queryRuntime.ts";
+import { createDataRuntime, frameScheduler, viewerKey, type DataRuntime, type DataScope } from "./queryRuntime.ts";
 import { DataError } from "./apiQuery.ts";
 import { installTransferListingsQueryOwner } from "./transferListingsOwner.ts";
 
@@ -9,6 +9,7 @@ import { installTransferListingsQueryOwner } from "./transferListingsOwner.ts";
 // created when a migrated page renders, so the public landing/prerender graph never loads
 // Query. On the server each call gets its own runtime, so private data is never shared.
 let browserRuntime: DataRuntime | undefined;
+
 export function appRuntime(): DataRuntime {
   if (typeof window === "undefined") return createDataRuntime();
   if (browserRuntime) return browserRuntime;
@@ -16,8 +17,9 @@ export function appRuntime(): DataRuntime {
   browserRuntime = runtime;
   // #6494: deliver observer updates once per frame. A page with many resources (the Dashboard
   // has ~25) otherwise re-renders once per answer as they land in separate ticks; measured on a
-  // throttled mobile profile that doubled main-thread blocking. A hidden tab catches up on return.
-  if (typeof window.requestAnimationFrame === "function") notifyManager.setScheduler((callback) => { window.requestAnimationFrame(() => callback()); });
+  // throttled mobile profile that doubled main-thread blocking. One pending flush coalesces
+  // every batch; a timer backs up the frame so a hidden tab (no frames) keeps loading.
+  if (typeof window.requestAnimationFrame === "function") notifyManager.setScheduler(frameScheduler());
   // Kept mounted for the app's lifetime so focus/reconnect refresh keeps working between pages.
   runtime.client.mount();
   installTransferListingsQueryOwner(runtime, () => scopedHeaders(runtime, runtime.scope(), false));
