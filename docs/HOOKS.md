@@ -10,6 +10,8 @@ Dette repo har **tre lag** af Claude Code settings/hooks (per [#385](https://git
 
 **Vigtigt — matcher-syntax (#385):** Claude Code's PreToolUse/PostToolUse matcher-parser håndterer IKKE regex-alternation (`"Edit|Write|NotebookEdit"`). Hooks fyrede ikke. Splittes derfor i separate entries pr. tool — én `"matcher": "Edit"`, én `"matcher": "Write"`, etc. Samme `hooks`-array kopieres til hver entry.
 
+**Absolutte stier og cwd (#8206):** hver project-hook kaldes som `bash "$CLAUDE_PROJECT_DIR/scripts/hooks/x.sh"` (aldrig relativ sti: fra `frontend/`, et andet worktree eller scratchpad gav det exit 127, og vagten koerte ikke). Hook-processens cwd er ikke noedvendigvis kommandoens mappe (maalt 15/11: hovedmappen, mens Bash stod i et worktree), saa scripts der vurderer "hvor koerer kommandoen" bruger hook-inputtets `cwd` via `scripts/hooks/lib/hook-cwd.sh` (`hook_enter_cwd`, `hook_repo_root`). `scripts/hook-paths.test.mjs` (CI) fejler ved en relativ hook-sti. Overskrifterne nedenfor navngiver scriptet kort.
+
 **Forward-guard:** `scripts/cross-pc-forensic-audit.ps1` scanner alle 3 settings-filer + `scripts/hooks/*.sh` + `.claude/hooks/*.sh` for hardcoded `C:\Users\<name>\` paths (både Windows-native og Git-Bash form). Fail-fast hvis fundet — kør auditen før commit.
 
 **OneDrive-status:** `~/OneDrive/CyclingZone-context/claude-settings/` (med subfolder `skills/github-housekeeping/SKILL.md`) er en historisk leftover fra før 3-lag-modellen. Skills bor nu i `.claude/skills/` i repoet (committed). Mappen er IKKE længere kilden til settings/skills; brugeren kan slette efter manuel verifikation.
