@@ -120,6 +120,9 @@ test('branch-vagten vurderer kommandoens mappe (input-cwd), ogsaa fra en underma
   // Vercel Security Review #8207, runde 3: subshell-cd laekker ikke ud, --work-tree/--git-dir,
   // GIT_DIR/GIT_WORK_TREE og git.exe kan ikke flytte vurderingen vaek fra hovedmappen.
   assert.equal(callCmd(main, `(cd "${wt}") && git switch -c feature-l`).status, 2);
+  // Codex-review #8207 (P2): subshell eller bash -c med cd maa ikke flytte den ydre mappe.
+  assert.equal(callCmd(main, `(cd "${base}" && pwd); git switch -c feature-c1`).status, 2);
+  assert.equal(callCmd(main, `bash -c "cd '${wt}'"; git switch -c feature-c2`).status, 2);
   assert.equal(callCmd(main, `git --work-tree="${wt}" switch -c feature-t`).status, 2);
   assert.equal(callCmd(wt, `GIT_WORK_TREE="${main}" GIT_DIR="${main}/.git" git switch -c feature-e`).status, 2);
   assert.equal(callCmd(wt, `git --git-dir="${main}/.git" switch -c feature-g`).status, 2);
