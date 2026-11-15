@@ -138,6 +138,7 @@ async function withPendingReleases(supabase, now, result, notifyTeamOwner) {
 async function loadRiderNames(supabase, riderIds) {
   const ids = [...new Set((riderIds || []).filter(Boolean))];
   if (!ids.length) return new Map();
+  // pagination-safe: kun ryttere med en ventende frigivelse (een aktiv pr. rytter, faa i alt).
   const { data, error } = await supabase.from("riders").select("id, firstname, lastname").in("id", ids);
   if (error) throw new Error(`pendingRelease rider lookup failed: ${error.message}`);
   return new Map((data || []).map((r) => [r.id, fullName(r)]));

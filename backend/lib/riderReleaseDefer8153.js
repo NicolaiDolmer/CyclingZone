@@ -67,6 +67,7 @@ export async function findActiveStageRaceForRider(supabase, riderId) {
   if (rErr) throw new Error(`findActiveStageRaceForRider: races lookup failed: ${rErr.message}`);
   if (!races?.length) return null;
 
+  // pagination-safe: een rytters tilmeldinger i de aktive etapeloeb (hoejst nogle faa).
   const { data: entries, error: eErr } = await supabase
     .from("race_entries")
     .select("race_id, team_id")
