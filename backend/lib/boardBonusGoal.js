@@ -75,11 +75,23 @@ export function hasBonusGoalForOffer(goals, { offerId, extraGoal }) {
 /**
  * #3574 · Beholdnings-baseline på accept-tidspunktet. `null` for måltyper der
  * ikke er beholdninger (DNA-tradition-mål bærer aldrig baseline).
+ *
+ * #8188 · Kun to måltyper kan blive bonus-ekstra-mål (selectBonusExtraGoal i
+ * boardConsequences.js): `signature_rider` er en ren beholdning (truppen NU),
+ * som både baseline og evaluering måler uden sæsonvindue, så den har ingen
+ * vindues-fejl. `monument_podium` er kumulativ over plan-cyklussen, og her
+ * SKAL baselinen tælle i præcis samme vindue som visning og evaluering
+ * (boardRoom.js, boardGoals.js), ellers trækkes podier fra tidligere sæsoner
+ * fra sæsonens podier, og målet står fast på 0. Vinduet er det samme som
+ * Boardroom bruger: 1yr-planens `plan_start_season_number`, og mangler den,
+ * den aktive sæson (Boardroom falder tilbage til mandatets sæson, som er den
+ * aktive).
  */
 export async function computeBonusGoalBaseline({
   supabase,
   teamId,
   boardId,
+  planStartSeasonNumber = null,
   extraGoal,
   reputationEnabled = false,
   loadGoalContext = loadGoalContextForBoard,
@@ -97,7 +109,15 @@ export async function computeBonusGoalBaseline({
 
   if (extraGoal?.type === "monument_podium") {
     const { data: activeSeason, error } = await supabase
-      .from("seasons").select("id").eq("status", "active").maybeSingle();
+      .from("seasons")
+      .select("id, number")
+      .eq("status", "active")
+      // Samme valg som appendBonusGoalToActiveMandate (#6780): under
+      // saesonskiftet kan to saesoner kortvarigt vaere aktive, og maybeSingle
+      // ville da fejle og koste holdet ekstra-maalet. Den nyeste vinder.
+      .order("number", { ascending: false })
+      .limit(1)
+      .maybeSingle();
     if (error) throw new Error(`seasons (bonus-offer baseline): ${error.message}`);
     if (!activeSeason?.id) return 0;
     const context = await loadGoalContext({
@@ -105,6 +125,7 @@ export async function computeBonusGoalBaseline({
       teamId,
       boardId,
       currentSeasonId: activeSeason.id,
+      planStartSeasonNumber: planStartSeasonNumber ?? activeSeason.number ?? null,
     });
     return context.cumulativeMonumentPodiums ?? 0;
   }
@@ -114,13 +135,15 @@ export async function computeBonusGoalBaseline({
 
 /**
  * Holdets `completed` 1yr-plan — den række den gamle sti skriver ekstra-målet
- * til, og hvis id monument_podium-baselinen måles imod.
+ * til, og hvis id + plan-start monument_podium-baselinen måles imod.
  */
 export async function loadCompletedOneYearBoard({ supabase, teamId } = {}) {
   ensureSupabase(supabase);
   const { data, error } = await supabase
     .from("board_profiles")
-    .select("id, current_goals, plan_type")
+    // #8188 · plan_start_season_number er cyklusvinduets start; uden den
+    // tæller baselinen boardets snapshots fra alle tidligere sæsoner.
+    .select("id, current_goals, plan_type, plan_start_season_number")
     .eq("team_id", teamId)
     .eq("plan_type", "1yr")
     .eq("negotiation_status", "completed")
@@ -261,6 +284,7 @@ export async function applyAcceptedBonusGoal({
     supabase,
     teamId,
     boardId: oneYrBoard?.id ?? null,
+    planStartSeasonNumber: oneYrBoard?.plan_start_season_number ?? null,
     extraGoal,
     reputationEnabled,
     loadGoalContext,

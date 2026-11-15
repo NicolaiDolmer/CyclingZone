@@ -18,6 +18,8 @@ import { copenhagenDateString } from "./copenhagenTime.js";
 import { RACE_V3_TUNING } from "./raceRoles.js";
 import { TRAINING_FOCUSES } from "./training.js";
 import { trainingQualityForWindow } from "./racePeaks.js";
+import { isTrainingPeakFromTicksEnabled, TRAINING_RUNS_FROM_TICKS_RPC } from "./trainingHistoryFromTicks6490.js";
+import { fetchAllRows } from "./supabasePagination.js";
 
 const DAY_MS = 86_400_000;
 
@@ -147,13 +149,26 @@ export function aggregateDemandVector(stageProfiles) {
  * @param {{supabase, teamIds:string[], startDate:string, endDate:string}} args
  * @returns {Promise<Array<{team_id:string, ord:number, riderMap:Map}>>}
  */
-export async function loadTeamTrainingRuns({ supabase, teamIds, startDate, endDate }) {
+export async function loadTeamTrainingRuns({ supabase, teamIds, startDate, endDate, fromTicks }) {
   const out = [];
   const ids = [...new Set(teamIds || [])];
   if (!ids.length || !startDate || !endDate) return out;
+  // #6490 trin c: med SIN EGEN kontakt (training_peak_from_ticks_6490) tændt kommer status og focus
+  // fra kvitteringerne (samme rækker, låst rytterliste). Træningssidens kontakt påvirker aldrig
+  // motorens input. Slukket = præcis main-læsningen (ét kald, ingen sortering, ingen paginering,
+  // også rækkeloftet: #8180). `fromTicks` kan injiceres i prøver.
+  const useTicks = fromTicks ?? await isTrainingPeakFromTicksEnabled(supabase, { fresh: true });
   for (let i = 0; i < ids.length; i += IN_CHUNK) {
     const slice = ids.slice(i, i + IN_CHUNK);
-    const { data, error } = await supabase
+    // Den nye vej pagineres med en stabil rækkefølge, så et stort felt aldrig afkortes
+    // ved PostgRESTs rækkeloft (den gamle læsning er én side, uændret).
+    const { data, error } = useTicks
+      ? await fetchAllRows(() => supabase
+        .rpc(TRAINING_RUNS_FROM_TICKS_RPC, { p_team_ids: slice, p_since: startDate, p_until: endDate, p_slim: true })
+        .select("team_id, tick_date, report")
+        .order("team_id").order("tick_date").order("game_day").order("id"))
+        .then((rows) => ({ data: rows, error: null }), (err) => ({ data: null, error: err }))
+      : await supabase
       .from("training_day_runs")
       .select("team_id, tick_date, report")
       .in("team_id", slice)

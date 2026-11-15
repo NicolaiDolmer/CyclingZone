@@ -55,6 +55,7 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "training_train_now", area: "training", label: "Træn nu (uden bonus)" },
   // #7737: træning med det samme for ryttere med løb senere samme dag. "on" = alle, "beta" = kun beta-testere. Ejer-only flip.
   { key: "training_train_now_instant", area: "training", label: "Træn nu med det samme (løbsryttere)" },
+  { key: "training_settle_race_session", area: "training", label: "Løbets session afregnes efter etapen (#7982, kun on)" },
   { key: "training_train_now_bonus", area: "training", label: "Træn nu: separat træningsbonus" },
   // #4629: programmer pr. løbsdag, seedet i beta 26/9. Flip til on er ejer-only.
   { key: "training_programs", area: "training", label: "Træningsprogrammer pr. løbsdag" },
@@ -66,6 +67,11 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "training_groups", area: "training", label: "Træningsgrupper" },
   // #5319: træningskatalog v3 (5 nye hårde sessioner), seedet off. Flip er ejer-only.
   { key: "training_catalog_v3", area: "training", label: "Træningskatalog v3 (nye hårde sessioner)" },
+  // #6490: træningshistorikken læser rytterne fra kvitteringerne. Seedet off; kun "on" tænder. Ejer-only flip.
+  { key: "training_history_from_ticks_6490", area: "training", label: "Træningshistorik fra kvitteringerne" },
+  // #6490 trin c: peak-signalet (motorens input) læser fra kvitteringerne. Egen kontakt, seedet off,
+  // binær (kun "on" tænder). Ejer-only flip; se #8180 om rækkeloftet på den gamle læsning.
+  { key: "training_peak_from_ticks_6490", area: "training", label: "Peak-signal fra kvitteringerne (motor)" },
   { key: "peak_planner_enabled", area: "training", label: "Form-planlægger" },
   // #7536: motoren laeser kun "on" (beta = off); Hjaelp-blokken foelger samme svar.
   { key: "condition_v2_race_date_training_day", area: "training", label: "Træning på løbsdato vejer et helt døgn" },
@@ -210,6 +216,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "market_commitment_6181", area: "market", label: "Bud-forpligtelsesgate" }, // #2176: scoped beta, global on; no activation.
   // #6181 PR 3: pengelaas. Kun 'on' taender (beta = slukket, det er penge). Flip er ejer-only.
   { key: "sale_escrow_enabled", area: "market", label: "Pengelås — sælgers penge låses til holdskiftet" },
+  // #8153: frigivelse midt i et etapeløb bestilles og udføres efter sidste etape. Kun 'on' tænder (penge). Ejer-only flip.
+  { key: "release_defer_8153", area: "market", label: "Frigivelse midt i etapeløb venter til løbets slut" },
   { key: "rider_primary_type_from_distribution", area: "squad", label: "Rytter-generator: primær type fra mål-fordelingen" },
   { key: "alunta_reconcile_enabled", area: "billing", label: "Alunta-afstemning" },
 ]);
@@ -326,6 +334,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "training_train_now_instant",
   // #6181: Hjaelp siger, hvornaar saelgeren faar pengene, paa dette flag (binaert, som pengelaasen).
   "sale_escrow_enabled",
+  // #6490: traeningssiden vaelger laesevej paa dette flag (binaert, som backend og peak-signalet).
+  "training_history_from_ticks_6490",
 ]);
 
 // #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,
@@ -333,4 +343,4 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
 // en flade aldrig beskriver en model motoren ikke koerer for beta-gruppen.
 // #7536: condition_v2_race_date_training_day laeses ogsaa kun som "on" af motoren
 // (conditionModelV2Flag.isRaceDateTrainingDayEnabled).
-export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801", "sale_escrow_enabled"]);
+export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801", "sale_escrow_enabled", "training_history_from_ticks_6490"]);

@@ -14,9 +14,12 @@ import { sharedReadsClient } from "./riderFatigueNow.js";
 
 // [kald, ventetider] pr. scenarie efter rettelsen. Før rettelsen (main 14/11) var Træning med en
 // etape i morgen 48-49 kald og 28 ventetider, og auto-udfyld til fem løb 36-39 kald og 33-36 ventetider.
+// Prognosens opslag sendes samtidig (#7801): Træning med en etape i morgen går fra 20 til 14 ventetider
+// (model slukket: 21 til 16), med samme antal kald. På en hviledag uden en hel dato sendes rytterlisten
+// og modelkontakten med i første runde, før datoen er kendt: ét kald mere, ingen ekstra ventetid.
 const CEILING = {
-  "traening|team-a": { midt_paa_dagen: [14, 6], morgen_foer_etaper: [14, 6], aften_alle_koert: [40, 20], hviledag: [16, 8], traen_nu_trykket: [23, 12], model_v2_slukket: [10, 6], laege_byttet: [13, 6] },
-  "traening|team-b": { midt_paa_dagen: [39, 20], morgen_foer_etaper: [39, 20], aften_alle_koert: [39, 20], hviledag: [15, 8], traen_nu_trykket: [39, 20], model_v2_slukket: [37, 21], laege_byttet: [39, 20] },
+  "traening|team-a": { midt_paa_dagen: [14, 6], morgen_foer_etaper: [14, 6], aften_alle_koert: [40, 14], hviledag: [17, 8], traen_nu_trykket: [23, 12], model_v2_slukket: [10, 6], laege_byttet: [13, 6] },
+  "traening|team-b": { midt_paa_dagen: [39, 14], morgen_foer_etaper: [39, 14], aften_alle_koert: [39, 14], hviledag: [16, 8], traen_nu_trykket: [39, 14], model_v2_slukket: [37, 16], laege_byttet: [39, 14] },
   "autoudfyld|team-a": { midt_paa_dagen: [16, 5], morgen_foer_etaper: [16, 5], aften_alle_koert: [16, 5], hviledag: [16, 5], traen_nu_trykket: [48, 20], model_v2_slukket: [9, 3], laege_byttet: [15, 4] },
   "autoudfyld|team-b": { midt_paa_dagen: [15, 4], morgen_foer_etaper: [15, 4], aften_alle_koert: [15, 4], hviledag: [15, 4], traen_nu_trykket: [15, 4], model_v2_slukket: [9, 3], laege_byttet: [15, 4] },
 };
@@ -86,6 +89,23 @@ test("sharedReadsClient: samme læsning sendes én gang; andre filtre sendes for
   await reads.from("x").select("id").in("id", new Set(["2"]));
   assert.equal(client.sent.length, 4);
   assert.equal(reads.rpc(), "bundet", "andre metoder går til den rigtige klient");
+});
+
+test("sharedReadsClient: en læsning, der stadig er undervejs, deles; fejlen deles kun med dem, der ventede", async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  let fail = true;
+  client = countingClient(async () => { await gate; return fail ? { data: null, error: { message: "nede" } } : { data: [{ v: 1 }], error: null }; });
+  const reads = sharedReadsClient(client.client);
+  const both = Promise.all([reads.from("a").select("*"), reads.from("a").select("*")]);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(client.sent.length, 1, "to samtidige ens læsninger sendes som én");
+  release();
+  const [first, second] = await both;
+  assert.ok(first.error && second.error);
+  fail = false;
+  assert.equal((await reads.from("a").select("*")).error, null, "efter fejlen går et nyt forsøg til databasen");
+  assert.equal(client.sent.length, 2);
 });
 
 test("sharedReadsClient: fejl huskes ikke, skrivninger går altid igennem, svaret er en kopi", async () => {

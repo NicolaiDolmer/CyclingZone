@@ -148,6 +148,11 @@ export async function resetBetaRosters(supabase) {
     return { moved: 0, to_ai: 0, to_null: 0, pending_cleared: 0 };
   }
 
+  // #8153: ryd ventende frigivelser FOER rytterne flyttes. Vagten paa riders afviser
+  // ellers holdskiftet for en rytter med en aktiv bestilling. Gebyrerne forsvinder
+  // med saldo-nulstillingen; bestillingerne har intet at udfoere efter en reset.
+  const pendingReleasesCleared = await clearPendingRiderReleases(supabase);
+
   const ridersResult = ensureOk(await supabase
     .from("riders")
     .select("id, ai_team_id")
@@ -207,7 +212,23 @@ export async function resetBetaRosters(supabase) {
     to_null: withoutAi.length,
     pending_cleared: countRows(pendingCleared),
     ...(saleEscrows.checked > 0 ? { sale_escrows_settled: saleEscrows.released + saleEscrows.refunded, sale_escrows_stuck: saleEscrows.stuck } : {}),
+    ...(pendingReleasesCleared > 0 ? { pending_releases_cleared: pendingReleasesCleared } : {}),
   };
+}
+
+// #8153: hele tabellen ryddes (ogsaa udfoerte raekker; de er et revisionsspor for
+// en spilverden, reset'en lige har nulstillet). Manglende tabel = 0.
+async function clearPendingRiderReleases(supabase) {
+  const { data, error } = await supabase
+    .from("pending_rider_releases")
+    .delete()
+    .not("id", "is", null)
+    .select("id");
+  if (error) {
+    if (error.code === "42P01" || error.code === "PGRST205") return 0;
+    throw new Error(`resetBetaRosters: pending_rider_releases kunne ikke ryddes: ${error.message}`);
+  }
+  return countRows({ data });
 }
 
 export async function resetBetaBalances(supabase, { clearTransactions = false, balance = DEFAULT_BETA_BALANCE } = {}) {

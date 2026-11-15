@@ -40,10 +40,35 @@ test("race_completed-bøtten med resultat som ansigt linker til løbssiden", () 
   assert.equal(resolveAggregateLink(entry, "/resultater"), `/races/${RACE_ID}`);
 });
 
-test("stage_result + milepæl samme dag linker også til løbssiden", () => {
+test("stage_result + milepæl samme dag åbner den kørte etape (#7868)", () => {
   const entry = firstEntry([
     row("n1", "stage_result", "2026-09-19T10:00:00Z", { raceId: RACE_ID, stageNumber: 3 }),
     row("n2", "career_milestone", "2026-09-19T10:00:05Z", { raceId: RACE_ID, riderId: "rider-1" }),
+  ]);
+  assert.equal(resolveAggregateLink(entry, "/resultater"), `/races/${RACE_ID}?stage=3`);
+});
+
+test("flere etaper samme dag: linket åbner den seneste kørte etape (#7868)", () => {
+  const entry = firstEntry([
+    row("n1", "stage_result", "2026-09-19T10:00:00Z", { raceId: RACE_ID, stageNumber: 4 }),
+    row("n2", "stage_result", "2026-09-19T10:00:05Z", { raceId: RACE_ID, stageNumber: 5 }),
+    row("n3", "career_milestone", "2026-09-19T10:00:09Z", { raceId: RACE_ID, riderId: "rider-1" }),
+  ]);
+  assert.equal(resolveAggregateLink(entry, "/resultater"), `/races/${RACE_ID}?stage=5`);
+});
+
+test("afsluttende race_result i bøtten giver det brede løbslink, ikke en enkelt etape (#7868)", () => {
+  const entry = firstEntry([
+    row("n1", "stage_result", "2026-09-19T10:00:00Z", { raceId: RACE_ID, stageNumber: 21 }),
+    row("n2", "race_result", "2026-09-19T10:00:05Z", { raceId: RACE_ID }),
+  ]);
+  assert.equal(resolveAggregateLink(entry, "/resultater"), `/races/${RACE_ID}`);
+});
+
+test("stage_result uden gyldigt etapenummer falder tilbage til løbslinket (#7868)", () => {
+  const entry = firstEntry([
+    row("n1", "stage_result", "2026-09-19T10:00:00Z", { raceId: RACE_ID }),
+    row("n2", "stage_result", "2026-09-19T10:00:05Z", { raceId: RACE_ID, stageNumber: "x" }),
   ]);
   assert.equal(resolveAggregateLink(entry, "/resultater"), `/races/${RACE_ID}`);
 });

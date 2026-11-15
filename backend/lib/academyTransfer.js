@@ -48,6 +48,9 @@ import { ACTIVE_AUCTION_STATUSES } from "./auctionRules.ts";
 import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
 import { clearOffSquadEntries, clearOffSquadEntriesSafe } from "./squadEntryCleanup.js";
 import {
+  PENDING_RELEASE_SQUAD_CODE, isPendingReleaseGuardError, getPendingReleaseSquadIssue, pendingReleaseSquadResponse,
+} from "./riderReleaseDefer8153.js";
+import {
   SQUAD_MAX_AGE, DEFAULT_SQUAD, ACADEMY_SQUAD_WHEN_AGE_UNKNOWN,
   isSquad, isYouthSquad, squadForSeason, squadCapRpcArgs, effectiveSquad,
   fitsSquadAge, squadMoveDirection,
@@ -155,7 +158,11 @@ export async function promote(supabase, {
     is_academy: false,
     ...contractPatch,
   }).eq("id", riderId);
-  if (error) throw new Error(`promote update: ${error.message}`);
+  if (error) {
+    // #8153: vagten paa riders afviser trupskiftet for en rytter med en ventende frigivelse.
+    if (isPendingReleaseGuardError(error)) throw new Error(PENDING_RELEASE_SQUAD_CODE);
+    throw new Error(`promote update: ${error.message}`);
+  }
   await notifyIfContractExpiresThisSeason({
     supabase, teamId, seasonNumber, now, notify,
     rider: { ...rider, ...contractPatch, squad: "senior", is_academy: false },
@@ -298,7 +305,11 @@ export async function demote(supabase, {
     ...squadArgs,
     p_squad_max_age: SQUAD_MAX_AGE[targetSquad],
   });
-  if (error) throw new Error(`demote rpc: ${error.message}`);
+  if (error) {
+    // #8153: vagten paa riders afviser nedrykningen, mens frigivelsen venter.
+    if (isPendingReleaseGuardError(error)) throw new Error(PENDING_RELEASE_SQUAD_CODE);
+    throw new Error(`demote rpc: ${error.message}`);
+  }
 
   if (!data || data.ok !== true) {
     const code = data?.code;
@@ -414,7 +425,10 @@ async function moveWithinAcademy(supabase, { teamId, riderId, fromSquad, targetS
     p_rider_id: riderId,
     ...squadCapRpcArgs(targetSquad),
   });
-  if (error) throw new Error(`move rpc: ${error.message}`);
+  if (error) {
+    if (isPendingReleaseGuardError(error)) throw new Error(PENDING_RELEASE_SQUAD_CODE); // #8153
+    throw new Error(`move rpc: ${error.message}`);
+  }
   if (!data || data.ok !== true) {
     const code = data?.code;
     if (MOVE_RPC_ERROR_CODES.has(code)) throw new Error(code);
@@ -579,21 +593,27 @@ export function moveSquadErrorStatus(code) {
  *
  * @param {any} supabase
  * @param {{teamId:string, riderId:string, body:any, seasonNumber:number,
- *   move?:typeof moveRider, moveDeps?:Record<string, any>}} args
+ *   move?:typeof moveRider, moveDeps?:Record<string, any>,
+ *   pendingReleaseIssue?:typeof getPendingReleaseSquadIssue}} args
  * @returns {Promise<{status:number, body:Record<string, any>}>}
  */
 export async function handleMoveSquadRequest(supabase, {
   teamId, riderId, body, seasonNumber, move = moveRider, moveDeps = {},
+  pendingReleaseIssue = getPendingReleaseSquadIssue,
 } = /** @type {any} */ ({})) {
   const squad = body?.squad;
   if (!isSquad(squad)) {
     return { status: 400, body: { error: "invalid_squad", errorCode: "invalid_squad" } };
   }
+  // #8153: en rytter, hvis frigivelse venter, skifter ikke trup. Slukket kontakt = null.
+  const pendingIssue = await pendingReleaseIssue(supabase, riderId);
+  if (pendingIssue) return pendingIssue;
   try {
     const result = await move(supabase, { ...moveDeps, teamId, riderId, targetSquad: squad, seasonNumber });
     return { status: 200, body: result };
   } catch (err) {
     const code = /** @type {any} */ (err)?.message ?? "";
+    if (code === PENDING_RELEASE_SQUAD_CODE) return pendingReleaseSquadResponse(supabase, riderId);
     const status = moveSquadErrorStatus(code);
     if (status === null) throw err;
     return { status, body: { error: code, errorCode: code } };

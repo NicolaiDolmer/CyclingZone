@@ -715,6 +715,14 @@
       "title": "Rytteren er ankommet",
       "message": "{riderName} er nu skiftet til dit hold. {reason, select, tourFinished {{raceName} er kørt færdigt.} tourFinishedUnnamed {Hans etapeløb er kørt færdigt.} dealCompleted {Hans handel er nu gennemført.} other {}}"
     },
+    "riderReleasePending": {
+      "title": "Frigivelse bestilt",
+      "message": "{rider} frigives efter {race}. Gebyret på {fee} CZ$ er trukket."
+    },
+    "riderReleaseExecuted": {
+      "title": "Rytter frigivet",
+      "message": "{rider} har forladt dit hold."
+    },
     "squadEnforced": {
       "title": "Holdstørrelse håndhævet",
       "message": "{purchasedCount, plural, =0 {} one {Auto-købte # rytter: {purchasedNames}\n} other {Auto-købte # ryttere: {purchasedNames}\n}}{deferredCount, plural, =0 {} one {# rytter kommer til holdet, når hans igangværende etapeløb er slut: {deferredNames}\n} other {# ryttere kommer til holdet, når deres igangværende etapeløb er slut: {deferredNames}\n}}{soldCount, plural, =0 {} one {Auto-solgte # rytter: {soldNames}\n} other {Auto-solgte # ryttere: {soldNames}\n}}{salesDeferredCount, plural, =0 {} one {# rytter i et igangværende etapeløb sælges i stedet efter løbet\n} other {# ryttere i et igangværende etapeløb sælges i stedet efter løbet\n}}Bøde: {fine} CZ$ · Fradrag: {points} point"

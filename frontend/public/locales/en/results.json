@@ -88,5 +88,13 @@
     },
     "error": "Race history couldn't load. Nothing was lost.",
     "retry": "Try again"
+  },
+  "raceResultsV6": {
+    "searchLabel": "Search the result by rider or team",
+    "searchPlaceholder": "Search rider or team",
+    "clearSearch": "Clear search",
+    "myTeam": "My team",
+    "matchCount": "Showing {shown} of {total}",
+    "noMatch": "No rider or team matches that search."
   }
 }

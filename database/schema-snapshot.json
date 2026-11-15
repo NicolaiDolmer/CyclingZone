@@ -1754,7 +1754,8 @@
         "tradeoff_payload",
         "major_pivot_used_at",
         "season_start_satisfaction",
-        "season_start_anchor_season_id"
+        "season_start_anchor_season_id",
+        "mid_season_notified_season"
       ]
     },
     "board_profiles_4377_backup_20260901": {
@@ -4081,7 +4082,8 @@
         "tick_date",
         "team_id",
         "report",
-        "created_at"
+        "created_at",
+        "settled_at"
       ]
     },
     "training_slot_health_daily": {

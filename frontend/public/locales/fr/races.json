@@ -11,7 +11,14 @@
     "hero": {
       "stageLocks": "L'étape {number} se verrouille à {time} · {countdown}",
       "locks": "Se verrouille à {time} · {countdown}",
-      "notScheduled": "L'étape {number} n'a pas encore d'heure de départ"
+      "notScheduled": "L'étape {number} n'a pas encore d'heure de départ",
+      "gapToLead": "{gap} du leader"
+    },
+    "strip": {
+      "earlier": "Étapes précédentes",
+      "later": "Étapes suivantes",
+      "you": "Toi #{rank}",
+      "plan": "{done} sur {total} faits"
     },
     "route": {
       "aria": "Parcours de l'étape",
@@ -32,6 +39,27 @@
       "notRiddenTitle": "Prépare l'étape {number}",
       "notRiddenHint": "Les résultats s'affichent ici une fois l'étape courue.",
       "openStage": "Voir l'étape"
+    },
+    "tacticsAfter": {
+      "title": "Ton plan face à ce qui s'est passé",
+      "metaStage": "Étape {number}",
+      "metaRace": "La course",
+      "intro": "Chaque phase de ton plan à côté de ce que montre le relevé de l'étape. Une phase sans rien dans le relevé est marquée non vue. Cela ne veut pas dire qu'elle a échoué.",
+      "colPlan": "Ton plan",
+      "colRecord": "Ce que montre le relevé",
+      "step": "Phase {number}",
+      "km": "km {km}",
+      "noOrders": "Ton plan pour cette étape n'a pas pu être chargé. Réessaie plus tard.",
+      "mark": {
+        "notSeen": "Non vu dans le relevé",
+        "notReached": "Pas atteinte"
+      },
+      "line": {
+        "attackFoot": "Attaque au pied de la dernière montée",
+        "attackFootNamed": "Attaque au pied de {climb}",
+        "attackHeld": "Tient l'attaque jusqu'au sommet",
+        "attackCracked": "Se vide après l'attaque et est lâché"
+      }
     }
   },
   "stagePlanReady": {

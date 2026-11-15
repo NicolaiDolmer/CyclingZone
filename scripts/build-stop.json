@@ -1439,6 +1439,21 @@
       "issue": 8013,
       "reason": "Ejer-go 15/11 (Claude Code, Dolmer PC): natbølge 15.-16/11, se #7911",
       "since": "2026-11-15"
+    },
+    {
+      "issue": 8188,
+      "reason": "Ejer-go 15/11 (Claude Code, Dolmer PC): Discord-fund, boelge i baggrunden, se #2758",
+      "since": "2026-11-15"
+    },
+    {
+      "issue": 8189,
+      "reason": "Ejer-go 15/11 (Claude Code, Dolmer PC): Discord-fund, boelge i baggrunden, se #2758",
+      "since": "2026-11-15"
+    },
+    {
+      "issue": 8190,
+      "reason": "Ejer-go 15/11 (Claude Code, Dolmer PC): Discord-fund, boelge i baggrunden, se #2758",
+      "since": "2026-11-15"
     }
   ]
 }

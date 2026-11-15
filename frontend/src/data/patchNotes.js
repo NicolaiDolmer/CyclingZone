@@ -1,5 +1,68 @@
 export const PATCHES = [
 {
+  "version": "7.449",
+  "date": "2026-11-15",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "switched_on",
+      "topic": "Transfers",
+      "en": {
+        "title": "Sale money arrives when the rider moves",
+        "body": "When you sell a rider, the money is now held until the rider actually moves to the new team. Until then you cannot spend the money. If the move is cancelled, the buyer gets the money back."
+      },
+      "da": {
+        "title": "Salgssummen kommer, når rytteren skifter",
+        "body": "Når du sælger en rytter, holdes pengene nu tilbage, til rytteren faktisk skifter hold. Indtil da kan du ikke bruge pengene. Bliver skiftet annulleret, får køberen pengene tilbage."
+      },
+      "refs": [
+        6181
+      ]
+    }
+  ]
+},
+{
+  "version": "7.448",
+  "date": "2026-11-15",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Inbox",
+      "en": {
+        "title": "Inbox line opens the latest stage",
+        "body": "The combined inbox line for a stage race now opens the latest stage that was ridden."
+      },
+      "da": {
+        "title": "Indbakke-linjen åbner seneste etape",
+        "body": "Den samlede indbakke-linje for et etapeløb åbner nu den senest kørte etape."
+      },
+      "refs": [
+        7868
+      ]
+    },
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Board",
+      "en": {
+        "title": "Monument bonus goal no longer stuck at 0",
+        "body": "Fixed the monument bonus goal staying at 0. Podiums from earlier seasons were wrongly counted as the starting point, so new podiums never showed as progress."
+      },
+      "da": {
+        "title": "Monument-bonusmålet står ikke længere på 0",
+        "body": "Rettet at monument-bonusmålet stod på 0. Podier fra tidligere sæsoner blev fejlagtigt talt med i udgangspunktet, så nye podier aldrig viste sig som fremdrift."
+      },
+      "refs": [
+        8188
+      ]
+    }
+  ]
+},
+{
   "version": "7.447",
   "date": "2026-11-14",
   "changes": [

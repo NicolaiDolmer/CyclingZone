@@ -715,6 +715,14 @@
       "title": "The rider has arrived",
       "message": "{riderName} has joined your team. {reason, select, tourFinished {{raceName} has finished.} tourFinishedUnnamed {His stage race has finished.} dealCompleted {His deal is now completed.} other {}}"
     },
+    "riderReleasePending": {
+      "title": "Release ordered",
+      "message": "{rider} will be released after {race}. The fee of {fee} CZ$ has been charged."
+    },
+    "riderReleaseExecuted": {
+      "title": "Rider released",
+      "message": "{rider} has left your team."
+    },
     "squadEnforced": {
       "title": "Squad size enforced",
       "message": "{purchasedCount, plural, =0 {} one {Auto-purchased # rider: {purchasedNames}\n} other {Auto-purchased # riders: {purchasedNames}\n}}{deferredCount, plural, =0 {} one {# rider will join the team once their ongoing stage race finishes: {deferredNames}\n} other {# riders will join the team once their ongoing stage race finishes: {deferredNames}\n}}{soldCount, plural, =0 {} one {Auto-sold # rider: {soldNames}\n} other {Auto-sold # riders: {soldNames}\n}}{salesDeferredCount, plural, =0 {} one {# rider in an ongoing stage race will be sold after the race instead\n} other {# riders in an ongoing stage race will be sold after the race instead\n}}Fine: {fine} CZ$ · Deduction: {points} points"

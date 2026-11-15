@@ -27,10 +27,14 @@ const TAB_BASE =
 const TAB_PAD = "px-4";
 const TAB_PAD_FIT = "px-2 sm:px-4";
 
-export function tabClass({ active = false, fit = false } = {}) {
+// #7778 udgave E: `accent` er et OPT-IN for T3-faner under et hero-kort, hvor den
+// aktive fane har guld-tekst (`--accent-t`, TASTE P3 punkt 3) ud over den guld
+// understregning. Skriftvaegt og -stoerrelse er de samme for aktiv og inaktiv.
+// Standarden (uden `accent`) er uaendret.
+export function tabClass({ active = false, fit = false, accent = false } = {}) {
   const base = `${TAB_BASE} ${fit ? TAB_PAD_FIT : TAB_PAD}`;
   return active
-    ? `${base} border-cz-accent text-cz-1`
+    ? `${base} border-cz-accent ${accent ? "text-cz-accent-t" : "text-cz-1"}`
     : `${base} border-transparent text-cz-3 hover:text-cz-2`;
 }
 

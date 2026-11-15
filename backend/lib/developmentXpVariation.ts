@@ -2,9 +2,10 @@
 //
 // ═══ HVORFOR ═════════════════════════════════════════════════════════════════
 // XP-tallet vises for spilleren, og XP pr. dag er selve potentialet. Uden variation
-// kan talentet regnes ud på få datoer. Ejeren valgte 7/11 en bred variation MED
-// hukommelse: gode og dårlige perioder, som skjuler talentet længere end en ren
-// dag-for-dag-variation ved samme daglige udsving (gate X9, H6b).
+// kan talentet regnes ud på få datoer. Ejeren valgte 12/11 (R11) en bred daglig
+// variation, ca. 50-150 %, UDEN hukommelse og sæson-perioder (hukommelse 0); valget
+// 7/11 med hukommelse er afløst. Hukommelsen kan stadig sættes i params. Prøvekørslen
+// (tenSeasonSim6110.mjs) kalder denne funktion direkte med xp.variation (#7757).
 //
 // ═══ KRAV ════════════════════════════════════════════════════════════════════
 //  1. Deterministisk pr. (rytter, dato): en gen-kørsel af datoen giver samme tal.
@@ -16,8 +17,7 @@
 //     aldrig til klienten.
 //  4. Hukommelse uden lager: tilstanden for en dato regnes fra trækkene for de
 //     foregående datoer, så motoren ikke skal gemme noget, og en dato kan regnes
-//     om alene. Formen er den samme som 10-sæsoners-kørslens variationSeries, så
-//     det, kørslen måler, er det, motoren kører.
+//     om alene. Kørslen bruger samme funktion, så det, kørslen måler, er det, motoren kører.
 //
 // ═══ NØGLEN I HUKOMMELSEN ════════════════════════════════════════════════════
 // Den validerede variation er et frosset objekt med bredde og hukommelse. Nøglen
@@ -73,6 +73,19 @@ export function validateXpVariation(raw: unknown): XpVariation | null | undefine
   const variation: XpVariation = Object.freeze({ span: v.span, memory: v.memory });
   KEYS.set(variation, v.key);
   return variation;
+}
+
+/**
+ * Et ikke-hemmeligt fingeraftryk af den effektive variation (nøgle, bredde, hukommelse),
+ * så gemte kørsler kan skelne en ny nøgle fra en gammel uden at nøglen afsløres. Det er en
+ * HMAC med nøglen som hemmelighed over et fast domæne; nøglen kan ikke aflæses af det.
+ * Ingen variation giver null.
+ */
+export function xpVariationFingerprint(variation: XpVariation | null | undefined): string | null {
+  if (!variation) return null;
+  const key = KEYS.get(variation);
+  if (key === undefined) throw new Error("[development-xp] variation without a registered key - params must come from validateDevelopmentXpParams");
+  return createHmac("sha256", key).update(`cz-xp-variation-fingerprint-v1:${variation.span}:${variation.memory}`).digest("hex");
 }
 
 /** Dagsnummer fra en dansk dato (YYYY-MM-DD), ellers null. Ingen ur, kun kalenderen. */

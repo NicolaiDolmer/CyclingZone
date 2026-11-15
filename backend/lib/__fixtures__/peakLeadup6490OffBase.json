@@ -1,0 +1,70 @@
+{
+  "mergeBase": "135a4824eae7e03fc8da5dbf2c45d4366357cd72",
+  "generatedFrom": "backend/lib/racePeakPlans.js at the merge-base (before #6490)",
+  "results": [
+    {
+      "seed": 1,
+      "qualities": "765b564593bca2024bc46c0f30d4e3386d115080333258e681e0a071bc0a1713",
+      "runs": "e4f5c8b581633862f4686f2c2b11a7e5060a0877dbf2ff8c28ef1a2d88342a88",
+      "tableQueries": [
+        "training_day_runs:team_id, tick_date, report"
+      ]
+    },
+    {
+      "seed": 2,
+      "qualities": "7229c1df32dc93864f550e26e882e3c6737e7d78ddf8a29758fa1190316167f0",
+      "runs": "486db9ab167d39403121b38381020ee1979704f325cf1b663507e82d4e7d7ecc",
+      "tableQueries": [
+        "training_day_runs:team_id, tick_date, report"
+      ]
+    },
+    {
+      "seed": 3,
+      "qualities": "cf55a09ed00caf799788b0a5b92be10d13b4c7ab26981ae207b281260b56312f",
+      "runs": "2e4ab4375f600c92922d5dff9d0d5b6e86418425773312b6cb9aeea9b804aee8",
+      "tableQueries": [
+        "training_day_runs:team_id, tick_date, report"
+      ]
+    },
+    {
+      "seed": 4,
+      "qualities": "e3a1cbec583a2513b82e06279ab20c9734d8b12bcaa76ba1f8e31dfcdb05cfe0",
+      "runs": "51d092c2e5c784726e2091b6c474cb2c49027498b761b8d68bc97ec4ac6f0e9e",
+      "tableQueries": [
+        "training_day_runs:team_id, tick_date, report"
+      ]
+    },
+    {
+      "seed": 5,
+      "qualities": "cec158d5cb742cea9160b77cd6c7d38d144edc45830549c1c8eb0caf5bc831fe",
+      "runs": "786a4ed375b5bef55520cbd6b3a529ab3f4b788b4d440b6049ddcbdd581c1571",
+      "tableQueries": [
+        "training_day_runs:team_id, tick_date, report"
+      ]
+    },
+    {
+      "seed": 6,
+      "qualities": "3360dedf29cb358353364c85299621e518895b3b5fc2c1cea976505538a378f2",
+      "runs": "3c7ac7312464f6df21b67346b072f5c02223e950a1687f912db40489385a3e03",
+      "tableQueries": [
+        "training_day_runs:team_id, tick_date, report"
+      ]
+    },
+    {
+      "seed": 7,
+      "qualities": "786b1ce1681744dba564958ffebe6bee880795d7a0d66f568b1cd13e15207d75",
+      "runs": "b86515e659b25bb92ada6198d867f937a310c08d5495dce2bd7b2a98d3449404",
+      "tableQueries": [
+        "training_day_runs:team_id, tick_date, report"
+      ]
+    },
+    {
+      "seed": 8,
+      "qualities": "ffbed6eec58ad93ada831e2192677b6326c0e68e3f4d2b309d38aeae3d9c8a8b",
+      "runs": "f56962438078fce340a873e1b182c7f470cbb0026c660a12541a76b3bb141979",
+      "tableQueries": [
+        "training_day_runs:team_id, tick_date, report"
+      ]
+    }
+  ]
+}

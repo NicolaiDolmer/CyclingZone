@@ -11,7 +11,8 @@
 // ═══ HVAD MODELLEN ER ════════════════════════════════════════════════════════
 //   1. PRISEN: næste point koster XP efter evnens værdi og intet andet. Den er ens
 //      for alle ryttere, typer, aldre og evner, stiger stejlt mod toppen af skalaen
-//      og er endelig helt op til 99. Der er ingen mur.
+//      og er endelig helt op til 99. Der er ingen mur. En valgfri prisbund (R16,
+//      ejer 14/11) gør kun lave evner dyrere, så store spring på én dato udebliver.
 //   2. XP PR. DAG: potentialet står fast gennem karrieren og afgør, hvor meget
 //      rytteren tjener. Forskellen mellem ryttere ligger i XP, aldrig i prisen.
 //   3. ALDER: fuld XP til et stykke ind i karrieren, derefter tydeligt faldende.
@@ -56,8 +57,16 @@ export interface XpCurvePoint {
   value: number;
 }
 
+// Prisbunden (R16, ejervalg A 14/11): under `belowLevel` koster et point aldrig under
+// `minCost`. Kun bunden af skalaen bliver dyrere; midte og top er urørt.
+export interface XpPriceFloor {
+  belowLevel: number;
+  minCost: number;
+}
+
 export interface DevelopmentXpParams {
-  price: { base: number; exponent: number };
+  // `floor` udeladt = prislisten uden bund, nøjagtig som før R16.
+  price: { base: number; exponent: number; floor?: XpPriceFloor };
   // XP på en hård dato i en signatur-fokusevne. Lineært mellem punkterne, fladt uden for
   // dem. Punkter frem for faste trin, så omregningen til 1-99 kun flytter tal, ikke kode.
   potentialXp: readonly XpCurvePoint[];
@@ -124,6 +133,9 @@ export function validateDevelopmentXpParams(raw: unknown): DevelopmentXpParams |
   if (!price || typeof price !== "object") return null;
   if (!isNum(price.base) || !(price.base > 0)) return null;
   if (!isNum(price.exponent) || !(price.exponent > 0)) return null;
+  // Sat, men ugyldig prisbund gør hele params ugyldige, ligesom variationen.
+  const floor = validPriceFloor(price.floor, price.base, price.exponent);
+  if (floor === null) return null;
 
   const potentialXp = validCurve(p.potentialXp);
   if (!potentialXp || potentialXp.length < 2) return null;
@@ -162,7 +174,8 @@ export function validateDevelopmentXpParams(raw: unknown): DevelopmentXpParams |
   if (variation === null) return null;
 
   return Object.freeze({
-    price: Object.freeze({ base: price.base, exponent: price.exponent }),
+    // Bunden er kun med, når den er sat, så params uden bund har samme form som før.
+    price: Object.freeze({ base: price.base, exponent: price.exponent, ...(floor ? { floor } : {}) }),
     potentialXp: freezeCurve(potentialXp),
     ageShare: Object.freeze({ physical: freezeCurve(physical), mental: freezeCurve(mental) }),
     offFocusShare: p.offFocusShare,
@@ -173,10 +186,37 @@ export function validateDevelopmentXpParams(raw: unknown): DevelopmentXpParams |
   });
 }
 
-/** XP for næste point. Afhænger kun af evnens værdi og er endelig helt op til 99. */
+/** Prislistens formel uden bund. */
+function formulaPrice(l: number, base: number, exponent: number): number {
+  return base * Math.pow(1 - l / SCALE_TOP, -exponent);
+}
+
+/**
+ * Validerer prisbunden. `undefined` = ingen bund. Er den sat, skal den være gyldig,
+ * ellers er hele params ugyldige (null). Bunden må aldrig gøre prisen faldende:
+ * ved grænsen skal formlen allerede koste mindst bunden, så et højere niveau
+ * aldrig bliver billigere end et lavere, og midten forbliver formlens egen.
+ */
+function validPriceFloor(raw: unknown, base: number, exponent: number): XpPriceFloor | null | undefined {
+  if (raw === undefined) return undefined;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const f = raw as Record<string, unknown>;
+  if (!isNum(f.belowLevel) || !(f.belowLevel > 0 && f.belowLevel <= MAX_ABILITY)) return null;
+  if (!isNum(f.minCost) || !(f.minCost > 0)) return null;
+  if (f.minCost > formulaPrice(f.belowLevel, base, exponent)) return null;
+  return Object.freeze({ belowLevel: f.belowLevel, minCost: f.minCost });
+}
+
+/**
+ * XP for næste point. Afhænger kun af evnens værdi og er endelig helt op til 99.
+ * Med prisbund (R16) koster et point under grænsen mindst bunden; uden bund er
+ * prisen formlens, nøjagtig som før.
+ */
 export function xpPriceForNextPoint(level: number, params: DevelopmentXpParams): number {
   const l = Math.min(MAX_ABILITY, Math.max(0, Number(level) || 0));
-  return params.price.base * Math.pow(1 - l / SCALE_TOP, -params.price.exponent);
+  const price = formulaPrice(l, params.price.base, params.price.exponent);
+  const floor = params.price.floor;
+  return floor && l < floor.belowLevel ? Math.max(price, floor.minCost) : price;
 }
 
 /** Andel af fuld XP efter alder. Ukendt alder er fuld XP, som en voksen, aldrig en turbo. */

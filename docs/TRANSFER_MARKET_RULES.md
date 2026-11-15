@@ -720,7 +720,7 @@ skrive-værn mod kapløb: frigivelsen skriver kun hvis `pending_team_id` stadig 
 givet før parkeringen, kan altså ikke gennemføres bagefter; det afvises med `stale_rider_state`,
 og ingen penge flyttes.
 
-**Sælgers penge låses til holdskiftet (#6181, pengelås PR 3, bag kontakten `sale_escrow_enabled`, slukket).**
+**Sælgers penge låses til holdskiftet (#6181, pengelås PR 3, bag kontakten `sale_escrow_enabled`, tændt 15/11 2026).**
 Med kontakten tændt betaler køberen stadig ved handlen, men ved en parkeret handel (transfer,
 bytte med kontanter, auktion med en sælger) ligger beløbet i `sale_escrows`, og sælgeren
 krediteres først når rytteren faktisk skifter hold. Ved øjeblikkeligt skifte er intet ændret.
@@ -750,6 +750,24 @@ is not null`; 30/8 var det 0). Heal-sweepen tjekkede sidst ind 20:46:20 UTC med 
 Sweepen findes fordi flushen kun kaldes fra ét sted: Vasco Fernandes stod parkeret
 22/6→4/8 (over 40 dage) med en betalt, aldrig-leveret handel, og spilleren rapporterede det
 selv i Discord (#3330, `deferredTransferHealSweep.js:1-22`).
+
+### 10.1 Frigivelse midt i et etapeløb venter (#8153, bag kontakten `release_defer_8153`, slukket)
+
+Slukket (seed `off`; kun `on` tænder, `beta` tæller som slukket) frigives en rytter straks som i dag. Tændt: fyrer holdet en seniorrytter, der kører et aktivt etapeløb (samme afgrænsning som tabellen ovenfor, og holdet er ikke afmeldt løbet), bestilles frigivelsen i stedet. Rytteren kører løbet færdigt og forlader holdet efter sidste etape.
+
+| Element | Regel | Fil |
+|---|---|---|
+| Bestilling | `POST /riders/:id/release` opretter én aktiv række i `pending_rider_releases`; `team_id` rører sig ikke. Prisoverslaget (`release-quote`) viser `pendingRace` | `riderReleaseDefer8153.js` `orderPendingRelease`, RPC `order_rider_release_8153` |
+| Gebyr | samme buyout-gebyr som en almindelig frigivelse trækkes straks, i samme transaktion som rækken, med nøglen `rider_release_pending:<række-id>`. Saldo minus bundne penge skal kunne bære det | `order_rider_release_8153` |
+| Endelig | en bestilling kan ikke fortrydes, og gebyret refunderes ikke. En ny bestilling på samme rytter afvises (409 `rider_release_already_pending`) | samme |
+| Truppen | rytteren tæller i truppen, til han er væk. I gulvtjekket ved næste frigivelse tæller holdets ventende frigivelser som afgående | `countPendingReleasesForTeam`, `order_rider_release_8153` |
+| Udførelse | ved løbets finalisering frigives rytteren som ved en almindelig frigivelse (hold og kontrakt ryddes, han står som senior uden akademi), åbne salgsopslag lukkes, fremtidige løbstilmeldinger ryddes, og holdet får besked. Kører han et andet aktivt etapeløb, venter den til også det er slut | `executePendingReleasesForRace` (`raceRunner.js`), RPC `execute_pending_rider_release_8153` |
+| Sikkerhedsnet | heal-sweepet (hvert 300. sekund) udfører enhver bestilling, hvis løb er slut, også med kontakten slukket. Har rytteren forladt holdet ad en anden vej, lukkes rækken som `cancelled_by_system` uden at røre ham | `runPendingReleaseHealSweep` |
+| Spærret imens | salg, transferliste, tilbud, bytte og auktion (409 `rider_pending_release_trade`); trupskifte, fx nedrykning til akademiet (409 `rider_pending_release_squad`); udtagelse til løb efter det igangværende (409 `selection_rider_leaving`). Ved bestillingen lukkes åbne opslag og tilbud på ham | `getPendingReleaseTradeIssue`, `getPendingReleaseSquadIssue`, `getPendingReleaseSelectionIssue` |
+| Hård grænse | triggeren `riders_pending_release_guard_8153` afviser ethvert skift af `team_id`, `pending_team_id`, `is_academy` eller `squad`, mens rytteren har en aktiv række, uanset sti | `database/2026-11-15-8153-pending-rider-releases.sql` |
+| Sæsonskifte | venter på ventende frigivelser; `force` afvises med 409 `pending_rider_releases`, så længe der står nogen | `seasonTransitionReadiness.js`, `countPendingReleasesForTransition` |
+| Visning | `GET /api/me/pending-releases` giver holdets ventende frigivelser med løbets navn | `loadPendingReleasesForTeam` |
+| Beta-nulstilling | tømmer tabellen, før rytterne flyttes | `betaResetService.js` |
 
 ---
 

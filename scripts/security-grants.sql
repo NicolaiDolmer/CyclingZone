@@ -104,7 +104,11 @@ WITH secdef AS (
       -- Founder-badgen (#4649, database/2026-09-03-4649-founder-public.sql):
       -- read-only liste af founder-brugere til profil/forum; EXECUTE for
       -- authenticated er tilsigtet. Audit 17/9 flaggede den som WARN.
-      'founder_public_list'
+      'founder_public_list',
+      -- #6490 (database/2026-11-15-6490-training-history-runs.sql): read-only
+      -- traeningshistorik for kalderens eget hold; ejerskabstjekket spejler
+      -- RLS-politikken training_day_runs_select. anon har ikke EXECUTE.
+      'training_history_runs'
     )
 )
 SELECT

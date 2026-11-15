@@ -11,7 +11,14 @@
     "hero": {
       "stageLocks": "Stage {number} locks at {time} · {countdown}",
       "locks": "Locks at {time} · {countdown}",
-      "notScheduled": "Stage {number} has no start time yet"
+      "notScheduled": "Stage {number} has no start time yet",
+      "gapToLead": "{gap} to the lead"
+    },
+    "strip": {
+      "earlier": "Earlier stages",
+      "later": "Later stages",
+      "you": "You #{rank}",
+      "plan": "{done} of {total} done"
     },
     "route": {
       "aria": "Stage route",
@@ -32,6 +39,27 @@
       "notRiddenTitle": "Get ready for stage {number}",
       "notRiddenHint": "Results show here once the stage has been ridden.",
       "openStage": "See the stage"
+    },
+    "tacticsAfter": {
+      "title": "Your plan against what happened",
+      "metaStage": "Stage {number}",
+      "metaRace": "The race",
+      "intro": "Each step of your plan next to what the stage record shows. A step with nothing in the record is marked not seen. That does not mean it failed.",
+      "colPlan": "Your plan",
+      "colRecord": "What the record shows",
+      "step": "Step {number}",
+      "km": "km {km}",
+      "noOrders": "Your plan for this stage could not be loaded. Try again later.",
+      "mark": {
+        "notSeen": "Not seen in the record",
+        "notReached": "Not reached"
+      },
+      "line": {
+        "attackFoot": "Attacks at the foot of the last climb",
+        "attackFootNamed": "Attacks at the foot of {climb}",
+        "attackHeld": "Holds the attack to the top",
+        "attackCracked": "Runs empty after the attack and is dropped"
+      }
     }
   },
   "stagePlanReady": {

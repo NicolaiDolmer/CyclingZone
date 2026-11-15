@@ -715,6 +715,14 @@
       "title": "El ciclista ha llegado",
       "message": "{riderName} se ha unido a tu equipo. {reason, select, tourFinished {{raceName} ha terminado.} tourFinishedUnnamed {Su carrera por etapas ha terminado.} dealCompleted {Su trato ya está completado.} other {}}"
     },
+    "riderReleasePending": {
+      "title": "Liberación solicitada",
+      "message": "{rider} será liberado después de {race}. Se ha cobrado la tarifa de {fee} CZ$."
+    },
+    "riderReleaseExecuted": {
+      "title": "Ciclista liberado",
+      "message": "{rider} ha dejado tu equipo."
+    },
     "squadEnforced": {
       "title": "Tamaño de plantilla aplicado",
       "message": "{purchasedCount, plural, =0 {} one {Compra automática de # ciclista: {purchasedNames}\n} other {Compra automática de # ciclistas: {purchasedNames}\n}}{deferredCount, plural, =0 {} one {# ciclista se unirá al equipo cuando termine su carrera por etapas en curso: {deferredNames}\n} other {# ciclistas se unirán al equipo cuando termine su carrera por etapas en curso: {deferredNames}\n}}{soldCount, plural, =0 {} one {Venta automática de # ciclista: {soldNames}\n} other {Venta automática de # ciclistas: {soldNames}\n}}{salesDeferredCount, plural, =0 {} one {# ciclista en una carrera por etapas en curso se venderá después de la carrera\n} other {# ciclistas en una carrera por etapas en curso se venderán después de la carrera\n}}Multa: {fine} CZ$ · Deducción: {points} puntos"

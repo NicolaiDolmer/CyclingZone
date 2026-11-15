@@ -68,6 +68,8 @@ function createMockSupabase({
   ridersError = null,
   // #6181: holdte escrows, der skal afregnes foer skiftet.
   heldSaleEscrows = [],
+  // #8153: aktive ventende frigivelser (pending_rider_releases, status pending).
+  pendingReleaseCount = 0,
   // #7871: rytterstatus for de holdte escrows (stuck-klassifikationen).
   escrowRiders = [],
   calls = null,
@@ -130,6 +132,9 @@ function createMockSupabase({
       if (table === "sale_escrows") {
         const chain = { eq: () => chain, order: () => Promise.resolve({ data: heldSaleEscrows, error: null }) };
         return { select: () => chain };
+      }
+      if (table === "pending_rider_releases") { // #8153
+        return { select: () => ({ eq: () => Promise.resolve({ count: pendingReleaseCount, error: null }) }) };
       }
       throw new Error(`Uventet tabel i mock: ${table}`);
     },
@@ -296,6 +301,14 @@ test("#6181 holdte escrows (låste salg) blokerer under no_deferred_transfers", 
   assert.deepEqual(result.failed_critical, ["no_deferred_transfers"]);
   assert.match(result.checks.no_deferred_transfers.detail, /^1 låste salg venter på afregning/);
   assert.doesNotMatch(result.checks.no_deferred_transfers.detail, /fastlåste/);
+});
+
+test("#8153 ventende frigivelser blokerer under no_deferred_transfers", async () => {
+  const supabase = createMockSupabase({ humanTeams: COMPLIANT_TEAMS, seniorRiders: COMPLIANT_RIDERS, pendingReleaseCount: 2 });
+  const result = await assessTransitionReadiness({ supabase, fromSeasonId: FROM_SEASON_ID });
+  assert.equal(result.ready, false);
+  assert.deepEqual(result.failed_critical, ["no_deferred_transfers"]);
+  assert.match(result.checks.no_deferred_transfers.detail, /^2 ventende frigivelser/);
 });
 
 test("#7871 et fastlåst bytte peger på admin-vejen i detail", async () => {
