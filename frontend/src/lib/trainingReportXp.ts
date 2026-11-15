@@ -79,7 +79,7 @@ export interface XpViewOptions {
   /** rider id -> ISO 3166 alpha-2 code; the receipt does not carry nationality. */
   nations?: Record<string, string | null | undefined>;
   /** The session score already shown on the training page, per slot. */
-  scoreOf?: (riderId: string, date: string, activity: TrainingActivity) => number | null;
+  scoreOf?: (riderId: string, date: string, activity: TrainingActivity, seasonId: string | null) => number | null;
 }
 
 /** The display boundary the fatigue colour already uses (ConditionChips.fatigueColor). */
@@ -201,7 +201,7 @@ export function buildTodayView(runs: ReadonlyArray<XpReceipt>, date: string | nu
         from: jump && finite(jump.from) ? jump.from : null, to: jump && finite(jump.to) ? jump.to : null,
         bar, segments: barSegments(bar, source.training, source.race, points > 0) };
     }).sort((a, b) => Number(b.points > 0) - Number(a.points > 0));
-    const scores = row.activities.map(a => options.scoreOf?.(row.rider_id, day.date, a) ?? null);
+    const scores = row.activities.map(a => options.scoreOf?.(row.rider_id, day.date, a, run.season_id ?? null) ?? null);
     const sessionScores = scores.filter((s): s is number => s != null);
     return {
       id: row.rider_id, name: row.name || row.rider_id, nation: options.nations?.[row.rider_id] ?? null,

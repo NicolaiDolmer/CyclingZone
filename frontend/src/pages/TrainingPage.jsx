@@ -93,6 +93,7 @@ import { DISPLAY_RECIPES } from "../lib/generated/displayRecipes.js";
 import TodayRowsMobile from "../components/training/TodayRowMobile.tsx";
 import { pressedChoice, pressedChoiceFromSession, rowLocked, rowForecast, hasOwnProgram } from "../components/training/todayRowModel.ts";
 import ResetToTeamProgram from "../components/training/ResetToTeamProgram.tsx";
+import XpReportSwitch from "../components/training/reportXp/XpReportSwitch.tsx"; // #7627
 // #6030: fanerne Program, Development og Report hentes foerst naar de aabnes
 // (lazyWithRetry, #5014), saa foerste visning af Today henter mindre. Fallback er den
 // kanoniske skelet-markup (PAGE_TEMPLATES: aldrig en spinner i kort).
@@ -2708,7 +2709,10 @@ export default function TrainingPage() {
         <Suspense fallback={<TabFallback />}>
         {/* #6030: training_daily_receipt er on for alle (1/10); den gamle
             rapport-gren (legacy-tabellen + gaarsdagens fold-ud) er slettet. */}
+        {/* #7627: XP-rapporten kun bag XP-kontakten eller preview ?xpreport=on; ellers uaendret. */}
+        <XpReportSwitch runs={receiptRuns} roster={ridersLoading ? null : riders} trainingScore={trainingScore}>
         <TrainingHistory history={{ ...history, runs: receiptRuns }} trainingScore={trainingScore} condition={condition} today={today} roster={ridersLoading ? null : riders} />
+        </XpReportSwitch>
         <TrainingMoment latestRun={latestRun} isToday={latestIsToday} progressByRider={progress} pastRuns={pastRuns} />
         </Suspense>
       </TabPanel>
