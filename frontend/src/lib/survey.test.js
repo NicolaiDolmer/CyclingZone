@@ -479,7 +479,7 @@ test("et tomt eller ulæseligt luk-flag betyder at kortet vises", () => {
 // det denne test beskytter er at komponenten kalder den, ikke at den virker.
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const inviteCardSource = readFileSync(
-  join(__dirname, "..", "components", "SurveyInviteCard.jsx"),
+  join(__dirname, "..", "data", "dashboardCards.ts"), // #6494: the card reads through the data layer
   "utf8"
 );
 
@@ -501,7 +501,7 @@ test("SurveyInviteCard filtrerer på closes_at I FORESPØRGSLEN, ikke kun bageft
 test("SurveyInviteCard skjuler kortet når closes_at er passeret (bælte og seler efter query-filteret)", () => {
   assert.match(inviteCardSource, /isSurveyPastClose\(open\.closes_at\)/);
   const guardIdx = inviteCardSource.indexOf("isSurveyPastClose(open.closes_at)");
-  const setSurveyIdx = inviteCardSource.indexOf("setSurvey(open)");
+  const setSurveyIdx = inviteCardSource.indexOf("return completions?.[0] ? null : open;");
   assert.ok(guardIdx !== -1 && setSurveyIdx !== -1, "begge linjer skal findes");
   assert.ok(guardIdx < setSurveyIdx, "closes_at-tjekket skal ske FØR kortet vises");
 });

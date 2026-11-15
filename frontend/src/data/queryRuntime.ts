@@ -115,3 +115,27 @@ export function createDataRuntime() {
   };
 }
 export type DataRuntime = ReturnType<typeof createDataRuntime>;
+
+/** Query notification scheduler: at most one pending flush, run on the next animation frame or
+ * after 100 ms, whichever comes first (frames do not fire in hidden tabs). */
+export function frameScheduler(
+  frame: (run: () => void) => unknown = (run) => globalThis.requestAnimationFrame(run),
+  timer: (run: () => void, ms: number) => unknown = (run, ms) => setTimeout(run, ms),
+) {
+  let queue: Array<() => void> = [];
+  let pending = false;
+  const flush = () => {
+    if (!pending) return;
+    pending = false;
+    const callbacks = queue;
+    queue = [];
+    for (const callback of callbacks) callback();
+  };
+  return (callback: () => void) => {
+    queue.push(callback);
+    if (pending) return;
+    pending = true;
+    frame(flush);
+    timer(flush, 100);
+  };
+}

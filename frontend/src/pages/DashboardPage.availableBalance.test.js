@@ -19,25 +19,31 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(__dirname, "DashboardPage.jsx"), "utf8");
+const dataSource = readFileSync(join(__dirname, "..", "data", "dashboardData.ts"), "utf8"); // #6494: server data moved to the data layer
 
 test("#3508 DashboardPage importerer den delte availableBalance-helper i stedet for at genopfinde beregningen", () => {
   assert.match(
     source,
-    /import \{ fetchReservedBalance, computeAvailableBalance \} from "\.\.\/lib\/availableBalance\.js";/,
-    "skal importere BÅDE fetchReservedBalance og computeAvailableBalance fra den delte helper",
+    /import \{ computeAvailableBalance \} from "\.\.\/lib\/availableBalance\.js";/,
+    "siden skal importere computeAvailableBalance fra den delte helper",
+  );
+  assert.match(
+    dataSource,
+    /import \{ fetchReservedBalance \} from "\.\.\/lib\/availableBalance\.js";/,
+    "datalaget skal importere fetchReservedBalance fra den delte helper",
   );
 });
 
 test("#3508 DashboardPage henter reservedBalance via fetchReservedBalance (samme queries som FinancePage)", () => {
   assert.match(
-    source,
-    /fetchReservedBalance\(supabase, teamData\.id\)/,
-    "skal kalde den delte fetch-helper med supabase-klienten + teamData.id",
+    dataSource,
+    /fetchReservedBalance\(supabase, team\.id\)/,
+    "skal kalde den delte fetch-helper med supabase-klienten + holdets id",
   );
   assert.match(
-    source,
-    /setReservedBalance\(reservedBalanceValue \|\| 0\)/,
-    "skal gemme resultatet i reservedBalance-state",
+    dataSource,
+    /reservedBalance: reservedBalanceValue \|\| 0/,
+    "skal gemme resultatet i core-data",
   );
 });
 

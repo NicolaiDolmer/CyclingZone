@@ -17,6 +17,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(__dirname, "DashboardPage.jsx"), "utf8");
+const dataSource = readFileSync(join(__dirname, "..", "data", "dashboardData.ts"), "utf8"); // #6494: server data moved to the data layer
 
 // #2230: load failure behavior is covered in 5312-dashboard-offline-error.spec.js.
 
@@ -40,13 +41,13 @@ test("#3510 fejlet load renderer den kanoniske ErrorState med retry, ikke et tom
   );
   assert.match(
     source,
-    /onClick=\{\(\) => \{ setLoading\(true\); loadAll\(\); \}\}/,
-    "retry-knappen skal genkalde loadAll (samme mønster som StandingsPage/#2175)",
+    /onClick=\{\(\) => \{ void dashboard\.retry\(\); \}\}/,
+    "retry-knappen skal genhente de fejlede ressourcer (#6494, tidligere loadAll)",
   );
   // Retry er ALTID secondary, aldrig gold (PAGE_TEMPLATES.md §Canonical states).
   assert.match(
     source,
-    /<Button size="sm" variant="secondary" onClick=\{\(\) => \{ setLoading\(true\); loadAll\(\); \}\}>\{t\("dashboard:retry"\)\}<\/Button>/,
+    /<Button size="sm" variant="secondary" onClick=\{\(\) => \{ void dashboard\.retry\(\); \}\}>\{t\("dashboard:retry"\)\}<\/Button>/,
     "retry-knappen skal være secondary sm, aldrig gold",
   );
 });
@@ -56,14 +57,10 @@ test("#5322 et 'naaede aldrig serveren'-resultat loeftes til sidens fejlflade, i
   // loeft ville de to BLOKERENDE kald falde ned i deres `res.ok`-gren, og
   // spilleren ville se et halvtomt dashboard i stedet for "kan ikke naa
   // serveren" — praecis den tilstand #5312 handlede om.
+  // #6494: the blocking core read is in the data layer.
   assert.match(
-    source,
-    /function failOnUnreachable\(res\) \{\s*if \(res\.networkError\) throw res;\s*return res;\s*\}/,
-    "der skal findes en helper der kaster apiFetch-resultatet videre ved networkError",
-  );
-  assert.match(
-    source,
-    /apiFetch\(`\$\{API\}\/api\/board\/status`[\s\S]{0,200}?\.then\(failOnUnreachable\)/,
+    dataSource,
+    /apiFetch\("\/api\/board\/status"[\s\S]{0,120}?if \(res\.networkError\) throw res;/,
     "board/status (blokerende) skal loefte et netvaerks-resultat til fejlfladen",
   );
   // #2230: my-offers is independent; failure must not replace the whole page.
@@ -71,16 +68,10 @@ test("#5322 et 'naaede aldrig serveren'-resultat loeftes til sidens fejlflade, i
 });
 
 test("#3510 recentResults + riderRanking defaulter til null (ikke []), så post-paint-fetch kan skelnes fra bekræftet tom", () => {
-  assert.match(
-    source,
-    /const \[recentResults, setRecentResults\] = useState\([^;\n]*\(null\)\);/,
-    "recentResults skal default til null (loading), ikke [] (empty)",
-  );
-  assert.match(
-    source,
-    /const \[riderRanking, setRiderRanking\] = useState\([^;\n]*\(null\)\);/,
-    "riderRanking skal default til null (loading), ikke [] (empty)",
-  );
+  // #6494: null until the first answer; a failed read with nothing known settles to [].
+  // Behaviour is tested with a real QueryClient in data/dashboardQueryPolicy.test.ts.
+  assert.match(dataSource, /recentResults: settledList\(recentQuery, EMPTY_ROWS\)/);
+  assert.match(dataSource, /riderRanking: settledList\(rankingQuery, EMPTY_ROWS\)/);
 });
 
 // #2230: placeholder/content geometry is tested in dashboard-stable-loading.spec.ts.

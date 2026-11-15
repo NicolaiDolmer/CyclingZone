@@ -10,10 +10,6 @@
     "backend/lib/aiRecoverySweep.js": {
       "riders": 1
     },
-    "backend/lib/aiTeamGenerator.js": {
-      "riders": 2,
-      "race_entries": 1
-    },
     "backend/lib/betaResetService.js": {
       "riders": 1
     },
@@ -33,7 +29,7 @@
       "race_entries": 1
     },
     "backend/lib/raceBinding.js": {
-      "race_stage_schedule": 2,
+      "race_stage_schedule": 1,
       "race_entries": 1
     },
     "backend/lib/raceEntryCleanup.js": {
@@ -86,9 +82,6 @@
     "backend/lib/teamProfileEngine.js": {
       "riders": 2
     },
-    "backend/lib/tierCalendarMaterializer.js": {
-      "race_stage_schedule": 1
-    },
     "backend/lib/transferExecution.js": {
       "riders": 3
     },
@@ -98,7 +91,7 @@
     "backend/routes/api.js": {
       "riders": 18,
       "race_stage_schedule": 2,
-      "race_entries": 6,
+      "race_entries": 5,
       "race_stage_profiles": 2
     },
     "backend/scripts/boardIdentityBackfillDryRun.js": {
@@ -153,11 +146,7 @@
     "frontend/src/components/race/StageScheduleCard.jsx": {
       "race_stage_schedule": 1
     },
-    "frontend/src/pages/DashboardPage.jsx": {
-      "race_stage_schedule": 1
-    },
     "frontend/src/pages/RaceDetailPage.jsx": {
-      "race_stage_profiles": 1,
       "race_stage_schedule": 1
     },
     "frontend/src/pages/ResultaterPage.jsx": {

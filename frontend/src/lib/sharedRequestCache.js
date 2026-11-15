@@ -152,4 +152,26 @@ export async function transferListingsKeyForHeaders2176(headers) {
 export function invalidateTransferListings2176(cache = sharedRequestCache) {
   cache.invalidate(SHARED_KEYS.transferListings);
   cache.invalidatePrefix(`${SHARED_KEYS.transferListings}:viewer:`);
+  if (cache === sharedRequestCache) transferListingsOwner?.invalidate();
+}
+
+/** @type {{ get: (key: string, loader: () => unknown) => unknown; invalidate: () => void; clear: () => void } | null} */
+let transferListingsOwner = null;
+const legacyGet = sharedRequestCache.get.bind(sharedRequestCache);
+const legacyClear = sharedRequestCache.clear.bind(sharedRequestCache);
+sharedRequestCache.get = async (key, loader, ttlMs = DEFAULT_TTL_MS) => {
+  if (transferListingsOwner && (key === SHARED_KEYS.transferListings || key.startsWith(SHARED_KEYS.transferListings + ":viewer:"))) {
+    return transferListingsOwner.get(key, loader);
+  }
+  return legacyGet(key, loader, ttlMs);
+};
+sharedRequestCache.clear = () => { legacyClear(); transferListingsOwner?.clear(); };
+
+/** A lazy migrated owner replaces the listing memo cache, leaving unrelated GETs alone.
+ * @param {NonNullable<typeof transferListingsOwner>} owner
+ */
+export function installTransferListingsOwner(owner) {
+  legacyClear();
+  transferListingsOwner = owner;
+  return () => { if (transferListingsOwner === owner) transferListingsOwner = null; };
 }
