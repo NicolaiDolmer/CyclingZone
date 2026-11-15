@@ -438,7 +438,8 @@ async function runMidSeasonReviewCron() {
   try {
     const result = await processMidSeasonReviewCron({
       supabase,
-      notifyUser: notifyUserWithBoardDM,
+      // #8196 (ejer 15/11): midtsaeson-beskeden sendes kun i spillet, ikke som Discord-DM.
+      notifyUser: notifyUserShared,
       captureExceptionFn: sentryCapture,
       now: new Date(),
     });

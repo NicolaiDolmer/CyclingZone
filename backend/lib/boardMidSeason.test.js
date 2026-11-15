@@ -864,3 +864,94 @@ function makeFakeSupabase(state) {
   };
   return fake;
 }
+
+// =====================================================================
+// #8196 — en slettet midtsaeson-besked maa ikke sendes igen
+// =====================================================================
+
+function makeNotifier8196(state, sent) {
+  return async (args) => {
+    sent.push({ ...args });
+    state.notifications.push({
+      id: `notif-${state.notifications.length + 1}`,
+      user_id: args.userId,
+      type: args.type,
+      title: args.title,
+      message: args.message,
+      related_id: args.relatedId,
+    });
+    return { delivered: true, deduped: false };
+  };
+}
+
+test("#8196: slettes beskeden i indbakken, sender naeste koersel den IKKE igen", async () => {
+  const sent = [];
+  const state = makeMidSeasonState({ raceDaysCompleted: 30, raceDaysTotal: 60, boardSatisfaction: 40 });
+  const supabase = makeFakeSupabase(state);
+  const notifyUser = makeNotifier8196(state, sent);
+
+  const first = await processMidSeasonReviewCron({ supabase, notifyUser });
+  assert.equal(first.banners_sent, 1);
+  assert.equal(Number(state.board_profiles[0].mid_season_notified_season), 5, "maerket saettes paa boardet");
+
+  state.notifications.length = 0; // spilleren sletter beskeden
+
+  const second = await processMidSeasonReviewCron({ supabase, notifyUser });
+  assert.equal(second.banners_sent, 0);
+  assert.equal(sent.length, 1, "ingen ny besked efter sletning");
+});
+
+test("#8196: en besked sendt foer rettelsen faar maerket sat, saa en senere sletning ikke udloeser en ny", async () => {
+  const sent = [];
+  const state = makeMidSeasonState({ raceDaysCompleted: 30, raceDaysTotal: 60, boardSatisfaction: 40 });
+  state.notifications.push({
+    id: "old-1",
+    user_id: state.teams[0].user_id,
+    type: "board_critical",
+    title: `${MID_SEASON_TITLE_PREFIX} (season 5)`,
+    related_id: state.board_profiles[0].id,
+  });
+  const supabase = makeFakeSupabase(state);
+  const notifyUser = makeNotifier8196(state, sent);
+
+  await processMidSeasonReviewCron({ supabase, notifyUser });
+  assert.equal(sent.length, 0);
+  assert.equal(Number(state.board_profiles[0].mid_season_notified_season), 5);
+
+  state.notifications.length = 0;
+  await processMidSeasonReviewCron({ supabase, notifyUser });
+  assert.equal(sent.length, 0, "ingen ny besked efter sletning");
+});
+
+test("#8196: et maerke fra en tidligere saeson spaerrer ikke for denne saesons besked", async () => {
+  const sent = [];
+  const state = makeMidSeasonState({ raceDaysCompleted: 30, raceDaysTotal: 60, boardSatisfaction: 40 });
+  state.board_profiles[0].mid_season_notified_season = 4;
+  const supabase = makeFakeSupabase(state);
+  const summary = await processMidSeasonReviewCron({ supabase, notifyUser: makeNotifier8196(state, sent) });
+  assert.equal(summary.banners_sent, 1);
+});
+
+test("#8196: mangler kolonnen endnu (migration ikke koert), virker koerslen som foer og vaelter ikke", async () => {
+  const sent = [];
+  const state = makeMidSeasonState({ raceDaysCompleted: 30, raceDaysTotal: 60, boardSatisfaction: 40 });
+  const supabase = makeFakeSupabase(state);
+  const realFrom = supabase.from.bind(supabase);
+  supabase.from = (table) => {
+    const builder = realFrom(table);
+    if (table !== "board_profiles") return builder;
+    const realSelect = builder.select.bind(builder);
+    builder.select = (columns) => {
+      if (String(columns).includes("mid_season_notified_season")) {
+        const failing = { eq: () => failing, then: (resolve) => resolve({ data: null, error: { code: "42703", message: "column board_profiles.mid_season_notified_season does not exist" } }) };
+        return failing;
+      }
+      return realSelect(columns);
+    };
+    return builder;
+  };
+  const summary = await processMidSeasonReviewCron({ supabase, notifyUser: makeNotifier8196(state, sent) });
+  assert.equal(summary.errors, 0);
+  assert.equal(summary.banners_sent, 1);
+  assert.equal(state.board_profiles[0].mid_season_notified_season, undefined, "ingen skrivning til en kolonne, der ikke findes");
+});
