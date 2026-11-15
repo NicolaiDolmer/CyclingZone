@@ -1,5 +1,28 @@
 export const PATCHES = [
 {
+  "version": "7.450",
+  "date": "2026-11-15",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "switched_on",
+      "topic": "Transfers",
+      "en": {
+        "title": "Auto-accept price is open to everyone",
+        "body": "A seller can set an auto-accept price on a listed rider. If you bid that price or more, a public auction starts right away and you choose how long it runs. Prices that beta testers already set now count for all buyers. Sellers can change or remove the price on the listing."
+      },
+      "da": {
+        "title": "Auto-pris er åben for alle",
+        "body": "En sælger kan sætte en auto-pris på en rytter til salg. Byder du den pris eller mere, starter en offentlig auktion med det samme, og du vælger selv længden. Priser, som betatestere allerede har sat, gælder nu for alle købere. Sælgere kan ændre eller fjerne prisen på opslaget."
+      },
+      "refs": [
+        2176
+      ]
+    }
+  ]
+},
+{
   "version": "7.449",
   "date": "2026-11-15",
   "changes": [
