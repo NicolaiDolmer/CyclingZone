@@ -600,6 +600,18 @@ features:
     verified: 2026-11-12
     note: "Beta 11/11 kl. 20:56; on for alle 12/11 (læst i prod 12/11). Patch note 7.435."
 
+  - id: release-defer-stage-race
+    area: market
+    title_en: Release waits for the end of a stage race
+    title_da: Frigivelse venter til etapeløbets slut
+    state: building
+    ssot: docs/TRANSFER_MARKET_RULES.md
+    epic: 8153
+    verified: 2026-11-15
+    decision: ejer-beslutning
+    decide_by: 2026-11-29
+    note: Kontakt release_defer_8153 (seed off) kommer med migrationen; slukket = som i dag.
+
   - id: rider-loans
     area: market
     title_en: Rider loans

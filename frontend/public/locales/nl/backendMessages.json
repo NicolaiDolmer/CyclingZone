@@ -715,6 +715,14 @@
       "title": "De renner is aangekomen",
       "message": "{riderName} heeft zich bij je team aangesloten. {reason, select, tourFinished {{raceName} is afgelopen.} tourFinishedUnnamed {Zijn etappekoers is afgelopen.} dealCompleted {Zijn deal is nu afgerond.} other {}}"
     },
+    "riderReleasePending": {
+      "title": "Vrijgave aangevraagd",
+      "message": "{rider} wordt vrijgegeven na {race}. De vergoeding van {fee} CZ$ is afgeschreven."
+    },
+    "riderReleaseExecuted": {
+      "title": "Renner vrijgegeven",
+      "message": "{rider} heeft je ploeg verlaten."
+    },
     "squadEnforced": {
       "title": "Selectiegrootte afgedwongen",
       "message": "{purchasedCount, plural, =0 {} one {Automatisch # renner gekocht: {purchasedNames}\n} other {Automatisch # renners gekocht: {purchasedNames}\n}}{deferredCount, plural, =0 {} one {# renner sluit zich bij het team aan zodra zijn lopende etappekoers is afgelopen: {deferredNames}\n} other {# renners sluiten zich bij het team aan zodra hun lopende etappekoers is afgelopen: {deferredNames}\n}}{soldCount, plural, =0 {} one {Automatisch # renner verkocht: {soldNames}\n} other {Automatisch # renners verkocht: {soldNames}\n}}{salesDeferredCount, plural, =0 {} one {# renner in een lopende etappekoers wordt in plaats daarvan na de koers verkocht\n} other {# renners in een lopende etappekoers worden in plaats daarvan na de koers verkocht\n}}Boete: {fine} CZ$ · Aftrek: {points} punten"

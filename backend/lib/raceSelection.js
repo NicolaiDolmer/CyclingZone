@@ -17,6 +17,7 @@ import { isRiderDayInvariantViolation, teamInRacePool, teamInRaceSquadPool, find
 import { isS5ProfilesV3OrLater, surfaceRulesRevision } from "./raceEngineRulesRevision.ts";
 import { firstStageNumber, raceFatigueNowForSurface } from "./riderFatigueNow.js"; // #7801
 import { isFatigueNow7801Enabled } from "./riderFatigueNowFlag.js"; // #7801
+import { getPendingReleaseSelectionIssue } from "./riderReleaseDefer8153.js"; // #8153
 
 // ── #7801: trætheden lige nu på Udtagelsen og Holdfanen ─────────────────────────────
 // Træningssiden, assistenten og motoren regner allerede på samme tal (riderFatigueNow.js).
@@ -330,6 +331,9 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
     availableCount: ctx.availableCount,
   });
   if (!result.ok) return { ok: false, status: 400, error: result.errors[0], errors: result.errors };
+  // #8153: en rytter med en ventende frigivelse kan ikke udtages til loeb efter det, han koerer faerdigt.
+  const leavingIssue = await getPendingReleaseSelectionIssue(supabase, { race, riderIds });
+  if (leavingIssue) return leavingIssue;
   // #6009: en allerede KOERT loebsdag binder ogsaa (bindingen frigives ved completed). Fail-closed.
   const raced = await loadRidersAlreadyRacedInSpan({ supabase, race, riderIds });
   if (raced.error) return { ok: false, status: 503, error: "selection_lookup_failed" };
