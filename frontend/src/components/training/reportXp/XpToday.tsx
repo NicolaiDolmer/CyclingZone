@@ -16,7 +16,7 @@ import { Swatch, XpBar, XpLegend } from "./XpBar.tsx";
 
 const META = "font-data text-2xs uppercase tracking-[.08em] text-cz-3";
 const NUM = "font-data tabular-nums";
-const ROW_GRID = "grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1.6fr)_7rem_3.5rem_3.5rem_minmax(5rem,1fr)_4.75rem_4.75rem]";
+const ROW_GRID = "grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,2.2fr)_7.5rem_3.25rem_3.25rem_minmax(4rem,0.9fr)_4.5rem_4.5rem]";
 const xp = (n: number) => formatNumber(Math.round(n));
 
 /** A dark mark for whole points: the date's headline, never gold. */
@@ -167,7 +167,7 @@ export default function XpToday({ view, onPickDate, switcher }: { view: XpTodayV
         ]} />
       </Section>
       <div className="grid items-start gap-[14px] lg:grid-cols-[minmax(0,1fr)_24rem]">
-        <Section data-testid="xp-today-list">
+        <Section className="min-w-0" data-testid="xp-today-list">
           <div className="-mx-1 mb-1 overflow-x-auto px-1 pb-1">
             <Segmented label={t("xpReport.filterLabel")} value={filter} onChange={(v: TodayFilter) => setFilter(v)} className="whitespace-nowrap"
               options={(["all", "gained", "raced", "notRaced"] as TodayFilter[]).map(key => ({ value: key, label: t(`xpReport.filter.${key}`, { count: view.counts[key] }) }))} />
@@ -203,7 +203,7 @@ export default function XpToday({ view, onPickDate, switcher }: { view: XpTodayV
             );
           })}
         </Section>
-        {selected && <Section className="hidden lg:sticky lg:top-4 lg:block"><RiderDetail rider={selected} panel /></Section>}
+        {selected && <Section className="hidden min-w-0 lg:sticky lg:top-4 lg:block"><RiderDetail rider={selected} panel /></Section>}
       </div>
     </>
   );
