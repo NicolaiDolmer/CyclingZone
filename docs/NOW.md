@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11 · slet `backup_5902_20261112_*` ~26/11 · slet `backup_8078/8080/8099_20261113_*` ~27/11.
 >
-> **🎯 Next action (15/11):** Resten af kortene, ét ad gangen (`docs/audits/night-wave-2026-11-15.md`): XP: ejervalg om bundens grænse; #7801 målt 15/11 (median 561 ms tændt); #8193 monument (kort + "kør"), #8192, #8194, #8191; skitser #8182/#8184-#8187; kladde #8179. Intet merges uden ordret "merge". Peak-afkortning #8180 kræver ejer-go. #6181: note, gentjek, "kør". #7535 B merget; ejer ser siden før beta. **TÆNDT 14/11:** `ranking_shadow_decoupled_6765`. **Åbent:** #8101 · #8097. **Man 16/11:** auto-kalender, private grene, Discord-valg (#8149), doctor-tjek #8162, motor: #7644. **#8071:** `private-handoffs/2026-11-13-trup-tabel-design/LAES-FOERST.md`.
+> **🎯 Next action (15/11):** Resten af kortene, ét ad gangen (`docs/audits/night-wave-2026-11-15.md`): XP: ejervalg om bundens grænse; #7801 målt 15/11 (median 561 ms tændt); #8188 rettet i prod; #7982: design afregning efter etapen; #8191 sprinter-valg; skitser #8182/#8184-#8187; kladde #8179. Intet merges uden ordret "merge". Peak-afkortning #8180 kræver ejer-go. #6181: note, gentjek, "kør". #7535 B merget; ejer ser siden før beta. **TÆNDT 14/11:** `ranking_shadow_decoupled_6765`. **Åbent:** #8101 · #8097. **Man 16/11:** auto-kalender, private grene, Discord-valg (#8149), doctor-tjek #8162, motor: #7644. **#8071:** `private-handoffs/2026-11-13-trup-tabel-design/LAES-FOERST.md`.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** Dolmer PC 15/11: kort 1-9 merget; bølge færdig.
+> **🤖 Working agent:** Dolmer PC 15/11: kort 1-9, #8192, #8193 merget.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 

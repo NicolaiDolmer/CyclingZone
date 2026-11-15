@@ -19,6 +19,23 @@ export const PATCHES = [
       "refs": [
         7868
       ]
+    },
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Board",
+      "en": {
+        "title": "Monument bonus goal no longer stuck at 0",
+        "body": "Fixed the monument bonus goal staying at 0. Podiums from earlier seasons were wrongly counted as the starting point, so new podiums never showed as progress."
+      },
+      "da": {
+        "title": "Monument-bonusmålet står ikke længere på 0",
+        "body": "Rettet at monument-bonusmålet stod på 0. Podier fra tidligere sæsoner blev fejlagtigt talt med i udgangspunktet, så nye podier aldrig viste sig som fremdrift."
+      },
+      "refs": [
+        8188
+      ]
     }
   ]
 },
