@@ -275,7 +275,7 @@ Den antagelse denne opgave startede med - "de øvrige ca. 92 er `backup_*`-snaps
 
 #### `season_end_claims` - Bevidst default-deny
 - **Grants:** kun `SELECT`.
-- **Skriv/læs:** `backend/routes/api.js:924` (`claimSeasonEndOrReject` - UNIQUE-claim der afviser dobbelt-POST med 409 før den irreversible sæson-slut-bearbejdning), `backend/lib/betaResetService.js:552` (beta-reset-oprydning), `backend/scripts/endSeasonS2.mjs:111`.
+- **Skriv/læs:** `backend/routes/api.js:924` (`claimSeasonEndOrReject` - UNIQUE-claim der afviser dobbelt-POST med 409 før den irreversible sæson-slut-bearbejdning), `backend/lib/betaResetService.js:552` (beta-reset-oprydning).
 - **Frontend:** ingen forekomst.
 
 #### `season_form_reset_runs` - Bevidst default-deny

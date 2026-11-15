@@ -256,6 +256,7 @@ import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTra
 import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
 import {
   STAGE_FLAGS, findStageFlag, isValidFlagStage, isUnknownStageValue, normalizeStageValue,
+  PLAYER_VISIBLE_BINARY_FLAG_KEYS, // #6181
 } from "../lib/stageFlagCatalog.js";
 import {
   BETA_REQUEST_STATUS, decideBetaRequest, isBetaRequestsMissing, listBetaAccess, readBetaAccess,
@@ -15761,6 +15762,11 @@ router.patch("/admin/feature-flags/:key", requireAdmin, adminWriteLimiter, async
       return res.status(400).json({
         error: "stage must be off, beta or on", errorCode: "flag_invalid_stage",
       });
+    }
+    // #6181: binaere noegler laeses kun som "on"; "beta" ville stille betyde slukket for alle.
+    // Samme svar som boolean-raekkerne nedenfor (genbruger deres oversaettelse).
+    if (PLAYER_VISIBLE_BINARY_FLAG_KEYS.includes(key) && stage === "beta") {
+      return res.status(409).json({ error: "This flag is on/off only and has no beta stage", errorCode: "flag_boolean_only" });
     }
 
     // Een laesning, to formaal: det forrige stadie til admin_log, og om raekken
