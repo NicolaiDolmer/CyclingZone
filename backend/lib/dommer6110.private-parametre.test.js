@@ -46,7 +46,9 @@ const TRAEN_NU = 1.15; // ejer 7/11
 // regel i motoren (validPriceFloor), kun i dommerens proeve. Fable-dom 15/11 maalte, at
 // motoren foerst er fri for +3 ved en graense et stykke over denne; ejeren vaelger mellem
 // en hoejere graense og en anden loesning (fx en hoejere bund-pris).
-const LAV_EVNE_GRAENSE = 40; // ejervalg 15/11 (#6110): graensen for lave evner
+// Ejervalg 15/11: graensen staar i den private talfil (dommer.lavEvneGraense), ikke her
+// (hard rule 17). Mangler den, gaelder dommerens foreloebige laesning.
+const LAV_EVNE_GRAENSE_FORELOEBIG = MEGET_LAV_EVNE;
 
 async function laesParametre() {
   if (!existsSync(FIL)) return null;
@@ -56,7 +58,8 @@ async function laesParametre() {
   const raa = hele?.xp;
   const { validateDevelopmentXpParams } = await kraev("./developmentXp.ts", "validateDevelopmentXpParams");
   // Loebsdagens rolletillaeg og roller, som proevekoerslen bruger (valgfrie i filen).
-  return { raa, params: validateDevelopmentXpParams(raa), rolleTillaeg: hele?.sim?.raceRoleYield ?? null, roller: hele?.sim?.raceRoles ?? null };
+  const lavEvneGraense = Number.isFinite(hele?.dommer?.lavEvneGraense) ? hele.dommer.lavEvneGraense : LAV_EVNE_GRAENSE_FORELOEBIG;
+  return { raa, lavEvneGraense, params: validateDevelopmentXpParams(raa), rolleTillaeg: hele?.sim?.raceRoleYield ?? null, roller: hele?.sim?.raceRoles ?? null };
 }
 
 const laest = await laesParametre();
@@ -124,7 +127,7 @@ test("R16 private parametre: normalt hoejst 1 point pr. dato; 2 kun for et ungt 
 
 test("R16 private parametre: prisbunden goer kun lave evner dyrere; top og midte er formlens egen", { skip: spring }, async () => {
   const { xpPriceForNextPoint } = await kraev("./developmentXp.ts", "xpPriceForNextPoint");
-  const fejl = bundUdenforLavtOmraade(laest.params, LAV_EVNE_GRAENSE, { xpPriceForNextPoint });
+  const fejl = bundUdenforLavtOmraade(laest.params, laest.lavEvneGraense, { xpPriceForNextPoint });
   assert.deepEqual(fejl, [], fejl.join("; "));
 });
 
