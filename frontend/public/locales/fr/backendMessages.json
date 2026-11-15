@@ -715,6 +715,14 @@
       "title": "Le coureur est arrivé",
       "message": "{riderName} a rejoint ton équipe. {reason, select, tourFinished {{raceName} est terminée.} tourFinishedUnnamed {Sa course par étapes est terminée.} dealCompleted {Son accord est maintenant finalisé.} other {}}"
     },
+    "riderReleasePending": {
+      "title": "Libération demandée",
+      "message": "{rider} sera libéré après {race}. Les frais de {fee} CZ$ ont été prélevés."
+    },
+    "riderReleaseExecuted": {
+      "title": "Coureur libéré",
+      "message": "{rider} a quitté ton équipe."
+    },
     "squadEnforced": {
       "title": "Taille d'effectif imposée",
       "message": "{purchasedCount, plural, =0 {} one {Achat automatique de # coureur : {purchasedNames}\n} other {Achat automatique de # coureurs : {purchasedNames}\n}}{deferredCount, plural, =0 {} one {# coureur rejoindra l'équipe une fois sa course par étapes en cours terminée : {deferredNames}\n} other {# coureurs rejoindront l'équipe une fois leur course par étapes en cours terminée : {deferredNames}\n}}{soldCount, plural, =0 {} one {Vente automatique de # coureur : {soldNames}\n} other {Vente automatique de # coureurs : {soldNames}\n}}{salesDeferredCount, plural, =0 {} one {# coureur dans une course par étapes en cours sera vendu après la course à la place\n} other {# coureurs dans une course par étapes en cours seront vendus après la course à la place\n}}Amende : {fine} CZ$ · Déduction : {points} points"
