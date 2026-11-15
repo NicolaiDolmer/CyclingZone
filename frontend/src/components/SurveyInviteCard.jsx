@@ -19,7 +19,6 @@
 // at springe over (#4496). Tabellerne oprettes af denne PRs egen migration;
 // snapshottet får dem først ved næste refresh efter merge.
 
-import { useState } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 
@@ -34,9 +33,7 @@ import { buttonClass } from "./ui/buttonStyles.js";
 export default function SurveyInviteCard() {
   const { t } = useTranslation("dashboard");
   // #6494: read through the shared scope; a local dismiss hides it at once.
-  const fetched = useSurveyInviteData();
-  const [hiddenSlug, setHiddenSlug] = useState(null);
-  const survey = fetched && fetched.slug !== hiddenSlug ? fetched : null;
+  const { survey, hide } = useSurveyInviteData();
 
   if (!survey) return null;
 
@@ -47,7 +44,7 @@ export default function SurveyInviteCard() {
     } catch {
       // Kan ikke huskes uden storage; kortet forsvinder stadig i denne session.
     }
-    setHiddenSlug(survey.slug);
+    hide();
   }
 
   return (

@@ -19,7 +19,7 @@ import { privateKey, viewerKey, type DataRuntime, type DataScope } from "./query
 import { useDataScope, scopedHeaders } from "./useDataScope.ts";
 import { DataError } from "./apiQuery.ts";
 import { transferOffersQuery } from "./marketData.ts";
-import { LIVE_RESOURCES, isScopeResource, cancelledWithoutData, settledList } from "./dashboardQueryPolicy.ts";
+import { LIVE_RESOURCES, isScopeResource, cancelledWithoutData, settledList, sameScopePlaceholder } from "./dashboardQueryPolicy.ts";
 
 // #6494: the Dashboard's page-owned server data. Every resource is one Query key under the
 // viewer/team scope; the page keeps only UI state (dismissals, menus, pending submits).
@@ -156,6 +156,9 @@ export function useDashboardData(options: DashboardOptions) {
   const { runtime, scope, team, ready } = context;
   const client = runtime.client;
   const viewer = ready && scope.viewerId !== null;
+  // Signed out: the team bootstrap never runs, so `ready` stays false; settle on the scope instead.
+  const signedOut = scope.ready && scope.viewerId === null;
+  const keep = sameScopePlaceholder(scope);
   const hasTeam = ready && !!team;
   const noTeam = ready && !team && !context.bootstrapLoading;
 
@@ -175,8 +178,10 @@ export function useDashboardData(options: DashboardOptions) {
   const seasonSettled = seasonQuery.data !== undefined || seasonQuery.isError;
 
   const coreQuery = useQuery({
-    queryKey: privateKey(scope, "dashboard:core", season?.id ?? null),
+    // The pool is part of the key: after a promotion the core never reads the old pool.
+    queryKey: privateKey(scope, "dashboard:core", season?.id ?? null, (team as Row | null)?.league_division_id ?? null),
     enabled: hasTeam && seasonSettled,
+    placeholderData: keep,
     queryFn: ({ signal }) => readCore(runtime, scope, team as Row, season, signal),
   }, client);
   const core = coreQuery.data;
@@ -205,6 +210,7 @@ export function useDashboardData(options: DashboardOptions) {
   const entriesQuery = useQuery({
     queryKey: privateKey(scope, "dashboard:team-race-entries", raceIds),
     enabled: hasTeam && core !== undefined,
+    placeholderData: keep,
     queryFn: async ({ signal }): Promise<Set<string>> => {
       if (!raceIds.length) return new Set();
       const revision = await runtime.beforeRead(signal);
@@ -231,7 +237,7 @@ export function useDashboardData(options: DashboardOptions) {
     queryFn: ({ signal }) => readApi(runtime, scope, "/api/me/onboarding-progress", signal) }, client);
   const signupQuery = useQuery({ queryKey: viewerKey(scope, "dashboard:signup"), enabled: viewer,
     queryFn: ({ signal }) => readApi(runtime, scope, "/api/season/signup-status", signal) }, client);
-  const optionalModulesSettled = (ready && scope.viewerId === null) || (viewer && ([
+  const optionalModulesSettled = signedOut || (viewer && ([
     [forecastQuery, true], [discordQuery, !options.discordNudgeDismissed], [onboardingQuery, options.onboardingNeeded], [signupQuery, true],
   ] as const).every(([query, enabled]) => !enabled || query.data !== undefined || query.isError));
 
@@ -252,23 +258,29 @@ export function useDashboardData(options: DashboardOptions) {
   const nextStageQuery = useQuery({
     queryKey: privateKey(scope, "dashboard:next-stage", scheduledIds),
     enabled: hasTeam && scheduledIds.length > 0 && !options.racePause,
-    queryFn: async ({ signal }): Promise<Record<string, number>> => {
+    placeholderData: keep,
+    queryFn: async ({ signal }): Promise<Row[]> => {
       const revision = await runtime.beforeRead(signal);
       // pagination-safe: only the own pool's live/scheduled races (~14) x their stages (<=21).
       const { data } = await supabase.from("race_stage_schedule")
         .select("race_id, stage_number, scheduled_at").in("race_id", scheduledIds).abortSignal(signal);
       runtime.assertReadCurrent(scope, revision);
-      const map: Record<string, number> = {};
-      for (const race of nextRaces) {
-        if (!scheduledIds.includes(race.id)) continue;
-        const next = (data || []).find((slot: Row) => slot.race_id === race.id && slot.stage_number === (race.stages_completed ?? 0) + 1);
-        const ms = next ? Date.parse(next.scheduled_at) : NaN;
-        if (Number.isFinite(ms)) map[race.id] = ms;
-      }
-      return map;
+      return data || [];
     },
   }, client);
-  const nextStageByRace = scheduledIds.length && !options.racePause ? nextStageQuery.data ?? EMPTY_MAP : EMPTY_MAP;
+  // Derived from the current races, so a finished stage moves the countdown without a new read.
+  const scheduleRows = nextStageQuery.data;
+  const nextStageByRace = useMemo(() => {
+    if (!scheduledIds.length || options.racePause || !scheduleRows) return EMPTY_MAP;
+    const map: Record<string, number> = {};
+    for (const race of nextRaces) {
+      if (!scheduledIds.includes(race.id)) continue;
+      const next = scheduleRows.find((slot) => slot.race_id === race.id && slot.stage_number === (race.stages_completed ?? 0) + 1);
+      const ms = next ? Date.parse(next.scheduled_at) : NaN;
+      if (Number.isFinite(ms)) map[race.id] = ms;
+    }
+    return map;
+  }, [nextRaces, scheduledIds, scheduleRows, options.racePause]);
 
   // #2288 D1/#3042/#5301/#7296: same selection contract as the race page; withdrawn races
   // are skipped, an unknown answer keeps the previous nudge (thrown, so Query retains it).
@@ -276,6 +288,7 @@ export function useDashboardData(options: DashboardOptions) {
   const selectionQuery = useQuery({
     queryKey: privateKey(scope, "dashboard:squad-selection", candidates.map((race) => race.id)),
     enabled: hasTeam && teamRaceIdsLoaded && candidates.length > 0,
+    placeholderData: keep,
     queryFn: async ({ signal }): Promise<Row | null> => {
       const request = boundedSignal(signal, 8000);
       try {
@@ -376,12 +389,12 @@ export function useDashboardData(options: DashboardOptions) {
       } finally { request.dispose(); }
     } }, client);
   // undefined = pending; null = failed/absent (no session also settles to absent).
-  const myLatestResult = latestQuery.data ?? (latestQuery.isError || (ready && scope.viewerId === null) ? null : undefined);
+  const myLatestResult = latestQuery.data ?? (latestQuery.isError || signedOut ? null : undefined);
 
   const coreError = core === undefined ? coreQuery.error : null;
   const bootstrapError = team ? null : context.error;
   const error = bootstrapError ?? coreError ?? null;
-  const loading = !ready || context.bootstrapLoading || (hasTeam && (!seasonSettled || core === undefined) && !coreError);
+  const loading = !signedOut && (!ready || context.bootstrapLoading || (hasTeam && (!seasonSettled || core === undefined) && !coreError));
 
   const refreshLive = useCallback(() => client.invalidateQueries(
     { predicate: (query) => isScopeResource(query, scope, LIVE_RESOURCES) }, { cancelRefetch: false },

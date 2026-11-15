@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { QueryObserver } from "@tanstack/react-query";
 import { createDataRuntime, privateKey, viewerKey, type DataScope } from "./queryRuntime.ts";
-import { LIVE_RESOURCES, isScopeResource, cancelledWithoutData, settledList } from "./dashboardQueryPolicy.ts";
+import { LIVE_RESOURCES, isScopeResource, cancelledWithoutData, settledList, sameScopePlaceholder } from "./dashboardQueryPolicy.ts";
 
 const flush = async () => { for (let i = 0; i < 5; i++) await Promise.resolve(); };
 
@@ -83,6 +83,50 @@ test("after a write, only the scope's reads cancelled without data are refetched
   assert.deepEqual(cold.getCurrentResult().data, []);
   stopKnown();
   stopCold();
+  runtime.client.clear();
+});
+
+test("the live channel also re-runs the derived next-stage and squad-selection reads", () => {
+  assert.equal(LIVE_RESOURCES.has("dashboard:next-stage"), true);
+  assert.equal(LIVE_RESOURCES.has("dashboard:squad-selection"), true);
+});
+
+test("a parameter change keeps the known value, a scope change never shows another viewer's data", async () => {
+  const runtime = scopedRuntime();
+  const scope = runtime.scope();
+  let release!: (rows: string[]) => void;
+  const observer = new QueryObserver<string[]>(runtime.client, {
+    queryKey: privateKey(scope, "dashboard:team-race-entries", ["r1"]),
+    queryFn: async () => ["r1"],
+    gcTime: 0, // a query cleared by the scope reset must not leave a gc timer
+    placeholderData: sameScopePlaceholder(scope),
+  });
+  const stop = observer.subscribe(() => {});
+  await flush();
+  observer.setOptions({
+    queryKey: privateKey(scope, "dashboard:team-race-entries", ["r1", "r2"]),
+    queryFn: () => new Promise<string[]>((resolve) => { release = resolve; }),
+    gcTime: 0, // a query cleared by the scope reset must not leave a gc timer
+    placeholderData: sameScopePlaceholder(scope),
+  });
+  let result = observer.getCurrentResult();
+  assert.deepEqual(result.data, ["r1"], "no skeleton while the new race list is read");
+  assert.equal(result.isPlaceholderData, true);
+  release(["r1", "r2"]);
+  await flush();
+  assert.deepEqual(observer.getCurrentResult().data, ["r1", "r2"]);
+
+  runtime.setViewer("viewer-b");
+  const next = runtime.scope();
+  observer.setOptions({
+    queryKey: privateKey(next, "dashboard:team-race-entries", ["r1", "r2"]),
+    queryFn: () => new Promise<string[]>(() => {}),
+    gcTime: 0, // a query cleared by the scope reset must not leave a gc timer
+    placeholderData: sameScopePlaceholder(next),
+  });
+  result = observer.getCurrentResult();
+  assert.equal(result.data, undefined, "the previous viewer's rows are never a placeholder");
+  stop();
   runtime.client.clear();
 });
 

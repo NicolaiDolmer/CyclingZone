@@ -86,8 +86,9 @@ export function useDevTransitionData() {
   }, runtime.client);
   const dismiss = useCallback(async () => {
     // Hiding an explanation panel is UI state, not money: hide now, persist in the background.
-    runtime.client.setQueryData(key, null);
+    // The barrier first: its cancel reverts in-flight reads, which must not restore the panel.
     const finish = runtime.beginWrite(scope);
+    runtime.client.setQueryData(key, null);
     try {
       await apiFetch("/api/development/transition/dismiss", { method: "POST", headers: await scopedHeaders(runtime, scope, false) });
     } catch { /* best-effort: at worst the panel shows again */ } finally { finish(); }
@@ -95,12 +96,14 @@ export function useDevTransitionData() {
   return { data: query.isError ? null : query.data ?? null, dismiss };
 }
 
-/** #4943: the newest open survey the viewer has neither completed nor dismissed. */
-export function useSurveyInviteData(): Row | null {
+/** #4943: the newest open survey the viewer has neither completed nor dismissed. `hide` clears
+ * the cached invite too, so a dismissed card does not return from cache on the next visit. */
+export function useSurveyInviteData(): { survey: Row | null; hide: () => void } {
   const { runtime, scope, ready } = useDataScope();
   const viewerId = scope.viewerId;
+  const key = viewerKey(scope, "dashboard:survey-invite");
   const query = useQuery({
-    queryKey: viewerKey(scope, "dashboard:survey-invite"),
+    queryKey: key,
     enabled: ready && viewerId !== null,
     queryFn: async ({ signal }): Promise<Row | null> => {
       const revision = await runtime.beforeRead(signal);
@@ -129,7 +132,8 @@ export function useSurveyInviteData(): Row | null {
       return completions?.[0] ? null : open;
     },
   }, runtime.client);
-  return query.isError ? null : query.data ?? null;
+  const hide = useCallback(() => { runtime.client.setQueryData(key, null); }, [runtime, key]);
+  return { survey: query.isError ? null : query.data ?? null, hide };
 }
 
 /** #1140: server-decided "Your first race" card. null = no card (also while loading). */
