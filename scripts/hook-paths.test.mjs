@@ -145,6 +145,9 @@ test('branch-vagten vurderer kommandoens mappe (input-cwd), ogsaa fra en underma
   // Review #8207: et maal fra en substitution er ukendt og blokeres (som paa main).
   assert.equal(callCmd(main, 'git switch $(cat .branch)').status, 2);
   assert.equal(callCmd(main, 'git checkout `cat .branch`').status, 2);
+  // Review #8207: en ukendt mappe i et worktree kan vaere hovedmappen -> blokeres.
+  assert.equal(callCmd(wt, 'cd "$CLAUDE_PROJECT_DIR" && git switch -c feature-u1').status, 2);
+  assert.equal(callCmd(wt, 'git -C "$HOME/x" switch -c feature-u2').status, 2);
   // Almindeligt arbejde i et worktree er stadig frit.
   assert.equal(callCmd(wt, 'git switch -c feature-ok').status, 0);
   assert.equal(callCmd(join(wt, 'frontend'), 'git checkout -b feature-ok2').status, 0);

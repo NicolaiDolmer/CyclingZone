@@ -85,11 +85,16 @@ process.stdin.on("end", () => {
   // Vercel Security Review #8207: et mappe-argument med shell-ekspansion ($PWD, ~,
   // `...`, %X%) eller en mappe der ikke findes, er UKENDT. Saa beholdes den kendte
   // mappe (fail-closed), i stedet for at en uopslaaelig sti tolkes som "ikke hovedmappen".
+  // Review #8207: en ukendt mappe kan vaere hovedmappen ($CLAUDE_PROJECT_DIR, ~, $(...)).
+  // Saa blokeres et senere branch-skift i kommandoen (fail-closed), ogsaa i et worktree.
+  let unresolved = false;
   const at = (base, p) => {
     const raw = unquote(p);
-    if (/[$`~%*?]/.test(raw)) return base;
+    if (/[$`~%*?]/.test(raw)) { unresolved = true; return base; }
     const abs = path.resolve(base, native(raw));
-    try { return fs.statSync(abs).isDirectory() ? abs : base; } catch { return base; }
+    try { if (fs.statSync(abs).isDirectory()) return abs; } catch {}
+    unresolved = true;
+    return base;
   };
   // Hoved-checkout = git-roden for mappen har en .git-MAPPE (linked worktree: fil).
   const isMainCheckout = (dir) => {
@@ -147,7 +152,7 @@ process.stdin.on("end", () => {
         else j += 1;
       }
       if (toks[j] !== "checkout" && toks[j] !== "switch") continue;
-      if (!c.some(isMainCheckout)) continue;
+      if (!unresolved && !c.some(isMainCheckout)) continue;
       const tokens = [];
       for (let k = j + 1; k < toks.length; k++) {
         // Kun $( eller backtick starter en ny kommando; et argument som "git" eller
