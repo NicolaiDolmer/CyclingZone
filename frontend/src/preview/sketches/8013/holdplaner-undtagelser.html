@@ -225,7 +225,7 @@ h2{font-size:16px;margin:32px 0 4px}
   function cv3(){
     var v=shell('Variant 3','Summary of everything unavailable','One short line above the grid lists every unavailable plan with its reason, whether or not anyone interacts.');
     var dis=PLANS.filter(function(p){return !p.ok;});
-    var n=el('div','note warn','<b>Unavailable now:</b> '+dis.map(function(p){return p.name+' ('+p.why.replace(/\.$/,'').toLowerCase()+')';}).join('; ')+'.');
+    var n=el('div','note warn','<b>Unavailable now:</b> '+dis.map(function(p){return p.name+' ('+p.why+')';}).join('; ')+'.');
     v.appendChild(n);
     v.appendChild(planGrid('none'));
     v.appendChild(pros(['Pro: reasons are shown once, together, with no interaction.','Pro: cards stay as small as today.','Con: the link between a reason and its card is by name only.','Con: always-on text above the grid is noise for a team where every plan works.']));
