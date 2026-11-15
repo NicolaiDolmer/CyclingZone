@@ -8,6 +8,9 @@ import {
   normalizeSearchText,
   rowMatchesQuery,
   rowTeamId,
+  mineOnlyFromTeamFilter,
+  sharedMineControls,
+  teamFilterAfterMineToggle,
 } from "./resultsControlsModel.ts";
 
 const rows = [
@@ -77,4 +80,37 @@ test("holdets id læses fra team_id, rytterens hold eller team-embed", () => {
   assert.equal(rowTeamId(teamRows[0]), "tB");
   assert.equal(rowTeamId(rows[3]), null);
   assert.equal(rowTeamId({ team_id: 7 }), "7");
+});
+
+// ── #7865 punkt 4: "Mit hold" er eet valg ──
+
+test("#7865: knappen og holdvaelgeren viser altid det samme Mit hold-valg", () => {
+  assert.equal(mineOnlyFromTeamFilter("mine"), true);
+  assert.equal(mineOnlyFromTeamFilter("all"), false);
+  assert.equal(mineOnlyFromTeamFilter("tB"), false, "et andet hold valgt i vaelgeren: knappen er slaaet fra");
+  assert.equal(teamFilterAfterMineToggle("all", true), "mine");
+  assert.equal(teamFilterAfterMineToggle("tB", true), "mine", "knappen vinder over et andet hold");
+  assert.equal(teamFilterAfterMineToggle("mine", false), "all");
+  assert.equal(teamFilterAfterMineToggle("tB", false), "tB");
+});
+
+test("#7865: med delt valg skriver knappen til holdvaelgeren og filtrerer ikke selv paa hold", () => {
+  let filter = "all";
+  const shared = () => ({ on: mineOnlyFromTeamFilter(filter), set: (on: boolean) => { filter = teamFilterAfterMineToggle(filter, on); } });
+  const local = { query: "", mineOnly: false };
+  const a = sharedMineControls(local, shared());
+  assert.equal(a.shown.mineOnly, false);
+  const next = a.change({ ...a.shown, mineOnly: true });
+  assert.equal(filter, "mine", "knappen satte holdvaelgeren");
+  assert.equal(next.mineOnly, false, "tabellens egen tilstand holder ikke en anden kopi");
+  const b = sharedMineControls(next, shared());
+  assert.equal(b.shown.mineOnly, true, "knappen viser vaelgerens valg");
+  assert.equal(b.filter.mineOnly, false, "holdet filtreres allerede af vaelgeren, ikke to gange");
+  assert.equal(isFiltering(b.filter), false, "ingen 'Showing N of M' for Mit hold alene");
+  filter = "tB";
+  assert.equal(sharedMineControls(next, shared()).shown.mineOnly, false, "vaelgeren paa et andet hold: knappen slukker");
+  // Uden delt valg: som foer (#7860).
+  const own = sharedMineControls({ query: "", mineOnly: true }, null);
+  assert.equal(own.filter.mineOnly, true);
+  assert.deepEqual(own.change({ query: "x", mineOnly: false }), { query: "x", mineOnly: false });
 });

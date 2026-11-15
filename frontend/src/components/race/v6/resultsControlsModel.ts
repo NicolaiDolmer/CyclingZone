@@ -72,6 +72,40 @@ export function isFiltering(state: ResultsControlsState): boolean {
 }
 
 /**
+ * #7865: "Mit hold" er ÉT valg under v6. Holdvælgerens "My team" og knappen
+ * "My team" viser altid det samme, fordi knappen læser og skriver holdvælgerens
+ * værdi ("all" | "mine" | hold-id). Knappen slået til = "mine"; slået fra = alle hold.
+ */
+export function mineOnlyFromTeamFilter(teamFilter: string | null | undefined): boolean {
+  return teamFilter === "mine";
+}
+
+export function teamFilterAfterMineToggle(teamFilter: string | null | undefined, on: boolean): string {
+  if (on) return "mine";
+  return teamFilter === "mine" ? "all" : (teamFilter ?? "all");
+}
+
+/**
+ * Kontrollernes tilstand, når "Mit hold" ejes udefra (holdvælgeren). Knappen viser det
+ * delte valg; selve filtreringen på hold sker allerede i holdvælgeren, så tabellens egen
+ * filtrering er kun søgningen. Uden delt valg: tabellens egen tilstand, som før.
+ */
+export function sharedMineControls(
+  local: ResultsControlsState,
+  shared: { on: boolean; set: (on: boolean) => void } | null | undefined,
+): { shown: ResultsControlsState; filter: ResultsControlsState; change: (next: ResultsControlsState) => ResultsControlsState } {
+  if (!shared) return { shown: local, filter: local, change: (next) => next };
+  return {
+    shown: { ...local, mineOnly: shared.on },
+    filter: { ...local, mineOnly: false },
+    change: (next) => {
+      if (next.mineOnly !== shared.on) shared.set(next.mineOnly);
+      return { ...next, mineOnly: false };
+    },
+  };
+}
+
+/**
  * Filtrér rækkerne. "Mit hold" uden et eget hold filtrerer intet (knappen vises ikke da).
  * Rækkefølgen bevares, så placeringerne står som i motorens liste.
  */

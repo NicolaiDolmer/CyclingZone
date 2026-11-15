@@ -3,9 +3,8 @@
 // Beslutningslisten på #7778 (ejer 12/11):
 //   valg 5: en kørt etape åbner på Resultater.
 //   valg 8: ingen bannere; låse-fristen og den ene guld-knap står i hovedets handlingsrække.
-// Taktik-knappens regel er den samme som etapeside 2.0 (StagePageV2): før etapen
-// den valgte etape, efter den den næste, og kun mens etapen ikke er startet og
-// holdet har ryttere i løbet.
+// #7865: hovedet er løbets og står stille, når man klikker i etapestriben; tal-rækken,
+// statuschippen, låse-fristen og guld-knappen står sammen (tacticsCta nedenfor).
 import { activeRiders, scheduleFor, tacticsProgress, type RoleOverride, type RoleRider, type ScheduleRow } from "../stagePageV2/stagePageV2Model.ts";
 
 /** Resultater først (valg 5). "stage" er etapens nuværende indhold (historien efter etapen). */
@@ -40,23 +39,84 @@ export interface TacticsCta {
 }
 
 /**
- * Hovedets handling: taktik for den etape der er åben, eller null. Samme regel
- * som StagePageV2's guld-knap, så knappen ikke flytter sig, når kontakten tændes.
+ * Hovedets handling: taktik for løbets næste åbne etape, eller null.
+ * #7865: hovedet er løbets, ikke den valgte etapes, så det står stille, når man
+ * klikker i etapestriben. Den åbne etape er den første ukørte etape, der ikke er
+ * startet (en etape på vejen er låst; så er den næste åben). Kun mens løbet ikke
+ * er slut og holdet har ryttere i løbet.
  */
 export function tacticsCta({
-  selectedStage, stagesCompleted, totalStages, raceFinished, schedule, riders, overrides, nowMs,
+  stagesCompleted, totalStages, raceFinished, schedule, riders, overrides, nowMs,
 }: {
-  selectedStage: number; stagesCompleted: number; totalStages: number; raceFinished: boolean;
+  stagesCompleted: number; totalStages: number; raceFinished: boolean;
   schedule: ScheduleRow[]; riders: RoleRider[]; overrides: RoleOverride[]; nowMs: number;
 }): TacticsCta | null {
-  const before = selectedStage > stagesCompleted;
-  const stage = before ? selectedStage : selectedStage + 1;
-  const locksAt = scheduleFor(schedule, stage);
-  const started = locksAt !== null && locksAt.getTime() <= nowMs;
-  const open = !raceFinished && !started && stage <= totalStages && stage > stagesCompleted && activeRiders(riders).length > 0;
-  if (!open) return null;
-  const progress = tacticsProgress(riders, overrides, stage);
-  return { stage, locksAt, done: progress.done, total: progress.total };
+  if (raceFinished || activeRiders(riders).length === 0) return null;
+  for (let stage = stagesCompleted + 1; stage <= totalStages; stage++) {
+    const locksAt = scheduleFor(schedule, stage);
+    if (locksAt !== null && locksAt.getTime() <= nowMs) continue;
+    const progress = tacticsProgress(riders, overrides, stage);
+    return { stage, locksAt, done: progress.done, total: progress.total };
+  }
+  return null;
+}
+
+/**
+ * #7865: Resultater for den valgte etape. "on_road" = etapen er startet, men ikke
+ * afgjort (den næste etape efter de kørte, og dens start er passeret).
+ */
+export type V6ResultsPhase = "ridden" | "on_road" | "not_ridden";
+
+export function v6ResultsPhase({ selectedStage, stagesCompleted, raceFinished, schedule, nowMs }: {
+  selectedStage: number; stagesCompleted: number; raceFinished: boolean; schedule: ScheduleRow[]; nowMs: number;
+}): V6ResultsPhase {
+  if (selectedStage <= stagesCompleted) return "ridden";
+  if (raceFinished || selectedStage !== stagesCompleted + 1) return "not_ridden";
+  const startsAt = scheduleFor(schedule, selectedStage);
+  return startsAt !== null && startsAt.getTime() <= nowMs ? "on_road" : "not_ridden";
+}
+
+/**
+ * #7865: den ene etapestribe. Resultater og Etape følger sidens valgte etape;
+ * Taktik følger Taktik-fanens etape (og styrer editoren, der ikke har sin egen
+ * vælger under v6). Stillinger og Hold har ingen stribe; et endagsløb heller ikke.
+ */
+export function v6Strip({ activeTab, isStageRace, selectedStage, tacticsStage }: {
+  activeTab: RacePageV6Tab; isStageRace: boolean; selectedStage: number; tacticsStage: number;
+}): { selected: number; target: "page" | "tactics" } | null {
+  if (!isStageRace) return null;
+  if (activeTab === "tactics") return { selected: tacticsStage, target: "tactics" };
+  if (STAGE_SCOPED_TABS.includes(activeTab)) return { selected: selectedStage, target: "page" };
+  return null;
+}
+
+/**
+ * #7865 (punkt 8): kun v6's egen resultatvisning for en etape er bygget til den
+ * brede side (loft 1600 px); de genbrugte faner står på deres egen bredde (max-w-5xl).
+ */
+export function v6BodyIsWide({ activeTab, isStageRace }: { activeTab: RacePageV6Tab; isStageRace: boolean }): boolean {
+  return activeTab === "results" && isStageRace;
+}
+
+/**
+ * #7865 (punkt 3): hvad planen mod det der skete viser på en kørt etape. Den låste
+ * oversigt over roller, indsats og holdplan står altid under den; "hidden" = intet
+ * at sammenligne (enkeltstart og holdtidskørsel, ingen optegnelse, ingen egne
+ * ryttere i optegnelsen), så oversigten står alene i stedet for en tom besked.
+ */
+export type TacticsAfterView = "hidden" | "loading" | "error" | "no_orders" | "compare";
+
+export function tacticsAfterView({ timeTrial, resultsState, timelineLoading, timelineMissing, ordersPending, ordersMissing, riderCount }: {
+  timeTrial: boolean; resultsState: StageResultsState; timelineLoading: boolean; timelineMissing: boolean;
+  ordersPending: boolean; ordersMissing: boolean; riderCount: number;
+}): TacticsAfterView {
+  if (timeTrial) return "hidden";
+  if (resultsState === "failed") return "error";
+  if (resultsState === "loading" || timelineLoading) return "loading";
+  if (timelineMissing) return "hidden";
+  if (ordersPending) return "loading";
+  if (ordersMissing) return "no_orders";
+  return riderCount > 0 ? "compare" : "hidden";
 }
 
 /**

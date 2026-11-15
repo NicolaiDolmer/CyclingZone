@@ -87,7 +87,7 @@ import { fetchStageProfiles } from "../components/race/stagePageV2/stageProfiles
 import { useRacePageV6Enabled } from "../components/race/v6/racePageV6Flag.ts"; // #7778
 import { resolveV6Tab, tacticsCta } from "../components/race/v6/racePageV6Model.ts"; // #7778
 import V6ResultsControls, { V6ResultsNoMatch } from "../components/race/v6/V6ResultsControls.tsx"; // #7860
-import { EMPTY_RESULTS_CONTROLS, filterResultRows, isFiltering } from "../components/race/v6/resultsControlsModel.ts"; // #7860
+import { EMPTY_RESULTS_CONTROLS, filterResultRows, isFiltering, mineOnlyFromTeamFilter, sharedMineControls, teamFilterAfterMineToggle } from "../components/race/v6/resultsControlsModel.ts"; // #7860 #7865
 
 // #3914: FinalKilometrePlayback vises nu bag en stille knap (StoryOfTheStage-
 // Section, "The Final Kilometre") i stedet for altid-øverst — lazy-loadet
@@ -1039,6 +1039,21 @@ export default function RaceDetailPage() {
   // alle etaper ("etape for etape"), og een vilkaarlig etapeprofil oeverst ville
   // vaere stoej der ikke svarer paa fanens spoergsmaal.
   const teamTabProfile = phase === "after" ? null : focusProfile;
+  // #7865: v6's hoved er løbets og står stille, når etapestriben skifter etape.
+  const heroStage = v6 ? runningStage : focusStage;
+  const heroProfile = profileByStage[heroStage] ?? null;
+  // Hovedets ene guld-knap og låse-fristen (#7778 valg 8): løbets næste åbne etape.
+  // stageRoles er null (henter), false (fejlede) eller svaret; kun svaret har ryttere.
+  const v6Roles = /** @type {{ riders?: any[], overrides?: any[] } | null | false} */ (stageRoles);
+  const v6Cta = v6 ? tacticsCta({
+    stagesCompleted: ridden,
+    totalStages,
+    raceFinished: phase === "after",
+    schedule,
+    riders: v6Roles ? (v6Roles.riders ?? []) : [],
+    overrides: v6Roles ? (v6Roles.overrides ?? []) : [],
+    nowMs,
+  }) : null;
 
   // Holdets egne tal i hero'en. `stageRoles` kan være null (henter) eller false
   // (hentningen fejlede) — begge giver en blok der UDELADES frem for at lyve.
@@ -1061,9 +1076,9 @@ export default function RaceDetailPage() {
   // ("profileType.rolling"), men strengene bor under `detail.` i races.json.
   // Uden præfikset renderede hero'en den rå nøgle ("profileType.rolling") som
   // terræn-værdi. Samme opslag som TerrainTypeGlyph/StageDetailPanel gør.
-  const terrainKey = focusProfile ? profileLabelKey(focusProfile.profile_type) : null;
+  const terrainKey = heroProfile ? profileLabelKey(heroProfile.profile_type) : null;
   const terrainValue = terrainKey ? t(`detail.${terrainKey}`) : null;
-  const finaleKey = focusProfile ? finaleLabelKey(focusProfile.finale_type) : null;
+  const finaleKey = heroProfile ? finaleLabelKey(heroProfile.finale_type) : null;
 
   // #4613: hero stat-rækken følger fasen (mockup A). Blokke uden ærlig værdi
   // udelades helt — en tom blok med "—" er støj, ikke information.
@@ -1097,7 +1112,7 @@ export default function RaceDetailPage() {
     : [
       ...(race.race_type === "stage_race" ? [{
         label: t("racePage.hero.stageLabel"),
-        value: `${focusStage} / ${totalStages}`,
+        value: `${heroStage} / ${totalStages}`,
         sub: phase === "during" ? (nextStageLater ? t("racePage.hero.nextStageSub") : t("racePage.hero.racingNow")) : t("racePage.hero.notStarted"),
       }] : [{
         label: t("detail.stat.status"),
@@ -1113,7 +1128,8 @@ export default function RaceDetailPage() {
         value: String(squadRiders.length),
         sub: t(phase === "during" ? "racePage.hero.squadFrozen" : "racePage.hero.squadLockedIn"),
       }] : []),
-      ...(nextStart ? [{
+      // #7865: med v6's guld-knap står fristen ved knappen i samme række (ikke to gange).
+      ...(nextStart && !v6Cta ? [{
         label: race.race_type === "stage_race"
           ? t("racePage.hero.stageLocks", { number: nextStart.stageNumber })
           : t("racePage.hero.locks"),
@@ -1140,7 +1156,10 @@ export default function RaceDetailPage() {
   // #6570: fanernes indhold som funktion af fanen, saa etapeside 2.0 kan
   // genbruge Standings/Team/Tactics UAENDRET som slots.
   // tacticsStage: etapen Tactics-fanen skal aabne paa.
-  const renderTabContent = (tab, { tacticsStage = null } = {}) => (
+  // #7865: v6Stage = v6's etapestribe styrer editoren (ingen egen vælger, ingen genstart
+  // pr. etape, så kladden overlever et etapeskift); hideOrdersRecap = ordre-oversigten
+  // står i v6's Taktik, ikke under Stillinger.
+  const renderTabContent = (tab, { tacticsStage = null, v6Stage = null, hideOrdersRecap = false } = {}) => (
     <>
           {tab === "team" && (
             <RaceTeamTab
@@ -1174,10 +1193,12 @@ export default function RaceDetailPage() {
 
           {tab === "tactics" && (
             <RaceTacticsTab
-              key={tacticsStage ?? "default"}
+              key={v6Stage != null ? "v6" : tacticsStage ?? "default"}
               raceId={race.id}
               profileByStage={profileByStage}
-              initialStage={tacticsStage}
+              initialStage={v6Stage != null ? null : tacticsStage}
+              stage={v6Stage}
+              hideStagePicker={v6Stage != null && race.race_type === "stage_race"}
             />
           )}
 
@@ -1245,7 +1266,7 @@ export default function RaceDetailPage() {
                   ? <StageTab key={n} stage={n} results={results} stagePointsRows={stagePointsRows} profile={profileByStage[n]} profileByStage={profileByStage}
                       filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} incidents={incidents}
                       moments={moments} riderNameById={riderNameById} teamNameById={teamNameById}
-                      raceId={race.id} raceName={race.name} raceSquad={race.squad} passages={passages} stageRoles={stageRoles} rulesRevision={rulesRevision} t={t} />
+                      raceId={race.id} raceName={race.name} raceSquad={race.squad} passages={passages} stageRoles={stageRoles} rulesRevision={rulesRevision} t={t} hideOrdersRecap={hideOrdersRecap} />
                   : <Section key={n}><SkeletonLines lines={6} /></Section>
               ))}
             </div>
@@ -1284,7 +1305,7 @@ export default function RaceDetailPage() {
                     stageLabel={race.name} startlist={oneDayStartlist}
                     ownRiderIds={oneDayOwnRiderIds} effortByRider={undefined} onToggleFinalKm={undefined}
                   />
-                  {(oneDayTimeline?.timeline_version ?? 1) >= 2 && <StageOrdersRecap raceId={race.id} stageNumber={1} riderIds={oneDayOwnRiderIds ?? []} nameOf={(id) => riderNameById?.get?.(id) ?? null} profileType={profileByStage[1]?.profile_type ?? null} stageRoles={stageRoles} ranAt={oneDayTimeline?.created_at ?? null} />}
+                  {!hideOrdersRecap && (oneDayTimeline?.timeline_version ?? 1) >= 2 && <StageOrdersRecap raceId={race.id} stageNumber={1} riderIds={oneDayOwnRiderIds ?? []} nameOf={(id) => riderNameById?.get?.(id) ?? null} profileType={profileByStage[1]?.profile_type ?? null} stageRoles={stageRoles} ranAt={oneDayTimeline?.created_at ?? null} />}
                   {/* #4373: endagsløb har præcis ÉN etape, så dens profil ER
                       løbets disciplin — en enkeltstart må ikke omtales som spurt. */}
                   <RaceRecap results={oneDayResults} scopeType="overall" incidents={incidents} profileType={profileByStage[1]?.profile_type ?? null} timelineEvents={oneDayTimeline?.events} teamNameById={teamNameById} startlist={oneDayStartlist} />
@@ -1334,7 +1355,7 @@ export default function RaceDetailPage() {
     stageRoles,
     careerEvents,
     dnfRows: v2DnfRows,
-    standingsSlot: renderTabContent("results"),
+    standingsSlot: renderTabContent("results", { hideOrdersRecap: v6 }),
     teamSlot: renderTabContent("team"),
     tacticsSlot: renderTabContent("tactics", { tacticsStage: v2TacticsStage }),
     nowMs,
@@ -1352,19 +1373,6 @@ export default function RaceDetailPage() {
 
   // #7778: v6-rammen. En kørt etape åbner på Resultater (valg 5); ?tab= vinder, når den er gyldig.
   const v6Tab = resolveV6Tab(searchParams.get("tab"), { ridden: v2SelectedStage <= ridden, isStageRace: v2IsStageRace });
-  // Hovedets ene guld-knap og låse-fristen (valg 8): samme regel som etapeside 2.0's knap.
-  // stageRoles er null (henter), false (fejlede) eller svaret; kun svaret har ryttere.
-  const v6Roles = /** @type {{ riders?: any[], overrides?: any[] } | null | false} */ (stageRoles);
-  const v6Cta = v6 ? tacticsCta({
-    selectedStage: v2SelectedStage,
-    stagesCompleted: ridden,
-    totalStages,
-    raceFinished: phase === "after",
-    schedule,
-    riders: v6Roles ? (v6Roles.riders ?? []) : [],
-    overrides: v6Roles ? (v6Roles.overrides ?? []) : [],
-    nowMs,
-  }) : null;
   // Resultatlisten for en kørt etape: den eksisterende tabel (StageTab) i v6-layoutet.
   const renderV6Results = (n, { profileSlot, sideSlot }) => (
     stageFetchState(n, { loaded: loadedStages, failed: failedStages }) === "failed"
@@ -1379,9 +1387,12 @@ export default function RaceDetailPage() {
             loaded: loadedStages.has(n),
             teamFilter: <TeamFilterSelect value={teamFilter} onChange={setTeamFilter} teamOptions={teamOptions} hasMyTeam={myTeamId != null} t={t}
               className="[@media(max-width:640px),(pointer:coarse)]:min-h-11" />,
+            // #7865: knappen "My team" og holdvælgerens "My team" er ét valg.
+            mine: { on: mineOnlyFromTeamFilter(teamFilter), set: (on) => setTeamFilter(teamFilterAfterMineToggle(teamFilter, on)) },
           }} />
   );
-  const pageWidth = v6 ? "max-w-[1600px]" : "max-w-5xl"; // valg 3: bred side, loft 1600 px
+  // valg 3: bred side, loft 1600 px. #7865: de genbrugte faner står på max-w-5xl inde i RacePageV6.
+  const pageWidth = v6 ? "max-w-[1600px]" : "max-w-5xl";
 
   return (
     // #2253: translate="no" — race-resultat-listerne opdaterer live under løb;
@@ -1422,8 +1433,7 @@ export default function RaceDetailPage() {
                 så "Hop til resultater"/"Gennemgå taktik" var to knapper der
                 pegede på noget der nu er ét klik væk. Chippen er ren visning —
                 sidens ENE guld-primær bor i den aktive fane. */}
-            {/* #7778: med v6's handlingsrække står fristen dér; chippen ville gentage den. */}
-            {!v6Cta && <span
+            <span
               className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-data text-2xs font-semibold uppercase tracking-[.08em] whitespace-nowrap flex-none ${
                 statusChip.live
                   ? "border-cz-danger/30 bg-cz-danger/10 text-cz-danger"
@@ -1432,11 +1442,11 @@ export default function RaceDetailPage() {
             >
               {statusChip.live && <span className="inline-block w-1.5 h-1.5 rounded-full bg-cz-danger" aria-hidden="true" />}
               {statusChip.text}
-            </span>}
+            </span>
           </div>
-          {/* #7778 (valg 8, wireframe v6 B): ingen bannere. Med v6 og en åben taktik er
-              hovedets bund handlingsrækken (låse-frist + sidens ene guld-knap) i stedet
-              for tal-rækken; fristen ville ellers stå to gange. Ellers tal-rækken som i dag. */}
+          {/* #7778 (valg 8): ingen bannere. #7865: tal-rækken og chippen står altid; med v6 og
+              en åben taktik står låse-fristen og sidens ene guld-knap i samme række som
+              tallene (rækken brydes kun på smal skærm), så hovedet ikke bliver højere. */}
           {!v6Cta && (
             <div className="flex mt-5 pt-4 border-t border-cz-border overflow-x-auto">
               {statBlocks.map((b, i) => (
@@ -1445,19 +1455,26 @@ export default function RaceDetailPage() {
             </div>
           )}
           {v6Cta && (
-            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 mt-5 pt-4 border-t border-cz-border">
-              <p className="m-0 font-data text-sm tabular-nums text-cz-2">
-                {v6Cta.locksAt
-                  ? t(race.race_type === "stage_race" ? "racePageV6.hero.stageLocks" : "racePageV6.hero.locks", {
-                    number: v6Cta.stage, time: formatStageTime(v6Cta.locksAt, locale), countdown: countdownText(v6Cta.locksAt, nowMs, t),
-                  })
-                  : t("racePageV6.hero.notScheduled", { number: v6Cta.stage })}
-              </p>
-              <Button variant="primary" size="md" className="w-full sm:w-auto" onClick={() => openV2Tactics(v6Cta.stage)}>
-                {race.race_type === "stage_race"
-                  ? t("stagePageV2.cta.setTactics", { number: v6Cta.stage, done: v6Cta.done, total: v6Cta.total })
-                  : t("stagePageV2.cta.setTacticsOneDay", { done: v6Cta.done, total: v6Cta.total })}
-              </Button>
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mt-5 pt-4 border-t border-cz-border">
+              <div className="flex min-w-0 max-w-full overflow-x-auto">
+                {statBlocks.map((b, i) => (
+                  <HeroStatBlock key={b.label} label={b.label} value={b.value} sub={b.sub} last={i === statBlocks.length - 1} />
+                ))}
+              </div>
+              <div data-race-hero-action className="flex w-full flex-wrap items-center justify-end gap-x-4 gap-y-2 sm:ms-auto sm:w-auto">
+                <p className="m-0 font-data text-sm tabular-nums text-cz-2">
+                  {v6Cta.locksAt
+                    ? t(race.race_type === "stage_race" ? "racePageV6.hero.stageLocks" : "racePageV6.hero.locks", {
+                      number: v6Cta.stage, time: formatStageTime(v6Cta.locksAt, locale), countdown: countdownText(v6Cta.locksAt, nowMs, t),
+                    })
+                    : t("racePageV6.hero.notScheduled", { number: v6Cta.stage })}
+                </p>
+                <Button variant="primary" size="md" className="w-full sm:w-auto" onClick={() => openV2Tactics(v6Cta.stage)}>
+                  {race.race_type === "stage_race"
+                    ? t("stagePageV2.cta.setTactics", { number: v6Cta.stage, done: v6Cta.done, total: v6Cta.total })
+                    : t("stagePageV2.cta.setTacticsOneDay", { done: v6Cta.done, total: v6Cta.total })}
+                </Button>
+              </div>
             </div>
           )}
         </section>
@@ -1469,7 +1486,8 @@ export default function RaceDetailPage() {
           <Suspense fallback={null}>
             {v6
               ? <RacePageV6 {...stagePageProps} activeTab={v6Tab} renderResults={renderV6Results} tacticsStageRequest={v2TacticsStage} loadStage={startStageFetch}
-                  stageStateFor={(n) => stageFetchState(n, { loaded: loadedStages, failed: failedStages })} stageErrorFor={stageLoadErrorFor} />
+                  stageStateFor={(n) => stageFetchState(n, { loaded: loadedStages, failed: failedStages })} stageErrorFor={stageLoadErrorFor}
+                  renderTactics={(n) => renderTabContent("tactics", { v6Stage: n })} />
               : stagePageV2El}
           </Suspense>
         </div>
@@ -1968,9 +1986,9 @@ function LiveOverallTab({ byType, stage, filterRows, myTeamId, myOwnTeamId, mome
 
 /**
  * #7778: v6-layoutet (layout B) for Resultater på en kørt etape. null = etapefanen som i dag.
- * @typedef {{ profileSlot: any, sideSlot: any, loaded: boolean, teamFilter: any }} StageTabV6Layout
+ * @typedef {{ profileSlot: any, sideSlot: any, loaded: boolean, teamFilter: any, mine?: { on: boolean, set: (on: boolean) => void } | null }} StageTabV6Layout
  */
-function StageTab({ stage, results, stagePointsRows, profile, profileByStage, filterRows, myTeamId, myOwnTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, raceSquad = /** @type {string | undefined} */ (undefined), passages, stageRoles = null, rulesRevision = /** @type {string | null} */ (null), t, v6Layout = /** @type {StageTabV6Layout | null} */ (null) }) {
+function StageTab({ stage, results, stagePointsRows, profile, profileByStage, filterRows, myTeamId, myOwnTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, raceSquad = /** @type {string | undefined} */ (undefined), passages, stageRoles = null, rulesRevision = /** @type {string | null} */ (null), t, v6Layout = /** @type {StageTabV6Layout | null} */ (null), hideOrdersRecap = false }) {
   // #7031: U23-/juniorløb har ingen Ungdom-fane.
   const classTabs = raceHasYouthClassification(raceSquad) ? STAGE_CLASS_TABS : STAGE_CLASS_TABS.filter((k) => k !== "young");
   const [classTab, setClassTab] = useState("stage");
@@ -2103,7 +2121,7 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
               </TabList>
             </Tabs>
             {v6Layout.loaded
-              ? <ResultTable title={title} rows={rows} highlightWinner={classTab === "team"} highlightTeamId={myTeamId} myOwnTeamId={myOwnTeamId} moments={moments} stageNumber={stage} pointsTotalByRider={pointsTotalMapForKey(stagePointsTotals, classTab)} raceId={raceId} participationHistory={participationHistory} dnfRows={dnfRows} defaultLimit={25} headerControl={v6Layout.teamFilter} searchable />
+              ? <ResultTable title={title} rows={rows} highlightWinner={classTab === "team"} highlightTeamId={myTeamId} myOwnTeamId={myOwnTeamId} moments={moments} stageNumber={stage} pointsTotalByRider={pointsTotalMapForKey(stagePointsTotals, classTab)} raceId={raceId} participationHistory={participationHistory} dnfRows={dnfRows} defaultLimit={25} headerControl={v6Layout.teamFilter} searchable sharedMine={v6Layout.mine ?? null} />
               : <Section><SkeletonLines lines={10} /></Section>}
             {v6Layout.loaded && passageGroups.length > 0 && <PassageList groups={passageGroups} t={t} />}
           </div>
@@ -2171,7 +2189,7 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
             profileType={profile?.profile_type ?? null} startlist={stageStartlist} ownAbandons={ownAbandons} ownTeamId={myOwnTeamId} t={t}
           />
           <StageSplitTimes events={timeline?.events} ownRiderIds={ownRiderIds} effortByRider={effortByRider} riderNameById={riderNameById} teamNameById={teamNameById} climbs={profile?.climbs} t={t} />
-          {isV4Timeline && <StageOrdersRecap raceId={raceId} stageNumber={stage} riderIds={ownRiderIds} nameOf={(id) => riderNameById?.get?.(id) ?? null} profileType={profile?.profile_type ?? null} stageRoles={stageRoles} ranAt={timeline?.created_at ?? null} teamOrders={teamOrders} />}
+          {isV4Timeline && !hideOrdersRecap && <StageOrdersRecap raceId={raceId} stageNumber={stage} riderIds={ownRiderIds} nameOf={(id) => riderNameById?.get?.(id) ?? null} profileType={profile?.profile_type ?? null} stageRoles={stageRoles} ranAt={timeline?.created_at ?? null} teamOrders={teamOrders} />}
           <WhyPanel moments={moments} stageNumber={stage} mode="full" riderNameById={riderNameById} t={t} />
           <DnfSection incidents={incidents} scopeType="stage" stageNumber={stage} t={t} />
           {jerseys.length > 0 && (
@@ -2331,14 +2349,18 @@ function ResultEntityCell({ row, highlightWinner, isMine, t, moments, stageNumbe
  *   dnfRows?: any[],
  *   headerControl?: any,
  *   searchable?: boolean,
+ *   sharedMine?: { on: boolean, set: (on: boolean) => void } | null,
  * }} props
  */
-function ResultTable({ title, rows: allRows, highlightWinner = false, highlightTeamId = null, myOwnTeamId = null, defaultLimit = 10, moments = [], stageNumber = null, pointsTotalByRider = undefined, raceId = undefined, participationHistory = null, dnfRows: allDnfRows = [], headerControl = null, searchable = false }) {
+function ResultTable({ title, rows: allRows, highlightWinner = false, highlightTeamId = null, myOwnTeamId = null, defaultLimit = 10, moments = [], stageNumber = null, pointsTotalByRider = undefined, raceId = undefined, participationHistory = null, dnfRows: allDnfRows = [], headerControl = null, searchable = false, sharedMine = null }) {
   const { t } = useTranslation("races");
   const [expanded, setExpanded] = useState(false);
   // #7860: søgning og "Mit hold" kun i v6 (searchable). Uden filter er listen uændret;
   // kolonnerne afgøres af hele listen, så de ikke hopper mens man søger.
-  const [controls, setControls] = useState(EMPTY_RESULTS_CONTROLS);
+  // #7865: med sharedMine er "Mit hold" holdvælgerens valg (ét valg, ikke to filtre).
+  const [localControls, setLocalControls] = useState(EMPTY_RESULTS_CONTROLS);
+  const mineControls = sharedMineControls(localControls, sharedMine);
+  const controls = mineControls.filter;
   const filtering = searchable && isFiltering(controls);
   const rows = filtering ? filterResultRows(allRows, controls, myOwnTeamId) : allRows;
   const dnfRows = filtering ? filterResultRows(allDnfRows, controls, myOwnTeamId) : allDnfRows;
@@ -2394,7 +2416,7 @@ function ResultTable({ title, rows: allRows, highlightWinner = false, highlightT
           : showAllButton}
       />
       {searchable && allCount > 0 && (
-        <V6ResultsControls state={controls} onChange={setControls} hasMyTeam={myOwnTeamId != null} shown={totalCount} total={allCount} />
+        <V6ResultsControls state={mineControls.shown} onChange={(next) => setLocalControls(mineControls.change(next))} counting={filtering} hasMyTeam={myOwnTeamId != null} shown={totalCount} total={allCount} />
       )}
       {totalCount === 0 ? (
         filtering ? <V6ResultsNoMatch /> : <p className="text-center text-cz-3 text-sm py-6">{t("detail.noResults")}</p>

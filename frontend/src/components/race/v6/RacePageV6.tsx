@@ -15,6 +15,12 @@
 // planen mod det der skete, en kommende åbner editoren på netop den etape. Striben
 // og guld-knappen går samme vej (siden ejer etapen), så den sidste handling vinder.
 // En kørt etapes resultater hentes ved valget, med indlæsning og fejl som Resultater.
+//
+// #7865 (ringere punkter): siden har én etapestribe; på Taktik styrer den editoren,
+// som under v6 ikke har sin egen vælger. En kørt etape på Taktik viser altid den
+// låste oversigt (roller, indsats, holdplan) og planen mod det der skete over den,
+// hvor der er en plan og en optegnelse. Ordre-oversigten findes ét sted: Taktik.
+// En etape på vejen siger det på Resultater. Genbrugte faner står på max-w-5xl.
 import { useEffect, useId, useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import StagePageV2, { type StagePageV2Props } from "../stagePageV2/StagePageV2.tsx";
@@ -25,7 +31,7 @@ import { hasRouteData } from "../../../lib/stageRouteProfile.js";
 import { useRaceViewTelemetry } from "../../../lib/useRaceViewTelemetry.ts";
 import { useUiPref } from "../../../lib/userUiPrefs.ts";
 import {
-  STAGE_SCOPED_TABS, tacticsCta, v6Tabs, v6TacticsResults, v6TacticsStage, type RacePageV6Tab, type StageResultsState,
+  tacticsCta, v6BodyIsWide, v6ResultsPhase, v6Strip, v6Tabs, v6TacticsResults, v6TacticsStage, type RacePageV6Tab, type StageResultsState,
 } from "./racePageV6Model.ts";
 import V6RouteProfile from "./V6RouteProfile.tsx";
 import V6TacticsAfter from "./V6TacticsAfter.tsx";
@@ -52,6 +58,11 @@ export interface RacePageV6Props extends Omit<StagePageV2Props, "activeTab" | "o
   stageStateFor?: (stageNumber: number) => StageResultsState;
   /** Fejl-tilstanden med "Prøv igen" for en etape, der ikke kunne hentes. */
   stageErrorFor?: (stageNumber: number) => ReactNode;
+  /**
+   * #7865: Taktik-editoren for en bestemt etape, uden sin egen etapevælger (v6-striben
+   * styrer den). En kørt etape viser den låst og skrivebeskyttet. Uden = tacticsSlot.
+   */
+  renderTactics?: (stageNumber: number) => ReactNode;
 }
 
 export default function RacePageV6(props: RacePageV6Props) {
@@ -60,6 +71,7 @@ export default function RacePageV6(props: RacePageV6Props) {
     activeTab, onChangeTab, profileByStage, schedule, timeLabelFor, results, stagePointRows, stageLoaded,
     myTeamId, stageRoles, dnfRows = [], standingsSlot, raceId = null, renderResults,
     raceFinished, nowMs, onOpenTactics, tacticsStageRequest = null, loadStage, stageStateFor, stageErrorFor,
+    renderTactics, tacticsSlot,
   } = props;
   const { t } = useTranslation("races");
   const profileId = useId();
@@ -84,7 +96,7 @@ export default function RacePageV6(props: RacePageV6Props) {
   // #7865: Taktik-fanens etape. Siden ejer den seneste eksplicitte navigation (striben
   // og hovedets guld-knap går samme vej) og glemmer den, når fanen forlades.
   const overrides = stageRoles ? stageRoles.overrides ?? [] : [];
-  const openTactics = tacticsCta({ selectedStage, stagesCompleted, totalStages, raceFinished, schedule, riders, overrides, nowMs });
+  const openTactics = tacticsCta({ stagesCompleted, totalStages, raceFinished, schedule, riders, overrides, nowMs });
   const tacticsStage = v6TacticsStage({ requested: tacticsStageRequest, ctaStage: openTactics?.stage, selectedStage });
   // En kørt etape: planen mod det der skete, når etapens resultater er hentet.
   const tacticsResults = v6TacticsResults({ activeTab, stage: tacticsStage, stagesCompleted, stateFor: stageStateFor });
@@ -94,26 +106,37 @@ export default function RacePageV6(props: RacePageV6Props) {
   const selectTacticsStage = (n: number) => onOpenTactics(n);
 
   const tabs = v6Tabs(isStageRace);
-  const showStrip = isStageRace && STAGE_SCOPED_TABS.includes(activeTab);
+  // #7865 (punkt 2): én etapestribe. På Taktik styrer den editoren (som ingen egen vælger har).
+  const strip = v6Strip({ activeTab, isStageRace, selectedStage, tacticsStage });
   const profile = profileByStage[selectedStage] ?? null;
   const canShowRoute = profile != null && hasRouteData(profile);
   const routeShown = canShowRoute && !routeHidden;
+  const resultsPhase = v6ResultsPhase({ selectedStage, stagesCompleted, raceFinished, schedule, nowMs });
 
   let body: ReactNode;
-  if (tacticsResults !== null) {
+  if (activeTab === "tactics") {
+    // #7865 (punkt 3): editoren står altid samme sted i træet, så en kladde på en kommende
+    // etape overlever et klik på en kørt etape. En kørt etape viser editoren låst og
+    // skrivebeskyttet (roller, indsats, holdplan) og, hvor der er en plan og en
+    // optegnelse, planen mod det der skete over den.
     body = (
-      <V6TacticsAfter
-        key={tacticsStage}
-        raceId={raceId}
-        stageNumber={tacticsStage}
-        isStageRace={isStageRace}
-        results={results}
-        myTeamId={myTeamId}
-        stageRoles={stageRoles}
-        profile={profileByStage[tacticsStage] ?? null}
-        resultsState={tacticsResults}
-        resultsErrorSlot={tacticsResults === "failed" ? stageErrorFor?.(tacticsStage) ?? null : null}
-      />
+      <div data-race-section="tactics" className="flex flex-col gap-[14px]">
+        {tacticsResults !== null ? (
+          <V6TacticsAfter
+            key={tacticsStage}
+            raceId={raceId}
+            stageNumber={tacticsStage}
+            isStageRace={isStageRace}
+            results={results}
+            myTeamId={myTeamId}
+            stageRoles={stageRoles}
+            profile={profileByStage[tacticsStage] ?? null}
+            resultsState={tacticsResults}
+            resultsErrorSlot={tacticsResults === "failed" ? stageErrorFor?.(tacticsStage) ?? null : null}
+          />
+        ) : null}
+        {renderTactics ? renderTactics(tacticsStage) : tacticsSlot}
+      </div>
     );
   } else if (activeTab !== "results") {
     body = (
@@ -129,11 +152,14 @@ export default function RacePageV6(props: RacePageV6Props) {
   } else if (!isStageRace) {
     // Endagsloebets resultat er det nuvaerende (maaltavle + historie), uaendret.
     body = <div data-race-section="standings">{standingsSlot}</div>;
-  } else if (phase === "before") {
+  } else if (resultsPhase !== "ridden") {
+    // #7865 (punkt 5): en etape på vejen siger det, i stedet for "Get ready for stage N".
     body = (
       <EmptyState
         icon={<FlagIcon size={26} aria-hidden="true" />}
-        title={t("racePageV6.results.notRiddenTitle", { number: selectedStage })}
+        title={resultsPhase === "on_road"
+          ? t("racePage.hero.chipStageOnRoad", { number: selectedStage })
+          : t("racePageV6.results.notRiddenTitle", { number: selectedStage })}
         description={t("racePageV6.results.notRiddenHint")}
         action={<Button variant="secondary" size="sm" onClick={() => onChangeTab("stage")}>{t("racePageV6.results.openStage")}</Button>}
       />
@@ -166,14 +192,14 @@ export default function RacePageV6(props: RacePageV6Props) {
             ))}
           </TabList>
         </Tabs>
-        {showStrip && (
-          <StageStripV2 stages={stripStages} selected={selectedStage} today={todayStage} ridden={stagesCompleted} onSelect={onSelectStage} />
-        )}
-        {isStageRace && activeTab === "tactics" && (
-          <StageStripV2 stages={stripStages} selected={tacticsStage} today={todayStage} ridden={stagesCompleted} onSelect={selectTacticsStage} />
+        {strip && (
+          <StageStripV2 stages={stripStages} selected={strip.selected} today={todayStage} ridden={stagesCompleted}
+            onSelect={strip.target === "tactics" ? selectTacticsStage : onSelectStage} />
         )}
       </div>
-      {body}
+      {/* #7865 (punkt 8): kun v6's egen resultatvisning bruger den brede side; de
+          genbrugte faner står på den bredde, de er bygget til. */}
+      {v6BodyIsWide({ activeTab, isStageRace }) ? body : <div data-race-body-width="5xl" className="w-full max-w-5xl">{body}</div>}
     </div>
   );
 }
