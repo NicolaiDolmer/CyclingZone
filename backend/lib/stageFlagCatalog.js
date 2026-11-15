@@ -55,6 +55,7 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "training_train_now", area: "training", label: "Træn nu (uden bonus)" },
   // #7737: træning med det samme for ryttere med løb senere samme dag. "on" = alle, "beta" = kun beta-testere. Ejer-only flip.
   { key: "training_train_now_instant", area: "training", label: "Træn nu med det samme (løbsryttere)" },
+  { key: "training_settle_race_session", area: "training", label: "Løbets session afregnes efter etapen (#7982, kun on)" },
   { key: "training_train_now_bonus", area: "training", label: "Træn nu: separat træningsbonus" },
   // #4629: programmer pr. løbsdag, seedet i beta 26/9. Flip til on er ejer-only.
   { key: "training_programs", area: "training", label: "Træningsprogrammer pr. løbsdag" },

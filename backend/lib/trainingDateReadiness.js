@@ -112,6 +112,35 @@ export function resolveTrainingDateReadiness({
     eligibleRiderIds: riderIds.filter(id => deadlineReached || !unresolvedSlotsByRider[id]) };
 }
 
+/**
+ * #7982 (afregning efter etapen): klarhed pr. session i stedet for "alle rytterens
+ * sessioner eller ingen". For hver loebsdag paa datoen: de ryttere, hvis etape den dag
+ * er afgjort og kan afregnes nu. Kun en lukket etape taeller (alle etaper til og med
+ * denne er koert, ingen halv afslutning, startlisten er gemt), og kun en rytter paa
+ * startlisten med etapens belastning i bogen. Rytterens andre sessioner roeres ikke.
+ * Ren funktion; resolveTrainingDateReadiness ovenfor er uaendret.
+ * @returns {Map<number, string[]>} loebsdag → rytter-id'er, sorteret
+ */
+export function resolveRaceSessionReadiness({ riderIds, stages = [], races = [], runs = [], loads = [] }) {
+  const owned = new Set(riderIds);
+  const byDay = new Map();
+  for (const stage of stages) {
+    const race = races.find(row => row.id === stage.race_id);
+    if (!race || race.finalize_state != null || !(Number(race.stages_completed) >= Number(stage.stage_number))) continue;
+    const match = row => row.race_id === stage.race_id && Number(row.stage_number) === Number(stage.stage_number);
+    const snapshot = snapshotIds(runs.find(match));
+    if (!snapshot || !Number.isInteger(Number(stage.game_day))) continue;
+    for (const riderId of snapshot) {
+      if (!owned.has(riderId)) continue;
+      if (!loads.some(row => match(row) && row.rider_id === riderId && Number(row.game_day) === Number(stage.game_day))) continue;
+      const day = Number(stage.game_day);
+      if (!byDay.has(day)) byDay.set(day, new Set());
+      byDay.get(day).add(riderId);
+    }
+  }
+  return new Map([...byDay].sort((a, b) => a[0] - b[0]).map(([day, ids]) => [day, [...ids].sort()]));
+}
+
 async function must(query, name) {
   const { data, error } = await query;
   if (error) throw new Error(`${name}: ${error.message}`);
