@@ -154,6 +154,7 @@ import {
 import * as transferNotif from "../lib/transferNotifications.js";
 import { withdrawCounterOffer, claimCounterForAccept, buildCounterOfferWithdrawnNotification } from "../lib/counterOfferWithdraw.js"; // #6463
 import { getParkedRiderReleaseIssue, getParkedRiderTradeIssue } from "../lib/parkedRiderGuard6181.js"; // #6181
+import { releaseDeferContext8153, orderPendingRelease, countPendingReleasesForTeam, getPendingReleaseTradeIssue, loadPendingReleasesForTeam, countPendingReleasesForTransition, PENDING_RELEASE_FORCE_BLOCKED_ERROR } from "../lib/riderReleaseDefer8153.js"; // #8153
 import { countSellerAuctionOutgoing, checkAutoAcceptMutation, isAutoAcceptEnabled, getListingPriceUpdateErrorResponse, getOfferAutoAcceptIssue, registerAutoAcceptRoutes, releaseRiderUnderTeamLock } from "../lib/autoAccept2176.js"; // #2176
 import { sanitizeDmPrefs } from "../lib/discordDmPrefs.js";
 import { readUiPrefs, sanitizeUiPrefsPatch, writeUiPrefs } from "../lib/userUiPrefs.js"; // #7778
@@ -1959,13 +1960,15 @@ router.get("/riders/:id/release-quote", requireAuth, async (req, res) => {
   if (parkedIssue) return res.status(parkedIssue.status).json(parkedIssue.body);
   const auctionGuard = await assertRiderNotOnActiveAuction(rider.id);
   if (auctionGuard.error) return res.status(auctionGuard.error.status).json(auctionGuard.error.body);
+  const releaseDefer = await releaseDeferContext8153(supabase, rider.id); // #8153: null = slukket, svaret som i dag
+  if (releaseDefer?.issue) return res.status(releaseDefer.issue.status).json(releaseDefer.issue.body);
   const currentSeason = await getActiveSeasonNumber();
   const fee = computeReleaseBuyoutFee({
     salary: rider.salary,
     contractEndSeason: rider.contract_end_season,
     currentSeason,
   });
-  res.json({ fee, balance: req.team.balance ?? 0, affordable: (req.team.balance ?? 0) >= fee });
+  res.json({ fee, balance: req.team.balance ?? 0, affordable: (req.team.balance ?? 0) >= fee, ...(releaseDefer ? { pendingRace: releaseDefer.pendingRace } : {}) });
 });
 
 // GET /api/riders/:id/extend-quote — preview af den genforhandlede løn + ny udløbssæson
@@ -2083,6 +2086,8 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
   if (parkedIssue) return res.status(parkedIssue.status).json(parkedIssue.body);
   const auctionGuard = await assertRiderNotOnActiveAuction(rider.id);
   if (auctionGuard.error) return res.status(auctionGuard.error.status).json(auctionGuard.error.body);
+  const releaseDefer = await releaseDeferContext8153(supabase, rider.id); // #8153: null = slukket, alt som i dag
+  if (releaseDefer?.issue) return res.status(releaseDefer.issue.status).json(releaseDefer.issue.body);
 
   const { data: season } = await supabase
     .from("seasons").select("id, number").eq("status", "active").maybeSingle();
@@ -2119,7 +2124,7 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
   releaseTeamState.at_risk_count = releaseAtRiskRiders.length;
   const releaseMarketGateApplied = await applySellerOutgoingAuctions6181(supabase, releaseTeamState, rider.id, { seasonNumber: currentSeason }); // #6181 PR 5
 
-  const releaseRiskViolation = getSquadRiskViolation(releaseTeamState, { outgoingCount: 1 + (releaseMarketGateApplied ? 0 : await countSellerAuctionOutgoing(supabase, req.team.id, { skipRiderIds: [rider.id, ...releaseAtRiskRiders.map((r) => r.id)] })) }); // #2176: only fallback when M3 did not count it
+  const releaseRiskViolation = getSquadRiskViolation(releaseTeamState, { outgoingCount: 1 + (releaseDefer ? await countPendingReleasesForTeam(supabase, req.team.id) : 0) + (releaseMarketGateApplied ? 0 : await countSellerAuctionOutgoing(supabase, req.team.id, { skipRiderIds: [rider.id, ...releaseAtRiskRiders.map((r) => r.id)] })) }); // #2176: only fallback when M3 did not count it
   if (releaseRiskViolation) {
     return res.status(409).json({
       error: `You can't drop below ${releaseRiskViolation.minRiders} riders once contract expiry and retirement risk at the next season change are counted`,
@@ -2150,6 +2155,12 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
       related_entity_id: rider.id,
     },
   };
+  if (releaseDefer?.pendingRace) { // #8153: rytteren koerer et etapeloeb -> bestil; gebyret nu, holdskiftet efter sidste etape
+    const ordered = await orderPendingRelease(supabase, { riderId: rider.id, teamId: req.team.id, race: releaseDefer.pendingRace, fee, feePayload: releaseFeePayment2176.payload, orderedBy: req.user.id, atRiskRiders: releaseAtRiskRiders, riderName: `${rider.firstname} ${rider.lastname}` });
+    if (ordered.error) return res.status(ordered.error.status).json(ordered.error.body);
+    invalidateNamespace("riders");
+    return res.json(ordered.data);
+  }
   const lockedRelease = await releaseRiderUnderTeamLock(supabase, { riderId: rider.id, teamId: req.team.id, atRiskRiders: releaseAtRiskRiders, marketBeta: await isMarketAtomicPayments2176(supabase), fee, feePayload: releaseFeePayment2176.payload }); // #2176: under holdlåsen, slukket = null
   if (lockedRelease?.error) return res.status(lockedRelease.error.status).json(lockedRelease.error.body);
   const { data: released } = lockedRelease ?? await supabase
@@ -7590,6 +7601,8 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
     }
     return res.status(409).json({ error: "This rider was won at auction and is awaiting transfer to the new team", errorCode: "rider_pending_transfer_auction" });
   }
+  const auctionPendingReleaseIssue = await getPendingReleaseTradeIssue(supabase, rider.id); // #8153
+  if (auctionPendingReleaseIssue) return res.status(auctionPendingReleaseIssue.status).json(auctionPendingReleaseIssue.body);
 
   // Allow auction if:
   // 1. Rider is on manager's own team, OR
@@ -8646,6 +8659,8 @@ router.post("/transfers", requireAuth, marketWriteLimiter, async (req, res) => {
     return res.status(409).json({ error: "This rider has retired and can't be listed for sale", errorCode: "rider_retired_listing" });
   const parkedListingIssue = getParkedRiderTradeIssue(rider); // #6181
   if (parkedListingIssue) return res.status(parkedListingIssue.status).json(parkedListingIssue.body);
+  const listingPendingReleaseIssue = await getPendingReleaseTradeIssue(supabase, rider.id); // #8153
+  if (listingPendingReleaseIssue) return res.status(listingPendingReleaseIssue.status).json(listingPendingReleaseIssue.body);
   // #3650 (ejer-løfte i Discord 11/8): akademiryttere må NU listes direkte —
   // #1824's is_academy-GUARD er fjernet HER (blokerer stadig auktion, se POST
   // /auctions). Ingen manuel graduation krævet længere: salget graduerer
@@ -8907,6 +8922,8 @@ router.post("/transfers/offer", requireAuth, marketWriteLimiter, async (req, res
   if (rider.is_retired) return res.status(409).json({ error: "Rytteren er pensioneret og kan ikke handles", errorCode: "rider_retired_trade" });
   const parkedOfferIssue = getParkedRiderTradeIssue(rider); // #6181
   if (parkedOfferIssue) return res.status(parkedOfferIssue.status).json(parkedOfferIssue.body);
+  const offerPendingReleaseIssue = await getPendingReleaseTradeIssue(supabase, rider.id); // #8153
+  if (offerPendingReleaseIssue) return res.status(offerPendingReleaseIssue.status).json(offerPendingReleaseIssue.body);
   if (rider.team_id === req.team.id) return res.status(400).json({ error: "You can't bid on your own rider", errorCode: "cannot_bid_own_rider" });
 
   const { data: sellerTeam } = await supabase
@@ -9386,6 +9403,8 @@ router.post("/transfers/:id/offer", requireAuth, marketWriteLimiter, async (req,
     return res.status(404).json({ error: "Listing ikke fundet", errorCode: "listing_unavailable" });
   const parkedListingOfferIssue = getParkedRiderTradeIssue(listing.rider); // #6181
   if (parkedListingOfferIssue) return res.status(parkedListingOfferIssue.status).json(parkedListingOfferIssue.body);
+  const listingOfferPendingReleaseIssue = await getPendingReleaseTradeIssue(supabase, listing.rider_id ?? listing.rider?.id); // #8153
+  if (listingOfferPendingReleaseIssue) return res.status(listingOfferPendingReleaseIssue.status).json(listingOfferPendingReleaseIssue.body);
   if (listing.seller_team_id === req.team.id)
     return res.status(400).json({ error: "You can't bid on your own listing", errorCode: "cannot_bid_own_listing" });
   const { data: listingSeller } = await supabase
@@ -9512,6 +9531,8 @@ router.post("/transfers/swaps", requireAuth, marketWriteLimiter, async (req, res
     return res.status(404).json({ error: "Target rider not found or has no team", errorCode: "target_rider_not_found" });
   if (requested.is_retired)
     return res.status(409).json({ error: "The target rider has retired and can't be traded", errorCode: "target_rider_retired" });
+  const swapPendingReleaseIssue = (await getPendingReleaseTradeIssue(supabase, offered_rider_id)) ?? (await getPendingReleaseTradeIssue(supabase, requested_rider_id)); // #8153
+  if (swapPendingReleaseIssue) return res.status(swapPendingReleaseIssue.status).json(swapPendingReleaseIssue.body);
   if (requested.team_id === req.team.id)
     return res.status(400).json({ error: "Du kan ikke bytte med dig selv", errorCode: "cannot_swap_self" });
   const { data: requestedTeam } = await supabase
@@ -14311,6 +14332,14 @@ router.get("/me/locked-sales", requireAuth, presencePulseLimiter, async (req, re
   } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
 
+// GET /api/me/pending-releases — #8153: holdets ventende frigivelser (maerket "Leaves after {race}")
+router.get("/me/pending-releases", requireAuth, presencePulseLimiter, async (req, res) => {
+  try {
+    if (!req.team) return res.json([]);
+    res.json(await loadPendingReleasesForTeam(supabase, req.team.id));
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
+});
+
 // POST /api/finance/loans — optag nyt finanslån
 router.post("/finance/loans", requireAuth, marketWriteLimiter, async (req, res) => {
   try {
@@ -15046,6 +15075,8 @@ router.post("/admin/season-transition", requireAdmin, adminWriteLimiter, async (
         });
       }
       // #6181 (ejer 13/11, fast regel): force kan aldrig tvinge et skifte forbi laaste salg.
+      const pendingReleases8153 = !readiness.ready && force && readiness.checks?.no_deferred_transfers?.ok === false ? await countPendingReleasesForTransition(supabase) : 0; // #8153: samme faste regel
+      if (pendingReleases8153 > 0) return res.status(409).json({ error: PENDING_RELEASE_FORCE_BLOCKED_ERROR, code: "pending_rider_releases", pending_rider_releases: pendingReleases8153, readiness });
       const heldSaleEscrows = !readiness.ready && force ? await countHeldSaleEscrowsForForce(supabase) : 0;
       if (heldSaleEscrows > 0) {
         return res.status(409).json({ error: SALE_ESCROW_FORCE_BLOCKED_ERROR, code: "held_sale_escrows", held_sale_escrows: heldSaleEscrows, readiness });

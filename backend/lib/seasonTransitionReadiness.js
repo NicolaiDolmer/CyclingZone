@@ -54,6 +54,7 @@ import { getSquadLimits } from "./marketUtils.js";
 import { applySeniorSquadFilter } from "./squads.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { listHeldSaleEscrowsForAdmin } from "./saleEscrowFlow6181.js";
+import { countActivePendingReleases } from "./riderReleaseDefer8153.js"; // #8153
 
 /**
  * #5855 — read-only måling af trup-håndhævelsens postcondition.
@@ -170,6 +171,7 @@ export async function assessTransitionReadiness({ supabase, fromSeasonId } = {})
     throw new Error(`Kunne ikke tælle låste salg: ${err instanceof Error ? err.message : String(err)}`, { cause: err });
   }
   const heldSaleEscrows = heldEscrowRows.length;
+  const pendingReleases = await countActivePendingReleases(supabase); // #8153: samme regel som laaste salg
   const stuckSaleEscrows = heldEscrowRows.filter((e) => e.action === "stuck").length;
   const activeAuctions = auctionsRes.count || 0;
   const { inEmptyPool } = poolFilterRes.data;
@@ -212,11 +214,12 @@ export async function assessTransitionReadiness({ supabase, fromSeasonId } = {})
         : `Sæson ${season.number} er stadig '${season.status}' — kør 'Afslut sæson' (season-end) FØRST, ellers springes op/nedrykning + divisionsbonusser over`,
     },
     no_deferred_transfers: {
-      ok: deferredTransfers === 0 && heldSaleEscrows === 0,
+      ok: deferredTransfers === 0 && heldSaleEscrows === 0 && pendingReleases === 0,
       critical: true,
       detail: [
         deferredTransfers === 0 ? null : `${deferredTransfers} gennemførte transfers venter på at blive flyttet (pending_team_id) — kør flush/heal-sweepet først`,
         heldSaleEscrows === 0 ? null : `${heldSaleEscrows} låste salg venter på afregning (sale_escrows) — kør heal-sweepet først`,
+        pendingReleases === 0 ? null : `${pendingReleases} ventende frigivelser (pending_rider_releases, #8153) venter på at deres etapeløb slutter — kør heal-sweepet efter løbet`,
         stuckSaleEscrows === 0 ? null : `${stuckSaleEscrows} af dem er fastlåste byt, som kun kan afgøres manuelt: GET /api/admin/sale-escrows, derefter POST /api/admin/sale-escrows/:id/resolve med outcome release eller refund`,
       ].filter(Boolean).join("; ") || null,
     },

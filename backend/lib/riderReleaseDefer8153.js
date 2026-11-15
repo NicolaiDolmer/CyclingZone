@@ -22,6 +22,8 @@ import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { buildKeyedNotification } from "./notificationKeys.js";
 import { fetchAllRows } from "./supabasePagination.js";
+import { SELLER_SQUAD_FLOOR, sellerFloorRiskIds } from "./marketUtils.js";
+import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 
 export const RELEASE_DEFER_FLAG_KEY = "release_defer_8153";
 export const PENDING_RELEASES_TABLE = "pending_rider_releases";
@@ -83,16 +85,19 @@ export async function findActiveStageRaceForRider(supabase, riderId) {
 }
 
 /**
- * Hvad sker der, hvis holdet frigiver rytteren nu? null = som i dag (kontakten
- * slukket, eller han koerer ikke et etapeloeb). Ellers loebet, frigivelsen venter paa.
+ * release-quote og release: null = kontakten er slukket, og ruten svarer som i dag.
+ * Taendt: issue (409, frigivelsen er allerede bestilt) eller pendingRace (loebet,
+ * frigivelsen venter paa, eller null = frigivelsen sker straks som i dag).
  *
  * @param {any} supabase
  * @param {string} riderId
- * @returns {Promise<{ id: string, name: string|null } | null>}
+ * @returns {Promise<null | { issue: null | { status: number, body: object }, pendingRace: { id: string, name: string|null } | null }>}
  */
-export async function resolveReleaseDeferral(supabase, riderId) {
+export async function releaseDeferContext8153(supabase, riderId) {
   if (!(await isReleaseDeferEnabled(supabase))) return null;
-  return findActiveStageRaceForRider(supabase, riderId);
+  const pending = await getPendingReleaseForRider(supabase, riderId);
+  if (pending) return { issue: pendingReleaseAlreadyOrderedIssue(pending.raceName), pendingRace: null };
+  return { issue: null, pendingRace: await findActiveStageRaceForRider(supabase, riderId) };
 }
 
 /**
@@ -249,23 +254,35 @@ export async function getPendingReleaseSelectionIssue(supabase, { race, riderIds
 }
 
 /**
- * Saesonskifte-spaerren (rettelse 7): antal aktive bestillinger. Fail-closed: kan
- * tabellen ikke laeses, svares 1, saa skiftet afvises. Manglende tabel = 0.
+ * Antal aktive bestillinger i hele spillet (saesonskiftets readiness-gate).
+ * Manglende tabel = 0; andre fejl kastes, som de oevrige tjek i gaten.
+ * @param {any} supabase
+ * @returns {Promise<number>}
+ */
+export async function countActivePendingReleases(supabase) {
+  const { count, error } = await supabase
+    .from(PENDING_RELEASES_TABLE)
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending");
+  if (error) {
+    if (isMissingTable(error)) return 0;
+    throw new Error(`Could not count pending rider releases: ${error.message}`);
+  }
+  return Number(count) || 0;
+}
+
+export const PENDING_RELEASE_FORCE_BLOCKED_ERROR =
+  "A season transition cannot be forced while rider releases are pending (pending_rider_releases, #8153). Let the stage race finish and the heal sweep execute them.";
+
+/**
+ * Saesonskiftets force-gren (rettelse 7, samme faste regel som laaste salg): antal
+ * aktive bestillinger. Fail-closed: kan tabellen ikke laeses, svares 1, saa force afvises.
  * @param {any} supabase
  * @returns {Promise<number>}
  */
 export async function countPendingReleasesForTransition(supabase) {
   try {
-    const { count, error } = await supabase
-      .from(PENDING_RELEASES_TABLE)
-      .select("id", { count: "exact", head: true })
-      .eq("status", "pending");
-    if (error) {
-      if (isMissingTable(error)) return 0;
-      console.error(`[pendingRelease8153] saesonskifte-spaerren kunne ikke laese bestillingerne, afviser: ${error.message}`);
-      return 1;
-    }
-    return Number(count) || 0;
+    return await countActivePendingReleases(supabase);
   } catch (err) {
     // fail-closed: hellere et afvist skifte end loen og kontraktudloeb midt i en ventende frigivelse.
     console.error(`[pendingRelease8153] saesonskifte-spaerren fejlede, afviser: ${errorMessage(err)}`);
@@ -278,15 +295,21 @@ export async function countPendingReleasesForTransition(supabase) {
  * et aktivt etapeloeb). Gebyret traekkes i samme transaktion som raekken oprettes.
  *
  * @param {any} supabase
+ * Truppens gulv regnes som i auto_accept_release_rider (SELLER_SQUAD_FLOOR og
+ * risiko-rytterne); de ventende frigivelser taeller som afgaaende i SQL.
+ *
+ * @param {any} supabase
  * @param {{ riderId: string, teamId: string, race: { id: string, name: string|null }, fee: number,
- *   feePayload: object, orderedBy: string|null, now?: Date, minRiders?: number, atRiskRiderIds?: string[],
+ *   feePayload: object, orderedBy: string|null, now?: Date, atRiskRiders?: Array<{ id: string }>,
  *   riderName?: string, notifyTeamOwner?: Function }} args
  * @returns {Promise<{ data: { pending: true, race: { id: string, name: string|null }, fee: number } } | { error: { status: number, body: object } }>}
  */
 export async function orderPendingRelease(supabase, {
   riderId, teamId, race, fee, feePayload, orderedBy = null, now = new Date(),
-  minRiders = 0, atRiskRiderIds = [], riderName = "", notifyTeamOwner = NOOP,
+  atRiskRiders = [], riderName = "", notifyTeamOwner = null,
 }) {
+  const notify = notifyTeamOwner ?? ((tid, type, title, message, relatedId = null, metadata = null) =>
+    notifyTeamOwnerShared({ supabase, teamId: tid, type, title, message, relatedId, metadata }));
   const { data: result, error } = await supabase.rpc("order_rider_release_8153", {
     p_rider_id: riderId,
     p_team_id: teamId,
@@ -295,8 +318,8 @@ export async function orderPendingRelease(supabase, {
     p_finance_payload: feePayload,
     p_ordered_by: orderedBy,
     p_now: now.toISOString(),
-    p_min_riders: minRiders,
-    p_at_risk_rider_ids: atRiskRiderIds,
+    p_min_riders: SELLER_SQUAD_FLOOR,
+    p_at_risk_rider_ids: sellerFloorRiskIds(atRiskRiders),
   });
   if (error) {
     const issue = readMarketGateIssue(error);
@@ -311,7 +334,12 @@ export async function orderPendingRelease(supabase, {
         messageParams: { rider: riderName, race: race.name ?? "", fee },
         metadata: { riderId, raceId: race.id },
       });
-      await notifyTeamOwner(teamId, PENDING_RELEASE_NOTIFICATION_TYPE, notice.title, notice.message, riderId, notice.metadata);
+      try {
+        await notify(teamId, PENDING_RELEASE_NOTIFICATION_TYPE, notice.title, notice.message, riderId, notice.metadata);
+      } catch (notifyErr) {
+        // bestillingen er gennemfoert og betalt; en fejlet besked maa ikke give spilleren en fejl.
+        console.error(`[pendingRelease8153] beskeden ved bestilling fejlede (${riderId}): ${errorMessage(notifyErr)}`);
+      }
       return { data: { pending: true, race: { id: race.id, name: race.name ?? null }, fee } };
     }
     case "already_pending": {
@@ -373,7 +401,12 @@ async function executeOne(supabase, row, { now, notifyTeamOwner, riderName }) {
     messageParams: { rider: riderName ?? "" },
     metadata: { riderId: row.rider_id, raceId: row.race_id },
   });
-  await notifyTeamOwner(row.team_id, PENDING_RELEASE_NOTIFICATION_TYPE, notice.title, notice.message, row.rider_id, notice.metadata);
+  try {
+    await notifyTeamOwner(row.team_id, PENDING_RELEASE_NOTIFICATION_TYPE, notice.title, notice.message, row.rider_id, notice.metadata);
+  } catch (notifyErr) {
+    // frigivelsen er udfoert; en fejlet besked logges, men taeller ikke som en fejlet udfoerelse.
+    console.error(`[pendingRelease8153] beskeden ved udfoerelse fejlede (${row.rider_id}): ${errorMessage(notifyErr)}`);
+  }
   return true;
 }
 
