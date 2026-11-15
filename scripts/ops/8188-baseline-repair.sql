@@ -27,6 +27,11 @@
 -- og holdets 'completed' 1yr-plan. Kun elementer med source 'bonus_offer' og
 -- type 'monument_podium'.
 --
+-- KUN DEN AKTIVE SAESONS MAAL (kolonnen in_active_mandate): BLOK 2 skriver
+-- mandatets egne maal og profilens spejling af netop dem (samme bonus_offer_id
+-- i det aktive mandat). Bonusmaal fra tidligere saesoner, der stadig staar i
+-- board_profiles.current_goals, vises i BLOK 1 men skrives aldrig.
+--
 -- KUN SAENKNING: scriptet retter et maal, naar den gemte baseline findes, er
 -- et heltal, og den korrekte baseline er MINDRE end den gemte. Det haever
 -- aldrig en baseline og tilfoejer aldrig en baseline til et maal uden en.
@@ -52,7 +57,7 @@
 -- =============================================================================
 -- BLOK 1 · REN SELECT (ingen skrivning). Lister beroerte aktive bonusmaal med
 -- gemt og korrekt baseline. needs_repair = true er de rækker BLOK 2 retter
--- (would_lower OG match_kind = 'offer_id').
+-- (would_lower OG match_kind = 'offer_id' OG in_active_mandate).
 -- =============================================================================
 
 WITH active_season AS (
@@ -259,7 +264,7 @@ WHERE EXISTS (
 -- BLOK 2 · UPDATE (SKRIVER TIL PROD). KUN EFTER EJERENS ORD.
 --
 -- Koeres som EEN samlet koersel. Idempotent: kun elementer med match paa
--- tilbuds-id, hvor gemt baseline er et heltal STOERRE end den korrekte,
+-- tilbuds-id i den aktive saesons mandat (og profilens spejling af dem), hvor gemt baseline er et heltal STOERRE end den korrekte,
 -- skrives (aldrig haevning, aldrig ny baseline), og hver skrivning er compare-and-swap paa
 -- den gemte vaerdi, saa en anden koersel (eller en samtidig skriver) rammer 0
 -- rækker. Foer-vaerdierne arkiveres i backup_8188_bonus_baseline (rule 38).
