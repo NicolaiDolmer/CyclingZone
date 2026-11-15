@@ -41,13 +41,10 @@ INPUT=$(cat 2>/dev/null || true)
 # shellcheck source=lib/hook-cwd.sh
 . "$(dirname "$0")/lib/hook-cwd.sh"
 hook_enter_cwd "$INPUT"
-ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
-cd "$ROOT" 2>/dev/null || exit 0
-
 # Kun i hoved-checkoutet. I et linked worktree er .git en FIL ("gitdir: ...").
-# Dér er sessionen allerede isoleret, og så blander vi os ikke.
-[ -f .git ] && exit 0
-[ -d .git ] || exit 0
+# Dér er sessionen allerede isoleret, og så blander vi os ikke. Hvilket checkout
+# et segment rammer, afgøres pr. segment nedenfor (cd <dir>, git -C <dir>), saa
+# `git -C C:/Dev/CyclingZone switch x` fra et worktree ogsaa fanges (review #8207).
 
 case "$INPUT" in
   *'"tool_name":"Bash"'*|*'"tool_name": "Bash"'*) ;;
@@ -76,13 +73,45 @@ process.stdin.on("end", () => {
   }
   if (!cmd) process.exit(0);
 
+  const fs = require("fs");
+  const path = require("path");
+  const { execFileSync } = require("child_process");
+  const unquote = (t) => t.replace(/^["\x27]|["\x27]$/g, "");
+  // Git Bash-stier (/c/dev/x) -> C:/dev/x paa Windows.
+  const native = (p) => {
+    const m = process.platform === "win32" && String(p).match(/^\/([a-zA-Z])(\/.*)?$/);
+    return m ? `${m[1].toUpperCase()}:${m[2] || "/"}` : p;
+  };
+  const at = (base, p) => path.resolve(base, native(unquote(p)));
+  // Hoved-checkout = git-roden for mappen har en .git-MAPPE (linked worktree: fil).
+  const isMainCheckout = (dir) => {
+    try {
+      const top = execFileSync("git", ["-C", dir, "rev-parse", "--show-toplevel"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+      return !!top && fs.statSync(path.join(top, ".git")).isDirectory();
+    } catch { return false; }
+  };
+
   // Del kommandoen i segmenter, så "cd x && git checkout y" også fanges.
   const segments = cmd.split(/&&|\|\||[;\n|]/);
+  let dir = process.cwd();
 
   for (const seg of segments) {
     const s = seg.trim();
-    const m = s.match(/(?:^|\s)git\s+(?:-[^\s]+\s+)*(checkout|switch)\b(.*)$/);
-    if (!m) continue;
+    const cd = s.match(/^(?:cd|pushd|Set-Location|sl)\s+(?:-[A-Za-z]+\s+)*("[^"]*"|\x27[^\x27]*\x27|\S+)\s*$/);
+    if (cd) { dir = at(dir, cd[1]); continue; }
+    // git [globale flag, fx -C <dir>, -c k=v, --no-pager] (checkout|switch) <rest>
+    const toks = s.match(/"[^"]*"|\x27[^\x27]*\x27|\S+/g) || [];
+    const gi = toks.indexOf("git");
+    if (gi < 0) continue;
+    let segDir = dir, i = gi + 1;
+    while (i < toks.length && toks[i].startsWith("-")) {
+      if (toks[i] === "-C" && i + 1 < toks.length) { segDir = at(segDir, toks[i + 1]); i += 2; }
+      else if (toks[i] === "-c" && i + 1 < toks.length) i += 2;
+      else i += 1;
+    }
+    if (toks[i] !== "checkout" && toks[i] !== "switch") continue;
+    if (!isMainCheckout(segDir)) continue;
+    const m = [null, toks[i], toks.slice(i + 1).join(" ")];
 
     const rest = (m[2] || "").trim();
 

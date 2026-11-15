@@ -36,6 +36,16 @@ cd "$ROOT" 2>/dev/null || exit 0
 # Kun i et linked worktree er .git en FIL ("gitdir: ..."). I main-repoet er .git en mappe.
 [ -f .git ] || exit 0
 
+# #8206 (Vercel Security Review): kun worktrees af hookens EGET repo (samme
+# git-common-dir). Et fremmed checkout faar aldrig automatisk koert kode, og
+# setup-scriptet hentes fra hookens betroede repo, ikke fra det inspicerede trae.
+HOOK_SCRIPTS_DIR="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)" || exit 0
+OWN_COMMON=$(git -C "$HOOK_SCRIPTS_DIR" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || exit 0
+CWD_COMMON=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || exit 0
+[ -n "$OWN_COMMON" ] && [ "$OWN_COMMON" = "$CWD_COMMON" ] || exit 0
+SETUP_PS1="$HOOK_SCRIPTS_DIR/setup-worktree.ps1"
+[ -f "$SETUP_PS1" ] || exit 0
+
 # Billig guard: skip hvis alt allerede er sundt (undgå pwsh-spawn uden grund).
 need=0
 for d in node_modules backend/node_modules frontend/node_modules; do
@@ -62,7 +72,7 @@ fi
 # Windows-only setup (junctions + hardlinks). Spring stille over hvis pwsh mangler.
 command -v pwsh >/dev/null 2>&1 || exit 0
 
-if pwsh -NoProfile -File scripts/setup-worktree.ps1 -Quiet; then
+if pwsh -NoProfile -File "$SETUP_PS1" -WorktreeRoot "$ROOT" -Quiet; then
   rm -f "$stamp"
 else
   : > "$stamp"

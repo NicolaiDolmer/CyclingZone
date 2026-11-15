@@ -107,4 +107,39 @@ test('branch-vagten vurderer kommandoens mappe (input-cwd), ogsaa fra en underma
   // (foer: falsk blokering, maalt 15/11 i en worktree-session).
   assert.equal(call(main, join(wt, 'frontend')).status, 0);
   assert.equal(call(main, wt).status, 0);
+  // Review #8207: fra et worktree maa hovedmappen ikke skiftes via git -C eller cd.
+  const callCmd = (cmdCwd, cmd) => run(command, {
+    cwd: base,
+    input: JSON.stringify({ hook_event_name: 'PreToolUse', tool_name: 'Bash', cwd: cmdCwd, tool_input: { command: cmd } }),
+  });
+  assert.equal(callCmd(wt, `git -C "${main}" switch -c feature-x`).status, 2);
+  assert.equal(callCmd(wt, `cd "${main}" && git checkout -b feature-y`).status, 2);
+  assert.equal(callCmd(main, `git -C "${wt}" switch -c feature-z`).status, 0);
+  assert.equal(callCmd(join(main, 'frontend'), 'git checkout -- x.txt').status, 0);
+});
+
+test('worktree-setup koerer aldrig kode fra et fremmed repos worktree (Vercel Security Review #8207)', t => {
+  const base = scratch(t);
+  const foreign = join(base, 'foreign');
+  const git = (...args) => execFileSync('git', ['-C', foreign, ...args], { stdio: 'ignore' });
+  mkdirSync(join(foreign, 'scripts'), { recursive: true });
+  execFileSync('git', ['init', '-q', foreign]);
+  writeFileSync(join(foreign, 'scripts', 'setup-worktree.ps1'), 'Write-Output owned');
+  git('add', '.');
+  git('-c', 'user.email=t@t', '-c', 'user.name=t', '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'x');
+  const wt = join(base, 'foreign-wt');
+  git('worktree', 'add', '-q', '-b', 'side', wt);
+  // Falsk pwsh foerst i PATH: skriver en markoer, hvis hooken overhovedet starter den.
+  const bin = join(base, 'bin');
+  const marker = join(base, 'pwsh-ran');
+  mkdirSync(bin);
+  writeFileSync(join(bin, 'pwsh'), `#!/bin/sh\necho ran > "${marker.replace(/\\/g, '/')}"\n`, { mode: 0o755 });
+  const res = spawnSync('bash', ['-c', 'bash "$CLAUDE_PROJECT_DIR/scripts/hooks/setup-worktree-if-needed.sh"'], {
+    cwd: base, encoding: 'utf8', timeout: 60_000,
+    input: JSON.stringify({ hook_event_name: 'PreToolUse', tool_name: 'Bash', cwd: wt, tool_input: { command: 'ls' } }),
+    env: { ...process.env, CLAUDE_PROJECT_DIR: ROOT, PATH: `${bin}${process.platform === 'win32' ? ';' : ':'}${process.env.PATH}` },
+  });
+  assert.equal(res.status, 0, res.stderr);
+  assert.equal(existsSync(marker), false, 'hooken startede pwsh i et fremmed repos worktree');
+  assert.equal(existsSync(join(wt, '.git-worktree-setup-failed')), false);
 });
