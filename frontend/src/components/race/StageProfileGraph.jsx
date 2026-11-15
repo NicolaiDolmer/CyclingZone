@@ -115,7 +115,7 @@ export default function StageProfileGraph({
   // Højdemærkerne må ikke ligge tættere end teksten er høj (gælder kun den hævede tekst).
   const GRID_STEPS = [100, 200, 500, 1000, 2000, 5000];
   while (narrow && (gridStep / top) * plotH < fs * 1.7 && gridStep < GRID_STEPS[GRID_STEPS.length - 1]) {
-    gridStep = GRID_STEPS.find((s) => s > gridStep);
+    gridStep = GRID_STEPS.find((s) => s > gridStep) ?? GRID_STEPS[GRID_STEPS.length - 1];
   }
   const gridLines = [];
   for (let m = gridStep; m <= top; m += gridStep) gridLines.push(m);
