@@ -172,6 +172,9 @@ BEGIN
   -- provisional form and fatigue, and a provisional row can never close a date.
   IF EXISTS(SELECT 1 FROM jsonb_array_elements(p_conditions) x WHERE NOT (x->>'rider_id')::uuid=ANY(v_settling)
     AND NOT((x->>'rider_id')::uuid=ANY(v_instant) AND x->>'provisional'='true')) THEN RAISE EXCEPTION 'Condition writes only at date settlement'; END IF;
+  -- #7982: a race session rider writes a final condition only on his last missing session (NULL-safe).
+  IF EXISTS(SELECT 1 FROM jsonb_array_elements(p_conditions) x WHERE (x->>'rider_id')::uuid=ANY(v_race_session)
+    AND NOT (x->>'rider_id')::uuid=ANY(v_settling) AND x->>'provisional' IS DISTINCT FROM 'true') THEN RAISE EXCEPTION 'Condition writes only at date settlement'; END IF;
   IF EXISTS(SELECT 1 FROM jsonb_array_elements(p_conditions) x WHERE (x->>'rider_id')::uuid=ANY(v_settling) AND x->>'provisional'='true') THEN
     RAISE EXCEPTION 'Provisional condition cannot settle a date; retry';
   END IF;

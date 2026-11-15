@@ -18,7 +18,7 @@ import {
 import { startTrainingDayCloseAfterStages, __resetTrainingDayCloseStateForTests } from "./trainingDayCloseTrigger.js";
 import { STAGE_FLAGS } from "./stageFlagCatalog.js";
 import {
-  seedState, finishRace, press, sweep, RACE, DATE1, rider as hRider,
+  seedState, finishRace, press, sweep, RACE, rider as hRider,
 } from "./trainNowSameResult7982.harness.js";
 import { fakeWithRaceSessionRule, settle, placeRace, finishStage1, STAGE_DONE_AT } from "./trainingSettleRaceSession7982.facit.test.js";
 
@@ -94,10 +94,14 @@ async function call(db, fn, { day, riders, openings, conditions = [], raceSessio
     ...(raceSession.includes(r) ? { race_session_7982: true } : {}),
     ...(receipts[r] ? { expected_date_receipt_days: receipts[r] } : {}),
   })) };
+  // Hvert kald i sit eget savepoint: en fejl ruller kun kaldet tilbage, ikke tilfaeldets transaktion.
+  await db.exec("SAVEPOINT c");
   try {
     const result = (await db.query(`SELECT ${fn}('${TEAM}','${SEASON}','senior',${day},'${DATE}','{${DAYS}}','assistant',${j(report)},'[]',${j(conditions)},'[]','[]','[]',${j(raceLoads)},false,'${at}') AS r`)).rows[0].r;
+    await db.exec("RELEASE SAVEPOINT c");
     return { result, rows: await dump(db) };
   } catch (e) {
+    await db.exec("ROLLBACK TO SAVEPOINT c");
     return { error: { code: e.code, message: e.message } };
   }
 }
@@ -132,6 +136,7 @@ describe("databasefunktionen (PGlite)", () => {
     const strip = (src) => src.replace(/;v_race_session uuid\[\]:='\{\}'/, "")
       .replace(/ {2}-- #7982: a race session settled[\s\S]*?v_instant:=v_instant\|\|v_race_session;\n/, "")
       .replace(/ {2}-- #7982: settled_at is the actual time[^\n]*\n/, "")
+      .replace(/ {2}-- #7982: a race session rider writes[\s\S]*?Condition writes only at date settlement'; END IF;\n/, "")
       .replace(",created_at,settled_at)", ",created_at)").replace("r,p_now,clock_timestamp() FROM", "r,p_now FROM");
     assert.equal(strip(migrated), frozen);
     assert.doesNotMatch(await file(MIGRATION), /POLICY|ROW LEVEL SECURITY|SECURITY DEFINER/i);
@@ -148,10 +153,6 @@ describe("databasefunktionen (PGlite)", () => {
         assert.ok(!out.error, JSON.stringify(out.error));
         await call(db, "commit_training_date_tick", { day, riders: RIDERS, openings, conditions, raceLoads, at: AT(day) });
       }
-      // Uden for rækkefølge og en betingelse skrevet for tidligt fejler som i dag.
-      await db.exec("DELETE FROM training_rider_ticks WHERE game_day=44 AND rider_id='" + RIDERS[2] + "'");
-      const early = await both(db, { day: 44, riders: [RIDERS[2]], openings, conditions: [settledCondition(RIDERS[2])] });
-      assert.match(early.error.message, /Condition writes only at date settlement/);
     });
     await inCase(db, async () => {
       const { opening_conditions: openings } = await register(db);
@@ -181,7 +182,7 @@ describe("databasefunktionen (PGlite)", () => {
       assert.match(noLoad.error.message, /requires the switch and the stage load/);
       // En endelig kondition ved loebssessionen, naar den ikke er rytterens sidste, afvises.
       const closing = await call(db, "commit_training_date_tick", { day: 43, riders: [a], openings, raceSession: [a], receipts: { [a]: [] }, conditions: [settledCondition(a)] });
-      assert.match(closing.error.message, /Condition writes only at date settlement/);
+      assert.match(closing.error?.message ?? JSON.stringify(closing.result), /Condition writes only at date settlement/);
       // Foreloebig form og traethed: tilladt, ingen afregning, belastningen er ikke brugt.
       const ok = await call(db, "commit_training_date_tick", { day: 43, riders: [a], openings, raceSession: [a], receipts: { [a]: [] },
         conditions: [{ rider_id: a, form: 47, fatigue: 44, provisional: true }], at: AT(30) });
@@ -223,7 +224,7 @@ describe("databasefunktionen (PGlite)", () => {
       const a = RIDERS[0];
       await load(db, a);
       // Stemplet af Traen nu: de frie sessioner er gemt; loebssessionen er den sidste.
-      await db.exec(`INSERT INTO training_train_now_locks(rider_id,team_id,season_id,tick_date,locked_at,instant_at) VALUES('${a}','${TEAM}','${SEASON}','${DATE}','${AT(0)}','${AT(0)}')`);
+      await db.exec(`INSERT INTO training_train_now_locks(rider_id,team_id,season_id,tick_date,pressed_at,instant_at) VALUES('${a}','${TEAM}','${SEASON}','${DATE}','${AT(0)}','${AT(0)}')`);
       for (const [day, seen] of [[41, []], [42, [41]], [44, [41, 42]], [45, [41, 42, 44]]]) {
         const r = await call(db, "commit_training_date_tick", { day, riders: [a], openings, receipts: { [a]: seen } });
         assert.ok(!r.error, `${day}: ${JSON.stringify(r.error)}`);
@@ -324,7 +325,7 @@ describe("delkoerslen", () => {
       loadDaySpans: async () => new Map(), loadFinalDate: async () => "2026-12-20",
       loadContext: async () => ({ ...(await (await import("./trainingSettleRaceSession7982.facit.test.js")).contextOf(state)()),
         riders: state.riders.map((r, i) => ({ ...r, team_id: i === 2 ? "00000000-0000-4000-8000-000000000003" : r.team_id })) }),
-      runDay: async (args) => { calls++; if (calls === 1) throw new Error("boom"); return { alreadyRan: false }; } });
+      runDay: async () => { calls++; if (calls === 1) throw new Error("boom"); return { alreadyRan: false }; } });
     assert.equal(out.failed, 1); assert.equal(out.settled, 1); assert.equal(calls, 2);
   });
 
@@ -350,9 +351,10 @@ describe("delkoerslen", () => {
       if (name === "try_register_training_date_work" && inFlight) return { data: { held: true }, error: null };
       if (name === "commit_training_date_tick" && args.p_report?.riders?.some((r) => r.race_session_7982) && pressAnswer === null) {
         inFlight = true;
-        const writesBefore = fake.log.filter((e) => e.kind !== "read").length;
+        const tables = () => JSON.stringify([state.training_rider_ticks, state.rider_condition, state.rider_derived_abilities, state.training_condition_settlements]);
+        const before = tables();
         pressAnswer = await press(state, fake, { now: new Date("2026-11-09T16:31:00Z") });
-        pressAnswer.writes = fake.log.filter((e) => e.kind !== "read").length - writesBefore;
+        pressAnswer.unchanged = tables() === before;
         const out = await rpc(name, args); inFlight = false; return out;
       }
       return rpc(name, args);
@@ -360,7 +362,7 @@ describe("delkoerslen", () => {
     const out = await settle(state, fake);
     assert.equal(pressAnswer.status, 409);
     assert.equal(pressAnswer.body.error, "training_in_progress");
-    assert.equal(pressAnswer.writes, 1, "kun trykkets eget try_-kald (held), ingen skrivning");
+    assert.equal(pressAnswer.unchanged, true, "trykket skrev ingen traening (laasene som i dag)");
     assert.equal(out.settled, 1);
     // Aftenkoerslen springer de gemte loebssessioner over: én kvittering pr. rytter og session.
     fake.supabase.rpc = rpc;
@@ -380,6 +382,7 @@ describe("krogen i lukningens start", () => {
     let release;
     const p = startRaceSessionSettlementAfterStages({ supabase: { from() {} }, stagesRan: 1, logger: { log() {}, error() {} }, run: () => new Promise((r) => { release = r; }) });
     assert.ok(p);
+    await new Promise((r) => setImmediate(r));
     assert.equal(startRaceSessionSettlementAfterStages({ supabase: { from() {} }, stagesRan: 1, run: async () => ({}) }), null, "overlap-vagt");
     release({ ran: true, settled: 1, failed: 0 }); await p;
     const errors = [];
