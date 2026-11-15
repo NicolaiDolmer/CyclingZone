@@ -116,27 +116,35 @@ process.stdin.on("end", () => {
   for (const seg of segments) {
     // Subshell/gruppe: parenteser og klammer fjernes.
     const s = seg.trim().replace(/^[({]+\s*/, "").replace(/\s*[)}]+$/, "");
-    const cd = s.match(/^(?:cd|pushd|Set-Location|sl)\s+(?:-[A-Za-z]+\s+)*("[^"]*"|\x27[^\x27]*\x27|\S+)\s*$/);
+    // cd [--] [-flag] <sti> [2>/dev/null ...]: ekstra tokens efter stien er tilladt (review #8207).
+    const cd = s.match(/^(?:cd|pushd|Set-Location|sl)\s+(?:--\s+)?(?:-[A-Za-z]+\s+)*("[^"]*"|\x27[^\x27]*\x27|[^\s;&|]+)(?:\s+.*)?$/);
     if (cd) { dir = at(dir, cd[1]); seen.push(dir); continue; }
-    // [VAR=x ...] git [globale flag] (checkout|switch) <rest>
+    // export GIT_DIR=... / GIT_WORK_TREE=...: gaelder resten af kommandoen.
+    const exp = s.match(/^export\s+(?:GIT_DIR|GIT_WORK_TREE)=("[^"]*"|\x27[^\x27]*\x27|\S+)/);
+    if (exp) { seen.push(at(dir, stripGit(unquote(exp[1])))); continue; }
+    // [VAR=x ...] [sudo/env ...] git [globale flag] (checkout|switch) <rest>
+    // Hvert token der ligner git proeves (review #8207: "sudo -u git git checkout x").
     const toks = s.match(/"[^"]*"|\x27[^\x27]*\x27|\S+/g) || [];
-    const gi = toks.findIndex((t) => /(^|[\\/])git(\.exe)?$/i.test(unquote(t)));
-    if (gi < 0) continue;
-    const cands = [...seen, dir];
-    for (const t of toks.slice(0, gi)) {
-      const env = t.match(/^(?:GIT_DIR|GIT_WORK_TREE)=(.+)$/);
-      if (env) cands.push(at(dir, stripGit(unquote(env[1]))));
+    let i = -1, cands = null;
+    for (let gi = 0; gi < toks.length && i < 0; gi++) {
+      if (!/(^|[\\/])git(\.exe)?$/i.test(unquote(toks[gi]))) continue;
+      const c = [...seen, dir];
+      for (const t of toks.slice(0, gi)) {
+        const env = t.match(/^(?:GIT_DIR|GIT_WORK_TREE)=(.+)$/);
+        if (env) c.push(at(dir, stripGit(unquote(env[1]))));
+      }
+      let segDir = dir, j = gi + 1;
+      while (j < toks.length && toks[j].startsWith("-")) {
+        const eq = toks[j].match(/^--(?:work-tree|git-dir)=(.+)$/);
+        if (toks[j] === "-C" && j + 1 < toks.length) { segDir = at(segDir, toks[j + 1]); c.push(segDir); j += 2; }
+        else if (eq) { c.push(at(segDir, stripGit(unquote(eq[1])))); j += 1; }
+        else if ((toks[j] === "--work-tree" || toks[j] === "--git-dir") && j + 1 < toks.length) { c.push(at(segDir, stripGit(unquote(toks[j + 1])))); j += 2; }
+        else if (toks[j] === "-c" && j + 1 < toks.length) j += 2;
+        else j += 1;
+      }
+      if (toks[j] === "checkout" || toks[j] === "switch") { i = j; cands = c; }
     }
-    let segDir = dir, i = gi + 1;
-    while (i < toks.length && toks[i].startsWith("-")) {
-      const eq = toks[i].match(/^--(?:work-tree|git-dir)=(.+)$/);
-      if (toks[i] === "-C" && i + 1 < toks.length) { segDir = at(segDir, toks[i + 1]); cands.push(segDir); i += 2; }
-      else if (eq) { cands.push(at(segDir, stripGit(unquote(eq[1])))); i += 1; }
-      else if ((toks[i] === "--work-tree" || toks[i] === "--git-dir") && i + 1 < toks.length) { cands.push(at(segDir, stripGit(unquote(toks[i + 1])))); i += 2; }
-      else if (toks[i] === "-c" && i + 1 < toks.length) i += 2;
-      else i += 1;
-    }
-    if (toks[i] !== "checkout" && toks[i] !== "switch") continue;
+    if (i < 0) continue;
     if (!cands.some(isMainCheckout)) continue;
     const m = [null, toks[i], toks.slice(i + 1).join(" ")];
 

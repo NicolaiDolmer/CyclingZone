@@ -127,6 +127,11 @@ test('branch-vagten vurderer kommandoens mappe (input-cwd), ogsaa fra en underma
   assert.equal(callCmd(wt, `GIT_WORK_TREE="${main}" GIT_DIR="${main}/.git" git switch -c feature-e`).status, 2);
   assert.equal(callCmd(wt, `git --git-dir="${main}/.git" switch -c feature-g`).status, 2);
   assert.equal(callCmd(wt, `git.exe -C "${main}" switch -c feature-x2`).status, 2);
+  // Review #8207, runde 5: et tidligere "git"-lignende token, cd med ekstra tokens, export.
+  assert.equal(callCmd(main, 'X=/usr/bin/git git switch -c feature-k').status, 2);
+  assert.equal(callCmd(wt, `cd "${main}" 2>/dev/null && git switch -c feature-n`).status, 2);
+  assert.equal(callCmd(wt, `cd -- "${main}" && git switch -c feature-d`).status, 2);
+  assert.equal(callCmd(wt, `export GIT_DIR="${main}/.git"; git switch -c feature-v`).status, 2);
   // Almindeligt arbejde i et worktree er stadig frit.
   assert.equal(callCmd(wt, 'git switch -c feature-ok').status, 0);
   assert.equal(callCmd(join(wt, 'frontend'), 'git checkout -b feature-ok2').status, 0);
