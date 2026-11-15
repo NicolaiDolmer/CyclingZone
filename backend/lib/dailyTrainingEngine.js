@@ -1466,9 +1466,11 @@ export async function runTeamTrainingDay({
     // "sluk udviklingen for S3" umulig før dette split.
     // #7737: on the last free race day of an instant press every missing race day is an open
     // race slot. His form and fatigue are then counted now, with the stage load still to come.
-    // #7982: the race session settled at its stage counts form and fatigue now too; unrun sessions are open.
-    const provisionalNow = instantRider && !settlesCondition && (raceSessionRiderIds?.has(rider.id) === true || (instantPress
-      && dateDays.every(day => day === raceDay || dateReceiptOn(day) || unresolvedSlots.some(slot => Number(slot.gameDay) === day))));
+    // #7982 (Fable-dom 15/11): the race session writes NO provisional condition. rider_condition stays
+    // the date's opening, and every reader already adds the date's unconsumed stage loads on top
+    // (riderFatigueNow), so a provisional value would count the stage twice. Closing is unchanged.
+    const provisionalNow = instantRider && instantPress && !settlesCondition
+      && dateDays.every(day => day === raceDay || dateReceiptOn(day) || unresolvedSlots.some(slot => Number(slot.gameDay) === day));
     const conditionCounted = settlesCondition || provisionalNow;
     const hasLoadOn = (day) => canonicalLoadRows.some(load=>load.rider_id===rider.id&&load.game_day===day);
     const settleIntensities = !conditionCounted ? null : instantRider

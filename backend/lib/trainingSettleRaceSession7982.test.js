@@ -307,10 +307,15 @@ describe("delkoerslen", () => {
     assert.ok(STAGE_FLAGS.some((f) => f.key === "training_settle_race_session"));
   });
 
+  test("hovedkontakten for daglig traening stopper ogsaa delkoerslen (Codex P1 15/11)", async () => {
+    const out = await runRaceSessionSettlement({ supabase: noRead, now: new Date(), isEnabled: async () => true, isDailyTraining: async () => false });
+    assert.equal(out.skipped, "daily_training_off");
+  });
+
   test("saesonens sidste dato og en dato efter saesonen afregnes ikke her", async () => {
     const season = { id: "S", number: 5, end_date: "2026-12-20", status: "active" };
     const supabase = { from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: season, error: null }) }) }) }) };
-    const base = { supabase, isEnabled: async () => true, isConditionPerDate: async () => true, loadContext: async () => { throw new Error("must not load"); } };
+    const base = { supabase, isEnabled: async () => true, isDailyTraining: async () => true, isConditionPerDate: async () => true, loadContext: async () => { throw new Error("must not load"); } };
     assert.equal((await runRaceSessionSettlement({ ...base, now: new Date("2026-12-20T15:00:00Z"), loadFinalDate: async () => "2026-12-20" })).skipped, "final_season_date");
     assert.equal((await runRaceSessionSettlement({ ...base, now: new Date("2026-12-21T15:00:00Z"), loadFinalDate: async () => "2026-12-20" })).skipped, "after_season_end");
   });

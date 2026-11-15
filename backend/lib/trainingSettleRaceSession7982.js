@@ -22,6 +22,7 @@ import { copenhagenDateString } from "./copenhagenTime.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
 import { isTrainingConditionPerDateEnabled } from "./trainingDateConditionFlag.js";
+import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
 import { loadFinalTrainingDate } from "./seasonTransitionReadiness.js";
 import {
   loadTrainingDateContext, resolveRaceSessionReadiness, resolveTrainingDateReadiness,
@@ -92,12 +93,15 @@ export async function runRaceSessionSettlement({
   supabase, now, loadDaySpans, logger = console,
   isEnabled = isTrainingSettleRaceSessionEnabled,
   isConditionPerDate = isTrainingConditionPerDateEnabled,
+  isDailyTraining = isDailyTrainingEnabled,
   loadContext = loadTrainingDateContext,
   loadFinalDate = loadFinalTrainingDate,
   runDay = runTeamTrainingDay,
 }) {
   const summary = { ran: false, planned: 0, settled: 0, alreadyRan: 0, failed: 0, failures: [] };
   if (!(await isEnabled(supabase))) return { ...summary, skipped: "flag_off" };
+  // Hovedkontakten for daglig traening gaelder ogsaa her, som i aftenkoerslen (Codex P1 15/11).
+  if (!(await isDailyTraining(supabase))) return { ...summary, skipped: "daily_training_off" };
   if (!(await isConditionPerDate(supabase))) return { ...summary, skipped: "condition_per_date_off" };
   const tickDate = copenhagenDateString(now);
   const season = await checked(supabase.from("seasons").select("id,number,start_date,end_date,status").eq("status", "active").maybeSingle(), "active season");

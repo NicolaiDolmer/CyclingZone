@@ -125,86 +125,10 @@ export async function applyStageStartFatigue({ supabase, raceId, stageNumber, en
   }
   const legacy = riders.filter(r => !instant.has(r.rider_id));
   if (instantOnly || !legacy.length) return changed;
-  const before = new Map(legacy.map((r) => [r.rider_id, Number(r.fatigue)]));
-  const restored = await restoreRaceSessionOpenings({ supabase, riders: legacy, tickDate: start.tickDate });
   const loadsByRider = await loadUnsettledDateLoads({
     supabase, riderIds: legacy.map((r) => r.rider_id), tickDate: start.tickDate, beforeGameDay: start.gameDay,
   });
-  const loaded = applyDateLoads(legacy, loadsByRider, medicalBonusByTeam);
-  // Uden løbssession tælles præcis som før; en genskabt rytter tælles, hvis tallet endte et andet sted.
-  if (!restored.size) return changed + loaded;
-  return changed + legacy.filter((r) => Number(r.fatigue) !== before.get(r.rider_id)).length;
-}
-
-/**
- * #7982: en løbssession kan gemme datoens foreløbige form og træthed i rider_condition, før
- * datoen er lukket (kvittering uden afregning). Belastningen står stadig ubrugt i ledgeren, så
- * åbningen skal være datoens gemte åbning; ellers tæller etapen dobbelt ved næste etape samme
- * dato (Fable-dom 15/11, fund 1). Afgøres af data, ikke af kontakten: foreløbige rækker kan
- * stå, efter kontakten er slukket. Muterer de ramte ryttere og returnerer deres id'er.
- */
-// Må aldrig spærre en etape: kan åbningen ikke findes (fx rytteren er købt samme dag og har
-// kvitteringen på sit gamle hold uden en åbning dér, eller et opslag fejler), beholdes det
-// nuværende tal som før #7982, og fejlen meldes (Vercel-review 15/11 af PR #8195).
-export async function restoreRaceSessionOpenings({ supabase, riders, tickDate }) {
-  try {
-    return await restoreRaceSessionOpeningsStrict({ supabase, riders, tickDate });
-  } catch (error) {
-    captureException(error, { tags: { area: "race_session_opening_7982" } });
-    return new Set();
-  }
-}
-
-async function restoreRaceSessionOpeningsStrict({ supabase, riders, tickDate }) {
-  const restored = new Set();
-  if (!riders?.length || !tickDate) return restored;
-  const ids = riders.map((r) => r.rider_id);
-  const receiptIds = new Set();
-  const receiptTeam = new Map();
-  const settledIds = new Set();
-  for (let i = 0; i < ids.length; i += SUPABASE_IN_CHUNK_SIZE) {
-    const chunk = ids.slice(i, i + SUPABASE_IN_CHUNK_SIZE);
-    // pagination-safe: højst fem kvitteringer pr. rytter på én dato, afgrænset rytter-chunk.
-    const { data: ticks, error: tickErr } = await supabase.from("training_rider_ticks")
-      .select("rider_id, team_id").eq("tick_date", tickDate).in("rider_id", chunk);
-    if (tickErr) throw new Error(`training_rider_ticks (race session opening): ${tickErr.message}`);
-    if (!(ticks ?? []).length) continue;
-    for (const t of ticks) {
-      receiptIds.add(String(t.rider_id));
-      if (t.team_id) receiptTeam.set(String(t.rider_id), t.team_id);
-    }
-    // pagination-safe: én afregning pr. rytter og dato.
-    const { data: settled, error: setErr } = await supabase.from("training_condition_settlements")
-      .select("rider_id").eq("tick_date", tickDate).in("rider_id", chunk);
-    if (setErr) throw new Error(`training_condition_settlements (race session opening): ${setErr.message}`);
-    for (const r of settled ?? []) settledIds.add(String(r.rider_id));
-  }
-  const pending = riders.filter((r) => receiptIds.has(String(r.rider_id)) && !settledIds.has(String(r.rider_id)));
-  if (!pending.length) return restored;
-  // Åbningen ligger på det hold, der gemte kvitteringen (rytteren kan være købt siden).
-  const teamOf = (r) => receiptTeam.get(String(r.rider_id)) ?? r.team_id;
-  const teamIds = [...new Set(pending.map(teamOf).filter(Boolean))];
-  // pagination-safe: én arbejdsrække pr. hold og dato.
-  const { data: work, error: workErr } = await supabase.from("training_date_work")
-    .select("team_id, opening_conditions").eq("tick_date", tickDate).in("team_id", teamIds);
-  if (workErr) throw new Error(`training_date_work (race session opening): ${workErr.message}`);
-  const missing = [];
-  for (const rider of pending) {
-    const opening = (work ?? []).find((w) => w.team_id === teamOf(rider))?.opening_conditions?.[rider.rider_id];
-    if (!Number.isFinite(opening?.fatigue) || !Number.isFinite(opening?.form)) {
-      missing.push(rider.rider_id);
-      continue;
-    }
-    rider.fatigue = opening.fatigue;
-    rider.form = opening.form;
-    restored.add(rider.rider_id);
-  }
-  if (missing.length) {
-    captureException(new Error("Missing date opening for race session rider"), {
-      tags: { area: "race_session_opening_7982" }, extra: { count: missing.length, tickDate },
-    });
-  }
-  return restored;
+  return changed + applyDateLoads(legacy, loadsByRider, medicalBonusByTeam);
 }
 
 /**
@@ -218,7 +142,6 @@ export async function ridersWithFatigueNow({ supabase, riders, now = new Date(),
   for (const rider of copies) if (instant.has(rider.rider_id)) Object.assign(rider, instant.get(rider.rider_id));
   const known = withCondition(copies).filter(r => !instant.has(r.rider_id));
   if (!known.length || !await isConditionModelV2Enabled(supabase)) return copies;
-  await restoreRaceSessionOpenings({ supabase, riders: known, tickDate: copenhagenDateString(now) });
   const loadsByRider = await loadUnsettledDateLoads({
     supabase, riderIds: known.map((r) => r.rider_id), tickDate: copenhagenDateString(now), beforeGameDay,
   });
