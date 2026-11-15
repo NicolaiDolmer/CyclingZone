@@ -243,6 +243,36 @@ test("b1 ownership: the owner sees his team, another manager sees nothing, anon 
   await assert.rejects(asRole(db, "authenticated", OWNER, () => derived(db, [TEAM])), /permission denied/);
 });
 
+// The ops script the owner runs in prod before the switch: here on the seeded data it must report
+// zero differences, also after the copy is gone (then the copy-presence count shows it).
+test("scripts/ops/6490-history-parity.sql is SELECT-only and reports zero differences on real commits", async () => {
+  const script = (await readFile(new URL("../../scripts/ops/6490-history-parity.sql", import.meta.url), "utf8")).replace(/\r\n/g, "\n");
+  const live = script.split("\n").filter((l) => !/^\s*--/.test(l)).join("\n");
+  assert.doesNotMatch(live, /\b(INSERT|UPDATE|DELETE|TRUNCATE|DROP|ALTER|CREATE|GRANT)\b/i);
+  assert.match(live, /BEGIN READ ONLY;/);
+  // Sections 1-3 as psql would send them (meta-commands out, :since bound); section 4 is EXPLAIN only.
+  const body = script.slice(script.indexOf("BEGIN READ ONLY;") + "BEGIN READ ONLY;".length, script.indexOf("-- 4)"))
+    .split("\n").filter((l) => !/^\s*\\/.test(l)).join("\n").replaceAll(":since", "'2026-01-01'::date");
+  const db = await fresh();
+  const run = async () => {
+    const results = await db.exec(`BEGIN READ ONLY; ${body} ROLLBACK;`);
+    const sets = results.filter((r) => r.fields.length > 0);
+    return { totals: sets[0].rows[0], slim: sets[1].rows[0], rows: sets[2].rows };
+  };
+  const first = await run();
+  assert.equal(first.totals.rows_stored, 8);
+  assert.deepEqual([first.totals.rows_new, first.totals.rows_missing_on_one_side, first.totals.riders_differ, first.totals.other_fields_differ], [8, 0, 0, 0]);
+  assert.equal(first.totals.race_day_rows_with_copy, 6);
+  assert.deepEqual(first.slim, { slim_rows: 8, slim_differ: 0 });
+  assert.deepEqual(first.rows, []);
+  // A broken copy is caught: the script is not blind.
+  await db.exec(`UPDATE training_day_runs SET report = jsonb_set(report, '{riders,0,status}', '"tampered"') WHERE game_day = 42`);
+  const broken = await run();
+  assert.equal(broken.totals.riders_differ, 1);
+  assert.equal(broken.slim.slim_differ, 1);
+  assert.equal(broken.rows.length, 1);
+});
+
 test("rights and shape: definer only for the one-team history, fixed search_path, flag seeded off", async () => {
   const db = await fresh();
   const procs = (await db.query(`SELECT proname, prosecdef, proconfig, provolatile FROM pg_proc WHERE proname IN ('training_history_runs','training_runs_from_ticks_6490') ORDER BY proname`)).rows;
