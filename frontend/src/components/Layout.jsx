@@ -39,6 +39,7 @@ import {
 import {
   isRoadmapUnread, readLastSeenRoadmap, latestRoadmapCreatedAt,
 } from "../lib/roadmapUnread.ts"; // #5673: samme prik-recipe som patch notes
+import { syncSeenMarkers } from "../lib/seenMarkers6515.ts"; // #6515: prikkerne foelger brugeren
 import ProBadge from "./ProBadge";
 import { useSubscription } from "../lib/useSubscription";
 import { getAttributionForBackend, sanitizeAttributionForBackend } from "../lib/attribution";
@@ -532,6 +533,7 @@ export default function Layout() {
   // stedet for den statiske patch-notes-meta.json.
   const [roadmapLatestDate, setRoadmapLatestDate]       = useState(null);
   const [roadmapUnread, setRoadmapUnread]               = useState(false);
+  const [seenSync, setSeenSync]                         = useState(0); // #6515: bumpes naar brugerens markoerer er flettet ind
   // #4118/#3451: gul prik ved "Forum" i navigationen — samme prik-recipe som
   // Patch Notes, men serverdrevet (forumUnread kommer fra
   // GET /api/forum/unread-status, ikke en lokal dato-sammenligning).
@@ -841,7 +843,15 @@ export default function Layout() {
     } else {
       setPatchNotesUnread(isPatchNotesUnread(patchNotesLatestDate, readLastSeenPatchNotes()));
     }
-  }, [patchNotesLatestDate, location.pathname]);
+  }, [patchNotesLatestDate, location.pathname, seenSync]);
+
+  // #6515: hent brugerens "sidst set" fra serveren (venter aldrig; fejl = lokal kopi som foer).
+  useEffect(() => {
+    if (!session) return;
+    let active = true;
+    syncSeenMarkers().then((changed) => { if (active && changed) setSeenSync((n) => n + 1); });
+    return () => { active = false; };
+  }, [session]);
 
   // #5673: henter kun `created_at` for det nyeste roadmap-punkt (ikke hele
   // listen — den fulde items-hentning bor i RoadmapPage.jsx), uafhængig af
@@ -874,7 +884,7 @@ export default function Layout() {
     } else {
       setRoadmapUnread(isRoadmapUnread(roadmapLatestDate, readLastSeenRoadmap()));
     }
-  }, [roadmapLatestDate, location.pathname]);
+  }, [roadmapLatestDate, location.pathname, seenSync]);
 
   useEffect(() => {
     if (!session) return;
