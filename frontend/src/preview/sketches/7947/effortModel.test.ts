@@ -33,13 +33,9 @@ test("hver gemt dag kan vises og skrives tilbage uaendret, uanset hvor aktiv res
       assert.ok(effort && EFFORTS.includes(effort), `${plan.focus}/${plan.intensity} fik ingen indsats`);
       assert.ok(isValidChoice(effort, session, { recoveryHome }), `${plan.focus} er ikke et gyldigt valg`);
       const back = planFromChoice(effort!, session, { keepFocus: plan.focus });
-      if (effort === "rest") {
-        assert.equal(back.intensity, "rest");
-        assert.equal(back.focus, plan.focus, "hvile bevarer fokus i kolonnen");
-      } else {
-        assert.equal(dayTypeForProgram(back), dayTypeForProgram(plan));
-        assert.equal(sessionForProgram(back), sessionForProgram(plan));
-      }
+      assert.equal(dayTypeForProgram(back), dayTypeForProgram(plan));
+      assert.equal(sessionForProgram(back), sessionForProgram(plan));
+      if (dayTypeForProgram(plan) === "rest") assert.equal(back.focus, plan.focus, "hvile bevarer fokus i kolonnen");
     }
   }
 });

@@ -76,8 +76,8 @@ export function planFromChoice(
   session: string | null,
   { keepFocus = null }: { keepFocus?: string | null } = {},
 ): { focus: string | null; intensity: string } {
-  if (effort === "rest") return { focus: keepFocus, intensity: "rest" };
   if (session === RECOVERY_SESSION) return { focus: RECOVERY_FOCUS as string, intensity: RECOVERY_INTENSITY as string };
+  if (effort === "rest") return { focus: keepFocus, intensity: "rest" };
   return { focus: session, intensity: intensityOf[session ?? ""] };
 }
 

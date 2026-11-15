@@ -45,12 +45,13 @@ function useDrafts(home: RecoveryHome) {
   const [draft, setDraft] = useState<Record<string, Choice>>(initial);
   const [justSaved, setJustSaved] = useState<string | null>(null);
   const set = (id: string, c: Choice) => setDraft((d) => ({ ...d, [id]: c }));
+  const reset = (id: string) => setDraft((d) => ({ ...d, [id]: saved[id] }));
   const save = (id: string) => {
     setSaved((s) => ({ ...s, [id]: draft[id] }));
     setJustSaved(id);
   };
   const dirty = (id: string) => draft[id].effort !== saved[id].effort || draft[id].session !== saved[id].session;
-  return { draft, set, save, dirty, justSaved };
+  return { draft, set, reset, save, dirty, justSaved };
 }
 
 function RiderCell({ r, lang }: { r: SketchRider; lang: Lang }) {
@@ -229,7 +230,7 @@ function summary(lang: Lang, ch: Choice) {
 function VariantB({ lang, openId }: { lang: Lang; openId: string | null }) {
   const c = COPY[lang];
   const home = VARIANTS.b.home;
-  const { draft, set, save, dirty, justSaved } = useDrafts(home);
+  const { draft, set, reset, save, dirty, justSaved } = useDrafts(home);
   const [open, setOpen] = useState<string | null>(openId);
   return (
     <ul className="divide-y divide-cz-border">
@@ -249,7 +250,7 @@ function VariantB({ lang, openId }: { lang: Lang; openId: string | null }) {
                   <span role="status" className="text-2xs font-semibold text-cz-success">{c.saved}</span>
                 )}
               </div>
-              <Button variant="secondary" size="sm" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : r.id)}>
+              <Button variant="secondary" size="sm" aria-expanded={isOpen} onClick={() => { if (isOpen) reset(r.id); setOpen(isOpen ? null : r.id); }}>
                 {isOpen ? c.cancel : c.change}
               </Button>
             </div>
@@ -451,7 +452,7 @@ function Transition({ lang, variant }: { lang: Lang; variant: VariantId }) {
       </header>
       <p className="mb-3 text-xs text-cz-2">{c.transitionSub}</p>
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
+        <table data-sort-exempt="skitse, statisk oversigt" className="w-full text-left text-xs">
           <thead>
             <tr className="border-b border-cz-border text-2xs uppercase tracking-wide text-cz-3">
               {c.transitionCols.map((h) => (

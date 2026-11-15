@@ -59,7 +59,7 @@ export const COPY: Record<Lang, Dict> = {
     colDay: "Day",
     efforts: { rest: "Rest", easy: "Easy", normal: "Medium", hard: "Hard" },
     effortNotes: {
-      rest: "No growth. Fatigue drops the most.",
+      rest: "Fatigue comes down. Full rest has no growth; active recovery gives a little.",
       easy: "Low load. Long rides, recovery and craft.",
       normal: "Steady load.",
       hard: "Highest load. The intervals live here.",
@@ -125,7 +125,7 @@ export const COPY: Record<Lang, Dict> = {
     colDay: "Dag",
     efforts: { rest: "Hvile", easy: "Let", normal: "Mellem", hard: "Hård" },
     effortNotes: {
-      rest: "Ingen udvikling. Trætheden falder mest.",
+      rest: "Trætheden falder. Fuld hvile giver ingen udvikling; aktiv restitution lidt.",
       easy: "Lav belastning. Lange ture, restitution og færdighed.",
       normal: "Jævn belastning.",
       hard: "Højeste belastning. Intervallerne bor her.",
