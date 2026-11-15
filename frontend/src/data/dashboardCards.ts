@@ -12,7 +12,6 @@ import { useDataScope, scopedHeaders } from "./useDataScope.ts";
 // #6494: the Dashboard's self-fetching cards read through the shared scope instead of each
 // repeating auth.getUser() + a teams lookup. Every card stays best-effort: a failure renders
 // nothing (null), never an error surface, exactly as before.
-/* eslint-disable @typescript-eslint/no-explicit-any -- untyped legacy rows. */
 type Row = Record<string, any>;
 
 /** #2453: own team's global rank and weekly movement. null = no card. */

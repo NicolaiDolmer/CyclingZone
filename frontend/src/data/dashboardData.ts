@@ -27,7 +27,6 @@ import { LIVE_RESOURCES, isScopeResource, cancelledWithoutData, settledList } fr
 // never takes the dashboard down): only the core block and the team bootstrap can raise the
 // page error, every other module settles to its own empty/absent state.
 
-/* eslint-disable @typescript-eslint/no-explicit-any -- Supabase rows of untyped legacy tables. */
 type Row = Record<string, any>;
 type SupabaseResult = { data: any; error?: unknown; count?: number | null };
 
@@ -211,6 +210,7 @@ export function useDashboardData(options: DashboardOptions) {
       const revision = await runtime.beforeRead(signal);
       const request = boundedSignal(signal, 8000);
       try {
+        // pagination-safe: one team (RLS team_id) and at most 50 race ids, far under 1000 rows.
         const { data, error } = await supabase.from("race_entries").select("race_id")
           .eq("team_id", (team as Row).id).in("race_id", raceIds).abortSignal(request.signal);
         if (error) throw error;
@@ -254,6 +254,7 @@ export function useDashboardData(options: DashboardOptions) {
     enabled: hasTeam && scheduledIds.length > 0 && !options.racePause,
     queryFn: async ({ signal }): Promise<Record<string, number>> => {
       const revision = await runtime.beforeRead(signal);
+      // pagination-safe: only the own pool's live/scheduled races (~14) x their stages (<=21).
       const { data } = await supabase.from("race_stage_schedule")
         .select("race_id, stage_number, scheduled_at").in("race_id", scheduledIds).abortSignal(signal);
       runtime.assertReadCurrent(scope, revision);

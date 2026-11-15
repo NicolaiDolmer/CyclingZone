@@ -6,7 +6,6 @@ import { useDataScope } from "./useDataScope.ts";
 // #3915/#6569/#6494: "Today's stages" for the viewer's team, one Query key per viewer/team.
 // The existing minute tick (scheduled -> live -> finished without a reload) is kept as the
 // resource's refetch interval while the strip is mounted; it is not new polling.
-/* eslint-disable @typescript-eslint/no-explicit-any -- legacy card shape from the JS reader. */
 export interface TodayStagesState { loading: boolean; cards: Array<Record<string, any>> }
 const PENDING: TodayStagesState = { loading: true, cards: [] };
 
