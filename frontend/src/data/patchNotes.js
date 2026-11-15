@@ -6,7 +6,7 @@ export const PATCHES = [
     {
       "category": "improved",
       "audience": "player",
-      "rollout": "live",
+      "rollout": "switched_on",
       "topic": "Transfers",
       "en": {
         "title": "Sale money arrives when the rider moves",
