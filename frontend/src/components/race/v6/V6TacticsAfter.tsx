@@ -166,6 +166,9 @@ export default function V6TacticsAfter({ raceId, stageNumber, isStageRace, resul
     body = <SkeletonLines lines={4} />;
   } else if (!timeline || error) {
     body = <p className="m-0 border-t border-cz-border py-2.5 text-sm text-cz-3">{t("stagePlan.recap.pending")}</p>;
+  } else if (!knownOrders?.value) {
+    // Ukendte ordrer: hellere ærligt "kunne ikke hentes" end "ingen ryttere" eller en gættet plan.
+    body = <p className="m-0 border-t border-cz-border py-2.5 text-sm text-cz-3">{t("racePageV6.tacticsAfter.noOrders")}</p>;
   } else if (!riders.length) {
     body = <p className="m-0 border-t border-cz-border py-2.5 text-sm text-cz-3">{t("racePageV6.tacticsAfter.noRiders")}</p>;
   } else {

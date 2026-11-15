@@ -43,6 +43,7 @@
       "step": "Trin {number}",
       "km": "km {km}",
       "noRiders": "Ingen af dine ryttere kørte denne etape.",
+      "noOrders": "Din plan for etapen kunne ikke hentes. Prøv igen senere.",
       "mark": {
         "notSeen": "Ikke set i optegnelsen",
         "notReached": "Ikke nået"

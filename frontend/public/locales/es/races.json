@@ -43,6 +43,7 @@
       "step": "Paso {number}",
       "km": "km {km}",
       "noRiders": "Ninguno de tus corredores corrió esta etapa.",
+      "noOrders": "No se pudo cargar tu plan para esta etapa. Inténtalo más tarde.",
       "mark": {
         "notSeen": "No visto en el registro",
         "notReached": "No alcanzado"

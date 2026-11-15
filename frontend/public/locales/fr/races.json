@@ -43,6 +43,7 @@
       "step": "Phase {number}",
       "km": "km {km}",
       "noRiders": "Aucun de tes coureurs n'a couru cette étape.",
+      "noOrders": "Ton plan pour cette étape n'a pas pu être chargé. Réessaie plus tard.",
       "mark": {
         "notSeen": "Non vu dans le relevé",
         "notReached": "Pas atteinte"
