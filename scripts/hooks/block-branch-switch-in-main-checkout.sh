@@ -92,11 +92,14 @@ process.stdin.on("end", () => {
   };
 
   // Del kommandoen i segmenter, så "cd x && git checkout y" også fanges.
-  const segments = cmd.split(/&&|\|\||[;\n|]/);
+  // Indlejret bash -c "..." / sh -c "..." pakkes ud, saa dens segmenter ogsaa ses.
+  const flat = cmd.replace(/\b(?:bash|sh)\s+-l?c\s+("([^"\\]|\\.)*"|\x27[^\x27]*\x27)/g, (_, q) => " ; " + q.slice(1, -1).replace(/\\"/g, "\"") + " ; ");
+  const segments = flat.split(/&&|\|\||[;\n|]/);
   let dir = process.cwd();
 
   for (const seg of segments) {
-    const s = seg.trim();
+    // Subshell/gruppe: "(cd x && git checkout y)" -> parenteser og klammer fjernes.
+    const s = seg.trim().replace(/^[({]+\s*/, "").replace(/\s*[)}]+$/, "");
     const cd = s.match(/^(?:cd|pushd|Set-Location|sl)\s+(?:-[A-Za-z]+\s+)*("[^"]*"|\x27[^\x27]*\x27|\S+)\s*$/);
     if (cd) { dir = at(dir, cd[1]); continue; }
     // git [globale flag, fx -C <dir>, -c k=v, --no-pager] (checkout|switch) <rest>
@@ -106,6 +109,8 @@ process.stdin.on("end", () => {
     let segDir = dir, i = gi + 1;
     while (i < toks.length && toks[i].startsWith("-")) {
       if (toks[i] === "-C" && i + 1 < toks.length) { segDir = at(segDir, toks[i + 1]); i += 2; }
+      else if (/^--work-tree=/.test(toks[i])) { segDir = at(segDir, toks[i].slice(12)); i += 1; }
+      else if (toks[i] === "--work-tree" && i + 1 < toks.length) { segDir = at(segDir, toks[i + 1]); i += 2; }
       else if (toks[i] === "-c" && i + 1 < toks.length) i += 2;
       else i += 1;
     }
@@ -118,7 +123,7 @@ process.stdin.on("end", () => {
     // "--" markerer filgendannelse: git checkout -- fil, git checkout HEAD -- fil
     if (/(^|\s)--(\s|$)/.test(rest)) continue;
 
-    const tokens = rest.split(/\s+/).filter(Boolean);
+    const tokens = rest.split(/\s+/).filter(Boolean).map(unquote); // "main" == main
     // Første token der ikke er et flag, er målet.
     const target = tokens.find((t) => !t.startsWith("-"));
 

@@ -42,7 +42,9 @@ cd "$ROOT" 2>/dev/null || exit 0
 HOOK_SCRIPTS_DIR="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)" || exit 0
 OWN_COMMON=$(git -C "$HOOK_SCRIPTS_DIR" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || exit 0
 CWD_COMMON=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || exit 0
-[ -n "$OWN_COMMON" ] && [ "$OWN_COMMON" = "$CWD_COMMON" ] || exit 0
+# Windows-stier er ikke versalfoelsomme (c:/dev vs C:/Dev): sammenlign normaliseret.
+norm_path() { printf '%s' "$1" | tr '\\' '/' | sed 's#/*$##' | tr '[:upper:]' '[:lower:]'; }
+[ -n "$OWN_COMMON" ] && [ "$(norm_path "$OWN_COMMON")" = "$(norm_path "$CWD_COMMON")" ] || exit 0
 SETUP_PS1="$HOOK_SCRIPTS_DIR/setup-worktree.ps1"
 [ -f "$SETUP_PS1" ] || exit 0
 

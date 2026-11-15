@@ -116,6 +116,55 @@ test('branch-vagten vurderer kommandoens mappe (input-cwd), ogsaa fra en underma
   assert.equal(callCmd(wt, `cd "${main}" && git checkout -b feature-y`).status, 2);
   assert.equal(callCmd(main, `git -C "${wt}" switch -c feature-z`).status, 0);
   assert.equal(callCmd(join(main, 'frontend'), 'git checkout -- x.txt').status, 0);
+  // Review #8207, runde 2: subshell, bash -c og --work-tree maa heller ikke slippe igennem.
+  assert.equal(callCmd(wt, `(cd "${main}" && git checkout -b feature-s)`).status, 2);
+  assert.equal(callCmd(wt, `bash -c "cd '${main}' && git switch -c feature-b"`).status, 2);
+  assert.equal(callCmd(wt, `git --work-tree="${main}" checkout feature-w`).status, 2);
+  assert.equal(callCmd(main, 'git checkout "main"').status, 0);
+});
+
+// Mini-repo med en kopi af hooken og en falsk setup-worktree.ps1; en falsk pwsh i PATH
+// skriver en markoer, hvis hooken starter den. Returnerer [repo, koer(cwd)].
+function setupHookFixture(t) {
+  const base = scratch(t);
+  const bin = join(base, 'bin');
+  const marker = join(base, 'pwsh-ran');
+  mkdirSync(bin);
+  writeFileSync(join(bin, 'pwsh'), `#!/bin/sh\necho "$@" > "${marker.replace(/\\/g, '/')}"\n`, { mode: 0o755 });
+  const runHook = (hookPath, cmdCwd) => spawnSync('bash', [hookPath], {
+    cwd: base, encoding: 'utf8', timeout: 60_000,
+    input: JSON.stringify({ hook_event_name: 'PreToolUse', tool_name: 'Bash', cwd: cmdCwd, tool_input: { command: 'ls' } }),
+    env: { ...process.env, PATH: `${bin}${process.platform === 'win32' ? ';' : ':'}${process.env.PATH}` },
+  });
+  const makeRepo = (name, withHook) => {
+    const repo = join(base, name);
+    mkdirSync(join(repo, 'scripts', 'hooks', 'lib'), { recursive: true });
+    execFileSync('git', ['init', '-q', repo]);
+    writeFileSync(join(repo, 'scripts', 'setup-worktree.ps1'), 'Write-Output setup');
+    if (withHook) {
+      for (const f of ['hooks/setup-worktree-if-needed.sh', 'hooks/lib/hook-cwd.sh']) {
+        writeFileSync(join(repo, 'scripts', f), readFileSync(join(ROOT, 'scripts', f)));
+      }
+    }
+    const git = (...args) => execFileSync('git', ['-C', repo, ...args], { stdio: 'ignore' });
+    git('add', '.');
+    git('-c', 'user.email=t@t', '-c', 'user.name=t', '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'x');
+    const wt = join(base, `${name}-wt`);
+    git('worktree', 'add', '-q', '-b', 'side', wt);
+    return { repo, wt };
+  };
+  return { base, marker, runHook, makeRepo };
+}
+
+test('worktree-setup koerer stadig i hookens eget repos worktree, med det betroede script', t => {
+  const { marker, runHook, makeRepo } = setupHookFixture(t);
+  const own = makeRepo('own', true);
+  const res = runHook(join(own.repo, 'scripts', 'hooks', 'setup-worktree-if-needed.sh'), join(own.wt, 'scripts'));
+  assert.equal(res.status, 0, res.stderr);
+  assert.ok(existsSync(marker), `hooken startede ikke setup i eget worktree: ${res.stderr}`);
+  const args = readFileSync(marker, 'utf8').replace(/\\/g, '/');
+  assert.match(args, /own\/scripts\/setup-worktree\.ps1/, 'setup-scriptet skal hentes fra hookens eget repo');
+  assert.match(args, /-WorktreeRoot/);
 });
 
 test('worktree-setup koerer aldrig kode fra et fremmed repos worktree (Vercel Security Review #8207)', t => {
