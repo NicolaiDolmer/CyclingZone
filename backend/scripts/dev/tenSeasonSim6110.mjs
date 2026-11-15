@@ -104,7 +104,7 @@ import {
   abilityXpForTick, buyPoints, developmentXpAbilityDelta, validateDevelopmentXpParams, xpPerDate, xpPriceForNextPoint,
   xpSessionShare, xpTypeShare,
 } from "../../lib/developmentXp.ts";
-import { developmentXpDayVariation } from "../../lib/developmentXpVariation.ts";
+import { developmentXpDayVariation, xpVariationFingerprint } from "../../lib/developmentXpVariation.ts";
 import { developmentXpRaceFitFloor } from "../../lib/developmentXpRaceFit.ts";
 import { withRaceDayRoleYieldXp } from "../../lib/developmentXpFlag.ts";
 import { CERTAINTY_WORDS, estimatePotential, uncertaintyFor, validateParams as validateEstimateParams } from "../../lib/potentialEstimate.js";
@@ -1175,11 +1175,23 @@ export function variantList(opts = SIM_DEFAULTS) {
 
 /** Alt andet end XP-tallene, der flytter en XP-kørsel. To kørsler må kun på samme kort, hvis det er ens. */
 export function xpRunInputs(variant, opts) {
-  // Variationen er en del af XP-tallene (xp.variation) og står derfor i params.xp, ikke her.
-  return { plan: variant.plan, intensity: variant.intensity, trainNowBonus: variant.trainNowBonus,
+  // Bredde og hukommelse står i params.xp; nøglen gør ikke, så fingeraftrykket (ikke nøglen) står her.
+  // Uden variation udelades feltet, så kørsler uden variation er uændrede.
+  const variation = xpVariationFingerprint(variant.xpParams?.variation);
+  return { ...(variation ? { variation } : {}), plan: variant.plan, intensity: variant.intensity, trainNowBonus: variant.trainNowBonus,
     capPerDate: variant.capPerDate !== false,
     engine: engineHooks(opts).source,
     raceRoles: opts.raceRoles ?? null, raceRoleYield: opts.raceRoleYield ?? null };
+}
+
+/** Om en gemt kørsel må på samme kort som denne: samme XP-tal og samme kørselsinput. */
+export function sameXpRun(r, opts) {
+  if (!r.variant.startsWith("xp")) return true;
+  // En gemt kørsel med en udgået variant (fx leddet _gulv) er uforenelig, ikke en fejl.
+  let variant;
+  try { variant = xpVariant(r.variant, opts); } catch { return false; }
+  return JSON.stringify(r.params?.xp ?? null) === JSON.stringify(variant.xpParams)
+    && JSON.stringify(r.params?.xpRun ?? null) === JSON.stringify(xpRunInputs(variant, opts));
 }
 
 /** Det, der ud over kurve B's egne tal flytter en kurve B-kørsel: løbsdagens roller og rolletillæg. */
@@ -1202,7 +1214,7 @@ export function sameCurveBRun(result, opts) {
 export function xpGateKey({ fingerprint, opts, estimateParams = null, knowledge = null }) {
   const gateVariant = xpVariant(opts.xpGateVariant ?? "xp", opts);
   // Variationen står i gateVariant.xpParams (xp.variation); motorens kilde flytter kørslen.
-  const inputs = [fingerprint, gateVariant.xpParams, curveBRunInputs(opts), opts.curveB ?? null,
+  const inputs = [fingerprint, gateVariant.xpParams, xpVariationFingerprint(gateVariant.xpParams.variation), curveBRunInputs(opts), opts.curveB ?? null,
     opts.xpAttackSpans ?? null, opts.xpAttackMemories ?? null, estimateParams, knowledge,
     gateVariant.plan, engineHooks(opts).source];
   return createHash("sha256").update(JSON.stringify(inputs)).digest("hex");
@@ -1655,8 +1667,8 @@ export function runXpGates(snapshot, opts, { estimateParams = null, knowledge = 
     return { ...row, truthByPotential: Object.fromEntries(potentials.map((p) => [p, expectedTopRating(asInput(r, p), xp, career)])) };
   });
   out.x9 = talentAttack(sample, xp, estimateParams, {
-    // Uden egne angrebsbredder måles motorens egen variation (xp.variation), ellers dagens støj.
-    dateSteps: [5, 12, 20, 40], spans: opts.xpAttackSpans ?? [xp.variation?.span ?? DAILY_TRAINING_CONFIG.noiseSpan],
+    // Uden egne angrebsbredder måles motorens egen variation (xp.variation); uden variation er der ingen støj (bredde 0).
+    dateSteps: [5, 12, 20, 40], spans: opts.xpAttackSpans ?? [xp.variation?.span ?? 0],
     memories: opts.xpAttackMemories ?? [xp.variation?.memory ?? 0], potentials,
   });
   return out;
@@ -2227,12 +2239,7 @@ async function main() {
   const all = files.filter((f) => !f.startsWith(COHORT_PREFIX)).map((f) => JSON.parse(readFileSync(join(runsDir, f), "utf8")));
   const cohortFiles = files.filter((f) => f.startsWith(COHORT_PREFIX)).map((f) => JSON.parse(readFileSync(join(runsDir, f), "utf8")));
   // Samme regel for XP: en kørsel med gamle tal kommer aldrig på kortet sammen med nye.
-  const sameXp = (r) => {
-    if (!r.variant.startsWith("xp")) return true;
-    const variant = xpVariant(r.variant, opts);
-    return JSON.stringify(r.params?.xp ?? null) === JSON.stringify(variant.xpParams)
-      && JSON.stringify(r.params?.xpRun ?? null) === JSON.stringify(xpRunInputs(variant, opts));
-  };
+  const sameXp = (r) => sameXpRun(r, opts);
   const fits = (r) => r.fingerprint === fingerprint && sameCurveBRun(r, opts) && sameXp(r);
   const results = orderResults(all.filter(fits));
   const skipped = all.filter((r) => !fits(r)).map((r) => r.variant);

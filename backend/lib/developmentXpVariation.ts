@@ -75,6 +75,19 @@ export function validateXpVariation(raw: unknown): XpVariation | null | undefine
   return variation;
 }
 
+/**
+ * Et ikke-hemmeligt fingeraftryk af den effektive variation (nøgle, bredde, hukommelse),
+ * så gemte kørsler kan skelne en ny nøgle fra en gammel uden at nøglen afsløres. Det er en
+ * HMAC med nøglen som hemmelighed over et fast domæne; nøglen kan ikke aflæses af det.
+ * Ingen variation giver null.
+ */
+export function xpVariationFingerprint(variation: XpVariation | null | undefined): string | null {
+  if (!variation) return null;
+  const key = KEYS.get(variation);
+  if (key === undefined) throw new Error("[development-xp] variation without a registered key - params must come from validateDevelopmentXpParams");
+  return createHmac("sha256", key).update(`cz-xp-variation-fingerprint-v1:${variation.span}:${variation.memory}`).digest("hex");
+}
+
 /** Dagsnummer fra en dansk dato (YYYY-MM-DD), ellers null. Ingen ur, kun kalenderen. */
 function dayIndex(dateStr: unknown): number | null {
   if (typeof dateStr !== "string") return null;

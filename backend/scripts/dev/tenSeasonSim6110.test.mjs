@@ -11,7 +11,7 @@ import {
   dayXpFloor, estimateGates, expectedTopRating, isTrainNowTeam, limitSnapshotTeams, milestoneStats, nearestPotential,
   orderResults, potentialPeakStats, quantile, raceRoleFor, raceShareForAge, raceSlot, raceVsTraining, renderXpGates,
   riderXpRates, rotatingProgram, runFingerprint, runVariant, runXpGates, talentAttack, typeCareer, variantList,
-  variationSeries, veteranStats, xpProgramShares, xpRunInputs, xpVariant,
+  variationSeries, veteranStats, xpProgramShares, xpRunInputs, sameXpRun, xpVariant,
   XP_ENGINE_HOOKS, assertPrivateOutDir, cohortFingerprint, dateGainBucket, inflationCheck,
   renderMotorpakke, renderX7, runCohort, topLossCheck, validateRequirements,
   SIM_CALENDAR_ANCHOR, TIME_TRIAL_PROFILES, engineRaceDayXp, engineRaceRider, r16Check, simDateStr, variationText,
@@ -355,7 +355,39 @@ test("Codex: en XP-kørsel med andre løbsroller, bonus eller variation må ikke
   assert.deepEqual(runVariant(syntheticSnapshot(), variant, XP_OPTS).params.xpRun, a);
 });
 
-test("potentialPeakStats og veteranStats: måler karrierens top og om veteraner stiger", () => {
+test("Codex P2: en ny variationsnøgle (samme bredde og hukommelse) giver andet fingeraftryk uden at afsløre nøglen", () => {
+  const other = { ...TEST_VARIATION, key: TEST_VARIATION.key.replace("kun-til", "kun-tit") };
+  const a = xpRunInputs(xpVariant("xp", { ...XP_OPTS, xp: XP_RAW_VAR }), { ...XP_OPTS, xp: XP_RAW_VAR });
+  const b = xpRunInputs(xpVariant("xp", { ...XP_OPTS, xp: { ...XP_RAW, variation: other } }), XP_OPTS);
+  assert.ok(a.variation && b.variation);
+  assert.notEqual(a.variation, b.variation);
+  assert.ok(!JSON.stringify(a).includes(TEST_VARIATION.key));
+  assert.equal("variation" in xpRunInputs(xpVariant("xp", XP_OPTS), XP_OPTS), false, "uden variation er feltet udeladt");
+  const gate = (xp) => xpGateKey({ fingerprint: "f", opts: { ...XP_OPTS, xp } });
+  assert.notEqual(gate(XP_RAW_VAR), gate({ ...XP_RAW, variation: other }), "gate-nøglen skifter også med nøglen");
+  // En gemt kørsel med den gamle nøgle må ikke på kortet, når nøglen er skiftet.
+  const saved = runVariant(syntheticSnapshot(), xpVariant("xp", { ...XP_OPTS, xp: XP_RAW_VAR }), { ...XP_OPTS, xp: XP_RAW_VAR });
+  assert.equal(sameXpRun(saved, { ...XP_OPTS, xp: XP_RAW_VAR }), true);
+  assert.equal(sameXpRun(saved, { ...XP_OPTS, xp: { ...XP_RAW, variation: other } }), false);
+});
+
+test("Codex P2: en gemt kørsel med udgået variant (_gulv) springes over i stedet for at kaste", () => {
+  assert.throws(() => xpVariant("xp_gulv", XP_OPTS), /_gulv/, "nyt ønsket setup afvises stadig");
+  const good = runVariant(syntheticSnapshot(), xpVariant("xp", XP_OPTS), XP_OPTS);
+  assert.equal(sameXpRun(good, XP_OPTS), true);
+  assert.equal(sameXpRun({ ...good, variant: "xp_bonus15_gulv_nocap" }, XP_OPTS), false);
+});
+
+test("Codex P2: X9 bruger bredde 0 uden xp.variation, men bevarer eksplicitte angrebsbredder", () => {
+  const snap = syntheticSnapshot();
+  const base = { estimateParams: ESTIMATE_PARAMS, knowledge: [], sampleRiders: 5 };
+  const spans = (opts) => Object.keys(runXpGates(snap, opts, base).x9.attack).map((k) => k.split("-")[0]);
+  assert.deepEqual(spans(XP_OPTS), ["span0"]);
+  assert.deepEqual(spans({ ...XP_OPTS, xpAttackSpans: [0.3] }), ["span0.3"]);
+  assert.deepEqual(spans({ ...XP_OPTS, xp: XP_RAW_VAR }), ["span0.5"]);
+});
+
+test("potentialPeakStats og veteranStats:måler karrierens top og om veteraner stiger", () => {
   const riders = [
     { potentiale: 2.5, inflow: true, trajectory: [{ season: 6, age: 26, rating: 30 }, { season: 7, age: 27, rating: 40 }] },
     { potentiale: 5, start: { age: 30, rating: 50 }, trajectory: [{ season: 8, age: 33, rating: 52 }, { season: 10, age: 35, rating: 49 }] },
