@@ -18,7 +18,7 @@ import { copenhagenDateString } from "./copenhagenTime.js";
 import { RACE_V3_TUNING } from "./raceRoles.js";
 import { TRAINING_FOCUSES } from "./training.js";
 import { trainingQualityForWindow } from "./racePeaks.js";
-import { isTrainingHistoryFromTicksEnabled, TRAINING_RUNS_FROM_TICKS_RPC } from "./trainingHistoryFromTicks6490.js";
+import { isTrainingPeakFromTicksEnabled, TRAINING_RUNS_FROM_TICKS_RPC } from "./trainingHistoryFromTicks6490.js";
 import { fetchAllRows } from "./supabasePagination.js";
 
 const DAY_MS = 86_400_000;
@@ -153,9 +153,11 @@ export async function loadTeamTrainingRuns({ supabase, teamIds, startDate, endDa
   const out = [];
   const ids = [...new Set(teamIds || [])];
   if (!ids.length || !startDate || !endDate) return out;
-  // #6490 trin c: med kontakten tændt kommer status og focus fra kvitteringerne (samme rækker,
-  // samme rytterliste). Slukket = præcis den gamle læsning. `fromTicks` kan injiceres i prøver.
-  const useTicks = fromTicks ?? await isTrainingHistoryFromTicksEnabled(supabase, { fresh: true });
+  // #6490 trin c: med SIN EGEN kontakt (training_peak_from_ticks_6490) tændt kommer status og focus
+  // fra kvitteringerne (samme rækker, låst rytterliste). Træningssidens kontakt påvirker aldrig
+  // motorens input. Slukket = præcis main-læsningen (ét kald, ingen sortering, ingen paginering,
+  // også rækkeloftet: #8180). `fromTicks` kan injiceres i prøver.
+  const useTicks = fromTicks ?? await isTrainingPeakFromTicksEnabled(supabase, { fresh: true });
   for (let i = 0; i < ids.length; i += IN_CHUNK) {
     const slice = ids.slice(i, i + IN_CHUNK);
     // Den nye vej pagineres med en stabil rækkefølge, så et stort felt aldrig afkortes

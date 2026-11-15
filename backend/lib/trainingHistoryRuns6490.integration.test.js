@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 import { loadTeamTrainingRuns } from "./racePeakPlans.js";
+import { TRAINING_HISTORY_FROM_TICKS_6490_FLAG_KEY, TRAINING_PEAK_FROM_TICKS_6490_FLAG_KEY } from "./trainingHistoryFromTicks6490.js";
 
 const file = async (name) => (await readFile(new URL(`../../database/${name}`, import.meta.url), "utf8")).replace(/\r\n/g, "\n");
 const MIGRATION = "2026-11-15-6490-training-history-runs.sql";
@@ -106,6 +107,12 @@ const stored = async (db, teams) => (await db.query(`SELECT ${COLS} FROM trainin
 const derived = async (db, teams, { since = "2026-01-01", until = null, slim = false } = {}) =>
   (await db.query(`SELECT * FROM training_runs_from_ticks_6490(${arr(teams)}, '${since}', ${until ? `'${until}'` : "NULL"}, ${slim}) ORDER BY team_id, tick_date, game_day NULLS FIRST, id`)).rows;
 const removeCopy = (db) => db.exec("UPDATE training_day_runs SET report = report - 'riders' WHERE game_day IS NOT NULL");
+// Same rider set, different content: every rider line in the copy gets a wrong status, focus and
+// progress. Only a read from the receipts can give back the original values.
+const tamperCopy = (db) => db.exec(`UPDATE training_day_runs SET report = jsonb_set(report, '{riders}', (
+    SELECT jsonb_agg(e || '{"status":"tampered","focus":"tampered","progress_after":{"climbing":-1}}'::jsonb ORDER BY o)
+    FROM jsonb_array_elements(report->'riders') WITH ORDINALITY x(e, o)))
+  WHERE game_day IS NOT NULL AND jsonb_typeof(report->'riders') = 'array'`);
 
 test("the seed is real: the copy holds every receipt of the date, and the second batch rebuilt it", async () => {
   const db = await fresh();
@@ -124,13 +131,53 @@ test("same rows, same columns, same report as the stored copy (both teams, every
   assert.deepEqual(await derived(db, [TEAM, OTHER_TEAM]), await stored(db, [TEAM, OTHER_TEAM]));
 });
 
-test("with the copy removed, the receipts give back exactly the stored reports; legacy and pending rows stay as stored", async () => {
+test("the riders come from the receipts: with the copy's content tampered (same rider set), the original reports come back", async () => {
   const db = await fresh();
   const before = await stored(db, [TEAM, OTHER_TEAM]);
+  await tamperCopy(db);
+  const tampered = await stored(db, [TEAM, OTHER_TEAM]);
+  assert.ok(tampered.some((r) => r.report.riders?.some((x) => x.status === "tampered")), "copy tampered");
+  assert.deepEqual(await derived(db, [TEAM, OTHER_TEAM]), before);
+});
+
+// Locked rider set (Fable-dom 15/11, fund 2): without a stored copy there is nothing to lock
+// against, so the stored report comes back unchanged. Reading without the copy is trin d's open
+// design point, not this step's.
+test("with the copy removed, the stored report comes back unchanged (no riders are invented); legacy and pending rows stay as stored", async () => {
+  const db = await fresh();
   await removeCopy(db);
   const afterRemoval = await stored(db, [TEAM, OTHER_TEAM]);
   assert.ok(afterRemoval.filter((r) => r.game_day != null).every((r) => !("riders" in r.report)), "copy gone");
-  assert.deepEqual(await derived(db, [TEAM, OTHER_TEAM]), before);
+  assert.deepEqual(await derived(db, [TEAM, OTHER_TEAM]), afterRemoval);
+  const slim = await derived(db, [TEAM, OTHER_TEAM], { slim: true });
+  assert.ok(slim.every((r) => r.report.riders.length === 0 || r.game_day == null), "slim invents no riders either");
+});
+
+// Team change mid-date (Fable-dom 15/11, fund 2): a rider on two teams' frozen lists on the same
+// date, with his receipt written under the other team. The derived list for the first team then
+// has one rider MORE than the stored copy; the stored report must come back unchanged (full and
+// slim), and the peak signal must not change either.
+test("team change mid-date: one rider more in the derived list gives the stored report, full and slim", async () => {
+  const db = await fresh();
+  const mover = OTHER_RIDERS[0];
+  await db.exec(`UPDATE training_date_work SET expected_rider_ids = expected_rider_ids || '${mover}'::uuid
+      WHERE team_id='${TEAM}' AND season_id='${SEASON}' AND tick_date='${DATE}';
+    INSERT INTO training_rider_ticks(rider_id,season_id,game_day,tick_date,team_id,report,created_at)
+      VALUES('${mover}','${SEASON}',42,'${DATE}','${OTHER_TEAM}',${j(line(mover, 42, 7))},'${AT(20)}')`);
+  // The derivation rule really does pick up one more rider for the first team's race day 42.
+  const ruleCount = (await db.query(`SELECT count(*)::int AS n FROM training_rider_ticks t JOIN training_date_work w
+      ON w.team_id='${TEAM}' AND w.season_id='${SEASON}' AND w.tick_date='${DATE}'
+    WHERE t.season_id='${SEASON}' AND t.game_day=42 AND t.rider_id = ANY(w.expected_rider_ids)`)).rows[0].n;
+  assert.equal(ruleCount, RIDERS.length + 1, "derived list has one more rider than the copy");
+  const before = await stored(db, [TEAM, OTHER_TEAM]);
+  assert.deepEqual(await derived(db, [TEAM, OTHER_TEAM]), before, "full: stored report unchanged");
+  const day42 = (await derived(db, [TEAM], { slim: true })).find((r) => r.game_day === 42);
+  assert.deepEqual(day42.report.riders.map((r) => r.rider_id), [...RIDERS].sort(), "slim: the stored rider set");
+  // The other days of the same team still read from the receipts (the guard is per row).
+  await tamperCopy(db);
+  const fromTicks = (await derived(db, [TEAM])).filter((r) => r.game_day >= 41 && r.game_day <= 45);
+  assert.ok(fromTicks.find((r) => r.game_day === 42).report.riders.every((x) => x.status === "tampered"), "day 42: stored (tampered) copy kept");
+  assert.ok(fromTicks.filter((r) => r.game_day !== 42).every((r) => r.report.riders.every((x) => x.status !== "tampered")), "other days: receipts");
 });
 
 // training_rider_ticks.rider_id is ON DELETE CASCADE and deleteRiderWithCleanup allows a hard
@@ -165,7 +212,7 @@ test("the date window and the team filter match a SELECT with the same bounds", 
 test("slim keeps only rider_id, status and focus, with missing keys missing and explicit nulls kept", async () => {
   const db = await fresh();
   const full = await stored(db, [TEAM, OTHER_TEAM]);
-  await removeCopy(db);
+  await tamperCopy(db); // status/focus in the copy are wrong now: the slim form must read the receipts
   const slim = await derived(db, [TEAM, OTHER_TEAM], { slim: true });
   assert.equal(slim.length, full.length);
   slim.forEach((row, i) => {
@@ -176,14 +223,19 @@ test("slim keeps only rider_id, status and focus, with missing keys missing and 
 });
 
 // A thin PostgREST stand-in over PGlite: the two query shapes loadTeamTrainingRuns sends.
-function fakeSupabase(db, { flag = null } = {}) {
+// `flags` maps app_config keys to values (a missing key = no row).
+function fakeSupabase(db, flags = {}) {
   const calls = [];
   const thenable = (run) => ({ then: (ok, bad) => run().then(ok, bad) });
   return {
     calls,
     from(table) {
       if (table === "app_config") {
-        return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: flag == null ? null : { value: flag }, error: null }) }) }) };
+        return { select: () => ({ eq: (col, key) => {
+          assert.equal(col, "key");
+          calls.push(`flag:${key}`);
+          return { maybeSingle: async () => ({ data: flags[key] == null ? null : { value: flags[key] }, error: null }) };
+        } }) };
       }
       assert.equal(table, "training_day_runs");
       const q = { cols: null, teams: null, gte: null, lt: null };
@@ -219,26 +271,50 @@ const normalize = (runs) => runs
   .map((r) => ({ team_id: r.team_id, ord: r.ord, riders: [...r.riderMap.entries()].sort(([a], [b]) => a.localeCompare(b)) }))
   .sort((a, b) => (a.team_id + a.ord + JSON.stringify(a.riders)).localeCompare(b.team_id + b.ord + JSON.stringify(b.riders)));
 
-test("trin c: the peak signal gets the same riderMap with and without the switch, also once the copy is gone", async () => {
+const PEAK = TRAINING_PEAK_FROM_TICKS_6490_FLAG_KEY, HISTORY = TRAINING_HISTORY_FROM_TICKS_6490_FLAG_KEY;
+
+test("trin c: the peak signal gets the same riderMap with its own switch on and off, also with the copy's content tampered", async () => {
   const db = await fresh();
   const args = { teamIds: [TEAM, OTHER_TEAM], startDate: "2026-11-01", endDate: "2026-11-12" };
   const off = await loadTeamTrainingRuns({ supabase: fakeSupabase(db), ...args });
-  const onClient = fakeSupabase(db, { flag: "on" });
+  const onClient = fakeSupabase(db, { [PEAK]: "on" });
   const on = await loadTeamTrainingRuns({ supabase: onClient, ...args });
-  assert.deepEqual(onClient.calls, ["rpc"], "switch on reads the receipts");
+  assert.deepEqual(onClient.calls, [`flag:${PEAK}`, "rpc"], "the peak switch on reads the receipts");
   assert.ok(off.length >= 6 && off.some((r) => r.riderMap.size > 0));
   assert.deepEqual(normalize(on), normalize(off));
-  await removeCopy(db);
-  assert.deepEqual(normalize(await loadTeamTrainingRuns({ supabase: fakeSupabase(db, { flag: "on" }), ...args })), normalize(off));
+  await tamperCopy(db);
+  assert.deepEqual(normalize(await loadTeamTrainingRuns({ supabase: fakeSupabase(db, { [PEAK]: "on" }), ...args })), normalize(off));
 });
 
-test("trin c: only the exact string \"on\" switches; beta, true, off and a missing row read the copy", async () => {
+// Fable-dom 15/11, fund 1: the training page's switch never changes the motor input. With the peak
+// switch off, loadTeamTrainingRuns sends exactly main's one table query (no rpc, no order, no
+// range) and gives main's riderMap, whatever the history switch says.
+test("trin c: with the peak switch off the riderMap is main's, whatever the history switch says", async () => {
   const db = await fresh();
-  for (const flag of [null, "off", "beta", true, "ON"]) {
-    const client = fakeSupabase(db, { flag });
-    await loadTeamTrainingRuns({ supabase: client, teamIds: [TEAM], startDate: "2026-11-01", endDate: "2026-11-12" });
-    assert.deepEqual(client.calls, ["table"], `flag ${JSON.stringify(flag)}`);
+  const args = { teamIds: [TEAM, OTHER_TEAM], startDate: "2026-11-01", endDate: "2026-11-12" };
+  const main = normalize(await loadTeamTrainingRuns({ supabase: fakeSupabase(db), ...args }));
+  for (const peak of [null, "off", "beta", true, "ON"]) {
+    for (const history of [null, "off", "on"]) {
+      const client = fakeSupabase(db, { [PEAK]: peak, [HISTORY]: history });
+      const runs = await loadTeamTrainingRuns({ supabase: client, ...args });
+      assert.deepEqual(client.calls, [`flag:${PEAK}`, "table"], `peak ${JSON.stringify(peak)}, history ${JSON.stringify(history)}`);
+      assert.deepEqual(normalize(runs), main);
+    }
   }
+});
+
+test("trin c: team change mid-date gives the same riderMap with the peak switch on and off", async () => {
+  const db = await fresh();
+  const mover = OTHER_RIDERS[0];
+  await db.exec(`UPDATE training_date_work SET expected_rider_ids = expected_rider_ids || '${mover}'::uuid
+      WHERE team_id='${TEAM}' AND season_id='${SEASON}' AND tick_date='${DATE}';
+    INSERT INTO training_rider_ticks(rider_id,season_id,game_day,tick_date,team_id,report,created_at)
+      VALUES('${mover}','${SEASON}',42,'${DATE}','${OTHER_TEAM}',${j(line(mover, 42, 7))},'${AT(20)}')`);
+  const args = { teamIds: [TEAM, OTHER_TEAM], startDate: "2026-11-01", endDate: "2026-11-12" };
+  const off = await loadTeamTrainingRuns({ supabase: fakeSupabase(db), ...args });
+  const on = await loadTeamTrainingRuns({ supabase: fakeSupabase(db, { [PEAK]: "on" }), ...args });
+  assert.deepEqual(normalize(on), normalize(off));
+  assert.ok(off.filter((r) => r.team_id === TEAM).every((r) => !r.riderMap.has(mover)), "the mover never enters the first team's map");
 });
 
 const asRole = async (db, role, sub, fn) => {
@@ -284,6 +360,7 @@ test("scripts/ops/6490-history-parity.sql is SELECT-only and reports zero differ
   assert.equal(first.totals.rows_stored, 8);
   assert.deepEqual([first.totals.rows_new, first.totals.rows_missing_on_one_side, first.totals.riders_differ, first.totals.other_fields_differ], [8, 0, 0, 0]);
   assert.equal(first.totals.race_day_rows_with_copy, 6);
+  assert.deepEqual([first.totals.rider_set_more, first.totals.rider_set_fewer, first.totals.rider_set_differ, first.totals.rider_set_no_copy], [0, 0, 0, 0]);
   assert.deepEqual(first.slim, { slim_rows: 8, slim_differ: 0 });
   assert.deepEqual(first.rows, []);
   // A broken copy is caught: the script is not blind.
@@ -292,16 +369,47 @@ test("scripts/ops/6490-history-parity.sql is SELECT-only and reports zero differ
   assert.equal(broken.totals.riders_differ, 1);
   assert.equal(broken.slim.slim_differ, 1);
   assert.equal(broken.rows.length, 1);
+  // A team change mid-date (one rider more by the rule) is counted, while the function keeps the
+  // stored report (riders_differ stays at the one tampered row).
+  const mover = OTHER_RIDERS[0];
+  await db.exec(`UPDATE training_date_work SET expected_rider_ids = expected_rider_ids || '${mover}'::uuid
+      WHERE team_id='${TEAM}' AND season_id='${SEASON}' AND tick_date='${DATE}';
+    INSERT INTO training_rider_ticks(rider_id,season_id,game_day,tick_date,team_id,report,created_at)
+      VALUES('${mover}','${SEASON}',43,'${DATE}','${OTHER_TEAM}',${j(line(mover, 43, 7))},'${AT(20)}')`);
+  const more = await run();
+  assert.deepEqual([more.totals.rider_set_more, more.totals.rider_set_fewer, more.totals.rider_set_differ], [1, 0, 1]);
+  assert.equal(more.totals.riders_differ, 1, "the team-change row reads the stored report");
+  // A hard-deleted rider (fewer by the rule) is counted too: he is on all five race days.
+  await db.exec(`DELETE FROM rider_condition WHERE rider_id='${RIDERS[3]}'; DELETE FROM rider_derived_abilities WHERE rider_id='${RIDERS[3]}'; DELETE FROM riders WHERE id='${RIDERS[3]}'`);
+  const fewer = await run();
+  assert.deepEqual([fewer.totals.rider_set_more, fewer.totals.rider_set_fewer, fewer.totals.rider_set_differ], [1, 5, 5]);
+  // Every race day of the team now reads the stored report, the tampered day 42 included.
+  assert.equal(fewer.totals.riders_differ, 0, "the deletion rows read the stored report");
 });
 
-test("rights and shape: definer only for the one-team history, fixed search_path, flag seeded off", async () => {
+test("rights and shape: definer only for the one-team history (fixed search_path), inlinable invoker reader, both flags seeded off", async () => {
   const db = await fresh();
-  const procs = (await db.query(`SELECT proname, prosecdef, proconfig, provolatile FROM pg_proc WHERE proname IN ('training_history_runs','training_runs_from_ticks_6490') ORDER BY proname`)).rows;
-  assert.deepEqual(procs.map((p) => [p.proname, p.prosecdef, p.proconfig, p.provolatile]), [
-    ["training_history_runs", true, ["search_path=public, pg_temp"], "s"],
-    ["training_runs_from_ticks_6490", false, ["search_path=public, pg_temp"], "s"],
+  const procs = (await db.query(`SELECT proname, prosecdef, proconfig, provolatile, l.lanname FROM pg_proc p JOIN pg_language l ON l.oid = p.prolang WHERE proname IN ('training_history_runs','training_runs_from_ticks_6490') ORDER BY proname`)).rows;
+  assert.deepEqual(procs.map((p) => [p.proname, p.prosecdef, p.proconfig, p.provolatile, p.lanname]), [
+    ["training_history_runs", true, ["search_path=public, pg_temp"], "s", "plpgsql"],
+    // Fund 3: no SET, so the planner inlines it (a SET function is never inlined).
+    ["training_runs_from_ticks_6490", false, null, "s", "sql"],
   ]);
-  assert.deepEqual((await db.query("SELECT value FROM app_config WHERE key='training_history_from_ticks_6490'")).rows, [{ value: "off" }]);
+  // The reader's body names every table and function by schema (it has no search_path of its own).
+  const body = (await db.query("SELECT prosrc FROM pg_proc WHERE proname='training_runs_from_ticks_6490'")).rows[0].prosrc.replace(/--.*$/gm, "");
+  for (const table of ["training_day_runs", "training_date_work", "training_rider_ticks"]) {
+    assert.doesNotMatch(body, new RegExp(`(?<!public\\.)\\b${table}\\b`), `${table} is schema-qualified`);
+  }
+  for (const fn of body.matchAll(/\b([a-z_]+)\(/g)) {
+    if (["CASE", "COALESCE", "EXISTS"].includes(fn[1].toUpperCase())) continue;
+    assert.match(body.slice(Math.max(0, fn.index - 11), fn.index), /pg_catalog\.$/, `${fn[1]}() is pg_catalog-qualified`);
+  }
+  // Inlined: the plan of a call has no Function Scan, the tables are scanned directly.
+  const plan = (await db.query(`EXPLAIN SELECT * FROM training_runs_from_ticks_6490(${arr([TEAM])}, '2026-01-01', NULL, false)`)).rows.map((r) => r["QUERY PLAN"]).join("\n");
+  assert.doesNotMatch(plan, /Function Scan on training_runs_from_ticks_6490/);
+  assert.match(plan, /training_day_runs/);
+  assert.deepEqual((await db.query("SELECT key, value FROM app_config WHERE key IN ('training_history_from_ticks_6490','training_peak_from_ticks_6490') ORDER BY key")).rows,
+    [{ key: "training_history_from_ticks_6490", value: "off" }, { key: "training_peak_from_ticks_6490", value: "off" }]);
   // Nothing is deleted, updated or dropped: outside comments the file only creates and seeds.
   const live = (await file(MIGRATION)).split("\n").filter((l) => !/^\s*--/.test(l)).join("\n");
   assert.doesNotMatch(live, /\b(DELETE|UPDATE|TRUNCATE|DROP)\b/i);

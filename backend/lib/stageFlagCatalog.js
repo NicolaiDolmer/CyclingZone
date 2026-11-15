@@ -68,6 +68,9 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "training_catalog_v3", area: "training", label: "Træningskatalog v3 (nye hårde sessioner)" },
   // #6490: træningshistorikken læser rytterne fra kvitteringerne. Seedet off; kun "on" tænder. Ejer-only flip.
   { key: "training_history_from_ticks_6490", area: "training", label: "Træningshistorik fra kvitteringerne" },
+  // #6490 trin c: peak-signalet (motorens input) læser fra kvitteringerne. Egen kontakt, seedet off,
+  // binær (kun "on" tænder). Ejer-only flip; se #8180 om rækkeloftet på den gamle læsning.
+  { key: "training_peak_from_ticks_6490", area: "training", label: "Peak-signal fra kvitteringerne (motor)" },
   { key: "peak_planner_enabled", area: "training", label: "Form-planlægger" },
   // #7536: motoren laeser kun "on" (beta = off); Hjaelp-blokken foelger samme svar.
   { key: "condition_v2_race_date_training_day", area: "training", label: "Træning på løbsdato vejer et helt døgn" },

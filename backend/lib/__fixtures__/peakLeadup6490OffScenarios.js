@@ -64,15 +64,21 @@ export function buildScenario(seed) {
   return { rows, entrants, windows, conditions, demands };
 }
 
-/** Fake client: the table query loadTeamTrainingRuns sends, plus app_config for the switch. */
-export function fakeClient(rows, { flag = null } = {}) {
+/**
+ * Fake client: the table query loadTeamTrainingRuns sends, plus app_config for the switches.
+ * `flag` answers every key; `flags` (by key) overrides it for the keys it names.
+ */
+export function fakeClient(rows, { flag = null, flags = {} } = {}) {
   const calls = [];
   return {
     calls,
     from(table) {
       if (table === "app_config") {
         calls.push("app_config");
-        return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: flag == null ? null : { value: flag }, error: null }) }) }) };
+        return { select: () => ({ eq: (_col, key) => {
+          const value = Object.hasOwn(flags, key) ? flags[key] : flag;
+          return { maybeSingle: async () => ({ data: value == null ? null : { value }, error: null }) };
+        } }) };
       }
       if (table !== "training_day_runs") throw new Error(`unexpected table ${table}`);
       const q = {};
@@ -97,11 +103,11 @@ export function fakeClient(rows, { flag = null } = {}) {
 const digest = (value) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 
 /** Run every scenario through `mod` (a racePeakPlans module). Returns digests only. */
-export async function runOffScenarios(mod, { flag = null, seeds = [1, 2, 3, 4, 5, 6, 7, 8] } = {}) {
+export async function runOffScenarios(mod, { flag = null, flags = {}, seeds = [1, 2, 3, 4, 5, 6, 7, 8] } = {}) {
   const out = [];
   for (const seed of seeds) {
     const s = buildScenario(seed);
-    const client = fakeClient(s.rows, { flag });
+    const client = fakeClient(s.rows, { flag, flags });
     const peakPlansByRider = new Map([...s.windows].map(([k, v]) => [k, v.map((w) => ({ ...w }))]));
     await mod.resolvePeakTrainingQualities({
       supabase: client,
@@ -111,7 +117,7 @@ export async function runOffScenarios(mod, { flag = null, seeds = [1, 2, 3, 4, 5
       loadTargetRaceDemands: async () => s.demands,
     });
     const qualities = [...peakPlansByRider].sort(([a], [b]) => a.localeCompare(b)).map(([k, ws]) => [k, ws.map((w) => w.trainingQuality ?? null)]);
-    const runs = await mod.loadTeamTrainingRuns({ supabase: fakeClient(s.rows, { flag }), teamIds: [...new Set(s.entrants.map((e) => e.team_id))], startDate: "2026-10-01", endDate: "2026-11-15" });
+    const runs = await mod.loadTeamTrainingRuns({ supabase: fakeClient(s.rows, { flag, flags }), teamIds: [...new Set(s.entrants.map((e) => e.team_id))], startDate: "2026-10-01", endDate: "2026-11-15" });
     const runsView = runs.map((r) => [r.team_id, r.ord, [...r.riderMap]]);
     out.push({ seed, qualities: digest(qualities), runs: digest(runsView), tableQueries: client.calls.filter((c) => c.startsWith("training_day_runs")) });
   }

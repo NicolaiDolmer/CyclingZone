@@ -8,7 +8,9 @@ import { PGlite } from "@electric-sql/pglite";
 import * as peak from "./racePeakPlans.js";
 import { runOffScenarios, buildScenario } from "./__fixtures__/peakLeadup6490OffScenarios.js";
 import { CADENCE_CASES } from "./__fixtures__/dailyConditionCadence6490Cases.js";
-import { evaluateTrainingHistoryFromTicksFlag } from "./trainingHistoryFromTicks6490.js";
+import {
+  evaluateTrainingHistoryFromTicksFlag, TRAINING_HISTORY_FROM_TICKS_6490_FLAG_KEY, TRAINING_PEAK_FROM_TICKS_6490_FLAG_KEY,
+} from "./trainingHistoryFromTicks6490.js";
 
 const json = (name) => JSON.parse(readFileSync(new URL(`./__fixtures__/${name}`, import.meta.url), "utf8"));
 const PEAK_BASE = json("peakLeadup6490OffBase.json");
@@ -25,6 +27,15 @@ for (const flag of [null, "off", "beta", true, "ON", "on "]) {
   test(`trin c off (${JSON.stringify(flag)}): peak qualities and riderMaps are bit-identical with the merge-base`, async () => {
     assert.equal(evaluateTrainingHistoryFromTicksFlag(flag), false);
     assert.deepEqual(await runOffScenarios(peak, { flag }), PEAK_BASE.results);
+  });
+}
+
+// Fable-dom 15/11, fund 1: the training page's switch (history "on") never reaches the motor input.
+// With the peak signal's own switch off, the output is still the merge-base's, bit for bit.
+for (const peakFlag of [null, "off", "beta"]) {
+  test(`trin c: peak switch ${JSON.stringify(peakFlag)} with the history switch "on" is bit-identical with the merge-base`, async () => {
+    const flags = { [TRAINING_HISTORY_FROM_TICKS_6490_FLAG_KEY]: "on", [TRAINING_PEAK_FROM_TICKS_6490_FLAG_KEY]: peakFlag };
+    assert.deepEqual(await runOffScenarios(peak, { flags }), PEAK_BASE.results);
   });
 }
 
