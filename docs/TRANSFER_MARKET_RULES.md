@@ -720,7 +720,7 @@ skrive-værn mod kapløb: frigivelsen skriver kun hvis `pending_team_id` stadig 
 givet før parkeringen, kan altså ikke gennemføres bagefter; det afvises med `stale_rider_state`,
 og ingen penge flyttes.
 
-**Sælgers penge låses til holdskiftet (#6181, pengelås PR 3, bag kontakten `sale_escrow_enabled`, slukket).**
+**Sælgers penge låses til holdskiftet (#6181, pengelås PR 3, bag kontakten `sale_escrow_enabled`, tændt 15/11 2026).**
 Med kontakten tændt betaler køberen stadig ved handlen, men ved en parkeret handel (transfer,
 bytte med kontanter, auktion med en sælger) ligger beløbet i `sale_escrows`, og sælgeren
 krediteres først når rytteren faktisk skifter hold. Ved øjeblikkeligt skifte er intet ændret.
