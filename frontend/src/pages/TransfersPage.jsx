@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import AutoAcceptAuctionDialog from "../components/transfers/AutoAcceptAuctionDialog.js";
+import BuyerCard8016 from "../components/transfers/buyerCard8016/BuyerCard8016.js"; // #8016
 import { fetchPlayerFeatureFlags } from "../lib/playerFeatureFlags.js";
 import { validTiming, readAutoListing, findCounterAutoListing } from "../lib/autoAccept2176.ts";
 import RiderLink from "../components/RiderLink";
@@ -926,7 +927,7 @@ function MarketStatBar({ value }) {
 }
 
 // Bud-form (ikke-egen listing) — samme felter/validering som TransferCard.
-function MarketOfferForm({ listing, onOffer, seasonYear, onStartAuction }) {
+function MarketOfferForm({ listing, onOffer, seasonYear }) {
   const { t } = useTranslation("transfers");
   const [offerAmt, setOfferAmt] = useState(listing.asking_price || 0);
   const [msg, setMsg] = useState("");
@@ -956,12 +957,9 @@ function MarketOfferForm({ listing, onOffer, seasonYear, onStartAuction }) {
           wrapperClassName="min-w-0 flex-1"
           className="w-full min-h-[44px] bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-sm focus:outline-hidden focus:border-cz-accent" />
         <Button variant="primary" size="sm"
-          onClick={offerBlock.guard(() => {
-            if (onStartAuction && Number(listing.auto_accept_price) > 0 && offerAmt >= Number(listing.auto_accept_price)) onStartAuction(listing);
-            else setConfirmOpen(true);
-          })}
+          onClick={offerBlock.guard(() => setConfirmOpen(true))}
           loading={loading} disabled={loading} {...offerBlock.blockedProps}>
-          {onStartAuction && Number(listing.auto_accept_price) > 0 && offerAmt >= Number(listing.auto_accept_price) ? t("autoAccept.start") : t("transferCard.send")}
+          {t("transferCard.send")}
         </Button>
       </div>
       {offerBlock.blocked && (
@@ -972,7 +970,6 @@ function MarketOfferForm({ listing, onOffer, seasonYear, onStartAuction }) {
       <input type="text" value={msg} onChange={e => setMsg(e.target.value)}
         placeholder={t("transferCard.messagePlaceholder")}
         className="bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-xs focus:outline-hidden focus:border-cz-accent" />
-      {onStartAuction && Number(listing.auto_accept_price) > 0 && offerAmt < Number(listing.auto_accept_price) && <Button variant="secondary" size="sm" onClick={() => onStartAuction(listing)}>{t("autoAccept.start")}</Button>}
       <BidConfirmModal
         show={confirmOpen}
         mode="transfer"
@@ -1119,7 +1116,7 @@ function MarketRow({
         <tr className="border-b border-cz-border bg-cz-subtle">
           <td colSpan={8 + (showStatCols ? statCols.length : 0) + 1} className="px-3 pb-4 pt-1">
             <div className="max-w-xl rounded-cz border border-cz-border bg-cz-card p-3">
-              {onStartAuction && Number(listing.auto_accept_price) > 0 && (
+              {onStartAuction && Number(listing.auto_accept_price) > 0 && isOwn && (
                 <dl className="flex justify-between gap-3 text-sm mb-3" data-testid="listing-auto-price">
                   <dt className="text-cz-2">{t("autoAccept.listingAutoPrice")}</dt>
                   <dd className="font-mono tabular-nums">{formatCz(Number(listing.auto_accept_price))}</dd>
@@ -1132,8 +1129,10 @@ function MarketRow({
                   onRemove={onRemove}
                   onUpdatePrice={onUpdatePrice}
                 />
+              ) : onStartAuction && Number(listing.auto_accept_price) > 0 ? (
+                <BuyerCard8016 listing={listing} onOffer={onOffer} seasonYear={seasonYear} onStartAuction={onStartAuction} />
               ) : (
-                <MarketOfferForm listing={listing} onOffer={onOffer} seasonYear={seasonYear} onStartAuction={onStartAuction} />
+                <MarketOfferForm listing={listing} onOffer={onOffer} seasonYear={seasonYear} />
               )}
             </div>
           </td>
@@ -1283,6 +1282,7 @@ export default function TransfersPage() {
   const [autoAccept, setAutoAccept] = useState(false);
   const [auctionTiming, setAuctionTiming] = useState(/** @type {import("../lib/autoAccept2176.ts").AuctionTiming | null} */ (null));
   const [auctionListing, setAuctionListing] = useState(/** @type {import("../components/transfers/AutoAcceptAuctionDialog.tsx").AutoListing | null} */ (null));
+  const [auctionDraft, setAuctionDraft] = useState(/** @type {{ bid: number, duration: number } | null} */ (null));
   const [auctionNow, setAuctionNow] = useState(/** @type {Date | null} */ (null));
   const [listings, setListings] = useState([]);
   const [sentOffers, setSentOffers] = useState([]);
@@ -1404,10 +1404,11 @@ export default function TransfersPage() {
     const timer = setInterval(() => setAuctionNow(new Date()), 30000);
     return () => clearInterval(timer);
   }, [auctionListing]);
-  function openAutoAuction(listing) {
+  function openAutoAuction(listing, draft) {
     const current = readAutoListing(listing);
     if (!current) return;
     setAuctionNow(new Date());
+    setAuctionDraft(draft); // #8016: beloeb + laengde fra koebers kort
     setAuctionListing(current);
   }
   async function refreshAutoListing() {
@@ -1457,7 +1458,7 @@ export default function TransfersPage() {
     setTimeout(() => setMsg({ text: "" }), 4000);
   }
 
-  async function handleOffer(riderId, amount, message) {
+  async function handleOffer(riderId, amount, message, doneText) {
     try {
       const res = await apiFetch(`${API}/api/transfers/offer`, {
         method: "POST",
@@ -1465,7 +1466,7 @@ export default function TransfersPage() {
         body: JSON.stringify({ rider_id: riderId, offer_amount: amount, message }),
       });
       const data = res.data || {};
-      if (res.ok) { showMsg(t("toast.offerSent")); loadAll(); setTab("sent"); }
+      if (res.ok) { showMsg(doneText || t("toast.offerSent")); loadAll(); setTab("sent"); }
       else showMsg(resolveApiError(data, t), "error");
     } catch {
       showMsg(t("auth:error.connectionFailed"), "error");
@@ -2119,7 +2120,7 @@ export default function TransfersPage() {
                             isMobile={isMobile}
                             expanded={expandedListingId === l.id}
                             onToggleExpand={toggleExpandedListing}
-                            onOffer={(riderId, amt, msg) => handleOffer(riderId, amt, msg)}
+                            onOffer={(riderId, amt, msg, doneText) => handleOffer(riderId, amt, msg, doneText)}
                             onRemove={handleRemoveListing}
                             onStartAuction={autoAccept ? openAutoAuction : undefined}
                             onUpdatePrice={handleUpdateListingPrice}
@@ -2144,7 +2145,8 @@ export default function TransfersPage() {
           )}
         </div>
       )}
-      {auctionListing && auctionTiming && auctionNow && <AutoAcceptAuctionDialog listing={auctionListing} timingConfig={auctionTiming} now={auctionNow} getNow={() => new Date()}
+      {auctionListing && auctionDraft && auctionTiming && auctionNow && <AutoAcceptAuctionDialog listing={auctionListing} timingConfig={auctionTiming} now={auctionNow} getNow={() => new Date()}
+        bid={auctionDraft.bid} duration={auctionDraft.duration} onDone={(text) => { showMsg(text); window.scrollTo({ top: 0 }); }}
         onCancel={() => setAuctionListing(null)} onSubmit={startAutoAuction} onRefresh={refreshAutoListing} />}
     </div>
   );
