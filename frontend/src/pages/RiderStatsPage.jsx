@@ -8,6 +8,7 @@ import { apiFetch } from "../lib/apiFetch.ts"; // #5089: Retry-After-respekt for
 import { formatCz, getRiderMarketValue, getRiderSalary, detectStartPriceTypo, computeBidValueDelta } from "../lib/marketValues.js";
 import { sharedRequestCache, SHARED_KEYS, SHARED_TTL_MS, invalidateTransferListings2176, transferListingsKeyForHeaders2176 } from "../lib/sharedRequestCache.js";
 import { fetchPlayerFeatureFlags } from "../lib/playerFeatureFlags.js";
+import RiderAutoPriceStrip from "../components/transfers/buyerCard8016/RiderAutoPriceStrip.js"; // #8016
 import { riderBestRole, riderOverallRating } from "../lib/riderRating";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys.js";
 import { chartColor } from "../lib/chartPalette.js";
@@ -2063,6 +2064,7 @@ export default function RiderStatsPage() {
                     {watchlistError}
                   </div>
                 )}
+                {transferListing && !isMyRider && <RiderAutoPriceStrip riderId={id} />}
                 {pendingOfferOnRider && (
                   <button type="button" onClick={() => navigate("/transfers")}
                     className="w-full flex items-center justify-between gap-3 px-3 py-2.5 bg-cz-accent/8
