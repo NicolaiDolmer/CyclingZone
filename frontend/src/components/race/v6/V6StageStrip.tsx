@@ -113,8 +113,8 @@ export default function V6StageStrip({ cells, profileByStage, selected, onSelect
               data-stage={c.number}
               aria-current={active ? "true" : undefined}
               tabIndex={active ? 0 : -1}
-              onClick={active ? undefined : () => onSelect(c.number)}
-              className={`v6-strip-cell min-w-[172px] flex-1 sm:min-w-[148px] border-e border-cz-border px-3 pt-2 pb-2 text-left last:border-e-0 ${active ? "" : "cursor-pointer hover:bg-cz-subtle"}`}
+              onClick={() => onSelect(c.number)}
+              className={`v6-strip-cell min-w-[172px] flex-1 sm:min-w-[148px] border-e border-cz-border px-3 pt-2 pb-2 text-left last:border-e-0 cursor-pointer ${active ? "" : "hover:bg-cz-subtle"}`}
             >
               <span className="flex items-center gap-1.5 whitespace-nowrap">
                 <span className="sr-only">{t("stagePageV2.stripStage", { number: c.number })}</span>
