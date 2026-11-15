@@ -63,9 +63,6 @@
   "../backend/lib/boardClubDna.js": {
     "TS2339": 3
   },
-  "../backend/lib/boardDmMirror.js": {
-    "TS2339": 8
-  },
   "../backend/lib/boardEvaluation.js": {
     "TS2339": 20,
     "TS2345": 1,
