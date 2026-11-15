@@ -39,7 +39,7 @@
     "rider_pending_release_trade": "Este ciclista dejará tu equipo después de {race} y no se puede traspasar.",
     "rider_pending_release_squad": "Este ciclista dejará tu equipo después de {race} y no puede cambiar de plantilla.",
     "rider_release_already_pending": "La liberación de este ciclista ya está solicitada. Dejará tu equipo después de {race}.",
-    "selection_rider_leaving": "Un ciclista con la liberación solicitada no puede ser seleccionado para carreras posteriores a su vuelta por etapas actual.",
+    "selection_rider_leaving": "La liberación de este ciclista está solicitada. No puede ser seleccionado para carreras posteriores a su vuelta por etapas actual.",
     "invalid_start_price": "Precio de salida no válido",
     "invalid_offer_amount": "Importe no válido",
     "invalid_loan_amount": "Importe no válido",

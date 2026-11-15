@@ -39,7 +39,7 @@
     "rider_pending_release_trade": "Deze renner verlaat je ploeg na {race} en kan niet worden verhandeld.",
     "rider_pending_release_squad": "Deze renner verlaat je ploeg na {race} en kan niet van selectie wisselen.",
     "rider_release_already_pending": "De vrijgave van deze renner is al aangevraagd. Hij verlaat je ploeg na {race}.",
-    "selection_rider_leaving": "Een renner met een aangevraagde vrijgave kan niet worden geselecteerd voor koersen na zijn huidige etappekoers.",
+    "selection_rider_leaving": "De vrijgave van deze renner is aangevraagd. Hij kan niet worden geselecteerd voor koersen na zijn huidige etappekoers.",
     "invalid_start_price": "Ongeldige startprijs",
     "invalid_offer_amount": "Ongeldig bedrag",
     "invalid_loan_amount": "Ongeldig bedrag",

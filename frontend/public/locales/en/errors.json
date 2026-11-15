@@ -39,7 +39,7 @@
     "rider_pending_release_trade": "This rider is leaving your team after {race} and cannot be traded.",
     "rider_pending_release_squad": "This rider is leaving your team after {race} and can't change squad.",
     "rider_release_already_pending": "This rider's release is already ordered. He leaves your team after {race}.",
-    "selection_rider_leaving": "A rider whose release is ordered can't be selected for races after his current stage race.",
+    "selection_rider_leaving": "This rider's release is ordered. He can't be selected for races after his current stage race.",
     "invalid_start_price": "Invalid starting price",
     "invalid_offer_amount": "Invalid amount",
     "invalid_loan_amount": "Invalid amount",

@@ -39,7 +39,7 @@
     "rider_pending_release_trade": "Rytteren forlader dit hold efter {race} og kan ikke handles.",
     "rider_pending_release_squad": "Rytteren forlader dit hold efter {race} og kan ikke skifte trup.",
     "rider_release_already_pending": "Frigivelsen af rytteren er allerede bestilt. Han forlader dit hold efter {race}.",
-    "selection_rider_leaving": "En rytter, hvis frigivelse er bestilt, kan ikke udtages til løb efter hans igangværende etapeløb.",
+    "selection_rider_leaving": "Rytterens frigivelse er bestilt. Han kan ikke udtages til løb efter sit igangværende etapeløb.",
     "invalid_start_price": "Ugyldig startpris",
     "invalid_offer_amount": "Ugyldigt beløb",
     "invalid_loan_amount": "Ugyldigt beløb",
