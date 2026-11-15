@@ -152,7 +152,12 @@ process.stdin.on("end", () => {
       for (let k = j + 1; k < toks.length; k++) {
         // Kun $( eller backtick starter en ny kommando; et argument som "git" eller
         // "feature/git" er et branchnavn, ikke en ny git (Vercel #8207).
-        if (/^(\$\(|`)/.test(toks[k])) break;
+        // Review #8207: staar substitutionen hvor maalet skulle vaere (git switch $(cat f)),
+        // er maalet ukendt; det blokeres (fail-closed), som paa main.
+        if (/^(\$\(|`)/.test(toks[k])) {
+          if (!tokens.some((t) => !t.startsWith("-"))) tokens.push("(ukendt maal)");
+          break;
+        }
         const cut = toks[k].search(/[)`]/);
         const t = unquote(cut >= 0 ? toks[k].slice(0, cut) : toks[k]);
         if (t) tokens.push(t);

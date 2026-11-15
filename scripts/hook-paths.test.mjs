@@ -142,6 +142,9 @@ test('branch-vagten vurderer kommandoens mappe (input-cwd), ogsaa fra en underma
   // Vercel #8207: et branchnavn der ender paa git afslutter ikke argumenterne.
   assert.equal(callCmd(main, 'git checkout feature/git').status, 2);
   assert.equal(callCmd(main, 'git switch git').status, 2);
+  // Review #8207: et maal fra en substitution er ukendt og blokeres (som paa main).
+  assert.equal(callCmd(main, 'git switch $(cat .branch)').status, 2);
+  assert.equal(callCmd(main, 'git checkout `cat .branch`').status, 2);
   // Almindeligt arbejde i et worktree er stadig frit.
   assert.equal(callCmd(wt, 'git switch -c feature-ok').status, 0);
   assert.equal(callCmd(join(wt, 'frontend'), 'git checkout -b feature-ok2').status, 0);
