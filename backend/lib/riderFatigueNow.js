@@ -724,11 +724,13 @@ export function sharedReadsClient(supabase) {
     const run = () => {
       if (steps.some(([method]) => MUTATIONS.has(method))) return send();
       const key = JSON.stringify([table, steps], keyPart);
-      if (answered.has(key)) return Promise.resolve(copyAnswer(answered.get(key)));
-      return send().then((res) => {
-        if (res && !res.error) answered.set(key, copyAnswer(res));
-        return res;
-      });
+      if (!answered.has(key)) {
+        // Også en læsning, der stadig er undervejs, deles; en fejl glemmes igen med det samme.
+        const shared = send();
+        answered.set(key, shared);
+        shared.then((res) => { if (!res || res.error) answered.delete(key); }, () => answered.delete(key));
+      }
+      return answered.get(key).then((res) => (res ? copyAnswer(res) : res));
     };
     const query = new Proxy({}, {
       get(_target, prop) {
