@@ -7,6 +7,7 @@ import { isHiddenYouthCareerEvent } from "../lib/youthClassification.ts";
 import { inviteDismissKey, isInviteDismissed, isSurveyPastClose } from "../lib/survey.js";
 import { readFirstRacePreviewParam, normalizeFirstRaceCardPayload } from "../lib/firstRaceCardPayload.js";
 import { privateKey, viewerKey } from "./queryRuntime.ts";
+import { cancelledWithoutData } from "./dashboardQueryPolicy.ts";
 import { useDataScope, scopedHeaders } from "./useDataScope.ts";
 
 // #6494: the Dashboard's self-fetching cards read through the shared scope instead of each
@@ -91,7 +92,11 @@ export function useDevTransitionData() {
     runtime.client.setQueryData(key, null);
     try {
       await apiFetch("/api/development/transition/dismiss", { method: "POST", headers: await scopedHeaders(runtime, scope, false) });
-    } catch { /* best-effort: at worst the panel shows again */ } finally { finish(); }
+    } catch { /* best-effort: at worst the panel shows again */ } finally {
+      finish();
+      // The barrier cancelled the scope's in-flight reads; restart those that had no data yet.
+      void runtime.client.invalidateQueries({ predicate: (query) => cancelledWithoutData(query, scope) });
+    }
   }, [runtime, scope, key]);
   return { data: query.isError ? null : query.data ?? null, dismiss };
 }
