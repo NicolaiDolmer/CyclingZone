@@ -26,22 +26,22 @@ export function PointsMark({ children, testId }: { children: ReactNode; testId?:
 
 /** The word mark for a rider who raced on the date. */
 export function RacedTag() {
-  const { t } = useTranslation("training");
+  const { t } = useTranslation("trainingXp");
   return <span className="shrink-0 rounded-cz border border-cz-border px-1 font-data text-3xs font-semibold uppercase tracking-[.08em] text-cz-2" data-testid="xp-raced">{t("xpReport.raced")}</span>;
 }
 
 function Change({ from, to, tone }: { from: number | null; to: number | null; tone?: "fatigue" }) {
-  const { t } = useTranslation("training");
+  const { t } = useTranslation("trainingXp");
   if (from == null || to == null) return <span className="text-cz-3">{t("xpReport.unknown")}</span>;
   return (
-    <span className={`inline-flex items-center gap-1 ${NUM}`} aria-label={t("dailyReceipt.change", { from: formatNumber(from), to: formatNumber(to) })} data-tone={tone}>
+    <span className={`inline-flex items-center gap-1 ${NUM}`} aria-label={t("training:dailyReceipt.change", { from: formatNumber(from), to: formatNumber(to) })} data-tone={tone}>
       <span>{formatNumber(from)}</span><ChevronRightIcon size={11} className="text-cz-3" aria-hidden="true" /><span>{formatNumber(to)}</span>
     </span>
   );
 }
 
 function FatigueNow({ rider }: { rider: XpTodayRider }) {
-  const { t } = useTranslation("training");
+  const { t } = useTranslation("trainingXp");
   if (rider.fatigue == null) return <span className="text-2xs text-cz-3">{t("xpReport.unknown")}</span>;
   const delta = rider.fatigueBefore != null ? rider.fatigue - rider.fatigueBefore : 0;
   return (
@@ -55,7 +55,7 @@ function FatigueNow({ rider }: { rider: XpTodayRider }) {
 }
 
 function Gained({ rider }: { rider: XpTodayRider }) {
-  const { t } = useTranslation("training");
+  const { t } = useTranslation("trainingXp");
   const { t: tRider } = useTranslation("rider");
   if (rider.points > 0) {
     return <PointsMark testId="xp-points-mark">{rider.pointAbility
@@ -67,7 +67,7 @@ function Gained({ rider }: { rider: XpTodayRider }) {
 
 /** The picked rider: sessions, XP per ability, form, fatigue and session score. */
 export function RiderDetail({ rider, panel = false }: { rider: XpTodayRider; panel?: boolean }) {
-  const { t } = useTranslation("training");
+  const { t } = useTranslation("trainingXp");
   const { t: tRider } = useTranslation("rider");
   const sessionLabel = (kind: string) => t(`xpReport.session.${kind}`);
   return (
@@ -112,8 +112,8 @@ export function RiderDetail({ rider, panel = false }: { rider: XpTodayRider; pan
         })}
       </ul>
       <HeroStats className="mt-3" items={[
-        { label: t("dailyReceipt.form"), value: <Change from={rider.formBefore} to={rider.form} /> },
-        { label: t("dailyReceipt.fatigue"), value: <Change from={rider.fatigueBefore} to={rider.fatigue} tone="fatigue" /> },
+        { label: t("training:dailyReceipt.form"), value: <Change from={rider.formBefore} to={rider.form} /> },
+        { label: t("training:dailyReceipt.fatigue"), value: <Change from={rider.fatigueBefore} to={rider.fatigue} tone="fatigue" /> },
         { label: t("xpReport.sessionScore"), value: rider.sessionScore != null ? formatNumber(rider.sessionScore) : t("xpReport.noScore") },
       ]} />
     </div>
@@ -121,7 +121,7 @@ export function RiderDetail({ rider, panel = false }: { rider: XpTodayRider; pan
 }
 
 export default function XpToday({ view, onPickDate, switcher }: { view: XpTodayView; onPickDate: (date: string) => void; switcher: ReactNode }) {
-  const { t } = useTranslation("training");
+  const { t } = useTranslation("trainingXp");
   const [filter, setFilter] = useState<TodayFilter>("all");
   const [picked, setPicked] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
@@ -138,7 +138,7 @@ export default function XpToday({ view, onPickDate, switcher }: { view: XpTodayV
             <button type="button" className={navButton} disabled={!view.previous} onClick={() => view.previous && onPickDate(view.previous)} aria-label={t("xpReport.previousDay")}><ChevronLeftIcon size={16} aria-hidden="true" /></button>
             <div className="min-w-0 px-1">
               <h2 className="truncate text-[15px] font-semibold text-cz-1" data-testid="xp-date">{dayLabel(view.date, { weekday: "short", day: "numeric", month: "short" })}</h2>
-              <p className={META}>{t(`dailyReceipt.status.${view.status}`)}</p>
+              <p className={META}>{t(`training:dailyReceipt.status.${view.status}`)}</p>
             </div>
             <button type="button" className={navButton} disabled={!view.next} onClick={() => view.next && onPickDate(view.next)} aria-label={t("xpReport.nextDay")}><ChevronRightIcon size={16} aria-hidden="true" /></button>
           </div>
@@ -173,9 +173,9 @@ export default function XpToday({ view, onPickDate, switcher }: { view: XpTodayV
               options={(["all", "gained", "raced", "notRaced"] as TodayFilter[]).map(key => ({ value: key, label: t(`xpReport.filter.${key}`, { count: view.counts[key] }) }))} />
           </div>
           <div className={`hidden gap-x-3 py-2 lg:grid ${ROW_GRID} ${META}`} aria-hidden="true">
-            <span>{t("colRider")}</span><span>{t("xpReport.colGained")}</span>
+            <span>{t("training:colRider")}</span><span>{t("xpReport.colGained")}</span>
             <span className="text-right">{t("xpReport.legend.training")}</span><span className="text-right">{t("xpReport.legend.race")}</span>
-            <span>{t("xpReport.colSplit")}</span><span className="text-right">{t("dailyReceipt.form")}</span><span className="text-right">{t("dailyReceipt.fatigue")}</span>
+            <span>{t("xpReport.colSplit")}</span><span className="text-right">{t("training:dailyReceipt.form")}</span><span className="text-right">{t("training:dailyReceipt.fatigue")}</span>
           </div>
           {riders.map(rider => {
             const isOpen = open === rider.id;

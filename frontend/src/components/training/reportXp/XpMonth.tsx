@@ -22,7 +22,7 @@ const CHART_HEIGHT = 112;
 const xp = (n: number) => formatNumber(Math.round(n));
 
 export default function XpMonth({ view, onOpenDay, switcher }: { view: XpMonthView; onOpenDay: (date: string) => void; switcher: ReactNode }) {
-  const { t } = useTranslation("training");
+  const { t } = useTranslation("trainingXp");
   const { t: tRider } = useTranslation("rider");
   const [filter, setFilter] = useState<MonthFilter>("all");
   const riders = filterMonthRiders(view.riders, filter);
@@ -73,8 +73,8 @@ export default function XpMonth({ view, onOpenDay, switcher }: { view: XpMonthVi
             ]} />
         </div>
         <div className={`hidden gap-x-4 py-2 lg:grid ${ROW_GRID} ${META}`} aria-hidden="true">
-          <span>{t("colRider")}</span><span>{t("xpReport.days30")}</span><span className="text-right">{t("xpReport.colXp")}</span>
-          <span>{t("xpReport.colPoints")}</span><span className="text-right">{t("dailyReceipt.form")}</span><span className="text-right">{t("dailyReceipt.fatigue")}</span><span>{t("xpReport.nextPoint")}</span>
+          <span>{t("training:colRider")}</span><span>{t("xpReport.days30")}</span><span className="text-right">{t("xpReport.colXp")}</span>
+          <span>{t("xpReport.colPoints")}</span><span className="text-right">{t("training:dailyReceipt.form")}</span><span className="text-right">{t("training:dailyReceipt.fatigue")}</span><span>{t("xpReport.nextPoint")}</span>
         </div>
         {riders.map(r => {
           const of = r.next ? xpOfPrice(r.next) : null;
@@ -88,8 +88,8 @@ export default function XpMonth({ view, onOpenDay, switcher }: { view: XpMonthVi
               <span className={`col-span-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-cz-2 lg:contents ${NUM}`}>
                 <span className="lg:text-right"><span className="lg:hidden">{t("xpReport.days30")} </span><span className="font-semibold text-cz-1">{t("xpReport.xpValue", { xp: xp(r.xp) })}</span></span>
                 <span><PointsMark>{t("xpReport.points", { count: r.points })}</PointsMark></span>
-                <span className="lg:text-right"><span className="lg:hidden">{t("dailyReceipt.form")} </span><span className="text-cz-1">{r.form != null ? formatNumber(r.form) : t("xpReport.unknown")}</span></span>
-                <span className="lg:text-right"><span className="lg:hidden">{t("dailyReceipt.fatigue")} </span><span className="text-cz-1">{r.fatigue != null ? formatNumber(r.fatigue) : t("xpReport.unknown")}</span></span>
+                <span className="lg:text-right"><span className="lg:hidden">{t("training:dailyReceipt.form")} </span><span className="text-cz-1">{r.form != null ? formatNumber(r.form) : t("xpReport.unknown")}</span></span>
+                <span className="lg:text-right"><span className="lg:hidden">{t("training:dailyReceipt.fatigue")} </span><span className="text-cz-1">{r.fatigue != null ? formatNumber(r.fatigue) : t("xpReport.unknown")}</span></span>
               </span>
               <span className="col-span-2 grid grid-cols-[auto_minmax(3rem,1fr)_auto] items-center gap-2 text-xs lg:col-span-1" data-testid="xp-next-point">
                 {r.next && of ? <>

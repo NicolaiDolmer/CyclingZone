@@ -39,10 +39,11 @@ loader.deregister();
 const { buildXpReportFixture } = await import("./xpReportFixture.ts");
 const { buildMonthView, buildTodayView } = await import("../../../lib/trainingReportXp.ts");
 
-const en = JSON.parse(readFileSync(new URL("../../../../public/locales/en/training.json", import.meta.url), "utf8"));
-const da = JSON.parse(readFileSync(new URL("../../../../public/locales/da/training.json", import.meta.url), "utf8"));
+const locale = (lang: string, ns: string) => JSON.parse(readFileSync(new URL(`../../../../public/locales/${lang}/${ns}.json`, import.meta.url), "utf8"));
+const LANGS = ["en", "da", "es", "fr", "nl"];
+const en = locale("en", "trainingXp");
 const i18n = createInstance();
-await i18n.use(ICU).init({ lng: "en", initAsync: false, resources: { en: { training: en, rider: {} } }, fallbackLng: false });
+await i18n.use(ICU).init({ lng: "en", initAsync: false, resources: { en: { trainingXp: en, training: locale("en", "training"), rider: {} } }, fallbackLng: false });
 
 const noSegmentGold = (html: string) => html.replaceAll("cursor-default bg-cz-accent/10 text-cz-accent-t", "");
 const fx = buildXpReportFixture();
@@ -74,12 +75,23 @@ test("30 days renders one column per day and never a days-to-go estimate", () =>
   assert.doesNotMatch(html, /\{[a-z]+\}|\{\{/i, "ICU placeholders are filled");
 });
 
-test("the XP keys exist in English and Danish alike", () => {
-  const keys = (o: Record<string, unknown>, p = ""): string[] => Object.entries(o).flatMap(([k, v]) =>
-    v && typeof v === "object" ? keys(v as Record<string, unknown>, `${p}${k}.`) : [`${p}${k}`]);
-  assert.deepEqual(keys(da.xpReport).sort(), keys(en.xpReport).sort());
-  for (const text of [...Object.values(en.xpReport), ...Object.values(da.xpReport)].flatMap(v => typeof v === "string" ? [v] : Object.values(v as object)))
-    assert.doesNotMatch(String(text), /—/, "no em-dash");
+test("the trainingXp keys exist in every language, without em-dash", () => {
+  const entries = (o: Record<string, unknown>, p = ""): Array<[string, string]> => Object.entries(o).flatMap(([k, v]) =>
+    v && typeof v === "object" ? entries(v as Record<string, unknown>, `${p}${k}.`) : [[`${p}${k}`, String(v)]]);
+  const want = entries(en).map(([k]) => k).sort();
+  for (const lang of LANGS) {
+    const got = entries(locale(lang, "trainingXp"));
+    assert.deepEqual(got.map(([k]) => k).sort(), want, lang);
+    for (const [key, text] of got) assert.doesNotMatch(text, /—/, `${lang} ${key}: no em-dash`);
+  }
+});
+
+test("the surface waits for its lazy namespace behind the skeleton", () => {
+  const src = readFileSync(new URL("./TrainingReportXp.tsx", import.meta.url), "utf8");
+  assert.match(src, /const \{ t, ready \} = useTranslation\("trainingXp"\)/);
+  assert.match(src, /if \(!ready\) return <Section[^>]*><SkeletonLines/);
+  const guard = readFileSync(new URL("../../../../../scripts/i18n-check-namespace-inline.mjs", import.meta.url), "utf8");
+  assert.match(guard, /"trainingXp", \/\/ #7627/);
 });
 
 test("the switch: off by default, preview only on the preview build with ?xpreport=on", () => {

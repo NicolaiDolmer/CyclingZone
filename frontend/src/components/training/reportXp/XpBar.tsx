@@ -61,7 +61,7 @@ export function Swatch({ part }: { part: Part }) {
 }
 
 export function XpLegend({ before = false, className = "" }: { before?: boolean; className?: string }) {
-  const { t } = useTranslation("training");
+  const { t } = useTranslation("trainingXp");
   const items: Part[] = before ? ["training", "race", "before"] : ["training", "race"];
   return (
     <span className={`flex flex-wrap items-center gap-x-4 gap-y-1 text-2xs text-cz-2 ${className}`.trim()} data-testid="xp-legend">

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { SectionStack } from "../../ui/Section.jsx";
+import Section, { SectionStack } from "../../ui/Section.jsx";
+import { SkeletonLines } from "../../ui/Skeleton.jsx";
 import Segmented from "../../ui/Segmented.jsx";
 import { aggregateTrainingRuns, type TrainingRun } from "../../../lib/trainingDailyReceipt.ts";
 import { receiptPassScore, type ReceiptScoreView } from "../../../lib/trainingScoreView.ts";
@@ -19,7 +20,9 @@ type RosterRider = { id: string; nationality_code?: string | null };
 export default function TrainingReportXp({ runs, roster, trainingScore = null, fixture = false }: {
   runs: TrainingRun[]; roster?: RosterRider[] | null; trainingScore?: Record<string, ReceiptScoreView> | null; fixture?: boolean;
 }) {
-  const { t } = useTranslation("training");
+  // trainingXp is not inlined (bundle budget): it loads with this lazy surface, so
+  // the surface waits for it behind the canonical skeleton instead of raw keys.
+  const { t, ready } = useTranslation("trainingXp");
   const [view, setView] = useState<View>("today");
   const [date, setDate] = useState<string | null>(null);
   const data = useMemo((): { receipts: XpReceipt[]; options: XpViewOptions } => {
@@ -37,6 +40,7 @@ export default function TrainingReportXp({ runs, roster, trainingScore = null, f
   }, [fixture, runs, roster, trainingScore]);
   const today = useMemo(() => buildTodayView(data.receipts, date, data.options), [data, date]);
   const month = useMemo(() => buildMonthView(data.receipts, data.options), [data]);
+  if (!ready) return <Section className="mb-[14px]" data-testid="training-report-xp-loading"><SkeletonLines lines={10} /></Section>;
   if (!today || !month) return null;
   const switcher = (
     <Segmented label={t("xpReport.viewLabel")} value={view} onChange={(v: View) => setView(v)}
