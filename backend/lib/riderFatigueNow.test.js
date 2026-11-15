@@ -114,9 +114,16 @@ test("#7982: etape 2 samme dato tæller ikke etape 1 dobbelt efter løbssessione
   await applyStageStartFatigue({ supabase: raceSessionSupabase({ ...base, ticks: [{ rider_id: "a", tick_date: tickDate }], settlements: [{ rider_id: "a", tick_date: tickDate }] }), raceId: "r", stageNumber: 2, entrants: settled });
   assert.equal(settled[0].form, 9, "en lukket dato røres ikke af genskabelsen");
 
+  // Vercel-review 15/11: må aldrig spærre etapen. Uden åbning beholdes tallet som før #7982.
   const missing = entrants();
-  await assert.rejects(applyStageStartFatigue({ supabase: raceSessionSupabase({ ...base, work: [], ticks: [{ rider_id: "a", tick_date: tickDate }], settlements: [] }), raceId: "r", stageNumber: 2, entrants: missing }),
-    /Missing date opening/, "uden gemt åbning kastes i stedet for at gætte");
+  await applyStageStartFatigue({ supabase: raceSessionSupabase({ ...base, work: [], ticks: [{ rider_id: "a", tick_date: tickDate }], settlements: [] }), raceId: "r", stageNumber: 2, entrants: missing });
+  assert.equal(missing[0].form, 9, "uden gemt åbning kører etapen videre med det nuværende tal");
+
+  // Købt samme dag efter løbssessionen: kvitteringen og åbningen ligger på det gamle hold.
+  const bought = entrants().map((r) => ({ ...r, team_id: "ny" }));
+  await applyStageStartFatigue({ supabase: raceSessionSupabase({ ...base, ticks: [{ rider_id: "a", team_id: "t", tick_date: tickDate }], settlements: [] }), raceId: "r", stageNumber: 2, entrants: bought });
+  assert.equal(bought[0].fatigue, expected, "åbningen findes på holdet, der gemte kvitteringen");
+  assert.equal(bought[0].form, opening.form);
 });
 
 test("#7801: en etape på en senere dato går gennem aftenens opgørelse først", () => {
