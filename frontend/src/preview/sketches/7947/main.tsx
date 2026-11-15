@@ -8,7 +8,7 @@ import Sketch, { type VariantId } from "./Sketch.tsx";
 import type { Lang } from "./copy.ts";
 
 const q = new URLSearchParams(window.location.search);
-const variant = (["a", "b", "c"].includes(q.get("v") ?? "") ? q.get("v") : "a") as VariantId;
+const variant = (["now", "a", "b", "c"].includes(q.get("v") ?? "") ? q.get("v") : "a") as VariantId;
 const lang: Lang = q.get("lang") === "da" ? "da" : "en";
 document.documentElement.lang = lang;
 if (q.get("theme") === "dark") document.documentElement.setAttribute("data-theme", "dark");
@@ -30,6 +30,7 @@ function Chrome() {
     <div className="border-b border-cz-border bg-cz-subtle">
       <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-2 px-4 py-2 sm:px-8">
         <span className="me-2 font-data text-2xs uppercase tracking-wide text-cz-3">Sketch #7947</span>
+        {link("now", "Today")}
         {link("a", "A · two fields")}
         {link("b", "B · matrix")}
         {link("c", "C · effort first")}

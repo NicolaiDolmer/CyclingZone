@@ -20,9 +20,10 @@ import {
   type RecoveryHome,
 } from "./effortModel.ts";
 
-export type VariantId = "a" | "b" | "c";
+export type VariantId = "now" | "a" | "b" | "c";
 
 const VARIANTS: Record<VariantId, { home: RecoveryHome }> = {
+  now: { home: "easy" },
   a: { home: "easy" },
   b: { home: "rest" },
   c: { home: "rest" },
@@ -136,7 +137,7 @@ function VariantA({ lang }: { lang: Lang }) {
         const valid = isValidChoice(d.effort, d.session, { recoveryHome: home });
         const rest = d.effort === "rest";
         return (
-          <li key={r.id} className="grid gap-2 py-3 lg:grid-cols-[210px_auto_220px_1fr] lg:items-center lg:gap-4">
+          <li key={r.id} className="grid gap-2 py-3 lg:grid-cols-[210px_300px_240px_1fr] lg:items-center lg:gap-4">
             <RiderCell r={r} lang={lang} />
             <Segmented
               label={`${c.colEffort} ${r.label}`}
@@ -292,7 +293,7 @@ function VariantC({ lang, openId }: { lang: Lang; openId: string | null }) {
         const pickFor = (e: Effort): Choice => (e === "rest" ? { effort: e, session: null } : { effort: e, session: r.suggest[e] });
         const isAssistant = d.effort && d.effort !== "rest" && d.session === r.suggest[d.effort];
         return (
-          <li key={r.id} className="grid gap-2 py-3 lg:grid-cols-[210px_auto_280px_1fr] lg:items-center lg:gap-4">
+          <li key={r.id} className="grid gap-2 py-3 lg:grid-cols-[210px_300px_240px_1fr] lg:items-center lg:gap-4">
             <RiderCell r={r} lang={lang} />
             <Segmented
               label={`${c.colEffort} ${r.label}`}
@@ -340,9 +341,56 @@ function VariantC({ lang, openId }: { lang: Lang; openId: string | null }) {
   );
 }
 
+// --- Foer: dagens ene vaelger (samme opbygning som TrainingDaySelect) ---------
+
+function VariantNow({ lang }: { lang: Lang }) {
+  const c = COPY[lang];
+  const [vals, setVals] = useState<Record<string, string>>(() => {
+    const m: Record<string, string> = {};
+    for (const r of RIDERS) {
+      const ch = choiceFromPlan(r.plan, { recoveryHome: "easy" });
+      m[r.id] = ch.effort === "rest" ? "rest" : ch.session === RECOVERY_SESSION ? "recovery" : (ch.session ?? "");
+    }
+    return m;
+  });
+  const levels: Effort[] = ["easy", "normal", "hard"];
+  return (
+    <ul className="divide-y divide-cz-border">
+      {RIDERS.map((r) => (
+        <li key={r.id} className="grid gap-2 py-3 lg:grid-cols-[210px_240px_1fr] lg:items-center lg:gap-4">
+          <RiderCell r={r} lang={lang} />
+          <select
+            aria-label={`${c.colDay} ${r.label}`}
+            value={vals[r.id]}
+            onChange={(e) => setVals((v) => ({ ...v, [r.id]: e.target.value }))}
+            className={SELECT_CLS}
+          >
+            <optgroup label={lang === "da" ? "Hele dagen" : "Whole day"}>
+              <option value="rest">{c.efforts.rest}</option>
+              <option value="recovery">{c.activeRecovery}</option>
+            </optgroup>
+            {levels.map((lv) => (
+              <optgroup key={lv} label={`${lang === "da" ? "Træning" : "Training"} · ${c.efforts[lv]}`}>
+                {sessionsForEffort(lv, { recoveryHome: "rest" }).filter((s) => !SKILL.includes(s)).map((s) => (
+                  <option key={s} value={s}>{optionLabel(lang, s)}</option>
+                ))}
+              </optgroup>
+            ))}
+            <optgroup label={c.groupSkill}>
+              {SKILL.map((s) => (
+                <option key={s} value={s}>{optionLabel(lang, s)}</option>
+              ))}
+            </optgroup>
+          </select>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 // --- Overgang og aabne punkter ----------------------------------------------
 
-const STANCE: Record<Lang, Record<VariantId, { rec: string; tac: string; cool: string; merge: string }>> = {
+const STANCE: Record<Lang, Record<Exclude<VariantId, "now">, { rec: string; tac: string; cool: string; merge: string }>> = {
   en: {
     a: {
       rec: "A session under Easy, next to Long ride.",
@@ -434,7 +482,7 @@ function Transition({ lang, variant }: { lang: Lang; variant: VariantId }) {
 
 function Decisions({ lang, variant }: { lang: Lang; variant: VariantId }) {
   const c = COPY[lang];
-  const s = STANCE[lang][variant];
+  const s = STANCE[lang][variant as Exclude<VariantId, "now">];
   const rows: [string, string][] = [
     [c.recoveryQ, s.rec],
     [c.tacticsQ, s.tac],
@@ -475,18 +523,21 @@ export default function Sketch({ variant, lang, openId }: Props) {
       </div>
       <div className="flex flex-col gap-3.5">
         <section className="rounded-cz border border-cz-border bg-cz-card p-4 sm:p-5">
-          <div className="mb-2 hidden grid-cols-[210px_auto_220px_1fr] gap-4 font-data text-2xs uppercase tracking-wide text-cz-3 lg:grid">
-            <span>{c.colRider}</span>
-            <span>{variant === "b" ? "" : c.colEffort}</span>
-            <span>{variant === "b" ? "" : c.colTraining}</span>
-            <span>{c.colDay}</span>
-          </div>
+          {(variant === "a" || variant === "c") && (
+            <div className="mb-2 hidden grid-cols-[210px_300px_240px_1fr] gap-4 font-data text-2xs uppercase tracking-wide text-cz-3 lg:grid">
+              <span>{c.colRider}</span>
+              <span>{c.colEffort}</span>
+              <span>{c.colTraining}</span>
+              <span>{c.colDay}</span>
+            </div>
+          )}
+          {variant === "now" && <VariantNow lang={lang} />}
           {variant === "a" && <VariantA lang={lang} />}
           {variant === "b" && <VariantB lang={lang} openId={openId} />}
           {variant === "c" && <VariantC lang={lang} openId={openId} />}
         </section>
-        <Transition lang={lang} variant={variant} />
-        <Decisions lang={lang} variant={variant} />
+        {variant !== "now" && <Transition lang={lang} variant={variant} />}
+        {variant !== "now" && <Decisions lang={lang} variant={variant} />}
       </div>
     </div>
   );
