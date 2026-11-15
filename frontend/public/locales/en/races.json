@@ -42,7 +42,6 @@
       "colRecord": "What the record shows",
       "step": "Step {number}",
       "km": "km {km}",
-      "noRiders": "None of your riders rode this stage.",
       "noOrders": "Your plan for this stage could not be loaded. Try again later.",
       "mark": {
         "notSeen": "Not seen in the record",
