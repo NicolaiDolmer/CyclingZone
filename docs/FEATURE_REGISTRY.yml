@@ -612,6 +612,18 @@ features:
     decide_by: 2026-11-29
     note: Kontakt release_defer_8153 (seed off) kommer med migrationen; slukket = som i dag.
 
+  - id: settle-race-session-after-stage
+    area: training
+    title_en: Race session settles when the stage is decided
+    title_da: Løbets session afregnes, når etapen er afgjort
+    state: building
+    ssot: docs/TRAINING_RULES.md
+    epic: 7982
+    verified: 2026-11-15
+    decision: ejer-beslutning
+    decide_by: 2026-11-29
+    note: Kontakt training_settle_race_session off i prod 15/11 (serverdel merget, #8195). Tændes kun sammen med fatigue_now_7801 (ejer 15/11). Skærmdelen er ikke bygget.
+
   - id: rider-loans
     area: market
     title_en: Rider loans
