@@ -284,7 +284,7 @@ export async function countPendingReleasesForTransition(supabase) {
   try {
     return await countActivePendingReleases(supabase);
   } catch (err) {
-    // fail-closed: hellere et afvist skifte end loen og kontraktudloeb midt i en ventende frigivelse.
+    // best-effort-laesning, fail-closed: hellere et afvist skifte end loen og kontraktudloeb midt i en ventende frigivelse.
     console.error(`[pendingRelease8153] saesonskifte-spaerren fejlede, afviser: ${errorMessage(err)}`);
     return 1;
   }
@@ -337,7 +337,7 @@ export async function orderPendingRelease(supabase, {
       try {
         await notify(teamId, PENDING_RELEASE_NOTIFICATION_TYPE, notice.title, notice.message, riderId, notice.metadata);
       } catch (notifyErr) {
-        // bestillingen er gennemfoert og betalt; en fejlet besked maa ikke give spilleren en fejl.
+        // best-effort: bestillingen er gennemfoert og betalt; en fejlet besked maa ikke give spilleren en fejl.
         console.error(`[pendingRelease8153] beskeden ved bestilling fejlede (${riderId}): ${errorMessage(notifyErr)}`);
       }
       return { data: { pending: true, race: { id: race.id, name: race.name ?? null }, fee } };
@@ -369,6 +369,7 @@ function readMarketGateIssue(error) {
     const detail = typeof error.details === "string" ? JSON.parse(error.details) : (error.details ?? {});
     return { available: Number(detail.available) || 0, locked: Number(detail.locked) || 0 };
   } catch (parseErr) {
+    // best-effort: detaljerne er kun til fejlteksten; afvisningen sker uanset.
     console.warn(`[pendingRelease8153] pengevagtens detaljer kunne ikke laeses: ${errorMessage(parseErr)}`);
     return { available: 0, locked: 0 };
   }
@@ -404,7 +405,7 @@ async function executeOne(supabase, row, { now, notifyTeamOwner, riderName }) {
   try {
     await notifyTeamOwner(row.team_id, PENDING_RELEASE_NOTIFICATION_TYPE, notice.title, notice.message, row.rider_id, notice.metadata);
   } catch (notifyErr) {
-    // frigivelsen er udfoert; en fejlet besked logges, men taeller ikke som en fejlet udfoerelse.
+    // best-effort: frigivelsen er udfoert; en fejlet besked logges, men taeller ikke som en fejlet udfoerelse.
     console.error(`[pendingRelease8153] beskeden ved udfoerelse fejlede (${row.rider_id}): ${errorMessage(notifyErr)}`);
   }
   return true;
@@ -418,7 +419,7 @@ async function executeRows(supabase, rows, { now, notifyTeamOwner }) {
     try {
       if (await executeOne(supabase, row, { now, notifyTeamOwner, riderName: names.get(row.rider_id) })) stats.executed += 1;
     } catch (err) {
-      // per-raekke isolation: een fejl maa ikke stoppe resten. Fejlen taelles og logges.
+      // best-effort pr. raekke: een fejl maa ikke stoppe resten. Fejlen taelles (failed/errors) og logges.
       stats.failed += 1;
       stats.errors.push({ riderId: row.rider_id, message: errorMessage(err) });
       console.error(`[pendingRelease8153] udfoerelse fejlede for rytter ${row.rider_id}: ${errorMessage(err)}`);

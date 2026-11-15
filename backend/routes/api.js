@@ -14337,7 +14337,7 @@ router.get("/me/pending-releases", requireAuth, presencePulseLimiter, async (req
   try {
     if (!req.team) return res.json([]);
     res.json(await loadPendingReleasesForTeam(supabase, req.team.id));
-  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
+  } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); /* swallow-ok: captureApiRouteError capturer til Sentry */ }
 });
 
 // POST /api/finance/loans — optag nyt finanslån

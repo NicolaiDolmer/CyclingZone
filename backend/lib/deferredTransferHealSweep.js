@@ -113,7 +113,7 @@ async function withPendingReleases(supabase, now, result, notifyTeamOwner) {
   try {
     releases = await runPendingReleaseHealSweep(supabase, { now, notifyTeamOwner });
   } catch (err) {
-    // taelles i failed/errors, saa cron-wrapperens Sentry-capture ser fejlen.
+    // best-effort: taelles i failed/errors, saa cron-wrapperens Sentry-capture ser fejlen.
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[deferredTransferHealSweep] ventende frigivelser fejlede: ${message}`);
     return { ...result, failed: result.failed + 1, errors: [...result.errors, { riderId: null, message }] };
