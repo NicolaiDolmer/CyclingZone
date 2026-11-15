@@ -19,7 +19,7 @@ import {
   isStagePlanTask, planWithoutJerseyHunt, stagePlanOutcomes, stagePlanRecap,
   type StagePlanLeg, type StagePlanRecapItem, type StagePlanTask, type StagePlanTrigger,
 } from "../StagePlanModel.ts";
-import { ridersSplitKm, stagePlanContactFacts, type TimelineEvent } from "../../../lib/stageSplitTimes.ts";
+import { riderInFrontOrFieldAt, ridersSplitKm, stagePlanContactFacts, type TimelineEvent } from "../../../lib/stageSplitTimes.ts";
 import { honestTimelineEvents, type SpanClimb, type SpanTimelineEvent } from "../../../lib/stageTimelineKmSpan.ts";
 import { roleRank } from "../../../lib/stageRoleVocabulary.ts";
 
@@ -184,11 +184,16 @@ export interface PlanVsActualInput {
   climbs?: readonly SpanClimb[] | null;
   /** Placering på etapen fra målresultatet. */
   rankOf?: (id: string) => number | null;
+  /**
+   * #7636 (kontakten stage_plan_dropped_front_7635): krydstjek et "sat af"-skift mod
+   * rytterens gruppe i filmen, præcis som Taktik-fanens opsummering. Slukket = som før.
+   */
+  crossCheck?: boolean;
 }
 
 /** Planen mod det der skete for hver egen rytter (kaptajnen først). */
 export function planVsActual(input: PlanVsActualInput): RiderPlanVsActual[] {
-  const { orders, stageRoles = null, stageNumber, nameOf, timelineVersion, climbs = null, rankOf = () => null } = input;
+  const { orders, stageRoles = null, stageNumber, nameOf, timelineVersion, climbs = null, rankOf = () => null, crossCheck = false } = input;
   const events = input.events ?? [];
   if (!orders) return [];
   const roster = (orders.riders ?? []).map((r) => String(r.rider_id));
@@ -230,7 +235,8 @@ export function planVsActual(input: PlanVsActualInput): RiderPlanVsActual[] {
     }
 
     const legs = ranWithoutHunt ? planWithoutJerseyHunt(saved) : saved;
-    const items = stagePlanRecap(legs, events as Array<{ type?: unknown; km?: unknown; params?: Rec | null }>, riderId);
+    const items = stagePlanRecap(legs, events as Array<{ type?: unknown; km?: unknown; params?: Rec | null }>, riderId,
+      crossCheck ? { inFrontOrFieldAt: (km) => riderInFrontOrFieldAt(film, riderId, km) } : {});
     const leader = teamLeaderFor(riderId, roleOf, nameOf);
     const outcomes = stagePlanOutcomes(items, events as Array<{ type?: unknown; km?: unknown; params?: Rec | null }>, riderId, {
       ...stagePlanContactFacts(film, riderId),
@@ -260,7 +266,8 @@ export function planVsActual(input: PlanVsActualInput): RiderPlanVsActual[] {
       return {
         index: i,
         task: item.task,
-        from: legs[i]?.from ?? null,
+        // #7636: et skift filmen ikke viser (fromHidden) står ikke som udløser.
+        from: item.fromHidden ? null : legs[i]?.from ?? null,
         previousTask: i > 0 ? legs[i - 1].task : null,
         mark,
         end,

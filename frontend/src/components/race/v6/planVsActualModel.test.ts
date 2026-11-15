@@ -120,6 +120,45 @@ test("uden etapens resultat bruges holdets udtagelse fra ordre-svaret", () => {
   assert.deepEqual(rows.map((r) => r.riderId).sort(), ["a", "b", "c", "d"]);
 });
 
+// PR #8173-review: samme krydstjek som Taktik-fanens opsummering (kontakten stage_plan_dropped_front_7635).
+// Giro-moenstret fra StagePlanModel.test.ts: et nedkoerselsangreb faa sekunder foran, "a" i feltet hele dagen.
+const DESCENT_INPUT = (crossCheck?: boolean) => input({
+  orders: {
+    riders: [{ rider_id: "a", race_role: "captain" }],
+    orders: [{ stage_number: 2, riders: [{ rider_id: "a", plan: [
+      { task: "follow_moves" },
+      { task: "attack", from: { at: "kom", kom_index: 1 } },
+      { task: "ride_for_result", from: { at: "dropped" } },
+    ] }] }],
+  },
+  riderIds: ["a"],
+  climbs: null,
+  events: [
+    { type: "stage_start", km: 0, params: { field_count: 8 } },
+    { type: "finale_attack", km: 60, params: { direction: "descent", rider_ids: ["x", "y", "z"], group_id: "breakaway-2000", gained_seconds: 6 } },
+    { type: "gap_update", km: 60, params: { group_id: "peloton-0", gap_seconds: 6 } },
+    { type: "stage_plan_leg", km: 60, params: { rider_id: "a", leg: 2, task: "ride_for_result", reason: "dropped" } },
+    { type: "group_merged", km: 64, params: { group_id: "breakaway-2000", into_group_id: "peloton-0", rider_ids: ["x", "y", "z"] } },
+  ],
+  rankOf: () => null,
+  ...(crossCheck === undefined ? {} : { crossCheck }),
+});
+
+test("krydstjekket taendt: filmen har ham i feltet, saa intet 'sat' og intet skjult skift-punkt", () => {
+  const a = planVsActual(DESCENT_INPUT(true))[0];
+  assert.deepEqual(a.steps.map((s) => s.end?.reason ?? null), [null, null, "finish"]);
+  assert.equal(a.steps[1].mark, "not_reached");
+  assert.equal(a.steps[2].from, null, "skiftet 'sat af' filmen ikke viser staar ikke som udloeser");
+});
+
+test("krydstjekket slukket: som Taktik-fanen i dag (ogsaa naar filmen modsiger det)", () => {
+  for (const off of [undefined, false]) {
+    const a = planVsActual(DESCENT_INPUT(off))[0];
+    assert.deepEqual(a.steps.map((s) => s.end?.reason ?? null), ["dropped", null, "finish"]);
+    assert.deepEqual(a.steps[2].from, { at: "dropped" });
+  }
+});
+
 test("en kaede med en ukendt opgave er ingen plan", () => {
   assert.equal(legsFromRaw([{ task: "breakaway" }, { task: "teleport" }]), null);
   assert.equal(legsFromRaw([]), null);

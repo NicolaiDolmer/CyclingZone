@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useStageTimeline } from "../../../hooks/useStageTimeline.js";
 import { fetchTeamOrders } from "../../../lib/tacticsOrdersAdapter.js";
+import { fetchPlayerFeatureFlags } from "../../../lib/playerFeatureFlags.js"; // #7636
 import { roleLabelKey } from "../../../lib/stageRoleVocabulary.ts";
 import { ownRiderIdsForStage } from "../../../lib/stageSplitTimes.ts";
 import { ownRiderIdsForOneDay } from "../../../lib/oneDayTimeline.ts";
@@ -18,6 +19,7 @@ import { isTimeTrialProfile, type StagePlanTask, type StagePlanTrigger } from ".
 import { teamPlanRouteFromProfile } from "../tacticsReady7864.ts";
 import type { ResultRow, StageProfile } from "../stagePageV2/stagePageV2Model.ts";
 import { RiderLink, Section, SectionHeader, SkeletonLines } from "../stagePageV2/ui.ts";
+import type { StageResultsState } from "./racePageV6Model.ts";
 import { planVsActual, type PlanStep, type StageRolesLike, type StepLine, type StepMark, type TeamOrdersLike } from "./planVsActualModel.ts";
 
 type IconComponent = (props: { size?: number; className?: string; "aria-hidden"?: boolean | "true" }) => ReactNode;
@@ -36,6 +38,10 @@ export interface V6TacticsAfterProps {
   myTeamId: string | null;
   stageRoles: StageRolesLike | null | false;
   profile: StageProfile | null;
+  /** Etapens resultater: hentes de stadig, eller fejlede de? (placeringer og egne ryttere bygger på dem). */
+  resultsState?: StageResultsState;
+  /** Fejl-tilstanden med "Prøv igen", når etapens resultater ikke kunne hentes. */
+  resultsErrorSlot?: ReactNode;
 }
 
 /** Ikonet og tonen for hver markering; ordet står altid ved, så farven aldrig er alene. */
@@ -102,8 +108,15 @@ function StepRow({ t, step, climbs }: { t: TFn; step: PlanStep; climbs: Readonly
   );
 }
 
-export default function V6TacticsAfter({ raceId, stageNumber, isStageRace, results, myTeamId, stageRoles, profile }: V6TacticsAfterProps) {
+export default function V6TacticsAfter({ raceId, stageNumber, isStageRace, results, myTeamId, stageRoles, profile, resultsState = "loaded", resultsErrorSlot = null }: V6TacticsAfterProps) {
   const { t } = useTranslation("races");
+  // #7636: samme kontakt som Taktik-fanens opsummering (binær; fejl = slukket = som før).
+  const [crossCheck7636, setCrossCheck7636] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    fetchPlayerFeatureFlags().then((flags: Record<string, boolean>) => { if (alive) setCrossCheck7636(flags?.stage_plan_dropped_front_7635 === true); });
+    return () => { alive = false; };
+  }, []);
   const timeTrial = isTimeTrialProfile(profile?.profile_type ?? null);
   const { timeline, loading, error } = useStageTimeline(timeTrial ? null : raceId, stageNumber) as {
     timeline: { events?: unknown[]; timeline_version?: number | null } | null; loading: boolean; error: boolean;
@@ -153,8 +166,9 @@ export default function V6TacticsAfter({ raceId, stageNumber, isStageRace, resul
       timelineVersion: timeline.timeline_version ?? null,
       climbs: Array.isArray(profile?.climbs) ? (profile?.climbs as unknown as Array<{ crest_km?: number | null; length_km?: number | null; name?: string | null }>) : null,
       rankOf: (id) => rankById.get(id) ?? null,
+      crossCheck: crossCheck7636,
     });
-  }, [timeline, knownOrders, stageRoles, stageNumber, riderIds, nameById, profile, rankById]);
+  }, [timeline, knownOrders, stageRoles, stageNumber, riderIds, nameById, profile, rankById, crossCheck7636]);
 
   const title = t("racePageV6.tacticsAfter.title");
   const meta = isStageRace ? t("racePageV6.tacticsAfter.metaStage", { number: stageNumber }) : t("racePageV6.tacticsAfter.metaRace");
@@ -162,7 +176,10 @@ export default function V6TacticsAfter({ raceId, stageNumber, isStageRace, resul
   let body: ReactNode;
   if (timeTrial) {
     body = <p className="m-0 border-t border-cz-border py-2.5 text-sm text-cz-3">{t("stagePlan.timeTrial")}</p>;
-  } else if (loading || (raceId && !knownOrders && !error)) {
+  } else if (resultsState === "failed") {
+    // Uden etapens resultater mangler placeringerne og hvem der kørte: ærlig fejl, ingen halv sammenligning.
+    body = resultsErrorSlot;
+  } else if (resultsState === "loading" || loading || (raceId && !knownOrders && !error)) {
     body = <SkeletonLines lines={4} />;
   } else if (!timeline || error) {
     body = <p className="m-0 border-t border-cz-border py-2.5 text-sm text-cz-3">{t("stagePlan.recap.pending")}</p>;
