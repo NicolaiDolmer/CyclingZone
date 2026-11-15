@@ -15,7 +15,8 @@ const frozen = JSON.parse(readFileSync(new URL("./__fixtures__/riderFatigueNow78
 // generic fake otherwise returns race-ledger rows/errors for every new table.
 const unstamped = (apply = applyStageStartFatigue) => args => apply({ ...args, supabase: {
   from(table) {
-    if (table !== "training_train_now_locks") return args.supabase.from(table);
+    // #7982: ingen løbssessions-kvitteringer i facit (fixturen er ældre end løbssessionen).
+    if (!["training_train_now_locks", "training_rider_ticks"].includes(table)) return args.supabase.from(table);
     const q = { select() { return q; }, eq() { return q; }, in() { return q; },
       then(resolve, reject) { return Promise.resolve({ data: [], error: null }).then(resolve, reject); } };
     return q;
@@ -65,6 +66,57 @@ test("#7801: start af næste etape samme dato er det tal, motoren kører på", a
   const scenario = { ledger, schedule: { game_day: 12, scheduled_at: "2026-11-01T14:00:00Z" } };
   await applySameDateEnteringFatigueV2({ supabase: fakeSupabase(scenario), raceId: "r", stageNumber: 3, entrants, medicalBonusByTeam: new Map([["t", 2]]) });
   assert.equal(entrants[0].fatigue, riderFatigueAtStageStart({ openingFatigue: 30, loadsBeforeStage: [20, 15], recoveryAbility: 60, medicalBonus: 2 }));
+});
+
+// #7982 (Fable-dom 15/11, fund 1): løbssessionen har gemt foreløbig træthed efter etape 1 i
+// rider_condition, men etape 1's belastning er stadig ubrugt i ledgeren. Etape 2 samme dato
+// skal starte fra datoens gemte åbning plus etape 1, ikke fra den foreløbige værdi plus etape 1.
+function raceSessionSupabase({ ticks, settlements, work, ledger, schedule }) {
+  const tables = {
+    training_train_now_locks: [], training_rider_ticks: ticks, training_condition_settlements: settlements,
+    training_date_work: work, training_race_loads: ledger, app_config: [],
+  };
+  return {
+    from(table) {
+      const filters = [];
+      const q = {
+        select() { return q; }, order() { return q; }, is() { return q; },
+        eq(col, val) { filters.push((r) => r[col] === undefined || r[col] === val); return q; },
+        in(col, vals) { filters.push((r) => r[col] === undefined || vals.includes(r[col])); return q; },
+        lt(col, val) { filters.push((r) => r[col] < val); return q; },
+        maybeSingle() { return Promise.resolve({ data: table === "race_stage_schedule" ? schedule : null, error: null }); },
+        then(resolve, reject) {
+          const rows = (tables[table] ?? []).filter((r) => filters.every((f) => f(r)));
+          return Promise.resolve({ data: rows, error: null }).then(resolve, reject);
+        },
+      };
+      return q;
+    },
+  };
+}
+
+test("#7982: etape 2 samme dato tæller ikke etape 1 dobbelt efter løbssessionen", async () => {
+  const tickDate = "2026-11-01";
+  const ledger = [{ rider_id: "a", game_day: 10, load: 20, tick_date: tickDate }];
+  const opening = { fatigue: 30, form: 5 };
+  const provisional = riderFatigueAtStageStart({ openingFatigue: 30, loadsBeforeStage: [20], recoveryAbility: 60 });
+  const base = { ledger, schedule: { game_day: 11, scheduled_at: "2026-11-01T15:00:00Z" },
+    work: [{ team_id: "t", tick_date: tickDate, opening_conditions: { a: opening } }] };
+  const entrants = () => [{ rider_id: "a", team_id: "t", fatigue: provisional, form: 9, abilities: { recovery: 60 } }];
+  const expected = riderFatigueAtStageStart({ openingFatigue: 30, loadsBeforeStage: [20], recoveryAbility: 60 });
+
+  const pending = entrants();
+  await applyStageStartFatigue({ supabase: raceSessionSupabase({ ...base, ticks: [{ rider_id: "a", tick_date: tickDate }], settlements: [] }), raceId: "r", stageNumber: 2, entrants: pending });
+  assert.equal(pending[0].fatigue, expected, "åbningen plus etape 1, ikke den foreløbige værdi plus etape 1");
+  assert.equal(pending[0].form, opening.form, "form fra datoens åbning, ikke den foreløbige");
+
+  const settled = entrants();
+  await applyStageStartFatigue({ supabase: raceSessionSupabase({ ...base, ticks: [{ rider_id: "a", tick_date: tickDate }], settlements: [{ rider_id: "a", tick_date: tickDate }] }), raceId: "r", stageNumber: 2, entrants: settled });
+  assert.equal(settled[0].form, 9, "en lukket dato røres ikke af genskabelsen");
+
+  const missing = entrants();
+  await assert.rejects(applyStageStartFatigue({ supabase: raceSessionSupabase({ ...base, work: [], ticks: [{ rider_id: "a", tick_date: tickDate }], settlements: [] }), raceId: "r", stageNumber: 2, entrants: missing }),
+    /Missing date opening/, "uden gemt åbning kastes i stedet for at gætte");
 });
 
 test("#7801: en etape på en senere dato går gennem aftenens opgørelse først", () => {
