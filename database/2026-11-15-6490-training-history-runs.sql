@@ -12,7 +12,9 @@
 -- som commit_training_date_tick bruger, når den skriver kopien (samme sæson og løbsdag, ryttere på
 -- datoens frosne liste, sorteret efter rider_id). Findes ingen kvittering for rækken (rækker med
 -- game_day NULL fra den gamle sti, en ventende reservation, rækker fra før kvitteringerne), står
--- den gemte rapport urørt.
+-- den gemte rapport urørt. Mangler den udledte liste en rytter, som den gemte rapport har (en
+-- hårdt slettet rytter mister sine kvitteringer via ON DELETE CASCADE), står den gemte rapport
+-- også urørt: den nye vej giver aldrig færre ryttere end kopien.
 --
 --   training_runs_from_ticks_6490(p_team_ids, p_since, p_until, p_slim)
 --     Kun service_role. Flere hold og et datointerval [p_since, p_until) til peak-signalet.
@@ -61,9 +63,9 @@ CREATE OR REPLACE FUNCTION public.training_runs_from_ticks_6490(
         (SELECT jsonb_agg(CASE WHEN jsonb_typeof(e.value)='object'
             THEN COALESCE((SELECT jsonb_object_agg(k.key, k.value) FROM jsonb_each(e.value) k WHERE k.key IN ('rider_id','status','focus')), '{}'::jsonb)
             ELSE e.value END ORDER BY e.ordinality)
-         FROM jsonb_array_elements(COALESCE(derived.riders, CASE WHEN jsonb_typeof(r.report->'riders')='array' THEN r.report->'riders' END)) WITH ORDINALITY e),
+         FROM jsonb_array_elements(COALESCE(safe.riders, CASE WHEN jsonb_typeof(r.report->'riders')='array' THEN r.report->'riders' END)) WITH ORDINALITY e),
         '[]'::jsonb))
-      WHEN derived.riders IS NOT NULL THEN (r.report - 'riders') || jsonb_build_object('riders', derived.riders)
+      WHEN safe.riders IS NOT NULL THEN (r.report - 'riders') || jsonb_build_object('riders', safe.riders)
       ELSE r.report
     END
   FROM public.training_day_runs r
@@ -75,6 +77,17 @@ CREATE OR REPLACE FUNCTION public.training_runs_from_ticks_6490(
     FROM public.training_rider_ticks t
     WHERE w.team_id IS NOT NULL AND t.season_id=r.season_id AND t.game_day=r.game_day AND t.rider_id=ANY(w.expected_rider_ids)
   ) derived ON true
+  LEFT JOIN LATERAL (
+    -- Never fewer riders than the stored copy: training_rider_ticks.rider_id is ON DELETE CASCADE, so
+    -- a hard-deleted rider loses his receipts. When the stored riders hold a rider_id the derived
+    -- list lacks, the stored report is returned unchanged (same result as when every receipt is gone).
+    -- Open design point for trin d (copy no longer stored): see #6490.
+    SELECT CASE WHEN derived.riders IS NOT NULL AND NOT EXISTS (
+        SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(r.report->'riders')='array' THEN r.report->'riders' ELSE '[]'::jsonb END) s
+        WHERE jsonb_typeof(s.value)='object' AND s.value ? 'rider_id'
+          AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(derived.riders) d WHERE d.value->>'rider_id' = s.value->>'rider_id'))
+      THEN derived.riders END AS riders
+  ) safe ON true
   WHERE r.team_id=ANY(p_team_ids) AND r.tick_date>=p_since AND (p_until IS NULL OR r.tick_date<p_until)
 $$;
 

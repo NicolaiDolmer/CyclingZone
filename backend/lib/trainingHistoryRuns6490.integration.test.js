@@ -133,6 +133,27 @@ test("with the copy removed, the receipts give back exactly the stored reports; 
   assert.deepEqual(await derived(db, [TEAM, OTHER_TEAM]), before);
 });
 
+// training_rider_ticks.rider_id is ON DELETE CASCADE and deleteRiderWithCleanup allows a hard
+// delete. The new path must never show fewer riders than the stored report: with one receipt left
+// and with every receipt gone, the rows are exactly the stored ones (Codex P2 on PR #8174).
+test("rider deletion: a hard-deleted rider never disappears from the history (one receipt left, and none left)", async () => {
+  const db = await fresh();
+  const deleteRider = async (rider) => {
+    await db.exec(`DELETE FROM rider_condition WHERE rider_id='${rider}'; DELETE FROM rider_derived_abilities WHERE rider_id='${rider}'`);
+    await db.exec(`DELETE FROM riders WHERE id='${rider}'`);
+  };
+  const before = await stored(db, [TEAM, OTHER_TEAM]);
+  await deleteRider(OTHER_RIDERS[0]);
+  const left = (await db.query(`SELECT count(*)::int AS n FROM training_rider_ticks WHERE rider_id='${OTHER_RIDERS[1]}'`)).rows[0].n;
+  assert.equal((await db.query(`SELECT count(*)::int AS n FROM training_rider_ticks WHERE rider_id='${OTHER_RIDERS[0]}'`)).rows[0].n, 0, "cascade removed the receipts");
+  assert.ok(left >= 1, "the other rider's receipt survives");
+  assert.deepEqual(await derived(db, [TEAM, OTHER_TEAM]), before, "one receipt left: stored report kept");
+  const slim = await derived(db, [OTHER_TEAM], { slim: true });
+  assert.deepEqual(slim[0].report.riders.map((r) => r.rider_id), [...OTHER_RIDERS].sort(), "slim keeps the deleted rider too");
+  await deleteRider(OTHER_RIDERS[1]);
+  assert.deepEqual(await derived(db, [TEAM, OTHER_TEAM]), before, "every receipt gone: stored report kept");
+});
+
 test("the date window and the team filter match a SELECT with the same bounds", async () => {
   const db = await fresh();
   const all = await stored(db, [TEAM, OTHER_TEAM]);
