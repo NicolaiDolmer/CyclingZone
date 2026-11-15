@@ -3,9 +3,9 @@ import { useTranslation } from "react-i18next";
 import Section from "../../ui/Section.jsx";
 import Segmented from "../../ui/Segmented.jsx";
 import HeroStats from "../../ui/HeroStats.jsx";
-import { Flag } from "../../Flag.jsx";
+import { Flag, formatDay } from "./ui.ts";
 import RiderLink from "../../RiderLink.jsx";
-import { formatDate, formatNumber } from "../../../lib/intl.js";
+import { formatNumber } from "../../../lib/intl.js";
 import { filterMonthRiders, xpOfPrice, TIRED_FATIGUE, type MonthFilter, type XpMonthView } from "../../../lib/trainingReportXp.ts";
 import { XpBar, XpColumn, XpLegend, XpSpark } from "./XpBar.tsx";
 import { PointsMark } from "./XpToday.tsx";
@@ -28,7 +28,7 @@ export default function XpMonth({ view, onOpenDay, switcher }: { view: XpMonthVi
   const riders = filterMonthRiders(view.riders, filter);
   const max = Math.max(1, ...view.days.map(d => d.training + d.race));
   const first = view.days[0], middle = view.days[Math.floor(view.days.length / 2)];
-  const short = (date: string) => formatDate(date, null, { day: "numeric", month: "short" });
+  const short = (date: string) => formatDay(date, { day: "numeric", month: "short" });
   return (
     <>
       <Section data-testid="xp-month">
@@ -52,7 +52,7 @@ export default function XpMonth({ view, onOpenDay, switcher }: { view: XpMonthVi
               <li key={day.date} className="min-w-0 flex-1">
                 {/* Phones read the chart; the day itself is one tap away in Today's strip and arrows. */}
                 <button type="button" onClick={() => onOpenDay(day.date)} className="block w-full hover:bg-cz-subtle max-sm:pointer-events-none"
-                  aria-label={t("xpReport.openDay", { date: formatDate(day.date, null, { weekday: "long", day: "numeric", month: "long" }), training: xp(day.training), race: xp(day.race) })}>
+                  aria-label={t("xpReport.openDay", { date: formatDay(day.date, { weekday: "long", day: "numeric", month: "long" }), training: xp(day.training), race: xp(day.race) })}>
                   <XpColumn training={day.training} race={day.race} max={max} height={CHART_HEIGHT} />
                 </button>
               </li>

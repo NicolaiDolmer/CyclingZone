@@ -5,8 +5,8 @@ import Segmented from "../../ui/Segmented.jsx";
 import HeroStats from "../../ui/HeroStats.jsx";
 import { ArrowDownIcon, ArrowUpIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from "../../ui/icons/index.jsx";
 import RiderLink from "../../RiderLink.jsx";
-import { Flag } from "../../Flag.jsx";
-import { formatDate, formatNumber } from "../../../lib/intl.js";
+import { Flag, formatDay } from "./ui.ts";
+import { formatNumber } from "../../../lib/intl.js";
 import { filterTodayRiders, xpOfPrice, type TodayFilter, type XpTodayRider, type XpTodayView } from "../../../lib/trainingReportXp.ts";
 import { Swatch, XpBar, XpLegend } from "./XpBar.tsx";
 
@@ -128,7 +128,7 @@ export default function XpToday({ view, onPickDate, switcher }: { view: XpTodayV
   const riders = filterTodayRiders(view.riders, filter);
   const selected = riders.find(r => r.id === picked) ?? riders[0] ?? null;
   const maxXp = Math.max(1, ...riders.map(r => r.xp));
-  const dayLabel = (date: string, style: Intl.DateTimeFormatOptions) => formatDate(date, null, style);
+  const dayLabel = (date: string, style: Intl.DateTimeFormatOptions) => formatDay(date, style);
   const navButton = "inline-flex size-11 shrink-0 items-center justify-center rounded-cz border border-cz-border text-cz-2 hover:text-cz-1 disabled:opacity-40";
   return (
     <>
