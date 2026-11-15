@@ -333,7 +333,9 @@ function TogglePill({ label, ariaLabel, active, disabled, onClick, title }) {
 
 // #6570: initialStage = etapen etapeside 2.0's guld-knap naevner ("Set tactics
 // for stage N"). Aaben etape → fanen aabner paa den; ellers dagens regel.
-export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders: showOrdersProp = false, initialStage = null }) {
+// #7865: stage = etapen styres udefra (løbssiden v6's ene etapestribe); hideStagePicker
+// skjuler fanens egen vælger. Begge default = uændret.
+export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders: showOrdersProp = false, initialStage = null, stage = null, hideStagePicker = false }) {
   const { t } = useTranslation("races");
   // #6067: løbets regel-revision, bundet til DET løb den er læst for. Et skift
   // af raceId kan derfor aldrig arve et andet løbs revision, og en fejlet
@@ -511,6 +513,14 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     isDirty(draftMatrix, initialMatrix) ||
     (showOrders && JSON.stringify(ordersByStage) !== JSON.stringify(initialOrdersByStage));
   useReloadBlock(draftDirty || status === "saving", RELOAD_BLOCK_REASONS.DIRTY);
+  // #7865: en etape udefra åbnes som et klik i fanens egen vælger (kladden bevares).
+  useEffect(() => {
+    if (stage == null) return;
+    setActiveStage(stage);
+    setOpenRiderId(null);
+    setOpenRoleRiderId(null);
+    setStatus((s) => (s === "saved" ? "idle" : s));
+  }, [stage]);
 
   if (roles === null) {
     return (
@@ -1138,7 +1148,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       {/* Etape-vælger: fanens egen toolbar inde i hairline-rammen. Låste etaper
           kan åbnes, men er read-only. Endagsløb har ingen vælger. */}
       <div className="px-4 py-2 border-b border-cz-border bg-cz-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div className="inline-flex rounded-cz border border-cz-border bg-cz-card overflow-x-auto max-w-full self-start">
+        {!hideStagePicker && <div className="inline-flex rounded-cz border border-cz-border bg-cz-card overflow-x-auto max-w-full self-start">
           {isOneDay ? (
             <span className="px-3 py-1 text-xs font-semibold text-cz-accent-t bg-cz-accent/10 whitespace-nowrap">
               {t("intention.raceDay")}
@@ -1174,7 +1184,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
               );
             })
           )}
-        </div>
+        </div>}
         <p className="text-xs text-cz-2">{toolbarNote}</p>
       </div>
 

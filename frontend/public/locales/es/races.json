@@ -11,7 +11,14 @@
     "hero": {
       "stageLocks": "La etapa {number} se cierra a las {time} · {countdown}",
       "locks": "Se cierra a las {time} · {countdown}",
-      "notScheduled": "La etapa {number} aún no tiene hora de salida"
+      "notScheduled": "La etapa {number} aún no tiene hora de salida",
+      "gapToLead": "{gap} del líder"
+    },
+    "strip": {
+      "earlier": "Etapas anteriores",
+      "later": "Etapas siguientes",
+      "you": "Tú #{rank}",
+      "plan": "{done} de {total} hechas"
     },
     "route": {
       "aria": "Recorrido de la etapa",
@@ -42,7 +49,6 @@
       "colRecord": "Lo que muestra el registro",
       "step": "Paso {number}",
       "km": "km {km}",
-      "noRiders": "Ninguno de tus corredores corrió esta etapa.",
       "noOrders": "No se pudo cargar tu plan para esta etapa. Inténtalo más tarde.",
       "mark": {
         "notSeen": "No visto en el registro",

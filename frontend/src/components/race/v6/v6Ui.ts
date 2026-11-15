@@ -6,7 +6,10 @@ import {
   ChevronUpIcon as ChevronUpIconJs,
   FlagIcon as FlagIconJs,
   CheckIcon as CheckIconJs,
+  ChevronLeftIcon as ChevronLeftIconJs,
+  ChevronRightIcon as ChevronRightIconJs,
 } from "../../ui/icons/index.jsx";
+import HeroStatsJs from "../../ui/HeroStats.jsx";
 import StageProfileGraphJs from "../StageProfileGraph.jsx";
 
 interface EmptyStateProps { icon?: ReactNode; title: ReactNode; description?: ReactNode; action: ReactNode }
@@ -34,4 +37,9 @@ export const ChevronDownIcon = ChevronDownIconJs as unknown as (props: IconProps
 export const ChevronUpIcon = ChevronUpIconJs as unknown as (props: IconProps) => ReactNode;
 export const FlagIcon = FlagIconJs as unknown as (props: IconProps) => ReactNode;
 export const CheckIcon = CheckIconJs as unknown as (props: IconProps) => ReactNode;
+export const ChevronLeftIcon = ChevronLeftIconJs as unknown as (props: IconProps) => ReactNode;
+export const ChevronRightIcon = ChevronRightIconJs as unknown as (props: IconProps) => ReactNode;
+/** T3-heroens talrække (#4628). `flush` = uden egen top-streg og luft (udgave E: rækken står mellem hovedkortets hairlines). */
+export interface HeroStatItem { label: string; value: ReactNode; sub?: ReactNode | null }
+export const HeroStats = HeroStatsJs as unknown as (props: { items: HeroStatItem[]; className?: string; flush?: boolean }) => ReactNode;
 export const StageProfileGraph = StageProfileGraphJs as unknown as (props: StageProfileGraphProps) => ReactNode;

@@ -1080,3 +1080,79 @@ tr:hover .sticky-name-cell {
     }
   }
 }
+
+/* #7778 udgave E: v6's etapestribe (V6StageStrip.tsx), bunden af løbshovedets kort.
+   Modern Web Guidance (carousel, scrollability-affordance-hints): vandret
+   rullecontainer, scroll-snap "proximity" (cellerne er valg, ikke slides), kant-fade
+   når der er mere, og scroll-padding-inline lig faden, så en celle aldrig snapper
+   eller får fokus inde i faden. Faden følger rullepositionen med en scroll-drevet
+   animation; uden den sætter komponenten data-more-start/-end (fallback nedenfor). */
+@property --v6-fade-start {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@property --v6-fade-end {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@keyframes v6-reveal-fade-start {
+  to { --v6-fade-start: var(--v6-fade-size); }
+}
+@keyframes v6-hide-fade-end {
+  from { --v6-fade-end: var(--v6-fade-size); }
+}
+@layer utilities {
+  .v6-strip-scroller {
+    --v6-fade-size: 2rem;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: var(--v6-fade-size);
+    scrollbar-width: none;
+    mask:
+      linear-gradient(black, black) no-clip subtract,
+      linear-gradient(to right, black, transparent) 0 0 / var(--v6-fade-start) 100% no-repeat no-clip,
+      linear-gradient(to right, transparent, black) 100% 0 / var(--v6-fade-end) 100% no-repeat no-clip;
+  }
+  .v6-strip-scroller::-webkit-scrollbar { display: none; }
+  @supports (animation-timeline: scroll()) {
+    .v6-strip-scroller {
+      animation: v6-reveal-fade-start linear both, v6-hide-fade-end linear both;
+      animation-timeline: scroll(self inline);
+      animation-range: 0 var(--v6-fade-size), calc(100% - var(--v6-fade-size)) 100%;
+    }
+  }
+  @supports not (animation-timeline: scroll()) {
+    .v6-strip-scroller[data-more-start="true"] { --v6-fade-start: var(--v6-fade-size); }
+    .v6-strip-scroller[data-more-end="true"] { --v6-fade-end: var(--v6-fade-size); }
+  }
+  .v6-strip-cell {
+    position: relative;
+    scroll-snap-align: start;
+  }
+  /* Den valgte etape: mørk kant (aldrig guld, valg 22). En kant, ikke en skygge. */
+  .v6-strip-cell[aria-current="true"]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 1.5px solid var(--text-1);
+    border-radius: 3px;
+    pointer-events: none;
+  }
+  /* Fokus står inden for cellen, så rullecontaineren ikke klipper den. */
+  .v6-strip-cell:focus-visible { outline-offset: -4px; }
+  .v6-strip-nav {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    border-color: var(--border);
+    color: var(--text-2);
+  }
+  .v6-strip-nav:hover:not(:disabled) { background: var(--bg-subtle); color: var(--text-1); }
+  .v6-strip-nav:disabled { color: var(--text-3); opacity: .45; }
+  .v6-strip-nav:focus-visible { outline-offset: -4px; }
+}

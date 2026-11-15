@@ -33,8 +33,8 @@ interface SegmentedOption { value: string; label: ReactNode; title?: string; dis
 interface SegmentedProps { label: string; value: string; onChange: (next: string) => void; options: SegmentedOption[]; className?: string }
 interface SkeletonLinesProps { lines?: number }
 interface TabsProps { value: string; onChange: (next: string) => void; className?: string; children: ReactNode }
-interface TabListProps { label: string; className?: string; fit?: boolean; children: ReactNode }
-interface TabProps { value: string; className?: string; children: ReactNode }
+interface TabListProps { label: string; className?: string; fit?: boolean; accent?: boolean; children: ReactNode }
+interface TabProps { value: string; className?: string; id?: string; children: ReactNode }
 interface FlagProps { code?: string | null; className?: string; squared?: boolean; title?: string }
 interface TerrainTypeGlyphProps { profileType?: string | null; size?: number; className?: string; showLabel?: boolean; labelClassName?: string }
 interface RiderLinkProps { id?: string | null; className?: string; children: ReactNode }
