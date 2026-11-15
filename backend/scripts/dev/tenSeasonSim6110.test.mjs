@@ -14,12 +14,13 @@ import {
   variationSeries, veteranStats, xpProgramShares, xpRunInputs, sameXpRun, xpVariant,
   XP_ENGINE_HOOKS, assertPrivateOutDir, cohortFingerprint, dateGainBucket, inflationCheck,
   renderMotorpakke, renderX7, runCohort, topLossCheck, validateRequirements,
-  SIM_CALENDAR_ANCHOR, TIME_TRIAL_PROFILES, engineRaceDayXp, engineRaceRider, r16Check, simDateStr, variationText,
+  SIM_CALENDAR_ANCHOR, TIME_TRIAL_PROFILES, engineRaceDayXp, engineRaceRider, r16Check, resultCapPerDate, simDateStr, MAX_RACE_INTENTION, raceIntentionMult, variationText,
 } from "./tenSeasonSim6110.mjs";
 import { developmentXpAbilityDelta, validateDevelopmentXpParams, xpPriceForNextPoint } from "../../lib/developmentXp.ts";
 import { developmentXpDayVariation } from "../../lib/developmentXpVariation.ts";
 import { xpBestHardSessionTotal } from "../../lib/developmentXpRaceFit.ts";
 import { raceDayProgram } from "../../lib/raceDayYield.js";
+import { VALID_EFFORTS_FIVE_STEP, effortDevelopmentMultiplier } from "../../lib/raceRoles.js";
 import { TRAINING_CONFIG } from "../../lib/training.js";
 import { raceDayBudgetDivisor } from "../../lib/trainingRaceDayTick.js";
 
@@ -378,13 +379,38 @@ test("Codex P2: en gemt kørsel med udgået variant (_gulv) springes over i sted
   assert.equal(sameXpRun({ ...good, variant: "xp_bonus15_gulv_nocap" }, XP_OPTS), false);
 });
 
-test("Codex P2: X9 bruger bredde 0 uden xp.variation, men bevarer eksplicitte angrebsbredder", () => {
+test("X9 (Fable-dom 15/11, fund 4): dommen bruger motorens variation; angrebsbredder er mærkede udforskninger uden for dommen", () => {
   const snap = syntheticSnapshot();
   const base = { estimateParams: ESTIMATE_PARAMS, knowledge: [], sampleRiders: 5 };
-  const spans = (opts) => Object.keys(runXpGates(snap, opts, base).x9.attack).map((k) => k.split("-")[0]);
-  assert.deepEqual(spans(XP_OPTS), ["span0"]);
-  assert.deepEqual(spans({ ...XP_OPTS, xpAttackSpans: [0.3] }), ["span0.3"]);
-  assert.deepEqual(spans({ ...XP_OPTS, xp: XP_RAW_VAR }), ["span0.5"]);
+  const seen = [];
+  const hooks = { ...XP_ENGINE_HOOKS, dayVariation: (args, variation) => {
+    const mult = XP_ENGINE_HOOKS.dayVariation(args, variation);
+    seen.push({ ...args, mult, variation });
+    return mult;
+  } };
+  const varOpts = { ...XP_OPTS, xp: XP_RAW_VAR, engineHooks: hooks };
+  const withVar = runXpGates(snap, varOpts, base);
+  assert.deepEqual(Object.keys(withVar.x9.attack), ["motor"], "dommen har kun motorens variation");
+  assert.deepEqual(withVar.x9.explore, {}, "ingen udforskning uden private angrebsbredder");
+  assert.ok(seen.length > 0, "X9 kalder motorens dagsvariation");
+  const params = xpVariant("xp", varOpts).xpParams;
+  for (const s of seen.slice(0, 20)) {
+    assert.match(s.dateStr, /^\d{4}-\d{2}-\d{2}$/, "en rigtig dato, som i motoren");
+    assert.equal(s.mult, developmentXpDayVariation({ riderId: s.riderId, dateStr: s.dateStr }, params.variation));
+  }
+  assert.ok(seen.some((s) => s.mult !== 1), "med xp.variation svinger dagene");
+  // Uden xp.variation er dagen 1 i motoren, også i X9.
+  seen.length = 0;
+  runXpGates(snap, { ...XP_OPTS, engineHooks: hooks }, base);
+  assert.ok(seen.length > 0 && seen.every((s) => s.mult === 1));
+  // Private angrebsbredder flytter aldrig dommen; de står mærket i explore.
+  const explored = runXpGates(snap, { ...varOpts, xpAttackSpans: [0.05, 0.9], xpAttackMemories: [0.9] }, base);
+  assert.deepEqual(explored.x9.attack, withVar.x9.attack, "udforskningerne rører ikke dommen");
+  assert.deepEqual(Object.keys(explored.x9.explore), ["span0.05-mem0.9", "span0.9-mem0.9"]);
+  const card = renderXpGates(snap, [], explored, varOpts, "test");
+  assert.match(card, /Angreb, motorens variation \(dommen\)/);
+  assert.match(card, /X9 udforskning \(ikke en del af tændingsdommen\)/);
+  assert.match(card, /\| udforskning span0\.9-mem0\.9 \|/);
 });
 
 test("potentialPeakStats og veteranStats:måler karrierens top og om veteraner stiger", () => {
@@ -454,9 +480,10 @@ test("talentAttack: bredere variation gør aflæsningen dårligere, og skønnet 
     const potentiale = 1 + (i % 3) * 2;
     return { id: `r${i}`, potentiale, truth: potentiale * 10, truthByPotential: { 1: 10, 3: 30, 5: 50 } };
   });
-  const out = talentAttack(rows, XP, ESTIMATE_PARAMS, { dateSteps: [5, 30], spans: [0.05, 0.9], memories: [0], potentials: [1, 3, 5] });
-  assert.equal(out.attack["span0.05-mem0"][30].exactPct, 100);
-  assert.ok(out.attack["span0.9-mem0"][5].exactPct <= out.attack["span0.05-mem0"][5].exactPct);
+  const out = talentAttack(rows, XP, ESTIMATE_PARAMS, { dateSteps: [5, 30], explore: { spans: [0.05, 0.9], memories: [0] }, potentials: [1, 3, 5] });
+  assert.equal(out.explore["span0.05-mem0"][30].exactPct, 100);
+  assert.ok(out.explore["span0.9-mem0"][5].exactPct <= out.explore["span0.05-mem0"][5].exactPct);
+  assert.equal(out.attack.motor[30].exactPct, 100, "uden xp.variation læses potentialet præcist af motorens dag");
   assert.ok(out.estimate[5].p50 >= out.estimate[30].p50, "skønnet bliver bedre med tiden");
 });
 
@@ -683,6 +710,51 @@ test("R16 i kørslen: løbsdatoer og enkeltstarter tælles for sig, og dommen er
   assert.deepEqual(r16Check({ all: { 1: 4 }, raceDate: {}, trainingDate: {} }), { all: 0, raceDate: 0, timeTrialDate: 0, verdict: true }, "gamle kørsler uden enkeltstart");
   assert.equal(r16Check({ all: { "3+": 1 }, raceDate: { "3+": 1 }, timeTrialDate: { "3+": 1 } }).verdict, false);
   assert.equal(r16Check(null).verdict, null);
+});
+
+test("R16 på løbsdage med højeste intention (Fable-dom 15/11, fund 6): leddet _maxint giver motoren den højeste intention", () => {
+  assert.equal(MAX_RACE_INTENTION, Math.max(...VALID_EFFORTS_FIVE_STEP.map(effortDevelopmentMultiplier)));
+  assert.ok(MAX_RACE_INTENTION > 1, "den højeste intention giver mere end normal");
+  assert.equal(raceIntentionMult("normal"), 1);
+  const opts = { ...XP_OPTS, seasons: 1, raceShareByAge: [{ maxAge: 99, share: 1 }], xpVariants: XP_BIG };
+  const max = xpVariant("xp_stor_nocap_maxint", opts);
+  assert.deepEqual([max.raceIntention, max.capPerDate], ["max", false]);
+  assert.equal(xpVariant("xp_stor_nocap", opts).raceIntention, "normal");
+  assert.equal(xpRunInputs(max, opts).raceIntention, "max", "højeste intention er en anden kørsel");
+  assert.equal("raceIntention" in xpRunInputs(xpVariant("xp_nocap", XP_OPTS), XP_OPTS), false, "kørsler uden _maxint har samme identitet som før");
+  const seen = [];
+  const hooks = { ...XP_ENGINE_HOOKS, raceDayXp: (args) => { seen.push(args.intention); return XP_ENGINE_HOOKS.raceDayXp(args); } };
+  const snap = syntheticSnapshot();
+  const hi = runVariant(snap, max, { ...opts, engineHooks: hooks });
+  assert.ok(seen.length > 0 && seen.every((i) => i === MAX_RACE_INTENTION), "hver løbsdag regnes med den højeste intention");
+  seen.length = 0;
+  const normal = runVariant(snap, xpVariant("xp_stor_nocap", opts), { ...opts, engineHooks: hooks });
+  assert.ok(seen.length > 0 && seen.every((i) => i === 1), "uden _maxint er løbsdagen normal");
+  const total = (r) => Object.values(r.dateGains.raceDate).reduce((s, n) => s + n, 0);
+  assert.ok(total(hi) >= total(normal), "højeste intention giver mindst lige så mange løbsdato-stigninger");
+  assert.match(renderMotorpakke(snap, [hi], [], opts, "test"), /\| xp_stor_nocap_maxint \| verden \| \d+ \| \d+ \| \d+ \| holder( IKKE)? \|/);
+});
+
+test("R16-dommen (Fable-dom 15/11, fund 3): brud dømmes 'holder IKKE', dagsloft dømmes 'ikke målt', aldrig 'holder'", () => {
+  const opts = { ...XP_OPTS, seasons: 1, raceShareByAge: [{ maxAge: 99, share: 0.5 }], xpVariants: XP_BIG };
+  const snap = syntheticSnapshot();
+  const free = runVariant(snap, xpVariant("xp_stor_nocap", opts), opts);
+  const capped = runVariant(snap, xpVariant("xp_stor", opts), opts);
+  assert.ok((free.dateGains.all["3+"] ?? 0) > 0, "de store syntetiske tal giver +3 på en dato uden dagsloft");
+  assert.equal(capped.dateGains.max, 1, "med dagsloft kan intet stige mere end 1");
+  assert.deepEqual([free.capPerDate, capped.capPerDate], [false, true]);
+  assert.equal(r16Check(free.dateGains, { capPerDate: false }).verdict, false);
+  const c = r16Check(capped.dateGains, { capPerDate: true });
+  assert.deepEqual([c.verdict, c.reason], [null, "ikke målt (dagsloft)"]);
+  const card = renderMotorpakke(snap, [free, capped], [], opts, "test");
+  assert.match(card, /\| xp_stor_nocap \| verden \| [1-9]\d* \| \d+ \| \d+ \| holder IKKE \|/, "en kørsel med brud dømmes 'holder IKKE'");
+  assert.match(card, /\| xp_stor \| verden \| 0 \| 0 \| 0 \| ikke målt \(dagsloft\) \|/, "dagsloft måler intet");
+  assert.doesNotMatch(card, /\| xp_stor \| verden \|[^\n]*\| holder \|/);
+  // Gemte kørsler fra før feltet: XP-kørsler har det i identiteten, de gamle modeller i navnet.
+  const { capPerDate: _drop, ...oldFree } = free;
+  assert.equal(resultCapPerDate(oldFree), false);
+  assert.equal(resultCapPerDate({ variant: "nu" }), false);
+  assert.equal(resultCapPerDate({ variant: "kurveB" }), true);
 });
 
 test("motorens hook: kørslen bruger de injicerede funktioner, og kilden står i kørslens identitet", () => {

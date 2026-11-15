@@ -45,6 +45,8 @@
 //   Private varianter (andre tal) kan lægges i XP_PRIVATE.variants.
 //   Led i navnet kan kombineres (#7757), fx xp_bonus15_nocap eller xp_cal_nocap:
 //     _nocap   intet dagsloft (#7739): kun prisen bremser, så #7739 kan måles.
+//     _maxint  løbsdage med den højeste intention (fx xp_nocap_maxint), så R16 også
+//              måles, når manageren beder om mest (Fable-dom 15/11, fund 6).
 //   Én sandhed med motoren (#7757, ejer 14/11): dagsvariationen er motorens egen
 //   (developmentXpVariation.ts) med bredde, hukommelse og nøgle fra xp.variation i den
 //   private fil; uden xp.variation er der ingen variation, præcis som i motoren. En
@@ -117,6 +119,7 @@ import { facilityTrainingMultiplier, staffTrainingBonus } from "../../lib/staffT
 import { riderLevelBand, normalizeLevelBands } from "../../lib/staffAbilityConstants.js";
 import { deriveStaffAbilities } from "../../lib/staffAbilityDerivation.js";
 import { raceDayProgram } from "../../lib/raceDayYield.js";
+import { VALID_EFFORTS_FIVE_STEP, effortDevelopmentMultiplier } from "../../lib/raceRoles.js";
 import { RACE_PROFILE_ABILITY_MAP } from "../../lib/dailyTraining.js";
 import { TRAINING_RACE_DAY_CONFIG, raceDayBudgetDivisor } from "../../lib/trainingRaceDayTick.js";
 import { generateAcademyCandidates } from "../../lib/academyGenerator.js";
@@ -375,7 +378,8 @@ export function engineRaceRider({ age, potentiale, primaryType, secondaryType, t
  * dailyTrainingEngine: programmet og rolletillægget fra withRaceDayRoleYieldXp (ellers
  * raceDayProgram), XP pr. evne fra developmentXpAbilityDelta (med løbsdags-gulvet), og
  * R15b-løftet på en etape, der passer rytterens primære type. Før dagsvariationen.
- * Kørslen har ingen intention (normal), og holdene kører det katalog, der er live (v3).
+ * Intentionen er normal (1), medmindre varianten har leddet _maxint (højeste intention),
+ * og holdene kører det katalog, der er live (v3).
  */
 export function engineRaceDayXp({ profile, role, rider, xp, raceRoleYield = null, catalogV3 = true, intention = 1 }) {
   const call = withRaceDayRoleYieldXp(xp, {}, { params: raceRoleYield, profileType: profile, role, catalogV3 });
@@ -389,6 +393,15 @@ export function engineRaceDayXp({ profile, role, rider, xp, raceRoleYield = null
   }
   const lifted = developmentXpRaceFitFloor({ day, program, fit: call.xpRaceDayFit, academyRateMult: intention, rider }, xp);
   return { xp: lifted ?? day, lifted: lifted != null, program };
+}
+
+/**
+ * Løbsdagens intention som motorens multiplikator (raceRoles.js). "max" er den højeste,
+ * manageren kan vælge, så R16 kan måles på den værste løbsdag (Fable-dom 15/11, fund 6).
+ */
+export const MAX_RACE_INTENTION = Math.max(...VALID_EFFORTS_FIVE_STEP.map(effortDevelopmentMultiplier));
+export function raceIntentionMult(intention) {
+  return intention === "max" ? MAX_RACE_INTENTION : effortDevelopmentMultiplier(intention ?? "normal");
 }
 
 export const XP_ENGINE_HOOKS = Object.freeze({
@@ -531,12 +544,29 @@ export function emptyDateGains() {
  * R16 (ejer 12/11): en evne stiger aldrig 3 point eller mere på én dato, heller ikke på
  * løbsdatoer og enkeltstarter. Reglen er ejerens egen og offentlig; dommen er 0 brud.
  * Ældre gemte kørsler uden enkeltstarts-spand tæller som 0 dér.
+ *
+ * Med dagsloft (`capPerDate`) kan en evne slet ikke stige mere end +1 på en dato, så
+ * intet er målt: dommen er "ikke målt (dagsloft)", aldrig "holder" (Fable-dom 15/11,
+ * fund 3). Kun en kørsel uden dagsloft (fx `_nocap`) kan dømme R16.
  */
-export function r16Check(dateGains) {
+export const R16_NOT_MEASURED_CAP = "ikke målt (dagsloft)";
+export function r16Check(dateGains, { capPerDate = false } = {}) {
   if (!dateGains) return { all: null, raceDate: null, timeTrialDate: null, verdict: null };
   const three = (h) => h?.["3+"] ?? 0;
   const out = { all: three(dateGains.all), raceDate: three(dateGains.raceDate), timeTrialDate: three(dateGains.timeTrialDate) };
+  if (capPerDate) return { ...out, verdict: null, reason: R16_NOT_MEASURED_CAP };
   return { ...out, verdict: out.all === 0 };
+}
+
+/**
+ * Om en (evt. gemt) kørsel havde dagsloft. Nye kørsler gemmer feltet; ældre XP-kørsler
+ * har det i kørselsidentiteten, og ældre kørsler af de gamle modeller har det kun i
+ * navnet: kun "nu" kørte uden dagsloft.
+ */
+export function resultCapPerDate(r) {
+  if (typeof r?.capPerDate === "boolean") return r.capPerDate;
+  if (typeof r?.params?.xpRun?.capPerDate === "boolean") return r.params.xpRun.capPerDate;
+  return r?.variant !== "nu";
 }
 
 export function cohortAgeBand(age) {
@@ -634,10 +664,11 @@ function simulateSeasonXp(world, seasonNumber, variant, opts) {
       age, potentiale: r.potentiale, primaryType: r.primary_type, secondaryType: r.secondary_type, team, riderLevel: riderLevelBand({ age }),
     });
     const raceCache = new Map();
+    const intention = raceIntentionMult(variant.raceIntention); // 1 = normal; _maxint = højeste (fund 6)
     const raceDayXp = (profile, role) => {
       const key = `${profile}|${role}`;
       let hit = raceCache.get(key);
-      if (!hit) { hit = hooks.raceDayXp({ profile, role, rider, xp, raceRoleYield: opts.raceRoleYield }); raceCache.set(key, hit); }
+      if (!hit) { hit = hooks.raceDayXp({ profile, role, rider, xp, raceRoleYield: opts.raceRoleYield, intention }); raceCache.set(key, hit); }
       return hit;
     };
     let gameDay = 0;
@@ -980,6 +1011,7 @@ export function runVariant(snapshot, variant, opts = SIM_DEFAULTS) {
   result.bNorm = world.bNorm;
   result.dateCap = world.dateCap;
   result.dateGains = world.dateGains;
+  result.capPerDate = variant.capPerDate !== false; // R16 kan kun dømmes uden dagsloft
   result.params = { raceDaysPerSeason: opts.raceDaysPerSeason, bNoiseSpan: opts.bNoiseSpan, bReferenceAge: opts.bReferenceAge,
     curveB: variant.kind === "curveB" ? opts.curveB ?? null : null, // #3564: kortet blander aldrig to kalibreringer
     curveBRun: variant.kind === "curveB" ? curveBRunInputs(opts) : null,
@@ -1082,7 +1114,7 @@ export function runCohort(snapshot, variant, opts = SIM_DEFAULTS) {
   return {
     variant: variant.name, mode: "cohort", cohortSize: world.riders.length, startAge, endAge, startSeason: s0 + 1,
     byAge: ages, retiredAt, milestones: milestoneStats(world.riders), peakByPotential: potentialPeakStats(world.riders),
-    riderPeaks, dateGains: world.dateGains, abilityPoints: world.abilityPoints,
+    riderPeaks, dateGains: world.dateGains, abilityPoints: world.abilityPoints, capPerDate: variant.capPerDate !== false,
     params: { xp: variant.kind === "xp" ? variant.xpParams : null, xpRun: variant.kind === "xp" ? xpRunInputs(variant, opts) : null,
       curveB: variant.kind === "curveB" ? opts.curveB ?? null : null, curveBRun: variant.kind === "curveB" ? curveBRunInputs(opts) : null },
     fingerprint: cohortFingerprint(snapshot, opts),
@@ -1180,6 +1212,8 @@ export function xpRunInputs(variant, opts) {
   const variation = xpVariationFingerprint(variant.xpParams?.variation);
   return { ...(variation ? { variation } : {}), plan: variant.plan, intensity: variant.intensity, trainNowBonus: variant.trainNowBonus,
     capPerDate: variant.capPerDate !== false,
+    // Kun med, når løbsdagen ikke er normal, så kørsler uden _maxint har samme identitet som før.
+    ...(variant.raceIntention && variant.raceIntention !== "normal" ? { raceIntention: variant.raceIntention } : {}),
     engine: engineHooks(opts).source,
     raceRoles: opts.raceRoles ?? null, raceRoleYield: opts.raceRoleYield ?? null };
 }
@@ -1216,7 +1250,9 @@ export function xpGateKey({ fingerprint, opts, estimateParams = null, knowledge 
   // Variationen står i gateVariant.xpParams (xp.variation); motorens kilde flytter kørslen.
   const inputs = [fingerprint, gateVariant.xpParams, xpVariationFingerprint(gateVariant.xpParams.variation), curveBRunInputs(opts), opts.curveB ?? null,
     opts.xpAttackSpans ?? null, opts.xpAttackMemories ?? null, estimateParams, knowledge,
-    gateVariant.plan, engineHooks(opts).source];
+    gateVariant.plan, engineHooks(opts).source,
+    // X9 måles på motorens variation (fund 4, 15/11): gemte gates fra før er en anden måling.
+    "x9-motor-variation"];
   return createHash("sha256").update(JSON.stringify(inputs)).digest("hex");
 }
 
@@ -1227,6 +1263,7 @@ const XP_NAME_TOKENS = Object.freeze({
   rot: { plan: "rotate" },
   hard: { intensity: "hard" },
   nocap: { capPerDate: false }, // intet dagsloft (#7739): kun prisen bremser
+  maxint: { raceIntention: "max" }, // løbsdage med højeste intention (fund 6)
 });
 
 // Felter, der gav en anden sandhed om dagsvariationen end motoren. De hører nu i xp.variation.
@@ -1261,6 +1298,7 @@ export function xpVariant(name, opts) {
     plan: custom.plan ?? flags.plan ?? "standard",
     intensity: custom.intensity ?? flags.intensity ?? null,
     trainNowBonus: custom.trainNowBonus ?? (bonusPct != null ? bonusPct / 100 : 0),
+    raceIntention: custom.raceIntention ?? flags.raceIntention ?? "normal",
   };
 }
 
@@ -1522,8 +1560,18 @@ export function nearestPotential(xpRead, steps) {
  * X9/H6b: en spiller kender koden og alle input undtagen nøglen og potentialet. Han
  * deler dagens XP med de kendte led, tager snittet over N datoer og slår potentialet op.
  * Fejlen måles på det sande tal og sammenlignes med holdets eget skøn efter N datoer.
+ *
+ * `attack.motor` er dommen: dagens udsving er motorens egen funktion
+ * (developmentXpDayVariation via kørslens hook) med xp.variation, på rigtige datoer, så
+ * det målte er det, motoren tænder med (Fable-dom 15/11, fund 4). Uden xp.variation er
+ * udsvinget 1, som i motoren. `explore` (private sim.attackSpans/attackMemories) er
+ * udtrykkelige udforskninger med kørslens egen variationSeries; de står i `explore`,
+ * aldrig i `attack`, og indgår aldrig i den dom, der afgør tænding.
  */
-export function talentAttack(rows, xp, estimateParams, { dateSteps, spans, memories, potentials }) {
+export const X9_ENGINE_KEY = "motor";
+export function talentAttack(rows, xp, estimateParams, {
+  dateSteps, potentials, explore = null, dayVariation = developmentXpDayVariation, season = 0, datesPerSeason = 1,
+}) {
   const steps = potentials.map((potentiale) => ({ potentiale, xp: xpPerDate({ potentiale, age: 23 }, xp) }));
   const estimateErr = (n) => {
     const errs = rows.map((r) => {
@@ -1532,25 +1580,27 @@ export function talentAttack(rows, xp, estimateParams, { dateSteps, spans, memor
     }).filter((x) => x != null);
     return errs.length ? { p50: quantile(errs.sort((a, b) => a - b), 0.5), hidden: rows.length - errs.length } : { p50: null, hidden: rows.length };
   };
-  const out = { estimate: {}, attack: {} };
+  const attackWith = (seriesFor) => Object.fromEntries(dateSteps.map((n) => {
+    const errs = [];
+    let exact = 0;
+    for (const r of rows) {
+      const base = xpPerDate({ potentiale: r.potentiale, age: 23 }, xp);
+      const series = seriesFor(r, n);
+      const read = series.reduce((s, v) => s + base * v, 0) / n;
+      const guess = nearestPotential(read, steps);
+      if (guess === r.potentiale) exact += 1;
+      errs.push(Math.abs((r.truthByPotential[guess] ?? r.truth) - r.truth));
+    }
+    return [n, { p50: quantile(errs.sort((a, b) => a - b), 0.5), exactPct: round((100 * exact) / rows.length) }];
+  }));
+  const out = { estimate: {}, attack: {}, explore: {} };
   for (const n of dateSteps) out.estimate[n] = estimateErr(n);
-  for (const span of spans) {
-    for (const memory of memories) {
-      const key = `span${span}-mem${memory}`;
-      out.attack[key] = {};
-      for (const n of dateSteps) {
-        const errs = [];
-        let exact = 0;
-        for (const r of rows) {
-          const base = xpPerDate({ potentiale: r.potentiale, age: 23 }, xp);
-          const series = variationSeries(`h6b:${r.id}`, n, span, memory);
-          const read = series.reduce((s, v) => s + base * v, 0) / n;
-          const guess = nearestPotential(read, steps);
-          if (guess === r.potentiale) exact += 1;
-          errs.push(Math.abs((r.truthByPotential[guess] ?? r.truth) - r.truth));
-        }
-        out.attack[key][n] = { p50: quantile(errs.sort((a, b) => a - b), 0.5), exactPct: round((100 * exact) / rows.length) };
-      }
+  const engineSeries = (r, n) => Array.from({ length: n }, (_, d) => dayVariation(
+    { riderId: r.id, dateStr: simDateStr(season, d, datesPerSeason) }, xp.variation));
+  out.attack[X9_ENGINE_KEY] = attackWith(engineSeries);
+  for (const span of explore?.spans ?? []) {
+    for (const memory of explore?.memories ?? [0]) {
+      out.explore[`span${span}-mem${memory}`] = attackWith((r, n) => variationSeries(`h6b:${r.id}`, n, span, memory));
     }
   }
   return out;
@@ -1667,9 +1717,13 @@ export function runXpGates(snapshot, opts, { estimateParams = null, knowledge = 
     return { ...row, truthByPotential: Object.fromEntries(potentials.map((p) => [p, expectedTopRating(asInput(r, p), xp, career)])) };
   });
   out.x9 = talentAttack(sample, xp, estimateParams, {
-    // Uden egne angrebsbredder måles motorens egen variation (xp.variation); uden variation er der ingen støj (bredde 0).
-    dateSteps: [5, 12, 20, 40], spans: opts.xpAttackSpans ?? [xp.variation?.span ?? 0],
-    memories: opts.xpAttackMemories ?? [xp.variation?.memory ?? 0], potentials,
+    // Dommen måler motorens egen variation (xp.variation) gennem kørslens hook; uden variation er dagen 1.
+    // Private angrebsbredder er udforskninger for sig og indgår aldrig i dommen (Fable-dom 15/11, fund 4).
+    dateSteps: [5, 12, 20, 40], potentials,
+    dayVariation: engineHooks(opts).dayVariation, season, datesPerSeason: career.datesPerSeason,
+    explore: opts.xpAttackSpans || opts.xpAttackMemories
+      ? { spans: opts.xpAttackSpans ?? [xp.variation?.span ?? 0], memories: opts.xpAttackMemories ?? [xp.variation?.memory ?? 0] }
+      : null,
   });
   return out;
 }
@@ -1932,8 +1986,20 @@ export function renderXpGates(snapshot, results, gates, opts, date) {
     L.push(`| Kilde | ${ns.map((n) => `${n} datoer`).join(" | ")} |`);
     L.push(`|---|${ns.map(() => "---").join("|")}|`);
     L.push(`| Skøn | ${ns.map((n) => gates.x9.estimate[n].p50 ?? "skjult").join(" | ")} |`);
-    for (const [k, v] of Object.entries(gates.x9.attack)) L.push(`| ${k} | ${ns.map((n) => `${v[n].p50} (${v[n].exactPct} % præcis)`).join(" | ")} |`);
+    const row = (k, v) => `| ${k} | ${ns.map((n) => `${v[n].p50} (${v[n].exactPct} % præcis)`).join(" | ")} |`;
+    for (const [k, v] of Object.entries(gates.x9.attack)) L.push(row(k === X9_ENGINE_KEY ? "Angreb, motorens variation (dommen)" : k, v));
     L.push("");
+    const explore = Object.entries(gates.x9.explore ?? {});
+    if (explore.length) {
+      L.push("### X9 udforskning (ikke en del af tændingsdommen)");
+      L.push("");
+      L.push("Kørslens egen variation med de private angrebsbredder (sim.attackSpans/attackMemories). Kun til at se, hvad en anden variation ville gøre.");
+      L.push("");
+      L.push(`| Udforskning | ${ns.map((n) => `${n} datoer`).join(" | ")} |`);
+      L.push(`|---|${ns.map(() => "---").join("|")}|`);
+      for (const [k, v] of explore) L.push(row(`udforskning ${k}`, v));
+      L.push("");
+    }
   }
   L.push("## X10 Fokus: point pr. evne over hele kørslen");
   L.push("");
@@ -2044,12 +2110,13 @@ export function renderMotorpakke(snapshot, results, cohorts, opts, date) {
   L.push("## R16: aldrig +3 i en evne på én dato, også løbsdato og enkeltstart (ejer 12/11 + 14/11)");
   L.push("");
   L.push("Kravet er ejerens eget og står i koden (0 brud); løbsdagene regnes af motoren med gulvet og R15b-løftet.");
+  L.push("Varianter med dagsloft kan ikke stige +3 på en dato, så de dømmes ikke: kun en kørsel uden dagsloft (`_nocap`) måler R16.");
   L.push("");
   L.push("| Variant | Kilde | 3+ i alt | 3+ på løbsdato | 3+ på enkeltstart | R16 |");
   L.push("|---|---|---|---|---|---|");
   for (const [src, r] of histRows) {
-    const c = r16Check(r.dateGains);
-    L.push(`| ${r.variant} | ${src} | ${c.all} | ${c.raceDate} | ${c.timeTrialDate} | ${c.verdict ? "holder" : "holder IKKE"} |`);
+    const c = r16Check(r.dateGains, { capPerDate: resultCapPerDate(r) });
+    L.push(`| ${r.variant} | ${src} | ${c.all} | ${c.raceDate} | ${c.timeTrialDate} | ${verdictText(c)} |`);
   }
   L.push("");
   L.push("## Intet dagsloft (#7739): stigning pr. evne pr. dato (ejervalg 12/11: normalt 1, sjældent 2, aldrig 3+)");

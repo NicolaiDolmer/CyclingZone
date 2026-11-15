@@ -25,6 +25,8 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { kraev, koebMedPrisliste, STAERK_TRAENER, BEDSTE_FACILITET } from "./dommer6110.fixtures.mjs";
+import { traeningsdatoBrud, bundUdenforLavtOmraade, ALDRE, POTENTIALER } from "./dommer6110.r16traening.mjs";
+import { aldersforloebBrud } from "./dommer6110.r5aldersforloeb.mjs";
 
 const HER = path.dirname(fileURLToPath(import.meta.url));
 const FIL = process.env.CZ_XP_PARAMS_FIL
@@ -32,11 +34,19 @@ const FIL = process.env.CZ_XP_PARAMS_FIL
   : path.resolve(HER, "../../balance-internals/6110/xp-params.mjs");
 
 // Dommerens laesning af ejerens ord (se toppen).
-const NAESTEN_INTET = 0.25; // ejer 14/11: "ca. en fjerdedel" af fuld udvikling ved 31
-const CA = 0.05; // dommerens laesning af "ca.": hoejst saa langt fra en fjerdedel
+// R5's "naesten intet" (ca. en fjerdedel), "ca." og "jaevnt fald" staar i dommer6110.r5aldersforloeb.mjs.
+// R6: mentale evner har intet eget loft (ejer 6/11: "samme prisliste, intet saerskilt loft";
+// 13/11: "nogle aar laengere" end de fysiske, uden et tal), saa proeven saetter ingen oevre graense.
 const UNGT_TOPTALENT = { maxAlder: 22, minPotentiale: 5 };
 const MEGET_LAV_EVNE = 30;
 const TRAEN_NU = 1.15; // ejer 7/11
+// Oevre graense for "lave evner", som prisbunden maa goere dyrere (ejervalg A 14/11: "kun
+// lave evner dyrere, top og midte er uroert"). EJEREN SKAL BEKRAEFTE TALLET: det er
+// dommerens laesning, sat til samme vaerdi som "meget lav evne" ovenfor. Det er IKKE en
+// regel i motoren (validPriceFloor), kun i dommerens proeve. Fable-dom 15/11 maalte, at
+// motoren foerst er fri for +3 ved en graense et stykke over denne; ejeren vaelger mellem
+// en hoejere graense og en anden loesning (fx en hoejere bund-pris).
+const LAV_EVNE_GRAENSE = MEGET_LAV_EVNE;
 
 async function laesParametre() {
   if (!existsSync(FIL)) return null;
@@ -58,18 +68,9 @@ test("private parametre: filen er gyldig for motoren", { skip: spring }, () => {
 
 test("R5 private parametre: fuld udvikling til og med 26, mindre for hvert aar fra 27, naesten intet fra 31", { skip: spring }, async () => {
   const { xpAgeShare } = await kraev("./developmentXp.ts", "xpAgeShare");
-  const andel = (alder) => xpAgeShare(alder, laest.params);
-  for (let alder = 16; alder <= 26; alder++) assert.equal(andel(alder), 1, `${alder} aar skal have fuld udvikling`);
-  for (let alder = 27; alder <= 31; alder++) {
-    assert.ok(andel(alder) < andel(alder - 1), `udviklingen skal falde fra ${alder - 1} til ${alder} (ikke et brat stop senere)`);
-  }
-  assert.ok(andel(27) >= 0.5, "faldet er gradvist: en 27-aarig har stadig det meste af sin udvikling");
-  assert.ok(Math.abs(andel(31) - NAESTEN_INTET) <= CA, `31 aar: ca. en fjerdedel af fuld udvikling (andel ${andel(31)})`);
-  for (let alder = 31; alder <= 40; alder++) {
-    assert.ok(andel(alder) > 0, `${alder} aar: aldrig nul`);
-    assert.ok(andel(alder) <= NAESTEN_INTET + CA, `${alder} aar: naesten intet (andel ${andel(alder)})`);
-    assert.ok(andel(alder) <= andel(alder - 1), `${alder} aar: udviklingen stiger aldrig igen`);
-  }
+  // Et jaevnt fald hvert aar fra 27 til 31 (fund 5); reglen staar i dommer6110.r5aldersforloeb.mjs.
+  const fejl = aldersforloebBrud((alder) => xpAgeShare(alder, laest.params));
+  assert.deepEqual(fejl, [], fejl.join("; "));
 });
 
 test("R6 private parametre: mentale evner vokser laengere end fysiske", { skip: spring }, async () => {
@@ -92,48 +93,39 @@ test("R11 private parametre: daglig variation ca. 50-150 % uden hukommelse", { s
   assert.ok(laest.params?.variation, "IKKE BYGGET: motoren laeser ikke variationen fra parametrene");
 });
 
+// R16 paa traeningsdage regnes GENNEM MOTOREN (Fable-dom 15/11, fund 1): datoens XP er
+// motorens developmentXpAbilityDelta over alle traeningspas i begge kataloger, saa
+// sessionens vaegt (op til 2 i dag, 1,5 i v3) er med. Se dommer6110.r16traening.mjs.
 test("R16 private parametre: aldrig 3 point eller mere paa én dato, heller ikke paa rytterens bedste dag", { skip: spring }, async () => {
-  const { xpPerDate, xpPriceForNextPoint } = await kraev("./developmentXp.ts", "xpPerDate", "xpPriceForNextPoint");
-  const { facilityTrainingMultiplier, staffTrainingBonus } = await kraev("./staffTrainingBonus.js", "facilityTrainingMultiplier", "staffTrainingBonus");
-  const pris = (niveau) => xpPriceForNextPoint(niveau, laest.params);
+  const { xpPriceForNextPoint } = await kraev("./developmentXp.ts", "xpPriceForNextPoint");
+  const { TRAIN_NOW_BONUS_FACTOR } = await kraev("./trainNowBonus7737.ts", "TRAIN_NOW_BONUS_FACTOR");
+  assert.equal(TRAIN_NOW_BONUS_FACTOR, TRAEN_NU, "Traen nu-bonussen er ejerens 1,15 (7/11)");
   const godDag = 1 + (laest.raa?.variation?.span ?? 0.5);
-  const brud = [];
-  for (const mental of [false, true]) {
-    const evne = mental ? "tactics" : "climbing";
-    for (const riderLevel of ["u23", "senior"]) {
-      const traener = facilityTrainingMultiplier({ facilityTier: BEDSTE_FACILITET, staff: STAERK_TRAENER })
-        * staffTrainingBonus({ facilityTier: BEDSTE_FACILITET, staff: STAERK_TRAENER, ability: evne, riderLevel });
-      for (let alder = 16; alder <= 36; alder++) {
-        for (let potentiale = 1; potentiale <= 6; potentiale += 0.5) {
-          // Én hel dato, haard dag, signatur-evne i fokus, bedste traener, Traen nu, god dag.
-          const xp = xpPerDate({ potentiale, age: alder, mental }, laest.params) * traener * TRAEN_NU * godDag;
-          for (let niveau = 1; niveau <= 96; niveau++) {
-            const { point } = koebMedPrisliste({ level: niveau, bar: 0.999, xp }, pris);
-            if (point >= 3) brud.push(`${mental ? "mental" : "fysisk"} alder ${alder} potentiale ${potentiale} evne ${niveau}: +${point}`);
-          }
-        }
-      }
-    }
-  }
-  assert.equal(brud.length, 0, `${brud.length} tilfaelde med +3 eller mere paa én dato, fx ${brud.slice(0, 3).join("; ")}`);
+  // Én hel dato, hvert pas i begge kataloger, bedste traener og facilitet, Traen nu, god dag.
+  const brud = await traeningsdatoBrud({
+    params: laest.params, pris: (niveau) => xpPriceForNextPoint(niveau, laest.params),
+    staff: STAERK_TRAENER, facilityTier: BEDSTE_FACILITET, dagMult: TRAEN_NU * godDag, bar: 0.999,
+    aldre: ALDRE, potentialer: POTENTIALER, graense: () => 2,
+  });
+  assert.equal(brud.length, 0, `${brud.length} tilfaelde med +3 eller mere paa én dato, fx ${brud.slice(0, 3).map((b) => b.tekst).join("; ")}`);
 });
 
 test("R16 private parametre: normalt hoejst 1 point pr. dato; 2 kun for et ungt toptalent i fokus paa en meget lav evne", { skip: spring }, async () => {
-  const { xpPerDate, xpPriceForNextPoint } = await kraev("./developmentXp.ts", "xpPerDate", "xpPriceForNextPoint");
-  const pris = (niveau) => xpPriceForNextPoint(niveau, laest.params);
-  const brud = [];
-  for (let alder = 16; alder <= 36; alder++) {
-    for (let potentiale = 1; potentiale <= 6; potentiale += 0.5) {
-      // En normal dato: haard dag i fokus, ingen traener, ingen bonus, almindelig dag, tom bjaelke.
-      const xp = xpPerDate({ potentiale, age: alder }, laest.params);
-      for (let niveau = 1; niveau <= 96; niveau++) {
-        const { point } = koebMedPrisliste({ level: niveau, xp }, pris);
-        const undtagelse = alder <= UNGT_TOPTALENT.maxAlder && potentiale >= UNGT_TOPTALENT.minPotentiale && niveau < MEGET_LAV_EVNE;
-        if (point > (undtagelse ? 2 : 1)) brud.push(`alder ${alder} potentiale ${potentiale} evne ${niveau}: +${point}`);
-      }
-    }
-  }
-  assert.equal(brud.length, 0, `${brud.length} tilfaelde over graensen paa en normal dato, fx ${brud.slice(0, 3).join("; ")}`);
+  const { xpPriceForNextPoint } = await kraev("./developmentXp.ts", "xpPriceForNextPoint");
+  // En normal dato: hvert pas i begge kataloger, ingen traener, ingen bonus, almindelig dag, tom bjaelke.
+  const brud = await traeningsdatoBrud({
+    params: laest.params, pris: (niveau) => xpPriceForNextPoint(niveau, laest.params),
+    aldre: ALDRE, potentialer: POTENTIALER,
+    graense: (alder, potentiale, niveau) => (
+      alder <= UNGT_TOPTALENT.maxAlder && potentiale >= UNGT_TOPTALENT.minPotentiale && niveau < MEGET_LAV_EVNE ? 2 : 1),
+  });
+  assert.equal(brud.length, 0, `${brud.length} tilfaelde over graensen paa en normal dato, fx ${brud.slice(0, 3).map((b) => b.tekst).join("; ")}`);
+});
+
+test("R16 private parametre: prisbunden goer kun lave evner dyrere; top og midte er formlens egen", { skip: spring }, async () => {
+  const { xpPriceForNextPoint } = await kraev("./developmentXp.ts", "xpPriceForNextPoint");
+  const fejl = bundUdenforLavtOmraade(laest.params, LAV_EVNE_GRAENSE, { xpPriceForNextPoint });
+  assert.deepEqual(fejl, [], fejl.join("; "));
 });
 
 // ── R16 paa loebsdage (ejer 14/11): samme regel, ogsaa naar loebsdags-gulvet loefter ──
