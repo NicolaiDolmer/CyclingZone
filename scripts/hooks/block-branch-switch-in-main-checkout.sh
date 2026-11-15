@@ -82,7 +82,15 @@ process.stdin.on("end", () => {
     const m = process.platform === "win32" && String(p).match(/^\/([a-zA-Z])(\/.*)?$/);
     return m ? `${m[1].toUpperCase()}:${m[2] || "/"}` : p;
   };
-  const at = (base, p) => path.resolve(base, native(unquote(p)));
+  // Vercel Security Review #8207: et mappe-argument med shell-ekspansion ($PWD, ~,
+  // `...`, %X%) eller en mappe der ikke findes, er UKENDT. Saa beholdes den kendte
+  // mappe (fail-closed), i stedet for at en uopslaaelig sti tolkes som "ikke hovedmappen".
+  const at = (base, p) => {
+    const raw = unquote(p);
+    if (/[$`~%*?]/.test(raw)) return base;
+    const abs = path.resolve(base, native(raw));
+    try { return fs.statSync(abs).isDirectory() ? abs : base; } catch { return base; }
+  };
   // Hoved-checkout = git-roden for mappen har en .git-MAPPE (linked worktree: fil).
   const isMainCheckout = (dir) => {
     try {

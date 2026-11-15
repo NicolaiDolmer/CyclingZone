@@ -121,6 +121,11 @@ test('branch-vagten vurderer kommandoens mappe (input-cwd), ogsaa fra en underma
   assert.equal(callCmd(wt, `bash -c "cd '${main}' && git switch -c feature-b"`).status, 2);
   assert.equal(callCmd(wt, `git --work-tree="${main}" checkout feature-w`).status, 2);
   assert.equal(callCmd(main, 'git checkout "main"').status, 0);
+  // Vercel Security Review #8207: shell-ekspansion eller en mappe der ikke findes er ukendt,
+  // saa hovedmappen stadig er maalet (foer: tolket bogstaveligt -> sluppet igennem).
+  assert.equal(callCmd(main, 'cd "$PWD/frontend" && git switch -c feature-p').status, 2);
+  assert.equal(callCmd(main, 'cd /does/not/exist; git switch -c feature-q').status, 2);
+  assert.equal(callCmd(main, 'git -C "$HOME/x" switch -c feature-r').status, 2);
 });
 
 // Mini-repo med en kopi af hooken og en falsk setup-worktree.ps1; en falsk pwsh i PATH
