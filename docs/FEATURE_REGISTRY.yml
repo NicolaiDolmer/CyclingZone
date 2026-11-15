@@ -580,10 +580,10 @@ features:
     area: market
     title_en: Sale escrow
     title_da: Låste salgspenge
-    state: building
+    state: live
     ssot: docs/TRANSFER_MARKET_RULES.md
     epic: 6181
-    verified: 2026-11-13
+    verified: 2026-11-15
     decision: goer-faerdigt
     decide_by: 2026-11-08
     note: Taendt 15/11 efter ejerens "merge + koer" (sale_escrow_enabled = on, patch note 7.449). Foerste salg i sale_escrows mangler endnu som bevis (krav 8).
