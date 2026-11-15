@@ -829,7 +829,7 @@
     "editPrices": "Prijzen aanpassen",
     "submitUpdatePrices": "Prijzen bijwerken",
     "autoLabel": "Autoprijs (CZ$), optioneel",
-    "autoHelp": "Een koper die de auto-accepteerprijs kan zien, kan een openbare veiling starten door die prijs of meer te bieden. De koper kiest de duur (30 min tot 24 uur actieve tijd). De verkoop is bindend voor jou. Tijdens de bèta zien alleen kopers met bètatoegang de prijs, en je moet zelf ook bètatoegang hebben.",
+    "autoHelp": "Een koper die de auto-accepteerprijs kan zien, kan een openbare veiling starten door die prijs of meer te bieden. De koper kiest de duur (30 min tot 24 uur actieve tijd). De verkoop is bindend voor jou.",
     "autoInvalid": "De autoprijs moet minstens de vraagprijs zijn.",
     "autoStatus": "Autoprijs {amount} CZ$",
     "autoEditHint": "Bestaande biedingen worden nooit een veiling. Lopende onderhandelingen op of boven de nieuwe prijs kunnen niet meer worden geaccepteerd als de koper de auto-accepteerprijs kan zien."
