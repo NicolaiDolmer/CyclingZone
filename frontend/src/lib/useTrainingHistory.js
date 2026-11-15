@@ -106,8 +106,10 @@ export function useTrainingHistory() {
       // #6490 trin b1: med kontakten tændt kommer rytterne fra kvitteringerne via
       // training_history_runs (samme rækker, kolonner og ejerskabstjek som RLS).
       const fromTicks = (await flagsPromise)?.[TRAINING_HISTORY_FROM_TICKS_FLAG_KEY] === true;
+      // Funktionen står ikke i de genererede database-typer, før migrationen er applied.
+      const rpcClient = /** @type {any} */ (supabase);
       const data = await fetchAllRows(() => (fromTicks
-        ? supabase.rpc("training_history_runs", { p_team_id: myTeam.id, p_since: since })
+        ? rpcClient.rpc("training_history_runs", { p_team_id: myTeam.id, p_since: since })
         : supabase.from("training_day_runs"))
         .select("id, season_id, squad, game_day, created_at, tick_date, executed_by, bonus_applied, report")
         .eq("team_id", myTeam.id)

@@ -22,6 +22,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { runTrainNow } from "./trainNow.js";
 import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
+import { applyJsonArrowProjection } from "./__fixtures__/postgrestJsonProjection.js";
 
 const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 export const TEAM = id(1);
@@ -271,7 +272,7 @@ export function createFake(state, { failRpc = null, fail = null } = {}) {
 
   function builder(table) {
     const filters = []; const spec = [];
-    let write = null, limit = null, orders = [], countOnly = false, returning = false;
+    let write = null, limit = null, orders = [], countOnly = false, returning = false, cols = null;
     const add = (name, col, val, fn) => { spec.push([name, col, canon(val)]); filters.push(fn); };
     const matching = () => (state[table] ?? []).filter((row) => filters.every((fn) => fn(row)));
     const run = () => {
@@ -283,7 +284,8 @@ export function createFake(state, { failRpc = null, fail = null } = {}) {
         for (const [col, asc] of [...orders].reverse()) out = [...out].sort((a, b) => { const x = pathGet(a, col), y = pathGet(b, col); return (x == null ? 1 : y == null ? -1 : x < y ? -1 : x > y ? 1 : 0) * (asc ? 1 : -1); });
         const count = out.length;
         if (limit != null) out = out.slice(0, limit);
-        return countOnly ? { data: null, count, error: null } : { data: structuredClone(out), count, error: null };
+        // #6490: JSON-projektioner (alias:kolonne->noegle) gives som PostgREST.
+        return countOnly ? { data: null, count, error: null } : { data: applyJsonArrowProjection(structuredClone(out), cols), count, error: null };
       }
       const failed = injected(record({ kind: "write", target: table, op: write.kind, filters: spec, payload: canon(write.payload), options: canon(write.options ?? null) }));
       if (failed) return failed;
@@ -301,7 +303,7 @@ export function createFake(state, { failRpc = null, fail = null } = {}) {
       return { data: returning ? structuredClone(touched) : null, error: null };
     };
     const q = {
-      select(_cols, options) { if (write) returning = true; if (options?.head) countOnly = true; return q; },
+      select(_cols, options) { if (write) returning = true; else cols = _cols; if (options?.head) countOnly = true; return q; },
       eq(col, val) { add("eq", col, val, (row) => sameValue(pathGet(row, col), val)); return q; },
       neq(col, val) { add("neq", col, val, (row) => !sameValue(pathGet(row, col), val)); return q; },
       is(col, val) { add("is", col, val, (row) => (pathGet(row, col) ?? null) === val); return q; },

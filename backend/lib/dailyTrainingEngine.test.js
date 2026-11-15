@@ -20,6 +20,7 @@ import { incidentInjuryUpsertRows } from './raceRunner.js';
 import { resolveIncidentInjuryEndDate } from './injuryRaceDays.js';
 import { programWeekDaysFor, setProgramCell, stripProgramFromWeekDays } from "./trainingPrograms.js";
 import { TRAINING_PROGRAMS_FLAG_KEY } from "./trainingProgramsFlag.js";
+import { applyJsonArrowProjection } from "./__fixtures__/postgrestJsonProjection.js";
 
 // ── In-memory Supabase-mock ───────────────────────────────────────────────────
 // Understøtter: select/eq/in/update/insert/upsert/delete — de operationer engine'n bruger.
@@ -55,11 +56,12 @@ function createMockSupabase(state, opts = {}) {
     };
 
     const obj = {
-      select(/* _cols */) {
+      select(cols) {
         // Vi ignorerer kolonne-selektionen og returnerer alle felter (mock).
         // #6759: .update()/.delete() efterfulgt af .select() returnerer de ramte raekker.
         if (op === "update" || op === "delete") return builder(table, op, [...filters, ["__returning", true, "meta"]], patch, inList);
-        return builder(table, "select", filters, patch, inList);
+        // #6490: JSON-projektioner (alias:kolonne->noegle) gives dog som PostgREST.
+        return builder(table, "select", [...filters, ["__cols", cols, "meta"]], patch, inList);
       },
       eq(col, val) {
         const nf = [...filters, [col, val, "eq"]];
@@ -195,6 +197,7 @@ function createMockSupabase(state, opts = {}) {
             if (Number.isFinite(lim)) rows = rows.slice(0, lim);
             const rng = filters.find((f) => f[2] === "meta" && f[0] === "__range")?.[1];
             if (rng) rows = rows.slice(rng[0], rng[1] + 1);
+            rows = applyJsonArrowProjection(rows, filters.find((f) => f[2] === "meta" && f[0] === "__cols")?.[1]);
             result = { data: rows, error: null };
           }
         }
