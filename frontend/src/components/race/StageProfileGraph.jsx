@@ -93,7 +93,10 @@ export default function StageProfileGraph({
         })
     : basePad;
   const plotW = W - p.l - p.r;
-  const plotH = H - p.t - p.b;
+  // Smal skærm + fuld graf: tegningen gøres højere i viewBox'en, så selve kurven stadig
+  // får en brugbar skærmhøjde når tekstpladsen er regnet op.
+  const Hv = narrow && full ? p.t + p.b + Math.max(H - basePad.t - basePad.b, 110 * u) : H;
+  const plotH = Hv - p.t - p.b;
   const D = Number(profile.distance_km);
   const top = series.maxY * 1.12;
   const X = (km) => p.l + (km / D) * plotW;
@@ -108,7 +111,12 @@ export default function StageProfileGraph({
   const kmStep = narrow
     ? baseKmStep * Math.max(1, Math.ceil(minTickGap / ((baseKmStep / D) * plotW)))
     : baseKmStep;
-  const gridStep = top > 3000 ? 1000 : top > 1200 ? 500 : top > 400 ? 200 : 100;
+  let gridStep = top > 3000 ? 1000 : top > 1200 ? 500 : top > 400 ? 200 : 100;
+  // Højdemærkerne må ikke ligge tættere end teksten er høj (gælder kun den hævede tekst).
+  const GRID_STEPS = [100, 200, 500, 1000, 2000, 5000];
+  while (narrow && (gridStep / top) * plotH < fs * 1.7 && gridStep < GRID_STEPS[GRID_STEPS.length - 1]) {
+    gridStep = GRID_STEPS.find((s) => s > gridStep);
+  }
   const gridLines = [];
   for (let m = gridStep; m <= top; m += gridStep) gridLines.push(m);
   const kmTicks = [];
@@ -122,7 +130,7 @@ export default function StageProfileGraph({
 
   return (
     <svg
-      viewBox={`0 0 ${W} ${H}`}
+      viewBox={`0 0 ${W} ${Hv}`}
       ref={setNode}
       className={`block w-full ${heightClass} overflow-visible`}
       preserveAspectRatio={mini ? "none" : undefined}
@@ -229,10 +237,10 @@ export default function StageProfileGraph({
                 {/* Højde ved toppen (#4107 pkt. 1: "kategori-skilt + navn + højde +
                     længde/% ved toppen") — cy er allerede den PIXEL-transformerede
                     Y, den ægte meterhøjde er series.ys[crestIdx] før Y()-transformen. */}
-                <text x={textX} y={labelY + 31} textAnchor={textAnchor} style={textStyle} className="text-3xs fill-cz-2 font-mono" display={narrow ? "none" : undefined}>
+                <text x={textX} y={narrow ? labelY + chipH + fs * 2.4 : labelY + 31} textAnchor={textAnchor} style={textStyle} className="text-3xs fill-cz-2 font-mono">
                   {t("detail.route.waypoint.altitude", { m: Math.round(series.ys[crestIdx]) })}
-                  {" · "}
-                  {t("detail.route.waypoint.gradient", {
+                  {!narrow && " · "}
+                  {!narrow && t("detail.route.waypoint.gradient", {
                     length: c.length_km.toFixed(1), gradient: c.avg_gradient.toFixed(1),
                   })}
                 </text>
