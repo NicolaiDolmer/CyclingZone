@@ -1,0 +1,459 @@
+// #8153: en frigivelse midt i et etapeloeb venter til loebets slut.
+//
+// Ejerens valg (14/11): frigivelsen bestilles, gebyret traekkes straks, rytteren
+// koerer loebet faerdigt og taeller i truppen, og han forlader holdet foerst efter
+// sidste etape. En bestilling er endelig. Design:
+// docs/superpowers/specs/2026-11-14-8153-frigivelse-venter-design.md (rettelser i
+// docs/drafts/spec-natboelge-2026-11-15.md, afsnit S6).
+//
+// Bag kontakten release_defer_8153 (binaer, kun "on" taender, "beta" er slukket,
+// fordi det er penge). Slukket: ingen bestilling oprettes, og ruterne svarer som i
+// dag. Udfoerelsen og saesonskifte-spaerren laeser tabellen uanset kontakten, saa en
+// bestilling fra en taendt periode altid bliver udfoert.
+//
+// Pengene og ejerskabet sker i SQL (database/2026-11-15-8153-pending-rider-releases.sql):
+// order_rider_release_8153 (bestilling + gebyr i een transaktion under holdlaasen) og
+// execute_pending_rider_release_8153 (idempotent udfoerelse). En vagt paa riders
+// afviser ethvert holdskifte for en rytter med en aktiv bestilling.
+
+import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
+import { loadWithdrawnPairs, withdrawalKey } from "./raceWithdrawal.js";
+import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
+import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
+import { buildKeyedNotification } from "./notificationKeys.js";
+import { fetchAllRows } from "./supabasePagination.js";
+
+export const RELEASE_DEFER_FLAG_KEY = "release_defer_8153";
+export const PENDING_RELEASES_TABLE = "pending_rider_releases";
+// Beskedtypen for "rytteren forlader / har forladt holdet" (findes allerede i
+// notifications_type_check og vises med samme ikon som kontraktudloeb).
+export const PENDING_RELEASE_NOTIFICATION_TYPE = "contract_expired_release";
+
+const MISSING_TABLE_CODES = new Set(["42P01", "PGRST205"]);
+const NOOP = () => {};
+
+const errorMessage = (err) => (err instanceof Error ? err.message : String(err?.message ?? err));
+const isMissingTable = (error) => MISSING_TABLE_CODES.has(error?.code);
+const fullName = (rider) => `${rider?.firstname ?? ""} ${rider?.lastname ?? ""}`.trim();
+
+/**
+ * Kontakten. Kun "on" (eller true) taender.
+ * @param {any} supabase
+ * @param {{ fresh?: boolean }} [opts]
+ */
+export async function isReleaseDeferEnabled(supabase, { fresh = true } = {}) {
+  return evaluateFlagStage(await readFlagStage(supabase, RELEASE_DEFER_FLAG_KEY, { fresh }));
+}
+
+/**
+ * Det aktive etapeloeb, rytteren koerer lige nu, eller null. Samme diskriminator
+ * som getRidersInActiveStageRace (salg og auktion bruger den): race_type
+ * stage_race, ikke completed, mindst een koert etape, og holdet er ikke afmeldt.
+ * Koerer han (mod forventning, bindingen forhindrer det) to, vaelges det med
+ * laveste id; udfoerelsen venter alligevel, til han ikke er i noget aktivt loeb.
+ *
+ * @param {any} supabase
+ * @param {string} riderId
+ * @returns {Promise<{ id: string, name: string|null } | null>}
+ */
+export async function findActiveStageRaceForRider(supabase, riderId) {
+  if (!riderId) return null;
+  const { data: races, error: rErr } = await supabase
+    .from("races")
+    .select("id, name")
+    .eq("race_type", "stage_race")
+    .neq("status", "completed")
+    .gt("stages_completed", 0);
+  if (rErr) throw new Error(`findActiveStageRaceForRider: races lookup failed: ${rErr.message}`);
+  if (!races?.length) return null;
+
+  const { data: entries, error: eErr } = await supabase
+    .from("race_entries")
+    .select("race_id, team_id")
+    .eq("rider_id", riderId)
+    .in("race_id", races.map((r) => r.id));
+  if (eErr) throw new Error(`findActiveStageRaceForRider: entries lookup failed: ${eErr.message}`);
+  if (!entries?.length) return null;
+
+  const withdrawn = await loadWithdrawnPairs({ supabase, raceIds: [...new Set(entries.map((e) => e.race_id))] });
+  const live = [...new Set(entries.filter((e) => !withdrawn.has(withdrawalKey(e.race_id, e.team_id))).map((e) => e.race_id))].sort();
+  if (!live.length) return null;
+  const race = races.find((r) => r.id === live[0]);
+  return { id: race.id, name: race.name ?? null };
+}
+
+/**
+ * Hvad sker der, hvis holdet frigiver rytteren nu? null = som i dag (kontakten
+ * slukket, eller han koerer ikke et etapeloeb). Ellers loebet, frigivelsen venter paa.
+ *
+ * @param {any} supabase
+ * @param {string} riderId
+ * @returns {Promise<{ id: string, name: string|null } | null>}
+ */
+export async function resolveReleaseDeferral(supabase, riderId) {
+  if (!(await isReleaseDeferEnabled(supabase))) return null;
+  return findActiveStageRaceForRider(supabase, riderId);
+}
+
+/**
+ * Rytterens aktive bestilling med loebets navn, eller null. Manglende tabel = null.
+ * @param {any} supabase
+ * @param {string} riderId
+ * @returns {Promise<{ id: string, riderId: string, teamId: string, raceId: string, raceName: string|null } | null>}
+ */
+export async function getPendingReleaseForRider(supabase, riderId) {
+  if (!riderId) return null;
+  const { data, error } = await supabase
+    .from(PENDING_RELEASES_TABLE)
+    .select("id, rider_id, team_id, race_id")
+    .eq("rider_id", riderId)
+    .eq("status", "pending")
+    .maybeSingle();
+  if (error) {
+    if (isMissingTable(error)) return null;
+    throw new Error(`getPendingReleaseForRider: ${error.message}`);
+  }
+  if (!data) return null;
+  const names = await loadRaceNames(supabase, [data.race_id]);
+  return { id: data.id, riderId: data.rider_id, teamId: data.team_id, raceId: data.race_id, raceName: names.get(data.race_id) ?? null };
+}
+
+async function loadRaceNames(supabase, raceIds) {
+  const ids = [...new Set((raceIds || []).filter(Boolean))];
+  if (!ids.length) return new Map();
+  const { data, error } = await supabase.from("races").select("id, name, status").in("id", ids);
+  if (error) throw new Error(`pendingRelease race lookup failed: ${error.message}`);
+  return new Map((data || []).map((r) => [r.id, r.name ?? null]));
+}
+
+/** 409-svaret, naar en rytter med en aktiv bestilling forsoeges handlet. */
+export function pendingReleaseTradeIssue(raceName) {
+  return {
+    status: 409,
+    body: {
+      error: `This rider is leaving your team after ${raceName ?? "the stage race"} and cannot be traded.`,
+      errorCode: "rider_pending_release_trade",
+      errorParams: { race: raceName ?? "" },
+    },
+  };
+}
+
+/** 409-svaret, naar frigivelsen allerede er bestilt. */
+export function pendingReleaseAlreadyOrderedIssue(raceName) {
+  return {
+    status: 409,
+    body: {
+      error: `This rider's release is already ordered. He leaves your team after ${raceName ?? "the stage race"}.`,
+      errorCode: "rider_release_already_pending",
+      errorParams: { race: raceName ?? "" },
+    },
+  };
+}
+
+/**
+ * Salg, bytte, auktion og transferliste: et delt praedikat ved siden af
+ * getParkedRiderTradeIssue. Slukket kontakt: null uden opslag i tabellen (vagten paa
+ * riders staar stadig imod, hvis en bestilling fra en taendt periode findes).
+ * En laesefejl giver null: vagten i databasen er den haarde graense, dette er
+ * forklaringen til spilleren.
+ *
+ * @param {any} supabase
+ * @param {string|null|undefined} riderId
+ * @returns {Promise<null | { status: number, body: object }>}
+ */
+export async function getPendingReleaseTradeIssue(supabase, riderId) {
+  if (!riderId) return null;
+  try {
+    if (!(await isReleaseDeferEnabled(supabase, { fresh: false }))) return null;
+    const pending = await getPendingReleaseForRider(supabase, riderId);
+    return pending ? pendingReleaseTradeIssue(pending.raceName) : null;
+  } catch (err) {
+    // best-effort-forklaring: vagten riders_pending_release_guard_8153 afviser stadig selve skiftet.
+    console.error(`[pendingRelease8153] handels-vagten kunne ikke laese bestillingen (${riderId}): ${errorMessage(err)}`);
+    return null;
+  }
+}
+
+/**
+ * Antal aktive bestillinger for holdet (afgaaende i gulvtjekket ved bestilling).
+ * @param {any} supabase
+ * @param {string} teamId
+ * @param {{ excludeRiderIds?: string[] }} [opts]
+ */
+export async function countPendingReleasesForTeam(supabase, teamId, { excludeRiderIds = [] } = {}) {
+  if (!teamId) return 0;
+  const { data, error } = await supabase
+    .from(PENDING_RELEASES_TABLE)
+    .select("rider_id")
+    .eq("team_id", teamId)
+    .eq("status", "pending");
+  if (error) {
+    if (isMissingTable(error)) return 0;
+    throw new Error(`countPendingReleasesForTeam: ${error.message}`);
+  }
+  const skip = new Set(excludeRiderIds);
+  return (data || []).filter((r) => !skip.has(r.rider_id)).length;
+}
+
+/**
+ * GET /api/me/pending-releases: holdets ventende frigivelser til maerket og
+ * bekraeftelsen. Laeses uanset kontakten (en bestilling fra en taendt periode vises).
+ * @param {any} supabase
+ * @param {string} teamId
+ * @returns {Promise<Array<{ riderId: string, raceId: string, raceName: string|null }>>}
+ */
+export async function loadPendingReleasesForTeam(supabase, teamId) {
+  if (!teamId) return [];
+  const { data, error } = await supabase
+    .from(PENDING_RELEASES_TABLE)
+    .select("rider_id, race_id, ordered_at")
+    .eq("team_id", teamId)
+    .eq("status", "pending")
+    .order("ordered_at", { ascending: true });
+  if (error) {
+    if (isMissingTable(error)) return [];
+    throw new Error(`loadPendingReleasesForTeam: ${error.message}`);
+  }
+  const rows = data || [];
+  if (!rows.length) return [];
+  const names = await loadRaceNames(supabase, rows.map((r) => r.race_id));
+  return rows.map((r) => ({ riderId: r.rider_id, raceId: r.race_id, raceName: names.get(r.race_id) ?? null }));
+}
+
+/**
+ * Udtagelse: en rytter med en aktiv bestilling kan ikke udtages til et andet loeb
+ * end det, han koerer faerdigt (rettelse 6 i S6). Bindingen holder ham allerede ude
+ * af overlappende loeb, saa "et andet loeb" er praecis "et loeb efter det
+ * igangvaerende". Slukket kontakt eller tom trup: null uden opslag i tabellen.
+ *
+ * @param {any} supabase
+ * @param {{ race: { id: string }, riderIds: string[] }} args
+ * @returns {Promise<null | { ok: false, status: number, error: string, leaving_rider_ids: string[] }>}
+ */
+export async function getPendingReleaseSelectionIssue(supabase, { race, riderIds }) {
+  const ids = [...new Set((riderIds || []).filter(Boolean))];
+  if (!ids.length || !race?.id) return null;
+  if (!(await isReleaseDeferEnabled(supabase, { fresh: false }))) return null;
+  const { data, error } = await supabase
+    .from(PENDING_RELEASES_TABLE)
+    .select("rider_id, race_id")
+    .in("rider_id", ids)
+    .eq("status", "pending");
+  if (error) {
+    if (isMissingTable(error)) return null;
+    throw new Error(`getPendingReleaseSelectionIssue: ${error.message}`);
+  }
+  const leaving = (data || []).filter((r) => r.race_id !== race.id).map((r) => r.rider_id);
+  if (!leaving.length) return null;
+  return { ok: false, status: 409, error: "selection_rider_leaving", leaving_rider_ids: leaving.sort() };
+}
+
+/**
+ * Saesonskifte-spaerren (rettelse 7): antal aktive bestillinger. Fail-closed: kan
+ * tabellen ikke laeses, svares 1, saa skiftet afvises. Manglende tabel = 0.
+ * @param {any} supabase
+ * @returns {Promise<number>}
+ */
+export async function countPendingReleasesForTransition(supabase) {
+  try {
+    const { count, error } = await supabase
+      .from(PENDING_RELEASES_TABLE)
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending");
+    if (error) {
+      if (isMissingTable(error)) return 0;
+      console.error(`[pendingRelease8153] saesonskifte-spaerren kunne ikke laese bestillingerne, afviser: ${error.message}`);
+      return 1;
+    }
+    return Number(count) || 0;
+  } catch (err) {
+    // fail-closed: hellere et afvist skifte end loen og kontraktudloeb midt i en ventende frigivelse.
+    console.error(`[pendingRelease8153] saesonskifte-spaerren fejlede, afviser: ${errorMessage(err)}`);
+    return 1;
+  }
+}
+
+/**
+ * Bestil frigivelsen (POST /riders/:id/release med kontakten taendt og rytteren i
+ * et aktivt etapeloeb). Gebyret traekkes i samme transaktion som raekken oprettes.
+ *
+ * @param {any} supabase
+ * @param {{ riderId: string, teamId: string, race: { id: string, name: string|null }, fee: number,
+ *   feePayload: object, orderedBy: string|null, now?: Date, minRiders?: number, atRiskRiderIds?: string[],
+ *   riderName?: string, notifyTeamOwner?: Function }} args
+ * @returns {Promise<{ data: { pending: true, race: { id: string, name: string|null }, fee: number } } | { error: { status: number, body: object } }>}
+ */
+export async function orderPendingRelease(supabase, {
+  riderId, teamId, race, fee, feePayload, orderedBy = null, now = new Date(),
+  minRiders = 0, atRiskRiderIds = [], riderName = "", notifyTeamOwner = NOOP,
+}) {
+  const { data: result, error } = await supabase.rpc("order_rider_release_8153", {
+    p_rider_id: riderId,
+    p_team_id: teamId,
+    p_race_id: race.id,
+    p_fee: fee,
+    p_finance_payload: feePayload,
+    p_ordered_by: orderedBy,
+    p_now: now.toISOString(),
+    p_min_riders: minRiders,
+    p_at_risk_rider_ids: atRiskRiderIds,
+  });
+  if (error) {
+    const issue = readMarketGateIssue(error);
+    if (issue) return { error: { status: 400, body: { errorCode: "insufficient_available_balance", errorParams: { fee, ...issue } } } };
+    throw new Error(`order_rider_release_8153: ${error.message}`);
+  }
+  switch (result?.status) {
+    case "pending": {
+      const notice = buildKeyedNotification({
+        titleCode: "notif.riderReleasePending.title",
+        messageCode: "notif.riderReleasePending.message",
+        messageParams: { rider: riderName, race: race.name ?? "", fee },
+        metadata: { riderId, raceId: race.id },
+      });
+      await notifyTeamOwner(teamId, PENDING_RELEASE_NOTIFICATION_TYPE, notice.title, notice.message, riderId, notice.metadata);
+      return { data: { pending: true, race: { id: race.id, name: race.name ?? null }, fee } };
+    }
+    case "already_pending": {
+      const names = await loadRaceNames(supabase, [result.race_id]);
+      return { error: pendingReleaseAlreadyOrderedIssue(names.get(result.race_id) ?? null) };
+    }
+    case "rider_state_changed":
+      return { error: { status: 409, body: { error: "This rider is no longer on your team", errorCode: "rider_state_changed" } } };
+    case "rider_on_auction":
+      return { error: { status: 409, body: { error: "This rider is currently on auction and can't be released. Wait for the auction to end first", errorCode: "rider_on_auction_release" } } };
+    case "cannot_afford_release":
+      return { error: { status: 400, body: { error: "You can't afford the buyout fee for this rider", errorCode: "cannot_afford_release", errorParams: { fee: Number(result.fee), balance: Number(result.balance) } } } };
+    case "insufficient_available_balance":
+      return { error: { status: 400, body: { error: "Not enough available money: part of your balance is locked in auction bids.", errorCode: "insufficient_available_balance", errorParams: { fee: Number(result.fee), available: Number(result.available), locked: Number(result.locked) } } } };
+    case "squad_floor":
+      return { error: { status: 409, body: { error: `You can't drop below ${result.min_riders} riders once contract expiry and retirement risk at the next season change are counted`, errorCode: "cannot_release_squad_risk", errorParams: { minRiders: result.min_riders } } } };
+    default:
+      throw new Error(`order_rider_release_8153: unexpected status ${result?.status}`);
+  }
+}
+
+// Den eksisterende pengevagt paa finance_transactions (market_discretionary_finance_guard_2176)
+// kaster market_gate_6181:insufficient_available_balance med detaljer i DETAIL.
+function readMarketGateIssue(error) {
+  if (!String(error?.message ?? "").includes("insufficient_available_balance")) return null;
+  try {
+    const detail = typeof error.details === "string" ? JSON.parse(error.details) : (error.details ?? {});
+    return { available: Number(detail.available) || 0, locked: Number(detail.locked) || 0 };
+  } catch (parseErr) {
+    console.warn(`[pendingRelease8153] pengevagtens detaljer kunne ikke laeses: ${errorMessage(parseErr)}`);
+    return { available: 0, locked: 0 };
+  }
+}
+
+async function loadRiderNames(supabase, riderIds) {
+  const ids = [...new Set((riderIds || []).filter(Boolean))];
+  if (!ids.length) return new Map();
+  const { data, error } = await supabase.from("riders").select("id, firstname, lastname").in("id", ids);
+  if (error) throw new Error(`pendingRelease rider lookup failed: ${error.message}`);
+  return new Map((data || []).map((r) => [r.id, fullName(r)]));
+}
+
+/**
+ * Udfoer een bestilling (idempotent i SQL). Bagefter: ryd fremtidige
+ * loebstilmeldinger og send beskeden. Returnerer true, hvis rytteren blev frigivet nu.
+ */
+async function executeOne(supabase, row, { now, notifyTeamOwner, riderName }) {
+  const { data: result, error } = await supabase.rpc("execute_pending_rider_release_8153", {
+    p_release_id: row.id,
+    p_now: now.toISOString(),
+  });
+  if (error) throw new Error(`execute_pending_rider_release_8153 (${row.id}): ${error.message}`);
+  if (result?.status !== "executed") return false;
+
+  await clearFutureRaceEntriesSafe({ supabase, riderId: row.rider_id, label: "pending_release_8153" });
+  const notice = buildKeyedNotification({
+    titleCode: "notif.riderReleaseExecuted.title",
+    messageCode: "notif.riderReleaseExecuted.message",
+    messageParams: { rider: riderName ?? "" },
+    metadata: { riderId: row.rider_id, raceId: row.race_id },
+  });
+  await notifyTeamOwner(row.team_id, PENDING_RELEASE_NOTIFICATION_TYPE, notice.title, notice.message, row.rider_id, notice.metadata);
+  return true;
+}
+
+async function executeRows(supabase, rows, { now, notifyTeamOwner }) {
+  const stats = { executed: 0, failed: 0, errors: [] };
+  if (!rows.length) return stats;
+  const names = await loadRiderNames(supabase, rows.map((r) => r.rider_id));
+  for (const row of rows) {
+    try {
+      if (await executeOne(supabase, row, { now, notifyTeamOwner, riderName: names.get(row.rider_id) })) stats.executed += 1;
+    } catch (err) {
+      // per-raekke isolation: een fejl maa ikke stoppe resten. Fejlen taelles og logges.
+      stats.failed += 1;
+      stats.errors.push({ riderId: row.rider_id, message: errorMessage(err) });
+      console.error(`[pendingRelease8153] udfoerelse fejlede for rytter ${row.rider_id}: ${errorMessage(err)}`);
+    }
+  }
+  return stats;
+}
+
+/**
+ * Ved loebets finalisering (raceRunner, samme sted som flushDeferredTransfersForRace).
+ * Udfoerer loebets aktive bestillinger for ryttere, der ikke er i et andet aktivt
+ * etapeloeb. Uanset kontakten: en bestilling skal altid udfoeres.
+ *
+ * @param {any} supabase
+ * @param {{ id: string, race_type?: string }} race
+ * @param {{ now?: Date, notifyTeamOwner?: Function }} [deps]
+ */
+export async function executePendingReleasesForRace(supabase, race, { now = new Date(), notifyTeamOwner = NOOP } = {}) {
+  const empty = { executed: 0, failed: 0, errors: [] };
+  if (!race?.id || race.race_type !== "stage_race") return empty;
+  const { data, error } = await supabase
+    .from(PENDING_RELEASES_TABLE)
+    .select("id, rider_id, team_id, race_id")
+    .eq("race_id", race.id)
+    .eq("status", "pending");
+  if (error) {
+    if (isMissingTable(error)) return empty;
+    throw new Error(`executePendingReleasesForRace: ${error.message}`);
+  }
+  const rows = data || [];
+  if (!rows.length) return empty;
+  const stillActive = new Set(await getRidersInActiveStageRace(supabase, rows.map((r) => r.rider_id), { excludeRaceId: race.id }));
+  return executeRows(supabase, rows.filter((r) => !stillActive.has(r.rider_id)), { now, notifyTeamOwner });
+}
+
+const RACE_DONE_STATUSES = new Set(["completed", "cancelled"]);
+
+/**
+ * Sikkerhedsnettet i deferredTransferHealSweep: en bestilling, hvis loeb er slut
+ * (eller slettet), og hvis rytter ikke er i et andet aktivt etapeloeb, udfoeres.
+ *
+ * @param {any} supabase
+ * @param {{ now?: Date, notifyTeamOwner?: Function }} [deps]
+ * @returns {Promise<{ checked: number, executed: number, failed: number, errors: Array<{ riderId: string, message: string }> }>}
+ */
+export async function runPendingReleaseHealSweep(supabase, { now = new Date(), notifyTeamOwner = NOOP } = {}) {
+  let rows;
+  try {
+    rows = await fetchAllRows(() => supabase
+      .from(PENDING_RELEASES_TABLE)
+      .select("id, rider_id, team_id, race_id")
+      .eq("status", "pending")
+      .order("id"));
+  } catch (err) {
+    // Manglende tabel (migrationen er ikke applied endnu) = ingen bestillinger; alt andet kastes.
+    if (isMissingTable(err)) return { checked: 0, executed: 0, failed: 0, errors: [] };
+    throw err;
+  }
+  if (!rows.length) return { checked: 0, executed: 0, failed: 0, errors: [] };
+
+  const { data: races, error: rErr } = await supabase.from("races").select("id, status").in("id", [...new Set(rows.map((r) => r.race_id))]);
+  if (rErr) throw new Error(`runPendingReleaseHealSweep: races lookup failed: ${rErr.message}`);
+  const statusById = new Map((races || []).map((r) => [r.id, r.status]));
+  const raceDone = (row) => !statusById.has(row.race_id) || RACE_DONE_STATUSES.has(statusById.get(row.race_id));
+  const finished = rows.filter(raceDone);
+  if (!finished.length) return { checked: rows.length, executed: 0, failed: 0, errors: [] };
+
+  const racing = new Set(await getRidersInActiveStageRace(supabase, finished.map((r) => r.rider_id)));
+  const stats = await executeRows(supabase, finished.filter((r) => !racing.has(r.rider_id)), { now, notifyTeamOwner });
+  return { checked: rows.length, ...stats };
+}

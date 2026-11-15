@@ -24,6 +24,7 @@
 import { fetchAllRows } from "./supabasePagination.js";
 import { getRidersInActiveStageRace, flushParkedRider } from "./stageRaceTransferDefer.js";
 import { reconcileHeldSaleEscrows } from "./saleEscrowFlow6181.js";
+import { runPendingReleaseHealSweep } from "./riderReleaseDefer8153.js"; // #8153
 
 const NOOP = () => {};
 
@@ -46,7 +47,7 @@ export async function runDeferredTransferHealSweep({
   );
 
   if (parked.length === 0) {
-    return withSaleEscrows(supabase, now, { candidates: 0, healed: 0, failed: 0, stillRacing: 0, errors: [] });
+    return withSaleEscrows(supabase, now, { candidates: 0, healed: 0, failed: 0, stillRacing: 0, errors: [] }, notifyTeamOwner);
   }
 
   const racingIds = new Set(
@@ -84,7 +85,7 @@ export async function runDeferredTransferHealSweep({
     failed,
     stillRacing: racingIds.size,
     errors,
-  });
+  }, notifyTeamOwner);
 }
 
 // #6181: sikkerhedsnettet for laaste salgspenge, IKKE bag sale_escrow_enabled (en
@@ -92,13 +93,36 @@ export async function runDeferredTransferHealSweep({
 // flushen, saa en netop leveret rytter afregnes i samme koersel. Fejl taelles i
 // failed/errors, saa cron-wrapperens Sentry-capture ser dem. Ingen escrows = samme
 // resultat som foer.
-async function withSaleEscrows(supabase, now, result) {
+async function withSaleEscrows(supabase, now, result, notifyTeamOwner) {
   const escrows = await reconcileHeldSaleEscrows({ supabase, now, sourcePath: "deferredTransferHealSweep.saleEscrow" });
-  if (escrows.checked === 0 && escrows.failed === 0) return result;
-  return {
+  const withEscrows = escrows.checked === 0 && escrows.failed === 0 ? result : {
     ...result,
     failed: result.failed + escrows.failed,
     errors: [...result.errors, ...escrows.errors],
     saleEscrows: escrows,
+  };
+  return withPendingReleases(supabase, now, withEscrows, notifyTeamOwner);
+}
+
+// #8153: sikkerhedsnettet for ventende frigivelser, IKKE bag release_defer_8153 (en
+// bestilling fra en taendt periode skal udfoeres, ogsaa efter et sluk). Udfoerer en
+// bestilling, hvis loeb er slut, og hvis rytter ikke koerer et andet etapeloeb.
+// Ingen bestillinger = samme resultat som foer.
+async function withPendingReleases(supabase, now, result, notifyTeamOwner) {
+  let releases;
+  try {
+    releases = await runPendingReleaseHealSweep(supabase, { now, notifyTeamOwner });
+  } catch (err) {
+    // taelles i failed/errors, saa cron-wrapperens Sentry-capture ser fejlen.
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[deferredTransferHealSweep] ventende frigivelser fejlede: ${message}`);
+    return { ...result, failed: result.failed + 1, errors: [...result.errors, { riderId: null, message }] };
+  }
+  if (releases.checked === 0 && releases.failed === 0) return result;
+  return {
+    ...result,
+    failed: result.failed + releases.failed,
+    errors: [...result.errors, ...releases.errors],
+    pendingReleases: releases,
   };
 }
