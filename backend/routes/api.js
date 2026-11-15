@@ -256,9 +256,10 @@ import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitio
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
 import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
 import {
-  STAGE_FLAGS, findStageFlag, isValidFlagStage, isUnknownStageValue, normalizeStageValue,
+  STAGE_FLAGS, findStageFlag, isValidFlagStage, normalizeStageValue,
   PLAYER_VISIBLE_BINARY_FLAG_KEYS, // #6181
 } from "../lib/stageFlagCatalog.js";
+import { adminFlagView } from "../lib/adminFlagView6181.js"; // #6181
 import {
   BETA_REQUEST_STATUS, decideBetaRequest, isBetaRequestsMissing, listBetaAccess, readBetaAccess,
   requestBetaAccess, setBetaTester, withdrawBetaAccess,
@@ -15742,23 +15743,9 @@ router.get("/admin/feature-flags", requireAdmin, async (req, res) => {
 
     const byKey = new Map((data ?? []).map((row) => [row.key, row]));
     res.json({
-      flags: STAGE_FLAGS.map((flag) => {
-        const row = byKey.get(flag.key);
-        const raw = row ? row.value : null;
-        return {
-          ...flag,
-          // Raekken findes ikke = "off", praecis som evaluateFlagStage laeser
-          // den. Tavlen maa aldrig vise noget andet end det spilleren faar.
-          stage: normalizeStageValue(raw),
-          raw_value: raw,
-          // Boolean-flag er on/off i det gamle skema: tavlen viser dem, men
-          // uden "beta" som valg — accept-kriteriet i #5259.
-          boolean_only: typeof raw === "boolean",
-          configured: Boolean(row),
-          unknown_value: isUnknownStageValue(raw),
-          updated_at: row?.updated_at ?? null,
-        };
-      }),
+      // Tavlen maa aldrig vise noget andet end det spilleren faar; binaere
+      // noegler og boolean-raekker vises uden "beta" (#5259, #6181).
+      flags: STAGE_FLAGS.map((flag) => adminFlagView(flag, byKey.get(flag.key))),
     });
   } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
