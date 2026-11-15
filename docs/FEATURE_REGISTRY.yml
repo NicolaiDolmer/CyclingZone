@@ -586,7 +586,7 @@ features:
     verified: 2026-11-13
     decision: goer-faerdigt
     decide_by: 2026-11-08
-    note: Kontakt sale_escrow_enabled findes ikke i prod app_config (13/11) = slukket; købernes del er market-commitment (on). Ejer 13/11: sælgers penge låses til holdskiftet; tænding er ejerens eget kort.
+    note: Taendt 15/11 efter ejerens "merge + koer" (sale_escrow_enabled = on, patch note 7.449). Foerste salg i sale_escrows mangler endnu som bevis (krav 8).
 
   - id: market-commitment
     # #2176: beta scope follows owner A, 10/11; no activation or new prod verification here.
