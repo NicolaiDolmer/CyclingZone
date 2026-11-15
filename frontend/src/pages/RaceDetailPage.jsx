@@ -2415,11 +2415,12 @@ function ResultTable({ title, rows: allRows, highlightWinner = false, highlightT
           ? <span className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2">{headerControl}{showAllButton}</span>
           : showAllButton}
       />
-      {searchable && allCount > 0 && (
+      {/* #7865: står også, når et aktivt Mit hold-valg tømmer listen, så det kan slås fra igen. */}
+      {searchable && (allCount > 0 || isFiltering(mineControls.shown)) && (
         <V6ResultsControls state={mineControls.shown} onChange={(next) => setLocalControls(mineControls.change(next))} counting={filtering} hasMyTeam={myOwnTeamId != null} shown={totalCount} total={allCount} />
       )}
       {totalCount === 0 ? (
-        filtering ? <V6ResultsNoMatch /> : <p className="text-center text-cz-3 text-sm py-6">{t("detail.noResults")}</p>
+        searchable && isFiltering(mineControls.shown) ? <V6ResultsNoMatch /> : <p className="text-center text-cz-3 text-sm py-6">{t("detail.noResults")}</p>
       ) : (
         <div className={WRAP}>
           <div className={SCROLLER}>

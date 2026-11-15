@@ -1,6 +1,7 @@
 // #7860 · Resultater i v6: søgning og "Mit hold".
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   EMPTY_RESULTS_CONTROLS,
   filterResultRows,
@@ -109,6 +110,9 @@ test("#7865: med delt valg skriver knappen til holdvaelgeren og filtrerer ikke s
   assert.equal(isFiltering(b.filter), false, "ingen 'Showing N of M' for Mit hold alene");
   filter = "tB";
   assert.equal(sharedMineControls(next, shared()).shown.mineOnly, false, "vaelgeren paa et andet hold: knappen slukker");
+  // Codex-fund: et aktivt Mit hold, der toemmer listen, fjerner ikke kontrollerne (saa det kan slaas fra).
+  const detail = readFileSync(new URL("../../../pages/RaceDetailPage.jsx", import.meta.url), "utf8");
+  assert.match(detail, /searchable && \(allCount > 0 \|\| isFiltering\(mineControls\.shown\)\) && \(/);
   // Uden delt valg: som foer (#7860).
   const own = sharedMineControls({ query: "", mineOnly: true }, null);
   assert.equal(own.filter.mineOnly, true);
