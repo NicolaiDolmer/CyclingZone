@@ -127,9 +127,9 @@ button.tile:focus-visible,.seg button:focus-visible,.opt:focus-visible,.btn:focu
 </style>
 </head>
 <body>
-<div class ="outer">
-<div class ="sketch-bar" id="bar"></div>
-<div class ="page" id="app"></div>
+<div class="outer">
+<div class="sketch-bar" id="bar"></div>
+<div class="page" id="app"></div>
 </div>
 <script>
 (function(){
@@ -223,7 +223,7 @@ button.tile:focus-visible,.seg button:focus-visible,.opt:focus-visible,.btn:focu
      it:'<rect width="20" height="14" fill="#fff"/><rect width="6.7" height="14" fill="#009246"/><rect x="13.3" width="6.7" height="14" fill="#ce2b37"/>',
      de:'<rect width="20" height="14" fill="#dd0000"/><rect width="20" height="4.7" fill="#000"/><rect y="9.3" width="20" height="4.7" fill="#ffce00"/>'
     }[c];
-    return '<svg class ="flag" viewBox="0 0 20 14" aria-hidden="true">'+s+'</svg>';
+    return '<svg class="flag" viewBox="0 0 20 14" aria-hidden="true">'+s+'</svg>';
   }
 
   // Kvalitative niveauer pr. alder (0 ingen, 1 faa, 2 nogle, 3 mange).
@@ -261,40 +261,40 @@ button.tile:focus-visible,.seg button:focus-visible,.opt:focus-visible,.btn:focu
   }
 
   var WORD=function(n){return [L.none,L.few,L.some,L.many][n]};
-  function dots(n){var h='<span class ="lvl" role="img" aria-label="'+esc(WORD(n))+'">',i;for(i=1;i<=3;i++)h+='<i class ="'+(i<=n?'on':'')+'"></i>';return h+'<em>'+esc(WORD(n))+'</em></span>'}
+  function dots(n){var h='<span class="lvl" role="img" aria-label="'+esc(WORD(n))+'">',i;for(i=1;i<=3;i++)h+='<i class="'+(i<=n?'on':'')+'"></i>';return h+'<em>'+esc(WORD(n))+'</em></span>'}
   function tileBody(a,lv){
-    return '<span class ="age"><span>'+a+' <small>'+L.ageWord+'</small></span>'+(V==='a'?'<span class ="tick"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>':'')+'</span>'+
+    return '<span class="age"><span>'+a+' <small>'+L.ageWord+'</small></span>'+(V==='a'?'<span class="tick"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>':'')+'</span>'+
       dots(lv)+
-      '<span class ="ln">'+esc(L['t'+a])+'</span>'+
-      '<span class ="join">'+(a<=18?L.junior:L.u23)+'</span>';
+      '<span class="ln">'+esc(L['t'+a])+'</span>'+
+      '<span class="join">'+(a<=18?L.junior:L.u23)+'</span>';
   }
   function tiles(lv){
-    var h='<div class ="tiles">',i,a;
+    var h='<div class="tiles">',i,a;
     for(i=0;i<4;i++){a=AGES[i];
       if(V==='a'){
         var on=st.ages.indexOf(a)>-1;
-        h+='<button type="button" class ="tile" data-age="'+a+'" aria-pressed="'+on+'">'+tileBody(a,lv[a])+'</button>';
-      } else h+='<div class ="tile" role="group" aria-label="'+a+'">'+tileBody(a,lv[a])+'</div>';
+        h+='<button type="button" class="tile" data-age="'+a+'" aria-pressed="'+on+'">'+tileBody(a,lv[a])+'</button>';
+      } else h+='<div class="tile" role="group" aria-label="'+a+'">'+tileBody(a,lv[a])+'</div>';
     }
     return h+'</div>';
   }
 
   function ageBlock(){
-    var lv=levelsFor(),h='<div class ="agebox"><div class ="t"><b>'+L.ageH+'</b><span>'+L.rule+'</span></div>';
+    var lv=levelsFor(),h='<div class="agebox"><div class="t"><b>'+L.ageH+'</b><span>'+L.rule+'</span></div>';
     if(V==='a'){
-      h+='<p class ="intro">'+L.helpA+'</p>'+tiles(lv);
-      if(!st.ages.length) h+='<p class ="err" role="alert">'+L.errEmpty+'</p>';
+      h+='<p class="intro">'+L.helpA+'</p>'+tiles(lv);
+      if(!st.ages.length) h+='<p class="err" role="alert">'+L.errEmpty+'</p>';
     }
     if(V==='b'){
-      h+='<p class ="intro">'+L.helpB+'</p><div class ="seg" role="radiogroup" aria-label="'+L.ageH+'">'+
-        '<button type="button" class ="mixb" role="radio" data-focus="mix" aria-checked="'+(st.focus==='mix')+'"><b>'+L.mix+'</b><span>'+L.mixS+'</span></button>';
+      h+='<p class="intro">'+L.helpB+'</p><div class="seg" role="radiogroup" aria-label="'+L.ageH+'">'+
+        '<button type="button" class="mixb" role="radio" data-focus="mix" aria-checked="'+(st.focus==='mix')+'"><b>'+L.mix+'</b><span>'+L.mixS+'</span></button>';
       AGES.forEach(function(a){h+='<button type="button" role="radio" data-focus="'+a+'" aria-checked="'+(st.focus===a)+'"><b>'+a+'</b><span>'+(a<=18?L.junior:L.u23)+'</span></button>'});
       h+='</div>'+tiles(lv);
     }
     if(V==='c'){
-      h+='<p class ="intro">'+L.helpC+'</p><div class ="opts" role="radiogroup" aria-label="'+L.ageH+'">'+
+      h+='<p class="intro">'+L.helpC+'</p><div class="opts" role="radiogroup" aria-label="'+L.ageH+'">'+
         [['mix',L.bandM,L.bandMD],['young',L.bandY,L.bandYD],['old',L.bandO,L.bandOD]].map(function(o){
-          return '<button type="button" class ="opt" role="radio" data-band="'+o[0]+'" aria-checked="'+(st.band===o[0])+'"><h3>'+o[1]+'</h3><p>'+o[2]+'</p></button>'}).join('')+'</div>'+tiles(lv);
+          return '<button type="button" class="opt" role="radio" data-band="'+o[0]+'" aria-checked="'+(st.band===o[0])+'"><h3>'+o[1]+'</h3><p>'+o[2]+'</p></button>'}).join('')+'</div>'+tiles(lv);
     }
     return h+'</div>';
   }
@@ -313,46 +313,46 @@ button.tile:focus-visible,.seg button:focus-visible,.opt:focus-visible,.btn:focu
   }
   function startLabel(a){return [L.startL,L.start2,L.start3,L.start4][a-16]}
   function intake(){
-    var rows=sample(),h='<div class ="sh"><h2>'+L.ih+'</h2><span class ="meta">'+L.im+'</span></div><div class ="card" style="overflow:hidden">';
-    if(!rows.length) return h+'<div class ="empty">'+L.onlyE+'</div></div>';
+    var rows=sample(),h='<div class="sh"><h2>'+L.ih+'</h2><span class="meta">'+L.im+'</span></div><div class="card" style="overflow:hidden">';
+    if(!rows.length) return h+'<div class="empty">'+L.onlyE+'</div></div>';
     var j=rows.filter(function(r){return r.age<=18}).length,u=rows.length-j;
-    h+='<div class ="strip"><span>'+fill(L.sj,{j:'<b>'+j+'</b>',u:'<b>'+u+'</b>'})+'</span></div>';
-    h+='<div class ="row hd"><span>'+L.cR+'</span><span>'+L.cA+'</span><span>'+L.cS+'</span><span>'+L.cY+'</span><span>'+L.cJ+'</span></div>';
+    h+='<div class="strip"><span>'+fill(L.sj,{j:'<b>'+j+'</b>',u:'<b>'+u+'</b>'})+'</span></div>';
+    h+='<div class="row hd"><span>'+L.cR+'</span><span>'+L.cA+'</span><span>'+L.cS+'</span><span>'+L.cY+'</span><span>'+L.cJ+'</span></div>';
     rows.forEach(function(r){
-      h+='<div class ="row"><div class ="nm">'+flag(r.nat)+'<span>'+L.rider+' '+r.n+'<div class ="meta">'+esc(r.type[LANG]||r.type.en)+'</div></span></div>'+
-        '<div class ="c-age num"><b>'+r.age+'</b></div>'+
-        '<div class ="c-start"><span class ="lb">'+L.cS+'</span><span>'+startLabel(r.age)+'</span></div>'+
-        '<div class ="c-yrs num"><span class ="lb">'+L.cY+'</span><span>'+(23-r.age)+'</span></div>'+
-        '<div class ="c-join"><span class ="lb">'+L.cJ+'</span><span class ="tag '+(r.age<=18?'':'u23')+'">'+(r.age<=18?L.junior:L.u23)+'</span></div></div>';
+      h+='<div class="row"><div class="nm">'+flag(r.nat)+'<span>'+L.rider+' '+r.n+'<div class="meta">'+esc(r.type[LANG]||r.type.en)+'</div></span></div>'+
+        '<div class="c-age num"><b>'+r.age+'</b></div>'+
+        '<div class="c-start"><span class="lb">'+L.cS+'</span><span>'+startLabel(r.age)+'</span></div>'+
+        '<div class="c-yrs num"><span class="lb">'+L.cY+'</span><span>'+(23-r.age)+'</span></div>'+
+        '<div class="c-join"><span class="lb">'+L.cJ+'</span><span class="tag '+(r.age<=18?'':'u23')+'">'+(r.age<=18?L.junior:L.u23)+'</span></div></div>';
     });
-    return h+'</div><p class ="note">'+L.iNote+'</p>';
+    return h+'</div><p class="note">'+L.iNote+'</p>';
   }
 
   function chevron(){return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>'}
   function card(){
     var dirty=isDirty()&&V!=='now', empty=(V==='a'&&!st.ages.length);
-    var h='<div class ="sh"><h2>'+L.ph+'</h2><span class ="meta">'+L.pm+'</span></div><div class ="card pad">'+
-      '<p class ="intro">'+L.intro+'</p><div class ="fields">'+
-      '<div><label class ="f">'+L.origin+'</label><div class ="sel">'+L.vOrigin+chevron()+'</div></div>'+
-      '<div><label class ="f">'+L.type+'</label><div class ="sel">'+L.vType+chevron()+'</div></div>'+
-      '<div><label class ="f">'+L.extra+'</label><div class ="sel off">'+L.vExtra+chevron()+'</div></div></div>';
+    var h='<div class="sh"><h2>'+L.ph+'</h2><span class="meta">'+L.pm+'</span></div><div class="card pad">'+
+      '<p class="intro">'+L.intro+'</p><div class="fields">'+
+      '<div><label class="f">'+L.origin+'</label><div class="sel">'+L.vOrigin+chevron()+'</div></div>'+
+      '<div><label class="f">'+L.type+'</label><div class="sel">'+L.vType+chevron()+'</div></div>'+
+      '<div><label class="f">'+L.extra+'</label><div class="sel off">'+L.vExtra+chevron()+'</div></div></div>';
     if(V!=='now') h+=ageBlock();
-    h+='<div class ="foot"><div class ="st"><span>'+fill(L.active,{p:L.vOrigin+' · '+L.vType+(V==='now'?'':' · '+L.mix)})+'</span>';
-    if(st.saved&&V!=='now') h+='<span class ="p">'+fill(L.pending,{d:EFFECTIVE[LANG],p:L.vOrigin+' · '+L.vType+' · '+describe()})+'</span>';
-    else h+='<span class ="p">'+L.delay+'</span>';
-    h+='</div><button type="button" class ="btn" id="save" '+((V==='now'||!dirty||empty||st.saved)?'disabled':'')+'>'+L.save+'</button></div>';
-    if(st.saved&&V!=='now') h+='<p class ="intro" role="status">'+fill(L.saved,{d:EFFECTIVE[LANG]})+'</p>';
-    if(V==='now') h+='<p class ="intro">'+L.nowNote+'</p>';
+    h+='<div class="foot"><div class="st"><span>'+fill(L.active,{p:L.vOrigin+' · '+L.vType+(V==='now'?'':' · '+L.mix)})+'</span>';
+    if(st.saved&&V!=='now') h+='<span class="p">'+fill(L.pending,{d:EFFECTIVE[LANG],p:L.vOrigin+' · '+L.vType+' · '+describe()})+'</span>';
+    else h+='<span class="p">'+L.delay+'</span>';
+    h+='</div><button type="button" class="btn" id="save" '+((V==='now'||!dirty||empty||st.saved)?'disabled':'')+'>'+L.save+'</button></div>';
+    if(st.saved&&V!=='now') h+='<p class="intro" role="status">'+fill(L.saved,{d:EFFECTIVE[LANG]})+'</p>';
+    if(V==='now') h+='<p class="intro">'+L.nowNote+'</p>';
     return h+'</div>';
   }
 
   function render(){
     var bar='<b>#6944</b>'+['now','a','b','c'].map(function(v){
       var u=new URLSearchParams(q);u.set('v',v);u.delete('state');
-      return '<a href="?'+u.toString()+'" class ="'+(v===V?'on':'')+'">'+L['v'+v.charAt(0).toUpperCase()+v.slice(1)]+'</a>';
+      return '<a href="?'+u.toString()+'" class="'+(v===V?'on':'')+'">'+L['v'+v.charAt(0).toUpperCase()+v.slice(1)]+'</a>';
     }).join('');
     document.getElementById('bar').innerHTML=bar;
-    document.getElementById('app').innerHTML='<h1>'+L.title+'</h1><p class ="sub">'+L.sub+'</p>'+card()+intake();
+    document.getElementById('app').innerHTML='<h1>'+L.title+'</h1><p class="sub">'+L.sub+'</p>'+card()+intake();
     bind();
   }
   function bind(){
