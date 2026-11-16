@@ -47,7 +47,8 @@ const LEVEL_WORD = ["hvile", "let", "mellem", "hård"] as const;
 
 // --- Faelles stumper --------------------------------------------------------
 
-function Banner({ id }: { id: Exclude<DirectionId, "today"> }) {
+const AFTER_PRESS = "Efter Træn nu er alle åbne felter kørt og låst for i dag; etaperne venter på deres løb, og I morgen kan planlægges med det samme.";
+function Banner({ id, pressed }: { id: Exclude<DirectionId, "today">; pressed: boolean }) {
   const b = BANNERS[id];
   return (
     <header data-testid="sketch-banner" className="border-b-2 border-cz-1 bg-cz-subtle">
@@ -56,8 +57,8 @@ function Banner({ id }: { id: Exclude<DirectionId, "today"> }) {
           <span className="font-data text-2xs font-semibold uppercase tracking-[.08em] text-cz-3">Skitse #7947 · 5 felter pr. dato</span>
           {b.pick && <span className="font-data text-2xs font-semibold uppercase tracking-[.08em] text-cz-accent-t">Min anbefaling</span>}
         </div>
-        <h2 className="mt-1 font-data text-xl font-bold leading-tight text-cz-1 sm:text-2xl">{b.name}</h2>
-        <p className="mt-1.5 max-w-[920px] text-sm text-cz-1">{b.what}</p>
+        <h2 className="mt-1 font-data text-xl font-bold leading-tight text-cz-1 sm:text-2xl">{b.name}{pressed ? ", efter Træn nu" : ""}</h2>
+        <p className="mt-1.5 max-w-[920px] text-sm text-cz-1">{pressed ? AFTER_PRESS : b.what}</p>
         <p className="mt-1.5 font-data text-xs font-semibold tabular-nums text-cz-2">{b.taps}</p>
       </div>
     </header>
@@ -269,7 +270,9 @@ function PageFrame({ plans, children }: { plans: Plans; children: ReactNode }) {
         </div>
         <div className="flex flex-col items-end gap-1 max-sm:w-full max-sm:items-stretch">
           {plans.pressed ? (
-            <Button variant="secondary" size="sm" disabled iconLeft={<CheckIcon size={14} aria-hidden="true" />}>Trænet kl. 14:05</Button>
+            <Button variant="secondary" size="sm" disabled>
+              <span className="inline-flex items-center gap-1.5"><CheckIcon size={14} aria-hidden="true" />Trænet kl. 14:05</span>
+            </Button>
           ) : (
             <Button size="sm" onClick={plans.press}>Træn nu</Button>
           )}
@@ -523,12 +526,12 @@ function MiniDay({ day, label, active, today, onOpen }: { day: Array<Session | "
       type="button"
       onClick={onOpen}
       aria-expanded={active}
-      aria-label={`${label}: ${words}`}
+      aria-label={`${today ? "I dag, " : ""}${label}: ${words}`}
       className={`flex min-h-11 min-w-0 flex-col gap-[3px] rounded-cz border px-1.5 py-1 text-start ${
         active ? "border-cz-1 bg-cz-subtle" : "border-cz-border bg-cz-card hover:border-cz-border-strong"
       }`}
     >
-      <span className={`flex items-center gap-1 font-data text-3xs ${today ? "font-bold text-cz-1" : "text-cz-2"}`}>
+      <span className={`flex items-center gap-1 font-data text-3xs ${today ? "font-bold text-cz-1 underline underline-offset-2" : "text-cz-2"}`}>
         {label}{hasStage && <LockIcon size={9} aria-hidden="true" />}
       </span>
       {day.map((d, i) => (
@@ -558,7 +561,7 @@ function Direction3({ plans, openDay }: { plans: Plans; openDay: { id: string; d
         <MiniDay
           key={wd}
           day={day === 0 ? plans.fields[r.id].map((f) => (f.kind === "stage" ? "S" : f.session)) : fieldsAt(r, day).map((f) => (f.kind === "stage" ? "S" : f.session))}
-          label={day === 0 ? "I dag" : wd}
+          label={wd}
           today={day === 0}
           active={open?.id === r.id && open.day === day}
           onOpen={() => toggle(r.id, day)}
@@ -645,7 +648,7 @@ export default function Sketch({ id, pressed, openDay }: { id: Exclude<Direction
   const plans = usePlans(pressed);
   return (
     <div className="min-h-screen bg-cz-body">
-      <Banner id={id} />
+      <Banner id={id} pressed={pressed} />
       <PageFrame plans={plans}>
         {id === "r1" && <Direction1 plans={plans} />}
         {id === "r2" && <Direction2 plans={plans} />}
