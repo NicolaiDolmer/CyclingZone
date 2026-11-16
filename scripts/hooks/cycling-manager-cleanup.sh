@@ -25,7 +25,11 @@
 set +e
 
 CWD="$PWD"
-LOG="${TMPDIR:-/tmp}/cm-cleanup.log"
+# Sikkerhed (Codex/Vercel 16/11): loggen skal have et unikt, sikkert navn pr. kørsel.
+# Et fast navn i en delt tmp-mappe kan peges om via et symlink og tømme en anden fil.
+# Fejler mktemp, skrives der ingen log (aldrig et forudsigeligt navn).
+LOG="$(mktemp -t cm-cleanup.XXXXXX 2>/dev/null)" || LOG=/dev/null
+[ -n "$LOG" ] || LOG=/dev/null
 exec 2>"$LOG"
 
 # Detect repo root portably. Skip silently if not in a git repo.
