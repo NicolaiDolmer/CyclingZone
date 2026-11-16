@@ -61,7 +61,8 @@ export interface TacticsPanelProps {
 }
 
 function SaveBadge({ t, badge }: { t: TFn; badge: TacticsSaveBadge }) {
-  if (badge === "saving") return null;
+  // Uændret gemt taktik (eller intet sat endnu) får intet mærke: "Ikke gemt" er kun til en ugemt kladde (Codex #8298).
+  if (badge === "saving" || badge === "untouched") return null;
   return badge === "saved"
     ? <StatusBadge state="won">{t("racePage.tactics.saveStatus.saved")}</StatusBadge>
     : <StatusBadge state="closing">{t("racePage.tactics.saveStatus.notSaved")}</StatusBadge>;
