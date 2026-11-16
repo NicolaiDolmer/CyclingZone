@@ -103,7 +103,7 @@ function ProfileSvg({ p, W, baseH, attackKm }: { p: StageProfile; W: number; bas
           <g key={km}>
             <line x1={x} x2={x} y1={top + 30} y2={H - bot} stroke="var(--good)" strokeDasharray="3 3" />
             <rect x={x - 9} y={top + 22} width="18" height="16" rx="3" fill="var(--good)" />
-            <text x={x} y={top + 34} textAnchor="middle" fontSize="10" fontWeight="700" fill="#fff">S</text>
+            <text x={x} y={top + 34} textAnchor="middle" fontSize="10" fontWeight="700" fill="white">S</text>
           </g>
         );
       })}
@@ -120,7 +120,7 @@ function ProfileSvg({ p, W, baseH, attackKm }: { p: StageProfile; W: number; bas
           <g key={c.name + c.crest}>
             <line x1={x} x2={x} y1={y} y2={top - 6 + OFF(i)} stroke="var(--t2)" />
             <rect x={bx - 11} y={top - 24 + OFF(i)} width="22" height="18" rx="3" fill="var(--kom)" />
-            <text x={bx} y={top - 11 + OFF(i)} textAnchor="middle" fontSize="11" fontWeight="700" fill="#fff">{c.cat}</text>
+            <text x={bx} y={top - 11 + OFF(i)} textAnchor="middle" fontSize="11" fontWeight="700" fill="white">{c.cat}</text>
             <text x={tx} y={top - 14 + OFF(i)} textAnchor={anchor} fontSize="12.5" fontWeight="700" fill="var(--t1)">{c.name}</text>
             <text x={tx} y={top + 1 + OFF(i)} textAnchor={anchor} fontSize="11" fill="var(--t2)">{`${c.len} km · ${c.grad} % · ${fmt(Math.round(h[idx]))} m`}</text>
             <rect x={X(from)} y={H - bot + 4} width={X(c.crest) - X(from)} height="6" fill="var(--kom)" />

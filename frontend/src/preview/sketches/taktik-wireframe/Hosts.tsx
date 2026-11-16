@@ -97,6 +97,7 @@ export function PlanHost({ details, mopen }: { details: boolean; mopen: string |
   const [s, set] = useTac({ details, mopen });
   const n = s.stage;
   const rows = [
+    { time: cph(SCHED_AT[1]), race: "Giro delle Alpi Orientali", st: "Stage 1", type: PROFILE[1].type, plan: planLabel(kindOf(s, 1), 1), mine: false, ex: false },
     { time: cph(SCHED_AT[2]), race: "Giro delle Alpi Orientali", st: `Stage ${n}`, type: PROFILE[n].type, plan: planLabel(kindOf(s, n), n), mine: true, ex: false },
     { time: "Sat 18:00", race: "Example: U23 Tour", st: "Stage 2", type: "hilly", plan: "Stage win", mine: false, ex: true },
     { time: "Sat 19:00", race: "Example: Junior Classic", st: "One day", type: "flat", plan: "Sprint", mine: false, ex: true },
@@ -114,13 +115,13 @@ export function PlanHost({ details, mopen }: { details: boolean; mopen: string |
             <thead><tr><th>Time</th><th>Race</th><th>Stage</th><th>Team plan</th><th>Source</th><th /></tr></thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.race} aria-current={r.mine ? "true" : undefined}>
-                  <td className="n">{r.time}</td>
+                <tr key={r.race + r.st} aria-current={r.mine ? "true" : undefined}>
+                  <td className="n" style={{ fontWeight: 700 }}>{r.time}</td>
                   <td className={r.ex ? "ex" : ""}>{r.race}</td>
-                  <td><svg className="ic" style={{ verticalAlign: -4 }}><use href={`#i-${r.type}`} /></svg> {r.st}</td>
+                  <td style={{ whiteSpace: "nowrap" }}><svg className="ic" style={{ verticalAlign: -4 }}><use href={`#i-${r.type}`} /></svg> {r.st}</td>
                   <td><b>{r.plan}</b></td>
                   <td className="dim">{r.mine && s.kinds[n] && s.kinds[n] !== s.std[PROFILE[n].type] ? "Changed for this stage" : "Your standard"}</td>
-                  <td>{r.mine ? <span className="dim">Shown below</span> : <button type="button" className="chip">Open</button>}</td>
+                  <td>{r.mine ? <span className="dim">Shown below</span> : r.ex ? null : <button type="button" className="chip">Open</button>}</td>
                 </tr>
               ))}
             </tbody>
