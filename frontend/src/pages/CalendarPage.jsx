@@ -56,7 +56,7 @@ function copenhagenTodayISO() {
 export default function CalendarPage() {
   const { t, i18n } = useTranslation(["calendar", "common"]);
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState(null);
+  const [data, setData] = useState(/** @type {any} */ (null));
   // #2849 bølge 3: kanonisk fejl-tilstand (states-sheet manglede en ÷ pr. audit'en).
   // #4165: var et boolean sat KUN fra catch'en, og hentningen tjekkede ikke
   // res.ok. Et 401 fra requireAuth har en gyldig JSON-krop, så res.json() lykkes,
@@ -64,7 +64,7 @@ export default function CalendarPage() {
   // tom-tilstanden "Ingen aktiv sæson" - en fejlet hentning der påstår noget
   // konkret og forkert om spillet. Nu bærer den en kind som de øvrige hub-flader.
   // { kind: "auth" | "http" | "parse" | "network", status? } | null
-  const [loadError, setLoadError] = useState(null);
+  const [loadError, setLoadError] = useState(/** @type {any} */ (null));
   const [retryTick, setRetryTick] = useState(0);
   // #4165: sæson-vælgeren skal OVERLEVE en fejlet hentning (samme grund som
   // SeasonView holder seasonsMeta uden for svaret). Uden den er fejl-fladen en
@@ -79,7 +79,7 @@ export default function CalendarPage() {
   // puljer i den valgte tier. Nulstilles hver gang division skifter (changeDivision).
   const [pool, setPool] = useState(null);
   const [mineOnly, setMineOnly] = useState(false);
-  const [cursor, setCursor] = useState(null); // { year, month }
+  const [cursor, setCursor] = useState(/** @type {any} */ (null)); // { year, month }
   // #2756: dagen der er foldet ud i "+N more"-modalen. null = lukket.
   const [expandedDayIso, setExpandedDayIso] = useState(null);
   // #2449: sæson-vælger (S1/S2/...) — null = ingen eksplicit valg endnu (backend

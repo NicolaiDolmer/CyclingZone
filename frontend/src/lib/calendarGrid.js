@@ -70,6 +70,7 @@ function poolTwinKey(e) {
 // løbet på holdets eget; ellers på puljen der står først i divisionstræet (laveste nummer).
 // Et løb der kun findes i én pulje er uændret. poolLabel ryddes på et sammenlagt løb der ikke er
 // holdets eget, fordi én puljes navn ville påstå at løbet kun køres der. Ren, bevarer rækkefølgen.
+/** @param {any[]|null|undefined} entries @param {{ divisions?: any[], preferPoolId?: number|null }} [opts] @returns {any[]} */
 export function mergePoolTwins(entries, { divisions = [], preferPoolId = null } = {}) {
   const rank = new Map();
   let i = 0;
@@ -100,6 +101,7 @@ export function mergePoolTwins(entries, { divisions = [], preferPoolId = null } 
 
 // #5841: den pulje en kommende sæsons tidslinje vises fra, mens holdets division ikke er afgjort:
 // den første pulje (laveste nummer) i den forventede division, der har løb. null hvis ingen.
+/** @param {{ divisions?: any[], entries?: any[], expectedDivision?: number|null }} [opts] @returns {number|null} */
 export function expectedPoolId({ divisions = [], entries = [], expectedDivision = null } = {}) {
   if (expectedDivision == null) return null;
   const tier = (divisions || []).find((d) => d.division === expectedDivision);

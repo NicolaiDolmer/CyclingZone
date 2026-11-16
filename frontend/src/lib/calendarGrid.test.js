@@ -214,7 +214,7 @@ test("mergePoolTwins: klokkeslæt alene adskiller ikke løb, og etapeløbet fyld
   });
   const out = mergePoolTwins([twin("a", 30, "D3 A"), later], { divisions: POOL_TREE });
   assert.equal(out.length, 1);
-  const evs = filterStageEvents(expandStageEvents(out), { year: 2026, month: 12, division: 3 });
+  const evs = expandStageEvents(out);
   assert.deepEqual(evs.map((e) => `${e.raceId}:${e.stage}`), ["a:1", "a:2"]);
 });
 

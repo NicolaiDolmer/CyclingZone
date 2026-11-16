@@ -131,7 +131,7 @@ export default function SeasonPlannerPage() {
   // #5841: divisionsvælger når brættet viser alle løb ("Alle løb", eller en kommende sæson).
   // undefined = intet eksplicit valg endnu → holdets division (kommende sæson: den forventede).
   // null = alle divisioner. Puljernes ens løb står én gang (plannerBoardRaces).
-  const [divisionChoice, setDivisionChoice] = useState(undefined);
+  const [divisionChoice, setDivisionChoice] = useState(/** @type {number|null|undefined} */ (undefined));
   const defaultDivision = useMemo(
     () => defaultPlannerDivision(races, { divisionPending, expectedDivision }),
     [races, divisionPending, expectedDivision],

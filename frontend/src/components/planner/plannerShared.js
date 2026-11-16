@@ -118,12 +118,14 @@ export function effectivePlannerFilter(filter, divisionPending) {
 }
 
 // #5841: de divisioner boardet har løb i, sorteret (driver Formplans divisionsvælger).
+/** @param {any[]|null|undefined} races @returns {number[]} */
 export function plannerDivisions(races) {
   return [...new Set((races || []).map((r) => r?.division).filter((d) => Number.isFinite(d)))].sort((a, b) => a - b);
 }
 
 // #5841: hvilken division vælgeren starter på. Kommende sæson: holdets nuværende (forventet),
 // ellers holdets egen (afledt af isMine). null = alle divisioner (ingen kendt division).
+/** @param {any[]|null|undefined} races @param {{ divisionPending?: boolean, expectedDivision?: number|null }} [opts] @returns {number|null} */
 export function defaultPlannerDivision(races, { divisionPending = false, expectedDivision = null } = {}) {
   if (divisionPending) return Number.isFinite(expectedDivision) ? expectedDivision : null;
   const own = (races || []).find((r) => r?.isMine && Number.isFinite(r.division));
@@ -134,6 +136,7 @@ export function defaultPlannerDivision(races, { divisionPending = false, expecte
 // og hvert løb én gang. Puljerne i en division kører de samme løb på de samme datoer med de
 // samme ruter, så boardet havde én kopi pr. pulje (D2 to gange, D3/D4 fire). Holdets eget løb
 // (isMine) vinder; ellers det første (boardet sorterer puljerne efter nummer). Ren funktion.
+/** @param {any[]|null|undefined} races @param {{ division?: number|null }} [opts] @returns {any[]} */
 export function plannerBoardRaces(races, { division = null } = {}) {
   const keyOf = (r) => [
     r.division ?? "", r.name, r.date || "", r.dateEnd || "", r.stages ?? 1,

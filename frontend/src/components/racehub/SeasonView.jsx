@@ -78,7 +78,7 @@ export function entriesToBands(entries, ownPoolId) {
 export default function SeasonView({ onSwitchView }) {
   const { t, i18n } = useTranslation(["races", "common"]);
   const [params, setParams] = useSearchParams();
-  const [data, setData] = useState(null);
+  const [data, setData] = useState(/** @type {any} */ (null));
   const [loading, setLoading] = useState(true);
   // #4165: "kaldet fejlede" og "kalenderen er tom" er to forskellige tilstande.
   // Var `failed` et boolean, og auth-grenen satte den slet ikke - en manglende
@@ -91,7 +91,7 @@ export default function SeasonView({ onSwitchView }) {
   // #4102: sæson-listen + hvilken der er aktiv persisterer UD OVER den enkelte
   // fetch, så SeasonPicker'en ikke blinker væk mens en NY sæson hentes (den
   // hører til navigationen, ikke til det enkelte kalender-svar).
-  const [seasonsMeta, setSeasonsMeta] = useState(null); // { availableSeasons, activeNumber } | null
+  const [seasonsMeta, setSeasonsMeta] = useState(/** @type {any} */ (null)); // { availableSeasons, activeNumber } | null
   // #1146: sæsonmatrixens ugemte-ændringer-flag bobler op hertil, så et sæson-skift
   // eller et view-toggle-klik guardes (samme boardDirty-mønster som RaceHubBoard.jsx,
   // IKKE StrategyPage-mønsteret, som er kendt defekt — StrategyPage.jsx:114).
