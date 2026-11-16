@@ -791,13 +791,14 @@ function extractInvestigateVerdict(reportText) {
 }
 
 // SPEJLING af findDeliveredPr() i scripts/wave-freeze.mjs (#8233). Sporets PR
-// fra reviewerens pr-felt eller som URL i lanens slutrapport; ellers null.
+// fra reviewerens pr-felt eller fra en 'PR: <url>'-linje i lanens slutrapport
+// (andre PR-links i rapporten er kilder, ikke levering); ellers null.
 function findDeliveredPr(row) {
   if (!row || typeof row !== 'object') return null
   const pr = String(row.pr || '').trim()
   if (/pull\/\d+|#\d+|^\d+$/.test(pr)) return pr
-  const m = String(row.report || '').match(/https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/)
-  return m ? m[0] : null
+  const m = String(row.report || '').match(/^[\s>*-]*PR(?:-URL)?\**\s*:\**\s*<?(https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+)/im)
+  return m ? m[1] : null
 }
 
 // SPEJLING af isNotDelivered() i scripts/wave-freeze.mjs (#8233). Et spor der
@@ -893,7 +894,7 @@ function laneBrief(track) {
       '',
       ...investigateLeveranceLines(track),
       '',
-      `Slutrapport (kort, dansk): hvad du undersoegte og hvordan, og PR-URL'en paa sin egen linje ("PR: https://github.com/.../pull/N"). Uden PR-URL melder boelgen sporet 'not-delivered'. Din SIDSTE saetning SKAL vaere PRAECIS en af de to domme ovenfor.`,
+      `Slutrapport (kort, dansk): hvad du undersoegte og hvordan, og din egen rapport-PR paa sin egen linje ("PR: https://github.com/.../pull/N" - kun den linje taeller som levering, andre PR-links er kilder). Uden den linje melder boelgen sporet 'not-delivered'. Din SIDSTE saetning SKAL vaere PRAECIS en af de to domme ovenfor.`,
     ].filter(Boolean).join('\n')
   }
 
@@ -1121,6 +1122,10 @@ function trackConfigRow(t) {
     // #6344: lane-agenten faar effort direkte i agent()-kaldet; feltet her er info.
     effort: t.effort,
     kind: t.kind,
+    // #8233: Claude-boelgens undersoegelsesspor leverer rapporten i en draft-PR.
+    // Codex-runtimen (scripts/codex-wave.mjs) har read-only .git for
+    // undersoegelser og saetter det ikke - dens brief er uaendret.
+    deliverPr: true,
     title: t.title,
     scopeText: t.scopeText,
     ownership: t.ownership,

@@ -1160,7 +1160,11 @@ test("#8233: findDeliveredPr finder PR'en fra reviewer-feltet eller rapportens U
     findDeliveredPr({ pr: "ingen", report: "Dom ...\nPR: https://github.com/o/r/pull/12\nafvist + bevis-test" }),
     "https://github.com/o/r/pull/12",
   );
-  for (const row of [{ pr: "ingen" }, { pr: "" }, { pr: "ingen PR" }, { report: "rapporten ligger i scratch" }, { report: "se issue https://github.com/o/r/issues/5" }, null, undefined, "x"]) {
+  assert.equal(findDeliveredPr({ report: "- **PR:** https://github.com/o/r/pull/13" }), "https://github.com/o/r/pull/13");
+  assert.equal(findDeliveredPr({ report: "PR-URL: https://github.com/o/r/pull/14" }), "https://github.com/o/r/pull/14");
+  // Codex-fund (#8233): en PR citeret som bevis er en kilde, ikke sporets levering.
+  const cited = "Bevis: fejlen kom med https://github.com/o/r/pull/8000.\nJeg oprettede ingen PR.\nafvist + bevis-test";
+  for (const row of [{ pr: "ingen" }, { pr: "" }, { pr: "ingen PR" }, { report: "rapporten ligger i scratch" }, { report: "se issue https://github.com/o/r/issues/5" }, { report: cited }, null, undefined, "x"]) {
     assert.equal(findDeliveredPr(row), null, JSON.stringify(row));
   }
 });
@@ -1189,6 +1193,7 @@ test("#8233: wave.js beder undersoegelsesspor om en draft-PR og melder not-deliv
   assert.ok(lev.includes("Refs #${track.issue}") && !lev.includes("Closes #"), "Refs, ikke Closes");
   const inv = extractFunction(src, "runInvestigateTrack");
   assert.ok(inv.includes("row.pr = findDeliveredPr({ report: reportText }) || 'ingen'"), "PR'en findes i HELE rapporten, ikke kun de foerste 4000 tegn");
+  assert.ok(extractFunction(src, "trackConfigRow").includes("deliverPr: true"), "Claude-boelgens fil-brief skal kraeve PR-leverancen (make-wave-brief deliverPr)");
   assert.ok(src.includes("const notDelivered = results.filter((r) => isNotDelivered(r))"), "slutrapporten skal samle not-delivered-spor");
   assert.ok(src.includes("ADVARSEL not-delivered:"), "not-delivered skal logges som advarsel");
   assert.ok(/\n\s*notDelivered: notDelivered\.map\(/.test(src), "returobjektet skal have notDelivered");

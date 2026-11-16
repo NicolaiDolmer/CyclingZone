@@ -303,8 +303,9 @@ export function extractInvestigateVerdict(reportText) {
 
 /**
  * #8233: finder sporets PR. Et spor har leveret, naar reviewerens pr-felt
- * peger paa en PR (URL, #N eller N), eller naar lanens egen slutrapport
- * indeholder en PR-URL. Alt andet ("ingen", tomt, tekst uden nummer) giver
+ * peger paa en PR (URL, #N eller N), eller naar lanens egen slutrapport har
+ * en 'PR: <url>'-linje. Andre PR-links i rapporten (fx en PR citeret som
+ * bevis) er kilder, ikke levering, og taeller ikke. Alt andet ("ingen", tomt, tekst uden nummer) giver
  * null. To gange 16/11 endte et undersoegelsesspors rapport kun i scratch,
  * fordi intet tjekkede at der kom en PR ud af sporet.
  * @returns {string|null}
@@ -315,8 +316,8 @@ export function findDeliveredPr(row) {
   if (!row || typeof row !== 'object') return null
   const pr = String(row.pr || '').trim()
   if (/pull\/\d+|#\d+|^\d+$/.test(pr)) return pr
-  const m = String(row.report || '').match(/https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/)
-  return m ? m[0] : null
+  const m = String(row.report || '').match(/^[\s>*-]*PR(?:-URL)?\**\s*:\**\s*<?(https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+)/im)
+  return m ? m[1] : null
 }
 
 /**
