@@ -101,14 +101,9 @@
     "orders": "Ordrer for etape {number}",
     "ordersRaceDay": "Ordrer for løbsdagen",
     "team": "Holdet",
-    "colToday": "I dag",
     "colEffort": "Indsats",
     "effortAria": "Indsats for {name}",
-    "untouched": "Gør du intet, kører de præcis sådan her.",
-    "badge": {
-      "saved": "Gemt",
-      "notSaved": "Ikke gemt"
-    }
+    "untouched": "Gør du intet, kører de præcis sådan her."
   },
   "stagePlan": {
     "title": "Etapeplan",

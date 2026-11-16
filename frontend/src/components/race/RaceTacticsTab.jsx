@@ -60,7 +60,7 @@
 // Revisionen læses direkte fra races (RLS: offentlig SELECT); en fejlet
 // læsning betyder legacy, aldrig de nye regler. Prosaen bor i Hjælp.
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import i18n from "i18next";
@@ -138,11 +138,13 @@ import TacticsSaveStatus from "./TacticsSaveStatus.tsx"; // #7327
 import { useV6TacticsSaved } from "./v6/v6TacticsSaved.ts"; // #7778: løbssiden v6 får besked om et lykket gem
 // #8297: det fælles taktikpanel (wireframe v6c). Kun løbssiden v6 vælger det; ellers som før.
 import { useTacticsLayout } from "../tactics/tacticsLayout.ts";
-import TacticsPanel from "../tactics/TacticsPanel.tsx";
-import TacticsRiderTable from "../tactics/TacticsRiderTable.tsx";
-import EffortSegmented from "../tactics/EffortSegmented.tsx";
-import TeamPlanCards from "../tactics/TeamPlanCards.tsx";
 import { saveBadge } from "../tactics/tacticsPanelModel.ts";
+// Panelets dele hentes foerst, naar panelet vises (kun under v6): den gamle sides stykke vokser ikke.
+const loadTactics = () => import("../tactics/index.ts");
+const TacticsPanel = lazy(() => loadTactics().then((m) => ({ default: m.TacticsPanel })));
+const TacticsRiderTable = lazy(() => loadTactics().then((m) => ({ default: m.TacticsRiderTable })));
+const EffortSegmented = lazy(() => loadTactics().then((m) => ({ default: m.EffortSegmented })));
+const TeamPlanCards = lazy(() => loadTactics().then((m) => ({ default: m.TeamPlanCards })));
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -1290,6 +1292,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       </div>
     );
     return (
+      <Suspense fallback={<Section><SectionHeader title={t("racePage.tactics.title")} /><SkeletonLines lines={6} /></Section>}>
       <TacticsPanel
         t={t}
         route={routeCard}
@@ -1329,7 +1332,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
               rider: t("intention.colRider"),
               role: t("intention.colRole"),
               routeMatch: routeMatchColumn,
-              today: t("tacticsPanel.colToday"),
+              today: t("stagePageV2.today"),
               effort: t("tacticsPanel.colEffort"),
               orders: ordersColumn,
             }}
@@ -1356,6 +1359,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
           busy: saving,
         }}
       />
+      </Suspense>
     );
   }
 

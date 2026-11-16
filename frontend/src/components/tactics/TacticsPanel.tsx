@@ -63,8 +63,8 @@ export interface TacticsPanelProps {
 function SaveBadge({ t, badge }: { t: TFn; badge: TacticsSaveBadge }) {
   if (badge === "saving") return null;
   return badge === "saved"
-    ? <StatusBadge state="won">{t("tacticsPanel.badge.saved")}</StatusBadge>
-    : <StatusBadge state="closing">{t("tacticsPanel.badge.notSaved")}</StatusBadge>;
+    ? <StatusBadge state="won">{t("racePage.tactics.saveStatus.saved")}</StatusBadge>
+    : <StatusBadge state="closing">{t("racePage.tactics.saveStatus.notSaved")}</StatusBadge>;
 }
 
 export default function TacticsPanel({ t, route, teamPlan, title, meta = null, intro = null, note = null, team, teamNote = null, board, footer }: TacticsPanelProps) {

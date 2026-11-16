@@ -101,14 +101,9 @@
     "orders": "Orders for stage {number}",
     "ordersRaceDay": "Orders for race day",
     "team": "The team",
-    "colToday": "Today",
     "colEffort": "Effort",
     "effortAria": "Effort for {name}",
-    "untouched": "If you do nothing, they ride exactly this.",
-    "badge": {
-      "saved": "Saved",
-      "notSaved": "Not saved"
-    }
+    "untouched": "If you do nothing, they ride exactly this."
   },
   "stagePlan": {
     "title": "Stage plan",
