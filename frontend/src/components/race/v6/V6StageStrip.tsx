@@ -10,7 +10,7 @@
 // Modern Web Guidance (carousel, scrollability-affordance-hints): vandret
 // rullecontainer med scroll-snap "proximity" (cellerne er valg, ikke slides),
 // rigtige <button>-pile med aria-label som kantens opakke mærke med hairline
-// (ingen gradient-fade, TASTE §3), og den valgte etape rulles ind i syne. Stilen
+// (ingen udtoning, TASTE §3), og den valgte etape rulles ind i syne. Stilen
 // bor i index.css (.v6-strip-*). Ægte roving tabindex (v6StripTabStop): ét
 // tab-stop i striben; piletaster, Home og End flytter fokus; Enter og mellemrum vælger.
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";

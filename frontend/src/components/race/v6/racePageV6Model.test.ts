@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  RACE_PAGE_V6_TABS, resolveV6Tab, tacticsAfterView, tacticsCta, v6BodyIsWide, v6ResultsPhase, v6StageTabFor, v6Strip, v6Tabs, v6TacticsResults, v6TacticsStage,
+  RACE_PAGE_V6_TABS, resolveV6Tab, tacticsAfterView, tacticsCta, v6ResultsPhase, v6StageTabFor, v6Strip, v6Tabs, v6TacticsResults, v6TacticsStage,
 } from "./racePageV6Model.ts";
 
 // Linjeskift normaliseres, saa kildeproeverne virker med CRLF-checkout (Windows) og LF (CI).
@@ -153,12 +153,10 @@ test("#7865: ordre-oversigten findes eet sted under v6 (Taktik), ikke under Stil
   assert.match(page, /hideOrdersRecap\n/, "og stadig ikke under Historie");
 });
 
-test("#7865: kun v6's egen resultatvisning er bred; de genbrugte faner staar paa max-w-5xl", () => {
-  assert.equal(v6BodyIsWide({ activeTab: "results", isStageRace: true }), true);
-  for (const tab of ["stage", "standings", "tactics", "team"] as const) assert.equal(v6BodyIsWide({ activeTab: tab, isStageRace: true }), false, tab);
-  assert.equal(v6BodyIsWide({ activeTab: "results", isStageRace: false }), false, "endagsloebets resultat er den gamle visning");
+test("#7865 review-punkt d: panelet har kortets bredde og placering paa alle faner", () => {
   const page = read("./RacePageV6.tsx");
-  assert.match(page, /"w-full max-w-5xl"/);
+  assert.match(page, /role="tabpanel" aria-labelledby=\{tabId\(activeTab\)\} data-race-body-width="card" className="w-full">/);
+  assert.doesNotMatch(page, /max-w-5xl/, "intet panel staar venstrestillet under et bredere kort");
 });
 
 // ── PR #8173-review: Taktik-fanens etape og etapens resultater ──

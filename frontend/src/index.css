@@ -1084,7 +1084,7 @@ tr:hover .sticky-name-cell {
 /* #7778 udgave E: v6's etapestribe (V6StageStrip.tsx), bunden af løbshovedets kort.
    Modern Web Guidance (carousel, scrollability-affordance-hints): vandret
    rullecontainer, scroll-snap "proximity" (cellerne er valg, ikke slides). Kanten
-   markeres af pileknapperne: opak kort-baggrund + hairline, ingen gradient-fade og
+   markeres af pileknapperne: opak kort-baggrund + hairline, ingen udtoning og
    ingen skygge (TASTE §3, review-punkt a på #7865). */
 @layer utilities {
   .v6-strip-scroller {
