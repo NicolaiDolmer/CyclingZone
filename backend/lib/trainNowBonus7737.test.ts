@@ -41,11 +41,13 @@ test('rest and old leftover bonus boolean do not earn extra growth', () => {
   assert.deepEqual(applyDailyTick({ ...rest, trainNowBonus: true }), applyDailyTick(rest));
 });
 
-test('independent control only accepts exact on', async () => {
+test('independent control accepts on for everyone and beta only for beta testers (#7741)', async () => {
   for (const value of ['on', 'off', 'beta', true, null]) {
     const supabase = { from: () => ({ select() { return this; }, eq() { return this; },
       async maybeSingle() { return { data: { value }, error: null }; } }) };
-    assert.equal(await isTrainNowBonusEnabled(supabase), value === 'on');
+    assert.equal(await isTrainNowBonusEnabled(supabase), value === 'on', `default ${String(value)}`);
+    assert.equal(await isTrainNowBonusEnabled(supabase, { isBetaTester: false }), value === 'on', `player ${String(value)}`);
+    assert.equal(await isTrainNowBonusEnabled(supabase, { isBetaTester: true }), value === 'on' || value === 'beta', `beta tester ${String(value)}`);
   }
 });
 
@@ -154,6 +156,21 @@ test('real press lost first publication response resumes automatically with cont
     return abilities;
   };
   assert.deepEqual(await run(true),await run(false));
+});
+
+test('#7741: bonus on beta gives the bonus to a beta tester press only; on is unchanged', async () => {
+  const run = async (controls, isBetaTester) => {
+    const state = seedState({ flags: { ...flags, ...controls } });
+    enter(state, ['r2']);
+    await press(state, createFake(state), { isBetaTester });
+    return decisions(state);
+  };
+  assert.deepEqual(await run({ training_train_now_bonus: 'beta' }, true), [true, true], 'beta tester earns the bonus');
+  assert.deepEqual(await run({ training_train_now_bonus: 'beta' }, false), [false, false], 'other players do not');
+  assert.deepEqual(await run({ training_train_now_instant: 'beta', training_train_now_bonus: 'beta' }, true), [true, true], 'both switches on beta');
+  assert.deepEqual(await run({ training_train_now_instant: 'beta', training_train_now_bonus: 'beta' }, false), [false, false]);
+  assert.deepEqual(await run({ training_train_now_bonus: 'on' }, false), [true, true], 'on still means everyone');
+  assert.deepEqual(await run({ training_train_now_bonus: 'off' }, true), [false, false], 'off still means no one');
 });
 
 test('no-click and old presses cannot acquire bonus on a later ON retry', async () => {
