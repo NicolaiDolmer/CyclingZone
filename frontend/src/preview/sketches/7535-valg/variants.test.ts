@@ -25,7 +25,7 @@ test("id'er er unikke og følger punkt + bogstav (filnavnene i pr-screens)", () 
 test("hver caption er én sætning med både fordel og ulempe", () => {
   for (const v of VARIANTS) {
     assert.match(v.line, /^Fordel: .+; ulempe: .+\.$/, v.id);
-    assert.ok(!/\.\s+\S/.test(v.line.replace(/\b(ca|pr)\. /g, "")), `${v.id} er mere end én sætning`);
+    assert.ok(!/\.\s+\S/.test(v.line.replace(/\b(ca|pr|\d+)\. /g, "")), `${v.id} er mere end én sætning`);
   }
 });
 

@@ -401,7 +401,7 @@ function SquadTable({ cfg }: { cfg: Config }) {
         {cfg.after === "today" && " Efter løbet: forventet træthed efter sidste etape ved normal indsats."}
         {cfg.after === "finish" && " Træthed ved mål: nu + hvad løbet lægger oven i."}
       </p>
-      <table className="w-full border-collapse text-[13px]">
+      <table data-sort-exempt="skitse: statisk billede, ingen rigtig sortering" className="w-full border-collapse text-[13px]">
         <thead className="border-b border-cz-border bg-cz-subtle">
           <tr>
             <Th>{""}</Th>
