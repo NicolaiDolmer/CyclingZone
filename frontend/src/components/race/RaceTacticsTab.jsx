@@ -1085,7 +1085,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     // En gemt modsaetning forklares med selve reglen; ellers hvorfor en knap er graa.
     const reason = conflict ? `intention.errors.${conflict}` : breakBlocked || trainBlocked;
     return (
-      <span data-testid="order-toggles" className="flex flex-wrap items-center gap-2">
+      <span className="flex flex-wrap items-center gap-2">
         {conflict && (
           <span data-testid="opposite-orders-pick-one" className="text-3xs font-medium uppercase tracking-wide text-cz-warning">
             {t("tacticsOrders.pickOne")}

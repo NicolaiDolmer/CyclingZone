@@ -102,10 +102,12 @@ for (const scenario of SCENARIOS) for (const width of WIDTHS) for (const theme o
     } else if (scenario === 'orders') {
       const stance = page.getByTestId('breakaway-stance');
       await expect(stance).toBeVisible();
-      targets = [stance, page.getByTestId('order-toggles').filter({ visible: true }).first()];
+      // Knap-gruppen findes via Forsøg udbrud-knappen (dens forælder), ikke et testid:
+      // et testid her ville ændre axe-selectoren mod baselinen (tactics-gaten).
+      const toggles = tab.getByRole('button', { name: /forsøger at komme med i udbruddet/ }).filter({ visible: true }).first().locator('..');
+      targets = [stance, toggles];
       if (MODE !== 'before') {
         await expect(stance.getByTestId('stance-cost')).toHaveText(['Hård', 'Middel', 'Let']);
-        const toggles = page.getByTestId('order-toggles').filter({ visible: true }).first();
         await expect(toggles.getByTestId('order-toggle-cost')).toHaveText(['Hård', 'Middel']);
         await expect(toggles.getByRole('button').first()).toHaveAccessibleName(/, Hård$/);
         await expect(tab.getByTestId('intention-cost').filter({ visible: true }).first()).toBeVisible();
