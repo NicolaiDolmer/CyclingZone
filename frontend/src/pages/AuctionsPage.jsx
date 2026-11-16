@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo, useRef } from "react";
+﻿import { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuctionData, useAuctionEvents } from "../data/auctionData.ts";
 
@@ -159,7 +159,9 @@ function Countdown({ end, status }) {
     });
   }, [end, status, i18n.language]);
 
-  useEffect(() => {
+  // #8290: layout effect, so a new end (a realtime extension) reaches text and ring in the same
+  // commit as the new price. A passive effect painted the stale ring first and fixed it a pass later.
+  useLayoutEffect(() => {
     if (status === "completed") { setText(t("timer.completed")); return; }
     function update() {
       const diff = new Date(end) - new Date();
