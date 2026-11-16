@@ -41,6 +41,7 @@ import { isFatigueNow7801Enabled } from "./riderFatigueNowFlag.js";
 import { isTrainingCellsEnabledForTeam } from "./trainingWeekPlanCellsFlag.js";
 import { isTrainingCatalogV3EnabledForTeam } from "./trainingCatalogV3.js"; // #5319
 import { loadRaceExitGameDays, dropBindingsAfterRaceExit } from "./trainingRaceDayTick.js";
+import { isTrainingSettleRaceSessionEnabled } from "./trainingSettleRaceSession7982.js"; // #7982
 // #5932-integrationen: spillerens traethedsgraense (#4854) aendrer motorens pas
 // efter resolveDayProgram. Prognosen kalder SAMME funktion (I5).
 import {
@@ -120,6 +121,7 @@ export function buildTeamFatigueForecast({
   // #4854: holdets regler (loadTeamFatigueRules) + hvem koerte etape i gaar.
   fatigueRules = null, stageYesterdayRiderIds = new Set(),
   fatigueNow = false, // #7801: reglen paa traetheden lige nu, samme tal som motoren (I5)
+  ranSlots = false, // #7982: kun med training_settle_race_session on; slukket = feltet findes ikke
 }) {
   const days = [...new Set((dateGameDays ?? []).map(Number).filter(Number.isFinite))].sort((a, b) => a - b);
   if (days.length !== FORECAST_SLOTS) return {};
@@ -182,6 +184,8 @@ export function buildTeamFatigueForecast({
     // dem som etape; de oevrige felter er traening.
     const raceSlots = slots.flatMap((slot, index) => (slot.intensity === "race" ? [index] : []));
     out[rider.id] = { fatigue, band: forecastBand(fatigue), raceSlots };
+    // #7982: felter med kvittering er koert (fx loebets session efter etapen) og kan ikke aendres.
+    if (ranSlots) out[rider.id].ranSlots = days.flatMap((day, index) => (riderReceipts.some((row) => row.game_day === day) ? [index] : []));
   }
   return out;
 }
@@ -295,6 +299,10 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     return { ...base, available: true, settled: true, riders: actual };
   }
 
+  // #7982: kontakten laeses kun, naar en kvittering findes paa en aaben dato (ellers er intet
+  // koert at vise), og samtidig med etapeopslagene, saa en almindelig dag er uaendret.
+  const settleRaceSessionP = dateReceipts.length ? settle(isTrainingSettleRaceSessionEnabled(supabase)) : null;
+
   // Planlagte etaper: bindingens loeb har en etape paa netop den loebsdag.
   const raceIds = [...new Set(entryDays.map((row) => row.race_id).filter(Boolean))];
   const [schedule, profiles, exits] = raceIds.length
@@ -318,6 +326,8 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
   const medicalBonus = conditionModelV2 ? unwrap(await medicalBonusP) : 0;
   const raceDateTrainingDay = conditionModelV2 ? unwrap(await raceDateTrainingDayP) : false; // #7536
   const fatigueNow = conditionModelV2 ? unwrap(await fatigueNowP) : false; // #7801, samme gate som motoren
+  // Fejl i opslaget = slukket (readFlagStage giver null), som delkoerslen selv.
+  const settleRaceSession = settleRaceSessionP ? (await settleRaceSessionP).value === true : false;
   const forecast = buildTeamFatigueForecast({
     conditionModelV2,
     fatigueNow,
@@ -339,8 +349,13 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     cellsOn: cellsOn && weekRows.some((row) => weekDaysHaveSessions(row.days)),
     raceDayEngineOn,
     catalogV3,
+    ranSlots: settleRaceSession,
   });
-  return { ...base, available: true, settled: false, riders: forecast };
+  return {
+    ...base, available: true, settled: false, riders: forecast,
+    // #7982: skaermen ved, at loebets session afregnes efter etapen, og om traetheden lige nu viser loebet.
+    ...(settleRaceSession ? { raceSessionSettle: { fatigueNow } } : {}),
+  };
 }
 
 // Motorens regler (samme loader som dailyTrainingEngine.js). Motoren kaster ved
