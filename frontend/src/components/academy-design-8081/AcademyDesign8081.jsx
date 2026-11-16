@@ -97,12 +97,12 @@ function OneList({ ctx, landingText, squadById }) {
       <table data-sort-exempt="Designudkast #8081, grupperet efter akademiets rejse" className="w-full table-fixed border-collapse text-sm sm:table-auto">
         <thead>
           <tr className="border-b border-cz-border">
-            <th className={`${TH} w-[44%] sm:w-auto`}>{c("talents.colRider")}</th>
+            <th className={`${TH} w-[40%] sm:w-auto`}>{c("talents.colRider")}</th>
             <th className={`${TH} hidden sm:table-cell`}>{c("talents.colType")}</th>
             <th className={`${TH} text-right`}>{c("talents.colAge")}</th>
             <th className={`${TH} hidden md:table-cell`}>{c("talents.colSquad")}</th>
-            <th className={TH}>{c("talents.colPrognosis")}</th>
-            <th className={`${TH} text-right`}>{c("c.colAction")}</th>
+            <th className={`${TH} w-[28%] sm:w-auto`}>{c("talents.colPrognosis")}</th>
+            <th className={`${TH} w-[18%] text-right sm:w-auto`}><span className="sr-only sm:not-sr-only">{c("c.colAction")}</span></th>
           </tr>
         </thead>
         <tbody>
