@@ -29,6 +29,7 @@ export default function TrainingGroupsPlan({
   client,
   forecast,
   lockedFor,
+  ranFor,
   catalog,
   riderShortName,
   onEdit,
@@ -43,6 +44,7 @@ export default function TrainingGroupsPlan({
   client: TrainingGroupsClient;
   forecast: ForecastResponse | null;
   lockedFor: (riderId: string) => ReadonlySet<number>;
+  ranFor?: (riderId: string) => ReadonlySet<number>; // #7982
   catalog: CatalogProgram[];
   riderShortName: (riderId: string) => string;
   onEdit: () => void;
@@ -108,6 +110,7 @@ export default function TrainingGroupsPlan({
         isSeed: false,
         program: catalog.find((p) => p.key === group.programKey) ?? null,
         lockedToday: groupLockedSlots(memberIds.map(lockedFor)),
+        ...(ranFor ? { ranToday: groupLockedSlots(memberIds.map(ranFor)) } : {}),
         busy: client.busy,
         onSetCell: async (weekday, slotIndex, session) => {
           const result = await client.setCell(group.id, weekday, slotIndex, session);

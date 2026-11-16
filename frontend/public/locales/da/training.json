@@ -551,6 +551,12 @@
     "restSelected": "Sæt til hvile",
     "pickHint": "Tryk på de ryttere, du vil ændre."
   },
+  "settleAfterStage": {
+    "ran": "Kørt",
+    "ranTitle": "Sessionen er kørt og kan ikke længere ændres",
+    "note": "{n, plural, one {# rytters løbssession er afregnet efter etapen.} other {# rytteres løbssessioner er afregnet efter etapen.}} Sessioner, der ikke er kørt, kan stadig ændres.",
+    "fatigueNow": "Den viste træthed har allerede løbet med."
+  },
   "programs": {
     "title": "Træningsprogrammer",
     "intro": "Vælg et program og læg det på en rytter eller hele truppen. Det kopieres ind i planen, så du kan rette enhver dag bagefter.",
