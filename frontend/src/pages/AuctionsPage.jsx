@@ -1172,13 +1172,17 @@ export default function AuctionsPage() {
   }, [apiFetch, getHeaders]);
 
   // #8069 T10: rundvisningen starter EN gang, naar der er auktioner at pege paa
-  // (ellers viser turen kun sin "target ikke fundet"-boks).
+  // (ellers viser turen kun sin "target ikke fundet"-boks). Codex-review #8316:
+  // "Min situation" kan vaere tom, selv om markedet har auktioner. Derfor ventes
+  // der, til bud-feltet (rundvisningens trin 2) faktisk staar paa siden; foer det
+  // bruges hverken rundvisningen eller noeglen op.
   useEffect(() => {
     if (!needsFirstBid || firstBidTourShown || auctions.length === 0) return;
+    if (typeof document === "undefined" || !document.querySelector("[data-tour='auctions-bid-input']")) return;
     try { localStorage.setItem("cz-first-bid-shown", "1"); } catch { /* private browsing */ }
     setFirstBidTourShown(true);
     startTour("auctions");
-  }, [needsFirstBid, firstBidTourShown, auctions.length]);
+  }, [needsFirstBid, firstBidTourShown, auctions, filter, wishlistOnly]);
 
   // #3007: kun beregnet mens manageren ikke har afgivet sit foerste bud (har ikke
   // budt endnu) — ingen grund til at gennemløbe auktionslisten hvert sekund
