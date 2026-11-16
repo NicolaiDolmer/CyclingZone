@@ -281,6 +281,12 @@ body{-webkit-text-size-adjust:100%}
 .shot .sk-bar{display:none}
 /* film labels: the wireframe draws climb names in --t1 on the dark film, which fails contrast; light text here */
 .film .prof text[fill="var(--t1)"]{fill:#f1efe8}.film .prof text[fill="var(--t2)"]{fill:#c3c0cf}.film .prof text[fill="var(--t3)"]{fill:#a9a6b8}
+/* a11y (WCAG 1.4.11): the off track of a switch was 1.3:1 against the card; a hairline in --t3 gives it an edge */
+.sw,.rule i{box-shadow:none;outline:1px solid var(--t3);outline-offset:-1px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+button.bell{cursor:pointer;padding:0}
+.marks .st[data-dev]{outline-offset:-3px}.marks .st[data-dev]::after{top:2px;right:2px}
+@media (max-width:640px),(pointer:coarse){.rule,.bell{min-height:44px;min-width:44px}}
 /* deviation marks (only with ?marks) */
 .marks [data-dev]{outline:2px dashed #c2185b;outline-offset:3px;position:relative}
 .marks [data-dev]::after{content:attr(data-dev);position:absolute;top:-13px;right:-13px;z-index:30;background:#c2185b;color:#fff;font:700 12px/22px var(--body);width:22px;height:22px;border-radius:50%;text-align:center;letter-spacing:0;text-transform:none}
@@ -353,7 +359,7 @@ body{-webkit-text-size-adjust:100%}
 .set .r p{margin:2px 0 0;font-size:13px;color:var(--t2)}
 .set .rule{font-size:12px;color:var(--t2)}
 /* standings */
-.std td.team{font-weight:500}
+.tm{font-weight:500}
 .tabs.small{margin-top:0}
 .hd-meta{font-family:var(--num);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);font-weight:400}
 /* coverage */
@@ -564,7 +570,7 @@ function hero(){
   return `<a class="back" href="#" onclick="return false"><svg viewBox="0 0 16 16"><path d="M10 3L5 8l5 5"/></svg>Races</a>
   <header class="hero">
     <div><h1>${RACE}</h1><div class="meta">WorldTour · stage race · Stage ${n} of 7 · ${TYPE_LABEL[p.profile_type]} · ${p.distance_km} km · ${SCHED[n]}</div><div class="verdict">${verdict}</div></div>
-    <div class="hero-r"><button class="shield" id="shield" aria-pressed="${S.shield}" type="button"${VIEW === '4' ? dev(1) : ''}><span>Spoiler shield</span><span class="sw" aria-hidden="true"></span></button></div>
+    <div class="hero-r"><button class="shield" id="shield" aria-pressed="${S.shield}" type="button"${VIEW === '4' ? dev(1) : VIEW === '1' ? dev(1) : ''}><span>Spoiler shield</span><span class="sw" aria-hidden="true"></span></button></div>
     <div class="hero-act"><span class="badge warn">Not saved</span><span class="when">Stage 2 locks Sat 16:55, in 35 min · 7 riders ride the assistant's plan</span><button type="button" class="gold">Set tactics for stage 2</button></div>
   </header>`;
 }
@@ -643,8 +649,8 @@ function todayCard(o){
 function dashboard(){
   const done = sh => todayCard({ race:RACE, label:'Stage 1 of 7', stage:1, badge:'neutral', state:'Finished', dev: sh ? 1 : 0,
     line: sh ? `<svg class="eye"><use href="#s-eyeoff"/></svg><span>Result hidden by your spoiler shield</span>` : `<svg class="eye"><use href="#s-trophy"/></svg><span class="win-n">Won by Luca Ferrandi</span>`,
-    sec: sh ? 'Standing after the last stage you have seen' : 'GC: 3rd of 140' });
-  const live = todayCard({ race:'Tour of the Fjords', label:'Stage 3 of 5', stage:3, badge:'live', state:'Live', line:'<span class="badge live" style="background:none;padding:0">Live</span>', sec:'GC: 12th of 120' });
+    sec: sh ? 'GC hidden until you open stage 1' : 'GC: 3rd of 140' });
+  const live = todayCard({ race:'Tour of the Fjords', label:'Stage 3 of 5', stage:3, badge:'live', state:'Live', line:'<span>Racing now · km 84 of 176</span>', sec:'GC: 12th of 120' });
   const up = todayCard({ race:RACE, label:'Stage 2 of 7', stage:2, badge:'neutral', state:'Upcoming', line:'<span class="t" style="font-family:var(--num)">17:00</span>', sec:'Locks 16:55' });
   const latest = sh => `<section class="card lr"${dev(sh ? 2 : 0)}><h2>Latest result <small class="mlab">Sat 13:02</small></h2>
      <p class="big">${sh ? `Stage 1 of ${RACE} is finished` : 'Mikkel Aagaard 3rd on stage 1'}</p>
@@ -658,7 +664,7 @@ function dashboard(){
 
 /* ---------- 6 inbox and in-game ---------- */
 function inbox(){
-  const row = (o) => `<li class="${o.unread ? 'unread' : ''}"${dev(o.dev)}><svg class="ri"><use href="#${o.icon}"/></svg><div><div class="ti">${o.unread ? '<span class="dot" aria-label="Unread"></span>' : ''}${esc(o.title)}</div>${o.msg ? `<div class="ms">${esc(o.msg)}</div>` : ''}<div class="mlab mt">${o.meta}</div></div>${o.act ? `<button type="button" class="quiet">${o.act}<svg viewBox="0 0 16 16"><path d="M6 3l5 5-5 5"/></svg></button>` : '<span></span>'}</li>`;
+  const row = (o) => `<li class="${o.unread ? 'unread' : ''}"${dev(o.dev)}><svg class="ri"><use href="#${o.icon}"/></svg><div><div class="ti">${o.unread ? '<span class="dot" aria-hidden="true"></span><span class="sr">Unread: </span>' : ''}${esc(o.title)}</div>${o.msg ? `<div class="ms">${esc(o.msg)}</div>` : ''}<div class="mlab mt">${o.meta}</div></div>${o.act ? `<button type="button" class="quiet">${o.act}<svg viewBox="0 0 16 16"><path d="M6 3l5 5-5 5"/></svg></button>` : '<span></span>'}</li>`;
   const neutral = { unread:true, icon:'s-flag', title:`Stage 1 of ${RACE} is finished`, msg:'', meta:'Sat 13:02 · Race', act:'See the result', dev:1 };
   const today = { unread:true, icon:'s-flag', title:'Ferrandi wins solo on Monte Serra', msg:`Stage 1 of ${RACE}. Mikkel Aagaard 3rd, Jonas Vermeer 9th.`, meta:'Sat 13:02 · Race', act:'See the result' };
   const other = [
@@ -669,7 +675,7 @@ function inbox(){
     <div class="sk-col">
     <section class="card"><h2>Inbox <small class="mlab">With the shield on</small></h2><ul class="rows">${row(neutral)}${other.map(row).join('')}</ul></section>
     <section class="card"${dev(2)}><h2>In-game <small class="mlab">bell and pop-up, with the shield on</small></h2>
-      <div class="frame"><div class="topbar"><span class="dim" style="margin-right:auto">Top bar</span><span class="bell" aria-label="Notifications, 1 unread"><svg><use href="#s-bell"/></svg><span class="n">1</span></span></div>
+      <div class="frame"><div class="topbar"><span class="dim" style="margin-right:auto">Top bar</span><button type="button" class="bell" aria-label="Notifications, 1 unread" aria-expanded="true"><svg aria-hidden="true"><use href="#s-bell"/></svg><span class="n" aria-hidden="true">1</span></button></div>
         <div class="popin" role="dialog" aria-label="Latest notifications"><div class="h">Latest</div><div class="o"><b>Stage 1 of ${RACE} is finished</b><small>Sat 13:02 · Race</small></div><div class="o">You were outbid on Stefan Ricci<small>Sat 12:40 · Auction</small></div></div>
         <div class="toast" role="status"><svg class="ri" style="width:18px;height:18px;stroke:var(--t2);fill:none;stroke-width:1.6"><use href="#s-flag"/></svg><div><b>Stage 1 is finished</b><span class="dim">${RACE}</span><div style="margin-top:6px"><button type="button" class="quiet">Open the race<svg viewBox="0 0 16 16"><path d="M6 3l5 5-5 5"/></svg></button></div></div></div>
       </div></section>
@@ -700,7 +706,7 @@ function standings(){
     <div class="tabs small" role="tablist"><button role="tab" type="button" aria-selected="true">Teams</button><button role="tab" type="button" aria-selected="false">Riders</button></div>
     <section class="card"><h2>Season standings <span class="hd-meta"${dev(3)}>1 finished stage not seen yet</span></h2>
       <div class="tbl"><table data-sort-exempt="standings"><thead><tr><th>Pos</th><th>Team</th><th class="n">Races</th><th class="n">Points</th><th class="n">Gap</th></tr></thead><tbody>
-      ${T.map(([t, pts], i) => `<tr><td class="p">${i + 1}</td><td class="team">${tn(t)}${t === ME ? '<span class="you">You</span>' : ''}</td><td class="n">14</td><td class="n">${pts}</td><td class="n">${i ? '-' + (T[0][1] - pts) : ''}</td></tr>`).join('')}
+      ${T.map(([t, pts], i) => `<tr><td class="p">${i + 1}</td><td class="tm">${tn(t)}${t === ME ? '<span class="you">You</span>' : ''}</td><td class="n">14</td><td class="n">${pts}</td><td class="n">${i ? '−' + (T[0][1] - pts) : ''}</td></tr>`).join('')}
       </tbody></table></div>
       <p class="dim" style="margin-top:8px">The Riders tab follows the same rule. Show latest adds the stages you have not seen.</p></section></div>`;
 }
