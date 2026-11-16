@@ -4,7 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { gzipSync } from "node:zlib";
 import { PATCHES } from "../src/data/patchNotes.js";
-import { buildPatchNotesV2Files, buildLangFiles, buildSeenKeys, latestSeenKeyOf, RECENT_WEEKS } from "./patch-notes-v2.js";
+import { buildPatchNotesV2Files, buildLangFiles, buildSeenKeys, latestSeenKeyOf, RECENT_WEEKS } from "./patch-notes-v2.ts";
 
 const RECENT_GZIP_BUDGET = 40 * 1024;
 

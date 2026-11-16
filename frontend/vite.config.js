@@ -8,7 +8,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { formatWorktreeId, WORKTREE_ID_PATH } from "./playwright.ports.js";
 import { patchNotesJsonPlugin } from "./vite-plugins/patch-notes-json.js";
-import { patchNotesV2Plugin } from "./vite-plugins/patch-notes-v2.js"; // #8049
+import { patchNotesV2Plugin } from "./vite-plugins/patch-notes-v2.ts"; // #8049
 import { bootAssetsManifestPlugin } from "./vite-plugins/boot-assets-manifest.js";
 // #5493: statisk <script>-tag for Ahrefs Web Analytics, nøgle fra
 // VITE_AHREFS_ANALYTICS_KEY — se vite-plugins/ahrefs-analytics.ts for hvorfor.

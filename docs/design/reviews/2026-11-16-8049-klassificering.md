@@ -3,8 +3,8 @@
 > Ejerens valg 16/11 (#8049, punkt 5): område på alle noter fra november; ældre noter får området, hvor det
 > kan udledes af det, der allerede findes; resten klassificeres ud fra titel og tekst; kun hvad der ikke kan
 > placeres sikkert, havner i "Andet" i arkivet. **Ingen notetekst er ændret.** Området er data i
-> `frontend/src/lib/patchNotesAreaData.js` (nøgle `version#index`) og `TOPIC_AREA` i
-> `frontend/src/lib/patchNotesArea.js`; nye noter skriver `area` direkte i `patchNotes.js` (PATCH_NOTES_RULES §2b).
+> `frontend/src/lib/patchNotesAreaData.ts` (nøgle `version#index`) og `TOPIC_AREA` i
+> `frontend/src/lib/patchNotesArea.ts`; nye noter skriver `area` direkte i `patchNotes.js` (PATCH_NOTES_RULES §2b).
 
 ## Kilder
 

@@ -50,7 +50,10 @@ function formatDate(iso, language) {
 // PageLoader for states. Al ternary-i18n (da ? … : …) erstattet med rigtige
 // t()-nøgler i det nye "patchnotes"-namespace (allerede wired i i18n/index.js,
 // lazy-loaded — siden er allerede route-lazy, se lib/patchNotes.js).
-function LegacyPatchNotesPage() {
+// #8049: arrivalMarker = "sidst set" fanget af indpakningen ved ankomst (menuen kan nå at
+// markere siden som set, mens kontakten hentes). Uden den læses localStorage som altid.
+/** @param {{ arrivalMarker?: string | null }} props */
+function LegacyPatchNotesPage({ arrivalMarker = undefined }) {
   // #2849 bølge 4: patchnotes-namespacet er IKKE inlinet (lazy via HttpBackend) —
   // `ready` indgår i PageLoader-gaten nedenfor så raw keys aldrig rammer first
   // paint. Se INLINE_EXEMPT i scripts/i18n-check-namespace-inline.mjs.
@@ -109,6 +112,7 @@ function LegacyPatchNotesPage() {
   );
 
   const [lastSeen, setLastSeen] = useState(() => {
+    if (arrivalMarker !== undefined) return arrivalMarker;
     try { return localStorage.getItem(LAST_SEEN_KEY); } catch { return null; }
   });
   useSeenMarkersSynced("patch_notes", setLastSeen); // #6515: set paa en anden enhed = ikke "ny"
@@ -352,7 +356,7 @@ function LegacyPatchNotesPage() {
 // (loadFeatureFlagStages); udlogget læses den anonymt, så den kun er tændt ved "on".
 // Mens svaret er på vej, vises præcis den gamle sides indlæsning (samme sidehoved
 // og samme head), og det er også det, server-renderingen (prerender) ser.
-const PatchNotesV2Page = lazy(() => import("../components/patchnotes/PatchNotesV2Page.jsx"));
+const PatchNotesV2Page = lazy(() => import("../components/patchnotes/PatchNotesV2Page.tsx"));
 
 function usePatchNotesHead() {
   const { t, i18n, ready } = useTranslation("patchnotes");
@@ -404,5 +408,5 @@ export default function PatchNotesPage() {
     return () => { active = false; };
   }, []);
   if (stage === null) return <PatchNotesPending />;
-  return isPatchNotesV2Stage(stage) ? <PatchNotesV2Route arrivalMarker={arrivalMarker} /> : <LegacyPatchNotesPage />;
+  return isPatchNotesV2Stage(stage) ? <PatchNotesV2Route arrivalMarker={arrivalMarker} /> : <LegacyPatchNotesPage arrivalMarker={arrivalMarker} />;
 }

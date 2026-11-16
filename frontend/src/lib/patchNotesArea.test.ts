@@ -6,14 +6,16 @@ import { statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PATCHES } from "../data/patchNotes.js";
-import { resolveArea, resolveImage, isArea, ALL_AREAS, AREAS, OTHER_AREA, TOPIC_AREA, IMAGE_BY_KEY } from "./patchNotesArea.js";
-import { AREA_BY_KEY } from "./patchNotesAreaData.js";
+import { resolveArea, resolveImage, isArea, ALL_AREAS, AREAS, OTHER_AREA, TOPIC_AREA, IMAGE_BY_KEY } from "./patchNotesArea.ts";
+import { AREA_BY_KEY } from "./patchNotesAreaData.ts";
 import { PATCH_NOTE_AREAS } from "./patchNotes.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-function playerNotes() {
-  const out = [];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- patchNotes.js er utypet data
+type Note = { p: any; c: any; key: string };
+function playerNotes(): Note[] {
+  const out: Note[] = [];
   for (const p of PATCHES) p.changes.forEach((c, i) => { if (c.audience === "player") out.push({ p, c, key: `${p.version}#${i}` }); });
   return out;
 }

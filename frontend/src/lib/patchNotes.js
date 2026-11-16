@@ -103,7 +103,7 @@ export function filterByRollout(changes, mode, liveFlags) {
 // ── #8049: den nye side (uge for uge, efter område, arkiv pr. måned) ─────────
 //
 // Siden ligger bag kontakten patch_notes_v2_8049. Slukket = den gamle side ovenfor,
-// uændret. Data kommer fra vite-plugins/patch-notes-v2.js som små filer pr. sprog:
+// uændret. Data kommer fra vite-plugins/patch-notes-v2.ts som små filer pr. sprog:
 // recent (de seneste uger + listen over arkivmåneder), index (titler til søgning i
 // arkivet, hentes ved første søgning) og én fil pr. måned (hentes når måneden åbnes).
 // Et punkt i filerne er kompakt: { k, v, d, s, a, c, r?, f?, ti, b, fb?, img?, hl?, rp? }.

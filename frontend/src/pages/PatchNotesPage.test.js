@@ -90,20 +90,22 @@ test("2/11 har kun ét \"Små rettelser\"-punkt (#7543)", async () => {
 });
 
 // ── #8049: kontakten vælger siden; den gamle side er uændret bag "off" ──────
-const partsSrc = readFileSync(join(__dirname, "../components/patchnotes/PatchNoteParts.jsx"), "utf8");
-const v2Src = readFileSync(join(__dirname, "../components/patchnotes/PatchNotesV2Page.jsx"), "utf8");
+const partsSrc = readFileSync(join(__dirname, "../components/patchnotes/PatchNoteParts.tsx"), "utf8");
+const v2Src = readFileSync(join(__dirname, "../components/patchnotes/PatchNotesV2Page.tsx"), "utf8");
 
 test("#8049: kontakten læses med viewerens login, og ukendt/fejl er den gamle side", () => {
   assert.match(src, /loadFeatureFlagStages\(\)/);
   assert.match(src, /stages\?\.\[PATCH_NOTES_V2_FLAG\] \?\? "off"/);
   assert.match(src, /\.catch\(\(\) => \{ if \(active\) setStage\("off"\); \}\)/);
-  assert.ok(src.includes("isPatchNotesV2Stage(stage) ? <PatchNotesV2Route arrivalMarker={arrivalMarker} /> : <LegacyPatchNotesPage />"));
+  assert.ok(src.includes("isPatchNotesV2Stage(stage) ? <PatchNotesV2Route arrivalMarker={arrivalMarker} /> : <LegacyPatchNotesPage arrivalMarker={arrivalMarker} />"));
   // "Sidst set" fanges ved ankomst, før menuen når at markere siden som set.
   assert.match(src, /const \[arrivalMarker\] = useState\(\(\) => readLocalSeenMarker\("patch_notes"\)\)/);
   // Den nye side er sin egen chunk: den gamle side henter ikke et byte mere.
-  assert.match(src, /lazy\(\(\) => import\("\.\.\/components\/patchnotes\/PatchNotesV2Page\.jsx"\)\)/);
+  assert.match(src, /lazy\(\(\) => import\("\.\.\/components\/patchnotes\/PatchNotesV2Page.tsx"\)\)/);
   // Den gamle side henter stadig hele patch-notes.json, som før.
-  assert.match(src, /function LegacyPatchNotesPage\(\)[\s\S]*loadPatches\(\)/);
+  assert.match(src, /function LegacyPatchNotesPage\(\{ arrivalMarker = undefined \}\)[\s\S]*loadPatches\(\)/);
+  // Også den gamle side bruger "sidst set" fra ankomsten (menuen kan nå at markere imens).
+  assert.match(src, /if \(arrivalMarker !== undefined\) return arrivalMarker;/);
 });
 
 test("#8049: mærkerne er firkantede (5px), aldrig piller; ingen guld-knap; stroke-ikoner", () => {

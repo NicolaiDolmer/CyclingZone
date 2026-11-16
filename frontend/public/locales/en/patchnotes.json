@@ -123,6 +123,7 @@
       "description": "Clear the filters to see every change."
     },
     "indexError": "Older patch notes could not be searched right now. Recent weeks are still searched.",
-    "monthError": "This month could not be loaded. Nothing was lost."
+    "monthError": "This month could not be loaded. Nothing was lost.",
+    "showInArchive": "Show in the archive"
   }
 }

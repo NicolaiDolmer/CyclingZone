@@ -20,7 +20,7 @@
 // læser stadig src/data/patchNotes.js direkte, så version-bump-gaten er uændret.
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { latestSeenKeyOf } from "./patch-notes-v2.js";
+import { latestSeenKeyOf } from "./patch-notes-v2.ts";
 
 const PLUGIN_DIR = path.dirname(fileURLToPath(import.meta.url));
 const DATA_FILE = path.resolve(PLUGIN_DIR, "..", "src", "data", "patchNotes.js");

@@ -173,8 +173,8 @@ function missingFlag(patches, baseVersions) {
 
 // #8049: en NY spillervendt note skal bære sit område (`area`), så den nye patch notes-side
 // kan gruppere ugen efter område (PATCH_NOTES_RULES §2b). Listen SKAL matche PATCH_NOTE_AREAS i
-// frontend/src/lib/patchNotes.js (låst af patchNotesArea.test.js). Gamle noter røres ikke;
-// deres område slås op i frontend/src/lib/patchNotesArea.js.
+// frontend/src/lib/patchNotes.js (låst af patchNotesArea.test.ts). Gamle noter røres ikke;
+// deres område slås op i frontend/src/lib/patchNotesArea.ts.
 const PATCH_NOTE_AREAS = [
   "tactics", "races", "engine", "training", "development", "market",
   "academy", "board", "economy", "interface", "mobile", "help",

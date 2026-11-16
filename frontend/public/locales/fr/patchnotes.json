@@ -123,6 +123,7 @@
       "description": "Effacez les filtres pour voir toutes les modifications."
     },
     "indexError": "Les anciennes notes ne peuvent pas être recherchées pour le moment. Les dernières semaines le sont toujours.",
-    "monthError": "Ce mois n'a pas pu être chargé. Rien n'a été perdu."
+    "monthError": "Ce mois n'a pas pu être chargé. Rien n'a été perdu.",
+    "showInArchive": "Afficher dans les archives"
   }
 }

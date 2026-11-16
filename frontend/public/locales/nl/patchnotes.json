@@ -123,6 +123,7 @@
       "description": "Wis de filters om alle wijzigingen te zien."
     },
     "indexError": "Oudere patch notes kunnen nu niet worden doorzocht. De laatste weken worden nog wel doorzocht.",
-    "monthError": "Deze maand kon niet worden geladen. Er is niets verloren gegaan."
+    "monthError": "Deze maand kon niet worden geladen. Er is niets verloren gegaan.",
+    "showInArchive": "Toon in het archief"
   }
 }

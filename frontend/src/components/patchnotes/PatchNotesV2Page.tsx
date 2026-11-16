@@ -9,7 +9,7 @@
 //  6. Beta og tændt samme uge: kun den seneste vises i ugen; begge findes i arkiv og søgning.
 // T1 (896 px), den kanoniske PageHeader og højst to section cards (fold-disciplinen).
 // "Nyt siden sidst" og prikkerne følger brugeren via seen_markers (#6515), ikke enheden.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ChangeEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
   PATCH_NOTE_AREAS_WITH_OTHER, patchNotesRecentUrl, patchNotesIndexUrl, patchNotesMonthUrl,
@@ -23,19 +23,31 @@ import {
   PageHeader, Section, SectionStack, SectionHeader, Input, Select, Toggle, Button, EmptyState,
   ErrorState, PageLoader, SkeletonLines, SearchIcon, XIcon,
 } from "../ui";
-import { AreaBlocksA, AreaRowsB, PatchHero, PatchTag, NewDot, QuietButton, TOUCH } from "./PatchNoteParts.jsx";
+import {
+  AreaBlocksA, AreaRowsB, PatchHero, PatchTag, NewDot, QuietButton, TOUCH,
+  type PatchItem, type Translate, type LiveFlags,
+} from "./PatchNoteParts.tsx";
 
-// UI-kittets JSX har null-defaults, som checkJs læser som "kun null" (samme som resten af appen).
-const Header = /** @type {any} */ (PageHeader);
-const CardHeader = /** @type {any} */ (SectionHeader);
-const ErrorBox = /** @type {any} */ (ErrorState);
+// UI-kittet er utypet JSX med null-defaults; samme greb som GraduationDayPage.tsx.
+interface PageHeaderProps { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode }
+interface SectionHeaderProps { title: ReactNode; meta?: ReactNode; action?: ReactNode }
+interface StateProps { title: ReactNode; description?: ReactNode; action?: ReactNode; icon?: ReactNode }
+const Header = PageHeader as unknown as (props: PageHeaderProps) => ReactNode;
+const CardHeader = SectionHeader as unknown as (props: SectionHeaderProps) => ReactNode;
+const ErrorBox = ErrorState as unknown as (props: StateProps) => ReactNode;
+const EmptyBox = EmptyState as unknown as (props: StateProps) => ReactNode;
+
+interface MonthRef { m: string; n: number }
+interface RecentFile { latest: string | null; recentStart: string | null; seenKey: string | null; months: MonthRef[]; items: PatchItem[] }
+interface MonthState { status: "loading" | "ready" | "error"; items?: PatchItem[] }
+interface IndexState { status: "idle" | "loading" | "ready" | "error"; lang: string | null; items: PatchItem[] }
 
 const PREVIOUS_WEEKS = 4;
 const ARCHIVE_MONTHS_SHOWN = 3;
 const SEARCH_MIN = 2;
 const SEARCH_PAGE = 40;
 
-function useDebounced(value, ms) {
+function useDebounced<T>(value: T, ms: number): T {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
     const id = setTimeout(() => setDebounced(value), ms);
@@ -44,17 +56,17 @@ function useDebounced(value, ms) {
   return debounced;
 }
 
-function capitalize(text, locale) {
+function capitalize(text: string, locale: string): string {
   return text ? text.charAt(0).toLocaleUpperCase(locale) + text.slice(1) : text;
 }
 
-/** @param {{ liveFlags?: Record<string, boolean> | null, initialMarker?: string | null }} props */
-export default function PatchNotesV2Page({ liveFlags = null, initialMarker }) {
-  const { t, i18n } = useTranslation("patchnotes");
+export default function PatchNotesV2Page({ liveFlags = null, initialMarker }: { liveFlags?: LiveFlags; initialMarker?: string | null }) {
+  const { t: translate, i18n } = useTranslation("patchnotes");
+  const t = translate as unknown as Translate;
   const lang = i18n.language?.startsWith("da") ? "da" : "en";
   const locale = intlLocale(i18n.language);
 
-  const [recent, setRecent] = useState(/** @type {any} */ (null));
+  const [recent, setRecent] = useState<RecentFile | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
   useEffect(() => {
@@ -62,14 +74,14 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }) {
     setLoadError(false);
     setRecent(null);
     loadPatchNotesFile(patchNotesRecentUrl(lang))
-      .then((data) => { if (active) setRecent(data); })
+      .then((data: RecentFile) => { if (active) setRecent(data); })
       .catch(() => { if (active) setLoadError(true); });
     return () => { active = false; };
   }, [lang, reloadToken]);
 
   // "Sidst set" ved ankomst (#6515): fanges før siden markerer, så prikkerne viser
   // hvad der var nyt, da spilleren kom. Rykker kun frem, når en anden enhed har set mere.
-  const [marker, setMarker] = useState(() => (initialMarker !== undefined ? initialMarker : readLocalSeenMarker("patch_notes")));
+  const [marker, setMarker] = useState<string | null>(() => (initialMarker !== undefined ? initialMarker : readLocalSeenMarker("patch_notes")));
   useSeenMarkersSynced("patch_notes", setMarker);
   useEffect(() => {
     if (recent?.seenKey) markSeen("patch_notes", recent.seenKey);
@@ -79,8 +91,8 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }) {
   const [area, setArea] = useState("all");
   const [betaOnly, setBetaOnly] = useState(false);
   const [onlyNew, setOnlyNew] = useState(false);
-  const [expanded, setExpanded] = useState(() => new Set());
-  const toggle = useCallback((key) => {
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const toggle = useCallback((key: string) => {
     setExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
@@ -89,35 +101,55 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }) {
     });
   }, []);
 
-  const areaLabel = useCallback((a) => t(`v2.area.${a}`), [t]);
+  const areaLabel = useCallback((a: string) => t(`v2.area.${a}`), [t]);
   const filters = { area, betaOnly, onlyNew, marker, liveFlags };
   const filtering = area !== "all" || betaOnly || onlyNew;
 
   const today = todayIso();
   const thisWeek = weekStartOf(today);
-  const allRecent = recent?.items || [];
+  const allRecent: PatchItem[] = recent?.items || [];
   const weeks = Array.from({ length: PREVIOUS_WEEKS + 1 }, (_, i) => {
     const start = addDaysIso(thisWeek, -7 * i);
     const end = addDaysIso(start, 6);
-    return { start, end, items: dedupeWeek(allRecent.filter((it) => it.d >= start && it.d <= end)) };
+    return { start, end, items: dedupeWeek(allRecent.filter((it) => it.d >= start && it.d <= end)) as PatchItem[] };
   });
   const thin = isThinWeek(weeks[0]?.items.length ?? 0);
-  const isWeekOpen = (i) => expanded.has(`week:${i}`) !== (i === 1 && thin);
+  const isWeekOpen = (i: number) => expanded.has(`week:${i}`) !== (i === 1 && thin);
 
   const newCount = allRecent.filter((it) => isNewSince(it, marker)).length;
 
   // ── Arkivmåneder: listen står i recent, indholdet hentes først når måneden åbnes ──
-  const currentMonth = today.slice(0, 7);
-  const archiveMonths = (recent?.months || []).filter((m) => m.m < currentMonth);
-  const [monthData, setMonthData] = useState(/** @type {Record<string, any>} */ ({}));
-  const loadMonth = useCallback((m) => {
+  // En måned står i arkivet, når den har dage før den ældste viste uge (også den indeværende
+  // måned sidst på måneden), så ingen note falder mellem ugerne og arkivet.
+  const oldestShown = weeks[weeks.length - 1].start;
+  const archiveMonths = (recent?.months || []).filter((m) => `${m.m}-01` < oldestShown);
+  const [monthData, setMonthData] = useState<Record<string, MonthState>>({});
+  const loadMonth = useCallback((m: string) => {
     const key = `${m}.${lang}`;
     setMonthData((prev) => ({ ...prev, [key]: { status: "loading" } }));
     loadPatchNotesFile(patchNotesMonthUrl(m, lang))
-      .then((data) => setMonthData((prev) => ({ ...prev, [key]: { status: "ready", items: data.items || [] } })))
+      .then((data: { items?: PatchItem[] }) => setMonthData((prev) => ({ ...prev, [key]: { status: "ready", items: data.items || [] } })))
       .catch(() => setMonthData((prev) => ({ ...prev, [key]: { status: "error" } })));
   }, [lang]);
-  const toggleMonth = (m) => {
+  // Skifter spilleren sprog med en måned åben, hentes måneden på det nye sprog.
+  useEffect(() => {
+    for (const key of expanded) {
+      const m = key.startsWith("month:") ? key.slice(6) : null;
+      if (m && !monthData[`${m}.${lang}`]) loadMonth(m);
+    }
+    // Kun ved sprogskift; åbning af en måned henter selv (toggleMonth).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang]);
+
+  // Et søgefund i arkivet åbnes på sin plads: måneden hentes, området og linjen foldes ud.
+  const showInArchive = (item: PatchItem) => {
+    const m = item.d.slice(0, 7);
+    if (!expanded.has(`month:${m}`)) toggleMonth(m);
+    setExpanded((prev) => new Set([...prev, `month:${m}`, `m${m}:b:${item.a}`, `line:${item.k}`, ...(archiveMonths.slice(ARCHIVE_MONTHS_SHOWN).some((x) => x.m === m) ? ["months:older"] : [])]));
+    setQuery("");
+  };
+
+  const toggleMonth = (m: string) => {
     const key = `month:${m}`;
     if (!expanded.has(key) && !["ready", "loading"].includes(monthData[`${m}.${lang}`]?.status)) loadMonth(m);
     toggle(key);
@@ -127,43 +159,47 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }) {
   const debouncedQuery = useDebounced(query, 250);
   const q = normalizeQuery(debouncedQuery);
   const searching = q.length >= SEARCH_MIN;
-  const [index, setIndex] = useState(/** @type {{ status: string, lang: string | null, items: any[] }} */ ({ status: "idle", lang: null, items: [] }));
+  const [index, setIndex] = useState<IndexState>({ status: "idle", lang: null, items: [] });
   useEffect(() => {
     if (!searching || (index.lang === lang && index.status !== "error")) return undefined;
     let active = true;
     setIndex({ status: "loading", lang, items: [] });
     loadPatchNotesFile(patchNotesIndexUrl(lang))
-      .then((data) => { if (active) setIndex({ status: "ready", lang, items: data.items || [] }); })
+      .then((data: { items?: PatchItem[] }) => { if (active) setIndex({ status: "ready", lang, items: data.items || [] }); })
       .catch(() => { if (active) setIndex({ status: "error", lang, items: [] }); });
-    return () => { active = false; };
+    return () => {
+      active = false;
+      // Afbrudt (søgningen ryddet, før svaret kom): næste søgning skal hente igen.
+      setIndex((prev) => (prev.status === "loading" ? { status: "idle", lang: null, items: [] } : prev));
+    };
     // index.status/lang er bevidst kun et værn: hentes én gang pr. sprog.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searching, lang]);
   const [searchLimit, setSearchLimit] = useState(SEARCH_PAGE);
   useEffect(() => { setSearchLimit(SEARCH_PAGE); }, [q, area, betaOnly, onlyNew]);
-  let hits = [];
+  let hits: PatchItem[] = [];
   if (searching) {
-    const fromRecent = filterV2Items(recent?.items, filters).filter((it) => matchesQuery(it, q));
+    const fromRecent: PatchItem[] = filterV2Items(recent?.items || [], filters).filter((it) => matchesQuery(it, q));
     const recentKeys = new Set((recent?.items || []).map((it) => it.k));
-    const fromIndex = index.lang === lang
+    const fromIndex: PatchItem[] = index.lang === lang
       ? filterV2Items(index.items, filters).filter((it) => !recentKeys.has(it.k) && (it.ti || "").toLowerCase().includes(q))
       : [];
     hits = [...fromRecent, ...fromIndex].sort((a, b) => (a.d !== b.d ? (a.d < b.d ? 1 : -1) : compareNewestFirst(a, b)));
   }
 
   // ── Datoer i spillerens sprog ──
-  const rangeLabel = (start, end) => {
+  const rangeLabel = (start: string, end: string) => {
     const fmt = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", timeZone: "UTC" });
     const a = new Date(`${start}T12:00:00Z`);
     const b = new Date(`${end}T12:00:00Z`);
     return typeof fmt.formatRange === "function" ? fmt.formatRange(a, b) : `${fmt.format(a)} - ${fmt.format(b)}`;
   };
-  const monthLabel = (m) => capitalize(
+  const monthLabel = (m: string) => capitalize(
     new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${m}-15T12:00:00Z`)),
     locale,
   );
-  const weekLabel = (i, start) => (i === 0 ? t("v2.thisWeek") : i === 1 ? t("v2.lastWeek") : t("v2.week", { week: isoWeekNumber(start) }));
-  const sourceLabel = (item) => {
+  const weekLabel = (i: number, start: string) => (i === 0 ? t("v2.thisWeek") : i === 1 ? t("v2.lastWeek") : t("v2.week", { week: isoWeekNumber(start) }));
+  const sourceLabel = (item: PatchItem) => {
     const i = weeks.findIndex((w) => item.d >= w.start && item.d <= w.end);
     if (i >= 0) return `${weekLabel(i, weeks[i].start)} · ${rangeLabel(weeks[i].start, weeks[i].end)}`;
     return monthLabel(item.d.slice(0, 7));
@@ -223,13 +259,13 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }) {
           type="search"
           size="sm"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)}
           placeholder={t("v2.search.placeholder")}
           className="w-full ps-9"
         />
       </label>
       <div className="max-sm:flex-1">
-        <Select size="sm" value={area} onChange={(e) => setArea(e.target.value)} aria-label={t("v2.area.label")} className="w-full">
+        <Select size="sm" value={area} onChange={(e: ChangeEvent<HTMLSelectElement>) => setArea(e.target.value)} aria-label={t("v2.area.label")} className="w-full">
           <option value="all">{t("v2.area.all")}</option>
           {PATCH_NOTE_AREAS_WITH_OTHER.map((a) => <option key={a} value={a}>{areaLabel(a)}</option>)}
         </Select>
@@ -237,7 +273,7 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }) {
       <Toggle
         id="patchnotes-v2-beta-only"
         checked={betaOnly}
-        onChange={(e) => setBetaOnly(e.target.checked)}
+        onChange={(e: ChangeEvent<HTMLInputElement>) => setBetaOnly(e.target.checked)}
         label={<span className="whitespace-nowrap text-[13px] text-cz-2">{t("filter.betaOnly")}</span>}
       />
     </div>
@@ -254,7 +290,7 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }) {
           {index.status === "loading" && hits.length === 0 ? (
             <SkeletonLines lines={4} />
           ) : hits.length === 0 ? (
-            <EmptyState
+            <EmptyBox
               icon={<SearchIcon size={26} aria-hidden="true" />}
               title={t("v2.searchEmpty.title")}
               description={t("v2.searchEmpty.description")}
@@ -267,7 +303,19 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }) {
                   <PatchTag tag={tagOf(it, liveFlags)} t={t} className="justify-self-start max-sm:col-span-2" />
                   <div className="min-w-0">
                     <p className="text-[13.5px] font-medium leading-snug text-cz-1">{it.ti || it.b}</p>
-                    {it.b && it.b !== it.ti && <p className="mt-px line-clamp-2 text-[12.5px] leading-[1.45] text-cz-2">{it.b}</p>}
+                    {it.b && it.b !== it.ti && (
+                      <button
+                        type="button"
+                        aria-expanded={expanded.has(`line:${it.k}`)}
+                        onClick={() => toggle(`line:${it.k}`)}
+                        className={`mt-px text-left text-[12.5px] leading-[1.45] text-cz-2 ${expanded.has(`line:${it.k}`) ? "block whitespace-pre-line" : "line-clamp-2"}`}
+                      >
+                        {it.b}
+                      </button>
+                    )}
+                    {!it.b && (
+                      <QuietButton chevron="right" className="mt-0.5" onClick={() => showInArchive(it)}>{t("v2.showInArchive")}</QuietButton>
+                    )}
                     <p className="mt-1 font-data text-2xs tabular-nums text-cz-3">{areaLabel(it.a)} · {sourceLabel(it)}</p>
                   </div>
                   <span className="pt-[6px] max-sm:col-start-2 max-sm:row-start-2">{isNewSince(it, marker) && <NewDot t={t} />}</span>
@@ -304,7 +352,7 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }) {
       {filterBar}
 
       {filtering && !anyContent && archiveMonths.length === 0 ? (
-        <EmptyState
+        <EmptyBox
           icon={<SearchIcon size={26} aria-hidden="true" />}
           title={t("v2.filterEmpty.title")}
           description={t("v2.filterEmpty.description")}
@@ -342,7 +390,7 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }) {
                       className={`flex w-full flex-wrap items-baseline gap-x-2.5 gap-y-0.5 text-left ${TOUCH}`}
                     >
                       <span className="whitespace-nowrap text-sm font-semibold text-cz-1">{weekLabel(i, w.start)}</span>
-                      <span className="whitespace-nowrap font-data text-2xs uppercase tabular-nums tracking-[.08em] text-cz-3 max-sm:order-3 max-sm:basis-full">
+                      <span className="font-data text-2xs uppercase tabular-nums tracking-[.08em] text-cz-3 sm:whitespace-nowrap max-sm:order-3 max-sm:basis-full">
                         {t("v2.weekMeta", { range: rangeLabel(w.start, w.end), count: list.length })}
                         {i === 1 && thin && !expanded.has("week:1") ? ` · ${t("v2.openOnMonday")}` : ""}
                       </span>
@@ -382,7 +430,7 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }) {
                   {visibleMonths.map(({ m, n }) => {
                     const open = expanded.has(`month:${m}`);
                     const data = monthData[`${m}.${lang}`];
-                    const list = data?.status === "ready" ? filterV2Items(data.items, filters) : [];
+                    const list = data?.status === "ready" ? filterV2Items(data.items || [], filters) : [];
                     return (
                       <li key={m} className="border-t border-cz-border first:border-t-0">
                         <button

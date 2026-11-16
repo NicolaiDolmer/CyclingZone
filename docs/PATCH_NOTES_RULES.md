@@ -73,11 +73,11 @@ område. Nye, valgfrie felter på en change i `patchNotes.js`:
 
 - Mærket afledes som i dag (`rollout` vinder over `category`), så der er én sandhed: Tændt for alle, Nyt, Beta,
   Forbedring, Fejlrettelse.
-- **Gamle noter røres ikke.** Deres område står i `frontend/src/lib/patchNotesAreaData.js` (nøgle `version#index`)
-  og i `TOPIC_AREA` i `frontend/src/lib/patchNotesArea.js`; hvad der ikke kunne placeres sikkert, ligger i
+- **Gamle noter røres ikke.** Deres område står i `frontend/src/lib/patchNotesAreaData.ts` (nøgle `version#index`)
+  og i `TOPIC_AREA` i `frontend/src/lib/patchNotesArea.ts`; hvad der ikke kunne placeres sikkert, ligger i
   "Andet" og vises kun i arkivet. Klassificeringen og dens kilder: [`docs/design/reviews/2026-11-16-8049-klassificering.md`](design/reviews/2026-11-16-8049-klassificering.md).
 - Filerne siden henter (`patch-notes-data/recent|index|<måned>.<sprog>.json`) genereres i build af
-  `frontend/vite-plugins/patch-notes-v2.js`; de committes aldrig. Åbning af siden henter kun `recent` (en test
+  `frontend/vite-plugins/patch-notes-v2.ts`; de committes aldrig. Åbning af siden henter kun `recent` (en test
   holder den under 40 KB pakket).
 
 ## 3. Discord: udsnit, ikke en ny tekst

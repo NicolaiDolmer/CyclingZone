@@ -3,10 +3,29 @@
 // uge eller en arkivmåned åbnes). Ejerens valg 16/11; TASTE: firkantede mærker med 5px
 // radius (ikke piller), hairlines, tabulære tal, stroke-ikoner.
 import { tagOf, isNewSince, groupByArea, countTags } from "../../lib/patchNotes.js";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { ChevronRightIcon, ChevronDownIcon } from "../ui";
 
+/** Et punkt fra patch-notes-data (kompakte nøgler, se lib/patchNotes.js). */
+export interface PatchItem {
+  k: string; v?: string; d: string; s?: string; a: string; c?: string; ti?: string; b?: string;
+  r?: string; f?: string; fb?: string; img?: string; hl?: boolean; rp?: string;
+}
+export type Translate = (key: string, options?: Record<string, unknown>) => string;
+export type LiveFlags = Record<string, boolean> | null;
+type AreaLabel = (area: string) => string;
+
+interface LineContext {
+  t: Translate;
+  liveFlags: LiveFlags;
+  marker: string | null;
+  areaLabel: AreaLabel;
+  expanded: Set<string>;
+  toggle: (key: string) => void;
+}
+
 // Én anatomi for alle fem mærker; kun tre farvesignaler (grøn, blå, gul), ingen guld.
-const TAG_TONE = {
+const TAG_TONE: Record<string, string> = {
   on: "border-cz-success/45 text-cz-success",
   new: "border-cz-info/45 text-cz-info",
   beta: "border-cz-warning/50 text-cz-warning",
@@ -17,7 +36,7 @@ const TAG_TONE = {
 // Mobil: trykflader mindst 44 x 44 (P16), samme medie-betingelse som knap-kittet.
 export const TOUCH = "[@media(max-width:640px),(pointer:coarse)]:min-h-11";
 
-export function PatchTag({ tag, t, className = "" }) {
+export function PatchTag({ tag, t, className = "" }: { tag: string; t: Translate; className?: string }) {
   return (
     <span
       data-tag={tag}
@@ -28,13 +47,15 @@ export function PatchTag({ tag, t, className = "" }) {
   );
 }
 
-export function NewDot({ t }) {
+export function NewDot({ t }: { t: Translate }) {
   return (
     <span className="inline-flex h-[7px] w-[7px] shrink-0 rounded-cz-pill bg-cz-accent" role="img" aria-label={t("v2.newDot")} />
   );
 }
 
-export function QuietButton({ children, className = "", chevron = "right", ...rest }) {
+export function QuietButton({ children, className = "", chevron = "right", ...rest }: {
+  children: ReactNode; className?: string; chevron?: "right" | "down" | "";
+} & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children" | "className">) {
   const Icon = chevron === "down" ? ChevronDownIcon : ChevronRightIcon;
   return (
     <button
@@ -48,7 +69,7 @@ export function QuietButton({ children, className = "", chevron = "right", ...re
   );
 }
 
-function FallbackNote({ item, t }) {
+function FallbackNote({ item, t }: { item: PatchItem; t: Translate }) {
   if (!item.fb) return null;
   return <span className="ms-1 text-xs text-cz-3">({t(`fallbackLang.${item.fb}`)})</span>;
 }
@@ -56,11 +77,13 @@ function FallbackNote({ item, t }) {
 const LINE_GRID = "grid grid-cols-[132px_minmax(0,1fr)_12px] items-start gap-x-3 max-sm:grid-cols-[minmax(0,1fr)_12px] max-sm:gap-y-1";
 
 /** Én ændring: mærke, titel, én linje tekst (tryk viser resten), prik hvis ny. */
-export function PatchLine({ item, t, liveFlags, marker, open, onToggle, quietTitle = false }) {
+export function PatchLine({ item, t, liveFlags, marker, open, onToggle, quietTitle = false }: {
+  item: PatchItem; t: Translate; liveFlags: LiveFlags; marker: string | null; open: boolean; onToggle: () => void; quietTitle?: boolean;
+}) {
   const hasBody = Boolean(item.b) && item.b !== item.ti;
   const isNew = isNewSince(item, marker);
   // Uden mere tekst er linjen ikke en knap (intet at folde ud, intet tomt tabstop).
-  const Body = hasBody ? "button" : "div";
+  const Body: "button" | "div" = hasBody ? "button" : "div";
   return (
     <li className={`${LINE_GRID} py-[7px]`}>
       <PatchTag tag={tagOf(item, liveFlags)} t={t} className="justify-self-start max-sm:col-span-2" />
@@ -84,7 +107,9 @@ export function PatchLine({ item, t, liveFlags, marker, open, onToggle, quietTit
 }
 
 /** Ugens store nyhed: neutral flade, billede kun når noten har et (ejer 16/11, valg 4). */
-export function PatchHero({ item, t, liveFlags, marker, areaLabel }) {
+export function PatchHero({ item, t, liveFlags, marker, areaLabel }: {
+  item: PatchItem; t: Translate; liveFlags: LiveFlags; marker: string | null; areaLabel: string;
+}) {
   return (
     <div className={`mb-5 rounded-cz bg-cz-subtle p-3.5 ${item.img ? "sm:grid sm:grid-cols-[208px_minmax(0,1fr)] sm:gap-4" : ""}`}>
       {item.img && (
@@ -118,8 +143,10 @@ export function PatchHero({ item, t, liveFlags, marker, areaLabel }) {
  * Variant A ("Denne uge", ejerens valg): ét afsnit pr. område, højst 3 linjer,
  * "+N mere i X", og fejlrettelser foldet til én linje pr. område.
  */
-export function AreaBlocksA({ items, t, liveFlags, marker, areaLabel, expanded, toggle, prefix, max = 3 }) {
-  return groupByArea(items, liveFlags).map(([area, list], index) => {
+export function AreaBlocksA({ items, t, liveFlags, marker, areaLabel, expanded, toggle, prefix, max = 3 }: LineContext & {
+  items: PatchItem[]; prefix: string; max?: number;
+}) {
+  return (groupByArea(items, liveFlags) as [string, PatchItem[]][]).map(([area, list], index) => {
     const main = list.filter((it) => tagOf(it, liveFlags) !== "fixed");
     const fixes = list.filter((it) => tagOf(it, liveFlags) === "fixed");
     const key = `${prefix}:${area}`;
@@ -174,10 +201,12 @@ export function AreaBlocksA({ items, t, liveFlags, marker, areaLabel, expanded, 
  * Variant B (en åbnet ældre uge eller måned, ejerens valg): én række pr. område med
  * det vigtigste og antal pr. mærke; tryk folder området ud.
  */
-export function AreaRowsB({ items, t, liveFlags, marker, areaLabel, expanded, toggle, prefix }) {
+export function AreaRowsB({ items, t, liveFlags, marker, areaLabel, expanded, toggle, prefix }: LineContext & {
+  items: PatchItem[]; prefix: string;
+}) {
   return (
     <ul>
-      {groupByArea(items, liveFlags).map(([area, list]) => {
+      {(groupByArea(items, liveFlags) as [string, PatchItem[]][]).map(([area, list]) => {
         const key = `${prefix}:b:${area}`;
         const open = expanded.has(key);
         const top = list.find((it) => tagOf(it, liveFlags) !== "fixed") || list[0];

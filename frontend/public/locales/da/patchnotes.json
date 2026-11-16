@@ -123,6 +123,7 @@
       "description": "Ryd filtrene for at se alle ændringer."
     },
     "indexError": "Ældre patch notes kan ikke søges lige nu. De seneste uger søges stadig.",
-    "monthError": "Måneden kunne ikke hentes. Intet er gået tabt."
+    "monthError": "Måneden kunne ikke hentes. Intet er gået tabt.",
+    "showInArchive": "Vis i arkivet"
   }
 }

@@ -1,8 +1,8 @@
 // GENERERET af #8049-klassificeringen 16/11 (se docs/design/reviews/2026-11-16-8049-klassificering.md).
 // Område pr. gammel patch note, nøgle = "version#index". Noter hvis `topic` allerede
-// giver området (TOPIC_AREA i patchNotesArea.js) står ikke her. Nye noter skriver
+// giver området (TOPIC_AREA i patchNotesArea.ts) står ikke her. Nye noter skriver
 // selv `area` i data/patchNotes.js; denne fil vokser ikke.
-export const AREA_BY_KEY = Object.freeze({
+export const AREA_BY_KEY: Readonly<Record<string, string>> = Object.freeze({
   "7.453#0": "board",
   "7.453#1": "races",
   "7.453#2": "market",
