@@ -91,6 +91,16 @@ test("seasonForDate falder tilbage til seneste startede sæson", () => {
   assert.equal(seasonForDate(seasons, null), null);
 });
 
+test("sæsonskifte samme dag: den nye sæson vinder (rækkefølgen er ligegyldig)", () => {
+  const sameDay = [
+    { id: "new", number: 6, start_date: "2026-12-01", end_date: null },
+    { id: "old", number: 5, start_date: "2026-10-01", end_date: "2026-12-01" },
+  ];
+  assert.equal(seasonForDate(sameDay, "2026-12-01T15:00:00Z")?.id, "new");
+  assert.equal(seasonForDate([...sameDay].reverse(), "2026-12-01T15:00:00Z")?.id, "new");
+  assert.equal(seasonForDate(sameDay, "2026-11-30T15:00:00Z")?.id, "old");
+});
+
 test("design-parameteren: kun a, b og c tænder en udgave", () => {
   assert.equal(readDesign8081Variant("?design8081=a"), "a");
   assert.equal(readDesign8081Variant("?design8081=C"), "c");

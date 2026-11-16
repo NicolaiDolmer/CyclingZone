@@ -32,8 +32,8 @@ const EN: Record<string, string> = {
   "stats.intakeDone": "Pulled this week",
   "stats.intake": "Intake",
 
-  "landing.on": "Lands on {squad}",
-  "landing.none": "No room on any squad",
+  "landing.on": "With the proposed limits: lands on {squad}",
+  "landing.none": "With the proposed limits: no room on any squad",
 
   "talents.title": "Your talents",
   "talents.colRider": "Rider",
@@ -120,8 +120,8 @@ const DA: Record<string, string> = {
   "stats.intakeDone": "Hentet i denne uge",
   "stats.intake": "Optag",
 
-  "landing.on": "Lander på {squad}",
-  "landing.none": "Ingen plads på nogen trup",
+  "landing.on": "Med de foreslåede grænser: lander på {squad}",
+  "landing.none": "Med de foreslåede grænser: ingen plads på nogen trup",
 
   "talents.title": "Dine talenter",
   "talents.colRider": "Rytter",

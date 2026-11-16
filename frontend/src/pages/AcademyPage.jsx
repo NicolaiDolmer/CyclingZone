@@ -358,10 +358,14 @@ export default function AcademyPage() {
 
         {/* #6155: juniortruppen er fuld, men U23 har plads: sig hvor han kommer hen,
             FØR det irreversible klik. */}
-        {opts?.landingText ? (
-          <p className="text-xs text-cz-2" data-testid="design8081-intake-landing">{opts.landingText(item)}</p>
-        ) : landing.movedToU23 && (
+        {landing.movedToU23 && (
           <p className="text-xs text-cz-2" data-testid="intake-lands-u23">{t("landsOnU23")}</p>
+        )}
+        {/* #8081: designets placering efter de foreslåede grænser står UNDER den
+            levende linje og er mærket som forslag; signeringen følger stadig
+            de gældende regler (Codex-fund på #8249). */}
+        {opts?.landingText && (
+          <p className="text-3xs text-cz-3" data-testid="design8081-intake-landing">{opts.landingText(item)}</p>
         )}
 
         {/* Fejlbesked */}

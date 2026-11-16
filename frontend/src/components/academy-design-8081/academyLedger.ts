@@ -64,8 +64,11 @@ function toTime(iso: unknown): number | null {
 }
 
 /**
- * Sæsonen et tidspunkt hører til: den sæson hvis periode dækker det, ellers den
- * seneste sæson der var startet. null når intet kan afgøres.
+ * Sæsonen et tidspunkt hører til: den senest startede sæson på det tidspunkt.
+ * Slutdatoen bruges bevidst ikke: ved et sæsonskifte samme dag overlapper den
+ * gamle sæsons slutdato den nyes startdato, og så skal den nye sæson vinde
+ * (Codex-fund på #8249). null når intet kan afgøres. Når regnskabet flyttes til
+ * backend, bruges salgets bogførte season_id i stedet for datoen.
  */
 export function seasonForDate(seasons: readonly Row[] | null | undefined, iso: unknown): Row | null {
   const at = toTime(iso);
@@ -74,8 +77,6 @@ export function seasonForDate(seasons: readonly Row[] | null | undefined, iso: u
   for (const s of seasons) {
     const start = toTime(s.start_date);
     if (start == null || start > at) continue;
-    const end = toTime(s.end_date);
-    if (end != null && at <= end + 86_400_000 - 1) return s;
     if (!latestStarted || start > (toTime(latestStarted.start_date) ?? 0)) latestStarted = s;
   }
   return latestStarted;
