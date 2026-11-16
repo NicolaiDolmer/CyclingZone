@@ -152,17 +152,23 @@ Et fagord på fladen kan være prikket understreget: tryk eller hover viser én 
 
 Trykflader er mindst 44 × 44 px (WCAG 2.2 kræver mindst 24 × 24; 44 er det anbefalede niveau og Apples). Den synlige knap må være mindre, men trykfladen er 44. Langt tryk på en rytterrække åbner højreklik-menuen som et ark nederst; Safari på iOS sender ikke `contextmenu` ved langt tryk, så det laves med en timer på pointer-events. Fordi langt tryk er svært at opdage, findes de samme handlinger altid også via et tryk på hover-ikonet.
 
+### P17 · Designbilleder fortæller sandheden (ejer 7/11)
+
+Billeder, vi beslutter ud fra, følger samme krav som spillet: ægte data fra spillet (private tal vises som "eksempel"), før og efter side om side, nummererede noter der peger på billedet, muligheder med fordele og ulemper og én anbefaling. Engelsk i Discord, dansk med ejeren. **Kun ejeren godkender ændringer til dette dokument**; andre må gerne sige deres mening.
+
 ### P18 · Overlays: hover-kort, højreklik-menu, tooltip (ejer 7/11, valg A)
 
-På computeren svæver kortet ved siden af det, man holder musen over (ca. 360 px bredt); listen bliver stående. På telefonen glider samme kort op fra bunden som et ark efter et tryk. Overlays bruger Inter Tight/DM Sans (aldrig Bebas, P4), spillets egne mærker (P8), hairline + 5 px radius + én skygge (§3 tillader skygge her), Esc lukker, fokus holdes inde, og de bygges med browserens popover og ankerpositionering (Googles menu-vejledning). Sidepanel og "fold ud under rækken" er afvist som standard.
+På computeren svæver kortet ved siden af det, man holder musen over (384 px bredt, opskrift i §5a); listen bliver stående. På telefonen glider samme kort op fra bunden som et ark efter et tryk. Overlays bruger Inter Tight/DM Sans (aldrig Bebas, P4), spillets egne mærker (P8), hairline + 5 px radius + én skygge (§3 tillader skygge her), Esc lukker, fokus holdes inde, og de bygges med browserens popover og ankerpositionering (Googles menu-vejledning). Sidepanel og "fold ud under rækken" er afvist som standard.
 
 ### P19 · Ruteprofilen: én tegning, to størrelser (ejer 7/11, valg A)
 
 Hver etape har én profil. Stor (løbssiden): farvet efter stigningsprocent (under 3 / 3-6 / 6-8 / 8-10 / over 10 %), stigningens navn, kategori og den rigtige højde på toppen fra højdedata. Lille (etapebjælken, lister): samme form i én rolig tone med en rød prik ved hver kategoriseret stigning, plus spillets terræn-ikon i farve. Én komponent tegner begge.
 
-### P17 · Designbilleder fortæller sandheden (ejer 7/11)
+### P20 · Ét spil på web, mobil og app (ejer 12/11, #8076)
 
-Billeder, vi beslutter ud fra, følger samme krav som spillet: ægte data fra spillet (private tal vises som "eksempel"), før og efter side om side, nummererede noter der peger på billedet, muligheder med fordele og ulemper og én anbefaling. Engelsk i Discord, dansk med ejeren. **Kun ejeren godkender ændringer til dette dokument**; andre må gerne sige deres mening.
+Ejerens ord 12/11: *"Jeg vil have, at hele hjemmesiden, mobilsiden og senere en app, får et samlet lækkert visuelt look, som man kan genkende overalt."* Appen er mobilsiden: samme komponenter fra `components/ui`, samme tokens, samme fonte, samme ikoner og samme regler i dette dokument. Forskellen mellem skærmene er kun geometri (P10, P16), aldrig et andet udseende. Intet platform-eget look (ingen iOS- eller Android-standardkontroller, hvor spillet har sin egen), og ingen komponent, der kun findes i appen.
+
+- **Spørgsmål:** Ville en spiller genkende siden som Cycling Zone, hvis spilleren kun så den på den anden skærm, og bruger den kun kittets komponenter?
 
 ---
 
@@ -200,6 +206,7 @@ Alt her er et fund uden diskussion. Kolonnen "sådan opdages det" er input til C
 | Rå hex-farver i JSX | Alt går gennem tokens (vi er på 0 i sider, hold det) | grep `#[0-9a-fA-F]{3,8}` i `src/pages` og `src/components` uden for `index.css`, brand-SVG og chart-paletter |
 | `text-[Npx]` under 12 px | Kun `text-2xs` (11) og `text-3xs` (10) | grep `text-\[(0?[0-9]|1[01])(\.\d+)?px\]` |
 | To guld-primære pr. view | Guld er rationeret | visuel dom + `Button variant="primary"`-tælling pr. side i audit |
+| Håndrullet guld-knap (`bg-cz-accent text-cz-on-accent` på en `<button>` eller et link) | Guld-knappen findes kun som `Button`/`buttonClass({ variant: "primary" })`; ellers kan hverken tællingen eller række-vagten (#4625) se den | grep `bg-cz-accent text-cz-on-accent` uden for `components/ui` |
 | Venstre-accent-bjælker, farvede top-bjælker ud over T3-keylinen | Femte prioritetssignal | grep `border-l-[234]`/`border-l-cz-accent` |
 | Title Case i dansk og engelsk UI | Sentence case altid | tone-script over locale-nøgler for overskrifter |
 | Em-dash i spillervendt tekst | TONE_OF_VOICE §Punktuation; `tone-check-em-dash.mjs` fejler allerede build | eksisterende vagt |
@@ -219,7 +226,7 @@ Bruges i slice 2 på hver af de 63 sider, i lys, mørk og mobil. **Hvert "nej" e
 
 **Struktur**
 1. Følger siden én af T1/T2/T3 uden egne opfindelser (sidehoved, bredde, padding, radius)? (PAGE_TEMPLATES)
-2. Står sidens primære data over folden på 1280×900, med under 250 px chrome før første datarække? (P1)
+2. Står sidens primære data over folden på 1280×900, med under 250 px chrome før første datarække? (P1) Etapestriben på løbs- og planlægningssider er data (P2), ikke chrome, og tælles ikke med; hovedet over den skal stadig holde sig under 250 px.
 3. Overholder siden fold-disciplinen: sidehoved + faner + højst 2 kort før 1000 px? (PAGE_TEMPLATES)
 4. Er der ingen løsrevne knaprækker og ingen introtekst mellem sidehoved og indhold? (P1, P9)
 
@@ -250,10 +257,13 @@ Bruges i slice 2 på hver af de 63 sider, i lys, mørk og mobil. **Hvert "nej" e
 20. Har hver trykflade på mobil mindst 44 × 44 px, og når man alle handlinger uden langt tryk? (P16)
 21. Følger overlays reglen: svævende kort på computeren, ark på telefonen, spillets fonte og mærker, Esc lukker? (P18)
 
+**Tilføjet 16/11 (#8076)**
+22. Ville siden kunne genkendes som Cycling Zone på den anden skærm (web, mobil, app), og bruger den kun kittets komponenter? (P20)
+
 **Bonus-spørgsmålet der afgør verdensklasse**
 17. Ville en Football Manager-spiller der ser siden i 5 sekunder tro at den var lavet af nogen der elsker cykelsport? Hvis nej: hvad mangler? Skriv det som fundet.
 
-**Score (ejer-bekræftet 2/9):** 17/17 = verdensklasse-kandidat. 14-16 = på system, mangler smag. Under 14 = skal have en runde. Spørgsmål 2, 7, 8 og 13 vejer dobbelt, fordi de rammer det spillerne mærker først. Auditten rangerer sider efter (manglende point × spillertrafik), så den mest sete side med det største hul står øverst.
+**Score (ejer-bekræftet 2/9, omregnet til procent 16/11 fordi tjeklisten nu har 22 spørgsmål):** scoren er andelen af "ja" blandt de relevante spørgsmål. Mindst 95 % = verdensklasse-kandidat. 80-94 % = på system, mangler smag. Under 80 % = skal have en runde (svarer til de gamle grænser 17/17, 14-16 og under 14). Spørgsmål 2, 7, 8 og 13 vejer dobbelt, fordi de rammer det spillerne mærker først. Auditten rangerer sider efter (manglende point × spillertrafik), så den mest sete side med det største hul står øverst.
 
 ---
 
@@ -268,9 +278,9 @@ Bruges i slice 2 på hver af de 63 sider, i lys, mørk og mobil. **Hvert "nej" e
 
 ---
 
-## 5a. FORSLAG (ikke godkendt): Overlays: hover-kort, højreklik-menu, tooltip
+## 5a. Opskriften for overlays (P18): hover-kort, højreklik-menu, tooltip
 
-> **Status: FORSLAG fra #2009/#7858 (7/11).** Gælder først når ejeren har sagt ja; indtil da er det kun en beskrivelse af det bygget, der ligger bag beta-kontakten `rider_hover_card`.
+> **Status:** P18 er ejer-godkendt 7/11 (valg A). Afsnittet her er dens opskrift, som den er bygget bag beta-kontakten `rider_hover_card` (#2009/#7858). Bredden er 384 px; P18's "ca. 360 px" er den samme regel i runde tal.
 
 - **Hvornår hvad:** tooltip = ét ord eller én sætning til et ikon/tal (`title`/`aria-label`, ingen egen flade). Hover-kort = et opslag på en ting (rytter) uden at forlade listen. Højreklik-menu = handlinger på en ting. Aldrig handlinger i et tooltip, aldrig en hel profil i en menu.
 - **Bredde:** hover-kort 24rem (384 px), menu 16rem (256 px), begge `max-w-[calc(100vw-1rem)]`. Ét kort ad gangen.
@@ -294,7 +304,7 @@ Otte forks blev vist som mockup-varianter (A/B/C) og afgjort af ejeren 2/9 2026.
 | 3 | Guld | **B · som i dag** (én knap, leder-markører, guld-tekst på quiet actions og aktiv fane, keyline kun T3) | Guld-tal, guld-tints og keyline på almindelige kort er fund |
 | 4 | Tomme flader | **A · handling + én knap** | ~15 tomme tilstande skrives om i én tone-runde (EN først) |
 | 5 | Dataviz | **A · monokrom streg + slutpunkt** | Én `Sparkline`-primitiv; farve kun i deltaet; søjler kun som supplement til diskrete værdier |
-| 6 | Mobil-tabel | **A · pinned navn + vandret scroll** | Bygges én gang i `DataTable`; gælder alle T2-sider |
+| 6 | Mobil-tabel | ~~A · pinned navn + vandret scroll~~ **Afløst 10/9 af D-047:** navn + tre kolonner uden vandret scroll, chip-række og "Fuld tabel" (P10) | Bygget én gang i `DataTable`; gælder alle T2-sider. Tabeller med tidsakse er undtaget (12/11, regel 4) |
 | 7 | Genre-anker ved konflikt | **Football Manager** | Tæthed vinder over ro; roen kommer fra typografi |
 | 8 | Tjeklistens strenghed | **Som skrevet** (17 spørgsmål, tre bånd, fire vejer dobbelt) | Fund = hvert nej; rangering = manglende point × trafik |
 
@@ -314,7 +324,7 @@ Otte forks blev vist som mockup-varianter (A/B/C) og afgjort af ejeren 2/9 2026.
 | 10 | Tjeklisten | Ja, spørgsmål 18-20 i §4 |
 | ny | Tabeller og navne | Tabeller ens overalt, rytter- og holdnavne altid klikbare (P12) |
 
-Åben: rettelsen af række 6 ovenfor (mobil-tabeller, D-047) afventer svar. Hele spillet gennemgås side for side mod TASTE (eget issue), og rettes løbende, når vi kommer forbi siderne.
+Række 6 ovenfor er rettet til D-047 (ordlyd godkendt ved merge af #8070-forslaget). Hele spillet gennemgås side for side mod TASTE (eget issue), og rettes løbende, når vi kommer forbi siderne.
 
 ### Ejer-beslutninger 12/11 (løbssiden, gælder hele spillet; ordlyd godkendt 12/11, #8070)
 
@@ -322,14 +332,14 @@ Otte forks blev vist som mockup-varianter (A/B/C) og afgjort af ejeren 2/9 2026.
 |---|---|---|
 | 1 | Bred detaljeside | En detaljeside, hvis faner har tabeller, bruger bredden op til 1600 px. Uden tabeller bliver den på 1024 px |
 | 2 | Ét breddesystem | Bredden vælges efter indholdet på alle sider: læsetekst 896 px, profil uden tabeller 1024 px, alt med tabeller op til 1600 px. Siderne gennemgås én ad gangen |
-| 3 | Frist og guld-knap | Frist og sidens ene guld-knap står i hovedets handlingsrække. Ingen bannere øverst på nogen side |
+| 3 | Frist og guld-knap | Frist og sidens ene guld-knap står i hovedets handlingsrække. Ingen bannere øverst på nogen side. En frist er én linje i hovedet ("Frist om 12 t"), aldrig en boks mellem hovedet og indholdet. Førstegangs-tip tæller også som banner; de bor i rundvisningen eller i Hjælp |
 | 4 | Tidsakse på mobil | Tabeller, hvis kolonner er dage eller etaper, er undtaget fra "navn + tre tal" på mobil og viser én kolonne pr. dag eller etape |
 | 5 | "Gemt" | Når noget er gemt, hedder det "Gemt" overalt, aldrig "bekræftet" |
 | 6 | Huskede valg | Et visningsvalg som "Skjul rute" huskes på brugeren, på tværs af sider og enheder |
 | 7 | Løbshovedet | Et kort med guld-streg øverst, ikke en mørk blok |
 
-De tekniske opskrifter står i `PAGE_TEMPLATES.md` (Shared rules, T2-undtagelsen og T3). Åben: hoved plus etapestribe fylder ca. 310 px mod de 250 px i spørgsmål 2 (#8070).
+De tekniske opskrifter står i `PAGE_TEMPLATES.md` (Shared rules, T2-undtagelsen og T3). Hoved plus etapestribe (ca. 310 px) er afgjort i spørgsmål 2: etapestriben tæller som data, hovedet alene skal under 250 px (#8070).
 
 ## 7. Kilder
 
-`ELEVATION_2849.md` (25/7, de syv løft) · `PAGE_TEMPLATES.md` (23/7, bindende) · `../audits/design-composition-audit-2026-07-23.md` (52 sider, F1-F10) · `../brand/BRAND_BRIEF.md` (§3 personlighed, §4 anti-patterns, §9 inspiration) · `../brand/GUIDELINES.md` (marks, kontrast) · `../TONE_OF_VOICE.md` · `README.md` (Claude Design-spejlet, drift-punkter) · memory `feedback_anti_ai_slop_design_taste` (#672, 14/6) · #481 (brand) · #2849 (lukket, bølge 0-6) · #4622 (epic).
+`ELEVATION_2849.md` (25/7, de syv løft) · `PAGE_TEMPLATES.md` (23/7, bindende) · `../audits/design-composition-audit-2026-07-23.md` (52 sider, F1-F10) · `../brand/BRAND_BRIEF.md` (§3 personlighed, §4 anti-patterns, §9 inspiration) · `../brand/GUIDELINES.md` (marks, kontrast) · `../TONE_OF_VOICE.md` · `README.md` (Claude Design-spejlet, drift-punkter) · memory `feedback_anti_ai_slop_design_taste` (#672, 14/6) · #481 (brand) · #2849 (lukket, bølge 0-6) · #4622 (epic) · #8069/#8070/#8076 (designløftet 12/11) · `../audits/2026-11-16-designsystem-taste.md` (gennemgang 16/11).
