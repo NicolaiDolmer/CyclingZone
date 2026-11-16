@@ -28,8 +28,10 @@
 //  - Catch-up via løb (race_day_catchup_enabled) er ikke udtrykt i XP endnu (#6950).
 //    Samme regel: der kastes, så de to aldrig kører sammen.
 //  - Dato-loftet (ability_cap_per_date_enabled, #6210): gælder kun kurve B og dagens
-//    model. Under XP er der intet +1-loft pr. evne pr. dato; kun prisen bremser (#7739).
-//  - Gemt bjælke-fremgang udbetales helt på tændingsnatten (ejer 12/11, #6110 R10).
+//    model. Under XP gælder i stedet højst +2 pr. evne pr. dato (#6110 R16, ejervalg 16/11),
+//    i selve XP-tick'et (developmentXp.ts).
+//  - Gemt bjælke-fremgang udbetales helt på tændingsnatten (ejer 12/11, #6110 R10), også
+//    over +2 (ejervalg 2 = A, 16/11). Natten er startdatoen; motoren læser den selv.
 //    Der findes ingen dryp-regel: overgangsvinduet (development_xp_transition_cap_dates)
 //    er fjernet, og en sådan nøgle i app_config læses ikke.
 //

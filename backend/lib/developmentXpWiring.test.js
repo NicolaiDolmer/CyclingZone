@@ -356,14 +356,15 @@ test("#6110 variation: uden variationsfelter er tick'et uaendret, og noeglen kom
   assert.ok(!JSON.stringify(varied).includes(VAR_RAW.variation.key));
 });
 
-// ── Intet loft pr. dato i XP (#6110 R9/R10) ────────────────────────────────────
+// ── Datoreglen i XP (#6110 R16, ejervalg 16/11): hoejst +2, gamle loefter gaelder ikke ──
 
-test("#6110 intet loft: et tick koeber alle point, XP'en raekker til, uanset dagsloftet", () => {
+test("#6110 datoregel: et tick koeber hoejst +2 pr. evne, og de gamle dagslofter klipper ikke", () => {
   const abilities = abilitiesAt(5);
   const progress = { climbing: 0.5 };
   const tick = applyDailyTick(tickArgs({ abilities, caps: abilities, progress }));
   assert.ok(tick.gains.climbing >= 2, "scenariet koeber flere point");
-  const facit = buyPoints({ level: 5, bar: 0.5, xp: tick.xp.climbing }, XP);
+  const facit = buyPoints({ level: 5, bar: 0.5, xp: tick.xp.climbing, maxPoints: 2 }, XP);
+  assert.equal(tick.gains.climbing, 2);
   assert.equal(tick.abilities.climbing, facit.level);
   assert.equal(tick.progress.climbing, facit.bar);
   for (const hardDailyCap of [1, 2]) {
