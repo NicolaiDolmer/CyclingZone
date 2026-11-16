@@ -24,10 +24,10 @@ import {
 } from "./primitives.ts";
 import RouteProfile from "./RouteProfile.tsx";
 import SquadTable from "./SquadTable.tsx";
-import TacticsView from "./TacticsView.tsx";
-import PeakView, { usePeakBoard } from "./PeakView.tsx";
+import TacticsView, { type TacticsViewHandle } from "./TacticsView.tsx";
+import PeakView, { usePeakBoard, type PeakBoardData } from "./PeakView.tsx";
 import { ReadinessMark } from "./planningUi.tsx";
-import { loadRaceSelection, saveRaceSelection, setRaceWithdrawal, loadStageProfiles, loadAfterRaceFatigue, type StageProfileRow, type RiderDetail, type SeasonLoad } from "../../lib/planningWorkbenchData.ts";
+import { loadRaceSelection, saveRaceSelection, setRaceWithdrawal, loadStageProfiles, loadExpectedLoad, type StageProfileRow, type RiderDetail, type SeasonLoad } from "../../lib/planningWorkbenchData.ts";
 import { deadlineCountdown } from "../../lib/selectionReminder.ts";
 import {
   DEFAULT_SQUAD_SORT,
@@ -39,7 +39,9 @@ import {
   entriesFromSelection,
   nextSort,
   overlappingRaces,
-  profileColumns,
+  nextPeakByRider,
+  toggleMobileColumn,
+  MOBILE_COLUMNS,
   selectionDirty,
   selectionFromServer,
   setRiderRole,
@@ -47,8 +49,9 @@ import {
   suggestSquad,
   toPutBody,
   saveLabelKey,
-  withAfterRace,
+  withLoad,
   WORKBENCH_VIEWS,
+  type MobileColumn,
   type WorkbenchView,
   type RoleKey,
   type Selection,
@@ -109,9 +112,11 @@ interface RaceWorkbenchProps {
   seasonYear?: number | null;
   profileHidden: boolean;
   onToggleProfileHidden: () => void;
-  /** Loebssidens fulde ruteprofil i stedet for det kompakte kort ("Vis fuld profil"). */
-  profileFull?: boolean;
-  onToggleProfileFull?: () => void;
+  /** Formtop-board'et, hentet én gang for siden (formtop i Trup, maerket i listen og Formtop-visningen). */
+  peakData: PeakBoardData;
+  /** Mobilens valgte tal-kolonner i trup-tabellen (chip-raekken); siden husker valget. */
+  mobileColumns?: MobileColumn[];
+  onMobileColumns?: (columns: MobileColumn[]) => void;
   /**
    * Spilleren aendrer loebets trup selv paa fladen: loebet forlader sidens Handlinger-kladde (spillerens
    * eget valg vinder; fladen viser altid den gemte trup plus spillerens egne aendringer).
@@ -154,8 +159,9 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     seasonYear = null,
     profileHidden,
     onToggleProfileHidden,
-    profileFull = false,
-    onToggleProfileFull,
+    peakData,
+    mobileColumns,
+    onMobileColumns,
     onEdit,
     gate,
     onDirtyChange,
@@ -190,8 +196,11 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
   const [profilesLoading, setProfilesLoading] = useState(true);
   // Ruteprofilens etape (0-baseret); Taktik foelger den, saa der kun er én etapevaelger.
   const [stageIndex, setStageIndex] = useState(0);
-  // "Efter loebet": serverens skoen med motorens model; null = slukket model eller ukendt.
-  const [afterRace, setAfterRace] = useState<Record<string, number> | null>(null);
+  // "Belastning": serverens ord (let/mellem/haard) med motorens model; null = slukket model eller ukendt.
+  const [expectedLoad, setExpectedLoad] = useState<Record<string, string> | null>(null);
+  // Taktik-visningens gem (fanens eget, trykket af hovedets guld-knap) og om det kan trykkes lige nu.
+  const tacticsRef = useRef<TacticsViewHandle>(null);
+  const [tacticsCanSave, setTacticsCanSave] = useState(false);
   // Taktik-visningen monteres foerste gang den aabnes og bliver monteret ved visningsskift (kladden overlever).
   const [tacticsMounted, setTacticsMounted] = useState(view === "tactics");
   useEffect(() => {
@@ -219,9 +228,9 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     setSaved(EMPTY_SELECTION);
     setProfilesLoading(true);
     setStageIndex(0);
-    setAfterRace(null);
-    loadAfterRaceFatigue(race.id).then((map) => {
-      if (gen === generation.current) setAfterRace(map);
+    setExpectedLoad(null);
+    loadExpectedLoad(race.id).then((map) => {
+      if (gen === generation.current) setExpectedLoad(map);
     });
     loadStageProfiles(race.id).then((rows) => {
       if (gen !== generation.current) return;
@@ -276,12 +285,13 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     [profiles],
   );
   const rows = useMemo(
-    () => (data?.riders ? withAfterRace(buildSquadRows(data, stageTypes, (flat) => riderBestRole(flat)), afterRace) : []),
-    [data, stageTypes, afterRace],
+    () => (data?.riders ? withLoad(buildSquadRows(data, stageTypes, (flat) => riderBestRole(flat)), expectedLoad) : []),
+    [data, stageTypes, expectedLoad],
   );
-  const peak = usePeakBoard({ active: view === "peak", raceId: race.id, today, gate });
+  const peak = usePeakBoard({ data: peakData, raceId: race.id, today, gate });
+  // Hvornaar rytteren formtopper (punkt 7): staar ved Form i Trup, aldrig i Status.
+  const peakNext = useMemo(() => nextPeakByRider(peak.rows), [peak.rows]);
   const sortedRows = useMemo(() => sortSquadRows(rows, sort, sel), [rows, sort, sel]);
-  const profileCols = useMemo(() => profileColumns(stageTypes), [stageTypes]);
 
   const size = data?.size ?? { min: 1, max: race.sizeMax };
   const sprintLeaderAllowed = data?.sprint_leader_allowed === true;
@@ -515,10 +525,25 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
       </div>
     ) : null;
 
-  // Én guld-knap pr. visning, teksten foelger visningen (Trup: gem truppen; Formtop: anvend paa de valgte).
-  // Taktik har sin egen guld-knap i loebssidens fane. I mobil-arket staar knappen fast i bunden af arket.
+  // Hovedets ENE guld-knap gemmer det, spilleren ser (ejervalg 16/11, punkt 8 B): Trup = "Gem trup";
+  // Taktik = "Gem taktik" (fanens eget gem), eller "Gem trup og saet taktik" naar truppen er ugemt (truppen
+  // gemmes, og taktikken hentes paa den nye trup); Formtop = "Anvend paa valgte". I mobil-arket staar
+  // knappen fast i bunden af arket.
+  const tacticsSquadFirst = view === "tactics" && dirty;
   const primaryButton =
-    state !== "ready" || readOnly ? null : view === "peak" ? (
+    state !== "ready" || readOnly ? null : view === "tactics" ? (
+      <Button
+        variant="primary"
+        size="sm"
+        onClick={tacticsSquadFirst ? save : () => tacticsRef.current?.save()}
+        loading={tacticsSquadFirst && saving}
+        disabled={locked || (tacticsSquadFirst ? clientErrors.length > 0 : !tacticsCanSave)}
+        data-testid="planning-tactics-save"
+        className={inSheet ? "w-full" : undefined}
+      >
+        {t(saveLabelKey("tactics", { squadDirty: dirty }))}
+      </Button>
+    ) : view === "peak" ? (
       <Button
         variant="primary"
         size="sm"
@@ -542,6 +567,32 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
         {t(saveLabelKey("squad"))}
       </Button>
     ) : null;
+
+  // Fanerne Trup | Taktik | Formtop (den kanoniske Segmented). Paa pc under profilen med visningens
+  // korte hjaelp til hoejre (wireframet); i mobil-arket fast oeverst (punkt 2).
+  const viewSwitch = onView ? (
+    <div
+      className={`flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 ${inSheet ? "sticky top-0 z-sticky border-b border-cz-border bg-cz-card px-3 py-2" : ""}`}
+      data-testid="planning-view-switch"
+    >
+      <Segmented
+        label={t("views.label")}
+        value={view}
+        onChange={(next: WorkbenchView) => onView(next)}
+        options={WORKBENCH_VIEWS.map((v) => ({ value: v, label: t(`views.${v}`) }))}
+      />
+      {!inSheet && <p className="text-xs text-cz-3">{t(`views.hint.${view}`)}</p>}
+    </div>
+  ) : null;
+
+  // Formtop-advarslens "Udtag til loebet" (punkt 6 B): rytteren kommer i trup-kladden, intet gemmes.
+  const canPickRider = (riderId: string) => {
+    if (sel.riderIds.includes(riderId) || sel.riderIds.length >= size.max) return false;
+    return rows.some((r) => r.id === riderId && r.selectable);
+  };
+  const pickFromPeak = (riderId: string) => {
+    if (canPickRider(riderId)) toggle(riderId);
+  };
 
   let body;
   if (state === "loading") {
@@ -587,27 +638,18 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
           loading={profilesLoading}
           hidden={profileHidden}
           onToggleHidden={onToggleProfileHidden}
-          full={profileFull}
-          onToggleFull={onToggleProfileFull}
           hasClassifications={race.stages > 1}
           index={stageIndex}
           onIndex={setStageIndex}
         />
-        {/* Visningsvaelgeren under profilen (spec): Trup | Taktik | Formtop. Den kanoniske Segmented. */}
-        {onView && (
-          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5" data-testid="planning-view-switch">
-            <Segmented
-              label={t("views.label")}
-              value={view}
-              onChange={(next: WorkbenchView) => onView(next)}
-              options={WORKBENCH_VIEWS.map((v) => ({ value: v, label: t(`views.${v}`) }))}
-            />
-          </div>
-        )}
+        {/* Fanerne under profilen (wireframet, punkt 4 D). I mobil-arket staar de fast oeverst i stedet. */}
+        {!inSheet && viewSwitch}
         {tacticsMounted && (
           // Monteret fra foerste besoeg; skjult (ikke afmonteret) i de andre visninger, saa kladden bliver.
           <div hidden={view !== "tactics"}>
             <TacticsView
+              ref={tacticsRef}
+              onCanSave={setTacticsCanSave}
               raceId={race.id}
               profiles={profiles}
               stageIndex={stageIndex}
@@ -620,7 +662,16 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
           </div>
         )}
         {view === "tactics" ? null : view === "peak" ? (
-          <PeakView peak={peak} raceName={race.name} raceStart={raceStart} locked={locked} compactMobile={inSheet} />
+          <PeakView
+            peak={peak}
+            raceName={race.name}
+            raceStart={raceStart}
+            locked={locked}
+            compactMobile={inSheet}
+            selectedIds={sel.riderIds}
+            onPick={pickFromPeak}
+            canPick={(riderId: string) => !readOnly && canPickRider(riderId)}
+          />
         ) : rows.length === 0 ? (
           <div className="p-4">
             <EmptyState
@@ -641,14 +692,35 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
             {/* Én linje kontekst om tallene, samme tekst som loebstavlen paa /planning (P9). */}
             <p className="border-t border-cz-border px-4 py-2 text-2xs leading-snug text-cz-3">
               {tr("racehub.column.numbersExplanation")}
-              {afterRace != null && <span className="hidden sm:inline"> {t("squad.afterRaceNote")}</span>}
+              {expectedLoad != null && <span className="hidden sm:inline"> {t("squad.loadNote")}</span>}
             </p>
+            {/* Mobil (punkt 2, kompakt): chip-raekken vaelger op til tre tal-kolonner; valget huskes. */}
+            {onMobileColumns && (
+              <div className="flex flex-wrap items-center gap-1.5 border-t border-cz-border px-3 py-1 sm:hidden" role="group" aria-label={t("squad.columns")} data-testid="planning-column-chips">
+                <span className="me-0.5 font-data text-2xs font-semibold uppercase tracking-wide text-cz-3">{t("squad.columns")}</span>
+                {MOBILE_COLUMNS.filter((c) => c !== "load" || expectedLoad != null).map((c) => {
+                  const on = (mobileColumns ?? []).includes(c);
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => onMobileColumns(toggleMobileColumn(mobileColumns ?? [], c))}
+                      className={`min-h-11 px-0.5 font-data text-2xs font-semibold uppercase tracking-wide`}
+                    >
+                      <span className={`inline-flex items-center rounded-cz border px-2 py-1 ${on ? "border-cz-1 text-cz-1" : "border-cz-border text-cz-3"}`}>
+                        {t(`squad.mobileColumn.${c}`)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             <SquadTable
               rows={sortedRows}
               selection={sel}
               sort={sort}
               onSort={(key: SquadSortKey) => setSort((current) => nextSort(current, key))}
-              profileCols={profileCols}
               max={size.max}
               readOnly={readOnly || locked}
               sprintLeaderAllowed={sprintLeaderAllowed}
@@ -657,7 +729,9 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
               details={riderDetails}
               seasonLoad={seasonLoad}
               seasonYear={seasonYear}
-              showAfterRace={afterRace != null}
+              showLoad={expectedLoad != null}
+              peakNext={peakNext}
+              mobileColumns={mobileColumns}
             />
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-cz-border px-4 py-1.5">
               <p className="py-1 font-data text-xs tabular-nums text-cz-3">
@@ -677,7 +751,9 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
       data-testid="planning-workbench"
       className="min-w-0 rounded-cz border border-cz-border bg-cz-card"
     >
-      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-cz-border px-4 py-3.5">
+      {/* Mobil-arket (punkt 2, kompakt): fanerne staar fast oeverst i arket. */}
+      {inSheet && viewSwitch}
+      <header className="border-b border-cz-border px-4 py-3.5">
         <div className="min-w-0">
           <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold text-cz-1">
             {/* I mobil-arket staar navnet i arkets hoved (med pilene); her kun for skaermlaesere. */}
@@ -704,47 +780,32 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
             <p className="mt-1 text-2xs text-cz-warning">{t("raceList.sharesDays", { races: overlaps.map((o) => o.name).join(", ") })}</p>
           )}
         </div>
-        {state === "ready" && !readOnly && view === "peak" && (
-          // Formtop: én guld-knap, teksten foelger visningen. Maalet er det aabne loeb.
-          <div className="flex flex-wrap items-center gap-2">
-            {peak.checked.size > 0 && (
-              <Button variant="ghost" size="sm" onClick={() => peak.setChecked(new Set())} disabled={locked}>
-                {t("peak.clear")}
-              </Button>
-            )}
-            {!inSheet && primaryButton}
-          </div>
-        )}
-        {state === "ready" && !readOnly && view === "tactics" && dirty && (
-          // Taktik-fanen har selv guld-knappen ("Gem taktik"); en ugemt trup kan gemmes her som sekundaer.
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={discard} disabled={locked}>
-              {t("race.discard")}
-            </Button>
-            <Button variant="secondary" size="sm" onClick={save} loading={saving} disabled={locked || clientErrors.length > 0}>
-              {t(saveLabelKey("squad"))}
-            </Button>
-          </div>
-        )}
-        {state === "ready" && !readOnly && view === "squad" && (
-          <div className="relative flex flex-wrap items-center gap-2">
+        {state === "ready" && !readOnly && (
+          // Hovedets knapper under loebets linje, som wireframet: Kopiér trup fra, Foreslaa trup og den ene
+          // guld-knap, der gemmer det man ser (punkt 8 B). Formtop har desuden "Ryd valg".
+          <div className="relative mt-3 flex flex-wrap items-center gap-2" data-testid="planning-head-actions">
             <Button variant="secondary" size="sm" onClick={() => setCopyOpen((v) => !v)} aria-expanded={copyOpen} disabled={locked}>
               {t("race.copyFrom")}
             </Button>
             <Button variant="secondary" size="sm" onClick={suggest} disabled={locked || rows.length === 0}>
               {t("race.suggest")}
             </Button>
+            {!inSheet && primaryButton}
             {dirty && (
               <Button variant="ghost" size="sm" onClick={discard} disabled={locked}>
                 {t("race.discard")}
               </Button>
             )}
-            {!inSheet && primaryButton}
+            {view === "peak" && peak.checked.size > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => peak.setChecked(new Set())} disabled={locked}>
+                {t("peak.clear")}
+              </Button>
+            )}
             {copyOpen && (
               <div
                 role="dialog"
                 aria-label={t("copy.title")}
-                className="absolute end-0 top-full z-dropdown mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-cz border border-cz-border bg-cz-card p-1.5 shadow-overlay"
+                className="absolute start-0 top-full z-dropdown mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-cz border border-cz-border bg-cz-card p-1.5 shadow-overlay"
               >
                 {copySources.length === 0 ? (
                   <p className="px-2.5 py-2 text-[13px] text-cz-2">{t("copy.none")}</p>

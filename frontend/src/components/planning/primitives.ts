@@ -15,6 +15,8 @@ import LegacyStageProfileCardBase from "../race/LegacyStageProfileCard.jsx";
 import { buttonClass as buttonClassBase } from "../ui/buttonStyles.js";
 import { statusBadgeClass as statusBadgeClassBase } from "../ui/badgeStyles.js";
 import { hasRouteData as hasRouteDataBase } from "../../lib/stageRouteProfile.js";
+import { statPlateStyle as statPlateStyleBase } from "../../lib/statColor.js";
+import { RIDER_TYPE_KEYS as RIDER_TYPE_KEYS_BASE } from "../../lib/riderTypeKeys.js";
 import { riderBestRole as riderBestRoleBase } from "../../lib/riderRating.js";
 import { validateSelectionClient as validateSelectionClientBase, partialSquadOutlook as partialSquadOutlookBase } from "../../lib/raceSelectionLogic.js";
 import {
@@ -73,6 +75,9 @@ export const LegacyStageProfileCard: AnyComponent = LegacyStageProfileCardBase a
 export const buttonClass: (opts?: { variant?: string; size?: string; fullWidth?: boolean }) => string = buttonClassBase as any;
 export const statusBadgeClass: (state: string, opts?: { emphasis?: boolean }) => string = statusBadgeClassBase as any;
 export const hasRouteData: (profile: unknown) => boolean = hasRouteDataBase as any;
+/** Ratingens gradient-plade (statColor, samme farver som ratings i hele spillet). */
+export const statPlateStyle: (value: number, opts?: { scale?: string }) => Record<string, string> = statPlateStyleBase as any;
+export const RIDER_TYPE_KEYS: readonly string[] = RIDER_TYPE_KEYS_BASE as any;
 export const riderBestRole: (flat: Record<string, unknown>) => { rating: number | null; role: string | null } = riderBestRoleBase as any;
 export const validateSelectionClient: (args: Record<string, unknown>) => string[] = validateSelectionClientBase as any;
 export const isU23: (birthdate: string | null, seasonYear: number | null) => boolean = isU23Base as any;

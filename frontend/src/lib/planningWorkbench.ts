@@ -900,8 +900,10 @@ export interface SquadRow {
   ratingRole: string | null;
   form: number | null;
   fatigue: number | null;
-  /** Forventet traethed efter loebets sidste etape (serverens skoen med motorens model); null = ukendt. */
-  afterRace?: number | null;
+  /** Rytterens naturlige type (riders.primary_type), kolonnen Type. */
+  type?: string | null;
+  /** Forventet belastning af loebet som ord (serveren sender kun ordet); null = ukendt. */
+  load?: LoadWord | null;
   routeMatch: number | null;
   /** Rute-match pr. rutetype (profile_type) i loebet. */
   byProfile: Record<string, number | null>;
@@ -993,6 +995,7 @@ export function buildSquadRows(
       busyIn,
       rating: best?.rating ?? null,
       ratingRole: best?.role ?? null,
+      type: r.primaryType ?? null,
       form: r.form ?? null,
       fatigue: r.fatigue ?? null,
       routeMatch: r.suitability ?? null,
@@ -1009,7 +1012,8 @@ export type SquadSortKey =
   | "rating"
   | "form"
   | "fatigue"
-  | "afterRace"
+  | "load"
+  | "type"
   | "routeMatch"
   | `profile:${string}`;
 
@@ -1023,7 +1027,7 @@ export const DEFAULT_SQUAD_SORT: SquadSort = { key: "routeMatch", dir: "desc" };
 
 /** Naturlig foerste retning: tekst stigende, tal faldende. */
 export function defaultSortDir(key: SquadSortKey): "asc" | "desc" {
-  return key === "name" || key === "status" || key === "role" ? "asc" : "desc";
+  return key === "name" || key === "status" || key === "role" || key === "type" ? "asc" : "desc";
 }
 
 export function nextSort(current: SquadSort, key: SquadSortKey): SquadSort {
@@ -1047,8 +1051,10 @@ function sortValue(row: SquadRow, key: SquadSortKey, sel: Selection): number | s
       return row.form;
     case "fatigue":
       return row.fatigue;
-    case "afterRace":
-      return row.afterRace ?? null;
+    case "load":
+      return row.load ? LOAD_WORDS.indexOf(row.load) : null;
+    case "type":
+      return row.type ?? null;
     case "routeMatch":
       return row.routeMatch;
     default:
@@ -1196,25 +1202,88 @@ export function isWorkbenchView(value: unknown): value is WorkbenchView {
   return typeof value === "string" && (WORKBENCH_VIEWS as readonly string[]).includes(value);
 }
 
-/** Gem-knappens tekst foelger visningen (spec: Save squad / Save tactics / Save peaks). */
-export function saveLabelKey(view: WorkbenchView): string {
-  return view === "tactics" ? "race.saveTactics" : view === "peak" ? "race.savePeaks" : "race.save";
+/**
+ * Hovedets ene guld-knap gemmer det, spilleren ser (ejervalg 16/11, punkt 8 B): Trup = "Gem trup",
+ * Taktik = "Gem taktik", Taktik med en ugemt trup = "Gem trup og saet taktik", Formtop = "Anvend paa valgte".
+ */
+export function saveLabelKey(view: WorkbenchView, { squadDirty = false }: { squadDirty?: boolean } = {}): string {
+  if (view === "tactics") return squadDirty ? "race.saveSquadAndTactics" : "race.saveTactics";
+  return view === "peak" ? "race.savePeaks" : "race.save";
 }
 
-/** Fra hvilket tal "Efter loebet" staar i advarselsfarven (designet: amber ved 60+). */
-export const AFTER_RACE_WARN = 60;
+// ── Ejervalg 16/11: belastning i ord, kolonnevalg paa mobil, formtop i trup og liste ──
 
-export function afterRaceWarns(value: number | null | undefined): boolean {
-  return value != null && value >= AFTER_RACE_WARN;
+/** Forventet belastning som ord (punkt 5). Raekkefoelgen er sorteringens: let foerst. */
+export const LOAD_WORDS = ["light", "medium", "hard"] as const;
+export type LoadWord = (typeof LOAD_WORDS)[number];
+
+export function isLoadWord(value: unknown): value is LoadWord {
+  return typeof value === "string" && (LOAD_WORDS as readonly string[]).includes(value);
 }
 
-/** Saet serverens skoen paa raekkerne; et manglende tal er ukendt (null), aldrig 0. */
-export function withAfterRace(rows: SquadRow[], byRider: Record<string, number> | null | undefined): SquadRow[] {
+/** Saet serverens ord paa raekkerne; alt andet end et kendt ord er ukendt (null). */
+export function withLoad(rows: SquadRow[], byRider: Record<string, unknown> | null | undefined): SquadRow[] {
   if (!byRider) return rows;
   return rows.map((row) => {
     const v = byRider[row.id];
-    return { ...row, afterRace: typeof v === "number" && Number.isFinite(v) ? v : null };
+    return { ...row, load: isLoadWord(v) ? v : null };
   });
+}
+
+/** Mobilens kolonnevalg (punkt 2): navnet staar altid, plus op til tre tal-kolonner. */
+export const MOBILE_COLUMNS = ["routeMatch", "form", "fatigue", "load", "rating"] as const;
+export type MobileColumn = (typeof MOBILE_COLUMNS)[number];
+export const MOBILE_COLUMN_MAX = 3;
+export const DEFAULT_MOBILE_COLUMNS: MobileColumn[] = ["routeMatch", "form", "fatigue"];
+
+/** Gyldige, unikke kolonner i den viste raekkefoelge; tomt eller ugyldigt giver standarden. */
+export function normalizeMobileColumns(value: unknown): MobileColumn[] {
+  if (!Array.isArray(value)) return DEFAULT_MOBILE_COLUMNS;
+  const picked = MOBILE_COLUMNS.filter((c) => value.includes(c)).slice(0, MOBILE_COLUMN_MAX);
+  return picked.length ? picked : DEFAULT_MOBILE_COLUMNS;
+}
+
+/** Slaa en kolonne til eller fra. Mindst én og hoejst tre; en fjerde skubber den aeldste ud. */
+export function toggleMobileColumn(current: MobileColumn[], column: MobileColumn): MobileColumn[] {
+  if (current.includes(column)) return current.length > 1 ? current.filter((c) => c !== column) : current;
+  const next = [...current, column];
+  const kept = next.length > MOBILE_COLUMN_MAX ? next.slice(next.length - MOBILE_COLUMN_MAX) : next;
+  return MOBILE_COLUMNS.filter((c) => kept.includes(c));
+}
+
+/** Rytterens naeste formtop (punkt 7): hvornaar han topper, vist ved Form, aldrig i Status. */
+export interface PeakNext {
+  name: string;
+  date: string;
+  days: number;
+}
+
+export function nextPeakByRider(rows: PeakRow[]): Map<string, PeakNext> {
+  const out = new Map<string, PeakNext>();
+  for (const row of rows) if (row.next) out.set(row.id, row.next);
+  return out;
+}
+
+/** Antal ryttere med en formtop mod hvert loeb (punkt 3, loebslistens formtop-maerke). */
+export function peakCountsByRace(riders: PeakBoardRider[] | null | undefined): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const r of riders ?? []) {
+    const races = new Set((r.peaks ?? []).filter((p) => !p.isSuggestion && p.targetRaceId).map((p) => String(p.targetRaceId)));
+    for (const id of races) out.set(id, (out.get(id) ?? 0) + 1);
+  }
+  return out;
+}
+
+/**
+ * Formtop-visningen med udtagne ryttere oeverst (punkt 6 B): "I truppen" og "Ikke udtaget", hver i sin
+ * egen sortering. `warn` = formtoppen rammer det aabne loeb, men rytteren er ikke udtaget.
+ */
+export function groupPeakRows(rows: PeakRow[], selectedIds: readonly string[]): { inSquad: PeakRow[]; outside: PeakRow[]; warn: Set<string> } {
+  const picked = new Set(selectedIds);
+  const inSquad = rows.filter((r) => picked.has(r.id));
+  const outside = rows.filter((r) => !picked.has(r.id));
+  const warn = new Set(outside.filter((r) => r.here != null).map((r) => r.id));
+  return { inSquad, outside, warn };
 }
 
 /** Forrige eller naeste loeb i listen (mobil-arkets pile). Null i enderne. */

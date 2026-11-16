@@ -6,13 +6,14 @@
 // og "Fjern" dens fjern (DELETE /api/peak-plans/:id). Serveren afgoer reglerne (maks mål pr. rytter,
 // loeb der er startet, seniortruppen); skippede par siges hoejt. Maalets vaerdi og payback (formdykket
 // efter toppen) er Form-fanens egen linje (PeakValue), ingen kopi af tallene.
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { SortableTh, Flag, PeakValue, Button, SkeletonLines, ErrorState } from "./primitives.ts";
+import { SortableTh, Flag, PeakValue, Button, SkeletonLines, ErrorState, AlertTriangleIcon } from "./primitives.ts";
 import { formatShortDate } from "./planningUi.tsx";
 import { loadPeakBoard, applyPeaks, removePeak } from "../../lib/planningWorkbenchData.ts";
 import {
   buildPeakRows,
+  groupPeakRows,
   peakApplyPairs,
   peakTargetOpen,
   sortPeakRows,
@@ -48,20 +49,20 @@ export interface PeakState {
   targetOpen: boolean;
 }
 
-/** Board'et hentes foerst, naar Formtop-visningen aabnes; afkrydsningen nulstilles ved nyt loeb. */
-export function usePeakBoard({ active, raceId, today, gate }: { active: boolean; raceId: string; today: string; gate: WriteGate }): PeakState {
-  const { t } = useTranslation("planning");
-  const { t: tp } = useTranslation("planner");
-  const [state, setState] = useState<PeakState["state"]>("idle");
-  const [board, setBoard] = useState<PeakBoard | null>(null);
-  const [checked, setChecked] = useState<Set<string>>(() => new Set());
-  const [message, setMessage] = useState<PeakState["message"]>(null);
-  const [version, setVersion] = useState(0);
+export interface PeakBoardData {
+  state: "idle" | "loading" | "error" | "ready";
+  board: PeakBoard | null;
+  reload: () => void;
+}
 
-  useEffect(() => {
-    setChecked(new Set());
-    setMessage(null);
-  }, [raceId]);
+/**
+ * Board'et hentes ÉN gang for siden (ejervalg 16/11): det giver formtoppen i Trup (punkt 7), formtop-
+ * maerket i loebslisten (punkt 3) og Formtop-visningen. Hentes igen efter hvert anvend og fjern.
+ */
+export function usePeakBoardData(active: boolean): PeakBoardData {
+  const [state, setState] = useState<PeakBoardData["state"]>("idle");
+  const [board, setBoard] = useState<PeakBoard | null>(null);
+  const [version, setVersion] = useState(0);
 
   useEffect(() => {
     if (!active) return undefined;
@@ -92,6 +93,23 @@ export function usePeakBoard({ active, raceId, today, gate }: { active: boolean;
       cancelled = true;
     };
   }, [active, version]);
+
+  const reload = useCallback(() => setVersion((v) => v + 1), []);
+  return useMemo(() => ({ state, board, reload }), [state, board, reload]);
+}
+
+/** Formtop-visningens tilstand for det aabne loeb; afkrydsningen nulstilles ved nyt loeb. */
+export function usePeakBoard({ data, raceId, today, gate }: { data: PeakBoardData; raceId: string; today: string; gate: WriteGate }): PeakState {
+  const { t } = useTranslation("planning");
+  const { t: tp } = useTranslation("planner");
+  const { state, board, reload } = data;
+  const [checked, setChecked] = useState<Set<string>>(() => new Set());
+  const [message, setMessage] = useState<PeakState["message"]>(null);
+
+  useEffect(() => {
+    setChecked(new Set());
+    setMessage(null);
+  }, [raceId]);
 
   const day = board?.today ?? today;
   const rows = useMemo(
@@ -125,12 +143,12 @@ export function usePeakBoard({ active, raceId, today, gate }: { active: boolean;
             : { tone: "ok", text: t("peak.applied", { count: data.created ?? pairs.length }) },
         );
         setChecked(new Set());
-        setVersion((v) => v + 1);
+        reload();
       } catch {
         setMessage({ tone: "danger", text: errorText("generic") });
       }
     });
-  }, [pairs, gate, errorText, t]);
+  }, [pairs, gate, errorText, t, reload]);
 
   const remove = useCallback(
     async (planId: string) => {
@@ -143,13 +161,13 @@ export function usePeakBoard({ active, raceId, today, gate }: { active: boolean;
             return;
           }
           setMessage({ tone: "ok", text: t("peak.removed") });
-          setVersion((v) => v + 1);
+          reload();
         } catch {
           setMessage({ tone: "danger", text: errorText("generic") });
         }
       });
     },
-    [gate, errorText, t],
+    [gate, errorText, t, reload],
   );
 
   const toggle = useCallback((id: string) => {
@@ -170,7 +188,7 @@ export function usePeakBoard({ active, raceId, today, gate }: { active: boolean;
     message,
     apply,
     remove,
-    reload: () => setVersion((v) => v + 1),
+    reload,
     pairs,
     rows,
     targetOpen,
@@ -183,6 +201,9 @@ export default function PeakView({
   raceStart,
   locked,
   compactMobile = false,
+  selectedIds = [],
+  onPick,
+  canPick,
 }: {
   peak: PeakState;
   raceName: string;
@@ -190,11 +211,16 @@ export default function PeakView({
   raceStart: string | null;
   locked: boolean;
   compactMobile?: boolean;
+  /** Truppen som spilleren ser den (gemt plus kladde): udtagne staar oeverst (punkt 6 B). */
+  selectedIds?: readonly string[];
+  /** "Udtag til loebet" ved advarslen: tager rytteren ind i trup-kladden (intet gemmes af sig selv). */
+  onPick?: (riderId: string) => void;
+  canPick?: (riderId: string) => boolean;
 }) {
   const { t, i18n } = useTranslation("planning");
   const { t: tp } = useTranslation("planner");
   const [sort, setSort] = useState<{ key: PeakSortKey; dir: "asc" | "desc" }>({ key: "form", dir: "desc" });
-  const sorted = useMemo(() => sortPeakRows(peak.rows, sort), [peak.rows, sort]);
+  const groups = useMemo(() => groupPeakRows(sortPeakRows(peak.rows, sort), selectedIds), [peak.rows, sort, selectedIds]);
   const onSort = (key: PeakSortKey) =>
     setSort((cur) => (cur.key === key ? { key, dir: cur.dir === "asc" ? "desc" : "asc" } : { key, dir: key === "name" || key === "start" ? "asc" : "desc" }));
 
@@ -274,12 +300,26 @@ export default function PeakView({
               {th("start", t("peak.col.start"))}
             </tr>
           </thead>
-          <tbody>
-            {sorted.map((row) => {
+          {/* Udtagne ryttere oeverst (punkt 6 B), hver gruppe i den valgte sortering. */}
+          {[
+            { key: "inSquad", label: t("peak.group.inSquad", { count: groups.inSquad.length }), rows: groups.inSquad },
+            { key: "outside", label: t("peak.group.outside", { count: groups.outside.length }), rows: groups.outside },
+          ]
+            .filter((g) => g.rows.length > 0)
+            .map((group) => (
+          <tbody key={group.key} data-testid={`planning-peak-group-${group.key}`}>
+            <tr className="border-t border-cz-border">
+              <th colSpan={7} scope="colgroup" className="bg-cz-subtle px-4 py-1.5 text-left font-data text-2xs font-semibold uppercase tracking-wide text-cz-3">
+                {group.label}
+              </th>
+            </tr>
+            {group.rows.map((row) => {
               const checked = peak.checked.has(row.id);
               const disabled = locked || !peak.targetOpen || row.state !== "open";
+              const warn = groups.warn.has(row.id);
               return (
-                <tr key={row.id} data-testid="planning-peak-row" className={`border-t border-cz-border sm:h-[46px] ${checked ? "bg-cz-subtle" : ""}`}>
+                <Fragment key={row.id}>
+                <tr data-testid="planning-peak-row" className={`border-t border-cz-border sm:h-[46px] ${checked ? "bg-cz-subtle" : ""}`}>
                   <td className="hidden px-1.5 py-[7px] ps-4 sm:table-cell">
                     <input
                       type="checkbox"
@@ -325,9 +365,29 @@ export default function PeakView({
                     )}
                   </td>
                 </tr>
+                {warn && (
+                  // Formtoppen rammer det aabne loeb, men rytteren er ikke udtaget: toppen gaar til spilde.
+                  <tr data-testid="planning-peak-warning" className="bg-cz-warning-bg">
+                    <td colSpan={7} className="px-4 py-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="flex min-w-0 items-start gap-1.5 text-xs text-cz-1">
+                          <AlertTriangleIcon size={14} className="mt-px shrink-0 text-cz-warning" aria-hidden="true" />
+                          <span>{t("peak.notPicked", { name: row.name, race: raceName })}</span>
+                        </p>
+                        {onPick && canPick?.(row.id) && (
+                          <Button variant="secondary" size="sm" disabled={locked} onClick={() => onPick(row.id)}>
+                            {t("peak.pickForRace")}
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               );
             })}
           </tbody>
+            ))}
         </table>
       </div>
       <p className="border-t border-cz-border px-4 py-2 font-data text-xs tabular-nums text-cz-3">

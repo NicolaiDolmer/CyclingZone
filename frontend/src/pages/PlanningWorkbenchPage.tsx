@@ -19,6 +19,7 @@ import RaceList from "../components/planning/RaceList.tsx";
 import RaceWorkbench, { type RaceWorkbenchHandle } from "../components/planning/RaceWorkbench.tsx";
 import UnsavedBar from "../components/planning/UnsavedBar.tsx";
 import RaceSheet from "../components/planning/RaceSheet.tsx";
+import { usePeakBoardData } from "../components/planning/PeakView.tsx";
 import { BulkMenu, BulkDraftBar, BulkRowMark, BulkOpenRaceNote, CheckedCount, type BulkPlan } from "../components/planning/BulkActions.tsx";
 import SelectionDeadlineReminder from "../components/planning/SelectionDeadlineReminder.tsx";
 import { useSelectionReminder, refreshSelectionReminder } from "../hooks/useSelectionReminder.ts";
@@ -40,6 +41,9 @@ import {
   addDays,
   adjacentRace,
   isWorkbenchView,
+  normalizeMobileColumns,
+  peakCountsByRace,
+  type MobileColumn,
   type WorkbenchView,
   actionTargets,
   capToRoom,
@@ -157,8 +161,16 @@ function Workbench() {
   // Ugeoversigten staar fremme som i wireframet (#7535); spillerens eget valg huskes derefter.
   const [showWeek, setShowWeek] = useState(() => readPref("week", true));
   const [showList, setShowList] = useState(() => readPref("list", true));
+  // "Skjul profil" huskes for alle loeb (punkt 4 D). Mobil-arket har sit eget valg, foldet som standard
+  // (punkt 2, kompakt), saa rytterne staar tidligt paa en lille skaerm.
   const [profileHidden, setProfileHidden] = useState(() => readPref("profileHidden", false));
-  const [profileFull, setProfileFull] = useState(() => readPref("profileFull", false));
+  const [sheetProfileHidden, setSheetProfileHidden] = useState(() => readPref("sheetProfileHidden", true));
+  // Mobilens tal-kolonner i trup-tabellen (chip-raekken); spillerens valg huskes.
+  const [mobileColumns, setMobileColumns] = useState<MobileColumn[]>(() => normalizeMobileColumns(readPref<unknown>("mobileColumns", null)));
+  const changeMobileColumns = useCallback((next: MobileColumn[]) => {
+    setMobileColumns(next);
+    writePref("mobileColumns", next);
+  }, []);
   // Visningen under ruteprofilen (Trup | Taktik | Formtop): spillerens sidste valg huskes.
   const [view, setView] = useState<WorkbenchView>(() => {
     const saved = readPref<unknown>("view", "squad");
@@ -504,13 +516,17 @@ function Workbench() {
     writePref("list", !showList);
   };
   const toggleProfile = () => {
+    if (useSheet) {
+      setSheetProfileHidden(!sheetProfileHidden);
+      writePref("sheetProfileHidden", !sheetProfileHidden);
+      return;
+    }
     setProfileHidden(!profileHidden);
     writePref("profileHidden", !profileHidden);
   };
-  const toggleProfileFull = () => {
-    setProfileFull(!profileFull);
-    writePref("profileFull", !profileFull);
-  };
+  // Formtop-board'et én gang for siden: formtop i Trup, maerket i loebslisten og Formtop-visningen.
+  const peakData = usePeakBoardData(load.state === "ready");
+  const peakCounts = useMemo(() => peakCountsByRace(peakData.board?.riders), [peakData.board]);
 
   const upcomingNeed = allRaces.filter(
     (r) => !isRacePast(r) && (raceStartDate(r, dates) ?? "9999") <= addDays(today, 8) && raceReadiness(r, counts.get(r.id) ?? 0, shownWithdrawn).state === "missing",
@@ -572,10 +588,11 @@ function Workbench() {
           riderDetails={riderDetails}
           seasonLoad={seasonLoad}
           seasonYear={seasonYear}
-          profileHidden={profileHidden}
+          profileHidden={useSheet ? sheetProfileHidden : profileHidden}
           onToggleProfileHidden={toggleProfile}
-          profileFull={profileFull}
-          onToggleProfileFull={toggleProfileFull}
+          peakData={peakData}
+          mobileColumns={mobileColumns}
+          onMobileColumns={changeMobileColumns}
           onEdit={dropFromDraft}
           gate={gate}
           onDirtyChange={setDirty}
@@ -685,6 +702,7 @@ function Workbench() {
               counts={counts}
               withdrawn={shownWithdrawn}
               terrain={terrain}
+              peakCounts={peakCounts}
               selectedId={selected?.id}
               onSelect={requestSelect}
               scope={scope}

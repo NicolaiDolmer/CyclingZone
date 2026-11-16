@@ -7,7 +7,7 @@
 //   POST /api/races/selection/auto/propose   assistentens forslag til mange loeb (laeser kun)
 //   POST /api/races/withdrawals/bulk  afmelding af mange loeb (alt eller intet)
 //   GET /api/races/distribution       kun seasonLoadByRider (samme tal som dagvisningens rytter-chip)
-//   GET /api/races/:id/after-race-fatigue   "Efter loebet" (runde 3, motorens model, laeser kun)
+//   GET /api/races/:id/expected-load  "Belastning" som ord (ejervalg 16/11, motorens model, laeser kun)
 //   GET /api/peak-plans/board · POST /bulk · DELETE /:id   Formtop (samme kald som Form-fanen)
 //   riders + rider_condition          nation, foedselsdato og skadesdato (som rytter-hoverkortet)
 // Etape-profiler (ruteprofil og etapetyper) laeses som paa loebssiden fra race_stage_profiles.
@@ -76,18 +76,19 @@ export async function withdrawRacesBulk(raceIds: string[], dryRun = false) {
 }
 
 /**
- * "Efter loebet" (runde 3): forventet traethed efter sidste etape ved normal indsats, regnet af serveren
- * med motorens model (GET /api/races/:id/after-race-fatigue). Fejl eller slukket model = null (en streg).
+ * "Belastning" (ejervalg 16/11, punkt 5): loebets forventede belastning for rytteren som ORD (let, mellem,
+ * haard), regnet af serveren med motorens model (GET /api/races/:id/expected-load). Serveren sender kun
+ * ordet, aldrig et tal. Fejl eller slukket model = null (kolonnen vises ikke).
  */
-export async function loadAfterRaceFatigue(raceId: string): Promise<Record<string, number> | null> {
+export async function loadExpectedLoad(raceId: string): Promise<Record<string, string> | null> {
   if (import.meta.env.VITE_PREVIEW_MOCK) {
-    const { previewAfterRace } = await import("../preview/planningWorkbenchMock.ts");
-    return previewAfterRace(raceId);
+    const { previewExpectedLoad } = await import("../preview/planningWorkbenchMock.ts");
+    return previewExpectedLoad(raceId);
   }
   try {
-    const res = await authed(`/api/races/${encodeURIComponent(raceId)}/after-race-fatigue`);
+    const res = await authed(`/api/races/${encodeURIComponent(raceId)}/expected-load`);
     if (!res.ok || !res.data || res.data.enabled !== true || typeof res.data.riders !== "object") return null;
-    return res.data.riders as Record<string, number>;
+    return res.data.riders as Record<string, string>;
   } catch {
     return null;
   }

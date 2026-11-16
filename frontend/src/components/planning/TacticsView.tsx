@@ -7,12 +7,81 @@
 // aendringer i truppen, siger visningen det, foer der saettes taktik paa en trup der ikke findes endnu.
 // Fladen holder visningen monteret, naar spilleren skifter til Trup eller Formtop, saa en taktik-kladde
 // overlever et visningsskift; et loebsskift med en kladde fanges af sidens bjaelke for ugemte aendringer.
-import { useMemo } from "react";
+//
+// Hovedets ene guld-knap (ejervalg 16/11, punkt 8 B) gemmer taktikken: fanens egen gem-knap skjules her og
+// trykkes af hovedets "Gem taktik", saa der kun er ét guld i visningen. Samme gem, samme validering. Det er
+// en bro, indtil den faelles taktik-komponent (punkt 1, #8289) giver et gem udefra.
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { RaceTacticsTab, Button } from "./primitives.ts";
 import type { StageProfileRow } from "../../lib/planningWorkbenchData.ts";
 
-export default function TacticsView({
+export interface TacticsViewHandle {
+  /** Tryk fanens eget gem (samme kald og validering som paa loebssiden). False = intet at gemme. */
+  save: () => boolean;
+}
+
+// Fanens egen guld-knap er dens eneste primaere knap (variant primary = bg-cz-accent).
+const TAB_SAVE = '[data-testid="race-tactics-tab"] button.bg-cz-accent';
+
+const TacticsView = forwardRef<TacticsViewHandle, {
+  /** Taeller op ved hvert gemt trup-skift, saa fanen henter den nye trup. */
+  squadVersion: number;
+  raceId: string;
+  profiles: StageProfileRow[];
+  /** Etapen ruteprofilen viser (0-baseret). */
+  stageIndex: number;
+  isStageRace: boolean;
+  squadDirty: boolean;
+  /** Antal ryttere i den gemte trup. */
+  savedCount: number;
+  onShowSquad: () => void;
+  /** Kan fanens gem trykkes lige nu (der er en kladde, intet kald koerer)? Hovedets knap foelger det. */
+  onCanSave?: (canSave: boolean) => void;
+}>(function TacticsView({
+  raceId,
+  profiles,
+  stageIndex,
+  isStageRace,
+  squadDirty,
+  savedCount,
+  squadVersion,
+  onShowSquad,
+  onCanSave,
+}, ref) {
+  const boxRef = useRef<HTMLDivElement>(null);
+  useImperativeHandle(ref, () => ({
+    save: () => {
+      const button = boxRef.current?.querySelector<HTMLButtonElement>(TAB_SAVE);
+      if (!button || button.disabled) return false;
+      button.click();
+      return true;
+    },
+  }), []);
+  // Hovedets knap er aktiv, naar fanens skjulte gem er det (fanen afgoer selv, om der er noget at gemme).
+  useEffect(() => {
+    const box = boxRef.current;
+    if (!box || !onCanSave) return undefined;
+    const report = () => {
+      const button = box.querySelector<HTMLButtonElement>(TAB_SAVE);
+      onCanSave(!!button && !button.disabled);
+    };
+    report();
+    if (typeof MutationObserver === "undefined") return undefined;
+    const mo = new MutationObserver(report);
+    mo.observe(box, { subtree: true, childList: true, attributes: true, attributeFilter: ["disabled", "class"] });
+    return () => {
+      mo.disconnect();
+      onCanSave(false);
+    };
+  }, [onCanSave, savedCount]);
+  return <TacticsBody boxRef={boxRef} {...{ raceId, profiles, stageIndex, isStageRace, squadDirty, savedCount, squadVersion, onShowSquad }} />;
+});
+
+export default TacticsView;
+
+function TacticsBody({
+  boxRef,
   raceId,
   profiles,
   stageIndex,
@@ -22,6 +91,7 @@ export default function TacticsView({
   squadVersion,
   onShowSquad,
 }: {
+  boxRef: RefObject<HTMLDivElement | null>;
   /** Taeller op ved hvert gemt trup-skift, saa fanen henter den nye trup. */
   squadVersion: number;
   raceId: string;
@@ -44,7 +114,7 @@ export default function TacticsView({
 
   if (savedCount === 0) {
     return (
-      <div className="border-t border-cz-border px-4 py-5" data-testid="planning-tactics-empty">
+      <div ref={boxRef} className="border-t border-cz-border px-4 py-5" data-testid="planning-tactics-empty">
         <p className="text-sm font-semibold text-cz-1">{t("tactics.noSquad.title")}</p>
         <p className="mt-0.5 text-xs text-cz-2">{t("tactics.noSquad.description")}</p>
         <Button variant="secondary" size="sm" className="mt-3" onClick={onShowSquad}>
@@ -56,9 +126,10 @@ export default function TacticsView({
 
   return (
     <div
+      ref={boxRef}
       // Ruteprofilen staar allerede over visningen: fanens egen tynde profilraekke skjules (etapeplanens
       // profil med stigningsvalg bliver, den er en del af planen). Fanens kort faar ingen ekstra ramme.
-      className="border-t border-cz-border [&_[data-testid=race-stage-profile-row].rounded-cz]:hidden [&_[data-testid=race-tactics-tab]]:rounded-none [&_[data-testid=race-tactics-tab]]:border-0"
+      className="border-t border-cz-border [&_[data-testid=race-stage-profile-row].rounded-cz]:hidden [&_[data-testid=race-tactics-tab]]:rounded-none [&_[data-testid=race-tactics-tab]]:border-0 [&_[data-testid=race-tactics-tab]_button.bg-cz-accent]:hidden"
       data-testid="planning-tactics"
     >
       {squadDirty && (

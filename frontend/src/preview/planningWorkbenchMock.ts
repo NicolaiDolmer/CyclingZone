@@ -231,20 +231,20 @@ export function previewAssistantProposals(raceIds: string[], overrides: Record<s
 }
 
 /**
- * "Efter loebet" i preview-mocken (GET /api/races/:id/after-race-fatigue har ingen server her). Kun en
- * troværdig illustration til billederne: haardere og laengere loeb giver hoejere tal. Det rigtige tal
- * regnes af serveren med motorens model (backend/lib/planningAfterRace7535.js), aldrig her.
+ * "Belastning" i preview-mocken (GET /api/races/:id/expected-load har ingen server her). Kun en troværdig
+ * illustration til billederne: haardere og laengere loeb giver et haardere ord. Det rigtige ord regnes af
+ * serveren med motorens model (backend/lib/planningExpectedLoad7535.js), aldrig her.
  */
-const PREVIEW_STAGE_WEIGHT: Record<string, number> = { flat: 6, rolling: 8, mountain: 12, high_mountain: 15, itt: 5 };
-export function previewAfterRace(raceId: string): Record<string, number> | null {
+const PREVIEW_STAGE_WEIGHT: Record<string, number> = { flat: 1, rolling: 2, mountain: 3, high_mountain: 4, itt: 1 };
+export function previewExpectedLoad(raceId: string): Record<string, string> | null {
   const def = RACE_DEFS.find((d) => d[0] === raceId);
   if (!def) return null;
   const types = def[3];
-  const out: Record<string, number> = {};
-  for (const [id, , , ab, , fatigue] of RIDER_DEFS) {
-    let f = fatigue;
-    for (const type of types) f = Math.min(100, f + (PREVIEW_STAGE_WEIGHT[type] ?? 8) - (4 + ((ab.recovery ?? 52) - 50) / 10));
-    out[id] = Math.max(0, Math.round(f));
+  const race = types.reduce((sum, type) => sum + (PREVIEW_STAGE_WEIGHT[type] ?? 2), 0);
+  const out: Record<string, string> = {};
+  for (const [id, , , , , fatigue] of RIDER_DEFS) {
+    const score = race + (fatigue >= 30 ? 2 : fatigue >= 25 ? 1 : 0);
+    out[id] = score <= 3 ? "light" : score <= 8 ? "medium" : "hard";
   }
   return out;
 }
