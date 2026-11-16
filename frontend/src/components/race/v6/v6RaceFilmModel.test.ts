@@ -77,6 +77,14 @@ test("referatet viser kun linjerne op til filmens position, så vinderen først 
   assert.equal(v6MoreAhead(lines, 155), false);
 });
 
+test("en linje over et stykke vej vises først, når filmen er ved dens slut-km (Codex-fund)", () => {
+  const lines = [{ km: 25, kmTo: 48, id: "gap" }, { km: 60, kmTo: null, id: "b" }];
+  assert.deepEqual(v6VisibleLines(lines, 30).map((l) => l.id), [], "hullets udfald ved km 48 afsløres ikke ved km 30");
+  assert.deepEqual(v6VisibleLines(lines, 48).map((l) => l.id), ["gap"]);
+  assert.equal(v6MoreAhead(lines, 30), true);
+  assert.equal(v6CurrentLine(lines, 30), null);
+});
+
 test("i Historie viser striben ikke den valgte etapes vinder eller egen plads (låst 7/11)", () => {
   const cells = [
     { number: 1, foot: { kind: "ridden", winner: "A. Vinder", myRank: 4 } },

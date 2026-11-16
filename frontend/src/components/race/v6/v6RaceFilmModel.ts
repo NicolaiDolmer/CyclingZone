@@ -105,20 +105,27 @@ export function v6NextChapter(chapters: readonly V6Chapter[], km: number): V6Cha
   return chapters.find((c) => c.km > km + EPS) ?? null;
 }
 
-/** F6: referatet viser kun linjerne op til filmens position. */
-export function v6VisibleLines<T extends Pick<StoryLine, "km">>(lines: readonly T[], km: number): T[] {
-  return lines.filter((l) => l.km <= km + EPS);
+type LineKm = Pick<StoryLine, "km"> & { kmTo?: number | null };
+
+/** Hvor linjens udfald kendes: et stykke vej (km-spænd) kendes først ved sin slut-km. */
+function knownAtKm(line: LineKm): number {
+  return line.kmTo != null && line.kmTo > line.km ? line.kmTo : line.km;
+}
+
+/** F6: referatet viser kun linjerne, hvis udfald filmen er nået til. */
+export function v6VisibleLines<T extends LineKm>(lines: readonly T[], km: number): T[] {
+  return lines.filter((l) => knownAtKm(l) <= km + EPS);
 }
 
 /** Linjen filmen står ved (den seneste viste); null før den første. */
-export function v6CurrentLine<T extends Pick<StoryLine, "km">>(lines: readonly T[], km: number): T | null {
+export function v6CurrentLine<T extends LineKm>(lines: readonly T[], km: number): T | null {
   const visible = v6VisibleLines(lines, km);
   return visible.length ? visible[visible.length - 1] : null;
 }
 
 /** Om der står flere linjer efter positionen (referatet siger så, at filmen fortsætter). */
-export function v6MoreAhead(lines: ReadonlyArray<Pick<StoryLine, "km">>, km: number): boolean {
-  return lines.some((l) => l.km > km + EPS);
+export function v6MoreAhead(lines: ReadonlyArray<LineKm>, km: number): boolean {
+  return lines.some((l) => knownAtKm(l) > km + EPS);
 }
 
 /**

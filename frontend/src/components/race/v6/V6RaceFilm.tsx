@@ -165,7 +165,7 @@ function FilmBody({ story, profile, cast, narrative, onShowResults }: {
   const current = v6CurrentLine(lines, km);
   const ahead = v6MoreAhead(lines, km);
   // Grupperne på vejen ved positionen; i mål er alle grupper "fremme", så dér står kun positionen (resultatet er i Resultater).
-  const groups = useMemo(() => (story.precise_times && km < D ? replayGroupsAt(story, frames, km, cast) : []), [story, frames, km, cast, D]);
+  const groups = useMemo(() => (story.precise_times && !timeTrial && km < D ? replayGroupsAt(story, frames, km, cast) : []), [story, frames, km, cast, D, timeTrial]);
   const { shown, rest } = pickGroups(groups, 2);
   const frame = frameAt(frames, km);
   const kmText = formatNumber(Math.round(km * 10) / 10, { maximumFractionDigits: 1 });
