@@ -3,8 +3,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
+  legTaskChoice,
   orderWithoutJerseyHunt,
   setLegTask,
+  taskChoiceKey,
+  taskChoiceOptions,
   setRiderPlan,
   stagePlanOutcomes,
   stagePlanRecap,
@@ -76,6 +79,59 @@ test("#7855 Codex-review: skiftes udbrudsleddet med jagt til en anden opgave, fo
   assert.equal(validateStagePlanLegs(next, "helper", ON), null);
   // Tilbage til udbrud: jagten er vaek (spilleren vaelger den selv igen).
   assert.deepEqual(setLegTask(next, 0, "breakaway", "helper", ON), [{ task: "breakaway" }]);
+});
+
+test("#7855 egne linjer (ejer 16/11): 'Gaa i udbrud + Hent point/bjergpoint' staar i opgavelisten paa foerste led", () => {
+  const keys = (legs: StagePlanLeg[], i: number, role: Parameters<typeof taskChoiceOptions>[2], route = ON) => taskChoiceOptions(legs, i, role, route).map(taskChoiceKey);
+  const helper = keys([{ task: "stay_sheltered" }], 0, "helper");
+  // Lige efter "Gaa i udbrud", som egne linjer.
+  const at = helper.indexOf("breakaway");
+  assert.deepEqual(helper.slice(at, at + 3), ["breakaway", "breakaway+hunt_points", "breakaway+hunt_kom"]);
+  // Valgene er praecis opgaverne plus de to linjer.
+  assert.deepEqual(helper.filter((k) => !k.includes("+")), taskOptions([{ task: "stay_sheltered" }], 0, "helper", ON));
+  // Slukket: ingen jagt-linjer, listen er som foer.
+  assert.deepEqual(keys([{ task: "stay_sheltered" }], 0, "helper", OFF), taskOptions([{ task: "stay_sheltered" }], 0, "helper", OFF));
+  // Kaptajnen koerer for klassementet; sprinterkaptajnen maa hente point, ikke bjergpoint.
+  assert.ok(!keys([{ task: "stay_sheltered" }], 0, "captain").some((k) => k.includes("+")));
+  const sc = keys([{ task: "stay_sheltered" }], 0, "sprint_captain");
+  assert.ok(sc.includes("breakaway+hunt_points") && !sc.includes("breakaway+hunt_kom"));
+  // Kun foerste led: senere led kan ikke vaere udbrud.
+  assert.ok(!keys([{ task: "stay_sheltered" }, { task: "tempo", from: { at: "kom", kom_index: 0 } }], 1, "helper").some((k) => k.includes("+")));
+  // En rute uden spurt har ingen "+ Hent point"-linje.
+  const noSprint = withJerseyHunt7855(stagePlanRouteFromRaw({ ...RAW, sprints: [] }), true);
+  const ns = keys([{ task: "stay_sheltered" }], 0, "helper", noSprint);
+  assert.ok(!ns.includes("breakaway+hunt_points") && ns.includes("breakaway+hunt_kom"));
+});
+
+test("#7855 egne linjer: valget gemmes som udbrudsleddet med jagt (serverens form), og kan skiftes begge veje", () => {
+  const start: StagePlanLeg[] = [{ task: "stay_sheltered" }];
+  const kom = setLegTask(start, 0, "breakaway", "helper", ON, "hunt_kom");
+  assert.deepEqual(kom, [{ task: "breakaway", hunt: "hunt_kom" }]);
+  assert.equal(validateStagePlanLegs(kom, "helper", ON), null);
+  assert.equal(taskChoiceKey(legTaskChoice(kom[0])), "breakaway+hunt_kom", "listen viser leddets eget valg");
+  const pts = setLegTask(kom, 0, "breakaway", "helper", ON, "hunt_points");
+  assert.deepEqual(pts, [{ task: "breakaway", hunt: "hunt_points" }]);
+  // "Gaa i udbrud" alene fjerner jagten; en anden opgave tager den heller ikke med.
+  assert.deepEqual(setLegTask(pts, 0, "breakaway", "helper", ON), [{ task: "breakaway" }]);
+  assert.deepEqual(setLegTask(pts, 0, "tempo", "helper", ON, "hunt_points"), [{ task: "tempo" }]);
+  // Resten af planen staar, naar jagten saettes paa.
+  const withDropped: StagePlanLeg[] = [{ task: "breakaway" }, { task: "ride_in", from: { at: "dropped" } }];
+  assert.deepEqual(setLegTask(withDropped, 0, "breakaway", "helper", ON, "hunt_kom"), [{ task: "breakaway", hunt: "hunt_kom" }, { task: "ride_in", from: { at: "dropped" } }]);
+});
+
+test("#7855 egne linjer: tekster for linjerne, prisen, noterne og fejlkoden paa alle fem sprog", () => {
+  for (const lang of ["en", "da", "es", "fr", "nl"]) {
+    const j = JSON.parse(readFileSync(new URL(`../../../public/locales/${lang}/races.json`, import.meta.url), "utf8"));
+    for (const v of [j.stagePlan.huntChoice.hunt_points, j.stagePlan.huntChoice.hunt_kom, j.stagePlan.huntNoteKom, j.intention.errors.stage_plan_hunt_needs_breakaway]) {
+      assert.equal(typeof v, "string", lang);
+      assert.ok(v.length > 0, lang);
+    }
+    for (const v of [j.stagePlan.huntPrice.sprint, j.stagePlan.huntPrice.kom]) assert.ok(v.includes("{price}"), `${lang}: prisordet bygger paa udbruddets ord`);
+    // Noten lover kun det, der virker (#7855 Fable-dom 16/11): pointnoten naevner ikke stigninger.
+    assert.ok(j.stagePlan.huntNote !== j.stagePlan.huntNoteKom, lang);
+  }
+  const en = JSON.parse(readFileSync(new URL("../../../public/locales/en/races.json", import.meta.url), "utf8"));
+  assert.ok(!/climb/i.test(en.stagePlan.huntNote), "pointnoten lover ikke stigninger");
 });
 
 const legs: StagePlanLeg[] = [{ task: "hunt_kom" }, { task: "ride_in", from: { at: "kom", kom_index: 1 } }];

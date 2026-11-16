@@ -65,6 +65,8 @@ function jerseyHuntPreviewSavedOff() {
 // Etape 3 (den aabne, spurt ved km 80, stigning ved km 130): en hjaelper henter point frem til stigningen.
 const STAGE_3_HUNT_PLANS = {
   "rider-96": [{ task: "hunt_points" }, { task: "shelter_leader", from: { at: "kom", kom_index: 0 } }],
+  // #7855 (ejer 16/11, egne linjer): en rytter paa "Gaa i udbrud + Hent bjergpoint", som serveren gemmer den.
+  "rider-97": [{ task: "breakaway", hunt: "hunt_kom" }, { task: "ride_in", from: { at: "dropped" } }],
 };
 
 export function withStagePlanPreview<T extends { orders?: OrderRow[] }>(body: T): T & { stage_plan_enabled: true } {
