@@ -73,7 +73,7 @@ export function PatchLine({ item, t, liveFlags, marker, open, onToggle, quietTit
           <FallbackNote item={item} t={t} />
         </span>
         {hasBody && (
-          <span className={`mt-px block text-[12.5px] leading-[1.45] text-cz-2 ${open ? "whitespace-pre-line" : "line-clamp-1 max-sm:line-clamp-2"}`}>
+          <span className={`mt-px text-[12.5px] leading-[1.45] text-cz-2 ${open ? "block whitespace-pre-line" : "line-clamp-1 max-sm:line-clamp-2"}`}>
             {item.b}
           </span>
         )}

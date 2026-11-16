@@ -43,7 +43,7 @@ function capitalize(text, locale) {
   return text ? text.charAt(0).toLocaleUpperCase(locale) + text.slice(1) : text;
 }
 
-export default function PatchNotesV2Page({ liveFlags = null }) {
+export default function PatchNotesV2Page({ liveFlags = null, initialMarker }) {
   const { t, i18n } = useTranslation("patchnotes");
   const lang = i18n.language?.startsWith("da") ? "da" : "en";
   const locale = intlLocale(i18n.language);
@@ -63,7 +63,7 @@ export default function PatchNotesV2Page({ liveFlags = null }) {
 
   // "Sidst set" ved ankomst (#6515): fanges før siden markerer, så prikkerne viser
   // hvad der var nyt, da spilleren kom. Rykker kun frem, når en anden enhed har set mere.
-  const [marker, setMarker] = useState(() => readLocalSeenMarker("patch_notes"));
+  const [marker, setMarker] = useState(() => (initialMarker !== undefined ? initialMarker : readLocalSeenMarker("patch_notes")));
   useSeenMarkersSynced("patch_notes", setMarker);
   useEffect(() => {
     if (recent?.seenKey) markSeen("patch_notes", recent.seenKey);

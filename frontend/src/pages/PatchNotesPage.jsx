@@ -5,7 +5,7 @@ import {
   effectiveRollout, filterByRollout, PATCH_NOTES_V2_FLAG, isPatchNotesV2Stage,
 } from "../lib/patchNotes.js";
 import { loadAnonymousFlags, loadFeatureFlagStages } from "../lib/featureStage.ts";
-import { markSeen, useSeenMarkersSynced } from "../lib/seenMarkers6515.ts"; // #6515
+import { markSeen, useSeenMarkersSynced, readLocalSeenMarker } from "../lib/seenMarkers6515.ts"; // #6515
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import { documentLang } from "../i18n/languages.js";
 import { intlLocale } from "../lib/intlLocale.ts";
@@ -375,7 +375,7 @@ function PatchNotesPending() {
   );
 }
 
-function PatchNotesV2Route() {
+function PatchNotesV2Route({ arrivalMarker }) {
   const { ready } = usePatchNotesHead();
   const [liveFlags, setLiveFlags] = useState(null);
   useEffect(() => {
@@ -386,13 +386,16 @@ function PatchNotesV2Route() {
   if (!ready) return <PatchNotesPending />;
   return (
     <Suspense fallback={<PatchNotesPending />}>
-      <PatchNotesV2Page liveFlags={liveFlags} />
+      <PatchNotesV2Page liveFlags={liveFlags} initialMarker={arrivalMarker} />
     </Suspense>
   );
 }
 
 export default function PatchNotesPage() {
   const [stage, setStage] = useState(null); // null = ikke kendt endnu
+  // "Sidst set" ved ankomst læses FØR kontakten er afgjort: menuen (Layout) markerer siden som
+  // set, så snart patch-notes-meta.json er hentet, og det må ikke slukke sidens "nyt"-prikker.
+  const [arrivalMarker] = useState(() => readLocalSeenMarker("patch_notes"));
   useEffect(() => {
     let active = true;
     loadFeatureFlagStages()
@@ -401,5 +404,5 @@ export default function PatchNotesPage() {
     return () => { active = false; };
   }, []);
   if (stage === null) return <PatchNotesPending />;
-  return isPatchNotesV2Stage(stage) ? <PatchNotesV2Route /> : <LegacyPatchNotesPage />;
+  return isPatchNotesV2Stage(stage) ? <PatchNotesV2Route arrivalMarker={arrivalMarker} /> : <LegacyPatchNotesPage />;
 }
