@@ -2546,7 +2546,7 @@ export default function TrainingPage() {
           status={overviewStatus}
           footer={<>
             <FatigueRuleSummary data={fatigueRules.data} onEdit={() => setSub("limit")} />
-            {phoneTodayView && phoneAssistantFooterRow}
+            {phoneTodayView && overviewVariant !== "chips" && phoneAssistantFooterRow}
           </>}
         />
       </div>
@@ -2554,6 +2554,14 @@ export default function TrainingPage() {
           lige under overblikkets fire tal, over tabellen, i begge telefon-
           visninger. Desktop (og telefon på langs uden beta) har knappen i
           tabellens værktøjslinje. */}
+      {/* Codex på #8311: chips-varianten (telefon på langs) tegner ikke overblikkets
+          fod, så dér står rækken i sit eget hairline-kort, ellers ville Assistant
+          og Select riders forsvinde i den retning. */}
+      {phoneTodayView && overviewVariant === "chips" && phoneAssistantFooterRow && (
+        <div className="overflow-hidden rounded-cz border border-cz-border bg-cz-card [&>div]:border-t-0">
+          {phoneAssistantFooterRow}
+        </div>
+      )}
       {phoneTodayView && assistantPanel}
       {/* #3643/#5485: desktop (og telefon på langs) får den nye tabel,
           telefonen sin løbsdags-tabel. #6030: training_mobile_table er on for
