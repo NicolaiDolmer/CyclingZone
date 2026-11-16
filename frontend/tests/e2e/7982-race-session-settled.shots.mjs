@@ -155,8 +155,8 @@ try {
     })));
     await stabilize(page, shot.theme);
     await login(page);
+    // Billederne er paa dansk (fixturens login er dansk); de engelske tekster er proevet i modellens test.
     await page.goto("/training?tab=weekplan");
-    await page.evaluate(() => window.__i18n?.changeLanguage("en"));
     await page.getByTestId("training-plan-for").waitFor();
     await page.getByTestId("training-plan-for").selectOption(rider.id);
     await page.getByTestId("training-program-grid").waitFor();
