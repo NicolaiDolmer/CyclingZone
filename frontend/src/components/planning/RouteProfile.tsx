@@ -105,17 +105,17 @@ export default function RouteProfile({
     <section aria-label={t("profile.title")} data-testid="planning-route-profile" className="border-b border-cz-border">
       {/* Etape-linjen (wireframet): pil, etape og dens tal til venstre; prikker, pil og "Skjul profil" til hoejre. */}
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 px-3.5 py-2" data-testid="planning-stage-line">
-        <div className="flex min-w-0 items-center gap-2.5">
+        <div className="flex min-w-0 items-center gap-2">
           {multi && arrow(-1)}
           <b className="font-data text-xs font-semibold tabular-nums text-cz-1">
             {multi ? t("profile.stageOf", { n: safe + 1, total }) : t("profile.oneDay")}
           </b>
           {profile?.profile_type && <TerrainTypeGlyph profileType={profile.profile_type} size={14} />}
-          {meta && <span className="font-data text-xs tabular-nums text-cz-3">{meta}</span>}
+          {meta && <span className="hidden font-data text-xs tabular-nums text-cz-3 sm:inline">{meta}</span>}
         </div>
         <div className="flex items-center gap-2">
           {multi && total <= 12 && (
-            <div className="flex gap-1" role="group" aria-label={t("profile.stages")}>
+            <div className="hidden gap-1 sm:flex" role="group" aria-label={t("profile.stages")}>
               {profiles.map((p, i) => (
                 <button
                   key={p.stage_number ?? i}

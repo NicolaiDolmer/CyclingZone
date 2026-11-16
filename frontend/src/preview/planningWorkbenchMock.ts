@@ -244,7 +244,7 @@ export function previewExpectedLoad(raceId: string): Record<string, string> | nu
   const out: Record<string, string> = {};
   for (const [id, , , , , fatigue] of RIDER_DEFS) {
     const score = race + (fatigue >= 30 ? 2 : fatigue >= 25 ? 1 : 0);
-    out[id] = score <= 3 ? "light" : score <= 8 ? "medium" : "hard";
+    out[id] = score <= 6 ? "light" : score <= 10 ? "medium" : "hard";
   }
   return out;
 }
@@ -256,6 +256,8 @@ let previewPeaks: Array<{ id: string; riderId: string; raceId: string }> = [
   { id: "pk-3", riderId: "wb-r01", raceId: "wb-appenninica" },
   { id: "pk-4", riderId: "wb-r05", raceId: "wb-dender" },
   { id: "pk-5", riderId: "wb-r15", raceId: "wb-preview" },
+  // Ikke udtaget til wb-preview: viser Formtop-advarslen (ejervalg 16/11, punkt 6 B).
+  { id: "pk-6", riderId: "wb-r13", raceId: "wb-preview" },
 ];
 const PREVIEW_PEAK_MAX = 2;
 

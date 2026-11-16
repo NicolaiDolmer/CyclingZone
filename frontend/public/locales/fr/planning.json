@@ -207,7 +207,7 @@
     "peak": "Pic de forme",
     "hint": {
       "squad": "Choisissez des coureurs et donnez-leur un rôle · chaque colonne se trie",
-      "tactics": "Même tactique et même enregistrement que sur la page de la course",
+      "tactics": "Le plan suit l'étape du profil",
       "peak": "Cochez des coureurs et appliquez le pic de forme à cette course"
     }
   },

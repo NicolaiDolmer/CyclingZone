@@ -45,11 +45,16 @@ function StatusCell({ row, detail, seasonYear, compact = false }: { row: SquadRo
     // Paa pc staar maerker og "Rask igen <dato>" paa én linje (ejer 14/11); paa mobil maa de bryde under navnet.
     <span className="inline-flex flex-wrap items-center gap-1 sm:flex-nowrap">
       <RiderBadges badges={badges} />
-      {fitAgain && (
-        <span className="whitespace-nowrap text-2xs leading-tight text-cz-3" data-testid="planning-fit-again">
-          {tRider(approx ? "condition.fitAgainApprox" : "condition.fitAgain", { date: formatShortDate(fitAgain, i18n.language, false) })}
-        </span>
-      )}
+      {fitAgain && (() => {
+        const date = formatShortDate(fitAgain, i18n.language, false);
+        const full = tRider(approx ? "condition.fitAgainApprox" : "condition.fitAgain", { date });
+        // Trang tabel: kun datoen (hele teksten i titlen), saa tabellen bliver i kortet.
+        return (
+          <span className="whitespace-nowrap text-2xs leading-tight text-cz-3" data-testid="planning-fit-again" title={full}>
+            {compact ? date : full}
+          </span>
+        );
+      })()}
       {row.overAge && <span className={`${CHIP} ${NEUTRAL}`}>{t("status.overAge")}</span>}
       {row.trainNowLocked && <span className={`${CHIP} ${NEUTRAL}`}>{t("status.trainNow")}</span>}
       {row.busyIn && (
@@ -101,16 +106,25 @@ function LoadCell({ value }: { value: LoadWord | null | undefined }) {
   );
 }
 
+/** Dato som tal (fx 22.11.), saa formtop-maerket under formtallet er smalt. */
+function numericDate(date: string, language: string): string {
+  try {
+    return new Intl.DateTimeFormat(language, { day: "numeric", month: "numeric", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
+  } catch {
+    return date;
+  }
+}
+
 /** Rytterens naeste formtop ved Form (punkt 7): kort dato, hele navnet og dagene i titlen. */
 function PeakMark({ peak }: { peak: PeakNext }) {
   const { t, i18n } = useTranslation("planning");
   return (
     <span
-      className="whitespace-nowrap font-data text-3xs uppercase tracking-wide text-cz-3"
+      className="whitespace-nowrap font-data text-3xs tabular-nums text-cz-3"
       title={t("squad.peakTitle", { race: peak.name, date: formatShortDate(peak.date, i18n.language), count: peak.days })}
       data-testid="planning-peak-mark"
     >
-      {t("squad.peakShort", { date: formatShortDate(peak.date, i18n.language, false) })}
+      {t("squad.peakShort", { date: numericDate(peak.date, i18n.language) })}
     </span>
   );
 }
@@ -315,18 +329,27 @@ export default function SquadTable({
                     readOnly ? (
                       <span className="text-[13px] text-cz-2">{t(`role.${roleOf(selection, row.id)}`)}</span>
                     ) : (
-                      <RoleSelect row={row} selection={selection} roles={roles} onRole={onRole} className={compact ? "min-w-[6.5rem]" : undefined} />
+                      <RoleSelect row={row} selection={selection} roles={roles} onRole={onRole} className={compact ? "min-w-[6rem]" : undefined} />
                     )
                   ) : (
                     <span className="text-cz-3">-</span>
                   )}
                 </td>
-                <td className="hidden px-1.5 py-[7px] text-left text-[13px] text-cz-2 sm:table-cell">{type ?? <span className="text-cz-3">-</span>}</td>
+                <td className="hidden px-1.5 py-[7px] text-left text-[13px] text-cz-2 sm:table-cell">
+                  {type ? (
+                    <span className={`block truncate ${compact ? "max-w-[4.5rem]" : ""}`} title={type}>
+                      {type}
+                    </span>
+                  ) : (
+                    <span className="text-cz-3">-</span>
+                  )}
+                </td>
                 <td className={`${onMobile("rating")} whitespace-nowrap text-right ${td}`}>{row.rating ?? <span className="text-cz-3">-</span>}</td>
                 <td className={`${onMobile("form")} whitespace-nowrap text-right ${td}`}>
-                  <span className="inline-flex flex-col items-end leading-tight sm:flex-row sm:items-center sm:gap-1.5">
-                    {peak && <span className="hidden sm:inline"><PeakMark peak={peak} /></span>}
+                  {/* Formtoppen staar under formtallet (pc), saa kolonnen ikke bliver bredere. */}
+                  <span className="inline-flex flex-col items-end leading-tight">
                     <span>{row.form ?? <span className="text-cz-3">-</span>}</span>
+                    {peak && <span className="hidden sm:inline"><PeakMark peak={peak} /></span>}
                   </span>
                 </td>
                 <td className={`${onMobile("fatigue")} whitespace-nowrap text-right ${td}`}>

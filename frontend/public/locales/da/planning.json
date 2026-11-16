@@ -207,7 +207,7 @@
     "peak": "Formtop",
     "hint": {
       "squad": "Udtag ryttere og giv dem en rolle · alle kolonner sorterer",
-      "tactics": "Samme taktik og samme gem som på løbssiden",
+      "tactics": "Planen følger etapen i profilen",
       "peak": "Kryds ryttere af og anvend formtoppen på løbet"
     }
   },

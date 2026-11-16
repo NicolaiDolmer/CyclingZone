@@ -207,7 +207,7 @@
     "peak": "Peak form",
     "hint": {
       "squad": "Pick riders and give them a role · every column sorts",
-      "tactics": "Same tactics and same save as on the race page",
+      "tactics": "The plan follows the stage shown in the profile",
       "peak": "Tick riders and apply peak form for this race"
     }
   },

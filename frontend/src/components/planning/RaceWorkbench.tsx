@@ -572,7 +572,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
   // korte hjaelp til hoejre (wireframet); i mobil-arket fast oeverst (punkt 2).
   const viewSwitch = onView ? (
     <div
-      className={`flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 ${inSheet ? "sticky top-0 z-sticky border-b border-cz-border bg-cz-card px-3 py-2" : ""}`}
+      className={`flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 ${inSheet ? "sticky -top-2 z-sticky border-b border-cz-border bg-cz-card px-3 py-2" : ""}`}
       data-testid="planning-view-switch"
     >
       <Segmented
@@ -690,14 +690,14 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
         ) : (
           <>
             {/* Én linje kontekst om tallene, samme tekst som loebstavlen paa /planning (P9). */}
-            <p className="border-t border-cz-border px-4 py-2 text-2xs leading-snug text-cz-3">
+            {/* Paa mobil staar forklaringen ikke over hver tabel (ejer 16/11: én gang, ikke overalt). */}
+            <p className="hidden border-t border-cz-border px-4 py-2 text-2xs leading-snug text-cz-3 sm:block">
               {tr("racehub.column.numbersExplanation")}
               {expectedLoad != null && <span className="hidden sm:inline"> {t("squad.loadNote")}</span>}
             </p>
             {/* Mobil (punkt 2, kompakt): chip-raekken vaelger op til tre tal-kolonner; valget huskes. */}
             {onMobileColumns && (
-              <div className="flex flex-wrap items-center gap-1.5 border-t border-cz-border px-3 py-1 sm:hidden" role="group" aria-label={t("squad.columns")} data-testid="planning-column-chips">
-                <span className="me-0.5 font-data text-2xs font-semibold uppercase tracking-wide text-cz-3">{t("squad.columns")}</span>
+              <div className="flex flex-nowrap items-center gap-0.5 overflow-hidden border-t border-cz-border px-2.5 sm:hidden" role="group" aria-label={t("squad.columns")} data-testid="planning-column-chips">
                 {MOBILE_COLUMNS.filter((c) => c !== "load" || expectedLoad != null).map((c) => {
                   const on = (mobileColumns ?? []).includes(c);
                   return (
@@ -706,9 +706,9 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
                       type="button"
                       aria-pressed={on}
                       onClick={() => onMobileColumns(toggleMobileColumn(mobileColumns ?? [], c))}
-                      className={`min-h-11 px-0.5 font-data text-2xs font-semibold uppercase tracking-wide`}
+                      className="min-h-11 shrink-0 px-0.5 font-data text-3xs font-semibold uppercase tracking-wide"
                     >
-                      <span className={`inline-flex items-center rounded-cz border px-2 py-1 ${on ? "border-cz-1 text-cz-1" : "border-cz-border text-cz-3"}`}>
+                      <span className={`inline-flex items-center rounded-cz border px-1.5 py-1 ${on ? "border-cz-1 bg-cz-subtle text-cz-1" : "border-cz-border text-cz-3"}`}>
                         {t(`squad.mobileColumn.${c}`)}
                       </span>
                     </button>
