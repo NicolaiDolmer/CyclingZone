@@ -1,0 +1,12858 @@
+{
+ "team-390-light": {
+  "url": "/team",
+  "docH": 844,
+  "hScroll": false,
+  "h1": "E2E Racing",
+  "h1Y": 65,
+  "firstRowY": 556,
+  "smallCount": 5,
+  "small": [
+   {
+    "w": 101,
+    "h": 24,
+    "y": 68,
+    "txt": "E2E Racing"
+   },
+   {
+    "w": 89,
+    "h": 20,
+    "y": 127,
+    "txt": "500,000 CZ$"
+   },
+   {
+    "w": 62,
+    "h": 20,
+    "y": 127,
+    "txt": "Division 2"
+   },
+   {
+    "w": 174,
+    "h": 20,
+    "y": 163,
+    "txt": "Salary/season: 42,000 CZ$"
+   },
+   {
+    "w": 106,
+    "h": 20,
+    "y": 565,
+    "txt": "Ada Pedersen"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "squad-u23-390-light": {
+  "url": "/squads/u23",
+  "docH": 844,
+  "hScroll": false,
+  "h1": "E2E Racing U23",
+  "h1Y": 65,
+  "firstRowY": 485,
+  "smallCount": 3,
+  "small": [
+   {
+    "w": 124,
+    "h": 40,
+    "y": 492,
+    "txt": "Emil Vestergaard"
+   },
+   {
+    "w": 97,
+    "h": 20,
+    "y": 566,
+    "txt": "Noah Brandt"
+   },
+   {
+    "w": 99,
+    "h": 20,
+    "y": 623,
+    "txt": "Mateo Ferrer"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "squad-junior-390-light": {
+  "url": "/squads/junior",
+  "docH": 844,
+  "hScroll": false,
+  "h1": "E2E Racing Juniors",
+  "h1Y": 65,
+  "firstRowY": 485,
+  "smallCount": 2,
+  "small": [
+   {
+    "w": 86,
+    "h": 20,
+    "y": 496,
+    "txt": "Oskar Lind"
+   },
+   {
+    "w": 100,
+    "h": 20,
+    "y": 553,
+    "txt": "Théo Garnier"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "youth-races-390-light": {
+  "url": "/youth-races",
+  "docH": 844,
+  "hScroll": false,
+  "h1": "Youth races",
+  "h1Y": 65,
+  "firstRowY": 365,
+  "smallCount": 0,
+  "small": [],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 4,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "rider-390-light": {
+  "url": "/riders/rider-1",
+  "docH": 2154,
+  "hScroll": false,
+  "h1": "Ada Pedersen",
+  "h1Y": 118,
+  "firstRowY": null,
+  "smallCount": 3,
+  "small": [
+   {
+    "w": 44,
+    "h": 16,
+    "y": 68,
+    "txt": "Back"
+   },
+   {
+    "w": 73,
+    "h": 20,
+    "y": 311,
+    "txt": "E2E Racing"
+   },
+   {
+    "w": 57,
+    "h": 23,
+    "y": 2021,
+    "txt": "All types"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "⚡",
+  "emdash": 0,
+  "golds": [
+   "Extend contract"
+  ],
+  "shadows": 0,
+  "bebas": [
+   "AP",
+   "Ada Pedersen",
+   "Physical",
+   "Mental",
+   "Technical",
+   "Rider types"
+  ],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "rider-training-390-light": {
+  "url": "/riders/rider-1?tab=training",
+  "docH": 2414,
+  "hScroll": false,
+  "h1": "Ada Pedersen",
+  "h1Y": 118,
+  "firstRowY": null,
+  "smallCount": 2,
+  "small": [
+   {
+    "w": 44,
+    "h": 16,
+    "y": 68,
+    "txt": "Back"
+   },
+   {
+    "w": 73,
+    "h": 20,
+    "y": 311,
+    "txt": "E2E Racing"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "⚡",
+  "emdash": 0,
+  "golds": [
+   "Extend contract"
+  ],
+  "shadows": 0,
+  "bebas": [
+   "AP",
+   "Ada Pedersen",
+   "This season",
+   "Training focus",
+   "Daily training · last 7 days",
+   "Form & recovery"
+  ],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "rider-development-390-light": {
+  "url": "/riders/rider-1?tab=development",
+  "docH": 2029,
+  "hScroll": false,
+  "h1": "Ada Pedersen",
+  "h1Y": 118,
+  "firstRowY": null,
+  "smallCount": 2,
+  "small": [
+   {
+    "w": 44,
+    "h": 16,
+    "y": 68,
+    "txt": "Back"
+   },
+   {
+    "w": 73,
+    "h": 20,
+    "y": 311,
+    "txt": "E2E Racing"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "⚡→",
+  "emdash": 0,
+  "golds": [
+   "Extend contract"
+  ],
+  "shadows": 0,
+  "bebas": [
+   "AP",
+   "Ada Pedersen",
+   "Rating by type · over seasons",
+   "Growth this season",
+   "Development log"
+  ],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "rider-scouting-390-light": {
+  "url": "/riders/rider-1?tab=scouting",
+  "docH": 2107,
+  "hScroll": false,
+  "h1": "Ada Pedersen",
+  "h1Y": 118,
+  "firstRowY": null,
+  "smallCount": 2,
+  "small": [
+   {
+    "w": 44,
+    "h": 16,
+    "y": 68,
+    "txt": "Back"
+   },
+   {
+    "w": 73,
+    "h": 20,
+    "y": 311,
+    "txt": "E2E Racing"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "⚡",
+  "emdash": 0,
+  "golds": [
+   "Extend contract"
+  ],
+  "shadows": 0,
+  "bebas": [
+   "AP",
+   "Ada Pedersen",
+   "Keep an eye on him",
+   "Projection per rider type",
+   "29",
+   "Sprinter"
+  ],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "training-390-light": {
+  "url": "/training",
+  "docH": 844,
+  "hScroll": false,
+  "h1": "Daily training",
+  "h1Y": 65,
+  "firstRowY": null,
+  "smallCount": 7,
+  "small": [
+   {
+    "w": 36,
+    "h": 44,
+    "y": 380,
+    "txt": "Edit"
+   },
+   {
+    "w": 198,
+    "h": 40,
+    "y": 564,
+    "txt": "Ada PedersenSprinter/Rouleur · 24"
+   },
+   {
+    "w": 126,
+    "h": 40,
+    "y": 588,
+    "txt": "Back to team program"
+   },
+   {
+    "w": 110,
+    "h": 40,
+    "y": 637,
+    "txt": "Rest"
+   },
+   {
+    "w": 110,
+    "h": 40,
+    "y": 637,
+    "txt": "Recovery"
+   },
+   {
+    "w": 110,
+    "h": 40,
+    "y": 637,
+    "txt": "Program"
+   },
+   {
+    "w": 96,
+    "h": 14,
+    "y": 711,
+    "txt": "How training works"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Train now"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "training-weekplan-390-light": {
+  "url": "/training?tab=weekplan",
+  "docH": 1082,
+  "hScroll": false,
+  "h1": "Daily training",
+  "h1Y": 65,
+  "firstRowY": null,
+  "smallCount": 7,
+  "small": [
+   {
+    "w": 63,
+    "h": 43,
+    "y": 548,
+    "txt": "Whole day · Mon"
+   },
+   {
+    "w": 63,
+    "h": 43,
+    "y": 592,
+    "txt": "Whole day · Tue"
+   },
+   {
+    "w": 63,
+    "h": 43,
+    "y": 636,
+    "txt": "Whole day · Wed"
+   },
+   {
+    "w": 63,
+    "h": 43,
+    "y": 680,
+    "txt": "Whole day · Thu"
+   },
+   {
+    "w": 63,
+    "h": 43,
+    "y": 724,
+    "txt": "Whole day · Fri"
+   },
+   {
+    "w": 63,
+    "h": 43,
+    "y": 768,
+    "txt": "Whole day · Sat"
+   },
+   {
+    "w": 63,
+    "h": 43,
+    "y": 812,
+    "txt": "Whole day · Sun"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Train now"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "training-development-390-light": {
+  "url": "/training?tab=development",
+  "docH": 844,
+  "hScroll": false,
+  "h1": "Daily training",
+  "h1Y": 65,
+  "firstRowY": null,
+  "smallCount": 2,
+  "small": [
+   {
+    "w": 106,
+    "h": 17,
+    "y": 535,
+    "txt": "Ada Pedersen"
+   },
+   {
+    "w": 138,
+    "h": 34,
+    "y": 628,
+    "txt": "Day — Ada Pedersen"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Train now"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "training-report-390-light": {
+  "url": "/training?tab=report",
+  "docH": 851,
+  "hScroll": false,
+  "h1": "Daily training",
+  "h1Y": 65,
+  "firstRowY": null,
+  "smallCount": 0,
+  "small": [],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Train now"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "academy-390-light": {
+  "url": "/academy",
+  "docH": 2255,
+  "hScroll": false,
+  "h1": "Academy",
+  "h1Y": 65,
+  "firstRowY": 2044,
+  "smallCount": 2,
+  "small": [
+   {
+    "w": 51,
+    "h": 38,
+    "y": 2054,
+    "txt": "Théo Dubois"
+   },
+   {
+    "w": 60,
+    "h": 38,
+    "y": 2111,
+    "txt": "Mateo Rossi"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "graduation-390-light": {
+  "url": "/academy/graduation",
+  "docH": 844,
+  "hScroll": false,
+  "h1": "Graduation Day",
+  "h1Y": 65,
+  "firstRowY": null,
+  "smallCount": 1,
+  "small": [
+   {
+    "w": 121,
+    "h": 17,
+    "y": 272,
+    "txt": "Tobias Lindqvist"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Confirm all"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "scouting-390-light": {
+  "url": "/scouting",
+  "docH": 1552,
+  "hScroll": false,
+  "h1": "Scouting",
+  "h1Y": 65,
+  "firstRowY": null,
+  "smallCount": 6,
+  "small": [
+   {
+    "w": 1,
+    "h": 1,
+    "y": 588,
+    "txt": ""
+   },
+   {
+    "w": 1,
+    "h": 1,
+    "y": 675,
+    "txt": ""
+   },
+   {
+    "w": 93,
+    "h": 17,
+    "y": 1044,
+    "txt": "Jonas Vinter"
+   },
+   {
+    "w": 102,
+    "h": 17,
+    "y": 1068,
+    "txt": "Emil Nørgaard"
+   },
+   {
+    "w": 103,
+    "h": 17,
+    "y": 1091,
+    "txt": "Mikkel Hansen"
+   },
+   {
+    "w": 101,
+    "h": 17,
+    "y": 1420,
+    "txt": "Ada Pedersen"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Start mission"
+  ],
+  "shadows": 0,
+  "bebas": [
+   "Scouting",
+   "Default scout",
+   "Free agents",
+   "Riders on other teams"
+  ],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "notifications-390-light": {
+  "url": "/notifications",
+  "docH": 844,
+  "hScroll": false,
+  "h1": "Inbox",
+  "h1Y": 65,
+  "firstRowY": null,
+  "smallCount": 2,
+  "small": [
+   {
+    "w": 24,
+    "h": 24,
+    "y": 332,
+    "txt": "Delete all"
+   },
+   {
+    "w": 24,
+    "h": 24,
+    "y": 468,
+    "txt": "Delete all"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "forum-390-light": {
+  "url": "/forum",
+  "docH": 1060,
+  "hScroll": false,
+  "h1": "Forum",
+  "h1Y": 65,
+  "firstRowY": null,
+  "smallCount": 9,
+  "small": [
+   {
+    "w": 48,
+    "h": 42,
+    "y": 203,
+    "txt": "All"
+   },
+   {
+    "w": 113,
+    "h": 42,
+    "y": 203,
+    "txt": "Roadmap"
+   },
+   {
+    "w": 84,
+    "h": 42,
+    "y": 203,
+    "txt": "General"
+   },
+   {
+    "w": 150,
+    "h": 42,
+    "y": 203,
+    "txt": "Feedback & ideas"
+   },
+   {
+    "w": 171,
+    "h": 42,
+    "y": 203,
+    "txt": "Questions & answers"
+   },
+   {
+    "w": 152,
+    "h": 42,
+    "y": 203,
+    "txt": "Tactics & strategy"
+   },
+   {
+    "w": 93,
+    "h": 42,
+    "y": 203,
+    "txt": "Transfers"
+   },
+   {
+    "w": 95,
+    "h": 42,
+    "y": 203,
+    "txt": "Off-topic"
+   },
+   {
+    "w": 82,
+    "h": 42,
+    "y": 203,
+    "txt": "Archive"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "New post"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "forum-post-390-light": {
+  "url": "/forum/forum-post-1",
+  "docH": 1627,
+  "hScroll": false,
+  "h1": "What I am building next",
+  "h1Y": 102,
+  "firstRowY": null,
+  "smallCount": 19,
+  "small": [
+   {
+    "w": 99,
+    "h": 16,
+    "y": 70,
+    "txt": "Back to the forum"
+   },
+   {
+    "w": 58,
+    "h": 30,
+    "y": 347,
+    "txt": "Support this (14 supporters)"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 488,
+    "txt": "Open the manager profile for peloton_pet"
+   },
+   {
+    "w": 85,
+    "h": 15,
+    "y": 486,
+    "txt": "peloton_pete"
+   },
+   {
+    "w": 46,
+    "h": 15,
+    "y": 486,
+    "txt": "Message peloton_pete"
+   },
+   {
+    "w": 91,
+    "h": 14,
+    "y": 693,
+    "txt": "Thunder Cycling"
+   },
+   {
+    "w": 54,
+    "h": 30,
+    "y": 723,
+    "txt": "Remove your support (6 supporters)"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 787,
+    "txt": "Open the manager profile for sofie_r"
+   },
+   {
+    "w": 44,
+    "h": 15,
+    "y": 794,
+    "txt": "sofie_r"
+   },
+   {
+    "w": 46,
+    "h": 15,
+    "y": 794,
+    "txt": "Message sofie_r"
+   },
+   {
+    "w": 286,
+    "h": 32,
+    "y": 823,
+    "txt": "By peloton_peteGreat initiative. My vote"
+   },
+   {
+    "w": 101,
+    "h": 17,
+    "y": 865,
+    "txt": "@peloton_pete"
+   },
+   {
+    "w": 69,
+    "h": 14,
+    "y": 939,
+    "txt": "Nordjysk CC"
+   },
+   {
+    "w": 53,
+    "h": 30,
+    "y": 969,
+    "txt": "Support this (2 supporters)"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 1033,
+    "txt": "Open the manager profile for e2e"
+   },
+   {
+    "w": 21,
+    "h": 15,
+    "y": 1039,
+    "txt": "e2e"
+   },
+   {
+    "w": 62,
+    "h": 14,
+    "y": 1145,
+    "txt": "E2E Racing"
+   },
+   {
+    "w": 54,
+    "h": 30,
+    "y": 1175,
+    "txt": "Support this"
+   },
+   {
+    "w": 1,
+    "h": 1,
+    "y": 1398,
+    "txt": ""
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Reply"
+  ],
+  "shadows": 4,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "help-390-light": {
+  "url": "/help",
+  "docH": 1414,
+  "hScroll": false,
+  "h1": "Help",
+  "h1Y": 65,
+  "firstRowY": null,
+  "smallCount": 0,
+  "small": [],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "patch-notes-390-light": {
+  "url": "/patch-notes",
+  "docH": 14371,
+  "hScroll": false,
+  "h1": "Patch notes",
+  "h1Y": 65,
+  "firstRowY": null,
+  "smallCount": 199,
+  "small": [
+   {
+    "w": 1,
+    "h": 1,
+    "y": 212,
+    "txt": ""
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 286,
+    "txt": "Monday 16 November4 improvements · 1 fix"
+   },
+   {
+    "w": 310,
+    "h": 19,
+    "y": 365,
+    "txt": "Clearer stage profile on phones"
+   },
+   {
+    "w": 310,
+    "h": 37,
+    "y": 411,
+    "txt": "Clearer buying card with an auto-accept "
+   },
+   {
+    "w": 310,
+    "h": 19,
+    "y": 475,
+    "txt": "The training report shows what races gav"
+   },
+   {
+    "w": 310,
+    "h": 38,
+    "y": 520,
+    "txt": "Now live for allTrain now works straight"
+   },
+   {
+    "w": 310,
+    "h": 37,
+    "y": 611,
+    "txt": "The board's mid-season message arrives o"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 710,
+    "txt": "Sunday 15 November1 new · 1 improvement "
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 780,
+    "txt": "Saturday 14 November1 improvement · 3 fi"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 851,
+    "txt": "Friday 13 November1 new · 2 improvements"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 921,
+    "txt": "Thursday 12 November2 new · 4 improvemen"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 992,
+    "txt": "Wednesday 11 November1 new · 2 improveme"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1062,
+    "txt": "Tuesday 10 November1 new · 2 fixes"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1133,
+    "txt": "Monday 9 November2 new · 7 improvements "
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1203,
+    "txt": "Sunday 8 November1 new · 2 improvements "
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1274,
+    "txt": "Saturday 7 November2 new · 2 improvement"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1344,
+    "txt": "Friday 6 November4 new · 5 improvements "
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1415,
+    "txt": "Thursday 5 November3 new · 2 improvement"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1485,
+    "txt": "Wednesday 4 November3 improvements · 4 f"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1556,
+    "txt": "Tuesday 3 November1 new · 2 improvements"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1626,
+    "txt": "Monday 2 November1 new · 3 improvements "
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1697,
+    "txt": "Sunday 1 November2 new · 3 improvements "
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1767,
+    "txt": "Saturday 31 October4 improvements · 5 fi"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1838,
+    "txt": "Friday 30 October2 new · 3 improvements "
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1908,
+    "txt": "Tuesday 27 October3 new · 3 improvements"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1979,
+    "txt": "Monday 26 October4 new · 5 improvements "
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2049,
+    "txt": "Sunday 25 October4 new · 13 improvements"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2120,
+    "txt": "Saturday 24 October4 new · 12 improvemen"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2190,
+    "txt": "Friday 23 October5 new · 8 improvements "
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2261,
+    "txt": "Wednesday 21 October2 new"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2331,
+    "txt": "Tuesday 20 October3 improvements · 5 fix"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2402,
+    "txt": "Monday 19 October1 improvement · 6 fixes"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2472,
+    "txt": "Sunday 18 October1 new · 3 improvements "
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2543,
+    "txt": "Saturday 17 October7 improvements · 1 fi"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2613,
+    "txt": "Friday 16 October2 new · 9 improvements "
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2684,
+    "txt": "Thursday 15 October4 new · 3 improvement"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2754,
+    "txt": "Wednesday 14 October3 fixes"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2825,
+    "txt": "Tuesday 13 October1 new · 1 improvement "
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2895,
+    "txt": "Monday 12 October2 fixes"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2966,
+    "txt": "Sunday 11 October4 improvements · 4 fixe"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "roadmap-390-light": {
+  "url": "/roadmap",
+  "docH": 922,
+  "hScroll": false,
+  "h1": "Roadmap",
+  "h1Y": 65,
+  "firstRowY": null,
+  "smallCount": 15,
+  "small": [
+   {
+    "w": 16,
+    "h": 16,
+    "y": 156,
+    "txt": ""
+   },
+   {
+    "w": 34,
+    "h": 34,
+    "y": 486,
+    "txt": "1"
+   },
+   {
+    "w": 34,
+    "h": 34,
+    "y": 486,
+    "txt": "2"
+   },
+   {
+    "w": 34,
+    "h": 34,
+    "y": 486,
+    "txt": "3"
+   },
+   {
+    "w": 34,
+    "h": 34,
+    "y": 486,
+    "txt": "4"
+   },
+   {
+    "w": 34,
+    "h": 34,
+    "y": 486,
+    "txt": "5"
+   },
+   {
+    "w": 34,
+    "h": 34,
+    "y": 486,
+    "txt": "6"
+   },
+   {
+    "w": 85,
+    "h": 34,
+    "y": 524,
+    "txt": "Don't know"
+   },
+   {
+    "w": 34,
+    "h": 34,
+    "y": 891,
+    "txt": "1"
+   },
+   {
+    "w": 34,
+    "h": 34,
+    "y": 891,
+    "txt": "2"
+   },
+   {
+    "w": 34,
+    "h": 34,
+    "y": 891,
+    "txt": "3"
+   },
+   {
+    "w": 34,
+    "h": 34,
+    "y": 891,
+    "txt": "4"
+   },
+   {
+    "w": 34,
+    "h": 34,
+    "y": 891,
+    "txt": "5"
+   },
+   {
+    "w": 34,
+    "h": 34,
+    "y": 891,
+    "txt": "6"
+   },
+   {
+    "w": 85,
+    "h": 34,
+    "y": 929,
+    "txt": "Don't know"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "settings-390-light": {
+  "url": "/profile",
+  "docH": 1023,
+  "hScroll": false,
+  "h1": "My Profile",
+  "h1Y": 65,
+  "firstRowY": null,
+  "smallCount": 0,
+  "small": [],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Save team info"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "team-1440-light": {
+  "url": "/team",
+  "docH": 900,
+  "hScroll": false,
+  "h1": "E2E Racing",
+  "h1Y": 28,
+  "firstRowY": 342,
+  "smallCount": 42,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 257,
+    "txt": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 292,
+    "txt": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 328,
+    "txt": "ForumNew forum activity"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 363,
+    "txt": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 399,
+    "txt": "U23 team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 434,
+    "txt": "Junior team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 505,
+    "txt": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Academy"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 576,
+    "txt": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 647,
+    "txt": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 724,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 761,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 798,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 900,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 936,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 971,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1007,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1042,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1078,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1113,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1149,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1188,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 101,
+    "h": 24,
+    "y": 31,
+    "txt": "E2E Racing"
+   },
+   {
+    "w": 89,
+    "h": 20,
+    "y": 90,
+    "txt": "500,000 CZ$"
+   },
+   {
+    "w": 62,
+    "h": 20,
+    "y": 90,
+    "txt": "Division 2"
+   },
+   {
+    "w": 174,
+    "h": 20,
+    "y": 90,
+    "txt": "Salary/season: 42,000 CZ$"
+   },
+   {
+    "w": 93,
+    "h": 42,
+    "y": 196,
+    "txt": "Squad (1)"
+   },
+   {
+    "w": 98,
+    "h": 42,
+    "y": 196,
+    "txt": "Contracts"
+   },
+   {
+    "w": 120,
+    "h": 42,
+    "y": 196,
+    "txt": "Development"
+   },
+   {
+    "w": 66,
+    "h": 42,
+    "y": 196,
+    "txt": "Stats"
+   },
+   {
+    "w": 135,
+    "h": 42,
+    "y": 196,
+    "txt": "Transfer history"
+   },
+   {
+    "w": 77,
+    "h": 28,
+    "y": 271,
+    "txt": "Overview"
+   },
+   {
+    "w": 70,
+    "h": 28,
+    "y": 271,
+    "txt": "Abilities"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "squad-u23-1440-light": {
+  "url": "/squads/u23",
+  "docH": 900,
+  "hScroll": false,
+  "h1": "E2E Racing U23",
+  "h1Y": 28,
+  "firstRowY": 307,
+  "smallCount": 43,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 257,
+    "txt": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 292,
+    "txt": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 328,
+    "txt": "ForumNew forum activity"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 363,
+    "txt": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 399,
+    "txt": "U23 team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 434,
+    "txt": "Junior team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 505,
+    "txt": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Academy"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 576,
+    "txt": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 647,
+    "txt": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 724,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 761,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 798,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 900,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 936,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 971,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1007,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1042,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1078,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1113,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1149,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1188,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 97,
+    "h": 42,
+    "y": 130,
+    "txt": "Squad (3)"
+   },
+   {
+    "w": 92,
+    "h": 42,
+    "y": 130,
+    "txt": "Calendar"
+   },
+   {
+    "w": 80,
+    "h": 42,
+    "y": 130,
+    "txt": "Results"
+   },
+   {
+    "w": 98,
+    "h": 42,
+    "y": 130,
+    "txt": "Standings"
+   },
+   {
+    "w": 120,
+    "h": 42,
+    "y": 130,
+    "txt": "Development"
+   },
+   {
+    "w": 66,
+    "h": 42,
+    "y": 130,
+    "txt": "Stats"
+   },
+   {
+    "w": 77,
+    "h": 28,
+    "y": 236,
+    "txt": "Overview"
+   },
+   {
+    "w": 70,
+    "h": 28,
+    "y": 236,
+    "txt": "Abilities"
+   },
+   {
+    "w": 125,
+    "h": 20,
+    "y": 321,
+    "txt": "Emil Vestergaard"
+   },
+   {
+    "w": 45,
+    "h": 30,
+    "y": 317,
+    "txt": "Sell"
+   },
+   {
+    "w": 97,
+    "h": 20,
+    "y": 370,
+    "txt": "Noah Brandt"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "squad-junior-1440-light": {
+  "url": "/squads/junior",
+  "docH": 900,
+  "hScroll": false,
+  "h1": "E2E Racing Juniors",
+  "h1Y": 28,
+  "firstRowY": 307,
+  "smallCount": 41,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 257,
+    "txt": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 292,
+    "txt": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 328,
+    "txt": "ForumNew forum activity"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 363,
+    "txt": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 399,
+    "txt": "U23 team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 434,
+    "txt": "Junior team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 505,
+    "txt": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Academy"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 576,
+    "txt": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 647,
+    "txt": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 724,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 761,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 798,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 900,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 936,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 971,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1007,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1042,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1078,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1113,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1149,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1188,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 96,
+    "h": 42,
+    "y": 130,
+    "txt": "Squad (2)"
+   },
+   {
+    "w": 92,
+    "h": 42,
+    "y": 130,
+    "txt": "Calendar"
+   },
+   {
+    "w": 80,
+    "h": 42,
+    "y": 130,
+    "txt": "Results"
+   },
+   {
+    "w": 98,
+    "h": 42,
+    "y": 130,
+    "txt": "Standings"
+   },
+   {
+    "w": 120,
+    "h": 42,
+    "y": 130,
+    "txt": "Development"
+   },
+   {
+    "w": 66,
+    "h": 42,
+    "y": 130,
+    "txt": "Stats"
+   },
+   {
+    "w": 77,
+    "h": 28,
+    "y": 236,
+    "txt": "Overview"
+   },
+   {
+    "w": 70,
+    "h": 28,
+    "y": 236,
+    "txt": "Abilities"
+   },
+   {
+    "w": 86,
+    "h": 20,
+    "y": 319,
+    "txt": "Oskar Lind"
+   },
+   {
+    "w": 45,
+    "h": 30,
+    "y": 315,
+    "txt": "Sell"
+   },
+   {
+    "w": 100,
+    "h": 20,
+    "y": 364,
+    "txt": "Théo Garnier"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "youth-races-1440-light": {
+  "url": "/youth-races",
+  "docH": 900,
+  "hScroll": false,
+  "h1": "Youth races",
+  "h1Y": 28,
+  "firstRowY": 260,
+  "smallCount": 21,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 259,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 296,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 333,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 435,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 506,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 577,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 648,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 723,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 114,
+    "h": 30,
+    "y": 40,
+    "txt": "Squad"
+   },
+   {
+    "w": 98,
+    "h": 42,
+    "y": 106,
+    "txt": "Standings"
+   },
+   {
+    "w": 92,
+    "h": 42,
+    "y": 106,
+    "txt": "Calendar"
+   },
+   {
+    "w": 80,
+    "h": 42,
+    "y": 106,
+    "txt": "Results"
+   },
+   {
+    "w": 94,
+    "h": 30,
+    "y": 180,
+    "txt": "Group AGroup B"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 5,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "rider-1440-light": {
+  "url": "/riders/rider-1",
+  "docH": 1529,
+  "hScroll": false,
+  "h1": "Ada Pedersen",
+  "h1Y": 77,
+  "firstRowY": null,
+  "smallCount": 29,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 259,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 296,
+    "txt": "Market"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 331,
+    "txt": "Riders"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 366,
+    "txt": "Auctions"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 402,
+    "txt": "Transfers"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 437,
+    "txt": "Transfer list"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 473,
+    "txt": "Watchlist"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 514,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 616,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 652,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 687,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 723,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 758,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 794,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 829,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 865,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 904,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 44,
+    "h": 16,
+    "y": 27,
+    "txt": "Back"
+   },
+   {
+    "w": 170,
+    "h": 24,
+    "y": 157,
+    "txt": "U23 world champion"
+   },
+   {
+    "w": 101,
+    "h": 24,
+    "y": 157,
+    "txt": "Top Talent"
+   },
+   {
+    "w": 73,
+    "h": 20,
+    "y": 189,
+    "txt": "E2E Racing"
+   },
+   {
+    "w": 144,
+    "h": 42,
+    "y": 517,
+    "txt": "Extend contract"
+   },
+   {
+    "w": 133,
+    "h": 42,
+    "y": 517,
+    "txt": "List for sale"
+   },
+   {
+    "w": 122,
+    "h": 42,
+    "y": 517,
+    "txt": "Release rider"
+   },
+   {
+    "w": 57,
+    "h": 23,
+    "y": 1428,
+    "txt": "All types"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "⚡",
+  "emdash": 0,
+  "golds": [
+   "Extend contract"
+  ],
+  "shadows": 0,
+  "bebas": [
+   "AP",
+   "Ada Pedersen",
+   "Physical",
+   "Mental",
+   "Technical",
+   "Rider types"
+  ],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "rider-training-1440-light": {
+  "url": "/riders/rider-1?tab=training",
+  "docH": 1422,
+  "hScroll": false,
+  "h1": "Ada Pedersen",
+  "h1Y": 77,
+  "firstRowY": null,
+  "smallCount": 28,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 259,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 296,
+    "txt": "Market"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 331,
+    "txt": "Riders"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 366,
+    "txt": "Auctions"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 402,
+    "txt": "Transfers"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 437,
+    "txt": "Transfer list"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 473,
+    "txt": "Watchlist"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 514,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 616,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 652,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 687,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 723,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 758,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 794,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 829,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 865,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 904,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 44,
+    "h": 16,
+    "y": 27,
+    "txt": "Back"
+   },
+   {
+    "w": 170,
+    "h": 24,
+    "y": 157,
+    "txt": "U23 world champion"
+   },
+   {
+    "w": 101,
+    "h": 24,
+    "y": 157,
+    "txt": "Top Talent"
+   },
+   {
+    "w": 73,
+    "h": 20,
+    "y": 189,
+    "txt": "E2E Racing"
+   },
+   {
+    "w": 144,
+    "h": 42,
+    "y": 517,
+    "txt": "Extend contract"
+   },
+   {
+    "w": 133,
+    "h": 42,
+    "y": 517,
+    "txt": "List for sale"
+   },
+   {
+    "w": 122,
+    "h": 42,
+    "y": 517,
+    "txt": "Release rider"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "⚡",
+  "emdash": 0,
+  "golds": [
+   "Extend contract"
+  ],
+  "shadows": 0,
+  "bebas": [
+   "AP",
+   "Ada Pedersen",
+   "This season",
+   "Training focus",
+   "Daily training · last 7 days",
+   "Form & recovery"
+  ],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "rider-development-1440-light": {
+  "url": "/riders/rider-1?tab=development",
+  "docH": 1345,
+  "hScroll": false,
+  "h1": "Ada Pedersen",
+  "h1Y": 77,
+  "firstRowY": null,
+  "smallCount": 29,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 259,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 296,
+    "txt": "Market"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 331,
+    "txt": "Riders"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 366,
+    "txt": "Auctions"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 402,
+    "txt": "Transfers"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 437,
+    "txt": "Transfer list"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 473,
+    "txt": "Watchlist"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 514,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 616,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 652,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 687,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 723,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 758,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 794,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 829,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 865,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 904,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 44,
+    "h": 16,
+    "y": 27,
+    "txt": "Back"
+   },
+   {
+    "w": 170,
+    "h": 24,
+    "y": 157,
+    "txt": "U23 world champion"
+   },
+   {
+    "w": 101,
+    "h": 24,
+    "y": 157,
+    "txt": "Top Talent"
+   },
+   {
+    "w": 73,
+    "h": 20,
+    "y": 189,
+    "txt": "E2E Racing"
+   },
+   {
+    "w": 144,
+    "h": 42,
+    "y": 517,
+    "txt": "Extend contract"
+   },
+   {
+    "w": 133,
+    "h": 42,
+    "y": 517,
+    "txt": "List for sale"
+   },
+   {
+    "w": 122,
+    "h": 42,
+    "y": 517,
+    "txt": "Release rider"
+   },
+   {
+    "w": 185,
+    "h": 30,
+    "y": 1230,
+    "txt": "See season history with Pro"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "⚡→",
+  "emdash": 0,
+  "golds": [
+   "Extend contract"
+  ],
+  "shadows": 0,
+  "bebas": [
+   "AP",
+   "Ada Pedersen",
+   "Rating by type · over seasons",
+   "Growth this season",
+   "Development log"
+  ],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "rider-scouting-1440-light": {
+  "url": "/riders/rider-1?tab=scouting",
+  "docH": 1466,
+  "hScroll": false,
+  "h1": "Ada Pedersen",
+  "h1Y": 77,
+  "firstRowY": null,
+  "smallCount": 28,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 259,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 296,
+    "txt": "Market"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 331,
+    "txt": "Riders"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 366,
+    "txt": "Auctions"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 402,
+    "txt": "Transfers"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 437,
+    "txt": "Transfer list"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 473,
+    "txt": "Watchlist"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 514,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 616,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 652,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 687,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 723,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 758,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 794,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 829,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 865,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 904,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 44,
+    "h": 16,
+    "y": 27,
+    "txt": "Back"
+   },
+   {
+    "w": 170,
+    "h": 24,
+    "y": 157,
+    "txt": "U23 world champion"
+   },
+   {
+    "w": 101,
+    "h": 24,
+    "y": 157,
+    "txt": "Top Talent"
+   },
+   {
+    "w": 73,
+    "h": 20,
+    "y": 189,
+    "txt": "E2E Racing"
+   },
+   {
+    "w": 144,
+    "h": 42,
+    "y": 517,
+    "txt": "Extend contract"
+   },
+   {
+    "w": 133,
+    "h": 42,
+    "y": 517,
+    "txt": "List for sale"
+   },
+   {
+    "w": 122,
+    "h": 42,
+    "y": 517,
+    "txt": "Release rider"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "⚡",
+  "emdash": 0,
+  "golds": [
+   "Extend contract"
+  ],
+  "shadows": 0,
+  "bebas": [
+   "AP",
+   "Ada Pedersen",
+   "Keep an eye on him",
+   "Projection per rider type",
+   "29",
+   "Sprinter"
+  ],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "training-1440-light": {
+  "url": "/training",
+  "docH": 900,
+  "hScroll": false,
+  "h1": "Daily training",
+  "h1Y": 28,
+  "firstRowY": 447,
+  "smallCount": 50,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 257,
+    "txt": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 292,
+    "txt": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 328,
+    "txt": "ForumNew forum activity"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 363,
+    "txt": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 399,
+    "txt": "U23 team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 434,
+    "txt": "Junior team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 505,
+    "txt": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Academy"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 576,
+    "txt": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 647,
+    "txt": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 724,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 761,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 798,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 900,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 936,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 971,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1007,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1042,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1078,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1113,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1149,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1188,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 81,
+    "h": 30,
+    "y": 40,
+    "txt": "Train now"
+   },
+   {
+    "w": 72,
+    "h": 42,
+    "y": 133,
+    "txt": "Today"
+   },
+   {
+    "w": 87,
+    "h": 42,
+    "y": 133,
+    "txt": "Program"
+   },
+   {
+    "w": 120,
+    "h": 42,
+    "y": 133,
+    "txt": "Development"
+   },
+   {
+    "w": 76,
+    "h": 42,
+    "y": 133,
+    "txt": "Report"
+   },
+   {
+    "w": 36,
+    "h": 16,
+    "y": 277,
+    "txt": "Edit"
+   },
+   {
+    "w": 89,
+    "h": 30,
+    "y": 324,
+    "txt": "RiderTypeAgeFormFatigueStatus"
+   },
+   {
+    "w": 32,
+    "h": 32,
+    "y": 323,
+    "txt": "Sorting descending, tap for ascending"
+   },
+   {
+    "w": 16,
+    "h": 16,
+    "y": 331,
+    "txt": ""
+   },
+   {
+    "w": 249,
+    "h": 30,
+    "y": 324,
+    "txt": "Get suggestions from the assistant"
+   },
+   {
+    "w": 96,
+    "h": 15,
+    "y": 332,
+    "txt": "How training works"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Train now"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "training-weekplan-1440-light": {
+  "url": "/training?tab=weekplan",
+  "docH": 900,
+  "hScroll": false,
+  "h1": "Daily training",
+  "h1Y": 28,
+  "firstRowY": null,
+  "smallCount": 49,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 257,
+    "txt": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 292,
+    "txt": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 328,
+    "txt": "ForumNew forum activity"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 363,
+    "txt": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 399,
+    "txt": "U23 team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 434,
+    "txt": "Junior team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 505,
+    "txt": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Academy"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 576,
+    "txt": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 647,
+    "txt": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 724,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 761,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 798,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 900,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 936,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 971,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1007,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1042,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1078,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1113,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1149,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1188,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 81,
+    "h": 30,
+    "y": 40,
+    "txt": "Train now"
+   },
+   {
+    "w": 72,
+    "h": 42,
+    "y": 133,
+    "txt": "Today"
+   },
+   {
+    "w": 87,
+    "h": 42,
+    "y": 133,
+    "txt": "Program"
+   },
+   {
+    "w": 120,
+    "h": 42,
+    "y": 133,
+    "txt": "Development"
+   },
+   {
+    "w": 76,
+    "h": 42,
+    "y": 133,
+    "txt": "Report"
+   },
+   {
+    "w": 48,
+    "h": 28,
+    "y": 189,
+    "txt": "Plan"
+   },
+   {
+    "w": 78,
+    "h": 28,
+    "y": 189,
+    "txt": "Programs"
+   },
+   {
+    "w": 93,
+    "h": 28,
+    "y": 189,
+    "txt": "Fatigue limit"
+   },
+   {
+    "w": 190,
+    "h": 32,
+    "y": 241,
+    "txt": "Plan for"
+   },
+   {
+    "w": 210,
+    "h": 28,
+    "y": 353,
+    "txt": "Whole day · Mon"
+   },
+   {
+    "w": 210,
+    "h": 28,
+    "y": 390,
+    "txt": "Whole day · Tue"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Train now"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "training-development-1440-light": {
+  "url": "/training?tab=development",
+  "docH": 900,
+  "hScroll": false,
+  "h1": "Daily training",
+  "h1Y": 28,
+  "firstRowY": null,
+  "smallCount": 36,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 257,
+    "txt": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 292,
+    "txt": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 328,
+    "txt": "ForumNew forum activity"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 363,
+    "txt": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 399,
+    "txt": "U23 team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 434,
+    "txt": "Junior team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 505,
+    "txt": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Academy"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 576,
+    "txt": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 647,
+    "txt": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 724,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 761,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 798,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 900,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 936,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 971,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1007,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1042,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1078,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1113,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1149,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1188,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 81,
+    "h": 30,
+    "y": 40,
+    "txt": "Train now"
+   },
+   {
+    "w": 72,
+    "h": 42,
+    "y": 133,
+    "txt": "Today"
+   },
+   {
+    "w": 87,
+    "h": 42,
+    "y": 133,
+    "txt": "Program"
+   },
+   {
+    "w": 120,
+    "h": 42,
+    "y": 133,
+    "txt": "Development"
+   },
+   {
+    "w": 76,
+    "h": 42,
+    "y": 133,
+    "txt": "Report"
+   },
+   {
+    "w": 106,
+    "h": 17,
+    "y": 317,
+    "txt": "Ada Pedersen"
+   },
+   {
+    "w": 138,
+    "h": 34,
+    "y": 316,
+    "txt": "Day — Ada Pedersen"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Train now"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "training-report-1440-light": {
+  "url": "/training?tab=report",
+  "docH": 900,
+  "hScroll": false,
+  "h1": "Daily training",
+  "h1Y": 28,
+  "firstRowY": null,
+  "smallCount": 34,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 257,
+    "txt": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 292,
+    "txt": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 328,
+    "txt": "ForumNew forum activity"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 363,
+    "txt": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 399,
+    "txt": "U23 team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 434,
+    "txt": "Junior team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 505,
+    "txt": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Academy"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 576,
+    "txt": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 647,
+    "txt": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 724,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 761,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 798,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 900,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 936,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 971,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1007,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1042,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1078,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1113,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1149,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1188,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 81,
+    "h": 30,
+    "y": 40,
+    "txt": "Train now"
+   },
+   {
+    "w": 72,
+    "h": 42,
+    "y": 133,
+    "txt": "Today"
+   },
+   {
+    "w": 87,
+    "h": 42,
+    "y": 133,
+    "txt": "Program"
+   },
+   {
+    "w": 120,
+    "h": 42,
+    "y": 133,
+    "txt": "Development"
+   },
+   {
+    "w": 76,
+    "h": 42,
+    "y": 133,
+    "txt": "Report"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Train now"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "academy-1440-light": {
+  "url": "/academy",
+  "docH": 1279,
+  "hScroll": false,
+  "h1": "Academy",
+  "h1Y": 28,
+  "firstRowY": 1141,
+  "smallCount": 38,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 257,
+    "txt": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 292,
+    "txt": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 328,
+    "txt": "ForumNew forum activity"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 363,
+    "txt": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 399,
+    "txt": "U23 team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 434,
+    "txt": "Junior team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 505,
+    "txt": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Academy"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 576,
+    "txt": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 647,
+    "txt": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 724,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 761,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 798,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 900,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 936,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 971,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1007,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1042,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1078,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1113,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1149,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1188,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 151,
+    "h": 30,
+    "y": 166,
+    "txt": "Open Graduation Day"
+   },
+   {
+    "w": 168,
+    "h": 30,
+    "y": 471,
+    "txt": "Sign"
+   },
+   {
+    "w": 168,
+    "h": 30,
+    "y": 471,
+    "txt": "Reject"
+   },
+   {
+    "w": 168,
+    "h": 30,
+    "y": 471,
+    "txt": "Sign"
+   },
+   {
+    "w": 168,
+    "h": 30,
+    "y": 471,
+    "txt": "Reject"
+   },
+   {
+    "w": 168,
+    "h": 30,
+    "y": 471,
+    "txt": "Sign"
+   },
+   {
+    "w": 168,
+    "h": 30,
+    "y": 471,
+    "txt": "Reject"
+   },
+   {
+    "w": 100,
+    "h": 18,
+    "y": 1150,
+    "txt": "Théo Dubois"
+   },
+   {
+    "w": 97,
+    "h": 18,
+    "y": 1187,
+    "txt": "Mateo Rossi"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "graduation-1440-light": {
+  "url": "/academy/graduation",
+  "docH": 900,
+  "hScroll": false,
+  "h1": "Graduation Day",
+  "h1Y": 28,
+  "firstRowY": null,
+  "smallCount": 34,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 257,
+    "txt": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 292,
+    "txt": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 328,
+    "txt": "ForumNew forum activity"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 363,
+    "txt": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 399,
+    "txt": "U23 team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 434,
+    "txt": "Junior team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 505,
+    "txt": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Academy"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 576,
+    "txt": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 647,
+    "txt": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 724,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 761,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 798,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 900,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 936,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 971,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1007,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1042,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1078,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1113,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1149,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1188,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 88,
+    "h": 30,
+    "y": 40,
+    "txt": "Confirm all"
+   },
+   {
+    "w": 121,
+    "h": 17,
+    "y": 200,
+    "txt": "Tobias Lindqvist"
+   },
+   {
+    "w": 72,
+    "h": 28,
+    "y": 216,
+    "txt": "Move up"
+   },
+   {
+    "w": 44,
+    "h": 28,
+    "y": 216,
+    "txt": "Sell"
+   },
+   {
+    "w": 67,
+    "h": 28,
+    "y": 216,
+    "txt": "Release"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Confirm all"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "scouting-1440-light": {
+  "url": "/scouting",
+  "docH": 1224,
+  "hScroll": false,
+  "h1": "Scouting",
+  "h1Y": 28,
+  "firstRowY": null,
+  "smallCount": 37,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 257,
+    "txt": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 292,
+    "txt": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 328,
+    "txt": "ForumNew forum activity"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 363,
+    "txt": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 399,
+    "txt": "U23 team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 434,
+    "txt": "Junior team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 505,
+    "txt": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Academy"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 576,
+    "txt": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 647,
+    "txt": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 724,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 761,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 798,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 900,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 936,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 971,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1007,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1042,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1078,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1113,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1149,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1188,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 1,
+    "h": 1,
+    "y": 539,
+    "txt": ""
+   },
+   {
+    "w": 1,
+    "h": 1,
+    "y": 539,
+    "txt": ""
+   },
+   {
+    "w": 206,
+    "h": 38,
+    "y": 652,
+    "txt": "U23 ridersCountryNational championshipsR"
+   },
+   {
+    "w": 102,
+    "h": 30,
+    "y": 660,
+    "txt": "Start mission"
+   },
+   {
+    "w": 93,
+    "h": 17,
+    "y": 854,
+    "txt": "Jonas Vinter"
+   },
+   {
+    "w": 102,
+    "h": 17,
+    "y": 854,
+    "txt": "Emil Nørgaard"
+   },
+   {
+    "w": 103,
+    "h": 17,
+    "y": 854,
+    "txt": "Mikkel Hansen"
+   },
+   {
+    "w": 101,
+    "h": 17,
+    "y": 1120,
+    "txt": "Ada Pedersen"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Start mission"
+  ],
+  "shadows": 0,
+  "bebas": [
+   "Scouting",
+   "Default scout",
+   "Free agents",
+   "Riders on other teams"
+  ],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "notifications-1440-light": {
+  "url": "/notifications",
+  "docH": 900,
+  "hScroll": false,
+  "h1": "Inbox",
+  "h1Y": 28,
+  "firstRowY": null,
+  "smallCount": 38,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 257,
+    "txt": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 292,
+    "txt": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 328,
+    "txt": "ForumNew forum activity"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 363,
+    "txt": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 399,
+    "txt": "U23 team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 434,
+    "txt": "Junior team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 505,
+    "txt": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Academy"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 576,
+    "txt": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 647,
+    "txt": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 724,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 761,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 798,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 900,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 936,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 971,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1007,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1042,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1078,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1113,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1149,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1188,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 100,
+    "h": 30,
+    "y": 40,
+    "txt": "Mark all read"
+   },
+   {
+    "w": 90,
+    "h": 42,
+    "y": 106,
+    "txt": "Mine7"
+   },
+   {
+    "w": 95,
+    "h": 42,
+    "y": 106,
+    "txt": "To handle"
+   },
+   {
+    "w": 79,
+    "h": 42,
+    "y": 106,
+    "txt": "League"
+   },
+   {
+    "w": 107,
+    "h": 42,
+    "y": 106,
+    "txt": "My Activity"
+   },
+   {
+    "w": 97,
+    "h": 42,
+    "y": 106,
+    "txt": "Messages"
+   },
+   {
+    "w": 224,
+    "h": 30,
+    "y": 165,
+    "txt": "Filter notifications"
+   },
+   {
+    "w": 24,
+    "h": 24,
+    "y": 249,
+    "txt": "Delete all"
+   },
+   {
+    "w": 24,
+    "h": 24,
+    "y": 354,
+    "txt": "Delete all"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "forum-1440-light": {
+  "url": "/forum",
+  "docH": 900,
+  "hScroll": false,
+  "h1": "Forum",
+  "h1Y": 28,
+  "firstRowY": null,
+  "smallCount": 40,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 257,
+    "txt": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 292,
+    "txt": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 328,
+    "txt": "ForumNew forum activity"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 363,
+    "txt": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 399,
+    "txt": "U23 team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 434,
+    "txt": "Junior team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 505,
+    "txt": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Academy"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 576,
+    "txt": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 647,
+    "txt": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 724,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 761,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 798,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 900,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 936,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 971,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1007,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1042,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1078,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1113,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1149,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1188,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 116,
+    "h": 30,
+    "y": 40,
+    "txt": "Mark all as read"
+   },
+   {
+    "w": 80,
+    "h": 30,
+    "y": 40,
+    "txt": "New post"
+   },
+   {
+    "w": 48,
+    "h": 42,
+    "y": 106,
+    "txt": "All"
+   },
+   {
+    "w": 113,
+    "h": 42,
+    "y": 106,
+    "txt": "Roadmap"
+   },
+   {
+    "w": 84,
+    "h": 42,
+    "y": 106,
+    "txt": "General"
+   },
+   {
+    "w": 150,
+    "h": 42,
+    "y": 106,
+    "txt": "Feedback & ideas"
+   },
+   {
+    "w": 171,
+    "h": 42,
+    "y": 106,
+    "txt": "Questions & answers"
+   },
+   {
+    "w": 152,
+    "h": 42,
+    "y": 106,
+    "txt": "Tactics & strategy"
+   },
+   {
+    "w": 93,
+    "h": 42,
+    "y": 106,
+    "txt": "Transfers"
+   },
+   {
+    "w": 95,
+    "h": 42,
+    "y": 152,
+    "txt": "Off-topic"
+   },
+   {
+    "w": 82,
+    "h": 42,
+    "y": 152,
+    "txt": "Archive"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "New post"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "forum-post-1440-light": {
+  "url": "/forum/forum-post-1",
+  "docH": 1357,
+  "hScroll": false,
+  "h1": "What I am building next",
+  "h1Y": 65,
+  "firstRowY": null,
+  "smallCount": 57,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 257,
+    "txt": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 292,
+    "txt": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 328,
+    "txt": "ForumNew forum activity"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 363,
+    "txt": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 399,
+    "txt": "U23 team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 434,
+    "txt": "Junior team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 505,
+    "txt": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Academy"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 576,
+    "txt": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 647,
+    "txt": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 724,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 761,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 798,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 900,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 936,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 971,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1007,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1042,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1078,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1113,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1149,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1188,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 99,
+    "h": 16,
+    "y": 33,
+    "txt": "Back to the forum"
+   },
+   {
+    "w": 58,
+    "h": 30,
+    "y": 285,
+    "txt": "Support this (14 supporters)"
+   },
+   {
+    "w": 88,
+    "h": 30,
+    "y": 285,
+    "txt": "Quote"
+   },
+   {
+    "w": 65,
+    "h": 30,
+    "y": 285,
+    "txt": "Report"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 423,
+    "txt": "Open the manager profile for peloton_pet"
+   },
+   {
+    "w": 85,
+    "h": 15,
+    "y": 429,
+    "txt": "peloton_pete"
+   },
+   {
+    "w": 46,
+    "h": 15,
+    "y": 429,
+    "txt": "Message peloton_pete"
+   },
+   {
+    "w": 91,
+    "h": 14,
+    "y": 603,
+    "txt": "Thunder Cycling"
+   },
+   {
+    "w": 54,
+    "h": 30,
+    "y": 626,
+    "txt": "Remove your support (6 supporters)"
+   },
+   {
+    "w": 88,
+    "h": 30,
+    "y": 626,
+    "txt": "Quote"
+   },
+   {
+    "w": 65,
+    "h": 30,
+    "y": 626,
+    "txt": "Report"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Reply"
+  ],
+  "shadows": 4,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "help-1440-light": {
+  "url": "/help",
+  "docH": 1207,
+  "hScroll": false,
+  "h1": "Help",
+  "h1Y": 28,
+  "firstRowY": null,
+  "smallCount": 41,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 259,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 296,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 333,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 435,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 506,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 577,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 648,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 723,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 896,
+    "h": 38,
+    "y": 106,
+    "txt": "Search help and FAQ"
+   },
+   {
+    "w": 160,
+    "h": 34,
+    "y": 164,
+    "txt": "Getting started"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 202,
+    "txt": "Board"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 238,
+    "txt": "The Mandate"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 274,
+    "txt": "Auctions"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 310,
+    "txt": "Transfers"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 346,
+    "txt": "Contracts"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 382,
+    "txt": "Manager & Profile"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 418,
+    "txt": "Forum"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 454,
+    "txt": "Messages"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 490,
+    "txt": "Discord DMs"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 526,
+    "txt": "Achievements"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 562,
+    "txt": "Watchlist"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 598,
+    "txt": "My Activity"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 634,
+    "txt": "Season"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 670,
+    "txt": "Prizes"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 706,
+    "txt": "Divisions"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 742,
+    "txt": "Global Rank"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 778,
+    "txt": "Riders"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 814,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 850,
+    "txt": "Academy"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 938,
+    "txt": "Club facilities"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 974,
+    "txt": "Activity feed"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 1010,
+    "txt": "Team selection"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "patch-notes-1440-light": {
+  "url": "/patch-notes",
+  "docH": 15760,
+  "hScroll": false,
+  "h1": "Patch notes",
+  "h1Y": 28,
+  "firstRowY": null,
+  "smallCount": 220,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 259,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 296,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 333,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 435,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 506,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 577,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 648,
+    "txt": "Patch Notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 723,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 896,
+    "h": 30,
+    "y": 106,
+    "txt": "Search updates"
+   },
+   {
+    "w": 38,
+    "h": 28,
+    "y": 149,
+    "txt": "All"
+   },
+   {
+    "w": 49,
+    "h": 28,
+    "y": 149,
+    "txt": "New"
+   },
+   {
+    "w": 78,
+    "h": 28,
+    "y": 149,
+    "txt": "Improved"
+   },
+   {
+    "w": 54,
+    "h": 28,
+    "y": 149,
+    "txt": "Fixed"
+   },
+   {
+    "w": 1,
+    "h": 1,
+    "y": 153,
+    "txt": ""
+   },
+   {
+    "w": 854,
+    "h": 23,
+    "y": 223,
+    "txt": "Monday 16 November4 improvements · 1 fix"
+   },
+   {
+    "w": 840,
+    "h": 19,
+    "y": 302,
+    "txt": "Clearer stage profile on phones"
+   },
+   {
+    "w": 840,
+    "h": 19,
+    "y": 348,
+    "txt": "Clearer buying card with an auto-accept "
+   },
+   {
+    "w": 840,
+    "h": 19,
+    "y": 393,
+    "txt": "The training report shows what races gav"
+   },
+   {
+    "w": 840,
+    "h": 20,
+    "y": 439,
+    "txt": "Now live for allTrain now works straight"
+   },
+   {
+    "w": 840,
+    "h": 19,
+    "y": 511,
+    "txt": "The board's mid-season message arrives o"
+   },
+   {
+    "w": 854,
+    "h": 23,
+    "y": 599,
+    "txt": "Sunday 15 November1 new · 1 improvement "
+   },
+   {
+    "w": 854,
+    "h": 23,
+    "y": 677,
+    "txt": "Saturday 14 November1 improvement · 3 fi"
+   },
+   {
+    "w": 854,
+    "h": 23,
+    "y": 756,
+    "txt": "Friday 13 November1 new · 2 improvements"
+   },
+   {
+    "w": 854,
+    "h": 23,
+    "y": 834,
+    "txt": "Thursday 12 November2 new · 4 improvemen"
+   },
+   {
+    "w": 854,
+    "h": 23,
+    "y": 913,
+    "txt": "Wednesday 11 November1 new · 2 improveme"
+   },
+   {
+    "w": 854,
+    "h": 23,
+    "y": 991,
+    "txt": "Tuesday 10 November1 new · 2 fixes"
+   },
+   {
+    "w": 854,
+    "h": 23,
+    "y": 1070,
+    "txt": "Monday 9 November2 new · 7 improvements "
+   },
+   {
+    "w": 854,
+    "h": 23,
+    "y": 1148,
+    "txt": "Sunday 8 November1 new · 2 improvements "
+   },
+   {
+    "w": 854,
+    "h": 23,
+    "y": 1227,
+    "txt": "Saturday 7 November2 new · 2 improvement"
+   },
+   {
+    "w": 854,
+    "h": 23,
+    "y": 1305,
+    "txt": "Friday 6 November4 new · 5 improvements "
+   },
+   {
+    "w": 854,
+    "h": 23,
+    "y": 1384,
+    "txt": "Thursday 5 November3 new · 2 improvement"
+   },
+   {
+    "w": 854,
+    "h": 23,
+    "y": 1462,
+    "txt": "Wednesday 4 November3 improvements · 4 f"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "roadmap-1440-light": {
+  "url": "/roadmap",
+  "docH": 900,
+  "hScroll": false,
+  "h1": "Roadmap",
+  "h1Y": 28,
+  "firstRowY": null,
+  "smallCount": 37,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 259,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 296,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 333,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 435,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 506,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 577,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Roadmap"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 648,
+    "txt": "Patch Notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 723,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 16,
+    "h": 16,
+    "y": 47,
+    "txt": ""
+   },
+   {
+    "w": 384,
+    "h": 30,
+    "y": 106,
+    "txt": "Search the roadmap"
+   },
+   {
+    "w": 74,
+    "h": 42,
+    "y": 152,
+    "txt": "Plan2"
+   },
+   {
+    "w": 77,
+    "h": 42,
+    "y": 152,
+    "txt": "Beta1"
+   },
+   {
+    "w": 77,
+    "h": 42,
+    "y": 152,
+    "txt": "Vote2"
+   },
+   {
+    "w": 136,
+    "h": 42,
+    "y": 152,
+    "txt": "Known issues2"
+   },
+   {
+    "w": 81,
+    "h": 42,
+    "y": 152,
+    "txt": "Done1"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 311,
+    "txt": "1"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 311,
+    "txt": "2"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 311,
+    "txt": "3"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 311,
+    "txt": "4"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 311,
+    "txt": "5"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 311,
+    "txt": "6"
+   },
+   {
+    "w": 85,
+    "h": 28,
+    "y": 343,
+    "txt": "Don't know"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 635,
+    "txt": "1"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 635,
+    "txt": "2"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 635,
+    "txt": "3"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 635,
+    "txt": "4"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 635,
+    "txt": "5"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 635,
+    "txt": "6"
+   },
+   {
+    "w": 85,
+    "h": 28,
+    "y": 667,
+    "txt": "Don't know"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "settings-1440-light": {
+  "url": "/profile",
+  "docH": 900,
+  "hScroll": false,
+  "h1": "My Profile",
+  "h1Y": 28,
+  "firstRowY": null,
+  "smallCount": 28,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 259,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 296,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 333,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 435,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 506,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 577,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 648,
+    "txt": "Patch Notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 723,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 88,
+    "h": 42,
+    "y": 106,
+    "txt": "Account"
+   },
+   {
+    "w": 116,
+    "h": 42,
+    "y": 106,
+    "txt": "Notifications"
+   },
+   {
+    "w": 111,
+    "h": 42,
+    "y": 106,
+    "txt": "Preferences"
+   },
+   {
+    "w": 80,
+    "h": 42,
+    "y": 106,
+    "txt": "Privacy"
+   },
+   {
+    "w": 62,
+    "h": 42,
+    "y": 106,
+    "txt": "Beta"
+   },
+   {
+    "w": 460,
+    "h": 42,
+    "y": 242,
+    "txt": ""
+   },
+   {
+    "w": 66,
+    "h": 42,
+    "y": 242,
+    "txt": "Save"
+   },
+   {
+    "w": 441,
+    "h": 42,
+    "y": 345,
+    "txt": ""
+   },
+   {
+    "w": 85,
+    "h": 42,
+    "y": 345,
+    "txt": "Change"
+   },
+   {
+    "w": 534,
+    "h": 38,
+    "y": 526,
+    "txt": ""
+   },
+   {
+    "w": 534,
+    "h": 38,
+    "y": 601,
+    "txt": "Your name as manager"
+   },
+   {
+    "w": 534,
+    "h": 42,
+    "y": 655,
+    "txt": "Save team info"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Save team info"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "team-390-dark": {
+  "url": "/team",
+  "docH": 844,
+  "hScroll": false,
+  "h1": "E2E Racing",
+  "h1Y": 65,
+  "firstRowY": 556,
+  "smallCount": 5,
+  "small": [
+   {
+    "w": 101,
+    "h": 24,
+    "y": 68,
+    "txt": "E2E Racing"
+   },
+   {
+    "w": 89,
+    "h": 20,
+    "y": 127,
+    "txt": "500,000 CZ$"
+   },
+   {
+    "w": 62,
+    "h": 20,
+    "y": 127,
+    "txt": "Division 2"
+   },
+   {
+    "w": 174,
+    "h": 20,
+    "y": 163,
+    "txt": "Salary/season: 42,000 CZ$"
+   },
+   {
+    "w": 106,
+    "h": 20,
+    "y": 565,
+    "txt": "Ada Pedersen"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "squad-u23-390-dark": {
+  "url": "/squads/u23",
+  "docH": 844,
+  "hScroll": false,
+  "h1": "E2E Racing U23",
+  "h1Y": 65,
+  "firstRowY": 485,
+  "smallCount": 3,
+  "small": [
+   {
+    "w": 124,
+    "h": 40,
+    "y": 492,
+    "txt": "Emil Vestergaard"
+   },
+   {
+    "w": 97,
+    "h": 20,
+    "y": 566,
+    "txt": "Noah Brandt"
+   },
+   {
+    "w": 99,
+    "h": 20,
+    "y": 623,
+    "txt": "Mateo Ferrer"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "squad-junior-390-dark": {
+  "url": "/squads/junior",
+  "docH": 844,
+  "hScroll": false,
+  "h1": "E2E Racing Juniors",
+  "h1Y": 65,
+  "firstRowY": 485,
+  "smallCount": 2,
+  "small": [
+   {
+    "w": 86,
+    "h": 20,
+    "y": 496,
+    "txt": "Oskar Lind"
+   },
+   {
+    "w": 100,
+    "h": 20,
+    "y": 553,
+    "txt": "Théo Garnier"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "youth-races-390-dark": {
+  "url": "/youth-races",
+  "docH": 844,
+  "hScroll": false,
+  "h1": "Youth races",
+  "h1Y": 65,
+  "firstRowY": 365,
+  "smallCount": 0,
+  "small": [],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 4,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "rider-390-dark": {
+  "url": "/riders/rider-1",
+  "docH": 2154,
+  "hScroll": false,
+  "h1": "Ada Pedersen",
+  "h1Y": 118,
+  "firstRowY": null,
+  "smallCount": 3,
+  "small": [
+   {
+    "w": 44,
+    "h": 16,
+    "y": 68,
+    "txt": "Back"
+   },
+   {
+    "w": 73,
+    "h": 20,
+    "y": 311,
+    "txt": "E2E Racing"
+   },
+   {
+    "w": 57,
+    "h": 23,
+    "y": 2021,
+    "txt": "All types"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "⚡",
+  "emdash": 0,
+  "golds": [
+   "Extend contract"
+  ],
+  "shadows": 0,
+  "bebas": [
+   "AP",
+   "Ada Pedersen",
+   "Physical",
+   "Mental",
+   "Technical",
+   "Rider types"
+  ],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "rider-training-390-dark": {
+  "url": "/riders/rider-1?tab=training",
+  "docH": 2414,
+  "hScroll": false,
+  "h1": "Ada Pedersen",
+  "h1Y": 118,
+  "firstRowY": null,
+  "smallCount": 2,
+  "small": [
+   {
+    "w": 44,
+    "h": 16,
+    "y": 68,
+    "txt": "Back"
+   },
+   {
+    "w": 73,
+    "h": 20,
+    "y": 311,
+    "txt": "E2E Racing"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "⚡",
+  "emdash": 0,
+  "golds": [
+   "Extend contract"
+  ],
+  "shadows": 0,
+  "bebas": [
+   "AP",
+   "Ada Pedersen",
+   "This season",
+   "Training focus",
+   "Daily training · last 7 days",
+   "Form & recovery"
+  ],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "rider-development-390-dark": {
+  "url": "/riders/rider-1?tab=development",
+  "docH": 2029,
+  "hScroll": false,
+  "h1": "Ada Pedersen",
+  "h1Y": 118,
+  "firstRowY": null,
+  "smallCount": 2,
+  "small": [
+   {
+    "w": 44,
+    "h": 16,
+    "y": 68,
+    "txt": "Back"
+   },
+   {
+    "w": 73,
+    "h": 20,
+    "y": 311,
+    "txt": "E2E Racing"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "⚡→",
+  "emdash": 0,
+  "golds": [
+   "Extend contract"
+  ],
+  "shadows": 0,
+  "bebas": [
+   "AP",
+   "Ada Pedersen",
+   "Rating by type · over seasons",
+   "Growth this season",
+   "Development log"
+  ],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "rider-scouting-390-dark": {
+  "url": "/riders/rider-1?tab=scouting",
+  "docH": 2107,
+  "hScroll": false,
+  "h1": "Ada Pedersen",
+  "h1Y": 118,
+  "firstRowY": null,
+  "smallCount": 2,
+  "small": [
+   {
+    "w": 44,
+    "h": 16,
+    "y": 68,
+    "txt": "Back"
+   },
+   {
+    "w": 73,
+    "h": 20,
+    "y": 311,
+    "txt": "E2E Racing"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "⚡",
+  "emdash": 0,
+  "golds": [
+   "Extend contract"
+  ],
+  "shadows": 0,
+  "bebas": [
+   "AP",
+   "Ada Pedersen",
+   "Keep an eye on him",
+   "Projection per rider type",
+   "29",
+   "Sprinter"
+  ],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "training-390-dark": {
+  "url": "/training",
+  "docH": 844,
+  "hScroll": false,
+  "h1": "Daily training",
+  "h1Y": 65,
+  "firstRowY": null,
+  "smallCount": 7,
+  "small": [
+   {
+    "w": 36,
+    "h": 44,
+    "y": 380,
+    "txt": "Edit"
+   },
+   {
+    "w": 198,
+    "h": 40,
+    "y": 564,
+    "txt": "Ada PedersenSprinter/Rouleur · 24"
+   },
+   {
+    "w": 126,
+    "h": 40,
+    "y": 588,
+    "txt": "Back to team program"
+   },
+   {
+    "w": 110,
+    "h": 40,
+    "y": 637,
+    "txt": "Rest"
+   },
+   {
+    "w": 110,
+    "h": 40,
+    "y": 637,
+    "txt": "Recovery"
+   },
+   {
+    "w": 110,
+    "h": 40,
+    "y": 637,
+    "txt": "Program"
+   },
+   {
+    "w": 96,
+    "h": 14,
+    "y": 711,
+    "txt": "How training works"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Train now"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "training-weekplan-390-dark": {
+  "url": "/training?tab=weekplan",
+  "docH": 1082,
+  "hScroll": false,
+  "h1": "Daily training",
+  "h1Y": 65,
+  "firstRowY": null,
+  "smallCount": 7,
+  "small": [
+   {
+    "w": 63,
+    "h": 43,
+    "y": 548,
+    "txt": "Whole day · Mon"
+   },
+   {
+    "w": 63,
+    "h": 43,
+    "y": 592,
+    "txt": "Whole day · Tue"
+   },
+   {
+    "w": 63,
+    "h": 43,
+    "y": 636,
+    "txt": "Whole day · Wed"
+   },
+   {
+    "w": 63,
+    "h": 43,
+    "y": 680,
+    "txt": "Whole day · Thu"
+   },
+   {
+    "w": 63,
+    "h": 43,
+    "y": 724,
+    "txt": "Whole day · Fri"
+   },
+   {
+    "w": 63,
+    "h": 43,
+    "y": 768,
+    "txt": "Whole day · Sat"
+   },
+   {
+    "w": 63,
+    "h": 43,
+    "y": 812,
+    "txt": "Whole day · Sun"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Train now"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "training-development-390-dark": {
+  "url": "/training?tab=development",
+  "docH": 844,
+  "hScroll": false,
+  "h1": "Daily training",
+  "h1Y": 65,
+  "firstRowY": null,
+  "smallCount": 2,
+  "small": [
+   {
+    "w": 106,
+    "h": 17,
+    "y": 535,
+    "txt": "Ada Pedersen"
+   },
+   {
+    "w": 138,
+    "h": 34,
+    "y": 628,
+    "txt": "Day — Ada Pedersen"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Train now"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "training-report-390-dark": {
+  "url": "/training?tab=report",
+  "docH": 851,
+  "hScroll": false,
+  "h1": "Daily training",
+  "h1Y": 65,
+  "firstRowY": null,
+  "smallCount": 0,
+  "small": [],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Train now"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "academy-390-dark": {
+  "url": "/academy",
+  "docH": 2255,
+  "hScroll": false,
+  "h1": "Academy",
+  "h1Y": 65,
+  "firstRowY": 2044,
+  "smallCount": 2,
+  "small": [
+   {
+    "w": 51,
+    "h": 38,
+    "y": 2054,
+    "txt": "Théo Dubois"
+   },
+   {
+    "w": 60,
+    "h": 38,
+    "y": 2111,
+    "txt": "Mateo Rossi"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "graduation-390-dark": {
+  "url": "/academy/graduation",
+  "docH": 844,
+  "hScroll": false,
+  "h1": "Graduation Day",
+  "h1Y": 65,
+  "firstRowY": null,
+  "smallCount": 1,
+  "small": [
+   {
+    "w": 121,
+    "h": 17,
+    "y": 272,
+    "txt": "Tobias Lindqvist"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Confirm all"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "scouting-390-dark": {
+  "url": "/scouting",
+  "docH": 1552,
+  "hScroll": false,
+  "h1": "Scouting",
+  "h1Y": 65,
+  "firstRowY": null,
+  "smallCount": 6,
+  "small": [
+   {
+    "w": 1,
+    "h": 1,
+    "y": 588,
+    "txt": ""
+   },
+   {
+    "w": 1,
+    "h": 1,
+    "y": 675,
+    "txt": ""
+   },
+   {
+    "w": 93,
+    "h": 17,
+    "y": 1044,
+    "txt": "Jonas Vinter"
+   },
+   {
+    "w": 102,
+    "h": 17,
+    "y": 1068,
+    "txt": "Emil Nørgaard"
+   },
+   {
+    "w": 103,
+    "h": 17,
+    "y": 1091,
+    "txt": "Mikkel Hansen"
+   },
+   {
+    "w": 101,
+    "h": 17,
+    "y": 1420,
+    "txt": "Ada Pedersen"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Start mission"
+  ],
+  "shadows": 0,
+  "bebas": [
+   "Scouting",
+   "Default scout",
+   "Free agents",
+   "Riders on other teams"
+  ],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "notifications-390-dark": {
+  "url": "/notifications",
+  "docH": 844,
+  "hScroll": false,
+  "h1": "Inbox",
+  "h1Y": 65,
+  "firstRowY": null,
+  "smallCount": 2,
+  "small": [
+   {
+    "w": 24,
+    "h": 24,
+    "y": 332,
+    "txt": "Delete all"
+   },
+   {
+    "w": 24,
+    "h": 24,
+    "y": 468,
+    "txt": "Delete all"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "forum-390-dark": {
+  "url": "/forum",
+  "docH": 1060,
+  "hScroll": false,
+  "h1": "Forum",
+  "h1Y": 65,
+  "firstRowY": null,
+  "smallCount": 9,
+  "small": [
+   {
+    "w": 48,
+    "h": 42,
+    "y": 203,
+    "txt": "All"
+   },
+   {
+    "w": 113,
+    "h": 42,
+    "y": 203,
+    "txt": "Roadmap"
+   },
+   {
+    "w": 84,
+    "h": 42,
+    "y": 203,
+    "txt": "General"
+   },
+   {
+    "w": 150,
+    "h": 42,
+    "y": 203,
+    "txt": "Feedback & ideas"
+   },
+   {
+    "w": 171,
+    "h": 42,
+    "y": 203,
+    "txt": "Questions & answers"
+   },
+   {
+    "w": 152,
+    "h": 42,
+    "y": 203,
+    "txt": "Tactics & strategy"
+   },
+   {
+    "w": 93,
+    "h": 42,
+    "y": 203,
+    "txt": "Transfers"
+   },
+   {
+    "w": 95,
+    "h": 42,
+    "y": 203,
+    "txt": "Off-topic"
+   },
+   {
+    "w": 82,
+    "h": 42,
+    "y": 203,
+    "txt": "Archive"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "New post"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "forum-post-390-dark": {
+  "url": "/forum/forum-post-1",
+  "docH": 1627,
+  "hScroll": false,
+  "h1": "What I am building next",
+  "h1Y": 102,
+  "firstRowY": null,
+  "smallCount": 19,
+  "small": [
+   {
+    "w": 99,
+    "h": 16,
+    "y": 70,
+    "txt": "Back to the forum"
+   },
+   {
+    "w": 58,
+    "h": 30,
+    "y": 347,
+    "txt": "Support this (14 supporters)"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 488,
+    "txt": "Open the manager profile for peloton_pet"
+   },
+   {
+    "w": 85,
+    "h": 15,
+    "y": 486,
+    "txt": "peloton_pete"
+   },
+   {
+    "w": 46,
+    "h": 15,
+    "y": 486,
+    "txt": "Message peloton_pete"
+   },
+   {
+    "w": 91,
+    "h": 14,
+    "y": 693,
+    "txt": "Thunder Cycling"
+   },
+   {
+    "w": 54,
+    "h": 30,
+    "y": 723,
+    "txt": "Remove your support (6 supporters)"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 787,
+    "txt": "Open the manager profile for sofie_r"
+   },
+   {
+    "w": 44,
+    "h": 15,
+    "y": 794,
+    "txt": "sofie_r"
+   },
+   {
+    "w": 46,
+    "h": 15,
+    "y": 794,
+    "txt": "Message sofie_r"
+   },
+   {
+    "w": 286,
+    "h": 32,
+    "y": 823,
+    "txt": "By peloton_peteGreat initiative. My vote"
+   },
+   {
+    "w": 101,
+    "h": 17,
+    "y": 865,
+    "txt": "@peloton_pete"
+   },
+   {
+    "w": 69,
+    "h": 14,
+    "y": 939,
+    "txt": "Nordjysk CC"
+   },
+   {
+    "w": 53,
+    "h": 30,
+    "y": 969,
+    "txt": "Support this (2 supporters)"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 1033,
+    "txt": "Open the manager profile for e2e"
+   },
+   {
+    "w": 21,
+    "h": 15,
+    "y": 1039,
+    "txt": "e2e"
+   },
+   {
+    "w": 62,
+    "h": 14,
+    "y": 1145,
+    "txt": "E2E Racing"
+   },
+   {
+    "w": 54,
+    "h": 30,
+    "y": 1175,
+    "txt": "Support this"
+   },
+   {
+    "w": 1,
+    "h": 1,
+    "y": 1398,
+    "txt": ""
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Reply"
+  ],
+  "shadows": 4,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "help-390-dark": {
+  "url": "/help",
+  "docH": 1414,
+  "hScroll": false,
+  "h1": "Help",
+  "h1Y": 65,
+  "firstRowY": null,
+  "smallCount": 0,
+  "small": [],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "patch-notes-390-dark": {
+  "url": "/patch-notes",
+  "docH": 14371,
+  "hScroll": false,
+  "h1": "Patch notes",
+  "h1Y": 65,
+  "firstRowY": null,
+  "smallCount": 199,
+  "small": [
+   {
+    "w": 1,
+    "h": 1,
+    "y": 212,
+    "txt": ""
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 286,
+    "txt": "Monday 16 November4 improvements · 1 fix"
+   },
+   {
+    "w": 310,
+    "h": 19,
+    "y": 365,
+    "txt": "Clearer stage profile on phones"
+   },
+   {
+    "w": 310,
+    "h": 37,
+    "y": 411,
+    "txt": "Clearer buying card with an auto-accept "
+   },
+   {
+    "w": 310,
+    "h": 19,
+    "y": 475,
+    "txt": "The training report shows what races gav"
+   },
+   {
+    "w": 310,
+    "h": 38,
+    "y": 520,
+    "txt": "Now live for allTrain now works straight"
+   },
+   {
+    "w": 310,
+    "h": 37,
+    "y": 611,
+    "txt": "The board's mid-season message arrives o"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 710,
+    "txt": "Sunday 15 November1 new · 1 improvement "
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 780,
+    "txt": "Saturday 14 November1 improvement · 3 fi"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 851,
+    "txt": "Friday 13 November1 new · 2 improvements"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 921,
+    "txt": "Thursday 12 November2 new · 4 improvemen"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 992,
+    "txt": "Wednesday 11 November1 new · 2 improveme"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1062,
+    "txt": "Tuesday 10 November1 new · 2 fixes"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1133,
+    "txt": "Monday 9 November2 new · 7 improvements "
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1203,
+    "txt": "Sunday 8 November1 new · 2 improvements "
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1274,
+    "txt": "Saturday 7 November2 new · 2 improvement"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1344,
+    "txt": "Friday 6 November4 new · 5 improvements "
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1415,
+    "txt": "Thursday 5 November3 new · 2 improvement"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1485,
+    "txt": "Wednesday 4 November3 improvements · 4 f"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1556,
+    "txt": "Tuesday 3 November1 new · 2 improvements"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1626,
+    "txt": "Monday 2 November1 new · 3 improvements "
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1697,
+    "txt": "Sunday 1 November2 new · 3 improvements "
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1767,
+    "txt": "Saturday 31 October4 improvements · 5 fi"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1838,
+    "txt": "Friday 30 October2 new · 3 improvements "
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1908,
+    "txt": "Tuesday 27 October3 new · 3 improvements"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 1979,
+    "txt": "Monday 26 October4 new · 5 improvements "
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2049,
+    "txt": "Sunday 25 October4 new · 13 improvements"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2120,
+    "txt": "Saturday 24 October4 new · 12 improvemen"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2190,
+    "txt": "Friday 23 October5 new · 8 improvements "
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2261,
+    "txt": "Wednesday 21 October2 new"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2331,
+    "txt": "Tuesday 20 October3 improvements · 5 fix"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2402,
+    "txt": "Monday 19 October1 improvement · 6 fixes"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2472,
+    "txt": "Sunday 18 October1 new · 3 improvements "
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2543,
+    "txt": "Saturday 17 October7 improvements · 1 fi"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2613,
+    "txt": "Friday 16 October2 new · 9 improvements "
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2684,
+    "txt": "Thursday 15 October4 new · 3 improvement"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2754,
+    "txt": "Wednesday 14 October3 fixes"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2825,
+    "txt": "Tuesday 13 October1 new · 1 improvement "
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2895,
+    "txt": "Monday 12 October2 fixes"
+   },
+   {
+    "w": 324,
+    "h": 23,
+    "y": 2966,
+    "txt": "Sunday 11 October4 improvements · 4 fixe"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "roadmap-390-dark": {
+  "url": "/roadmap",
+  "docH": 922,
+  "hScroll": false,
+  "h1": "Roadmap",
+  "h1Y": 65,
+  "firstRowY": null,
+  "smallCount": 15,
+  "small": [
+   {
+    "w": 16,
+    "h": 16,
+    "y": 156,
+    "txt": ""
+   },
+   {
+    "w": 34,
+    "h": 34,
+    "y": 486,
+    "txt": "1"
+   },
+   {
+    "w": 34,
+    "h": 34,
+    "y": 486,
+    "txt": "2"
+   },
+   {
+    "w": 34,
+    "h": 34,
+    "y": 486,
+    "txt": "3"
+   },
+   {
+    "w": 34,
+    "h": 34,
+    "y": 486,
+    "txt": "4"
+   },
+   {
+    "w": 34,
+    "h": 34,
+    "y": 486,
+    "txt": "5"
+   },
+   {
+    "w": 34,
+    "h": 34,
+    "y": 486,
+    "txt": "6"
+   },
+   {
+    "w": 85,
+    "h": 34,
+    "y": 524,
+    "txt": "Don't know"
+   },
+   {
+    "w": 34,
+    "h": 34,
+    "y": 891,
+    "txt": "1"
+   },
+   {
+    "w": 34,
+    "h": 34,
+    "y": 891,
+    "txt": "2"
+   },
+   {
+    "w": 34,
+    "h": 34,
+    "y": 891,
+    "txt": "3"
+   },
+   {
+    "w": 34,
+    "h": 34,
+    "y": 891,
+    "txt": "4"
+   },
+   {
+    "w": 34,
+    "h": 34,
+    "y": 891,
+    "txt": "5"
+   },
+   {
+    "w": 34,
+    "h": 34,
+    "y": 891,
+    "txt": "6"
+   },
+   {
+    "w": 85,
+    "h": 34,
+    "y": 929,
+    "txt": "Don't know"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "settings-390-dark": {
+  "url": "/profile",
+  "docH": 1023,
+  "hScroll": false,
+  "h1": "My Profile",
+  "h1Y": 65,
+  "firstRowY": null,
+  "smallCount": 0,
+  "small": [],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Save team info"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "team-1440-dark": {
+  "url": "/team",
+  "docH": 900,
+  "hScroll": false,
+  "h1": "E2E Racing",
+  "h1Y": 28,
+  "firstRowY": 342,
+  "smallCount": 42,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 257,
+    "txt": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 292,
+    "txt": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 328,
+    "txt": "ForumNew forum activity"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 363,
+    "txt": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 399,
+    "txt": "U23 team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 434,
+    "txt": "Junior team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 505,
+    "txt": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Academy"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 576,
+    "txt": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 647,
+    "txt": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 724,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 761,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 798,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 900,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 936,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 971,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1007,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1042,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1078,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1113,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1149,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1188,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 101,
+    "h": 24,
+    "y": 31,
+    "txt": "E2E Racing"
+   },
+   {
+    "w": 89,
+    "h": 20,
+    "y": 90,
+    "txt": "500,000 CZ$"
+   },
+   {
+    "w": 62,
+    "h": 20,
+    "y": 90,
+    "txt": "Division 2"
+   },
+   {
+    "w": 174,
+    "h": 20,
+    "y": 90,
+    "txt": "Salary/season: 42,000 CZ$"
+   },
+   {
+    "w": 93,
+    "h": 42,
+    "y": 196,
+    "txt": "Squad (1)"
+   },
+   {
+    "w": 98,
+    "h": 42,
+    "y": 196,
+    "txt": "Contracts"
+   },
+   {
+    "w": 120,
+    "h": 42,
+    "y": 196,
+    "txt": "Development"
+   },
+   {
+    "w": 66,
+    "h": 42,
+    "y": 196,
+    "txt": "Stats"
+   },
+   {
+    "w": 135,
+    "h": 42,
+    "y": 196,
+    "txt": "Transfer history"
+   },
+   {
+    "w": 77,
+    "h": 28,
+    "y": 271,
+    "txt": "Overview"
+   },
+   {
+    "w": 70,
+    "h": 28,
+    "y": 271,
+    "txt": "Abilities"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "squad-u23-1440-dark": {
+  "url": "/squads/u23",
+  "docH": 900,
+  "hScroll": false,
+  "h1": "E2E Racing U23",
+  "h1Y": 28,
+  "firstRowY": 307,
+  "smallCount": 43,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 257,
+    "txt": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 292,
+    "txt": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 328,
+    "txt": "ForumNew forum activity"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 363,
+    "txt": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 399,
+    "txt": "U23 team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 434,
+    "txt": "Junior team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 505,
+    "txt": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Academy"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 576,
+    "txt": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 647,
+    "txt": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 724,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 761,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 798,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 900,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 936,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 971,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1007,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1042,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1078,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1113,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1149,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1188,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 97,
+    "h": 42,
+    "y": 130,
+    "txt": "Squad (3)"
+   },
+   {
+    "w": 92,
+    "h": 42,
+    "y": 130,
+    "txt": "Calendar"
+   },
+   {
+    "w": 80,
+    "h": 42,
+    "y": 130,
+    "txt": "Results"
+   },
+   {
+    "w": 98,
+    "h": 42,
+    "y": 130,
+    "txt": "Standings"
+   },
+   {
+    "w": 120,
+    "h": 42,
+    "y": 130,
+    "txt": "Development"
+   },
+   {
+    "w": 66,
+    "h": 42,
+    "y": 130,
+    "txt": "Stats"
+   },
+   {
+    "w": 77,
+    "h": 28,
+    "y": 236,
+    "txt": "Overview"
+   },
+   {
+    "w": 70,
+    "h": 28,
+    "y": 236,
+    "txt": "Abilities"
+   },
+   {
+    "w": 125,
+    "h": 20,
+    "y": 321,
+    "txt": "Emil Vestergaard"
+   },
+   {
+    "w": 45,
+    "h": 30,
+    "y": 317,
+    "txt": "Sell"
+   },
+   {
+    "w": 97,
+    "h": 20,
+    "y": 370,
+    "txt": "Noah Brandt"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "squad-junior-1440-dark": {
+  "url": "/squads/junior",
+  "docH": 900,
+  "hScroll": false,
+  "h1": "E2E Racing Juniors",
+  "h1Y": 28,
+  "firstRowY": 307,
+  "smallCount": 41,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 257,
+    "txt": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 292,
+    "txt": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 328,
+    "txt": "ForumNew forum activity"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 363,
+    "txt": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 399,
+    "txt": "U23 team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 434,
+    "txt": "Junior team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 505,
+    "txt": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Academy"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 576,
+    "txt": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 647,
+    "txt": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 724,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 761,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 798,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 900,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 936,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 971,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1007,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1042,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1078,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1113,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1149,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1188,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 96,
+    "h": 42,
+    "y": 130,
+    "txt": "Squad (2)"
+   },
+   {
+    "w": 92,
+    "h": 42,
+    "y": 130,
+    "txt": "Calendar"
+   },
+   {
+    "w": 80,
+    "h": 42,
+    "y": 130,
+    "txt": "Results"
+   },
+   {
+    "w": 98,
+    "h": 42,
+    "y": 130,
+    "txt": "Standings"
+   },
+   {
+    "w": 120,
+    "h": 42,
+    "y": 130,
+    "txt": "Development"
+   },
+   {
+    "w": 66,
+    "h": 42,
+    "y": 130,
+    "txt": "Stats"
+   },
+   {
+    "w": 77,
+    "h": 28,
+    "y": 236,
+    "txt": "Overview"
+   },
+   {
+    "w": 70,
+    "h": 28,
+    "y": 236,
+    "txt": "Abilities"
+   },
+   {
+    "w": 86,
+    "h": 20,
+    "y": 319,
+    "txt": "Oskar Lind"
+   },
+   {
+    "w": 45,
+    "h": 30,
+    "y": 315,
+    "txt": "Sell"
+   },
+   {
+    "w": 100,
+    "h": 20,
+    "y": 364,
+    "txt": "Théo Garnier"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "youth-races-1440-dark": {
+  "url": "/youth-races",
+  "docH": 900,
+  "hScroll": false,
+  "h1": "Youth races",
+  "h1Y": 28,
+  "firstRowY": 260,
+  "smallCount": 21,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 259,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 296,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 333,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 435,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 506,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 577,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 648,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 723,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 114,
+    "h": 30,
+    "y": 40,
+    "txt": "Squad"
+   },
+   {
+    "w": 98,
+    "h": 42,
+    "y": 106,
+    "txt": "Standings"
+   },
+   {
+    "w": 92,
+    "h": 42,
+    "y": 106,
+    "txt": "Calendar"
+   },
+   {
+    "w": 80,
+    "h": 42,
+    "y": 106,
+    "txt": "Results"
+   },
+   {
+    "w": 94,
+    "h": 30,
+    "y": 180,
+    "txt": "Group AGroup B"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 5,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "rider-1440-dark": {
+  "url": "/riders/rider-1",
+  "docH": 1529,
+  "hScroll": false,
+  "h1": "Ada Pedersen",
+  "h1Y": 77,
+  "firstRowY": null,
+  "smallCount": 29,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 259,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 296,
+    "txt": "Market"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 331,
+    "txt": "Riders"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 366,
+    "txt": "Auctions"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 402,
+    "txt": "Transfers"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 437,
+    "txt": "Transfer list"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 473,
+    "txt": "Watchlist"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 514,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 616,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 652,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 687,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 723,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 758,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 794,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 829,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 865,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 904,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 44,
+    "h": 16,
+    "y": 27,
+    "txt": "Back"
+   },
+   {
+    "w": 170,
+    "h": 24,
+    "y": 157,
+    "txt": "U23 world champion"
+   },
+   {
+    "w": 101,
+    "h": 24,
+    "y": 157,
+    "txt": "Top Talent"
+   },
+   {
+    "w": 73,
+    "h": 20,
+    "y": 189,
+    "txt": "E2E Racing"
+   },
+   {
+    "w": 144,
+    "h": 42,
+    "y": 517,
+    "txt": "Extend contract"
+   },
+   {
+    "w": 133,
+    "h": 42,
+    "y": 517,
+    "txt": "List for sale"
+   },
+   {
+    "w": 122,
+    "h": 42,
+    "y": 517,
+    "txt": "Release rider"
+   },
+   {
+    "w": 57,
+    "h": 23,
+    "y": 1428,
+    "txt": "All types"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "⚡",
+  "emdash": 0,
+  "golds": [
+   "Extend contract"
+  ],
+  "shadows": 0,
+  "bebas": [
+   "AP",
+   "Ada Pedersen",
+   "Physical",
+   "Mental",
+   "Technical",
+   "Rider types"
+  ],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "rider-training-1440-dark": {
+  "url": "/riders/rider-1?tab=training",
+  "docH": 1422,
+  "hScroll": false,
+  "h1": "Ada Pedersen",
+  "h1Y": 77,
+  "firstRowY": null,
+  "smallCount": 28,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 259,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 296,
+    "txt": "Market"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 331,
+    "txt": "Riders"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 366,
+    "txt": "Auctions"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 402,
+    "txt": "Transfers"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 437,
+    "txt": "Transfer list"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 473,
+    "txt": "Watchlist"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 514,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 616,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 652,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 687,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 723,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 758,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 794,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 829,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 865,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 904,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 44,
+    "h": 16,
+    "y": 27,
+    "txt": "Back"
+   },
+   {
+    "w": 170,
+    "h": 24,
+    "y": 157,
+    "txt": "U23 world champion"
+   },
+   {
+    "w": 101,
+    "h": 24,
+    "y": 157,
+    "txt": "Top Talent"
+   },
+   {
+    "w": 73,
+    "h": 20,
+    "y": 189,
+    "txt": "E2E Racing"
+   },
+   {
+    "w": 144,
+    "h": 42,
+    "y": 517,
+    "txt": "Extend contract"
+   },
+   {
+    "w": 133,
+    "h": 42,
+    "y": 517,
+    "txt": "List for sale"
+   },
+   {
+    "w": 122,
+    "h": 42,
+    "y": 517,
+    "txt": "Release rider"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "⚡",
+  "emdash": 0,
+  "golds": [
+   "Extend contract"
+  ],
+  "shadows": 0,
+  "bebas": [
+   "AP",
+   "Ada Pedersen",
+   "This season",
+   "Training focus",
+   "Daily training · last 7 days",
+   "Form & recovery"
+  ],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "rider-development-1440-dark": {
+  "url": "/riders/rider-1?tab=development",
+  "docH": 1345,
+  "hScroll": false,
+  "h1": "Ada Pedersen",
+  "h1Y": 77,
+  "firstRowY": null,
+  "smallCount": 29,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 259,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 296,
+    "txt": "Market"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 331,
+    "txt": "Riders"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 366,
+    "txt": "Auctions"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 402,
+    "txt": "Transfers"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 437,
+    "txt": "Transfer list"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 473,
+    "txt": "Watchlist"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 514,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 616,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 652,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 687,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 723,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 758,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 794,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 829,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 865,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 904,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 44,
+    "h": 16,
+    "y": 27,
+    "txt": "Back"
+   },
+   {
+    "w": 170,
+    "h": 24,
+    "y": 157,
+    "txt": "U23 world champion"
+   },
+   {
+    "w": 101,
+    "h": 24,
+    "y": 157,
+    "txt": "Top Talent"
+   },
+   {
+    "w": 73,
+    "h": 20,
+    "y": 189,
+    "txt": "E2E Racing"
+   },
+   {
+    "w": 144,
+    "h": 42,
+    "y": 517,
+    "txt": "Extend contract"
+   },
+   {
+    "w": 133,
+    "h": 42,
+    "y": 517,
+    "txt": "List for sale"
+   },
+   {
+    "w": 122,
+    "h": 42,
+    "y": 517,
+    "txt": "Release rider"
+   },
+   {
+    "w": 185,
+    "h": 30,
+    "y": 1230,
+    "txt": "See season history with Pro"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "⚡→",
+  "emdash": 0,
+  "golds": [
+   "Extend contract"
+  ],
+  "shadows": 0,
+  "bebas": [
+   "AP",
+   "Ada Pedersen",
+   "Rating by type · over seasons",
+   "Growth this season",
+   "Development log"
+  ],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "rider-scouting-1440-dark": {
+  "url": "/riders/rider-1?tab=scouting",
+  "docH": 1466,
+  "hScroll": false,
+  "h1": "Ada Pedersen",
+  "h1Y": 77,
+  "firstRowY": null,
+  "smallCount": 28,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 259,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 296,
+    "txt": "Market"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 331,
+    "txt": "Riders"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 366,
+    "txt": "Auctions"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 402,
+    "txt": "Transfers"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 437,
+    "txt": "Transfer list"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 473,
+    "txt": "Watchlist"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 514,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 616,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 652,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 687,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 723,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 758,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 794,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 829,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 865,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 904,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 44,
+    "h": 16,
+    "y": 27,
+    "txt": "Back"
+   },
+   {
+    "w": 170,
+    "h": 24,
+    "y": 157,
+    "txt": "U23 world champion"
+   },
+   {
+    "w": 101,
+    "h": 24,
+    "y": 157,
+    "txt": "Top Talent"
+   },
+   {
+    "w": 73,
+    "h": 20,
+    "y": 189,
+    "txt": "E2E Racing"
+   },
+   {
+    "w": 144,
+    "h": 42,
+    "y": 517,
+    "txt": "Extend contract"
+   },
+   {
+    "w": 133,
+    "h": 42,
+    "y": 517,
+    "txt": "List for sale"
+   },
+   {
+    "w": 122,
+    "h": 42,
+    "y": 517,
+    "txt": "Release rider"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "⚡",
+  "emdash": 0,
+  "golds": [
+   "Extend contract"
+  ],
+  "shadows": 0,
+  "bebas": [
+   "AP",
+   "Ada Pedersen",
+   "Keep an eye on him",
+   "Projection per rider type",
+   "29",
+   "Sprinter"
+  ],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "training-1440-dark": {
+  "url": "/training",
+  "docH": 900,
+  "hScroll": false,
+  "h1": "Daily training",
+  "h1Y": 28,
+  "firstRowY": 447,
+  "smallCount": 50,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 257,
+    "txt": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 292,
+    "txt": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 328,
+    "txt": "ForumNew forum activity"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 363,
+    "txt": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 399,
+    "txt": "U23 team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 434,
+    "txt": "Junior team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 505,
+    "txt": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Academy"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 576,
+    "txt": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 647,
+    "txt": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 724,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 761,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 798,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 900,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 936,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 971,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1007,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1042,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1078,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1113,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1149,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1188,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 81,
+    "h": 30,
+    "y": 40,
+    "txt": "Train now"
+   },
+   {
+    "w": 72,
+    "h": 42,
+    "y": 133,
+    "txt": "Today"
+   },
+   {
+    "w": 87,
+    "h": 42,
+    "y": 133,
+    "txt": "Program"
+   },
+   {
+    "w": 120,
+    "h": 42,
+    "y": 133,
+    "txt": "Development"
+   },
+   {
+    "w": 76,
+    "h": 42,
+    "y": 133,
+    "txt": "Report"
+   },
+   {
+    "w": 36,
+    "h": 16,
+    "y": 277,
+    "txt": "Edit"
+   },
+   {
+    "w": 89,
+    "h": 30,
+    "y": 324,
+    "txt": "RiderTypeAgeFormFatigueStatus"
+   },
+   {
+    "w": 32,
+    "h": 32,
+    "y": 323,
+    "txt": "Sorting descending, tap for ascending"
+   },
+   {
+    "w": 16,
+    "h": 16,
+    "y": 331,
+    "txt": ""
+   },
+   {
+    "w": 249,
+    "h": 30,
+    "y": 324,
+    "txt": "Get suggestions from the assistant"
+   },
+   {
+    "w": 96,
+    "h": 15,
+    "y": 332,
+    "txt": "How training works"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Train now"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "training-weekplan-1440-dark": {
+  "url": "/training?tab=weekplan",
+  "docH": 900,
+  "hScroll": false,
+  "h1": "Daily training",
+  "h1Y": 28,
+  "firstRowY": null,
+  "smallCount": 49,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 257,
+    "txt": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 292,
+    "txt": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 328,
+    "txt": "ForumNew forum activity"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 363,
+    "txt": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 399,
+    "txt": "U23 team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 434,
+    "txt": "Junior team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 505,
+    "txt": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Academy"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 576,
+    "txt": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 647,
+    "txt": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 724,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 761,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 798,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 900,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 936,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 971,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1007,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1042,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1078,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1113,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1149,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1188,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 81,
+    "h": 30,
+    "y": 40,
+    "txt": "Train now"
+   },
+   {
+    "w": 72,
+    "h": 42,
+    "y": 133,
+    "txt": "Today"
+   },
+   {
+    "w": 87,
+    "h": 42,
+    "y": 133,
+    "txt": "Program"
+   },
+   {
+    "w": 120,
+    "h": 42,
+    "y": 133,
+    "txt": "Development"
+   },
+   {
+    "w": 76,
+    "h": 42,
+    "y": 133,
+    "txt": "Report"
+   },
+   {
+    "w": 48,
+    "h": 28,
+    "y": 189,
+    "txt": "Plan"
+   },
+   {
+    "w": 78,
+    "h": 28,
+    "y": 189,
+    "txt": "Programs"
+   },
+   {
+    "w": 93,
+    "h": 28,
+    "y": 189,
+    "txt": "Fatigue limit"
+   },
+   {
+    "w": 190,
+    "h": 32,
+    "y": 241,
+    "txt": "Plan for"
+   },
+   {
+    "w": 210,
+    "h": 28,
+    "y": 353,
+    "txt": "Whole day · Mon"
+   },
+   {
+    "w": 210,
+    "h": 28,
+    "y": 390,
+    "txt": "Whole day · Tue"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Train now"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "training-development-1440-dark": {
+  "url": "/training?tab=development",
+  "docH": 900,
+  "hScroll": false,
+  "h1": "Daily training",
+  "h1Y": 28,
+  "firstRowY": null,
+  "smallCount": 36,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 257,
+    "txt": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 292,
+    "txt": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 328,
+    "txt": "ForumNew forum activity"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 363,
+    "txt": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 399,
+    "txt": "U23 team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 434,
+    "txt": "Junior team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 505,
+    "txt": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Academy"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 576,
+    "txt": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 647,
+    "txt": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 724,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 761,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 798,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 900,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 936,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 971,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1007,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1042,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1078,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1113,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1149,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1188,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 81,
+    "h": 30,
+    "y": 40,
+    "txt": "Train now"
+   },
+   {
+    "w": 72,
+    "h": 42,
+    "y": 133,
+    "txt": "Today"
+   },
+   {
+    "w": 87,
+    "h": 42,
+    "y": 133,
+    "txt": "Program"
+   },
+   {
+    "w": 120,
+    "h": 42,
+    "y": 133,
+    "txt": "Development"
+   },
+   {
+    "w": 76,
+    "h": 42,
+    "y": 133,
+    "txt": "Report"
+   },
+   {
+    "w": 106,
+    "h": 17,
+    "y": 317,
+    "txt": "Ada Pedersen"
+   },
+   {
+    "w": 138,
+    "h": 34,
+    "y": 316,
+    "txt": "Day — Ada Pedersen"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Train now"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "training-report-1440-dark": {
+  "url": "/training?tab=report",
+  "docH": 900,
+  "hScroll": false,
+  "h1": "Daily training",
+  "h1Y": 28,
+  "firstRowY": null,
+  "smallCount": 34,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 257,
+    "txt": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 292,
+    "txt": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 328,
+    "txt": "ForumNew forum activity"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 363,
+    "txt": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 399,
+    "txt": "U23 team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 434,
+    "txt": "Junior team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 505,
+    "txt": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Academy"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 576,
+    "txt": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 647,
+    "txt": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 724,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 761,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 798,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 900,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 936,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 971,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1007,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1042,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1078,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1113,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1149,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1188,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 81,
+    "h": 30,
+    "y": 40,
+    "txt": "Train now"
+   },
+   {
+    "w": 72,
+    "h": 42,
+    "y": 133,
+    "txt": "Today"
+   },
+   {
+    "w": 87,
+    "h": 42,
+    "y": 133,
+    "txt": "Program"
+   },
+   {
+    "w": 120,
+    "h": 42,
+    "y": 133,
+    "txt": "Development"
+   },
+   {
+    "w": 76,
+    "h": 42,
+    "y": 133,
+    "txt": "Report"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Train now"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "academy-1440-dark": {
+  "url": "/academy",
+  "docH": 1279,
+  "hScroll": false,
+  "h1": "Academy",
+  "h1Y": 28,
+  "firstRowY": 1141,
+  "smallCount": 38,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 257,
+    "txt": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 292,
+    "txt": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 328,
+    "txt": "ForumNew forum activity"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 363,
+    "txt": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 399,
+    "txt": "U23 team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 434,
+    "txt": "Junior team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 505,
+    "txt": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Academy"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 576,
+    "txt": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 647,
+    "txt": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 724,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 761,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 798,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 900,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 936,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 971,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1007,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1042,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1078,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1113,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1149,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1188,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 151,
+    "h": 30,
+    "y": 166,
+    "txt": "Open Graduation Day"
+   },
+   {
+    "w": 168,
+    "h": 30,
+    "y": 471,
+    "txt": "Sign"
+   },
+   {
+    "w": 168,
+    "h": 30,
+    "y": 471,
+    "txt": "Reject"
+   },
+   {
+    "w": 168,
+    "h": 30,
+    "y": 471,
+    "txt": "Sign"
+   },
+   {
+    "w": 168,
+    "h": 30,
+    "y": 471,
+    "txt": "Reject"
+   },
+   {
+    "w": 168,
+    "h": 30,
+    "y": 471,
+    "txt": "Sign"
+   },
+   {
+    "w": 168,
+    "h": 30,
+    "y": 471,
+    "txt": "Reject"
+   },
+   {
+    "w": 100,
+    "h": 18,
+    "y": 1150,
+    "txt": "Théo Dubois"
+   },
+   {
+    "w": 97,
+    "h": 18,
+    "y": 1187,
+    "txt": "Mateo Rossi"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "graduation-1440-dark": {
+  "url": "/academy/graduation",
+  "docH": 900,
+  "hScroll": false,
+  "h1": "Graduation Day",
+  "h1Y": 28,
+  "firstRowY": null,
+  "smallCount": 34,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 257,
+    "txt": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 292,
+    "txt": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 328,
+    "txt": "ForumNew forum activity"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 363,
+    "txt": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 399,
+    "txt": "U23 team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 434,
+    "txt": "Junior team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 505,
+    "txt": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Academy"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 576,
+    "txt": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 647,
+    "txt": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 724,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 761,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 798,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 900,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 936,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 971,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1007,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1042,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1078,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1113,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1149,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1188,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 88,
+    "h": 30,
+    "y": 40,
+    "txt": "Confirm all"
+   },
+   {
+    "w": 121,
+    "h": 17,
+    "y": 200,
+    "txt": "Tobias Lindqvist"
+   },
+   {
+    "w": 72,
+    "h": 28,
+    "y": 216,
+    "txt": "Move up"
+   },
+   {
+    "w": 44,
+    "h": 28,
+    "y": 216,
+    "txt": "Sell"
+   },
+   {
+    "w": 67,
+    "h": 28,
+    "y": 216,
+    "txt": "Release"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Confirm all"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "scouting-1440-dark": {
+  "url": "/scouting",
+  "docH": 1224,
+  "hScroll": false,
+  "h1": "Scouting",
+  "h1Y": 28,
+  "firstRowY": null,
+  "smallCount": 37,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 257,
+    "txt": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 292,
+    "txt": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 328,
+    "txt": "ForumNew forum activity"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 363,
+    "txt": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 399,
+    "txt": "U23 team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 434,
+    "txt": "Junior team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 505,
+    "txt": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Academy"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 576,
+    "txt": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 647,
+    "txt": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 724,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 761,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 798,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 900,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 936,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 971,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1007,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1042,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1078,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1113,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1149,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1188,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 1,
+    "h": 1,
+    "y": 539,
+    "txt": ""
+   },
+   {
+    "w": 1,
+    "h": 1,
+    "y": 539,
+    "txt": ""
+   },
+   {
+    "w": 206,
+    "h": 38,
+    "y": 652,
+    "txt": "U23 ridersCountryNational championshipsR"
+   },
+   {
+    "w": 102,
+    "h": 30,
+    "y": 660,
+    "txt": "Start mission"
+   },
+   {
+    "w": 93,
+    "h": 17,
+    "y": 854,
+    "txt": "Jonas Vinter"
+   },
+   {
+    "w": 102,
+    "h": 17,
+    "y": 854,
+    "txt": "Emil Nørgaard"
+   },
+   {
+    "w": 103,
+    "h": 17,
+    "y": 854,
+    "txt": "Mikkel Hansen"
+   },
+   {
+    "w": 101,
+    "h": 17,
+    "y": 1120,
+    "txt": "Ada Pedersen"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Start mission"
+  ],
+  "shadows": 0,
+  "bebas": [
+   "Scouting",
+   "Default scout",
+   "Free agents",
+   "Riders on other teams"
+  ],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "notifications-1440-dark": {
+  "url": "/notifications",
+  "docH": 900,
+  "hScroll": false,
+  "h1": "Inbox",
+  "h1Y": 28,
+  "firstRowY": null,
+  "smallCount": 38,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 257,
+    "txt": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 292,
+    "txt": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 328,
+    "txt": "ForumNew forum activity"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 363,
+    "txt": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 399,
+    "txt": "U23 team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 434,
+    "txt": "Junior team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 505,
+    "txt": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Academy"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 576,
+    "txt": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 647,
+    "txt": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 724,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 761,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 798,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 900,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 936,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 971,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1007,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1042,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1078,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1113,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1149,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1188,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 100,
+    "h": 30,
+    "y": 40,
+    "txt": "Mark all read"
+   },
+   {
+    "w": 90,
+    "h": 42,
+    "y": 106,
+    "txt": "Mine7"
+   },
+   {
+    "w": 95,
+    "h": 42,
+    "y": 106,
+    "txt": "To handle"
+   },
+   {
+    "w": 79,
+    "h": 42,
+    "y": 106,
+    "txt": "League"
+   },
+   {
+    "w": 107,
+    "h": 42,
+    "y": 106,
+    "txt": "My Activity"
+   },
+   {
+    "w": 97,
+    "h": 42,
+    "y": 106,
+    "txt": "Messages"
+   },
+   {
+    "w": 224,
+    "h": 30,
+    "y": 165,
+    "txt": "Filter notifications"
+   },
+   {
+    "w": 24,
+    "h": 24,
+    "y": 249,
+    "txt": "Delete all"
+   },
+   {
+    "w": 24,
+    "h": 24,
+    "y": 354,
+    "txt": "Delete all"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "forum-1440-dark": {
+  "url": "/forum",
+  "docH": 900,
+  "hScroll": false,
+  "h1": "Forum",
+  "h1Y": 28,
+  "firstRowY": null,
+  "smallCount": 40,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 257,
+    "txt": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 292,
+    "txt": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 328,
+    "txt": "ForumNew forum activity"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 363,
+    "txt": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 399,
+    "txt": "U23 team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 434,
+    "txt": "Junior team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 505,
+    "txt": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Academy"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 576,
+    "txt": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 647,
+    "txt": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 724,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 761,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 798,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 900,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 936,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 971,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1007,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1042,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1078,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1113,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1149,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1188,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 116,
+    "h": 30,
+    "y": 40,
+    "txt": "Mark all as read"
+   },
+   {
+    "w": 80,
+    "h": 30,
+    "y": 40,
+    "txt": "New post"
+   },
+   {
+    "w": 48,
+    "h": 42,
+    "y": 106,
+    "txt": "All"
+   },
+   {
+    "w": 113,
+    "h": 42,
+    "y": 106,
+    "txt": "Roadmap"
+   },
+   {
+    "w": 84,
+    "h": 42,
+    "y": 106,
+    "txt": "General"
+   },
+   {
+    "w": 150,
+    "h": 42,
+    "y": 106,
+    "txt": "Feedback & ideas"
+   },
+   {
+    "w": 171,
+    "h": 42,
+    "y": 106,
+    "txt": "Questions & answers"
+   },
+   {
+    "w": 152,
+    "h": 42,
+    "y": 106,
+    "txt": "Tactics & strategy"
+   },
+   {
+    "w": 93,
+    "h": 42,
+    "y": 106,
+    "txt": "Transfers"
+   },
+   {
+    "w": 95,
+    "h": 42,
+    "y": 152,
+    "txt": "Off-topic"
+   },
+   {
+    "w": 82,
+    "h": 42,
+    "y": 152,
+    "txt": "Archive"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "New post"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "forum-post-1440-dark": {
+  "url": "/forum/forum-post-1",
+  "docH": 1357,
+  "hScroll": false,
+  "h1": "What I am building next",
+  "h1Y": 65,
+  "firstRowY": null,
+  "smallCount": 57,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 257,
+    "txt": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 292,
+    "txt": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 328,
+    "txt": "ForumNew forum activity"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 363,
+    "txt": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 399,
+    "txt": "U23 team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 434,
+    "txt": "Junior team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 505,
+    "txt": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Academy"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 576,
+    "txt": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 647,
+    "txt": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 724,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 761,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 798,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 900,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 936,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 971,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1007,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1042,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1078,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1113,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1149,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1188,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 99,
+    "h": 16,
+    "y": 33,
+    "txt": "Back to the forum"
+   },
+   {
+    "w": 58,
+    "h": 30,
+    "y": 285,
+    "txt": "Support this (14 supporters)"
+   },
+   {
+    "w": 88,
+    "h": 30,
+    "y": 285,
+    "txt": "Quote"
+   },
+   {
+    "w": 65,
+    "h": 30,
+    "y": 285,
+    "txt": "Report"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 423,
+    "txt": "Open the manager profile for peloton_pet"
+   },
+   {
+    "w": 85,
+    "h": 15,
+    "y": 429,
+    "txt": "peloton_pete"
+   },
+   {
+    "w": 46,
+    "h": 15,
+    "y": 429,
+    "txt": "Message peloton_pete"
+   },
+   {
+    "w": 91,
+    "h": 14,
+    "y": 603,
+    "txt": "Thunder Cycling"
+   },
+   {
+    "w": 54,
+    "h": 30,
+    "y": 626,
+    "txt": "Remove your support (6 supporters)"
+   },
+   {
+    "w": 88,
+    "h": 30,
+    "y": 626,
+    "txt": "Quote"
+   },
+   {
+    "w": 65,
+    "h": 30,
+    "y": 626,
+    "txt": "Report"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Reply"
+  ],
+  "shadows": 4,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "help-1440-dark": {
+  "url": "/help",
+  "docH": 1207,
+  "hScroll": false,
+  "h1": "Help",
+  "h1Y": 28,
+  "firstRowY": null,
+  "smallCount": 41,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 259,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 296,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 333,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 435,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 506,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 577,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 648,
+    "txt": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 723,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 896,
+    "h": 38,
+    "y": 106,
+    "txt": "Search help and FAQ"
+   },
+   {
+    "w": 160,
+    "h": 34,
+    "y": 164,
+    "txt": "Getting started"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 202,
+    "txt": "Board"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 238,
+    "txt": "The Mandate"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 274,
+    "txt": "Auctions"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 310,
+    "txt": "Transfers"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 346,
+    "txt": "Contracts"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 382,
+    "txt": "Manager & Profile"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 418,
+    "txt": "Forum"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 454,
+    "txt": "Messages"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 490,
+    "txt": "Discord DMs"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 526,
+    "txt": "Achievements"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 562,
+    "txt": "Watchlist"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 598,
+    "txt": "My Activity"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 634,
+    "txt": "Season"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 670,
+    "txt": "Prizes"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 706,
+    "txt": "Divisions"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 742,
+    "txt": "Global Rank"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 778,
+    "txt": "Riders"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 814,
+    "txt": "Daily Training"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 850,
+    "txt": "Academy"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 938,
+    "txt": "Club facilities"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 974,
+    "txt": "Activity feed"
+   },
+   {
+    "w": 160,
+    "h": 32,
+    "y": 1010,
+    "txt": "Team selection"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "patch-notes-1440-dark": {
+  "url": "/patch-notes",
+  "docH": 15760,
+  "hScroll": false,
+  "h1": "Patch notes",
+  "h1Y": 28,
+  "firstRowY": null,
+  "smallCount": 220,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 259,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 296,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 333,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 435,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 506,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 577,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 648,
+    "txt": "Patch Notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 723,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 896,
+    "h": 30,
+    "y": 106,
+    "txt": "Search updates"
+   },
+   {
+    "w": 38,
+    "h": 28,
+    "y": 149,
+    "txt": "All"
+   },
+   {
+    "w": 49,
+    "h": 28,
+    "y": 149,
+    "txt": "New"
+   },
+   {
+    "w": 78,
+    "h": 28,
+    "y": 149,
+    "txt": "Improved"
+   },
+   {
+    "w": 54,
+    "h": 28,
+    "y": 149,
+    "txt": "Fixed"
+   },
+   {
+    "w": 1,
+    "h": 1,
+    "y": 153,
+    "txt": ""
+   },
+   {
+    "w": 854,
+    "h": 23,
+    "y": 223,
+    "txt": "Monday 16 November4 improvements · 1 fix"
+   },
+   {
+    "w": 840,
+    "h": 19,
+    "y": 302,
+    "txt": "Clearer stage profile on phones"
+   },
+   {
+    "w": 840,
+    "h": 19,
+    "y": 348,
+    "txt": "Clearer buying card with an auto-accept "
+   },
+   {
+    "w": 840,
+    "h": 19,
+    "y": 393,
+    "txt": "The training report shows what races gav"
+   },
+   {
+    "w": 840,
+    "h": 20,
+    "y": 439,
+    "txt": "Now live for allTrain now works straight"
+   },
+   {
+    "w": 840,
+    "h": 19,
+    "y": 511,
+    "txt": "The board's mid-season message arrives o"
+   },
+   {
+    "w": 854,
+    "h": 23,
+    "y": 599,
+    "txt": "Sunday 15 November1 new · 1 improvement "
+   },
+   {
+    "w": 854,
+    "h": 23,
+    "y": 677,
+    "txt": "Saturday 14 November1 improvement · 3 fi"
+   },
+   {
+    "w": 854,
+    "h": 23,
+    "y": 756,
+    "txt": "Friday 13 November1 new · 2 improvements"
+   },
+   {
+    "w": 854,
+    "h": 23,
+    "y": 834,
+    "txt": "Thursday 12 November2 new · 4 improvemen"
+   },
+   {
+    "w": 854,
+    "h": 23,
+    "y": 913,
+    "txt": "Wednesday 11 November1 new · 2 improveme"
+   },
+   {
+    "w": 854,
+    "h": 23,
+    "y": 991,
+    "txt": "Tuesday 10 November1 new · 2 fixes"
+   },
+   {
+    "w": 854,
+    "h": 23,
+    "y": 1070,
+    "txt": "Monday 9 November2 new · 7 improvements "
+   },
+   {
+    "w": 854,
+    "h": 23,
+    "y": 1148,
+    "txt": "Sunday 8 November1 new · 2 improvements "
+   },
+   {
+    "w": 854,
+    "h": 23,
+    "y": 1227,
+    "txt": "Saturday 7 November2 new · 2 improvement"
+   },
+   {
+    "w": 854,
+    "h": 23,
+    "y": 1305,
+    "txt": "Friday 6 November4 new · 5 improvements "
+   },
+   {
+    "w": 854,
+    "h": 23,
+    "y": 1384,
+    "txt": "Thursday 5 November3 new · 2 improvement"
+   },
+   {
+    "w": 854,
+    "h": 23,
+    "y": 1462,
+    "txt": "Wednesday 4 November3 improvements · 4 f"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "roadmap-1440-dark": {
+  "url": "/roadmap",
+  "docH": 900,
+  "hScroll": false,
+  "h1": "Roadmap",
+  "h1Y": 28,
+  "firstRowY": null,
+  "smallCount": 37,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 259,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 296,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 333,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 435,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 506,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 577,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "Roadmap"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 648,
+    "txt": "Patch Notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 723,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 16,
+    "h": 16,
+    "y": 47,
+    "txt": ""
+   },
+   {
+    "w": 384,
+    "h": 30,
+    "y": 106,
+    "txt": "Search the roadmap"
+   },
+   {
+    "w": 74,
+    "h": 42,
+    "y": 152,
+    "txt": "Plan2"
+   },
+   {
+    "w": 77,
+    "h": 42,
+    "y": 152,
+    "txt": "Beta1"
+   },
+   {
+    "w": 77,
+    "h": 42,
+    "y": 152,
+    "txt": "Vote2"
+   },
+   {
+    "w": 136,
+    "h": 42,
+    "y": 152,
+    "txt": "Known issues2"
+   },
+   {
+    "w": 81,
+    "h": 42,
+    "y": 152,
+    "txt": "Done1"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 311,
+    "txt": "1"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 311,
+    "txt": "2"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 311,
+    "txt": "3"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 311,
+    "txt": "4"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 311,
+    "txt": "5"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 311,
+    "txt": "6"
+   },
+   {
+    "w": 85,
+    "h": 28,
+    "y": 343,
+    "txt": "Don't know"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 635,
+    "txt": "1"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 635,
+    "txt": "2"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 635,
+    "txt": "3"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 635,
+    "txt": "4"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 635,
+    "txt": "5"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 635,
+    "txt": "6"
+   },
+   {
+    "w": 85,
+    "h": 28,
+    "y": 667,
+    "txt": "Don't know"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ },
+ "settings-1440-dark": {
+  "url": "/profile",
+  "docH": 900,
+  "hScroll": false,
+  "h1": "My Profile",
+  "h1Y": 28,
+  "firstRowY": null,
+  "smallCount": 28,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 222,
+    "txt": "Clubhouse"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 259,
+    "txt": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 296,
+    "txt": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 333,
+    "txt": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 435,
+    "txt": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 470,
+    "txt": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 506,
+    "txt": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 541,
+    "txt": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 577,
+    "txt": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 612,
+    "txt": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 648,
+    "txt": "Patch Notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 683,
+    "txt": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 723,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "txt": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "txt": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "txt": "Change language"
+   },
+   {
+    "w": 88,
+    "h": 42,
+    "y": 106,
+    "txt": "Account"
+   },
+   {
+    "w": 116,
+    "h": 42,
+    "y": 106,
+    "txt": "Notifications"
+   },
+   {
+    "w": 111,
+    "h": 42,
+    "y": 106,
+    "txt": "Preferences"
+   },
+   {
+    "w": 80,
+    "h": 42,
+    "y": 106,
+    "txt": "Privacy"
+   },
+   {
+    "w": 62,
+    "h": 42,
+    "y": 106,
+    "txt": "Beta"
+   },
+   {
+    "w": 460,
+    "h": 42,
+    "y": 242,
+    "txt": ""
+   },
+   {
+    "w": 66,
+    "h": 42,
+    "y": 242,
+    "txt": "Save"
+   },
+   {
+    "w": 441,
+    "h": 42,
+    "y": 345,
+    "txt": ""
+   },
+   {
+    "w": 85,
+    "h": 42,
+    "y": 345,
+    "txt": "Change"
+   },
+   {
+    "w": 534,
+    "h": 38,
+    "y": 526,
+    "txt": ""
+   },
+   {
+    "w": 534,
+    "h": 38,
+    "y": 601,
+    "txt": "Your name as manager"
+   },
+   {
+    "w": 534,
+    "h": 42,
+    "y": 655,
+    "txt": "Save team info"
+   }
+  ],
+  "overflow": [],
+  "overflowCount": 0,
+  "emoji": "",
+  "emdash": 0,
+  "golds": [
+   "Save team info"
+  ],
+  "shadows": 0,
+  "bebas": [],
+  "errorText": false,
+  "pageErrors": []
+ }
+}
