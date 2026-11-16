@@ -144,7 +144,7 @@ export async function saveAcademyProfileWithAgeFocus(supabase, { teamId, input, 
  *   PUT /profile    { origins, types, ageFocus } -> ny ventende profilrække
  * Slukket kontakt = 409 academy_page_v2_disabled.
  */
-export function createAcademyV2Router({ supabase, requireAuth, writeLimiter, isViewerBetaTester, reportError = () => {} }) {
+export function createAcademyV2Router({ supabase, requireAuth, writeLimiter, isViewerBetaTester, reportError: captureException = () => {} }) {
   const router = express.Router();
 
   async function gate(req, res) {
@@ -155,8 +155,7 @@ export function createAcademyV2Router({ supabase, requireAuth, writeLimiter, isV
     return true;
   }
 
-  function fail(err, req, res) {
-    reportError(err, { tags: { route: `/academy/v2${req.path}`, method: req.method } });
+  function respondFailed(res) {
     if (!res.headersSent) res.status(500).json({ error: "academy_v2_failed" });
   }
 
@@ -166,7 +165,8 @@ export function createAcademyV2Router({ supabase, requireAuth, writeLimiter, isV
       res.set("Cache-Control", "no-store");
       res.json(await loadAgeFocusState(supabase, { teamId: req.team.id }));
     } catch (err) {
-      fail(err, req, res);
+      captureException(err, { tags: { route: `/academy/v2${req.path}`, method: req.method } });
+      respondFailed(res);
     }
   });
 
@@ -178,7 +178,8 @@ export function createAcademyV2Router({ supabase, requireAuth, writeLimiter, isV
       if (!result.ok) return res.status(400).json({ error: result.error });
       res.json(result);
     } catch (err) {
-      fail(err, req, res);
+      captureException(err, { tags: { route: `/academy/v2${req.path}`, method: req.method } });
+      respondFailed(res);
     }
   });
 

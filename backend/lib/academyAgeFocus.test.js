@@ -113,6 +113,57 @@ test("kontakten er slukket uden række, og står i kataloget og spiller-allowlis
   assert.ok(PLAYER_VISIBLE_FLAG_KEYS.includes(ACADEMY_PAGE_V2_FLAG_KEY));
 });
 
+// Router mod en fake med app_config-værdier pr. nøgle (ny klient pr. test = ingen flag-cache).
+async function withRouter(flags, fn) {
+  const { default: express } = await import("express");
+  const { createAcademyV2Router } = await import("./academyAgeFocus.js");
+  const db = fakeSupabase({ tier: 3 });
+  const baseFrom = db.from.bind(db);
+  db.from = (table) => (table === "app_config"
+    ? { select: () => ({ eq: (_col, key) => ({ maybeSingle: () => Promise.resolve({ data: key in flags ? { value: flags[key] } : null, error: null }) }) }) }
+    : baseFrom(table));
+  const app = express();
+  app.use(express.json());
+  app.use("/academy/v2", createAcademyV2Router({
+    supabase: db,
+    requireAuth: (req, _res, next) => { req.team = { id: "team-a" }; next(); },
+    writeLimiter: (_req, _res, next) => next(),
+    isViewerBetaTester: async () => false,
+  }));
+  const server = app.listen(0);
+  try {
+    await fn(`http://127.0.0.1:${server.address().port}/academy/v2`, db);
+  } finally {
+    server.close();
+  }
+}
+const putProfile = (base, body) => fetch(`${base}/profile`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+
+test("slukket kontakt (akademiet tændt): begge ruter svarer 409 academy_page_v2_disabled og skriver intet", async () => {
+  await withRouter({ academy_enabled: "on", academy_intake_pull_enabled: "on" }, async (base, db) => {
+    const get = await fetch(`${base}/age-focus`);
+    const put = await putProfile(base, { origins: [], types: [], ageFocus: "16" });
+    assert.equal(get.status, 409);
+    assert.equal((await get.json()).error, "academy_page_v2_disabled");
+    assert.equal(put.status, 409);
+    assert.equal(db.rpcCalls.length, 0);
+  });
+});
+
+test("tændt kontakt: GET svarer tilstanden, PUT gemmer, et ugyldigt valg giver 400", async () => {
+  await withRouter({ academy_enabled: "on", academy_intake_pull_enabled: "on", academy_page_v2_8081: "on" }, async (base, db) => {
+    const get = await fetch(`${base}/age-focus`);
+    assert.equal(get.status, 200);
+    assert.equal((await get.json()).unlocked, true);
+    const ok = await putProfile(base, { origins: ["DK"], types: [], ageFocus: "17" });
+    assert.equal(ok.status, 200);
+    assert.equal(db.rpcCalls[0].args.p_age_focus, "17");
+    const bad = await putProfile(base, { origins: [], types: [], ageFocus: "25" });
+    assert.equal(bad.status, 400);
+    assert.equal(db.rpcCalls.length, 1);
+  });
+});
+
 test("migrationen seeder kontakten off og rører ikke den gamle gem-funktion", () => {
   const sql = readFileSync(new URL("../../database/2026-11-16-8081-academy-v2.sql", import.meta.url), "utf8");
   assert.match(sql, /'academy_page_v2_8081',\s*'"off"'::jsonb/);
