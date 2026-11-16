@@ -178,7 +178,7 @@ export const RIDERS: SketchRider[] = [
     change: {
       source: "unknown",
       km: null,
-      text: t("The record shows no move for him to follow. Not seen is not failed", "Optegnelsen viser intet angreb, han kunne følge. Ikke set er ikke mislykket"),
+      text: t("Step 1 not seen: the record shows no move for him to follow", "Trin 1 ikke set: optegnelsen viser intet angreb, han kunne følge"),
     },
     finish: t("No. 33 · +6:15", "Nr. 33 · +6:15"),
   },
@@ -196,7 +196,7 @@ export const RIDERS: SketchRider[] = [
     change: {
       source: "none",
       km: null,
-      text: t("No saved plan. He rode on his role", "Ingen gemt plan. Han kørte på sin rolle"),
+      text: t("No plan to switch", "Ingen plan at skifte"),
     },
     finish: t("No. 74 · +21:40", "Nr. 74 · +21:40"),
   },

@@ -109,7 +109,7 @@ function ReasonLine({ r, lang, compact = false }: { r: SketchRider; lang: Lang; 
       <span className="flex items-start gap-2 text-sm text-cz-3">
         <span className="inline-flex w-4 flex-none pt-[3px]"><IconInfo /></span>
         <span className="min-w-0">
-          <span className="block text-cz-2">{c.unknownReason}</span>
+          {!compact && <span className="block text-cz-2">{c.unknownReason}</span>}
           {tx(lang, ch.text)}
         </span>
       </span>
@@ -274,7 +274,6 @@ function ProfileStrip({ r, lang }: { r: SketchRider; lang: Lang }) {
   const c = COPY[lang];
   const maxM = 2200;
   const pts = STAGE.profile.map(([km, m]) => `${(km / STAGE.lengthKm) * 1000},${60 - (m / maxM) * 56}`).join(" ");
-  const switchStep = r.steps.find((s) => s.actualFromKm != null && s.plannedFrom);
   return (
     <div className="min-w-0">
       {/* Profilen: én rolig tone, rød prik ved hver kategoriseret stigning (P19, lille). */}
@@ -323,7 +322,6 @@ function ProfileStrip({ r, lang }: { r: SketchRider; lang: Lang }) {
       )}
       <div className="mt-1 flex justify-between font-data text-3xs uppercase tracking-wide text-cz-3 tabular-nums">
         <span>{c.km(0)}</span>
-        {switchStep?.plannedFrom && <span className="normal-case tracking-normal">{c.planned(tx(lang, switchStep.plannedFrom))}</span>}
         <span>{c.stageFinish} · {c.km(STAGE.lengthKm)}</span>
       </div>
     </div>
@@ -434,7 +432,8 @@ function VariantC({ lang, open }: { lang: Lang; open: string[] }) {
                 <RiderMeta r={r} lang={lang} />
               </span>
               <span className="col-span-2 row-start-2 min-w-0 md:col-span-1 md:row-start-auto"><ChainInline r={r} lang={lang} /></span>
-              <span className="col-span-2 row-start-3 min-w-0 md:col-span-1 md:row-start-auto"><ReasonLine r={r} lang={lang} compact /></span>
+              {/* Aaben: aarsagen flytter ned til det trin, hvor skiftet skete, saa den ikke staar to gange. */}
+              <span className={`col-span-2 row-start-3 min-w-0 md:col-span-1 md:row-start-auto ${r.change.source === "record" ? "max-md:group-open:hidden md:group-open:invisible" : ""}`}><ReasonLine r={r} lang={lang} compact /></span>
               <span className="col-start-2 row-start-1 inline-flex items-center gap-1 self-start whitespace-nowrap pt-0.5 text-xs font-medium text-cz-2 md:col-start-auto md:row-start-auto">
                 <span className="hidden sm:inline">{c.events(r.events.length)}</span>
                 <span className="sm:hidden font-data tabular-nums">{r.events.length}</span>
