@@ -47,8 +47,9 @@ import {
   notifyGraduationReady,
   openGraduationWindow,
 } from "./academyGraduation.js";
-import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
+import { fetchAllRows, fetchAllRowsChunkedIn, SUPABASE_IN_CHUNK_SIZE } from "./supabasePagination.js";
 import { findStuckAcademyGraduates, STUCK_GRADUATE_GRACE_HOURS } from "./stuckAcademyGraduates.js";
+import { captureException } from "./sentry.js";
 
 /**
  * Slå den aktive sæson op (id + nummer). Begge dele skal bruges: nummeret til
@@ -87,6 +88,73 @@ export async function findMissedGraduates(supabase, {
   return { seasonNumber: season, checked, missed: stuck.filter((c) => c.graduationStatuses.length === 0) };
 }
 
+// #8196 · "Sendt"-mærket bor på grad-rækken (academy_graduation.notified_at),
+// ikke i indbakken. Før var notifikations-rækken selv det eneste bevis for
+// levering: slettede manageren beskeden, så det natlige sweep rækken som
+// "aldrig notificeret" og sendte den igen hver nat, så længe vinduet stod åbent.
+export const GRADUATION_NOTIFIED_COLUMN = "notified_at";
+
+// Kolonnen kommer med en migration, der køres efter merge (#2642). Indtil da
+// svarer PostgREST 42703 (select) eller PGRST204 (update) med kolonnens navn.
+export function isMissingNotifiedColumnError(error) {
+  if (!error) return false;
+  const code = String(error.code ?? "");
+  if (code === "42703" || code === "PGRST204") return true;
+  return String(error.message ?? "").includes(GRADUATION_NOTIFIED_COLUMN);
+}
+
+async function fetchPendingGraduations(supabase, seasonId) {
+  const build = (columns) => () =>
+    supabase.from("academy_graduation")
+      .select(columns)
+      .eq("season_id", seasonId)
+      .eq("status", "pending")
+      .order("rider_id");
+  try {
+    return { rows: await fetchAllRows(build(`id, rider_id, team_id, ${GRADUATION_NOTIFIED_COLUMN}`)), markerAvailable: true };
+  } catch (err) {
+    if (!isMissingNotifiedColumnError(err)) throw err;
+    // best-effort: forventet i auto-migrate-vinduet; synligt, så en migration der
+    // aldrig blev kørt ikke gemmer sig bag faldvejen. Det gamle værn gælder så.
+    console.warn(`  ⚠️  missed-graduate: ${GRADUATION_NOTIFIED_COLUMN} mangler, bruger gammelt gentagelsesvaern (#8196)`);
+    return { rows: await fetchAllRows(build("id, rider_id, team_id")), markerAvailable: false };
+  }
+}
+
+/**
+ * #8196 · Sæt "sendt"-mærket på grad-rækkerne. Fejl her må aldrig vælte sweepet:
+ * beskeden er allerede leveret, og næste tick sætter mærket via "beskeden findes".
+ *
+ * @returns {Promise<{marked:number, error?:string}>}
+ */
+export async function markGraduationsNotified(supabase, { ids, now = new Date() } = {}) {
+  if (!ids?.length) return { marked: 0 };
+  // Codex P2 (#8214): en lang id-liste i ét .in() sprænger gatewayens request-linje.
+  // Opdatér i bidder, så en fejlet bid ikke tager de allerede mærkede med sig.
+  let marked = 0;
+  try {
+    for (let i = 0; i < ids.length; i += SUPABASE_IN_CHUNK_SIZE) {
+      const chunk = ids.slice(i, i + SUPABASE_IN_CHUNK_SIZE);
+      const { error } = await supabase.from("academy_graduation")
+        .update({ [GRADUATION_NOTIFIED_COLUMN]: now.toISOString() })
+        .in("id", chunk)
+        .is(GRADUATION_NOTIFIED_COLUMN, null);
+      if (error) throw error;
+      marked += chunk.length;
+    }
+    return { marked };
+  } catch (err) {
+    // best-effort: fejlen sluges IKKE. Den bæres videre i sweepets `errors` og
+    // captures her, fordi cron.js kun captures backfillens per-rytter-fejl.
+    console.error("  ⚠️  missed-graduate: notified_at marker failed:", err?.message || err);
+    captureException(err instanceof Error ? err : new Error(String(err?.message || err)), {
+      tags: { cron: "graduation sweep", stage: "notified-marker" },
+      extra: { count: ids.length },
+    });
+    return { marked, error: err?.message || String(err) };
+  }
+}
+
 /**
  * Pending graduerings-rækker hvis manager ALDRIG fik sin notifikation.
  *
@@ -101,21 +169,24 @@ export async function findMissedGraduates(supabase, {
  * notifikationen i virkeligheden nåede frem. Matchet er (holdets user_id, type,
  * related_id = rytteren) — samme tre felter notifikationen skrives med.
  *
+ * #8196: en række med notified_at er leveret, uanset om beskeden stadig ligger i
+ * indbakken. En række uden mærke, hvis besked findes (sendt før #8196 eller af
+ * sæsonskiftet), kommer i `toMark`, så mærket sættes og en senere sletning ikke
+ * udløser en ny besked.
+ *
  * AI-hold (teams.user_id = null) har ingen modtager og udelades: ellers ville
  * hvert tick prøve at levere en besked der pr. definition ikke kan leveres.
  *
- * @returns {Promise<Array<{graduationId:string, riderId:string, teamId:string, name:string}>>}
+ * @returns {Promise<{missing:Array<{graduationId:string, riderId:string, teamId:string, name:string}>,
+ *                    toMark:string[], markerAvailable:boolean}>}
  */
-export async function findPendingWithoutNotification(supabase, { seasonId } = {}) {
+export async function planPendingNotifications(supabase, { seasonId } = {}) {
   if (!seasonId) throw new Error("findPendingWithoutNotification: seasonId required");
 
-  const pending = await fetchAllRows(() =>
-    supabase.from("academy_graduation")
-      .select("id, rider_id, team_id")
-      .eq("season_id", seasonId)
-      .eq("status", "pending")
-      .order("rider_id"));
-  if (pending.length === 0) return [];
+  const { rows, markerAvailable } = await fetchPendingGraduations(supabase, seasonId);
+  // #8196: mærket er sandheden; indbakke-rækken kan være slettet af manageren.
+  const pending = markerAvailable ? rows.filter((g) => !g[GRADUATION_NOTIFIED_COLUMN]) : rows;
+  if (pending.length === 0) return { missing: [], toMark: [], markerAvailable };
 
   const riderIds = [...new Set(pending.map((g) => g.rider_id))];
   const teamIds = [...new Set(pending.map((g) => g.team_id).filter(Boolean))];
@@ -139,10 +210,14 @@ export async function findPendingWithoutNotification(supabase, { seasonId } = {}
   const riderById = new Map(riders.map((r) => [r.id, r]));
 
   const missing = [];
+  const toMark = [];
   for (const g of pending) {
     const userId = ownerByTeam.get(g.team_id);
     if (!userId) continue;
-    if (delivered.has(`${userId}::${g.rider_id}`)) continue;
+    if (delivered.has(`${userId}::${g.rider_id}`)) {
+      if (markerAvailable) toMark.push(g.id);
+      continue;
+    }
     const r = riderById.get(g.rider_id);
     missing.push({
       graduationId: g.id,
@@ -153,7 +228,17 @@ export async function findPendingWithoutNotification(supabase, { seasonId } = {}
       name: `${r?.firstname ?? ""} ${r?.lastname ?? ""}`.trim(),
     });
   }
-  return missing;
+  return { missing, toMark, markerAvailable };
+}
+
+/**
+ * Bagudkompatibel læse-indgang (dry-run, tests): kun listen over manglende
+ * notifikationer. Skriver intet.
+ *
+ * @returns {Promise<Array<{graduationId:string, riderId:string, teamId:string, name:string}>>}
+ */
+export async function findPendingWithoutNotification(supabase, { seasonId } = {}) {
+  return (await planPendingNotifications(supabase, { seasonId })).missing;
 }
 
 /**
@@ -206,7 +291,9 @@ export async function runMissedGraduateSweep({
   // Efter-leveringen kører FØR oprettelserne, så en række der oprettes i dette
   // tick ikke kan blive vurderet af to stier i samme kørsel. Fejler notifikationen
   // igen nu, fanger næste tick den igen.
-  const missingNotifications = await findPendingWithoutNotification(supabase, { seasonId: active.id });
+  const {
+    missing: missingNotifications, toMark, markerAvailable,
+  } = await planPendingNotifications(supabase, { seasonId: active.id });
 
   if (dryRun) {
     return { ...empty, checked, seasonNumber: active.number, candidates, missingNotifications, dryRun: true };
@@ -215,13 +302,18 @@ export async function runMissedGraduateSweep({
   let created = 0, duplicates = 0, failed = 0, notificationsSent = 0;
   const errors = [];
 
+  // #8196: beskeder der allerede ligger i indbakken (sendt før mærket fandtes,
+  // eller af sæsonskiftet) får mærket nu, så en senere sletning ikke giver en ny.
+  const deliveredIds = [...toMark];
   for (const m of missingNotifications) {
     try {
-      await notifyGraduationReady(supabase, {
+      const res = await notifyGraduationReady(supabase, {
         rider: { id: m.riderId, team_id: m.teamId, firstname: m.firstname, lastname: m.lastname },
         notify,
       });
       notificationsSent++;
+      // deduped = en matchende besked findes allerede; begge dele er "leveret".
+      if (markerAvailable && (res?.delivered || res?.deduped)) deliveredIds.push(m.graduationId);
     } catch (err) {
       // best-effort pr. rytter: fejlen sluges IKKE, den bæres videre i `errors`
       // og captures aggregeret i cron.js. Rækken står stadig som pending, så
@@ -231,6 +323,8 @@ export async function runMissedGraduateSweep({
       console.error(`missed-graduate notify backfill failed (${m.riderId}):`, err?.message || err);
     }
   }
+  const marker = await markGraduationsNotified(supabase, { ids: deliveredIds, now });
+  if (marker.error) errors.push({ phase: "notified_marker", count: deliveredIds.length, message: marker.error });
   // Per-rytter try/catch: én rytter med et ødelagt hold må ikke koste de andre
   // deres vindue (samme isolation som graduerings-sweepets resolve-loop).
   for (const c of missed) {

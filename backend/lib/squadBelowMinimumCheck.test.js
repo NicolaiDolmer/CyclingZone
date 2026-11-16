@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+const NOW_8196 = new Date("2026-11-16T09:00:00.000Z"); // fast ur til alle kald (hard rule 16)
+
 import {
   SQUAD_BELOW_MINIMUM_TYPE,
   buildSquadBelowMinimumNotification,
@@ -36,6 +38,7 @@ function seniorCounts(entries) {
 test("detectAndNotifySquadsBelowMinimum: ingen hold under minimum → ingen notifikationer", async () => {
   const notified = [];
   const stats = await detectAndNotifySquadsBelowMinimum({
+    now: NOW_8196,
     supabase: makeNoopSupabase(),
     notify: async (payload) => { notified.push(payload); return { delivered: true }; },
     fetchHumanTeams: async () => [
@@ -56,6 +59,7 @@ test("detectAndNotifySquadsBelowMinimum: ingen hold under minimum → ingen noti
 test("detectAndNotifySquadsBelowMinimum: hold under 6 bliver detekteret + varslet", async () => {
   const notified = [];
   const stats = await detectAndNotifySquadsBelowMinimum({
+    now: NOW_8196,
     supabase: makeNoopSupabase(),
     notify: async (payload) => { notified.push(payload); return { delivered: true }; },
     fetchHumanTeams: async () => [
@@ -88,6 +92,7 @@ test("detectAndNotifySquadsBelowMinimum: hold under 6 bliver detekteret + varsle
 
 test("detectAndNotifySquadsBelowMinimum: nøjagtigt på grænsen (6) tæller IKKE som under minimum", async () => {
   const stats = await detectAndNotifySquadsBelowMinimum({
+    now: NOW_8196,
     supabase: makeNoopSupabase(),
     notify: async () => ({ delivered: true }),
     fetchHumanTeams: async () => [{ id: "t1", name: "Alpha CC", user_id: "u1" }],
@@ -99,6 +104,7 @@ test("detectAndNotifySquadsBelowMinimum: nøjagtigt på grænsen (6) tæller IKK
 
 test("detectAndNotifySquadsBelowMinimum: injicerbar minRiders (test-override)", async () => {
   const stats = await detectAndNotifySquadsBelowMinimum({
+    now: NOW_8196,
     supabase: makeNoopSupabase(),
     minRiders: 3,
     notify: async () => ({ delivered: true }),
@@ -112,6 +118,7 @@ test("detectAndNotifySquadsBelowMinimum: injicerbar minRiders (test-override)", 
 test("detectAndNotifySquadsBelowMinimum: ét holds notif-fejl stopper ikke resten (isoleret try/catch)", async () => {
   const notified = [];
   const stats = await detectAndNotifySquadsBelowMinimum({
+    now: NOW_8196,
     supabase: makeNoopSupabase(),
     notify: async (payload) => {
       if (payload.userId === "u1") throw new Error("simuleret notif-fejl");
@@ -136,6 +143,7 @@ test("detectAndNotifySquadsBelowMinimum: ét holds notif-fejl stopper ikke reste
 test("detectAndNotifySquadsBelowMinimum: fetch-fejl FØR loopet hænger partialStats på error", async () => {
   await assert.rejects(
     () => detectAndNotifySquadsBelowMinimum({
+      now: NOW_8196,
       supabase: makeNoopSupabase(),
       fetchHumanTeams: async () => { throw new Error("simuleret DB-fejl"); },
     }),
@@ -149,7 +157,7 @@ test("detectAndNotifySquadsBelowMinimum: fetch-fejl FØR loopet hænger partialS
 
 test("detectAndNotifySquadsBelowMinimum: kaster hvis supabase mangler", async () => {
   await assert.rejects(
-    () => detectAndNotifySquadsBelowMinimum({ supabase: null }),
+    () => detectAndNotifySquadsBelowMinimum({ supabase: null, now: NOW_8196 }),
     /Supabase client required/
   );
 });
@@ -215,6 +223,7 @@ test("#5864 planSquadsBelowMinimum: youth squads are only checked when the team 
 test("#5864 detect: one notification per team+squad, youth variant names the squad and explains expiry", async () => {
   const notified = [];
   const stats = await detectAndNotifySquadsBelowMinimum({
+    now: NOW_8196,
     supabase: makeNoopSupabase(),
     seasonNumber: 5,
     notify: async (payload) => { notified.push(payload); return { delivered: true }; },
@@ -254,6 +263,7 @@ test("#5864 detect: an existing notification with the same (team, squad, season)
   const notified = [];
   const asked = [];
   const stats = await detectAndNotifySquadsBelowMinimum({
+    now: NOW_8196,
     supabase: makeNoopSupabase(),
     seasonNumber: 5,
     notify: async (payload) => { notified.push(payload); return { delivered: true }; },
@@ -276,6 +286,7 @@ test("#5864 detect: an existing notification with the same (team, squad, season)
 
 test("#5864 detect: without a season number there is no dedupe key, so no lookup (falls back to notifyUser's own dedupe)", async () => {
   const stats = await detectAndNotifySquadsBelowMinimum({
+    now: NOW_8196,
     supabase: makeNoopSupabase(),
     notify: async () => ({ delivered: false, deduped: true }),
     fetchHumanTeams: async () => [youthTeam("A")],
@@ -291,6 +302,7 @@ test("#5864 detect: no auto-fill, the phase never writes riders", async () => {
   const touched = [];
   const supabase = { from: (t) => { touched.push(t); return {}; } };
   await detectAndNotifySquadsBelowMinimum({
+    now: NOW_8196,
     supabase,
     seasonNumber: 5,
     notify: async () => ({ delivered: true }),
@@ -364,6 +376,7 @@ test("default fetchers: applyHumanTeamFilter + pool columns, is_retired=false, c
   });
   const notified = [];
   const stats = await detectAndNotifySquadsBelowMinimum({
+    now: NOW_8196,
     supabase,
     seasonNumber: 5,
     notify: async (p) => { notified.push(p); return { delivered: true }; },
@@ -406,4 +419,138 @@ test("defaultFetchActiveRiderCounts stays SENIOR-only for its other callers (sel
   const q = supabase.queries[0];
   assert.equal(q.filters.is_academy, false);
   assert.equal(q.filters.is_retired, false);
+});
+
+// =====================================================================
+// #8196 · en slettet trup-besked må ikke sendes igen ved en genkørsel
+// =====================================================================
+// Transitionen er bygget til re-run efter delvis fejl. Før var beskeden i
+// indbakken eneste værn: slettede manageren den, sendte en genkørsel den igen.
+
+
+/** Indbakke + mærke-store i hukommelsen. Indbakken kan tømmes (= manageren sletter). */
+function make8196World({ markersMissing = false, markFails = false } = {}) {
+  const inbox = [];
+  const markers = new Map();
+  const calls = [];
+  const missing = { code: "42P01", message: 'relation "public.notification_sent_markers" does not exist' };
+  return {
+    inbox,
+    markers,
+    calls,
+    notify: async (payload) => {
+      inbox.push({ userId: payload.userId, dedupeKey: payload.metadata?.dedupeKey });
+      return { delivered: true, deduped: false };
+    },
+    hasNotificationForKey: async ({ userId, dedupeKey }) =>
+      inbox.some((n) => n.userId === userId && n.dedupeKey === dedupeKey),
+    sentMarkers: {
+      has: async ({ dedupeKey }) => {
+        calls.push(["has", dedupeKey]);
+        if (markersMissing) throw missing;
+        return markers.has(dedupeKey);
+      },
+      mark: async ({ dedupeKey, sentAtIso }) => {
+        calls.push(["mark", dedupeKey]);
+        if (markersMissing) throw missing;
+        if (markFails) throw new Error("canceling statement due to statement timeout");
+        if (!markers.has(dedupeKey)) markers.set(dedupeKey, sentAtIso);
+      },
+    },
+  };
+}
+
+function run8196(world, extra = {}) {
+  return detectAndNotifySquadsBelowMinimum({
+    supabase: makeNoopSupabase(),
+    seasonNumber: 5,
+    now: NOW_8196,
+    notify: world.notify,
+    hasNotificationForKey: world.hasNotificationForKey,
+    sentMarkers: world.sentMarkers,
+    fetchHumanTeams: async () => [youthTeam("A")],
+    fetchSquadRiderCounts: async () => new Map([["A", { senior: 10, u23: 2, junior: 10 }]]),
+    ...extra,
+  });
+}
+
+test("#8196: slettes trup-beskeden i indbakken, sender en genkørsel af transitionen den IKKE igen", async () => {
+  const world = make8196World();
+  const first = await run8196(world);
+  assert.equal(first.notified, 1);
+  assert.equal(world.markers.get("squad_below_minimum:A:u23:5"), NOW_8196.toISOString(), "mærket sættes ved levering");
+
+  world.inbox.length = 0; // manageren sletter beskeden
+
+  const second = await run8196(world);
+  assert.equal(second.notified, 0);
+  assert.equal(second.deduped, 1);
+  assert.equal(world.inbox.length, 0, "ingen ny besked efter sletning");
+});
+
+test("#8196: en besked sendt før mærket får mærket, så en senere sletning ikke giver en ny", async () => {
+  const world = make8196World();
+  world.inbox.push({ userId: "u-A", dedupeKey: "squad_below_minimum:A:u23:5" });
+
+  const first = await run8196(world);
+  assert.equal(first.notified, 0);
+  assert.equal(first.deduped, 1);
+  assert.ok(world.markers.has("squad_below_minimum:A:u23:5"));
+
+  world.inbox.length = 0;
+  const second = await run8196(world);
+  assert.equal(second.notified, 0);
+  assert.equal(world.inbox.length, 0, "ingen ny besked efter sletning");
+});
+
+test("#8196: mangler mærke-tabellen endnu (migration ikke kørt), virker fasen som før og vælter ikke", async () => {
+  const world = make8196World({ markersMissing: true });
+  const stats = await run8196(world, {
+    fetchSquadRiderCounts: async () => new Map([["A", { senior: 10, u23: 2, junior: 1 }]]),
+  });
+  assert.equal(stats.notifyFailed, 0);
+  assert.equal(stats.notified, 2, "det gamle værn gælder: ingen besked i indbakken, så begge sendes");
+  assert.deepEqual(world.calls, [["has", "squad_below_minimum:A:u23:5"]], "mærket slås fra efter første fejl");
+});
+
+test("#8196: fejler mærke-skrivningen, er beskeden stadig leveret og tælles ikke som fejl", async () => {
+  const world = make8196World({ markFails: true });
+  const stats = await run8196(world);
+  assert.equal(stats.notified, 1);
+  assert.equal(stats.notifyFailed, 0);
+  assert.equal(world.markers.size, 0);
+});
+
+test("#8196: bliver beskeden IKKE leveret, sættes mærket ikke", async () => {
+  const world = make8196World();
+  const stats = await run8196(world, { notify: async () => ({ delivered: false, deduped: false, reason: "missing_user" }) });
+  assert.equal(stats.notified, 0);
+  assert.equal(world.markers.size, 0, "en genkørsel må prøve igen");
+});
+
+test("#8196: uden injiceret opslag bruges det ægte mærke mod notification_sent_markers", async () => {
+  const tables = [];
+  const upserts = [];
+  const builder = (table) => {
+    const b = {
+      select() { return b; },
+      eq() { return b; },
+      limit() { return Promise.resolve({ data: [], error: null }); },
+      upsert(row, opts) { upserts.push({ table, row, opts }); return Promise.resolve({ error: null }); },
+    };
+    return b;
+  };
+  const supabase = { from: (t) => { tables.push(t); return builder(t); } };
+  const stats = await detectAndNotifySquadsBelowMinimum({
+    supabase,
+    seasonNumber: 5,
+    now: NOW_8196,
+    notify: async () => ({ delivered: true }),
+    fetchHumanTeams: async () => [youthTeam("A")],
+    fetchSquadRiderCounts: async () => new Map([["A", { senior: 10, u23: 2, junior: 10 }]]),
+  });
+  assert.equal(stats.notified, 1);
+  assert.deepEqual(tables, ["notification_sent_markers", "notifications", "notification_sent_markers"]);
+  assert.deepEqual(upserts[0].row, { dedupe_key: "squad_below_minimum:A:u23:5", sent_at: NOW_8196.toISOString() });
+  assert.deepEqual(upserts[0].opts, { onConflict: "dedupe_key", ignoreDuplicates: true });
 });
