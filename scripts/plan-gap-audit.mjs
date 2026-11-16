@@ -389,7 +389,10 @@ export function checkCommit(sha) {
   };
   const before = show(`${sha}^`, "docs/MASTERPLAN.md");
   const after = show(sha, "docs/MASTERPLAN.md");
-  const stillPlaced = extractIssueNumbers(show(sha, "docs/I_GANG.md"));
+  // Plads = I_GANG ved commit'en eller i arbejdstraeet nu (en senere rettelse taeller).
+  const stillPlaced = extractIssueNumbers(
+    [show(sha, "docs/I_GANG.md"), readOr("docs/I_GANG.md"), readOr("docs/MASTERPLAN.md")].join("\n"),
+  );
   const candidates = removedIssueNumbers(before, after).filter((n) => !stillPlaced.has(n));
   if (!candidates.length) return "";
   let states = new Map();
@@ -443,10 +446,13 @@ async function main(argv) {
     ...findOwnerAgreedWithoutPlace({ openIssues, placed }),
   ];
   if (sb) {
-    findings.push(...findArchivedWithoutShipped({ roadmapItems, sinceIso: since?.toISOString() }));
+    // Et issue med plads er ikke tabt, selv om en gammel roadmap-raekke blev arkiveret
+    // eller kontakten staar off; en arkiveret raekke for et lukket issue er lukket med grund.
+    const archived = findArchivedWithoutShipped({ roadmapItems, sinceIso: since?.toISOString() });
+    findings.push(...archived.filter((f) => f.number == null || (openIssues.has(f.number) && !placed.has(f.number))));
     const { parseRegistry } = await import("./generate-feature-status.mjs");
     const registry = parseRegistry(readOr("docs/FEATURE_REGISTRY.yml"));
-    findings.push(...findStaleOffFlags({ registry, config: sb.config, now }));
+    findings.push(...findStaleOffFlags({ registry, config: sb.config, now }).filter((f) => !placed.has(f.number)));
   }
   // Dublet-lukninger: hele historikken er tusindvis af issues; --days all ser 90 dage tilbage.
   const closedSince = sinceDate ?? new Date(now.getTime() - 90 * 86_400_000).toISOString().slice(0, 10);
