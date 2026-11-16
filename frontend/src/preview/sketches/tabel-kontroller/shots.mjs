@@ -72,6 +72,7 @@ async function shoot(browser, base, { page: key, theme, vw, dir = null, open = n
   const m = await page.evaluate(() => window.__sk.measure());
   await page.evaluate((mm) => window.__sk.ruler(mm, mm.color), { ...m, color: dir ? "#2e7d32" : "#c62828" });
   const png = await page.screenshot();
+  if (process.env.CZ_SKETCH_RAW) writeFileSync(join(process.env.CZ_SKETCH_RAW, `${key}-${theme}-${vw}-${dir || "now"}${open ? "-" + open : ""}.png`), png);
   await ctx.close();
   return { png, m };
 }
@@ -90,10 +91,10 @@ async function compose(browser, { letter, title, sentence, rows, notes, file }) 
   .p{background:#fff;border:1px solid #d9d5ca;border-radius:5px;padding:8px}
   .p h4{margin:0 0 6px;font-size:12px;letter-spacing:.04em;color:#555;font-weight:500}
   .p h4 b{color:#1b2236;font-weight:700}.p img{display:block;border:1px solid #e6e2d8}
-  .n{padding:16px 24px 22px;font-size:14px;max-width:1500px}.n ol{margin:6px 0 0 18px;padding:0}.n li{margin:3px 0}
+  .n{padding:16px 24px 22px;font-size:14px;max-width:1500px}.n ul{margin:6px 0 0 18px;padding:0}.n li{margin:3px 0}
   </style><div class=hd><span class=id>${esc(letter)}</span><div><div class=t>${esc(title)}</div><div class=s>${esc(sentence)}</div></div></div>
   ${rows.map((r) => `<div class=rl>${esc(r.label)}</div><div class=row>${r.panels.map(panel).join("")}</div>`).join("")}
-  <div class=n><b>Noter</b><ol>${notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ol></div>`;
+  <div class=n><b>Noter</b> (tallene peger på de grønne markeringer)<ul>${notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul></div>`;
   const ctx = await browser.newContext({ viewport: { width: 900, height: 300 }, deviceScaleFactor: 1 });
   const page = await ctx.newPage();
   await page.setContent(html);

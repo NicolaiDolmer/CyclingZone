@@ -45,7 +45,7 @@ export function installSketchLib() {
   // A: D-047's kolonnevalg strammet: firkantede segmenter (5 px, hairline) inde i
   // rammen i stedet for 999 px-piller over den. Aktiv = --text-1 paa subtil flade.
   const squareChips = (labels, active) =>
-    `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border)"><div role="group" style="display:flex;min-width:0;flex:1;overflow-x:auto;border:1px solid var(--border);border-radius:5px">${labels
+    `<div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid var(--border)"><div role="group" style="display:flex;min-width:0;flex:1;overflow-x:auto;border:1px solid var(--border);border-radius:5px">${labels
       .map((l, i) => `<button type="button" class="font-data" style="flex:none;min-height:44px;padding:0 10px;${i ? "border-left:1px solid var(--border);" : ""}background:${active.includes(l) ? "var(--bg-subtle)" : "var(--bg-card)"};color:${active.includes(l) ? "var(--text-1)" : "var(--text-3)"};font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap">${l}</button>`)
       .join("")}</div>${iconBtn("table", "Full table")}</div>`;
   const toolbar = (html, style = "") =>
@@ -76,7 +76,7 @@ export function installSketchLib() {
   // ---------- annoteringer ----------
   const layer = () => {
     let l = document.getElementById("__ann");
-    if (!l) { l = document.createElement("div"); l.id = "__ann"; l.style.cssText = "position:absolute;left:0;top:0;width:100%;height:0;z-index:2147483647;pointer-events:none;font:700 12px/1.2 system-ui,sans-serif"; document.body.appendChild(l); }
+    if (!l) { l = document.createElement("div"); l.id = "__ann"; l.style.cssText = "position:absolute;left:0;top:0;width:100%;height:0;z-index:2147482000;pointer-events:none;font:700 12px/1.2 system-ui,sans-serif"; document.body.appendChild(l); }
     return l;
   };
   const mark = (target, n, color = "#2e7d32") => {
@@ -98,7 +98,7 @@ export function installSketchLib() {
     const row = [...document.querySelectorAll("main table tbody tr")].find((r) => r.getBoundingClientRect().height > 0);
     const rowTop = row ? row.getBoundingClientRect().top : 0;
     const visible = (e) => { const b = e.getBoundingClientRect(); if (!b.width || !b.height) return false; let p = e; while (p) { if (getComputedStyle(p).display === "none") return false; p = p.parentElement; } return true; };
-    const ctrls = [...document.querySelectorAll("main button, main select, main input:not([type=checkbox]), main label:has(input[type=checkbox]), main summary, main a[role=tab]")]
+    const ctrls = [...document.querySelectorAll("main button, main select, main input:not([type=checkbox]), main label:has(input[type=checkbox]), main summary, main a[role=tab], main [data-sk-ctrl]")]
       .filter((e) => !e.closest("table tbody") && !e.closest("header") && visible(e))
       .filter((e) => { const b = e.getBoundingClientRect(); return b.top >= top - 1 && b.bottom <= rowTop + 1; });
     return { top: Math.round(top), rowTop: Math.round(rowTop), chrome: Math.round(rowTop - top), controls: ctrls.length };
@@ -110,7 +110,7 @@ export function installSketchLib() {
     line.style.cssText = `position:absolute;left:0;right:0;top:${m.rowTop + scrollY}px;border-top:2px dashed ${color}`;
     const t = document.createElement("span");
     t.textContent = `${m.chrome} px · ${m.controls} kontroller`;
-    t.style.cssText = `position:absolute;right:6px;top:-21px;background:${color};color:#fff;padding:2px 6px;border-radius:3px;white-space:nowrap`;
+    t.style.cssText = `position:absolute;right:4px;top:-19px;background:${color};color:#fff;padding:1px 5px;border-radius:3px;white-space:nowrap;font-size:11px;opacity:.92`;
     line.appendChild(t);
     layer().appendChild(d);
     layer().appendChild(line);

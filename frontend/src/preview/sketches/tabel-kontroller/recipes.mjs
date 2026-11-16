@@ -65,19 +65,19 @@ export function rankings(dir, opts = {}) {
 
   if (dir === "C") {
     const left = [sk.textSelect(divisionLabel), poolSel ? sk.textSelect(poolLabel) : "", sk.textSelect("Standings")].join('<span style="color:var(--text-3)">·</span>');
-    const right = m ? `<span style="margin-inline-start:auto;display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;color:var(--text-2)">${sk.icon("search", 18)}</span>` : `${sk.search("Search team...", "width:240px;margin-inline-start:auto")}${sk.button("Compare")}`;
+    const right = m ? `<span data-sk-ctrl style="margin-inline-start:auto;display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;color:var(--text-2)">${sk.icon("search", 18)}</span>` : `${sk.search("Search team...", "width:240px;margin-inline-start:auto")}${sk.button("Compare")}`;
     const cap = sk.el(`<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;padding:0 12px;border-bottom:1px solid var(--border)">${left}${right}</div>`);
     frame.insertBefore(cap, frame.firstChild);
     let n = 1;
     sk.mark(cap, String(n++));
     if (m) {
       const ths = [...frame.querySelectorAll("thead th")].slice(1);
-      ths.forEach((th) => { th.style.whiteSpace = "nowrap"; th.insertAdjacentHTML("beforeend", sk.icon("chevron", 12, "display:inline-block;vertical-align:-2px;margin-inline-start:2px;color:var(--text-3)")); });
+      ths.forEach((th) => { th.setAttribute("data-sk-ctrl", ""); th.insertAdjacentHTML("beforeend", sk.icon("chevron", 12, "display:inline-block;vertical-align:-2px;margin-inline-start:2px;color:var(--text-3)")); });
       sk.mark(frame.querySelector("thead tr"), String(n++));
     }
     sk.mark(ruleTxt, String(n));
     if (opts.open === "picker") {
-      sk.sheet("Column 3 · Prize money", `${sk.sheetLabel("Swap this column for")}${sk.radioList(["Points", "Stage wins", "Prize money", "Team classification", "Podiums"], ["Prize money"])}${sk.sheetLabel("Or")}<div style="display:flex;align-items:center;gap:8px;min-height:44px;color:var(--text-1);font-size:13px;font-weight:600">${sk.icon("table", 16)}Show the full table</div>`);
+      sk.sheet("Column 3 · Prize money", `<div style="display:flex;align-items:center;gap:8px;min-height:44px;color:var(--text-1);font-size:13px;font-weight:600">Sort by prize money</div>${sk.sheetLabel("Swap this column for")}${sk.radioList(["Points", "Stage wins", "Prize money", "Team classification", "Podiums"], ["Prize money"])}${sk.sheetLabel("Or")}<div style="display:flex;align-items:center;gap:8px;min-height:44px;color:var(--text-1);font-size:13px;font-weight:600">${sk.icon("table", 16)}Show the full table</div>`);
     }
   }
 }
@@ -95,7 +95,7 @@ export function riders(dir) {
   sk.hide(proBox, sortRow, chipRow);
 
   if (dir === "A") {
-    const selects = [...filterRow.querySelectorAll(":scope > div.relative")];
+    const selects = [...filterRow.querySelectorAll(":scope > div.relative")].filter((d) => d.querySelector("select"));
     const cb = filterRow.querySelector(":scope > label");
     const reset = sk.byText(":scope > button", /^Reset all/, filterRow);
     if (m) {
@@ -122,13 +122,13 @@ export function riders(dir) {
   if (dir === "C") {
     sk.hide(filterRow);
     const left = [sk.textSelect("All nations"), sk.textSelect("Any role")].join('<span style="color:var(--text-3)">·</span>');
-    const more = `<span class="font-data" style="display:inline-flex;align-items:center;gap:4px;min-height:44px;color:var(--text-2);font-size:12px;font-weight:500">${sk.icon("filter", 14)}${m ? "" : "More filters"}</span>`;
-    const right = m ? `<span style="margin-inline-start:auto;display:inline-flex;align-items:center;gap:4px">${more}<span style="display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;color:var(--text-2)">${sk.icon("search", 18)}</span></span>` : `<span style="margin-inline-start:auto;display:inline-flex;align-items:center;gap:12px">${more}${sk.search("Search rider...", "width:240px")}</span>`;
+    const more = `<span data-sk-ctrl class="font-data" style="display:inline-flex;align-items:center;gap:4px;min-height:44px;color:var(--text-2);font-size:12px;font-weight:500">${sk.icon("filter", 14)}${m ? "" : "More filters"}</span>`;
+    const right = m ? `<span style="margin-inline-start:auto;display:inline-flex;align-items:center;gap:4px">${more}<span data-sk-ctrl style="display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;color:var(--text-2)">${sk.icon("search", 18)}</span></span>` : `<span style="margin-inline-start:auto;display:inline-flex;align-items:center;gap:12px">${more}${sk.search("Search rider...", "width:240px")}</span>`;
     const cap = sk.el(`<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;padding:0 12px;border-bottom:1px solid var(--border)">${left}${right}</div>`);
     frame.insertBefore(cap, frame.firstChild);
     sk.mark(cap, "1");
     if (m) {
-      [...frame.querySelectorAll("thead th")].slice(1).forEach((th) => { th.style.whiteSpace = "nowrap"; th.insertAdjacentHTML("beforeend", sk.icon("chevron", 12, "display:inline-block;vertical-align:-2px;margin-inline-start:2px;color:var(--text-3)")); });
+      [...frame.querySelectorAll("thead th")].slice(1).forEach((th) => { th.setAttribute("data-sk-ctrl", ""); th.insertAdjacentHTML("beforeend", sk.icon("chevron", 12, "display:inline-block;vertical-align:-2px;margin-inline-start:2px;color:var(--text-3)")); });
       sk.mark(frame.querySelector("thead tr"), "2");
     }
   }
@@ -169,7 +169,7 @@ export function team(dir) {
     }
     sk.mark(tb, "1");
     if (m) {
-      [...frame.querySelectorAll("thead th")].slice(1).forEach((th) => { th.style.whiteSpace = "nowrap"; th.insertAdjacentHTML("beforeend", sk.icon("chevron", 12, "display:inline-block;vertical-align:-2px;margin-inline-start:2px;color:var(--text-3)")); });
+      [...frame.querySelectorAll("thead th")].slice(1).forEach((th) => { th.setAttribute("data-sk-ctrl", ""); th.insertAdjacentHTML("beforeend", sk.icon("chevron", 12, "display:inline-block;vertical-align:-2px;margin-inline-start:2px;color:var(--text-3)")); });
       sk.mark(frame.querySelector("thead tr"), "2");
     }
   }
