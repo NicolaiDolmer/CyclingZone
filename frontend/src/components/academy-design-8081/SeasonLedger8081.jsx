@@ -70,7 +70,7 @@ function SeasonTable({ c, ledger }) {
   const lines = lineDefs(c, ledger);
   return (
     <div className="hidden overflow-hidden rounded-cz border border-cz-border bg-cz-card sm:block">
-      <table data-sort-exempt="Regnskab pr. sæson, fast rækkefølge: denne sæson øverst" className="w-full border-collapse text-sm">
+      <table data-sort-exempt="Regnskab pr. saeson, fast raekkefoelge: denne saeson oeverst" className="w-full border-collapse text-sm">
         <thead className="bg-cz-subtle">
           <tr className="border-b border-cz-border">
             <th className={`${TH} text-left`}>{c("ledger.colSeason")}</th>
@@ -118,7 +118,7 @@ function SalesList({ c, sales }) {
   const shown = all ? sales : sales.slice(0, 8);
   return (
     <div className="overflow-hidden rounded-cz border border-cz-border bg-cz-card">
-      <table data-sort-exempt="Salgshistorik, nyeste først" className="w-full border-collapse text-sm">
+      <table data-sort-exempt="Salgshistorik, nyeste foerst" className="w-full border-collapse text-sm">
         <thead className="bg-cz-subtle">
           <tr className="border-b border-cz-border">
             <th className={`${TH} text-left`}>{c("talents.colRider")}</th>

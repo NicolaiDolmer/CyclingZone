@@ -31,7 +31,7 @@ export default function TalentTable8081({ roster, seasonYear, squadById, pool, o
   }
   return (
     <div className="overflow-hidden rounded-cz border border-cz-border bg-cz-card" data-testid="design8081-talents">
-      <table data-sort-exempt="Designudkast #8081, rækkefølge = yngste først som akademiets liste" className="w-full table-fixed border-collapse text-sm sm:table-auto">
+      <table data-sort-exempt="Designudkast #8081, raekkefoelge = yngste foerst som akademiets liste" className="w-full table-fixed border-collapse text-sm sm:table-auto">
         <thead className="bg-cz-subtle">
           <tr className="border-b border-cz-border">
             <th className={`${TH} w-[46%] sm:w-auto`}>{c("talents.colRider")}</th>
