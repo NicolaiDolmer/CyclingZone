@@ -167,7 +167,7 @@ export default function AcademyV2(props: AcademyV2Props) {
           {showProfileTab ? (
             <TabPanel value="profile">
               {ageFocus.loading ? (
-                <div className="flex justify-center py-10"><Spinner /></div>
+                <div className="flex justify-center py-10" role="status" aria-busy="true" aria-label={t("v2.tabs.profile")}><Spinner /></div>
               ) : ageFocus.error || !ageFocus.state ? (
                 <ErrorState title={t("v2.age.errorTitle")} description={t("v2.age.errorBody")} />
               ) : (
