@@ -1,5 +1,45 @@
 export const PATCHES = [
 {
+  "version": "7.459",
+  "date": "2026-11-16",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Auctions",
+      "en": {
+        "title": "Auction list starts right under the filters",
+        "body": "The first-bid tip box above the auction list is gone, so the riders start right under the filters, especially on phones. If you have not placed a bid yet, the tour starts once on its own and explains what winning a bid means. The suggested first pick is still marked in the list."
+      },
+      "da": {
+        "title": "Auktionslisten starter lige under filtrene",
+        "body": "Tip-boksen om første bud over auktionslisten er væk, så rytterne står lige under filtrene, især på telefonen. Har du ikke budt endnu, starter rundvisningen én gang af sig selv og forklarer, hvad et vundet bud betyder. Det foreslåede første valg er stadig markeret i listen."
+      },
+      "refs": [
+        8069
+      ]
+    },
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Help",
+      "en": {
+        "title": "Show me around starts the tour right away",
+        "body": "Show me around now starts the page tour at once. Before, the tour only appeared after you went to another page and back."
+      },
+      "da": {
+        "title": "Vis mig rundt starter rundvisningen med det samme",
+        "body": "Vis mig rundt starter nu sidens rundvisning med det samme. Før kom rundvisningen først, når du havde været på en anden side og tilbage."
+      },
+      "refs": [
+        8069
+      ]
+    }
+  ]
+},
+{
   "version": "7.454",
   "date": "2026-11-16",
   "changes": [
