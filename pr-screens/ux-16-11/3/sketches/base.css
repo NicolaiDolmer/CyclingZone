@@ -1,0 +1,19 @@
+@font-face{font-family:'DM Sans';src:url(../../../../frontend/public/fonts/dm-sans-latin-wght-normal.woff2) format('woff2');font-weight:100 1000}
+@font-face{font-family:'Inter Tight';src:url(../../../../frontend/public/fonts/inter-tight-latin-wght-normal.woff2) format('woff2');font-weight:100 900}
+@font-face{font-family:'Bebas Neue';src:url(../../../../frontend/public/fonts/bebas-neue-latin-400-normal.woff2) format('woff2')}
+:root{--bg:#f4f2ec;--card:#fcfbf7;--subtle:#ece9e1;--border:#e5e0d5;--strong:#827f96;--t1:#0e0f15;--t2:#4c4a5e;--t3:#67657e;--gold:#e8c547;--gold-t:#806000;--navy:#1a1f38;--ok:#2f7d4f;--warn:#9a5b00}
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:390px;background:var(--bg);font-family:'DM Sans',system-ui,sans-serif;color:var(--t1);font-size:14px;line-height:1.4;font-variant-numeric:tabular-nums}
+.top{height:48px;background:var(--navy);display:flex;align-items:center;justify-content:center;color:#e8c547;font-family:'Bebas Neue';font-size:15px;letter-spacing:.5px}
+.wrap{padding:16px}
+h1{font-family:'Inter Tight';font-weight:700;font-size:24px;letter-spacing:-.3px}
+.sub{color:var(--t3);font-size:13px;margin-top:2px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:5px}
+.cap{font-size:10px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--t3)}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 16px;border-radius:5px;font-weight:600;font-size:14px;border:1px solid var(--border);background:var(--card);color:var(--t1)}
+.btn.gold{background:var(--gold);border-color:var(--gold);color:var(--navy)}
+.tabs{display:flex;gap:20px;border-bottom:1px solid var(--border);margin-top:16px}
+.tabs div{padding:12px 0;color:var(--t3);font-size:15px}
+.tabs .on{color:var(--t1);border-bottom:2px solid var(--gold-t)}
+.badge{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;padding:2px 6px;border-radius:3px;background:var(--subtle);color:var(--t2)}
+.nav{position:fixed;bottom:0;left:0;width:390px;height:56px;background:var(--navy);display:flex;justify-content:space-around;align-items:center;color:#c9cbe0;font-size:11px}
