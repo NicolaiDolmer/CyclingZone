@@ -1478,6 +1478,11 @@
       "issue": 8060,
       "reason": "Akademiets regnskab pr. sæson på akademisiden (fanen Akademi-regnskab), parallelt med udgave A. Ejer-go 16/11 PC1 (AskUserQuestion: \"Ja, parallelt nu\"; placering A).",
       "since": "2026-11-16"
+    },
+    {
+      "issue": 8069,
+      "reason": "Designsystem og TASTE: regler F1-F8. Ejer-go 16/11 PC1 (AskUserQuestion: \"Ja, tilføj #8069\"; F1=A, F2-F8 \"merge\").",
+      "since": "2026-11-16"
     }
   ]
 }
