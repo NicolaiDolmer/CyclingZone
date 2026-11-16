@@ -99,11 +99,13 @@
     "retry": "Réessayer"
   },
   "raceResultsV6": {
-    "searchLabel": "Rechercher dans le résultat par coureur ou équipe",
-    "searchPlaceholder": "Rechercher un coureur ou une équipe",
+    "searchLabel": "Rechercher dans le résultat par coureur, équipe ou nation",
+    "searchPlaceholder": "Rechercher un coureur, une équipe ou une nation",
     "clearSearch": "Effacer la recherche",
     "myTeam": "Mon équipe",
     "matchCount": "{shown} sur {total}",
-    "noMatch": "Aucun coureur ni aucune équipe ne correspond à cette recherche."
+    "noMatch": "Aucun coureur ni aucune équipe ne correspond à cette recherche.",
+    "nation": "Nation",
+    "allNations": "Toutes les nations"
   }
 }

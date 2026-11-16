@@ -90,11 +90,13 @@
     "retry": "Prøv igen"
   },
   "raceResultsV6": {
-    "searchLabel": "Søg i resultatet efter rytter eller hold",
-    "searchPlaceholder": "Søg rytter eller hold",
+    "searchLabel": "Søg i resultatet efter rytter, hold eller nation",
+    "searchPlaceholder": "Søg rytter, hold eller nation",
     "clearSearch": "Ryd søgning",
     "myTeam": "Mit hold",
     "matchCount": "Viser {shown} af {total}",
-    "noMatch": "Ingen rytter eller hold matcher søgningen."
+    "noMatch": "Ingen rytter eller hold matcher søgningen.",
+    "nation": "Nation",
+    "allNations": "Alle nationer"
   }
 }

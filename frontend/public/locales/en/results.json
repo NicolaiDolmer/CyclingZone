@@ -90,11 +90,13 @@
     "retry": "Try again"
   },
   "raceResultsV6": {
-    "searchLabel": "Search the result by rider or team",
-    "searchPlaceholder": "Search rider or team",
+    "searchLabel": "Search the result by rider, team or nation",
+    "searchPlaceholder": "Search rider, team or nation",
     "clearSearch": "Clear search",
     "myTeam": "My team",
     "matchCount": "Showing {shown} of {total}",
-    "noMatch": "No rider or team matches that search."
+    "noMatch": "No rider or team matches that search.",
+    "nation": "Nation",
+    "allNations": "All nations"
   }
 }

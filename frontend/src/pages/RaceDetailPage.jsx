@@ -87,7 +87,8 @@ import { fetchStageProfiles } from "../components/race/stagePageV2/stageProfiles
 import { useRacePageV6Enabled } from "../components/race/v6/racePageV6Flag.ts"; // #7778
 import { resolveV6Tab, tacticsCta, v6Overall, v6WhenLabel } from "../components/race/v6/racePageV6Model.ts"; // #7778
 import V6RaceHeroCard, { V6_STRIP_RESERVED_CLASS } from "../components/race/v6/V6RaceHeroCard.tsx"; // #7778 udgave E
-import { EMPTY_RESULTS_CONTROLS, filterResultRows, isFiltering, mineOnlyFromTeamFilter, sharedMineControls, teamFilterAfterMineToggle } from "../components/race/v6/resultsControlsModel.ts"; // #7860 #7865
+import { EMPTY_RESULTS_CONTROLS, filterResultRows, isFiltering, mineOnlyFromTeamFilter, resultNations, sharedMineControls, teamFilterAfterMineToggle } from "../components/race/v6/resultsControlsModel.ts"; // #7860 #7865 #7862
+import { getCountryName } from "../lib/countryUtils.js"; // #7862: nationsfilter og søgning på nation
 
 // #3914: FinalKilometrePlayback vises nu bag en stille knap (StoryOfTheStage-
 // Section, "The Final Kilometre") i stedet for altid-øverst — lazy-loadet
@@ -1043,7 +1044,9 @@ export default function RaceDetailPage() {
   // etape man udtager til eller koerer. EFTER loebet er fanen en historik over
   // alle etaper ("etape for etape"), og een vilkaarlig etapeprofil oeverst ville
   // vaere stoej der ikke svarer paa fanens spoergsmaal.
-  const teamTabProfile = phase === "after" ? null : focusProfile;
+  // #7862 (valg 13): under v6 følger Hold-fanen etapestriben (den valgte etape).
+  const teamStage = v6 ? v2SelectedStage : focusStage;
+  const teamTabProfile = phase === "after" ? null : (profileByStage[teamStage] ?? null);
   // #7865: v6's hoved er løbets og står stille, når etapestriben skifter etape.
   const heroStage = v6 ? runningStage : focusStage;
   const heroProfile = profileByStage[heroStage] ?? null;
@@ -1187,7 +1190,7 @@ export default function RaceDetailPage() {
                  koerende. Etaper-fanen har sin egen fulde profil; de to faner
                  er aldrig synlige samtidig. */
               stageProfile={teamTabProfile}
-              stageProfileLabel={totalStages > 1 ? t("detail.tabStage", { number: focusStage }) : null}
+              stageProfileLabel={totalStages > 1 ? t("detail.tabStage", { number: teamStage }) : null}
               hasClassifications={race.race_type === "stage_race"}
               selectedStageIndex={selectedStageIndexForPanel}
               selectedStageBucket={terrainBucket(profileByStage[scheduledStage]?.profile_type)}
@@ -1200,7 +1203,10 @@ export default function RaceDetailPage() {
                  stages/onSelect ændrer INTET af hvad der gemmes. */
               stageStripeStages={stageProfiles}
               stageStripeActiveStage={scheduledStage}
-              onSelectStage={changeStage}
+              // #7862: under v6 er hovedkortets etapestribe den ene vælger; fanens egen stribe udgår.
+              onSelectStage={v6 ? null : changeStage}
+              // #7862 (valg 13): rollerne under løbet følger den valgte etape (etapens holdplan).
+              roleStage={v6 && phase === "during" ? v2SelectedStage : null}
               stageStripeTimes={stripeTimes}
             />
           )}
@@ -2103,6 +2109,11 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
     () => (classTab === "stage" ? groupPassagesForStage(passages, stage) : []),
     [passages, stage, classTab],
   );
+  // #7862 (ejer 16/11): i v6 er mellemspurter og bjergspurter et klassementvalg
+  // ("Sprints & climbs") i stedet for en liste under måltavlen.
+  const isV6 = v6Layout != null;
+  const v6PassageGroups = useMemo(() => (isV6 ? groupPassagesForStage(passages, stage) : []), [isV6, passages, stage]);
+  const v6ClassTabs = v6PassageGroups.length > 0 ? [...classTabs, "passages"] : classTabs;
 
   // #3396/#3914: "The Final Kilometre" er nu skjult bag en stille knap i
   // StoryOfTheStageSection ("ved siden af Watch the race film") i stedet for
@@ -2140,17 +2151,22 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
           <div className={`min-w-0 flex flex-col gap-[14px] @4xl:col-start-1 @4xl:row-start-1 ${v6Layout.profileSlot ? "@4xl:row-span-2" : ""}`}>
             <Tabs value={classTab} onChange={setClassTab}>
               <TabList label={t("detail.classTab.ariaLabel")}>
-                {classTabs.map(key => (
+                {v6ClassTabs.map(key => (
                   <Tab key={key} value={key}>{t(`detail.classTab.${key}`)}</Tab>
                 ))}
               </TabList>
             </Tabs>
-            {v6Layout.loaded
+            {v6Layout.loaded && classTab === "passages"
+              ? <PassageList groups={v6PassageGroups} t={t} />
+              : v6Layout.loaded
               ? <ResultTable title={title} rows={rows} highlightWinner={classTab === "team"} highlightTeamId={myTeamId} myOwnTeamId={myOwnTeamId} moments={moments} stageNumber={stage} pointsTotalByRider={pointsTotalMapForKey(stagePointsTotals, classTab)} raceId={raceId} participationHistory={participationHistory} dnfRows={dnfRows} defaultLimit={25} headerControl={v6Layout.teamFilter} searchable sharedMine={v6Layout.mine ?? null} />
               : <Section><SkeletonLines lines={10} /></Section>}
-            {v6Layout.loaded && passageGroups.length > 0 && <PassageList groups={passageGroups} t={t} />}
           </div>
-          <div className={`min-w-0 @4xl:col-start-2 ${v6Layout.profileSlot ? "@4xl:row-start-2" : "@4xl:row-start-1"}`}>{v6Layout.sideSlot}</div>
+          <div className={`min-w-0 flex flex-col gap-[14px] @4xl:col-start-2 ${v6Layout.profileSlot ? "@4xl:row-start-2" : "@4xl:row-start-1"}`}>
+            {v6Layout.sideSlot}
+            {/* #7862: trøjerne efter etapen i højre kolonne (wireframe v6c), som dagens side har dem. */}
+            {v6Layout.loaded && <V6JerseysCard jerseys={jerseys} teamLeader={classificationRowsForStage(results, stage, "team")[0] ?? null} t={t} />}
+          </div>
         </div>
       </div>
     );
@@ -2252,6 +2268,54 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
         <StageProfileSlot profile={profile} passages={passages} tier="compact" />
       </CollapsibleSection>
     </div>
+  );
+}
+
+// #7862: v6's trøjekort i højre kolonne: trøjen, bæreren og hans hold, og holdklassementets
+// fører. Samme kilde som dagens trøje-badges (jerseyHoldersForStage); intet kort uden trøjer.
+function V6JerseysCard({ jerseys, teamLeader, t }) {
+  const team = teamLeader ? resultEntity(teamLeader) : null;
+  if (!jerseys.length && !team?.name) return null;
+  return (
+    <Section>
+      <SectionHeader title={t("detail.jerseysAfterStage")} />
+      <table data-sort-exempt="Troejerne staar i spillets faste raekkefoelge" className="w-full text-sm" data-v6-jerseys="">
+        <tbody className="divide-y divide-cz-border">
+          {jerseys.map((j) => (
+            <tr key={j.dayType}>
+              <td className="py-2 pe-2 align-middle whitespace-nowrap">
+                <span className="rounded-full px-1.5 py-0.5 text-3xs font-bold uppercase" style={{ backgroundColor: j.bg, color: j.fg }}>
+                  {t(`detail.jersey.${j.dayType}`)}
+                </span>
+              </td>
+              <td className="py-2 pe-2 align-middle">
+                <RiderLink id={j.holder.rider?.id ?? j.holder.rider_id} className="text-cz-1 hover:text-cz-accent-t transition-colors">
+                  {j.holder.rider?.nationality_code && <Flag code={j.holder.rider.nationality_code} className="me-1" />}
+                  {riderName(j.holder)}
+                </RiderLink>
+              </td>
+              <td className="py-2 text-right align-middle text-xs text-cz-3">
+                {(j.holder.rider?.team?.name || j.holder.team_name) && (
+                  <TeamLink id={j.holder.rider?.team?.id ?? j.holder.team_id} className="hover:text-cz-accent-t transition-colors">
+                    {j.holder.rider?.team?.name || j.holder.team_name}
+                  </TeamLink>
+                )}
+              </td>
+            </tr>
+          ))}
+          {team?.name && (
+            <tr>
+              <td className="py-2 pe-2 align-middle whitespace-nowrap">
+                <span className="rounded-full border border-cz-border bg-cz-subtle px-1.5 py-0.5 text-3xs font-bold uppercase text-cz-2">{t("detail.classTab.team")}</span>
+              </td>
+              <td className="py-2 align-middle" colSpan={2}>
+                <TeamLink id={team.linkId} className="text-cz-1 hover:text-cz-accent-t transition-colors">{team.name}</TeamLink>
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </Section>
   );
 }
 
@@ -2378,17 +2442,25 @@ function ResultEntityCell({ row, highlightWinner, isMine, t, moments, stageNumbe
  * }} props
  */
 function ResultTable({ title, rows: allRows, highlightWinner = false, highlightTeamId = null, myOwnTeamId = null, defaultLimit = 10, moments = [], stageNumber = null, pointsTotalByRider = undefined, raceId = undefined, participationHistory = null, dnfRows: allDnfRows = [], headerControl = null, searchable = false, sharedMine = null }) {
-  const { t } = useTranslation("races");
+  const { t, i18n } = useTranslation("races");
   const [expanded, setExpanded] = useState(false);
   // #7860: søgning og "Mit hold" kun i v6 (searchable). Uden filter er listen uændret;
   // kolonnerne afgøres af hele listen, så de ikke hopper mens man søger.
   // #7865: med sharedMine er "Mit hold" holdvælgerens valg (ét valg, ikke to filtre).
   const [localControls, setLocalControls] = useState(EMPTY_RESULTS_CONTROLS);
   const mineControls = sharedMineControls(localControls, sharedMine);
-  const controls = mineControls.filter;
+  // #7862: nationsfilter og søgning på nation (navnet på brugerens sprog og engelsk). Har
+  // listen under to nationer (fx holdklassementet), står vælgeren ikke, og valget gælder ikke.
+  const lang = i18n.language;
+  const nations = useMemo(
+    () => (searchable ? resultNations([...allRows, ...(allDnfRows || [])], (c) => getCountryName(c, lang)) : []),
+    [searchable, allRows, allDnfRows, lang],
+  );
+  const controls = nations.length > 1 ? mineControls.filter : { ...mineControls.filter, nation: "all" };
+  const nationNames = (c) => [getCountryName(c, lang), getCountryName(c, "en")];
   const filtering = searchable && isFiltering(controls);
-  const rows = filtering ? filterResultRows(allRows, controls, myOwnTeamId) : allRows;
-  const dnfRows = filtering ? filterResultRows(allDnfRows, controls, myOwnTeamId) : allDnfRows;
+  const rows = filtering ? filterResultRows(allRows, controls, myOwnTeamId, nationNames) : allRows;
+  const dnfRows = filtering ? filterResultRows(allDnfRows, controls, myOwnTeamId, nationNames) : allDnfRows;
   const allCount = allRows.length + (allDnfRows?.length ?? 0);
   // #3913: points_earned er PRÆMIEpoint for at ramme podiet i DENNE klassement
   // (fx top-3 i point- eller bjergkonkurrencen), ikke antallet af trøje-point
@@ -2415,7 +2487,9 @@ function ResultTable({ title, rows: allRows, highlightWinner = false, highlightT
   const dnsCount = (dnfRows || []).filter((d) => d.status === "dns").length;
   const didNotFinishCount = dnfCount - dnsCount;
   const totalCount = rows.length + dnfCount;
-  const collapsible = !filtering && totalCount > defaultLimit; // #7860: et filtreret udsnit vises helt
+  // #7860: et filtreret udsnit vises helt. #7862: i v6 (searchable) står hele listen altid; den
+  // ruller i tabellens egen boks (SCROLLER) i stedet for 25 rækker og "Vis alle".
+  const collapsible = !filtering && !searchable && totalCount > defaultLimit;
   const collapsed = collapsible && !expanded;
   const visibleRows = collapsed ? rows.slice(0, defaultLimit) : rows;
   const showDnfRows = dnfCount > 0 && !collapsed;
@@ -2443,7 +2517,7 @@ function ResultTable({ title, rows: allRows, highlightWinner = false, highlightT
       {/* #7865: står også, når et aktivt Mit hold-valg tømmer listen, så det kan slås fra igen. */}
       {searchable && (allCount > 0 || isFiltering(mineControls.shown)) && (
         <Suspense fallback={<div aria-hidden="true" className="mb-3 min-h-11" />}>
-          <V6ResultsControls state={mineControls.shown} onChange={(next) => setLocalControls(mineControls.change(next))} counting={filtering} hasMyTeam={myOwnTeamId != null} shown={totalCount} total={allCount} />
+          <V6ResultsControls state={mineControls.shown} onChange={(next) => setLocalControls(mineControls.change(next))} counting={filtering} hasMyTeam={myOwnTeamId != null} shown={totalCount} total={allCount} nations={nations} />
         </Suspense>
       )}
       {totalCount === 0 ? (

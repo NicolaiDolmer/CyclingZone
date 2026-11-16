@@ -68,7 +68,7 @@ const roleLabel = (t, role) => {
   return key ? t(key) : "—";
 };
 
-function ReadOnlyRoster({ t, riders, stageNumbers, overridesMap, gcRankByRider, showStages, isOneDay, nextStage }) {
+function ReadOnlyRoster({ t, riders, stageNumbers, overridesMap, gcRankByRider, showStages, isOneDay, nextStage, roleStage = null }) {
   return (
     <div className={WRAP}>
       <div className={SCROLLER}>
@@ -106,9 +106,10 @@ function ReadOnlyRoster({ t, riders, stageNumbers, overridesMap, gcRankByRider, 
                     : !showStages && showsTimeLimitRisk(rider, nextStage, resolveCell({ rider, stageNumber: nextStage, overridesMap }).effort) && <div className="mt-1"><TimeLimitRiskMark /></div>}
                 </td>
                 <td className="px-4 py-2.5">
-                  <div className="text-cz-1 text-xs">{roleLabel(t, baseRoleForRider(rider))}</div>
+                  {/* #7862 (valg 13): med en valgt etape (v6) er rollen etapens, ellers grundrollen. */}
+                  <div className="text-cz-1 text-xs">{roleLabel(t, roleStage != null ? resolveCell({ rider, stageNumber: roleStage, overridesMap }).race_role : baseRoleForRider(rider))}</div>
                   <div className="text-3xs uppercase tracking-wider text-cz-3 mt-0.5">
-                    {isOneDay ? t("intention.thisRace") : t("intention.allRace")}
+                    {isOneDay ? t("intention.thisRace") : roleStage != null ? t("racePage.team.stageShort", { number: roleStage }) : t("intention.allRace")}
                   </div>
                 </td>
                 {showStages ? (
@@ -171,6 +172,8 @@ export default function RaceTeamTab({
   stageStripeActiveStage = null,
   onSelectStage = null,
   stageStripeTimes = null,
+  // #7862 (valg 13): under v6 den valgte etape i hovedets stribe; rollerne følger den. null = grundrollen.
+  roleStage = null,
 }) {
   const { t } = useTranslation("races");
   // FØR løbet bruges svaret ikke: fanen ER holdudtagelsen, og RaceSelectionPanel
@@ -342,6 +345,7 @@ export default function RaceTeamTab({
         showStages={afterRace}
         isOneDay={isOneDay}
         nextStage={nextEditableStage}
+        roleStage={isOneDay ? null : roleStage}
       />
       {afterRace && (
         <p className="mt-3 pt-3 border-t border-cz-border text-3xs text-cz-3">

@@ -99,11 +99,13 @@
     "retry": "Opnieuw proberen"
   },
   "raceResultsV6": {
-    "searchLabel": "Zoek in de uitslag op renner of ploeg",
-    "searchPlaceholder": "Zoek renner of ploeg",
+    "searchLabel": "Zoek in de uitslag op renner, ploeg of land",
+    "searchPlaceholder": "Zoek renner, ploeg of land",
     "clearSearch": "Zoekopdracht wissen",
     "myTeam": "Mijn ploeg",
     "matchCount": "{shown} van {total}",
-    "noMatch": "Geen renner of ploeg komt overeen met die zoekopdracht."
+    "noMatch": "Geen renner of ploeg komt overeen met die zoekopdracht.",
+    "nation": "Land",
+    "allNations": "Alle landen"
   }
 }

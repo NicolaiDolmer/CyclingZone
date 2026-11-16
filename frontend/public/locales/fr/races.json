@@ -6,7 +6,33 @@
       "story": "Récit",
       "standings": "Classements",
       "tactics": "Tactique",
-      "team": "Équipe"
+      "team": "Équipe",
+      "start": "Liste de départ"
+    },
+    "start": {
+      "favouritesTitle": "Favoris de la course",
+      "favouritesFor": "Favoris pour",
+      "favouriteLine": "{rank, selectordinal, one {#er} other {#e}} {after}",
+      "afterStage": "après l'étape {number}",
+      "afterRace": "de la course",
+      "favouritesEmpty": "Les favoris apparaissent quand la course a un classement visible par tous.",
+      "favouritesFoot": "D'après le classement de cette course. Jamais la forme, la fatigue, l'adéquation au parcours ni les rôles des autres équipes.",
+      "fieldTitle": "Tous les coureurs",
+      "fieldMeta": "{riders, plural, one {# coureur} other {# coureurs}} · {teams, plural, one {# équipe} other {# équipes}}",
+      "searchPlaceholder": "Rechercher un coureur, une équipe ou une nation",
+      "clearSearch": "Effacer la recherche",
+      "myTeam": "Mon équipe",
+      "nation": "Nation",
+      "allNations": "Toutes les nations",
+      "matchCount": "{shown} sur {total}",
+      "noMatch": "Aucun coureur ne correspond. Effacez la recherche ou les filtres.",
+      "opensIn": "{count, plural, one {La liste de départ ouvre dans # jour.} other {La liste de départ ouvre dans # jours.}}",
+      "loadError": "Impossible de charger la liste de départ.",
+      "retry": "Réessayer",
+      "empty": "Aucune équipe n'est encore sur la liste de départ.",
+      "unnamedTeam": "Équipe",
+      "bibAria": "Dossard {bib}",
+      "rating": "Note"
     },
     "hero": {
       "stageLocks": "L'étape {number} se verrouille à {time} · {countdown}",
@@ -1667,7 +1693,8 @@
       "points": "Points",
       "mountain": "Montagne",
       "young": "Jeunes",
-      "team": "Équipes"
+      "team": "Équipes",
+      "passages": "Sprints et ascensions"
     },
     "teamFilter": {
       "label": "Équipe",

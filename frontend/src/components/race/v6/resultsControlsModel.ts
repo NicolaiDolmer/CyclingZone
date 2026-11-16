@@ -1,6 +1,6 @@
 // #7860 · Resultater i v6: søgning og "Mit hold" over den fulde resultatliste.
 // Ren model (ingen React), så filtreringen kan prøves uden at rendere tabellen.
-// Søgningen matcher rytterens navn og holdets navn. Intet nationsfilter (spec S10).
+// Søgningen matcher rytterens navn og holdets navn. #7862 (ejer 16/11): også nationen, og et nationsfilter.
 
 /** Den del af en race_results- eller DNF-række modellen læser. */
 export interface ResultsControlsRow {
@@ -12,6 +12,7 @@ export interface ResultsControlsRow {
   rider?: {
     firstname?: string | null;
     lastname?: string | null;
+    nationality_code?: string | null;
     team?: { id?: string | number | null; name?: string | null } | null;
   } | null;
   team?: { id?: string | number | null; name?: string | null } | null;
@@ -20,6 +21,21 @@ export interface ResultsControlsRow {
 export interface ResultsControlsState {
   query: string;
   mineOnly: boolean;
+  /** #7862: "all"/udeladt = alle nationer, ellers en landekode. */
+  nation?: string;
+}
+
+/** #7862: navnene en nation kan søges på (fx brugerens sprog og engelsk). */
+export type NationNames = (code: string) => string[];
+
+/** #7862: rytterens landekode med små bogstaver, eller null (holdrækker har ingen). */
+export function rowNation(row: ResultsControlsRow): string | null {
+  const code = row.rider?.nationality_code;
+  return code ? String(code).trim().toLowerCase() || null : null;
+}
+
+function nationChosen(state: ResultsControlsState): string | null {
+  return state.nation && state.nation !== "all" ? state.nation.toLowerCase() : null;
 }
 
 export const EMPTY_RESULTS_CONTROLS: ResultsControlsState = Object.freeze({ query: "", mineOnly: false });
@@ -47,9 +63,12 @@ export function rowTeamId(row: ResultsControlsRow): string | null {
   return id == null ? null : String(id);
 }
 
-function searchableText(row: ResultsControlsRow): string {
+function searchableText(row: ResultsControlsRow, nationNames?: NationNames): string {
   const riderFull = [row.rider?.firstname, row.rider?.lastname].filter(Boolean).join(" ");
+  const nation = rowNation(row);
   return normalizeSearchText([
+    nation,
+    ...(nation && nationNames ? nationNames(nation) : []),
     riderFull,
     row.rider_name,
     row.name,
@@ -60,15 +79,15 @@ function searchableText(row: ResultsControlsRow): string {
 }
 
 /** Alle ord i søgningen skal findes i rytter- eller holdnavnet (rækkefølge er ligegyldig). */
-export function rowMatchesQuery(row: ResultsControlsRow, query: string): boolean {
+export function rowMatchesQuery(row: ResultsControlsRow, query: string, nationNames?: NationNames): boolean {
   const words = normalizeSearchText(query).split(" ").filter(Boolean);
   if (!words.length) return true;
-  const haystack = searchableText(row);
+  const haystack = searchableText(row, nationNames);
   return words.every((w) => haystack.includes(w));
 }
 
 export function isFiltering(state: ResultsControlsState): boolean {
-  return state.mineOnly || normalizeSearchText(state.query) !== "";
+  return state.mineOnly || normalizeSearchText(state.query) !== "" || nationChosen(state) !== null;
 }
 
 /**
@@ -113,9 +132,18 @@ export function filterResultRows<T extends ResultsControlsRow>(
   rows: readonly T[] | null | undefined,
   state: ResultsControlsState,
   myTeamId: string | number | null | undefined,
+  nationNames?: NationNames,
 ): T[] {
   const list = rows ? [...rows] : [];
   const mine = state.mineOnly && myTeamId != null ? String(myTeamId) : null;
-  if (!mine && !normalizeSearchText(state.query)) return list;
-  return list.filter((row) => (mine == null || rowTeamId(row) === mine) && rowMatchesQuery(row, state.query));
+  const nation = nationChosen(state);
+  if (!mine && !nation && !normalizeSearchText(state.query)) return list;
+  return list.filter((row) => (mine == null || rowTeamId(row) === mine) && (nation == null || rowNation(row) === nation) && rowMatchesQuery(row, state.query, nationNames));
+}
+
+/** #7862: nationerne i listen til nationsvælgeren (kode og vist navn), sorteret efter navnet. */
+export function resultNations(rows: readonly ResultsControlsRow[] | null | undefined, nameOf: (code: string) => string): Array<{ code: string; name: string }> {
+  const codes = new Set<string>();
+  for (const row of rows || []) { const c = rowNation(row); if (c) codes.add(c); }
+  return [...codes].map((code) => ({ code, name: nameOf(code) || code.toUpperCase() })).sort((a, b) => a.name.localeCompare(b.name));
 }

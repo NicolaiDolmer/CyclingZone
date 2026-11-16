@@ -49,6 +49,7 @@ import V6StageStrip from "./V6StageStrip.tsx";
 import V6RouteProfile from "./V6RouteProfile.tsx";
 import V6TacticsAfter from "./V6TacticsAfter.tsx";
 import V6YourDay from "./V6YourDay.tsx";
+import V6StartList from "./V6StartList.tsx"; // #7862
 import { V6TacticsSavedContext } from "./v6TacticsSaved.ts";
 import { Button, EmptyState, FlagIcon } from "./v6Ui.ts";
 import V6RaceHeroCard, { type RacePageV6Hero } from "./V6RaceHeroCard.tsx";
@@ -128,7 +129,7 @@ export default function RacePageV6(props: RacePageV6Props) {
   const bestByStage = useMemo(() => myBestByStage(stagePointRows, myTeamId, nameById), [stagePointRows, myTeamId, nameById]);
   const phase = stagePhase(selectedStage, stagesCompleted);
   // StagePageV2 maaler sine egne faner; Resultater er v6's egen og maales her.
-  useRaceViewTelemetry({ raceId: activeTab === "results" ? raceId : null, tab: activeTab, stage: selectedStage, phase });
+  useRaceViewTelemetry({ raceId: activeTab === "results" || activeTab === "start" ? raceId : null, tab: activeTab, stage: selectedStage, phase });
 
   // #7865: Taktik-fanens etape. Siden ejer den seneste eksplicitte navigation (striben
   // og hovedets guld-knap går samme vej) og glemmer den, når fanen forlades.
@@ -208,6 +209,9 @@ export default function RacePageV6(props: RacePageV6Props) {
         </V6TacticsSavedContext.Provider>
       </div>
     );
+  } else if (activeTab === "start") {
+    // #7862 (valg 9/10): løbets felt med rygnumre og favoritter.
+    body = <V6StartList raceId={raceId} isStageRace={isStageRace} stagesCompleted={stagesCompleted} results={results} myTeamId={myTeamId} firstStartMs={scheduleFor(schedule, 1)?.getTime() ?? null} nowMs={nowMs} />;
   } else if (activeTab !== "results") {
     body = (
       <StagePageV2
