@@ -212,6 +212,8 @@ test("hent-knappen vises uanset åbne tilbud, og 'provisional value' kun på pul
 // #6666 Optag 2.0 (ejer-beslutninger 15/10).
 const localesDir = join(__dirname, "..", "..", "public", "locales");
 const academyLocale = (lng) => JSON.parse(readFileSync(join(localesDir, lng, "academy.json"), "utf8"));
+// #8081: udgave A's tekster ligger i det route-gatede navnerum academyV2 (perf-gaten: academy hentes ved første indlæsning).
+const academyV2Locale = (lng) => JSON.parse(readFileSync(join(localesDir, lng, "academyV2.json"), "utf8"));
 
 test("hent-knappen siger aldrig 'scout' (#6666 punkt 3)", () => {
   assert.equal(academyLocale("en").intakePull.pullBtn, "Bring in this week's intake");
@@ -272,7 +274,8 @@ const v2Source = readFileSync(join(__dirname, "..", "components", "academy-v2", 
 
 test("#8081: udgave A vises kun bag kontakten; den normale gren og kortet er uændrede", () => {
   assert.match(pageSource, /const pageV2 = useAcademyPageV2Flag\(\);/);
-  assert.match(pageSource, /if \(pageV2\) \{\s*return \(\s*<AcademyV2\b/);
+  // Udgave A står bag en ready-gate for det lazy navnerum academyV2 (perf-gaten).
+  assert.match(pageSource, /if \(pageV2\) \{\s*return \([\s\S]{0,300}?<I18nReadyGate ns="academyV2">\s*<AcademyV2\b/);
   // Den normale side kalder stadig kortet via .map, og "Lander på" kræver showLanding.
   assert.match(pageSource, /regularIntake\.map\(renderIntakeCard\)/);
   assert.match(pageSource, /\{!showLanding && landing\.movedToU23 && \(/);
@@ -292,13 +295,15 @@ test("#8081: udgave A har ét guld, ingen saldo i sidehovedet (A2) og de rigtige
 
 test("#8081: v2-teksterne findes på alle fem sprog med samme nøgler og uden em-dash", () => {
   const flat = (obj, prefix = "") => Object.entries(obj).flatMap(([k, v]) => (v && typeof v === "object" ? flat(v, `${prefix}${k}.`) : [[`${prefix}${k}`, v]]));
-  const en = flat(academyLocale("en").v2).map(([k]) => k).sort();
+  const en = flat(academyV2Locale("en").v2).map(([k]) => k).sort();
   for (const lng of ["da", "es", "fr", "nl"]) {
-    assert.deepEqual(flat(academyLocale(lng).v2).map(([k]) => k).sort(), en, `${lng}: v2-nøglerne afviger fra en`);
+    assert.deepEqual(flat(academyV2Locale(lng).v2).map(([k]) => k).sort(), en, `${lng}: v2-nøglerne afviger fra en`);
   }
   for (const lng of ["en", "da", "es", "fr", "nl"]) {
-    for (const [key, text] of flat(academyLocale(lng).v2)) assert.doesNotMatch(String(text), /—/, `${lng}: em-dash i v2.${key}`);
+    for (const [key, text] of flat(academyV2Locale(lng).v2)) assert.doesNotMatch(String(text), /—/, `${lng}: em-dash i v2.${key}`);
   }
-  assert.equal(academyLocale("en").v2.tabs.talents, "Your talents");
-  assert.equal(academyLocale("da").v2.tabs.profile, "Profil og alder");
+  assert.equal(academyV2Locale("en").v2.tabs.talents, "Your talents");
+  assert.equal(academyV2Locale("da").v2.tabs.profile, "Profil og alder");
+  // academy.json må ikke længere bære v2 (det ville igen veje på første indlæsning).
+  for (const lng of ["en", "da", "es", "fr", "nl"]) assert.equal(academyLocale(lng).v2, undefined, `${lng}: v2 ligger stadig i academy.json`);
 });
