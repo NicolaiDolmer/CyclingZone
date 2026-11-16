@@ -2291,13 +2291,13 @@ function V6JerseysCard({ jerseys, teamLeader, t }) {
               </td>
               <td className="py-2 pe-2 align-middle">
                 <RiderLink id={j.holder.rider?.id ?? j.holder.rider_id} className="text-cz-1 hover:text-cz-accent-t transition-colors">
-                  {j.holder.rider?.nationality_code && <Flag code={j.holder.rider.nationality_code} className="me-1" />}
+                  {j.holder.rider?.nationality_code && <Flag code={j.holder.rider.nationality_code} className="me-1" title={undefined} />}
                   {riderName(j.holder)}
                 </RiderLink>
               </td>
               <td className="py-2 text-right align-middle text-xs text-cz-3">
                 {(j.holder.rider?.team?.name || j.holder.team_name) && (
-                  <TeamLink id={j.holder.rider?.team?.id ?? j.holder.team_id} className="hover:text-cz-accent-t transition-colors">
+                  <TeamLink id={j.holder.rider?.team?.id ?? j.holder.team_id} className="hover:text-cz-accent-t transition-colors" tab={undefined}>
                     {j.holder.rider?.team?.name || j.holder.team_name}
                   </TeamLink>
                 )}
@@ -2310,7 +2310,7 @@ function V6JerseysCard({ jerseys, teamLeader, t }) {
                 <span className="rounded-full border border-cz-border bg-cz-subtle px-1.5 py-0.5 text-3xs font-bold uppercase text-cz-2">{t("detail.classTab.team")}</span>
               </td>
               <td className="py-2 align-middle" colSpan={2}>
-                <TeamLink id={team.linkId} className="text-cz-1 hover:text-cz-accent-t transition-colors">{team.name}</TeamLink>
+                <TeamLink id={team.linkId} className="text-cz-1 hover:text-cz-accent-t transition-colors" tab={undefined}>{team.name}</TeamLink>
               </td>
             </tr>
           )}

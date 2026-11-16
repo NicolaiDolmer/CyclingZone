@@ -68,7 +68,7 @@ const roleLabel = (t, role) => {
   return key ? t(key) : "—";
 };
 
-function ReadOnlyRoster({ t, riders, stageNumbers, overridesMap, gcRankByRider, showStages, isOneDay, nextStage, roleStage = null }) {
+function ReadOnlyRoster({ t, riders, stageNumbers, overridesMap, gcRankByRider, showStages, isOneDay, nextStage, roleStage = /** @type {number | null} */ (null) }) {
   return (
     <div className={WRAP}>
       <div className={SCROLLER}>
@@ -173,9 +173,9 @@ export default function RaceTeamTab({
   onSelectStage = null,
   stageStripeTimes = null,
   // #7862 (valg 13): under v6 den valgte etape i hovedets stribe; rollerne følger den. null = grundrollen.
-  roleStage = null,
+  roleStage = /** @type {number | null} */ (null),
   // #7862: under v6 er hovedkortets etapestribe den ene vælger, så fanens egen stribe udgår.
-  hideStageStripe = false,
+  hideStageStripe = /** @type {boolean} */ (false),
 }) {
   const { t } = useTranslation("races");
   // FØR løbet bruges svaret ikke: fanen ER holdudtagelsen, og RaceSelectionPanel

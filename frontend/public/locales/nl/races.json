@@ -12,7 +12,7 @@
     "start": {
       "favouritesTitle": "Favorieten voor de koers",
       "favouritesFor": "Favorieten voor",
-      "favouriteLine": "{rank}e {after}",
+      "favouriteLine": "{rank, selectordinal, one {#e} two {#e} few {#e} other {#e}} {after}",
       "afterStage": "na etappe {number}",
       "afterRace": "in de koers",
       "favouritesEmpty": "Favorieten verschijnen zodra de koers een klassement heeft dat iedereen kan zien.",

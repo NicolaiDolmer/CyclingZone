@@ -12,7 +12,7 @@
     "start": {
       "favouritesTitle": "Favoris de la course",
       "favouritesFor": "Favoris pour",
-      "favouriteLine": "{rank, selectordinal, one {#er} other {#e}} {after}",
+      "favouriteLine": "{rank, selectordinal, one {#er} two {#e} few {#e} other {#e}} {after}",
       "afterStage": "après l'étape {number}",
       "afterRace": "de la course",
       "favouritesEmpty": "Les favoris apparaissent quand la course a un classement visible par tous.",
