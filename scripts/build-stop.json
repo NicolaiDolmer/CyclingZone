@@ -1503,6 +1503,21 @@
       "issue": 8281,
       "reason": "Skitser: rytterprofil med billede (mobil 7). Del af #8073. Ejer-go 16/11 PC1 (AskUserQuestion: \"Ja, sæt i gang\").",
       "since": "2026-11-16"
+    },
+    {
+      "issue": 8116,
+      "reason": "Forkert info: halvsæson-beskeden henviser til 'board request', der ikke findes. Ejer-go 17/11 PC1 natplan (AskUserQuestion 9/12: Bestyrelsen #7963/#8116/#8118).",
+      "since": "2026-11-17"
+    },
+    {
+      "issue": 8118,
+      "reason": "Forkert info: bestyrelsen utilfreds selvom alle mål er nået. Ejer-go 17/11 PC1 natplan (AskUserQuestion 9/12: Bestyrelsen #7963/#8116/#8118).",
+      "since": "2026-11-17"
+    },
+    {
+      "issue": 8003,
+      "reason": "Ranglisten venter ~13 min efter et løb (uge 47-milestone, MASTERPLAN). Ejer-go 17/11 PC1 natplan (AskUserQuestion 9/12: Ranglisten #8003); måling + design før første PR.",
+      "since": "2026-11-17"
     }
   ]
 }
