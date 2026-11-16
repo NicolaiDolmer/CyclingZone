@@ -247,7 +247,7 @@ export default function RacePageV6(props: RacePageV6Props) {
           saveState={routeSaveState}
         />
       ) : null,
-      sideSlot: <V6YourDay results={results} stageNumber={selectedStage} myTeamId={myTeamId} dnfRows={dnfRows} loaded={stageLoaded} />,
+      sideSlot: <V6YourDay results={results} stageNumber={selectedStage} myTeamId={myTeamId} dnfRows={dnfRows} loaded={stageLoaded} raceId={raceId} profile={profile} stageRoles={stageRoles} nowMs={nowMs} />,
     });
   }
 
