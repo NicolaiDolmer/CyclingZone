@@ -12,7 +12,7 @@ import {
   AlertTriangleIcon, CheckIcon, ChevronDownIcon, ClockIcon, GiftIcon, LockIcon,
 } from "../../../components/ui/icons/index.jsx";
 import {
-  applyWholeDay, dayChoice, levelOf, overviewCounts, setField, trainNow,
+  applyWholeDay, dayChoice, isMixed, levelOf, overviewCounts, setField, trainNow,
   type Field, type Level, type Session,
 } from "./model.ts";
 import {
@@ -215,10 +215,12 @@ function XpCell({ rider, compact = false }: { rider: SketchRider; compact?: bool
 
 function DaySelect({ rider, fields, onDay, full = false }: { rider: SketchRider; fields: Field[]; onDay: (s: Session) => void; full?: boolean }) {
   const value = dayChoice(fields);
+  // Blandet dag: intet pas staar som valgt, saa ethvert valg kan laegges paa alle aabne felter.
+  const mixed = isMixed(fields);
   return (
     <div className={`relative ${full ? "w-full" : "w-[176px]"}`}>
       <select
-        value={value ?? ""}
+        value={mixed ? "" : value ?? ""}
         disabled={value === null}
         aria-label={`${rider.name}: dagens træning på alle åbne felter`}
         onChange={(e) => onDay(e.target.value as Session)}
@@ -227,6 +229,7 @@ function DaySelect({ rider, fields, onDay, full = false }: { rider: SketchRider;
         }`}
       >
         {value === null && <option value="">Hele dagen er løb eller kørt</option>}
+        {value !== null && mixed && <option value="" disabled>Blandet dag</option>}
         <SessionOptions />
       </select>
       <ChevronDownIcon size={14} aria-hidden="true" className="pointer-events-none absolute inset-e-2.5 top-1/2 -translate-y-1/2 text-cz-3" />
@@ -416,7 +419,7 @@ function QuickChoice({ rider, plans, full = false }: { rider: SketchRider; plans
     return <span className="font-data text-2xs text-cz-3">{plans.pressed ? "Kørt i dag" : "Hele dagen er løb"}</span>;
   }
   const restOn = quick === "rest" || quick === "recovery";
-  const other = quick === "other" ? dayChoice(fields) : null;
+  const other = quick === "other" && !isMixed(fields) ? dayChoice(fields) : null;
   return (
     <div className={`flex flex-wrap items-center gap-1.5 ${full ? "w-full" : ""}`}>
       <Segmented
@@ -650,7 +653,7 @@ export default function Sketch({ id, pressed, openDay }: { id: Exclude<Direction
   const plans = usePlans(pressed);
   return (
     <div className="min-h-screen bg-cz-body">
-      <Banner id={id} pressed={pressed} />
+      <Banner id={id} pressed={plans.pressed} />
       <PageFrame plans={plans}>
         {id === "r1" && <Direction1 plans={plans} />}
         {id === "r2" && <Direction2 plans={plans} />}

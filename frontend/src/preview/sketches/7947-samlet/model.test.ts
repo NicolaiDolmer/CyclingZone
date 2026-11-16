@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  FIELDS_PER_DATE, applyWholeDay, dayChoice, openCount, overviewCounts, setField, trainNow, type Field,
+  FIELDS_PER_DATE, applyWholeDay, dayChoice, isMixed, openCount, overviewCounts, setField, trainNow, type Field,
 } from "./model.ts";
 
 const stage: Field = { kind: "stage", label: "Etape 3" };
@@ -28,6 +28,13 @@ test("et rettet felt er markeret som aendret, og dagens valg er stadig flertalle
   const next = setField(day(), 4, "sprint");
   assert.deepEqual(next[4], { kind: "train", session: "sprint", changed: true });
   assert.equal(dayChoice(next), "tempo");
+});
+
+test("en dag med forskellige pas paa de aabne felter er blandet; hele dagen goer den ensartet", () => {
+  const mixed = setField(day(), 4, "sprint");
+  assert.equal(isMixed(mixed), true);
+  assert.equal(isMixed(applyWholeDay(mixed, "tempo")), false);
+  assert.equal(isMixed(day()), false);
 });
 
 test("et etapefelt kan ikke rettes", () => {

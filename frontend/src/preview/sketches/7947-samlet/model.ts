@@ -79,6 +79,14 @@ export function dayChoice(fields: readonly Field[]): Session | null {
   return best;
 }
 
+/**
+ * Blandet dag: de aabne felter har forskellige pas. Vaelgeren maa saa ikke vise
+ * flertallet som valgt, ellers kan det pas ikke laegges paa alle felter.
+ */
+export function isMixed(fields: readonly Field[]): boolean {
+  return new Set(fields.filter(isOpen).map((f) => f.session)).size > 1;
+}
+
 /** Traen nu: alle aabne felter koeres straks; en etape beholder sit felt. */
 export function trainNow(fields: readonly Field[]): Field[] {
   return fields.map((field) => (isOpen(field) ? { kind: "done", session: field.session } : field));
