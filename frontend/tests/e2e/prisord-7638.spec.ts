@@ -62,6 +62,8 @@ async function markAndShoot(page: Page, targets: Locator[], file: string, width:
     }
   }
   if (!boxes.length) throw new Error(`no change area for ${file}`);
+  // Faste lag (mobilens bundmenu) ville ellers ligge midt i et helsides-billede.
+  await page.evaluate(() => { for (const el of document.querySelectorAll('body *')) if (getComputedStyle(el).position === 'fixed') (el as HTMLElement).style.visibility = 'hidden'; });
   for (const b of boxes) {
     await page.evaluate((r) => {
       const d = document.createElement('div');
@@ -113,7 +115,7 @@ for (const scenario of SCENARIOS) for (const width of WIDTHS) for (const theme o
       await page.getByTestId('team-plan-sprint').click();
       const stance = page.getByTestId('breakaway-stance');
       const cost = page.getByTestId('stage-plan-task-cost').filter({ visible: true });
-      targets = [stance, cost];
+      targets = [stance, cost.locator('..')];
       if (MODE !== 'before') {
         await expect(stance.getByTestId('stance-cost')).toHaveText(['Hård', 'Middel', 'Let']);
         await expect(cost.first()).toBeVisible();
