@@ -6368,7 +6368,7 @@ const planningBulkCtx7535 = { supabase, isViewerBetaTester, captureException, in
 router.post("/races/selection/auto/propose", requireAuth, marketWriteLimiter, planningBulkRoute7535(proposeAssistantSquads7535, planningBulkCtx7535));
 router.post("/races/withdrawals/bulk", requireAuth, marketWriteLimiter, planningBulkRoute7535(withdrawRacesBulk7535, planningBulkCtx7535));
 // #7535 runde 3: "Efter loebet" i trup-tabellen (laeser kun). Motorens model, se lib/planningAfterRace7535.js.
-router.get("/races/:raceId/after-race-fatigue", requireAuth, async (req, res) => {
+router.get("/races/:raceId/after-race-fatigue", requireAuth, presencePulseLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
     const out = await loadAfterRaceFatigue7535({ supabase, teamId: req.team.id, raceId: req.params.raceId });
