@@ -203,7 +203,11 @@ export default function FinancePage() {
   const [repaying, setRepaying] = useState(false);
 
   // #8069 T07: rundvisningen startes fra sidehovedet (ikke et kort over indholdet).
+  // Codex-review #8315: turens trin peger paa Overblik-fanens elementer, og
+  // TabPanel afmonterer inaktive faner. Skift derfor til Overblik foerst, saa
+  // "Vis mig rundt" virker fra alle faner.
   function handleStartTour() {
+    if (activeTab !== "overview") setTab("overview");
     startTour("finance");
   }
 
