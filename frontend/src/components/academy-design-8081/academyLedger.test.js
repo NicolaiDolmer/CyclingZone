@@ -113,7 +113,7 @@ test("#6944: fokus-alder flytter fordelingen, alle aldre er stadig med", () => {
   const mixed = ageFocusDistribution("mixed");
   assert.deepEqual(mixed.map((d) => d.age), [16, 17, 18, 19]);
   const focus17 = ageFocusDistribution("17");
-  assert.equal(focus17.find((d) => d.age === 17).share, "many");
+  assert.equal(focus17.find((d) => d.age === 17)?.share, "many");
   assert.ok(focus17.every((d) => d.share !== undefined));
-  assert.equal(focus17.find((d) => d.age === 19).squad, "u23");
+  assert.equal(focus17.find((d) => d.age === 19)?.squad, "u23");
 });

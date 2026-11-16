@@ -9,8 +9,11 @@ import { Link } from "react-router";
 import RiderLink from "../RiderLink.jsx";
 import Button from "../ui/Button.jsx";
 import EmptyState from "../ui/EmptyState.jsx";
-import ErrorState from "../ui/ErrorState.jsx";
-import CollapsibleSection from "../ui/CollapsibleSection.jsx";
+import ErrorStateJs from "../ui/ErrorState.jsx";
+import CollapsibleSectionJs from "../ui/CollapsibleSection.jsx";
+
+const ErrorState = /** @type {any} */ (ErrorStateJs);
+const CollapsibleSection = /** @type {any} */ (CollapsibleSectionJs);
 import { SkeletonLines } from "../ui/Skeleton.jsx";
 import { buttonClass } from "../ui/buttonStyles.js";
 import { formatCz } from "../../lib/marketValues.js";

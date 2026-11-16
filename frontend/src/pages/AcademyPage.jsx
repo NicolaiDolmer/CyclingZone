@@ -212,6 +212,7 @@ export default function AcademyPage() {
   // så de to aldrig driver fra hinanden (samme sign/afvis, samme trup-spærring).
   // #8081: `opts.landingText` (kun designudgaverne) erstatter U23-linjen med
   // "Lander på <trup>" efter de midlertidige trupgrænser (#7932).
+  /** @param {any} item @param {{ landingText?: (item: any) => string } | null} [opts] */
   const renderIntakeCard = (item, opts = null) => {
     const rider = item.rider;
     const isBoardGift = item.source === BOARD_GIFT_SOURCE;
@@ -398,6 +399,8 @@ export default function AcademyPage() {
   // #8081: designudgaverne A/B/C (kun bag ?design8081=). Samme sidehoved, samme
   // sign/afvis/hent som den normale gren; kun opbygningen er ny.
   if (designVariant) {
+    const DesignHeader = /** @type {any} */ (PageHeader);
+    const DesignSectionHeader = /** @type {any} */ (SectionHeader);
     const pullOpen = intakePull.enabled && !intakePull.pulledThisWeek;
     const designNodes = {
       graduationBanner: graduations.length > 0 ? (
@@ -413,7 +416,7 @@ export default function AcademyPage() {
       ) : null,
       giftSection: giftIntake.length > 0 ? (
         <section data-testid="academy-board-gift">
-          <SectionHeader title={t("boardGift.heading")} meta={t("boardGift.meta", { count: giftIntake.length })} />
+          <DesignSectionHeader title={t("boardGift.heading")} meta={t("boardGift.meta", { count: giftIntake.length })} />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {giftIntake.map((i) => renderIntakeCard(i))}
           </div>
@@ -439,7 +442,7 @@ export default function AcademyPage() {
     };
     return (
       <div className="max-w-[1600px] mx-auto">
-        <PageHeader
+        <DesignHeader
           title={t("title")}
           subtitle={t("subtitle")}
           actions={balance != null ? (

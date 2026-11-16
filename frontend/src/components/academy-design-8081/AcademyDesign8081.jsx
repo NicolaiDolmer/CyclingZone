@@ -16,7 +16,11 @@ import NationCell from "../rider/NationCell.jsx";
 import RiderLink from "../RiderLink.jsx";
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
 import AcademyPrognosisCell from "../rider/AcademyPrognosisCell.tsx";
-import { Card, Button, HeroStats, Section, SectionHeader, Tabs, TabList, Tab, TabPanel, CollapsibleSection } from "../ui";
+import { Card, Button, HeroStats, Section, SectionHeader as SectionHeaderJs, Tabs, TabList, Tab, TabPanel, CollapsibleSection as CollapsibleSectionJs } from "../ui";
+
+// Kit-primitiverne er utypede .jsx; checkJs udleder prop-typer fra defaults (null).
+const SectionHeader = /** @type {any} */ (SectionHeaderJs);
+const CollapsibleSection = /** @type {any} */ (CollapsibleSectionJs);
 import { formatCz } from "../../lib/marketValues.js";
 import { ageForSeason, getRiderAge } from "../../lib/riderAge.js";
 import { academyTargetSquad } from "../../lib/squadCaps.ts";
@@ -136,7 +140,7 @@ function OneList({ ctx, landingText, squadById }) {
           {groups.map((g) => {
             const cap = capOf(g.squad);
             return [
-              <GroupRow key={`h-${g.squad}`} title={g.title} meta={c("squads.count", { used: cap.used, max: cap.max })} />,
+              <GroupRow key={`h-${g.squad}`} title={g.title} meta={c("squads.count", { used: cap?.used ?? 0, max: cap?.max ?? 0 })} />,
               ...g.riders.map((r) => (
                 <tr key={r.id} className="border-b border-cz-border hover:bg-cz-subtle">
                   {nameCell(r, true)}

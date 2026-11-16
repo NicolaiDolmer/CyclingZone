@@ -13,8 +13,9 @@ async function rows(query) {
   return data ?? [];
 }
 
+/** @param {boolean} enabled @param {string[]} [rosterIds] */
 export function useAcademyLedger8081(enabled, rosterIds = []) {
-  const [state, setState] = useState({ loading: Boolean(enabled), error: null, ledger: null, sales: [], pool: new Map(), squadById: new Map() });
+  const [state, setState] = useState(/** @type {any} */ ({ loading: Boolean(enabled), error: null, ledger: null, sales: [], pool: new Map(), squadById: new Map() }));
   const rosterKey = rosterIds.join(",");
 
   const load = useCallback(async () => {
@@ -89,7 +90,7 @@ export function useAcademyLedger8081(enabled, rosterIds = []) {
         squadById: new Map(squadRows.map((r) => [r.id, r.squad ?? null])),
       });
     } catch (err) {
-      setState((s) => ({ ...s, loading: false, error: err?.message ?? "failed" }));
+      setState((s) => ({ ...s, loading: false, error: /** @type {any} */ (err)?.message ?? "failed" }));
     }
   }, [enabled, rosterKey]);
 

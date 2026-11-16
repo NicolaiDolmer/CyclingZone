@@ -16,6 +16,7 @@ export const LEDGER_SOURCE = Object.freeze({ OFFER: "offer", YOUTH_AUCTION: "you
 const YOUTH_AUCTION_CODE = "tx.youthAuctionWin";
 
 /** En ungdomsauktions-sejr bogføres som academy_signing; metadata/entity skiller den fra en hentning. */
+/** @param {any} row */
 export function classifySigning(row) {
   if (row?.metadata?.code === YOUTH_AUCTION_CODE) return LEDGER_SOURCE.YOUTH_AUCTION;
   if (row?.related_entity_type === "auction") return LEDGER_SOURCE.YOUTH_AUCTION;
@@ -23,10 +24,12 @@ export function classifySigning(row) {
 }
 
 /** #785: en auktion uden vinder og uden garanteret salg er intet salg. */
+/** @param {any} auction */
 export function isRealizedSale(auction) {
   return Boolean(auction?.current_bidder_id) || Boolean(auction?.is_guaranteed_sale);
 }
 
+/** @param {any} iso */
 function toTime(iso) {
   const ms = iso ? new Date(iso).getTime() : NaN;
   return Number.isFinite(ms) ? ms : null;
@@ -36,20 +39,23 @@ function toTime(iso) {
  * Sæsonen et tidspunkt hører til: den sæson hvis periode dækker det, ellers den
  * seneste sæson der var startet. null når intet kan afgøres.
  */
+/** @param {any[]} seasons @param {any} iso @returns {any} */
 export function seasonForDate(seasons, iso) {
   const at = toTime(iso);
   if (at == null || !Array.isArray(seasons) || seasons.length === 0) return null;
+  /** @type {any} */
   let latestStarted = null;
   for (const s of seasons) {
     const start = toTime(s.start_date);
     if (start == null || start > at) continue;
     const end = toTime(s.end_date);
     if (end != null && at <= end + 86_400_000 - 1) return s;
-    if (!latestStarted || start > toTime(latestStarted.start_date)) latestStarted = s;
+    if (!latestStarted || start > (toTime(latestStarted.start_date) ?? 0)) latestStarted = s;
   }
   return latestStarted;
 }
 
+/** @param {any} rider */
 function nameOf(rider) {
   const name = `${rider?.firstname ?? ""} ${rider?.lastname ?? ""}`.trim();
   return name || null;
@@ -59,6 +65,7 @@ function nameOf(rider) {
  * Akademiets rytterkreds: hentet fra tilbud + vundet på ungdomsauktion.
  * Map riderId -> { riderId, riderName, origin }.
  */
+/** @param {any} [args] @returns {Map<string, any>} */
 export function buildAcademyRiderPool({ signedIntake = [], youthAuctionWins = [] } = {}) {
   const pool = new Map();
   for (const row of signedIntake) {
@@ -77,6 +84,7 @@ export function buildAcademyRiderPool({ signedIntake = [], youthAuctionWins = []
  * Holdets gennemførte salg af ryttere fra akademiets kreds (senior-auktion eller
  * transfermarked). Nyeste først, med sæson påsat.
  */
+/** @param {any} [args] @returns {any[]} */
 export function buildLedgerSales({ auctionRows = [], transferRows = [], pool = new Map(), seasons = [] } = {}) {
   const sales = [];
   for (const a of auctionRows) {
@@ -105,6 +113,7 @@ export function buildLedgerSales({ auctionRows = [], transferRows = [], pool = n
     .sort((a, b) => (toTime(b.soldAt) ?? 0) - (toTime(a.soldAt) ?? 0));
 }
 
+/** @param {any} season @param {any} currentSeasonId */
 function emptyRow(season, currentSeasonId) {
   return {
     seasonId: season?.id ?? null,
@@ -123,6 +132,7 @@ function emptyRow(season, currentSeasonId) {
  * Regnskabet pr. sæson: denne sæson øverst, tidligere sæsoner under, og en
  * samlet linje. Udgifter er positive beløb (vises med minus i UI'et).
  */
+/** @param {any} [args] @returns {any} */
 export function buildSeasonLedger({ financeRows = [], sales = [], seasons = [], currentSeasonId = null } = {}) {
   const byId = new Map(seasons.map((s) => [s.id, s]));
   const rows = new Map();

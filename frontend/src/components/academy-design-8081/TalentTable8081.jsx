@@ -15,6 +15,7 @@ import { useDesignCopy } from "./copy.js";
 const TH = "px-3 py-2 text-left font-data text-2xs font-semibold uppercase tracking-wide text-cz-3";
 const TD = "px-3 py-[9px] align-top";
 
+/** @param {{ roster: any[], seasonYear: any, squadById?: Map<string, any>, pool?: Map<string, any>, onGoToIntake?: (() => void) | null, showVia?: boolean }} props */
 export default function TalentTable8081({ roster, seasonYear, squadById, pool, onGoToIntake = null, showVia = true }) {
   const c = useDesignCopy();
   if (!roster || roster.length === 0) {
