@@ -26,6 +26,9 @@ import { WithBestRole } from "../components/rider/BestRoleTag.jsx";
 import { getSquadLimits } from "../lib/dashboardSquadStats.js";
 import { formatNumber } from "../lib/intl";
 import MoveSquadDialog from "../components/MoveSquadDialog.tsx"; // #5748
+import LeavingAfterRaceBadge, { ReleasePendingLine } from "../components/rider/LeavingAfterRaceBadge.jsx"; // #8153
+import { pendingRaceFromQuote, isPendingReleaseResult, pendingRaceLabel } from "../lib/pendingReleaseModel8153.js"; // #8153
+import { usePendingReleases8153 } from "../lib/usePendingReleases8153.js"; // #8153
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import { useScouting } from "../lib/useScouting";
 import { scoutSortValue } from "../lib/scouting";
@@ -66,7 +69,7 @@ function ReputationValue({ rider, enabled, t }) {
 // #1529: erstattede de 14 PCM stat_*-kolonner — visningen viser nu evner.
 
 function RiderActionModal({ rider, team, scouting, onClose, onAction, onMoveSquad, ddActive, seasonYear }) {
-  const { t } = useTranslation("team");
+  const { t } = useTranslation(["team", "rider"]);
   // #5748: "Move squad"-fanen vises for enhver rytter med mindst ét lovligt mål
   // (squadTarget.hasMoveTarget): alle ungdomsryttere (opad er altid tilladt) og
   // seniorer i ungdomsalder. Målet vælges i den delte MoveSquadDialog, samme
@@ -192,7 +195,18 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onMoveSqua
     try {
       // #2007: delt body-løs POST-helper (riderContractActions.js).
       const { ok, data } = await postRiderContractAction(rider.id, path);
-      if (ok) { setMsgOk(true); setMsg(t(successKey)); setTimeout(() => { onAction(); onClose(); }, 1500); }
+      if (ok) {
+        setMsgOk(true);
+        // #8153: frigivelse midt i et etapeloeb er bestilt; rytteren bliver til efter sidste etape.
+        setMsg(isPendingReleaseResult(data)
+          ? t("rider:manage.release.pendingSuccess", {
+            rider: `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim(),
+            race: pendingRaceLabel(data.race, t("rider:manage.release.pendingRaceFallback")),
+            fee: formatNumber(data.fee ?? 0),
+          })
+          : t(successKey));
+        setTimeout(() => { onAction(); onClose(); }, 1500);
+      }
       else {
         setMsgOk(false); setMsg(`${t("actionModal.errorPrefix")}${resolveApiError(data, t)}`);
         // #2718: en afvist kontrakt-handling var kun synlig i UI'et — nu tælles
@@ -473,6 +487,8 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onMoveSqua
           {activeTab === "release" && (
             <div>
               <p className="text-cz-2 text-xs mb-3">{t("actionModal.release.description")}</p>
+              {/* #8153: rytteren koerer et etapeloeb -> frigivelsen venter til sidste etape. */}
+              <ReleasePendingLine race={pendingRaceFromQuote(releaseQuote)} className="mb-3" />
               <div className="space-y-1.5 mb-3 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-cz-3 text-xs">{t("actionModal.release.feeLabel")}</span>
@@ -594,7 +610,7 @@ function OwnTransferListingBadge({ listing }) {
   );
 }
 
-function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferListings, seasonYear, activeSeasonNumber, squadFilter, reputationOn }) {
+function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferListings, pendingReleases = {}, seasonYear, activeSeasonNumber, squadFilter, reputationOn }) {
   const { t } = useTranslation("team");
   // #1131: fulde stat-navne som native tooltip på de forkortede kolonne-headers.
   const { t: tRider } = useTranslation("rider");
@@ -850,6 +866,8 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
           {!r._isIncoming && ownAuctions[r.id] && <OwnAuctionBadge auction={ownAuctions[r.id]} />}
           {/* #3810: egen aktiv transferliste-annonce — badge + udbudspris, link til markedet. */}
           {!r._isIncoming && ownTransferListings[r.id] && <OwnTransferListingBadge listing={ownTransferListings[r.id]} />}
+          {/* #8153: frigivelsen er bestilt midt i et etapeloeb; han forlader holdet efter sidste etape. */}
+          {!r._isIncoming && <LeavingAfterRaceBadge pending={pendingReleases[r.id]} />}
         </div>
       ),
     },
@@ -1053,6 +1071,8 @@ export function TeamPage() {
   // asking_price ændrer sig ikke live som et bud, kun via managerens egen
   // handling (som allerede trigger loadAll() via RiderActionModal's onAction).
   const [ownTransferListings, setOwnTransferListings] = useState({});
+  // #8153: ventende frigivelser ("Leaves after {race}"); hentes igen, naar truppen genindlaeses.
+  const pendingReleases = usePendingReleases8153(riders);
   // Ref'en holder ID'erne på nuværende (ikke-indgående) egne ryttere, så
   // realtime-callbacket kan filtrere uden at skulle re-subscribe ved hver rytter-ændring.
   const ownRiderIdsRef = useRef(new Set());
@@ -1315,7 +1335,7 @@ export function TeamPage() {
       </Tabs>
 
       {activeTab === "squad" && (
-        <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} ownAuctions={ownAuctions} ownTransferListings={ownTransferListings} seasonYear={seasonYear} activeSeasonNumber={activeSeasonNumber}
+        <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} ownAuctions={ownAuctions} ownTransferListings={ownTransferListings} pendingReleases={pendingReleases} seasonYear={seasonYear} activeSeasonNumber={activeSeasonNumber}
           squadFilter={squadFilter} reputationOn={reputationOn} />
       )}
       {activeTab === "contracts" && (

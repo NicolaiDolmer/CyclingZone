@@ -62,6 +62,7 @@ import RiderResultsTab from "../components/rider/profile/RiderResultsTab.jsx";
 import RiderPalmaresTab from "../components/rider/profile/RiderPalmaresTab.jsx";
 import RiderInterestTab from "../components/rider/profile/RiderInterestTab.jsx";
 import { useRiderReputation } from "../lib/useRiderReputation.ts";
+import { OwnRiderLeavingBadge } from "../components/rider/LeavingAfterRaceBadge.jsx"; // #8153
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -2049,6 +2050,8 @@ export default function RiderStatsPage() {
                     {t("blocked.pendingTransfer")}
                   </p>
                 )}
+                {/* #8153: frigivelsen er bestilt midt i et etapeloeb; han forlader holdet efter sidste etape. */}
+                {isMyRider && !isRetired && <OwnRiderLeavingBadge riderId={rider.id} refreshKey={rider} className="w-full justify-center py-2 text-xs" />}
                 {isRetired && (
                   <p className="w-full text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-cz border border-cz-border">
                     {t("blocked.retired")}

@@ -25,6 +25,7 @@
     "retireRisk": "Groot risico op pensioen: renners stoppen meestal tussen 36 en 40 jaar",
     "contractExpiring": "Het contract loopt af bij de volgende seizoenswissel: deze renner wordt transfervrij tenzij het contract eerst wordt verlengd",
     "junior": "Juniorenrenner (in je juniorenselectie)",
+    "leavesAfter": "Vertrekt na {race}",
     "label": {
       "u23": "U23",
       "u25": "U25",
@@ -863,7 +864,10 @@
       "working": "Vrijgeven…",
       "cancel": "Annuleren",
       "success": "Renner vrijgegeven.",
-      "errorPrefix": "Vrijgeven is niet gelukt:"
+      "errorPrefix": "Vrijgeven is niet gelukt:",
+      "pendingLine": "Hij rijdt {race}. Hij verlaat je ploeg na de laatste etappe. De vergoeding wordt nu afgeschreven en het ontslag kan niet ongedaan worden gemaakt.",
+      "pendingSuccess": "{rider} wordt na {race} vrijgegeven. De vergoeding van {fee} CZ$ is afgeschreven.",
+      "pendingRaceFallback": "de etappekoers"
     },
     "move": {
       "button": "Selectie wisselen",

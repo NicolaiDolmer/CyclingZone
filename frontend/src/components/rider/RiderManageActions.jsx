@@ -32,6 +32,8 @@ import { reportActionFailure } from "../../lib/actionTelemetry.js";
 // release (api.js:1834), saa den delte GET /api/transfers-kopi bliver stale.
 import { invalidateTransferListings2176 } from "../../lib/sharedRequestCache.js";
 import MoveSquadDialog from "../MoveSquadDialog.tsx";
+import { ReleasePendingLine } from "./LeavingAfterRaceBadge.jsx"; // #8153
+import { pendingRaceFromQuote, isPendingReleaseResult, pendingRaceLabel } from "../../lib/pendingReleaseModel8153.js"; // #8153
 import { buttonClass } from "../ui/buttonStyles.js";
 
 // Trigger-knapper (ejer-feedback 3/7): appens delte buttonStyles, kompakt
@@ -328,7 +330,14 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
         invalidateTransferListings2176(); // #5089
         setReleaseOpen(false);
         setReleaseQuote(null);
-        flashResult(true, t("manage.release.success"));
+        // #8153: rytteren koerer et etapeloeb -> frigivelsen er bestilt, han bliver til efter sidste etape.
+        flashResult(true, isPendingReleaseResult(data)
+          ? t("manage.release.pendingSuccess", {
+            rider: `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim(),
+            race: pendingRaceLabel(data.race, t("manage.release.pendingRaceFallback")),
+            fee: formatNumber(data.fee ?? 0),
+          })
+          : t("manage.release.success"));
         onChanged?.();
       } else {
         flashResult(false, `${t("manage.release.errorPrefix")} ${resolveApiError(data, t)}`);
@@ -446,6 +455,8 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
           ) : (
             <>
               <p className="text-cz-3 text-xs">{t("manage.release.description")}</p>
+              {/* #8153: rytteren koerer et etapeloeb -> frigivelsen venter til sidste etape. */}
+              <ReleasePendingLine race={pendingRaceFromQuote(releaseQuote)} />
               <div className="space-y-1.5 text-sm rounded-cz border border-cz-border bg-cz-subtle p-3">
                 <div className="flex items-center justify-between">
                   <span className="text-cz-3 text-xs">{t("manage.release.fee")}</span>
