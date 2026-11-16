@@ -35,7 +35,8 @@
       "title": "Toon het hele seizoen",
       "description": "Er zijn geen komende koersen in deze weergave. Met het hele seizoen kun je vooruit plannen.",
       "action": "Heel seizoen tonen"
-    }
+    },
+    "peaks": "{count, plural, one {Vormpiek · # renner} other {Vormpiek · # renners}}"
   },
   "status": {
     "ready": "Klaar",
@@ -63,7 +64,8 @@
     "withdrawn": "Je team heeft zich afgemeld voor deze koers. Een selectie opslaan meldt het weer aan.",
     "restored": "Je niet-opgeslagen wijzigingen zijn hersteld.",
     "saveTactics": "Tactiek opslaan",
-    "savePeaks": "{count, plural, =0 {Toepassen op selectie} other {Toepassen op selectie (#)}}"
+    "savePeaks": "{count, plural, =0 {Toepassen op selectie} other {Toepassen op selectie (#)}}",
+    "saveSquadAndTactics": "Ploeg opslaan en tactiek zetten"
   },
   "copy": {
     "title": "Selectie kopiëren van",
@@ -86,9 +88,25 @@
       "title": "Laad de renners opnieuw",
       "description": "Op dit moment zijn er geen renners van je team beschikbaar voor deze koers."
     },
-    "afterRace": "Na de koers",
-    "afterRaceTitle": "Verwachte vermoeidheid na de laatste etappe bij normale inspanning",
-    "afterRaceNote": "Na de koers: verwachte vermoeidheid na de laatste etappe bij normale inspanning, gerekend vanaf de vermoeidheid van vandaag (een schatting)."
+    "type": "Type",
+    "load": "Belasting",
+    "loadTitle": "Verwachte belasting van de koers bij normale inspanning",
+    "loadNote": "Belasting: hoe zwaar de koers naar verwachting wordt bij normale inspanning (licht, gemiddeld, zwaar).",
+    "loadWord": {
+      "light": "Licht",
+      "medium": "Gemiddeld",
+      "hard": "Zwaar"
+    },
+    "peakShort": "Piek {date}",
+    "peakTitle": "Vormpiek: {race}, {date} ({count, plural, =0 {vandaag} one {over # dag} other {over # dagen}})",
+    "columns": "Kolommen",
+    "mobileColumn": {
+      "routeMatch": "Match",
+      "form": "Vorm",
+      "fatigue": "Vermoeidheid",
+      "load": "Belasting",
+      "rating": "Rating"
+    }
   },
   "role": {
     "captain": "Kopman",
@@ -110,8 +128,8 @@
     "hide": "Profiel verbergen",
     "show": "Profiel tonen",
     "unavailable": "Nog geen parcoursgegevens voor deze rit.",
-    "showFull": "Volledig profiel tonen",
-    "hideFull": "Volledig profiel verbergen"
+    "km": "{km} km",
+    "gain": "{gain} m"
   },
   "unsavedBar": {
     "label": "Niet-opgeslagen wijzigingen",
@@ -186,16 +204,21 @@
     "label": "Weergave",
     "squad": "Ploeg",
     "tactics": "Tactiek",
-    "peak": "Vormpiek"
+    "peak": "Vormpiek",
+    "hint": {
+      "squad": "Kies renners en geef ze een rol · elke kolom sorteert",
+      "tactics": "Dezelfde tactiek en hetzelfde opslaan als op de koerspagina",
+      "peak": "Vink renners aan en pas de vormpiek toe op deze koers"
+    }
   },
   "tactics": {
     "noSquad": {
       "title": "Sla eerst een ploeg op",
       "description": "De tactiek geldt voor de renners in de opgeslagen ploeg."
     },
-    "squadUnsaved": "De ploeg heeft niet-opgeslagen wijzigingen. De tactiek gebruikt de opgeslagen ploeg, dus sla eerst de ploeg op.",
+    "squadUnsaved": "De ploeg heeft niet-opgeslagen wijzigingen. \"Ploeg opslaan en tactiek zetten\" slaat haar op en toont de tactiek.",
     "shared": "Dezelfde tactiek als op de koerspagina: een plan dat je hier opslaat, staat daar ook, en andersom.",
-    "saveInTab": "Je hebt niet-opgeslagen tactiek. Sla die eerst op met de tactiekknop."
+    "saveInTab": "Je hebt niet-opgeslagen tactiek. Sla die eerst op met \"Tactiek opslaan\"."
   },
   "peak": {
     "target": "Piekdoel: {race}, start {date}. Vink renners aan en pas toe.",
@@ -214,7 +237,13 @@
     "notSenior": "Niet in de seniorenploeg",
     "applied": "{count, plural, one {Piek ingesteld voor # renner.} other {Piek ingesteld voor # renners.}}",
     "appliedPartial": "{created} ingesteld, {skipped} overgeslagen (limiet voor doelen, of de koers is niet meer open).",
-    "count": "{shown} renners · {open} kunnen hier pieken · max {max} per renner"
+    "count": "{shown} renners · {open} kunnen hier pieken · max {max} per renner",
+    "group": {
+      "inSquad": "In de ploeg · {count}",
+      "outside": "Niet geselecteerd · {count}"
+    },
+    "notPicked": "{name} piekt voor {race}, maar is niet geselecteerd. Zonder de koers gaat de piek verloren.",
+    "pickForRace": "Selecteren voor de koers"
   },
   "sheet": {
     "prev": "Vorige koers",

@@ -1,10 +1,10 @@
-// #7535 runde 3: visningerne, "Efter loebet", Formtop-raekkerne og mobil-arkets pile.
+// #7535 runde 3 + ejervalg 16/11 (#8294): visningerne, belastning i ord, kolonnevalg paa mobil, Formtop-
+// raekkerne (udtagne oeverst, advarsel), formtop-maerket og mobil-arkets pile.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   adjacentRace,
-  afterRaceWarns,
   buildPeakRows,
   daysBetween,
   isWorkbenchView,
@@ -13,7 +13,14 @@ import {
   saveLabelKey,
   sortPeakRows,
   sortSquadRows,
-  withAfterRace,
+  withLoad,
+  isLoadWord,
+  normalizeMobileColumns,
+  toggleMobileColumn,
+  groupPeakRows,
+  peakCountsByRace,
+  nextPeakByRider,
+  DEFAULT_MOBILE_COLUMNS,
   EMPTY_SELECTION,
   type SquadRow,
 } from "../../lib/planningWorkbench.ts";
@@ -36,34 +43,38 @@ const row = (id: string, extra: Partial<SquadRow> = {}): SquadRow => ({
   ...extra,
 });
 
-test("views: three, unknown values fall back, save label follows the view", () => {
+test("views: three, unknown values fall back, the head gold follows the view (punkt 8 B)", () => {
   assert.equal(isWorkbenchView("squad"), true);
   assert.equal(isWorkbenchView("peak"), true);
   assert.equal(isWorkbenchView("calendar"), false);
   assert.equal(isWorkbenchView(null), false);
   assert.equal(saveLabelKey("squad"), "race.save");
   assert.equal(saveLabelKey("tactics"), "race.saveTactics");
+  assert.equal(saveLabelKey("tactics", { squadDirty: true }), "race.saveSquadAndTactics");
   assert.equal(saveLabelKey("peak"), "race.savePeaks");
 });
 
-test("after race: server numbers land on rows, missing is unknown (never 0), and it sorts", () => {
-  const rows = withAfterRace([row("a"), row("b"), row("c")], { a: 38, c: 64 });
-  assert.equal(rows[0].afterRace, 38);
-  assert.equal(rows[1].afterRace, null);
-  assert.equal(rows[2].afterRace, 64);
-  const sorted = sortSquadRows(rows, { key: "afterRace", dir: "desc" }, EMPTY_SELECTION);
-  assert.deepEqual(sorted.map((r) => r.id), ["c", "a", "b"]);
-  const asc = sortSquadRows(rows, { key: "afterRace", dir: "asc" }, EMPTY_SELECTION);
-  assert.deepEqual(asc.map((r) => r.id), ["a", "c", "b"]);
-  // Slukket model: raekkerne er uroerte.
+test("load (punkt 5): only known words land on rows, unknown is null, and it sorts light to hard", () => {
+  const rows = withLoad([row("a"), row("b"), row("c"), row("d")], { a: "hard", c: "light", d: 42 });
+  assert.equal(rows[0].load, "hard");
+  assert.equal(rows[1].load, null);
+  assert.equal(rows[2].load, "light");
+  assert.equal(rows[3].load, null); // et tal er aldrig et ord
+  assert.equal(isLoadWord("medium"), true);
+  assert.equal(isLoadWord(30), false);
+  assert.deepEqual(sortSquadRows(rows, { key: "load", dir: "desc" }, EMPTY_SELECTION).map((r) => r.id), ["a", "c", "b", "d"]);
+  assert.deepEqual(sortSquadRows(rows, { key: "load", dir: "asc" }, EMPTY_SELECTION).map((r) => r.id), ["c", "a", "b", "d"]);
   const same = [row("a")];
-  assert.equal(withAfterRace(same, null), same);
+  assert.equal(withLoad(same, null), same); // slukket model: raekkerne er uroerte
 });
 
-test("after race warns at the design's amber level", () => {
-  assert.equal(afterRaceWarns(null), false);
-  assert.equal(afterRaceWarns(59), false);
-  assert.equal(afterRaceWarns(60), true);
+test("mobile columns (punkt 2): at most three, at least one, invalid falls back", () => {
+  assert.deepEqual(normalizeMobileColumns(null), DEFAULT_MOBILE_COLUMNS);
+  assert.deepEqual(normalizeMobileColumns(["nope"]), DEFAULT_MOBILE_COLUMNS);
+  assert.deepEqual(normalizeMobileColumns(["form", "routeMatch"]), ["routeMatch", "form"]);
+  assert.deepEqual(toggleMobileColumn(["routeMatch", "form", "fatigue"], "load"), ["form", "fatigue", "load"]);
+  assert.deepEqual(toggleMobileColumn(["form"], "form"), ["form"]);
+  assert.deepEqual(toggleMobileColumn(["routeMatch", "form"], "form"), ["routeMatch"]);
 });
 
 test("sheet arrows step through the list and stop at both ends", () => {
@@ -109,6 +120,47 @@ test("peak rows: target here, full, senior only; suggestions are not targets", (
   assert.deepEqual(pairs, [{ riderId: "c", raceId: "r1" }]);
 });
 
+test("peak (punkt 6 B): picked riders first, warning when the peak hits this race but the rider is not picked", () => {
+  const riders = [
+    { id: "a", firstname: "Ann", peaks: [{ id: "p1", targetRaceId: "r1" }] },
+    { id: "b", firstname: "Bo", peaks: [{ id: "p2", targetRaceId: "r1" }] },
+    { id: "c", firstname: "Cy", peaks: [] },
+  ];
+  const rows = buildPeakRows({ riders, races, raceId: "r1", maxPerRider: 2, today: "2026-11-16" });
+  const g = groupPeakRows(rows, ["a"]);
+  assert.deepEqual(g.inSquad.map((r) => r.id), ["a"]);
+  assert.deepEqual(g.outside.map((r) => r.id), ["b", "c"]);
+  assert.deepEqual([...g.warn], ["b"]); // a er udtaget, c har ingen formtop her
+});
+
+test("peak counts per race (punkt 3) and next peak per rider (punkt 7)", () => {
+  const riders = [
+    { id: "a", peaks: [{ id: "p1", targetRaceId: "r1" }, { id: "p2", targetRaceId: "r2" }] },
+    { id: "b", peaks: [{ id: "p3", targetRaceId: "r1" }, { targetRaceId: "r2", isSuggestion: true }] },
+  ];
+  const counts = peakCountsByRace(riders);
+  assert.equal(counts.get("r1"), 2);
+  assert.equal(counts.get("r2"), 1); // et forslag er ikke en formtop
+  assert.equal(peakCountsByRace(null).size, 0);
+  const next = nextPeakByRider(buildPeakRows({ riders, races, raceId: "r1", maxPerRider: 2, today: "2026-11-16" }));
+  assert.equal(next.get("a")?.name, "Race One");
+  assert.equal(next.get("a")?.days, 4);
+});
+
+// Kontrakt (punkt 7 + 8): rute-match paa ratingens gradient (ingen guld-fremhaevning), formtoppen staar
+// ikke i Status, og visningen har kun hovedets ene guld-knap (taktik-fanens eget gem skjules og trykkes).
+test("route match uses the rating gradient, peak is not in Status, and tactics has one gold in the head", () => {
+  const table = readFileSync(new URL("./SquadTable.tsx", import.meta.url), "utf8");
+  assert.match(table, /statPlateStyle\(value, \{ scale: "rating" \}\)/);
+  assert.doesNotMatch(table, /text-cz-accent-t" : ""/);
+  const status = table.slice(table.indexOf("function StatusCell"), table.indexOf("function FatigueCell"));
+  assert.doesNotMatch(status, /peak/i);
+  const tactics = readFileSync(new URL("./TacticsView.tsx", import.meta.url), "utf8");
+  assert.match(tactics, /race-tactics-tab\]_button\.bg-cz-accent\]:hidden/);
+  const wb = readFileSync(new URL("./RaceWorkbench.tsx", import.meta.url), "utf8");
+  assert.match(wb, /tacticsRef\.current\?\.save\(\)/);
+});
+
 test("peak target must be own, not started and not past", () => {
   assert.equal(peakTargetOpen(races[0], "2026-11-16"), true);
   assert.equal(peakTargetOpen(races[2], "2026-11-16"), false);
@@ -144,12 +196,17 @@ test("tactics view mounts the race page's tactics tab; peak view uses the Form t
   const data = readFileSync(new URL("../../lib/planningWorkbenchData.ts", import.meta.url), "utf8");
   assert.match(data, /\/api\/peak-plans\/board/);
   assert.match(data, /\/api\/peak-plans\/bulk/);
-  assert.match(data, /\/after-race-fatigue/);
+  assert.match(data, /\/expected-load/);
+  assert.doesNotMatch(data, /after-race-fatigue/);
 });
 
 test("every new text exists in all five languages", () => {
   const keys = [
-    "race.saveTactics", "race.savePeaks", "squad.afterRace", "squad.afterRaceTitle", "squad.afterRaceNote",
+    "race.saveTactics", "race.savePeaks", "race.saveSquadAndTactics", "squad.type", "squad.load", "squad.loadTitle", "squad.loadNote",
+    "squad.loadWord.light", "squad.loadWord.medium", "squad.loadWord.hard", "squad.peakShort", "squad.peakTitle", "squad.columns",
+    "squad.mobileColumn.routeMatch", "squad.mobileColumn.form", "squad.mobileColumn.fatigue", "squad.mobileColumn.load", "squad.mobileColumn.rating",
+    "views.hint.squad", "views.hint.tactics", "views.hint.peak", "peak.group.inSquad", "peak.group.outside", "peak.notPicked", "peak.pickForRace",
+    "raceList.peaks", "profile.km", "profile.gain",
     "views.label", "views.squad", "views.tactics", "views.peak",
     "tactics.noSquad.title", "tactics.noSquad.description", "tactics.squadUnsaved", "tactics.shared", "tactics.saveInTab",
     "peak.target", "peak.targetClosed", "peak.selected", "peak.col.target", "peak.col.start", "peak.inDays",

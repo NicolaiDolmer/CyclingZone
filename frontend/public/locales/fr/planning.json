@@ -35,7 +35,8 @@
       "title": "Affiche toute la saison",
       "description": "Aucune course à venir dans cette vue. Avec toute la saison, tu peux planifier à l'avance.",
       "action": "Afficher toute la saison"
-    }
+    },
+    "peaks": "{count, plural, one {Pic de forme · # coureur} other {Pic de forme · # coureurs}}"
   },
   "status": {
     "ready": "Prêt",
@@ -63,7 +64,8 @@
     "withdrawn": "Ton équipe s'est retirée de cette course. Enregistrer une équipe la réinscrit.",
     "restored": "Tes modifications non enregistrées ont été rétablies.",
     "saveTactics": "Enregistrer la tactique",
-    "savePeaks": "{count, plural, =0 {Appliquer à la sélection} other {Appliquer à la sélection (#)}}"
+    "savePeaks": "{count, plural, =0 {Appliquer à la sélection} other {Appliquer à la sélection (#)}}",
+    "saveSquadAndTactics": "Enregistrer l'équipe et fixer la tactique"
   },
   "copy": {
     "title": "Copier l'équipe de",
@@ -86,9 +88,25 @@
       "title": "Recharge les coureurs",
       "description": "Aucun coureur de ton équipe n'est disponible pour cette course pour le moment."
     },
-    "afterRace": "Après la course",
-    "afterRaceTitle": "Fatigue attendue après la dernière étape à effort normal",
-    "afterRaceNote": "Après la course : fatigue attendue après la dernière étape à effort normal, à partir de la fatigue du jour (une estimation)."
+    "type": "Type",
+    "load": "Charge",
+    "loadTitle": "Charge attendue de la course à effort normal",
+    "loadNote": "Charge : la difficulté attendue de la course à effort normal (légère, moyenne, dure).",
+    "loadWord": {
+      "light": "Légère",
+      "medium": "Moyenne",
+      "hard": "Dure"
+    },
+    "peakShort": "Pic {date}",
+    "peakTitle": "Pic de forme : {race}, {date} ({count, plural, =0 {aujourd'hui} one {dans # jour} other {dans # jours}})",
+    "columns": "Colonnes",
+    "mobileColumn": {
+      "routeMatch": "Profil",
+      "form": "Forme",
+      "fatigue": "Fatigue",
+      "load": "Charge",
+      "rating": "Note"
+    }
   },
   "role": {
     "captain": "Leader",
@@ -110,8 +128,8 @@
     "hide": "Masquer le profil",
     "show": "Afficher le profil",
     "unavailable": "Pas encore de données de parcours pour cette étape.",
-    "showFull": "Afficher le profil complet",
-    "hideFull": "Masquer le profil complet"
+    "km": "{km} km",
+    "gain": "{gain} m"
   },
   "unsavedBar": {
     "label": "Modifications non enregistrées",
@@ -186,16 +204,21 @@
     "label": "Vue",
     "squad": "Équipe",
     "tactics": "Tactique",
-    "peak": "Pic de forme"
+    "peak": "Pic de forme",
+    "hint": {
+      "squad": "Choisissez des coureurs et donnez-leur un rôle · chaque colonne se trie",
+      "tactics": "Même tactique et même enregistrement que sur la page de la course",
+      "peak": "Cochez des coureurs et appliquez le pic de forme à cette course"
+    }
   },
   "tactics": {
     "noSquad": {
       "title": "Enregistrez d'abord une équipe",
       "description": "La tactique se règle pour les coureurs de l'équipe enregistrée."
     },
-    "squadUnsaved": "L'équipe a des modifications non enregistrées. La tactique utilise l'équipe enregistrée : enregistrez d'abord l'équipe.",
+    "squadUnsaved": "L'équipe a des modifications non enregistrées. \"Enregistrer l'équipe et fixer la tactique\" l'enregistre et affiche la tactique.",
     "shared": "Même tactique que sur la page de la course : un plan enregistré ici y apparaît, et inversement.",
-    "saveInTab": "Vous avez une tactique non enregistrée. Enregistrez-la d'abord avec le bouton de la tactique."
+    "saveInTab": "Vous avez une tactique non enregistrée. Enregistrez-la d'abord avec \"Enregistrer la tactique\"."
   },
   "peak": {
     "target": "Objectif de pic : {race}, départ le {date}. Cochez des coureurs et appliquez.",
@@ -214,7 +237,13 @@
     "notSenior": "Pas dans l'équipe senior",
     "applied": "{count, plural, one {Pic fixé pour # coureur.} other {Pic fixé pour # coureurs.}}",
     "appliedPartial": "{created} fixés, {skipped} ignorés (limite d'objectifs, ou la course n'est plus ouverte).",
-    "count": "{shown} coureurs · {open} peuvent viser un pic ici · max {max} par coureur"
+    "count": "{shown} coureurs · {open} peuvent viser un pic ici · max {max} par coureur",
+    "group": {
+      "inSquad": "Dans l'équipe · {count}",
+      "outside": "Non sélectionnés · {count}"
+    },
+    "notPicked": "{name} vise son pic pour {race}, mais n'est pas sélectionné. Sans la course, le pic est perdu.",
+    "pickForRace": "Sélectionner pour la course"
   },
   "sheet": {
     "prev": "Course précédente",
