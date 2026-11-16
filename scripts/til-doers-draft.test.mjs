@@ -391,7 +391,7 @@ test('fetchRoadmap: uden env springes over; med env kun GET og fejl rapporteres'
   const seen = [];
   const fetchImpl = async (url, opts) => {
     seen.push({ url, method: opts.method });
-    const rows = url.includes('roadmap_items') ? [{ id: 'r', issue_ref: 7, status: 'planned', title_en: 'X' }] : [];
+    const rows = url.includes('roadmap_items') ? [{ id: 'r', issue_ref: 7, status: 'planned', title_en: 'X', approved: true }] : [];
     return { ok: true, json: async () => rows };
   };
   const res = await fetchRoadmap({ fetchImpl, env: { SUPABASE_URL: 'https://db.example/', SUPABASE_SERVICE_KEY: 'k' }, issues: [7, 8] });
@@ -401,6 +401,27 @@ test('fetchRoadmap: uden env springes over; med env kun GET og fejl rapporteres'
   assert.match(seen[0].url, /flag_key=is\.null/);
   const failing = await fetchRoadmap({ fetchImpl: async () => ({ ok: false, status: 401 }), env: { SUPABASE_URL: 'u', SUPABASE_SERVICE_KEY: 'k' }, issues: [7] });
   assert.match(failing.error, /HTTP 401/);
+});
+
+test('fetchRoadmap: ikke-godkendte roadmap-punkter og ikke-udgivne kendte fejl kommer aldrig med (Vercel Security Review)', async () => {
+  const seen = [];
+  // Svaret ignorerer filteret med vilje: vaernet paa svaret skal ogsaa holde.
+  const fetchImpl = async (url) => {
+    seen.push(url);
+    const rows = url.includes('roadmap_items')
+      ? [{ id: 'a', issue_ref: 7, status: 'planned', title_en: 'Godkendt', approved: true }, { id: 'b', issue_ref: 7, status: 'planned', title_en: 'Hemmeligt punkt', approved: false }]
+      : [{ id: 'c', issue_ref: 8, status: 'open', title_en: 'Udgivet fejl', published: true }, { id: 'd', issue_ref: 8, status: 'open', title_en: 'Hemmelig fejl', published: false }, { id: 'e', issue_ref: 8, status: 'open', title_en: 'Uden felt' }];
+    return { ok: true, json: async () => rows };
+  };
+  const res = await fetchRoadmap({ fetchImpl, env: { SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_KEY: 'k' }, issues: [7, 8] });
+  assert.deepEqual(res.items.map((i) => i.id), ['a', 'c']);
+  assert.ok(res.items.every((i) => !('approved' in i) && !('published' in i)));
+  assert.match(seen.find((u) => u.includes('roadmap_items')), /approved=is.true/);
+  assert.match(seen.find((u) => u.includes('known_issues')), /published=is.true/);
+  const body = renderDraft({ day: '2026-11-16', days: 3, results: [], masterplan: [], roadmap: res, backups: [], cleanup: '' });
+  assert.doesNotMatch(body, /Hemmelig|Uden felt/);
+  assert.match(body, /Godkendt/);
+  assert.match(body, /Udgivet fejl/);
 });
 
 test('runDraft: dry-run skriver intet; --apply opretter én kommentar, naeste koersel opdaterer den', async () => {
@@ -453,7 +474,7 @@ test('runDraft: intern PR med Refs til et lukket issue udenfor masterplanen tjek
   const seen = [];
   const fetchImpl = async (url) => {
     seen.push(url);
-    return { ok: true, json: async () => (url.includes('roadmap_items') ? [{ id: 'r', issue_ref: 7801, status: 'planned', title_en: 'Levering' }] : []) };
+    return { ok: true, json: async () => (url.includes('roadmap_items') ? [{ id: 'r', issue_ref: 7801, status: 'planned', title_en: 'Levering', approved: true }] : []) };
   };
   const r = await runDraft({ execGh: gh.exec, repo: 'o/n', now: new Date('2026-11-16T12:00:00Z'), env: { SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_KEY: 'k' }, fetchImpl, read: () => '', log: () => {} });
   assert.ok(seen.some((u) => /issue_ref=in\.\(7801\)/.test(u)));

@@ -683,7 +683,12 @@ export function fetchIssueComments(execGh, repo, n) {
   return ghPaged(execGh, `repos/${repo}/issues/${n}/comments?per_page=100`);
 }
 
-/** Roadmap-punkter og kendte fejl uden kontakt paa de leverede issues. Kun GET. */
+/**
+ * Roadmap-punkter og kendte fejl uden kontakt paa de leverede issues. Kun GET.
+ * Service-noeglen omgaar RLS, og kommentaren er offentlig: kun raekker spillerne
+ * allerede kan se (roadmap_items.approved, known_issues.published) maa komme med,
+ * baade som filter i forespoergslen og som vaern paa svaret (Vercel Security Review, #8266).
+ */
 export async function fetchRoadmap({ fetchImpl = globalThis.fetch, env = process.env, issues }) {
   const url = env.SUPABASE_URL;
   const key = env.SUPABASE_SERVICE_KEY;
@@ -691,15 +696,17 @@ export async function fetchRoadmap({ fetchImpl = globalThis.fetch, env = process
   if (!issues.length) return { items: [] };
   const list = issues.map(Number).filter(Number.isSafeInteger).join(',');
   const headers = { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' };
-  const get = async (table, select, doneStatuses, extra = '') => {
-    const q = `${url.replace(/\/+$/, '')}/rest/v1/${table}?select=${select}&issue_ref=in.(${list})&status=not.in.(${doneStatuses.join(',')})${extra}`;
+  const get = async (table, select, visible, doneStatuses, extra = '') => {
+    const q = `${url.replace(/\/+$/, '')}/rest/v1/${table}?select=${select},${visible}&issue_ref=in.(${list})&status=not.in.(${doneStatuses.join(',')})&${visible}=is.true${extra}`;
     const res = await fetchImpl(q, { method: 'GET', headers });
     if (!res.ok) throw new Error(`${table}: HTTP ${res.status}`);
-    return (await res.json()).map((r) => ({ ...r, table }));
+    return (await res.json())
+      .filter((r) => r[visible] === true)
+      .map(({ [visible]: _visible, ...r }) => ({ ...r, table }));
   };
   try {
-    const items = await get('roadmap_items', 'id,issue_ref,status,title_en,flag_key', ['shipped', 'archived'], '&flag_key=is.null');
-    const known = await get('known_issues', 'id,issue_ref,status,title_en', ['fixed', 'dismissed']);
+    const items = await get('roadmap_items', 'id,issue_ref,status,title_en,flag_key', 'approved', ['shipped', 'archived'], '&flag_key=is.null');
+    const known = await get('known_issues', 'id,issue_ref,status,title_en', 'published', ['fixed', 'dismissed']);
     return { items: [...items, ...known].sort((a, b) => a.issue_ref - b.issue_ref) };
   } catch (err) {
     return { items: [], error: err.message };
