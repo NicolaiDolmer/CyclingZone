@@ -77,7 +77,10 @@ for (const width of [375, 1440]) {
     let observing = false;
     page.on("request", request => {
       const path = new URL(request.url()).pathname;
-      if (observing && request.method() !== "OPTIONS" && (path.startsWith("/rest/v1/") || path.startsWith("/api/"))) reads.push({ method: request.method(), path });
+      // #8290: /api/feature-flags is viewer config, never auction or money data. Its startup fetches are
+      // driven by auth events (the rider-name icon re-asks on onAuthStateChange's initial session), so on a
+      // loaded runner the last pair can land after the window opens. A realtime delta never triggers it.
+      if (observing && request.method() !== "OPTIONS" && path !== "/api/feature-flags" && (path.startsWith("/rest/v1/") || path.startsWith("/api/"))) reads.push({ method: request.method(), path });
     });
     await page.goto("/auctions?tab=all");
     const row = page.locator('[data-auction-row="auction-realtime-8020"]:visible').first();
