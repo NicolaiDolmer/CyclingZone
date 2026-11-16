@@ -1,5 +1,62 @@
 export const PATCHES = [
 {
+  "version": "7.453",
+  "date": "2026-11-16",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Board",
+      "en": {
+        "title": "The board's mid-season message arrives once",
+        "body": "The board's mid-season review is sent once per season. Deleting it no longer brings it back, and it now arrives in the game only, not as a Discord message."
+      },
+      "da": {
+        "title": "Bestyrelsens midtsæson-besked kommer én gang",
+        "body": "Bestyrelsens midtsæson-vurdering sendes én gang pr. sæson. Sletter du den, kommer den ikke igen, og den kommer nu kun i spillet, ikke som Discord-besked."
+      },
+      "refs": [
+        8196
+      ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Races",
+      "en": {
+        "title": "Clearer stage profile on phones",
+        "body": "The numbers on the stage profile use even-width digits, and the labels on the graph are readable on a phone. On narrow screens the busiest labels are left out; the same numbers are shown under the graph."
+      },
+      "da": {
+        "title": "Tydeligere etapeprofil på telefonen",
+        "body": "Tallene på etapeprofilen står i lige brede cifre, og mærkaterne i grafen kan læses på en telefon. På smalle skærme udelades de tætteste mærkater; de samme tal står under grafen."
+      },
+      "refs": [
+        6365
+      ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Transfers",
+      "en": {
+        "title": "Clearer buying card with an auto-accept price",
+        "body": "When a listed rider has an auto-accept price, the buying card shows that price at the top and lets you choose between bidding on the listing and starting an auction. A summary says what will happen before you confirm."
+      },
+      "da": {
+        "title": "Tydeligere købskort ved auto-pris",
+        "body": "Har en rytter til salg en auto-pris, viser købskortet prisen øverst, og du vælger mellem at byde på opslaget og at starte en auktion. En opsummering siger, hvad der sker, før du bekræfter."
+      },
+      "refs": [
+        8016
+      ]
+    }
+  ]
+},
+{
   "version": "7.452",
   "date": "2026-11-16",
   "changes": [
