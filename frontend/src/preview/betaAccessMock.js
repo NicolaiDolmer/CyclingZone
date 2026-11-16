@@ -106,10 +106,11 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "training_train_now_instant", // #8031 (kun patch-noten om Traen nu-kvitteringen)
   "sale_escrow_enabled", // #6181 Hjaelp (binaert, som pengelaasen)
   "training_history_from_ticks_6490", // #6490 traeningssidens laesevej (binaert)
+  "training_train_now_bonus", // #7741 bonusmaerket og teksterne (binaert, off paa preview; ?trainNowBonus=on viser dem)
 ];
 
 // Spejler PLAYER_VISIBLE_BINARY_FLAG_KEYS i backenden: "beta" er off.
-const BINARY_FLAG_KEYS = ["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801", "sale_escrow_enabled", "training_history_from_ticks_6490"];
+const BINARY_FLAG_KEYS = ["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801", "sale_escrow_enabled", "training_history_from_ticks_6490", "training_train_now_bonus"];
 
 // #5319: træningskatalog v3 er OFF på preview (som i prod), men kan tændes med
 // ?catalogV3=on for at se de nye sessioner i vælgerne. Huskes i localStorage
@@ -154,6 +155,18 @@ function previewRacePageV6Enabled() {
 }
 previewRacePageV6Enabled();
 
+// #7741: Træn nu-bonussen er OFF på preview (som i prod), men ?trainNowBonus=on viser mærket og teksterne.
+export function previewTrainNowBonusEnabled() {
+  try {
+    const param = new URLSearchParams(window.location.search).get("trainNowBonus");
+    if (param === "on") localStorage.setItem("cz_mock_train_now_bonus", "1");
+    if (param === "off") localStorage.setItem("cz_mock_train_now_bonus", "0");
+    return localStorage.getItem("cz_mock_train_now_bonus") === "1";
+  } catch {
+    return false;
+  }
+}
+
 // #7778: visningsvalg på brugeren (GET/PUT /api/me/ui-prefs), i hukommelsen.
 let uiPrefs = {};
 
@@ -161,6 +174,7 @@ function playerFlags() {
   return Object.fromEntries(PLAYER_VISIBLE_FLAG_KEYS.map((key) => {
     if (key === "race_page_v6") return [key, previewRacePageV6Enabled()];
     if (key === "training_catalog_v3") return [key, previewCatalogV3Enabled()];
+    if (key === "training_train_now_bonus") return [key, previewTrainNowBonusEnabled()];
     if (key === "champion_jerseys_7824") return [key, previewChampionJerseysEnabled()];
     if (key === "potential_estimate_display") return [key, previewPotentialEstimateEnabled()];
     const stage = flags.find((f) => f.key === key)?.stage;

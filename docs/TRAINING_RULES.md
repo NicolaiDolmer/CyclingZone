@@ -453,8 +453,13 @@ er den tekniske kontrakt.
   hidtil.
 - **Stemplet vinder over kontakten.** Et tryk, der er gået igennem som øjeblikkeligt, følges resten
   af datoen, også hvis kontakten slukkes bagefter.
-- **Ingen bonus i reglen.** Bonussen er en separat kontakt (`training_train_now_bonus`, #7741) og
-  indgår ikke i teksten for alle.
+- **Bonus kun ved eget tryk (#7741, ejervalg 16/11).** Bonussen er en separat kontakt
+  (`training_train_now_bonus`), slukket indtil ejeren tænder den, og indgår ikke i teksten for
+  alle. Tændt giver en rytter en lille bonus på dagens træningsfremgang, kun når spilleren selv
+  trykker Træn nu, før holdets automatiske træning har kørt for datoen. Automatisk træning giver
+  aldrig bonus. Der er ingen klokkeslæt-grænse i koden: afgørelsen er trykket, ikke uret. Hjælp
+  (`trainNowBonus`), turens tekster (`tour.*DayCloseBonus`) og kvitteringens bonusmærke
+  (`train_now_bonus` i rytterens rapport) følger kontakten; slukket viser de intet om bonussen.
 
 **Hjælp følger kontakten selv.** `HELP_BLOCK_FLAGS.dailytraining` (`frontend/src/pages/helpFlagGates.js`)
 viser `trainNowBeta` (dagens tekst med beta-forbeholdet), når kontakten er off for viewer'en, og
@@ -481,7 +486,7 @@ punkt, og skal i så fald rettes særskilt).
 
 `training_tick_per_race_day` og `race_day_development_enabled` er begge `on`.
 Træningen kører én gang pr. løbsdag efter dagens sidste løb, tidligst kl. 20 dansk tid
-(`trainingDayCloseTrigger.js`). Managerens frivillige klik giver ingen bonus efter #5281.
+(`trainingDayCloseTrigger.js`). Managerens frivillige klik giver ingen bonus efter #5281; Træn nu-bonussen (#7741) er en separat, slukket kontakt, se "Træn nu for alle" nedenfor.
 Afsnit med S3/off-status er historiske og skal læses med deres angivne dato.
 
 ## 1. Kadencen: hvornår træningen faktisk kører
@@ -499,7 +504,7 @@ Med løbsdagsflaget on er der **ét trænings-tick pr. hold og trup pr. løbsdag
 | Hvem sweepes | hold hvor `is_bank=false`, `is_frozen=false`, `is_test_account=false`. `is_ai=false` er **fjernet** så længe `race_day_engine_enabled` er on (D4) | `trainingSweep.js:78-82` |
 | Master-flag | `daily_training_enabled` i `app_config`, fail-safe off | `backend/lib/dailyTrainingFlag.js` |
 
-**Manager-klikket er ikke en ekstra dag og giver ingen bonus.** Med løbsdagsflaget on
+**Manager-klikket er ikke en ekstra dag og giver som udgangspunkt ingen bonus** (Træn nu-bonussen, #7741, er en separat, slukket kontakt: bonus kun ved eget tryk, aldrig ved automatisk træning). Med løbsdagsflaget on
 åbner den frivillige knap og assistentens sweep på samme betingelse: tidligst
 kl. 20 efter dagens sidste løb. Begge bruger samme tick og udbytte.
 `bonus_applied` i `training_day_runs` er et historisk audit-felt uden effekt
@@ -1237,7 +1242,7 @@ Når et af issuerne merges, flyttes indholdet ind i det relevante afsnit, og ræ
 | # | Beslutning | Ejerens ord | Konsekvens |
 |---|---|---|---|
 | 1 | **Tick-enheden er løbsdagen (`game_day`), og alle divisioner har SAMME antal løbsdage pr. sæson** | *"Det skal være samme antal dage ind i spillet. Men divisionerne behøves ikke nødvendigvis at køre lige mange løb. Altså det kan sagtens være, at divisionerne der er lidt lavere, de bare får flere muligheder for at træne."* | Kalenderpakkeren fylder et fast antal løbsdage (fx 3 pr. kalenderdag) i alle divisioner; løbsdage uden løb er rene træningsdage. En rytter enten kører løb eller træner på hver løbsdag (§6.2-afvigelsen forsvinder strukturelt). Restitutionen får sin plads efter hver løbsdag (#3461). Rater rekalibreres så en sæsons samlede udvikling ikke stiger med antallet af ticks; "+1 pr. evne pr. dag" (#4801) betyder pr. løbsdag |
-| 2 | **"Træn i dag"-knappen og 25 %-bonussen fjernes** · **ÆNDRET 29/9:** bonussen forbliver fjernet, men knappen kommer tilbage som tidsuafhængig "Træn nu" (samme resultat som automatisk afregning, dagen afgøres i begge retninger). Se [`2026-09-29-traen-nu-og-prognose-design.md`](superpowers/specs/2026-09-29-traen-nu-og-prognose-design.md) | valgt 6/9 (anbefaling: fjern begge); revideret af ejeren 29/9 efter forumtråd | Programmet kører af sig selv når løbsdagen lukker. Ingen fordel af at logge ind ofte. `DAILY_TRAINING_CONFIG.bonusMult` og `POST /api/training/run-today` udgår sammen med omlægningen; spillerens arbejde er program, dagens override og løbsdagens intention |
+| 2 | **"Træn i dag"-knappen og 25 %-bonussen fjernes** · **ÆNDRET 29/9:** bonussen forbliver fjernet, men knappen kommer tilbage som tidsuafhængig "Træn nu" (samme resultat som automatisk afregning, dagen afgøres i begge retninger). **ÆNDRET 16/11 (#7741):** en separat, slukket kontakt giver en lille bonus, kun ved spillerens eget tryk. Se [`2026-09-29-traen-nu-og-prognose-design.md`](superpowers/specs/2026-09-29-traen-nu-og-prognose-design.md) | valgt 6/9 (anbefaling: fjern begge); revideret af ejeren 29/9 efter forumtråd | Programmet kører af sig selv når løbsdagen lukker. Ingen fordel af at logge ind ofte. `DAILY_TRAINING_CONFIG.bonusMult` og `POST /api/training/run-today` udgår sammen med omlægningen; spillerens arbejde er program, dagens override og løbsdagens intention |
 | 3 | **Løbsdagens intention vælges i holdudtagelsen pr. etape, sammen med rolle og taktik; standard = Normal** | valgt 6/9 (anbefaling) | Træningssiden viser intentionen read-only ("Race: attack") med link til etapen. Én kilde, tre forbrugere: løbsmotor, træthed, udvikling. Lukker #4632 punkt 1. **`race_entries` har ingen intentions-kolonne i dag** (kolonner: `race_id, rider_id, team_id, is_auto_filled, created_at, race_role, binding_span`), så det er migration + API-kontrakt + holdudtagelses-UI, ikke en aflæsning |
 | 4 | **Træningsscoren måler PASSETS KVALITET (1-99), ikke udbyttet** | *"Tættest på 1 - Men det skal også være alt efter hvor hurtigt/godt han udvikler sig. Sådan store talenter har bedre score, end nær så gode talenter. Derudover skal det også stige, hvis man har bedre træner, hvis man har bedre akademi mv. Altså underforstået, fordi man træner bedre."* | Score = f(potentiale, alder, session/intensitet, form/træthed, fokus-match, træner, faciliteter/akademi), og udviklingen udledes AF scoren. Bekræfter #3564 beslutning 5 og vender kausalretningen om: i dag er `tickResult.score` summen af de deltaer motoren allerede har beregnet (`dailyTraining.js:214, 233`). Scoren må IKKE være cap-afhængig som i dag (`dailyTraining.js:118-119`), hvor en rytter med fokus-evner på loftet får 0 efter et perfekt pas. Udbyttet pr. evne vises fortsat som +point på udviklingsfanen |
 | 5 | **Scoren ses KUN af rytterens egen manager og er ÆRLIG fra dag ét** | valgt 6/9 | RLS som i dag (`training_day_runs_select`-mønsteret: kun holdets ejer kan læse). **#3564 beslutning C frafalder** - ingen støj-gate, ingen "median ≥14 dage før potentialet kan aflæses". Accepteret pris: køb-træn-sælg bliver et scouting-loop. Markedsværdi og fremmede ryttere røres ikke, så #2798-sidekanalen er uændret |
@@ -1298,7 +1303,7 @@ Grundlag: før/efter-billede + fakta-ark med prod-tal (kilde: [#4850, kommentar 
 |---|---|---|
 | 1 | **Løbsdagen er tick-enheden** (bekræftet mod billedet) | uændret fra 6/9 |
 | 2 | **140 løbsdage pr. sæson i alle divisioner**, ikke 80. Antal LØB pr. division er urørt ("jeg vil ikke have at dette laver om i løbskalenderen") | `SEASON_RACE_DAY_TARGET[4] = 140` (= 28 løbsdatoer × D1's 5 slots); ekstra løbsdage er rene træningsdage. Deleren i `trainingRaceDayTick.js` kalibreres til 140 (siden #6711 forankret i 5 løbsdage pr. dato, se §13.3c). Skrivetryk ≈ 5× → gate G6 er krav før flip |
-| 3 | **Dagens træning kører samlet** (alle dagens løbsdage i ÉN sweep efter dagens sidste finalization) **+ frivillig knap "Kør dagens træning nu" uden bonus** | 25 %-bonussen fjernes stadig (beslutning 2, 6/9). Knappen giver ingen fordel, kun utålmodighed |
+| 3 | **Dagens træning kører samlet** (alle dagens løbsdage i ÉN sweep efter dagens sidste finalization) **+ frivillig knap "Kør dagens træning nu" uden bonus** | 25 %-bonussen fjernes stadig (beslutning 2, 6/9). Knappen giver ingen fordel, kun utålmodighed (16/11, #7741: undtagen den separate, slukkede Træn nu-bonus, kun ved eget tryk) |
 | 4 | **Tidligst kl. 20 dansk tid** (målt: aktive spillerdage/time kl. 16 = 218, 17-20 ≈ 185-199, 21 = 127) | Træningsrapport i indbakken kl. 20 = dagens øjeblik |
 | 5 | **U23-kalenderen (#4620) bygges MED i S4-cutover**; én løbsdags-akse pr. trup (senior/U23/junior), samme 140-mål | #4620 ind i Bane 1. Risiko flagget (13 dage, nul buffer) |
 | 6 | Formtræning = (b), besluttet 14/9 i #4633 | Åbnere #5238 først |
@@ -1376,10 +1381,10 @@ Alt nedenfor ligger bag `training_tick_per_race_day`, som er **on** i S4 (read-o
 | Præcis 140 tickede løbsdage pr. division: kanterne ved første/sidste løbsdato + gate G2 | **bygget** (#4846, 24/9) — se §13.3b "Kanterne" | `trainingDayCloseTrigger.js`, `trainingRaceDayG2.test.js` |
 | Overlap-guard + dags-claim på sweepen (G6) | **bygget**, kode-invariant + test | `trainingDayCloseTrigger.js` |
 | Maks-ventetid på hængende finalization (kl. 23) + Sentry-alarm | **bygget** | `trainingDayCloseTrigger.js`, `cron.js` |
-| Frivillig knap "Run today's training now" / "Kør dagens træning nu", uden bonus, samme åbne-betingelse som sweepen | **bygget** | `POST /api/training/run-today`, `TrainingPage.jsx` |
+| Frivillig knap "Run today's training now" / "Kør dagens træning nu", uden bonus som standard (Træn nu-bonussen er en separat kontakt, #7741), samme åbne-betingelse som sweepen | **bygget** | `POST /api/training/run-today`, `TrainingPage.jsx` |
 | Deleren kalibreret mod S4's 140 løbsdage og **forankret i 5 løbsdage pr. dato**, ens for alle sæsoner (#6711, ejer-go 16/10). Sæsonens mål i `calendarRaceDayTargets.js` styrer kun aksens længde | **bygget** (#6711; før da læst fra sæsonens mål, #4845/#4846) — se §13.3c | `trainingRaceDayTick.js` |
 | Trup-akse i nøglen (`squad`, default `senior`) til #4620's tre akser pr. hold | **bygget** | `database/2026-09-15-4847-training-day-close-trigger.sql` |
-| Manager-klik-bonussen i vækstformlen (B3) | **fjernet i #5281** fra både løbsdags- og kalenderdagsstien. `bonus_applied` består som historisk audit-felt, men påvirker ikke udvikling; knappen er frivillig. | `dailyTraining.js`, `dailyTrainingEngine.js` |
+| Manager-klik-bonussen i vækstformlen (B3) | **fjernet i #5281** fra både løbsdags- og kalenderdagsstien. `bonus_applied` består som historisk audit-felt, men påvirker ikke udvikling; knappen er frivillig. Træn nu-bonussen (#7741) er en ny, separat mekanik bag `training_train_now_bonus`, ikke den gamle B3. | `dailyTraining.js`, `dailyTrainingEngine.js` |
 | Skadesvarighed i løbsdage (beslutning 7) | **bygget bag flag** (PR #5465 merget). Begge skrivere bruger sæsonaksen; ukendt akse beholder kalenderfallback. En skade hen over sæsonslut bruger den konservative datofallback og genbruger aldrig en gammel akse | `injuryRaceDays.js`, `dailyTrainingEngine.js`, `raceRunner.js` |
 | Program pr. løbsdag, 7 × 5 celler (beslutning 8) | **bygget, on for alle** (`training_program_cells` = on, prod 11/10; 89 af 340 ugeplaner bruger cellerne) | `training_week_plans.days[*].slots` · `trainingWeekPlanCellsFlag.js` · `TrainingPlanCard.tsx` |
 | Peak-plannerens konsistens-signal tæller datoer, ikke løbsdags-rækker (B5, gate G8) | **bygget** (#4848) — se "B5" nedenfor | `racePeakPlans.js` (`summarizeLeadupTraining`) |

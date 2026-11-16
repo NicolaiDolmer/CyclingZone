@@ -82,3 +82,20 @@ test('#8025 a trained-now date says one thing: one note, and a dash that explain
   assert.match(html,/dailyReceipt\.activitiesRecorded/);
   assert.doesNotMatch(render({ run:settled }),/daily-receipt-condition-later/, 'a settled date shows numbers, not the dash hint');
 });
+
+// #7741: the bonus mark shows only for a rider the engine stamped, and only with the switch on.
+const bonusRun = { ...settled, report:{ condition_settled:true, riders:[
+  { ...rider('r1','Ada Pedersen',{positioning:1},{positioning:110}), activities:[{ rider_id:'r1', train_now_bonus:true }] },
+  rider('r2','Bo Holm',{},{}),
+]}};
+
+test('#7741 bonus mark: on shows it for the stamped rider only', () => {
+  const html = render({ run:bonusRun, trainNowBonus:true });
+  assert.equal(html.split('data-testid="daily-receipt-bonus"').length - 1, 1);
+  assert.ok(html.indexOf('data-testid="daily-receipt-bonus"') < html.indexOf('Bo Holm'), 'the mark sits on Ada, before Bo');
+});
+
+test('#7741 bonus mark: off, or no answer yet, shows nothing', () => {
+  assert.doesNotMatch(render({ run:bonusRun, trainNowBonus:false }), /daily-receipt-bonus/);
+  assert.doesNotMatch(render({ run:bonusRun }), /daily-receipt-bonus/);
+});

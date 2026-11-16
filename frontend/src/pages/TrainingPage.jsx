@@ -36,6 +36,7 @@ import {
   sessionI18nKey,
 } from "../lib/trainingDayTypes.js";
 import { useTrainingCatalogV3 } from "../lib/useTrainingCatalogV3.ts";
+import { useTrainNowBonusEnabled } from "../lib/trainNowBonusFlag.ts";
 import { copenhagenDayKey } from "../lib/raceCentre.js";
 import { todayGainTotal, seasonAbilityGains, focusAbilityReceipt, latestReceiptRun, reportRowsByRider, receiptGainDay, SEASON_RECEIPT_RUNNING, SEASON_RECEIPT_NOT_STARTED, SEASON_RECEIPT_NO_DAYS, SEASON_RECEIPT_NOTE_KEY } from "../lib/trainingReport.js";
 import { formatDate } from "../lib/intl.js";
@@ -215,8 +216,8 @@ function dayLabel(plan, t) {
 // Nye hold har typisk ingen dage sat, så det er den første oplevelse.
 // `runTarget` kommer fra tourRunTarget og teksten fra tourRunStepKey
 // (trainingOverview.ts, testet): med #4847's dayClose lover turen ingen bonus.
-function getTrainingTourSteps(t, runTarget = "primary", dayCloseOn = false) {
-  const runKey = tourRunStepKey(runTarget, dayCloseOn);
+function getTrainingTourSteps(t, runTarget = "primary", dayCloseOn = false, bonusOn = false) {
+  const runKey = tourRunStepKey(runTarget, dayCloseOn, bonusOn);
   return [
     {
       target: "[data-tour='training-focus']",
@@ -239,8 +240,8 @@ function getTrainingTourSteps(t, runTarget = "primary", dayCloseOn = false) {
 // Stabil trin-liste pr. (sprog, anker): OnboardingTour genstarter sin rulle-
 // og måle-effekt når trinnets objekt skifter, så listen må ikke bygges på ny
 // ved hver render af siden.
-function useTrainingTourSteps(t, runTarget, dayCloseOn) {
-  return useMemo(() => getTrainingTourSteps(t, runTarget, dayCloseOn), [t, runTarget, dayCloseOn]);
+function useTrainingTourSteps(t, runTarget, dayCloseOn, bonusOn) {
+  return useMemo(() => getTrainingTourSteps(t, runTarget, dayCloseOn, bonusOn), [t, runTarget, dayCloseOn, bonusOn]);
 }
 
 // Bred side — samme mønster som TeamPage / RidersPage.
@@ -1353,7 +1354,7 @@ export default function TrainingPage() {
   // getTrainingTourSteps). Ét anker ad gangen: guld-knappen, "Run now" eller
   // statuslinjen.
   const tourTarget = tourRunTarget(primaryAction, runnable);
-  const trainingTourSteps = useTrainingTourSteps(t, tourTarget, dayClose != null);
+  const trainingTourSteps = useTrainingTourSteps(t, tourTarget, dayClose != null, useTrainNowBonusEnabled());
   const selectedCount = pruneSelection(selected, filterIds).size;
   // #6523: linjen "Set today's day for ..." — intet markeret = alle i visningen.
   const bulkScope = resolveBulkScope(selected, filterIds, selectableRiders.map((r) => r.id));
