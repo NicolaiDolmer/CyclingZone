@@ -18,7 +18,9 @@
       "earlier": "Etapas anteriores",
       "later": "Etapas siguientes",
       "you": "Tú #{rank}",
-      "plan": "{done} de {total} hechas"
+      "planSaved": "Guardado",
+      "planDefault": "Plan estándar",
+      "planNotSaved": "Sin guardar"
     },
     "route": {
       "aria": "Recorrido de la etapa",
