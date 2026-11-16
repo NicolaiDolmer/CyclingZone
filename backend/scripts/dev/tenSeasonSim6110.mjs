@@ -730,6 +730,8 @@ function simulateSeasonXp(world, seasonNumber, variant, opts) {
         r.progress = res.progress;
       }
       trackDate(world, r, d, usedToday, firstSeason, trackCap, { age, raced, timeTrial, payout: payoutToday });
+      // Valgfri maaling (dommerens private koersel, #6110 R16): ser datoen, aendrer intet.
+      opts.dateObserver?.({ rider: r, age, seasonNumber, dateIndex: d, gains: usedToday, firstSeason });
     }
   }
 }

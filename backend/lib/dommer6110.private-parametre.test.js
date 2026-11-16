@@ -38,10 +38,11 @@ const FIL = process.env.CZ_XP_PARAMS_FIL
 // R5's "naesten intet" (ca. en fjerdedel), "ca." og "jaevnt fald" staar i dommer6110.r5aldersforloeb.mjs.
 // R6: mentale evner har intet eget loft (ejer 6/11: "samme prisliste, intet saerskilt loft";
 // 13/11: "nogle aar laengere" end de fysiske, uden et tal), saa proeven saetter ingen oevre graense.
-// R16 "sjaeldent 2": dommerens laesning er en meget lav evne. Foer 16/11 kraevede den ogsaa et
-// ungt toptalent; uden prisbund (ejervalg 16/11) giver et stort talent +2 paa lave evner i alle
-// aldre (Fable-dom 16/11), og motorens +2 er det, der holder. Laesningen er meldt til ejeren.
-const MEGET_LAV_EVNE = 30;
+// R16 "sjaeldent 2": ejervalg A (16/11 aften, Fable-fund 4): +2 paa én dato kun for et ungt
+// toptalent paa en meget lav evne; alle andre hoejst +1. Hvad "ung", "toptalent" og "meget lav"
+// er i tal, er balancetal (hard rule 17): dommerens laesning staar i talfilen (dommer.plus2:
+// maxAlder, minPotentiale, megetLavEvne), aldrig her. Motorens egne graenser (xp.datePlus2)
+// maa ikke vaere loesere end dommerens laesning.
 const TRAEN_NU = 1.15; // ejer 7/11
 
 async function laesParametre() {
@@ -52,7 +53,10 @@ async function laesParametre() {
   const raa = hele?.xp;
   const { validateDevelopmentXpParams } = await kraev("./developmentXp.ts", "validateDevelopmentXpParams");
   // Loebsdagens rolletillaeg og roller, som proevekoerslen bruger (valgfrie i filen).
-  return { raa, params: validateDevelopmentXpParams(raa), rolleTillaeg: hele?.sim?.raceRoleYield ?? null, roller: hele?.sim?.raceRoles ?? null };
+  return {
+    raa, params: validateDevelopmentXpParams(raa), rolleTillaeg: hele?.sim?.raceRoleYield ?? null, roller: hele?.sim?.raceRoles ?? null,
+    plus2: hele?.dommer?.plus2 ?? null,
+  };
 }
 
 const laest = await laesParametre();
@@ -106,17 +110,48 @@ test("R16 private parametre: aldrig 3 point eller mere paa én dato gennem motor
   assert.equal(brud.length, 0, `${brud.length} tilfaelde med +3 eller mere paa én dato, fx ${brud.slice(0, 3).map((b) => b.tekst).join("; ")}`);
 });
 
-test("R16 private parametre: en normal dato giver normalt hoejst 1; +2 kun paa en meget lav evne", { skip: spring }, async () => {
+/** Dommerens laesning af "ungt toptalent paa meget lav evne" fra talfilen (dommer.plus2). */
+function ungtToptalentPaaMegetLavEvne() {
+  const p = laest.plus2;
+  assert.ok(p && [p.maxAlder, p.minPotentiale, p.megetLavEvne].every(Number.isFinite),
+    "talfilen mangler dommerens laesning af ejervalg A (dommer.plus2: maxAlder, minPotentiale, megetLavEvne)");
+  return (alder, potentiale, niveau) => alder <= p.maxAlder && potentiale >= p.minPotentiale && niveau < p.megetLavEvne;
+}
+
+test("R16 private parametre (ejervalg A): motorens graenser for +2 er sat og ikke loesere end dommerens laesning", { skip: spring }, () => {
+  ungtToptalentPaaMegetLavEvne();
+  const p = laest.plus2;
+  const m = laest.params.datePlus2;
+  assert.ok(m, "talfilen har ingen xp.datePlus2: motoren giver da ingen +2; ejervalg A kraever graenserne");
+  assert.ok(m.maxAge <= p.maxAlder, "motoren kalder aeldre ryttere unge end dommeren");
+  assert.ok(m.minPotential >= p.minPotentiale, "motoren kalder lavere potentialer toptalenter end dommeren");
+  assert.ok(m.belowLevel <= p.megetLavEvne, "motoren kalder hoejere evner meget lave end dommeren");
+});
+
+test("R16 private parametre: en normal dato giver hoejst 1; +2 kun for et ungt toptalent paa en meget lav evne (ejervalg A)", { skip: spring }, async () => {
   const { xpPriceForNextPoint } = await kraev("./developmentXp.ts", "xpPriceForNextPoint");
+  const ungtToptalent = ungtToptalentPaaMegetLavEvne();
   // En normal dato: hvert pas i begge kataloger, ingen traener, ingen bonus, almindelig dag, tom bjaelke.
-  // Ejervalg 16/11 (Fable-dom 16/11): uden prisbund giver et stort talent +2 paa lave evner, ogsaa
-  // efter de 22 aar ("ungt toptalent" er dermed ikke laengere en betingelse); motoren holder +2.
+  // Datoen koebes gennem motorens tick med rytterens alder og potentiale (motorensDatoKoeb).
   const brud = await traeningsdatoBrud({
     params: laest.params, pris: (niveau) => xpPriceForNextPoint(niveau, laest.params),
     aldre: ALDRE, potentialer: POTENTIALER, koeb: await motorensDatoKoeb(laest.params),
-    graense: (alder, potentiale, niveau) => (niveau < MEGET_LAV_EVNE ? 2 : 1),
+    graense: (alder, potentiale, niveau) => (ungtToptalent(alder, potentiale, niveau) ? 2 : 1),
   });
   assert.equal(brud.length, 0, `${brud.length} tilfaelde over graensen paa en normal dato, fx ${brud.slice(0, 3).map((b) => b.tekst).join("; ")}`);
+});
+
+test("R16 private parametre (ejervalg A): heller ikke paa rytterens bedste dag faar et aeldre eller middeltalent +2", { skip: spring }, async () => {
+  const { xpPriceForNextPoint } = await kraev("./developmentXp.ts", "xpPriceForNextPoint");
+  const ungtToptalent = ungtToptalentPaaMegetLavEvne();
+  const godDag = 1 + (laest.raa?.variation?.span ?? 0.5);
+  const brud = await traeningsdatoBrud({
+    params: laest.params, pris: (niveau) => xpPriceForNextPoint(niveau, laest.params),
+    staff: STAERK_TRAENER, facilityTier: BEDSTE_FACILITET, dagMult: TRAEN_NU * godDag, bar: 0.999,
+    aldre: ALDRE, potentialer: POTENTIALER, koeb: await motorensDatoKoeb(laest.params),
+    graense: (alder, potentiale, niveau) => (ungtToptalent(alder, potentiale, niveau) ? 2 : 1),
+  });
+  assert.equal(brud.length, 0, `${brud.length} tilfaelde, fx ${brud.slice(0, 3).map((b) => b.tekst).join("; ")}`);
 });
 
 test("R16 private parametre: ingen prisbund (ejervalg 16/11)", { skip: spring }, () => {
@@ -169,7 +204,7 @@ async function loebsdatoBrud({ profiler }) {
             let tilstand = { abilities: Object.fromEntries(EVNER.map((a) => [a, niveau])), progress: Object.fromEntries(EVNER.map((a) => [a, 0.999])) };
             const brugt = {};
             for (let dag = 0; dag < loebsdage; dag++) {
-              tilstand = developmentXpTick({ ...tilstand, dateUsedGains: { ...brugt }, xpFor: (a) => (loeftet[a] ?? 0) * godDag }, params);
+              tilstand = developmentXpTick({ ...tilstand, dateUsedGains: { ...brugt }, rider: { age: alder, potentiale }, xpFor: (a) => (loeftet[a] ?? 0) * godDag }, params);
               for (const [a, n] of Object.entries(tilstand.gains)) brugt[a] = (brugt[a] ?? 0) + n;
             }
             for (const [ability, point] of Object.entries(brugt)) {

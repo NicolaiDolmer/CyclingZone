@@ -74,6 +74,19 @@ test("#6110 R16 motor: datoens tidligere gevinster taeller med, ogsaa naar dato-
   }
 });
 
+test("#6110 R16 motor (ejervalg A): uden for de unge toptalenter paa meget lave evner koeber XP hoejst +1 pr. dato", async () => {
+  // Samme rytter og bjaelke; kun talfilens graenser goer ham "for gammel" eller evnen "for hoej".
+  for (const datePlus2 of [{ ...XP_TEST_PARAMS.datePlus2, maxAge: 20 }, { ...XP_TEST_PARAMS.datePlus2, belowLevel: 40 }, undefined]) {
+    const state = seed({ flags: ENGINE_SCENARIOS.noCap.flags, overlay: { ...xpOn(EARLIER), params: { ...XP_TEST_PARAMS, datePlus2 } } });
+    const before = r1Level(state);
+    const report = r1Report(await runEngine(state));
+    assert.equal(report.gains[ABILITY], 1, `${JSON.stringify(datePlus2)}: hoejst +1`);
+    assert.equal(r1Level(state) - before, 1);
+    assert.ok(state.rider_derived_abilities[0].ability_progress[ABILITY] >= 1, "resten venter paa bjaelken");
+    assert.equal(report.gains_deferred_by_date_cap, undefined, "ingen dato-loft-kvittering under XP");
+  }
+});
+
 test("#6110 R10 motor: paa taendingsnatten udbetales gemt fremgang helt (undtaget fra +2)", async () => {
   const state = seed({ overlay: xpOn() });
   const before = r1Level(state);

@@ -107,7 +107,7 @@ export async function traeningsdatoBrud({
         for (const d of datoXp({ alder, potentiale, riderLevel })) {
           if (!(d.xp > 0)) continue;
           for (let niveau = niveauer.fra; niveau <= niveauer.til; niveau++) {
-            const { point } = koeb({ level: niveau, bar, xp: d.xp });
+            const { point } = koeb({ level: niveau, bar, xp: d.xp, alder, potentiale });
             if (point > graense(alder, potentiale, niveau)) {
               brud.push({ point, alder, potentiale, niveau, riderLevel, ...d,
                 tekst: `${d.mental ? "mental" : "fysisk"} ${riderLevel} alder ${alder} potentiale ${potentiale} evne ${niveau} via ${d.hvor}: +${point}` });
@@ -124,14 +124,17 @@ export async function traeningsdatoBrud({
  * Motorens eget koeb paa én dato (ejervalg 16/11, R16): datoens XP koebes gennem
  * developmentXpTick i to ticks paa samme dato (fx Traen nu om morgenen og aftenkoerslen),
  * hvor det andet tick faar det foerste ticks point som datoens tidligere gevinster.
+ * Rytterens alder og potentiale sendes med, saa motorens egen datoregel (ejervalg A 16/11:
+ * +2 kun for et ungt toptalent paa en meget lav evne) afgoer datoens tal.
  * Svarer med datoens point i alt, som koebMedPrisliste.
  */
 export async function motorensDatoKoeb(params) {
   const { developmentXpTick } = await kraev("./developmentXp.ts", "developmentXpTick");
   const EVNE = "climbing"; // prisen afhaenger kun af niveauet, ikke af evnen
-  return ({ level, bar = 0, xp = 0 }) => {
-    const foerste = developmentXpTick({ abilities: { [EVNE]: level }, progress: { [EVNE]: bar }, xpFor: (a) => (a === EVNE ? xp / 2 : 0) }, params);
-    const anden = developmentXpTick({ abilities: foerste.abilities, progress: foerste.progress, dateUsedGains: foerste.gains, xpFor: (a) => (a === EVNE ? xp / 2 : 0) }, params);
+  return ({ level, bar = 0, xp = 0, alder = null, potentiale = null }) => {
+    const rider = { age: alder, potentiale };
+    const foerste = developmentXpTick({ abilities: { [EVNE]: level }, progress: { [EVNE]: bar }, rider, xpFor: (a) => (a === EVNE ? xp / 2 : 0) }, params);
+    const anden = developmentXpTick({ abilities: foerste.abilities, progress: foerste.progress, dateUsedGains: foerste.gains, rider, xpFor: (a) => (a === EVNE ? xp / 2 : 0) }, params);
     return { point: (foerste.gains[EVNE] ?? 0) + (anden.gains[EVNE] ?? 0) };
   };
 }

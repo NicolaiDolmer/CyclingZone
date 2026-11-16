@@ -98,7 +98,9 @@ const ROLLETAL = {
   // #5950 A (underkontakten "rollen styrer ogsaa basis-dagen").
   rolleStyrerBasis: Object.freeze({ ...validateRaceDayRoleYieldParams({ stageBonus: 0.2, leadShare: 0.5 }), roleDrivesBaseDay: true }),
 };
-const RIGELIG = await xpParams(RIGELIG_XP_RAA);
+// Ejervalg A (16/11): +2 kun for et ungt toptalent paa en meget lav evne. Opdigtede graenser,
+// saa KLATRER (19 aar, stort talent) paa en lav klatre-evne er netop saadan et talent.
+const RIGELIG = await xpParams({ ...RIGELIG_XP_RAA, datePlus2: { maxAge: 21, minPotential: 5.5, belowLevel: 20 } });
 const DATO = "2026-11-16";
 const dato = (n) => new Date(Date.UTC(2026, 10, 15) + n * 86_400_000).toISOString().slice(0, 10);
 
