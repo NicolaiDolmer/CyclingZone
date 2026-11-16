@@ -1,0 +1,215 @@
+/* Skitse #7535: wireframe v6c's CSS (#7778) samlet til de endelige vaerdier og afgraenset til .twf.
+   Farverne peger paa appens tokens (index.css) i stedet for wireframets egne hex-vaerdier; resten
+   er wireframets regler ordret: 5px radius, hairlines, ingen skygger uden for overlays, 44px-trykflader
+   paa telefon. Mobil-reglerne er wireframe v6b-mobil-taktik (tids-akse + aabent kort pr. rytter). */
+
+.twf {
+  --bg: var(--bg-body); --card: var(--bg-card); --sub: var(--bg-subtle); --line: var(--border);
+  --t1: var(--text-1); --t2: var(--text-2); --t3: var(--text-3);
+  --gold: rgb(var(--accent)); --gold-t: rgb(var(--accent-t)); --gold-soft: rgba(232,197,71,.18); --gold-face: rgba(232,197,71,.10);
+  --navy: var(--bg-sidebar); --good: rgb(var(--success)); --warn: rgb(var(--warning)); --bad: rgb(var(--danger)); --pop: var(--bg-elevated);
+  /* stigningsbaandene er appens climb-grad-tokens (samme farver som wireframet); under 3 % og nedkoersel
+     har ingen token, saa de blandes af hairline og tekstfarve (taet paa wireframets toner) */
+  --g0: color-mix(in srgb, var(--border) 92%, var(--text-1)); --g1: rgb(var(--climb-grad-2)); --g2: rgb(var(--climb-grad-3));
+  --g3: rgb(var(--climb-grad-4)); --g4: rgb(var(--climb-grad-5)); --gd: var(--bg-subtle); --kom: rgb(var(--climb-grad-4));
+  --display: 'Bebas Neue', Impact, sans-serif; --body: 'DM Sans', system-ui, sans-serif; --num: 'Inter Tight', 'DM Sans', system-ui, sans-serif;
+  background: var(--bg); color: var(--t1); font-family: var(--body); font-size: 14px; line-height: 1.45; min-height: 100vh;
+}
+[data-theme="dark"] .twf {
+  --g0: color-mix(in srgb, var(--border) 80%, var(--text-1)); --gd: color-mix(in srgb, var(--border) 92%, var(--text-1));
+}
+.twf *, .twf *::before, .twf *::after { box-sizing: border-box }
+.twf button { font: inherit; color: inherit; cursor: pointer }
+/* appens preflight goer svg til blok; wireframet regner med inline */
+.twf svg { display: inline-block }
+.twf button:focus-visible, .twf select:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px }
+.twf h1, .twf h2, .twf p { margin: 0 }
+
+/* app-skal: sidebjaelke-pladsholder som i wireframe-billederne */
+.twf-shell { display: flex; min-height: 100vh }
+.twf-side { width: 208px; flex: none; background: var(--bg-sidebar); color: white; font: 700 11px/1.3 var(--body); letter-spacing: .06em; text-transform: uppercase; padding: 16px; position: sticky; top: 0; height: 100vh }
+@media (max-width: 1023px) { .twf-side { display: none } }
+.twf-main { flex: 1; min-width: 0 }
+.twf .wrap { max-width: 1600px; margin: 0 auto; padding: 24px 32px 48px }
+@media (max-width: 640px) { .twf .wrap { padding: 16px 16px 48px } }
+
+/* sma byggesten */
+.twf .ic { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; flex: none; color: var(--t1) }
+.twf .wx { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linecap: round; flex: none; color: var(--t2) }
+.twf .dim { color: var(--t3); font-size: 12px }
+.twf .ex { color: var(--t3); font-style: italic }
+.twf .fl { display: inline-block; width: 16px; height: 11px; margin-right: 6px; border-radius: 1px; vertical-align: -1px; background-size: cover; background-position: center; outline: 1px solid rgba(0,0,0,.1); outline-offset: -1px; flex: none }
+.twf .fl::before, .twf-pop .fl::before { content: none }
+.twf-pop .fl { display: inline-block; width: 16px; height: 11px; margin-right: 6px; background-size: cover }
+.twf .rn { all: unset; cursor: pointer; border-bottom: 1px dotted var(--t3) }
+.twf .rn:hover { color: var(--gold-t) }
+.twf .rn:focus-visible { outline: 2px solid var(--gold) }
+.twf .hv { all: unset; cursor: pointer; display: inline-flex; vertical-align: -2px; margin-right: 4px; color: var(--t3) }
+.twf .hv svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 1.3 }
+.twf .hv:hover { color: var(--gold-t) }
+.twf .word { font-weight: 700; font-size: 12px }
+.twf .w1 { color: var(--good) } .twf .w2 { color: var(--gold-t) } .twf .w3 { color: var(--warn) } .twf .w4 { color: var(--bad) }
+.twf .badge { display: inline-flex; align-items: center; border-radius: 5px; padding: 2px 7px; font: 700 10px/1.3 var(--body); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap }
+.twf .badge.warn { background: rgba(154,91,12,.10); color: var(--warn) }
+.twf .badge.good { background: rgba(31,122,69,.10); color: var(--good) }
+.twf .btn2 { border: 1px solid var(--line); background: var(--card); border-radius: 5px; padding: 6px 11px; font-size: 12.5px; font-weight: 700; white-space: nowrap }
+.twf .btn2[aria-pressed="true"] { background: var(--card); color: var(--t1); border-color: var(--t1) }
+.twf .gold { background: var(--gold); color: var(--on-accent); border: 0; border-radius: 5px; padding: 8px 14px; font-weight: 700; font-size: 13px; white-space: nowrap }
+.twf .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; background: var(--card); flex-wrap: wrap; max-width: 100% }
+.twf .seg button { border: 0; background: none; padding: 5px 10px; font-size: 12.5px; color: var(--t2) }
+.twf .seg button + button { border-left: 1px solid var(--line) }
+.twf .seg button[aria-pressed="true"] { background: var(--gold-face); color: var(--gold-t); font-weight: 700; cursor: default }
+.twf .chip { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); background: var(--card); border-radius: 5px; padding: 2px 7px; font-size: 12px; white-space: nowrap }
+.twf button.chip:hover { border-color: var(--t3) }
+.twf .chip svg { width: 9px; height: 9px; stroke: var(--t3); fill: none; stroke-width: 1.6 }
+.twf .chip[aria-pressed="true"] { background: var(--card); color: var(--t1); border-color: var(--t1) }
+.twf .lk { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 1.3 }
+
+/* tilbage-link + hero (variant Hoved B: kort-flade, hairline, 2px guld-keyline) */
+.twf .back { display: inline-flex; gap: 3px; align-items: center; font-size: 12px; font-weight: 500; color: var(--t2); text-decoration: none; margin: 0 0 10px }
+.twf .back svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.8 }
+.twf .hero { background: var(--card); color: var(--t1); border: 1px solid var(--line); border-top: 2px solid var(--gold); border-radius: 5px; padding: 24px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap }
+.twf .hero h1 { font-family: var(--display); font-weight: 400; font-size: 40px; line-height: .92; letter-spacing: .01em }
+.twf .hero .meta { font-size: 12.5px; color: var(--t2); margin-top: 8px }
+.twf .hero .verdict { font-size: 13.5px; margin-top: 8px }
+.twf .hero-r { display: flex; flex-direction: column; align-items: flex-end; gap: 8px }
+.twf .shield { display: flex; align-items: center; gap: 8px; font-size: 12px; border: 1px solid var(--line); border-radius: 5px; padding: 5px 9px; background: transparent; color: var(--t1) }
+.twf .sw { width: 30px; height: 16px; border-radius: 8px; background: var(--line); position: relative; flex: none }
+.twf .sw::after { content: ""; position: absolute; left: 2px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: white; transition: left .15s }
+.twf .shield[aria-pressed="true"] .sw { background: var(--t1) }
+.twf .shield[aria-pressed="true"] .sw::after { left: 16px; background: var(--card) }
+.twf .hero-act { flex-basis: 100%; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 10px; font-size: 13px }
+.twf .hero-act .when { color: var(--t2) }
+.twf .hero-act .gold { margin-left: auto }
+@media (max-width: 900px) { .twf .hero h1 { font-size: 26px } }
+@media (max-width: 640px) { .twf .hero { padding: 20px } .twf .hero h1 { font-size: 32px } }
+
+/* etapestriben */
+.twf .calwrap { position: sticky; top: 0; z-index: 6; background: var(--bg); padding-top: 8px; display: flex; gap: 6px; align-items: stretch }
+.twf .arrow { border: 1px solid var(--line); background: var(--card); border-radius: 5px; width: 34px; flex: none; font-size: 18px; color: var(--t2); display: flex; align-items: center; justify-content: center }
+.twf .arrow svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round }
+.twf .arrow:disabled { opacity: .35; cursor: default }
+.twf .cal { display: grid; grid-template-columns: repeat(7, minmax(120px, 1fr)) minmax(100px, .8fr); gap: 6px; overflow-x: auto; flex: 1; padding-top: 8px }
+.twf .st { border: 1px solid var(--line); background: var(--card); border-radius: 5px; padding: 8px 9px; font-size: 12px; color: var(--t2); position: relative; text-align: left; min-width: 0 }
+.twf .st.done { background: var(--sub) }
+.twf .st[aria-pressed="true"] { border-color: var(--line); border-bottom: 2px solid var(--gold); padding-bottom: 7px }
+.twf .st .top { display: flex; justify-content: flex-start; align-items: center; gap: 6px }
+.twf .st .lhs { display: inline-flex; align-items: center; gap: 5px }
+.twf .st b { color: var(--t1); font-size: 12.5px }
+.twf .st .t { font-family: var(--num); font-variant-numeric: tabular-nums; color: var(--t1); margin-left: auto; font-size: 11px }
+.twf .st .today { position: absolute; top: -8px; left: 8px; background: var(--navy); color: white; font-size: 10px; font-weight: 700; border-radius: 5px; padding: 1px 5px; letter-spacing: .05em }
+.twf .st .row { display: flex; gap: 5px; align-items: center; margin-top: 3px; flex-wrap: wrap }
+.twf .st .win { margin-top: 4px; font-size: 11px; color: var(--t1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.twf .mini-w { position: relative; display: block; height: 24px; margin-top: 5px }
+.twf .mini-w .mini { display: block; width: 100%; height: 24px }
+.twf .mini-w i { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: var(--kom); transform: translate(-50%, -50%) }
+
+/* faner */
+.twf .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin: 10px 0 12px; overflow-x: auto }
+.twf .tabs button { background: none; border: 0; border-bottom: 2px solid transparent; padding: 8px 14px; font-size: 14px; color: var(--t2); white-space: nowrap }
+.twf .tabs button[aria-selected="true"] { color: var(--t1); font-weight: 700; border-bottom-color: var(--gold) }
+
+/* kort */
+.twf .card { background: var(--card); border: 1px solid var(--line); border-radius: 5px; padding: 20px; min-width: 0 }
+.twf .card h2 { font-size: 15px; font-weight: 600; margin: 0 0 16px; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: baseline }
+.twf .card h2 small { font-weight: 400; font-size: 12px; color: var(--t3) }
+.twf .tiles { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px }
+.twf .tile { padding: 0 18px 0 0 }
+.twf .tile .k { font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--t3) }
+.twf .tile .v { font-size: 14px; font-weight: 700; display: flex; gap: 6px; align-items: center }
+.twf .prof svg { display: block; width: 100%; height: auto }
+.twf .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--t2); margin-top: 6px }
+.twf .legend i { display: inline-block; width: 10px; height: 10px; margin-right: 4px; vertical-align: -1px }
+
+/* holdplanen */
+.twf .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px }
+.twf .plan { all: unset; box-sizing: border-box; cursor: pointer; border: 1px solid var(--line); border-radius: 5px; padding: 9px 10px; background: var(--card) }
+.twf .plan b { display: block; font-size: 13.5px }
+.twf .plan span { font-size: 12px; color: var(--t2) }
+.twf .plan[aria-pressed="true"] { border-color: var(--line); background: var(--gold-face) }
+.twf .plan[aria-pressed="true"] b { color: var(--gold-t) }
+.twf .plan:focus-visible { outline: 2px solid var(--gold) }
+
+/* ordrer */
+.twf .status { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 13px; margin-bottom: 8px }
+.twf .teambar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: var(--sub); border-radius: 5px; padding: 7px 10px; margin-bottom: 8px; font-size: 13px }
+.twf .tbl { overflow-x: auto }
+.twf table { width: 100%; border-collapse: collapse; font-size: 13px }
+.twf thead th { position: sticky; top: 0; background: var(--card); z-index: 1 }
+.twf th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--t3); font-weight: 500; text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap }
+.twf td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top }
+.twf td.n, .twf th.n { text-align: right; font-family: var(--num); font-variant-numeric: tabular-nums; white-space: nowrap }
+.twf .th { all: unset; cursor: pointer }
+.twf .th:hover { color: var(--t1) }
+.twf .th svg { width: 10px; height: 10px; stroke: currentColor; fill: none; stroke-width: 1.8; vertical-align: 0; margin-left: 3px }
+.twf tr.locked td { background: transparent }
+.twf .ordersrow td { background: var(--sub) }
+.twf .steps { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start }
+.twf .step { display: grid; gap: 3px }
+.twf .extras { display: flex; gap: 4px; white-space: nowrap }
+.twf .foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; font-size: 12.5px; color: var(--t3) }
+
+/* popover (eneste sted med skygge: overlay) */
+.twf-pop { position: fixed; z-index: 20; width: 300px; max-width: calc(100vw - 32px); background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 5px; padding: 6px; color: var(--text-1); font-family: 'DM Sans', system-ui, sans-serif; font-size: 14px }
+.twf-pop .h { font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--text-3); text-transform: uppercase; padding: 4px 6px }
+.twf-pop .o { all: unset; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px; border-radius: 5px; font-size: 12.5px; width: calc(100% - 12px) }
+.twf-pop .o:hover { background: var(--bg-subtle) }
+.twf-pop .o[aria-pressed="true"] { background: var(--bg-subtle); font-weight: 700 }
+.twf-pop .o small { display: block; font-weight: 400; font-size: 11px; color: var(--text-3) }
+.twf-pop .sep { border-top: 1px solid var(--border); margin: 6px 0 }
+.twf-pop .seg { display: flex; margin: 2px 6px 6px; border: 1px solid var(--border); border-radius: 5px; overflow: hidden }
+.twf-pop .seg button { all: unset; cursor: pointer; flex: 1; text-align: center; padding: 4px 2px; font-size: 11px; color: var(--text-2) }
+.twf-pop .seg button + button { border-left: 1px solid var(--border) }
+.twf-pop .seg button[aria-pressed="true"] { background: rgba(232,197,71,.10); color: rgb(var(--accent-t)); font-weight: 700 }
+.twf-pop .card-r { display: grid; gap: 4px; font-size: 12.5px; padding: 4px 6px }
+.twf-pop .card-r .big { font-size: 15px; font-weight: 700; display: flex; align-items: center }
+.twf-pop .w1 { color: rgb(var(--success)) } .twf-pop .w2 { color: rgb(var(--accent-t)) } .twf-pop .w3 { color: rgb(var(--warning)) } .twf-pop .w4 { color: rgb(var(--danger)) }
+.twf-pop .word { font-weight: 700; font-size: 12px }
+.twf-pop .dim { color: var(--text-3); font-size: 12px }
+
+/* P16: 44px-trykflader paa telefon og grove pegere */
+@media (max-width: 640px), (pointer: coarse) {
+  .twf .card { padding: 16px }
+  .twf .tabs button, .twf .seg button, .twf .btn2, .twf .gold, .twf .chip, .twf .shield, .twf .arrow { min-height: 44px }
+  .twf .chip { min-width: 44px; justify-content: center }
+  .twf .hv { min-width: 28px; min-height: 28px; align-items: center; justify-content: center }
+}
+
+/* Panelet er det faelles stykke: det tilpasser sig sin egen bredde (container query), ikke skaermen,
+   saa samme komponent virker paa loebssiden og i planlaegningen. Under 640px: wireframe v6b-mobil-taktik. */
+.twf .tac { container: tac / inline-size; display: grid; gap: 12px }
+.twf .mtac { display: none }
+@container tac (width < 640px) {
+  .twf .dtac, .twf .status .seg { display: none }
+  .twf .mtac { display: block; margin: 0 -16px }
+  .twf .mhead { display: grid; grid-template-columns: minmax(0,1.3fr) repeat(3, minmax(0,1fr)); gap: 6px; padding: 0 16px 6px; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--t3); border-bottom: 1px solid var(--line); align-items: end }
+  .twf .mhead span { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical }
+  .twf .mrow { all: unset; box-sizing: border-box; display: grid; grid-template-columns: minmax(0,1.3fr) repeat(3, minmax(0,1fr)); gap: 6px; align-items: start; width: 100%; min-height: 52px; padding: 8px 16px; border-bottom: 1px solid var(--line); cursor: pointer }
+  .twf .mrow[aria-expanded="true"] { background: var(--sub); border-bottom-color: transparent }
+  .twf .mrow:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px }
+  .twf .mn { min-width: 0 }
+  .twf .mn b { display: flex; align-items: center; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+  .twf .mn .dim { display: block; font-size: 11px; margin-top: 1px }
+  .twf .mt { font-size: 12px; font-weight: 600; line-height: 1.25; padding-top: 1px }
+  .twf .mcard { padding: 4px 16px 16px; border-bottom: 1px solid var(--line); background: var(--sub); display: grid; gap: 12px }
+  .twf .mcard .steps { display: grid; gap: 10px }
+  .twf .mcard .ex { font-size: 12px }
+  .twf .mcard .row2 { display: flex; gap: 8px; flex-wrap: wrap; align-items: center }
+  .twf .plans { grid-template-columns: 1fr; gap: 6px }
+  .twf .plan { padding: 10px 12px; min-height: 44px }
+  .twf .plan span { display: none }
+  .twf .plan[aria-pressed="true"] span { display: block }
+  .twf .foot > span:last-child { flex: 1 1 100%; display: flex; flex-direction: column-reverse; gap: 8px }
+  .twf .foot .gold, .twf .foot .btn2 { width: 100% }
+}
+
+/* planlaegnings-vaert (wireframets "Planning"-sidehoved) */
+.twf .pagehead { margin: 2px 0 24px }
+.twf .pg { font-family: var(--num); font-size: 20px; font-weight: 700; letter-spacing: -.01em; margin: 0 0 2px; display: flex; gap: 8px; align-items: center }
+.twf .pagehead p { font-size: 13px; margin: 4px 0 0 }
+.twf tr[aria-current="true"] td { background: var(--sub) }
+.twf .racehead { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; margin: 16px 0 10px }
+.twf .racehead h2 { font-size: 15px; font-weight: 600 }
+.twf .racehead .when { color: var(--t2) }
+/* wireframet hentede kun Inter Tight 600/700, saa tal staar i 600 dér; samme vaegt her */
+.twf td.n, .twf .st .t { font-weight: 600 }
