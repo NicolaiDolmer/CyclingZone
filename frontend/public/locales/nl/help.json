@@ -2275,7 +2275,7 @@
     },
     "midSeasonCheckFaq": {
       "q": "Wat is de controle halverwege het seizoen, en waarom krijg ik halverwege het seizoen een melding 'Actie vereist'?",
-      "a": "Als de helft van de koersdagen van het seizoen voorbij is, controleert het bestuur de status van je plan. Als de tevredenheid onder 50% ligt OF minstens de helft van je plandoelen na de rust 'achter' ligt -> krijg je een melding 'Controle halverwege het seizoen' in de inbox 'Actie vereist'. De melding is informatief: het bestuur maakt zich zorgen maar handelt niet automatisch. Je kunt reageren door een verzoek aan het bestuur te sturen (plandoelen bijsturen), een budgetlening aan te vragen op de pagina Economie, of gewoon de focus voor de rest van het seizoen aan te scherpen. De banner verschijnt maar één keer per seizoen per bestuur."
+      "a": "Als de helft van de koersdagen van het seizoen voorbij is, controleert het bestuur de status van je plan. Als de tevredenheid onder 50% ligt OF minstens de helft van je plandoelen na de rust 'achter' ligt -> krijg je een melding 'Controle halverwege het seizoen' in de inbox 'Actie vereist'. De melding is informatief: het bestuur maakt zich zorgen maar handelt niet automatisch. De melding zegt welke van de twee hem activeerde. Het plan voor het seizoen is getekend, dus je reageert door te werken aan de doelen die achterlopen (de pagina Bestuur laat zien welke), of door een lening af te sluiten op de pagina Financiën als de druk financieel is. De banner verschijnt maar één keer per seizoen per bestuur."
     },
     "majorPivotCooldown": {
       "q": "Wat is de afkoelperiode voor bijsturen en een 'grote koerswijziging'?",
