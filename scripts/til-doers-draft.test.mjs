@@ -23,7 +23,8 @@ import {
   planBranchCleanup,
   planComment,
   prIssueRefs,
-  refPath,
+  leaseDeleteArgs,
+  fetchIssueStates,
   renderCleanup,
   renderDraft,
   runCleanup,
@@ -266,8 +267,16 @@ test('planBranchCleanup: loft pr. koersel', () => {
   assert.equal(plan.udskudt, 1);
 });
 
-test('refPath: segmenter URL-kodes, skraastreger bevares', () => {
-  assert.equal(refPath('o/n', 'feat/8266-æ#x'), 'repos/o/n/git/refs/heads/feat/8266-%C3%A6%23x');
+const SHA_A = 'a'.repeat(40);
+const SHA_B = 'b'.repeat(40);
+
+test('leaseDeleteArgs: sletning er betinget af den SHA planen saa', () => {
+  assert.deepEqual(leaseDeleteArgs('https://github.com/o/n.git', 'feat/8266-x', SHA_A), [
+    'push', '--porcelain', `--force-with-lease=refs/heads/feat/8266-x:${SHA_A}`, 'https://github.com/o/n.git', ':refs/heads/feat/8266-x',
+  ]);
+  assert.throws(() => leaseDeleteArgs('r', 'fix/a', 'a1'), /SHA/);
+  assert.throws(() => leaseDeleteArgs('r', '--delete', SHA_A), /branch-navn/);
+  assert.throws(() => leaseDeleteArgs('r', 'a..b', SHA_A), /branch-navn/);
 });
 
 function fakeGh(state) {
@@ -279,42 +288,59 @@ function fakeGh(state) {
     if (a.startsWith('pr list') && a.includes('headRefOid')) return JSON.stringify(state.mergedHeads || []);
     if (a.startsWith('pr list')) return JSON.stringify(state.prs || []);
     if (a.includes('matching-refs')) return (state.refs || []).map((r) => JSON.stringify(r)).join('\n');
-    if (args[0] === 'api' && args[1] === '-X') {
-      if (state.failDelete && args[2] === 'DELETE') throw Object.assign(new Error('boom'), { stderr: 'HTTP 422' });
-      return '{}';
+    if (args[0] === 'api' && args[1] === 'graphql') {
+      const repository = {};
+      for (const m of a.matchAll(/i(\d+): issueOrPullRequest/g)) {
+        const issue = state.issues?.[m[1]] || { state: 'open', labels: [] };
+        repository[`i${m[1]}`] = { state: issue.state.toUpperCase(), labels: { nodes: issue.labels } };
+      }
+      return JSON.stringify({ data: { repository } });
     }
+    if (args[0] === 'api' && args[1] === '-X') return '{}';
     if (a.includes('/comments')) return (state.comments || []).map((c) => JSON.stringify(c)).join('\n');
-    const m = /issues\/(\d+)$/.exec(args[1] || '');
-    if (m) return JSON.stringify(state.issues?.[m[1]] || { state: 'open', labels: [] });
     throw new Error(`uventet gh-kald: ${a}`);
   };
   return { exec, calls };
 }
 
-test('runCleanup: dry-run sletter intet, --apply sletter via API og samler fejl', () => {
+function fakeGit({ stale = [] } = {}) {
+  const calls = [];
+  const exec = (args) => {
+    calls.push(args);
+    const branch = args.at(-1).replace(':refs/heads/', '');
+    if (stale.includes(branch)) throw Object.assign(new Error('push fejlede'), { stderr: '! [rejected] (stale info)' });
+    return '';
+  };
+  return { exec, calls };
+}
+
+test('runCleanup: dry-run sletter intet, --apply sletter med lease, flyttet spids afvises', () => {
   const state = {
-    refs: [{ ref: 'refs/heads/fix/a', object: { sha: 'a1' } }, { ref: 'refs/heads/fix/b', object: { sha: 'b1' } }],
+    refs: [{ ref: 'refs/heads/fix/a', object: { sha: SHA_A } }, { ref: 'refs/heads/fix/b', object: { sha: SHA_B } }],
     mergedHeads: [
-      { number: 1, headRefName: 'fix/a', headRefOid: 'a1', baseRefName: 'main', mergedAt: OLD },
-      { number: 2, headRefName: 'fix/b', headRefOid: 'b1', baseRefName: 'main', mergedAt: OLD },
+      { number: 1, headRefName: 'fix/a', headRefOid: SHA_A, baseRefName: 'main', mergedAt: OLD },
+      { number: 2, headRefName: 'fix/b', headRefOid: SHA_B, baseRefName: 'main', mergedAt: OLD },
     ],
     open: [],
   };
-  const dry = fakeGh(state);
-  const r1 = runCleanup({ execGh: dry.exec, repo: 'o/n', now: NOW, log: () => {} });
+  const dryGit = fakeGit();
+  const r1 = runCleanup({ execGh: fakeGh(state).exec, execGit: dryGit.exec, repo: 'o/n', now: NOW, log: () => {} });
   assert.equal(r1.applied, false);
   assert.equal(r1.deleted.length, 2);
-  assert.equal(dry.calls.filter((c) => c.args.includes('DELETE')).length, 0);
+  assert.equal(dryGit.calls.length, 0);
 
-  const wet = fakeGh(state);
-  const r2 = runCleanup({ execGh: wet.exec, repo: 'o/n', now: NOW, apply: true, log: () => {} });
-  assert.deepEqual(wet.calls.filter((c) => c.args.includes('DELETE')).map((c) => c.args.at(-1)), ['repos/o/n/git/refs/heads/fix/a', 'repos/o/n/git/refs/heads/fix/b']);
+  const wetGit = fakeGit();
+  const r2 = runCleanup({ execGh: fakeGh(state).exec, execGit: wetGit.exec, repo: 'o/n', now: NOW, apply: true, log: () => {} });
+  assert.deepEqual(wetGit.calls.map((c) => c[2]), [`--force-with-lease=refs/heads/fix/a:${SHA_A}`, `--force-with-lease=refs/heads/fix/b:${SHA_B}`]);
+  assert.ok(wetGit.calls.every((c) => c[3] === 'https://github.com/o/n.git'));
   assert.equal(r2.deleted.length, 2);
 
-  const bad = fakeGh({ ...state, failDelete: true });
-  const r3 = runCleanup({ execGh: bad.exec, repo: 'o/n', now: NOW, apply: true, log: () => {} });
-  assert.equal(r3.deleted.length, 0);
-  assert.equal(r3.errors.length, 2);
+  // Nogen skubbede til fix/b efter opgoerelsen: serveren afviser, intet tabes.
+  const staleGit = fakeGit({ stale: ['fix/b'] });
+  const r3 = runCleanup({ execGh: fakeGh(state).exec, execGit: staleGit.exec, repo: 'o/n', now: NOW, apply: true, log: () => {} });
+  assert.deepEqual(r3.deleted.map((d) => d.branch), ['fix/a']);
+  assert.equal(r3.errors.length, 1);
+  assert.match(r3.errors[0], /fix\/b: .*stale info/);
 });
 
 // ---------------------------------------------------------------- kommentar og rendering
@@ -419,6 +445,32 @@ test('runDraft: dry-run skriver intet; --apply opretter én kommentar, naeste ko
   const keep = fakeGh({ ...state, comments: [{ id: 77, body: r4.body, created_at: '2026-11-16T12:00:00Z', user: { login: 'github-actions[bot]' } }] });
   const r5 = await runDraft({ ...opts, execGh: keep.exec, apply: true });
   assert.deepEqual(r5.actions, []);
+});
+
+test('runDraft: intern PR med Refs til et lukket issue udenfor masterplanen tjekkes stadig i roadmap', async () => {
+  const internal = pr({ number: 9002, title: 'chore: leverings-metadata (Refs #7801)', body: 'Refs #7801', files: [{ path: 'scripts/x.mjs' }] });
+  const gh = fakeGh({ prs: [internal], issues: { 7801: { state: 'closed', labels: [] } }, comments: [] });
+  const seen = [];
+  const fetchImpl = async (url) => {
+    seen.push(url);
+    return { ok: true, json: async () => (url.includes('roadmap_items') ? [{ id: 'r', issue_ref: 7801, status: 'planned', title_en: 'Levering' }] : []) };
+  };
+  const r = await runDraft({ execGh: gh.exec, repo: 'o/n', now: new Date('2026-11-16T12:00:00Z'), env: { SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_KEY: 'k' }, fetchImpl, read: () => '', log: () => {} });
+  assert.ok(seen.some((u) => /issue_ref=in\.\(7801\)/.test(u)));
+  assert.match(r.body, /#7801 roadmap-punkt "Levering" står som planned/);
+  // Kommentarer hentes ikke for en intern PR (kun #7911-traaden).
+  assert.equal(gh.calls.filter((c) => c.args.join(' ').includes('issues/7801/comments')).length, 0);
+});
+
+test('fetchIssueStates: 50 issues pr. GraphQL-kald, PR-numre og manglende noder haandteres', () => {
+  const issues = Object.fromEntries(Array.from({ length: 60 }, (_, i) => [String(i + 1), { state: i % 2 ? 'closed' : 'open', labels: [{ name: 'x' }] }]));
+  const gh = fakeGh({ issues });
+  const map = fetchIssueStates(gh.exec, 'o/n', [...Array.from({ length: 60 }, (_, i) => i + 1), 3, -1]);
+  assert.equal(gh.calls.length, 2);
+  assert.equal(map.size, 60);
+  assert.deepEqual(map.get(1), { number: 1, state: 'open', labels: [{ name: 'x' }] });
+  assert.equal(map.get(2).state, 'closed');
+  assert.match(gh.calls[0].args.at(-1), /repository\(owner: "o", name: "n"\)/);
 });
 
 test('copenhagenDay og parseArgs', () => {

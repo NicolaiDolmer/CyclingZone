@@ -46,7 +46,7 @@ import {
   DONE_LABEL,
   HELP_FILE,
   defaultExecGh,
-  ghJson,
+  defaultExecGit,
   ghPaged,
   isInternalChange,
   labelNames,
@@ -489,8 +489,15 @@ export function planBranchCleanup({ branches, mergedPrs, openPrs, now = new Date
   return { deletions: deletions.slice(0, max), udskudt: Math.max(0, deletions.length - max), skipped };
 }
 
-export function refPath(repo, branch) {
-  return `repos/${repo}/git/refs/heads/${branch.split('/').map(encodeURIComponent).join('/')}`;
+/**
+ * git push-argumenter der sletter branchen, KUN hvis spidsen stadig er den
+ * SHA planen saa. Serveren tjekker den forventede vaerdi atomisk, saa et push
+ * mellem opgoerelsen og sletningen afviser sletningen i stedet for at miste det.
+ */
+export function leaseDeleteArgs(remote, branch, sha) {
+  if (!/^[0-9a-f]{40}$/i.test(String(sha))) throw new Error(`ugyldig SHA for ${branch}`);
+  if (!branch || branch.startsWith('-') || /[\s~^:?*[\\]|\.\.|@\{/.test(branch)) throw new Error(`ugyldigt branch-navn: ${branch}`);
+  return ['push', '--porcelain', `--force-with-lease=refs/heads/${branch}:${sha}`, remote, `:refs/heads/${branch}`];
 }
 
 // ---------------------------------------------------------------- rendering
@@ -648,10 +655,32 @@ export function fetchMergedPrs(execGh, repo, sinceDay) {
   return JSON.parse(out || '[]');
 }
 
-export function fetchIssueInfo(execGh, repo, n) {
-  const issue = ghJson(execGh, [`repos/${repo}/issues/${n}`]);
-  const comments = ghPaged(execGh, `repos/${repo}/issues/${n}/comments?per_page=100`);
-  return { number: n, state: issue.state, labels: issue.labels || [], comments };
+/**
+ * Tilstand og labels for mange issues i faa GraphQL-kald (50 pr. kald), saa
+ * leveret-tjekket kan se ALLE refererede issues uden et REST-kald pr. issue.
+ * Returnerer Map<nummer, {number, state: 'open'|'closed', labels:[{name}]}>.
+ */
+export function fetchIssueStates(execGh, repo, numbers) {
+  const [owner, name] = repo.split('/');
+  const out = new Map();
+  const list = [...new Set(numbers.map(Number))].filter((n) => Number.isSafeInteger(n) && n > 0).sort((a, b) => a - b);
+  for (let i = 0; i < list.length; i += 50) {
+    const chunk = list.slice(i, i + 50);
+    const fields = chunk.map((n) => `i${n}: issueOrPullRequest(number: ${n}) { ... on Issue { state labels(first: 50) { nodes { name } } } ... on PullRequest { state } }`).join('\n');
+    const query = `query { repository(owner: ${JSON.stringify(owner)}, name: ${JSON.stringify(name)}) {\n${fields}\n} }`;
+    const data = JSON.parse(execGh(['api', 'graphql', '-f', `query=${query}`]) || '{}');
+    const repoData = data?.data?.repository || {};
+    for (const n of chunk) {
+      const node = repoData[`i${n}`];
+      if (!node) continue;
+      out.set(n, { number: n, state: String(node.state || '').toLowerCase() === 'open' ? 'open' : 'closed', labels: node.labels?.nodes || [] });
+    }
+  }
+  return out;
+}
+
+export function fetchIssueComments(execGh, repo, n) {
+  return ghPaged(execGh, `repos/${repo}/issues/${n}/comments?per_page=100`);
 }
 
 /** Roadmap-punkter og kendte fejl uden kontakt paa de leverede issues. Kun GET. */
@@ -703,22 +732,31 @@ export async function runDraft({ execGh = defaultExecGh, repo = DEFAULT_REPO, da
   const masterplanText = read(MASTERPLAN_FILE);
   const helpIndex = buildHelpIndex(JSON.parse(read(HELP_FILE) || '{}'), JSON.parse(read(HELP_FILE_DA) || '{}'));
 
-  // Issues hentes kun naar de kan aendre udfaldet: spillervendte PR'er
-  // (markeringer 6/7) og Refs-issues masterplanen naevner (leveret-tjek).
-  const issues = new Map();
-  const need = new Set();
+  // Tilstand og labels for ALLE refererede issues (leveret-tjekket til roadmap
+  // og masterplan), samlet i faa GraphQL-kald. Kommentarer (markeringer 6/7)
+  // hentes kun for issues paa spillervendte PR'er, hvor de kan aendre udfaldet.
+  const allRefs = new Set();
+  const needComments = new Set();
   for (const pr of prs) {
     const { type, scope } = parseTitle(pr.title);
     const markersMatter = !isInternalPr(pr) && PATCH_TYPES.has(type) && !INTERNAL_SCOPES.test(scope);
     for (const ref of prIssueRefs(pr)) {
-      if (markersMatter || new RegExp(`#${ref.issue}(?!\\d)`).test(masterplanText)) need.add(ref.issue);
+      allRefs.add(ref.issue);
+      if (markersMatter) needComments.add(ref.issue);
     }
   }
-  for (const n of [...need].sort((a, b) => a - b)) {
+  let issues = new Map();
+  try {
+    issues = fetchIssueStates(execGh, repo, [...allRefs]);
+  } catch (err) {
+    log(`advarsel: issue-tilstande kunne ikke læses: ${err.message}`);
+  }
+  for (const n of [...needComments].sort((a, b) => a - b)) {
     try {
-      issues.set(n, fetchIssueInfo(execGh, repo, n));
+      const info = issues.get(n) || { number: n, state: 'open', labels: [] };
+      issues.set(n, { ...info, comments: fetchIssueComments(execGh, repo, n) });
     } catch (err) {
-      log(`advarsel: issue #${n} kunne ikke læses: ${err.message}`);
+      log(`advarsel: kommentarer på #${n} kunne ikke læses: ${err.message}`);
     }
   }
 
@@ -755,7 +793,7 @@ export async function runDraft({ execGh = defaultExecGh, repo = DEFAULT_REPO, da
   return { body, actions, results };
 }
 
-export function runCleanup({ execGh = defaultExecGh, repo = DEFAULT_REPO, apply = false, max = 100, minAgeHours = 24, now = new Date(), log = console.log }) {
+export function runCleanup({ execGh = defaultExecGh, execGit = defaultExecGit, repo = DEFAULT_REPO, remote = `https://github.com/${repo}.git`, apply = false, max = 100, minAgeHours = 24, now = new Date(), log = console.log }) {
   const branches = ghPaged(execGh, `repos/${repo}/git/matching-refs/heads/`).map((r) => ({ name: String(r.ref).replace(/^refs\/heads\//, ''), sha: r.object?.sha }));
   const mergedPrs = JSON.parse(execGh(['pr', 'list', '--repo', repo, '--state', 'merged', '--base', 'main', '--limit', '1000', '--json', 'number,headRefName,headRefOid,baseRefName,isCrossRepository,mergedAt']) || '[]');
   const openPrs = JSON.parse(execGh(['pr', 'list', '--repo', repo, '--state', 'open', '--limit', '1000', '--json', 'number,headRefName,baseRefName']) || '[]');
@@ -768,7 +806,7 @@ export function runCleanup({ execGh = defaultExecGh, repo = DEFAULT_REPO, apply 
       continue;
     }
     try {
-      execGh(['api', '-X', 'DELETE', refPath(repo, d.branch)]);
+      execGit(leaseDeleteArgs(remote, d.branch, d.sha));
       deleted.push(d);
     } catch (err) {
       errors.push(`${d.branch}: ${String(err.stderr || err.message).trim()}`);

@@ -9,7 +9,8 @@ name: Til dørs-udkast
 #
 # Dagligt ryddes desuden mergede remote branches (kun naar spidsen stadig er
 # PR'ens head, ingen aaben PR bruger dem som head eller base, og merget er
-# mindst et doegn gammelt). GitHub gemmer commits'ene paa PR'en ("Restore
+# mindst et doegn gammelt; sletningen afvises af serveren, hvis spidsen er
+# flyttet siden opgoerelsen). GitHub gemmer commits'ene paa PR'en ("Restore
 # branch"). Backup-tabeller listes kun, sletning er ejer-gated.
 #
 # Ingen betalte kald: kun GitHub Actions, gh og et laese-kald (GET) til
@@ -112,6 +113,14 @@ jobs:
           if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$INPUT_APPLY" != "true" ]; then
             MODE=--dry-run
           fi
+          # Sletning sker med git push --force-with-lease (atomisk mod den SHA
+          # planen saa). Tokenet gives som http.extraheader via env, ikke paa
+          # kommandolinjen, og checkout gemmer ingen credentials.
+          B64="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          echo "::add-mask::$B64"
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0="http.https://github.com/.extraheader"
+          export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $B64"
           OUT="$RUNNER_TEMP/cleanup.json"
           node scripts/til-doers-draft.mjs cleanup --repo "$REPO" "$MODE" --out "$OUT" | tee "$RUNNER_TEMP/cleanup.txt"
           {
