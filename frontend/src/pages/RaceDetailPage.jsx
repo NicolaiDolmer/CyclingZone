@@ -26,6 +26,7 @@ import {
   Tab,
   CollapsibleSection,
   SkeletonLines,
+  Segmented, // #8253
   // #4628 (TASTE P7): tilbage-linket bar en unicode-pil ("← Race library") i selve
   // locale-strengen. Pile er ikke ikoner — de arver linjehoejde, rammer ikke
   // baseline og ser forskellige ud pr. platform. Nu et stroke-chevron + ren tekst.
@@ -2138,13 +2139,12 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
         <div className={`grid grid-cols-1 gap-[14px] items-start @4xl:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] ${v6Layout.profileSlot ? "@4xl:grid-rows-[auto_1fr]" : ""}`}>
           {v6Layout.profileSlot && <div className="min-w-0 @4xl:col-start-2 @4xl:row-start-1">{v6Layout.profileSlot}</div>}
           <div className={`min-w-0 flex flex-col gap-[14px] @4xl:col-start-1 @4xl:row-start-1 ${v6Layout.profileSlot ? "@4xl:row-span-2" : ""}`}>
-            <Tabs value={classTab} onChange={setClassTab}>
-              <TabList label={t("detail.classTab.ariaLabel")}>
-                {classTabs.map(key => (
-                  <Tab key={key} value={key}>{t(`detail.classTab.${key}`)}</Tab>
-                ))}
-              </TabList>
-            </Tabs>
+            {/* #8253: klassementet er en linse på samme liste, ikke en fane til: Segmented (TASTE),
+                så rækken under sidens understregede faner ser underordnet ud. Ruller vandret på mobil. */}
+            <div className="max-w-full overflow-x-auto [scrollbar-width:none]" data-v6-class-switch>
+              <Segmented label={t("detail.classTab.ariaLabel")} value={classTab} onChange={setClassTab}
+                options={classTabs.map(key => ({ value: key, label: t(`detail.classTab.${key}`) }))} className="whitespace-nowrap" />
+            </div>
             {v6Layout.loaded
               ? <ResultTable title={title} rows={rows} highlightWinner={classTab === "team"} highlightTeamId={myTeamId} myOwnTeamId={myOwnTeamId} moments={moments} stageNumber={stage} pointsTotalByRider={pointsTotalMapForKey(stagePointsTotals, classTab)} raceId={raceId} participationHistory={participationHistory} dnfRows={dnfRows} defaultLimit={25} headerControl={v6Layout.teamFilter} searchable sharedMine={v6Layout.mine ?? null} />
               : <Section><SkeletonLines lines={10} /></Section>}
