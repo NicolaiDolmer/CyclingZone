@@ -85,11 +85,12 @@ test('#8025 a trained-now date says one thing: one note, and a dash that explain
 
 // #7741: the bonus mark shows only for a rider the engine stamped, and only with the switch on.
 const bonusRun = { ...settled, report:{ condition_settled:true, riders:[
-  { ...rider('r1','Ada Pedersen',{positioning:1},{positioning:110}), activities:[{ rider_id:'r1', train_now_bonus:true }] },
-  rider('r2','Bo Holm',{},{}),
+  { ...rider('r1','Ada Pedersen',{positioning:1},{positioning:110}), activities:[{ rider_id:'r1', train_now_bonus:true, intensity:'normal' }] },
+  { ...rider('r2','Bo Holm',{},{}), activities:[{ rider_id:'r2', train_now_bonus:true, intensity:'rest' }, { rider_id:'r2', train_now_bonus:true, race_day:true }] },
+  { ...rider('r3','Cai Berg',{},{}), activities:[{ rider_id:'r3', train_now_bonus:true, intensity:'hard', injured:true }] },
 ]}};
 
-test('#7741 bonus mark: on shows it for the stamped rider only', () => {
+test('#7741 bonus mark: on shows it only for a rider whose training was boosted (not rest, race or injury rows)', () => {
   const html = render({ run:bonusRun, trainNowBonus:true });
   assert.equal(html.split('data-testid="daily-receipt-bonus"').length - 1, 1);
   assert.ok(html.indexOf('data-testid="daily-receipt-bonus"') < html.indexOf('Bo Holm'), 'the mark sits on Ada, before Bo');

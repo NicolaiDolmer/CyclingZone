@@ -1354,7 +1354,9 @@ export default function TrainingPage() {
   // getTrainingTourSteps). Ét anker ad gangen: guld-knappen, "Run now" eller
   // statuslinjen.
   const tourTarget = tourRunTarget(primaryAction, runnable);
-  const trainingTourSteps = useTrainingTourSteps(t, tourTarget, dayClose != null, useTrainNowBonusEnabled());
+  // #7741: bonussen kan kun tjenes ved et oejeblikkeligt Traen nu-tryk, saa turen naevner den kun naar begge er tilgaengelige.
+  const bonusSwitchOn = useTrainNowBonusEnabled();
+  const trainingTourSteps = useTrainingTourSteps(t, tourTarget, dayClose != null, bonusSwitchOn && trainNow.status.instant === true);
   const selectedCount = pruneSelection(selected, filterIds).size;
   // #6523: linjen "Set today's day for ..." — intet markeret = alle i visningen.
   const bulkScope = resolveBulkScope(selected, filterIds, selectableRiders.map((r) => r.id));

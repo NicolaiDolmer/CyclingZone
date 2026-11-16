@@ -18,8 +18,10 @@ const isKnown = (row: DailyRiderReceipt) => row.receipt_status === "complete" ||
 // #6027: a pending date still shows what its stored race days already trained.
 const showsDevelopment = (row: DailyRiderReceipt) => isKnown(row) || row.trained_now != null;
 const development = (row: DailyRiderReceipt) => row.trained_now ?? row;
-// #7741: the engine stamps train_now_bonus on a rider's stored rows when his own Train now press earned the bonus.
-const hasBonus = (row: DailyRiderReceipt) => row.train_now_bonus === true || row.activities.some(a => a.train_now_bonus === true);
+// #7741: the engine stamps train_now_bonus on a rider's stored rows when his own Train now press chose the bonus. The stamp
+// also rides on rest, injured and race rows, which train nothing, so only a real training session counts as a bonus.
+const boosted = (a: TrainingActivity) => a.train_now_bonus === true && !a.race_day && !a.injured && !!a.intensity && a.intensity !== "rest";
+const hasBonus = (row: DailyRiderReceipt) => row.activities.some(boosted);
 // #7745: the meta line and the micro headings share one recipe.
 const META = "font-data text-2xs uppercase tracking-[.08em] text-cz-3";
 
