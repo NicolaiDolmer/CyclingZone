@@ -13,6 +13,7 @@ import { POINTS, VARIANTS, configFor, variantById, type Variant } from "./varian
 const q = new URLSearchParams(window.location.search);
 const mobile = q.get("w") === "m";
 const variant = variantById(q.get("id"));
+if (variant && (mobile ? variant.fullM : variant.fullD)) document.documentElement.dataset.full = "1";
 document.documentElement.lang = "da";
 
 function Caption({ v }: { v: Variant }) {

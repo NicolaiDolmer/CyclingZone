@@ -109,7 +109,7 @@ export const VARIANTS: Variant[] = [
   },
   {
     id: "2c", point: 2, letter: "C", name: "Rytterkort",
-    line: "Fordel: hver rytter har plads til rolle, tal og status uden tabel; ulempe: kortene fylder, så kun 5-6 ryttere ses, og D-047 valgte tabellen frem for kort.",
+    line: "Fordel: hver rytter har plads til rolle, tal og status uden tabel; ulempe: kortene fylder, så kun 4-5 ryttere ses, og D-047 valgte tabellen frem for kort.",
     recommended: false,
     cfg: { sheet: "cards", head: "compact" },
   },

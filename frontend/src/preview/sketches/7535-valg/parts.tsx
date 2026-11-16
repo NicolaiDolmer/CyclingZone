@@ -26,7 +26,7 @@ export function Btn({
   className?: string;
 }) {
   return (
-    <button type="button" disabled={disabled} className={`${buttonClass({ variant, size, fullWidth: full })} ${className}`}>
+    <button type="button" disabled={disabled} className={`whitespace-nowrap ${buttonClass({ variant, size, fullWidth: full })} ${className}`}>
       {children}
     </button>
   );

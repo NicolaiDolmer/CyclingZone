@@ -8,6 +8,8 @@ import type { Config } from "./variants.ts";
 import { Badge, Btn, Chip, Flag, Glyph, Ico, MatchBar, Plan, Profile, Seg } from "./parts.tsx";
 
 const VIEW_LABEL = { squad: "Trup", tactics: "Taktik", peak: "Formtop" } as const;
+/** Gem-bjælker er faste i bunden; i et helsides billede står de i stedet sidst på siden. */
+const barPos = () => (document.documentElement.dataset.full === "1" ? "relative" : "fixed");
 const VIEW_HINT = { squad: "Udtag ryttere og giv dem en rolle · alle kolonner sorterer", tactics: "Samme taktik og samme gem som på løbssiden", peak: "Kryds ryttere af og anvend formtoppen på løbet" } as const;
 
 // --- Sidens ramme ----------------------------------------------------------------
@@ -312,13 +314,13 @@ function FoldedProfile() {
 // --- Trup-visningen (punkt 5, 6C, 7) ---------------------------------------------------
 
 function StatusCell({ r, cfg }: { r: Rider; cfg: Config }) {
-  if (r.injured) return <span className="text-2xs font-semibold text-cz-danger">{r.injured}</span>;
-  if (r.busy) return <span className="rounded-cz border border-cz-border px-1.5 py-0.5 text-2xs text-cz-2">{r.busy}</span>;
+  if (r.injured) return <span className="text-2xs font-semibold leading-tight text-cz-danger">{r.injured}</span>;
+  if (r.busy) return <span className="whitespace-nowrap rounded-cz border border-cz-border px-1.5 py-0.5 text-2xs text-cz-2">{r.busy}</span>;
   if ((cfg.table === "status" || cfg.table === "roleChip") && r.peak?.here)
     return (
       <span className="flex flex-col">
         <span className="inline-flex items-center gap-1 whitespace-nowrap text-2xs font-semibold text-cz-info">{Ico.peak(12)} Formtop her</span>
-        <span className="whitespace-nowrap text-3xs text-cz-3">Pris: {r.peak.cost}</span>
+        <span className="text-3xs leading-tight text-cz-3">Pris: {r.peak.cost}</span>
       </span>
     );
   if ((cfg.table === "status" || cfg.table === "roleChip") && r.peak)
@@ -426,7 +428,7 @@ function SquadTable({ cfg }: { cfg: Config }) {
                   <span className="font-medium text-cz-1">{r.name}</span>
                 </span>
               </td>
-              <td className="px-2 py-[7px]">
+              <td className="w-[130px] max-w-[130px] px-2 py-[7px]">
                 <StatusCell r={r} cfg={cfg} />
               </td>
               <td className="px-2 py-[7px]">
@@ -443,7 +445,7 @@ function SquadTable({ cfg }: { cfg: Config }) {
               <td className="px-2 py-[7px] text-end font-data tabular-nums text-cz-1">{r.form}</td>
               <td className="px-2 py-[7px] text-end font-data tabular-nums text-cz-1">{r.fatigue}</td>
               {cfg.after !== "none" && (
-                <td className="px-2 py-[7px] text-end">
+                <td className="px-2 py-[7px] pe-5 text-end">
                   <AfterCell r={r} cfg={cfg} />
                 </td>
               )}
@@ -710,6 +712,14 @@ function PeakView({ cfg, mobile }: { cfg: Config; mobile: boolean }) {
       <p className={`m-0 border-b border-cz-border ${px} py-2 text-2xs text-cz-3`}>
         Formtop-mål: Tour de Preview, starter tirs. 17. nov. Kryds ryttere af og anvend.
       </p>
+      {linked && mobile && (
+        <div className="flex items-center justify-between gap-2 border-b border-cz-border bg-cz-warning/10 px-4 py-2 text-xs text-cz-warning">
+          <span className="inline-flex items-start gap-1.5">
+            <span className="mt-0.5">{Ico.alert(13)}</span> Ignacio Moreno har formtop her, men er ikke udtaget.
+          </span>
+          <Btn>Udtag</Btn>
+        </div>
+      )}
       {!mobile && (
         <div className="grid grid-cols-[32px_1.5fr_.5fr_.5fr_.6fr_1.7fr_1fr] border-b border-cz-border bg-cz-subtle px-5 py-2 font-data text-3xs font-semibold uppercase tracking-[.08em] text-cz-3">
           <span />
@@ -805,7 +815,7 @@ function PeakView({ cfg, mobile }: { cfg: Config; mobile: boolean }) {
 
 function SaveBar({ mobile }: { mobile: boolean }) {
   return (
-    <div className={`fixed bottom-0 end-0 z-20 border-t border-cz-border bg-cz-card ${mobile ? "start-0 px-4 py-3" : "start-[208px] px-8 py-3"}`}>
+    <div className={`${barPos()} bottom-0 end-0 z-20 border-t border-cz-border bg-cz-card ${mobile ? "start-0 px-4 py-3" : `${barPos() === "fixed" ? "start-[208px]" : "ms-[208px]"} px-8 py-3`}`}>
       <div className={`mx-auto flex max-w-[1600px] items-center justify-between gap-3 ${mobile ? "flex-col items-stretch" : ""}`}>
         <span className="text-[13px] text-cz-1">
           <span className="font-semibold">Ugemte ændringer:</span> trup (2 skift) · taktik etape 1
@@ -1069,7 +1079,7 @@ function MobileSheet({ cfg }: { cfg: Config }) {
         <SaveBar mobile />
       ) : (
         s && (
-          <div className="fixed bottom-0 end-0 start-0 z-20 border-t border-cz-border bg-cz-card px-4 py-3">
+          <div className={`${barPos()} bottom-0 end-0 start-0 z-20 border-t border-cz-border bg-cz-card px-4 py-3`}>
             <Btn variant={s.gold ? "primary" : "secondary"} size="md" full>
               {s.text}
             </Btn>
