@@ -98,6 +98,7 @@ function FieldCell({
     return (
       <span
         className={`flex ${height} items-center justify-center gap-1 rounded-cz bg-cz-1 px-1 text-cz-card`}
+        role="img"
         title="Låst af løbet"
         aria-label={`${riderName}, felt ${n}: ${field.label}, låst af løbet`}
       >
@@ -110,6 +111,7 @@ function FieldCell({
     return (
       <span
         className={`flex ${height} items-center justify-center gap-1 rounded-cz border border-cz-border bg-cz-subtle px-1 text-cz-3`}
+        role="img"
         aria-label={`${riderName}, felt ${n}: ${SESSION_NAME[field.session]}, kørt`}
       >
         <CheckIcon size={11} aria-hidden="true" className="shrink-0 text-cz-success" />
@@ -175,7 +177,7 @@ function SourceLine({ rider }: { rider: SketchRider }) {
   if (s.kind === "own") {
     return (
       <span className="text-cz-2">
-        Eget program: {s.name} <button type="button" className="ms-1 font-medium text-cz-accent-t hover:underline">Fjern</button>
+        Eget program: {s.name} <button type="button" aria-label={`Fjern programmet ${s.name} fra ${rider.name}`} className="ms-1 inline-flex min-h-11 min-w-11 items-center font-medium text-cz-accent-t hover:underline md:min-h-0 md:min-w-0">Fjern</button>
       </span>
     );
   }
@@ -306,7 +308,7 @@ function PageFrame({ plans, children }: { plans: Plans; children: ReactNode }) {
             type="button"
             className={`px-3 py-2 text-start hover:bg-cz-subtle max-sm:px-2 ${i > 0 ? "border-s border-cz-border" : ""}`}
           >
-            <div className={`font-data text-lg font-bold tabular-nums ${c.warn ? "text-cz-warning" : "text-cz-1"}`}>{c.n}</div>
+            <div className="flex items-center gap-1.5 font-data text-lg font-bold tabular-nums text-cz-1">{c.n}{c.warn && <AlertTriangleIcon size={14} aria-label="Kræver handling" className="text-cz-warning" />}</div>
             <div className="text-3xs leading-tight text-cz-2 sm:text-2xs">{c.label}</div>
           </button>
         ))}
