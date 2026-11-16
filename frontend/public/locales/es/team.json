@@ -12,11 +12,8 @@
     "balanceTooltip": "CZ$ es la moneda del juego. La ganas jugando y no se puede comprar con dinero real.",
     "ownAuctionsLine": "{count, plural, one {# ciclista en subasta} other {# ciclistas en subasta}}",
     "stats": {
-      "balance": "Saldo",
-      "division": "División",
       "seniorRiders": "Ciclistas sénior",
-      "salaryPerSeason": "Salario/temporada",
-      "teamValue": "Valor del equipo"
+      "salaryPerSeason": "Salario/temporada"
     }
   },
   "promotionPending": {

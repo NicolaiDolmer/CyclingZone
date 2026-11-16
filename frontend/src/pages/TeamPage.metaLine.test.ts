@@ -40,7 +40,7 @@ test("#4500 balancen paa /team er et link, ikke guld-tekst uden destination", ()
   const block = metaLineBlock();
   assert.match(
     block,
-    /label: t\("page\.stats\.balance"\),\s*value: <Link to="\/finance" className="text-cz-accent-t/,
+    /label: t\("auctions:stats\.balance"\),\s*value: <Link to="\/finance" className="text-cz-accent-t/,
     "guld-balancen skal foere til /finance — guld-tekst uden destination var 42 rage clicks",
   );
 });
@@ -48,7 +48,7 @@ test("#4500 balancen paa /team er et link, ikke guld-tekst uden destination", ()
 test("#4500 loen pr. saeson og division paa /team har hver sin destination", () => {
   const block = metaLineBlock();
   assert.match(block, /label: t\("page\.stats\.salaryPerSeason"\),\s*value: <Link to="\/finance"/, "loen/saeson skal foere til /finance");
-  assert.match(block, /label: t\("page\.stats\.division"\),\s*value: <Link to="\/standings"/, "division skal foere til /standings");
+  assert.match(block, /label: t\("manager\.thDivision"\),\s*value: <Link to="\/standings"/, "division skal foere til /standings");
 });
 
 test("#4500 meta-linjen har ingen tilbagevendende guld-span uden destination", () => {

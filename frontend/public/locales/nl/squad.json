@@ -15,7 +15,6 @@
     "seniorsStayHint": "Renners in je seniorenselectie blijven senior tot je ze verplaatst. Open een renner en gebruik Selectie wisselen.",
     "stats": {
       "riders": "Renners",
-      "rosterValue": "{count}/{cap}",
       "squadValue": "Selectiewaarde"
     }
   },

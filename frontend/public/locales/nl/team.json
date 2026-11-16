@@ -12,11 +12,8 @@
     "balanceTooltip": "CZ$ is de valuta in het spel. Je verdient het door te spelen en het is niet met echt geld te koop.",
     "ownAuctionsLine": "{count, plural, one {# renner in veiling} other {# renners in veiling}}",
     "stats": {
-      "balance": "Saldo",
-      "division": "Divisie",
       "seniorRiders": "Seniorenrenners",
-      "salaryPerSeason": "Salaris/seizoen",
-      "teamValue": "Teamwaarde"
+      "salaryPerSeason": "Salaris/seizoen"
     }
   },
   "promotionPending": {

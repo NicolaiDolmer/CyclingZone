@@ -15,7 +15,6 @@
     "seniorsStayHint": "Riders on your senior squad stay seniors until you move them. Open a rider and use Move squad.",
     "stats": {
       "riders": "Riders",
-      "rosterValue": "{count}/{cap}",
       "squadValue": "Squad value"
     }
   },

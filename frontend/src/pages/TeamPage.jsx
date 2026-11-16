@@ -1273,11 +1273,11 @@ export function TeamPage() {
         className="-mt-2 mb-5 border-t border-cz-border pt-4"
         items={[
           {
-            label: t("page.stats.balance"),
+            label: t("auctions:stats.balance"),
             value: <Link to="/finance" className="text-cz-accent-t hover:underline" title={t("page.balanceTooltip")}>{formatNumber(team?.balance ?? 0)}</Link>,
           },
           {
-            label: t("page.stats.division"),
+            label: t("manager.thDivision"),
             value: <Link to="/standings" className="hover:text-cz-accent-t transition-colors" title={t("page.divisionTooltip")}>{team?.division ?? "–"}</Link>,
           },
           {
@@ -1297,7 +1297,7 @@ export function TeamPage() {
             label: t("page.stats.salaryPerSeason"),
             value: <Link to="/finance" className="hover:text-cz-accent-t transition-colors" title={t("page.salaryPerSeasonTooltip")}>{formatNumber(totalSalary)}</Link>,
           },
-          { label: t("page.stats.teamValue"), value: formatNumber(totalValue) },
+          { label: t("profile.statTeamValue"), value: formatNumber(totalValue) },
         ]}
       />
 

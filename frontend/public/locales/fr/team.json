@@ -12,11 +12,8 @@
     "balanceTooltip": "Le CZ$ est la monnaie du jeu. Tu en gagnes en jouant, et il ne s'achète pas avec de l'argent réel.",
     "ownAuctionsLine": "{count, plural, one {# coureur aux enchères} other {# coureurs aux enchères}}",
     "stats": {
-      "balance": "Solde",
-      "division": "Division",
       "seniorRiders": "Coureurs seniors",
-      "salaryPerSeason": "Salaire/saison",
-      "teamValue": "Valeur de l'équipe"
+      "salaryPerSeason": "Salaire/saison"
     }
   },
   "promotionPending": {

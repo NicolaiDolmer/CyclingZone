@@ -118,7 +118,7 @@ function YouthSquadView({ squad }: { squad: YouthSquad }) {
             flush
             className="-mt-2 mb-5 border-t border-cz-border pt-4"
             items={[
-              { label: t("page.stats.riders"), value: t("page.stats.rosterValue", { count: riders.length, cap }) },
+              { label: t("page.stats.riders"), value: `${riders.length}/${cap}` },
               ...(riders.length > 0
                 ? [
                     { label: tTeam("page.stats.salaryPerSeason"), value: formatNumber(totalSalary) },

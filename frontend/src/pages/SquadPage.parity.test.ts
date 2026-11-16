@@ -57,7 +57,7 @@ test("#5631 meta-linjen viser truppens loft, også ved en tom trup", () => {
   // `riders.length > 0`-grenen, som kun løn og trupværdi ligger bag.
   assert.match(
     squadPage,
-    /items=\{\[\s*\{ label: t\("page\.stats\.riders"\), value: t\("page\.stats\.rosterValue", \{ count: riders\.length, cap \}\) \},\s*\.\.\.\(riders\.length > 0/,
+    /items=\{\[\s*\{ label: t\("page\.stats\.riders"\), value: `\$\{riders\.length\}\/\$\{cap\}` \},\s*\.\.\.\(riders\.length > 0/,
     "truppens n/loft skal altid stå i HeroStats, også ved en tom trup",
   );
   // Meta-div'en stod tidligere helt bag `{riders.length > 0 && (` — det mønster

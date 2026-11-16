@@ -12,11 +12,8 @@
     "balanceTooltip": "CZ$ is the in-game currency. You earn it by playing, and it cannot be bought with real money.",
     "ownAuctionsLine": "{count, plural, one {# rider on auction} other {# riders on auction}}",
     "stats": {
-      "balance": "Balance",
-      "division": "Division",
       "seniorRiders": "Senior riders",
-      "salaryPerSeason": "Salary/season",
-      "teamValue": "Team value"
+      "salaryPerSeason": "Salary/season"
     }
   },
   "promotionPending": {
