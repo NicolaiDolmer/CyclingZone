@@ -3,7 +3,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  legTaskChoice,
   orderWithoutJerseyHunt,
   setLegTask,
   taskChoiceKey,
@@ -108,7 +107,7 @@ test("#7855 egne linjer: valget gemmes som udbrudsleddet med jagt (serverens for
   const kom = setLegTask(start, 0, "breakaway", "helper", ON, "hunt_kom");
   assert.deepEqual(kom, [{ task: "breakaway", hunt: "hunt_kom" }]);
   assert.equal(validateStagePlanLegs(kom, "helper", ON), null);
-  assert.equal(taskChoiceKey(legTaskChoice(kom[0])), "breakaway+hunt_kom", "listen viser leddets eget valg");
+  assert.equal(taskChoiceKey(kom[0]), "breakaway+hunt_kom", "listen viser leddets eget valg");
   const pts = setLegTask(kom, 0, "breakaway", "helper", ON, "hunt_points");
   assert.deepEqual(pts, [{ task: "breakaway", hunt: "hunt_points" }]);
   // "Gaa i udbrud" alene fjerner jagten; en anden opgave tager den heller ikke med.

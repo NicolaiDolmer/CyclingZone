@@ -44,7 +44,6 @@ import {
   suggestStagePlan,
   suggestionReasonKey,
   legHuntTask,
-  legTaskChoice,
   taskChoiceKey,
   taskChoiceOptions,
   triggerKey,
@@ -256,7 +255,7 @@ function PlanEditor({ t, riderName, legs, role, route, suggestion, showsSuggesti
                 <Select
                   size="sm"
                   disabled={disabled}
-                  value={taskChoiceKey(legTaskChoice(leg))}
+                  value={taskChoiceKey(leg)}
                   onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                     const choice = choices.find((c) => taskChoiceKey(c) === e.target.value);
                     if (choice) onChange(setLegTask(legs, i, choice.task, role, route, choice.hunt));
@@ -318,8 +317,9 @@ function PlanEditor({ t, riderName, legs, role, route, suggestion, showsSuggesti
         </button>
       </div>
       {/* #7855: troejejagten forklaret med ord, kun naar en jagt er i kaeden (ogsaa paa udbrudsleddet). */}
-      {legs.some((l) => legHuntTask(l) === "hunt_points") && <p className="px-3.5 py-2 border-t border-cz-border text-3xs text-cz-2">{t("stagePlan.huntNote")}</p>}
-      {legs.some((l) => legHuntTask(l) === "hunt_kom") && <p className="px-3.5 py-2 border-t border-cz-border text-3xs text-cz-2">{t("stagePlan.huntNoteKom")}</p>}
+      {(["hunt_points", "hunt_kom"] as const).filter((h) => legs.some((l) => legHuntTask(l) === h)).map((h) => (
+        <p key={h} className="px-3.5 py-2 border-t border-cz-border text-3xs text-cz-2">{t(h === "hunt_kom" ? "stagePlan.huntNoteKom" : "stagePlan.huntNote")}</p>
+      ))}
       <p className="px-3.5 py-2 border-t border-cz-border text-3xs text-cz-3">{t("stagePlan.rulesNote")}</p>
     </div>
   );
