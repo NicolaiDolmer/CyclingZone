@@ -174,12 +174,8 @@
     "moreRight": "Más columnas a la derecha"
   },
   "expectedDivision": {
-    "label": "División",
-    "all": "Todas las divisiones",
-    "option": "División {n}",
     "optionExpected": "División {n} (prevista)",
-    "note": "Se muestra la división {n}, en la que estás ahora. Tu división para la temporada {number} se decide en el cambio de temporada.",
-    "plannerBody": "Los ascensos y descensos se deciden al cerrar la temporada actual. El tablero empieza en la división {n}, en la que estás ahora. Elige otra división arriba para estudiar sus recorridos de la temporada {number}."
+    "note": "Se muestra la división {n}, en la que estás ahora. Tu división para la temporada {number} se decide en el cambio de temporada."
   },
   "networkError": "No se puede conectar con el servidor ahora mismo. Comprueba tu conexión e inténtalo de nuevo.",
   "push": {

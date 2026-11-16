@@ -174,12 +174,8 @@
     "moreRight": "Flere kolonner til højre"
   },
   "expectedDivision": {
-    "label": "Division",
-    "all": "Alle divisioner",
-    "option": "Division {n}",
     "optionExpected": "Division {n} (forventet)",
-    "note": "Viser division {n}, som du er i nu. Din division i sæson {number} afgøres ved sæsonskiftet.",
-    "plannerBody": "Op- og nedrykning falder først på plads når den nuværende sæson lukker. Brættet starter på division {n}, som du er i nu. Vælg en anden division ovenfor for at studere dens ruter i sæson {number}."
+    "note": "Viser division {n}, som du er i nu. Din division i sæson {number} afgøres ved sæsonskiftet."
   },
   "networkError": "Kan ikke nå serveren lige nu. Tjek din forbindelse og prøv igen.",
   "push": {

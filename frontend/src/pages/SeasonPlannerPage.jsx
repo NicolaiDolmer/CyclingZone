@@ -4,7 +4,7 @@
 // peaks) + kontekst-skuffe (race/rytter) + mobilt stakket spor. Launch-gated:
 // mens peak_planner_enabled er 'off' viser fanen en tom-state (samme
 // kill-switch-mønster som Scouting/Facilities).
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { PageLoader, EmptyState, ErrorState, Section, Button, Select, GripVerticalIcon, CalendarIcon, XIcon, Tabs, TabList, Tab, TabPanel } from "../components/ui";
@@ -88,7 +88,7 @@ function DivisionPendingNotice({ t, seasonNumber, expectedDivision = null }) {
           <p className="text-[15px] font-semibold text-cz-1">{t("divisionPending.title", { number: seasonNumber })}</p>
           <p className="mt-1 text-[13px] text-cz-2">
             {expectedDivision != null
-              ? t("common:expectedDivision.plannerBody", { number: seasonNumber, n: expectedDivision })
+              ? t("planner:expectedDivision.plannerBody", { number: seasonNumber, n: expectedDivision })
               : t("divisionPending.body", { number: seasonNumber })}
           </p>
           <p className="mt-1 text-2xs text-cz-3">{t("divisionPending.hint", { number: seasonNumber })}</p>
@@ -138,6 +138,12 @@ export default function SeasonPlannerPage() {
     [races, divisionPending, expectedDivision],
   );
   const activeDivision = divisionChoice === undefined ? defaultDivision : divisionChoice;
+  // #5841 (Codex 16/11): ÉT sæsonskift for alle veje (sæsonknapperne og "Næste sæson"-knappen),
+  // så et divisionsvalg aldrig følger med over i en anden sæson.
+  const switchSeason = useCallback((number) => {
+    setSeasonNumber(number);
+    setDivisionChoice(undefined);
+  }, []);
   const divisionOptions = useMemo(() => plannerDivisions(races), [races]);
   const boardRaces = useMemo(
     () => (viewFilter === "all" ? plannerBoardRaces(races, { division: activeDivision }) : races),
@@ -279,7 +285,7 @@ export default function SeasonPlannerPage() {
                 <button
                   key={s.id}
                   className={`px-3 py-1.5 ${(seasonNumber ?? season?.number) === s.number ? "bg-cz-sidebar text-cz-body" : "bg-transparent text-cz-2 hover:bg-cz-subtle"}`}
-                  onClick={() => { setSeasonNumber(s.number); setDivisionChoice(undefined); }}
+                  onClick={() => switchSeason(s.number)}
                 >{t("seasonMenu.option", { number: s.number })}</button>
               ))}
             </div>
@@ -302,21 +308,21 @@ export default function SeasonPlannerPage() {
         {/* #5841: divisionsvælgeren. Efter mine/alle, fordi den kun gælder når alle løb vises ("Mine løb" er allerede én division). */}
         {viewFilter === "all" && divisionOptions.length > 1 && (
           <div className="flex items-center gap-1.5">
-            <span className="hidden sm:inline text-3xs text-cz-3 uppercase tracking-wide">{t("common:expectedDivision.label")}</span>
+            <span className="hidden sm:inline text-3xs text-cz-3 uppercase tracking-wide">{t("planner:expectedDivision.label")}</span>
             <Select
               size="sm"
               value={activeDivision ?? ""}
               onChange={(e) => setDivisionChoice(e.target.value === "" ? null : Number(e.target.value))}
-              aria-label={t("common:expectedDivision.label")}
+              aria-label={t("planner:expectedDivision.label")}
               className="w-48"
               data-testid="planner-division"
             >
-              <option value="">{t("common:expectedDivision.all")}</option>
+              <option value="">{t("planner:expectedDivision.all")}</option>
               {divisionOptions.map((d) => (
                 <option key={d} value={d}>
                   {divisionPending && d === expectedDivision
-                    ? t("common:expectedDivision.optionExpected", { n: d })
-                    : t("common:expectedDivision.option", { n: d })}
+                    ? t("planner:expectedDivision.optionExpected", { n: d })
+                    : t("planner:expectedDivision.option", { n: d })}
                 </option>
               ))}
             </Select>
@@ -342,7 +348,7 @@ export default function SeasonPlannerPage() {
         <NextSeasonNudge
           t={t}
           nextSeason={nextSeason}
-          onSwitch={() => { setSeasonNumber(nextSeason.number); setDismissedNudgeSeasonId(nextSeason.id); }}
+          onSwitch={() => { switchSeason(nextSeason.number); setDismissedNudgeSeasonId(nextSeason.id); }}
           onDismiss={() => setDismissedNudgeSeasonId(nextSeason.id)}
         />
       )}
