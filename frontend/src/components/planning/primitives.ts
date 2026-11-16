@@ -30,7 +30,16 @@ import { useReloadBlock as useReloadBlockBase, RELOAD_BLOCK_REASONS as RELOAD_BL
 import { useDismiss as useDismissBase } from "../ui/useDismiss.js";
 import { useModalA11y as useModalA11yBase } from "../../hooks/useModalA11y.js";
 
+// Runde 3: Taktik er loebssidens egen taktik-fane (samme etapeplan, samme gem, samme validering), og
+// Formtop-maalets vaerdi og payback er Form-fanens egen linje. Ingen kopi af nogen af dem.
+import RaceTacticsTabBase from "../race/RaceTacticsTab.jsx";
+import { PeakValue as PeakValueBase } from "../planner/PlannerSquad.jsx";
+
 type AnyComponent = (props: any) => any;
+
+export const Segmented: AnyComponent = ui.Segmented as any;
+export const RaceTacticsTab: AnyComponent = RaceTacticsTabBase as any;
+export const PeakValue: AnyComponent = PeakValueBase as any;
 
 export const Button: AnyComponent = ui.Button as any;
 export const EmptyState: AnyComponent = ui.EmptyState as any;

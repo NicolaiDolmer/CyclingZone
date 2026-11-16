@@ -6,6 +6,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRe
 import { useTranslation } from "react-i18next";
 import {
   Button,
+  Segmented,
   EmptyState,
   ErrorState,
   SkeletonLines,
@@ -22,8 +23,10 @@ import {
 } from "./primitives.ts";
 import RouteProfile from "./RouteProfile.tsx";
 import SquadTable from "./SquadTable.tsx";
+import TacticsView from "./TacticsView.tsx";
+import PeakView, { usePeakBoard } from "./PeakView.tsx";
 import { ReadinessMark } from "./planningUi.tsx";
-import { loadRaceSelection, saveRaceSelection, setRaceWithdrawal, loadStageProfiles, type StageProfileRow, type RiderDetail, type SeasonLoad } from "../../lib/planningWorkbenchData.ts";
+import { loadRaceSelection, saveRaceSelection, setRaceWithdrawal, loadStageProfiles, loadAfterRaceFatigue, type StageProfileRow, type RiderDetail, type SeasonLoad } from "../../lib/planningWorkbenchData.ts";
 import { deadlineCountdown } from "../../lib/selectionReminder.ts";
 import {
   DEFAULT_SQUAD_SORT,
@@ -42,6 +45,10 @@ import {
   sortSquadRows,
   suggestSquad,
   toPutBody,
+  saveLabelKey,
+  withAfterRace,
+  WORKBENCH_VIEWS,
+  type WorkbenchView,
   type RoleKey,
   type Selection,
   type SeasonEntry,
@@ -117,6 +124,14 @@ interface RaceWorkbenchProps {
   onDirtyChange?: (dirty: boolean) => void;
   onSaved?: (raceId: string, entries: SeasonEntry[]) => void;
   onWithdrawnChange?: (raceId: string, withdrawn: boolean) => void;
+  /** Visningen under ruteprofilen: Trup | Taktik | Formtop (siden husker valget). */
+  view?: WorkbenchView;
+  onView?: (view: WorkbenchView) => void;
+  /** I dag (Europe/Copenhagen) og loebets startdato, til Formtop-visningen. */
+  today?: string;
+  raceStart?: string | null;
+  /** Mobil-arket: hovedet staar i arket selv, saa fladen viser ikke sit eget navn igen. */
+  inSheet?: boolean;
 }
 
 interface SaveError {
@@ -145,6 +160,11 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     onDirtyChange,
     onSaved,
     onWithdrawnChange,
+    view = "squad",
+    onView,
+    today = "",
+    raceStart = null,
+    inSheet = false,
   },
   ref,
 ) {
@@ -167,6 +187,10 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
   const [copyOpen, setCopyOpen] = useState(false);
   const [profiles, setProfiles] = useState<StageProfileRow[]>([]);
   const [profilesLoading, setProfilesLoading] = useState(true);
+  // Ruteprofilens etape (0-baseret); Taktik foelger den, saa der kun er én etapevaelger.
+  const [stageIndex, setStageIndex] = useState(0);
+  // "Efter loebet": serverens skoen med motorens model; null = slukket model eller ukendt.
+  const [afterRace, setAfterRace] = useState<Record<string, number> | null>(null);
   const generation = useRef(0);
   const latest = useRef<{ ready: boolean; sel: Selection; saved: Selection; readOnly: boolean; clientErrors: string[]; sprintLeaderAllowed: boolean; size: { min: number; max: number } } | null>(null);
 
@@ -184,6 +208,11 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     setSel(EMPTY_SELECTION);
     setSaved(EMPTY_SELECTION);
     setProfilesLoading(true);
+    setStageIndex(0);
+    setAfterRace(null);
+    loadAfterRaceFatigue(race.id).then((map) => {
+      if (gen === generation.current) setAfterRace(map);
+    });
     loadStageProfiles(race.id).then((rows) => {
       if (gen !== generation.current) return;
       setProfiles(rows);
@@ -237,9 +266,10 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     [profiles],
   );
   const rows = useMemo(
-    () => (data?.riders ? buildSquadRows(data, stageTypes, (flat) => riderBestRole(flat)) : []),
-    [data, stageTypes],
+    () => (data?.riders ? withAfterRace(buildSquadRows(data, stageTypes, (flat) => riderBestRole(flat)), afterRace) : []),
+    [data, stageTypes, afterRace],
   );
+  const peak = usePeakBoard({ active: view === "peak", raceId: race.id, today, gate });
   const sortedRows = useMemo(() => sortSquadRows(rows, sort, sel), [rows, sort, sel]);
   const profileCols = useMemo(() => profileColumns(stageTypes), [stageTypes]);
 
@@ -511,8 +541,33 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
           full={profileFull}
           onToggleFull={onToggleProfileFull}
           hasClassifications={race.stages > 1}
+          index={stageIndex}
+          onIndex={setStageIndex}
         />
-        {rows.length === 0 ? (
+        {/* Visningsvaelgeren under profilen (spec): Trup | Taktik | Formtop. Den kanoniske Segmented. */}
+        {onView && (
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5" data-testid="planning-view-switch">
+            <Segmented
+              label={t("views.label")}
+              value={view}
+              onChange={(next: WorkbenchView) => onView(next)}
+              options={WORKBENCH_VIEWS.map((v) => ({ value: v, label: t(`views.${v}`) }))}
+            />
+          </div>
+        )}
+        {view === "tactics" ? (
+          <TacticsView
+            raceId={race.id}
+            profiles={profiles}
+            stageIndex={stageIndex}
+            isStageRace={race.stages > 1}
+            squadDirty={dirty}
+            savedCount={saved.riderIds.length}
+            onShowSquad={() => onView?.("squad")}
+          />
+        ) : view === "peak" ? (
+          <PeakView peak={peak} raceName={race.name} raceStart={raceStart} locked={locked} compactMobile={inSheet} />
+        ) : rows.length === 0 ? (
           <div className="p-4">
             <EmptyState
               icon={<FlagIcon size={26} aria-hidden="true" />}
@@ -530,7 +585,10 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
         ) : (
           <>
             {/* Én linje kontekst om tallene, samme tekst som loebstavlen paa /planning (P9). */}
-            <p className="border-t border-cz-border px-4 py-2 text-2xs leading-snug text-cz-3">{tr("racehub.column.numbersExplanation")}</p>
+            <p className="border-t border-cz-border px-4 py-2 text-2xs leading-snug text-cz-3">
+              {tr("racehub.column.numbersExplanation")}
+              {afterRace != null && <span className="hidden sm:inline"> {t("squad.afterRaceNote")}</span>}
+            </p>
             <SquadTable
               rows={sortedRows}
               selection={sel}
@@ -545,6 +603,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
               details={riderDetails}
               seasonLoad={seasonLoad}
               seasonYear={seasonYear}
+              showAfterRace={afterRace != null}
             />
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-cz-border px-4 py-1.5">
               <p className="py-1 font-data text-xs tabular-nums text-cz-3">
@@ -567,7 +626,8 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
       <header className="flex flex-wrap items-start justify-between gap-3 border-b border-cz-border px-4 py-3.5">
         <div className="min-w-0">
           <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold text-cz-1">
-            <span className="min-w-0 break-words">{race.name}</span>
+            {/* I mobil-arket staar navnet i arkets hoved (med pilene); her kun for skaermlaesere. */}
+            <span className={inSheet ? "sr-only" : "min-w-0 break-words"}>{race.name}</span>
             {dirty && (
               <span className="inline-flex items-center gap-1.5 font-data text-2xs font-semibold uppercase tracking-wide text-cz-warning" data-testid="planning-unsaved-marker">
                 <ReadinessMark state="missing" />
@@ -590,7 +650,38 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
             <p className="mt-1 text-2xs text-cz-warning">{t("raceList.sharesDays", { races: overlaps.map((o) => o.name).join(", ") })}</p>
           )}
         </div>
-        {state === "ready" && !readOnly && (
+        {state === "ready" && !readOnly && view === "peak" && (
+          // Formtop: én guld-knap, teksten foelger visningen. Maalet er det aabne loeb.
+          <div className="flex flex-wrap items-center gap-2">
+            {peak.checked.size > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => peak.setChecked(new Set())} disabled={locked}>
+                {t("peak.clear")}
+              </Button>
+            )}
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={peak.apply}
+              loading={writing === "peak"}
+              disabled={locked || peak.pairs.length === 0}
+              data-testid="planning-peak-apply"
+            >
+              {t(saveLabelKey("peak"), { count: peak.pairs.length })}
+            </Button>
+          </div>
+        )}
+        {state === "ready" && !readOnly && view === "tactics" && dirty && (
+          // Taktik-fanen har selv guld-knappen ("Gem taktik"); en ugemt trup kan gemmes her som sekundaer.
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={discard} disabled={locked}>
+              {t("race.discard")}
+            </Button>
+            <Button variant="secondary" size="sm" onClick={save} loading={saving} disabled={locked || clientErrors.length > 0}>
+              {t(saveLabelKey("squad"))}
+            </Button>
+          </div>
+        )}
+        {state === "ready" && !readOnly && view === "squad" && (
           <div className="relative flex flex-wrap items-center gap-2">
             <Button variant="secondary" size="sm" onClick={() => setCopyOpen((v) => !v)} aria-expanded={copyOpen} disabled={locked}>
               {t("race.copyFrom")}
@@ -604,7 +695,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
               </Button>
             )}
             <Button variant="primary" size="sm" onClick={save} loading={saving} disabled={!dirty || locked || clientErrors.length > 0}>
-              {t("race.save")}
+              {t(saveLabelKey("squad"))}
             </Button>
             {copyOpen && (
               <div

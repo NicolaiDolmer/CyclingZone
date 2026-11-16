@@ -11,6 +11,7 @@ import { formatShortDate } from "./planningUi.tsx";
 import { injuryFitAgainDate } from "../../lib/injuryExplain.ts";
 import type { RiderDetail, SeasonLoad } from "../../lib/planningWorkbenchData.ts";
 import {
+  afterRaceWarns,
   availableRoles,
   roleOf,
   bestOf,
@@ -86,6 +87,8 @@ interface SquadTableProps {
   /** Saeson-belastning pr. rytter, samme tal som rytter-chippen paa /planning. */
   seasonLoad?: Record<string, SeasonLoad>;
   seasonYear?: number | null;
+  /** Kolonnen "Efter loebet" (forventet traethed efter sidste etape); kun paa pc, mobil har tre tal (D-047). */
+  showAfterRace?: boolean;
 }
 
 export default function SquadTable({
@@ -102,6 +105,7 @@ export default function SquadTable({
   details,
   seasonLoad,
   seasonYear = null,
+  showAfterRace = false,
 }: SquadTableProps) {
   const { t } = useTranslation("planning");
   const { t: tRaces } = useTranslation("races");
@@ -142,7 +146,11 @@ export default function SquadTable({
 
   // Luft til kortets kant (ejer 14/11): foerste og sidste kolonne faar kortets egen indrykning paa pc,
   // saa Traethed (eller den sidste rutetype) aldrig staar helt ude ved kanten.
-  const lastKey: SquadSortKey = profileCols.length ? (`profile:${profileCols[profileCols.length - 1].profileType}` as SquadSortKey) : "fatigue";
+  const lastKey: SquadSortKey = profileCols.length
+    ? (`profile:${profileCols[profileCols.length - 1].profileType}` as SquadSortKey)
+    : showAfterRace
+      ? "afterRace"
+      : "fatigue";
   const edge = (key: SquadSortKey) => (key === "pick" ? (compact ? "sm:ps-3" : "sm:ps-4") : key === lastKey ? "sm:pe-4" : "");
   const th = (
     key: SquadSortKey,
@@ -176,6 +184,7 @@ export default function SquadTable({
             {th("routeMatch", t("squad.routeMatch"), { hideMobile: false })}
             {th("form", t("squad.form"), { hideMobile: false })}
             {th("fatigue", t("squad.fatigue"), { hideMobile: false })}
+            {showAfterRace && th("afterRace", t("squad.afterRace"), { title: t("squad.afterRaceTitle") })}
             {/* Rutetypen som ikon (navnet staar i ikonets titel), saa kolonnerne er smalle nok til kortet. */}
             {profileCols.map((c) =>
               th(`profile:${c.profileType}` as SquadSortKey, (
@@ -288,6 +297,14 @@ export default function SquadTable({
                 <td className={`whitespace-nowrap px-1.5 py-[7px] text-right font-data text-[13px] tabular-nums ${edge("fatigue")}`}>
                   <FatigueCell value={row.fatigue} compact={compact} />
                 </td>
+                {showAfterRace && (
+                  <td
+                    className={`hidden whitespace-nowrap px-1.5 py-[7px] text-right font-data text-[13px] tabular-nums sm:table-cell ${edge("afterRace")} ${afterRaceWarns(row.afterRace) ? "font-semibold text-cz-warning" : ""}`}
+                    data-testid="planning-after-race"
+                  >
+                    {row.afterRace != null ? `~${row.afterRace}` : <span className="text-cz-3">-</span>}
+                  </td>
+                )}
                 {profileCols.map((c) => {
                   const v = row.byProfile[c.profileType] ?? null;
                   const best = row.selectable && v != null && v === bestByProfile[c.profileType];

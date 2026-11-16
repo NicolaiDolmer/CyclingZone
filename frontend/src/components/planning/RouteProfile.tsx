@@ -66,6 +66,8 @@ export default function RouteProfile({
   full = false,
   onToggleFull,
   hasClassifications,
+  index: controlledIndex,
+  onIndex,
 }: {
   raceId: string;
   profiles: StageProfileRow[];
@@ -76,10 +78,15 @@ export default function RouteProfile({
   full?: boolean;
   onToggleFull?: () => void;
   hasClassifications: boolean;
+  /** Den viste etape (0-baseret), naar fladen selv styrer den (Taktik foelger profilens etape). */
+  index?: number;
+  onIndex?: (index: number) => void;
 }) {
   const { t } = useTranslation("planning");
-  const [index, setIndex] = useState(0);
-  useEffect(() => setIndex(0), [raceId]); // altid etape 1 ved nyt loeb
+  const [ownIndex, setOwnIndex] = useState(0);
+  useEffect(() => setOwnIndex(0), [raceId]); // altid etape 1 ved nyt loeb
+  const index = controlledIndex ?? ownIndex;
+  const setIndex = (next: number) => (onIndex ? onIndex(next) : setOwnIndex(next));
 
   const total = profiles.length;
   const multi = total > 1;

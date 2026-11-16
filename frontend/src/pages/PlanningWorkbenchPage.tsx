@@ -18,6 +18,7 @@ import WeekBoard from "../components/planning/WeekBoard.tsx";
 import RaceList from "../components/planning/RaceList.tsx";
 import RaceWorkbench, { type RaceWorkbenchHandle } from "../components/planning/RaceWorkbench.tsx";
 import UnsavedBar from "../components/planning/UnsavedBar.tsx";
+import RaceSheet from "../components/planning/RaceSheet.tsx";
 import { BulkMenu, BulkDraftBar, BulkRowMark, BulkOpenRaceNote, CheckedCount, type BulkPlan } from "../components/planning/BulkActions.tsx";
 import SelectionDeadlineReminder from "../components/planning/SelectionDeadlineReminder.tsx";
 import { useSelectionReminder, refreshSelectionReminder } from "../hooks/useSelectionReminder.ts";
@@ -37,6 +38,9 @@ import {
 } from "../lib/planningWorkbenchData.ts";
 import {
   addDays,
+  adjacentRace,
+  isWorkbenchView,
+  type WorkbenchView,
   actionTargets,
   capToRoom,
   createBulkStore,
@@ -102,6 +106,21 @@ function writePref(key: string, value: unknown) {
   }
 }
 
+// Smal skaerm (under lg): loebslisten er foerste skaerm, og loebet aabner som bundark (spec "Mobile").
+const NARROW_QUERY = "(max-width: 1023px)";
+function subscribeNarrow(cb: () => void) {
+  if (typeof window === "undefined" || !window.matchMedia) return () => {};
+  const mq = window.matchMedia(NARROW_QUERY);
+  mq.addEventListener?.("change", cb);
+  return () => mq.removeEventListener?.("change", cb);
+}
+function readNarrow() {
+  return typeof window !== "undefined" && !!window.matchMedia?.(NARROW_QUERY).matches;
+}
+function useNarrow() {
+  return useSyncExternalStore(subscribeNarrow, readNarrow, () => false);
+}
+
 function Toggle({ pressed, onClick, children }: { pressed: boolean; onClick: () => void; children: ReactNode }) {
   return (
     <Button variant="secondary" size="sm" aria-pressed={pressed} onClick={onClick} className={pressed ? "border-cz-3 bg-cz-subtle" : ""}>
@@ -140,6 +159,22 @@ function Workbench() {
   const [showList, setShowList] = useState(() => readPref("list", true));
   const [profileHidden, setProfileHidden] = useState(() => readPref("profileHidden", false));
   const [profileFull, setProfileFull] = useState(() => readPref("profileFull", false));
+  // Visningen under ruteprofilen (Trup | Taktik | Formtop): spillerens sidste valg huskes.
+  const [view, setView] = useState<WorkbenchView>(() => {
+    const saved = readPref<unknown>("view", "squad");
+    return isWorkbenchView(saved) ? saved : "squad";
+  });
+  const changeView = useCallback((next: WorkbenchView) => {
+    setView(next);
+    writePref("view", next);
+  }, []);
+  const narrow = useNarrow();
+  // Mobil-arket er aabent, naar spilleren har trykket paa et loeb (aldrig af sig selv ved indlaesning).
+  const [sheetOpen, setSheetOpen] = useState(false);
+  // Arket kraever en liste at vaelge fra: er baade listen og ugeoversigten skjult, staar loebet paa siden.
+  const useSheet = narrow && (showList || showWeek);
+  const useSheetRef = useRef(useSheet);
+  useSheetRef.current = useSheet;
   // Sidens skrive-laas: ÉT sted ejer "der er et kald i gang" (fladens gem, afmeld, masse-gem, assistenten).
   // Alle veje der sender eller anvender noget (gem, Handlinger, Fortryd, Gem, loebsskift) laeser den,
   // og kun det kald der tog den, kan slippe den.
@@ -280,6 +315,7 @@ function Workbench() {
   const selectRace = useCallback(
     (id: string) => {
       userPicked.current = true;
+      setSheetOpen(true);
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev);
@@ -305,6 +341,8 @@ function Workbench() {
         writing: gate.current(),
         dirty: workbenchRef.current?.isDirty() ?? dirty,
       });
+      // Paa en smal skaerm aabner et tryk altid arket (ogsaa paa det valgte loeb eller med bjaelken for ugemte aendringer).
+      setSheetOpen(true);
       if (step === "queue") setQueuedId(id);
       else if (step === "ask") setPendingId(id);
       else if (step === "go") selectRace(id);
@@ -321,6 +359,7 @@ function Workbench() {
   useEffect(() => {
     if (!userPicked.current || !selected) return;
     userPicked.current = false;
+    if (useSheetRef.current) return; // arket viser loebet; listen bliver staaende bagved
     if (typeof window !== "undefined" && window.matchMedia?.("(max-width: 1023px)").matches) {
       anchorRef.current?.scrollIntoView?.({ block: "start", behavior: "auto" });
     }
@@ -501,6 +540,68 @@ function Workbench() {
     </div>
   );
 
+  const unsavedBar =
+    pendingRace && selected ? (
+      <UnsavedBar
+        raceName={selected.name}
+        nextName={pendingRace.name}
+        busy={writing !== null}
+        onStay={stay}
+        onDiscard={discardAndOpen}
+        onSaveAndOpen={saveAndOpen}
+      />
+    ) : null;
+
+  // Mobil-arkets pile foelger loebslisten, som spilleren ser den (filter og omfang); ellers alle kommende.
+  const sheetRaces = listRaces.length ? listRaces : boardRaces;
+  const sheetIndex = sheetRaces.findIndex((r) => r.id === selected?.id);
+  const prevRace = adjacentRace(sheetRaces, selected?.id, -1);
+  const nextRace = adjacentRace(sheetRaces, selected?.id, 1);
+
+  const workbenchPane = (
+    <>
+      {selected && <BulkOpenRaceNote kind={draft.kinds.get(selected.id) ?? null} />}
+      {selected ? (
+        <RaceWorkbench
+          key={`${selected.id}:${workbenchVersion}`}
+          ref={workbenchRef}
+          race={selected}
+          allRaces={allRaces}
+          entries={shownEntries}
+          withdrawn={shownWithdrawn}
+          riderDetails={riderDetails}
+          seasonLoad={seasonLoad}
+          seasonYear={seasonYear}
+          profileHidden={profileHidden}
+          onToggleProfileHidden={toggleProfile}
+          profileFull={profileFull}
+          onToggleProfileFull={toggleProfileFull}
+          onEdit={dropFromDraft}
+          gate={gate}
+          onDirtyChange={setDirty}
+          onSaved={onSaved}
+          onWithdrawnChange={onWithdrawnChange}
+          view={view}
+          onView={changeView}
+          today={today}
+          raceStart={raceStartDate(selected, dates)}
+          inSheet={useSheet}
+        />
+      ) : (
+        <EmptyState
+          icon={<FlagIcon size={26} aria-hidden="true" />}
+          title={t("noSelection.title")}
+          description={t("noSelection.description")}
+          action={
+            <Button variant="secondary" size="sm" onClick={() => setScope("season")}>
+              {t("raceList.scopeSeason")}
+            </Button>
+          }
+        />
+      )}
+    </>
+  );
+
   let content;
   if (load.state === "loading") {
     content = (
@@ -564,16 +665,7 @@ function Workbench() {
             canNext={lastMonday != null && activeMonday < lastMonday}
           />
         )}
-        {pendingRace && selected && (
-          <UnsavedBar
-            raceName={selected.name}
-            nextName={pendingRace.name}
-            busy={writing !== null}
-            onStay={stay}
-            onDiscard={discardAndOpen}
-            onSaveAndOpen={saveAndOpen}
-          />
-        )}
+        {!useSheet && unsavedBar}
         <BulkDraftBar
           summary={draftSummary(draft, entries)}
           hasDraft={hasDraft}
@@ -620,43 +712,24 @@ function Workbench() {
               rowMark={(raceId: string) => <BulkRowMark kind={draft.kinds.get(raceId) ?? null} />}
             />
           )}
-          <div ref={anchorRef} className="min-w-0 scroll-mt-4">
-            {selected && <BulkOpenRaceNote kind={draft.kinds.get(selected.id) ?? null} />}
-            {selected ? (
-              <RaceWorkbench
-                key={`${selected.id}:${workbenchVersion}`}
-                ref={workbenchRef}
-                race={selected}
-                allRaces={allRaces}
-                entries={shownEntries}
-                withdrawn={shownWithdrawn}
-                riderDetails={riderDetails}
-                seasonLoad={seasonLoad}
-                seasonYear={seasonYear}
-                profileHidden={profileHidden}
-                onToggleProfileHidden={toggleProfile}
-                profileFull={profileFull}
-                onToggleProfileFull={toggleProfileFull}
-                onEdit={dropFromDraft}
-                gate={gate}
-                onDirtyChange={setDirty}
-                onSaved={onSaved}
-                onWithdrawnChange={onWithdrawnChange}
-              />
-            ) : (
-              <EmptyState
-                icon={<FlagIcon size={26} aria-hidden="true" />}
-                title={t("noSelection.title")}
-                description={t("noSelection.description")}
-                action={
-                  <Button variant="secondary" size="sm" onClick={() => setScope("season")}>
-                    {t("raceList.scopeSeason")}
-                  </Button>
-                }
-              />
-            )}
-          </div>
+          {!useSheet && (
+            <div ref={anchorRef} className="min-w-0 scroll-mt-4">
+              {workbenchPane}
+            </div>
+          )}
         </div>
+        {useSheet && sheetOpen && selected && (
+          <RaceSheet
+            title={selected.name}
+            position={sheetIndex >= 0 ? t("sheet.position", { n: sheetIndex + 1, total: sheetRaces.length }) : null}
+            onPrev={prevRace ? () => requestSelect(prevRace.id) : null}
+            onNext={nextRace ? () => requestSelect(nextRace.id) : null}
+            onClose={() => setSheetOpen(false)}
+          >
+            {unsavedBar}
+            {workbenchPane}
+          </RaceSheet>
+        )}
       </>
     );
   }
@@ -669,3 +742,4 @@ function Workbench() {
     </div>
   );
 }
+

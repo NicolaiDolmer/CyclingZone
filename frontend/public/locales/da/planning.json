@@ -61,7 +61,9 @@
     "copiedAll": "Kopieret fra {name}. Gennemgå og gem.",
     "locked": "Løbet er startet, så truppen er låst.",
     "withdrawn": "Dit hold har meldt fra til dette løb. At gemme en trup melder det til igen.",
-    "restored": "Dine ikke gemte ændringer er genskabt."
+    "restored": "Dine ikke gemte ændringer er genskabt.",
+    "saveTactics": "Gem taktik",
+    "savePeaks": "{count, plural, =0 {Anvend på valgte} other {Anvend på valgte (#)}}"
   },
   "copy": {
     "title": "Kopiér trup fra",
@@ -83,7 +85,10 @@
     "empty": {
       "title": "Hent rytterne igen",
       "description": "Dit hold har ingen ryttere til rådighed til dette løb lige nu."
-    }
+    },
+    "afterRace": "Efter løbet",
+    "afterRaceTitle": "Forventet træthed efter sidste etape ved normal indsats",
+    "afterRaceNote": "Efter løbet: forventet træthed efter sidste etape ved normal indsats, regnet fra trætheden i dag (et skøn)."
   },
   "role": {
     "captain": "Kaptajn",
@@ -176,5 +181,44 @@
   "noSelection": {
     "title": "Vælg et løb at planlægge",
     "description": "Vælg et løb på listen for at sætte dets trup."
+  },
+  "views": {
+    "label": "Visning",
+    "squad": "Trup",
+    "tactics": "Taktik",
+    "peak": "Formtop"
+  },
+  "tactics": {
+    "noSquad": {
+      "title": "Gem en trup først",
+      "description": "Taktikken sættes for rytterne i den gemte trup."
+    },
+    "squadUnsaved": "Truppen har ugemte ændringer. Taktikken bruger den gemte trup, så gem truppen først.",
+    "shared": "Samme taktik som på løbssiden: en plan gemt her står dér, og omvendt."
+  },
+  "peak": {
+    "target": "Formtop-mål: {race}, starter {date}. Kryds ryttere af og anvend.",
+    "targetClosed": "{race} kan ikke længere være formtop-mål (løbet er startet eller ikke i din kalender).",
+    "selected": "{count, plural, =0 {Ingen valgt} other {# valgt}}",
+    "col": {
+      "target": "Formtop-mål",
+      "start": "Løbsstart"
+    },
+    "inDays": "{count, plural, =0 {i dag} one {om # dag} other {om # dage}}",
+    "here": "Formtop her",
+    "remove": "Fjern",
+    "removed": "Formtop fjernet.",
+    "clear": "Ryd valg",
+    "full": "Har allerede {max} mål",
+    "notSenior": "Ikke i seniortruppen",
+    "applied": "{count, plural, one {Formtop sat for # rytter.} other {Formtop sat for # ryttere.}}",
+    "appliedPartial": "{created} sat, {skipped} sprunget over (loft for mål, eller løbet er ikke længere åbent).",
+    "count": "{shown} ryttere · {open} kan få formtop her · maks {max} pr. rytter"
+  },
+  "sheet": {
+    "prev": "Forrige løb",
+    "next": "Næste løb",
+    "close": "Luk",
+    "position": "{n} / {total}"
   }
 }

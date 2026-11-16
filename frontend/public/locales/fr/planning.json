@@ -61,7 +61,9 @@
     "copiedAll": "Copié depuis {name}. Relis et enregistre.",
     "locked": "La course a commencé, l'équipe est donc verrouillée.",
     "withdrawn": "Ton équipe s'est retirée de cette course. Enregistrer une équipe la réinscrit.",
-    "restored": "Tes modifications non enregistrées ont été rétablies."
+    "restored": "Tes modifications non enregistrées ont été rétablies.",
+    "saveTactics": "Enregistrer la tactique",
+    "savePeaks": "{count, plural, =0 {Appliquer à la sélection} other {Appliquer à la sélection (#)}}"
   },
   "copy": {
     "title": "Copier l'équipe de",
@@ -83,7 +85,10 @@
     "empty": {
       "title": "Recharge les coureurs",
       "description": "Aucun coureur de ton équipe n'est disponible pour cette course pour le moment."
-    }
+    },
+    "afterRace": "Après la course",
+    "afterRaceTitle": "Fatigue attendue après la dernière étape à effort normal",
+    "afterRaceNote": "Après la course : fatigue attendue après la dernière étape à effort normal, à partir de la fatigue du jour (une estimation)."
   },
   "role": {
     "captain": "Leader",
@@ -176,5 +181,44 @@
   "noSelection": {
     "title": "Choisis une course à planifier",
     "description": "Choisis une course dans la liste pour composer son équipe."
+  },
+  "views": {
+    "label": "Vue",
+    "squad": "Équipe",
+    "tactics": "Tactique",
+    "peak": "Pic de forme"
+  },
+  "tactics": {
+    "noSquad": {
+      "title": "Enregistrez d'abord une équipe",
+      "description": "La tactique se règle pour les coureurs de l'équipe enregistrée."
+    },
+    "squadUnsaved": "L'équipe a des modifications non enregistrées. La tactique utilise l'équipe enregistrée : enregistrez d'abord l'équipe.",
+    "shared": "Même tactique que sur la page de la course : un plan enregistré ici y apparaît, et inversement."
+  },
+  "peak": {
+    "target": "Objectif de pic : {race}, départ le {date}. Cochez des coureurs et appliquez.",
+    "targetClosed": "{race} ne peut plus être un objectif de pic (elle a commencé ou n'est pas dans votre calendrier).",
+    "selected": "{count, plural, =0 {Aucun sélectionné} one {# sélectionné} other {# sélectionnés}}",
+    "col": {
+      "target": "Objectif de pic",
+      "start": "Départ"
+    },
+    "inDays": "{count, plural, =0 {aujourd'hui} one {dans # jour} other {dans # jours}}",
+    "here": "Pic ici",
+    "remove": "Retirer",
+    "removed": "Pic retiré.",
+    "clear": "Effacer la sélection",
+    "full": "A déjà {max} objectifs",
+    "notSenior": "Pas dans l'équipe senior",
+    "applied": "{count, plural, one {Pic fixé pour # coureur.} other {Pic fixé pour # coureurs.}}",
+    "appliedPartial": "{created} fixés, {skipped} ignorés (limite d'objectifs, ou la course n'est plus ouverte).",
+    "count": "{shown} coureurs · {open} peuvent viser un pic ici · max {max} par coureur"
+  },
+  "sheet": {
+    "prev": "Course précédente",
+    "next": "Course suivante",
+    "close": "Fermer",
+    "position": "{n} / {total}"
   }
 }

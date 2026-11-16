@@ -61,7 +61,9 @@
     "copiedAll": "Gekopieerd van {name}. Bekijk en sla op.",
     "locked": "De koers is gestart, dus de selectie is vergrendeld.",
     "withdrawn": "Je team heeft zich afgemeld voor deze koers. Een selectie opslaan meldt het weer aan.",
-    "restored": "Je niet-opgeslagen wijzigingen zijn hersteld."
+    "restored": "Je niet-opgeslagen wijzigingen zijn hersteld.",
+    "saveTactics": "Tactiek opslaan",
+    "savePeaks": "{count, plural, =0 {Toepassen op selectie} other {Toepassen op selectie (#)}}"
   },
   "copy": {
     "title": "Selectie kopiëren van",
@@ -83,7 +85,10 @@
     "empty": {
       "title": "Laad de renners opnieuw",
       "description": "Op dit moment zijn er geen renners van je team beschikbaar voor deze koers."
-    }
+    },
+    "afterRace": "Na de koers",
+    "afterRaceTitle": "Verwachte vermoeidheid na de laatste etappe bij normale inspanning",
+    "afterRaceNote": "Na de koers: verwachte vermoeidheid na de laatste etappe bij normale inspanning, gerekend vanaf de vermoeidheid van vandaag (een schatting)."
   },
   "role": {
     "captain": "Kopman",
@@ -176,5 +181,44 @@
   "noSelection": {
     "title": "Kies een koers om te plannen",
     "description": "Kies een koers uit de lijst om de selectie in te stellen."
+  },
+  "views": {
+    "label": "Weergave",
+    "squad": "Ploeg",
+    "tactics": "Tactiek",
+    "peak": "Vormpiek"
+  },
+  "tactics": {
+    "noSquad": {
+      "title": "Sla eerst een ploeg op",
+      "description": "De tactiek geldt voor de renners in de opgeslagen ploeg."
+    },
+    "squadUnsaved": "De ploeg heeft niet-opgeslagen wijzigingen. De tactiek gebruikt de opgeslagen ploeg, dus sla eerst de ploeg op.",
+    "shared": "Dezelfde tactiek als op de koerspagina: een plan dat je hier opslaat, staat daar ook, en andersom."
+  },
+  "peak": {
+    "target": "Piekdoel: {race}, start {date}. Vink renners aan en pas toe.",
+    "targetClosed": "{race} kan geen piekdoel meer zijn (de koers is gestart of staat niet in je kalender).",
+    "selected": "{count, plural, =0 {Niets geselecteerd} other {# geselecteerd}}",
+    "col": {
+      "target": "Piekdoel",
+      "start": "Start"
+    },
+    "inDays": "{count, plural, =0 {vandaag} one {over # dag} other {over # dagen}}",
+    "here": "Piek hier",
+    "remove": "Verwijderen",
+    "removed": "Piek verwijderd.",
+    "clear": "Selectie wissen",
+    "full": "Heeft al {max} doelen",
+    "notSenior": "Niet in de seniorenploeg",
+    "applied": "{count, plural, one {Piek ingesteld voor # renner.} other {Piek ingesteld voor # renners.}}",
+    "appliedPartial": "{created} ingesteld, {skipped} overgeslagen (limiet voor doelen, of de koers is niet meer open).",
+    "count": "{shown} renners · {open} kunnen hier pieken · max {max} per renner"
+  },
+  "sheet": {
+    "prev": "Vorige koers",
+    "next": "Volgende koers",
+    "close": "Sluiten",
+    "position": "{n} / {total}"
   }
 }

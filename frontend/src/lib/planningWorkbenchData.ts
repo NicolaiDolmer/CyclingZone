@@ -73,6 +73,56 @@ export async function withdrawRacesBulk(raceIds: string[], dryRun = false) {
   return authed("/api/races/withdrawals/bulk", { method: "POST", body: JSON.stringify({ race_ids: raceIds, dry_run: dryRun }) });
 }
 
+/**
+ * "Efter loebet" (runde 3): forventet traethed efter sidste etape ved normal indsats, regnet af serveren
+ * med motorens model (GET /api/races/:id/after-race-fatigue). Fejl eller slukket model = null (en streg).
+ */
+export async function loadAfterRaceFatigue(raceId: string): Promise<Record<string, number> | null> {
+  if (import.meta.env.VITE_PREVIEW_MOCK) {
+    const { previewAfterRace } = await import("../preview/planningWorkbenchMock.ts");
+    return previewAfterRace(raceId);
+  }
+  try {
+    const res = await authed(`/api/races/${encodeURIComponent(raceId)}/after-race-fatigue`);
+    if (!res.ok || !res.data || res.data.enabled !== true || typeof res.data.riders !== "object") return null;
+    return res.data.riders as Record<string, number>;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Formtop (runde 3): samme kald som /planning's Form-fane. Board'et (GET /api/peak-plans/board) giver
+ * rytterne med mål, form og traethed; "Apply to selected" er det samme masse-kald som "Accept all"
+ * (POST /api/peak-plans/bulk), og "Fjern" det samme som fanens fjern (DELETE /api/peak-plans/:id).
+ */
+export async function loadPeakBoard(): Promise<ApiResult> {
+  if (import.meta.env.VITE_PREVIEW_MOCK) {
+    const { previewPeakBoard } = await import("../preview/planningWorkbenchMock.ts");
+    return { ok: true, status: 200, data: previewPeakBoard() };
+  }
+  return authed("/api/peak-plans/board");
+}
+
+export async function applyPeaks(pairs: Array<{ riderId: string; raceId: string }>): Promise<ApiResult> {
+  if (import.meta.env.VITE_PREVIEW_MOCK) {
+    const { previewApplyPeaks } = await import("../preview/planningWorkbenchMock.ts");
+    return { ok: true, status: 200, data: previewApplyPeaks(pairs) };
+  }
+  return authed("/api/peak-plans/bulk", {
+    method: "POST",
+    body: JSON.stringify({ plans: pairs.map((p) => ({ rider_id: p.riderId, target_race_id: p.raceId })) }),
+  });
+}
+
+export async function removePeak(planId: string): Promise<ApiResult> {
+  if (import.meta.env.VITE_PREVIEW_MOCK) {
+    const { previewRemovePeak } = await import("../preview/planningWorkbenchMock.ts");
+    return { ok: true, status: 200, data: previewRemovePeak(planId) };
+  }
+  return authed(`/api/peak-plans/${encodeURIComponent(planId)}`, { method: "DELETE" });
+}
+
 /** Afmeld (withdraw = true) eller deltag igen: samme endpoint og samme guards som loebstavlens knap. */
 export async function setRaceWithdrawal(raceId: string, withdraw: boolean) {
   return authed(`/api/races/${encodeURIComponent(raceId)}/withdrawal`, { method: withdraw ? "POST" : "DELETE" });
