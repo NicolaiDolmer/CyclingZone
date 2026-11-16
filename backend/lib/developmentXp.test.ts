@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  XP_ROLE_CLASSES, abilityXpForTick, buyPoints, validateDevelopmentXpParams, xpAgeShare, xpBarView,
+  XP_MAX_POINTS_PER_DATE, XP_ROLE_CLASSES, abilityXpForTick, buyPoints, developmentXpTick, validateDevelopmentXpParams, xpAgeShare, xpBarView,
   xpPerDate, xpPriceForNextPoint, xpSessionShare, xpTypeShare,
 } from "./developmentXp.ts";
 import type { DevelopmentXpParams } from "./developmentXp.ts";
@@ -97,64 +97,76 @@ test("prisen: stiger med evnen, er endelig til 99, og kun evnen tæller", () => 
   assert.equal(xpPriceForNextPoint(Number.NaN, params), xpPriceForNextPoint(0, params));
 });
 
-// ── R16 prisbund (ejervalg A 14/11): kun bunden bliver dyrere ─────────────────
-const FLOOR = Object.freeze({ belowLevel: 30, minCost: 18 });
-const withFloor = validateDevelopmentXpParams({ ...RAW, price: { ...RAW.price, floor: FLOOR } }) as DevelopmentXpParams;
-
-test("prisbund: uden feltet er prislisten og params' form nøjagtig som før", () => {
-  assert.equal("floor" in params.price, false, "ingen bund på params uden bund");
+// ── R16 (ejervalg 16/11): ingen prisbund; højst +2 pr. evne pr. dato ─────────────
+test("ingen prisbund: prislisten er formlens egen fra 0 til 99, og params har kun base og eksponent", () => {
   assert.deepEqual(Object.keys(params.price), ["base", "exponent"]);
   for (let level = 0; level <= 99; level++) {
     assert.equal(xpPriceForNextPoint(level, params), RAW.price.base * Math.pow(1 - level / 100, -RAW.price.exponent), `evne ${level}`);
   }
 });
 
-test("prisbund: under grænsen koster et point mindst bunden, midte og top er urørt", () => {
-  assert.ok(withFloor, "gyldig bund giver gyldige params");
-  assert.ok(Object.isFrozen(withFloor.price.floor));
-  assert.deepEqual(withFloor.price.floor, FLOOR);
-  for (let level = 0; level <= 99; level++) {
-    const formula = xpPriceForNextPoint(level, params);
-    const floored = xpPriceForNextPoint(level, withFloor);
-    if (level < FLOOR.belowLevel) assert.equal(floored, Math.max(formula, FLOOR.minCost), `evne ${level}: max(formel, bund)`);
-    else assert.equal(floored, formula, `evne ${level}: formlens egen pris`);
-  }
-  assert.equal(xpPriceForNextPoint(0, withFloor), FLOOR.minCost, "bunden binder nederst");
-  assert.ok(xpPriceForNextPoint(0, withFloor) > xpPriceForNextPoint(0, params), "lave evner bliver dyrere");
-  assert.equal(xpPriceForNextPoint(-5, withFloor), FLOOR.minCost, "klippet til 0, stadig bunden");
-});
-
-test("prisbund: prisen falder aldrig, når evnen stiger", () => {
-  let previous = 0;
-  for (let level = 0; level <= 99; level++) {
-    const price = xpPriceForNextPoint(level, withFloor);
-    assert.ok(Number.isFinite(price) && price >= previous, `evne ${level}`);
-    previous = price;
+test("ingen prisbund: en talfil med en bund er fra før valget og afvises hel (fail-safe)", () => {
+  for (const floor of [{ belowLevel: 30, minCost: 18 }, null, {}, 7]) {
+    assert.equal(tweak({ price: { ...RAW.price, floor } }), null, `bund ${JSON.stringify(floor)}`);
   }
 });
 
-test("prisbund: ugyldig bund gør hele params ugyldige (fail-safe)", () => {
-  const floor = (f: unknown) => tweak({ price: { ...RAW.price, floor: f } });
-  for (const f of [null, 7, "x", [], {}]) assert.equal(floor(f), null, `bund ${JSON.stringify(f)}`);
-  assert.equal(floor({ belowLevel: 30 }), null, "mangler minCost");
-  assert.equal(floor({ minCost: 18 }), null, "mangler belowLevel");
-  assert.equal(floor({ belowLevel: 0, minCost: 18 }), null, "grænse over 0");
-  assert.equal(floor({ belowLevel: 100, minCost: 18 }), null, "grænse højst 99");
-  assert.equal(floor({ belowLevel: 30, minCost: 0 }), null, "bund over 0");
-  assert.equal(floor({ belowLevel: 30, minCost: Number.NaN }), null);
-  // En bund over formlens pris ved grænsen ville gøre et højere niveau billigere.
-  assert.equal(floor({ belowLevel: 30, minCost: xpPriceForNextPoint(30, params) * 1.01 }), null, "prisen må ikke falde ved grænsen");
-  assert.ok(floor({ belowLevel: 30, minCost: xpPriceForNextPoint(30, params) }), "lige ved grænsen er tilladt");
+test("datoreglen: reglens tal er ejerens +2", () => {
+  assert.equal(XP_MAX_POINTS_PER_DATE, 2);
 });
 
-test("prisbund: købet bruger bunden, så lave evner køber færre point på samme XP", () => {
-  const xp = 60;
-  const without = buyPoints({ level: 5, xp }, params);
-  const floored = buyPoints({ level: 5, xp }, withFloor);
-  assert.ok(floored.points < without.points, `${floored.points} < ${without.points}`);
-  assert.equal(floored.points, Math.floor(xp / FLOOR.minCost));
-  // Over grænsen er købet det samme.
-  assert.deepEqual(buyPoints({ level: 50, bar: 0.4, xp: 200 }, withFloor), buyPoints({ level: 50, bar: 0.4, xp: 200 }, params));
+// En evne på 10 med rigeligt XP til mange point.
+const MANY = xpPriceForNextPoint(10, params) * 12;
+const tickOne = (extra: Record<string, unknown> = {}) => developmentXpTick({
+  abilities: { climbing: 10 }, progress: {}, xpFor: (a) => (a === "climbing" ? MANY : 0), ...extra,
+}, params);
+
+test("datoreglen: et tick køber højst +2, og resten står på bjælken omregnet til den nye pris", () => {
+  const free = buyPoints({ level: 10, xp: MANY }, params);
+  assert.ok(free.points > 2, `scenariet skal række til mere end +2 (${free.points})`);
+  const out = tickOne();
+  assert.equal(out.gains.climbing, 2);
+  assert.equal(out.abilities.climbing, 12);
+  // Intet tabt, intet opstået: bjælken er resten målt i prisen for evne 12.
+  const rest = MANY - xpPriceForNextPoint(10, params) - xpPriceForNextPoint(11, params);
+  assert.ok(Math.abs(out.progress.climbing * xpPriceForNextPoint(12, params) - rest) < 1e-9 * rest);
+  assert.ok(out.progress.climbing > 1, "resten kan være mere end et helt point");
+});
+
+test("datoreglen: datoens tidligere point tæller med, på tværs af ticks", () => {
+  assert.equal(tickOne({ dateUsedGains: { climbing: 1 } }).gains.climbing, 1);
+  const spent = tickOne({ dateUsedGains: { climbing: 2 } });
+  assert.equal(spent.gains.climbing, undefined, "datoen er brugt op");
+  assert.equal(spent.abilities.climbing, 10);
+  assert.ok(Math.abs(spent.progress.climbing * xpPriceForNextPoint(10, params) - MANY) < 1e-9 * MANY, "al XP venter på bjælken");
+  // Korrupt input tæller som intet købt, aldrig som et ekstra point.
+  for (const used of [Number.NaN, -3, "x", null]) assert.equal(tickOne({ dateUsedGains: { climbing: used } }).gains.climbing, 2);
+});
+
+test("datoreglen: en bjælke over 1 venter, til en ny dato har plads, og står uændret imens", () => {
+  const first = tickOne();
+  const sameDate = developmentXpTick({ abilities: first.abilities, progress: first.progress, xpFor: () => 0, dateUsedGains: first.gains }, params);
+  assert.deepEqual(sameDate.progress, first.progress, "samme dato: bjælken står præcis, som den er");
+  assert.deepEqual(sameDate.gains, {});
+  const nextDate = developmentXpTick({ abilities: first.abilities, progress: first.progress, xpFor: () => 0 }, params);
+  assert.ok(nextDate.gains.climbing >= 1 && nextDate.gains.climbing <= 2, "næste dato udbetaler resten, højst +2");
+});
+
+test("tændingsnatten: gemt fremgang fra dagens model udbetales helt; dagens nye XP følger reglen", () => {
+  const stored = 4.5; // fire et halvt point gemt i dagens model
+  const payout = buyPoints({ level: 10, bar: stored }, params).points;
+  assert.ok(payout > 2, "scenariet skal have gemt mere end +2");
+  const night = developmentXpTick({ abilities: { climbing: 10 }, progress: { climbing: stored }, xpFor: () => 0, storedBarPayout: true }, params);
+  assert.equal(night.gains.climbing, payout, "alt gemt udbetales på én nat");
+  // Med ny XP oveni: udbetalingen er undtaget, det optjente venter.
+  const withXp = developmentXpTick({ abilities: { climbing: 10 }, progress: { climbing: stored }, xpFor: () => MANY, storedBarPayout: true }, params);
+  assert.equal(withXp.gains.climbing, payout, "det nye XP køber intet ud over udbetalingen");
+  // Lille gemt bjælke: reglens +2 gælder stadig for det optjente.
+  const small = developmentXpTick({ abilities: { climbing: 10 }, progress: { climbing: 1.2 }, xpFor: () => MANY, storedBarPayout: true }, params);
+  assert.equal(small.gains.climbing, 2);
+  // Undtagelsen gælder kun datoens første køb i evnen, og ikke uden for tændingsnatten.
+  assert.equal(developmentXpTick({ abilities: { climbing: 10 }, progress: { climbing: stored }, xpFor: () => 0, storedBarPayout: true, dateUsedGains: { climbing: 1 } }, params).gains.climbing, 1);
+  assert.equal(developmentXpTick({ abilities: { climbing: 10 }, progress: { climbing: stored }, xpFor: () => 0 }, params).gains.climbing, 2);
 });
 
 test("alder: fuld til kurven falder, aldrig over 1, mentale evner længst", () => {

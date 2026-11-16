@@ -10,6 +10,10 @@
 // dem uden for fokus) og alle rytter-typer. Traen nu og den gode dag ganges paa, som
 // applyDailyTick goer (dailyTraining.js, XP-grenen).
 //
+// Ejervalg 16/11: R16 er nu en regel i motoren (hoejst +2 pr. evne pr. dato, developmentXpTick).
+// `koeb` i traeningsdatoBrud vaelger, om datoen koebes med prislisten alene (proeven af
+// regnemaaden) eller gennem motorens tick (motorensDatoKoeb, de private proever).
+//
 // Filen er ikke en test (ingen .test.-endelse) og koerer ikke af sig selv. Den bruges af
 // dommer6110.private-parametre.test.js og af den offentlige dommer6110.r16-regnemaade.test.js.
 
@@ -93,6 +97,7 @@ export async function lavTraeningsdato({ params, staff = null, facilityTier = nu
 export async function traeningsdatoBrud({
   params, pris, staff = null, facilityTier = null, dagMult = 1, bar = 0,
   aldre, potentialer, niveauer = { fra: 1, til: 96 }, graense,
+  koeb = (ind) => koebMedPrisliste(ind, pris), // standard: prislisten alene, uden motorens datoregel
 }) {
   const datoXp = await lavTraeningsdato({ params, staff, facilityTier, dagMult });
   const brud = [];
@@ -102,7 +107,7 @@ export async function traeningsdatoBrud({
         for (const d of datoXp({ alder, potentiale, riderLevel })) {
           if (!(d.xp > 0)) continue;
           for (let niveau = niveauer.fra; niveau <= niveauer.til; niveau++) {
-            const { point } = koebMedPrisliste({ level: niveau, bar, xp: d.xp }, pris);
+            const { point } = koeb({ level: niveau, bar, xp: d.xp });
             if (point > graense(alder, potentiale, niveau)) {
               brud.push({ point, alder, potentiale, niveau, riderLevel, ...d,
                 tekst: `${d.mental ? "mental" : "fysisk"} ${riderLevel} alder ${alder} potentiale ${potentiale} evne ${niveau} via ${d.hvor}: +${point}` });
@@ -116,27 +121,19 @@ export async function traeningsdatoBrud({
 }
 
 /**
- * "Top og midte roeres ikke" (ejervalg A 14/11, Fable-dom 15/11 fund 2): prisbunden goer
- * KUN lave evner dyrere. Svarer med de fejl, der er i params' prisbund, mod en oevre
- * graense for "lave evner" (`lavGraense`, et ejertal). Tom liste = holder.
- *   1) bunden er sat (R16 loeses med bunden, ejervalg A),
- *   2) bundens graense ligger i det lave omraade (hoejst `lavGraense`),
- *   3) fra graensen og op er prisen formlens egen: base * (1 - niveau/100)^-eksponent.
+ * Motorens eget koeb paa én dato (ejervalg 16/11, R16): datoens XP koebes gennem
+ * developmentXpTick i to ticks paa samme dato (fx Traen nu om morgenen og aftenkoerslen),
+ * hvor det andet tick faar det foerste ticks point som datoens tidligere gevinster.
+ * Svarer med datoens point i alt, som koebMedPrisliste.
  */
-export function bundUdenforLavtOmraade(params, lavGraense, { xpPriceForNextPoint }) {
-  const floor = params?.price?.floor;
-  if (!floor) return ["IKKE SAT: talfilen har ingen prisbund (ejervalg A 14/11)"];
-  const fejl = [];
-  if (!(floor.belowLevel <= lavGraense)) {
-    fejl.push(`bundens graense ${floor.belowLevel} ligger over de lave evner (hoejst ${lavGraense})`);
-  }
-  const { base, exponent } = params.price;
-  for (let niveau = Math.ceil(floor.belowLevel); niveau <= 99; niveau++) {
-    const formel = base * Math.pow(1 - niveau / 100, -exponent);
-    const pris = xpPriceForNextPoint(niveau, params);
-    if (Math.abs(pris - formel) > 1e-9 * formel) { fejl.push(`evne ${niveau}: prisen er ikke formlens egen`); break; }
-  }
-  return fejl;
+export async function motorensDatoKoeb(params) {
+  const { developmentXpTick } = await kraev("./developmentXp.ts", "developmentXpTick");
+  const EVNE = "climbing"; // prisen afhaenger kun af niveauet, ikke af evnen
+  return ({ level, bar = 0, xp = 0 }) => {
+    const foerste = developmentXpTick({ abilities: { [EVNE]: level }, progress: { [EVNE]: bar }, xpFor: (a) => (a === EVNE ? xp / 2 : 0) }, params);
+    const anden = developmentXpTick({ abilities: foerste.abilities, progress: foerste.progress, dateUsedGains: foerste.gains, xpFor: (a) => (a === EVNE ? xp / 2 : 0) }, params);
+    return { point: (foerste.gains[EVNE] ?? 0) + (anden.gains[EVNE] ?? 0) };
+  };
 }
 
 /** Hele aldre/potentialer, som dommerens oevrige R16-proever bruger. */
