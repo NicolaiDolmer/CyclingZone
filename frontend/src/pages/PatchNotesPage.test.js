@@ -101,7 +101,7 @@ test("#8049: kontakten læses med viewerens login, og ukendt/fejl er den gamle s
   // "Sidst set" fanges ved ankomst, før menuen når at markere siden som set.
   assert.match(src, /const \[arrivalMarker\] = useState\(\(\) => readLocalSeenMarker\("patch_notes"\)\)/);
   // Den nye side er sin egen chunk: den gamle side henter ikke et byte mere.
-  assert.match(src, /lazy\(\(\) => import\("\.\.\/components\/patchnotes\/PatchNotesV2Page.tsx"\)\)/);
+  assert.match(src, /lazyWithRetry\(\(\) => import\("\.\.\/components\/patchnotes\/PatchNotesV2Page\.tsx"\)\)/);
   // Den gamle side henter stadig hele patch-notes.json, som før.
   assert.match(src, /function LegacyPatchNotesPage\(\{ arrivalMarker = undefined \}\)[\s\S]*loadPatches\(\)/);
   // Også den gamle side bruger "sidst set" fra ankomsten (menuen kan nå at markere imens).

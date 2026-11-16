@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect, lazy, Suspense } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
+import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 import { useTranslation } from "react-i18next";
 import {
   loadPatches, flattenChanges, filterChanges, groupByDay, pickLang, computeNewDays, CATEGORY_META,
@@ -356,7 +357,8 @@ function LegacyPatchNotesPage({ arrivalMarker = undefined }) {
 // (loadFeatureFlagStages); udlogget læses den anonymt, så den kun er tændt ved "on".
 // Mens svaret er på vej, vises præcis den gamle sides indlæsning (samme sidehoved
 // og samme head), og det er også det, server-renderingen (prerender) ser.
-const PatchNotesV2Page = lazy(() => import("../components/patchnotes/PatchNotesV2Page.tsx"));
+// lazyWithRetry: et forældet chunk efter deploy giver genindlæsning, ikke en render-fejl (#5014).
+const PatchNotesV2Page = lazyWithRetry(() => import("../components/patchnotes/PatchNotesV2Page.tsx"));
 
 function usePatchNotesHead() {
   const { t, i18n, ready } = useTranslation("patchnotes");

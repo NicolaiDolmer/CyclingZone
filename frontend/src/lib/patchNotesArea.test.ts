@@ -12,8 +12,11 @@ import { PATCH_NOTE_AREAS } from "./patchNotes.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- patchNotes.js er utypet data
-type Note = { p: any; c: any; key: string };
+type Note = {
+  p: { version: string; date: string };
+  c: { audience?: string; area?: unknown; topic?: string; image?: unknown };
+  key: string;
+};
 function playerNotes(): Note[] {
   const out: Note[] = [];
   for (const p of PATCHES) p.changes.forEach((c, i) => { if (c.audience === "player") out.push({ p, c, key: `${p.version}#${i}` }); });

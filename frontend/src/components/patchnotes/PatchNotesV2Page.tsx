@@ -9,7 +9,7 @@
 //  6. Beta og tændt samme uge: kun den seneste vises i ugen; begge findes i arkiv og søgning.
 // T1 (896 px), den kanoniske PageHeader og højst to section cards (fold-disciplinen).
 // "Nyt siden sidst" og prikkerne følger brugeren via seen_markers (#6515), ikke enheden.
-import { useCallback, useEffect, useState, type ChangeEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
   PATCH_NOTE_AREAS_WITH_OTHER, patchNotesRecentUrl, patchNotesIndexUrl, patchNotesMonthUrl,
@@ -132,14 +132,19 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }: { 
       .catch(() => setMonthData((prev) => ({ ...prev, [key]: { status: "error" } })));
   }, [lang]);
   // Skifter spilleren sprog med en måned åben, hentes måneden på det nye sprog.
+  // Refs, så effekten kun kører ved sprogskift (åbning af en måned henter selv i toggleMonth).
+  const expandedRef = useRef(expanded);
+  const monthDataRef = useRef(monthData);
   useEffect(() => {
-    for (const key of expanded) {
+    expandedRef.current = expanded;
+    monthDataRef.current = monthData;
+  });
+  useEffect(() => {
+    for (const key of expandedRef.current) {
       const m = key.startsWith("month:") ? key.slice(6) : null;
-      if (m && !monthData[`${m}.${lang}`]) loadMonth(m);
+      if (m && !monthDataRef.current[`${m}.${lang}`]) loadMonth(m);
     }
-    // Kun ved sprogskift; åbning af en måned henter selv (toggleMonth).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lang]);
+  }, [lang, loadMonth]);
 
   // Et søgefund i arkivet åbnes på sin plads: måneden hentes, området og linjen foldes ud.
   const showInArchive = (item: PatchItem) => {
@@ -160,20 +165,21 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }: { 
   const q = normalizeQuery(debouncedQuery);
   const searching = q.length >= SEARCH_MIN;
   const [index, setIndex] = useState<IndexState>({ status: "idle", lang: null, items: [] });
+  // Sproget hvis indeks er hentet. Sættes først ved svar, så en afbrudt eller fejlet
+  // hentning prøves igen ved næste søgning.
+  const indexLoadedRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!searching || (index.lang === lang && index.status !== "error")) return undefined;
+    if (!searching || indexLoadedRef.current === lang) return undefined;
     let active = true;
     setIndex({ status: "loading", lang, items: [] });
     loadPatchNotesFile(patchNotesIndexUrl(lang))
-      .then((data: { items?: PatchItem[] }) => { if (active) setIndex({ status: "ready", lang, items: data.items || [] }); })
+      .then((data: { items?: PatchItem[] }) => {
+        if (!active) return;
+        indexLoadedRef.current = lang;
+        setIndex({ status: "ready", lang, items: data.items || [] });
+      })
       .catch(() => { if (active) setIndex({ status: "error", lang, items: [] }); });
-    return () => {
-      active = false;
-      // Afbrudt (søgningen ryddet, før svaret kom): næste søgning skal hente igen.
-      setIndex((prev) => (prev.status === "loading" ? { status: "idle", lang: null, items: [] } : prev));
-    };
-    // index.status/lang er bevidst kun et værn: hentes én gang pr. sprog.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { active = false; };
   }, [searching, lang]);
   const [searchLimit, setSearchLimit] = useState(SEARCH_PAGE);
   useEffect(() => { setSearchLimit(SEARCH_PAGE); }, [q, area, betaOnly, onlyNew]);
