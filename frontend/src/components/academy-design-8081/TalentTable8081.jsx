@@ -44,7 +44,7 @@ export default function TalentTable8081({ roster, seasonYear, squadById, pool, o
         <tbody>
           {roster.map((r) => {
             const age = getRiderAge(r.birthdate, seasonYear);
-            const squad = squadById?.get(r.id) ?? null;
+            const squad = squadById?.get(r.id) ?? r.squad ?? null;
             const origin = pool?.get(r.id)?.origin ?? null;
             return (
               <tr key={r.id} className="border-b border-cz-border last:border-0 hover:bg-cz-subtle">

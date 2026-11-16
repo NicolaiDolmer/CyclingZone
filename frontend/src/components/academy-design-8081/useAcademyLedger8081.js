@@ -42,13 +42,15 @@ export function useAcademyLedger8081(enabled, rosterIds = []) {
           .eq("status", "signed")),
         rows(supabase
           .from("auctions")
-          .select("rider_id, current_bidder_id, is_guaranteed_sale, current_price, actual_end, riders(firstname, lastname)")
+          .select("rider_id, current_bidder_id, is_guaranteed_sale, current_price, actual_end, is_youth, riders(firstname, lastname)")
           .eq("is_youth", true)
           .eq("status", "completed")
           .eq("current_bidder_id", teamId)),
       ]);
 
-      const pool = buildAcademyRiderPool({ signedIntake, youthAuctionWins });
+      // Forsvar i dybden: de to auktions-hentninger skilles også på is_youth her,
+      // så en ungdomsauktion aldrig kan tælle som salg (og omvendt).
+      const pool = buildAcademyRiderPool({ signedIntake, youthAuctionWins: youthAuctionWins.filter((a) => a.is_youth === true) });
       const poolIds = [...pool.keys()];
       let auctionRows = [];
       let transferRows = [];
@@ -56,7 +58,7 @@ export function useAcademyLedger8081(enabled, rosterIds = []) {
         [auctionRows, transferRows] = await Promise.all([
           rows(supabase
             .from("auctions")
-            .select("rider_id, current_bidder_id, is_guaranteed_sale, current_price, actual_end")
+            .select("rider_id, current_bidder_id, is_guaranteed_sale, current_price, actual_end, is_youth")
             .eq("seller_team_id", teamId)
             .eq("is_youth", false)
             .eq("status", "completed")
@@ -76,7 +78,7 @@ export function useAcademyLedger8081(enabled, rosterIds = []) {
         : [];
 
       const currentSeasonId = seasons.find((s) => s.status === "active")?.id ?? null;
-      const sales = buildLedgerSales({ auctionRows, transferRows, pool, seasons });
+      const sales = buildLedgerSales({ auctionRows: auctionRows.filter((a) => a.is_youth === false), transferRows, pool, seasons });
       const ledger = buildSeasonLedger({ financeRows, sales, seasons, currentSeasonId });
       setState({
         loading: false,

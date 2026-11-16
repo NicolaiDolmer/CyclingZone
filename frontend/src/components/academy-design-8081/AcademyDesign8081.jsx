@@ -76,7 +76,7 @@ function OneList({ ctx, landingText, squadById }) {
   const { regularIntake, roster, seasonYear, counts, balance, actionState, actionErrors, onSign, onReject } = ctx;
   const { rows } = squadLimitRows(counts);
   const capOf = (squad) => rows.find((r) => r.squad === squad);
-  const squadOf = (r) => squadById.get(r.id) ?? academyTargetSquad(r.birthdate, seasonYear) ?? "u23";
+  const squadOf = (r) => squadById.get(r.id) ?? r.squad ?? academyTargetSquad(r.birthdate, seasonYear) ?? "u23";
   const groups = [
     { squad: "junior", title: c("c.groupJunior"), riders: roster.filter((r) => squadOf(r) === "junior") },
     { squad: "u23", title: c("c.groupU23"), riders: roster.filter((r) => squadOf(r) === "u23") },
