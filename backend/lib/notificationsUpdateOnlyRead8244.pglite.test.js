@@ -33,7 +33,7 @@ CREATE TABLE public.notifications (
   message text,
   is_read boolean NOT NULL DEFAULT false,
   related_id uuid,
-  created_at timestamptz NOT NULL DEFAULT now(),
+  created_at timestamptz NOT NULL DEFAULT '2026-11-16T12:00:00Z',
   metadata jsonb
 );
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
@@ -89,7 +89,7 @@ const forbiddenWrites = [
   ['user_id', `user_id = '${USER_B}'`],
   ['title', `title = 'forfalsket'`],
   ['message', `message = 'forfalsket'`],
-  ['created_at', `created_at = now() - interval '1 year'`],
+  ['created_at', `created_at = '2025-11-16T12:00:00Z'`],
 ];
 
 test('kontrol: foer migrationen kan en manager omskrive metadata paa sin egen notifikation', async () => {
