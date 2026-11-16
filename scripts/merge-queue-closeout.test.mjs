@@ -12,7 +12,7 @@ const SHA_B = 'b'.repeat(40);
 const NOW = new Date('2026-11-04T12:00:00Z');
 
 // Fake gh med tilstand: kommentarer og labels pr. issue. Logger hvert kald.
-function fakeGh({ prs = {}, comments = {}, labels = {}, fail = {} } = {}) {
+function fakeGh({ prs = {}, comments = {}, labels = {}, fail = {}, openPrs = [] } = {}) {
   const calls = [];
   const state = { comments: structuredClone(comments), labels: structuredClone(labels) };
   const gh = (args) => {
@@ -23,6 +23,7 @@ function fakeGh({ prs = {}, comments = {}, labels = {}, fail = {} } = {}) {
       const pr = prs[args[2]];
       return pr ? { status: 0, stdout: JSON.stringify(pr) } : { status: 1, stdout: '' };
     }
+    if (args[0] === 'pr' && args[1] === 'list') return { status: 0, stdout: JSON.stringify(openPrs) };
     if (args[0] === 'api' && args.includes('PATCH')) {
       // Kommentar-id = issue * 1000 + indeks (se listen herunder).
       if (fail['api patch']) return { status: 1, stdout: '' };
@@ -455,4 +456,65 @@ test('-DryRun preview passes --dry-run and carries no merge SHA', () => {
   assert.ok(mergePreview >= 0, 'merge preview exists');
   const dryBranch = queue.slice(queue.lastIndexOf('  if ($DryRun) {', mergePreview), queue.indexOf('    continue\n  }\n\n  $failedRuns'));
   assert.match(dryBranch, /Invoke-TrainCloseOut -Entries @\(\[pscustomobject\]@\{ number = \$n; sha = \$null \}\)/, 'dry-run branch previews close-out without SHA');
+});
+
+test('a Refs issue with another open PR keeps claude:todo and the comment says why (#8222)', () => {
+  const { gh, state } = fakeGh({
+    prs: { 100: { title: 'feat: del 1', body: 'Refs #1' } },
+    labels: { 1: ['claude:todo'] },
+    openPrs: [{ number: 200, title: 'feat: del 2', body: 'Refs #1' }],
+  });
+  const res = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh, now: NOW });
+  assert.deepEqual(res.flips, []);
+  assert.deepEqual(res.errors, []);
+  assert.deepEqual(state.labels[1], ['claude:todo']);
+  assert.ok(state.comments[1][0].includes('åbne PR\'er (#200)'), 'comment names the open PR');
+  assert.ok(!state.comments[1][0].includes('label flyttet til'), 'comment does not claim a flip');
+});
+
+test('a Refs issue without other open PRs still flips; unrelated and own-train PRs do not block (#8222)', () => {
+  const { gh, state } = fakeGh({
+    prs: { 100: { title: 'feat: del 1', body: 'Refs #1' } },
+    labels: { 1: ['claude:todo'] },
+    openPrs: [
+      { number: 201, title: 'feat: andet', body: 'Refs #11 og nævner #1 uden ord' },
+      { number: 100, title: 'feat: del 1', body: 'Refs #1' },
+    ],
+  });
+  const res = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh, now: NOW });
+  assert.deepEqual(res.flips, [1]);
+  assert.deepEqual(state.labels[1], ['claude:done']);
+});
+
+test('an open PR referencing the issue only in its title also blocks the flip (#8222)', () => {
+  const { gh } = fakeGh({
+    prs: { 100: { title: 'feat: del 1', body: 'Refs #1' } },
+    labels: { 1: ['claude:todo'] },
+    openPrs: [{ number: 202, title: 'feat: del 2 (Refs #1)', body: '' }],
+  });
+  assert.deepEqual(runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh, now: NOW }).flips, []);
+});
+
+test('open-PR search failure or a full result page never flips (fail-safe) (#8222)', () => {
+  const failing = fakeGh({ prs: { 100: { title: 't', body: 'Refs #1' } }, labels: { 1: ['claude:todo'] }, fail: { 'pr list': true } });
+  const res = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: failing.gh, now: NOW });
+  assert.deepEqual(res.flips, []);
+  assert.deepEqual(failing.state.labels[1], ['claude:todo']);
+  assert.ok(res.errors.some((e) => e.includes('intet flip')));
+  assert.ok(failing.state.comments[1][0].includes('kunne ikke afgøres'));
+
+  const full = fakeGh({
+    prs: { 100: { title: 't', body: 'Refs #1' } }, labels: { 1: ['claude:todo'] },
+    openPrs: Array.from({ length: 100 }, (_, i) => ({ number: 300 + i, title: 'x', body: '' })),
+  });
+  assert.deepEqual(runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: full.gh, now: NOW }).flips, []);
+});
+
+test('Closes is not blocked by other open PRs: GitHub closes the issue anyway (#8222)', () => {
+  const { gh } = fakeGh({
+    prs: { 100: { title: 't', body: 'Closes #1' } },
+    labels: { 1: ['claude:todo'] },
+    openPrs: [{ number: 200, title: 'x', body: 'Refs #1' }],
+  });
+  assert.deepEqual(runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh, now: NOW }).flips, [1]);
 });
