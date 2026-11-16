@@ -140,5 +140,34 @@
       "noneTitle": "Kies Alle teams om het hele seizoen te zien",
       "noneDesc": "Geen koers dit seizoen past bij deze weergave."
     }
+  },
+  "editions": {
+    "poolTrigger": "Poule {letter}",
+    "seasonTrigger": "Seizoen {number}",
+    "poolMenuAria": "Wissel van poule, nu Poule {letter}",
+    "seasonMenuAria": "Wissel van seizoen, nu Seizoen {number}",
+    "poolHeading": "Zelfde koers · Divisie {tier} · {count, plural, one {# poule} other {# poules}}",
+    "seasonHeading": "Edities van deze koers",
+    "poolOption": "Poule {letter}",
+    "seasonOption": "Seizoen {number}",
+    "now": "nu",
+    "yours": "Jouw poule",
+    "divisionLine": "Divisie {tier}",
+    "yourPoolThatSeason": "jouw team: Poule {letter}",
+    "stageLine": "Etappe {stage}: {name}",
+    "wonLine": "Gewonnen door {name}",
+    "ahead": "{gap} voorsprong",
+    "sameTime": "zelfde tijd",
+    "upcoming": "Nog niet verreden",
+    "unknown": "Nog geen uitslag",
+    "poolFoot": "Zelfde data en parcours in elke poule. Alleen de renners verschillen.",
+    "seasonFoot": "Opent jouw poule in dat seizoen.",
+    "otherPool": "Je bekijkt Poule {letter}. Jouw team rijdt in Poule {own}.",
+    "otherDivision": "Je bekijkt Poule {letter}. Jouw team rijdt in Divisie {tier}, Poule {own}.",
+    "backToYours": "Terug naar jouw koers",
+    "cardLabel": "Poules",
+    "cardRuns": "Verreden in {count, plural, one {# poule} other {# poules}}",
+    "cardPoolAria": "Open Poule {letter}",
+    "cardPoolOwnAria": "Open Poule {letter}, jouw poule"
   }
 }

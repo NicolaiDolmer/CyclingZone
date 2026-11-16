@@ -27,7 +27,8 @@ export interface RacePageV6Hero {
 /** Stribens højde, mens v6-rammen hentes (samme højde som cellerne, så intet hopper). */
 export const V6_STRIP_RESERVED_CLASS = "h-[81px] border-t border-cz-border";
 
-export default function V6RaceHeroCard({ hero, strip }: { hero: RacePageV6Hero; strip: ReactNode }) {
+// #5841: `editions` = udgave-skiftet (Pool/Season) til højre i række 1.
+export default function V6RaceHeroCard({ hero, strip, editions = null }: { hero: RacePageV6Hero; strip: ReactNode; editions?: ReactNode }) {
   return (
     <section data-race-hero="e" aria-label={hero.name} className="overflow-hidden rounded-cz border border-cz-border border-t-2 border-t-cz-accent bg-cz-card">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 pt-3.5 pb-3 md:px-5">
@@ -37,6 +38,7 @@ export default function V6RaceHeroCard({ hero, strip }: { hero: RacePageV6Hero; 
           {/* #7566: et endagsløb gentager ikke typen fra mærket ved siden af (siden bygger linjen). */}
           {hero.meta && <span className="font-data text-2xs uppercase tracking-[.08em] tabular-nums text-cz-3">{hero.meta}</span>}
         </div>
+        {editions}
       </div>
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-cz-border px-4 py-2.5 md:px-5">
         <HeroStats flush items={hero.stats} className="min-w-0 max-sm:w-full" />

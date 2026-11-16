@@ -140,5 +140,34 @@
       "noneTitle": "Skift til Alle hold for at se hele sæsonen",
       "noneDesc": "Intet løb i sæsonen passer til denne visning."
     }
+  },
+  "editions": {
+    "poolTrigger": "Pulje {letter}",
+    "seasonTrigger": "Sæson {number}",
+    "poolMenuAria": "Skift pulje, nu Pulje {letter}",
+    "seasonMenuAria": "Skift sæson, nu Sæson {number}",
+    "poolHeading": "Samme løb · Division {tier} · {count, plural, one {# pulje} other {# puljer}}",
+    "seasonHeading": "Udgaver af løbet",
+    "poolOption": "Pulje {letter}",
+    "seasonOption": "Sæson {number}",
+    "now": "nu",
+    "yours": "Din pulje",
+    "divisionLine": "Division {tier}",
+    "yourPoolThatSeason": "dit hold: Pulje {letter}",
+    "stageLine": "Etape {stage}: {name}",
+    "wonLine": "Vundet af {name}",
+    "ahead": "{gap} foran",
+    "sameTime": "samme tid",
+    "upcoming": "Ikke kørt endnu",
+    "unknown": "Intet resultat endnu",
+    "poolFoot": "Samme datoer og rute i alle puljer. Kun rytterne er forskellige.",
+    "seasonFoot": "Åbner din pulje den sæson.",
+    "otherPool": "Du ser Pulje {letter}. Dit hold kører i Pulje {own}.",
+    "otherDivision": "Du ser Pulje {letter}. Dit hold kører i Division {tier}, Pulje {own}.",
+    "backToYours": "Tilbage til dit løb",
+    "cardLabel": "Puljer",
+    "cardRuns": "Køres i {count, plural, one {# pulje} other {# puljer}}",
+    "cardPoolAria": "Åbn Pulje {letter}",
+    "cardPoolOwnAria": "Åbn Pulje {letter}, din pulje"
   }
 }

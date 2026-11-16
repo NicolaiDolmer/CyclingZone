@@ -140,5 +140,34 @@
       "noneTitle": "Cambia a Todos los equipos para ver toda la temporada",
       "noneDesc": "Ninguna carrera de la temporada coincide con esta vista."
     }
+  },
+  "editions": {
+    "poolTrigger": "Grupo {letter}",
+    "seasonTrigger": "Temporada {number}",
+    "poolMenuAria": "Cambiar de grupo, ahora Grupo {letter}",
+    "seasonMenuAria": "Cambiar de temporada, ahora Temporada {number}",
+    "poolHeading": "Misma carrera · División {tier} · {count, plural, one {# grupo} other {# grupos}}",
+    "seasonHeading": "Ediciones de esta carrera",
+    "poolOption": "Grupo {letter}",
+    "seasonOption": "Temporada {number}",
+    "now": "ahora",
+    "yours": "Tu grupo",
+    "divisionLine": "División {tier}",
+    "yourPoolThatSeason": "tu equipo: Grupo {letter}",
+    "stageLine": "Etapa {stage}: {name}",
+    "wonLine": "Ganada por {name}",
+    "ahead": "{gap} de ventaja",
+    "sameTime": "mismo tiempo",
+    "upcoming": "Aún no disputada",
+    "unknown": "Aún sin resultado",
+    "poolFoot": "Mismas fechas y recorrido en todos los grupos. Solo cambian los corredores.",
+    "seasonFoot": "Abre tu grupo en esa temporada.",
+    "otherPool": "Estás viendo el Grupo {letter}. Tu equipo corre en el Grupo {own}.",
+    "otherDivision": "Estás viendo el Grupo {letter}. Tu equipo corre en la División {tier}, Grupo {own}.",
+    "backToYours": "Volver a tu carrera",
+    "cardLabel": "Grupos",
+    "cardRuns": "Se corre en {count, plural, one {# grupo} other {# grupos}}",
+    "cardPoolAria": "Abrir Grupo {letter}",
+    "cardPoolOwnAria": "Abrir Grupo {letter}, tu grupo"
   }
 }

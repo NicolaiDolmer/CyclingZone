@@ -140,5 +140,34 @@
       "noneTitle": "Passe à Toutes les équipes pour voir toute la saison",
       "noneDesc": "Aucune course de la saison ne correspond à cet affichage."
     }
+  },
+  "editions": {
+    "poolTrigger": "Groupe {letter}",
+    "seasonTrigger": "Saison {number}",
+    "poolMenuAria": "Changer de groupe, actuellement Groupe {letter}",
+    "seasonMenuAria": "Changer de saison, actuellement Saison {number}",
+    "poolHeading": "Même course · Division {tier} · {count, plural, one {# groupe} other {# groupes}}",
+    "seasonHeading": "Éditions de cette course",
+    "poolOption": "Groupe {letter}",
+    "seasonOption": "Saison {number}",
+    "now": "en cours",
+    "yours": "Ton groupe",
+    "divisionLine": "Division {tier}",
+    "yourPoolThatSeason": "ton équipe : Groupe {letter}",
+    "stageLine": "Étape {stage} : {name}",
+    "wonLine": "Gagnée par {name}",
+    "ahead": "{gap} d'avance",
+    "sameTime": "même temps",
+    "upcoming": "Pas encore courue",
+    "unknown": "Pas encore de résultat",
+    "poolFoot": "Mêmes dates et même parcours dans chaque groupe. Seuls les coureurs changent.",
+    "seasonFoot": "Ouvre ton groupe pour cette saison.",
+    "otherPool": "Tu regardes le Groupe {letter}. Ton équipe court dans le Groupe {own}.",
+    "otherDivision": "Tu regardes le Groupe {letter}. Ton équipe court en Division {tier}, Groupe {own}.",
+    "backToYours": "Retour à ta course",
+    "cardLabel": "Groupes",
+    "cardRuns": "Courue dans {count, plural, one {# groupe} other {# groupes}}",
+    "cardPoolAria": "Ouvrir le Groupe {letter}",
+    "cardPoolOwnAria": "Ouvrir le Groupe {letter}, ton groupe"
   }
 }

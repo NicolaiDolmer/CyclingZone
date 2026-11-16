@@ -140,5 +140,34 @@
       "noneTitle": "Switch to All teams to see the whole season",
       "noneDesc": "No race this season matches this view."
     }
+  },
+  "editions": {
+    "poolTrigger": "Pool {letter}",
+    "seasonTrigger": "Season {number}",
+    "poolMenuAria": "Switch pool, now Pool {letter}",
+    "seasonMenuAria": "Switch season, now Season {number}",
+    "poolHeading": "Same race · Division {tier} · {count, plural, one {# pool} other {# pools}}",
+    "seasonHeading": "Editions of this race",
+    "poolOption": "Pool {letter}",
+    "seasonOption": "Season {number}",
+    "now": "now",
+    "yours": "Your pool",
+    "divisionLine": "Division {tier}",
+    "yourPoolThatSeason": "your team: Pool {letter}",
+    "stageLine": "Stage {stage}: {name}",
+    "wonLine": "Won by {name}",
+    "ahead": "{gap} ahead",
+    "sameTime": "same time",
+    "upcoming": "Not raced yet",
+    "unknown": "No result yet",
+    "poolFoot": "Same dates and route in every pool. Only the riders differ.",
+    "seasonFoot": "Opens your pool for that season.",
+    "otherPool": "You're looking at Pool {letter}. Your team rides Pool {own}.",
+    "otherDivision": "You're looking at Pool {letter}. Your team rides Division {tier}, Pool {own}.",
+    "backToYours": "Back to your race",
+    "cardLabel": "Pools",
+    "cardRuns": "Runs in {count, plural, one {# pool} other {# pools}}",
+    "cardPoolAria": "Open Pool {letter}",
+    "cardPoolOwnAria": "Open Pool {letter}, your pool"
   }
 }
