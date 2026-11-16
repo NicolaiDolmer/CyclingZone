@@ -6,6 +6,7 @@
 // #7865: hovedet er løbets og står stille, når man klikker i etapestriben; tal-rækken,
 // statuschippen, låse-fristen og guld-knappen står sammen (tacticsCta nedenfor).
 import { activeRiders, lineupFor, scheduleFor, tacticsProgress, type RoleOverride, type RoleRider, type ScheduleRow } from "../stagePageV2/stagePageV2Model.ts";
+import { classificationRowsForStage } from "../../../lib/raceStageClassifications.js";
 // Udgave E (#7778 valg 20-22, ejer 15/11): hoved og etapestribe er ét kort; striben
 // er kortets bund og står over fanerne (v6Strip, v6StripCells, v6Overall nedenfor).
 
@@ -378,4 +379,17 @@ export function v6TacticsResults({ activeTab, stage, stagesCompleted, stateFor }
 }): StageResultsState | null {
   if (activeTab !== "tactics" || stage > stagesCompleted) return null;
   return stateFor ? stateFor(stage) : "loaded";
+}
+
+/**
+ * #7861 (Codex P2): "Din dag" på et kørt endagsløb. Et endagsløb kan have resultatet som
+ * klassement-rækker alene (ingen etape-rækker); samme regel som den nuværende side
+ * (YourDayCard): mangler etape-rækkerne, læses klassementets rækker som etapens, så
+ * egne ryttere og deres Hvorfor? står der. Med etape-rækker er listen uændret.
+ */
+export function v6OneDayDayResults<T extends { result_type: string; stage_number?: number | null }>(results: readonly T[], stageNumber: number): T[] {
+  if ((classificationRowsForStage(results, stageNumber, "stage") as T[]).length) return [...results];
+  const overall = classificationRowsForStage(results, stageNumber, "gc") as T[];
+  if (!overall.length) return [...results];
+  return [...results, ...overall.map((r) => ({ ...r, result_type: "stage", stage_number: stageNumber }))];
 }

@@ -220,5 +220,5 @@ test("filmen bruger v6's fælles rute (V6Route) med positionen som overlay, og r
 
 test("et kørt endagsløbs Resultater har \"Din dag\" med Hvorfor? for egne ryttere (Codex P2)", () => {
   const page = read("./RacePageV6.tsx");
-  assert.match(page, /\} else if \(!isStageRace\) \{[\s\S]{0,700}data-race-section="standings"[\s\S]{0,200}phase === "after" && <V6YourDay results=\{results\} stageNumber=\{selectedStage\}/);
+  assert.match(page, /\} else if \(!isStageRace\) \{[\s\S]{0,700}data-race-section="standings"[\s\S]{0,200}phase === "after" && <V6YourDay results=\{oneDayDayResults\} stageNumber=\{selectedStage\}/);
 });

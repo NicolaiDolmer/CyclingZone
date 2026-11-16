@@ -3,8 +3,29 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  RACE_PAGE_V6_TABS, resolveV6Tab, tacticsAfterView, tacticsCta, v6ResultsPhase, v6StageTabFor, v6Strip, v6TabButtonFor, v6TabButtons, v6Tabs, v6TacticsResults, v6TacticsStage,
+  RACE_PAGE_V6_TABS, resolveV6Tab, tacticsAfterView, tacticsCta, v6OneDayDayResults, v6ResultsPhase, v6StageTabFor, v6Strip, v6TabButtonFor, v6TabButtons, v6Tabs, v6TacticsResults, v6TacticsStage,
 } from "./racePageV6Model.ts";
+import { yourDay } from "../stagePageV2/stagePageV2Model.ts";
+
+test("#7861 Codex P2: endagsloebets Din dag finder egne ryttere, ogsaa naar resultatet kun er klassement-raekker", () => {
+  const gcOnly = [
+    { result_type: "gc", stage_number: 1, rank: 1, rider_id: "r1", rider_name: "Rytter A", team_id: "t1" },
+    { result_type: "gc", stage_number: 1, rank: 2, rider_id: "r2", rider_name: "Rytter B", team_id: "t2" },
+  ];
+  assert.equal(yourDay(gcOnly, 1, "t1", "stage").mine.length, 0, "uden normalisering er Din dag tom (fejlen)");
+  const mine = yourDay(v6OneDayDayResults(gcOnly, 1), 1, "t1", "stage").mine;
+  assert.deepEqual(mine.map((r) => [r.riderId, r.rank]), [["r1", 1]]);
+  // Med etape-raekker er listen uaendret (samme regel som YourDayCard).
+  const withStage = [...gcOnly, { result_type: "stage", stage_number: 1, rank: 1, rider_id: "r1", rider_name: "Rytter A", team_id: "t1" }];
+  assert.deepEqual(v6OneDayDayResults(withStage, 1), withStage);
+  assert.deepEqual(v6OneDayDayResults([], 1), []);
+});
+
+test("#7861 Codex P2: endagsloebets Resultater giver Din dag de normaliserede raekker", () => {
+  const src = read("./RacePageV6.tsx");
+  assert.match(src, /isStageRace \? results : v6OneDayDayResults\(results, selectedStage\)/);
+  assert.match(src, /phase === "after" && <V6YourDay results=\{oneDayDayResults\}/);
+});
 
 // Linjeskift normaliseres, saa kildeproeverne virker med CRLF-checkout (Windows) og LF (CI).
 const read = (rel: string) => readFileSync(new URL(rel, import.meta.url), "utf8").replace(/\r\n/g, "\n");

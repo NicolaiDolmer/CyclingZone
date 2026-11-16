@@ -42,7 +42,7 @@ import { useRiderNames } from "../../../lib/useRiderNames.js";
 import { useUiPref } from "../../../lib/userUiPrefs.ts";
 import {
   tacticsCta, v6NamesFromResults, v6ResultsPhase, v6SavedStages, v6SavedStagesRefreshKey, v6StageTabFor, v6Strip, v6StripCells, v6StripWinners, v6TabButtonFor, v6TabButtons,
-  v6TacticsResults, v6TacticsStage, v6WinnerIdsByStage, v6WinnersByStage,
+  v6OneDayDayResults, v6TacticsResults, v6TacticsStage, v6WinnerIdsByStage, v6WinnersByStage,
   type RacePageV6Tab, type StageResultsState, type V6ResultRow,
 } from "./racePageV6Model.ts";
 import V6StageStrip from "./V6StageStrip.tsx";
@@ -128,6 +128,8 @@ export default function RacePageV6(props: RacePageV6Props) {
   const [routeHidden, setRouteHidden, routeSaveState] = useUiPref("race_route_hidden", false);
 
   const riders = useMemo(() => (stageRoles ? stageRoles.riders ?? [] : []), [stageRoles]);
+  // #7861 (Codex P2): et endagsløbs "Din dag" læser også et resultat, der kun findes som klassement-rækker.
+  const oneDayDayResults = useMemo(() => (isStageRace ? results : v6OneDayDayResults(results, selectedStage)), [isStageRace, results, selectedStage]);
   const overrides = useMemo(() => (stageRoles ? stageRoles.overrides ?? [] : []), [stageRoles]);
   const nameById = useMemo(() => new Map(riders.map((r) => [String(r.rider_id), r.name ?? ""])), [riders]);
   const bestByStage = useMemo(() => myBestByStage(stagePointRows, myTeamId, nameById), [stagePointRows, myTeamId, nameById]);
@@ -245,7 +247,7 @@ export default function RacePageV6(props: RacePageV6Props) {
         {/* #7861 (Codex P2): "Din dag" med Hvorfor? for egne ryttere står også i et kørt endagsløbs Resultater. */}
         <div className="@container"><div className={phase === "after" ? "grid grid-cols-1 items-start gap-[14px] @4xl:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]" : ""}>
           <div data-race-section="standings" className="min-w-0">{standingsSlot}</div>
-          {phase === "after" && <V6YourDay results={results} stageNumber={selectedStage} myTeamId={myTeamId} dnfRows={dnfRows} loaded={stageLoaded} raceId={raceId} profile={profile} stageRoles={stageRoles} nowMs={nowMs} />}
+          {phase === "after" && <V6YourDay results={oneDayDayResults} stageNumber={selectedStage} myTeamId={myTeamId} dnfRows={dnfRows} loaded={stageLoaded} raceId={raceId} profile={profile} stageRoles={stageRoles} nowMs={nowMs} />}
         </div></div>
       </div>
     );
