@@ -157,6 +157,15 @@ export function deadlineCountdown(hoursUntil: number): DeadlineCountdown {
 }
 
 /**
+ * #8069 T01: skal Planlaegnings sidehoved vise en fristlinje? Bruges af siden til
+ * kun at give PageHeader en undertitel, naar der er noget at vise (ellers
+ * renderer PageHeader et tomt <p> med margen, og hovedet bliver hoejere).
+ */
+export function hasHeaderDeadline(reminder: SelectionReminder | null | undefined): boolean {
+  return Boolean(reminder?.enabled && reminder.tone !== "none" && reminder.races?.length);
+}
+
+/**
  * #8069 T01: hvilket loeb fristen i Planlaegnings sidehoved handler om. Det
  * tidligste loeb, men ved roed samlet tone det tidligste ROEDE loeb, saa
  * "Holdet stiller ikke op" og fristen beskriver samme loeb (Codex-review #8317;

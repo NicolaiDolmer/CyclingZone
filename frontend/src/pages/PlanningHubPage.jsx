@@ -13,6 +13,7 @@ import StrategyPage from "./StrategyPage.jsx";
 import CalendarPage from "./CalendarPage.jsx";
 import I18nReadyGate from "../components/I18nReadyGate.jsx"; // #3697
 import SelectionDeadlineLine from "../components/planning/SelectionDeadlineLine.js"; // #4983 → #8069 T01
+import { hasHeaderDeadline } from "../lib/selectionReminder.ts";
 import { useSelectionReminder } from "../hooks/useSelectionReminder.js"; // #4983
 
 // #3102 etape 3 (PR 1) — Planlægnings-hubben: Holdudtagelse (11.254 sessions/30
@@ -127,7 +128,8 @@ export default function PlanningHubPage() {
       <PageHeader
         title={t("hub.title")}
         // #8069 T01: fristen er én linje i hovedet, ikke en boks før fanerne.
-        subtitle={<SelectionDeadlineLine reminder={selectionReminder} />}
+        // Kun en undertitel naar der ER en frist: ellers giver PageHeader et tomt <p>.
+        subtitle={hasHeaderDeadline(selectionReminder) ? <SelectionDeadlineLine reminder={selectionReminder} /> : null}
         // @ts-ignore: PageHeader udleder actions som null-only fra sin default
         actions={workbenchEnabled === true ? (
           <Link to="/planning/workbench" className={buttonClass({ variant: "secondary", size: "sm" })}>

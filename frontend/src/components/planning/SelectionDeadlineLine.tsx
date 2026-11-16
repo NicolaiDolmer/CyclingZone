@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { AlertTriangleIcon } from "../ui/icons";
-import { deadlineCountdown, pickHeaderRace, REMINDER_TEXT_TONE_CLASS, type SelectionReminder } from "../../lib/selectionReminder.ts";
+import { deadlineCountdown, hasHeaderDeadline, pickHeaderRace, REMINDER_TEXT_TONE_CLASS, type SelectionReminder } from "../../lib/selectionReminder.ts";
 
 // #8069 T01 (TASTE F3): fristen paa Planlaegning er EN linje i sidehovedet
 // ("Trup mangler · om 12 t"), ikke en boks mellem hovedet og fanerne. Samme
@@ -10,7 +10,7 @@ import { deadlineCountdown, pickHeaderRace, REMINDER_TEXT_TONE_CLASS, type Selec
 // blandt de roede).
 export default function SelectionDeadlineLine({ reminder }: { reminder: SelectionReminder }) {
   const { t } = useTranslation("races");
-  if (!reminder?.enabled || reminder.tone === "none" || !reminder.races.length) return null;
+  if (!hasHeaderDeadline(reminder)) return null;
   const tone = reminder.tone as "warning" | "urgent";
   // Ved roed tone: det tidligste ROEDE loeb (Codex-review #8317), se pickHeaderRace.
   const soonest = pickHeaderRace(reminder);

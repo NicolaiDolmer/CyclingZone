@@ -6,6 +6,7 @@ import {
   resolveNavDotTone,
   deadlineCountdown,
   pickHeaderRace,
+  hasHeaderDeadline,
   EMPTY_SELECTION_REMINDER,
 } from "./selectionReminder.ts";
 
@@ -128,4 +129,13 @@ test("pickHeaderRace: roed tone vaelger tidligste roede loeb, ikke et tidligere 
   assert.equal(pickHeaderRace({ ...base, tone: "urgent", races: [race("gul", 4, "warning"), race("roed", 8, "urgent")] })?.id, "roed");
   assert.equal(pickHeaderRace({ ...base, tone: "warning", races: [race("b", 30, "warning"), race("a", 12, "warning")] })?.id, "a");
   assert.equal(pickHeaderRace({ ...base, tone: "none", races: [] }), null);
+});
+
+// #8069 T01: ingen frist -> ingen undertitel (ellers et tomt <p> i PageHeader)
+test("hasHeaderDeadline: kun naar paamindelsen er aktiv og har loeb", () => {
+  assert.equal(hasHeaderDeadline(EMPTY_SELECTION_REMINDER), false);
+  assert.equal(hasHeaderDeadline(null), false);
+  assert.equal(hasHeaderDeadline({ ...EMPTY_SELECTION_REMINDER, tone: "warning", races: [] }), false);
+  assert.equal(hasHeaderDeadline({ ...EMPTY_SELECTION_REMINDER, enabled: false, tone: "warning", races: [{ id: "r", name: "r", deadline_at: "x", hours_until: 1, entry_count: 1, target_size: 8, tone: "warning" }] }), false);
+  assert.equal(hasHeaderDeadline({ ...EMPTY_SELECTION_REMINDER, tone: "warning", races: [{ id: "r", name: "r", deadline_at: "x", hours_until: 1, entry_count: 1, target_size: 8, tone: "warning" }] }), true);
 });
