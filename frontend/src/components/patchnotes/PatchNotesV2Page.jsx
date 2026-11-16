@@ -21,7 +21,7 @@ import { markSeen, readLocalSeenMarker, useSeenMarkersSynced } from "../../lib/s
 import { intlLocale } from "../../lib/intlLocale.ts";
 import {
   PageHeader, Section, SectionStack, SectionHeader, Input, Select, Toggle, Button, EmptyState,
-  ErrorState, PageLoader, SkeletonLines, SearchIcon,
+  ErrorState, PageLoader, SkeletonLines, SearchIcon, XIcon,
 } from "../ui";
 import { AreaBlocksA, AreaRowsB, PatchHero, PatchTag, NewDot, QuietButton, TOUCH } from "./PatchNoteParts.jsx";
 
@@ -197,10 +197,12 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }) {
           variant="secondary"
           aria-pressed={onlyNew}
           onClick={() => setOnlyNew((v) => !v)}
-          className={onlyNew ? "border-cz-1" : ""}
+          className={onlyNew ? "bg-cz-subtle" : ""}
         >
           <NewDot t={t} />
           <span className="font-data tabular-nums">{t("v2.newSince", { count: newCount })}</span>
+          {/* Aktiv filtrering vises ikke kun med farve: et kryds siger "tryk for at fjerne" (WCAG 1.4.1). */}
+          {onlyNew && <XIcon size={13} aria-hidden="true" className="text-cz-2" />}
         </Button>
       ) : null}
     />

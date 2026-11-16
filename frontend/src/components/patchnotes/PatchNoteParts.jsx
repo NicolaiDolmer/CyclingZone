@@ -59,14 +59,14 @@ const LINE_GRID = "grid grid-cols-[132px_minmax(0,1fr)_12px] items-start gap-x-3
 export function PatchLine({ item, t, liveFlags, marker, open, onToggle, quietTitle = false }) {
   const hasBody = Boolean(item.b) && item.b !== item.ti;
   const isNew = isNewSince(item, marker);
+  // Uden mere tekst er linjen ikke en knap (intet at folde ud, intet tomt tabstop).
+  const Body = hasBody ? "button" : "div";
   return (
     <li className={`${LINE_GRID} py-[7px]`}>
       <PatchTag tag={tagOf(item, liveFlags)} t={t} className="justify-self-start max-sm:col-span-2" />
-      <button
-        type="button"
-        onClick={hasBody ? onToggle : undefined}
-        aria-expanded={hasBody ? open : undefined}
-        className={`min-w-0 text-left ${hasBody ? "" : "cursor-default"}`}
+      <Body
+        {...(hasBody ? { type: "button", onClick: onToggle, "aria-expanded": open } : {})}
+        className="min-w-0 text-left"
       >
         <span className={`block text-[13.5px] leading-snug text-cz-1 ${quietTitle ? "font-normal" : "font-medium"}`}>
           {item.ti || item.b}
@@ -77,7 +77,7 @@ export function PatchLine({ item, t, liveFlags, marker, open, onToggle, quietTit
             {item.b}
           </span>
         )}
-      </button>
+      </Body>
       <span className="pt-[6px] max-sm:col-start-2 max-sm:row-start-2">{isNew && <NewDot t={t} />}</span>
     </li>
   );
