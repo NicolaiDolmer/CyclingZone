@@ -15,21 +15,16 @@ Status: mekanismen er bygget bag en kontakt der er slukket (`season_injury_reset
 
 Konsekvens: en rytter der styrter i sæsonens sidste uge, starter den nye sæson skadet, mens hans træthed er nulstillet. Det er præcis det spillerne undrede sig over 28/9 ("fejl eller funktion?").
 
-## 2. Målinger (read-only, prod 16/11)
+## 2. Målinger
 
-De præcise tal ligger i `balance-internals/2026-11-16-5865-skader-ved-saesonskiftet.md` (hard rule 17). Kvalitativt:
+Målingerne (S4→S5-skiftet, aktive skader nu, forventning til S6) og deres forbehold ligger kun i den private rapport `balance-internals/2026-11-16-5865-skader-ved-saesonskiftet.md` (hard rule 17: målinger, kalibrering og begrundelser er private).
 
-- **S4→S5-skiftet (28/10), det seneste skifte:** et lille antal ryttere startede S5 skadet, under en femtedel af dem der typisk er skadet midt i en sæson. De fordelte sig på mange forskellige menneskehold (næsten aldrig to på samme hold) plus enkelte AI-ryttere. De fleste var raske efter første løbsdato; et par rakte over en uge ind i S5.
-- **Nu (midt i S5):** ingen af de skader der er aktive i dag, rækker ind i S6. S6-tallet afhænger alene af styrt og overbelastning i S5's sidste dage.
-- **Forventet ved S6-start:** samme størrelsesorden som ved S4→S5. Antagelse, ikke måling: sæsonpausen er stadig få dage, og skadesvarighederne er uændrede.
-- Måling gentages på skiftedagen med `scripts/dry-run-5865-season-injury-reset.mjs --season-start <skiftets dato>` (read-only, kun aggregerede tal).
-
-Forbehold: S4→S5-tallet er rekonstrueret fra den sidste trænings-afregning før skiftet. Et styrt i et løb efter den afregning er ikke med, så tallet er snarere for lavt end for højt.
+Sådan gentages målingen på skiftedagen: `scripts/dry-run-5865-season-injury-reset.mjs --season-start <skiftets dato>` (read-only, kun aggregerede tal, resultatet går i den private rapport).
 
 ## 3. Virkelig cykelsport
 
 - En rigtig off-season er 2-3 måneder (oktober til januar). Typiske styrtskader (kraveben, ribben, hudafskrabninger, hjernerystelse) heler inden for den tid. En rytter der styrter i et efterårsløb, starter normalt næste sæson rask.
-- Kun alvorlige skader (bækken, lårben, store operationer) rækker ind i næste sæson. Den slags skader findes ikke i spillet: den længste skade er et par uger.
+- Kun alvorlige skader (bækken, lårben, store operationer) rækker ind i næste sæson. Den slags lange skader findes ikke i spillet.
 - Sygdom (forkølelse, overtræning) er altid væk efter en pause.
 - Spillets sæsonpause er få dage, men den **står for** en hel vinter. Det er samme logik som trætheden: ingen rytter er træt efter tre måneders pause.
 
@@ -44,7 +39,7 @@ Forbehold: S4→S5-tallet er rekonstrueret fra den sidste trænings-afregning f�
 
 De konkrete defaults for loftet (B) og grænsen (C) står i `balance-internals/2026-11-16-5865-skader-ved-saesonskiftet.md` (hard rule 17).
 
-**Anbefaling: A.** Begrundelse: (1) det er det spillerne bad om, og ejeren svarede positivt; (2) det følger trætheds-beslutningen fra 26/7, hvor princippet "alle starter sæsonen lige" vejede tungere end en engangs-skævhed; (3) i virkeligheden heler alle skader af den længde spillet har, over en vinter; (4) antallet der påvirkes er lille, så balance-effekten er lille, men det rammer netop de hold der føler sig snydt.
+**Anbefaling: A.** Begrundelse: (1) det er det spillerne bad om, og ejeren svarede positivt; (2) det følger trætheds-beslutningen fra 26/7, hvor princippet "alle starter sæsonen lige" vejede tungere end en engangs-skævhed; (3) i virkeligheden heler alle skader af den længde spillet har, over en vinter; (4) det rammer netop de hold der føler sig snydt (omfanget står i den private rapport).
 
 Eneste reelle pris ved A: den sidste uges hårde træning bærer ikke en skade med ind i næste sæson. Den koster stadig løbsdage i de sidste dage af den gamle sæson, så afskrækkelsen er der, bare kortere. Vil ejeren bevare en lille konsekvens, er B det bedste alternativ, med et loft der passer til pausen før første løb (ejeren sætter pausen, når S6-kalenderen bygges).
 
