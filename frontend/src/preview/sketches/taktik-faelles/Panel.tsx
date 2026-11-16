@@ -205,7 +205,7 @@ function SuggestionTag({ lang }: { lang: Lang }) {
  * Aktivt valg er moerk flade som i wireframe v5 (valg 16: "ligesom i v5"), ikke guld:
  * syv raekker med guld ville bryde rationeringen. Forslag til Segmented: `tone="ink"`.
  */
-function EffortChoice({ lang, r, value, onChange, stretch = false }: { lang: Lang; r: SketchRider; value: Effort; onChange: (e: Effort) => void; stretch?: boolean }) {
+function EffortChoice({ lang, r, value, onChange, stretch = false, instance }: { lang: Lang; r: SketchRider; value: Effort; onChange: (e: Effort) => void; stretch?: boolean; /** Tabel og kort er begge monteret: hver sin gruppe, ellers fjerner den skjulte kopi valget (Codex P2). */ instance: "row" | "card" }) {
   const c = COPY[lang];
   return (
     <fieldset className={`m-0 flex min-w-0 border-0 p-0 ${stretch ? "w-full" : ""}`}>
@@ -218,7 +218,7 @@ function EffortChoice({ lang, r, value, onChange, stretch = false }: { lang: Lan
               value === e ? "bg-cz-1 font-semibold text-cz-body" : "bg-cz-card font-medium text-cz-2 hover:text-cz-1"
             }`}
           >
-            <input type="radio" name={`effort-${r.id}`} value={e} checked={value === e} onChange={() => onChange(e)} className="sr-only" />
+            <input type="radio" name={`effort-${instance}-${r.id}`} value={e} checked={value === e} onChange={() => onChange(e)} className="sr-only" />
             {c.effort[e]}
           </label>
         ))}
@@ -354,10 +354,15 @@ function EditorPopover({ lang, r, anchorId, onClose }: { lang: Lang; r: SketchRi
       el.style.inset = "auto";
       el.style.width = `${width}px`;
       el.style.left = `${Math.max(8, Math.min(a.right - width, window.innerWidth - width - 8))}px`;
-      el.style.top = `${row.bottom + 4}px`;
+      el.style.maxHeight = `${window.innerHeight - 16}px`;
+      // Er der ikke plads under raekken, vend over den; klem altid ind i vinduet (Codex P2).
+      const h = el.offsetHeight;
+      const below = row.bottom + 4;
+      const top = below + h <= window.innerHeight - 8 ? below : row.top - 4 - h;
+      el.style.top = `${Math.max(8, Math.min(top, window.innerHeight - h - 8))}px`;
     };
-    place();
     el.showPopover();
+    place();
     // Fokus paa foerste felt (autofocus virker ikke foer kortet er vist).
     el.querySelector<HTMLSelectElement>("select")?.focus();
     // Vist fra script, saa browseren giver ikke fokus tilbage af sig selv: goer det her (WCAG 2.4.3).
@@ -371,7 +376,7 @@ function EditorPopover({ lang, r, anchorId, onClose }: { lang: Lang; r: SketchRi
       ref={ref}
       popover="auto"
       aria-labelledby={`editor-title-${r.id}`}
-      className="fixed m-0 overflow-hidden rounded-cz border border-cz-border bg-cz-card p-0 text-cz-1 shadow-overlay"
+      className="fixed m-0 overflow-y-auto overscroll-contain rounded-cz border border-cz-border bg-cz-card p-0 text-cz-1 shadow-overlay"
     >
       <div className="flex items-center justify-between gap-3 border-b border-cz-border px-4 py-2.5">
         <h3 id={`editor-title-${r.id}`} className="m-0 text-sm font-semibold">{c.editTitle(r.name)}</h3>
@@ -532,7 +537,7 @@ export default function TaktikPanel({ lang, stage, edit, bare = false }: { lang:
                 <td className={`${TDN} hidden @5xl:table-cell`}>{r.form}</td>
                 <td className={`${TDN} hidden @5xl:table-cell`}>{r.fatigue}</td>
                 <td className={`${TDN} hidden @5xl:table-cell`}>{r.match}</td>
-                <td className={TD}><EffortChoice lang={lang} r={r} value={efforts[r.id]} onChange={setEffort(r.id)} /></td>
+                <td className={TD}><EffortChoice instance="row" lang={lang} r={r} value={efforts[r.id]} onChange={setEffort(r.id)} /></td>
                 <td className={TD}>
                   <span className="flex items-start gap-3">
                     <span className="min-w-0 flex-1">
@@ -587,7 +592,7 @@ export default function TaktikPanel({ lang, stage, edit, bare = false }: { lang:
               </span>
             </div>
             <div className="mt-2.5 flex items-center gap-2">
-              <span className="min-w-0 flex-1"><EffortChoice lang={lang} r={r} value={efforts[r.id]} onChange={setEffort(r.id)} stretch /></span>
+              <span className="min-w-0 flex-1"><EffortChoice instance="card" lang={lang} r={r} value={efforts[r.id]} onChange={setEffort(r.id)} stretch /></span>
               <button
                 type="button"
                 aria-haspopup="dialog"
