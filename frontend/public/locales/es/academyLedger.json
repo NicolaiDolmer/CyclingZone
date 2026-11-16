@@ -32,6 +32,7 @@
   "allSales": "Ver las {{count}} ventas",
   "emptySalesTitle": "Aún no has vendido ciclistas de la academia",
   "emptySalesBody": "Cuando vendas un ciclista que fichaste de una oferta de la academia o ganaste en una subasta juvenil, la venta aparecerá aquí.",
+  "emptySalesAction": "Ver tu equipo",
   "errorTitle": "No se pudieron cargar las cuentas de la academia",
   "errorBody": "Inténtalo de nuevo en un momento.",
   "retry": "Reintentar"

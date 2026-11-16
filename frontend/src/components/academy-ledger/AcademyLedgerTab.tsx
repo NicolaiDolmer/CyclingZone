@@ -12,9 +12,11 @@
 import { useState } from "react";
 import type { ComponentType, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 import type { TFunction } from "i18next";
 import RiderLink from "../RiderLink.jsx";
 import { Button, EmptyState, ErrorState as ErrorStateJs, SkeletonLines } from "../ui/index.js";
+import { buttonClass } from "../ui/buttonStyles.js";
 import { formatCz } from "../../lib/marketValues.js";
 import { formatDate } from "../../lib/intl.js";
 import { useAcademyLedger } from "./useAcademyLedger.ts";
@@ -120,7 +122,13 @@ function SeasonTable({ t, ledger, lines }: { t: TFunction; ledger: AcademyLedger
 function SalesTable({ t, sales }: { t: TFunction; sales: LedgerSale[] }) {
   const [showAll, setShowAll] = useState(false);
   if (sales.length === 0) {
-    return <EmptyState title={t("emptySalesTitle")} description={t("emptySalesBody")} />;
+    return (
+      <EmptyState
+        title={t("emptySalesTitle")}
+        description={t("emptySalesBody")}
+        action={<Link to="/team" className={buttonClass({ variant: "secondary", size: "sm" })}>{t("emptySalesAction")}</Link>}
+      />
+    );
   }
   const shown = showAll ? sales : sales.slice(0, SALES_PREVIEW);
   return (

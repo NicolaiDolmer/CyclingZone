@@ -32,6 +32,7 @@
   "allSales": "Show all {{count}} sales",
   "emptySalesTitle": "No academy riders sold yet",
   "emptySalesBody": "When you sell a rider you signed from an academy offer or won at a youth auction, the sale shows here.",
+  "emptySalesAction": "See your team",
   "errorTitle": "Could not load the academy ledger",
   "errorBody": "Try again in a moment.",
   "retry": "Try again"

@@ -32,6 +32,7 @@
   "allSales": "Vis alle {{count}} salg",
   "emptySalesTitle": "Ingen akademiryttere solgt endnu",
   "emptySalesBody": "Når du sælger en rytter, du har hentet fra et akademitilbud eller vundet på ungdomsauktion, står salget her.",
+  "emptySalesAction": "Se dit hold",
   "errorTitle": "Akademi-regnskabet kunne ikke hentes",
   "errorBody": "Prøv igen om lidt.",
   "retry": "Prøv igen"

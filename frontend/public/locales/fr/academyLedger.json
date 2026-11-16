@@ -32,6 +32,7 @@
   "allSales": "Voir les {{count}} ventes",
   "emptySalesTitle": "Aucun coureur de l'académie vendu pour l'instant",
   "emptySalesBody": "Quand tu vends un coureur recruté via une offre de l'académie ou remporté lors d'une enchère jeunes, la vente s'affiche ici.",
+  "emptySalesAction": "Voir ton équipe",
   "errorTitle": "Impossible de charger les comptes de l'académie",
   "errorBody": "Réessaie dans un instant.",
   "retry": "Réessayer"

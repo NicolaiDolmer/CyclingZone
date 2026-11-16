@@ -32,6 +32,7 @@
   "allSales": "Toon alle {{count}} verkopen",
   "emptySalesTitle": "Nog geen academierenners verkocht",
   "emptySalesBody": "Als je een renner verkoopt die je via een academieaanbod hebt gehaald of op een jeugdveiling hebt gewonnen, staat de verkoop hier.",
+  "emptySalesAction": "Bekijk je team",
   "errorTitle": "De academiefinanciën konden niet worden geladen",
   "errorBody": "Probeer het zo meteen opnieuw.",
   "retry": "Opnieuw proberen"
