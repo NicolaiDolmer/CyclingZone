@@ -83,7 +83,13 @@ dir_mtime() {
   stat -c %Y "$p" 2>/dev/null || stat -f %m "$p" 2>/dev/null || echo 0
 }
 
-printf -v NOW_EPOCH '%(%s)T' -1
+# Referencetid: systemuret. Tests giver et fast tidspunkt via CZ_CLEANUP_NOW_EPOCH
+# (AGENTS.md regel 16: ingen test maa laese det rigtige ur). Kun et rent heltal bruges.
+if [[ "${CZ_CLEANUP_NOW_EPOCH:-}" =~ ^[0-9]+$ ]]; then
+  NOW_EPOCH="$CZ_CLEANUP_NOW_EPOCH"
+else
+  printf -v NOW_EPOCH '%(%s)T' -1
+fi
 ACTIVITY_GUARD_SEC=1800  # 30 minutes
 
 # 1. Sync with origin: ONE fetch, then the same FF-only merge `git pull --ff-only

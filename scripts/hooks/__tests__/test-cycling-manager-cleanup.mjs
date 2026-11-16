@@ -110,7 +110,9 @@ test('samlet pwsh-fjernelse: indeks-mapping og apostrof i sti', { skip: spawnSyn
     copyFileSync(join(root, 'scripts/lib/archive-worktree-unversioned.ps1'), join(repo, 'scripts/lib/archive-worktree-unversioned.ps1'));
     copyFileSync(join(root, 'scripts/lib/balance-internals.ps1'), join(repo, 'scripts/lib/balance-internals.ps1'));
     copyFileSync(join(root, 'scripts/close-out-cleanup-junctions.ps1'),join(repo, 'scripts/close-out-cleanup-junctions.ps1'));
-    const old = new Date(Date.now() - 3 * 3600 * 1000);
+    // Fast referencetid (regel 16): hooken faar samme tidspunkt via CZ_CLEANUP_NOW_EPOCH.
+    const NOW_EPOCH = 1893456000; // 2030-01-01T00:00:00Z
+    const old = new Date((NOW_EPOCH - 3 * 3600) * 1000);
     const locked = join(repo, '.claude/worktrees/a-locked');
     const quoted = join(repo, ".claude/worktrees/b-o'quote");
     git(repo, 'branch', 'claude/locked', 'main~1');
@@ -120,7 +122,7 @@ test('samlet pwsh-fjernelse: indeks-mapping og apostrof i sti', { skip: spawnSyn
     git(repo, 'worktree', 'lock', locked);
     utimesSync(locked, old, old);
     utimesSync(quoted, old, old);
-    const res = spawnSync(bash, ['--noprofile', '--norc', hook], { cwd: repo, encoding: 'utf8', input: '{}', env: { ...process.env, CZ_WORKTREE_ARCHIVE_ROOT: archive } });
+    const res = spawnSync(bash, ['--noprofile', '--norc', hook], { cwd: repo, encoding: 'utf8', input: '{}', env: { ...process.env, CZ_WORKTREE_ARCHIVE_ROOT: archive, CZ_CLEANUP_NOW_EPOCH: String(NOW_EPOCH) } });
     assert.equal(res.status, 0, res.stderr);
     assert.equal(existsSync(quoted), false, 'worktree med apostrof skal vaere fjernet');
     assert.equal(existsSync(locked), true, 'laast worktree skal blive');
