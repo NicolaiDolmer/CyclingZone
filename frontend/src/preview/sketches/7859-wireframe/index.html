@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Spoiler shield on v6c</title>
+<!--
+  #7859 Spoiler shield, built on race page wireframe v6c (#7778).
+  Standalone sketch: no product code, no imports from the app, not built by Vite.
+  The CSS block marked "wireframe v6c" is copied unchanged from the wireframe, so the
+  race page renders exactly as the wireframe does. Everything after it is the sketch's own.
+  All races, riders, teams and numbers are synthetic. Views: ?v=1 ... ?v=9.
+  ?shot hides the sketch bar (used for the screenshots), ?marks shows the numbered
+  deviations from the wireframe.
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Inter+Tight:wght@600;700&family=Bebas+Neue&display=swap">
+<style>
+/* ===== wireframe v6c, copied unchanged ===== */
+/* Layout: CyclingZone T2 wide data template (cap 1600px): hero, sticky stage calendar, tabs; two columns on desktop. Tokens follow the game's palette. */
+:root{
+  --bg:#f4f2ec; --card:#fcfbf7; --sub:#f1eee6; --line:#e5e0d5; --t1:#0e0f15; --t2:#4c4a5e; --t3:#67657e;
+  --gold:#e8c547; --gold-t:#7a6410; --gold-soft:rgba(232,197,71,.18); --navy:#1a1f38; --on-navy:#ffffff;
+  --good:#1f7a45; --warn:#9a5b0c; --bad:#b4232a; --film:#22273f; --mine:rgba(232,197,71,.14); --pop:#ffffff;
+  --g0:#d6d2c8; --g1:#eab308; --g2:#f97316; --g3:#dc2626; --g4:#7f1d1d; --gd:#ebe7de; --kom:#dc2626;
+  --display:'Bebas Neue',Impact,sans-serif; --body:'DM Sans',system-ui,sans-serif; --num:'Inter Tight','DM Sans',system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12141c; --card:#191c26; --sub:#1f2330; --line:#2c3142; --t1:#f1efe8; --t2:#c3c0cf; --t3:#9a97ab;
+  --gold-t:#ecd07a; --gold-soft:rgba(232,197,71,.16); --navy:#0b0d15; --good:#4cc283; --warn:#e3a54a; --bad:#ff6b6b;
+  --film:#0b0d15; --mine:rgba(232,197,71,.12); --pop:#232735; --g0:#4a4f62; --gd:#2e3343; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12141c; --card:#191c26; --sub:#1f2330; --line:#2c3142; --t1:#f1efe8; --t2:#c3c0cf; --t3:#9a97ab;
+  --gold-t:#ecd07a; --gold-soft:rgba(232,197,71,.16); --navy:#0b0d15; --good:#4cc283; --warn:#e3a54a; --bad:#ff6b6b;
+  --film:#0b0d15; --mine:rgba(232,197,71,.12); --pop:#232735; --g0:#4a4f62; --gd:#2e3343; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--t1);font-family:var(--body);font-size:14px;line-height:1.45}
+.wrap{max-width:1600px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 48px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,input[type=range]:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.note{font-size:12.5px;color:var(--t2);background:var(--card);border:1px solid var(--line);border-radius:5px;padding:8px 12px;margin-bottom:10px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.note b{color:var(--t1)}
+.lab{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;border-radius:4px;padding:1px 5px;vertical-align:2px;margin-left:6px;text-transform:uppercase}
+.lab.same{background:var(--sub);color:var(--t3)}.lab.better{background:rgba(31,122,69,.14);color:var(--good)}.lab.new{background:var(--gold-soft);color:var(--gold-t)}
+body.nolabels .lab{display:none}
+.hero{background:var(--navy);color:var(--on-navy);border-radius:5px;padding:14px 16px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.hero h1{font-family:var(--display);font-weight:400;font-size:32px;line-height:1;margin:0;letter-spacing:.01em}
+.hero .meta{font-size:12.5px;color:rgba(255,255,255,.72);margin-top:4px}
+.hero .verdict{font-size:13.5px;margin-top:8px}.hero .verdict b{color:var(--gold)}
+.hero-r{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.shield{display:flex;align-items:center;gap:8px;font-size:12px;border:1px solid rgba(255,255,255,.3);border-radius:5px;padding:5px 9px;background:transparent;color:var(--on-navy)}
+.sw{width:30px;height:16px;border-radius:8px;background:rgba(255,255,255,.3);position:relative;flex:none}
+.sw:after{content:"";position:absolute;left:2px;top:2px;width:12px;height:12px;border-radius:50%;background:#fff;transition:left .15s}
+.shield[aria-pressed="true"] .sw{background:var(--gold)}.shield[aria-pressed="true"] .sw:after{left:16px;background:#1a1f38}
+.lockbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:rgba(154,91,12,.12);border:1px solid rgba(154,91,12,.4);color:var(--t1);border-radius:5px;padding:7px 12px;margin-top:8px;font-size:13px}
+.lockbar b{color:var(--warn)}
+.calwrap{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;background:var(--bg);padding-top:8px;display:flex;gap:6px;align-items:stretch}
+.arrow{border:1px solid var(--line);background:var(--card);border-radius:5px;width:34px;flex:none;font-size:18px;color:var(--t2)}
+.arrow:disabled{opacity:.35;cursor:default}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(120px,1fr)) minmax(100px,.8fr);gap:6px;overflow-x:auto;flex:1;padding-top:8px}
+.st{border:1px solid var(--line);background:var(--card);border-radius:5px;padding:8px 9px;font-size:12px;color:var(--t2);position:relative;text-align:left;min-width:0}
+.st.done{background:var(--sub)}
+.st[aria-pressed="true"]{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+.st .top{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.st b{color:var(--t1);font-size:12.5px}
+.st .t{font-family:var(--num);font-variant-numeric:tabular-nums;color:var(--t1)}
+.st .today{position:absolute;top:-8px;left:8px;background:var(--navy);color:#fff;font-size:9.5px;font-weight:700;border-radius:4px;padding:1px 5px;letter-spacing:.05em}
+.st .row{display:flex;gap:5px;align-items:center;margin-top:3px;flex-wrap:wrap}
+.st .win{margin-top:4px;font-size:11.5px;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ic{width:18px;height:14px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round;flex:none;color:var(--t1)}
+.wx{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;flex:none;color:var(--t2)}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:10px 0 12px;overflow-x:auto}
+.tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:8px 14px;font-size:14px;color:var(--t2);white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--t1);font-weight:700;border-bottom-color:var(--gold)}
+.grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:12px;align-items:start}
+.col{display:grid;gap:12px;min-width:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:5px;padding:12px 14px;min-width:0}
+.card h2{font-size:14.5px;margin:0 0 8px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline}
+.card h2 small{font-weight:400;font-size:12px;color:var(--t3)}
+.mode{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:5px;overflow:hidden;margin-bottom:12px;background:var(--card)}
+.mode button{border:0;background:none;padding:9px;font-size:13.5px;color:var(--t2)}
+.mode button+button{border-left:1px solid var(--line)}
+.mode button[aria-pressed="true"]{background:var(--navy);color:#fff;font-weight:700}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:5px;overflow:hidden;background:var(--card);flex-wrap:wrap;max-width:100%}
+.seg button{border:0;background:none;padding:5px 10px;font-size:12.5px;color:var(--t2)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--navy);color:#fff;font-weight:700}
+.tool{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
+.tool input,.tool select{border:1px solid var(--line);background:var(--card);border-radius:5px;padding:7px 10px;font-size:13px;color:var(--t1)}
+.tool input{flex:1;min-width:180px}
+.search{position:relative;flex:1;min-width:180px;display:flex}
+.search svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:14px;height:14px;stroke:var(--t3);fill:none;stroke-width:1.8}
+.search input{padding-left:28px;width:100%}
+.btn2{border:1px solid var(--line);background:var(--card);border-radius:5px;padding:6px 11px;font-size:12.5px;font-weight:700;white-space:nowrap}
+.btn2[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy)}
+.gold{background:var(--gold);color:#0e0f15;border:0;border-radius:5px;padding:8px 14px;font-weight:700;font-size:13px;white-space:nowrap}
+.tbl{overflow-x:auto}
+.tbl.scroll{max-height:520px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{position:sticky;top:0;background:var(--card);z-index:1}
+th{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);font-weight:500;text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+td.n,th.n{text-align:right;font-family:var(--num);font-variant-numeric:tabular-nums;white-space:nowrap}
+td.p{font-family:var(--num);font-variant-numeric:tabular-nums;color:var(--t3);width:34px}
+tr.mine td{background:var(--mine)}
+img.fl{width:16px;height:11px;margin-right:6px;border-radius:1px;vertical-align:-1px;box-shadow:0 0 0 1px rgba(0,0,0,.08)}
+.rn{all:unset;cursor:pointer;border-bottom:1px dotted var(--t3)}
+.rn:hover{color:var(--gold-t)}
+.rn:focus-visible{outline:2px solid var(--gold)}
+.dim{color:var(--t3);font-size:12px}
+.why{font-size:12px;color:var(--t2);margin-top:2px}
+.ex{color:var(--t3);font-style:italic}
+.tiles{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.tile{border:1px solid var(--line);border-radius:5px;padding:6px 10px;background:var(--card)}
+.tile .k{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--t3)}
+.tile .v{font-size:14px;font-weight:700;display:flex;gap:6px;align-items:center}
+.prof svg{display:block;width:100%;height:auto}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--t2);margin-top:6px}
+.legend i{display:inline-block;width:18px;height:8px;border-radius:2px;margin-right:4px;vertical-align:0}
+.film{background:var(--film);color:#fff;border-radius:5px;padding:10px 12px}
+.film .ctl{display:flex;gap:10px;align-items:center;font-size:12.5px;margin-top:6px;flex-wrap:wrap}
+.film input[type=range]{flex:1;accent-color:var(--gold);min-width:160px}
+.film .ctl button{background:var(--gold);color:#0e0f15;border:0;border-radius:5px;padding:4px 10px;font-weight:700}
+.chapters{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chapters button{border:1px solid var(--line);background:var(--card);border-radius:5px;padding:3px 9px;font-size:12px;color:var(--t2)}
+.chapters button[aria-pressed="true"]{background:var(--gold-soft);border-color:var(--gold);color:var(--t1);font-weight:700}
+.chapters button.locked{border-style:dashed;color:var(--t3)}
+.report{margin-top:8px}
+.report button{all:unset;cursor:pointer;display:grid;grid-template-columns:62px 1fr;gap:8px;padding:6px 0;border-top:1px solid var(--line);font-size:13px;width:100%}
+.report button[aria-current="true"]{background:var(--gold-soft)}
+.report .km{font-family:var(--num);font-weight:700;color:var(--gold-t)}
+.hidden-box{border:1px dashed var(--t3);border-radius:5px;padding:12px;text-align:center;color:var(--t2);font-size:13px;background:var(--sub)}
+.stars{color:var(--gold-t);letter-spacing:1px;white-space:nowrap}
+.teams{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.team{border:1px solid var(--line);border-radius:5px;background:var(--card);padding:8px 10px}
+.team.mine{border-color:var(--gold);background:var(--mine)}
+.team h3{margin:0 0 4px;font-size:13px;display:flex;justify-content:space-between;gap:6px}
+.rr{display:grid;grid-template-columns:26px minmax(0,1fr) auto 26px;gap:4px;font-size:12.5px;padding:2px 0;align-items:center}
+.rr .b,.rr .a{font-family:var(--num);color:var(--t3);font-size:11.5px}.rr .a{text-align:right}
+.rr .ty{font-size:10.5px;color:var(--t3)}
+.chip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:var(--card);border-radius:5px;padding:2px 7px;font-size:12px;white-space:nowrap}
+button.chip:hover{border-color:var(--t3)}
+.chip svg{width:9px;height:9px;stroke:var(--t3);fill:none;stroke-width:1.6}
+.word{font-weight:700;font-size:11.5px}.w1{color:var(--good)}.w2{color:var(--gold-t)}.w3{color:var(--warn)}.w4{color:var(--bad)}
+.ok{color:var(--good);font-size:12px}.part{color:var(--warn);font-size:12px}
+.status{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px;margin-bottom:8px}
+.pill{border-radius:5px;padding:2px 8px;font-size:12px;font-weight:700;background:var(--gold-soft);color:var(--gold-t)}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:12.5px;color:var(--t3)}
+.teamrow td{background:var(--sub)}
+.pop{position:fixed;z-index:20;width:300px;max-width:calc(100vw - 32px);background:var(--pop);border:1px solid var(--line);border-radius:5px;box-shadow:0 10px 30px rgba(14,15,21,.18);padding:6px}
+.pop .h{font-size:10.5px;font-weight:700;letter-spacing:.06em;color:var(--t3);text-transform:uppercase;padding:4px 6px}
+.pop .o{all:unset;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px;border-radius:4px;font-size:12.5px;width:calc(100% - 12px)}
+.pop .o:hover{background:var(--sub)}
+.pop .o[aria-pressed="true"]{background:var(--gold-soft);font-weight:700}
+.pop .o small{display:block;font-weight:400;font-size:11px;color:var(--t3)}
+.pop .sep{border-top:1px solid var(--line);margin:6px 0}
+.pop .seg{display:flex;margin:2px 6px 6px}.pop .seg button{flex:1;padding:4px 2px;font-size:11px}
+.card-r{display:grid;gap:4px;font-size:12.5px;padding:4px 6px}
+.card-r .big{font-size:15px;font-weight:700;display:flex;align-items:center}
+.gcbar{display:grid;grid-template-columns:150px 1fr 52px;gap:6px;align-items:center;font-size:12px;padding:2px 0}
+.gcbar .bar{height:8px;background:var(--sub);border-radius:4px;position:relative;overflow:hidden}
+.gcbar .bar span{position:absolute;left:0;top:0;bottom:0;background:var(--t3);border-radius:4px}
+.gcbar.mine .bar span{background:var(--gold)}
+.mobileonly{display:none}
+@media (max-width:900px){.grid{grid-template-columns:1fr}.hero h1{font-size:26px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.hv{all:unset;cursor:pointer;display:inline-flex;vertical-align:-2px;margin-right:4px;color:var(--t3)}.hv svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.3}.hv:hover{color:var(--gold-t)}.hv:focus-visible{outline:2px solid var(--gold)}
+.tychip{display:inline-block;background:var(--gold-soft);color:var(--gold-t);border-radius:4px;padding:1px 6px;font-size:11px;white-space:nowrap}
+.jer{width:14px;height:12px;fill:#fff;stroke:var(--t3);stroke-width:1;vertical-align:-2px;margin-left:5px}
+.th{all:unset;cursor:pointer}.th:hover{color:var(--t1)}.th:focus-visible{outline:2px solid var(--gold)}
+.teambar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--sub);border-radius:5px;padding:7px 10px;margin-bottom:8px;font-size:13px}
+.extras{display:flex;gap:4px;white-space:nowrap}
+.chip[aria-pressed="true"]{background:var(--gold-soft);border-color:var(--gold)}
+.resgrid{align-items:stretch}.resgrid>.col:first-child{grid-template-rows:1fr}.resgrid>.col:first-child>.card{display:flex;flex-direction:column}.resgrid .tbl.scroll{flex:1 1 auto;max-height:none;height:0;min-height:520px}
+.st .top{justify-content:flex-start}.st .lhs{display:inline-flex;align-items:center;gap:5px}.st .top .t{margin-left:auto;font-size:11.5px}.st .mini{display:block;width:100%;height:24px;margin-top:5px}
+.st[aria-pressed="true"]{border-color:var(--line);box-shadow:inset 0 -3px 0 var(--gold)}
+.plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px}
+.plan{all:unset;box-sizing:border-box;cursor:pointer;border:1px solid var(--line);border-radius:5px;padding:9px 10px;background:var(--card)}.plan b{display:block;font-size:13.5px}.plan span{font-size:12px;color:var(--t2)}.plan[aria-pressed="true"]{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold);background:var(--gold-soft)}.plan:focus-visible{outline:2px solid var(--gold)}
+.lk{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.3}
+.pagehead{margin:2px 0 10px}.pg{font-size:18px;margin:0 0 2px;display:flex;gap:8px;align-items:center}
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px 16px}.rule{all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px}.rule i{width:26px;height:14px;border-radius:7px;background:var(--line);position:relative;flex:none}.rule i:after{content:"";position:absolute;left:2px;top:2px;width:10px;height:10px;border-radius:50%;background:var(--card)}.rule[aria-pressed="true"] i{background:var(--navy)}.rule[aria-pressed="true"] i:after{left:14px;background:var(--gold)}.rule:focus-visible{outline:2px solid var(--gold)}
+.ch-x{display:inline-block}
+.pagesw{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.ordersrow td{background:var(--sub)}.steps{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}.step{display:grid;gap:3px}
+
+/* ===== v6b: system-true fixes only (TASTE.md + PAGE_TEMPLATES.md), #7778. Taste choices (hero form, width) untouched. ===== */
+:root{--me-bg:#1a1f38;--me-fg:#f4f2ec;
+  --terrain-flat:#2a7366;--terrain-rolling:#567326;--terrain-hilly:#80651a;--terrain-mountain:#962f2a;--terrain-high-mountain:#62388f;--terrain-time-trial:#2b5f99;--gold-face:rgba(232,197,71,.10)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--me-bg:#ededf2;--me-fg:#0e0f15;
+  --terrain-flat:#5fae9f;--terrain-rolling:#97b46a;--terrain-hilly:#c9aa55;--terrain-mountain:#cf6f69;--terrain-high-mountain:#a885c9;--terrain-time-trial:#6f9fd4}}
+/* section card recipe: 20px padding (16 mobile), 15/600 title, 16px under header, 14px gaps */
+.card{padding:20px}.card h2{font-size:15px;font-weight:600;margin-bottom:16px}
+.grid,.col{gap:14px}
+/* micro type: only 11 (text-2xs) and 10 (text-3xs) below 12 */
+th{font-size:11px}.st .today{font-size:10px}.st .win,.st .top .t{font-size:11px}.legend{font-size:11px}
+.rr .b,.rr .a,.rr .ty{font-size:11px}.word{font-size:12px}.pop .h{font-size:11px}.tychip{font-size:11px}
+/* one radius: 5px (pills only for chips/DIG) */
+.lab,.tychip,.pop .o,.st .today{border-radius:5px}
+.legend i{border-radius:0;width:10px;height:10px;vertical-align:-1px}
+/* no shadows outside overlays */
+img.fl{box-shadow:none;outline:1px solid rgba(0,0,0,.1);outline-offset:-1px}
+.st[aria-pressed="true"]{box-shadow:none;border-color:var(--line);border-bottom:2px solid var(--gold);padding-bottom:7px}
+/* gold only in the four places: active choices use the Segmented recipe (gold text on a 10% gold face) */
+.seg button[aria-pressed="true"],.mode button[aria-pressed="true"]{background:var(--gold-face);color:var(--gold-t);cursor:default}
+.plan[aria-pressed="true"]{box-shadow:none;border-color:var(--line);background:var(--gold-face)}.plan[aria-pressed="true"] b{color:var(--gold-t)}
+.btn2[aria-pressed="true"],.chip[aria-pressed="true"],.chapters button[aria-pressed="true"]{background:var(--card);color:var(--t1);border-color:var(--t1)}
+.report button[aria-current="true"],.pop .o[aria-pressed="true"]{background:var(--sub)}
+.film .ctl button{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.45);display:inline-flex;gap:6px;align-items:center}
+.shield[aria-pressed="true"] .sw{background:#fff}.shield[aria-pressed="true"] .sw:after{background:var(--navy)}
+.rule[aria-pressed="true"] i:after{background:var(--card)}
+/* own riders: no gold tint, the game's DIG marker instead (StandingsPage youBadge recipe) */
+tr.mine td{background:transparent}.team.mine{border-color:var(--line);background:var(--card)}
+.you{display:inline-block;border-radius:999px;padding:1px 6px;margin-left:6px;font:700 10px/1.4 var(--body);letter-spacing:.04em;text-transform:uppercase;background:var(--me-bg);color:var(--me-fg);vertical-align:1px}
+/* one status language: StatusBadge (8-10% face, uppercase 10px) */
+.badge{display:inline-flex;align-items:center;border-radius:5px;padding:2px 7px;font:700 10px/1.3 var(--body);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.badge.warn{background:rgba(154,91,12,.10);color:var(--warn)}.badge.good{background:rgba(31,122,69,.10);color:var(--good)}
+/* status at the action it belongs to: the hero's action row, no banner */
+.lockbar{display:none!important}
+.hero-act{flex-basis:100%;display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,.16);padding-top:10px;font-size:13px}
+.hero-act .when{color:rgba(255,255,255,.85)}.hero-act .gold{margin-left:auto}
+.hero-act .badge.warn{background:rgba(227,165,74,.16);color:#f0c27a}.hero-act .badge.good{background:rgba(76,194,131,.16);color:#7fdca9}
+/* quiet action (card header right slot): gold text + stroke chevron */
+.quiet{all:unset;cursor:pointer;font-size:12px;font-weight:500;color:var(--gold-t);display:inline-flex;gap:3px;align-items:center}
+.quiet svg,.chev{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.arrow{display:flex;align-items:center;justify-content:center}.arrow svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.th svg{width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:1.8;vertical-align:0;margin-left:3px}
+/* the stage profile's small form (P19): one calm tone, a red dot per categorised climb, terrain icon in colour */
+.ic{width:18px;height:18px}
+.mini-w{position:relative;display:block;height:24px;margin-top:5px}.mini-w .mini{margin-top:0}
+.mini-w i{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--kom);transform:translate(-50%,-50%)}
+/* stat line instead of boxes in a box */
+.tile{border:0;background:none;padding:0 18px 0 0}.tiles{margin-bottom:10px}
+/* page header recipe (Planning pages) */
+.pg{font-family:var(--num);font-size:20px;font-weight:700;letter-spacing:-.01em}.pagehead p{font-size:13px;margin:4px 0 0}.pagehead{margin-bottom:24px}
+/* P16: 44 px targets on phones and coarse pointers */
+@media (max-width:640px),(pointer:coarse){
+  .card{padding:16px}
+  .tabs button,.seg button,.mode button,.btn2,.gold,.chip,.tool input,.tool select,.shield,.arrow,.chapters button,.film .ctl button,.quiet{min-height:44px}
+  .chip{min-width:44px;justify-content:center}.hv{min-width:28px;min-height:28px;align-items:center;justify-content:center}
+}
+/* D-047 for the result list: name + three data columns, team folds into the name's subline */
+.subline{display:none;font-size:11px;color:var(--t3);margin-top:1px}
+@media (max-width:640px){.res-team{display:none}.subline{display:block}}
+.back{display:inline-flex;gap:3px;align-items:center;font-size:12px;font-weight:500;color:var(--t2);text-decoration:none;margin:0 0 10px}.back svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8}
+/* ===== variant: Hoved B (T3 card with gold keyline) ===== */
+.wrap{padding-left:32px;padding-right:32px;padding-top:24px}@media (max-width:640px){.wrap{padding-left:16px;padding-right:16px;padding-top:16px}}.hero{padding:24px;border-radius:5px;gap:16px}.hero h1{font-size:40px;line-height:.92}.hero .meta{margin-top:8px}
+@media (max-width:640px){.hero{padding:20px}.hero h1{font-size:32px}}
+.hero{background:var(--card);color:var(--t1);border:1px solid var(--line);border-top:2px solid var(--gold)}
+.hero .meta{color:var(--t2)}.hero .verdict b{color:var(--t1)}
+.shield{border-color:var(--line);color:var(--t1)}.sw{background:var(--line)}.shield[aria-pressed="true"] .sw{background:var(--t1)}.shield[aria-pressed="true"] .sw:after{background:var(--card)}
+.hero-act{border-top-color:var(--line)}.hero-act .when{color:var(--t2)}
+.hero-act .badge.warn{background:rgba(154,91,12,.10);color:var(--warn)}.hero-act .badge.good{background:rgba(31,122,69,.10);color:var(--good)}
+/* ===== v6c (#7778): hero B + wide page (1600 px cap) + result first on a finished stage ===== */
+.wrap{max-width:1600px}
+/* the big profile is drawn 1:1, so its height is fixed and never grows with the width */
+.v6c .prof svg{width:100%;height:auto}
+/* low route line, P19 small form */
+.rline{display:flex;align-items:center;gap:18px;padding:0;margin:0 0 6px;font-size:13px;background:none;border:0;border-radius:0}
+.rline .rl-t{display:inline-flex;gap:6px;align-items:center;font-weight:600;white-space:nowrap}
+.rline .rl-n{font-family:var(--num);font-variant-numeric:tabular-nums;color:var(--t2);white-space:nowrap}
+.rline .mini-w{flex:1;min-width:120px;height:24px;margin:0}.rline .mini-w .mini{display:block;width:100%;height:24px}
+.rline .rl-mode{flex:none}.rline .rl-mode button{padding:6px 12px;font-size:13px}
+.v6c .resgrid .tool select{max-width:150px}.v6c .resgrid .search{min-width:140px}
+.rline .quiet{white-space:nowrap}
+.rline + .card{margin-bottom:14px}
+/* the result list: the page scrolls, never a box; header row sticky under the stage bar */
+.v6c .reslist{overflow-x:clip;max-height:none}
+.v6c .reslist thead th{top:var(--calh,0px);z-index:2}
+.v6c .resgrid{align-items:start;margin-top:0}
+@media (min-width:901px){.v6c .resgrid{grid-template-columns:minmax(0,1fr) 380px}}
+@media (max-width:640px){.rline{flex-wrap:wrap;gap:6px 14px;padding:0}.rline .rl-mode{flex-basis:100%;display:flex}.rline .rl-mode button{flex:1}.rline .mini-w{flex:1 1 150px;order:5}.rline .quiet{order:6;min-height:44px}}
+/* ===== end of wireframe v6c ===== */
+
+/* ===== sketch #7859: the shield outside the race page, same tokens and recipes ===== */
+html,body{margin:0}
+body{-webkit-text-size-adjust:100%}
+.sk-bar{font-size:12.5px;color:var(--t2);background:var(--card);border:1px solid var(--line);border-radius:5px;padding:8px 12px;margin-bottom:14px;display:flex;gap:8px 12px;flex-wrap:wrap;align-items:center}
+.sk-bar b{color:var(--t1)}
+.sk-bar nav{display:flex;gap:6px;flex-wrap:wrap}
+.sk-bar a{border:1px solid var(--line);background:var(--card);border-radius:5px;padding:4px 9px;font-size:12px;color:var(--t2);text-decoration:none;white-space:nowrap}
+.sk-bar a[aria-current="page"]{border-color:var(--t1);color:var(--t1);font-weight:700}
+.shot .sk-bar{display:none}
+/* film labels: the wireframe draws climb names in --t1 on the dark film, which fails contrast; light text here */
+.film .prof text[fill="var(--t1)"]{fill:#f1efe8}.film .prof text[fill="var(--t2)"]{fill:#c3c0cf}.film .prof text[fill="var(--t3)"]{fill:#a9a6b8}
+/* deviation marks (only with ?marks) */
+.marks [data-dev]{outline:2px dashed #c2185b;outline-offset:3px;position:relative}
+.marks [data-dev]::after{content:attr(data-dev);position:absolute;top:-13px;right:-13px;z-index:30;background:#c2185b;color:#fff;font:700 12px/22px var(--body);width:22px;height:22px;border-radius:50%;text-align:center;letter-spacing:0;text-transform:none}
+/* page shell for the non-race views (the wireframe also leaves out the app sidebar) */
+.t1{max-width:896px;margin:0 auto}
+.t2{max-width:1600px;margin:0 auto}
+.pagehead.row{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.pagehead .acts{display:flex;gap:8px;flex-wrap:wrap}
+.sk-col{display:grid;gap:14px}
+.cap{font:700 11px/1.3 var(--num);letter-spacing:.08em;text-transform:uppercase;color:var(--t3);margin:0 0 6px}
+.mlab{font-family:var(--num);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--t3)}
+.eye{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none;vertical-align:-2px}
+/* today's stages (dashboard) */
+.strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.sc{border:1px solid var(--line);border-radius:5px;background:var(--card);padding:14px 16px;min-width:0;display:block;color:inherit;text-decoration:none}
+.sc .hd{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.sc .nm{font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc .lv{margin-top:3px}
+.sc .stl{margin-top:10px;display:flex;align-items:center;gap:6px;font-size:13px;color:var(--t2);min-height:18px}
+.sc .sec{margin-top:8px}
+.sc .mini-w{width:90px;height:22px;margin-top:10px}.sc .mini-w .mini{height:22px}
+.badge.neutral{background:var(--sub);color:var(--t2)}
+.badge.live{background:rgba(180,35,42,.10);color:var(--bad)}
+/* latest result card */
+.lr .big{font-size:15px;font-weight:700;margin:0 0 4px}
+.lr .hidden-box{margin-top:12px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:900px){.cmp{grid-template-columns:1fr}}
+.was{opacity:1}
+.was .card{background:var(--sub)}
+/* inbox rows (T1 row list recipe) */
+.rows{margin:0;padding:0;list-style:none}
+.rows li{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:12px;align-items:start;padding:13px 0;border-top:1px solid var(--line)}
+.rows li:first-child{border-top:0;padding-top:0}
+.rows .ti{font-size:13.5px;font-weight:500;color:var(--t1)}
+.rows .ms{font-size:13px;color:var(--t2);margin-top:2px}
+.rows .mt{margin-top:4px}
+.rows .ri{width:18px;height:18px;stroke:var(--t2);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;margin-top:1px}
+.rows li.unread .ti{font-weight:700}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--t1);margin-right:6px;vertical-align:1px}
+/* in-game and browser notification mocks */
+.frame{border:1px dashed var(--t3);border-radius:5px;padding:14px;background:var(--bg)}
+.topbar{display:flex;align-items:center;justify-content:flex-end;gap:10px;border-bottom:1px solid var(--line);padding-bottom:10px}
+.bell{position:relative;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--line);border-radius:5px;background:var(--card)}
+.bell svg{width:18px;height:18px;stroke:var(--t1);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.bell .n{position:absolute;top:-6px;right:-6px;background:var(--bad);color:#fff;font:700 10px/16px var(--num);min-width:16px;height:16px;border-radius:999px;text-align:center;padding:0 3px}
+.popin{position:relative;margin:10px 0 0 auto;width:330px;max-width:100%;background:var(--pop);border:1px solid var(--line);border-radius:5px;box-shadow:0 10px 30px rgba(14,15,21,.18);padding:6px}
+.popin .h{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--t3);text-transform:uppercase;padding:6px 8px}
+.popin .o{display:block;padding:8px;border-radius:4px;font-size:13px}
+.popin .o + .o{border-top:1px solid var(--line)}
+.popin .o small{display:block;color:var(--t3);font-size:11px;margin-top:2px;font-family:var(--num);letter-spacing:.06em;text-transform:uppercase}
+.toast{margin:12px 0 0 auto;width:330px;max-width:100%;background:var(--pop);border:1px solid var(--line);border-radius:5px;box-shadow:0 10px 30px rgba(14,15,21,.18);padding:12px 14px;display:flex;gap:10px;align-items:flex-start;font-size:13px}
+.toast b{display:block}
+.os{border-radius:5px;padding:12px 14px;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;max-width:380px}
+.os.android{background:#2b2d31;color:#e8e8ea}
+.os.win{background:#f3f3f3;color:#1b1b1b;border:1px solid #d6d6d6}
+.os .app{display:flex;align-items:center;gap:8px;font-size:12px;opacity:.85}
+.os .app i{display:inline-block;width:18px;height:18px;border-radius:4px;background:#1a1f38;position:relative}
+.os .app i:after{content:"";position:absolute;inset:5px;border:2px solid #e8c547;border-radius:50%}
+.os b{display:block;margin-top:8px;font-size:14px}
+.os p{margin:2px 0 0;font-size:13px;opacity:.9}
+.os-wrap{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:640px){.os-wrap{grid-template-columns:1fr}}
+.os-cap{font-size:12px;color:var(--t3);margin:0 0 6px}
+/* settings rows (wireframe .rule switch) */
+.set{display:grid;gap:0}
+.set .r{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:13px 0;border-top:1px solid var(--line)}
+.set .r:first-child{border-top:0;padding-top:0}
+.set .r b{font-size:13.5px;font-weight:500}
+.set .r p{margin:2px 0 0;font-size:13px;color:var(--t2)}
+.set .rule{font-size:12px;color:var(--t2)}
+/* standings */
+.std td.team{font-weight:500}
+.tabs.small{margin-top:0}
+.hd-meta{font-family:var(--num);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);font-weight:400}
+/* coverage */
+.cov td{font-size:13px}
+.cov td:first-child{white-space:nowrap}
+.cov code{font-size:11.5px;color:var(--t3)}
+.tag{display:inline-block;border-radius:5px;padding:2px 7px;font:700 10px/1.3 var(--body);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.tag.hide{background:var(--sub);color:var(--t2)}.tag.neutral{background:rgba(31,122,69,.10);color:var(--good)}.tag.seen{background:var(--gold-face);color:var(--gold-t)}.tag.out{background:rgba(180,35,42,.08);color:var(--bad)}
+@media (max-width:640px){.cov .why-col{display:none}.cov td:first-child{white-space:normal}}
+@media (max-width:640px),(pointer:coarse){.sk-bar a{min-height:44px;display:inline-flex;align-items:center}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-flat" viewBox="0 0 24 24" fill="none" stroke="var(--terrain-flat)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12h10"/></symbol>
+<symbol id="i-rolling" viewBox="0 0 24 24" fill="none" stroke="var(--terrain-rolling)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 13.5h3.5l2.5-2.5 2.5 2.5H18"/></symbol>
+<symbol id="i-hilly" viewBox="0 0 24 24" fill="none" stroke="var(--terrain-hilly)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 14.5l2.6-3.6 2.2 2.4 2.8-4.3 2.4 3.3 3-1.3"/></symbol>
+<symbol id="i-mountain" viewBox="0 0 24 24" fill="none" stroke="var(--terrain-mountain)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 16.5l3.5-8 3 5.5 3-8 4.5 10.5"/></symbol>
+<symbol id="i-high_mountain" viewBox="0 0 24 24" fill="none" stroke="var(--terrain-high-mountain)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17l4-6 2 3 4-9 4.5 12"/><path d="M13.6 8.3l1.4 1.1 1.5-1"/></symbol>
+<symbol id="i-itt" viewBox="0 0 24 24" fill="none" stroke="var(--terrain-time-trial)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="12" r="4.5"/><path d="M13.5 10v2l1.5 1"/><path d="M5.5 10.5h3M6.5 13.5h2"/></symbol>
+<symbol id="s-left" viewBox="0 0 16 16"><path d="M10 3L5 8l5 5"/></symbol>
+<symbol id="s-right" viewBox="0 0 16 16"><path d="M6 3l5 5-5 5"/></symbol>
+<symbol id="s-up" viewBox="0 0 10 10"><path d="M2 6.5L5 3.5l3 3"/></symbol>
+<symbol id="s-dn" viewBox="0 0 10 10"><path d="M2 3.5L5 6.5l3-3"/></symbol>
+<symbol id="s-play" viewBox="0 0 16 16"><path d="M5 3.5v9l7-4.5z"/></symbol>
+<symbol id="w-sun" viewBox="0 0 16 16"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6L13 13M3 13l1.4-1.4M11.6 4.4L13 3"/></symbol>
+<symbol id="w-rain" viewBox="0 0 16 16"><path d="M4 9h8a3 3 0 0 0 0-6 4 4 0 0 0-7.5 1A2.5 2.5 0 0 0 4 9z"/><path d="M5 12l-1 2M8 12l-1 2M11 12l-1 2"/></symbol>
+<symbol id="w-cloud" viewBox="0 0 16 16"><path d="M4 12h8a3 3 0 0 0 0-6 4 4 0 0 0-7.5 1A2.5 2.5 0 0 0 4 12z"/></symbol>
+<symbol id="w-wind" viewBox="0 0 16 16"><path d="M1 6h9a2 2 0 1 0-2-2M1 10h12a2 2 0 1 1-2 2"/></symbol>
+<symbol id="s-search" viewBox="0 0 16 16"><circle cx="7" cy="7" r="5"/><path d="M11 11l4 4"/></symbol>
+<symbol id="s-down" viewBox="0 0 9 9"><path d="M1 3l3.5 3.5L8 3"/></symbol>
+</defs></svg>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="s-eyeoff" viewBox="0 0 16 16"><path d="M2 8s2.2-4.5 6-4.5c1.2 0 2.2.4 3.1 1M14 8s-2.2 4.5-6 4.5c-1.2 0-2.2-.4-3.1-1"/><path d="M6.6 9.4a2 2 0 0 1 2.8-2.8"/><path d="M2.5 13.5l11-11"/></symbol>
+<symbol id="s-flag" viewBox="0 0 18 18"><path d="M4 16V2.5"/><path d="M4 3h9l-2 3.2L13 9.5H4"/></symbol>
+<symbol id="s-gavel" viewBox="0 0 18 18"><path d="M3 15h7"/><path d="M8.5 3.5l4 4M6.5 5.5l4 4M7.5 4.5l-3 3 4 4 3-3"/><path d="M11 9l4 4"/></symbol>
+<symbol id="s-coin" viewBox="0 0 18 18"><circle cx="9" cy="9" r="6"/><path d="M9 5.8v6.4M7.3 7.3c0-.8.8-1.3 1.7-1.3s1.7.5 1.7 1.2c0 1.6-3.4.9-3.4 2.6 0 .7.8 1.2 1.7 1.2s1.7-.5 1.7-1.3"/></symbol>
+<symbol id="s-bell" viewBox="0 0 18 18"><path d="M5 12.5V8a4 4 0 0 1 8 0v4.5l1.2 1.5H3.8z"/><path d="M7.5 15.5a1.6 1.6 0 0 0 3 0"/></symbol>
+<symbol id="s-trophy" viewBox="0 0 16 16"><path d="M5 2.5h6v3a3 3 0 0 1-6 0z"/><path d="M5 3.5H3a2 2 0 0 0 2 2.5M11 3.5h2a2 2 0 0 1-2 2.5"/><path d="M8 8.5v3M5.5 13.5h5"/></symbol>
+<symbol id="s-chev" viewBox="0 0 16 16"><path d="M6 3l5 5-5 5"/></symbol>
+</defs></svg>
+
+<div class="wrap" id="wrap"></div>
+<div class="pop" id="pop" hidden></div>
+
+<script>
+'use strict';
+/* ---------- view switch ---------- */
+const Q = new URLSearchParams(location.search);
+const VIEW = Q.get('v') || '1';
+if (Q.has('shot')) document.documentElement.classList.add('shot');
+if (Q.has('marks')) document.documentElement.classList.add('marks');
+document.documentElement.classList.add('v6c');
+const VIEWS = [
+  ['1', 'Race page, shield off (default)'],
+  ['2', 'Race page, shield on: Story'],
+  ['3', 'Race page, shield on: Results'],
+  ['4', 'Race page, after Show results'],
+  ['5', 'Dashboard'],
+  ['6', 'Inbox and in-game notifications'],
+  ['7', 'Browser notifications and settings'],
+  ['8', 'Standings'],
+  ['9', 'Where the shield works'],
+];
+
+/* ---------- helpers (as in the wireframe) ---------- */
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const dev = n => (n ? ` data-dev="${n}"` : '');
+const FLAG_SVG = {
+  it: '<rect width="3" height="2" fill="#fff"/><rect width="1" height="2" fill="#009246"/><rect x="2" width="1" height="2" fill="#ce2b37"/>',
+  fr: '<rect width="3" height="2" fill="#fff"/><rect width="1" height="2" fill="#0055a4"/><rect x="2" width="1" height="2" fill="#ef4135"/>',
+  be: '<rect width="1" height="2" fill="#000"/><rect x="1" width="1" height="2" fill="#fdda24"/><rect x="2" width="1" height="2" fill="#ef3340"/>',
+  nl: '<rect width="3" height="2" fill="#fff"/><rect width="3" height=".667" fill="#ae1c28"/><rect y="1.333" width="3" height=".667" fill="#21468b"/>',
+  de: '<rect width="3" height="2" fill="#ffce00"/><rect width="3" height="1.333" fill="#dd0000"/><rect width="3" height=".667" fill="#000"/>',
+  co: '<rect width="3" height="2" fill="#ce1126"/><rect width="3" height="1.5" fill="#003893"/><rect width="3" height="1" fill="#fcd116"/>',
+  es: '<rect width="3" height="2" fill="#aa151b"/><rect y=".5" width="3" height="1" fill="#f1bf00"/>',
+  dk: '<rect width="3" height="2" fill="#c8102e"/><rect x=".86" width=".29" height="2" fill="#fff"/><rect y=".86" width="3" height=".29" fill="#fff"/>',
+  no: '<rect width="3" height="2" fill="#ba0c2f"/><rect x=".75" width=".5" height="2" fill="#fff"/><rect y=".75" width="3" height=".5" fill="#fff"/><rect x=".875" width=".25" height="2" fill="#00205b"/><rect y=".875" width="3" height=".25" fill="#00205b"/>',
+  at: '<rect width="3" height="2" fill="#c8102e"/><rect y=".667" width="3" height=".667" fill="#fff"/>',
+  pl: '<rect width="3" height="2" fill="#dc143c"/><rect width="3" height="1" fill="#fff"/>',
+};
+const NATN = { it:'Italy', fr:'France', be:'Belgium', nl:'Netherlands', de:'Germany', co:'Colombia', es:'Spain', dk:'Denmark', no:'Norway', at:'Austria', pl:'Poland' };
+const FLAGS = Object.fromEntries(Object.entries(FLAG_SVG).map(([k, v]) => [k, 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3 2" preserveAspectRatio="none">${v}</svg>`)]));
+const fl = cc => FLAGS[cc] ? `<img class="fl" alt="${NATN[cc]}" src="${FLAGS[cc]}">` : '';
+const rn = (name, id) => `<button type="button" class="hv" aria-label="Rider card for ${esc(name)}"><svg viewBox="0 0 12 12"><circle cx="6" cy="4" r="2.2"/><path d="M2 11c.6-2.6 2.2-3.8 4-3.8s3.4 1.2 4 3.8"/></svg></button><button type="button" class="rn">${esc(name)}</button>`;
+const tn = name => `<button type="button" class="rn tn">${esc(name)}</button>`;
+
+/* ---------- synthetic race ---------- */
+const ME = 'Your team';
+const RACE = 'Giro delle Valli';
+const MINE = [['Mikkel Aagaard','dk',3,'+1:29'],['Jonas Vermeer','nl',9,'+2:37'],['Tomás Herrera','co',31,'+10:31'],['Pierre Lemaire','fr',34,'+10:31'],['Anders Holm','dk',53,'+10:31'],['Diego Martín','es',88,'+10:31'],['Kasper Brandt','de',138,'+10:31']];
+const TOP = [
+  ['Luca Ferrandi','it','Team C','Winner',86],['Erik Solvang','no','Team F','+1:29',57],null,['Pieter Claes','be','Team D','+1:45',36],
+  ['Matteo Galli','it','Team H','+2:02',29],['Andrés Rojas','co','Team B','+2:13',22],['Bram Visser','nl','Team G','+2:25',14],['Jesper Lind','dk','Team E','+2:37',11],null,
+  ['Felix Hartmann','de','Team A','+2:53',3],['Paul Moreau','fr','Team C','+2:53',0],['Javier Ortega','es','Team B','+2:53',0],['Lukas Bauer','at','Team E','+3:11',0],
+  ['Marek Nowak','pl','Team F','+10:06',0],['Simon Dupont','fr','Team D','+10:31',0],
+];
+const FIRST = ['Nico','Jens','Raúl','Oskar','Tim','Ruben','Lars','Hugo','Iván','Milan','Emil','Joris','Aksel','Thibault','Stefan','Mats','Pablo','Kris','Dario','Ole'];
+const LAST = ['Weber','Kraus','Pérez','Lund','Smit','Rossi','Janssens','Berg','Fournier','Molina','Dahlström','Hofer','Vidal','Bakker','Novak','Ricci','Leclerc','Haugen','Peeters','Kowal'];
+const CCS = ['de','at','es','dk','nl','it','be','no','fr','es','dk','at','es','nl','pl','it','fr','no','be','pl'];
+const TEAMS = ['Team A','Team B','Team C','Team D','Team E','Team F','Team G','Team H'];
+const RESULT = [];
+{
+  let filler = 0;
+  for (let p = 1; p <= 140; p++){
+    const m = MINE.find(x => x[2] === p);
+    if (m){ RESULT.push({ p, name:m[0], cc:m[1], team:ME, time:m[3], pts:p===3?43:p===9?7:0 }); continue; }
+    const t = TOP[p-1];
+    if (t){ RESULT.push({ p, name:t[0], cc:t[1], team:t[2], time:t[3], pts:t[4] }); continue; }
+    const i = filler++; RESULT.push({ p, name:`${FIRST[i % 20]} ${LAST[(i * 7 + 3) % 20]}`, cc:CCS[i % 20], team:TEAMS[(i * 3) % 8], time: p < 120 ? '+10:31' : '+' + (11 + Math.floor((p - 120) / 4)) + ':' + String((p * 13) % 60).padStart(2, '0'), pts:0 });
+  }
+}
+const LINES = { 'Mikkel Aagaard':'Followed the favourites up Monte Serra; stayed with Solvang when Ferrandi went alone.', 'Jonas Vermeer':'Dropped with Jesper Lind in the last 10 km. 3rd best young rider.' };
+
+/* synthetic elevation: rolling base plus ramps for each climb */
+function makeProfile(D, base, climbs, opts = {}){
+  const h = [];
+  for (let km = 0; km <= D; km++){
+    let e = base + 22 * Math.sin(km / 7.3) + 11 * Math.sin(km / 2.9) + (opts.tilt || 0) * km;
+    for (const c of climbs){
+      const foot = c.crest_km - c.length_km, rise = c.length_km * c.avg_gradient * 10, dl = c.desc ?? rise / 70;
+      if (km >= foot && km <= c.crest_km) e = Math.max(e, base + rise * ((km - foot) / c.length_km));
+      else if (km > c.crest_km && km <= c.crest_km + dl) e = Math.max(e, base + rise * (1 - (km - c.crest_km) / dl));
+    }
+    h.push(Math.round(e));
+  }
+  const segments = [];
+  for (const c of climbs){ segments.push({ kind:'climb', from_km:c.crest_km - c.length_km, to_km:c.crest_km }); if (c.crest_km < D) segments.push({ kind:'descent', from_km:c.crest_km, to_km:Math.min(D, c.crest_km + (c.desc ?? c.length_km * c.avg_gradient * 10 / 70)) }); }
+  return { h, step_km:1, segments };
+}
+const ST1_CLIMBS = [
+  { name:'Passo Alto', category:'3', crest_km:58, length_km:4.5, avg_gradient:5.8, desc:3 },
+  { name:'Colle Verde', category:'3', crest_km:101, length_km:5, avg_gradient:5.2, desc:5 },
+  { name:'Monte Serra', category:'1', crest_km:162, length_km:11.8, avg_gradient:8.3 },
+];
+const P1 = makeProfile(162, 460, ST1_CLIMBS);
+const PROFILE = {
+  1: { stage_number:1, profile_type:'mountain', finale_type:'long_climb', distance_km:162, elevation_gain_m:2860, climbs:ST1_CLIMBS, sprints:[{ km:70, kind:'intermediate' }], segments:P1.segments, weather:{ kind:'sun' }, elevation_profile:{ h:P1.h, step_km:1 } },
+};
+const OTHER = { 2:['mountain',168,[[44,6,6.1,'2'],[96,7,6.8,'1'],[168,9,7.4,'1']]], 3:['rolling',182,[[90,3,5.1,'4'],[160,2.5,6,'4']]], 4:['flat',195,[]], 5:['flat',176,[]], 6:['rolling',188,[[70,3.2,4.8,'4']]], 7:['flat',145,[]] };
+for (const [n, [type, D, cl]] of Object.entries(OTHER)){
+  const climbs = cl.map(([crest, len, g, cat], i) => ({ name:'Climb ' + (i + 1), category:cat, crest_km:crest, length_km:len, avg_gradient:g }));
+  const pr = makeProfile(D, type === 'flat' ? 60 : 300, climbs);
+  PROFILE[n] = { stage_number:+n, profile_type:type, finale_type: type === 'flat' ? 'flat_sprint' : type === 'rolling' ? 'punchy' : 'long_climb', distance_km:D, elevation_gain_m:1000, climbs, sprints:[], segments:pr.segments, weather:{ kind: n === '4' || n === '6' ? 'rain' : 'sun' }, elevation_profile:{ h:pr.h, step_km:1 } };
+}
+const SCHED = { 1:'Sat 11:00', 2:'Sat 17:00', 3:'Sun 11:00', 4:'Sun 17:00', 5:'Mon 13:00', 6:'Mon 19:00', 7:'Tue 13:00' };
+const TYPE_LABEL = { mountain:'Mountain', high_mountain:'High mountain', rolling:'Rolling', hilly:'Hilly', flat:'Flat', itt:'Time trial' };
+const FINALE = { long_climb:'Summit finish', flat_sprint:'Sprint finish', uphill_sprint:'Uphill sprint', punchy:'Punchy finish' };
+const isDone = n => n === 1;
+const winnerOf = n => n === 1 ? 'Luca Ferrandi' : null;
+
+/* ---------- state ---------- */
+const S = { stage:1, tab:'stage', mode:'results', shield:false, seen:{}, cls:'stage', pos:155, route:false };
+if (VIEW === '2'){ S.shield = true; S.mode = 'story'; S.pos = 128; }
+if (VIEW === '3'){ S.shield = true; S.mode = 'results'; }
+if (VIEW === '4'){ S.shield = true; S.mode = 'results'; S.seen[1] = true; }
+const hidden = n => S.shield && !S.seen[n];
+
+/* ---------- drawings (wireframe recipes) ---------- */
+function bandColor(g){ return g < 3 ? 'var(--g0)' : g < 6 ? 'var(--g1)' : g < 8 ? 'var(--g2)' : g < 10 ? 'var(--g3)' : 'var(--g4)'; }
+function miniProf(q){ const h = q.elevation_profile?.h || []; if (!h.length) return ''; const step = Math.max(1, Math.floor(h.length / 60)); const pts = h.filter((_,i) => i % step === 0); const mx = Math.max(...pts), mn = Math.min(...pts), rng = Math.max(mx - mn, 300); const line = pts.map((e,i) => `${(i/(pts.length-1)*100).toFixed(1)},${(26 - (e-mn)/rng*22).toFixed(1)}`).join(' '); const D = q.distance_km || 1, dots = (q.climbs || []).filter(c => c.category).map(c => { const i = Math.min(h.length - 1, Math.round(c.crest_km / D * (h.length - 1))); return `<i style="left:${(c.crest_km / D * 100).toFixed(1)}%;top:${((26 - (h[i]-mn)/rng*22) / 26 * 24).toFixed(1)}px"></i>`; }).join(''); return `<span class="mini-w"><svg class="mini" viewBox="0 0 100 26" preserveAspectRatio="none" aria-hidden="true"><polygon points="0,26 ${line} 100,26" fill="var(--g0)"/></svg>${dots}</span>`; }
+function profileInner(n, opts = {}){
+  const p = PROFILE[n]; const h = p.elevation_profile.h; const D = p.distance_km;
+  const W = Math.max(480, opts.W || 1000), nC = (p.climbs || []).length, rowsL = nC > 2 && W < 900 ? 3 : 2, LS = rowsL === 3 ? 30 : 16, extra = rowsL === 3 ? 44 : 0, H = (opts.h || 240) + extra, top = 46 + extra, bot = 30, left = 62;
+  const maxH = Math.max(...h), minH = Math.min(...h);
+  const yMax = Math.ceil((maxH + 150)/500)*500, yMin = Math.max(0, Math.floor((minH - 150)/500)*500);
+  const X = km => left + (km / D) * (W - left - 8);
+  const Y = e => top + (1 - (e - yMin) / (yMax - yMin)) * (H - top - bot);
+  const step = p.elevation_profile.step_km;
+  const climbs = p.segments.filter(s => s.kind === 'climb'), desc = p.segments.filter(s => s.kind === 'descent');
+  let slices = '';
+  for (let i = 0; i < h.length - 1; i++){
+    const km = i * step, g = (h[i+1]-h[i]) / (step*1000) * 100;
+    const inDesc = desc.some(s => km >= s.from_km && km < s.to_km);
+    const col = inDesc || g < 0 ? 'var(--gd)' : bandColor(g);
+    slices += `<path d="M${X(km).toFixed(1)} ${(H-bot)} L${X(km).toFixed(1)} ${Y(h[i]).toFixed(1)} L${X(km+step).toFixed(1)} ${Y(h[i+1]).toFixed(1)} L${X(km+step).toFixed(1)} ${H-bot}Z" fill="${col}"/>`;
+  }
+  const line = h.map((e,i) => `${i?'L':'M'}${X(i*step).toFixed(1)} ${Y(e).toFixed(1)}`).join(' ');
+  let grid = '';
+  for (let e = yMin; e <= yMax; e += 500){ grid += `<line x1="${left}" x2="${W-8}" y1="${Y(e)}" y2="${Y(e)}" stroke="var(--line)"/><text x="${left-6}" y="${Y(e)+4}" text-anchor="end" font-size="11" fill="var(--t3)">${e.toLocaleString('en-GB')} m</text>`; }
+  const OFF = i => rowsL === 3 ? ((i % 3) - 2) * LS : (i % 2) * 16;
+  let marks = '';
+  (p.climbs || []).forEach((c, i) => {
+    const seg = climbs.find(s => Math.abs(s.to_km - c.crest_km) < 1.5) || {};
+    const x = X(c.crest_km); const idx = Math.min(h.length-1, Math.round(c.crest_km/step)); const y = Y(h[idx]);
+    const anchor = x > W - 220 ? 'end' : 'start', tx = anchor === 'end' ? x - 22 : x + 22;
+    marks += `<line x1="${x}" x2="${x}" y1="${y}" y2="${top-6+OFF(i)}" stroke="var(--t2)"/>
+      <rect x="${Math.min(x, W-12)-11}" y="${top-24+OFF(i)}" width="22" height="18" rx="3" fill="var(--kom)"/><text x="${Math.min(x, W-12)}" y="${top-11+OFF(i)}" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">${c.category}</text>
+      <text x="${tx}" y="${top-14+OFF(i)}" text-anchor="${anchor}" font-size="12.5" font-weight="700" fill="var(--t1)">${esc(c.name)}</text>
+      <text x="${tx}" y="${top+1+OFF(i)}" text-anchor="${anchor}" font-size="11" fill="var(--t2)">${c.length_km} km · ${c.avg_gradient} % · ${Math.round(h[idx]).toLocaleString('en-GB')} m</text>
+      <rect x="${X(seg.from_km ?? c.crest_km - c.length_km)}" y="${H-bot+4}" width="${X(c.crest_km)-X(seg.from_km ?? c.crest_km - c.length_km)}" height="6" fill="var(--kom)"/>`;
+  });
+  let spr = '';
+  (p.sprints || []).filter(s => s.kind === 'intermediate').forEach(s => { const x = X(s.km); spr += `<g><line x1="${x}" x2="${x}" y1="${top+30}" y2="${H-bot}" stroke="var(--good)" stroke-dasharray="3 3"/><rect x="${x-9}" y="${top+22}" width="18" height="16" rx="3" fill="var(--good)"/><text x="${x}" y="${top+34}" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">S</text></g>`; });
+  const last10 = `<rect x="${X(D-10)}" y="${top-4}" width="${X(D)-X(D-10)}" height="${H-bot-top+4}" fill="var(--sub)" opacity=".7"/>`;
+  const pos = opts.posKm != null ? `<line x1="${X(opts.posKm)}" x2="${X(opts.posKm)}" y1="${top-6}" y2="${H-bot}" stroke="var(--gold)" stroke-width="2"/><circle cx="${X(opts.posKm)}" cy="${Y(h[Math.min(h.length-1, Math.round(opts.posKm/step))])}" r="6" fill="var(--gold)" stroke="#0e0f15"/>` : '';
+  const ticks = [0, ...(p.climbs || []).map(c => c.crest_km).filter(k => k < D - 8), D].map(k => `<text x="${X(k)}" y="${H-6}" text-anchor="${k===0?'start':k===D?'end':'middle'}" font-size="11" fill="var(--t3)">${k === 0 || k === D ? k + ' km' : k}</text>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Stage ${n} profile, ${D} km">${grid}${last10}${slices}<path d="${line}" fill="none" stroke="var(--t1)" stroke-width="1.6"/>${spr}${marks}${pos}${ticks}</svg>`;
+}
+const profileSVG = (n, opts = {}) => { const o = { h:240, ...opts }; return `<div class="prof" data-n="${n}" data-o="${esc(JSON.stringify(o))}">${profileInner(n, o)}</div>`; };
+function fitProfiles(){ document.querySelectorAll('.prof[data-n]').forEach(el => { const w = Math.round(el.clientWidth); if (!w || +el.dataset.w === w) return; el.dataset.w = w; el.innerHTML = profileInner(+el.dataset.n, { ...JSON.parse(el.dataset.o), W:w }); }); }
+function setCalH(){ const c = document.querySelector('.calwrap'); if (c) document.documentElement.style.setProperty('--calh', c.offsetHeight + 'px'); }
+
+/* ---------- race page (wireframe v6c structure) ---------- */
+function hero(){
+  const n = S.stage, p = PROFILE[n];
+  const verdict = isDone(n) && !hidden(n) ? `<b>Luca Ferrandi</b> won stage 1 solo, 1:29 ahead, and leads the race` : isDone(n) ? 'Stage finished · result hidden by your spoiler shield' : '';
+  return `<a class="back" href="#" onclick="return false"><svg viewBox="0 0 16 16"><path d="M10 3L5 8l5 5"/></svg>Races</a>
+  <header class="hero">
+    <div><h1>${RACE}</h1><div class="meta">WorldTour · stage race · Stage ${n} of 7 · ${TYPE_LABEL[p.profile_type]} · ${p.distance_km} km · ${SCHED[n]}</div><div class="verdict">${verdict}</div></div>
+    <div class="hero-r"><button class="shield" id="shield" aria-pressed="${S.shield}" type="button"${VIEW === '4' ? dev(1) : ''}><span>Spoiler shield</span><span class="sw" aria-hidden="true"></span></button></div>
+    <div class="hero-act"><span class="badge warn">Not saved</span><span class="when">Stage 2 locks Sat 16:55, in 35 min · 7 riders ride the assistant's plan</span><button type="button" class="gold">Set tactics for stage 2</button></div>
+  </header>`;
+}
+function calendar(){
+  const n = S.stage;
+  const cells = [1,2,3,4,5,6,7].map(k => {
+    const q = PROFILE[k]; const today = k <= 2;
+    const w = isDone(k) ? (hidden(k) ? 'Finished' : winnerOf(k)) : 'Standard';
+    const plain = isDone(k) && !hidden(k);
+    return `<button type="button" class="st ${isDone(k)?'done':''}" aria-pressed="${k===n}"${VIEW === '4' && k === 1 ? dev(2) : ''}>${today?'<span class="today">TODAY</span>':''}<div class="top"><span class="lhs"><b>${k}</b><svg class="ic" aria-label="${TYPE_LABEL[q.profile_type]}"><use href="#i-${q.profile_type === 'flat' ? 'flat' : q.profile_type}"/></svg></span><span class="t">${SCHED[k]}</span>${q.weather?.kind==='rain'?`<svg class="wx" aria-label="Rain"><use href="#w-rain"/></svg>`:''}</div>${miniProf(q)}<div class="win" style="${plain?'':'color:var(--t3)'}">${esc(w)}</div></button>`;
+  }).join('') + `<button type="button" class="st" aria-pressed="false"${VIEW === '4' ? dev(2) : ''}><div class="top"><b>Overall</b></div><div class="row">after stage 1</div><div class="win">${hidden(1) ? 'Hidden' : 'Ferrandi leads'}</div></button>`;
+  return `<div class="calwrap"><button class="arrow" type="button" aria-label="Previous stage" disabled><svg><use href="#s-left"/></svg></button><nav class="cal" aria-label="Stages">${cells}</nav><button class="arrow" type="button" aria-label="Next stage"><svg><use href="#s-right"/></svg></button></div>
+  <div class="tabs" role="tablist">${[['stage','Stage'],['start','Start list'],['tactics','Tactics'],['team','Team']].map(([k,l]) => `<button role="tab" type="button" aria-selected="${k===S.tab}">${l}</button>`).join('')}</div>`;
+}
+function routeLine(n, lead, withProfile){
+  const p = PROFILE[n]; const c = (p.climbs || []).filter(x => x.category).length;
+  return `<section class="rline" aria-label="Stage ${n} route">${lead}<span class="rl-t"><svg class="ic"><use href="#i-${p.profile_type}"/></svg>${TYPE_LABEL[p.profile_type]}</span><span class="rl-n">${p.distance_km} km</span><span class="rl-n">${p.elevation_gain_m.toLocaleString('en-GB')} m</span><span class="rl-n">${c} climbs</span>${withProfile ? `${miniProf(p)}<button type="button" class="quiet" aria-expanded="false">Show route<svg viewBox="0 0 16 16"><path d="M3 6l5 5 5-5"/></svg></button>` : '<span style="flex:1"></span>'}</section>`;
+}
+const CLS = [['stage','Stage'],['overall','Overall'],['points','Points'],['mountains','Mountains'],['youth','Youth'],['teams','Teams'],['passages','Sprints & climbs']];
+function resultsList(){
+  const rows = RESULT;
+  return `<div class="tbl reslist"><table><thead><tr><th>Pos</th><th>Rider</th><th class="res-team">Team</th><th class="n">Time</th><th class="n">Prize pts</th></tr></thead><tbody>
+   ${rows.map(r => `<tr class="${r.team===ME?'mine':''}"><td class="p">${r.p}</td><td>${fl(r.cc)}${rn(r.name)}${r.team===ME?'<span class="you">You</span>':''}<div class="subline">${esc(r.team)}</div></td><td class="dim res-team">${tn(r.team)}</td><td class="n">${r.p===1?'Winner':r.time}</td><td class="n">${r.pts ? r.pts + ' pts' : ''}</td></tr>`).join('')}
+   </tbody></table></div><p class="dim" style="margin-top:6px">${rows.length} of ${rows.length}</p>`;
+}
+function stageResults(){
+  const mine = RESULT.filter(r => r.team === ME);
+  return `<div class="grid resgrid"><div class="col">
+    <section class="card"><h2>Stage 1 result</h2>
+      <div class="seg" role="group" aria-label="Classification">${CLS.map(([k,l]) => `<button type="button" aria-pressed="${S.cls===k}">${l}</button>`).join('')}</div>
+      <div class="tool"><div class="search"><svg><use href="#s-search"/></svg><input type="search" placeholder="Search rider, team or nation" aria-label="Search rider, team or nation"></div><button type="button" class="btn2" aria-pressed="false">My team</button><select aria-label="Team"><option>All teams</option></select><select aria-label="Nation"><option>All nations</option></select></div>
+      ${resultsList()}
+    </section></div>
+    <div class="col">
+    <section class="card"><h2>Your day <small>${ME}</small></h2><div class="tbl"><table><tbody>${mine.map(r => `<tr class="mine"><td class="p">${r.p}</td><td>${fl(r.cc)}${rn(r.name)}${LINES[r.name]?`<div class="why">${LINES[r.name]}</div>`:''}</td><td class="n">${r.time}</td></tr>`).join('')}</tbody></table></div><p class="dim" style="margin-top:6px">The full plan against what happened is in Tactics.</p></section>
+    <section class="card"><h2>Jerseys after stage 1</h2><div class="tbl"><table><tbody>${[['Leader','Luca Ferrandi','it','Team C'],['Points','Andrés Rojas','co','Team B'],['Mountains','Luca Ferrandi','it','Team C'],['Youth','Bram Visser','nl','Team G']].map(([l,nm,cc,t]) => `<tr><td>${l}</td><td>${fl(cc)}${rn(nm)}</td><td class="dim">${tn(t)}</td></tr>`).join('')}<tr><td>Teams</td><td>${tn(ME)}</td><td></td></tr></tbody></table></div></section>
+    </div></div>`;
+}
+const CHAPTERS = [['Start',0],['The break',14],['Passo Alto',53],['Sprint km 70',70],['Colle Verde',96],['The chase',128],['Finale',150]];
+const REPORT = [
+  [14,'Andrés Rojas and Simon Dupont go clear.'],
+  [58,'Passo Alto (cat. 3): Simon Dupont first over the top.'],
+  [70,'Intermediate sprint: Andrés Rojas takes 20 points and 3 bonus seconds.'],
+  [88.5,'Mechanical for Bram Visser; a teammate waits. He loses 12 s.'],
+  [101,'Colle Verde (cat. 3): Simon Dupont first over the top.'],
+  [133,'4 teams chase. The break is caught.'],
+  [150.2,'Luca Ferrandi attacks at the foot of Monte Serra.'],
+  [158.5,'Luca Ferrandi holds the attack to the top and has gained time on the climb.'],
+  [162,'Luca Ferrandi wins solo, 1:29 ahead of Erik Solvang and Mikkel Aagaard.'],
+];
+function stageStory(){
+  const pos = S.pos, sh = hidden(1);
+  const L = REPORT.filter(l => !sh || l[0] <= pos);
+  const chap = CHAPTERS.slice().reverse().find(c => c[1] <= pos);
+  const cur = L.slice().reverse().find(l => l[0] <= pos);
+  return `<div class="grid"><div class="col"><section class="card"><h2>Race film <small>one player · the route is the timeline</small></h2>
+     <div class="film"${VIEW === '2' ? dev(1) : ''}>${profileSVG(1, { h:190, posKm:pos })}
+      <div class="ctl"><button type="button"><svg class="chev"><use href="#s-play"/></svg>Play</button><input type="range" min="0" max="162" step="0.5" value="${pos}" aria-label="Position in the stage, km"><span class="n" style="font-family:var(--num)">km ${pos}</span><span>${chap ? chap[0] : ''}</span></div></div>
+     <div class="chapters">${CHAPTERS.map(c => `<button type="button" aria-pressed="${chap && chap[0]===c[0]}">${c[0]}</button>`).join('')}</div>
+    </section></div>
+    <div class="col"><section class="card"><h2>What happened <small>${sh ? 'only up to where you are in the film' : 'click a line to jump'}</small></h2>
+     <div class="report">${L.map(l => `<button type="button" aria-current="${cur && cur[0]===l[0]}"><span class="km">km ${l[0]}</span><span>${esc(l[1])}</span></button>`).join('')}</div>
+     ${sh && pos < 150 ? '<div class="hidden-box" style="margin-top:8px">The finale is ahead · keep watching</div>' : ''}
+    </section>${sh ? `<div class="hidden-box">Your day and the result are in Results · <button type="button" class="btn2" data-act="show">Show results</button></div>` : ''}</div></div>`;
+}
+function stageView(){
+  const seg = `<div class="seg rl-mode" role="group" aria-label="Stage view"><button type="button" aria-pressed="${S.mode==='story'}" data-mode="story">Story · film and report</button><button type="button" aria-pressed="${S.mode==='results'}" data-mode="results">Results · full list</button></div>`;
+  return routeLine(1, seg, S.mode !== 'story') + (S.mode === 'story' ? stageStory() : (hidden(1) ? `<div class="hidden-box">Results are hidden by your spoiler shield · <button type="button" class="btn2" data-act="show">Show results</button></div>` : stageResults()));
+}
+const racePage = () => hero() + calendar() + `<main>${stageView()}</main>`;
+
+/* ---------- 5 dashboard ---------- */
+function todayCard(o){
+  return `<a class="sc" href="#" onclick="return false"${dev(o.dev)}><div class="hd"><div style="min-width:0"><div class="nm">${esc(o.race)}</div><div class="mlab lv">${esc(o.label)}</div></div><span class="badge ${o.badge}">${o.state}</span></div>${miniProf(PROFILE[o.stage])}<div class="stl">${o.line}</div><div class="mlab sec">${o.sec}</div></a>`;
+}
+function dashboard(){
+  const done = sh => todayCard({ race:RACE, label:'Stage 1 of 7', stage:1, badge:'neutral', state:'Finished', dev: sh ? 1 : 0,
+    line: sh ? `<svg class="eye"><use href="#s-eyeoff"/></svg><span>Result hidden by your spoiler shield</span>` : `<svg class="eye"><use href="#s-trophy"/></svg><span class="win-n">Won by Luca Ferrandi</span>`,
+    sec: sh ? 'Standing after the last stage you have seen' : 'GC: 3rd of 140' });
+  const live = todayCard({ race:'Tour of the Fjords', label:'Stage 3 of 5', stage:3, badge:'live', state:'Live', line:'<span class="badge live" style="background:none;padding:0">Live</span>', sec:'GC: 12th of 120' });
+  const up = todayCard({ race:RACE, label:'Stage 2 of 7', stage:2, badge:'neutral', state:'Upcoming', line:'<span class="t" style="font-family:var(--num)">17:00</span>', sec:'Locks 16:55' });
+  const latest = sh => `<section class="card lr"${dev(sh ? 2 : 0)}><h2>Latest result <small class="mlab">Sat 13:02</small></h2>
+     <p class="big">${sh ? `Stage 1 of ${RACE} is finished` : 'Mikkel Aagaard 3rd on stage 1'}</p>
+     <p class="dim" style="margin:0">${sh ? 'Your riders and the winner stay hidden until you open the stage.' : `${RACE} · 1:29 behind the winner · 43 prize pts`}</p>
+     ${sh ? `<div class="hidden-box">Your result is hidden by your spoiler shield · <button type="button" class="btn2">Show result</button></div>` : `<div class="tbl" style="margin-top:10px"><table><tbody><tr><td class="p">3</td><td>${fl('dk')}${rn('Mikkel Aagaard')}</td><td class="n">+1:29</td></tr><tr><td class="p">9</td><td>${fl('nl')}${rn('Jonas Vermeer')}</td><td class="n">+2:37</td></tr></tbody></table></div>`}</section>`;
+  const block = sh => `<div class="sk-col"><section class="card"><h2>Today's stages <small class="mlab">3 stages</small></h2><div class="strip">${done(sh)}${live}${up}</div></section>${latest(sh)}</div>`;
+  return `<div class="t2"><div class="pagehead"><h1 class="pg">Dashboard</h1><p class="dim">Your team, today and the latest results.</p></div>
+    <p class="cap">With the shield on</p>${block(true)}
+    <p class="cap" style="margin-top:24px">Shield off (as today)</p><div class="was">${block(false)}</div></div>`;
+}
+
+/* ---------- 6 inbox and in-game ---------- */
+function inbox(){
+  const row = (o) => `<li class="${o.unread ? 'unread' : ''}"${dev(o.dev)}><svg class="ri"><use href="#${o.icon}"/></svg><div><div class="ti">${o.unread ? '<span class="dot" aria-label="Unread"></span>' : ''}${esc(o.title)}</div>${o.msg ? `<div class="ms">${esc(o.msg)}</div>` : ''}<div class="mlab mt">${o.meta}</div></div>${o.act ? `<button type="button" class="quiet">${o.act}<svg viewBox="0 0 16 16"><path d="M6 3l5 5-5 5"/></svg></button>` : '<span></span>'}</li>`;
+  const neutral = { unread:true, icon:'s-flag', title:`Stage 1 of ${RACE} is finished`, msg:'', meta:'Sat 13:02 · Race', act:'See the result', dev:1 };
+  const today = { unread:true, icon:'s-flag', title:'Ferrandi wins solo on Monte Serra', msg:`Stage 1 of ${RACE}. Mikkel Aagaard 3rd, Jonas Vermeer 9th.`, meta:'Sat 13:02 · Race', act:'See the result' };
+  const other = [
+    { icon:'s-gavel', title:'You were outbid on Stefan Ricci', msg:'The auction ends Sat 21:00.', meta:'Sat 12:40 · Auction', act:'Bid again' },
+    { icon:'s-coin', title:'Sponsor payment received', msg:'Paid into your account.', meta:'Sat 08:00 · Finance', act:'' },
+  ];
+  return `<div class="t1"><div class="pagehead row"><div><h1 class="pg">Notifications</h1><p class="dim">Races, auctions, transfers and your board.</p></div><div class="acts"><button type="button" class="btn2">Mark all as read</button></div></div>
+    <div class="sk-col">
+    <section class="card"><h2>Inbox <small class="mlab">With the shield on</small></h2><ul class="rows">${row(neutral)}${other.map(row).join('')}</ul></section>
+    <section class="card"${dev(2)}><h2>In-game <small class="mlab">bell and pop-up, with the shield on</small></h2>
+      <div class="frame"><div class="topbar"><span class="dim" style="margin-right:auto">Top bar</span><span class="bell" aria-label="Notifications, 1 unread"><svg><use href="#s-bell"/></svg><span class="n">1</span></span></div>
+        <div class="popin" role="dialog" aria-label="Latest notifications"><div class="h">Latest</div><div class="o"><b>Stage 1 of ${RACE} is finished</b><small>Sat 13:02 · Race</small></div><div class="o">You were outbid on Stefan Ricci<small>Sat 12:40 · Auction</small></div></div>
+        <div class="toast" role="status"><svg class="ri" style="width:18px;height:18px;stroke:var(--t2);fill:none;stroke-width:1.6"><use href="#s-flag"/></svg><div><b>Stage 1 is finished</b><span class="dim">${RACE}</span><div style="margin-top:6px"><button type="button" class="quiet">Open the race<svg viewBox="0 0 16 16"><path d="M6 3l5 5-5 5"/></svg></button></div></div></div>
+      </div></section>
+    <section class="card was"><h2>The same race row with the shield off <small class="mlab">as today</small></h2><ul class="rows">${row(today)}</ul></section>
+    </div></div>`;
+}
+
+/* ---------- 7 browser notifications and settings ---------- */
+function browserView(){
+  const rule = (on, label, d) => `<button type="button" class="rule" aria-pressed="${on}"${dev(d)}><i aria-hidden="true"></i>${label}</button>`;
+  return `<div class="t1"><div class="pagehead"><h1 class="pg">Settings</h1><p class="dim">Notifications, language and how results reach you.</p></div>
+    <div class="sk-col">
+    <section class="card"><h2>Browser notifications <small class="mlab">with the shield on</small></h2>
+      <div class="os-wrap"${dev(1)}><div><p class="os-cap">Android</p><div class="os android"><div class="app"><i></i>Cycling Zone · now</div><b>Stage 1 is finished</b><p>${RACE} · see the result</p></div></div>
+      <div><p class="os-cap">Chrome on a computer</p><div class="os win"><div class="app"><i></i>Cycling Zone · cyclingzone.app</div><b>Stage 1 is finished</b><p>${RACE} · see the result</p></div></div></div>
+      <p class="dim" style="margin:12px 0 0">With the shield off the notification says who won and where your riders finished, as today.</p></section>
+    <section class="card"><h2>Results and spoilers</h2><div class="set">
+      <div class="r"><div><b>Spoiler shield for all races</b><p>Hides winners and results until you open the stage. Each race page also has its own switch.</p></div>${rule(false, 'Off', 2)}</div>
+      <div class="r"><div><b>Browser notifications</b><p>A notification when a stage is finished. With the shield on it only says that the stage is finished.</p></div>${rule(true, 'On', 0)}</div>
+      <div class="r"><div><b>Open a finished stage in</b><p>The shield always opens a finished stage in Story.</p></div><div class="seg" role="group" aria-label="Open a finished stage in"><button type="button" aria-pressed="true">Results</button><button type="button" aria-pressed="false">Story</button></div></div>
+    </div></section></div></div>`;
+}
+
+/* ---------- 8 standings ---------- */
+function standings(){
+  const T = [['Team C',412,0],['Team F',398,1],[ME,377,2],['Team D',351,3],['Team H',330,4],['Team B',318,5],['Team G',296,6],['Team E',281,7],['Team A',260,8]];
+  return `<div class="t2"><div class="pagehead row"><div><h1 class="pg">Standings</h1><p class="dim"${dev(1)}>Division 2 · points up to the last stage you have seen: ${RACE}, before stage 1</p></div><div class="acts"><button type="button" class="btn2"${dev(2)}>Show latest</button></div></div>
+    <div class="tabs small" role="tablist"><button role="tab" type="button" aria-selected="true">Teams</button><button role="tab" type="button" aria-selected="false">Riders</button></div>
+    <section class="card"><h2>Season standings <span class="hd-meta"${dev(3)}>1 finished stage not seen yet</span></h2>
+      <div class="tbl"><table data-sort-exempt="standings"><thead><tr><th>Pos</th><th>Team</th><th class="n">Races</th><th class="n">Points</th><th class="n">Gap</th></tr></thead><tbody>
+      ${T.map(([t, pts], i) => `<tr><td class="p">${i + 1}</td><td class="team">${tn(t)}${t === ME ? '<span class="you">You</span>' : ''}</td><td class="n">14</td><td class="n">${pts}</td><td class="n">${i ? '-' + (T[0][1] - pts) : ''}</td></tr>`).join('')}
+      </tbody></table></div>
+      <p class="dim" style="margin-top:8px">The Riders tab follows the same rule. Show latest adds the stages you have not seen.</p></section></div>`;
+}
+
+/* ---------- 9 coverage (Danish: for the owner) ---------- */
+function coverage(){
+  const R = [
+    ['Løbsside: etapestriben', 'Vinder pr. kørt etape, fører i Samlet', 'hide', 'Finished / Hidden (wireframe)', '2, 3'],
+    ['Løbsside: hovedet', 'Vinder og afstand i verdict-linjen', 'hide', 'Stage finished · result hidden by your spoiler shield (wireframe)', '2, 3'],
+    ['Løbsside: Story', 'Referat og film til mål', 'hide', 'Kun til hvor du er i filmen, The finale is ahead (wireframe)', '2'],
+    ['Løbsside: Results, Din dag, trøjer, sidste km', 'Alle placeringer', 'hide', 'Bag Show results (wireframe)', '3'],
+    ['Løbsside: Taktik efter etapen', 'Placering pr. rytter', 'hide', 'Hidden, som wireframets Tactics-kolonne', '3'],
+    ['Løbscentret og Resultater-siden', 'Podium pr. løb', 'hide', 'Finished i stedet for podium, samme ord som striben', '9'],
+    ['Forside: dagens etaper', 'Vindernavn på chippen', 'hide', 'Result hidden by your spoiler shield', '5'],
+    ['Forside: Seneste resultat', 'Placeringer, "vandt"', 'hide', 'Stage 1 is finished + Show result', '5'],
+    ['Indbakke', 'Referat-overskrift + placering', 'neutral', 'Stage 1 of [løb] is finished · See the result', '6'],
+    ['Klokke og pop-up i spillet', 'Samme tekst som indbakken', 'neutral', 'Stage 1 is finished · Open the race', '6'],
+    ['Browser-notifikation (push)', 'Samme tekst som indbakken', 'neutral', 'Stage 1 is finished · [løb] · see the result', '7'],
+    ['Mail-digest', 'Bedste placering pr. løb', 'neutral', 'Forslag: samme neutrale tekst (ikke aftalt)', '7'],
+    ['Stilling og ranglister', 'Point fra nye etaper', 'seen', 'Stilling efter din sidst sete etape + Show latest', '8'],
+    ['Holdets og rytterens resultatfaner, hover-kort', 'Seneste placeringer', 'seen', 'Kun etaper du har set', '8'],
+    ['Løbshistorik og arkiv', 'Vindere', 'seen', 'Kun etaper du har set', '8'],
+    ['Præstationer og bestyrelsesmål', 'Udløses af en etapesejr', 'seen', 'Vises først når etapen er set (skal med i byggeplanen)', '9'],
+    ['Discord (DM og bot)', 'Placeringer', 'out', 'Ikke en del af løsningen (ejervalg 16/11)', '9'],
+  ];
+  const TAG = { hide:['Skjult','hide'], neutral:['Neutral tekst','neutral'], seen:['Til sidst sete etape','seen'], out:['Udenfor','out'] };
+  return `<div class="t2"><div class="pagehead"><h1 class="pg">Hvor skjoldet virker</h1><p class="dim">Skjoldet er slået fra som standard. Når det er slået til, gælder én regel tre steder: skjul, sig det neutralt, eller vis til din sidst sete etape.</p></div>
+    <section class="card"><h2>Alle steder et resultat afsløres i dag <small class="mlab">liste fra skitsen 16/11</small></h2><div class="tbl"><table class="cov" data-sort-exempt="kortlaegning"><thead><tr><th>Sted</th><th class="why-col">Afslører i dag</th><th>Med skjoldet</th><th class="why-col">Sådan</th><th class="n">Visning</th></tr></thead><tbody>
+    ${R.map(([w, a, k, how, v]) => `<tr><td>${esc(w)}</td><td class="why-col dim">${esc(a)}</td><td><span class="tag ${TAG[k][1]}">${TAG[k][0]}</span></td><td class="why-col">${esc(how)}</td><td class="n">${v}</td></tr>`).join('')}
+    </tbody></table></div></section></div>`;
+}
+
+/* ---------- render ---------- */
+function bar(){
+  return `<div class="sk-bar"><b>Skitse #7859 · spoiler-skjold bygget på wireframe v6c.</b><span>Syntetiske data. Visning 1-4 er løbssiden som wireframet, 5-9 udvider samme løsning. Tilføj <code>&amp;marks</code> for afvigelser.</span><nav aria-label="Views">${VIEWS.map(([k, l]) => `<a href="?v=${k}${Q.has('marks') ? '&marks' : ''}" aria-current="${k === VIEW ? 'page' : 'false'}">${k} ${l}</a>`).join('')}</nav></div>`;
+}
+function render(){
+  const body = ['1','2','3','4'].includes(VIEW) ? racePage() : VIEW === '5' ? dashboard() : VIEW === '6' ? inbox() : VIEW === '7' ? browserView() : VIEW === '8' ? standings() : coverage();
+  document.getElementById('wrap').innerHTML = bar() + body;
+  setCalH(); fitProfiles();
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.id === 'shield'){ S.shield = !S.shield; S.mode = S.shield ? 'story' : 'results'; if (S.shield) S.pos = Math.min(S.pos, 128); return render(); }
+  if (b.dataset.act === 'show'){ S.seen[S.stage] = true; S.mode = 'results'; return render(); }
+  if (b.dataset.mode){ S.mode = b.dataset.mode; return render(); }
+});
+window.addEventListener('resize', () => { fitProfiles(); setCalH(); });
+render();
+</script>
+</body>
+</html>
