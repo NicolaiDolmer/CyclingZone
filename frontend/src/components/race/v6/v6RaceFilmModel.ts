@@ -121,6 +121,15 @@ export function v6MoreAhead(lines: ReadonlyArray<Pick<StoryLine, "km">>, km: num
   return lines.some((l) => l.km > km + EPS);
 }
 
+/**
+ * Låst (spec 7/11): vinderen står ingen steder i Historie. Etapestriben over filmen
+ * viser derfor ikke den valgte etapes vinder eller egen plads, mens Historie er åben;
+ * cellen siger kun, at etapen er kørt. Andre etaper er uændrede.
+ */
+export function v6StoryStripCells<T extends { number: number; foot: { kind: string } }>(cells: readonly T[], selectedStage: number): T[] {
+  return cells.map((c) => (c.number === selectedStage && c.foot.kind === "ridden" ? ({ ...c, foot: { kind: "ridden", winner: null, myRank: null } } as T) : c));
+}
+
 /** Afspilningens skridt pr. tik: hele etapen på cirka 15 s (som den nuværende afspiller), aldrig under en halv km. */
 export function v6PlayStep(distanceKm: number): number {
   return Math.max(0.5, Math.round(distanceKm / 150));

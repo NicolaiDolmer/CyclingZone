@@ -1,8 +1,9 @@
 // #7861 · Løbsfilmen som én afspiller: kapitler og referatet, der følger filmen.
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
-  climbFootKm, v6ChapterAt, v6CurrentLine, v6FilmChapters, v6FinaleKm, v6MoreAhead, v6NextChapter, v6PlayStep, v6VisibleLines,
+  climbFootKm, v6ChapterAt, v6CurrentLine, v6FilmChapters, v6FinaleKm, v6MoreAhead, v6NextChapter, v6PlayStep, v6StoryStripCells, v6VisibleLines,
 } from "./v6RaceFilmModel.ts";
 
 const mountainClimbs = [
@@ -74,6 +75,39 @@ test("referatet viser kun linjerne op til filmens position, så vinderen først 
   assert.equal(v6CurrentLine(lines, 5), null);
   assert.equal(v6MoreAhead(lines, 70), true);
   assert.equal(v6MoreAhead(lines, 155), false);
+});
+
+test("i Historie viser striben ikke den valgte etapes vinder eller egen plads (låst 7/11)", () => {
+  const cells = [
+    { number: 1, foot: { kind: "ridden", winner: "A. Vinder", myRank: 4 } },
+    { number: 2, foot: { kind: "ridden", winner: "B. Vinder", myRank: 2 } },
+    { number: 3, foot: { kind: "plan", state: "saved" } },
+  ];
+  const out = v6StoryStripCells(cells, 2);
+  assert.deepEqual(out[1].foot, { kind: "ridden", winner: null, myRank: null });
+  assert.equal(out[0], cells[0], "andre etaper er uændrede");
+  assert.equal(out[2], cells[2]);
+  assert.deepEqual(v6StoryStripCells(cells, 3)[2], cells[2], "en kommende etape har intet at skjule");
+});
+
+const read = (rel: string) => readFileSync(new URL(rel, import.meta.url), "utf8").replace(/\r\n/g, "\n");
+
+test("Historie efter etapen er filmen; Etape-fanen har Historie | Resultater i rutelinjen", () => {
+  const page = read("./RacePageV6.tsx");
+  assert.match(page, /activeTab === "stage" && phase === "after"\) \{[\s\S]{0,400}routeLine\("story"\)[\s\S]{0,200}<V6RaceFilm /);
+  assert.match(page, /\{routeLine\("results"\)\}\{renderResults\(/);
+  const line = read("./V6RouteLine.tsx");
+  assert.match(line, /racePageV6\.tab\.story[\s\S]{0,120}racePageV6\.tab\.results/, "Historie først, som wireframet");
+});
+
+test("filmens dubletter er væk under v6: popup-afspiller, sidste km, ekstra referat og mellemtider", () => {
+  const detail = read("../../../pages/RaceDetailPage.jsx");
+  assert.equal(detail.match(/\{!hideFilm && <StoryOfTheStageSection/g)?.length, 2, "etapens og endagsløbets popup-afspiller");
+  assert.match(detail, /\{!hideFilm && finalKmOpen && finalKmPlayback\.available && \(/);
+  assert.match(detail, /\{!hideFilm && <RaceReportPanel/);
+  assert.match(detail, /\{!hideFilm && <StageSplitTimes/);
+  assert.match(detail, /\{!hideFilm && <RaceRecap results=\{oneDayResults\}/);
+  assert.match(detail, /standingsSlot: renderTabContent\("results", \{ hideOrdersRecap: v6, hideFilm: v6 \}\)/, "kun når v6 er tændt");
 });
 
 test("afspilningen går hele etapen igennem i ca. 150 tik, aldrig under en halv km pr. tik", () => {
