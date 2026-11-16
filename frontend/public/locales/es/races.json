@@ -4,9 +4,30 @@
       "results": "Resultados",
       "stage": "Etapa",
       "story": "Historia",
-      "standings": "Clasificaciones",
+      "startlist": "Lista de salida",
       "tactics": "Táctica",
       "team": "Equipo"
+    },
+    "mode": { "aria": "Vista de la etapa" },
+    "film": {
+      "title": "Película de la carrera",
+      "meta": "El recorrido es la línea de tiempo",
+      "play": "Reproducir",
+      "chaptersAria": "Capítulos",
+      "chapter": {
+        "start": "Salida",
+        "break": "La escapada",
+        "sprint": "Sprint km {km}",
+        "finale": "Final"
+      },
+      "report": {
+        "title": "Qué pasó",
+        "meta": "Hasta donde vas en la película",
+        "empty": "Pulsa Reproducir o elige un capítulo. El relato sigue a la película, así que nada se desvela antes de llegar.",
+        "ahead": "El resto de la etapa llega mientras avanza la película."
+      },
+      "none": "Esta etapa no tiene película de la carrera. El resultado completo está en Resultados.",
+      "error": "No se pudo cargar la película de la carrera. El resultado completo está en Resultados."
     },
     "hero": {
       "stageLocks": "La etapa {number} se cierra a las {time} · {countdown}",

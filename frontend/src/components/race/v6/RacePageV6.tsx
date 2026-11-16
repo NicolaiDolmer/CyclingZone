@@ -41,7 +41,7 @@ import { useRaceViewTelemetry } from "../../../lib/useRaceViewTelemetry.ts";
 import { useRiderNames } from "../../../lib/useRiderNames.js";
 import { useUiPref } from "../../../lib/userUiPrefs.ts";
 import {
-  tacticsCta, v6NamesFromResults, v6ResultsPhase, v6SavedStages, v6SavedStagesRefreshKey, v6StageTabFor, v6Strip, v6StripCells, v6StripWinners, v6Tabs,
+  tacticsCta, v6NamesFromResults, v6ResultsPhase, v6SavedStages, v6SavedStagesRefreshKey, v6StageTabFor, v6Strip, v6StripCells, v6StripWinners, v6TabButtonFor, v6TabButtons,
   v6TacticsResults, v6TacticsStage, v6WinnerIdsByStage, v6WinnersByStage,
   type RacePageV6Tab, type StageResultsState, type V6ResultRow,
 } from "./racePageV6Model.ts";
@@ -49,6 +49,8 @@ import V6StageStrip from "./V6StageStrip.tsx";
 import V6RouteProfile from "./V6RouteProfile.tsx";
 import V6TacticsAfter from "./V6TacticsAfter.tsx";
 import V6YourDay from "./V6YourDay.tsx";
+import V6RaceFilm from "./V6RaceFilm.tsx"; // #7861
+import V6RouteLine, { type V6StageMode } from "./V6RouteLine.tsx"; // #7861
 import { V6TacticsSavedContext } from "./v6TacticsSaved.ts";
 import { Button, EmptyState, FlagIcon } from "./v6Ui.ts";
 import V6RaceHeroCard, { type RacePageV6Hero } from "./V6RaceHeroCard.tsx";
@@ -86,6 +88,8 @@ export interface RacePageV6Props extends Omit<StagePageV2Props, "activeTab" | "o
   onOpenStage?: (stageNumber: number, tab: RacePageV6Tab) => void;
   /** Udgave E: cellens tidspunkt (kun klokkeslæt i dag, ellers ugedag og klokkeslæt). */
   whenLabelFor?: (date: Date) => string | null;
+  /** #7861: Startliste-fanens indhold (bygges i #7862); uden den står fanen ikke. */
+  startListSlot?: ReactNode;
 }
 
 /**
@@ -116,7 +120,7 @@ export default function RacePageV6(props: RacePageV6Props) {
     activeTab, onChangeTab, profileByStage, schedule, timeLabelFor, results, stagePointRows, stageLoaded,
     myTeamId, stageRoles, dnfRows = [], standingsSlot, raceId = null, renderResults,
     raceFinished, nowMs, onOpenTactics, tacticsStageRequest = null, loadStage, stageStateFor, stageErrorFor,
-    renderTactics, tacticsSlot, hero, onOpenStage, whenLabelFor,
+    renderTactics, tacticsSlot, hero, onOpenStage, whenLabelFor, startListSlot,
   } = props;
   const { t } = useTranslation("races");
   const profileId = useId();
@@ -128,7 +132,8 @@ export default function RacePageV6(props: RacePageV6Props) {
   const bestByStage = useMemo(() => myBestByStage(stagePointRows, myTeamId, nameById), [stagePointRows, myTeamId, nameById]);
   const phase = stagePhase(selectedStage, stagesCompleted);
   // StagePageV2 maaler sine egne faner; Resultater er v6's egen og maales her.
-  useRaceViewTelemetry({ raceId: activeTab === "results" ? raceId : null, tab: activeTab, stage: selectedStage, phase });
+  // #7861: Historie efter etapen er også v6's egen (filmen), ikke StagePageV2's.
+  useRaceViewTelemetry({ raceId: activeTab === "results" || (activeTab === "stage" && phase === "after") ? raceId : null, tab: activeTab, stage: selectedStage, phase });
 
   // #7865: Taktik-fanens etape. Siden ejer den seneste eksplicitte navigation (striben
   // og hovedets guld-knap går samme vej) og glemmer den, når fanen forlades.
@@ -141,7 +146,7 @@ export default function RacePageV6(props: RacePageV6Props) {
   }, [tacticsResults, tacticsStage, loadStage]);
   const selectTacticsStage = (n: number) => onOpenTactics(n);
 
-  const tabs = v6Tabs(isStageRace);
+  const tabs = v6TabButtons(startListSlot != null);
   const tabIdBase = useId();
   const tabId = (key: string) => `${tabIdBase}-tab-${key}`;
   // Udgave E: én celle pr. etape, kun med data siden allerede har (v6StripCells).
@@ -180,6 +185,8 @@ export default function RacePageV6(props: RacePageV6Props) {
   const canShowRoute = profile != null && hasRouteData(profile);
   const routeShown = canShowRoute && !routeHidden;
   const resultsPhase = v6ResultsPhase({ selectedStage, stagesCompleted, raceFinished, schedule, nowMs });
+  // #7861: en kørt etapes Etape-fane har rutelinjen med Historie | Resultater øverst.
+  const routeLine = (mode: V6StageMode) => <V6RouteLine mode={mode} onChange={(m) => onChangeTab(m === "story" ? "stage" : "results")} profile={profile} />;
 
   let body: ReactNode;
   if (activeTab === "tactics") {
@@ -208,20 +215,35 @@ export default function RacePageV6(props: RacePageV6Props) {
         </V6TacticsSavedContext.Provider>
       </div>
     );
+  } else if (activeTab === "stage" && phase === "after") {
+    // #7861: Historie er ÉN film med ét referat; "Din dag" og resultatet står i Resultater.
+    body = (
+      <div className="flex flex-col gap-[14px]">
+        {routeLine("story")}
+        <V6RaceFilm key={selectedStage} raceId={raceId} stageNumber={selectedStage} isStageRace={isStageRace} profile={profile} results={results} myTeamId={myTeamId} stageRoles={stageRoles} onShowResults={() => onChangeTab("results")} />
+      </div>
+    );
+  } else if (activeTab === "startlist") {
+    body = <div data-race-section="startlist">{startListSlot}</div>;
   } else if (activeTab !== "results") {
     body = (
       <StagePageV2
         {...props}
         activeTab={activeTab as StagePageV2Tab}
-        onChangeTab={(tab) => onChangeTab(tab)}
+        onChangeTab={(tab) => onChangeTab(tab === "standings" ? "results" : tab)}
         hideNav
         hideTacticsAction
         hideOrdersRecap
       />
     );
   } else if (!isStageRace) {
-    // Endagsloebets resultat er det nuvaerende (maaltavle + historie), uaendret.
-    body = <div data-race-section="standings">{standingsSlot}</div>;
+    // Endagsloebets resultat er det nuvaerende (maaltavle); #7861: filmen og referatet staar i Historie.
+    body = (
+      <div className="flex flex-col gap-[14px]">
+        {phase === "after" && routeLine("results")}
+        <div data-race-section="standings">{standingsSlot}</div>
+      </div>
+    );
   } else if (resultsPhase !== "ridden") {
     // #7865 (punkt 5): en etape på vejen siger det, i stedet for "Get ready for stage N".
     body = (
@@ -235,7 +257,7 @@ export default function RacePageV6(props: RacePageV6Props) {
       />
     );
   } else {
-    body = renderResults(selectedStage, {
+    body = <div className="flex flex-col gap-[14px]">{routeLine("results")}{renderResults(selectedStage, {
       profileSlot: profile ? (
         <V6RouteProfile
           id={profileId}
@@ -248,7 +270,7 @@ export default function RacePageV6(props: RacePageV6Props) {
         />
       ) : null,
       sideSlot: <V6YourDay results={results} stageNumber={selectedStage} myTeamId={myTeamId} dnfRows={dnfRows} loaded={stageLoaded} raceId={raceId} profile={profile} stageRoles={stageRoles} nowMs={nowMs} />,
-    });
+    })}</div>;
   }
 
   const selectFromStrip = (n: number) => {
@@ -264,18 +286,18 @@ export default function RacePageV6(props: RacePageV6Props) {
       <V6RaceHeroCard hero={hero} strip={strip ? <V6StageStrip cells={stripCells} profileByStage={profileByStage} selected={strip.selected} onSelect={selectFromStrip} /> : null} />
       {/* Fanerne står 8 px under kortet (gap 14 minus 14, plus 8 px luft i den klæbende række). */}
       <div className="sticky top-0 z-20 -mt-[14px] -mb-2 bg-cz-body pt-2 pb-2">
-        <Tabs value={activeTab} onChange={(v) => onChangeTab(v as RacePageV6Tab)}>
+        {/* #7861: Etape er én fane med Historie | Resultater i rutelinjen; den åbner en kørt etape på Resultater (valg 5). */}
+        <Tabs value={v6TabButtonFor(activeTab)} onChange={(v) => onChangeTab(v === "stage" ? v6StageTabFor(selectedStage, stagesCompleted) : v as RacePageV6Tab)}>
           <TabList label={t("stagePageV2.tabsAria")} accent>
             {tabs.map((key) => (
-              // En koert etapes "Etape"-fane er historien om etapen; foer etapen er den forhaandsvisningen.
-              <Tab key={key} value={key} id={tabId(key)}>{t(`racePageV6.tab.${key === "stage" && phase === "after" ? "story" : key}`)}</Tab>
+              <Tab key={key} value={key} id={tabId(key)}>{t(`racePageV6.tab.${key}`)}</Tab>
             ))}
           </TabList>
         </Tabs>
       </div>
       {/* #7865 (review-punkt d): panelet har samme bredde og placering som kortet og
           fanerne over det, så intet står venstrestillet under et bredere kort ved 1600 px+. */}
-      <div role="tabpanel" aria-labelledby={tabId(activeTab)} data-race-body-width="card" className="w-full">
+      <div role="tabpanel" aria-labelledby={tabId(v6TabButtonFor(activeTab))} data-race-body-width="card" className="w-full">
         {body}
       </div>
     </div>

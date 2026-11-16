@@ -4,9 +4,30 @@
       "results": "Résultats",
       "stage": "Étape",
       "story": "Récit",
-      "standings": "Classements",
+      "startlist": "Liste de départ",
       "tactics": "Tactique",
       "team": "Équipe"
+    },
+    "mode": { "aria": "Vue de l'étape" },
+    "film": {
+      "title": "Film de la course",
+      "meta": "Le parcours est la ligne du temps",
+      "play": "Lecture",
+      "chaptersAria": "Chapitres",
+      "chapter": {
+        "start": "Départ",
+        "break": "L'échappée",
+        "sprint": "Sprint km {km}",
+        "finale": "Final"
+      },
+      "report": {
+        "title": "Ce qui s'est passé",
+        "meta": "Jusqu'où tu en es dans le film",
+        "empty": "Appuie sur Lecture ou choisis un chapitre. Le récit suit le film, donc rien n'est dévoilé avant que tu y arrives.",
+        "ahead": "La suite de l'étape arrive au fil du film."
+      },
+      "none": "Cette étape n'a pas de film de la course. Le résultat complet est dans Résultats.",
+      "error": "Le film de la course n'a pas pu être chargé. Le résultat complet est dans Résultats."
     },
     "hero": {
       "stageLocks": "L'étape {number} se verrouille à {time} · {countdown}",
