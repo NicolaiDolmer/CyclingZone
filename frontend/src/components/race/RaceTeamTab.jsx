@@ -318,7 +318,8 @@ export default function RaceTeamTab({
     {profileRow}
     <Section data-testid="race-team-tab">
       <SectionHeader
-        title={t("racePage.team.title")}
+        // #7862 (wireframe v6c): under v6 navngiver overskriften etapen, rollerne følger.
+        title={!isOneDay && roleStage != null ? `${t("racePage.team.title")} · ${t("detail.tabStage", { number: roleStage })}` : t("racePage.team.title")}
         meta={t("racePage.team.riderCount", { count: riders.length })}
       />
       <p className="text-cz-3 text-xs mb-3 flex items-center gap-1.5">

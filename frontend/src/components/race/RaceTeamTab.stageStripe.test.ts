@@ -92,3 +92,11 @@ test("#5419 et etapeskift via changeStage rammer PRÆCIS de props der allerede f
     "selectedStageIndexForPanel skal stadig udledes af scheduledStage — det er DEN variabel changeStage (nu kaldt fra Hold-fanens stribe) skriver til via ?stage=",
   );
 });
+
+test("#7862 under v6 navngiver Hold-fanens overskrift den valgte etape (wireframe v6c), ellers uændret", () => {
+  assert.match(
+    raceTeamTab,
+    /title=\{!isOneDay && roleStage != null \? `\$\{t\("racePage\.team\.title"\)\} · \$\{t\("detail\.tabStage", \{ number: roleStage \}\)\}` : t\("racePage\.team\.title"\)\}/,
+    "overskriften skal være \"Hold · Etape N\", når rollerne følger en valgt etape, og ellers kun \"Hold\"",
+  );
+});
