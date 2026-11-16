@@ -50,6 +50,7 @@ import V6RouteProfile from "./V6RouteProfile.tsx";
 import V6TacticsAfter from "./V6TacticsAfter.tsx";
 import V6YourDay from "./V6YourDay.tsx";
 import { V6TacticsSavedContext } from "./v6TacticsSaved.ts";
+import { TacticsLayoutContext } from "../../tactics/tacticsLayout.ts"; // #8297
 import { Button, EmptyState, FlagIcon } from "./v6Ui.ts";
 import V6RaceHeroCard, { type RacePageV6Hero } from "./V6RaceHeroCard.tsx";
 
@@ -203,9 +204,10 @@ export default function RacePageV6(props: RacePageV6Props) {
             resultsErrorSlot={tacticsResults === "failed" ? stageErrorFor?.(tacticsStage) ?? null : null}
           />
         ) : null}
-        <V6TacticsSavedContext.Provider value={onTacticsSaved}>
+        {/* #8297: editoren tegnes som det fælles taktikpanel (wireframe v6c) under v6. */}
+        <TacticsLayoutContext.Provider value="v6c"><V6TacticsSavedContext.Provider value={onTacticsSaved}>
           {renderTactics ? renderTactics(tacticsStage) : tacticsSlot}
-        </V6TacticsSavedContext.Provider>
+        </V6TacticsSavedContext.Provider></TacticsLayoutContext.Provider>
       </div>
     );
   } else if (activeTab !== "results") {
