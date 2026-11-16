@@ -106,6 +106,7 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "training_train_now_instant", // #8031 (kun patch-noten om Traen nu-kvitteringen)
   "sale_escrow_enabled", // #6181 Hjaelp (binaert, som pengelaasen)
   "training_history_from_ticks_6490", // #6490 traeningssidens laesevej (binaert)
+  "patch_notes_v2_8049", // #8049 (off; ?patchNotesV2=on paa preview)
 ];
 
 // Spejler PLAYER_VISIBLE_BINARY_FLAG_KEYS i backenden: "beta" er off.
@@ -154,12 +155,26 @@ function previewRacePageV6Enabled() {
 }
 previewRacePageV6Enabled();
 
+// #8049: den nye patch notes-side er OFF på preview (som i prod); ?patchNotesV2=on viser den.
+function previewPatchNotesV2Enabled() {
+  try {
+    const param = new URLSearchParams(window.location.search).get("patchNotesV2");
+    if (param === "on") localStorage.setItem("cz_mock_patch_notes_v2", "1");
+    if (param === "off") localStorage.setItem("cz_mock_patch_notes_v2", "0");
+    return localStorage.getItem("cz_mock_patch_notes_v2") === "1";
+  } catch {
+    return false;
+  }
+}
+previewPatchNotesV2Enabled();
+
 // #7778: visningsvalg på brugeren (GET/PUT /api/me/ui-prefs), i hukommelsen.
 let uiPrefs = {};
 
 function playerFlags() {
   return Object.fromEntries(PLAYER_VISIBLE_FLAG_KEYS.map((key) => {
     if (key === "race_page_v6") return [key, previewRacePageV6Enabled()];
+    if (key === "patch_notes_v2_8049") return [key, previewPatchNotesV2Enabled()];
     if (key === "training_catalog_v3") return [key, previewCatalogV3Enabled()];
     if (key === "champion_jerseys_7824") return [key, previewChampionJerseysEnabled()];
     if (key === "potential_estimate_display") return [key, previewPotentialEstimateEnabled()];

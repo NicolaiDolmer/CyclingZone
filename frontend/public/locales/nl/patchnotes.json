@@ -54,5 +54,75 @@
   "footer": {
     "hiddenNote": "Interne en technische notities worden op deze pagina niet getoond.",
     "rolloutNote": "Beta: alleen de betagroep heeft het. Geen label: live voor iedereen."
+  },
+  "v2": {
+    "subtitle": "Wat er nieuw is in Cycling Zone, per week en per onderdeel",
+    "newSince": "{count, plural, one {# nieuw sinds je laatste bezoek} other {# nieuw sinds je laatste bezoek}}",
+    "newDot": "Nieuw sinds je laatste bezoek",
+    "heroImageAlt": "Schermafbeelding uit het spel: {title}",
+    "search": {
+      "ariaLabel": "Zoek in alle patch notes",
+      "placeholder": "Zoek in alle patch notes, ook in het archief"
+    },
+    "area": {
+      "label": "Onderdeel",
+      "all": "Alle onderdelen",
+      "tactics": "Tactiek",
+      "races": "Koersen en koersfilm",
+      "engine": "Koersmotor",
+      "training": "Training",
+      "development": "Ontwikkeling",
+      "market": "Markt",
+      "academy": "Academie en jeugd",
+      "board": "Bestuur",
+      "economy": "Economie",
+      "interface": "Interface",
+      "mobile": "Mobiel",
+      "help": "Help",
+      "other": "Overig"
+    },
+    "tag": {
+      "on": "Aan voor iedereen",
+      "new": "Nieuw",
+      "beta": "Beta",
+      "improved": "Verbetering",
+      "fixed": "Oplossing"
+    },
+    "thisWeek": "Deze week",
+    "lastWeek": "Vorige week",
+    "week": "Week {week}",
+    "weekMeta": "{range} · {count, plural, one {# wijziging} other {# wijzigingen}}",
+    "earlierWeeks": "Eerdere weken",
+    "archive": "Archief",
+    "changes": "{count, plural, one {# wijziging} other {# wijzigingen}}",
+    "olderMonths": "{from} tot {to}",
+    "showMonths": "Toon de maanden",
+    "open": "Openen",
+    "openWeek": "Week openen",
+    "close": "Sluiten",
+    "openOnMonday": "open zolang deze week rustig is",
+    "moreIn": "+{count} meer in {area}",
+    "fixesCount": "{count, plural, one {# oplossing} other {# oplossingen}}",
+    "show": "Tonen",
+    "showFixes": "Toon de oplossingen in {area}",
+    "mostImportant": "Belangrijkste",
+    "otherCount": "overig {count}",
+    "emptyWeek": "Nog geen wijzigingen deze week.",
+    "emptyWeekFiltered": "Geen wijzigingen passen hier bij je filters.",
+    "searchResults": "Zoekresultaten",
+    "hits": "{count, plural, one {# resultaat} other {# resultaten}}",
+    "showing": "{shown} van {total} getoond",
+    "showMore": "Meer tonen",
+    "clear": "Filters wissen",
+    "searchEmpty": {
+      "title": "Niets past bij je zoekopdracht",
+      "description": "Probeer een ander woord of wis de filters."
+    },
+    "filterEmpty": {
+      "title": "Niets past bij je filters",
+      "description": "Wis de filters om alle wijzigingen te zien."
+    },
+    "indexError": "Oudere patch notes kunnen nu niet worden doorzocht. De laatste weken worden nog wel doorzocht.",
+    "monthError": "Deze maand kon niet worden geladen. Er is niets verloren gegaan."
   }
 }

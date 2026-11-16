@@ -116,6 +116,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "rider_hover_card", area: "squad", label: "Hover-miniprofil på ryttere" },
   // #7535: den nye planlægningsside (løbsliste, ugeoversigt, trup-tabel, ruteprofil). Kun visning, beta først.
   { key: "planning_workbench", area: "race-day", label: "Ny planlægningsside (/planning/workbench)" },
+  // #8049: den nye patch notes-side (uge for uge, efter område, arkiv pr. måned). Kun visning, seedet off.
+  { key: "patch_notes_v2_8049", area: "onboarding", label: "Patch notes: ny side efter område og uge" },
 
   // ── Motorer og batch-jobs (spilleren ser resultatet, ikke kontakten) ──────
   { key: "race_engine_v2_enabled", area: "race-engine", label: "Løbsmotor v2" },
@@ -324,6 +326,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "talent_marks_7879",
   // #2009: rytternavnene viser hover-miniprofilen paa dette flag.
   "rider_hover_card",
+  // #8049: patch notes-siden vaelger den nye side paa dette flag (ogsaa for udloggede, naar det er on).
+  "patch_notes_v2_8049",
   // #7725: Hjaelp viser svaret om dagsformen i ord paa dette flag (binaert, som motoren).
   "day_words_7725",
   // #7801: Hjaelp viser traethed lige nu og regel-teksten paa dette flag (binaert, som motoren).

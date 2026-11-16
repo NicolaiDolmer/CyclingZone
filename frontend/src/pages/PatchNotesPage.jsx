@@ -1,10 +1,10 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import {
   loadPatches, flattenChanges, filterChanges, groupByDay, pickLang, computeNewDays, CATEGORY_META,
-  effectiveRollout, filterByRollout,
+  effectiveRollout, filterByRollout, PATCH_NOTES_V2_FLAG, isPatchNotesV2Stage,
 } from "../lib/patchNotes.js";
-import { loadAnonymousFlags } from "../lib/featureStage.ts";
+import { loadAnonymousFlags, loadFeatureFlagStages } from "../lib/featureStage.ts";
 import { markSeen, useSeenMarkersSynced } from "../lib/seenMarkers6515.ts"; // #6515
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import { documentLang } from "../i18n/languages.js";
@@ -50,7 +50,7 @@ function formatDate(iso, language) {
 // PageLoader for states. Al ternary-i18n (da ? … : …) erstattet med rigtige
 // t()-nøgler i det nye "patchnotes"-namespace (allerede wired i i18n/index.js,
 // lazy-loaded — siden er allerede route-lazy, se lib/patchNotes.js).
-export default function PatchNotesPage() {
+function LegacyPatchNotesPage() {
   // #2849 bølge 4: patchnotes-namespacet er IKKE inlinet (lazy via HttpBackend) —
   // `ready` indgår i PageLoader-gaten nedenfor så raw keys aldrig rammer first
   // paint. Se INLINE_EXEMPT i scripts/i18n-check-namespace-inline.mjs.
@@ -343,4 +343,63 @@ export default function PatchNotesPage() {
       </div>
     </div>
   );
+}
+
+// ── #8049: kontakten patch_notes_v2_8049 vælger siden ─────────────────────────
+// off (eller ukendt, eller fejl) = den gamle side ovenfor, uændret. beta/on for
+// viewer'en = den nye side (components/patchnotes/), hentet som egen chunk, så den
+// gamle side ikke henter et byte mere. Kontakten læses med viewerens login
+// (loadFeatureFlagStages); udlogget læses den anonymt, så den kun er tændt ved "on".
+// Mens svaret er på vej, vises præcis den gamle sides indlæsning (samme sidehoved
+// og samme head), og det er også det, server-renderingen (prerender) ser.
+const PatchNotesV2Page = lazy(() => import("../components/patchnotes/PatchNotesV2Page.jsx"));
+
+function usePatchNotesHead() {
+  const { t, i18n, ready } = useTranslation("patchnotes");
+  useDocumentHead({
+    title: ready ? t("meta.title") : undefined,
+    description: ready ? t("meta.description") : undefined,
+    canonical: "https://cyclingzone.org/patch-notes",
+    lang: documentLang(i18n.language),
+  });
+  return { t, ready };
+}
+
+function PatchNotesPending() {
+  const { t, ready } = usePatchNotesHead();
+  return (
+    <div className="max-w-4xl mx-auto">
+      <PageHeader title={t("title", { defaultValue: "Patch notes" })} />
+      <PageLoader label={ready ? t("loading.label") : "Loading"} />
+    </div>
+  );
+}
+
+function PatchNotesV2Route() {
+  const { ready } = usePatchNotesHead();
+  const [liveFlags, setLiveFlags] = useState(null);
+  useEffect(() => {
+    let active = true;
+    loadAnonymousFlags().then((flags) => { if (active) setLiveFlags(flags); }).catch(() => {});
+    return () => { active = false; };
+  }, []);
+  if (!ready) return <PatchNotesPending />;
+  return (
+    <Suspense fallback={<PatchNotesPending />}>
+      <PatchNotesV2Page liveFlags={liveFlags} />
+    </Suspense>
+  );
+}
+
+export default function PatchNotesPage() {
+  const [stage, setStage] = useState(null); // null = ikke kendt endnu
+  useEffect(() => {
+    let active = true;
+    loadFeatureFlagStages()
+      .then((stages) => { if (active) setStage(stages?.[PATCH_NOTES_V2_FLAG] ?? "off"); })
+      .catch(() => { if (active) setStage("off"); });
+    return () => { active = false; };
+  }, []);
+  if (stage === null) return <PatchNotesPending />;
+  return isPatchNotesV2Stage(stage) ? <PatchNotesV2Route /> : <LegacyPatchNotesPage />;
 }

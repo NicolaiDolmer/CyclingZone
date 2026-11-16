@@ -54,5 +54,75 @@
   "footer": {
     "hiddenNote": "Las notas internas y técnicas no se muestran en esta página.",
     "rolloutNote": "Beta: solo lo tiene el grupo beta. Sin etiqueta: disponible para todos."
+  },
+  "v2": {
+    "subtitle": "Las novedades de Cycling Zone, semana a semana y por área",
+    "newSince": "{count, plural, one {# novedad desde tu última visita} other {# novedades desde tu última visita}}",
+    "newDot": "Nuevo desde tu última visita",
+    "heroImageAlt": "Captura del juego: {title}",
+    "search": {
+      "ariaLabel": "Buscar en todas las notas de parche",
+      "placeholder": "Buscar en todas las notas, también en el archivo"
+    },
+    "area": {
+      "label": "Área",
+      "all": "Todas las áreas",
+      "tactics": "Táctica",
+      "races": "Carreras y película de carrera",
+      "engine": "Motor de carrera",
+      "training": "Entrenamiento",
+      "development": "Desarrollo",
+      "market": "Mercado",
+      "academy": "Academia y juveniles",
+      "board": "Directiva",
+      "economy": "Economía",
+      "interface": "Interfaz",
+      "mobile": "Móvil",
+      "help": "Ayuda",
+      "other": "Otros"
+    },
+    "tag": {
+      "on": "Activado para todos",
+      "new": "Nuevo",
+      "beta": "Beta",
+      "improved": "Mejora",
+      "fixed": "Corrección"
+    },
+    "thisWeek": "Esta semana",
+    "lastWeek": "La semana pasada",
+    "week": "Semana {week}",
+    "weekMeta": "{range} · {count, plural, one {# cambio} other {# cambios}}",
+    "earlierWeeks": "Semanas anteriores",
+    "archive": "Archivo",
+    "changes": "{count, plural, one {# cambio} other {# cambios}}",
+    "olderMonths": "{from} a {to}",
+    "showMonths": "Mostrar los meses",
+    "open": "Abrir",
+    "openWeek": "Abrir la semana",
+    "close": "Cerrar",
+    "openOnMonday": "abierta mientras esta semana está tranquila",
+    "moreIn": "+{count} más en {area}",
+    "fixesCount": "{count, plural, one {# corrección} other {# correcciones}}",
+    "show": "Mostrar",
+    "showFixes": "Mostrar las correcciones de {area}",
+    "mostImportant": "Lo más importante",
+    "otherCount": "otros {count}",
+    "emptyWeek": "Todavía no hay cambios esta semana.",
+    "emptyWeekFiltered": "Ningún cambio coincide con tus filtros aquí.",
+    "searchResults": "Resultados de búsqueda",
+    "hits": "{count, plural, one {# resultado} other {# resultados}}",
+    "showing": "Mostrando {shown} de {total}",
+    "showMore": "Mostrar más",
+    "clear": "Borrar filtros",
+    "searchEmpty": {
+      "title": "Nada coincide con tu búsqueda",
+      "description": "Prueba otra palabra o borra los filtros."
+    },
+    "filterEmpty": {
+      "title": "Nada coincide con tus filtros",
+      "description": "Borra los filtros para ver todos los cambios."
+    },
+    "indexError": "Ahora mismo no se pueden buscar las notas antiguas. Las últimas semanas se siguen buscando.",
+    "monthError": "No se pudo cargar este mes. No se ha perdido nada."
   }
 }
