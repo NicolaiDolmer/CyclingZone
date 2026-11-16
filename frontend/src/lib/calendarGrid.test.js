@@ -14,6 +14,8 @@ import {
   filterEntries,
   expandStageEvents,
   filterStageEvents,
+  mergePoolTwins,
+  expectedPoolId,
 } from "./calendarGrid.js";
 
 test("daysInMonth håndterer skudår + måneds-længder", () => {
@@ -148,4 +150,85 @@ test("filterStageEvents: poolId snævrer en tier ind til én konkret gruppe", ()
     filterStageEvents(events, { year: 2026, month: 7, division: 2, poolId: 3 }).map((e) => e.raceId),
     ["b"],
   );
+});
+
+// ── #5841: puljernes ens løb står én gang pr. division ─────────────────────────
+
+const POOL_TREE = [
+  { division: 1, pools: [{ id: 1, label: "D1", poolIndex: 0 }] },
+  { division: 3, pools: [{ id: 30, label: "D3 A", poolIndex: 0 }, { id: 31, label: "D3 B", poolIndex: 1 }, { id: 32, label: "D3 C", poolIndex: 2 }] },
+];
+const twin = (id, poolId, poolLabel, extra = {}) => ({
+  id, name: "Ronde X", raceType: "stage_race", stages: 2, division: 3, poolId, poolLabel, isMine: false,
+  stageSchedule: [
+    { stage: 1, date: "2026-12-01", time: "12:00", profileType: "flat" },
+    { stage: 2, date: "2026-12-02", time: "12:00", profileType: "hilly" },
+  ],
+  ...extra,
+});
+
+test("mergePoolTwins: samme løb i tre puljer bliver ét, puljen med lavest nummer vinder", () => {
+  const out = mergePoolTwins([twin("c", 32, "D3 C"), twin("a", 30, "D3 A"), twin("b", 31, "D3 B")], { divisions: POOL_TREE });
+  assert.equal(out.length, 1);
+  assert.equal(out[0].id, "a");
+  assert.equal(out[0].poolLabel, null, "én puljes navn ville paastaa at loebet kun koeres der");
+});
+
+test("mergePoolTwins: holdets egen pulje vinder og beholder sit navn og sin markering", () => {
+  const out = mergePoolTwins(
+    [twin("a", 30, "D3 A"), twin("b", 31, "D3 B", { isMine: true, entered: true })],
+    { divisions: POOL_TREE, preferPoolId: 31 },
+  );
+  assert.equal(out.length, 1);
+  assert.equal(out[0].id, "b");
+  assert.equal(out[0].isMine, true);
+  assert.equal(out[0].entered, true);
+  assert.equal(out[0].poolLabel, "D3 B");
+});
+
+test("mergePoolTwins: en afvigende rute, dato eller division holder løbene adskilt", () => {
+  const otherRoute = twin("b", 31, "D3 B", {
+    stageSchedule: [
+      { stage: 1, date: "2026-12-01", profileType: "flat" },
+      { stage: 2, date: "2026-12-02", profileType: "mountain" },
+    ],
+  });
+  const otherDate = twin("c", 32, "D3 C", {
+    stageSchedule: [
+      { stage: 1, date: "2026-12-03", profileType: "flat" },
+      { stage: 2, date: "2026-12-04", profileType: "hilly" },
+    ],
+  });
+  const otherDivision = twin("d", 1, "D1", { division: 1 });
+  const out = mergePoolTwins([twin("a", 30, "D3 A"), otherRoute, otherDate, otherDivision], { divisions: POOL_TREE });
+  assert.deepEqual(out.map((e) => e.id), ["a", "b", "c", "d"]);
+  assert.equal(out[0].poolLabel, "D3 A", "et loeb uden tvilling er uaendret");
+});
+
+test("mergePoolTwins: klokkeslæt alene adskiller ikke løb, og etapeløbet fylder én chip pr. dag", () => {
+  const later = twin("b", 31, "D3 B", {
+    stageSchedule: [
+      { stage: 1, date: "2026-12-01", time: "15:00", profileType: "flat" },
+      { stage: 2, date: "2026-12-02", time: "15:00", profileType: "hilly" },
+    ],
+  });
+  const out = mergePoolTwins([twin("a", 30, "D3 A"), later], { divisions: POOL_TREE });
+  assert.equal(out.length, 1);
+  const evs = filterStageEvents(expandStageEvents(out), { year: 2026, month: 12, division: 3 });
+  assert.deepEqual(evs.map((e) => `${e.raceId}:${e.stage}`), ["a:1", "a:2"]);
+});
+
+test("mergePoolTwins: endagsløb uden etapeplan slås sammen på dato og terræn", () => {
+  const one = (id, poolId) => ({ id, name: "GP Y", raceType: "single", stages: 1, division: 3, poolId, date: "2026-12-05", terrain: "sprint" });
+  assert.deepEqual(mergePoolTwins([one("b", 31), one("a", 30)], { divisions: POOL_TREE }).map((e) => e.id), ["a"]);
+  assert.deepEqual(mergePoolTwins([], {}), []);
+  assert.deepEqual(mergePoolTwins(null), []);
+});
+
+test("expectedPoolId: første pulje med løb i den forventede division", () => {
+  const entries = [{ id: "x", poolId: 31 }, { id: "y", poolId: 32 }];
+  assert.equal(expectedPoolId({ divisions: POOL_TREE, entries, expectedDivision: 3 }), 31);
+  assert.equal(expectedPoolId({ divisions: POOL_TREE, entries, expectedDivision: 1 }), null, "ingen loeb i D1");
+  assert.equal(expectedPoolId({ divisions: POOL_TREE, entries, expectedDivision: null }), null);
+  assert.equal(expectedPoolId({ divisions: POOL_TREE, entries, expectedDivision: 4 }), null);
 });

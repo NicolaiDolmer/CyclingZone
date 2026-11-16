@@ -12,6 +12,7 @@ import {
   expandStageEvents,
   filterStageEvents,
   groupStageEventsByDate,
+  mergePoolTwins,
   monthsWithRaces,
   stepMonth,
 } from "../lib/calendarGrid.js";
@@ -198,8 +199,16 @@ export default function CalendarPage() {
   // aktivt filter ville tømme kalenderen helt og påstå at manageren ingen løb har.
   const effectiveMineOnly = !divisionPending && (effectiveTab === "mine" || mineOnly);
 
+  // #5841: puljerne i en division kører de samme løb (én kopi pr. pulje), så uden et
+  // pulje-valg står hvert løb én gang pr. division. Med en valgt pulje vises den puljes egne.
+  const viewEntries = useMemo(
+    () => (activePool != null
+      ? (data?.entries || [])
+      : mergePoolTwins(data?.entries || [], { divisions: data?.divisions || [], preferPoolId: data?.ownPoolId ?? null })),
+    [data, activePool],
+  );
   // Hver etape er sin egen kalender-event (på sin dag), så et etapeløb vises på hver dag det køres.
-  const allStageEvents = useMemo(() => expandStageEvents(data?.entries || []), [data]);
+  const allStageEvents = useMemo(() => expandStageEvents(viewEntries), [viewEntries]);
   const stageEvents = useMemo(() => {
     if (!cursor) return [];
     return filterStageEvents(allStageEvents, {
@@ -224,7 +233,8 @@ export default function CalendarPage() {
   const libraryV2 = useRaceLibraryV2() === true;
   const [peekRaceId, setPeekRaceId] = useState(null);
   const [peekStage, setPeekStage] = useState(null); // klikket etape, bevares til "Aabn loeb"
-  const entryById = useMemo(() => new Map((data?.entries || []).map((e) => [e.id, e])), [data]);
+  // #5841: kortet viser det sammenlagte løb (uden én puljes navn), samme som chippen.
+  const entryById = useMemo(() => new Map(viewEntries.map((e) => [e.id, e])), [viewEntries]);
   const statusByRace = useMemo(() => {
     if (!libraryV2) return null;
     const list = data?.entries || [];
@@ -447,7 +457,7 @@ export default function CalendarPage() {
       {view === "table" ? (
         <Suspense fallback={<PageLoader label={t("loadingAria")} />}>
         <CalendarTable
-          entries={/** @type {any} */ (data).entries} todayIso={todayISO} division={activeDivision} poolId={activePool}
+          entries={/** @type {any} */ (viewEntries)} todayIso={todayISO} division={activeDivision} poolId={activePool}
           mineOnly={effectiveMineOnly}
           divisionPending={divisionPending} onShowAll={effectiveTab !== "all" ? () => setTab("all") : null}
         />
