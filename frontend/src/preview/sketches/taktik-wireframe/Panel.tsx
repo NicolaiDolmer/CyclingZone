@@ -59,7 +59,7 @@ export function TacticsPanel({ s, set }: { s: TacState; set: SetTac }) {
     openPop(el, (
       <>
         <div className="h">{`${r.name} · ${legs[i]}`}</div>
-        {stepOptions(i).filter((t) => canDo(r.role, t)).map((t) => (
+        {stepOptions(i).filter((t) => canDo(roleOf(s, r, n), t)).map((t) => (
           <button key={t} type="button" className="o" aria-pressed={t === cur} onClick={() => pickStep(r, i, t)}>
             <span>{TASK[t][0]}<small>{TASK[t][2]}</small></span>
             <span className={`word w${TASK[t][1]}`}>{WORD[TASK[t][1]]}</span>
@@ -83,7 +83,7 @@ export function TacticsPanel({ s, set }: { s: TacState; set: SetTac }) {
     <>
       <div className="h">{`Role for ${r.name}`}</div>
       {["captain", "co_captain", "helper", "luxury_helper", "hunter", "sprint_captain", "free_role"].map((k) => (
-        <button key={k} type="button" className="o" aria-pressed={r.role === k}><span>{ROLE_L[k]}</span></button>
+        <button key={k} type="button" className="o" aria-pressed={roleOf(s, r, n) === k}><span>{ROLE_L[k]}</span></button>
       ))}
       <div className="sep" />
       <div className="h">Applies to</div>
@@ -107,8 +107,10 @@ export function TacticsPanel({ s, set }: { s: TacState; set: SetTac }) {
 
   const setEffort = (r: MyRider, k: Effort) => change((d) => { d.effort[`${n}|${r.id}`] = k; delete d.custom[`${n}|${r.id}`]; ensure(d)[r.id] = effortPlan(d, r, k, n); });
   const setPlan = (k: PlanKind) => change((d) => {
+    // de nuvaerende ordrer gemmes foer skiftet, saa en laast rytter beholder sine (ogsaa standardordrer)
+    const prev = plansOf(d, n);
     d.kinds[n] = k;
-    d.plans[n] = buildPlans(d, n, d.plans[n]);
+    d.plans[n] = buildPlans(d, n, prev);
     for (const r of sortedMy(d, n)) { const key = `${n}|${r.id}`; if (!d.locks[key]) { delete d.effort[key]; delete d.custom[key]; } }
   });
   const sortBy = (k: string) => set((d) => { d.sort = d.sort?.k === k ? { k, d: -d.sort.d } : { k, d: k === "rider" || k === "role" ? 1 : -1 }; });
