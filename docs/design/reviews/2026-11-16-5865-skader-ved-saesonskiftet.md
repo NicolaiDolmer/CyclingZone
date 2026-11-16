@@ -54,8 +54,9 @@ Eneste reelle pris ved A: den sidste uges hårde træning bærer ikke en skade m
 - Kaldt fra `seasonStartHooks.js` lige efter trætheden, i sin egen fejl-isolerede blok. Slukket mode skriver ingen fase-række, så fase-loggen er bit-identisk med i dag.
 - Rører kun skade-kolonnerne (`injured_until`, `injury_cause`, løbsdags-koordinaten, `updated_at`). Form og træthed er urørt.
 - Varigheden regnes i **kalenderdage** fra den nye sæsons `start_date`, som `seasonTransition` sætter til skiftets dato. En skade der krydser skiftet lever allerede på dato-aksen (afsnit 1), og første løbsdato kendes ikke endnu, når hookene kører (kalenderen bygges bagefter).
-- Gen-kørsel: ankeret er den lagrede `start_date`, så en gen-kørsel en senere dag giver samme udfald. Har den nye sæson allerede kørt løbsdage, springes trinnet over (fase-loggen viser `season_already_started`), så en skade fra den nye sæson aldrig røres.
-- Idempotent i alle modes: en gen-kørsel af skiftet skriver nul rækker.
+- Anker: den seneste af den lagrede `start_date` og skiftets danske dato. `start_date` er en DATE skrevet fra et UTC-tidsstempel, så et skifte mellem kl. 00 og 01/02 dansk tid ville ellers regne fra gårsdagen (review 16/11).
+- Én gang pr. sæson: efter kørslen gemmes sæson-id'et i `app_config` (`season_injury_reset_applied_season`). Et genoptaget skifte springer trinnet over (fase-loggen viser `already_applied`), så skader og sygdom fra den nye sæsons pause, fx træningsoverbelastning, aldrig røres. Har den nye sæson kørt løbsdage, springes trinnet også over (`season_already_started`).
+- Idempotent inden for én kørsel i alle modes: fejler markør-skrivningen, skriver en gen-kørsel nul skade-rækker.
 - Gælder alle ryttere (menneskehold, AI og frie ryttere), ligesom trætheden.
 - Migration `database/2026-11-16-5865-season-injury-reset-app-config.sql` indsætter kun konfig-rækkerne med `off`. Ikke kørt; den kører post-merge via auto-migrate og ændrer intet spilbart.
 

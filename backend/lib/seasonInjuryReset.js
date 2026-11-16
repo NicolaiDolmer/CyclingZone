@@ -30,14 +30,19 @@
 // mode returnerer { ran:false, reason:"flag_off" }, så seasonStartHooks.js ikke
 // skriver en fase-række (bit-identisk fase-log med adfærden før #5865).
 //
-// IDEMPOTENS: alle tre modes er idempotente afbildninger for et fast anker. Ankeret er
-// den LAGREDE start_date, så en gen-kørsel på en senere dato regner fra samme anker;
-// og har den nye sæson allerede kørt løbsdage, springes trinnet over, så en skade der
-// er opstået I den nye sæson aldrig røres (Codex 16/11).
-// "clear" efterlader ingen aktive skader; "cap" er et min() mod samme loft; "light"
-// fjerner de korte, og de lange er stadig lange ved næste kørsel. En gen-kørsel af
-// sæsonskiftet skriver derfor nul rækker — ingen claim-tabel, samme begrundelse som
-// seasonFatigueReset.js.
+// ÉN GANG PR. SÆSON: efter en vellykket kørsel gemmes sæson-id'et i app_config
+// (season_injury_reset_applied_season, samme mønster som managerParking.js). Et
+// genoptaget skifte (#578) springer derfor trinnet over, så skader og sygdom der er
+// opstået i den nye sæsons pause (fx træningsoverbelastning, som ikke tæller som
+// løbsdag), aldrig røres. Har den nye sæson allerede kørt løbsdage, springes trinnet
+// også over (Codex 16/11). Inden for én kørsel er alle tre modes idempotente
+// afbildninger: "clear" efterlader ingen aktive skader, "cap" er et min() mod loftet,
+// "light" fjerner kun de korte.
+//
+// ANKER: den seneste af den lagrede start_date og skiftets danske dato. start_date er
+// en DATE, der skrives fra et UTC-tidsstempel (seasonTransition.js), så et skifte
+// mellem kl. 00 og 01/02 dansk tid ville ellers give gårsdagens dato som anker og en
+// dag for kort skade (review 16/11).
 //
 // Rører KUN skade-kolonnerne (+ updated_at). form/fatigue er urørt (supabase-js
 // upsert opdaterer kun de angivne kolonner på UPDATE-stien, samme kontrakt som
@@ -47,6 +52,7 @@ import { copenhagenDateString } from "./copenhagenTime.js";
 import { fetchAllPaged } from "./dbChunk.js";
 
 export const SEASON_INJURY_RESET_MODE_KEY = "season_injury_reset_mode";
+export const SEASON_INJURY_RESET_APPLIED_KEY = "season_injury_reset_applied_season";
 
 export const SEASON_INJURY_RESET_PARAM_KEYS = Object.freeze({
   capDays: "season_injury_reset_cap_days",
@@ -175,9 +181,8 @@ export function seasonResetInjury({
 /**
  * Den nye sæsons ankerdato + om den allerede er i gang.
  *
- * Ankeret er den LAGREDE start_date (også når den ligger før i dag), så en gen-kørsel
- * af skiftet på en senere dato regner fra samme anker og forbliver idempotent (Codex
- * 16/11). Kun uden lagret dato bruges skiftets egen dato.
+ * Ankeret er den seneste af den lagrede start_date og skiftets danske dato (se ANKER
+ * øverst). Uden lagret dato bruges skiftets egen dato.
  */
 async function resolveSeasonAnchor(supabase, toSeasonId, today) {
   if (!toSeasonId) return { seasonStartDate: today, started: false };
@@ -186,9 +191,31 @@ async function resolveSeasonAnchor(supabase, toSeasonId, today) {
   if (error) throw new Error(`season injury reset: season lookup: ${error.message}`);
   const start = data?.start_date ? String(data.start_date).slice(0, 10) : null;
   return {
-    seasonStartDate: start && DATE_RE.test(start) ? start : today,
+    seasonStartDate: start && DATE_RE.test(start) && start > today ? start : today,
     started: Number(data?.race_days_completed ?? 0) > 0,
   };
+}
+
+async function readAppliedSeason(supabase) {
+  const { data, error } = await supabase
+    .from("app_config").select("value").eq("key", SEASON_INJURY_RESET_APPLIED_KEY).maybeSingle();
+  if (error) throw new Error(`season injury reset: applied-marker read: ${error.message}`);
+  return data?.value == null ? null : String(data.value);
+}
+
+async function writeAppliedSeason(supabase, toSeasonId, nowIso) {
+  const { error } = await supabase.from("app_config").upsert(
+    {
+      key: SEASON_INJURY_RESET_APPLIED_KEY,
+      value: String(toSeasonId),
+      description:
+        "#5865: sæsonen skade-reglen ved sæsonskiftet sidst har kørt for. Gør reglen " +
+        "én-gang-pr.-sæson, så et genoptaget skifte ikke rører skader fra den nye sæsons pause.",
+      updated_at: nowIso,
+    },
+    { onConflict: "key" },
+  );
+  if (error) throw new Error(`season injury reset: applied-marker write: ${error.message}`);
 }
 
 /**
@@ -207,6 +234,10 @@ export async function applySeasonInjuryReset({
   const cfg = await readConfig(supabase);
   if (!cfg || cfg.mode === "off" || !VALID_MODES.has(cfg.mode)) return { ran: false, reason: "flag_off" };
   if (!supabase?.from) throw new Error("Supabase client required");
+
+  if (toSeasonId && (await readAppliedSeason(supabase)) === String(toSeasonId)) {
+    return { ran: false, reason: "already_applied", mode: cfg.mode };
+  }
 
   const today = copenhagenDateString(now);
   const { seasonStartDate, started } = await resolveSeasonAnchor(supabase, toSeasonId, today);
@@ -249,12 +280,15 @@ export async function applySeasonInjuryReset({
     shortened,
     changed: upserts.length,
   };
-  if (dryRun || upserts.length === 0) return summary;
+  if (dryRun) return summary;
 
   for (let i = 0; i < upserts.length; i += SEASON_INJURY_RESET_DEFAULTS.upsertChunk) {
     const chunk = upserts.slice(i, i + SEASON_INJURY_RESET_DEFAULTS.upsertChunk);
     const { error: upErr } = await supabase.from("rider_condition").upsert(chunk, { onConflict: "rider_id" });
     if (upErr) throw new Error(`season injury reset upsert: ${upErr.message}`);
   }
+  // Markøren skrives først efter alle rækker er gemt: fejler en chunk, kaster vi før
+  // markøren, og en gen-kørsel kan gøre arbejdet færdigt (idempotent inden for én kørsel).
+  if (toSeasonId) await writeAppliedSeason(supabase, toSeasonId, nowIso);
   return summary;
 }
