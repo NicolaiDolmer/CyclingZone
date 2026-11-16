@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { buildTeamPlan, teamPlanTarget, taskCostKey, applyTeamPlanRoles, TASK_COST_EXCEPTIONS, type TeamPlanRider, type TeamPlanKind } from './tacticsReady7864.ts';
+import { buildTeamPlan, teamPlanTarget, taskCostKey, applyTeamPlanRoles, TASK_COST_EXCEPTIONS, BREAKAWAY_STANCE_COST_WORD, COST_WORD_CLASS, EFFORT_COST_WORD, ORDER_TOGGLE_TASK, costWordKey, effortCostWord, stanceCostWord, taskCostWord, type TeamPlanRider, type TeamPlanKind } from './tacticsReady7864.ts';
+import { BREAKAWAY_STANCE_VALUES } from '../../../../backend/lib/engine/v4/ai/teamOrderContract.ts';
+import { EFFORT_SCALE } from '../../lib/raceIntention.js';
 import { STAGE_PLAN_TASKS as BACKEND_TASKS, TASK_EFFORT as BACKEND_TASK_EFFORT } from '../../../../backend/lib/stagePlan.ts';
 import { suggestStagePlan, validateStagePlanLegs, type StagePlanRoute, type StagePlanRole } from './StagePlanModel.ts';
 import { buildGroupTeamContexts } from '../../../../backend/lib/engine/v4/mechanics/teamPlay.ts';
@@ -97,6 +99,27 @@ test('price words follow the engine effort step (backend TASK_EFFORT), with brea
     }
     assert.equal(taskCostKey(task),`stagePlanReady.price.${word}`,task);
   }
+});
+test('#7638 every priced order uses the same four words: effort steps, breakaway stance and the old order buttons',()=>{
+  for(const step of EFFORT_SCALE) assert.equal(effortCostWord(step),EFFORT_COST_WORD[step as keyof typeof EFFORT_COST_WORD],step);
+  assert.equal(effortCostWord('toString'),null,'prototype keys are not steps');
+  assert.equal(effortCostWord('future_step'),null,'an unknown step shows no word rather than a wrong one');
+  assert.deepEqual([...BREAKAWAY_STANCE_VALUES].sort(),Object.keys(BREAKAWAY_STANCE_COST_WORD).sort(),'every engine stance has a word');
+  assert.equal(stanceCostWord('chase'),'hard');
+  assert.equal(stanceCostWord('neutral'),'medium');
+  assert.equal(stanceCostWord('let_go'),'easy');
+  assert.equal(stanceCostWord('hasOwnProperty'),null);
+  assert.equal(taskCostWord(ORDER_TOGGLE_TASK.try_break),'hard','Try the break costs what Go in the break costs');
+  assert.equal(taskCostWord(ORDER_TOGGLE_TASK.leadout),'medium','Sprint train costs what the sprint train task costs');
+  assert.equal(costWordKey('veryHard'),'stagePlanReady.price.veryHard');
+});
+test('#7638 one colour per price word, all four distinct, from the shared status tokens',()=>{
+  assert.deepEqual(Object.keys(COST_WORD_CLASS).sort(),['easy','hard','medium','veryHard']);
+  assert.equal(new Set(Object.values(COST_WORD_CLASS)).size,4);
+  assert.equal(COST_WORD_CLASS.easy,'text-cz-success');
+  assert.equal(COST_WORD_CLASS.medium,'text-cz-1','Medium stays neutral (owner 16/11)');
+  assert.equal(COST_WORD_CLASS.hard,'text-cz-warning');
+  assert.equal(COST_WORD_CLASS.veryHard,'text-cz-danger');
 });
 test('team plan texts are translated in es/fr/nl and every language has the plural copy key',()=>{
   const read=(lng:string)=>JSON.parse(readFileSync(new URL(`../../../public/locales/${lng}/races.json`,import.meta.url),'utf8'));

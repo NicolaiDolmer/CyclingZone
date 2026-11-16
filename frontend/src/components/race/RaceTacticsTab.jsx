@@ -125,7 +125,8 @@ import { roadOrdersAvailable, withoutRoadOrders } from "../../lib/tacticsProfile
 import { isStageLockedForTactics } from "../../lib/racePageTabs.js";
 import { tacticsStartStage } from "./stagePageV2/stagePageV2Model.ts"; // #6570
 import StagePlanBoard from "./StagePlanBoard.tsx"; // #7003
-import { applyTeamPlanRoles, buildTeamPlan, TEAM_PLAN_KINDS, teamPlanFingerprint, teamPlanRouteFromProfile } from "./tacticsReady7864.ts";
+import { applyTeamPlanRoles, buildTeamPlan, costWordKey, effortCostWord, ORDER_TOGGLE_TASK, stanceCostWord, taskCostWord, TEAM_PLAN_KINDS, teamPlanFingerprint, teamPlanRouteFromProfile } from "./tacticsReady7864.ts";
+import CostWord from "./CostWord.tsx"; // #7638
 import { planRole } from "./StagePlanModel.ts";
 import TeamPlanChoices7864 from "./TeamPlanChoices7864.tsx";
 import { multiStagePlans7864, runStageFill7864, readStageRoles7864, stageFillError7864 } from "./tacticsMultiStage7864.ts";
@@ -167,25 +168,29 @@ function stageLockTime(scheduledAt) {
 
 // Chip: valgt intention (guld-tekst på tonet flade) vs. "ikke valgt" (stiplet
 // hairline, dæmpet). To tilstande, ingen tredje.
-function IntentionChip({ t, effort, isDefault, role, muted = false }) {
+// #7638 (bag tactics_ready_7864): showCost saetter trinnets prisord efter navnet.
+function IntentionChip({ t, effort, isDefault, role, muted = false, showCost = false }) {
+  const cost = showCost ? <CostWord t={t} word={effortCostWord(effort)} testId="intention-cost" /> : null;
   if (isDefault) {
     return (
-      <span className="inline-flex items-center rounded-full border border-dashed border-cz-border px-2.5 py-0.5 text-2xs font-medium text-cz-3 whitespace-nowrap">
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-cz-border px-2.5 py-0.5 text-2xs font-medium text-cz-3 whitespace-nowrap">
         {t("intention.roleDefault")}
+        {cost}
       </span>
     );
   }
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-2xs font-semibold whitespace-nowrap ${
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-2xs font-semibold whitespace-nowrap ${
       muted ? "border-cz-border bg-cz-subtle text-cz-2" : "border-cz-accent/30 bg-cz-accent/10 text-cz-accent-t"
     }`}>
       {effort === "protect" ? protectText(t, role, "step") : t(`intention.step.${effort}`)}
+      {cost}
     </span>
   );
 }
 
 // Den udfoldede vælger: ét trin pr. linje, én sætning i ord, ingen tal.
-function IntentionPicker({ t, riderName, role, scopeLabel, steps, value, disabled, onPick, timeTrial = false, blockedFor = /** @type {(step: string) => string | null} */ (() => null) }) {
+function IntentionPicker({ t, riderName, role, scopeLabel, steps, value, disabled, onPick, timeTrial = false, showCost = false, blockedFor = /** @type {(step: string) => string | null} */ (() => null) }) {
   return (
     <div className="rounded-cz border border-cz-border bg-cz-card overflow-hidden">
       <div className="flex items-baseline justify-between gap-3 px-3.5 py-2 border-b border-cz-border">
@@ -212,8 +217,9 @@ function IntentionPicker({ t, riderName, role, scopeLabel, steps, value, disable
             <span className="w-3.5 shrink-0 text-cz-accent-t">
               {on && <CheckIcon size={14} aria-hidden="true" />}
             </span>
-            <span className={`text-xs sm:w-32 shrink-0 ${on ? "font-semibold text-cz-accent-t" : "font-medium text-cz-1"}`}>
+            <span className={`text-xs shrink-0 ${showCost ? "inline-flex items-baseline gap-1.5 sm:w-48" : "sm:w-32"} ${on ? "font-semibold text-cz-accent-t" : "font-medium text-cz-1"}`}>
               {step === "protect" ? protectText(t, role, "step") : t(`intention.step.${step}`)}
+              {showCost && <CostWord t={t} word={effortCostWord(step)} testId="intention-step-cost" />}
             </span>
             <span className="text-xs text-cz-2 basis-full sm:basis-auto ps-[26px] sm:ps-0">
               {step === "protect" ? protectText(t, role, "why") : step === "save" && timeTrial ? t("intention.whyItt.save") : t(`intention.why.${step}`)}
@@ -312,14 +318,16 @@ function RolePicker({ t, riderName, scopeNote, value, disabled, onPick, scopeCho
   );
 }
 
-function TogglePill({ label, ariaLabel, active, disabled, onClick, title }) {
+// #7638: `cost` (bag tactics_ready_7864) = opgavens prisord efter navnet. aria-label
+// skjuler den synlige tekst for skaermlaesere, saa ordet skal med i navnet ogsaa.
+function TogglePill({ t, label, ariaLabel, active, disabled, onClick, title, cost = null }) {
   return (
     <button
       type="button"
       disabled={disabled}
       title={title}
       aria-pressed={active}
-      aria-label={ariaLabel}
+      aria-label={cost ? `${ariaLabel}, ${t(costWordKey(cost))}` : ariaLabel}
       onClick={onClick}
       className={`inline-flex items-center gap-1 rounded-cz border px-2 py-1 text-3xs font-medium uppercase tracking-wide transition-colors shrink-0 disabled:opacity-60 disabled:pointer-events-none
         ${active ? "border-cz-accent bg-cz-accent/10 text-cz-accent-t" : "border-cz-accent/40 text-cz-accent-t bg-transparent hover:bg-cz-accent/5"}`}
@@ -328,6 +336,7 @@ function TogglePill({ label, ariaLabel, active, disabled, onClick, title }) {
           den slaas til, og hele knap-kolonnen hopper sidelaens. */}
       <CheckIcon size={10} aria-hidden="true" className={active ? "" : "invisible"} />
       {label}
+      {cost && <CostWord t={t} word={cost} className="ms-0.5" testId="order-toggle-cost" />}
     </button>
   );
 }
@@ -1003,7 +1012,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     if (stageLocked) {
       return (
         <>
-          <IntentionChip t={t} effort={effort} isDefault={isDefault} role={role} muted />
+          <IntentionChip t={t} effort={effort} isDefault={isDefault} role={role} muted showCost={ready7864} />
           <p className="mt-1 text-3xs text-cz-3">
             {isDefault
               ? t("intention.nothingSet")
@@ -1014,7 +1023,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         </>
       );
     }
-    const chip = <IntentionChip t={t} effort={effort} isDefault={isDefault} role={role} />;
+    const chip = <IntentionChip t={t} effort={effort} isDefault={isDefault} role={role} showCost={ready7864} />;
     const action = (
       <button
         type="button"
@@ -1083,6 +1092,8 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
           </span>
         )}
         <TogglePill
+          t={t}
+          cost={ready7864 ? taskCostWord(ORDER_TOGGLE_TASK.try_break) : null}
           label={t("tacticsOrders.tryBreak")}
           ariaLabel={t("tacticsOrders.tryBreakAria", { name: rider.name || "—" })}
           active={ro.try_break === true}
@@ -1099,6 +1110,8 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
             aria-hidden={isSprintCaptain}
           >
             <TogglePill
+              t={t}
+              cost={ready7864 ? taskCostWord(ORDER_TOGGLE_TASK.leadout) : null}
               label={t("tacticsOrders.leadout")}
               ariaLabel={t("tacticsOrders.leadoutAria", { name: rider.name || "—" })}
               active={ro.leadout === true}
@@ -1231,9 +1244,12 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
                 onClick={() => updateOrder((o) => setBreakawayStance(o, stance))}
                 className={`px-2 py-1 text-3xs font-medium transition-colors disabled:opacity-60 disabled:pointer-events-none
                   ${ordersGc ? "flex-1 leading-tight border-s border-cz-border first:border-s-0" : ""}
+                  ${ready7864 ? "inline-flex flex-col items-center justify-center gap-0.5 leading-tight" : ""}
                   ${order.breakaway_stance === stance ? "bg-cz-accent/10 text-cz-accent-t" : "bg-cz-card text-cz-2 hover:text-cz-1"}`}
               >
                 {t(breakawayStanceLabelKey(stance, rulesRevision))}
+                {/* #7638: holdningens pris for de ryttere, der jager (bag tactics_ready_7864). */}
+                {ready7864 && <CostWord t={t} word={stanceCostWord(stance)} testId="stance-cost" />}
               </button>
             ))}
           </div>
@@ -1353,6 +1369,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
                           scopeLabel={scopeLabel}
                           steps={steps}
                           timeTrial={isIndividualTimeTrialProfile(stageProfileType)}
+                          showCost={ready7864}
                           value={effortFor(rider)}
                           disabled={saving}
                           onPick={(step) => pickIntention(rider.rider_id, step)}
@@ -1412,6 +1429,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
                     scopeLabel={scopeLabel}
                     steps={steps}
                     timeTrial={isIndividualTimeTrialProfile(stageProfileType)}
+                    showCost={ready7864}
                     value={effortFor(rider)}
                     disabled={saving}
                     onPick={(step) => pickIntention(rider.rider_id, step)}
