@@ -59,6 +59,21 @@ test("#6110 R16 motor: efter taendingsnatten koeber XP hoejst +2 pr. evne pr. da
   }
 });
 
+test("#6110 R16 motor: datoens tidligere gevinster taeller med, ogsaa naar dato-loftet (#6210) er slukket (Codex P1)", async () => {
+  for (const flags of [ENGINE_SCENARIOS.cap.flags, ENGINE_SCENARIOS.noCap.flags]) {
+    const state = seed({ flags, overlay: xpOn(EARLIER) });
+    // En tidligere koersel samme dato (loebsdags-aksen) har allerede givet +1 i evnen.
+    state.training_day_runs.push({
+      team_id: state.teams[0].id, season_id: state.training_plans[0].season_id, tick_date: TICK_DATE, game_day: 3, squad: "senior",
+      report: { riders: [{ rider_id: "r1", gains: { [ABILITY]: 1 } }] },
+    });
+    const before = r1Level(state);
+    const report = r1Report(await runEngine(state));
+    assert.equal(report.gains[ABILITY], 1, `${JSON.stringify(flags)}: kun det, datoen har tilbage (+2 i alt)`);
+    assert.equal(r1Level(state) - before, 1);
+  }
+});
+
 test("#6110 R10 motor: paa taendingsnatten udbetales gemt fremgang helt (undtaget fra +2)", async () => {
   const state = seed({ overlay: xpOn() });
   const before = r1Level(state);

@@ -1248,11 +1248,8 @@ export async function runTeamTrainingDay({
   // dato-kvitteringerne (training_rider_ticks, rytter-noeglet, laest paa tvaers af hold).
   // Kalenderdags-stien (useRaceDayKey=false: rollback eller fallback) laeser ogsaa.
   let sameDateRunReports = [];
-  // #7982 trin 3: one group (readTogether); the evening run reads them one by one in this order.
-  const [capPerDateOn, , , [raceDayEngineOn, raceDayDevelopmentOn, developmentV2On, curveB]] = await readTogether(pressReads, [
-  () => isAbilityCapPerDateEnabled(supabase, { strict: conditionPerDate }),
-  async (earlier) => {
-  if (await earlier(0)) {
+  // #6110 R16: XP (hoejst +2 pr. dato) laeser dem ogsaa, naar #6210-flaget er slukket (Codex P1).
+  const loadSameDateRunReports = async () => {
     let query = supabase.from("training_day_runs").select("game_day, season_id, squad, report")
       .eq("team_id", teamId).eq("tick_date", tickDate);
     // Med dato-kvitteringer kommer loebsdagene derfra; kun kalenderdags-raekker her.
@@ -1265,7 +1262,12 @@ export async function runTeamTrainingDay({
     sameDateRunReports = (data ?? []).filter((row) => !isThisRun(row) && (row.game_day == null
       || (!conditionPerDate && row.season_id === seasonId)))
       .flatMap((row) => row.report?.riders ?? []);
-  }
+  };
+  // #7982 trin 3: one group (readTogether); the evening run reads them one by one in this order.
+  const [capPerDateOn, , , [raceDayEngineOn, raceDayDevelopmentOn, developmentV2On, curveB]] = await readTogether(pressReads, [
+  () => isAbilityCapPerDateEnabled(supabase, { strict: conditionPerDate }),
+  async (earlier) => {
+  if (await earlier(0)) await loadSameDateRunReports();
   },
   async () => {
   if (conditionPerDate) {
@@ -1349,6 +1351,7 @@ export async function runTeamTrainingDay({
   developmentXp = await loadDevelopmentXp({ supabase, tickDate, strict: conditionPerDate, developmentScoreB, raceCatchUp, now: () => +now });
   // #6110 R16 (ejervalg 16/11, valg 2 = A): paa taendingsnatten udbetales gemt fremgang helt.
   if (developmentXp) developmentXpIgnition = tickDate === await readDevelopmentXpFromDate(supabase, { strict: conditionPerDate });
+  if (developmentXp && !capPerDateOn) await loadSameDateRunReports(); // #6110 R16: datoens tidligere gevinster
 
   // #6500: holdets raekke hentes ÉN gang, og kun naar flaget er taendt. Regel-gate,
   // ikke berigelse: et gaet ville enten give et AI-hold udvikling eller tage den
