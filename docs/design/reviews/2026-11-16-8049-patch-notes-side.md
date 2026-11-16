@@ -160,8 +160,11 @@ teksten" henter arkivmånederne efter behov (i alt ca. 250 KB, kun når spillere
 
 ## Kontakt til udrulning
 
-Frontend-kontakt `patch_notes_v2_8049` via `loadAnonymousFlags` (siden er offentlig, også udlogget):
-`off` = den gamle side bit for bit; `beta` = ny side for beta-testere; `on` = alle. Ingen spillerdata ændres,
+Frontend-kontakt `patch_notes_v2_8049`. Indloggede læser den med viewerens login via
+`loadFeatureFlagStages` (`frontend/src/lib/featureStage.ts:78`), fordi `backend/api/featureFlagsApi.js`
+evaluerer anonyme kald med både `beta` og `off` som falsk; `loadAnonymousFlags` (`featureStage.ts:62`)
+bruges kun for udloggede besøgende, så siden stadig virker offentligt.
+`off` = den gamle side bit for bit; `beta` = ny side for indloggede beta-testere; `on` = alle, også udlogget. Ingen spillerdata ændres,
 ingen motor, ingen penge. Den gamle side og `patch-notes.json` slettes i oprydnings-PR'en efter `on`.
 
 ## Byggeplan i små PR'er
