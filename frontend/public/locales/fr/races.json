@@ -95,6 +95,16 @@
       "veryHard": "Très dure"
     }
   },
+  "tacticsPanel": {
+    "todayPlan": "Plan du jour",
+    "todayPlanNote": "Un seul choix pour toute l’équipe",
+    "orders": "Consignes pour l’étape {number}",
+    "ordersRaceDay": "Consignes pour le jour de course",
+    "team": "L’équipe",
+    "colEffort": "Effort",
+    "effortAria": "Effort de {name}",
+    "untouched": "Si tu ne fais rien, ils courent exactement comme ça."
+  },
   "stagePlan": {
     "title": "Plan d'étape",
     "help": "Chaque coureur a un court plan le long du parcours. La tâche change à une montée, dans les 10 derniers km ou quand il est lâché.",

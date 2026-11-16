@@ -60,7 +60,8 @@
 // Revisionen læses direkte fra races (RLS: offentlig SELECT); en fejlet
 // læsning betyder legacy, aldrig de nye regler. Prosaen bor i Hjælp.
 
-import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, Suspense } from "react";
+import { lazyWithRetry } from "../../lib/lazyWithRetry.js"; // #8297: panelets stykke med retry-vaernet (#5014)
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import i18n from "i18next";
@@ -141,10 +142,10 @@ import { useTacticsLayout } from "../tactics/tacticsLayout.ts";
 import { saveBadge } from "../tactics/tacticsPanelModel.ts";
 // Panelets dele hentes foerst, naar panelet vises (kun under v6): den gamle sides stykke vokser ikke.
 const loadTactics = () => import("../tactics/index.ts");
-const TacticsPanel = lazy(() => loadTactics().then((m) => ({ default: m.TacticsPanel })));
-const TacticsRiderTable = lazy(() => loadTactics().then((m) => ({ default: m.TacticsRiderTable })));
-const EffortSegmented = lazy(() => loadTactics().then((m) => ({ default: m.EffortSegmented })));
-const TeamPlanCards = lazy(() => loadTactics().then((m) => ({ default: m.TeamPlanCards })));
+const TacticsPanel = lazyWithRetry(() => loadTactics().then((m) => ({ default: m.TacticsPanel })));
+const TacticsRiderTable = lazyWithRetry(() => loadTactics().then((m) => ({ default: m.TacticsRiderTable })));
+const EffortSegmented = lazyWithRetry(() => loadTactics().then((m) => ({ default: m.EffortSegmented })));
+const TeamPlanCards = lazyWithRetry(() => loadTactics().then((m) => ({ default: m.TeamPlanCards })));
 
 const API = import.meta.env.VITE_API_URL;
 

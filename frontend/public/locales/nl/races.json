@@ -95,6 +95,16 @@
       "veryHard": "Heel zwaar"
     }
   },
+  "tacticsPanel": {
+    "todayPlan": "Plan van vandaag",
+    "todayPlanNote": "Eén keuze voor het hele team",
+    "orders": "Orders voor etappe {number}",
+    "ordersRaceDay": "Orders voor de koersdag",
+    "team": "Het team",
+    "colEffort": "Inspanning",
+    "effortAria": "Inspanning voor {name}",
+    "untouched": "Doe je niets, dan rijden ze precies zo."
+  },
   "stagePlan": {
     "title": "Etappeplan",
     "help": "Elke renner krijgt een kort plan langs het parcours. De taak wisselt bij een klim, in de laatste 10 km of als hij gelost wordt.",

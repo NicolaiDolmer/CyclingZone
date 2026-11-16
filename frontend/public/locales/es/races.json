@@ -95,6 +95,16 @@
       "veryHard": "Muy dura"
     }
   },
+  "tacticsPanel": {
+    "todayPlan": "Plan de hoy",
+    "todayPlanNote": "Una decisión para todo el equipo",
+    "orders": "Órdenes para la etapa {number}",
+    "ordersRaceDay": "Órdenes para el día de carrera",
+    "team": "El equipo",
+    "colEffort": "Esfuerzo",
+    "effortAria": "Esfuerzo de {name}",
+    "untouched": "Si no haces nada, correrán exactamente así."
+  },
   "stagePlan": {
     "title": "Plan de etapa",
     "help": "Cada corredor tiene un plan corto a lo largo del recorrido. La tarea cambia en un puerto, en los últimos 10 km o cuando se descuelga.",
