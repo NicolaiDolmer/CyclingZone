@@ -7,6 +7,8 @@
 //   POST /api/races/selection/auto/propose   assistentens forslag til mange loeb (laeser kun)
 //   POST /api/races/withdrawals/bulk  afmelding af mange loeb (alt eller intet)
 //   GET /api/races/distribution       kun seasonLoadByRider (samme tal som dagvisningens rytter-chip)
+//   GET /api/races/:id/after-race-fatigue   "Efter loebet" (runde 3, motorens model, laeser kun)
+//   GET /api/peak-plans/board · POST /bulk · DELETE /:id   Formtop (samme kald som Form-fanen)
 //   riders + rider_condition          nation, foedselsdato og skadesdato (som rytter-hoverkortet)
 // Etape-profiler (ruteprofil og etapetyper) laeses som paa loebssiden fra race_stage_profiles.
 import { authHeaders } from "./supabase";

@@ -1,7 +1,7 @@
 // #7535 · Planlaegningssiden (Planning Workbench), trin 1. Erstatter paa sigt de fire faner
 // (Udtagelse, Form, Strategi, Kalender) med én side: loebsliste, ugeoversigt, ruteprofil og
-// trup-tabel, med en bjaelke for ugemte aendringer. Taktik (trin 2) og Peak form + mobil-ark
-// (trin 3) kommer senere.
+// trup-tabel, med en bjaelke for ugemte aendringer. Runde 3: visningerne Trup | Taktik | Formtop under
+// ruteprofilen, kolonnen "Efter loebet" og mobil-arket (loebslisten foerst, loebet som bundark).
 //
 // Findes KUN bag kontakten planning_workbench (off|beta|on, standard off). Slukket: ruten sender
 // videre til den nuvaerende planlaegningsside, som er uroert. Siden henter og gemmer gennem de
