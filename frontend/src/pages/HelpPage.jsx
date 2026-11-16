@@ -439,6 +439,8 @@ const SECTION_DEFS = [
       { id: "ceilingReached", kind: "text" },
       { id: "ceilingReachedCurveB", kind: "text" },
       { id: "readingReport", kind: "text" },
+      // #7627: hvor fremgangen kom fra (traening/loeb pr. evne, TrainingReport raceSource).
+      { id: "raceSource", kind: "text" },
       // #3721: wired in — the copy already lived in help.json (translated,
       // en+da) but was never listed here, so the "Weekly rhythm" panel and its
       // per-rider override had no reachable documentation. The Training page's
