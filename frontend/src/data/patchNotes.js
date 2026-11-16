@@ -8,7 +8,6 @@ export const PATCHES = [
       "audience": "player",
       "rollout": "beta",
       "topic": "Training",
-      "area": "training",
       "flag": "training_train_now_bonus",
       "en": {
         "title": "Train now bonus (beta)",

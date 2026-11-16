@@ -3,6 +3,7 @@
 // giver området (TOPIC_AREA i patchNotesArea.ts) står ikke her. Nye noter skriver
 // selv `area` i data/patchNotes.js; denne fil vokser ikke.
 export const AREA_BY_KEY: Readonly<Record<string, string>> = Object.freeze({
+  "7.454#0": "training", // landet paa main efter klassificeringen; udgivne noter maa ikke aendres (patch-history)
   "7.453#0": "board",
   "7.453#1": "races",
   "7.453#2": "market",
