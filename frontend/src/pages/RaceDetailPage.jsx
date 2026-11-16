@@ -1039,14 +1039,14 @@ export default function RaceDetailPage() {
   // ligger ude i fremtiden) siger chippen hvornår den næste etape starter.
   const nextStageLater = nextStart && nextStart.stageNumber === runningStage && nextStart.date.getTime() > nowMs;
   const focusStage = phase === "before" ? scheduledStage : runningStage;
-  const focusProfile = profileByStage[focusStage] ?? null;
+  // #7862 (valg 13): under v6 følger Hold-fanen etapestriben (den valgte etape).
+  const teamStage = v6 ? v2SelectedStage : focusStage;
+  const focusProfile = profileByStage[teamStage] ?? null;
   // #4979: Hold-fanens profil-raekke findes FOER og UNDER loebet, hvor der er en
   // etape man udtager til eller koerer. EFTER loebet er fanen en historik over
   // alle etaper ("etape for etape"), og een vilkaarlig etapeprofil oeverst ville
   // vaere stoej der ikke svarer paa fanens spoergsmaal.
-  // #7862 (valg 13): under v6 følger Hold-fanen etapestriben (den valgte etape).
-  const teamStage = v6 ? v2SelectedStage : focusStage;
-  const teamTabProfile = phase === "after" ? null : (profileByStage[teamStage] ?? null);
+  const teamTabProfile = phase === "after" ? null : focusProfile;
   // #7865: v6's hoved er løbets og står stille, når etapestriben skifter etape.
   const heroStage = v6 ? runningStage : focusStage;
   const heroProfile = profileByStage[heroStage] ?? null;
@@ -1203,8 +1203,9 @@ export default function RaceDetailPage() {
                  stages/onSelect ændrer INTET af hvad der gemmes. */
               stageStripeStages={stageProfiles}
               stageStripeActiveStage={scheduledStage}
+              onSelectStage={changeStage}
               // #7862: under v6 er hovedkortets etapestribe den ene vælger; fanens egen stribe udgår.
-              onSelectStage={v6 ? null : changeStage}
+              hideStageStripe={v6}
               // #7862 (valg 13): rollerne under løbet følger den valgte etape (etapens holdplan).
               roleStage={v6 && phase === "during" ? v2SelectedStage : null}
               stageStripeTimes={stripeTimes}

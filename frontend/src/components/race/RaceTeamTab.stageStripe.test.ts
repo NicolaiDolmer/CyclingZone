@@ -49,7 +49,8 @@ test("#5419 de nye stribe-props har trygge defaults (renderer intet stribe-relat
   );
   assert.match(
     raceTeamTab,
-    /\{onSelectStage && \(\s*\n\s*<StageStripe/,
+    // #7862: under v6 skjules fanens egen stribe også (hovedkortets etapestribe er den ene vælger).
+    /\{onSelectStage && !hideStageStripe && \(\s*\n\s*<StageStripe/,
     "stribe-linjen skal gates bag onSelectStage, så en fremtidig kalder uden callback ikke render'er en dødt-klik-stribe",
   );
 });

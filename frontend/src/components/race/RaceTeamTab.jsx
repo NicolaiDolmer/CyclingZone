@@ -107,7 +107,7 @@ function ReadOnlyRoster({ t, riders, stageNumbers, overridesMap, gcRankByRider, 
                 </td>
                 <td className="px-4 py-2.5">
                   {/* #7862 (valg 13): med en valgt etape (v6) er rollen etapens, ellers grundrollen. */}
-                  <div className="text-cz-1 text-xs">{roleLabel(t, roleStage != null ? resolveCell({ rider, stageNumber: roleStage, overridesMap }).race_role : baseRoleForRider(rider))}</div>
+                  <div className="text-cz-1 text-xs">{roleStage != null ? roleLabel(t, resolveCell({ rider, stageNumber: roleStage, overridesMap }).race_role) : roleLabel(t, baseRoleForRider(rider))}</div>
                   <div className="text-3xs uppercase tracking-wider text-cz-3 mt-0.5">
                     {isOneDay ? t("intention.thisRace") : roleStage != null ? t("racePage.team.stageShort", { number: roleStage }) : t("intention.allRace")}
                   </div>
@@ -174,6 +174,8 @@ export default function RaceTeamTab({
   stageStripeTimes = null,
   // #7862 (valg 13): under v6 den valgte etape i hovedets stribe; rollerne følger den. null = grundrollen.
   roleStage = null,
+  // #7862: under v6 er hovedkortets etapestribe den ene vælger, så fanens egen stribe udgår.
+  hideStageStripe = false,
 }) {
   const { t } = useTranslation("races");
   // FØR løbet bruges svaret ikke: fanen ER holdudtagelsen, og RaceSelectionPanel
@@ -202,7 +204,7 @@ export default function RaceTeamTab({
             uden at hoppe via Etaper-fanen. Ren navigation (delt ?stage=); ændrer
             intet af hvad udtagelsen gemmer. StageStripe no-op'er selv på
             endagsløb (stages.length < 2). */}
-        {onSelectStage && (
+        {onSelectStage && !hideStageStripe && (
           <StageStripe
             stages={stageStripeStages}
             activeStage={stageStripeActiveStage}
