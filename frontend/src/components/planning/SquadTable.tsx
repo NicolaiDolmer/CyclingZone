@@ -329,7 +329,7 @@ export default function SquadTable({
                     readOnly ? (
                       <span className="text-[13px] text-cz-2">{t(`role.${roleOf(selection, row.id)}`)}</span>
                     ) : (
-                      <RoleSelect row={row} selection={selection} roles={roles} onRole={onRole} className={compact ? "min-w-[6rem]" : undefined} />
+                      <RoleSelect row={row} selection={selection} roles={roles} onRole={onRole} className={compact ? "min-w-[6.75rem]" : undefined} />
                     )
                   ) : (
                     <span className="text-cz-3">-</span>
@@ -337,7 +337,7 @@ export default function SquadTable({
                 </td>
                 <td className="hidden px-1.5 py-[7px] text-left text-[13px] text-cz-2 sm:table-cell">
                   {type ? (
-                    <span className={`block truncate ${compact ? "max-w-[4.5rem]" : ""}`} title={type}>
+                    <span className={`block truncate ${compact ? "max-w-[4rem]" : ""}`} title={type}>
                       {type}
                     </span>
                   ) : (

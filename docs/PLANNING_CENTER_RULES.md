@@ -34,7 +34,7 @@ Planning Center er den flade hvor en manager beslutter **hvem der kører hvad, h
 | `POST /races/selection/auto/propose` | planlægningssidens "Lad assistenten udtage" over mange løb (#7535) — **læser kun**; samme regler som `/selection/auto`, egne valg bliver, forslaget gemmes via bulk | samme, ét kald |
 | `POST /races/withdrawals/bulk` | planlægningssidens "Afmeld" over mange løb (#7535) — atomart (én upsert), `dry_run` kontrollerer uden at skrive | samme, ét kald |
 
-Planlægningssiden runde 3 (#7535) bygger ingen ny skrivevej: Taktik er løbssidens taktik-fane (samme endpoints), Formtop bruger Form-fanens `POST /peak-plans/bulk` og `DELETE /peak-plans/:id`, og "Efter løbet" læser `GET /races/:raceId/after-race-fatigue` (motorens `conditionModelV2`, skriver intet).
+Planlægningssiden runde 3 (#7535) bygger ingen ny skrivevej: Taktik er løbssidens taktik-fane (samme endpoints), Formtop bruger Form-fanens `POST /peak-plans/bulk` og `DELETE /peak-plans/:id`, og "Belastning" læser `GET /races/:raceId/expected-load` (motorens `conditionModelV2`, skriver intet; kun ordet let/mellem/hård forlader serveren, ejervalg 16/11).
 
 **Bulk er atomart.** Enten går hele planen ind, eller ingen af den. Delvis succes findes ikke — spilleren må aldrig se halvdelen af sit arbejde gemt. Bulk-vejen orkestrerer kun; valideringen (binding, trupgrænse, tilgængelighed) er den samme som enkelt-endpointets.
 
