@@ -92,7 +92,7 @@ function EditionMenu({ label, ariaLabel, heading, foot, items }: {
   label: ReactNode; ariaLabel: string; heading: string; foot: string; items: MenuItem[];
 }) {
   const [open, setOpen] = useState(false);
-  const [coords, setCoords] = useState<{ left: number; top: number } | null>(null);
+  const [coords, setCoords] = useState<{ left: number; top: number | null; bottom: number | null; maxHeight: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
@@ -109,7 +109,13 @@ function EditionMenu({ label, ariaLabel, heading, foot, items }: {
     const r = anchor.getBoundingClientRect();
     const width = Math.min(PANEL_WIDTH, window.innerWidth - 2 * GAP);
     const left = Math.min(Math.max(GAP, r.right - width), window.innerWidth - width - GAP);
-    setCoords({ left, top: r.bottom + GAP });
+    // Codex-fund: på en lav skærm (liggende telefon, otte puljer) må menuen aldrig gå ud over
+    // kanten. Den åbner opad, hvis der er mere plads over, og ruller indvendigt i det der er.
+    const below = window.innerHeight - r.bottom - 2 * GAP;
+    const above = r.top - 2 * GAP;
+    const panelH = panelRef.current?.scrollHeight ?? 0;
+    const up = panelH > below && above > below;
+    setCoords({ left, top: up ? null : r.bottom + GAP, bottom: up ? window.innerHeight - r.top + GAP : null, maxHeight: Math.max(120, up ? above : below) });
   }, []);
 
   useLayoutEffect(() => {
@@ -167,7 +173,16 @@ function EditionMenu({ label, ariaLabel, heading, foot, items }: {
           aria-label={ariaLabel}
           onKeyDown={onKeyDown}
           data-race-editions-menu
-          style={{ position: "fixed", left: coords?.left ?? -9999, top: coords?.top ?? -9999, width: Math.min(PANEL_WIDTH, typeof window === "undefined" ? PANEL_WIDTH : window.innerWidth - 2 * GAP) }}
+          style={{
+            position: "fixed",
+            left: coords?.left ?? -9999,
+            top: coords ? coords.top ?? undefined : -9999,
+            bottom: coords?.bottom ?? undefined,
+            maxHeight: coords?.maxHeight,
+            overflowY: "auto",
+            overscrollBehavior: "contain",
+            width: Math.min(PANEL_WIDTH, typeof window === "undefined" ? PANEL_WIDTH : window.innerWidth - 2 * GAP),
+          }}
           className={`z-dropdown ${menuClass()}`}
         >
           <p className="m-0 px-2.5 pt-1 pb-1.5 font-data text-3xs font-bold uppercase tracking-[.12em] text-cz-3">{heading}</p>
