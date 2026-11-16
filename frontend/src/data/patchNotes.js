@@ -590,11 +590,11 @@ export const PATCHES = [
       "topic": "Transfers",
       "en": {
         "title": "Bid money is now locked for every team",
-        "body": "Money you have bid is now locked until the auction ends, for every team. It has run in beta since 11 November."
+        "body": "Money you have bid is now locked while you lead the auction or still have automatic bids in it, for every team. It has run in beta since 11 November."
       },
       "da": {
         "title": "Budt beløb er nu låst for alle hold",
-        "body": "Penge, du har budt, er nu låst, til auktionen slutter, for alle hold. Det har kørt i beta siden 11. november."
+        "body": "Penge, du har budt, er nu låst, mens du fører auktionen eller stadig har automatiske bud i den, for alle hold. Det har kørt i beta siden 11. november."
       },
       "refs": [
         6181,
