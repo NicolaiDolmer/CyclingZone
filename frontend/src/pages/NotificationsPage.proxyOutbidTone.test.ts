@@ -26,3 +26,16 @@ test("#8260 auction_outbid (tabt føring) forbliver rød", () => {
   assert.match(entry, /text-cz-danger/);
   assert.match(entry, /AlertTriangleIcon/);
 });
+
+test("#8260 kun autoBidRaised er neutral; stoppet/annulleret/udtømt autobud bevarer rød config", () => {
+  const fn = source.match(/function proxyLeadHeldConfig[\s\S]*?\r?\n}\r?\n/);
+  assert.ok(fn, "proxyLeadHeldConfig skal findes");
+  assert.match(fn[0], /type === "auction_proxy_outbid"/);
+  assert.match(fn[0], /titleCode !== "notif\.autoBidRaised\.title"/);
+  assert.match(fn[0], /return TYPE_CONFIG\.auction_outbid/);
+});
+
+test("#8260 både enkelt-rækker og samlede bøtter går gennem proxyLeadHeldConfig", () => {
+  assert.match(source, /proxyLeadHeldConfig\(notification\.type, notification\.metadata\)/);
+  assert.match(source, /proxyLeadHeldConfig\(entry\.type, entry\.sample_metadata\)/);
+});
