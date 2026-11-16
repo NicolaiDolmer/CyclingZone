@@ -83,6 +83,8 @@ const CLASS_LABEL: Record<StartListFavouriteClass, string> = { gc: "gc", points:
 
 export default function V6StartList({ raceId, isStageRace, stagesCompleted, results, myTeamId, firstStartMs, nowMs }: V6StartListProps) {
   const { t, i18n } = useTranslation("races");
+  // Fanens egne tekster bor i det lazy "results"-navnerum (første indlæsning holdes under budgettet).
+  const { t: ts } = useTranslation("results");
   const opensIn = startListOpensIn(firstStartMs, nowMs);
   const [attempt, setAttempt] = useState(0);
   const field = useStartListField(raceId, opensIn == null, attempt);
@@ -111,14 +113,14 @@ export default function V6StartList({ raceId, isStageRace, stagesCompleted, resu
     () => startListFavourites(results as never, { stagesCompleted, cls: favCls, myTeamId }),
     [results, stagesCompleted, favCls, myTeamId],
   );
-  const afterLabel = isStageRace ? t("racePageV6.start.afterStage", { number: stagesCompleted }) : t("racePageV6.start.afterRace");
+  const afterLabel = isStageRace ? ts("raceStartList.afterStage", { number: stagesCompleted }) : ts("raceStartList.afterRace");
 
   const favouritesCard = (
-    <Section aria-label={t("racePageV6.start.favouritesTitle")}>
-      <SectionHeader title={t("racePageV6.start.favouritesTitle")} />
+    <Section aria-label={ts("raceStartList.favouritesTitle")}>
+      <SectionHeader title={ts("raceStartList.favouritesTitle")} />
       {favClasses.length > 1 && (
         <Segmented
-          label={t("racePageV6.start.favouritesFor")}
+          label={ts("raceStartList.favouritesFor")}
           value={favCls}
           onChange={(v) => setFavPick(v as StartListFavouriteClass)}
           options={favClasses.map((c) => ({ value: c, label: t(`detail.classTab.${CLASS_LABEL[c]}`) }))}
@@ -139,7 +141,7 @@ export default function V6StartList({ raceId, isStageRace, stagesCompleted, resu
                 <span className="text-2xs text-cz-2">
                   {f.teamName ? <TeamLink id={f.teamId} className="hover:text-cz-accent-t">{f.teamName}</TeamLink> : null}
                   {f.teamName ? " · " : ""}
-                  {t("racePageV6.start.favouriteLine", { rank: f.rank, after: afterLabel })}
+                  {ts("raceStartList.favouriteLine", { rank: f.rank, after: afterLabel })}
                   {f.gap ? <> · <span className="font-data tabular-nums">{f.gap}</span></> : null}
                 </span>
               </span>
@@ -147,26 +149,26 @@ export default function V6StartList({ raceId, isStageRace, stagesCompleted, resu
           ))}
         </ol>
       ) : (
-        <p className="m-0 text-sm text-cz-2">{t("racePageV6.start.favouritesEmpty")}</p>
+        <p className="m-0 text-sm text-cz-2">{ts("raceStartList.favouritesEmpty")}</p>
       )}
-      <p className="m-0 mt-3 border-t border-cz-border pt-2.5 text-xs text-cz-3">{t("racePageV6.start.favouritesFoot")}</p>
+      <p className="m-0 mt-3 border-t border-cz-border pt-2.5 text-xs text-cz-3">{ts("raceStartList.favouritesFoot")}</p>
     </Section>
   );
 
   let fieldBody: ReactNode;
   if (opensIn != null) {
-    fieldBody = <p className="m-0 py-4 text-sm text-cz-2">{t("racePageV6.start.opensIn", { count: opensIn })}</p>;
+    fieldBody = <p className="m-0 py-4 text-sm text-cz-2">{ts("raceStartList.opensIn", { count: opensIn })}</p>;
   } else if (field.status === "loading") {
     fieldBody = <SkeletonLines lines={8} />;
   } else if (field.status === "error") {
     fieldBody = (
       <div className="flex flex-col items-start gap-3 py-2">
-        <p className="m-0 text-sm text-cz-2">{t("racePageV6.start.loadError")}</p>
-        <Button variant="secondary" size="sm" onClick={() => setAttempt((n) => n + 1)}>{t("racePageV6.start.retry")}</Button>
+        <p className="m-0 text-sm text-cz-2">{ts("raceStartList.loadError")}</p>
+        <Button variant="secondary" size="sm" onClick={() => setAttempt((n) => n + 1)}>{ts("raceStartList.retry")}</Button>
       </div>
     );
   } else if (teams.length === 0) {
-    fieldBody = <p className="m-0 py-4 text-sm text-cz-2">{t("racePageV6.start.empty")}</p>;
+    fieldBody = <p className="m-0 py-4 text-sm text-cz-2">{ts("raceStartList.empty")}</p>;
   } else {
     fieldBody = (
       <>
@@ -178,8 +180,8 @@ export default function V6StartList({ raceId, isStageRace, stagesCompleted, resu
               value={filter.query}
               onChange={(e) => setFilter({ ...filter, query: e.target.value })}
               onKeyDown={(e) => { if (e.key === "Escape" && filter.query) { e.preventDefault(); setFilter({ ...filter, query: "" }); } }}
-              placeholder={t("racePageV6.start.searchPlaceholder")}
-              aria-label={t("racePageV6.start.searchPlaceholder")}
+              placeholder={ts("raceStartList.searchPlaceholder")}
+              aria-label={ts("raceStartList.searchPlaceholder")}
               enterKeyHint="search"
               autoComplete="off"
               spellCheck={false}
@@ -189,7 +191,7 @@ export default function V6StartList({ raceId, isStageRace, stagesCompleted, resu
               <button
                 type="button"
                 onClick={() => setFilter({ ...filter, query: "" })}
-                aria-label={t("racePageV6.start.clearSearch")}
+                aria-label={ts("raceStartList.clearSearch")}
                 className="absolute end-1 inline-flex h-7 w-7 items-center justify-center rounded-cz text-cz-3 hover:text-cz-1 [@media(max-width:640px),(pointer:coarse)]:h-9 [@media(max-width:640px),(pointer:coarse)]:w-9"
               >
                 <XIcon size={13} aria-hidden="true" />
@@ -205,41 +207,41 @@ export default function V6StartList({ raceId, isStageRace, stagesCompleted, resu
                 filter.mineOnly ? "border-cz-accent/30 bg-cz-accent/10 text-cz-accent-t" : "border-cz-border bg-cz-card text-cz-2 hover:text-cz-1"
               }`}
             >
-              {t("racePageV6.start.myTeam")}
+              {ts("raceStartList.myTeam")}
             </button>
           )}
           {nations.length > 1 && (
             <select
               value={filter.nation}
               onChange={(e) => setFilter({ ...filter, nation: e.target.value })}
-              aria-label={t("racePageV6.start.nation")}
+              aria-label={ts("raceStartList.nation")}
               className={`max-w-56 cursor-pointer rounded-cz border px-3 py-2 text-sm font-medium transition-colors focus:outline-hidden focus:ring-1 focus:ring-cz-accent ${TOUCH} ${
                 filter.nation !== "all" ? "border-cz-accent/30 bg-cz-accent/10 text-cz-accent-t" : "border-cz-border bg-cz-card text-cz-2"
               }`}
             >
-              <option value="all">{t("racePageV6.start.allNations")}</option>
+              <option value="all">{ts("raceStartList.allNations")}</option>
               {nations.map((n) => <option key={n.code} value={n.code}>{n.name}</option>)}
             </select>
           )}
           <span className="ms-auto font-data text-2xs tabular-nums text-cz-3" aria-live="polite">
-            {filtering ? t("racePageV6.start.matchCount", { shown: shownCount, total }) : ""}
+            {filtering ? ts("raceStartList.matchCount", { shown: shownCount, total }) : ""}
           </span>
         </div>
         {shown.length === 0 ? (
-          <p className="m-0 py-6 text-center text-sm text-cz-3">{t("racePageV6.start.noMatch")}</p>
+          <p className="m-0 py-6 text-center text-sm text-cz-3">{ts("raceStartList.noMatch")}</p>
         ) : (
           <div className={SCROLLER} data-start-list-scroll="">
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]">
               {shown.map((team) => (
                 <section key={team.teamId} aria-label={team.name} className="rounded-cz border border-cz-border bg-cz-card px-2.5 py-2" data-start-team={team.mine ? "mine" : ""}>
                   <h3 className="m-0 mb-1 flex items-center justify-between gap-2 text-sm font-semibold text-cz-1">
-                    <TeamLink id={team.teamId} className="min-w-0 truncate hover:text-cz-accent-t">{team.name || t("racePageV6.start.unnamedTeam")}</TeamLink>
+                    <TeamLink id={team.teamId} className="min-w-0 truncate hover:text-cz-accent-t">{team.name || ts("raceStartList.unnamedTeam")}</TeamLink>
                     {team.mine && <span className="flex-none rounded-sm bg-cz-1 px-1.5 py-0.5 font-data text-3xs font-bold uppercase tracking-[.08em] text-cz-body">{t("stagePageV2.favourites.you")}</span>}
                   </h3>
                   <ul className="m-0 list-none p-0">
                     {team.riders.map((r) => (
                       <li key={r.riderId} className="grid min-h-8 grid-cols-[1.75rem_minmax(0,1fr)_auto_1.75rem] items-center gap-1.5 py-0.5 text-sm [@media(max-width:640px),(pointer:coarse)]:min-h-11">
-                        <span className="font-data text-xs tabular-nums text-cz-3"><span className="sr-only">{t("racePageV6.start.bibAria", { bib: r.bib })}</span><span aria-hidden="true">{r.bib}</span></span>
+                        <span className="font-data text-xs tabular-nums text-cz-3"><span className="sr-only">{ts("raceStartList.bibAria", { bib: r.bib })}</span><span aria-hidden="true">{r.bib}</span></span>
                         <span className="flex min-w-0 items-center gap-1">
                           {r.nation && <Flag code={r.nation} className="flex-none" title={nationName(r.nation)} />}
                           <RiderLink id={r.riderId} className="truncate text-cz-1 hover:text-cz-accent-t">{r.name || "?"}</RiderLink>
@@ -247,7 +249,7 @@ export default function V6StartList({ raceId, isStageRace, stagesCompleted, resu
                         </span>
                         {/* Kun hovedtypen: navnet skal have pladsen i holdets smalle kort. */}
                         <RiderTypeBadge primaryType={r.primaryType} size="sm" />
-                        <span className="text-right font-data text-xs tabular-nums text-cz-2" title={t("racePageV6.start.rating")}>{r.rating != null && <><span className="sr-only">{t("racePageV6.start.rating")} </span>{r.rating}</>}</span>
+                        <span className="text-right font-data text-xs tabular-nums text-cz-2" title={ts("raceStartList.rating")}>{r.rating != null && <><span className="sr-only">{ts("raceStartList.rating")} </span>{r.rating}</>}</span>
                       </li>
                     ))}
                   </ul>
@@ -265,10 +267,10 @@ export default function V6StartList({ raceId, isStageRace, stagesCompleted, resu
       <div className="grid grid-cols-1 items-start gap-[14px] @4xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <div className="min-w-0">{favouritesCard}</div>
         <div className="min-w-0">
-          <Section aria-label={t("racePageV6.start.fieldTitle")}>
+          <Section aria-label={ts("raceStartList.fieldTitle")}>
             <SectionHeader
-              title={t("racePageV6.start.fieldTitle")}
-              meta={field.status === "ready" && opensIn == null && total > 0 ? t("racePageV6.start.fieldMeta", { riders: total, teams: teams.length }) : undefined}
+              title={ts("raceStartList.fieldTitle")}
+              meta={field.status === "ready" && opensIn == null && total > 0 ? ts("raceStartList.fieldMeta", { riders: total, teams: teams.length }) : undefined}
             />
             {fieldBody}
           </Section>

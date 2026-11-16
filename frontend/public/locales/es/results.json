@@ -107,5 +107,30 @@
     "noMatch": "Ningún corredor o equipo coincide con la búsqueda.",
     "nation": "Nación",
     "allNations": "Todas las naciones"
+  },
+  "raceStartList": {
+    "favouritesTitle": "Favoritos de la carrera",
+    "favouritesFor": "Favoritos en",
+    "favouriteLine": "{rank, selectordinal, one {#.º} two {#.º} few {#.º} other {#.º}} {after}",
+    "afterStage": "tras la etapa {number}",
+    "afterRace": "en la carrera",
+    "favouritesEmpty": "Los favoritos aparecen cuando la carrera tiene una clasificación que todos pueden ver.",
+    "favouritesFoot": "De la clasificación de esta carrera. Nunca forma, fatiga, encaje con el recorrido ni roles de otros equipos.",
+    "fieldTitle": "Todos los corredores",
+    "fieldMeta": "{riders, plural, one {# corredor} other {# corredores}} · {teams, plural, one {# equipo} other {# equipos}}",
+    "searchPlaceholder": "Buscar corredor, equipo o nación",
+    "clearSearch": "Borrar búsqueda",
+    "myTeam": "Mi equipo",
+    "nation": "Nación",
+    "allNations": "Todas las naciones",
+    "matchCount": "Mostrando {shown} de {total}",
+    "noMatch": "Ningún corredor coincide. Borra la búsqueda o los filtros.",
+    "opensIn": "{count, plural, one {La lista de salida se abre en # día.} other {La lista de salida se abre en # días.}}",
+    "loadError": "No se pudo cargar la lista de salida.",
+    "retry": "Reintentar",
+    "empty": "Todavía no hay equipos en la lista de salida.",
+    "unnamedTeam": "Equipo",
+    "bibAria": "Dorsal {bib}",
+    "rating": "Valoración"
   }
 }

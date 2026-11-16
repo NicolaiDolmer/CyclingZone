@@ -107,5 +107,30 @@
     "noMatch": "Geen renner of ploeg komt overeen met die zoekopdracht.",
     "nation": "Land",
     "allNations": "Alle landen"
+  },
+  "raceStartList": {
+    "favouritesTitle": "Favorieten voor de koers",
+    "favouritesFor": "Favorieten voor",
+    "favouriteLine": "{rank, selectordinal, one {#e} two {#e} few {#e} other {#e}} {after}",
+    "afterStage": "na etappe {number}",
+    "afterRace": "in de koers",
+    "favouritesEmpty": "Favorieten verschijnen zodra de koers een klassement heeft dat iedereen kan zien.",
+    "favouritesFoot": "Uit het klassement van deze koers. Nooit vorm, vermoeidheid, parcoursmatch of rollen van andere ploegen.",
+    "fieldTitle": "Alle renners",
+    "fieldMeta": "{riders, plural, one {# renner} other {# renners}} · {teams, plural, one {# ploeg} other {# ploegen}}",
+    "searchPlaceholder": "Zoek renner, ploeg of land",
+    "clearSearch": "Zoekopdracht wissen",
+    "myTeam": "Mijn ploeg",
+    "nation": "Land",
+    "allNations": "Alle landen",
+    "matchCount": "{shown} van {total}",
+    "noMatch": "Geen renners gevonden. Wis de zoekopdracht of de filters.",
+    "opensIn": "{count, plural, one {De startlijst opent over # dag.} other {De startlijst opent over # dagen.}}",
+    "loadError": "De startlijst kon niet worden geladen.",
+    "retry": "Opnieuw proberen",
+    "empty": "Er staan nog geen ploegen op de startlijst.",
+    "unnamedTeam": "Ploeg",
+    "bibAria": "Rugnummer {bib}",
+    "rating": "Rating"
   }
 }
