@@ -91,3 +91,34 @@ export function fingerprint(run) {
     state: Object.fromEntries(TABLES.map((table) => [table, digest(run.state[table])])),
   };
 }
+
+// ── Den frosne golden (#7587): genereret af merge-basens kode, aldrig af den nye ────────────────
+// `off`: grenens motor (med trykkets hukommelse) med kontakterne som i prod (fatigue_now_7801 slukket).
+// `main_on`: mains motor (hvert dag-felt læser alt) med fatigue_now_7801 tændt: mains genlæsning.
+export const AFTER_STAGE_AT = new Date("2026-11-09T17:30:00Z");
+const ON = { fatigue_now_7801: "on" };
+// [etape efter gemme-kald nr., løbets session efter gemme-kald nr.]
+export const MIDWAY = [[null, null], [1, null], [2, null], [3, null], [4, null], [1, 1], [2, 2], [4, 4], [1, 2], [1, 3], [1, 4], [3, 4]];
+export const caseLabel = (stageAfter, sessionAfter) => `etape_${stageAfter ?? "nej"}_session_${sessionAfter ?? "nej"}`;
+export const GOLDEN_CASES = [
+  ...MIDWAY.map(([stageAfter, sessionAfter]) => ({
+    name: `off_stort_beta_${caseLabel(stageAfter, sessionAfter)}`, seed: "stort_hold_beta_tryk", stageAfter, sessionAfter, retryOnThrow: true,
+  })),
+  { name: "off_stort_almindeligt", seed: "stort_hold_beta_tryk", isBetaTester: false },
+  { name: "off_stort_almindeligt_etape_2", seed: "stort_hold_beta_tryk", isBetaTester: false, stageAfter: 2 },
+  { name: "off_lille_hold", seed: "lille_hold_uden_loeb" },
+  { name: "off_etape_koert_session_2", seed: "stort_hold_beta_tryk", stageRun: true, sessionAfter: 2, now: AFTER_STAGE_AT },
+  ...MIDWAY.map(([stageAfter, sessionAfter]) => ({
+    name: `main_on_stort_beta_${caseLabel(stageAfter, sessionAfter)}`, seed: "stort_hold_beta_tryk", stageAfter, sessionAfter, flags: ON, main: true,
+  })),
+];
+
+/** Kør ét golden-tilfælde. `flags`/`main` kan overstyres (fx grenens motor med kontakten tændt). */
+export async function runGoldenCase(c, scenarios, { flags = c.flags, main = c.main } = {}) {
+  const base = scenarios[c.seed].seed;
+  const seed = { ...base, ...(c.stageRun ? { stageRun: true } : {}), ...(flags ? { flags } : {}) };
+  return pressMidway(seed, {
+    stageAfter: c.stageAfter ?? null, sessionAfter: c.sessionAfter ?? null, isBetaTester: c.isBetaTester ?? true,
+    now: c.now ?? PRESS_AT, retryOnThrow: c.retryOnThrow ?? false, ...(main ? { runDay: mainEngine } : {}),
+  });
+}
