@@ -221,12 +221,12 @@ export const PATCHES = [
       "rollout": "live",
       "topic": "Races",
       "en": {
-        "title": "Rankings update within a minute",
-        "body": "The rider rankings, team standings and the dashboard's top 5 now update about a minute after a stage finishes, instead of after 15 minutes or more. The team standings also show when they were last updated."
+        "title": "Rankings update sooner after a stage",
+        "body": "The rider rankings, team standings and the dashboard's top 5 now update sooner after a stage finishes. The team standings also show when they were last updated."
       },
       "da": {
-        "title": "Ranglisterne opdateres inden for et minut",
-        "body": "Rytterranglisten, holdranglisten og forsidens top 5 opdateres nu cirka et minut efter en etape, i stedet for efter 15 minutter eller mere. Holdranglisten viser også, hvornår den sidst blev opdateret."
+        "title": "Ranglisterne opdateres hurtigere efter en etape",
+        "body": "Rytterranglisten, holdranglisten og forsidens top 5 opdateres nu hurtigere efter en etape. Holdranglisten viser også, hvornår den sidst blev opdateret."
       },
       "refs": [
         7664,
@@ -262,8 +262,8 @@ export const PATCHES = [
       "rollout": "live",
       "topic": "Races",
       "en": {
-        "title": "Race story names the right group",
-        "body": "Race story: the report no longer calls the group at the finish line the chasers by mistake in rare cases."
+        "title": "Race film names the right group",
+        "body": "Race film: the report no longer calls the group at the finish line the chasers by mistake in rare cases."
       },
       "da": {
         "title": "Løbsfilmen nævner den rigtige gruppe",
@@ -333,12 +333,12 @@ export const PATCHES = [
       "rollout": "live",
       "topic": "Board",
       "en": {
-        "title": "Parked teams",
-        "body": "Parked teams no longer get messages from the board: no mid-season check, no annual mandate reminders and no negative balance warning. The board no longer signs the mandate on the team's behalf either."
+        "title": "Inactive teams",
+        "body": "Inactive teams no longer get messages from the board: no mid-season check, no annual mandate reminders and no negative balance warning. The board no longer accepts the season mandate for an inactive team."
       },
       "da": {
-        "title": "Parkerede hold",
-        "body": "Parkerede hold får ikke længere beskeder fra bestyrelsen: ingen halvsæson-besked, ingen påmindelser om årsmandatet og ingen advarsel om negativ saldo. Bestyrelsen skriver heller ikke længere under på holdets vegne."
+        "title": "Inaktive hold",
+        "body": "Inaktive hold får ikke længere beskeder fra bestyrelsen: ingen halvsæson-besked, ingen påmindelser om årsmandatet og ingen advarsel om negativ saldo. Bestyrelsen accepterer heller ikke længere sæsonens mandat for et inaktivt hold."
       },
       "refs": [
         8099,
@@ -359,11 +359,11 @@ export const PATCHES = [
       "rollout": "live",
       "topic": "Help",
       "en": {
-        "title": "Help",
+        "title": "Help: roles and potential",
         "body": "Help no longer claims that a role's ceiling is shown next to a rider's potential."
       },
       "da": {
-        "title": "Hjælp",
+        "title": "Hjælp: roller og potentiale",
         "body": "Hjælp påstår ikke længere, at rollens loft vises ved en rytters potentiale."
       },
       "refs": [
@@ -377,11 +377,11 @@ export const PATCHES = [
       "rollout": "live",
       "topic": "Dashboard",
       "en": {
-        "title": "Today's stages",
+        "title": "Today's stages: missing overall position",
         "body": "Today's stages no longer says the overall position is not settled when the information is just missing."
       },
       "da": {
-        "title": "Dagens etaper",
+        "title": "Dagens etaper: manglende samlet stilling",
         "body": "Dagens etaper skriver ikke længere, at den samlede stilling ikke er afgjort, når det bare er oplysningerne, der mangler."
       },
       "refs": [
@@ -647,11 +647,11 @@ export const PATCHES = [
       "topic": "Transfers",
       "en": {
         "title": "Bid money is now locked for every team",
-        "body": "Money you have bid is now locked for every team, so no one can bid more than they have. It has run in beta since 11 November. Auto-accept is still in beta."
+        "body": "Money you have bid is now locked while you lead the auction or still have automatic bids in it, for every team. It has run in beta since 11 November."
       },
       "da": {
         "title": "Budt beløb er nu låst for alle hold",
-        "body": "Penge, I har budt, er nu låst for alle hold, så ingen kan byde for mere, end de har. Den har kørt i beta siden 11. november. Auto-accept er stadig i beta."
+        "body": "Penge, du har budt, er nu låst, mens du fører auktionen eller stadig har automatiske bud i den, for alle hold. Det har kørt i beta siden 11. november."
       },
       "refs": [
         6181,
