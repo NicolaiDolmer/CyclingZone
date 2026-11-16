@@ -346,7 +346,7 @@ function Direction1({ plans }: { plans: Plans }) {
   return (
     <>
       <div className="hidden overflow-hidden rounded-cz border border-cz-border bg-cz-card md:block">
-        <table className="w-full border-collapse">
+        <table className="w-full border-collapse" data-sort-exempt="skitse; den rigtige side sorterer efter rytter">
           <thead className="bg-cz-subtle">
             <tr>
               <th className={TH}>Rytter</th>
@@ -466,7 +466,7 @@ function Direction2({ plans }: { plans: Plans }) {
           <Segmented label="Hele holdet" value="" onChange={() => undefined} options={[{ value: "program", label: "Alle følger program" }, { value: "rest", label: "Trætte hviler" }]} />
           <span className="text-2xs text-cz-3">Et tryk på et felt retter kun det felt i dag.</span>
         </div>
-        <table className="w-full border-collapse">
+        <table className="w-full border-collapse" data-sort-exempt="skitse; den rigtige side sorterer efter rytter">
           <thead className="bg-cz-subtle">
             <tr>
               <th className={TH}>Rytter</th>
@@ -595,7 +595,7 @@ function Direction3({ plans, openDay }: { plans: Plans; openDay: { id: string; d
   return (
     <>
       <div className="hidden overflow-hidden rounded-cz border border-cz-border bg-cz-card md:block">
-        <table className="w-full border-collapse">
+        <table className="w-full border-collapse" data-sort-exempt="skitse; den rigtige side sorterer efter rytter">
           <thead className="bg-cz-subtle">
             <tr>
               <th className={TH}>Rytter</th>
