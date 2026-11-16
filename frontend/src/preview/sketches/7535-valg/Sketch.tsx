@@ -418,10 +418,9 @@ function SquadTable({ cfg }: { cfg: Config }) {
                 <Check on={r.selected} />
               </td>
               <td className="px-2 py-[7px]">
-                <span className="flex items-center gap-2">
+                <span className="flex items-center gap-2 whitespace-nowrap">
                   <Flag code={r.nation} />
                   <span className="font-medium text-cz-1">{r.name}</span>
-                  <span className="text-3xs text-cz-3">{r.type}</span>
                 </span>
               </td>
               <td className="px-2 py-[7px]">
@@ -854,7 +853,7 @@ export function DesktopPage({ cfg }: { cfg: Config }) {
         <div className="mx-auto max-w-[1600px]">
           <PageHead mobile={false} />
           <WeekBoard mobile={false} />
-          <div className="grid grid-cols-[300px_minmax(0,1fr)] gap-4">
+          <div className="grid grid-cols-[320px_minmax(0,1fr)] gap-4">
             <RaceList mode={cfg.status} mobile={false} />
             <Workbench cfg={cfg} />
           </div>

@@ -66,11 +66,11 @@ export const RIDERS: Rider[] = [
   { id: "r6", name: "Zhen Ren", nation: "cn", type: "Sprinter", rating: 72, form: 72, fatigue: 30, finishDelta: 14, routeMatch: 58, selected: true, role: "Spurtkaptajn", plan: [["Bliv i læ", "Let"], ["Spurt", "Meget hård"]], planCost: "Sparer kræfter" },
   { id: "r7", name: "Ignacio Moreno", nation: "es", type: "Puncheur", rating: 67, form: 74, fatigue: 38, finishDelta: 19, routeMatch: 58, selected: false, peak: { race: "Tour de Preview", when: "tirs. 17. nov. · om 1 dag", cost: "lille formdyk bagefter", here: true } },
   { id: "r8", name: "Wilson Maldonado", nation: "co", type: "Klatrer", rating: 73, form: 64, fatigue: 29, finishDelta: 21, routeMatch: 56, selected: false },
-  { id: "r9", name: "Jonas Baumann", nation: "de", type: "Puncheur", rating: 68, form: 72, fatigue: 29, finishDelta: 18, routeMatch: 56, selected: false, busy: "I Omloop van de Denderstreek" },
+  { id: "r9", name: "Jonas Baumann", nation: "de", type: "Puncheur", rating: 68, form: 72, fatigue: 29, finishDelta: 18, routeMatch: 56, selected: false, busy: "I Omloop" },
   { id: "r10", name: "Abdel Jaziri", nation: "tn", type: "Rouleur", rating: 68, form: 62, fatigue: 20, finishDelta: 20, routeMatch: 55, selected: false },
   { id: "r11", name: "Fei Fu", nation: "cn", type: "Sprinter", u23: true, rating: 73, form: 72, fatigue: 26, finishDelta: 17, routeMatch: 54, selected: false },
   { id: "r12", name: "Riad Zerouali", nation: "ma", type: "Sprinter", rating: 67, form: 72, fatigue: 30, finishDelta: 18, routeMatch: 54, selected: false },
-  { id: "r13", name: "Rik Maes", nation: "be", type: "Puncheur", u23: true, rating: 67, form: 70, fatigue: 25, finishDelta: 18, routeMatch: 53, selected: false, busy: "I Grand Prix de Wallonie" },
+  { id: "r13", name: "Rik Maes", nation: "be", type: "Puncheur", u23: true, rating: 67, form: 70, fatigue: 25, finishDelta: 18, routeMatch: 53, selected: false, busy: "I Wallonie" },
   { id: "r14", name: "Joaquin Ibarra", nation: "ar", type: "Klatrer", rating: 69, form: 70, fatigue: 26, finishDelta: 19, routeMatch: 52, selected: false, injured: "Skadet · rask igen 20. nov." },
 ];
 

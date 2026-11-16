@@ -48,21 +48,23 @@ function Page({ v }: { v: Variant }) {
     document.documentElement.style.setProperty("--cap", `${h}px`);
   });
   useEffect(() => {
-    const id = mobile ? cfg.mobileAnchor : cfg.anchor;
-    if (!id) return;
-    const t = window.setTimeout(() => {
-      const el = document.getElementById(id);
-      if (!el) return;
+    // Rul så punktet står lige under captionen. Billed-scriptet kalder den igen efter at have
+    // gjort vinduet højt nok til captionen + en hel skærm.
+    const scrollToAnchor = () => {
+      const id = mobile ? cfg.mobileAnchor : cfg.anchor;
+      const el = id ? document.getElementById(id) : null;
+      if (!el) return window.scrollTo(0, 0);
       const h = cap.current?.offsetHeight ?? 0;
       // Mobil: app-baren (48) og evt. den klæbende visningsvælger dækker toppen.
       const extra = mobile ? 48 + (cfg.sheet !== "today" && id !== "view-switch" && id !== "sheet-top" ? 52 : 0) : cfg.head !== "today" && id !== "workbench" ? 72 : 12;
       window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - h - extra);
+    };
+    (window as unknown as { __scrollToAnchor: () => void }).__scrollToAnchor = scrollToAnchor;
+    const t = window.setTimeout(() => {
+      scrollToAnchor();
       document.body.dataset.ready = "1";
     }, 60);
     return () => window.clearTimeout(t);
-  });
-  useEffect(() => {
-    if (!(mobile ? cfg.mobileAnchor : cfg.anchor)) document.body.dataset.ready = "1";
   });
   return (
     <>

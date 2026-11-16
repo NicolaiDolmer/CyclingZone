@@ -57,6 +57,9 @@ export interface Variant {
   /** Kort note ved siden af anbefalingen (fx rækkefølge). */
   recNote?: string;
   cfg: Partial<Config>;
+  /** Hele siden i ét billede (desktop/mobil) i stedet for én skærm. */
+  fullD?: boolean;
+  fullM?: boolean;
 }
 
 export const POINTS: Record<number, string> = {
@@ -73,18 +76,21 @@ export const POINTS: Record<number, string> = {
 export const VARIANTS: Variant[] = [
   {
     id: "1a", point: 1, letter: "A", name: "Løbssidens taktik-fane, rettet",
+    fullD: true, fullM: true,
     line: "Fordel: præcis samme taktik som løbssiden (tændt for alle), ét guld \"Gem etape 1\" og ingen intro, kan laves straks; ulempe: lang og fylder som en side i siden.",
     recommended: false, recNote: "Trin 1, straks",
     cfg: { view: "tactics", tactics: "raceTab", anchor: "view-switch", mobileAnchor: "view-switch" },
   },
   {
     id: "1b", point: 1, letter: "B", name: "Kompakt planlægnings-udgave",
+    fullD: true, fullM: true,
     line: "Fordel: holdplan på ét kort og én række pr. rytter med plan-chips og pris i ord, samme gem som løbssiden; ulempe: en ny visning at holde i takt med løbssiden.",
     recommended: true, recNote: "Mål efter A",
     cfg: { view: "tactics", tactics: "compact", anchor: "view-switch", mobileAnchor: "view-switch" },
   },
   {
     id: "1c", point: 1, letter: "C", name: "Kun status + link til løbssiden",
+    fullD: true, fullM: true,
     line: "Fordel: intet dobbelt, status pr. etape ses her og taktikken sættes ét sted; ulempe: man forlader planlægningen for at sætte taktik.",
     recommended: false,
     cfg: { view: "tactics", tactics: "link", anchor: "view-switch", mobileAnchor: "view-switch" },
@@ -163,18 +169,21 @@ export const VARIANTS: Variant[] = [
   },
   {
     id: "6a", point: 6, letter: "A", name: "Som runde 3",
+    fullD: true,
     line: "Fordel: samme liste som Form-fanen; ulempe: ingen kobling til truppen, så en formtop på en rytter der ikke er udtaget ses ikke.",
     recommended: false,
     cfg: { view: "peak", peak: "today", anchor: "view-switch", mobileAnchor: "view-switch" },
   },
   {
     id: "6b", point: 6, letter: "B", name: "Udtagne øverst + advarsel",
+    fullD: true,
     line: "Fordel: \"I truppen\" øverst og en advarsel når formtoppen rammer et løb rytteren ikke er udtaget til, mobilens 3. kolonne er målets status; ulempe: listen er sorteret efter trup, ikke efter rating.",
     recommended: true,
     cfg: { view: "peak", peak: "linked", anchor: "view-switch", mobileAnchor: "view-switch" },
   },
   {
     id: "6c", point: 6, letter: "C", name: "Formtop som kolonne i truppen",
+    fullD: true,
     line: "Fordel: ingen ekstra visning, formtop ses mens man udtager; ulempe: trup-tabellen får endnu en kolonne og selve målet sættes stadig et andet sted.",
     recommended: false,
     cfg: { view: "squad", peak: "column", table: "today", anchor: "squad-table", mobileAnchor: "squad-table" },
@@ -199,18 +208,21 @@ export const VARIANTS: Variant[] = [
   },
   {
     id: "8a", point: 8, letter: "A", name: "Som runde 3",
+    fullD: true, fullM: true,
     line: "Fordel: intet nyt; ulempe: taktik gemmes nederst mens hovedets guld siger \"Gem trup\", og en ugemt trup skjuler taktikken helt.",
     recommended: false,
     cfg: { view: "tactics", save: "today", squadDirty: true, anchor: "workbench", mobileAnchor: "sheet-top" },
   },
   {
     id: "8b", point: 8, letter: "B", name: "Hovedets guld følger visningen",
+    fullD: true, fullM: true,
     line: "Fordel: ét guld øverst der altid gemmer det man ser, og ved ugemt trup står \"Gem trup og sæt taktik\"; ulempe: hovedets knap skifter tekst, når man skifter visning.",
     recommended: true,
     cfg: { view: "tactics", save: "follows", squadDirty: true, anchor: "workbench", mobileAnchor: "sheet-top" },
   },
   {
     id: "8c", point: 8, letter: "C", name: "Fælles gem-bjælke nederst",
+    fullD: true, fullM: true,
     line: "Fordel: én bjælke samler alle ugemte ændringer, trup og taktik, og gemmer dem i ét tryk; ulempe: to skriv bag én knap, så en delvis fejl skal forklares.",
     recommended: false,
     cfg: { view: "tactics", save: "bar", squadDirty: true, anchor: "workbench", mobileAnchor: "sheet-top" },
