@@ -24,11 +24,18 @@ export function useTalentOrigins(teamId: string | null, riderIds: readonly strin
     let alive = true;
     const ids = idsKey ? idsKey.split(",") : [];
     setFailed(false);
-    if (!teamId || ids.length === 0) {
+    if (ids.length === 0) {
       setOrigins(new Map());
       return () => { alive = false; };
     }
-    setOrigins(null);
+    // Talenter uden holdets id kan ikke afgøres: en fejl, aldrig en tom liste der skjuler dem tavst.
+    if (!teamId) {
+      setOrigins(null);
+      setFailed(true);
+      return () => { alive = false; };
+    }
+    // Ved genhentning (fx efter en signering) bliver den forrige oprindelse stående, til svaret er her,
+    // så listen ikke blinker til en spinner og mister sin sortering.
     Promise.all([
       fetchAllRows(() => supabase
         .from("academy_intake")
