@@ -13,7 +13,7 @@
 //
 // Akademi-regnskabet er et separat stykke (placeringen er ikke valgt): AcademyPnl står uændret
 // under fanerne, og der er ingen regnskabsfane.
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ComponentType, ReactNode } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -65,10 +65,25 @@ export default function AcademyV2(props: AcademyV2Props) {
   }));
   const ageFocus = useAcademyAgeFocus(Boolean(academyProfile));
   const showProfileTab = Boolean(academyProfile);
-  // Skitse A: "Kom via" i "Dine talenter". Rosterets ryttere bærer holdets id (/academy/me).
+  // Spillerens eget fanevalg vinder altid over den automatiske start-fane.
+  const tabPicked = useRef(false);
+  const pickTab = (next: AcademyV2Tab) => {
+    tabPicked.current = true;
+    setTab(next);
+  };
+  // Oprindelsen (egen avl) til "Dine talenter". Rosterets ryttere bærer holdets id (/academy/me).
   const { origins, failed: originsFailed } = useTalentOrigins(roster.find((r) => r.team_id)?.team_id ?? null, roster.map((r) => r.id));
   // Ejer 16/11: listen viser kun egen avl (akademi-tilbud); null = oprindelsen indlæses endnu.
   const ownTalents = ownAcademyTalents(roster, origins);
+  // Start-fanen afgøres igen, når egen avl er kendt: er listen tom, åbner siden på optaget i stedet for en
+  // tom talentfane (Codex #8271). Et fanevalg spilleren selv har truffet, røres aldrig.
+  const ownTalentCount = ownTalents?.length ?? null;
+  useEffect(() => {
+    if (ownTalentCount === null || tabPicked.current) return;
+    setTab(initialAcademyTab({
+      regularCount: regularIntake.length, giftCount: giftIntake.length, pullOpen, talentCount: ownTalentCount,
+    }));
+  }, [ownTalentCount, regularIntake.length, giftIntake.length, pullOpen]);
 
   const focusNow = ageFocus.state?.active?.ageFocus ?? null;
   const focusLabel = (value: string | null) => (ageFocusChoice(value) === AGE_FOCUS_MIXED ? t("academyV2:v2.age.mixed") : String(value));
@@ -90,7 +105,7 @@ export default function AcademyV2(props: AcademyV2Props) {
   ];
 
   const goToIntake = (
-    <button type="button" onClick={() => setTab("intake")} className={buttonClass({ variant: "secondary", size: "sm" })}>
+    <button type="button" onClick={() => pickTab("intake")} className={buttonClass({ variant: "secondary", size: "sm" })}>
       {t("academyV2:v2.talents.emptyAction")}
     </button>
   );
@@ -125,7 +140,7 @@ export default function AcademyV2(props: AcademyV2Props) {
           </Card>
         </section>
 
-        <Tabs value={tab} onChange={(next) => setTab(next as AcademyV2Tab)}>
+        <Tabs value={tab} onChange={(next) => pickTab(next as AcademyV2Tab)}>
           <TabList label={t("academyV2:v2.tabsLabel")} className="mb-5">
             <Tab value="intake">{t("academyV2:v2.tabs.intake")}</Tab>
             <Tab value="talents">{t("academyV2:v2.tabs.talents")}</Tab>
