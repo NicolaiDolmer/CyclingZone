@@ -51,7 +51,7 @@ function StatusCell({ row, detail, seasonYear, compact = false }: { row: SquadRo
       {row.busyIn && (
         // Hele "I <loeb>" i almindelig skrift; kun et meget langt navn afkortes (titlen har resten).
         <span
-          className={`inline-block ${compact ? "max-w-[4.5rem]" : "max-w-[6.5rem]"} truncate rounded border border-cz-border bg-cz-subtle px-1.5 py-0.5 text-2xs leading-none text-cz-2`}
+          className={`inline-block ${compact ? "max-w-[4rem]" : "max-w-[6.5rem]"} truncate rounded border border-cz-border bg-cz-subtle px-1.5 py-0.5 text-2xs leading-none text-cz-2`}
           title={t("status.busyTitle", { race: row.busyIn })}
         >
           {t("status.busy", { race: row.busyIn })}
@@ -171,7 +171,13 @@ export default function SquadTable({
   );
 
   return (
-    <div ref={wrapRef} className="overflow-x-clip sm:overflow-x-auto" data-testid="planning-squad-table" data-compact={compact ? "true" : undefined}>
+    <div
+      ref={wrapRef}
+      // Trang tabel (runde 3: "Efter loebet" kom til): cellerne rykker taettere, men kortets kant-luft bliver.
+      className={`overflow-x-clip sm:overflow-x-auto ${compact ? "[&_td]:px-1 [&_th]:px-1 sm:[&_td:first-child]:ps-3 sm:[&_th:first-child]:ps-3 sm:[&_td:last-child]:pe-3 sm:[&_th:last-child]:pe-3" : ""}`}
+      data-testid="planning-squad-table"
+      data-compact={compact ? "true" : undefined}
+    >
       <table data-sortable className="w-full border-collapse">
         <thead>
           {/* Hver kolonne sorterer: th() bygger en SortableTh med onSort (guard: tableSortIntent.test.js). */}
@@ -245,7 +251,8 @@ export default function SquadTable({
                           {detail?.nationality && <Flag code={detail.nationality} className="shrink-0 text-2xs" />}
                           <RiderNameCell id={row.id} name={row.name} wrap className="text-[13.5px] font-medium text-cz-1 hover:text-cz-accent-t sm:whitespace-nowrap" />
                         </span>
-                        {load != null && load.raceDays > 0 && (
+                        {/* Trang tabel: belastningen er pynt ved navnet og falder vaek som traethedsbjaelken (tallet staar paa /planning). */}
+                        {load != null && load.raceDays > 0 && !compact && (
                           <span
                             className="shrink-0 whitespace-nowrap font-mono text-3xs tabular-nums text-cz-3"
                             data-testid="planning-season-load"
@@ -274,7 +281,7 @@ export default function SquadTable({
                     readOnly ? (
                       <span className="text-[13px] text-cz-2">{t(`role.${roleOf(selection, row.id)}`)}</span>
                     ) : (
-                      <RoleSelect row={row} selection={selection} roles={roles} onRole={onRole} className={compact ? "min-w-[7.25rem]" : undefined} />
+                      <RoleSelect row={row} selection={selection} roles={roles} onRole={onRole} className={compact ? "min-w-[6.5rem]" : undefined} />
                     )
                   ) : (
                     <span className="text-cz-3">-</span>

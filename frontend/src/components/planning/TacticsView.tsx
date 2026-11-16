@@ -50,7 +50,12 @@ export default function TacticsView({
   }
 
   return (
-    <div className="border-t border-cz-border" data-testid="planning-tactics">
+    <div
+      // Ruteprofilen staar allerede over visningen: fanens egen tynde profilraekke skjules (etapeplanens
+      // profil med stigningsvalg bliver, den er en del af planen). Fanens kort faar ingen ekstra ramme.
+      className="border-t border-cz-border [&_[data-testid=race-stage-profile-row].rounded-cz]:hidden [&_[data-testid=race-tactics-tab]]:rounded-none [&_[data-testid=race-tactics-tab]]:border-0"
+      data-testid="planning-tactics"
+    >
       {squadDirty && (
         <p className="border-b border-cz-border px-4 py-2 text-xs text-cz-warning" role="status">
           {t("tactics.squadUnsaved")}

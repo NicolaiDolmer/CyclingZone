@@ -494,6 +494,34 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
       </div>
     ) : null;
 
+  // Én guld-knap pr. visning, teksten foelger visningen (Trup: gem truppen; Formtop: anvend paa de valgte).
+  // Taktik har sin egen guld-knap i loebssidens fane. I mobil-arket staar knappen fast i bunden af arket.
+  const primaryButton =
+    state !== "ready" || readOnly ? null : view === "peak" ? (
+      <Button
+        variant="primary"
+        size="sm"
+        onClick={peak.apply}
+        loading={writing === "peak"}
+        disabled={locked || peak.pairs.length === 0}
+        data-testid="planning-peak-apply"
+        className={inSheet ? "w-full" : undefined}
+      >
+        {t(saveLabelKey("peak"), { count: peak.pairs.length })}
+      </Button>
+    ) : view === "squad" ? (
+      <Button
+        variant="primary"
+        size="sm"
+        onClick={save}
+        loading={saving}
+        disabled={!dirty || locked || clientErrors.length > 0}
+        className={inSheet ? "w-full" : undefined}
+      >
+        {t(saveLabelKey("squad"))}
+      </Button>
+    ) : null;
+
   let body;
   if (state === "loading") {
     body = (
@@ -658,16 +686,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
                 {t("peak.clear")}
               </Button>
             )}
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={peak.apply}
-              loading={writing === "peak"}
-              disabled={locked || peak.pairs.length === 0}
-              data-testid="planning-peak-apply"
-            >
-              {t(saveLabelKey("peak"), { count: peak.pairs.length })}
-            </Button>
+            {!inSheet && primaryButton}
           </div>
         )}
         {state === "ready" && !readOnly && view === "tactics" && dirty && (
@@ -694,9 +713,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
                 {t("race.discard")}
               </Button>
             )}
-            <Button variant="primary" size="sm" onClick={save} loading={saving} disabled={!dirty || locked || clientErrors.length > 0}>
-              {t(saveLabelKey("squad"))}
-            </Button>
+            {!inSheet && primaryButton}
             {copyOpen && (
               <div
                 role="dialog"
@@ -744,6 +761,11 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
       )}
 
       {body}
+      {inSheet && primaryButton && (
+        <div className="sticky bottom-0 z-sticky border-t border-cz-border bg-cz-card px-3 py-2" data-testid="planning-sheet-save">
+          {primaryButton}
+        </div>
+      )}
     </section>
   );
 });

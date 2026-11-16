@@ -255,6 +255,7 @@ let previewPeaks: Array<{ id: string; riderId: string; raceId: string }> = [
   { id: "pk-2", riderId: "wb-r01", raceId: "wb-navarra" },
   { id: "pk-3", riderId: "wb-r01", raceId: "wb-appenninica" },
   { id: "pk-4", riderId: "wb-r05", raceId: "wb-dender" },
+  { id: "pk-5", riderId: "wb-r15", raceId: "wb-preview" },
 ];
 const PREVIEW_PEAK_MAX = 2;
 
