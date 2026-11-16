@@ -142,12 +142,13 @@ function undersoegelseBlok() {
   ].join("\n");
 }
 
-// CodeRabbit (denne PR): et undersoegelsesspor bygger intet - de fulde
-// build-regler (commit-guard, livstegn/push-kadence, TIER-verifikation,
-// draft-PR + CodeRabbit + gh pr ready) er ALLE meningsloese for et spor der
-// kun leverer en dom i sin slutrapport. Denne trimmede regelblok erstatter
-// dem for kind: "investigate" i stedet for at faa dem tilfoejet oveni.
-function reglerBlokInvestigate(scratchDir) {
+// CodeRabbit (#5220): et undersoegelsesspor bygger ingen kode - de fulde
+// build-regler (livstegn/push-kadence, TIER-verifikation, CodeRabbit + gh pr
+// ready) er meningsloese her. Denne trimmede regelblok erstatter dem for
+// kind: "investigate". #8233: rapporten committes dog bag guarden og leveres
+// i en draft-PR - to gange 16/11 endte et resultat ellers kun i scratch.
+function reglerBlokInvestigate(wd, branch, scratchDir, msgFile, issue, slug) {
+  const reportFile = `docs/audits/undersoegelse-${slug}.md`;
   return [
     "# Regler (bindende, undersoegelsesspor)",
     "",
@@ -155,7 +156,15 @@ function reglerBlokInvestigate(scratchDir) {
     `- Scratch-mappe (kun din): \`${scratchDir}\` - eventuelle midlertidige filer (bevis-logs, test-output) laegges DER.`,
     "- INGEN baggrundsjob. Koer ALLE kommandoer i FORGRUNDEN og laes resultatet selv.",
     "- Arbejd sekventielt. Spawn ALDRIG under-agenter.",
-    "- Dette spor bygger INTET: intet commit, ingen push, ingen PR. Din leverance er en dom + bevis i slutrapporten, ikke kode.",
+    "- Dette spor bygger INTET (ingen kode-aendring). Leverancen er en dom + bevis, committet som rapport i en draft-PR (#8233) - aldrig kun i scratch.",
+    "",
+    "# Leverance (#8233, bindende)",
+    "",
+    `1. Skriv rapporten med Write-vaerktoejet til \`${wd}\\${reportFile.replace(/\//g, "\\")}\` (offentligt repo: ingen praecise balance-tal, holdnavne, brugernavne, id'er eller e-mails).`,
+    `2. Commit-beskeden skrives til \`${msgFile}\` (aldrig heredoc), med "Refs #${issue}".`,
+    `3. \`git -C "${wd}" add ${reportFile}\` (kun den fil), og commit KUN bag guarden: \`bash "${wd}/scripts/guard-commit-branch.sh" ${branch} "${wd}" && git -C "${wd}" commit -F "${msgFile}"\`. Blokerer guarden: STOP og rapporter det.`,
+    `4. \`git -C "${wd}" push -u origin ${branch}\`.`,
+    `5. \`gh pr create --draft --base main --head ${branch} --title "docs(audit): undersoegelse af #${issue}" --body "Refs #${issue} - undersoegelsesspor (kind: investigate). Dom og bevis i ${reportFile}." --label docs-only\`. Ikke Closes, aldrig \`gh pr ready\`, aldrig merge.`,
   ].join("\n");
 }
 
@@ -165,7 +174,7 @@ function slutrapportBlokInvestigate() {
     "",
     "- Hvad du undersoegte og hvordan (kommandoer, filer, logs du kiggede paa).",
     "- Din SIDSTE saetning SKAL vaere PRAECIS en af de to domme ovenfor, ordret - intet tredje svar.",
-    "- Ingen PR, intet commit, intet push - dette spor leverer kun en dom, ikke kode.",
+    "- PR-URL'en paa sin egen linje (\"PR: https://github.com/.../pull/N\"). Uden PR-URL melder boelgen sporet 'not-delivered' (#8233).",
   ].join("\n");
 }
 
@@ -366,7 +375,7 @@ export function generateBrief(config) {
     // TIER-verifikation, PR-skabelon) kraever ALLE commit/push/PR - modstrider
     // "bygger intet". Erstattes med en trimmet regelblok + egen slutrapport.
     parts.push(undersoegelseBlok(), "");
-    parts.push(reglerBlokInvestigate(scratchDir), "");
+    parts.push(reglerBlokInvestigate(wd, branch, scratchDir, msgFile, issue, slug), "");
     parts.push(slutrapportBlokInvestigate());
     return parts.join("\n") + "\n";
   }

@@ -302,6 +302,37 @@ export function extractInvestigateVerdict(reportText) {
 }
 
 /**
+ * #8233: finder sporets PR. Et spor har leveret, naar reviewerens pr-felt
+ * peger paa en PR (URL, #N eller N), eller naar lanens egen slutrapport
+ * indeholder en PR-URL. Alt andet ("ingen", tomt, tekst uden nummer) giver
+ * null. To gange 16/11 endte et undersoegelsesspors rapport kun i scratch,
+ * fordi intet tjekkede at der kom en PR ud af sporet.
+ * @returns {string|null}
+ *
+ * SPEJLING i .claude/workflows/wave.js - hold dem identiske.
+ */
+export function findDeliveredPr(row) {
+  if (!row || typeof row !== 'object') return null
+  const pr = String(row.pr || '').trim()
+  if (/pull\/\d+|#\d+|^\d+$/.test(pr)) return pr
+  const m = String(row.report || '').match(/https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/)
+  return m ? m[0] : null
+}
+
+/**
+ * #8233: et spor der sluttede (lane-agenten svarede) uden en PR, er
+ * 'not-delivered'. Stoppede spor (frys, timeout, doed, fejl ...) raabes
+ * allerede op i boelgens `stopped` og taelles ikke her.
+ *
+ * SPEJLING i .claude/workflows/wave.js - hold dem identiske.
+ */
+export function isNotDelivered(row) {
+  const finished = ['bygget', 'rettet', 'rettelse-mangler', 'undersoegt', 'undersoegt-ufuldstaendig']
+  if (!row || !finished.includes(row.status)) return false
+  return findDeliveredPr(row) === null
+}
+
+/**
  * Tungeste spor foerst (#5562, longest-processing-time-first). Erstatter den
  * blandede koe fra #5220, der stillede lette spor forrest: saa startede det
  * tungeste spor sidst og koerte alene til sidst (boelge A 23/9: ca. 18 % af
