@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11 · slet `backup_5902_20261112_*` ~26/11 · slet `backup_8078/8080/8099_20261113_*` ~27/11.
 >
-> **🎯 Next action (16/11 nat):** ugeplan efter roadmappets This week: MASTERPLAN + #7911. #8195 (#7982) merget slukket 15/11; tændes KUN sammen med `fatigue_now_7801` (ejer; luk Fable-fund A først, #7801). #8148 merget: mål tryk 16/11. XP #6110 godkendt privat; før tænding `_nocap`, Infisical-nøgle, Fable. #6181: se første `sale_escrows`. #8014 merget; #6649 måles 17/11; #7884 byg venter. #7644 IKKE klar. **TÆNDT 15/11:** `sale_escrow_enabled`. **Nye:** #8198 · #8199. **Man 16/11:** auto-kalender, private grene, #8149, #8162. **#8071:** `private-handoffs/2026-11-13-trup-tabel-design/LAES-FOERST.md`.
+> **🎯 Next action (16/11 morgen):** morgenkort på #7911. Ugeplan: MASTERPLAN + #7911. Kladder nat 16/11: #8212 fund A (Fable-gentjek før `fatigue_now_7801`+`training_settle_race_session`), #8213 afregning-skærm, #8211 løbsside v6, #8205 rapport neutral. #8214 (#8196) merget `ff60a752`. #8148: mål tryk 16/11. XP #6110 godkendt privat; før tænding `_nocap`, Infisical-nøgle, Fable. #6181: se første `sale_escrows`. #8014 merget; #6649 måles 17/11; #7884 byg venter. #7644 IKKE klar. **TÆNDT 15/11:** `sale_escrow_enabled`. **Nye:** #8198 · #8199. **Man 16/11:** auto-kalender, private grene, #8149, #8162. **#8071:** `private-handoffs/2026-11-13-trup-tabel-design/LAES-FOERST.md`.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** Ingen aktiv session. 15-16/11: `sale_escrow_enabled` + `auto_accept_enabled` tændt; #8210 XP-kladde; hooks-rest #8209.
+> **🤖 Working agent:** Ingen aktiv session. 15-16/11: `sale_escrow_enabled` + `auto_accept_enabled` tændt; #8210 XP-kladde; nat 16/11: #8182/#8186/#8214 merget.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
