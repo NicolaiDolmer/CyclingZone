@@ -551,6 +551,12 @@
     "restSelected": "Mettre au repos",
     "pickHint": "Touche les coureurs que tu veux changer."
   },
+  "settleAfterStage": {
+    "ran": "Faite",
+    "ranTitle": "Cette séance est faite et ne peut plus être modifiée",
+    "note": "{n, plural, one {La séance de course de # coureur est réglée après l'étape.} other {Les séances de course de # coureurs sont réglées après l'étape.}} Les séances qui ne sont pas faites peuvent encore être modifiées.",
+    "fatigueNow": "La fatigue affichée inclut déjà la course."
+  },
   "programs": {
     "title": "Programmes d'entraînement",
     "intro": "Choisis un programme et applique-le à un coureur ou à tout l'effectif. Il est copié dans le plan, tu peux donc modifier n'importe quel jour ensuite.",
