@@ -76,8 +76,9 @@ function NextSeasonNudge({ t, nextSeason, onSwitch, onDismiss }) {
 // planlæggeren siger det rent ud og viser hele kalenderen på tværs af divisioner
 // i stedet for at udpege en forkert. Ingen dismiss-knap — det her er ikke en
 // nudge man kan vælge fra, det er grunden til at brættet ser anderledes ud.
-// #5841: når den forventede division kendes, viser brættet den (ikke alle divisioner), og
-// brødteksten siger det; ellers den oprindelige tekst om alle divisioners løb.
+// #5841: når den forventede division kendes, STARTER brættet på den (ikke alle divisioner).
+// Brødteksten siger hvor det starter, ikke hvad der vises nu, så den holder uanset hvilken
+// division manageren vælger bagefter (Codex-fund). Ellers den oprindelige tekst om alle divisioner.
 function DivisionPendingNotice({ t, seasonNumber, expectedDivision = null }) {
   return (
     <Section borderClass="border-cz-accent-t" className="mb-[14px] bg-cz-subtle">
