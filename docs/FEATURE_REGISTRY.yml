@@ -514,6 +514,19 @@ features:
     verified: 2026-11-13
     note: "#7778/#8062: kun trin 1 af 5 er bygget (kun visning); kontakt race_page_v6 off i prod 13/11."
 
+  - id: spoiler-shield
+    area: race-day
+    title_en: Spoiler shield
+    title_da: Spoiler-skjold
+    state: building
+    flag: spoiler_shield_7859
+    decision: ejer-beslutning
+    decide_by: 2026-11-30
+    epic: 7778
+    ssot: docs/RACE_ENGINE_RULES.md
+    verified: 2026-11-16
+    note: "#7859: seedes off."
+
   - id: rider-hover-card
     area: squad
     title_en: Rider card

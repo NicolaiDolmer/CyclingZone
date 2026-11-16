@@ -1174,3 +1174,12 @@ Kun visning; motoren, resultaterne og taktikkens gemning er uændrede. Beslutnin
 - *Bredden.* Hovedkortet (med striben) og fanerne står på den brede side; kun Resultater for en etape bruger bredden. Etape/Historie, Stillinger, Taktik, Hold og endagsløbets resultat står på `max-w-5xl`, som de er bygget til.
 
 Ikke bygget her (egne trin): startliste, Hold der følger valgt etape, Taktik trin 2b/2c, Historie som én afspiller.
+
+## Spoiler-skjoldet (#7859, bygget bag slukket kontakt)
+
+Kun visning og notifikationstekst; motoren og resultaterne er uændrede. Ejervalg 16/11: billede 1-4 (løbssiden v6), 6 (indbakke og beskeder i spillet) og 7 (indstillingen); forsiden og ranglisterne er ikke med, Discord heller ikke.
+- *Kontakten.* `spoiler_shield_7859` (off | beta | on) seedes `off` (`database/2026-11-16-7859-spoiler-shield.sql`) og evalueres pr. bruger i `/api/me/spoiler-shield` (`backend/lib/spoilerShield7859.ts`). Slukket, fejl eller manglende svar = alt som i dag.
+- *Valgene.* "Spoiler shield for all races" er fra som standard; hvert løb har sin egen kontakt i hovedet (vinder over valget for alle løb). "Open a finished stage in" (Results eller Story) gælder uden skjold; skjoldet åbner altid i Story.
+- *Åbnet etape* gemmes på brugeren (`user_spoiler_races_7859.opened_stages`, atomisk i `spoiler_open_stage_7859`), så ét tryk på "Show results" eller filmen i mål åbner etapen overalt og på alle enheder.
+- *Løbssiden.* En kørt, uåbnet etape: hovedet siger "Stage finished · result hidden by your spoiler shield", talrækkens resultat-tal og etapestribens vinder og egen placering står ikke, Story starter filmen ved start og viser kun referatet op til filmens position ("The finale is ahead · keep watching"), og Resultater ligger bag "Show results".
+- *Notifikationer.* Med skjoldet for løbet får modtageren etapens og løbets neutrale tekst (`notif.stageResult.messageNoResult`, `notif.raceResult.message`) uden vinder, rubrik og placering. Push for løb sendes kun som resumé med antal og var allerede neutralt.
