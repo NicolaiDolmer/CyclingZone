@@ -4853,6 +4853,8 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
       // kan vise den ærlige "din division afgøres ved sæsonskiftet"-tilstand i
       // stedet for et tomt bræt (mine-filteret ville ellers matche nul løb).
       divisionPending: !divisionSettled,
+      // #5841: samme "forventet"-division som kalenderen (holdets nuværende), kun mens divisionen er uafgjort.
+      expectedDivision: divisionPending ? (divisionsRes.data || []).find((d) => d.id === req.team.league_division_id)?.tier ?? null : null,
       maxPerRider: MAX_PEAK_PLANS_PER_SEASON,
       today,
       leadupDays: leadup,
@@ -5267,6 +5269,8 @@ router.get("/races/calendar", requireAuth, cached({
       availableSeasons,
       ownPoolId,
       divisionPending,
+      // #5841: holdets nuværende division, vist som "forventet" mens den kommende sæsons division er uafgjort.
+      expectedDivision: divisionPending ? (divisions || []).find((d) => d.id === req.team?.league_division_id)?.tier ?? null : null,
       days: model.days,
       divisions: model.divisions,
       entries: model.entries.map(toCalendarWireEntry),
