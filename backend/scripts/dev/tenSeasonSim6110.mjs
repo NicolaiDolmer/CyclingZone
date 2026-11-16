@@ -104,7 +104,7 @@ import {
 import { abilityMeta } from "../../lib/abilityRegistry.js";
 import {
   abilityXpForTick, buyPoints, developmentXpAbilityDelta, validateDevelopmentXpParams, xpPerDate, xpPriceForNextPoint,
-  xpSessionShare, xpTypeShare,
+  xpSessionShare, xpTypeShare, xpDatePointAllowance, XP_MAX_POINTS_PER_DATE,
 } from "../../lib/developmentXp.ts";
 import { developmentXpDayVariation, xpVariationFingerprint } from "../../lib/developmentXpVariation.ts";
 import { developmentXpRaceFitFloor } from "../../lib/developmentXpRaceFit.ts";
@@ -321,11 +321,12 @@ export function riderXpRates({ potentiale, age }, xp) {
  */
 export function applyTickXp({
   abilities, progress, shares, rates, xp, dayMult = 1, abilityMults = null, ticksPerDate = 1, usedGains = {}, cap = 1,
-  xpByAbility = null,
+  xpByAbility = null, storedBarPayout = false,
 }) {
   const nextAbilities = { ...abilities };
   const nextProgress = { ...(progress ?? {}) };
   const gains = {};
+  const payout = {}; // #6110 R16: point fra gemt fremgang paa taendingsnatten (undtaget fra datoreglen)
   let earned = 0;
   for (const ability of VISIBLE_ABILITIES) {
     const level = Number(nextAbilities[ability] ?? 0);
@@ -339,11 +340,15 @@ export function applyTickXp({
     const bar = Number(nextProgress[ability] ?? 0);
     if (!(gained > 0) && !(bar >= 1)) continue;
     earned += gained;
-    const out = buyPoints({ level, bar, xp: gained, maxPoints: cap - (usedGains[ability] ?? 0) }, xp);
+    // Motorens datoregel (developmentXp.ts), med variantens graense.
+    const used = usedGains[ability] ?? 0;
+    const paid = storedBarPayout && used === 0 && bar >= 1 ? buyPoints({ level, bar }, xp).points : 0;
+    const out = buyPoints({ level, bar, xp: gained, maxPoints: xpDatePointAllowance({ level, bar, used, storedBarPayout, cap }, xp) }, xp);
     nextProgress[ability] = out.bar;
     if (out.points > 0) { gains[ability] = out.points; nextAbilities[ability] = out.level; }
+    if (paid > 0 && out.points > 0) payout[ability] = Math.min(paid, out.points);
   }
-  return { abilities: nextAbilities, progress: nextProgress, gains, earned };
+  return { abilities: nextAbilities, progress: nextProgress, gains, earned, payout };
 }
 
 // ── Motorens pakke (#6110 §4.2, §4.9, §5.2, R15b; #7757) ────────────────────────
@@ -547,14 +552,22 @@ export function emptyDateGains() {
  *
  * Med dagsloft (`capPerDate`) kan en evne slet ikke stige mere end +1 på en dato, så
  * intet er målt: dommen er "ikke målt (dagsloft)", aldrig "holder" (Fable-dom 15/11,
- * fund 3). Kun en kørsel uden dagsloft (fx `_nocap`) kan dømme R16.
+ * fund 3). Kun en kørsel uden dagsloft (fx `_nocap`) eller med motorens egen grænse
+ * (`_cap2`, ejervalg 16/11) kan dømme R16.
+ *
+ * Udbetaling og optjent skelnes (ejervalg 2 = A, 16/11): tændingsnattens udbetaling af
+ * gemt fremgang er undtaget fra reglen. Spandene `all`, `raceDate` osv. tæller kun det
+ * optjente; udbetalingen står for sig i `payout` og indgår ikke i dommen.
  */
 export const R16_NOT_MEASURED_CAP = "ikke målt (dagsloft)";
-export function r16Check(dateGains, { capPerDate = false } = {}) {
-  if (!dateGains) return { all: null, raceDate: null, timeTrialDate: null, verdict: null };
+export function r16Check(dateGains, { capPerDate = false, dateLimit = null } = {}) {
+  if (!dateGains) return { all: null, raceDate: null, timeTrialDate: null, payout: null, verdict: null };
   const three = (h) => h?.["3+"] ?? 0;
-  const out = { all: three(dateGains.all), raceDate: three(dateGains.raceDate), timeTrialDate: three(dateGains.timeTrialDate) };
-  if (capPerDate) return { ...out, verdict: null, reason: R16_NOT_MEASURED_CAP };
+  const out = {
+    all: three(dateGains.all), raceDate: three(dateGains.raceDate), timeTrialDate: three(dateGains.timeTrialDate),
+    payout: three(dateGains.payout),
+  };
+  if (capPerDate && !(dateLimit >= XP_MAX_POINTS_PER_DATE)) return { ...out, verdict: null, reason: R16_NOT_MEASURED_CAP };
   return { ...out, verdict: out.all === 0 };
 }
 
@@ -588,15 +601,18 @@ function addDateGain(h, n, { firstWeek, raced, timeTrial = false, age, potential
 }
 
 /** Tæller datoens køb: pr. evne, pr. sæson, første sæsons uger, og brud på +1-loftet. */
-function trackDate(world, r, dateIndex, used, firstSeason, cap, { age = null, raced = false, timeTrial = false } = {}) {
+function trackDate(world, r, dateIndex, used, firstSeason, cap, { age = null, raced = false, timeTrial = false, payout = {} } = {}) {
   let total = 0;
   let mental = 0;
   for (const [ability, n] of Object.entries(used)) {
     total += n;
     if (MENTAL_ABILITIES.has(ability)) mental += n;
     world.abilityPoints[ability] = (world.abilityPoints[ability] ?? 0) + n;
-    if (n > cap) world.capViolations += 1;
-    if (world.dateGains) addDateGain(world.dateGains, n, { firstWeek: firstSeason && dateIndex < 7, raced, timeTrial, age, potentiale: r.potentiale });
+    // #6110 R16: taendingsnattens udbetaling er undtaget; reglen maales paa det optjente.
+    const paid = payout[ability] ?? 0;
+    if (n - paid > cap) world.capViolations += 1;
+    if (world.dateGains) addDateGain(world.dateGains, n - paid, { firstWeek: firstSeason && dateIndex < 7, raced, timeTrial, age, potentiale: r.potentiale });
+    if (world.dateGains && paid > 0) { const b = dateGainBucket(paid); (world.dateGains.payout ??= {})[b] = (world.dateGains.payout[b] ?? 0) + 1; }
   }
   r.seasonPointsBought = (r.seasonPointsBought ?? 0) + total;
   r.seasonMentalPoints = (r.seasonMentalPoints ?? 0) + mental;
@@ -635,7 +651,7 @@ function simulateSeasonXp(world, seasonNumber, variant, opts) {
   const shareCache = new Map();
   const hooks = engineHooks(opts);
   // Intet dagsloft (#7739): kun prisen bremser. Med loft: maks +1 pr. evne pr. dato.
-  const cap = variant.capPerDate === false ? Infinity : opts.abilityCapPerDate;
+  const cap = variant.capPerDate === false ? Infinity : variant.dateCap ?? opts.abilityCapPerDate; // _cap2: motorens regel (R16)
   const sharesFor = (program, ctx, typeKey) => {
     const key = `${typeKey}|${program.focus}|${program.intensity}`;
     let hit = shareCache.get(key);
@@ -674,6 +690,7 @@ function simulateSeasonXp(world, seasonNumber, variant, opts) {
     let gameDay = 0;
     for (let d = 0; d < dates; d++) {
       const usedToday = {};
+      const payoutToday = {};
       let raced = false;
       let timeTrial = false;
       // Motorens dagsvariation pr. (rytter, dato) fra xp.variation; uden feltet er den 1.
@@ -698,13 +715,15 @@ function simulateSeasonXp(world, seasonNumber, variant, opts) {
         const res = applyTickXp({
           abilities: r.abilities, progress: r.progress, rates, xp, ...tick,
           ticksPerDate: opts.raceDaysPerDate, usedGains: usedToday, cap,
+          storedBarPayout: firstSeason && d === 0, // taendingsnatten: billedets gemte fremgang (ejervalg 2 = A)
         });
         for (const [k, n] of Object.entries(res.gains)) usedToday[k] = (usedToday[k] ?? 0) + n;
+        for (const [k, n] of Object.entries(res.payout)) payoutToday[k] = (payoutToday[k] ?? 0) + n;
         r.seasonXp = (r.seasonXp ?? 0) + res.earned;
         r.abilities = res.abilities;
         r.progress = res.progress;
       }
-      trackDate(world, r, d, usedToday, firstSeason, cap, { age, raced, timeTrial });
+      trackDate(world, r, d, usedToday, firstSeason, cap, { age, raced, timeTrial, payout: payoutToday });
     }
   }
 }
@@ -1011,7 +1030,8 @@ export function runVariant(snapshot, variant, opts = SIM_DEFAULTS) {
   result.bNorm = world.bNorm;
   result.dateCap = world.dateCap;
   result.dateGains = world.dateGains;
-  result.capPerDate = variant.capPerDate !== false; // R16 kan kun dømmes uden dagsloft
+  result.capPerDate = variant.capPerDate !== false; // R16 kan kun dømmes uden dagsloft eller med motorens graense
+  if (variant.dateCap) result.dateLimit = variant.dateCap;
   result.params = { raceDaysPerSeason: opts.raceDaysPerSeason, bNoiseSpan: opts.bNoiseSpan, bReferenceAge: opts.bReferenceAge,
     curveB: variant.kind === "curveB" ? opts.curveB ?? null : null, // #3564: kortet blander aldrig to kalibreringer
     curveBRun: variant.kind === "curveB" ? curveBRunInputs(opts) : null,
@@ -1115,6 +1135,7 @@ export function runCohort(snapshot, variant, opts = SIM_DEFAULTS) {
     variant: variant.name, mode: "cohort", cohortSize: world.riders.length, startAge, endAge, startSeason: s0 + 1,
     byAge: ages, retiredAt, milestones: milestoneStats(world.riders), peakByPotential: potentialPeakStats(world.riders),
     riderPeaks, dateGains: world.dateGains, abilityPoints: world.abilityPoints, capPerDate: variant.capPerDate !== false,
+    ...(variant.dateCap ? { dateLimit: variant.dateCap } : {}),
     params: { xp: variant.kind === "xp" ? variant.xpParams : null, xpRun: variant.kind === "xp" ? xpRunInputs(variant, opts) : null,
       curveB: variant.kind === "curveB" ? opts.curveB ?? null : null, curveBRun: variant.kind === "curveB" ? curveBRunInputs(opts) : null },
     fingerprint: cohortFingerprint(snapshot, opts),
@@ -1212,6 +1233,7 @@ export function xpRunInputs(variant, opts) {
   const variation = xpVariationFingerprint(variant.xpParams?.variation);
   return { ...(variation ? { variation } : {}), plan: variant.plan, intensity: variant.intensity, trainNowBonus: variant.trainNowBonus,
     capPerDate: variant.capPerDate !== false,
+    ...(variant.dateCap ? { dateCap: variant.dateCap } : {}), // kun med _cap2, saa gamle kørsler er uaendrede
     // Kun med, når løbsdagen ikke er normal, så kørsler uden _maxint har samme identitet som før.
     ...(variant.raceIntention && variant.raceIntention !== "normal" ? { raceIntention: variant.raceIntention } : {}),
     engine: engineHooks(opts).source,
@@ -1263,6 +1285,7 @@ const XP_NAME_TOKENS = Object.freeze({
   rot: { plan: "rotate" },
   hard: { intensity: "hard" },
   nocap: { capPerDate: false }, // intet dagsloft (#7739): kun prisen bremser
+  cap2: { dateCap: XP_MAX_POINTS_PER_DATE }, // motorens regel: hoejst +2 pr. evne pr. dato (R16, ejervalg 16/11)
   maxint: { raceIntention: "max" }, // løbsdage med højeste intention (fund 6)
 });
 
@@ -1295,6 +1318,7 @@ export function xpVariant(name, opts) {
   return {
     name, kind: "xp", xpParams,
     capPerDate: custom.capPerDate ?? flags.capPerDate ?? true,
+    ...(flags.dateCap ? { dateCap: flags.dateCap } : {}),
     plan: custom.plan ?? flags.plan ?? "standard",
     intensity: custom.intensity ?? flags.intensity ?? null,
     trainNowBonus: custom.trainNowBonus ?? (bonusPct != null ? bonusPct / 100 : 0),
@@ -2110,13 +2134,14 @@ export function renderMotorpakke(snapshot, results, cohorts, opts, date) {
   L.push("## R16: aldrig +3 i en evne på én dato, også løbsdato og enkeltstart (ejer 12/11 + 14/11)");
   L.push("");
   L.push("Kravet er ejerens eget og står i koden (0 brud); løbsdagene regnes af motoren med gulvet og R15b-løftet.");
-  L.push("Varianter med dagsloft kan ikke stige +3 på en dato, så de dømmes ikke: kun en kørsel uden dagsloft (`_nocap`) måler R16.");
+  L.push("Varianter med dagsloft +1 dømmes ikke; en kørsel uden dagsloft (`_nocap`) eller med motorens grænse (`_cap2`) måler R16.");
+  L.push("Tallene er det optjente; tændingsnattens udbetaling af gemt fremgang er undtaget (ejervalg 16/11) og står i sidste talkolonne.");
   L.push("");
-  L.push("| Variant | Kilde | 3+ i alt | 3+ på løbsdato | 3+ på enkeltstart | R16 |");
-  L.push("|---|---|---|---|---|---|");
+  L.push("| Variant | Kilde | 3+ i alt | 3+ på løbsdato | 3+ på enkeltstart | R16 | Udbetaling 3+ (undtaget) |");
+  L.push("|---|---|---|---|---|---|---|");
   for (const [src, r] of histRows) {
-    const c = r16Check(r.dateGains, { capPerDate: resultCapPerDate(r) });
-    L.push(`| ${r.variant} | ${src} | ${c.all} | ${c.raceDate} | ${c.timeTrialDate} | ${verdictText(c)} |`);
+    const c = r16Check(r.dateGains, { capPerDate: resultCapPerDate(r), dateLimit: r.dateLimit ?? null });
+    L.push(`| ${r.variant} | ${src} | ${c.all} | ${c.raceDate} | ${c.timeTrialDate} | ${verdictText(c)} | ${c.payout} |`);
   }
   L.push("");
   L.push("## Intet dagsloft (#7739): stigning pr. evne pr. dato (ejervalg 12/11: normalt 1, sjældent 2, aldrig 3+)");

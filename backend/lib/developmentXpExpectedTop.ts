@@ -27,7 +27,7 @@
 // fra `params` (privat, hard rule 17) eller fra motorens egne konfigurationer.
 
 import {
-  buyPoints, xpPerDate, xpSessionShare, xpTypeShare, type DevelopmentXpParams,
+  XP_MAX_POINTS_PER_DATE, buyPoints, xpPerDate, xpSessionShare, xpTypeShare, type DevelopmentXpParams,
 } from "./developmentXp.ts";
 import { resolveProgram } from "./dailyTraining.js";
 import { applyTrainingCatalog, v3SmartDefaultFocus } from "./trainingCatalogV3.js";
@@ -168,8 +168,8 @@ export function expectedCareer(
         const level = state[ability];
         if (!isNum(level)) continue;
         const riderXp = MENTAL_ABILITIES.has(ability) ? mental : physical;
-        // Intet loft pr. dato, som motoren (#6110 R9): kun prisen bremser.
-        const out = buyPoints({ level, bar: bars[ability] ?? 0, xp: riderXp * share }, params);
+        // Samme datoregel som motoren (#6110 R16, ejervalg 16/11): resten venter på bjælken.
+        const out = buyPoints({ level, bar: bars[ability] ?? 0, xp: riderXp * share, maxPoints: XP_MAX_POINTS_PER_DATE }, params);
         bars[ability] = out.bar;
         state[ability] = out.level;
       }
