@@ -13,14 +13,19 @@ import RiderLink from "../RiderLink.jsx";
 import { receiptPassScore, latestReceiptPassScore, type ReceiptScoreView } from "../../lib/trainingScoreView.ts";
 import { formColor, fatigueColor } from "../rider/ConditionChips.jsx";
 import { useTrainNowBonusEnabled } from "../../lib/trainNowBonusFlag.ts";
+import { raceSourceBreakdown, dayRaceShare } from "./raceContribution7627/raceContributionModel.ts";
+import RaceSourceTable from "./raceContribution7627/RaceSourceTable.tsx";
+import RaceShareStrip from "./raceContribution7627/RaceShareStrip.tsx";
 
 const isKnown = (row: DailyRiderReceipt) => row.receipt_status === "complete" || row.receipt_status === "recorded";
 // #6027: a pending date still shows what its stored race days already trained.
 const showsDevelopment = (row: DailyRiderReceipt) => isKnown(row) || row.trained_now != null;
 const development = (row: DailyRiderReceipt) => row.trained_now ?? row;
 // #7741: the engine stamps train_now_bonus on a rider's stored rows when his own Train now press chose the bonus. The stamp
-// also rides on rest, injured and race rows, which train nothing, so only a real training session counts as a bonus.
-const boosted = (a: TrainingActivity) => a.train_now_bonus === true && !a.race_day && !a.injured && !!a.intensity && a.intensity !== "rest";
+// also rides on rest and race rows, which train nothing, so only a real training session counts as a bonus. A rider who
+// was already injured is stored with intensity "rest" (dailyTrainingEngine effectiveIntensity), so `injured` alone is
+// not a skip: it is also set when the injury happened AFTER the boosted session (Codex P2 on #8219).
+const boosted = (a: TrainingActivity) => a.train_now_bonus === true && !a.race_day && !!a.intensity && a.intensity !== "rest";
 const hasBonus = (row: DailyRiderReceipt) => row.activities.some(boosted);
 // #7745: the meta line and the micro headings share one recipe.
 const META = "font-data text-2xs uppercase tracking-[.08em] text-cz-3";
@@ -62,9 +67,13 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
     : "sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_6rem]";
   const allOpen = rows.length > 0 && rows.every(row => openRiders.has(row.rider_id));
   const known = rows.filter(isKnown);
-  const points = (trainedNow ? trainedRows : known).reduce((sum, row) => sum + todayGainTotal(development(row)), 0);
+  // Codex P2 (#8205): ved Træn nu tæller dagens tal både de færdige og de foreløbige ryttere,
+  // så en dato med begge dele ikke viser løbets andel af kun den ene gruppe.
+  const dayRows = trainedNow ? rows.filter(showsDevelopment) : known;
+  const points = dayRows.reduce((sum, row) => sum + todayGainTotal(development(row)), 0);
   const wholeDateKnown = run.receipt_status === "complete" || run.receipt_status === "recorded";
   const pointsKnown = wholeDateKnown || trainedNow;
+  const raceShare = pointsKnown ? dayRaceShare(dayRows.map(row => raceSourceBreakdown(row.activities, development(row)))) : null; // #7627
   const abilityName = (key: string) => tRider(`racePreview.derived.${key}`);
   const activityName = (activity: TrainingActivity) => activity.status === "unknown_pending"
     ? t("dailyReceipt.status.reconciliation")
@@ -91,6 +100,7 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
     const detailId = `receipt-${run.tick_date}-${run.season_id ?? "legacy"}-${row.rider_id}`;
     const whole = visible ? wholePointEntries(dev) : [];
     const progress = visible ? progressOnlyEntries(dev) : [];
+    const sources = visible ? raceSourceBreakdown(row.activities, dev) : null; // #7627
     return (
       <div key={row.rider_id} className="border-t border-cz-border">
         <button type="button" className={`grid min-h-[44px] w-full grid-cols-[minmax(0,1fr)_minmax(0,1fr)_4.5rem] items-center gap-2 py-3 text-left hover:bg-cz-subtle ${rowGrid}`}
@@ -115,7 +125,8 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
             </li>)}
           </ol>
           {showBonus && hasBonus(row) && <p className="mb-3 text-xs text-cz-2" data-testid="daily-receipt-bonus-detail">{t("dailyReceipt.bonus.detail")}</p>}
-          {visible && <div className="mb-3" data-testid="daily-receipt-whole-point-detail">
+          {sources && <RaceSourceTable breakdown={sources} abilityName={abilityName} wholeChange={key => dev.gains_detail[key] ? change(dev.gains_detail[key].from,dev.gains_detail[key].to) : null} />}
+          {visible && !sources && <div className="mb-3" data-testid="daily-receipt-whole-point-detail">
             <p className={`${META} mb-1`}>{t("dailyReceipt.wholePoints")}</p>
             {whole.length ? whole.map(({key,points:n})=><div key={key} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-cz-border py-2 text-xs">
               <span className="font-semibold text-cz-1">{abilityName(key)}</span>
@@ -125,7 +136,7 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
               </span>
             </div>) : <p className="border-t border-cz-border py-2 text-xs text-cz-2" data-testid="daily-receipt-no-whole-point">{t("dailyReceipt.noWholePoint")}</p>}
           </div>}
-          {visible && progress.length > 0 && <div data-testid="daily-receipt-progress-detail">
+          {visible && !sources && progress.length > 0 && <div data-testid="daily-receipt-progress-detail">
             <p className={`${META} mb-1`}>{t("dailyReceipt.progressHeading")}</p>
             {/* #7746: columns read top to bottom, so the list keeps the profile's order. */}
             <div className="gap-x-6 sm:columns-2">
@@ -164,6 +175,7 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
           : <div><p className="font-data text-lg font-semibold tabular-nums text-cz-1">{known.length} / {rows.length}</p><p className="text-2xs text-cz-3">{t("dailyReceipt.riderReceipts")}</p></div>}
         <div><p className="font-data text-lg font-semibold tabular-nums text-cz-1">{gameDays.length || "—"}{run.expected_game_days ? ` / ${run.expected_game_days.length}` : ""}</p><p className="text-2xs text-cz-3">{t("dailyReceipt.activitiesRecorded")}</p></div>
       </div>
+      {raceShare != null && <RaceShareStrip percent={raceShare} date={run.tick_date} today={today} />}
       {rows.length > 1 && <div className="mb-1 flex flex-wrap items-center justify-between gap-2" data-testid="daily-receipt-toolbar">
         <Segmented label={t("dailyReceipt.sortLabel")} value={sortBy} onChange={(value: ReceiptSort)=>setSortBy(value)}
           options={[{value:"name",label:t("dailyReceipt.sortFirstName")},{value:"lastname",label:t("dailyReceipt.sortLastName")},

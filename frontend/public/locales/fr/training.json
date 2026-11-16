@@ -652,6 +652,19 @@
     "retry": "Réessayer",
     "emptyAction": "Aller à l'entraînement du jour"
   },
+  "raceSource": {
+    "heading": "D'où vient la progression",
+    "training": "Entraînement",
+    "race": "Course",
+    "total": "Total",
+    "ability": "Aptitude",
+    "whole": "+{count} entier",
+    "barLabel": "Entraînement {training}, course {race}",
+    "foot": "La progression des courses est déjà comprise dans le total du jour.",
+    "shareToday": "Les courses ont apporté {percent} % de la progression de l'équipe aujourd'hui",
+    "shareDate": "Les courses ont apporté {percent} % de la progression de l'équipe ce jour-là",
+    "shareBar": "Entraînement {training} %, courses {race} %"
+  },
   "forecast": {
     "label": "Fatigue ce soir",
     "value": "environ {value}",

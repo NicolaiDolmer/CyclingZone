@@ -652,6 +652,19 @@
     "retry": "Opnieuw proberen",
     "emptyAction": "Naar de training van vandaag"
   },
+  "raceSource": {
+    "heading": "Waar de voortgang vandaan kwam",
+    "training": "Training",
+    "race": "Koers",
+    "total": "Totaal",
+    "ability": "Vaardigheid",
+    "whole": "+{count} heel",
+    "barLabel": "Training {training}, koers {race}",
+    "foot": "De voortgang uit koersen zit al in het dagtotaal.",
+    "shareToday": "Koersen gaven {percent}% van de voortgang van de ploeg vandaag",
+    "shareDate": "Koersen gaven {percent}% van de voortgang van de ploeg op deze dag",
+    "shareBar": "Training {training}%, koersen {race}%"
+  },
   "forecast": {
     "label": "Vermoeidheid vanavond",
     "value": "circa {value}",

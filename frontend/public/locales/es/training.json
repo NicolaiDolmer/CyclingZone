@@ -652,6 +652,19 @@
     "retry": "Reintentar",
     "emptyAction": "Ir al entrenamiento de hoy"
   },
+  "raceSource": {
+    "heading": "De dónde vino el progreso",
+    "training": "Entrenamiento",
+    "race": "Carrera",
+    "total": "Total",
+    "ability": "Habilidad",
+    "whole": "+{count} entero",
+    "barLabel": "Entrenamiento {training}, carrera {race}",
+    "foot": "El progreso de las carreras ya está incluido en el total del día.",
+    "shareToday": "Las carreras dieron el {percent} % del progreso del equipo hoy",
+    "shareDate": "Las carreras dieron el {percent} % del progreso del equipo ese día",
+    "shareBar": "Entrenamiento {training} %, carreras {race} %"
+  },
   "forecast": {
     "label": "Fatiga esta noche",
     "value": "aprox. {value}",
