@@ -54,16 +54,34 @@ export const JERSEY_HUNT_WORK_7855: Readonly<Record<"sprint" | "kom", number>> =
   kom: 0.13,
 });
 
+/** En gruppe, som passagen ser den (kun det jagten laeser). */
+type HuntGroup7855 = { origin?: string; kind?: string; rider_ids: readonly string[] };
+
+/**
+ * #7855 S2 (ejer 16/11, "jagten slutter"): ligger rytteren i dagens udbrud ved passagen? Samme
+ * regel som etapeplanens udbrud (stagePlanEngine.isEscape): en gruppe skabt af udbruddet, foran
+ * som udbrud eller alene.
+ */
+export function inEscapeAtPassage7855(groups: readonly HuntGroup7855[], riderId: string): boolean {
+  return groups.some((g) => g.origin === "breakaway" && (g.kind === "breakaway" || g.kind === "solo") && g.rider_ids.includes(riderId));
+}
+
 /**
  * Rytterne der i dette segment jager passager af arten `kind`, i rider_id-orden. Kun ryttere der
  * stadig er i loebet (udgaaede er ikke paa vejen). Tom uden plan eller uden jagt.
+ *
+ * #7855 S2 (ejer 16/11): bjergjagten findes kun sammen med udbruddet (valg 1 af 13/11), saa en
+ * bjergjaeger kaemper kun om en top, mens han ligger i udbruddet. Kom han ikke med, eller er han
+ * hentet, er jagten slut: ingen bjergjagt fra feltet. Det afgoeres paa gruppebilledet ved selve
+ * passagen (`groups`), ikke ved segmentets start, saa et udbrud der foerst dannes sent i segmentet
+ * (hul 1) stadig taeller, naar han kom med. Pointjagten i spurterne er uaendret.
  */
 export function jerseyHuntersForPassage7855(
   huntTasks: Readonly<Record<string, StagePlanTask>> | null | undefined,
   kind: "sprint" | "kom",
   isRacing: (riderId: string) => boolean,
   /** Passagens km og hver jaegers straekning: et jagt-led kaemper kun om passager paa sin egen straekning. */
-  passage?: { km: number; windows: Readonly<Record<string, { fromKm: number; toKm: number }>> | undefined },
+  passage?: { km: number; windows: Readonly<Record<string, { fromKm: number; toKm: number }>> | undefined; groups?: readonly HuntGroup7855[] },
 ): string[] {
   if (!huntTasks) return [];
   const task = JERSEY_HUNT_TASK_BY_KIND_7855[kind];
@@ -71,8 +89,11 @@ export function jerseyHuntersForPassage7855(
     const window = passage?.windows?.[id];
     return !window || (passage!.km > window.fromKm && passage!.km <= window.toKm);
   };
+  // S2: kun bjergjagten, og kun naar passagens gruppebillede er givet.
+  const groups = kind === "kom" ? passage?.groups : undefined;
+  const withBreak = (id: string) => groups === undefined || inEscapeAtPassage7855(groups, id);
   return Object.keys(huntTasks)
-    .filter((id) => huntTasks[id] === task && isRacing(id) && onStretch(id))
+    .filter((id) => huntTasks[id] === task && isRacing(id) && onStretch(id) && withBreak(id))
     .sort();
 }
 

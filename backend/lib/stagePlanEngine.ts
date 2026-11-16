@@ -602,6 +602,9 @@ export function stagePlanHuntWindows7855(rt: StagePlanRuntime): Record<string, {
  * valg A). Passagerne laeser den i stedet for selve opgaven, saa en udbrudsrytter med jagt bade
  * proever udbruddet (opgaven er stadig "breakaway") og koerer om pointene. undefined uden
  * kontakten eller uden jaegere (samme betingelse som stagePlanHuntWindows7855).
+ * #7855 S2 (ejer 16/11, "jagten slutter"): bjergjagten staar her hele udbrudsleddet, men gaelder kun
+ * de toppe, han ligger i udbruddet ved. Det afgoeres ved selve passagen, ikke her ved segmentets
+ * start, saa et sent dannet udbrud (hul 1) taeller (mechanics/jerseyHunt7855.jerseyHuntersForPassage7855).
  */
 export function stagePlanHuntTasks7855(rt: StagePlanRuntime): Record<string, StagePlanTask> | undefined {
   if (!rt.huntRoute7855) return undefined;
