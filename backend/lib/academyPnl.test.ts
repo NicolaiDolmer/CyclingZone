@@ -1,5 +1,5 @@
 // #8060: akademi-regnskabet pr. sæson. Porteret fra designudgavens
-// academyLedger.test.ts (PR #8249) og udvidet med backend-hentningen og
+// regnskabstests i draft-PR #8249 og udvidet med backend-hentningen og
 // kontakten. De gamle tests for de kumulative tal står i academyPnl.test.js
 // og er uændrede (kontakten slukket = svaret som før).
 import test from "node:test";
