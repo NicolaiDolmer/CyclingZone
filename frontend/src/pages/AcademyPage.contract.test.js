@@ -293,6 +293,53 @@ test("#8081: udgave A har ét guld, ingen saldo i sidehovedet (A2) og de rigtige
   assert.doesNotMatch(v2Source, /text-cz-3/, "A3/A4: hjælpelinjer i --text-2");
 });
 
+// #8081 opfølgning 16/11 aften: skitse A's "Kom via", fordelingen pr. alder og to TASTE-rettelser.
+const v2Dir = join(__dirname, "..", "components", "academy-v2");
+const talentSource = readFileSync(join(v2Dir, "TalentTable.tsx"), "utf8");
+const ageFieldSource = readFileSync(join(v2Dir, "AgeFocusField.tsx"), "utf8");
+const originsSource = readFileSync(join(v2Dir, "useTalentOrigins.ts"), "utf8");
+const dataTableSource = readFileSync(join(__dirname, "..", "components", "ui", "DataTable.jsx"), "utf8");
+
+test("#8081: en fuld trup står i neutral tekst med ordet Fuld, ingen advarselsfarve (TASTE: ét guld/én farve)", () => {
+  assert.doesNotMatch(v2Source, /text-cz-warning|text-cz-accent|text-cz-gold/, "overblikkets tal står neutralt");
+  assert.match(v2Source, /row\.full && <span className="[^"]*text-cz-2[^"]*">\{t\("academyV2:v2\.stats\.full"\)\}/);
+  assert.equal(academyV2Locale("en").v2.stats.full, "Full");
+  assert.equal(academyV2Locale("da").v2.stats.full, "Fuld");
+});
+
+test("#8081: talenttabellens mobil-chips er firkantede (5px), kun på akademiet", () => {
+  assert.match(talentSource, /<DataTable[\s\S]*?\bsquareChips\b[\s\S]*?\/>/);
+  // Den delte tabel er uændret for alle andre sider: piller er stadig standard.
+  assert.match(dataTableSource, /squareChips = false/);
+  assert.match(dataTableSource, /squareChips \? "rounded-cz" : "rounded-cz-pill"/);
+});
+
+test("#8081: Kom via læses read-only, pagineret og efter samme regel som akademi-regnskabets kreds", () => {
+  assert.match(talentSource, /key: "via",[\s\S]*?t\("academyV2:v2\.talents\.colVia"\)/);
+  assert.match(talentSource, /t\(`academyV2:v2\.origin\.\$\{r\._via\}`\)/);
+  // Ukendt (indlæser/fejl) = tom celle, aldrig "–" som om ingen oprindelse fandtes.
+  assert.match(talentSource, /origins === null\s*\? null/);
+  assert.match(v2Source, /useTalentOrigins\(/);
+  assert.equal((originsSource.match(/fetchAllRows\(/g) || []).length, 2, "begge hentninger er pagineret");
+  assert.equal((originsSource.match(/\.order\("id"\)\) as Promise/g) || []).length, 2, "stabil orden pr. side");
+  assert.match(originsSource, /\.from\("academy_intake"\)[\s\S]*?\.eq\("status", "signed"\)/);
+  assert.match(originsSource, /\.from\("auctions"\)[\s\S]*?\.eq\("is_youth", true\)[\s\S]*?\.eq\("current_bidder_id", teamId\)/);
+  assert.doesNotMatch(originsSource, /\.(insert|update|upsert|delete|rpc)\(/, "kun læsning");
+  assert.equal(academyV2Locale("da").v2.talents.colVia, "Kom via");
+  assert.deepEqual(academyV2Locale("da").v2.origin, { offer: "Akademi-tilbud", youthAuction: "Ungdomsauktion" });
+});
+
+test("#8081: fordelingen pr. alder står under aldersvælgeren i ord og følger det valgte fokus (ingen tal)", () => {
+  assert.match(ageFieldSource, /const distribution = ageFocusDistribution\(value\);/);
+  assert.ok(ageFieldSource.indexOf("<Segmented") < ageFieldSource.indexOf('data-testid="academy-age-distribution"'), "linjen står under vælgeren");
+  for (const lng of ["en", "da", "es", "fr", "nl"]) {
+    const age = academyV2Locale(lng).v2.age;
+    for (const word of Object.values(age.share)) assert.doesNotMatch(String(word), /\d|%/, `${lng}: kun ord, ingen tal`);
+    assert.doesNotMatch(age.row, /%/, `${lng}: ingen procent`);
+  }
+  assert.deepEqual(academyV2Locale("da").v2.age.share, { many: "mange", some: "nogle", few: "få" });
+});
+
 test("#8081: v2-teksterne findes på alle fem sprog med samme nøgler og uden em-dash", () => {
   const flat = (obj, prefix = "") => Object.entries(obj).flatMap(([k, v]) => (v && typeof v === "object" ? flat(v, `${prefix}${k}.`) : [[`${prefix}${k}`, v]]));
   const en = flat(academyV2Locale("en").v2).map(([k]) => k).sort();
