@@ -34,6 +34,11 @@ export const IMAGE_BY_KEY = Object.freeze({
   "7.451#0": "/patch-notes-images/train-now-instant-7737.webp",
 });
 
+/**
+ * @param {any} change
+ * @param {string} [key]
+ * @param {Record<string, string>} [images]
+ */
 export function resolveImage(change, key, images = IMAGE_BY_KEY) {
   if (typeof change?.image === "string" && change.image.startsWith("/patch-notes-images/")) return change.image;
   return (key && images[key]) || null;
@@ -78,6 +83,11 @@ export const TOPIC_AREA = Object.freeze({
 /**
  * Notens område. `key` er `${version}#${index}` (samme nøgle som siden bruger).
  * Returnerer altid et område; "other" når intet kan placeres sikkert.
+ */
+/**
+ * @param {any} change
+ * @param {string} [key]
+ * @param {Record<string, string>} [overrides]
  */
 export function resolveArea(change, key, overrides = AREA_BY_KEY) {
   if (isWritableArea(change?.area)) return change.area;

@@ -25,6 +25,11 @@ import {
 } from "../ui";
 import { AreaBlocksA, AreaRowsB, PatchHero, PatchTag, NewDot, QuietButton, TOUCH } from "./PatchNoteParts.jsx";
 
+// UI-kittets JSX har null-defaults, som checkJs læser som "kun null" (samme som resten af appen).
+const Header = /** @type {any} */ (PageHeader);
+const CardHeader = /** @type {any} */ (SectionHeader);
+const ErrorBox = /** @type {any} */ (ErrorState);
+
 const PREVIOUS_WEEKS = 4;
 const ARCHIVE_MONTHS_SHOWN = 3;
 const SEARCH_MIN = 2;
@@ -43,12 +48,13 @@ function capitalize(text, locale) {
   return text ? text.charAt(0).toLocaleUpperCase(locale) + text.slice(1) : text;
 }
 
+/** @param {{ liveFlags?: Record<string, boolean> | null, initialMarker?: string | null }} props */
 export default function PatchNotesV2Page({ liveFlags = null, initialMarker }) {
   const { t, i18n } = useTranslation("patchnotes");
   const lang = i18n.language?.startsWith("da") ? "da" : "en";
   const locale = intlLocale(i18n.language);
 
-  const [recent, setRecent] = useState(null);
+  const [recent, setRecent] = useState(/** @type {any} */ (null));
   const [loadError, setLoadError] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
   useEffect(() => {
@@ -103,7 +109,7 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }) {
   // ── Arkivmåneder: listen står i recent, indholdet hentes først når måneden åbnes ──
   const currentMonth = today.slice(0, 7);
   const archiveMonths = (recent?.months || []).filter((m) => m.m < currentMonth);
-  const [monthData, setMonthData] = useState({});
+  const [monthData, setMonthData] = useState(/** @type {Record<string, any>} */ ({}));
   const loadMonth = useCallback((m) => {
     const key = `${m}.${lang}`;
     setMonthData((prev) => ({ ...prev, [key]: { status: "loading" } }));
@@ -121,7 +127,7 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }) {
   const debouncedQuery = useDebounced(query, 250);
   const q = normalizeQuery(debouncedQuery);
   const searching = q.length >= SEARCH_MIN;
-  const [index, setIndex] = useState({ status: "idle", lang: null, items: [] });
+  const [index, setIndex] = useState(/** @type {{ status: string, lang: string | null, items: any[] }} */ ({ status: "idle", lang: null, items: [] }));
   useEffect(() => {
     if (!searching || (index.lang === lang && index.status !== "error")) return undefined;
     let active = true;
@@ -166,7 +172,7 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }) {
   if (!recent && !loadError) {
     return (
       <div className="max-w-4xl mx-auto">
-        <PageHeader title={t("title", { defaultValue: "Patch notes" })} />
+        <Header title={t("title", { defaultValue: "Patch notes" })} />
         <PageLoader label={t("loading.label")} />
       </div>
     );
@@ -174,8 +180,8 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }) {
   if (loadError) {
     return (
       <div className="max-w-4xl mx-auto">
-        <PageHeader title={t("title", { defaultValue: "Patch notes" })} />
-        <ErrorState
+        <Header title={t("title", { defaultValue: "Patch notes" })} />
+        <ErrorBox
           title={t("loadError")}
           description={t("loadErrorBody")}
           action={<Button size="sm" variant="secondary" onClick={() => setReloadToken((n) => n + 1)}>{t("retry")}</Button>}
@@ -188,7 +194,7 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }) {
   const lineProps = { t, liveFlags, marker, areaLabel, expanded, toggle };
 
   const header = (
-    <PageHeader
+    <Header
       title={t("title", { defaultValue: "Patch notes" })}
       subtitle={t("v2.subtitle")}
       actions={newCount > 0 ? (
@@ -244,7 +250,7 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }) {
         {header}
         {filterBar}
         <Section>
-          <SectionHeader title={t("v2.searchResults")} meta={t("v2.hits", { count: hits.length })} />
+          <CardHeader title={t("v2.searchResults")} meta={t("v2.hits", { count: hits.length })} />
           {index.status === "loading" && hits.length === 0 ? (
             <SkeletonLines lines={4} />
           ) : hits.length === 0 ? (
@@ -307,7 +313,7 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }) {
       ) : (
         <SectionStack>
           <Section aria-labelledby="pn-this-week">
-            <SectionHeader
+            <CardHeader
               title={<span id="pn-this-week">{t("v2.thisWeek")}</span>}
               meta={<span className="tabular-nums">{t("v2.weekMeta", { range: rangeLabel(weeks[0].start, weeks[0].end), count: week0.length })}</span>}
             />
@@ -320,7 +326,7 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }) {
           </Section>
 
           <Section aria-labelledby="pn-earlier">
-            <SectionHeader title={<span id="pn-earlier">{t("v2.earlierWeeks")}</span>} />
+            <CardHeader title={<span id="pn-earlier">{t("v2.earlierWeeks")}</span>} />
             <ul>
               {previous.map((w, j) => {
                 const i = j + 1;

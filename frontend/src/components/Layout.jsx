@@ -568,7 +568,7 @@ export default function Layout() {
   // #5404: off|beta|on pr. spiller-synlig kontakt (lib/featureStage.ts) —
   // KUN til Beta-badgen, ikke til at gate synlighed (den mekanik er uændret).
   const [flagStages, setFlagStages] = useState({});
-  const patchNotesLatestDate = pickPatchNotesMarker(patchNotesMeta, flagStages.patch_notes_v2_8049); // #8049
+  const patchNotesLatestDate = pickPatchNotesMarker(patchNotesMeta, /** @type {Record<string, string>} */ (flagStages).patch_notes_v2_8049); // #8049
   const boardMandateBeta = isBetaStage(flagStages.board_mandate_model_enabled);
   // #3102 etape 3: peak_planner-nav-gaten (usePlanner) udgik — Formplan er en
   // fane i Planlægnings-hubben, og fanen selv viser tom-staten ved kill-switch.

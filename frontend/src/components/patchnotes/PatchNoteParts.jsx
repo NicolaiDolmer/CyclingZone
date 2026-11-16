@@ -142,7 +142,7 @@ export function AreaBlocksA({ items, t, liveFlags, marker, areaLabel, expanded, 
           </ul>
         )}
         {main.length > max && !showAll && (
-          <QuietButton className="sm:ms-[144px]" chevron={null} onClick={() => toggle(key)}>
+          <QuietButton className="sm:ms-[144px]" chevron="" onClick={() => toggle(key)}>
             {t("v2.moreIn", { count: main.length - max, area: areaLabel(area) })}
           </QuietButton>
         )}
@@ -159,7 +159,7 @@ export function AreaBlocksA({ items, t, liveFlags, marker, areaLabel, expanded, 
             <span className="line-clamp-1 text-[12.5px] leading-[1.45] text-cz-3 max-sm:line-clamp-2">
               {t("v2.fixesCount", { count: fixes.length })}: {fixes.map((it) => it.ti || it.b).join(" · ")}
             </span>
-            <QuietButton chevron={null} onClick={() => toggle(fixKey)} aria-label={t("v2.showFixes", { area: areaLabel(area) })}
+            <QuietButton chevron="" onClick={() => toggle(fixKey)} aria-label={t("v2.showFixes", { area: areaLabel(area) })}
               className="max-sm:col-start-2 max-sm:row-start-2">
               {t("v2.show")}
             </QuietButton>

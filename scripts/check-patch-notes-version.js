@@ -201,7 +201,7 @@ async function main() {
   if (!importResult.ok) {
     fail(
       `${PATCH_FILE} could not be imported (syntax error?): `
-      + `${importResult.error && importResult.error.message}`
+      + `${importResult.error && /** @type {any} */ (importResult.error).message}`
     );
     return;
   }

@@ -162,7 +162,7 @@ export function isoWeekNumber(iso) {
   const t = new Date(`${iso}T12:00:00Z`);
   t.setUTCDate(t.getUTCDate() + 3 - ((t.getUTCDay() + 6) % 7));
   const jan4 = new Date(Date.UTC(t.getUTCFullYear(), 0, 4));
-  return 1 + Math.round(((t - jan4) / 864e5 - 3 + ((jan4.getUTCDay() + 6) % 7)) / 7);
+  return 1 + Math.round(((t.getTime() - jan4.getTime()) / 864e5 - 3 + ((jan4.getUTCDay() + 6) % 7)) / 7);
 }
 
 /** Dagens dato hos spilleren (lokal kalenderdag), som YYYY-MM-DD. */
@@ -264,6 +264,10 @@ export function isThinWeek(count) {
   return count < THIN_WEEK_LIMIT;
 }
 
+/**
+ * @param {any[]} items
+ * @param {{ area?: string, betaOnly?: boolean, onlyNew?: boolean, marker?: string | null, liveFlags?: Record<string, boolean> | null }} [options]
+ */
 export function filterV2Items(items, { area = "all", betaOnly = false, onlyNew = false, marker = null, liveFlags = null } = {}) {
   return (items || []).filter((it) => {
     if (area !== "all" && it.a !== area) return false;

@@ -369,7 +369,7 @@ function PatchNotesPending() {
   const { t, ready } = usePatchNotesHead();
   return (
     <div className="max-w-4xl mx-auto">
-      <PageHeader title={t("title", { defaultValue: "Patch notes" })} />
+      <PageHeader title={t("title", { defaultValue: "Patch notes" })} subtitle={undefined} />
       <PageLoader label={ready ? t("loading.label") : "Loading"} />
     </div>
   );
@@ -377,7 +377,7 @@ function PatchNotesPending() {
 
 function PatchNotesV2Route({ arrivalMarker }) {
   const { ready } = usePatchNotesHead();
-  const [liveFlags, setLiveFlags] = useState(null);
+  const [liveFlags, setLiveFlags] = useState(/** @type {Record<string, boolean> | null} */ (null));
   useEffect(() => {
     let active = true;
     loadAnonymousFlags().then((flags) => { if (active) setLiveFlags(flags); }).catch(() => {});
@@ -392,7 +392,7 @@ function PatchNotesV2Route({ arrivalMarker }) {
 }
 
 export default function PatchNotesPage() {
-  const [stage, setStage] = useState(null); // null = ikke kendt endnu
+  const [stage, setStage] = useState(/** @type {string | null} */ (null)); // null = ikke kendt endnu
   // "Sidst set" ved ankomst læses FØR kontakten er afgjort: menuen (Layout) markerer siden som
   // set, så snart patch-notes-meta.json er hentet, og det må ikke slukke sidens "nyt"-prikker.
   const [arrivalMarker] = useState(() => readLocalSeenMarker("patch_notes"));
