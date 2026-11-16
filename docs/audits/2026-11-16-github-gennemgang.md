@@ -18,6 +18,7 @@
 
 **Forbehold (verificér før handling):**
 - GitHubs `updated_at` kan ikke bruges som aktivitetsmål: 686 issues blev rørt samme dag, 2/11 (masse-relabel). "Aktivitet" er derfor målt som *commit på main der nævner issuet* + *omtale i MASTERPLAN/NOW*. Kommentarer er ikke læst for de 348 forældede kandidater.
+- **Rettelse (16/11 eftermiddag):** De 70 luk-kandidater (Bilag A-B og A-C) har alle en kommentar fra backlog-sweepen 2/11 (#7492), der vurderede dem uden at handle. Masse-berøringen 2/11 var altså sweepens kommentarer. De er ikke uden aktivitet, men uden beslutning. Detaljer pr. issue: `2026-11-16-github-gamle-70.json`. Sektion 6 talte 221; genberegnet med samme forælder-regel som Bilag B er det 219 (`2026-11-16-ejer-loefter-221.json`).
 - `docs/audits/2026-11-16-tabt-fra-masterplanen.md` findes ikke på `main` (heller ikke på PR-branchen for den åbne PR 8231, "plan-hul-tjek"). Sektion 6 er derfor beregnet direkte mod `MASTERPLAN.md` + `NOW.md`.
 - "Område-label" er ikke defineret i `GITHUB_WORKFLOW.md`. Antagelse: `cat:*`, `slice:*`, `epic:*`, `security` eller `brand`.
 - `priority:next` behandles som en markør oven på prioritet, ikke som en konflikt (med+next er OK).

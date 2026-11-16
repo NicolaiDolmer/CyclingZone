@@ -1,0 +1,2530 @@
+{
+ "genereret": "2026-11-16",
+ "kilde": "docs/audits/2026-11-16-github-gennemgang.md (sektion 6, Bilag B)",
+ "refs": "#7911",
+ "kriterie": "Åbne issues der ikke er nævnt i docs/MASTERPLAN.md eller docs/NOW.md (heller ikke via \"Del af #M\" til et planlagt issue), og som har ejer-direktiv/ejer-valg/løfte i titlen eller priority:high/priority:next/cat:founder.",
+ "forbehold": [
+  "Antal er 219 ved genberegning (rapporten sagde 221; forskellen er to issues, hvis forælder står i planen).",
+  "Områdegruppering er automatisk efter titelord med håndrettelser; enkelte issues kan høre bedre hjemme i en nabogruppe.",
+  "Titlerne er rensede originaltitler (præfiks og datomarkør fjernet), ikke omskrevet pr. issue.",
+  "eksplicit_ejer_løfte=true betyder at titlen selv siger løfte/lovet/senest/planlagt uge; ejer-direktiver med dato står som løfte_type=ejer-direktiv.",
+  "Anbefalingerne er Claudes forslag; ejeren beslutter."
+ ],
+ "antal": 219,
+ "grupper": [
+  {
+   "navn": "Træning og udvikling",
+   "giver_spillerne": "Spilleren forstår og styrer, hvordan rytterne bliver bedre: træning, form, træthed og lofter.",
+   "anbefaling": "næste uge",
+   "begrundelse": "Træning er nr. 1 i planen denne uge (#7737/#7801/#6110). Disse issues bør gennemgås mod XP-modellen (#6110), når den lander: en del er overhalet af den og kan droppes, resten foldes ind under #6110.",
+   "antal": 36,
+   "issues": [
+    {
+     "nummer": 2645,
+     "titel": "Peak/loft-beskeder inkonsistente: 'approaching ceiling' ved 29/90+ — Del B peak-alderskurve = ejer-beslutning",
+     "oprettet": "2026-07-18",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 2670,
+     "titel": "Udvikl-og-sælg: re-mål ROI mod ægte markedsadfærd + ejer-beslutning om 250%-loftet (opfølgning #2591)",
+     "oprettet": "2026-07-18",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 3659,
+     "titel": "Gør udvikling, træning og lofter forståeligt i UI — forslag først",
+     "oprettet": "2026-08-13",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-direktiv",
+     "lovet_dato": "13/8",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 3709,
+     "titel": "Rytterudvikling og træning: taget og raten skilles ad — 13 ejer-beslutninger + scorecard (14/8)",
+     "oprettet": "2026-08-14",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 4010,
+     "titel": "Supabase-hærdning: realtime-MalformedJWT, sponsor-sweep, offset-paginering og getUser() pr. request",
+     "oprettet": "2026-08-20",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 4271,
+     "titel": "Formpeaks skal være mere forståelige",
+     "oprettet": "2026-08-26",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-direktiv",
+     "lovet_dato": "25/8",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 4765,
+     "titel": "Udviklingshastighed for svagheder: ROLE_CLASS_RATE.svaghed = 0,05 er den bindende knap",
+     "oprettet": "2026-09-04",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "lovet tidspunkt",
+     "lovet_dato": "11/9",
+     "eksplicit_ejer_løfte": true
+    },
+    {
+     "nummer": 4831,
+     "titel": "Træningsrater kalibreres så +1-loftet pr. dag næsten aldrig binder - langsigtet løsning bag #4801",
+     "oprettet": "2026-09-05",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "5/9",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 4850,
+     "titel": "Træning pr. løbsdag - løbsdagen bliver tick-enheden, live senest S4 28/9",
+     "oprettet": "2026-09-05",
+     "prioritet": "high",
+     "signal": [
+      "ejer",
+      "high"
+     ],
+     "løfte_type": "lovet tidspunkt",
+     "lovet_dato": "S4 28/9 (ejer-go 6/9",
+     "eksplicit_ejer_løfte": true
+    },
+    {
+     "nummer": 4852,
+     "titel": "D1: Belastning Let/Normal/Hård på samme session, tempo-varianten",
+     "oprettet": "2026-09-05",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "6/9",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 4853,
+     "titel": "D2: Holdpas variant 2 rollefordelt (fem paktyper, ingen bonus)",
+     "oprettet": "2026-09-05",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "6/9",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 4854,
+     "titel": "D3: Trætheds-grænse - holdregel plus undtagelse pr. rytter",
+     "oprettet": "2026-09-05",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "6/9",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5327,
+     "titel": "Færdiggør PR #3512 arketype-prior: WIP-cherry-pick, grøn test, før/efter-fordeling (Bølge 4 m. #5269)",
+     "oprettet": "2026-09-17",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5348,
+     "titel": "Holdarbejde i løbsmotoren v4 bag flag teamwork_in_engine + harness-gate H6 + kemi-tabel (D-051, ejer 15/9)",
+     "oprettet": "2026-09-17",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "15/9",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5349,
+     "titel": "Lederskab: mentorpar (data + flader) + mentor-delta bag flag mentor_pairs_enabled (D-052, ejer 15/9)",
+     "oprettet": "2026-09-17",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "15/9",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5443,
+     "titel": "Værdisystemet færdigt: rigtig type for alle, omregnet formel, kvittering, marked og løn",
+     "oprettet": "2026-09-20",
+     "prioritet": "high",
+     "signal": [
+      "ejer",
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5485,
+     "titel": "Træningssiden: ingen scroll, faner/modals, det mest brugte øverst, Clarity-data først",
+     "oprettet": "2026-09-22",
+     "prioritet": "high",
+     "signal": [
+      "ejer",
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5882,
+     "titel": "Løbsudvikling efter niveau-match v1 (D-018): løb på rytterens niveau udvikler mest",
+     "oprettet": "2026-09-28",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "28/9",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5911,
+     "titel": "Aftentræningen skal være færdig på < 2 min og starte straks efter sidste etape",
+     "oprettet": "2026-09-28",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5912,
+     "titel": "Genopret 1.759 tabte træningsdage fra 28/9 (kørt før regel A i #5880)",
+     "oprettet": "2026-09-28",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6165,
+     "titel": "Bundle-loft der måler det spilleren henter: første indlæsning + pr. stykke, total som trend",
+     "oprettet": "2026-10-04",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "4/10",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6190,
+     "titel": "Ro under pres + træningsdisciplin som mentale egenskaber (planlagt uge 43-46, ejer 5/10)",
+     "oprettet": "2026-10-05",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "lovet tidspunkt",
+     "lovet_dato": "43-46",
+     "eksplicit_ejer_løfte": true
+    },
+    {
+     "nummer": 6275,
+     "titel": "Lasttest på staging: 10 × dagens peak, før 25/10 og ved hver større release (release-gate)",
+     "oprettet": "2026-10-06",
+     "prioritet": "high+next",
+     "signal": [
+      "high",
+      "next"
+     ],
+     "løfte_type": "lovet tidspunkt",
+     "lovet_dato": "25/10 og ved hver større relea",
+     "eksplicit_ejer_løfte": true
+    },
+    {
+     "nummer": 6666,
+     "titel": "Akademi-optag 2.0: hent ugens kuld, lær prognosen gennem træning, klubprofil via faciliteten (D-039)",
+     "oprettet": "2026-10-15",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6765,
+     "titel": "Rangliste-matviews genberegner hele historikken: 15,7 s/runde ved prod-volumen, over 60 s-loftet ved 10x",
+     "oprettet": "2026-10-17",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6883,
+     "titel": "Næsten ingen ryttere har GC som bedste rating, og træning kan ikke få dem derhen (knud_r_flink + ejer 19/10)",
+     "oprettet": "2026-10-19",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "19/10",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6935,
+     "titel": "Spil-dækkende gennemgang: fjern information der kan være forkert",
+     "oprettet": "2026-10-20",
+     "prioritet": "high",
+     "signal": [
+      "ejer",
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6984,
+     "titel": "Form og træthed 2.0: spillernes kravspec (træthed pr. etapetype, sæsonbelastning, ingen peak i alle GT) - staff 20/10",
+     "oprettet": "2026-10-20",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7004,
+     "titel": "Træning skal føles øjeblikkelig: i dag køres træthed og form først i aftenkørslen",
+     "oprettet": "2026-10-21",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "20/10",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7167,
+     "titel": "Gennemgang med ejeren i S5 uge 1: virker bestyrelsen efter hensigten, og former den holdets identitet?",
+     "oprettet": "2026-10-24",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7247,
+     "titel": "System: PostgREST 1.000-loftet må aldrig ramme uopdaget igen (runtime-detektor, nær-loft-monitor, baseline til 0)",
+     "oprettet": "2026-10-26",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7248,
+     "titel": "Har 1.000-loftet allerede ramt andre steder? Triage af 105 baseline-fund + skadesvurdering i prod",
+     "oprettet": "2026-10-26",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7950,
+     "titel": "AI-hold træner ikke: fast træthed og form, ingen daglig træning",
+     "oprettet": "2026-11-09",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7999,
+     "titel": "Bundle-diet: én stor gennemgang + loft pr. side der kun kan strammes",
+     "oprettet": "2026-11-11",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 8077,
+     "titel": "Motoren uden lodtrækninger: udfald følger af energi, taktik, evner og løbets forløb",
+     "oprettet": "2026-11-12",
+     "prioritet": "high",
+     "signal": [
+      "ejer",
+      "high"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "12/11",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 8180,
+     "titel": "Peak-signalet afkortes i store felter: de sidste hold får ingen træningsrækker",
+     "oprettet": "2026-11-15",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    }
+   ]
+  },
+  {
+   "navn": "Motor og løb",
+   "giver_spillerne": "Løbene føles ægte: rigtige udfald, taktik der virker, og en løbsfilm der forklarer hvorfor.",
+   "anbefaling": "senere",
+   "begrundelse": "Motoren har sin egen plan (RACE_ENGINE_PLAN, Loft 1) og et dommer-krav. Kobl hvert issue til planen eller drop det; byg ikke uden om den.",
+   "antal": 33,
+   "issues": [
+    {
+     "nummer": 2480,
+     "titel": "Motor-ops: ML-assisteret kalibreringsforslag fra live drift (systemet foreslår, ejer beslutter)",
+     "oprettet": "2026-07-16",
+     "prioritet": "low",
+     "signal": [
+      "ejer"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 2557,
+     "titel": "LIVE drift i race v3: hold-dominans (share4+) RØD 3 dage i træk + favorit-win-rate 51% og stigende",
+     "oprettet": "2026-07-17",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 2770,
+     "titel": "Sub-2: Dybe konkurrencer — passage-ordener (KOM/point) + bonussekunder",
+     "oprettet": "2026-07-21",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 3426,
+     "titel": "Nedkørsel vejer for tungt: 30-50 sek tabt på korte nedkørsler + for mange bjergetaper der slutter nedad",
+     "oprettet": "2026-08-06",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 3950,
+     "titel": "Resultat-botten poster etape-resultater i divisionskanalerne",
+     "oprettet": "2026-08-18",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "18/8",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 4914,
+     "titel": "Kalibreringspakke før flip: holdspil-gab, M12 all_out/grupetto, feltspredning, 5-seed-gate",
+     "oprettet": "2026-09-06",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5256,
+     "titel": "Taktik vægter 18 % på holdtidskørsel ved en fejl - ejeren vil fjerne det sammen med de nye stats",
+     "oprettet": "2026-09-15",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "14/9",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5573,
+     "titel": "Holdmødet: sportsdirektørens plan pr. etape - holdplan, angrebspunkt, positionering, følg rytter, trøjejagt (lag 3)",
+     "oprettet": "2026-09-23",
+     "prioritet": "med+next",
+     "signal": [
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5575,
+     "titel": "Taktik i v4: Holdmødet i 4 lag - sportsdirektørens beslutninger",
+     "oprettet": "2026-09-23",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "23/9",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5978,
+     "titel": "V4: GC-trussel og gentagne favorit-udbrud i Soleil skal vurderes efter aktuel stilling",
+     "oprettet": "2026-09-30",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6157,
+     "titel": "Trin 0: tjek hvad der er løst i v4 + kvalitetsopfølgning på motorændringer siden flippet",
+     "oprettet": "2026-10-04",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "4/10",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6273,
+     "titel": "Mål API-svartider omkring etape-tick → beslut worker-service (uge 42 eller 44)",
+     "oprettet": "2026-10-06",
+     "prioritet": "high+next",
+     "signal": [
+      "high",
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6299,
+     "titel": "'Work'-ordren ser ud til at angribe uden 'try the break' + 27 mand i udbrud på rullende Giro-etape (staff 6/10)",
+     "oprettet": "2026-10-07",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6351,
+     "titel": "Vis hvilken regelversion et løb kører på",
+     "oprettet": "2026-10-08",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6369,
+     "titel": "S5-etapeprofiler: typen af ruten, mellembjerg, nye finaler, to akser, benchmark",
+     "oprettet": "2026-10-08",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6514,
+     "titel": "Resultatarkivet: søgning finder kun enkelte løb (ikke Tour de l'Hexagone/Vuelta Iberica) og race-archive-siden er meget langsom (thelamba + ejer 11/10)",
+     "oprettet": "2026-10-12",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "11/10",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6569,
+     "titel": "Dashboard: \"Dagens etaper\" venter 1-2,6 s på resten af siden + vandfald + skelet-blink hvert minut",
+     "oprettet": "2026-10-13",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6571,
+     "titel": "Ruter på rigtige højdedata (Copernicus/SRTM): licens, kilde og arkitektur",
+     "oprettet": "2026-10-13",
+     "prioritet": "next",
+     "signal": [
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6872,
+     "titel": "Løbsbibliotek: Grand Tour-tærskel (>=15 etaper) i racePeek + rute-fallback til ældre udgaver (Codex-restfund #6680)",
+     "oprettet": "2026-10-18",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6914,
+     "titel": "Race engine til verdensklasse: rigtige data, obligatorisk testport, løbsfilm-gennemgang, konkurrent-analyse",
+     "oprettet": "2026-10-19",
+     "prioritet": "high+next",
+     "signal": [
+      "high",
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6940,
+     "titel": "Gruppetto-ordre: ingen udbrud, energibesparelse efter etapetype",
+     "oprettet": "2026-10-20",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-løfte",
+     "lovet_dato": "1/10",
+     "eksplicit_ejer_løfte": true
+    },
+    {
+     "nummer": 7236,
+     "titel": "Dronningeetaper: nr. 10 kommer 7-13 min efter på bjerg med kort nedkørsel (v2 og v3)",
+     "oprettet": "2026-10-26",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7418,
+     "titel": "Luksushjælper: mål effekten i S5 og foreslå forbedringer",
+     "oprettet": "2026-10-31",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-løfte",
+     "lovet_dato": "27/10",
+     "eksplicit_ejer_løfte": true
+    },
+    {
+     "nummer": 7467,
+     "titel": "Beskeder åbner på \"Skal handles\" + dagens etape på forsiden",
+     "oprettet": "2026-11-01",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "18/10",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7701,
+     "titel": "Udgåede ryttere får forkert eller ingen årsag i referat og på løbssiden",
+     "oprettet": "2026-11-05",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7719,
+     "titel": "Årsags-krav i testene: ingen rytter må tabe meget tid eller udgå uden hændelse med km og årsag",
+     "oprettet": "2026-11-05",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7720,
+     "titel": "Sandhedsvagten skal kunne stoppe tænding: ren på rigtige etaper før motor-kør",
+     "oprettet": "2026-11-05",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7733,
+     "titel": "Planryttere uden resultatrække: hvor blev de af? (41 på 7 dage)",
+     "oprettet": "2026-11-05",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7830,
+     "titel": "Ryttere udgår på enkeltstarter: skal det kun kunne ske ved styrt?",
+     "oprettet": "2026-11-07",
+     "prioritet": "low",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "6/11",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7856,
+     "titel": "Hunter og fri rolle samles til Fri rolle",
+     "oprettet": "2026-11-07",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "7/11",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7880,
+     "titel": "Taktik for mange etaper på én gang: planer der arves",
+     "oprettet": "2026-11-07",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "7/11",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7890,
+     "titel": "Generalprøve af motoren før Tour de l'Hexagone 8/11 kl. 15",
+     "oprettet": "2026-11-07",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 8129,
+     "titel": "Roadmap-pakke 13/11: holdplaner-dublet, trupgrænser, løbssiden og fire koblinger",
+     "oprettet": "2026-11-13",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "eksplicit_ejer_løfte": false
+    }
+   ]
+  },
+  {
+   "navn": "Akademi, U23 og junior",
+   "giver_spillerne": "Ungdomsarbejdet giver mening: synlige løb, rimelige AI-ungdomshold og et akademi man kan styre.",
+   "anbefaling": "næste uge",
+   "begrundelse": "Planen lover U23 og junior senest i S6, og graduering/salg skal prøves før 28/11 (#7323). Hub'en #6667 bør stå i MASTERPLAN.",
+   "antal": 11,
+   "issues": [
+    {
+     "nummer": 5843,
+     "titel": "U23- og juniorløbene kan ikke ses før, under eller efter - hvor planlægges de, og skal starten udskydes?",
+     "oprettet": "2026-09-28",
+     "prioritet": "high+next",
+     "signal": [
+      "ejer",
+      "high",
+      "next"
+     ],
+     "løfte_type": "ejer-direktiv",
+     "lovet_dato": "27/9",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5876,
+     "titel": "Nye rytteres nationer skal afspejle virkelighedens cykelnationer",
+     "oprettet": "2026-09-28",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "28/9",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5893,
+     "titel": "S4 løbsdag 1 hændelse: ungdomsløb, DB-udfald og bestyrelser - rod-årsager + langsigtet plan",
+     "oprettet": "2026-09-28",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5895,
+     "titel": "Bestyrelsesmål for akademiarbejde (eksplicit, valgfrit) - ejer-valg B 28/9",
+     "oprettet": "2026-09-28",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "28/9",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6155,
+     "titel": "Akademisiden efter U23/Junior-siderne: rytterlisten ud",
+     "oprettet": "2026-10-04",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "4/10",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6667,
+     "titel": "U23/junior uden S4's fejl: løftet AI-ungdom, samlede grupper, flere U23-løbsdage, nye byggeregler",
+     "oprettet": "2026-10-15",
+     "prioritet": "high",
+     "signal": [
+      "ejer",
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6668,
+     "titel": "AI-ungdom løftes til menneskeholdenes niveau + menneskehold samles i færre grupper (del af #6667)",
+     "oprettet": "2026-10-15",
+     "prioritet": "high",
+     "signal": [
+      "ejer",
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6944,
+     "titel": "Manageren vælger hvilken aldersgruppe nye talenter søges i",
+     "oprettet": "2026-10-20",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "20/10",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7096,
+     "titel": "Ungdomsresultater (U23/junior) tæller i vurderingen af ungdomsarbejdet, ikke i seniormål",
+     "oprettet": "2026-10-23",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "23/10",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7932,
+     "titel": "Ungdomstrupper, prognose-ord, scout-knap og favoritter",
+     "oprettet": "2026-11-09",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "9/11",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 8081,
+     "titel": "Ét samlet designvalg for akademiet (regnskab, rejsen, optag)",
+     "oprettet": "2026-11-12",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    }
+   ]
+  },
+  {
+   "navn": "Marked, kontrakter og økonomi",
+   "giver_spillerne": "Retfærdige handler og kontrakter: rimelige priser, ingen hængende tilbud og klare regler for forlængelse.",
+   "anbefaling": "næste uge",
+   "begrundelse": "Flere er regler der skal gælde fra S5/S6 (fx kontrakter maks. 2 sæsoner, #7138) og bør afklares før sæsonskiftet 28/11.",
+   "antal": 16,
+   "issues": [
+    {
+     "nummer": 1819,
+     "titel": "Opfølgning efter præmie ÷20: bekræft økonomi-coherence + ryd backup",
+     "oprettet": "2026-06-23",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 2675,
+     "titel": "19/7 aften: første stemplede udløbs-auktioner + kreditering — og ejer-valg om de 16 backfill-ryttere",
+     "oprettet": "2026-07-18",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 2759,
+     "titel": "Start Facebook-annoncer + organisk TikTok-markedsføring",
+     "oprettet": "2026-07-20",
+     "prioritet": "med",
+     "signal": [
+      "ejer",
+      "founder"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "20/7",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 2840,
+     "titel": "Løn skal være dagsbaseret (rigtige dage) — engangstræk ved sæsonstart gør sent købte ryttere gratis",
+     "oprettet": "2026-07-23",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 2884,
+     "titel": "Auktioner: længere varighed + anti-snipe-forlængelse ved sene bud (1-times-vinduet gør ryttere usælgelige)",
+     "oprettet": "2026-07-25",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 3756,
+     "titel": "Gebyr på høje auktions-startpriser (ejer-beslutning 15/8) - gated af #3755",
+     "oprettet": "2026-08-14",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "15/8",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 4955,
+     "titel": "PR 2: backfill --apply + flag shadow + 7 dages natlig audit",
+     "oprettet": "2026-09-07",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5382,
+     "titel": "Dobbelthop mellem divisioner efterlader hold uden økonomisk fodfæste",
+     "oprettet": "2026-09-18",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5871,
+     "titel": "Sæsonskifte-gaten skal kun spærre pensionister/udløbende kontrakter, ikke alle auktioner (før S5)",
+     "oprettet": "2026-09-28",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "løfte_type": "lovet tidspunkt",
+     "lovet_dato": "S5",
+     "eksplicit_ejer_løfte": true
+    },
+    {
+     "nummer": 6164,
+     "titel": "Ryd op bagud: hængende tilbud + transferliste og tilbud fra inaktive managers",
+     "oprettet": "2026-10-04",
+     "prioritet": "high",
+     "signal": [
+      "ejer",
+      "high"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "4/10",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6604,
+     "titel": "Deps: ryd alle major-efterslæb i dag (ESLint 10 marketing, React-config, Sentry 11, @vercel/og 1.0) + anti-sjusk",
+     "oprettet": "2026-10-14",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6950,
+     "titel": "Kløften mellem rige og fattige hold: catch-up-mekanik",
+     "oprettet": "2026-10-20",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-løfte",
+     "lovet_dato": "28/9",
+     "eksplicit_ejer_løfte": true
+    },
+    {
+     "nummer": 7111,
+     "titel": "Scouting som jagt: scout-missioner med krav",
+     "oprettet": "2026-10-23",
+     "prioritet": "high+low",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7138,
+     "titel": "Kontrakter kan maks. forlænges 2 sæsoner frem (fra S5)",
+     "oprettet": "2026-10-24",
+     "prioritet": "high",
+     "signal": [
+      "ejer",
+      "high",
+      "founder"
+     ],
+     "løfte_type": "ejer-direktiv",
+     "lovet_dato": "23/10",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7953,
+     "titel": "Holdsiden løftes: alle trupper, sæsonhistorik og transfers; managersiden bliver en ægte managerside",
+     "oprettet": "2026-11-09",
+     "prioritet": "high",
+     "signal": [
+      "ejer",
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 8016,
+     "titel": "Auto-accept for køber: tydelig auto-pris og to klart adskilte valg (bud vs. start auktion)",
+     "oprettet": "2026-11-11",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    }
+   ]
+  },
+  {
+   "navn": "Bestyrelse og trupper",
+   "giver_spillerne": "Bestyrelsen og trupgrænserne opfører sig som lovet og viser korrekt info.",
+   "anbefaling": "denne uge",
+   "begrundelse": "'Forkert info' om bestyrelsen og trupplaner står allerede i ugens rækkefølge (pkt. 5); trupgrænser #8034 kobles til #7490.",
+   "antal": 12,
+   "issues": [
+    {
+     "nummer": 1569,
+     "titel": "Ny-spiller onboarding-audit (2026-06-20) — prioriteret handlingsplan",
+     "oprettet": "2026-06-20",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 3511,
+     "titel": "Bestyrelsens resultatqueries: gentagne opslag og dyr query-plan på dashboard og mål-evaluering",
+     "oprettet": "2026-08-07",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 3513,
+     "titel": "Dashboard-rework: Sportsforsiden — fast rygrad + spillerens widget-board (hybrid, ejer-godkendt 7/8)",
+     "oprettet": "2026-08-07",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "7/8",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5757,
+     "titel": "Tilliden er mættet før Mandatet går til alle: 191 af 251 hold på 100, 44 på 0 - kalibreres i S4",
+     "oprettet": "2026-09-25",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "25/9",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5898,
+     "titel": "Bestyrelsen ser kun seniortruppen: fælles scope + CI-vagt",
+     "oprettet": "2026-09-28",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5901,
+     "titel": "Bestyrelsens rytme: ét skridt pr. løbsdag eller pr. eget løb?",
+     "oprettet": "2026-09-28",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7136,
+     "titel": "Tjek om ansatte automatisk bliver opsagt, når hold bliver inaktive",
+     "oprettet": "2026-10-24",
+     "prioritet": "high",
+     "signal": [
+      "ejer",
+      "high",
+      "founder"
+     ],
+     "løfte_type": "ejer-direktiv",
+     "lovet_dato": "23/10",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7626,
+     "titel": "Dashboard - vis kun store nyheder, flyt årsmøde og sæsonbjælke op, forbedr Global Rank, fjern AI slop",
+     "oprettet": "2026-11-04",
+     "prioritet": "high",
+     "signal": [
+      "ejer",
+      "high"
+     ],
+     "løfte_type": "ejer-direktiv",
+     "lovet_dato": "2026-11-03",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7695,
+     "titel": "Forbedringsforslag ud fra 14 dages #staff-chat",
+     "oprettet": "2026-11-05",
+     "prioritet": "high",
+     "signal": [
+      "ejer",
+      "high",
+      "founder"
+     ],
+     "løfte_type": "ejer-direktiv",
+     "lovet_dato": "2026-11-04",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 8008,
+     "titel": "Dashboard: ét samlet kald i stedet for ~10 separate",
+     "oprettet": "2026-11-11",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 8034,
+     "titel": "Nye trupgrænser 30/30/30, højst 60 i alt, vist som midlertidige",
+     "oprettet": "2026-11-12",
+     "prioritet": "high",
+     "signal": [
+      "ejer",
+      "high"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "9/11",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 8035,
+     "titel": "Markér flere ryttere og flyt med højreklik i alle trupvisninger",
+     "oprettet": "2026-11-12",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "9/11",
+     "eksplicit_ejer_løfte": false
+    }
+   ]
+  },
+  {
+   "navn": "Kalender, sæson og planlægning",
+   "giver_spillerne": "Spilleren kan se og planlægge sæsonen: kommende kalender, løbsdage og udtagelse.",
+   "anbefaling": "næste uge",
+   "begrundelse": "Kommende sæsons kalender (#5841) og sæsonskiftet hænger sammen med testen af skiftet før 28/11.",
+   "antal": 11,
+   "issues": [
+    {
+     "nummer": 4109,
+     "titel": "Planlægning-fladen - for mange faner og klik, anti-AI-slop-gennemsyn",
+     "oprettet": "2026-08-22",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-direktiv",
+     "lovet_dato": "21/8",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 4176,
+     "titel": "Samle ALLE kalender-regler i én SSOT + gate dem, så de ikke skal læres forfra ved hver ny kalender",
+     "oprettet": "2026-08-24",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-direktiv",
+     "lovet_dato": "24/8",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5480,
+     "titel": "Fælles kalender-varianter + proveniens for S4 - ejerbeslutning (22/9)",
+     "oprettet": "2026-09-22",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5681,
+     "titel": "Anonymiser Discord-brugernavne i gamle issues og kommentarer (efter sæsonskiftet, ejer 24/9)",
+     "oprettet": "2026-09-24",
+     "prioritet": "low+next",
+     "signal": [
+      "ejer",
+      "next"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "24/9",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5833,
+     "titel": "Pause mellem sæsoner + flyttet slut/start (spillerønske 27/9) - ejer-beslutning til S5",
+     "oprettet": "2026-09-27",
+     "prioritet": "low",
+     "signal": [
+      "ejer"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5841,
+     "titel": "Kommende sæsons kalender skal kunne ses, og divisionsvalget skal kun vise den divisions løb",
+     "oprettet": "2026-09-28",
+     "prioritet": "high",
+     "signal": [
+      "ejer",
+      "high"
+     ],
+     "løfte_type": "ejer-direktiv",
+     "lovet_dato": "27/9",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6890,
+     "titel": "Samlet session: forbedringer af triage-rutinerne (uge 44, efter sæsonskiftet)",
+     "oprettet": "2026-10-19",
+     "prioritet": "next",
+     "signal": [
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7197,
+     "titel": "Forum-opslag til sæsonskiftet: før 20:30, når S4 er lukket, når S5 er klar (med opsummering)",
+     "oprettet": "2026-10-25",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7250,
+     "titel": "Automatisk påmindelse før sæsonskiftet (T-7 og T-48 t) i stedet for manuelt script",
+     "oprettet": "2026-10-26",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7335,
+     "titel": "Automatisk info-bjælke i spillet når løbene er sat på pause (egomadsen + ejer 28/10)",
+     "oprettet": "2026-10-29",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "28/10",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7339,
+     "titel": "Auto-fyld satte for få ryttere på ved S5-løbsdag 28/10 (did_not_start under gulv 6)",
+     "oprettet": "2026-10-29",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    }
+   ]
+  },
+  {
+   "navn": "Sider, design og mobil",
+   "giver_spillerne": "Siderne er overskuelige på både telefon og computer, med ét fælles design.",
+   "anbefaling": "senere",
+   "begrundelse": "Samles under designløftet #8069 og Web 5x #6494; ét samlet designvalg frem for 30 enkeltsager.",
+   "antal": 31,
+   "issues": [
+    {
+     "nummer": 671,
+     "titel": "Brand minimum: accent + font + wordmark (TdF-deadline subset af #481)",
+     "oprettet": "2026-05-25",
+     "prioritet": "high",
+     "signal": [
+      "high",
+      "founder"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 2259,
+     "titel": "Supabase DB-hygiejne: ryd ~20 backup_*-tabeller + covering-index på unindexed foreign keys",
+     "oprettet": "2026-07-10",
+     "prioritet": "med+next",
+     "signal": [
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 2762,
+     "titel": "FAQ: kategori-inddeling + navigation + oprydning af forældet indhold",
+     "oprettet": "2026-07-20",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "19/7",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 3458,
+     "titel": "Ryttertype-fundamentet v2: arketype-generation + skala-ærlighed, ingen tredje rystelse (spec til ejer-godkendelse)",
+     "oprettet": "2026-08-06",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 3624,
+     "titel": "Løb starter ofte senere end det tidspunkt der står på siden",
+     "oprettet": "2026-08-11",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-direktiv",
+     "lovet_dato": "10/8",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 3660,
+     "titel": "UX-gennemgang af hele siden — kan spilleren stole på det de ser? + vend værste oplevelser til bedste",
+     "oprettet": "2026-08-13",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-direktiv",
+     "lovet_dato": "13/8",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 4521,
+     "titel": "SSOT for patch notes (site + Discord) + efterkontrol siden 28/8 - først når PR-backloggen er live",
+     "oprettet": "2026-08-31",
+     "prioritet": "high",
+     "signal": [
+      "ejer",
+      "high"
+     ],
+     "løfte_type": "ejer-direktiv",
+     "lovet_dato": "31/8",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 4622,
+     "titel": "Designsystem til næste niveau: taste-doc, audit af 63 sider, kit, CI-vagter, Claude Design-spejl, anti-slop",
+     "oprettet": "2026-09-02",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "2/9",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 4751,
+     "titel": "Forum- og social-pakke - klikbare navne, profilbillede, DM/indbakke mellem managers, venner, @-tag, kategori-abonnement, mobil",
+     "oprettet": "2026-09-04",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-direktiv",
+     "lovet_dato": "3/9",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 4814,
+     "titel": "Rytterprofilens foto-plads uden feature + skyggerne på /seasons (dokumenteret teknik mod TASTE-forbud) - to ejer-valg",
+     "oprettet": "2026-09-05",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 4985,
+     "titel": "Gruppér enslydende beskeder i indbakken på tværs af flere hændelser",
+     "oprettet": "2026-09-07",
+     "prioritet": "low",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "7/9",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5131,
+     "titel": "Hele hjemmesiden skal hastighedsoptimeres OG mobiloptimeres (paraply + baseline)",
+     "oprettet": "2026-09-11",
+     "prioritet": "high",
+     "signal": [
+      "ejer",
+      "high"
+     ],
+     "løfte_type": "ejer-direktiv",
+     "lovet_dato": "10/9",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5151,
+     "titel": "Tailwind 4 trin 2/3: migrer spillet (frontend/) fra 3.4 til 4.x + radius-konvergering #3952 i samme bane, før/efter pr. sidetype",
+     "oprettet": "2026-09-11",
+     "prioritet": "med+next",
+     "signal": [
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5574,
+     "titel": "Hvis-så-ordrer i cykelsprog + feltets spil mellem mennesker (lag 4)",
+     "oprettet": "2026-09-23",
+     "prioritet": "med+next",
+     "signal": [
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6109,
+     "titel": "Løb bremser tilbagegangen + stilstandsår: tilbagegang man kan påvirke",
+     "oprettet": "2026-10-02",
+     "prioritet": "high",
+     "signal": [
+      "ejer",
+      "high"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "2/10",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6147,
+     "titel": "Samlet navigationsanalyse mobil + pc med Clarity-data",
+     "oprettet": "2026-10-04",
+     "prioritet": "low",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "4/10",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6319,
+     "titel": "Svar-side v2 til 8/10: lær af ejerens rettede svar, find nye ubesvarede, påmind om de resterende",
+     "oprettet": "2026-10-07",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6495,
+     "titel": "Store sider deles op efter T1-T3 + ratchet på sidestørrelse (+ ESLint React 19, struktureret logning)",
+     "oprettet": "2026-10-11",
+     "prioritet": "high+next",
+     "signal": [
+      "high",
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6706,
+     "titel": "Automatisk besked til beta-testere når en funktion går i beta (indbakke + Discord + beta-forum)",
+     "oprettet": "2026-10-16",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6871,
+     "titel": "Automatisk beta-mærkning: menu viser beta i området + beta-tegn foran funktionen (regel + CI-gate)",
+     "oprettet": "2026-10-18",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6889,
+     "titel": "Clarity custom tags (spiller-alder, Pro, sideskabelon) så friktionsfund kan segmenteres - privatlivs-tjek først",
+     "oprettet": "2026-10-19",
+     "prioritet": "next",
+     "signal": [
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6915,
+     "titel": "Tastaturgenveje + kommandopalet (Mod+K) med TanStack Hotkeys",
+     "oprettet": "2026-10-19",
+     "prioritet": "med+next",
+     "signal": [
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6916,
+     "titel": "Mobil 10x: native-følelse, tommelfinger-navigation, øjeblikkelige sider, én-tommel-flows, Google Play",
+     "oprettet": "2026-10-19",
+     "prioritet": "high+next",
+     "signal": [
+      "high",
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6918,
+     "titel": "Desktop 10x: cockpit, hover-forhåndsvisning, regneark-tabeller, træk-og-slip",
+     "oprettet": "2026-10-19",
+     "prioritet": "next",
+     "signal": [
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6976,
+     "titel": "Nyt design (beta-preview): billeder er klemt",
+     "oprettet": "2026-10-20",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "15/10",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7526,
+     "titel": "Server-side auto-merge for lavrisiko-PR'er (policy-as-code), så nætter kan merge rene rettelser uden lokale omveje",
+     "oprettet": "2026-11-02",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7886,
+     "titel": "Tabeller på telefonen: nyt forslag",
+     "oprettet": "2026-11-07",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "7/11",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7993,
+     "titel": "Selvskærpende kvalitetssystem for hele hjemmesiden (a11y, Lighthouse, fuld gennemgang, RUM, TASTE)",
+     "oprettet": "2026-11-11",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 8069,
+     "titel": "Designløftet: ét udseende på web, mobil og app, faste regler og fast proces (samleopgave, ejer 12/11)",
+     "oprettet": "2026-11-12",
+     "prioritet": "high",
+     "signal": [
+      "ejer",
+      "high"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "12/11",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 8070,
+     "titel": "Dagens designregler skrives ind i TASTE.md og PAGE_TEMPLATES.md",
+     "oprettet": "2026-11-12",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 8152,
+     "titel": "Forsiden viser vinder og tilmeldte ca. 7 sekunder for sent, når det valgfrie profil-opslag fejler (efter biblioteksløftet 13/11)",
+     "oprettet": "2026-11-13",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "eksplicit_ejer_løfte": false
+    }
+   ]
+  },
+  {
+   "navn": "Hurtighed og database",
+   "giver_spillerne": "Siderne svarer hurtigt, og databasen holder under spidsbelastning.",
+   "anbefaling": "denne uge",
+   "begrundelse": "Supabase-planen #7659 og ranglisten i uge 47 er i gang; disse issues er dens målepunkter og bør kobles dertil.",
+   "antal": 6,
+   "issues": [
+    {
+     "nummer": 4159,
+     "titel": "Game_day-aksen må aldrig kunne skrives skævt igen: DB-trigger + lane-packer-fix + transition-gate",
+     "oprettet": "2026-08-23",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6184,
+     "titel": "PostgREST dræber ca. 3.000 forespørgsler i døgnet ('Thread killed by timeout manager'), også om natten - rod-årsag og rettelse i uge 41",
+     "oprettet": "2026-10-05",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6272,
+     "titel": "Database-alarm: ekstern overvågning af /api/health med rigtig DB-forespørgsel, push + Discord efter 2 min",
+     "oprettet": "2026-10-06",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7137,
+     "titel": "Ranglisten skal vise sejre (samlede, klassikere, i alt)",
+     "oprettet": "2026-10-24",
+     "prioritet": "high+med",
+     "signal": [
+      "ejer",
+      "high",
+      "founder"
+     ],
+     "løfte_type": "ejer-direktiv",
+     "lovet_dato": "23/10",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 8012,
+     "titel": "Slå React Compiler til (automatisk memoisering), trinvist",
+     "oprettet": "2026-11-11",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 8143,
+     "titel": "Serverens vej til databasen: mål ventetiden, direkte forbindelse og hent én gang, gem én gang (holder det til 100x?)",
+     "oprettet": "2026-11-13",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    }
+   ]
+  },
+  {
+   "navn": "Fællesskab, forum og kommunikation",
+   "giver_spillerne": "Spillerne kan følge med og blive hørt: forum, Discord, patch notes, roadmap og Hjælp.",
+   "anbefaling": "senere",
+   "begrundelse": "Vigtigt, men ikke en fejl; tag dem efter Pro 2.0. Flere forum-direktiver fra august er sandsynligvis forældede og kan droppes.",
+   "antal": 16,
+   "issues": [
+    {
+     "nummer": 2236,
+     "titel": "Organic community outreach — Reddit + Discord posting",
+     "oprettet": "2026-07-06",
+     "prioritet": "med",
+     "signal": [
+      "founder"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 2758,
+     "titel": "Faste rutiner: Discord-triage → GitHub-issues (dagligt) + done-audit-sweep (ugentligt)",
+     "oprettet": "2026-07-20",
+     "prioritet": "low",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "20/7",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 3451,
+     "titel": "Forum-søgning + markering af ulæste indlæg i tråde",
+     "oprettet": "2026-08-06",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-direktiv",
+     "lovet_dato": "6/8",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 3517,
+     "titel": "Forum v1.1: ejer-direktiver 6-7/8 — citér-svar m. notifikation, emoji+links, dansk/engelsk-split, auto-signatur",
+     "oprettet": "2026-08-07",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 4268,
+     "titel": "Roller i spillet - Admin, Moderator, Beta tester",
+     "oprettet": "2026-08-26",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-direktiv",
+     "lovet_dato": "25/8",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 4820,
+     "titel": "Indholdsplan for forum-indlæg (9 emner) + spørgeskema til spillerne",
+     "oprettet": "2026-09-05",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-direktiv",
+     "lovet_dato": "4/9",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6203,
+     "titel": "Søgefunktion på roadmappet for spillerne",
+     "oprettet": "2026-10-05",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "5/10",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6204,
+     "titel": "Faner, filtre og sortering i roadmap-admin",
+     "oprettet": "2026-10-05",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "5/10",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6205,
+     "titel": "MASTERPLAN, roadmap og roadbook i sync, tæt på automatisk",
+     "oprettet": "2026-10-05",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "5/10",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6212,
+     "titel": "Patch notes: fast struktur til Discord, ensartet og i ejerens tone of voice (denne uge, ejer 5/10)",
+     "oprettet": "2026-10-05",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "5/10",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6324,
+     "titel": "Roadmap: spillernes 'god idé'-stemmer blev ikke flyttet med til de nye punkter ved roadmap-hubben 4/10",
+     "oprettet": "2026-10-07",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6554,
+     "titel": "S5-mail 24/10 til sovende spillere med samtykke (send kun på ejerens endelige go)",
+     "oprettet": "2026-10-13",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6923,
+     "titel": "Roadmap og known issues: leveret fra patch notes, din rapport → rettet, 'i gang'-status, spillerforslag",
+     "oprettet": "2026-10-19",
+     "prioritet": "med+next",
+     "signal": [
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6958,
+     "titel": "Afstemningen har for mange og uklare spørgsmål: rotér, så man ser færre ad gangen",
+     "oprettet": "2026-10-20",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-løfte",
+     "lovet_dato": "16/10",
+     "eksplicit_ejer_løfte": true
+    },
+    {
+     "nummer": 7694,
+     "titel": "Forbedringsforslag ud fra egomadsens forslagstråd",
+     "oprettet": "2026-11-05",
+     "prioritet": "high",
+     "signal": [
+      "ejer",
+      "high",
+      "founder"
+     ],
+     "løfte_type": "ejer-direktiv",
+     "lovet_dato": "2026-11-04",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7941,
+     "titel": "Discord-kanalen for ops: hvad skal derind, og hvem håndterer det",
+     "oprettet": "2026-11-09",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    }
+   ]
+  },
+  {
+   "navn": "Vækst og forretning",
+   "giver_spillerne": "Flere nye spillere og indtægt: måling, annoncer, Pro og betaling.",
+   "anbefaling": "senere",
+   "begrundelse": "Forretningsmålet 31/12 kører via Pro 2.0 (#8085) og måling (#5305); placér det, der bidrager dertil, og drop resten.",
+   "antal": 11,
+   "issues": [
+    {
+     "nummer": 941,
+     "titel": "Regnskabsprogram — vælg + opsæt",
+     "oprettet": "2026-06-02",
+     "prioritet": "med",
+     "signal": [
+      "founder"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 1283,
+     "titel": "ToV-session: definér founder-stemmen (ejer-ledet) — struktur fra AI, prosa fra Nicolai",
+     "oprettet": "2026-06-11",
+     "prioritet": "med",
+     "signal": [
+      "founder"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 2820,
+     "titel": "/founder-supporter siger \"betaling er ikke live\" mens /pro tager imod betaling — og dens venteliste er død",
+     "oprettet": "2026-07-23",
+     "prioritet": "med",
+     "signal": [
+      "founder"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 2822,
+     "titel": "Verdensklasse-benchmark: hvor står Cycling Zone mod de bedste managerspil",
+     "oprettet": "2026-07-23",
+     "prioritet": "high",
+     "signal": [
+      "high",
+      "founder"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 3453,
+     "titel": "/admin/growth er ikke opdateret til dagsdato — tallene skal opdateres automatisk",
+     "oprettet": "2026-08-06",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-direktiv",
+     "lovet_dato": "6/8",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 4321,
+     "titel": "PostHog (EU) som analytics-lag: kanal-attribution, funnels, retention + MCP-adgang",
+     "oprettet": "2026-08-27",
+     "prioritet": "high+med+next",
+     "signal": [
+      "high",
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 4322,
+     "titel": "AI-assistenter som målt akkvisitionskanal: ChatGPT er allerede top-5 signup-kilde",
+     "oprettet": "2026-08-27",
+     "prioritet": "med",
+     "signal": [
+      "founder"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 4964,
+     "titel": "Launch-kohorten holder 28,6 % mens etablerede holder 86,8 % - og signups faldt 20 -> 6/uge (målt i #4960)",
+     "oprettet": "2026-09-07",
+     "prioritet": "high",
+     "signal": [
+      "high",
+      "founder"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5973,
+     "titel": "Pressekit og afgrænset pilot for redaktionel omtale af Cycling Zone",
+     "oprettet": "2026-09-30",
+     "prioritet": "med",
+     "signal": [
+      "founder"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6553,
+     "titel": "Beta → færdigt spil: tjekliste, dato S6-start",
+     "oprettet": "2026-10-13",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false,
+     "undtagelse": "næste uge: release-gate med dato S6"
+    },
+    {
+     "nummer": 6919,
+     "titel": "Første 10 minutter, del og vind, smarte notifikationer, AI-assistent",
+     "oprettet": "2026-10-19",
+     "prioritet": "next",
+     "signal": [
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    }
+   ]
+  },
+  {
+   "navn": "Fair play og sikkerhed",
+   "giver_spillerne": "Spillet er fair og sikkert: ingen multikonti, opdaterede afhængigheder og beskyttede data.",
+   "anbefaling": "næste uge",
+   "begrundelse": "Sikkerhedsvinduet med ejeren (#7029 + #7034) er det naturlige sted at tage dem samlet.",
+   "antal": 7,
+   "issues": [
+    {
+     "nummer": 4812,
+     "titel": "Dependabot-auto-merge.yml er sandsynligvis død af samme årsag som #4404 - tredje merge-vej mod ejer-princippet 4/9",
+     "oprettet": "2026-09-05",
+     "prioritet": "low+next",
+     "signal": [
+      "ejer",
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6047,
+     "titel": "Malwarebytes Browser Guard blokerer cyclingzone.org (false positive) — indberet 3/10",
+     "oprettet": "2026-10-01",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6862,
+     "titel": "Audit: sommer-/vintertid i alle tidsafhængige job og visninger (mandag 19/10, før DST 25/10)",
+     "oprettet": "2026-10-18",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6917,
+     "titel": "Driftssikkerhed, kvalitetsstige og fart ved 10x (verdensklasse spor 1)",
+     "oprettet": "2026-10-19",
+     "prioritet": "med+next",
+     "signal": [
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7006,
+     "titel": "Ejer-princip 20/10: ingen 90%-færdige kommer-snart-løsninger, større sikkerhedsnet, færre klik/scroll, flere meningsfulde valg",
+     "oprettet": "2026-10-21",
+     "prioritet": "med+low",
+     "signal": [
+      "ejer",
+      "founder"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7018,
+     "titel": "Security: afhængigheds- og sikkerhedstjek 21/10 (Node 24.22.1, Next/React RCE-advisories)",
+     "oprettet": "2026-10-21",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7367,
+     "titel": "Genbesøg @vercel/og/satori-opgradering når en fungerende version findes",
+     "oprettet": "2026-10-30",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    }
+   ]
+  },
+  {
+   "navn": "Drift, AI og arbejdsgang",
+   "giver_spillerne": "Intern drift: hvordan Claude/Codex arbejder, CI og værktøjer. Spillerne mærker det kun indirekte.",
+   "anbefaling": "drop",
+   "begrundelse": "De fleste er gamle procesopgaver, der er overhalet af nyere regler (loftet, bølge-orkestratoren, til-dørs). Undtagelser er markeret pr. issue.",
+   "antal": 29,
+   "issues": [
+    {
+     "nummer": 519,
+     "titel": "Split backend/routes/api.js i domain routers uden adfærdsændring",
+     "oprettet": "2026-05-20",
+     "prioritet": "med+next",
+     "signal": [
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 2682,
+     "titel": "AI-audit 19/7: NOW.md 2x over token-budget + CLAUDE.md-trim; gør token-WARN til FAIL",
+     "oprettet": "2026-07-18",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 3154,
+     "titel": "Backlog ned til ~200 åbne issues på 7-14 dage + fuld prioriteringsgennemgang",
+     "oprettet": "2026-07-30",
+     "prioritet": "high",
+     "signal": [
+      "ejer",
+      "high"
+     ],
+     "løfte_type": "ejer-direktiv",
+     "lovet_dato": "26/7",
+     "eksplicit_ejer_løfte": false,
+     "undtagelse": "ejer-beslutning: backlog-direktivet er ikke opfyldt (1.013 åbne)"
+    },
+    {
+     "nummer": 3556,
+     "titel": "Merge queue på main + flake-karantæne som data (verdensklasse-verifikation, ejer-godkendt 8/8)",
+     "oprettet": "2026-08-09",
+     "prioritet": "med+next",
+     "signal": [
+      "ejer",
+      "next"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "8/8",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 4616,
+     "titel": "Infisical-session: EUR-planer i Alunta, Railway-nøgler, Resend-nøgler, checkout-sprog, EU-moms-spørgsmål",
+     "oprettet": "2026-09-02",
+     "prioritet": "low",
+     "signal": [
+      "founder"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5031,
+     "titel": "Ryd op i admin-funktioner der aldrig bruges eller er blevet overflødige",
+     "oprettet": "2026-09-08",
+     "prioritet": "low",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-direktiv",
+     "lovet_dato": "7/9",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5157,
+     "titel": "To drafts ældre end en måned (#3512, #4736): færdig eller luk + 14-dages draft-regel",
+     "oprettet": "2026-09-11",
+     "prioritet": "med+next",
+     "signal": [
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5507,
+     "titel": "Færdig = kan tændes: kontakt-vagt i CI + reviewer slår PR-bodyens påstande op i koden",
+     "oprettet": "2026-09-22",
+     "prioritet": "med+next",
+     "signal": [
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 5678,
+     "titel": "Session-hygiejne: hård grænse for sessionslængde, close-out som fast blok, prompt skrives før sidste merge-runde",
+     "oprettet": "2026-09-24",
+     "prioritet": "med+next",
+     "signal": [
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6064,
+     "titel": "Bølge: hook der håndhæver scope for bølge-agenter deterministisk",
+     "oprettet": "2026-10-02",
+     "prioritet": "med+next",
+     "signal": [
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6065,
+     "titel": "Bølge: drift-audit af subagent-transcripts ved oprydning",
+     "oprettet": "2026-10-02",
+     "prioritet": "med+next",
+     "signal": [
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6134,
+     "titel": "Schedulerbudget og holdbar backpressure: rest fra #5900",
+     "oprettet": "2026-10-03",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6493,
+     "titel": "Én delt TS-pakke til logik, som frontend og backend begge bruger (slut med kopier + paritetstests)",
+     "oprettet": "2026-10-11",
+     "prioritet": "med+next",
+     "signal": [
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6496,
+     "titel": "Tekniske standarder 11/10: samle-issue (6 punkter, ejer-godkendt)",
+     "oprettet": "2026-10-11",
+     "prioritet": "med+next",
+     "signal": [
+      "ejer",
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6548,
+     "titel": "\"Hvad brænder\"-vagten: daglig rapport kl. 08 (GitHub Action + fast issue)",
+     "oprettet": "2026-10-12",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6616,
+     "titel": "Bølger uden ekstra runde: preflight = CI static-guards + review-loop i lanen",
+     "oprettet": "2026-10-14",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6864,
+     "titel": "PR-CI under 10 min: målt baseline mandag 19/10, byg tirsdag 20/10",
+     "oprettet": "2026-10-18",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6886,
+     "titel": "Planlagte rutiner ligger kun lokalt på én PC - versionér prompterne i repoet + sync-script",
+     "oprettet": "2026-10-19",
+     "prioritet": "next",
+     "signal": [
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6887,
+     "titel": "29 × 'Script error.' i Clarity pr. uge uden detaljer - find kilden og gør fejlen læsbar (crossorigin)",
+     "oprettet": "2026-10-19",
+     "prioritet": "next",
+     "signal": [
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6888,
+     "titel": "Konvention for kendte/afgjorte Sentry-alarmer (link til beslutning + arkivér til eskalering) i begge triage-rutiner",
+     "oprettet": "2026-10-19",
+     "prioritet": "next",
+     "signal": [
+      "next"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 6942,
+     "titel": "Anti-feature-liste: hvad laves aldrig/først 2028, og hvad tidligst januar 2027",
+     "oprettet": "2026-10-20",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-løfte",
+     "lovet_dato": "5/10",
+     "eksplicit_ejer_løfte": true
+    },
+    {
+     "nummer": 7336,
+     "titel": "Byggestop i admission (følg til dørs, Task 1-2)",
+     "oprettet": "2026-10-29",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false,
+     "undtagelse": "behold: byggestop-sporet er aktivt"
+    },
+    {
+     "nummer": 7476,
+     "titel": "Til dørs 1/11: opfølgning (eneste indgang til alt aftalt i sweepen)",
+     "oprettet": "2026-11-01",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false,
+     "undtagelse": "behold: eneste indgang til til-dørs-opfølgning"
+    },
+    {
+     "nummer": 7492,
+     "titel": "Backlog-sweep 2026-11: Codex-ledger (4 lanes, DolmerPC)",
+     "oprettet": "2026-11-02",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 7583,
+     "titel": "TypeScript-retning: spejderregel + filer med flest fejl til .ts én ad gangen",
+     "oprettet": "2026-11-03",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "løfte_type": "ejer-valg",
+     "lovet_dato": "3/11",
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 8039,
+     "titel": "Regel-oprydning 12/11: NOW.md-budget, byggestop-liste og close-out pr. commit",
+     "oprettet": "2026-11-12",
+     "prioritet": "med",
+     "signal": [
+      "ejer"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 8055,
+     "titel": "Playwright Smoke rød på main (nightly)",
+     "oprettet": "2026-11-12",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false,
+     "undtagelse": "denne uge: Playwright smoke er rød på main"
+    },
+    {
+     "nummer": 8126,
+     "titel": "Funktionsregistret, statustavlen og masterplanens statuslinjer rettes til prod efter 12/11 og 13/11",
+     "oprettet": "2026-11-13",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false
+    },
+    {
+     "nummer": 8206,
+     "titel": "Hooks springer over når cwd ikke er repo-roden (relative stier i settings.json)",
+     "oprettet": "2026-11-15",
+     "prioritet": "high",
+     "signal": [
+      "high"
+     ],
+     "eksplicit_ejer_løfte": false,
+     "undtagelse": "denne uge: hooks springer over i worktrees"
+    }
+   ]
+  }
+ ]
+}

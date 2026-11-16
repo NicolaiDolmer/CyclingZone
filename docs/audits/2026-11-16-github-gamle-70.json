@@ -1,0 +1,815 @@
+{
+ "genereret": "2026-11-16",
+ "kilde": "docs/audits/2026-11-16-github-gennemgang.md (sektion 4, Bilag A-B og A-C)",
+ "refs": "#7911",
+ "kriterie": "Åbne issues oprettet før 17/9/2026, ikke nævnt i MASTERPLAN/NOW, ingen commit på main efter 17/9, og enten icebox/post-launch (34) eller priority:low uden nogen commit (36).",
+ "vigtigt": "Alle 70 fik en kommentar 2/11 fra backlog-sweepen (#7492), der vurderede dem (gyldig / delvist leveret / uklar) uden at handle. De er altså ikke uden aktivitet, men uden beslutning. Kun #27 har en nyere kommentar fra en spiller (5/11).",
+ "forbehold": [
+  "Titlerne er omskrevet til klart dansk ud fra titel og issue-tekst; detaljer kan afvige fra issuet.",
+  "Begrundelser der siger \"erstattet af\" eller \"leveret\" er Claudes vurdering ud fra titler og planen, ikke verificeret i prod. Læs issuet før lukning.",
+  "Anbefalingerne er Claudes forslag; ejeren beslutter. Lukning er not planned med arkiv-note, ikke sletning (regel 38)."
+ ],
+ "antal": 70,
+ "opsummering": {
+  "luk": 52,
+  "behold": 18
+ },
+ "områder": [
+  {
+   "navn": "AI og drift",
+   "antal": 11,
+   "luk": 10,
+   "behold": 1,
+   "issues": [
+    {
+     "nummer": 323,
+     "titel": "Verdensklasse AI/ops-opsætning (epic)",
+     "oprettet": "2026-05-12",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: delvist leveret; opdatér børneinventar, behold stående paraply",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "9 rester fra september; lad dem leve som enkelt-issues."
+    },
+    {
+     "nummer": 324,
+     "titel": "Fase 0: AI- og release-baseline",
+     "oprettet": "2026-05-12",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: delvist; driftMonitor bruger D1/D2/D3, afgræns mod trup-SSOT",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Leveret i praksis af CI/review-gaten (#6654)."
+    },
+    {
+     "nummer": 658,
+     "titel": "Kør token-hygiejne automatisk på Windows",
+     "oprettet": "2026-05-25",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: delvist leveret; afstem mandat, mål scheduler/harness",
+     "gruppe": "priority:low",
+     "anbefaling": "luk",
+     "begrundelse": "Erstattet af close-out-trin 6 i CLAUDE.md."
+    },
+    {
+     "nummer": 722,
+     "titel": "Discord-MCP på ny PC uden manuel opsætning",
+     "oprettet": "2026-05-28",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: delvist leveret; afprøv aktuel setup på frisk maskine",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Icebox; ny PC-opsætning er sjælden."
+    },
+    {
+     "nummer": 1450,
+     "titel": "Hemmeligheder synkes automatisk fra Infisical til Vercel",
+     "oprettet": "2026-06-18",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: uklar; læs Vercel sync-status, dokumentér mapping",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "behold",
+     "begrundelse": "Driftssikkerhed; ejer-handling kræves, men værdien er reel."
+    },
+    {
+     "nummer": 2460,
+     "titel": "Fjern opsætningsforhindringer én gang for alle",
+     "oprettet": "2026-07-15",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: delvist leveret; kør opsætningstest på begge PC'er",
+     "gruppe": "priority:low",
+     "anbefaling": "luk",
+     "begrundelse": "Ejer-irritation fra juli; løst løbende via Infisical og MCP."
+    },
+    {
+     "nummer": 2679,
+     "titel": "Slå 5 overflødige plugins fra",
+     "oprettet": "2026-07-18",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: uklar; genmål harness, vurder plugins efter faktisk brug",
+     "gruppe": "priority:low",
+     "anbefaling": "luk",
+     "begrundelse": "Engangsopgave fra juli; opsætningen er ændret siden."
+    },
+    {
+     "nummer": 2680,
+     "titel": "Slå marketing-connectors fra i udviklings-sessioner",
+     "oprettet": "2026-07-18",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: uklar; kontrollér Cowork-devkanalens connectorliste",
+     "gruppe": "priority:low",
+     "anbefaling": "luk",
+     "begrundelse": "Samme som ovenfor; ejer-klik der er forældet."
+    },
+    {
+     "nummer": 2681,
+     "titel": "Ryd op i AI-hukommelsen (MEMORY.md)",
+     "oprettet": "2026-07-18",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; memory 3190 tok, forelæg HOT/WARM-kandidater",
+     "gruppe": "priority:low",
+     "anbefaling": "luk",
+     "begrundelse": "Håndhæves nu af token-hygiejne-tjekket."
+    },
+    {
+     "nummer": 2683,
+     "titel": "Ryd 7 udløbne planlagte opgaver op",
+     "oprettet": "2026-07-18",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; inventér lokale tasks før oprydning",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Engangsoprydning fra juli."
+    },
+    {
+     "nummer": 3486,
+     "titel": "Vercel-token i Infisical, så Claude kan læse forbrug",
+     "oprettet": "2026-08-07",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: uklar; kontrollér Vercel-adgang og alarm-/forbrugsmetadata",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Vercel MCP er nu koblet til sessionerne."
+    }
+   ]
+  },
+  {
+   "navn": "Sider og visning",
+   "antal": 9,
+   "luk": 7,
+   "behold": 2,
+   "issues": [
+    {
+     "nummer": 62,
+     "titel": "Indbakke 'Today': hvad skete, hvad ændrede sig, hvad kræver handling",
+     "oprettet": "2026-05-06",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: delvist leveret; kortlæg første manglende lille Today-leverance",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Stort set leveret i indbakken ('Skal handles', #7467)."
+    },
+    {
+     "nummer": 94,
+     "titel": "Managerstatistik på tværs af sæsoner",
+     "oprettet": "2026-05-06",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: delvist leveret; bevar icebox, afstem med #1106/#1148",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Icebox; dækkes af sæsonhistorik på holdsiden (#7953)."
+    },
+    {
+     "nummer": 957,
+     "titel": "Mest besøgte ryttere (24 t/7 d og trend)",
+     "oprettet": "2026-06-02",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: delvist leveret; afgræns rest til global liste eller widget",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Post-launch-idé uden plads; lav spillerværdi nu."
+    },
+    {
+     "nummer": 1148,
+     "titel": "Verdenshistorie og klubmuseum: rekorder, legender, rivaliseringer",
+     "oprettet": "2026-06-08",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; behold som parkeret ejertracker uden buildscope",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Icebox-vision; omdømme-sporet i 2027 er det naturlige sted."
+    },
+    {
+     "nummer": 1239,
+     "titel": "Bestyrelsens fokus v2: nationalitet, egen avl, sportsligt fokus",
+     "oprettet": "2026-06-10",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: delvist leveret; sammenlign D-040 med nuværende DNA-valg",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Bestyrelsen er omlagt siden juni (#7167, #7963)."
+    },
+    {
+     "nummer": 3050,
+     "titel": "Venskabsløb og egne turneringer på tværs af divisioner",
+     "oprettet": "2026-07-26",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; bevar icebox, vælg venskabsløb vs budgetturnering senere",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Icebox-ønske; stort nyt system."
+    },
+    {
+     "nummer": 4100,
+     "titel": "Portrætbilleder af ryttere",
+     "oprettet": "2026-08-22",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; bevar icebox og 3D-first-retning under #5113",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "behold",
+     "begrundelse": "Del af Visual Identity #5113 i planen (Q1 2027); fold ind dér og luk."
+    },
+    {
+     "nummer": 4815,
+     "titel": "Små designfejl: badge-radius, deaktiverede knapper uden forklaring m.m.",
+     "oprettet": "2026-09-05",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: delvist leveret; gennemgå seks punkter, saml rester",
+     "gruppe": "priority:low",
+     "anbefaling": "luk",
+     "begrundelse": "Samle-issue fra september; designløftet #8069 erstatter det."
+    },
+    {
+     "nummer": 5095,
+     "titel": "Rå kode/pladsholdertekst i finanshistorik, fyr rytter og træn tempo",
+     "oprettet": "2026-09-10",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: uklar; reproducér synlig i18n-nøgle før byg",
+     "gruppe": "priority:low",
+     "anbefaling": "behold",
+     "begrundelse": "Forkert info set af spiller; tjek om det stadig findes (Brand-reglen)."
+    }
+   ]
+  },
+  {
+   "navn": "Økonomi",
+   "antal": 8,
+   "luk": 7,
+   "behold": 1,
+   "issues": [
+    {
+     "nummer": 17,
+     "titel": "Lån: skal renten starte med det samme, og skal gebyret betales kontant?",
+     "oprettet": "2026-05-06",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; beslut lånegebyrets timing og form før kodeændring",
+     "gruppe": "priority:low",
+     "anbefaling": "luk",
+     "begrundelse": "Designspørgsmål fra maj uden opfølgning; lånesystemet kører, og ingen spillere har klaget siden."
+    },
+    {
+     "nummer": 986,
+     "titel": "Økonomisiden får faner, prognose, lån og sæsonhistorik samlet",
+     "oprettet": "2026-06-02",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: delvist leveret; struktur leveret, rout restkrav til økonomi2",
+     "gruppe": "priority:low",
+     "anbefaling": "behold",
+     "begrundelse": "Konkret spillerønske; passer ind når siden alligevel flyttes til T1/T2-skabelon."
+    },
+    {
+     "nummer": 1099,
+     "titel": "Omdømmesystem: optjent popularitet",
+     "oprettet": "2026-06-06",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: delvist leveret; lav status pr. rytter/bestyrelse/nation/netværk",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Erstattet af #4957/#5106 i Tidsplanen (2027)."
+    },
+    {
+     "nummer": 1113,
+     "titel": "Fans bliver en rigtig mekanik, der påvirker indtægt og moral",
+     "oprettet": "2026-06-06",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; afstem fans, merchandise og omdømme før designkort",
+     "gruppe": "priority:low",
+     "anbefaling": "luk",
+     "begrundelse": "Stort nyt system uden plan; dækkes af omdømme-sporet (#4957/#5106) i 2027."
+    },
+    {
+     "nummer": 2222,
+     "titel": "Hold kan sælge merchandise til deres fans",
+     "oprettet": "2026-07-05",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; behold parkeret, fjern gamle deadlineforventninger",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Afhænger af fans-mekanikken, som også foreslås lukket; icebox siden juli."
+    },
+    {
+     "nummer": 2749,
+     "titel": "Undersøg præmie-overbetaling i sæson 1 (40,7 mio. mod 35,98 mio.)",
+     "oprettet": "2026-07-20",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: uklar; afstem S1-præmieposteringer, kræver prod-tjek",
+     "gruppe": "priority:low",
+     "anbefaling": "luk",
+     "begrundelse": "Historisk S1-afvigelse; præmierne er siden omlagt (÷20), så tallet kan ikke rettes meningsfuldt nu."
+    },
+    {
+     "nummer": 4958,
+     "titel": "Omdømme påvirker marked og løn (PR 5)",
+     "oprettet": "2026-09-07",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; afstem marked/løn-løfte mod v6-ejermål",
+     "gruppe": "priority:low",
+     "anbefaling": "luk",
+     "begrundelse": "Omdømme er flyttet til starten af 2027 i planen; genopret derfra."
+    },
+    {
+     "nummer": 5068,
+     "titel": "Admin: løb kun med AI-hold vises som 0 CZ$-rækker i præmie-preview",
+     "oprettet": "2026-09-09",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; afgræns visning af nul-kontant-afregninger",
+     "gruppe": "priority:low",
+     "anbefaling": "luk",
+     "begrundelse": "Kun admin-kosmetik, ingen spillereffekt."
+    }
+   ]
+  },
+  {
+   "navn": "Marked og transfer",
+   "antal": 8,
+   "luk": 5,
+   "behold": 3,
+   "issues": [
+    {
+     "nummer": 26,
+     "titel": "Transfer-rum: favoritliste, sammenlign ryttere og budgetprognose",
+     "oprettet": "2026-05-06",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: delvist leveret; bevar icebox, senere ét konkret budgetvalg",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Stort designprojekt i icebox siden maj; favoritter er delvist leveret (#7932)."
+    },
+    {
+     "nummer": 27,
+     "titel": "Gem dine egne scoutingfiltre med navn (og synk mellem pc og mobil)",
+     "oprettet": "2026-05-06",
+     "seneste_kommentar": "2026-11-05",
+     "seneste_kommentar_resume": "Discord: gemte filtre synkroniseres ikke mellem pc og mobil",
+     "gruppe": "priority:low",
+     "anbefaling": "behold",
+     "begrundelse": "Spiller skrev 5/11 at filtre ikke synkes mellem pc og mobil; levende ønske."
+    },
+    {
+     "nummer": 1151,
+     "titel": "Menneskedrevet transfermarked, hvor AI kun skaber likviditet",
+     "oprettet": "2026-06-08",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: delvist leveret; adskil handelsskinner fra AI-likviditet",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Visions-epic uden konkrete skridt; markedsarbejdet kører nu i #6181 (pengelås)."
+    },
+    {
+     "nummer": 3755,
+     "titel": "Mål auktionskonkurrencen 28 dage efter valgfrit sluttidspunkt",
+     "oprettet": "2026-08-14",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: delvist leveret; forelæg rapport, gebyrbeslutning ligger hos ejer",
+     "gruppe": "priority:low",
+     "anbefaling": "luk",
+     "begrundelse": "Målevinduet udløb i september; beslutningerne den skulle styre er ikke længere aktuelle."
+    },
+    {
+     "nummer": 4540,
+     "titel": "Træk en rytter ud af et igangværende løb, men lås ham ude af overlappende løb",
+     "oprettet": "2026-09-01",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; bevar icebox, managerafmelding holdes adskilt",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Icebox-ønske, der strider mod doktrinen 'én rytter, ét løb pr. løbsdag'."
+    },
+    {
+     "nummer": 5062,
+     "titel": "Skift division i sæsonpausen ved at bytte plads med et AI-hold",
+     "oprettet": "2026-09-09",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; behold parkeret uden deadline",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Icebox; rokker ved op/nedrykning, som ejeren ikke har åbnet for."
+    },
+    {
+     "nummer": 5255,
+     "titel": "Notifikation om byttehandel åbner din egen rytter i stedet for handlen",
+     "oprettet": "2026-09-15",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: uklar; reproducér klikmål, luk som overhalet hvis korrekt",
+     "gruppe": "priority:low",
+     "anbefaling": "behold",
+     "begrundelse": "Konkret fejl i en spillerflade, lille at rette."
+    },
+    {
+     "nummer": 5293,
+     "titel": "Live-bud-blokken på auktionssiden skubber det vigtige ned",
+     "oprettet": "2026-09-16",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: delvist leveret; reproducér pladsproblem før fjernelse af feed",
+     "gruppe": "priority:low",
+     "anbefaling": "behold",
+     "begrundelse": "Konkret spillerønske om auktionssiden, lille ændring."
+    }
+   ]
+  },
+  {
+   "navn": "Måling og data",
+   "antal": 7,
+   "luk": 5,
+   "behold": 2,
+   "issues": [
+    {
+     "nummer": 306,
+     "titel": "Mål de sidste ~10 hændelser i analytics",
+     "oprettet": "2026-05-11",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: delvist leveret; lav dispositionsmatrix for events mod produktspørgsmål",
+     "gruppe": "priority:low",
+     "anbefaling": "luk",
+     "begrundelse": "Målingen er flyttet til PostHog (#4321); listen er forældet."
+    },
+    {
+     "nummer": 621,
+     "titel": "Sentry-hærdning efter grundopsætning",
+     "oprettet": "2026-05-24",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: delvist leveret; afstem Sentry-menupunkter mod eksisterende leverancer",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Afløst af alarm-arbejdet i #7659/#7917."
+    },
+    {
+     "nummer": 1199,
+     "titel": "Natlig vagt der tjekker spilregler mod prod-data",
+     "oprettet": "2026-06-09",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: delvist leveret; kortlæg dækning mod eksisterende driftsvagter",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Afløst af 'Hvad brænder'-vagten #6548 og sandhedsvagten #7720."
+    },
+    {
+     "nummer": 1208,
+     "titel": "Bestyrelsens stjernescore bruger frosne UCI-point",
+     "oprettet": "2026-06-10",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: delvist leveret; kortlæg kaldere, bevis om legacy-gren er aktiv",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Bestyrelsen er omlagt; tjek at feltet ikke længere bruges, ellers luk."
+    },
+    {
+     "nummer": 3109,
+     "titel": "4 AI-hold fik deres trup erstattet ved en fejl 26/7",
+     "oprettet": "2026-07-28",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: uklar; afstem fire AI-holds tilstand (prod-tjek)",
+     "gruppe": "priority:low",
+     "anbefaling": "luk",
+     "begrundelse": "AI-hold, ingen spillereffekt; 4 måneder gammelt."
+    },
+    {
+     "nummer": 4352,
+     "titel": "Frontendens API-fejl skjules, så hyppige fejl ligner sjældne",
+     "oprettet": "2026-08-28",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: delvist leveret; afstem dækningshuller før nyt telemetrilag",
+     "gruppe": "priority:low",
+     "anbefaling": "behold",
+     "begrundelse": "Gør fejl usynlige for os; passer til #7659-alarmerne."
+    },
+    {
+     "nummer": 4433,
+     "titel": "Værn: genberegning af evner må aldrig sænke en trænet rytter",
+     "oprettet": "2026-08-30",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; reproducér genudledning af trænet rytter med fixture",
+     "gruppe": "priority:low",
+     "anbefaling": "behold",
+     "begrundelse": "Beskytter mod at synlige ratings falder (doktrin)."
+    }
+   ]
+  },
+  {
+   "navn": "Løb og resultater",
+   "antal": 5,
+   "luk": 2,
+   "behold": 3,
+   "issues": [
+    {
+     "nummer": 1293,
+     "titel": "Motoren: fulde mål for brosten, bakker og enkeltstart",
+     "oprettet": "2026-06-11",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: uklar; afstem gamle mål mod v4, omskriv restscope",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Overhalet af motor-sporet (#7588, #7645, #6912) i Loft 1."
+    },
+    {
+     "nummer": 2751,
+     "titel": "Hold uden division (test/frosne konti) springes stille over i op/nedrykning",
+     "oprettet": "2026-07-20",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; afstem null-puljer og bonusvej før rettelse",
+     "gruppe": "priority:low",
+     "anbefaling": "luk",
+     "begrundelse": "Gælder kun testkonti; ingen spillereffekt."
+    },
+    {
+     "nummer": 2838,
+     "titel": "Hollandske og belgiske løb får spanske stigningsnavne",
+     "oprettet": "2026-07-23",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; stram regionmatch, tilføj NL/BE-region",
+     "gruppe": "priority:low",
+     "anbefaling": "behold",
+     "begrundelse": "Synlig forkert info i løbene; lille rettelse."
+    },
+    {
+     "nummer": 4490,
+     "titel": "Etapeteksten vises også i samlet stilling, hvor den læses forkert",
+     "oprettet": "2026-08-31",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; fjern etape-tags fra samlet GC-visning",
+     "gruppe": "priority:low",
+     "anbefaling": "behold",
+     "begrundelse": "Forkert info set af to spillere; passer ind i løbssiden v6 #7778."
+    },
+    {
+     "nummer": 5120,
+     "titel": "Løbsgenspil i 3D med dine egne ryttere og trøjer",
+     "oprettet": "2026-09-10",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; behold parkeret efter #5113",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "behold",
+     "begrundelse": "Del af #5113, som står i planen til Q1 2027; ikke forældet."
+    }
+   ]
+  },
+  {
+   "navn": "Akademi og ungdom",
+   "antal": 5,
+   "luk": 2,
+   "behold": 3,
+   "issues": [
+    {
+     "nummer": 3970,
+     "titel": "Kontraktforlængelse i dage og korte introkontrakter til akademiryttere",
+     "oprettet": "2026-08-19",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; afstem dagkontrakter mod sæsonloftmodel",
+     "gruppe": "priority:low",
+     "anbefaling": "behold",
+     "begrundelse": "Ejer-retning 19/8; hører til i S6-arbejdet med kontrakter og graduering (#7323)."
+    },
+    {
+     "nummer": 4032,
+     "titel": "Pensionsrisiko vægter resultater, og ryttere kan stoppe tidligere",
+     "oprettet": "2026-08-20",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; mål pensionsmønster, vis ét designvalg",
+     "gruppe": "priority:low",
+     "anbefaling": "luk",
+     "begrundelse": "Ejer sagde 'S4+'; ingen plan siden, og pension fungerer."
+    },
+    {
+     "nummer": 4073,
+     "titel": "Salg/afvisning af akademirytter tæt på sæsonskiftet sker uden besked",
+     "oprettet": "2026-08-21",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; vis kort udsættelsesbesked ved boundary-svar",
+     "gruppe": "priority:low",
+     "anbefaling": "behold",
+     "begrundelse": "Stille fejl tæt på sæsonskiftet; tjek mod #7323 før 28/11."
+    },
+    {
+     "nummer": 4703,
+     "titel": "Vis akademiryttere i holdudtagelsen bag et tilvalg",
+     "oprettet": "2026-09-03",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; design sammenligningstilvalg for egne ungdomstrupper",
+     "gruppe": "priority:low",
+     "anbefaling": "luk",
+     "begrundelse": "Overhalet af de nye U23/junior-trupper (#7932)."
+    },
+    {
+     "nummer": 4926,
+     "titel": "Akademirytter står som 'solgt', når auktionen oprettes, ikke når den afgøres",
+     "oprettet": "2026-09-06",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; afstem listed/sold-livscyklus, afvent ejerens design",
+     "gruppe": "priority:low",
+     "anbefaling": "behold",
+     "begrundelse": "Forkert info i data; tjek mod graduering/salg #7323 før 28/11."
+    }
+   ]
+  },
+  {
+   "navn": "Discord og fællesskab",
+   "antal": 4,
+   "luk": 4,
+   "behold": 0,
+   "issues": [
+    {
+     "nummer": 425,
+     "titel": "Discord: automatisk Top-50-rolle hver søndag",
+     "oprettet": "2026-05-15",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; opdatér datakontrakt, afklar ranggrundlag og jobtid",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Post-launch; ingen plan for Discord-bots lige nu."
+    },
+    {
+     "nummer": 426,
+     "titel": "Discord: /mit-hold-kommando",
+     "oprettet": "2026-05-15",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: uklar; find botkommandoer og afklar afhængighed",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Post-launch; ingen plan."
+    },
+    {
+     "nummer": 430,
+     "titel": "Rekrutter 2 moderatorer til Discord",
+     "oprettet": "2026-05-15",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: uklar; kontrollér moderatorroller/mandat med ejeren først",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Ejer-opgave uden aktivitet siden maj; genopret hvis serveren kræver det."
+    },
+    {
+     "nummer": 431,
+     "titel": "Første spørgetime (AMA) med ejeren",
+     "oprettet": "2026-05-15",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: uklar; afklar om første AMA er afholdt",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Ejer-opgave uden aktivitet siden maj."
+    }
+   ]
+  },
+  {
+   "navn": "Hurtighed",
+   "antal": 4,
+   "luk": 4,
+   "behold": 0,
+   "issues": [
+    {
+     "nummer": 479,
+     "titel": "Hurtigere mobilside for supporter-ventelisten",
+     "oprettet": "2026-05-18",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: delvist leveret; genmål mobil-route hvis løftet fra icebox",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Ventelisten er afløst af /pro; Pro 2.0 #8085 er sporet nu."
+    },
+    {
+     "nummer": 1373,
+     "titel": "Delt cache og hurtigere svar i frontenden",
+     "oprettet": "2026-06-13",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; færdiggør TanStack-evaluering før ejerens byggevalg",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Erstattet af Web 5x #6494 (TanStack Query), som står i planen."
+    },
+    {
+     "nummer": 1374,
+     "titel": "Live-opdatering af auktioner uden at hente alt igen",
+     "oprettet": "2026-06-13",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: delvist leveret; mål refetch-stier, målret resterende brede hændelser",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Erstattet af Web 5x #6494."
+    },
+    {
+     "nummer": 1375,
+     "titel": "Samlet performance-plan (juni)",
+     "oprettet": "2026-06-13",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: delvist leveret; afstem faser med #5893/#5904, genmål kapacitet",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Erstattet af Web 5x #6494 og Supabase-planen #7659."
+    }
+   ]
+  },
+  {
+   "navn": "Hold og stab",
+   "antal": 4,
+   "luk": 4,
+   "behold": 0,
+   "issues": [
+    {
+     "nummer": 930,
+     "titel": "Manageren som direktør med stab (læger, fysioterapeuter, kokke)",
+     "oprettet": "2026-06-02",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: delvist leveret; bevar staffdybde som parkeret epic",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Stor visions-epic i icebox siden juni."
+    },
+    {
+     "nummer": 1109,
+     "titel": "Manageren får egne evner som i Football Manager",
+     "oprettet": "2026-06-06",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; ret scope til kosmetisk, bevar icebox",
+     "gruppe": "icebox/post-launch",
+     "anbefaling": "luk",
+     "begrundelse": "Icebox-vision uden design."
+    },
+    {
+     "nummer": 2217,
+     "titel": "Kontrakter og genforhandling for trænere og spejdere",
+     "oprettet": "2026-07-05",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; afgræns staff-kontraktudløb og genforhandling",
+     "gruppe": "priority:low",
+     "anbefaling": "luk",
+     "begrundelse": "Del af økonomi-epic #1441 uden plads i planen; har både med og low prioritet."
+    },
+    {
+     "nummer": 2218,
+     "titel": "Pensionerede ryttere kan blive trænere eller spejdere",
+     "oprettet": "2026-07-05",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; design konkret pension-til-staff-sløjfe",
+     "gruppe": "priority:low",
+     "anbefaling": "luk",
+     "begrundelse": "Samme epic som ovenfor; sød idé, men ingen plan."
+    }
+   ]
+  },
+  {
+   "navn": "Udtagelse og kalender",
+   "antal": 4,
+   "luk": 1,
+   "behold": 3,
+   "issues": [
+    {
+     "nummer": 2991,
+     "titel": "Bestyrelsesmålet 'rytter i en Grand Tour' kan ikke nås af mennesker",
+     "oprettet": "2026-07-25",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: uklar; genmål menneskeholds GT-adgang, afklar prestigemål",
+     "gruppe": "priority:low",
+     "anbefaling": "luk",
+     "begrundelse": "Bestyrelsen er siden lavet om (#7963/#8116); tjek om målet stadig findes, ellers luk."
+    },
+    {
+     "nummer": 3374,
+     "titel": "Marker en rytter som 'udtag ikke', så han kan træne i stedet",
+     "oprettet": "2026-08-05",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; design én managerregel for udtagelse/opt-out",
+     "gruppe": "priority:low",
+     "anbefaling": "behold",
+     "begrundelse": "Gentaget spillerønske; passer med træningssporet, der er nr. 1 i planen."
+    },
+    {
+     "nummer": 5200,
+     "titel": "Kalenderen farves efter din status: udmeldt, tilmeldt, hold sat",
+     "oprettet": "2026-09-14",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; design kalenderens tre udtagelsestilstande",
+     "gruppe": "priority:low",
+     "anbefaling": "behold",
+     "begrundelse": "Konkret spillerønske; passer ind i planlægningssiden #7535."
+    },
+    {
+     "nummer": 5225,
+     "titel": "Knap: 'lad aldrig assistenten udtage for mig'",
+     "oprettet": "2026-09-14",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: gyldig; opdatér design efter sen-opfyldning, afklar fra-knap",
+     "gruppe": "priority:low",
+     "anbefaling": "behold",
+     "begrundelse": "Lille valg efter afstemning (2 af 14 ønskede det)."
+    }
+   ]
+  },
+  {
+   "navn": "Brand",
+   "antal": 1,
+   "luk": 1,
+   "behold": 0,
+   "issues": [
+    {
+     "nummer": 481,
+     "titel": "Komplet brand-identitet: logo og designmanual",
+     "oprettet": "2026-05-18",
+     "seneste_kommentar": "2026-11-02",
+     "seneste_kommentar_resume": "Sweep: delvist leveret; afstem brandleverance mod nuværende assets",
+     "gruppe": "priority:low",
+     "anbefaling": "luk",
+     "begrundelse": "Erstattet af designløftet #8069 og TASTE.md."
+    }
+   ]
+  }
+ ]
+}
