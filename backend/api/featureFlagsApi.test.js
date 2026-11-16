@@ -454,6 +454,16 @@ test("#7725: day_words_7725 er binaert og strengt som motoren (kun strengen on t
   assert.equal(on.day_words_7725, true);
 });
 
+test("#7741: training_train_now_bonus foelger motoren: beta taender kun for beta-testere", async () => {
+  assert.ok(!PLAYER_VISIBLE_BINARY_FLAG_KEYS.includes("training_train_now_bonus"), "motoren laeser beta for beta-testere (isTrainNowBonusEnabled)");
+  assert.ok(PLAYER_VISIBLE_FLAG_KEYS.includes("training_train_now_bonus"));
+  const beta = fakeSupabase({ training_train_now_bonus: "beta" });
+  assert.equal((await readPlayerFeatureFlags(beta, { isBetaTester: true })).training_train_now_bonus, true);
+  assert.equal((await readPlayerFeatureFlags(beta, { isBetaTester: false })).training_train_now_bonus, false);
+  assert.equal((await readPlayerFeatureFlags(fakeSupabase({ training_train_now_bonus: "on" }))).training_train_now_bonus, true);
+  assert.equal((await readPlayerFeatureFlags(fakeSupabase({ training_train_now_bonus: "off" }), { isBetaTester: true })).training_train_now_bonus, false);
+});
+
 test("#7536: Hjaelp-flaget er off naar condition_model_v2 eller dens forudsaetning er off", async () => {
   const parentOff = await readPlayerFeatureFlags(fakeSupabase({ condition_v2_race_date_training_day: "on", condition_model_v2: "off" }));
   assert.equal(parentOff.condition_v2_race_date_training_day, false, "motoren bruger ikke reglen uden v2");

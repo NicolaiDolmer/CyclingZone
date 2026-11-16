@@ -1,415 +1,102 @@
 #!/usr/bin/env bash
-# PreToolUse hook (matcher: Bash|PowerShell)
+# PreToolUse hook (matcher: "" = ALLE vaerktoejer, bevidst)
 #
-# Blokerer kendte command-patterns der dumper secret-values til stdout/stderr.
-# Defense-in-depth: PrimÆR forsvarslinje før secret overhovedet printes.
+# Blokerer kendte command-patterns der dumper secret-values til stdout/stderr,
+# Read/Grep mod secret-filer, og literal secrets i ENHVER tool_input (fx
+# Agent-prompt, MCP-arg, Write/Edit-indhold). Derfor koerer den paa alle
+# vaerktoejer - en matcher kun paa Bash|PowerShell ville tabe de to sidste lag.
+# Defense-in-depth: PRIMÆR forsvarslinje før secret overhovedet printes.
 # Sekundær er sanitize-secrets.sh (PostToolUse).
 #
-# Patterns katalogiseret i docs/SECRET_LEAK_VECTORS.md tabel A-D.
+# Patterns katalogiseret i docs/SECRET_LEAK_VECTORS.md tabel A-D. Selve
+# regelsaettet bor i block-dangerous-secret-commands.py ved siden af.
 #
 # Adfærd:
 #   - Safe command  -> exit 0
 #   - Dangerous     -> exit 2 med stderr (block), giv agent safe alternativ
+#   - Scanner/runtime-fejl -> exit 2 (fail closed; intet antages sikkert)
 #
-# Refs: #634 AC2.
+# Ydelse (#8240): hooken koerer paa hvert eneste tool-kald med 5 s timeout, og en
+# timeout er ingen beskyttelse. Derfor: ingen subshells/grep-pipelines, kun EEN
+# Python-proces paa den normale sti (probe og scan i samme koersel). Den separate
+# probe koeres kun naar scanningen fejler, for at skelne "ingen brugbar Python"
+# fra "scanneren fejlede".
+#
+# Refs: #634 AC2, #8240.
 
 set -u
 
+# Stier uden subshells: normaliser backslashes og skær filnavnet af.
+SELF="${BASH_SOURCE[0]//\\//}"
+case "$SELF" in
+  */*) HOOK_DIR="${SELF%/*}" ;;
+  *) HOOK_DIR="." ;;
+esac
+HOOK_LIB="$HOOK_DIR/../../scripts/hooks/lib/resolve-python.sh"
+SCANNER="$HOOK_DIR/block-dangerous-secret-commands.py"
+
 # Security checks must not silently disappear when PATH contains a broken stub.
-HOOK_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../scripts/hooks/lib" && pwd)/resolve-python.sh"
 if ! source "$HOOK_LIB"; then
   echo 'SECRET GUARD BLOCKED: Python runtime helper unavailable.' >&2
   exit 2
 fi
-PY=$(resolve_hook_python) || { secret_runtime_failure 'no working Python >=3.8 (Windows Store aliases rejected)'; exit 2; }
 
-# --- #684 TRACE (cross-PC hook-firing investigation) ---
+# --- #684 TRACE (cross-PC hook-firing investigation) --- (kun builtins)
 {
-  mkdir -p "$HOME/.claude" 2>/dev/null
+  [ -d "$HOME/.claude" ] || mkdir -p "$HOME/.claude"
+  printf -v TRACE_TS '%(%Y-%m-%dT%H:%M:%S%z)T' -1
   printf '%s hook=%s pid=%s host=%s cwd=%s\n' \
-    "$(date '+%Y-%m-%dT%H:%M:%S%z')" \
-    "$(basename "$0")" \
+    "$TRACE_TS" \
+    "${0##*/}" \
     "$$" \
     "${COMPUTERNAME:-${HOSTNAME:-unknown}}" \
-    "$(pwd 2>/dev/null)" \
-    >> "$HOME/.claude/hook-trace.log" 2>/dev/null
+    "${PWD:-}" \
+    >> "$HOME/.claude/hook-trace.log"
 } 2>/dev/null || true
 # --- /#684 TRACE ---
 
+# Bevidst $(cat), ikke $(</dev/stdin): naar Claude Code (node) starter hooken,
+# er stdin et Windows-pipe som /dev/stdin ikke kan aabne i MSYS - input blev
+# tomt og vagten lod alt passere (fanget af test-secret-runtime.mjs, #8240).
 INPUT=$(cat 2>/dev/null || true)
 if [ -z "$INPUT" ]; then
   exit 0
 fi
 
-# For ALLE tool-calls: scan tool_input for secret-patterns. Catch'er meta-leaks
-# hvor agent ekkoer et secret i fx spawn_task-prompt eller MCP-arg (opdaget
-# 2026-05-25 da et spawn_task indeholdt Sentry DSN literal fra source-file).
-#
-# Vi scanner kun tool_input — tool_response håndteres af PostToolUse sanitizer.
-# Bash/PowerShell command-specifikt block (cat .env, railway variables osv.)
-# kommer længere nede.
-# PY was runtime-verified above; never re-select by existence alone.
-
-if [ -n "${PY:-}" ]; then
-  INPUT_SCAN_CODE=$(cat <<'PYEOF'
-import re, json, sys
-text = sys.stdin.buffer.read().decode("utf-8")
-try:
-    d = json.loads(text)
-except Exception:
-    sys.exit(3)
-
-# Extract ALL string-values from tool_input recursively
-def collect_strings(obj, out):
-    if isinstance(obj, str):
-        out.append(obj)
-    elif isinstance(obj, dict):
-        for v in obj.values():
-            collect_strings(v, out)
-    elif isinstance(obj, list):
-        for v in obj:
-            collect_strings(v, out)
-
-strings = []
-collect_strings(d.get("tool_input", {}), strings)
-joined = "\n".join(strings)
-
-# Scan for HIGH-VALUE patterns kun (mindre risiko for false positive end full
-# sanitize-secrets pattern-set). Skip her hvis pattern er publikt acceptabelt.
-PATTERNS = [
-    ("supabase-secret",      re.compile(r"sb_secret_[A-Za-z0-9_-]{30,}")),
-    ("jwt-supabase-legacy",  re.compile(r"eyJh[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}")),
-    ("sentry-dsn",           re.compile(r"https://[a-f0-9]{32}@[a-z0-9.\-]+\.ingest(?:\.[a-z]{2})?\.sentry\.io/[0-9]+")),
-    ("discord-bot-token",    re.compile(r"\b[MN][A-Za-z0-9_-]{23,28}\.[A-Za-z0-9_-]{6,7}\.[A-Za-z0-9_-]{27,38}\b")),
-    ("github-pat",           re.compile(r"\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{36,}\b")),
-    ("aws-access-key",       re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
-    ("anthropic-key",        re.compile(r"\bsk-ant-[A-Za-z0-9_-]{90,}\b")),
-    ("stripe-key",           re.compile(r"\b(?:sk|pk|rk)_(?:test|live)_[A-Za-z0-9]{24,}\b")),
-]
-found = []
-for name, pat in PATTERNS:
-    if pat.search(joined):
-        found.append(name)
-if found:
-    print(",".join(sorted(set(found))))
-PYEOF
-  ) || { secret_runtime_failure 'tool-input scanner unavailable'; exit 2; }
-  LEAK_TYPES=$(printf '%s' "$INPUT" | "$PY" -c "$INPUT_SCAN_CODE" 2>/dev/null) || { secret_runtime_failure 'tool-input scan failed'; exit 2; }
-  unset INPUT_SCAN_CODE
-
-  if [ -n "$LEAK_TYPES" ]; then
-    cat >&2 <<EOF
-🔴 BLOCKED by block-dangerous-secret-commands.sh
-
-Tool call input indeholder secret-pattern(s): $LEAK_TYPES
-
-Hvad skete der: agent forsøgte at sende et tool-call med en literal secret i
-input (fx spawn_task prompt, MCP-arg, agent-besked). Selv hvis Bash-output
-sanitizer ville fange et sådan secret AFTER det printes, blokerer vi nu FØR
-det forwardes til et andet system (spawned session, MCP-server, etc.).
-
-Hvad gør du nu:
-1. STOP. Genkald værdien fra hukommelsen — det skal IKKE være i prompts.
-2. Reference værdien indirekte (fx "line 147 i setup-sentry-frontend.ps1
-   indeholder den hardcoded DSN" — uden at quote det).
-3. Hvis du SKAL inkludere et secret i et tool-input, så er flowet at
-   brugeren tilføjer det manuelt i en separat besked til den spawned agent.
-
-Refs: #634 (denne hook).
-EOF
-    exit 2
-  fi
-fi
-
-# --- Lag A (#634 follow-up): block Read/Grep mod secret-fil-stier ----------
-# Read/Grep tool_response indeholder filindhold; for secret-filer = leak til
-# transcript. Input-scan ovenfor fanger det IKKE (tool_input er kun en sti),
-# og PostToolUse-sanitizer dækkede det først efter Read/Grep blev tilføjet til
-# matcheren. Denne block er proaktiv + indholds-uafhængig (fanger også custom
-# secrets uden genkendeligt format). Vektoren bed 2026-05-29 (.mcp.json).
-if [ -n "${PY:-}" ]; then
-  PATH_SCAN_CODE=$(cat <<'PYEOF'
-import json, re, sys
-text = sys.stdin.buffer.read().decode("utf-8")
-try:
-    d = json.loads(text)
-except Exception:
-    sys.exit(3)
-tn = str(d.get("tool_name", "") or "")
-if tn not in ("Read", "Grep"):
-    sys.exit(0)
-ti = d.get("tool_input", {}) or {}
-paths = []
-if tn == "Read":
-    p = ti.get("file_path")
-    if p:
-        paths.append(str(p))
-elif tn == "Grep":
-    # Grep uden 'path' = cwd-bred soegning; kan ikke pinnes til een fil ->
-    # overlades til PostToolUse-sanitizer (lag B). Kun eksplicit fil/sti her.
-    p = ti.get("path")
-    if p:
-        paths.append(str(p))
-
-whitelist = re.compile(r"\.(example|sample|template)$", re.IGNORECASE)
-
-def is_secret_path(p):
-    pl = p.replace("\\", "/")
-    base = pl.rsplit("/", 1)[-1]
-    if whitelist.search(base):
-        return False
-    if base == ".mcp.json":
-        return True
-    if re.match(r"^\.env(\..+)?$", base):
-        return True
-    if "/secrets/" in pl.lower():
-        return True
-    # #3342: get-test-token.mjs' sikre default skriver JWT-payload til
-    # .codex.local/test-token*.json. Filen er lige saa secret som en direkte
-    # Read af .env — bloker den samme vej. Match baade relative stier
-    # (".codex.local/...", uden leading slash) og absolutte/nested stier.
-    pl_lower = pl.lower()
-    if (pl_lower.startswith(".codex.local/") or "/.codex.local/" in pl_lower) and \
-       base.lower().startswith("test-token"):
-        return True
-    return False
-
-hits = [p for p in paths if is_secret_path(p)]
-if hits:
-    print(hits[0])
-PYEOF
-  ) || { secret_runtime_failure 'secret-path scanner unavailable'; exit 2; }
-  SECRET_PATH=$(printf '%s' "$INPUT" | "$PY" -c "$PATH_SCAN_CODE" 2>/dev/null)
-  path_scan_exit=$?
-  unset PATH_SCAN_CODE
-  [ "$path_scan_exit" -eq 0 ] || { secret_runtime_failure 'secret-path scan failed'; exit 2; }
-
-  if [ -n "$SECRET_PATH" ]; then
-    cat >&2 <<EOF
-🔴 BLOCKED by block-dangerous-secret-commands.sh
-
-Read/Grep mod secret-fil: $SECRET_PATH
-
-Filen indeholder secrets i klartekst. Tool-output ville dumpe dem til
-transcript (vektoren der bed 2026-05-29 paa .mcp.json). Selv gitignored filer
-laekker denne vej.
-
-Hvad goer du nu:
-1. Behoever du kun KEY-NAVNE (ikke values)?
-     grep -oE '^[A-Z_][A-Z0-9_]*' backend/.env     # via Bash — kun keys
-2. Behoever du strukturen i .mcp.json? Laes docs/DISCORD_MCP_SETUP.md (har
-   redacted eksempel) i stedet for selve filen.
-3. Skal du se en value? Aaben filen i en editor UDENFOR Claude Code.
-
-Catalog: docs/SECRET_LEAK_VECTORS.md tabel B.
-
-Refs: #634.
-EOF
-    exit 2
-  fi
-fi
-
-# Quick bail-out hvis ikke Bash/PowerShell tool-call for command-specifikke checks nedenfor
-case "$INPUT" in
-  *'"tool_name":"Bash"'*|*'"tool_name": "Bash"'*) ;;
-  *'"tool_name":"PowerShell"'*|*'"tool_name": "PowerShell"'*) ;;
-  *) exit 0 ;;
-esac
-
-# Extract command field via python json-parse (sed-greedy bug ramte ved korte
-# commands som "env" — fanger ikke trailing JSON). Python handles escapes
-# korrekt. Den allerede runtime-verificerede interpreter genbruges.
-
-CMD=$(printf '%s' "$INPUT" | "$PY" -c 'import sys, json
-try:
-  d = json.load(sys.stdin)
-  print(d.get("tool_input", {}).get("command", ""))
-except Exception:
-  sys.exit(3)' 2>/dev/null) || { secret_runtime_failure 'command parsing failed'; exit 2; }
-CMD=${CMD:0:8000}
-
-if [ -z "$CMD" ]; then
-  exit 0
-fi
-
-# Lowercase for case-insensitive match
-CMDLO=$(printf '%s' "$CMD" | tr '[:upper:]' '[:lower:]')
-
-block() {
-  local pattern_name="$1"
-  local safe_alt="$2"
-  cat >&2 <<EOF
-🔴 BLOCKED by block-dangerous-secret-commands.sh
-
-Command matches known leak-pattern: $pattern_name
-
-Det blokerede command ville sandsynligvis printe secret-values til transcript.
-Tidligere incidents: #296 (setup.py JWT in commit), #620 (railway variables --json).
-
-Safe alternative:
-$safe_alt
-
-Catalog: docs/SECRET_LEAK_VECTORS.md (alle kendte vektorer + wrappers).
-Override: hvis du SKAL køre raw command (fx for rotation), kør det fra en
-terminal UDENFOR Claude Code så transcript ikke fanger output.
-
-Refs: #634.
-EOF
-  exit 2
+# Samme probe som resolve_hook_python, men for EEN kandidat. Koeres kun paa
+# fejlstien.
+probe_python() {
+  local reply
+  reply=$("$1" -c 'import sys; sys.stdout.write("CZ_HOOK_PYTHON_OK" if sys.version_info >= (3, 8) else "unsupported")' </dev/null 2>/dev/null) || return 1
+  [ "$reply" = 'CZ_HOOK_PYTHON_OK' ]
 }
 
-# --- Railway env-dumps ---
-# `railway variables` (med eller uden --json) printer alle values.
-# Tillader: `railway variables --json | jq 'keys'` (extracts only keys).
-# Tillader: probe-railway-keys.* wrapper.
-if printf '%s' "$CMDLO" | grep -Eq '(^|[^a-z])railway[[:space:]]+variables'; then
-  # Check om der er en safe-extract pattern i samme command
-  if printf '%s' "$CMDLO" | grep -Eq "jq[[:space:]]+'keys'" || \
-     printf '%s' "$CMDLO" | grep -Eq 'jq[[:space:]]+"keys"' || \
-     printf '%s' "$CMDLO" | grep -Eq 'probe-railway-keys'; then
-    : # Safe
-  else
-    block "railway variables (uden jq 'keys' filter)" \
-      "  pwsh -File scripts/probe-railway-keys.ps1   # Windows
-  bash scripts/probe-railway-keys.sh           # Linux/Mac
-  # Eller manual: railway variables --json | jq 'keys'"
+# Kandidater i samme raekkefoelge og med samme afvisning af Windows Store-aliaser
+# som resolve_hook_python. PATH-opslaget sker via `hash` (builtin, ingen fork).
+for name in python python3 py; do
+  hash "$name" 2>/dev/null || continue
+  candidate="${BASH_CMDS[$name]:-}"
+  [ -n "$candidate" ] || continue
+  case "${candidate,,}" in
+    */windowsapps/python|*/windowsapps/python.exe|*/windowsapps/python3|*/windowsapps/python3.exe|*/windowsapps/py|*/windowsapps/py.exe) continue ;;
+  esac
+
+  # -I: ignorer PYTHON*-miljoe og laeg ikke scriptets mappe paa sys.path.
+  # -S: spring site-import over (hurtigere opstart; kun stdlib bruges).
+  "$candidate" -I -S "$SCANNER" <<<"$INPUT"
+  rc=$?
+  case "$rc" in
+    10) exit 0 ;;   # tilladt
+    12) exit 2 ;;   # blokeret; beskeden er skrevet af scanneren
+  esac
+
+  # Scanneren gav ikke et gyldigt svar. Er kandidaten en brugbar Python, er det
+  # scanneren der fejlede -> bloker. Ellers proev naeste kandidat.
+  if probe_python "$candidate"; then
+    secret_runtime_failure 'tool-input scan failed' "scanner exit=$rc"
+    exit 2
   fi
-fi
+done
 
-# --- Vercel env-dumps ---
-# `vercel env ls --format json` printer values. `vercel env pull` skriver
-# values til disk. `vercel env decrypt` printer values direkte.
-if printf '%s' "$CMDLO" | grep -Eq 'vercel[[:space:]]+env[[:space:]]+ls.*--format[[:space:]]+json'; then
-  if printf '%s' "$CMDLO" | grep -Eq "jq[[:space:]]+'\\[" || \
-     printf '%s' "$CMDLO" | grep -Eq 'probe-vercel-keys'; then
-    : # Safe
-  else
-    block "vercel env ls --format json (uden jq filter)" \
-      "  pwsh -File scripts/probe-vercel-keys.ps1
-  bash scripts/probe-vercel-keys.sh
-  # Eller manual: vercel env ls production --format json | jq '[.[] | .key]'"
-  fi
-fi
-
-if printf '%s' "$CMDLO" | grep -Eq 'vercel[[:space:]]+env[[:space:]]+pull'; then
-  block "vercel env pull (skriver values til disk)" \
-    "  # IKKE behov i agent-flow. Hvis du SKAL pull values lokalt for debug:
-  #   kør fra terminal UDENFOR Claude Code, og slet filen bagefter."
-fi
-
-if printf '%s' "$CMDLO" | grep -Eq 'vercel[[:space:]]+env[[:space:]]+decrypt'; then
-  block "vercel env decrypt (printer values)" \
-    "  Brug probe-vercel-keys.ps1 til at se key-navne."
-fi
-
-# --- Infisical secrets-dump (ALLE former printer values) ---
-# `infisical secrets` (tabel m. value-kolonne), `infisical secrets --plain`
-# (KEY=VALUE), `infisical secrets get <KEY>`, og `infisical export` (dotenv)
-# printer ALLE secret-values. Kun `infisical run -- <cmd>` (runtime-injection,
-# printer intet) er safe og rammes IKKE af mønstret nedenfor.
-#
-# Blokeres KATEGORISK — ingen allow-pipe-undtagelse. Det var præcis en sådan
-# snæver undtagelse (kun `list --format json`) der lækkede SUPABASE_SERVICE_KEY
-# 2026-05-30: `infisical secrets --plain` matchede ikke den gamle form.
-if printf '%s' "$CMDLO" | grep -Eq '(^|[^a-z])infisical[[:space:]]+(secrets|export)([[:space:]]|$)'; then
-  block "infisical secrets/export (printer secret-values til transcript)" \
-    "  # Tjek om en key er sat (uden at printe value):
-  infisical run --env=dev -- node backend/scripts/verify-infisical-injection.js
-  # Brug værdier via runtime-injection: infisical run --env=dev -- <cmd>
-  # Se key-navne i Infisical-dashboardet. ALDRIG 'infisical secrets'/'--plain'/'export' i agent-session."
-fi
-
-# --- get-test-token.mjs --print (#3342) ---
-# Scriptets sikre default skriver JWT'et til en gitignored fil og printer kun
-# stien. `--print` er det eksplicitte opt-out der genindfører den gamle
-# adfærd (raw access_token på stdout = transcript). Leaket 2026-08-04 20:00
-# under #3336-arbejde. Blokeres KATEGORISK — ingen safe-pipe-undtagelse,
-# ligesom infisical secrets/export ovenfor.
-if printf '%s' "$CMDLO" | grep -Eq 'get-test-token\.mjs' && \
-   printf '%s' "$CMDLO" | grep -Eq '(^|[[:space:]])--print([[:space:]=]|$)'; then
-  block "get-test-token.mjs --print (printer Supabase JWT til stdout = transcript)" \
-    "  # Sikker default (skriver til gitignored fil, printer kun stien):
-  node scripts/get-test-token.mjs --email=<email>
-  # Brug filens STI i næste kommando — læs/print ALDRIG selve indholdet.
-  # --print er KUN til manuel terminalbrug UDENFOR Claude Code."
-fi
-
-# --- Cat / Get-Content på .env-filer + get-test-token.mjs-output (#3342) ---
-# 2026-08-06: udvidet fra kun 'cat' til alle kendte fil-læsere — en subagent
-# læste backend/.env med en læser mønstret ikke dækkede (3. bid af denne
-# vektor-klasse; sanitizer fangede outputtet, men blokken skal fyre FØR).
-# Desuden deterministisk backup i .claude/settings.json permissions.deny.
-if printf '%s' "$CMDLO" | grep -Eq '(^|[[:space:]])(cat|head|tail|less|more|nl|tac|strings|od|xxd)[[:space:]]+[^|;&]*\.env' || \
-   printf '%s' "$CMDLO" | grep -Eq '(^|[[:space:]])(sed|awk)[[:space:]]+[^|;&]*\.env'; then
-  block "fil-læser mod .env (direkte secret-file læsning)" \
-    "  # Kun key-navne:
-  grep -oE '^[A-Z_][A-Z0-9_]+' backend/.env
-  # Eller åben fil i editor manuelt (uden agent)."
-fi
-
-if printf '%s' "$CMDLO" | grep -Eq '(^|[[:space:]])(cat|type)[[:space:]]+([^|;&]+/)?test-token[^[:space:]]*\.json' || \
-   printf '%s' "$CMDLO" | grep -Eq 'get-content[[:space:]]+([^|;&]+/)?test-token[^[:space:]]*\.json' || \
-   printf '%s' "$CMDLO" | grep -Eq '(^|[[:space:]])gc[[:space:]]+([^|;&]+/)?test-token[^[:space:]]*\.json'; then
-  block "cat/Get-Content på get-test-token.mjs-output (printer JWT til stdout)" \
-    "  # Filen ER outputtet fra get-test-token.mjs — samme leak som --print.
-  # Brug filens STI i næste kommando i stedet for at printe indholdet
-  # (fx lad en anden proces læse filen selv, uden at ekko'e værdien)."
-fi
-
-if printf '%s' "$CMDLO" | grep -Eq 'get-content[[:space:]]+([^|;&]+/)?\.env' || \
-   printf '%s' "$CMDLO" | grep -Eq '(^|[[:space:]])gc[[:space:]]+([^|;&]+/)?\.env'; then
-  block "Get-Content .env" \
-    "  Select-String -Path backend/.env -Pattern '^[A-Z_]+=' | ForEach-Object { (\$_ -split '=')[0] }"
-fi
-
-# --- env / printenv unfiltered ---
-# `env` alene eller `printenv` alene printer alle env vars incl. secrets.
-# `env | grep` er ofte ok hvis grep filter er på key-name. `env | awk '{print $1}'`
-# er safe. Vi blokker kun helt-unfiltered.
-if printf '%s' "$CMDLO" | grep -Eq '(^|[[:space:]];|\|\||&&)(env|printenv)([[:space:]]*$|[[:space:]]*[;|&])'; then
-  block "env / printenv (unfiltered — dumper alle env-vars)" \
-    "  env | awk -F= '{print \$1}' | sort   # kun key-navne
-  # Eller: env | grep -E '^(SUPABASE|RAILWAY)_'   # filter på prefix"
-fi
-
-# --- PowerShell env-listing unfiltered ---
-if printf '%s' "$CMDLO" | grep -Eq 'get-childitem[[:space:]]+env:[[:space:]]*$' || \
-   printf '%s' "$CMDLO" | grep -Eq '(^|[[:space:]])(gci|ls|dir)[[:space:]]+env:[[:space:]]*$'; then
-  block "Get-ChildItem env: (printer alle env-vars incl. values)" \
-    "  Get-ChildItem env: | Select-Object -ExpandProperty Name | Sort-Object"
-fi
-
-# --- Git show/log/diff på .env-filer ---
-if printf '%s' "$CMDLO" | grep -Eq 'git[[:space:]]+show[[:space:]]+[^|]*\.env'; then
-  block "git show <ref>:.env (læser historisk secret hvis nogensinde committed)" \
-    "  Hvis .env i historie: brug \`git log --diff-filter=D --name-only -- .env\` (kun stier)
-  Hvis du skal vurdere om secret er compromised: tjek GitHub secret-scanning."
-fi
-
-if printf '%s' "$CMDLO" | grep -Eq 'git[[:space:]]+log[[:space:]]+-p[[:space:]]+[^|]*\.env'; then
-  block "git log -p .env (printer historiske values)" \
-    "  git log --oneline -- backend/.env   # kun commit-summaries"
-fi
-
-# --- Vercel inspect (kan inkludere build-time env i nogen formater) ---
-# Specifikt: `vercel inspect <deployment-url>` uden filter kan dumpe env.
-# Detalje-output har vi set inkludere build-config-objekter med embedded keys.
-if printf '%s' "$CMDLO" | grep -Eq 'vercel[[:space:]]+inspect[[:space:]]+'; then
-  # Allow inspect kun hvis output filtres (>/dev/null, jq, eller specific subcommand)
-  if printf '%s' "$CMDLO" | grep -Eq 'jq' || \
-     printf '%s' "$CMDLO" | grep -Eq '> ?/dev/null'; then
-    : # Filtered
-  else
-    block "vercel inspect (kan inkludere build-time env)" \
-      "  vercel inspect <url> 2>&1 | jq '{name, status, url, createdAt}'   # kun metadata"
-  fi
-fi
-
-# --- Dotenv debug-print ---
-if printf '%s' "$CMDLO" | grep -Eq 'console\.log\([^)]*process\.env[^)]*\)'; then
-  block "console.log(process.env) (printer alle env-vars med values)" \
-    "  console.log(Object.keys(process.env).sort())   # kun key-navne"
-fi
-
-# Hvis vi når hertil — ingen pattern matched. Tillad command.
-exit 0
+secret_runtime_failure 'no working Python >=3.8 (Windows Store aliases rejected)'
+exit 2

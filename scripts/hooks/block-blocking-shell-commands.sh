@@ -47,11 +47,19 @@ esac
 
 command -v node >/dev/null 2>&1 || exit 0
 
-VERDICT=$(printf '%s' "$CMD" | node -e '
+# Node faar hele hook-inputtet og laeser kommandoen via JSON.parse, saa
+# escapede citationstegn (\") og linjeskift (\n) bliver til de rigtige tegn.
+# sed-udtraekket ovenfor er kun fallback hvis JSON ikke kan parses (#8240).
+VERDICT=$(printf '%s' "$INPUT" | BBSC_FALLBACK_CMD="$CMD" node -e '
 let raw = "";
 process.stdin.on("data", (d) => (raw += d));
 process.stdin.on("end", () => {
-  const cmd = raw;
+  let cmd = process.env.BBSC_FALLBACK_CMD || "";
+  try {
+    const parsed = JSON.parse(raw);
+    const c = parsed && parsed.tool_input && parsed.tool_input.command;
+    if (typeof c === "string") cmd = c.slice(0, 8000);
+  } catch (_) { /* fallback til sed-udtraekket */ }
   if (!cmd.trim()) process.exit(0);
 
   // --- 1. git diff|log|show|branch uden --no-pager nogetsteds i kommandoen ---
@@ -92,18 +100,52 @@ process.stdin.on("end", () => {
   // Split i top-level chains (&&, ||, ;, newline), og hver chain i
   // pipeline-stages (|). Kun stage 0 i en pipeline kan mangle stdin - senere
   // stages faar input fra forrige stage.
-  const chains = cmd.split(/&&|\|\|/);
-  for (const chain of chains) {
-    const stages = chain.split("|");
-    const first = stages[0];
-    const hasRedirect = /<\s*\S/.test(first) || /<<-?\s*\S/.test(first);
-    if (hasRedirect) continue;
+  //
+  // Opdelingen er citationstegn-bevidst (#8240): et jq-filter som
+  // ".a | .b" i citationstegn er EET argument, ikke en pipe. Den gamle
+  // naive split(" | ") skar filteret over, saa jq -r ".a | .b" "$F" saa ud
+  // som "jq med kun et filter" og blev blokeret, selv om jq fik en fil.
+  const SQ = "\x27";
+  const DQ = "\x22";
+  const BS = "\x5c";
+  const chains = [];
+  let stages = [], segments = [], tokens = [], cur = "";
+  let inTok = false, redirect = false, quote = null;
+  const endTok = () => { if (inTok) { tokens.push(cur); cur = ""; inTok = false; } };
+  const endSeg = () => { endTok(); segments.push(tokens); tokens = []; };
+  const endStage = () => { endSeg(); stages.push({ segments, redirect }); segments = []; redirect = false; };
+  const endChain = () => { endStage(); chains.push(stages); stages = []; };
+  for (let i = 0; i < cmd.length; i++) {
+    const c = cmd[i];
+    if (quote) {
+      if (c === quote) { quote = null; continue; }
+      if (quote === DQ && c === BS && i + 1 < cmd.length) { cur += cmd[++i]; continue; }
+      cur += c;
+      continue;
+    }
+    if (c === SQ || c === DQ) { quote = c; inTok = true; continue; }
+    if (c === BS && i + 1 < cmd.length) {
+      i++;
+      if (cmd[i] !== "\n") { cur += cmd[i]; inTok = true; }
+      continue;
+    }
+    if ((c === "&" || c === "|") && cmd[i + 1] === c) { i++; endChain(); continue; }
+    if (c === "|") { endStage(); continue; }
+    if (c === ";" || c === "\n") { endSeg(); continue; }
+    if (c === "<") { redirect = true; endTok(); continue; }
+    if (/\s/.test(c)) { endTok(); continue; }
+    cur += c;
+    inTok = true;
+  }
+  endChain();
 
-    // Split det foerste segment af chainen (foer evt. ";" eller newline) i
-    // tokens - vi kigger kun paa selve python/jq-invokationen.
-    const segments = first.split(/;|\n/);
-    for (const seg of segments) {
-      const tokens = seg.trim().split(/\s+/).filter(Boolean);
+  for (const chainStages of chains) {
+    const first = chainStages[0];
+    if (!first || first.redirect) continue;
+
+    // Kig paa hvert ";"/newline-segment af foerste stage - vi kigger kun paa
+    // selve python/jq-invokationen.
+    for (const tokens of first.segments) {
       if (tokens.length === 0) continue;
 
       // Spring env-var-assignments over (FOO=bar python ...).

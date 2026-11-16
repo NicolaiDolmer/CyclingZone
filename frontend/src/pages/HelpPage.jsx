@@ -536,10 +536,14 @@ const SECTION_DEFS = [
       // translated copy but no reachable docs; it belongs right after
       // roles, since it's the stage-race-specific extension of them.
       { id: "stageTactics", kind: "text" },
+      // #7003: de spaerrede ordre-kombinationer (oppositeOrders.js) og planens regel.
+      { id: "oppositeOrders", kind: "text" },
       // #6746: ét sandt afsnit om indsatstrinnene (fem trin; kontakten fjernet, #6641).
       { id: "effortSteps", kind: "text" },
       // #7864: holdplaner og prisord; vises foerst med samme kontakt som holdplanerne selv.
       { id: "teamPlans", kind: "text", flag: "tactics_ready_7864" },
+      // #7638: hvilken opgave faar hvilket prisord (EFFORT_COST_WORD + undtagelsen udbrud).
+      { id: "taskPrices", kind: "text", flag: "tactics_ready_7864" },
       { id: "strategy", kind: "text" },
       { id: "breakaway", kind: "text" },
       { id: "ordersGc", kind: "text" }, // #6067: orders_gc_v1
