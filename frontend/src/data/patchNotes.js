@@ -1,5 +1,28 @@
 export const PATCHES = [
 {
+  "version": "7.452",
+  "date": "2026-11-16",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Training",
+      "en": {
+        "title": "The training report shows what races gave",
+        "body": "For each ability, the training report now shows how much came from training and how much came from races on that date. Race progress is shown hatched in a neutral colour and is already part of the day's total."
+      },
+      "da": {
+        "title": "Træningsrapporten viser, hvad løbene gav",
+        "body": "For hver evne viser træningsrapporten nu, hvor meget der kom fra træning, og hvor meget der kom fra løb på datoen. Løbenes fremgang vises skraveret i en neutral farve og er allerede en del af dagens samlede tal."
+      },
+      "refs": [
+        7627
+      ]
+    }
+  ]
+},
+{
   "version": "7.450",
   "date": "2026-11-15",
   "changes": [
