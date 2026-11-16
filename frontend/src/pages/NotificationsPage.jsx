@@ -199,7 +199,8 @@ const TYPE_CONFIG = {
   academy_demoted:           { Icon: UndoIcon,         color: "text-cz-2",        bg: "bg-cz-subtle border-cz-border",           link: "/team" },
   academy_intake_expired_compensation: { Icon: CoinIcon, color: "text-cz-warning", bg: "bg-cz-warning/8 border-cz-warning/15", link: "/academy" },
   auction_cancelled:         { Icon: UndoIcon,         color: "text-cz-2",        bg: "bg-cz-subtle border-cz-border",           link: "/auctions" },
-  auction_proxy_outbid:      { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger/8 border-cz-danger/15",    link: "/auctions" },
+  // #8260: dit autobud HOLDT føringen — god nyhed, neutral tone (som bid_placed). Rød er forbeholdt auction_outbid.
+  auction_proxy_outbid:      { Icon: LightningIcon,    color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/auctions" },
   contract_expired_release:  { Icon: UndoIcon,         color: "text-cz-warning",  bg: "bg-cz-warning/8 border-cz-warning/15", link: "/team?tab=contracts" },
   deadline_day_warning:      { Icon: AlertTriangleIcon, color: "text-cz-warning",  bg: "bg-cz-warning/8 border-cz-warning/15", link: "/transfers" },
   emergency_loan_breach:     { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger/8 border-cz-danger/15",    link: "/finance" },
