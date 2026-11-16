@@ -640,6 +640,19 @@
     "retry": "Try again",
     "emptyAction": "Go to today's training"
   },
+  "raceSource": {
+    "heading": "Where the progress came from",
+    "training": "Training",
+    "race": "Race",
+    "total": "Total",
+    "ability": "Ability",
+    "whole": "+{count} whole",
+    "barLabel": "Training {training}, race {race}",
+    "foot": "Race progress is already part of the day's total.",
+    "shareToday": "Races gave {percent}% of the squad's progress today",
+    "shareDate": "Races gave {percent}% of the squad's progress on this date",
+    "shareBar": "Training {training}%, races {race}%"
+  },
   "forecast": {
     "label": "Fatigue tonight",
     "value": "approx. {value}",
