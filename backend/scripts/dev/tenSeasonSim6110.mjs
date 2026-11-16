@@ -45,6 +45,8 @@
 //   Private varianter (andre tal) kan lægges i XP_PRIVATE.variants.
 //   Led i navnet kan kombineres (#7757), fx xp_bonus15_nocap eller xp_cal_nocap:
 //     _nocap   intet dagsloft (#7739): kun prisen bremser, så #7739 kan måles.
+//     _cap2    motorens regel: højst +2 pr. evne pr. dato (#6110 R16, ejervalg 16/11).
+//              Tændingsnattens udbetaling af gemt fremgang er undtaget og tælles for sig.
 //     _maxint  løbsdage med den højeste intention (fx xp_nocap_maxint), så R16 også
 //              måles, når manageren beder om mest (Fable-dom 15/11, fund 6).
 //   Én sandhed med motoren (#7757, ejer 14/11): dagsvariationen er motorens egen
