@@ -49,15 +49,20 @@ on:
 permissions:
   contents: read
 
+# #7582: forældede PR-kørsler annulleres; push, schedule og dispatch får hver
+# sin gruppe (run_id) og kører altid færdigt. To samtidige kørsler kan derfor
+# begge oprette dagens kommentar; den næste kørsel tømmer så den yngste til en
+# dublet-note (planComment i scriptet).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   test:
     name: til-doers-draft tests
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    concurrency:
-      group: til-doers-draft-test-${{ github.event.pull_request.number }}
-      cancel-in-progress: true
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -80,9 +85,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: read
-    concurrency:
-      group: til-doers-draft-cleanup
-      cancel-in-progress: false
     outputs:
       report: ${{ steps.clean.outputs.report }}
     steps:
@@ -130,13 +132,6 @@ jobs:
       contents: read
       issues: write
       pull-requests: read
-    # En ny merge erstatter en ventende push-koersel (den nyeste ser det
-    # hele). Daglig koersel og dispatch har egen gruppe og annulleres aldrig.
-    # Opretter to koersler samtidig dagens kommentar, toemmer naeste koersel
-    # den yngste til en dublet-note.
-    concurrency:
-      group: til-doers-draft-${{ github.event_name == 'push' && 'push' || 'daily' }}
-      cancel-in-progress: ${{ github.event_name == 'push' }}
     steps:
       - name: Check out main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
