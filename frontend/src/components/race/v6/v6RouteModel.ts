@@ -89,7 +89,10 @@ export function v6TextWidth(text: string, fontPx: number): number {
 }
 
 export interface V6LabelMarker { x: number; half: number }
-export interface V6LabelItem { x: number; width: number; gap: number }
+/** `y` (top, bund) bruges kun mod de reserverede felter; etiketter imellem regnes vandret. */
+export interface V6LabelItem { x: number; width: number; gap: number; y?: [number, number] }
+/** Et optaget felt: vandret interval og, hvis kendt, lodret interval. */
+export interface V6LabelReserved { x: [number, number]; y?: [number, number] }
 export interface V6LabelLayoutInput {
   width: number;
   /** Alle mærker på profilen (bjergpriser og spurter), så en etiket ikke dækker dem. */
@@ -97,20 +100,23 @@ export interface V6LabelLayoutInput {
   /** Etiketter i prioriteret rækkefølge; resultatet følger samme rækkefølge. */
   items: V6LabelItem[];
   /** Felter der allerede er optaget (fx "Mål · 312 m" øverst til højre). */
-  reserved?: Array<[number, number]>;
+  reserved?: V6LabelReserved[];
   /** Afstand mellem to etiketter. */
   spacing?: number;
 }
 
+const overlaps = (a: [number, number], b: [number, number], pad: number) => a[0] < b[1] + pad && a[1] > b[0] - pad;
+
 export function v6LayoutLabels({ width, markers, items, reserved = [], spacing = 6 }: V6LabelLayoutInput): Array<V6LabelSide | null> {
-  const placed: Array<[number, number]> = reserved.map(([a, b]) => [a, b]);
+  const placed: Array<[number, number]> = [];
   return items.map((it) => {
     const preferred: V6LabelSide[] = it.x > width * 0.6 ? ["left", "right"] : ["right", "left"];
     for (const side of preferred) {
       const box: [number, number] = side === "right" ? [it.x + it.gap, it.x + it.gap + it.width] : [it.x - it.gap - it.width, it.x - it.gap];
       const inside = box[0] >= 0 && box[1] <= width;
       const hitsMarker = markers.some((m) => Math.abs(m.x - it.x) > 0.5 && m.x + m.half > box[0] && m.x - m.half < box[1]);
-      const hitsLabel = placed.some(([a, b]) => a < box[1] + spacing && b > box[0] - spacing);
+      const hitsReserved = reserved.some((r) => overlaps(r.x, box, spacing) && (!r.y || !it.y || overlaps(r.y, it.y, 2)));
+      const hitsLabel = hitsReserved || placed.some((p) => overlaps(p, box, spacing));
       if (inside && !hitsMarker && !hitsLabel) {
         placed.push(box);
         return side;
@@ -129,12 +135,30 @@ export interface V6RouteLabelPlan {
   sprints: Array<{ side: V6LabelSide | null; tag: string | null }>;
 }
 
+/** Lodret plads for en etiket ud fra mærkets punkt på profilen (SVG-y), som V6Route tegner den. */
+export function v6ClimbLabelBand(markY: number, size: V6RouteSize, withName: boolean): [number, number] {
+  return size === "narrow" || !withName ? [markY - 45, markY - 31] : [markY - 52, markY - 23];
+}
+export function v6SprintLabelBand(markY: number): [number, number] {
+  return [markY - 35, markY - 21];
+}
+
+export interface V6RouteLabelOptions {
+  /** Bredden af målets tekst øverst til højre (0 når den ikke tegnes, fx ved mål på toppen). */
+  finishLabelWidth?: number;
+  /** Målets tekst lodret (SVG-y top, bund). Uden den regnes målets felt i hele højden. */
+  finishLabelY?: [number, number];
+  /** Profilens punkt (SVG-y) ved et km; uden den regnes etiketterne i hele højden. */
+  y?: (km: number) => number;
+}
+
 /**
  * Hele etiket-planen for én tegning. `x` omsætter km til pixel i den målte
- * bredde; `finishLabelWidth` er bredden af målets tekst øverst til højre (0 når
- * den ikke tegnes, fx ved målstreg på toppen).
+ * bredde. Målets tekst er et optaget felt; en etiket må kun stå under eller
+ * over den, aldrig oven i den.
  */
-export function v6RouteLabelPlan(points: V6RoutePoints, size: V6RouteSize, width: number, x: (km: number) => number, finishLabelWidth = 0): V6RouteLabelPlan {
+export function v6RouteLabelPlan(points: V6RoutePoints, size: V6RouteSize, width: number, x: (km: number) => number, opts: V6RouteLabelOptions = {}): V6RouteLabelPlan {
+  const { finishLabelWidth = 0, finishLabelY, y } = opts;
   const markers: V6LabelMarker[] = [
     ...points.climbs.map((c) => ({ x: x(c.km), half: V6_CLIMB_MARK_HALF })),
     ...points.sprints.map((s) => ({ x: x(s.km), half: V6_SPRINT_MARK_HALF })),
@@ -148,10 +172,13 @@ export function v6RouteLabelPlan(points: V6RoutePoints, size: V6RouteSize, width
   });
   const sprintTexts = points.sprints.map((s) => v6SprintTag(s, size));
   const items: V6LabelItem[] = [
-    ...climbOrder.map((i) => ({ x: x(points.climbs[i].km), width: climbTexts[i].w, gap: size === "narrow" ? 13 : 16 })),
-    ...points.sprints.map((s, i) => ({ x: x(s.km), width: sprintTexts[i] ? v6TextWidth(sprintTexts[i]!, 11) : 0, gap: 11 })),
+    ...climbOrder.map((i) => {
+      const c = points.climbs[i];
+      return { x: x(c.km), width: climbTexts[i].w, gap: size === "narrow" ? 13 : 16, y: y ? v6ClimbLabelBand(y(c.km), size, climbTexts[i].name !== null) : undefined };
+    }),
+    ...points.sprints.map((s, i) => ({ x: x(s.km), width: sprintTexts[i] ? v6TextWidth(sprintTexts[i]!, 11) : 0, gap: 11, y: y ? v6SprintLabelBand(y(s.km)) : undefined })),
   ];
-  const reserved: Array<[number, number]> = finishLabelWidth > 0 ? [[width - 6 - finishLabelWidth, width]] : [];
+  const reserved: V6LabelReserved[] = finishLabelWidth > 0 ? [{ x: [width - 6 - finishLabelWidth, width], y: finishLabelY }] : [];
   // En spurt uden tekst (smal) skal ikke have plads; den springes over i layoutet.
   const active = items.map((it, i) => i < climbOrder.length || sprintTexts[i - climbOrder.length] !== null);
   const sides = v6LayoutLabels({ width, markers, items: items.filter((_, i) => active[i]), reserved });

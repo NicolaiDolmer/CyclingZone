@@ -125,7 +125,7 @@ test("reglen overlapper aldrig, heller ikke i tilfældige tætte ruter (smal og 
     const x = (km: number) => (km / D) * W;
     const size = narrow ? "narrow" : "wide";
     const finishW = v6SummitFinish(points) ? 0 : v6TextWidth("Finish · 1,234 m", 11);
-    const plan = v6RouteLabelPlan(points, size, W, x, finishW);
+    const plan = v6RouteLabelPlan(points, size, W, x, { finishLabelWidth: finishW });
     // Genskab de samme intervaller som planen brugte, og tjek dem.
     const markers = [
       ...points.climbs.map((c) => ({ x: x(c.km), half: 11 })),
@@ -154,6 +154,17 @@ test("reglen overlapper aldrig, heller ikke i tilfældige tætte ruter (smal og 
       });
     }
   }
+});
+
+test("målets tekst: en lav stigning under den får sin etiket, en høj ved siden af gør ikke", () => {
+  const W = 400, D = 180;
+  const x = (km: number) => (km / D) * W;
+  const points = v6RoutePoints({ distance_km: D, climbs: [{ name: "Low", category: "4", crest_km: 150, length_km: 2, avg_gradient: 4 }] });
+  const finish = { finishLabelWidth: v6TextWidth("Finish · 90 m", 11), finishLabelY: [3, 17] as [number, number] };
+  // Profilens top er y = 48 i den smalle tegning; en lav stigning ligger langt under målets tekst.
+  assert.ok(v6RouteLabelPlan(points, "narrow", W, x, { ...finish, y: () => 190 }).climbs[0].side, "lav stigning: plads under målets tekst");
+  assert.equal(v6RouteLabelPlan(points, "narrow", W, x, { ...finish, y: () => 50 }).climbs[0].side, null, "høj stigning: etiketten ville ramme målets tekst");
+  assert.equal(v6RouteLabelPlan(points, "narrow", W, x, { finishLabelWidth: finish.finishLabelWidth }).climbs[0].side, null, "uden højder regnes målets felt i hele højden");
 });
 
 test("v6LayoutLabels: prøver den anden side, og udelader hellere end at overlappe", () => {

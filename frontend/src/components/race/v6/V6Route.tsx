@@ -47,7 +47,12 @@ function SprintMark() {
 function RouteLabels({ geo, points, finishText }: { geo: ProfileGeometry; points: V6RoutePoints; finishText: string | null }) {
   const size = geo.narrow ? "narrow" : "wide";
   const D = points.finishKm;
-  const plan = v6RouteLabelPlan(points, size, geo.W, geo.X, finishText ? v6TextWidth(finishText, 11) : 0);
+  // Målets tekst står som i StageProfileV2: grundlinje 34 px over profilens top.
+  const plan = v6RouteLabelPlan(points, size, geo.W, geo.X, {
+    finishLabelWidth: finishText ? v6TextWidth(finishText, 11) : 0,
+    finishLabelY: [geo.top - 45, geo.top - 31],
+    y: (km) => geo.Y(geo.elevation(km)),
+  });
   const halo = { stroke: "var(--bg-card)", strokeWidth: 3, paintOrder: "stroke" as const };
   return (
     <g aria-hidden="true" pointerEvents="none">
