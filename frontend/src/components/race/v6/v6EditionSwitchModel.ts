@@ -190,7 +190,9 @@ export function buildEditionSwitch({ currentRaceId, editions, results, ownRaceId
     ? { raceId: ownHere.id, letter: poolLetter(poolIndexOf(ownHere)), tier: tierOf(ownHere), sameTier: tierOf(ownHere) === tier }
     : null;
 
-  if (pools.length < 2 && seasons.length < 2) return null;
+  // "Tilbage til dit løb" skal stå, selv når ingen af menuerne har et valg (Codex #8303): komponenten skjuler
+  // selv en menu med under to valg.
+  if (pools.length < 2 && seasons.length < 2 && !ownElsewhere) return null;
   return {
     pools,
     seasons,

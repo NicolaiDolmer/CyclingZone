@@ -130,3 +130,13 @@ test("kilden: switchen monteres i løbshovedet bag v6 og bruger det route-gatede
   assert.match(sw, /\.eq\("pool_race_id", /);
   assert.doesNotMatch(sw, /variant="primary"/);
 });
+
+test("buildEditionSwitch: én pulje og én sæson, men holdet kører en anden division = tilbage-linjen bliver (Codex #8303)", () => {
+  const editions = [race("x1", "s5", S5, 1, 0), race("c3", "s5", S5, 3, 2)];
+  const m = buildEditionSwitch({ currentRaceId: "x1", editions, results: [], ownRaceIds: new Set(["c3"]) });
+  assert.ok(m, "modellen findes, fordi holdets løb er et andet sted");
+  assert.equal(m.pools.length, 1);
+  assert.equal(m.seasons.length, 1);
+  assert.equal(m.ownElsewhere?.raceId, "c3");
+  assert.equal(m.ownElsewhere?.sameTier, false);
+});
