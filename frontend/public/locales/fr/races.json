@@ -18,7 +18,9 @@
       "earlier": "Étapes précédentes",
       "later": "Étapes suivantes",
       "you": "Toi #{rank}",
-      "plan": "{done} sur {total} faits"
+      "planSaved": "Enregistré",
+      "planDefault": "Plan standard",
+      "planNotSaved": "Non enregistré"
     },
     "route": {
       "aria": "Parcours de l'étape",
