@@ -192,7 +192,7 @@ function IntentionChip({ t, effort, isDefault, role, muted = false, showCost = f
 // Den udfoldede vælger: ét trin pr. linje, én sætning i ord, ingen tal.
 function IntentionPicker({ t, riderName, role, scopeLabel, steps, value, disabled, onPick, timeTrial = false, showCost = false, blockedFor = /** @type {(step: string) => string | null} */ (() => null) }) {
   return (
-    <div className="rounded-cz border border-cz-border bg-cz-card overflow-hidden">
+    <div data-testid="intention-picker" className="rounded-cz border border-cz-border bg-cz-card overflow-hidden">
       <div className="flex items-baseline justify-between gap-3 px-3.5 py-2 border-b border-cz-border">
         <span className="text-xs font-semibold text-cz-1">
           {t("intention.pickerTitle", { name: riderName || "—", scope: scopeLabel })}
@@ -1085,7 +1085,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     // En gemt modsaetning forklares med selve reglen; ellers hvorfor en knap er graa.
     const reason = conflict ? `intention.errors.${conflict}` : breakBlocked || trainBlocked;
     return (
-      <span className="flex flex-wrap items-center gap-2">
+      <span data-testid="order-toggles" className="flex flex-wrap items-center gap-2">
         {conflict && (
           <span data-testid="opposite-orders-pick-one" className="text-3xs font-medium uppercase tracking-wide text-cz-warning">
             {t("tacticsOrders.pickOne")}
@@ -1234,7 +1234,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
           <p className="text-3xs uppercase tracking-wide text-cz-3 mb-1">
             {t(ordersGc ? "tacticsOrders.ordersGc.stanceLabel" : "tacticsOrders.breakawayLabel")}
           </p>
-          <div role="group" aria-label={t("tacticsOrders.breakawayAria")} className={`flex rounded-cz border border-cz-border overflow-hidden ${ordersGc ? "w-full" : "w-fit"}`}>
+          <div data-testid="breakaway-stance" role="group" aria-label={t("tacticsOrders.breakawayAria")} className={`flex rounded-cz border border-cz-border overflow-hidden ${ordersGc ? "w-full" : "w-fit"}`}>
             {BREAKAWAY_STANCES.map((stance) => (
               <button
                 key={stance}
