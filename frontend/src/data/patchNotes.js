@@ -1,5 +1,28 @@
 export const PATCHES = [
 {
+  "version": "7.458",
+  "date": "2026-11-16",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Interface",
+      "en": {
+        "title": "Finance, Club and Scouting look like the rest of the game",
+        "body": "Finance, Club and Scouting use the same page heading as the other pages. On Finance the page is a little wider and the large explainer card above your numbers is gone, so your balance comes first. Show me around in the heading starts the tour, which now also explains wages and loans."
+      },
+      "da": {
+        "title": "Økonomi, Klub og Scouting ligner resten af spillet",
+        "body": "Økonomi, Klub og Scouting bruger samme sidehoved som de andre sider. På Økonomi er siden lidt bredere, og det store forklaringskort over tallene er væk, så saldoen står først. Vis mig rundt i sidehovedet starter rundvisningen, som nu også forklarer løn og lån."
+      },
+      "refs": [
+        8069
+      ]
+    }
+  ]
+},
+{
   "version": "7.454",
   "date": "2026-11-16",
   "changes": [

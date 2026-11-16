@@ -6,7 +6,6 @@ import { formatNumber } from "../lib/intl";
 import LockedSaleEscrows, { LockedSalesLine } from "../components/finance/LockedSaleEscrows.tsx"; // #6181
 import { renderBackendMessage } from "../lib/backendMessage";
 import { resolveLegacyFinanceMessage } from "../lib/legacyFinanceMessage";
-import FinanceFirstVisitHint from "../components/FinanceFirstVisitHint";
 import FinanceForecastCard from "../components/FinanceForecastCard";
 import SeasonFinanceReportPanel from "../components/SeasonFinanceReportPanel";
 import SponsorContractPanel from "../components/SponsorContractPanel";
@@ -25,7 +24,7 @@ import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + c
 import {
   AmountInput, Tabs, TabList, Tab, TabPanel,
   Card, Button, Select, ProgressMeter, PageLoader, BlockedNote,
-  ChevronRightIcon, XIcon,
+  ChevronRightIcon, XIcon, PageHeader, DataTable, BookOpenIcon,
 } from "../components/ui";
 import { controlClass } from "../components/ui/fieldStyles.js";
 
@@ -120,8 +119,9 @@ export default function FinancePage() {
   // #4011: sæsonskifte-opgørelsen (S2/S3-opstilling) til forecast-kortet.
   const [seasonSwitch, setSeasonSwitch] = useState(null);
 
-  // Onboarding v2 Slice 3 — tour-trin på /finance (aktiveres fra FinanceFirstVisitHint
-  // "Vis mig rundt"-knap). #986: tour peger nu på Overblik-fanens elementer
+  // Onboarding v2 Slice 3 — tour-trin på /finance. #8069 T07: aktiveres fra
+  // sidehovedets "Vis mig rundt" (første-besøgs-kortet over indholdet er væk, TASTE
+  // F3: tip bor i rundvisningen); kortets løn- og lån-forklaring er to trin her. #986: tour peger nu på Overblik-fanens elementer
   // (balance-grid + gældsloft); transaktionshistorik flyttede til Historik-fanen.
   const tourSteps = useMemo(() => [
     {
@@ -133,6 +133,16 @@ export default function FinancePage() {
       target: "[data-tour='finance-debt-ceiling']",
       title: t("tour.debtCeiling.title"),
       body: t("tour.debtCeiling.body"),
+    },
+    {
+      target: "[data-tour='finance-balance']",
+      title: t("hint.salary.title"),
+      body: t("hint.salary.body"),
+    },
+    {
+      target: "[data-tour='finance-tabs']",
+      title: t("hint.loans.title"),
+      body: t("hint.loans.body"),
     },
   ], [t]);
 
@@ -192,19 +202,9 @@ export default function FinancePage() {
   const [repayAmount, setRepayAmount] = useState(null);
   const [repaying, setRepaying] = useState(false);
 
-  // Onboarding v2 Slice 3 — first-visit-hint, dismiss persisteres i localStorage
-  const [showHint, setShowHint] = useState(
-    () => typeof window !== "undefined" && localStorage.getItem("cz-finance-hint-shown") !== "1",
-  );
-
-  function dismissHint() {
-    try { localStorage.setItem("cz-finance-hint-shown", "1"); } catch { /* private browsing */ }
-    setShowHint(false);
-  }
-
+  // #8069 T07: rundvisningen startes fra sidehovedet (ikke et kort over indholdet).
   function handleStartTour() {
     startTour("finance");
-    dismissHint();
   }
 
   // #4068: loadAll er memoized (useCallback) så mount-effekten kan liste den
@@ -539,16 +539,23 @@ export default function FinancePage() {
     debtCeiling: loanData?.debt_ceiling,
   });
   const loanLabel = (type) => t(`loans.types.${type}`, { defaultValue: type });
+  const loanTermsTitle = t("loans.terms.title", { division: team?.division });
   const txLabel = (type) => t(`transactions.type.${type}`, { defaultValue: type });
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-4xl mx-auto">
       <OnboardingTour pageKey="finance" steps={tourSteps} />
 
-      <div className="mb-5">
-        <h1 className="text-xl font-bold text-cz-1">{t("page.title")}</h1>
-        <p className="text-cz-3 text-sm">{t("page.subtitle")}</p>
-      </div>
+      <PageHeader
+        title={t("page.title")}
+        subtitle={t("page.subtitle")}
+        actions={
+          <Button variant="ghost" size="sm" onClick={handleStartTour}>
+            <BookOpenIcon size={14} aria-hidden="true" />
+            {t("hint.showTour")}
+          </Button>
+        }
+      />
 
       {msg.text && (
         // #1349 (WCAG 4.1.3): mutation-feedback annonceres til skærmlæsere.
@@ -564,15 +571,15 @@ export default function FinancePage() {
         </div>
       )}
 
-      {showHint && <FinanceFirstVisitHint onDismiss={dismissHint} onStartTour={handleStartTour} />}
-
       <Tabs value={activeTab} onChange={setTab} className="mt-1">
-        <TabList label={t("page.title")} className="mb-4">
-          <Tab value="overview">{t("tabs.overview")}</Tab>
-          <Tab value="loans">{t("tabs.loans")}</Tab>
-          <Tab value="sponsors">{t("tabs.sponsors")}</Tab>
-          <Tab value="history">{t("tabs.history")}</Tab>
-        </TabList>
+        <div data-tour="finance-tabs">
+          <TabList label={t("page.title")} className="mb-4">
+            <Tab value="overview">{t("tabs.overview")}</Tab>
+            <Tab value="loans">{t("tabs.loans")}</Tab>
+            <Tab value="sponsors">{t("tabs.sponsors")}</Tab>
+            <Tab value="history">{t("tabs.history")}</Tab>
+          </TabList>
+        </div>
 
         {/* ───────────────────────────── Overblik ───────────────────────────── */}
         <TabPanel value="overview">
@@ -921,34 +928,23 @@ export default function FinancePage() {
           {configs.length > 0 && (
             <Card className="p-5 mb-4">
               <h2 className="text-cz-1 font-semibold text-sm mb-3">
-                {t("loans.terms.title", { division: team?.division })}
+                {loanTermsTitle}
               </h2>
-              <div className="overflow-x-auto rounded-cz border border-cz-border">
-                <table data-sort-exempt="Fast laane-vilkaar opslag, 2 raekker" className="w-full min-w-[480px] text-xs">
-                  <thead>
-                    <tr className="border-b border-cz-border">
-                      <th className="px-3 py-2 text-start text-cz-3">{t("loans.terms.headers.type")}</th>
-                      <th className="px-3 py-2 text-end text-cz-3">{t("loans.terms.headers.fee")}</th>
-                      <th className="px-3 py-2 text-end text-cz-3">{t("loans.terms.headers.interest")}</th>
-                      <th className="px-3 py-2 text-end text-cz-3">{t("loans.terms.headers.seasons")}</th>
-                      <th className="px-3 py-2 text-end text-cz-3">{t("loans.terms.headers.debtCeiling")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {configs.map(c => (
-                      <tr key={`${c.division}-${c.loan_type}`} className="border-b border-cz-border">
-                        <td className="px-3 py-2 text-cz-1 font-medium">{loanLabel(c.loan_type)}</td>
-                        <td className="px-3 py-2 text-end text-cz-2">{(c.origination_fee_pct * 100).toFixed(0)}%</td>
-                        <td className="px-3 py-2 text-end text-cz-2">{(c.interest_rate_pct * 100).toFixed(0)}%</td>
-                        <td className="px-3 py-2 text-end text-cz-2">{c.seasons}</td>
-                        <td className="px-3 py-2 text-end text-cz-accent-t font-mono">
-                          {formatNumber(c.debt_ceiling || 0)} CZ$
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DataTable data-sort-exempt="Fast laane-vilkaar opslag, 2 raekker"
+                label={loanTermsTitle}
+                rows={/** @type {any[]} */ (configs)}
+                sort={undefined}
+                sortDir={undefined}
+                onSort={undefined}
+                rowKey={(/** @type {any} */ c) => `${c.division}-${c.loan_type}`}
+                columns={[
+                  { key: "loan_type", header: t("loans.terms.headers.type"), sticky: true, render: (/** @type {any} */ c) => <span className="font-medium text-cz-1">{loanLabel(c.loan_type)}</span> },
+                  { key: "origination_fee_pct", header: t("loans.terms.headers.fee"), numeric: true, render: (/** @type {any} */ c) => formatNumber(c.origination_fee_pct, { style: "percent", maximumFractionDigits: 0 }) },
+                  { key: "interest_rate_pct", header: t("loans.terms.headers.interest"), numeric: true, render: (/** @type {any} */ c) => formatNumber(c.interest_rate_pct, { style: "percent", maximumFractionDigits: 0 }) },
+                  { key: "seasons", header: t("loans.terms.headers.seasons"), numeric: true },
+                  { key: "debt_ceiling", header: t("loans.terms.headers.debtCeiling"), numeric: true, render: (/** @type {any} */ c) => `${formatNumber(c.debt_ceiling || 0)} CZ$` },
+                ]}
+              />
             </Card>
           )}
         </TabPanel>
