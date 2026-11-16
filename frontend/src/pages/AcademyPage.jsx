@@ -22,7 +22,7 @@
 // backend-fejl (#2796: en 500'er viste før "Akademiet kommer snart").
 
 import { useMemo, useState } from "react";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useAcademy } from "../lib/useAcademy.js";
 import NationCell from "../components/rider/NationCell.jsx";
@@ -44,6 +44,9 @@ import { ChevronRightIcon, GiftIcon } from "../components/ui/icons/index.jsx";
 import { ABILITY_KEYS, ABILITY_SHORT, flattenAbilities } from "../lib/abilities.js"; // #6666
 import { riderOverallRating } from "../lib/riderRating.js";
 import { statPlateStyle } from "../lib/statColor.js";
+// #8081: tre designudgaver til ejerens valg, kun bag ?design8081=a|b|c.
+import AcademyDesign8081 from "../components/academy-design-8081/AcademyDesign8081.jsx";
+import { readDesign8081Variant, readDesign8081Tab } from "../components/academy-design-8081/designModel.js";
 
 // #5844: academy_intake.source for bestyrelsens gave-kuld (backend academyIntakeSource.js).
 const BOARD_GIFT_SOURCE = "board_gift";
@@ -92,8 +95,12 @@ export default function AcademyPage() {
   const {
     enabled, squads, intake, graduations, balance,
     intakePull, loading, error, signCandidate, rejectCandidate,
-    pullIntake, academyProfile, saveProfile,
+    pullIntake, academyProfile, saveProfile, roster, seniorCount,
   } = useAcademy();
+  // #8081: uden parameteren er siden uændret.
+  const location = useLocation();
+  const designVariant = readDesign8081Variant(location.search);
+  const designTab = readDesign8081Tab(location.search);
   // #5844: bestyrelsens gave-kuld ("A thank-you from the board") vises i sin
   // egen sektion og tæller IKKE med i ugens optag: pull-knappen afgøres kun af
   // de normale tilbud, så gaven aldrig skjuler ugens hentning.
@@ -203,7 +210,9 @@ export default function AcademyPage() {
 
   // #5844: ét intake-kort. Delt af det normale optag og bestyrelsens gave-kuld,
   // så de to aldrig driver fra hinanden (samme sign/afvis, samme trup-spærring).
-  const renderIntakeCard = (item) => {
+  // #8081: `opts.landingText` (kun designudgaverne) erstatter U23-linjen med
+  // "Lander på <trup>" efter de midlertidige trupgrænser (#7932).
+  const renderIntakeCard = (item, opts = null) => {
     const rider = item.rider;
     const isBoardGift = item.source === BOARD_GIFT_SOURCE;
     const isPull = item.source === PULL_SOURCE;
@@ -348,7 +357,9 @@ export default function AcademyPage() {
 
         {/* #6155: juniortruppen er fuld, men U23 har plads: sig hvor han kommer hen,
             FØR det irreversible klik. */}
-        {landing.movedToU23 && (
+        {opts?.landingText ? (
+          <p className="text-xs text-cz-2" data-testid="design8081-intake-landing">{opts.landingText(item)}</p>
+        ) : landing.movedToU23 && (
           <p className="text-xs text-cz-2" data-testid="intake-lands-u23">{t("landsOnU23")}</p>
         )}
 
@@ -383,6 +394,81 @@ export default function AcademyPage() {
       </Card>
     );
   };
+
+  // #8081: designudgaverne A/B/C (kun bag ?design8081=). Samme sidehoved, samme
+  // sign/afvis/hent som den normale gren; kun opbygningen er ny.
+  if (designVariant) {
+    const pullOpen = intakePull.enabled && !intakePull.pulledThisWeek;
+    const designNodes = {
+      graduationBanner: graduations.length > 0 ? (
+        <Card className="mb-6 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-[13.5px] font-medium text-cz-1">{t("graduationBanner.title", { count: graduations.length })}</p>
+            <p className="mt-1 text-xs text-cz-2">{t("graduationBanner.body")}</p>
+          </div>
+          <Link to="/academy/graduation" className={`${buttonClass({ variant: "secondary", size: "sm" })} shrink-0`}>
+            {t("graduationBanner.action")}
+          </Link>
+        </Card>
+      ) : null,
+      giftSection: giftIntake.length > 0 ? (
+        <section data-testid="academy-board-gift">
+          <SectionHeader title={t("boardGift.heading")} meta={t("boardGift.meta", { count: giftIntake.length })} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {giftIntake.map((i) => renderIntakeCard(i))}
+          </div>
+        </section>
+      ) : null,
+      pullCard: intakePull.enabled && !intakePull.pulledThisWeek && (
+        <Card className="p-5 mb-4 flex flex-col items-start gap-3">
+          <h3 className="text-sm font-semibold text-cz-1">{t("intakePull.title")}</h3>
+          <p className="text-xs text-cz-2 max-w-md">{t("intakePull.description")}</p>
+          {pullError && <p className="text-xs text-cz-danger">{pullError}</p>}
+          <Button size="sm" variant="primary" onClick={handlePullIntake} disabled={pullBusy} loading={pullBusy}>
+            {t("intakePull.pullBtn")}
+          </Button>
+        </Card>
+      ),
+      intakeEmpty: pullOpen ? null : (
+        <EmptyState
+          title={t("emptyIntakeTitle")}
+          description={intakePull.enabled ? t("intakePull.emptyAfterPull") : t("emptyIntake")}
+          action={<Link to="/auctions" className={buttonClass({ variant: "secondary", size: "sm" })}>{t("emptyAction")}</Link>}
+        />
+      ),
+    };
+    return (
+      <div className="max-w-[1600px] mx-auto">
+        <PageHeader
+          title={t("title")}
+          subtitle={t("subtitle")}
+          actions={balance != null ? (
+            <span className="font-data text-sm tabular-nums text-cz-2">{t("balance", { amount: formatMoney(balance) })}</span>
+          ) : null}
+        />
+        <AcademyDesign8081
+          variant={designVariant}
+          initialTab={designTab}
+          ctx={{
+            ...designNodes,
+            roster: roster ?? [],
+            seasonYear,
+            counts: { senior: seniorCount, u23: squads?.u23?.used ?? 0, junior: squads?.junior?.used ?? 0 },
+            regularIntake,
+            intakePull,
+            academyProfile,
+            saveProfile,
+            balance,
+            renderIntakeCard,
+            actionState,
+            actionErrors,
+            onSign: handleSign,
+            onReject: handleReject,
+          }}
+        />
+      </div>
+    );
+  }
 
   // #3454: T2 (max-w-[1600px]). Layout.jsx's WIDE_CONTENT_ROUTES matcher
   // /academy, så shellen giver fuld bredde til denne cap; kandidatkortene står
@@ -472,7 +558,7 @@ export default function AcademyPage() {
             <span>{t("boardGift.context")}</span>
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {giftIntake.map(renderIntakeCard)}
+            {giftIntake.map((i) => renderIntakeCard(i))}
           </div>
         </section>
       )}
@@ -521,7 +607,7 @@ export default function AcademyPage() {
           />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {regularIntake.map(renderIntakeCard)}
+            {regularIntake.map((i) => renderIntakeCard(i))}
           </div>
         )}
       </section>
