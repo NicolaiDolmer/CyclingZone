@@ -320,7 +320,7 @@ function RolePicker({ t, riderName, scopeNote, value, disabled, onPick, scopeCho
 
 // #7638: `cost` (bag tactics_ready_7864) = opgavens prisord efter navnet. aria-label
 // skjuler den synlige tekst for skaermlaesere, saa ordet skal med i navnet ogsaa.
-function TogglePill({ t, label, ariaLabel, active, disabled, onClick, title, cost = null }) {
+function TogglePill({ t, label, ariaLabel, active, disabled, onClick, title, cost = /** @type {import("./tacticsReady7864.ts").TaskCostWord | null} */ (null) }) {
   return (
     <button
       type="button"
