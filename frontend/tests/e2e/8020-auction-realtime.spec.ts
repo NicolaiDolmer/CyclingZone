@@ -37,28 +37,41 @@ for (const width of [375, 1440]) {
         }
       });
     });
-    // #8290 (installed after routeWebSocket so it wraps the mock socket): the 350 ms guard measures the app (realtime message received in the browser -> DOM changed),
-    // not the test harness. Wall-clock from the Node-side send includes harness and CI scheduling latency,
-    // which says nothing about the player's experience.
+    // #8290 (installed after routeWebSocket so it wraps the mock socket): the 350 ms guard measures the app,
+    // from the realtime message arriving in the browser to the DOM showing it, never the test harness.
+    // The watch is armed and awaited BEFORE the send, and the DOM watch starts synchronously inside the
+    // socket's own message dispatch (our listener is registered in the constructor, so it runs before
+    // the app's onmessage). An earlier version armed the watch with an un-awaited evaluate: under CI load
+    // it landed after the DOM had already changed and then waited for the next unrelated mutation (the
+    // 1 s countdown tick), which is the 700-1000 ms that failed CI while the app itself took tens of ms.
+    // page.clock.setFixedTime only freezes Date; timers and performance.now keep running in real time.
     await page.addInitScript(() => {
-      const received: Array<{ t: number; data: string }> = [];
-      Reflect.set(window, "__rtReceived", received);
+      type Watch = { marker: string; id: string; kind: "closing" | "removed"; receivedAt?: number; changedAt?: number };
+      let armed: Watch | undefined;
+      const done = (watch: Watch) => {
+        const rows = [...document.querySelectorAll(`[data-auction-row="${watch.id}"]`)];
+        const row = rows.find(el => el.getBoundingClientRect().height > 0);
+        return watch.kind === "removed" ? rows.length === 0 : !!row?.textContent?.includes("125.000") && !row.querySelector('[role="timer"]');
+      };
+      const start = (watch: Watch) => {
+        watch.receivedAt = performance.now();
+        const observer = new MutationObserver(() => {
+          if (watch.changedAt === undefined && done(watch)) { watch.changedAt = performance.now(); observer.disconnect(); }
+        });
+        observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
+      };
       const Native = window.WebSocket;
       Reflect.set(window, "WebSocket", class extends Native {
         constructor(...args: ConstructorParameters<typeof WebSocket>) {
           super(...args);
-          this.addEventListener("message", event => { if (typeof event.data === "string" && event.data.includes("postgres_changes")) received.push({ t: performance.now(), data: event.data }); });
+          this.addEventListener("message", event => {
+            if (armed && armed.receivedAt === undefined && typeof event.data === "string" && event.data.includes("postgres_changes") && event.data.includes(armed.marker)) start(armed);
+          });
         }
       });
-      Reflect.set(window, "__rtWatch", (id: string, kind: "closing" | "removed") => new Promise<number>(resolve => {
-        const done = () => {
-          const rows = [...document.querySelectorAll(`[data-auction-row="${id}"]`)];
-          const row = rows.find(el => el.getBoundingClientRect().height > 0);
-          return kind === "removed" ? rows.length === 0 : !!row?.textContent?.includes("125.000") && !row.querySelector('[role="timer"]');
-        };
-        const observer = new MutationObserver(() => { if (done()) { observer.disconnect(); resolve(performance.now()); } });
-        observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
-      }));
+      Reflect.set(window, "__rtArm", (watch: Watch) => { armed = watch; });
+      Reflect.set(window, "__rtResult", () => armed && armed.receivedAt !== undefined && armed.changedAt !== undefined
+        ? { visible: true, elapsed: armed.changedAt - armed.receivedAt } : null);
     });
     const reads: Array<{method: string; path: string}> = [];
     let observing = false;
@@ -71,25 +84,24 @@ for (const width of [375, 1440]) {
     await expect(row).toBeVisible(); await expect(row.getByRole("timer")).toContainText("0:05");
     await expect.poll(() => typeof send).toBe("function"); await waitForStableSnapshotTarget(page);
     observing = true;
-    // Elapsed = browser receives the realtime message -> DOM shows the change. The generous ceiling only
-    // keeps a genuine failure from hanging; the guard itself is the 350 ms assertion below.
-    const measure = async (kind: "closing" | "removed", marker: string) => {
-      const watch = page.evaluate(([id, k]) => (Reflect.get(window, "__rtWatch") as (id: string, kind: string) => Promise<number>)(id, k), [initial.id, kind] as const);
-      return { watch, finish: async () => {
-        const changedAt = await Promise.race([watch, new Promise<number>(resolve => setTimeout(() => resolve(-1), 5000))]);
-        const receivedAt = await page.evaluate(m => (Reflect.get(window, "__rtReceived") as Array<{ t: number; data: string }>).find(item => item.data.includes(m))?.t ?? -1, marker);
-        return { visible: changedAt >= 0 && receivedAt >= 0, elapsed: changedAt - receivedAt };
-      } };
+    // Elapsed = browser receives the realtime message -> DOM shows the change, both read in the page.
+    // The 5 s poll ceiling only keeps a genuine failure from hanging; the guard is the 350 ms assertion.
+    const arm = (kind: "closing" | "removed", marker: string) =>
+      page.evaluate(watch => (Reflect.get(window, "__rtArm") as (w: unknown) => void)(watch), { id: initial.id, kind, marker });
+    const finish = async () => {
+      const read = () => page.evaluate(() => (Reflect.get(window, "__rtResult") as () => { visible: boolean; elapsed: number } | null)());
+      await expect.poll(read, { timeout: 5000 }).not.toBeNull();
+      return (await read()) ?? { visible: false, elapsed: Number.POSITIVE_INFINITY };
     };
-    const closing = await measure("closing", '"current_price":125000');
+    await arm("closing", '"current_price":125000');
     rows = [{ ...initial, current_price: 125000, calculated_end: "2026-11-12T12:02:00Z" }];
     send!("auctions", "UPDATE", { id: initial.id, current_price: 125000, calculated_end: rows[0].calculated_end });
-    const result = await closing.finish();
+    const result = await finish();
     expect(result.visible).toBe(true); expect(result.elapsed).toBeLessThan(350);
     await page.waitForTimeout(500); expect(reads).toEqual([]);
-    const removal = await measure("removed", '"status":"completed"');
+    await arm("removed", '"status":"completed"');
     rows = []; send!("auctions", "UPDATE", { id: initial.id, status: "completed", current_bidder_id: RIVAL_TEAM.id });
-    const removed = await removal.finish();
+    const removed = await finish();
     expect(removed.visible).toBe(true); expect(removed.elapsed).toBeLessThan(350);
     await page.waitForTimeout(500); expect(reads).toEqual([]);
     send!("auction_bids", "INSERT", { id: "unrelated-bid", auction_id: "unrelated", team_id: RIVAL_TEAM.id, amount: 100, bid_time: NOW });
