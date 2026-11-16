@@ -105,6 +105,23 @@ test("nextMenuFocus går rundt i begge ender", () => {
   assert.equal(nextMenuFocus(0, 4, "Tab"), null);
 });
 
+test("poolTwinsByRaceId: kalenderkortets puljer efter mergePoolTwins' regel, i divisionstræets orden", async () => {
+  const { poolTwinsByRaceId, mergePoolTwins } = await import("../../../lib/calendarGrid.js");
+  const divisions = [{ division: 3, pools: [{ id: 31, poolIndex: 0 }, { id: 32, poolIndex: 1 }, { id: 33, poolIndex: 2 }] }];
+  const sched = [{ stage: 1, date: "2026-11-07", terrain: "hilly" }];
+  const entries = [
+    { id: "r-c", name: "Giro", raceType: "stage_race", stages: 1, division: 3, poolId: 33, stageSchedule: sched },
+    { id: "r-a", name: "Giro", raceType: "stage_race", stages: 1, division: 3, poolId: 31, stageSchedule: sched },
+    { id: "r-b", name: "Giro", raceType: "stage_race", stages: 1, division: 3, poolId: 32, stageSchedule: sched },
+    { id: "solo", name: "Solo", raceType: "single", stages: 1, division: 3, poolId: 31, date: "2026-11-08" },
+  ];
+  const twins = poolTwinsByRaceId(entries, { divisions });
+  assert.deepEqual(twins.get("r-b")?.map((tw) => [tw.id, tw.poolIndex]), [["r-a", 0], ["r-b", 1], ["r-c", 2]]);
+  assert.equal(twins.get("solo"), undefined);
+  // Samme gruppering som kalenderens sammenlægning: tre tvillinger bliver til ét løb.
+  assert.equal(mergePoolTwins(entries, { divisions }).length, 2);
+});
+
 test("kilden: switchen monteres i løbshovedet bag v6 og bruger det route-gatede navnerum", () => {
   const page = readFileSync(new URL("./RacePageV6.tsx", import.meta.url), "utf8");
   assert.match(page, /editions=\{<V6EditionSwitch raceId=\{raceId\} myTeamId=\{myTeamId\} \/>\}/);
