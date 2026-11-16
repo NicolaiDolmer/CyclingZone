@@ -232,9 +232,12 @@ function fold(s) {
     .replace(/[̀-ͯ]/g, '');
 }
 
+// Fyldord i PR-titler, der ellers ville matche tilfaeldige Hjaelp-noegler.
+const STOP_WORDS = new Set(['viser', 'efter', 'naar', 'eller', 'ikke', 'foer', 'samme', 'alle', 'straks', 'gang', 'udgave', 'rettelse', 'rettelser', 'review', 'fejl', 'kommer', 'bliver', 'with', 'from', 'when', 'show', 'shows', 'fix', 'feat']);
+
 export function tokens(s) {
   const spaced = String(s || '').replace(/([a-z])([A-Z])/g, '$1 $2');
-  return [...new Set(fold(spaced).split(/[^a-z0-9]+/).filter((t) => t.length >= 4 && !/^\d+$/.test(t)))];
+  return [...new Set(fold(spaced).split(/[^a-z0-9]+/).filter((t) => t.length >= 4 && !/^\d+$/.test(t) && !STOP_WORDS.has(t)))];
 }
 
 /** [{key, label, words}] fra help.json en + da. */
@@ -320,11 +323,18 @@ export function parseBackupReminders(nowMd, today) {
 
 // ---------------------------------------------------------------- PR-vurdering
 
-/** Issue-numre PR'en refererer: Refs/Closes i titel+body og titlens scope. */
+/**
+ * Issue-numre PR'en refererer: Refs/Closes i titel+body og titlens scope. Et
+ * scope taeller kun, naar det alene bestaar af numre ("fix(7801)", "feat(#12, 34)"),
+ * saa "race-v6" ikke bliver til issue #6.
+ */
 export function prIssueRefs(pr) {
   const byIssue = new Map();
   for (const r of parseIssueRefs(`${pr.title || ''}\n${pr.body || ''}`, pr.number)) byIssue.set(r.issue, r);
-  for (const n of titleScopeIssues(pr.title)) if (n !== pr.number && !byIssue.has(n)) byIssue.set(n, { issue: n, kind: 'refs' });
+  const { scope } = parseTitle(pr.title);
+  if (/^[#\d\s,&]+$/.test(scope)) {
+    for (const n of titleScopeIssues(pr.title)) if (n !== pr.number && !byIssue.has(n)) byIssue.set(n, { issue: n, kind: 'refs' });
+  }
   return [...byIssue.values()].sort((a, b) => a.issue - b.issue);
 }
 
@@ -332,12 +342,26 @@ function prFiles(pr) {
   return (pr.files || []).map((f) => (typeof f === 'string' ? f : f.path || f.filename)).filter(Boolean);
 }
 
-/** Alle filer kendt og alle interne? Ufuldstaendig liste = spillervendt (fail-safe). */
+/**
+ * Alle filer kendt og alle interne? Ufuldstaendig liste = spillervendt (fail-safe).
+ * patchNotes.js selv taeller som internt her: en PR der kun skriver patch notes
+ * (og docs) er selve leverancen af kravet, ikke noget nyt der mangler en note.
+ */
 export function isInternalPr(pr) {
   const files = prFiles(pr);
-  if (Number(pr.changedFiles) > files.length) return false;
-  return isInternalChange(files);
+  if (!files.length || Number(pr.changedFiles) > files.length) return false;
+  const rest = files.filter((f) => f !== PATCH_NOTES_DATA_FILE);
+  return rest.length === 0 || isInternalChange(rest);
 }
+
+// Conventional-typer der kan aendre noget spilleren maerker. chore/test/ci/docs/
+// refactor/build/style forventes ikke at have en patch note; utypede titler
+// behandles som spillervendte (fail-safe).
+const PATCH_TYPES = new Set(['feat', 'fix', 'perf', 'revert', '']);
+// Hjaelp forklarer mekanik; det er nyt (feat), ikke rettelser.
+const HELP_TYPES = new Set(['feat']);
+// Scopes for driftsvaerktoej (fx "feat(ops): ..."): ingen spillertekst.
+const INTERNAL_SCOPES = /^(?:ops|ci|hooks|dev|infra|admin|deps)$/i;
 
 /** Har et menneske markeret kravet ok/na, mens PR'en var aaben eller senere? */
 function markedSince(issueInfo, krav, sinceIso) {
@@ -366,38 +390,48 @@ export function evaluatePr({ pr, notes, issues = new Map(), helpIndex = [] }) {
   const internal = isInternalPr(pr);
   const behindSwitch = isBehindSwitch(pr.title, pr.body);
   const mergedDay = pr.mergedAt ? copenhagenDay(new Date(pr.mergedAt)) : null;
-  const res = { pr, refs, internal, behindSwitch, patch: null, help: null, delivered: [] };
-  if (internal) return res;
-
-  if (behindSwitch) {
-    res.patch = { status: 'venter', draft: extractPatchNoteDraft(pr.body) };
-    return res;
-  }
+  const { type, scope } = parseTitle(pr.title);
+  const res = { pr, refs, internal, behindSwitch, patch: null, help: null };
+  if (internal || INTERNAL_SCOPES.test(scope)) return res;
 
   // Patch note
-  const marked7 = refs.map((r) => markedSince(issues.get(r.issue), 7, pr.createdAt)).find(Boolean);
-  const note = coveringNote(notes, [...numbers, pr.number], mergedDay);
-  if (files.includes(PATCH_NOTES_DATA_FILE)) res.patch = { status: 'ok', kilde: 'PR’en ændrede patchNotes.js' };
-  else if (note) res.patch = { status: 'ok', kilde: `patch note v${note.version}` };
-  else if (hasOptOut(pr.body)) res.patch = { status: 'ok', kilde: 'patch-notes: n/a i PR-body' };
-  else if (marked7) res.patch = { status: 'ok', kilde: `Til dørs: 7 ${marked7.status}` };
-  else res.patch = { status: 'mangler', ...patchNoteTemplate(pr, numbers) };
+  if (PATCH_TYPES.has(type)) {
+    const marked7 = refs.map((r) => markedSince(issues.get(r.issue), 7, pr.createdAt)).find(Boolean);
+    const note = coveringNote(notes, [...numbers, pr.number], mergedDay);
+    if (files.includes(PATCH_NOTES_DATA_FILE)) res.patch = { status: 'ok', kilde: 'PR’en ændrede patchNotes.js' };
+    else if (note) res.patch = { status: 'ok', kilde: `patch note v${note.version}` };
+    else if (hasOptOut(pr.body)) res.patch = { status: 'ok', kilde: 'patch-notes: n/a i PR-body' };
+    else if (marked7) res.patch = { status: 'ok', kilde: `Til dørs: 7 ${marked7.status}` };
+    // Bag slukket kontakt: noten skrives ved taending, ikke nu.
+    else if (behindSwitch) res.patch = { status: 'venter', draft: extractPatchNoteDraft(pr.body) };
+    else res.patch = { status: 'mangler', ...patchNoteTemplate(pr, numbers) };
+  }
 
   // Hjaelp
-  const marked6 = refs.map((r) => markedSince(issues.get(r.issue), 6, pr.createdAt)).find(Boolean);
-  if (files.includes(HELP_FILE) || files.includes(HELP_FILE_DA)) res.help = { status: 'ok', kilde: 'PR’en ændrede help.json' };
-  else if (marked6) res.help = { status: 'ok', kilde: `Til dørs: 6 ${marked6.status}` };
-  else res.help = { status: 'mangler', sections: helpPointers(pr.title, helpIndex) };
+  if (HELP_TYPES.has(type) && !behindSwitch) {
+    const marked6 = refs.map((r) => markedSince(issues.get(r.issue), 6, pr.createdAt)).find(Boolean);
+    if (files.includes(HELP_FILE) || files.includes(HELP_FILE_DA)) res.help = { status: 'ok', kilde: 'PR’en ændrede help.json' };
+    else if (marked6) res.help = { status: 'ok', kilde: `Til dørs: 6 ${marked6.status}` };
+    else res.help = { status: 'mangler', sections: helpPointers(pr.title, helpIndex) };
+  }
 
   return res;
 }
 
-/** Leverede issues (til roadmap og masterplan) fra alle PR'er der ikke ligger bag en kontakt. */
+/**
+ * Leverede issues (til roadmap og masterplan). Issuets tilstand afgoer:
+ * lukket eller claude:done (merge-koeen flipper ikke, naar PR'en ligger bag en
+ * kontakt). Et Closes taeller kun fra en PR, der ikke ligger bag en kontakt.
+ */
 export function deliveredIssues(results, issues) {
   const out = new Map();
   for (const r of results) {
-    if (r.behindSwitch) continue;
-    for (const ref of r.refs) if (isDelivered(ref, issues.get(ref.issue)) && !out.has(ref.issue)) out.set(ref.issue, r.pr.number);
+    for (const ref of r.refs) {
+      if (out.has(ref.issue)) continue;
+      const info = issues.get(ref.issue);
+      const byState = isDelivered({ ...ref, kind: 'refs' }, info);
+      if (byState || (ref.kind === 'closes' && !r.behindSwitch)) out.set(ref.issue, r.pr.number);
+    }
   }
   return out;
 }
@@ -674,9 +708,10 @@ export async function runDraft({ execGh = defaultExecGh, repo = DEFAULT_REPO, da
   const issues = new Map();
   const need = new Set();
   for (const pr of prs) {
-    const internal = isInternalPr(pr);
+    const { type, scope } = parseTitle(pr.title);
+    const markersMatter = !isInternalPr(pr) && PATCH_TYPES.has(type) && !INTERNAL_SCOPES.test(scope);
     for (const ref of prIssueRefs(pr)) {
-      if (!internal || (ref.kind === 'refs' && new RegExp(`#${ref.issue}(?!\\d)`).test(masterplanText))) need.add(ref.issue);
+      if (markersMatter || new RegExp(`#${ref.issue}(?!\\d)`).test(masterplanText)) need.add(ref.issue);
     }
   }
   for (const n of [...need].sort((a, b) => a - b)) {
