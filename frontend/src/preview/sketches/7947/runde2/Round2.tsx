@@ -36,7 +36,7 @@ const SKILL = ["technique", "aero", "loebslaere"];
 const SEG_ON = "cursor-default bg-cz-accent/10 font-semibold text-cz-accent-t";
 const SEG_OFF = "bg-cz-card text-cz-2 hover:text-cz-1";
 const SEG_BTN =
-  "min-h-9 px-3 text-xs font-medium transition-colors duration-150 [@media(max-width:640px),(pointer:coarse)]:min-h-11";
+  "min-h-9 font-medium transition-colors duration-150 [@media(max-width:640px),(pointer:coarse)]:min-h-11";
 
 // --- Faelles ---------------------------------------------------------------
 
@@ -117,7 +117,7 @@ function Group({
             type="button"
             aria-pressed={it.on}
             onClick={it.on ? undefined : it.onClick}
-            className={`${SEG_BTN} min-w-0 flex-1 px-1.5 py-1 text-[11px] leading-tight [overflow-wrap:anywhere] lg:px-3 lg:text-xs lg:truncate lg:whitespace-nowrap ${i > 0 ? "border-s border-cz-border" : ""} ${it.on ? SEG_ON : SEG_OFF}`}
+            className={`${SEG_BTN} min-w-0 flex-1 px-1.5 py-1 text-2xs leading-tight break-words lg:px-3 lg:text-xs lg:truncate lg:whitespace-nowrap ${i > 0 ? "border-s border-cz-border" : ""} ${it.on ? SEG_ON : SEG_OFF}`}
           >
             {it.label}
           </button>
