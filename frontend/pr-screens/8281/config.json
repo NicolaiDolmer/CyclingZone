@@ -1,0 +1,55 @@
+{
+  "out": ".",
+  "ref": "#8281 (mobil-rettelse 7, #8073 · portræt-pipeline #5113)",
+  "sketch": "/src/preview/sketches/8281-rytterhero/index.html",
+  "items": [
+    {
+      "file": "rytterhero-A.png",
+      "letter": "A",
+      "title": "Rytterhero · Kanonisk billede-felt",
+      "line": "Billedet bor i PAGE_TEMPLATES' faste 96 px-felt ved siden af navnet, og resten af toppen strammes som i rettelse 7.",
+      "before": "/riders/rider-1",
+      "query": "d=A",
+      "noPhoto": true,
+      "notes": [
+        "Billedet: 96 × 96 (desktop) / 76 × 76 (mobil), hoved og skuldre. Uden billede: initialer + PHOTO på samme flade, som i dag.",
+        "Mærkerne står inline efter navnet; nation, alder, hold og U25 på én linje. Popularity er udeladt, fordi den i dag kun viser en streg (P13).",
+        "Auktionen er én linje med See auction. Ingen Bid, for det er din egen rytter.",
+        "Kontrakt samlet: Extend contract (sidens ene guld-knap) + menu med List for sale og Release rider."
+      ],
+      "aside": "Mindste ændring: feltet findes allerede i skabelonen og i appen. Billedet er lille, så det fylder ikke over folden."
+    },
+    {
+      "file": "rytterhero-B.png",
+      "letter": "B",
+      "title": "Rytterhero · Spillerkort",
+      "line": "Billedet bliver en stående 3:4-kolonne til venstre, så profilen ligner et spillerkort.",
+      "before": "/riders/rider-1",
+      "query": "d=B",
+      "noPhoto": true,
+      "notes": [
+        "Portræt i 3:4: 186 × 248 (desktop) / 104 × 136 (mobil), hele brystbilledet.",
+        "Tallene står ved siden af billedet på desktop og under det på mobil. Popularity er udeladt, fordi den i dag kun viser en streg (P13).",
+        "Auktionen er én linje med See auction.",
+        "Kontrakt samlet: Extend contract + menu."
+      ],
+      "aside": "Billedet bærer siden. Koster ca. 60 px mere over folden på mobil end A."
+    },
+    {
+      "file": "rytterhero-C.png",
+      "letter": "C",
+      "title": "Rytterhero · Figuren står i kortet",
+      "line": "Rytteren står uden ramme på kortets kant til højre, som på et samlekort, og tallene står til venstre.",
+      "before": "/riders/rider-1",
+      "query": "d=C",
+      "noPhoto": true,
+      "notes": [
+        "Figuren uden ramme og flade, stående på kortets bundkant (desktop) eller på stregen over tallene (mobil). Uden billede: store initialer i hairline-farve.",
+        "Tallene i fire kolonner (desktop) / to (mobil). Popularity er udeladt, fordi den i dag kun viser en streg (P13).",
+        "Auktionen er én linje med See auction.",
+        "Kontrakt samlet: Extend contract + menu."
+      ],
+      "aside": "Mest karakter, og den passer til #5113's plan om en figur der drejer hovedet. Kræver at alle billeder har gennemsigtig baggrund."
+    }
+  ]
+}
