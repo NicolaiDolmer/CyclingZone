@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-151 poster: live 119 · dormant 10 · building 12 · spec 1 · idea 2 · retired 7. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+152 poster: live 119 · dormant 10 · building 13 · spec 1 · idea 2 · retired 7. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -139,6 +139,10 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 ## comms
 
 **arkiv:** `discord-welcome-inbox` · `email-loop` · `in-app-survey` · `manager-dm-v1` · `push-notifications` · `roadmap-hub`
+
+|Feature|State|Flag|SSOT|Epic|Verified|Note|
+|-|-|-|-|-|-|-|
+|Patch notes by area, week by week (`patch-notes-v2`)|building|-|[PATCH_NOTES_RULES](PATCH_NOTES_RULES.md)|#954|2026-11-16|#8049 bag kontakten patch_notes_v2_8049 (migration 2026-11-16-8049, ikke applied = off = gammel side). Ejer-go paa billederne foer merge.|
 
 ## billing
 

@@ -59,6 +59,27 @@ En spiller skal kunne se, om en ændring gælder ham nu, kun beta-gruppen, eller
 - Siden: chippen er en rolig hairline (5px radius, ingen fyld, ingen guld). Hjælp forklarer mærkerne under
   beta-gruppe-FAQ'en, og sidens fod har én forklarende linje.
 
+## 2b. Område, ugens nyhed og billede (ejer 12/11 + 16/11, [#8049](https://github.com/NicolaiDolmer/CyclingZone/issues/8049))
+
+Den nye patch notes-side (bag kontakten `patch_notes_v2_8049`, slukket = den gamle side) grupperer ugen efter
+område. Nye, valgfrie felter på en change i `patchNotes.js`:
+
+| Felt | Betyder | Regel |
+|---|---|---|
+| `area` | Hvilken del af spillet ændringen forbedrer | **Krævet på nye spillervendte noter.** Én af `tactics`, `races` (løb og løbsfilm), `engine` (løbsmotoren), `training`, `development`, `market`, `academy`, `board`, `economy`, `interface`, `mobile`, `help`. Guarden i `scripts/check-patch-notes-version.js` fejler en ny note uden gyldigt område |
+| `highlight: true` | Redaktørens valg af ugens store nyhed | Valgfri. Uden det vælger siden selv: Tændt for alle > Nyt > Beta, nyeste først |
+| `image` | Billede ved ugens nyhed | Valgfri. Sti under `/patch-notes-images/` (fil i `frontend/public/patch-notes-images/`), webp, højst ca. 60 KB, ingen holdnavne eller spillernavne. Vises kun, når noten er ugens nyhed |
+| `replaces` | `version#index` på den beta-note, som denne note afløser | Valgfri. Står begge i samme uge, vises kun den nye. Uden feltet gælder det samme for to noter med samme `flag` |
+
+- Mærket afledes som i dag (`rollout` vinder over `category`), så der er én sandhed: Tændt for alle, Nyt, Beta,
+  Forbedring, Fejlrettelse.
+- **Gamle noter røres ikke.** Deres område står i `frontend/src/lib/patchNotesAreaData.js` (nøgle `version#index`)
+  og i `TOPIC_AREA` i `frontend/src/lib/patchNotesArea.js`; hvad der ikke kunne placeres sikkert, ligger i
+  "Andet" og vises kun i arkivet. Klassificeringen og dens kilder: [`docs/design/reviews/2026-11-16-8049-klassificering.md`](design/reviews/2026-11-16-8049-klassificering.md).
+- Filerne siden henter (`patch-notes-data/recent|index|<måned>.<sprog>.json`) genereres i build af
+  `frontend/vite-plugins/patch-notes-v2.js`; de committes aldrig. Åbning af siden henter kun `recent` (en test
+  holder den under 40 KB pakket).
+
 ## 3. Discord: udsnit, ikke en ny tekst
 
 **Reglen (ToV §2.2, 14/8):** Discord får **titlen plus feltet "What changed", ordret**. Der skrives

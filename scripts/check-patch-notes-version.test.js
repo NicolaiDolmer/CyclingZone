@@ -16,7 +16,23 @@ const {
   importCheck,
   missingRollout,
   missingFlag,
+  missingArea,
 } = require("./check-patch-notes-version.js");
+
+test("#8049: nye player-changes kræver et gyldigt område; historiske og interne gør ikke", () => {
+  const patches = [
+    { version: "2.1", changes: [
+      { audience: "player", area: "training" },
+      { audience: "player" },
+      { audience: "player", area: "other" },
+      { audience: "player", area: "Training" },
+      { audience: "internal" },
+    ] },
+    { version: "2.0", changes: [{ audience: "player" }] },
+  ];
+  assert.deepEqual(missingArea(patches, ["2.0"]), ["2.1#1", "2.1#2", "2.1#3"]);
+  assert.deepEqual(missingArea(patches, ["2.1", "2.0"]), []);
+});
 
 test("#6014: nye player-changes kræver rollout; historiske og interne gør ikke", () => {
   const patches = [

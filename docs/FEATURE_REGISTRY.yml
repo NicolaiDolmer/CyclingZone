@@ -1523,6 +1523,16 @@ features:
     verified: 2026-10-15
     note: Velkomst-, dag 1- og løbsoversigt-mails on for alle. Win-back (winback_send_enabled=false) er kill-switch, kun pr. kørsel (#2760).
 
+  - id: patch-notes-v2
+    area: comms
+    title_en: Patch notes by area, week by week
+    title_da: Patch notes efter område, uge for uge
+    state: building
+    ssot: docs/PATCH_NOTES_RULES.md
+    epic: 954
+    verified: 2026-11-16
+    note: "#8049 bag kontakten patch_notes_v2_8049 (migration 2026-11-16-8049, ikke applied = off = gammel side). Ejer-go paa billederne foer merge."
+
   - id: in-app-survey
     area: comms
     title_en: In-app player survey
