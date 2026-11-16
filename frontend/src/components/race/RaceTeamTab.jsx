@@ -56,6 +56,7 @@ import {
   isJerseyLeaderCaptainOnAllRemainingStages,
 } from "../../lib/stageRoleMatrixLogic.js";
 import { DEFAULT_EFFORT } from "../../lib/raceIntention.js";
+import { stageRouteMatch } from "../../lib/lineupInsight.js"; // #7862: rute-match pr. valgt etape
 import { roleLabelKey } from "../../lib/stageRoleVocabulary.ts";
 import { showsTimeLimitRisk } from "../../lib/timeLimitRisk7715.ts"; // #7715
 
@@ -131,7 +132,8 @@ function ReadOnlyRoster({ t, riders, stageNumbers, overridesMap, gcRankByRider, 
                   </>
                 ) : (
                   <>
-                    <td className="px-4 py-2.5 text-right"><FitBar score={rider.fit} /></td>
+                    {/* #7862: med en valgt etape (v6) er rute-matchet etapens (som Taktik), ellers løbets snit. */}
+                    <td className="px-4 py-2.5 text-right">{roleStage == null ? <FitBar score={rider.fit} /> : stageRouteMatch(rider, roleStage) != null ? <FitBar score={stageRouteMatch(rider, roleStage)} /> : <span className="font-data text-xs text-cz-3">—</span>}</td>
                     <td className="px-4 py-2.5 text-right font-data text-xs tabular-nums text-cz-2">{rider.form ?? "—"}</td>
                     <td className="px-4 py-2.5 text-right font-data text-xs tabular-nums text-cz-2">{rider.fatigue ?? "—"}</td>
                   </>

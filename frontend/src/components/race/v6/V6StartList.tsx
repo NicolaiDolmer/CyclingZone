@@ -57,8 +57,10 @@ function useStartListField(raceId: string | null, enabled: boolean, attempt: num
       db.from("races").select("season:season_id(number)").eq("id", raceId).maybeSingle(),
     ]).then(([entriesRes, withdrawnRes, raceRes]) => {
       if (!alive) return;
-      if (entriesRes.error) { setState({ key, value: { status: "error" } }); return; }
-      const withdrawn = new Set(((withdrawnRes.error ? [] : withdrawnRes.data) as Array<{ team_id: string }> ?? []).map((w) => String(w.team_id)));
+      // Holdene der har meldt fra beholder deres race_entries; uden den liste ville de stå
+      // som deltagere med rygnumre. Fejler opslaget, er feltet ikke kendt: fejl + prøv igen.
+      if (entriesRes.error || withdrawnRes.error) { setState({ key, value: { status: "error" } }); return; }
+      const withdrawn = new Set(((withdrawnRes.data ?? []) as Array<{ team_id: string }>).map((w) => String(w.team_id)));
       const seasonNumber = Number((raceRes.data as { season?: { number?: number | null } | null } | null)?.season?.number);
       setState({ key, value: { status: "ready", entries: (entriesRes.data ?? []) as StartListEntry[], withdrawn, seasonYear: seasonReferenceYear(seasonNumber) } });
     }).catch(() => { if (alive) setState({ key, value: { status: "error" } }); });

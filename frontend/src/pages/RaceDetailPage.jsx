@@ -87,7 +87,7 @@ import { fetchStageProfiles } from "../components/race/stagePageV2/stageProfiles
 import { useRacePageV6Enabled } from "../components/race/v6/racePageV6Flag.ts"; // #7778
 import { resolveV6Tab, tacticsCta, v6Overall, v6WhenLabel } from "../components/race/v6/racePageV6Model.ts"; // #7778
 import V6RaceHeroCard, { V6_STRIP_RESERVED_CLASS } from "../components/race/v6/V6RaceHeroCard.tsx"; // #7778 udgave E
-import { EMPTY_RESULTS_CONTROLS, filterResultRows, isFiltering, mineOnlyFromTeamFilter, resultNations, sharedMineControls, teamFilterAfterMineToggle } from "../components/race/v6/resultsControlsModel.ts"; // #7860 #7865 #7862
+import { EMPTY_RESULTS_CONTROLS, effectiveNation, filterResultRows, isFiltering, mineOnlyFromTeamFilter, resultNations, sharedMineControls, teamFilterAfterMineToggle } from "../components/race/v6/resultsControlsModel.ts"; // #7860 #7865 #7862
 import { getCountryName } from "../lib/countryUtils.js"; // #7862: nationsfilter og søgning på nation
 
 // #3914: FinalKilometrePlayback vises nu bag en stille knap (StoryOfTheStage-
@@ -2452,7 +2452,7 @@ function ResultTable({ title, rows: allRows, highlightWinner = false, highlightT
     () => (searchable ? resultNations([...allRows, ...(allDnfRows || [])], (c) => getCountryName(c, lang)) : []),
     [searchable, allRows, allDnfRows, lang],
   );
-  const controls = nations.length > 1 ? mineControls.filter : { ...mineControls.filter, nation: "all" };
+  const controls = { ...mineControls.filter, nation: effectiveNation(mineControls.filter.nation, nations) };
   const nationNames = (c) => [getCountryName(c, lang), getCountryName(c, "en")];
   const filtering = searchable && isFiltering(controls);
   const rows = filtering ? filterResultRows(allRows, controls, myOwnTeamId, nationNames) : allRows;
@@ -2513,7 +2513,7 @@ function ResultTable({ title, rows: allRows, highlightWinner = false, highlightT
       {/* #7865: står også, når et aktivt Mit hold-valg tømmer listen, så det kan slås fra igen. */}
       {searchable && (allCount > 0 || isFiltering(mineControls.shown)) && (
         <Suspense fallback={<div aria-hidden="true" className="mb-3 min-h-11" />}>
-          <V6ResultsControls state={mineControls.shown} onChange={(next) => setLocalControls(mineControls.change(next))} counting={filtering} hasMyTeam={myOwnTeamId != null} shown={totalCount} total={allCount} nations={nations} />
+          <V6ResultsControls state={{ ...mineControls.shown, nation: controls.nation }} onChange={(next) => setLocalControls(mineControls.change(next))} counting={filtering} hasMyTeam={myOwnTeamId != null} shown={totalCount} total={allCount} nations={nations} />
         </Suspense>
       )}
       {totalCount === 0 ? (

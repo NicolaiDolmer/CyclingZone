@@ -147,3 +147,14 @@ export function resultNations(rows: readonly ResultsControlsRow[] | null | undef
   for (const row of rows || []) { const c = rowNation(row); if (c) codes.add(c); }
   return [...codes].map((code) => ({ code, name: nameOf(code) || code.toUpperCase() })).sort((a, b) => a.name.localeCompare(b.name));
 }
+
+/**
+ * #7862: det nationsvalg der gælder (og vises). Står vælgeren ikke (under to nationer), eller
+ * er den valgte nation ikke længere i listen (fx efter et skift til Mit hold), gælder "all",
+ * så et usynligt filter aldrig tømmer tabellen.
+ */
+export function effectiveNation(nation: string | null | undefined, nations: ReadonlyArray<{ code: string }>): string {
+  const n = nation ?? "all";
+  if (nations.length < 2 || n === "all") return "all";
+  return nations.some((x) => x.code === n) ? n : "all";
+}
