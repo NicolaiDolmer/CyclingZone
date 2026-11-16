@@ -37,6 +37,29 @@ for (const width of [375, 1440]) {
         }
       });
     });
+    // #8290 (installed after routeWebSocket so it wraps the mock socket): the 350 ms guard measures the app (realtime message received in the browser -> DOM changed),
+    // not the test harness. Wall-clock from the Node-side send includes harness and CI scheduling latency,
+    // which says nothing about the player's experience.
+    await page.addInitScript(() => {
+      const received: Array<{ t: number; data: string }> = [];
+      Reflect.set(window, "__rtReceived", received);
+      const Native = window.WebSocket;
+      Reflect.set(window, "WebSocket", class extends Native {
+        constructor(...args: ConstructorParameters<typeof WebSocket>) {
+          super(...args);
+          this.addEventListener("message", event => { if (typeof event.data === "string" && event.data.includes("postgres_changes")) received.push({ t: performance.now(), data: event.data }); });
+        }
+      });
+      Reflect.set(window, "__rtWatch", (id: string, kind: "closing" | "removed") => new Promise<number>(resolve => {
+        const done = () => {
+          const rows = [...document.querySelectorAll(`[data-auction-row="${id}"]`)];
+          const row = rows.find(el => el.getBoundingClientRect().height > 0);
+          return kind === "removed" ? rows.length === 0 : !!row?.textContent?.includes("125.000") && !row.querySelector('[role="timer"]');
+        };
+        const observer = new MutationObserver(() => { if (done()) { observer.disconnect(); resolve(performance.now()); } });
+        observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
+      }));
+    });
     const reads: Array<{method: string; path: string}> = [];
     let observing = false;
     page.on("request", request => {
@@ -48,25 +71,26 @@ for (const width of [375, 1440]) {
     await expect(row).toBeVisible(); await expect(row.getByRole("timer")).toContainText("0:05");
     await expect.poll(() => typeof send).toBe("function"); await waitForStableSnapshotTarget(page);
     observing = true;
-    await page.evaluate(id => {
-      const start = performance.now();
-      Reflect.set(window, "__realtimeClosingProof", new Promise(resolve => {
-        const check = () => {
-          const row = [...document.querySelectorAll(`[data-auction-row="${id}"]`)].find(el => el.getBoundingClientRect().height > 0);
-          const elapsed = performance.now() - start;
-          const visible = !!row?.textContent?.includes("125.000") && !row.querySelector('[role="timer"]');
-          if (visible || elapsed >= 350) resolve({ visible, elapsed }); else requestAnimationFrame(check);
-        };
-        requestAnimationFrame(check);
-      }));
-    }, initial.id);
+    // Elapsed = browser receives the realtime message -> DOM shows the change. The generous ceiling only
+    // keeps a genuine failure from hanging; the guard itself is the 350 ms assertion below.
+    const measure = async (kind: "closing" | "removed", marker: string) => {
+      const watch = page.evaluate(([id, k]) => (Reflect.get(window, "__rtWatch") as (id: string, kind: string) => Promise<number>)(id, k), [initial.id, kind] as const);
+      return { watch, finish: async () => {
+        const changedAt = await Promise.race([watch, new Promise<number>(resolve => setTimeout(() => resolve(-1), 5000))]);
+        const receivedAt = await page.evaluate(m => (Reflect.get(window, "__rtReceived") as Array<{ t: number; data: string }>).find(item => item.data.includes(m))?.t ?? -1, marker);
+        return { visible: changedAt >= 0 && receivedAt >= 0, elapsed: changedAt - receivedAt };
+      } };
+    };
+    const closing = await measure("closing", '"current_price":125000');
     rows = [{ ...initial, current_price: 125000, calculated_end: "2026-11-12T12:02:00Z" }];
     send!("auctions", "UPDATE", { id: initial.id, current_price: 125000, calculated_end: rows[0].calculated_end });
-    const result = await page.evaluate(() => Reflect.get(window, "__realtimeClosingProof")) as {visible: boolean; elapsed: number};
+    const result = await closing.finish();
     expect(result.visible).toBe(true); expect(result.elapsed).toBeLessThan(350);
     await page.waitForTimeout(500); expect(reads).toEqual([]);
+    const removal = await measure("removed", '"status":"completed"');
     rows = []; send!("auctions", "UPDATE", { id: initial.id, status: "completed", current_bidder_id: RIVAL_TEAM.id });
-    await expect(page.locator('[data-auction-row="auction-realtime-8020"]')).toHaveCount(0, { timeout: 350 });
+    const removed = await removal.finish();
+    expect(removed.visible).toBe(true); expect(removed.elapsed).toBeLessThan(350);
     await page.waitForTimeout(500); expect(reads).toEqual([]);
     send!("auction_bids", "INSERT", { id: "unrelated-bid", auction_id: "unrelated", team_id: RIVAL_TEAM.id, amount: 100, bid_time: NOW });
     await page.waitForTimeout(500); expect(reads).toEqual([]);
