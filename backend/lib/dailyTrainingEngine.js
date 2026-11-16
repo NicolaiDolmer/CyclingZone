@@ -849,6 +849,7 @@ async function runPressDayFromMemory({
   // since is departed by the full read (instead of quarantined by the save guard).
   if (executedBy === "assistant") {
     const roster = plan.dateWork.expected_rider_ids.filter((id) => !(plan.dateWork.quarantined_rider_ids ?? []).includes(id));
+    // pagination-safe: én række pr. id i datoens frosne trup (ét holds trup, bounded af rostergrænsen)
     const { data, error } = await supabase.from("riders").select("id, team_id, is_retired").in("id", roster);
     if (error || (data ?? []).length !== roster.length || data.some((row) => row.team_id == null || row.is_retired === true)) return null;
   }

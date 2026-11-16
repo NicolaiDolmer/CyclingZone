@@ -18,6 +18,7 @@ export const CONFIG_CACHE_SWITCH_KEY = "config_cache_8143";
 export const CONFIG_CACHE_SWITCH_REFRESH_MS = 30_000;
 
 let enabled = false;
+/** @type {ReturnType<typeof setInterval> | null} */
 let timer = null;
 /** @type {Map<string, { value: any, expiresAt: number }>} */
 const sharedValues = new Map();
@@ -78,8 +79,9 @@ export async function refreshConfigCacheSwitch(supabase) {
 export function startConfigCacheSwitch({ supabase, intervalMs = CONFIG_CACHE_SWITCH_REFRESH_MS }) {
   if (timer || !supabase?.from) return;
   void refreshConfigCacheSwitch(supabase);
-  timer = setInterval(() => { void refreshConfigCacheSwitch(supabase); }, intervalMs);
-  timer.unref?.();
+  const interval = setInterval(() => { void refreshConfigCacheSwitch(supabase); }, intervalMs);
+  interval.unref?.();
+  timer = interval;
 }
 
 /** Shutdown (and tests): stop asking, and go back to the per-client memory. */
