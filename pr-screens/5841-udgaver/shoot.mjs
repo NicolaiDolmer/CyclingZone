@@ -56,7 +56,8 @@ async function shoot(b, kind, key, qs, vw) {
   return { name, errs, docW, vw, banner };
 }
 
-const b = await chromium.launch();
+// Mangler Playwrights egen browser, kan PW_CHANNEL=msedge/chrome bruge den installerede.
+const b = await chromium.launch(process.env.PW_CHANNEL ? { channel: process.env.PW_CHANNEL } : {});
 const out = [];
 for (const [key, qs] of Object.entries(RACE)) for (const vw of [1440, 390]) out.push(await shoot(b, "race", key, qs, vw));
 for (const [key, qs] of Object.entries(CARD)) for (const vw of [1440, 390]) out.push(await shoot(b, "card", key, qs, vw));
@@ -68,6 +69,10 @@ h1{font-size:22px;margin:0 0 4px}p.s{margin:0 0 16px;color:#4c4a5e;font-size:13p
 .c img{display:block;border:1px solid #cfc9bb;background:#fff}</style>`;
 const col = (title, sub, file, w) => `<div class="c"><div class="t">${title} <span>${sub}</span></div><img src="shots/${file}" width="${w}"></div>`;
 const L = { A: "A · Små menuer", B: "B · Fast udgave-linje" };
+const SENT = {
+  A: "Løbssiden får \"Pool B\" og \"Season 5\" som to små menuer i hovedet med vindere og tider, og kalenderkortet får rækken \"Runs in 4 pools\" med en knap pr. pulje, der åbner den puljes løbsside.",
+  B: "Løbssiden får en fast linje i hovedet med alle puljer og sæsoner som knapper (ét klik, din pulje markeret), og kalenderkortet skifter mellem puljerne uden at forlade kalenderen.",
+};
 const comps = [
   { out: "A-1440-loebsside", w: 2940, cols: 2, title: `${L.A}: løbssiden ved 1440 px`, sub: "Øverst til venstre wireframe v6c uændret, de tre andre er variant A. Blå stiplet ramme = det nye.",
     cells: [["Wireframe v6c", "uændret reference", "race-ref-1440.png"], ["A", "Pool-menuen åben", "race-a-pool-1440.png"], ["A", "Season-menuen åben: vindere og tider", "race-a-season-1440.png"], ["A", "Viser Pulje C (ikke holdets)", "race-a-c-1440.png"]], iw: 1440 },
@@ -84,7 +89,8 @@ const comps = [
 ];
 for (const c of comps) {
   const tmpl = c.out.endsWith("kalenderkort") ? `grid-template-columns:repeat(${c.cols === 6 ? 3 : 2},auto)` : `grid-template-columns:repeat(${c.cols},${c.iw}px)`;
-  const html = `${css}<body style="width:${c.w}px"><h1>${c.title}</h1><p class="s">${c.sub}</p><div class="g" style="${tmpl}">${c.cells.map(([t, s, f, w]) => col(t, s, f, w || c.iw)).join("")}</div></body>`;
+  const sent = SENT[c.out[0]];
+  const html = `${css}<body style="width:${c.w}px"><h1>${c.title}</h1><p class="s"><b>${sent}</b><br>${c.sub}</p><div class="g" style="${tmpl}">${c.cells.map(([t, s, f, w]) => col(t, s, f, w || c.iw)).join("")}</div></body>`;
   const f = resolve(DIR, `${c.out}.comp.html`);
   fs.writeFileSync(f, html);
   const p = await b.newPage({ viewport: { width: c.w, height: 900 } });

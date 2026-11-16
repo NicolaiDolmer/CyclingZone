@@ -308,6 +308,7 @@ tr.mine td{background:transparent}.team.mine{border-color:var(--line);background
 .edpop .ft{border-top:1px solid var(--line);margin-top:6px;padding:8px 6px 4px;display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:11.5px;color:var(--t3)}
 /* B: one fixed edition line in the hero */
 .edB{flex-basis:100%;display:flex;gap:8px 10px;align-items:center;flex-wrap:wrap;font-size:12.5px}
+.edB .grp{display:inline-flex;align-items:center;gap:8px;flex-wrap:nowrap}
 .edB .edlab{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--t3);font-weight:700}
 .edB .seg button{min-width:34px;font-variant-numeric:tabular-nums}
 .edB .gap{width:10px}
@@ -324,8 +325,10 @@ tr.mine td{background:transparent}.team.mine{border-color:var(--line);background
 .cchip{display:block;border:1px solid rgba(232,197,71,.4);background:rgba(232,197,71,.07);border-radius:5px;padding:2px 6px;margin-top:4px;font-size:11px;line-height:1.25}
 .cchip.o{border-color:var(--line);background:var(--sub);color:var(--t2)}
 .cchip small{display:block;color:var(--gold-t);font-size:10px}
-.bd{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:40}
-.mwrap{position:fixed;inset:0;z-index:41;display:flex;align-items:center;justify-content:center;padding:16px}
+#cardpage{min-height:calc(100vh - 96px)}
+.bd{position:absolute;inset:0;background:rgba(0,0,0,.6);z-index:40}
+.mwrap{position:absolute;inset:0;z-index:41;display:flex;align-items:flex-start;justify-content:center;padding:72px 16px 16px}
+@media (max-width:640px){.mwrap{padding-top:24px}}
 .mp{position:relative;width:100%;max-width:384px;background:var(--card);border:1px solid var(--line);border-radius:5px;box-shadow:0 20px 50px rgba(0,0,0,.3)}
 .mp .mx{position:absolute;right:12px;top:12px;width:32px;height:32px;border:0;background:none;border-radius:5px;color:var(--t3);display:flex;align-items:center;justify-content:center}
 .mp .mx svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8}
@@ -960,7 +963,7 @@ function ctrlA(){
 }
 function ctrlB(){
   const s = SEASONS[E.season];
-  return `${tag}<span class="edlab">Pool</span><div class="seg" role="group" aria-label="Pool">${lettersOf(s.pools).map(p => `<button type="button" aria-pressed="${p === E.pool}" data-edpool="${p}" ${p === s.mine ? 'title="Your pool"' : ''}>${p}${p === s.mine ? '<span class="medot" aria-label="your pool"></span>' : ''}</button>`).join('')}</div><span class="gap"></span><span class="edlab">Season</span><div class="seg" role="group" aria-label="Season">${Object.keys(SEASONS).map(Number).sort((a, b) => a - b).map(n => `<button type="button" aria-pressed="${n === E.season}" data-edseason="${n}">S${n}</button>`).join('')}</div><span class="hint"><span class="medot"></span> your pool · same dates and route in all ${s.pools} pools</span>`;
+  return `${tag}<span class="grp"><span class="edlab">Pool</span><div class="seg" role="group" aria-label="Pool">${lettersOf(s.pools).map(p => `<button type="button" aria-pressed="${p === E.pool}" data-edpool="${p}" ${p === s.mine ? 'title="Your pool"' : ''}>${p}${p === s.mine ? '<span class="medot" aria-label="your pool"></span>' : ''}</button>`).join('')}</div></span><span class="gap"></span><span class="grp"><span class="edlab">Season</span><div class="seg" role="group" aria-label="Season">${Object.keys(SEASONS).map(Number).sort((a, b) => a - b).map(n => `<button type="button" aria-pressed="${n === E.season}" data-edseason="${n}">S${n}</button>`).join('')}</div></span><span class="hint"><span class="medot"></span> your pool · same dates and route in all ${s.pools} pools</span>`;
 }
 function applyHero(){
   banner();
@@ -970,6 +973,9 @@ function applyHero(){
     let c = document.getElementById('edA');
     if (!c){ c = document.createElement('div'); c.id = 'edA'; c.className = 'edA n5841'; hr.appendChild(c); }
     c.innerHTML = ctrlA();
+    // Hold menuen inde paa skaermen (telefon): skub den, hvis den rammer en kant.
+    const pop = c.querySelector('.edpop');
+    if (pop){ const r = pop.getBoundingClientRect(); if (r.left < 8) pop.style.right = (r.left - 8) + 'px'; }
   } else {
     let c = document.getElementById('edB');
     if (!c){ c = document.createElement('div'); c.id = 'edB'; c.className = 'edB n5841'; document.getElementById('heroAct').before(c); }
