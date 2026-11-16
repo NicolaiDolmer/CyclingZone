@@ -338,6 +338,7 @@ import { handleListPendingRequest, handlePromotePendingRequest } from "../lib/pr
 import { promote as promoteAcademyRider, demote as demoteAcademyRider, resolveDemoteSalary, hasCompleteContract, demoteTargetSquad, handleMoveSquadRequest } from "../lib/academyTransfer.js";
 import { countFutureRaceEntries, countOngoingRaceEntries, clearFutureRaceEntriesSafe } from "../lib/raceEntryCleanup.js";
 import { computeAcademyCurrent, computeAcademyCumulative, buildAcademySales, summarizeAcademyPnl } from "../lib/academyPnl.ts";
+import { isAcademyLedgerEnabled, loadAcademySeasonLedger } from "../lib/academyPnlLoad.ts"; // #8060
 import { buildFictionalPopulationPreview } from "../lib/fictionalPopulationPreview.js";
 import {
   getTeamAcademyCount,
@@ -19483,6 +19484,8 @@ router.get("/academy/pnl", requireAuth, async (req, res) => {
     res.json({
       enabled: true,
       ...summarizeAcademyPnl({ current, driftPaid, signingFeesPaid, sales }),
+      // #8060: regnskab pr. sæson kun bag academy_page_v2_8081; slukket er svaret som før.
+      ...((await isAcademyLedgerEnabled(supabase, { isBetaTester })) ? { ledger: await loadAcademySeasonLedger(supabase, { teamId }) } : {}),
     });
   } catch (err) {
     captureException(err);
