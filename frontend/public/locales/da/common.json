@@ -173,6 +173,14 @@
     "columnsLabel": "Vælg kolonner",
     "moreRight": "Flere kolonner til højre"
   },
+  "expectedDivision": {
+    "label": "Division",
+    "all": "Alle divisioner",
+    "option": "Division {n}",
+    "optionExpected": "Division {n} (forventet)",
+    "note": "Viser division {n}, som du er i nu. Din division i sæson {number} afgøres ved sæsonskiftet.",
+    "plannerBody": "Op- og nedrykning falder først på plads når den nuværende sæson lukker. Nedenfor står sæson {number}-løbene i division {n}, som du er i nu. Vælg en anden division for at studere dens ruter."
+  },
   "networkError": "Kan ikke nå serveren lige nu. Tjek din forbindelse og prøv igen.",
   "push": {
     "title": "Push-notifikationer",

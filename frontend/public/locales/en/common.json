@@ -173,6 +173,14 @@
     "columnsLabel": "Choose columns",
     "moreRight": "More columns to the right"
   },
+  "expectedDivision": {
+    "label": "Division",
+    "all": "All divisions",
+    "option": "Division {n}",
+    "optionExpected": "Division {n} (expected)",
+    "note": "Showing division {n}, the one you are in now. Your division for season {number} is decided at the season switch.",
+    "plannerBody": "Promotion and relegation are settled when the current season closes. Below are the season {number} races of division {n}, the one you are in now. Pick another division to study its routes."
+  },
   "networkError": "Can't reach the server right now. Check your connection and try again.",
   "push": {
     "title": "Push notifications",

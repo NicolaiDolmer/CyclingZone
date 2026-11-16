@@ -173,6 +173,14 @@
     "columnsLabel": "Choisir les colonnes",
     "moreRight": "Plus de colonnes à droite"
   },
+  "expectedDivision": {
+    "label": "Division",
+    "all": "Toutes les divisions",
+    "option": "Division {n}",
+    "optionExpected": "Division {n} (prévue)",
+    "note": "Affichage de la division {n}, celle où tu es maintenant. Ta division pour la saison {number} est fixée au changement de saison.",
+    "plannerBody": "Les montées et descentes sont fixées à la clôture de la saison en cours. Voici les courses de la saison {number} en division {n}, celle où tu es maintenant. Choisis une autre division pour étudier ses parcours."
+  },
   "networkError": "Impossible de joindre le serveur pour le moment. Vérifie ta connexion et réessaie.",
   "push": {
     "title": "Notifications push",

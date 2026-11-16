@@ -15,7 +15,7 @@ import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
 import { reportLoadFailure } from "../../lib/actionTelemetry.js";
-import { Spinner, EmptyState, ErrorState, FlagIcon, Button, ChevronRightIcon } from "../ui";
+import { Spinner, EmptyState, ErrorState, FlagIcon, Button, ChevronRightIcon, InfoIcon } from "../ui";
 import SeasonDayToggle from "./SeasonDayToggle.jsx";
 import SeasonPicker, { neighborSeasons } from "./SeasonPicker.jsx";
 import SeasonChangeoverNote from "./SeasonChangeoverNote.jsx";
@@ -32,6 +32,7 @@ import {
   seasonDayOrdinal,
 } from "../../lib/seasonTimeline.js";
 import { intlLocale } from "../../lib/intlLocale.ts";
+import { expectedPoolId } from "../../lib/calendarGrid.js";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -75,7 +76,7 @@ export function entriesToBands(entries, ownPoolId) {
 }
 
 export default function SeasonView({ onSwitchView }) {
-  const { t, i18n } = useTranslation("races");
+  const { t, i18n } = useTranslation(["races", "common"]);
   const [params, setParams] = useSearchParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -181,7 +182,14 @@ export default function SeasonView({ onSwitchView }) {
 
   const model = useMemo(() => {
     if (!data?.season) return null;
-    const bands = entriesToBands(data.entries, data.ownPoolId);
+    // #5841: for en kommende sæson er holdets pulje ukendt før skiftet (ownPoolId null), og
+    // visningen var derfor altid tom. Vi viser i stedet én pulje fra holdets nuværende division,
+    // mærket "forventet". Puljerne i en division kører de samme løb, så én pulje er hele billedet.
+    const bandPoolId = data.ownPoolId ?? (data.divisionPending
+      ? expectedPoolId({ divisions: data.divisions, entries: data.entries, expectedDivision: data.expectedDivision ?? null })
+      : null);
+    const expected = data.ownPoolId == null && bandPoolId != null;
+    const bands = entriesToBands(data.entries, bandPoolId);
     if (!bands.length) return { empty: true };
     const rail = seasonRange(bands);
     // Boardets ?day=-akse er forankret i sæsonens TIDLIGSTE dato på tværs af
@@ -226,7 +234,8 @@ export default function SeasonView({ onSwitchView }) {
       },
       readOnly: activeNumber != null && data.season.number !== activeNumber,
       upcoming: activeNumber != null && data.season.number > activeNumber,
-      division: (data.entries || []).find((e) => e.poolId === data.ownPoolId)?.division ?? null,
+      division: expected ? data.expectedDivision : (data.entries || []).find((e) => e.poolId === data.ownPoolId)?.division ?? null,
+      expected,
     };
   }, [data, todayIso]);
 
@@ -350,15 +359,18 @@ export default function SeasonView({ onSwitchView }) {
           <span className="text-xs text-cz-2 truncate">
             {t("seasonView.meta", {
               season: data.season.number,
-              division: t("seasonView.divisionLabel", { n: model.division ?? "?" }),
+              division: model.expected
+                ? t("common:expectedDivision.optionExpected", { n: model.division })
+                : t("seasonView.divisionLabel", { n: model.division ?? "?" }),
               count: model.bands.length,
               start: fmt.range(rail.startIso),
               end: fmt.range(rail.endIso),
             })}
           </span>
-          {/* #4102: tydelig start-markering når man browser en kommende sæson read-only. */}
+          {/* #4102: tydelig start-markering når man browser en kommende sæson read-only.
+              #5841: tekst i stedet for en guld-tonet pille (TASTE: ingen piller, ingen guld-tint). */}
           {model.upcoming && (
-            <span className="rounded-full border border-cz-accent/40 bg-cz-accent/10 px-2 py-0.5 font-data text-2xs font-semibold text-cz-accent-t whitespace-nowrap">
+            <span className="text-xs font-semibold text-cz-1 whitespace-nowrap">
               {t("seasonView.startsOn", { date: fmt.panel(rail.startIso) })}
             </span>
           )}
@@ -367,6 +379,15 @@ export default function SeasonView({ onSwitchView }) {
           {model.readOnly ? t("seasonView.readOnlyHint") : t("seasonView.hint")}
         </span>
       </div>
+
+      {/* #5841: ÉN linje kontekst (samme stil som kalenderens divisionPending-linje): divisionen
+          er et gæt indtil sæsonskiftet, ikke et løfte. */}
+      {model.expected && (
+        <p className="mb-4 flex items-start gap-1.5 text-[13px] text-cz-2" data-testid="season-view-expected-division">
+          <InfoIcon size={14} aria-hidden="true" className="mt-[3px] shrink-0 text-cz-3" />
+          <span>{t("common:expectedDivision.note", { n: model.division, number: data.season.number })}</span>
+        </p>
+      )}
 
       <div className="rounded-cz border border-cz-border bg-cz-card p-4 sm:p-5">
         {/* Vandret scroll i EGEN container på smalle skærme — aldrig side-scroll på body */}

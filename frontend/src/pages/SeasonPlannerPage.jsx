@@ -7,9 +7,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { PageLoader, EmptyState, ErrorState, Section, Button, GripVerticalIcon, CalendarIcon, XIcon, Tabs, TabList, Tab, TabPanel } from "../components/ui";
+import { PageLoader, EmptyState, ErrorState, Section, Button, Select, GripVerticalIcon, CalendarIcon, XIcon, Tabs, TabList, Tab, TabPanel } from "../components/ui";
 import { usePlanner } from "../lib/usePlanner";
-import { nextPlannableSeason, effectivePlannerFilter } from "../components/planner/plannerShared";
+import { nextPlannableSeason, effectivePlannerFilter, plannerDivisions, defaultPlannerDivision, plannerBoardRaces } from "../components/planner/plannerShared";
 import { plannerStatusSummary, pendingSuggestionPairs, ridersWithSuggestions } from "../components/planner/plannerSquadModel";
 import MasterCanvas from "../components/planner/MasterCanvas";
 import MobileLanes from "../components/planner/MobileLanes";
@@ -76,14 +76,20 @@ function NextSeasonNudge({ t, nextSeason, onSwitch, onDismiss }) {
 // planlæggeren siger det rent ud og viser hele kalenderen på tværs af divisioner
 // i stedet for at udpege en forkert. Ingen dismiss-knap — det her er ikke en
 // nudge man kan vælge fra, det er grunden til at brættet ser anderledes ud.
-function DivisionPendingNotice({ t, seasonNumber }) {
+// #5841: når den forventede division kendes, viser brættet den (ikke alle divisioner), og
+// brødteksten siger det; ellers den oprindelige tekst om alle divisioners løb.
+function DivisionPendingNotice({ t, seasonNumber, expectedDivision = null }) {
   return (
     <Section borderClass="border-cz-accent-t" className="mb-[14px] bg-cz-subtle">
       <div className="flex items-start gap-2">
         <CalendarIcon size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-cz-accent-t" />
         <div className="min-w-0">
           <p className="text-[15px] font-semibold text-cz-1">{t("divisionPending.title", { number: seasonNumber })}</p>
-          <p className="mt-1 text-[13px] text-cz-2">{t("divisionPending.body", { number: seasonNumber })}</p>
+          <p className="mt-1 text-[13px] text-cz-2">
+            {expectedDivision != null
+              ? t("common:expectedDivision.plannerBody", { number: seasonNumber, n: expectedDivision })
+              : t("divisionPending.body", { number: seasonNumber })}
+          </p>
           <p className="mt-1 text-2xs text-cz-3">{t("divisionPending.hint", { number: seasonNumber })}</p>
         </div>
       </div>
@@ -99,11 +105,11 @@ function DivisionPendingNotice({ t, seasonNumber }) {
 // T2's cap er et loft, ikke et krav — en dataTABEL vinder på bredde, et fast-format
 // bræt gør ikke.
 export default function SeasonPlannerPage() {
-  const { t } = useTranslation("planner");
+  const { t } = useTranslation(["planner", "common"]);
   // #2518: sæson-vælger (S1/S2/...) — null = backend defaulter til aktiv sæson.
   const [seasonNumber, setSeasonNumber] = useState(null);
   const planner = usePlanner(seasonNumber);
-  const { enabled, loading, error, season, availableSeasons, divisionPending, riders, races, maxPerRider, today, leadupDays, paybackDays, busy } = planner;
+  const { enabled, loading, error, season, availableSeasons, divisionPending, expectedDivision, riders, races, maxPerRider, today, leadupDays, paybackDays, busy } = planner;
 
   // #3086: fanerne synkroniseres til URL'en (samme mønster som Finance/#986), så
   // et dybt link til fx Sæson lander rigtigt og en refresh ikke smider manageren
@@ -122,6 +128,20 @@ export default function SeasonPlannerPage() {
   // #3018: uden en afgjort division findes der ingen "mine løb" — tving hele
   // kalenderen frem i stedet for at lade default-filteret tegne et tomt bræt.
   const viewFilter = effectivePlannerFilter(filter, divisionPending);
+  // #5841: divisionsvælger når brættet viser alle løb ("Alle løb", eller en kommende sæson).
+  // undefined = intet eksplicit valg endnu → holdets division (kommende sæson: den forventede).
+  // null = alle divisioner. Puljernes ens løb står én gang (plannerBoardRaces).
+  const [divisionChoice, setDivisionChoice] = useState(undefined);
+  const defaultDivision = useMemo(
+    () => defaultPlannerDivision(races, { divisionPending, expectedDivision }),
+    [races, divisionPending, expectedDivision],
+  );
+  const activeDivision = divisionChoice === undefined ? defaultDivision : divisionChoice;
+  const divisionOptions = useMemo(() => plannerDivisions(races), [races]);
+  const boardRaces = useMemo(
+    () => (viewFilter === "all" ? plannerBoardRaces(races, { division: activeDivision }) : races),
+    [races, viewFilter, activeDivision],
+  );
   const [selected, setSelected] = useState(null); // { mode: "race"|"rider", id }
   const [toast, setToast] = useState(null); // { kind: "error"|"ok", text }
   // #2883 sæson-nudge: gemmer ID'et på den sæson der er afvist (ikke bare et bool),
@@ -258,7 +278,7 @@ export default function SeasonPlannerPage() {
                 <button
                   key={s.id}
                   className={`px-3 py-1.5 ${(seasonNumber ?? season?.number) === s.number ? "bg-cz-sidebar text-cz-body" : "bg-transparent text-cz-2 hover:bg-cz-subtle"}`}
-                  onClick={() => setSeasonNumber(s.number)}
+                  onClick={() => { setSeasonNumber(s.number); setDivisionChoice(undefined); }}
                 >{t("seasonMenu.option", { number: s.number })}</button>
               ))}
             </div>
@@ -267,6 +287,29 @@ export default function SeasonPlannerPage() {
         {/* #3018: mine/alle-filteret skjules når divisionen ikke er afgjort —
             "Mine løb" ville matche nul løb, og at tilbyde et valg der ikke
             findes er netop den slags flade testerne kaldte ubrugelig. */}
+        {/* #5841: divisionsvælgeren. Kun når alle løb vises; "Mine løb" er allerede én division. */}
+        {viewFilter === "all" && divisionOptions.length > 1 && (
+          <div className="flex items-center gap-1.5">
+            <span className="hidden sm:inline text-3xs text-cz-3 uppercase tracking-wide">{t("common:expectedDivision.label")}</span>
+            <Select
+              size="sm"
+              value={activeDivision ?? ""}
+              onChange={(e) => setDivisionChoice(e.target.value === "" ? null : Number(e.target.value))}
+              aria-label={t("common:expectedDivision.label")}
+              className="w-48"
+              data-testid="planner-division"
+            >
+              <option value="">{t("common:expectedDivision.all")}</option>
+              {divisionOptions.map((d) => (
+                <option key={d} value={d}>
+                  {divisionPending && d === expectedDivision
+                    ? t("common:expectedDivision.optionExpected", { n: d })
+                    : t("common:expectedDivision.option", { n: d })}
+                </option>
+              ))}
+            </Select>
+          </div>
+        )}
         {!divisionPending && (
           <div className="flex border border-cz-border rounded-cz overflow-hidden text-2xs">
             {["mine", "all"].map((f) => (
@@ -289,7 +332,7 @@ export default function SeasonPlannerPage() {
       {/* #3018: den ærlige tilstand når divisionen for den valgte sæson ikke er
           afgjort endnu. Vist FØR alt andet, så den aldrig kan læses som en
           fodnote til et bræt der ser ud til at være "din" kalender. */}
-      {divisionPending && <DivisionPendingNotice t={t} seasonNumber={season?.number ?? seasonNumber} />}
+      {divisionPending && <DivisionPendingNotice t={t} seasonNumber={season?.number ?? seasonNumber} expectedDivision={expectedDivision} />}
 
       {/* #2883: proaktiv nudge mod en senere oprettet sæson (fx S2 op mod cutover)
           — vist UANSET pladsmangel/tom-state nedenfor, så beskeden aldrig kan
@@ -363,7 +406,7 @@ export default function SeasonPlannerPage() {
                   </span>
                 </div>
                 <MasterCanvas
-                  riders={riders} races={races} today={today} leadupDays={leadupDays}
+                  riders={riders} races={boardRaces} today={today} leadupDays={leadupDays}
                   filter={viewFilter}
                   selectedRaceId={selected?.mode === "race" ? selected.id : null}
                   selectedRiderId={selected?.mode === "rider" ? selected.id : null}
@@ -383,7 +426,7 @@ export default function SeasonPlannerPage() {
               {/* Mobil stakket spor — uændret. */}
               <div className="md:hidden">
                 <MobileLanes
-                  riders={riders} races={races} filter={viewFilter} today={today}
+                  riders={riders} races={boardRaces} filter={viewFilter} today={today}
                   selectedRaceId={selected?.mode === "race" ? selected.id : null}
                   selectedRiderId={selected?.mode === "rider" ? selected.id : null}
                   onSelectRace={(id) => setSelected({ mode: "race", id })}
