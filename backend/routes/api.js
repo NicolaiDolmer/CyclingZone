@@ -256,7 +256,7 @@ import { programForChoice, normalizeProgram, smartDefaultSession } from "../lib/
 import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer, V3_TRAINING_FOCUSES } from "../lib/trainingCatalogV3.js"; // #5319
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, isValidWeekPlanDays, cappedVisibleAbilities } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
-import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
+import { readFlagStage, evaluateFlagStage, clearFlagStageCache } from "../lib/featureStage.js";
 import {
   STAGE_FLAGS, findStageFlag, isValidFlagStage, normalizeStageValue,
   PLAYER_VISIBLE_BINARY_FLAG_KEYS, // #6181
@@ -15851,6 +15851,7 @@ router.patch("/admin/feature-flags/:key", requireAdmin, adminWriteLimiter, async
       { onConflict: "key" },
     );
     if (error) throw error;
+    clearFlagStageCache({ client: supabase, key }); // #8143 (H): skiftet slår igennem straks
 
     // best-effort: flaget ER flyttet. En fejlet log-raekke maa ikke faa admin
     // til at trykke igen paa noget der allerede er sket.
