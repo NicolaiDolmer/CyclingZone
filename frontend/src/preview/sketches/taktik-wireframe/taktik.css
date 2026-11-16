@@ -150,7 +150,7 @@
 .twf .foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; font-size: 12.5px; color: var(--t3) }
 
 /* popover (eneste sted med skygge: overlay) */
-.twf-pop { position: fixed; z-index: 20; width: 300px; max-width: calc(100vw - 32px); background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 5px; box-shadow: 0 10px 30px rgba(14,15,21,.18); padding: 6px; color: var(--text-1); font-family: 'DM Sans', system-ui, sans-serif; font-size: 14px }
+.twf-pop { position: fixed; z-index: 20; width: 300px; max-width: calc(100vw - 32px); background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 5px; padding: 6px; color: var(--text-1); font-family: 'DM Sans', system-ui, sans-serif; font-size: 14px }
 .twf-pop .h { font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--text-3); text-transform: uppercase; padding: 4px 6px }
 .twf-pop .o { all: unset; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px; border-radius: 5px; font-size: 12.5px; width: calc(100% - 12px) }
 .twf-pop .o:hover { background: var(--bg-subtle) }

@@ -326,7 +326,7 @@ export function TacticsPanel({ s, set }: { s: TacState; set: SetTac }) {
       </section>
 
       {pop && createPortal(
-        <div className="twf-pop" role="dialog" style={{ left: pop.x, top: pop.y }}>{pop.body}</div>,
+        <div className="twf-pop shadow-overlay" role="dialog" style={{ left: pop.x, top: pop.y }}>{pop.body}</div>,
         document.body,
       )}
     </div>
