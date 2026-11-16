@@ -127,6 +127,7 @@ test("#7627 every new string parses through ICU in all five languages", async ()
 test("#7627 the race share is neutral and hatched, never the gold accent", () => {
   const html = render(run([raced, trainedOnly])) + table(raced);
   assert.doesNotMatch(html, /h-(?:2|full)[^"]*bg-cz-accent/, "one gold primary per view: the race share must not use gold");
+  assert.match(html, /data-race-fill/, "race fill is the neutral hatched fill");
   assert.match(html, /bg-cz-2/, "race fill is a neutral token");
-  assert.match(html, /repeating-linear-gradient/, "race is told from training by pattern, not colour alone");
+  assert.match(html, /<pattern /, "race is told from training by pattern, not colour alone");
 });
