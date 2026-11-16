@@ -5,6 +5,7 @@ import {
   normalizeSelectionReminder,
   resolveNavDotTone,
   deadlineCountdown,
+  pickHeaderRace,
   EMPTY_SELECTION_REMINDER,
 } from "./selectionReminder.ts";
 
@@ -117,4 +118,14 @@ test("deadlineCountdown: passeret frist er 'past', ikke et negativt tal", () => 
   assert.deepEqual(deadlineCountdown(0), { unit: "past", value: 0 });
   assert.deepEqual(deadlineCountdown(-3), { unit: "past", value: 0 });
   assert.deepEqual(deadlineCountdown(Number.NaN), { unit: "past", value: 0 });
+});
+
+// #8069 T01 + Codex-review #8317
+test("pickHeaderRace: roed tone vaelger tidligste roede loeb, ikke et tidligere gult", () => {
+  const race = (id: string, hours_until: number, tone: "warning" | "urgent") =>
+    ({ id, name: id, deadline_at: "2026-11-17T00:00:00Z", hours_until, entry_count: 5, target_size: 8, tone });
+  const base = { enabled: true, count: 2, window_hours: 36, urgent_hours: 24 };
+  assert.equal(pickHeaderRace({ ...base, tone: "urgent", races: [race("gul", 4, "warning"), race("roed", 8, "urgent")] })?.id, "roed");
+  assert.equal(pickHeaderRace({ ...base, tone: "warning", races: [race("b", 30, "warning"), race("a", 12, "warning")] })?.id, "a");
+  assert.equal(pickHeaderRace({ ...base, tone: "none", races: [] }), null);
 });
