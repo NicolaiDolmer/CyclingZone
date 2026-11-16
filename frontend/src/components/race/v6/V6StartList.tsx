@@ -51,7 +51,7 @@ function useStartListField(raceId: string | null, enabled: boolean, attempt: num
     let alive = true;
     Promise.all([
       db.from("race_entries")
-        .select("rider_id, team_id, rider:rider_id(id, firstname, lastname, nationality_code, birthdate, primary_type, secondary_type, best_role_rating), team:team_id(id, name)")
+        .select("rider_id, team_id, rider:rider_id(id, firstname, lastname, nationality_code, birthdate, primary_type, best_role_rating), team:team_id(id, name)")
         .eq("race_id", raceId),
       db.from("race_withdrawals").select("team_id").eq("race_id", raceId),
       db.from("races").select("season:season_id(number)").eq("id", raceId).maybeSingle(),
@@ -245,7 +245,8 @@ export default function V6StartList({ raceId, isStageRace, stagesCompleted, resu
                           <RiderLink id={r.riderId} className="truncate text-cz-1 hover:text-cz-accent-t">{r.name || "?"}</RiderLink>
                           {r.u25 && <RiderBadges badges={["u25"]} className="flex-none" />}
                         </span>
-                        <RiderTypeBadge primaryType={r.primaryType} secondaryType={r.secondaryType} size="sm" />
+                        {/* Kun hovedtypen: navnet skal have pladsen i holdets smalle kort. */}
+                        <RiderTypeBadge primaryType={r.primaryType} size="sm" />
                         <span className="text-right font-data text-xs tabular-nums text-cz-2" title={t("racePageV6.start.rating")}>{r.rating ?? ""}</span>
                       </li>
                     ))}

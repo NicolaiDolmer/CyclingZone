@@ -28,7 +28,6 @@ export interface StartListEntry {
     nationality_code?: string | null;
     birthdate?: string | null;
     primary_type?: string | null;
-    secondary_type?: string | null;
     best_role_rating?: number | null;
   } | null;
   team?: { id?: string | null; name?: string | null } | null;
@@ -41,7 +40,6 @@ export interface StartListRider {
   lastname: string;
   nation: string | null;
   primaryType: string | null;
-  secondaryType: string | null;
   rating: number | null;
   u25: boolean;
 }
@@ -97,7 +95,6 @@ export function buildStartList(
           lastname,
           nation: e.rider?.nationality_code ? String(e.rider.nationality_code).toLowerCase() : null,
           primaryType: e.rider?.primary_type ?? null,
-          secondaryType: e.rider?.secondary_type ?? null,
           rating: Number.isFinite(rating) ? Number(rating) : null,
           u25: seasonYear != null && isU25(e.rider?.birthdate ?? null, seasonYear),
         };
