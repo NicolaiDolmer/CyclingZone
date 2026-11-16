@@ -790,6 +790,25 @@ function extractInvestigateVerdict(reportText) {
   return null
 }
 
+// SPEJLING af findDeliveredPr() i scripts/wave-freeze.mjs (#8233). Sporets PR
+// fra reviewerens pr-felt eller fra en 'PR: <url>'-linje i lanens slutrapport
+// (andre PR-links i rapporten er kilder, ikke levering); ellers null.
+function findDeliveredPr(row) {
+  if (!row || typeof row !== 'object') return null
+  const pr = String(row.pr || '').trim()
+  if (/pull\/\d+|#\d+|^\d+$/.test(pr)) return pr
+  const m = String(row.report || '').match(/^[\s>*-]*PR(?:-URL)?\**\s*:\**\s*<?(https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+)/im)
+  return m ? m[1] : null
+}
+
+// SPEJLING af isNotDelivered() i scripts/wave-freeze.mjs (#8233). Et spor der
+// sluttede uden PR er 'not-delivered'; stoppede spor staar allerede i stopped.
+function isNotDelivered(row) {
+  const finished = ['bygget', 'rettet', 'rettelse-mangler', 'undersoegt', 'undersoegt-ufuldstaendig']
+  if (!row || !finished.includes(row.status)) return false
+  return findDeliveredPr(row) === null
+}
+
 // Per-spor-timeout. VIGTIGT (natboelgen 5-6/9): en timeout frigiver IKKE lanen
 // hos den frosne agent - den frosne holder sin plads i samtidigheds-loftet.
 // Timeouten er en oevre graense paa hvor laenge lane-poolen VENTER paa et spor,
@@ -825,16 +844,33 @@ function investigateBlok(track) {
   ].join('\n')
 }
 
+// #8233: et undersoegelsesspors rapport maa aldrig kun ende i scratch (to
+// gange 16/11 gik et resultat naesten tabt). Rapporten committes som fil paa
+// sporets egen branch og leveres i en draft-PR; scripts/make-wave-brief.mjs
+// skriver samme krav ind i den fil-genererede brief.
+function investigateLeveranceLines(track) {
+  const reportFile = `docs/audits/undersoegelse-${track.slug}.md`
+  const msgFile = `${track.scratch}\\msg-${track.slug}.txt`
+  return [
+    'Leverance (#8233, bindende): rapporten SKAL ende i en draft-PR, aldrig kun i scratch.',
+    `1. Skriv rapporten med Write-vaerktoejet til ${track.worktree}\\${reportFile.replace(/\//g, '\\')} (offentligt repo: ingen praecise balance-tal, holdnavne, brugernavne, id'er eller e-mails).`,
+    `2. Commit-beskeden skrives til ${msgFile} (aldrig heredoc), med "Refs #${track.issue}".`,
+    `3. \`git -C "${track.worktree}" add ${reportFile}\` (kun den fil), og commit KUN bag guarden: \`bash "${track.worktree}/scripts/guard-commit-branch.sh" ${track.branch} "${track.worktree}" && git -C "${track.worktree}" commit -F "${msgFile}"\`. Blokerer guarden: STOP og rapporter det.`,
+    `4. \`git -C "${track.worktree}" push -u origin ${track.branch}\`.`,
+    `5. \`gh pr create --draft --base main --head ${track.branch} --title "docs(audit): undersoegelse af #${track.issue}" --body "Refs #${track.issue} - undersoegelsesspor (kind: investigate). Dom og bevis i ${reportFile}." --label docs-only\`. Ikke Closes, aldrig \`gh pr ready\`, aldrig merge.`,
+  ]
+}
+
 function laneBrief(track) {
   // Briefen ligger som fil (genereret af scripts/make-wave-brief.mjs), saa de
   // bindende blokke kommer fra EEN kilde og ikke kan drifte fra dette script.
   // De faa gates der ALDRIG maa mangle staar alligevel her, saa en lane ikke
   // staar helt uden regler hvis fil-laesningen fejler.
   //
-  // CodeRabbit (denne PR): et investigate-spor bygger intet - de generelle
-  // build-gates (commit-guard, draft-PR, CodeRabbit-CLI, Refs-i-PR-body) er
-  // ALLE meningsloese og selvmodsigende her ("bygger intet" men faar besked
-  // om commit-guarden). Egen, trimmet gren i stedet for at genbruge byggeteksten.
+  // CodeRabbit (#5220): et investigate-spor bygger ingen kode - build-gates som
+  // livstegn, TIER-verifikation og CodeRabbit-CLI er meningsloese her. Egen,
+  // trimmet gren i stedet for at genbruge byggeteksten. #8233: rapporten
+  // committes dog og leveres i en draft-PR (investigateLeveranceLines).
   if (track.kind === 'investigate') {
     return [
       `WAVE-LANE: #${track.issue} ${track.branch} (undersoegelsesspor, kind: investigate, #5220)`,
@@ -846,17 +882,19 @@ function laneBrief(track) {
       `FOERSTE HANDLING: laes HELE din brief: ${track.briefPath}`,
       'Den er din fulde kontrakt. Foelg den ordret. Kan du ikke laese den, saa STOP og rapporter det - gaet ikke.',
       '',
-      'Dette spor bygger INTET: intet commit, ingen push, ingen PR. Gates der gaelder uanset hvad:',
-      `- Arbejdsmappe (kun til at LAESE/reproducere i, aendr intet): ${track.worktree}.`,
+      'Dette spor bygger INTET (ingen kode-aendring), men leverer sin rapport i en draft-PR (#8233). Gates der gaelder uanset hvad:',
+      `- Arbejdsmappe: ${track.worktree}. Aendr ingen kode; den eneste fil du skriver der, er rapporten.`,
       '- INGEN baggrundsjob, alt i FORGRUNDEN, ingen under-agenter.',
-      `- Fast vindue paa ${WAVE_FREEZE.INVESTIGATE_TIMEOUT_MINUTES} min - IKKE forlaengeligt.`,
+      `- Fast vindue paa ${WAVE_FREEZE.INVESTIGATE_TIMEOUT_MINUTES} min - IKKE forlaengeligt. Lever PR'en i god tid inden vinduet lukker.`,
       '',
       `Issue: #${track.issue} - ${track.title}`,
       track.scopeText ? `Scope: ${track.scopeText}` : '',
       '',
       investigateBlok(track),
       '',
-      'Slutrapport (kort, dansk): hvad du undersoegte og hvordan. Din SIDSTE saetning SKAL vaere PRAECIS en af de to domme ovenfor - intet commit, ingen PR.',
+      ...investigateLeveranceLines(track),
+      '',
+      `Slutrapport (kort, dansk): hvad du undersoegte og hvordan, og din egen rapport-PR paa sin egen linje ("PR: https://github.com/.../pull/N" - kun den linje taeller som levering, andre PR-links er kilder). Uden den linje melder boelgen sporet 'not-delivered'. Din SIDSTE saetning SKAL vaere PRAECIS en af de to domme ovenfor.`,
     ].filter(Boolean).join('\n')
   }
 
@@ -1084,6 +1122,10 @@ function trackConfigRow(t) {
     // #6344: lane-agenten faar effort direkte i agent()-kaldet; feltet her er info.
     effort: t.effort,
     kind: t.kind,
+    // #8233: Claude-boelgens undersoegelsesspor leverer rapporten i en draft-PR.
+    // Codex-runtimen (scripts/codex-wave.mjs) har read-only .git for
+    // undersoegelser og saetter det ikke - dens brief er uaendret.
+    deliverPr: true,
     title: t.title,
     scopeText: t.scopeText,
     ownership: t.ownership,
@@ -1596,6 +1638,8 @@ async function runInvestigateTrack(track) {
   const reportText = String(build)
   const verdict = extractInvestigateVerdict(reportText)
   row.report = reportText.slice(0, 4000)
+  // #8233: PR-URL'en kan staa efter de 4000 tegn - find den i hele rapporten.
+  row.pr = findDeliveredPr({ report: reportText }) || 'ingen'
   if (verdict) {
     row.status = 'undersoegt'
     row.verdict = verdict
@@ -1721,6 +1765,8 @@ async function runTrack(track, trackTimeoutMinutes) {
   }
   row.status = 'bygget'
   row.report = String(build).slice(0, 4000)
+  // #8233: lanens egen PR-URL, hvis reviewet ikke naar at melde en.
+  row.pr = findDeliveredPr({ report: String(build) }) || 'ingen'
 
   // Reviewer har sit eget, kortere vindue og faar praecis EET gen-spawn
   // (#5178, punkt 3 i issuet). Tavshed er her billig at teste igen.
@@ -1768,7 +1814,7 @@ async function runTrack(track, trackTimeoutMinutes) {
   row.review = review.verdict
   if (row.recovery) row.recovery.review = row.review
   row.reviewSummary = review.summary
-  row.pr = review.pr || 'ingen'
+  row.pr = findDeliveredPr({ pr: review.pr }) || row.pr
   // #7587: en ikke-blokerende dom bliver til Claude-markoeren paa PR'en, saa
   // review-gate ikke staar roed paa en klar PR. BLOKERENDE skriver intet; efter
   // et ret-trin skal det nye commit reviewes igen.
@@ -2228,7 +2274,7 @@ for (const m of markerTracks) {
 }
 
 const stopped = results.filter((r) => r.status === 'frys' || r.status === 'timeout' || r.status === 'investigate-timeout' || r.status === 'undersoegt-ufuldstaendig' || r.status === 'doed' || r.status === 'fejl')
-log(`Boelge slut: ${results.length} spor koert, ${stopped.length} stoppet, ${skipped.length} sprunget over, ${unstarted.length} ikke startet (af ${allTracks.length} kendte, heraf ${allTracks.length - tracks.length} via rullende optag i ${intakeRuns} intake-kald efter ${intakeChecks} billige tjek; ${selfStoppedLanes.length} lane(r) stoppede sig selv).`)
+log(`Boelge slut: ${results.length} spor koert, ${stopped.length} stoppet, ${results.filter((r) => isNotDelivered(r)).length} not-delivered, ${skipped.length} sprunget over, ${unstarted.length} ikke startet (af ${allTracks.length} kendte, heraf ${allTracks.length - tracks.length} via rullende optag i ${intakeRuns} intake-kald efter ${intakeChecks} billige tjek; ${selfStoppedLanes.length} lane(r) stoppede sig selv).`)
 // Et worktree der stadig er dirty efter den graceful stop-agent skal ses af et
 // menneske - det er praecis den tilstand boelge 2 den 11/9 efterlod usynligt.
 // Fire tilstande der alle skal raabes op, og ingen flere:
@@ -2259,6 +2305,12 @@ for (const r of results.filter((x) => x.status === 'timeout')) {
 }
 for (const r of results.filter((x) => x.status === 'investigate-timeout')) {
   log(`ADVARSEL: #${r.issue} ${r.branch} (undersoegelsesspor) svarede ikke inden ${WAVE_FREEZE.INVESTIGATE_TIMEOUT_MINUTES} min - ingen dom modtaget. Ingen forlaengelse per design (#5220); relancér som et nyt undersoegelsesspor om noedvendigt.`)
+}
+// #8233: et spor der sluttede uden PR har ikke leveret - heller ikke et
+// undersoegelsesspor. Raabes op, saa resultatet ikke kun ligger i scratch.
+const notDelivered = results.filter((r) => isNotDelivered(r))
+for (const r of notDelivered) {
+  log(`ADVARSEL not-delivered: #${r.issue} ${r.branch} (${r.status}) sluttede uden PR - resultatet ligger kun i worktreet/scratch. Faa det committet i en draft-PR, foer sporet regnes som leveret.`)
 }
 for (const r of results.filter((x) => x.status === 'undersoegt-ufuldstaendig')) {
   log(`ADVARSEL: #${r.issue} ${r.branch} (undersoegelsesspor) leverede IKKE en af de to tvungne domme (#5220) - se r.report i resultatet. Kraev en ny dom, accepter ALDRIG stiltiende.`)
@@ -2293,6 +2345,8 @@ return {
   dirtyWorktrees: stillDirty.map((r) => ({ issue: r.issue, branch: r.branch, gracefulStop: r.gracefulStop })),
   skipped: skipped.map((s) => ({ issue: s.issue, branch: s.branch, reason: s.reason })),
   stopped: stopped.map((s) => ({ issue: s.issue, branch: s.branch, status: s.status, note: s.note, gracefulStop: s.gracefulStop, recovery: s.recovery })),
+  // #8233: spor der sluttede uden PR (status 'not-delivered' i rapporten).
+  notDelivered: notDelivered.map((r) => ({ issue: r.issue, branch: r.branch, status: 'not-delivered', trackStatus: r.status, worktree: r.worktree || '', note: 'sporet sluttede uden PR' })),
   unstarted,
   tracks: results,
 }
