@@ -65,7 +65,10 @@ export async function pressMidway(seed, {
     supabase: fake.supabase, team: structuredClone(state.teams[0]), season: SEASON, isBetaTester, now: at, logger: QUIET,
     loadDaySpans: async () => new Map(), confirmedShortRaceIds: state.races.map((row) => row.id),
     ...(runDay ? { runDay } : {}),
-  })).catch((err) => ({ status: `kast: ${err.message}` }));
+  })).catch((err) => {
+    // swallow-ok: et kast ER trykkets svar i prøven; det gemmes som status og sammenlignes.
+    return { status: `kast: ${err.message}` };
+  });
   fake.ctx.tryk += 1;
   const response = await once(now);
   const retry = retryOnThrow && typeof response.status === "string" ? await once(new Date(now.getTime() + 60_000)) : null;
