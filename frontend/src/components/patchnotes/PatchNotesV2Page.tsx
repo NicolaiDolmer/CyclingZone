@@ -165,18 +165,25 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }: { 
   const q = normalizeQuery(debouncedQuery);
   const searching = q.length >= SEARCH_MIN;
   const [index, setIndex] = useState<IndexState>({ status: "idle", lang: null, items: [] });
-  // Sproget hvis indeks er hentet. Sættes først ved svar, så en afbrudt eller fejlet
-  // hentning prøves igen ved næste søgning.
-  const indexLoadedRef = useRef<string | null>(null);
+  // Hentede indekser pr. sprog. Kun et færdigt svar gemmes, så en afbrudt eller fejlet
+  // hentning prøves igen ved næste søgning, og et sprogskift midt i en hentning kan
+  // aldrig markere det forkerte sprog som hentet (Codex 16/11).
+  const indexCacheRef = useRef<Map<string, PatchItem[]>>(new Map());
   useEffect(() => {
-    if (!searching || indexLoadedRef.current === lang) return undefined;
+    if (!searching) return undefined;
+    const cached = indexCacheRef.current.get(lang);
+    if (cached) {
+      setIndex((cur) => (cur.status === "ready" && cur.lang === lang ? cur : { status: "ready", lang, items: cached }));
+      return undefined;
+    }
     let active = true;
     setIndex({ status: "loading", lang, items: [] });
     loadPatchNotesFile(patchNotesIndexUrl(lang))
       .then((data: { items?: PatchItem[] }) => {
+        const items = data.items || [];
+        indexCacheRef.current.set(lang, items);
         if (!active) return;
-        indexLoadedRef.current = lang;
-        setIndex({ status: "ready", lang, items: data.items || [] });
+        setIndex({ status: "ready", lang, items });
       })
       .catch(() => { if (active) setIndex({ status: "error", lang, items: [] }); });
     return () => { active = false; };
