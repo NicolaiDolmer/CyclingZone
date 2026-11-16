@@ -38,8 +38,24 @@ export function film7861Timeline(url: string): unknown | null {
   if (!url.includes(`/api/races/${RACE}/timeline?`)) return null;
   const q = query(url);
   if (!q || q.get("stage") !== String(STAGE)) return null;
-  const { story, ...timeline } = FILM_7861_TIMELINE;
+  const { story, ...base } = FILM_7861_TIMELINE;
+  const timeline = { ...base, events: withClimbAttacks(base.events) };
   return q.get("story") === "1" ? { ...timeline, story } : timeline;
+}
+
+/**
+ * Runde 3 (#7965): motorens opsummering af "alt ud"/angreb på etapens sidste stigning
+ * (stemplet ved toppen), så referatets angrebslinjer kan ses på preview: en egen rytter
+ * holder angrebet, en anden løber tør. Lagt ind lige efter toppassagen.
+ */
+const CLIMB_ATTACKS_7965 = [
+  { km: 121, type: "all_out_gain", params: { rider_id: "rider-1", exact_km: 121, exact_time: 10333.4 } },
+  { km: 121, type: "all_out_cracked", params: { rider_id: "rider-702", exact_km: 121, exact_time: 10333.4 } },
+];
+function withClimbAttacks<T extends { km: number; type: string }>(events: readonly T[]): T[] {
+  const at = events.findIndex((e) => e.type === "kom_passage" && e.km === 121);
+  if (at < 0) return [...events];
+  return [...events.slice(0, at + 1), ...(CLIMB_ATTACKS_7965 as unknown as T[]), ...events.slice(at + 1)];
 }
 
 /**

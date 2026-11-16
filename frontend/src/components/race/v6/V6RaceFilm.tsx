@@ -147,7 +147,7 @@ function FilmBody({ story, profile, cast, narrative, timelineVersion, ownRiders,
   // #7965 (Codex P1): angrebet op ad sidste stigning og dets udfald, som i den hidtidige film.
   const attackLines = useMemo(() => (timeTrial ? [] : v6ClimbAttackLines(narrative.events as Parameters<typeof v6ClimbAttackLines>[0], {
     timelineVersion, climbs: profile?.climbs ?? null, mine: cast.mine, ownRiderIds: ownRiders,
-    effortByRider: (narrative.effortByRider ?? null) as Parameters<typeof v6ClimbAttackLines>[1]["effortByRider"], profileType: profile?.profile_type ?? null,
+    effortByRider: (narrative.effortByRider ?? null) as NonNullable<Parameters<typeof v6ClimbAttackLines>[1]>["effortByRider"], profileType: profile?.profile_type ?? null,
   })), [timeTrial, narrative, timelineVersion, profile, cast, ownRiders]);
   const lines = useMemo(() => v6ReportLines(storyLines, attackLines), [storyLines, attackLines]);
   const chapters = useMemo(() => v6FilmChapters({ distanceKm: D, climbs, sprints: profile?.sprints ?? [], lines: storyLines }), [D, climbs, profile, storyLines]);
