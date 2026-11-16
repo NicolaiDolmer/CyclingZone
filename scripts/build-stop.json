@@ -1473,6 +1473,11 @@
       "issue": 8081,
       "reason": "Akademiet som ét designvalg (+#8060, #8036, #6944). Ejer-go 16/11 (Claude Code, Dolmer PC, AskUserQuestion: Ja, alle tre); arbejdsfordeling i referatet: https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6914665328",
       "since": "2026-11-16"
+    },
+    {
+      "issue": 8060,
+      "reason": "Akademiets regnskab pr. sæson på akademisiden (fanen Akademi-regnskab), parallelt med udgave A. Ejer-go 16/11 PC1 (AskUserQuestion: \"Ja, parallelt nu\"; placering A).",
+      "since": "2026-11-16"
     }
   ]
 }
