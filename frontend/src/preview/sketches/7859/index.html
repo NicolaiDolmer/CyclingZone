@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spoiler-skjold skitser</title>
+<!--
+  #7859 Spoiler-skjold: skitseside. Selvstændig HTML, ingen produktkode, ingen
+  import fra appen. Alle navne, løb og tal er syntetiske. Varianten vælges med
+  ?v=A, ?v=B, ?v=C eller ?v=overblik (standard). Billederne i pr-screens/7859/
+  er taget af denne side ved 1440 og 390 px.
+-->
+<style>
+  :root {
+    --bg-body: #0e0f15;
+    --bg-card: #161824;
+    --bg-elevated: #1f2233;
+    --bg-subtle: #14161e;
+    --border: #2a2d3a;
+    --border-strong: #6a6e86;
+    --text-1: #ededf2;
+    --text-2: #b4b3c4;
+    --text-3: #9a99ad;
+    --accent: rgb(232 197 71);
+    --accent-t: rgb(232 197 71);
+    --on-accent: #0e0f15;
+    --success: rgb(74 196 112);
+    --danger: rgb(232 96 96);
+    --radius: 5px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg-body);
+    color: var(--text-1);
+    font-family: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+    font-variant-numeric: tabular-nums;
+  }
+  .num { font-family: 'Inter Tight', system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+  .wrap { max-width: 1600px; margin: 0 auto; padding: 0 24px 48px; }
+
+  /* Brændt-ind sidehoved: navn + én sætning, altid øverst på billedet. */
+  .burn {
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-card);
+    padding: 20px 24px 18px;
+  }
+  .burn-inner { max-width: 1600px; margin: 0 auto; }
+  .burn .kicker { color: var(--accent-t); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; }
+  .burn h1 { margin: 4px 0 6px; font-size: 24px; line-height: 1.2; font-weight: 700; }
+  .burn p { margin: 0; color: var(--text-2); font-size: 15px; max-width: 900px; }
+
+  .nav { display: flex; gap: 0; margin: 20px 0 18px; border: 1px solid var(--border); border-radius: var(--radius); width: fit-content; overflow: hidden; }
+  .nav a { color: var(--text-2); text-decoration: none; padding: 7px 14px; font-size: 13px; border-right: 1px solid var(--border); }
+  .nav a:last-child { border-right: 0; }
+  .nav a[aria-current="page"] { background: var(--bg-elevated); color: var(--text-1); font-weight: 600; }
+
+  .grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
+  .span-4 { grid-column: span 4; }
+  .span-5 { grid-column: span 5; }
+  .span-6 { grid-column: span 6; }
+  .span-7 { grid-column: span 7; }
+  .span-8 { grid-column: span 8; }
+  .span-12 { grid-column: span 12; }
+
+  .surface { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card); }
+  .surface > header { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .surface > header .tag { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+  .surface > header .where { margin-left: auto; font-size: 11px; color: var(--text-3); }
+  .surface .body { padding: 14px; }
+  .note { font-size: 12px; color: var(--text-3); margin: 10px 0 0; }
+  .note b { color: var(--text-2); font-weight: 600; }
+
+  .muted { color: var(--text-3); }
+  .t2 { color: var(--text-2); }
+  .row { display: flex; align-items: center; gap: 10px; }
+  .stack > * + * { margin-top: 10px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: var(--radius); padding: 3px 8px; font-size: 12px; color: var(--text-2); background: var(--bg-subtle); }
+  .chip.gold { border-color: rgb(232 197 71 / .45); color: var(--accent-t); background: rgb(232 197 71 / .08); }
+
+  .btn { display: inline-flex; align-items: center; gap: 6px; border-radius: var(--radius); padding: 8px 14px; font-size: 13px; font-weight: 600; border: 1px solid var(--border-strong); color: var(--text-1); background: transparent; font-family: inherit; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .link { color: var(--accent-t); font-size: 13px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+
+  svg.i { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  svg.i.lg { width: 28px; height: 28px; }
+
+  /* Forside: dagens etaper */
+  .strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .scard { border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; background: var(--bg-subtle); }
+  .scard .ttl { font-weight: 600; font-size: 13px; }
+  .scard .meta { font-size: 12px; color: var(--text-3); }
+  .scard .foot { margin-top: 8px; font-size: 12px; display: flex; align-items: center; gap: 6px; color: var(--text-2); }
+
+  /* Løbsside */
+  .hero { border-bottom: 1px solid var(--border); padding: 14px; }
+  .hero h3 { margin: 0; font-size: 18px; }
+  .stages { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; margin-top: 12px; }
+  .st { border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 7px; font-size: 11px; background: var(--bg-subtle); min-height: 54px; }
+  .st b { display: block; font-size: 12px; color: var(--text-1); }
+  .st.sel { border-color: var(--accent); }
+  .st .ln { color: var(--text-3); display: flex; gap: 4px; align-items: center; margin-top: 3px; }
+  .tabs { display: flex; gap: 18px; padding: 0 14px; border-bottom: 1px solid var(--border); }
+  .tabs span { padding: 9px 0; font-size: 13px; color: var(--text-3); }
+  .tabs span.on { color: var(--text-1); border-bottom: 2px solid var(--accent); font-weight: 600; }
+
+  .sealed { border: 1px dashed var(--border-strong); border-radius: var(--radius); padding: 22px 16px; text-align: center; }
+  .sealed h4 { margin: 8px 0 4px; font-size: 16px; }
+  .sealed p { margin: 0 auto 14px; color: var(--text-2); max-width: 420px; }
+  .sealed .btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+  .film { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-subtle); }
+  .film .scr { height: 128px; position: relative; overflow: hidden; border-bottom: 1px solid var(--border); }
+  .film .scr svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .film .bar { display: flex; align-items: center; gap: 10px; padding: 8px 10px; font-size: 12px; color: var(--text-2); }
+  .track { flex: 1; height: 4px; border-radius: 2px; background: var(--border); position: relative; }
+  .track i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: var(--accent); }
+  .feed { list-style: none; margin: 0; padding: 0; }
+  .feed li { display: flex; gap: 10px; padding: 7px 0; border-top: 1px solid var(--border); font-size: 13px; }
+  .feed li:first-child { border-top: 0; }
+  .feed .km { width: 52px; flex: none; color: var(--text-3); font-size: 12px; }
+  .feed li.hidden { color: var(--text-3); font-style: italic; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 7px 8px; border-top: 1px solid var(--border); font-size: 13px; }
+  th { color: var(--text-3); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; border-top: 0; }
+  td.r, th.r { text-align: right; }
+  tr.me td { background: rgb(232 197 71 / .06); }
+  tr.me td:first-child { box-shadow: inset 2px 0 0 var(--accent); }
+
+  .banner { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; background: var(--bg-subtle); font-size: 13px; margin-bottom: 10px; }
+  .banner .link { margin-left: auto; white-space: nowrap; }
+
+  .blur { filter: blur(5px); user-select: none; }
+  .mask { display: inline-block; border-radius: 3px; background: var(--border-strong); opacity: .55; height: 10px; vertical-align: middle; }
+
+  /* Notifikationer */
+  .notif { display: flex; gap: 10px; padding: 10px 0; border-top: 1px solid var(--border); }
+  .notif:first-child { border-top: 0; padding-top: 0; }
+  .notif .ic { width: 30px; height: 30px; border-radius: var(--radius); border: 1px solid var(--border); display: grid; place-items: center; color: var(--accent-t); flex: none; }
+  .notif .tt { font-weight: 600; font-size: 13px; }
+  .notif .mm { font-size: 13px; color: var(--text-2); }
+  .notif .ch { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; }
+
+  /* Til/fra */
+  .set { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--border); }
+  .set:first-child { border-top: 0; padding-top: 0; }
+  .set .lbl { font-weight: 600; font-size: 13px; }
+  .set .hint { font-size: 12px; color: var(--text-3); }
+  .switch { margin-left: auto; width: 38px; height: 22px; border-radius: 11px; background: var(--border-strong); position: relative; flex: none; }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--text-1); }
+  .switch.on { background: var(--accent); }
+  .switch.on::after { left: 19px; background: var(--on-accent); }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-left: auto; flex: none; }
+  .seg span { padding: 5px 10px; font-size: 12px; color: var(--text-2); border-right: 1px solid var(--border); }
+  .seg span:last-child { border-right: 0; }
+  .seg span.on { background: var(--bg-elevated); color: var(--text-1); font-weight: 600; }
+
+  .rule { border-left: 2px solid var(--accent); padding: 2px 0 2px 10px; font-size: 13px; color: var(--text-2); margin-top: 12px; }
+
+  /* Overblik */
+  .cmp th, .cmp td { vertical-align: top; }
+  .cmp td:first-child { color: var(--text-3); font-size: 12px; width: 150px; }
+  .rec { border: 1px solid rgb(232 197 71 / .45); background: rgb(232 197 71 / .06); border-radius: var(--radius); padding: 16px; }
+  .rec h2 { margin: 0 0 6px; font-size: 17px; }
+  .rec ol { margin: 8px 0 0; padding-left: 18px; color: var(--text-2); }
+  .rec li + li { margin-top: 4px; }
+  .vcard { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; background: var(--bg-card); text-decoration: none; color: inherit; display: block; }
+  .vcard h3 { margin: 0 0 4px; font-size: 15px; }
+  .vcard p { margin: 0; color: var(--text-2); font-size: 13px; }
+  .vcard .chip { margin-top: 10px; }
+
+  h2.sec { font-size: 13px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-3); margin: 26px 0 10px; font-weight: 600; }
+
+  @media (max-width: 900px) {
+    .wrap { padding: 0 16px 32px; }
+    .burn { padding: 16px; }
+    .burn h1 { font-size: 20px; }
+    .burn p { font-size: 14px; }
+    .grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    .span-4, .span-5, .span-6, .span-7, .span-8, .span-12 { grid-column: auto; }
+    .strip { grid-template-columns: minmax(0, 1fr); }
+    .stages { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .nav { width: 100%; }
+    .nav a { flex: 1; text-align: center; padding: 8px 4px; }
+    .cmp td:first-child { width: 96px; }
+    .cmp th, .cmp td { padding: 6px 5px; font-size: 12px; }
+    .hide-sm { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="burn"><div class="burn-inner">
+  <div class="kicker" id="burn-kicker">#7859 Spoiler-skjold</div>
+  <h1 id="burn-title"></h1>
+  <p id="burn-line"></p>
+</div></div>
+<div class="wrap">
+  <nav class="nav" id="nav" aria-label="Varianter"></nav>
+  <main id="app"></main>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // Syntetiske data. Ingen rigtige hold, managere eller spillere.
+  var RACE = "Tour de Nord";
+  var STAGE = 4;
+  var WINNER = "L. Arvidsen";
+  var MY_RIDER = "T. Brandt";
+
+  var ICON = {
+    lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    play: '<circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5z"/>',
+    eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    eyeOff: '<path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.2"/><path d="M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a9.6 9.6 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
+    shield: '<path d="M12 3l8 3v6c0 4.5-3.4 8.2-8 9-4.6-.8-8-4.5-8-9V6z"/>',
+    bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.3 20a2 2 0 0 0 3.4 0"/>',
+    flag: '<path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/>',
+    chat: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
+    mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+    phone: '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>',
+    list: '<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/>',
+    arrow: '<path d="M5 12h14"/><path d="M13 6l6 6-6 6"/>',
+    skip: '<path d="M5 5l9 7-9 7z"/><path d="M19 5v14"/>',
+    gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'
+  };
+  function ic(name, cls) {
+    return '<svg class="i' + (cls ? " " + cls : "") + '" viewBox="0 0 24 24" aria-hidden="true">' + ICON[name] + "</svg>";
+  }
+
+  function surface(tag, where, body, note, span) {
+    return '<section class="surface ' + span + '"><header><span class="tag">' + tag + '</span><span class="where">' + where + '</span></header><div class="body">' + body + (note ? '<p class="note">' + note + "</p>" : "") + "</div></section>";
+  }
+
+  // Ruteprofil til filmen (ren dekoration af syntetisk rute).
+  function filmScreen(progress) {
+    var pts = [0, 30, 28, 46, 40, 70, 64, 92, 80, 60, 74, 50, 42, 36, 30];
+    var w = 600, h = 128, step = w / (pts.length - 1);
+    var d = "M0 " + h;
+    for (var k = 0; k < pts.length; k++) d += " L" + (k * step).toFixed(1) + " " + (h - 14 - pts[k]).toFixed(1);
+    d += " L" + w + " " + h + " Z";
+    var x = (w * progress).toFixed(1);
+    return '<div class="scr"><svg viewBox="0 0 ' + w + " " + h + '" preserveAspectRatio="none" aria-hidden="true">' +
+      '<path d="' + d + '" fill="#1f2233" stroke="#6a6e86" stroke-width="1.5"/>' +
+      '<line x1="' + x + '" y1="0" x2="' + x + '" y2="' + h + '" stroke="rgb(232 197 71)" stroke-width="1.5" stroke-dasharray="3 3"/>' +
+      '<circle cx="' + x + '" cy="40" r="5" fill="rgb(232 197 71)"/>' +
+      "</svg></div>";
+  }
+
+  function stageStrip(mode) {
+    // mode: "A" forseglet, "B" film først, "C" sløret, "off" i dag
+    var out = '<div class="stages">';
+    var winners = { 1: "M. Vester", 2: "J. Lindqvist", 3: "P. Okafor" };
+    for (var n = 1; n <= 6; n++) {
+      var cls = "st" + (n === STAGE ? " sel" : "");
+      var line;
+      if (n < STAGE) {
+        line = mode === "C" ? '<span class="mask" style="width:56px"></span>' : winners[n];
+      } else if (n === STAGE) {
+        if (mode === "A") line = ic("lock") + "Forseglet";
+        else if (mode === "B") line = ic("play") + "Klar til film";
+        else if (mode === "C") line = '<span class="mask" style="width:56px"></span>';
+        else line = WINNER;
+      } else {
+        line = n === 5 ? "I morgen 17.00" : "Lør 17.00";
+      }
+      out += '<div class="' + cls + '"><b>Etape ' + n + '</b><span class="ln">' + line + "</span></div>";
+    }
+    return out + "</div>";
+  }
+
+  function hero(mode, extra) {
+    return '<div class="hero"><div class="row" style="flex-wrap:wrap;gap:8px"><h3>' + RACE + '</h3><span class="chip">Etapeløb · 6 etaper</span>' + (extra || "") + "</div>" +
+      '<div class="t2" style="font-size:13px;margin-top:4px">Etape ' + STAGE + " kørt i dag 17.00 · Bakket · 182 km</div>" + stageStrip(mode) + "</div>";
+  }
+
+  var COPY = {
+    A: {
+      title: "Variant A: Forseglet etape",
+      line: "Hver kørt etape står forseglet overalt, til du selv åbner den med ét tryk; filmen er en valgfri vej ind."
+    },
+    B: {
+      title: "Variant B: Film først (anbefalet)",
+      line: "Etapen åbner i filmen, og vinderen kommer først frem, når filmen når målstregen eller du trykker “Spring til resultatet”."
+    },
+    C: {
+      title: "Variant C: Sløret resultat",
+      line: "Resultaterne står på deres vante pladser, men navne og placeringer er sløret, til du trykker på dem."
+    },
+    overblik: {
+      title: "Tre varianter af spoiler-skjoldet",
+      line: "Se løbsfilmen, før du ser vinderen: tre måder at skjule vinderen på forside, løbsside, notifikationer og ranglister, og at slå det til og fra."
+    }
+  };
+
+  // ---------- Variant A ----------
+  function variantA() {
+    var forside = surface("Forside", "Dagens etaper + Seneste resultat",
+      '<div class="strip">' +
+        '<div class="scard"><div class="ttl">' + RACE + '</div><div class="meta">Etape 4 · Kørt</div><div class="foot">' + ic("lock") + 'Resultatet er forseglet</div></div>' +
+        '<div class="scard"><div class="ttl">Kystklassikeren</div><div class="meta">Endagsløb · 19.30</div><div class="foot">Starter om 2 t 30 min</div></div>' +
+        '<div class="scard hide-sm"><div class="ttl">Ungdomsrunden</div><div class="meta">Etape 2 · 21.00</div><div class="foot">Startliste klar</div></div>' +
+      "</div>" +
+      '<div class="sealed" style="margin-top:12px;padding:16px">' + ic("lock", "lg") + '<h4>Etape 4 er kørt</h4><p>Vinder, trøjer og dine placeringer ligger bag forseglingen.</p><div class="btns"><a class="btn primary">' + ic("lock") + "Åbn etape 4</a></div></div>",
+      "<b>Skjult:</b> vindernavn på chippen og hele kortet Seneste resultat. Etape 1 til 3 er åbnet og vises som i dag.", "span-6");
+
+    var lobsside = surface("Løbsside", "Etape-fanen, etape 4 valgt",
+      hero("A", '<span class="chip gold">' + ic("shield") + "Skjold til</span>") +
+      '<div class="tabs"><span class="on">Etape</span><span>Startliste</span><span>Taktik</span><span>Hold</span></div>' +
+      '<div style="padding:14px"><div class="sealed">' + ic("lock", "lg") +
+      '<h4>Resultatet er forseglet</h4><p>Se filmen først, eller åbn resultatet med det samme. Begge veje åbner etape 4 overalt i spillet.</p>' +
+      '<div class="btns"><a class="btn primary">' + ic("play") + 'Se løbsfilmen</a><a class="btn">' + ic("eye") + "Vis resultatet</a></div></div>" +
+      '<p class="note">Profilen, startlisten og din taktik for etapen står som i dag under forseglingen.</p></div>',
+      "<b>Skjult:</b> vinder i etapebjælken, trøjer efter etapen, Din dag og resultatlisten. Heroen viser ingen førende rytter.", "span-6");
+
+    var notif = surface("Notifikationer", "Indbakke, push, Discord-DM, mail",
+      '<div class="notif"><span class="ic">' + ic("flag") + '</span><div><div class="ch">Indbakke</div><div class="tt">Etape 4 af ' + RACE + ' er færdig</div><div class="mm">Se resultatet, når du er klar.</div></div></div>' +
+      '<div class="notif"><span class="ic">' + ic("phone") + '</span><div><div class="ch">Push</div><div class="tt">Etape 4 er færdig</div><div class="mm">' + RACE + ' · Resultatet er forseglet</div></div></div>' +
+      '<div class="notif"><span class="ic">' + ic("chat") + '</span><div><div class="ch">Discord-DM</div><div class="tt">Dine løb i dag</div><div class="mm">2 etaper kørt. Åbn dem i spillet.</div></div></div>' +
+      '<div class="notif"><span class="ic">' + ic("mail") + '</span><div><div class="ch">Mail</div><div class="tt">3 løb kørt siden sidst</div><div class="mm">Ingen placeringer i mailen.</div></div></div>',
+      "<b>Samme tekst for alle,</b> uanset om din rytter vandt eller blev nr. 140. Ellers afslører tonen resultatet.", "span-6");
+
+    var rang = surface("Ranglister", "Samlet stilling i løbet + sæsonstilling",
+      '<div class="banner">' + ic("lock") + '<span>Stillingen vises efter etape 3. Etape 4 er forseglet.</span><a class="link">Åbn etape 4' + ic("arrow") + "</a></div>" +
+      gcTable(false),
+      "<b>Sæsonstilling og rytterrangliste</b> tæller ikke point fra forseglede etaper med for dig; øverst står “Opdateret til og med etape 3”.", "span-6");
+
+    var toggle = surface("Til/fra", "Indstillinger + pr. løb",
+      '<div class="set"><div><div class="lbl">Spoiler-skjold</div><div class="hint">Forsegl kørte etaper, til jeg åbner dem. Gælder alle løb.</div></div><span class="switch on" role="img" aria-label="Til"></span></div>' +
+      '<div class="set"><div><div class="lbl">Kun for ' + RACE + '</div><div class="hint">Menuen på løbets skjold-chip.</div></div><span class="seg"><span>Som standard</span><span class="on">Til</span><span>Fra</span></span></div>' +
+      '<div class="rule">Åbner du etapen ét sted, er den åben overalt: forside, løbsside, indbakke og ranglister.</div>',
+      "<b>Svaghed:</b> ét ekstra tryk på hver etape, også for dem der aldrig ser filmen.", "span-12");
+
+    return '<div class="grid">' + forside + lobsside + notif + rang + toggle + "</div>";
+  }
+
+  // ---------- Variant B ----------
+  function variantB() {
+    var forside = surface("Forside", "Dagens etaper + Seneste resultat",
+      '<div class="strip">' +
+        '<div class="scard"><div class="ttl">' + RACE + '</div><div class="meta">Etape 4 · Kørt</div><div class="foot" style="color:var(--accent-t)">' + ic("play") + 'Se filmen</div></div>' +
+        '<div class="scard"><div class="ttl">Kystklassikeren</div><div class="meta">Endagsløb · 19.30</div><div class="foot">Starter om 2 t 30 min</div></div>' +
+        '<div class="scard hide-sm"><div class="ttl">Ungdomsrunden</div><div class="meta">Etape 2 · 21.00</div><div class="foot">Startliste klar</div></div>' +
+      "</div>" +
+      '<div class="film" style="margin-top:12px">' + filmScreen(0) +
+      '<div class="bar"><span><b style="color:var(--text-1)">Etape 4 er klar</b> · 182 km · Bakket</span><a class="btn primary" style="margin-left:auto">' + ic("play") + "Se filmen</a></div></div>",
+      "<b>Skjult:</b> vindernavn på chippen og Seneste resultat. Kortet bliver en invitation til filmen i stedet for et resultat.", "span-6");
+
+    var lobsside = surface("Løbsside", "Etape-fanen åbner i Historie",
+      hero("B", '<span class="chip gold">' + ic("shield") + "Skjold til</span>") +
+      '<div class="tabs"><span class="on">Historie</span><span>Resultater</span><span>Startliste</span><span>Taktik</span></div>' +
+      '<div style="padding:14px" class="stack">' +
+        '<div class="film">' + filmScreen(0.66) + '<div class="bar">' + ic("play") + '<span class="num">km 120 af 182</span><span class="track"><i style="width:66%"></i></span><span class="num">1:04 tilbage</span></div></div>' +
+        '<ul class="feed">' +
+          '<li><span class="km num">km 118</span><span>Udbruddet på fem har 1:40 på feltet ved foden af Høgsbjerg.</span></li>' +
+          '<li><span class="km num">km 104</span><span>' + MY_RIDER + ' sidder godt placeret i feltet, 14. position.</span></li>' +
+          '<li><span class="km num">km 62</span><span>Fem ryttere går af sted efter første bjergspurt.</span></li>' +
+          '<li class="hidden"><span class="km num">km 120+</span><span>Resten af referatet kommer, når filmen når dertil.</span></li>' +
+        "</ul>" +
+        '<div class="banner" style="margin:0">' + ic("eyeOff") + '<span>Resultater, trøjer og Din dag vises, når filmen når målstregen.</span><a class="link">' + ic("skip") + "Spring til resultatet</a></div>" +
+      "</div>",
+      "<b>Aftalt 7/11 (Q3):</b> med skjoldet til åbner en færdig etape i Historie. Referatet følger filmen og nævner aldrig noget, filmen ikke har vist.", "span-6");
+
+    var efter = surface("Løbsside", "Når filmen når målstregen",
+      '<div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:8px"><div><div class="tag muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:600">Etape 4 · Mål</div><div style="font-size:16px;font-weight:700;margin-top:2px">' + WINNER + ' vinder spurten fra udbruddet</div></div><span class="chip">' + ic("eye") + "Set</span></div>" +
+      '<table style="margin-top:10px"><thead><tr><th class="r">#</th><th>Rytter</th><th class="r">Tid</th></tr></thead><tbody>' +
+        '<tr><td class="r num">1</td><td>' + WINNER + '</td><td class="r num">4:21:07</td></tr>' +
+        '<tr><td class="r num">2</td><td>R. Haugen</td><td class="r num">s.t.</td></tr>' +
+        '<tr><td class="r num">3</td><td>M. Vester</td><td class="r num">+0:02</td></tr>' +
+        '<tr class="me"><td class="r num">9</td><td>' + MY_RIDER + ' <span class="muted">· Dit hold</span></td><td class="r num">+0:41</td></tr>' +
+      "</tbody></table>",
+      "<b>Set</b> = filmen har nået mål, eller du har trykket Spring til resultatet. Derefter er etapen åben overalt, også på din telefon.", "span-6");
+
+    var notif = surface("Notifikationer", "Indbakke, push, Discord-DM, mail",
+      '<div class="notif"><span class="ic">' + ic("play") + '</span><div><div class="ch">Indbakke</div><div class="tt">Etape 4 af ' + RACE + ' er færdig</div><div class="mm">Se filmen, før du ser resultatet.</div></div></div>' +
+      '<div class="notif"><span class="ic">' + ic("phone") + '</span><div><div class="ch">Push</div><div class="tt">Etape 4 er klar til at se</div><div class="mm">' + RACE + ' · 182 km</div></div></div>' +
+      '<div class="notif"><span class="ic">' + ic("chat") + '</span><div><div class="ch">Discord-DM</div><div class="tt">Dine løb i dag</div><div class="mm">2 etaper er klar til at se i spillet.</div></div></div>' +
+      '<div class="notif"><span class="ic">' + ic("mail") + '</span><div><div class="ch">Mail</div><div class="tt">3 løb kørt siden sidst</div><div class="mm">Ingen placeringer i mailen.</div></div></div>',
+      "<b>Aftalt 7/11 (S1):</b> indbakken siger altid “Etape X er færdig, se resultatet” med skjoldet til. Discord-botten (S2) er ikke afgjort; skitsen viser samme regel.", "span-6");
+
+    var rang = surface("Ranglister", "Samlet stilling i løbet + sæsonstilling",
+      '<div class="banner">' + ic("play") + '<span>Du har ikke set etape 4 endnu. Stillingen står efter etape 3.</span><a class="link">Se filmen' + ic("arrow") + "</a></div>" +
+      gcTable(false) +
+      '<p class="note" style="margin-top:8px"><a class="link" style="font-size:12px">' + ic("eye") + "Vis nyeste stilling alligevel</a></p>",
+      "<b>Sæsonstilling, rytterrangliste og holdets resultatfane</b> stopper ved din sidst sete etape i dette løb. Andre løb påvirkes ikke.", "span-6");
+
+    var toggle = surface("Til/fra", "Indstillinger + pr. løb",
+      '<div class="set"><div><div class="lbl">Spoiler-skjold</div><div class="hint">Vis filmen før vinderen i alle løb.</div></div><span class="switch on" role="img" aria-label="Til"></span></div>' +
+      '<div class="set"><div><div class="lbl">Kun for ' + RACE + '</div><div class="hint">Skjold-chippen i løbets hoved.</div></div><span class="seg"><span>Som standard</span><span class="on">Til</span><span>Fra</span></span></div>' +
+      '<div class="set"><div><div class="lbl">Første gang</div><div class="hint">Efter din første kørte etape spørger spillet én gang: “Vil du se filmen før vinderen?”</div></div></div>' +
+      '<div class="rule">Slukket skjold = siden åbner i Resultater og husker dit sidste valg, som aftalt i Q3.</div>',
+      "<b>Aftalt 7/11 (Q5):</b> både en indstilling for alle løb og en kontakt pr. løb.", "span-6");
+
+    return '<div class="grid">' + forside + lobsside + efter + notif + rang + toggle + "</div>";
+  }
+
+  // ---------- Variant C ----------
+  function variantC() {
+    var m = function (w) { return '<span class="mask" style="width:' + w + 'px"></span>'; };
+    var forside = surface("Forside", "Dagens etaper + Seneste resultat",
+      '<div class="strip">' +
+        '<div class="scard"><div class="ttl">' + RACE + '</div><div class="meta">Etape 4 · Kørt</div><div class="foot">Vinder: ' + m(70) + ic("eye") + "</div></div>" +
+        '<div class="scard"><div class="ttl">Kystklassikeren</div><div class="meta">Endagsløb · 19.30</div><div class="foot">Starter om 2 t 30 min</div></div>' +
+        '<div class="scard hide-sm"><div class="ttl">Ungdomsrunden</div><div class="meta">Etape 2 · 21.00</div><div class="foot">Startliste klar</div></div>' +
+      "</div>" +
+      '<div class="scard" style="margin-top:12px"><div class="row"><div><div class="meta">Seneste resultat · Etape 4</div><div style="font-size:28px;font-weight:700" class="num blur">#9</div></div><div style="margin-left:auto" class="t2">' + MY_RIDER + "</div></div><div class=\"foot\">" + ic("eye") + "Tryk for at vise</div></div>",
+      "<b>Skjult:</b> navne og tal sløres på deres vante pladser. Kortets størrelse og farve er det samme, uanset resultatet.", "span-6");
+
+    var lobsside = surface("Løbsside", "Resultater, sløret",
+      hero("C", '<span class="chip">' + ic("eyeOff") + "Sløret</span>") +
+      '<div class="tabs"><span>Historie</span><span class="on">Resultater</span><span>Startliste</span><span>Taktik</span></div>' +
+      '<div style="padding:14px"><table><thead><tr><th class="r">#</th><th>Rytter</th><th class="r">Tid</th></tr></thead><tbody>' +
+        '<tr><td class="r num">' + m(10) + "</td><td>" + m(110) + '</td><td class="r num">' + m(56) + "</td></tr>" +
+        '<tr><td class="r num">' + m(10) + "</td><td>" + m(90) + '</td><td class="r num">' + m(30) + "</td></tr>" +
+        '<tr><td class="r num">' + m(10) + "</td><td>" + m(100) + '</td><td class="r num">' + m(40) + "</td></tr>" +
+        '<tr class="me"><td class="r num">' + m(10) + "</td><td>" + MY_RIDER + ' <span class="muted">· Dit hold</span></td><td class="r num">' + m(40) + "</td></tr>" +
+      '</tbody></table><p class="note">' + ic("eye") + " Tryk på en række for at vise den. “Vis alle” åbner hele listen.</p></div>",
+      "<b>Problem:</b> din egen rytters række står stadig på sin plads i listen, så rækkefølgen afslører meget. Filmen er ikke en del af afsløringen.", "span-6");
+
+    var notif = surface("Notifikationer", "Indbakke, push, Discord-DM, mail",
+      '<div class="notif"><span class="ic">' + ic("flag") + '</span><div><div class="ch">Indbakke</div><div class="tt">Etape 4 af ' + RACE + ' er færdig</div><div class="mm">' + MY_RIDER + " blev nr. " + m(16) + "</div></div></div>" +
+      '<div class="notif"><span class="ic">' + ic("phone") + '</span><div><div class="ch">Push</div><div class="tt">Etape 4 er færdig</div><div class="mm">Push kan ikke sløres; teksten bliver generisk.</div></div></div>' +
+      '<div class="notif"><span class="ic">' + ic("chat") + '</span><div><div class="ch">Discord-DM</div><div class="tt">Dine løb i dag</div><div class="mm">Discord kan sløre med spoiler-tags: ||nr. 9||</div></div></div>',
+      "<b>Svaghed:</b> tre forskellige regler for tre kanaler. Spoiler-tags i Discord er et ægte værktøj, men kun dér.", "span-6");
+
+    var rang = surface("Ranglister", "Samlet stilling i løbet",
+      '<table><thead><tr><th class="r">#</th><th>Rytter</th><th class="r">Efter</th></tr></thead><tbody>' +
+        '<tr><td class="r num">1</td><td>' + m(100) + '</td><td class="r num">' + m(48) + "</td></tr>" +
+        '<tr><td class="r num">2</td><td>' + m(80) + '</td><td class="r num">' + m(36) + "</td></tr>" +
+        '<tr><td class="r num">3</td><td>' + m(90) + '</td><td class="r num">' + m(36) + "</td></tr>" +
+        '<tr class="me"><td class="r num">' + m(12) + "</td><td>" + MY_RIDER + '</td><td class="r num">' + m(36) + "</td></tr>" +
+      "</tbody></table>",
+      "<b>Kun løbets egen stilling</b> kan sløres pænt. Sæsonstillingen ændrer tal i hele tabellen og kan ikke sløres uden at blive ubrugelig.", "span-6");
+
+    var toggle = surface("Til/fra", "Øje-knap i topbjælken",
+      '<div class="set"><div><div class="lbl">Øje-knappen</div><div class="hint">Ét tryk i topbjælken slører eller viser alle resultater i hele spillet.</div></div><span class="btn" style="margin-left:auto;padding:6px 10px">' + ic("eyeOff") + "</span></div>" +
+      '<div class="set"><div><div class="lbl">Pr. løb</div><div class="hint">Findes ikke i denne variant.</div></div></div>',
+      "<b>Afviger fra Q5:</b> ingen kontakt pr. løb. Hurtig at slå fra, men også let at slå fra ved et uheld.", "span-12");
+
+    return '<div class="grid">' + forside + lobsside + notif + rang + toggle + "</div>";
+  }
+
+  function gcTable(blur) {
+    var rows = [
+      ["1", "M. Vester", "15:02:44"],
+      ["2", "P. Okafor", "+0:06"],
+      ["3", "J. Lindqvist", "+0:19"],
+      ["14", MY_RIDER, "+1:52"]
+    ];
+    var out = '<table><thead><tr><th class="r">#</th><th>Rytter</th><th class="r">Tid</th></tr></thead><tbody>';
+    rows.forEach(function (r) {
+      out += "<tr" + (r[1] === MY_RIDER ? ' class="me"' : "") + '><td class="r num">' + r[0] + "</td><td" + (blur ? ' class="blur"' : "") + ">" + r[1] + '</td><td class="r num">' + r[2] + "</td></tr>";
+    });
+    return out + "</tbody></table>";
+  }
+
+  // ---------- Overblik ----------
+  function overview() {
+    var cards =
+      '<div class="grid">' +
+        '<a class="vcard span-4" href="?v=A"><h3>A: Forseglet etape</h3><p>Hver kørt etape er forseglet overalt, til du åbner den. Filmen er én af to veje ind.</p><span class="chip">' + ic("lock") + "Åbn pr. etape</span></a>" +
+        '<a class="vcard span-4" href="?v=B" style="border-color:rgb(232 197 71 / .45)"><h3>B: Film først</h3><p>Etapen åbner i filmen. Vinderen kommer frem ved målstregen, eller når du springer frem.</p><span class="chip gold">' + ic("play") + "Anbefalet</span></a>" +
+        '<a class="vcard span-4" href="?v=C"><h3>C: Sløret resultat</h3><p>Alt står hvor det plejer, men navne og tal er sløret, til du trykker.</p><span class="chip">' + ic("eyeOff") + "Tryk for at vise</span></a>" +
+      "</div>";
+
+    var cmp = '<table class="cmp"><thead><tr><th></th><th>A Forseglet</th><th>B Film først</th><th>C Sløret</th></tr></thead><tbody>' +
+      "<tr><td>Hvordan vinderen kommer frem</td><td>Tryk “Åbn” eller se filmen</td><td>Filmen når mål, eller “Spring til resultatet”</td><td>Tryk på hvert sløret felt</td></tr>" +
+      "<tr><td>Forside</td><td>Lås på chippen, forseglet kort</td><td>“Se filmen” på chippen og kortet</td><td>Sløret navn og placering</td></tr>" +
+      "<tr><td>Løbsside</td><td>Forseglet felt over resultatet</td><td>Åbner i Historie, referat følger filmen</td><td>Sløret liste, egen række synlig</td></tr>" +
+      "<tr><td>Notifikationer</td><td>Samme neutrale tekst overalt</td><td>Samme neutrale tekst, peger på filmen</td><td>Forskellig regel pr. kanal</td></tr>" +
+      "<tr><td>Ranglister</td><td>Står efter sidst åbnede etape</td><td>Står efter sidst sete etape, “vis nyeste”-link</td><td>Kun løbets stilling kan sløres</td></tr>" +
+      "<tr><td>Til/fra</td><td>Indstilling + pr. løb</td><td>Indstilling + pr. løb + spørg én gang</td><td>Øje-knap, intet pr. løb</td></tr>" +
+      "<tr><td>Passer med aftaler 7/11</td><td>Q5, S1, S3. Ikke Q3</td><td>Q3, Q5, S1, S3</td><td>Kun S3</td></tr>" +
+      "<tr><td>Byggestørrelse</td><td>Mellem</td><td>Mellem til stor (film skal melde “set”)</td><td>Lille, men lækker</td></tr>" +
+      "</tbody></table>";
+
+    var rec = '<div class="rec"><h2>Anbefaling: B, Film først</h2>' +
+      '<p class="t2" style="margin:0">B er den eneste variant, der gør det issuet beder om: se løbet, før du ser vinderen. Den følger alle fire aftaler fra 7/11 (Q3, Q5, S1, S3), og den bruger filmen, der allerede er spillets stærkeste flade.</p>' +
+      "<ol>" +
+        "<li>Én regel for “set”: filmen når mål, eller du trykker Spring til resultatet. Derefter er etapen åben på alle flader og enheder.</li>" +
+        "<li>Indbakke, push, Discord og mail siger altid det samme neutrale “Etape X er færdig”, uanset resultat.</li>" +
+        "<li>Ranglister står efter din sidst sete etape med et tydeligt “vis nyeste”-link, så ingen tror, tallene er forkerte.</li>" +
+        "<li>Lån A's forseglede kort som udseende for forsidens Seneste resultat, når filmen ikke er relevant (fx endagsløb uden film).</li>" +
+      "</ol>" +
+      '<p class="note">Åbne valg til dig: skal skjoldet være slået til som standard for nye spillere, og skal Discord-botten (S2) følge samme regel?</p></div>';
+
+    return '<h2 class="sec">Varianter</h2>' + cards + '<h2 class="sec">Sammenligning</h2><div class="surface"><div class="body" style="overflow-x:auto">' + cmp + '</div></div><h2 class="sec">Anbefaling</h2>' + rec;
+  }
+
+  var VIEWS = { overblik: overview, A: variantA, B: variantB, C: variantC };
+  var raw = new URLSearchParams(window.location.search).get("v");
+  var view = Object.prototype.hasOwnProperty.call(VIEWS, raw) ? raw : "overblik";
+
+  document.getElementById("burn-title").textContent = COPY[view].title;
+  document.getElementById("burn-line").textContent = COPY[view].line;
+  document.title = "Spoiler-skjold " + (view === "overblik" ? "overblik" : "variant " + view);
+
+  var labels = { overblik: "Overblik", A: "A Forseglet", B: "B Film først", C: "C Sløret" };
+  var nav = "";
+  ["overblik", "A", "B", "C"].forEach(function (k) {
+    nav += '<a href="?v=' + k + '"' + (k === view ? ' aria-current="page"' : "") + ">" + labels[k] + "</a>";
+  });
+  document.getElementById("nav").innerHTML = nav;
+  document.getElementById("app").innerHTML = VIEWS[view]();
+})();
+</script>
+</body>
+</html>
