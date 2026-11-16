@@ -43,14 +43,17 @@ import {
   stagePlanSwitchNoteText,
   suggestStagePlan,
   suggestionReasonKey,
-  taskOptions,
+  legHuntTask,
+  legTaskChoice,
+  taskChoiceKey,
+  taskChoiceOptions,
   triggerKey,
   triggerOptions,
   validateStagePlanLegs,
   withJerseyHunt7855,
   JERSEY_HUNT_TASKS,
 } from "./StagePlanModel.ts";
-import type { StagePlanLeg, StagePlanRecapItem, StagePlanRole, StagePlanRoute, StagePlanTask, StagePlanTrigger } from "./StagePlanModel.ts";
+import type { JerseyHuntTask, StagePlanLeg, StagePlanRecapItem, StagePlanRole, StagePlanRoute, StagePlanTask, StagePlanTrigger } from "./StagePlanModel.ts";
 
 type TFn = (key: string, opts?: Record<string, unknown>) => string;
 type PlanRider = { rider_id: string; name?: string | null; abandoned?: boolean };
@@ -79,15 +82,31 @@ function triggerLabel(t: TFn, route: StagePlanRoute, from: StagePlanTrigger | un
   return t(`stagePlan.from.${from.at}`);
 }
 
-function TaskChip({ t, task, dashed = false, compact = false, showCost = false }: { t: TFn; task: StagePlanTask; dashed?: boolean; compact?: boolean; showCost?: boolean }) {
+/** #7855 (ejer 16/11): opgavens navn. Udbrudsleddet med jagt er sin egen linje ("Gaa i udbrud + Hent point"). */
+function taskLabel(t: TFn, task: StagePlanTask, hunt?: JerseyHuntTask): string {
+  return task === "breakaway" && hunt !== undefined ? t(`stagePlan.huntChoice.${hunt}`) : t(`stagePlan.task.${task}`);
+}
+
+/**
+ * #7855: prisordet. Udbrud med jagt koster som udbruddet (samme ord som linjen "Gaa i udbrud") plus et
+ * lille stykke pr. passage, han koerer med om. En jagt-opgave alene koster Haard.
+ */
+function taskPrice(t: TFn, task: StagePlanTask, hunt?: JerseyHuntTask, showCost = true): string | null {
+  if (task === "breakaway" && hunt !== undefined) return t(`stagePlan.huntPrice.${JERSEY_HUNT_TASKS[hunt]}`, { price: t(taskCostKey(task)) });
+  if (showCost) return t(taskCostKey(task));
+  return JERSEY_HUNT_TASKS[task] ? t("stagePlan.price.hard") : null;
+}
+
+function TaskChip({ t, task, hunt, dashed = false, compact = false, showCost = false }: { t: TFn; task: StagePlanTask; hunt?: JerseyHuntTask; dashed?: boolean; compact?: boolean; showCost?: boolean }) {
+  const label = taskLabel(t, task, hunt);
   return (
     <span
       className={`inline-flex items-center rounded-cz border px-2 py-0.5 text-2xs font-medium whitespace-nowrap ${
         compact && !showCost ? "min-w-0 truncate" : "min-w-0 max-w-full"
       } ${dashed ? "border-dashed border-cz-border text-cz-3" : "border-cz-border bg-cz-subtle text-cz-1"}`}
     >
-      {compact && !showCost ? <span className="truncate">{t(`stagePlan.task.${task}`)}</span> : <span className="min-w-0 whitespace-normal">{t(`stagePlan.task.${task}`)}</span>}
-      {showCost && <span className="ml-1 text-cz-2" data-testid="stage-plan-task-cost">{t(taskCostKey(task))}</span>}
+      {compact && !showCost ? <span className="truncate">{label}</span> : <span className="min-w-0 whitespace-normal">{label}</span>}
+      {showCost && <span className="ml-1 text-cz-2" data-testid="stage-plan-task-cost">{taskPrice(t, task, hunt)}</span>}
     </span>
   );
 }
@@ -115,7 +134,7 @@ function PlanChain({ t, legs, route, dashed = false, compact = false, showCost =
           {i > 0 && !compact && (
             <span className="text-3xs text-cz-3 whitespace-nowrap">{triggerLabel(t, route, leg.from, legs[i - 1].task)}</span>
           )}
-          <TaskChip t={t} task={leg.task} dashed={dashed} compact={compact} showCost={showCost} />
+          <TaskChip t={t} task={leg.task} hunt={leg.hunt} dashed={dashed} compact={compact} showCost={showCost} />
         </span>
       ))}
     </span>
@@ -171,7 +190,7 @@ function PlanRecap({ t, legs, route, events, riderId, rank = null, leader = null
               {Icon && <Icon size={12} aria-hidden="true" />}
             </span>
             <span className={mark === "not_reached" ? "text-cz-3" : "text-cz-1"}>
-              <span className="font-medium">{t(`stagePlan.task.${item.task}`)}</span>
+              <span className="font-medium">{taskLabel(t, item.task, legs[i]?.task === item.task ? legs[i].hunt : undefined)}</span>
               {line ? <>{", "}<span className="tabular-nums">{line}</span></> : null}
               {/* Ordet er med, saa markeringen aldrig kun er en farve. Uden bevis staar der intet (#7706). */}
               {word && <span className="ml-1.5 text-3xs text-cz-3 tabular-nums whitespace-nowrap">{t(word.key, word.params)}</span>}
@@ -204,7 +223,7 @@ function PlanEditor({ t, riderName, legs, role, route, suggestion, showsSuggesti
       )}
       <ol>
         {legs.map((leg, i) => {
-          const tasks = taskOptions(legs, i, role, route);
+          const choices = taskChoiceOptions(legs, i, role, route); // #7855: udbrud med jagt er egne linjer
           const triggers = i > 0 ? triggerOptions(legs, i, role, route) : [];
           return (
             <li key={i} className="px-3.5 py-2 border-b border-cz-border flex flex-wrap items-end gap-2">
@@ -236,12 +255,19 @@ function PlanEditor({ t, riderName, legs, role, route, suggestion, showsSuggesti
                 <Select
                   size="sm"
                   disabled={disabled}
-                  value={leg.task}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onChange(setLegTask(legs, i, e.target.value as StagePlanTask, role, route))}
+                  value={taskChoiceKey(legTaskChoice(leg))}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                    const choice = choices.find((c) => taskChoiceKey(c) === e.target.value);
+                    if (choice) onChange(setLegTask(legs, i, choice.task, role, route, choice.hunt));
+                  }}
                 >
-                  {tasks.map((task) => (
-                    <option key={task} value={task}>{showCost ? t("stagePlan.huntOption", { task: t(`stagePlan.task.${task}`), price: t(taskCostKey(task)) }) : JERSEY_HUNT_TASKS[task] ? t("stagePlan.huntOption", { task: t(`stagePlan.task.${task}`), price: t("stagePlan.price.hard") }) : t(`stagePlan.task.${task}`)}</option>
-                  ))}
+                  {choices.map((choice) => {
+                    const label = taskLabel(t, choice.task, choice.hunt);
+                    const price = taskPrice(t, choice.task, choice.hunt, showCost);
+                    return (
+                      <option key={taskChoiceKey(choice)} value={taskChoiceKey(choice)}>{price ? t("stagePlan.huntOption", { task: label, price }) : label}</option>
+                    );
+                  })}
                 </Select>
               </label>
               {i > 0 && (
@@ -290,8 +316,9 @@ function PlanEditor({ t, riderName, legs, role, route, suggestion, showsSuggesti
           {t("stagePlan.clearPlan")}
         </button>
       </div>
-      {/* #7855: troejejagten forklaret med ord, kun naar en jagt-opgave er i kaeden. */}
-      {legs.some((l) => JERSEY_HUNT_TASKS[l.task]) && <p className="px-3.5 py-2 border-t border-cz-border text-3xs text-cz-2">{t("stagePlan.huntNote")}</p>}
+      {/* #7855: troejejagten forklaret med ord, kun naar en jagt er i kaeden (ogsaa paa udbrudsleddet). */}
+      {legs.some((l) => legHuntTask(l) === "hunt_points") && <p className="px-3.5 py-2 border-t border-cz-border text-3xs text-cz-2">{t("stagePlan.huntNote")}</p>}
+      {legs.some((l) => legHuntTask(l) === "hunt_kom") && <p className="px-3.5 py-2 border-t border-cz-border text-3xs text-cz-2">{t("stagePlan.huntNoteKom")}</p>}
       <p className="px-3.5 py-2 border-t border-cz-border text-3xs text-cz-3">{t("stagePlan.rulesNote")}</p>
     </div>
   );

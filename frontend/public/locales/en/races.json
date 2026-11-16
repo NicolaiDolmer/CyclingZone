@@ -134,7 +134,10 @@
     "effortNote": "The effort follows the task.",
     "huntOption": "{task} · {price}",
     "price": { "hard": "Hard" },
-    "huntNote": "Going for points: he contests the sprints or climbs on his stretch from the group he is in. A break ahead still takes the points first. The task is ridden hard and counts in his fatigue.",
+    "huntNote": "Going for sprint points: he contests the intermediate sprints on his stretch from the group he is in. A break ahead still takes the points first. Sprints he only contests because of the task add a little to his fatigue.",
+    "huntNoteKom": "Going for KOM points only works with the break: he contests the climbs on his stretch while he is in it. If he misses the break or is caught, the KOM hunt ends.",
+    "huntChoice": { "hunt_points": "Go in the break + go for sprint points", "hunt_kom": "Go in the break + go for KOM points" },
+    "huntPrice": { "sprint": "{price}, plus a little per sprint", "kom": "{price}, plus a little per climb" },
 
     "huntOffNote": "Going for points is off in this race, so he rides sheltered on that part of the plan.",
     "rulesNote": "The break can only be the first task. Grupetto, riding in and the sprint train always come last.",
@@ -1223,7 +1226,8 @@
 
       "stage_plan_hunt_no_climb": "Going for KOM points needs a categorised climb on his stretch. Pick another task or change the switch point.",
 
-      "stage_plan_hunt_after_dropped": "A rider can't go for points once he is dropped. Pick another task for that step."
+      "stage_plan_hunt_after_dropped": "A rider can't go for points once he is dropped. Pick another task for that step.",
+      "stage_plan_hunt_needs_breakaway": "Going for points with the break only works on the break, as the first step. Pick a 'Go in the break +' line and save again."
     }
   },
   "tacticsOrders": {

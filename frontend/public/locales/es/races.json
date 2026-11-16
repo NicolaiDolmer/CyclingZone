@@ -134,7 +134,10 @@
     "effortNote": "El esfuerzo sigue a la tarea.",
     "huntOption": "{task} · {price}",
     "price": { "hard": "Dura" },
-    "huntNote": "Caza de puntos: disputa los sprints o las subidas de su tramo desde el grupo en el que va. Una fuga por delante se lleva los puntos primero. La tarea se corre fuerte y cuenta en su fatiga.",
+    "huntNote": "Caza de puntos en los sprints: disputa los sprints intermedios de su tramo desde el grupo en el que va. Una fuga por delante se lleva los puntos primero. Los sprints que solo disputa por la tarea suman un poco a su fatiga.",
+    "huntNoteKom": "Los puntos de montaña solo se cazan con la fuga: disputa las subidas de su tramo mientras va en ella. Si no entra en la fuga o lo alcanzan, la caza de montaña termina.",
+    "huntChoice": { "hunt_points": "Meterse en la fuga + ir a por puntos de sprint", "hunt_kom": "Meterse en la fuga + ir a por puntos de montaña" },
+    "huntPrice": { "sprint": "{price}, más un poco por sprint", "kom": "{price}, más un poco por subida" },
 
     "huntOffNote": "La caza de puntos está desactivada en esta carrera, así que irá protegido en esa parte del plan.",
     "rulesNote": "La fuga solo puede ser la primera tarea. La grupeta, llegar a meta y el tren de sprint siempre van al final.",
@@ -1240,7 +1243,8 @@
 
       "stage_plan_hunt_no_climb": "Ir a por puntos de montaña requiere una subida categorizada en su tramo. Elige otra tarea o cambia el punto de cambio.",
 
-      "stage_plan_hunt_after_dropped": "Un corredor descolgado no puede ir a por puntos. Elige otra tarea para ese paso."
+      "stage_plan_hunt_after_dropped": "Un corredor descolgado no puede ir a por puntos. Elige otra tarea para ese paso.",
+      "stage_plan_hunt_needs_breakaway": "La caza de puntos con la fuga solo va en el paso de la fuga, el primero. Elige una línea 'Meterse en la fuga +' y guarda de nuevo."
     }
   },
   "tacticsOrders": {

@@ -422,12 +422,52 @@ export function triggerOptions(legs: StagePlanLeg[], i: number, role: StagePlanR
   });
 }
 
-export function setLegTask(legs: StagePlanLeg[], i: number, task: StagePlanTask, role: StagePlanRole, route: StagePlanRoute): StagePlanLeg[] {
-  // #7855 (Codex-review): jagten (`hunt`) hoerer kun til udbrudsleddet; skiftes opgaven vaek fra udbrud, foelger den ikke med.
+/**
+ * #7855 (ejer 16/11, "egne linjer i opgavelisten"): et valg i leddets opgaveliste. "Gaa i udbrud +
+ * Hent point" og "Gaa i udbrud + Hent bjergpoint" er egne linjer og gemmes som udbrudsleddet med
+ * `hunt` (serverens kontrakt, backend/lib/stagePlan.ts). Alle andre valg er opgaven alene.
+ */
+export type StagePlanTaskChoice = { task: StagePlanTask; hunt?: JerseyHuntTask };
+
+const JERSEY_HUNT_CHOICES: readonly JerseyHuntTask[] = ["hunt_points", "hunt_kom"];
+
+/** Valgets noegle i opgavelisten ("breakaway", "breakaway+hunt_kom", ...). */
+export function taskChoiceKey(choice: StagePlanTaskChoice): string {
+  return choice.hunt !== undefined ? `${choice.task}+${choice.hunt}` : choice.task;
+}
+
+/** Leddets eget valg (opgaven og en eventuel jagt paa udbrudsleddet). */
+export function legTaskChoice(leg: StagePlanLeg): StagePlanTaskChoice {
+  return leg.task === "breakaway" && leg.hunt !== undefined ? { task: leg.task, hunt: leg.hunt } : { task: leg.task };
+}
+
+/**
+ * #7855: de valg led `i` kan faa, i opgavelistens orden. Efter "Gaa i udbrud" kommer udbrud med
+ * jagt som egne linjer, kun naar de er gyldige her (kontakten, rollen og en passage paa leddets
+ * straekning). Slukket er listen praecis opgaverne (taskOptions).
+ */
+export function taskChoiceOptions(legs: StagePlanLeg[], i: number, role: StagePlanRole, route: StagePlanRoute): StagePlanTaskChoice[] {
+  const out: StagePlanTaskChoice[] = [];
+  for (const task of taskOptions(legs, i, role, route)) {
+    out.push({ task });
+    if (task !== "breakaway") continue;
+    for (const hunt of JERSEY_HUNT_CHOICES) {
+      const leg: StagePlanLeg = i === 0 ? { task, hunt } : { ...(legs[i] ?? {}), task, hunt };
+      if (validateStagePlanLegs([...legs.slice(0, i), leg], role, route) === null) out.push({ task, hunt });
+    }
+  }
+  return out;
+}
+
+/**
+ * Saet leddets opgave. #7855 (ejer 16/11): valget bestemmer jagten. Udbrud med `hunt` er udbrud med
+ * jagt; alle andre valg (ogsaa "Gaa i udbrud" alene) er uden jagt (Codex-review: jagten foelger
+ * aldrig med til en anden opgave).
+ */
+export function setLegTask(legs: StagePlanLeg[], i: number, task: StagePlanTask, role: StagePlanRole, route: StagePlanRoute, hunt?: JerseyHuntTask): StagePlanLeg[] {
   const withTask = (l: StagePlanLeg): StagePlanLeg => {
-    if (task === "breakaway" || l.hunt === undefined) return { ...l, task };
-    const { hunt: _hunt, ...rest } = l;
-    return { ...rest, task };
+    const { hunt: _old, ...rest } = l;
+    return task === "breakaway" && hunt !== undefined ? { ...rest, task, hunt } : { ...rest, task };
   };
   return repairLegs(legs.map((l, j) => (j === i ? withTask(l) : l)), role, route);
 }
