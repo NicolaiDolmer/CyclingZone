@@ -1,0 +1,29 @@
+{
+  "switch": "Bouclier anti-spoiler",
+  "hero": {
+    "hidden": "Étape terminée · résultat masqué par ton bouclier anti-spoiler"
+  },
+  "results": {
+    "hidden": "Les résultats sont masqués par ton bouclier anti-spoiler",
+    "show": "Afficher les résultats",
+    "loading": "Vérification de ton bouclier anti-spoiler"
+  },
+  "story": {
+    "inResults": "Ta journée et le résultat sont dans Résultats",
+    "finaleAhead": "Le final arrive · continue de regarder"
+  },
+  "settings": {
+    "title": "Résultats et spoilers",
+    "intro": "Comment les résultats te parviennent.",
+    "all": "Bouclier anti-spoiler pour toutes les courses",
+    "allHint": "Masque les vainqueurs et les résultats jusqu'à ce que tu ouvres l'étape. Chaque page de course a aussi son propre interrupteur.",
+    "notifications": "Notifications",
+    "notificationsHint": "Avec le bouclier activé, la boîte de réception, la cloche et les notifications du navigateur disent seulement que l'étape est terminée.",
+    "openIn": "Ouvrir une étape terminée dans",
+    "openInHint": "Le bouclier ouvre toujours une étape terminée dans Récit.",
+    "results": "Résultats",
+    "story": "Récit",
+    "saved": "Enregistré",
+    "failed": "Impossible d'enregistrer. Réessaie."
+  }
+}
