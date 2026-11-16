@@ -94,7 +94,7 @@ const en: Dict = {
     d1: ["1 tap", "1 tap", "2 (list in the row)", "Set for several, as today", "None, a tap saves"],
     d2: ["1 tap", "2 taps", "2 (Change, then pick)", "Set for several, as today", "None, a tap saves"],
     d3: ["1 tap for the team, 1 per rider who rests", "2 taps", "2 (list in the row)", "1 tap", "None, a tap saves"],
-    d4: ["0 if you accept, 1 to change", "0 or 1 tap", "2 (list in the row)", "1 tap", "None, a tap saves"],
+    d4: ["0 if you accept, 1 to change", "0 if suggested, otherwise 2 taps", "2 (list in the row)", "1 tap", "None, a tap saves"],
   },
   banners: {
     then: {
@@ -171,7 +171,7 @@ const da: Dict = {
     d1: ["1 tryk", "1 tryk", "2 (listen i rækken)", "Sæt for flere, som i dag", "Ingen, et tryk gemmer"],
     d2: ["1 tryk", "2 tryk", "2 (Skift, så vælg)", "Sæt for flere, som i dag", "Ingen, et tryk gemmer"],
     d3: ["1 tryk for holdet, 1 pr. rytter der hviler", "2 tryk", "2 (listen i rækken)", "1 tryk", "Ingen, et tryk gemmer"],
-    d4: ["0 hvis du tager forslaget, 1 for at rette", "0 eller 1 tryk", "2 (listen i rækken)", "1 tryk", "Ingen, et tryk gemmer"],
+    d4: ["0 hvis du tager forslaget, 1 for at rette", "0 hvis foreslået, ellers 2 tryk", "2 (listen i rækken)", "1 tryk", "Ingen, et tryk gemmer"],
   },
   banners: {
     then: {

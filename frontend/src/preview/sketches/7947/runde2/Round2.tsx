@@ -370,6 +370,7 @@ function D3({ lang }: { lang: Lang }) {
   );
   // Undtagelser: hvem hviler i dag, og hvordan. Start: de to mest traette.
   const [resting, setResting] = useState<Record<string, "full" | "active">>({ r4: "active", r7: "full" });
+  const [custom, setCustom] = useState<Record<string, string>>({});
   const teamOpts = (["easy", "normal", "hard"] as Effort[]).map((e) => ({ value: e, label: effortName(lang, e) }));
   return (
     <>
@@ -382,7 +383,12 @@ function D3({ lang }: { lang: Lang }) {
         {RIDERS.map((r) => {
           const rest = resting[r.id];
           const basePlan: Plan = { focus: own[r.id], intensity: effortForSession(own[r.id]) };
-          const today = choiceForQuick(team as Quick, basePlan, r.suggest.hard);
+          // En traening valgt i listen er en undtagelse: den koeres paa sin egen
+          // indsats, ogsaa naar den ikke passer til holdets dag.
+          const isCustom = r.id in custom;
+          const today = isCustom
+            ? { session: custom[r.id], effort: effortForSession(custom[r.id]) }
+            : choiceForQuick(team as Quick, basePlan, r.suggest.hard);
           const toggle = () =>
             setResting((m) => {
               const n = { ...m };
@@ -402,7 +408,11 @@ function D3({ lang }: { lang: Lang }) {
               {c.restToday}
             </button>
           );
-          const pick = (s: string) => s && setOwn((m) => ({ ...m, [r.id]: s }));
+          const pick = (s: string) => {
+            if (!s) return;
+            setOwn((m) => ({ ...m, [r.id]: s }));
+            setCustom((m) => ({ ...m, [r.id]: s }));
+          };
           return (
             <li key={r.id} className="grid gap-2 py-3 lg:grid-cols-[200px_minmax(0,1fr)_150px_200px] lg:items-center lg:gap-4">
               <Head
@@ -425,7 +435,7 @@ function D3({ lang }: { lang: Lang }) {
                   <div className="flex items-center justify-between gap-2">
                     <span className="min-w-0">
                       <span className="font-medium text-cz-1">{sessionName(lang, today.session)}</span>
-                      <span className="text-cz-3"> · {effortName(lang, today.effort as Effort)} · {c.followsTeam}</span>
+                      <span className="text-cz-3"> · {effortName(lang, today.effort as Effort)} · {isCustom ? c.yours.toLowerCase() : c.followsTeam}</span>
                     </span>
                     <div className="lg:hidden">
                       <TrainingSelect lang={lang} value="" label={c.changeTraining} compact={c.change} onPick={pick} />
@@ -499,13 +509,23 @@ function D4({ lang }: { lang: Lang }) {
                 </span>
                 {settled && <Saved lang={lang} show />}
               </div>
-              <Segmented
-                label={`${c.rider} ${r.label}`}
-                value={effortOf(plan) ?? ""}
-                options={opts}
-                onChange={(e: string) => setMine((m) => ({ ...m, [r.id]: planForQuick(e as Quick, r.plan, fb) }))}
-                className="w-full [&>button]:flex-1"
-              />
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <Segmented
+                  label={`${c.rider} ${r.label}`}
+                  value={effortOf(plan) ?? ""}
+                  options={opts}
+                  onChange={(e: string) => setMine((m) => ({ ...m, [r.id]: planForQuick(e as Quick, plan, fb) }))}
+                  className="w-full [&>button]:flex-1"
+                />
+                {effortOf(plan) === "rest" && (
+                  <Group
+                    items={[
+                      { key: "full", label: c.fullRest, on: !isActiveRecovery(plan), onClick: () => setMine((m) => ({ ...m, [r.id]: planForQuick("rest", plan, fb) })) },
+                      { key: "active", label: c.activeLong, on: isActiveRecovery(plan), onClick: () => setMine((m) => ({ ...m, [r.id]: planForQuick("active", plan, fb) })) },
+                    ]}
+                  />
+                )}
+              </div>
               <div className="hidden lg:block">
                 <TrainingSelect lang={lang} value="" label={c.changeTraining} onPick={pick} />
               </div>
