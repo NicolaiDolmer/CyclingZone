@@ -445,6 +445,22 @@ function MutedStats({ lang, r, withMatch = true }: { lang: Lang; r: SketchRider;
   );
 }
 
+type SortKey = "name" | "rating" | "form" | "fatigue" | "match";
+type Sort = { k: SortKey; dir: "asc" | "desc" };
+
+/** Sorterbart kolonnehoved med aria-sort (samme kontrakt som ui/SortableTh). */
+function SortTh({ k, sort, onSort, className, children }: { k: SortKey; sort: Sort | null; onSort: (k: SortKey) => void; className: string; children: ReactNode }) {
+  const active = sort?.k === k;
+  return (
+    <th scope="col" aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"} className={className}>
+      <button type="button" onClick={() => onSort(k)} className={`inline-flex items-center gap-1 uppercase tracking-[.06em] hover:text-cz-1 ${active ? "text-cz-1" : ""}`}>
+        {children}
+        {active && <span className={sort.dir === "asc" ? "rotate-180" : ""}><IconChevronDown size={10} /></span>}
+      </button>
+    </th>
+  );
+}
+
 const TH = "px-3 py-2 text-left text-2xs font-medium uppercase tracking-[.06em] text-cz-3 whitespace-nowrap";
 const THN = `${TH} text-right`;
 const TD = "px-3 py-2.5 align-top";
@@ -454,6 +470,10 @@ export default function TaktikPanel({ lang, stage, edit, bare = false }: { lang:
   const c = COPY[lang];
   const [plan, setPlan] = useState<TeamPlanKey>("gc");
   const [stance, setStance] = useState<Stance>("neutral");
+  // Kolonnesortering (TASTE 7a): standard er holdets egen raekkefoelge (kaptajnen foerst, T7).
+  const [sort, setSort] = useState<Sort | null>(null);
+  const toggleSort = (k: SortKey) => setSort((s) => (s?.k === k ? { k, dir: s.dir === "desc" ? "asc" : "desc" } : { k, dir: k === "name" || k === "fatigue" ? "asc" : "desc" }));
+  const rows = sort ? [...RIDERS].sort((a, b) => { const d = sort.k === "name" ? a.name.localeCompare(b.name) : a[sort.k] - b[sort.k]; return sort.dir === "asc" ? d : -d; }) : RIDERS;
   const [efforts, setEfforts] = useState<Record<string, Effort>>(() => Object.fromEntries(RIDERS.map((r) => [r.id, r.effort])));
   const [open, setOpen] = useState<{ id: string; mode: "popover" | "sheet" } | null>(() => {
     if (!edit) return null;
@@ -483,12 +503,12 @@ export default function TaktikPanel({ lang, stage, edit, bare = false }: { lang:
           </colgroup>
           <thead>
             <tr className="border-b border-cz-border">
-              <th scope="col" className={TH}>{c.col.rider}</th>
+              <SortTh k="name" sort={sort} onSort={toggleSort} className={TH}>{c.col.rider}</SortTh>
               <th scope="col" className={`${TH} hidden @5xl:table-cell`}>{c.col.role}</th>
-              <th scope="col" className={`${THN} hidden @5xl:table-cell`}>{c.col.rating}</th>
-              <th scope="col" className={`${THN} hidden @5xl:table-cell`}>{c.col.form}</th>
-              <th scope="col" className={`${THN} hidden @5xl:table-cell`}>{c.col.fatigue}</th>
-              <th scope="col" className={`${THN} hidden @5xl:table-cell`}>{c.col.match}</th>
+              <SortTh k="rating" sort={sort} onSort={toggleSort} className={`${THN} hidden @5xl:table-cell`}>{c.col.rating}</SortTh>
+              <SortTh k="form" sort={sort} onSort={toggleSort} className={`${THN} hidden @5xl:table-cell`}>{c.col.form}</SortTh>
+              <SortTh k="fatigue" sort={sort} onSort={toggleSort} className={`${THN} hidden @5xl:table-cell`}>{c.col.fatigue}</SortTh>
+              <SortTh k="match" sort={sort} onSort={toggleSort} className={`${THN} hidden @5xl:table-cell`}>{c.col.match}</SortTh>
               <th scope="col" className={TH}>{c.col.effort}</th>
               <th scope="col" className={`${TH} pb-1`}>
                 <span className="block">{c.col.plan}</span>
@@ -498,7 +518,7 @@ export default function TaktikPanel({ lang, stage, edit, bare = false }: { lang:
             </tr>
           </thead>
           <tbody>
-            {RIDERS.map((r) => (
+            {rows.map((r) => (
               <tr key={r.id} className="border-b border-cz-border last:border-b-0">
                 <td className={TD}>
                   <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
@@ -544,7 +564,7 @@ export default function TaktikPanel({ lang, stage, edit, bare = false }: { lang:
 
       {/* Smal (valg 15): et kort pr. rytter; redigering i et ark fra bunden. */}
       <ul className="m-0 list-none divide-y divide-cz-border p-0 @2xl:hidden">
-        {RIDERS.map((r) => (
+        {rows.map((r) => (
           <li key={r.id} className="px-4 py-3">
             <div className="flex items-start justify-between gap-2">
               <span className="min-w-0">
