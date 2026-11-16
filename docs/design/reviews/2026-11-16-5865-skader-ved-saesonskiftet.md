@@ -37,10 +37,12 @@ Forbehold: S4→S5-tallet er rekonstrueret fra den sidste trænings-afregning f�
 
 | | A · Alle væk (`clear`) | B · Afkortet (`cap`) | C · Kun korte væk (`light`) |
 |---|---|---|---|
-| Hvad sker | Alle aktive skader og sygdomme forsvinder | Skaden afkortes til højst et loft af dage efter skiftet (default 3) | Skader der højst rækker en uge efter skiftet, forsvinder (default 7); lange løber videre |
+| Hvad sker | Alle aktive skader og sygdomme forsvinder | Skaden afkortes til højst et loft af dage efter skiftet | Skader der højst rækker en kort grænse efter skiftet, forsvinder; lange løber videre |
 | Fordel | Enkelt, samme princip som trætheden ("alle starter lige"), matcher virkelig off-season og spillernes ønske | Et sent styrt koster stadig lidt | Lange skader beholder deres konsekvens |
 | Pris | Et styrt i sæsonens sidste dage koster intet i næste sæson | Svær at forklare ("hvorfor 1 dato?"); skaden er stadig synlig ved start | To slags skader med forskellig regel; en lang skade er stadig det spillerne klager over |
 | Spillertekst | "Injuries heal over the off-season" | "Injuries are shortened over the off-season" | "Minor injuries heal over the off-season" |
+
+De konkrete defaults for loftet (B) og grænsen (C) står i `balance-internals/2026-11-16-5865-skader-ved-saesonskiftet.md` (hard rule 17).
 
 **Anbefaling: A.** Begrundelse: (1) det er det spillerne bad om, og ejeren svarede positivt; (2) det følger trætheds-beslutningen fra 26/7, hvor princippet "alle starter sæsonen lige" vejede tungere end en engangs-skævhed; (3) i virkeligheden heler alle skader af den længde spillet har, over en vinter; (4) antallet der påvirkes er lille, så balance-effekten er lille, men det rammer netop de hold der føler sig snydt.
 
