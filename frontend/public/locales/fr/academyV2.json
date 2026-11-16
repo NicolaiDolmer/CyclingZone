@@ -35,7 +35,9 @@
       "count": "{count, plural, one {# talent} other {# talents}}",
       "emptyTitle": "Pas encore de talents",
       "emptyBody": "Les coureurs que tu signes depuis le recrutement apparaissent ici avec leur type de coureur.",
-      "emptyAction": "Aller au recrutement de la semaine"
+      "emptyAction": "Aller au recrutement de la semaine",
+      "errorTitle": "Impossible de charger tes talents",
+      "errorBody": "Réessaie dans un instant. Tes effectifs sont inchangés."
     },
     "age": {
       "label": "Âge ciblé",

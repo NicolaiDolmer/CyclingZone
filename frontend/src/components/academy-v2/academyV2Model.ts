@@ -72,6 +72,21 @@ export function buildTalentOrigins({ signedIntake = [], youthAuctionWins = [] }:
   return origins;
 }
 
+/**
+ * Ejer 16/11 (#8081): "Dine talenter" viser kun egen avl, dvs. ryttere med et signeret akademi-tilbud
+ * fra holdets eget akademi. Ungdomsauktion, transfer og ukendt oprindelse (fx gamle ryttere uden
+ * academy_intake-række) er IKKE egen avl: den sikre side er at udelade frem for at gætte.
+ * null = oprindelsen er ikke kendt endnu (indlæser eller fejlede): listen kan da ikke afgøres.
+ * Trupgrænserne (U23/junior) tæller fortsat hele truppen; kun listen filtreres.
+ */
+export function ownAcademyTalents<T extends { id: string }>(
+  roster: readonly T[],
+  origins: ReadonlyMap<string, TalentOrigin> | null,
+): T[] | null {
+  if (origins === null) return null;
+  return roster.filter((r) => origins.get(r.id) === "offer");
+}
+
 /** Valget som backend gemmer det: Blandet = null. */
 export function ageFocusForSave(choice: string): string | null {
   return choice === AGE_FOCUS_MIXED || !AGE_FOCUS_OPTIONS.includes(choice) ? null : choice;

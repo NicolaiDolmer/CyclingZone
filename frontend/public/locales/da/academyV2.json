@@ -35,7 +35,9 @@
       "count": "{count, plural, one {# talent} other {# talenter}}",
       "emptyTitle": "Ingen talenter endnu",
       "emptyBody": "Ryttere, du henter fra optaget, står her med deres ryttertype.",
-      "emptyAction": "Gå til ugens optag"
+      "emptyAction": "Gå til ugens optag",
+      "errorTitle": "Dine talenter kunne ikke hentes",
+      "errorBody": "Prøv igen om lidt. Dine trupper er uændrede."
     },
     "age": {
       "label": "Aldersfokus",

@@ -8,9 +8,11 @@ import {
   ageFocusDistribution,
   ageFocusForSave,
   buildTalentOrigins,
+  ownAcademyTalents,
   initialAcademyTab,
   talentSquad,
 } from "./academyV2Model.ts";
+import type { TalentOrigin } from "./academyV2Model.ts";
 
 test("kontaktens nøgle er den samme som backend seeder", () => {
   assert.equal(ACADEMY_PAGE_V2_FLAG_KEY, "academy_page_v2_8081");
@@ -71,4 +73,12 @@ test("Kom via: signeret tilbud vinder, ellers vundet ungdomsauktion, ellers inte
   assert.equal(origins.has("d"), false, "en senior-auktion er ingen ungdomsauktion");
   assert.equal(origins.has("e"), false, "en auktion uden køber er ikke vundet");
   assert.equal(buildTalentOrigins().size, 0);
+});
+
+test("ownAcademyTalents: kun egen avl (akademi-tilbud); ungdomsauktion og ukendt oprindelse udelades (ejer 16/11)", () => {
+  const roster = [{ id: "a" }, { id: "b" }, { id: "c" }];
+  const origins = new Map<string, TalentOrigin>([["a", "offer"], ["b", "youthAuction"]]);
+  assert.deepEqual(ownAcademyTalents(roster, origins), [{ id: "a" }]);
+  assert.deepEqual(ownAcademyTalents(roster, new Map()), []);
+  assert.equal(ownAcademyTalents(roster, null), null, "oprindelsen ukendt endnu: listen kan ikke afgøres");
 });

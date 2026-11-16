@@ -35,7 +35,9 @@
       "count": "{count, plural, one {# talento} other {# talentos}}",
       "emptyTitle": "Aún no hay talentos",
       "emptyBody": "Los ciclistas que fiches de la captación aparecen aquí con su tipo de ciclista.",
-      "emptyAction": "Ir a la captación de la semana"
+      "emptyAction": "Ir a la captación de la semana",
+      "errorTitle": "No se pudieron cargar tus talentos",
+      "errorBody": "Inténtalo de nuevo en un momento. Tus plantillas no han cambiado."
     },
     "age": {
       "label": "Edad preferente",

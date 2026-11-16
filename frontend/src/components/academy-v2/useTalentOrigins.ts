@@ -11,14 +11,19 @@ import { fetchAllRows } from "../../lib/supabasePagination.js";
 import { reportLoadFailure } from "../../lib/actionTelemetry.js";
 import { buildTalentOrigins, type SignedIntakeRow, type TalentOrigin, type YouthAuctionWinRow } from "./academyV2Model.ts";
 
-/** null = ikke kendt (indlæser eller fejlede); tabellen viser da ingen oprindelse frem for en forkert. */
-export function useTalentOrigins(teamId: string | null, riderIds: readonly string[]): Map<string, TalentOrigin> | null {
+/**
+ * origins: null = ikke kendt (indlæser eller fejlede); tabellen viser da ingen oprindelse frem for en forkert.
+ * failed: hentningen fejlede (så "Dine talenter" viser en fejl i stedet for at indlæse for evigt).
+ */
+export function useTalentOrigins(teamId: string | null, riderIds: readonly string[]): { origins: Map<string, TalentOrigin> | null; failed: boolean } {
   const [origins, setOrigins] = useState<Map<string, TalentOrigin> | null>(null);
+  const [failed, setFailed] = useState(false);
   const idsKey = [...riderIds].sort().join(",");
 
   useEffect(() => {
     let alive = true;
     const ids = idsKey ? idsKey.split(",") : [];
+    setFailed(false);
     if (!teamId || ids.length === 0) {
       setOrigins(new Map());
       return () => { alive = false; };
@@ -47,10 +52,13 @@ export function useTalentOrigins(teamId: string | null, riderIds: readonly strin
       .catch((err: unknown) => {
         // Ingen gæt: en fejlet hentning viser ingen oprindelse (null), aldrig "–" som om ingen fandtes.
         reportLoadFailure("academy_v2_talent_origins", { kind: "network", cause: err });
-        if (alive) setOrigins(null);
+        if (alive) {
+          setOrigins(null);
+          setFailed(true);
+        }
       });
     return () => { alive = false; };
   }, [teamId, idsKey]);
 
-  return origins;
+  return { origins, failed };
 }

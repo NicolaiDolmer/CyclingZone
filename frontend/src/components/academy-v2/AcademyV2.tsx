@@ -27,7 +27,7 @@ import { squadCapRows, type SquadCounts } from "../../lib/squadCaps.ts";
 import TalentTable, { type TalentRider } from "./TalentTable.tsx";
 import { useAcademyAgeFocus, type ProfileWithAgeFocus } from "./useAcademyAgeFocus.ts";
 import { useTalentOrigins } from "./useTalentOrigins.ts";
-import { ageFocusChoice, initialAcademyTab, AGE_FOCUS_MIXED, type AcademyV2Tab } from "./academyV2Model.ts";
+import { ageFocusChoice, initialAcademyTab, ownAcademyTalents, AGE_FOCUS_MIXED, type AcademyV2Tab } from "./academyV2Model.ts";
 
 // Kit-primitiverne er utypede .jsx; kontrakten skrives ned her (samme greb som AcademyProfileCard.tsx).
 const SectionHeader = SectionHeaderJs as unknown as ComponentType<{ title: ReactNode; meta?: ReactNode }>;
@@ -66,7 +66,9 @@ export default function AcademyV2(props: AcademyV2Props) {
   const ageFocus = useAcademyAgeFocus(Boolean(academyProfile));
   const showProfileTab = Boolean(academyProfile);
   // Skitse A: "Kom via" i "Dine talenter". Rosterets ryttere bærer holdets id (/academy/me).
-  const origins = useTalentOrigins(roster.find((r) => r.team_id)?.team_id ?? null, roster.map((r) => r.id));
+  const { origins, failed: originsFailed } = useTalentOrigins(roster.find((r) => r.team_id)?.team_id ?? null, roster.map((r) => r.id));
+  // Ejer 16/11: listen viser kun egen avl (akademi-tilbud); null = oprindelsen indlæses endnu.
+  const ownTalents = ownAcademyTalents(roster, origins);
 
   const focusNow = ageFocus.state?.active?.ageFocus ?? null;
   const focusLabel = (value: string | null) => (ageFocusChoice(value) === AGE_FOCUS_MIXED ? t("academyV2:v2.age.mixed") : String(value));
@@ -83,7 +85,7 @@ export default function AcademyV2(props: AcademyV2Props) {
         </>
       ),
     })),
-    { label: t("academyV2:v2.stats.talents"), value: String(roster.length) },
+    { label: t("academyV2:v2.stats.talents"), value: ownTalents ? String(ownTalents.length) : "–" },
     ...(showProfileTab ? [{ label: t("academyV2:v2.stats.ageFocus"), value: ageFocus.state ? focusLabel(focusNow) : "–" }] : []),
   ];
 
@@ -170,7 +172,13 @@ export default function AcademyV2(props: AcademyV2Props) {
           </TabPanel>
 
           <TabPanel value="talents">
-            <TalentTable roster={roster} seasonYear={seasonYear} emptyAction={goToIntake} origins={origins} />
+            {ownTalents === null && originsFailed ? (
+              <ErrorState title={t("academyV2:v2.talents.errorTitle")} description={t("academyV2:v2.talents.errorBody")} />
+            ) : ownTalents === null ? (
+              <div className="flex justify-center py-10" role="status" aria-busy="true" aria-label={t("academyV2:v2.tabs.talents")}><Spinner /></div>
+            ) : (
+              <TalentTable roster={ownTalents} seasonYear={seasonYear} emptyAction={goToIntake} origins={origins} />
+            )}
           </TabPanel>
 
           {showProfileTab ? (

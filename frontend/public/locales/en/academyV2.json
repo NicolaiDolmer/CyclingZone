@@ -35,7 +35,9 @@
       "count": "{count, plural, one {# talent} other {# talents}}",
       "emptyTitle": "No talents yet",
       "emptyBody": "Riders you sign from the intake show up here with their rider type.",
-      "emptyAction": "Go to this week's intake"
+      "emptyAction": "Go to this week's intake",
+      "errorTitle": "Your talents could not be loaded",
+      "errorBody": "Try again in a moment. Your squads are unchanged."
     },
     "age": {
       "label": "Age focus",

@@ -35,7 +35,9 @@
       "count": "{count, plural, one {# talent} other {# talenten}}",
       "emptyTitle": "Nog geen talenten",
       "emptyBody": "Renners die je uit de instroom tekent, staan hier met hun rennerstype.",
-      "emptyAction": "Naar de instroom van deze week"
+      "emptyAction": "Naar de instroom van deze week",
+      "errorTitle": "Je talenten konden niet worden geladen",
+      "errorBody": "Probeer het zo opnieuw. Je selecties zijn ongewijzigd."
     },
     "age": {
       "label": "Leeftijdsfocus",
