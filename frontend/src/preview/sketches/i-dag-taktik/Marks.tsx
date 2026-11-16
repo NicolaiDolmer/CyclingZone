@@ -45,7 +45,7 @@ export function Caption({ n, text }: { n: string; text: string }) {
 }
 
 const pin = (label: string, x: number, y: number) => (
-  <span style={{ position: "absolute", left: Math.max(x, 18), top: Math.max(y, 14), transform: "translate(-80%, -60%)", background: RED, color: "white", borderRadius: 999, minWidth: 24, height: 24, padding: "0 6px", display: "inline-flex", alignItems: "center", justifyContent: "center", font: "700 13px/1 'DM Sans', system-ui, sans-serif", boxShadow: "0 0 0 2px white" }}>{label}</span>
+  <span style={{ position: "absolute", left: Math.max(x, 18), top: Math.max(y, 14), transform: "translate(-80%, -60%)", background: RED, color: "white", borderRadius: 999, minWidth: 24, height: 24, padding: "0 6px", display: "inline-flex", alignItems: "center", justifyContent: "center", font: "700 13px/1 'DM Sans', system-ui, sans-serif", outline: "2px solid white" }}>{label}</span>
 );
 
 export function Frames({ on }: { on: boolean }) {
