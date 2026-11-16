@@ -1,4 +1,4 @@
-// #5841 skitse: tager billeder af frontend/src/preview/sketches/5841-udgaver/index.html
+// #5841 skitse: tager billeder af pr-screens/5841-udgaver/skitse/index.html
 // og samler dem side om side med wireframe-referencen (v=0).
 // Koer: node pr-screens/5841-udgaver/shoot.mjs   (bruger frontend/node_modules/@playwright/test)
 import fs from "node:fs";
@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const DIR = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(DIR, "../..");
-const PAGE = pathToFileURL(resolve(ROOT, "frontend/src/preview/sketches/5841-udgaver/index.html")).href;
+const PAGE = pathToFileURL(resolve(DIR, "skitse/index.html")).href;
 const SHOTS = resolve(DIR, "shots");
 fs.mkdirSync(SHOTS, { recursive: true });
 const { chromium } = await import(pathToFileURL(resolve(ROOT, "frontend/node_modules/@playwright/test/index.mjs")).href);
