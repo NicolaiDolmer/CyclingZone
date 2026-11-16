@@ -9,6 +9,7 @@
 // Resultater, ikke her. Kilde: kun løbsloggens historie (samme model som før).
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import I18nReadyGate from "../../I18nReadyGate.jsx";
 import { useStageTimeline } from "../../../hooks/useStageTimeline.js";
 import { formatNumber } from "../../../lib/intl.js";
 import { ownRiderIdsForOneDay } from "../../../lib/oneDayTimeline.ts";
@@ -42,8 +43,28 @@ export interface V6RaceFilmProps {
 
 const NO_RIDERS: RoleRider[] = [];
 
-export default function V6RaceFilm({ raceId, stageNumber, isStageRace, profile, results, myTeamId, stageRoles, onShowResults }: V6RaceFilmProps) {
-  const { t } = useTranslation("races");
+/** Filmens og referatets pladsholdere, mens løbsloggen (eller teksterne) hentes. */
+function FilmSkeleton({ filmTitle, reportTitle }: { filmTitle?: string; reportTitle?: string }) {
+  return (
+    <div data-race-section="race_story" className="@container">
+      <div className="grid grid-cols-1 items-start gap-[14px] @4xl:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]">
+        <Section aria-label={filmTitle}>{filmTitle ? <SectionHeader title={filmTitle} /> : null}<SkeletonLines lines={6} /></Section>
+        <Section aria-label={reportTitle}>{reportTitle ? <SectionHeader title={reportTitle} /> : null}<SkeletonLines lines={6} /></Section>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Filmens tekster ligger i namespacet "raceFilm", som hentes først, når filmen vises
+ * (I18nReadyGate), ikke i første indlæsning (bundle-loftet, #7861).
+ */
+export default function V6RaceFilm(props: V6RaceFilmProps) {
+  return <I18nReadyGate ns="raceFilm" fallback={<FilmSkeleton />}><V6RaceFilmLoaded {...props} /></I18nReadyGate>;
+}
+
+function V6RaceFilmLoaded({ raceId, stageNumber, isStageRace, profile, results, myTeamId, stageRoles, onShowResults }: V6RaceFilmProps) {
+  const { t } = useTranslation(["races", "raceFilm"]);
   const { timeline, loading, error } = useStageTimeline(raceId, stageNumber, { story: true });
   const story = useMemo(() => asStory((timeline as { story?: unknown } | null)?.story), [timeline]);
   const riders = stageRoles ? stageRoles.riders ?? NO_RIDERS : NO_RIDERS;
@@ -87,24 +108,15 @@ export default function V6RaceFilm({ raceId, stageNumber, isStageRace, profile, 
     };
   }, [results, profile, ran, v4, knownOrders, stageRoles, stageNumber]);
 
-  const filmTitle = t("racePageV6.film.title");
-  const reportTitle = t("racePageV6.film.report.title");
+  const filmTitle = t("raceFilm:title");
+  const reportTitle = t("raceFilm:report.title");
 
-  if (loading && !story) {
-    return (
-      <div data-race-section="race_story" className="@container">
-        <div className="grid grid-cols-1 items-start gap-[14px] @4xl:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]">
-          <Section aria-label={filmTitle}><SectionHeader title={filmTitle} /><SkeletonLines lines={6} /></Section>
-          <Section aria-label={reportTitle}><SectionHeader title={reportTitle} /><SkeletonLines lines={6} /></Section>
-        </div>
-      </div>
-    );
-  }
+  if (loading && !story) return <FilmSkeleton filmTitle={filmTitle} reportTitle={reportTitle} />;
   if (!story) {
     return (
       <Section aria-label={filmTitle}>
         <div data-race-section="race_story" className="flex flex-wrap items-center gap-3">
-          <p className="m-0 min-w-[200px] flex-1 text-sm text-cz-2">{t(error ? "racePageV6.film.error" : "racePageV6.film.none")}</p>
+          <p className="m-0 min-w-[200px] flex-1 text-sm text-cz-2">{t(error ? "raceFilm:error" : "raceFilm:none")}</p>
           <Button variant="secondary" size="md" onClick={onShowResults}>{t("racePageV6.tab.results")}</Button>
         </div>
       </Section>
@@ -120,7 +132,7 @@ function FilmBody({ story, profile, cast, narrative, onShowResults }: {
   narrative: StoryNarrativeContext;
   onShowResults: () => void;
 }) {
-  const { t } = useTranslation("races");
+  const { t } = useTranslation(["races", "raceFilm"]);
   const text = useStoryText(cast);
   const D = story.distance_km ?? (Number(profile?.distance_km) || 0);
   const series = useMemo(() => elevationSeries(profile), [profile]);
@@ -158,8 +170,8 @@ function FilmBody({ story, profile, cast, narrative, onShowResults }: {
   const chapter = v6ChapterAt(chapters, km);
   const chapterLabel = (c: V6Chapter) => {
     if (c.kind === "climb") return c.name || t("stagePageV2.story.splits.climb");
-    if (c.kind === "sprint") return t("racePageV6.film.chapter.sprint", { km: formatNumber(Math.round(c.km)) });
-    return t(`racePageV6.film.chapter.${c.kind}`);
+    if (c.kind === "sprint") return t("raceFilm:chapter.sprint", { km: formatNumber(Math.round(c.km)) });
+    return t(`raceFilm:chapter.${c.kind}`);
   };
   const visible = v6VisibleLines(lines, km);
   const current = v6CurrentLine(lines, km);
@@ -169,14 +181,14 @@ function FilmBody({ story, profile, cast, narrative, onShowResults }: {
   const { shown, rest } = pickGroups(groups, 2);
   const frame = frameAt(frames, km);
   const kmText = formatNumber(Math.round(km * 10) / 10, { maximumFractionDigits: 1 });
-  const filmTitle = t("racePageV6.film.title");
-  const reportTitle = t("racePageV6.film.report.title");
+  const filmTitle = t("raceFilm:title");
+  const reportTitle = t("raceFilm:report.title");
 
   return (
     <div data-race-section="race_story" className="@container">
       <div className="grid grid-cols-1 items-start gap-[14px] @4xl:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]">
         <Section aria-label={filmTitle}>
-          <SectionHeader title={filmTitle} meta={t("racePageV6.film.meta")} />
+          <SectionHeader title={filmTitle} meta={t("raceFilm:meta")} />
           {/* Den mørke filmflade: mørkt tema lokalt, så profilens egne farver følger med i begge temaer. */}
           <div data-theme="dark" data-film-surface className="rounded-cz border border-cz-border bg-cz-card px-3 pb-2 pt-3 text-cz-1">
             {profile && series && (
@@ -216,7 +228,7 @@ function FilmBody({ story, profile, cast, narrative, onShowResults }: {
                 className="inline-flex min-h-11 flex-none items-center gap-1.5 rounded-cz border border-cz-border-strong px-3 text-sm font-semibold text-cz-1 hover:bg-cz-subtle"
               >
                 <PlayIcon playing={playing} />
-                <span aria-hidden="true">{playing ? t("stagePageV2.story.replay.pause") : t("racePageV6.film.play")}</span>
+                <span aria-hidden="true">{playing ? t("stagePageV2.story.replay.pause") : t("raceFilm:play")}</span>
               </button>
               <input
                 type="range"
@@ -238,7 +250,7 @@ function FilmBody({ story, profile, cast, narrative, onShowResults }: {
             </div>
           </div>
           {chapters.length > 1 && (
-            <div role="group" aria-label={t("racePageV6.film.chaptersAria")} className="mt-3 flex flex-wrap gap-2">
+            <div role="group" aria-label={t("raceFilm:chaptersAria")} className="mt-3 flex flex-wrap gap-2">
               {chapters.map((c) => {
                 const active = chapter === c;
                 return (
@@ -283,21 +295,21 @@ function FilmBody({ story, profile, cast, narrative, onShowResults }: {
         </Section>
 
         <Section aria-label={reportTitle}>
-          <SectionHeader title={reportTitle} meta={timeTrial ? null : t("racePageV6.film.report.meta")} />
+          <SectionHeader title={reportTitle} meta={timeTrial ? null : t("raceFilm:report.meta")} />
           {timeTrial ? (
             <div className="flex flex-wrap items-center gap-3">
               <p className="m-0 min-w-[200px] flex-1 text-sm text-cz-2">{t("stagePageV2.story.timeTrial")}</p>
               <Button variant="secondary" size="md" onClick={onShowResults}>{t("racePageV6.tab.results")}</Button>
             </div>
           ) : visible.length === 0 ? (
-            <p className="m-0 border-t border-cz-border py-3 text-sm text-cz-2">{t("racePageV6.film.report.empty")}</p>
+            <p className="m-0 border-t border-cz-border py-3 text-sm text-cz-2">{t("raceFilm:report.empty")}</p>
           ) : (
             <ol className="m-0 list-none p-0">
               {visible.map((l) => <ReportLine key={l.id} line={l} current={current?.id === l.id} text={text} onJump={() => jump(lineReplayKm(l, D || null))} />)}
             </ol>
           )}
           {!timeTrial && ahead && visible.length > 0 && (
-            <p className="m-0 border-t border-dashed border-cz-border pt-2.5 text-xs text-cz-3">{t("racePageV6.film.report.ahead")}</p>
+            <p className="m-0 border-t border-dashed border-cz-border pt-2.5 text-xs text-cz-3">{t("raceFilm:report.ahead")}</p>
           )}
         </Section>
       </div>

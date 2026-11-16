@@ -9,26 +9,6 @@
       "team": "Hold"
     },
     "mode": { "aria": "Etapens visning" },
-    "film": {
-      "title": "Løbsfilm",
-      "meta": "Ruten er tidslinjen",
-      "play": "Afspil",
-      "chaptersAria": "Kapitler",
-      "chapter": {
-        "start": "Start",
-        "break": "Udbruddet",
-        "sprint": "Spurt km {km}",
-        "finale": "Finalen"
-      },
-      "report": {
-        "title": "Det skete",
-        "meta": "Op til der, hvor du er i filmen",
-        "empty": "Tryk Afspil eller vælg et kapitel. Referatet følger filmen, så intet afsløres, før du når dertil.",
-        "ahead": "Resten af etapen kommer, mens filmen kører."
-      },
-      "none": "Etapen har ingen løbsfilm. Hele resultatet står under Resultater.",
-      "error": "Løbsfilmen kunne ikke hentes. Hele resultatet står under Resultater."
-    },
     "hero": {
       "stageLocks": "Etape {number} låses kl. {time} · {countdown}",
       "locks": "Låses kl. {time} · {countdown}",
