@@ -121,6 +121,15 @@ export function planSync({ entries, existingFlagKeys, existingIssueRefs = [], ma
   return { inserts, skipped };
 }
 
+/**
+ * issue_ref'er for haandlavede punkter der blokerer en oprettelse (#8065/#8129):
+ * ikke-arkiverede raekker uden flag_key. Flere raekker med samme issue_ref giver
+ * stadig kun en blokering, saa sync aldrig opretter en dublet.
+ */
+export function handmadeIssueRefs(rows) {
+  return rows.filter((r) => !r.flag_key && r.status !== "archived" && r.issue_ref != null).map((r) => Number(r.issue_ref));
+}
+
 export function formatPlan({ inserts, skipped }, { apply }) {
   const lines = [];
   const verb = apply ? "Opretter" : "Ville oprette (dry-run)";
@@ -170,7 +179,7 @@ async function main() {
   const plan = planSync({
     entries,
     existingFlagKeys: existing.data.map((r) => r.flag_key).filter(Boolean),
-    existingIssueRefs: existing.data.filter((r) => !r.flag_key && r.status !== "archived" && r.issue_ref != null).map((r) => r.issue_ref),
+    existingIssueRefs: handmadeIssueRefs(existing.data),
     maxSortOrder: existing.data.reduce((m, r) => Math.max(m, Number(r.sort_order) || 0), 0),
   });
   console.log(formatPlan(plan, args));

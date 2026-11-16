@@ -391,14 +391,15 @@ test("(1) guidet tur: når guld-knappen selv kører dagen, peger trin 2 på den 
   await expect(page.getByRole("dialog")).toContainText("Train once a day");
 });
 
-test("(1) guidet tur med dayClose (#4847): turen lover ingen bonus, men siger at dagen også kører af sig selv", async ({ page }) => {
+test("(1) guidet tur med dayClose (#4847): turen lover ingen bonus-tal, og siger at dagen også kører af sig selv (#7741)", async ({ page }) => {
   await startTourAtRunStep(page);
   await openTraining(page, 1440, 900, trainingMe({ dayClose: { open: true, opensAtHour: 20 } }));
   const anchor = page.locator("[data-tour='training-run-today']");
   await expect(anchor.getByTestId("training-run-now")).toBeVisible();
   const tour = page.getByRole("dialog");
-  await expect(tour).toContainText("with no bonus");
+  await expect(tour).toContainText("runs on its own");
   await expect(tour).not.toContainText("+25%");
+  await expect(tour).not.toContainText("15%");
 });
 
 test("(2)+(6) markeringen: A får en dag i sin egen vælger → 'Saved' ses, '2 selected', og A overskrives ikke", async ({ page }) => {

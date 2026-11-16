@@ -45,6 +45,14 @@ const INTERNAL_PATHS = [
   /^backend\/scripts\/dev\//,
   /^backend\/test\//,
   /^frontend\/tests\//,
+  // #8264: admin-flader og maaleskranker ses kun af ejeren, aldrig af en spiller.
+  /^frontend\/src\/components\/admin\//,
+  /^frontend\/src\/pages\/admin\//,
+  /^frontend\/src\/pages\/Admin[A-Z]/,
+  /^frontend\/src\/pages\/admin[A-Z]/,
+  /^backend\/routes\/admin[A-Z]/,
+  /^frontend\/bundle-budget\.json$/,
+  /^frontend\/typecheck-baseline\.json$/,
   /\.test\.[cm]?[jt]sx?$/,
 ];
 

@@ -82,3 +82,26 @@ test('#8025 a trained-now date says one thing: one note, and a dash that explain
   assert.match(html,/dailyReceipt\.activitiesRecorded/);
   assert.doesNotMatch(render({ run:settled }),/daily-receipt-condition-later/, 'a settled date shows numbers, not the dash hint');
 });
+
+// #7741: the bonus mark shows only for a rider the engine stamped, and only with the switch on.
+const bonusRun = { ...settled, report:{ condition_settled:true, riders:[
+  { ...rider('r1','Ada Pedersen',{positioning:1},{positioning:110}), activities:[{ rider_id:'r1', train_now_bonus:true, intensity:'normal' }] },
+  { ...rider('r2','Bo Holm',{},{}), activities:[{ rider_id:'r2', train_now_bonus:true, intensity:'rest' }, { rider_id:'r2', train_now_bonus:true, race_day:true }] },
+  // Injured AFTER the boosted hard session: the engine keeps the real intensity and sets injured, so the bonus counts.
+  { ...rider('r3','Cai Berg',{},{}), activities:[{ rider_id:'r3', train_now_bonus:true, intensity:'hard', injured:true }] },
+  // Already injured before the date: the engine stores intensity "rest", so nothing was trained and no bonus shows.
+  { ...rider('r4','Dan Lund',{},{}), activities:[{ rider_id:'r4', train_now_bonus:true, intensity:'rest', injured:true }] },
+]}};
+
+test('#7741 bonus mark: on shows it only for a rider whose training was boosted (not rest, race or skipped-injury rows)', () => {
+  const html = render({ run:bonusRun, trainNowBonus:true });
+  assert.equal(html.split('data-testid="daily-receipt-bonus"').length - 1, 2, 'Ada and Cai (injured after training), not Bo or Dan');
+  assert.ok(html.indexOf('data-testid="daily-receipt-bonus"') < html.indexOf('Bo Holm'), 'the first mark sits on Ada, before Bo');
+  const dan = html.slice(html.indexOf('Dan Lund'));
+  assert.doesNotMatch(dan.slice(0, dan.indexOf('</button>')), /daily-receipt-bonus/, 'a rider injured before the date gets no mark');
+});
+
+test('#7741 bonus mark: off, or no answer yet, shows nothing', () => {
+  assert.doesNotMatch(render({ run:bonusRun, trainNowBonus:false }), /daily-receipt-bonus/);
+  assert.doesNotMatch(render({ run:bonusRun }), /daily-receipt-bonus/);
+});

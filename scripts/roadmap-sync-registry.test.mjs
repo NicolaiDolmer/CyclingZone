@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { AREAS } from "./generate-feature-status.mjs";
-import { AREA_ENGINE, itemFromEntry, planSync, formatPlan, parseArgs } from "./roadmap-sync-registry.mjs";
+import { AREA_ENGINE, itemFromEntry, planSync, handmadeIssueRefs, formatPlan, parseArgs } from "./roadmap-sync-registry.mjs";
 
 const ENGINES = ["races", "training", "youth", "market", "club"];
 const entry = (o) => ({
@@ -118,6 +118,24 @@ test("planSync: et ukoblet punkt for samme opgave (issue_ref = epic) faar ingen 
   assert.deepEqual(linked.skipped, []);
   // Uden existingIssueRefs er adfaerden uaendret.
   assert.equal(planSync({ entries, existingFlagKeys: [] }).inserts.length, 3);
+});
+
+test("12/11-forloebet (#8065): stemt punkt uden flag_key giver 0 nye raekker, ogsaa ved flere kandidater", () => {
+  const rows = [
+    { flag_key: null, status: "planned", issue_ref: 8058, sort_order: 10 }, // det stemte punkt
+    { flag_key: null, status: "planned", issue_ref: 8058, sort_order: 20 }, // endnu en kandidat
+    { flag_key: null, status: "archived", issue_ref: 9001, sort_order: 30 }, // arkiveret blokerer ikke
+    { flag_key: "other_flag", status: "planned", issue_ref: 9002, sort_order: 40 }, // koblet blokerer ikke
+    { flag_key: null, status: "planned", issue_ref: null, sort_order: 50 },
+  ];
+  assert.deepEqual(handmadeIssueRefs(rows), [8058, 8058]);
+  const entries = [
+    entry({ id: "auto-accept", flag: "market_auto_accept", epic: "8058", state: "building" }),
+    entry({ id: "archived-epic", flag: "archived_epic_flag", epic: "9001" }),
+  ];
+  const plan = planSync({ entries, existingFlagKeys: ["other_flag"], existingIssueRefs: handmadeIssueRefs(rows) });
+  assert.deepEqual(plan.inserts.map((p) => p.id), ["archived-epic"]);
+  assert.deepEqual(plan.skipped.map((s) => s.id), ["auto-accept"]);
 });
 
 test("formatPlan skelner dry-run fra apply", () => {

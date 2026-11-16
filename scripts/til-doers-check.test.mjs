@@ -576,6 +576,39 @@ test('isInternalChange: kun positivlisten er intern, og tom liste er det ikke', 
   assert.equal(isInternalChange(null), false);
 });
 
+test('isInternalChange: admin-sider, admin-ruter, bundle-budget og typecheck-baseline er interne (#8264)', () => {
+  for (const p of [
+    'frontend/src/components/admin/RaceTable.jsx',
+    'frontend/src/pages/AdminGrowthPage.jsx',
+    'frontend/src/pages/AdminValuePreviewPage.tsx',
+    'frontend/src/pages/admin/Tab.jsx',
+    'frontend/src/pages/adminValuePreviewShape.ts',
+    'backend/routes/adminRoadmap.js',
+    'backend/routes/adminSaleEscrows.js',
+    'frontend/bundle-budget.json',
+    'frontend/typecheck-baseline.json',
+  ]) {
+    assert.equal(isInternalChange([p]), true, p);
+  }
+});
+
+test('isInternalChange: spillersider og spillerruter er stadig spillervendte (#8264)', () => {
+  for (const p of [
+    'frontend/src/pages/RidersPage.jsx',
+    'frontend/src/pages/AdminlikeNonAdmin.jsx',
+    'frontend/src/pages/Administration.jsx',
+    'frontend/src/components/RiderCard.jsx',
+    'frontend/src/components/administration/X.jsx',
+    'backend/routes/riders.js',
+    'backend/routes/administrators.js',
+    'frontend/package.json',
+    'frontend/bundle-budget.json.bak',
+  ]) {
+    assert.equal(isInternalChange([p]), false, p);
+  }
+  assert.equal(isInternalChange(['frontend/bundle-budget.json', 'frontend/src/pages/RidersPage.jsx']), false);
+});
+
 test('internt done-issue med verificeret PR er 8 af 8 og lukkes', () => {
   const door = evaluateDoor({ issue: DONE, prs: MERGED, comments: [verified()], internalOnly: true });
   assert.deepEqual([3, 4, 5, 6, 7].map((k) => status(door, k)), ['na', 'na', 'na', 'na', 'na']);
