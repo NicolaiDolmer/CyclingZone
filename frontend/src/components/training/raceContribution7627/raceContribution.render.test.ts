@@ -131,3 +131,12 @@ test("#7627 the race share is neutral and hatched, never the gold accent", () =>
   assert.match(html, /bg-cz-2/, "race fill is a neutral token");
   assert.match(html, /<pattern /, "race is told from training by pattern, not colour alone");
 });
+
+test("#8205 a trained-now date counts finished and provisional riders together in the race share", () => {
+  // Codex P2: a finished training-only rider and a pending raced rider on the same date.
+  const pendingRaced = { ...raced, receipt_status: "pending", fatigue: null, form: null,
+    trained_now: { gains: { climbing: 1 }, gains_detail: {}, gain_percent: {} } };
+  const mixed = { ...run([trainedOnly, pendingRaced]), receipt_status: "pending", trained_now_slots: [0] };
+  // race 0.2 + 0.26 of 0.3 + 0.46 + 0.23, not 100 % of the pending rider alone
+  assert.match(render(mixed), /Races gave 46% of the squad&#x27;s progress on this date/);
+});

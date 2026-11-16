@@ -58,10 +58,13 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
     : "sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_6rem]";
   const allOpen = rows.length > 0 && rows.every(row => openRiders.has(row.rider_id));
   const known = rows.filter(isKnown);
-  const points = (trainedNow ? trainedRows : known).reduce((sum, row) => sum + todayGainTotal(development(row)), 0);
+  // Codex P2 (#8205): ved Træn nu tæller dagens tal både de færdige og de foreløbige ryttere,
+  // så en dato med begge dele ikke viser løbets andel af kun den ene gruppe.
+  const dayRows = trainedNow ? rows.filter(showsDevelopment) : known;
+  const points = dayRows.reduce((sum, row) => sum + todayGainTotal(development(row)), 0);
   const wholeDateKnown = run.receipt_status === "complete" || run.receipt_status === "recorded";
   const pointsKnown = wholeDateKnown || trainedNow;
-  const raceShare = pointsKnown ? dayRaceShare((trainedNow ? trainedRows : known).map(row => raceSourceBreakdown(row.activities, development(row)))) : null; // #7627
+  const raceShare = pointsKnown ? dayRaceShare(dayRows.map(row => raceSourceBreakdown(row.activities, development(row)))) : null; // #7627
   const abilityName = (key: string) => tRider(`racePreview.derived.${key}`);
   const activityName = (activity: TrainingActivity) => activity.status === "unknown_pending"
     ? t("dailyReceipt.status.reconciliation")
