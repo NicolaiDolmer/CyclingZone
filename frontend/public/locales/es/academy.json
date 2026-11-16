@@ -312,5 +312,51 @@
     "meta": "{count} abiertas",
     "context": "La directiva ha puesto a estas promesas en tu academia como agradecimiento. Fichar es gratis, se aplican los salarios juveniles normales y los límites de plantilla siguen contando. Las ofertas duran 14 días, y las que no elijas se marchan en silencio.",
     "free": "Gratis"
+  },
+  "v2": {
+    "overview": "Resumen de la academia",
+    "tabsLabel": "Secciones de la academia",
+    "tabs": {
+      "intake": "Captación de la semana",
+      "talents": "Tus talentos",
+      "profile": "Perfil y edad"
+    },
+    "stats": {
+      "intake": "Captación",
+      "junior": "Equipo júnior",
+      "u23": "Equipo sub-23",
+      "talents": "Talentos",
+      "ageFocus": "Edad preferente",
+      "intakeOpen": "Los candidatos de esta semana están listos para incorporarse.",
+      "intakeDone": "Ya has incorporado a los candidatos de esta semana."
+    },
+    "squad": {
+      "junior": "Júnior",
+      "u23": "Sub-23"
+    },
+    "landsOn": "Va al equipo {squad}",
+    "talents": {
+      "colNation": "Nac.",
+      "colRider": "Ciclista",
+      "colType": "Tipo de ciclista",
+      "colSquad": "Equipo",
+      "colAge": "Edad",
+      "colPrognosis": "Pronóstico",
+      "count_one": "{count} talento",
+      "count_other": "{count} talentos",
+      "emptyTitle": "Aún no hay talentos",
+      "emptyBody": "Los ciclistas que fiches de la captación aparecen aquí con su tipo de ciclista.",
+      "emptyAction": "Ir a la captación de la semana"
+    },
+    "age": {
+      "label": "Edad preferente",
+      "mixed": "Mixta",
+      "intro": "Elige la edad hacia la que se inclinan tus candidatos semanales. Siguen apareciendo todas las edades.",
+      "toU23": "Los de 19 años siempre van al equipo sub-23.",
+      "active": "Edad preferente ahora: {focus}.",
+      "pending": "Desde el {date}: {focus}.",
+      "errorTitle": "No se pudo cargar el perfil de la academia",
+      "errorBody": "No se ha cambiado nada. Recarga la página para volver a intentarlo."
+    }
   }
 }

@@ -25,6 +25,10 @@ type SelectChange = ChangeEvent<HTMLSelectElement>;
 import { buttonClass } from "./ui/buttonStyles.js";
 import { getCountryName } from "../lib/countryUtils";
 import { formatDate } from "../lib/intl.js";
+// #8081 / #6944: aldersfokus som fjerde felt, kun når akademisiden udgave A sender `ageFocus`.
+import AgeFocusField from "./academy-v2/AgeFocusField.tsx";
+import { ageFocusChoice, ageFocusForSave } from "./academy-v2/academyV2Model.ts";
+import type { AgeFocusState, ProfileWithAgeFocus } from "./academy-v2/useAcademyAgeFocus.ts";
 
 const REGION = "region:";
 const TYPE = "type:";
@@ -64,9 +68,20 @@ export function choiceToProfile({ origin, type, extra }: Choice): ProfileValue {
   return { origins: [...new Set(origins)], types: [...new Set(types)] };
 }
 
-export default function AcademyProfileCard({ profile, onSave }: {
+/**
+ * #8081: med `ageFocus` får kortet aldersfokus som fjerde felt, og Gem sender hele profilen
+ * inkl. alderen til `ageFocus.onSave` (én række, ét ur). Uden `ageFocus` er kortet uændret.
+ */
+export interface AgeFocusProps {
+  state: AgeFocusState;
+  onSave: (profile: ProfileWithAgeFocus) => Promise<SaveResult>;
+  describe: (value: string | null) => string;
+}
+
+export default function AcademyProfileCard({ profile, onSave, ageFocus = null }: {
   profile: AcademyProfile | null;
   onSave: (profile: ProfileValue) => Promise<SaveResult>;
+  ageFocus?: AgeFocusProps | null;
 }) {
   const { t, i18n } = useTranslation("academy");
   const { t: tTypes } = useTranslation("riderTypes");
@@ -74,6 +89,8 @@ export default function AcademyProfileCard({ profile, onSave }: {
   const options = profile?.options ?? { nations: [], regions: [], types: [], delayDays: 14 };
   const locked = (profile?.tier ?? 0) === 0 || slots.origins === 0;
   const [choice, setChoice] = useState(() => initialChoice(profile?.pending ?? profile?.active));
+  const savedAge = ageFocusChoice((ageFocus?.state.pending ?? ageFocus?.state.active)?.ageFocus ?? null);
+  const [age, setAge] = useState(savedAge);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
@@ -112,12 +129,13 @@ export default function AcademyProfileCard({ profile, onSave }: {
     extra: slots.extra > 0 ? choice.extra : "",
   });
   const saved = profile?.pending ?? profile?.active ?? { origins: [], types: [] };
-  const dirty = JSON.stringify(current) !== JSON.stringify({ origins: saved.origins ?? [], types: saved.types ?? [] });
+  const dirty = JSON.stringify(current) !== JSON.stringify({ origins: saved.origins ?? [], types: saved.types ?? [] })
+    || (ageFocus != null && age !== savedAge);
 
   async function handleSave() {
     setBusy(true);
     setMessage(null);
-    const res = await onSave(current);
+    const res = ageFocus ? await ageFocus.onSave({ ...current, ageFocus: ageFocusForSave(age) }) : await onSave(current);
     setBusy(false);
     setMessage(res.ok
       ? { kind: "ok", text: t("profile.saved", { date: formatDate(res.result?.effectiveFrom) }) }
@@ -165,9 +183,16 @@ export default function AcademyProfileCard({ profile, onSave }: {
                 </Select>
               </Field>
             </div>
+            {ageFocus && <AgeFocusField value={age} onChange={setAge} />}
             <div className="flex flex-col gap-3 border-t border-cz-border pt-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0 text-xs text-cz-2 space-y-0.5">
                 <p>{profile?.active ? t("profile.active", { profile: describe(profile.active) || t("profile.none") }) : t("profile.activeNone")}</p>
+                {ageFocus && (
+                  <p data-testid="academy-age-focus-status">
+                    {t("v2.age.active", { focus: ageFocus.describe(ageFocus.state.active?.ageFocus ?? null) })}
+                    {ageFocus.state.pending && ` ${t("v2.age.pending", { date: formatDate(ageFocus.state.pending.effectiveFrom), focus: ageFocus.describe(ageFocus.state.pending.ageFocus) })}`}
+                  </p>
+                )}
                 {profile?.pending && (
                   <p className="text-cz-3">
                     {t("profile.pending", { date: formatDate(profile.pending.effectiveFrom), profile: describe(profile.pending) || t("profile.none") })}

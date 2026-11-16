@@ -300,5 +300,51 @@
     "meta": "{count} open",
     "context": "The board has found these prospects for you as a thank-you. Signing is free, normal youth wages apply, and squad limits still count. The offers run for 14 days, and the ones you do not pick leave quietly.",
     "free": "Free"
+  },
+  "v2": {
+    "overview": "Academy overview",
+    "tabsLabel": "Academy sections",
+    "tabs": {
+      "intake": "This week's intake",
+      "talents": "Your talents",
+      "profile": "Profile and age"
+    },
+    "stats": {
+      "intake": "Intake",
+      "junior": "Junior squad",
+      "u23": "U23 squad",
+      "talents": "Talents",
+      "ageFocus": "Age focus",
+      "intakeOpen": "This week's candidates are ready to bring in.",
+      "intakeDone": "You have brought in this week's candidates."
+    },
+    "squad": {
+      "junior": "Junior",
+      "u23": "U23"
+    },
+    "landsOn": "Lands on the {squad} squad",
+    "talents": {
+      "colNation": "Nat.",
+      "colRider": "Rider",
+      "colType": "Rider type",
+      "colSquad": "Squad",
+      "colAge": "Age",
+      "colPrognosis": "Prognosis",
+      "count_one": "{count} talent",
+      "count_other": "{count} talents",
+      "emptyTitle": "No talents yet",
+      "emptyBody": "Riders you sign from the intake show up here with their rider type.",
+      "emptyAction": "Go to this week's intake"
+    },
+    "age": {
+      "label": "Age focus",
+      "mixed": "Mixed",
+      "intro": "Pick the age your weekly candidates lean towards. Every age still turns up.",
+      "toU23": "19-year-olds always join the U23 squad.",
+      "active": "Age focus now: {focus}.",
+      "pending": "From {date}: {focus}.",
+      "errorTitle": "The academy profile didn't load",
+      "errorBody": "Nothing was changed. Reload the page to try again."
+    }
   }
 }

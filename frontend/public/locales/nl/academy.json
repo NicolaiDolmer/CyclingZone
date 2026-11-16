@@ -312,5 +312,51 @@
     "meta": "{count} open",
     "context": "Het bestuur heeft deze talenten als bedankje in je academie gezet. Contracteren is gratis, het gewone jeugdloon geldt en de selectielimieten tellen nog steeds. De aanbiedingen lopen 14 dagen, en degene die je niet kiest vertrekken stilletjes.",
     "free": "Gratis"
+  },
+  "v2": {
+    "overview": "Overzicht van de academie",
+    "tabsLabel": "Onderdelen van de academie",
+    "tabs": {
+      "intake": "Instroom van deze week",
+      "talents": "Jouw talenten",
+      "profile": "Profiel en leeftijd"
+    },
+    "stats": {
+      "intake": "Instroom",
+      "junior": "Juniorenploeg",
+      "u23": "U23-ploeg",
+      "talents": "Talenten",
+      "ageFocus": "Leeftijdsfocus",
+      "intakeOpen": "De kandidaten van deze week staan klaar om binnen te halen.",
+      "intakeDone": "Je hebt de kandidaten van deze week binnengehaald."
+    },
+    "squad": {
+      "junior": "Junioren",
+      "u23": "U23"
+    },
+    "landsOn": "Komt in de {squad}-ploeg",
+    "talents": {
+      "colNation": "Nat.",
+      "colRider": "Renner",
+      "colType": "Rennerstype",
+      "colSquad": "Ploeg",
+      "colAge": "Leeftijd",
+      "colPrognosis": "Prognose",
+      "count_one": "{count} talent",
+      "count_other": "{count} talenten",
+      "emptyTitle": "Nog geen talenten",
+      "emptyBody": "Renners die je uit de instroom tekent, staan hier met hun rennerstype.",
+      "emptyAction": "Naar de instroom van deze week"
+    },
+    "age": {
+      "label": "Leeftijdsfocus",
+      "mixed": "Gemengd",
+      "intro": "Kies de leeftijd waar je wekelijkse kandidaten naar neigen. Alle leeftijden blijven voorkomen.",
+      "toU23": "19-jarigen gaan altijd naar de U23-ploeg.",
+      "active": "Leeftijdsfocus nu: {focus}.",
+      "pending": "Vanaf {date}: {focus}.",
+      "errorTitle": "Het academieprofiel kon niet worden geladen",
+      "errorBody": "Er is niets gewijzigd. Laad de pagina opnieuw om het nog eens te proberen."
+    }
   }
 }
