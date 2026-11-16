@@ -107,10 +107,15 @@ function WeekBoard({ mobile }: { mobile: boolean }) {
 const TACTIC_WORD: Record<ListRace["tactic"], string> = { saved: "Gemt", partial: "1 af 4 gemt", default: "Standardplan", unsaved: "Ikke gemt" };
 const TACTIC_TONE: Record<ListRace["tactic"], string> = { saved: "bg-cz-success", partial: "bg-cz-warning", default: "bg-cz-3", unsaved: "bg-cz-danger" };
 
+/** 3C: klar kun når truppen er fuld og taktikken er gemt eller bevidst standardplan. Samme regel i rækken og i ugelinjen. */
+function raceReady(r: ListRace): boolean {
+  return r.picked === r.size && r.tactic !== "unsaved" && r.tactic !== "partial";
+}
+
 function RaceStatus({ r, mode }: { r: ListRace; mode: Config["status"] }) {
   const missing = r.size - r.picked;
   if (mode === "single") {
-    const ok = missing === 0 && r.tactic !== "unsaved" && r.tactic !== "partial";
+    const ok = raceReady(r);
     return <Badge tone={ok ? "won" : "closing"}>{ok ? "Klar" : missing > 0 ? "Mangler trup" : "Mangler taktik"}</Badge>;
   }
   return <Badge tone={missing === 0 ? "won" : "closing"}>{missing === 0 ? "Klar" : `${missing} mangler`}</Badge>;
@@ -130,6 +135,8 @@ function RaceList({ mode, mobile }: { mode: Config["status"]; mobile: boolean })
           <span>
             Uge 47 · {counts.squad} mangler trup · {counts.tactic} mangler taktik
           </span>
+        ) : mode === "single" ? (
+          <span>Uge 47 · 6 løb · {LIST.filter((r) => !raceReady(r)).length} ikke klar</span>
         ) : (
           <span>Uge 47 · 6 løb · {counts.squad} mangler</span>
         )}
@@ -910,17 +917,30 @@ function MobileSquad({ cfg }: { cfg: Config }) {
               <Flag code={r.nation} />
               <span className="text-[14px] font-medium text-cz-1">{r.name}</span>
             </div>
-            <div className="mt-1.5 grid grid-cols-[1fr_52px_40px_56px] text-[13px]">
-              <span />
-              <span className={`text-end font-data tabular-nums ${r.routeMatch >= 60 && cfg.table === "today" ? "text-cz-accent-t" : ""}`}>{r.routeMatch}</span>
+            <div className="mt-1.5 grid grid-cols-[1fr_52px_40px_56px] items-center text-[13px]">
+              <span className="min-w-0 ps-6">
+                {/* 6C/7B/7C: samme status- og formtop-celle som på desktop. */}
+                {cfg.peak === "column" ? <PeakCell r={r} /> : cfg.table !== "today" ? <StatusCell r={r} cfg={cfg} /> : null}
+              </span>
+              <span className="text-end">
+                {cfg.table === "today" ? (
+                  <span className={`font-data tabular-nums ${r.routeMatch >= 60 ? "text-cz-accent-t" : ""}`}>{r.routeMatch}</span>
+                ) : (
+                  <MatchBar value={r.routeMatch} />
+                )}
+              </span>
               <span className="text-end font-data tabular-nums">{r.form}</span>
               <span className="text-end">{cfg.after === "finish" ? <span className="font-data tabular-nums">{r.fatigue + r.finishDelta}<span className="text-3xs text-cz-warning"> +{r.finishDelta}</span></span> : <span className="font-data tabular-nums">{r.fatigue}</span>}</span>
             </div>
             {r.selected && (
               <div className="mt-2">
-                <span className="inline-flex w-36 items-center justify-between rounded-cz border border-cz-border px-3 py-2 text-[13px]">
-                  {r.role} {Ico.chevD(13)}
-                </span>
+                {cfg.table === "roleChip" ? (
+                  <RoleCell r={r} cfg={cfg} />
+                ) : (
+                  <span className="inline-flex w-36 items-center justify-between rounded-cz border border-cz-border px-3 py-2 text-[13px]">
+                    {r.role} {Ico.chevD(13)}
+                  </span>
+                )}
               </div>
             )}
           </div>
