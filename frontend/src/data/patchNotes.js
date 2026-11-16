@@ -1,5 +1,29 @@
 export const PATCHES = [
 {
+  "version": "7.454",
+  "date": "2026-11-16",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "topic": "Training",
+      "flag": "training_train_now_bonus",
+      "en": {
+        "title": "Train now bonus (beta)",
+        "body": "When you press Train now yourself, before your team's automatic training has run, your riders get a small extra training bonus for the day. Automatic training gives no bonus. The receipt shows the bonus, and Help explains it."
+      },
+      "da": {
+        "title": "Træn nu-bonus (beta)",
+        "body": "Når du selv trykker Træn nu, før holdets automatiske træning har kørt, får dine ryttere en lille ekstra træningsbonus for dagen. Automatisk træning giver ingen bonus. Kvitteringen viser bonussen, og Hjælp forklarer den."
+      },
+      "refs": [
+        7741
+      ]
+    }
+  ]
+},
+{
   "version": "7.453",
   "date": "2026-11-16",
   "changes": [

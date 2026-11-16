@@ -106,11 +106,11 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "training_train_now_instant", // #8031 (kun patch-noten om Traen nu-kvitteringen)
   "sale_escrow_enabled", // #6181 Hjaelp (binaert, som pengelaasen)
   "training_history_from_ticks_6490", // #6490 traeningssidens laesevej (binaert)
-  "training_train_now_bonus", // #7741 bonusmaerket og teksterne (binaert, off paa preview; ?trainNowBonus=on viser dem)
+  "training_train_now_bonus", // #7741 bonusmaerket og teksterne (off paa preview; ?trainNowBonus=on viser dem)
 ];
 
 // Spejler PLAYER_VISIBLE_BINARY_FLAG_KEYS i backenden: "beta" er off.
-const BINARY_FLAG_KEYS = ["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801", "sale_escrow_enabled", "training_history_from_ticks_6490", "training_train_now_bonus"];
+const BINARY_FLAG_KEYS = ["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801", "sale_escrow_enabled", "training_history_from_ticks_6490"];
 
 // #5319: træningskatalog v3 er OFF på preview (som i prod), men kan tændes med
 // ?catalogV3=on for at se de nye sessioner i vælgerne. Huskes i localStorage

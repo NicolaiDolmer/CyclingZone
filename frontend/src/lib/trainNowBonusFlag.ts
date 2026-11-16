@@ -1,5 +1,6 @@
-// #7741 · Kontakten training_train_now_bonus (binær, som motoren) for Træn nu-bonussen.
-// Kvitteringens bonusmærke og teksterne om bonussen vises kun, når den er on.
+// #7741 · Kontakten training_train_now_bonus for Træn nu-bonussen ("beta" = kun
+// beta-testerne, som motoren 16/11). Kvitteringens bonusmærke og teksterne om
+// bonussen vises kun, når kontakten er tændt for viewer.
 // Svaret evalueres server-side (GET /api/feature-flags); fejl eller manglende
 // svar = off, så fladerne ser ud som uden bonussen.
 //
