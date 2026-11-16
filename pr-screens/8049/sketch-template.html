@@ -300,9 +300,9 @@ function render() {
     const q = state.q.trim().toLowerCase();
     const hl = (s) => esc(s).replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), (m) => `<mark>${m}</mark>`);
     const hits = [];
-    weeks.forEach((w, i) => w.list.forEach((c) => { if ((c.ti + " " + c.b).toLowerCase().includes(q)) hits.push({ c, src: `${weekLabel(i, w.w)} · ${range(w.w)}` }); }));
+    weeks.forEach((w, i) => filt(w.list).forEach((c) => { if ((c.ti + " " + c.b).toLowerCase().includes(q)) hits.push({ c, src: `${weekLabel(i, w.w)} · ${range(w.w)}` }); }));
     const recentStart = weeks[weeks.length - 1].w;
-    DATA.archive.forEach((m) => m.items.forEach((c) => { if (c.d < recentStart && c.ti.toLowerCase().includes(q)) hits.push({ c, src: `${MONTH[+m.m.slice(5) - 1]} ${m.m.slice(0, 4)}` }); }));
+    DATA.archive.forEach((m) => filt(m.items).forEach((c) => { if (c.d < recentStart && c.ti.toLowerCase().includes(q)) hits.push({ c, src: `${MONTH[+m.m.slice(5) - 1]} ${m.m.slice(0, 4)}` }); }));
     h += `<section class="card"><div class="ch"><h2>Søgeresultat</h2><span class="meta">${hits.length} fund</span></div>
       ${hits.slice(0, 40).map(({ c, src }) => `<div class="hit">${tag(c.t)}<div><div style="font-size:13.5px;font-weight:500">${hl(c.ti)}</div>${c.b ? `<div style="font-size:12.5px;color:var(--text-2)">${hl(c.b).slice(0, 400)}</div>` : ""}<div class="src">${AREA[c.a]} · ${src}</div></div><span></span></div>`).join("")}
       ${hits.length > 40 ? `<div class="meta" style="margin-top:10px">Viser 40 af ${hits.length}</div>` : ""}</section>`;
@@ -331,16 +331,16 @@ function render() {
   h += `<div class="arch-h"><span class="n" style="float:left;margin-right:8px">6</span><span class="meta">Arkiv · hentes først, når du åbner en måned</span></div>`;
   const older = DATA.archive.filter((m) => m.m < "2026-08");
   DATA.archive.filter((m) => m.m >= "2026-08").forEach((m) => {
-    const key = `m-${m.m}`; const open = state.open.has(key);
-    h += `<div class="mrow" data-open="${key}" style="cursor:pointer"><b>${MONTH[+m.m.slice(5) - 1]} ${m.m.slice(0, 4)}</b><span class="meta"><span class="tnum">${m.n}</span> ændringer</span><span class="sp"></span><span class="quiet">${open ? "luk" : "åbn"} ${open ? chevD : chevR}</span></div>`;
+    const key = `m-${m.m}`; const open = state.open.has(key); const mi = filt(m.items);
+    h += `<div class="mrow" data-open="${key}" style="cursor:pointer"><b>${MONTH[+m.m.slice(5) - 1]} ${m.m.slice(0, 4)}</b><span class="meta"><span class="tnum">${mi.length}</span> ændringer</span><span class="sp"></span><span class="quiet">${open ? "luk" : "åbn"} ${open ? chevD : chevR}</span></div>`;
     if (open) {
-      h += `<div class="wbody" style="margin-bottom:10px">${byArea(m.items).map(([a, it]) => {
+      h += `<div class="wbody" style="margin-bottom:10px">${byArea(mi).map(([a, it]) => {
         const main = it.filter((c) => c.t !== "fixed"); const fx = it.filter((c) => c.t === "fixed");
         return `<div class="area"><div class="area-h"><b>${AREA[a]}</b><span class="meta">${it.length}</span></div>${main.map((c) => `<div class="line">${tag(c.t)}<div><div class="lt" style="font-weight:400">${esc(c.ti)}</div></div><span></span></div>`).join("")}${fx.length ? `<div class="fixes">${tag("fixed")}<span class="fx"><span class="tnum">${fx.length}</span> rettelser: ${fx.map((c) => esc(c.ti)).join(" · ")}</span><span class="quiet">vis</span></div>` : ""}</div>`;
       }).join("")}</div>`;
     }
   });
-  const on = older.reduce((s, m) => s + m.n, 0);
+  const on = older.reduce((s, m) => s + filt(m.items).length, 0);
   h += `<div class="mrow"><b>April til juli 2026</b><span class="meta"><span class="tnum">${on}</span> ændringer i ${older.length} måneder</span><span class="sp"></span><span class="quiet">vis månederne ${chevR}</span></div>`;
   h += `</section>`;
   p.innerHTML = h; bind();
