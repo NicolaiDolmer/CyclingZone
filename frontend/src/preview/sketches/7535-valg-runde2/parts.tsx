@@ -42,7 +42,7 @@ export function Badge({ tone, children, title }: { tone: Tone; children: ReactNo
   );
 }
 
-/** Spillets segmenterede kontrol (hairline-ramme, aktivt segment = guld-tekst på 10 % guld). */
+/** Segmenteret kontrol (hairline-ramme). Aktivt segment: mørk tekst på let guld, så teksten klarer 4,5:1 (guld-tekst målte 3,9:1). */
 export function Seg({ options, value, small = false, full = false }: { options: string[]; value: string; small?: boolean; full?: boolean }) {
   return (
     <div className={`inline-flex overflow-hidden rounded-cz border border-cz-border ${full ? "w-full" : ""}`} role="group">
@@ -51,7 +51,7 @@ export function Seg({ options, value, small = false, full = false }: { options: 
           key={o}
           className={`whitespace-nowrap ${full ? "flex-1 text-center" : ""} ${small ? "px-2 py-1 text-xs" : "px-3.5 py-1.5 text-[13px]"} font-medium ${
             i > 0 ? "border-s border-cz-border" : ""
-          } ${o === value ? "bg-cz-accent/10 text-cz-accent-t" : "text-cz-2"}`}
+          } ${o === value ? "bg-cz-accent/15 font-semibold text-cz-1" : "text-cz-2"}`}
         >
           {o}
         </span>

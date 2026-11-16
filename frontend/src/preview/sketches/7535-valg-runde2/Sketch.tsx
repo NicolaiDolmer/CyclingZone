@@ -196,7 +196,7 @@ function SaveButton({ cfg, full = false }: { cfg: Config; full?: boolean }) {
 
 function ProfileToggle({ cfg }: { cfg: Config }) {
   return (
-    <span {...note(cfg, 4, "Skjul profil / Vis profil huskes og gælder alle løb, også næste gang siden åbnes")} className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium text-cz-2">
+    <span {...note(cfg, 4, "Skjul profil / Vis profil huskes og gælder alle løb, også næste gang siden åbnes")} className="inline-flex min-h-[44px] items-center gap-1 whitespace-nowrap text-xs font-medium text-cz-2 sm:min-h-0">
       {cfg.profileHidden ? Ico.chevD(12) : Ico.chevU(12)} {cfg.profileHidden ? "Vis profil" : "Skjul profil"}
     </span>
   );
@@ -784,7 +784,7 @@ function PeakView({ cfg, mobile }: { cfg: Config; mobile: boolean }) {
         </div>
       )}
       {mobile && (
-        <div className="grid grid-cols-[24px_1fr_36px_36px_72px] gap-1 border-b border-cz-border bg-cz-subtle px-4 py-2 font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3">
+        <div className="grid grid-cols-[24px_1fr_36px_36px_88px] gap-1 border-b border-cz-border bg-cz-subtle px-4 py-2 font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3">
           <span />
           <span>Rytter</span>
           <span className="text-end">Rating</span>
@@ -824,7 +824,7 @@ function PeakView({ cfg, mobile }: { cfg: Config; mobile: boolean }) {
                 <span className="font-data tabular-nums text-cz-1">{r.fatigue}</span>
               );
               return (
-                <div key={r.id} className={`grid grid-cols-[24px_1fr_36px_36px_72px] items-center gap-1 border-b border-cz-border px-4 py-2 text-[13px] ${warn ? "bg-cz-warning/10" : ""}`}>
+                <div key={r.id} className={`grid grid-cols-[24px_1fr_36px_36px_88px] items-center gap-1 border-b border-cz-border px-4 py-2 text-[13px] ${warn ? "bg-cz-warning/10" : ""}`}>
                   <Check on={false} />
                   <span className="flex min-w-0 items-center gap-1.5 truncate font-medium text-cz-1">
                     <Flag code={r.nation} /> {r.name}
