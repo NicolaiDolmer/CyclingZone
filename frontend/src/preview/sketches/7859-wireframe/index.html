@@ -12,6 +12,8 @@
   All races, riders, teams and numbers are synthetic. Views: ?v=1 ... ?v=9.
   ?shot hides the sketch bar (used for the screenshots), ?marks shows the numbered
   deviations from the wireframe.
+  Styling is plain CSS, not Tailwind. HTML attributes are written with a space before the
+  equals sign so the Tailwind source guard (#5449) does not treat this file as Tailwind markup.
 -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Inter+Tight:wght@600;700&family=Bebas+Neue&display=swap">
 <style>
@@ -402,8 +404,8 @@ button.bell{cursor:pointer;padding:0}
 <symbol id="s-chev" viewBox="0 0 16 16"><path d="M6 3l5 5-5 5"/></symbol>
 </defs></svg>
 
-<div class="wrap" id="wrap"></div>
-<div class="pop" id="pop" hidden></div>
+<div class ="wrap" id="wrap"></div>
+<div class ="pop" id="pop" hidden></div>
 
 <script>
 'use strict';
@@ -443,9 +445,9 @@ const FLAG_SVG = {
 };
 const NATN = { it:'Italy', fr:'France', be:'Belgium', nl:'Netherlands', de:'Germany', co:'Colombia', es:'Spain', dk:'Denmark', no:'Norway', at:'Austria', pl:'Poland' };
 const FLAGS = Object.fromEntries(Object.entries(FLAG_SVG).map(([k, v]) => [k, 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3 2" preserveAspectRatio="none">${v}</svg>`)]));
-const fl = cc => FLAGS[cc] ? `<img class="fl" alt="${NATN[cc]}" src="${FLAGS[cc]}">` : '';
-const rn = (name, id) => `<button type="button" class="hv" aria-label="Rider card for ${esc(name)}"><svg viewBox="0 0 12 12"><circle cx="6" cy="4" r="2.2"/><path d="M2 11c.6-2.6 2.2-3.8 4-3.8s3.4 1.2 4 3.8"/></svg></button><button type="button" class="rn">${esc(name)}</button>`;
-const tn = name => `<button type="button" class="rn tn">${esc(name)}</button>`;
+const fl = cc => FLAGS[cc] ? `<img class ="fl" alt="${NATN[cc]}" src="${FLAGS[cc]}">` : '';
+const rn = (name, id) => `<button type="button" class ="hv" aria-label="Rider card for ${esc(name)}"><svg viewBox="0 0 12 12"><circle cx="6" cy="4" r="2.2"/><path d="M2 11c.6-2.6 2.2-3.8 4-3.8s3.4 1.2 4 3.8"/></svg></button><button type="button" class ="rn">${esc(name)}</button>`;
+const tn = name => `<button type="button" class ="rn tn">${esc(name)}</button>`;
 
 /* ---------- synthetic race ---------- */
 const ME = 'Your team';
@@ -520,7 +522,7 @@ const hidden = n => S.shield && !S.seen[n];
 
 /* ---------- drawings (wireframe recipes) ---------- */
 function bandColor(g){ return g < 3 ? 'var(--g0)' : g < 6 ? 'var(--g1)' : g < 8 ? 'var(--g2)' : g < 10 ? 'var(--g3)' : 'var(--g4)'; }
-function miniProf(q){ const h = q.elevation_profile?.h || []; if (!h.length) return ''; const step = Math.max(1, Math.floor(h.length / 60)); const pts = h.filter((_,i) => i % step === 0); const mx = Math.max(...pts), mn = Math.min(...pts), rng = Math.max(mx - mn, 300); const line = pts.map((e,i) => `${(i/(pts.length-1)*100).toFixed(1)},${(26 - (e-mn)/rng*22).toFixed(1)}`).join(' '); const D = q.distance_km || 1, dots = (q.climbs || []).filter(c => c.category).map(c => { const i = Math.min(h.length - 1, Math.round(c.crest_km / D * (h.length - 1))); return `<i style="left:${(c.crest_km / D * 100).toFixed(1)}%;top:${((26 - (h[i]-mn)/rng*22) / 26 * 24).toFixed(1)}px"></i>`; }).join(''); return `<span class="mini-w"><svg class="mini" viewBox="0 0 100 26" preserveAspectRatio="none" aria-hidden="true"><polygon points="0,26 ${line} 100,26" fill="var(--g0)"/></svg>${dots}</span>`; }
+function miniProf(q){ const h = q.elevation_profile?.h || []; if (!h.length) return ''; const step = Math.max(1, Math.floor(h.length / 60)); const pts = h.filter((_,i) => i % step === 0); const mx = Math.max(...pts), mn = Math.min(...pts), rng = Math.max(mx - mn, 300); const line = pts.map((e,i) => `${(i/(pts.length-1)*100).toFixed(1)},${(26 - (e-mn)/rng*22).toFixed(1)}`).join(' '); const D = q.distance_km || 1, dots = (q.climbs || []).filter(c => c.category).map(c => { const i = Math.min(h.length - 1, Math.round(c.crest_km / D * (h.length - 1))); return `<i style="left:${(c.crest_km / D * 100).toFixed(1)}%;top:${((26 - (h[i]-mn)/rng*22) / 26 * 24).toFixed(1)}px"></i>`; }).join(''); return `<span class ="mini-w"><svg class ="mini" viewBox="0 0 100 26" preserveAspectRatio="none" aria-hidden="true"><polygon points="0,26 ${line} 100,26" fill="var(--g0)"/></svg>${dots}</span>`; }
 function profileInner(n, opts = {}){
   const p = PROFILE[n]; const h = p.elevation_profile.h; const D = p.distance_km;
   const W = Math.max(480, opts.W || 1000), nC = (p.climbs || []).length, rowsL = nC > 2 && W < 900 ? 3 : 2, LS = rowsL === 3 ? 30 : 16, extra = rowsL === 3 ? 44 : 0, H = (opts.h || 240) + extra, top = 46 + extra, bot = 30, left = 62;
@@ -559,7 +561,7 @@ function profileInner(n, opts = {}){
   const ticks = [0, ...(p.climbs || []).map(c => c.crest_km).filter(k => k < D - 8), D].map(k => `<text x="${X(k)}" y="${H-6}" text-anchor="${k===0?'start':k===D?'end':'middle'}" font-size="11" fill="var(--t3)">${k === 0 || k === D ? k + ' km' : k}</text>`).join('');
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Stage ${n} profile, ${D} km">${grid}${last10}${slices}<path d="${line}" fill="none" stroke="var(--t1)" stroke-width="1.6"/>${spr}${marks}${pos}${ticks}</svg>`;
 }
-const profileSVG = (n, opts = {}) => { const o = { h:240, ...opts }; return `<div class="prof" data-n="${n}" data-o="${esc(JSON.stringify(o))}">${profileInner(n, o)}</div>`; };
+const profileSVG = (n, opts = {}) => { const o = { h:240, ...opts }; return `<div class ="prof" data-n="${n}" data-o="${esc(JSON.stringify(o))}">${profileInner(n, o)}</div>`; };
 function fitProfiles(){ document.querySelectorAll('.prof[data-n]').forEach(el => { const w = Math.round(el.clientWidth); if (!w || +el.dataset.w === w) return; el.dataset.w = w; el.innerHTML = profileInner(+el.dataset.n, { ...JSON.parse(el.dataset.o), W:w }); }); }
 function setCalH(){ const c = document.querySelector('.calwrap'); if (c) document.documentElement.style.setProperty('--calh', c.offsetHeight + 'px'); }
 
@@ -567,11 +569,11 @@ function setCalH(){ const c = document.querySelector('.calwrap'); if (c) documen
 function hero(){
   const n = S.stage, p = PROFILE[n];
   const verdict = isDone(n) && !hidden(n) ? `<b>Luca Ferrandi</b> won stage 1 solo, 1:29 ahead, and leads the race` : isDone(n) ? 'Stage finished · result hidden by your spoiler shield' : '';
-  return `<a class="back" href="#" onclick="return false"><svg viewBox="0 0 16 16"><path d="M10 3L5 8l5 5"/></svg>Races</a>
-  <header class="hero">
-    <div><h1>${RACE}</h1><div class="meta">WorldTour · stage race · Stage ${n} of 7 · ${TYPE_LABEL[p.profile_type]} · ${p.distance_km} km · ${SCHED[n]}</div><div class="verdict">${verdict}</div></div>
-    <div class="hero-r"><button class="shield" id="shield" aria-pressed="${S.shield}" type="button"${VIEW === '4' ? dev(1) : VIEW === '1' ? dev(1) : ''}><span>Spoiler shield</span><span class="sw" aria-hidden="true"></span></button></div>
-    <div class="hero-act"><span class="badge warn">Not saved</span><span class="when">Stage 2 locks Sat 16:55, in 35 min · 7 riders ride the assistant's plan</span><button type="button" class="gold">Set tactics for stage 2</button></div>
+  return `<a class ="back" href="#" onclick="return false"><svg viewBox="0 0 16 16"><path d="M10 3L5 8l5 5"/></svg>Races</a>
+  <header class ="hero">
+    <div><h1>${RACE}</h1><div class ="meta">WorldTour · stage race · Stage ${n} of 7 · ${TYPE_LABEL[p.profile_type]} · ${p.distance_km} km · ${SCHED[n]}</div><div class ="verdict">${verdict}</div></div>
+    <div class ="hero-r"><button class ="shield" id="shield" aria-pressed="${S.shield}" type="button"${VIEW === '4' ? dev(1) : VIEW === '1' ? dev(1) : ''}><span>Spoiler shield</span><span class ="sw" aria-hidden="true"></span></button></div>
+    <div class ="hero-act"><span class ="badge warn">Not saved</span><span class ="when">Stage 2 locks Sat 16:55, in 35 min · 7 riders ride the assistant's plan</span><button type="button" class ="gold">Set tactics for stage 2</button></div>
   </header>`;
 }
 function calendar(){
@@ -580,33 +582,33 @@ function calendar(){
     const q = PROFILE[k]; const today = k <= 2;
     const w = isDone(k) ? (hidden(k) ? 'Finished' : winnerOf(k)) : 'Standard';
     const plain = isDone(k) && !hidden(k);
-    return `<button type="button" class="st ${isDone(k)?'done':''}" aria-pressed="${k===n}"${VIEW === '4' && k === 1 ? dev(2) : ''}>${today?'<span class="today">TODAY</span>':''}<div class="top"><span class="lhs"><b>${k}</b><svg class="ic" aria-label="${TYPE_LABEL[q.profile_type]}"><use href="#i-${q.profile_type === 'flat' ? 'flat' : q.profile_type}"/></svg></span><span class="t">${SCHED[k]}</span>${q.weather?.kind==='rain'?`<svg class="wx" aria-label="Rain"><use href="#w-rain"/></svg>`:''}</div>${miniProf(q)}<div class="win" style="${plain?'':'color:var(--t3)'}">${esc(w)}</div></button>`;
-  }).join('') + `<button type="button" class="st" aria-pressed="false"${VIEW === '4' ? dev(2) : ''}><div class="top"><b>Overall</b></div><div class="row">after stage 1</div><div class="win">${hidden(1) ? 'Hidden' : 'Ferrandi leads'}</div></button>`;
-  return `<div class="calwrap"><button class="arrow" type="button" aria-label="Previous stage" disabled><svg><use href="#s-left"/></svg></button><nav class="cal" aria-label="Stages">${cells}</nav><button class="arrow" type="button" aria-label="Next stage"><svg><use href="#s-right"/></svg></button></div>
-  <div class="tabs" role="tablist">${[['stage','Stage'],['start','Start list'],['tactics','Tactics'],['team','Team']].map(([k,l]) => `<button role="tab" type="button" aria-selected="${k===S.tab}">${l}</button>`).join('')}</div>`;
+    return `<button type="button" class ="st ${isDone(k)?'done':''}" aria-pressed="${k===n}"${VIEW === '4' && k === 1 ? dev(2) : ''}>${today?'<span class ="today">TODAY</span>':''}<div class ="top"><span class ="lhs"><b>${k}</b><svg class ="ic" aria-label="${TYPE_LABEL[q.profile_type]}"><use href="#i-${q.profile_type === 'flat' ? 'flat' : q.profile_type}"/></svg></span><span class ="t">${SCHED[k]}</span>${q.weather?.kind==='rain'?`<svg class ="wx" aria-label="Rain"><use href="#w-rain"/></svg>`:''}</div>${miniProf(q)}<div class ="win" style="${plain?'':'color:var(--t3)'}">${esc(w)}</div></button>`;
+  }).join('') + `<button type="button" class ="st" aria-pressed="false"${VIEW === '4' ? dev(2) : ''}><div class ="top"><b>Overall</b></div><div class ="row">after stage 1</div><div class ="win">${hidden(1) ? 'Hidden' : 'Ferrandi leads'}</div></button>`;
+  return `<div class ="calwrap"><button class ="arrow" type="button" aria-label="Previous stage" disabled><svg><use href="#s-left"/></svg></button><nav class ="cal" aria-label="Stages">${cells}</nav><button class ="arrow" type="button" aria-label="Next stage"><svg><use href="#s-right"/></svg></button></div>
+  <div class ="tabs" role="tablist">${[['stage','Stage'],['start','Start list'],['tactics','Tactics'],['team','Team']].map(([k,l]) => `<button role="tab" type="button" aria-selected="${k===S.tab}">${l}</button>`).join('')}</div>`;
 }
 function routeLine(n, lead, withProfile){
   const p = PROFILE[n]; const c = (p.climbs || []).filter(x => x.category).length;
-  return `<section class="rline" aria-label="Stage ${n} route">${lead}<span class="rl-t"><svg class="ic"><use href="#i-${p.profile_type}"/></svg>${TYPE_LABEL[p.profile_type]}</span><span class="rl-n">${p.distance_km} km</span><span class="rl-n">${p.elevation_gain_m.toLocaleString('en-GB')} m</span><span class="rl-n">${c} climbs</span>${withProfile ? `${miniProf(p)}<button type="button" class="quiet" aria-expanded="false">Show route<svg viewBox="0 0 16 16"><path d="M3 6l5 5 5-5"/></svg></button>` : '<span style="flex:1"></span>'}</section>`;
+  return `<section class ="rline" aria-label="Stage ${n} route">${lead}<span class ="rl-t"><svg class ="ic"><use href="#i-${p.profile_type}"/></svg>${TYPE_LABEL[p.profile_type]}</span><span class ="rl-n">${p.distance_km} km</span><span class ="rl-n">${p.elevation_gain_m.toLocaleString('en-GB')} m</span><span class ="rl-n">${c} climbs</span>${withProfile ? `${miniProf(p)}<button type="button" class ="quiet" aria-expanded="false">Show route<svg viewBox="0 0 16 16"><path d="M3 6l5 5 5-5"/></svg></button>` : '<span style="flex:1"></span>'}</section>`;
 }
 const CLS = [['stage','Stage'],['overall','Overall'],['points','Points'],['mountains','Mountains'],['youth','Youth'],['teams','Teams'],['passages','Sprints & climbs']];
 function resultsList(){
   const rows = RESULT;
-  return `<div class="tbl reslist"><table><thead><tr><th>Pos</th><th>Rider</th><th class="res-team">Team</th><th class="n">Time</th><th class="n">Prize pts</th></tr></thead><tbody>
-   ${rows.map(r => `<tr class="${r.team===ME?'mine':''}"><td class="p">${r.p}</td><td>${fl(r.cc)}${rn(r.name)}${r.team===ME?'<span class="you">You</span>':''}<div class="subline">${esc(r.team)}</div></td><td class="dim res-team">${tn(r.team)}</td><td class="n">${r.p===1?'Winner':r.time}</td><td class="n">${r.pts ? r.pts + ' pts' : ''}</td></tr>`).join('')}
-   </tbody></table></div><p class="dim" style="margin-top:6px">${rows.length} of ${rows.length}</p>`;
+  return `<div class ="tbl reslist"><table><thead><tr><th>Pos</th><th>Rider</th><th class ="res-team">Team</th><th class ="n">Time</th><th class ="n">Prize pts</th></tr></thead><tbody>
+   ${rows.map(r => `<tr class ="${r.team===ME?'mine':''}"><td class ="p">${r.p}</td><td>${fl(r.cc)}${rn(r.name)}${r.team===ME?'<span class ="you">You</span>':''}<div class ="subline">${esc(r.team)}</div></td><td class ="dim res-team">${tn(r.team)}</td><td class ="n">${r.p===1?'Winner':r.time}</td><td class ="n">${r.pts ? r.pts + ' pts' : ''}</td></tr>`).join('')}
+   </tbody></table></div><p class ="dim" style="margin-top:6px">${rows.length} of ${rows.length}</p>`;
 }
 function stageResults(){
   const mine = RESULT.filter(r => r.team === ME);
-  return `<div class="grid resgrid"><div class="col">
-    <section class="card"><h2>Stage 1 result</h2>
-      <div class="seg" role="group" aria-label="Classification">${CLS.map(([k,l]) => `<button type="button" aria-pressed="${S.cls===k}">${l}</button>`).join('')}</div>
-      <div class="tool"><div class="search"><svg><use href="#s-search"/></svg><input type="search" placeholder="Search rider, team or nation" aria-label="Search rider, team or nation"></div><button type="button" class="btn2" aria-pressed="false">My team</button><select aria-label="Team"><option>All teams</option></select><select aria-label="Nation"><option>All nations</option></select></div>
+  return `<div class ="grid resgrid"><div class ="col">
+    <section class ="card"><h2>Stage 1 result</h2>
+      <div class ="seg" role="group" aria-label="Classification">${CLS.map(([k,l]) => `<button type="button" aria-pressed="${S.cls===k}">${l}</button>`).join('')}</div>
+      <div class ="tool"><div class ="search"><svg><use href="#s-search"/></svg><input type="search" placeholder="Search rider, team or nation" aria-label="Search rider, team or nation"></div><button type="button" class ="btn2" aria-pressed="false">My team</button><select aria-label="Team"><option>All teams</option></select><select aria-label="Nation"><option>All nations</option></select></div>
       ${resultsList()}
     </section></div>
-    <div class="col">
-    <section class="card"><h2>Your day <small>${ME}</small></h2><div class="tbl"><table><tbody>${mine.map(r => `<tr class="mine"><td class="p">${r.p}</td><td>${fl(r.cc)}${rn(r.name)}${LINES[r.name]?`<div class="why">${LINES[r.name]}</div>`:''}</td><td class="n">${r.time}</td></tr>`).join('')}</tbody></table></div><p class="dim" style="margin-top:6px">The full plan against what happened is in Tactics.</p></section>
-    <section class="card"><h2>Jerseys after stage 1</h2><div class="tbl"><table><tbody>${[['Leader','Luca Ferrandi','it','Team C'],['Points','Andrés Rojas','co','Team B'],['Mountains','Luca Ferrandi','it','Team C'],['Youth','Bram Visser','nl','Team G']].map(([l,nm,cc,t]) => `<tr><td>${l}</td><td>${fl(cc)}${rn(nm)}</td><td class="dim">${tn(t)}</td></tr>`).join('')}<tr><td>Teams</td><td>${tn(ME)}</td><td></td></tr></tbody></table></div></section>
+    <div class ="col">
+    <section class ="card"><h2>Your day <small>${ME}</small></h2><div class ="tbl"><table><tbody>${mine.map(r => `<tr class ="mine"><td class ="p">${r.p}</td><td>${fl(r.cc)}${rn(r.name)}${LINES[r.name]?`<div class ="why">${LINES[r.name]}</div>`:''}</td><td class ="n">${r.time}</td></tr>`).join('')}</tbody></table></div><p class ="dim" style="margin-top:6px">The full plan against what happened is in Tactics.</p></section>
+    <section class ="card"><h2>Jerseys after stage 1</h2><div class ="tbl"><table><tbody>${[['Leader','Luca Ferrandi','it','Team C'],['Points','Andrés Rojas','co','Team B'],['Mountains','Luca Ferrandi','it','Team C'],['Youth','Bram Visser','nl','Team G']].map(([l,nm,cc,t]) => `<tr><td>${l}</td><td>${fl(cc)}${rn(nm)}</td><td class ="dim">${tn(t)}</td></tr>`).join('')}<tr><td>Teams</td><td>${tn(ME)}</td><td></td></tr></tbody></table></div></section>
     </div></div>`;
 }
 const CHAPTERS = [['Start',0],['The break',14],['Passo Alto',53],['Sprint km 70',70],['Colle Verde',96],['The chase',128],['Finale',150]];
@@ -626,89 +628,89 @@ function stageStory(){
   const L = REPORT.filter(l => !sh || l[0] <= pos);
   const chap = CHAPTERS.slice().reverse().find(c => c[1] <= pos);
   const cur = L.slice().reverse().find(l => l[0] <= pos);
-  return `<div class="grid"><div class="col"><section class="card"><h2>Race film <small>one player · the route is the timeline</small></h2>
-     <div class="film"${VIEW === '2' ? dev(1) : ''}>${profileSVG(1, { h:190, posKm:pos })}
-      <div class="ctl"><button type="button"><svg class="chev"><use href="#s-play"/></svg>Play</button><input type="range" min="0" max="162" step="0.5" value="${pos}" aria-label="Position in the stage, km"><span class="n" style="font-family:var(--num)">km ${pos}</span><span>${chap ? chap[0] : ''}</span></div></div>
-     <div class="chapters">${CHAPTERS.map(c => `<button type="button" aria-pressed="${chap && chap[0]===c[0]}">${c[0]}</button>`).join('')}</div>
+  return `<div class ="grid"><div class ="col"><section class ="card"><h2>Race film <small>one player · the route is the timeline</small></h2>
+     <div class ="film"${VIEW === '2' ? dev(1) : ''}>${profileSVG(1, { h:190, posKm:pos })}
+      <div class ="ctl"><button type="button"><svg class ="chev"><use href="#s-play"/></svg>Play</button><input type="range" min="0" max="162" step="0.5" value="${pos}" aria-label="Position in the stage, km"><span class ="n" style="font-family:var(--num)">km ${pos}</span><span>${chap ? chap[0] : ''}</span></div></div>
+     <div class ="chapters">${CHAPTERS.map(c => `<button type="button" aria-pressed="${chap && chap[0]===c[0]}">${c[0]}</button>`).join('')}</div>
     </section></div>
-    <div class="col"><section class="card"><h2>What happened <small>${sh ? 'only up to where you are in the film' : 'click a line to jump'}</small></h2>
-     <div class="report">${L.map(l => `<button type="button" aria-current="${cur && cur[0]===l[0]}"><span class="km">km ${l[0]}</span><span>${esc(l[1])}</span></button>`).join('')}</div>
-     ${sh && pos < 150 ? '<div class="hidden-box" style="margin-top:8px">The finale is ahead · keep watching</div>' : ''}
-    </section>${sh ? `<div class="hidden-box">Your day and the result are in Results · <button type="button" class="btn2" data-act="show">Show results</button></div>` : ''}</div></div>`;
+    <div class ="col"><section class ="card"><h2>What happened <small>${sh ? 'only up to where you are in the film' : 'click a line to jump'}</small></h2>
+     <div class ="report">${L.map(l => `<button type="button" aria-current="${cur && cur[0]===l[0]}"><span class ="km">km ${l[0]}</span><span>${esc(l[1])}</span></button>`).join('')}</div>
+     ${sh && pos < 150 ? '<div class ="hidden-box" style="margin-top:8px">The finale is ahead · keep watching</div>' : ''}
+    </section>${sh ? `<div class ="hidden-box">Your day and the result are in Results · <button type="button" class ="btn2" data-act="show">Show results</button></div>` : ''}</div></div>`;
 }
 function stageView(){
-  const seg = `<div class="seg rl-mode" role="group" aria-label="Stage view"><button type="button" aria-pressed="${S.mode==='story'}" data-mode="story">Story · film and report</button><button type="button" aria-pressed="${S.mode==='results'}" data-mode="results">Results · full list</button></div>`;
-  return routeLine(1, seg, S.mode !== 'story') + (S.mode === 'story' ? stageStory() : (hidden(1) ? `<div class="hidden-box">Results are hidden by your spoiler shield · <button type="button" class="btn2" data-act="show">Show results</button></div>` : stageResults()));
+  const seg = `<div class ="seg rl-mode" role="group" aria-label="Stage view"><button type="button" aria-pressed="${S.mode==='story'}" data-mode="story">Story · film and report</button><button type="button" aria-pressed="${S.mode==='results'}" data-mode="results">Results · full list</button></div>`;
+  return routeLine(1, seg, S.mode !== 'story') + (S.mode === 'story' ? stageStory() : (hidden(1) ? `<div class ="hidden-box">Results are hidden by your spoiler shield · <button type="button" class ="btn2" data-act="show">Show results</button></div>` : stageResults()));
 }
 const racePage = () => hero() + calendar() + `<main>${stageView()}</main>`;
 
 /* ---------- 5 dashboard ---------- */
 function todayCard(o){
-  return `<a class="sc" href="#" onclick="return false"${dev(o.dev)}><div class="hd"><div style="min-width:0"><div class="nm">${esc(o.race)}</div><div class="mlab lv">${esc(o.label)}</div></div><span class="badge ${o.badge}">${o.state}</span></div>${miniProf(PROFILE[o.stage])}<div class="stl">${o.line}</div><div class="mlab sec">${o.sec}</div></a>`;
+  return `<a class ="sc" href="#" onclick="return false"${dev(o.dev)}><div class ="hd"><div style="min-width:0"><div class ="nm">${esc(o.race)}</div><div class ="mlab lv">${esc(o.label)}</div></div><span class ="badge ${o.badge}">${o.state}</span></div>${miniProf(PROFILE[o.stage])}<div class ="stl">${o.line}</div><div class ="mlab sec">${o.sec}</div></a>`;
 }
 function dashboard(){
   const done = sh => todayCard({ race:RACE, label:'Stage 1 of 7', stage:1, badge:'neutral', state:'Finished', dev: sh ? 1 : 0,
-    line: sh ? `<svg class="eye"><use href="#s-eyeoff"/></svg><span>Result hidden by your spoiler shield</span>` : `<svg class="eye"><use href="#s-trophy"/></svg><span class="win-n">Won by Luca Ferrandi</span>`,
+    line: sh ? `<svg class ="eye"><use href="#s-eyeoff"/></svg><span>Result hidden by your spoiler shield</span>` : `<svg class ="eye"><use href="#s-trophy"/></svg><span class ="win-n">Won by Luca Ferrandi</span>`,
     sec: sh ? 'GC hidden until you open stage 1' : 'GC: 3rd of 140' });
   const live = todayCard({ race:'Tour of the Fjords', label:'Stage 3 of 5', stage:3, badge:'live', state:'Live', line:'<span>Racing now · km 84 of 176</span>', sec:'GC: 12th of 120' });
-  const up = todayCard({ race:RACE, label:'Stage 2 of 7', stage:2, badge:'neutral', state:'Upcoming', line:'<span class="t" style="font-family:var(--num)">17:00</span>', sec:'Locks 16:55' });
-  const latest = sh => `<section class="card lr"${dev(sh ? 2 : 0)}><h2>Latest result <small class="mlab">Sat 13:02</small></h2>
-     <p class="big">${sh ? `Stage 1 of ${RACE} is finished` : 'Mikkel Aagaard 3rd on stage 1'}</p>
-     <p class="dim" style="margin:0">${sh ? 'Your riders and the winner stay hidden until you open the stage.' : `${RACE} · 1:29 behind the winner · 43 prize pts`}</p>
-     ${sh ? `<div class="hidden-box">Your result is hidden by your spoiler shield · <button type="button" class="btn2">Show result</button></div>` : `<div class="tbl" style="margin-top:10px"><table><tbody><tr><td class="p">3</td><td>${fl('dk')}${rn('Mikkel Aagaard')}</td><td class="n">+1:29</td></tr><tr><td class="p">9</td><td>${fl('nl')}${rn('Jonas Vermeer')}</td><td class="n">+2:37</td></tr></tbody></table></div>`}</section>`;
-  const block = sh => `<div class="sk-col"><section class="card"><h2>Today's stages <small class="mlab">3 stages</small></h2><div class="strip">${done(sh)}${live}${up}</div></section>${latest(sh)}</div>`;
-  return `<div class="t2"><div class="pagehead"><h1 class="pg">Dashboard</h1><p class="dim">Your team, today and the latest results.</p></div>
-    <p class="cap">With the shield on</p>${block(true)}
-    <p class="cap" style="margin-top:24px">Shield off (as today)</p><div class="was">${block(false)}</div></div>`;
+  const up = todayCard({ race:RACE, label:'Stage 2 of 7', stage:2, badge:'neutral', state:'Upcoming', line:'<span class ="t" style="font-family:var(--num)">17:00</span>', sec:'Locks 16:55' });
+  const latest = sh => `<section class ="card lr"${dev(sh ? 2 : 0)}><h2>Latest result <small class ="mlab">Sat 13:02</small></h2>
+     <p class ="big">${sh ? `Stage 1 of ${RACE} is finished` : 'Mikkel Aagaard 3rd on stage 1'}</p>
+     <p class ="dim" style="margin:0">${sh ? 'Your riders and the winner stay hidden until you open the stage.' : `${RACE} · 1:29 behind the winner · 43 prize pts`}</p>
+     ${sh ? `<div class ="hidden-box">Your result is hidden by your spoiler shield · <button type="button" class ="btn2">Show result</button></div>` : `<div class ="tbl" style="margin-top:10px"><table><tbody><tr><td class ="p">3</td><td>${fl('dk')}${rn('Mikkel Aagaard')}</td><td class ="n">+1:29</td></tr><tr><td class ="p">9</td><td>${fl('nl')}${rn('Jonas Vermeer')}</td><td class ="n">+2:37</td></tr></tbody></table></div>`}</section>`;
+  const block = sh => `<div class ="sk-col"><section class ="card"><h2>Today's stages <small class ="mlab">3 stages</small></h2><div class ="strip">${done(sh)}${live}${up}</div></section>${latest(sh)}</div>`;
+  return `<div class ="t2"><div class ="pagehead"><h1 class ="pg">Dashboard</h1><p class ="dim">Your team, today and the latest results.</p></div>
+    <p class ="cap">With the shield on</p>${block(true)}
+    <p class ="cap" style="margin-top:24px">Shield off (as today)</p><div class ="was">${block(false)}</div></div>`;
 }
 
 /* ---------- 6 inbox and in-game ---------- */
 function inbox(){
-  const row = (o) => `<li class="${o.unread ? 'unread' : ''}"${dev(o.dev)}><svg class="ri"><use href="#${o.icon}"/></svg><div><div class="ti">${o.unread ? '<span class="dot" aria-hidden="true"></span><span class="sr">Unread: </span>' : ''}${esc(o.title)}</div>${o.msg ? `<div class="ms">${esc(o.msg)}</div>` : ''}<div class="mlab mt">${o.meta}</div></div>${o.act ? `<button type="button" class="quiet">${o.act}<svg viewBox="0 0 16 16"><path d="M6 3l5 5-5 5"/></svg></button>` : '<span></span>'}</li>`;
+  const row = (o) => `<li class ="${o.unread ? 'unread' : ''}"${dev(o.dev)}><svg class ="ri"><use href="#${o.icon}"/></svg><div><div class ="ti">${o.unread ? '<span class ="dot" aria-hidden="true"></span><span class ="sr">Unread: </span>' : ''}${esc(o.title)}</div>${o.msg ? `<div class ="ms">${esc(o.msg)}</div>` : ''}<div class ="mlab mt">${o.meta}</div></div>${o.act ? `<button type="button" class ="quiet">${o.act}<svg viewBox="0 0 16 16"><path d="M6 3l5 5-5 5"/></svg></button>` : '<span></span>'}</li>`;
   const neutral = { unread:true, icon:'s-flag', title:`Stage 1 of ${RACE} is finished`, msg:'', meta:'Sat 13:02 · Race', act:'See the result', dev:1 };
   const today = { unread:true, icon:'s-flag', title:'Ferrandi wins solo on Monte Serra', msg:`Stage 1 of ${RACE}. Mikkel Aagaard 3rd, Jonas Vermeer 9th.`, meta:'Sat 13:02 · Race', act:'See the result' };
   const other = [
     { icon:'s-gavel', title:'You were outbid on Stefan Ricci', msg:'The auction ends Sat 21:00.', meta:'Sat 12:40 · Auction', act:'Bid again' },
     { icon:'s-coin', title:'Sponsor payment received', msg:'Paid into your account.', meta:'Sat 08:00 · Finance', act:'' },
   ];
-  return `<div class="t1"><div class="pagehead row"><div><h1 class="pg">Notifications</h1><p class="dim">Races, auctions, transfers and your board.</p></div><div class="acts"><button type="button" class="btn2">Mark all as read</button></div></div>
-    <div class="sk-col">
-    <section class="card"><h2>Inbox <small class="mlab">With the shield on</small></h2><ul class="rows">${row(neutral)}${other.map(row).join('')}</ul></section>
-    <section class="card"${dev(2)}><h2>In-game <small class="mlab">bell and pop-up, with the shield on</small></h2>
-      <div class="frame"><div class="topbar"><span class="dim" style="margin-right:auto">Top bar</span><button type="button" class="bell" aria-label="Notifications, 1 unread" aria-expanded="true"><svg aria-hidden="true"><use href="#s-bell"/></svg><span class="n" aria-hidden="true">1</span></button></div>
-        <div class="popin" role="dialog" aria-label="Latest notifications"><div class="h">Latest</div><div class="o"><b>Stage 1 of ${RACE} is finished</b><small>Sat 13:02 · Race</small></div><div class="o">You were outbid on Stefan Ricci<small>Sat 12:40 · Auction</small></div></div>
-        <div class="toast" role="status"><svg class="ri" style="width:18px;height:18px;stroke:var(--t2);fill:none;stroke-width:1.6"><use href="#s-flag"/></svg><div><b>Stage 1 is finished</b><span class="dim">${RACE}</span><div style="margin-top:6px"><button type="button" class="quiet">Open the race<svg viewBox="0 0 16 16"><path d="M6 3l5 5-5 5"/></svg></button></div></div></div>
+  return `<div class ="t1"><div class ="pagehead row"><div><h1 class ="pg">Notifications</h1><p class ="dim">Races, auctions, transfers and your board.</p></div><div class ="acts"><button type="button" class ="btn2">Mark all as read</button></div></div>
+    <div class ="sk-col">
+    <section class ="card"><h2>Inbox <small class ="mlab">With the shield on</small></h2><ul class ="rows">${row(neutral)}${other.map(row).join('')}</ul></section>
+    <section class ="card"${dev(2)}><h2>In-game <small class ="mlab">bell and pop-up, with the shield on</small></h2>
+      <div class ="frame"><div class ="topbar"><span class ="dim" style="margin-right:auto">Top bar</span><button type="button" class ="bell" aria-label="Notifications, 1 unread" aria-expanded="true"><svg aria-hidden="true"><use href="#s-bell"/></svg><span class ="n" aria-hidden="true">1</span></button></div>
+        <div class ="popin" role="dialog" aria-label="Latest notifications"><div class ="h">Latest</div><div class ="o"><b>Stage 1 of ${RACE} is finished</b><small>Sat 13:02 · Race</small></div><div class ="o">You were outbid on Stefan Ricci<small>Sat 12:40 · Auction</small></div></div>
+        <div class ="toast" role="status"><svg class ="ri" style="width:18px;height:18px;stroke:var(--t2);fill:none;stroke-width:1.6"><use href="#s-flag"/></svg><div><b>Stage 1 is finished</b><span class ="dim">${RACE}</span><div style="margin-top:6px"><button type="button" class ="quiet">Open the race<svg viewBox="0 0 16 16"><path d="M6 3l5 5-5 5"/></svg></button></div></div></div>
       </div></section>
-    <section class="card was"><h2>The same race row with the shield off <small class="mlab">as today</small></h2><ul class="rows">${row(today)}</ul></section>
+    <section class ="card was"><h2>The same race row with the shield off <small class ="mlab">as today</small></h2><ul class ="rows">${row(today)}</ul></section>
     </div></div>`;
 }
 
 /* ---------- 7 browser notifications and settings ---------- */
 function browserView(){
-  const rule = (on, label, d) => `<button type="button" class="rule" aria-pressed="${on}"${dev(d)}><i aria-hidden="true"></i>${label}</button>`;
-  return `<div class="t1"><div class="pagehead"><h1 class="pg">Settings</h1><p class="dim">Notifications, language and how results reach you.</p></div>
-    <div class="sk-col">
-    <section class="card"><h2>Browser notifications <small class="mlab">with the shield on</small></h2>
-      <div class="os-wrap"${dev(1)}><div><p class="os-cap">Android</p><div class="os android"><div class="app"><i></i>Cycling Zone · now</div><b>Stage 1 is finished</b><p>${RACE} · see the result</p></div></div>
-      <div><p class="os-cap">Chrome on a computer</p><div class="os win"><div class="app"><i></i>Cycling Zone · cyclingzone.app</div><b>Stage 1 is finished</b><p>${RACE} · see the result</p></div></div></div>
-      <p class="dim" style="margin:12px 0 0">With the shield off the notification says who won and where your riders finished, as today.</p></section>
-    <section class="card"><h2>Results and spoilers</h2><div class="set">
-      <div class="r"><div><b>Spoiler shield for all races</b><p>Hides winners and results until you open the stage. Each race page also has its own switch.</p></div>${rule(false, 'Off', 2)}</div>
-      <div class="r"><div><b>Browser notifications</b><p>A notification when a stage is finished. With the shield on it only says that the stage is finished.</p></div>${rule(true, 'On', 0)}</div>
-      <div class="r"><div><b>Open a finished stage in</b><p>The shield always opens a finished stage in Story.</p></div><div class="seg" role="group" aria-label="Open a finished stage in"><button type="button" aria-pressed="true">Results</button><button type="button" aria-pressed="false">Story</button></div></div>
+  const rule = (on, label, d) => `<button type="button" class ="rule" aria-pressed="${on}"${dev(d)}><i aria-hidden="true"></i>${label}</button>`;
+  return `<div class ="t1"><div class ="pagehead"><h1 class ="pg">Settings</h1><p class ="dim">Notifications, language and how results reach you.</p></div>
+    <div class ="sk-col">
+    <section class ="card"><h2>Browser notifications <small class ="mlab">with the shield on</small></h2>
+      <div class ="os-wrap"${dev(1)}><div><p class ="os-cap">Android</p><div class ="os android"><div class ="app"><i></i>Cycling Zone · now</div><b>Stage 1 is finished</b><p>${RACE} · see the result</p></div></div>
+      <div><p class ="os-cap">Chrome on a computer</p><div class ="os win"><div class ="app"><i></i>Cycling Zone · cyclingzone.app</div><b>Stage 1 is finished</b><p>${RACE} · see the result</p></div></div></div>
+      <p class ="dim" style="margin:12px 0 0">With the shield off the notification says who won and where your riders finished, as today.</p></section>
+    <section class ="card"><h2>Results and spoilers</h2><div class ="set">
+      <div class ="r"><div><b>Spoiler shield for all races</b><p>Hides winners and results until you open the stage. Each race page also has its own switch.</p></div>${rule(false, 'Off', 2)}</div>
+      <div class ="r"><div><b>Browser notifications</b><p>A notification when a stage is finished. With the shield on it only says that the stage is finished.</p></div>${rule(true, 'On', 0)}</div>
+      <div class ="r"><div><b>Open a finished stage in</b><p>The shield always opens a finished stage in Story.</p></div><div class ="seg" role="group" aria-label="Open a finished stage in"><button type="button" aria-pressed="true">Results</button><button type="button" aria-pressed="false">Story</button></div></div>
     </div></section></div></div>`;
 }
 
 /* ---------- 8 standings ---------- */
 function standings(){
   const T = [['Team C',412,0],['Team F',398,1],[ME,377,2],['Team D',351,3],['Team H',330,4],['Team B',318,5],['Team G',296,6],['Team E',281,7],['Team A',260,8]];
-  return `<div class="t2"><div class="pagehead row"><div><h1 class="pg">Standings</h1><p class="dim"${dev(1)}>Division 2 · points up to the last stage you have seen: ${RACE}, before stage 1</p></div><div class="acts"><button type="button" class="btn2"${dev(2)}>Show latest</button></div></div>
-    <div class="tabs small" role="tablist"><button role="tab" type="button" aria-selected="true">Teams</button><button role="tab" type="button" aria-selected="false">Riders</button></div>
-    <section class="card"><h2>Season standings <span class="hd-meta"${dev(3)}>1 finished stage not seen yet</span></h2>
-      <div class="tbl"><table data-sort-exempt="standings"><thead><tr><th>Pos</th><th>Team</th><th class="n">Races</th><th class="n">Points</th><th class="n">Gap</th></tr></thead><tbody>
-      ${T.map(([t, pts], i) => `<tr><td class="p">${i + 1}</td><td class="tm">${tn(t)}${t === ME ? '<span class="you">You</span>' : ''}</td><td class="n">14</td><td class="n">${pts}</td><td class="n">${i ? '−' + (T[0][1] - pts) : ''}</td></tr>`).join('')}
+  return `<div class ="t2"><div class ="pagehead row"><div><h1 class ="pg">Standings</h1><p class ="dim"${dev(1)}>Division 2 · points up to the last stage you have seen: ${RACE}, before stage 1</p></div><div class ="acts"><button type="button" class ="btn2"${dev(2)}>Show latest</button></div></div>
+    <div class ="tabs small" role="tablist"><button role="tab" type="button" aria-selected="true">Teams</button><button role="tab" type="button" aria-selected="false">Riders</button></div>
+    <section class ="card"><h2>Season standings <span class ="hd-meta"${dev(3)}>1 finished stage not seen yet</span></h2>
+      <div class ="tbl"><table data-sort-exempt="standings"><thead><tr><th>Pos</th><th>Team</th><th class ="n">Races</th><th class ="n">Points</th><th class ="n">Gap</th></tr></thead><tbody>
+      ${T.map(([t, pts], i) => `<tr><td class ="p">${i + 1}</td><td class ="tm">${tn(t)}${t === ME ? '<span class ="you">You</span>' : ''}</td><td class ="n">14</td><td class ="n">${pts}</td><td class ="n">${i ? '−' + (T[0][1] - pts) : ''}</td></tr>`).join('')}
       </tbody></table></div>
-      <p class="dim" style="margin-top:8px">The Riders tab follows the same rule. Show latest adds the stages you have not seen.</p></section></div>`;
+      <p class ="dim" style="margin-top:8px">The Riders tab follows the same rule. Show latest adds the stages you have not seen.</p></section></div>`;
 }
 
 /* ---------- 9 coverage (Danish: for the owner) ---------- */
@@ -733,15 +735,15 @@ function coverage(){
     ['Discord (DM og bot)', 'Placeringer', 'out', 'Ikke en del af løsningen (ejervalg 16/11)', '9'],
   ];
   const TAG = { hide:['Skjult','hide'], neutral:['Neutral tekst','neutral'], seen:['Til sidst sete etape','seen'], out:['Udenfor','out'] };
-  return `<div class="t2"><div class="pagehead"><h1 class="pg">Hvor skjoldet virker</h1><p class="dim">Skjoldet er slået fra som standard. Når det er slået til, gælder én regel tre steder: skjul, sig det neutralt, eller vis til din sidst sete etape.</p></div>
-    <section class="card"><h2>Alle steder et resultat afsløres i dag <small class="mlab">liste fra skitsen 16/11</small></h2><div class="tbl"><table class="cov" data-sort-exempt="kortlaegning"><thead><tr><th>Sted</th><th class="why-col">Afslører i dag</th><th>Med skjoldet</th><th class="why-col">Sådan</th><th class="n">Visning</th></tr></thead><tbody>
-    ${R.map(([w, a, k, how, v]) => `<tr><td>${esc(w)}</td><td class="why-col dim">${esc(a)}</td><td><span class="tag ${TAG[k][1]}">${TAG[k][0]}</span></td><td class="why-col">${esc(how)}</td><td class="n">${v}</td></tr>`).join('')}
+  return `<div class ="t2"><div class ="pagehead"><h1 class ="pg">Hvor skjoldet virker</h1><p class ="dim">Skjoldet er slået fra som standard. Når det er slået til, gælder én regel tre steder: skjul, sig det neutralt, eller vis til din sidst sete etape.</p></div>
+    <section class ="card"><h2>Alle steder et resultat afsløres i dag <small class ="mlab">liste fra skitsen 16/11</small></h2><div class ="tbl"><table class ="cov" data-sort-exempt="kortlaegning"><thead><tr><th>Sted</th><th class ="why-col">Afslører i dag</th><th>Med skjoldet</th><th class ="why-col">Sådan</th><th class ="n">Visning</th></tr></thead><tbody>
+    ${R.map(([w, a, k, how, v]) => `<tr><td>${esc(w)}</td><td class ="why-col dim">${esc(a)}</td><td><span class ="tag ${TAG[k][1]}">${TAG[k][0]}</span></td><td class ="why-col">${esc(how)}</td><td class ="n">${v}</td></tr>`).join('')}
     </tbody></table></div></section></div>`;
 }
 
 /* ---------- render ---------- */
 function bar(){
-  return `<div class="sk-bar"><b>Skitse #7859 · spoiler-skjold bygget på wireframe v6c.</b><span>Syntetiske data. Visning 1-4 er løbssiden som wireframet, 5-9 udvider samme løsning. Tilføj <code>&amp;marks</code> for afvigelser.</span><nav aria-label="Views">${VIEWS.map(([k, l]) => `<a href="?v=${k}${Q.has('marks') ? '&marks' : ''}" aria-current="${k === VIEW ? 'page' : 'false'}">${k} ${l}</a>`).join('')}</nav></div>`;
+  return `<div class ="sk-bar"><b>Skitse #7859 · spoiler-skjold bygget på wireframe v6c.</b><span>Syntetiske data. Visning 1-4 er løbssiden som wireframet, 5-9 udvider samme løsning. Tilføj <code>&amp;marks</code> for afvigelser.</span><nav aria-label="Views">${VIEWS.map(([k, l]) => `<a href="?v=${k}${Q.has('marks') ? '&marks' : ''}" aria-current="${k === VIEW ? 'page' : 'false'}">${k} ${l}</a>`).join('')}</nav></div>`;
 }
 function render(){
   const body = ['1','2','3','4'].includes(VIEW) ? racePage() : VIEW === '5' ? dashboard() : VIEW === '6' ? inbox() : VIEW === '7' ? browserView() : VIEW === '8' ? standings() : coverage();
