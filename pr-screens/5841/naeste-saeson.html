@@ -62,7 +62,7 @@ h1 { font:700 20px/1.2 "Inter Tight", Inter, sans-serif; letter-spacing:-.01em; 
 .seg { display:inline-flex; border:1px solid var(--border); border-radius:5px; overflow:hidden; }
 .seg span { padding:6px 11px; font-size:12px; font-weight:500; color:var(--text-2); border-right:1px solid var(--border); white-space:nowrap; }
 .seg span:last-child { border-right:0; }
-.seg span.on { color:rgb(var(--accent-t)); background:rgb(var(--accent) / .10); }
+.seg span.on { color:rgb(var(--accent-t)); background:var(--bg-subtle); font-weight:600; }
 .ms-auto { margin-left:auto; }
 .monthnav { display:inline-flex; align-items:center; gap:6px; font-size:13px; color:var(--text-1); }
 .monthnav b { font-weight:600; }
@@ -104,7 +104,7 @@ h1 { font:700 20px/1.2 "Inter Tight", Inter, sans-serif; letter-spacing:-.01em; 
 .ticks { display:flex; justify-content:space-between; font:600 10px/1 "Inter Tight", Inter, sans-serif; color:var(--text-3); letter-spacing:.08em; border-bottom:1px solid var(--border); padding-bottom:6px; margin-bottom:8px; }
 .band { position:absolute; height:26px; border-radius:5px; font-size:11px; padding:5px 7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; border:1px solid var(--border); background:var(--bg-subtle); color:var(--text-2); }
 .band.multi { background:var(--bg-sidebar); color:#e7e8ef; border-color:var(--bg-sidebar); }
-.band.mon { outline:2px solid rgb(var(--accent)); outline-offset:1px; background:var(--bg-sidebar); color:rgb(var(--accent)); border-color:var(--bg-sidebar); }
+.band.mon { background:var(--bg-sidebar); color:#ffffff; font-weight:700; border:1px solid var(--text-1); }
 /* Tomme tilstande og noter */
 .empty { border:1px dashed var(--border-strong); border-radius:5px; padding:22px; text-align:center; color:var(--text-2); }
 .empty .t { font-weight:600; font-size:15px; color:var(--text-1); margin:8px 0 4px; }
@@ -344,8 +344,8 @@ if (qs.get("theme") === "dark") { document.documentElement.dataset.theme = "dark
 // Før: kalender-celler med dubletter (alle divisioner, puljer gentaget)
 (function(){
   const ev = [];
-  for (const r of D1.slice(0,3)) ev.push(`<div class="ev">${icon(r.st[0].t)}<span class="nm">${r.n}</span><span class="st">D1</span></div>`);
-  for (const r of D2_FIRST) for (const p of ["A","B"]) ev.push(`<div class="ev${p==="B"?" dup":""}">${icon(r.st[0].t)}<span class="nm">${r.n}</span><span class="st">D2 ${p}</span></div>`);
+  for (const r of D1.slice(0,3)) ev.push(`<div class="ev" title="${r.n}">${icon(r.st[0].t)}<span class="nm">${r.n}</span><span class="st">D1</span></div>`);
+  for (const r of D2_FIRST) for (const p of ["A","B"]) ev.push(`<div class="ev${p==="B"?" dup":""}" title="${r.n}">${icon(r.st[0].t)}<span class="nm">${r.n}</span><span class="st">D2 ${p}</span></div>`);
   document.getElementById("beforeCal").innerHTML = `<div class="small muted" style="margin-bottom:6px">Onsdag 28/10, én kalendercelle:</div>${ev.join("")}<div class="more">+ 24 flere</div>`;
   const pl = [["De Openingsklassieker","D1"],["Klassieker van Kuurne","D2"],["Ocean Road Classic","D2"],["Tour des Émirats","D2"],["Grand Prix de ...","D3"],["...","D4"]];
   document.getElementById("beforePlanner").innerHTML = `<div class="rows">${pl.map(([n,d])=>`<div style="display:flex;justify-content:space-between;padding:8px 2px;border-bottom:1px solid var(--border);font-size:13px"><span>${n}</span><span class="data small muted">${d}</span></div>`).join("")}</div><div class="small muted data" style="margin-top:6px">437 løb på tværs af 4 divisioner</div>`;
@@ -361,7 +361,7 @@ if (qs.get("theme") === "dark") { document.documentElement.dataset.theme = "dark
   for (const d of days) {
     const list = byDate.get(d) || [];
     const off = d < "10-28";
-    const items = list.slice(0, cap).map(({r,s,i}) => `<div class="ev">${icon(s.t)}<span class="nm">${r.n}</span><span class="st">${r.st.length>1?`E${i+1}`:""}</span></div>`).join("");
+    const items = list.slice(0, cap).map(({r,s,i}) => `<div class="ev" title="${r.n}">${icon(s.t)}<span class="nm">${r.n}</span><span class="st">${r.st.length>1?`E${i+1}`:""}</span></div>`).join("");
     const more = list.length > cap ? `<div class="more">+${list.length-cap} flere</div>` : "";
     html += `<div class="day${off?" off":""}"><div class="dn">${ddmm(d)}</div>${items}${more}</div>`;
   }
