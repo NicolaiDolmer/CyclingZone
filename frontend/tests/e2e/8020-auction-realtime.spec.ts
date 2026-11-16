@@ -11,29 +11,6 @@ for (const width of [375, 1440]) {
       const token = `${btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }))}.${btoa(JSON.stringify({ exp: 1893456000, role: "authenticated" }))}.fixture-signature`;
       localStorage.setItem("sb-cycling-zone-e2e-auth-token", JSON.stringify({ access_token: token, refresh_token: "e2e-refresh-token", token_type: "bearer", expires_at: 1893456000, user }));
     }, TEST_USER);
-    // #8290: the 350 ms guard measures the app (realtime message received in the browser -> DOM changed),
-    // not the test harness. Wall-clock from the Node-side send includes harness and CI scheduling latency,
-    // which says nothing about the player's experience.
-    await page.addInitScript(() => {
-      const received: Array<{ t: number; data: string }> = [];
-      Reflect.set(window, "__rtReceived", received);
-      const Native = window.WebSocket;
-      Reflect.set(window, "WebSocket", class extends Native {
-        constructor(...args: ConstructorParameters<typeof WebSocket>) {
-          super(...args);
-          this.addEventListener("message", event => { if (typeof event.data === "string" && event.data.includes("postgres_changes")) received.push({ t: performance.now(), data: event.data }); });
-        }
-      });
-      Reflect.set(window, "__rtWatch", (id: string, kind: "closing" | "removed") => new Promise<number>(resolve => {
-        const done = () => {
-          const rows = [...document.querySelectorAll(`[data-auction-row="${id}"]`)];
-          const row = rows.find(el => el.getBoundingClientRect().height > 0);
-          return kind === "removed" ? rows.length === 0 : !!row?.textContent?.includes("125.000") && !row.querySelector('[role="timer"]');
-        };
-        const observer = new MutationObserver(() => { if (done()) { observer.disconnect(); resolve(performance.now()); } });
-        observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
-      }));
-    });
     const initial = { ...AUCTIONS[0], id: "auction-realtime-8020", current_price: 100000,
       calculated_end: "2026-11-12T12:00:05Z", status: "active", current_bidder_id: RIVAL_TEAM.id,
       current_bidder: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name }, seller_team_id: RIVAL_TEAM.id,
@@ -59,6 +36,29 @@ for (const width of [375, 1440]) {
           socket.send(JSON.stringify([joinRef, ref, topic, "phx_reply", { status: "ok", response: {} }]));
         }
       });
+    });
+    // #8290 (installed after routeWebSocket so it wraps the mock socket): the 350 ms guard measures the app (realtime message received in the browser -> DOM changed),
+    // not the test harness. Wall-clock from the Node-side send includes harness and CI scheduling latency,
+    // which says nothing about the player's experience.
+    await page.addInitScript(() => {
+      const received: Array<{ t: number; data: string }> = [];
+      Reflect.set(window, "__rtReceived", received);
+      const Native = window.WebSocket;
+      Reflect.set(window, "WebSocket", class extends Native {
+        constructor(...args: ConstructorParameters<typeof WebSocket>) {
+          super(...args);
+          this.addEventListener("message", event => { if (typeof event.data === "string" && event.data.includes("postgres_changes")) received.push({ t: performance.now(), data: event.data }); });
+        }
+      });
+      Reflect.set(window, "__rtWatch", (id: string, kind: "closing" | "removed") => new Promise<number>(resolve => {
+        const done = () => {
+          const rows = [...document.querySelectorAll(`[data-auction-row="${id}"]`)];
+          const row = rows.find(el => el.getBoundingClientRect().height > 0);
+          return kind === "removed" ? rows.length === 0 : !!row?.textContent?.includes("125.000") && !row.querySelector('[role="timer"]');
+        };
+        const observer = new MutationObserver(() => { if (done()) { observer.disconnect(); resolve(performance.now()); } });
+        observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
+      }));
     });
     const reads: Array<{method: string; path: string}> = [];
     let observing = false;
