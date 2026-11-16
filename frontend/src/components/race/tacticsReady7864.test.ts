@@ -116,10 +116,10 @@ test('#7638 every priced order uses the same four words: effort steps, breakaway
 test('#7638 one colour per price word, all four distinct, from the shared status tokens',()=>{
   assert.deepEqual(Object.keys(COST_WORD_CLASS).sort(),['easy','hard','medium','veryHard']);
   assert.equal(new Set(Object.values(COST_WORD_CLASS)).size,4);
-  assert.equal(COST_WORD_CLASS.easy,'text-cz-success');
+  assert.equal(COST_WORD_CLASS.easy,'text-cz-success-t');
   assert.equal(COST_WORD_CLASS.medium,'text-cz-1','Medium stays neutral (owner 16/11)');
-  assert.equal(COST_WORD_CLASS.hard,'text-cz-warning');
-  assert.equal(COST_WORD_CLASS.veryHard,'text-cz-danger');
+  assert.equal(COST_WORD_CLASS.hard,'text-cz-warning-t');
+  assert.equal(COST_WORD_CLASS.veryHard,'text-cz-danger-t','AA text tones, not the base status colour');
 });
 test('team plan texts are translated in es/fr/nl and every language has the plural copy key',()=>{
   const read=(lng:string)=>JSON.parse(readFileSync(new URL(`../../../public/locales/${lng}/races.json`,import.meta.url),'utf8'));

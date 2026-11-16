@@ -133,9 +133,9 @@ export function stanceCostWord(stance: unknown): TaskCostWord | null {
 }
 /** #7638: the old order buttons cost what the stage plan's matching task costs. */
 export const ORDER_TOGGLE_TASK: Readonly<Record<'try_break' | 'leadout', StagePlanTask>> = Object.freeze({ try_break:'breakaway', leadout:'sprint_train' });
-/** #7638: one colour per word everywhere (the wireframe's Easy green, Medium neutral, Hard orange, Very hard red). */
+/** #7638: one colour per word everywhere (the wireframe's Easy green, Medium neutral, Hard orange, Very hard red), via the -t text tones so each word holds WCAG AA on every surface. */
 export const COST_WORD_CLASS: Readonly<Record<TaskCostWord, string>> = Object.freeze({
-  easy:'text-cz-success', medium:'text-cz-1', hard:'text-cz-warning', veryHard:'text-cz-danger',
+  easy:'text-cz-success-t', medium:'text-cz-1', hard:'text-cz-warning-t', veryHard:'text-cz-danger-t',
 });
 type Matrix = Record<number, Record<string, {race_role:string;effort:string}>>;
 export function applyTeamPlanRoles<T extends Matrix>(matrix: T, stage: number, changes: TeamPlanRoleChange[], editableIds?: string[]): T {
