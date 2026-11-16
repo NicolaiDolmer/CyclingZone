@@ -287,7 +287,18 @@ export default function SeasonPlannerPage() {
         {/* #3018: mine/alle-filteret skjules når divisionen ikke er afgjort —
             "Mine løb" ville matche nul løb, og at tilbyde et valg der ikke
             findes er netop den slags flade testerne kaldte ubrugelig. */}
-        {/* #5841: divisionsvælgeren. Kun når alle løb vises; "Mine løb" er allerede én division. */}
+        {!divisionPending && (
+          <div className="flex border border-cz-border rounded-cz overflow-hidden text-2xs">
+            {["mine", "all"].map((f) => (
+              <button
+                key={f}
+                className={`px-3 py-1.5 ${filter === f ? "bg-cz-sidebar text-cz-body" : "bg-transparent text-cz-2 hover:bg-cz-subtle"}`}
+                onClick={() => setFilter(f)}
+              >{t(`filter.${f}`)}</button>
+            ))}
+          </div>
+        )}
+        {/* #5841: divisionsvælgeren. Efter mine/alle, fordi den kun gælder når alle løb vises ("Mine løb" er allerede én division). */}
         {viewFilter === "all" && divisionOptions.length > 1 && (
           <div className="flex items-center gap-1.5">
             <span className="hidden sm:inline text-3xs text-cz-3 uppercase tracking-wide">{t("common:expectedDivision.label")}</span>
@@ -308,17 +319,6 @@ export default function SeasonPlannerPage() {
                 </option>
               ))}
             </Select>
-          </div>
-        )}
-        {!divisionPending && (
-          <div className="flex border border-cz-border rounded-cz overflow-hidden text-2xs">
-            {["mine", "all"].map((f) => (
-              <button
-                key={f}
-                className={`px-3 py-1.5 ${filter === f ? "bg-cz-sidebar text-cz-body" : "bg-transparent text-cz-2 hover:bg-cz-subtle"}`}
-                onClick={() => setFilter(f)}
-              >{t(`filter.${f}`)}</button>
-            ))}
           </div>
         )}
       </div>
