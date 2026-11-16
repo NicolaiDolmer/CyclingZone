@@ -199,7 +199,8 @@ const TYPE_CONFIG = {
   academy_demoted:           { Icon: UndoIcon,         color: "text-cz-2",        bg: "bg-cz-subtle border-cz-border",           link: "/team" },
   academy_intake_expired_compensation: { Icon: CoinIcon, color: "text-cz-warning", bg: "bg-cz-warning/8 border-cz-warning/15", link: "/academy" },
   auction_cancelled:         { Icon: UndoIcon,         color: "text-cz-2",        bg: "bg-cz-subtle border-cz-border",           link: "/auctions" },
-  auction_proxy_outbid:      { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger/8 border-cz-danger/15",    link: "/auctions" },
+  // #8260: neutral tone gælder kun når autobuddet HOLDT føringen (se proxyLeadHeldConfig); stoppet/annulleret/udtømt forbliver rød.
+  auction_proxy_outbid:      { Icon: LightningIcon,    color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/auctions" },
   contract_expired_release:  { Icon: UndoIcon,         color: "text-cz-warning",  bg: "bg-cz-warning/8 border-cz-warning/15", link: "/team?tab=contracts" },
   deadline_day_warning:      { Icon: AlertTriangleIcon, color: "text-cz-warning",  bg: "bg-cz-warning/8 border-cz-warning/15", link: "/transfers" },
   emergency_loan_breach:     { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger/8 border-cz-danger/15",    link: "/finance" },
@@ -279,11 +280,21 @@ function isLegacyWatchlistAuctionNotification(notification, _i18n) {
   return text.includes("auktion") || text.includes("auction");
 }
 
+// #8260: auction_proxy_outbid dækker både "autobuddet holdt føringen" (god nyhed,
+// neutral) og stoppet/annulleret/udtømt autobud (reelle advarsler, rød). Kun beskeden
+// med hævnings-koden er neutral; alt andet (også ældre rækker uden kode) bevarer rød.
+function proxyLeadHeldConfig(type, metadata) {
+  if (type === "auction_proxy_outbid" && metadata?.titleCode !== "notif.autoBidRaised.title") {
+    return TYPE_CONFIG.auction_outbid;
+  }
+  return TYPE_CONFIG[type] || DEFAULT_TYPE_CONFIG;
+}
+
 function getNotificationConfig(notification, i18n) {
   if (isLegacyWatchlistAuctionNotification(notification, i18n)) {
     return TYPE_CONFIG.watchlist_rider_auction;
   }
-  return TYPE_CONFIG[notification.type] || DEFAULT_TYPE_CONFIG;
+  return proxyLeadHeldConfig(notification.type, notification.metadata);
 }
 
 // Build feed-event label using i18n. Falls back to event.type if no labelKey.
@@ -868,7 +879,7 @@ export default function NotificationsPage() {
                   );
                 }
                 // Aggregate
-                const config = TYPE_CONFIG[entry.type] || DEFAULT_TYPE_CONFIG;
+                const config = proxyLeadHeldConfig(entry.type, entry.sample_metadata);
                 const AggIcon = config.Icon;
                 const isExpanded = expandedAggregates.has(entry.key);
                 const allRead = !entry.any_unread;

@@ -844,6 +844,14 @@ bestyrelses-notifikationer (`.claude/learnings/2026-08-03-ai-rider-recovery-filt
 Målt i `app_config` 30/8. De øvrige `season_form_reset_*`-parametre står også i `app_config`
 og blev sidst rørt 3/8.
 
+**Skader (#5865, bygget, SLUKKET):** `seasonInjuryReset.js` bag `season_injury_reset_mode`
+= **`off`** (nuværende adfærd: en aktiv skade eller sygdom løber uændret ind i den nye sæson).
+Modes: `clear` (alle forsvinder), `cap` (afkortes til `season_injury_reset_cap_days` dage efter
+skiftet), `light` (kun skader inden for `season_injury_reset_light_max_days` dage forsvinder).
+Dagene regnes fra den nye sæsons `start_date` (skiftets dato). Rører kun skade-kolonnerne,
+er idempotent, og springes over hvis den nye sæson allerede har kørt løbsdage. Ejeren vælger
+mode; design: [2026-11-16-5865](design/reviews/2026-11-16-5865-skader-ved-saesonskiftet.md).
+
 Bemærk at de to blev bevidst adskilt: `seasonFatigueReset` rører **ikke** form, fordi
 `nextForm` kobler form til træthed, og en reset der skrev begge ville flytte to
 balance-håndtag på én gang (`seasonFatigueReset.js:14-16`).

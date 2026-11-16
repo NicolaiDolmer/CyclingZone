@@ -26,6 +26,7 @@
 
 import { applySeasonFatigueReset } from "./seasonFatigueReset.js";
 import { applySeasonFormReset } from "./seasonFormReset.js";
+import { applySeasonInjuryReset } from "./seasonInjuryReset.js";
 import { runSeasonAcademyIntake } from "./seasonAcademyIntake.js";
 import { expireSeasonScopedConsequences, stampUnscopedBonusOffers } from "./boardConsequences.js";
 import { captureException } from "./sentry.js";
@@ -59,6 +60,15 @@ export async function runSeasonStartHooks({
       tags: { phase: "season_fatigue_reset" },
       extra: { toSeasonNumber },
     });
+  }
+
+  // #5865 · skader ved skiftet — eget håndtag (season_injury_reset_mode, default "off").
+  const injuryResetFn = deps.applySeasonInjuryReset ?? applySeasonInjuryReset;
+  try {
+    push("season_injury_reset", await injuryResetFn({ supabase, now, toSeasonId }));
+  } catch (err) {
+    log.push({ phase: "season_injury_reset", error: err.message });
+    captureException(err, { tags: { phase: "season_injury_reset" }, extra: { toSeasonNumber } });
   }
 
   // #3232 · form-nulstilling — sit EGET håndtag (season_form_reset_mode),
