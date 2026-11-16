@@ -30,11 +30,6 @@ export function useExclusivePanel(key: string, initial = false): [boolean, (next
   const setActive = slot ? slot.setActive : null;
   const [open, setOpenRaw] = useState(initial);
 
-  // Aaben fra start (fx ?sell=1): meld formularen som den aktive.
-  useEffect(() => {
-    if (initial && setActive) setActive(key);
-  }, [initial, setActive, key]);
-
   // En anden formular blev aabnet: luk denne.
   useEffect(() => {
     if (open && active && active !== key) setOpenRaw(false);
@@ -44,6 +39,18 @@ export function useExclusivePanel(key: string, initial = false): [boolean, (next
   const openRef = useRef(open);
   const activeRef = useRef(active);
   useEffect(() => { openRef.current = open; activeRef.current = active; });
+
+  // Aaben fra start (fx ?sell=1): meld formularen som den aktive - kun hvis den
+  // faktisk er aaben, ellers staar siden uden guld-knap (#8308-review).
+  useEffect(() => {
+    if (initial && openRef.current && setActive) setActive(key);
+  }, [initial, setActive, key]);
+
+  // Formularen forsvinder (rytterskift, auktion slut) mens den er den aktive:
+  // frigiv pladsen, saa triggerne bliver guld igen (#8308-review).
+  useEffect(() => () => {
+    if (setActive && activeRef.current === key) setActive(null);
+  }, [setActive, key]);
 
   const setOpen = useCallback((next: boolean | ((prev: boolean) => boolean)) => {
     const value = typeof next === "function" ? next(openRef.current) : next;
