@@ -25,6 +25,16 @@ test('train-now bonus is independently registered for the operator', () => {
   assert.equal(findStageFlag('training_train_now_bonus').area,'training');
 });
 
+// #7741 (ejer 16/11): bonus-kontakten har en beta-tilstand som motoren, saa admin tilbyder og viser "beta".
+test('train-now bonus offers beta on the admin board (#7741)', async () => {
+  const { adminFlagView } = await import('./adminFlagView6181.js');
+  const view = adminFlagView(findStageFlag('training_train_now_bonus'), { value: 'beta' });
+  assert.equal(view.stage, 'beta');
+  assert.equal(view.boolean_only, false);
+  assert.ok(view.offered_stages.includes('beta'));
+  assert.equal(view.warning, null);
+});
+
 // Bevar kildedækning for bølgens flyttede wrappers. Bred TS-scanning afventer #5271.
 const MIGRATED_FLAG_SOURCES = new Set([
   "academyIntakeExpiryFlag.ts",
