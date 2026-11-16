@@ -247,6 +247,7 @@ function heldByEarlierPr(comments, issue) {
 }
 
 const OPEN_PR_LIMIT = 100;
+const OPEN_HOLD_RE = /stadig åbne PR|åbne PR'er på issuet kunne ikke afgøres/;
 
 // #8222: andre AABNE PR'er der refererer issuet (Refs/Closes i body eller titel). Returnerer
 // sorteret nummerliste, eller 'unknown' naar soegningen fejler eller kan vaere ufuldstaendig (fail-safe: intet flip).
@@ -270,12 +271,14 @@ function closeOutIssue({ entry, ref, repo, dryRun, deployVerified, phase, behind
   const comments = readComments(gh, repo, issue);
   const existing = comments?.find((c) => c.body.includes(marker));
   // Verificeret = sidste tilstand; 'merged' maa heller aldrig skrive oven i en afventende kommentar.
-  const upToDate = existing && (phase === 'merged' || isVerifiedComment(existing.body));
   const heldByOther = ref.kind === 'refs' && !behindSwitch && (heldInTrain.has(issue) || heldByEarlierPr(comments, issue));
   // #8222: Refs flipper kun uden andre aabne PR'er paa issuet. Closes er undtaget: GitHub lukker issuet alligevel.
   const openPrs = phase === 'verified' && ref.kind === 'refs' && !behindSwitch && !heldByOther
     ? findOtherOpenPrs(gh, repo, issue, trainNumbers)
     : [];
+  // #8222: en verificeret kommentar fornyes, naar aabne-PR-udfaldet har aendret sig siden (genkoersel/recovery).
+  const openHold = openPrs === 'unknown' || openPrs.length > 0;
+  const upToDate = existing && (phase === 'merged' || (isVerifiedComment(existing.body) && OPEN_HOLD_RE.test(existing.body) === openHold));
   const body = entry.sha ? commentBody({ pr, issue, sha: entry.sha, kind: ref.kind, deployVerified, phase, behindSwitch, heldByOther, openPrs }) : null;
   if (comments === null) {
     result.errors.push(`#${issue}: kommentarer kunne ikke laeses; SHA-kommentar springes over (ingen dublet-risiko)`);

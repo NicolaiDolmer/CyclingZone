@@ -518,3 +518,17 @@ test('Closes is not blocked by other open PRs: GitHub closes the issue anyway (#
   });
   assert.deepEqual(runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh, now: NOW }).flips, [1]);
 });
+
+test('recovery rerun refreshes the comment and flips once the other open PR is gone (#8222)', () => {
+  const first = fakeGh({
+    prs: { 100: { title: 't', body: 'Refs #1' } }, labels: { 1: ['claude:todo'] },
+    openPrs: [{ number: 200, title: 'x', body: 'Refs #1' }],
+  });
+  runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: first.gh, now: NOW });
+  assert.ok(first.state.comments[1][0].includes('#200'));
+  const second = fakeGh({ prs: { 100: { title: 't', body: 'Refs #1' } }, labels: first.state.labels, comments: first.state.comments, openPrs: [] });
+  const res = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: second.gh, now: NOW });
+  assert.deepEqual(res.flips, [1]);
+  assert.equal(second.state.comments[1].length, 1, 'same comment updated, no duplicate');
+  assert.ok(!second.state.comments[1][0].includes('#200') && second.state.comments[1][0].includes('label flyttet til'));
+});
