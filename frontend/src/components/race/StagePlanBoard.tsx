@@ -250,7 +250,8 @@ function PlanEditor({ t, riderName, legs, role, route, suggestion, showsSuggesti
                   </Select>
                 </label>
               )}
-              <label className="flex-1 min-w-[9rem] sm:flex-none sm:w-56">
+              {/* #7855: bredden foelger den laengste linje ("Gaa i udbrud + Hent bjergpoint" med prisen), mindst som foer. */}
+              <label className="flex-1 min-w-[9rem] sm:flex-none sm:w-auto sm:min-w-56 sm:max-w-full">
                 <span className="sr-only">{t("stagePlan.taskLabel")}</span>
                 <Select
                   size="sm"
