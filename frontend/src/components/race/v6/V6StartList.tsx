@@ -239,7 +239,7 @@ export default function V6StartList({ raceId, isStageRace, stagesCompleted, resu
                   <ul className="m-0 list-none p-0">
                     {team.riders.map((r) => (
                       <li key={r.riderId} className="grid min-h-8 grid-cols-[1.75rem_minmax(0,1fr)_auto_1.75rem] items-center gap-1.5 py-0.5 text-sm [@media(max-width:640px),(pointer:coarse)]:min-h-11">
-                        <span className="font-data text-xs tabular-nums text-cz-3" aria-label={t("racePageV6.start.bibAria", { bib: r.bib })}>{r.bib}</span>
+                        <span className="font-data text-xs tabular-nums text-cz-3"><span className="sr-only">{t("racePageV6.start.bibAria", { bib: r.bib })}</span><span aria-hidden="true">{r.bib}</span></span>
                         <span className="flex min-w-0 items-center gap-1">
                           {r.nation && <Flag code={r.nation} className="flex-none" title={nationName(r.nation)} />}
                           <RiderLink id={r.riderId} className="truncate text-cz-1 hover:text-cz-accent-t">{r.name || "?"}</RiderLink>
@@ -247,7 +247,7 @@ export default function V6StartList({ raceId, isStageRace, stagesCompleted, resu
                         </span>
                         {/* Kun hovedtypen: navnet skal have pladsen i holdets smalle kort. */}
                         <RiderTypeBadge primaryType={r.primaryType} size="sm" />
-                        <span className="text-right font-data text-xs tabular-nums text-cz-2" title={t("racePageV6.start.rating")}>{r.rating ?? ""}</span>
+                        <span className="text-right font-data text-xs tabular-nums text-cz-2" title={t("racePageV6.start.rating")}>{r.rating != null && <><span className="sr-only">{t("racePageV6.start.rating")} </span>{r.rating}</>}</span>
                       </li>
                     ))}
                   </ul>
