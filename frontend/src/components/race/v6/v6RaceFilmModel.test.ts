@@ -85,6 +85,14 @@ test("en linje over et stykke vej vises først, når filmen er ved dens slut-km 
   assert.equal(v6CurrentLine(lines, 30), null);
 });
 
+test("den aktuelle linje er den, hvis udfald blev kendt senest, ikke den sidste i listen (Codex-fund 16/11)", () => {
+  // Listen er sorteret efter start-km: stykket km 25-48 står før hændelsen ved km 40.
+  const lines = [{ km: 25, kmTo: 48, id: "gap" }, { km: 40, kmTo: null, id: "event" }];
+  assert.equal(v6CurrentLine(lines, 45)?.id, "event", "ved km 45 er kun hændelsen ved km 40 kendt");
+  assert.equal(v6CurrentLine(lines, 48)?.id, "gap", "ved km 48 er stykket det seneste udfald");
+  assert.equal(v6CurrentLine(lines, 60)?.id, "gap");
+});
+
 test("i Historie viser striben ikke den valgte etapes vinder eller egen plads (låst 7/11)", () => {
   const cells = [
     { number: 1, foot: { kind: "ridden", winner: "A. Vinder", myRank: 4 } },

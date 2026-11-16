@@ -117,10 +117,15 @@ export function v6VisibleLines<T extends LineKm>(lines: readonly T[], km: number
   return lines.filter((l) => knownAtKm(l) <= km + EPS);
 }
 
-/** Linjen filmen står ved (den seneste viste); null før den første. */
+/**
+ * Linjen filmen står ved: den viste linje, hvis udfald blev kendt senest (et stykke vej
+ * tæller ved sin slut-km, ikke ved sin plads i den start-sorterede liste); ved lighed
+ * den sidste i listen. null før den første.
+ */
 export function v6CurrentLine<T extends LineKm>(lines: readonly T[], km: number): T | null {
-  const visible = v6VisibleLines(lines, km);
-  return visible.length ? visible[visible.length - 1] : null;
+  let current: T | null = null;
+  for (const l of v6VisibleLines(lines, km)) if (!current || knownAtKm(l) >= knownAtKm(current)) current = l;
+  return current;
 }
 
 /** Om der står flere linjer efter positionen (referatet siger så, at filmen fortsætter). */
