@@ -244,3 +244,13 @@ test("#8253: Resultater tegner rute, liste og Din dag for den samme valgte etape
   const detail = read("../../../pages/RaceDetailPage.jsx");
   assert.match(detail, /for \(const p of stageProfiles\) out\[p\.stage_number \?\? 1\] = p;/, "siden nøgler profilerne som prøven");
 });
+
+test("#8253: underrækken (klassementet) er Segmented, hovedfanerne er understregede faner", () => {
+  const detail = read("../../../pages/RaceDetailPage.jsx");
+  const v6Branch = detail.slice(detail.indexOf("if (v6Layout) {"), detail.indexOf("if (v6Layout) {") + 2200);
+  assert.match(v6Branch, /<Segmented label=\{t\("detail\.classTab\.ariaLabel"\)\} value=\{classTab\} onChange=\{setClassTab\}/);
+  assert.doesNotMatch(v6Branch, /<TabList label=\{t\("detail\.classTab\.ariaLabel"\)\}/, "ingen anden fanerække under v6");
+  assert.match(v6Branch, /overflow-x-auto/, "ruller vandret på mobil i stedet for at brække");
+  const page = read("./RacePageV6.tsx");
+  assert.match(page, /<TabList label=\{t\("stagePageV2\.tabsAria"\)\} accent>/, "hovedfanerne er stadig understregede faner");
+});
