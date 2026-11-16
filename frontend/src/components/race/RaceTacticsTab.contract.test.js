@@ -302,7 +302,9 @@ test("#8297: panelet bruger samme gem, kopi, holdplaner og spærrede valg som de
   has(panelV6c, "onPick={(step) => pickIntention(rider.rider_id, step)}");
   has(panelV6c, "const key = effortBlockedKey(rider, step);");
   has(panelV6c, "onClick={() => updateOrder((o) => setBreakawayStance(o, stance))}");
-  has(panelV6c, "onPick={(role) => pickRole(rider.rider_id, role)}");
+  // Rollens vælger: samme som etapeplanens (én definition, samme pickRole).
+  has(panelV6c, "expanded: rolePickerFor(rider),");
+  has(source, "rolePickerFor={rolePickerFor}");
   // Samme holdplan-regel og samme etapeplan som det klassiske kort.
   has(panelV6c, "teamPlan={ready7864 && stagePlanOn ?");
   has(panelV6c, "{stagePlanBoard}");

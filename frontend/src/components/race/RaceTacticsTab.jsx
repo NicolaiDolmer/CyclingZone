@@ -1148,6 +1148,10 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       {errorKey === "stage_roles_conflict" && <Button variant="secondary" size="sm" disabled={saving} onClick={loadNewAfterConflict}>{t("racePage.tactics.saveStatus.loadNew")}</Button>}
     </>
   );
+  // Rollens vælger under rækken (etapeplanen og det fælles panel bruger samme).
+  const rolePickerFor = (rider) => (openRoleRiderId === rider.rider_id && !rider.abandoned && !stageLocked
+    ? <RolePicker t={t} riderName={rider.name} {...rolePickerScope} value={roleFor(rider)} disabled={saving} onPick={(role) => pickRole(rider.rider_id, role)} />
+    : null);
   /* #7003: etapeplanen erstatter intentions- og ordre-kolonnerne, naar den er slaaet til. */
   const stagePlanBoard = stagePlanOn ? (
     <StagePlanBoard
@@ -1167,9 +1171,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       jerseyHunt7855={orders?.jerseyHunt7855 === true}
       ready7864={ready7864}
       renderRoleCell={renderRoleCell}
-      rolePickerFor={(rider) => (openRoleRiderId === rider.rider_id && !rider.abandoned && !stageLocked
-        ? <RolePicker t={t} riderName={rider.name} {...rolePickerScope} value={roleFor(rider)} disabled={saving} onPick={(role) => pickRole(rider.rider_id, role)} />
-        : null)}
+      rolePickerFor={rolePickerFor}
       onEditorOpen={() => setOpenRoleRiderId(null)}
       roleDefaultFor={(id) => roleDefaultFor(defaultOrderForStage(orders, profileByStage[activeStage]?.profile_type), id)}
       effortFor={effortFor}
@@ -1226,7 +1228,6 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       );
     };
     const rows = stagePlanOn ? [] : visibleRiders.map((rider) => {
-      const openRole = openRoleRiderId === rider.rider_id && !rider.abandoned && !stageLocked;
       return {
         id: rider.rider_id,
         name: rider.name,
@@ -1239,7 +1240,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         effort: effortCell(rider, false),
         effortMobile: effortCell(rider, true),
         orders: showOrders ? renderOrdersCell(rider) : null,
-        expanded: openRole ? <RolePicker t={t} riderName={rider.name} {...rolePickerScope} value={roleFor(rider)} disabled={saving} onPick={(role) => pickRole(rider.rider_id, role)} /> : null,
+        expanded: rolePickerFor(rider),
       };
     });
     const teamShown = showOrders && roadOrdersAvailable(stageProfileType);
@@ -1262,7 +1263,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
             </button>
           ))}
         </div>
-        <span className="text-xs text-cz-3">{t(plan.key, plan.params)}</span>
+        <span className="text-xs text-cz-3">{/** @type {string} */ (t(plan.key, plan.params))}</span>
         <span className="text-xs text-cz-3">
           {teamHasSprintCaptain
             ? t("racePage.tactics.sprintTrainRiders", { count: leadoutCount, name: sprintCaptain?.name || "—" })
@@ -1272,7 +1273,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         {ordersGc && <span data-testid="orders-gc-break-note" className="basis-full text-2xs text-cz-3">{t("tacticsOrders.ordersGc.breakNote")}</span>}
       </>
     ) : null;
-    const badge = saveBadge({ status, dirty });
+    const badge = saveBadge({ status: /** @type {import("../tactics/tacticsPanelModel.ts").TacticsSaveStatus} */ (status), dirty });
     const statusLine = (
       <div className="space-y-0.5">
         {status === "error" && errorKey && (
@@ -1285,7 +1286,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         {status === "saved" && <p className="m-0 text-xs text-cz-success">{t("intention.saved")}</p>}
         {status === "idle" && dirty && <p className="m-0 text-xs text-cz-2">{t("intention.unsaved")}</p>}
         {status === "idle" && !dirty && <p className="m-0 text-xs text-cz-3">{t("tacticsPanel.untouched")}</p>}
-        {!(ready7864 && stagePlanOn) && <p className="m-0 text-xs tabular-nums text-cz-3">{untouchedLine ? `${footerLine} · ${untouchedLine}` : footerLine}</p>}
+        {!(ready7864 && stagePlanOn) && <p className="m-0 text-xs tabular-nums text-cz-3">{untouchedLine ? `${footerLine} · ${untouchedLine}` : /** @type {string} */ (footerLine)}</p>}
       </div>
     );
     return (
