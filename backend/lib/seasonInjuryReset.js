@@ -10,13 +10,15 @@
 // kan ikke slås op på den nye sæsons akse — træningsmotoren nulstiller den selv ved
 // første tick i den nye sæson, og injuryRaceDays.js beholder injured_until som den
 // konservative fallback. Derfor regner dette modul den resterende varighed i
-// LØBSDATOER fra den nye sæsons første løbsdato, ikke i løbsdage.
+// KALENDERDAGE fra den nye sæsons ankerdato (seasons.start_date = skiftets dato,
+// sat af seasonTransition). Første løbsdato kendes ikke her: kalenderen bygges
+// EFTER hookene, og pausens længde vælges ved kalenderbygningen.
 //
 // Config (app_config, samme flere-nøgler-mønster som seasonFormReset.js — et
 // mode-VALG, ikke en ja/nej-kontakt):
 //   season_injury_reset_mode            "off" | "clear" | "cap" | "light"  (default "off")
-//   season_injury_reset_cap_dates       mode "cap": højst så mange løbsdatoer ind i den nye sæson
-//   season_injury_reset_light_max_dates mode "light": skader der højst rækker så langt ind, forsvinder
+//   season_injury_reset_cap_days        mode "cap": højst så mange dage efter skiftet (inkl. skiftedagen)
+//   season_injury_reset_light_max_days  mode "light": skader der højst rækker så langt, forsvinder
 //
 // Modes (designnotens A/B/C):
 //   "off"   → identitet. Nuværende adfærd, bit for bit.
@@ -28,7 +30,10 @@
 // mode returnerer { ran:false, reason:"flag_off" }, så seasonStartHooks.js ikke
 // skriver en fase-række (bit-identisk fase-log med adfærden før #5865).
 //
-// IDEMPOTENS: alle tre modes er idempotente afbildninger for en fast sæsonstart.
+// IDEMPOTENS: alle tre modes er idempotente afbildninger for et fast anker. Ankeret er
+// den LAGREDE start_date, så en gen-kørsel på en senere dato regner fra samme anker;
+// og har den nye sæson allerede kørt løbsdage, springes trinnet over, så en skade der
+// er opstået I den nye sæson aldrig røres (Codex 16/11).
 // "clear" efterlader ingen aktive skader; "cap" er et min() mod samme loft; "light"
 // fjerner de korte, og de lange er stadig lange ved næste kørsel. En gen-kørsel af
 // sæsonskiftet skriver derfor nul rækker — ingen claim-tabel, samme begrundelse som
@@ -44,14 +49,14 @@ import { fetchAllPaged } from "./dbChunk.js";
 export const SEASON_INJURY_RESET_MODE_KEY = "season_injury_reset_mode";
 
 export const SEASON_INJURY_RESET_PARAM_KEYS = Object.freeze({
-  capDates: "season_injury_reset_cap_dates",
-  lightMaxDates: "season_injury_reset_light_max_dates",
+  capDays: "season_injury_reset_cap_days",
+  lightMaxDays: "season_injury_reset_light_max_days",
 });
 
 export const SEASON_INJURY_RESET_DEFAULTS = Object.freeze({
   mode: "off",
-  capDates: 1,
-  lightMaxDates: 2,
+  capDays: 3,
+  lightMaxDays: 7,
   upsertChunk: 500,
 });
 
@@ -73,10 +78,10 @@ function positiveInt(raw, fallback) {
 }
 
 /**
- * Løbsdatoer skaden rækker ind i den nye sæson, INKLUSIV første løbsdato
- * (samme inklusiv-semantik som injuryRaceDaysLeft, #1672). 0 = rask ved start.
+ * Kalenderdage skaden rækker ind i den nye sæson, regnet fra ankeret og INKLUSIV
+ * ankerdagen (samme inklusiv-semantik som injuryRaceDaysLeft, #1672). 0 = rask.
  */
-export function injuryDatesIntoSeason({ injuredUntil, seasonStartDate } = {}) {
+export function injuryDaysIntoSeason({ injuredUntil, seasonStartDate } = {}) {
   if (typeof injuredUntil !== "string" || !DATE_RE.test(injuredUntil)) return 0;
   if (typeof seasonStartDate !== "string" || !DATE_RE.test(seasonStartDate)) return 0;
   const diff = Math.round((toUtcMs(injuredUntil) - toUtcMs(seasonStartDate)) / DAY_MS);
@@ -99,8 +104,8 @@ export async function readSeasonInjuryResetConfig(supabase) {
     return {
       ...d,
       mode: typeof modeRaw === "string" && VALID_MODES.has(modeRaw) ? modeRaw : "off",
-      capDates: positiveInt(byKey[SEASON_INJURY_RESET_PARAM_KEYS.capDates], d.capDates),
-      lightMaxDates: positiveInt(byKey[SEASON_INJURY_RESET_PARAM_KEYS.lightMaxDates], d.lightMaxDates),
+      capDays: positiveInt(byKey[SEASON_INJURY_RESET_PARAM_KEYS.capDays], d.capDays),
+      lightMaxDays: positiveInt(byKey[SEASON_INJURY_RESET_PARAM_KEYS.lightMaxDays], d.lightMaxDays),
     };
   } catch {
     // best-effort: config-læsning må aldrig vælte sæsonskiftet. Fail-safe er "off",
@@ -122,7 +127,7 @@ const CLEARED = Object.freeze({
  * Deterministisk, ingen DB, ingen Date.now.
  *
  * @param {{condition: object|null, mode?: string, seasonStartDate: string,
- *   today?: string|null, capDates?: number, lightMaxDates?: number}} args
+ *   today?: string|null, capDays?: number, lightMaxDays?: number}} args
  *   `today` = skiftets danske dato; en skade der allerede er udløbet før i dag, røres ikke.
  * @returns {object|null} de skade-kolonner der skal skrives, eller null = uændret.
  */
@@ -131,8 +136,8 @@ export function seasonResetInjury({
   mode = SEASON_INJURY_RESET_DEFAULTS.mode,
   seasonStartDate,
   today = null,
-  capDates = SEASON_INJURY_RESET_DEFAULTS.capDates,
-  lightMaxDates = SEASON_INJURY_RESET_DEFAULTS.lightMaxDates,
+  capDays = SEASON_INJURY_RESET_DEFAULTS.capDays,
+  lightMaxDays = SEASON_INJURY_RESET_DEFAULTS.lightMaxDays,
 } = {}) {
   if (!VALID_MODES.has(mode)) throw new Error(`seasonResetInjury: unknown mode '${mode}'`);
   if (mode === "off") return null;
@@ -145,16 +150,16 @@ export function seasonResetInjury({
     throw new Error("seasonResetInjury: seasonStartDate (YYYY-MM-DD) is required");
   }
 
-  const into = injuryDatesIntoSeason({ injuredUntil: until, seasonStartDate });
+  const into = injuryDaysIntoSeason({ injuredUntil: until, seasonStartDate });
 
   if (mode === "clear") return { ...CLEARED };
 
   if (mode === "light") {
-    return into <= positiveInt(lightMaxDates, SEASON_INJURY_RESET_DEFAULTS.lightMaxDates) ? { ...CLEARED } : null;
+    return into <= positiveInt(lightMaxDays, SEASON_INJURY_RESET_DEFAULTS.lightMaxDays) ? { ...CLEARED } : null;
   }
 
   // "cap": afkort til loftet. En skade der allerede er kortere, røres ikke.
-  const cap = positiveInt(capDates, SEASON_INJURY_RESET_DEFAULTS.capDates);
+  const cap = positiveInt(capDays, SEASON_INJURY_RESET_DEFAULTS.capDays);
   if (into <= cap) return null;
   return {
     injured_until: addDays(seasonStartDate, cap - 1),
@@ -167,14 +172,23 @@ export function seasonResetInjury({
   };
 }
 
-/** Den nye sæsons første løbsdato. Fallback: skiftets egen dato. */
-async function resolveSeasonStartDate(supabase, toSeasonId, today) {
-  if (!toSeasonId) return today;
+/**
+ * Den nye sæsons ankerdato + om den allerede er i gang.
+ *
+ * Ankeret er den LAGREDE start_date (også når den ligger før i dag), så en gen-kørsel
+ * af skiftet på en senere dato regner fra samme anker og forbliver idempotent (Codex
+ * 16/11). Kun uden lagret dato bruges skiftets egen dato.
+ */
+async function resolveSeasonAnchor(supabase, toSeasonId, today) {
+  if (!toSeasonId) return { seasonStartDate: today, started: false };
   const { data, error } = await supabase
-    .from("seasons").select("start_date").eq("id", toSeasonId).maybeSingle();
+    .from("seasons").select("start_date, race_days_completed").eq("id", toSeasonId).maybeSingle();
   if (error) throw new Error(`season injury reset: season lookup: ${error.message}`);
   const start = data?.start_date ? String(data.start_date).slice(0, 10) : null;
-  return start && DATE_RE.test(start) && start >= today ? start : today;
+  return {
+    seasonStartDate: start && DATE_RE.test(start) ? start : today,
+    started: Number(data?.race_days_completed ?? 0) > 0,
+  };
 }
 
 /**
@@ -195,7 +209,10 @@ export async function applySeasonInjuryReset({
   if (!supabase?.from) throw new Error("Supabase client required");
 
   const today = copenhagenDateString(now);
-  const seasonStartDate = await resolveSeasonStartDate(supabase, toSeasonId, today);
+  const { seasonStartDate, started } = await resolveSeasonAnchor(supabase, toSeasonId, today);
+  // En gen-kørsel efter at den nye sæson har kørt løbsdage, må ikke røre skader der
+  // er opstået I den nye sæson. Logges (ikke flag_off), så operatøren ser springet.
+  if (started) return { ran: false, reason: "season_already_started", mode: cfg.mode, seasonStartDate };
 
   const { data: rows, error } = await fetchAllPaged(() =>
     supabase.from("rider_condition")
@@ -212,7 +229,7 @@ export async function applySeasonInjuryReset({
   for (const c of rows ?? []) {
     const next = seasonResetInjury({
       condition: c, mode: cfg.mode, seasonStartDate, today,
-      capDates: cfg.capDates, lightMaxDates: cfg.lightMaxDates,
+      capDays: cfg.capDays, lightMaxDays: cfg.lightMaxDays,
     });
     if (!next) continue;
     if (next.injured_until === null) cleared++;
@@ -225,8 +242,8 @@ export async function applySeasonInjuryReset({
     dryRun,
     mode: cfg.mode,
     seasonStartDate,
-    ...(cfg.mode === "cap" ? { capDates: cfg.capDates } : {}),
-    ...(cfg.mode === "light" ? { lightMaxDates: cfg.lightMaxDates } : {}),
+    ...(cfg.mode === "cap" ? { capDays: cfg.capDays } : {}),
+    ...(cfg.mode === "light" ? { lightMaxDays: cfg.lightMaxDays } : {}),
     injured: rows?.length ?? 0,
     cleared,
     shortened,

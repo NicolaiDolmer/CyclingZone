@@ -12,7 +12,7 @@ const rows = [
 ];
 
 test("summarize: buckets og pr. mode, udløbne skader ignoreres", () => {
-  const s = summarize({ rows, seasonStartDate: "2026-12-02", today: "2026-11-29", capDates: 1, lightMaxDates: 2 });
+  const s = summarize({ rows, seasonStartDate: "2026-12-02", today: "2026-11-29", capDays: 1, lightMaxDays: 2 });
   assert.equal(s.activeNow, 4);
   assert.equal(s.stillInjuredAtStart, 3);
   assert.deepEqual(s.buckets, { endsBeforeStart: 1, dates1: 1, dates2to3: 1, dates4plus: 1 });

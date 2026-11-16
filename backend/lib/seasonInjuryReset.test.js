@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   seasonResetInjury,
-  injuryDatesIntoSeason,
+  injuryDaysIntoSeason,
   readSeasonInjuryResetConfig,
   applySeasonInjuryReset,
   SEASON_INJURY_RESET_MODE_KEY,
@@ -31,12 +31,12 @@ const CLEARED = {
   injury_race_days_left: null,
 };
 
-test("injuryDatesIntoSeason: inklusiv første løbsdato, 0 før start og ved ugyldige datoer", () => {
-  assert.equal(injuryDatesIntoSeason({ injuredUntil: START, seasonStartDate: START }), 1);
-  assert.equal(injuryDatesIntoSeason({ injuredUntil: "2026-12-05", seasonStartDate: START }), 4);
-  assert.equal(injuryDatesIntoSeason({ injuredUntil: "2026-12-01", seasonStartDate: START }), 0);
-  assert.equal(injuryDatesIntoSeason({ injuredUntil: null, seasonStartDate: START }), 0);
-  assert.equal(injuryDatesIntoSeason({ injuredUntil: "x", seasonStartDate: START }), 0);
+test("injuryDaysIntoSeason: inklusiv første løbsdato, 0 før start og ved ugyldige datoer", () => {
+  assert.equal(injuryDaysIntoSeason({ injuredUntil: START, seasonStartDate: START }), 1);
+  assert.equal(injuryDaysIntoSeason({ injuredUntil: "2026-12-05", seasonStartDate: START }), 4);
+  assert.equal(injuryDaysIntoSeason({ injuredUntil: "2026-12-01", seasonStartDate: START }), 0);
+  assert.equal(injuryDaysIntoSeason({ injuredUntil: null, seasonStartDate: START }), 0);
+  assert.equal(injuryDaysIntoSeason({ injuredUntil: "x", seasonStartDate: START }), 0);
 });
 
 test("mode off: ingen ændring for nogen række", () => {
@@ -62,7 +62,7 @@ test("A clear: enhver aktiv skade og sygdom forsvinder, inkl. løbsdags-koordina
 });
 
 test("B cap: lang skade afkortes til loftet, kort skade er urørt, årsagen bevares", () => {
-  const out = seasonResetInjury({ condition: injured("2026-12-20"), mode: "cap", seasonStartDate: START, today: TODAY, capDates: 2 });
+  const out = seasonResetInjury({ condition: injured("2026-12-20"), mode: "cap", seasonStartDate: START, today: TODAY, capDays: 2 });
   assert.deepEqual(out, {
     injured_until: "2026-12-03",
     injury_cause: "race_crash",
@@ -70,24 +70,24 @@ test("B cap: lang skade afkortes til loftet, kort skade er urørt, årsagen beva
     injury_season_id: null,
     injury_race_days_left: null,
   });
-  assert.equal(seasonResetInjury({ condition: injured("2026-12-03"), mode: "cap", seasonStartDate: START, today: TODAY, capDates: 2 }), null);
-  assert.equal(seasonResetInjury({ condition: injured("2026-11-30"), mode: "cap", seasonStartDate: START, today: TODAY, capDates: 2 }), null);
+  assert.equal(seasonResetInjury({ condition: injured("2026-12-03"), mode: "cap", seasonStartDate: START, today: TODAY, capDays: 2 }), null);
+  assert.equal(seasonResetInjury({ condition: injured("2026-11-30"), mode: "cap", seasonStartDate: START, today: TODAY, capDays: 2 }), null);
 });
 
 test("C light: kun skader inden for grænsen forsvinder", () => {
-  assert.deepEqual(seasonResetInjury({ condition: injured("2026-12-03"), mode: "light", seasonStartDate: START, today: TODAY, lightMaxDates: 2 }), CLEARED);
-  assert.deepEqual(seasonResetInjury({ condition: injured("2026-11-30"), mode: "light", seasonStartDate: START, today: TODAY, lightMaxDates: 2 }), CLEARED);
-  assert.equal(seasonResetInjury({ condition: injured("2026-12-04"), mode: "light", seasonStartDate: START, today: TODAY, lightMaxDates: 2 }), null);
+  assert.deepEqual(seasonResetInjury({ condition: injured("2026-12-03"), mode: "light", seasonStartDate: START, today: TODAY, lightMaxDays: 2 }), CLEARED);
+  assert.deepEqual(seasonResetInjury({ condition: injured("2026-11-30"), mode: "light", seasonStartDate: START, today: TODAY, lightMaxDays: 2 }), CLEARED);
+  assert.equal(seasonResetInjury({ condition: injured("2026-12-04"), mode: "light", seasonStartDate: START, today: TODAY, lightMaxDays: 2 }), null);
 });
 
 test("idempotens: anden anvendelse af hver mode er et no-op", () => {
   for (const mode of ["clear", "cap", "light"]) {
     for (const until of ["2026-11-30", START, "2026-12-03", "2026-12-20"]) {
       const c = injured(until);
-      const once = seasonResetInjury({ condition: c, mode, seasonStartDate: START, today: TODAY, capDates: 2, lightMaxDates: 2 });
+      const once = seasonResetInjury({ condition: c, mode, seasonStartDate: START, today: TODAY, capDays: 2, lightMaxDays: 2 });
       const after = once ? { ...c, ...once } : c;
       assert.equal(
-        seasonResetInjury({ condition: after, mode, seasonStartDate: START, today: TODAY, capDates: 2, lightMaxDates: 2 }),
+        seasonResetInjury({ condition: after, mode, seasonStartDate: START, today: TODAY, capDays: 2, lightMaxDays: 2 }),
         null,
         `${mode} ${until}`,
       );
@@ -97,7 +97,7 @@ test("idempotens: anden anvendelse af hver mode er et no-op", () => {
 
 // ── DB-stien med en lille fake ──────────────────────────────────────────────
 
-function fakeSupabase({ config = [], seasonStart = START, rows = [] } = {}) {
+function fakeSupabase({ config = [], seasonStart = START, raceDaysCompleted = 0, rows = [] } = {}) {
   const writes = [];
   const reads = [];
   const from = (table) => {
@@ -109,7 +109,9 @@ function fakeSupabase({ config = [], seasonStart = START, rows = [] } = {}) {
       gte(col, v) { q._filters.push(["gte", col, v]); return q; },
       order() { return q; },
       range() { return q; },
-      maybeSingle() { return Promise.resolve({ data: { start_date: seasonStart }, error: null }); },
+      maybeSingle() {
+        return Promise.resolve({ data: { start_date: seasonStart, race_days_completed: raceDaysCompleted }, error: null });
+      },
       upsert(chunk, opts) { writes.push({ table, chunk, opts }); return Promise.resolve({ error: null }); },
       then(resolve, reject) {
         reads.push({ table, filters: q._filters });
@@ -136,10 +138,10 @@ test("readSeasonInjuryResetConfig: manglende række / ugyldig værdi / kastende 
   assert.equal((await readSeasonInjuryResetConfig(null)).mode, "off");
   const cfg = await readSeasonInjuryResetConfig(fakeSupabase({ config: [
     { key: SEASON_INJURY_RESET_MODE_KEY, value: "cap" },
-    { key: "season_injury_reset_cap_dates", value: 0 },
+    { key: "season_injury_reset_cap_days", value: 0 },
   ] }));
   assert.equal(cfg.mode, "cap");
-  assert.ok(cfg.capDates >= 1, "et loft under 1 falder tilbage til default");
+  assert.ok(cfg.capDays >= 1, "et loft under 1 falder tilbage til default");
 });
 
 test("kontakt slukket: flag_off, ingen læsning af rider_condition, ingen skrivning", async () => {
@@ -201,10 +203,34 @@ test("dryRun: tæller men skriver intet", async () => {
   assert.equal(sb.writes.length, 0);
 });
 
-test("sæsonstart i fortiden eller manglende sæson → skiftets egen dato bruges", async () => {
-  const sb = fakeSupabase({ config: [{ key: SEASON_INJURY_RESET_MODE_KEY, value: "cap" }], seasonStart: "2026-10-28", rows: [injured("2026-12-20")] });
+test("ankeret er den lagrede start_date; uden sæson-id bruges skiftets egen dato", async () => {
+  const sb = fakeSupabase({ config: [{ key: SEASON_INJURY_RESET_MODE_KEY, value: "cap" }], seasonStart: "2026-11-27", rows: [injured("2026-12-20")] });
   const res = await applySeasonInjuryReset({ supabase: sb, now: NOW, toSeasonId: "s6", dryRun: true });
-  assert.equal(res.seasonStartDate, TODAY);
+  assert.equal(res.seasonStartDate, "2026-11-27");
   const res2 = await applySeasonInjuryReset({ supabase: fakeSupabase({ config: [{ key: SEASON_INJURY_RESET_MODE_KEY, value: "cap" }], rows: [] }), now: NOW, dryRun: true });
   assert.equal(res2.seasonStartDate, TODAY);
+});
+
+// Codex 16/11: en gen-kørsel af skiftet på en senere dato må ikke ændre udfaldet.
+test("gen-kørsel på en senere dato (før første løbsdag) regner fra samme anker → no-op", async () => {
+  const cfg = [
+    { key: SEASON_INJURY_RESET_MODE_KEY, value: "light" },
+    { key: "season_injury_reset_light_max_days", value: 2 },
+  ];
+  const row = injured("2026-12-05");
+  const first = await applySeasonInjuryReset({ supabase: fakeSupabase({ config: cfg, rows: [row] }), now: new Date("2026-12-02T10:00:00Z"), toSeasonId: "s6" });
+  assert.equal(first.changed, 0);
+  const retry = fakeSupabase({ config: cfg, rows: [row] });
+  const second = await applySeasonInjuryReset({ supabase: retry, now: new Date("2026-12-04T10:00:00Z"), toSeasonId: "s6" });
+  assert.equal(second.changed, 0);
+  assert.equal(retry.writes.length, 0);
+});
+
+test("gen-kørsel efter at den nye sæson har kørt løbsdage → springes over, intet læses eller skrives", async () => {
+  const sb = fakeSupabase({ config: [{ key: SEASON_INJURY_RESET_MODE_KEY, value: "clear" }], raceDaysCompleted: 3, rows: [injured("2026-12-20", { injury_season_id: "s6" })] });
+  const res = await applySeasonInjuryReset({ supabase: sb, now: NOW, toSeasonId: "s6" });
+  assert.equal(res.ran, false);
+  assert.equal(res.reason, "season_already_started");
+  assert.equal(sb.writes.length, 0);
+  assert.ok(!sb.reads.some((r) => r.table === "rider_condition"));
 });

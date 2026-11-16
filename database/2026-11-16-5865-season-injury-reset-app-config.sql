@@ -22,11 +22,11 @@
 INSERT INTO public.app_config (key, value, description)
 VALUES
   ('season_injury_reset_mode', '"off"'::jsonb,
-   '#5865: hvad der sker med aktive skader og sygdomme ved sæsonskiftet. "off" = intet (default, nuværende adfærd: skaden løber videre ind i den nye sæson). "clear" = alle forsvinder. "cap" = afkortes til højst season_injury_reset_cap_dates løbsdatoer ind i den nye sæson. "light" = kun skader der højst rækker season_injury_reset_light_max_dates løbsdatoer ind, forsvinder. Håndhæves i backend/lib/seasonInjuryReset.js, kaldt fra seasonStartHooks.js.'),
-  ('season_injury_reset_cap_dates', '1'::jsonb,
-   '#5865 · mode "cap": højst så mange løbsdatoer (inkl. den første) rækker en skade ind i den nye sæson. Bruges kun når season_injury_reset_mode = "cap".'),
-  ('season_injury_reset_light_max_dates', '2'::jsonb,
-   '#5865 · mode "light": skader der højst rækker så mange løbsdatoer ind i den nye sæson, forsvinder; længere skader løber uændret videre. Bruges kun når season_injury_reset_mode = "light".')
+   '#5865: hvad der sker med aktive skader og sygdomme ved sæsonskiftet. "off" = intet (default, nuværende adfærd: skaden løber videre ind i den nye sæson). "clear" = alle forsvinder. "cap" = afkortes til højst season_injury_reset_cap_days dage efter skiftet. "light" = kun skader der højst rækker season_injury_reset_light_max_days dage efter skiftet, forsvinder. Dagene regnes fra den nye sæsons start_date (skiftets dato), inkl. den dag. Håndhæves i backend/lib/seasonInjuryReset.js, kaldt fra seasonStartHooks.js.'),
+  ('season_injury_reset_cap_days', '3'::jsonb,
+   '#5865 · mode "cap": højst så mange dage efter skiftet (inkl. skiftedagen) rækker en skade. Bruges kun når season_injury_reset_mode = "cap".'),
+  ('season_injury_reset_light_max_days', '7'::jsonb,
+   '#5865 · mode "light": skader der højst rækker så mange dage efter skiftet (inkl. skiftedagen), forsvinder; længere skader løber uændret videre. Bruges kun når season_injury_reset_mode = "light".')
 ON CONFLICT (key) DO NOTHING;
 
 -- ── POST-VERIFY (read-only, efter auto-migrate.yml) ──────────────────────────
