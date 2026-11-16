@@ -20,7 +20,8 @@
 // som under v6 ikke har sin egen vælger. En kørt etape på Taktik viser altid den
 // låste oversigt (roller, indsats, holdplan) og planen mod det der skete over den,
 // hvor der er en plan og en optegnelse. Ordre-oversigten findes ét sted: Taktik.
-// En etape på vejen siger det på Resultater. Genbrugte faner står på max-w-5xl.
+// En etape på vejen siger det på Resultater. Panelet under fanerne har kortets
+// bredde og placering (review-punkt d, #7865).
 //
 // #7778 udgave E (valg 20-22, ejer 15/11): løbshovedet og etapestriben er ÉT kort
 // (T3-heroens anatomi). Række 1: navn, mærker, "N etaper · sæson N". Række 2:
@@ -28,17 +29,20 @@
 // etapestriben som kortets bund (V6StageStrip). Fanerne står under kortet
 // (underline, aktiv = guld understregning og guld-tekst), og panelet er
 // role="tabpanel" med aria-labelledby på den aktive fane.
-import { useEffect, useId, useMemo, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import StagePageV2, { type StagePageV2Props } from "../stagePageV2/StagePageV2.tsx";
-import { myBestByStage, scheduleFor, stagePhase, type StagePageV2Tab } from "../stagePageV2/stagePageV2Model.ts";
+import { activeRiders, myBestByStage, scheduleFor, stagePhase, type StagePageV2Tab } from "../stagePageV2/stagePageV2Model.ts";
 import { Tab, TabList, Tabs } from "../stagePageV2/ui.ts";
 import { profileLabelKey } from "../../../lib/stageProfileConfig.js";
 import { hasRouteData } from "../../../lib/stageRouteProfile.js";
+import { fetchTeamOrders } from "../../../lib/tacticsOrdersAdapter.js";
 import { useRaceViewTelemetry } from "../../../lib/useRaceViewTelemetry.ts";
+import { useRiderNames } from "../../../lib/useRiderNames.js";
 import { useUiPref } from "../../../lib/userUiPrefs.ts";
 import {
-  tacticsCta, v6BodyIsWide, v6ResultsPhase, v6StageTabFor, v6Strip, v6StripCells, v6Tabs, v6TacticsResults, v6TacticsStage, v6WinnersByStage,
+  tacticsCta, v6NamesFromResults, v6ResultsPhase, v6SavedStages, v6StageTabFor, v6Strip, v6StripCells, v6StripWinners, v6Tabs,
+  v6TacticsResults, v6TacticsStage, v6WinnerIdsByStage, v6WinnersByStage,
   type RacePageV6Tab, type StageResultsState, type V6ResultRow,
 } from "./racePageV6Model.ts";
 import V6StageStrip from "./V6StageStrip.tsx";
@@ -83,6 +87,28 @@ export interface RacePageV6Props extends Omit<StagePageV2Props, "activeTab" | "o
   whenLabelFor?: (date: Date) => string | null;
 }
 
+/**
+ * #7865 (valg 21): etaper med en gemt plan, fra samme svar som Taktik læser
+ * (team-orders). Hentes igen, når Taktik åbnes, når Taktiks etape skifter, og når
+ * fanen forlades, så et gem i Taktik når striben uden en ny side. Det sidst kendte
+ * svar står, mens der hentes; uden svar (fejl, ikke logget ind) er tilstanden ukendt.
+ */
+function useV6SavedStages(raceId: string | null, enabled: boolean, refreshKey: string): Set<number> | null {
+  const [saved, setSaved] = useState<{ raceId: string; stages: Set<number> } | null>(null);
+  useEffect(() => {
+    if (!enabled || !raceId) return undefined;
+    let alive = true;
+    fetchTeamOrders({ raceId })
+      .then((ctx) => {
+        const stages = v6SavedStages(ctx);
+        if (alive && stages) setSaved({ raceId, stages });
+      })
+      .catch(() => { /* catch-ok: ukendt tilstand = intet ord i cellen, aldrig et gæt */ });
+    return () => { alive = false; };
+  }, [raceId, enabled, refreshKey]);
+  return enabled && saved && saved.raceId === raceId ? saved.stages : null;
+}
+
 export default function RacePageV6(props: RacePageV6Props) {
   const {
     isStageRace, totalStages, stagesCompleted, selectedStage, onSelectStage,
@@ -118,13 +144,32 @@ export default function RacePageV6(props: RacePageV6Props) {
   const tabIdBase = useId();
   const tabId = (key: string) => `${tabIdBase}-tab-${key}`;
   // Udgave E: én celle pr. etape, kun med data siden allerede har (v6StripCells).
-  const winners = useMemo(() => v6WinnersByStage(results as V6ResultRow[]), [results]);
+  // #7865: vinderen på ALLE kørte etaper. Id'et kommer fra hele løbets etaperækker;
+  // navnet fra de hentede lister, holdets ryttere eller ét navneopslag for resten.
+  const winnerIds = useMemo(() => (isStageRace ? v6WinnerIdsByStage(stagePointRows) : {}), [isStageRace, stagePointRows]);
+  const resultNames = useMemo(() => v6NamesFromResults(results as V6ResultRow[]), [results]);
+  const unnamedWinnerIds = useMemo(
+    () => [...new Set(Object.values(winnerIds))].filter((id) => !resultNames.has(id) && !nameById.get(id)).sort(),
+    [winnerIds, resultNames, nameById],
+  );
+  const lookedUpNames = useRiderNames(unnamedWinnerIds) as Record<string, string | null>;
+  const winners = useMemo(() => v6StripWinners({
+    winnerIds,
+    nameById: (id) => resultNames.get(id) ?? nameById.get(id) ?? lookedUpNames[id],
+    fromResults: v6WinnersByStage(results as V6ResultRow[]),
+  }), [winnerIds, resultNames, nameById, lookedUpNames, results]);
+  // #7865 (valg 21): planens tilstand pr. kommende etape, fra Taktiks egne data.
+  const savedStages = useV6SavedStages(
+    raceId,
+    isStageRace && !raceFinished && activeRiders(riders).length > 0,
+    activeTab === "tactics" ? `tactics-${tacticsStage}` : "away",
+  );
   const stripCells = useMemo(() => v6StripCells({
     totalStages, stagesCompleted, raceFinished, schedule, nowMs,
     profileTypeByStage: Object.fromEntries(Object.entries(profileByStage).map(([n, p]) => [n, p && profileLabelKey(p.profile_type) ? p.profile_type : null])),
-    winners, myBest: bestByStage, riders, overrides,
+    winners, myBest: bestByStage, riders, overrides, savedStages,
     whenFor: whenLabelFor ?? timeLabelFor,
-  }), [totalStages, stagesCompleted, raceFinished, schedule, nowMs, profileByStage, winners, bestByStage, riders, overrides, whenLabelFor, timeLabelFor]);
+  }), [totalStages, stagesCompleted, raceFinished, schedule, nowMs, profileByStage, winners, bestByStage, riders, overrides, savedStages, whenLabelFor, timeLabelFor]);
   // #7865 (punkt 2): én etapestribe. På Taktik styrer den editoren (som ingen egen vælger har).
   const strip = v6Strip({ activeTab, isStageRace, selectedStage, tacticsStage });
   const profile = profileByStage[selectedStage] ?? null;
@@ -206,7 +251,6 @@ export default function RacePageV6(props: RacePageV6Props) {
     else if (strip.target === "open" && onOpenStage) onOpenStage(n, v6StageTabFor(n, stagesCompleted));
     else onSelectStage(n);
   };
-  const bodyWide = v6BodyIsWide({ activeTab, isStageRace });
 
   return (
     <div data-race-page data-race-page-version="v6" className="flex flex-col gap-[14px]">
@@ -223,10 +267,9 @@ export default function RacePageV6(props: RacePageV6Props) {
           </TabList>
         </Tabs>
       </div>
-      {/* #7865 (punkt 8): kun v6's egen resultatvisning bruger den brede side; de
-          genbrugte faner står på den bredde, de er bygget til. */}
-      <div role="tabpanel" aria-labelledby={tabId(activeTab)} data-race-body-width={bodyWide ? "wide" : "5xl"}
-        className={bodyWide ? "w-full" : "w-full max-w-5xl"}>
+      {/* #7865 (review-punkt d): panelet har samme bredde og placering som kortet og
+          fanerne over det, så intet står venstrestillet under et bredere kort ved 1600 px+. */}
+      <div role="tabpanel" aria-labelledby={tabId(activeTab)} data-race-body-width="card" className="w-full">
         {body}
       </div>
     </div>

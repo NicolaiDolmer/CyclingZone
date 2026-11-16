@@ -35,15 +35,17 @@ test("koert etape uden egne ryttere: ingen egen plads", () => {
 test("etape paa vejen: startet og ikke afgjort", () => {
   assert.deepEqual(v6StripCells(base)[2].foot, { kind: "on_road" });
   // Foer starten er den samme etape kommende.
-  const before = v6StripCells({ ...base, nowMs: Date.parse("2026-11-14T11:00:00.000Z") });
+  const before = v6StripCells({ ...base, savedStages: new Set<number>(), nowMs: Date.parse("2026-11-14T11:00:00.000Z") });
   assert.equal(before[2].foot.kind, "plan");
 });
 
-test("kommende etape med egne ryttere: samme 'x af 3' som guld-knappen; uden ryttere intet", () => {
-  const cells = v6StripCells(base);
-  assert.deepEqual(cells[3].foot, { kind: "plan", done: 2, total: 3 }, "udtaget og kaptajn, ingen intention");
-  assert.deepEqual(v6StripCells({ ...base, riders: [] })[3].foot, { kind: "none" });
-  assert.deepEqual(v6StripCells({ ...base, raceFinished: true })[3].foot, { kind: "none" }, "slut loeb har ingen plan");
+test("kommende etape med egne ryttere: planens tilstand som ord (valg 21); uden ryttere intet", () => {
+  const cells = v6StripCells({ ...base, savedStages: new Set([5]) });
+  assert.deepEqual(cells[3].foot, { kind: "plan", state: "default" }, "intet gemt, kaptajnen er sat: standardplanen");
+  assert.deepEqual(cells[4].foot, { kind: "plan", state: "saved" });
+  assert.deepEqual(v6StripCells({ ...base, savedStages: new Set<number>(), riders: [] })[3].foot, { kind: "none" });
+  assert.deepEqual(v6StripCells({ ...base, savedStages: new Set<number>(), raceFinished: true })[3].foot, { kind: "none" }, "slut loeb har ingen plan");
+  assert.deepEqual(v6StripCells(base)[3].foot, { kind: "none" }, "ukendt (Taktiks data ikke hentet) = intet ord, aldrig et gaet");
 });
 
 test("cellen baerer terraen og tidspunkt fra siden; ukendt = null", () => {
@@ -102,7 +104,7 @@ test("piletaster flytter mellem etaperne, Home/End til enderne", () => {
   assert.equal(v6StripKeyTarget("Enter", 2, 7), null);
 });
 
-test("striben: rigtige knapper, aria-current, proximity-snap, fade med scroll-padding, ingen guld", () => {
+test("striben: rigtige knapper, aria-current, proximity-snap, opakt kantmaerke uden gradient, ingen guld", () => {
   const strip = read("./V6StageStrip.tsx");
   assert.match(strip, /aria-current=\{active \? "true" : undefined\}/);
   assert.match(strip, /aria-label=\{t\("racePageV6\.strip\.earlier"\)\}/);
@@ -113,9 +115,12 @@ test("striben: rigtige knapper, aria-current, proximity-snap, fade med scroll-pa
   const block = css.slice(css.indexOf("/* #7778 udgave E: v6's etapestribe"));
   assert.match(block, /scroll-snap-type: x proximity;/);
   assert.doesNotMatch(block, /mandatory/);
-  assert.match(block, /scroll-padding-inline: var\(--v6-fade-size\);/);
-  assert.match(block, /@property --v6-fade-start/);
-  assert.match(block, /border: 1\.5px solid var\(--text-1\);/, "valgt etape = moerk kant");
+  // #7865 review-punkt a+b: kanten er pileknappernes opakke kort-baggrund + hairline, ingen gradient-fade.
+  assert.doesNotMatch(block, /gradient|mask/, "ingen kant-fade (TASTE §3)");
+  assert.match(block, /\.v6-strip-nav \{[^}]*background: var\(--bg-card\);/);
+  assert.match(strip, /className="v6-strip-nav border-e"/);
+  assert.match(strip, /className="v6-strip-nav border-s"/);
+  assert.match(block, /border: 1\.5px solid var\(--text-1\);\n\s+border-radius: 5px;/, "valgt etape = moerk kant med kortets 5 px radius");
   assert.match(block, /width: 44px;/, "pilene har 44 px trykflade");
   assert.doesNotMatch(block, /box-shadow|accent/);
 });

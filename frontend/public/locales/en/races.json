@@ -18,7 +18,9 @@
       "earlier": "Earlier stages",
       "later": "Later stages",
       "you": "You #{rank}",
-      "plan": "{done} of {total} done"
+      "planSaved": "Saved",
+      "planDefault": "Default plan",
+      "planNotSaved": "Not saved"
     },
     "route": {
       "aria": "Stage route",
