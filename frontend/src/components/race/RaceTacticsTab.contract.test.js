@@ -150,7 +150,7 @@ test("kolonnen er sorterbar, og listen står i holdets rækkefølge indtil man k
   assert.match(source, /routeSortDir \? \[\.\.\.riders\]\.sort\(routeMatchComparator\(activeStage, routeSortDir\)\) : riders/);
   // Sorteringen gælder BEGGE flader — ellers viser mobil en anden rækkefølge
   // end desktop for de samme data.
-  assert.equal((source.match(/visibleRiders\.map\(/g) || []).length, 2, "både tabellen og mobil-listen tegner den sorterede liste");
+  assert.equal((source.match(/visibleRiders\.map\(/g) || []).length, 3, "tabellen, mobil-listen og det fælles panel (#8297) tegner den sorterede liste");
 });
 
 test("colSpan for den udfoldede vælger følger antallet af kolonner", () => {
@@ -247,7 +247,8 @@ test("etapeplanens tabel og mobilkort tegner rute-match", () => {
 
 test("#7332 enkeltstart: tre trin, gamle valg vises som save, kopi og gem skriver aldrig grupetto/protect", () => {
   // Vaelgeren faar etapens trin (begge layouts), aldrig serverens raa liste.
-  assert.equal((source.match(/steps=\{steps\}/g) || []).length, 2);
+  // #8297: det fælles panels indsats-linje faar de samme trin (tredje forekomst).
+  assert.equal((source.match(/steps=\{steps\}/g) || []).length, 3);
   assert.match(source, /const steps = effortsForStage\(roles\?\.valid_efforts, stageProfileType\);/);
   // Aaben etape: visningen gaar gennem effortForStage; laast etape viser det der blev sendt.
   assert.match(source, /: effortForStage\(intentionFor\(\{ matrix: draftMatrix, stageNumber: activeStage, riderId: rider\.rider_id \}\), stageProfileType\)\);/);
@@ -275,3 +276,43 @@ test("#8013 g: gem fra en kopi-etape sender kildeetapens beskidte ordrer foer fi
 test("#7864: kopi-knappen bruger flertal ved flere etaper og ental ved en", () => {
   assert.match(source, /sameTypePlans\.length === 1\s*\? t\("intention\.copyToStage", \{ number: sameTypePlans\[0\]\.stage \}\)\s*: t\("intention\.copyToStages", \{ numbers: /);
 });
+
+
+// ── #8297: det fælles taktikpanel (wireframe v6c) under løbssiden v6 ──────────
+
+const panel = readFileSync(join(__dirname, '../tactics/TacticsPanel.tsx'), 'utf8');
+const panelV6c = source.slice(source.indexOf('function renderPanelV6c()'), source.indexOf('if (layout === "v6c") return renderPanelV6c();'));
+const has = (text, needle, message) => assert.ok(text.includes(needle), message ?? `mangler: ${needle}`);
+
+test("#8297: kun v6 vælger panelet; uden provider tegnes det klassiske kort uændret", () => {
+  has(source, "const layout = useTacticsLayout();");
+  has(source, 'if (layout === "v6c") return renderPanelV6c();');
+  const ctx = readFileSync(join(__dirname, "../tactics/tacticsLayout.ts"), "utf8");
+  has(ctx, 'createContext<TacticsLayout>("classic")', "uden provider: classic");
+  const page = readFileSync(join(__dirname, "v6/RacePageV6.tsx"), "utf8");
+  has(page, '<TacticsLayoutContext.Provider value="v6c">');
+});
+
+test("#8297: panelet bruger samme gem, kopi, holdplaner og spærrede valg som det klassiske kort", () => {
+  assert.ok(panelV6c.length > 0, "renderPanelV6c findes");
+  has(panelV6c, "onSave: save,");
+  has(panelV6c, "onCopy: copyToNextStage,");
+  has(panelV6c, 'saveDisabled: !dirty || saving || status === "conflict",');
+  has(panelV6c, "onApply={applyReadyPlan}");
+  has(panelV6c, "onPick={(step) => pickIntention(rider.rider_id, step)}");
+  has(panelV6c, "const key = effortBlockedKey(rider, step);");
+  has(panelV6c, "onClick={() => updateOrder((o) => setBreakawayStance(o, stance))}");
+  has(panelV6c, "onPick={(role) => pickRole(rider.rider_id, role)}");
+  // Samme holdplan-regel og samme etapeplan som det klassiske kort.
+  has(panelV6c, "teamPlan={ready7864 && stagePlanOn ?");
+  has(panelV6c, "{stagePlanBoard}");
+  // Låst etape og udgået rytter: ingen indsats-linje, kun det der blev sendt.
+  has(panelV6c, "if (rider.abandoned || stageLocked) return renderIntentionCell(rider);");
+});
+
+test("#8297: panelet har præcis én guldknap, og den gemmer", () => {
+  assert.equal((panel.match(/variant="primary"/g) || []).length, 1);
+  assert.match(panel, /<Button variant="primary"[^>]*onClick=\{footer\.onSave\}/);
+  assert.equal((panelV6c.match(/variant="primary"/g) || []).length, 0, "værten tilføjer ingen guldknap");
+});
+
