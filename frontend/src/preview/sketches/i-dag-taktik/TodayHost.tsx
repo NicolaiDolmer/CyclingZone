@@ -115,8 +115,9 @@ export function TodayHost({ details, mopen }: { details: boolean; mopen: string 
                 <span style={{ minWidth: 0 }}>
                   <span style={{ display: "block", fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: r.done ? "var(--t3)" : undefined }}>{r.race}</span>
                   <span className="dim" style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                    <svg className="ic" style={{ width: 14, height: 14 }}><use href={`#i-${r.type}`} /></svg>{r.st} · <b style={{ color: "var(--t1)" }}>{r.plan}</b>
+                    <svg className="ic" style={{ width: 14, height: 14 }}><use href={`#i-${r.type}`} /></svg>{r.st}
                   </span>
+                  <b style={{ display: "block", fontSize: 12.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.plan}</b>
                 </span>
                 <span>{action(r)}</span>
               </li>

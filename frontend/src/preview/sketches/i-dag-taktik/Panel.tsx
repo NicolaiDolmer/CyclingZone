@@ -161,7 +161,7 @@ export function TacticsPanel({ s, set, saveInHeader = false }: { s: TacState; se
     const key = `${n}|${r.id}`;
     const eff = s.custom[key] ? null : s.effort[key] ?? "normal";
     return (
-      <div className="seg" role="group" aria-label={`Effort for ${r.name}`}>
+      <div className="seg one" role="group" aria-label={`Effort for ${r.name}`}>
         {([["easy", "Easy"], ["normal", "Normal"], ["hard", "Hard"]] as [Effort, string][]).map(([k, l]) => (
           <button key={k} type="button" aria-pressed={eff === k} onClick={() => setEffort(r, k)}>{l}</button>
         ))}

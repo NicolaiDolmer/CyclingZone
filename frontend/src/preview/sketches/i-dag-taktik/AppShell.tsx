@@ -90,12 +90,13 @@ const QUICK: [string, ReactNode][] = [
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen bg-cz-body">
-      <aside className="hidden md:flex flex-col w-52 shrink-0 bg-cz-sidebar border-r border-cz-sidebar-border sticky top-0 h-screen" aria-label="App sidebar">
-        <Sidebar />
+      {/* appens sidebjaelke er fast (fixed); her strakt i fuld hoejde, saa et helsidebillede viser den hele vejen ned */}
+      <aside className="hidden md:block w-52 shrink-0 bg-cz-sidebar border-r border-cz-sidebar-border" aria-label="App sidebar">
+        <div className="sticky top-0 h-screen flex flex-col"><Sidebar /></div>
       </aside>
       <main className="flex-1 min-w-0 min-h-screen">
         <div className="md:hidden flex items-center justify-between px-4 bg-cz-sidebar border-b border-cz-sidebar-border">
-          <span className="inline-flex min-h-12 min-w-12 items-center justify-center text-cz-sidebar-2" data-flow-m="1">
+          <span className="inline-flex min-h-12 min-w-12 items-center justify-center text-cz-sidebar-2">
             <span className="relative">
               <MenuIcon aria-hidden="true" className="w-6 h-6" />
               <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 block w-2 h-2 rounded-full bg-cz-warning" />
@@ -106,8 +107,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         {/* side-padding som Layout.jsx (#2849): pt-7 px-8 pb-16 paa computer, 16 px paa telefon */}
         <div className="pt-4 px-4 pb-8 md:pt-7 md:px-8 md:pb-16 mx-auto max-w-full">{children}</div>
-        {/* appens hurtig-navigation er fast i bunden; i skitsen staar den sidst, saa et helsidebillede viser den nederst */}
-        <nav className="sticky bottom-0 md:hidden bg-cz-sidebar border-t border-cz-sidebar-border flex" style={{ height: 56 }} aria-label="Quick navigation">
+        {/* appens hurtig-navigation er fast i bunden; i skitsen staar den sidst i siden (ikke fast), saa et helsidebillede viser den nederst */}
+        <nav className="md:hidden bg-cz-sidebar border-t border-cz-sidebar-border flex" style={{ height: 56 }} aria-label="Quick navigation">
           {QUICK.map(([l, icon]) => (
             <span key={l} className="flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 px-0.5 text-3xs font-medium text-cz-sidebar-2">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">{icon}</svg>

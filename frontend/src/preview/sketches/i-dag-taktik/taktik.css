@@ -213,3 +213,7 @@
 .twf .racehead .when { color: var(--t2) }
 /* wireframet hentede kun Inter Tight 600/700, saa tal staar i 600 dér; samme vaegt her */
 .twf td.n, .twf .st .t { font-weight: 600 }
+
+/* #7535 "I dag" (ejer 16/11): indsatsen staar altid paa een linje, Easy | Normal | Hard */
+.twf .seg.one { flex-wrap: nowrap }
+.twf .seg.one button { white-space: nowrap }

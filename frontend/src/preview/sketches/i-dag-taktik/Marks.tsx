@@ -45,7 +45,7 @@ export function Caption({ n, text }: { n: string; text: string }) {
 }
 
 const pin = (label: string, x: number, y: number) => (
-  <span style={{ position: "absolute", left: x, top: y, transform: "translate(-50%, -50%)", background: RED, color: "white", borderRadius: 999, minWidth: 24, height: 24, padding: "0 6px", display: "inline-flex", alignItems: "center", justifyContent: "center", font: "700 13px/1 'DM Sans', system-ui, sans-serif", boxShadow: "0 0 0 2px white" }}>{label}</span>
+  <span style={{ position: "absolute", left: Math.max(x, 18), top: Math.max(y, 14), transform: "translate(-80%, -60%)", background: RED, color: "white", borderRadius: 999, minWidth: 24, height: 24, padding: "0 6px", display: "inline-flex", alignItems: "center", justifyContent: "center", font: "700 13px/1 'DM Sans', system-ui, sans-serif", boxShadow: "0 0 0 2px white" }}>{label}</span>
 );
 
 export function Frames({ on }: { on: boolean }) {
@@ -87,8 +87,15 @@ export function FlowArrows({ on }: { on: boolean }) {
           <rect key={`r-${b.key}`} x={b.x - 4} y={b.y - 4} width={b.w + 8} height={b.h + 8} rx={6} fill="none" stroke={RED} strokeWidth={2.5} />
         ))}
         {boxes.slice(1).map((to, i) => {
-          const [x1, y1, x2, y2] = edge(boxes[i], to);
+          const from = boxes[i];
+          const [x1, y1, x2, y2] = edge(from, to);
           const mx = (x1 + x2) / 2;
+          // op og til hoejre (sidebjaelken til sidehovedet): ned ad rillen ved sidebjaelken og hen over
+          // sidehovedet, saa pilen ikke krydser indholdet
+          if (to.y + to.h < from.y && to.x > from.x + from.w) {
+            const gx = from.x + from.w + 14, top = to.y - 24, cx = to.x + to.w / 2;
+            return <path key={`p-${to.key}`} d={`M${from.x + from.w + 6} ${y1} H${gx} V${top} H${cx} V${to.y - 10}`} fill="none" stroke={RED} strokeWidth={3} strokeLinejoin="round" markerEnd="url(#flow-head)" />;
+          }
           const d = y2 > y1 + 40 && Math.abs(x2 - x1) < 400
             ? `M${x1} ${y1 + 6} C ${x1} ${(y1 + y2) / 2}, ${x2} ${(y1 + y2) / 2}, ${x2} ${y2 - 8}`
             : `M${x1 + 8} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2 - 10} ${y2}`;
