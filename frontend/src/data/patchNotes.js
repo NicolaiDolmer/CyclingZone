@@ -1,5 +1,28 @@
 export const PATCHES = [
 {
+  "version": "7.460",
+  "date": "2026-11-16",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Planning",
+      "en": {
+        "title": "Squad deadline in the Planning heading",
+        "body": "When a squad is missing riders, Planning shows it as one line in the page heading with the nearest deadline, such as Squad selection missing · in 12h. The box above the tabs is gone, so the tabs and your races come first."
+      },
+      "da": {
+        "title": "Trup-fristen står i Planlægnings sidehoved",
+        "body": "Mangler en trup ryttere, viser Planlægning det som én linje i sidehovedet med den nærmeste frist, fx Trup mangler · om 12 t. Boksen over fanerne er væk, så fanerne og dine løb står først."
+      },
+      "refs": [
+        8069
+      ]
+    }
+  ]
+},
+{
   "version": "7.454",
   "date": "2026-11-16",
   "changes": [

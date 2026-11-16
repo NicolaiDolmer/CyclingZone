@@ -12,7 +12,7 @@ import SeasonPlannerPage from "./SeasonPlannerPage.jsx";
 import StrategyPage from "./StrategyPage.jsx";
 import CalendarPage from "./CalendarPage.jsx";
 import I18nReadyGate from "../components/I18nReadyGate.jsx"; // #3697
-import SelectionDeadlineReminder from "../components/planning/SelectionDeadlineReminder.js"; // #4983
+import SelectionDeadlineLine from "../components/planning/SelectionDeadlineLine.js"; // #4983 → #8069 T01
 import { useSelectionReminder } from "../hooks/useSelectionReminder.js"; // #4983
 
 // #3102 etape 3 (PR 1) — Planlægnings-hubben: Holdudtagelse (11.254 sessions/30
@@ -126,6 +126,8 @@ export default function PlanningHubPage() {
       {/* #7535: knappen findes kun naar kontakten planning_workbench er taendt for spilleren (beta foerst). */}
       <PageHeader
         title={t("hub.title")}
+        // #8069 T01: fristen er én linje i hovedet, ikke en boks før fanerne.
+        subtitle={<SelectionDeadlineLine reminder={selectionReminder} />}
         // @ts-ignore: PageHeader udleder actions som null-only fra sin default
         actions={workbenchEnabled === true ? (
           <Link to="/planning/workbench" className={buttonClass({ variant: "secondary", size: "sm" })}>
@@ -133,11 +135,6 @@ export default function PlanningHubPage() {
           </Link>
         ) : null}
       />
-
-      {/* #4983: paamindelsen staar OEVERST paa fladen, foer fanerne — den
-          gaelder alle fire faner, og den er grunden til at manageren blev
-          sendt hertil af nav-markeringen. */}
-      <SelectionDeadlineReminder reminder={selectionReminder} />
 
       <Tabs value={tab} onChange={changeTab} className="mb-5">
         <TabList label={t("hub.title")}>
