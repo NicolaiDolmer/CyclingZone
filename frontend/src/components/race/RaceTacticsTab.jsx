@@ -60,7 +60,7 @@
 // Revisionen læses direkte fra races (RLS: offentlig SELECT); en fejlet
 // læsning betyder legacy, aldrig de nye regler. Prosaen bor i Hjælp.
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import i18n from "i18next";
@@ -124,7 +124,7 @@ import { defaultOrderForStage, fetchTeamOrders, orderForStage, saveTacticsCard }
 import { roadOrdersAvailable, withoutRoadOrders } from "../../lib/tacticsProfileGate.ts"; // #7317
 import { isStageLockedForTactics } from "../../lib/racePageTabs.js";
 import { tacticsStartStage } from "./stagePageV2/stagePageV2Model.ts"; // #6570
-import StagePlanBoard from "./StagePlanBoard.tsx"; // #7003
+import { lazyWithRetry } from "../../lib/lazyWithRetry.js";
 import { applyTeamPlanRoles, buildTeamPlan, TEAM_PLAN_KINDS, teamPlanFingerprint, teamPlanRouteFromProfile } from "./tacticsReady7864.ts";
 import { planRole } from "./StagePlanModel.ts";
 import TeamPlanChoices7864 from "./TeamPlanChoices7864.tsx";
@@ -137,6 +137,10 @@ import { advanceBaseline, keepMineAfterConflict, runTacticsSave, withConfirmedVe
 import TacticsSaveStatus from "./TacticsSaveStatus.tsx"; // #7327
 
 const API = import.meta.env.VITE_API_URL;
+
+// #7003/#7855: etapeplanen vises kun, naar holdet har den slaaet til, og faar sit eget stykke, saa
+// RaceDetailPage holder sig under perf-gatens loft (lazyWithRetry, #5014).
+const StagePlanBoard = lazyWithRetry(() => import("./StagePlanBoard.tsx"));
 
 // Rollens navn i kolonnen. Ét sæt labels for hele fladen (tacticsOrders.roleLabel
 // er SSOT'ens ord — "Domestique", ikke "Rider", jf. RACE_ENGINE_RULES §1).
@@ -1255,6 +1259,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
 
       {/* #7003: etapeplanen erstatter intentions- og ordre-kolonnerne, naar den er slaaet til. */}
       {stagePlanOn && (
+        <Suspense fallback={<SkeletonLines lines={6} />}>
         <StagePlanBoard
           t={t}
           raceId={raceId}
@@ -1288,6 +1293,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
             renderMark: renderTimeLimitMark,
           }}
         />
+        </Suspense>
       )}
       {/* Desktop: tabel. Under sm: stablede kort (samme indhold, ingen vandret
           scroll — siden må aldrig overflowe på mobil, #1834). */}
