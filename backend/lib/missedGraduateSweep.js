@@ -47,7 +47,7 @@ import {
   notifyGraduationReady,
   openGraduationWindow,
 } from "./academyGraduation.js";
-import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
+import { fetchAllRows, fetchAllRowsChunkedIn, SUPABASE_IN_CHUNK_SIZE } from "./supabasePagination.js";
 import { findStuckAcademyGraduates, STUCK_GRADUATE_GRACE_HOURS } from "./stuckAcademyGraduates.js";
 import { captureException } from "./sentry.js";
 
@@ -129,13 +129,20 @@ async function fetchPendingGraduations(supabase, seasonId) {
  */
 export async function markGraduationsNotified(supabase, { ids, now = new Date() } = {}) {
   if (!ids?.length) return { marked: 0 };
+  // Codex P2 (#8214): en lang id-liste i ét .in() sprænger gatewayens request-linje.
+  // Opdatér i bidder, så en fejlet bid ikke tager de allerede mærkede med sig.
+  let marked = 0;
   try {
-    const { error } = await supabase.from("academy_graduation")
-      .update({ [GRADUATION_NOTIFIED_COLUMN]: now.toISOString() })
-      .in("id", ids)
-      .is(GRADUATION_NOTIFIED_COLUMN, null);
-    if (error) throw error;
-    return { marked: ids.length };
+    for (let i = 0; i < ids.length; i += SUPABASE_IN_CHUNK_SIZE) {
+      const chunk = ids.slice(i, i + SUPABASE_IN_CHUNK_SIZE);
+      const { error } = await supabase.from("academy_graduation")
+        .update({ [GRADUATION_NOTIFIED_COLUMN]: now.toISOString() })
+        .in("id", chunk)
+        .is(GRADUATION_NOTIFIED_COLUMN, null);
+      if (error) throw error;
+      marked += chunk.length;
+    }
+    return { marked };
   } catch (err) {
     // best-effort: fejlen sluges IKKE. Den bæres videre i sweepets `errors` og
     // captures her, fordi cron.js kun captures backfillens per-rytter-fejl.
@@ -144,7 +151,7 @@ export async function markGraduationsNotified(supabase, { ids, now = new Date() 
       tags: { cron: "graduation sweep", stage: "notified-marker" },
       extra: { count: ids.length },
     });
-    return { marked: 0, error: err?.message || String(err) };
+    return { marked, error: err?.message || String(err) };
   }
 }
 

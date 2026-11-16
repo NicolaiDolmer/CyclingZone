@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { runMissedGraduateSweep, findMissedGraduates, findPendingWithoutNotification } from "./missedGraduateSweep.js";
+import { runMissedGraduateSweep, findMissedGraduates, findPendingWithoutNotification, markGraduationsNotified } from "./missedGraduateSweep.js";
 import { GRADUATION, buildGraduationReadyNotification, notifyGraduationReady } from "./academyGraduation.js";
 import { notifyTeamOwner } from "./notificationService.js";
 import { translate } from "./i18nServer.js";
@@ -593,4 +593,26 @@ test("#8196: dry-run sætter intet mærke, heller ikke for en besked der findes"
   });
   await runMissedGraduateSweep({ supabase: mock.supabase, now: NOW, dryRun: true, isEnabled: enabled, notify: spyNotify(mock) });
   assert.equal(mock.rec.updates.length, 0);
+});
+
+// Codex P2 (#8214): mange id'er opdateres i bidder, og en fejlet bid beholder de mærkede.
+test("8196 markGraduationsNotified: opdaterer i bidder og beholder mærker før en fejlet bid", async () => {
+  const calls = [];
+  const supabase = {
+    from: () => ({
+      update: () => ({
+        in: (_col, chunk) => ({
+          is: async () => {
+            calls.push(chunk.length);
+            return calls.length === 3 ? { error: { message: "boom" } } : { error: null };
+          },
+        }),
+      }),
+    }),
+  };
+  const ids = Array.from({ length: 250 }, (_, i) => `g-${i}`);
+  const res = await markGraduationsNotified(supabase, { ids, now: new Date("2026-11-16T09:00:00.000Z") });
+  assert.deepEqual(calls, [100, 100, 50]);
+  assert.equal(res.marked, 200);
+  assert.equal(res.error, "boom");
 });
