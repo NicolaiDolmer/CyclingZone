@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  RACE_PAGE_V6_TABS, resolveV6Tab, tacticsAfterView, tacticsCta, v6ResultsPhase, v6StageTabFor, v6Strip, v6Tabs, v6TacticsResults, v6TacticsStage,
+  RACE_PAGE_V6_TABS, resolveV6Tab, tacticsAfterView, tacticsCta, v6ResultsPhase, v6StageTabFor, v6Strip, v6TabButtonFor, v6TabButtons, v6Tabs, v6TacticsResults, v6TacticsStage,
 } from "./racePageV6Model.ts";
 
 // Linjeskift normaliseres, saa kildeproeverne virker med CRLF-checkout (Windows) og LF (CI).
@@ -17,14 +17,24 @@ test("en koert etape aabner paa Resultater, en kommende paa Etape (valg 5)", () 
 
 test("en gyldig ?tab= vinder; Resultater staar foerst", () => {
   assert.equal(RACE_PAGE_V6_TABS[0], "results");
-  for (const tab of ["results", "stage", "standings", "tactics", "team"]) {
+  for (const tab of ["results", "stage", "tactics", "team"]) {
     assert.equal(resolveV6Tab(tab, { ridden: true, isStageRace: true }), tab);
   }
 });
 
-test("endagsloeb har ingen Stillinger-fane", () => {
-  assert.deepEqual([...v6Tabs(false)], ["results", "stage", "tactics", "team"]);
+test("#7861: fanerne som wireframet; Stillinger er ingen fane, Startliste kun naar siden har den", () => {
+  assert.deepEqual([...v6Tabs()], ["results", "stage", "tactics", "team"]);
+  assert.deepEqual([...v6TabButtons()], ["stage", "tactics", "team"]);
+  assert.deepEqual([...v6TabButtons(true)], ["stage", "startlist", "tactics", "team"]);
+  // Et gammelt link til Stillinger lander paa Etape-fanens standard (Resultater for en koert etape).
+  assert.equal(resolveV6Tab("standings", { ridden: true, isStageRace: true }), "results");
   assert.equal(resolveV6Tab("standings", { ridden: true, isStageRace: false }), "results");
+  assert.equal(resolveV6Tab("startlist", { ridden: true, isStageRace: true }), "results");
+  assert.equal(resolveV6Tab("startlist", { ridden: true, isStageRace: true, hasStartList: true }), "startlist");
+  // Resultater og Historie er begge Etape-fanen.
+  assert.equal(v6TabButtonFor("results"), "stage");
+  assert.equal(v6TabButtonFor("stage"), "stage");
+  assert.equal(v6TabButtonFor("team"), "team");
 });
 
 const riders = [{ rider_id: "r1", name: "A", race_role: "captain" }, { rider_id: "r2", name: "B", race_role: "helper" }];
@@ -89,8 +99,8 @@ test("#7865: een etapestribe; paa Taktik foelger den Taktik-fanens etape og styr
   assert.deepEqual(v6Strip({ activeTab: "tactics", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 3, target: "tactics" });
   assert.deepEqual(v6Strip({ activeTab: "results", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 1, target: "page" });
   assert.deepEqual(v6Strip({ activeTab: "stage", isStageRace: true, selectedStage: 2, tacticsStage: 3 }), { selected: 2, target: "page" });
-  // Udgave E: striben er hovedkortets bund og staar paa alle faner; fra Stillinger og Hold aabner den etapen.
-  assert.deepEqual(v6Strip({ activeTab: "standings", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 1, target: "open" });
+  // Udgave E: striben er hovedkortets bund og staar paa alle faner; fra Startliste og Hold aabner den etapen.
+  assert.deepEqual(v6Strip({ activeTab: "startlist", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 1, target: "open" });
   assert.deepEqual(v6Strip({ activeTab: "team", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 1, target: "open" });
   assert.equal(v6StageTabFor(2, 3), "results");
   assert.equal(v6StageTabFor(4, 3), "stage");
@@ -146,7 +156,7 @@ test("#7865: Resultater for en etape paa vejen siger det; en kommende etape som 
 
 test("#7865: ordre-oversigten findes eet sted under v6 (Taktik), ikke under Stillinger", () => {
   const detail = read("../../../pages/RaceDetailPage.jsx");
-  assert.match(detail, /standingsSlot: renderTabContent\("results", \{ hideOrdersRecap: v6 \}\)/);
+  assert.match(detail, /standingsSlot: renderTabContent\("results", \{ hideOrdersRecap: v6, hideFilm: v6 \}\)/);
   assert.match(detail, /isV4Timeline && !hideOrdersRecap && <StageOrdersRecap/);
   assert.match(detail, /!hideOrdersRecap && \(oneDayTimeline\?\.timeline_version \?\? 1\) >= 2 && <StageOrdersRecap/);
   const page = read("./RacePageV6.tsx");
@@ -155,7 +165,7 @@ test("#7865: ordre-oversigten findes eet sted under v6 (Taktik), ikke under Stil
 
 test("#7865 review-punkt d: panelet har kortets bredde og placering paa alle faner", () => {
   const page = read("./RacePageV6.tsx");
-  assert.match(page, /role="tabpanel" aria-labelledby=\{tabId\(activeTab\)\} data-race-body-width="card" className="w-full">/);
+  assert.match(page, /role="tabpanel" aria-labelledby=\{tabId\(v6TabButtonFor\(activeTab\)\)\} data-race-body-width="card" className="w-full">/);
   assert.doesNotMatch(page, /max-w-5xl/, "intet panel staar venstrestillet under et bredere kort");
 });
 
