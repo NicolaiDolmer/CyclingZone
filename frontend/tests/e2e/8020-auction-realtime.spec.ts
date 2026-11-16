@@ -44,14 +44,20 @@ for (const width of [375, 1440]) {
     // the app's onmessage). An earlier version armed the watch with an un-awaited evaluate: under CI load
     // it landed after the DOM had already changed and then waited for the next unrelated mutation (the
     // 1 s countdown tick), which is the 700-1000 ms that failed CI while the app itself took tens of ms.
-    // page.clock.setFixedTime only freezes Date; timers and performance.now keep running in real time.
+    // page.clock.setFixedTime only freezes Date; timers and performance.now keep running in real time
+    // (its fake performance drops performance.mark entries, so in-page timing reads performance.now()).
     await page.addInitScript(() => {
-      type Watch = { marker: string; id: string; kind: "closing" | "removed"; receivedAt?: number; changedAt?: number };
+      type Watch = { marker: string; id: string; kind: "closing" | "removed"; receivedAt?: number; changedAt?: number; staleRing?: boolean };
       let armed: Watch | undefined;
       const done = (watch: Watch) => {
         const rows = [...document.querySelectorAll(`[data-auction-row="${watch.id}"]`)];
         const row = rows.find(el => el.getBoundingClientRect().height > 0);
-        return watch.kind === "removed" ? rows.length === 0 : !!row?.textContent?.includes("125.000") && !row.querySelector('[role="timer"]');
+        if (watch.kind === "removed") return rows.length === 0;
+        const price = !!row?.textContent?.includes("125.000"), ring = !!row?.querySelector('[role="timer"]');
+        // #8290 root cause: the new price used to commit while the closing ring stayed one more render pass
+        // (the countdown read the new end in a passive effect). Any observed DOM state with both is a regression.
+        if (price && ring) watch.staleRing = true;
+        return price && !ring;
       };
       const start = (watch: Watch) => {
         watch.receivedAt = performance.now();
@@ -71,7 +77,7 @@ for (const width of [375, 1440]) {
       });
       Reflect.set(window, "__rtArm", (watch: Watch) => { armed = watch; });
       Reflect.set(window, "__rtResult", () => armed && armed.receivedAt !== undefined && armed.changedAt !== undefined
-        ? { visible: true, elapsed: armed.changedAt - armed.receivedAt } : null);
+        ? { visible: true, elapsed: armed.changedAt - armed.receivedAt, staleRing: armed.staleRing === true } : null);
     });
     const reads: Array<{method: string; path: string}> = [];
     let observing = false;
@@ -92,15 +98,16 @@ for (const width of [375, 1440]) {
     const arm = (kind: "closing" | "removed", marker: string) =>
       page.evaluate(watch => (Reflect.get(window, "__rtArm") as (w: unknown) => void)(watch), { id: initial.id, kind, marker });
     const finish = async () => {
-      const read = () => page.evaluate(() => (Reflect.get(window, "__rtResult") as () => { visible: boolean; elapsed: number } | null)());
+      const read = () => page.evaluate(() => (Reflect.get(window, "__rtResult") as () => { visible: boolean; elapsed: number; staleRing: boolean } | null)());
       await expect.poll(read, { timeout: 5000 }).not.toBeNull();
-      return (await read()) ?? { visible: false, elapsed: Number.POSITIVE_INFINITY };
+      return (await read()) ?? { visible: false, elapsed: Number.POSITIVE_INFINITY, staleRing: false };
     };
     await arm("closing", '"current_price":125000');
     rows = [{ ...initial, current_price: 125000, calculated_end: "2026-11-12T12:02:00Z" }];
     send!("auctions", "UPDATE", { id: initial.id, current_price: 125000, calculated_end: rows[0].calculated_end });
     const result = await finish();
     expect(result.visible).toBe(true); expect(result.elapsed).toBeLessThan(350);
+    expect(result.staleRing, "price and closing ring must leave the stale state in the same commit").toBe(false);
     await page.waitForTimeout(500); expect(reads).toEqual([]);
     await arm("removed", '"status":"completed"');
     rows = []; send!("auctions", "UPDATE", { id: initial.id, status: "completed", current_bidder_id: RIVAL_TEAM.id });
