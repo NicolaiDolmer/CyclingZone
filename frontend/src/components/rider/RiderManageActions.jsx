@@ -41,7 +41,7 @@ import { buttonClass } from "../ui/buttonStyles.js";
 // ACTION_PANEL) — den tintede/ring-markerede trigger viser tilhørsforholdet.
 const ACTION_PANEL = "order-2 w-full";
 // Bekræft-knap inde i udfoldede paneler (fuld bredde i panelet).
-const BTN_PRIMARY = "w-full min-h-[44px] py-2 rounded-cz text-sm font-bold transition-all bg-cz-accent text-cz-on-accent hover:brightness-110 disabled:opacity-50 inline-flex items-center justify-center gap-2";
+const BTN_PRIMARY = buttonClass({ variant: "primary", fullWidth: true });
 
 // #2718: en knap der arbejder skal SE ud som om den arbejder. Den bare "..." vi
 // viste før er ikke et arbejds-signal — spilleren tror knappen er død og trykker

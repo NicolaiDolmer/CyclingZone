@@ -1,5 +1,28 @@
 export const PATCHES = [
 {
+  "version": "7.455",
+  "date": "2026-11-16",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Interface",
+      "en": {
+        "title": "One gold button, the same everywhere",
+        "body": "Confirm buttons on rider profiles, transfers, the board and in confirm dialogs now use the game's standard button, with the same weight and height everywhere. A selected team in Standings and the current step in the board's guide are shown in gold text instead of solid gold, so the page's one gold button stands out."
+      },
+      "da": {
+        "title": "Én guld-knap, ens overalt",
+        "body": "Bekræft-knapperne på rytterprofiler, transfers, bestyrelsen og i bekræft-dialoger bruger nu spillets standardknap med samme vægt og højde overalt. Et valgt hold i Stillinger og det aktuelle trin i bestyrelsens guide vises med guld-tekst i stedet for fyldt guld, så sidens ene guld-knap står tydeligt."
+      },
+      "refs": [
+        8069
+      ]
+    }
+  ]
+},
+{
   "version": "7.454",
   "date": "2026-11-16",
   "changes": [

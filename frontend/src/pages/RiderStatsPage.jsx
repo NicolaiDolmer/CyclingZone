@@ -200,7 +200,7 @@ function SwapOfferButton({ rider, myTeamId }) {
           </div>
           <p className="text-cz-3 text-xs">{t("swapOffer.cashHint")}</p>
           <button onClick={sendSwap} disabled={loading || !offeredId}
-            className="w-full min-h-[44px] py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50 transition-all">
+            className={buttonClass({ variant: "primary", fullWidth: true })}>
             {loading ? t("swapOffer.sending") : t("swapOffer.submit")}
           </button>
         </div>
@@ -276,7 +276,7 @@ function DirectOfferButton({ rider, seasonYear }) {
             placeholder={t("directOffer.messagePlaceholder")}
             className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-base sm:text-sm focus:outline-hidden focus:border-cz-accent" />
           <button onClick={sendOffer} disabled={loading || amount <= 0}
-            className="w-full min-h-[44px] py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50 transition-all">
+            className={buttonClass({ variant: "primary", fullWidth: true })}>
             {loading ? t("directOffer.sending") : t("directOffer.submit")}
           </button>
         </div>
@@ -567,7 +567,7 @@ function TransferListButton({ rider, onChanged }) {
             </div>
           )}
           <button onClick={submit} disabled={loading || priceInvalid || autoInvalid}
-            className="w-full min-h-[44px] py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50 transition-all">
+            className={buttonClass({ variant: "primary", fullWidth: true })}>
             {loading ? t("sellRider.sending") : listing ? t(autoEnabled ? "sellRider.submitUpdatePrices" : "sellRider.submitUpdate") : t("sellRider.submit")}
           </button>
         </div>
@@ -699,11 +699,12 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, seniorCo
               disabled={bidStatus === "loading"}
               {...bidBlock.blockedProps}
               aria-label={imWinning ? t("auctionPanel.bidRaiseAria") : t("auctionPanel.bidPlaceAria")}
-              className={`min-h-[44px] px-4 py-2 rounded-cz text-sm font-bold transition-all whitespace-nowrap
-                ${bidStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
-                  bidStatus === "success" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
-                  imWinning ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40 hover:bg-cz-accent/25" : "bg-cz-accent text-cz-on-accent hover:brightness-110"}
-                disabled:opacity-50 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed`}>
+              className={`${bidStatus === "error" || bidStatus === "success" || imWinning
+                ? `min-h-[44px] px-4 py-2 rounded-cz text-sm font-semibold transition-colors border ${
+                    bidStatus === "error" ? "bg-cz-danger-bg text-cz-danger border-cz-danger/30" :
+                    bidStatus === "success" ? "bg-cz-success-bg text-cz-success border-cz-success/30" :
+                    "bg-cz-accent/10 text-cz-accent-t border-cz-accent/40 hover:bg-cz-accent/25"} disabled:opacity-50`
+                : buttonClass({ variant: "primary" })} whitespace-nowrap aria-disabled:opacity-50 aria-disabled:cursor-not-allowed`}>
               {bidStatus === "loading" ? t("common:actions.loadingShort") : bidStatus === "error" ? t("auctionPanel.bidError") : bidStatus === "success" ? <CheckIcon size={16} aria-hidden="true" /> : imWinning ? t("auctionPanel.bidRaise") : t("auctionPanel.bidPlace")}
             </button>
           </div>
@@ -922,8 +923,7 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
             <button
               onClick={handleSubmit}
               disabled={loading || priceError || Boolean(!(ddActive && flash) && endTimeIssue)}
-              className={`w-full sm:w-auto min-h-[44px] px-4 py-2 font-bold rounded-cz text-sm transition-all disabled:opacity-50
-                ${flash ? "bg-cz-danger text-white hover:brightness-110" : "bg-cz-accent text-cz-on-accent hover:brightness-110"}`}>
+              className={`${buttonClass({ variant: flash ? "danger" : "primary" })} w-full sm:w-auto`}>
               {loading ? t("auctionStart.buttons.loading") : flash ? t("auctionStart.buttons.startFlash") : t("auctionStart.buttons.start")}
             </button>
           </div>
