@@ -23,6 +23,8 @@
 // samme is_youth=false-default som enhver anden senior-auktion (POST
 // /auctions sætter den ikke eksplicit). Se academyPnl.test.js.
 
+import { buildSeasonResolver } from "./teamTransferHistory.js";
+
 type NumericInput = number | string | null | undefined;
 type RosterRow = { salary?: NumericInput };
 type FinanceRow = { type?: string | null; amount?: NumericInput };
@@ -217,6 +219,7 @@ export type SeasonInput = {
   number?: number | null;
   status?: string | null;
   start_date?: string | null;
+  end_date?: string | null;
 };
 export type LedgerFinanceRow = FinanceRow & {
   season_id?: string | null;
@@ -288,26 +291,26 @@ function toTime(iso: unknown): number | null {
 }
 
 /**
- * Sæsonen et tidspunkt hører til: den senest startede sæson på tidspunktet.
- * Slutdatoen bruges bevidst ikke: ved et sæsonskifte samme dag overlapper den
- * gamle sæsons slutdato den nyes startdato, og så skal den nye vinde.
+ * Sæsonen et tidspunkt hører til. Bruger SAMME regel som holdets handelshistorik
+ * (buildSeasonResolver i teamTransferHistory.js, #5257: eksporteret frem for
+ * kopieret), så et salg aldrig står i én sæson her og en anden i historikken:
+ * - inden for en sæson (slutdagen inklusiv) hører det til den sæson; på en delt
+ *   grænsedag vinder den gamle sæson (#984);
+ * - i pausen efter en sæsons slut og før den næste starter hører det til den
+ *   KOMMENDE sæson (#7285);
+ * - en nul-bred sæson (start = slut) taber sin grænsedag til en senere sæson (#1776).
  */
+const resolverCache = new WeakMap<readonly SeasonInput[], (iso: string) => number | null>();
 export function seasonForDate(seasons: readonly SeasonInput[] | null | undefined, iso: unknown): SeasonInput | null {
-  const at = toTime(iso);
-  if (at == null || !Array.isArray(seasons) || seasons.length === 0) return null;
-  let latest: SeasonInput | null = null;
-  let latestStart = -Infinity;
-  for (const s of seasons) {
-    const start = toTime(s.start_date);
-    if (start == null || start > at) continue;
-    // Samme startdato (fx en prøvesæson og sæson 1): den højeste nummer vinder.
-    const later = start > latestStart || (start === latestStart && (s.number ?? -1) > (latest?.number ?? -1));
-    if (later) {
-      latest = s;
-      latestStart = start;
-    }
+  if (toTime(iso) == null || !Array.isArray(seasons) || seasons.length === 0) return null;
+  let resolve = resolverCache.get(seasons);
+  if (!resolve) {
+    resolve = buildSeasonResolver(seasons as SeasonInput[]) as (iso: string) => number | null;
+    resolverCache.set(seasons, resolve);
   }
-  return latest;
+  const number = resolve(String(iso));
+  if (number == null) return null;
+  return seasons.find((s) => s.number === number) ?? null;
 }
 
 /** Akademiets rytterkreds: hentet fra tilbud + vundet på ungdomsauktion. */

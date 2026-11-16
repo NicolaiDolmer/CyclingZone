@@ -35,7 +35,7 @@ export async function isAcademyLedgerEnabled(supabase: Db, { isBetaTester = fals
 /** Hent og beregn regnskabet pr. sæson for ét hold. Kaster ved læsefejl. */
 export async function loadAcademySeasonLedger(supabase: Db, { teamId }: { teamId: string }): Promise<AcademyLedgerPayload> {
   const [seasons, financeRows, signedIntake, youthAuctionWins] = await Promise.all([
-    fetchAllRows(() => supabase.from("seasons").select("id, number, status, start_date").order("id")) as Promise<SeasonInput[]>,
+    fetchAllRows(() => supabase.from("seasons").select("id, number, status, start_date, end_date").order("id")) as Promise<SeasonInput[]>,
     fetchAllRows(() => supabase
       .from("finance_transactions")
       .select("id, type, amount, season_id, created_at, metadata, related_entity_type, idempotency_key")

@@ -21,7 +21,7 @@ import type { PoolMember } from "./academyPnl.ts";
 import { ACADEMY_LEDGER_FLAG_KEY, isAcademyLedgerEnabled, loadAcademySeasonLedger } from "./academyPnlLoad.ts";
 
 const seasons = [
-  { id: "s4", number: 4, status: "completed", start_date: "2026-08-01" },
+  { id: "s4", number: 4, status: "completed", start_date: "2026-08-01", end_date: "2026-09-28" },
   { id: "s5", number: 5, status: "active", start_date: "2026-10-01" },
 ];
 
@@ -169,23 +169,36 @@ test("seasonForDate falder tilbage til seneste startede sæson", () => {
   assert.equal(seasonForDate(seasons, null), null);
 });
 
-test("sæsonskifte samme dag: den nye sæson vinder (rækkefølgen er ligegyldig)", () => {
-  const sameDay = [
+// Samme regel som holdets handelshistorik (buildSeasonResolver, #984/#7285/#1776),
+// så et salg står i samme sæson her og i historikken (Codex 16/11).
+test("delt grænsedag: den gamle sæson vinder (#984), dagen efter er den nye", () => {
+  const shift = [
     { id: "new", number: 6, start_date: "2026-12-01" },
-    { id: "old", number: 5, start_date: "2026-10-01" },
+    { id: "old", number: 5, start_date: "2026-10-01", end_date: "2026-12-01" },
   ];
-  assert.equal(seasonForDate(sameDay, "2026-12-01T15:00:00Z")?.id, "new");
-  assert.equal(seasonForDate([...sameDay].reverse(), "2026-12-01T15:00:00Z")?.id, "new");
-  assert.equal(seasonForDate(sameDay, "2026-11-30T15:00:00Z")?.id, "old");
+  assert.equal(seasonForDate(shift, "2026-12-01T15:00:00Z")?.id, "old");
+  assert.equal(seasonForDate([...shift].reverse(), "2026-12-01T15:00:00Z")?.id, "old");
+  assert.equal(seasonForDate(shift, "2026-12-02T09:00:00Z")?.id, "new");
+  assert.equal(seasonForDate(shift, "2026-11-30T15:00:00Z")?.id, "old");
 });
 
-test("to sæsoner med samme startdato: den højeste nummer vinder (rækkefølgen er ligegyldig)", () => {
-  const twins = [
-    { id: "s0", number: 0, start_date: "2026-06-22" },
+test("salg i sæsonpausen hører til den KOMMENDE sæson (#7285), som i handelshistorikken", () => {
+  const s45 = [
+    { id: "s4", number: 4, start_date: "2026-08-23", end_date: "2026-10-25" },
+    { id: "s5", number: 5, start_date: "2026-10-28" },
+  ];
+  assert.equal(seasonForDate(s45, "2026-10-26T12:00:00Z")?.id, "s5");
+  assert.equal(seasonForDate(s45, "2026-10-25T20:00:00Z")?.id, "s4");
+});
+
+test("nul-bred sæson taber sin grænsedag til en senere sæson samme dag (#1776)", () => {
+  const launch = [
+    { id: "s0", number: 0, start_date: "2026-06-22", end_date: "2026-06-22" },
     { id: "s1", number: 1, start_date: "2026-06-22" },
   ];
-  assert.equal(seasonForDate(twins, "2026-07-01T00:00:00Z")?.id, "s1");
-  assert.equal(seasonForDate([...twins].reverse(), "2026-07-01T00:00:00Z")?.id, "s1");
+  assert.equal(seasonForDate(launch, "2026-06-22T12:00:00Z")?.id, "s1");
+  assert.equal(seasonForDate([...launch].reverse(), "2026-06-22T12:00:00Z")?.id, "s1");
+  assert.equal(seasonForDate(launch, "2026-07-01T00:00:00Z")?.id, "s1");
 });
 
 // ─── Kontakten og hentningen ─────────────────────────────────────────────────
