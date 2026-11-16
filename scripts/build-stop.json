@@ -1483,6 +1483,26 @@
       "issue": 8069,
       "reason": "Designsystem og TASTE: regler F1-F8. Ejer-go 16/11 PC1 (AskUserQuestion: \"Ja, tilføj #8069\"; F1=A, F2-F8 \"merge\").",
       "since": "2026-11-16"
+    },
+    {
+      "issue": 8278,
+      "reason": "Mobil rettelse 1, 8, 13. Del af #8073. Ejer-go 16/11 PC1 (AskUserQuestion: \"Ja, sæt i gang\").",
+      "since": "2026-11-16"
+    },
+    {
+      "issue": 8279,
+      "reason": "Mobil rettelse 3, 11, 15. Del af #8073. Ejer-go 16/11 PC1 (AskUserQuestion: \"Ja, sæt i gang\").",
+      "since": "2026-11-16"
+    },
+    {
+      "issue": 8280,
+      "reason": "Skitser: tabel-kontroller og indbakke (mobil 6, 9). Del af #8073. Ejer-go 16/11 PC1 (AskUserQuestion: \"Ja, sæt i gang\").",
+      "since": "2026-11-16"
+    },
+    {
+      "issue": 8281,
+      "reason": "Skitser: rytterprofil med billede (mobil 7). Del af #8073. Ejer-go 16/11 PC1 (AskUserQuestion: \"Ja, sæt i gang\").",
+      "since": "2026-11-16"
     }
   ]
 }
