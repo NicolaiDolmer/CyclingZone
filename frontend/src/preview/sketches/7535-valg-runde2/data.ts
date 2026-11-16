@@ -58,7 +58,7 @@ export const STAGES: Stage[] = [
 const lead: Array<[string, string]> = [["Hold lederen fremme", "Normal"]];
 
 export const RIDERS: Rider[] = [
-  { id: "r1", name: "Nebiyu Berhane", nation: "er", type: "Klatrer", rating: 71, form: 72, fatigue: 30, finishDelta: 18, routeMatch: 61, selected: true, role: "Kaptajn", plan: [["Bliv i læ", "Let"], ["Følg de bedste", "Hård"]], planCost: "Sparer kræfter", peak: { race: "Vuelta a Navarra", when: "søn. 22. nov. · om 6 dage", cost: "lille formdyk bagefter", here: false } },
+  { id: "r1", name: "Nebiyu Berhane", nation: "er", type: "Klatrer", rating: 71, form: 72, fatigue: 30, finishDelta: 18, routeMatch: 64, selected: true, role: "Kaptajn", plan: [["Bliv i læ", "Let"], ["Følg de bedste", "Hård"]], planCost: "Sparer kræfter", peak: { race: "Vuelta a Navarra", when: "søn. 22. nov. · om 6 dage", cost: "lille formdyk bagefter", here: false } },
   { id: "r2", name: "Raul Gil", nation: "es", type: "Klatrer", rating: 73, form: 66, fatigue: 22, finishDelta: 21, routeMatch: 61, selected: true, role: "Hjælper", plan: lead, planCost: "Koster en del", peak: { race: "Tour du Jura", when: "man. 30. nov. · om 14 dage", cost: "lille formdyk bagefter", here: false } },
   { id: "r3", name: "Nicolas Sanz", nation: "es", type: "Klatrer", rating: 71, form: 62, fatigue: 18, finishDelta: 20, routeMatch: 61, selected: true, role: "Hjælper", plan: lead, planCost: "Koster en del" },
   { id: "r4", name: "Hajun Pyo", nation: "kr", type: "Enkeltstart", rating: 73, form: 74, fatigue: 29, finishDelta: 16, routeMatch: 60, selected: true, role: "Hjælper", plan: lead, planCost: "Koster en del", peak: { race: "Tour de Preview", when: "tirs. 17. nov. · om 1 dag", cost: "mærkbart formdyk bagefter", here: true } },

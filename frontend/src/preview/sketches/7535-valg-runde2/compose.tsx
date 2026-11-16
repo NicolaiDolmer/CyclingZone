@@ -34,8 +34,8 @@ export interface ComposeData {
   marks: Mark[];
 }
 
-const DEV = "#c62828";
-const NOTE = "#1565c0";
+const DEV = "var(--color-cz-danger)";
+const NOTE = "var(--color-cz-info)";
 
 function Tag({ children, tone }: { children: string; tone: "gold" | "line" | "plain" }) {
   const cls =
@@ -83,7 +83,7 @@ function Num({ n, kind, abs }: { n: number; kind: Mark["kind"]; abs?: { left: nu
         height: size ?? "1.4em",
         fontSize: size ? size * 0.62 : ".85em",
         padding: "0 .3em",
-        ...(abs ? { position: "absolute", left: abs.left, top: abs.top, border: "2px solid #fff" } : {}),
+        ...(abs ? { position: "absolute", left: abs.left, top: abs.top, border: "2px solid var(--color-cz-card)" } : {}),
       }}
     >
       {n}
@@ -154,7 +154,7 @@ function Compose({ d }: { d: ComposeData }) {
                     borderRadius: 3,
                   }}
                 />
-                <Num n={m.n} kind={m.kind} abs={{ left: Math.max(0, m.x - tag / 2 - 3), top: Math.max(0, m.y - tag / 2 - 3), size: tag }} />
+                <Num n={m.n} kind={m.kind} abs={{ left: Math.max(0, m.x - 4), top: m.y - tag - 5 >= 0 ? m.y - tag - 5 : m.y + 2, size: tag }} />
               </span>
             ))}
           </div>

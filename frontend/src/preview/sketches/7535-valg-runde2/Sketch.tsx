@@ -227,11 +227,17 @@ function RaceHeadR3({ cfg, sticky }: { cfg: Config; sticky: boolean }) {
       className={`border-b border-cz-border bg-cz-card px-5 ${sticky ? "sticky top-0 z-10 py-3" : "py-4"}`}
     >
       <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h2 className="m-0 text-[17px] font-semibold text-cz-1">{RACE.name}</h2>
-          <p className="m-0 mt-0.5 font-data text-3xs uppercase tracking-wide text-cz-3">
-            {RACE.meta} · {cfg.squadDirty ? "6 af 6 valgt · 2 ændringer" : "6 af 6 valgt"}
-          </p>
+          {sticky ? (
+            <p className="m-0 mt-0.5 truncate font-data text-3xs uppercase tracking-wide text-cz-3">
+              Tirs. 17. nov. · 4 etaper · {cfg.squadDirty ? "6 af 6 · 2 ændringer" : "6 af 6"}
+            </p>
+          ) : (
+            <p className="m-0 mt-0.5 font-data text-3xs uppercase tracking-wide text-cz-3">
+              {RACE.meta} · {cfg.squadDirty ? "6 af 6 valgt · 2 ændringer" : "6 af 6 valgt"}
+            </p>
+          )}
           {!sticky && <p className="m-0 mt-1 text-2xs text-cz-warning">{RACE.shares}</p>}
         </div>
         <div {...(!sticky ? dev(cfg, 4, "Knapperne står til højre for titlen (wireframen: under titlen)") : {})} className="flex shrink-0 items-center gap-2">
@@ -256,13 +262,15 @@ function StageNav({ cfg, px = "px-5" }: { cfg: Config; px?: string }) {
     <div className={`flex items-center justify-between gap-3 border-b border-cz-border ${px} py-2.5`}>
       <span className="flex min-w-0 items-center gap-2 text-[13px]">
         <span className="rounded-cz border border-cz-border p-1 text-cz-3">{Ico.chevL(14)}</span>
-        <span className="font-semibold text-cz-1">Etape 1 af 4</span>
+        <span className="whitespace-nowrap font-semibold text-cz-1">Etape 1 af 4</span>
         <Glyph kind={s.kind} size={14} />
-        <span className="truncate font-data text-xs tabular-nums text-cz-2">
-          {s.label} · {s.km} km · {s.gain} m
-        </span>
+        {px === "px-5" && (
+          <span className="truncate font-data text-xs tabular-nums text-cz-2">
+            {s.label} · {s.km} km · {s.gain} m
+          </span>
+        )}
       </span>
-      <span className="flex items-center gap-3">
+      <span className="flex items-center gap-2.5">
         <span className="flex gap-1">
           {STAGES.map((x) => (
             <span key={x.n} className={`inline-block h-2 w-2 ${x.n === 1 ? "bg-cz-accent-t" : "bg-cz-3/40"}`} />
@@ -627,8 +635,6 @@ function SquadTable({ cfg }: { cfg: Config }) {
 
 // --- Taktik: den fælles komponent med løbssiden v6 (ejervalg 1) ----------------------------
 
-const EFFORTS = ["Let", "Normal", "Hård"] as const;
-
 function StageTabs() {
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -643,11 +649,6 @@ function StageTabs() {
       ))}
     </div>
   );
-}
-
-function effortOf(r: Rider): string {
-  const last = r.plan?.[r.plan.length - 1]?.[1] ?? "Normal";
-  return EFFORTS.includes(last as (typeof EFFORTS)[number]) ? last : "Normal";
 }
 
 function TacticsShared({ cfg, mobile }: { cfg: Config; mobile: boolean }) {
@@ -677,11 +678,10 @@ function TacticsShared({ cfg, mobile }: { cfg: Config; mobile: boolean }) {
         )}
       </div>
       {!mobile && (
-        <div className="grid grid-cols-[1.4fr_.8fr_2.2fr_1.1fr_48px] border-b border-cz-border bg-cz-subtle px-5 py-2 font-data text-3xs font-semibold uppercase tracking-[.08em] text-cz-3">
+        <div className="grid grid-cols-[1.4fr_.8fr_3fr_48px] border-b border-cz-border bg-cz-subtle px-5 py-2 font-data text-3xs font-semibold uppercase tracking-[.08em] text-cz-3">
           <span>Rytter</span>
           <span>Rolle</span>
           <span>Plan for etape 1</span>
-          <span>Indsats</span>
           <span />
         </div>
       )}
@@ -701,15 +701,12 @@ function TacticsShared({ cfg, mobile }: { cfg: Config; mobile: boolean }) {
             </div>
           </div>
         ) : (
-          <div key={r.id} className="grid grid-cols-[1.4fr_.8fr_2.2fr_1.1fr_48px] items-center border-b border-cz-border px-5 py-2 text-[13px]">
+          <div key={r.id} className="grid grid-cols-[1.4fr_.8fr_3fr_48px] items-center border-b border-cz-border px-5 py-2 text-[13px]">
             <span className="flex items-center gap-2 font-medium text-cz-1">
               <Flag code={r.nation} /> {r.name}
             </span>
             <span className="text-xs text-cz-1">{r.role}</span>
             <span className="flex flex-wrap gap-1.5">{r.plan?.map(([t, e], i) => <PlanChip key={t + i} task={t} effort={e} />)}</span>
-            <span>
-              <Seg options={[...EFFORTS]} value={effortOf(r)} small />
-            </span>
             <span className="text-end text-xs font-medium text-cz-1">Ændr</span>
           </div>
         ),
@@ -950,7 +947,7 @@ function MobileSquad({ cfg }: { cfg: Config }) {
   const rows = [...RIDERS].sort((a, b) => Number(b.selected) - Number(a.selected) || b.routeMatch - a.routeMatch);
   const top = Math.max(...RIDERS.map((r) => r.routeMatch));
   const third = cfg.after === "finish" ? "Ved mål" : cfg.after === "none" ? "Træthed" : "Efter løbet";
-  const cols = "grid-cols-[22px_1fr_48px_36px_64px]";
+  const cols = "grid-cols-[22px_1fr_58px_34px_60px]";
   const rich = cfg.table === "status" || cfg.table === "roleChip";
   return (
     <div id="squad-table">
@@ -1003,7 +1000,7 @@ function MobileSquad({ cfg }: { cfg: Config }) {
             </span>,
           );
         const matchEl = rich ? (
-          <MatchBar value={r.routeMatch} />
+          <MatchBar value={r.routeMatch} narrow />
         ) : (
           <span className={`font-data text-[13px] tabular-nums ${(cfg.table === "today" ? r.routeMatch >= 60 : r.routeMatch === top) ? "font-semibold text-cz-accent-t" : "text-cz-1"}`}>{r.routeMatch}</span>
         );

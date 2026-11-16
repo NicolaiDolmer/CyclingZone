@@ -101,10 +101,10 @@ export function Plan({ plan }: { plan: Array<[string, string]> }) {
 }
 
 /** Lille neutral bjælke med tal (rutematch, TASTE: aldrig guld-tal). */
-export function MatchBar({ value, wide = false }: { value: number; wide?: boolean }) {
+export function MatchBar({ value, wide = false, narrow = false }: { value: number; wide?: boolean; narrow?: boolean }) {
   return (
     <span className="inline-flex items-center gap-2">
-      <span className={`relative h-1.5 ${wide ? "w-16" : "w-10"} overflow-hidden bg-cz-border`}>
+      <span className={`relative h-1.5 ${wide ? "w-16" : narrow ? "w-6" : "w-10"} overflow-hidden bg-cz-border`}>
         <span className="absolute inset-y-0 start-0 bg-cz-1" style={{ width: `${Math.min(100, value)}%` }} />
       </span>
       <span className="font-data text-xs tabular-nums text-cz-1">{value}</span>
