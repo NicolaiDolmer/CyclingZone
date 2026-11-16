@@ -83,8 +83,13 @@ ACTIVITY_GUARD_SEC=1800  # 30 minutes
 
 # 1. Sync with origin: ONE fetch, then the same FF-only merge `git pull --ff-only
 #    origin main` did (no-op if non-FF). Tidligere hentede pull'en en gang til.
-git fetch origin --quiet
-git merge --ff-only --quiet origin/main >/dev/null
+#    Sikkerhed (Vercel 16/11): hent KUN main med eksplicit refspec og brug det fuldt
+#    kvalificerede navn. Et tag ved navn "origin/main" ville ellers vinde over
+#    remote-branchen og kunne fast-forwarde til ugennemgaaet kode, som hooks derefter koerer.
+MAIN_REF="refs/remotes/origin/main"
+if git fetch --quiet --no-tags origin "+refs/heads/main:$MAIN_REF"; then
+  git merge --ff-only --quiet "$MAIN_REF" >/dev/null
+fi
 
 # Alle opslag koeres een gang for hele repoet (#8240).
 WT_PORCELAIN="$(git worktree list --porcelain)"
@@ -94,7 +99,7 @@ declare -A CHECKED_OUT=() # grene der er tjekket ud i et worktree
 declare -A TRACKED=()     # worktree-stier git kender
 while IFS= read -r br; do
   [ -n "$br" ] && MERGED["$br"]=1
-done < <(git for-each-ref --merged origin/main --format='%(refname:short)' refs/heads/ 2>/dev/null)
+done < <(git for-each-ref --merged "$MAIN_REF" --format='%(refname:short)' refs/heads/ 2>/dev/null)
 
 WT_LIST=()   # "sti<TAB>gren" for claude/*-worktrees
 wt=""
