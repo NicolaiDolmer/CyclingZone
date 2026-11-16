@@ -2257,6 +2257,10 @@
     "table": {
       "prizePoints": "Puntos de premio",
       "jerseyPoints": "Puntos de maillot",
+      "colPos": "Pos.",
+      "colRider": "Ciclista",
+      "colTeam": "Equipo",
+      "colTime": "Tiempo",
       "prizePointsShort": "Premio",
       "jerseyPointsShort": "Maillot"
     },

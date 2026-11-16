@@ -2284,11 +2284,8 @@ function V6JerseysCard({ jerseys, teamLeader, t }) {
         <tbody className="divide-y divide-cz-border">
           {jerseys.map((j) => (
             <tr key={j.dayType}>
-              <td className="py-2 pe-2 align-middle whitespace-nowrap">
-                <span className="rounded-full px-1.5 py-0.5 text-3xs font-bold uppercase" style={{ backgroundColor: j.bg, color: j.fg }}>
-                  {t(`detail.jersey.${j.dayType}`)}
-                </span>
-              </td>
+              {/* Trøjens navn som ren tekst (wireframe v6c, TASTE: ingen piller, ét guld pr. view). */}
+              <td className="py-2 pe-3 align-middle whitespace-nowrap text-xs text-cz-2">{t(`detail.jersey.${j.dayType}`)}</td>
               <td className="py-2 pe-2 align-middle">
                 <RiderLink id={j.holder.rider?.id ?? j.holder.rider_id} className="text-cz-1 hover:text-cz-accent-t transition-colors">
                   {j.holder.rider?.nationality_code && <Flag code={j.holder.rider.nationality_code} className="me-1" title={undefined} />}
@@ -2306,9 +2303,7 @@ function V6JerseysCard({ jerseys, teamLeader, t }) {
           ))}
           {team?.name && (
             <tr>
-              <td className="py-2 pe-2 align-middle whitespace-nowrap">
-                <span className="rounded-full border border-cz-border bg-cz-subtle px-1.5 py-0.5 text-3xs font-bold uppercase text-cz-2">{t("detail.classTab.team")}</span>
-              </td>
+              <td className="py-2 pe-3 align-middle whitespace-nowrap text-xs text-cz-2">{t("detail.classTab.team")}</td>
               <td className="py-2 align-middle" colSpan={2}>
                 <TeamLink id={team.linkId} className="text-cz-1 hover:text-cz-accent-t transition-colors" tab={undefined}>{team.name}</TeamLink>
               </td>
@@ -2527,16 +2522,17 @@ function ResultTable({ title, rows: allRows, highlightWinner = false, highlightT
         <div className={WRAP}>
           <div className={SCROLLER}>
             <table data-sort-exempt="Loebsresultat, sorteret paa placering (rank)" className="w-full text-sm">
-              {(showPoints || showPointsTotal) && (
+              {(showPoints || showPointsTotal || searchable) && (
                 // #3913: kun de to point-kolonner har brug for en overskrift —
                 // det er dem der ellers er umulige at kende fra hinanden.
                 // Rank/navn/hold/tid er selvforklarende ved deres placering.
+                // #7862: i v6 (searchable) har alle kolonner overskrift (wireframe v6c, TASTE).
                 <thead>
                   <tr className="text-3xs uppercase tracking-wide text-cz-3">
-                    <th className="ps-3 pe-1 sm:px-4 py-1 font-medium" scope="col"></th>
-                    <th className="ps-1 pe-2 sm:px-2 py-1 font-medium" scope="col"></th>
-                    {showTeamCol && <th className="hidden sm:table-cell ps-1 pe-2 sm:px-2 py-1 font-medium" scope="col"></th>}
-                    {showTime && <th className="ps-1 pe-1.5 sm:px-3 py-1 font-medium" scope="col"></th>}
+                    <th className="ps-3 pe-1 sm:px-4 py-1 text-left font-medium" scope="col">{searchable ? t("detail.table.colPos") : ""}</th>
+                    <th className="ps-1 pe-2 sm:px-2 py-1 text-left font-medium" scope="col">{searchable ? t(rows[0] && resultEntity(rows[0]).kind !== "rider" ? "detail.table.colTeam" : "detail.table.colRider") : ""}</th>
+                    {showTeamCol && <th className="hidden sm:table-cell ps-1 pe-2 sm:px-2 py-1 text-left font-medium" scope="col">{searchable ? t("detail.table.colTeam") : ""}</th>}
+                    {showTime && <th className="ps-1 pe-1.5 sm:px-3 py-1 text-right font-medium" scope="col">{searchable ? t("detail.table.colTime") : ""}</th>}
                     {showPointsTotal && (
                       <th className="ps-1 pe-3 sm:px-4 py-1 text-right font-medium whitespace-nowrap" scope="col">
                         <abbr className="no-underline sm:hidden" title={t("detail.table.jerseyPoints")}>{t("detail.table.jerseyPointsShort")}</abbr>

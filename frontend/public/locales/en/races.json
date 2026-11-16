@@ -2240,6 +2240,10 @@
     "table": {
       "prizePoints": "Prize points",
       "jerseyPoints": "Jersey points",
+      "colPos": "Pos",
+      "colRider": "Rider",
+      "colTeam": "Team",
+      "colTime": "Time",
       "prizePointsShort": "Prize",
       "jerseyPointsShort": "Jersey"
     },

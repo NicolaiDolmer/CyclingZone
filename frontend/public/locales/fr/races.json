@@ -2257,6 +2257,10 @@
     "table": {
       "prizePoints": "Points de gains",
       "jerseyPoints": "Points de maillot",
+      "colPos": "Pos.",
+      "colRider": "Coureur",
+      "colTeam": "Équipe",
+      "colTime": "Temps",
       "prizePointsShort": "Gains",
       "jerseyPointsShort": "Maillot"
     },

@@ -2257,6 +2257,10 @@
     "table": {
       "prizePoints": "Prijspunten",
       "jerseyPoints": "Truipunten",
+      "colPos": "Pos",
+      "colRider": "Renner",
+      "colTeam": "Ploeg",
+      "colTime": "Tijd",
       "prizePointsShort": "Prijs",
       "jerseyPointsShort": "Trui"
     },
