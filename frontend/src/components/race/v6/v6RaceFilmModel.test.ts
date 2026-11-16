@@ -3,8 +3,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  climbFootKm, v6ChapterAt, v6CurrentLine, v6FilmChapters, v6FinaleKm, v6MoreAhead, v6NextChapter, v6PlayStep, v6StoryStripCells, v6VisibleLines,
+  climbFootKm, v6ChapterAt, v6ClimbAttackCopyKey, v6ClimbAttackLines, v6CurrentLine, v6FilmChapters, v6FilmProfileGeometry, v6FinaleKm, v6MoreAhead,
+  v6NextChapter, v6PlayStep, v6ReportLines, v6StoryStripCells, v6VisibleLines,
 } from "./v6RaceFilmModel.ts";
+import type { StoryLine } from "../stagePageV2/raceStoryModel.ts";
 
 const mountainClimbs = [
   { name: "Passo A", category: "3", crest_km: 60, length_km: 5, avg_gradient: 6 },
@@ -130,4 +132,93 @@ test("afspilningen går hele etapen igennem i ca. 150 tik, aldrig under en halv 
   assert.equal(v6PlayStep(155), 1);
   assert.equal(v6PlayStep(30), 0.5);
   assert.equal(v6PlayStep(300), 2);
+});
+
+// ── Runde 3 (16/11 aften) ────────────────────────────────────────────────
+
+// En topankomst: motoren stempler stigningens opsummering på målstregen (#7965).
+const summitEvents = (attack: Record<string, unknown>) => [
+  { type: "stage_start", km: 0, params: { distance_km: 155 } },
+  { type: "gap_update", km: 120, params: { gap_seconds: 30 } },
+  { type: "kom_passage", km: 155, params: { name: "Salita C", category: "1" } },
+  attack,
+  { type: "finish", km: 155, params: {} },
+];
+const summitClimbs = [{ name: "Salita C", crest_km: 155, length_km: 11.8 }];
+
+test("et holdt angreb op ad sidste stigning er TO linjer: angrebet ved foden og udfaldet ved toppen (#7965, Codex P1)", () => {
+  const lines = v6ClimbAttackLines(summitEvents({ type: "all_out_gain", km: 155, params: { rider_id: "r1" } }), {
+    timelineVersion: 2, climbs: summitClimbs, mine: new Set(["r1"]), ownRiderIds: ["r1"], effortByRider: new Map([["r1", "all_out"]]),
+  });
+  assert.deepEqual(lines.map((l) => [l.phase, Math.round(l.km * 10) / 10, l.time, v6ClimbAttackCopyKey(l)]), [
+    ["attack", 143.2, null, "climb_attack_start_named"],
+    ["outcome", 155, null, "climb_attack_held"],
+  ]);
+  assert.equal(lines[0].climbName, "Salita C");
+  assert.deepEqual(lines.map((l) => l.mineIds), [["r1"], ["r1"]], "egen rytter på begge linjer");
+  assert.notEqual(lines[0].id, lines[1].id);
+});
+
+test("et knæk op ad sidste stigning er TO linjer: angrebet uden tid og knækket dér hvor motoren stemplede det, med løbstid (#7965)", () => {
+  const lines = v6ClimbAttackLines(summitEvents({ type: "all_out_cracked", km: 155, params: { rider_id: "r2", exact_km: 150.4, exact_time: 14000 } }), {
+    timelineVersion: 2, climbs: summitClimbs,
+  });
+  assert.deepEqual(lines.map((l) => [l.phase, Math.round(l.km * 10) / 10, l.time, l.held, v6ClimbAttackCopyKey(l)]), [
+    ["attack", 143.2, null, false, "climb_attack_start_named"],
+    ["outcome", 150.4, 14000, false, "climb_attack_cracked"],
+  ]);
+  assert.deepEqual(lines[0].mineIds, [], "andres ryttere er ikke dine");
+});
+
+test("uden topankomst er angrebet én linje ved toppen med den hidtidige films tekst", () => {
+  const events = [
+    { type: "stage_start", km: 0, params: { distance_km: 170 } },
+    { type: "all_out_gain", km: 150, params: { rider_id: "r3" } },
+    { type: "finish", km: 170, params: {} },
+  ];
+  const [line, ...rest] = v6ClimbAttackLines(events, { timelineVersion: 2, climbs: [{ crest_km: 150, length_km: 8 }] });
+  assert.equal(rest.length, 0);
+  assert.equal(line.phase, "single");
+  assert.equal(line.km, 150);
+  // Et andet holds rytter (ingen kendt ordre) "angriber" (#7707); egen "Alt ud"-ordre giver all_out-teksten.
+  assert.equal(v6ClimbAttackCopyKey(line), "attack_gain");
+  assert.equal(v6ClimbAttackCopyKey({ ...line, attackTask: false, held: false }), "all_out_cracked");
+  assert.equal(v6ClimbAttackCopyKey({ ...line, phase: "attack", climbName: null }), "climb_attack_start");
+  assert.deepEqual(v6ClimbAttackLines([{ type: "finish", km: 10 }], { timelineVersion: 2 }), [], "ingen angreb, ingen linjer");
+});
+
+test("referatet fletter angrebslinjerne efter km; målet står sidst på samme km, og referatet følger filmen", () => {
+  const story = (kind: StoryLine["kind"], km: number): StoryLine => ({ id: `${kind}-${km}`, kind, km, kmTo: null, span: false, time: null, count: 0, riderIds: [], mineIds: [], priority: 0, data: {} });
+  const attacks = v6ClimbAttackLines(summitEvents({ type: "all_out_gain", km: 155, params: { rider_id: "r1" } }), { timelineVersion: 2, climbs: summitClimbs });
+  const merged = v6ReportLines([story("formed", 12), story("climb", 96), story("finish", 155)], attacks);
+  assert.deepEqual(merged.map((l) => [l.kind, Math.round(l.km * 10) / 10]), [
+    ["formed", 12], ["climb", 96], ["climbAttack", 143.2], ["climbAttack", 155], ["finish", 155],
+  ]);
+  assert.deepEqual(v6VisibleLines(merged, 150).map((l) => l.kind), ["formed", "climb", "climbAttack"], "udfaldet står først, når filmen er nået dertil");
+});
+
+test("filmens position ligger i rutens egne koordinater (samme tal som StageProfileV2 uden bånd)", () => {
+  const geo = v6FilmProfileGeometry({ width: 800, profile: { distance_km: 200 }, series: { kms: [0, 200] }, floor: 0, ceil: 1000 });
+  assert.deepEqual([geo.W, geo.H, geo.top, geo.bottom, geo.X(100), geo.Y(0), geo.Y(1000)], [800, 320, 78, 290, 400, 290, 78]);
+  const narrow = v6FilmProfileGeometry({ width: 358, profile: { distance_km: 0 }, series: { kms: [0, 100] }, floor: 0, ceil: 1000 });
+  assert.deepEqual([narrow.H, narrow.top, narrow.D], [220, 48, 100]);
+  const profileSrc = read("../stagePageV2/StageProfileV2.tsx");
+  assert.match(profileSrc, /const H = short \? \(narrow \? 130 : 170\) : \(narrow \? 220 : 320\);/);
+  assert.match(profileSrc, /const TOP = short \? 34 : \(narrow \? 48 : 78\);/);
+  assert.match(profileSrc, /const BOT = 30;/);
+  assert.match(profileSrc, /const narrow = width > 0 && width < 640;/);
+  assert.match(profileSrc, /const X = \(km: number\) => \(km \/ D\) \* W;/);
+});
+
+test("filmen bruger v6's fælles rute (V6Route) med positionen som overlay, og referatet har angrebslinjerne", () => {
+  const film = read("./V6RaceFilm.tsx");
+  assert.match(film, /<V6Route profile=\{profile\} \/>/);
+  assert.doesNotMatch(film, /<StageProfileV2\b/, "ingen anden profil i filmen");
+  assert.match(film, /data-film-position/);
+  assert.match(film, /v6ReportLines\(storyLines, attackLines\)/);
+});
+
+test("et kørt endagsløbs Resultater har \"Din dag\" med Hvorfor? for egne ryttere (Codex P2)", () => {
+  const page = read("./RacePageV6.tsx");
+  assert.match(page, /\} else if \(!isStageRace\) \{[\s\S]{0,700}data-race-section="standings"[\s\S]{0,200}phase === "after" && <V6YourDay results=\{results\} stageNumber=\{selectedStage\}/);
 });
