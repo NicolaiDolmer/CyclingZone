@@ -243,6 +243,13 @@ Tændes **kun mellem to datoer**. En dato må aldrig afregnes med to modeller, h
 
 **Krav før tænding:** Å4 og Å5 afgjort, §8 grøn, frossen golden grøn, ejerens valg af Træn nu-bonus og af, hvordan XP, værdien og omregningen tændes sammen (B15, B16), privat tænd-kort, ejerens ordrette "kør" på netop det skridt, efter at ejeren har set den live tilstand. Hjælp en+da, patch note og Discord-udkast er klar samme dag.
 
+**Tændingslisten (hårde tjek, Fable-dom 16/11 på #8276).** Hvert punkt er et ja/nej på tænd-kortet; et nej stopper tændingen.
+
+1. **Talfilen er gyldig på startdatoen (fund 3b).** `development_xp_params` i `private_config` består `validateDevelopmentXpParams` for netop startdatoen (samme læsning som motoren, `loadDevelopmentXp`), og den har datoreglens grænser (`datePlus2`, ejervalg A). En ugyldig talfil får motoren til at falde tilbage til dagens model, så tændingsnattens udbetaling aldrig sker; loggen siger det højt som fejl (`[development-xp] ... is missing/invalid/error - running today's model`), men tjekket skal ske før natten, ikke i loggen bagefter. Uden `datePlus2` får ingen det høje tal på én dato (fail-safe), og ejervalg A er så ikke tændt.
+2. **Rapporten skelner "optjent i dag" fra "udbetalt fra bjælken" (fund 5, #8210).** Opsparet XP købes også på hviledage og efter skift af fokus. Spilleren må aldrig se et point, der kommer fra bjælken, som dagens træning. Visningen er #8210; uden den tændes XP ikke.
+3. **Ryttere uden tick på tændingsnatten (fund 3a).** En skadet rytter eller en bundet hviledag har intet tick den nat, og så kommer hans gemte fremgang ud med +2-reglen over de næste datoer i stedet for på én nat. Tænd-kortet viser, hvor mange det gælder, og ejeren godkender det eller beder om en rettelse før tænding.
+4. **Dommerkørslen over 15 sæsoner med motorens egen grænse (`_cap2`) og ny Fable-dom** er lavet på den kode, der tændes (ejer 16/11). Tal kun i `balance-internals/6110/`.
+
 ### 7.3 Eksisterende ryttere og data
 
 - **Ingen evne ændres, og ingen rating falder ved tænding.** Der køres ingen massemutation og ingen omregning.
