@@ -111,7 +111,7 @@ export function PlanHost({ details, mopen }: { details: boolean; mopen: string |
       </div>
       <section className="card">
         <div className="tbl">
-          <table>
+          <table data-sort-exempt="dagens løb i tidsorden">
             <thead><tr><th>Time</th><th>Race</th><th>Stage</th><th>Team plan</th><th>Source</th><th /></tr></thead>
             <tbody>
               {rows.map((r) => (

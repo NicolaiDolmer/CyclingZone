@@ -113,7 +113,7 @@ export function TacticsPanel({ s, set }: { s: TacState; set: SetTac }) {
   });
   const sortBy = (k: string) => set((d) => { d.sort = d.sort?.k === k ? { k, d: -d.sort.d } : { k, d: k === "rider" || k === "role" ? 1 : -1 }; });
   const thS = (k: string, l: string, c = "") => (
-    <th className={c}>
+    <th className={c} aria-sort={s.sort?.k === k ? (s.sort.d > 0 ? "ascending" : "descending") : undefined}>
       <button type="button" className="th" onClick={() => sortBy(k)}>
         {l}
         {s.sort?.k === k && <svg><use href={`#s-${s.sort.d > 0 ? "up" : "dn"}`} /></svg>}
@@ -221,7 +221,7 @@ export function TacticsPanel({ s, set }: { s: TacState; set: SetTac }) {
 
         {/* computer: tabellen med alle kolonner, ordrer pr. rutedel under hver rytter */}
         <div className="tbl dtac">
-          <table>
+          <table data-sortable>
             <thead>
               <tr>
                 {thS("rider", "Rider")}{thS("role", "Role")}{thS("rating", "Rating", "n")}{thS("form", "Form", "n")}{thS("match", "Route match", "n")}{thS("fatigue", "Fatigue now", "n")}
