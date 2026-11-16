@@ -34,7 +34,7 @@ import { NPS_MIN_RACE_DAYS } from "../lib/npsGating.js";
 import { buildMockSurveyResults } from "./surveyResultsMock.js"; // #4943
 import { stagePlanPreviewActive, stagePlanPreviewTimeline, withStagePlanPreview } from "../components/race/StagePlanPreviewMock.ts"; // #7003
 import { luxuryHelperPreviewActive, withLuxuryHelperSelection, withLuxuryHelperStageRoles, withSeasonRoles } from "./luxuryHelperPreviewMock.ts"; // #5982
-import { film7861Results, film7861Timeline } from "./raceFilm7861PreviewMock.ts"; // #7861
+import { film7861Profiles, film7861Results, film7861Timeline } from "./raceFilm7861PreviewMock.ts"; // #7861
 
 // [epic #4592 del 3] "Tilmeld dig næste sæson" (#452) — statefuld in-memory
 // toggle, samme princip som klubMock/plannerMock: POST flipper den, GET
@@ -268,7 +268,7 @@ export function installPreviewMock() {
         }
         const table = parseTable(url);
         if (!wantsObject(accept)) {
-          const filmRows = film7861Results(url, restRows(table, url)); // #7861
+          const filmRows = film7861Results(url, restRows(table, url)) ?? film7861Profiles(url, restRows(table, url)); // #7861
           if (filmRows) return jsonResponse(filmRows);
         }
         return jsonResponse(wantsObject(accept) ? restObject(table, url) : restRows(table, url));

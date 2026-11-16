@@ -41,3 +41,21 @@ export function film7861Timeline(url: string): unknown | null {
   const { story, ...timeline } = FILM_7861_TIMELINE;
   return q.get("story") === "1" ? { ...timeline, story } : timeline;
 }
+
+/**
+ * Etapens højdeserie, lavet af spillets egen generator (backend/lib/routeElevationProfile.js
+ * buildElevationProfile, samme rute og seed-nøgle som etapen). Alle kommende etaper i spillet har
+ * en sådan serie; uden den tegnede filmen syntesens savtakker i stedet for en rigtig rute.
+ */
+export const FILM_7861_ELEVATION_PROFILE = {"v":1,"step_km":0.5,"h":[221,222,224,225,226,226,224,222,220,219,219,221,225,230,236,241,243,242,238,232,225,218,213,212,215,222,231,242,252,260,265,266,264,260,254,247,240,233,226,220,214,210,208,210,216,227,243,262,281,297,307,308,300,283,260,235,213,198,193,199,214,236,260,281,295,299,293,279,260,241,226,219,220,230,246,264,281,294,302,303,299,291,280,269,258,248,238,229,220,213,209,211,220,237,261,290,320,346,362,365,353,327,291,250,212,183,169,171,189,219,249,279,307,323,325,315,296,273,252,236,228,229,237,249,262,273,280,282,280,275,269,263,257,252,247,241,234,227,221,219,222,233,251,274,299,322,338,343,334,313,281,244,208,180,164,163,176,201,231,261,290,309,317,313,300,282,262,245,232,225,224,227,232,237,241,244,245,245,245,246,247,248,248,246,242,237,231,226,223,224,229,238,249,260,268,272,270,262,249,233,217,204,196,195,200,210,222,235,246,253,256,255,250,243,236,230,225,222,221,221,221,222,223,223,223,223,223,223,222,221,244,273,308,333,353,383,415,438,470,501,534,572,611,575,546,513,473,441,405,379,349,324,297,271,234,221,224,230,237,243,246,246,242,236,228,220,214,211,211,213,217,223,230,239,249,261,274,286,295,299,297,287,271,251,230,213,204,206,219,241,267,292,310,316,309,289,261,231,205,189,187,200,225,255,285,312,329,333,325,307,283,257,233,215,204,199,200,205,212,220,228,236,244,251,257,261,262,259,253,245,236,228,222,219,218,219,221]};
+
+/** race_stage_profiles for løbet: etape 2 får sin højdeserie. null = ikke dette kald. */
+export function film7861Profiles(url: string, rows: unknown[]): unknown[] | null {
+  if (!url.includes("/rest/v1/race_stage_profiles")) return null;
+  const q = query(url);
+  if (!q || q.get("race_id") !== `eq.${RACE}`) return null;
+  return rows.map((row) => {
+    const r = row as { stage_number?: number; elevation_profile?: unknown };
+    return r && r.stage_number === STAGE && !r.elevation_profile ? { ...r, elevation_profile: FILM_7861_ELEVATION_PROFILE } : row;
+  });
+}

@@ -1,6 +1,7 @@
 // #7861 · Løbsfilmen som én afspiller (spec 2026-11-07 F1-F7, wireframe v6c "Story").
-// Venstre: ÉN film på en mørk filmflade. Ruteprofilen er tidslinjen (stigninger og
-// mellemspurt står på den), den guld km-skyder og Afspil styrer positionen, og
+// Venstre: ÉN film på den lyse kortflade (ejer 16/11). Ruteprofilen er etapesidens
+// farvede profil og tidslinjen (stigninger med kategori og navn, mellemspurt, km og
+// meter står på den), en guld linje med prik viser positionen, den guld km-skyder og Afspil styrer den, og
 // kapitelnavnet står ved siden af. Under filmen: kapitlerne (start, udbruddet,
 // stigningerne, spurten, finalen) og grupperne på vejen ved positionen.
 // Højre: ÉT referat. Hver linje er en km, der hopper filmen dertil; linjen filmen
@@ -26,7 +27,7 @@ import { elevationSeries, sortedClimbs, type ResultRow, type RoleOverride, type 
 import { useStoryText } from "../stagePageV2/storyText.ts";
 import { Button, Section, SectionHeader, SkeletonLines } from "../stagePageV2/ui.ts";
 import {
-  v6ChapterAt, v6CurrentLine, v6FilmChapters, v6MoreAhead, v6NextChapter, v6PlayStep, v6VisibleLines, type V6Chapter,
+  climbFootKm, v6ChapterAt, v6CurrentLine, v6FilmChapters, v6MoreAhead, v6NextChapter, v6PlayStep, v6VisibleLines, type V6Chapter,
 } from "./v6RaceFilmModel.ts";
 
 export interface V6RaceFilmProps {
@@ -189,29 +190,29 @@ function FilmBody({ story, profile, cast, narrative, onShowResults }: {
       <div className="grid grid-cols-1 items-start gap-[14px] @4xl:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]">
         <Section aria-label={filmTitle}>
           <SectionHeader title={filmTitle} meta={t("raceFilm:meta")} />
-          {/* Den mørke filmflade: mørkt tema lokalt, så profilens egne farver følger med i begge temaer. */}
-          <div data-theme="dark" data-film-surface className="rounded-cz border border-cz-border bg-cz-card px-3 pb-2 pt-3 text-cz-1">
+          {/* Ejer 16/11: filmen står på den lyse kortflade med etapesidens farvede ruteprofil
+              (wireframe v6c "Stage N · the route"): stigningsfarver, kategori og navn, spurt, km og
+              meter. Ovenpå kun positionen: en guld linje med en prik (og grupperne på vejen). */}
+          <div data-film-surface className="text-cz-1">
             {profile && series && (
               <StageProfileV2
                 profile={profile}
                 series={series}
                 climbs={climbs}
                 selectedClimb={null}
-                onSelectClimb={() => {}}
-                band
-                progressKm={km}
+                onSelectClimb={(i) => { const foot = climbs[i] ? climbFootKm(climbs[i]) : null; if (foot != null) jump(foot); }}
                 overlay={(geo) => (
-                  <g aria-hidden="true">
-                    <line x1={geo.X(km)} x2={geo.X(km)} y1={geo.top - 6} y2={geo.bottom} stroke="rgb(var(--accent))" strokeWidth={2} />
+                  <g aria-hidden="true" data-film-position>
+                    <line x1={geo.X(km)} x2={geo.X(km)} y1={geo.top - 30} y2={geo.bottom} stroke="rgb(var(--accent))" strokeWidth={2} />
                     {groups.length === 0 && (
-                      <circle cx={geo.X(km)} cy={geo.Y(geo.elevation(km))} r={5} fill="rgb(var(--accent))" stroke="var(--bg-card)" strokeWidth={1.5} />
+                      <circle cx={geo.X(km)} cy={geo.Y(geo.elevation(km))} r={6} fill="rgb(var(--accent))" stroke="var(--text-1)" strokeWidth={1} />
                     )}
                     {[...groups].sort((a, b) => b.gapS - a.gapS).map((g) => {
                       if (g.km == null) return null;
-                      const x = Math.max(12, Math.min(geo.W - 12, geo.X(g.km))), y = geo.Y(geo.elevation(g.km)) - 6;
+                      const x = Math.max(12, Math.min(geo.W - 12, geo.X(g.km))), y = geo.Y(geo.elevation(g.km));
                       return (
                         <g key={g.groupId}>
-                          <circle cx={x} cy={y} r={g.front ? 6 : 4.5} fill={g.front ? "rgb(var(--accent))" : "var(--text-1)"} stroke="var(--bg-card)" strokeWidth={1.5} />
+                          <circle cx={x} cy={y} r={g.front ? 6 : 4.5} fill={g.front ? "rgb(var(--accent))" : "var(--text-1)"} stroke={g.front ? "var(--text-1)" : "var(--bg-card)"} strokeWidth={g.front ? 1 : 1.5} />
                           {g.mine.length > 0 && <circle cx={x} cy={y} r={10} fill="none" stroke="var(--text-1)" strokeWidth={2} />}
                         </g>
                       );
