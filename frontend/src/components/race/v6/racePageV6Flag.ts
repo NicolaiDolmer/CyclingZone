@@ -7,11 +7,12 @@
 // bruges til første billede; serverens svar vinder altid bagefter. En spiller uden
 // kontakten venter aldrig: uden husket værdi tegnes den gamle side straks, som i dag.
 // Er den indloggede konto en anden end den, der gemte værdien, slukkes v6 straks,
-// når sessionen er læst (lokalt, før serverens svar).
+// når sessionen er læst (lokalt, før serverens svar). Hvert svar valideres: kun et
+// udtrykkeligt "til" bliver husket; slukket, fejl og {} rydder værdien (#7865, punkt e).
 import { useEffect, useState } from "react";
 import { fetchPlayerFeatureFlags } from "../../../lib/playerFeatureFlags.js";
 import { getSession } from "../../../lib/supabase";
-import { readLastRacePageV6, rememberedFor, rememberedFromFlags, writeLastRacePageV6 } from "./racePageV6FlagCache.ts";
+import { readLastRacePageV6, rememberAfterAnswer, rememberedFor, rememberedFromFlags, writeLastRacePageV6 } from "./racePageV6FlagCache.ts";
 
 export const RACE_PAGE_V6_FLAG_KEY = "race_page_v6";
 
@@ -40,8 +41,10 @@ export function useRacePageV6Enabled(): boolean {
       answered = true;
       const known = rememberedFromFlags(flags, RACE_PAGE_V6_FLAG_KEY);
       if (alive) setEnabled(known === true);
-      // Et ukendt svar (fejl eller {}) er slukket nu, men overskriver ikke det huskede.
-      if (known !== null) writeLastRacePageV6({ userId: await userIdPromise, on: known });
+      // #7865 (review-punkt e): ethvert svar valideres; alt andet end et udtrykkeligt
+      // "til" rydder det huskede, så næste første billede ikke viser v6 for en konto,
+      // der har mistet kontakten.
+      writeLastRacePageV6(rememberAfterAnswer(flags, RACE_PAGE_V6_FLAG_KEY, await userIdPromise));
     });
     return () => { alive = false; };
   }, [remembered]);

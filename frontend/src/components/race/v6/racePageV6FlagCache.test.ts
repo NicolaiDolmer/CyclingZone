@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { RACE_PAGE_V6_LAST_KEY, readLastRacePageV6, rememberedFor, rememberedFromFlags, writeLastRacePageV6 } from "./racePageV6FlagCache.ts";
+import { RACE_PAGE_V6_LAST_KEY, readLastRacePageV6, rememberAfterAnswer, rememberedFor, rememberedFromFlags, writeLastRacePageV6 } from "./racePageV6FlagCache.ts";
 
 function memory() {
   const map = new Map<string, string>();
@@ -39,13 +39,33 @@ test("Codex-fund: en anden konto i samme browser arver ikke den huskede vaerdi",
   assert.match(hook, /!rememberedFor\(remembered, userId\)\) setEnabled\(false\)/, "slukkes, saa snart sessionen er laest");
 });
 
-test("kun et kendt svar huskes; en fejl ({}) slukker nu uden at overskrive det huskede", () => {
+test("serverens svar laeses: true, false eller ukendt ({}, fejl)", () => {
   assert.equal(rememberedFromFlags({ race_page_v6: true }, "race_page_v6"), true);
   assert.equal(rememberedFromFlags({ race_page_v6: false }, "race_page_v6"), false);
   assert.equal(rememberedFromFlags({}, "race_page_v6"), null);
   assert.equal(rememberedFromFlags(null, "race_page_v6"), null);
   const hook = readFileSync(new URL("./racePageV6Flag.ts", import.meta.url), "utf8");
   assert.match(hook, /useState\(\(\) => readLastRacePageV6\(\)\)/, "foerste billede bruger den huskede vaerdi");
-  assert.match(hook, /if \(known !== null\) writeLastRacePageV6\(/);
   assert.match(hook, /setEnabled\(known === true\)/, "serverens svar vinder bagefter");
+});
+
+test("#7865 review-punkt e: en konto der har mistet kontakten faar aldrig v6 fra det huskede igen", () => {
+  const s = memory();
+  writeLastRacePageV6({ userId: "u1", on: true }, s);
+  // Serveren siger slukket: det huskede ryddes.
+  writeLastRacePageV6(rememberAfterAnswer({ race_page_v6: false }, "race_page_v6", "u1"), s);
+  assert.equal(readLastRacePageV6(s).on, false);
+  // Et ukendt svar ({} eller fejl) er ogsaa slukket og rydder det huskede.
+  writeLastRacePageV6({ userId: "u1", on: true }, s);
+  writeLastRacePageV6(rememberAfterAnswer({}, "race_page_v6", "u1"), s);
+  assert.equal(readLastRacePageV6(s).on, false);
+  writeLastRacePageV6({ userId: "u1", on: true }, s);
+  writeLastRacePageV6(rememberAfterAnswer(null, "race_page_v6", "u1"), s);
+  assert.equal(readLastRacePageV6(s).on, false);
+  // Kun et udtrykkeligt "til" for en kendt konto huskes.
+  assert.deepEqual(rememberAfterAnswer({ race_page_v6: true }, "race_page_v6", "u1"), { userId: "u1", on: true });
+  assert.deepEqual(rememberAfterAnswer({ race_page_v6: true }, "race_page_v6", null), { userId: null, on: false });
+  const hook = readFileSync(new URL("./racePageV6Flag.ts", import.meta.url), "utf8");
+  assert.match(hook, /writeLastRacePageV6\(rememberAfterAnswer\(flags, RACE_PAGE_V6_FLAG_KEY, await userIdPromise\)\)/, "hvert svar valideres og skrives");
+  assert.doesNotMatch(hook, /if \(known !== null\) writeLastRacePageV6/, "et ukendt svar efterlader ikke et husket 'til'");
 });
