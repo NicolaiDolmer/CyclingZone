@@ -28,6 +28,8 @@ function client(rows, counts = new Map(), { failKeys = new Set(), delay = null }
 }
 
 const reset = () => { stopConfigCacheSwitch(); clearFlagStageCache(); };
+// Rule 16: no wall clock. One fixed instant for every read that is not about expiry.
+const FIXED = { now: () => 1_000 };
 
 test("switch: only on (or true) shares; off, beta, missing and failures do not", async (t) => {
   t.after(reset);
@@ -47,8 +49,8 @@ test("measured: 3 server clients + 100 per-request clients read one flag 100 tim
   const run = async () => {
     const counts = new Map();
     const servers = [client(rows, counts), client(rows, counts), client(rows, counts)];
-    for (let i = 0; i < 100; i++) for (const c of servers) assert.equal(await readFlagStage(c, "some_flag"), "on");
-    for (let i = 0; i < 100; i++) assert.equal(await readFlagStage(client(rows, counts), "some_flag"), "on");
+    for (let i = 0; i < 100; i++) for (const c of servers) assert.equal(await readFlagStage(c, "some_flag", FIXED), "on");
+    for (let i = 0; i < 100; i++) assert.equal(await readFlagStage(client(rows, counts), "some_flag", FIXED), "on");
     return counts.get("some_flag");
   };
   reset();
@@ -65,7 +67,7 @@ test("on: engine switches are still read fresh every time", async (t) => {
   await refreshConfigCacheSwitch(client({ [CONFIG_CACHE_SWITCH_KEY]: "on" }));
   const counts = new Map();
   const c = client({ daily_training_enabled: "on" }, counts);
-  for (let i = 0; i < 5; i++) await readFlagStage(c, "daily_training_enabled");
+  for (let i = 0; i < 5; i++) await readFlagStage(c, "daily_training_enabled", FIXED);
   assert.equal(counts.get("daily_training_enabled"), 5);
 });
 
@@ -90,49 +92,53 @@ test("on: an admin change forgets the key for every client at once, also a read 
   const rows = { some_flag: "off" };
   const admin = client(rows);
   const other = client(rows);
-  assert.equal(await readFlagStage(other, "some_flag"), "off");
+  assert.equal(await readFlagStage(other, "some_flag", FIXED), "off");
   rows.some_flag = "on";
-  assert.equal(await readFlagStage(other, "some_flag"), "off", "remembered within the TTL");
+  assert.equal(await readFlagStage(other, "some_flag", FIXED), "off", "remembered within the TTL");
   clearFlagStageCache({ client: admin, key: "some_flag" }); // what the admin flag route does
-  assert.equal(await readFlagStage(other, "some_flag"), "on", "another client sees the change at once");
+  assert.equal(await readFlagStage(other, "some_flag", FIXED), "on", "another client sees the change at once");
 
   // A read that started before the change must not put the old value back.
   clearFlagStageCache({ client: admin, key: "some_flag" });
   let release;
   const slow = client({ some_flag: "old" }, new Map(), { delay: new Promise((r) => { release = r; }) });
-  const under = readFlagStage(slow, "some_flag");
+  const under = readFlagStage(slow, "some_flag", FIXED);
   clearFlagStageCache({ client: admin, key: "some_flag" });
   release();
   assert.equal(await under, "old", "the caller that asked still gets its answer");
   rows.some_flag = "new";
-  assert.equal(await readFlagStage(other, "some_flag"), "new", "the stale answer was not remembered");
+  assert.equal(await readFlagStage(other, "some_flag", FIXED), "new", "the stale answer was not remembered");
 });
 
 test("a flip either way empties the shared memory; stop returns to per client", async (t) => {
   t.after(reset);
   await refreshConfigCacheSwitch(client({ [CONFIG_CACHE_SWITCH_KEY]: "on" }));
   const rows = { some_flag: "a" };
-  assert.equal(await readFlagStage(client(rows), "some_flag"), "a");
+  assert.equal(await readFlagStage(client(rows), "some_flag", FIXED), "a");
   rows.some_flag = "b";
   await refreshConfigCacheSwitch(client({ [CONFIG_CACHE_SWITCH_KEY]: "off" }));
   await refreshConfigCacheSwitch(client({ [CONFIG_CACHE_SWITCH_KEY]: "on" }));
-  assert.equal(await readFlagStage(client(rows), "some_flag"), "b");
+  assert.equal(await readFlagStage(client(rows), "some_flag", FIXED), "b");
   stopConfigCacheSwitch();
   assert.equal(isConfigCacheShared(), false);
 });
 
 test("start asks at once, then on its interval; stop stops asking", async (t) => {
   t.after(reset);
+  t.mock.timers.enable({ apis: ["setInterval"] });
+  const settle = () => new Promise((r) => { setImmediate(r); });
   const counts = new Map();
   const c = client({ [CONFIG_CACHE_SWITCH_KEY]: "on" }, counts);
   startConfigCacheSwitch({ supabase: c, intervalMs: 5 });
   startConfigCacheSwitch({ supabase: c, intervalMs: 5 }); // a second start is ignored
-  await new Promise((r) => setTimeout(r, 30));
+  await settle();
+  assert.equal(counts.get(CONFIG_CACHE_SWITCH_KEY), 1, "asked once at start");
   assert.equal(isConfigCacheShared(), true);
-  const asked = counts.get(CONFIG_CACHE_SWITCH_KEY);
-  assert.ok(asked >= 2, `asked ${asked} times`);
+  t.mock.timers.tick(5); await settle();
+  t.mock.timers.tick(5); await settle();
+  assert.equal(counts.get(CONFIG_CACHE_SWITCH_KEY), 3, "then once per interval");
   stopConfigCacheSwitch();
-  await new Promise((r) => setTimeout(r, 20));
-  assert.equal(counts.get(CONFIG_CACHE_SWITCH_KEY), asked);
+  t.mock.timers.tick(50); await settle();
+  assert.equal(counts.get(CONFIG_CACHE_SWITCH_KEY), 3, "stop stops asking");
   assert.equal(isConfigCacheShared(), false);
 });
