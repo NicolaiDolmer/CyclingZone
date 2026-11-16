@@ -119,6 +119,8 @@ test("#8049: mærkerne er firkantede (5px), aldrig piller; ingen guld-knap; stro
 test("#8049: arkivmåneder og titelindekset hentes først ved klik eller søgning", () => {
   assert.match(v2Src, /patchNotesRecentUrl\(lang\)/);
   assert.match(v2Src, /const toggleMonth = [\s\S]*loadMonth\(m\)/);
-  assert.match(v2Src, /if \(!searching \|\|[\s\S]*patchNotesIndexUrl\(lang\)/);
+  // Indekset hentes først ved søgning, og kun ét pr. sprog (cache pr. sprog, Codex 16/11).
+  assert.match(v2Src, /if \(!searching\) return undefined;[\s\S]*indexCacheRef\.current\.get\(lang\)[\s\S]*patchNotesIndexUrl\(lang\)/);
+  assert.doesNotMatch(v2Src, /indexLoadedRef/);
   assert.match(v2Src, /markSeen\("patch_notes", recent\.seenKey\)/);
 });
