@@ -46,9 +46,8 @@ export interface RaceSpoilerState {
   openedStages: number[];
 }
 
-// Minimal form af supabase-klienten, som modulet bruger (tests giver en forfalskning).
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Db = any;
+// Samme (løse) type som featureStage.js giver klienten: ruterne og cronen sender den rigtige supabase-klient.
+type Db = Parameters<typeof readFlagStage>[0];
 interface DbError { code?: string; message?: string }
 
 // ── Rene hjælpere ─────────────────────────────────────────────────────────
