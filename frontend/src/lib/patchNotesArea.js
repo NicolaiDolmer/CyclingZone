@@ -16,15 +16,28 @@
 // Rene funktioner (node --test-venlige). Bruges af vite-pluginet ved build-tid,
 // så klienten får området færdigregnet i JSON'en og aldrig henter denne fil.
 import { AREA_BY_KEY } from "./patchNotesAreaData.js";
+import { PATCH_NOTE_AREAS, PATCH_NOTE_AREAS_WITH_OTHER, OTHER_AREA } from "./patchNotes.js";
 
-/** Områderne i ejerens faste rækkefølge (#8049). "other" er kun arkivets reserve. */
-export const AREAS = Object.freeze([
-  "tactics", "races", "engine", "training", "development", "market",
-  "academy", "board", "economy", "interface", "mobile", "help",
-]);
-export const OTHER_AREA = "other";
-export const ALL_AREAS = Object.freeze([...AREAS, OTHER_AREA]);
+export { OTHER_AREA };
+/** Områderne i ejerens faste rækkefølge (én kilde: lib/patchNotes.js). */
+export const AREAS = PATCH_NOTE_AREAS;
+export const ALL_AREAS = PATCH_NOTE_AREAS_WITH_OTHER;
 const AREA_SET = new Set(ALL_AREAS);
+
+/**
+ * Billede ved en gammel note (ejer 16/11, valg 4: kun ved ugens nyhed, genbrug et
+ * allerede godkendt PR-billede uden holdnavne, højst ca. 60 KB). Nye noter skriver
+ * selv `image` i data/patchNotes.js. Stien er relativ til sitets rod.
+ */
+export const IMAGE_BY_KEY = Object.freeze({
+  // Træn nu med det samme for alle (#7737): skærmen fra PR'ens godkendte billede, syntetisk rytter.
+  "7.451#0": "/patch-notes-images/train-now-instant-7737.webp",
+});
+
+export function resolveImage(change, key, images = IMAGE_BY_KEY) {
+  if (typeof change?.image === "string" && change.image.startsWith("/patch-notes-images/")) return change.image;
+  return (key && images[key]) || null;
+}
 
 export function isArea(value) {
   return typeof value === "string" && AREA_SET.has(value);
