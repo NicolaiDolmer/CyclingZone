@@ -967,13 +967,13 @@ features:
 
   - id: academy-page-v2-8081
     area: academy
-    title_en: Academy page with overview and tabs, plus age focus
-    title_da: Akademisiden med overblik og faner, plus aldersfokus
+    title_en: Academy page with tabs and age focus
+    title_da: Akademisiden med faner og aldersfokus
     state: building
     ssot: docs/YOUTH_RULES.md
     epic: 8081
     verified: 2026-11-16
-    note: Kontakt academy_page_v2_8081 seedes off (migration 2026-11-16-8081). Ugens træk bruger endnu ikke aldersfokus; tændes ikke før det.
+    note: Slukket; trækket læser ikke aldersfokus.
     decision: ejer-beslutning
     decide_by: 2026-11-30
 
