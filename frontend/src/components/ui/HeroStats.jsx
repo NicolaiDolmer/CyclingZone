@@ -25,12 +25,17 @@
 // 5 tal og opefter holder rækkeantallet på to, som før #5008 — ingen tal
 // skjules (TASTE P10 kræver stadig de samme tal på mobil som desktop).
 //
+// #7778 udgave E: `flush` udelader rækkens egen top-streg og luft, fordi
+// løbshovedet selv tegner hairlines mellem sine rækker. Uden `flush` er alt uændret.
+//
 // props:
 //   items — [{ label, value, sub? }]
-export function HeroStats({ items, className = "" }) {
+//   flush — uden mt-5/border-t/pt-4 (default false)
+export function HeroStats({ items, className = "", flush = false }) {
+  const frame = flush ? "" : "mt-5 border-t border-cz-border pt-4 ";
   const gridBase = items.length >= 5
-    ? "mt-5 grid grid-cols-3 gap-x-4 gap-y-4 border-t border-cz-border pt-4 sm:flex sm:gap-0 sm:overflow-x-auto"
-    : "mt-5 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-cz-border pt-4 sm:flex sm:gap-0 sm:overflow-x-auto";
+    ? `${frame}grid grid-cols-3 gap-x-4 gap-y-4 sm:flex sm:gap-0 sm:overflow-x-auto`
+    : `${frame}grid grid-cols-2 gap-x-6 gap-y-4 sm:flex sm:gap-0 sm:overflow-x-auto`;
   return (
     <div
       className={`${gridBase} ${className}`.trim()}

@@ -38,7 +38,9 @@ test("DashboardPage gater bestyrelsens evaluering paa boardPlanMissing og viser 
   assert.match(src, /\{boardPlanMissing && !boardPlanExpired && \([\s\S]{0,200}dashboard:nextActions\.boardPlanMissing/);
   // Codex P2: en UDLOEBET plan (feedback.expired fra backend) beholder sin evaluering.
   assert.match(src, /boardPlanExpired = [^\n]*feedback\.expired\.headline/);
-  assert.match(src, /hasSignedBoardPlan\(boardStatus\?\.plans\)/);
+  // #6494: the core read now lives in the data layer.
+  const dataSrc = readFileSync(fileURLToPath(new URL("../data/dashboardData.ts", import.meta.url)), "utf8");
+  assert.match(dataSrc, /hasSignedBoardPlan\(boardStatus\?\.plans\)/);
 });
 
 // Loader den ÆGTE board.json gennem en ægte i18next-icu-instans, så testen

@@ -186,11 +186,17 @@ function repoRoot(abs) {
   if (!common || !guardCommon || common !== guardCommon) return null;
   return gitOut(dir, ['rev-parse', '--show-toplevel']);
 }
-function defaultListWorktrees(cwd) {
+function listWorktreesIn(dir) {
   try {
-    return execFileSync('git', ['-C', cwd, 'worktree', 'list', '--porcelain'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+    return execFileSync('git', ['-C', dir, 'worktree', 'list', '--porcelain'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
       .split('\n').filter((l) => l.startsWith('worktree ')).map((l) => l.slice(9).trim());
   } catch { return []; }
+}
+// #8206: staar kommandoen uden for et repo (scratchpad), kender cwd ingen worktrees;
+// saa beskyttes vagtens eget repos worktrees i stedet for ingen.
+function defaultListWorktrees(cwd) {
+  const own = listWorktreesIn(cwd);
+  return own.length ? own : listWorktreesIn(dirname(fileURLToPath(import.meta.url)));
 }
 function defaultReadScript(abs) {
   try { if (!existsSync(abs) || statSync(abs).size > 2e6) return null; return readFileSync(abs, 'utf8'); } catch { return null; }

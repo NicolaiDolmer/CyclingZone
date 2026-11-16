@@ -1,0 +1,183 @@
+{
+  "before": {
+    "base": "704f5a874f6cc8fd339960522450f011e789b58d",
+    "note": "Rebased on main 9ad395c7 with six preserved night WIP files; original patch and stash retained privately.",
+    "entry": "index-BduEkxRP.js",
+    "sha256": "dd33c27c08be47a69be339afcee56118d15a3e6e1a9cec5857149a52cfc60aa6",
+    "bundleKB": 1442.1
+  },
+  "after": {
+    "note": "Reviewed frozen P1-v2 working checkpoint; no claim that the broader Dashboard migration is complete.",
+    "entry": "index-DLVkrtaD.js",
+    "sha256": "2edbf44fa46f0304794aaca82b7618b245e56967abb024a8b275579125e78f29",
+    "sourceArchiveSha256": "249dce5da8b2bffe53068303531e4df42a5821607b4ee631931d1a768368c559",
+    "bundleKB": 1444.8
+  },
+  "unchangedLimitKB": 1432.2,
+  "measurements": {
+    "before": [
+      {
+        "viewport": "mobile",
+        "scenario": "price-and-end",
+        "priceMs": 420,
+        "endMs": 420,
+        "removalMs": null,
+        "requests": {
+          "GET /rest/v1/auction_bids": 1,
+          "GET /rest/v1/auction_proxy_bids": 1,
+          "GET /rest/v1/auctions": 1,
+          "GET /rest/v1/rider_watchlist": 1,
+          "GET /rest/v1/teams": 1,
+          "HEAD /rest/v1/riders": 3
+        },
+        "requestCount": 8
+      },
+      {
+        "viewport": "mobile",
+        "scenario": "completion",
+        "priceMs": null,
+        "endMs": null,
+        "removalMs": 447,
+        "requests": {
+          "GET /rest/v1/auction_bids": 1,
+          "GET /rest/v1/auction_proxy_bids": 1,
+          "GET /rest/v1/auctions": 1,
+          "GET /rest/v1/rider_watchlist": 1,
+          "GET /rest/v1/teams": 1,
+          "HEAD /rest/v1/riders": 3
+        },
+        "requestCount": 8
+      },
+      {
+        "viewport": "mobile",
+        "scenario": "unrelated-bid",
+        "priceMs": null,
+        "endMs": null,
+        "removalMs": null,
+        "requests": {
+          "GET /rest/v1/auction_bids": 1,
+          "GET /rest/v1/auction_proxy_bids": 1,
+          "GET /rest/v1/auctions": 1,
+          "GET /rest/v1/rider_watchlist": 1,
+          "GET /rest/v1/teams": 1,
+          "HEAD /rest/v1/riders": 3
+        },
+        "requestCount": 8
+      },
+      {
+        "viewport": "desktop",
+        "scenario": "price-and-end",
+        "priceMs": 423,
+        "endMs": 423,
+        "removalMs": null,
+        "requests": {
+          "GET /rest/v1/auction_bids": 1,
+          "GET /rest/v1/auction_proxy_bids": 1,
+          "GET /rest/v1/auctions": 1,
+          "GET /rest/v1/rider_watchlist": 1,
+          "GET /rest/v1/teams": 1,
+          "HEAD /rest/v1/riders": 3
+        },
+        "requestCount": 8
+      },
+      {
+        "viewport": "desktop",
+        "scenario": "completion",
+        "priceMs": null,
+        "endMs": null,
+        "removalMs": 443,
+        "requests": {
+          "GET /rest/v1/auction_bids": 1,
+          "GET /rest/v1/auction_proxy_bids": 1,
+          "GET /rest/v1/auctions": 1,
+          "GET /rest/v1/rider_watchlist": 1,
+          "GET /rest/v1/teams": 1,
+          "HEAD /rest/v1/riders": 3
+        },
+        "requestCount": 8
+      },
+      {
+        "viewport": "desktop",
+        "scenario": "unrelated-bid",
+        "priceMs": null,
+        "endMs": null,
+        "removalMs": null,
+        "requests": {
+          "GET /rest/v1/auction_bids": 1,
+          "GET /rest/v1/auction_proxy_bids": 1,
+          "GET /rest/v1/auctions": 1,
+          "GET /rest/v1/rider_watchlist": 1,
+          "GET /rest/v1/teams": 1,
+          "HEAD /rest/v1/riders": 3
+        },
+        "requestCount": 8
+      }
+    ],
+    "after": [
+      {
+        "viewport": "mobile",
+        "scenario": "price-and-end",
+        "priceMs": 11,
+        "endMs": 11,
+        "removalMs": null,
+        "requests": {},
+        "requestCount": 0
+      },
+      {
+        "viewport": "mobile",
+        "scenario": "completion",
+        "priceMs": null,
+        "endMs": null,
+        "removalMs": 5,
+        "requests": {},
+        "requestCount": 0
+      },
+      {
+        "viewport": "mobile",
+        "scenario": "unrelated-bid",
+        "priceMs": null,
+        "endMs": null,
+        "removalMs": null,
+        "requests": {},
+        "requestCount": 0
+      },
+      {
+        "viewport": "desktop",
+        "scenario": "price-and-end",
+        "priceMs": 12,
+        "endMs": 12,
+        "removalMs": null,
+        "requests": {},
+        "requestCount": 0
+      },
+      {
+        "viewport": "desktop",
+        "scenario": "completion",
+        "priceMs": null,
+        "endMs": null,
+        "removalMs": 9,
+        "requests": {},
+        "requestCount": 0
+      },
+      {
+        "viewport": "desktop",
+        "scenario": "unrelated-bid",
+        "priceMs": null,
+        "endMs": null,
+        "removalMs": null,
+        "requests": {},
+        "requestCount": 0
+      }
+    ]
+  },
+  "verification": {
+    "helperTests": 32,
+    "frontendUnits": 5626,
+    "targetedBrowserCases": 4,
+    "strictTypecheck": "passed",
+    "frontendLint": "passed",
+    "build": "passed",
+    "bundle": "failed; external #6165/#8040 room dependency",
+    "fullE2E": "not claimed for this checkpoint"
+  }
+}

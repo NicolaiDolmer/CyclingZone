@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 // optræde i rider-select-listen igen.
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const auctionsPageSource = readFileSync(join(__dirname, "AuctionsPage.jsx"), "utf8");
+const auctionsPageSource = readFileSync(join(__dirname, "../data/auctionData.ts"), "utf8");
 
 // rider:rider_id(...) embedder evnerne via et ${ABILITY_SELECT}-interpolations-
 // token (ikke literal kolonner i kildeteksten), så det inderste join har ingen

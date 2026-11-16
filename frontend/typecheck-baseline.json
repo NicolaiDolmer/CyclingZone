@@ -626,10 +626,6 @@
   "src/components/CountdownRing.jsx": {
     "TS2362": 1
   },
-  "src/components/DevTransitionCard.jsx": {
-    "TS2339": 5,
-    "TS2345": 1
-  },
   "src/components/FeedbackModal.jsx": {
     "TS2345": 5,
     "TS2739": 2,
@@ -644,10 +640,6 @@
     "TS2322": 2,
     "TS2339": 10,
     "TS2741": 1
-  },
-  "src/components/GlobalRankWidget.jsx": {
-    "TS2339": 7,
-    "TS2353": 1
   },
   "src/components/HeroAgonyCard.jsx": {
     "TS2322": 2,
@@ -665,10 +657,6 @@
     "TS2345": 6,
     "TS2589": 1,
     "TS2741": 2
-  },
-  "src/components/MaidenWinMomentCard.jsx": {
-    "TS2339": 4,
-    "TS2345": 3
   },
   "src/components/MyLatestResultCard.jsx": {
     "TS2322": 1,
@@ -751,11 +739,6 @@
   },
   "src/components/StatsToggle.jsx": {
     "TS2339": 1
-  },
-  "src/components/SurveyInviteCard.jsx": {
-    "TS18047": 1,
-    "TS2339": 1,
-    "TS2345": 1
   },
   "src/components/TeamClubTab.jsx": {
     "TS2339": 6,
@@ -1301,9 +1284,6 @@
   "src/hooks/useDocumentHead.test.js": {
     "TS2339": 2,
     "TS2740": 7
-  },
-  "src/hooks/useFirstRaceCard.js": {
-    "TS2345": 1
   },
   "src/hooks/useForumHighlights.js": {
     "TS2322": 1,
@@ -2285,19 +2265,16 @@
     "TS2741": 2
   },
   "src/pages/AuctionsPage.jsx": {
-    "TS18046": 1,
-    "TS18047": 7,
+    "TS18047": 4,
     "TS2322": 21,
-    "TS2339": 52,
-    "TS2345": 14,
+    "TS2339": 16,
+    "TS2345": 8,
     "TS2349": 2,
     "TS2353": 3,
     "TS2362": 1,
     "TS2363": 1,
-    "TS2698": 4,
     "TS2739": 2,
-    "TS2741": 3,
-    "TS2769": 1
+    "TS2741": 3
   },
   "src/pages/BoardPage.jsx": {
     "TS18047": 2,
@@ -2321,15 +2298,11 @@
     "TS2741": 3
   },
   "src/pages/DashboardPage.jsx": {
-    "TS18046": 3,
-    "TS18047": 9,
-    "TS2322": 23,
-    "TS2339": 129,
-    "TS2345": 17,
-    "TS2353": 1,
+    "TS2322": 20,
+    "TS2339": 6,
+    "TS2345": 2,
     "TS2362": 3,
     "TS2363": 3,
-    "TS2698": 1,
     "TS2741": 8
   },
   "src/pages/FinancePage.jsx": {
@@ -2640,10 +2613,10 @@
     "TS2741": 3
   },
   "src/pages/TransfersPage.jsx": {
-    "TS18047": 4,
-    "TS2322": 5,
-    "TS2339": 40,
-    "TS2345": 22,
+    "TS18047": 2,
+    "TS2322": 4,
+    "TS2339": 6,
+    "TS2345": 18,
     "TS2353": 2,
     "TS2362": 1,
     "TS2363": 1,

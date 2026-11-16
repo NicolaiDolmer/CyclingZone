@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(__dirname, "DashboardPage.jsx"), "utf8");
+const dataSource = readFileSync(join(__dirname, "..", "data", "dashboardData.ts"), "utf8"); // #6494: server data moved to the data layer
 
 test("#1488 board-kortet er gated på BÅDE modul-synlighed OG en etableret board", () => {
   assert.match(
@@ -31,13 +32,13 @@ test("#1488 board-kortet er gated på BÅDE modul-synlighed OG en etableret boar
 test("#1488 board udledes fra activePlan (kun non-null når en plan findes)", () => {
   // activePlan = plans["1yr"] || plans["3yr"] || plans["5yr"] || null
   assert.match(
-    source,
+    dataSource,
     /boardStatus\?\.plans\?\.\["1yr"\][\s\S]*?\["3yr"\][\s\S]*?\["5yr"\][\s\S]*?\|\|\s*null/,
     "activePlan skal falde tilbage til null når ingen plan findes",
   );
   assert.match(
-    source,
-    /setBoard\(activePlan\?\.board\s*\|\|\s*null\)/,
+    dataSource,
+    /board: activePlan\?\.board\s*\|\|\s*null/,
     "board skal sættes til activePlan?.board || null",
   );
 });

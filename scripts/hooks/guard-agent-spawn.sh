@@ -48,6 +48,10 @@
 set -u
 
 INPUT=$(cat 2>/dev/null || true)
+# #8206: koer i den mappe kommandoen koerer i (hook-inputtets cwd), ikke hook-processens.
+# shellcheck source=lib/hook-cwd.sh
+. "$(dirname "$0")/lib/hook-cwd.sh"
+hook_enter_cwd "$INPUT"
 [ -z "$INPUT" ] && exit 0
 
 case "$INPUT" in
@@ -62,11 +66,12 @@ command -v node >/dev/null 2>&1 || exit 0
 if [ -n "${CZ_AGENT_GUARD_RUN_DIR:-}" ]; then
   RUN_DIR="$CZ_AGENT_GUARD_RUN_DIR"
 else
-  ROOT=$(git rev-parse --show-toplevel 2>/dev/null || true)
+  # #8206: cwd's repo, ellers hookens eget repo (cwd kan ligge uden for repoet).
+  ROOT=$(hook_repo_root || true)
   [ -z "$ROOT" ] && exit 0
   # Worktrees deler hoved-repoets register: ellers ville hvert worktree have sit
   # eget loft, og loftet ville i praksis ikke findes.
-  COMMON=$(git rev-parse --git-common-dir 2>/dev/null || true)
+  COMMON=$(git -C "$ROOT" rev-parse --git-common-dir 2>/dev/null || true)
   if [ -n "$COMMON" ]; then
     case "$COMMON" in
       /*|[A-Za-z]:*) ABS="$COMMON" ;;

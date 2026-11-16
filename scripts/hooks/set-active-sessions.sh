@@ -31,7 +31,11 @@
 
 set -u
 
-REPO="$(git rev-parse --show-toplevel 2>/dev/null)"
+# #8206: cwd's repo, ellers hookens eget repo (hook-cwd kan vaere en undermappe
+# eller ligge uden for repoet).
+# shellcheck source=lib/hook-cwd.sh
+. "$(dirname "$0")/lib/hook-cwd.sh"
+REPO="$(hook_repo_root)"
 [ -z "$REPO" ] && exit 0
 
 # Guard to CyclingZone/cycling-manager only (same pattern as

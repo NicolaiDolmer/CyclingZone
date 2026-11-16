@@ -193,9 +193,9 @@ const KNOWN_UNSCOPED_LEAGUE_READERS = Object.freeze({
     count: 1, blocksYouthSeed: false,
     reason: "id→tier-opslag for allerede valgte løb; itererer ikke puljerne.",
   },
-  "frontend/src/pages/DashboardPage.jsx": {
+  "frontend/src/data/dashboardData.ts": {
     count: 1, blocksYouthSeed: true,
-    reason: "Læser Supabase direkte; pulje-etiketter/-træ uden squad-filter (spec §7).",
+    reason: "Dashboardets core-opslag (#6494, flyttet fra DashboardPage.jsx); pulje-etiketter/-træ uden squad-filter (spec §7).",
   },
   "frontend/src/pages/RaceCentrePage.jsx": {
     count: 1, blocksYouthSeed: true,

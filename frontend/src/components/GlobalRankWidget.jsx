@@ -1,8 +1,6 @@
-import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
-import { supabase } from "../lib/supabase";
-import { getGlobalRank } from "../lib/rankingsApi.ts";
+import { useGlobalRankWidgetData } from "../data/dashboardCards.ts";
 import { formatNumber } from "../lib/intl";
 import { Card, ArrowUpIcon, ArrowDownIcon } from "./ui";
 
@@ -11,35 +9,12 @@ import { Card, ArrowUpIcon, ArrowDownIcon } from "./ui";
 // useGlobalRank-hooken, som henter ALLE hold (unødvendigt tungt for et lille kort).
 export default function GlobalRankWidget() {
   const { t } = useTranslation("globalRank");
-  const [row, setRow] = useState(null);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        const { data: myTeam } = await supabase.from("teams").select("id").eq("user_id", user.id).maybeSingle();
-        if (!myTeam) return;
-        const [{ data: mv }, { data: weekly }] = await Promise.all([
-          getGlobalRank(myTeam.id),
-          supabase.from("global_rank_weekly_snapshot").select("global_rank").eq("team_id", myTeam.id).maybeSingle(),
-        ]);
-        if (mv) {
-          const currentRank = mv.global_rank == null ? null : Number(mv.global_rank);
-          const prevRank = weekly?.global_rank == null ? null : Number(weekly.global_rank);
-          const movement = (currentRank == null || prevRank == null) ? null : prevRank - currentRank;
-          setRow({ ...mv, global_rank: currentRank, movement });
-        }
-      } finally {
-        setLoaded(true);
-      }
-    })();
-  }, []);
+  // #6494: own team only, through the shared scope (no extra auth/teams lookup).
+  const row = useGlobalRankWidgetData();
 
   // Ingen data (inaktiv, eller endnu ingen resultater) → widget renderer ingenting,
   // ikke et misvisende tomt kort.
-  if (!loaded || !row || row.global_rank == null) return null;
+  if (!row || row.global_rank == null) return null;
 
   const up = row.movement > 0;
 

@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-151 poster: live 117 · beta 2 · dormant 10 · building 12 · spec 1 · idea 2 · retired 7. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+151 poster: live 118 · beta 1 · dormant 10 · building 12 · spec 1 · idea 2 · retired 7. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -37,13 +37,12 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## market
 
-**live:** Bid commitment gate (`market-commitment`) 2026-11-12 · Sale escrow (`sale-escrow`) 2026-11-15
+**live:** Auto-accept price (`market-auto-accept`) 2026-11-15 · Bid commitment gate (`market-commitment`) 2026-11-12 · Sale escrow (`sale-escrow`) 2026-11-15
 
 **arkiv:** `auctions` · `direct-transfers` · `rider-swaps` · `rider-valuation-v5`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
-|Auto-accept price (`market-auto-accept`)|beta|`auto_accept_enabled`|[TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md)|#2176|2026-11-12|-|
 |Release waits for the end of a stage race (`release-defer-stage-race`)|building|-|[TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md)|#8153|2026-11-15|Kontakt release_defer_8153 (seed off) kommer med migrationen; slukket = som i dag.|
 |AI and unsolicited bids (`ai-unsolicited-bids`)|idea|-|[TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md)|#1310|2026-09-06|Findes ikke i kode.|
 |Market value blend sweep (`market-value-blend`)|retired|-|[ECONOMY_RULES](ECONOMY_RULES.md)|#3448|2026-10-15|Afløst af v6 (#4449).|

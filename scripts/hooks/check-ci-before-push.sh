@@ -28,6 +28,10 @@ set -u
 # --- /#684 TRACE ---
 
 INPUT=$(cat 2>/dev/null || true)
+# #8206: koer i den mappe kommandoen koerer i (hook-inputtets cwd), ikke hook-processens.
+# shellcheck source=lib/hook-cwd.sh
+. "$(dirname "$0")/lib/hook-cwd.sh"
+hook_enter_cwd "$INPUT"
 
 # Bail-out: kun Bash tool-calls
 case "$INPUT" in

@@ -286,6 +286,11 @@ const FLAG_GATED_EMPTY_TABLES = new Map([
 // Detector B: endpoints der er korrekt orphaned i frontend (cron, admin-curl, webhook)
 // Match-form: HTTP method + path-pattern (samme som routes-listen).
 const WHITELIST_ORPHANED_ENDPOINTS = new Set([
+  // #8153 (PR #8172): frigivelse midt i etapeloeb, API-first bag den slukkede
+  // kontakt release_defer_8153. Skaermdelen ("Leaves after {race}") er planlagt
+  // i uge 47 (ugeplan paa #7911, 16/11). Fjern entry'en, naar skaermdelen er
+  // merget: grep efter "pending-releases" i frontend/src.
+  "GET /me/pending-releases",
   // #6181/#7874: requireAdmin-gated manual triage for stuck sale escrows.
   // Used by ops through the API, intentionally no player/frontend caller.
   // Remove these entries if the routes are removed or an admin UI is wired.

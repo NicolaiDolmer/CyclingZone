@@ -11,7 +11,14 @@
     "hero": {
       "stageLocks": "Etappe {number} sluit om {time} · {countdown}",
       "locks": "Sluit om {time} · {countdown}",
-      "notScheduled": "Etappe {number} heeft nog geen starttijd"
+      "notScheduled": "Etappe {number} heeft nog geen starttijd",
+      "gapToLead": "{gap} op de leider"
+    },
+    "strip": {
+      "earlier": "Eerdere etappes",
+      "later": "Latere etappes",
+      "you": "Jij #{rank}",
+      "plan": "{done} van {total} klaar"
     },
     "route": {
       "aria": "Parcours van de etappe",
@@ -42,7 +49,6 @@
       "colRecord": "Wat het verslag laat zien",
       "step": "Stap {number}",
       "km": "km {km}",
-      "noRiders": "Geen van je renners reed deze etappe.",
       "noOrders": "Je plan voor deze etappe kon niet worden geladen. Probeer het later opnieuw.",
       "mark": {
         "notSeen": "Niet gezien in het verslag",

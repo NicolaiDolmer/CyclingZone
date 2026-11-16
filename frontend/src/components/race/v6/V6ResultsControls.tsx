@@ -19,11 +19,13 @@ export interface V6ResultsControlsProps {
   /** Antal rækker efter filtrering og i alt; tælleren vises kun mens der filtreres. */
   shown: number;
   total: number;
+  /** #7865: filtrerer tabellen selv lige nu? Mit hold kan ejes af holdvælgeren; uden = afledt af state. */
+  counting?: boolean;
 }
 
-export default function V6ResultsControls({ state, onChange, hasMyTeam, shown, total }: V6ResultsControlsProps) {
+export default function V6ResultsControls({ state, onChange, hasMyTeam, shown, total, counting }: V6ResultsControlsProps) {
   const { t } = useTranslation("results");
-  const filtering = isFiltering(state);
+  const filtering = counting ?? isFiltering(state);
   return (
     <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2" data-results-controls="">
       <span className="relative inline-flex min-w-0 basis-full items-center sm:max-w-72 sm:flex-1 sm:basis-auto">

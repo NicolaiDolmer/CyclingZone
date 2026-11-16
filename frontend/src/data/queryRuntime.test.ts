@@ -118,3 +118,24 @@ test("continuous realtime invalidations share an active read and perform one tra
   assert.deepEqual(runtime.client.getQueryData(key), ["latest"]);
   unsubscribe(); runtime.client.clear();
 });
+
+test("frameScheduler coalesces batches into one flush and a timer backs up missing frames", async () => {
+  const { frameScheduler } = await import("./queryRuntime.ts");
+  const frames: Array<() => void> = [];
+  const timers: Array<() => void> = [];
+  const schedule = frameScheduler(run => frames.push(run), run => timers.push(run));
+  const ran: number[] = [];
+  schedule(() => ran.push(1));
+  schedule(() => ran.push(2));
+  assert.equal(frames.length, 1, "one pending flush for both batches");
+  frames[0]();
+  assert.deepEqual(ran, [1, 2]);
+  timers[0]();
+  assert.deepEqual(ran, [1, 2], "the backup timer is a no-op after the frame ran");
+  // Hidden tab: no frame fires, the timer delivers.
+  schedule(() => ran.push(3));
+  timers[1]();
+  assert.deepEqual(ran, [1, 2, 3]);
+  frames[1]();
+  assert.deepEqual(ran, [1, 2, 3]);
+});

@@ -5,7 +5,8 @@
 // Mobil først (valg 19): et kort pr. rytter, trinnene under hinanden med planen
 // over det optegnelsen viser. Fra md: planen og optegnelsen side om side.
 // Data: etapens optegnelse (tidslinjen) og holdets egne ordrer; intet andet hold
-// læses. Uden optegnelse står en ærlig tom tilstand, aldrig en gættet plan.
+// læses. Uden optegnelse vises intet her, aldrig en gættet plan: #7865 sætter den
+// låste oversigt over roller, indsats og holdplan under (RacePageV6), som i dag.
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useStageTimeline } from "../../../hooks/useStageTimeline.js";
@@ -19,7 +20,7 @@ import { isTimeTrialProfile, type StagePlanTask, type StagePlanTrigger } from ".
 import { teamPlanRouteFromProfile } from "../tacticsReady7864.ts";
 import type { ResultRow, StageProfile } from "../stagePageV2/stagePageV2Model.ts";
 import { RiderLink, Section, SectionHeader, SkeletonLines } from "../stagePageV2/ui.ts";
-import type { StageResultsState } from "./racePageV6Model.ts";
+import { tacticsAfterView, type StageResultsState } from "./racePageV6Model.ts";
 import { planVsActual, type PlanStep, type StageRolesLike, type StepLine, type StepMark, type TeamOrdersLike } from "./planVsActualModel.ts";
 
 type IconComponent = (props: { size?: number; className?: string; "aria-hidden"?: boolean | "true" }) => ReactNode;
@@ -173,21 +174,28 @@ export default function V6TacticsAfter({ raceId, stageNumber, isStageRace, resul
   const title = t("racePageV6.tacticsAfter.title");
   const meta = isStageRace ? t("racePageV6.tacticsAfter.metaStage", { number: stageNumber }) : t("racePageV6.tacticsAfter.metaRace");
 
+  // #7865 (punkt 3): enkeltstart/holdtidskørsel, en etape uden optegnelse og en etape
+  // uden egne ryttere i optegnelsen viser intet her; den låste oversigt under står alene.
+  const view = tacticsAfterView({
+    timeTrial,
+    resultsState,
+    timelineLoading: loading,
+    timelineMissing: !timeline || error,
+    ordersPending: Boolean(raceId) && !knownOrders,
+    ordersMissing: !knownOrders?.value,
+    riderCount: riders.length,
+  });
+  if (view === "hidden") return null;
+
   let body: ReactNode;
-  if (timeTrial) {
-    body = <p className="m-0 border-t border-cz-border py-2.5 text-sm text-cz-3">{t("stagePlan.timeTrial")}</p>;
-  } else if (resultsState === "failed") {
+  if (view === "error") {
     // Uden etapens resultater mangler placeringerne og hvem der kørte: ærlig fejl, ingen halv sammenligning.
     body = resultsErrorSlot;
-  } else if (resultsState === "loading" || loading || (raceId && !knownOrders && !error)) {
+  } else if (view === "loading") {
     body = <SkeletonLines lines={4} />;
-  } else if (!timeline || error) {
-    body = <p className="m-0 border-t border-cz-border py-2.5 text-sm text-cz-3">{t("stagePlan.recap.pending")}</p>;
-  } else if (!knownOrders?.value) {
+  } else if (view === "no_orders") {
     // Ukendte ordrer: hellere ærligt "kunne ikke hentes" end "ingen ryttere" eller en gættet plan.
     body = <p className="m-0 border-t border-cz-border py-2.5 text-sm text-cz-3">{t("racePageV6.tacticsAfter.noOrders")}</p>;
-  } else if (!riders.length) {
-    body = <p className="m-0 border-t border-cz-border py-2.5 text-sm text-cz-3">{t("racePageV6.tacticsAfter.noRiders")}</p>;
   } else {
     body = (
       <>

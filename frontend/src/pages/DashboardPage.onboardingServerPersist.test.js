@@ -22,10 +22,12 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(__dirname, "DashboardPage.jsx"), "utf8");
+const dataSource = readFileSync(join(__dirname, "..", "data", "dashboardData.ts"), "utf8"); // #6494: server data moved to the data layer
 
 test("#2439 dismissOnboarding kalder POST /api/me/onboarding-progress/dismiss (server-persisteret, ikke kun sessionStorage)", () => {
+  assert.match(source, /dashboard\.dismissOnboardingOnServer\(\)/);
   assert.match(
-    source,
+    dataSource,
     /me\/onboarding-progress\/dismiss/,
     "dismissOnboarding skal kalde det server-persisterede dismiss-endpoint",
   );
@@ -34,7 +36,7 @@ test("#2439 dismissOnboarding kalder POST /api/me/onboarding-progress/dismiss (s
 test("#2439 progress-fetch overstyrer lokal state fra server-svarets dismissed/established (cross-device/session sandhed)", () => {
   assert.match(
     source,
-    /prog\.dismissed\s*\|\|\s*prog\.established/,
+    /onboardingProgress\?\.dismissed\s*\|\|\s*onboardingProgress\?\.established/,
     "et tidligere server-dismiss eller et etableret hold skal sætte onboardingDismissed uden nyt klik",
   );
 });

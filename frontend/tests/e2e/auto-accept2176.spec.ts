@@ -12,8 +12,8 @@ import type { Page, TestInfo } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
-async function captureBeta2176(page: Page, info: TestInfo, name: string) {
-  const send = page.getByRole("button", { name: "Send", exact: true });
+async function captureBeta2176(page: Page, info: TestInfo, name: string, action = "Send") {
+  const send = page.getByRole("button", { name: action, exact: true });
   // Keep the real form action above the fixed mobile navigation in evidence.
   await send.evaluate(element => element.scrollIntoView({ block: "center", inline: "nearest" }));
   await expect(send).toBeInViewport({ ratio: 1 });
@@ -87,10 +87,20 @@ async function setup(page: Page, { enabled = true, seller = false, listingEligib
   await page.goto(`/transfers?tab=${seller ? "received" : "market"}`);
   await expect(page.getByRole("button", { name: seller ? "Modbud" : /Ada Pedersen/, exact: seller })).toBeVisible({ timeout: 20000 });
 }
-async function openBuyer(page: Page) {
+// #8016 variant B: beloeb og laengde vaelges paa koebers kort; dialogen er bekraeftelsen.
+async function openCard(page: Page) {
   await setup(page);
   await page.getByRole("button", { name: /Ada Pedersen/ }).click();
-  await page.getByRole("button", { name: "Start auktion", exact: true }).click();
+  return page.getByTestId("buyer-card-8016");
+}
+async function chooseAuction(card: ReturnType<Page["getByTestId"]>) {
+  await card.getByRole("button", { name: /^Start auktion\s*Offentlig/ }).click();
+}
+async function openBuyer(page: Page, amount = "600000") {
+  const card = await openCard(page);
+  await chooseAuction(card);
+  await card.getByLabel("Dit åbningsbud (CZ$)").fill(amount);
+  await card.getByRole("button", { name: "Start auktion", exact: true }).click();
   return page.getByRole("dialog");
 }
 test("OFF preserves direct negotiations and shows no start dialog", async ({ page }) => {
@@ -115,18 +125,70 @@ test("seller cannot send a counter at or above the current auto-price", async ({
   await expect(page.getByRole("button", { name: "Send modbud", exact: true })).toBeDisabled();
 });
 test("buyer uses free active duration, immediate end preview and Escape", async ({ page }) => {
-  const dialog = await openBuyer(page);
-  await expect(dialog.getByLabel("Dit bud (CZ$)")).toHaveValue("600000");
-  await expect(dialog).toContainText("Dit bud binder pengene, så længe du fører.");
+  const card = await openCard(page);
+  await chooseAuction(card);
+  await card.getByLabel("Dit åbningsbud (CZ$)").fill("600000");
+  await card.getByLabel("timer", { exact: true }).fill("0");
+  await card.getByLabel("min", { exact: true }).fill("29");
+  await expect(card.getByRole("button", { name: "Start auktion", exact: true })).toBeDisabled();
+  await card.getByLabel("min", { exact: true }).fill("30");
+  await expect(card.getByRole("button", { name: "Start auktion", exact: true })).toBeEnabled();
+  await expect(card.getByTestId("buyer-card-summary")).toHaveText(
+    "Starter en offentlig auktion: 600.000 CZ$ i 0 t 30 min. Pengene bindes, mens du fører."
+  );
+  await card.getByRole("button", { name: "Start auktion", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByTestId("buyer-auction-confirm-rows")).toContainText("starter en auktion");
+  await expect(dialog.getByTestId("buyer-auction-confirm-rows")).toContainText("Mens du fører");
   await expect(dialog).toContainText("08:00-24:00");
-  await dialog.getByLabel("timer", { exact: true }).fill("0");
-  await dialog.getByLabel("min", { exact: true }).fill("29");
-  await expect(dialog.getByRole("button", { name: "Start auktion", exact: true })).toBeDisabled();
-  await dialog.getByLabel("min", { exact: true }).fill("30");
-  await expect(dialog.getByRole("button", { name: "Start auktion", exact: true })).toBeEnabled();
   await expect(dialog).toContainText("11.30");
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
+});
+test("#8016: an amount for the other choice offers a one-tap switch and keeps the amount", async ({ page }) => {
+  const card = await openCard(page);
+  // Kortet aabner paa udbudsprisen og buddet.
+  await expect(card.getByLabel("Dit tilbud (CZ$)")).toHaveValue("200000");
+  await expect(card.getByTestId("listing-auto-price")).toContainText(/600\.000/);
+  await card.getByLabel("Dit tilbud (CZ$)").fill("650000");
+  await expect(card.getByTestId("buyer-card-error")).toHaveText("Tilbud fra 600.000 CZ$ går gennem en auktion.");
+  await expect(card.getByRole("button", { name: "Send bud til sælgeren", exact: true })).toBeDisabled();
+  await card.getByRole("button", { name: "Start en auktion med dette beløb", exact: true }).click();
+  await expect(card.getByLabel("Dit åbningsbud (CZ$)")).toHaveValue("650000");
+  await expect(card.getByTestId("buyer-card-error")).toHaveCount(0);
+  // Tilbage til buddet: beloebet staar, og fejlen staar ved det rigtige valg.
+  await card.getByRole("button", { name: /^Byd på listen/ }).click();
+  await expect(card.getByLabel("Dit tilbud (CZ$)")).toHaveValue("650000");
+  await card.getByLabel("Dit tilbud (CZ$)").fill("300000");
+  await chooseAuction(card);
+  await expect(card.getByTestId("buyer-card-error")).toHaveText("Mindst 600.000 CZ$ for at starte auktion.");
+  await card.getByRole("button", { name: "Send det som bud i stedet", exact: true }).click();
+  await expect(card.getByTestId("buyer-card-summary")).toContainText("Sender et bud til sælgeren: 300.000 CZ$.");
+});
+test("#8016: a bid uses the same offer call and says it is a bid in the confirmation and the result", async ({ page }) => {
+  const card = await openCard(page);
+  const bodies: unknown[] = [];
+  await page.route("**/api/transfers/offer", async (route) => {
+    bodies.push(route.request().postDataJSON());
+    await json(route, { id: "offer-1", status: "pending" }, 201);
+  });
+  await card.getByLabel("Dit tilbud (CZ$)").fill("300000");
+  await card.getByRole("button", { name: "Send bud til sælgeren", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByTestId("buyer-bid-confirm-rows")).toContainText("sender et bud");
+  await expect(dialog.getByTestId("buyer-bid-confirm-rows")).toContainText("Ingen, før handlen går igennem");
+  await dialog.getByRole("button", { name: "Send bud til sælgeren", exact: true }).click();
+  await expect(page.getByText(/^Bud sendt til sælgeren: 300\.000 CZ\$ for Ada Pedersen\./)).toBeVisible();
+  expect(bodies).toEqual([{ rider_id: "auto-rider", offer_amount: 300000, message: "" }]);
+});
+test("#8016: a started auction says so in the result", async ({ page }) => {
+  const dialog = await openBuyer(page, "650000");
+  await page.route("**/api/transfers/auto-listing/auto-accept", (route) =>
+    json(route, { status: "started", auction_id: "auction-test" }, 201)
+  );
+  await dialog.getByRole("button", { name: "Start auktion", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByText(/^Auktion startet: 650\.000 CZ\$ for Ada Pedersen, slutter /)).toBeVisible();
 });
 test("a stale price refresh requires a second explicit submit", async ({ page }) => {
   const bodies: unknown[] = [];
@@ -141,8 +203,9 @@ test("a stale price refresh requires a second explicit submit", async ({ page })
   });
   await page.route("**/api/transfers", (route) => json(route, [listing(false, 700000)]));
   await dialog.getByRole("button", { name: "Start auktion", exact: true }).click();
-  await expect(dialog.getByLabel("Dit bud (CZ$)")).toHaveValue("700000");
-  await expect(dialog.getByRole("alert")).toBeVisible();
+  // #8016: beloebet er spillerens eget; under den nye auto-pris kan han ikke bekraefte.
+  await expect(dialog.getByTestId("auto-accept-minimum")).toHaveText("Mindst 700.000 CZ$ for at starte auktion.");
+  await expect(dialog.getByRole("button", { name: "Start auktion", exact: true })).toBeDisabled();
   expect(bodies).toHaveLength(1);
   expect(bodies[0]).toMatchObject({
     expected_price: 600000,
@@ -158,7 +221,7 @@ test("rapid submissions reserve the editable bid once and cannot dismiss pending
   const wait = new Promise<void>((resolve) => {
     finish = resolve;
   });
-  const dialog = await openBuyer(page);
+  const dialog = await openBuyer(page, "800000");
   await page.route("**/api/transfers/auto-listing/auto-accept", async (route) => {
     count++;
     expect(route.request().postDataJSON()).toMatchObject({
@@ -168,7 +231,6 @@ test("rapid submissions reserve the editable bid once and cannot dismiss pending
     await wait;
     await json(route, { status: "started", auction_id: "auction-test" }, 201);
   });
-  await dialog.getByLabel("Dit bud (CZ$)").fill("800000");
   await dialog.locator("form").evaluate((form: HTMLFormElement) => {
     form.requestSubmit();
     form.requestSubmit();
@@ -181,7 +243,7 @@ test("rapid submissions reserve the editable bid once and cannot dismiss pending
   );
   await page.keyboard.press("Escape");
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole("button", { name: "Annuller", exact: true }).last()).toBeDisabled();
+  await expect(dialog.getByRole("button", { name: "Tilbage", exact: true }).last()).toBeDisabled();
   finish?.();
   await expect(dialog).toHaveCount(0);
   expect(count).toBe(1);
@@ -353,6 +415,22 @@ test("seller edits and removes the auto-price on an existing listing", async ({ 
   expect(last.method).toBe("PUT");
   expect(last.body).toEqual({ auto_accept_price: null, expected_auto_accept_price: 700000 });
 });
+test("#8016: a buyer sees the auto price on a listed rider's page", async ({ page }) => {
+  await installNetworkMocks(page);
+  await stabilizePage(page);
+  await page.route("**/api/feature-flags", (route) => json(route, { flags: { auto_accept_enabled: true } }));
+  const other = RIDERS[1];
+  await page.route("**/api/transfers", (route) =>
+    json(route, [{ id: "rival-listing", rider: { id: other.id }, seller: RIVAL_TEAM, asking_price: 200000, auto_accept_price: 600000, status: "open" }])
+  );
+  await page.route("**/rest/v1/transfer_listings**", (route) => json(route, { id: "rival-listing", asking_price: 200000 }));
+  await login(page);
+  await page.goto(`/riders/${other.id}`);
+  const strip = page.getByTestId("rider-auto-price");
+  await expect(strip).toContainText(/600\.000/, { timeout: 20000 });
+  await expect(strip).toContainText("Byd 600.000 CZ$ eller mere for at starte en offentlig auktion.");
+  await expect(strip.getByRole("link", { name: "Gå til transferlisten" })).toHaveAttribute("href", "/transfers?tab=market");
+});
 test("OFF: the seller form has no auto-price field and the old button label", async ({ page }) => {
   const calls = await setupSeller(page, { enabled: false, listed: true });
   await expect(page.getByRole("button", { name: "Redigér pris", exact: true })).toBeVisible({ timeout: 20000 });
@@ -366,7 +444,8 @@ test("an eligible buyer sees the approved auto-price row", async ({ page }, info
   await setup(page);
   await page.getByRole("button", { name: /Ada Pedersen/ }).click();
   const row = page.getByTestId("listing-auto-price");
-  await expect(row).toContainText("Auto-pris (starter auktion)");
+  await expect(row).toContainText("Auto-pris");
+  await expect(row).toContainText("Byd dette eller mere for at starte en offentlig auktion.");
   await expect(row).toContainText(/600\.000/);
   if (process.env.BETA2176_SCREENSHOTS) {
     // Clicking a far-right action scrolls the existing wide table. Bring its
@@ -377,7 +456,7 @@ test("an eligible buyer sees the approved auto-price row", async ({ page }, info
       }
     });
     await expect(row).toBeInViewport();
-    await captureBeta2176(page, info, "eligible");
+    await captureBeta2176(page, info, "eligible", "Send bud til sælgeren");
   }
 });
 
