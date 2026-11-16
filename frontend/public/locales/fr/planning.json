@@ -137,7 +137,8 @@
     "next": "Ouverture de {race}.",
     "stay": "Rester ici",
     "discard": "Annuler",
-    "saveAndOpen": "Enregistrer et ouvrir"
+    "saveAndOpen": "Enregistrer et ouvrir",
+    "saveAndClose": "Enregistrer et fermer"
   },
   "bulk": {
     "menu": "Actions",
@@ -218,7 +219,8 @@
     },
     "squadUnsaved": "L'équipe a des modifications non enregistrées. \"Enregistrer l'équipe et fixer la tactique\" l'enregistre et affiche la tactique.",
     "shared": "Même tactique que sur la page de la course : un plan enregistré ici y apparaît, et inversement.",
-    "saveInTab": "Vous avez une tactique non enregistrée. Enregistrez-la d'abord avec \"Enregistrer la tactique\"."
+    "saveInTab": "Vous avez une tactique non enregistrée. Enregistrez-la d'abord avec \"Enregistrer la tactique\".",
+    "saveFirst": "Vous avez une tactique non enregistrée. Enregistrez-la avec \"Enregistrer la tactique\" avant l'équipe, sinon elle est perdue."
   },
   "peak": {
     "target": "Objectif de pic : {race}, départ le {date}. Cochez des coureurs et appliquez.",

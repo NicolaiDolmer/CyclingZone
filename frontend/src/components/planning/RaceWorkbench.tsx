@@ -200,7 +200,10 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
   const [expectedLoad, setExpectedLoad] = useState<Record<string, string> | null>(null);
   // Taktik-visningens gem (fanens eget, trykket af hovedets guld-knap) og om det kan trykkes lige nu.
   const tacticsRef = useRef<TacticsViewHandle>(null);
+  // Fanens gem kan kun trykkes, naar fanen har en ugemt kladde: det er ogsaa tegnet paa en taktik-kladde.
   const [tacticsCanSave, setTacticsCanSave] = useState(false);
+  const tacticsDraftRef = useRef(false);
+  tacticsDraftRef.current = tacticsCanSave;
   // Taktik-visningen monteres foerste gang den aabnes og bliver monteret ved visningsskift (kladden overlever).
   const [tacticsMounted, setTacticsMounted] = useState(view === "tactics");
   useEffect(() => {
@@ -360,6 +363,12 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
       onView?.("tactics");
       return false;
     }
+    // En ugemt taktik-kladde ville gaa tabt, naar et trup-gem henter taktik-fanen paa ny: gem taktikken foerst.
+    if (tacticsDraftRef.current && !gate.current()) {
+      setNote(t("tactics.saveFirst"));
+      onView?.("tactics");
+      return false;
+    }
     const result = await gate.run("save", async () => {
       setSaveError(null);
       try {
@@ -433,7 +442,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
   const isDirty = useCallback(() => {
     const current = latest.current;
     if (!current || !current.ready) return false;
-    if (selectionDirty(current.sel, current.saved)) return true;
+    if (selectionDirty(current.sel, current.saved) || tacticsDraftRef.current) return true;
     return tacticsMountedRef.current && !gate.current() && !isReloadAllowed();
   }, [gate]);
 
@@ -528,10 +537,14 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
   // Hovedets ENE guld-knap gemmer det, spilleren ser (ejervalg 16/11, punkt 8 B): Trup = "Gem trup";
   // Taktik = "Gem taktik" (fanens eget gem), eller "Gem trup og saet taktik" naar truppen er ugemt (truppen
   // gemmes, og taktikken hentes paa den nye trup); Formtop = "Anvend paa valgte". I mobil-arket staar
-  // knappen fast i bunden af arket.
-  const tacticsSquadFirst = view === "tactics" && dirty;
+  // knappen fast i bunden af arket. Taktikken kan gemmes, ogsaa naar truppen er laast (et etapeloeb i gang:
+  // de senere etaper kan stadig planlaegges); fanen afgoer selv, om der er noget at gemme. En ugemt
+  // taktik-kladde gemmes altid foer truppen (ellers ville et trup-gem hente fanen paa ny og tabe den).
+  const tacticsSquadFirst = view === "tactics" && dirty && !readOnly && !tacticsCanSave;
+  const tacticsSavable = data?.eligible !== false && data?.did_not_start !== true;
   const primaryButton =
-    state !== "ready" || readOnly ? null : view === "tactics" ? (
+    state !== "ready" ? null : view === "tactics" ? (
+      !tacticsSavable ? null : (
       <Button
         variant="primary"
         size="sm"
@@ -541,9 +554,10 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
         data-testid="planning-tactics-save"
         className={inSheet ? "w-full" : undefined}
       >
-        {t(saveLabelKey("tactics", { squadDirty: dirty }))}
+        {t(saveLabelKey("tactics", { squadDirty: tacticsSquadFirst }))}
       </Button>
-    ) : view === "peak" ? (
+      )
+    ) : readOnly ? null : view === "peak" ? (
       <Button
         variant="primary"
         size="sm"
@@ -654,7 +668,8 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
               profiles={profiles}
               stageIndex={stageIndex}
               isStageRace={race.stages > 1}
-              squadDirty={dirty}
+              // En taktik-kladde holder fanen synlig, saa den kan gemmes foer truppen.
+              squadDirty={dirty && !tacticsCanSave}
               savedCount={saved.riderIds.length}
               squadVersion={squadVersion}
               onShowSquad={() => onView?.("squad")}
@@ -780,16 +795,21 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
             <p className="mt-1 text-2xs text-cz-warning">{t("raceList.sharesDays", { races: overlaps.map((o) => o.name).join(", ") })}</p>
           )}
         </div>
-        {state === "ready" && !readOnly && (
+        {state === "ready" && (!readOnly || (view === "tactics" && primaryButton && !inSheet)) && (
           // Hovedets knapper under loebets linje, som wireframet: Kopiér trup fra, Foreslaa trup og den ene
-          // guld-knap, der gemmer det man ser (punkt 8 B). Formtop har desuden "Ryd valg".
+          // guld-knap, der gemmer det man ser (punkt 8 B). Formtop har desuden "Ryd valg". En laast trup har
+          // kun taktikkens gem tilbage.
           <div className="relative mt-3 flex flex-wrap items-center gap-2" data-testid="planning-head-actions">
-            <Button variant="secondary" size="sm" onClick={() => setCopyOpen((v) => !v)} aria-expanded={copyOpen} disabled={locked}>
-              {t("race.copyFrom")}
-            </Button>
-            <Button variant="secondary" size="sm" onClick={suggest} disabled={locked || rows.length === 0}>
-              {t("race.suggest")}
-            </Button>
+            {!readOnly && (
+              <>
+                <Button variant="secondary" size="sm" onClick={() => setCopyOpen((v) => !v)} aria-expanded={copyOpen} disabled={locked}>
+                  {t("race.copyFrom")}
+                </Button>
+                <Button variant="secondary" size="sm" onClick={suggest} disabled={locked || rows.length === 0}>
+                  {t("race.suggest")}
+                </Button>
+              </>
+            )}
             {!inSheet && primaryButton}
             {dirty && (
               <Button variant="ghost" size="sm" onClick={discard} disabled={locked}>

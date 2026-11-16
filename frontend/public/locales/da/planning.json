@@ -137,7 +137,8 @@
     "next": "Åbner {race}.",
     "stay": "Bliv her",
     "discard": "Kassér",
-    "saveAndOpen": "Gem og åbn"
+    "saveAndOpen": "Gem og åbn",
+    "saveAndClose": "Gem og luk"
   },
   "bulk": {
     "menu": "Handlinger",
@@ -218,7 +219,8 @@
     },
     "squadUnsaved": "Truppen har ugemte ændringer. \"Gem trup og sæt taktik\" gemmer den og viser taktikken.",
     "shared": "Samme taktik som på løbssiden: en plan gemt her står dér, og omvendt.",
-    "saveInTab": "Du har ugemt taktik. Gem den først med \"Gem taktik\"."
+    "saveInTab": "Du har ugemt taktik. Gem den først med \"Gem taktik\".",
+    "saveFirst": "Du har ugemt taktik. Gem den med \"Gem taktik\", før du gemmer truppen, ellers går den tabt."
   },
   "peak": {
     "target": "Formtop-mål: {race}, starter {date}. Kryds ryttere af og anvend.",

@@ -137,7 +137,8 @@
     "next": "{race} wordt geopend.",
     "stay": "Blijf hier",
     "discard": "Negeren",
-    "saveAndOpen": "Opslaan en openen"
+    "saveAndOpen": "Opslaan en openen",
+    "saveAndClose": "Opslaan en sluiten"
   },
   "bulk": {
     "menu": "Acties",
@@ -218,7 +219,8 @@
     },
     "squadUnsaved": "De ploeg heeft niet-opgeslagen wijzigingen. \"Ploeg opslaan en tactiek zetten\" slaat haar op en toont de tactiek.",
     "shared": "Dezelfde tactiek als op de koerspagina: een plan dat je hier opslaat, staat daar ook, en andersom.",
-    "saveInTab": "Je hebt niet-opgeslagen tactiek. Sla die eerst op met \"Tactiek opslaan\"."
+    "saveInTab": "Je hebt niet-opgeslagen tactiek. Sla die eerst op met \"Tactiek opslaan\".",
+    "saveFirst": "Je hebt niet-opgeslagen tactiek. Sla die op met \"Tactiek opslaan\" voordat je de ploeg opslaat, anders gaat ze verloren."
   },
   "peak": {
     "target": "Piekdoel: {race}, start {date}. Vink renners aan en pas toe.",

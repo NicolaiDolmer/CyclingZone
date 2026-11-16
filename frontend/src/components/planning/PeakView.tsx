@@ -347,6 +347,12 @@ export default function PeakView({
                         <span className="text-[13.5px] font-medium text-cz-1 sm:whitespace-nowrap">{row.name}</span>
                       </span>
                     </div>
+                    {/* Mobil-arket: maalet og "Fjern" under navnet (kolonnen er skjult paa smal skaerm). */}
+                    {compactMobile && (row.here || row.targets.length > 0) && (
+                      <div className="ms-10 mt-0.5 text-xs sm:hidden">
+                        <TargetCell row={row} board={peak.board as PeakBoard} locked={locked} onRemove={peak.remove} />
+                      </div>
+                    )}
                   </td>
                   <td className="hidden px-1.5 py-[7px] text-right font-data text-[13px] tabular-nums sm:table-cell">{row.rating ?? <span className="text-cz-3">-</span>}</td>
                   <td className="whitespace-nowrap px-1.5 py-[7px] text-right font-data text-[13px] tabular-nums">{row.form ?? <span className="text-cz-3">-</span>}</td>

@@ -327,6 +327,7 @@ function Workbench() {
   const selectRace = useCallback(
     (id: string) => {
       userPicked.current = true;
+      setCloseAsk(false);
       setSheetOpen(true);
       setSearchParams(
         (prev) => {
@@ -388,6 +389,28 @@ function Workbench() {
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [dirty, hasDraft]);
+
+  // Mobil-arket lukkes (kryds, Escape, baggrund, stryg ned): en ugemt trup eller taktik-kladde ville
+  // forsvinde med fladen, saa spilleren spoerges foerst (Bliv her / Kassér / Gem og luk).
+  const [closeAsk, setCloseAsk] = useState(false);
+  const requestCloseSheet = () => {
+    if (gate.current()) return;
+    if (workbenchRef.current?.isDirty()) setCloseAsk(true);
+    else setSheetOpen(false);
+  };
+  const discardAndClose = () => {
+    if (gate.current()) return;
+    workbenchRef.current?.discard();
+    setCloseAsk(false);
+    setSheetOpen(false);
+  };
+  const saveAndClose = async () => {
+    const ok = await workbenchRef.current?.save();
+    if (ok) {
+      setCloseAsk(false);
+      setSheetOpen(false);
+    }
+  };
 
   const pendingRace = pendingId ? allRaces.find((r) => r.id === pendingId) : null;
   const stay = () => setPendingId(null);
@@ -742,9 +765,19 @@ function Workbench() {
             position={sheetIndex >= 0 ? t("sheet.position", { n: sheetIndex + 1, total: sheetRaces.length }) : null}
             onPrev={prevRace ? () => requestSelect(prevRace.id) : null}
             onNext={nextRace ? () => requestSelect(nextRace.id) : null}
-            onClose={() => setSheetOpen(false)}
+            onClose={requestCloseSheet}
           >
             {unsavedBar}
+            {closeAsk && !pendingRace && (
+              <UnsavedBar
+                raceName={selected.name}
+                busy={writing !== null}
+                onStay={() => setCloseAsk(false)}
+                onDiscard={discardAndClose}
+                onSaveAndOpen={saveAndClose}
+                saveLabelKey="unsavedBar.saveAndClose"
+              />
+            )}
             {workbenchPane}
           </RaceSheet>
         )}

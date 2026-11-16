@@ -137,7 +137,8 @@
     "next": "Se abrirá {race}.",
     "stay": "Quedarme aquí",
     "discard": "Descartar",
-    "saveAndOpen": "Guardar y abrir"
+    "saveAndOpen": "Guardar y abrir",
+    "saveAndClose": "Guardar y cerrar"
   },
   "bulk": {
     "menu": "Acciones",
@@ -218,7 +219,8 @@
     },
     "squadUnsaved": "El equipo tiene cambios sin guardar. \"Guardar equipo y fijar táctica\" lo guarda y muestra la táctica.",
     "shared": "La misma táctica que en la página de la carrera: un plan guardado aquí aparece allí, y al revés.",
-    "saveInTab": "Tienes táctica sin guardar. Guárdala primero con \"Guardar táctica\"."
+    "saveInTab": "Tienes táctica sin guardar. Guárdala primero con \"Guardar táctica\".",
+    "saveFirst": "Tienes táctica sin guardar. Guárdala con \"Guardar táctica\" antes de guardar el equipo, o se perderá."
   },
   "peak": {
     "target": "Objetivo de pico: {race}, empieza el {date}. Marca corredores y aplica.",

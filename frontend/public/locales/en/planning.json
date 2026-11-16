@@ -137,7 +137,8 @@
     "next": "Opening {race}.",
     "stay": "Stay here",
     "discard": "Discard",
-    "saveAndOpen": "Save and open"
+    "saveAndOpen": "Save and open",
+    "saveAndClose": "Save and close"
   },
   "bulk": {
     "menu": "Actions",
@@ -218,7 +219,8 @@
     },
     "squadUnsaved": "The squad has unsaved changes. \"Save squad and set tactics\" saves it and shows the tactics.",
     "shared": "Same tactics as on the race page: a plan saved here shows there, and the other way round.",
-    "saveInTab": "You have unsaved tactics. Save them first with \"Save tactics\"."
+    "saveInTab": "You have unsaved tactics. Save them first with \"Save tactics\".",
+    "saveFirst": "You have unsaved tactics. Save them with \"Save tactics\" before saving the squad, or they are lost."
   },
   "peak": {
     "target": "Peak target: {race}, starts {date}. Tick riders and apply.",

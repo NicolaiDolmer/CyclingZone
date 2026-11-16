@@ -208,7 +208,7 @@ test("every new text exists in all five languages", () => {
     "views.hint.squad", "views.hint.tactics", "views.hint.peak", "peak.group.inSquad", "peak.group.outside", "peak.notPicked", "peak.pickForRace",
     "raceList.peaks", "profile.km", "profile.gain",
     "views.label", "views.squad", "views.tactics", "views.peak",
-    "tactics.noSquad.title", "tactics.noSquad.description", "tactics.squadUnsaved", "tactics.shared", "tactics.saveInTab",
+    "tactics.noSquad.title", "tactics.noSquad.description", "tactics.squadUnsaved", "tactics.shared", "tactics.saveInTab", "tactics.saveFirst", "unsavedBar.saveAndClose",
     "peak.target", "peak.targetClosed", "peak.selected", "peak.col.target", "peak.col.start", "peak.inDays",
     "peak.here", "peak.remove", "peak.removed", "peak.clear", "peak.full", "peak.notSenior",
     "peak.applied", "peak.appliedPartial", "peak.count", "sheet.prev", "sheet.next", "sheet.close", "sheet.position",
