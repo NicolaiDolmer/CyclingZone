@@ -118,6 +118,18 @@ test("#7855 egne linjer: valget gemmes som udbrudsleddet med jagt (serverens for
   assert.deepEqual(setLegTask(withDropped, 0, "breakaway", "helper", ON, "hunt_kom"), [{ task: "breakaway", hunt: "hunt_kom" }, { task: "ride_in", from: { at: "dropped" } }]);
 });
 
+test("#7855 Codex-review (PR #8218): en jagt-linje tilbydes kun, naar den ikke sletter resten af planen", () => {
+  // Udbrud til Col B, saa tempo, saa ind naar han er sat. Spurten ligger efter Col B, altsaa ikke paa udbrudsleddet.
+  const plan: StagePlanLeg[] = [{ task: "breakaway" }, { task: "tempo", from: { at: "kom", kom_index: 0 } }, { task: "ride_in", from: { at: "dropped" } }];
+  assert.equal(validateStagePlanLegs(plan, "helper", ON), null);
+  const keys = taskChoiceOptions(plan, 0, "helper", ON).map(taskChoiceKey);
+  assert.ok(!keys.includes("breakaway+hunt_points"), "ingen spurt paa leddets straekning: linjen tilbydes ikke");
+  for (const key of keys.filter((k) => k.startsWith("breakaway+"))) {
+    const hunt = key.split("+")[1] as "hunt_points" | "hunt_kom";
+    assert.equal(setLegTask(plan, 0, "breakaway", "helper", ON, hunt).length, plan.length, `${key}: resten af planen staar`);
+  }
+});
+
 test("#7855 egne linjer: tekster for linjerne, prisen, noterne og fejlkoden paa alle fem sprog", () => {
   for (const lang of ["en", "da", "es", "fr", "nl"]) {
     const j = JSON.parse(readFileSync(new URL(`../../../public/locales/${lang}/races.json`, import.meta.url), "utf8"));

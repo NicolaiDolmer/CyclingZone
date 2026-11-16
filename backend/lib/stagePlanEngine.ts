@@ -115,6 +115,8 @@ export type StagePlanRuntime = {
    * (`fromField`, se noteHuntFromField7855). Udeladt = ingen saadan rytter (bit-identisk).
    */
   missedBreakHunt7855?: MissedBreakHunt7855;
+  /** #7855 hul 1 (ejer 16/11, KUN kontakten): dagens udbrud er dannet (set ved en graense). Udeladt = endnu ikke. */
+  escapeFormed7855?: true;
 };
 
 /**
@@ -472,6 +474,9 @@ export function advanceStagePlan(
   // #7855 valg 3 + hul 1 og 2: spurterne i segmentet, der lige er koert (tom uden kontakten).
   const missed = rt.missedBreakHunt7855;
   const sprints = missed ? takeNewSprints7855(missed, state) : [];
+  // #7855 hul 1 (ejer 16/11, KUN kontakten): er dagens udbrud dannet? Et udbrud foran nu, eller et
+  // udbrud motoren har noteret (ogsaa et, der blev dannet og hentet inden for samme segment).
+  if (huntRoute !== undefined && !rt.escapeFormed7855 && (state.groups.some(isEscape) || (state.s5_last_break_rider_ids?.length ?? 0) > 0)) rt.escapeFormed7855 = true;
   for (const riderId of rt.riderIds) {
     if (state.riders[riderId]?.status !== "racing") continue;
     const legs = rt.legs.get(riderId)!;
@@ -493,9 +498,12 @@ export function advanceStagePlan(
       behind7635 = streak >= STAGE_PLAN_DROPPED_7635_TUNING.consecutiveChecks;
     }
     const dropped = breakawayLeg ? !inEscape : (front ? behind7635 : isRiderDropped(riderId, state, entrants));
+    // #7855 hul 1 (ejer 16/11, KUN kontakten): et udbrudsled med jagt venter, til udbruddet er dannet,
+    // foer "kom ikke med" afgoeres. Ellers slap han jagten, foer han overhovedet kunne komme med.
+    const waitsForBreak7855 = huntRoute !== undefined && breakawayLeg && legs[cur].hunt !== null && !rt.escapeFormed7855;
     let next = cur;
     let reason: StagePlanSwitchReason | null = null;
-    if (!atStart && droppedIdx > cur && dropped) {
+    if (!atStart && droppedIdx > cur && dropped && !waitsForBreak7855) {
       next = droppedIdx;
       reason = breakawayLeg ? (rt.everInEscape.has(riderId) ? "caught" : "missed_break") : "dropped";
     } else {

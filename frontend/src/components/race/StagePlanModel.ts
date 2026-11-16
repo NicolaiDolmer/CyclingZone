@@ -445,9 +445,12 @@ export function taskChoiceKey(choice: StagePlanTaskChoice): string {
  * leddets straekning). Slukket er listen praecis opgaverne (taskOptions).
  */
 export function taskChoiceOptions(legs: StagePlanLeg[], i: number, role: StagePlanRole, route: StagePlanRoute): StagePlanTaskChoice[] {
+  // Codex-review: jagten proeves paa planen, som "Gaa i udbrud" alene ville efterlade den (leddets
+  // egen straekning), saa et valg med jagt aldrig sletter flere af de senere led.
+  const asBreak = () => setLegTask(legs, i, "breakaway", role, route);
   return taskOptions(legs, i, role, route).flatMap((task) => [
     { task },
-    ...(task === "breakaway" ? JERSEY_HUNT_CHOICES.filter((hunt) => validateStagePlanLegs([{ task, hunt }], role, route) === null).map((hunt) => ({ task, hunt })) : []),
+    ...(task === "breakaway" ? JERSEY_HUNT_CHOICES.filter((hunt) => validateStagePlanLegs(asBreak().map((l, j) => (j === i ? { ...l, hunt } : l)), role, route) === null).map((hunt) => ({ task, hunt })) : []),
   ]);
 }
 
