@@ -115,6 +115,7 @@ import {
 // forveksles med "stiller op" (race_entries bevares bevidst ved afmelding, #4306).
 import { findRejoinConflicts, loadWithdrawnPairs, loadWithdrawnRaceIdsForTeam, withdrawalKey, splitWithdrawals, DID_NOT_START_REASON } from "../lib/raceWithdrawal.js";
 import { planningBulkRoute7535, proposeAssistantSquads7535, withdrawRacesBulk7535 } from "../lib/planningBulkActions7535.js"; // #7535
+import { loadAfterRaceFatigue7535 } from "../lib/planningAfterRace7535.js"; // #7535 runde 3
 import { loadTeamsInStartedField } from "../lib/raceStartOutlook.js"; // #6740
 import { planningDidNotStart } from "../lib/planningDidNotStart.ts"; // #7518
 import { teamDistributionColumns } from "../lib/raceDistributionColumns.ts"; // #7553
@@ -6366,6 +6367,17 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
 const planningBulkCtx7535 = { supabase, isViewerBetaTester, captureException, invalidateNamespace };
 router.post("/races/selection/auto/propose", requireAuth, marketWriteLimiter, planningBulkRoute7535(proposeAssistantSquads7535, planningBulkCtx7535));
 router.post("/races/withdrawals/bulk", requireAuth, marketWriteLimiter, planningBulkRoute7535(withdrawRacesBulk7535, planningBulkCtx7535));
+// #7535 runde 3: "Efter loebet" i trup-tabellen (laeser kun). Motorens model, se lib/planningAfterRace7535.js.
+router.get("/races/:raceId/after-race-fatigue", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const out = await loadAfterRaceFatigue7535({ supabase, teamId: req.team.id, raceId: req.params.raceId });
+    res.status(out.status).json(out.body);
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: "after_race_failed" });
+  }
+});
 
 // POST /api/races/:raceId/selection/auto — #2180 one-click "auto-udtag" (indbakke-
 // knappen på 36t-varslet, selectionWarningSweep.js). Assistenten bygger + gemmer
