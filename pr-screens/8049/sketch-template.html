@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Patch notes · skitse #8049</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter+Tight:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Tokens kopieret fra frontend/src/index.css (lys + [data-theme="dark"]). */
+:root {
+  --bg-body:#f4f2ec; --bg-card:#fcfbf7; --bg-elevated:#fff; --bg-subtle:#ece9e1; --border:#e5e0d5; --border-strong:#827f96;
+  --text-1:#0e0f15; --text-2:#4c4a5e; --text-3:#67657e; --accent:232 197 71; --accent-t:160 120 0;
+  --success:21 119 47; --danger:168 30 30; --warning:154 91 0; --info:26 71 192;
+  --bg-sidebar:#1a1f38; --text-sb-1:#fff; --text-sb-2:rgba(255,255,255,.55); --text-sb-3:rgba(255,255,255,.25); --border-sb:rgba(255,255,255,.07);
+  --font-sans:'DM Sans',system-ui,sans-serif; --font-data:'Inter Tight',system-ui,sans-serif;
+}
+[data-theme="dark"] {
+  --bg-body:#0e0f15; --bg-card:#161824; --bg-elevated:#1f2233; --bg-subtle:#14161e; --border:#2a2d3a; --border-strong:#6a6e86;
+  --text-1:#ededf2; --text-2:#9da0b3; --text-3:#888ba0; --accent-t:255 217 102;
+  --success:95 217 138; --danger:251 132 132; --warning:240 168 48; --info:122 176 251;
+}
+* { box-sizing:border-box; }
+html,body { margin:0; background:var(--bg-body); color:var(--text-1); font-family:var(--font-sans); font-size:14px; -webkit-font-smoothing:antialiased; }
+button { font:inherit; color:inherit; background:none; border:0; padding:0; cursor:pointer; }
+.shell { display:flex; min-height:100vh; }
+.sidebar { width:208px; flex:0 0 208px; background:var(--bg-sidebar); color:var(--text-sb-2); position:sticky; top:0; height:100vh; display:flex; flex-direction:column; }
+.sb-logo { height:100px; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border-sb); font-family:'Bebas Neue',Impact,sans-serif; letter-spacing:.04em; color:rgb(var(--accent)); font-size:22px; font-weight:700; }
+.sb-group { padding:22px 16px 0; font-family:var(--font-data); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--text-sb-2); font-weight:600; }
+.sb-group div { padding:9px 0; display:flex; justify-content:space-between; }
+.sb-sep { margin:14px 16px 0; border-top:1px solid var(--border-sb); }
+.sb-item { margin:2px 8px; padding:9px 12px; border-radius:5px; display:flex; align-items:center; gap:10px; color:rgba(255,255,255,.75); font-size:13px; }
+.sb-item::before { content:""; width:5px; height:5px; border-radius:50%; background:var(--text-sb-3); }
+.sb-item.active { background:rgba(255,255,255,.06); color:rgb(var(--accent)); }
+.sb-item.active::before { background:rgb(var(--accent)); }
+.sb-item .dot { margin-left:auto; width:7px; height:7px; border-radius:50%; background:rgb(var(--accent)); }
+.topbar, .bottomnav { display:none; }
+.main { flex:1; min-width:0; }
+.page { max-width:896px; margin:0 auto; padding:28px 32px 64px; }
+/* PageHeader (den ENE opskrift) */
+.ph { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px; }
+.ph h1 { margin:0; font-family:var(--font-data); font-size:20px; font-weight:700; letter-spacing:-.01em; }
+.ph .sub { margin-top:4px; font-size:13px; color:var(--text-2); }
+.btn-q { display:inline-flex; align-items:center; gap:8px; height:32px; padding:0 12px; border:1px solid var(--border); border-radius:5px; background:var(--bg-card); font-size:12.5px; font-weight:500; color:var(--text-1); white-space:nowrap; }
+.btn-q.on { border-color:var(--text-1); }
+.udot { width:7px; height:7px; border-radius:50%; background:rgb(var(--accent)); flex:0 0 7px; }
+/* Filterbar på én linje */
+.fbar { display:flex; gap:10px; align-items:center; margin-bottom:14px; }
+.search { flex:1; position:relative; }
+.search input { width:100%; height:36px; border:1px solid var(--border); border-radius:5px; background:var(--bg-card); color:var(--text-1); padding:0 12px 0 34px; font:inherit; font-size:13px; }
+.search svg { position:absolute; left:11px; top:10px; color:var(--text-3); }
+select.sel { height:36px; border:1px solid var(--border); border-radius:5px; background:var(--bg-card); color:var(--text-1); padding:0 10px; font:inherit; font-size:13px; }
+.tog { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-2); white-space:nowrap; }
+.tog i { width:30px; height:18px; border-radius:999px; background:var(--bg-subtle); border:1px solid var(--border); position:relative; }
+.tog i::after { content:""; position:absolute; top:2px; left:2px; width:12px; height:12px; border-radius:50%; background:var(--text-3); }
+.tog.on i::after { left:14px; background:var(--text-1); }
+/* Section card */
+.card { background:var(--bg-card); border:1px solid var(--border); border-radius:5px; padding:20px; margin-bottom:14px; }
+.ch { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:16px; }
+.ch h2 { margin:0; font-size:15px; font-weight:600; }
+.meta { font-family:var(--font-data); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-3); font-variant-numeric:tabular-nums; }
+.quiet { color:rgb(var(--accent-t)); font-size:12px; font-weight:500; display:inline-flex; align-items:center; gap:3px; white-space:nowrap; }
+/* Ugens store nyhed */
+.hero { display:grid; grid-template-columns:208px 1fr; gap:16px; padding:14px; background:var(--bg-subtle); border-radius:5px; margin-bottom:18px; }
+.hero .img { aspect-ratio:16/9; border-radius:5px; border:1px dashed var(--border-strong); display:flex; align-items:center; justify-content:center; text-align:center; font-size:11px; color:var(--text-3); padding:8px;
+ }
+.hero h3 { margin:6px 0 4px; font-size:16px; font-weight:600; line-height:1.3; }
+.hero p { margin:0 0 8px; font-size:13px; line-height:1.5; color:var(--text-2); }
+.hero .row { display:flex; gap:8px; align-items:center; }
+/* Mærker: én anatomi */
+.tag { display:inline-flex; align-items:center; justify-content:center; height:20px; padding:0 7px; border:1px solid var(--border-strong); border-radius:999px; font-family:var(--font-data); font-size:10px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; white-space:nowrap; color:var(--text-2); }
+.tag-on { border-color:rgb(var(--success) / .45); color:rgb(var(--success)); }
+.tag-new { border-color:rgb(var(--info) / .45); color:rgb(var(--info)); }
+.tag-beta { border-color:rgb(var(--warning) / .5); color:rgb(var(--warning)); }
+.tag-improved { border-color:var(--border); color:var(--text-2); }
+.tag-fixed { border-color:var(--border); color:var(--text-3); }
+.lines .tag { width:112px; }
+/* Variant A: område med linjer */
+.area { padding-top:12px; margin-top:12px; border-top:1px solid var(--border); }
+.area:first-of-type { border-top:0; margin-top:0; padding-top:0; }
+.area-h { display:flex; align-items:baseline; gap:8px; margin-bottom:6px; }
+.area-h b { font-size:13.5px; font-weight:600; }
+.line { display:grid; grid-template-columns:112px 1fr auto; gap:12px; align-items:start; padding:7px 0; }
+.line .lt { font-size:13.5px; font-weight:500; line-height:1.35; }
+.line .lb { font-size:12.5px; color:var(--text-2); line-height:1.45; margin-top:1px; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; }
+.line.open .lb { -webkit-line-clamp:unset; }
+.line .nd { padding-top:5px; }
+.fixes { display:grid; grid-template-columns:112px 1fr auto; gap:12px; align-items:start; padding:6px 0 2px; font-size:12.5px; color:var(--text-3); }
+.fixes .fx { line-height:1.45; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; }
+.fixes.open .fx { -webkit-line-clamp:unset; }
+.more { font-size:12px; color:rgb(var(--accent-t)); font-weight:500; padding:4px 0 0 124px; }
+/* Variant B: kompakt tabel pr. område */
+.brow { display:grid; grid-template-columns:150px 1fr 18px; gap:12px; align-items:center; padding:10px 0; border-top:1px solid var(--border); cursor:pointer; }
+.brow:first-child { border-top:0; }
+.brow .bn { font-size:13.5px; font-weight:600; }
+.brow .bt { font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.brow .bc { display:flex; gap:6px; margin-top:4px; }
+.brow .bc span { font-family:var(--font-data); font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-3); }
+.bopen { padding:0 0 8px 162px; }
+/* Tidligere uger + arkiv */
+.wrow { padding:12px 0; border-top:1px solid var(--border); }
+.wrow:first-child { border-top:0; padding-top:0; }
+.wh { display:flex; align-items:baseline; gap:10px; }
+.wh b { font-size:14px; font-weight:600; white-space:nowrap; }
+.wh .meta { white-space:nowrap; }
+.wh .sp { flex:1; }
+.wsum { font-size:12.5px; color:var(--text-2); margin-top:3px; line-height:1.5; }
+.wbody { margin-top:12px; padding:14px; border:1px solid var(--border); border-radius:5px; }
+.arch-h { margin:18px 0 4px; padding-top:16px; border-top:1px solid var(--border); }
+.mrow { display:flex; align-items:baseline; gap:10px; padding:10px 0; border-top:1px solid var(--border); }
+.mrow:first-of-type { border-top:0; }
+.mrow b { font-size:13.5px; font-weight:500; }
+.mrow .sp { flex:1; }
+.chev { width:13px; height:13px; }
+.tnum { font-family:var(--font-data); font-variant-numeric:tabular-nums; }
+.hit { padding:9px 0; border-top:1px solid var(--border); display:grid; grid-template-columns:112px 1fr auto; gap:12px; }
+.hit:first-child { border-top:0; }
+.hit .src { font-family:var(--font-data); font-size:11px; color:var(--text-3); white-space:nowrap; }
+mark { background:rgb(var(--accent) / .35); color:inherit; border-radius:2px; }
+/* Skitse-ramme: varianter og noter (uden for produktet) */
+.sk { position:fixed; right:12px; bottom:12px; z-index:9; display:flex; gap:6px; font-family:var(--font-data); font-size:11px; }
+.sk a { padding:6px 9px; background:var(--bg-elevated); border:1px solid var(--border); border-radius:5px; color:var(--text-2); text-decoration:none; }
+.sk a.on { color:var(--text-1); border-color:var(--text-1); }
+.n { display:inline-flex; width:18px; height:18px; border-radius:50%; background:#c9302c; color:#fff; font-family:var(--font-data); font-size:11px; font-weight:700; align-items:center; justify-content:center; flex:0 0 18px; }
+body:not(.notes) .n, body:not(.notes) .legend { display:none; }
+body.notes .page { margin:0 0 0 32px; }
+.legend { position:fixed; top:28px; right:24px; width:300px; font-size:12.5px; line-height:1.5; color:var(--text-2); }
+.legend h4 { margin:0 0 10px; font-size:13px; color:var(--text-1); }
+.legend li { margin:0 0 9px; display:flex; gap:8px; list-style:none; }
+.legend ul { padding:0; margin:0; }
+@media (max-width: 767px) {
+  .sidebar { display:none; }
+  .topbar { display:flex; position:sticky; top:0; z-index:5; height:48px; background:var(--bg-sidebar); align-items:center; justify-content:space-between; padding:0 16px; color:#fff; }
+  .topbar .lg { font-family:'Bebas Neue',Impact,sans-serif; color:rgb(var(--accent)); font-size:15px; font-weight:700; letter-spacing:.04em; }
+  .bottomnav { display:flex; position:fixed; left:0; right:0; bottom:0; height:56px; background:var(--bg-sidebar); justify-content:space-around; align-items:center; z-index:5; }
+  .bottomnav span { display:flex; flex-direction:column; align-items:center; gap:3px; color:rgba(255,255,255,.7); font-size:10px; }
+  .shell { flex-direction:column; }
+  .page { padding:20px 16px 88px; }
+  .ph { flex-wrap:wrap; gap:10px; margin-bottom:16px; }
+  .fbar { flex-wrap:wrap; }
+  .search { flex:1 0 100%; }
+  .search input, select.sel { height:44px; }
+  select.sel { flex:1; }
+  .card { padding:16px; }
+  .hero { grid-template-columns:1fr; padding:12px; }
+  .lines .tag, .line .tag, .fixes .tag { width:auto; justify-self:start; }
+  .line, .fixes, .hit { grid-template-columns:1fr auto; gap:4px 10px; }
+  .line .tag, .fixes .tag, .hit .tag { grid-column:1 / -1; }
+  .line .lb { -webkit-line-clamp:2; }
+  .more { padding-left:0; }
+  .brow { grid-template-columns:1fr 18px; }
+  .brow .bn { grid-column:1; }
+  .bopen { padding-left:0; }
+  .btn-q { height:44px; }
+  .wh { flex-wrap:wrap; row-gap:2px; }
+  .wh .meta { order:3; flex-basis:100%; }
+  .legend, .n { display:none !important; }
+  body.notes .page { margin:0 auto; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sb-logo">CYCLING ZONE</div>
+    <div class="sb-group"><div>Klubhus</div><div>Planlægning</div><div>Marked</div><div>Resultater</div></div>
+    <div class="sb-sep"></div>
+    <div class="sb-group" style="padding-bottom:8px"><div>Konto og hjælp</div></div>
+    <div class="sb-item">Indstillinger</div><div class="sb-item">Pro</div><div class="sb-item">Hjælp</div><div class="sb-item">Regler</div>
+    <div class="sb-item">Roadmap<span class="dot"></span></div>
+    <div class="sb-item active">Patch notes</div>
+    <div class="sb-item">Kontakt</div>
+  </aside>
+  <header class="topbar"><span>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span>
+    <span class="lg">CYCLING ZONE</span>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+  </header>
+  <main class="main"><div class="page" id="page"></div></main>
+  <nav class="bottomnav">
+    <span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></svg>Dashboard</span>
+    <span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>Indbakke</span>
+    <span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>Marked</span>
+    <span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Ryttere</span>
+    <span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 15 9l7 .5-5.5 4.5L18 21l-6-3.5L6 21l1.5-7L2 9.5 9 9z"/></svg>Mit hold</span>
+  </nav>
+</div>
+<aside class="legend">
+  <h4>Noter til skitsen</h4>
+  <ul>
+    <li><span class="n">1</span><span><b>Nyt siden sidst</b> i sidehovedets knaprække, ikke som banner. Tallet kommer fra <code>seen_markers</code> på brugeren, så telefon og computer er enige. Tryk viser kun de nye.</span></li>
+    <li><span class="n">2</span><span><b>Ugens store nyhed</b> med plads til et billede fra spillet. Uden billede vises den uden billedfeltet.</span></li>
+    <li><span class="n">3</span><span><b>Efter område</b> i fast rækkefølge, højst 3 linjer pr. område, ét mærke pr. linje. Tomme områder vises ikke.</span></li>
+    <li><span class="n">4</span><span><b>Fejlrettelser foldet</b> til én linje pr. område.</span></li>
+    <li><span class="n">5</span><span><b>De 4 forrige uger</b> som én linje hver: antal, det vigtigste, største områder. Tryk åbner ugen.</span></li>
+    <li><span class="n">6</span><span><b>Arkiv pr. måned.</b> Måneden hentes først, når den åbnes.</span></li>
+    <li><span class="n">7</span><span><b>Søgning</b> i alt, også arkivet. Mandag, når ugen er tynd, står sidste uge også åben.</span></li>
+  </ul>
+</aside>
+<div class="sk" id="sk"></div>
+<script>
+const DATA = /*__DATA__*/null;
+const qs = new URLSearchParams(location.search);
+const V = qs.get("v") === "b" ? "b" : "a";
+const THEME = qs.get("theme") === "dark" ? "dark" : "light";
+document.documentElement.dataset.theme = THEME;
+if (qs.get("notes") === "1") document.body.classList.add("notes");
+const AREA = Object.fromEntries(DATA.AREAS.map(([k, da]) => [k, da]));
+const AREA_ORDER = DATA.AREAS.map(([k]) => k);
+const TAG = { on: ["Tændt for alle", "tag-on"], new: ["Nyt", "tag-new"], beta: ["Beta", "tag-beta"], improved: ["Forbedring", "tag-improved"], fixed: ["Fejlrettelse", "tag-fixed"] };
+const MON = ["jan.", "feb.", "mar.", "apr.", "maj", "jun.", "jul.", "aug.", "sep.", "okt.", "nov.", "dec."];
+const MONTH = ["Januar", "Februar", "Marts", "April", "Maj", "Juni", "Juli", "August", "September", "Oktober", "November", "December"];
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const tag = (t) => `<span class="tag ${TAG[t][1]}">${TAG[t][0]}</span>`;
+const isNew = (c) => c.d > DATA.LAST_SEEN;
+const chevR = `<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>`;
+const chevD = `<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>`;
+function addDays(iso, n) { const t = new Date(iso + "T12:00:00Z"); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); }
+function range(w) {
+  const e = addDays(w, 6); const [, m1, d1] = w.split("-").map(Number); const [, m2, d2] = e.split("-").map(Number);
+  return m1 === m2 ? `${d1}.–${d2}. ${MON[m2 - 1]}` : `${d1}. ${MON[m1 - 1]}–${d2}. ${MON[m2 - 1]}`;
+}
+function isoWeek(iso) { const t = new Date(iso + "T12:00:00Z"); t.setUTCDate(t.getUTCDate() + 3 - ((t.getUTCDay() + 6) % 7)); const y = new Date(Date.UTC(t.getUTCFullYear(), 0, 4)); return 1 + Math.round(((t - y) / 864e5 - 3 + ((y.getUTCDay() + 6) % 7)) / 7); }
+
+const state = { q: "", area: "all", beta: false, onlyNew: false, open: new Set(), openLines: new Set() };
+const weeks = DATA.weeks;
+const thin = weeks[0].list.length < 10; // mandagsreglen
+if (thin) state.open.add("w1");
+
+function filt(list) {
+  return list.filter((c) => (state.area === "all" || c.a === state.area) && (!state.beta || c.t === "beta") && (!state.onlyNew || isNew(c)));
+}
+function byArea(list) {
+  const m = new Map();
+  for (const c of list) { if (!m.has(c.a)) m.set(c.a, []); m.get(c.a).push(c); }
+  return AREA_ORDER.filter((k) => m.has(k)).map((k) => [k, m.get(k)]);
+}
+function pickHero(list) { return list.find((c) => c.t === "on") || list.find((c) => c.t === "new") || list.find((c) => c.t === "beta") || list[0]; }
+
+function lineHtml(c, key) {
+  const open = state.openLines.has(key);
+  return `<div class="line${open ? " open" : ""}" data-line="${key}"><span class="tag ${TAG[c.t][1]}">${TAG[c.t][0]}</span>
+    <div><div class="lt">${esc(c.ti)}</div><div class="lb">${esc(c.b)}</div></div>
+    <span class="nd">${isNew(c) ? '<span class="udot" title="Ny siden sidst"></span>' : ""}</span></div>`;
+}
+function areasA(list, prefix, max = 3) {
+  return byArea(list).map(([a, items], ai) => {
+    const main = items.filter((c) => c.t !== "fixed");
+    const fixes = items.filter((c) => c.t === "fixed");
+    const key = `${prefix}-${a}`;
+    const showAll = state.open.has(key);
+    const shown = showAll ? main : main.slice(0, max);
+    const fkey = `${key}-fx`;
+    const fxOpen = state.open.has(fkey);
+    return `<div class="area"><div class="area-h">${ai === 0 && prefix === "w0" ? '<span class="n">3</span>' : ""}<b>${AREA[a]}</b><span class="meta">${items.length}</span></div>
+      <div class="lines">${shown.map((c, i) => lineHtml(c, `${key}-${i}`)).join("")}</div>
+      ${main.length > max && !showAll ? `<button class="more" data-open="${key}">+${main.length - max} mere i ${AREA[a]}</button>` : ""}
+      ${fixes.length ? (fxOpen ? `<div class="lines">${fixes.map((c, i) => lineHtml(c, `${fkey}-${i}`)).join("")}</div>` :
+        `<div class="fixes">${tag("fixed")}<span class="fx">${ai === 0 && prefix === "w0" ? "" : ""}<span class="tnum">${fixes.length}</span> ${fixes.length === 1 ? "rettelse" : "rettelser"}: ${fixes.map((c) => esc(c.ti)).join(" · ")}</span><button class="quiet" data-open="${fkey}">vis</button></div>`) : ""}
+    </div>`;
+  }).join("");
+}
+function areasB(list, prefix) {
+  return byArea(list).map(([a, items]) => {
+    const key = `${prefix}-b-${a}`;
+    const open = state.open.has(key);
+    const counts = ["on", "new", "beta", "improved", "fixed"].map((t) => [t, items.filter((c) => c.t === t).length]).filter(([, n]) => n);
+    const top = items.find((c) => c.t !== "fixed") || items[0];
+    return `<div class="brow" data-open="${key}"><div class="bn">${AREA[a]} <span class="meta">${items.length}</span></div>
+      <div><div class="bt">${tag(top.t)} ${esc(top.ti)}</div><div class="bc">${counts.map(([t, n]) => `<span>${n} ${TAG[t][0]}</span>`).join("")}</div></div>${open ? chevD : chevR}</div>
+      ${open ? `<div class="bopen lines">${items.map((c, i) => lineHtml(c, `${key}-${i}`)).join("")}</div>` : ""}`;
+  }).join("");
+}
+function weekLabel(i, w) { return i === 0 ? "Denne uge" : i === 1 ? "Sidste uge" : `Uge ${isoWeek(w)}`; }
+function summary(list) {
+  const top = list.filter((c) => c.t !== "fixed").slice(0, 2).map((c) => esc(c.ti));
+  const counts = byArea(list).map(([a, it]) => [a, it.length]).sort((x, y) => y[1] - x[1]);
+  const big = counts.slice(0, 3).map(([a, n]) => `${AREA[a]} <span class="tnum">${n}</span>`);
+  const rest = counts.slice(3).reduce((s, [, n]) => s + n, 0);
+  return `Vigtigst: ${top.join(" · ")}<br><span style="color:var(--text-3)">${big.join(" · ")}${rest ? ` · andet <span class="tnum">${rest}</span>` : ""}</span>`;
+}
+
+function render() {
+  const p = document.getElementById("page");
+  const newCount = weeks.flatMap((w) => w.list).filter(isNew).length;
+  let h = `<div class="ph"><div><h1>Patch notes</h1><div class="sub">Det nye i Cycling Zone, uge for uge og efter område</div></div>
+    <div style="display:flex;gap:8px;align-items:center"><span class="n">1</span><button class="btn-q${state.onlyNew ? " on" : ""}" data-act="new"><span class="udot"></span><span class="tnum">${newCount}</span>&nbsp;nye siden sidst</button></div></div>
+    <div class="fbar"><span class="n">7</span><label class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="q" placeholder="Søg i alle patch notes, også arkivet" value="${esc(state.q)}"></label>
+      <select class="sel" id="area"><option value="all">Alle områder</option>${DATA.AREAS.map(([k, da]) => `<option value="${k}"${state.area === k ? " selected" : ""}>${da}</option>`).join("")}</select>
+      <button class="tog${state.beta ? " on" : ""}" data-act="beta"><i></i>Kun beta</button></div>`;
+
+  if (state.q.trim().length >= 2) {
+    const q = state.q.trim().toLowerCase();
+    const hl = (s) => esc(s).replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), (m) => `<mark>${m}</mark>`);
+    const hits = [];
+    weeks.forEach((w, i) => w.list.forEach((c) => { if ((c.ti + " " + c.b).toLowerCase().includes(q)) hits.push({ c, src: `${weekLabel(i, w.w)} · ${range(w.w)}` }); }));
+    const recentStart = weeks[weeks.length - 1].w;
+    DATA.archive.forEach((m) => m.items.forEach((c) => { if (c.d < recentStart && c.ti.toLowerCase().includes(q)) hits.push({ c, src: `${MONTH[+m.m.slice(5) - 1]} ${m.m.slice(0, 4)}` }); }));
+    h += `<section class="card"><div class="ch"><h2>Søgeresultat</h2><span class="meta">${hits.length} fund</span></div>
+      ${hits.slice(0, 40).map(({ c, src }) => `<div class="hit">${tag(c.t)}<div><div style="font-size:13.5px;font-weight:500">${hl(c.ti)}</div>${c.b ? `<div style="font-size:12.5px;color:var(--text-2)">${hl(c.b).slice(0, 400)}</div>` : ""}<div class="src">${AREA[c.a]} · ${src}</div></div><span></span></div>`).join("")}
+      ${hits.length > 40 ? `<div class="meta" style="margin-top:10px">Viser 40 af ${hits.length}</div>` : ""}</section>`;
+    p.innerHTML = h; bind(); return;
+  }
+
+  // Denne uge
+  const w0 = weeks[0];
+  const l0 = filt(w0.list);
+  const hero = state.area === "all" && !state.beta && !state.onlyNew ? pickHero(l0) : null;
+  const rest0 = l0.filter((c) => c !== hero);
+  h += `<section class="card"><div class="ch"><h2>Denne uge</h2><span class="meta">${range(w0.w)} · <span class="tnum">${l0.length}</span> ændringer</span></div>`;
+  if (hero) h += `<div class="hero"><div class="img">Billede fra spillet<br>(valgfrit pr. note)</div><div>
+      <div class="row"><span class="n">2</span>${tag(hero.t)}<span class="meta">${AREA[hero.a]}</span>${isNew(hero) ? '<span class="udot"></span>' : ""}</div>
+      <h3>${esc(hero.ti)}</h3><p>${esc(hero.b)}</p><div class="row"><a class="quiet">Se det i spillet ${chevR}</a><a class="quiet">Læs mere i Hjælp ${chevR}</a></div></div></div>`;
+  h += V === "b" ? areasB(rest0, "w0") : areasA(rest0, "w0");
+  h += `</section>`;
+
+  // Tidligere uger + arkiv i ét kort (fold-disciplin: højst 2 kort)
+  h += `<section class="card"><div class="ch"><h2>Tidligere uger</h2><span class="meta">Tryk for at åbne en uge</span></div>`;
+  weeks.slice(1).forEach((w, j) => {
+    const i = j + 1; const key = `w${i}`; const open = state.open.has(key); const l = filt(w.list);
+    h += `<div class="wrow">${i === 1 ? '<span class="n" style="float:left;margin-right:8px">5</span>' : ""}<div class="wh" data-open="${key}" style="cursor:pointer"><b>${weekLabel(i, w.w)}</b><span class="meta">${range(w.w)} · <span class="tnum">${l.length}</span> ændringer${i === 1 && thin ? " · åben i dag (mandag)" : ""}</span><span class="sp"></span><span class="quiet">${open ? "luk" : "åbn ugen"} ${open ? chevD : chevR}</span></div>
+      ${open ? `<div class="wbody">${V === "b" ? areasB(l, key) : areasA(l, key)}</div>` : `<div class="wsum">${summary(l)}</div>`}</div>`;
+  });
+  h += `<div class="arch-h"><span class="n" style="float:left;margin-right:8px">6</span><span class="meta">Arkiv · hentes først, når du åbner en måned</span></div>`;
+  const older = DATA.archive.filter((m) => m.m < "2026-08");
+  DATA.archive.filter((m) => m.m >= "2026-08").forEach((m) => {
+    const key = `m-${m.m}`; const open = state.open.has(key);
+    h += `<div class="mrow" data-open="${key}" style="cursor:pointer"><b>${MONTH[+m.m.slice(5) - 1]} ${m.m.slice(0, 4)}</b><span class="meta"><span class="tnum">${m.n}</span> ændringer</span><span class="sp"></span><span class="quiet">${open ? "luk" : "åbn"} ${open ? chevD : chevR}</span></div>`;
+    if (open) {
+      h += `<div class="wbody" style="margin-bottom:10px">${byArea(m.items).map(([a, it]) => {
+        const main = it.filter((c) => c.t !== "fixed"); const fx = it.filter((c) => c.t === "fixed");
+        return `<div class="area"><div class="area-h"><b>${AREA[a]}</b><span class="meta">${it.length}</span></div>${main.map((c) => `<div class="line">${tag(c.t)}<div><div class="lt" style="font-weight:400">${esc(c.ti)}</div></div><span></span></div>`).join("")}${fx.length ? `<div class="fixes">${tag("fixed")}<span class="fx"><span class="tnum">${fx.length}</span> rettelser: ${fx.map((c) => esc(c.ti)).join(" · ")}</span><span class="quiet">vis</span></div>` : ""}</div>`;
+      }).join("")}</div>`;
+    }
+  });
+  const on = older.reduce((s, m) => s + m.n, 0);
+  h += `<div class="mrow"><b>April til juli 2026</b><span class="meta"><span class="tnum">${on}</span> ændringer i ${older.length} måneder</span><span class="sp"></span><span class="quiet">vis månederne ${chevR}</span></div>`;
+  h += `</section>`;
+  p.innerHTML = h; bind();
+}
+function bind() {
+  const q = document.getElementById("q");
+  q.oninput = () => { state.q = q.value; const pos = q.selectionStart; render(); const n = document.getElementById("q"); n.focus(); n.setSelectionRange(pos, pos); };
+  document.getElementById("area").onchange = (e) => { state.area = e.target.value; render(); };
+  document.querySelectorAll("[data-act]").forEach((b) => b.onclick = () => { if (b.dataset.act === "new") state.onlyNew = !state.onlyNew; else state.beta = !state.beta; render(); });
+  document.querySelectorAll("[data-open]").forEach((b) => b.onclick = () => { const k = b.dataset.open; state.open.has(k) ? state.open.delete(k) : state.open.add(k); render(); });
+  document.querySelectorAll("[data-line]").forEach((b) => b.onclick = () => { const k = b.dataset.line; state.openLines.has(k) ? state.openLines.delete(k) : state.openLines.add(k); render(); });
+}
+const sk = document.getElementById("sk");
+const link = (p, label, on) => { const u = new URLSearchParams(location.search); Object.entries(p).forEach(([k, v]) => u.set(k, v)); return `<a href="?${u}" class="${on ? "on" : ""}">${label}</a>`; };
+sk.innerHTML = link({ v: "a" }, "Variant A", V === "a") + link({ v: "b" }, "Variant B", V === "b") + link({ theme: "light" }, "Lys", THEME === "light") + link({ theme: "dark" }, "Mørk", THEME === "dark") + link({ notes: qs.get("notes") === "1" ? "0" : "1" }, "Noter", qs.get("notes") === "1");
+if (qs.get("open")) qs.get("open").split(",").forEach((k) => state.open.add(k));
+if (qs.get("q")) state.q = qs.get("q");
+if (qs.get("clean") === "1") sk.style.display = "none";
+render();
+</script>
+</body>
+</html>
