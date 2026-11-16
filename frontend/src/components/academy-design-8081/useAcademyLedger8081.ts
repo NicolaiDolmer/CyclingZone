@@ -4,6 +4,7 @@
 // backend (GET /api/academy/pnl) når den bygges.
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
+import { fetchAllRows } from "../../lib/supabasePagination.js";
 import { getAuthedUser } from "../../lib/getAuthedUser.js";
 import { buildAcademyRiderPool, buildLedgerSales, buildSeasonLedger } from "./academyLedger.ts";
 import type { LedgerSale, PoolMember, Row, SeasonLedger } from "./academyLedger.ts";
@@ -21,6 +22,16 @@ async function rows(query: PromiseLike<{ data: unknown; error: { message: string
   const { data, error } = await query;
   if (error) throw new Error(error.message);
   return (data as Row[] | null) ?? [];
+}
+
+// Historik vokser over sæsoner, så PostgREST's 1000-rækkers-loft må aldrig skære
+// stille i regnskabet (Codex 16/11). buildQuery skal have en stabil .order("id").
+async function pagedRows(buildQuery: () => any): Promise<Row[]> {
+  try {
+    return ((await fetchAllRows(buildQuery)) as Row[] | null) ?? [];
+  } catch (err) {
+    throw new Error(err instanceof Error ? err.message : String((err as { message?: string })?.message ?? err));
+  }
 }
 
 export function useAcademyLedger8081(enabled: boolean, rosterIds: readonly string[] = []): LedgerState & { reload: () => Promise<void> } {
@@ -42,19 +53,21 @@ export function useAcademyLedger8081(enabled: boolean, rosterIds: readonly strin
 
       const [seasons, financeRows, signedIntake, youthAuctionWins] = await Promise.all([
         rows(supabase.from("seasons").select("id, number, status, start_date, end_date")),
-        // pagination-safe: ét hold, kun de to akademi-typer, langt under 1000 rækker
-        rows(supabase.from("finance_transactions").select("type, amount, season_id, created_at, metadata, related_entity_type").eq("team_id", teamId).in("type", ["academy_drift", "academy_signing"])),
-        rows(supabase
+        // pagination-safe: pagedRows -> fetchAllRows (frontend/src/lib/supabasePagination.js)
+        pagedRows(() => supabase.from("finance_transactions").select("type, amount, season_id, created_at, metadata, related_entity_type").eq("team_id", teamId).in("type", ["academy_drift", "academy_signing"]).order("id")),
+        pagedRows(() => supabase
           .from("academy_intake")
           .select("rider_id, riders(firstname, lastname)")
           .eq("team_id", teamId)
-          .eq("status", "signed")),
-        rows(supabase
+          .eq("status", "signed")
+          .order("id")),
+        pagedRows(() => supabase
           .from("auctions")
           .select("rider_id, current_bidder_id, is_guaranteed_sale, current_price, actual_end, is_youth, riders(firstname, lastname)")
           .eq("is_youth", true)
           .eq("status", "completed")
-          .eq("current_bidder_id", teamId)),
+          .eq("current_bidder_id", teamId)
+          .order("id")),
       ]);
 
       // Forsvar i dybden: de to auktions-hentninger skilles også på is_youth her,
@@ -65,19 +78,21 @@ export function useAcademyLedger8081(enabled: boolean, rosterIds: readonly strin
       let transferRows: Row[] = [];
       if (poolIds.length > 0) {
         [auctionRows, transferRows] = await Promise.all([
-          rows(supabase
+          pagedRows(() => supabase
             .from("auctions")
             .select("rider_id, current_bidder_id, is_guaranteed_sale, current_price, actual_end, is_youth")
             .eq("seller_team_id", teamId)
             .eq("is_youth", false)
             .eq("status", "completed")
-            .in("rider_id", poolIds)),
-          rows(supabase
+            .in("rider_id", poolIds)
+            .order("id")),
+          pagedRows(() => supabase
             .from("transfer_offers")
             .select("rider_id, offer_amount, counter_amount, updated_at")
             .eq("seller_team_id", teamId)
             .eq("status", "accepted")
-            .in("rider_id", poolIds)),
+            .in("rider_id", poolIds)
+            .order("id")),
         ]);
       }
 
