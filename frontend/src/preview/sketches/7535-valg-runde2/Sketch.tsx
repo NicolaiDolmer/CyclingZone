@@ -1004,6 +1004,19 @@ function MobileSquad({ cfg }: { cfg: Config }) {
               Formtop her, ikke udtaget
             </span>,
           );
+        // Codex P2 16/11: 6C mobil viser formtop for ALLE ryttere med et mål, som desktop (PeakCell).
+        if (cfg.peak === "column" && r.peak?.here && r.selected && !rich)
+          sub.push(
+            <span key="pkh" className="inline-flex items-center gap-0.5 font-semibold text-cz-info">
+              {Ico.peak(11)} Formtop her
+            </span>,
+          );
+        if (cfg.peak === "column" && r.peak && !r.peak.here)
+          sub.push(
+            <span key="pko" className="text-cz-2">
+              Formtop {r.peak.race.split(" ").slice(-1)[0]} · {r.peak.when.split(" · ")[1]}
+            </span>,
+          );
         const matchEl = rich ? (
           <MatchBar value={r.routeMatch} narrow />
         ) : (
