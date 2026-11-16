@@ -847,7 +847,7 @@ export type SegmentHookContext = {
   // som runtimen satte den ved segmentets start (stagePlanEngine.stagePlanCurrentTasks). Udeladt = ingen plan.
   stagePlanTasks?: Readonly<Record<string, import("../../stagePlan.ts").StagePlanTask>>;
   // #7855 (KUN kontakten jersey_hunt_7855): hver jaegers straekning (stagePlanEngine.stagePlanHuntWindows7855). Udeladt = ingen jaegere.
-  stagePlanHuntWindows7855?: Readonly<Record<string, { fromKm: number; toKm: number }>>;
+  stagePlanHuntWindows7855?: Readonly<Record<string, { fromKm: number; toKm: number; escapeOnly?: true }>>; // escapeOnly: #7855 hul 1
   // #7855 (KUN kontakten): hver jaegers jagt-opgave i segmentet (stagePlanEngine.stagePlanHuntTasks7855), ogsaa
   // udbrudsleddets jagt (valg A). Udeladt = ingen jaegere.
   stagePlanHuntTasks7855?: Readonly<Record<string, import("../../stagePlan.ts").StagePlanTask>>;

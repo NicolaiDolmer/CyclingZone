@@ -81,7 +81,7 @@ export function jerseyHuntersForPassage7855(
   kind: "sprint" | "kom",
   isRacing: (riderId: string) => boolean,
   /** Passagens km og hver jaegers straekning: et jagt-led kaemper kun om passager paa sin egen straekning. */
-  passage?: { km: number; windows: Readonly<Record<string, { fromKm: number; toKm: number }>> | undefined; groups?: readonly HuntGroup7855[] },
+  passage?: { km: number; windows: Readonly<Record<string, { fromKm: number; toKm: number; escapeOnly?: true }>> | undefined; groups?: readonly HuntGroup7855[] },
 ): string[] {
   if (!huntTasks) return [];
   const task = JERSEY_HUNT_TASK_BY_KIND_7855[kind];
@@ -89,9 +89,10 @@ export function jerseyHuntersForPassage7855(
     const window = passage?.windows?.[id];
     return !window || (passage!.km > window.fromKm && passage!.km <= window.toKm);
   };
-  // S2: kun bjergjagten, og kun naar passagens gruppebillede er givet.
-  const groups = kind === "kom" ? passage?.groups : undefined;
-  const withBreak = (id: string) => groups === undefined || inEscapeAtPassage7855(groups, id);
+  // S2: bjergjagten, og (hul 1) en jagt der fulgte ham fra udbrudsleddet (`escapeOnly`), gaelder kun
+  // i udbruddet. Kun naar passagens gruppebillede er givet.
+  const groups = passage?.groups;
+  const withBreak = (id: string) => groups === undefined || !(kind === "kom" || passage?.windows?.[id]?.escapeOnly) || inEscapeAtPassage7855(groups, id);
   return Object.keys(huntTasks)
     .filter((id) => huntTasks[id] === task && isRacing(id) && onStretch(id) && withBreak(id))
     .sort();
