@@ -247,7 +247,7 @@ function FilmBody({ story, profile, cast, narrative, onShowResults }: {
                     type="button"
                     aria-pressed={active}
                     onClick={() => jump(c.km)}
-                    className={`rounded-cz border px-2.5 py-1 text-xs transition-colors duration-150 [@media(max-width:640px),(pointer:coarse)]:min-h-11 ${active ? "border-cz-accent bg-cz-accent/10 font-semibold text-cz-accent-t" : "border-cz-border bg-cz-card text-cz-2 hover:text-cz-1"}`}
+                    className={`rounded-cz border px-2.5 py-1 text-xs transition-colors duration-150 [@media(max-width:640px),(pointer:coarse)]:min-h-11 ${active ? "border-cz-accent bg-cz-accent/10 font-semibold text-cz-1" :"border-cz-border bg-cz-card text-cz-2 hover:text-cz-1"}`}
                   >
                     {chapterLabel(c)}
                   </button>
@@ -316,7 +316,7 @@ function ReportLine({ line, current, text, onJump }: { line: StoryLine; current:
         aria-current={current ? "step" : undefined}
         className={`grid min-h-11 w-full grid-cols-[72px_minmax(0,1fr)] gap-2.5 border-t border-cz-border px-1 py-2 text-left hover:bg-cz-subtle ${current ? "bg-cz-subtle" : ""}`}
       >
-        <span className="flex flex-col font-data text-xs font-semibold tabular-nums text-cz-accent-t">
+        <span className="flex flex-col font-data text-xs font-semibold tabular-nums text-cz-1">
           <span>{text.kmLabel(line)}</span>
           {line.time != null && <span className="font-normal text-cz-3">{formatClock(line.time)}</span>}
         </span>
