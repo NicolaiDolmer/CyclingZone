@@ -4,7 +4,7 @@
 // tælle-piller giver falske positiver, så hvert fund i rapporten er
 // efterset i koden. Kør fra repo-roden: node scripts/audit/8069-taste-scan.mjs out.json
 import { readFileSync, readdirSync, statSync, existsSync, writeFileSync } from "node:fs";
-import { join, dirname, resolve, relative } from "node:path";
+import { join, dirname, resolve, relative, sep } from "node:path";
 
 const ROOT = resolve("frontend/src");
 const files = [];
@@ -56,12 +56,12 @@ const RULES = {
 
 const data = {};
 for (const f of files) {
-  const rel = relative(ROOT, f);
+  const rel = relative(ROOT, f).split(sep).join("/");
   const src = readFileSync(f, "utf8");
   const r = {}; for (const [k, fn] of Object.entries(RULES)) r[k] = fn(src, rel);
   const imports = [...src.matchAll(/(?:import|from)\s*\(?\s*["'](\.{1,2}\/[^"']+)["']/g)].map((m) => {
     const base = resolve(dirname(f), m[1]);
-    for (const ext of ["", ".jsx", ".tsx", ".js", ".ts", "/index.jsx", "/index.tsx", "/index.js", "/index.ts"]) if (existsSync(base + ext) && statSync(base + ext).isFile()) return relative(ROOT, base + ext);
+    for (const ext of ["", ".jsx", ".tsx", ".js", ".ts", "/index.jsx", "/index.tsx", "/index.js", "/index.ts"]) if (existsSync(base + ext) && statSync(base + ext).isFile()) return relative(ROOT, base + ext).split(sep).join("/");
     return null;
   }).filter(Boolean);
   data[rel] = { r, imports };
