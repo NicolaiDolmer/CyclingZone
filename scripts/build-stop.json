@@ -1458,6 +1458,21 @@
       "issue": 8190,
       "reason": "Ejer-go 15/11 (Claude Code, Dolmer PC): Discord-fund, boelge i baggrunden, se #2758",
       "since": "2026-11-15"
+    },
+    {
+      "issue": 5841,
+      "reason": "Næste sæsons kalender + divisionsvalg synlige før S6-skiftet. Ejer-go 16/11 (Claude Code, Dolmer PC, AskUserQuestion: Ja, alle tre); arbejdsfordeling i referatet: https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6914665328",
+      "since": "2026-11-16"
+    },
+    {
+      "issue": 5865,
+      "reason": "Skader nulstilles ved sæsonskiftet (bag kontakt). Ejer-go 16/11 (Claude Code, Dolmer PC, AskUserQuestion: Ja, alle tre); arbejdsfordeling i referatet: https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6914665328",
+      "since": "2026-11-16"
+    },
+    {
+      "issue": 8081,
+      "reason": "Akademiet som ét designvalg (+#8060, #8036, #6944). Ejer-go 16/11 (Claude Code, Dolmer PC, AskUserQuestion: Ja, alle tre); arbejdsfordeling i referatet: https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6914665328",
+      "since": "2026-11-16"
     }
   ]
 }
