@@ -164,6 +164,7 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     fatigue_now_7801: false,
     planning_workbench: false,
     training_train_now_instant: false,
+    training_train_now_bonus: false, // #7741
     sale_escrow_enabled: false, // #6181
   });
   assert.equal(f.betaLookups(), 0, "en anonym forespoergsel maa ikke slaa en bruger op");
@@ -240,6 +241,7 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
     fatigue_now_7801: false,
     planning_workbench: false,
     training_train_now_instant: false,
+    training_train_now_bonus: false, // #7741
     sale_escrow_enabled: false, // #6181
   });
 });
@@ -324,6 +326,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     fatigue_now_7801: false,
     planning_workbench: false,
     training_train_now_instant: false,
+    training_train_now_bonus: false, // #7741
     sale_escrow_enabled: false, // #6181
   });
   assert.deepEqual(await readPlayerFeatureFlags(supabase, { isBetaTester: true }), {
@@ -369,6 +372,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     fatigue_now_7801: false,
     planning_workbench: false,
     training_train_now_instant: false,
+    training_train_now_bonus: false, // #7741
     sale_escrow_enabled: false, // #6181
   });
 });
