@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 import {
   LEDGER_SOURCE, classifySigning, seasonForDate, buildAcademyRiderPool,
   buildLedgerSales, buildSeasonLedger,
-} from "./academyLedger.js";
+} from "./academyLedger.ts";
 import {
   readDesign8081Variant, readDesign8081Tab, designLandingSquad, ageFocusDistribution,
-} from "./designModel.js";
+} from "./designModel.ts";
 
 const seasons = [
   { id: "s4", number: 4, start_date: "2026-08-01", end_date: "2026-09-30" },
@@ -37,7 +37,7 @@ test("#785: en auktion uden vinder er hverken et køb eller et salg", () => {
   const pool = buildAcademyRiderPool({ youthAuctionWins: [{ rider_id: "x", current_bidder_id: null }] });
   assert.equal(pool.size, 0);
   const sales = buildLedgerSales({
-    pool: new Map([["y", { riderId: "y", origin: "offer" }]]),
+    pool: new Map([["y", { riderId: "y", riderName: null, origin: "offer" as const }]]),
     auctionRows: [{ rider_id: "y", current_bidder_id: null, current_price: 50 }],
   });
   assert.equal(sales.length, 0);
@@ -80,7 +80,7 @@ test("regnskabet deles pr. sæson: denne sæson øverst, samlet linje summerer",
 test("denne sæson står altid med, også uden bevægelser", () => {
   const ledger = buildSeasonLedger({ seasons, currentSeasonId: "s5" });
   assert.equal(ledger.rows.length, 1);
-  assert.equal(ledger.current.seasonNumber, 5);
+  assert.equal(ledger.current?.seasonNumber, 5);
   assert.equal(ledger.showDrift, false);
 });
 

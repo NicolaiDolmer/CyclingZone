@@ -3,21 +3,23 @@
 // eneste guld er ugens hentning).
 import { Link } from "react-router";
 import { ChevronRightIcon } from "../ui/icons/index.jsx";
-import { DESIGN_SQUAD_LIMITS } from "./designModel.js";
-import { useDesignCopy } from "./copy.js";
+import { DESIGN_SQUAD_LIMITS } from "./designModel.ts";
+import { useDesignCopy } from "./copy.ts";
 
-const PATH = { senior: "/team", u23: "/squads/u23", junior: "/squads/junior" };
+const PATH: Record<SquadKey, string> = { senior: "/team", u23: "/squads/u23", junior: "/squads/junior" };
 
-export function squadLimitRows(counts) {
-  const n = (k) => Number(counts?.[k]) || 0;
-  const rows = ["junior", "u23", "senior"].map((squad) => ({
+import type { SquadCountsAll, SquadKey } from "./designModel.ts";
+
+export function squadLimitRows(counts: SquadCountsAll | null | undefined) {
+  const n = (k: SquadKey) => Number(counts?.[k]) || 0;
+  const rows = (["junior", "u23", "senior"] as SquadKey[]).map((squad) => ({
     squad, used: n(squad), max: DESIGN_SQUAD_LIMITS[squad], full: n(squad) >= DESIGN_SQUAD_LIMITS[squad],
   }));
   const used = rows.reduce((sum, r) => sum + r.used, 0);
   return { rows, total: { used, max: DESIGN_SQUAD_LIMITS.total, full: used >= DESIGN_SQUAD_LIMITS.total } };
 }
 
-export default function SquadLimits8081({ counts }) {
+export default function SquadLimits8081({ counts }: { counts: SquadCountsAll }) {
   const c = useDesignCopy();
   const { rows, total } = squadLimitRows(counts);
   return (

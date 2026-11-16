@@ -5,6 +5,7 @@
 // mode="full": hele tabellen + salgslisten (udgave A og C).
 // mode="compact": kun denne sæson, tidligere sæsoner bag en fold (udgave B's sidekolonne).
 import { useState } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { Link } from "react-router";
 import RiderLink from "../RiderLink.jsx";
 import Button from "../ui/Button.jsx";
@@ -12,38 +13,45 @@ import EmptyState from "../ui/EmptyState.jsx";
 import ErrorStateJs from "../ui/ErrorState.jsx";
 import CollapsibleSectionJs from "../ui/CollapsibleSection.jsx";
 
-const ErrorState = /** @type {any} */ (ErrorStateJs);
-const CollapsibleSection = /** @type {any} */ (CollapsibleSectionJs);
 import { SkeletonLines } from "../ui/Skeleton.jsx";
 import { buttonClass } from "../ui/buttonStyles.js";
 import { formatCz } from "../../lib/marketValues.js";
 import { formatDate } from "../../lib/intl.js";
-import { useDesignCopy } from "./copy.js";
+import { useDesignCopy } from "./copy.ts";
+import type { CopyFn } from "./copy.ts";
+import type { LedgerRow, LedgerSale, LedgerTotals, SeasonLedger } from "./academyLedger.ts";
+import type { LedgerState } from "./useAcademyLedger8081.ts";
+
+type LineKey = "offerSignings" | "youthAuctionBuys" | "drift" | "salesProceeds";
+
+// Kit-primitiverne er utypede .jsx; kontrakten skrives ned her (samme greb som AcademyProfileCard.tsx).
+const ErrorState = ErrorStateJs as unknown as ComponentType<{ title: ReactNode; description?: ReactNode; action?: ReactNode }>;
+const CollapsibleSection = CollapsibleSectionJs as unknown as ComponentType<{ title: ReactNode; meta?: ReactNode; defaultOpen?: boolean; children?: ReactNode }>;
 
 const TH = "px-3 py-2 font-data text-2xs font-semibold uppercase tracking-wide text-cz-3";
 const TDN = "px-3 py-[9px] text-right font-data tabular-nums";
 
-function Money({ value, signed = false, strong = false }) {
+function Money({ value, signed = false, strong = false }: { value: number; signed?: boolean; strong?: boolean }) {
   const tone = !signed ? "text-cz-1" : value > 0 ? "text-cz-success" : value < 0 ? "text-cz-danger" : "text-cz-2";
   return <span className={`${tone} ${strong ? "font-semibold" : ""}`}>{formatCz(value)}</span>;
 }
 
-function seasonLabel(c, row) {
+function seasonLabel(c: CopyFn, row: LedgerRow) {
   if (row.isCurrent) return c("ledger.thisSeason");
   return row.seasonNumber != null ? c("ledger.season", { n: row.seasonNumber }) : "–";
 }
 
-function lineDefs(c, ledger) {
+function lineDefs(c: CopyFn, ledger: SeasonLedger): { key: LineKey; label: string; sign: number }[] {
   return [
     { key: "offerSignings", label: c("ledger.offerSignings"), sign: -1 },
     { key: "youthAuctionBuys", label: c("ledger.youthAuctionBuys"), sign: -1 },
-    ...(ledger.showDrift ? [{ key: "drift", label: c(ledger.driftIsHistoric ? "ledger.driftHistoric" : "ledger.drift"), sign: -1 }] : []),
+    ...(ledger.showDrift ? [{ key: "drift" as const, label: c(ledger.driftIsHistoric ? "ledger.driftHistoric" : "ledger.drift"), sign: -1 }] : []),
     { key: "salesProceeds", label: c("ledger.sales"), sign: 1 },
   ];
 }
 
 /** Én sæson som definitionsliste (mobil og sidekolonnen). */
-function SeasonBlock({ c, ledger, row, title }) {
+function SeasonBlock({ c, ledger, row, title }: { c: CopyFn; ledger: SeasonLedger; row: LedgerTotals & Partial<LedgerRow>; title?: string }) {
   return (
     <dl className="space-y-1.5 text-sm">
       {title && <dt className="pb-1 font-data text-2xs font-semibold uppercase tracking-wide text-cz-3">{title}</dt>}
@@ -66,7 +74,7 @@ function SeasonBlock({ c, ledger, row, title }) {
   );
 }
 
-function SeasonTable({ c, ledger }) {
+function SeasonTable({ c, ledger }: { c: CopyFn; ledger: SeasonLedger }) {
   const lines = lineDefs(c, ledger);
   return (
     <div className="hidden overflow-hidden rounded-cz border border-cz-border bg-cz-card sm:block">
@@ -104,7 +112,7 @@ function SeasonTable({ c, ledger }) {
   );
 }
 
-function SalesList({ c, sales }) {
+function SalesList({ c, sales }: { c: CopyFn; sales: LedgerSale[] }) {
   const [all, setAll] = useState(false);
   if (sales.length === 0) {
     return (
@@ -152,7 +160,7 @@ function SalesList({ c, sales }) {
   );
 }
 
-export default function SeasonLedger8081({ state, mode = "full" }) {
+export default function SeasonLedger8081({ state, mode = "full" }: { state: LedgerState & { reload: () => void }; mode?: "full" | "compact" }) {
   const c = useDesignCopy();
   const { loading, error, ledger, sales, reload } = state;
   if (loading && !ledger) return <SkeletonLines lines={mode === "compact" ? 5 : 6} />;

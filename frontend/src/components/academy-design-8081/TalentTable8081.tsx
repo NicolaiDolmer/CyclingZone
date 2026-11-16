@@ -10,13 +10,22 @@ import AcademyPrognosisCell from "../rider/AcademyPrognosisCell.tsx";
 import EmptyState from "../ui/EmptyState.jsx";
 import { buttonClass } from "../ui/buttonStyles.js";
 import { getRiderAge } from "../../lib/riderAge.js";
-import { useDesignCopy } from "./copy.js";
+import { useDesignCopy } from "./copy.ts";
+import type { PoolMember, Row } from "./academyLedger.ts";
 
 const TH = "px-3 py-2 text-left font-data text-2xs font-semibold uppercase tracking-wide text-cz-3";
 const TD = "px-3 py-[9px] align-top";
 
-/** @param {{ roster: any[], seasonYear: any, squadById?: Map<string, any>, pool?: Map<string, any>, onGoToIntake?: (() => void) | null, showVia?: boolean }} props */
-export default function TalentTable8081({ roster, seasonYear, squadById, pool, onGoToIntake = null, showVia = true }) {
+type TalentProps = {
+  roster: Row[];
+  seasonYear: number | null;
+  squadById?: Map<string, string | null>;
+  pool?: Map<string, PoolMember>;
+  onGoToIntake?: (() => void) | null;
+  showVia?: boolean;
+};
+
+export default function TalentTable8081({ roster, seasonYear, squadById, pool, onGoToIntake = null, showVia = true }: TalentProps) {
   const c = useDesignCopy();
   if (!roster || roster.length === 0) {
     return (

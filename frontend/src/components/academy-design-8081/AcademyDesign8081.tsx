@@ -10,6 +10,7 @@
 //
 // A: overblik + faner. B: én side med sidekolonne. C: én liste fra kandidat til trup.
 import { useMemo, useState } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import AcademyProfileCard from "../AcademyProfileCard.tsx";
 import NationCell from "../rider/NationCell.jsx";
@@ -17,28 +18,50 @@ import RiderLink from "../RiderLink.jsx";
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
 import AcademyPrognosisCell from "../rider/AcademyPrognosisCell.tsx";
 import { Card, Button, HeroStats, Section, SectionHeader as SectionHeaderJs, Tabs, TabList, Tab, TabPanel, CollapsibleSection as CollapsibleSectionJs } from "../ui";
-
-// Kit-primitiverne er utypede .jsx; checkJs udleder prop-typer fra defaults (null).
-const SectionHeader = /** @type {any} */ (SectionHeaderJs);
-const CollapsibleSection = /** @type {any} */ (CollapsibleSectionJs);
 import { formatCz } from "../../lib/marketValues.js";
 import { ageForSeason, getRiderAge } from "../../lib/riderAge.js";
 import { academyTargetSquad } from "../../lib/squadCaps.ts";
-import AgeFocusField8081 from "./AgeFocusField8081.jsx";
-import SquadLimits8081, { squadLimitRows } from "./SquadLimits8081.jsx";
-import TalentTable8081 from "./TalentTable8081.jsx";
-import SeasonLedger8081 from "./SeasonLedger8081.jsx";
-import { useAcademyLedger8081 } from "./useAcademyLedger8081.js";
-import { designLandingSquad } from "./designModel.js";
-import { useDesignCopy } from "./copy.js";
+import AgeFocusField8081 from "./AgeFocusField8081.tsx";
+import SquadLimits8081, { squadLimitRows } from "./SquadLimits8081.tsx";
+import TalentTable8081 from "./TalentTable8081.tsx";
+import SeasonLedger8081 from "./SeasonLedger8081.tsx";
+import { useAcademyLedger8081 } from "./useAcademyLedger8081.ts";
+import { designLandingSquad } from "./designModel.ts";
+import { useDesignCopy } from "./copy.ts";
+import type { Row } from "./academyLedger.ts";
+import type { DesignVariant, SquadCountsAll } from "./designModel.ts";
 
-function PreviewLine({ text }) {
+// Kit-primitiverne er utypede .jsx; kontrakten skrives ned her (samme greb som AcademyProfileCard.tsx).
+const SectionHeader = SectionHeaderJs as unknown as ComponentType<{ title: ReactNode; meta?: ReactNode }>;
+const CollapsibleSection = CollapsibleSectionJs as unknown as ComponentType<{ title: ReactNode; meta?: ReactNode; defaultOpen?: boolean; children?: ReactNode }>;
+
+export type DesignCtx = {
+  graduationBanner: ReactNode;
+  giftSection: ReactNode;
+  pullCard: ReactNode;
+  intakeEmpty: ReactNode;
+  roster: Row[];
+  seasonYear: number | null;
+  counts: SquadCountsAll;
+  regularIntake: Row[];
+  intakePull: { enabled: boolean; pulledThisWeek: boolean };
+  academyProfile: any;
+  saveProfile: any;
+  balance: number | null;
+  renderIntakeCard: (item: Row, opts?: { landingText?: (item: Row) => string } | null) => ReactNode;
+  actionState: Record<string, string | null>;
+  actionErrors: Record<string, string | null>;
+  onSign: (riderId: string) => void;
+  onReject: (riderId: string) => void;
+};
+
+function PreviewLine({ text }: { text: string }) {
   return <p className="-mt-3 mb-5 font-data text-2xs uppercase tracking-wide text-cz-3" data-testid="design8081-variant">{text}</p>;
 }
 
-function useLandingText(counts, seasonYear) {
+function useLandingText(counts: SquadCountsAll, seasonYear: number | null) {
   const c = useDesignCopy();
-  return (item) => {
+  return (item: Row): string => {
     const age = ageForSeason(item.rider?.birthdate, seasonYear);
     const squad = designLandingSquad(age, counts);
     return squad ? c("landing.on", { squad: c(`squad.${squad}`) }) : c("landing.none");
@@ -46,7 +69,7 @@ function useLandingText(counts, seasonYear) {
 }
 
 /** Profilkortet med aldersfokus som ekstra felt (#6944). */
-function ProfileWithAge({ academyProfile, saveProfile, ageFocus, setAgeFocus }) {
+function ProfileWithAge({ academyProfile, saveProfile, ageFocus, setAgeFocus }: { academyProfile: any; saveProfile: any; ageFocus: string; setAgeFocus: (v: string) => void }) {
   return (
     <div className="flex flex-col gap-4">
       {academyProfile && <AcademyProfileCard profile={academyProfile} onSave={saveProfile} />}
@@ -61,7 +84,7 @@ function ProfileWithAge({ academyProfile, saveProfile, ageFocus, setAgeFocus }) 
 const TH = "px-3 py-2 text-left font-data text-2xs font-semibold uppercase tracking-wide text-cz-3";
 const TD = "px-3 py-[9px] align-top";
 
-function GroupRow({ title, meta }) {
+function GroupRow({ title, meta }: { title: string; meta?: string | null }) {
   return (
     <tr className="border-b border-cz-border bg-cz-subtle">
       <td colSpan={6} className="px-3 py-2">
@@ -74,18 +97,18 @@ function GroupRow({ title, meta }) {
   );
 }
 
-function OneList({ ctx, landingText, squadById }) {
+function OneList({ ctx, landingText, squadById }: { ctx: DesignCtx; landingText: (item: Row) => string; squadById: Map<string, string | null> }) {
   const c = useDesignCopy();
   const { t } = useTranslation("academy");
   const { regularIntake, roster, seasonYear, counts, balance, actionState, actionErrors, onSign, onReject } = ctx;
   const { rows } = squadLimitRows(counts);
-  const capOf = (squad) => rows.find((r) => r.squad === squad);
-  const squadOf = (r) => squadById.get(r.id) ?? r.squad ?? academyTargetSquad(r.birthdate, seasonYear) ?? "u23";
+  const capOf = (squad: string) => rows.find((r) => r.squad === squad);
+  const squadOf = (r: Row): string => squadById.get(r.id) ?? r.squad ?? academyTargetSquad(r.birthdate, seasonYear) ?? "u23";
   const groups = [
     { squad: "junior", title: c("c.groupJunior"), riders: roster.filter((r) => squadOf(r) === "junior") },
     { squad: "u23", title: c("c.groupU23"), riders: roster.filter((r) => squadOf(r) === "u23") },
   ];
-  const nameCell = (rider, linked) => (
+  const nameCell = (rider: Row, linked: boolean) => (
     <td className={TD}>
       <span className="flex min-w-0 items-center gap-1.5">
         {rider.nationality_code && <NationCell code={rider.nationality_code} />}
@@ -163,7 +186,7 @@ function OneList({ ctx, landingText, squadById }) {
 }
 
 // ---------- Hovedkomponenten ----------
-export default function AcademyDesign8081({ variant, initialTab = "intake", ctx }) {
+export default function AcademyDesign8081({ variant, initialTab = "intake", ctx }: { variant: DesignVariant; initialTab?: string; ctx: DesignCtx }) {
   const c = useDesignCopy();
   const { t } = useTranslation("academy");
   const [tab, setTab] = useState(initialTab);
@@ -175,7 +198,7 @@ export default function AcademyDesign8081({ variant, initialTab = "intake", ctx 
   const { rows: limitRows, total } = squadLimitRows(counts);
   const net = ledgerState.ledger?.current?.net;
 
-  const intakeCards = (cols) => (
+  const intakeCards = (cols: number) => (
     <>
       {ctx.pullCard}
       {regularIntake.length === 0 ? ctx.intakeEmpty : (

@@ -6,7 +6,7 @@
 // sine nøgler ind i academy.json (en, da, es, fr, nl) når den bygges.
 import { useTranslation } from "react-i18next";
 
-const EN = {
+const EN: Record<string, string> = {
   variantA: "Design A: overview and tabs",
   variantB: "Design B: one page with a side column",
   variantC: "Design C: one list from candidate to squad",
@@ -94,7 +94,7 @@ const EN = {
   "c.edit": "Change",
 };
 
-const DA = {
+const DA: Record<string, string> = {
   variantA: "Udgave A: overblik og faner",
   variantB: "Udgave B: én side med sidekolonne",
   variantC: "Udgave C: én liste fra kandidat til trup",
@@ -185,15 +185,18 @@ const DA = {
 export const DESIGN_8081_COPY = Object.freeze({ en: EN, da: DA });
 
 /** Slå en nøgle op og flet {navn}-pladsholdere ind. Ukendt sprog = engelsk. */
-export function designCopy(lang, key, vars = {}) {
+export type CopyVars = Record<string, string | number | null | undefined>;
+export type CopyFn = (key: string, vars?: CopyVars) => string;
+
+export function designCopy(lang: string | null | undefined, key: string, vars: CopyVars = {}): string {
   const dict = String(lang ?? "").toLowerCase().startsWith("da") ? DA : EN;
   const raw = dict[key] ?? EN[key] ?? key;
-  return raw.replace(/\{(\w+)\}/g, (m, name) => (vars[name] != null ? String(vars[name]) : m));
+  return raw.replace(/\{(\w+)\}/g, (m: string, name: string) => (vars[name] != null ? String(vars[name]) : m));
 }
 
 /** Hook: c("ledger.title") i komponenterne, på sidens aktuelle sprog. */
-export function useDesignCopy() {
+export function useDesignCopy(): CopyFn {
   const { i18n } = useTranslation();
   const lang = i18n?.resolvedLanguage || i18n?.language || "en";
-  return (key, vars) => designCopy(lang, key, vars);
+  return (key: string, vars?: CopyVars) => designCopy(lang, key, vars);
 }

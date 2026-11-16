@@ -1,10 +1,10 @@
 // #8081 / #6944: aldersvalget i akademiets profil (skitse B fra PR #8185, ét
 // fokus-valg). Kun et designudkast: valget gemmes ikke og ændrer intet optag.
 import { Segmented } from "../ui/Segmented.jsx";
-import { AGE_FOCUS_OPTIONS, ageFocusDistribution } from "./designModel.js";
-import { useDesignCopy } from "./copy.js";
+import { AGE_FOCUS_OPTIONS, ageFocusDistribution } from "./designModel.ts";
+import { useDesignCopy } from "./copy.ts";
 
-export default function AgeFocusField8081({ value, onChange, compact = false }) {
+export default function AgeFocusField8081({ value, onChange, compact = false }: { value: string; onChange: (v: string) => void; compact?: boolean }) {
   const c = useDesignCopy();
   const options = AGE_FOCUS_OPTIONS.map((v) => ({ value: v, label: v === "mixed" ? c("age.mixed") : v }));
   const dist = ageFocusDistribution(value);

@@ -45,8 +45,8 @@ import { ABILITY_KEYS, ABILITY_SHORT, flattenAbilities } from "../lib/abilities.
 import { riderOverallRating } from "../lib/riderRating.js";
 import { statPlateStyle } from "../lib/statColor.js";
 // #8081: tre designudgaver til ejerens valg, kun bag ?design8081=a|b|c.
-import AcademyDesign8081 from "../components/academy-design-8081/AcademyDesign8081.jsx";
-import { readDesign8081Variant, readDesign8081Tab } from "../components/academy-design-8081/designModel.js";
+import AcademyDesign8081 from "../components/academy-design-8081/AcademyDesign8081.tsx";
+import { readDesign8081Variant, readDesign8081Tab } from "../components/academy-design-8081/designModel.ts";
 
 // #5844: academy_intake.source for bestyrelsens gave-kuld (backend academyIntakeSource.js).
 const BOARD_GIFT_SOURCE = "board_gift";
