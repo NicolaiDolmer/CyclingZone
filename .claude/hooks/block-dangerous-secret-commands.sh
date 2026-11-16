@@ -55,6 +55,9 @@ fi
 } 2>/dev/null || true
 # --- /#684 TRACE ---
 
+# Bevidst $(cat), ikke $(</dev/stdin): naar Claude Code (node) starter hooken,
+# er stdin et Windows-pipe som /dev/stdin ikke kan aabne i MSYS - input blev
+# tomt og vagten lod alt passere (fanget af test-secret-runtime.mjs, #8240).
 INPUT=$(cat 2>/dev/null || true)
 if [ -z "$INPUT" ]; then
   exit 0
