@@ -1458,6 +1458,51 @@
       "issue": 8190,
       "reason": "Ejer-go 15/11 (Claude Code, Dolmer PC): Discord-fund, boelge i baggrunden, se #2758",
       "since": "2026-11-15"
+    },
+    {
+      "issue": 5841,
+      "reason": "Næste sæsons kalender + divisionsvalg synlige før S6-skiftet. Ejer-go 16/11 (Claude Code, Dolmer PC, AskUserQuestion: Ja, alle tre); arbejdsfordeling i referatet: https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6914665328",
+      "since": "2026-11-16"
+    },
+    {
+      "issue": 5865,
+      "reason": "Skader nulstilles ved sæsonskiftet (bag kontakt). Ejer-go 16/11 (Claude Code, Dolmer PC, AskUserQuestion: Ja, alle tre); arbejdsfordeling i referatet: https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6914665328",
+      "since": "2026-11-16"
+    },
+    {
+      "issue": 8081,
+      "reason": "Akademiet som ét designvalg (+#8060, #8036, #6944). Ejer-go 16/11 (Claude Code, Dolmer PC, AskUserQuestion: Ja, alle tre); arbejdsfordeling i referatet: https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6914665328",
+      "since": "2026-11-16"
+    },
+    {
+      "issue": 8060,
+      "reason": "Akademiets regnskab pr. sæson på akademisiden (fanen Akademi-regnskab), parallelt med udgave A. Ejer-go 16/11 PC1 (AskUserQuestion: \"Ja, parallelt nu\"; placering A).",
+      "since": "2026-11-16"
+    },
+    {
+      "issue": 8069,
+      "reason": "Designsystem og TASTE: regler F1-F8. Ejer-go 16/11 PC1 (AskUserQuestion: \"Ja, tilføj #8069\"; F1=A, F2-F8 \"merge\").",
+      "since": "2026-11-16"
+    },
+    {
+      "issue": 8278,
+      "reason": "Mobil rettelse 1, 8, 13. Del af #8073. Ejer-go 16/11 PC1 (AskUserQuestion: \"Ja, sæt i gang\").",
+      "since": "2026-11-16"
+    },
+    {
+      "issue": 8279,
+      "reason": "Mobil rettelse 3, 11, 15. Del af #8073. Ejer-go 16/11 PC1 (AskUserQuestion: \"Ja, sæt i gang\").",
+      "since": "2026-11-16"
+    },
+    {
+      "issue": 8280,
+      "reason": "Skitser: tabel-kontroller og indbakke (mobil 6, 9). Del af #8073. Ejer-go 16/11 PC1 (AskUserQuestion: \"Ja, sæt i gang\").",
+      "since": "2026-11-16"
+    },
+    {
+      "issue": 8281,
+      "reason": "Skitser: rytterprofil med billede (mobil 7). Del af #8073. Ejer-go 16/11 PC1 (AskUserQuestion: \"Ja, sæt i gang\").",
+      "since": "2026-11-16"
     }
   ]
 }

@@ -1,10 +1,13 @@
 import { RIDERS, TEST_TEAM } from "./seedData.js";
+import { previewTrainNowBonusEnabled } from "./betaAccessMock.js";
 
 export function trainingReceiptMock(seed: Record<string, unknown>, mode: string | null) {
   if (!["complete","pending","reconciliation"].includes(mode ?? "")) return null;
   const own = RIDERS.filter(rider=>rider.team_id===TEST_TEAM.id);
   const date = "2026-09-29";
   const days = mode === "pending" ? [0,1,2] : [0,1,2,3,4];
+  // #7741: with ?trainNowBonus=on the first riders carry the engine's bonus stamp.
+  const bonusOn = previewTrainNowBonusEnabled();
   const todayRuns = days.map(day=>({
     id: `receipt-fixture-${day}`, tick_date:date,season_id:"receipt-season",squad:"senior",game_day:day,
     executed_by:"cron",bonus_applied:false,created_at:`2026-09-29T20:0${day}:00Z`,
@@ -20,6 +23,7 @@ export function trainingReceiptMock(seed: Record<string, unknown>, mode: string 
         progress_after:{sprint:[0.95,0.1,0.9,0.2,0.2][day]},
         condition_before_date:{form:52,fatigue:11},form:day===4?53:52,
         fatigue:day===4?19:11,fatigue_delta:day===4?8:0,injured:false,
+        ...(bonusOn && index<2 ? {train_now_bonus:true} : {}),
       })),
     },
   }));

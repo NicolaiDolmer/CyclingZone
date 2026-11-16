@@ -135,6 +135,7 @@ import { hardestPlanEffort, stagePlanReplacesControls, withStagePlanFields, with
 import { blockedReasonKey, oppositeOrderError } from "../../lib/oppositeOrders.js"; // #7003 spec §3
 import { advanceBaseline, keepMineAfterConflict, runTacticsSave, withConfirmedVersions, stageEqual } from "../../lib/tacticsSaveFlow.ts"; // #7327
 import TacticsSaveStatus from "./TacticsSaveStatus.tsx"; // #7327
+import { useV6TacticsSaved } from "./v6/v6TacticsSaved.ts"; // #7778: løbssiden v6 får besked om et lykket gem
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -525,6 +526,9 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     setOpenRoleRiderId(null);
     setStatus((s) => (s === "saved" ? "idle" : s));
   }, [stage]);
+  // #7778: et (delvist) lykket gem opdaterer v6-etapestriben straks; uden v6 er den null.
+  const onV6Saved = useV6TacticsSaved();
+  useEffect(() => { if (status === "saved" || status === "partial") onV6Saved?.(); }, [status, onV6Saved]);
 
   if (roles === null) {
     return (

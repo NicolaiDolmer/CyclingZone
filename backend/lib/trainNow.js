@@ -64,8 +64,9 @@ export const evaluateTrainNowInstantFlag = (value, { isBetaTester = false } = {}
 export async function isTrainNowInstantEnabled(supabase, { isBetaTester = false } = {}) {
   return evaluateTrainNowInstantFlag(await readFlagStage(supabase, TRAIN_NOW_INSTANT_FLAG_KEY, { fresh: true }), { isBetaTester });
 }
-export async function isTrainNowBonusEnabled(supabase) {
-  return await readFlagStage(supabase, TRAIN_NOW_BONUS_FLAG_KEY, { fresh: true }) === 'on';
+// #7741 (owner 16/11): the bonus switch follows the same rule as the instant switch above.
+export async function isTrainNowBonusEnabled(supabase, { isBetaTester = false } = {}) {
+  return evaluateTrainNowInstantFlag(await readFlagStage(supabase, TRAIN_NOW_BONUS_FLAG_KEY, { fresh: true }), { isBetaTester });
 }
 export { TRAIN_NOW_LOCK_TABLE, isMissingTable, loadTeamTrainNowLocks };
 const SETTLED_STATUSES = new Set(["complete", "needs_reconciliation"]);
@@ -556,7 +557,7 @@ async function runTrainNowSteps({
   const [shortRacesOf, bridgeOf, bonusOf] = await settleTogether([
     () => (existingLocks.length ? [] : timing.step("short_races", () => loadShortRaces({ supabase, team, tickDate }))),
     () => (existingWork ? false : timing.step("bridge_check", () => hasUnregisteredEarlierBridgeDate({ supabase, team, season, tickDate, context: contextOf() }))),
-    () => (instant ? timing.step("bonus_flag", () => isTrainNowBonusEnabled(supabase)) : false),
+    () => (instant ? timing.step("bonus_flag", () => isTrainNowBonusEnabled(supabase, { isBetaTester })) : false),
   ]);
 
   // #6740: a first press with a race below the floor needs the explicit yes for exactly

@@ -5,7 +5,12 @@
 # template i deres egen self-render-harness (ikke bruger-input) og aldrig serveres
 # af prod-appen. js/xss-through-dom-fund der (alarmer #165-168) er derfor false
 # positives. paths-ignore virker for fortolkede sprog som JavaScript/TypeScript.
+#
+# pr-screens/ indeholder skitse-HTML og billeder til PR-gennemgang (samme slags
+# statiske prototyper som docs/design/**). Mappen bygges og serveres aldrig af
+# frontend eller backend; js/xss-fund der (alarmer #389, #390) er false positives.
 name: "CyclingZone CodeQL config"
 
 paths-ignore:
   - 'docs/**'
+  - 'pr-screens/**'

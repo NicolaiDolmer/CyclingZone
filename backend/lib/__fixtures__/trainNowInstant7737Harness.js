@@ -152,9 +152,9 @@ export function contextOf(state, { snapshot = false } = {}) {
   };
 }
 
-export function press(state, fake, { now = PRESS_AT } = {}) {
+export function press(state, fake, { now = PRESS_AT, isBetaTester = false } = {}) {
   return runTrainNow({
-    supabase: fake.supabase, team: { id: TEAM, league_division_id: DIVISION }, season: SEASON, now,
+    supabase: fake.supabase, team: { id: TEAM, league_division_id: DIVISION }, season: SEASON, now, isBetaTester,
     loadDaySpans: async () => new Map(), loadContext: async () => contextOf(state), loadShortRaces: async () => [],
   });
 }

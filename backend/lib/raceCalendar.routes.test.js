@@ -154,6 +154,40 @@ test("#5405: divisionPending sendes med i svaret, så fladen kan sige det rent u
   );
 });
 
+// ── #5841: forventet division for en kommende sæson ──────────────────────────
+//
+// Holdudtagelsens sæsonvisning viste "Ingen løb" for en kommende sæson, fordi
+// egen-puljen er ukendt før skiftet. Kalenderen sender nu holdets NUVÆRENDE
+// division som expectedDivision, men KUN mens divisionen er uafgjort, og den
+// rører ikke isMine (ownPoolId forbliver null, #5405-gaten er uændret).
+
+function boardHandler() {
+  const idx = apiSource.indexOf('router.get("/peak-plans/board"');
+  assert.ok(idx !== -1, "GET /peak-plans/board skal findes");
+  const next = apiSource.indexOf("\nrouter.", idx + 1);
+  return apiSource.slice(idx, next === -1 ? idx + 20000 : next);
+}
+
+test("#5841: kalenderen sender expectedDivision kun mens divisionen er uafgjort", () => {
+  const block = calendarHandler();
+  assert.match(
+    block,
+    /expectedDivision: divisionPending \? \(divisions \|\| \[\]\)\.find\(\(d\) => d\.id === req\.team\?\.league_division_id\)\?\.tier \?\? null : null,/,
+    "en aktiv eller afsluttet saeson har en afgjort division og skal ikke have et gaet",
+  );
+  assert.match(block, /teamDivisionId: ownPoolId,/, "isMine bygges stadig kun paa den afgjorte pulje (#5405)");
+});
+
+test("#5841: planlæggerens board sender samme expectedDivision-gate som kalenderen", () => {
+  const block = boardHandler();
+  assert.match(
+    block,
+    /expectedDivision: divisionPending \? \(divisionsRes\.data \|\| \[\]\)\.find\(\(d\) => d\.id === req\.team\.league_division_id\)\?\.tier \?\? null : null,/,
+    "Formplans divisionsvaelger starter paa den forventede division for en kommende saeson",
+  );
+  assert.match(block, /teamDivisionId: seasonDivisionId,/, "isMine er stadig den saeson-oploeste division (#3018)");
+});
+
 test("hver race-muterende invalidering rammer også kalender-cachen (#2861)", () => {
   const racesHits = (apiSource.match(/invalidateNamespace\("races"\)/g) || []).length;
   const calendarHits = (apiSource.match(/invalidateNamespace\("calendar"\)/g) || []).length;

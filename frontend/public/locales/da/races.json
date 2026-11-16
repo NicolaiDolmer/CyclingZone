@@ -18,7 +18,9 @@
       "earlier": "Tidligere etaper",
       "later": "Senere etaper",
       "you": "Du #{rank}",
-      "plan": "{done} af {total} klar"
+      "planSaved": "Gemt",
+      "planDefault": "Standardplan",
+      "planNotSaved": "Ikke gemt"
     },
     "route": {
       "aria": "Etapens rute",

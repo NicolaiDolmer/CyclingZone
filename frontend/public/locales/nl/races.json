@@ -18,7 +18,9 @@
       "earlier": "Eerdere etappes",
       "later": "Latere etappes",
       "you": "Jij #{rank}",
-      "plan": "{done} van {total} klaar"
+      "planSaved": "Opgeslagen",
+      "planDefault": "Standaardplan",
+      "planNotSaved": "Niet opgeslagen"
     },
     "route": {
       "aria": "Parcours van de etappe",
