@@ -4,10 +4,11 @@
       "results": "Uitslagen",
       "stage": "Etappe",
       "story": "Verhaal",
-      "standings": "Klassementen",
+      "startlist": "Startlijst",
       "tactics": "Tactiek",
       "team": "Ploeg"
     },
+    "mode": { "aria": "Etappeweergave" },
     "hero": {
       "stageLocks": "Etappe {number} sluit om {time} · {countdown}",
       "locks": "Sluit om {time} · {countdown}",

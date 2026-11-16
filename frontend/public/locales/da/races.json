@@ -4,10 +4,11 @@
       "results": "Resultater",
       "stage": "Etape",
       "story": "Historie",
-      "standings": "Stillinger",
+      "startlist": "Startliste",
       "tactics": "Taktik",
       "team": "Hold"
     },
+    "mode": { "aria": "Etapens visning" },
     "hero": {
       "stageLocks": "Etape {number} låses kl. {time} · {countdown}",
       "locks": "Låses kl. {time} · {countdown}",

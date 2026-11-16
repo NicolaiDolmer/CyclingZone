@@ -4,10 +4,11 @@
       "results": "Results",
       "stage": "Stage",
       "story": "Story",
-      "standings": "Standings",
+      "startlist": "Start list",
       "tactics": "Tactics",
       "team": "Team"
     },
+    "mode": { "aria": "Stage view" },
     "hero": {
       "stageLocks": "Stage {number} locks at {time} · {countdown}",
       "locks": "Locks at {time} · {countdown}",

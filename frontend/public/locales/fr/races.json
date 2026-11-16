@@ -4,10 +4,11 @@
       "results": "Résultats",
       "stage": "Étape",
       "story": "Récit",
-      "standings": "Classements",
+      "startlist": "Liste de départ",
       "tactics": "Tactique",
       "team": "Équipe"
     },
+    "mode": { "aria": "Vue de l'étape" },
     "hero": {
       "stageLocks": "L'étape {number} se verrouille à {time} · {countdown}",
       "locks": "Se verrouille à {time} · {countdown}",

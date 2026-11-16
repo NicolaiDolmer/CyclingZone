@@ -4,10 +4,11 @@
       "results": "Resultados",
       "stage": "Etapa",
       "story": "Historia",
-      "standings": "Clasificaciones",
+      "startlist": "Lista de salida",
       "tactics": "Táctica",
       "team": "Equipo"
     },
+    "mode": { "aria": "Vista de la etapa" },
     "hero": {
       "stageLocks": "La etapa {number} se cierra a las {time} · {countdown}",
       "locks": "Se cierra a las {time} · {countdown}",
