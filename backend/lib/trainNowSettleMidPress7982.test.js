@@ -40,6 +40,10 @@ test("kontakten tændt: afvisningen opstår faktisk, og trykket læser igen i st
     const refused = run.attempts.filter((attempt) => REFUSED.test(attempt.error ?? ""));
     assert.equal(refused.length, 1, `etape ${stageAfter}, session ${sessionAfter}: ét afvist gemme-kald`);
     assert.equal(run.status, 200, `etape ${stageAfter}, session ${sessionAfter}: trykket går igennem`);
+    // Prisen ved afvisningen (Fable-dom 16/11): det afviste dag-felt læser belastningen én gang mere
+    // end main, fordi det læser alt igen efter afvisningen.
+    const main = GOLDEN.cases[`main_on_stort_beta_${caseLabel(stageAfter, sessionAfter)}`];
+    assert.equal(run.raceLoadReads, main.raceLoadReads + 1, `etape ${stageAfter}, session ${sessionAfter}: én læsning mere end main`);
   }
 });
 

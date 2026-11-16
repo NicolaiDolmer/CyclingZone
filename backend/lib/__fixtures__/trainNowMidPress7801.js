@@ -35,13 +35,15 @@ async function settleRaceSession(fake, state, now) {
  * Ét tryk som ruten kalder det. `stageAfter`: etapen afgøres lige efter gemme-kald nr. n.
  * `sessionAfter`: løbets session gemmes lige efter gemme-kald nr. n (efter etapen, hvis samme n).
  * `runDay` udeladt = grenens motor med trykkets hukommelse. `retryOnThrow`: et nyt tryk et minut
- * senere, hvis det første svarer med en fejl.
+ * senere, hvis det første svarer med en fejl. `makeFake`: stedfortræderen (standard: dommerens;
+ * #8195's fakeWithRaceSessionRule giver den migrationens løbssessions-regel for ryttere uden stempel).
  */
 export async function pressMidway(seed, {
   stageAfter = null, sessionAfter = null, runDay = undefined, isBetaTester = true, now = PRESS_AT, retryOnThrow = false,
+  makeFake = createFake,
 } = {}) {
   const state = seedState(seed);
-  const fake = createFake(state);
+  const fake = makeFake(state);
   const realRpc = fake.supabase.rpc;
   const attempts = [];
   const applied = [];
@@ -116,12 +118,27 @@ export const GOLDEN_CASES = [
   })),
 ];
 
-/** Kør ét golden-tilfælde. `flags`/`main` kan overstyres (fx grenens motor med kontakten tændt). */
-export async function runGoldenCase(c, scenarios, { flags = c.flags, main = c.main } = {}) {
+// Fable-dom 16/11: ryttere UDEN stempel (almindeligt tryk: løbsrytterne venter på deres løb), og
+// løbets session gemmes midt i trykket. Kun #8195's stedfortræder (fakeWithRaceSessionRule) kender
+// migrationens regel, der regner en løbssessions-rytter som stemplet i netop det kald; derfor køres
+// disse tilfælde med den. Begge kontakter tændt, som de tændes sammen. Facit: mains motor, frosset af
+// merge-basens kode i trainNowNoStampSession7801Golden.json.
+export const NO_STAMP_FLAGS = { fatigue_now_7801: "on", training_settle_race_session: "on" };
+export const NO_STAMP_CASES = MIDWAY.filter(([, sessionAfter]) => sessionAfter != null).map(([stageAfter, sessionAfter]) => ({
+  name: `uden_stempel_main_on_${caseLabel(stageAfter, sessionAfter)}`, seed: "stort_hold_beta_tryk", stageAfter, sessionAfter,
+  isBetaTester: false, flags: NO_STAMP_FLAGS, main: true,
+}));
+
+/**
+ * Kør ét golden-tilfælde. `flags`/`main` kan overstyres (fx grenens motor med kontakten tændt).
+ * `makeFake`: stedfortræderen (standard: dommerens).
+ */
+export async function runGoldenCase(c, scenarios, { flags = c.flags, main = c.main, makeFake = undefined } = {}) {
   const base = scenarios[c.seed].seed;
   const seed = { ...base, ...(c.stageRun ? { stageRun: true } : {}), ...(flags ? { flags } : {}) };
   return pressMidway(seed, {
     stageAfter: c.stageAfter ?? null, sessionAfter: c.sessionAfter ?? null, isBetaTester: c.isBetaTester ?? true,
     now: c.now ?? PRESS_AT, retryOnThrow: c.retryOnThrow ?? false, ...(main ? { runDay: mainEngine } : {}),
+    ...(makeFake ? { makeFake } : {}),
   });
 }
