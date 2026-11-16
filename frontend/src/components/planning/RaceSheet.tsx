@@ -3,8 +3,9 @@
 // pile til forrige og naeste loeb; et vandret stryg paa hovedet goer det samme, og et stryg nedad
 // lukker arket. Loebets navn staar i fuld laengde i hovedet (det brydes, det afkortes aldrig).
 //
-// Arket er en dialog (fokus fanges, Escape lukker) i appens egen modal-hoejde; siden bagved ruller ikke.
-import { useEffect, useRef, type ReactNode, type TouchEvent } from "react";
+// Arket er en dialog (fokus fanges, Escape lukker) i appens egen modal-hoejde; useModalA11y ejer
+// rullelaasen paa siden bagved (én laas, saa siden altid kan rulle igen efter lukning).
+import { useRef, type ReactNode, type TouchEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, ChevronLeftIcon, ChevronRightIcon, XIcon, useModalA11y, Portal } from "./primitives.ts";
 
@@ -29,14 +30,6 @@ export default function RaceSheet({
   const { t } = useTranslation("planning");
   const dialogRef = useModalA11y(onClose, true);
   const touch = useRef<{ x: number; y: number } | null>(null);
-
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, []);
 
   const onTouchStart = (e: TouchEvent) => {
     const p = e.touches[0];

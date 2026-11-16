@@ -194,7 +194,8 @@
       "description": "De tactiek geldt voor de renners in de opgeslagen ploeg."
     },
     "squadUnsaved": "De ploeg heeft niet-opgeslagen wijzigingen. De tactiek gebruikt de opgeslagen ploeg, dus sla eerst de ploeg op.",
-    "shared": "Dezelfde tactiek als op de koerspagina: een plan dat je hier opslaat, staat daar ook, en andersom."
+    "shared": "Dezelfde tactiek als op de koerspagina: een plan dat je hier opslaat, staat daar ook, en andersom.",
+    "saveInTab": "Je hebt niet-opgeslagen tactiek. Sla die eerst op met de tactiekknop."
   },
   "peak": {
     "target": "Piekdoel: {race}, start {date}. Vink renners aan en pas toe.",

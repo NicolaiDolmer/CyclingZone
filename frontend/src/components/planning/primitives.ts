@@ -26,7 +26,7 @@ import {
 import { Flag as FlagBase } from "../Flag.jsx";
 import { isU23 as isU23Base } from "../../lib/riderAge.js";
 import { injuryTimeLeft as injuryTimeLeftBase } from "../../lib/training.js";
-import { useReloadBlock as useReloadBlockBase, RELOAD_BLOCK_REASONS as RELOAD_BLOCK_REASONS_BASE } from "../../lib/reloadGate.js";
+import { useReloadBlock as useReloadBlockBase, RELOAD_BLOCK_REASONS as RELOAD_BLOCK_REASONS_BASE, isReloadAllowed as isReloadAllowedBase } from "../../lib/reloadGate.js";
 import { useDismiss as useDismissBase } from "../ui/useDismiss.js";
 import { useModalA11y as useModalA11yBase } from "../../hooks/useModalA11y.js";
 
@@ -82,6 +82,8 @@ export const injuryTimeLeft: (condition: { injured_until?: string | null; injury
 } = injuryTimeLeftBase as any;
 export const useReloadBlock: (active: boolean, reason?: string) => void = useReloadBlockBase as any;
 export const RELOAD_BLOCK_REASONS: { DIRTY: string } = RELOAD_BLOCK_REASONS_BASE as any;
+/** Holder en flade paa siden en ugemt kladde (fx taktik-fanen)? Samme laas som genindlaesnings-vagten. */
+export const isReloadAllowed: () => boolean = isReloadAllowedBase as any;
 export const useDismiss: (ref: { current: HTMLElement | null }, onDismiss: () => void, active?: boolean) => void = useDismissBase as any;
 export const useModalA11y: (onClose: (() => void) | null, active?: boolean) => { current: HTMLDivElement | null } = useModalA11yBase as any;
 

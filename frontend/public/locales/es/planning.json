@@ -194,7 +194,8 @@
       "description": "La táctica se define para los corredores del equipo guardado."
     },
     "squadUnsaved": "El equipo tiene cambios sin guardar. La táctica usa el equipo guardado, así que guarda primero el equipo.",
-    "shared": "La misma táctica que en la página de la carrera: un plan guardado aquí aparece allí, y al revés."
+    "shared": "La misma táctica que en la página de la carrera: un plan guardado aquí aparece allí, y al revés.",
+    "saveInTab": "Tienes táctica sin guardar. Guárdala primero con el botón de táctica."
   },
   "peak": {
     "target": "Objetivo de pico: {race}, empieza el {date}. Marca corredores y aplica.",

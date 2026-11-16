@@ -151,7 +151,7 @@ test("every new text exists in all five languages", () => {
   const keys = [
     "race.saveTactics", "race.savePeaks", "squad.afterRace", "squad.afterRaceTitle", "squad.afterRaceNote",
     "views.label", "views.squad", "views.tactics", "views.peak",
-    "tactics.noSquad.title", "tactics.noSquad.description", "tactics.squadUnsaved", "tactics.shared",
+    "tactics.noSquad.title", "tactics.noSquad.description", "tactics.squadUnsaved", "tactics.shared", "tactics.saveInTab",
     "peak.target", "peak.targetClosed", "peak.selected", "peak.col.target", "peak.col.start", "peak.inDays",
     "peak.here", "peak.remove", "peak.removed", "peak.clear", "peak.full", "peak.notSenior",
     "peak.applied", "peak.appliedPartial", "peak.count", "sheet.prev", "sheet.next", "sheet.close", "sheet.position",

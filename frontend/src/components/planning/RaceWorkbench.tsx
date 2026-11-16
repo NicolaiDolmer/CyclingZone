@@ -14,6 +14,7 @@ import {
   validateSelectionClient,
   riderBestRole,
   useReloadBlock,
+  isReloadAllowed,
   RELOAD_BLOCK_REASONS,
   partialSquadOutlook,
   rememberSelectionDraft,
@@ -191,6 +192,15 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
   const [stageIndex, setStageIndex] = useState(0);
   // "Efter loebet": serverens skoen med motorens model; null = slukket model eller ukendt.
   const [afterRace, setAfterRace] = useState<Record<string, number> | null>(null);
+  // Taktik-visningen monteres foerste gang den aabnes og bliver monteret ved visningsskift (kladden overlever).
+  const [tacticsMounted, setTacticsMounted] = useState(view === "tactics");
+  useEffect(() => {
+    if (view === "tactics") setTacticsMounted(true);
+  }, [view]);
+  const tacticsMountedRef = useRef(tacticsMounted);
+  tacticsMountedRef.current = tacticsMounted;
+  // Taeller op ved hvert gemt trup, saa taktik-fanen henter den nye trup.
+  const [squadVersion, setSquadVersion] = useState(0);
   const generation = useRef(0);
   const latest = useRef<{ ready: boolean; sel: Selection; saved: Selection; readOnly: boolean; clientErrors: string[]; sprintLeaderAllowed: boolean; size: { min: number; max: number } } | null>(null);
 
@@ -334,6 +344,12 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
   const save = useCallback(async () => {
     const current = latest.current;
     if (!current || current.readOnly || current.clientErrors.length > 0) return false;
+    // Kun en taktik-kladde er ugemt: den gemmes med fanens egen knap, aldrig af et trup-gem ("Gem og aabn").
+    if (!selectionDirty(current.sel, current.saved) && tacticsMountedRef.current && !gate.current() && !isReloadAllowed()) {
+      setNote(t("tactics.saveInTab"));
+      onView?.("tactics");
+      return false;
+    }
     const result = await gate.run("save", async () => {
       setSaveError(null);
       try {
@@ -350,6 +366,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
           return false;
         }
         setSaved(current.sel);
+        setSquadVersion((v) => v + 1);
         setData((d: SelectionResponse) => (d ? { ...d, withdrawn: false } : d)); // et gem melder holdet til igen
         setSaveState("saved");
         onSaved?.(race.id, entriesFromSelection(race.id, current.sel)); // siden tager loebet ud af sin kladde
@@ -361,7 +378,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
       }
     });
     return result.ran ? result.value : false;
-  }, [gate, race.id, onSaved]);
+  }, [gate, race.id, onSaved, onView, t]);
 
   const discard = useCallback(() => {
     if (!latest.current || gate.current()) return;
@@ -401,10 +418,14 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     }
   }, [race.id]);
 
+  // Ugemt trup ELLER en ugemt taktik-kladde. Taktik-fanen er loebssidens egen og melder sin kladde gennem
+  // genindlaesnings-vagten; holder fladen ingen laas selv (ren trup, intet kald), er en laas fanens kladde.
   const isDirty = useCallback(() => {
     const current = latest.current;
-    return !!current && current.ready && selectionDirty(current.sel, current.saved);
-  }, []);
+    if (!current || !current.ready) return false;
+    if (selectionDirty(current.sel, current.saved)) return true;
+    return tacticsMountedRef.current && !gate.current() && !isReloadAllowed();
+  }, [gate]);
 
   latest.current = { ready: state === "ready", sel, saved, readOnly, clientErrors, sprintLeaderAllowed, size };
   useImperativeHandle(ref, () => ({ save, discard, markSaved, refreshAvailability, isDirty }), [save, discard, markSaved, refreshAvailability, isDirty]);
@@ -583,17 +604,22 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
             />
           </div>
         )}
-        {view === "tactics" ? (
-          <TacticsView
-            raceId={race.id}
-            profiles={profiles}
-            stageIndex={stageIndex}
-            isStageRace={race.stages > 1}
-            squadDirty={dirty}
-            savedCount={saved.riderIds.length}
-            onShowSquad={() => onView?.("squad")}
-          />
-        ) : view === "peak" ? (
+        {tacticsMounted && (
+          // Monteret fra foerste besoeg; skjult (ikke afmonteret) i de andre visninger, saa kladden bliver.
+          <div hidden={view !== "tactics"}>
+            <TacticsView
+              raceId={race.id}
+              profiles={profiles}
+              stageIndex={stageIndex}
+              isStageRace={race.stages > 1}
+              squadDirty={dirty}
+              savedCount={saved.riderIds.length}
+              squadVersion={squadVersion}
+              onShowSquad={() => onView?.("squad")}
+            />
+          </div>
+        )}
+        {view === "tactics" ? null : view === "peak" ? (
           <PeakView peak={peak} raceName={race.name} raceStart={raceStart} locked={locked} compactMobile={inSheet} />
         ) : rows.length === 0 ? (
           <div className="p-4">

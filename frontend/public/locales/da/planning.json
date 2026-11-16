@@ -194,7 +194,8 @@
       "description": "Taktikken sættes for rytterne i den gemte trup."
     },
     "squadUnsaved": "Truppen har ugemte ændringer. Taktikken bruger den gemte trup, så gem truppen først.",
-    "shared": "Samme taktik som på løbssiden: en plan gemt her står dér, og omvendt."
+    "shared": "Samme taktik som på løbssiden: en plan gemt her står dér, og omvendt.",
+    "saveInTab": "Du har ugemt taktik. Gem den først med taktik-knappen."
   },
   "peak": {
     "target": "Formtop-mål: {race}, starter {date}. Kryds ryttere af og anvend.",

@@ -194,7 +194,8 @@
       "description": "Tactics are set for the riders in the saved squad."
     },
     "squadUnsaved": "The squad has unsaved changes. Tactics use the saved squad, so save the squad first.",
-    "shared": "Same tactics as on the race page: a plan saved here shows there, and the other way round."
+    "shared": "Same tactics as on the race page: a plan saved here shows there, and the other way round.",
+    "saveInTab": "You have unsaved tactics. Save them with the tactics button first."
   },
   "peak": {
     "target": "Peak target: {race}, starts {date}. Tick riders and apply.",

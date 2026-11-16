@@ -194,7 +194,8 @@
       "description": "La tactique se règle pour les coureurs de l'équipe enregistrée."
     },
     "squadUnsaved": "L'équipe a des modifications non enregistrées. La tactique utilise l'équipe enregistrée : enregistrez d'abord l'équipe.",
-    "shared": "Même tactique que sur la page de la course : un plan enregistré ici y apparaît, et inversement."
+    "shared": "Même tactique que sur la page de la course : un plan enregistré ici y apparaît, et inversement.",
+    "saveInTab": "Vous avez une tactique non enregistrée. Enregistrez-la d'abord avec le bouton de la tactique."
   },
   "peak": {
     "target": "Objectif de pic : {race}, départ le {date}. Cochez des coureurs et appliquez.",
