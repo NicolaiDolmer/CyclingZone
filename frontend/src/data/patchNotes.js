@@ -1,5 +1,28 @@
 export const PATCHES = [
 {
+  "version": "7.457",
+  "date": "2026-11-16",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Interface",
+      "en": {
+        "title": "No more emoji in game text",
+        "body": "Messages, buttons and labels on rider profiles, transfers, the board, the watchlist and in finance notifications no longer use emoji. Where a symbol helps, such as Active auction or Accept and Reject, the game's own line icons are used instead, so it looks the same on every phone."
+      },
+      "da": {
+        "title": "Ingen emoji i spillets tekster",
+        "body": "Beskeder, knapper og mærker på rytterprofiler, transfers, bestyrelsen, watchlisten og i økonomi-notifikationer bruger ikke længere emoji. Hvor et symbol hjælper, fx Aktiv auktion eller Accepter og Afvis, bruges spillets egne streg-ikoner, så det ser ens ud på alle telefoner."
+      },
+      "refs": [
+        8069
+      ]
+    }
+  ]
+},
+{
   "version": "7.454",
   "date": "2026-11-16",
   "changes": [

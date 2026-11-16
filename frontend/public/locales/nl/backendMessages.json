@@ -30,7 +30,7 @@
     "loanReceivedShort": "Korte lening afgesloten (kosten: {fee} CZ$)",
     "loanReceivedLong": "Lange lening afgesloten (kosten: {fee} CZ$)",
     "loanRepayment": "Leningaflossing betaald",
-    "loanRepaymentFinal": "Leningaflossing betaald. Lening volledig afgelost! 🎉",
+    "loanRepaymentFinal": "Leningaflossing betaald. Lening volledig afgelost!",
     "loanRepaymentRemaining": "Leningaflossing betaald (resterend: {remaining} CZ$)",
     "forcedDebtRepaymentFinal": "De opbrengst van de gedwongen verkoop loste je lening volledig af",
     "forcedDebtRepaymentRemaining": "De opbrengst van de gedwongen verkoop verlaagde de schuld (resterend: {remaining} CZ$)",
@@ -123,11 +123,11 @@
       "message": "Je hebt een lange lening van {principal} CZ$ afgesloten. Kosten: {fee} CZ$. Totale terugbetaling: {totalOwed} CZ$."
     },
     "emergencyLoan": {
-      "title": "⚠️ Noodlening geopend",
+      "title": "Noodlening geopend",
       "message": "Je team kon de lonen niet dekken. Er is automatisch een noodlening van {amount} CZ$ geopend met {feeRate}% kosten en {interestRate}% rente. Totale schuld: {totalOwed} CZ$."
     },
     "emergencyLoanBreach": {
-      "title": "🚨 Schuldenplafond overschreden",
+      "title": "Schuldenplafond overschreden",
       "message": "Je noodlening brengt de schuld van het team {breachAmount} CZ$ boven het plafond van de divisie van {ceiling} CZ$. Je kunt doorspelen, maar je MOET kosten verlagen (renners verkopen, sterrencontracten laten gaan) vóór het einde van het volgende seizoen om een schuldenspiraal te voorkomen."
     },
     "emergencyLoanEscalation": {
@@ -147,7 +147,7 @@
       "message": "Je schuld van {debt} CZ$ bleef {streak} seizoenen op rij boven het plafond van je divisie van {ceiling} CZ$, dus het bestuur verkocht {riders} voor {proceeds} CZ$ en stopte het geld rechtstreeks in je leningen. Je schuld is nu {remainingDebt} CZ$ en transfers blijven bevroren tot je weer onder het plafond zit. Als je bij de volgende seizoenswissel nog boven het plafond zit, verkoopt het bestuur opnieuw. Los leningen af, verkoop zelf renners of verlaag de lonen voor die tijd."
     },
     "loanPaidOff": {
-      "title": "✅ Lening afgelost",
+      "title": "Lening afgelost",
       "message": "Gefeliciteerd! Je hebt je lening volledig afgelost."
     },
     "boardPlanExpired": {
@@ -186,7 +186,7 @@
       "message": "Het bestuur is onder de indruk ({satisfaction}% tevredenheid, {goalsMet}/{goalsTotal} doelen gehaald). Het biedt +{bonusAmount} CZ$ voor een extra doel: {goalLabel}. Accepteer of wijs af op de pagina Bestuur."
     },
     "divisionPromoted": {
-      "title": "Gepromoveerd! 🎉",
+      "title": "Gepromoveerd!",
       "message": "Gefeliciteerd! Je team stijgt naar Divisie {division}."
     },
     "divisionRelegated": {
@@ -415,7 +415,7 @@
       "message": "{winnerName} snapte {rider} weg voor {price} CZ$, {overBid} CZ$ boven je hoogste bod van {yourMax} CZ$."
     },
     "debtWarning": {
-      "title": "⚠️ Negatief saldo",
+      "title": "Negatief saldo",
       "message": "Je team heeft een negatief saldo. Bekijk de pagina Financiën voor details."
     },
     "deadlineDay": {

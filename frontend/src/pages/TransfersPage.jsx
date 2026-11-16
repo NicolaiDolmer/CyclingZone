@@ -35,7 +35,7 @@ import TradeListPage from "./TradeListPage.js"; // #5257: "Alle handler"-fanens 
 import {
   AmountInput, EmptyState, ErrorState, ExchangeIcon, InboxIcon, PageLoader,
   PageHeader, Section, Button, Select, Tabs, TabList, Tab, BlockedNote,
-  ArrowUpIcon, ArrowDownIcon, BikeIcon, ChevronRightIcon, SkeletonLines,
+  ArrowUpIcon, ArrowDownIcon, BikeIcon, ChevronRightIcon, SkeletonLines, CheckIcon, XIcon,
 } from "../components/ui";
 import { useBlockedAction } from "../lib/useBlockedAction.js";
 // #2849 bølge 2: markeds-tabellens wrap/border deles med cz-table-recipen (T2),
@@ -348,7 +348,8 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true, autoListing = 
         <div className="flex flex-col gap-2">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <button onClick={() => doAction("accept")} disabled={loading}
-              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success/15 transition-all disabled:opacity-50">
+              className="inline-flex items-center justify-center gap-1 min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success/15 transition-all disabled:opacity-50">
+              <CheckIcon size={14} aria-hidden="true" />
               {t("offerCard.buttons.accept")}
             </button>
             <button onClick={() => setMode(mode === "counter" ? null : "counter")}
@@ -360,7 +361,8 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true, autoListing = 
               {t("offerCard.buttons.counter")}
             </button>
             <button onClick={() => doAction("reject")} disabled={loading}
-              className="min-h-[44px] flex-1 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-cz text-sm font-medium hover:bg-cz-danger-bg transition-all disabled:opacity-50">
+              className="inline-flex items-center justify-center gap-1 min-h-[44px] flex-1 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-cz text-sm font-medium hover:bg-cz-danger-bg transition-all disabled:opacity-50">
+              <XIcon size={14} aria-hidden="true" />
               {t("offerCard.buttons.reject")}
             </button>
           </div>
@@ -407,7 +409,8 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true, autoListing = 
           ) : (
             <div className="flex gap-2">
               <button onClick={() => doAction("confirm")} disabled={loading}
-                className="min-h-[44px] flex-1 py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-cz text-sm font-medium hover:bg-cz-info/15 transition-all disabled:opacity-50">
+                className="inline-flex items-center justify-center gap-1 min-h-[44px] flex-1 py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-cz text-sm font-medium hover:bg-cz-info/15 transition-all disabled:opacity-50">
+                <CheckIcon size={14} aria-hidden="true" />
                 {t("offerCard.buttons.confirmDeal", { amount: price })}
               </button>
             </div>
@@ -528,7 +531,8 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
         <div className="flex flex-col gap-2">
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2">
             <button onClick={() => doAction("accept_counter")} disabled={loading}
-              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success/15 disabled:opacity-50">
+              className="inline-flex items-center justify-center gap-1 min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success/15 disabled:opacity-50">
+              <CheckIcon size={14} aria-hidden="true" />
               {t("offerCard.buttons.acceptCounter", { amount: formatNumber(offer.counter_amount) })}
             </button>
             <button onClick={() => setMode(mode === "new_offer" ? null : "new_offer")}
@@ -583,7 +587,8 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
             </div>
           ) : (
             <button onClick={() => doAction("confirm")} disabled={loading}
-              className="min-h-[44px] w-full py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-cz text-sm font-medium hover:bg-cz-info/15 transition-all disabled:opacity-50">
+              className="inline-flex items-center justify-center gap-1 min-h-[44px] w-full py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-cz text-sm font-medium hover:bg-cz-info/15 transition-all disabled:opacity-50">
+              <CheckIcon size={14} aria-hidden="true" />
               {t("offerCard.buttons.confirmDeal", { amount: price })}
             </button>
           )}
@@ -690,7 +695,8 @@ function SwapCard({ swap, myTeamId, onAction, showArchive = true }) {
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">
             <button onClick={() => doAction("accept")} disabled={loading}
-              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success/15 disabled:opacity-50">
+              className="inline-flex items-center justify-center gap-1 min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success/15 disabled:opacity-50">
+              <CheckIcon size={14} aria-hidden="true" />
               {t("swapCard.buttons.accept")}
             </button>
             <button onClick={() => setMode(mode === "counter" ? null : "counter")}
@@ -700,7 +706,8 @@ function SwapCard({ swap, myTeamId, onAction, showArchive = true }) {
               {t("swapCard.buttons.counter")}
             </button>
             <button onClick={() => doAction("reject")} disabled={loading}
-              className="min-h-[44px] flex-1 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-cz text-sm font-medium hover:bg-cz-danger-bg disabled:opacity-50">
+              className="inline-flex items-center justify-center gap-1 min-h-[44px] flex-1 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-cz text-sm font-medium hover:bg-cz-danger-bg disabled:opacity-50">
+              <XIcon size={14} aria-hidden="true" />
               {t("swapCard.buttons.reject")}
             </button>
           </div>
@@ -743,7 +750,8 @@ function SwapCard({ swap, myTeamId, onAction, showArchive = true }) {
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">
             <button onClick={() => doAction("accept_counter")} disabled={loading}
-              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success/15 disabled:opacity-50">
+              className="inline-flex items-center justify-center gap-1 min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-cz text-sm font-medium hover:bg-cz-success/15 disabled:opacity-50">
+              <CheckIcon size={14} aria-hidden="true" />
               {t("swapCard.buttons.acceptCounter")}
             </button>
             <button onClick={() => setMode(mode === "counter" ? null : "counter")}
@@ -785,7 +793,8 @@ function SwapCard({ swap, myTeamId, onAction, showArchive = true }) {
             </div>
           ) : (
             <button onClick={() => doAction("confirm")} disabled={loading}
-              className="min-h-[44px] w-full py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-cz text-sm font-medium hover:bg-cz-info/15 disabled:opacity-50">
+              className="inline-flex items-center justify-center gap-1 min-h-[44px] w-full py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-cz text-sm font-medium hover:bg-cz-info/15 disabled:opacity-50">
+              <CheckIcon size={14} aria-hidden="true" />
               {t("swapCard.buttons.confirmSwap")}
             </button>
           )}

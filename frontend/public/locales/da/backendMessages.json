@@ -30,7 +30,7 @@
     "loanReceivedShort": "Kort lån optaget (gebyr: {fee} CZ$)",
     "loanReceivedLong": "Langt lån optaget (gebyr: {fee} CZ$)",
     "loanRepayment": "Lånrate betalt",
-    "loanRepaymentFinal": "Lånrate betalt. Lån fuldt tilbagebetalt! 🎉",
+    "loanRepaymentFinal": "Lånrate betalt. Lån fuldt tilbagebetalt!",
     "loanRepaymentRemaining": "Lånrate betalt (resterende: {remaining} CZ$)",
     "forcedDebtRepaymentFinal": "Provenu fra tvangssalg afdrog dit lån fuldt ud",
     "forcedDebtRepaymentRemaining": "Provenu fra tvangssalg afdrog gæld (resterende: {remaining} CZ$)",
@@ -123,11 +123,11 @@
       "message": "Du har optaget et langt lån på {principal} CZ$. Gebyr: {fee} CZ$. Samlet tilbagebetaling: {totalOwed} CZ$."
     },
     "emergencyLoan": {
-      "title": "⚠️ Nødlån oprettet",
+      "title": "Nødlån oprettet",
       "message": "Dit hold havde ikke midler til at betale løn. Der er automatisk oprettet et nødlån på {amount} CZ$ med {feeRate}% gebyr og {interestRate}% rente. Samlet gæld: {totalOwed} CZ$."
     },
     "emergencyLoanBreach": {
-      "title": "🚨 Gældsloft overskredet",
+      "title": "Gældsloft overskredet",
       "message": "Dit nødlån presser holdets gæld {breachAmount} CZ$ over divisions-loftet på {ceiling} CZ$. Du kan stadig drive klubben videre, men du SKAL reducere udgifterne (sælg ryttere, fyr stjernekontrakter) inden næste sæsonslut for at undgå spiral."
     },
     "emergencyLoanEscalation": {
@@ -147,7 +147,7 @@
       "message": "Din gæld på {debt} CZ$ har været over divisionsloftet på {ceiling} CZ$ i {streak} sæsoner i træk, så bestyrelsen solgte {riders} for {proceeds} CZ$ og satte pengene direkte i dine lån. Din gæld er nu {remainingDebt} CZ$, og transfers forbliver frosset, indtil du er under loftet igen. Er du stadig over det ved næste sæsonskifte, sælger bestyrelsen igen. Betal lån af, sælg selv ryttere, eller skær ned på lønnen inden da."
     },
     "loanPaidOff": {
-      "title": "✅ Lån tilbagebetalt",
+      "title": "Lån tilbagebetalt",
       "message": "Tillykke! Du har fuldt tilbagebetalt dit lån."
     },
     "boardPlanExpired": {
@@ -186,7 +186,7 @@
       "message": "Bestyrelsen er imponeret ({satisfaction}% tilfredshed, {goalsMet}/{goalsTotal} mål nået). De tilbyder +{bonusAmount} CZ$ mod ekstra-mål: {goalLabel}. Acceptér eller afvis på Bestyrelse-siden."
     },
     "divisionPromoted": {
-      "title": "Oprykket! 🎉",
+      "title": "Oprykket!",
       "message": "Tillykke! Dit hold rykker op til Division {division}."
     },
     "divisionRelegated": {
@@ -415,7 +415,7 @@
       "message": "{winnerName} snuppede {rider} for {price} CZ$, {overBid} CZ$ over dit højeste bud på {yourMax} CZ$."
     },
     "debtWarning": {
-      "title": "⚠️ Negativ saldo",
+      "title": "Negativ saldo",
       "message": "Dit hold har negativ saldo. Tjek Økonomi-siden for detaljer."
     },
     "deadlineDay": {
