@@ -181,6 +181,8 @@ export type AcademyV2RouterDeps = {
   writeLimiter: RequestHandler;
   isViewerBetaTester: (req: Request) => Promise<boolean | null | undefined> | boolean | null | undefined;
   reportError?: (err: unknown, ctx?: Record<string, unknown>) => void;
+  /** Uret (injiceres i tests, så 14-dages-grænsen kan prøves deterministisk). */
+  now?: () => Date;
 };
 
 /**
@@ -190,7 +192,7 @@ export type AcademyV2RouterDeps = {
  * Slukket kontakt = 409 academy_page_v2_disabled.
  */
 export function createAcademyV2Router({
-  supabase, requireAuth, writeLimiter, isViewerBetaTester, reportError: captureException = () => {},
+  supabase, requireAuth, writeLimiter, isViewerBetaTester, reportError: captureException = () => {}, now = () => new Date(),
 }: AcademyV2RouterDeps): Router {
   const router = Router();
 
@@ -210,7 +212,7 @@ export function createAcademyV2Router({
     try {
       if (!(await gate(req, res))) return;
       res.set("Cache-Control", "no-store");
-      res.json(await loadAgeFocusState(supabase, { teamId: req.team!.id }));
+      res.json(await loadAgeFocusState(supabase, { teamId: req.team!.id, now: now() }));
     } catch (err) {
       captureException(err, { tags: { route: `/academy/v2${req.path}`, method: req.method } });
       respondFailed(res);
@@ -221,7 +223,7 @@ export function createAcademyV2Router({
     try {
       if (!(await gate(req, res))) return;
       if (!(await isAcademyIntakePullEnabled(supabase))) { res.status(409).json({ error: "intake_pull_disabled" }); return; }
-      const result = await saveAcademyProfileWithAgeFocus(supabase, { teamId: req.team!.id, input: req.body ?? {} });
+      const result = await saveAcademyProfileWithAgeFocus(supabase, { teamId: req.team!.id, input: req.body ?? {}, now: now() });
       if (!result.ok) { res.status(400).json({ error: result.error }); return; }
       res.json(result);
     } catch (err) {

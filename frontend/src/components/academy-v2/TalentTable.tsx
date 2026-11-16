@@ -11,6 +11,8 @@ import { useTranslation } from "react-i18next";
 import NationCell from "../rider/NationCell.jsx";
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
 import AcademyPrognosisCell, { type AcademyPrognosis } from "../rider/AcademyPrognosisCell.tsx";
+import PotentialEstimate from "../rider/PotentialEstimate.tsx";
+import { potentialViewOf } from "../../lib/potentialEstimateDisplay.ts";
 import { DataTable, EmptyState, RiderLink, type DataTableColumn } from "../squad/squadUi.ts";
 import { useTableSort } from "../../lib/useTableSort.js";
 import { riderNameSortKey } from "../../lib/riderColumnSort.js";
@@ -50,6 +52,13 @@ const ACCESSORS: Record<string, (r: Row) => unknown> = {
 const SORT_OPTS = { descFirstKeys: new Set(["prognosis"]) };
 const MOBILE_DEFAULTS = ["type", "age", "prognosis"];
 
+/** Sortering: skønnets tal, ellers prognose-båndets bund; skjult/ukendt sidst. */
+function potentialSortValue(r: TalentRider): number | null {
+  const view = potentialViewOf(r);
+  if (view) return view.hidden ? null : view.value;
+  return r.prognosis?.band?.lo ?? null;
+}
+
 export default function TalentTable({ roster, seasonYear, emptyAction }: {
   roster: TalentRider[];
   seasonYear: number | null;
@@ -62,7 +71,7 @@ export default function TalentTable({ roster, seasonYear, emptyAction }: {
     ...r,
     _age: getRiderAge(r.birthdate, seasonYear) ?? null,
     _squad: talentSquad(r, seasonYear),
-    _band: r.prognosis?.band?.lo ?? null,
+    _band: potentialSortValue(r),
   })), [roster, seasonYear]);
   const { rows, sort, sortDir, handleSort } = useTableSort(decorated, ACCESSORS, SORT_OPTS);
 
@@ -113,7 +122,11 @@ export default function TalentTable({ roster, seasonYear, emptyAction }: {
       key: "prognosis",
       header: t("v2.talents.colPrognosis"),
       sortKey: "prognosis",
-      render: (r) => (r.prognosis ? <AcademyPrognosisCell prognosis={r.prognosis} /> : <span className="text-cz-2">–</span>),
+      render: (r) => {
+        const view = potentialViewOf(r);
+        if (view) return <PotentialEstimate view={view} />;
+        return r.prognosis ? <AcademyPrognosisCell prognosis={r.prognosis} /> : <span className="text-cz-2">–</span>;
+      },
     },
   ];
 

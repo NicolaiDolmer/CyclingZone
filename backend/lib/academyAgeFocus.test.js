@@ -15,6 +15,9 @@ import {
 import { STAGE_FLAGS, PLAYER_VISIBLE_FLAG_KEYS } from "./stageFlagCatalog.js";
 import { PROFILE_DELAY_DAYS } from "./academyIntakeProfile.ts";
 
+// Fast ur i alle tests (AGENTS.md: deterministiske tests).
+const FIXED_NOW = new Date("2026-11-16T12:00:00Z");
+
 // Kædbar fake: hver .from(tabel) svarer med `tables[tabel]`; .rpc() logges.
 function fakeSupabase({ tier = 1, rows = [], flag = undefined, rpcResult = { data: 7, error: null } } = {}) {
   const rpcCalls = [];
@@ -74,11 +77,11 @@ test("aktivt og ventende aldersfokus følger profilrækkernes ur", () => {
 });
 
 test("loadAgeFocusState sender niveau, lås, valg og forsinkelsen", async () => {
-  const state = await loadAgeFocusState(fakeSupabase({ tier: 0 }), { teamId: "team-a" });
+  const state = await loadAgeFocusState(fakeSupabase({ tier: 0 }), { teamId: "team-a", now: FIXED_NOW });
   assert.equal(state.unlocked, false);
   assert.deepEqual(state.options, ["mixed", "16", "17", "18", "19"]);
   assert.equal(state.delayDays, PROFILE_DELAY_DAYS);
-  assert.equal((await loadAgeFocusState(fakeSupabase({ tier: 1 }), { teamId: "team-a" })).unlocked, true);
+  assert.equal((await loadAgeFocusState(fakeSupabase({ tier: 1 }), { teamId: "team-a", now: FIXED_NOW })).unlocked, true);
 });
 
 test("gem: hele profilen + aldersfokus i ÉN række med samme ur (14 dage)", async () => {
@@ -99,10 +102,10 @@ test("gem: hele profilen + aldersfokus i ÉN række med samme ur (14 dage)", asy
 
 test("gem afviser ugyldige valg uden at skrive", async () => {
   const locked = fakeSupabase({ tier: 0 });
-  assert.deepEqual(await saveAcademyProfileWithAgeFocus(locked, { teamId: "t", input: { origins: [], types: [], ageFocus: "16" } }),
+  assert.deepEqual(await saveAcademyProfileWithAgeFocus(locked, { teamId: "t", now: FIXED_NOW, input: { origins: [], types: [], ageFocus: "16" } }),
     { ok: false, error: "profile_locked" });
   const open = fakeSupabase({ tier: 1 });
-  assert.deepEqual(await saveAcademyProfileWithAgeFocus(open, { teamId: "t", input: { origins: [], types: [], ageFocus: "22" } }),
+  assert.deepEqual(await saveAcademyProfileWithAgeFocus(open, { teamId: "t", now: FIXED_NOW, input: { origins: [], types: [], ageFocus: "22" } }),
     { ok: false, error: "invalid_age_focus" });
   assert.equal(locked.rpcCalls.length + open.rpcCalls.length, 0);
 });
@@ -129,6 +132,7 @@ async function withRouter(flags, fn) {
     requireAuth: (req, _res, next) => { req.team = { id: "team-a" }; next(); },
     writeLimiter: (_req, _res, next) => next(),
     isViewerBetaTester: async () => false,
+    now: () => FIXED_NOW,
   }));
   const server = app.listen(0);
   try {
@@ -158,17 +162,24 @@ test("tændt kontakt: GET svarer tilstanden, PUT gemmer, et ugyldigt valg giver 
     const ok = await putProfile(base, { origins: ["DK"], types: [], ageFocus: "17" });
     assert.equal(ok.status, 200);
     assert.equal(db.rpcCalls[0].args.p_age_focus, "17");
+    assert.equal(db.rpcCalls[0].args.p_now, FIXED_NOW.toISOString());
+    assert.equal(new Date(db.rpcCalls[0].args.p_effective_from).getTime() - FIXED_NOW.getTime(), PROFILE_DELAY_DAYS * 86_400_000);
     const bad = await putProfile(base, { origins: [], types: [], ageFocus: "25" });
     assert.equal(bad.status, 400);
     assert.equal(db.rpcCalls.length, 1);
   });
 });
 
-test("migrationen seeder kontakten off og rører ikke den gamle gem-funktion", () => {
+test("migrationen seeder kontakten off, og den gamle gem-funktion bevarer aldersfokus", () => {
   const sql = readFileSync(new URL("../../database/2026-11-16-8081-academy-v2.sql", import.meta.url), "utf8");
   assert.match(sql, /'academy_page_v2_8081',\s*'"off"'::jsonb/);
   assert.match(sql, /ON CONFLICT \(key\) DO NOTHING/);
   assert.match(sql, /ADD COLUMN IF NOT EXISTS age_focus text NULL/);
-  assert.doesNotMatch(sql, /FUNCTION public\.save_academy_intake_profile\(/);
+  // Den gamle funktion (samme signatur) kopierer holdets seneste age_focus ind i sin nye række,
+  // så et gem fra den gamle editor aldrig nulstiller alderen (Codex-fund på PR #8271).
+  const legacy = sql.slice(sql.indexOf("CREATE OR REPLACE FUNCTION public.save_academy_intake_profile("));
+  assert.ok(legacy.length > 0 && legacy.startsWith("CREATE OR REPLACE FUNCTION public.save_academy_intake_profile("));
+  assert.match(legacy, /SELECT age_focus INTO v_age_focus/);
+  assert.match(legacy, /coalesce\(p_rider_types, '\{\}'\), v_age_focus, p_effective_from\)/);
   assert.match(sql, /REVOKE ALL\s+ON FUNCTION public\.save_academy_intake_profile_8081/);
 });
