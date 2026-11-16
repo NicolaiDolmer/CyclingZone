@@ -1,0 +1,184 @@
+name: Til dørs-udkast
+
+# Til dørs-robotten (#8266). Efter hver merge til main og dagligt samler
+# scripts/til-doers-draft.mjs ÉT udkast pr. dag som kommentar paa
+# dirigent-tavlen #7911: manglende patch note (EN/DA-skabelon), Hjaelp-
+# pegepind, roadmap-punkter der boer flyttes til leveret, MASTERPLAN-linjer
+# der naevner leverede issues og backup-tabeller over dato. Robotten udgiver
+# aldrig spillervendt tekst; hovedsessionen fremlaegger udkastet for ejeren.
+#
+# Dagligt ryddes desuden mergede remote branches (kun naar spidsen stadig er
+# PR'ens head, ingen aaben PR bruger dem som head eller base, og merget er
+# mindst et doegn gammelt; sletningen afvises af serveren, hvis spidsen er
+# flyttet siden opgoerelsen). GitHub gemmer commits'ene paa PR'en ("Restore
+# branch"). Backup-tabeller listes kun, sletning er ejer-gated.
+#
+# Ingen betalte kald: kun GitHub Actions, gh og et laese-kald (GET) til
+# Supabase for roadmap-punkterne.
+#
+# Sikkerhed: inputs gives KUN som env-variabler, aldrig interpoleret i
+# shell-teksten. Koden der koerer er altid main (checkout af default-branchen).
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # 04:41 UTC, efter til-doers.yml's sweep 04:17.
+    - cron: '41 4 * * *'
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: 'Skriv til GitHub (fra = dry-run)'
+        type: boolean
+        default: true
+      days:
+        description: 'Antal dage bagud med mergede PRer'
+        type: number
+        default: 3
+      cleanup:
+        description: 'Koer ogsaa branch-oprydningen'
+        type: boolean
+        default: false
+  pull_request:
+    paths:
+      - 'scripts/til-doers-draft*'
+      - 'scripts/lib/til-doers.mjs'
+      - 'scripts/merge-queue-closeout.mjs'
+      - 'scripts/check-patch-notes-coverage.js'
+      - '.github/workflows/til-doers-draft.yml'
+
+permissions:
+  contents: read
+
+# #7582: forældede PR-kørsler annulleres; push, schedule og dispatch får hver
+# sin gruppe (run_id) og kører altid færdigt. To samtidige kørsler kan derfor
+# begge oprette dagens kommentar; den næste kørsel tømmer så den yngste til en
+# dublet-note (planComment i scriptet).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    name: til-doers-draft tests
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Proever
+        run: node --test scripts/til-doers-draft.test.mjs
+
+  cleanup:
+    name: til-doers-oprydning
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.cleanup)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: read
+    outputs:
+      report: ${{ steps.clean.outputs.report }}
+    steps:
+      - name: Check out main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Ryd mergede remote branches
+        id: clean
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_APPLY: ${{ inputs.apply }}
+        run: |
+          set -euo pipefail
+          MODE=--apply
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$INPUT_APPLY" != "true" ]; then
+            MODE=--dry-run
+          fi
+          # Sletning sker med git push --force-with-lease (atomisk mod den SHA
+          # planen saa). Tokenet gives som http.extraheader via env, ikke paa
+          # kommandolinjen, og checkout gemmer ingen credentials.
+          B64="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          echo "::add-mask::$B64"
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0="http.https://github.com/.extraheader"
+          export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $B64"
+          OUT="$RUNNER_TEMP/cleanup.json"
+          node scripts/til-doers-draft.mjs cleanup --repo "$REPO" "$MODE" --out "$OUT" | tee "$RUNNER_TEMP/cleanup.txt"
+          {
+            echo 'report<<CLEANUP_EOF'
+            cat "$OUT"
+            echo
+            echo 'CLEANUP_EOF'
+          } >> "$GITHUB_OUTPUT"
+          { echo '```'; cat "$RUNNER_TEMP/cleanup.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+  draft:
+    name: til-doers-udkast
+    needs: cleanup
+    if: always() && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    steps:
+      - name: Check out main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Proever
+        run: node --test scripts/til-doers-draft.test.mjs
+
+      - name: Skriv dagens udkast
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_APPLY: ${{ inputs.apply }}
+          INPUT_DAYS: ${{ inputs.days }}
+          CLEANUP_RESULT: ${{ needs.cleanup.result }}
+          CLEANUP_OUTPUT: ${{ needs.cleanup.outputs.report }}
+          # Kun laesning (GET) af roadmap_items og known_issues.
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          set -euo pipefail
+          MODE=--apply
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$INPUT_APPLY" != "true" ]; then
+            MODE=--dry-run
+          fi
+          DAYS="${INPUT_DAYS:-3}"
+          case "$CLEANUP_RESULT" in
+            success) export CLEANUP_REPORT="$CLEANUP_OUTPUT" ;;
+            failure|cancelled) export CLEANUP_REPORT='{"error":"oprydnings-jobbet fejlede, se workflow-loggen"}' ;;
+            *) unset CLEANUP_REPORT ;;
+          esac
+          node scripts/til-doers-draft.mjs draft --repo "$REPO" --days "$DAYS" "$MODE" | tee "$RUNNER_TEMP/draft.md"
+          cat "$RUNNER_TEMP/draft.md" >> "$GITHUB_STEP_SUMMARY"
