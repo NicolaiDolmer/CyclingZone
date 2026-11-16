@@ -179,6 +179,15 @@ test("sæsonskifte samme dag: den nye sæson vinder (rækkefølgen er ligegyldig
   assert.equal(seasonForDate(sameDay, "2026-11-30T15:00:00Z")?.id, "old");
 });
 
+test("to sæsoner med samme startdato: den højeste nummer vinder (rækkefølgen er ligegyldig)", () => {
+  const twins = [
+    { id: "s0", number: 0, start_date: "2026-06-22" },
+    { id: "s1", number: 1, start_date: "2026-06-22" },
+  ];
+  assert.equal(seasonForDate(twins, "2026-07-01T00:00:00Z")?.id, "s1");
+  assert.equal(seasonForDate([...twins].reverse(), "2026-07-01T00:00:00Z")?.id, "s1");
+});
+
 // ─── Kontakten og hentningen ─────────────────────────────────────────────────
 
 type Filter = [op: string, col: string, val: unknown];

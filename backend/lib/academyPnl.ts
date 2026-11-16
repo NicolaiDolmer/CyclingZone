@@ -300,7 +300,9 @@ export function seasonForDate(seasons: readonly SeasonInput[] | null | undefined
   for (const s of seasons) {
     const start = toTime(s.start_date);
     if (start == null || start > at) continue;
-    if (start > latestStart) {
+    // Samme startdato (fx en prøvesæson og sæson 1): den højeste nummer vinder.
+    const later = start > latestStart || (start === latestStart && (s.number ?? -1) > (latest?.number ?? -1));
+    if (later) {
       latest = s;
       latestStart = start;
     }
