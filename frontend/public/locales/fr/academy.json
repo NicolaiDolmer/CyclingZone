@@ -314,9 +314,7 @@
       "junior": "Équipe junior",
       "u23": "Équipe U23",
       "talents": "Talents",
-      "ageFocus": "Âge ciblé",
-      "intakeOpen": "Les candidats de la semaine sont prêts à être recrutés.",
-      "intakeDone": "Tu as recruté les candidats de la semaine."
+      "ageFocus": "Âge ciblé"
     },
     "squad": {
       "junior": "Junior",
@@ -330,8 +328,7 @@
       "colSquad": "Équipe",
       "colAge": "Âge",
       "colPrognosis": "Pronostic",
-      "count_one": "{count} talent",
-      "count_other": "{count} talents",
+      "count": "{count, plural, one {# talent} other {# talents}}",
       "emptyTitle": "Pas encore de talents",
       "emptyBody": "Les coureurs que tu signes depuis le recrutement apparaissent ici avec leur type de coureur.",
       "emptyAction": "Aller au recrutement de la semaine"
@@ -341,8 +338,7 @@
       "mixed": "Mixte",
       "intro": "Choisis l'âge vers lequel penchent tes candidats hebdomadaires. Tous les âges continuent d'apparaître.",
       "toU23": "Les coureurs de 19 ans rejoignent toujours l'équipe U23.",
-      "active": "Âge ciblé actuel : {focus}.",
-      "pending": "À partir du {date} : {focus}.",
+      "inline": "âge ciblé {focus}",
       "errorTitle": "Le profil du centre de formation n'a pas pu être chargé",
       "errorBody": "Rien n'a été modifié. Recharge la page pour réessayer."
     }

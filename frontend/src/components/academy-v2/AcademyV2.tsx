@@ -77,9 +77,6 @@ export default function AcademyV2(props: AcademyV2Props) {
     { label: t("v2.stats.talents"), value: String(roster.length) },
     ...(showProfileTab ? [{ label: t("v2.stats.ageFocus"), value: ageFocus.state ? focusLabel(focusNow) : "–" }] : []),
   ];
-  const statusLine = pullOpen
-    ? t("v2.stats.intakeOpen")
-    : intakePull.enabled ? t("v2.stats.intakeDone") : null;
 
   const goToIntake = (
     <button type="button" onClick={() => setTab("intake")} className={buttonClass({ variant: "secondary", size: "sm" })}>
@@ -114,7 +111,6 @@ export default function AcademyV2(props: AcademyV2Props) {
         <section aria-label={t("v2.overview")} data-testid="academy-v2-overview">
           <Card className="p-5">
             <HeroStats items={stats} flush />
-            {statusLine && <p className="mt-4 border-t border-cz-border pt-3 text-xs text-cz-2">{statusLine}</p>}
           </Card>
         </section>
 

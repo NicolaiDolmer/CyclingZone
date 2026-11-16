@@ -266,3 +266,39 @@ test("profil-kortet vises kun med Optag 2.0 og har ingen guld-knap (#6666 punkt 
   assert.doesNotMatch(card, /variant="primary"/, "sidens eneste guld er hent-knappen (TASTE: ét guld pr. view)");
   assert.match(apiSource, /router\.put\("\/academy\/profile"/);
 });
+
+// #8081 (ejervalg 16/11): udgave A bag kontakten academy_page_v2_8081. Slukket = siden som før.
+const v2Source = readFileSync(join(__dirname, "..", "components", "academy-v2", "AcademyV2.tsx"), "utf8");
+
+test("#8081: udgave A vises kun bag kontakten; den normale gren og kortet er uændrede", () => {
+  assert.match(pageSource, /const pageV2 = useAcademyPageV2Flag\(\);/);
+  assert.match(pageSource, /if \(pageV2\) \{\s*return \(\s*<AcademyV2\b/);
+  // Den normale side kalder stadig kortet via .map, og "Lander på" kræver showLanding.
+  assert.match(pageSource, /regularIntake\.map\(renderIntakeCard\)/);
+  assert.match(pageSource, /\{!showLanding && landing\.movedToU23 && \(/);
+  assert.match(pageSource, /showLanding && landing\.squad && \(/);
+  // Regnskabet er et separat stykke: AcademyPnl uændret nederst, ingen regnskabsfane.
+  assert.match(pageSource, /footer=\{<AcademyPnl \/>\}/);
+  assert.doesNotMatch(v2Source, /tabs\.ledger|value="ledger"/);
+});
+
+test("#8081: udgave A har ét guld, ingen saldo i sidehovedet (A2) og de rigtige trupgrænser", () => {
+  assert.equal((v2Source.match(/variant="primary"/g) || []).length, 1, "kun hent-knappen er guld");
+  assert.doesNotMatch(v2Source, /t\("balance"/, "A2: saldoen står allerede i sidebjælken");
+  assert.match(v2Source, /squadCapRows\(squadCounts\)/, "#7932: lofterne fra squadCaps.ts (spejl af backend SQUAD_CAPS)");
+  assert.doesNotMatch(v2Source, /\b30\b|\b60\b/, "ingen 30/30/30 eller 60 (ikke besluttet bygget)");
+  assert.doesNotMatch(v2Source, /text-cz-3/, "A3/A4: hjælpelinjer i --text-2");
+});
+
+test("#8081: v2-teksterne findes på alle fem sprog med samme nøgler og uden em-dash", () => {
+  const flat = (obj, prefix = "") => Object.entries(obj).flatMap(([k, v]) => (v && typeof v === "object" ? flat(v, `${prefix}${k}.`) : [[`${prefix}${k}`, v]]));
+  const en = flat(academyLocale("en").v2).map(([k]) => k).sort();
+  for (const lng of ["da", "es", "fr", "nl"]) {
+    assert.deepEqual(flat(academyLocale(lng).v2).map(([k]) => k).sort(), en, `${lng}: v2-nøglerne afviger fra en`);
+  }
+  for (const lng of ["en", "da", "es", "fr", "nl"]) {
+    for (const [key, text] of flat(academyLocale(lng).v2)) assert.doesNotMatch(String(text), /—/, `${lng}: em-dash i v2.${key}`);
+  }
+  assert.equal(academyLocale("en").v2.tabs.talents, "Your talents");
+  assert.equal(academyLocale("da").v2.tabs.profile, "Profil og alder");
+});

@@ -326,9 +326,7 @@
       "junior": "Equipo júnior",
       "u23": "Equipo sub-23",
       "talents": "Talentos",
-      "ageFocus": "Edad preferente",
-      "intakeOpen": "Los candidatos de esta semana están listos para incorporarse.",
-      "intakeDone": "Ya has incorporado a los candidatos de esta semana."
+      "ageFocus": "Edad preferente"
     },
     "squad": {
       "junior": "Júnior",
@@ -342,8 +340,7 @@
       "colSquad": "Equipo",
       "colAge": "Edad",
       "colPrognosis": "Pronóstico",
-      "count_one": "{count} talento",
-      "count_other": "{count} talentos",
+      "count": "{count, plural, one {# talento} other {# talentos}}",
       "emptyTitle": "Aún no hay talentos",
       "emptyBody": "Los ciclistas que fiches de la captación aparecen aquí con su tipo de ciclista.",
       "emptyAction": "Ir a la captación de la semana"
@@ -353,8 +350,7 @@
       "mixed": "Mixta",
       "intro": "Elige la edad hacia la que se inclinan tus candidatos semanales. Siguen apareciendo todas las edades.",
       "toU23": "Los de 19 años siempre van al equipo sub-23.",
-      "active": "Edad preferente ahora: {focus}.",
-      "pending": "Desde el {date}: {focus}.",
+      "inline": "edad preferente {focus}",
       "errorTitle": "No se pudo cargar el perfil de la academia",
       "errorBody": "No se ha cambiado nada. Recarga la página para volver a intentarlo."
     }

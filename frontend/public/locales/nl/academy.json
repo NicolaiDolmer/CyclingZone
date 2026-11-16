@@ -326,9 +326,7 @@
       "junior": "Juniorenploeg",
       "u23": "U23-ploeg",
       "talents": "Talenten",
-      "ageFocus": "Leeftijdsfocus",
-      "intakeOpen": "De kandidaten van deze week staan klaar om binnen te halen.",
-      "intakeDone": "Je hebt de kandidaten van deze week binnengehaald."
+      "ageFocus": "Leeftijdsfocus"
     },
     "squad": {
       "junior": "Junioren",
@@ -342,8 +340,7 @@
       "colSquad": "Ploeg",
       "colAge": "Leeftijd",
       "colPrognosis": "Prognose",
-      "count_one": "{count} talent",
-      "count_other": "{count} talenten",
+      "count": "{count, plural, one {# talent} other {# talenten}}",
       "emptyTitle": "Nog geen talenten",
       "emptyBody": "Renners die je uit de instroom tekent, staan hier met hun rennerstype.",
       "emptyAction": "Naar de instroom van deze week"
@@ -353,8 +350,7 @@
       "mixed": "Gemengd",
       "intro": "Kies de leeftijd waar je wekelijkse kandidaten naar neigen. Alle leeftijden blijven voorkomen.",
       "toU23": "19-jarigen gaan altijd naar de U23-ploeg.",
-      "active": "Leeftijdsfocus nu: {focus}.",
-      "pending": "Vanaf {date}: {focus}.",
+      "inline": "leeftijdsfocus {focus}",
       "errorTitle": "Het academieprofiel kon niet worden geladen",
       "errorBody": "Er is niets gewijzigd. Laad de pagina opnieuw om het nog eens te proberen."
     }

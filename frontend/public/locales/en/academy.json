@@ -314,9 +314,7 @@
       "junior": "Junior squad",
       "u23": "U23 squad",
       "talents": "Talents",
-      "ageFocus": "Age focus",
-      "intakeOpen": "This week's candidates are ready to bring in.",
-      "intakeDone": "You have brought in this week's candidates."
+      "ageFocus": "Age focus"
     },
     "squad": {
       "junior": "Junior",
@@ -330,8 +328,7 @@
       "colSquad": "Squad",
       "colAge": "Age",
       "colPrognosis": "Prognosis",
-      "count_one": "{count} talent",
-      "count_other": "{count} talents",
+      "count": "{count, plural, one {# talent} other {# talents}}",
       "emptyTitle": "No talents yet",
       "emptyBody": "Riders you sign from the intake show up here with their rider type.",
       "emptyAction": "Go to this week's intake"
@@ -341,8 +338,7 @@
       "mixed": "Mixed",
       "intro": "Pick the age your weekly candidates lean towards. Every age still turns up.",
       "toU23": "19-year-olds always join the U23 squad.",
-      "active": "Age focus now: {focus}.",
-      "pending": "From {date}: {focus}.",
+      "inline": "age focus {focus}",
       "errorTitle": "The academy profile didn't load",
       "errorBody": "Nothing was changed. Reload the page to try again."
     }

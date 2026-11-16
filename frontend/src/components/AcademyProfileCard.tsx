@@ -101,6 +101,11 @@ export default function AcademyProfileCard({ profile, onSave, ageFocus = null }:
     ...(p?.origins ?? []).map(originLabel),
     ...(p?.types ?? []).map((k: string) => tTypes(`types.${k}`)),
   ].join(" · ");
+  // #8081: med aldersfokus står alderen i samme linje som profilen (samme række, samme ur).
+  const describeLine = (p: ProfileValue | null | undefined, age: string | null | undefined): string => {
+    const base = describe(p) || t("profile.none");
+    return ageFocus ? `${base} · ${t("v2.age.inline", { focus: ageFocus.describe(age ?? null) })}` : base;
+  };
 
   const nations = useMemo(
     () => [...options.nations].sort((a, b) => getCountryName(a, i18n.language).localeCompare(getCountryName(b, i18n.language))),
@@ -186,16 +191,10 @@ export default function AcademyProfileCard({ profile, onSave, ageFocus = null }:
             {ageFocus && <AgeFocusField value={age} onChange={setAge} />}
             <div className="flex flex-col gap-3 border-t border-cz-border pt-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0 text-xs text-cz-2 space-y-0.5">
-                <p>{profile?.active ? t("profile.active", { profile: describe(profile.active) || t("profile.none") }) : t("profile.activeNone")}</p>
-                {ageFocus && (
-                  <p data-testid="academy-age-focus-status">
-                    {t("v2.age.active", { focus: ageFocus.describe(ageFocus.state.active?.ageFocus ?? null) })}
-                    {ageFocus.state.pending && ` ${t("v2.age.pending", { date: formatDate(ageFocus.state.pending.effectiveFrom), focus: ageFocus.describe(ageFocus.state.pending.ageFocus) })}`}
-                  </p>
-                )}
+                <p>{profile?.active ? t("profile.active", { profile: describeLine(profile.active, ageFocus?.state.active?.ageFocus) }) : t("profile.activeNone")}</p>
                 {profile?.pending && (
                   <p className="text-cz-3">
-                    {t("profile.pending", { date: formatDate(profile.pending.effectiveFrom), profile: describe(profile.pending) || t("profile.none") })}
+                    {t("profile.pending", { date: formatDate(profile.pending.effectiveFrom), profile: describeLine(profile.pending, ageFocus?.state.pending?.ageFocus) })}
                   </p>
                 )}
                 {!profile?.pending && <p className="text-cz-3">{t("profile.delayNote", { days: options.delayDays })}</p>}

@@ -314,9 +314,7 @@
       "junior": "Juniortrup",
       "u23": "U23-trup",
       "talents": "Talenter",
-      "ageFocus": "Aldersfokus",
-      "intakeOpen": "Ugens kandidater er klar til at blive hentet.",
-      "intakeDone": "Du har hentet ugens kandidater."
+      "ageFocus": "Aldersfokus"
     },
     "squad": {
       "junior": "Junior",
@@ -330,8 +328,7 @@
       "colSquad": "Trup",
       "colAge": "Alder",
       "colPrognosis": "Prognose",
-      "count_one": "{count} talent",
-      "count_other": "{count} talenter",
+      "count": "{count, plural, one {# talent} other {# talenter}}",
       "emptyTitle": "Ingen talenter endnu",
       "emptyBody": "Ryttere, du henter fra optaget, står her med deres ryttertype.",
       "emptyAction": "Gå til ugens optag"
@@ -341,8 +338,7 @@
       "mixed": "Blandet",
       "intro": "Vælg den alder, dine ugentlige kandidater hælder mod. Alle aldre dukker stadig op.",
       "toU23": "19-årige kommer altid på U23-truppen.",
-      "active": "Aldersfokus nu: {focus}.",
-      "pending": "Fra {date}: {focus}.",
+      "inline": "aldersfokus {focus}",
       "errorTitle": "Akademiets profil kunne ikke hentes",
       "errorBody": "Intet blev ændret. Genindlæs siden for at prøve igen."
     }
