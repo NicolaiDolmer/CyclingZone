@@ -47,6 +47,7 @@ type Copy = {
   priceNote: string;
   rulesNote: string;
   legendDarker: string;
+  priceLegend: string;
   legendOpen: string;
   saveStage: (n: number) => string;
   copyTo: (n: number) => string;
@@ -114,6 +115,7 @@ export const COPY: Record<Lang, Copy> = {
     priceNote: "The price is the task's own. Hard, Normal or Easy sets how hard he rides it.",
     rulesNote: "The break can only be the first task. Grupetto, riding in and the sprint train always come last.",
     legendDarker: "Darker = harder task",
+    priceLegend: "Task price",
     legendOpen: "Open end = switches when it happens",
     saveStage: (n) => `Save stage ${n}`,
     copyTo: (n) => `Copy to stage ${n}`,
@@ -188,6 +190,7 @@ export const COPY: Record<Lang, Copy> = {
     priceNote: "Prisen er opgavens egen. Hård, Normal eller Let afgør, hvor hårdt han kører den.",
     rulesNote: "Udbrud kan kun være første opgave. Grupetto, kør i mål og sprinttog kommer altid sidst.",
     legendDarker: "Mørkere = hårdere opgave",
+    priceLegend: "Opgavens pris",
     legendOpen: "Åben ende = skifter, når det sker",
     saveStage: (n) => `Gem etape ${n}`,
     copyTo: (n) => `Kopiér til etape ${n}`,

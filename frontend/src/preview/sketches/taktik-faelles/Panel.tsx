@@ -52,7 +52,7 @@ function RiderName({ r, className = "" }: { r: SketchRider; className?: string }
     <span className={`inline-flex min-w-0 items-center gap-1.5 ${className}`}>
       <Flag code={r.nat} />
       <span className="shrink-0 text-cz-3"><IconPerson /></span>
-      <a href={`#rider-${r.id}`} className="min-w-0 truncate text-[13.5px] font-medium text-cz-1 underline decoration-cz-border underline-offset-2 hover:text-cz-accent-t">
+      <a href={`#rider-${r.id}`} className="min-w-0 truncate text-[13.5px] font-medium text-cz-1 underline decoration-cz-border underline-offset-2 hover:text-cz-accent-t [@media(max-width:640px),(pointer:coarse)]:-my-3 [@media(max-width:640px),(pointer:coarse)]:py-3">
         {r.name}
       </a>
     </span>
@@ -214,7 +214,7 @@ function EffortChoice({ lang, r, value, onChange, stretch = false }: { lang: Lan
         {(["hard", "normal", "easy"] as Effort[]).map((e) => (
           <label
             key={e}
-            className={`relative flex cursor-pointer items-center justify-center border-s border-cz-border px-2.5 py-1 text-xs first:border-s-0 has-[:focus-visible]:outline-2 has-[:focus-visible]:-outline-offset-2 has-[:focus-visible]:outline-cz-1 [@media(max-width:640px),(pointer:coarse)]:min-h-11 ${stretch ? "flex-1" : ""} ${
+            className={`relative flex cursor-pointer items-center justify-center border-s border-cz-border px-2.5 py-1 text-xs first:border-s-0 has-[:focus-visible]:outline-2 has-[:focus-visible]:-outline-offset-2 has-[:focus-visible]:outline-cz-accent [@media(max-width:640px),(pointer:coarse)]:min-h-11 ${stretch ? "flex-1" : ""} ${
               value === e ? "bg-cz-1 font-semibold text-cz-body" : "bg-cz-card font-medium text-cz-2 hover:text-cz-1"
             }`}
           >
@@ -246,7 +246,7 @@ function TeamChoices({ lang, plan, onPlan, stance, onStance }: { lang: Lang; pla
           {(["gc", "stage", "sprint", "break", "save"] as TeamPlanKey[]).map((k, i) => (
             <label
               key={k}
-              className={`relative flex cursor-pointer items-center border-cz-border px-3 py-1.5 text-xs has-[:focus-visible]:outline-2 has-[:focus-visible]:-outline-offset-2 has-[:focus-visible]:outline-cz-1 [@media(max-width:640px),(pointer:coarse)]:min-h-11 @2xl:flex-1 @2xl:justify-center @2xl:border-s @2xl:first:border-s-0 ${
+              className={`relative flex cursor-pointer items-center border-cz-border px-3 py-1.5 text-xs has-[:focus-visible]:outline-2 has-[:focus-visible]:-outline-offset-2 has-[:focus-visible]:outline-cz-accent [@media(max-width:640px),(pointer:coarse)]:min-h-11 @2xl:flex-1 @2xl:justify-center @2xl:border-s @2xl:first:border-s-0 ${
                 i % 2 === 1 ? "border-s" : ""
               } ${i > 1 ? "border-t @2xl:border-t-0" : ""} ${k === "save" ? "col-span-2 @2xl:col-span-1" : ""} ${
                 plan === k ? "bg-cz-accent/10 font-semibold text-cz-accent-t" : "bg-cz-card font-medium text-cz-2 hover:text-cz-1"
@@ -265,7 +265,7 @@ function TeamChoices({ lang, plan, onPlan, stance, onStance }: { lang: Lang; pla
           {(["chase", "neutral", "let_go"] as Stance[]).map((s) => (
             <label
               key={s}
-              className={`relative flex flex-1 cursor-pointer items-center justify-center border-s border-cz-border px-3 py-1.5 text-center text-xs leading-tight first:border-s-0 has-[:focus-visible]:outline-2 has-[:focus-visible]:-outline-offset-2 has-[:focus-visible]:outline-cz-1 [@media(max-width:640px),(pointer:coarse)]:min-h-11 ${
+              className={`relative flex flex-1 cursor-pointer items-center justify-center border-s border-cz-border px-3 py-1.5 text-center text-xs leading-tight first:border-s-0 has-[:focus-visible]:outline-2 has-[:focus-visible]:-outline-offset-2 has-[:focus-visible]:outline-cz-accent [@media(max-width:640px),(pointer:coarse)]:min-h-11 ${
                 stance === s ? "bg-cz-1 font-semibold text-cz-body" : "bg-cz-card font-medium text-cz-2 hover:text-cz-1"
               }`}
             >
@@ -360,7 +360,8 @@ function EditorPopover({ lang, r, anchorId, onClose }: { lang: Lang; r: SketchRi
     el.showPopover();
     // Fokus paa foerste felt (autofocus virker ikke foer kortet er vist).
     el.querySelector<HTMLSelectElement>("select")?.focus();
-    const toggle = (e: Event) => { if ((e as Event & { newState?: string }).newState === "closed") onClose(); };
+    // Vist fra script, saa browseren giver ikke fokus tilbage af sig selv: goer det her (WCAG 2.4.3).
+    const toggle = (e: Event) => { if ((e as Event & { newState?: string }).newState === "closed") { anchor.focus(); onClose(); } };
     el.addEventListener("toggle", toggle);
     window.addEventListener("resize", place);
     return () => { el.removeEventListener("toggle", toggle); window.removeEventListener("resize", place); };
@@ -526,6 +527,7 @@ export default function TaktikPanel({ lang, stage, edit, bare = false }: { lang:
                       type="button"
                       aria-haspopup="dialog"
                       aria-expanded={open?.id === r.id}
+                      aria-label={c.editTitle(r.name)}
                       onClick={() => setOpen({ id: r.id, mode: "popover" })}
                       className="shrink-0 text-xs font-medium text-cz-accent-t hover:underline"
                     >
@@ -569,6 +571,7 @@ export default function TaktikPanel({ lang, stage, edit, bare = false }: { lang:
               <button
                 type="button"
                 aria-haspopup="dialog"
+                aria-label={c.editTitle(r.name)}
                 onClick={() => setOpen({ id: r.id, mode: "sheet" })}
                 className={buttonClass({ variant: "secondary", size: "sm" })}
               >
@@ -580,7 +583,8 @@ export default function TaktikPanel({ lang, stage, edit, bare = false }: { lang:
       </ul>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-cz-border px-4 py-2.5 text-2xs text-cz-3">
-        <span className="inline-flex items-center gap-1.5">
+        <span className="inline-flex flex-wrap items-center gap-1.5">
+          <span className="text-cz-2">{`${c.priceLegend}:`}</span>
           {(["easy", "medium", "hard", "veryHard"] as TaskCostWord[]).map((w) => (
             <span key={w} className="inline-flex items-center gap-1">
               <span className={`inline-block h-1.5 w-3 ${COST_FILL[w]}`} aria-hidden="true" />

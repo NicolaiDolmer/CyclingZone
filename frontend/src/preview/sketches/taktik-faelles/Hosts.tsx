@@ -39,7 +39,7 @@ function Tabs({ items, active, sticky = false }: { items: string[]; active: numb
           type="button"
           aria-selected={i === active}
           tabIndex={i === active ? 0 : -1}
-          className={`-mb-px whitespace-nowrap border-b-2 py-2.5 text-sm font-medium [@media(max-width:640px),(pointer:coarse)]:min-h-11 ${
+          className={`-mb-px whitespace-nowrap border-b-2 py-2.5 text-sm font-medium [@media(max-width:640px),(pointer:coarse)]:min-h-11 [@media(max-width:640px),(pointer:coarse)]:min-w-11 ${
             i === active ? "border-cz-accent text-cz-1" : "border-transparent text-cz-2 hover:text-cz-1"
           }`}
         >
