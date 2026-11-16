@@ -12,11 +12,16 @@
       "junior": "Equipo júnior",
       "u23": "Equipo sub-23",
       "talents": "Talentos",
-      "ageFocus": "Edad preferente"
+      "ageFocus": "Edad preferente",
+      "full": "Completo"
     },
     "squad": {
       "junior": "Júnior",
       "u23": "Sub-23"
+    },
+    "origin": {
+      "offer": "Oferta de la academia",
+      "youthAuction": "Subasta juvenil"
     },
     "landsOn": "Va al equipo {squad}",
     "talents": {
@@ -26,6 +31,7 @@
       "colSquad": "Equipo",
       "colAge": "Edad",
       "colPrognosis": "Pronóstico",
+      "colVia": "Llegó por",
       "count": "{count, plural, one {# talento} other {# talentos}}",
       "emptyTitle": "Aún no hay talentos",
       "emptyBody": "Los ciclistas que fiches de la captación aparecen aquí con su tipo de ciclista.",
@@ -34,6 +40,13 @@
     "age": {
       "label": "Edad preferente",
       "mixed": "Mixta",
+      "distributionLabel": "Captación prevista por edad",
+      "row": "{age}: {share}",
+      "share": {
+        "many": "muchos",
+        "some": "algunos",
+        "few": "pocos"
+      },
       "intro": "Elige la edad hacia la que se inclinan tus candidatos semanales. Siguen apareciendo todas las edades.",
       "toU23": "Los de 19 años siempre van al equipo sub-23.",
       "inline": "edad preferente {focus}",

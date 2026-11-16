@@ -26,6 +26,7 @@ import { GiftIcon } from "../ui/icons/index.jsx";
 import { squadCapRows, type SquadCounts } from "../../lib/squadCaps.ts";
 import TalentTable, { type TalentRider } from "./TalentTable.tsx";
 import { useAcademyAgeFocus, type ProfileWithAgeFocus } from "./useAcademyAgeFocus.ts";
+import { useTalentOrigins } from "./useTalentOrigins.ts";
 import { ageFocusChoice, initialAcademyTab, AGE_FOCUS_MIXED, type AcademyV2Tab } from "./academyV2Model.ts";
 
 // Kit-primitiverne er utypede .jsx; kontrakten skrives ned her (samme greb som AcademyProfileCard.tsx).
@@ -64,6 +65,8 @@ export default function AcademyV2(props: AcademyV2Props) {
   }));
   const ageFocus = useAcademyAgeFocus(Boolean(academyProfile));
   const showProfileTab = Boolean(academyProfile);
+  // Skitse A: "Kom via" i "Dine talenter". Rosterets ryttere bærer holdets id (/academy/me).
+  const origins = useTalentOrigins(roster.find((r) => r.team_id)?.team_id ?? null, roster.map((r) => r.id));
 
   const focusNow = ageFocus.state?.active?.ageFocus ?? null;
   const focusLabel = (value: string | null) => (ageFocusChoice(value) === AGE_FOCUS_MIXED ? t("academyV2:v2.age.mixed") : String(value));
@@ -72,7 +75,13 @@ export default function AcademyV2(props: AcademyV2Props) {
     { label: t("academyV2:v2.stats.intake"), value: String(regularIntake.length) },
     ...squadRows.map((row) => ({
       label: t(`academyV2:v2.stats.${row.squad}`),
-      value: <span className={row.full ? "text-cz-warning" : undefined}>{t("squadLinks.count", { used: row.used, max: row.max })}</span>,
+      // TASTE: tallet står neutralt (guld/farve kun til sidens ene handling); en fuld trup får ordet "Fuld" i --text-2.
+      value: (
+        <>
+          {t("squadLinks.count", { used: row.used, max: row.max })}
+          {row.full && <span className="ms-2 font-sans text-xs font-medium text-cz-2">{t("academyV2:v2.stats.full")}</span>}
+        </>
+      ),
     })),
     { label: t("academyV2:v2.stats.talents"), value: String(roster.length) },
     ...(showProfileTab ? [{ label: t("academyV2:v2.stats.ageFocus"), value: ageFocus.state ? focusLabel(focusNow) : "–" }] : []),
@@ -161,7 +170,7 @@ export default function AcademyV2(props: AcademyV2Props) {
           </TabPanel>
 
           <TabPanel value="talents">
-            <TalentTable roster={roster} seasonYear={seasonYear} emptyAction={goToIntake} />
+            <TalentTable roster={roster} seasonYear={seasonYear} emptyAction={goToIntake} origins={origins} />
           </TabPanel>
 
           {showProfileTab ? (

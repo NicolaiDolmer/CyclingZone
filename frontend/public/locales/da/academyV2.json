@@ -12,11 +12,16 @@
       "junior": "Juniortrup",
       "u23": "U23-trup",
       "talents": "Talenter",
-      "ageFocus": "Aldersfokus"
+      "ageFocus": "Aldersfokus",
+      "full": "Fuld"
     },
     "squad": {
       "junior": "Junior",
       "u23": "U23"
+    },
+    "origin": {
+      "offer": "Akademi-tilbud",
+      "youthAuction": "Ungdomsauktion"
     },
     "landsOn": "Lander på {squad}-truppen",
     "talents": {
@@ -26,6 +31,7 @@
       "colSquad": "Trup",
       "colAge": "Alder",
       "colPrognosis": "Prognose",
+      "colVia": "Kom via",
       "count": "{count, plural, one {# talent} other {# talenter}}",
       "emptyTitle": "Ingen talenter endnu",
       "emptyBody": "Ryttere, du henter fra optaget, står her med deres ryttertype.",
@@ -34,6 +40,13 @@
     "age": {
       "label": "Aldersfokus",
       "mixed": "Blandet",
+      "distributionLabel": "Forventet optag pr. alder",
+      "row": "{age}: {share}",
+      "share": {
+        "many": "mange",
+        "some": "nogle",
+        "few": "få"
+      },
       "intro": "Vælg den alder, dine ugentlige kandidater hælder mod. Alle aldre dukker stadig op.",
       "toU23": "19-årige kommer altid på U23-truppen.",
       "inline": "aldersfokus {focus}",

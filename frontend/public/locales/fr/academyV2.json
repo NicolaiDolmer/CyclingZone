@@ -12,11 +12,16 @@
       "junior": "Équipe junior",
       "u23": "Équipe U23",
       "talents": "Talents",
-      "ageFocus": "Âge ciblé"
+      "ageFocus": "Âge ciblé",
+      "full": "Complet"
     },
     "squad": {
       "junior": "Junior",
       "u23": "U23"
+    },
+    "origin": {
+      "offer": "Offre de l'académie",
+      "youthAuction": "Enchère de jeunes"
     },
     "landsOn": "Rejoint l'équipe {squad}",
     "talents": {
@@ -26,6 +31,7 @@
       "colSquad": "Équipe",
       "colAge": "Âge",
       "colPrognosis": "Pronostic",
+      "colVia": "Arrivé via",
       "count": "{count, plural, one {# talent} other {# talents}}",
       "emptyTitle": "Pas encore de talents",
       "emptyBody": "Les coureurs que tu signes depuis le recrutement apparaissent ici avec leur type de coureur.",
@@ -34,6 +40,13 @@
     "age": {
       "label": "Âge ciblé",
       "mixed": "Mixte",
+      "distributionLabel": "Recrutement attendu par âge",
+      "row": "{age} : {share}",
+      "share": {
+        "many": "beaucoup",
+        "some": "quelques-uns",
+        "few": "peu"
+      },
       "intro": "Choisis l'âge vers lequel penchent tes candidats hebdomadaires. Tous les âges continuent d'apparaître.",
       "toU23": "Les coureurs de 19 ans rejoignent toujours l'équipe U23.",
       "inline": "âge ciblé {focus}",

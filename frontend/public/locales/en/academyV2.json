@@ -12,11 +12,16 @@
       "junior": "Junior squad",
       "u23": "U23 squad",
       "talents": "Talents",
-      "ageFocus": "Age focus"
+      "ageFocus": "Age focus",
+      "full": "Full"
     },
     "squad": {
       "junior": "Junior",
       "u23": "U23"
+    },
+    "origin": {
+      "offer": "Academy offer",
+      "youthAuction": "Youth auction"
     },
     "landsOn": "Lands on the {squad} squad",
     "talents": {
@@ -26,6 +31,7 @@
       "colSquad": "Squad",
       "colAge": "Age",
       "colPrognosis": "Prognosis",
+      "colVia": "Came via",
       "count": "{count, plural, one {# talent} other {# talents}}",
       "emptyTitle": "No talents yet",
       "emptyBody": "Riders you sign from the intake show up here with their rider type.",
@@ -34,6 +40,13 @@
     "age": {
       "label": "Age focus",
       "mixed": "Mixed",
+      "distributionLabel": "Expected intake by age",
+      "row": "{age}: {share}",
+      "share": {
+        "many": "many",
+        "some": "some",
+        "few": "few"
+      },
       "intro": "Pick the age your weekly candidates lean towards. Every age still turns up.",
       "toU23": "19-year-olds always join the U23 squad.",
       "inline": "age focus {focus}",
