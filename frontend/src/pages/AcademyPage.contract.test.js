@@ -340,6 +340,12 @@ test("#8081: fordelingen pr. alder står under aldersvælgeren i ord og følger 
   assert.deepEqual(academyV2Locale("da").v2.age.share, { many: "mange", some: "nogle", few: "få" });
 });
 
+test("#8081 (Codex-fund): en fejlet genhentning efter et gemt valg viser ikke 'intet blev ændret'", () => {
+  const hook = readFileSync(join(v2Dir, "useAcademyAgeFocus.ts"), "utf8");
+  assert.match(hook, /const refreshed = await load\(\{ keepOnFailure: true \}\);/);
+  assert.match(hook, /\} else if \(!keepOnFailure\) \{\s*setError\(true\);/);
+});
+
 test("#8081: v2-teksterne findes på alle fem sprog med samme nøgler og uden em-dash", () => {
   const flat = (obj, prefix = "") => Object.entries(obj).flatMap(([k, v]) => (v && typeof v === "object" ? flat(v, `${prefix}${k}.`) : [[`${prefix}${k}`, v]]));
   const en = flat(academyV2Locale("en").v2).map(([k]) => k).sort();

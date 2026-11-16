@@ -31,19 +31,22 @@ export function useAcademyAgeFocus(enabled: boolean): {
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState(false);
 
-  const load = useCallback(async () => {
-    if (!enabled) return;
+  // Returnerer om hentningen lykkedes. `keepOnFailure` (genhentning efter et gemt valg): en
+  // fejlet genhentning må ikke skjule profilen bag "intet blev ændret", for gemmet LYKKEDES.
+  const load = useCallback(async ({ keepOnFailure = false }: { keepOnFailure?: boolean } = {}): Promise<boolean> => {
+    if (!enabled) return false;
     const headers = await authHeaders();
-    if (!headers) { setLoading(false); setError(true); return; }
-    const res = await apiFetch(`${API}/api/academy/v2/age-focus`, { headers });
-    const body = res.data as AgeFocusState | null;
-    if (res.ok && body && Array.isArray(body.options)) {
+    const res = headers ? await apiFetch(`${API}/api/academy/v2/age-focus`, { headers }) : null;
+    const body = (res?.data ?? null) as AgeFocusState | null;
+    const ok = Boolean(res?.ok && body && Array.isArray(body.options));
+    if (ok) {
       setState(body);
       setError(false);
-    } else {
+    } else if (!keepOnFailure) {
       setError(true);
     }
     setLoading(false);
+    return ok;
   }, [enabled]);
 
   useEffect(() => { load(); }, [load]);
@@ -55,9 +58,14 @@ export function useAcademyAgeFocus(enabled: boolean): {
       method: "PUT", headers, body: JSON.stringify(profile),
     });
     if (res.networkError) return { ok: false, error: "network" };
-    const data = (res.data || {}) as { error?: string; effectiveFrom?: string };
+    const data = (res.data || {}) as { error?: string; effectiveFrom?: string; ageFocus?: string | null };
     if (!res.ok) return { ok: false, error: data.error || "failed" };
-    await load();
+    const refreshed = await load({ keepOnFailure: true });
+    // Codex-fund: genhentningen fejlede, men gemmet står. Vis det ventende valg fra PUT-svaret.
+    if (!refreshed && data.effectiveFrom) {
+      const pending: AgeFocusValue = { ageFocus: data.ageFocus ?? null, effectiveFrom: data.effectiveFrom };
+      setState((prev) => (prev ? { ...prev, pending } : prev));
+    }
     return { ok: true, result: data };
   }, [load]);
 
