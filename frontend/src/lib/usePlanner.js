@@ -23,7 +23,7 @@ const API = import.meta.env.VITE_API_URL;
 // endnu (sæsonen er 'upcoming'; op/nedrykning sker ved sæsonskiftet). Så er intet
 // løb markeret isMine, og siden viser en ærlig forklaring frem for den gamle
 // divisions kalender. Default false → uændret adfærd for den aktive sæson.
-const EMPTY = { season: null, availableSeasons: [], divisionPending: false, maxPerRider: 2, today: null, leadupDays: 14, paybackDays: 7, riders: [], races: [] };
+const EMPTY = { season: null, availableSeasons: [], divisionPending: false, expectedDivision: null, maxPerRider: 2, today: null, leadupDays: 14, paybackDays: 7, riders: [], races: [] };
 
 // #2518: seasonNumber = null → backend defaulter til aktiv sæson (uændret
 // adfærd); et eksplicit nummer (fra sæson-vælgeren i SeasonPlannerPage) lader
@@ -83,6 +83,7 @@ export function usePlanner(seasonNumber = null) {
           season: data.season ?? null,
           availableSeasons: data.availableSeasons ?? [],
           divisionPending: Boolean(data.divisionPending),
+          expectedDivision: data.expectedDivision ?? null, // #5841: Formplans divisionsvælger (kommende sæson)
           maxPerRider: data.maxPerRider ?? 2,
           today: data.today ?? null,
           leadupDays: data.leadupDays ?? 14,

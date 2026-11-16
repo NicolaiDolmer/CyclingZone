@@ -114,6 +114,7 @@ export function seasonResetFatigue({
  *   trætheds-siden — derfor ingen claim-tabel her. ("rest_days" er IKKE
  *   idempotent: hver kørsel trækker N hviledage mere fra.)
  * - Rører KUN kolonnen fatigue (+ updated_at). form/injured_until er urørt
+ *   (skader ved skiftet har deres eget håndtag: seasonInjuryReset.js, #5865)
  *   (supabase-js upsert opdaterer kun de angivne kolonner på UPDATE-stien —
  *   samme kontrakt som raceFatigue.applyRaceFatigue).
  *
