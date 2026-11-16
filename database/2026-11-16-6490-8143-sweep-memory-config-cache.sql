@@ -34,7 +34,7 @@ INSERT INTO public.app_config (key, value, description)
 VALUES (
   'config_cache_8143',
   '"off"'::jsonb,
-  'Binary flag (off|on) for #8143 H: flag reads share one 60 s server memory across all clients. Engine switches are always read fresh; an admin flag change forgets the key at once. Only "on" turns it on; beta counts as off. Polled by the server every 30 s.'
+  'Binary flag (off|on) for #8143 H: flag reads share one 60 s server memory across all clients. Engine switches are always read fresh; an admin flag change forgets the key at once. Only "on" turns it on; beta counts as off. Read on demand (30 s lifetime, no polling); an admin write of this key takes effect at once.'
 )
 ON CONFLICT (key) DO NOTHING;
 
