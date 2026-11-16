@@ -75,8 +75,7 @@ export default function TacticsPanel({ t, route, teamPlan, title, meta = null, i
       {teamPlan && (
         <section data-testid="tactics-today-plan" className="min-w-0 rounded-cz border border-cz-border bg-cz-card p-4 sm:p-5">
           <h2 className="m-0 mb-3 flex flex-wrap items-baseline justify-between gap-2 text-[15px] font-semibold text-cz-1">
-            {t("tacticsPanel.todayPlan")}
-            <small className="text-xs font-normal text-cz-3">{t("tacticsPanel.todayPlanNote")}</small>
+            {t("tacticsOrders.planLabel")}
           </h2>
           {teamPlan}
         </section>
@@ -94,7 +93,7 @@ export default function TacticsPanel({ t, route, teamPlan, title, meta = null, i
 
         {team && (
           <div data-testid="tactics-team-bar" className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-cz bg-cz-subtle px-2.5 py-2 text-sm">
-            <b className="font-semibold text-cz-1">{t("tacticsPanel.team")}</b>
+            <b className="font-semibold text-cz-1">{t("stagePageV2.tab.team")}</b>
             {team}
           </div>
         )}

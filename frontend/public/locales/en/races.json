@@ -95,16 +95,6 @@
       "veryHard": "Very hard"
     }
   },
-  "tacticsPanel": {
-    "todayPlan": "Today's plan",
-    "todayPlanNote": "One choice for the whole team",
-    "orders": "Orders for stage {number}",
-    "ordersRaceDay": "Orders for race day",
-    "team": "The team",
-    "colEffort": "Effort",
-    "effortAria": "Effort for {name}",
-    "untouched": "If you do nothing, they ride exactly this."
-  },
   "stagePlan": {
     "title": "Stage plan",
     "help": "Each rider gets a short plan along the route. The task switches at a climb, in the last 10 km or when he is dropped.",

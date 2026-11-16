@@ -1219,7 +1219,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       }
       return (
         <EffortSegmented
-          label={t("tacticsPanel.effortAria", { name: rider.name || "—" })}
+          label={`${t("tacticsOrders.effortLabel")}: ${rider.name || "—"}`}
           steps={steps}
           value={effortFor(rider)}
           labelFor={effortLabel(rider)}
@@ -1288,7 +1288,6 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         )}
         {status === "saved" && <p className="m-0 text-xs text-cz-success">{t("intention.saved")}</p>}
         {status === "idle" && dirty && <p className="m-0 text-xs text-cz-2">{t("intention.unsaved")}</p>}
-        {status === "idle" && !dirty && <p className="m-0 text-xs text-cz-3">{t("tacticsPanel.untouched")}</p>}
         {!(ready7864 && stagePlanOn) && <p className="m-0 text-xs tabular-nums text-cz-3">{untouchedLine ? `${footerLine} · ${untouchedLine}` : /** @type {string} */ (footerLine)}</p>}
       </div>
     );
@@ -1305,7 +1304,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
             )}
           </>
         ) : null}
-        title={isOneDay ? t("tacticsPanel.ordersRaceDay") : t("tacticsPanel.orders", { number: activeStage })}
+        title={ordersColumn}
         meta={!stageLocked && lockTime && !isOneDay ? t("racePage.tactics.stageMeta", { number: activeStage, time: lockTime }) : null}
         intro={(
           <>
@@ -1334,7 +1333,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
               role: t("intention.colRole"),
               routeMatch: routeMatchColumn,
               today: t("stagePageV2.today"),
-              effort: t("tacticsPanel.colEffort"),
+              effort: t("tacticsOrders.effortLabel"),
               orders: ordersColumn,
             }}
             routeMatchTitle={t("racePage.tactics.sortRouteMatch")}
