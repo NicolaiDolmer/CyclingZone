@@ -19,10 +19,6 @@
       "junior": "Junioren",
       "u23": "U23"
     },
-    "origin": {
-      "offer": "Academie-aanbod",
-      "youthAuction": "Jeugdveiling"
-    },
     "landsOn": "Komt in de {squad}-ploeg",
     "talents": {
       "colNation": "Nat.",
@@ -31,7 +27,6 @@
       "colSquad": "Ploeg",
       "colAge": "Leeftijd",
       "colPrognosis": "Prognose",
-      "colVia": "Kwam via",
       "count": "{count, plural, one {# talent} other {# talenten}}",
       "emptyTitle": "Nog geen talenten",
       "emptyBody": "Renners die je uit de instroom tekent, staan hier met hun rennerstype.",

@@ -19,10 +19,6 @@
       "junior": "Júnior",
       "u23": "Sub-23"
     },
-    "origin": {
-      "offer": "Oferta de la academia",
-      "youthAuction": "Subasta juvenil"
-    },
     "landsOn": "Va al equipo {squad}",
     "talents": {
       "colNation": "Nac.",
@@ -31,7 +27,6 @@
       "colSquad": "Equipo",
       "colAge": "Edad",
       "colPrognosis": "Pronóstico",
-      "colVia": "Llegó por",
       "count": "{count, plural, one {# talento} other {# talentos}}",
       "emptyTitle": "Aún no hay talentos",
       "emptyBody": "Los ciclistas que fiches de la captación aparecen aquí con su tipo de ciclista.",

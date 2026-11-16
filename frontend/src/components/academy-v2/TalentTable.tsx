@@ -6,7 +6,7 @@
 //
 // Ingen rækkehandlinger (#6155): flyt og fyring sker på rytterprofilen, som for alle ryttere.
 // Navnet er linket. Tabellen er DataTable med sortering på alle kolonner (TASTE 7a).
-// "Kom via" (skitse A): akademi-tilbud eller ungdomsauktion, fra useTalentOrigins.
+// Kun egen avl (ejer 16/11): AcademyV2 filtrerer listen, så "Kom via" fra skitse A er fjernet.
 // Mobilens kolonne-chips er firkantede (squareChips, 5px), ikke piller.
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -21,7 +21,7 @@ import { riderNameSortKey } from "../../lib/riderColumnSort.js";
 import { getRiderAge } from "../../lib/riderAge.js";
 import { getCountryCode3 } from "../../lib/countryUtils.js";
 import { useTypeColumnLabel } from "../../lib/useTypeColumnLabel.ts";
-import { talentSquad, type TalentOrigin } from "./academyV2Model.ts";
+import { talentSquad } from "./academyV2Model.ts";
 import type { ReactNode } from "react";
 
 export interface TalentRider {
@@ -41,7 +41,6 @@ interface Row extends TalentRider {
   _age: number | null;
   _squad: string | null;
   _band: number | null;
-  _via: TalentOrigin | null;
 }
 
 // Modul-konstanter: useTableSort re-sorterer ellers på hver render.
@@ -52,7 +51,6 @@ const ACCESSORS: Record<string, (r: Row) => unknown> = {
   squad: (r) => r._squad,
   age: (r) => r._age,
   prognosis: (r) => r._band,
-  via: (r) => r._via,
 };
 const SORT_OPTS = { descFirstKeys: new Set(["prognosis"]) };
 const MOBILE_DEFAULTS = ["type", "age", "prognosis"];
@@ -64,12 +62,10 @@ function potentialSortValue(r: TalentRider): number | null {
   return r.prognosis?.band?.lo ?? null;
 }
 
-export default function TalentTable({ roster, seasonYear, emptyAction, origins }: {
+export default function TalentTable({ roster, seasonYear, emptyAction }: {
   roster: TalentRider[];
   seasonYear: number | null;
   emptyAction: ReactNode;
-  /** "Kom via" pr. rytter (skitse A). null = ikke kendt endnu: cellen står tom, aldrig "–". */
-  origins: ReadonlyMap<string, TalentOrigin> | null;
 }) {
   const { t } = useTranslation(["academy", "academyV2"]);
   const typeColumnLabel = useTypeColumnLabel();
@@ -79,8 +75,7 @@ export default function TalentTable({ roster, seasonYear, emptyAction, origins }
     _age: getRiderAge(r.birthdate, seasonYear) ?? null,
     _squad: talentSquad(r, seasonYear),
     _band: potentialSortValue(r),
-    _via: origins?.get(r.id) ?? null,
-  })), [roster, seasonYear, origins]);
+  })), [roster, seasonYear]);
   const { rows, sort, sortDir, handleSort } = useTableSort(decorated, ACCESSORS, SORT_OPTS);
 
   const columns: DataTableColumn<Row>[] = [
@@ -135,14 +130,6 @@ export default function TalentTable({ roster, seasonYear, emptyAction, origins }
         if (view) return <PotentialEstimate view={view} />;
         return r.prognosis ? <AcademyPrognosisCell prognosis={r.prognosis} /> : <span className="text-cz-2">–</span>;
       },
-    },
-    {
-      key: "via",
-      header: t("academyV2:v2.talents.colVia"),
-      sortKey: "via",
-      render: (r) => (origins === null
-        ? null
-        : <span className="text-cz-2">{r._via ? t(`academyV2:v2.origin.${r._via}`) : "–"}</span>),
     },
   ];
 

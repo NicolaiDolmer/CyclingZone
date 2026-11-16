@@ -19,10 +19,6 @@
       "junior": "Junior",
       "u23": "U23"
     },
-    "origin": {
-      "offer": "Offre de l'académie",
-      "youthAuction": "Enchère de jeunes"
-    },
     "landsOn": "Rejoint l'équipe {squad}",
     "talents": {
       "colNation": "Nat.",
@@ -31,7 +27,6 @@
       "colSquad": "Équipe",
       "colAge": "Âge",
       "colPrognosis": "Pronostic",
-      "colVia": "Arrivé via",
       "count": "{count, plural, one {# talent} other {# talents}}",
       "emptyTitle": "Pas encore de talents",
       "emptyBody": "Les coureurs que tu signes depuis le recrutement apparaissent ici avec leur type de coureur.",

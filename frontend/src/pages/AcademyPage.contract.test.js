@@ -314,19 +314,18 @@ test("#8081: talenttabellens mobil-chips er firkantede (5px), kun på akademiet"
   assert.match(dataTableSource, /squareChips \? "rounded-cz" : "rounded-cz-pill"/);
 });
 
-test("#8081: Kom via læses read-only, pagineret og efter samme regel som akademi-regnskabets kreds", () => {
-  assert.match(talentSource, /key: "via",[\s\S]*?t\("academyV2:v2\.talents\.colVia"\)/);
-  assert.match(talentSource, /t\(`academyV2:v2\.origin\.\$\{r\._via\}`\)/);
-  // Ukendt (indlæser/fejl) = tom celle, aldrig "–" som om ingen oprindelse fandtes.
-  assert.match(talentSource, /origins === null\s*\? null/);
+test("#8081 (ejer 16/11): Dine talenter viser kun egen avl; oprindelsen læses read-only og pagineret", () => {
+  // Listen filtreres til akademi-tilbud, så "Kom via" (altid samme ord) er fjernet fra tabellen.
+  assert.doesNotMatch(talentSource, /key: "via"|colVia|_via/);
   assert.match(v2Source, /useTalentOrigins\(/);
+  assert.match(v2Source, /ownAcademyTalents\(roster, origins\)/);
+  assert.match(v2Source, /<TalentTable roster=\{ownTalents\}/);
   assert.equal((originsSource.match(/fetchAllRows\(/g) || []).length, 2, "begge hentninger er pagineret");
   assert.equal((originsSource.match(/\.order\("id"\)\) as Promise/g) || []).length, 2, "stabil orden pr. side");
   assert.match(originsSource, /\.from\("academy_intake"\)[\s\S]*?\.eq\("status", "signed"\)/);
   assert.match(originsSource, /\.from\("auctions"\)[\s\S]*?\.eq\("is_youth", true\)[\s\S]*?\.eq\("current_bidder_id", teamId\)/);
   assert.doesNotMatch(originsSource, /\.(insert|update|upsert|delete|rpc)\(/, "kun læsning");
-  assert.equal(academyV2Locale("da").v2.talents.colVia, "Kom via");
-  assert.deepEqual(academyV2Locale("da").v2.origin, { offer: "Akademi-tilbud", youthAuction: "Ungdomsauktion" });
+  assert.equal(academyV2Locale("da").v2.talents.colVia, undefined);
 });
 
 test("#8081: fordelingen pr. alder står under aldersvælgeren i ord og følger det valgte fokus (ingen tal)", () => {

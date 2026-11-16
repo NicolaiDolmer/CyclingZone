@@ -19,10 +19,6 @@
       "junior": "Junior",
       "u23": "U23"
     },
-    "origin": {
-      "offer": "Academy offer",
-      "youthAuction": "Youth auction"
-    },
     "landsOn": "Lands on the {squad} squad",
     "talents": {
       "colNation": "Nat.",
@@ -31,7 +27,6 @@
       "colSquad": "Squad",
       "colAge": "Age",
       "colPrognosis": "Prognosis",
-      "colVia": "Came via",
       "count": "{count, plural, one {# talent} other {# talents}}",
       "emptyTitle": "No talents yet",
       "emptyBody": "Riders you sign from the intake show up here with their rider type.",

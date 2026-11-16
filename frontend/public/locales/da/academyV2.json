@@ -19,10 +19,6 @@
       "junior": "Junior",
       "u23": "U23"
     },
-    "origin": {
-      "offer": "Akademi-tilbud",
-      "youthAuction": "Ungdomsauktion"
-    },
     "landsOn": "Lander på {squad}-truppen",
     "talents": {
       "colNation": "Nat.",
@@ -31,7 +27,6 @@
       "colSquad": "Trup",
       "colAge": "Alder",
       "colPrognosis": "Prognose",
-      "colVia": "Kom via",
       "count": "{count, plural, one {# talent} other {# talenter}}",
       "emptyTitle": "Ingen talenter endnu",
       "emptyBody": "Ryttere, du henter fra optaget, står her med deres ryttertype.",

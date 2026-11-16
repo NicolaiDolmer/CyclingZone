@@ -177,7 +177,7 @@ export default function AcademyV2(props: AcademyV2Props) {
             ) : ownTalents === null ? (
               <div className="flex justify-center py-10" role="status" aria-busy="true" aria-label={t("academyV2:v2.tabs.talents")}><Spinner /></div>
             ) : (
-              <TalentTable roster={ownTalents} seasonYear={seasonYear} emptyAction={goToIntake} origins={origins} />
+              <TalentTable roster={ownTalents} seasonYear={seasonYear} emptyAction={goToIntake} />
             )}
           </TabPanel>
 
