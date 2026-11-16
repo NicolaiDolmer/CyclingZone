@@ -58,6 +58,9 @@ try {
         await page.goto(`${base}/index.html?id=${v.id}${state ? `&state=${state}` : ""}&w=${w}`, { waitUntil: "networkidle" });
         await ready(page);
         const fullH = await page.evaluate(() => Math.ceil(document.documentElement.scrollHeight));
+        // Flyder siden ud over bredden, tages billedet bredere; numrene placeres så efter den faktiske bredde.
+        const fullW = await page.evaluate(() => Math.ceil(document.documentElement.scrollWidth));
+        if (fullW > vw) console.warn("bredere end vinduet:", v.id, state, fullW);
         await page.setViewportSize({ width: vw, height: fullH });
         await page.waitForTimeout(150);
         const raw = await page.evaluate(() =>
@@ -83,7 +86,7 @@ try {
           mobile: w === "m", point: v.point, pointName: POINTS[v.point], letter: v.letter, name: v.name, line: v.line,
           recommended: v.recommended, wireframe: v.wireframe, wfNote: v.wfNote, state,
           wfSrc: WF[w].src, wfW: WF[w].w, wfH: WF[w].h,
-          shotSrc: dataUrl(shot), shotW: vw, shotH: fullH, marks,
+          shotSrc: dataUrl(shot), shotW: Math.max(vw, fullW), shotH: fullH, marks,
         };
         const sheet = await ctx.newPage();
         await sheet.addInitScript((d) => { window.__COMPOSE = d; }, data);

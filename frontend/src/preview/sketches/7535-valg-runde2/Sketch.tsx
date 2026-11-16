@@ -246,8 +246,12 @@ function RaceHeadR3({ cfg, sticky }: { cfg: Config; sticky: boolean }) {
               <Seg options={["Trup", "Taktik", "Formtop"]} value={VIEW_LABEL[cfg.view]} />
             </span>
           )}
-          <Btn variant="ghost">{Ico.copy(13)} Kopiér trup fra…</Btn>
-          <Btn variant="ghost">{Ico.spark(13)} Foreslå trup</Btn>
+          <Btn variant="ghost">
+            {Ico.copy(13)} {sticky ? "Kopiér" : "Kopiér trup fra…"}
+          </Btn>
+          <Btn variant="ghost">
+            {Ico.spark(13)} {sticky ? "Foreslå" : "Foreslå trup"}
+          </Btn>
           <SaveButton cfg={cfg} />
         </div>
       </div>
@@ -455,7 +459,7 @@ function RoleCell({ r, cfg }: { r: Rider; cfg: Config }) {
       </span>
     );
   return (
-    <span className="inline-flex w-[118px] items-center justify-between rounded-cz border border-cz-border bg-cz-card px-2 py-1 text-xs text-cz-1">
+    <span className="inline-flex w-[100px] items-center justify-between rounded-cz border border-cz-border bg-cz-card px-2 py-1 text-xs text-cz-1">
       {r.role} {Ico.chevD(12)}
     </span>
   );
@@ -494,14 +498,15 @@ function PeakCell({ r }: { r: Rider }) {
   if (!r.peak) return <span className="text-cz-3">–</span>;
   if (r.peak.here && !r.selected)
     return (
-      <span className="inline-flex items-center gap-1 whitespace-nowrap text-2xs font-semibold text-cz-warning">
+      <span className="flex items-start gap-1 text-2xs font-semibold leading-tight text-cz-warning">
         {Ico.alert(12)} Her, ikke udtaget
       </span>
     );
   if (r.peak.here) return <span className="inline-flex items-center gap-1 text-2xs font-semibold text-cz-info">{Ico.peak(12)} Her</span>;
   return (
-    <span className="whitespace-nowrap text-2xs text-cz-2">
-      {r.peak.race.split(" ").slice(-1)[0]} · {r.peak.when.split(" · ")[1]}
+    <span className="flex flex-col text-2xs leading-tight text-cz-2">
+      <span>{r.peak.race.split(" ").slice(-1)[0]}</span>
+      <span className="text-cz-3">{r.peak.when.split(" · ")[1]}</span>
     </span>
   );
 }
@@ -516,7 +521,7 @@ function Check({ on }: { on: boolean }) {
 
 function Th({ children, end = false, sort = false, extra = {} }: { children: ReactNode; end?: boolean; sort?: boolean; extra?: Record<string, string> }) {
   return (
-    <th {...extra} className={`whitespace-nowrap px-2 py-2 font-data text-3xs font-semibold uppercase tracking-[.08em] text-cz-3 ${end ? "text-end" : "text-start"}`}>
+    <th {...extra} className={`whitespace-nowrap px-1.5 py-2 font-data text-3xs font-semibold uppercase tracking-[.08em] text-cz-3 ${end ? "text-end" : "text-start"}`}>
       {children}
       {sort && <span className="ms-0.5 inline-block align-middle">{Ico.chevD(10)}</span>}
     </th>
@@ -585,36 +590,36 @@ function SquadTable({ cfg }: { cfg: Config }) {
         <tbody>
           {rows.map((r) => (
             <tr key={r.id} className={`border-b border-cz-border ${r.selected ? "bg-cz-accent/[.04]" : ""}`}>
-              <td className="w-8 px-2 py-[7px] ps-5">
+              <td className="w-8 px-1.5 py-[7px] ps-5">
                 <Check on={r.selected} />
               </td>
-              <td className="px-2 py-[7px]">
+              <td className="px-1.5 py-[7px]">
                 <span className="flex items-center gap-2 whitespace-nowrap">
                   <Flag code={r.nation} />
                   <span className="font-medium text-cz-1">{r.name}</span>
                 </span>
               </td>
-              <td className="w-[130px] max-w-[130px] px-2 py-[7px]">
+              <td className="w-[112px] max-w-[112px] px-1.5 py-[7px]">
                 <StatusCell r={r} cfg={cfg} />
               </td>
-              <td className="px-2 py-[7px]">
+              <td className="px-1.5 py-[7px]">
                 <RoleCell r={r} cfg={cfg} />
               </td>
-              {showType && <td className="px-2 py-[7px] text-cz-2">{r.type}</td>}
-              {!matchLast && <td className="px-2 py-[7px] text-end">{match(r)}</td>}
-              <td className="px-2 py-[7px] text-end font-data tabular-nums text-cz-1">{r.rating}</td>
-              <td className="px-2 py-[7px] text-end font-data tabular-nums text-cz-1">{r.form}</td>
-              <td className="px-2 py-[7px] text-end">
+              {showType && <td className="px-1.5 py-[7px] text-cz-2">{r.type}</td>}
+              {!matchLast && <td className="px-1.5 py-[7px] text-end">{match(r)}</td>}
+              <td className="px-1.5 py-[7px] text-end font-data tabular-nums text-cz-1">{r.rating}</td>
+              <td className="px-1.5 py-[7px] text-end font-data tabular-nums text-cz-1">{r.form}</td>
+              <td className="px-1.5 py-[7px] text-end">
                 <FatigueCell r={r} bar={bar} />
               </td>
               {cfg.after !== "none" && (
-                <td className="px-2 py-[7px] text-end">
+                <td className="px-1.5 py-[7px] text-end">
                   <AfterCell r={r} cfg={cfg} />
                 </td>
               )}
-              {matchLast && <td className="px-2 py-[7px] pe-5 text-end">{match(r)}</td>}
+              {matchLast && <td className="px-1.5 py-[7px] pe-5 text-end">{match(r)}</td>}
               {cfg.peak === "column" && (
-                <td className="px-2 py-[7px] pe-5">
+                <td className="w-[84px] max-w-[84px] px-1.5 py-[7px] pe-4">
                   <PeakCell r={r} />
                 </td>
               )}
@@ -920,7 +925,7 @@ export function DesktopPage({ cfg }: { cfg: Config }) {
         <div className="mx-auto max-w-[1600px]">
           <PageHead />
           <WeekBoard />
-          <div className="grid grid-cols-[320px_minmax(0,1fr)] gap-4">
+          <div className="grid grid-cols-[280px_minmax(0,1fr)] gap-4">
             <RaceList />
             <Workbench cfg={cfg} />
           </div>
@@ -1058,9 +1063,15 @@ function MobileSheet({ cfg }: { cfg: Config }) {
       </div>
       <div className="border-b border-cz-border px-4 py-2 text-xs text-cz-2">
         <div className="font-data text-3xs uppercase tracking-wide text-cz-3">Tirs. 17. nov., 12.00 · ProSeries · 4 etaper · 6 af 6</div>
-        <div className="mt-0.5 flex items-center gap-4">
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-4">
           <span className="inline-flex min-h-[44px] items-center font-medium text-cz-1">Kopiér trup</span>
           <span className="inline-flex min-h-[44px] items-center font-medium text-cz-1">Foreslå trup</span>
+          {/* 8B: hovedets guld følger visningen, også på mobil (øverst, ikke i bunden). */}
+          {cfg.save === "follows" && (
+            <span className="ms-auto">
+              <SaveButton cfg={cfg} />
+            </span>
+          )}
         </div>
       </div>
       <ProfileBlock cfg={cfg} mobile />
@@ -1068,7 +1079,8 @@ function MobileSheet({ cfg }: { cfg: Config }) {
       {cfg.save === "bar" ? (
         <SaveBar cfg={cfg} mobile />
       ) : (
-        s && (
+        s &&
+        cfg.save !== "follows" && (
           <div className="border-t border-cz-border bg-cz-card px-4 py-3">
             <SaveButton cfg={cfg} full />
           </div>
