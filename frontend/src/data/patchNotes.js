@@ -1,5 +1,28 @@
 export const PATCHES = [
 {
+  "version": "7.451",
+  "date": "2026-11-16",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "beta_to_live",
+      "topic": "Training",
+      "en": {
+        "title": "Train now works straight away for everyone",
+        "body": "Train now applies today's free training the moment you press it, for every manager. Form and fatigue update at once and carry into today's races. A race keeps its own slot and is settled after the stage."
+      },
+      "da": {
+        "title": "Træn nu virker med det samme for alle",
+        "body": "Træn nu udfører dagens ledige træning, i det øjeblik du trykker, for alle managere. Form og træthed opdateres straks og tæller med i dagens løb. Et løb beholder sit eget felt og afregnes efter etapen."
+      },
+      "refs": [
+        7737
+      ]
+    }
+  ]
+},
+{
   "version": "7.450",
   "date": "2026-11-15",
   "changes": [
