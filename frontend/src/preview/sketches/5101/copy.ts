@@ -29,6 +29,7 @@ type Copy = {
   planned: (from: string) => string;
   notSeen: string;
   notReached: string;
+  noMoments: string;
   noPlan: string;
   rodeOnRole: string;
   change: string;
@@ -84,6 +85,7 @@ const EN: Copy = {
   planned: (from) => `plan: ${from}`,
   notSeen: "Not seen in the record",
   notReached: "Not reached",
+  noMoments: "No moments of his own in this step",
   noPlan: "No saved plan",
   rodeOnRole: "He rode on his role",
   change: "Switch",
@@ -139,6 +141,7 @@ const DA: Copy = {
   planned: (from) => `plan: ${from}`,
   notSeen: "Ikke set i optegnelsen",
   notReached: "Ikke nået",
+  noMoments: "Ingen egne øjeblikke i dette trin",
   noPlan: "Ingen gemt plan",
   rodeOnRole: "Han kørte på sin rolle",
   change: "Skift",

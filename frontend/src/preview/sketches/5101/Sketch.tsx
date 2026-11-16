@@ -401,13 +401,16 @@ function StepTimeline({ r, lang }: { r: SketchRider; lang: Lang }) {
               <StepFrom s={s} lang={lang} />
             </div>
             <div className="mt-1 ps-0 md:ps-14">
-              {s.mark === "not_seen" ? (
+              {/* Trinnets status og trinnets oejeblikke er to ting: et trin der ikke ses,
+                  sletter ikke de andre haendelser i samme stykke af ruten. */}
+              {s.mark === "not_seen" && (
                 <span className="flex items-start gap-2 text-sm text-cz-3"><MarkIcon mark="not_seen" />{c.notSeen}</span>
-              ) : evs.length ? (
-                <EventList events={evs} lang={lang} />
-              ) : (
-                <span className="text-sm text-cz-3">{c.notSeen}</span>
               )}
+              {evs.length ? (
+                <EventList events={evs} lang={lang} />
+              ) : s.mark !== "not_seen" ? (
+                <span className="text-sm text-cz-3">{c.noMoments}</span>
+              ) : null}
             </div>
           </li>
         );

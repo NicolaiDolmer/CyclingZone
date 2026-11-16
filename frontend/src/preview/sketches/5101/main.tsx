@@ -16,7 +16,7 @@ const RECOMMENDED: VariantId = "c";
 const variant = (VARIANTS.includes(q.get("v") as VariantId) ? q.get("v") : "c") as VariantId;
 const lang: Lang = q.get("lang") === "en" ? "en" : "da";
 const theme = q.get("theme") === "dark" ? "dark" : null;
-const open = (q.get("open") ?? (variant === "c" ? "r2" : "")).split(",").filter(Boolean);
+const open = (q.get("open") ?? (variant === "c" ? "r2,r5" : "")).split(",").filter(Boolean);
 document.documentElement.lang = lang;
 if (theme) document.documentElement.setAttribute("data-theme", theme);
 
