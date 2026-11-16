@@ -47,10 +47,11 @@ try {
       const cap = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--cap")) || 0);
       await page.setViewportSize({ width: vw, height: Math.round(vh + cap) });
       await page.waitForTimeout(100);
-      await page.evaluate(() => window.__scrollToAnchor?.());
+      const full = w === "d" ? v.fullD : v.fullM;
+      // Helsides billeder tages fra toppen, ellers lander den faste caption midt i billedet.
+      await page.evaluate((f) => (f ? window.scrollTo(0, 0) : window.__scrollToAnchor?.()), Boolean(full));
       await page.waitForTimeout(150);
       const file = path.join(out, `${v.point}${v.letter.toLowerCase()}-${w === "d" ? "1440" : "390"}.png`);
-      const full = w === "d" ? v.fullD : v.fullM;
       await page.screenshot({ path: file, fullPage: Boolean(full) });
       console.log("ok", path.relative(frontend, file));
     }

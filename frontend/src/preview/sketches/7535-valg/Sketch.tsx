@@ -8,6 +8,7 @@ import type { Config } from "./variants.ts";
 import { Badge, Btn, Chip, Flag, Glyph, Ico, MatchBar, Plan, Profile, Seg } from "./parts.tsx";
 
 const VIEW_LABEL = { squad: "Trup", tactics: "Taktik", peak: "Formtop" } as const;
+const VIEW_HINT = { squad: "Udtag ryttere og giv dem en rolle · alle kolonner sorterer", tactics: "Samme taktik og samme gem som på løbssiden", peak: "Kryds ryttere af og anvend formtoppen på løbet" } as const;
 
 // --- Sidens ramme ----------------------------------------------------------------
 
@@ -19,7 +20,8 @@ function Sidebar() {
     ["Resultater", []],
   ];
   return (
-    <aside className="fixed bottom-0 start-0 w-[208px] bg-cz-sidebar px-4 py-6 text-cz-sidebar-2" style={{ top: "var(--cap)" }}>
+    <aside className="absolute inset-y-0 start-0 w-[208px] bg-cz-sidebar text-cz-sidebar-2">
+      <div className="sticky px-4 py-6" style={{ top: "var(--cap)" }}>
       <div className="mb-6 text-center font-display text-2xl tracking-wide text-cz-accent">CYCLING ZONE</div>
       <div className="mb-5 border-b border-cz-sidebar-border pb-4">
         <div className="font-data text-3xs uppercase tracking-wide text-cz-sidebar-3">Balance</div>
@@ -38,6 +40,7 @@ function Sidebar() {
           ))}
         </div>
       ))}
+      </div>
     </aside>
   );
 }
@@ -117,16 +120,16 @@ function RaceList({ mode, mobile }: { mode: Config["status"]; mobile: boolean })
     <section className={`overflow-hidden rounded-cz border border-cz-border bg-cz-card ${mobile ? "" : "self-start"}`}>
       <div className="flex items-center justify-between gap-2 border-b border-cz-border px-3 py-2.5">
         <Seg options={["Næste 7 dage", "Hele sæsonen"]} value="Næste 7 dage" small />
-        <Btn variant="ghost">Handlinger {Ico.chevD(12)}</Btn>
+        <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-semibold text-cz-1">Handlinger {Ico.chevD(12)}</span>
       </div>
-      <div className="flex items-center gap-1.5 border-b border-cz-border bg-cz-subtle px-3 py-2 font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-2">
-        {Ico.chevD(11)} Uge 47 · 6 løb ·{" "}
+      <div className="flex items-center gap-1.5 whitespace-nowrap border-b border-cz-border bg-cz-subtle px-3 py-2 font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-2">
+        {Ico.chevD(11)}
         {mode === "full" ? (
           <span>
-            {counts.squad} mangler trup · {counts.tactic} mangler taktik
+            Uge 47 · {counts.squad} mangler trup · {counts.tactic} mangler taktik
           </span>
         ) : (
-          <span>{counts.squad} mangler</span>
+          <span>Uge 47 · 6 løb · {counts.squad} mangler</span>
         )}
       </div>
       {LIST.map((r) => (
@@ -185,7 +188,7 @@ function saveLabel(cfg: Config): { text: string; gold: boolean } | null {
     if (cfg.save === "today" && cfg.squadDirty) return { text: "Gem trup", gold: true };
     return { text: "Gem trup", gold: false };
   }
-  if (cfg.view === "peak") return cfg.peak === "today" ? { text: "Anvend på valgte (0)", gold: true } : { text: "Anvend formtop (1)", gold: true };
+  if (cfg.view === "peak") return { text: "Anvend på valgte (0)", gold: true };
   return { text: "Gem trup", gold: cfg.squadDirty };
 }
 
@@ -314,12 +317,12 @@ function StatusCell({ r, cfg }: { r: Rider; cfg: Config }) {
   if ((cfg.table === "status" || cfg.table === "roleChip") && r.peak?.here)
     return (
       <span className="flex flex-col">
-        <span className="inline-flex items-center gap-1 text-2xs font-semibold text-cz-info">{Ico.peak(12)} Formtop her</span>
-        <span className="text-3xs text-cz-3">Pris: {r.peak.cost}</span>
+        <span className="inline-flex items-center gap-1 whitespace-nowrap text-2xs font-semibold text-cz-info">{Ico.peak(12)} Formtop her</span>
+        <span className="whitespace-nowrap text-3xs text-cz-3">Pris: {r.peak.cost}</span>
       </span>
     );
   if ((cfg.table === "status" || cfg.table === "roleChip") && r.peak)
-    return <span className="text-2xs text-cz-3">Formtop i {r.peak.race.split(" ").slice(-1)[0]}</span>;
+    return <span className="whitespace-nowrap text-2xs text-cz-3">Formtop i {r.peak.race.split(" ").slice(-1)[0]}</span>;
   if (r.u23) return <span className="rounded-cz bg-cz-info/10 px-1.5 py-0.5 font-data text-3xs font-semibold text-cz-info">U23</span>;
   return <span className="text-cz-3">–</span>;
 }
@@ -731,7 +734,7 @@ function PeakView({ cfg, mobile }: { cfg: Config; mobile: boolean }) {
           {label && <div className={`border-b border-cz-border bg-cz-subtle ${px} py-1.5 font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-2`}>{label}</div>}
           {rows.map((r) => {
             const warn = linked && r.peak?.here && !r.selected;
-            const checked = r.id === "r4" || (linked && r.id === "r7");
+            const checked = false;
             const target = r.peak ? (
               <span className="flex flex-col">
                 <span className={`text-xs ${r.peak.here ? "font-semibold text-cz-1" : "text-cz-2"}`}>{r.peak.here ? "Her: Tour de Preview" : r.peak.race}</span>
@@ -836,7 +839,7 @@ function Workbench({ cfg }: { cfg: Config }) {
       {cfg.head === "today" && (
         <div id="view-switch" className="flex items-center justify-between border-b border-cz-border px-5 py-2.5" style={{ scrollMarginTop: "calc(var(--cap) + 12px)" }}>
           <Seg options={["Trup", "Taktik", "Formtop"]} value={VIEW_LABEL[cfg.view]} />
-          <span className="text-xs text-cz-3">Udtag ryttere og giv dem en rolle · alle kolonner sorterer</span>
+          <span className="text-xs text-cz-3">{VIEW_HINT[cfg.view]}</span>
         </div>
       )}
       {cfg.head !== "today" && <span id="view-switch" />}
@@ -847,7 +850,7 @@ function Workbench({ cfg }: { cfg: Config }) {
 
 export function DesktopPage({ cfg }: { cfg: Config }) {
   return (
-    <div className="min-h-screen bg-cz-body">
+    <div className="relative min-h-screen bg-cz-body">
       <Sidebar />
       <main className="ms-[208px] px-8 pb-24 pt-7">
         <div className="mx-auto max-w-[1600px]">

@@ -33,7 +33,7 @@ function Caption({ v }: { v: Variant }) {
         {!v.recommended && v.recNote && (
           <span className="rounded-cz border border-cz-accent px-2 py-0.5 font-data text-2xs font-bold uppercase tracking-[.1em] text-cz-accent">{v.recNote}</span>
         )}
-        <span className="ms-auto font-data text-2xs tabular-nums text-cz-sidebar-3">{mobile ? "390 px" : "1440 px"}</span>
+        <span className="ms-auto font-data text-2xs tabular-nums text-cz-sidebar-3">{mobile ? "" : "1440 px"}</span>
       </div>
       <p className={`m-0 mt-1 text-cz-sidebar-1 ${mobile ? "text-[12.5px] leading-snug" : "text-[13.5px]"}`}>{v.line}</p>
     </div>

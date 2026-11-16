@@ -49,7 +49,7 @@ export function Seg({ options, value, small = false, full = false }: { options: 
       {options.map((o, i) => (
         <span
           key={o}
-          className={`whitespace-nowrap ${full ? "flex-1 text-center" : ""} ${small ? "px-2.5 py-1 text-xs" : "px-3.5 py-1.5 text-[13px]"} font-medium ${
+          className={`whitespace-nowrap ${full ? "flex-1 text-center" : ""} ${small ? "px-2 py-1 text-xs" : "px-3.5 py-1.5 text-[13px]"} font-medium ${
             i > 0 ? "border-s border-cz-border" : ""
           } ${o === value ? "bg-cz-accent/10 text-cz-accent-t" : "text-cz-2"}`}
         >
