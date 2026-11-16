@@ -33,8 +33,13 @@ export function WithBestRole({ children, rider = null, role = null, variant = "s
   return (
     <span className={`inline-flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 ${className}`}>
       {children}
+      {/* #8278 (rettelse 1): på mobil står chippen UNDER pladen, og pladsens
+          `ch` blev regnet i cellens text-sm, ikke chippens text-3xs. Det gjorde
+          pladsen 69 px og Rating-kolonnen 85 px, som navnet betalte for.
+          `max-sm:text-3xs` regner pladsen i chippens egen skriftstørrelse
+          (ca. 55 px); desktop er uændret. */}
       <span
-        className="inline-flex justify-center sm:justify-start"
+        className="inline-flex justify-center sm:justify-start max-sm:text-3xs"
         style={{ minWidth: CHIP_SLOT_WIDTH[variant] || CHIP_SLOT_WIDTH.short }}
       >
         <BestRoleTag rider={rider} role={role} variant={variant} />

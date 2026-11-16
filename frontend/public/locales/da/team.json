@@ -2,20 +2,22 @@
   "page": {
     "fallbackTitle": "Mit Hold",
     "managerLabel": "Manager: {name}",
-    "ridersCount": "{count}/{cap} senior-ryttere",
     "youthSquadCounts": "+{u23} U23 · +{junior} juniorer",
     "seniorCapTooltip": "Trup-cap er {cap} senior-ryttere. Akademiryttere tæller ikke med.",
     "youthSquadCountsTooltip": "U23- og juniorryttere har deres egne trup-lofter og tæller ikke med i senior-cap'en.",
     "incomingCount": "+{count} indgående",
     "outgoingCount": "-{count} udgående",
-    "salaryPerSeason": "Løn/sæson: {value} CZ$",
     "salaryPerSeasonTooltip": "Samlet sæsonløn for din trup",
-    "teamValue": "Holdværdi: {value} CZ$",
-    "division": "Division {n}",
     "divisionTooltip": "Dit ligatrin. Division 1 er øverste niveau, Division 4 er startniveauet.",
-    "balance": "{value} CZ$",
     "balanceTooltip": "CZ$ er spillets valuta. Du tjener den ved at spille, og den kan ikke købes for rigtige penge.",
-    "ownAuctionsBanner": "{count, plural, one {# af dine ryttere er på auktion} other {# af dine ryttere er på auktion}} · se auktioner"
+    "ownAuctionsLine": "{count, plural, one {# rytter på auktion} other {# ryttere på auktion}}",
+    "stats": {
+      "balance": "Saldo",
+      "division": "Division",
+      "seniorRiders": "Senior-ryttere",
+      "salaryPerSeason": "Løn/sæson",
+      "teamValue": "Holdværdi"
+    }
   },
   "promotionPending": {
     "title": "Afventer oprykning",

@@ -2,20 +2,22 @@
   "page": {
     "fallbackTitle": "Mi equipo",
     "managerLabel": "Mánager: {name}",
-    "ridersCount": "{count}/{cap} ciclistas sénior",
     "youthSquadCounts": "+{u23} sub-23 · +{junior} júniors",
     "seniorCapTooltip": "El tope de plantilla es de {cap} ciclistas sénior. Los ciclistas de la academia no cuentan para él.",
     "youthSquadCountsTooltip": "Los ciclistas sub-23 y júnior tienen sus propios topes de plantilla (12 y 10) y no cuentan para el tope sénior.",
     "incomingCount": "+{count} entrantes",
     "outgoingCount": "-{count} salientes",
-    "salaryPerSeason": "Salario/temporada: {value} CZ$",
     "salaryPerSeasonTooltip": "Salario total que gana tu plantilla por temporada",
-    "teamValue": "Valor del equipo: {value} CZ$",
-    "division": "División {n}",
     "divisionTooltip": "Tu nivel de liga. La División 1 es el nivel más alto y la División 4 el de entrada.",
-    "balance": "{value} CZ$",
     "balanceTooltip": "CZ$ es la moneda del juego. La ganas jugando y no se puede comprar con dinero real.",
-    "ownAuctionsBanner": "{count, plural, one {# de tus ciclistas está en subasta} other {# de tus ciclistas están en subasta}} · ver subastas"
+    "ownAuctionsLine": "{count, plural, one {# ciclista en subasta} other {# ciclistas en subasta}}",
+    "stats": {
+      "balance": "Saldo",
+      "division": "División",
+      "seniorRiders": "Ciclistas sénior",
+      "salaryPerSeason": "Salario/temporada",
+      "teamValue": "Valor del equipo"
+    }
   },
   "promotionPending": {
     "title": "A la espera de ascenso",

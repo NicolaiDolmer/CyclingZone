@@ -53,7 +53,13 @@ test("Youth races har en rute bag I18nReadyGate", () => {
 // SQUAD_CAPS (backend/lib/squads.js) har været live siden #5626. Meta-linjen
 // skal altid vise "n/loft", også ved en tom trup — ikke kun når riders.length>0.
 test("#5631 meta-linjen viser truppens loft, også ved en tom trup", () => {
-  assert.match(squadPage, /t\("page\.rosterCount", \{ count: riders\.length, cap \}\)/);
+  // #8278: meta-linjen er nu HeroStats; loftet er det FØRSTE tal og står uden for
+  // `riders.length > 0`-grenen, som kun løn og trupværdi ligger bag.
+  assert.match(
+    squadPage,
+    /items=\{\[\s*\{ label: t\("page\.stats\.riders"\), value: t\("page\.stats\.rosterValue", \{ count: riders\.length, cap \}\) \},\s*\.\.\.\(riders\.length > 0/,
+    "truppens n/loft skal altid stå i HeroStats, også ved en tom trup",
+  );
   // Meta-div'en stod tidligere helt bag `{riders.length > 0 && (` — det mønster
   // må ikke stå lige før meta-div'en længere (kun løn/trupværdi må være bag den).
   assert.doesNotMatch(

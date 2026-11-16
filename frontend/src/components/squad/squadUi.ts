@@ -50,6 +50,8 @@ export interface DataTableProps<Row> {
   mobileDefaults?: string[];
   empty?: ReactNode;
   toolbar?: ReactNode;
+  // #8278: visnings-tilstand (Overblik/Evner); toolbar på desktop, chip-række på mobil.
+  viewModes?: { label: string; value: string; onChange: (next: string) => void; options: { value: string; label: ReactNode; title?: string; disabled?: boolean }[] };
 }
 
 interface EmptyStateProps { icon?: ReactNode; title: ReactNode; description?: ReactNode; action: ReactNode; className?: string }
