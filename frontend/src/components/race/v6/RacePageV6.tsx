@@ -29,7 +29,7 @@
 // etapestriben som kortets bund (V6StageStrip). Fanerne står under kortet
 // (underline, aktiv = guld understregning og guld-tekst), og panelet er
 // role="tabpanel" med aria-labelledby på den aktive fane.
-import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import StagePageV2, { type StagePageV2Props } from "../stagePageV2/StagePageV2.tsx";
 import { activeRiders, myBestByStage, scheduleFor, stagePhase, type StagePageV2Tab } from "../stagePageV2/stagePageV2Model.ts";
@@ -41,7 +41,7 @@ import { useRaceViewTelemetry } from "../../../lib/useRaceViewTelemetry.ts";
 import { useRiderNames } from "../../../lib/useRiderNames.js";
 import { useUiPref } from "../../../lib/userUiPrefs.ts";
 import {
-  tacticsCta, v6NamesFromResults, v6ResultsPhase, v6SavedStages, v6StageTabFor, v6Strip, v6StripCells, v6StripWinners, v6Tabs,
+  tacticsCta, v6NamesFromResults, v6ResultsPhase, v6SavedStages, v6SavedStagesRefreshKey, v6StageTabFor, v6Strip, v6StripCells, v6StripWinners, v6Tabs,
   v6TacticsResults, v6TacticsStage, v6WinnerIdsByStage, v6WinnersByStage,
   type RacePageV6Tab, type StageResultsState, type V6ResultRow,
 } from "./racePageV6Model.ts";
@@ -49,6 +49,7 @@ import V6StageStrip from "./V6StageStrip.tsx";
 import V6RouteProfile from "./V6RouteProfile.tsx";
 import V6TacticsAfter from "./V6TacticsAfter.tsx";
 import V6YourDay from "./V6YourDay.tsx";
+import { V6TacticsSavedContext } from "./v6TacticsSaved.ts";
 import { Button, EmptyState, FlagIcon } from "./v6Ui.ts";
 import V6RaceHeroCard, { type RacePageV6Hero } from "./V6RaceHeroCard.tsx";
 
@@ -89,8 +90,8 @@ export interface RacePageV6Props extends Omit<StagePageV2Props, "activeTab" | "o
 
 /**
  * #7865 (valg 21): etaper med en gemt plan, fra samme svar som Taktik læser
- * (team-orders). Hentes igen, når Taktik åbnes, når Taktiks etape skifter, og når
- * fanen forlades, så et gem i Taktik når striben uden en ny side. Det sidst kendte
+ * (team-orders). Hentes igen, når Taktik åbnes, når Taktiks etape skifter, når et gem
+ * i Taktik lykkes (#7778), og når fanen forlades. Det sidst kendte
  * svar står, mens der hentes; uden svar (fejl, ikke logget ind) er tilstanden ukendt.
  */
 function useV6SavedStages(raceId: string | null, enabled: boolean, refreshKey: string): Set<number> | null {
@@ -159,10 +160,13 @@ export default function RacePageV6(props: RacePageV6Props) {
     fromResults: v6WinnersByStage(results as V6ResultRow[]),
   }), [winnerIds, resultNames, nameById, lookedUpNames, results]);
   // #7865 (valg 21): planens tilstand pr. kommende etape, fra Taktiks egne data.
+  // #7778: et lykket gem i Taktik tæller op og henter igen, så striben følger med straks.
+  const [tacticsSaves, setTacticsSaves] = useState(0);
+  const onTacticsSaved = useCallback(() => setTacticsSaves((n) => n + 1), []);
   const savedStages = useV6SavedStages(
     raceId,
     isStageRace && !raceFinished && activeRiders(riders).length > 0,
-    activeTab === "tactics" ? `tactics-${tacticsStage}` : "away",
+    v6SavedStagesRefreshKey({ activeTab, tacticsStage, saves: tacticsSaves }),
   );
   const stripCells = useMemo(() => v6StripCells({
     totalStages, stagesCompleted, raceFinished, schedule, nowMs,
@@ -199,7 +203,9 @@ export default function RacePageV6(props: RacePageV6Props) {
             resultsErrorSlot={tacticsResults === "failed" ? stageErrorFor?.(tacticsStage) ?? null : null}
           />
         ) : null}
-        {renderTactics ? renderTactics(tacticsStage) : tacticsSlot}
+        <V6TacticsSavedContext.Provider value={onTacticsSaved}>
+          {renderTactics ? renderTactics(tacticsStage) : tacticsSlot}
+        </V6TacticsSavedContext.Provider>
       </div>
     );
   } else if (activeTab !== "results") {

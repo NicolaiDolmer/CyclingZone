@@ -1449,7 +1449,7 @@
       },
       "runDayNow": {
         "title": "Lancer l'entraînement du jour maintenant",
-        "text": "À partir de la saison 4, l'entraînement du jour se lance tout seul, en une fois, dès que la dernière course du jour est terminée et pas avant 20:00. Chaque jour de course de cette journée est entraîné dans le même lancement, rien n'est donc perdu à ne pas être en ligne. “Lancer l'entraînement du jour maintenant” n'est là que si tu ne veux pas attendre : il lance exactement le même entraînement, sans bonus ni avantage, et il s'ouvre au même moment que le lancement automatique. Une fois la journée entraînée, elle ne peut pas être relancée."
+        "text": "À partir de la saison 4, l'entraînement du jour se lance tout seul, en une fois, dès que la dernière course du jour est terminée et pas avant 20:00. Chaque jour de course de cette journée est entraîné dans le même lancement, que tu sois en ligne ou non. “Lancer l'entraînement du jour maintenant” n'est là que si tu ne veux pas attendre : il lance le même entraînement et il s'ouvre au même moment que le lancement automatique. Une fois la journée entraînée, elle ne peut pas être relancée."
       },
       "trainNowBeta": {
         "title": "S'entraîner maintenant",
@@ -1458,6 +1458,10 @@
       "trainNowInstant": {
         "title": "S'entraîner maintenant",
         "text": "S'entraîner maintenant applique dès l'appui les créneaux d'entraînement libres du jour. La forme et la fatigue sont mises à jour immédiatement, et les courses du jour utilisent la condition à jour. Une course occupe toujours son propre créneau ; elle est réglée après la course. Tu ne reçois jamais l'entraînement deux fois pour le même créneau. Les coureurs inclus dans l'appui ne peuvent pas être inscrits à de nouvelles courses aujourd'hui. Les coureurs inclus dans l'appui ne peuvent pas non plus être retirés des courses du jour, et le plan d'entraînement du jour est verrouillé après l'appui. Les coureurs que tu recrutes ou promeus après l'appui peuvent encore courir aujourd'hui. Tu peux toujours planifier des dates ultérieures. Si tu n'appuies pas sur S'entraîner maintenant, l'entraînement se lance automatiquement après les courses du jour, comme d'habitude. Le lancement du soir à 20:00 n'entraîne jamais un coureur deux fois."
+      },
+      "trainNowBonus": {
+        "title": "Bonus S'entraîner maintenant",
+        "text": "Quand le bonus de S'entraîner maintenant est activé, les coureurs que tu entraînes toi-même avec S'entraîner maintenant reçoivent un petit bonus supplémentaire sur la progression d'entraînement du jour. Il ne compte que si tu appuies toi-même sur S'entraîner maintenant, avant que l'entraînement automatique de ton équipe ait tourné ce jour-là. L'entraînement lancé automatiquement ne donne jamais le bonus. Le reçu marque les coureurs qui l'ont obtenu. Les plafonds de capacités tiennent toujours : le bonus ne fait jamais dépasser à un coureur ce qu'il peut atteindre."
       },
       "raceDays": {
         "title": "Jours de course et entraînement",

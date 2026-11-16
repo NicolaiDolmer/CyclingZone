@@ -20,6 +20,8 @@ export interface TrainingActivity {
   injured?: boolean;
   injury_days?: number;
   race_day?: boolean;
+  /** #7741: the rider's own Train now press earned the bonus (stamped by the engine). */
+  train_now_bonus?: boolean;
   bound_race_day?: boolean;
   status?: string;
   settlement_status?: string;

@@ -130,10 +130,13 @@ export function tourRunTarget(action: PrimaryAction, runnable: boolean): TourRun
 // dayClose (training_tick_per_race_day on) koerer dagen af sig selv naar dagens
 // sidste loeb er slut, og et tryk giver INGEN bonus (Hjaelp: runDayNow). Saa maa
 // turen ikke love bonus eller "efter 22:00" (CodeRabbit paa #5564 23/9).
-export function tourRunStepKey(target: TourRunTarget, dayCloseOn: boolean): string {
+// #7741: er Traen nu-bonussen on (training_train_now_bonus), faar de to dayClose-
+// tekster en tvilling "<noegle>Bonus", der forklarer reglen; off lover intet om den.
+export function tourRunStepKey(target: TourRunTarget, dayCloseOn: boolean, bonusOn = false): string {
   if (target === "status") return "runStatus";
   const base = target === "runNow" ? "runNow" : "runToday";
-  return dayCloseOn ? `${base}DayClose` : base;
+  if (!dayCloseOn) return base;
+  return bonusOn ? `${base}DayCloseBonus` : `${base}DayClose`;
 }
 
 // ── Markeringen foelger det tabellen viser (#5485 23/9) ──────────────────────
