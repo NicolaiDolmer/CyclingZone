@@ -230,6 +230,17 @@ export function v6SavedStages(teamOrders: { savedStageNumbers?: number[] | null;
   return out;
 }
 
+/**
+ * #7778 (Codex P2 fra #8211): nøglen der henter Taktiks gemte etaper igen. Den skifter,
+ * når Taktik åbnes, når Taktiks etape skifter, når et gem i Taktik lykkes (saves tæller
+ * op), og når fanen forlades, så striben viser den nye tilstand uden et fane- eller etapeskift.
+ */
+export function v6SavedStagesRefreshKey({ activeTab, tacticsStage, saves }: {
+  activeTab: string; tacticsStage: number; saves: number;
+}): string {
+  return activeTab === "tactics" ? `tactics-${tacticsStage}-${saves}` : "away";
+}
+
 /** Planens tilstand for etape n; null = ukendt (team-orders ikke hentet og ingen undtagelse). */
 export function v6PlanState({ stage, savedStages, riders, overrides }: {
   stage: number; savedStages: ReadonlySet<number> | null; riders: RoleRider[]; overrides: RoleOverride[];
