@@ -59,7 +59,7 @@ export default function RiderAbilityColumns({ abilities }) {
               <span className="flex text-cz-accent-t">
                 <IconBase size={16}>{CATEGORY_ICON_PATHS[cat.key]}</IconBase>
               </span>
-              <h3 className="font-display text-base leading-none tracking-[0.03em] uppercase text-cz-1 m-0">
+              <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0">
                 {t(`stats.categories.${cat.key}`)}
               </h3>
               <span className="font-mono text-3xs text-cz-3 ms-auto">
