@@ -2,23 +2,31 @@
 //
 // Én knap pr. etape: nummer, terræn (ikon + ord), tidspunkt, lille profil
 // (StageStripV2's Mini) og en fodlinje (vinder og egen plads, "På vejen" eller
-// planens fremdrift; v6StripCells i racePageV6Model.ts). Ingen kort i kortet:
-// kun hairlines mellem cellerne. Den valgte etape har en mørk kant og
-// aria-current="true", aldrig guld.
+// planens tilstand: Gemt, Standardplan, Ikke gemt; v6StripCells i
+// racePageV6Model.ts). Ingen kort i kortet: kun hairlines mellem cellerne. Den
+// valgte etape har en mørk kant og aria-current="true", aldrig guld, og
+// tilstanden står som et ord, aldrig som en farvet pille (valg 22).
 //
 // Modern Web Guidance (carousel, scrollability-affordance-hints): vandret
 // rullecontainer med scroll-snap "proximity" (cellerne er valg, ikke slides),
-// kant-fade når der er mere, scroll-padding-inline lig faden, rigtige
-// <button>-pile med aria-label, og den valgte etape rulles ind i syne. Stilen
-// bor i index.css (.v6-strip-*). Piletaster flytter fokus mellem etaperne
-// (roving tabindex); Enter og mellemrum vælger.
+// rigtige <button>-pile med aria-label som kantens opakke mærke med hairline
+// (ingen gradient-fade, TASTE §3), og den valgte etape rulles ind i syne. Stilen
+// bor i index.css (.v6-strip-*). Ægte roving tabindex (v6StripTabStop): ét
+// tab-stop i striben; piletaster, Home og End flytter fokus; Enter og mellemrum vælger.
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Mini } from "../stagePageV2/StageStripV2.tsx";
 import type { StageProfile } from "../stagePageV2/stagePageV2Model.ts";
 import { shortName } from "../stagePageV2/stagePageV2Model.ts";
 import { TerrainTypeGlyph } from "../stagePageV2/ui.ts";
-import { v6StripKeyTarget, type V6StripCell } from "./racePageV6Model.ts";
+import { v6StripKeyTarget, v6StripTabStop, type V6PlanState, type V6StripCell } from "./racePageV6Model.ts";
+
+/** Ordet for planens tilstand (racePageV6.strip.*; "Gemt" er ordet overalt, valg 7). */
+const PLAN_STATE_KEY: Record<V6PlanState, string> = {
+  saved: "racePageV6.strip.planSaved",
+  default: "racePageV6.strip.planDefault",
+  not_saved: "racePageV6.strip.planNotSaved",
+};
 import { ChevronLeftIcon, ChevronRightIcon } from "./v6Ui.ts";
 
 export interface V6StageStripProps {
@@ -37,6 +45,11 @@ export default function V6StageStrip({ cells, profileByStage, selected, onSelect
   const { t } = useTranslation("races");
   const listRef = useRef<HTMLDivElement | null>(null);
   const [more, setMore] = useState({ start: false, end: false });
+  // Roving tabindex: etapen fokus sidst stod på i striben, husket sammen med det valg,
+  // den hører til. Et nyt valg flytter derfor tab-stoppet med (uden en effekt).
+  const [focus, setFocus] = useState<{ stage: number; selected: number } | null>(null);
+  const setFocused = (stage: number) => setFocus({ stage, selected });
+  const tabStop = v6StripTabStop(cells.map((c) => c.number), focus && focus.selected === selected ? focus.stage : null, selected);
 
   const measure = useCallback(() => {
     const el = listRef.current;
@@ -82,6 +95,7 @@ export default function V6StageStrip({ cells, profileByStage, selected, onSelect
     const target = v6StripKeyTarget(e.key, current, cells.length);
     if (target === null) return;
     e.preventDefault();
+    setFocused(target);
     const btn = listRef.current?.querySelector<HTMLElement>(`[data-stage="${target}"]`);
     btn?.focus({ preventScroll: true });
     btn?.scrollIntoView({ block: "nearest", inline: "nearest", container: "nearest" } as ScrollIntoViewOptions);
@@ -98,8 +112,6 @@ export default function V6StageStrip({ cells, profileByStage, selected, onSelect
         role="group"
         aria-label={t("stagePageV2.stripAria")}
         className="v6-strip-scroller flex min-w-0 flex-1"
-        data-more-start={more.start}
-        data-more-end={more.end}
         onScroll={measure}
         onKeyDown={onKeyDown}
       >
@@ -112,7 +124,8 @@ export default function V6StageStrip({ cells, profileByStage, selected, onSelect
               type="button"
               data-stage={c.number}
               aria-current={active ? "true" : undefined}
-              tabIndex={active ? 0 : -1}
+              tabIndex={c.number === tabStop ? 0 : -1}
+              onFocus={() => setFocused(c.number)}
               onClick={() => onSelect(c.number)}
               className={`v6-strip-cell min-w-[172px] flex-1 sm:min-w-[148px] border-e border-cz-border px-3 pt-2 pb-2 text-left last:border-e-0 cursor-pointer ${active ? "" : "hover:bg-cz-subtle"}`}
             >
@@ -136,7 +149,10 @@ export default function V6StageStrip({ cells, profileByStage, selected, onSelect
                     : t("stagePageV2.stripRidden")
                 )}
                 {c.foot.kind === "on_road" && <span className="font-semibold uppercase tracking-[.07em] text-cz-1 text-3xs">{t("racePage.hero.chipRacing")}</span>}
-                {c.foot.kind === "plan" && t("racePageV6.strip.plan", { done: c.foot.done, total: c.foot.total })}
+                {c.foot.kind === "plan" && (
+                  // Kun "Ikke gemt" står med vægt: det er den tilstand, der beder om en handling.
+                  <span data-plan-state={c.foot.state} className={c.foot.state === "not_saved" ? "font-semibold text-cz-1" : undefined}>{t(PLAN_STATE_KEY[c.foot.state])}</span>
+                )}
                 {c.foot.kind === "none" && " "}
               </span>
             </button>

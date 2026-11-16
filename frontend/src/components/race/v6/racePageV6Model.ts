@@ -5,7 +5,7 @@
 //   valg 8: ingen bannere; låse-fristen og den ene guld-knap står i hovedets handlingsrække.
 // #7865: hovedet er løbets og står stille, når man klikker i etapestriben; tal-rækken,
 // statuschippen, låse-fristen og guld-knappen står sammen (tacticsCta nedenfor).
-import { activeRiders, scheduleFor, tacticsProgress, type RoleOverride, type RoleRider, type ScheduleRow } from "../stagePageV2/stagePageV2Model.ts";
+import { activeRiders, lineupFor, scheduleFor, tacticsProgress, type RoleOverride, type RoleRider, type ScheduleRow } from "../stagePageV2/stagePageV2Model.ts";
 // Udgave E (#7778 valg 20-22, ejer 15/11): hoved og etapestribe er ét kort; striben
 // er kortets bund og står over fanerne (v6Strip, v6StripCells, v6Overall nedenfor).
 
@@ -167,11 +167,83 @@ export function v6WinnersByStage(rows: V6ResultRow[] | null | undefined): Record
   return out;
 }
 
-/** Cellens fodlinje: kørt (vinder og egen plads), på vejen, eller planens fremdrift. */
+/** Navne pr. rytter fra de hentede etapers lister (rytter-embeds). */
+export function v6NamesFromResults(rows: V6ResultRow[] | null | undefined): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const r of rows || []) {
+    if (!r.rider_id || out.has(String(r.rider_id))) continue;
+    const name = r.rider ? `${r.rider.firstname ?? ""} ${r.rider.lastname ?? ""}`.trim() : (r.rider_name ?? "").trim();
+    if (name) out.set(String(r.rider_id), name);
+  }
+  return out;
+}
+
+/**
+ * #7865: etapevinderen (rytter-id) pr. kørt etape fra hele løbets etaperækker
+ * (siden henter dem for alle etaper, uden navne). Ved delt førsteplads vinder den
+ * første række (rækkerne kommer sorteret på id).
+ */
+export function v6WinnerIdsByStage(rows: Array<{ stage_number?: number | null; result_type: string; rank?: number | null; rider_id?: string | null }> | null | undefined): Record<number, string> {
+  const out: Record<number, string> = {};
+  for (const r of rows || []) {
+    if (r.result_type !== "stage" || Number(r.rank) !== 1 || !r.rider_id) continue;
+    const n = r.stage_number ?? 1;
+    if (out[n] == null) out[n] = String(r.rider_id);
+  }
+  return out;
+}
+
+/**
+ * #7865: vindernavnet pr. kørt etape. Navnet slås op på vinderens id (de hentede
+ * lister og navneopslaget); en hentet etape uden id-række beholder navnet fra sin
+ * egen liste. Ukendt navn = ingen nøgle (opfindes ikke).
+ */
+export function v6StripWinners({ winnerIds, nameById, fromResults }: {
+  winnerIds: Record<number, string>; nameById: (id: string) => string | null | undefined; fromResults: Record<number, string>;
+}): Record<number, string> {
+  const out: Record<number, string> = { ...fromResults };
+  for (const [n, id] of Object.entries(winnerIds)) {
+    const name = (nameById(id) ?? "").trim();
+    if (name) out[Number(n)] = name;
+  }
+  return out;
+}
+
+/**
+ * #7865 (valg 21, ordet "Gemt" valg 7): planens tilstand for en kommende etape.
+ * "saved" = holdet har gemt en plan for netop den etape. Ellers kører motoren
+ * rollernes standardordrer: "default", når etapens opstilling har en kaptajn at
+ * køre for, og "not_saved", når der hverken er en gemt plan eller en kaptajn.
+ */
+export type V6PlanState = "saved" | "default" | "not_saved";
+
+/**
+ * Etaper med en gemt plan: samme kilder som Taktik (RaceTacticsTab) bruger:
+ * team-orders' gemte etaper og ordrerækker samt etapens rolle-undtagelser.
+ * null = team-orders er ikke hentet (eller fejlede); så kendes kun undtagelserne.
+ */
+export function v6SavedStages(teamOrders: { savedStageNumbers?: number[] | null; orders?: Array<{ stage_number?: number | null }> | null } | null | undefined): Set<number> | null {
+  if (!teamOrders) return null;
+  const out = new Set<number>();
+  for (const n of teamOrders.savedStageNumbers ?? []) if (Number.isInteger(n) && n > 0) out.add(n);
+  for (const row of teamOrders.orders ?? []) if (Number.isInteger(row?.stage_number) && Number(row.stage_number) > 0) out.add(Number(row.stage_number));
+  return out;
+}
+
+/** Planens tilstand for etape n; null = ukendt (team-orders ikke hentet og ingen undtagelse). */
+export function v6PlanState({ stage, savedStages, riders, overrides }: {
+  stage: number; savedStages: ReadonlySet<number> | null; riders: RoleRider[]; overrides: RoleOverride[];
+}): V6PlanState | null {
+  if ((overrides || []).some((o) => o.stage_number === stage) || savedStages?.has(stage)) return "saved";
+  if (savedStages == null) return null;
+  return lineupFor(riders, overrides, stage).some((r) => r.role === "captain") ? "default" : "not_saved";
+}
+
+/** Cellens fodlinje: kørt (vinder og egen plads), på vejen, eller planens tilstand. */
 export type V6CellFoot =
   | { kind: "ridden"; winner: string | null; myRank: number | null }
   | { kind: "on_road" }
-  | { kind: "plan"; done: number; total: number }
+  | { kind: "plan"; state: V6PlanState }
   | { kind: "none" };
 
 export interface V6StripCell {
@@ -182,18 +254,18 @@ export interface V6StripCell {
 }
 
 /**
- * Udgave E: én celle pr. etape. Kun data siden har: vinderen (hentede etaper),
+ * Udgave E: én celle pr. etape. Kun data siden har: vinderen (v6StripWinners),
  * egen bedste plads (alle kørte etaper), "på vejen" (startet, ikke afgjort) og,
- * for en åben etape med egne ryttere, samme "x af 3"-fremdrift som guld-knappen.
- * Om planen er "Gemt" pr. etape ved siden ikke (ordrerne hentes kun i Taktik),
- * så det ord vises ikke.
+ * for en åben etape med egne ryttere, planens tilstand (v6PlanState, valg 21).
+ * Ukendt tilstand (team-orders ikke hentet) = intet ord, aldrig et gæt.
  */
 export function v6StripCells({
-  totalStages, stagesCompleted, raceFinished, schedule, nowMs, profileTypeByStage, winners, myBest, riders, overrides, whenFor,
+  totalStages, stagesCompleted, raceFinished, schedule, nowMs, profileTypeByStage, winners, myBest, riders, overrides, savedStages = null, whenFor,
 }: {
   totalStages: number; stagesCompleted: number; raceFinished: boolean; schedule: ScheduleRow[]; nowMs: number;
   profileTypeByStage: Record<number, string | null | undefined>; winners: Record<number, string>;
   myBest: Record<number, { rank: number } | undefined>; riders: RoleRider[]; overrides: RoleOverride[];
+  savedStages?: ReadonlySet<number> | null;
   whenFor: (d: Date) => string | null;
 }): V6StripCell[] {
   const hasRiders = activeRiders(riders).length > 0;
@@ -205,8 +277,8 @@ export function v6StripCells({
     if (n <= stagesCompleted) foot = { kind: "ridden", winner: winners[n] ?? null, myRank: myBest[n]?.rank ?? null };
     else if (!raceFinished && n === stagesCompleted + 1 && started) foot = { kind: "on_road" };
     else if (!raceFinished && !started && hasRiders) {
-      const p = tacticsProgress(riders, overrides, n);
-      foot = { kind: "plan", done: p.done, total: p.total };
+      const state = v6PlanState({ stage: n, savedStages, riders, overrides });
+      foot = state ? { kind: "plan", state } : { kind: "none" };
     } else foot = { kind: "none" };
     out.push({ number: n, profileType: profileTypeByStage[n] ?? null, when: at ? whenFor(at) : null, foot });
   }
@@ -224,11 +296,15 @@ export function v6StripKeyTarget(key: string, current: number, total: number): n
 }
 
 /**
- * #7865 (punkt 8): kun v6's egen resultatvisning for en etape er bygget til den
- * brede side (loft 1600 px); de genbrugte faner står på deres egen bredde (max-w-5xl).
+ * #7865 (review-punkt c): ægte roving tabindex. Striben har ét tab-stop: den etape,
+ * fokus sidst stod på i striben, ellers den valgte, ellers den første. Tab ind i
+ * striben lander dér; piletaster, Home og End flytter både fokus og tab-stoppet.
  */
-export function v6BodyIsWide({ activeTab, isStageRace }: { activeTab: RacePageV6Tab; isStageRace: boolean }): boolean {
-  return activeTab === "results" && isStageRace;
+export function v6StripTabStop(numbers: readonly number[], focused: number | null, selected: number): number | null {
+  if (numbers.length === 0) return null;
+  if (focused != null && numbers.includes(focused)) return focused;
+  if (numbers.includes(selected)) return selected;
+  return numbers[0];
 }
 
 /**
