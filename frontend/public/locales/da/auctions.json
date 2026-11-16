@@ -26,14 +26,7 @@
     }
   },
   "hint": {
-    "title": "Vind buddet, og rytteren kommer på dit hold",
-    "body": "Rytteren kører for dig fra din næste holdudtagelse. Du byder mod rigtige managere, ikke en fast pris.",
-    "minBidLabel": "Sådan byder du:",
-    "minBidBody": "Feltet er forudfyldt med minimum, mindst 1 CZ$ over det aktuelle bud. Tryk Byd, og du er med.",
-    "autoExtendLabel": "10-min auto-forlængelse:",
-    "autoExtendBody": "Et bud der overtager føringen i de sidste 10 minutter forlænger auktionen, så ingen kan snuppe den i sidste sekund.",
-    "startTour": "Vis mig rundt",
-    "jumpToRecommendation": "Se en rytter jeg har råd til"
+    "helpLine": "Sådan virker auktioner"
   },
   "ticker": {
     "bidCount": "{count, plural, one {1 nyt bud} other {# nye bud}} for nylig"

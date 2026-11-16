@@ -46,9 +46,6 @@
   "onlineNow": "Online nu",
   "offline": "Offline",
   "movement": {
-    "label": "Bevægelse",
-    "up": "{count} rykker op",
-    "down": "{count} rykker ned",
     "ruleBoth": "Top {up} op, bund {down} ned",
     "ruleBothPerPool": "Top {up} op, bund {down} ned i hver af de {pools} puljer",
     "ruleDown": "Bund {down} ned",

@@ -26,14 +26,7 @@
     }
   },
   "hint": {
-    "title": "Win the bid, the rider joins your team",
-    "body": "The rider races for you from your next squad selection onward. You are bidding against real managers, not buying at a fixed price.",
-    "minBidLabel": "Placing a bid:",
-    "minBidBody": "The input is pre-filled with the minimum, at least 1 CZ$ above the current bid. Press Bid and you are in it.",
-    "autoExtendLabel": "10-min auto-extension:",
-    "autoExtendBody": "A bid that takes the lead in the last 10 minutes extends the auction, so no one can snipe it in the final second.",
-    "startTour": "Show me around",
-    "jumpToRecommendation": "See an affordable pick"
+    "helpLine": "How auctions work"
   },
   "ticker": {
     "bidCount": "{count, plural, one {1 recent bid} other {# recent bids}}"

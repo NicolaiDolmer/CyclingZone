@@ -21,9 +21,7 @@ import { useScouting } from "../lib/useScouting";
 import { scoutSortValue } from "../lib/scouting";
 import AuctionsFirstBidHint from "../components/AuctionsFirstBidHint";
 import OnboardingTour from "../components/OnboardingTour";
-import { startTour } from "../lib/onboardingTour";
 import { pickFirstBidRecommendation } from "../lib/firstBidRecommendation";
-import { findVisibleTarget } from "../lib/onboardingTourTarget";
 import AuctionsSidebarFeed from "../components/AuctionsSidebarFeed";
 import OverbidToast from "../components/OverbidToast";
 import CountdownRing from "../components/CountdownRing";
@@ -1053,13 +1051,9 @@ export default function AuctionsPage() {
   const [raceConfirm, setRaceConfirm] = useState(null);
   const [auctionSort, setAuctionSort] = useState({ key: null, dir: "desc" });
   const [showFirstBidHint, setShowFirstBidHint] = useState(false);
-  const [firstBidDismissed, setFirstBidDismissed] = useState(
+  const [firstBidDismissed] = useState(
     () => typeof window !== "undefined" && localStorage.getItem("cz-first-bid-shown") === "1",
   );
-  // #3007: id manageren pegede på ("Se en rytter jeg har råd til") — venter til
-  // filter/sort er skiftet og rækken faktisk er i DOM'et, så useEffect nedenfor
-  // kan scrolle til den i stedet for at ramme et element der endnu ikke findes.
-  const [scrollToAuctionId, setScrollToAuctionId] = useState(null);
   // #196: realtime UX — recentBidEvents driver både ticker og sidebar-feed,
   // flashingAuctionIds driver pulse-animation, toasts vises ved overbud.
   const [recentBidEvents, setRecentBidEvents] = useState([]);
@@ -1187,41 +1181,6 @@ export default function AuctionsPage() {
     }
   }, [firstBidRecommendation]);
 
-  function dismissFirstBidHint() {
-    localStorage.setItem("cz-first-bid-shown", "1");
-    setFirstBidDismissed(true);
-    setShowFirstBidHint(false);
-  }
-
-  function handleStartFirstBidTour() {
-    startTour("auctions");
-    dismissFirstBidHint();
-  }
-
-  // #3007: "Se en rytter jeg har råd til" — færre skridt end at browse en
-  // tabel med 20+ auktioner uden noget "start her"-signal. Skifter til Alle-
-  // fanen, sorterer billigste bud først, og scroller til den anbefalede række
-  // (useEffect nedenfor, når DOM'et rent faktisk indeholder den efter re-render).
-  function handleJumpToFirstBidRecommendation() {
-    if (!firstBidRecommendation) return;
-    pickFilter("all");
-    setWishlistOnly(false);
-    setAuctionSort({ key: "current_price", dir: "asc" });
-    logEvent("onboarding_first_bid_recommendation_clicked");
-    setScrollToAuctionId(firstBidRecommendation.id);
-  }
-
-  useEffect(() => {
-    if (!scrollToAuctionId) return;
-    // #3007: samme mobil-kort/desktop-tabel-dublet-mønster som OnboardingTour
-    // (#3279) — begge rendrer et element med samme data-auction-row-værdi,
-    // kun ét er synligt pr. viewport. findVisibleTarget vælger det synlige.
-    const el = findVisibleTarget(`[data-auction-row="${scrollToAuctionId}"]`);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-      setScrollToAuctionId(null);
-    }
-  }, [scrollToAuctionId, filter, auctionSort]);
 
   useEffect(() => {
     if (!recentBids.length) return;
@@ -1587,14 +1546,6 @@ export default function AuctionsPage() {
         }
       />
 
-      {showFirstBidHint && (
-        <AuctionsFirstBidHint
-          onDismiss={dismissFirstBidHint}
-          onStartTour={handleStartFirstBidTour}
-          onJumpToRecommendation={firstBidRecommendation ? handleJumpToFirstBidRecommendation : null}
-        />
-      )}
-
       {/* #4628: de tre visnings-filtre er nu kanoniske underline-Tabs
           (PAGE_TEMPLATES: "Tabs are underline-tabs, never buttons"), ikke seks
           guld-tintede knapper i en loesreven raekke. Guld staar kun paa den
@@ -1606,6 +1557,10 @@ export default function AuctionsPage() {
           ))}
         </TabList>
       </Tabs>
+
+      {/* #8279 (rettelse 3): forklaringen er én Hjælp-linje under fanerne, ikke et
+          kort over dem (PAGE_TEMPLATES: førstegangs-tip bor i Hjælp, #8070). */}
+      {showFirstBidHint && <AuctionsFirstBidHint />}
 
       {/* #4628: DEN kanoniske T2-filterlinje. Soegefelt + ønskeliste-checkbox +
           taellelinje paa ÉN raekke; det fulde RiderFilters-panel (11 felter +

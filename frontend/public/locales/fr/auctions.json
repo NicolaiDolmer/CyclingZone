@@ -26,14 +26,7 @@
     }
   },
   "hint": {
-    "title": "Remporte l'enchère, le coureur rejoint ton équipe",
-    "body": "Le coureur court pour toi dès ta prochaine sélection d'effectif. Tu enchéris contre de vrais managers, tu n'achètes pas à prix fixe.",
-    "minBidLabel": "Placer une enchère :",
-    "minBidBody": "Le champ est prérempli avec le minimum, au moins 1 CZ$ de plus que l'enchère actuelle. Appuie sur Enchérir et te voilà dans la partie.",
-    "autoExtendLabel": "Prolongation automatique de 10 min :",
-    "autoExtendBody": "Une enchère qui prend la tête dans les 10 dernières minutes prolonge l'enchère, pour que personne ne puisse l'arracher à la dernière seconde.",
-    "startTour": "Fais-moi visiter",
-    "jumpToRecommendation": "Voir un choix abordable"
+    "helpLine": "Comment fonctionnent les enchères"
   },
   "ticker": {
     "bidCount": "{count, plural, one {# enchère récente} other {# enchères récentes}}"

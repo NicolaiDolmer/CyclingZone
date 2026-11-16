@@ -1825,45 +1825,42 @@ export default function TrainingPage() {
   // under overblikkets fire tal, over tabellen, i begge telefon-visninger
   // (beta-tabellen og #5124's D-047-gren). Samme lukkede række med tælling som
   // mockup 2; trykket åbner det samme panel lige under rækken.
-  const assistantRow = (
-    <div className="space-y-3">
-      {/* #5620/#5485: "Select riders" står i SAMME række som assistenten, så
-          indgangen til hurtig hvile ikke skubber tabellen ned (mindst 8 ryttere
-          på første skærm, 390 × 844). Kun telefonens tabel-visning. */}
-      <div className="flex items-stretch gap-2">
-      {/* #6110 S26 (ejer 25/10, valg A): vises Dagens beslutning, skjules den
-          gamle assistent-linje. Select riders bliver staaende. */}
-      {!(decisionCardOn && !ridersLoading) && (
-      <button
-        type="button"
-        onClick={handleOpenAssistantPanel}
-        data-testid="training-assistant-row"
-        className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-cz border border-cz-border bg-cz-card px-3 text-start text-xs transition-colors hover:bg-cz-subtle"
-      >
-        <StarIcon size={14} className="flex-none text-cz-3" aria-hidden="true" />
-        <span className="flex-1 text-xs font-semibold text-cz-1">{t("mobile.assistantTitle")}</span>
-        <span className="font-data text-2xs tabular-nums text-cz-3">
-          {t("mobile.assistantCount", { n: assistantSuggestionRows.length })}
-        </span>
-        <ChevronRightIcon size={14} className="flex-none text-cz-3" aria-hidden="true" />
-      </button>
-      )}
-      {phoneTodayView && activeTab === "today" && !mobilePickMode && (
-        <Button
+  // #8279 (rettelse 15, ejer-go 16/11): på telefonen står assistenten og "Select
+  // riders" som en hairline-række INDE i overblikskortet under træthedslinjen,
+  // i stedet for et eget kort mellem overblikket og tabellen. Samme handlere og
+  // test-id'er som den tidligere assistent-række; panelet (assistantPanel) folder stadig ud
+  // under kortet.
+  const showPhoneAssistant = !(decisionCardOn && !ridersLoading);
+  const showPhoneSelect = phoneTodayView && activeTab === "today" && !mobilePickMode;
+  const phoneAssistantFooterRow = (showPhoneAssistant || showPhoneSelect) ? (
+    <div className="flex min-w-0 items-stretch border-t border-cz-border text-xs">
+      {showPhoneAssistant && (
+        <button
           type="button"
-          variant="secondary"
-          size="sm"
-          className="min-h-11 flex-none"
+          onClick={handleOpenAssistantPanel}
+          data-testid="training-assistant-row"
+          className="flex min-h-11 min-w-0 flex-1 items-center gap-2 px-4 text-start text-xs transition-colors hover:bg-cz-subtle"
+        >
+          <StarIcon size={14} className="flex-none text-cz-3" aria-hidden="true" />
+          <span className="flex-1 truncate font-semibold text-cz-1">{t("mobile.assistantTitle")}</span>
+          <span className="font-data text-2xs tabular-nums text-cz-3">
+            {t("mobile.assistantCount", { n: assistantSuggestionRows.length })}
+          </span>
+          <ChevronRightIcon size={14} className="flex-none text-cz-3" aria-hidden="true" />
+        </button>
+      )}
+      {showPhoneSelect && (
+        <button
+          type="button"
           onClick={startMobilePick}
           data-testid="training-mobile-select-riders"
+          className={`flex min-h-11 flex-none items-center px-4 font-medium text-cz-accent-t hover:underline ${showPhoneAssistant ? "border-s border-cz-border" : "ms-auto"}`}
         >
           {t("mobile.selectRiders")}
-        </Button>
+        </button>
       )}
-      </div>
-      {assistantPanel}
     </div>
-  );
+  ) : null;
 
   function renderBulkDayOptions() {
     return (
@@ -2547,14 +2544,17 @@ export default function TrainingPage() {
           onToggle={toggleOverviewFilter}
           variant={overviewVariant}
           status={overviewStatus}
-          footer={<FatigueRuleSummary data={fatigueRules.data} onEdit={() => setSub("limit")} />}
+          footer={<>
+            <FatigueRuleSummary data={fatigueRules.data} onEdit={() => setSub("limit")} />
+            {phoneTodayView && phoneAssistantFooterRow}
+          </>}
         />
       </div>
       {/* #5485 (ejer-go 23/9): assistenten rykket OP på telefonen — rækken
           lige under overblikkets fire tal, over tabellen, i begge telefon-
           visninger. Desktop (og telefon på langs uden beta) har knappen i
           tabellens værktøjslinje. */}
-      {phoneTodayView && assistantRow}
+      {phoneTodayView && assistantPanel}
       {/* #3643/#5485: desktop (og telefon på langs) får den nye tabel,
           telefonen sin løbsdags-tabel. #6030: training_mobile_table er on for
           alle, så #5124's D-047-gren (telefonen uden flaget) er slettet. */}

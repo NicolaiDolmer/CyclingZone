@@ -1,5 +1,28 @@
 export const PATCHES = [
 {
+  "version": "7.456",
+  "date": "2026-11-16",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Market",
+      "en": {
+        "title": "Less to scroll past on Auctions, League & standings and Training",
+        "body": "On Auctions the explainer card is one line that opens Help. On League & standings, Compare appears once you pick a team, and the promotion and relegation rule sits under the table. On Training, the assistant sits inside the overview card, and Rest, Recovery and Program are easier to tap on phones."
+      },
+      "da": {
+        "title": "Mindre at rulle forbi på Auktioner, Liga & rangliste og Træning",
+        "body": "På Auktioner er forklaringskortet én linje, der åbner Hjælp. På Liga & rangliste kommer Sammenlign frem, når du vælger et hold, og reglen for op- og nedrykning står under tabellen. På Træning står assistenten i overblikskortet, og Hvile, Restitution og Program er lettere at ramme på telefonen."
+      },
+      "refs": [
+        8279
+      ]
+    }
+  ]
+},
+{
   "version": "7.454",
   "date": "2026-11-16",
   "changes": [
