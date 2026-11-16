@@ -242,7 +242,11 @@ export default function RacePageV6(props: RacePageV6Props) {
     body = (
       <div className="flex flex-col gap-[14px]">
         {phase === "after" && routeLine("results")}
-        <div data-race-section="standings">{standingsSlot}</div>
+        {/* #7861 (Codex P2): "Din dag" med Hvorfor? for egne ryttere står også i et kørt endagsløbs Resultater. */}
+        <div className="@container"><div className={phase === "after" ? "grid grid-cols-1 items-start gap-[14px] @4xl:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]" : ""}>
+          <div data-race-section="standings" className="min-w-0">{standingsSlot}</div>
+          {phase === "after" && <V6YourDay results={results} stageNumber={selectedStage} myTeamId={myTeamId} dnfRows={dnfRows} loaded={stageLoaded} raceId={raceId} profile={profile} stageRoles={stageRoles} nowMs={nowMs} />}
+        </div></div>
       </div>
     );
   } else if (resultsPhase !== "ridden") {

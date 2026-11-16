@@ -8,6 +8,8 @@
 // Kun data siden allerede har (ruteprofilen og løbshistoriens linjer). Opfinder intet.
 import type { Climb } from "../stagePageV2/stagePageV2Model.ts";
 import type { StoryLine } from "../stagePageV2/raceStoryModel.ts";
+import { honestTimelineEvents, type SpanClimb, type SpanTimelineEvent } from "../../../lib/stageTimelineKmSpan.ts";
+import { withAttackWording, type NarrativeEvent, type OrderEfforts } from "../../../../../backend/lib/engine/v4/mechanics/narrativeCauses6469.ts";
 
 /** Finalen dækker de sidste km, eller hele den sidste stigning når den topper i dem. */
 export const V6_FINALE_WINDOW_KM = 10;
@@ -145,4 +147,135 @@ export function v6StoryStripCells<T extends { number: number; foot: { kind: stri
 /** Afspilningens skridt pr. tik: hele etapen på cirka 15 s (som den nuværende afspiller), aldrig under en halv km. */
 export function v6PlayStep(distanceKm: number): number {
   return Math.max(0.5, Math.round(distanceKm / 150));
+}
+
+// ── Filmens position oven på den fælles rute (#8253) ──────────────────────
+
+/**
+ * Geometrien for rutens profil (V6Route tegner StageProfileV2 i fuld størrelse, uden
+ * bånd), så filmens position kan ligge som overlay i samme koordinater: samme bredde,
+ * samme højde og top for smal/bred, samme km- og højdeskala. V6Route har ingen
+ * markør-prop (#8253 ejer den); en kildetest låser, at tallene følger StageProfileV2.
+ */
+export function v6FilmProfileGeometry({ width, profile, series, floor, ceil }: {
+  width: number;
+  profile: { distance_km?: number | string | null };
+  series: { kms: readonly number[] };
+  floor: number;
+  ceil: number;
+}): { W: number; H: number; top: number; bottom: number; D: number; X: (km: number) => number; Y: (h: number) => number } {
+  const narrow = width > 0 && width < 640;
+  const H = narrow ? 220 : 320;
+  const top = narrow ? 48 : 78;
+  const BOT = 30;
+  const W = Math.max(1, width);
+  const D = Number(profile.distance_km) || series.kms[series.kms.length - 1] || 1;
+  const span = ceil - floor || 1;
+  return {
+    W, H, top, bottom: H - BOT, D,
+    X: (km) => (km / D) * W,
+    Y: (h) => H - BOT - ((h - floor) / span) * (H - BOT - top),
+  };
+}
+
+// ── Angrebet op ad sidste stigning (#7965, Codex P1 på #8275) ─────────────
+
+/**
+ * En referatlinje for motorens "alt ud"/angreb på en stigning (`all_out_gain` /
+ * `all_out_cracked`). Ved en topankomst bliver hver hændelse TO linjer (ejerens
+ * v6-valg 14, RACE_ENGINE_RULES #7965): angrebet ved foden uden resultat og uden
+ * tid, og udfaldet dér hvor motoren stemplede det. Ellers én linje ved toppen,
+ * som i den hidtidige film. Kun det motoren har skrevet; intet tal.
+ */
+export interface V6ClimbAttackLine {
+  id: string;
+  kind: "climbAttack";
+  km: number;
+  kmTo: null;
+  span: false;
+  time: number | null;
+  riderIds: string[];
+  mineIds: string[];
+  /** "attack" = angrebet ved foden, "outcome" = udfaldet, "single" = én linje (ingen topankomst). */
+  phase: "attack" | "outcome" | "single";
+  held: boolean;
+  /** true = rytteren angreb (opgaven Angrib eller et andet holds rytter); false = egen "Alt ud"-ordre. */
+  attackTask: boolean;
+  climbName: string | null;
+}
+
+/** En linje i filmens referat: løbshistoriens linje eller stigningens angreb. */
+export type V6FilmLine = StoryLine | V6ClimbAttackLine;
+
+export function isClimbAttackLine(line: { kind: string }): line is V6ClimbAttackLine {
+  return line.kind === "climbAttack";
+}
+
+const CLIMB_ATTACK_TYPES = new Set(["all_out_gain", "all_out_cracked"]);
+
+/**
+ * Stigningens angrebslinjer fra løbsloggen, med filmens egne km (samme afledning som
+ * den hidtidige film: honestTimelineEvents + Angrib-stemplet). Tom på en enkeltstart.
+ */
+export function v6ClimbAttackLines(events: readonly SpanTimelineEvent[] | null | undefined, opts: {
+  timelineVersion?: number | null;
+  climbs?: readonly SpanClimb[] | null;
+  mine?: ReadonlySet<string>;
+  ownRiderIds?: readonly string[];
+  effortByRider?: OrderEfforts | null;
+  profileType?: string | null;
+} = {}): V6ClimbAttackLine[] {
+  if (!events?.some((e) => CLIMB_ATTACK_TYPES.has(String(e?.type ?? "")))) return [];
+  const shown = honestTimelineEvents(events, { timelineVersion: opts.timelineVersion ?? null, climbs: opts.climbs ?? null });
+  const worded = withAttackWording(shown as NarrativeEvent[], {
+    ownRiderIds: opts.ownRiderIds ?? [], effortByRider: opts.effortByRider ?? null, profileType: opts.profileType ?? null,
+  }) as SpanTimelineEvent[];
+  const out: V6ClimbAttackLine[] = [];
+  for (const e of worded) {
+    if (!e || !CLIMB_ATTACK_TYPES.has(String(e.type ?? ""))) continue;
+    const riderId = typeof e.params?.rider_id === "string" ? e.params.rider_id : null;
+    const km = finite(e.km);
+    if (!riderId || km == null) continue;
+    const phase = e.climb_phase ?? "single";
+    // Tid kun med et ægte km (motorens exact_time); angrebet ved foden har aldrig en.
+    const time = phase !== "attack" && typeof e.race_time_s === "number" && Number.isFinite(e.race_time_s) ? e.race_time_s : null;
+    out.push({
+      id: `climbAttack-${phase}-${e.type}-${riderId}-${km}`,
+      kind: "climbAttack",
+      km,
+      kmTo: null,
+      span: false,
+      time,
+      riderIds: [riderId],
+      mineIds: opts.mine?.has(riderId) ? [riderId] : [],
+      phase,
+      held: e.type === "all_out_gain",
+      attackTask: e.params?.task === "attack",
+      climbName: typeof e.climb_name === "string" && e.climb_name ? e.climb_name : null,
+    });
+  }
+  return out;
+}
+
+/** Tekstnøglen (races: detail.film.event.*) for en angrebslinje, som i den hidtidige film. */
+export function v6ClimbAttackCopyKey(line: Pick<V6ClimbAttackLine, "phase" | "held" | "attackTask" | "climbName">): string {
+  if (line.phase === "attack") return line.climbName ? "climb_attack_start_named" : "climb_attack_start";
+  if (line.phase === "outcome") return line.held ? "climb_attack_held" : "climb_attack_cracked";
+  const outcome = line.held ? "gain" : "cracked";
+  return line.attackTask ? `attack_${outcome}` : `all_out_${outcome}`;
+}
+
+/**
+ * Referatets linjer i rutens rækkefølge: løbshistoriens linjer og stigningens
+ * angrebslinjer flettet efter km. På samme km står målet sidst, og et angreb
+ * står før sit udfald (rækkefølgen ind er bevaret).
+ */
+export function v6ReportLines(story: readonly StoryLine[], attacks: readonly V6ClimbAttackLine[]): V6FilmLine[] {
+  if (!attacks.length) return [...story];
+  return [...story, ...attacks]
+    .map((line, i) => ({ line, i }))
+    .sort((a, b) => a.line.km - b.line.km
+      || Number(a.line.kind === "finish") - Number(b.line.kind === "finish")
+      || a.i - b.i)
+    .map(({ line }) => line);
 }

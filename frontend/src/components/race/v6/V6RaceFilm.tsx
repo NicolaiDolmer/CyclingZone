@@ -22,12 +22,14 @@ import {
   asStory, castFrom, curateMoments, formatClock, frameAt, isTimeTrialStory, lineReplayKm, namesList, pickGroups, replayGroupsAt,
   wholeStageFrames, type StoryLine, type StoryNarrativeContext,
 } from "../stagePageV2/raceStoryModel.ts";
-import StageProfileV2 from "../stagePageV2/StageProfileV2.tsx";
-import { elevationSeries, sortedClimbs, type ResultRow, type RoleOverride, type RoleRider, type StageProfile } from "../stagePageV2/stagePageV2Model.ts";
+import { useMeasuredWidth } from "../stagePageV2/StageProfileV2.tsx";
+import { elevationAt, elevationSeries, profileScale, sortedClimbs, type ResultRow, type RoleOverride, type RoleRider, type StageProfile } from "../stagePageV2/stagePageV2Model.ts";
 import { useStoryText } from "../stagePageV2/storyText.ts";
 import { Button, Section, SectionHeader, SkeletonLines } from "../stagePageV2/ui.ts";
+import V6Route from "./V6Route.tsx";
 import {
-  climbFootKm, v6ChapterAt, v6CurrentLine, v6FilmChapters, v6MoreAhead, v6NextChapter, v6PlayStep, v6VisibleLines, type V6Chapter,
+  isClimbAttackLine, v6ChapterAt, v6ClimbAttackCopyKey, v6ClimbAttackLines, v6CurrentLine, v6FilmChapters, v6FilmProfileGeometry, v6MoreAhead,
+  v6NextChapter, v6PlayStep, v6ReportLines, v6VisibleLines, type V6Chapter, type V6ClimbAttackLine,
 } from "./v6RaceFilmModel.ts";
 
 export interface V6RaceFilmProps {
@@ -123,14 +125,16 @@ function V6RaceFilmLoaded({ raceId, stageNumber, isStageRace, profile, results, 
       </Section>
     );
   }
-  return <FilmBody key={`${raceId}-${stageNumber}`} story={story} profile={profile} cast={cast} narrative={narrative} onShowResults={onShowResults} />;
+  return <FilmBody key={`${raceId}-${stageNumber}`} story={story} profile={profile} cast={cast} narrative={narrative} timelineVersion={ran?.timeline_version ?? null} ownRiders={ownRiders} onShowResults={onShowResults} />;
 }
 
-function FilmBody({ story, profile, cast, narrative, onShowResults }: {
+function FilmBody({ story, profile, cast, narrative, timelineVersion, ownRiders, onShowResults }: {
   story: NonNullable<ReturnType<typeof asStory>>;
   profile: StageProfile | null;
   cast: ReturnType<typeof castFrom>;
   narrative: StoryNarrativeContext;
+  timelineVersion: number | null;
+  ownRiders: readonly string[];
   onShowResults: () => void;
 }) {
   const { t } = useTranslation(["races", "raceFilm"]);
@@ -139,8 +143,14 @@ function FilmBody({ story, profile, cast, narrative, onShowResults }: {
   const series = useMemo(() => elevationSeries(profile), [profile]);
   const climbs = useMemo(() => sortedClimbs(profile), [profile]);
   const timeTrial = isTimeTrialStory(story, profile?.profile_type, narrative.events);
-  const lines = useMemo(() => (timeTrial ? [] : curateMoments(story, cast, undefined, narrative)), [story, cast, narrative, timeTrial]);
-  const chapters = useMemo(() => v6FilmChapters({ distanceKm: D, climbs, sprints: profile?.sprints ?? [], lines }), [D, climbs, profile, lines]);
+  const storyLines = useMemo(() => (timeTrial ? [] : curateMoments(story, cast, undefined, narrative)), [story, cast, narrative, timeTrial]);
+  // #7965 (Codex P1): angrebet op ad sidste stigning og dets udfald, som i den hidtidige film.
+  const attackLines = useMemo(() => (timeTrial ? [] : v6ClimbAttackLines(narrative.events as Parameters<typeof v6ClimbAttackLines>[0], {
+    timelineVersion, climbs: profile?.climbs ?? null, mine: cast.mine, ownRiderIds: ownRiders,
+    effortByRider: (narrative.effortByRider ?? null) as Parameters<typeof v6ClimbAttackLines>[1]["effortByRider"], profileType: profile?.profile_type ?? null,
+  })), [timeTrial, narrative, timelineVersion, profile, cast, ownRiders]);
+  const lines = useMemo(() => v6ReportLines(storyLines, attackLines), [storyLines, attackLines]);
+  const chapters = useMemo(() => v6FilmChapters({ distanceKm: D, climbs, sprints: profile?.sprints ?? [], lines: storyLines }), [D, climbs, profile, storyLines]);
   const frames = useMemo(() => wholeStageFrames(story), [story]);
 
   // F6: filmen starter ved start, så intet er afsløret, før man selv spiller den.
@@ -190,37 +200,12 @@ function FilmBody({ story, profile, cast, narrative, onShowResults }: {
       <div className="grid grid-cols-1 items-start gap-[14px] @4xl:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]">
         <Section aria-label={filmTitle}>
           <SectionHeader title={filmTitle} meta={t("raceFilm:meta")} />
-          {/* Ejer 16/11: filmen står på den lyse kortflade med etapesidens farvede ruteprofil
-              (wireframe v6c "Stage N · the route"): stigningsfarver, kategori og navn, spurt, km og
-              meter. Ovenpå kun positionen: en guld linje med en prik (og grupperne på vejen). */}
+          {/* #8253/#7861 (ejer 16/11): filmen bruger v6's ÉNE fælles rute (V6Route): farvet profil,
+              bjergpriser, mellemspurter, mål, punktlisten og farveforklaringen. Ovenpå kun positionen:
+              en guld linje med en prik (og grupperne på vejen), lagt som overlay her, da V6Route
+              ingen markør-prop har. */}
           <div data-film-surface className="text-cz-1">
-            {profile && series && (
-              <StageProfileV2
-                profile={profile}
-                series={series}
-                climbs={climbs}
-                selectedClimb={null}
-                onSelectClimb={(i) => { const foot = climbs[i] ? climbFootKm(climbs[i]) : null; if (foot != null) jump(foot); }}
-                overlay={(geo) => (
-                  <g aria-hidden="true" data-film-position>
-                    <line x1={geo.X(km)} x2={geo.X(km)} y1={geo.top - 30} y2={geo.bottom} stroke="rgb(var(--accent))" strokeWidth={2} />
-                    {groups.length === 0 && (
-                      <circle cx={geo.X(km)} cy={geo.Y(geo.elevation(km))} r={6} fill="rgb(var(--accent))" stroke="var(--text-1)" strokeWidth={1} />
-                    )}
-                    {[...groups].sort((a, b) => b.gapS - a.gapS).map((g) => {
-                      if (g.km == null) return null;
-                      const x = Math.max(12, Math.min(geo.W - 12, geo.X(g.km))), y = geo.Y(geo.elevation(g.km));
-                      return (
-                        <g key={g.groupId}>
-                          <circle cx={x} cy={y} r={g.front ? 6 : 4.5} fill={g.front ? "rgb(var(--accent))" : "var(--text-1)"} stroke={g.front ? "var(--text-1)" : "var(--bg-card)"} strokeWidth={g.front ? 1 : 1.5} />
-                          {g.mine.length > 0 && <circle cx={x} cy={y} r={10} fill="none" stroke="var(--text-1)" strokeWidth={2} />}
-                        </g>
-                      );
-                    })}
-                  </g>
-                )}
-              />
-            )}
+            {profile && series && <FilmRoute profile={profile} km={km} groups={groups} />}
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
               <button
                 type="button"
@@ -306,7 +291,9 @@ function FilmBody({ story, profile, cast, narrative, onShowResults }: {
             <p className="m-0 border-t border-cz-border py-3 text-sm text-cz-2">{t("raceFilm:report.empty")}</p>
           ) : (
             <ol className="m-0 list-none p-0">
-              {visible.map((l) => <ReportLine key={l.id} line={l} current={current?.id === l.id} text={text} onJump={() => jump(lineReplayKm(l, D || null))} />)}
+              {visible.map((l) => (isClimbAttackLine(l)
+                ? <ClimbAttackReportLine key={l.id} line={l} current={current?.id === l.id} cast={cast} text={text} onJump={() => jump(l.km)} />
+                : <ReportLine key={l.id} line={l} current={current?.id === l.id} text={text} onJump={() => jump(lineReplayKm(l, D || null))} />))}
             </ol>
           )}
           {!timeTrial && ahead && visible.length > 0 && (
@@ -315,6 +302,88 @@ function FilmBody({ story, profile, cast, narrative, onShowResults }: {
         </Section>
       </div>
     </div>
+  );
+}
+
+type FilmGroups = ReturnType<typeof replayGroupsAt>;
+
+/**
+ * v6's fælles rute (V6Route, #8253) med filmens position ovenpå: guld linje og prik, eller
+ * grupperne på vejen. V6Route har ingen markør-prop, så positionen er et overlay med samme
+ * geometri som rutens profil (v6FilmProfileGeometry), målt i samme bredde.
+ */
+function FilmRoute({ profile, km, groups }: { profile: StageProfile; km: number; groups: FilmGroups }) {
+  const [wrapRef, width] = useMeasuredWidth<HTMLDivElement>();
+  const series = useMemo(() => elevationSeries(profile), [profile]);
+  const scale = useMemo(() => (series ? profileScale(profile, series) : null), [profile, series]);
+  const geo = series && scale && width > 0 ? v6FilmProfileGeometry({ width, profile, series, ...scale }) : null;
+  const yAt = (at: number) => (geo && series ? geo.Y(elevationAt(series, Math.max(0, Math.min(geo.D, at)))) : 0);
+  return (
+    <div ref={wrapRef} className="relative">
+      <V6Route profile={profile} />
+      {geo && (
+        <svg
+          aria-hidden="true"
+          data-film-position
+          width={geo.W}
+          height={geo.H}
+          viewBox={`0 0 ${geo.W} ${geo.H}`}
+          className="pointer-events-none absolute left-0 top-0 overflow-visible"
+        >
+          <line x1={geo.X(km)} x2={geo.X(km)} y1={geo.top - 30} y2={geo.bottom} stroke="rgb(var(--accent))" strokeWidth={2} />
+          {groups.length === 0 && (
+            <circle cx={geo.X(km)} cy={yAt(km)} r={6} fill="rgb(var(--accent))" stroke="var(--text-1)" strokeWidth={1} />
+          )}
+          {[...groups].sort((a, b) => b.gapS - a.gapS).map((g) => {
+            if (g.km == null) return null;
+            const x = Math.max(12, Math.min(geo.W - 12, geo.X(g.km))), y = yAt(g.km);
+            return (
+              <g key={g.groupId}>
+                <circle cx={x} cy={y} r={g.front ? 6 : 4.5} fill={g.front ? "rgb(var(--accent))" : "var(--text-1)"} stroke={g.front ? "var(--text-1)" : "var(--bg-card)"} strokeWidth={g.front ? 1 : 1.5} />
+                {g.mine.length > 0 && <circle cx={x} cy={y} r={10} fill="none" stroke="var(--text-1)" strokeWidth={2} />}
+              </g>
+            );
+          })}
+        </svg>
+      )}
+    </div>
+  );
+}
+
+/** #7965: angrebet ved foden og dets udfald (to linjer), eller én linje uden topankomst. */
+function ClimbAttackReportLine({ line, current, cast, text, onJump }: {
+  line: V6ClimbAttackLine;
+  current: boolean;
+  cast: ReturnType<typeof castFrom>;
+  text: ReturnType<typeof useStoryText>;
+  onJump: () => void;
+}) {
+  const { t } = useTranslation("races");
+  const id = line.riderIds[0];
+  const rider = namesList(line.riderIds, cast, 1) || (id ? cast.nameOf(id) : null) || t("stagePageV2.story.aRider");
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onJump}
+        aria-current={current ? "step" : undefined}
+        data-film-line={`climb-attack-${line.phase}`}
+        className={`grid min-h-11 w-full grid-cols-[72px_minmax(0,1fr)] gap-2.5 border-t border-cz-border px-1 py-2 text-left hover:bg-cz-subtle ${current ? "bg-cz-subtle" : ""}`}
+      >
+        <span className="flex flex-col font-data text-xs font-semibold tabular-nums text-cz-1">
+          <span>{t("stagePageV2.story.kmAt", { km: text.km(line.km) })}</span>
+          {line.time != null && <span className="font-normal text-cz-3">{formatClock(line.time)}</span>}
+        </span>
+        <span className="text-sm text-cz-1">
+          {t(`detail.film.event.${v6ClimbAttackCopyKey(line)}`, { rider, climb: line.climbName ?? "" })}
+          {line.mineIds.length > 0 && (
+            <span className="ml-1.5 inline-flex items-center gap-1.5 align-middle">
+              <span className="rounded-sm bg-cz-1 px-1.5 py-0.5 font-data text-3xs font-bold uppercase tracking-[.08em] text-cz-body">{t("stagePageV2.story.you")}</span>
+            </span>
+          )}
+        </span>
+      </button>
+    </li>
   );
 }
 
