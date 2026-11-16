@@ -407,3 +407,138 @@ test("defaultFetchActiveRiderCounts stays SENIOR-only for its other callers (sel
   assert.equal(q.filters.is_academy, false);
   assert.equal(q.filters.is_retired, false);
 });
+
+// =====================================================================
+// #8196 · en slettet trup-besked må ikke sendes igen ved en genkørsel
+// =====================================================================
+// Transitionen er bygget til re-run efter delvis fejl. Før var beskeden i
+// indbakken eneste værn: slettede manageren den, sendte en genkørsel den igen.
+
+const NOW_8196 = new Date("2026-11-16T09:00:00.000Z");
+
+/** Indbakke + mærke-store i hukommelsen. Indbakken kan tømmes (= manageren sletter). */
+function make8196World({ markersMissing = false, markFails = false } = {}) {
+  const inbox = [];
+  const markers = new Map();
+  const calls = [];
+  const missing = { code: "42P01", message: 'relation "public.notification_sent_markers" does not exist' };
+  return {
+    inbox,
+    markers,
+    calls,
+    notify: async (payload) => {
+      inbox.push({ userId: payload.userId, dedupeKey: payload.metadata?.dedupeKey });
+      return { delivered: true, deduped: false };
+    },
+    hasNotificationForKey: async ({ userId, dedupeKey }) =>
+      inbox.some((n) => n.userId === userId && n.dedupeKey === dedupeKey),
+    sentMarkers: {
+      has: async ({ dedupeKey }) => {
+        calls.push(["has", dedupeKey]);
+        if (markersMissing) throw missing;
+        return markers.has(dedupeKey);
+      },
+      mark: async ({ dedupeKey, sentAtIso }) => {
+        calls.push(["mark", dedupeKey]);
+        if (markersMissing) throw missing;
+        if (markFails) throw new Error("canceling statement due to statement timeout");
+        if (!markers.has(dedupeKey)) markers.set(dedupeKey, sentAtIso);
+      },
+    },
+  };
+}
+
+function run8196(world, extra = {}) {
+  return detectAndNotifySquadsBelowMinimum({
+    supabase: makeNoopSupabase(),
+    seasonNumber: 5,
+    now: NOW_8196,
+    notify: world.notify,
+    hasNotificationForKey: world.hasNotificationForKey,
+    sentMarkers: world.sentMarkers,
+    fetchHumanTeams: async () => [youthTeam("A")],
+    fetchSquadRiderCounts: async () => new Map([["A", { senior: 10, u23: 2, junior: 10 }]]),
+    ...extra,
+  });
+}
+
+test("#8196: slettes trup-beskeden i indbakken, sender en genkørsel af transitionen den IKKE igen", async () => {
+  const world = make8196World();
+  const first = await run8196(world);
+  assert.equal(first.notified, 1);
+  assert.equal(world.markers.get("squad_below_minimum:A:u23:5"), NOW_8196.toISOString(), "mærket sættes ved levering");
+
+  world.inbox.length = 0; // manageren sletter beskeden
+
+  const second = await run8196(world);
+  assert.equal(second.notified, 0);
+  assert.equal(second.deduped, 1);
+  assert.equal(world.inbox.length, 0, "ingen ny besked efter sletning");
+});
+
+test("#8196: en besked sendt før mærket får mærket, så en senere sletning ikke giver en ny", async () => {
+  const world = make8196World();
+  world.inbox.push({ userId: "u-A", dedupeKey: "squad_below_minimum:A:u23:5" });
+
+  const first = await run8196(world);
+  assert.equal(first.notified, 0);
+  assert.equal(first.deduped, 1);
+  assert.ok(world.markers.has("squad_below_minimum:A:u23:5"));
+
+  world.inbox.length = 0;
+  const second = await run8196(world);
+  assert.equal(second.notified, 0);
+  assert.equal(world.inbox.length, 0, "ingen ny besked efter sletning");
+});
+
+test("#8196: mangler mærke-tabellen endnu (migration ikke kørt), virker fasen som før og vælter ikke", async () => {
+  const world = make8196World({ markersMissing: true });
+  const stats = await run8196(world, {
+    fetchSquadRiderCounts: async () => new Map([["A", { senior: 10, u23: 2, junior: 1 }]]),
+  });
+  assert.equal(stats.notifyFailed, 0);
+  assert.equal(stats.notified, 2, "det gamle værn gælder: ingen besked i indbakken, så begge sendes");
+  assert.deepEqual(world.calls, [["has", "squad_below_minimum:A:u23:5"]], "mærket slås fra efter første fejl");
+});
+
+test("#8196: fejler mærke-skrivningen, er beskeden stadig leveret og tælles ikke som fejl", async () => {
+  const world = make8196World({ markFails: true });
+  const stats = await run8196(world);
+  assert.equal(stats.notified, 1);
+  assert.equal(stats.notifyFailed, 0);
+  assert.equal(world.markers.size, 0);
+});
+
+test("#8196: bliver beskeden IKKE leveret, sættes mærket ikke", async () => {
+  const world = make8196World();
+  const stats = await run8196(world, { notify: async () => ({ delivered: false, deduped: false, reason: "missing_user" }) });
+  assert.equal(stats.notified, 0);
+  assert.equal(world.markers.size, 0, "en genkørsel må prøve igen");
+});
+
+test("#8196: uden injiceret opslag bruges det ægte mærke mod notification_sent_markers", async () => {
+  const tables = [];
+  const upserts = [];
+  const builder = (table) => {
+    const b = {
+      select() { return b; },
+      eq() { return b; },
+      limit() { return Promise.resolve({ data: [], error: null }); },
+      upsert(row, opts) { upserts.push({ table, row, opts }); return Promise.resolve({ error: null }); },
+    };
+    return b;
+  };
+  const supabase = { from: (t) => { tables.push(t); return builder(t); } };
+  const stats = await detectAndNotifySquadsBelowMinimum({
+    supabase,
+    seasonNumber: 5,
+    now: NOW_8196,
+    notify: async () => ({ delivered: true }),
+    fetchHumanTeams: async () => [youthTeam("A")],
+    fetchSquadRiderCounts: async () => new Map([["A", { senior: 10, u23: 2, junior: 10 }]]),
+  });
+  assert.equal(stats.notified, 1);
+  assert.deepEqual(tables, ["notification_sent_markers", "notifications", "notification_sent_markers"]);
+  assert.deepEqual(upserts[0].row, { dedupe_key: "squad_below_minimum:A:u23:5", sent_at: NOW_8196.toISOString() });
+  assert.deepEqual(upserts[0].opts, { onConflict: "dedupe_key", ignoreDuplicates: true });
+});
