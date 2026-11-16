@@ -15,6 +15,7 @@ type Dict = {
   trainNow: string;
   trainNowNote: string;
   fullRest: string;
+  full: string;
   active: string;
   activeLong: string;
   restGroup: string;
@@ -54,6 +55,7 @@ const en: Dict = {
   trainNow: "Train now",
   trainNowNote: "Unchanged",
   fullRest: "Full rest",
+  full: "Full",
   active: "Active",
   activeLong: "Active recovery",
   restGroup: "Rest",
@@ -130,6 +132,7 @@ const da: Dict = {
   trainNow: "Træn nu",
   trainNowNote: "Uændret",
   fullRest: "Fuld hvile",
+  full: "Fuld",
   active: "Aktiv",
   activeLong: "Aktiv restitution",
   restGroup: "Hvile",

@@ -117,7 +117,7 @@ function Group({
             type="button"
             aria-pressed={it.on}
             onClick={it.on ? undefined : it.onClick}
-            className={`${SEG_BTN} min-w-0 flex-1 truncate whitespace-nowrap ${i > 0 ? "border-s border-cz-border" : ""} ${it.on ? SEG_ON : SEG_OFF}`}
+            className={`${SEG_BTN} min-w-0 flex-1 px-1.5 py-1 text-[11px] leading-tight [overflow-wrap:anywhere] lg:px-3 lg:text-xs lg:truncate lg:whitespace-nowrap ${i > 0 ? "border-s border-cz-border" : ""} ${it.on ? SEG_ON : SEG_OFF}`}
           >
             {it.label}
           </button>
@@ -216,12 +216,12 @@ function d1Buttons(plan: Plan, fallback: string) {
 function D1({ lang }: { lang: Lang }) {
   const c = COPY2[lang];
   const { plans, save, justSaved } = usePlans();
-  const GRID = "lg:grid-cols-[200px_minmax(0,520px)_200px_1fr]";
+  const GRID = "lg:grid-cols-[200px_minmax(0,600px)_200px_1fr]";
   return (
     <>
     <div className={`mb-1 hidden gap-4 font-data text-2xs uppercase tracking-wide text-cz-3 lg:grid ${GRID}`}>
       <span>{c.rider}</span>
-      <span className="grid grid-cols-[2fr_3fr] gap-2">
+      <span className="grid grid-cols-[1fr_1.9fr] gap-2 lg:grid-cols-[2fr_3fr]">
         <span>{c.restGroup}</span>
         <span>{c.trainGroup}</span>
       </span>
@@ -244,12 +244,22 @@ function D1({ lang }: { lang: Lang }) {
               lang={lang}
               right={<TrainingSelect lang={lang} value="" label={c.changeTraining} compact={c.change} onPick={pick} />}
             />
-            <div className="grid grid-cols-[2fr_3fr] gap-2">
+            <div className="grid grid-cols-[1fr_1.9fr] gap-2 lg:grid-cols-[2fr_3fr]">
               <Group
                 caption={c.restGroup}
                 captionClass="lg:hidden"
                 items={[
-                  { key: "rest", label: c.fullRest, on: eff === "rest" && !isActiveRecovery(plan), onClick: () => save(r.id, planForQuick("rest", plan, fb)) },
+                  {
+                    key: "rest",
+                    label: (
+                      <>
+                        <span className="lg:hidden">{c.full}</span>
+                        <span className="hidden lg:inline">{c.fullRest}</span>
+                      </>
+                    ),
+                    on: eff === "rest" && !isActiveRecovery(plan),
+                    onClick: () => save(r.id, planForQuick("rest", plan, fb)),
+                  },
                   { key: "active", label: c.active, on: isActiveRecovery(plan), onClick: () => save(r.id, planForQuick("active", plan, fb)) },
                 ]}
               />
@@ -262,7 +272,7 @@ function D1({ lang }: { lang: Lang }) {
                     key: "train",
                     label: (
                       <span className="inline-flex items-baseline">
-                        <span className="truncate">{sessionName(lang, train)}</span>
+                        <span className="lg:truncate">{sessionName(lang, train)}</span>
                         <EffortTag lang={lang} session={train} />
                       </span>
                     ),
@@ -398,12 +408,7 @@ function D3({ lang }: { lang: Lang }) {
               <Head
                 r={r}
                 lang={lang}
-                right={
-                  <>
-                    {restBtn}
-                    <TrainingSelect lang={lang} value="" label={c.changeTraining} compact={c.change} onPick={pick} />
-                  </>
-                }
+                right={restBtn}
               />
               <div className="min-w-0 text-xs">
                 {rest ? (
@@ -417,10 +422,15 @@ function D3({ lang }: { lang: Lang }) {
                     />
                   </div>
                 ) : (
-                  <span>
-                    <span className="font-medium text-cz-1">{sessionName(lang, today.session)}</span>
-                    <span className="text-cz-3"> · {effortName(lang, today.effort as Effort)} · {c.followsTeam}</span>
-                  </span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="min-w-0">
+                      <span className="font-medium text-cz-1">{sessionName(lang, today.session)}</span>
+                      <span className="text-cz-3"> · {effortName(lang, today.effort as Effort)} · {c.followsTeam}</span>
+                    </span>
+                    <div className="lg:hidden">
+                      <TrainingSelect lang={lang} value="" label={c.changeTraining} compact={c.change} onPick={pick} />
+                    </div>
+                  </div>
                 )}
               </div>
               <div className="hidden lg:grid">{restBtn}</div>
