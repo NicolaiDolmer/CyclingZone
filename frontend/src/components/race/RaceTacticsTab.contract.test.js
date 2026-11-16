@@ -307,7 +307,8 @@ test("#8297: panelet bruger samme gem, kopi, holdplaner og spærrede valg som de
   has(panelV6c, "teamPlan={ready7864 && stagePlanOn ?");
   has(panelV6c, "{stagePlanBoard}");
   // Låst etape og udgået rytter: ingen indsats-linje, kun det der blev sendt.
-  has(panelV6c, "if (rider.abandoned || stageLocked) return renderIntentionCell(rider);");
+  has(panelV6c, "if (rider.abandoned) return renderIntentionCell(rider);");
+  has(panelV6c, "if (stageLocked) {");
 });
 
 test("#8297: panelet har præcis én guldknap, og den gemmer", () => {

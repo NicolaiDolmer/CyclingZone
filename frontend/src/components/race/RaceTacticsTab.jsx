@@ -1196,7 +1196,8 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       return key ? t(key) : null;
     };
     const todayFor = (rider) => {
-      if (rider.abandoned) return t("intention.riderAbandoned");
+      if (rider.abandoned) return "—"; // indsats-cellen siger det allerede
+
       const effort = effortFor(rider);
       if (effort === DEFAULT_EFFORT) return t("intention.nothingSet");
       const role = roleFor(rider);
@@ -1205,7 +1206,12 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       return t("intention.line", { role: t(`intention.roleWord.${role}`), today: todayText });
     };
     const effortCell = (rider, fill) => {
-      if (rider.abandoned || stageLocked) return renderIntentionCell(rider);
+      if (rider.abandoned) return renderIntentionCell(rider);
+      // Låst etape: kun mærket med det der blev sendt; sætningen står i "I dag".
+      if (stageLocked) {
+        const sent = effortFor(rider);
+        return <span className="text-xs text-cz-2">{sent === DEFAULT_EFFORT ? t("intention.roleDefault") : effortLabel(rider)(sent)}</span>;
+      }
       return (
         <EffortSegmented
           label={t("tacticsPanel.effortAria", { name: rider.name || "—" })}
@@ -1224,7 +1230,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       return {
         id: rider.rider_id,
         name: rider.name,
-        role: renderRoleCell(rider),
+        role: renderRoleCell(rider, { mobile: true }),
         roleMobile: renderRoleCell(rider, { mobile: true }),
         routeMatch: renderRouteMatchCell(rider),
         routeMatchNumber: renderRouteMatchCell(rider, { numberOnly: true }),
