@@ -195,13 +195,13 @@ test("modtagere med skjoldet: en fejl giver ingen (som i dag) og meldes", async 
 });
 
 test("etape-notifikationen: med skjoldet neutral tekst uden rytter og placering, uden skjold som i dag", async () => {
-  const sent: Array<{ userId: string; title: string; message: string; metadata: Record<string, unknown> }> = [];
+  const sent: Array<{ userId: string; title: string; message: string; metadata?: object | null }> = [];
   await emitStageResultNotifications({
     supabase: {},
     race: { id: RACE, name: "Race X" },
     stageNumber: 3,
     totalStages: 5,
-    notify: async (n: { userId: string; title: string; message: string; metadata: Record<string, unknown> }) => { sent.push(n); return { delivered: true }; },
+    notify: (async (n: { userId: string; title: string; message: string; metadata?: object | null }) => { sent.push(n); return { delivered: true }; }) as never,
     fetchStageParticipants: async () => [
       { userId: A, riderName: "Rider A", rank: 1 },
       { userId: B, riderName: "Rider B", rank: 4 },
@@ -213,7 +213,7 @@ test("etape-notifikationen: med skjoldet neutral tekst uden rytter og placering,
   const b = sent.find((n) => n.userId === B)!;
   assert.equal(a.title, "Stage result is in");
   assert.equal(a.message, "Stage 3 of Race X is done.");
-  assert.equal(a.metadata.messageCode, "notif.stageResult.messageNoResult");
+  assert.equal((a.metadata as { messageCode?: string }).messageCode, "notif.stageResult.messageNoResult");
   assert.doesNotMatch(JSON.stringify(a), /Rider A|wins/);
   assert.match(`${b.title} ${b.message}`, /Rider B|position 4|placed 4th/, "uden skjold: som i dag");
 });
@@ -223,16 +223,17 @@ test("løbs-notifikationen: med skjoldet uden de bedste ryttere og uden rubrik",
   await emitRaceResultNotifications({
     supabase: {},
     race: { id: RACE, name: "Race X" },
-    notify: async (n: { userId: string; title: string; message: string }) => { sent.push(n); return { delivered: true }; },
+    notify: (async (n: { userId: string; title: string; message: string }) => { sent.push(n); return { delivered: true }; }) as never,
     fetchParticipatingManagers: async () => [A, B],
     fetchFirstTimeManagers: async () => new Set(),
     fetchRaceNarrative: async () => null,
-    fetchTopResults: async () => new Map([[A, [{ name: "Rider A", rank: 1 }]], [B, [{ name: "Rider B", rank: 2 }]]]),
+    fetchTopResults: async () => new Map([[A, [{ riderName: "Rider A", rank: 1 }]], [B, [{ riderName: "Rider B", rank: 2 }]]]),
     fetchShielded: async () => new Set([A]),
   });
   const a = sent.find((n) => n.userId === A)!;
   assert.equal(a.message, "Race X has been run. View the result.");
   assert.doesNotMatch(a.message, /Rider A/);
+  assert.match(sent.find((n) => n.userId === B)!.message, /Rider B/, "uden skjold: som i dag");
 });
 
 // ── Ruterne ───────────────────────────────────────────────────────────────
