@@ -43,7 +43,8 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+// Repo-roden; --check-commit bruger hookens cwd (det kan vaere et andet checkout).
+let ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const PLAN_FILES = ["docs/MASTERPLAN.md", "docs/NOW.md"];
 const TOP_LIMIT = 10;
 const FLAG_OFF_DAYS = 14;
@@ -393,7 +394,8 @@ export function checkCommit(sha) {
   if (!candidates.length) return "";
   let states = new Map();
   try {
-    states = fetchStates(candidates);
+    // PLAN_GAP_AUDIT_OFFLINE: kun til tests (ingen netvaerk); tilstanden er da ukendt.
+    if (!process.env.PLAN_GAP_AUDIT_OFFLINE) states = fetchStates(candidates);
   } catch {
     // gh utilgaengelig: advar om alle kandidater hellere end at tie.
   }
@@ -407,6 +409,7 @@ export function checkCommit(sha) {
 async function main(argv) {
   const commit = argValue(argv, "--check-commit");
   if (commit) {
+    ROOT = process.cwd();
     try {
       const msg = checkCommit(commit);
       if (msg) console.log(msg);

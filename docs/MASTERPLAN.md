@@ -1,6 +1,7 @@
 # MASTERPLAN: prioriteret rækkefølge (SSOT)
 
 > Ejer-afstemt 4/11, ny kurs 8/11, web 5x 11/11 (#7911, #7495). Intet udskydes uden ejer-aftale. Intention: GDD. Dagligt: tavlen #7911.
+> **Fjern-reglen (ejer 16/11, #8230):** et punkt må kun fjernes herfra, hvis det samtidig står på roadmappet med horisont, i docs/I_GANG.md eller er lukket med bevis. Plan-hul-tjek hver mandag: `scripts/plan-gap-audit.mjs`.
 
 ## Kurs (ejer 8/11, 25 valg på #7911)
 
