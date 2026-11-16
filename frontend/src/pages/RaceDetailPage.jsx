@@ -1100,17 +1100,17 @@ export default function RaceDetailPage() {
         value: t(`status.${ds}`),
       }]),
       ...(bestGc ? [{
-        label: t("racePage.hero.yourBest"),
+        label: t("racePage.hero.yourBest"), spoiler: true, // #7859
         value: `#${bestGc.rank ?? "—"}`,
         sub: riderName(bestGc),
       }] : []),
       ...(myStageWins.length ? [{
-        label: t("racePage.hero.stageWins"),
+        label: t("racePage.hero.stageWins"), spoiler: true,
         value: String(myStageWins.length),
         sub: myStageWins.map((r) => t("racePage.team.stageShort", { number: r.stage_number ?? 1 })).join(" · "),
       }] : []),
       ...(squadRiders.length ? [{
-        label: t("racePage.hero.finishers"),
+        label: t("racePage.hero.finishers"), spoiler: true,
         value: `${squadRiders.length - abandonedCount} / ${squadRiders.length}`,
         sub: abandonedCount > 0 ? t("racePage.hero.abandons", { count: abandonedCount }) : null,
       }] : []),
@@ -1138,7 +1138,7 @@ export default function RaceDetailPage() {
       // #7778 udgave E: "Samlet" = holdets bedste plads i klassementet og afstanden til
       // føreren; kun når holdet står i klassementet (v6Overall), ellers udelades tallet.
       ...(v6OverallStat ? [{
-        label: t("stagePageV2.yourDay.overall"),
+        label: t("stagePageV2.yourDay.overall"), spoiler: true, // #7859
         value: `#${v6OverallStat.rank}`,
         sub: v6OverallStat.gap ? t("racePageV6.hero.gapToLead", { gap: v6OverallStat.gap }) : (v6OverallStat.rank === 1 ? t("stagePageV2.favourites.leadsOverall") : null),
       }] : []),

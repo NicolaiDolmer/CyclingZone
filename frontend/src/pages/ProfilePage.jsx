@@ -41,6 +41,7 @@ import { buttonClass } from "../components/ui/buttonStyles.js";
 // #5402: fanerne og deres sektioner (ren modul, testet i ProfilePage.test.tsx).
 import { SETTINGS_TABS, resolveSettingsTab, settingsSectionId } from "../lib/settingsTabs.ts";
 import PushNotificationsCard from "../pwa/push/PushNotificationsCard.tsx"; // #6590: usynlig mens push er slukket
+import SpoilerShieldSettingsCard from "../components/spoiler/SpoilerShieldSettingsCard.tsx"; // #7859: usynlig mens skjoldet er slukket
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -866,6 +867,7 @@ export default function ProfilePage() {
 
         <TabPanel value="notifications">
           <PushNotificationsCard />
+          <SpoilerShieldSettingsCard />
           {/* Paamindelse foer udtagelsesfristen (#4983) — vises ALTID: den er ren
               UI-tilstand og afhaenger ikke af assistentens tilstand. */}
           <Card id={settingsSectionId("selection-reminder")} className="p-5 mb-4">
