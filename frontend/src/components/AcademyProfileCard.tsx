@@ -83,7 +83,7 @@ export default function AcademyProfileCard({ profile, onSave, ageFocus = null }:
   onSave: (profile: ProfileValue) => Promise<SaveResult>;
   ageFocus?: AgeFocusProps | null;
 }) {
-  const { t, i18n } = useTranslation("academy");
+  const { t, i18n } = useTranslation(["academy", "academyV2"]);
   const { t: tTypes } = useTranslation("riderTypes");
   const slots = profile?.slots ?? { origins: 0, types: 0, extra: 0 };
   const options = profile?.options ?? { nations: [], regions: [], types: [], delayDays: 14 };
@@ -104,7 +104,7 @@ export default function AcademyProfileCard({ profile, onSave, ageFocus = null }:
   // #8081: med aldersfokus står alderen i samme linje som profilen (samme række, samme ur).
   const describeLine = (p: ProfileValue | null | undefined, age: string | null | undefined): string => {
     const base = describe(p) || t("profile.none");
-    return ageFocus ? `${base} · ${t("v2.age.inline", { focus: ageFocus.describe(age ?? null) })}` : base;
+    return ageFocus ? `${base} · ${t("academyV2:v2.age.inline", { focus: ageFocus.describe(age ?? null) })}` : base;
   };
 
   const nations = useMemo(

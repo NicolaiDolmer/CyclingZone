@@ -1,0 +1,44 @@
+{
+  "v2": {
+    "overview": "Akademiets overblik",
+    "tabsLabel": "Akademiets sektioner",
+    "tabs": {
+      "intake": "Ugens optag",
+      "talents": "Dine talenter",
+      "profile": "Profil og alder"
+    },
+    "stats": {
+      "intake": "Optag",
+      "junior": "Juniortrup",
+      "u23": "U23-trup",
+      "talents": "Talenter",
+      "ageFocus": "Aldersfokus"
+    },
+    "squad": {
+      "junior": "Junior",
+      "u23": "U23"
+    },
+    "landsOn": "Lander på {squad}-truppen",
+    "talents": {
+      "colNation": "Nat.",
+      "colRider": "Rytter",
+      "colType": "Ryttertype",
+      "colSquad": "Trup",
+      "colAge": "Alder",
+      "colPrognosis": "Prognose",
+      "count": "{count, plural, one {# talent} other {# talenter}}",
+      "emptyTitle": "Ingen talenter endnu",
+      "emptyBody": "Ryttere, du henter fra optaget, står her med deres ryttertype.",
+      "emptyAction": "Gå til ugens optag"
+    },
+    "age": {
+      "label": "Aldersfokus",
+      "mixed": "Blandet",
+      "intro": "Vælg den alder, dine ugentlige kandidater hælder mod. Alle aldre dukker stadig op.",
+      "toU23": "19-årige kommer altid på U23-truppen.",
+      "inline": "aldersfokus {focus}",
+      "errorTitle": "Akademiets profil kunne ikke hentes",
+      "errorBody": "Intet blev ændret. Genindlæs siden for at prøve igen."
+    }
+  }
+}

@@ -64,7 +64,7 @@ export default function TalentTable({ roster, seasonYear, emptyAction }: {
   seasonYear: number | null;
   emptyAction: ReactNode;
 }) {
-  const { t } = useTranslation("academy");
+  const { t } = useTranslation(["academy", "academyV2"]);
   const typeColumnLabel = useTypeColumnLabel();
 
   const decorated = useMemo<Row[]>(() => roster.map((r) => ({
@@ -78,7 +78,7 @@ export default function TalentTable({ roster, seasonYear, emptyAction }: {
   const columns: DataTableColumn<Row>[] = [
     {
       key: "nation",
-      header: t("v2.talents.colNation"),
+      header: t("academyV2:v2.talents.colNation"),
       sortKey: "nationality_code",
       fold: true,
       foldValue: (r) => getCountryCode3(r.nationality_code) || "–",
@@ -86,7 +86,7 @@ export default function TalentTable({ roster, seasonYear, emptyAction }: {
     },
     {
       key: "name",
-      header: t("v2.talents.colRider"),
+      header: t("academyV2:v2.talents.colRider"),
       sticky: true,
       sortKey: "name",
       render: (r) => (
@@ -98,21 +98,21 @@ export default function TalentTable({ roster, seasonYear, emptyAction }: {
     {
       key: "type",
       header: typeColumnLabel,
-      mobileLabel: t("v2.talents.colType"),
+      mobileLabel: t("academyV2:v2.talents.colType"),
       sortKey: "primary_type",
       compact: true,
       render: (r) => <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} stacked />,
     },
     {
       key: "squad",
-      header: t("v2.talents.colSquad"),
+      header: t("academyV2:v2.talents.colSquad"),
       sortKey: "squad",
       compact: true,
-      render: (r) => <span className="text-cz-2">{r._squad ? t(`v2.squad.${r._squad}`) : "–"}</span>,
+      render: (r) => <span className="text-cz-2">{r._squad ? t(`academyV2:v2.squad.${r._squad}`) : "–"}</span>,
     },
     {
       key: "age",
-      header: t("v2.talents.colAge"),
+      header: t("academyV2:v2.talents.colAge"),
       sortKey: "age",
       numeric: true,
       compact: true,
@@ -120,7 +120,7 @@ export default function TalentTable({ roster, seasonYear, emptyAction }: {
     },
     {
       key: "prognosis",
-      header: t("v2.talents.colPrognosis"),
+      header: t("academyV2:v2.talents.colPrognosis"),
       sortKey: "prognosis",
       render: (r) => {
         const view = potentialViewOf(r);
@@ -133,7 +133,7 @@ export default function TalentTable({ roster, seasonYear, emptyAction }: {
   return (
     <div data-testid="academy-v2-talents">
       <DataTable
-        label={t("v2.tabs.talents")}
+        label={t("academyV2:v2.tabs.talents")}
         columns={columns}
         rows={rows}
         rowKey={(r) => r.id}
@@ -142,11 +142,11 @@ export default function TalentTable({ roster, seasonYear, emptyAction }: {
         sort={sort}
         sortDir={sortDir}
         onSort={handleSort}
-        count={t("v2.talents.count", { count: rows.length })}
+        count={t("academyV2:v2.talents.count", { count: rows.length })}
         empty={(
           <EmptyState
-            title={t("v2.talents.emptyTitle")}
-            description={t("v2.talents.emptyBody")}
+            title={t("academyV2:v2.talents.emptyTitle")}
+            description={t("academyV2:v2.talents.emptyBody")}
             action={emptyAction}
           />
         )}

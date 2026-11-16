@@ -57,7 +57,7 @@ export default function AcademyV2(props: AcademyV2Props) {
     graduationCount, giftIntake, regularIntake, renderIntakeCard, intakePull, pullBusy, pullError, onPull,
     roster, seasonYear, squadCounts, academyProfile, refreshAcademy, footer,
   } = props;
-  const { t } = useTranslation("academy");
+  const { t } = useTranslation(["academy", "academyV2"]);
   const pullOpen = intakePull.enabled && !intakePull.pulledThisWeek;
   const [tab, setTab] = useState<AcademyV2Tab>(() => initialAcademyTab({
     regularCount: regularIntake.length, giftCount: giftIntake.length, pullOpen, talentCount: roster.length,
@@ -66,21 +66,21 @@ export default function AcademyV2(props: AcademyV2Props) {
   const showProfileTab = Boolean(academyProfile);
 
   const focusNow = ageFocus.state?.active?.ageFocus ?? null;
-  const focusLabel = (value: string | null) => (ageFocusChoice(value) === AGE_FOCUS_MIXED ? t("v2.age.mixed") : String(value));
+  const focusLabel = (value: string | null) => (ageFocusChoice(value) === AGE_FOCUS_MIXED ? t("academyV2:v2.age.mixed") : String(value));
   const squadRows = squadCapRows(squadCounts);
   const stats = [
-    { label: t("v2.stats.intake"), value: String(regularIntake.length) },
+    { label: t("academyV2:v2.stats.intake"), value: String(regularIntake.length) },
     ...squadRows.map((row) => ({
-      label: t(`v2.stats.${row.squad}`),
+      label: t(`academyV2:v2.stats.${row.squad}`),
       value: <span className={row.full ? "text-cz-warning" : undefined}>{t("squadLinks.count", { used: row.used, max: row.max })}</span>,
     })),
-    { label: t("v2.stats.talents"), value: String(roster.length) },
-    ...(showProfileTab ? [{ label: t("v2.stats.ageFocus"), value: ageFocus.state ? focusLabel(focusNow) : "–" }] : []),
+    { label: t("academyV2:v2.stats.talents"), value: String(roster.length) },
+    ...(showProfileTab ? [{ label: t("academyV2:v2.stats.ageFocus"), value: ageFocus.state ? focusLabel(focusNow) : "–" }] : []),
   ];
 
   const goToIntake = (
     <button type="button" onClick={() => setTab("intake")} className={buttonClass({ variant: "secondary", size: "sm" })}>
-      {t("v2.talents.emptyAction")}
+      {t("academyV2:v2.talents.emptyAction")}
     </button>
   );
 
@@ -108,17 +108,17 @@ export default function AcademyV2(props: AcademyV2Props) {
           </Card>
         )}
 
-        <section aria-label={t("v2.overview")} data-testid="academy-v2-overview">
+        <section aria-label={t("academyV2:v2.overview")} data-testid="academy-v2-overview">
           <Card className="p-5">
             <HeroStats items={stats} flush />
           </Card>
         </section>
 
         <Tabs value={tab} onChange={(next) => setTab(next as AcademyV2Tab)}>
-          <TabList label={t("v2.tabsLabel")} className="mb-5">
-            <Tab value="intake">{t("v2.tabs.intake")}</Tab>
-            <Tab value="talents">{t("v2.tabs.talents")}</Tab>
-            {showProfileTab ? <Tab value="profile">{t("v2.tabs.profile")}</Tab> : null}
+          <TabList label={t("academyV2:v2.tabsLabel")} className="mb-5">
+            <Tab value="intake">{t("academyV2:v2.tabs.intake")}</Tab>
+            <Tab value="talents">{t("academyV2:v2.tabs.talents")}</Tab>
+            {showProfileTab ? <Tab value="profile">{t("academyV2:v2.tabs.profile")}</Tab> : null}
           </TabList>
 
           <TabPanel value="intake" className="space-y-6">
@@ -167,9 +167,9 @@ export default function AcademyV2(props: AcademyV2Props) {
           {showProfileTab ? (
             <TabPanel value="profile">
               {ageFocus.loading ? (
-                <div className="flex justify-center py-10" role="status" aria-busy="true" aria-label={t("v2.tabs.profile")}><Spinner /></div>
+                <div className="flex justify-center py-10" role="status" aria-busy="true" aria-label={t("academyV2:v2.tabs.profile")}><Spinner /></div>
               ) : ageFocus.error || !ageFocus.state ? (
-                <ErrorState title={t("v2.age.errorTitle")} description={t("v2.age.errorBody")} />
+                <ErrorState title={t("academyV2:v2.age.errorTitle")} description={t("academyV2:v2.age.errorBody")} />
               ) : (
                 <AcademyProfileCard
                   profile={academyProfile}

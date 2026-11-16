@@ -300,47 +300,5 @@
     "meta": "{count} ouvertes",
     "context": "La direction a placé ces jeunes talents dans ton académie pour te remercier. La signature est gratuite, les salaires de jeunes normaux s'appliquent, et les limites d'effectif comptent toujours. Les offres durent 14 jours, et celles que tu ne choisis pas partent discrètement.",
     "free": "Gratuit"
-  },
-  "v2": {
-    "overview": "Vue d'ensemble du centre de formation",
-    "tabsLabel": "Sections du centre de formation",
-    "tabs": {
-      "intake": "Recrutement de la semaine",
-      "talents": "Tes talents",
-      "profile": "Profil et âge"
-    },
-    "stats": {
-      "intake": "Recrutement",
-      "junior": "Équipe junior",
-      "u23": "Équipe U23",
-      "talents": "Talents",
-      "ageFocus": "Âge ciblé"
-    },
-    "squad": {
-      "junior": "Junior",
-      "u23": "U23"
-    },
-    "landsOn": "Rejoint l'équipe {squad}",
-    "talents": {
-      "colNation": "Nat.",
-      "colRider": "Coureur",
-      "colType": "Type de coureur",
-      "colSquad": "Équipe",
-      "colAge": "Âge",
-      "colPrognosis": "Pronostic",
-      "count": "{count, plural, one {# talent} other {# talents}}",
-      "emptyTitle": "Pas encore de talents",
-      "emptyBody": "Les coureurs que tu signes depuis le recrutement apparaissent ici avec leur type de coureur.",
-      "emptyAction": "Aller au recrutement de la semaine"
-    },
-    "age": {
-      "label": "Âge ciblé",
-      "mixed": "Mixte",
-      "intro": "Choisis l'âge vers lequel penchent tes candidats hebdomadaires. Tous les âges continuent d'apparaître.",
-      "toU23": "Les coureurs de 19 ans rejoignent toujours l'équipe U23.",
-      "inline": "âge ciblé {focus}",
-      "errorTitle": "Le profil du centre de formation n'a pas pu être chargé",
-      "errorBody": "Rien n'a été modifié. Recharge la page pour réessayer."
-    }
   }
 }

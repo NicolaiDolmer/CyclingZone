@@ -46,6 +46,7 @@ import { riderOverallRating } from "../lib/riderRating.js";
 import { statPlateStyle } from "../lib/statColor.js";
 // #8081: udgave A (overblik + faner) bag kontakten academy_page_v2_8081. Slukket = siden som før.
 import AcademyV2 from "../components/academy-v2/AcademyV2.tsx";
+import I18nReadyGate from "../components/I18nReadyGate.jsx";
 import { useAcademyPageV2Flag } from "../components/academy-v2/useAcademyPageV2Flag.ts";
 
 // #5844: academy_intake.source for bestyrelsens gave-kuld (backend academyIntakeSource.js).
@@ -87,7 +88,7 @@ function daysUntil(deadline) {
 const SQUAD_PAGE_PATH = { u23: "/squads/u23", junior: "/squads/junior" };
 
 export default function AcademyPage() {
-  const { t } = useTranslation("academy");
+  const { t } = useTranslation(["academy", "academyV2"]);
   // #3071: sæson-referenceår til alders-visning (intake) — se riderAge.js.
   const seasonYear = useActiveSeasonYear();
   // #5519: med U23/Junior-siderne tændt erstatter links Youth squads-kortet (3a).
@@ -363,7 +364,7 @@ export default function AcademyPage() {
         {/* #8081/#7932: trupgrænserne er de gældende lofter (squadCaps.ts = backend SQUAD_CAPS). */}
         {showLanding && landing.squad && (
           <p className="text-xs text-cz-2" data-testid="intake-lands-on">
-            {t("v2.landsOn", { squad: t(`v2.squad.${landing.squad}`) })}
+            {t("academyV2:v2.landsOn", { squad: t(`academyV2:v2.squad.${landing.squad}`) })}
           </p>
         )}
 
@@ -403,6 +404,9 @@ export default function AcademyPage() {
   // Regnskabet (AcademyPnl) står uændret nederst, til dets placering er valgt.
   if (pageV2) {
     return (
+      // #8081: udgave A's tekster ligger i det route-gatede navnerum academyV2 (ikke i
+      // academy, som hentes ved første indlæsning), så siden venter på det.
+      <I18nReadyGate ns="academyV2">
       <AcademyV2
         graduationCount={graduations.length}
         giftIntake={giftIntake}
@@ -419,6 +423,7 @@ export default function AcademyPage() {
         refreshAcademy={refresh}
         footer={<AcademyPnl />}
       />
+      </I18nReadyGate>
     );
   }
 

@@ -1,0 +1,44 @@
+{
+  "v2": {
+    "overview": "Resumen de la academia",
+    "tabsLabel": "Secciones de la academia",
+    "tabs": {
+      "intake": "Captación de la semana",
+      "talents": "Tus talentos",
+      "profile": "Perfil y edad"
+    },
+    "stats": {
+      "intake": "Captación",
+      "junior": "Equipo júnior",
+      "u23": "Equipo sub-23",
+      "talents": "Talentos",
+      "ageFocus": "Edad preferente"
+    },
+    "squad": {
+      "junior": "Júnior",
+      "u23": "Sub-23"
+    },
+    "landsOn": "Va al equipo {squad}",
+    "talents": {
+      "colNation": "Nac.",
+      "colRider": "Ciclista",
+      "colType": "Tipo de ciclista",
+      "colSquad": "Equipo",
+      "colAge": "Edad",
+      "colPrognosis": "Pronóstico",
+      "count": "{count, plural, one {# talento} other {# talentos}}",
+      "emptyTitle": "Aún no hay talentos",
+      "emptyBody": "Los ciclistas que fiches de la captación aparecen aquí con su tipo de ciclista.",
+      "emptyAction": "Ir a la captación de la semana"
+    },
+    "age": {
+      "label": "Edad preferente",
+      "mixed": "Mixta",
+      "intro": "Elige la edad hacia la que se inclinan tus candidatos semanales. Siguen apareciendo todas las edades.",
+      "toU23": "Los de 19 años siempre van al equipo sub-23.",
+      "inline": "edad preferente {focus}",
+      "errorTitle": "No se pudo cargar el perfil de la academia",
+      "errorBody": "No se ha cambiado nada. Recarga la página para volver a intentarlo."
+    }
+  }
+}
