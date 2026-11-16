@@ -323,7 +323,7 @@ export function riderXpRates({ potentiale, age }, xp) {
  */
 export function applyTickXp({
   abilities, progress, shares, rates, xp, dayMult = 1, abilityMults = null, ticksPerDate = 1, usedGains = {}, cap = 1,
-  xpByAbility = null, storedBarPayout = false,
+  xpByAbility = null, storedBarPayout = false, rider = null,
 }) {
   const nextAbilities = { ...abilities };
   const nextProgress = { ...(progress ?? {}) };
@@ -342,10 +342,11 @@ export function applyTickXp({
     const bar = Number(nextProgress[ability] ?? 0);
     if (!(gained > 0) && !(bar >= 1)) continue;
     earned += gained;
-    // Motorens datoregel (developmentXp.ts), med variantens graense.
+    // Motorens datoregel (developmentXp.ts), med variantens graense. `cap` null = motorens
+    // egen graense for rytteren (`rider`, ejervalg A 16/11), som _cap2 bruger.
     const used = usedGains[ability] ?? 0;
     const paid = storedBarPayout && used === 0 && bar >= 1 ? buyPoints({ level, bar }, xp).points : 0;
-    const out = buyPoints({ level, bar, xp: gained, maxPoints: xpDatePointAllowance({ level, bar, used, storedBarPayout, cap }, xp) }, xp);
+    const out = buyPoints({ level, bar, xp: gained, maxPoints: xpDatePointAllowance({ level, bar, used, storedBarPayout, cap, rider }, xp) }, xp);
     nextProgress[ability] = out.bar;
     if (out.points > 0) { gains[ability] = out.points; nextAbilities[ability] = out.level; }
     if (paid > 0 && out.points > 0) payout[ability] = Math.min(paid, out.points);
@@ -653,7 +654,10 @@ function simulateSeasonXp(world, seasonNumber, variant, opts) {
   const shareCache = new Map();
   const hooks = engineHooks(opts);
   // Intet dagsloft (#7739): kun prisen bremser. Med loft: maks +1 pr. evne pr. dato.
-  const cap = variant.capPerDate === false ? Infinity : variant.dateCap ?? opts.abilityCapPerDate; // _cap2: motorens regel (R16)
+  // _cap2: motorens EGEN regel (R16, ejervalg A 16/11) via xpDatePointCap, ikke en kopi; `dateCap` er dens loft.
+  const engineDateRule = variant.capPerDate !== false && Boolean(variant.dateCap);
+  const cap = variant.capPerDate === false ? Infinity : engineDateRule ? null : opts.abilityCapPerDate; // null, ikke undefined: applyTickXp har en standard
+  const trackCap = engineDateRule ? variant.dateCap : cap;
   const sharesFor = (program, ctx, typeKey) => {
     const key = `${typeKey}|${program.focus}|${program.intensity}`;
     let hit = shareCache.get(key);
@@ -716,7 +720,7 @@ function simulateSeasonXp(world, seasonNumber, variant, opts) {
         }
         const res = applyTickXp({
           abilities: r.abilities, progress: r.progress, rates, xp, ...tick,
-          ticksPerDate: opts.raceDaysPerDate, usedGains: usedToday, cap,
+          ticksPerDate: opts.raceDaysPerDate, usedGains: usedToday, cap, rider: engineDateRule ? { age, potentiale: r.potentiale } : null,
           storedBarPayout: firstSeason && d === 0, // taendingsnatten: billedets gemte fremgang (ejervalg 2 = A)
         });
         for (const [k, n] of Object.entries(res.gains)) usedToday[k] = (usedToday[k] ?? 0) + n;
@@ -725,7 +729,7 @@ function simulateSeasonXp(world, seasonNumber, variant, opts) {
         r.abilities = res.abilities;
         r.progress = res.progress;
       }
-      trackDate(world, r, d, usedToday, firstSeason, cap, { age, raced, timeTrial, payout: payoutToday });
+      trackDate(world, r, d, usedToday, firstSeason, trackCap, { age, raced, timeTrial, payout: payoutToday });
     }
   }
 }
