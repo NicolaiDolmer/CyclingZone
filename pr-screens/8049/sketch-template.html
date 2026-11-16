@@ -93,8 +93,9 @@ select.sel { height:36px; border:1px solid var(--border); border-radius:5px; bac
 .brow { display:grid; grid-template-columns:150px 1fr 18px; gap:12px; align-items:center; padding:10px 0; border-top:1px solid var(--border); cursor:pointer; }
 .brow:first-child { border-top:0; }
 .brow .bn { font-size:13.5px; font-weight:600; }
+.brow > div { min-width:0; }
 .brow .bt { font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.brow .bc { display:flex; gap:6px; margin-top:4px; }
+.brow .bc { display:flex; flex-wrap:wrap; gap:2px 8px; margin-top:4px; }
 .brow .bc span { font-family:var(--font-data); font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-3); }
 .bopen { padding:0 0 8px 162px; }
 /* Tidligere uger + arkiv */
@@ -136,7 +137,10 @@ body.notes .page { margin:0 0 0 32px; }
   .bottomnav span { display:flex; flex-direction:column; align-items:center; gap:3px; color:rgba(255,255,255,.7); font-size:10px; }
   .shell { flex-direction:column; }
   .page { padding:20px 16px 88px; }
-  .ph { flex-wrap:wrap; gap:10px; margin-bottom:16px; }
+  .ph { flex-wrap:nowrap; align-items:flex-start; gap:10px; margin-bottom:16px; }
+  .ph .sub { font-size:12.5px; }
+  .hero .img { aspect-ratio:2/1; }
+  .brow > div { min-width:0; }
   .fbar { flex-wrap:wrap; }
   .search { flex:1 0 100%; }
   .search input, select.sel { height:44px; }
@@ -149,7 +153,9 @@ body.notes .page { margin:0 0 0 32px; }
   .line .lb { -webkit-line-clamp:2; }
   .more { padding-left:0; }
   .brow { grid-template-columns:1fr 18px; }
-  .brow .bn { grid-column:1; }
+  .brow .bn { grid-column:1; grid-row:1; }
+  .brow > svg { grid-column:2; grid-row:1; }
+  .brow > div:not(.bn) { grid-column:1 / -1; grid-row:2; }
   .bopen { padding-left:0; }
   .btn-q { height:44px; }
   .wh { flex-wrap:wrap; row-gap:2px; }
