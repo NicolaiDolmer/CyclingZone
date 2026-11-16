@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(__dirname, "NotificationsPage.jsx"), "utf8");
 
-function entryOf(type) {
+function entryOf(type: string): string {
   const m = source.match(new RegExp(`\\n  ${type}:\\s*\\{[^}]*\\}`));
   assert.ok(m, `TYPE_CONFIG skal have en entry for ${type}`);
   return m[0];
