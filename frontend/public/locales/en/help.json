@@ -1449,7 +1449,7 @@
       },
       "runDayNow": {
         "title": "Run today's training now",
-        "text": "From season 4 the day's training runs by itself, in one go, once the last race of the day is done and no earlier than 20:00. Every race day of that day is trained in the same run, so nothing is lost by not being online. 'Run today's training now' is there only if you don't want to wait: it runs exactly the same training, with no bonus and no advantage, and it opens at the same moment the automatic run would. Once the day has been trained it cannot be run again."
+        "text": "From season 4 the day's training runs by itself, in one go, once the last race of the day is done and no earlier than 20:00. Every race day of that day is trained in the same run, whether you are online or not. 'Run today's training now' is there only if you don't want to wait: it runs the same training and it opens at the same moment the automatic run would. Once the day has been trained it cannot be run again."
       },
       "trainNowBeta": {
         "title": "Train now",
@@ -1458,6 +1458,10 @@
       "trainNowInstant": {
         "title": "Train now",
         "text": "Train now applies today's free training slots when you press the button. Form and fatigue update immediately, and today's races use the updated condition. A race still takes its own slot; it is settled after the race. You never get training twice for the same slot. Riders included in the press cannot be entered in new races today. Riders in the press cannot be taken out of today's races either, and today's training plan is locked after the press. Riders you buy or promote after the press can still race today. You can still plan later dates. If you do not press Train now, training runs automatically after today's races as usual. The evening run at 20:00 never trains a rider twice."
+      },
+      "trainNowBonus": {
+        "title": "Train now bonus",
+        "text": "When the Train now bonus is on, riders you train yourself with Train now get a small extra bonus on that day's training progress. It only counts when you press Train now yourself, before your team's automatic training has run for the day. Training that runs automatically never gives the bonus. The receipt marks the riders who got it. Ability caps still hold: the bonus never lifts a rider above what he can reach."
       },
       "raceDays": {
         "title": "Race days and training",

@@ -86,6 +86,15 @@ test("#5485 turens tekst: med dayClose (ingen bonus, koerer af sig selv) faar kn
   assert.equal(tourRunStepKey("status", false), "runStatus");
 });
 
+test("#7741 turens tekst: bonus-tvillingen kun med dayClose og kontakten on", () => {
+  assert.equal(tourRunStepKey("primary", true, true), "runTodayDayCloseBonus");
+  assert.equal(tourRunStepKey("runNow", true, true), "runNowDayCloseBonus");
+  assert.equal(tourRunStepKey("primary", false, true), "runToday");
+  assert.equal(tourRunStepKey("runNow", false, true), "runNow");
+  assert.equal(tourRunStepKey("status", true, true), "runStatus");
+  assert.equal(tourRunStepKey("primary", true, false), "runTodayDayClose");
+});
+
 test("#5485 markeringen skaeres ned til filterets ryttere, ogsaa naar en rytter faar en dag", () => {
   const selected = new Set(["a", "b", "c"]);
   // Intet filter: alt bevares.
