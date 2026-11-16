@@ -16,6 +16,7 @@ import { formatNumber } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import { reportActionFailure } from "../lib/actionTelemetry.js";
 import RiderManageActions from "../components/rider/RiderManageActions.jsx";
+import { PanelSlotContext, usePanelSlotState, useExclusivePanel, useAnyPanelOpen } from "../components/rider/panelSlot.ts"; // #8069 T02
 import { useScouting } from "../lib/useScouting";
 import { useTraining } from "../lib/useTraining";
 import { useTrainingHistory } from "../lib/useTrainingHistory";
@@ -121,7 +122,7 @@ const ACTION_PANEL = "order-2 w-full";
 
 function SwapOfferButton({ rider, myTeamId }) {
   const { t } = useTranslation("rider");
-  const [show, setShow]         = useState(false);
+  const [show, setShow]         = useExclusivePanel("swap");
   const [myRiders, setMyRiders] = useState([]);
   const [offeredId, setOfferedId] = useState("");
   const [cash, setCash]         = useState(0);
@@ -211,7 +212,10 @@ function SwapOfferButton({ rider, myTeamId }) {
 
 function DirectOfferButton({ rider, seasonYear }) {
   const { t } = useTranslation("rider");
-  const [show, setShow]       = useState(false);
+  const [show, setShow]       = useExclusivePanel("offer");
+  // #8069 T02: guld kun naar ingen formular er aaben; ellers er formularens
+  // afsendeknap sidens ene guld-knap.
+  const anyPanelOpen = useAnyPanelOpen();
   const [amount, setAmount]   = useState(getRiderMarketValue(rider));
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -263,7 +267,7 @@ function DirectOfferButton({ rider, seasonYear }) {
         </div>
       )}
       {/* Primær CTA i scouting-visningen (én accent-knap pr. kontekst). */}
-      <button type="button" onClick={() => setShow(!show)} className={`${triggerClass(false, "primary")} inline-flex items-center gap-1`}>
+      <button type="button" onClick={() => setShow(!show)} className={`${triggerClass(show, anyPanelOpen ? "secondary" : "primary")} inline-flex items-center gap-1`}>
         <ExchangeIcon size={14} aria-hidden="true" />
         {t("directOffer.buttonOpen")}
       </button>
@@ -305,7 +309,7 @@ function TransferListButton({ rider, onChanged }) {
   const { t } = useTranslation("rider");
   // #5917: U23-/Junior-tabellens Sælg-handling linker hertil med ?sell=1.
   const [searchParams] = useSearchParams();
-  const [show, setShow]       = useState(() => searchParams.get("sell") === "1");
+  const [show, setShow]       = useExclusivePanel("sell", searchParams.get("sell") === "1");
   const [listing, setListing] = useState(/** @type {any} */ (null));
   const [price, setPrice]     = useState(getRiderMarketValue(rider));
   const [loading, setLoading] = useState(false);
@@ -806,7 +810,7 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
   // Ejer-feedback 3/7: pris-formularen var altid udfoldet og fyldte hero'en —
   // nu en kompakt trigger-knap der folder formularen ud (samme mønster som
   // salgs-/bud-knapperne).
-  const [open, setOpen]             = useState(false);
+  const [open, setOpen]             = useExclusivePanel("auction");
   const [price, setPrice]           = useState(riderValue);
   const [loading, setLoading]       = useState(false);
   const [flash, setFlash]           = useState(false);
@@ -949,6 +953,8 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
 }
 
 export default function RiderStatsPage() {
+  // #8069 T02: handlingsraekkens formularer deler EN aaben-plads (een guld-knap).
+  const panelSlot = usePanelSlotState();
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -2043,6 +2049,7 @@ export default function RiderStatsPage() {
                  action row) — udvidede formularer folder ud i fuld bredde under
                  rækken (hver komponents wrapper skifter selv til w-full). Fuld-
                  bredde-elementer (notiser, fejl, bid-panel) er w-full-børn. */
+              <PanelSlotContext.Provider value={panelSlot}>
               <div className="flex flex-wrap items-start gap-2">
                 {isPendingTransfer && (
                   <p className="w-full text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-cz border border-cz-border">
@@ -2131,6 +2138,7 @@ export default function RiderStatsPage() {
               {canDirectOffer && <DirectOfferButton rider={rider} seasonYear={seasonYear} />}
               {canDirectOffer && <SwapOfferButton rider={rider} myTeamId={myTeamId} />}
             </div>
+              </PanelSlotContext.Provider>
           }
         />
         </section>
