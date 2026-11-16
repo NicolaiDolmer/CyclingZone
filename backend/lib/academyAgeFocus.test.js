@@ -11,7 +11,7 @@ import {
   loadAgeFocusState,
   saveAcademyProfileWithAgeFocus,
   isAcademyPageV2Enabled,
-} from "./academyAgeFocus.js";
+} from "./academyAgeFocus.ts";
 import { STAGE_FLAGS, PLAYER_VISIBLE_FLAG_KEYS } from "./stageFlagCatalog.js";
 import { PROFILE_DELAY_DAYS } from "./academyIntakeProfile.ts";
 
@@ -116,7 +116,7 @@ test("kontakten er slukket uden række, og står i kataloget og spiller-allowlis
 // Router mod en fake med app_config-værdier pr. nøgle (ny klient pr. test = ingen flag-cache).
 async function withRouter(flags, fn) {
   const { default: express } = await import("express");
-  const { createAcademyV2Router } = await import("./academyAgeFocus.js");
+  const { createAcademyV2Router } = await import("./academyAgeFocus.ts");
   const db = fakeSupabase({ tier: 3 });
   const baseFrom = db.from.bind(db);
   db.from = (table) => (table === "app_config"
