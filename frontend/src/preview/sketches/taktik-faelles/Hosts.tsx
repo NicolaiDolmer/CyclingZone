@@ -89,7 +89,7 @@ export function RaceHost({ lang, edit, notes }: { lang: Lang; edit: string | nul
                   <span className="font-semibold text-cz-1">{s.n}</span>
                   <span className="text-cz-3">{`${c.day[s.day]} ${s.time}`}</span>
                 </span>
-                <span className="mt-1 block"><MiniProfile lang={lang} height={14} /></span>
+                <span className="mt-1 block"><MiniProfile lang={lang} height={14} relief={[0.9, 1, 0.35, 0.08, 0.5, 0.15, 0.06][s.n - 1]} shift={s.n === 2 ? 0 : s.n * 3} /></span>
                 <span className={`mt-1 block text-2xs ${s.state === "unsaved" ? "font-medium text-cz-warning" : "text-cz-2"}`}>
                   {s.state === "ridden" && <span className="me-1 inline-flex align-[-1px] text-cz-3"><IconLock size={10} /></span>}
                   {c.stateWord[s.state]}
@@ -108,7 +108,7 @@ export function RaceHost({ lang, edit, notes }: { lang: Lang; edit: string | nul
             <h2 className="m-0 text-[15px] font-semibold text-cz-1">{`${c.stage(STAGE)} · Monte Ferro`}</h2>
             <button type="button" className="text-xs font-medium text-cz-accent-t hover:underline [@media(max-width:640px),(pointer:coarse)]:min-h-11">{c.race.hideRoute}</button>
           </div>
-          <div className="mt-2"><MiniProfile lang={lang} height={56} axis /></div>
+          <div className="mt-2"><MiniProfile lang={lang} height={44} axis /></div>
         </section>
         <SharedMark lang={lang} notes={notes}>
           <TaktikPanel lang={lang} stage={STAGE} edit={edit} />
@@ -197,9 +197,9 @@ export function PlanHost({ lang, edit, notes }: { lang: Lang; edit: string | nul
             <Tabs items={p.views} active={1} sticky />
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-cz-border px-4 py-2">
               <span className="inline-flex items-center gap-1">
-                <button type="button" aria-label="Forrige etape" className="inline-flex size-8 rotate-180 items-center justify-center rounded-cz border border-cz-border text-cz-2 [@media(max-width:640px),(pointer:coarse)]:size-11"><IconChevronRight size={14} /></button>
+                <button type="button" aria-label={lang === "da" ? "Forrige etape" : "Previous stage"} className="inline-flex size-8 rotate-180 items-center justify-center rounded-cz border border-cz-border text-cz-2 [@media(max-width:640px),(pointer:coarse)]:size-11"><IconChevronRight size={14} /></button>
                 <span className="px-2 text-sm font-semibold tabular-nums text-cz-1">{c.stageOf(STAGE, 7)}</span>
-                <button type="button" aria-label="Næste etape" className="inline-flex size-8 items-center justify-center rounded-cz border border-cz-border text-cz-2 [@media(max-width:640px),(pointer:coarse)]:size-11"><IconChevronRight size={14} /></button>
+                <button type="button" aria-label={lang === "da" ? "Næste etape" : "Next stage"} className="inline-flex size-8 items-center justify-center rounded-cz border border-cz-border text-cz-2 [@media(max-width:640px),(pointer:coarse)]:size-11"><IconChevronRight size={14} /></button>
               </span>
               {/* Profilen foldet som standard (punkt 2, 4): en lille streg og "Vis profil". */}
               <span className="flex min-w-0 flex-1 items-center gap-3 sm:max-w-[22rem]">

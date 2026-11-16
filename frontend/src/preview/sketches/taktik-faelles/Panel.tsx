@@ -105,10 +105,13 @@ const COST_FILL: Record<TaskCostWord, string> = {
 // --- Ruten som kolonnehoved og som spor pr. rytter -----------------------------
 
 /** Lille profil i én rolig tone med en roed prik ved hver stigning (P19, lille). */
-export function MiniProfile({ height = 28, axis = false, lang }: { height?: number; axis?: boolean; lang: Lang }) {
+export function MiniProfile({ height = 28, axis = false, lang, relief = 1, shift = 0 }: { height?: number; axis?: boolean; lang: Lang; /** Kun etapestriben: fladere/forskudt form pr. etape. */ relief?: number; shift?: number }) {
   const w = 1000;
   const maxM = 2200;
-  const pts = PROFILE.map(([km, m]) => `${(km / ROUTE.distance) * w},${height - (m / maxM) * (height - 4)}`).join(" ");
+  const pts = PROFILE.map(([km, m], i) => {
+    const mm = 300 + (PROFILE[(i + shift) % PROFILE.length][1] - 300) * relief;
+    return `${(km / ROUTE.distance) * w},${height - ((shift ? mm : 300 + (m - 300) * relief) / maxM) * (height - 4)}`;
+  }).join(" ");
   return (
     <span className="block w-full">
       <svg viewBox={`0 0 ${w} ${height}`} preserveAspectRatio="none" className="block w-full" style={{ height }} aria-hidden="true">
@@ -250,7 +253,7 @@ function TeamChoices({ lang, plan, onPlan, stance, onStance }: { lang: Lang; pla
               }`}
             >
               <input type="radio" name="team-plan" value={k} checked={plan === k} onChange={() => onPlan(k)} className="sr-only" />
-              <span className="truncate">{label(k)}</span>
+              <span className="leading-tight">{label(k)}</span>
             </label>
           ))}
         </span>
@@ -279,7 +282,7 @@ function TeamChoices({ lang, plan, onPlan, stance, onStance }: { lang: Lang; pla
 
 // --- Editoren: samme indhold i et svaevende kort (computer) og et ark (telefon) -
 
-function EditorBody({ lang, r }: { lang: Lang; r: SketchRider }) {
+function EditorBody({ lang, r, focusFirst = false }: { lang: Lang; r: SketchRider; focusFirst?: boolean }) {
   const c = COPY[lang];
   return (
     <>
@@ -289,13 +292,14 @@ function EditorBody({ lang, r }: { lang: Lang; r: SketchRider }) {
           <span className="text-2xs text-cz-2">{c.suggestionWhy}</span>
         </div>
       )}
-      <ol className="m-0 list-none p-0">
+      {/* Egen container: arket (smalt) stabler skift og opgave, det svaevende kort har dem side om side. */}
+      <ol className="@container m-0 list-none p-0">
         {r.plan.map((leg, i) => (
-          <li key={i} className="grid grid-cols-[3.25rem_1fr] items-center gap-x-2 gap-y-1.5 border-b border-cz-border px-4 py-2.5">
+          <li key={i} className="grid grid-cols-[3.25rem_minmax(0,1fr)_2.75rem] items-center gap-x-2 border-b border-cz-border px-4 py-2.5">
             <span className="text-3xs font-medium uppercase tracking-[.06em] text-cz-3">{c.step(i + 1)}</span>
-            <span className="flex min-w-0 flex-wrap items-center gap-2">
+            <span className="flex min-w-0 flex-col gap-2 @min-[25rem]:flex-row @min-[25rem]:items-center">
               {i > 0 && (
-                <label className="min-w-0 flex-1">
+                <label className="min-w-0 @min-[25rem]:flex-1">
                   <span className="sr-only">{`${c.switchAt}, ${c.step(i + 1)}`}</span>
                   <select defaultValue={triggerText(lang, leg.from)} className="w-full rounded-cz border border-cz-border bg-cz-card px-2 py-1.5 text-xs text-cz-1 [@media(max-width:640px),(pointer:coarse)]:min-h-11">
                     {[...ROUTE.climbs.slice(0, 2).map((cl) => c.from.kom(cl.name)), c.from.final_km, c.from.dropped].map((o) => <option key={o}>{o}</option>)}
@@ -303,20 +307,20 @@ function EditorBody({ lang, r }: { lang: Lang; r: SketchRider }) {
                   </select>
                 </label>
               )}
-              <label className="min-w-0 flex-[1.4]">
+              <label className="min-w-0 @min-[25rem]:flex-[1.4]">
                 <span className="sr-only">{`${c.task1}, ${c.step(i + 1)}`}</span>
-                <select defaultValue={leg.task} className="w-full rounded-cz border border-cz-border bg-cz-card px-2 py-1.5 text-xs text-cz-1 [@media(max-width:640px),(pointer:coarse)]:min-h-11">
+                <select autoFocus={focusFirst && i === 0} defaultValue={leg.task} className="w-full rounded-cz border border-cz-border bg-cz-card px-2 py-1.5 text-xs text-cz-1 [@media(max-width:640px),(pointer:coarse)]:min-h-11">
                   {(Object.keys(c.task) as Array<keyof typeof c.task>).map((tk) => (
                     <option key={tk} value={tk}>{`${c.task[tk]} · ${c.price[taskCostWord(tk)]}`}</option>
                   ))}
                 </select>
               </label>
-              {i > 0 && (
-                <button type="button" aria-label={`${c.clearPlan}: ${c.step(i + 1)}`} className="inline-flex size-8 items-center justify-center rounded-cz text-cz-3 hover:text-cz-1 [@media(max-width:640px),(pointer:coarse)]:size-11">
-                  <IconX />
-                </button>
-              )}
             </span>
+            {i > 0 ? (
+              <button type="button" aria-label={c.removeStep(i + 1)} className="inline-flex size-8 items-center justify-center justify-self-end rounded-cz text-cz-3 hover:text-cz-1 [@media(max-width:640px),(pointer:coarse)]:size-11">
+                <IconX />
+              </button>
+            ) : <span />}
           </li>
         ))}
       </ol>
@@ -344,14 +348,18 @@ function EditorPopover({ lang, r, anchorId, onClose }: { lang: Lang; r: SketchRi
     if (!el || !anchor) return undefined;
     const place = () => {
       const a = anchor.getBoundingClientRect();
-      const width = Math.min(384, window.innerWidth - 16);
+      // Under raekken, hoejrestillet mod planens kolonne: kaeden man aendrer bliver synlig.
+      const row = anchor.closest("tr")?.getBoundingClientRect() ?? a;
+      const width = Math.min(448, window.innerWidth - 16);
       el.style.inset = "auto";
       el.style.width = `${width}px`;
       el.style.left = `${Math.max(8, Math.min(a.right - width, window.innerWidth - width - 8))}px`;
-      el.style.top = `${a.bottom + 6}px`;
+      el.style.top = `${row.bottom + 4}px`;
     };
     place();
     el.showPopover();
+    // Fokus paa foerste felt (autofocus virker ikke foer kortet er vist).
+    el.querySelector<HTMLSelectElement>("select")?.focus();
     const toggle = (e: Event) => { if ((e as Event & { newState?: string }).newState === "closed") onClose(); };
     el.addEventListener("toggle", toggle);
     window.addEventListener("resize", place);
@@ -416,7 +424,7 @@ function EditorSheet({ lang, r, onClose }: { lang: Lang; r: SketchRider; onClose
           <button className="inline-flex size-11 items-center justify-center rounded-cz text-cz-3 hover:text-cz-1" aria-label={c.close}><IconX /></button>
         </form>
       </div>
-      <EditorBody lang={lang} r={r} />
+      <EditorBody lang={lang} r={r} focusFirst />
       <form method="dialog" className="sticky bottom-0 border-t border-cz-border bg-cz-card px-4 py-3">
         <button className={buttonClass({ variant: "secondary", size: "md", fullWidth: true })}>{c.done}</button>
       </form>
@@ -426,11 +434,12 @@ function EditorSheet({ lang, r, onClose }: { lang: Lang; r: SketchRider; onClose
 
 // --- Panelet -------------------------------------------------------------------
 
-function MutedStats({ lang, r }: { lang: Lang; r: SketchRider }) {
+/** Én daempet linje (valg 15). Paa telefonen kun rating, form og traethed, som valget siger. */
+function MutedStats({ lang, r, withMatch = true }: { lang: Lang; r: SketchRider; withMatch?: boolean }) {
   const s = COPY[lang].short;
   return (
-    <span className="font-data text-3xs uppercase tracking-[.04em] text-cz-3 tabular-nums">
-      {`${s.rating} ${r.rating} · ${s.form} ${r.form} · ${s.fatigue} ${r.fatigue} · ${s.match} ${r.match}`}
+    <span className="font-data text-3xs uppercase tracking-[.02em] text-cz-3 tabular-nums">
+      {`${s.rating} ${r.rating} · ${s.form} ${r.form} · ${s.fatigue} ${r.fatigue}${withMatch ? ` · ${s.match} ${r.match}` : ""}`}
     </span>
   );
 }
@@ -461,15 +470,15 @@ export default function TaktikPanel({ lang, stage, edit, bare = false }: { lang:
       <div className="hidden @2xl:block">
         <table className="w-full table-fixed border-collapse text-sm" data-sortable>
           <colgroup>
-            <col className="w-[30%] @5xl:w-[17%]" />
-            <col className="hidden w-[9%] @5xl:table-column" />
-            <col className="hidden w-[5%] @5xl:table-column" />
-            <col className="hidden w-[5%] @5xl:table-column" />
-            <col className="hidden w-[6%] @5xl:table-column" />
-            <col className="hidden w-[5%] @5xl:table-column" />
-            <col className="w-[22%] @5xl:w-[15%]" />
+            <col className="w-[31%] @5xl:w-[15%]" />
+            <col className="hidden w-[8%] @5xl:table-column" />
+            <col className="hidden w-[4.5%] @5xl:table-column" />
+            <col className="hidden w-[4.5%] @5xl:table-column" />
+            <col className="hidden w-[5.5%] @5xl:table-column" />
+            <col className="hidden w-[4.5%] @5xl:table-column" />
+            <col className="w-[10.5rem] @5xl:w-[13%]" />
             <col />
-            <col className="w-[13%] @5xl:w-[8%]" />
+            <col className="w-[5.5rem] @5xl:w-[7%]" />
           </colgroup>
           <thead>
             <tr className="border-b border-cz-border">
@@ -481,10 +490,7 @@ export default function TaktikPanel({ lang, stage, edit, bare = false }: { lang:
               <th scope="col" className={`${THN} hidden @5xl:table-cell`}>{c.col.match}</th>
               <th scope="col" className={TH}>{c.col.effort}</th>
               <th scope="col" className={`${TH} pb-1`}>
-                <span className="flex items-baseline justify-between gap-2">
-                  <span>{c.col.plan}</span>
-                  <span className="font-data text-3xs normal-case tracking-normal tabular-nums">{c.routeAxis(ROUTE.distance)}</span>
-                </span>
+                <span className="block">{c.col.plan}</span>
                 <span className="mt-1 block font-normal normal-case tracking-normal"><MiniProfile lang={lang} height={22} axis /></span>
               </th>
               <th scope="col" className={TH}>{c.col.tonight}</th>
@@ -494,11 +500,11 @@ export default function TaktikPanel({ lang, stage, edit, bare = false }: { lang:
             {RIDERS.map((r) => (
               <tr key={r.id} className="border-b border-cz-border last:border-b-0">
                 <td className={TD}>
-                  <RiderName r={r} className="max-w-full" />
-                  <span className="mt-1 flex flex-wrap items-center gap-1.5 @5xl:hidden">
-                    <RoleChip lang={lang} r={r} />
-                    <MutedStats lang={lang} r={r} />
+                  <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                    <RiderName r={r} className="max-w-full" />
+                    <span className="@5xl:hidden"><RoleChip lang={lang} r={r} /></span>
                   </span>
+                  <span className="mt-1 block @5xl:hidden"><MutedStats lang={lang} r={r} /></span>
                 </td>
                 <td className={`${TD} hidden @5xl:table-cell`}><RoleChip lang={lang} r={r} /></td>
                 <td className={`${TDN} hidden @5xl:table-cell`}>{r.rating}</td>
@@ -541,7 +547,13 @@ export default function TaktikPanel({ lang, stage, edit, bare = false }: { lang:
             <div className="flex items-start justify-between gap-2">
               <span className="min-w-0">
                 <RiderName r={r} className="max-w-full" />
-                <span className="mt-0.5 block"><MutedStats lang={lang} r={r} /></span>
+                <span className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
+                  <MutedStats lang={lang} r={r} withMatch={false} />
+                  <span className={`text-2xs ${TONIGHT_TONE[r.tonight]}`}>
+                    <span className="text-cz-3">{`${c.col.tonight} `}</span>
+                    <span className="font-medium">{c.tonight[r.tonight]}</span>
+                  </span>
+                </span>
               </span>
               <RoleChip lang={lang} r={r} />
             </div>
@@ -563,10 +575,6 @@ export default function TaktikPanel({ lang, stage, edit, bare = false }: { lang:
                 {c.editPlan}
               </button>
             </div>
-            <p className={`m-0 mt-1.5 text-2xs ${TONIGHT_TONE[r.tonight]}`}>
-              <span className="text-cz-3">{c.col.tonight}: </span>
-              <span className="font-medium">{c.tonight[r.tonight]}</span>
-            </p>
           </li>
         ))}
       </ul>

@@ -39,6 +39,7 @@ type Copy = {
   switchAt: string;
   task1: string;
   addStep: string;
+  removeStep: (n: number) => string;
   useSuggestion: string;
   clearPlan: string;
   done: string;
@@ -105,6 +106,7 @@ export const COPY: Record<Lang, Copy> = {
     switchAt: "Switch",
     task1: "Task",
     addStep: "Add a step",
+    removeStep: (n) => `Remove step ${n}`,
     useSuggestion: "Use the suggestion",
     clearPlan: "Remove the plan",
     done: "Done",
@@ -126,7 +128,7 @@ export const COPY: Record<Lang, Copy> = {
     race: {
       tabs: ["Stage", "Start list", "Tactics", "Team"],
       meta: "WorldTour · stage race · example data",
-      stats: [["Stage", "2 of 7"], ["Terrain", "High mountain"], ["Selected", "7 of 7"], ["Overall", "4th · +0:38"]],
+      stats: [["Stage", "2 of 7"], ["Terrain", "High mountain"], ["Selected", "7 of 7"], ["Overall", "4th +0:38"]],
       hideRoute: "Hide route",
       ridden: "4th",
     },
@@ -178,6 +180,7 @@ export const COPY: Record<Lang, Copy> = {
     switchAt: "Skift",
     task1: "Opgave",
     addStep: "Tilføj et trin",
+    removeStep: (n) => `Fjern trin ${n}`,
     useSuggestion: "Brug forslaget",
     clearPlan: "Fjern planen",
     done: "Færdig",
@@ -199,7 +202,7 @@ export const COPY: Record<Lang, Copy> = {
     race: {
       tabs: ["Etape", "Startliste", "Taktik", "Hold"],
       meta: "WorldTour · etapeløb · eksempeldata",
-      stats: [["Etape", "2 af 7"], ["Terræn", "Højt bjerg"], ["Udtaget", "7 af 7"], ["Samlet", "4. · +0:38"]],
+      stats: [["Etape", "2 af 7"], ["Terræn", "Højt bjerg"], ["Udtaget", "7 af 7"], ["Samlet", "4. +0:38"]],
       hideRoute: "Skjul rute",
       ridden: "4.",
     },
