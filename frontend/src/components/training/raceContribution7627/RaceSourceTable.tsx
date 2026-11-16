@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../../../lib/intl.js";
 import type { RaceSourceBreakdown } from "./raceContributionModel.ts";
+import { RACE_FILL_CLASS, RACE_FILL_STYLE } from "./raceSourceFill.ts";
 
 // #7627 variant B: one table per rider, ability by source. Columns follow what
 // the rider did on the date: training only, races only, or both plus a total.
@@ -27,7 +28,7 @@ export default function RaceSourceTable({ breakdown, abilityName, wholeChange }:
       <p className={`${META} mb-2`}>{t("raceSource.heading")}</p>
       {both && <div className="mb-2 flex flex-wrap gap-x-4 gap-y-1 text-2xs text-cz-2" data-testid="daily-receipt-race-source-key">
         <span className="inline-flex items-center gap-1.5"><span className="inline-block h-2 w-2.5 rounded-[2px] border border-cz-border bg-cz-border-strong" aria-hidden="true" />{t("raceSource.training")}</span>
-        <span className="inline-flex items-center gap-1.5"><span className="inline-block h-2 w-2.5 rounded-[2px] border border-cz-border bg-cz-accent" aria-hidden="true" />{t("raceSource.race")}</span>
+        <span className="inline-flex items-center gap-1.5"><span className={`inline-block h-2 w-2.5 rounded-[2px] border border-cz-border ${RACE_FILL_CLASS}`} style={RACE_FILL_STYLE} aria-hidden="true" />{t("raceSource.race")}</span>
       </div>}
       {rows.length === 0
         ? <p className="border-t border-cz-border py-2 text-xs text-cz-2" data-testid="daily-receipt-no-whole-point">{t("dailyReceipt.noWholePoint")}</p>
@@ -50,7 +51,7 @@ export default function RaceSourceTable({ breakdown, abilityName, wholeChange }:
             <span className="order-last col-span-full flex h-2 overflow-hidden rounded-[2px] border border-cz-border bg-cz-subtle sm:order-none sm:col-span-1" role="img"
               aria-label={both ? t("raceSource.barLabel", { training: pct(row.training), race: pct(row.race) }) : `${t(`raceSource.${only}`)} ${pct(row.total)}`}>
               {row.training > 0 && <span className="block h-full bg-cz-border-strong" style={{ width: `${row.training / max * 100}%` }} />}
-              {row.race > 0 && <span className="block h-full bg-cz-accent" style={{ width: `${row.race / max * 100}%` }} />}
+              {row.race > 0 && <span className={`block h-full ${RACE_FILL_CLASS}`} style={{ ...RACE_FILL_STYLE, width: `${row.race / max * 100}%` }} />}
             </span>
             {both ? <>
               <span className={`text-right font-data tabular-nums ${row.training > 0 ? "text-cz-2" : "text-cz-3"}`}>{pct(row.training)}</span>

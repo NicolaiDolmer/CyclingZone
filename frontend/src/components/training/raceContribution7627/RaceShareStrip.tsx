@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../../../lib/intl.js";
 import { copenhagenDayKey } from "../../../lib/raceCentre.js";
+import { RACE_FILL_CLASS, RACE_FILL_STYLE } from "./raceSourceFill.ts";
 
 // #7627 (variant C's day strip): how much of the squad's progress on the date
 // came from races. Only rendered when the squad raced on the date. "Today" is
@@ -15,7 +16,7 @@ export default function RaceShareStrip({ percent, date, today }: { percent: numb
       <span className="flex h-2 w-full overflow-hidden rounded-[2px] border border-cz-border bg-cz-subtle sm:w-40" role="img"
         aria-label={t("raceSource.shareBar", { training: fmt(100 - percent), race: fmt(percent) })}>
         <span className="block h-full bg-cz-border-strong" style={{ width: `${100 - percent}%` }} />
-        <span className="block h-full bg-cz-accent" style={{ width: `${percent}%` }} />
+        <span className={`block h-full ${RACE_FILL_CLASS}`} style={{ ...RACE_FILL_STYLE, width: `${percent}%` }} />
       </span>
     </div>
   );
