@@ -261,6 +261,7 @@ export default function PeakView({
       <div className="overflow-x-clip sm:overflow-x-auto">
         <table data-sortable className="w-full border-collapse">
           <thead>
+            {/* Hver kolonne sorterer: th() bygger en SortableTh med onSort (guard: tableSortIntent.test.js). */}
             <tr>
               <th className="hidden bg-cz-subtle px-1.5 py-2 ps-4 text-left font-data text-2xs font-semibold uppercase tracking-wide text-cz-3 sm:table-cell">
                 <span className="sr-only">{t("squad.pick")}</span>

@@ -88,6 +88,7 @@ export async function loadAfterRaceFatigue7535({ supabase, teamId, raceId, deps 
   try {
     startById = await fatigueNow({ supabase, conditions: conditionRes.data ?? [], teamId });
   } catch {
+    // best-effort: uden "lige nu" regnes skoennet fra aabningen (rider_condition), som Traethed-kolonnen ville.
     startById = new Map((conditionRes.data ?? []).map((c) => [c.rider_id, c.fatigue]));
   }
   const loadSeasonRaceDays = deps.loadSeasonRaceDaysByRider ?? (await import("./raceFatigue.js")).loadSeasonRaceDaysByRider;
