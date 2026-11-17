@@ -71,7 +71,8 @@ const block = (section: string, id: string, flags: Flags) => isHelpBlockVisible(
 test("XP-kontakten er spillersynlig og binaer (beta = off, som motoren)", () => {
   assert.ok((PLAYER_VISIBLE_FLAG_KEYS as readonly string[]).includes(XP));
   assert.ok((PLAYER_VISIBLE_BINARY_FLAG_KEYS as readonly string[]).includes(XP));
-  assert.ok(helpGateFlagKeys().includes(XP));
+  const gateKeys: string[] = helpGateFlagKeys();
+  assert.ok(gateKeys.includes(XP));
 });
 
 test("i dag (XP off): de gamle blokke vises, ingen XP-tvilling og intet XP-afsnit", () => {
