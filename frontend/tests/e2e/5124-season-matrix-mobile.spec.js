@@ -118,6 +118,23 @@ test("linse-kontrollen er hairline 5px uden fyldt guld og har tryk-mål ≥32px 
   await expect(group).toBeVisible();
   const lens = group.getByRole("button", { name: "Rutematch" });
   const problems = page.getByRole("button", { name: "Kun problemer" });
+  // DEBUG-8348-TMP
+  const probe = (phase) => group.evaluate(async (el, ph) => {
+    if (ph === "after") await document.fonts.ready;
+    const p = document.createElement("span"); p.textContent = "Form og peak"; p.style.cssText = "font:500 12px system-ui;position:absolute;visibility:hidden"; document.body.append(p);
+    const sysW = p.getBoundingClientRect().width; p.style.fontFamily = "sans-serif"; const sansW = p.getBoundingClientRect().width; p.remove();
+    return { phase: ph, sysW, sansW, fontStatus: [...document.fonts].map((f) => `${f.family}:${f.status}`), problemsH: document.querySelector("[aria-pressed]:not([role=group] *)")?.getBoundingClientRect().height,
+      ua: navigator.userAgent, dpr: devicePixelRatio, vw: document.documentElement.clientWidth,
+      fontsLoaded: [...document.fonts].filter((f) => f.status === "loaded").map((f) => `${f.family}/${f.weight}`),
+      groupW: el.getBoundingClientRect().width,
+      buttons: [...el.querySelectorAll("button")].map((b) => {
+        const cs = getComputedStyle(b); const r = document.createRange(); r.selectNodeContents(b);
+        return { t: b.textContent, w: b.getBoundingClientRect().width, h: b.getBoundingClientRect().height, ff: cs.fontFamily, fw: cs.fontWeight, fs: cs.fontSize, ls: cs.letterSpacing, lh: cs.lineHeight, minH: cs.minHeight, pl: cs.paddingLeft, lines: r.getClientRects().length, textW: Math.max(...[...r.getClientRects()].map((x) => x.width)) };
+      }),
+    };
+  }, phase);
+  console.log("DEBUG8348", JSON.stringify(await probe("before")));
+  console.log("DEBUG8348", JSON.stringify(await probe("after")));
   for (const control of [lens, problems]) {
     const box = await control.boundingBox();
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(32);
