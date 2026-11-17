@@ -111,7 +111,10 @@ param(
   [string] $Repo = "NicolaiDolmer/CyclingZone",
   # #6318: over deploy-verify.yml's timeout-minutes (100) + oprettelses-slack.
   [int] $DeployVerifyTimeoutMinutes = 140,
-  [int] $CiTimeoutMinutes = 25,
+  # CI-plan trin 1 (ejer 17/11): main-CI tog 76-110 min i koe-spidser 16-17/11; 25 min gav
+  # falske timeouts, der laaste auto-toget. Stall-vagten (45 min uden fremskridt) stopper stadig
+  # et reelt haengende tog.
+  [int] $CiTimeoutMinutes = 90,
   # 23/10 (ejer: "een PR ad gangen"): en PR hvis checks ikke er groenne endnu, stilles
   # bagerst i koeen een gang (klar-foerst). Naar den igen er forrest, ventes hoejst saa
   # mange minutter. Stadig ikke groen = PR'en springes over (SKIP), koeen fortsaetter.
@@ -1030,6 +1033,21 @@ function Close-OpenTrain {
   try { $proofPrs = (@($closeOutEntries | Where-Object { $null -ne $_ } | ForEach-Object { [int]$_.number }) -join ','); if ($proofPrs) { Start-Process -FilePath node -ArgumentList @((Join-Path $PSScriptRoot 'til-doers-proof.mjs'), 'run', '--pr', $proofPrs, '--dry-run', '--repo', $Repo) -WindowStyle Hidden | Out-Null } } catch {}
 }
 
+# CI-plan trin 1 (ejer 17/11): kun EEN koe ad gangen, haandhaevet i koden (ikke kun en
+# hukommelses-regel). 16/11 blokerede manuelle koeer auto-toget i timevis, og to samtidige
+# koeer genstarter hinandens CI. En levende markoer fra en anden proces = stop foer noget merges.
+if (-not $DryRun) {
+  try {
+    $liveMarker = (& node $script:ActiveMarkerScript status 2>$null | Out-String).Trim()
+    if ($liveMarker -and $liveMarker.StartsWith('{')) {
+      $live = $liveMarker | ConvertFrom-Json
+      if ($live.pid -and [int]$live.pid -ne $PID) {
+        Write-Host "STOP: en anden merge-koe koerer allerede (pid $($live.pid), startet $($live.startedAt), PR'er $($live.prs -join ',')). Vent til den er faerdig; koer aldrig to koeer samtidig." -ForegroundColor Red
+        exit 3
+      }
+    }
+  } catch { Write-Host '  (kunne ikke laese koe-markoeren; fortsaetter som foer)' -ForegroundColor DarkYellow }
+}
 # #7587: markoeren lever fra foerste merge-forsoeg til koeen slutter; finally (nederst) fjerner den ogsaa ved STOP/exit.
 Invoke-ActiveMarker @('start', '--prs', ($PrNumbers -join ','))
 try {

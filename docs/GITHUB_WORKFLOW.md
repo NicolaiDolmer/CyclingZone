@@ -131,6 +131,14 @@ Trade-offet (bevidst): to hver-for-sig-grønne PRs der tilsammen er røde, fange
 
 Historik: GitHubs ægte Merge Queue blev forsøgt 4/8 men kræver et ORG-ejet repo (CyclingZone er bruger-ejet). CI'en er allerede kø-kompatibel (`merge_group`-triggere + pass-throughs, PR #3303, i dvale) — flyttes repoet til en organisation, kan køen tændes med ét ruleset (`scratchpad`-udkastet ligger i PR #3303's beskrivelse). Rollback af dagens ændring: `gh api .../branches/main/protection/required_status_checks -X PATCH -F strict=true`.
 
+## CI-gennemstrømning (ejer 17/11, CI-plan trin 1-4)
+
+Målt 10-17/11: flaskehalsen er GitHubs kø (gratis-kontoen: 20 samtidige jobs), ikke testene. Et push starter 50-75 jobs; 16/11 kørte 15.228 CI-kørsler. Derfor, for alle sessioner:
+- **Kladder pushes samlet**, ikke for hvert lille skridt (livstegn-push hvert 15. min er nok; tunge i18n-jobs springes over på kladder og kører ved "ready for review").
+- **Én merge-kø ad gangen** er håndhævet i `scripts/merge-queue.ps1` (exit 3 ved en levende markør fra en anden proces). Manuelle køer blokerer auto-toget.
+- **gh API-budgettet (5000/t) deles af alle sessioner på kontoen**: ingen `gh`-polling-løkker; brug `--watch` i baggrunden eller vent på notifikationer. 17/11 kl. 08 var budgettet brugt op, og ingen session kunne merge.
+- Trin 2-4 (patch notes som fragmenter, færre jobs pr. push, Linux-snapshots) og trin 5 (GitHubs merge-kø via organisation) står i CI-planen; se issuet "CI-plan".
+
 ## Arbejdsstandard for merges (ejer 18/10: branchens bedste praksis)
 
 Efter 18/10, hvor intet blev merget i ca. 2 timer, gælder disse regler for alle sessioner:
