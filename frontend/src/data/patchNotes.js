@@ -1,28 +1,5 @@
 export const PATCHES = [
 {
-  "version": "7.457",
-  "date": "2026-11-16",
-  "changes": [
-    {
-      "category": "improved",
-      "audience": "player",
-      "rollout": "live",
-      "topic": "Riders",
-      "en": {
-        "title": "Calmer rider profile",
-        "body": "Card titles in the rider profile tabs use the normal card heading instead of large capitals, so the rider's name is the one big word on the page. The reading card under Development no longer has a gold edge."
-      },
-      "da": {
-        "title": "Roligere rytterprofil",
-        "body": "Kort-titlerne i rytterprofilens faner bruger den normale kortoverskrift i stedet for store versaler, så rytterens navn er sidens ene store ord. Læsningskortet under Udvikling har ikke længere en guld-kant."
-      },
-      "refs": [
-        8069
-      ]
-    }
-  ]
-},
-{
   "version": "7.456",
   "date": "2026-11-16",
   "changes": [
