@@ -844,6 +844,14 @@ bestyrelses-notifikationer (`.claude/learnings/2026-08-03-ai-rider-recovery-filt
 Målt i `app_config` 30/8. De øvrige `season_form_reset_*`-parametre står også i `app_config`
 og blev sidst rørt 3/8.
 
+**Skader (#5865, bygget, SLUKKET):** `seasonInjuryReset.js` bag `season_injury_reset_mode`
+= **`off`** (nuværende adfærd: en aktiv skade eller sygdom løber uændret ind i den nye sæson).
+Modes: `clear` (alle forsvinder), `cap` (afkortes til `season_injury_reset_cap_days` dage efter
+skiftet), `light` (kun skader inden for `season_injury_reset_light_max_days` dage forsvinder).
+Dagene regnes fra den nye sæsons `start_date` (skiftets dato). Rører kun skade-kolonnerne,
+er idempotent, og springes over hvis den nye sæson allerede har kørt løbsdage. Ejeren vælger
+mode; design: [2026-11-16-5865](design/reviews/2026-11-16-5865-skader-ved-saesonskiftet.md).
+
 Bemærk at de to blev bevidst adskilt: `seasonFatigueReset` rører **ikke** form, fordi
 `nextForm` kobler form til træthed, og en reset der skrev begge ville flytte to
 balance-håndtag på én gang (`seasonFatigueReset.js:14-16`).
@@ -1425,3 +1433,20 @@ Kontakt `training_settle_race_session` (binær; kun "on" tænder, seedet "off").
 - **Datoregnskab:** datoen registreres ved første løbssession (som ved et Træn nu-tryk).
 - **Tændes KUN sammen med `fatigue_now_7801`** (ejervalg 15/11: "Merge slukket, tænd de to sammen"), så spilleren ser løbets træthed lige efter løbet. Efterprøv på en rigtig etape med begge tændt.
 - **Før tænding (Fable 15/11):** SQL afviser `provisional` for løbssessions-ryttere og beholder åbningstjekket for dem; forældede kommentarer (SQL l.11-12, `trainingSettleRaceSession7982.js:7-8`); ryttere der skifter hold efter første etape; `proRiderHistory.js` sorterer uden `created_at`; prøvekørsel mod prod-billede; Træn nu-frontend efter ejerens retning på #7982.
+
+### 13.6 Aftenkørslen genbruger Træn nu-hukommelsen (#6490 B, PR #8274; bag slukket kontakt)
+
+Ren ydelsesændring: samme afregning, færre databasekald pr. hold. Ingen ny mekanik, intet spilleren ser.
+
+- **Kontakt:** `training_sweep_memory_6490` (binær; kun `"on"` eller gammelt `true` tænder, `"beta"` tæller som slukket; seedet `"off"` i `database/2026-11-16-6490-8143-sweep-memory-config-cache.sql`; står i `stageFlagCatalog.js` og flippes fra Admin > System). Aftenkørslen (`runNormalizedTrainingDateSweep` i `trainingDateClose.js`, `isTrainingSweepMemoryEnabled`) læser den **friskt én gang pr. kørsel**, aldrig fra en cache, og først når et hold når sine løbsdage; en kørsel uden hold at afregne spørger ikke. En fejlet læsning er slukket, så kontakten kan aldrig stoppe aftenkørslen.
+- **Hvad tændt gør:** holdets løbsdage på datoen afregnes med Træn nu-trykkets hukommelse (`trainNowPressMemory.js`, #7982 trin 4a), præcis som `trainNowWholeDay.js` gør det: første løbsdag læser alt som før, de næste regnes fra den læsning og gemmes med samme `commit_training_date_tick`. Kvitteringer, gemmekald (i rækkefølge), sluttilstand, karantæne og afgang er de samme som på den gamle vej.
+- **Snapshottets levetid:** én hukommelse pr. hold og dato, oprettet i holdets kald og væk med det. Aldrig delt mellem hold, mellem to kørsler eller med et Træn nu-tryk; intet ligger på modulniveau. Efter hvert gem får hukommelsen at vide, hvad databasen nu holder; tilstand (form/træthed) og løbsbelastninger huskes ikke efter et gem og læses igen, hvis en senere løbsdag skal bruge dem.
+- **Fallbacks (hukommelsen træder til side, og løbsdagen læser alt som før):**
+  - databasen anvendte ikke præcis de ryttere, der blev sendt (allerede kørt, karantæne), eller en senere løbsdag skal bruge en rytter, den første ikke læste;
+  - en læsning i første løbsdag fejlede og gav et neutralt svar (et fejlet opslag huskes aldrig);
+  - datoens løbsbelastninger, frist, dato eller løbsdage er ikke de samme som ved læsningen;
+  - **afgang (#6504):** kun aftenkørslen (`executedBy: "assistant"`) spørger pr. løbsdag igen om truppens holdtilknytning og pensionering. Er en rytter frigivet siden første læsning, træder hukommelsen til side, og rytteren får afgang som før i stedet for at blive sat i karantæne af gemme-vagten. Træn nu-trykket er uændret.
+  - Kørslens egen karantæne sker før holdets løbsdage, og fristen (`deadlineReached`) sammenlignes pr. kald med samme regel for ventende løbsryttere.
+- **Slukket = som før, bevist:** `runDay` får nøjagtig de gamle argumenter. `trainingSweepMemory6490.test.js` kører den rigtige aftenkørsel i aften-scenarier (etape kørt, før/efter etape, frist, tryk før aften, frigivet/solgt, karantæne, frigivet midt i holdet, fejlet gemmekald) og sammenligner med en frossen golden fra merge-basen (`trainingSweepMemory6490.golden.json`, aldrig genereret med den nye kode): slukket bit for bit; tændt samme svar, skrivninger, sluttilstand og udfald med færre ventetrin.
+- **Aktiveringskrav:** Fable-dom før merge (motor/træning); tænding kun med ejer-go, aldrig autonomt. Første aften med kontakten tændt måles (første til sidste afregning, langsomme kald) mod baseline i `docs/audits/2026-11-16-6490-aftentraening-baseline.md`; målingerne før tænding er fra en stedfortræder-database, ikke rigtig PostgreSQL. Samspil med flere hold ad gangen (`teamConcurrency`) er kun prøvet via pariteten (hukommelsen er pr. hold).
+- **Rul tilbage:** kontakten til `"off"`. Næste kørsel bruger den gamle vej (kontakten læses friskt pr. kørsel); der er intet data at rydde, fordi hukommelsen kun lever i kaldet.

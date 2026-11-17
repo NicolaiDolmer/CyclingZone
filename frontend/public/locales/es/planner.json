@@ -221,5 +221,12 @@
     "title": "Tu división de la temporada {number} se decide en el cambio de temporada",
     "body": "Los ascensos y descensos se resuelven cuando se cierra la temporada actual, así que todavía no puedo decirte cuál es tu calendario. Debajo se listan las carreras de la temporada {number} de todas las divisiones, para que puedas estudiar el recorrido.",
     "hint": "Los picos de la temporada {number} se abren en cuanto se confirme tu división."
+  },
+  "expectedDivision": {
+    "label": "División",
+    "all": "Todas las divisiones",
+    "option": "División {n}",
+    "optionExpected": "División {n} (prevista)",
+    "plannerBody": "Los ascensos y descensos se deciden al cerrar la temporada actual. El tablero empieza en la división {n}, en la que estás ahora. Elige otra división arriba para estudiar sus recorridos de la temporada {number}."
   }
 }

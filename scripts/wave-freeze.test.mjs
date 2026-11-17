@@ -17,7 +17,9 @@ import {
   classifyStall,
   commitAgeMinutes,
   extractInvestigateVerdict,
+  findDeliveredPr,
   intakeBackoffMinutes,
+  isNotDelivered,
   needsGracefulStop,
   planClaudeMarker,
   planIdleLane,
@@ -755,7 +757,7 @@ function normalizeFunction(text) {
 test("#5562/#5567: de spejlede funktioner er identiske i wave.js og modulet", () => {
   const waveSrc = readFileSync(WAVE_JS_PATH, "utf8");
   const moduleSrc = readFileSync(MODULE_PATH, "utf8");
-  for (const name of ["trackWeight", "sortHeavyFirst", "planIdleLane", "intakeBackoffMinutes", "releasesOwnership", "applySchemaEvidenceRule", "tailIdleLaneMinutes", "subStepScopeLines", "classifyBuildRecoveryFailure", "planClaudeMarker"]) {
+  for (const name of ["trackWeight", "sortHeavyFirst", "planIdleLane", "intakeBackoffMinutes", "releasesOwnership", "applySchemaEvidenceRule", "tailIdleLaneMinutes", "subStepScopeLines", "classifyBuildRecoveryFailure", "planClaudeMarker", "findDeliveredPr", "isNotDelivered"]) {
     const inWave = extractFunction(waveSrc, name);
     const inModule = extractFunction(moduleSrc, name);
     assert.ok(inWave, `wave.js mangler den spejlede funktion ${name}()`);
@@ -1146,4 +1148,54 @@ test("#7587: wave.js skriver markoeren efter reviewet, paa det reviewede HEAD, a
   const agentFile = readFileSync(path.join(path.dirname(WAVE_JS_PATH), "..", "agents", "wave-marker.md"), "utf8");
   assert.match(agentFile, /^name: wave-marker$/m);
   assert.equal((agentFile.match(/^tools:\s*(.+)$/m) || [, ""])[1].trim(), "Bash, PowerShell", "markoer-agenten har kun en shell");
+});
+
+// ===== #8233: et spor uden PR har ikke leveret =====
+
+test("#8233: findDeliveredPr finder PR'en fra reviewer-feltet eller rapportens URL", () => {
+  assert.equal(findDeliveredPr({ pr: "#8237" }), "#8237");
+  assert.equal(findDeliveredPr({ pr: "8237" }), "8237");
+  assert.equal(findDeliveredPr({ pr: "https://github.com/o/r/pull/8237" }), "https://github.com/o/r/pull/8237");
+  assert.equal(
+    findDeliveredPr({ pr: "ingen", report: "Dom ...\nPR: https://github.com/o/r/pull/12\nafvist + bevis-test" }),
+    "https://github.com/o/r/pull/12",
+  );
+  assert.equal(findDeliveredPr({ report: "- **PR:** https://github.com/o/r/pull/13" }), "https://github.com/o/r/pull/13");
+  assert.equal(findDeliveredPr({ report: "PR-URL: https://github.com/o/r/pull/14" }), "https://github.com/o/r/pull/14");
+  // Codex-fund (#8233): en PR citeret som bevis er en kilde, ikke sporets levering.
+  const cited = "Bevis: fejlen kom med https://github.com/o/r/pull/8000.\nJeg oprettede ingen PR.\nafvist + bevis-test";
+  for (const row of [{ pr: "ingen" }, { pr: "" }, { pr: "ingen PR" }, { report: "rapporten ligger i scratch" }, { report: "se issue https://github.com/o/r/issues/5" }, { report: cited }, null, undefined, "x"]) {
+    assert.equal(findDeliveredPr(row), null, JSON.stringify(row));
+  }
+});
+
+test("#8233: isNotDelivered melder kun faerdige spor uden PR", () => {
+  for (const status of ["bygget", "rettet", "rettelse-mangler", "undersoegt", "undersoegt-ufuldstaendig"]) {
+    assert.equal(isNotDelivered({ status, pr: "ingen", report: "kun i scratch" }), true, status);
+    assert.equal(isNotDelivered({ status, pr: "#5" }), false, status);
+    assert.equal(isNotDelivered({ status, report: "PR: https://github.com/o/r/pull/5" }), false, status);
+  }
+  // Stoppede spor staar allerede i boelgens stopped-liste.
+  for (const status of ["frys", "timeout", "investigate-timeout", "doed", "fejl", undefined]) {
+    assert.equal(isNotDelivered({ status, pr: "ingen" }), false, String(status));
+  }
+  assert.equal(isNotDelivered(null), false);
+});
+
+test("#8233: wave.js beder undersoegelsesspor om en draft-PR og melder not-delivered", () => {
+  const src = readFileSync(WAVE_JS_PATH, "utf8");
+  const brief = extractFunction(src, "laneBrief");
+  assert.ok(brief.includes("...investigateLeveranceLines(track)"), "investigate-grenen af laneBrief skal have leverance-trinnene");
+  assert.ok(!brief.includes("intet commit, ingen push, ingen PR"), "den gamle 'ingen PR'-regel maa ikke staa tilbage");
+  const lev = extractFunction(src, "investigateLeveranceLines");
+  assert.ok(lev.includes("guard-commit-branch.sh"), "rapporten committes kun bag guarden");
+  assert.ok(lev.includes("gh pr create --draft --base main --head ${track.branch}"), "rapporten leveres i en draft-PR paa sporets branch");
+  assert.ok(lev.includes("Refs #${track.issue}") && !lev.includes("Closes #"), "Refs, ikke Closes");
+  const inv = extractFunction(src, "runInvestigateTrack");
+  assert.ok(inv.includes("row.pr = findDeliveredPr({ report: reportText }) || 'ingen'"), "PR'en findes i HELE rapporten, ikke kun de foerste 4000 tegn");
+  assert.ok(extractFunction(src, "trackConfigRow").includes("deliverPr: true"), "Claude-boelgens fil-brief skal kraeve PR-leverancen (make-wave-brief deliverPr)");
+  assert.ok(src.includes("const notDelivered = results.filter((r) => isNotDelivered(r))"), "slutrapporten skal samle not-delivered-spor");
+  assert.ok(src.includes("ADVARSEL not-delivered:"), "not-delivered skal logges som advarsel");
+  assert.ok(/\n\s*notDelivered: notDelivered\.map\(/.test(src), "returobjektet skal have notDelivered");
+  assert.ok(src.includes("status: 'not-delivered'"), "rapporten markerer sporet 'not-delivered'");
 });

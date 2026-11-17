@@ -221,5 +221,12 @@
     "title": "Je divisie voor seizoen {number} wordt bepaald bij de seizoenswissel",
     "body": "Promotie en degradatie worden vastgesteld wanneer het huidige seizoen sluit, dus ik kan je nog niet zeggen welke kalender de jouwe is. Hieronder staan de koersen van seizoen {number} voor elke divisie, zodat je de route toch al kunt bestuderen.",
     "hint": "Pieken voor seizoen {number} gaan open zodra je divisie vaststaat."
+  },
+  "expectedDivision": {
+    "label": "Divisie",
+    "all": "Alle divisies",
+    "option": "Divisie {n}",
+    "optionExpected": "Divisie {n} (verwacht)",
+    "plannerBody": "Promotie en degradatie liggen vast zodra het huidige seizoen sluit. Het bord start op divisie {n}, waar je nu in zit. Kies hierboven een andere divisie om de routes van seizoen {number} te bekijken."
   }
 }

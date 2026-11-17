@@ -855,6 +855,19 @@ features:
     verified: 2026-10-27
     note: "PR #7288 merget; fælles start over nul. Historik bruger loggens startFatigue."
 
+  - id: season-injury-reset
+    area: training
+    title_en: Injuries heal over the off-season
+    title_da: Skader heler i sæsonpausen
+    state: building
+    flag: season_injury_reset_mode
+    ssot: docs/TRAINING_RULES.md
+    epic: 5865
+    verified: 2026-11-16
+    note: 'Bygget bag season_injury_reset_mode = off; ejeren vælger clear/cap/light før S6-skiftet.'
+    decision: ejer-beslutning
+    decide_by: 2026-11-28
+
   - id: training-programs
     area: training
     title_en: Training programs per race day
@@ -1638,11 +1651,13 @@ features:
     area: training
     title_en: Train now bonus
     title_da: Træn nu-bonus
-    state: building
+    state: beta
     flag: training_train_now_bonus
     ssot: docs/TRAINING_RULES.md
     epic: 7737
-    verified: 2026-11-10
+    verified: 2026-11-16
     decision: goer-faerdigt
     decide_by: 2026-11-16
-    note: 'OFF. Tekster, Hjælp, kvitteringsmærke bygget (#7741): bonus kun ved eget tryk.'
+    note: 'Beta: app_config = "beta" og migrationen fra #8268 er i prod (triggeren godkender "beta"), læst 16/11. Kun beta-testernes egne tryk får bonussen. Patch note 7.454. Alle: værdien til "on" kræver ejer-go.'
+    roadmap_en: "Press Train now yourself and get 15% extra development that day."
+    roadmap_da: "Tryk selv på Træn nu, og få 15 % ekstra udvikling den dag."

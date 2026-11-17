@@ -26,6 +26,8 @@
 //  3. Cachen hænger på klient-objektet (WeakMap). Tests med deres egne
 //     fake-klienter deler derfor aldrig cache med hinanden eller med prod.
 
+import { isConfigCacheShared, sharedConfigCache, forgetSharedConfig } from "./configCache8143.js";
+
 /** Hvor længe et vellykket opslag genbruges. Issue #7663: 30-60 s. */
 export const FLAG_CACHE_TTL_MS = 60_000;
 
@@ -129,14 +131,18 @@ export async function readFlagStage(supabase, key, { fresh = false, now = Date.n
 
   if (fresh || FRESH_FLAG_KEYS.has(key)) return (await queryFlagValue(supabase, key)).value;
 
-  const values = mapFor(valueCache, supabase);
+  // #8143 (H): med config_cache_8143 on deler alle klienter én hukommelse; ellers pr. klient som før.
+  const shared = isConfigCacheShared() ? sharedConfigCache() : null;
+  const values = shared ? shared.values : mapFor(valueCache, supabase);
   const hit = values.get(key);
   if (hit && hit.expiresAt > now()) return hit.value;
 
-  const pending = mapFor(inflight, supabase);
+  const pending = shared ? shared.inflight : mapFor(inflight, supabase);
   let promise = pending.get(key);
   if (!promise) {
     promise = queryFlagValue(supabase, key).then((result) => {
+      // #8143 (H): et opslag, der blev glemt undervejs (admin-skrivning), gemmes ikke.
+      if (pending.get(key) !== promise) return result;
       if (result.ok) {
         values.set(key, { value: result.value, expiresAt: now() + FLAG_CACHE_TTL_MS });
       } else {
@@ -145,7 +151,7 @@ export async function readFlagStage(supabase, key, { fresh = false, now = Date.n
       }
       return result;
     }).finally(() => {
-      pending.delete(key);
+      if (pending.get(key) === promise) pending.delete(key);
     });
     pending.set(key, promise);
   }
@@ -161,6 +167,8 @@ export async function readFlagStage(supabase, key, { fresh = false, now = Date.n
  * @param {{ client?: object, key?: string }} [opts]
  */
 export function clearFlagStageCache({ client, key } = {}) {
+  // #8143 (H): den delte hukommelse glemmer altid samme nøgle (eller alt).
+  forgetSharedConfig(client ? key : undefined);
   if (!client) {
     valueCache = new WeakMap();
     inflight = new WeakMap();
