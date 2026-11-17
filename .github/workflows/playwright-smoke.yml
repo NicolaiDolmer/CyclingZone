@@ -30,9 +30,14 @@ name: Playwright Smoke
 # testene, `frontend-smoke` samler op med `if: always()` og fejler hvis en shard
 # fejlede ELLER brugte for lang tid.
 #
-# Runner: windows-latest, bevidst. De committede toHaveScreenshot-baselines er
-# taget på Windows; et skift til ubuntu-latest kræver en re-baseline af ALLE
-# snapshots i samme PR og er derfor et selvstændigt skridt (se #4647).
+# Runner (#8348): ubuntu-latest i en LAAST Playwright-container (samme image
+# hver gang, pinnet paa digest). toHaveScreenshot-baselines er `*-linux.png`
+# lavet i netop dette image, og playwright.config.js sammenligner dem KUN naar
+# PW_SNAPSHOT_BASELINE=linux-container er sat (her og i update-snapshots.yml).
+# Foer var runneren windows-latest og baselines win32, saa de kun kunne fornyes
+# paa een maskine. Fornyelse nu: label "opdater snapshots" (update-snapshots.yml).
+# Image-tag, digest og @playwright/test-versionen holdes ens af
+# frontend/tests/e2e/snapshot-baseline.test.ts.
 #
 # Værn mod stille e2e-spec-rot (2026-07-02): da rytterprofil-redesignet (#2000,
 # PR #2037) fjernede "Effektprofil"-sektionen, FANGEDE dette job regressionen i
@@ -171,6 +176,8 @@ jobs:
     needs: [changes, plan]
     env:
       AXE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+      # #8348: slaar pixel-sammenligningen til (playwright.config.js).
+      PW_SNAPSHOT_BASELINE: linux-container
     if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.frontend == 'true'
     # Uden en `name:` ville GitHub navngive jobbet efter ALLE matrix-værdier
     # ("e2e-shard (chromium, desktop-chromium-1of2, ...)"). Lanens key er den
@@ -178,12 +185,21 @@ jobs:
     # Dynamisk navn er ufarligt her: e2e-shard er IKKE et required check —
     # matrix-jobs kan aldrig bære et (se scripts/check-required-ci-jobs.mjs).
     name: e2e-shard (${{ matrix.key }})
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
+    # #8348: browserne (chromium + webkit) og deres systembiblioteker/fonte
+    # kommer fra imaget, ikke fra `npx playwright install`. Derfor er pixel-
+    # baselines reproducerbare. Bump: ret tag+digest her OG i
+    # update-snapshots.yml sammen med @playwright/test, og forny snapshots med
+    # labelen (snapshot-baseline.test.ts fejler ved uoverensstemmelse).
+    # --ipc=host: Chromium loeber ellers toer for delt hukommelse i Docker.
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.0-noble@sha256:9beb546099e11f52d62e505537914870e01a67e0e6b00ae41da4775324e73dbe
+      options: --ipc=host
     strategy:
       fail-fast: false
       matrix:
-        # Kun den browser lanen faktisk bruger installeres: `npx playwright
-        # install chromium webkit` hentede før begge på ALLE kørsler.
+        # Planens `browser`-felt bruges ikke laengere her (#8348: browserne
+        # ligger i container-imaget), men beholdes i planformatet.
         include: ${{ fromJSON(needs.plan.outputs.matrix) }}
     permissions:
       contents: read
@@ -196,6 +212,17 @@ jobs:
         with:
           persist-credentials: false
 
+      # #8348: containeren koerer som root, men checkout-mappen ejes af
+      # runner-brugeren. actions/checkout markerer kun mappen som sikker i sin
+      # EGEN midlertidige git-konfiguration, saa hvert senere git-kald fejlede
+      # med "dubious ownership": base-fetch'en nedenfor, git ls-files i
+      # snapshot-baseline.test.ts (sprang stille over) og git diff i
+      # rent-trae-vagten (#3554), der saa meldte falsk "aendrede filer".
+      # Saettes een gang for hele jobbet, foer foerste git-kald.
+      - name: Trust the checkout (container git)
+        shell: bash
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
@@ -206,21 +233,22 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      # #8348: bash (containeren har ingen pwsh). Samme adfaerd som foer.
       - name: Obtain immutable accessibility baseline base
-        shell: pwsh
+        shell: bash
         run: |
-          git fetch --no-tags --depth=1 origin $env:AXE_BASE_SHA
-          if ($LASTEXITCODE -ne 0) { throw 'Cannot verify accessibility baseline against base commit' }
+          if ! git fetch --no-tags --depth=1 origin "$AXE_BASE_SHA"; then
+            echo "::error::Cannot verify accessibility baseline against base commit"
+            exit 1
+          fi
 
       - name: Test accessibility ratchet
         run: node --test ../scripts/tests/axe-ratchet.test.mjs
 
       # #3429: CI kører alle tre projekter (desktop-chromium, mobile-chromium,
-      # mobile-webkit). Webkit var droppet siden #1342 og var dermed den eneste
-      # browser hvis snapshots kunne drive uset - se playwright.config.js for
-      # hvorfor #1342's rodårsag ikke findes længere.
-      - name: Install Playwright browser
-        run: npx playwright install "${{ matrix.browser }}"
+      # mobile-webkit). #8348: browserne ligger i container-imaget, saa der er
+      # intet install-step; et versionsbrud mellem image og @playwright/test
+      # fanges statisk af snapshot-baseline.test.ts (naeste step).
 
       # #1342: byg frontend FØR Playwright, så webServer-kommandoen i CI kun er
       # den statiske server (én proces). `npm run build && npm run preview` i én
@@ -241,7 +269,7 @@ jobs:
       # committet sti). Den kører her fordi den er sekunder og skal fejle før
       # suiten, ikke efter.
       - name: Run e2e guards (static)
-        run: node --test tests/e2e/guards.test.js
+        run: node --test tests/e2e/guards.test.js tests/e2e/snapshot-baseline.test.ts
 
       # Selve lanen. `--grep-invert @flaky` er karantæne-mekanismen: en test
       # der tagges `@flaky` køres stadig (steppet nedenfor), men kan ikke gøre
@@ -329,9 +357,16 @@ jobs:
         if: always()
         shell: bash
         working-directory: .
+        # Exit 1 = diff (den aegte fejl); alt andet = git kunne ikke laese
+        # traeet (fx dubious ownership, #8348) og meldes som det, ikke som diff.
         run: |
-          if ! git diff --exit-code --stat; then
+          rc=0
+          git diff --exit-code --stat || rc=$?
+          if [ "$rc" -eq 1 ]; then
             echo "::error::e2e-suiten ændrede committede filer. Alt genereret skal skrives til test-results/ (se evidenceShotPath i frontend/tests/e2e/fixtures.js, #3554)."
+            exit 1
+          elif [ "$rc" -ne 0 ]; then
+            echo "::error::Vagten kunne ikke laese arbejdstraeet (git diff exit $rc), saa et rent trae kan ikke bekraeftes. Se git-fejlen ovenfor."
             exit 1
           fi
 
