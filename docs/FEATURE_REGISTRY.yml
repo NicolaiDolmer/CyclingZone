@@ -1663,13 +1663,13 @@ features:
     area: training
     title_en: Train now bonus
     title_da: Træn nu-bonus
-    state: beta
+    state: live
     flag: training_train_now_bonus
     ssot: docs/TRAINING_RULES.md
     epic: 7737
-    verified: 2026-11-16
-    decision: goer-faerdigt
-    decide_by: 2026-11-16
-    note: 'Beta i prod (migration #8268, læst 16/11): kun beta-testeres egne tryk får bonussen. Patch note 7.454. "on" kræver ejer-go.'
+    verified: 2026-11-17
+    decision: taend
+    decide_by: 2026-12-01
+    note: 'On for alle 17/11 efter ejer-go (#7741), læst tilbage i prod. Beta 16/11 (migration #8268). Svartid målt før tændingen; måling efter tændingen og fejlrate mangler.'
     roadmap_en: "Press Train now yourself and get 15% extra development that day."
     roadmap_da: "Tryk selv på Træn nu, og få 15 % ekstra udvikling den dag."
