@@ -10,3 +10,14 @@ export const V6TacticsSavedContext = createContext<(() => void) | null>(null);
 export function useV6TacticsSaved(): (() => void) | null {
   return useContext(V6TacticsSavedContext);
 }
+
+/**
+ * #8298 (wireframe v6c pkt. 28): Taktik fortæller løbssiden v6, hvor mange ryttere der
+ * kører assistentens plan på den åbne etape, så hero'ens fristlinje kan sige det
+ * ("7 riders ride the assistant's plan"). null uden for v6.
+ */
+export const V6TacticsSummaryContext = createContext<((summary: { stage: number; assistant: number } | null) => void) | null>(null);
+
+export function useV6TacticsSummary(): ((summary: { stage: number; assistant: number } | null) => void) | null {
+  return useContext(V6TacticsSummaryContext);
+}

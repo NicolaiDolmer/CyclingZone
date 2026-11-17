@@ -247,8 +247,9 @@ test("etapeplanens tabel og mobilkort tegner rute-match", () => {
 
 test("#7332 enkeltstart: tre trin, gamle valg vises som save, kopi og gem skriver aldrig grupetto/protect", () => {
   // Vaelgeren faar etapens trin (begge layouts), aldrig serverens raa liste.
-  // #8297: det fælles panels indsats-linje faar de samme trin (tredje forekomst).
-  assert.equal((source.match(/steps=\{steps\}/g) || []).length, 3);
+  // #8298: det fælles panels indsatstrin (bag "All orders") faar de samme trin.
+  assert.equal((source.match(/steps=\{steps\}/g) || []).length, 2);
+  assert.match(source, /steps: \{ steps, value: effort, labelFor: effortLabel\(rider\), blocked: effortReason\(rider\), editable \}/);
   assert.match(source, /const steps = effortsForStage\(roles\?\.valid_efforts, stageProfileType\);/);
   // Aaben etape: visningen gaar gennem effortForStage; laast etape viser det der blev sendt.
   assert.match(source, /: effortForStage\(intentionFor\(\{ matrix: draftMatrix, stageNumber: activeStage, riderId: rider\.rider_id \}\), stageProfileType\)\);/);
@@ -293,24 +294,34 @@ test("#8297: kun v6 vælger panelet; uden provider tegnes det klassiske kort uæ
   has(page, '<TacticsLayoutContext.Provider value="v6c">');
 });
 
-test("#8297: panelet bruger samme gem, kopi, holdplaner og spærrede valg som det klassiske kort", () => {
+test("#8297/#8298: panelet bruger samme gem, kopi, holdplaner og spærrede valg som det klassiske kort", () => {
   assert.ok(panelV6c.length > 0, "renderPanelV6c findes");
   has(panelV6c, "onSave: save,");
   has(panelV6c, "onCopy: copyToNextStage,");
   has(panelV6c, 'saveDisabled: !dirty || saving || status === "conflict",');
   has(panelV6c, "onApply={applyReadyPlan}");
-  has(panelV6c, "onPick={(step) => pickIntention(rider.rider_id, step)}");
+  has(panelV6c, "onStep={(id, step) => pickIntention(id, step)}");
   has(panelV6c, "const key = effortBlockedKey(rider, step);");
   has(panelV6c, "onClick={() => updateOrder((o) => setBreakawayStance(o, stance))}");
-  // Rollens vælger: samme som etapeplanens (én definition, samme pickRole).
-  has(panelV6c, "expanded: rolePickerFor(rider),");
-  has(source, "rolePickerFor={rolePickerFor}");
-  // Samme holdplan-regel og samme etapeplan som det klassiske kort.
-  has(panelV6c, "teamPlan={ready7864 && stagePlanOn ?");
-  has(panelV6c, "{stagePlanBoard}");
-  // Låst etape og udgået rytter: ingen indsats-linje, kun det der blev sendt.
-  has(panelV6c, "if (rider.abandoned) return renderIntentionCell(rider);");
-  has(panelV6c, "if (stageLocked) {");
+  // Rollens vælger: samme som det klassiske kort (én definition, samme pickRole).
+  has(panelV6c, "rolePicker: rolePickerFor(rider),");
+  has(panelV6c, "teamPlan={ready7864 && stagePlanOn ? {");
+  // Etapeplanen skrives som serverens kæde (setRiderPlan), valideret af modellen.
+  has(panelV6c, "updateOrder((o) => setRiderPlan(o, id, legsNext));");
+  has(panelV6c, "const legsNext = legsFromParts(next, parts, role, planRoute, droppedLeg(legs ?? shown));");
+  // Udgået rytter og låst etape: ingen vælgere, kun det der blev sendt.
+  has(panelV6c, "if (rider.abandoned) {");
+  has(panelV6c, "levelText: stageLocked ?");
+});
+
+test("#8298: låste ryttere beholder planen, og det valgte kort afledes af rytternes planer", () => {
+  has(source, "const applied = planWithLocks(plan); // #8298: låste ryttere røres ikke");
+  has(source, "setDraftMatrix((matrix) => applyTeamPlanRoles(matrix, stage, applied.roleChanges, applied.editableRiderIds));");
+  has(source, "order: withLockedRiders(plan.order, order, lockedSet),");
+  has(source, "return teamPlanFingerprint(applied.order, applied.roles) === currentFingerprint;");
+  // Teksterne ligger i det route-gatede namespace "tactics"; panelet venter på dem.
+  has(source, 'useTranslation(layout === "v6c" ? "tactics" : "races")');
+  has(panelV6c, "if (!tacticsTextReady) {");
 });
 
 test("#8297: panelet har præcis én guldknap, og den gemmer", () => {

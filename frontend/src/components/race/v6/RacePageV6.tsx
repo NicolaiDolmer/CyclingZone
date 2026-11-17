@@ -50,7 +50,8 @@ import V6RouteProfile from "./V6RouteProfile.tsx";
 import V6TacticsAfter from "./V6TacticsAfter.tsx";
 import V6YourDay from "./V6YourDay.tsx";
 import V6StartList from "./V6StartList.tsx"; // #7862
-import { V6TacticsSavedContext } from "./v6TacticsSaved.ts";
+import { V6TacticsSavedContext, V6TacticsSummaryContext } from "./v6TacticsSaved.ts";
+import { useTranslation as useTacticsTranslation } from "react-i18next";
 import { TacticsLayoutContext } from "../../tactics/tacticsLayout.ts"; // #8297
 import { Button, EmptyState, FlagIcon } from "./v6Ui.ts";
 import V6RaceHeroCard, { type RacePageV6Hero } from "./V6RaceHeroCard.tsx";
@@ -165,6 +166,12 @@ export default function RacePageV6(props: RacePageV6Props) {
   // #7778: et lykket gem i Taktik tæller op og henter igen, så striben følger med straks.
   const [tacticsSaves, setTacticsSaves] = useState(0);
   const onTacticsSaved = useCallback(() => setTacticsSaves((n) => n + 1), []);
+  // #8298 (wireframe v6c pkt. 28): "N riders ride the assistant's plan" i hero'ens fristlinje.
+  const [tacticsSummary, setTacticsSummary] = useState<{ stage: number; assistant: number } | null>(null);
+  const onTacticsSummary = useCallback((next: { stage: number; assistant: number } | null) => {
+    setTacticsSummary((cur) => (cur?.stage === next?.stage && cur?.assistant === next?.assistant ? cur : next));
+  }, []);
+  const { t: tTactics, ready: tacticsTextReady } = useTacticsTranslation("tactics", { useSuspense: false });
   const savedStages = useV6SavedStages(
     raceId,
     isStageRace && !raceFinished && activeRiders(riders).length > 0,
@@ -207,9 +214,9 @@ export default function RacePageV6(props: RacePageV6Props) {
           />
         ) : null}
         {/* #8297: editoren tegnes som det fælles taktikpanel (wireframe v6c) under v6. */}
-        <TacticsLayoutContext.Provider value="v6c"><V6TacticsSavedContext.Provider value={onTacticsSaved}>
+        <TacticsLayoutContext.Provider value="v6c"><V6TacticsSavedContext.Provider value={onTacticsSaved}><V6TacticsSummaryContext.Provider value={onTacticsSummary}>
           {renderTactics ? renderTactics(tacticsStage) : tacticsSlot}
-        </V6TacticsSavedContext.Provider></TacticsLayoutContext.Provider>
+        </V6TacticsSummaryContext.Provider></V6TacticsSavedContext.Provider></TacticsLayoutContext.Provider>
       </div>
     );
   } else if (activeTab === "start") {
@@ -268,7 +275,7 @@ export default function RacePageV6(props: RacePageV6Props) {
   return (
     <div data-race-page data-race-page-version="v6" className="flex flex-col gap-[14px]">
       {/* Udgave E: ét kort med striben som bund. Guld kun i stregen øverst og på den ene knap. */}
-      <V6RaceHeroCard hero={hero} strip={strip ? <V6StageStrip cells={stripCells} profileByStage={profileByStage} selected={strip.selected} onSelect={selectFromStrip} /> : null} />
+      <V6RaceHeroCard hero={hero} actionNote={tacticsSummary && tacticsSummary.assistant > 0 && tacticsTextReady ? tTactics("hero.assistant", { count: tacticsSummary.assistant }) : null} strip={strip ? <V6StageStrip cells={stripCells} profileByStage={profileByStage} selected={strip.selected} onSelect={selectFromStrip} /> : null} />
       {/* Fanerne står 8 px under kortet (gap 14 minus 14, plus 8 px luft i den klæbende række). */}
       <div className="sticky top-0 z-20 -mt-[14px] -mb-2 bg-cz-body pt-2 pb-2">
         <Tabs value={activeTab} onChange={(v) => onChangeTab(v as RacePageV6Tab)}>

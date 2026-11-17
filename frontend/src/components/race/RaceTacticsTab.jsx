@@ -143,9 +143,15 @@ import { saveBadge } from "../tactics/tacticsPanelModel.ts";
 // Panelets dele hentes foerst, naar panelet vises (kun under v6): den gamle sides stykke vokser ikke.
 const loadTactics = () => import("../tactics/index.ts");
 const TacticsPanel = lazyWithRetry(() => loadTactics().then((m) => ({ default: m.TacticsPanel })));
-const TacticsRiderTable = lazyWithRetry(() => loadTactics().then((m) => ({ default: m.TacticsRiderTable })));
-const EffortSegmented = lazyWithRetry(() => loadTactics().then((m) => ({ default: m.EffortSegmented })));
+const TacticsBoardV6c = lazyWithRetry(() => loadTactics().then((m) => ({ default: m.TacticsBoardV6c })));
 const TeamPlanCards = lazyWithRetry(() => loadTactics().then((m) => ({ default: m.TeamPlanCards })));
+// #8298: wireframe v6c's regler (rutedele, Easy | Medium | Hard, Day load, låsen). Ren logik, lille.
+import {
+  dayLoadOfEffort, dayLoadOfLegs, droppedLeg, effortForLevel, legsFromParts, levelOfEffort, levelOfLegs, levelPlans,
+  partTaskOptions, partTasks, routeParts, setPartTask, todayLine, withLockedRiders,
+} from "../tactics/tacticsV6cModel.ts";
+import { isLuxuryHelperRole, isTimeTrialProfile, setRiderPlan, suggestStagePlan, TASK_ROLES, withJerseyHunt7855 } from "./StagePlanModel.ts";
+import { waypointsFor } from "../../lib/stageRouteProfile.js";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -350,6 +356,11 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   const { t } = useTranslation("races");
   // #8297: "v6c" under løbssiden v6 (provider i RacePageV6), ellers "classic" = uændret.
   const layout = useTacticsLayout();
+  // #8298: panelets tekster (eget namespace, hentes først med panelet). Klassisk = races (ubrugt).
+  const { t: tt, ready: tacticsTextReady } = useTranslation(layout === "v6c" ? "tactics" : "races");
+  // #8298: "Simple" (standard) | "All orders", og låste ryttere pr. etape ("<etape>|<rytter>").
+  const [allOrders, setAllOrders] = useState(false);
+  const [lockedRiders, setLockedRiders] = useState(/** @type {Record<string, boolean>} */ ({}));
   // #6067: løbets regel-revision, bundet til DET løb den er læst for. Et skift
   // af raceId kan derfor aldrig arve et andet løbs revision, og en fejlet
   // læsning er legacy: "legacy" indtil læsningen for netop dette løb siger andet.
@@ -855,7 +866,28 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     TEAM_PLAN_KINDS.map((kind) => [kind, ready7864 && stagePlanOn ? buildTeamPlan(kind, { riders: readyRiders, route: readyRoute, order, locked: stageLocked, sourceRoles: readySourceRoles }) : null]),
   ));
   const readyRoles = Object.fromEntries(riders.map((rider) => [rider.rider_id, planRole(roleFor(rider))]));
-  const selectedTeamPlan = readyChoice && readyChoice.raceId === raceId && readyChoice.stage === activeStage && readyChoice.fingerprint === teamPlanFingerprint(order, readyRoles) ? readyChoice.kind : null;
+  // #8298: låste ryttere på den åbne etape beholder deres plan, når holdplanen skiftes (ejer 17/11, valg A).
+  const lockedSet = new Set(riders.filter((r) => lockedRiders[`${activeStage}|${r.rider_id}`] === true).map((r) => r.rider_id));
+  /** Holdplanen som den lægges på kladden: låste ryttere uændrede (ordre og rolle). */
+  const planWithLocks = (plan) => ({
+    order: withLockedRiders(plan.order, order, lockedSet),
+    roles: { ...plan.roles, ...Object.fromEntries([...lockedSet].map((id) => [id, readyRoles[id]])) },
+    roleChanges: plan.roleChanges.filter((change) => !lockedSet.has(change.riderId)),
+    editableRiderIds: plan.editableRiderIds.filter((id) => !lockedSet.has(id)),
+  });
+  const currentFingerprint = teamPlanFingerprint(order, readyRoles);
+  // #8298 (ejer 17/11): det valgte kort afledes af rytternes planer, så det huskes efter gem.
+  // Valget i denne fane (readyChoice) vinder, så længe kladden stadig svarer til det.
+  const selectedTeamPlan = readyChoice && readyChoice.raceId === raceId && readyChoice.stage === activeStage && readyChoice.fingerprint === currentFingerprint
+    ? readyChoice.kind
+    : (layout === "v6c" && ready7864 && stagePlanOn
+      ? TEAM_PLAN_KINDS.find((kind) => {
+        const plan = readyPlans[kind];
+        if (!plan) return false;
+        const applied = planWithLocks(plan);
+        return teamPlanFingerprint(applied.order, applied.roles) === currentFingerprint;
+      }) ?? null
+      : null);
   const savedStageNumbers = new Set([...(orders?.savedStageNumbers ?? []), ...(orders?.orders ?? []).map(row => row.stage_number), ...(Array.isArray(roles.overrides) ? roles.overrides : []).map(row => row.stage_number)]);
   const manualDraftStages = new Set([...changedStages(draftMatrix, initialMatrix), ...stageNumbers.filter(sn => JSON.stringify(ordersByStage[sn]) !== JSON.stringify(initialOrdersByStage[sn]))]);
   const sameTypePlans = ready7864 && stagePlanOn && orders?.atomicStageSave === true && selectedTeamPlan && activeStage != null
@@ -877,10 +909,11 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     const stage = activeStage;
     if (!ready7864 || saving || stageLocked || stage == null || stage <= stagesCompleted) return;
     detachBulkStages([stage]);
-    setDraftMatrix((matrix) => applyTeamPlanRoles(matrix, stage, plan.roleChanges, plan.editableRiderIds));
-    updateOrder(() => plan.order);
+    const applied = planWithLocks(plan); // #8298: låste ryttere røres ikke
+    setDraftMatrix((matrix) => applyTeamPlanRoles(matrix, stage, applied.roleChanges, applied.editableRiderIds));
+    updateOrder(() => applied.order);
     setOpenRoleRiderId(null);
-    setReadyChoice({ raceId, stage, kind: plan.kind, fingerprint: teamPlanFingerprint(plan.order, plan.roles), sourceRoles: plan.sourceRoles });
+    setReadyChoice({ raceId, stage, kind: plan.kind, fingerprint: teamPlanFingerprint(applied.order, applied.roles), sourceRoles: plan.sourceRoles });
   }
   const leadoutCount = ((stagePlanOn ? withStagePlanFields(order) : order).riders ?? []).filter((r) => r.leadout).length; // #7003: planens tog
 
@@ -1211,76 +1244,138 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     />
   ) : null;
 
-  // #8297: det fælles panel (wireframe v6c) med PRÆCIS samme tilstand og handlinger som
-  // det klassiske kort ovenfor: samme gem (save), samme kopi, samme holdplaner, samme
-  // spærrede valg. Kun visningen er wireframets. Indsatsen er ÉN linje, let til venstre
-  // og hård til højre (ejer 16/11, #7535); trinnene er stadig etapens egne (steps).
+  // #8297/#8298: det fælles panel (wireframe v6c) med PRÆCIS samme tilstand og handlinger som
+  // det klassiske kort ovenfor: samme gem (save), samme kopi, samme holdplaner, samme spærrede
+  // valg. Visningen og teksterne er wireframets; reglerne for rutedele, Easy | Medium | Hard,
+  // Day load og låsen bor i tactics/tacticsV6cModel.ts.
   function renderPanelV6c() {
+    if (!tacticsTextReady) {
+      return <Section><SectionHeader title={t("racePage.tactics.title")} /><SkeletonLines lines={6} /></Section>;
+    }
+    const timeTrial = isTimeTrialProfile(stageProfileType);
+    const planRoute = withJerseyHunt7855(readyRoute, orders?.jerseyHunt7855 === true);
+    const namedClimbs = waypointsFor(profileByStage[activeStage] ?? null)
+      .filter((w) => w.kind === "kom")
+      .map((w) => ({ km: Number(w.km), name: w.name ?? null, summit: w.summit_finish === true, category: w.category }));
+    const parts = stagePlanOn ? routeParts(planRoute, namedClimbs) : [];
+    const decisiveClimb = [...namedClimbs].reverse().find((c) => c.category !== "4")?.name ?? null;
+    const surname = (name) => (name ? String(name).trim().split(/\s+/).slice(-1)[0] : null);
+    const activePlan = selectedTeamPlan ? readyPlans[selectedTeamPlan] : null;
+    const leaderName = surname(activePlan?.target?.name ?? (selectedTeamPlan === "sprint" ? sprintCaptain?.name : captain?.name) ?? null);
+    const lockKey = (id) => `${activeStage}|${id}`;
     const effortLabel = (rider) => (step) => (step === "protect" ? protectText(t, roleFor(rider), "step") : t(`intention.step.${step}`));
     const effortReason = (rider) => (step) => {
       const key = effortBlockedKey(rider, step);
       return key ? t(key) : null;
     };
-    const todayFor = (rider) => {
-      if (rider.abandoned) return "—"; // indsats-cellen siger det allerede
+    const roleEditableFor = (rider) => !stageLocked && !rider.abandoned && editableStages.length > 0 && !saving;
+    const planEditable = (rider) => !stageLocked && !rider.abandoned && !saving;
+    let assistantCount = 0;
 
+    const boardRiders = visibleRiders.map((rider) => {
+      const id = rider.rider_id;
+      const tacticsRoleValue = roleFor(rider);
+      const role = planRole(tacticsRoleValue);
       const effort = effortFor(rider);
-      if (effort === DEFAULT_EFFORT) return t("intention.nothingSet");
-      const role = roleFor(rider);
-      const todayText = effort === "protect" ? protectText(t, role, "today") : effort === "save" && isIndividualTimeTrialProfile(stageProfileType) ? t("intention.todayItt.save") : t(`intention.today.${effort}`);
-      if (stageLocked) return isOneDay ? t("racePage.tactics.whatYouSetRaceDay", { today: todayText }) : t("racePage.tactics.whatYouSet", { number: activeStage, today: todayText });
-      return t("intention.line", { role: t(`intention.roleWord.${role}`), today: todayText });
-    };
-    const effortCell = (rider, fill) => {
-      if (rider.abandoned) return renderIntentionCell(rider);
-      // Låst etape: kun mærket med det der blev sendt; sætningen står i "I dag".
-      if (stageLocked) {
-        const sent = effortFor(rider);
-        return <span className="text-xs text-cz-2">{sent === DEFAULT_EFFORT ? t("intention.roleDefault") : effortLabel(rider)(sent)}</span>;
-      }
-      return (
-        <EffortSegmented
-          label={`${t("tacticsOrders.effortLabel")}: ${rider.name || "—"}`}
-          steps={steps}
-          value={effortFor(rider)}
-          labelFor={effortLabel(rider)}
-          blockedReason={effortReason(rider)}
-          disabled={saving}
-          onPick={(step) => pickIntention(rider.rider_id, step)}
-          fill={fill}
-        />
-      );
-    };
-    const rows = stagePlanOn ? [] : visibleRiders.map((rider) => {
-      return {
-        id: rider.rider_id,
+      const base = {
+        id,
         name: rider.name,
-        // #8298: flag, rating, form og traethed nu fra stage-roles (samme tal som Holdfanen, #4613).
         nation: typeof rider.nationality_code === "string" ? rider.nationality_code.toLowerCase() : null,
+        abandoned: rider.abandoned === true,
+        roleLabel: t(`tacticsOrders.roleLabel.${roleKey(tacticsRoleValue)}`),
+        roleOpen: openRoleRiderId === id,
+        roleEditable: roleEditableFor(rider),
+        rolePicker: rolePickerFor(rider),
         rating: typeof rider.rating === "number" ? rider.rating : null,
         form: typeof rider.form === "number" ? Math.round(rider.form) : null,
         fatigue: typeof rider.fatigue === "number" ? Math.round(rider.fatigue) : null,
-        role: renderRoleCell(rider, { inline: true }),
-        roleMobile: renderRoleCell(rider, { mobile: true }),
-        routeMatch: renderRouteMatchCell(rider),
-        routeMatchNumber: renderRouteMatchCell(rider, { numberOnly: true }),
+        routeMatch: stageRouteMatch(rider, activeStage),
         timeLimitMark: renderTimeLimitMark(rider),
-        // #8298: EEN linje i tabellen; den tomme tilstand er det korte "Rollens standard", hele saetningen i title.
-        today: (() => {
-          const full = todayFor(rider);
-          const short = !rider.abandoned && effortFor(rider) === DEFAULT_EFFORT ? t("intention.roleDefaultTag") : full;
-          return <span className="block max-w-[110px] truncate" title={full}>{short}</span>;
-        })(),
-        effort: effortCell(rider, false),
-        effortMobile: effortCell(rider, true),
-        orders: showOrders ? renderOrdersCell(rider) : null,
-        expanded: rolePickerFor(rider),
+        lock: rider.abandoned ? null : { on: lockedSet.has(id), disabled: stageLocked || saving },
+      };
+      if (rider.abandoned) {
+        return { ...base, today: { key: "abandoned", text: t("intention.riderAbandoned") }, level: null, levelEditable: false, levelText: "—", parts: null, dropped: null, steps: null, extras: [], dayLoad: null };
+      }
+
+      if (stagePlanOn) {
+        const legs = (() => { const p = orderByRider.get(id)?.plan; return Array.isArray(p) && p.length ? p : null; })();
+        const assistant = suggestStagePlan({ role, route: planRoute, teamHasSprintCaptain, luxuryHelper: isLuxuryHelperRole(tacticsRoleValue) });
+        if (legs && assistant && JSON.stringify(legs) === JSON.stringify(assistant)) assistantCount += 1;
+        const teamLegs = activePlan?.order?.riders?.find((r) => r.rider_id === id)?.plan;
+        const medium = Array.isArray(teamLegs) && teamLegs.length ? teamLegs : assistant;
+        const plans = levelPlans(role, planRoute, parts, medium, namedClimbs.length > 0);
+        const shown = legs ?? medium ?? plans.easy;
+        const tasks = partTasks(shown, planRoute, parts) ?? parts.map(() => "stay_sheltered");
+        const editable = planEditable(rider);
+        const writeTasks = (next) => {
+          const legsNext = legsFromParts(next, parts, role, planRoute, droppedLeg(legs ?? shown));
+          updateOrder((o) => setRiderPlan(o, id, legsNext));
+        };
+        const firstOff = (() => { const m = partTasks(medium, planRoute, parts)?.[0]; return m && m !== "breakaway" ? m : "stay_sheltered"; })();
+        const lastOff = (() => { const m = partTasks(medium, planRoute, parts); const v = m?.[m.length - 1]; return v && v !== "sprint_train" ? v : "ride_in"; })();
+        const breakOn = tasks[0] === "breakaway";
+        const trainOn = tasks.includes("sprint_train");
+        const trainReason = tacticsRoleValue === "sprint_captain" ? tt("orders.trainSelf")
+          : !TASK_ROLES.sprint_train.includes(role) ? tt("orders.notForRole")
+            : !teamHasSprintCaptain ? tt("orders.noSprintCaptain")
+              : breakOn ? tt("orders.trainAfterBreak") : null;
+        const breakReason = TASK_ROLES.breakaway.includes(role) ? null : tt("orders.notForRole");
+        return {
+          ...base,
+          today: legs ? todayLine(legs, decisiveClimb, leaderName) : { key: "effort", effort },
+          level: legs ? levelOfLegs(legs, plans) : "medium",
+          levelEditable: editable,
+          levelText: stageLocked ? (legs ? null : t("intention.roleDefault")) : null,
+          parts: tasks.map((task, index) => ({ task, options: editable ? partTaskOptions(tasks, index, parts, role, planRoute) : [task], editable })),
+          dropped: droppedLeg(shown)?.task ?? null,
+          steps: null,
+          extras: [
+            { key: "tryBreak", on: breakOn, disabled: !editable || breakReason != null, reason: breakReason, toggle: () => writeTasks(setPartTask(tasks, 0, breakOn ? firstOff : "breakaway")) },
+            { key: "sprintTrain", on: trainOn, disabled: !editable || (!trainOn && trainReason != null), reason: trainOn ? null : trainReason, toggle: () => writeTasks(trainOn ? tasks.map((x) => (x === "sprint_train" ? lastOff : x)) : setPartTask(tasks, tasks.length - 1, "sprint_train")) },
+          ],
+          dayLoad: legs ? dayLoadOfLegs(legs) : dayLoadOfEffort(effort, false),
+          onLevel: (level) => { const next = plans[level]; if (next) updateOrder((o) => setRiderPlan(o, id, next)); },
+          onPart: (index, task) => writeTasks(setPartTask(tasks, index, task)),
+        };
+      }
+
+      // Uden etapeplan (tidskørsel, eller planen er slået fra): Easy | Medium | Hard er indsats-trin.
+      const ro = orderByRider.get(id) || roleDefaultFor(defaultOrderForStage(orders, stageProfileType), id);
+      const roadOn = showOrders && roadOrdersAvailable(stageProfileType);
+      const riderState = { effort, try_break: ro.try_break === true, leadout: ro.leadout === true };
+      const breakBlocked = roadOn ? blockedReasonKey("try_break", riderState, tacticsRoleValue, { teamHasSprintCaptain }) : null;
+      const trainBlocked = roadOn ? (tacticsRoleValue === "sprint_captain" ? "trainSelf" : !teamHasSprintCaptain ? "noSprintCaptain" : blockedReasonKey("leadout", riderState, tacticsRoleValue, { teamHasSprintCaptain })) : null;
+      const reasonText = (key) => (key == null ? null : key === "trainSelf" || key === "noSprintCaptain" ? tt(`orders.${key}`) : t(key));
+      const editable = !stageLocked && !saving;
+      return {
+        ...base,
+        today: { key: "effort", effort },
+        level: levelOfEffort(effort),
+        levelEditable: editable,
+        levelText: stageLocked ? (effort === DEFAULT_EFFORT ? t("intention.roleDefault") : effortLabel(rider)(effort)) : null,
+        parts: null,
+        dropped: null,
+        steps: { steps, value: effort, labelFor: effortLabel(rider), blocked: effortReason(rider), editable },
+        extras: roadOn ? [
+          { key: "tryBreak", on: ro.try_break === true, disabled: !editable || !!breakBlocked, reason: reasonText(breakBlocked), toggle: () => updateOrder((o) => toggleTryBreak(o, id)) },
+          { key: "sprintTrain", on: ro.leadout === true, disabled: !editable || (ro.leadout !== true && !!trainBlocked), reason: reasonText(trainBlocked), toggle: () => updateOrder((o) => toggleLeadout(o, id)) },
+        ] : [],
+        dayLoad: dayLoadOfEffort(effort, timeTrial),
+        onLevel: (level) => {
+          const step = effortForLevel(level, steps);
+          if (step && !effortBlockedKey(rider, step)) pickIntention(id, step);
+        },
+        onPart: () => {},
       };
     });
+    const byId = new Map(boardRiders.map((r) => [r.id, r]));
+
     const teamShown = showOrders && roadOrdersAvailable(stageProfileType);
+    const captainSurname = surname(captain?.name ?? null);
     const teamBar = teamShown ? (
       <>
-        <span className="text-xs text-cz-3">{t(ordersGc ? "tacticsOrders.ordersGc.stanceLabel" : "tacticsOrders.breakawayLabel")}</span>
+        <b className="font-semibold text-cz-1">{tt("team.label")}</b>
+        <span className="text-xs text-cz-3">{tt("team.question")}</span>
         <div role="group" aria-label={t("tacticsOrders.breakawayAria")} className="inline-flex max-w-full flex-wrap overflow-hidden rounded-cz border border-cz-border bg-cz-card">
           {BREAKAWAY_STANCES.map((stance) => (
             <button
@@ -1293,18 +1388,15 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
                 order.breakaway_stance === stance ? "bg-cz-accent/10 font-semibold text-cz-accent-t" : "bg-cz-card font-medium text-cz-2 hover:text-cz-1"
               }`}
             >
-              {t(breakawayStanceLabelKey(stance, rulesRevision))}
+              {tt(`team.${stance}`)}
             </button>
           ))}
         </div>
-        <span className="text-xs text-cz-3">{/** @type {string} */ (t(plan.key, plan.params))}</span>
         <span className="text-xs text-cz-3">
-          {teamHasSprintCaptain
-            ? t("racePage.tactics.sprintTrainRiders", { count: leadoutCount, name: sprintCaptain?.name || "—" })
-            : t("racePage.tactics.sprintTrainNone")}
+          {order.breakaway_stance === "neutral"
+            ? (captainSurname ? tt("team.reacts", { name: captainSurname }) : tt("team.reactsNoLeader"))
+            : /** @type {string} */ (t(plan.key, plan.params))}
         </span>
-        {ordersGc && <span className="basis-full text-2xs text-cz-3">{t("tacticsOrders.ordersGc.gcNote")}</span>}
-        {ordersGc && <span data-testid="orders-gc-break-note" className="basis-full text-2xs text-cz-3">{t("tacticsOrders.ordersGc.breakNote")}</span>}
       </>
     ) : null;
     const badge = saveBadge({ status: /** @type {import("../tactics/tacticsPanelModel.ts").TacticsSaveStatus} */ (status), dirty });
@@ -1317,69 +1409,106 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
           <TacticsSaveStatus t={t} parts={saveOutcome.parts} conflict={status === "conflict"} busy={saving} onLoadNew={loadNewAfterConflict} onKeepMine={keepMine}
             reason={status === "partial" && errorKey && i18n.exists(`races:intention.errors.${errorKey}`) ? t(`intention.errors.${errorKey}`) : null} />
         )}
-        {status === "saved" && <p className="m-0 text-xs text-cz-success">{t("intention.saved")}</p>}
-        {status === "idle" && dirty && <p className="m-0 text-xs text-cz-2">{t("intention.unsaved")}</p>}
-        {!(ready7864 && stagePlanOn) && <p className="m-0 text-xs tabular-nums text-cz-3">{untouchedLine ? `${footerLine} · ${untouchedLine}` : /** @type {string} */ (footerLine)}</p>}
+        {status !== "error" && status !== "partial" && status !== "conflict" && <p className="m-0 text-xs text-cz-2">{tt("footer.notSavedLine")}</p>}
+      </div>
+    );
+    const costWords = ["easy", "medium", "hard", "veryHard"];
+    const costClass = { easy: "text-cz-success", medium: "text-cz-1", hard: "text-cz-warning", veryHard: "text-cz-danger" };
+    const legend = (
+      <>
+        <p className="m-0 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span>
+            {tt("legend.cost")}{" "}
+            {costWords.map((w, i) => (
+              <span key={w}>{i > 0 && " · "}<span className={`font-semibold ${costClass[w]}`}>{t(`stagePlanReady.price.${w}`)}</span></span>
+            ))}
+          </span>
+          <span>
+            {tt("legend.dayLoad")}{" "}
+            {["easy", "light", "normal", "hard", "veryHard"].map((w, i) => (
+              <span key={w}>{i > 0 && " · "}<span className={w === "veryHard" ? "text-cz-danger" : w === "hard" ? "text-cz-warning" : "text-cz-2"}>{tt(`dayLoad.${w}`)}</span></span>
+            ))}
+          </span>
+        </p>
+        <p className="m-0">{tt("legend.sort")}</p>
+      </>
+    );
+    const ordersToggle = (
+      <div role="group" aria-label={tt("panel.ordersView")} className="inline-flex overflow-hidden rounded-cz border border-cz-border bg-cz-card">
+        {[false, true].map((all) => (
+          <button
+            key={String(all)}
+            type="button"
+            aria-pressed={allOrders === all}
+            onClick={() => setAllOrders(all)}
+            className={`border-s border-cz-border px-2.5 py-1.5 text-xs first:border-s-0 [@media(max-width:640px),(pointer:coarse)]:min-h-11 ${allOrders === all ? "bg-cz-accent/10 font-semibold text-cz-accent-t" : "font-medium text-cz-2 hover:text-cz-1"}`}
+          >
+            {tt(all ? "panel.allOrders" : "panel.simple")}
+          </button>
+        ))}
       </div>
     );
     return (
       <Suspense fallback={<Section><SectionHeader title={t("racePage.tactics.title")} /><SkeletonLines lines={6} /></Section>}>
       <TacticsPanel
-        t={t}
         route={routeCard}
-        teamPlan={ready7864 && stagePlanOn ? (
+        teamPlan={ready7864 && stagePlanOn ? {
+          title: tt("panel.todaysPlan"),
+          meta: tt("panel.planMeta"),
+          body: (
+            <>
+              <TeamPlanCards
+                groupLabel={tt("panel.todaysPlan")}
+                plans={readyPlans}
+                active={selectedTeamPlan}
+                disabled={saving || stageLocked}
+                name={(kind, p) => (p?.target?.name && ["gc", "stage", "sprint"].includes(kind) ? t(`stagePlanReady.${kind}.named`, { name: surname(p.target.name) }) : t(`stagePlanReady.${kind}.name`))}
+                description={(kind) => tt(`plan.${kind}`)}
+                unavailable={(kind) => (kind === "gc" ? t("tacticsOrders.plan.noCaptain") : kind === "sprint" ? t("racePage.tactics.sprintTrainNone") : null)}
+                onApply={applyReadyPlan}
+              />
+              {multiStageShown && (
+                <div data-testid="team-plan-multi-stage" className="mt-2 flex flex-wrap items-center gap-2 text-xs text-cz-2">{multiStageRow}</div>
+              )}
+            </>
+          ),
+        } : null}
+        title={isOneDay ? tt("panel.ordersForRaceDay") : tt("panel.ordersFor", { number: activeStage })}
+        actions={(
           <>
-            <TeamPlanCards t={t} plans={readyPlans} active={selectedTeamPlan} disabled={saving || stageLocked} onApply={applyReadyPlan} />
-            {multiStageShown && (
-              <div data-testid="team-plan-multi-stage" className="mt-2 flex flex-wrap items-center gap-2 text-xs text-cz-2">{multiStageRow}</div>
-            )}
-          </>
-        ) : null}
-        title={ordersColumn}
-        meta={!stageLocked && lockTime && !isOneDay ? t("racePage.tactics.stageMeta", { number: activeStage, time: lockTime }) : null}
-        intro={(
-          <>
-            <p className="m-0 mt-0.5 text-xs text-cz-3">{t(isOneDay ? "racePage.tactics.helpRaceDay" : scopeChoice ? "racePage.tactics.helpScoped" : "racePage.tactics.help")}</p>
-            {ordersGc && (
-              <p data-testid="race-rules-revision" className="m-0 mt-1 text-xs text-cz-2">
-                <span className="text-cz-3">{t("tacticsOrders.ordersGc.rulesLabel")}:</span>{" "}
-                <span className="font-medium text-cz-1">{t("tacticsOrders.ordersGc.rulesName")}</span>
-                {" · "}
-                <Link to="/help?section=raceSelection" className="text-cz-accent-t hover:underline">{t("tacticsOrders.ordersGc.rulesHelp")}</Link>
-              </p>
-            )}
+            {ordersToggle}
+            <Link to="/help?section=raceSelection" className="inline-flex h-8 items-center rounded-cz border border-cz-border bg-cz-card px-3 text-xs font-semibold text-cz-1 hover:bg-cz-subtle [@media(max-width:640px),(pointer:coarse)]:h-11">
+              {tt("panel.howItWorks")}
+            </Link>
           </>
         )}
-        note={toolbarNote}
+        note={stageLocked ? toolbarNote : null}
         team={teamBar}
         teamNote={showOrders && !roadOrdersAvailable(stageProfileType)
           ? <p data-testid="time-trial-no-road-orders" className="m-0 mb-2 text-xs text-cz-2">{t("tacticsOrders.timeTrialNoRoadOrders")}</p>
           : null}
-        board={stagePlanOn ? <div className="-mx-4 sm:-mx-5">{stagePlanBoard}</div> : (
-          <TacticsRiderTable
-            rows={rows}
-            showOrders={showOrders}
-            columns={{
-              rider: t("intention.colRider"),
-              role: t("intention.colRole"),
-              rating: t("intention.colRating"),
-              form: t("selection.form"),
-              routeMatch: routeMatchColumn,
-              fatigue: t("selection.fatigue"),
-              today: t("stagePageV2.today"),
-              effort: t("tacticsOrders.effortLabel"),
-              orders: ordersColumn,
-            }}
-            routeMatchTitle={t("racePage.tactics.sortRouteMatch")}
-            mobileRouteMatchLabel={t("selection.routeMatch")}
-            sortDir={routeSortDir}
-            onSort={toggleRouteSort}
+        board={(
+          <TacticsBoardV6c
+            riders={boardRiders.map(({ onLevel: _l, onPart: _p, extras, ...rest }) => ({ ...rest, extras: extras.map(({ toggle: _t, ...x }) => x) }))}
+            partLabels={parts.map((p) => p.label)}
+            allOrders={allOrders}
+            summary={stagePlanOn && activeStage != null ? { stage: activeStage, assistant: assistantCount } : null}
+            taskLabel={(task) => t(`stagePlan.task.${task}`)}
+            costLabel={(cost) => t(`stagePlanReady.price.${cost}`)}
+            onRole={(id) => { setOpenRoleRiderId(openRoleRiderId === id ? null : id); setOpenRiderId(null); setRoleScopeChoice("rest"); }}
+            onLevel={(id, level) => byId.get(id)?.onLevel(level)}
+            onPart={(id, index, task) => byId.get(id)?.onPart(index, task)}
+            onStep={(id, step) => pickIntention(id, step)}
+            onExtra={(id, key) => byId.get(id)?.extras.find((x) => x.key === key)?.toggle()}
+            onLock={(id) => setLockedRiders((cur) => ({ ...cur, [lockKey(id)]: !cur[lockKey(id)] }))}
           />
         )}
+        legend={legend}
         footer={{
           locked: stageLocked,
           lockedNote: t("tacticsOrders.lockedNote"),
           badge,
+          badgeLabels: { saved: t("racePage.tactics.saveStatus.saved"), notSaved: t("racePage.tactics.saveStatus.notSaved") },
           statusLine,
           copyLabel: nextStage != null ? t("intention.copyToStage", { number: nextStage }) : null,
           onCopy: copyToNextStage,
