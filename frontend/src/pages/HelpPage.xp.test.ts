@@ -169,7 +169,7 @@ test("XP-teksterne findes paa en og da, uden em-dash, vi-stemme eller nye tal", 
     for (const [id, oldText, xpText] of pairs) {
       const body = String(xpText?.text ?? xpText?.a ?? "");
       assert.ok(body.length > 0 && (xpText?.title || xpText?.q), `${lng}: ${id} mangler`);
-      assert.match(body, /XP|built for|bygget til/, `${lng}: ${id} beskriver ikke XP-modellen`);
+      assert.match(body, /XP|built for|bygget til|per date|pr. dato/, `${lng}: ${id} beskriver ikke XP-modellen`);
       assert.doesNotMatch(body, /—/, `${lng}: ${id} har em-dash`);
       assert.doesNotMatch(body, lng === "en" ? /\bwe\b/i : /\bvi\b/i, `${lng}: ${id} bruger vi-stemmen`);
       // Kun datogrænsens +1/+2 (spillerregel, ikke talfil) og tal fra den gamle tekst.
