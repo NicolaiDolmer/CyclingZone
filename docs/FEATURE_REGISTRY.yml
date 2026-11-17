@@ -518,14 +518,14 @@ features:
     area: race-day
     title_en: Spoiler shield
     title_da: Spoiler-skjold
-    state: building
+    state: beta
     flag: spoiler_shield_7859
-    decision: ejer-beslutning
+    decision: taend
     decide_by: 2026-11-30
     epic: 7778
     ssot: docs/RACE_ENGINE_RULES.md
-    verified: 2026-11-16
-    note: "#7859: seedes off."
+    verified: 2026-11-17
+    note: "#7859: beta 17/11 efter ejer-go; løbssiden skjuler først med race_page_v6."
 
   - id: rider-hover-card
     area: squad
