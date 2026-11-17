@@ -16,7 +16,7 @@ export default function LeavingAfterRaceBadge({ pending, className = "" }: { pen
     <span
       data-testid="leaving-after-race-badge"
       title={text}
-      className={`inline-flex items-center text-3xs font-semibold leading-none px-1.5 py-0.5 rounded shrink-0 bg-cz-warning-bg text-cz-warning ${className}`}
+      className={`inline-flex items-center text-3xs font-semibold leading-tight px-1.5 py-0.5 rounded-cz min-w-0 max-w-full break-words bg-cz-warning-bg text-cz-warning ${className}`}
     >
       {text}
     </span>

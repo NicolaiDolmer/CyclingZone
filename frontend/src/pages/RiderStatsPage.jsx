@@ -2059,7 +2059,7 @@ export default function RiderStatsPage() {
                   </p>
                 )}
                 {/* #8153: frigivelsen er bestilt midt i et etapeloeb; han forlader holdet efter sidste etape. */}
-                {isMyRider && !isRetired && <OwnRiderLeavingBadge riderId={/** @type {any} */ (rider).id} refreshKey={rider} className="w-full justify-center py-2 text-xs" />}
+                {isMyRider && !isRetired && <OwnRiderLeavingBadge riderId={/** @type {any} */ (rider).id} refreshKey={rider} className="w-full justify-center text-center py-2 text-xs" />}
                 {isRetired && (
                   <p className="w-full text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-cz border border-cz-border">
                     {t("blocked.retired")}
