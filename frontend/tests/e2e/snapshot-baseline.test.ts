@@ -95,6 +95,13 @@ test("label-workflowet fornyer alle tre projekter og kun same-repo-PR'er", () =>
   assert.deepEqual((matrix[1] ?? "").split(",").map((s) => s.trim()).sort(), [...projectNames].sort());
   const forkGuards = update.match(/github\.event\.pull_request\.head\.repo\.full_name == github\.repository/g) ?? [];
   assert.ok(forkGuards.length >= 2, "baade generate og commit skal udelukke fork-PR'er");
+  // En genkoert lane maa ikke efterlade et gammelt artefakt med samme navn (#7444).
+  for (const step of ["Upload snapshots", "Upload lane status"]) {
+    const at = update.indexOf(`- name: ${step}\n`);
+    assert.ok(at > 0, `update-snapshots.yml mangler steppet ${step}`);
+    const body = update.slice(at, update.indexOf("\n\n", at));
+    assert.match(body, /^\s*overwrite: true$/m, `${step} skal have overwrite: true`);
+  }
 });
 
 // I containeren er git-brugeren root, men checkout-mappen ejes af runneren.

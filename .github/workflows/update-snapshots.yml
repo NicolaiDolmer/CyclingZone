@@ -138,6 +138,9 @@ jobs:
       # Kun dette projekts baselines, eet niveau under tests/e2e. Artefaktets
       # rod bliver dermed frontend/tests/e2e/, og commit-jobbet kan validere
       # hver sti mod et stramt moenster.
+      # overwrite: genkoeres en lane, ligger der ellers to artefakter med samme
+      # navn i koerslen (#7444), og commit-jobbets merge-multiple kunne tage
+      # det gamle. Den nye upload sletter den gamle foerst.
       - name: Upload snapshots
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -146,6 +149,7 @@ jobs:
           path: frontend/tests/e2e/*-snapshots/*-${{ matrix.project }}-linux.png
           if-no-files-found: warn
           retention-days: 7
+          overwrite: true
 
       - name: Upload lane status
         if: always()
@@ -154,6 +158,7 @@ jobs:
           name: snapshot-status-${{ matrix.project }}
           path: ${{ runner.temp }}/snapshot-status/
           retention-days: 7
+          overwrite: true
 
       - name: Upload Playwright report
         if: steps.regen.outputs.status != '0'
