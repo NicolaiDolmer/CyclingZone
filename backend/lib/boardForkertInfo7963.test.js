@@ -90,6 +90,19 @@ test("#7963: det gemte weekend-billede kan afvige fra dashboardet, så det må i
   assert.equal(roomEconomy, dashboardEconomy, "rettelsen: Boardroom følger dashboardet");
 });
 
+test("#7963: en kategori med flere mål afrundes som dashboardet (intet point i forskel)", () => {
+  const board = oneYearBoard([
+    { type: "stage_wins", target: 1 },
+    { type: "gc_wins", target: 10 },
+  ]);
+  const standing = { rank_in_division: 9, division: 3, stage_wins: 0, gc_wins: 1 };
+  const team = { division: 3, riders: riders(12) };
+  const ctx = buildBoardEvalContext({ board, standing, balance: 0, seasonNumber: SEASON });
+  const dashboard = buildBoardOutlook({ board, standing, team, context: ctx }).score_breakdown.categories.results.score_pct;
+  const room = deriveLiveCategoryScores({ board, standing, team, context: ctx }).find((c) => c.key === "results").score;
+  assert.equal(room, Math.min(100, dashboard));
+});
+
 test("#7963: intet 1yr-board giver tom liste, så kalderen beholder det gemte billede", () => {
   assert.deepEqual(deriveLiveCategoryScores({ board: null }), []);
 });

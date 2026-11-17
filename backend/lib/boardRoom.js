@@ -128,7 +128,7 @@ import { buildBoardEvalContext, loadGoalContextForBoard } from "./boardGoalConte
 // no_outstanding_debt (scoreFinanceHealthGoal, boardUtils.js).
 import { sumActiveLoanDebt, sumRiderSalaries } from "./boardUtils.js";
 import { sampleVoiceLine, BoardVoiceEmptyBucketError } from "./boardVoice.js";
-import { MANDATE_CATEGORIES, buildCategoryScores, resolveMandateDisplayGoals } from "./boardMandate.js";
+import { MANDATE_CATEGORIES, resolveMandateDisplayGoals } from "./boardMandate.js";
 // #7963 · Kategorimetrene regnes af SAMME funktion som dashboardets kort (/board/status → buildBoardOutlook).
 import { calculateBoardPerformance } from "./boardEvaluation.js";
 import { BOARD_MANDATE_MODEL_FLAG_KEY } from "./boardMandateFlag.js";
@@ -479,10 +479,12 @@ export function deriveBonusOffer({ rows = [], currentSeasonId = null } = {}) {
 export function deriveLiveCategoryScores({ board, standing = null, team = null, context = {} } = {}) {
   if (!board) return [];
   const { scoreBreakdown } = calculateBoardPerformance({ board, standing, team, context });
-  const scores = buildCategoryScores(scoreBreakdown?.categories);
+  const categories = scoreBreakdown?.categories || {};
+  // Dashboardet viser `score_pct` (loftet ved 100). Samme felt her, ikke en ny
+  // afrunding af `score`, ellers kan de to afvige med et point.
   return MANDATE_CATEGORIES
-    .filter((key) => scores[key] != null)
-    .map((key) => ({ key, score: scores[key] }));
+    .filter((key) => categories[key]?.score_pct != null && Number.isFinite(Number(categories[key].score_pct)))
+    .map((key) => ({ key, score: Math.max(0, Math.min(100, Number(categories[key].score_pct))) }));
 }
 
 export function buildGoalLabelSource(goal = {}) {
