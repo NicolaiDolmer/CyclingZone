@@ -1,5 +1,28 @@
 export const PATCHES = [
 {
+  "version": "7.460",
+  "date": "2026-11-17",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Season",
+      "en": {
+        "title": "The season documentary names a real rival",
+        "body": "The rival in your season documentary is now the team right above or below you in your own pool. If that team is not a manager team, the rival sentence is left out instead of naming a team from another pool. A top result that was not a win is now written as a placing, and the text no longer uses long dashes. This applies from the season 6 switch; earlier documentaries are unchanged."
+      },
+      "da": {
+        "title": "Sæson-dokumentaren nævner en ægte rival",
+        "body": "Rivalen i din sæson-dokumentar er nu holdet lige over eller under dig i din egen pulje. Er det hold ikke et managerhold, udelades rival-sætningen i stedet for at nævne et hold fra en anden pulje. Et topresultat, der ikke var en sejr, skrives nu som en placering, og teksten bruger ikke længere lange tankestreger eller engelske ord. Det gælder fra sæson 6-skiftet; tidligere dokumentarer er uændrede."
+      },
+      "refs": [
+        8361
+      ]
+    }
+  ]
+},
+{
   "version": "7.459",
   "date": "2026-11-17",
   "changes": [
