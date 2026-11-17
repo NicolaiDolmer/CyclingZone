@@ -892,7 +892,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   // Valget i denne fane (readyChoice) vinder for den etape.
   const v6cSelectedPlan = () => {
     const active = riders.filter((r) => !r.abandoned).map((r) => r.rider_id);
-    let best = null;
+    let best = /** @type {import("./tacticsReady7864.ts").TeamPlanKind | null} */ (null);
     let bestCount = 0;
     for (const kind of TEAM_PLAN_KINDS) {
       const plan = readyPlans[kind];
@@ -1276,7 +1276,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     }
     const timeTrial = isTimeTrialProfile(stageProfileType);
     const planRoute = withJerseyHunt7855(readyRoute, orders?.jerseyHunt7855 === true);
-    const namedClimbs = waypointsFor(profileByStage[activeStage] ?? null)
+    const namedClimbs = waypointsFor(profileByStage[/** @type {number} */ (activeStage)] ?? null)
       .filter((w) => w.kind === "kom")
       .map((w) => ({ km: Number(w.km), name: w.name ?? null, summit: w.summit_finish === true, category: w.category }));
     const parts = stagePlanOn ? routeParts(planRoute, namedClimbs) : [];
