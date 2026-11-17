@@ -106,7 +106,7 @@ export default function RiderResultsTab({ seasonRows, loadFailed = false }) {
     <div className="flex flex-col gap-[13px]">
       <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
         <div className="flex items-center justify-between gap-2 flex-wrap mb-3">
-          <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0">
+          <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0">
             {t("profile.results.totalsTitle")}
           </h3>
           {/* Bevidst IKKE role="tablist": det ville love ARIA-tabs' tastaturkontrakt

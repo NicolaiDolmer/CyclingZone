@@ -34,6 +34,8 @@ export const STAGE_FLAGS = Object.freeze([
   // ── Spiller-vendte funktioner ─────────────────────────────────────────────
   { key: "academy_enabled", area: "academy", label: "Akademi" },
   { key: "academy_intake_pull_enabled", area: "academy", label: "Akademi — træk af nye talenter" },
+  // #8081: akademisiden udgave A (overblik + faner) og aldersfokus i profilen. Seedet off; ejer-only flip.
+  { key: "academy_page_v2_8081", area: "academy", label: "Akademisiden udgave A + aldersfokus" },
   { key: "intake_offer_expiry_enabled", area: "academy", label: "Akademi — udløb på tilbud" },
   { key: "season_academy_intake_enabled", area: "academy", label: "Akademi — sæsonoptag" },
   { key: "board_mandate_model_enabled", area: "board", label: "Bestyrelse — mandat-modellen" },
@@ -346,6 +348,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "sale_escrow_enabled",
   // #6490: traeningssiden vaelger laesevej paa dette flag (binaert, som backend og peak-signalet).
   "training_history_from_ticks_6490",
+  // #8081: akademisiden vaelger udgave A paa dette flag.
+  "academy_page_v2_8081",
 ]);
 
 // #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,

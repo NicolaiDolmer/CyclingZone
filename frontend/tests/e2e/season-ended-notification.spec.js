@@ -38,7 +38,7 @@ const DIVISION_PROMOTED_ROW = {
   id: "notif-promoted-1",
   user_id: TEST_USER.id,
   type: "board_update",
-  title: "Promoted! 🎉",
+  title: "Promoted!",
   message: "Congratulations! Your team moves up to Division 2.",
   related_id: null,
   is_read: false,
@@ -75,7 +75,8 @@ test("season_ended-notifikationen renderes med ikon, titel, besked og deep-link 
   // #2164: oprykningsbeskeden var før hardkodet dansk uden metadata — nu
   // renderer den engelsk fallback ligesom season_ended, via samme
   // titleCode/messageCode-mønster som nedrykningen allerede brugte.
-  await expect(page.getByText(/^Promoted! 🎉$|^Oprykket! 🎉$/)).toBeVisible();
+  // #8069 T06: emoji er fjernet fra notif.divisionPromoted.title (EN+DA).
+  await expect(page.getByText(/^Promoted!$|^Oprykket!$/)).toBeVisible();
   await expect(
     page.getByText(/moves up to Division 2|rykker op til Division 2/)
   ).toBeVisible();

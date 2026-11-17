@@ -4,6 +4,10 @@ on:
   # Required jobs must report on every PR. A path-filtered required workflow
   # leaves docs/config-only PRs waiting forever because no check run exists.
   pull_request:
+    # CI-plan trin 1 (ejer 17/11): kladder springer disse 14 jobs over; ready_for_review
+    # koerer dem, naar kladden bliver klar (et skipped required check taeller som groent,
+    # saa en kladde blokerer intet, og en klar PR faar altid en rigtig koersel).
+    types: [opened, synchronize, reopened, ready_for_review]
   # Merge queue (4/8): alle jobs her er fil-baserede scans og kører uændret på
   # merge-group-SHA'en (ingen PR-kontekst nødvendig).
   merge_group:
@@ -54,6 +58,7 @@ concurrency:
 
 jobs:
   key-coverage:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -88,6 +93,7 @@ jobs:
         run: node scripts/i18n-check-key-parity.mjs
 
   delta-pending:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -116,6 +122,7 @@ jobs:
         run: node scripts/i18n-check-delta-pending.mjs
 
   namespace-inline:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -137,6 +144,7 @@ jobs:
         run: node scripts/i18n-check-namespace-inline.mjs
 
   nav-strings:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -159,6 +167,7 @@ jobs:
         run: node scripts/i18n-check-nav-strings.mjs
 
   page-untranslated:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -181,6 +190,7 @@ jobs:
         run: node scripts/i18n-check-page-untranslated.mjs
 
   lib-strings:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -203,6 +213,7 @@ jobs:
         run: node scripts/i18n-check-lib-strings.mjs
 
   terrain-coverage:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -230,6 +241,7 @@ jobs:
         run: node scripts/i18n-check-terrain-coverage.mjs
 
   error-code-coverage:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -259,6 +271,7 @@ jobs:
         run: node scripts/i18n-check-error-codes.mjs
 
   leak-check:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -285,6 +298,7 @@ jobs:
         run: node scripts/i18n-check-leaks.mjs
 
   backend-player-strings:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -316,6 +330,7 @@ jobs:
         run: node scripts/build-backend-locales.mjs --check
 
   hardcoded-formats:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -342,6 +357,7 @@ jobs:
         run: node scripts/i18n-check-hardcoded-formats.mjs
 
   tone-em-dash:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -383,6 +399,7 @@ jobs:
         run: node scripts/feature-registry-roadmap-check.mjs
 
   tone-terms:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
