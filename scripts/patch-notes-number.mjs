@@ -332,7 +332,15 @@ export function writeCommitViaApi({ gh, repo, baseSha, baseTree, source, removed
 
 export function defaultGit(root = ROOT) {
   return (args) => {
-    const res = spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, windowsHide: true });
+    // Codex P2 (PR #8353): close-out koerer synkront i merge-koeen, saa et haengende fetch eller
+    // en credential-prompt maa aldrig fryse koeen. Loft + ingen prompt; fejl naar den fail-softe kalder.
+    const res = spawnSync('git', ['-c', 'credential.interactive=never', '-C', root, ...args], {
+      encoding: 'utf8',
+      maxBuffer: 256 * 1024 * 1024,
+      timeout: 180_000,
+      windowsHide: true,
+      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+    });
     if (res.error || res.status !== 0) throw new Error(`git ${args[0]} fejlede: ${String(res.stderr || res.error?.message || '').trim().slice(0, 300)}`);
     return res.stdout;
   };
