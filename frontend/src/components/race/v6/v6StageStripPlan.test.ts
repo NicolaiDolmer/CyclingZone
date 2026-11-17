@@ -102,7 +102,7 @@ test("Taktik giver v6 besked ved et lykket gem; siden taeller op med en stabil c
   const page = read("./RacePageV6.tsx");
   assert.match(page, /const onTacticsSaved = useCallback\(\(\) => setTacticsSaves\(\(n\) => n \+ 1\), \[\]\);/, "stabil, ellers genudloeses effekten ved hver render");
   // #8298: summary-provideren (hero'ens "N riders ride the assistant's plan") ligger inden i.
-  assert.match(page, /<V6TacticsSavedContext\.Provider value=\{onTacticsSaved\}><V6TacticsSummaryContext\.Provider value=\{onTacticsSummary\}>\n\s+\{renderTactics \? renderTactics\(tacticsStage\) : tacticsSlot\}/);
+  assert.match(page, /<V6TacticsSavedContext\.Provider value=\{onTacticsSaved\}><V6TacticsSummaryContext\.Provider value=\{tacticsSummary\.report\}>\n\s+\{renderTactics \? renderTactics\(tacticsStage\) : tacticsSlot\}/);
   const ctx = read("./v6TacticsSaved.ts");
   assert.match(ctx, /createContext<\(\(\) => void\) \| null>\(null\)/, "uden v6 (ingen provider) er beskeden null, og Taktik opfoerer sig som foer");
 });
