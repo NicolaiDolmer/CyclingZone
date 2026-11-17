@@ -34,5 +34,8 @@
   "emptySalesAction": "Voir ton équipe",
   "errorTitle": "Impossible de charger les comptes de l'académie",
   "errorBody": "Réessaie dans un instant.",
-  "retry": "Réessayer"
+  "retry": "Réessayer",
+  "noLedgerTitle": "Pas encore de comptes de l'académie",
+  "noLedgerBody": "Les comptes s'affichent quand ton académie est ouverte.",
+  "noLedgerAction": "Voir ton équipe"
 }

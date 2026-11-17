@@ -34,5 +34,8 @@
   "emptySalesAction": "Se dit hold",
   "errorTitle": "Akademi-regnskabet kunne ikke hentes",
   "errorBody": "Prøv igen om lidt.",
-  "retry": "Prøv igen"
+  "retry": "Prøv igen",
+  "noLedgerTitle": "Intet akademi-regnskab endnu",
+  "noLedgerBody": "Regnskabet vises, når dit akademi er åbent.",
+  "noLedgerAction": "Se dit hold"
 }

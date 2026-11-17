@@ -300,6 +300,55 @@ test("GET /academy/pnl: ledger kun bag kontakten, øvrigt svar uændret", () => 
   assert.notEqual(start, -1);
   const block = api.slice(start, api.indexOf("\nrouter.", start + 10));
   assert.match(block, /res\.json\(\{\s*enabled: true,\s*\.\.\.summarizeAcademyPnl\(\{ current, driftPaid, signingFeesPaid, sales \}\),/);
-  assert.match(block, /\(await isAcademyLedgerEnabled\(supabase, \{ isBetaTester \}\)\) \? \{ ledger: await loadAcademySeasonLedger\(supabase, \{ teamId \}\) \} : \{\}/);
-  assert.equal((block.match(/loadAcademySeasonLedger/g) ?? []).length, 1, "hentningen må kun ske i den tændte gren");
+  assert.match(block, /\(await isAcademyLedgerEnabled\(supabase, \{ isBetaTester \}\)\) \? await academyLedgerPart8060\(teamId\) : \{\}/);
+  assert.equal((block.match(/academyLedgerPart8060/g) ?? []).length, 1, "hentningen må kun ske i den tændte gren");
+  // #8060 review 2: en fejl i regnskabet vaelter ikke svaret; ledger udelades og fejlen meldes.
+  const hs = api.indexOf("async function academyLedgerPart8060");
+  assert.notEqual(hs, -1);
+  const helper = api.slice(hs, api.indexOf("\n}\n", hs));
+  assert.match(helper, /try \{\s*return \{ ledger: await loadAcademySeasonLedger\(supabase, \{ teamId \}\) \};\s*\} catch \(err\) \{/);
+  assert.match(helper, /captureException\(err/);
+  assert.match(helper, /return \{ ledger_unavailable: true \};/);
+});
+
+// --- #8060 review (17/11): de tre manglende tilfaelde ---------------------------------------
+
+test("#8060 review 1: en rytter solgt, koebt tilbage og solgt igen er kun akademisalg første gang", () => {
+  const pool = new Map<string, PoolMember>([["r1", { riderId: "r1", riderName: "A", origin: LEDGER_SOURCE.YOUTH_AUCTION }]]);
+  const sales = buildLedgerSales({
+    pool,
+    seasons,
+    auctionRows: [
+      { rider_id: "r1", current_bidder_id: "other", current_price: 500, actual_end: "2026-10-20T12:00:00Z" },
+      { rider_id: "r1", current_bidder_id: "other", current_price: 300, actual_end: "2026-08-20T12:00:00Z" },
+    ],
+    transferRows: [{ rider_id: "r1", offer_amount: 900, updated_at: "2026-11-01T12:00:00Z" }],
+  });
+  assert.equal(sales.length, 1);
+  assert.equal(sales[0].price, 300);
+  assert.equal(sales[0].seasonId, "s4");
+});
+
+test("#8060 review 6: en postering uden season_id og created_at havner under 'uden sæson', ikke i en tilfældig sæson", () => {
+  const ledger = buildSeasonLedger({
+    seasons,
+    currentSeasonId: "s5",
+    financeRows: [{ type: "academy_signing", amount: -70, metadata: { code: "tx.academySigning" } }],
+  });
+  const none = ledger.rows.find((r) => r.seasonId === null);
+  assert.ok(none, "en række uden sæson");
+  assert.equal(none?.offerSignings, 70);
+  assert.equal(ledger.rows.find((r) => r.seasonId === "s4")?.offerSignings ?? 0, 0);
+  assert.equal(ledger.total.offerSignings, 70);
+});
+
+test("#8060 review 5: en ældre sæson uden slutdato fanger ikke senere datoer", () => {
+  const open = [
+    { id: "s3", number: 3, status: "completed", start_date: "2026-06-01" },
+    { id: "s4", number: 4, status: "completed", start_date: "2026-08-01", end_date: "2026-09-28" },
+    { id: "s5", number: 5, status: "active", start_date: "2026-10-01" },
+  ];
+  assert.equal(seasonForDate(open, "2026-06-15")?.id, "s3");
+  assert.equal(seasonForDate(open, "2026-08-20")?.id, "s4");
+  assert.equal(seasonForDate(open, "2026-10-20")?.id, "s5");
 });
