@@ -4,7 +4,8 @@
 // trainNowSameResult7982.harness.js (fast ur, ingen motortal i filen, regel 17).
 //
 // Stedfortraederens commit_training_date_tick kender kun Traen nu-stemplet. Indpakningen nedenfor
-// giver den migrationens #7982-regel (database/2026-11-15-7982-settle-race-session.sql): en rytter
+// giver den migrationernes #7982-regel (database/2026-11-15-7982-settle-race-session.sql og
+// 2026-11-18-7982-race-session-no-provisional.sql): en rytter
 // med loebssessions-maerket (i rapporten med kontakten taendt og etapens belastning i bogen, eller
 // allerede paa en kvittering paa datoen) regnes som stemplet i netop det kald. Selve SQL-reglen er
 // proevet mod PostgreSQL i trainingSettleRaceSession7982.test.js.
@@ -44,6 +45,13 @@ export function fakeWithRaceSessionRule(state, options) {
     for (const t of state.training_rider_ticks) if (t.tick_date === args.p_tick_date && t.report?.race_session_7982 === true) marked.add(t.rider_id);
     const synthetic = [...marked].filter((rid) => !state.training_train_now_locks.some((l) => l.rider_id === rid && l.tick_date === args.p_tick_date && l.instant_at != null))
       .map((rid) => ({ rider_id: rid, tick_date: args.p_tick_date, season_id: args.p_season_id, team_id: args.p_team_id, instant_at: "synthetic", __race_session: true }));
+    // 2026-11-18-migrationen (Fable 15/11): en loebssessions-rytter, der ikke er stemplet af Traen nu,
+    // maa aldrig skrive foreloebig kondition. (Aabningstjekket kender stedfortraederen ikke for nogen
+    // rytter; det er proevet mod PostgreSQL i trainingSettleRaceSession7982.test.js.)
+    const raceSessionOnly = new Set(synthetic.map((row) => row.rider_id));
+    if ((args.p_conditions ?? []).some((row) => raceSessionOnly.has(row.rider_id) && row.provisional === true)) {
+      return Promise.resolve({ data: null, error: { code: "P0001", message: "Race session writes no provisional condition" } });
+    }
     state.training_train_now_locks.push(...synthetic);
     // Stedfortraederen udfoerer funktionen synkront i kaldet; bagefter er laasene vaek igen.
     const out = rpc(name, args);

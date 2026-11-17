@@ -27,6 +27,8 @@ const file = async (name) => (await readFile(new URL(`../../database/${name}`, i
 const TRIN1 = "2026-11-12-7982-commit-training-date-tick-samlet-tjek.sql";
 const TRIN1B = "2026-11-13-7982-commit-training-date-tick-opslag-pr-rytter.sql";
 const MIGRATION = "2026-11-15-7982-settle-race-session.sql";
+// Fable 15/11 (TRAINING_RULES 13.5): ingen foreloebig kondition og aabningstjekket for loebssessionen.
+const MIGRATION_1118 = "2026-11-18-7982-race-session-no-provisional.sql";
 const SIGNATURE = "(uuid,uuid,text,integer,date,integer[],text,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,boolean,timestamptz)";
 const id = (n) => `00000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
 const TEAM = id(1), SEASON = id(900), RACE_ID = id(800);
@@ -36,11 +38,11 @@ const AT = (minute) => `2026-11-09T${String(14 + Math.floor(minute / 60)).padSta
 const arr = (ids) => `'{${ids.join(",")}}'::uuid[]`;
 const j = (x) => `'${JSON.stringify(x).replace(/'/g, "''")}'::jsonb`;
 
-async function frozenSql() {
-  const source = await file(TRIN1B);
+async function frozenSql(name = TRIN1B, as = "commit_training_date_tick_frozen") {
+  const source = await file(name);
   const start = source.indexOf("CREATE OR REPLACE FUNCTION public.commit_training_date_tick(");
   const end = source.indexOf("$$;", start) + 3;
-  return source.slice(start, end).replace("public.commit_training_date_tick(", "public.commit_training_date_tick_frozen(");
+  return source.slice(start, end).replace("public.commit_training_date_tick(", `public.${as}(`);
 }
 
 // Trin 1 som auto-migrate koerer den (samme opdeling som commitTrainingDateTick7982b), saa 1b, saa denne.
@@ -66,6 +68,10 @@ async function newDb() {
   await db.exec(await frozenSql());
   await db.exec(await file(MIGRATION));
   await db.exec(await file(MIGRATION)); // idempotent
+  // 15/11-udgaven publiceres FROSSET ved siden af, foer 18/11-rettelsen laegges ovenpaa.
+  await db.exec(await frozenSql(MIGRATION, "commit_training_date_tick_1115"));
+  await db.exec(await file(MIGRATION_1118));
+  await db.exec(await file(MIGRATION_1118)); // idempotent
   await db.exec(`INSERT INTO riders(id,team_id) VALUES ${RIDERS.map((r) => `('${r}','${TEAM}')`).join(",")};
     INSERT INTO rider_derived_abilities VALUES ${RIDERS.map((r) => `('${r}',50,'{}')`).join(",")};
     INSERT INTO rider_condition(rider_id,form,fatigue,updated_at) VALUES ${RIDERS.map((r) => `('${r}',50,32,'2026-11-08T20:00:00Z')`).join(",")};
@@ -128,18 +134,32 @@ describe("databasefunktionen (PGlite)", () => {
     }
     // Samtidighed: samme laase i samme raekkefoelge som i dag (holdlaasen giver Traen nu 409 under delkoerslen).
     const frozen = await scalar(db, "SELECT prosrc FROM pg_proc WHERE proname='commit_training_date_tick_frozen'");
+    const v1115 = await scalar(db, "SELECT prosrc FROM pg_proc WHERE proname='commit_training_date_tick_1115'");
     const migrated = await scalar(db, "SELECT prosrc FROM pg_proc WHERE proname='commit_training_date_tick'");
     const locks = (src) => src.split("\n").filter((line) => /pg_advisory|FOR UPDATE/.test(line)).map((line) => line.trim());
+    assert.deepEqual(locks(v1115), locks(frozen));
     assert.deepEqual(locks(migrated), locks(frozen));
     assert.match(locks(migrated)[1], /pg_advisory_xact_lock\(hashtextextended\('training-date:'\|\|p_team_id/);
-    // Uden for #7982-linjerne er kroppen trin 1b's tekst.
+    // Uden for #7982-linjerne er 15/11-kroppen trin 1b's tekst.
     const strip = (src) => src.replace(/;v_race_session uuid\[\]:='\{\}'/, "")
       .replace(/ {2}-- #7982: a race session settled[\s\S]*?v_instant:=v_instant\|\|v_race_session;\n/, "")
       .replace(/ {2}-- #7982: settled_at is the actual time[^\n]*\n/, "")
       .replace(/ {2}-- #7982: a race session rider writes[\s\S]*?Condition writes only at date settlement'; END IF;\n/, "")
       .replace(",created_at,settled_at)", ",created_at)").replace("r,p_now,clock_timestamp() FROM", "r,p_now FROM");
-    assert.equal(strip(migrated), frozen);
-    assert.doesNotMatch(await file(MIGRATION), /POLICY|ROW LEVEL SECURITY|SECURITY DEFINER/i);
+    assert.equal(strip(v1115), frozen);
+    // 18/11 (Fable 15/11): uden for de fire rettelser er kroppen 15/11's tekst. Rettelserne: v_stamped
+    // (stemplet alene), aabningstjekket og foreloebig kondition foelger v_stamped, den foreloebige
+    // skrivning roerer kun stemplede, og loebssessionens foreloebige kondition afvises.
+    const strip1118 = (src) => src.replace(";v_stamped uuid[]:='{}'", "")
+      .replace(/ {2}-- #7982 \(Fable 15\/11\): v_stamped is[\s\S]*?v_stamped:=v_instant;\n/, "")
+      .replace(/ {4}-- #7982: a race session rider keeps the check[^\n]*\n/, "")
+      .replace(/ {2}-- #7982 \(Fable 15\/11\): a race session rider never writes[\s\S]*?'Race session writes no provisional condition'; END IF;\n/, "")
+      .replace(" AND c.rider_id=ANY(v_stamped);", ";")
+      .replaceAll("ANY(v_stamped)", "ANY(v_instant)");
+    const strip1115 = (src) => src.replace(/ {2}-- #7982: a race session rider writes[\s\S]*?Condition writes only at date settlement'; END IF;\n/, "");
+    assert.notEqual(migrated, v1115, "18/11-rettelsen er anvendt");
+    assert.equal(strip1118(migrated), strip1115(v1115));
+    for (const name of [MIGRATION, MIGRATION_1118]) assert.doesNotMatch(await file(name), /POLICY|ROW LEVEL SECURITY|SECURITY DEFINER/i);
   });
 
   test("bevis 5 (RPC): kontakten slukket = samme svar, raekker og fejl som trin 1b for en hel dato", async () => {
@@ -171,7 +191,7 @@ describe("databasefunktionen (PGlite)", () => {
     });
   });
 
-  test("bevis 2: loebssessionen gemmes uden for raekkefoelgen, foreloebigt, og lukker aldrig datoen for tidligt", async () => {
+  test("bevis 2: loebssessionen gemmes uden for raekkefoelgen, UDEN kondition, og lukker aldrig datoen for tidligt", async () => {
     await inCase(db, async () => {
       await setSwitch(db, "on");
       const { opening_conditions: openings } = await register(db);
@@ -183,14 +203,21 @@ describe("databasefunktionen (PGlite)", () => {
       // En endelig kondition ved loebssessionen, naar den ikke er rytterens sidste, afvises.
       const closing = await call(db, "commit_training_date_tick", { day: 43, riders: [a], openings, raceSession: [a], receipts: { [a]: [] }, conditions: [settledCondition(a)] });
       assert.match(closing.error?.message ?? JSON.stringify(closing.result), /Condition writes only at date settlement/);
-      // Foreloebig form og traethed: tilladt, ingen afregning, belastningen er ikke brugt.
-      const ok = await call(db, "commit_training_date_tick", { day: 43, riders: [a], openings, raceSession: [a], receipts: { [a]: [] },
-        conditions: [{ rider_id: a, form: 47, fatigue: 44, provisional: true }], at: AT(30) });
+      // Fable 15/11: foreloebig form og traethed afvises for en loebssession (15/11-udgaven tog dem).
+      const provisional = { day: 43, riders: [a], openings, raceSession: [a], receipts: { [a]: [] }, conditions: [{ rider_id: a, form: 47, fatigue: 44, provisional: true }], at: AT(30) };
+      const rejected = await call(db, "commit_training_date_tick", provisional);
+      assert.match(rejected.error?.message ?? JSON.stringify(rejected.result), /Race session writes no provisional condition/);
+      await db.exec("SAVEPOINT old");
+      const old = await call(db, "commit_training_date_tick_1115", provisional);
+      await db.exec("ROLLBACK TO SAVEPOINT old");
+      assert.ok(!old.error, "15/11-udgaven tillod den (det er hullet, der lukkes)");
+      // Uden kondition: gemt, ingen afregning, belastningen er ikke brugt, rider_condition er aabningen.
+      const ok = await call(db, "commit_training_date_tick", { day: 43, riders: [a], openings, raceSession: [a], receipts: { [a]: [] }, at: AT(30) });
       assert.ok(!ok.error, JSON.stringify(ok.error));
       assert.equal(ok.result.already_ran, false);
       assert.deepEqual(ok.rows.training_condition_settlements, []);
       const cond = ok.rows.rider_condition.find((r) => r.rider_id === a);
-      assert.equal(cond.form, 47); assert.equal(cond.fatigue, 44);
+      assert.equal(cond.form, openings[a].form); assert.equal(cond.fatigue, openings[a].fatigue);
       assert.equal(String(cond.updated_at), String(new Date("2026-11-08T20:00:00Z")), "skade-felter og updated_at er uroerte");
       assert.equal(ok.rows.training_race_loads.find((r) => r.rider_id === a).consumed_at, null);
       // Rigtigt tidsstempel: settled_at er sat, created_at er kaldets tid som i dag.
@@ -198,7 +225,7 @@ describe("databasefunktionen (PGlite)", () => {
       assert.ok(stamp.settled_at instanceof Date && Number.isFinite(stamp.settled_at.getTime()));
       assert.equal(stamp.created_at.toISOString(), new Date(AT(30)).toISOString());
       // Aftenen: de tidligere sessioner gemmes uden for raekkefoelgen (kvitteringen afgoer, ikke kontakten),
-      // med snapshot-tjekket, og rytteren karantaeneres ikke for sin foreloebige kondition.
+      // med snapshot-tjekket og aabningstjekket, og rytteren karantaeneres ikke (hans raekke er aabningen).
       await setSwitch(db, "off");
       const stale = await call(db, "commit_training_date_tick", { day: 41, riders: [a], openings, receipts: { [a]: [] } });
       assert.match(stale.error.message, /Training receipt snapshot changed/);
@@ -244,11 +271,108 @@ describe("databasefunktionen (PGlite)", () => {
       const { opening_conditions: openings } = await register(db);
       const a = RIDERS[0];
       await load(db, a);
-      await call(db, "commit_training_date_tick", { day: 43, riders: [a], openings, raceSession: [a], receipts: { [a]: [] }, conditions: [{ rider_id: a, form: 47, fatigue: 44, provisional: true }] });
+      const first = await call(db, "commit_training_date_tick", { day: 43, riders: [a], openings, raceSession: [a], receipts: { [a]: [] } });
+      assert.ok(!first.error, JSON.stringify(first.error));
       const before = await dump(db);
       const again = await call(db, "commit_training_date_tick", { day: 43, riders: [a], openings });
       assert.equal(again.result.already_ran, true);
       assert.deepEqual(again.rows, before);
+    });
+  });
+
+  // Fable 15/11 (TRAINING_RULES 13.5): loebssessions-rytteren beholder aabningstjekket. Hans
+  // rider_condition skal vaere datoens aabning; ellers karantaene som for enhver anden rytter.
+  test("aabningstjekket gaelder loebssessionen: en aendret kondition giver karantaene (15/11 lod den passere)", async () => {
+    await inCase(db, async () => {
+      await setSwitch(db, "on");
+      const { opening_conditions: openings } = await register(db);
+      const a = RIDERS[0];
+      await load(db, a);
+      await db.exec(`UPDATE rider_condition SET fatigue=fatigue+7 WHERE rider_id='${a}'`);
+      const args = { day: 43, riders: [a], openings, raceSession: [a], receipts: { [a]: [] }, at: AT(30) };
+      await db.exec("SAVEPOINT old");
+      const old = await call(db, "commit_training_date_tick_1115", args);
+      await db.exec("ROLLBACK TO SAVEPOINT old");
+      assert.ok(!old.error && old.result.applied_rider_ids?.includes(a), "15/11 sprang aabningstjekket over");
+      const out = await call(db, "commit_training_date_tick", args);
+      assert.ok(!out.error, JSON.stringify(out.error));
+      assert.deepEqual(out.result.quarantined_rider_ids, [a]);
+      assert.deepEqual(out.rows.training_rider_ticks, [], "ingen kvittering for en rytter i karantaene");
+      assert.equal(out.rows.training_date_work[0].quarantine_evidence[0]?.reason ?? "unsafe_current_state", "unsafe_current_state");
+    });
+  });
+
+  test("stemplet rytter (Traen nu): samme svar, raekker og fejl som 15/11 for hele datoen, ogsaa med loebssession", async () => {
+    await inCase(db, async () => {
+      await setSwitch(db, "on");
+      const { opening_conditions: openings } = await register(db);
+      const [a, b] = RIDERS;
+      await load(db, a); await load(db, b);
+      await db.exec(`INSERT INTO training_train_now_locks(rider_id,team_id,season_id,tick_date,pressed_at,instant_at) VALUES('${a}','${TEAM}','${SEASON}','${DATE}','${AT(0)}','${AT(0)}')`);
+      const same = async (args) => {
+        const out = {};
+        for (const fn of ["commit_training_date_tick_1115", "commit_training_date_tick"]) {
+          await db.exec("SAVEPOINT eq"); out[fn] = await call(db, fn, args); await db.exec("ROLLBACK TO SAVEPOINT eq");
+        }
+        assert.deepEqual(out.commit_training_date_tick, out.commit_training_date_tick_1115);
+        return call(db, "commit_training_date_tick", args);
+      };
+      const steps = [
+        { day: 41, riders: [a], receipts: { [a]: [] } },
+        { day: 42, riders: [a], receipts: { [a]: [41] } },
+        { day: 44, riders: [a], receipts: { [a]: [41, 42] } },
+        // Sidste frie felt: stemplet rytter regner form og traethed foreloebigt (tilladt som foer).
+        { day: 45, riders: [a], receipts: { [a]: [41, 42, 44] }, conditions: [{ rider_id: a, form: 47, fatigue: 44, provisional: true }] },
+        // Loebssessionen lukker datoen; rider_condition er foreloebig, aabningstjekket springes over for ham.
+        { day: 43, riders: [a, b], raceSession: [a, b], receipts: { [a]: [41, 42, 44, 45], [b]: [] },
+          conditions: [settledCondition(a)], raceLoads: [{ rider_id: a, race_id: RACE_ID, stage_number: 1, game_day: 43, load: 9 }] },
+      ];
+      for (const step of steps) {
+        const r = await same({ openings, at: AT(step.day), ...step });
+        assert.ok(!r.error, `${step.day}: ${JSON.stringify(r.error)}`);
+      }
+      // b (ikke stemplet) fik ingen kondition; a's dato er lukket praecis een gang.
+      const rows = await dump(db);
+      assert.equal(rows.training_condition_settlements.filter((s) => s.rider_id === a).length, 1);
+      assert.equal(rows.training_condition_settlements.filter((s) => s.rider_id === b).length, 0);
+      assert.equal(rows.rider_condition.find((r) => r.rider_id === b).fatigue, openings[b].fatigue);
+    });
+  });
+
+  // Fable 15/11 punkt 3: datoen fryses ved foerste etape (loebssessionen registrerer holdets dato).
+  // En rytter, der derefter skifter hold, foelger traeningen i det gamle holds frosne trup (#6439):
+  // det nye hold kan ikke registrere eller traene ham paa datoen, og hans dato lukkes praecis een gang.
+  test("rytter skifter hold efter foerste etape: det gamle hold lukker datoen een gang, det nye roerer ham ikke", async () => {
+    await inCase(db, async () => {
+      await setSwitch(db, "on");
+      const TEAM2 = id(2);
+      const { opening_conditions: openings } = await register(db);
+      const [a, b] = RIDERS;
+      await load(db, a);
+      const session = await call(db, "commit_training_date_tick", { day: 43, riders: [a], openings, raceSession: [a], receipts: { [a]: [] }, at: AT(30) });
+      assert.ok(!session.error, JSON.stringify(session.error));
+      // Salget efter etapen: rytteren staar nu paa det nye hold.
+      await db.exec(`UPDATE riders SET team_id='${TEAM2}' WHERE id='${a}'`);
+      const work2 = (await db.query(`SELECT register_training_date_work('${TEAM2}','${SEASON}','${DATE}','{${DAYS}}',${arr([a])},NULL,'${AT(60)}') AS w`)).rows[0].w;
+      assert.deepEqual(work2.expected_rider_ids, [], "det nye hold faar ham ikke paa samme dato");
+      await db.exec("SAVEPOINT t2");
+      const report2 = { condition_per_date: true, riders: [{ rider_id: a, game_day: 41, intensity: "normal", condition_before_date: openings[a], condition_observed: openings[a], missing_evidence: [] }] };
+      await assert.rejects(db.query(`SELECT commit_training_date_tick('${TEAM2}','${SEASON}','senior',41,'${DATE}','{${DAYS}}','assistant',${j(report2)},'[]','[]','[]','[]','[]','[]',false,'${AT(61)}')`), /Rider outside frozen date roster/);
+      await db.exec("ROLLBACK TO SAVEPOINT t2");
+      // Aftenen paa det gamle hold: de andre sessioner gemmes, og den sidste lukker datoen.
+      for (const [day, seen] of [[41, [43]], [42, [41, 43]], [44, [41, 42, 43]]]) {
+        const r = await call(db, "commit_training_date_tick", { day, riders: [a, b].filter((x) => x === a || day < 43), openings, receipts: { [a]: seen }, at: AT(300 + day) });
+        assert.ok(!r.error, `${day}: ${JSON.stringify(r.error)}`);
+        assert.deepEqual(JSON.parse(JSON.stringify(r.rows.training_date_work.find((w) => w.team_id === TEAM).quarantined_rider_ids)), [], `loebsdag ${day}: ingen karantaene`);
+      }
+      const last = await call(db, "commit_training_date_tick", { day: 45, riders: [a], openings, receipts: { [a]: [41, 42, 43, 44] },
+        conditions: [settledCondition(a)], raceLoads: [{ rider_id: a, race_id: RACE_ID, stage_number: 1, game_day: 43, load: 9 }], at: AT(345) });
+      assert.ok(!last.error, JSON.stringify(last.error));
+      const settled = last.rows.training_condition_settlements.filter((s) => s.rider_id === a);
+      assert.equal(settled.length, 1);
+      assert.equal(settled[0].team_id, TEAM, "afregnet paa holdet, der aabnede datoen");
+      assert.equal(last.rows.training_rider_ticks.filter((t) => t.rider_id === a).length, 5);
+      assert.ok(last.rows.training_rider_ticks.filter((t) => t.rider_id === a).every((t) => t.team_id === TEAM));
     });
   });
 });
