@@ -208,6 +208,7 @@ export default function RacePageV6(props: RacePageV6Props) {
             stageRoles={stageRoles}
             profile={v6RouteProfile(profileByStage, tacticsStage)}
             resultsState={tacticsResults}
+            spoilerSlot={spoiler.hiddenSlotFor(tacticsStage)} // #8388
             resultsErrorSlot={tacticsResults === "failed" ? stageErrorFor?.(tacticsStage) ?? null : null}
           />
         ) : null}
