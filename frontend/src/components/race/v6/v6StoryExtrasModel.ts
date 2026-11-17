@@ -50,8 +50,6 @@ export interface V6ExtrasView {
   day: boolean;
   /** Mellemtiderne der vises: op til filmens position, alle når filmen er i mål. */
   rows: SplitRow[];
-  /** "Resten følger, mens filmen kører" står under det viste. */
-  ahead: boolean;
 }
 
 /**
@@ -65,13 +63,12 @@ export function v6ExtrasView({ km, distanceKm, spoilerActive, resultsSeen, split
   resultsSeen: boolean;
   splitRows: readonly SplitRow[];
 }): V6ExtrasView {
-  if (spoilerActive) return { full: false, day: false, rows: [], ahead: false };
+  if (spoilerActive) return { full: false, day: false, rows: [] };
   const full = filmAtFinish(km, distanceKm);
   return {
     full,
     day: full || resultsSeen,
     rows: full ? [...splitRows] : splitRows.filter((r) => r.kind !== "finish" && r.km <= km + 1e-6),
-    ahead: !full,
   };
 }
 

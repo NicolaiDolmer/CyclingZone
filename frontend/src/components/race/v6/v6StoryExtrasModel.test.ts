@@ -51,7 +51,6 @@ test("7/11-reglen: før mål kun mellemtider op til filmen, aldrig målet; ingen
   assert.equal(v.full, false);
   assert.equal(v.day, false);
   assert.deepEqual(v.rows.map((r) => r.key), ["c1", "s1"]);
-  assert.equal(v.ahead, true);
   const start = v6ExtrasView({ km: 0, distanceKm: 160, spoilerActive: false, resultsSeen: false, splitRows: SPLITS });
   assert.deepEqual(start.rows, [], "filmen starter ved start: intet er passeret");
 });
@@ -64,7 +63,7 @@ test("7/11-reglen: et mål før distancen (afrundet km) står ikke, før filmen 
 
 test("filmen i mål: alle mellemtider, referat og Din dag", () => {
   const v = v6ExtrasView({ km: 160, distanceKm: 160, spoilerActive: false, resultsSeen: false, splitRows: SPLITS });
-  assert.deepEqual(v, { full: true, day: true, rows: SPLITS, ahead: false });
+  assert.deepEqual(v, { full: true, day: true, rows: SPLITS });
 });
 
 test("Resultater set: Din dag-sætningen står før mål, resten følger stadig filmen", () => {
@@ -76,7 +75,7 @@ test("Resultater set: Din dag-sætningen står før mål, resten følger stadig 
 
 test("spoiler-skjoldet: intet afslørende, heller ikke når Resultater er set", () => {
   const v = v6ExtrasView({ km: 160, distanceKm: 160, spoilerActive: true, resultsSeen: true, splitRows: SPLITS });
-  assert.deepEqual(v, { full: false, day: false, rows: [], ahead: false });
+  assert.deepEqual(v, { full: false, day: false, rows: [] });
 });
 
 test("Resultater set huskes pr. løb og etape, aldrig uden løb", () => {

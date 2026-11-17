@@ -53,7 +53,7 @@ const SUBHEAD = "m-0 mb-1 font-data text-3xs font-semibold uppercase tracking-[.
 export default function V6StoryExtras({
   km, distanceKm, lines, timeTrial, raceId, story, cast, narrative, profile, results, stageNumber, isStageRace, myTeamId, dnfRows,
 }: V6StoryExtrasProps) {
-  const { t } = useTranslation(["races", "raceFilm"]);
+  const { t } = useTranslation("races");
   const text = useStoryText(cast);
   const spoiler = useSpoilerStory();
   const events = narrative.events;
@@ -93,7 +93,7 @@ export default function V6StoryExtras({
       )}
       {ttWords && <p data-story-extra="time-trial" className="m-0 mb-3 max-w-[72ch] text-[15px] leading-relaxed text-cz-1">{ttWords}</p>}
       {(showSplits || right) && (
-        <div className="grid grid-cols-1 gap-6 border-t border-cz-border pt-4 @4xl:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]">
+        <div className={`grid grid-cols-1 gap-6 @4xl:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] ${dayLine || weather || ttWords ? "border-t border-cz-border pt-4" : ""}`}>
           {showSplits && (
             <div data-story-extra="splits" className="min-w-0">
               <h3 className={SUBHEAD}>{t("stagePageV2.story.splits.title")}</h3>
@@ -125,9 +125,6 @@ export default function V6StoryExtras({
             </div>
           )}
         </div>
-      )}
-      {view.ahead && !timeTrial && showSplits && (
-        <p className="m-0 mt-3 border-t border-dashed border-cz-border pt-2.5 text-xs text-cz-3">{t("raceFilm:report.ahead")}</p>
       )}
     </Section></div>
   );
