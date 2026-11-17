@@ -45,6 +45,12 @@ export interface TacticsSavePlan {
   baselineMatrix: Matrix;
   /** Skal ordren for den aabne etape gemmes? */
   ordersNeeded: boolean;
+  /**
+   * #8381: etaper hvis ordre skal gemmes. Ordrekladden ligger pr. etape og
+   * overlever et etapeskift, saa et gem sender alle etaper med aendrede ordrer,
+   * ikke kun den aabne. Udeladt = een ordre (den aabne etape, foer #8381).
+   */
+  orderStages?: number[];
 }
 
 export interface TacticsSaveDeps {
@@ -53,8 +59,8 @@ export interface TacticsSaveDeps {
   readRoles(): Promise<RolesBody | null>;
   /** Serverens udgave som matrix, normaliseret som sentMatrix. */
   matrixOf(body: RolesBody): Matrix;
-  /** Gem ordren. Kaster med serverens fejlkode; en eventuel svarvaerdi ignoreres. */
-  putOrders(): Promise<unknown>;
+  /** Gem ordren (for `stage`, naar planen har orderStages). Kaster med serverens fejlkode; en eventuel svarvaerdi ignoreres. */
+  putOrders(stage?: number): Promise<unknown>;
 }
 
 export interface TacticsSaveOutcome {
@@ -65,6 +71,8 @@ export interface TacticsSaveOutcome {
   receipt: RolesBody | null;
   /** Etaper hvis intention nu er bekraeftet gemt (baseline maa flyttes for dem). */
   confirmedStages: number[];
+  /** #8381: etaper hvis ordre er bekraeftet gemt (kun med orderStages). */
+  ordersSaved: number[];
 }
 
 export const EMPTY_STAGE_VERSION = "empty";
@@ -180,11 +188,19 @@ async function saveRoles(plan: TacticsSavePlan, deps: TacticsSaveDeps): Promise<
   return { state: "failed", errorKey: retry.error || "generic", receipt, confirmed: committed };
 }
 
-function overall(parts: TacticsSaveOutcome["parts"], rolesConflict: boolean): SaveStatus {
+function overall(parts: TacticsSaveOutcome["parts"], rolesConflict: boolean, someOrdersSaved: boolean): SaveStatus {
   if (rolesConflict) return "conflict";
   const needed = (Object.values(parts) as PartState[]).filter((p) => p !== "notNeeded");
   if (needed.every((p) => p === "saved")) return "saved";
-  return needed.some((p) => p === "saved") ? "partial" : "failed";
+  return needed.some((p) => p === "saved") || someOrdersSaved ? "partial" : "failed";
+}
+
+/**
+ * #8381: etaper hvor ordrekladden afviger fra sin kvittering (baseline). En
+ * ordre uden kvittering (null/udefineret efter et fejlet gem) er stadig ugemt.
+ */
+export function dirtyOrderStages(current: Record<number, unknown>, baseline: Record<number, unknown>, stages: number[]): number[] {
+  return stages.filter((sn) => current?.[sn] !== undefined && JSON.stringify(current[sn]) !== JSON.stringify(baseline?.[sn]));
 }
 
 /** Koer et gem. Kaster aldrig: alle fejl ender i udfaldet. */
@@ -205,18 +221,26 @@ export async function runTacticsSave(plan: TacticsSavePlan, deps: TacticsSaveDep
     confirmedStages = r.confirmed;
   }
 
+  // #8381: een ordre pr. etape, hver med sin egen kvittering. En fejlet etape
+  // stopper ikke de andre; delen er kun "saved" naar alle er bekraeftet.
+  const ordersSaved: number[] = [];
   if (plan.ordersNeeded && roles !== "failed") {
-    try {
-      await deps.putOrders();
-      orders = "saved";
-    } catch (err) {
-      orders = "failed";
-      errorKey = (err instanceof Error && err.message) || "generic";
+    const targets: Array<number | undefined> = plan.orderStages ?? [undefined];
+    let allSaved = true;
+    for (const sn of targets) {
+      try {
+        await deps.putOrders(sn);
+        if (sn !== undefined) ordersSaved.push(sn);
+      } catch (err) {
+        allSaved = false;
+        errorKey = (err instanceof Error && err.message) || "generic";
+      }
     }
+    orders = allSaved ? "saved" : "failed";
   }
 
   const parts = { roles, orders };
-  return { status: overall(parts, rolesConflict), parts, errorKey, receipt, confirmedStages };
+  return { status: overall(parts, rolesConflict, ordersSaved.length > 0), parts, errorKey, receipt, confirmedStages, ordersSaved };
 }
 
 /**
