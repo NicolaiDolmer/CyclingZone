@@ -1870,6 +1870,10 @@
       "scouting": {
         "title": "Observer les autres divisions",
         "text": "Passe le hub des courses sur “Ma division” ou “Autres divisions” pour parcourir en lecture seule les prochaines listes de départ de n'importe quel groupe. Les listes de départ ouvrent sept jours avant chaque course et n'affichent que les effectifs bruts (quels coureurs une équipe a engagés), tu peux donc évaluer le peloton attendu. Les rôles, la forme et la fatigue restent masqués, et les courses plus éloignées restent verrouillées jusqu'à l'ouverture de leur liste de départ."
+      },
+      "spoilerShield": {
+        "title": "Bouclier anti-spoiler",
+        "text": "Le bouclier anti-spoiler garde les vainqueurs et les classements hors de tes notifications jusqu'à ce que tu décides de regarder. Active-le dans Paramètres, sous Notifications, dans la carte Résultats et spoilers (Bouclier anti-spoiler pour toutes les courses). Il est désactivé par défaut. Avec le bouclier activé, la boîte de réception, la cloche et les notifications du navigateur disent seulement qu'une étape est terminée. Elles ne nomment ni vainqueur ni place. La nouvelle page de course ajoute un interrupteur pour chaque course et y masque le résultat jusqu'à ce que tu appuies sur Afficher les résultats. Tant que la nouvelle page de course n'est pas activée pour toi, la page de course affiche le résultat comme avant."
       }
     },
     "raceDay": {
