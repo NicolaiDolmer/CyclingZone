@@ -8,7 +8,7 @@
       "team": "Équipe",
       "start": "Liste de départ"
     },
-    "mode": { "aria": "Vue de l'étape" },
+    "mode": { "aria": "Vue de l'étape", "story": "Récit · film et compte rendu", "results": "Résultats · liste complète" },
     "hero": {
       "stageLocks": "L'étape {number} se verrouille à {time} · {countdown}",
       "locks": "Se verrouille à {time} · {countdown}",
@@ -27,6 +27,7 @@
       "aria": "Parcours de l'étape",
       "km": "{km} km",
       "gain": "{gain} m de dénivelé",
+      "elevation": "{gain} m",
       "climbs": "{count, plural, one {# montée} other {# montées}}",
       "hide": "Masquer le parcours",
       "show": "Afficher le parcours",

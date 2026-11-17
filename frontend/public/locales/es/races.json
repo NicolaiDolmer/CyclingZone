@@ -8,7 +8,7 @@
       "team": "Equipo",
       "start": "Lista de salida"
     },
-    "mode": { "aria": "Vista de la etapa" },
+    "mode": { "aria": "Vista de la etapa", "story": "Historia · película y crónica", "results": "Resultados · lista completa" },
     "hero": {
       "stageLocks": "La etapa {number} se cierra a las {time} · {countdown}",
       "locks": "Se cierra a las {time} · {countdown}",
@@ -27,6 +27,7 @@
       "aria": "Recorrido de la etapa",
       "km": "{km} km",
       "gain": "{gain} m de desnivel",
+      "elevation": "{gain} m",
       "climbs": "{count, plural, one {# subida} other {# subidas}}",
       "hide": "Ocultar recorrido",
       "show": "Mostrar recorrido",

@@ -1,17 +1,18 @@
 {
   "title": "Film de la course",
-  "meta": "Le parcours est la ligne du temps",
+  "meta": "Un seul lecteur · le parcours est la ligne du temps",
   "play": "Lecture",
   "chaptersAria": "Chapitres",
   "chapter": {
     "start": "Départ",
     "break": "L'échappée",
     "sprint": "Sprint km {km}",
+    "chase": "La poursuite",
     "finale": "Final"
   },
   "report": {
     "title": "Ce qui s'est passé",
-    "meta": "Jusqu'où tu en es dans le film",
+    "meta": "Cliquez sur une ligne pour y aller",
     "empty": "Appuie sur Lecture ou choisis un chapitre. Le récit suit le film, donc rien n'est dévoilé avant que tu y arrives.",
     "ahead": "La suite de l'étape arrive au fil du film."
   },

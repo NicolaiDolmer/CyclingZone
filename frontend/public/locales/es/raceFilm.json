@@ -1,17 +1,18 @@
 {
   "title": "Película de la carrera",
-  "meta": "El recorrido es la línea de tiempo",
+  "meta": "Un reproductor · la ruta es la línea de tiempo",
   "play": "Reproducir",
   "chaptersAria": "Capítulos",
   "chapter": {
     "start": "Salida",
     "break": "La escapada",
     "sprint": "Sprint km {km}",
+    "chase": "La persecución",
     "finale": "Final"
   },
   "report": {
     "title": "Qué pasó",
-    "meta": "Hasta donde vas en la película",
+    "meta": "Pulsa una línea para saltar",
     "empty": "Pulsa Reproducir o elige un capítulo. El relato sigue a la película, así que nada se desvela antes de llegar.",
     "ahead": "El resto de la etapa llega mientras avanza la película."
   },

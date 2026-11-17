@@ -27,12 +27,12 @@ test("finalen begynder ved foden af en stigning, der topper i finalens vindue (F
   assert.equal(v6FinaleKm(6, []), 0);
 });
 
-test("kapitlerne er start, udbruddet, stigningerne, spurten og finalen i rutens rækkefølge (F4)", () => {
+test("kapitlerne er start, udbruddet, stigningerne, spurten, jagten og finalen i rutens rækkefølge (F4, wireframe v6c)", () => {
   const chapters = v6FilmChapters({
     distanceKm: 155,
     climbs: mountainClimbs,
     sprints: [{ km: 67, kind: "intermediate" }, { km: 155, kind: "finish" }],
-    lines: [{ kind: "formed", km: 12 }, { kind: "finish", km: 155 }],
+    lines: [{ kind: "formed", km: 12 }, { kind: "caught", km: 128.7 }, { kind: "finish", km: 155 }],
   });
   assert.deepEqual(chapters.map((c) => [c.kind, Math.round(c.km * 10) / 10, c.name ?? null]), [
     ["start", 0, null],
@@ -40,6 +40,7 @@ test("kapitlerne er start, udbruddet, stigningerne, spurten og finalen i rutens 
     ["climb", 55, "Passo A"],
     ["sprint", 67, null],
     ["climb", 91, "Cima B"],
+    ["chase", 128.7, null],
     ["finale", 143.2, null],
   ]);
 });
@@ -115,7 +116,14 @@ test("Historie efter etapen er filmen; Etape-fanen har Historie | Resultater i r
   assert.match(page, /activeTab === "stage" && phase === "after"\) \{[\s\S]{0,400}routeLine\("story"\)[\s\S]{0,200}<V6RaceFilm /);
   assert.match(page, /\{routeLine\("results"\)\}\{renderResults\(/);
   const line = read("./V6RouteLine.tsx");
-  assert.match(line, /racePageV6\.tab\.story[\s\S]{0,120}racePageV6\.tab\.results/, "Historie først, som wireframet");
+  assert.match(line, /racePageV6\.mode\.story[\s\S]{0,120}racePageV6\.mode\.results/, "Historie først, som wireframet");
+  // Wireframe v6c: "Story · film and report | Results · full list", på mobil i hele bredden.
+  for (const lang of ["en", "da"]) {
+    const races = JSON.parse(readFileSync(new URL(`../../../../public/locales/${lang}/races.json`, import.meta.url), "utf8"));
+    assert.match(races.racePageV6.mode.story, / · /);
+    assert.match(races.racePageV6.mode.results, / · /);
+  }
+  assert.match(line, /className="w-full sm:w-auto [^"]*\[&>button\]:flex-1/);
 });
 
 test("filmens dubletter er væk under v6: popup-afspiller, sidste km, ekstra referat og mellemtider", () => {

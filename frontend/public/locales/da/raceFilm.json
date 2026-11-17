@@ -1,17 +1,18 @@
 {
   "title": "Løbsfilm",
-  "meta": "Ruten er tidslinjen",
+  "meta": "Én afspiller · ruten er tidslinjen",
   "play": "Afspil",
   "chaptersAria": "Kapitler",
   "chapter": {
     "start": "Start",
     "break": "Udbruddet",
     "sprint": "Spurt km {km}",
+    "chase": "Jagten",
     "finale": "Finalen"
   },
   "report": {
     "title": "Det skete",
-    "meta": "Op til der, hvor du er i filmen",
+    "meta": "Klik på en linje for at hoppe dertil",
     "empty": "Tryk Afspil eller vælg et kapitel. Referatet følger filmen, så intet afsløres, før du når dertil.",
     "ahead": "Resten af etapen kommer, mens filmen kører."
   },

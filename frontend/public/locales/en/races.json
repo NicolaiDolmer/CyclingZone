@@ -8,7 +8,7 @@
       "team": "Team",
       "start": "Start list"
     },
-    "mode": { "aria": "Stage view" },
+    "mode": { "aria": "Stage view", "story": "Story · film and report", "results": "Results · full list" },
     "hero": {
       "stageLocks": "Stage {number} locks at {time} · {countdown}",
       "locks": "Locks at {time} · {countdown}",
@@ -27,6 +27,7 @@
       "aria": "Stage route",
       "km": "{km} km",
       "gain": "{gain} m climbing",
+      "elevation": "{gain} m",
       "climbs": "{count, plural, one {# climb} other {# climbs}}",
       "hide": "Hide route",
       "show": "Show route",

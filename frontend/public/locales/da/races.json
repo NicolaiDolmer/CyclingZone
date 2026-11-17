@@ -8,7 +8,7 @@
       "team": "Hold",
       "start": "Startliste"
     },
-    "mode": { "aria": "Etapens visning" },
+    "mode": { "aria": "Etapens visning", "story": "Historie · film og referat", "results": "Resultater · hele listen" },
     "hero": {
       "stageLocks": "Etape {number} låses kl. {time} · {countdown}",
       "locks": "Låses kl. {time} · {countdown}",
@@ -27,6 +27,7 @@
       "aria": "Etapens rute",
       "km": "{km} km",
       "gain": "{gain} m stigning",
+      "elevation": "{gain} m",
       "climbs": "{count, plural, one {# stigning} other {# stigninger}}",
       "hide": "Skjul rute",
       "show": "Vis rute",

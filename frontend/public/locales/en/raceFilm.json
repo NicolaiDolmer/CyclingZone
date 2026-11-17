@@ -1,17 +1,18 @@
 {
   "title": "Race film",
-  "meta": "The route is the timeline",
+  "meta": "One player · the route is the timeline",
   "play": "Play",
   "chaptersAria": "Chapters",
   "chapter": {
     "start": "Start",
     "break": "The break",
     "sprint": "Sprint km {km}",
+    "chase": "The chase",
     "finale": "Finale"
   },
   "report": {
     "title": "What happened",
-    "meta": "Up to where you are in the film",
+    "meta": "Click a line to jump",
     "empty": "Press Play or pick a chapter. The report follows the film, so nothing is given away before you get there.",
     "ahead": "The rest of the stage follows as the film plays."
   },

@@ -17,7 +17,7 @@ export const V6_FINALE_WINDOW_KM = 10;
 const MIN_CHAPTER_GAP_KM = 1;
 const EPS = 1e-6;
 
-export type V6ChapterKind = "start" | "break" | "climb" | "sprint" | "finale";
+export type V6ChapterKind = "start" | "break" | "climb" | "sprint" | "chase" | "finale";
 
 export interface V6Chapter {
   kind: V6ChapterKind;
@@ -59,7 +59,8 @@ export function v6FinaleKm(distanceKm: number, climbs: ReadonlyArray<Pick<Climb,
 
 /**
  * Filmens kapitler i rutens rækkefølge: start, udbruddet (første "går væk"-linje),
- * hver stigning ved sin fod, hver mellemspurt og til sidst finalen. Steder i
+ * hver stigning ved sin fod, hver mellemspurt, jagten (hvor udbruddet hentes, wireframe v6c)
+ * og til sidst finalen. Steder i
  * finalen hører til finalen; to steder inden for samme km bliver ét kapitel.
  */
 export function v6FilmChapters({ distanceKm, climbs = [], sprints = [], lines = [] }: {
@@ -73,6 +74,8 @@ export function v6FilmChapters({ distanceKm, climbs = [], sprints = [], lines = 
   const candidates: V6Chapter[] = [];
   const formed = lines.find((l) => l.kind === "formed");
   if (formed && Number.isFinite(formed.km)) candidates.push({ kind: "break", km: formed.km });
+  const caught = lines.find((l) => l.kind === "caught");
+  if (caught && Number.isFinite(caught.km)) candidates.push({ kind: "chase", km: caught.km });
   for (const c of climbs) {
     const foot = climbFootKm(c);
     if (foot != null) candidates.push({ kind: "climb", km: foot, name: c.name ?? null });
