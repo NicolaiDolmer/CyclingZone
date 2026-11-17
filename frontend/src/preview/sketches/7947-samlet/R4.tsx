@@ -283,7 +283,6 @@ export default function Direction4({ pressedAtStart, dateAtStart, mobile }: { pr
     let fields = resolveDate(baseFor(r, date), st.quick, st.manual);
     if (pressed && isToday) fields = fields.map((f) => (f.kind === "train" ? { ...f, done: true } : f));
     return { rider: r, st, fields, override: hasDateOverride(st.quick, st.manual) };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [plans, date, pressed]);
 
   const changedDates = new Set<number>();
