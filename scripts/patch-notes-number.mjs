@@ -17,7 +17,9 @@
 //   3. giver dem top-version + 1, + 2 ... og saetter posterne oeverst i patchNotes.js,
 //   4. sletter fragmenterne og skriver det hele som eet chore-commit paa main via
 //      GitHubs Git Data API oven paa den hentede SHA (ref-opdatering uden force; er
-//      main flyttet, proeves een gang til fra frisk main).
+//      main flyttet, proeves een gang til fra frisk main),
+//   5. melder den nye SHA som maskinlinjen `PATCH-NOTES-SHA: <sha>`; merge-koeen venter
+//      derefter paa main-CI + deploy-verifikation af netop det commit (AGENTS regel 20).
 // Ingen lokal checkout roeres: koeen koerer ofte i et delt checkout med andres arbejde.
 //
 // Validering af fragmenterne i PR'er sker i scripts/check-patch-notes-version.js
@@ -54,6 +56,17 @@ const FRAGMENT_KEYS = ['changes', 'label'];
 // slippe igennem med noget den afviser.
 const STAGES = ['beta'];
 const LEAK_RE = /(\bSELECT \b|\bINSERT \b|\bGRANT \b|service_role|\.sql\b|scripts\/|\bRLS\b|\.github\/)/i;
+
+// Maskinlinje til merge-koeen (scripts/merge-queue.ps1, Invoke-TrainCloseOut): den nye
+// main-SHA, som koeen skal verificere (main-CI + deploy) foer close-out er faerdig.
+export const NUMBERED_SHA_PREFIX = 'PATCH-NOTES-SHA: ';
+export const NUMBERED_SHA_RE = /^PATCH-NOTES-SHA: ([0-9a-f]{40})$/;
+
+export function numberedShaLine(sha) {
+  const full = String(sha ?? '');
+  if (!/^[0-9a-f]{40}$/.test(full)) throw new Error(`ugyldig commit-SHA fra GitHub: ${full.slice(0, 60)}`);
+  return `${NUMBERED_SHA_PREFIX}${full}`;
+}
 
 export function isPendingFragmentPath(file) {
   return FRAGMENT_PATH_RE.test(String(file ?? ''));
@@ -356,7 +369,10 @@ export function numberPendingOnMain({ repo = DEFAULT_REPO, dryRun = false, git =
     const res = writeCommitViaApi({ gh, repo, baseSha, baseTree, source, removed: assigned.map((a) => a.path), message: commitMessage(assigned) });
     if (res.ok) {
       lines.push(`patch notes: ${assigned.length} fragment(er) nummereret paa main som ${String(res.sha).slice(0, 8)}: ${summary}.`);
-      lines.push(`patch notes: ${res.sha} er et nyt main-commit efter dette togs verifikation; main-CI og deploy for det ses af naeste tog (dets merge bygger oven paa det) eller tjekkes paa main-HEAD.`);
+      // Codex P1 (PR #8353): commit'et er nyt efter togets verifikation. Maskinlinjen giver
+      // SHA'en tilbage til merge-koeen, som kraever main-CI + deploy-verifikation af den,
+      // foer close-out er faerdig (AGENTS regel 20). Koeres `push` manuelt, verificeres den selv.
+      lines.push(numberedShaLine(res.sha));
       return lines;
     }
     if (!res.notFastForward || attempt === attempts) throw new Error(res.error);

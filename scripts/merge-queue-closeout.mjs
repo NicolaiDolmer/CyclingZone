@@ -352,6 +352,8 @@ export function main(argv = process.argv.slice(2), { gh = defaultGh, out = (l) =
   for (const err of result.errors) out(`close-out ADVARSEL: ${err}`);
   if (result.nowLine) out(`NOW-LINJE (commit selv i docs/NOW.md ved close-out): ${result.nowLine}`);
   // #8346: kun efter et verificeret tog faar ventende patch notes nummer + dato (eet chore-commit paa main). Fail-soft.
+  // Laves et commit, skrives maskinlinjen `PATCH-NOTES-SHA: <sha>` uaendret videre: merge-queue.ps1
+  // laeser den og kraever main-CI + deploy-verifikation af commit'et, foer close-out er faerdig (Codex P1, PR #8353).
   if (phase === 'verified' && numberPatchNotes) {
     try { for (const line of numberPatchNotes({ repo, dryRun })) out(line); } catch (err) { out(`close-out ADVARSEL: patch notes-nummerering: ${err?.message ?? err}`); }
   }

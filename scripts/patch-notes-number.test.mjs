@@ -22,6 +22,8 @@ import {
   defaultGit,
   isPendingFragmentPath,
   commitMessage,
+  NUMBERED_SHA_RE,
+  numberedShaLine,
 } from './patch-notes-number.mjs';
 
 const require = createRequire(import.meta.url);
@@ -291,7 +293,10 @@ test('numberPendingOnMain: eet commit via API oven paa origin/main, fragmenter s
     const { gh, calls } = fakeGh();
     const lines = numberPendingOnMain({ repo: 'o/r', git: defaultGit(work), gh });
     assert.match(lines.join('\n'), /2 fragment\(er\) nummereret paa main som cccccccc: 7\.457 <- 2000-merged-first\.json, 7\.458 <- 1000-merged-second\.json/);
-    assert.match(lines.at(-1), /c{40} er et nyt main-commit efter dette togs verifikation/);
+    // Codex P1 (PR #8353): den nye SHA meldes som maskinlinje, saa merge-koeen kan verificere den.
+    assert.equal(lines.at(-1), `PATCH-NOTES-SHA: ${'c'.repeat(40)}`);
+    assert.equal(NUMBERED_SHA_RE.exec(lines.at(-1))?.[1], 'c'.repeat(40));
+    assert.equal(lines.filter((l) => NUMBERED_SHA_RE.test(l)).length, 1);
     assert.deepEqual(calls.map((c) => c.endpoint), ['repos/o/r/git/blobs', 'repos/o/r/git/trees', 'repos/o/r/git/commits', 'repos/o/r/git/refs/heads/main']);
     const written = Buffer.from(calls[0].body.content, 'base64').toString('utf8');
     assert.deepEqual(parsePatchesSource(written).map((p) => p.version), ['7.458', '7.457', '7.456', '7.455']);
@@ -323,6 +328,13 @@ test('numberPendingOnMain: main flyttede sig = een ny runde; to gange = fejl til
   }
 });
 
+test('numberedShaLine: kun en fuld 40-hex SHA giver maskinlinjen', () => {
+  assert.equal(numberedShaLine('d'.repeat(40)), `PATCH-NOTES-SHA: ${'d'.repeat(40)}`);
+  assert.throws(() => numberedShaLine('abc'), /ugyldig commit-SHA/);
+  assert.throws(() => numberedShaLine(undefined), /ugyldig commit-SHA/);
+  assert.equal(NUMBERED_SHA_RE.test(`PATCH-NOTES-SHA: ${'d'.repeat(40)} ekstra`), false);
+});
+
 test('numberPendingOnMain: dry-run og intet at nummerere skriver intet', () => {
   const { base, work } = setupRepos();
   try {
@@ -330,6 +342,7 @@ test('numberPendingOnMain: dry-run og intet at nummerere skriver intet', () => {
     const lines = numberPendingOnMain({ repo: 'o/r', dryRun: true, git: defaultGit(work), gh: dry.gh });
     assert.match(lines[0], /^\[dry-run\] patch notes: ville nummerere 2 fragment/);
     assert.equal(dry.calls.length, 0);
+    assert.ok(!lines.some((l) => NUMBERED_SHA_RE.test(l)), 'dry-run melder ingen SHA til koeen');
     sh(work, ['rm', '-q', '-r', PENDING_DIR]);
     sh(work, ['commit', '-q', '-m', 'numbered']);
     sh(work, ['push', '-q', 'origin', 'main']);

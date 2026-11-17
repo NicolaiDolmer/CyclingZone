@@ -8,6 +8,7 @@ import {
 
 const SHA_A = 'a'.repeat(40);
 const SHA_B = 'b'.repeat(40);
+const SHA_C = 'c'.repeat(40);
 // Fast ur i alle tests (AGENTS.md: deterministiske tests, intet vaeg-ur).
 const NOW = new Date('2026-11-04T12:00:00Z');
 
@@ -371,7 +372,7 @@ const psQuote = (value) => "'" + value.replaceAll("'", "''") + "'";
 function runQueue(body) {
   const prelude = `$ErrorActionPreference='Stop'
 $ast=[Management.Automation.Language.Parser]::ParseInput(${psQuote(queue)},[ref]$null,[ref]$null)
-foreach($name in @('Close-OpenTrain','Invoke-TrainCloseOut','Get-DeployGateAction')){
+foreach($name in @('Close-OpenTrain','Invoke-TrainCloseOut','Get-DeployGateAction','Confirm-PatchNotesCommit')){
  $fn=$ast.Find({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq $name},$true)
  if(-not $fn){throw "Missing queue function: $name"}
  Invoke-Expression $fn.Extent.Text
@@ -385,13 +386,17 @@ $script:trainDeploys=1; $script:trainNeedsRailway=$false; $script:queueStall=$nu
 $script:trainEntries=@([pscustomobject]@{number=1;sha='${SHA_A}'},[pscustomobject]@{number=2;sha='${SHA_B}'})
 function Wait-BatchCi { return $script:ciOk }
 function Wait-BatchMigrations { return $true }
-function Wait-ForDeployVerification { param($Sha,$TimeoutMinutes,$StallMinutes); return 'released' }
+$script:patchDeployState='released'; $script:patchCiOk=$true; $script:patchCiState='success'; $script:ciWaits=@(); $script:deployWaits=@()
+function Wait-ForDeployVerification { param($Sha,$TimeoutMinutes,$StallMinutes); $script:deployWaits += [string]$Sha; if ($Sha -eq '${SHA_C}') { return $script:patchDeployState }; return 'released' }
+function Wait-ForWorkflowRun { param($WorkflowFile,$Sha,$TimeoutMinutes,$Label,$StallMinutes); $script:ciWaits += ([string]$WorkflowFile + '@' + [string]$Sha); $script:workflowRunState=$script:patchCiState; return $script:patchCiOk }
+function Stop-QueueStall { exit 1 }
 function Write-TrainCulprit { param($Failure) }
 function Start-Sleep { param($Seconds) }
 function node {
  $script:nodeCalls += ,@($args)
  if($script:nodeMode -eq 'throw'){ throw 'private-closeout-failure' }
  if($script:nodeMode -eq 'fail'){ $global:LASTEXITCODE=1; return 'close-out ADVARSEL: fixture' }
+ if($script:nodeMode -eq 'patch'){ $global:LASTEXITCODE=0; return @('patch notes: 1 fragment(er) nummereret', '  PATCH-NOTES-SHA: ${SHA_C}', 'close-out faerdig') }
  $global:LASTEXITCODE=0; return 'NOW-LINJE fixture'
 }
 `;
@@ -400,7 +405,7 @@ try { ${body}; $script:nextMerge++ }
 catch { $script:unexpected=$_.Exception.Message; exit 2 }
 finally {
  $calls=@($script:nodeCalls | ForEach-Object { ,@($_ | ForEach-Object { [string]$_ }) })
- Write-Output ('RESULT='+(@{calls=$calls;nextMerge=$script:nextMerge;unexpected=$script:unexpected;batch=$script:batchMerged.Count}|ConvertTo-Json -Compress -Depth 5))
+ Write-Output ('RESULT='+(@{calls=$calls;nextMerge=$script:nextMerge;unexpected=$script:unexpected;batch=$script:batchMerged.Count;ciWaits=@($script:ciWaits);deployWaits=@($script:deployWaits)}|ConvertTo-Json -Compress -Depth 5))
 }
 `;
   const result = spawnSync('pwsh', ['-NoProfile', '-NonInteractive', '-Command', '& ([scriptblock]::Create([Console]::In.ReadToEnd()))'], { input, encoding: 'utf8', timeout: 60_000 });
@@ -453,6 +458,51 @@ test('close-out failure never turns a verified merge into a failure', () => {
   const missing = runQueue('Remove-Item Function:\\Invoke-TrainCloseOut; Close-OpenTrain');
   assert.equal(missing.status, 0, missing.stdout);
   assert.equal(missing.data.nextMerge, 1);
+});
+
+test('#8346 Codex P1: a new patch notes commit gets main-CI + deploy verification before close-out ends', () => {
+  const res = runQueue("$script:nodeMode='patch'; Close-OpenTrain");
+  assert.equal(res.status, 0, res.stdout);
+  assert.equal(res.data.unexpected, null);
+  assert.equal(res.data.nextMerge, 1);
+  assert.deepEqual(res.data.ciWaits, [`ci.yml@${SHA_C}`]);
+  assert.deepEqual(res.data.deployWaits, [SHA_B, SHA_C], 'train deploy first, then the patch notes commit');
+  assert.match(res.stdout, /\[ok\] patch notes-commit cccccccc: main-CI \+ deploy-verifikation groenne/);
+});
+
+test('#8346 Codex P1: a train without deploy still verifies the patch notes commit deploy', () => {
+  const res = runQueue("$script:batchBackend=$false; $script:nodeMode='patch'; Close-OpenTrain");
+  assert.equal(res.status, 0, res.stdout);
+  assert.deepEqual(res.data.ciWaits, [`ci.yml@${SHA_C}`]);
+  assert.deepEqual(res.data.deployWaits, [SHA_C]);
+});
+
+test('#8346 Codex P1: red CI or a failed/pending deploy on the patch notes commit stops the queue', () => {
+  const red = runQueue("$script:nodeMode='patch'; $script:patchCiOk=$false; $script:patchCiState='failure'; Close-OpenTrain");
+  assert.equal(red.status, 1, red.stdout);
+  assert.equal(red.data.nextMerge, 0);
+  assert.match(red.stdout, /STOP: main-CI er ROED for patch notes-commit cccccccc/);
+  assert.deepEqual(red.data.deployWaits, [SHA_B], 'no deploy wait after red CI');
+  const unverified = runQueue("$script:nodeMode='patch'; $script:patchCiOk=$false; $script:patchCiState='pending'; Close-OpenTrain");
+  assert.equal(unverified.status, 1, unverified.stdout);
+  assert.match(unverified.stdout, /endnu ikke verificeret groen for patch notes-commit/);
+  const failed = runQueue("$script:nodeMode='patch'; $script:patchDeployState='failed'; Close-OpenTrain");
+  assert.equal(failed.status, 1, failed.stdout);
+  assert.equal(failed.data.nextMerge, 0);
+  assert.match(failed.stdout, /deploy-verifikation for patch notes-commit cccccccc er failed/);
+  const pending = runQueue("$script:nodeMode='patch'; $script:patchDeployState='pending'; Close-OpenTrain");
+  assert.equal(pending.status, 75, pending.stdout);
+  assert.equal(pending.data.nextMerge, 0);
+});
+
+test('#8346: without a patch notes commit nothing extra is verified', () => {
+  const res = runQueue('Close-OpenTrain');
+  assert.equal(res.status, 0, res.stdout);
+  assert.deepEqual(res.data.ciWaits, []);
+  assert.deepEqual(res.data.deployWaits, [SHA_B]);
+  const merged = runQueue(`$script:nodeMode='patch'; $r = Invoke-TrainCloseOut -Entries @([pscustomobject]@{number=7;sha='${SHA_A}'}) -Phase 'merged'; if ($r -ne '${SHA_C}') { throw "sha not returned: $r" }`);
+  assert.equal(merged.status, 0, merged.stdout);
+  assert.deepEqual(merged.data.ciWaits, [], 'Invoke-TrainCloseOut only returns the SHA; Close-OpenTrain verifies it');
 });
 
 test('Invoke-TrainCloseOut -Phase merged calls the merged subcommand', () => {
