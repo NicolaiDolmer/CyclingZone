@@ -33,6 +33,7 @@ import { createPublicStageRouteRouter } from "./routes/publicStageRoute.js"; // 
 import { startCron, awaitCronsIdle, getCronInFlight, stopCronScheduling } from "./cron.js";
 import { createActionTimingMiddleware, flushActionTimingOnShutdown } from "./lib/actionTimingMonitor8101.js"; // #8101
 import { startDirectDbProbe, stopDirectDbProbe, closeDirectDbLine } from "./lib/directDbProbe.ts"; // #8143
+import { startConfigCacheSwitch, stopConfigCacheSwitch } from "./lib/configCache8143.js"; // #8143 (H)
 
 const app = express();
 // Express 5 default; laast eksplicit 11/9 (#4565): ingen nestede/array-query-noegler
@@ -129,6 +130,7 @@ const server = app.listen(PORT, () => {
   startCron();
   // #8143: måleprøven for den direkte linje. Uden DIRECT_DB_URL sker der intet.
   startDirectDbProbe({ supabase: healthSupabase });
+  startConfigCacheSwitch({ supabase: healthSupabase }); // #8143 (H): config_cache_8143, slukket = som før
 });
 
 // Graceful shutdown — Railway sender SIGTERM før dyno-kill ved deploy. Uden
@@ -155,6 +157,7 @@ async function gracefulShutdown(signal) {
   // den gamle blive ved med at fyre ticks parallelt med den nye i op til 150s.
   stopCronScheduling();
   stopDirectDbProbe(); // #8143
+  stopConfigCacheSwitch(); // #8143 (H)
   const inFlight = getCronInFlight();
   if (inFlight > 0) {
     console.log(`[shutdown] venter på ${inFlight} cron-tick(s) (timeout ${SHUTDOWN_TIMEOUT_MS}ms)`);
