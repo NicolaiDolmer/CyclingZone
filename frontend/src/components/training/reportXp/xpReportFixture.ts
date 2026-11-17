@@ -11,19 +11,19 @@ import type { XpActivity, XpReceipt, XpRiderReceipt } from "../../../lib/trainin
 export const XP_FIXTURE_LAST_DATE = "2026-11-15";
 const DAYS = 30;
 
-const RIDERS: Array<{ id: string; name: string; nation: string; focus: string[][]; races: number }> = [
-  { id: "fx-1", name: "Aksel Brandvig", nation: "dk", focus: [["climbing", "endurance"], ["tempo", "recovery"]], races: 3 },
-  { id: "fx-2", name: "Teodor Lunde", nation: "no", focus: [["sprint", "acceleration"], ["positioning", "flat"]], races: 2 },
-  { id: "fx-3", name: "Matteo Calvari", nation: "it", focus: [["punch", "acceleration"], ["climbing", "recovery"]], races: 3 },
-  { id: "fx-4", name: "Pieter van Hoorn", nation: "nl", focus: [["time_trial", "tempo"], ["flat", "endurance"]], races: 2 },
-  { id: "fx-5", name: "Julien Marcadet", nation: "fr", focus: [["cobblestone", "durability"], ["positioning", "flat"]], races: 3 },
-  { id: "fx-6", name: "Iker Zubeldia Arregi", nation: "es", focus: [["climbing", "descending"], ["endurance", "recovery"]], races: 2 },
-  { id: "fx-7", name: "Lukas Brenner", nation: "de", focus: [["tempo", "flat"], ["teamwork", "endurance"]], races: 3 },
-  { id: "fx-8", name: "Owen Pellow", nation: "gb", focus: [["sprint", "positioning"], ["acceleration", "flat"]], races: 0 },
-  { id: "fx-9", name: "Camilo Ortegón Vela", nation: "co", focus: [["climbing", "recovery"], ["punch", "endurance"]], races: 2 },
-  { id: "fx-10", name: "Nils Ammann", nation: "ch", focus: [["time_trial", "endurance"], ["descending", "tempo"]], races: 1 },
-  { id: "fx-11", name: "Jesper Hollund", nation: "dk", focus: [["aggression", "punch"], ["tactics", "flat"]], races: 3 },
-  { id: "fx-12", name: "Callum Reid", nation: "au", focus: [["leadership", "tactics"], ["endurance", "tempo"]], races: 1 },
+const RIDERS: Array<{ id: string; name: string; nation: string; type: [string, string]; focus: string[][]; races: number }> = [
+  { id: "fx-1", name: "Aksel Brandvig", nation: "dk", type: ["climber", "gc"], focus: [["climbing", "endurance"], ["tempo", "recovery"]], races: 3 },
+  { id: "fx-2", name: "Teodor Lunde", nation: "no", type: ["sprinter", "rouleur"], focus: [["sprint", "acceleration"], ["positioning", "flat"]], races: 2 },
+  { id: "fx-3", name: "Matteo Calvari", nation: "it", type: ["puncheur", "climber"], focus: [["punch", "acceleration"], ["climbing", "recovery"]], races: 3 },
+  { id: "fx-4", name: "Pieter van Hoorn", nation: "nl", type: ["tt", "rouleur"], focus: [["time_trial", "tempo"], ["flat", "endurance"]], races: 2 },
+  { id: "fx-5", name: "Julien Marcadet", nation: "fr", type: ["brostensrytter", "rouleur"], focus: [["cobblestone", "durability"], ["positioning", "flat"]], races: 3 },
+  { id: "fx-6", name: "Iker Zubeldia Arregi", nation: "es", type: ["climber", "puncheur"], focus: [["climbing", "descending"], ["endurance", "recovery"]], races: 2 },
+  { id: "fx-7", name: "Lukas Brenner", nation: "de", type: ["rouleur", "tt"], focus: [["tempo", "flat"], ["teamwork", "endurance"]], races: 3 },
+  { id: "fx-8", name: "Owen Pellow", nation: "gb", type: ["sprinter", "puncheur"], focus: [["sprint", "positioning"], ["acceleration", "flat"]], races: 0 },
+  { id: "fx-9", name: "Camilo Ortegón Vela", nation: "co", type: ["climber", "gc"], focus: [["climbing", "recovery"], ["punch", "endurance"]], races: 2 },
+  { id: "fx-10", name: "Nils Ammann", nation: "ch", type: ["tt", "gc"], focus: [["time_trial", "endurance"], ["descending", "tempo"]], races: 1 },
+  { id: "fx-11", name: "Jesper Hollund", nation: "dk", type: ["baroudeur", "puncheur"], focus: [["aggression", "punch"], ["tactics", "flat"]], races: 3 },
+  { id: "fx-12", name: "Callum Reid", nation: "au", type: ["gc", "climber"], focus: [["leadership", "tactics"], ["endurance", "tempo"]], races: 1 },
 ];
 const RACE_ABILITIES = [["endurance", "flat", "tempo"], ["climbing", "endurance", "recovery"], ["punch", "acceleration", "positioning"]];
 
@@ -43,7 +43,24 @@ function addDays(date: string, delta: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-export interface XpFixture { receipts: XpReceipt[]; nations: Record<string, string>; scores: Map<string, number> }
+export interface XpFixture { receipts: XpReceipt[]; nations: Record<string, string>; types: Record<string, { primary: string; secondary: string }>; scores: Map<string, number> }
+
+// Invented fixture rule, not the engine's: at most this many points per ability
+// per date. XP over it stays on the bar and is paid out on a later date, which is
+// how the fixture shows "paid out from the bar" next to "earned today".
+const FIXTURE_POINTS_PER_DATE = 1;
+
+/**
+ * Scripted moments on the last two dates, so the preview's default day shows the
+ * two cases the report must explain: a rider who rests all day and still gets a
+ * point (paid out from the bar), and a rider whose focus moved on while the old
+ * focus is paid out from the bar. `boost` is extra XP, in shares of the ability's
+ * fixture price, on the scripted date's first session.
+ */
+const SCRIPT: Record<string, Record<number, { rest?: true; race?: boolean; focus?: string[]; boost?: { key: string; share: number } }>> = {
+  "fx-6": { 1: { race: true, boost: { key: "climbing", share: 2.4 } }, 0: { rest: true } },
+  "fx-1": { 1: { focus: ["climbing", "endurance"], boost: { key: "climbing", share: 2.3 } }, 0: { race: false, focus: ["tempo", "recovery"] } },
+};
 
 export function buildXpReportFixture(): XpFixture {
   const scores = new Map<string, number>();
@@ -57,30 +74,39 @@ export function buildXpReportFixture(): XpFixture {
     const raceDate = noise(date, "race") < 0.55;
     const riders: XpRiderReceipt[] = RIDERS.map(r => {
       const s = state.get(r.id)!;
+      const script = SCRIPT[r.id]?.[offset] ?? {};
       const levelOf = (key: string) => (s.levels[key] ??= pick(noise(r.id, key, "lvl"), 38, 76));
-      const races = raceDate && r.races > 0 && noise(r.id, date) < r.races / 3.4;
+      const races = script.rest ? false : script.race ?? (raceDate && r.races > 0 && noise(r.id, date) < r.races / 3.4);
       const formBefore = s.form, fatigueBefore = s.fatigue;
       const gains: Record<string, number> = {};
+      const paid: Record<string, number> = {};
       const detail: Record<string, { from: number; to: number }> = {};
+      const buy = (key: string, into: Record<string, number>[]) => {
+        const from = levelOf(key);
+        s.bars[key] -= fixturePrice(from);
+        s.levels[key] = from + 1;
+        for (const map of into) map[key] = (map[key] ?? 0) + 1;
+        detail[key] = { from: detail[key]?.from ?? from, to: from + 1 };
+      };
+      const room = (key: string) => (gains[key] ?? 0) < FIXTURE_POINTS_PER_DATE;
+      // The date's start: XP saved on the bar that already covers a point is paid
+      // out first, before any of today's XP (rest day or not).
+      for (const key of Object.keys(s.bars)) {
+        while (room(key) && s.bars[key] >= fixturePrice(levelOf(key))) buy(key, [gains, paid]);
+      }
       const activities: XpActivity[] = [0, 1, 2, 3, 4].map(slot => {
         const race = races && (slot === 2 || slot === 4);
-        const rest = !race && (races || slot === 4 || noise(r.id, date, slot, "rest") < 0.12);
-        const focus = r.focus[(slot + offset) % r.focus.length];
+        const rest = script.rest || (!race && (races || slot === 4 || noise(r.id, date, slot, "rest") < 0.12));
+        const focus = script.focus ?? r.focus[(slot + offset) % r.focus.length];
         const xp: Record<string, number> = {};
         if (race) for (const key of RACE_ABILITIES[pick(noise(date, slot, "terrain"), 0, 2)]) xp[key] = pick(noise(r.id, date, slot, key), 3, 9);
         else if (!rest) for (const key of focus) xp[key] = pick(noise(r.id, date, slot, key), 2, 7);
+        const boost = script.boost;
+        if (boost && slot === (race ? 2 : 0)) xp[boost.key] = (xp[boost.key] ?? 0) + Math.round(boost.share * fixturePrice(levelOf(boost.key)));
         const slotGains: Record<string, number> = {};
         for (const [key, earned] of Object.entries(xp)) {
-          let bar = (s.bars[key] ?? 0) + earned;
-          while (bar >= fixturePrice(levelOf(key))) {
-            bar -= fixturePrice(levelOf(key));
-            const from = levelOf(key);
-            s.levels[key] = from + 1;
-            slotGains[key] = (slotGains[key] ?? 0) + 1;
-            gains[key] = (gains[key] ?? 0) + 1;
-            detail[key] = { from: detail[key]?.from ?? from, to: from + 1 };
-          }
-          s.bars[key] = bar;
+          s.bars[key] = (s.bars[key] ?? 0) + earned;
+          while (room(key) && s.bars[key] >= fixturePrice(levelOf(key))) buy(key, [gains, slotGains]);
         }
         s.fatigue = Math.max(0, Math.min(80, s.fatigue + (race ? 9 : rest ? -6 : 3)));
         if (!race && !rest) scores.set(`${r.id}:${date}:${slot}`, pick(noise(r.id, date, slot, "score"), 34, 82));
@@ -98,7 +124,7 @@ export function buildXpReportFixture(): XpFixture {
         ...last, rider_id: r.id, name: r.name, activities, receipt_status: "complete",
         gains, gains_detail: detail, gain_percent: {}, progress_before: {}, trained_now: null,
         form_before: formBefore, fatigue_before: fatigueBefore, form: s.form, fatigue: s.fatigue,
-        fatigue_delta: s.fatigue - fatigueBefore, race_day: activities.some(a => a.race_day), xp_bar: xpBar,
+        fatigue_delta: s.fatigue - fatigueBefore, race_day: activities.some(a => a.race_day), xp_bar: xpBar, bar_paid: paid,
       } satisfies XpRiderReceipt;
     });
     receipts.push({
@@ -108,7 +134,7 @@ export function buildXpReportFixture(): XpFixture {
     });
   }
   receipts.reverse(); // newest first, like aggregateTrainingRuns
-  return { receipts, nations: Object.fromEntries(RIDERS.map(r => [r.id, r.nation])), scores };
+  return { receipts, nations: Object.fromEntries(RIDERS.map(r => [r.id, r.nation])), types: Object.fromEntries(RIDERS.map(r => [r.id, { primary: r.type[0], secondary: r.type[1] }])), scores };
 }
 
 export const fixtureScoreOf = (scores: Map<string, number>) =>

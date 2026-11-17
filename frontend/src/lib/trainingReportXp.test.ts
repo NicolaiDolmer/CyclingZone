@@ -46,14 +46,57 @@ test("raceShare never rounds a source away and is null without a race", () => {
 
 test("barSegments: before today, training and race as shares of the price", () => {
   // No point bought: 10 of 40 XP now, 6 of them today (4 training, 2 race).
-  assert.deepEqual(barSegments({ xp: 10, price: 40 }, 4, 2, false), { before: 4 / 40, training: 4 / 40, race: 2 / 40 });
-  // A point bought today: the bar starts over and only today's remainder shows.
-  const bought = barSegments({ xp: 3, price: 30 }, 0, 9, true)!;
+  assert.deepEqual(barSegments({ xp: 10, price: 40 }, 4, 2), { before: 4 / 40, training: 4 / 40, race: 2 / 40 });
+  // A point bought with today's XP: saved XP is spent first, only today's remainder shows.
+  const bought = barSegments({ xp: 3, price: 30 }, 0, 9)!;
   assert.equal(bought.before, 0);
   assert.equal(bought.training, 0);
   assert.equal(bought.race, 3 / 30);
-  assert.equal(barSegments(null, 1, 1, false), null);
-  assert.equal(barSegments({ xp: 1, price: 0 }, 1, 1, false), null);
+  // Rest day with a point paid out from the bar: what is left is older XP, never "today".
+  assert.deepEqual(barSegments({ xp: 12, price: 40 }, 0, 0), { before: 12 / 40, training: 0, race: 0 });
+  assert.equal(barSegments(null, 1, 1), null);
+  assert.equal(barSegments({ xp: 1, price: 0 }, 1, 1), null);
+});
+
+test("earned today vs paid out from the bar: rest day, change of focus and totals (Fable point 5)", () => {
+  const restDay = rider("rest", [slot({ intensity: "rest" }), slot({ intensity: "rest", game_day: 1 })], {
+    gains: { climbing: 1 }, gains_detail: { climbing: { from: 61, to: 62 } }, bar_paid: { climbing: 1 },
+    xp_bar: { climbing: { xp: 5, price: 50 } },
+  });
+  const newFocus = rider("focus", [slot({ xp: { tempo: 9, recovery: 4 } }), slot({ game_day: 1, xp: { tempo: 30 } })], {
+    gains: { climbing: 1, tempo: 1 }, bar_paid: { climbing: 1 },
+  });
+  const plain = rider("plain", [slot({ xp: { sprint: 40 } })], { gains: { sprint: 1 } });
+  // A bad payload never shows more paid out than landed.
+  const junk = rider("junk", [slot({ xp: { flat: 2 } })], { gains: { flat: 1 }, bar_paid: { flat: 3, sprint: 2 } });
+  const day = buildTodayView([receipt("2026-11-15", [restDay, newFocus, plain, junk])], null)!;
+  const byId = Object.fromEntries(day.riders.map(r => [r.id, r]));
+  assert.deepEqual([byId.rest.xp, byId.rest.earned, byId.rest.paid, byId.rest.paidAbility], [0, 0, 1, "climbing"]);
+  assert.deepEqual([byId.focus.earned, byId.focus.paid, byId.focus.pointAbility, byId.focus.paidAbility], [1, 1, "tempo", "climbing"]);
+  assert.deepEqual([byId.plain.earned, byId.plain.paid], [1, 0]);
+  assert.deepEqual([byId.junk.earned, byId.junk.paid], [0, 1]);
+  const climbing = byId.rest.abilities.find(a => a.key === "climbing")!;
+  assert.deepEqual([climbing.points, climbing.earned, climbing.paid, climbing.xp], [1, 0, 1, 0]);
+  assert.deepEqual(climbing.segments, { before: 5 / 50, training: 0, race: 0 });
+  assert.deepEqual([day.points, day.earned, day.paid, day.earnedRiders, day.paidRiders], [5, 2, 3, 2, 3]);
+  // Without the field nothing is paid out: every point is earned (today's behaviour).
+  const none = buildTodayView([receipt("2026-11-15", [rider("x", [slot({ xp: { sprint: 40 } })], { gains: { sprint: 2 } })])], null)!;
+  assert.deepEqual([none.earned, none.paid], [2, 0]);
+  const month = buildMonthView([receipt("2026-11-15", [restDay, newFocus]), receipt("2026-11-14", [rider("rest", [slot({ xp: { climbing: 70 } })], { gains: { climbing: 1 } })])])!;
+  assert.deepEqual([month.points, month.earned, month.paid], [4, 2, 2]);
+  assert.deepEqual([month.riders.find(r => r.id === "rest")!.earned, month.riders.find(r => r.id === "rest")!.paid], [1, 1]);
+});
+
+test("the preview fixture shows a rest-day payout and a change of focus on its last date", () => {
+  const view = buildTodayView(buildXpReportFixture().receipts, null)!;
+  const rest = view.riders.find(r => r.id === "fx-6")!;
+  assert.ok(rest.sessions.every(s => s.kind === "rest"));
+  assert.equal(rest.xp, 0);
+  assert.ok(rest.paid > 0);
+  const focus = view.riders.find(r => r.id === "fx-1")!;
+  assert.ok(focus.paid > 0 && focus.xp > 0);
+  assert.equal(focus.abilities.find(a => a.paid > 0)!.xp, 0, "the paid ability got no XP after the change of focus");
+  assert.ok(view.paid > 0 && view.earned > 0);
 });
 
 test("xpOfPrice never rounds up to a point that has not landed", () => {
@@ -151,8 +194,10 @@ test("the preview fixture is deterministic and complete", () => {
   const today = buildTodayView(a.receipts, null, { nations: a.nations })!;
   assert.ok(today.riders.every(r => typeof r.nation === "string"));
   assert.ok(today.riders.some(r => r.points > 0));
-  // Bars never show a whole point that has not been bought.
+  // A bar holds a whole point or more only when the date's points already landed
+  // (the rest waits for a later date); "x of y XP" never shows it as bought.
   for (const r of today.riders) for (const ab of r.abilities) {
-    if (ab.bar) assert.ok(ab.bar.xp < ab.bar.price, `${r.id} ${ab.key}`);
+    if (ab.bar && ab.bar.xp >= ab.bar.price) assert.ok(ab.points > 0, `${r.id} ${ab.key}`);
+    if (ab.bar) assert.ok(xpOfPrice(ab.bar).xp < xpOfPrice(ab.bar).price, `${r.id} ${ab.key}`);
   }
 });

@@ -13,7 +13,20 @@
 //   2. receipt row.xp_bar     "x of y XP" per ability after the date: the bar in XP
 //                              and the price of the next point. Only the server can
 //                              send it (xpBarView needs the private params).
-// Without them `hasXpFields` is false and the page keeps today's report.
+//   3. receipt row.bar_paid   Whole points per ability PAID OUT FROM THE BAR on the
+//                              date: points the XP saved before the date already
+//                              covered at the date's start (XP left on the bar by
+//                              the per-date rule, or the stored progress on the
+//                              switch-on night). They land on a rest day too, and
+//                              after a change of focus, without any XP earned that
+//                              day. The rest of the date's points were earned by
+//                              the date's own XP. Only the server knows the bar at
+//                              the date's start, so it writes this; the client never
+//                              guesses it. Missing = 0 (nothing paid out).
+// Without 1 `hasXpFields` is false and the page keeps today's report.
+//
+// "Earned today" is the date's own XP (1). "Paid out from the bar" is (3). The two
+// are always shown apart, per rider and in total (Fable verdict on PR #8276, point 5).
 import type { DailyRiderReceipt, DailyTrainingReceipt, TrainingActivity } from "./trainingDailyReceipt.ts";
 import { orderAbilities } from "./trainingReceiptView.ts";
 
@@ -22,7 +35,12 @@ export interface XpBar { xp: number; price: number }
 /** PROPOSED (not in the payload today): XP per ability on one slot. */
 export type XpActivity = TrainingActivity & { xp?: Numbers | null };
 /** PROPOSED (not in the payload today): the bar in XP after the date, per ability. */
-export type XpRiderReceipt = DailyRiderReceipt & { xp_bar?: Record<string, XpBar> | null; activities: XpActivity[] };
+export type XpRiderReceipt = DailyRiderReceipt & {
+  xp_bar?: Record<string, XpBar> | null;
+  /** PROPOSED (not in the payload today): whole points paid out from the bar on the date. */
+  bar_paid?: Numbers | null;
+  activities: XpActivity[];
+};
 export type XpReceipt = Omit<DailyTrainingReceipt, "report"> & { report: { riders: XpRiderReceipt[]; condition_settled: boolean } };
 
 export type SessionKind = "training" | "race" | "rest" | "injured" | "unknown";
@@ -30,54 +48,66 @@ export interface XpSession { kind: SessionKind; focus: string | null; score: num
 export interface XpAbilityRow {
   key: string;
   xp: number; training: number; race: number;
-  /** Whole points landed on the date (0 = none). */
+  /** Whole points landed on the date (0 = none): earned + paid. */
   points: number;
+  /** Of those, earned by the date's own XP. */
+  earned: number;
+  /** Of those, paid out from XP saved before the date. */
+  paid: number;
   from: number | null; to: number | null;
   bar: XpBar | null;
   /** Shares of the next point's price, 0..1: XP from before today, today's training, today's races. */
   segments: { before: number; training: number; race: number } | null;
 }
 export interface XpTodayRider {
-  id: string; name: string; nation: string | null;
+  id: string; name: string; nation: string | null; type: XpRiderType | null;
   raced: boolean;
   xp: number; training: number; race: number;
   points: number;
-  /** One ability when exactly one whole point landed, else null ("+N points"). */
+  /** Points earned by today's XP, and points paid out from the bar. */
+  earned: number; paid: number;
+  /** One ability when exactly one whole point was earned today, else null. */
   pointAbility: string | null;
+  /** One ability when exactly one whole point was paid out from the bar, else null. */
+  paidAbility: string | null;
   form: number | null; formBefore: number | null;
   fatigue: number | null; fatigueBefore: number | null;
   sessions: XpSession[];
   abilities: XpAbilityRow[];
   sessionScore: number | null;
 }
-export interface XpDay { date: string; training: number; race: number; points: number; status: DailyTrainingReceipt["receipt_status"] }
+export interface XpDay { date: string; training: number; race: number; points: number; earned: number; paid: number; status: DailyTrainingReceipt["receipt_status"] }
 export type TodayFilter = "all" | "gained" | "raced" | "notRaced";
 export interface XpTodayView {
   date: string; status: DailyTrainingReceipt["receipt_status"];
   previous: string | null; next: string | null;
   strip: XpDay[];
   xp: number; xp30: number; points: number; pointRiders: number;
+  earned: number; paid: number; earnedRiders: number; paidRiders: number;
   racePercent: number | null;
   counts: Record<TodayFilter, number>;
   riders: XpTodayRider[];
 }
 export interface XpMonthRider {
-  id: string; name: string; nation: string | null;
+  id: string; name: string; nation: string | null; type: XpRiderType | null;
   spark: number[];
-  xp: number; points: number;
+  xp: number; points: number; earned: number; paid: number;
   form: number | null; fatigue: number | null;
   next: { key: string; xp: number; price: number } | null;
 }
 export type MonthFilter = "all" | "closest" | "tired";
 export interface XpMonthView {
   days: XpDay[];
-  xp: number; points: number; racePercent: number | null;
+  xp: number; points: number; earned: number; paid: number; racePercent: number | null;
   tired: number;
   riders: XpMonthRider[];
 }
+export interface XpRiderType { primary: string | null; secondary: string | null }
 export interface XpViewOptions {
   /** rider id -> ISO 3166 alpha-2 code; the receipt does not carry nationality. */
   nations?: Record<string, string | null | undefined>;
+  /** rider id -> natural type (riders.primary_type/secondary_type); its own column. */
+  types?: Record<string, XpRiderType | null | undefined>;
   /** The session score already shown on the training page, per slot. */
   scoreOf?: (riderId: string, date: string, activity: TrainingActivity, seasonId: string | null) => number | null;
 }
@@ -123,14 +153,16 @@ export function raceShare(training: number, race: number): number | null {
 }
 
 /**
- * Where the bar stands, as shares of the next point's price. A point bought today
- * starts the bar over, so only today's remainder shows, split like today's XP.
+ * Where the bar stands, as shares of the next point's price. Saved XP is spent
+ * first, so what is left on the bar is today's XP up to today's amount, and older
+ * XP beyond that. On a rest day (no XP today) a point paid out from the bar
+ * leaves only older XP, never a "today" part.
  */
-export function barSegments(bar: XpBar | null | undefined, training: number, race: number, boughtPoint: boolean) {
+export function barSegments(bar: XpBar | null | undefined, training: number, race: number) {
   if (!bar || !finite(bar.price) || bar.price <= 0) return null;
   const now = Math.min(positive(bar.xp), bar.price);
   const today = training + race;
-  const fromToday = boughtPoint ? now : Math.min(now, today);
+  const fromToday = Math.min(now, today);
   const before = now - fromToday;
   const raceShown = today > 0 ? fromToday * (race / today) : 0;
   return { before: before / bar.price, training: (fromToday - raceShown) / bar.price, race: raceShown / bar.price };
@@ -152,22 +184,28 @@ function byDate(runs: ReadonlyArray<XpReceipt>): Map<string, XpReceipt> {
   return out;
 }
 
+/** Points paid out from the bar for one ability: never more than the points that landed. */
+export function paidPoints(row: Pick<XpRiderReceipt, "gains" | "bar_paid">, key: string): number {
+  return Math.min(Math.floor(positive(row.bar_paid?.[key])), positive(row.gains?.[key]));
+}
+
 function riderTotals(row: XpRiderReceipt) {
   let training = 0, race = 0;
   for (const value of Object.values(xpBySource(row.activities))) { training += value.training; race += value.race; }
-  const points = Object.values(row.gains ?? {}).reduce((sum, n) => sum + positive(n), 0);
-  return { training, race, points };
+  let points = 0, paid = 0;
+  for (const [key, n] of Object.entries(row.gains ?? {})) { points += positive(n); paid += paidPoints(row, key); }
+  return { training, race, points, paid, earned: points - paid };
 }
 
 /** XP and new points per date, oldest first. */
 export function xpDays(runs: ReadonlyArray<XpReceipt>): XpDay[] {
   return [...byDate(runs).values()].map(run => {
-    let training = 0, race = 0, points = 0;
+    let training = 0, race = 0, points = 0, paid = 0;
     for (const row of run.report.riders) {
       const totals = riderTotals(row);
-      training += totals.training; race += totals.race; points += totals.points;
+      training += totals.training; race += totals.race; points += totals.points; paid += totals.paid;
     }
-    return { date: run.tick_date, training, race, points, status: run.receipt_status };
+    return { date: run.tick_date, training, race, points, earned: points - paid, paid, status: run.receipt_status };
   }).sort((a, b) => a.date.localeCompare(b.date));
 }
 
@@ -179,6 +217,12 @@ export function stripWindow<T>(days: T[], index: number, size = STRIP_DAYS): T[]
 }
 
 const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
+
+/** The ability when exactly one whole point (of this kind) landed, else null. */
+function single(entries: Array<[string, number]>): string | null {
+  const hit = entries.filter(([, n]) => n > 0);
+  return hit.length === 1 && hit[0][1] === 1 ? hit[0][0] : null;
+}
 
 export function buildTodayView(runs: ReadonlyArray<XpReceipt>, date: string | null, options: XpViewOptions = {}): XpTodayView | null {
   const days = xpDays(runs);
@@ -195,19 +239,24 @@ export function buildTodayView(runs: ReadonlyArray<XpReceipt>, date: string | nu
     const abilities = keys.map((key): XpAbilityRow => {
       const source = sources[key] ?? { training: 0, race: 0 };
       const points = positive(row.gains?.[key]);
+      const paid = paidPoints(row, key);
       const jump = row.gains_detail?.[key];
       const bar = row.xp_bar?.[key] ?? null;
       return { key, xp: source.training + source.race, training: source.training, race: source.race, points,
+        earned: points - paid, paid,
         from: jump && finite(jump.from) ? jump.from : null, to: jump && finite(jump.to) ? jump.to : null,
-        bar, segments: barSegments(bar, source.training, source.race, points > 0) };
+        bar, segments: barSegments(bar, source.training, source.race) };
     }).sort((a, b) => Number(b.points > 0) - Number(a.points > 0));
     const scores = row.activities.map(a => options.scoreOf?.(row.rider_id, day.date, a, run.season_id ?? null) ?? null);
     const sessionScores = scores.filter((s): s is number => s != null);
     return {
       id: row.rider_id, name: row.name || row.rider_id, nation: options.nations?.[row.rider_id] ?? null,
+      type: options.types?.[row.rider_id] ?? null,
       raced: row.activities.some(isRace),
       xp: totals.training + totals.race, training: totals.training, race: totals.race, points: totals.points,
-      pointAbility: gained.length === 1 && positive(gained[0][1]) === 1 ? gained[0][0] : null,
+      earned: totals.earned, paid: totals.paid,
+      pointAbility: single(abilities.map(a => [a.key, a.earned])),
+      paidAbility: single(abilities.map(a => [a.key, a.paid])),
       form: finite(row.form) ? row.form : null, formBefore: row.form_before,
       fatigue: finite(row.fatigue) ? row.fatigue : null, fatigueBefore: row.fatigue_before,
       sessions: row.activities.map((a, i) => sessionOf(a, scores[i])),
@@ -222,6 +271,7 @@ export function buildTodayView(runs: ReadonlyArray<XpReceipt>, date: string | nu
     xp: day.training + day.race,
     xp30: month.reduce((sum, d) => sum + d.training + d.race, 0),
     points: day.points, pointRiders: riders.filter(r => r.points > 0).length,
+    earned: day.earned, paid: day.paid, earnedRiders: riders.filter(r => r.earned > 0).length, paidRiders: riders.filter(r => r.paid > 0).length,
     racePercent: raceShare(day.training, day.race),
     counts: {
       all: riders.length,
@@ -249,12 +299,15 @@ export function buildMonthView(runs: ReadonlyArray<XpReceipt>, options: XpViewOp
     for (const row of receipts.get(day.date)!.report.riders) {
       const rider = riders.get(row.rider_id) ?? {
         id: row.rider_id, name: row.name || row.rider_id, nation: options.nations?.[row.rider_id] ?? null,
-        spark: days.map(() => 0), xp: 0, points: 0, form: null, fatigue: null, next: null,
+        type: options.types?.[row.rider_id] ?? null,
+        spark: days.map(() => 0), xp: 0, points: 0, earned: 0, paid: 0, form: null, fatigue: null, next: null,
       };
       const totals = riderTotals(row);
       rider.spark[index] = totals.training + totals.race;
       rider.xp += totals.training + totals.race;
       rider.points += totals.points;
+      rider.earned += totals.earned;
+      rider.paid += totals.paid;
       // Days are oldest first, so the last receipt a rider appears on is "now".
       rider.form = finite(row.form) ? row.form : rider.form;
       rider.fatigue = finite(row.fatigue) ? row.fatigue : rider.fatigue;
@@ -273,6 +326,7 @@ export function buildMonthView(runs: ReadonlyArray<XpReceipt>, options: XpViewOp
   const race = days.reduce((s, d) => s + d.race, 0);
   return {
     days, xp: training + race, points: days.reduce((s, d) => s + d.points, 0),
+    earned: days.reduce((s, d) => s + d.earned, 0), paid: days.reduce((s, d) => s + d.paid, 0),
     racePercent: raceShare(training, race),
     tired: list.filter(r => finite(r.fatigue) && r.fatigue >= TIRED_FATIGUE).length,
     riders: list,

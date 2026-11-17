@@ -779,7 +779,7 @@ export default function TrainingPage() {
         // allerede henter server-side via effectiveSquad.
         const { data } = await supabase
           .from("riders")
-          .select(`id, firstname, lastname, birthdate, contract_end_season, primary_type, secondary_type, is_academy, squad, ${ABILITY_SELECT}`)
+          .select(`id, firstname, lastname, birthdate, nationality_code, contract_end_season, primary_type, secondary_type, is_academy, squad, ${ABILITY_SELECT}`)
           .eq("team_id", myTeam.id)
           .order("lastname");
         setRiders((data || []).map(flattenAbilities));

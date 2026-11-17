@@ -15,7 +15,7 @@ import XpMonth from "./XpMonth.tsx";
 // build with ?xpreport=on (then on the invented fixture). See XpReportSwitch.tsx.
 
 type View = "today" | "days30";
-type RosterRider = { id: string; nationality_code?: string | null };
+type RosterRider = { id: string; nationality_code?: string | null; primary_type?: string | null; secondary_type?: string | null };
 
 export default function TrainingReportXp({ runs, roster, trainingScore = null, fixture = false }: {
   runs: TrainingRun[]; roster?: RosterRider[] | null; trainingScore?: Record<string, ReceiptScoreView> | null; fixture?: boolean;
@@ -28,12 +28,13 @@ export default function TrainingReportXp({ runs, roster, trainingScore = null, f
   const data = useMemo((): { receipts: XpReceipt[]; options: XpViewOptions } => {
     if (fixture) {
       const fx = buildXpReportFixture();
-      return { receipts: fx.receipts, options: { nations: fx.nations, scoreOf: fixtureScoreOf(fx.scores) } };
+      return { receipts: fx.receipts, options: { nations: fx.nations, types: fx.types, scoreOf: fixtureScoreOf(fx.scores) } };
     }
     return {
       receipts: aggregateTrainingRuns(runs) as XpReceipt[],
       options: {
         nations: Object.fromEntries((roster ?? []).map(r => [r.id, r.nationality_code ?? null])),
+        types: Object.fromEntries((roster ?? []).map(r => [r.id, { primary: r.primary_type ?? null, secondary: r.secondary_type ?? null }])),
         scoreOf: (id, day, activity, seasonId) => receiptPassScore(trainingScore?.[id], day, seasonId, activity),
       },
     };

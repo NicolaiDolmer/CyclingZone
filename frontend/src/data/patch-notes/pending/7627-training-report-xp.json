@@ -1,0 +1,23 @@
+{
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "topic": "Training",
+      "flag": "development_xp_model",
+      "en": {
+        "title": "Training report in XP (beta)",
+        "body": "The training report shows each rider's XP today and over 30 days, split into training and races. New points are marked as earned today or paid out from the bar: XP saved on earlier days, which can land on a rest day or after a change of focus."
+      },
+      "da": {
+        "title": "Træningsrapport i XP (beta)",
+        "body": "Træningsrapporten viser hver rytters XP i dag og over 30 dage, delt i træning og løb. Nye point er mærket som optjent i dag eller udbetalt fra bjælken: XP sparet op på tidligere dage, som kan komme på en hviledag eller efter et skift af fokus."
+      },
+      "refs": [
+        7627,
+        6110
+      ]
+    }
+  ]
+}
