@@ -201,8 +201,8 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onMoveSqua
         setMsg(isPendingReleaseResult(data)
           ? t("rider:manage.release.pendingSuccess", {
             rider: `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim(),
-            race: pendingRaceLabel(data.race, t("rider:manage.release.pendingRaceFallback")),
-            fee: formatNumber(data.fee ?? 0),
+            race: pendingRaceLabel(/** @type {any} */ (data).race, t("rider:manage.release.pendingRaceFallback")),
+            fee: formatNumber(/** @type {any} */ (data).fee ?? 0),
           })
           : t(successKey));
         setTimeout(() => { onAction(); onClose(); }, 1500);

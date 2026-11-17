@@ -334,8 +334,8 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
         flashResult(true, isPendingReleaseResult(data)
           ? t("manage.release.pendingSuccess", {
             rider: `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim(),
-            race: pendingRaceLabel(data.race, t("manage.release.pendingRaceFallback")),
-            fee: formatNumber(data.fee ?? 0),
+            race: pendingRaceLabel(/** @type {any} */ (data).race, t("manage.release.pendingRaceFallback")),
+            fee: formatNumber(/** @type {any} */ (data).fee ?? 0),
           })
           : t("manage.release.success"));
         onChanged?.();
