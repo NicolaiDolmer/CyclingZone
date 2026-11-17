@@ -103,6 +103,11 @@ export const SLOP_PATTERNS = [
   // #6686 (ejer 15/10): ét hjørnemål. 8 px/6 px er slop; brug rounded-cz (5 px).
   ["rounded-lg", /\brounded-(?:(?:t|b|l|r|s|e|tl|tr|bl|br|ss|se|es|ee)-)?lg\b/g],
   ["rounded-md", /\brounded-(?:(?:t|b|l|r|s|e|tl|tr|bl|br|ss|se|es|ee)-)?md\b/g],
+  // #8069 T03: ren `rounded` (4 px) og `rounded-sm` (2 px) er ogsaa off-token.
+  // Kun som klasse (mellemrum/anfoerselstegn/variant-kolon foer og efter), ikke
+  // en variabel som `const rounded = Math.round(x)`.
+  ["rounded", /(?<=[\s"'`:])rounded(?=[\s"'`])(?!\s*[=(,;])/g],
+  ["rounded-sm", /\brounded-(?:(?:t|b|l|r|s|e|tl|tr|bl|br|ss|se|es|ee)-)?sm\b/g],
   ["glow-shadow", /shadow-\[0_0/g],
   ["backdrop-blur", /\bbackdrop-blur\b/g],
   ["blob-blur", /\bblur-(?:2xl|3xl)\b/g],
