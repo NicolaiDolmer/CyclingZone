@@ -22,6 +22,8 @@ import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../../../lib/supabase.ts";
 import { fetchAllRows } from "../../../lib/supabasePagination.js";
+import { formatRelativeTime } from "../../../lib/intl.js";
+import { raceArchiveHref } from "../../../lib/racePeek.ts";
 import { menuClass, menuItemClass } from "../../ui/menuStyles.js";
 import { ChevronDownIcon, ChevronRightIcon } from "./v6Ui.ts";
 import {
@@ -31,7 +33,7 @@ import {
 
 type Translate = (key: string, opts?: Record<string, unknown>) => string;
 
-const EDITION_COLUMNS = "id, season_id, league_division_id, status, stages, stages_completed, season:season_id(number, status), division:league_division_id(tier, pool_index, label)";
+const EDITION_COLUMNS = "id, name, race_type, season_id, league_division_id, status, stages, stages_completed, season:season_id(number, status), division:league_division_id(tier, pool_index, label)";
 
 interface EditionData {
   raceId: string;
@@ -78,6 +80,7 @@ function useEditionSwitch(raceId: string | null, myTeamId: string | null): Editi
 function summaryText(s: EditionSummary, t: Translate): string {
   if (s.kind === "upcoming") return t("editions.upcoming");
   if (s.kind === "unknown") return t("editions.unknown");
+  if (s.kind === "progress") return t("editions.progressLine", { done: s.done, total: s.total });
   const who = s.kind === "won" ? t("editions.wonLine", { name: s.name }) : t("editions.stageLine", { stage: s.stage, name: s.name });
   if (s.marginSec == null) return who;
   return `${who}, ${s.marginSec === 0 ? t("editions.sameTime") : t("editions.ahead", { gap: formatMargin(s.marginSec) })}`;
@@ -85,11 +88,15 @@ function summaryText(s: EditionSummary, t: Translate): string {
 
 interface MenuItem { key: string; to: string; current: boolean; title: ReactNode; detail: string; aside?: string | null }
 
+// #8303 (skitse A): holdets markoer er det godkendte "You"-maerke (samme som v6-startlisten, e41453f8c).
+const YOU_MARK = "flex-none rounded-cz bg-cz-1 px-1.5 py-0.5 font-data text-3xs font-bold uppercase tracking-[.08em] text-cz-body";
+const POOL_CHIP = "flex-none rounded-cz border border-cz-border bg-cz-subtle px-1.5 py-0.5 font-data text-3xs font-bold uppercase tracking-[.08em] text-cz-2";
+
 const GAP = 6;
 const PANEL_WIDTH = 304;
 
-function EditionMenu({ label, ariaLabel, heading, foot, items }: {
-  label: ReactNode; ariaLabel: string; heading: string; foot: string; items: MenuItem[];
+function EditionMenu({ label, ariaLabel, heading, foot, footLink = null, items }: {
+  label: ReactNode; ariaLabel: string; heading: string; foot: string; footLink?: { to: string; label: string } | null; items: MenuItem[];
 }) {
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState<{ left: number; top: number | null; bottom: number | null; maxHeight: number } | null>(null);
@@ -200,14 +207,57 @@ function EditionMenu({ label, ariaLabel, heading, foot, items }: {
                 <span className="block font-medium">{item.title}</span>
                 <span className="block font-data text-2xs tabular-nums text-cz-2">{item.detail}</span>
               </span>
-              {item.aside && <span className="shrink-0 font-data text-2xs tabular-nums text-cz-2">{item.aside}</span>}
+              {item.aside && <span className="shrink-0 font-data text-xs font-semibold tabular-nums text-cz-1">{item.aside}</span>}
             </Link>
           ))}
-          <p className="m-0 mt-1 border-t border-cz-border px-2.5 pt-1.5 pb-1 text-2xs text-cz-3">{foot}</p>
+          <p className="m-0 mt-1 flex items-center justify-between gap-3 border-t border-cz-border px-2.5 pt-1.5 pb-1 text-2xs text-cz-3">
+            <span>{foot}</span>
+            {footLink && (
+              <Link to={footLink.to} role="menuitem" onClick={() => close(false)} className="inline-flex shrink-0 items-center gap-0.5 font-medium text-cz-1 hover:underline">
+                {footLink.label}
+                <ChevronRightIcon size={11} aria-hidden="true" />
+              </Link>
+            )}
+          </p>
         </div>,
         document.body,
       )}
     </>
+  );
+}
+
+/**
+ * #8303 (skitse A): linjen naar man ser en anden pulje: maerket "Pool X", hvor holdet koerer og
+ * hvornaar holdets naeste etape laaser, og "Back to your race". Laasetiden er holdets egen
+ * (race_stage_schedule for holdets udgave, naeste etape); mangler raekken, staar saetningen uden.
+ */
+function OtherPoolLine({ other, currentLetter, tr }: {
+  other: NonNullable<EditionSwitchModel["ownElsewhere"]>; currentLetter: string; tr: Translate;
+}) {
+  const [lockAt, setLockAt] = useState<string | null>(null);
+  useEffect(() => {
+    setLockAt(null);
+    if (other.nextStage == null) return undefined;
+    let alive = true;
+    supabase.from("race_stage_schedule").select("scheduled_at").eq("race_id", other.raceId).eq("stage_number", other.nextStage).maybeSingle()
+      .then(({ data }) => { if (alive) setLockAt(typeof data?.scheduled_at === "string" ? data.scheduled_at : null); },
+        () => { /* catch-ok: uden laasetid staar saetningen uden den */ });
+    return () => { alive = false; };
+  }, [other.raceId, other.nextStage]);
+  const when = lockAt && new Date(lockAt).getTime() > Date.now() ? formatRelativeTime(lockAt) : "";
+  const params = { own: other.letter ?? "?", tier: other.tier ?? "?", stage: other.nextStage ?? "?", when };
+  const text = when
+    ? tr(other.sameTier ? "editions.otherPoolLock" : "editions.otherDivisionLock", params)
+    : tr(other.sameTier ? "editions.otherPool" : "editions.otherDivision", params);
+  return (
+    <p data-race-editions-other className="m-0 flex basis-full flex-wrap items-center gap-x-3 gap-y-1 text-xs text-cz-2">
+      <span className={POOL_CHIP}>{tr("editions.poolOption", { letter: currentLetter })}</span>
+      <span className="min-w-0 flex-1 max-sm:basis-full">{text}</span>
+      <Link to={`/races/${other.raceId}`} className="inline-flex items-center gap-1 font-medium text-cz-1 underline-offset-2 hover:underline max-sm:ms-auto">
+        {tr("editions.backToYours")}
+        <ChevronRightIcon size={12} aria-hidden="true" />
+      </Link>
+    </p>
   );
 }
 
@@ -222,7 +272,7 @@ export default function V6EditionSwitch({ raceId, myTeamId }: { raceId: string |
     key: p.raceId,
     to: `/races/${p.raceId}`,
     current: p.current,
-    title: <>{tr("editions.poolOption", { letter: p.letter })}{p.own && <span className="ms-1.5 text-2xs font-normal text-cz-3">· {tr("editions.yours")}</span>}</>,
+    title: <span className="inline-flex items-center gap-1.5">{tr("editions.poolOption", { letter: p.letter })}{p.own && <span className={YOU_MARK}>{tr("editions.you")}</span>}</span>,
     detail: summaryText(p.summary, tr),
   }));
   const seasonItems: MenuItem[] = model.seasons.map((s) => ({
@@ -239,13 +289,21 @@ export default function V6EditionSwitch({ raceId, myTeamId }: { raceId: string |
   }));
   const ownPool = model.pools.find((p) => p.own) ?? null;
   const other = model.ownElsewhere;
+  const historyLink = model.raceName ? { to: raceArchiveHref(model.raceName, model.raceType), label: tr("editions.raceHistory") } : null;
 
   return (
     <>
-      <div data-race-editions className="ms-auto flex items-center gap-2">
+      {/* #8303 (skitse A): ser man en anden pulje, faar hovedets undertitel "· Division N · Pool X". */}
+      {other && model.currentLetter && (
+        <span data-race-editions-meta className="font-data text-2xs uppercase tracking-[.08em] tabular-nums text-cz-3">
+          · {model.tier != null ? `${tr("editions.divisionLine", { tier: model.tier })} · ` : ""}{tr("editions.poolOption", { letter: model.currentLetter })}
+        </span>
+      )}
+      {/* Telefon: menuerne til venstre under navnet (skitse A, 390). */}
+      <div data-race-editions className="ms-auto flex items-center gap-2 max-sm:ms-0 max-sm:basis-full">
         {model.pools.length >= 2 && model.currentLetter && (
           <EditionMenu
-            label={<>{tr("editions.poolTrigger", { letter: model.currentLetter })}{ownPool?.current && <span aria-hidden="true" className="text-cz-3">·</span>}</>}
+            label={<>{tr("editions.poolTrigger", { letter: model.currentLetter })}{ownPool?.current && <span className={YOU_MARK}>{tr("editions.you")}</span>}</>}
             ariaLabel={tr("editions.poolMenuAria", { letter: model.currentLetter })}
             heading={tr("editions.poolHeading", { tier: model.tier ?? "?", count: model.pools.length })}
             foot={tr("editions.poolFoot")}
@@ -258,22 +316,13 @@ export default function V6EditionSwitch({ raceId, myTeamId }: { raceId: string |
             ariaLabel={tr("editions.seasonMenuAria", { number: model.currentSeasonNumber })}
             heading={tr("editions.seasonHeading")}
             foot={tr("editions.seasonFoot")}
+            footLink={historyLink}
             items={seasonItems}
           />
         )}
       </div>
       {other && model.currentLetter && (
-        <p data-race-editions-other className="m-0 flex basis-full flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-cz border border-cz-border bg-cz-subtle px-3 py-2 text-xs text-cz-2">
-          <span>
-            {other.sameTier
-              ? tr("editions.otherPool", { letter: model.currentLetter, own: other.letter ?? "?" })
-              : tr("editions.otherDivision", { letter: model.currentLetter, tier: other.tier ?? "?", own: other.letter ?? "?" })}
-          </span>
-          <Link to={`/races/${other.raceId}`} className="inline-flex items-center gap-1 font-medium text-cz-1 underline-offset-2 hover:underline">
-            {tr("editions.backToYours")}
-            <ChevronRightIcon size={12} aria-hidden="true" />
-          </Link>
-        </p>
+        <OtherPoolLine other={other} currentLetter={model.currentLetter} tr={tr} />
       )}
     </>
   );

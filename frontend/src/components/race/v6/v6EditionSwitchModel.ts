@@ -14,6 +14,9 @@
 
 export interface EditionRaceRow {
   id: string;
+  /** Til "Race history ›" (Loebshistorik linker paa navn + type). */
+  name?: string | null;
+  race_type?: string | null;
   season_id: string | null;
   league_division_id: number | null;
   status?: string | null;
@@ -37,6 +40,8 @@ export type EditionSummary =
   | { kind: "won"; name: string; marginSec: number | null; time: string | null }
   | { kind: "stage"; stage: number; name: string; marginSec: number | null }
   | { kind: "upcoming" }
+  /** #8303: den aktuelle saeson i saesonmenuen: kun fremdriften, aldrig en vinder (spoiler-skjoldet, #8302). */
+  | { kind: "progress"; done: number; total: number }
   | { kind: "unknown" };
 
 export interface PoolOption {
@@ -66,7 +71,10 @@ export interface EditionSwitchModel {
   currentSeasonNumber: number | null;
   tier: number | null;
   /** Holdets egen udgave i den viste sæson, når det ikke er den der vises. */
-  ownElsewhere: { raceId: string; letter: string | null; tier: number | null; sameTier: boolean } | null;
+  ownElsewhere: { raceId: string; letter: string | null; tier: number | null; sameTier: boolean; nextStage: number | null } | null;
+  /** Til "Race history ›" i saesonmenuen. */
+  raceName: string | null;
+  raceType: string | null;
 }
 
 /** Pulje-bogstav fra pool_index (0 = A). */
@@ -130,6 +138,13 @@ export function editionSummary(race: EditionRaceRow, results: readonly EditionRe
   return { kind: "stage", stage: done, name, marginSec: second ? gapToSeconds(second.finish_time) : null };
 }
 
+/** Fremdriften i en igangvaerende udgave; intet koert endnu = "Not raced yet". */
+function progressOf(race: EditionRaceRow): EditionSummary {
+  const done = Number(race.stages_completed) || 0;
+  const total = Number(race.stages) || 0;
+  return done > 0 && total > 0 ? { kind: "progress", done, total } : { kind: "upcoming" };
+}
+
 const tierOf = (r: EditionRaceRow) => (r.division?.tier ?? null);
 const poolIndexOf = (r: EditionRaceRow) => (r.division?.pool_index ?? null);
 function byTree(a: EditionRaceRow, b: EditionRaceRow): number {
@@ -181,13 +196,22 @@ export function buildEditionSwitch({ currentRaceId, editions, results, ownRaceId
       current: isCurrent,
       tier: tierOf(target),
       ownLetter: own ? poolLetter(poolIndexOf(own)) : null,
-      summary: editionSummary(target, results),
+      // #8303 (skitse A): den igangvaerende saeson viser "etape X af Y koert", aldrig en vinder.
+      summary: isCurrent && !isFinished(target)
+        ? progressOf(target)
+        : editionSummary(target, results),
     };
   }).sort((a, b) => (b.seasonNumber ?? -1) - (a.seasonNumber ?? -1));
 
   const ownHere = sameSeason.filter((e) => ownRaceIds.has(e.id)).sort(byTree)[0] ?? null;
   const ownElsewhere = ownHere && ownHere.id !== current.id
-    ? { raceId: ownHere.id, letter: poolLetter(poolIndexOf(ownHere)), tier: tierOf(ownHere), sameTier: tierOf(ownHere) === tier }
+    ? {
+      raceId: ownHere.id,
+      letter: poolLetter(poolIndexOf(ownHere)),
+      tier: tierOf(ownHere),
+      sameTier: tierOf(ownHere) === tier,
+      nextStage: isFinished(ownHere) ? null : (Number(ownHere.stages_completed) || 0) + 1,
+    }
     : null;
 
   // "Tilbage til dit løb" skal stå, selv når ingen af menuerne har et valg (Codex #8303): komponenten skjuler
@@ -200,6 +224,8 @@ export function buildEditionSwitch({ currentRaceId, editions, results, ownRaceId
     currentSeasonNumber: current.season?.number ?? null,
     tier,
     ownElsewhere,
+    raceName: current.name ?? null,
+    raceType: current.race_type ?? null,
   };
 }
 

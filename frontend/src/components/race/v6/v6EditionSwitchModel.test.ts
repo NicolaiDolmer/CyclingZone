@@ -75,7 +75,13 @@ test("buildEditionSwitch: puljer = samme sæson og division, i puljeorden, holde
   assert.deepEqual(m.pools.filter((p) => p.current).map((p) => p.raceId), ["c5"]);
   assert.equal(m.currentLetter, "C");
   assert.equal(m.currentSeasonNumber, 5);
-  assert.deepEqual(m.ownElsewhere, { raceId: "b5", letter: "B", tier: 3, sameTier: true });
+  assert.deepEqual(m.ownElsewhere, { raceId: "b5", letter: "B", tier: 3, sameTier: true, nextStage: 2 });
+});
+
+test("#8303: den igangvaerende saeson viser kun fremdriften, aldrig en vinder (spoiler-skjoldet)", () => {
+  const m = buildEditionSwitch({ currentRaceId: "c5", editions: EDITIONS, results: RESULTS, ownRaceIds: new Set(["b5", "f4"]) });
+  assert.deepEqual(m?.seasons[0].summary, { kind: "progress", done: 1, total: 7 });
+  assert.equal(m?.seasons[1].summary.kind, "won", "en koert saeson viser stadig vinderen");
 });
 
 test("buildEditionSwitch: sæsoner nyeste først; en anden sæson åbner holdets pulje, ellers den første", () => {
