@@ -356,12 +356,13 @@ features:
     area: season
     title_en: One planning page
     title_da: Én planlægningsside (ugeoversigt, løbsliste, trup)
-    state: building
+    state: beta
+    flag: planning_workbench
     ssot: docs/PLANNING_CENTER_RULES.md
     epic: 7535
-    verified: 2026-11-14
-    note: Kontakt planning_workbench ikke seedet = slukket.
-    decision: ejer-beslutning
+    verified: 2026-11-17
+    note: "#7535: beta 17/11 efter ejerens kør; belastningsordenes grænser i private_config (planning_expected_load_7535)."
+    decision: taend
     decide_by: 2026-11-28
 
   - id: luxury-helper-role
