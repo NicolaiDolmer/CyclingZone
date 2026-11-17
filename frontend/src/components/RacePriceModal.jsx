@@ -1,6 +1,7 @@
 import { Trans, useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
 import { AlertTriangleIcon } from "./ui";
+import { buttonClass } from "./ui/buttonStyles.js";
 
 // #194 race-confirm-modal: vises når server returnerer 409 price_changed —
 // dvs. prisen er steget mellem manager's fetch og POST. Manager kan annullere
@@ -47,8 +48,7 @@ export function RacePriceModal({ show, newPrice, newMinBid, onCancel, onConfirm 
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 px-4 py-2.5 rounded-cz text-sm font-bold
-              bg-cz-accent text-cz-on-accent hover:brightness-110 transition-all"
+            className={`${buttonClass({ variant: "primary" })} flex-1`}
           >
             {t("priceChanged.bidCta", { amount: formatNumber(newMinBid) })}
           </button>
