@@ -33,7 +33,7 @@ export default function EffortSegmented({ label, steps, value, labelFor, blocked
       value={value}
       onChange={(next) => { if (!disabled) onPick(next); }}
       options={options}
-      className={`max-w-full ${fill ? "flex w-full [&>button]:min-w-0 [&>button]:flex-1 [&>button]:px-1 [&>button]:leading-tight" : "[&>button]:whitespace-nowrap"}`}
+      className={`max-w-full ${fill ? "flex w-full [&>button]:min-w-0 [&>button]:flex-1 [&>button]:px-1 [&>button]:leading-tight" : "[&>button]:whitespace-nowrap [&>button]:px-2"}`}
     />
   );
 }

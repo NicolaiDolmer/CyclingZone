@@ -62,7 +62,7 @@ const dash = (n: number | null) => (n === null ? "—" : String(n));
 
 function Name({ row, className }: { row: TacticsRiderRow; className: string }) {
   return (
-    <span className="inline-flex min-w-0 items-center gap-1.5">
+    <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 whitespace-nowrap" title={row.name ?? undefined}>
       {row.nation && <Flag code={row.nation} className="shrink-0" />}
       <RiderLink id={row.id} className={className}>{row.name || "—"}</RiderLink>
     </span>
@@ -79,11 +79,11 @@ export default function TacticsRiderTable({ rows, showOrders, columns, routeMatc
         <table data-sortable className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-cz-border">
-              <th className={TH}>{columns.rider}</th>
+              <th className={`${TH} w-[170px]`}>{columns.rider}</th>
               <th className={TH}>{columns.role}</th>
               <th className={`${TH} text-right`}>{columns.rating}</th>
               <th className={`${TH} text-right`}>{columns.form}</th>
-              <SortableTh sortKey="routeMatch" sort={sortDir ? "routeMatch" : null} sortDir={sortDir ?? "desc"} onSort={onSort} title={routeMatchTitle} className={TH}>
+              <SortableTh sortKey="routeMatch" sort={sortDir ? "routeMatch" : null} sortDir={sortDir ?? "desc"} onSort={onSort} title={routeMatchTitle} className={TH.replace("whitespace-nowrap", "")}>
                 {columns.routeMatch}
               </SortableTh>
               <th className={`${TH} text-right`}>{columns.fatigue}</th>
@@ -95,8 +95,8 @@ export default function TacticsRiderTable({ rows, showOrders, columns, routeMatc
           <tbody>
             {rows.map((row) => [
               <tr key={row.id} data-tactics-rider={row.id} className="border-b border-cz-border">
-                <td className={`${TD} font-medium text-cz-1`}>
-                  <Name row={row} className="text-cz-1 hover:text-cz-accent-t" />
+                <td className={`${TD} max-w-[170px] font-medium text-cz-1`}>
+                  <Name row={row} className="min-w-0 truncate text-cz-1 hover:text-cz-accent-t" />
                 </td>
                 <td className={TD}>{row.role}</td>
                 <td className={`${TD} text-right ${NUM}`}>{dash(row.rating)}</td>

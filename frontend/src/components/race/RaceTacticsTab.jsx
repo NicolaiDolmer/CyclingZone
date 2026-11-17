@@ -934,7 +934,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   // Rene render-funktioner, IKKE nestede komponenter: en komponent defineret
   // inde i render remountes ved hver tastetryk-render (React ser en ny type),
   // hvilket ville lukke den udfoldede vaelger under fingeren.
-  function renderRoleCell(rider, { mobile = false } = {}) {
+  function renderRoleCell(rider, { mobile = false, inline = false } = {}) {
     const role = roleFor(rider);
     const open = openRoleRiderId === rider.rider_id;
     // Låst etape og udgåede ryttere er ren visning: serveren afviser dem
@@ -949,6 +949,27 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         {!scopeChoice && <div className="text-3xs uppercase tracking-wider text-cz-3 mt-0.5">{roleScope}</div>}
       </>
     );
+    // #8298: v6c-tabellen paa computer: rolle, "hele loebet" og Skift paa EEN linje (raekken ~44 px, som wireframet).
+    if (inline) {
+      return (
+        <div className="flex min-w-0 items-baseline gap-2 whitespace-nowrap">
+          <span className="text-cz-1 text-xs">{t(`tacticsOrders.roleLabel.${roleKey(role)}`)}</span>
+          {!scopeChoice && <span className="text-3xs uppercase tracking-wider text-cz-3">{roleScope}</span>}
+          {canEdit && (
+            <button
+              type="button"
+              disabled={saving}
+              aria-expanded={open}
+              aria-label={t("racePage.tactics.changeRoleAria", { name: rider.name || "—" })}
+              onClick={() => { setOpenRoleRiderId(open ? null : rider.rider_id); setOpenRiderId(null); setRoleScopeChoice("rest"); }}
+              className="text-xs font-medium text-cz-accent-t hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {open ? t("intention.close") : t("intention.change")}
+            </button>
+          )}
+        </div>
+      );
+    }
     const compact = mobile && canEdit;
     const content = (
       <>
@@ -1239,12 +1260,17 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         rating: typeof rider.rating === "number" ? rider.rating : null,
         form: typeof rider.form === "number" ? Math.round(rider.form) : null,
         fatigue: typeof rider.fatigue === "number" ? Math.round(rider.fatigue) : null,
-        role: renderRoleCell(rider, { mobile: true }),
+        role: renderRoleCell(rider, { inline: true }),
         roleMobile: renderRoleCell(rider, { mobile: true }),
         routeMatch: renderRouteMatchCell(rider),
         routeMatchNumber: renderRouteMatchCell(rider, { numberOnly: true }),
         timeLimitMark: renderTimeLimitMark(rider),
-        today: todayFor(rider),
+        // #8298: EEN linje i tabellen; den tomme tilstand er det korte "Rollens standard", hele saetningen i title.
+        today: (() => {
+          const full = todayFor(rider);
+          const short = !rider.abandoned && effortFor(rider) === DEFAULT_EFFORT ? t("intention.roleDefaultTag") : full;
+          return <span className="block max-w-[110px] truncate" title={full}>{short}</span>;
+        })(),
         effort: effortCell(rider, false),
         effortMobile: effortCell(rider, true),
         orders: showOrders ? renderOrdersCell(rider) : null,
