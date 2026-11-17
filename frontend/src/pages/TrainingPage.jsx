@@ -80,7 +80,9 @@ import { useTrainNow } from "../components/training/TrainNowClient.ts";
 import { trainNowRunGate, trainNowSaveErrorKey, trainNowNeedsConfirm, trainNowWarnings, trainNowInstantConfirm } from "../components/training/TrainNowState.ts";
 import TrainNowNote from "../components/training/TrainNowNote.tsx";
 import FatigueForecast from "../components/training/FatigueForecast.tsx";
-import { useFatigueForecast, raceSlotsFor } from "../components/training/FatigueForecastData.ts";
+import { useFatigueForecast } from "../components/training/FatigueForecastData.ts";
+import { todayLockedSlots, ranSlotsFor } from "../components/training/settleAfterStage7982/settleAfterStageModel.ts"; // #7982
+import RaceSessionNote from "../components/training/settleAfterStage7982/RaceSessionNote.tsx";
 import { programSessionToday, PROGRAM_SLOTS, isProgramPlan } from "../lib/trainingPrograms.ts";
 import TrainingMobileRiderCard from "../components/training/mobile/TrainingMobileRiderCard.tsx";
 import {
@@ -94,6 +96,7 @@ import { DISPLAY_RECIPES } from "../lib/generated/displayRecipes.js";
 import TodayRowsMobile from "../components/training/TodayRowMobile.tsx";
 import { pressedChoice, pressedChoiceFromSession, rowLocked, rowForecast, hasOwnProgram } from "../components/training/todayRowModel.ts";
 import ResetToTeamProgram from "../components/training/ResetToTeamProgram.tsx";
+import XpReportSwitch from "../components/training/reportXp/XpReportSwitch.tsx"; // #7627
 // #6030: fanerne Program, Development og Report hentes foerst naar de aabnes
 // (lazyWithRetry, #5014), saa foerste visning af Today henter mindre. Fallback er den
 // kanoniske skelet-markup (PAGE_TEMPLATES: aldrig en spinner i kort).
@@ -778,7 +781,7 @@ export default function TrainingPage() {
         // allerede henter server-side via effectiveSquad.
         const { data } = await supabase
           .from("riders")
-          .select(`id, firstname, lastname, birthdate, contract_end_season, primary_type, secondary_type, is_academy, squad, ${ABILITY_SELECT}`)
+          .select(`id, firstname, lastname, birthdate, nationality_code, contract_end_season, primary_type, secondary_type, is_academy, squad, ${ABILITY_SELECT}`)
           .eq("team_id", myTeam.id)
           .order("lastname");
         setRiders((data || []).map(flattenAbilities));
@@ -2048,7 +2051,8 @@ export default function TrainingPage() {
           group={activeGroup}
           client={trainingGroups}
           forecast={fatigueForecast.forecast}
-          lockedFor={(id) => raceSlotsFor(fatigueForecast.forecast, id)}
+          lockedFor={(id) => todayLockedSlots(fatigueForecast.forecast, id)}
+          ranFor={(id) => ranSlotsFor(fatigueForecast.forecast, id)}
           catalog={programs.catalog}
           riderShortName={(id) => `${riderByIdMap.get(id)?.firstname?.charAt(0) ?? ""}. ${riderByIdMap.get(id)?.lastname ?? ""}`}
           onEdit={() => setGroupDialog({ group: activeGroup })}
@@ -2073,7 +2077,8 @@ export default function TrainingPage() {
         days: isSeed ? seedDays : ownDays,
         isSeed,
         program: programs.catalog.find((p) => p.key === programs.assigned?.[key]) ?? null,
-        lockedToday: raceSlotsFor(fatigueForecast.forecast, key),
+        lockedToday: todayLockedSlots(fatigueForecast.forecast, key),
+        ranToday: ranSlotsFor(fatigueForecast.forecast, key),
         busy: programs.busy,
         onSetCell: async (weekday, slotIndex, session) => {
           const result = await programs.setCell(key, weekday, slotIndex, session);
@@ -2475,6 +2480,7 @@ export default function TrainingPage() {
 
       {isMobile && primaryButton}
       <TrainNowNote status={trainNow.status} result={trainNow.result} error={trainNow.error} className="mb-3" />
+      <RaceSessionNote forecast={fatigueForecast.forecast} className="mb-3" />
       {/* #6740: the press locks every rider for today, so a race below the start floor
           can no longer be topped up and the team will not start. Asked once, here. */}
       <Modal
@@ -2719,7 +2725,10 @@ export default function TrainingPage() {
         <Suspense fallback={<TabFallback />}>
         {/* #6030: training_daily_receipt er on for alle (1/10); den gamle
             rapport-gren (legacy-tabellen + gaarsdagens fold-ud) er slettet. */}
+        {/* #7627: XP-rapporten kun bag XP-kontakten eller preview ?xpreport=on; ellers uaendret. */}
+        <XpReportSwitch runs={receiptRuns} roster={ridersLoading ? null : riders} trainingScore={trainingScore}>
         <TrainingHistory history={{ ...history, runs: receiptRuns }} trainingScore={trainingScore} condition={condition} today={today} roster={ridersLoading ? null : riders} />
+        </XpReportSwitch>
         <TrainingMoment latestRun={latestRun} isToday={latestIsToday} progressByRider={progress} pastRuns={pastRuns} />
         </Suspense>
       </TabPanel>

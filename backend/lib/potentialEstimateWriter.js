@@ -306,9 +306,19 @@ const XP_ABILITY_COLUMNS = `rider_id, ${REGISTRY_ABILITY_KEYS.join(", ")}`;
  * sæson får null og springes over: hellere intet skøn end et gættet.
  * Tallet bliver på serveren: det skrives kun som ceiling_at_write i den server-only
  * tabel og vises aldrig, kun skønnet over det.
+ *
+ * `cache` (valgfri Map) gælder én kørsel over mange hold: det forventede topniveau
+ * afhænger kun af rytteren, ikke af holdet, så en rytter, som flere hold har
+ * scoutet, regnes og læses kun én gang (søndagskørslen og tændingens backfill).
  */
-export async function loadExpectedTops(supabase, riderIds, developmentXp) {
-  const ids = [...new Set((riderIds ?? []).filter(Boolean))];
+export async function loadExpectedTops(supabase, riderIds, developmentXp, { cache = null } = {}) {
+  const wanted = [...new Set((riderIds ?? []).filter(Boolean))];
+  if (cache) {
+    const missing = wanted.filter((id) => !cache.has(id));
+    if (missing.length) for (const [id, top] of await loadExpectedTops(supabase, missing, developmentXp)) cache.set(id, top);
+    return new Map(wanted.map((id) => [id, cache.get(id) ?? null]));
+  }
+  const ids = wanted;
   const truth = new Map(ids.map((id) => [id, null]));
   if (!ids.length) return truth;
   const [riderRows, abilityRows, season] = await Promise.all([
@@ -372,17 +382,17 @@ async function persistRows(supabase, rows, storedByRider) {
   return lost;
 }
 
+const emptyCounts = () => ({ written: 0, changed: 0, kept: 0, noKnowledge: 0, noCeiling: 0 });
+
 /**
- * Skriver skønnene for ét hold. `riders`: rækker med ESTIMATE_RIDER_COLUMNS.
- * Kaster ved databasefejl; kalderne isolerer selv pr. hold.
- *
- * Kom en anden skrivning først, læses de ryttere igen og planlægges forfra én gang,
- * så et nyt kig ikke går tabt. Taber den også, indhenter søndagskørslen det.
- * `changed` tæller første forsøg; tallet bruges kun i logs.
+ * Læser holdets viden og planlægger skrivningen for ét hold, uden at skrive noget.
+ * Returnerer { rows, counts, context }: `context` er de læste data, så en kalder
+ * (tændingens backfill) kan planlægge igen på samme data, fx for gate H2.
+ * `config.truthCache` (valgfri Map) deles på tværs af hold i samme kørsel.
  */
-export async function writeTeamEstimates({ supabase, teamId, riders, trigger, config, now = new Date(), retryLost = true }) {
+export async function planTeamEstimatesFromDb({ supabase, teamId, riders, trigger, config, now = new Date() }) {
   const candidates = riders.filter((rider) => rider.is_retired !== true);
-  if (!candidates.length) return { written: 0, changed: 0, kept: 0, noKnowledge: 0, noCeiling: 0 };
+  if (!candidates.length) return { rows: [], counts: emptyCounts(), context: null };
   const riderIds = candidates.map((rider) => rider.id);
   const ownIds = candidates.filter((rider) => rider.team_id === teamId).map((rider) => rider.id);
   const [storedByRider, looksByRider, datesByRider, scoutTier, staffSpeed, truthByRider] = await Promise.all([
@@ -392,13 +402,29 @@ export async function writeTeamEstimates({ supabase, teamId, riders, trigger, co
     loadScoutTier(supabase, teamId),
     ownIds.length ? loadStaffSpeed(supabase, teamId) : 0,
     // XP slukket: ingen ekstra opslag, og det sande tal er talent_ceiling som før.
-    config.developmentXp ? loadExpectedTops(supabase, riderIds, config.developmentXp) : null,
+    config.developmentXp ? loadExpectedTops(supabase, riderIds, config.developmentXp, { cache: config.truthCache ?? null }) : null,
   ]);
-  const { rows, counts } = planTeamEstimates({
+  const context = {
     teamId, riders: candidates, storedByRider, looksByRider, datesByRider, staffSpeed, scoutTier,
-    trigger, params: config.params, paramsVersion: config.paramsVersion, now: now.toISOString(), truthByRider,
-  });
-  const lost = await persistRows(supabase, rows, storedByRider);
+    params: config.params, paramsVersion: config.paramsVersion, now: now.toISOString(), truthByRider,
+  };
+  const { rows, counts } = planTeamEstimates({ ...context, trigger });
+  return { rows, counts, context };
+}
+
+/**
+ * Skriver skønnene for ét hold. `riders`: rækker med ESTIMATE_RIDER_COLUMNS.
+ * Kaster ved databasefejl; kalderne isolerer selv pr. hold.
+ *
+ * Kom en anden skrivning først, læses de ryttere igen og planlægges forfra én gang,
+ * så et nyt kig ikke går tabt. Taber den også, indhenter søndagskørslen det.
+ * `changed` tæller første forsøg; tallet bruges kun i logs.
+ */
+export async function writeTeamEstimates({ supabase, teamId, riders, trigger, config, now = new Date(), retryLost = true }) {
+  const { rows, counts, context } = await planTeamEstimatesFromDb({ supabase, teamId, riders, trigger, config, now });
+  if (!context) return counts;
+  const candidates = context.riders;
+  const lost = await persistRows(supabase, rows, context.storedByRider);
   if (!lost.size) return counts;
   counts.written -= lost.size;
   if (!retryLost) return counts;

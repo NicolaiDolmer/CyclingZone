@@ -54,6 +54,7 @@ import { V6TacticsSavedContext, V6TacticsSummaryContext, useV6TacticsSummaryNote
 import { TacticsLayoutContext } from "../../tactics/tacticsLayout.ts"; // #8297
 import { Button, EmptyState, FlagIcon } from "./v6Ui.ts";
 import V6RaceHeroCard, { type RacePageV6Hero } from "./V6RaceHeroCard.tsx";
+import V6EditionSwitch from "./V6EditionSwitch.tsx"; // #5841
 import { useRacePageSpoiler } from "../../spoiler/useRacePageSpoiler.tsx"; // #7859
 import { SpoilerStoryContext } from "../../spoiler/spoilerStoryContext.ts"; // #7859
 
@@ -275,7 +276,7 @@ export default function RacePageV6(props: RacePageV6Props) {
   return (
     <div data-race-page data-race-page-version="v6" className="flex flex-col gap-[14px]">
       {/* Udgave E: ét kort med striben som bund. Guld kun i stregen øverst og på den ene knap. */}
-      <V6RaceHeroCard hero={spoiler.hero(hero)} aside={spoiler.heroAside} note={spoiler.heroNote} actionNote={tacticsSummary.note} strip={strip ? <V6StageStrip cells={stripCells} profileByStage={profileByStage} selected={strip.selected} onSelect={selectFromStrip} /> : null} />
+      <V6RaceHeroCard hero={spoiler.hero(hero)} aside={spoiler.heroAside} note={spoiler.heroNote} actionNote={tacticsSummary.note} editions={<V6EditionSwitch raceId={raceId} myTeamId={myTeamId} hideResults={spoiler.resultsHidden} />} strip={strip ? <V6StageStrip cells={stripCells} profileByStage={profileByStage} selected={strip.selected} onSelect={selectFromStrip} /> : null} />
       {/* Fanerne står 8 px under kortet (gap 14 minus 14, plus 8 px luft i den klæbende række). */}
       <div className="sticky top-0 z-20 -mt-[14px] -mb-2 bg-cz-body pt-2 pb-2">
         <Tabs value={activeTab} onChange={(v) => onChangeTab(v as RacePageV6Tab)}>

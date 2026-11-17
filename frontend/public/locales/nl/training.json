@@ -559,6 +559,12 @@
     "restSelected": "Op rust zetten",
     "pickHint": "Tik op de renners die je wilt wijzigen."
   },
+  "settleAfterStage": {
+    "ran": "Gedaan",
+    "ranTitle": "Deze sessie is gedaan en kan niet meer worden gewijzigd",
+    "note": "{n, plural, one {De koerssessie van # renner is na de etappe verwerkt.} other {De koerssessies van # renners zijn na de etappe verwerkt.}} Sessies die nog niet gedaan zijn, kun je nog wijzigen.",
+    "fatigueNow": "De getoonde vermoeidheid bevat de koers al."
+  },
   "programs": {
     "title": "Trainingsprogramma's",
     "intro": "Kies een programma en zet het op een renner of de hele selectie. Het wordt in het plan gekopieerd, dus je kunt daarna elke dag wijzigen.",

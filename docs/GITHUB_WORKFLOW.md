@@ -295,6 +295,12 @@ Færdig = spilleren har det: **1** bygget, **2** merget, **3** tændt, **4** syn
 - PR-body har `Refs #42` — brugeren lukker selv issuet efter manuel verifikation
 - En PR = ét issue (med mindre flere er klart koblede — så `Closes #42, closes #43`)
 
+## Skærmbilleds-snapshots: label `opdater snapshots` (#8348)
+- Pixel-baselines (`toHaveScreenshot`) er `*-linux.png`, lavet og sammenlignet KUN i den låste Playwright-container (image pinnet på digest i `playwright-smoke.yml` og `update-snapshots.yml`). Lokalt og i cloud-sessioner springes snapshot-sammenligningen over; resten af hver test kører.
+- Forny: sæt labelen `opdater snapshots` på PR'en. CI fornyer baselines i containeren, committer kun `frontend/tests/e2e/*-snapshots/*-linux.png` til PR'ens egen branch (aldrig forks), fjerner labelen og kommenterer resultatet. Kig billederne igennem før merge.
+- Bump af `@playwright/test`: ret image-tag + digest i begge workflows og forny med labelen; `frontend/tests/e2e/snapshot-baseline.test.ts` fejler indtil de passer sammen.
+- Chromium-projekterne starter med `--font-render-hinting=none` (`playwright.config.js`). Uden flaget runder headless Chromium på Linux tegnbredder til hele pixels, så tekst bliver bredere end på Windows, Android og i WebKit og kan bryde over flere linjer kun i containeren. Vagten står i `snapshot-baseline.test.ts`.
+
 ## Session-start (Claude)
 Per `CLAUDE.md` "Start (eksplicit)" trin 2: Claude tjekker `gh issue list --label "claude:todo" --state open --repo NicolaiDolmer/CyclingZone` ved session-start og foreslår at tage den top-prioriterede hvis brugeren ikke selv peger på en konkret opgave.
 

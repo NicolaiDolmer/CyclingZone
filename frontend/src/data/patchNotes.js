@@ -1,5 +1,208 @@
 export const PATCHES = [
 {
+  "version": "7.461",
+  "date": "2026-11-17",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Interface",
+      "en": {
+        "title": "Deleted messages stay deleted",
+        "body": "If you delete the message about a graduating academy rider or a squad below the minimum, it no longer comes back the next night."
+      },
+      "da": {
+        "title": "Slettede beskeder bliver væk",
+        "body": "Sletter du beskeden om en akademirytter, der er klar til oprykning, eller om en for lille trup, kommer den ikke igen næste nat."
+      },
+      "refs": [
+        8196
+      ]
+    }
+  ]
+},
+{
+  "version": "7.460",
+  "date": "2026-11-17",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Season",
+      "en": {
+        "title": "The season documentary names a real rival",
+        "body": "The rival in your season documentary is now the team right above or below you in your own pool. If that team is not a manager team, the rival sentence is left out instead of naming a team from another pool. A top result that was not a win is now written as a placing, and the text no longer uses long dashes. This applies from the season 6 switch; earlier documentaries are unchanged."
+      },
+      "da": {
+        "title": "Sæson-dokumentaren nævner en ægte rival",
+        "body": "Rivalen i din sæson-dokumentar er nu holdet lige over eller under dig i din egen pulje. Er det hold ikke et managerhold, udelades rival-sætningen i stedet for at nævne et hold fra en anden pulje. Et topresultat, der ikke var en sejr, skrives nu som en placering, og teksten bruger ikke længere lange tankestreger eller engelske ord. Det gælder fra sæson 6-skiftet; tidligere dokumentarer er uændrede."
+      },
+      "refs": [
+        8361
+      ]
+    }
+  ]
+},
+{
+  "version": "7.459",
+  "date": "2026-11-17",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Races",
+      "en": {
+        "title": "Price words in colour on every order",
+        "body": "Every race order with a price now shows its price word in the same colour as the stage plan, so Easy, Medium, Hard and Very hard read the same everywhere."
+      },
+      "da": {
+        "title": "Prisord i farver på alle ordrer",
+        "body": "Alle løbsordrer med en pris viser nu prisordet i samme farve som etapeplanen, så Let, Middel, Hård og Meget hård læses ens alle steder."
+      },
+      "refs": [
+        7638
+      ]
+    },
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Board",
+      "en": {
+        "title": "The board shows the same everywhere",
+        "body": "The board page and the dashboard now show the same category numbers. The mid-season message no longer points to a board request that does not exist."
+      },
+      "da": {
+        "title": "Bestyrelsen viser det samme alle steder",
+        "body": "Bestyrelsessiden og dashboardet viser nu de samme kategorital. Halvsæson-beskeden peger ikke længere på en bestyrelsesanmodning, der ikke findes."
+      },
+      "refs": [
+        7963,
+        8116
+      ]
+    },
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Auctions",
+      "en": {
+        "title": "Auction countdown follows an extension",
+        "body": "When a late bid extends an auction, the countdown ring and the time now change together with the new price."
+      },
+      "da": {
+        "title": "Auktionens nedtælling følger forlængelsen",
+        "body": "Når et sent bud forlænger en auktion, skifter nedtællingsringen og tiden nu sammen med den nye pris."
+      },
+      "refs": [
+        8290
+      ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Auctions",
+      "en": {
+        "title": "Auctions without the first-bid banner",
+        "body": "The first-bid banner above the list is gone, so the riders come right under the filters. The tour now starts on the page you are on when you press Show me around."
+      },
+      "da": {
+        "title": "Auktioner uden første-buds-banner",
+        "body": "Første-buds-banneret over listen er væk, så rytterne står lige under filtrene. Rundvisningen starter nu på den side, du står på, når du trykker Vis mig rundt."
+      },
+      "refs": [
+        8069
+      ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Interface",
+      "en": {
+        "title": "Tidier tables and training on phones",
+        "body": "Rider tables on phones put the name on its own line, and My team shows its figures at the top. Compare on the league page only appears once you have picked a team. On Training, the Assistant and the rider picker sit in one row."
+      },
+      "da": {
+        "title": "Ryddeligere tabeller og træning på telefonen",
+        "body": "Rytterlister på telefonen har navnet på egen linje, og Mit hold viser sine tal øverst. Sammenlign på ligasiden vises først, når du har valgt et hold. På Træning står Assistent og Vælg ryttere i én række."
+      },
+      "refs": [
+        8278,
+        8279
+      ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Interface",
+      "en": {
+        "title": "Calmer look",
+        "body": "One gold button per view, the display font only on the rider's name on the rider page, and line icons instead of emoji in game text."
+      },
+      "da": {
+        "title": "Roligere udtryk",
+        "body": "Én guld-knap pr. visning, overskriftsskriften kun på rytterens navn på rytterprofilen, og streg-ikoner i stedet for emoji i spilteksten."
+      },
+      "refs": [
+        8069
+      ]
+    }
+  ]
+},
+{
+  "version": "7.458",
+  "date": "2026-11-17",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "beta_to_live",
+      "topic": "Training",
+      "en": {
+        "title": "Train now bonus is now for everyone",
+        "body": "The Train now bonus is out of beta. When you press Train now yourself, before your team's automatic training has run, your riders get a small extra training bonus for the day. Automatic training gives no bonus."
+      },
+      "da": {
+        "title": "Træn nu-bonussen er nu for alle",
+        "body": "Træn nu-bonussen er ude af beta. Når du selv trykker Træn nu, før holdets automatiske træning har kørt, får dine ryttere en lille ekstra træningsbonus for dagen. Automatisk træning giver ingen bonus."
+      },
+      "refs": [
+        7741
+      ]
+    }
+  ]
+},
+{
+  "version": "7.457",
+  "date": "2026-11-17",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "flag": "spoiler_shield_7859",
+      "topic": "Spoiler shield",
+      "en": {
+        "title": "Spoiler shield for notifications",
+        "body": "I added a spoiler shield. Switch it on in Settings, under Notifications, in the card Results and spoilers. It is off by default. With the shield on, your inbox, the bell and browser notifications only say that a stage is finished, with no winner and no placing. The race page itself only hides the result with the new race page."
+      },
+      "da": {
+        "title": "Spoiler-skjold til notifikationer",
+        "body": "Jeg har bygget et spoiler-skjold. Slå det til under Indstillinger, under Notifikationer, i kortet Resultater og spoilere. Det er slået fra som standard. Med skjoldet til siger din indbakke, klokken og browser-notifikationerne kun, at en etape er færdig, uden vinder og placering. Selve løbssiden skjuler først resultatet med den nye løbsside."
+      },
+      "refs": [
+        7859
+      ]
+    }
+  ]
+},
+{
   "version": "7.456",
   "date": "2026-11-16",
   "changes": [

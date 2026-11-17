@@ -559,6 +559,12 @@
     "restSelected": "Poner en descanso",
     "pickHint": "Toca los ciclistas que quieras cambiar."
   },
+  "settleAfterStage": {
+    "ran": "Hecha",
+    "ranTitle": "Esta sesión ya se ha hecho y no se puede cambiar",
+    "note": "{n, plural, one {La sesión de carrera de # ciclista se liquida tras la etapa.} other {Las sesiones de carrera de # ciclistas se liquidan tras la etapa.}} Las sesiones que no se han hecho aún se pueden cambiar.",
+    "fatigueNow": "La fatiga mostrada ya incluye la carrera."
+  },
   "programs": {
     "title": "Programas de entrenamiento",
     "intro": "Elige un programa y aplícaselo a un ciclista o a toda la plantilla. Se copia al plan, así que luego puedes cambiar cualquier día.",

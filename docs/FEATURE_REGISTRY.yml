@@ -518,14 +518,16 @@ features:
     area: race-day
     title_en: Spoiler shield
     title_da: Spoiler-skjold
-    state: building
+    state: beta
     flag: spoiler_shield_7859
-    decision: ejer-beslutning
+    decision: taend
     decide_by: 2026-11-30
     epic: 7778
     ssot: docs/RACE_ENGINE_RULES.md
-    verified: 2026-11-16
-    note: "#7859: seedes off."
+    verified: 2026-11-17
+    note: "#7859: beta 17/11 efter ejer-go; løbssiden skjuler først med race_page_v6."
+    roadmap_en: "Spoiler shield: watch the race before you see who won"
+    roadmap_da: "Spoiler-skjold: se løbet, før du ser, hvem der vandt"
 
   - id: rider-hover-card
     area: squad
@@ -1676,13 +1678,13 @@ features:
     area: training
     title_en: Train now bonus
     title_da: Træn nu-bonus
-    state: beta
+    state: live
     flag: training_train_now_bonus
     ssot: docs/TRAINING_RULES.md
     epic: 7737
-    verified: 2026-11-16
-    decision: goer-faerdigt
-    decide_by: 2026-11-16
-    note: 'Beta i prod (migration #8268, læst 16/11): kun beta-testeres egne tryk får bonussen. Patch note 7.454. "on" kræver ejer-go.'
+    verified: 2026-11-17
+    decision: taend
+    decide_by: 2026-12-01
+    note: 'On for alle 17/11 efter ejer-go (#7741), læst tilbage i prod. Beta 16/11 (migration #8268). Svartid målt før tændingen; måling efter tændingen og fejlrate mangler.'
     roadmap_en: "Press Train now yourself and get 15% extra development that day."
     roadmap_da: "Tryk selv på Træn nu, og få 15 % ekstra udvikling den dag."

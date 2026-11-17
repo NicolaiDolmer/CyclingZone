@@ -31,12 +31,23 @@ process.env.AXE_RUN_ID ||= process.env.GITHUB_RUN_ID
 // mobil-Safari-dækning der findes, og uden CI kunne dens snapshots drive uset.
 // Det skete: planner-snapshottet drev 5/8 (#3378) og blev først opdaget 6/8 —
 // og rettet ved et tilfælde af en anden PR's snapshot-refresh. Se #3429.
+//
+// #8348: Playwrights headless Chromium paa Linux bruger fuld font-hinting som
+// standard, og saa rundes hvert tegns bredde op/ned til hele pixels. Paa
+// Windows, macOS, Android og i almindelig Chrome er bredderne broekdele. Maalt
+// i containeren: "Form og peak" i DM Sans 12px/500 blev 78 px mod 76,3 px paa
+// Windows, saa matrix-linsen paa 390 px broed over to linjer, og alle
+// baselines var tegnet med afrundede bredder. Uden hinting maaler containeren
+// det samme som Windows og rigtige telefoner (WebKit runder ikke). Flaget er
+// uden virkning paa Windows og macOS.
+export const CHROMIUM_LAUNCH_ARGS = ["--font-render-hinting=none"];
 const ALL_PROJECTS = [
   {
     name: "desktop-chromium",
     use: {
       ...devices["Desktop Chrome"],
       viewport: { width: 1280, height: 900 },
+      launchOptions: { args: CHROMIUM_LAUNCH_ARGS },
     },
   },
   {
@@ -44,6 +55,7 @@ const ALL_PROJECTS = [
     use: {
       ...devices["Pixel 5"],
       viewport: { width: 393, height: 852 },
+      launchOptions: { args: CHROMIUM_LAUNCH_ARGS },
     },
   },
   {
@@ -56,6 +68,19 @@ const ALL_PROJECTS = [
 // Ingen CI-filtrering: lokal pre-flight og CI kører præcis de samme tre
 // projekter. Divergensen mellem de to var selve fejlen i #3429.
 const PROJECTS = ALL_PROJECTS;
+
+// #8348: pixel-baselines (toHaveScreenshot) laves og sammenlignes KUN i den
+// laaste Linux-container (samme Playwright-image hver gang, pinnet paa digest i
+// playwright-smoke.yml og update-snapshots.yml). Foer var de win32 og kunne kun
+// fornyes paa een maskine. Skrifttyper og font-rendering er forskellige paa
+// tvaers af OS og distro, saa en sammenligning uden for containeren ville give
+// falske roede (eller skrive nye *-win32/-linux-filer). Uden for containeren
+// springes snapshot-assertions derfor over; resten af hver test koerer uaendret.
+// Fornyelse: label "opdater snapshots" paa PR'en (docs/GITHUB_WORKFLOW.md).
+export const SNAPSHOT_BASELINE_ENV = "PW_SNAPSHOT_BASELINE";
+export const SNAPSHOT_BASELINE_VALUE = "linux-container";
+const COMPARE_SNAPSHOTS =
+  process.platform === "linux" && process.env[SNAPSHOT_BASELINE_ENV] === SNAPSHOT_BASELINE_VALUE;
 
 /**
  * Antal parallelle workers. Playwright tager enten et tal eller en
@@ -100,6 +125,8 @@ export default defineConfig({
   // expect-timeouten i #2960: en aegte broken flade dukker ikke op ved 60s, saa
   // graensen skjuler ingen regressioner. Lokalt beholdes Playwright-defaulten.
   timeout: process.env.CI ? 60000 : 30000,
+  // #8348: se COMPARE_SNAPSHOTS ovenfor.
+  ignoreSnapshots: !COMPARE_SNAPSHOTS,
   // json-reporteren er inputtet til scripts/extract-e2e-flakes.mjs: den er den
   // eneste rapport der eksplicit maerker en test der fejlede foerst og bestod
   // ved retry som "flaky" (#4292's klasse). html-rapporten viser det for et
