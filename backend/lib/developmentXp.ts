@@ -11,8 +11,7 @@
 // ═══ HVAD MODELLEN ER ════════════════════════════════════════════════════════
 //   1. PRISEN: næste point koster XP efter evnens værdi og intet andet. Den er ens
 //      for alle ryttere, typer, aldre og evner, stiger stejlt mod toppen af skalaen
-//      og er endelig helt op til 99. Der er ingen mur. En valgfri prisbund (R16,
-//      ejer 14/11) gør kun lave evner dyrere, så store spring på én dato udebliver.
+//      og er endelig helt op til 99. Der er ingen mur og ingen prisbund (ejervalg 16/11).
 //   2. XP PR. DAG: potentialet står fast gennem karrieren og afgør, hvor meget
 //      rytteren tjener. Forskellen mellem ryttere ligger i XP, aldrig i prisen.
 //   3. ALDER: fuld XP til et stykke ind i karrieren, derefter tydeligt faldende.
@@ -23,6 +22,11 @@
 //      ikke med, når rytteren trænes om.
 //   6. BJÆLKEN: gemmes som en andel af næste point. Når et point købes, regnes
 //      overskuddet om til den nye pris, så ingen XP går tabt eller opstår.
+//   7. DATOEN (R16, ejervalg 16/11): en evne stiger højst XP_POINTS_PER_DATE point pr.
+//      dato, på tværs af datoens ticks; XP_MAX_POINTS_PER_DATE kun for et ungt toptalent
+//      på en meget lav evne (ejervalg A, xpDatePointCap). Resten bliver stående på bjælken, omregnet
+//      til den nye pris, og købes en senere dato. Eneste undtagelse er tændingsnatten:
+//      dér udbetales gemt fremgang fra dagens model på én nat (ejervalg 2 = A).
 //
 // ═══ TAL ═════════════════════════════════════════════════════════════════════
 // Alle tal er PRIVATE (hard rule 17, balance-internals/6110/) og gives som `params`.
@@ -57,16 +61,16 @@ export interface XpCurvePoint {
   value: number;
 }
 
-// Prisbunden (R16, ejervalg A 14/11): under `belowLevel` koster et point aldrig under
-// `minCost`. Kun bunden af skalaen bliver dyrere; midte og top er urørt.
-export interface XpPriceFloor {
-  belowLevel: number;
-  minCost: number;
-}
+// R16 (ejervalg 16/11): højst så mange point pr. evne pr. dato. En ejerregel, ikke et
+// balancetal: resten af XP'en går aldrig tabt, den venter på bjælken.
+// Ejervalg A (16/11 aften, Fable-fund 4): det høje tal er kun for et ungt toptalent på en
+// meget lav evne; alle andre har det lave. Hvem der er "ung", "toptalent" og "meget lav" er
+// balancetal og står i talfilen (`datePlus2`), aldrig her (hard rule 17).
+export const XP_MAX_POINTS_PER_DATE = 2;
+export const XP_POINTS_PER_DATE = 1;
 
 export interface DevelopmentXpParams {
-  // `floor` udeladt = prislisten uden bund, nøjagtig som før R16.
-  price: { base: number; exponent: number; floor?: XpPriceFloor };
+  price: { base: number; exponent: number };
   // XP på en hård dato i en signatur-fokusevne. Lineært mellem punkterne, fladt uden for
   // dem. Punkter frem for faste trin, så omregningen til 1-99 kun flytter tal, ikke kode.
   potentialXp: readonly XpCurvePoint[];
@@ -79,6 +83,26 @@ export interface DevelopmentXpParams {
   // Dagsvariationen (§5.2). Udeladt = ingen variation. Nøglen ligger ikke på objektet
   // (developmentXpVariation.ts), så params kan skrives ud uden at afsløre den.
   variation?: XpVariation;
+  // Hvem må få det høje antal point på én dato (ejervalg A 16/11): højst `maxAge` år,
+  // mindst `minPotential` i potentiale og en evne under `belowLevel` ved datoens start.
+  // Udeladt = ingen får det høje antal; alle har det lave (fail-safe, aldrig løsere).
+  datePlus2?: XpDatePlus2;
+}
+
+export interface XpDatePlus2 {
+  maxAge: number;
+  minPotential: number;
+  belowLevel: number;
+}
+
+function validDatePlus2(raw: unknown): XpDatePlus2 | null | undefined {
+  if (raw === undefined) return undefined;
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  if (!isNum(r.maxAge) || !(r.maxAge > 0)) return null;
+  if (!isNum(r.minPotential) || !(r.minPotential > 0)) return null;
+  if (!isNum(r.belowLevel) || !(r.belowLevel > 0 && r.belowLevel <= SCALE_TOP)) return null;
+  return Object.freeze({ maxAge: r.maxAge, minPotential: r.minPotential, belowLevel: r.belowLevel });
 }
 
 const isNum = (x: unknown): x is number => typeof x === "number" && Number.isFinite(x);
@@ -133,9 +157,9 @@ export function validateDevelopmentXpParams(raw: unknown): DevelopmentXpParams |
   if (!price || typeof price !== "object") return null;
   if (!isNum(price.base) || !(price.base > 0)) return null;
   if (!isNum(price.exponent) || !(price.exponent > 0)) return null;
-  // Sat, men ugyldig prisbund gør hele params ugyldige, ligesom variationen.
-  const floor = validPriceFloor(price.floor, price.base, price.exponent);
-  if (floor === null) return null;
+  // Ingen prisbund (ejervalg 16/11): en talfil med en bund er fra før valget og afvises
+  // hel, så motoren falder tilbage til dagens model i stedet for at regne en halv model.
+  if (price.floor !== undefined) return null;
 
   const potentialXp = validCurve(p.potentialXp);
   if (!potentialXp || potentialXp.length < 2) return null;
@@ -172,10 +196,12 @@ export function validateDevelopmentXpParams(raw: unknown): DevelopmentXpParams |
   // Sat, men ugyldig variation gør hele params ugyldige: XP må ikke køre uden den.
   const variation = validateXpVariation(p.variation);
   if (variation === null) return null;
+  // Samme regel for datoreglens grænser: sat, men ugyldig, gør hele params ugyldige.
+  const datePlus2 = validDatePlus2(p.datePlus2);
+  if (datePlus2 === null) return null;
 
   return Object.freeze({
-    // Bunden er kun med, når den er sat, så params uden bund har samme form som før.
-    price: Object.freeze({ base: price.base, exponent: price.exponent, ...(floor ? { floor } : {}) }),
+    price: Object.freeze({ base: price.base, exponent: price.exponent }),
     potentialXp: freezeCurve(potentialXp),
     ageShare: Object.freeze({ physical: freezeCurve(physical), mental: freezeCurve(mental) }),
     offFocusShare: p.offFocusShare,
@@ -183,40 +209,14 @@ export function validateDevelopmentXpParams(raw: unknown): DevelopmentXpParams |
     typeShare: Object.freeze(typeShare),
     // Kun med, når den er sat, så params uden variation har samme form som før.
     ...(variation ? { variation } : {}),
+    ...(datePlus2 ? { datePlus2 } : {}),
   });
 }
 
-/** Prislistens formel uden bund. */
-function formulaPrice(l: number, base: number, exponent: number): number {
-  return base * Math.pow(1 - l / SCALE_TOP, -exponent);
-}
-
-/**
- * Validerer prisbunden. `undefined` = ingen bund. Er den sat, skal den være gyldig,
- * ellers er hele params ugyldige (null). Bunden må aldrig gøre prisen faldende:
- * ved grænsen skal formlen allerede koste mindst bunden, så et højere niveau
- * aldrig bliver billigere end et lavere, og midten forbliver formlens egen.
- */
-function validPriceFloor(raw: unknown, base: number, exponent: number): XpPriceFloor | null | undefined {
-  if (raw === undefined) return undefined;
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
-  const f = raw as Record<string, unknown>;
-  if (!isNum(f.belowLevel) || !(f.belowLevel > 0 && f.belowLevel <= MAX_ABILITY)) return null;
-  if (!isNum(f.minCost) || !(f.minCost > 0)) return null;
-  if (f.minCost > formulaPrice(f.belowLevel, base, exponent)) return null;
-  return Object.freeze({ belowLevel: f.belowLevel, minCost: f.minCost });
-}
-
-/**
- * XP for næste point. Afhænger kun af evnens værdi og er endelig helt op til 99.
- * Med prisbund (R16) koster et point under grænsen mindst bunden; uden bund er
- * prisen formlens, nøjagtig som før.
- */
+/** XP for næste point. Afhænger kun af evnens værdi og er endelig helt op til 99. */
 export function xpPriceForNextPoint(level: number, params: DevelopmentXpParams): number {
   const l = Math.min(MAX_ABILITY, Math.max(0, Number(level) || 0));
-  const price = formulaPrice(l, params.price.base, params.price.exponent);
-  const floor = params.price.floor;
-  return floor && l < floor.belowLevel ? Math.max(price, floor.minCost) : price;
+  return params.price.base * Math.pow(1 - l / SCALE_TOP, -params.price.exponent);
 }
 
 /** Andel af fuld XP efter alder. Ukendt alder er fuld XP, som en voksen, aldrig en turbo. */
@@ -280,7 +280,7 @@ export function abilityXpForTick(
 
 /**
  * Lægger XP på bjælken og køber point. `bar` er andelen af næste point til den
- * nuværende pris, og den kan ligge over 1, når et dato-loft har klippet et point.
+ * nuværende pris, og den kan ligge over 1, når datoreglen har holdt et point tilbage.
  * Resten regnes om til prisen for det nye næste point. Fremdrift ud over `maxPoints`
  * står på bjælken til næste gang. Kun en evne på 99 mister XP: dér er intet at købe.
  */
@@ -410,7 +410,7 @@ function programAbilityXp(
 
 /**
  * XP på én evne for ét tick. Erstatter dailyAbilityDelta's andel af et point, når
- * kontakten er tændt. Kender intet loft (B4): kun prisen bremser.
+ * kontakten er tændt. Kender intet loft (B4); datoreglen (R16) ligger i developmentXpTick.
  *
  * Løbsdags-gulvet (ejer 7/11, bekræftet 12/11, gate X8): på en løbsdag er XP i hver
  * evne mindst det, en hård træningsdag i etapens evner med rytterens træner og
@@ -452,16 +452,70 @@ export interface XpTickResult {
   score: number;
 }
 
+/** Det, datoreglen skal vide om rytteren. Ukendt alder eller potentiale = det lave tal. */
+export interface XpDateRider {
+  age?: number | null;
+  potentiale?: number | null;
+}
+
+/**
+ * Datoens tal for én evne (ejervalg A 16/11): det høje tal kun for et ungt toptalent på
+ * en meget lav evne, ellers det lave. `startLevel` er evnens niveau ved datoens start, så
+ * tallet står fast hele datoen, på tværs af ticks og stier. Grænserne kommer fra
+ * talfilen (`datePlus2`); uden dem og ved ukendt alder eller potentiale gælder det lave.
+ */
+export function xpDatePointCap(
+  { startLevel, age, potentiale }: { startLevel: number; age?: number | null; potentiale?: number | null },
+  params: DevelopmentXpParams,
+): number {
+  const rule = params.datePlus2;
+  if (!rule || !isNum(age) || !isNum(potentiale) || !isNum(startLevel)) return XP_POINTS_PER_DATE;
+  const young = age <= rule.maxAge;
+  const topTalent = potentiale >= rule.minPotential;
+  const veryLow = startLevel < rule.belowLevel;
+  return young && topTalent && veryLow ? XP_MAX_POINTS_PER_DATE : XP_POINTS_PER_DATE;
+}
+
+/**
+ * Hvor mange point evnen må købe på tick'et efter datoreglen (R16, ejervalg 16/11):
+ * det, datoen har tilbage, efter det evnen allerede har købt på datoen. På tændingsnatten
+ * (`storedBarPayout`) udbetales en gemt bjælke fra dagens model helt (ejervalg 2 = A).
+ * Undtagelsen gælder kun bjælken fra før XP: kun datoens første køb i evnen, og kun det,
+ * bjælken selv rækker til. Dagens nye XP følger reglen. `cap` kan kun sættes af
+ * 10-sæsoners-kørslen (varianter); motoren bruger altid reglens eget tal for rytteren
+ * (xpDatePointCap, med evnens niveau ved datoens start).
+ */
+export function xpDatePointAllowance(
+  { level, bar, used, storedBarPayout, cap, rider = null }: {
+    level: number; bar: number; used: number; storedBarPayout: boolean; cap?: number | null; rider?: XpDateRider | null;
+  },
+  params: DevelopmentXpParams,
+): number {
+  const limit = cap ?? xpDatePointCap({ startLevel: level - used, age: rider?.age, potentiale: rider?.potentiale }, params);
+  const left = Math.max(0, limit - used);
+  if (!storedBarPayout || used > 0 || !(bar >= 1)) return left;
+  return Math.max(left, buyPoints({ level, bar }, params).points);
+}
+
 /**
  * Ét XP-tick for én rytter. `xpFor(ability)` er evnens XP på tick'et (kalderen
- * samler dailyAbilityDelta og løbsdagens tillæg). Point købes til prisen og højst
- * `maxPointsPerTick` pr. evne; resten bliver på bjælken (spec §4.3). Muterer ikke input.
+ * samler dailyAbilityDelta og løbsdagens tillæg). Point købes til prisen, højst
+ * `maxPointsPerTick` pr. evne og højst det, datoen har tilbage (`dateUsedGains` er
+ * evnens point tidligere på datoen, på tværs af ticks og stier). Resten bliver på
+ * bjælken, omregnet til den nye pris (spec §4.3, §7.3). Muterer ikke input.
  */
 export function developmentXpTick(
-  { abilities, progress, maxPointsPerTick = Infinity, xpFor }: {
+  {
+    abilities, progress, maxPointsPerTick = Infinity, dateUsedGains = null, storedBarPayout = false, rider = null, xpFor,
+  }: {
     abilities: Record<string, unknown>;
     progress?: Record<string, unknown> | null;
     maxPointsPerTick?: number;
+    dateUsedGains?: Record<string, unknown> | null;
+    /** Tændingsnatten: gemt fremgang fra dagens model udbetales på én nat. */
+    storedBarPayout?: boolean;
+    /** Alder og potentiale til datoreglen (xpDatePointCap). Udeladt = det lave tal. */
+    rider?: XpDateRider | null;
     xpFor: (ability: string) => number;
   },
   params: DevelopmentXpParams,
@@ -477,9 +531,14 @@ export function developmentXpTick(
     const raw = Number(xpFor(ability));
     const earned = Number.isFinite(raw) && raw > 0 ? raw : 0;
     const bar = Number(nextProgress[ability] ?? 0);
-    // En bjælke over 1 (klippet af dato-loftet) betales ud, også uden ny XP (§7.3).
+    // En bjælke over 1 (resten fra en tidligere dato) betales ud, også uden ny XP (§7.3).
     if (!(earned > 0) && !(bar >= 1)) continue;
-    const out = buyPoints({ level, bar, xp: earned, maxPoints: maxPointsPerTick }, params);
+    const usedRaw = Number(dateUsedGains?.[ability]);
+    const used = Number.isFinite(usedRaw) && usedRaw > 0 ? usedRaw : 0;
+    const limit = Math.min(maxPointsPerTick, xpDatePointAllowance({ level, bar, used, storedBarPayout, rider }, params));
+    // Datoen er brugt op og intet nyt at lægge på: bjælken står præcis, som den er.
+    if (!(earned > 0) && !(limit > 0)) continue;
+    const out = buyPoints({ level, bar, xp: earned, maxPoints: limit }, params);
     if (earned > 0) {
       xp[ability] = earned;
       score += earned / xpPriceForNextPoint(level, params);
