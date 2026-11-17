@@ -154,12 +154,15 @@ function byTree(a: EditionRaceRow, b: EditionRaceRow): number {
 /**
  * Menuernes indhold. `editions` er alle rækker med løbets pool_race_id (inkl. den viste),
  * `ownRaceIds` de udgaver holdet har ryttere i. null = intet at skifte imellem.
+ * `hideResults` (#7859/#8303, Codex P1): spoiler-skjoldet skjuler en kørt etape i det viste løb.
+ * Så viser INGEN menu en vinder eller et forspring, kun hvor langt udgaven er ("etape X af Y kørt").
  */
-export function buildEditionSwitch({ currentRaceId, editions, results, ownRaceIds }: {
+export function buildEditionSwitch({ currentRaceId, editions, results, ownRaceIds, hideResults = false }: {
   currentRaceId: string;
   editions: readonly EditionRaceRow[];
   results: readonly EditionResultRow[];
   ownRaceIds: ReadonlySet<string>;
+  hideResults?: boolean;
 }): EditionSwitchModel | null {
   const current = editions.find((e) => e.id === currentRaceId);
   if (!current) return null;
@@ -174,7 +177,7 @@ export function buildEditionSwitch({ currentRaceId, editions, results, ownRaceId
       letter: poolLetter(poolIndexOf(e)) as string,
       own: ownRaceIds.has(e.id),
       current: e.id === current.id,
-      summary: editionSummary(e, results),
+      summary: hideResults ? progressOf(e) : editionSummary(e, results),
     }));
 
   const bySeason = new Map<string, EditionRaceRow[]>();
@@ -197,7 +200,7 @@ export function buildEditionSwitch({ currentRaceId, editions, results, ownRaceId
       tier: tierOf(target),
       ownLetter: own ? poolLetter(poolIndexOf(own)) : null,
       // #8303 (skitse A): den igangvaerende saeson viser "etape X af Y koert", aldrig en vinder.
-      summary: isCurrent && !isFinished(target)
+      summary: hideResults || (isCurrent && !isFinished(target))
         ? progressOf(target)
         : editionSummary(target, results),
     };

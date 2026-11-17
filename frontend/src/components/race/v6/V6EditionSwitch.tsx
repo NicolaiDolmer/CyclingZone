@@ -61,7 +61,7 @@ async function loadEditions(raceId: string, myTeamId: string | null): Promise<Ed
   return { raceId, editions, results, ownRaceIds: new Set(entries.map((e) => e.race_id)) };
 }
 
-function useEditionSwitch(raceId: string | null, myTeamId: string | null): EditionSwitchModel | null {
+function useEditionSwitch(raceId: string | null, myTeamId: string | null, hideResults: boolean): EditionSwitchModel | null {
   const [data, setData] = useState<EditionData | null>(null);
   useEffect(() => {
     if (!raceId) return undefined;
@@ -72,8 +72,8 @@ function useEditionSwitch(raceId: string | null, myTeamId: string | null): Editi
     return () => { alive = false; };
   }, [raceId, myTeamId]);
   return useMemo(() => (data && data.raceId === raceId
-    ? buildEditionSwitch({ currentRaceId: raceId, editions: data.editions, results: data.results, ownRaceIds: data.ownRaceIds })
-    : null), [data, raceId]);
+    ? buildEditionSwitch({ currentRaceId: raceId, editions: data.editions, results: data.results, ownRaceIds: data.ownRaceIds, hideResults })
+    : null), [data, raceId, hideResults]);
 }
 
 /** Linje 2 i et menupunkt: vinder (eller seneste etapes vinder) og forspring. */
@@ -262,9 +262,10 @@ function OtherPoolLine({ other, currentLetter, tr }: {
 }
 
 /** Løbshovedets udgave-skift (række 1, til højre). Intet at skifte imellem = intet tegnet. */
-export default function V6EditionSwitch({ raceId, myTeamId }: { raceId: string | null; myTeamId?: string | number | null }) {
+/** `hideResults`: spoiler-skjoldet skjuler en kørt etape i løbet (#7859); menuerne viser da ingen vinder. */
+export default function V6EditionSwitch({ raceId, myTeamId, hideResults = false }: { raceId: string | null; myTeamId?: string | number | null; hideResults?: boolean }) {
   const { t, ready } = useTranslation("calendar");
-  const model = useEditionSwitch(raceId, myTeamId != null ? String(myTeamId) : null);
+  const model = useEditionSwitch(raceId, myTeamId != null ? String(myTeamId) : null, hideResults);
   if (!ready || !model) return null;
   const tr = t as unknown as Translate;
 

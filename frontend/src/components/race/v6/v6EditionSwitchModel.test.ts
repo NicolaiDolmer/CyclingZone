@@ -130,7 +130,7 @@ test("poolTwinsByRaceId: kalenderkortets puljer efter mergePoolTwins' regel, i d
 
 test("kilden: switchen monteres i løbshovedet bag v6 og bruger det route-gatede navnerum", () => {
   const page = readFileSync(new URL("./RacePageV6.tsx", import.meta.url), "utf8");
-  assert.match(page, /editions=\{<V6EditionSwitch raceId=\{raceId\} myTeamId=\{myTeamId\} \/>\}/);
+  assert.match(page, /editions=\{<V6EditionSwitch raceId=\{raceId\} myTeamId=\{myTeamId\} hideResults=\{spoiler\.resultsHidden\} \/>\}/);
   const sw = readFileSync(new URL("./V6EditionSwitch.tsx", import.meta.url), "utf8");
   assert.match(sw, /useTranslation\("calendar"\)/);
   assert.match(sw, /\.eq\("pool_race_id", /);
@@ -145,4 +145,21 @@ test("buildEditionSwitch: én pulje og én sæson, men holdet kører en anden di
   assert.equal(m.seasons.length, 1);
   assert.equal(m.ownElsewhere?.raceId, "c3");
   assert.equal(m.ownElsewhere?.sameTier, false);
+});
+
+test("#8303 (Codex P1): spoiler-skjold over en kørt etape = ingen vinder eller forspring i nogen menu", () => {
+  const shown = buildEditionSwitch({ currentRaceId: "c5", editions: EDITIONS, results: RESULTS, ownRaceIds: new Set(["b5", "f4"]) });
+  assert.ok(shown && [...shown.pools, ...shown.seasons].some((o) => o.summary.kind !== "progress" && o.summary.kind !== "upcoming"), "uden skjold vises vindere som i dag");
+  const hidden = buildEditionSwitch({ currentRaceId: "c5", editions: EDITIONS, results: RESULTS, ownRaceIds: new Set(["b5", "f4"]), hideResults: true });
+  assert.ok(hidden);
+  for (const o of [...hidden.pools, ...hidden.seasons]) {
+    assert.ok(o.summary.kind === "progress" || o.summary.kind === "upcoming", `${o.raceId}: ${o.summary.kind}`);
+  }
+});
+
+test("#8303: løbssiden giver skjold-tilstanden videre til udgave-skiftet", () => {
+  const page = readFileSync(new URL("./RacePageV6.tsx", import.meta.url), "utf8");
+  assert.match(page, /<V6EditionSwitch raceId=\{raceId\} myTeamId=\{myTeamId\} hideResults=\{spoiler\.resultsHidden\} \/>/);
+  const hook = readFileSync(new URL("../../spoiler/useRacePageSpoiler.tsx", import.meta.url), "utf8");
+  assert.match(hook, /resultsHidden: anyHidden,/);
 });
