@@ -135,7 +135,8 @@ Historik: GitHubs ægte Merge Queue blev forsøgt 4/8 men kræver et ORG-ejet re
 
 Målt 10-17/11: flaskehalsen er GitHubs kø (gratis-kontoen: 20 samtidige jobs), ikke testene. Et push starter 50-75 jobs; 16/11 kørte 15.228 CI-kørsler. Derfor, for alle sessioner:
 - **Kladder pushes samlet**, ikke for hvert lille skridt (livstegn-push hvert 15. min er nok; tunge i18n-jobs springes over på kladder og kører ved "ready for review").
-- **Én merge-kø ad gangen** er håndhævet i `scripts/merge-queue.ps1` (exit 3 ved en levende markør fra en anden proces). Manuelle køer blokerer auto-toget.
+- **Én merge-kø ad gangen** er håndhævet i `scripts/merge-queue.ps1`: køen tager markøren atomisk (`merge-queue-active-marker.mjs acquire`), exit 3 ved en levende markør fra en anden proces. Manuelle køer blokerer auto-toget.
+- **Auto-toget kører ét samlet tog** (`scripts/merge-autotrain.mjs`): op til 5 klare PR'er (`-MaxBatch`), højst én deploy-PR og den sidst, hvert hoved bundet med `-ExpectHead`. Køens CI-frist er 90 min (`-CiTimeoutMinutes`; 25 min gav falske timeouts, mens main-CI stod i GitHubs kø).
 - **gh API-budgettet (5000/t) deles af alle sessioner på kontoen**: ingen `gh`-polling-løkker; brug `--watch` i baggrunden eller vent på notifikationer. 17/11 kl. 08 var budgettet brugt op, og ingen session kunne merge.
 - Trin 2-4 (patch notes som fragmenter, færre jobs pr. push, Linux-snapshots) og trin 5 (GitHubs merge-kø via organisation) står i CI-planen; se issuet "CI-plan".
 
