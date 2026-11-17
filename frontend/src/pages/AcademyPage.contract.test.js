@@ -308,10 +308,10 @@ test("#8081: en fuld trup står i neutral tekst med ordet Fuld, ingen advarselsf
 });
 
 test("#8081: talenttabellens mobil-chips er firkantede (5px), kun på akademiet", () => {
-  assert.match(talentSource, /<DataTable[\s\S]*?\bsquareChips\b[\s\S]*?\/>/);
-  // Den delte tabel er uændret for alle andre sider: piller er stadig standard.
-  assert.match(dataTableSource, /squareChips = false/);
-  assert.match(dataTableSource, /squareChips \? "rounded-cz" : "rounded-cz-pill"/);
+  // Kun akademiets wrapper gør pillerne firkantede; den delte DataTable er uændret (første indlæsning).
+  assert.match(talentSource, /data-testid="academy-v2-talents" className="\[&_\.rounded-cz-pill\]:rounded-cz"/);
+  assert.doesNotMatch(dataTableSource, /squareChips/);
+  assert.match(dataTableSource, /rounded-cz-pill/);
 });
 
 test("#8081 (ejer 16/11): Dine talenter viser kun egen avl; oprindelsen læses read-only og pagineret", () => {

@@ -48,7 +48,6 @@ export interface DataTableProps<Row> {
   label?: string;
   dense?: boolean;
   mobileDefaults?: string[];
-  squareChips?: boolean;
   empty?: ReactNode;
   toolbar?: ReactNode;
 }

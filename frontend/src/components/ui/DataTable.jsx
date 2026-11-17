@@ -91,8 +91,6 @@ export function DataTable({
   toolbar = null,
   empty = null,
   mobileDefaults = null,
-  // #8081: firkantede chips (5px radius) i stedet for piller; kun akademisiden udgave A.
-  squareChips = false,
 }) {
   const { t } = useTranslation("common");
   const isMobile = useIsMobileViewport();
@@ -190,7 +188,6 @@ export function DataTable({
             onPick={pickColumn}
             fullTable={fullTable}
             onToggleFullTable={() => setFullTable((v) => !v)}
-            squareChips={squareChips}
             t={t}
           />
         )}
@@ -392,9 +389,9 @@ function TableHead({ columns, sort, sortDir, onSort, dense, mobile = false, stic
 // vandret chip-raekke paa en telefon. Ordenen er FRYSSET af DataTable, saa et
 // tryk aldrig flytter chippen under fingeren; derfor ruller raekken heller ikke
 // tilbage til start af sig selv.
-function MobileColumnChips({ columns, selected, onPick, fullTable, onToggleFullTable, squareChips = false, t }) {
+function MobileColumnChips({ columns, selected, onPick, fullTable, onToggleFullTable, t }) {
   const base =
-    `flex-none inline-flex items-center gap-1.5 ${squareChips ? "rounded-cz" : "rounded-cz-pill"} border px-2.5 min-h-[32px] ` +
+    "flex-none inline-flex items-center gap-1.5 rounded-cz-pill border px-2.5 min-h-[32px] " +
     "font-data text-2xs font-semibold uppercase tracking-[.06em] transition-colors duration-150 " +
     "[@media(max-width:640px),(pointer:coarse)]:min-h-11 [@media(max-width:640px),(pointer:coarse)]:min-w-11";
   return (

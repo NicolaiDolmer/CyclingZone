@@ -7,7 +7,8 @@
 // Ingen rækkehandlinger (#6155): flyt og fyring sker på rytterprofilen, som for alle ryttere.
 // Navnet er linket. Tabellen er DataTable med sortering på alle kolonner (TASTE 7a).
 // Kun egen avl (ejer 16/11): AcademyV2 filtrerer listen, så "Kom via" fra skitse A er fjernet.
-// Mobilens kolonne-chips er firkantede (squareChips, 5px), ikke piller.
+// Mobilens kolonne-chips er firkantede (5px), ikke piller: kun her, via en CSS-regel på wrapperen,
+// så den delte DataTable (første indlæsning) er uændret.
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import NationCell from "../rider/NationCell.jsx";
@@ -134,14 +135,13 @@ export default function TalentTable({ roster, seasonYear, emptyAction }: {
   ];
 
   return (
-    <div data-testid="academy-v2-talents">
+    <div data-testid="academy-v2-talents" className="[&_.rounded-cz-pill]:rounded-cz">
       <DataTable
         label={t("academyV2:v2.tabs.talents")}
         columns={columns}
         rows={rows}
         rowKey={(r) => r.id}
         mobileDefaults={MOBILE_DEFAULTS}
-        squareChips
         dense
         sort={sort}
         sortDir={sortDir}
