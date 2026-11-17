@@ -1,6 +1,9 @@
-import test from "node:test";
+import test, { describe, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { fetchSeasonDocumentaryFacts, generateSeasonDocumentary } from "./seasonDocumentaryGenerate.js";
+import { buildSeasonDocumentary } from "./seasonDocumentaryGrammar.js";
+import { createTestDb, readMigration, RESULT_AGGREGATE_SCHEMA_FILES } from "./testdb/createTestDb.js";
+import { sanitizeForPglite } from "./testdb/sanitizeForPglite.js";
 
 const FACTS = {
   signings: [{ amount: 10000, riderName: "Rider One", source: "auction" }],
@@ -145,4 +148,101 @@ test("generateSeasonDocumentary is idempotent — regenerating with identical fa
   await runOnce(capturedB);
   assert.deepEqual(capturedA[0].deterministic_en, capturedB[0].deterministic_en);
   assert.deepEqual(capturedA[0].deterministic_da, capturedB[0].deterministic_da);
+});
+
+// ── #8361: get_season_documentary_facts mod en ÆGTE Postgres (PGlite) ─────────
+// Den committede migration loades oven på skemaet bag 5535-funktionen. To puljer i
+// samme division med kendt stilling: rivalen skal komme fra holdets egen pulje og
+// være en reel nabo, også når et hold i nabopuljen ligger tættere i point.
+
+const MIGRATION_8361 = "2026-11-17-8361-season-documentary-rival-same-pool.sql";
+
+describe("#8361 get_season_documentary_facts: rival from the team's own pool", () => {
+  let db;
+  const ids = {};
+
+  async function one(sql, params) {
+    return (await db.query(sql, params)).rows[0];
+  }
+
+  async function team(name, pool, isAi = false) {
+    return (
+      await one("INSERT INTO teams (name, is_ai, division, league_division_id) VALUES ($1, $2, 2, $3) RETURNING id", [name, isAi, pool])
+    ).id;
+  }
+
+  async function standing(teamId, pool, rank, points) {
+    await db.query(
+      `INSERT INTO season_standings (season_id, team_id, division, league_division_id, rank_in_division, total_points)
+       VALUES ($1, $2, 2, $3, $4, $5)`,
+      [ids.season, teamId, pool, rank, points],
+    );
+  }
+
+  async function facts(teamId) {
+    return (await one("SELECT public.get_season_documentary_facts($1, $2) AS r", [ids.season, teamId])).r;
+  }
+
+  before(async () => {
+    db = await createTestDb({ files: [...RESULT_AGGREGATE_SCHEMA_FILES, MIGRATION_8361] });
+    ids.season = (await one("INSERT INTO seasons (number, status) VALUES (4, 'completed') RETURNING id")).id;
+    ids.poolP = (await one("INSERT INTO league_divisions (tier, pool_index, label) VALUES (2, 0, 'Pulje P') RETURNING id")).id;
+    ids.poolQ = (await one("INSERT INTO league_divisions (tier, pool_index, label) VALUES (2, 1, 'Pulje Q') RETURNING id")).id;
+    // Pulje P: A (1.), Mig (2.), B (3.), AI-hold (4.), D (5.)
+    ids.a = await team("Hold A", ids.poolP);
+    ids.me = await team("Hold Mig", ids.poolP);
+    ids.b = await team("Hold B", ids.poolP);
+    ids.ai = await team("AI-hold", ids.poolP, true);
+    ids.d = await team("Hold D", ids.poolP);
+    await standing(ids.a, ids.poolP, 1, 5097);
+    await standing(ids.me, ids.poolP, 2, 5000);
+    await standing(ids.b, ids.poolP, 3, 4950);
+    await standing(ids.ai, ids.poolP, 4, 4800);
+    await standing(ids.d, ids.poolP, 5, 4700);
+    // Pulje Q i samme division: Q1 ligger tættest på Mig i point, men er ikke en nabo.
+    ids.q1 = await team("Hold Q1", ids.poolQ);
+    await standing(ids.q1, ids.poolQ, 1, 5010);
+    // Et hold uden pulje i samme division.
+    ids.loose = await team("Hold Uden Pulje", null);
+    await standing(ids.loose, null, 1, 5005);
+  });
+
+  after(async () => {
+    if (db) await db.close();
+  });
+
+  test("the rival is the nearest neighbour in the own pool, not a closer team from the other pool", async () => {
+    const f = await facts(ids.me);
+    assert.equal(f.rival.team_id, ids.b);
+    assert.equal(f.rival.league_division_id, ids.poolP);
+    assert.equal(Number(f.rival.penalty_points), 0);
+    assert.equal(f.myStanding.league_division_id, ids.poolP);
+
+    const doc = buildSeasonDocumentary(f, { teamId: ids.me, teamName: "Hold Mig", seasonNumber: 4 });
+    for (const lang of ["en", "da"]) {
+      const text = doc[lang].join(" ");
+      assert.ok(text.includes("Hold B"), `${lang}: rivalen fra egen pulje er nævnt`);
+      assert.ok(!text.includes("Hold Q1"), `${lang}: holdet fra nabopuljen er ikke nævnt`);
+      assert.doesNotMatch(text, /[—–]/);
+    }
+  });
+
+  test("a human team two places away is not a rival when the neighbours are AI or missing", async () => {
+    const f = await facts(ids.d);
+    assert.equal(f.rival, null);
+    const doc = buildSeasonDocumentary(f, { teamId: ids.d, teamName: "Hold D", seasonNumber: 4 });
+    assert.equal(doc.en.length, 4);
+    assert.equal(doc.da.length, 4);
+  });
+
+  test("a team without a pool gets no rival from anywhere in the division", async () => {
+    const f = await facts(ids.loose);
+    assert.equal(f.rival, null);
+  });
+
+  test("the migration can run twice (auto-migrate safe)", async () => {
+    await db.exec(sanitizeForPglite(readMigration(MIGRATION_8361)));
+    const f = await facts(ids.me);
+    assert.equal(f.rival.team_id, ids.b);
+  });
 });
