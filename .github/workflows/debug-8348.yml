@@ -36,23 +36,9 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Install frontend dependencies
         run: npm ci
-      - name: Fonts in the image
+      - name: Font render probe
         shell: bash
         run: |
-          fc-match system-ui || true
-          fc-match sans-serif || true
-          fc-match Arial || true
-          fc-list : family | sort -u || true
-      - name: Build frontend (e2e)
-        run: npm run build
-        env:
-          VITE_E2E: "1"
-          VITE_API_URL: http://127.0.0.1:4173
-          VITE_SUPABASE_URL: https://cycling-zone-e2e.supabase.co
-          VITE_SUPABASE_ANON_KEY: e2e-anon-key
-          VITE_PUBLIC_APP_URL: http://127.0.0.1:4173
-      - name: Run the one test
-        shell: bash
-        env:
-          PW_SNAPSHOT_BASELINE: linux-container
-        run: npx playwright test tests/e2e/5124-season-matrix-mobile.spec.js --project=mobile-chromium --project=desktop-chromium -g "linse-kontrollen" --retries=0 --reporter=line || true
+          fc-match -v sans-serif | grep -E "hint|antialias|rgba|autohint|embeddedbitmap" || true
+          ls /etc/fonts/conf.d | head -80 || true
+          node ../.github/debug-8348/probe.mjs
