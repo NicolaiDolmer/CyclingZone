@@ -342,7 +342,7 @@ jobs:
               pushed)
                 echo "Committet til \`$HEAD_REF\` ($(wc -l < "$RUNNER_TEMP/staged.txt") filer):"
                 echo
-                sed 's/^/- `/; s/$/`/' "$RUNNER_TEMP/staged.txt"
+                while IFS= read -r f; do echo "- \`$f\`"; done < "$RUNNER_TEMP/staged.txt"
                 if [ "${HAS_PAT:-}" = "pat-rejected" ]; then
                   echo
                   echo "\`AUTO_MERGE_PAT\` blev afvist ved push (udloebet eller uden skriveadgang?), saa pushet skete med \`GITHUB_TOKEN\`, og CI starter ikke af sig selv. Luk og genaabn PR'en for at starte CI, og forny PAT'en."
