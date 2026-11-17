@@ -92,6 +92,7 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "champion_jerseys_7824", // #7824
   "rider_why_button", // #7717
   "race_page_v6", // #7778 (off; ?racePageV6=on paa preview)
+  "spoiler_shield_7859", // #7859 (off)
   "talent_marks_7879", // #7879
   "tactics_ready_7864", // Missing stage keeps this preview feature off.
   "rider_hover_card", // #2009

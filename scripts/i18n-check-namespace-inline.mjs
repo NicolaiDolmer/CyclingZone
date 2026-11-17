@@ -70,6 +70,7 @@ const INLINE_EXEMPT = new Set([
   "standings",
   "squad", // #5519 SquadPage (U23 team / Junior team): I18nReadyGate i App.jsx
   "pwa", // #6584 InstallPrompt: mountInstallPrompt venter paa loadNamespaces + ready-gate
+  "spoiler", // #7859 spoiler-skjoldet (bag kontakten spoiler_shield_7859): I18nReadyGate i components/spoiler/
   "academyLedger", // #8060 AcademyLedgerTab (fane i akademisiden udgave A) — ready-gate
 
   // #4231: backendMessages var det tungeste tilbagevaerende inlinede namespace
