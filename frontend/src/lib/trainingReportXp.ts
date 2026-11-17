@@ -13,16 +13,20 @@
 //   2. receipt row.xp_bar     "x of y XP" per ability after the date: the bar in XP
 //                              and the price of the next point. Only the server can
 //                              send it (xpBarView needs the private params).
-//   3. receipt row.bar_paid   Whole points per ability PAID OUT FROM THE BAR on the
-//                              date: points the XP saved before the date already
-//                              covered at the date's start (XP left on the bar by
-//                              the per-date rule, or the stored progress on the
-//                              switch-on night). They land on a rest day too, and
-//                              after a change of focus, without any XP earned that
-//                              day. The rest of the date's points were earned by
-//                              the date's own XP. Only the server knows the bar at
-//                              the date's start, so it writes this; the client never
-//                              guesses it. Missing = 0 (nothing paid out).
+//   3. slot row.bar_paid      Whole points per ability PAID OUT FROM THE BAR: points
+//                              the XP saved before the date already covered at the
+//                              date's start (XP left on the bar by the per-date rule,
+//                              or the stored progress on the switch-on night). PER
+//                              SLOT: the server writes it only on the slot row where
+//                              the payout lands (often the date's first), never a
+//                              date total repeated on every slot; the report sums
+//                              the slots. A value on the aggregated row is read only
+//                              when no slot carries one. Points land this way on a
+//                              rest day too, and after a change of focus, without any
+//                              XP earned that day. The rest of the date's points were
+//                              earned by the date's own XP. Only the server knows the
+//                              bar at the date's start, so it writes this; the client
+//                              never guesses it. Missing = 0 (nothing paid out).
 // Without 1 `hasXpFields` is false and the page keeps today's report.
 //
 // "Earned today" is the date's own XP (1). "Paid out from the bar" is (3). The two
