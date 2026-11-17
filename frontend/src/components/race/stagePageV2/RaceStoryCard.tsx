@@ -61,6 +61,12 @@ export default function RaceStoryCard({ story, profile, series, climbs, cast, ti
   // #7859: med spoiler-skjoldet starter filmen ved start, og filmen i mål åbner etapen.
   const spoiler = useSpoilerStory();
   const [km, setKm] = useState<number>(spoiler.active ? 0 : D);
+  // Tændes skjoldet, mens "Sidste 5 km" er valgt, går visningen tilbage til etapen (Codex #8302):
+  // valget forsvinder fra menuen, og finalen må ikke stå, mens hovedet siger, at resultatet er skjult.
+  const spoilerActive = spoiler.active;
+  useEffect(() => {
+    if (spoilerActive) setView((v) => (v === "final" ? "stage" : v));
+  }, [spoilerActive]);
   // Kun en film der er spillet (eller trukket) frem til mål åbner etapen; står den i mål,
   // da skjoldet slog til (svaret kom efter første billede), spoles den tilbage til start.
   const filmBelowFinish = useRef(false);
@@ -128,7 +134,7 @@ export default function RaceStoryCard({ story, profile, series, climbs, cast, ti
       {view === "stage" && (
         <ReplayView story={story} profile={profile} series={series} climbs={climbs} cast={cast} km={km} onKm={setKm} />
       )}
-      {view === "final" && finale && (
+      {view === "final" && finale && !spoiler.active && (
         <FinaleView story={story} data={finale} cast={cast} lines={lines} series={series} stageLabel={hudLabel} />
       )}
 

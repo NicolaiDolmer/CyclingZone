@@ -11,7 +11,7 @@ import { clearFlagStageCache } from "./featureStage.js";
 import { emitRaceResultNotifications, emitStageResultNotifications } from "./notificationService.js";
 import {
   cleanStages, createSpoilerShieldRouter, fetchShieldedRecipients, isMissingSpoilerStorage, isRaceShielded,
-  raceStateFrom, sanitizeSettingsPatch, settingsFromRow, SPOILER_SHIELD_FLAG_KEY,
+  raceStateFrom, readSettings, sanitizeSettingsPatch, settingsFromRow, SPOILER_SHIELD_FLAG_KEY, writeSettings,
 } from "./spoilerShield7859.ts";
 
 const RACE = "11111111-1111-4111-8111-111111111111";
@@ -270,8 +270,12 @@ test("ruterne: tændt kontakt læser og skriver kun den indloggedes rækker", as
   const { call, tables } = await serve(t, world("on"), { userId: B });
   const got = await call(`/?raceId=${RACE}`);
   assert.deepEqual(got.body, { enabled: true, available: true, settings: { shieldAll: false, openFinishedIn: "results" }, race: { shield: true, shielded: true, openedStages: [2] } });
-  assert.equal((await call("/settings", { method: "PUT", body: JSON.stringify({ openFinishedIn: "story" }) })).status, 200);
-  assert.deepEqual(tables.user_spoiler_shield_7859.find((r) => r.user_id === B), { user_id: B, shield_all: false, open_finished_in: "story", updated_at: tables.user_spoiler_shield_7859.find((r) => r.user_id === B)!.updated_at });
+  const saved = await call("/settings", { method: "PUT", body: JSON.stringify({ openFinishedIn: "story" }) });
+  assert.equal(saved.status, 200);
+  // Kun det sendte felt skrives (Codex #8302); shield_all får tabellens standard (false) i Postgres.
+  const rowB = tables.user_spoiler_shield_7859.find((r) => r.user_id === B)!;
+  assert.deepEqual({ user_id: rowB.user_id, open_finished_in: rowB.open_finished_in }, { user_id: B, open_finished_in: "story" });
+  assert.equal("shield_all" in rowB, false, "et felt kaldet ikke sendte, skrives ikke");
   const opened = await call(`/races/${RACE}/opened`, { method: "POST", body: JSON.stringify({ stage: 1 }) });
   assert.deepEqual(opened.body, { ok: true, openedStages: [1, 2] });
   assert.equal((await call(`/races/${RACE}`, { method: "PUT", body: JSON.stringify({ shield: null }) })).status, 200);
@@ -293,4 +297,15 @@ test("ruterne: beta-stadiet gælder kun beta-testere", async (t) => {
   assert.equal((await tester.call("/")).body.enabled, true);
   const player = await serve(t, world("beta"), { beta: false });
   assert.equal((await player.call("/")).body.enabled, false);
+});
+
+test("writeSettings skriver kun de sendte felter, så to gem lige efter hinanden ikke overskriver hinanden (Codex #8302)", async () => {
+  const supabase = fakeSupabase({ user_spoiler_shield_7859: [{ user_id: A, shield_all: false, open_finished_in: "results" }] });
+  const [first, second] = await Promise.all([
+    writeSettings(supabase as never, A, { shieldAll: true }, () => "t1"),
+    writeSettings(supabase as never, A, { openFinishedIn: "story" }, () => "t2"),
+  ]);
+  assert.equal(first.available && second.available, true);
+  const after = await readSettings(supabase as never, A);
+  assert.deepEqual(after.settings, { shieldAll: true, openFinishedIn: "story" }, "begge valg står");
 });

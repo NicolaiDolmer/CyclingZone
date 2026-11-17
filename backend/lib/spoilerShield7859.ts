@@ -144,20 +144,22 @@ export async function readRaceState(supabase: Db, userId: string, raceId: string
   return { race: raceStateFrom(settings, Array.isArray(data) ? data[0] : null), available: true };
 }
 
-/** Flet ét valg ind. Én bruger skriver kun sin egen række; sidste valg vinder pr. felt. */
+/**
+ * Skriv kun de felter, kaldet selv sender (Codex #8302): to gem lige efter hinanden (fx "alle løb" og
+ * så "åbn i") kan ellers læse samme gamle række, og det sidste ville skrive det første tilbage.
+ * Upsert med kun de sendte kolonner opdaterer kun dem; en ny række får tabellens standardværdier.
+ * Bagefter læses rækken igen, så svaret er det, der faktisk står.
+ */
 export async function writeSettings(supabase: Db, userId: string, patch: Partial<SpoilerSettings>, nowIso: () => string = () => new Date().toISOString()) {
-  const current = await readSettings(supabase, userId);
-  if (!current.available) return current;
-  const next: SpoilerSettings = { ...current.settings, ...patch };
-  const { error } = await supabase.from(SETTINGS_TABLE).upsert(
-    { user_id: userId, shield_all: next.shieldAll, open_finished_in: next.openFinishedIn, updated_at: nowIso() },
-    { onConflict: "user_id" },
-  );
+  const row: Record<string, unknown> = { user_id: userId, updated_at: nowIso() };
+  if (patch.shieldAll !== undefined) row.shield_all = patch.shieldAll;
+  if (patch.openFinishedIn !== undefined) row.open_finished_in = patch.openFinishedIn;
+  const { error } = await supabase.from(SETTINGS_TABLE).upsert(row, { onConflict: "user_id" });
   if (error) {
-    if (isMissingSpoilerStorage(error)) return { settings: current.settings, available: false };
+    if (isMissingSpoilerStorage(error)) return { settings: { ...DEFAULT_SETTINGS }, available: false };
     throw new Error(`${SETTINGS_TABLE}: ${error.message}`);
   }
-  return { settings: next, available: true };
+  return readSettings(supabase, userId);
 }
 
 /** Kontakten i løbets hoved. Rører kun kolonnen shield, så åbnede etaper står urørt. */

@@ -44,7 +44,7 @@ export interface RacePageSpoiler {
 export function useRacePageSpoiler({ raceId, selectedStage, stagesCompleted, onShowResults }: {
   raceId: string | null; selectedStage: number; stagesCompleted: number; onShowResults: () => void;
 }): RacePageSpoiler {
-  const { view, openStage, setRaceShield } = useRaceSpoilerShield(raceId);
+  const { view, openStage, setRaceShield, saveFailed } = useRaceSpoilerShield(raceId);
   const switchId = useId();
   const hidden = useCallback((n: number) => stageHidden(view, n, stagesCompleted), [view, stagesCompleted]);
   const selectedHidden = hidden(selectedStage);
@@ -75,7 +75,7 @@ export function useRacePageSpoiler({ raceId, selectedStage, stagesCompleted, onS
   const shielded = raceShielded(view);
   return {
     shownTab, tabFor, visible, hero, story,
-    heroAside: view.enabled ? <SpoilerHeroSwitch id={switchId} on={shielded} onChange={setRaceShield} /> : null,
+    heroAside: view.enabled ? <SpoilerHeroSwitch id={switchId} on={shielded} onChange={setRaceShield} failed={saveFailed} /> : null,
     heroNote: view.enabled && selectedHidden ? <SpoilerHeroNote /> : null,
     resultsBody: selectedHidden ? (view.pending ? <SpoilerResultsPending /> : <SpoilerResultsHidden onShow={show} />) : null,
   };

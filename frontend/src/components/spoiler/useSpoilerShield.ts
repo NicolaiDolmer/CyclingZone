@@ -3,7 +3,7 @@
 // Serveren er sandheden (kontakten, valgene, de åbnede etaper). Browseren husker kun,
 // om skjoldet var tændt sidst, så en kørt etapes resultat ikke glimter frem, mens
 // svaret hentes (spoilerShieldModel.initialView). Fejl = slukket = som i dag.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   DEFAULT_SETTINGS, OFF_VIEW, initialView, parseSettings, parseShieldResponse, raceShielded, readRememberedShield, rememberShield,
   withOpenedStage, withRaceShield, type OpenFinishedIn, type SpoilerSettings, type SpoilerShieldView,
@@ -44,11 +44,16 @@ export interface RaceSpoilerShield {
   openStage: (stage: number) => void;
   /** Kontakten i løbets hoved. */
   setRaceShield: (on: boolean) => void;
+  /** Det seneste skift af kontakten kunne ikke gemmes; kontakten er rullet tilbage (Codex #8302). */
+  saveFailed: boolean;
 }
 
 /** Løbssiden: skjoldet for ét løb. */
 export function useRaceSpoilerShield(raceId: string | null): RaceSpoilerShield {
   const [view, setView] = useState<SpoilerShieldView>(() => initialView(readRememberedShield()));
+  const [saveFailed, setSaveFailed] = useState(false);
+  const viewRef = useRef(view);
+  viewRef.current = view;
   useEffect(() => {
     if (!raceId) { setView(OFF_VIEW); return undefined; }
     let alive = true;
@@ -66,14 +71,23 @@ export function useRaceSpoilerShield(raceId: string | null): RaceSpoilerShield {
     void call(`/races/${encodeURIComponent(raceId)}/opened`, { method: "POST", body: { stage } });
   }, [raceId]);
 
+  // Et gem, der fejler, ruller kontakten tilbage og siger det (Codex #8302): ellers tror spilleren, at
+  // løbet er beskyttet, mens notifikationer og andre enheder stadig bruger den gamle indstilling.
   const setRaceShield = useCallback((on: boolean) => {
     if (!raceId) return;
+    const before = viewRef.current;
+    setSaveFailed(false);
     setView((v) => withRaceShield(v, on));
     if (on) rememberShield(true);
-    void call(`/races/${encodeURIComponent(raceId)}`, { method: "PUT", body: { shield: on } });
+    void call(`/races/${encodeURIComponent(raceId)}`, { method: "PUT", body: { shield: on } }).then((res) => {
+      if (res?.ok) return;
+      setView(before);
+      rememberShield(raceShielded(before));
+      setSaveFailed(true);
+    });
   }, [raceId]);
 
-  return { view, openStage, setRaceShield };
+  return { view, openStage, setRaceShield, saveFailed };
 }
 
 export type SettingsSaveState = "idle" | "saving" | "saved" | "failed";

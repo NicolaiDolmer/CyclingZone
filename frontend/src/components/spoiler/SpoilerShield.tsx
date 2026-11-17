@@ -20,15 +20,18 @@ function Gate({ children, fallback = null }: { children: ReactNode; fallback?: R
 }
 
 /** Billede 1: kontakten i løbets hoved. */
-export function SpoilerHeroSwitch({ id, on, onChange }: { id: string; on: boolean; onChange: (on: boolean) => void }) {
-  return <Gate><HeroSwitch id={id} on={on} onChange={onChange} /></Gate>;
+export function SpoilerHeroSwitch({ id, on, onChange, failed = false }: { id: string; on: boolean; onChange: (on: boolean) => void; failed?: boolean }) {
+  return <Gate><HeroSwitch id={id} on={on} onChange={onChange} failed={failed} /></Gate>;
 }
 
-function HeroSwitch({ id, on, onChange }: { id: string; on: boolean; onChange: (on: boolean) => void }) {
+function HeroSwitch({ id, on, onChange, failed }: { id: string; on: boolean; onChange: (on: boolean) => void; failed: boolean }) {
   const { t } = useTranslation("spoiler");
   return (
-    <span data-spoiler-switch={on ? "on" : "off"} className="inline-flex min-h-11 items-center rounded-cz border border-cz-border px-2.5 text-xs">
-      <Toggle id={id} label={t("switch")} checked={on} onChange={(e: { target: { checked: boolean } }) => onChange(e.target.checked)} />
+    <span className="inline-flex flex-col items-end gap-1">
+      <span data-spoiler-switch={on ? "on" : "off"} className="inline-flex min-h-11 items-center rounded-cz border border-cz-border px-2.5 text-xs">
+        <Toggle id={id} label={t("switch")} checked={on} onChange={(e: { target: { checked: boolean } }) => onChange(e.target.checked)} />
+      </span>
+      {failed && <span role="alert" data-spoiler-switch-failed className="text-2xs text-cz-danger">{t("settings.failed")}</span>}
     </span>
   );
 }
