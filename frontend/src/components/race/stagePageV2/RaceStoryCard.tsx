@@ -356,7 +356,7 @@ function StorySection({ story, lines, cast, km, onJump, ownOut, narrative, dayWo
 const GENERIC_SPRINT = /^intermediate sprint$/i;
 const GENERIC_CLIMB = /^(?:climb|ascent|hill) of (.+)$/i;
 
-function SplitTable({ rows, cast, me, precise }: { rows: SplitRow[]; cast: Cast; me: string | null; precise: boolean }) {
+export function SplitTable({ rows, cast, me, precise }: { rows: SplitRow[]; cast: Cast; me: string | null; precise: boolean }) {
   const { t } = useTranslation("races");
   const meName = me ? cast.nameOf(me) : null;
   // Ejer 24/10: rute-generatorens engelske standardnavne ("Intermediate Sprint", "Climb of X",

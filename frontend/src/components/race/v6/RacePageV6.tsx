@@ -51,6 +51,7 @@ import V6TacticsAfter from "./V6TacticsAfter.tsx";
 import V6YourDay from "./V6YourDay.tsx";
 import V6RaceFilm from "./V6RaceFilm.tsx"; // #7861
 import { v6StoryStripCells } from "./v6RaceFilmModel.ts"; // #7861
+import { markV6ResultsSeen } from "./v6StoryExtrasModel.ts"; // #8383
 import V6RouteLine, { type V6StageMode } from "./V6RouteLine.tsx"; // #7861
 import V6StartList from "./V6StartList.tsx"; // #7862
 import { V6TacticsSavedContext } from "./v6TacticsSaved.ts";
@@ -128,6 +129,8 @@ export default function RacePageV6(props: RacePageV6Props) {
   // #7859: spoiler-skjoldet (slukket kontakt = alt som i dag). En skjult etape åbner i Story.
   const spoiler = useRacePageSpoiler({ raceId, selectedStage, stagesCompleted, onShowResults: useCallback(() => onChangeTab("results"), [onChangeTab]) });
   const activeTab = spoiler.shownTab(requestedTab);
+  // #8383: Din dag-sætningen under filmen må stå, når Resultater er set for etapen.
+  if (activeTab === "results") markV6ResultsSeen(raceId, selectedStage);
   const { t } = useTranslation("races");
   const profileId = useId();
   const [routeHidden, setRouteHidden, routeSaveState] = useUiPref("race_route_hidden", false);
@@ -229,7 +232,7 @@ export default function RacePageV6(props: RacePageV6Props) {
     body = (
       <div className="flex flex-col gap-[14px]">
         {routeLine("story")}
-        <V6RaceFilm key={selectedStage} raceId={raceId} stageNumber={selectedStage} isStageRace={isStageRace} profile={profile} results={results} myTeamId={myTeamId} stageRoles={stageRoles} onShowResults={() => onChangeTab("results")} />
+        <V6RaceFilm key={selectedStage} raceId={raceId} stageNumber={selectedStage} isStageRace={isStageRace} profile={profile} results={results} myTeamId={myTeamId} stageRoles={stageRoles} dnfRows={dnfRows} onShowResults={() => onChangeTab("results")} />
       </div>
     );
   } else if (activeTab === "start") {

@@ -8,7 +8,7 @@
 // står ved har aria-current. Referatet viser kun linjerne op til filmens position,
 // så vinderen først står der, når filmen er i mål. "Din dag" og resultatet står i
 // Resultater, ikke her. Kilde: kun løbsloggens historie (samme model som før).
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import I18nReadyGate from "../../I18nReadyGate.jsx";
 import { useStageTimeline } from "../../../hooks/useStageTimeline.js";
@@ -23,10 +23,11 @@ import {
   wholeStageFrames, type StoryLine, type StoryNarrativeContext,
 } from "../stagePageV2/raceStoryModel.ts";
 import { useMeasuredWidth } from "../stagePageV2/StageProfileV2.tsx";
-import { elevationAt, elevationSeries, profileScale, sortedClimbs, type ResultRow, type RoleOverride, type RoleRider, type StageProfile } from "../stagePageV2/stagePageV2Model.ts";
+import { elevationAt, elevationSeries, profileScale, sortedClimbs, type DnfRowInput, type ResultRow, type RoleOverride, type RoleRider, type StageProfile } from "../stagePageV2/stagePageV2Model.ts";
 import { useStoryText } from "../stagePageV2/storyText.ts";
 import { Button, Section, SectionHeader, SkeletonLines } from "../stagePageV2/ui.ts";
 import V6Route from "./V6Route.tsx";
+import V6StoryExtras, { type V6FilmPosition } from "./V6StoryExtras.tsx"; // #8383
 import { useSpoilerStory } from "../../spoiler/spoilerStoryContext.ts"; // #7859
 import { SpoilerFinaleAhead, SpoilerStoryResultsNote } from "../../spoiler/SpoilerShield.tsx"; // #7859
 import { filmAtFinish } from "../../spoiler/spoilerShieldModel.ts"; // #7859
@@ -45,9 +46,12 @@ export interface V6RaceFilmProps {
   stageRoles: null | false | { riders?: RoleRider[]; overrides?: RoleOverride[] };
   /** Skift til Resultater (enkeltstart og en etape uden film peger dertil). */
   onShowResults: () => void;
+  /** #8383: etapens udgåede (egne står i referat-afsnittet under filmen). */
+  dnfRows?: DnfRowInput[];
 }
 
 const NO_RIDERS: RoleRider[] = [];
+const NO_DNF: DnfRowInput[] = [];
 
 /** Filmens og referatets pladsholdere, mens løbsloggen (eller teksterne) hentes. */
 function FilmSkeleton({ filmTitle, reportTitle }: { filmTitle?: string; reportTitle?: string }) {
@@ -69,7 +73,7 @@ export default function V6RaceFilm(props: V6RaceFilmProps) {
   return <I18nReadyGate ns="raceFilm" fallback={<FilmSkeleton />}><V6RaceFilmLoaded {...props} /></I18nReadyGate>;
 }
 
-function V6RaceFilmLoaded({ raceId, stageNumber, isStageRace, profile, results, myTeamId, stageRoles, onShowResults }: V6RaceFilmProps) {
+function V6RaceFilmLoaded({ raceId, stageNumber, isStageRace, profile, results, myTeamId, stageRoles, onShowResults, dnfRows = NO_DNF }: V6RaceFilmProps) {
   const { t } = useTranslation(["races", "raceFilm"]);
   const { timeline, loading, error } = useStageTimeline(raceId, stageNumber, { story: true });
   const story = useMemo(() => asStory((timeline as { story?: unknown } | null)?.story), [timeline]);
@@ -128,10 +132,12 @@ function V6RaceFilmLoaded({ raceId, stageNumber, isStageRace, profile, results, 
       </Section>
     );
   }
-  return <FilmBody key={`${raceId}-${stageNumber}`} story={story} profile={profile} cast={cast} narrative={narrative} timelineVersion={ran?.timeline_version ?? null} ownRiders={ownRiders} onShowResults={onShowResults} />;
+  // #8383: mellemtider, referat-afsnittet, tabt tid, vejret og Din dag-sætningen under filmen.
+  const extras = (film: V6FilmPosition) => <V6StoryExtras {...film} raceId={raceId} story={story} cast={cast} narrative={narrative} profile={profile} results={results} stageNumber={stageNumber} isStageRace={isStageRace} myTeamId={myTeamId} dnfRows={dnfRows} />;
+  return <FilmBody key={`${raceId}-${stageNumber}`} story={story} profile={profile} cast={cast} narrative={narrative} timelineVersion={ran?.timeline_version ?? null} ownRiders={ownRiders} onShowResults={onShowResults} extras={extras} />;
 }
 
-function FilmBody({ story, profile, cast, narrative, timelineVersion, ownRiders, onShowResults }: {
+function FilmBody({ story, profile, cast, narrative, timelineVersion, ownRiders, onShowResults, extras }: {
   story: NonNullable<ReturnType<typeof asStory>>;
   profile: StageProfile | null;
   cast: ReturnType<typeof castFrom>;
@@ -139,6 +145,7 @@ function FilmBody({ story, profile, cast, narrative, timelineVersion, ownRiders,
   timelineVersion: number | null;
   ownRiders: readonly string[];
   onShowResults: () => void;
+  extras?: (film: V6FilmPosition) => ReactNode;
 }) {
   const { t } = useTranslation(["races", "raceFilm"]);
   const text = useStoryText(cast);
@@ -315,6 +322,7 @@ function FilmBody({ story, profile, cast, narrative, timelineVersion, ownRiders,
           )}
         </Section>
       </div>
+      {extras?.({ km, distanceKm: D, lines: storyLines, timeTrial })}
       {spoiler.active && <div className="mt-[14px]"><SpoilerStoryResultsNote onShow={spoiler.showResults} /></div>}
     </div>
   );
