@@ -1,5 +1,111 @@
 export const PATCHES = [
 {
+  "version": "7.456",
+  "date": "2026-11-16",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Planning",
+      "en": {
+        "title": "Squad deadline in the Planning heading",
+        "body": "When a squad is missing riders, Planning shows it as one line in the page heading with the nearest deadline, such as Squad selection missing · in 12h. The box above the tabs is gone, so the tabs and your races come first."
+      },
+      "da": {
+        "title": "Trup-fristen står i Planlægnings sidehoved",
+        "body": "Mangler en trup ryttere, viser Planlægning det som én linje i sidehovedet med den nærmeste frist, fx Trup mangler · om 12 t. Boksen over fanerne er væk, så fanerne og dine løb står først."
+      },
+      "refs": [
+        8069
+      ]
+    }
+  ]
+},
+{
+  "version": "7.455",
+  "date": "2026-11-16",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Calendar",
+      "en": {
+        "title": "Each race once in the calendar",
+        "body": "With a division chosen, the calendar and the form plan show each race once instead of once for every pool in the division. For the coming season, the season view under Team selection shows the races of the division you are in now, marked (expected), and the form plan has a Division picker when it shows all races. Your division is still decided at the season switch."
+      },
+      "da": {
+        "title": "Hvert løb én gang i kalenderen",
+        "body": "Med en division valgt viser kalenderen og formplanen hvert løb én gang i stedet for én gang for hver pulje i divisionen. For den kommende sæson viser sæsonvisningen under Holdudtagelse løbene i den division, du er i nu, mærket (forventet), og formplanen har en Division-vælger, når den viser alle løb. Din division afgøres stadig ved sæsonskiftet."
+      },
+      "refs": [
+        5841
+      ]
+    },
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Notifications",
+      "en": {
+        "title": "Auto-bid good news is no longer red",
+        "body": "When your auto-bid holds the lead, the inbox shows it in a neutral colour instead of as a red warning. A stopped, cancelled or used-up auto-bid is still shown as a warning."
+      },
+      "da": {
+        "title": "God nyhed om autobud er ikke længere rød",
+        "body": "Når dit autobud holder føringen, viser indbakken det i en neutral farve i stedet for som en rød advarsel. Et stoppet, annulleret eller opbrugt autobud vises stadig som en advarsel."
+      },
+      "refs": [
+        8260
+      ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Help",
+      "en": {
+        "title": "Help: task prices, blocked orders and race progress",
+        "body": "Help now lists which stage plan task gets which price word, from Easy to Very hard, and which orders a rider cannot get at the same time. It also explains the training report's split between progress from training and progress from races."
+      },
+      "da": {
+        "title": "Hjælp: opgavepriser, spærrede ordrer og fremgang fra løb",
+        "body": "Hjælp viser nu, hvilken opgave i etapeplanen der får hvilket prisord, fra Let til Meget hård, og hvilke ordrer en rytter ikke kan få samtidig. Den forklarer også træningsrapportens opdeling i fremgang fra træning og fremgang fra løb."
+      },
+      "refs": [
+        7638,
+        7003,
+        7627
+      ]
+    }
+  ]
+},
+{
+  "version": "7.454",
+  "date": "2026-11-16",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "topic": "Training",
+      "flag": "training_train_now_bonus",
+      "en": {
+        "title": "Train now bonus (beta)",
+        "body": "When you press Train now yourself, before your team's automatic training has run, your riders get a small extra training bonus for the day. Automatic training gives no bonus. The receipt shows the bonus, and Help explains it."
+      },
+      "da": {
+        "title": "Træn nu-bonus (beta)",
+        "body": "Når du selv trykker Træn nu, før holdets automatiske træning har kørt, får dine ryttere en lille ekstra træningsbonus for dagen. Automatisk træning giver ingen bonus. Kvitteringen viser bonussen, og Hjælp forklarer den."
+      },
+      "refs": [
+        7741
+      ]
+    }
+  ]
+},
+{
   "version": "7.453",
   "date": "2026-11-16",
   "changes": [
@@ -221,12 +327,12 @@ export const PATCHES = [
       "rollout": "live",
       "topic": "Races",
       "en": {
-        "title": "Rankings update within a minute",
-        "body": "The rider rankings, team standings and the dashboard's top 5 now update about a minute after a stage finishes, instead of after 15 minutes or more. The team standings also show when they were last updated."
+        "title": "Rankings update sooner after a stage",
+        "body": "The rider rankings, team standings and the dashboard's top 5 now update sooner after a stage finishes. The team standings also show when they were last updated."
       },
       "da": {
-        "title": "Ranglisterne opdateres inden for et minut",
-        "body": "Rytterranglisten, holdranglisten og forsidens top 5 opdateres nu cirka et minut efter en etape, i stedet for efter 15 minutter eller mere. Holdranglisten viser også, hvornår den sidst blev opdateret."
+        "title": "Ranglisterne opdateres hurtigere efter en etape",
+        "body": "Rytterranglisten, holdranglisten og forsidens top 5 opdateres nu hurtigere efter en etape. Holdranglisten viser også, hvornår den sidst blev opdateret."
       },
       "refs": [
         7664,
@@ -262,8 +368,8 @@ export const PATCHES = [
       "rollout": "live",
       "topic": "Races",
       "en": {
-        "title": "Race story names the right group",
-        "body": "Race story: the report no longer calls the group at the finish line the chasers by mistake in rare cases."
+        "title": "Race film names the right group",
+        "body": "Race film: the report no longer calls the group at the finish line the chasers by mistake in rare cases."
       },
       "da": {
         "title": "Løbsfilmen nævner den rigtige gruppe",
@@ -333,12 +439,12 @@ export const PATCHES = [
       "rollout": "live",
       "topic": "Board",
       "en": {
-        "title": "Parked teams",
-        "body": "Parked teams no longer get messages from the board: no mid-season check, no annual mandate reminders and no negative balance warning. The board no longer signs the mandate on the team's behalf either."
+        "title": "Inactive teams",
+        "body": "Inactive teams no longer get messages from the board: no mid-season check, no annual mandate reminders and no negative balance warning. The board no longer accepts the season mandate for an inactive team."
       },
       "da": {
-        "title": "Parkerede hold",
-        "body": "Parkerede hold får ikke længere beskeder fra bestyrelsen: ingen halvsæson-besked, ingen påmindelser om årsmandatet og ingen advarsel om negativ saldo. Bestyrelsen skriver heller ikke længere under på holdets vegne."
+        "title": "Inaktive hold",
+        "body": "Inaktive hold får ikke længere beskeder fra bestyrelsen: ingen halvsæson-besked, ingen påmindelser om årsmandatet og ingen advarsel om negativ saldo. Bestyrelsen accepterer heller ikke længere sæsonens mandat for et inaktivt hold."
       },
       "refs": [
         8099,
@@ -359,11 +465,11 @@ export const PATCHES = [
       "rollout": "live",
       "topic": "Help",
       "en": {
-        "title": "Help",
+        "title": "Help: roles and potential",
         "body": "Help no longer claims that a role's ceiling is shown next to a rider's potential."
       },
       "da": {
-        "title": "Hjælp",
+        "title": "Hjælp: roller og potentiale",
         "body": "Hjælp påstår ikke længere, at rollens loft vises ved en rytters potentiale."
       },
       "refs": [
@@ -377,11 +483,11 @@ export const PATCHES = [
       "rollout": "live",
       "topic": "Dashboard",
       "en": {
-        "title": "Today's stages",
+        "title": "Today's stages: missing overall position",
         "body": "Today's stages no longer says the overall position is not settled when the information is just missing."
       },
       "da": {
-        "title": "Dagens etaper",
+        "title": "Dagens etaper: manglende samlet stilling",
         "body": "Dagens etaper skriver ikke længere, at den samlede stilling ikke er afgjort, når det bare er oplysningerne, der mangler."
       },
       "refs": [
@@ -647,11 +753,11 @@ export const PATCHES = [
       "topic": "Transfers",
       "en": {
         "title": "Bid money is now locked for every team",
-        "body": "Money you have bid is now locked for every team, so no one can bid more than they have. It has run in beta since 11 November. Auto-accept is still in beta."
+        "body": "Money you have bid is now locked while you lead the auction or still have automatic bids in it, for every team. It has run in beta since 11 November."
       },
       "da": {
         "title": "Budt beløb er nu låst for alle hold",
-        "body": "Penge, I har budt, er nu låst for alle hold, så ingen kan byde for mere, end de har. Den har kørt i beta siden 11. november. Auto-accept er stadig i beta."
+        "body": "Penge, du har budt, er nu låst, mens du fører auktionen eller stadig har automatiske bud i den, for alle hold. Det har kørt i beta siden 11. november."
       },
       "refs": [
         6181,

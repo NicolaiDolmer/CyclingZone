@@ -46,9 +46,6 @@
   "onlineNow": "En línea ahora",
   "offline": "Desconectado",
   "movement": {
-    "label": "Movimiento",
-    "up": "{count} ascienden",
-    "down": "{count} descienden",
     "ruleBoth": "Los {up} primeros suben y los {down} últimos bajan",
     "ruleBothPerPool": "Los {up} primeros suben y los {down} últimos bajan en cada uno de los {pools} grupos",
     "ruleDown": "Los {down} últimos bajan",

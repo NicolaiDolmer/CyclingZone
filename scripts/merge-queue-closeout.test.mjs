@@ -8,11 +8,12 @@ import {
 
 const SHA_A = 'a'.repeat(40);
 const SHA_B = 'b'.repeat(40);
+const SHA_C = 'c'.repeat(40);
 // Fast ur i alle tests (AGENTS.md: deterministiske tests, intet vaeg-ur).
 const NOW = new Date('2026-11-04T12:00:00Z');
 
 // Fake gh med tilstand: kommentarer og labels pr. issue. Logger hvert kald.
-function fakeGh({ prs = {}, comments = {}, labels = {}, fail = {} } = {}) {
+function fakeGh({ prs = {}, comments = {}, labels = {}, fail = {}, openPrs = [] } = {}) {
   const calls = [];
   const state = { comments: structuredClone(comments), labels: structuredClone(labels) };
   const gh = (args) => {
@@ -23,6 +24,7 @@ function fakeGh({ prs = {}, comments = {}, labels = {}, fail = {} } = {}) {
       const pr = prs[args[2]];
       return pr ? { status: 0, stdout: JSON.stringify(pr) } : { status: 1, stdout: '' };
     }
+    if (args[0] === 'pr' && args[1] === 'list') return { status: 0, stdout: JSON.stringify(openPrs) };
     if (args[0] === 'api' && args.includes('PATCH')) {
       // Kommentar-id = issue * 1000 + indeks (se listen herunder).
       if (fail['api patch']) return { status: 1, stdout: '' };
@@ -347,13 +349,30 @@ test('train validation and CLI exit codes', () => {
   assert.ok(ok.at(-1).includes('1 kommentar(er)'));
 });
 
+test('#8346: patch notes nummereres kun efter et verificeret tog, med --repo/--dry-run, og fail-soft', () => {
+  const seen = [];
+  const numberPatchNotes = (opts) => { seen.push(opts); return ['patch notes: 1 fragment(er) nummereret']; };
+  const train = JSON.stringify([{ number: 5, sha: SHA_A }]);
+  const out = [];
+  main(['merged', '--train', train, '--repo', 'o/r'], { gh: fakeGh({ prs: { 5: { title: 't', body: '' } } }).gh, out: (l) => out.push(l), now: NOW, numberPatchNotes });
+  assert.equal(seen.length, 0, 'merged-fasen nummererer aldrig');
+  main(['run', '--train', train, '--repo', 'o/r', '--dry-run'], { gh: fakeGh({ prs: { 5: { title: 't', body: '' } } }).gh, out: (l) => out.push(l), now: NOW, numberPatchNotes });
+  assert.deepEqual(seen, [{ repo: 'o/r', dryRun: true }]);
+  assert.ok(out.includes('patch notes: 1 fragment(er) nummereret'));
+  const failing = [];
+  const code = main(['run', '--train', train, '--repo', 'o/r'], { gh: fakeGh({ prs: { 5: { title: 't', body: '' } } }).gh, out: (l) => failing.push(l), now: NOW, numberPatchNotes: () => { throw new Error('boom'); } });
+  assert.equal(code, 0);
+  assert.ok(failing.includes('close-out ADVARSEL: patch notes-nummerering: boom'));
+  assert.ok(failing.at(-1).startsWith('close-out faerdig'));
+});
+
 // --- merge-queue.ps1-integration: den rigtige Close-OpenTrain + Invoke-TrainCloseOut ---
 const queue = readFileSync(new URL('./merge-queue.ps1', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const psQuote = (value) => "'" + value.replaceAll("'", "''") + "'";
 function runQueue(body) {
   const prelude = `$ErrorActionPreference='Stop'
 $ast=[Management.Automation.Language.Parser]::ParseInput(${psQuote(queue)},[ref]$null,[ref]$null)
-foreach($name in @('Close-OpenTrain','Invoke-TrainCloseOut','Get-DeployGateAction')){
+foreach($name in @('Close-OpenTrain','Invoke-TrainCloseOut','Get-DeployGateAction','Confirm-PatchNotesCommit')){
  $fn=$ast.Find({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq $name},$true)
  if(-not $fn){throw "Missing queue function: $name"}
  Invoke-Expression $fn.Extent.Text
@@ -367,13 +386,17 @@ $script:trainDeploys=1; $script:trainNeedsRailway=$false; $script:queueStall=$nu
 $script:trainEntries=@([pscustomobject]@{number=1;sha='${SHA_A}'},[pscustomobject]@{number=2;sha='${SHA_B}'})
 function Wait-BatchCi { return $script:ciOk }
 function Wait-BatchMigrations { return $true }
-function Wait-ForDeployVerification { param($Sha,$TimeoutMinutes,$StallMinutes); return 'released' }
+$script:patchDeployState='released'; $script:patchCiOk=$true; $script:patchCiState='success'; $script:ciWaits=@(); $script:deployWaits=@()
+function Wait-ForDeployVerification { param($Sha,$TimeoutMinutes,$StallMinutes); $script:deployWaits += [string]$Sha; if ($Sha -eq '${SHA_C}') { return $script:patchDeployState }; return 'released' }
+function Wait-ForWorkflowRun { param($WorkflowFile,$Sha,$TimeoutMinutes,$Label,$StallMinutes); $script:ciWaits += ([string]$WorkflowFile + '@' + [string]$Sha); $script:workflowRunState=$script:patchCiState; return $script:patchCiOk }
+function Stop-QueueStall { exit 1 }
 function Write-TrainCulprit { param($Failure) }
 function Start-Sleep { param($Seconds) }
 function node {
  $script:nodeCalls += ,@($args)
  if($script:nodeMode -eq 'throw'){ throw 'private-closeout-failure' }
  if($script:nodeMode -eq 'fail'){ $global:LASTEXITCODE=1; return 'close-out ADVARSEL: fixture' }
+ if($script:nodeMode -eq 'patch'){ $global:LASTEXITCODE=0; return @('patch notes: 1 fragment(er) nummereret', '  PATCH-NOTES-SHA: ${SHA_C}', 'close-out faerdig') }
  $global:LASTEXITCODE=0; return 'NOW-LINJE fixture'
 }
 `;
@@ -382,7 +405,7 @@ try { ${body}; $script:nextMerge++ }
 catch { $script:unexpected=$_.Exception.Message; exit 2 }
 finally {
  $calls=@($script:nodeCalls | ForEach-Object { ,@($_ | ForEach-Object { [string]$_ }) })
- Write-Output ('RESULT='+(@{calls=$calls;nextMerge=$script:nextMerge;unexpected=$script:unexpected;batch=$script:batchMerged.Count}|ConvertTo-Json -Compress -Depth 5))
+ Write-Output ('RESULT='+(@{calls=$calls;nextMerge=$script:nextMerge;unexpected=$script:unexpected;batch=$script:batchMerged.Count;ciWaits=@($script:ciWaits);deployWaits=@($script:deployWaits)}|ConvertTo-Json -Compress -Depth 5))
 }
 `;
   const result = spawnSync('pwsh', ['-NoProfile', '-NonInteractive', '-Command', '& ([scriptblock]::Create([Console]::In.ReadToEnd()))'], { input, encoding: 'utf8', timeout: 60_000 });
@@ -437,6 +460,51 @@ test('close-out failure never turns a verified merge into a failure', () => {
   assert.equal(missing.data.nextMerge, 1);
 });
 
+test('#8346 Codex P1: a new patch notes commit gets main-CI + deploy verification before close-out ends', () => {
+  const res = runQueue("$script:nodeMode='patch'; Close-OpenTrain");
+  assert.equal(res.status, 0, res.stdout);
+  assert.equal(res.data.unexpected, null);
+  assert.equal(res.data.nextMerge, 1);
+  assert.deepEqual(res.data.ciWaits, [`ci.yml@${SHA_C}`]);
+  assert.deepEqual(res.data.deployWaits, [SHA_B, SHA_C], 'train deploy first, then the patch notes commit');
+  assert.match(res.stdout, /\[ok\] patch notes-commit cccccccc: main-CI \+ deploy-verifikation groenne/);
+});
+
+test('#8346 Codex P1: a train without deploy still verifies the patch notes commit deploy', () => {
+  const res = runQueue("$script:batchBackend=$false; $script:nodeMode='patch'; Close-OpenTrain");
+  assert.equal(res.status, 0, res.stdout);
+  assert.deepEqual(res.data.ciWaits, [`ci.yml@${SHA_C}`]);
+  assert.deepEqual(res.data.deployWaits, [SHA_C]);
+});
+
+test('#8346 Codex P1: red CI or a failed/pending deploy on the patch notes commit stops the queue', () => {
+  const red = runQueue("$script:nodeMode='patch'; $script:patchCiOk=$false; $script:patchCiState='failure'; Close-OpenTrain");
+  assert.equal(red.status, 1, red.stdout);
+  assert.equal(red.data.nextMerge, 0);
+  assert.match(red.stdout, /STOP: main-CI er ROED for patch notes-commit cccccccc/);
+  assert.deepEqual(red.data.deployWaits, [SHA_B], 'no deploy wait after red CI');
+  const unverified = runQueue("$script:nodeMode='patch'; $script:patchCiOk=$false; $script:patchCiState='pending'; Close-OpenTrain");
+  assert.equal(unverified.status, 1, unverified.stdout);
+  assert.match(unverified.stdout, /endnu ikke verificeret groen for patch notes-commit/);
+  const failed = runQueue("$script:nodeMode='patch'; $script:patchDeployState='failed'; Close-OpenTrain");
+  assert.equal(failed.status, 1, failed.stdout);
+  assert.equal(failed.data.nextMerge, 0);
+  assert.match(failed.stdout, /deploy-verifikation for patch notes-commit cccccccc er failed/);
+  const pending = runQueue("$script:nodeMode='patch'; $script:patchDeployState='pending'; Close-OpenTrain");
+  assert.equal(pending.status, 75, pending.stdout);
+  assert.equal(pending.data.nextMerge, 0);
+});
+
+test('#8346: without a patch notes commit nothing extra is verified', () => {
+  const res = runQueue('Close-OpenTrain');
+  assert.equal(res.status, 0, res.stdout);
+  assert.deepEqual(res.data.ciWaits, []);
+  assert.deepEqual(res.data.deployWaits, [SHA_B]);
+  const merged = runQueue(`$script:nodeMode='patch'; $r = Invoke-TrainCloseOut -Entries @([pscustomobject]@{number=7;sha='${SHA_A}'}) -Phase 'merged'; if ($r -ne '${SHA_C}') { throw "sha not returned: $r" }`);
+  assert.equal(merged.status, 0, merged.stdout);
+  assert.deepEqual(merged.data.ciWaits, [], 'Invoke-TrainCloseOut only returns the SHA; Close-OpenTrain verifies it');
+});
+
 test('Invoke-TrainCloseOut -Phase merged calls the merged subcommand', () => {
   const res = runQueue(`Invoke-TrainCloseOut -Entries @([pscustomobject]@{number=7;sha='${SHA_A}'}) -Phase 'merged'`);
   assert.equal(res.status, 0, res.stdout);
@@ -455,4 +523,79 @@ test('-DryRun preview passes --dry-run and carries no merge SHA', () => {
   assert.ok(mergePreview >= 0, 'merge preview exists');
   const dryBranch = queue.slice(queue.lastIndexOf('  if ($DryRun) {', mergePreview), queue.indexOf('    continue\n  }\n\n  $failedRuns'));
   assert.match(dryBranch, /Invoke-TrainCloseOut -Entries @\(\[pscustomobject\]@\{ number = \$n; sha = \$null \}\)/, 'dry-run branch previews close-out without SHA');
+});
+
+test('a Refs issue with another open PR keeps claude:todo and the comment says why (#8222)', () => {
+  const { gh, state } = fakeGh({
+    prs: { 100: { title: 'feat: del 1', body: 'Refs #1' } },
+    labels: { 1: ['claude:todo'] },
+    openPrs: [{ number: 200, title: 'feat: del 2', body: 'Refs #1' }],
+  });
+  const res = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh, now: NOW });
+  assert.deepEqual(res.flips, []);
+  assert.deepEqual(res.errors, []);
+  assert.deepEqual(state.labels[1], ['claude:todo']);
+  assert.ok(state.comments[1][0].includes('åbne PR\'er (#200)'), 'comment names the open PR');
+  assert.ok(!state.comments[1][0].includes('label flyttet til'), 'comment does not claim a flip');
+});
+
+test('a Refs issue without other open PRs still flips; unrelated and own-train PRs do not block (#8222)', () => {
+  const { gh, state } = fakeGh({
+    prs: { 100: { title: 'feat: del 1', body: 'Refs #1' } },
+    labels: { 1: ['claude:todo'] },
+    openPrs: [
+      { number: 201, title: 'feat: andet', body: 'Refs #11 og nævner #1 uden ord' },
+      { number: 100, title: 'feat: del 1', body: 'Refs #1' },
+    ],
+  });
+  const res = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh, now: NOW });
+  assert.deepEqual(res.flips, [1]);
+  assert.deepEqual(state.labels[1], ['claude:done']);
+});
+
+test('an open PR referencing the issue only in its title also blocks the flip (#8222)', () => {
+  const { gh } = fakeGh({
+    prs: { 100: { title: 'feat: del 1', body: 'Refs #1' } },
+    labels: { 1: ['claude:todo'] },
+    openPrs: [{ number: 202, title: 'feat: del 2 (Refs #1)', body: '' }],
+  });
+  assert.deepEqual(runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh, now: NOW }).flips, []);
+});
+
+test('open-PR search failure or a full result page never flips (fail-safe) (#8222)', () => {
+  const failing = fakeGh({ prs: { 100: { title: 't', body: 'Refs #1' } }, labels: { 1: ['claude:todo'] }, fail: { 'pr list': true } });
+  const res = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: failing.gh, now: NOW });
+  assert.deepEqual(res.flips, []);
+  assert.deepEqual(failing.state.labels[1], ['claude:todo']);
+  assert.ok(res.errors.some((e) => e.includes('intet flip')));
+  assert.ok(failing.state.comments[1][0].includes('kunne ikke afgøres'));
+
+  const full = fakeGh({
+    prs: { 100: { title: 't', body: 'Refs #1' } }, labels: { 1: ['claude:todo'] },
+    openPrs: Array.from({ length: 100 }, (_, i) => ({ number: 300 + i, title: 'x', body: '' })),
+  });
+  assert.deepEqual(runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: full.gh, now: NOW }).flips, []);
+});
+
+test('Closes is not blocked by other open PRs: GitHub closes the issue anyway (#8222)', () => {
+  const { gh } = fakeGh({
+    prs: { 100: { title: 't', body: 'Closes #1' } },
+    labels: { 1: ['claude:todo'] },
+    openPrs: [{ number: 200, title: 'x', body: 'Refs #1' }],
+  });
+  assert.deepEqual(runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh, now: NOW }).flips, [1]);
+});
+
+test('recovery rerun refreshes the comment and flips once the other open PR is gone (#8222)', () => {
+  const first = fakeGh({
+    prs: { 100: { title: 't', body: 'Refs #1' } }, labels: { 1: ['claude:todo'] },
+    openPrs: [{ number: 200, title: 'x', body: 'Refs #1' }],
+  });
+  runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: first.gh, now: NOW });
+  assert.ok(first.state.comments[1][0].includes('#200'));
+  const second = fakeGh({ prs: { 100: { title: 't', body: 'Refs #1' } }, labels: first.state.labels, comments: first.state.comments, openPrs: [] });
+  const res = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: second.gh, now: NOW });
+  assert.deepEqual(res.flips, [1]);
+  assert.equal(second.state.comments[1].length, 1, 'same comment updated, no duplicate');
+  assert.ok(!second.state.comments[1][0].includes('#200') && second.state.comments[1][0].includes('label flyttet til'));
 });

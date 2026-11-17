@@ -82,7 +82,8 @@ test.describe("D-047 mobilstandard for DataTable (#5102)", () => {
   });
 
   test("et chip-tryk aendrer valget, men ikke chip-raekkens raekkefoelge", async ({ page }) => {
-    const chips = page.getByRole("group").getByRole("button");
+    // #8278: kun kolonne-chipsene; Overblik/Evner er sin egen gruppe i samme raekke.
+    const chips = page.getByRole("group", { name: /^(Choose columns|Vælg kolonner)$/ }).getByRole("button");
     const before = await chips.allInnerTexts();
     expect(before.length).toBeGreaterThan(3);
 

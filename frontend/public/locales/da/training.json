@@ -382,15 +382,23 @@
     },
     "runNow": {
       "title": "Kør dagens træning",
-      "body": "Kør nu træner hele truppen i dag, også ryttere uden en dag: de træner det din assistent vælger til deres type. Et tryk giver ingen bonus. Springer du over, kører assistenten det samme pas automatisk."
+      "body": "Kør nu træner hele truppen i dag, også ryttere uden en dag: de træner det din assistent vælger til deres type. Springer du over, kører assistenten det samme pas automatisk."
     },
     "runTodayDayClose": {
       "title": "Kør dagens træning",
-      "body": "Tryk her for at køre dagens træning nu i stedet for at vente. Det er samme træning som den automatiske kørsel, uden bonus: dagen kører også af sig selv, når dagens sidste løb er slut."
+      "body": "Tryk her for at køre dagens træning nu i stedet for at vente. Dagen kører også af sig selv, når dagens sidste løb er slut."
     },
     "runNowDayClose": {
       "title": "Kør dagens træning",
-      "body": "Kør nu træner hele truppen i dag, også ryttere uden en dag: de træner det din assistent vælger til deres type. Det er samme træning som den automatiske kørsel, uden bonus: dagen kører også af sig selv, når dagens sidste løb er slut."
+      "body": "Kør nu træner hele truppen i dag, også ryttere uden en dag: de træner det din assistent vælger til deres type. Dagen kører også af sig selv, når dagens sidste løb er slut."
+    },
+    "runTodayDayCloseBonus": {
+      "title": "Kør dagens træning",
+      "body": "Tryk her for at køre dagens træning nu i stedet for at vente. Træning, du selv starter, giver en lille bonus; den automatiske kørsel gør aldrig. Dagen kører også af sig selv, når dagens sidste løb er slut."
+    },
+    "runNowDayCloseBonus": {
+      "title": "Kør dagens træning",
+      "body": "Kør nu træner hele truppen i dag, også ryttere uden en dag: de træner det din assistent vælger til deres type. Træning, du selv starter, giver en lille bonus; den automatiske kørsel gør aldrig. Dagen kører også af sig selv, når dagens sidste løb er slut."
     },
     "runStatus": {
       "title": "Træn én gang om dagen",
@@ -610,6 +618,10 @@
       "pending": "Datoen er ikke helt opgjort endnu. Endelig udvikling og ændringer i form og træthed afventer.",
       "reconciliation": "Nogle aktiviteter kræver efterkontrol. Manglende bevis vises aldrig som nul udvikling.",
       "recorded": "De registrerede aktiviteter er samlet for datoen. Ældre rapporter kan mangle fuld fremdrift eller bevis for afregningen."
+    },
+    "bonus": {
+      "mark": "Træn nu-bonus",
+      "detail": "Du trykkede på Træn nu, før den automatiske træning kørte, så denne rytters træning fik Træn nu-bonussen."
     },
     "riderReceipts": "Rytterkvitteringer",
     "trainedNow": "{count, plural, one {Trænet nu · løbsdag {range}} other {Trænet nu · løbsdage {range}}}",

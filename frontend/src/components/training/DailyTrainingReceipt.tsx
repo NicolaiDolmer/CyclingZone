@@ -12,6 +12,7 @@ import { ChevronDownIcon, ChevronRightIcon } from "../ui/icons/index.jsx";
 import RiderLink from "../RiderLink.jsx";
 import { receiptPassScore, latestReceiptPassScore, type ReceiptScoreView } from "../../lib/trainingScoreView.ts";
 import { formColor, fatigueColor } from "../rider/ConditionChips.jsx";
+import { useTrainNowBonusEnabled } from "../../lib/trainNowBonusFlag.ts";
 import { raceSourceBreakdown, dayRaceShare } from "./raceContribution7627/raceContributionModel.ts";
 import RaceSourceTable from "./raceContribution7627/RaceSourceTable.tsx";
 import RaceShareStrip from "./raceContribution7627/RaceShareStrip.tsx";
@@ -20,13 +21,21 @@ const isKnown = (row: DailyRiderReceipt) => row.receipt_status === "complete" ||
 // #6027: a pending date still shows what its stored race days already trained.
 const showsDevelopment = (row: DailyRiderReceipt) => isKnown(row) || row.trained_now != null;
 const development = (row: DailyRiderReceipt) => row.trained_now ?? row;
+// #7741: the engine stamps train_now_bonus on a rider's stored rows when his own Train now press chose the bonus. The stamp
+// also rides on rest and race rows, which train nothing, so only a real training session counts as a bonus. A rider who
+// was already injured is stored with intensity "rest" (dailyTrainingEngine effectiveIntensity), so `injured` alone is
+// not a skip: it is also set when the injury happened AFTER the boosted session (Codex P2 on #8219).
+const boosted = (a: TrainingActivity) => a.train_now_bonus === true && !a.race_day && !!a.intensity && a.intensity !== "rest";
+const hasBonus = (row: DailyRiderReceipt) => row.activities.some(boosted);
 // #7745: the meta line and the micro headings share one recipe.
 const META = "font-data text-2xs uppercase tracking-[.08em] text-cz-3";
 
 type ScoreView = Record<string, ReceiptScoreView> | null;
 type ConditionView = Record<string, { injured_until?: string | null; injury_race_days_left?: number | null }>;
 type RosterRider = { id: string; firstname?: string | null; lastname?: string | null };
-export default function DailyTrainingReceipt({ run, trainingScore = null, defaultExpanded = true, condition, today, roster }: { run: DateReceipt; trainingScore?: ScoreView; defaultExpanded?: boolean; condition?: ConditionView; today?: Date; roster?: RosterRider[] }) {
+export default function DailyTrainingReceipt({ run, trainingScore = null, defaultExpanded = true, condition, today, roster, trainNowBonus }: { run: DateReceipt; trainingScore?: ScoreView; defaultExpanded?: boolean; condition?: ConditionView; today?: Date; roster?: RosterRider[]; trainNowBonus?: boolean }) {
+  const bonusFlag = useTrainNowBonusEnabled(trainNowBonus === undefined);
+  const showBonus = trainNowBonus ?? bonusFlag;
   const { t } = useTranslation("training");
   const { t: tRider } = useTranslation("rider");
   const change = (from: number | null | undefined, to: number | null | undefined, tone?: (value: number) => string) =>
@@ -96,7 +105,7 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
       <div key={row.rider_id} className="border-t border-cz-border">
         <button type="button" className={`grid min-h-[44px] w-full grid-cols-[minmax(0,1fr)_minmax(0,1fr)_4.5rem] items-center gap-2 py-3 text-left hover:bg-cz-subtle ${rowGrid}`}
           aria-expanded={open} aria-controls={detailId} onClick={()=>toggleRider(row.rider_id)}>
-          <span className="flex min-w-0 items-start gap-1.5"><ChevronDownIcon size={13} className={`mt-1 shrink-0 text-cz-3 ${open ? "rotate-180" : ""}`} aria-hidden="true" /><span className="min-w-0"><span className="wrap-break-word text-[13px] font-semibold text-cz-1">{row.name || row.rider_id}</span>{showScore && <span className="mt-1 block text-2xs text-cz-2 sm:hidden" data-testid="daily-receipt-mobile-score">{t("dailyReceipt.latestPassScore")}: <span className="font-data tabular-nums">{latestScore ?? "—"}</span></span>}</span></span>
+          <span className="flex min-w-0 items-start gap-1.5"><ChevronDownIcon size={13} className={`mt-1 shrink-0 text-cz-3 ${open ? "rotate-180" : ""}`} aria-hidden="true" /><span className="min-w-0"><span className="wrap-break-word text-[13px] font-semibold text-cz-1">{row.name || row.rider_id}</span>{showBonus && hasBonus(row) && <span className="mt-1 block font-data text-2xs uppercase tracking-[.08em] text-cz-accent-t" data-testid="daily-receipt-bonus">{t("dailyReceipt.bonus.mark")}</span>}{showScore && <span className="mt-1 block text-2xs text-cz-2 sm:hidden" data-testid="daily-receipt-mobile-score">{t("dailyReceipt.latestPassScore")}: <span className="font-data tabular-nums">{latestScore ?? "—"}</span></span>}</span></span>
           <span className="wrap-break-word text-xs">{developmentCell(row)}</span>
           {showScore && <span className="hidden text-right font-data text-xs tabular-nums text-cz-1 sm:block" data-testid="daily-receipt-latest-score">{latestScore ?? "—"}</span>}
           <span className="text-right font-data text-xs tabular-nums text-cz-1">{change(row.fatigue_before,row.fatigue,fatigueColor)}</span>
@@ -115,6 +124,7 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
               {showScore && !activity.race_day && !activity.injured && activity.intensity !== "rest" && <p className="mt-1 font-data text-xs tabular-nums text-cz-1" data-testid="daily-receipt-pass-score">{t("colScore")}: {visible ? receiptPassScore(trainingScore?.[row.rider_id],run.tick_date,run.season_id,activity) ?? "—" : "—"}</p>}
             </li>)}
           </ol>
+          {showBonus && hasBonus(row) && <p className="mb-3 text-xs text-cz-2" data-testid="daily-receipt-bonus-detail">{t("dailyReceipt.bonus.detail")}</p>}
           {sources && <RaceSourceTable breakdown={sources} abilityName={abilityName} wholeChange={key => dev.gains_detail[key] ? change(dev.gains_detail[key].from,dev.gains_detail[key].to) : null} />}
           {visible && !sources && <div className="mb-3" data-testid="daily-receipt-whole-point-detail">
             <p className={`${META} mb-1`}>{t("dailyReceipt.wholePoints")}</p>

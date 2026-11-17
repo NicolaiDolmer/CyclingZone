@@ -36,6 +36,7 @@ import {
   sessionI18nKey,
 } from "../lib/trainingDayTypes.js";
 import { useTrainingCatalogV3 } from "../lib/useTrainingCatalogV3.ts";
+import { useTrainNowBonusEnabled } from "../lib/trainNowBonusFlag.ts";
 import { copenhagenDayKey } from "../lib/raceCentre.js";
 import { todayGainTotal, seasonAbilityGains, focusAbilityReceipt, latestReceiptRun, reportRowsByRider, receiptGainDay, SEASON_RECEIPT_RUNNING, SEASON_RECEIPT_NOT_STARTED, SEASON_RECEIPT_NO_DAYS, SEASON_RECEIPT_NOTE_KEY } from "../lib/trainingReport.js";
 import { formatDate } from "../lib/intl.js";
@@ -217,8 +218,8 @@ function dayLabel(plan, t) {
 // Nye hold har typisk ingen dage sat, så det er den første oplevelse.
 // `runTarget` kommer fra tourRunTarget og teksten fra tourRunStepKey
 // (trainingOverview.ts, testet): med #4847's dayClose lover turen ingen bonus.
-function getTrainingTourSteps(t, runTarget = "primary", dayCloseOn = false) {
-  const runKey = tourRunStepKey(runTarget, dayCloseOn);
+function getTrainingTourSteps(t, runTarget = "primary", dayCloseOn = false, bonusOn = false) {
+  const runKey = tourRunStepKey(runTarget, dayCloseOn, bonusOn);
   return [
     {
       target: "[data-tour='training-focus']",
@@ -241,8 +242,8 @@ function getTrainingTourSteps(t, runTarget = "primary", dayCloseOn = false) {
 // Stabil trin-liste pr. (sprog, anker): OnboardingTour genstarter sin rulle-
 // og måle-effekt når trinnets objekt skifter, så listen må ikke bygges på ny
 // ved hver render af siden.
-function useTrainingTourSteps(t, runTarget, dayCloseOn) {
-  return useMemo(() => getTrainingTourSteps(t, runTarget, dayCloseOn), [t, runTarget, dayCloseOn]);
+function useTrainingTourSteps(t, runTarget, dayCloseOn, bonusOn) {
+  return useMemo(() => getTrainingTourSteps(t, runTarget, dayCloseOn, bonusOn), [t, runTarget, dayCloseOn, bonusOn]);
 }
 
 // Bred side — samme mønster som TeamPage / RidersPage.
@@ -1355,7 +1356,9 @@ export default function TrainingPage() {
   // getTrainingTourSteps). Ét anker ad gangen: guld-knappen, "Run now" eller
   // statuslinjen.
   const tourTarget = tourRunTarget(primaryAction, runnable);
-  const trainingTourSteps = useTrainingTourSteps(t, tourTarget, dayClose != null);
+  // #7741: bonussen kan kun tjenes ved et oejeblikkeligt Traen nu-tryk, saa turen naevner den kun naar begge er tilgaengelige.
+  const bonusSwitchOn = useTrainNowBonusEnabled();
+  const trainingTourSteps = useTrainingTourSteps(t, tourTarget, dayClose != null, bonusSwitchOn && trainNow.status.instant === true);
   const selectedCount = pruneSelection(selected, filterIds).size;
   // #6523: linjen "Set today's day for ..." — intet markeret = alle i visningen.
   const bulkScope = resolveBulkScope(selected, filterIds, selectableRiders.map((r) => r.id));
@@ -1824,45 +1827,42 @@ export default function TrainingPage() {
   // under overblikkets fire tal, over tabellen, i begge telefon-visninger
   // (beta-tabellen og #5124's D-047-gren). Samme lukkede række med tælling som
   // mockup 2; trykket åbner det samme panel lige under rækken.
-  const assistantRow = (
-    <div className="space-y-3">
-      {/* #5620/#5485: "Select riders" står i SAMME række som assistenten, så
-          indgangen til hurtig hvile ikke skubber tabellen ned (mindst 8 ryttere
-          på første skærm, 390 × 844). Kun telefonens tabel-visning. */}
-      <div className="flex items-stretch gap-2">
-      {/* #6110 S26 (ejer 25/10, valg A): vises Dagens beslutning, skjules den
-          gamle assistent-linje. Select riders bliver staaende. */}
-      {!(decisionCardOn && !ridersLoading) && (
-      <button
-        type="button"
-        onClick={handleOpenAssistantPanel}
-        data-testid="training-assistant-row"
-        className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-cz border border-cz-border bg-cz-card px-3 text-start text-xs transition-colors hover:bg-cz-subtle"
-      >
-        <StarIcon size={14} className="flex-none text-cz-3" aria-hidden="true" />
-        <span className="flex-1 text-xs font-semibold text-cz-1">{t("mobile.assistantTitle")}</span>
-        <span className="font-data text-2xs tabular-nums text-cz-3">
-          {t("mobile.assistantCount", { n: assistantSuggestionRows.length })}
-        </span>
-        <ChevronRightIcon size={14} className="flex-none text-cz-3" aria-hidden="true" />
-      </button>
-      )}
-      {phoneTodayView && activeTab === "today" && !mobilePickMode && (
-        <Button
+  // #8279 (rettelse 15, ejer-go 16/11): på telefonen står assistenten og "Select
+  // riders" som en hairline-række INDE i overblikskortet under træthedslinjen,
+  // i stedet for et eget kort mellem overblikket og tabellen. Samme handlere og
+  // test-id'er som den tidligere assistent-række; panelet (assistantPanel) folder stadig ud
+  // under kortet.
+  const showPhoneAssistant = !(decisionCardOn && !ridersLoading);
+  const showPhoneSelect = phoneTodayView && activeTab === "today" && !mobilePickMode;
+  const phoneAssistantFooterRow = (showPhoneAssistant || showPhoneSelect) ? (
+    <div className="flex min-w-0 items-stretch border-t border-cz-border text-xs">
+      {showPhoneAssistant && (
+        <button
           type="button"
-          variant="secondary"
-          size="sm"
-          className="min-h-11 flex-none"
+          onClick={handleOpenAssistantPanel}
+          data-testid="training-assistant-row"
+          className="flex min-h-11 min-w-0 flex-1 items-center gap-2 px-4 text-start text-xs transition-colors hover:bg-cz-subtle"
+        >
+          <StarIcon size={14} className="flex-none text-cz-3" aria-hidden="true" />
+          <span className="flex-1 truncate font-semibold text-cz-1">{t("mobile.assistantTitle")}</span>
+          <span className="font-data text-2xs tabular-nums text-cz-3">
+            {t("mobile.assistantCount", { n: assistantSuggestionRows.length })}
+          </span>
+          <ChevronRightIcon size={14} className="flex-none text-cz-3" aria-hidden="true" />
+        </button>
+      )}
+      {showPhoneSelect && (
+        <button
+          type="button"
           onClick={startMobilePick}
           data-testid="training-mobile-select-riders"
+          className={`flex min-h-11 flex-none items-center px-4 font-medium text-cz-1 hover:underline ${showPhoneAssistant ? "border-s border-cz-border" : "ms-auto"}`}
         >
           {t("mobile.selectRiders")}
-        </Button>
+        </button>
       )}
-      </div>
-      {assistantPanel}
     </div>
-  );
+  ) : null;
 
   function renderBulkDayOptions() {
     return (
@@ -2549,14 +2549,25 @@ export default function TrainingPage() {
           onToggle={toggleOverviewFilter}
           variant={overviewVariant}
           status={overviewStatus}
-          footer={<FatigueRuleSummary data={fatigueRules.data} onEdit={() => setSub("limit")} />}
+          footer={<>
+            <FatigueRuleSummary data={fatigueRules.data} onEdit={() => setSub("limit")} />
+            {phoneTodayView && overviewVariant !== "chips" && phoneAssistantFooterRow}
+          </>}
         />
       </div>
       {/* #5485 (ejer-go 23/9): assistenten rykket OP på telefonen — rækken
           lige under overblikkets fire tal, over tabellen, i begge telefon-
           visninger. Desktop (og telefon på langs uden beta) har knappen i
           tabellens værktøjslinje. */}
-      {phoneTodayView && assistantRow}
+      {/* Codex på #8311: chips-varianten (telefon på langs) tegner ikke overblikkets
+          fod, så dér står rækken i sit eget hairline-kort, ellers ville Assistant
+          og Select riders forsvinde i den retning. */}
+      {phoneTodayView && overviewVariant === "chips" && phoneAssistantFooterRow && (
+        <div className="overflow-hidden rounded-cz border border-cz-border bg-cz-card [&>div]:border-t-0">
+          {phoneAssistantFooterRow}
+        </div>
+      )}
+      {phoneTodayView && assistantPanel}
       {/* #3643/#5485: desktop (og telefon på langs) får den nye tabel,
           telefonen sin løbsdags-tabel. #6030: training_mobile_table er on for
           alle, så #5124's D-047-gren (telefonen uden flaget) er slettet. */}

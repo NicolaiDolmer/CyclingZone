@@ -1,0 +1,139 @@
+{
+  "note": "#7801 Fable-dom 16/11: ryttere uden stempel, løbssession midt i trykket. Genereret af merge-basens kode (mains motor, fakeWithRaceSessionRule), aldrig af den nye. Kun hashes og antal.",
+  "mergeBase": "175171823a9e1f382ca2ba7dfbe3693c88585504",
+  "cases": {
+    "uden_stempel_main_on_etape_1_session_1": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 193,
+      "reads": 177,
+      "raceLoadReads": 7,
+      "attempts": "23af8640d7f31016a556",
+      "applied": "f1f93ac5073c64ab3dfd",
+      "provisional": "4f53cda18c2baa0c0354",
+      "state": {
+        "rider_derived_abilities": "8873da2bc53243f653d1",
+        "rider_condition": "a30dad816337bdafe53b",
+        "training_rider_ticks": "5a8230ffa63f23b18579",
+        "training_condition_settlements": "b0c72d5bbf1268b51523",
+        "training_race_loads": "9f0d054a2b9754b86cc2",
+        "training_date_work": "b008f9c9c54a276acd51",
+        "training_day_runs": "dd7b9c05e7f195376b36"
+      }
+    },
+    "uden_stempel_main_on_etape_2_session_2": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 193,
+      "reads": 177,
+      "raceLoadReads": 7,
+      "attempts": "23af8640d7f31016a556",
+      "applied": "f1f93ac5073c64ab3dfd",
+      "provisional": "4f53cda18c2baa0c0354",
+      "state": {
+        "rider_derived_abilities": "8873da2bc53243f653d1",
+        "rider_condition": "a30dad816337bdafe53b",
+        "training_rider_ticks": "fe3e6fa6552436ad51e5",
+        "training_condition_settlements": "b0c72d5bbf1268b51523",
+        "training_race_loads": "9f0d054a2b9754b86cc2",
+        "training_date_work": "b008f9c9c54a276acd51",
+        "training_day_runs": "c3e96faa2cac3ce60e84"
+      }
+    },
+    "uden_stempel_main_on_etape_4_session_4": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 193,
+      "reads": 177,
+      "raceLoadReads": 7,
+      "attempts": "23af8640d7f31016a556",
+      "applied": "f1f93ac5073c64ab3dfd",
+      "provisional": "4f53cda18c2baa0c0354",
+      "state": {
+        "rider_derived_abilities": "8873da2bc53243f653d1",
+        "rider_condition": "a30dad816337bdafe53b",
+        "training_rider_ticks": "5f7e2217a4a2bf89eb87",
+        "training_condition_settlements": "b0c72d5bbf1268b51523",
+        "training_race_loads": "9f0d054a2b9754b86cc2",
+        "training_date_work": "b008f9c9c54a276acd51",
+        "training_day_runs": "c1c45e9f0ce794dd4d57"
+      }
+    },
+    "uden_stempel_main_on_etape_1_session_2": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 193,
+      "reads": 177,
+      "raceLoadReads": 7,
+      "attempts": "23af8640d7f31016a556",
+      "applied": "f1f93ac5073c64ab3dfd",
+      "provisional": "4f53cda18c2baa0c0354",
+      "state": {
+        "rider_derived_abilities": "8873da2bc53243f653d1",
+        "rider_condition": "a30dad816337bdafe53b",
+        "training_rider_ticks": "fe3e6fa6552436ad51e5",
+        "training_condition_settlements": "b0c72d5bbf1268b51523",
+        "training_race_loads": "9f0d054a2b9754b86cc2",
+        "training_date_work": "b008f9c9c54a276acd51",
+        "training_day_runs": "c3e96faa2cac3ce60e84"
+      }
+    },
+    "uden_stempel_main_on_etape_1_session_3": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 193,
+      "reads": 177,
+      "raceLoadReads": 7,
+      "attempts": "23af8640d7f31016a556",
+      "applied": "f1f93ac5073c64ab3dfd",
+      "provisional": "4f53cda18c2baa0c0354",
+      "state": {
+        "rider_derived_abilities": "8873da2bc53243f653d1",
+        "rider_condition": "a30dad816337bdafe53b",
+        "training_rider_ticks": "5d0e32d657d03c17d1b2",
+        "training_condition_settlements": "b0c72d5bbf1268b51523",
+        "training_race_loads": "9f0d054a2b9754b86cc2",
+        "training_date_work": "b008f9c9c54a276acd51",
+        "training_day_runs": "c1c45e9f0ce794dd4d57"
+      }
+    },
+    "uden_stempel_main_on_etape_1_session_4": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 193,
+      "reads": 177,
+      "raceLoadReads": 7,
+      "attempts": "23af8640d7f31016a556",
+      "applied": "f1f93ac5073c64ab3dfd",
+      "provisional": "4f53cda18c2baa0c0354",
+      "state": {
+        "rider_derived_abilities": "8873da2bc53243f653d1",
+        "rider_condition": "a30dad816337bdafe53b",
+        "training_rider_ticks": "5f7e2217a4a2bf89eb87",
+        "training_condition_settlements": "b0c72d5bbf1268b51523",
+        "training_race_loads": "9f0d054a2b9754b86cc2",
+        "training_date_work": "b008f9c9c54a276acd51",
+        "training_day_runs": "c1c45e9f0ce794dd4d57"
+      }
+    },
+    "uden_stempel_main_on_etape_3_session_4": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 193,
+      "reads": 177,
+      "raceLoadReads": 7,
+      "attempts": "23af8640d7f31016a556",
+      "applied": "f1f93ac5073c64ab3dfd",
+      "provisional": "4f53cda18c2baa0c0354",
+      "state": {
+        "rider_derived_abilities": "8873da2bc53243f653d1",
+        "rider_condition": "a30dad816337bdafe53b",
+        "training_rider_ticks": "5f7e2217a4a2bf89eb87",
+        "training_condition_settlements": "b0c72d5bbf1268b51523",
+        "training_race_loads": "9f0d054a2b9754b86cc2",
+        "training_date_work": "b008f9c9c54a276acd51",
+        "training_day_runs": "c1c45e9f0ce794dd4d57"
+      }
+    }
+  }
+}

@@ -356,19 +356,28 @@ test("#6110 variation: uden variationsfelter er tick'et uaendret, og noeglen kom
   assert.ok(!JSON.stringify(varied).includes(VAR_RAW.variation.key));
 });
 
-// ── Intet loft pr. dato i XP (#6110 R9/R10) ────────────────────────────────────
+// ── Datoreglen i XP (#6110 R16, ejervalg 16/11): hoejst +2, gamle loefter gaelder ikke ──
 
-test("#6110 intet loft: et tick koeber alle point, XP'en raekker til, uanset dagsloftet", () => {
+test("#6110 datoregel: et tick koeber hoejst +2 pr. evne, og de gamle dagslofter klipper ikke", () => {
   const abilities = abilitiesAt(5);
   const progress = { climbing: 0.5 };
-  const tick = applyDailyTick(tickArgs({ abilities, caps: abilities, progress }));
+  // Et ungt toptalent efter fixturens opdigtede graenser (ejervalg A 16/11).
+  const young = { age: XP_TEST_PARAMS.datePlus2.maxAge };
+  const tick = applyDailyTick(tickArgs({ abilities, caps: abilities, progress, ...young }));
   assert.ok(tick.gains.climbing >= 2, "scenariet koeber flere point");
-  const facit = buyPoints({ level: 5, bar: 0.5, xp: tick.xp.climbing }, XP);
+  const facit = buyPoints({ level: 5, bar: 0.5, xp: tick.xp.climbing, maxPoints: 2 }, XP);
+  assert.equal(tick.gains.climbing, 2);
   assert.equal(tick.abilities.climbing, facit.level);
   assert.equal(tick.progress.climbing, facit.bar);
   for (const hardDailyCap of [1, 2]) {
-    assert.deepEqual(applyDailyTick(tickArgs({ abilities, caps: abilities, progress, hardDailyCap })), tick, `hardDailyCap=${hardDailyCap}`);
+    assert.deepEqual(applyDailyTick(tickArgs({ abilities, caps: abilities, progress, hardDailyCap, ...young })), tick, `hardDailyCap=${hardDailyCap}`);
   }
+  // Et aar aeldre, samme evne og XP: det lave tal (applyDailyTick sender alder og potentiale videre).
+  const older = applyDailyTick(tickArgs({ abilities, caps: abilities, progress, age: young.age + 1 }));
+  assert.equal(older.gains.climbing, 1);
+  const olderFacit = buyPoints({ level: 5, bar: 0.5, xp: older.xp.climbing, maxPoints: 1 }, XP);
+  assert.equal(older.progress.climbing, olderFacit.bar, "resten venter, intet tabt");
+  assert.equal(applyDailyTick(tickArgs({ abilities, caps: abilities, progress, ...young, potentiale: XP_TEST_PARAMS.datePlus2.minPotential - 1 })).gains.climbing, 1, "middeltalent: +1");
 });
 
 // ── Loebsdagens rolletillaeg ──────────────────────────────────────────────────

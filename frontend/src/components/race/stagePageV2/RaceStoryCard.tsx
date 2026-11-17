@@ -5,7 +5,7 @@
 //   Final 5 km  - TV-grafikken (kun med praecise tider)
 // og under dem historien: "How it unfolded" (kurateret til ca. 8 linjer),
 // "Split times" og "Report". Kilde: kun loebslog-kontrakten (#6632).
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../../../lib/intl.js";
 import { filmKmValue } from "../../../lib/stageTimelineKmSpan.ts";
@@ -22,6 +22,9 @@ import { useStoryText } from "./storyText.ts";
 import { Button, Section, Segmented } from "./ui.ts";
 import type { StageWeather } from "./stageWeather.ts";
 import { WeatherTag, weatherSentenceKey } from "./WeatherTag.tsx";
+import { useSpoilerStory } from "../../spoiler/spoilerStoryContext.ts"; // #7859
+import { SpoilerFinaleAhead } from "../../spoiler/SpoilerShield.tsx"; // #7859
+import { filmAtFinish, linesUpTo } from "../../spoiler/spoilerShieldModel.ts"; // #7859
 
 type View = "route" | "stage" | "final";
 const NO_OWN_OUT: ReportSentence[] = [];
@@ -55,7 +58,23 @@ export default function RaceStoryCard({ story, profile, series, climbs, cast, ti
   const lines = useMemo(() => timeTrial ? [] : curateMoments(story, cast, undefined, narrative), [story, cast, narrative, timeTrial]);
   const dayWords = useMemo(() => dayWordSentences(narrative?.events, cast), [narrative, cast]);
   const [view, setView] = useState<View>(timeTrial ? "route" : "stage");
-  const [km, setKm] = useState<number>(D);
+  // #7859: med spoiler-skjoldet starter filmen ved start, og filmen i mål åbner etapen.
+  const spoiler = useSpoilerStory();
+  const [km, setKm] = useState<number>(spoiler.active ? 0 : D);
+  // Tændes skjoldet, mens "Sidste 5 km" er valgt, går visningen tilbage til etapen (Codex #8302):
+  // valget forsvinder fra menuen, og finalen må ikke stå, mens hovedet siger, at resultatet er skjult.
+  const spoilerActive = spoiler.active;
+  useEffect(() => {
+    if (spoilerActive) setView((v) => (v === "final" ? "stage" : v));
+  }, [spoilerActive]);
+  // Kun en film der er spillet (eller trukket) frem til mål åbner etapen; står den i mål,
+  // da skjoldet slog til (svaret kom efter første billede), spoles den tilbage til start.
+  const filmBelowFinish = useRef(false);
+  useEffect(() => {
+    if (!spoiler.active) { filmBelowFinish.current = false; return; }
+    if (!filmAtFinish(km, D)) { filmBelowFinish.current = true; return; }
+    if (filmBelowFinish.current) spoiler.open(); else setKm(0);
+  }, [spoiler, km, D]);
 
   if (timeTrial) {
     return (
@@ -79,7 +98,7 @@ export default function RaceStoryCard({ story, profile, series, climbs, cast, ti
   const options = [
     { value: "route", label: t("stagePageV2.story.view.route") },
     { value: "stage", label: t(oneDay ? "stagePageV2.story.view.race" : "stagePageV2.story.view.stage") },
-    ...(finale ? [{ value: "final", label: t("stagePageV2.story.view.final") }] : []),
+    ...(finale && !spoiler.active ? [{ value: "final", label: t("stagePageV2.story.view.final") }] : []),
   ];
 
   const weatherSentence = weatherSentenceKey(weather);
@@ -115,13 +134,16 @@ export default function RaceStoryCard({ story, profile, series, climbs, cast, ti
       {view === "stage" && (
         <ReplayView story={story} profile={profile} series={series} climbs={climbs} cast={cast} km={km} onKm={setKm} />
       )}
-      {view === "final" && finale && (
+      {view === "final" && finale && !spoiler.active && (
         <FinaleView story={story} data={finale} cast={cast} lines={lines} series={series} stageLabel={hudLabel} />
       )}
 
-      {view !== "route" && (
+      {view !== "route" && (spoiler.active ? (
+        // #7859: referatet stopper ved filmens position; mellemtider, referat og tab venter til etapen er åbnet.
+        <StorySection story={story} lines={linesUpTo(lines, km)} cast={cast} km={km} onJump={jumpTo} ownOut={NO_OWN_OUT} narrative={narrative} dayWords={NO_OWN_OUT} shielded />
+      ) : (
         <StorySection story={story} lines={lines} cast={cast} km={view === "stage" ? km : null} onJump={jumpTo} ownOut={ownOut} narrative={narrative} dayWords={dayWords} />
-      )}
+      ))}
     </Section>
   );
 }
@@ -251,7 +273,7 @@ function ReplayView({ story, profile, series, climbs, cast, km, onKm }: {
 
 // ── Historien: oejeblikke, mellemtider, referat ───────────────────────────
 
-function StorySection({ story, lines, cast, km, onJump, ownOut, narrative, dayWords }: { story: RaceStory; lines: StoryLine[]; cast: Cast; km: number | null; onJump: (l: StoryLine) => void; ownOut: ReportSentence[]; narrative: StoryNarrativeContext | null; dayWords: ReportSentence[] }) {
+function StorySection({ story, lines, cast, km, onJump, ownOut, narrative, dayWords, shielded = false }: { story: RaceStory; lines: StoryLine[]; cast: Cast; km: number | null; onJump: (l: StoryLine) => void; ownOut: ReportSentence[]; narrative: StoryNarrativeContext | null; dayWords: ReportSentence[]; shielded?: boolean }) {
   const { t } = useTranslation("races");
   const text = useStoryText(cast);
   const me = useMemo(() => myBestRider(story, cast), [story, cast]);
@@ -297,8 +319,9 @@ function StorySection({ story, lines, cast, km, onJump, ownOut, narrative, dayWo
             );
           })}
         </ol>
+        {shielded && <SpoilerFinaleAhead />}
       </div>
-      <div className="flex min-w-0 flex-col gap-4">
+      {!shielded && <div className="flex min-w-0 flex-col gap-4">
         <div className="min-w-0">
           <h3 className="m-0 mb-1 font-data text-3xs font-semibold uppercase tracking-[.16em] text-cz-3">{t("stagePageV2.story.splits.title")}</h3>
           <SplitTable rows={rows} cast={cast} me={me} precise={story.precise_times} />
@@ -323,7 +346,7 @@ function StorySection({ story, lines, cast, km, onJump, ownOut, narrative, dayWo
           </div>
         )}
         <p className="m-0 font-data text-2xs text-cz-3">{t("stagePageV2.story.source")}</p>
-      </div>
+      </div>}
     </div>
   );
 }

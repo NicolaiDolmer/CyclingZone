@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { SortIndicator } from "./SortableTh.jsx";
 import { WRAP, SCROLLER, MOBILE_SCROLLER, TABLE, COUNT, thClass, tdClass, mergeRowProps, zonePillClass } from "./dataTableStyles.js";
 import { TableRowContext } from "./tableRowContext.js";
+import { Segmented } from "./Segmented.jsx";
 import { ChevronRightIcon, TableIcon } from "./icons/index.jsx";
 import { useIsMobileViewport } from "../../hooks/useMediaQuery.ts";
 import {
@@ -63,6 +64,12 @@ import {
 //
 //   mobileDefaults: ["ovr", "value", "salary"]  // sidens tre standardkolonner
 //
+// `viewModes` (#8278, rettelse 13): tabellens visnings-tilstand (fx Overblik /
+// Evner) som { label, value, onChange, options }. Desktop: kittets Segmented
+// yderst til højre i toolbaren, præcis som siderne selv lagde den før. Mobil:
+// de første piller i chip-rækken, så tilstanden ikke fylder sin egen række på
+// 70 px inde i tabelkortet (audit 16/11, P1/P5).
+//
 // "Ingen vandret scroll" er HÅNDHÆVET, ikke håbet: standardtilstanden ligger i
 // MOBILE_SCROLLER (overflow-x: clip), og navnecellen wrapper i stedet for at
 // stå på én nowrap-linje, så et langt rytternavn eller et 8-cifret beløb bliver
@@ -91,6 +98,7 @@ export function DataTable({
   toolbar = null,
   empty = null,
   mobileDefaults = null,
+  viewModes = /** @type {any} */ (null),
 }) {
   const { t } = useTranslation("common");
   const isMobile = useIsMobileViewport();
@@ -181,13 +189,14 @@ export function DataTable({
   if (mobileStandard) {
     return (
       <div className={className}>
-        {hasChips && (
+        {(hasChips || viewModes) && (
           <MobileColumnChips
-            columns={applyMobileChipOrder(columns, chipOrder)}
+            columns={hasChips ? applyMobileChipOrder(columns, chipOrder) : []}
             selected={mobileKeys}
             onPick={pickColumn}
             fullTable={fullTable}
-            onToggleFullTable={() => setFullTable((v) => !v)}
+            onToggleFullTable={hasChips ? () => setFullTable((v) => !v) : undefined}
+            modes={viewModes}
             t={t}
           />
         )}
@@ -275,9 +284,10 @@ export function DataTable({
             praecis PAGE_TEMPLATES' "no orphan action rows" og audit 2026-09's
             fund paa Mit hold. Inde i tabellens hairline-ramme, adskilt af den
             samme 1px-regel som headeren, hoerer de synligt til tabellen. */}
-        {toolbar && (
+        {(toolbar || viewModes) && (
           <div className="flex flex-wrap items-center gap-2 border-b border-cz-border px-4 py-2.5">
             {toolbar}
+            {viewModes && <Segmented className="ms-auto" {...viewModes} />}
           </div>
         )}
         <div className={SCROLLER}>
@@ -365,6 +375,10 @@ function TableHead({ columns, sort, sortDir, onSort, dense, mobile = false, stic
               }
             >
               {mobile && col.mobileHeader != null ? col.mobileHeader : col.header}
+              {/* #8278: U+2060 (word joiner) binder pilen til sidste ord, så en smal
+                  mobilkolonne ikke knækker "RATING" og pilen over to linjer. Lange
+                  overskrifter må stadig bryde mellem deres ord. */}
+              {sortable && <span aria-hidden="true">{"\u2060"}</span>}
               {sortable && <SortIndicator active={active} dir={sortDir} />}
             </th>
           );
@@ -389,18 +403,45 @@ function TableHead({ columns, sort, sortDir, onSort, dense, mobile = false, stic
 // vandret chip-raekke paa en telefon. Ordenen er FRYSSET af DataTable, saa et
 // tryk aldrig flytter chippen under fingeren; derfor ruller raekken heller ikke
 // tilbage til start af sig selv.
-function MobileColumnChips({ columns, selected, onPick, fullTable, onToggleFullTable, t }) {
+//
+// #8278 (rettelse 13): `modes` (DataTable's `viewModes`) står FØRST i rækken som
+// piller med samme opskrift, adskilt fra kolonne-chipsene af en hairline. Det er
+// en visnings-tilstand (radio-agtig, aria-pressed), ikke en kolonne, og den
+// ruller med rækken, så "Fuld tabel" bliver stående i højre kant.
+function MobileColumnChips({ columns, selected, onPick, fullTable, onToggleFullTable, modes = /** @type {any} */ (null), t }) {
   const base =
     "flex-none inline-flex items-center gap-1.5 rounded-cz-pill border px-2.5 min-h-[32px] " +
     "font-data text-2xs font-semibold uppercase tracking-[.06em] transition-colors duration-150 " +
     "[@media(max-width:640px),(pointer:coarse)]:min-h-11 [@media(max-width:640px),(pointer:coarse)]:min-w-11";
   return (
     <div className="mb-2 flex items-center gap-1.5">
-      <div
-        className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto"
-        role="group"
-        aria-label={t("table.columnsLabel")}
-      >
+      {/* #8278: rækken ruller som én, men "Vælg kolonner"-gruppen indeholder KUN
+          kolonne-chips; visnings-tilstanden er sin egen gruppe ved siden af, så
+          en skærmlæser (og testenes gruppe-opslag) ikke blander de to. */}
+      <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto">
+        {modes && (
+          <div role="group" aria-label={modes.label} className="flex flex-none gap-1.5">
+            {modes.options.map((option) => {
+              const active = option.value === modes.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-pressed={active}
+                  title={option.title}
+                  disabled={option.disabled === true}
+                  onClick={active ? undefined : () => modes.onChange(option.value)}
+                  className={`${base} ${active ? "cursor-default border-cz-1 text-cz-1" : "border-cz-border text-cz-2 hover:text-cz-1"}`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {modes && columns.length > 0 && <span aria-hidden="true" className="w-px flex-none self-stretch bg-cz-border" />}
+        {columns.length > 0 && (
+        <div role="group" aria-label={t("table.columnsLabel")} className="flex flex-none gap-1.5">
         {columns.map((col) => {
           const active = selected.includes(col.key);
           return (
@@ -418,16 +459,20 @@ function MobileColumnChips({ columns, selected, onPick, fullTable, onToggleFullT
             </button>
           );
         })}
+        </div>
+        )}
       </div>
-      <button
-        type="button"
-        onClick={onToggleFullTable}
-        aria-pressed={fullTable}
-        className={`${base} ${fullTable ? "border-cz-1 bg-cz-1 text-cz-card" : "border-cz-1 text-cz-1"}`}
-      >
-        <TableIcon size={14} aria-hidden="true" />
-        {t("table.fullTable")}
-      </button>
+      {onToggleFullTable && (
+        <button
+          type="button"
+          onClick={onToggleFullTable}
+          aria-pressed={fullTable}
+          className={`${base} ${fullTable ? "border-cz-1 bg-cz-1 text-cz-card" : "border-cz-1 text-cz-1"}`}
+        >
+          <TableIcon size={14} aria-hidden="true" />
+          {t("table.fullTable")}
+        </button>
+      )}
     </div>
   );
 }
@@ -708,7 +753,16 @@ function renderStickyCell(col, row, i, foldCols, wrap = false) {
     : "whitespace-nowrap";
   return (
     <>
-      <span className={`flex items-center gap-2 text-[13.5px] font-medium text-cz-1 ${nowrap}`}>
+      {/* #8278 (rettelse 1): `data-name-stack` fortæller RiderNameCell, at den står
+          i mobilens navnecelle. Dér får navnet sin egen linje, og trøje,
+          talentmærke og status-mærker rykker ned på linjen under (TASTE P12-
+          rækkefølgen er den samme). Uden det delte navnet linje med ikon,
+          trøje og stjerne og fik ca. 25 px: "A. / Ped / ers / en". Kun mobil-
+          standarden sætter attributten, så desktop og "Fuld tabel" er uændrede. */}
+      <span
+        className={`flex items-center gap-2 text-[13.5px] font-medium text-cz-1 ${nowrap}`}
+        data-name-stack={wrap ? "" : undefined}
+      >
         {primary}
       </span>
       {/* #5383: den foldede meta-linje er den laengste tekst i cellen og stak

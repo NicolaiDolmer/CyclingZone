@@ -382,15 +382,23 @@
     },
     "runNow": {
       "title": "De training van vandaag draaien",
-      "body": "Nu draaien traint vandaag de hele selectie, ook renners zonder dag: zij trainen wat je assistent voor hun type kiest. Erop drukken geeft geen bonus. Sla het over en je assistent draait automatisch dezelfde training."
+      "body": "Nu draaien traint vandaag de hele selectie, ook renners zonder dag: zij trainen wat je assistent voor hun type kiest. Sla het over en je assistent draait automatisch dezelfde training."
     },
     "runTodayDayClose": {
       "title": "De training van vandaag draaien",
-      "body": "Druk hierop om de training van vandaag nu te draaien in plaats van te wachten. Het is dezelfde training als de automatische run, zonder bonus: de dag draait ook vanzelf zodra de laatste koers klaar is."
+      "body": "Druk hierop om de training van vandaag nu te draaien in plaats van te wachten. De dag draait ook vanzelf zodra de laatste koers klaar is."
     },
     "runNowDayClose": {
       "title": "De training van vandaag draaien",
-      "body": "Nu draaien traint vandaag de hele selectie, ook renners zonder dag: zij trainen wat je assistent voor hun type kiest. Het is dezelfde training als de automatische run, zonder bonus: de dag draait ook vanzelf zodra de laatste koers klaar is."
+      "body": "Nu draaien traint vandaag de hele selectie, ook renners zonder dag: zij trainen wat je assistent voor hun type kiest. De dag draait ook vanzelf zodra de laatste koers klaar is."
+    },
+    "runTodayDayCloseBonus": {
+      "title": "De training van vandaag draaien",
+      "body": "Druk hierop om de training van vandaag nu te draaien in plaats van te wachten. Training die je zelf start geeft een kleine bonus; de automatische run geeft die nooit. De dag draait ook vanzelf zodra de laatste koers klaar is."
+    },
+    "runNowDayCloseBonus": {
+      "title": "De training van vandaag draaien",
+      "body": "Nu draaien traint vandaag de hele selectie, ook renners zonder dag: zij trainen wat je assistent voor hun type kiest. Training die je zelf start geeft een kleine bonus; de automatische run geeft die nooit. De dag draait ook vanzelf zodra de laatste koers klaar is."
     },
     "runStatus": {
       "title": "Eén keer per dag trainen",
@@ -610,6 +618,10 @@
       "pending": "Deze datum is nog niet volledig verwerkt. De uiteindelijke ontwikkeling en conditiewijzigingen zijn nog in behandeling.",
       "reconciliation": "Sommige activiteiten moeten worden afgestemd. Ontbrekend bewijs wordt nooit als nul ontwikkeling getoond.",
       "recorded": "Vastgelegde activiteiten zijn voor deze datum gecombineerd. Oudere rapporten bevatten mogelijk niet het volledige bewijs van voortgang of verwerking."
+    },
+    "bonus": {
+      "mark": "Bonus Nu trainen",
+      "detail": "Je drukte op Nu trainen voordat de automatische training draaide, dus de training van deze renner kreeg de bonus."
     },
     "riderReceipts": "Rennersoverzichten",
     "trainedNow": "{count, plural, one {Nu getraind · koersdag {range}} other {Nu getraind · koersdagen {range}}}",

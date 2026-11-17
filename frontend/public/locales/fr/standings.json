@@ -46,9 +46,6 @@
   "onlineNow": "En ligne",
   "offline": "Hors ligne",
   "movement": {
-    "label": "Mouvement",
-    "up": "{count} promus",
-    "down": "{count} relégués",
     "ruleBoth": "Les {up} premiers montent, les {down} derniers descendent",
     "ruleBothPerPool": "Les {up} premiers montent, les {down} derniers descendent dans chacun des {pools} groupes",
     "ruleDown": "Les {down} derniers descendent",

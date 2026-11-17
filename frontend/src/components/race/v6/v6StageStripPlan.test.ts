@@ -4,7 +4,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  v6NamesFromResults, v6PlanState, v6SavedStages, v6StripCells, v6StripKeyTarget, v6StripTabStop, v6StripWinners, v6WinnerIdsByStage,
+  v6NamesFromResults, v6PlanState, v6SavedStages, v6SavedStagesRefreshKey, v6StripCells, v6StripKeyTarget, v6StripTabStop, v6StripWinners, v6WinnerIdsByStage,
 } from "./racePageV6Model.ts";
 
 const read = (rel: string) => readFileSync(new URL(rel, import.meta.url), "utf8").replace(/\r\n/g, "\n");
@@ -78,10 +78,32 @@ test("cellen viser ordet, aldrig en farvet pille; kun Ikke gemt staar med vaegt"
   assert.deepEqual([da.racePageV6.strip.planSaved, da.racePageV6.strip.planDefault, da.racePageV6.strip.planNotSaved], ["Gemt", "Standardplan", "Ikke gemt"]);
 });
 
-test("siden henter Taktiks data igen, naar Taktik aabnes, skifter etape eller forlades", () => {
+test("siden henter Taktiks data igen, naar Taktik aabnes, skifter etape, gemmer eller forlades", () => {
   const page = read("./RacePageV6.tsx");
   assert.match(page, /fetchTeamOrders\(\{ raceId \}\)/);
-  assert.match(page, /activeTab === "tactics" \? `tactics-\$\{tacticsStage\}` : "away"/);
+  assert.match(page, /v6SavedStagesRefreshKey\(\{ activeTab, tacticsStage, saves: tacticsSaves \}\)/);
+  const first = v6SavedStagesRefreshKey({ activeTab: "tactics", tacticsStage: 4, saves: 0 });
+  assert.notEqual(v6SavedStagesRefreshKey({ activeTab: "tactics", tacticsStage: 5, saves: 0 }), first, "etapeskift henter igen");
+  assert.equal(v6SavedStagesRefreshKey({ activeTab: "stage", tacticsStage: 4, saves: 3 }), "away", "fanen forladt");
+});
+
+// ── #7778 (Codex P2 fra #8211): striben opdateres straks efter et gem paa Taktik ──
+
+test("et gem paa samme etape og fane skifter noeglen, saa Taktiks data hentes igen", () => {
+  const before = v6SavedStagesRefreshKey({ activeTab: "tactics", tacticsStage: 4, saves: 0 });
+  const after = v6SavedStagesRefreshKey({ activeTab: "tactics", tacticsStage: 4, saves: 1 });
+  assert.notEqual(after, before, "uden et nyt opslag blev 'Standardplan'/'Ikke gemt' staaende til fane- eller etapeskift");
+});
+
+test("Taktik giver v6 besked ved et lykket gem; siden taeller op med en stabil callback", () => {
+  const tab = read("../RaceTacticsTab.jsx");
+  assert.match(tab, /const onV6Saved = useV6TacticsSaved\(\);/);
+  assert.match(tab, /if \(status === "saved" \|\| status === "partial"\) onV6Saved\?\.\(\);/, "kun et (delvist) lykket gem, aldrig fejl eller konflikt");
+  const page = read("./RacePageV6.tsx");
+  assert.match(page, /const onTacticsSaved = useCallback\(\(\) => setTacticsSaves\(\(n\) => n \+ 1\), \[\]\);/, "stabil, ellers genudloeses effekten ved hver render");
+  assert.match(page, /<V6TacticsSavedContext\.Provider value=\{onTacticsSaved\}>\n\s+\{renderTactics \? renderTactics\(tacticsStage\) : tacticsSlot\}/);
+  const ctx = read("./v6TacticsSaved.ts");
+  assert.match(ctx, /createContext<\(\(\) => void\) \| null>\(null\)/, "uden v6 (ingen provider) er beskeden null, og Taktik opfoerer sig som foer");
 });
 
 // ── Vindernavn paa ALLE koerte etaper ──

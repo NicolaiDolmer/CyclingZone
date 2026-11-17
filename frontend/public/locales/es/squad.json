@@ -12,9 +12,11 @@
       "u23": "Equipo sub-23, ciclistas de 22 años o menos",
       "junior": "Equipo júnior, ciclistas de 18 años o menos"
     },
-    "squadValue": "Valor de la plantilla: {value} CZ$",
-    "rosterCount": "{count}/{cap} ciclistas en la plantilla",
-    "seniorsStayHint": "Los ciclistas de tu plantilla sénior siguen siendo sénior hasta que los muevas. Abre un ciclista y usa Cambiar de plantilla."
+    "seniorsStayHint": "Los ciclistas de tu plantilla sénior siguen siendo sénior hasta que los muevas. Abre un ciclista y usa Cambiar de plantilla.",
+    "stats": {
+      "riders": "Ciclistas",
+      "squadValue": "Valor de la plantilla"
+    }
   },
   "tabs": {
     "ariaLabel": "Secciones de la plantilla",

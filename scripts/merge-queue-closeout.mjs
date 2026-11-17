@@ -10,6 +10,8 @@
 //   2. claude:todo -> claude:done for baade Closes og Refs (#7782), medmindre PR-titel
 //      eller -body siger at rettelsen ligger bag en slukket kontakt: saa faar issuet
 //      kun kommentaren.
+//      #8222: en Refs-flip sker desuden kun, naar ingen ANDRE aabne PR'er refererer
+//      issuet (soegning via gh pr list; fejl/fuld side = ingen flip). Kommentaren siger hvorfor.
 //   3. EEN samlet NOW-linje pr. tog, UDSKREVET (ikke committet). Valg + grund:
 //      koeen koerer typisk i et delt checkout, hvor sessionen kan have egne
 //      ucommittede NOW-rettelser; et auto-commit ville enten feje dem med eller
@@ -42,6 +44,7 @@
 // Tests: node --test scripts/merge-queue-closeout.test.mjs
 
 import { spawnSync } from 'node:child_process';
+import { numberPendingOnMain } from './patch-notes-number.mjs';
 
 export const DEFAULT_REPO = 'NicolaiDolmer/CyclingZone';
 export const MARKER_PREFIX = 'merge-queue-closeout:v1';
@@ -124,10 +127,15 @@ function kindLabel(kind) {
 }
 
 // phase: 'verified' (efter toget, default) eller 'merged' (straks efter merget).
-export function commentBody({ pr, issue, sha, kind, deployVerified = true, phase = 'verified', behindSwitch = false, heldByOther = false }) {
+// #8222: openPrs = numre paa andre AABNE PR'er der refererer issuet; 'unknown' = soegningen fejlede/var ufuldstaendig.
+export function commentBody({ pr, issue, sha, kind, deployVerified = true, phase = 'verified', behindSwitch = false, heldByOther = false, openPrs = [] }) {
   const head = `${markerFor(pr, issue)}\nMerget via merge-køen: PR #${pr} som \`${shortSha(sha)}\` (${sha}).`;
-  const flips = shouldFlip(kind, behindSwitch || heldByOther);
-  const holdText = heldByOther
+  const openHold = openPrs === 'unknown' || (Array.isArray(openPrs) && openPrs.length > 0);
+  const flips = shouldFlip(kind, behindSwitch || heldByOther) && !openHold;
+  const openText = openPrs === 'unknown'
+    ? `PR'en ${kindLabel(kind)}; åbne PR'er på issuet kunne ikke afgøres, så labels er ikke ændret.`
+    : `PR'en ${kindLabel(kind)}; issuet har stadig åbne PR'er (${(openPrs || []).map((n) => `#${n}`).join(', ')}), så labels er ikke ændret.`;
+  const holdText = openHold ? openText : heldByOther
     ? `PR'en ${kindLabel(kind)}; en anden PR på issuet ligger bag slukket kontakt, så labels er ikke ændret.`
     : `PR'en ${kindLabel(kind)} og ligger bag slukket kontakt; labels er ikke ændret.`;
   if (phase === 'merged') {
@@ -222,10 +230,11 @@ export function runCloseOut({ train, repo = DEFAULT_REPO, dryRun = false, deploy
   for (const { refs, behindSwitch } of loaded) {
     if (behindSwitch) for (const ref of refs) if (ref.kind === 'refs') heldInTrain.add(ref.issue);
   }
+  const trainNumbers = new Set(train.map((e) => e.number));
   for (const { entry, refs, behindSwitch } of loaded) {
     if (!refs.length) say(`close-out PR #${entry.number}: ingen Refs/Closes-issues i PR-body.`);
     for (const ref of refs) {
-      try { closeOutIssue({ entry, ref, repo, dryRun, deployVerified, phase, behindSwitch, heldInTrain, gh, result, say }); }
+      try { closeOutIssue({ entry, ref, repo, dryRun, deployVerified, phase, behindSwitch, heldInTrain, trainNumbers, gh, result, say }); }
       catch (err) { result.errors.push(`#${ref.issue}: ${err?.message ?? err}`); }
     }
   }
@@ -238,16 +247,40 @@ function heldByEarlierPr(comments, issue) {
   return (comments ?? []).some((c) => c.body.includes(`${MARKER_PREFIX} pr=`) && c.body.includes(` issue=${issue} -->`) && c.body.includes('og ligger bag slukket kontakt'));
 }
 
-function closeOutIssue({ entry, ref, repo, dryRun, deployVerified, phase, behindSwitch = false, heldInTrain = new Set(), gh, result, say }) {
+const OPEN_PR_LIMIT = 100;
+const OPEN_HOLD_RE = /stadig åbne PR|åbne PR'er på issuet kunne ikke afgøres/;
+
+// #8222: andre AABNE PR'er der refererer issuet (Refs/Closes i body eller titel). Returnerer
+// sorteret nummerliste, eller 'unknown' naar soegningen fejler eller kan vaere ufuldstaendig (fail-safe: intet flip).
+export function findOtherOpenPrs(gh, repo, issue, excluded = new Set()) {
+  const res = gh(['pr', 'list', '--repo', repo, '--state', 'open', '--search', `#${issue} in:title,body`, '--json', 'number,title,body', '--limit', String(OPEN_PR_LIMIT)]);
+  const list = res.status === 0 ? parseJson(res.stdout) : undefined;
+  if (!Array.isArray(list) || list.length >= OPEN_PR_LIMIT) return 'unknown';
+  const hits = [];
+  for (const p of list) {
+    const n = Number(p?.number);
+    if (!Number.isSafeInteger(n) || excluded.has(n)) continue;
+    if (parseIssueRefs(`${p?.title ?? ''}\n${p?.body ?? ''}`, n).some((r) => r.issue === issue)) hits.push(n);
+  }
+  return hits.sort((a, b) => a - b);
+}
+
+function closeOutIssue({ entry, ref, repo, dryRun, deployVerified, phase, behindSwitch = false, heldInTrain = new Set(), trainNumbers = new Set(), gh, result, say }) {
   const pr = entry.number;
   const issue = ref.issue;
   const marker = markerFor(pr, issue);
   const comments = readComments(gh, repo, issue);
   const existing = comments?.find((c) => c.body.includes(marker));
   // Verificeret = sidste tilstand; 'merged' maa heller aldrig skrive oven i en afventende kommentar.
-  const upToDate = existing && (phase === 'merged' || isVerifiedComment(existing.body));
   const heldByOther = ref.kind === 'refs' && !behindSwitch && (heldInTrain.has(issue) || heldByEarlierPr(comments, issue));
-  const body = entry.sha ? commentBody({ pr, issue, sha: entry.sha, kind: ref.kind, deployVerified, phase, behindSwitch, heldByOther }) : null;
+  // #8222: Refs flipper kun uden andre aabne PR'er paa issuet. Closes er undtaget: GitHub lukker issuet alligevel.
+  const openPrs = phase === 'verified' && ref.kind === 'refs' && !behindSwitch && !heldByOther
+    ? findOtherOpenPrs(gh, repo, issue, trainNumbers)
+    : [];
+  // #8222: en verificeret kommentar fornyes, naar aabne-PR-udfaldet har aendret sig siden (genkoersel/recovery).
+  const openHold = openPrs === 'unknown' || openPrs.length > 0;
+  const upToDate = existing && (phase === 'merged' || (isVerifiedComment(existing.body) && OPEN_HOLD_RE.test(existing.body) === openHold));
+  const body = entry.sha ? commentBody({ pr, issue, sha: entry.sha, kind: ref.kind, deployVerified, phase, behindSwitch, heldByOther, openPrs }) : null;
   if (comments === null) {
     result.errors.push(`#${issue}: kommentarer kunne ikke laeses; SHA-kommentar springes over (ingen dublet-risiko)`);
   } else if (upToDate) {
@@ -271,6 +304,15 @@ function closeOutIssue({ entry, ref, repo, dryRun, deployVerified, phase, behind
   if (phase === 'merged') return;
   if (!shouldFlip(ref.kind, behindSwitch || heldByOther)) {
     say(`close-out #${issue}: ${heldByOther ? `en anden PR på issuet (ikke PR #${pr})` : `PR #${pr}`} ligger bag slukket kontakt; claude:todo beholdes.`);
+    return;
+  }
+  if (openPrs === 'unknown') {
+    result.errors.push(`#${issue}: åbne PR'er kunne ikke afgøres; intet flip`);
+    say(`close-out #${issue}: åbne PR'er kunne ikke afgøres; claude:todo beholdes.`);
+    return;
+  }
+  if (openPrs.length) {
+    say(`close-out #${issue}: issuet har andre åbne PR'er (${openPrs.map((n) => `#${n}`).join(', ')}); claude:todo beholdes.`);
     return;
   }
   const view = gh(['issue', 'view', String(issue), '--repo', repo, '--json', 'labels']);
@@ -298,7 +340,7 @@ function argValue(argv, name) {
   return i >= 0 ? argv[i + 1] : undefined;
 }
 
-export function main(argv = process.argv.slice(2), { gh = defaultGh, out = (l) => process.stdout.write(`${l}\n`), now = new Date() } = {}) {
+export function main(argv = process.argv.slice(2), { gh = defaultGh, out = (l) => process.stdout.write(`${l}\n`), now = new Date(), numberPatchNotes = null } = {}) {
   if (argv[0] !== 'run' && argv[0] !== 'merged') { out('Brug: node scripts/merge-queue-closeout.mjs run|merged --train <json> [--repo owner/name] [--dry-run]'); return 1; }
   const phase = argv[0] === 'merged' ? 'merged' : 'verified';
   const train = parseJson(argValue(argv, '--train') ?? '');
@@ -309,12 +351,18 @@ export function main(argv = process.argv.slice(2), { gh = defaultGh, out = (l) =
   const result = runCloseOut({ train, repo, dryRun, deployVerified, phase, gh, now, log: out });
   for (const err of result.errors) out(`close-out ADVARSEL: ${err}`);
   if (result.nowLine) out(`NOW-LINJE (commit selv i docs/NOW.md ved close-out): ${result.nowLine}`);
+  // #8346: kun efter et verificeret tog faar ventende patch notes nummer + dato (eet chore-commit paa main). Fail-soft.
+  // Laves et commit, skrives maskinlinjen `PATCH-NOTES-SHA: <sha>` uaendret videre: merge-queue.ps1
+  // laeser den og kraever main-CI + deploy-verifikation af commit'et, foer close-out er faerdig (Codex P1, PR #8353).
+  if (phase === 'verified' && numberPatchNotes) {
+    try { for (const line of numberPatchNotes({ repo, dryRun })) out(line); } catch (err) { out(`close-out ADVARSEL: patch notes-nummerering: ${err?.message ?? err}`); }
+  }
   out(`close-out ${dryRun ? '[dry-run] ' : ''}${phase === 'merged' ? '(straks efter merge) ' : ''}faerdig: ${result.comments.length} kommentar(er), ${result.updatedComments.length} opdateret, ${result.skippedComments.length} fandtes allerede, ${result.flips.length} flip, ${result.errors.length} advarsel(er).`);
   return 0;
 }
 
 if (process.argv[1]?.endsWith('merge-queue-closeout.mjs')) {
   let code = 0;
-  try { code = main(); } catch (err) { process.stdout.write(`close-out ADVARSEL: uventet fejl: ${err?.message ?? err}\n`); code = 0; }
+  try { code = main(process.argv.slice(2), { numberPatchNotes: numberPendingOnMain }); } catch (err) { process.stdout.write(`close-out ADVARSEL: uventet fejl: ${err?.message ?? err}\n`); code = 0; }
   process.exitCode = code;
 }

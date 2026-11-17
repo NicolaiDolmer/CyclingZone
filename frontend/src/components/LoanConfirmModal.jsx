@@ -11,6 +11,7 @@ import { Trans, useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
 import { AlertTriangleIcon } from "./ui";
 import { useModalA11y } from "../hooks/useModalA11y.js";
+import { buttonClass } from "./ui/buttonStyles.js";
 
 export function LoanConfirmModal({
   show,
@@ -77,8 +78,7 @@ export function LoanConfirmModal({
             type="button"
             onClick={onConfirm}
             disabled={busy}
-            className="flex-1 px-4 py-2.5 rounded-cz text-sm font-bold
-              bg-cz-accent text-cz-on-accent hover:brightness-110 transition-all disabled:opacity-60"
+            className={`${buttonClass({ variant: "primary" })} flex-1`}
           >
             {busy ? t("finance:loans.take.processing") : t("finance:loans.confirmModal.confirm")}
           </button>
