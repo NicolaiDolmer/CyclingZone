@@ -4,11 +4,11 @@
       "results": "Uitslagen",
       "stage": "Etappe",
       "story": "Verhaal",
-      "standings": "Klassementen",
       "tactics": "Tactiek",
       "team": "Ploeg",
       "start": "Startlijst"
     },
+    "mode": { "aria": "Etappeweergave", "story": "Verhaal · film en verslag", "results": "Uitslagen · volledige lijst" },
     "hero": {
       "stageLocks": "Etappe {number} sluit om {time} · {countdown}",
       "locks": "Sluit om {time} · {countdown}",
@@ -27,6 +27,7 @@
       "aria": "Parcours van de etappe",
       "km": "{km} km",
       "gain": "{gain} m klimmen",
+      "elevation": "{gain} m",
       "climbs": "{count, plural, one {# klim} other {# klimmen}}",
       "hide": "Parcours verbergen",
       "show": "Parcours tonen",
