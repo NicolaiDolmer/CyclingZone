@@ -57,6 +57,19 @@ const ALL_PROJECTS = [
 // projekter. Divergensen mellem de to var selve fejlen i #3429.
 const PROJECTS = ALL_PROJECTS;
 
+// #8348: pixel-baselines (toHaveScreenshot) laves og sammenlignes KUN i den
+// laaste Linux-container (samme Playwright-image hver gang, pinnet paa digest i
+// playwright-smoke.yml og update-snapshots.yml). Foer var de win32 og kunne kun
+// fornyes paa een maskine. Skrifttyper og font-rendering er forskellige paa
+// tvaers af OS og distro, saa en sammenligning uden for containeren ville give
+// falske roede (eller skrive nye *-win32/-linux-filer). Uden for containeren
+// springes snapshot-assertions derfor over; resten af hver test koerer uaendret.
+// Fornyelse: label "opdater snapshots" paa PR'en (docs/GITHUB_WORKFLOW.md).
+export const SNAPSHOT_BASELINE_ENV = "PW_SNAPSHOT_BASELINE";
+export const SNAPSHOT_BASELINE_VALUE = "linux-container";
+const COMPARE_SNAPSHOTS =
+  process.platform === "linux" && process.env[SNAPSHOT_BASELINE_ENV] === SNAPSHOT_BASELINE_VALUE;
+
 /**
  * Antal parallelle workers. Playwright tager enten et tal eller en
  * procent-streng ("50%" = halvdelen af kernerne), og PW_WORKERS skal kunne
@@ -100,6 +113,8 @@ export default defineConfig({
   // expect-timeouten i #2960: en aegte broken flade dukker ikke op ved 60s, saa
   // graensen skjuler ingen regressioner. Lokalt beholdes Playwright-defaulten.
   timeout: process.env.CI ? 60000 : 30000,
+  // #8348: se COMPARE_SNAPSHOTS ovenfor.
+  ignoreSnapshots: !COMPARE_SNAPSHOTS,
   // json-reporteren er inputtet til scripts/extract-e2e-flakes.mjs: den er den
   // eneste rapport der eksplicit maerker en test der fejlede foerst og bestod
   // ved retry som "flaky" (#4292's klasse). html-rapporten viser det for et

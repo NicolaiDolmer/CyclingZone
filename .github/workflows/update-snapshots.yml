@@ -1,0 +1,303 @@
+name: Update snapshots
+
+# #8348: forny Playwright-pixel-baselines (toHaveScreenshot) fra den LAASTE
+# Linux-container, saa ingen bestemt maskine skal til for at forny dem.
+#
+# Brug: saet labelen "opdater snapshots" paa en PR. Workflowet
+#   1. koerer de specs der indeholder toHaveScreenshot( med
+#      --update-snapshots=changed, een lane pr. Playwright-projekt, i PRAECIS
+#      samme image som e2e-shard i playwright-smoke.yml (tag + digest),
+#   2. committer KUN aendrede/nye `*-linux.png` under
+#      frontend/tests/e2e/<spec>-snapshots/ til PR'ens EGEN branch,
+#   3. fjerner labelen igen og skriver en kommentar med resultatet.
+# Rutinen staar i docs/GITHUB_WORKFLOW.md.
+#
+# Graenser (issue #8348):
+#   - Kun same-repo-PR'er. Fork-PR'er springes over (`if` paa begge jobs); de
+#     faar hverken skrive-token eller secrets af GitHub, og jobbet skal heller
+#     ikke proeve.
+#   - `generate` koerer PR'ens kode (npm ci, build, tests) og har derfor kun
+#     `contents: read` og ingen secrets. `commit` koerer INGEN PR-kode: den
+#     kopierer kun billedfiler fra artefaktet, afviser enhver anden sti og
+#     tjekker at det stagede diff kun er snapshot-filer foer push.
+#   - Pushet sker kun hvis branchens spids stadig er den SHA der blev
+#     renderet; ellers springes det over med en kommentar (saet labelen igen).
+#   - Push med AUTO_MERGE_PAT, saa CI koerer paa det nye commit (et push med
+#     GITHUB_TOKEN starter ingen workflows, GitHubs anti-loop-vaern). Mangler
+#     PAT'en, pushes med GITHUB_TOKEN og kommentaren siger hvordan CI startes.
+#
+# Required check-navne: ingen af disse jobs er required, og intet required job
+# er omdoebt (scripts/ci-required-checks.json).
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+# Labelnavnet er med i gruppen: en ANDEN label paa samme PR (fx fra
+# auto-merge/review-gate) starter ogsaa dette workflow (jobs skippes), og maa
+# ikke annullere en igangvaerende snapshot-koersel.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}-${{ github.event.label.name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  generate:
+    if: github.event.label.name == 'opdater snapshots' && github.event.pull_request.head.repo.full_name == github.repository
+    name: generate (${{ matrix.project }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # SKAL vaere identisk med e2e-shard i playwright-smoke.yml
+    # (frontend/tests/e2e/snapshot-baseline.test.js haandhaever det).
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.0-noble@sha256:9beb546099e11f52d62e505537914870e01a67e0e6b00ae41da4775324e73dbe
+      options: --ipc=host
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [desktop-chromium, mobile-chromium, mobile-webkit]
+    permissions:
+      contents: read
+    env:
+      PW_SNAPSHOT_BASELINE: linux-container
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Check out PR head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      # Samme build-env som e2e-shard i playwright-smoke.yml.
+      - name: Build frontend (e2e)
+        run: npm run build
+        env:
+          VITE_E2E: "1"
+          VITE_API_URL: http://127.0.0.1:4173
+          VITE_SUPABASE_URL: https://cycling-zone-e2e.supabase.co
+          VITE_SUPABASE_ANON_KEY: e2e-anon-key
+          VITE_PUBLIC_APP_URL: http://127.0.0.1:4173
+
+      # Kun specs der faktisk tager pixel-baselines (hele suiten ville tage
+      # en time pr. projekt). `changed` skriver ogsaa manglende baselines.
+      # @flaky-tests koeres med vilje: en karantaeneret test skal stadig kunne
+      # faa sin baseline fornyet.
+      - name: Regenerate snapshots
+        id: regen
+        shell: bash
+        timeout-minutes: 25
+        env:
+          PW_PROJECT: ${{ matrix.project }}
+        run: |
+          set -uo pipefail
+          mapfile -t specs < <(grep -rlE 'toHaveScreenshot\(' tests/e2e --include='*.spec.js' --include='*.spec.ts' | sort)
+          if [ "${#specs[@]}" -eq 0 ]; then
+            echo "::error::Fandt ingen specs med toHaveScreenshot( - intet at forny."
+            echo "status=no-specs" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          printf 'Spec: %s\n' "${specs[@]}"
+          npx playwright test "${specs[@]}" --project="$PW_PROJECT" --update-snapshots=changed
+          status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Write lane status
+        if: always()
+        shell: bash
+        env:
+          PW_PROJECT: ${{ matrix.project }}
+          REGEN_STATUS: ${{ steps.regen.outputs.status }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/snapshot-status"
+          echo "${REGEN_STATUS:-ukendt}" > "$RUNNER_TEMP/snapshot-status/$PW_PROJECT.txt"
+
+      # Kun dette projekts baselines, eet niveau under tests/e2e. Artefaktets
+      # rod bliver dermed frontend/tests/e2e/, og commit-jobbet kan validere
+      # hver sti mod et stramt moenster.
+      - name: Upload snapshots
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: snapshots-${{ matrix.project }}
+          path: frontend/tests/e2e/*-snapshots/*-${{ matrix.project }}-linux.png
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload lane status
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: snapshot-status-${{ matrix.project }}
+          path: ${{ runner.temp }}/snapshot-status/
+          retention-days: 7
+
+      - name: Upload Playwright report
+        if: steps.regen.outputs.status != '0'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: playwright-report-${{ matrix.project }}
+          path: frontend/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  commit:
+    needs: generate
+    if: always() && github.event.label.name == 'opdater snapshots' && github.event.pull_request.head.repo.full_name == github.repository && needs.generate.result != 'skipped' && needs.generate.result != 'cancelled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # kun fallback-push med GITHUB_TOKEN naar AUTO_MERGE_PAT mangler
+      pull-requests: write # fjerne labelen + resultat-kommentar
+    env:
+      REPO: ${{ github.repository }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      HEAD_REF: ${{ github.event.pull_request.head.ref }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      # Ingen PR-kode koeres i dette job; checkout er kun git-tilstanden der
+      # committes ovenpaa. Credentials gemmes ikke i .git/config (#5441); pushet
+      # nedenfor saetter tokenet kun for det ene kald.
+      - name: Check out PR head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Download snapshots
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          pattern: snapshots-*
+          path: ${{ runner.temp }}/snapshots
+          merge-multiple: true
+
+      - name: Download lane status
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          pattern: snapshot-status-*
+          path: ${{ runner.temp }}/snapshot-status
+          merge-multiple: true
+
+      # Kun snapshot-filer: hver sti i artefaktet skal vaere
+      # <spec>-snapshots/<navn>-linux.png (eet niveau, ingen `..`, ingen
+      # symlinks). Alt andet stopper jobbet foer noget kopieres videre.
+      - name: Copy snapshot files into the tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          src="$RUNNER_TEMP/snapshots"
+          copied=0
+          if [ -d "$src" ]; then
+            if [ -n "$(find "$src" ! -type f ! -type d -print -quit)" ]; then
+              echo "::error::Artefaktet indeholder andet end almindelige filer."
+              exit 1
+            fi
+            while IFS= read -r -d '' file; do
+              rel="${file#"$src"/}"
+              if [[ ! "$rel" =~ ^[A-Za-z0-9_.-]+-snapshots/[A-Za-z0-9_.-]+-linux\.png$ ]]; then
+                echo "::error::Uventet sti i artefaktet: $rel"
+                exit 1
+              fi
+              mkdir -p "frontend/tests/e2e/${rel%/*}"
+              cp -- "$file" "frontend/tests/e2e/$rel"
+              copied=$((copied + 1))
+            done < <(find "$src" -type f -print0)
+          fi
+          echo "Kopierede $copied snapshot-filer."
+
+      - name: Commit and push snapshot changes
+        id: push
+        shell: bash
+        env:
+          PUSH_TOKEN: ${{ secrets.AUTO_MERGE_PAT || secrets.GITHUB_TOKEN }}
+          HAS_PAT: ${{ secrets.AUTO_MERGE_PAT != '' }}
+        run: |
+          set -euo pipefail
+          git add -- 'frontend/tests/e2e/*-snapshots/*-linux.png'
+          staged=$(git diff --cached --name-only)
+          if [ -z "$staged" ]; then
+            echo "result=unchanged" >> "$GITHUB_OUTPUT"
+            echo "Ingen snapshot-aendringer."
+            exit 0
+          fi
+          bad=$(printf '%s\n' "$staged" | grep -vE '^frontend/tests/e2e/[A-Za-z0-9_.-]+-snapshots/[A-Za-z0-9_.-]+-linux\.png$' || true)
+          if [ -n "$bad" ]; then
+            echo "::error::Stagede filer uden for snapshot-moensteret:"
+            printf '%s\n' "$bad"
+            exit 1
+          fi
+          tip=$(git ls-remote origin "refs/heads/$HEAD_REF" | cut -f1)
+          if [ "$tip" != "$HEAD_SHA" ]; then
+            echo "result=moved" >> "$GITHUB_OUTPUT"
+            echo "::warning::Branchen er flyttet ($tip) siden $HEAD_SHA blev renderet. Intet pushet."
+            exit 0
+          fi
+          printf '%s\n' "$staged" > "$RUNNER_TEMP/staged.txt"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -q -m "test(e2e): opdater snapshots fra Linux-containeren" -m "Label \"opdater snapshots\" paa #$PR_NUMBER. Run: $RUN_URL"
+          auth=$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)
+          echo "::add-mask::$auth"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push origin "HEAD:refs/heads/$HEAD_REF"
+          echo "result=pushed" >> "$GITHUB_OUTPUT"
+          echo "has_pat=$HAS_PAT" >> "$GITHUB_OUTPUT"
+
+      - name: Report on PR and remove label
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RESULT: ${{ steps.push.outputs.result }}
+          HAS_PAT: ${{ steps.push.outputs.has_pat }}
+          GENERATE_RESULT: ${{ needs.generate.result }}
+        run: |
+          set -uo pipefail
+          {
+            echo "**Opdater snapshots** ([run]($RUN_URL))"
+            echo
+            for p in desktop-chromium mobile-chromium mobile-webkit; do
+              s=$(cat "$RUNNER_TEMP/snapshot-status/$p.txt" 2>/dev/null || echo "mangler")
+              if [ "$s" = "0" ]; then echo "- \`$p\`: groen"; else echo "- \`$p\`: tests fejlede eller koerte ikke (status $s) - se \`playwright-report-$p\` i runnet"; fi
+            done
+            echo
+            case "${RESULT:-}" in
+              pushed)
+                echo "Committet til \`$HEAD_REF\` ($(wc -l < "$RUNNER_TEMP/staged.txt") filer):"
+                echo
+                sed 's/^/- `/; s/$/`/' "$RUNNER_TEMP/staged.txt"
+                if [ "${HAS_PAT:-}" != "true" ]; then
+                  echo
+                  echo "\`AUTO_MERGE_PAT\` mangler, saa pushet skete med \`GITHUB_TOKEN\`, og CI starter ikke af sig selv. Luk og genaabn PR'en for at starte CI."
+                fi
+                ;;
+              unchanged) echo "Ingen snapshot-aendringer at committe (alle producerede baselines matcher de committede)." ;;
+              moved) echo "Branchen fik et nyt push undervejs, saa intet blev committet. Saet labelen igen." ;;
+              *) echo "Intet blev committet (generate: $GENERATE_RESULT). Se runnet." ;;
+            esac
+            echo
+            echo "Kig billederne igennem i PR'ens filvisning foer merge: en fornyet baseline er en godkendt UI-aendring."
+          } > "$RUNNER_TEMP/comment.md"
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file "$RUNNER_TEMP/comment.md" || echo "::warning::Kunne ikke kommentere paa PR'en."
+          gh pr edit "$PR_NUMBER" --repo "$REPO" --remove-label "opdater snapshots" || echo "::warning::Kunne ikke fjerne labelen."
+          for p in desktop-chromium mobile-chromium mobile-webkit; do
+            s=$(cat "$RUNNER_TEMP/snapshot-status/$p.txt" 2>/dev/null || echo "mangler")
+            if [ "$s" != "0" ]; then
+              echo "::error::Lane $p endte med status $s."
+              exit 1
+            fi
+          done
