@@ -1175,7 +1175,13 @@ Kun visning; motoren, resultaterne og taktikkens gemning er uændrede. Beslutnin
 - *Intet hop fra den gamle side.* Den sidst kendte værdi af kontakten huskes i browseren med kontoens id (`cz_race_page_v6_last`) og bruges til første billede; serverens svar vinder bagefter. Er den indloggede konto en anden end den, der gemte værdien, slukkes v6, så snart sessionen er læst lokalt. Uden husket værdi tegnes den gamle side straks, så en spiller uden kontakten aldrig venter. Et ukendt svar (fejl) slukker uden at overskrive det huskede.
 - *Bredden.* Hovedkortet (med striben) og fanerne står på den brede side; kun Resultater for en etape bruger bredden. Etape/Historie, Stillinger, Taktik, Hold og endagsløbets resultat står på `max-w-5xl`, som de er bygget til.
 
-Ikke bygget her (egne trin): startliste, Hold der følger valgt etape, Taktik trin 2b/2c, Historie som én afspiller.
+Ikke bygget her (egne trin): Taktik trin 2b/2c, Historie som én afspiller.
+
+**Startliste, Hold pr. etape og Resultaternes nye dele (#7862, samme slukkede kontakt; afløser fanerækkefølgen og "intet nationsfilter" ovenfor).** Kun visning; motoren og gemningen er uændrede.
+- *Fanerne* er nu Resultater, Etape (Historie), Stillinger, Startliste, Taktik, Hold (`RACE_PAGE_V6_TABS`; endagsløb uden Stillinger). Etapestriben vælger sidens etape på Resultater, Etape og Hold (`STAGE_SCOPED_TABS`); på Stillinger og Startliste åbner et klik etapen på dens egen fane (`v6StageTabFor`), på Taktik styrer den editoren.
+- *Startliste* (`V6StartList`, regler i `v6StartListModel.ts`): til venstre favoritter pr. klassement (Samlet/Point/Bjerg/Ungdom) med resultatlinjen under navnet, kun ud fra løbets offentlige stilling, aldrig form, træthed, rutematch eller andre holds roller, og ingen stjerner. Til højre hele feltet pr. hold med rygnumre (holdene efter navn, rytterne efter efternavn, ti numre pr. hold, ens for alle seere), flag, U25, ryttertype og rating, med søgning (rytter, hold, nation), Mit hold og nationsfilter. Hold, der har meldt fra, står ikke på listen. Feltet vises, når løbet starter inden for horisonten.
+- *Hold pr. etape:* fanens egen stribe udgår; profilen og overskriften ("Hold · Etape N") følger den valgte etape, og under løbet viser rollekolonnen etapens rolle. Efter løbet er fanen uændret historikken etape for etape.
+- *Resultater:* nationsfilter ved siden af søgning og Mit hold (søgningen matcher også nationens navn), "Sprints & climbs" er et klassementvalg i stedet for en liste under tavlen, alle kolonner har overskrift, hele listen står i tabellens egen rullende boks, og trøjekortet "Trøjer efter etapen" står i højre kolonne under "Din dag" (trøjens navn som tekst, bæreren, holdet og holdklassementets fører).
 
 ## Spoiler-skjoldet (#7859, bygget bag slukket kontakt)
 
