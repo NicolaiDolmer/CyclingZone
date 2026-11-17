@@ -127,8 +127,12 @@ function sleepSync(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
-function lockAgeMs(lock) {
-  try { return Date.now() - statSync(lock).mtimeMs; } catch { return null; }
+// Laasens alder maales mod et injicerbart ur (AGENTS.md regel 16): tests saetter
+// fixturernes mtime ud fra samme ur, saa et fremskudt test-ur ikke goer en frisk laas stale.
+const wallClock = () => Date.now();
+
+function lockAgeMs(lock, clock = wallClock) {
+  try { return clock() - statSync(lock).mtimeMs; } catch { return null; }
 }
 
 /**
@@ -137,14 +141,14 @@ function lockAgeMs(lock) {
  * begge saa den gamle laas, kan derfor ikke slette en afloeser. En efterladt .recover
  * (proces draebt midt i oprydningen) ryddes ikke automatisk: acquire fejler lukket.
  */
-function recoverStaleLock(lock) {
+function recoverStaleLock(lock, clock = wallClock) {
   const guard = `${lock}.recover`;
   try { mkdirSync(guard); } catch (err) {
     if (err?.code === 'EEXIST') return;
     throw err;
   }
   try {
-    const age = lockAgeMs(lock);
+    const age = lockAgeMs(lock, clock);
     if (age !== null && age > LOCK_STALE_MS) rmSync(lock, { recursive: true, force: true });
   } finally { rmSync(guard, { recursive: true, force: true }); }
 }
@@ -154,8 +158,10 @@ function recoverStaleLock(lock) {
  * proces ad gangen, saa laes-og-skriv inde i fn er atomisk i forhold til andre
  * `acquire`-kald. Laasen baerer et ejer-token og fjernes kun af sin ejer.
  * Kaster, hvis laasen ikke kan tages inden timeoutMs (kalderen fejler lukket).
+ * clock (ms) er uret, laasens alder maales mod (default vaeg-uret); ventefristen er
+ * en varighed og maales fortsat med Date.now(), saa en forskudt klokke ikke flytter den.
  */
-export function withFileLock(file, fn, { timeoutMs = 10_000, sleep = sleepSync } = {}) {
+export function withFileLock(file, fn, { timeoutMs = 10_000, sleep = sleepSync, clock = wallClock } = {}) {
   const lock = `${file}.lock`;
   const token = `${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   mkdirSync(dirname(file), { recursive: true });
@@ -163,11 +169,11 @@ export function withFileLock(file, fn, { timeoutMs = 10_000, sleep = sleepSync }
   for (;;) {
     try { mkdirSync(lock); break; } catch (err) {
       if (err?.code !== 'EEXIST') throw err;
-      const age = lockAgeMs(lock);
+      const age = lockAgeMs(lock, clock);
       if (age === null) continue;
       if (age > LOCK_STALE_MS) {
-        recoverStaleLock(lock);
-        if (lockAgeMs(lock) === null) continue;
+        recoverStaleLock(lock, clock);
+        if (lockAgeMs(lock, clock) === null) continue;
       }
       if (Date.now() >= deadline) throw new Error(`markoer-laasen ${lock} er optaget (efterladt? slet mappen, naar ingen koe koerer)`);
       sleep(20 + Math.floor(Math.random() * 30));

@@ -13,6 +13,9 @@ const SHA_A = 'a'.repeat(40);
 const SHA_B = 'b'.repeat(40);
 // Fast ur i alle tests (AGENTS.md: deterministiske tests, intet vaeg-ur).
 const NOW = new Date('2026-11-04T12:00:00Z');
+// Laase-uret er ogsaa injiceret (Codex P1): fixturernes mtime saettes ud fra det, saa et
+// fremskudt test-ur (CZ_TEST_CLOCK_OFFSET_DAYS) ikke faar en frisk laas til at se efterladt ud.
+const lockClock = () => NOW.getTime();
 const alive = () => true;
 const dead = () => false;
 
@@ -144,13 +147,14 @@ test('CLI acquire: exit 0 = ours, 3 = another live queue, 4 = no proven ownershi
     assert.match(out.at(-1), /pid 11.*5,6/);
     assert.equal(main(['acquire', '--prs', '7'], opts), ACQUIRE_EXIT.ERROR, 'missing --pid fails closed');
     mkdirSync(`${t.file}.lock`);
-    assert.equal(main(['acquire', '--pid', '12'], { ...opts, isAlive: dead, lockOpts: { timeoutMs: 50, sleep: () => {} } }), ACQUIRE_EXIT.ERROR, 'a held lock fails closed');
+    utimesSync(`${t.file}.lock`, NOW, NOW);
+    assert.equal(main(['acquire', '--pid', '12'], { ...opts, isAlive: dead, lockOpts: { timeoutMs: 50, sleep: () => {}, clock: lockClock } }), ACQUIRE_EXIT.ERROR, 'a held lock fails closed');
     assert.equal(readMarkerFile(t.file).pid, 11);
   } finally { t.cleanup(); }
 });
 
 function ageDir(dir) {
-  const old = new Date(Date.now() - LOCK_STALE_MS - 5_000);
+  const old = new Date(lockClock() - LOCK_STALE_MS - 5_000);
   utimesSync(dir, old, old);
 }
 
@@ -159,7 +163,7 @@ test('withFileLock clears a lock left by a killed process and only ever removes 
   try {
     mkdirSync(`${t.file}.lock`, { recursive: true });
     ageDir(`${t.file}.lock`);
-    assert.equal(withFileLock(t.file, () => 'ran', { timeoutMs: 1_000 }), 'ran');
+    assert.equal(withFileLock(t.file, () => 'ran', { timeoutMs: 1_000, clock: lockClock }), 'ran');
     assert.throws(() => withFileLock(t.file, () => { throw new Error('boom'); }), /boom/);
     assert.equal(existsSync(`${t.file}.lock`), false);
     // En laas der under fn blev overtaget af en anden (token skiftet), fjernes ikke.
@@ -175,14 +179,16 @@ test('a recovery left by a killed process fails closed (no endless wait, no doub
     ageDir(`${t.file}.lock`);
     mkdirSync(`${t.file}.lock.recover`);
     let ran = false;
-    assert.throws(() => withFileLock(t.file, () => { ran = true; }, { timeoutMs: 50, sleep: () => {} }), /optaget/);
+    assert.throws(() => withFileLock(t.file, () => { ran = true; }, { timeoutMs: 50, sleep: () => {}, clock: lockClock }), /optaget/);
     assert.equal(ran, false);
   } finally { t.cleanup(); }
 });
 
 // Hver "koe" er sin egen proces, der lever under hele kapploebet (som pwsh-koeen).
 // Ingen vaeg-ur-vinduer (AGENTS.md): faelles injiceret tid, og testen styrer
-// start og slut med filer, saa vinderen lever, til alle har svaret.
+// start og slut med filer, saa vinderen lever, til alle har svaret. Laase-uret er
+// RACE_NOW: den efterladte laas er aeldet ud fra det, og en frisk laas (mtime = filsystemets
+// tid, efter RACE_NOW) er aldrig stale, uanset om processen koerer med fremskudt ur.
 const RACE_CHILD = `const { existsSync } = await import('node:fs');
 const { main } = await import(process.env.RACE_MODULE);
 const pause = () => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2);
@@ -190,7 +196,8 @@ const giveUp = () => { process.stdout.write('TIMEOUT\\n'); process.exit(9); };
 let spins = 0;
 process.stdout.write('READY\\n');
 while (!existsSync(process.env.RACE_GO)) { pause(); if (++spins > 30000) giveUp(); }
-const code = main(['acquire', '--pid', String(process.pid), '--prs', '1'], { now: new Date(process.env.RACE_NOW), out: () => {} });
+const raceNow = new Date(process.env.RACE_NOW);
+const code = main(['acquire', '--pid', String(process.pid), '--prs', '1'], { now: raceNow, out: () => {}, lockOpts: { clock: () => raceNow.getTime() } });
 process.stdout.write('CODE=' + code + '\\n');
 spins = 0;
 while (!existsSync(process.env.RACE_RELEASE)) { pause(); if (++spins > 30000) giveUp(); }`;
