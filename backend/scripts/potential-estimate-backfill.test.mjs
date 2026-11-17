@@ -4,7 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  BACKFILL_TRIGGER, PUBLIC_VIEW_KEYS, evaluateEstimateGates, isPrivateOutDir, parseArgs, resolveBackfillConfig,
+  BACKFILL_TRIGGER, PUBLIC_VIEW_KEYS, blockingGates, evaluateEstimateGates, isPrivateOutDir, parseArgs, resolveBackfillConfig,
   runPotentialEstimateBackfill,
 } from "./potential-estimate-backfill.mjs";
 import { POTENTIAL_ESTIMATE_PARAMS_KEY, POTENTIAL_ESTIMATES_TABLE } from "../lib/potentialEstimateWriter.js";
@@ -243,7 +243,11 @@ test("evaluateEstimateGates: private grænser dømmer, og en søndag der ville s
   assert.equal(pooled.h6.poolRatio, 2);
   assert.equal(pooled.h6.status, "green");
   assert.equal(evaluateEstimateGates(rows, { params: PARAMS, limits: { h6: { poolMinRatio: 3 } } }).h6.status, "red");
-  assert.equal(evaluateEstimateGates([], { params: PARAMS }).h3.status, "green");
+  const empty = evaluateEstimateGates([], { params: PARAMS, limits: { h1: { sure: { p90Max: 3 } } } });
+  assert.deepEqual(["h1", "h2", "h3", "h4", "h6"].map((key) => empty[key].status), Array(5).fill("no_data"), "en tom kørsel er aldrig grøn");
+  assert.deepEqual(blockingGates(empty), ["h1", "h2", "h3", "h4", "h6"]);
+  assert.deepEqual(blockingGates(strict), ["h1"]);
+  assert.deepEqual(blockingGates(loose), []);
 });
 
 test("H4: den offentlige visning har kun de tilladte felter", () => {

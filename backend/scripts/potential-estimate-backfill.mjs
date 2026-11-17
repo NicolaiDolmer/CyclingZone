@@ -254,12 +254,20 @@ export function evaluateEstimateGates(rows, { params, limits = null, h2Writes = 
     status: status(h6Pass, h6HasLimit),
   };
 
-  return {
+  const gates = {
     h1: { byWord: h1, status: status(h1Pass, h1HasLimit) },
     h2, h3, h4,
     h5: { status: "covered_by_tests", note: "potentialEstimateRead.test.js" },
     h6,
   };
+  // Uden en eneste række er intet målt: en tom kørsel må aldrig se grøn ud.
+  if (!list.length) for (const key of ["h1", "h2", "h3", "h4", "h6"]) gates[key].status = "no_data";
+  return gates;
+}
+
+/** Gater, der stopper tændingen: røde eller umålte. */
+export function blockingGates(gates) {
+  return Object.entries(gates ?? {}).filter(([, gate]) => gate.status === "red" || gate.status === "no_data").map(([key]) => key);
 }
 
 // ---------------------------------------------------------------------------
@@ -407,6 +415,16 @@ async function main() {
     const file = join(args.out, `potential-estimate-backfill-${report.computedAt.replace(/[:.]/g, "-")}.json`);
     writeFileSync(file, JSON.stringify({ ...summary, byCertainty, gates, rows }, null, 2));
     console.log(`Privat rapport: ${file}`);
+  }
+  // Et fejlet hold eller en rød/umålt gate er ikke en grøn kørsel: exit-koden siger det.
+  if (report.failedTeams > 0) {
+    console.error(`${report.failedTeams} hold fejlede (${report.firstError}). Kør igen; kørslen er idempotent.`);
+    process.exit(1);
+  }
+  const blocking = blockingGates(gates);
+  if (blocking.length) {
+    console.error(`Gater der stopper tændingen: ${blocking.map((key) => key.toUpperCase()).join(", ")}`);
+    process.exit(3);
   }
 }
 
