@@ -7,6 +7,8 @@ import { useV6TacticsSummary } from "../race/v6/v6TacticsSaved.ts";
 import TacticsRiderTable, { type TacticsRiderRow } from "./TacticsRiderTable.tsx";
 import { ExtraChip, LevelSegmented, PartPicker, RoleButton } from "./TacticsControls.tsx";
 import EffortSegmented from "./EffortSegmented.tsx";
+import RiderChampionJersey from "../rider/ChampionJersey.tsx";
+import RiderTalentMark from "../rider/TalentMark.tsx";
 import type { DayLoad, EffortLevel, RoutePartLabel, TodayLine } from "./tacticsV6cModel.ts";
 import type { StagePlanTask } from "../race/StagePlanModel.ts";
 import { taskCostWord, type TaskCostWord } from "../race/tacticsReady7864.ts";
@@ -42,6 +44,8 @@ export interface BoardRider {
   extras: Array<{ key: "tryBreak" | "sprintTrain"; on: boolean; disabled: boolean; reason: string | null }>;
   lock: { on: boolean; disabled: boolean } | null;
   dayLoad: DayLoad | null;
+  /** Rytteren har sit eget valg: "Follow team plan" i ordrerne sender ham tilbage. */
+  canFollowTeam: boolean;
 }
 
 export interface TacticsBoardV6cProps {
@@ -60,6 +64,7 @@ export interface TacticsBoardV6cProps {
   onStep: (id: string, step: string) => void;
   onExtra: (id: string, key: "tryBreak" | "sprintTrain") => void;
   onLock: (id: string) => void;
+  onFollowTeam: (id: string) => void;
 }
 
 const shortName = (name: string | null) => {
@@ -68,7 +73,7 @@ const shortName = (name: string | null) => {
   return parts.length > 1 ? `${parts[0][0]}. ${parts.slice(1).join(" ")}` : name;
 };
 
-export default function TacticsBoardV6c({ riders, partLabels, allOrders, summary, taskLabel, costLabel, onRole, onLevel, onPart, onStep, onExtra, onLock }: TacticsBoardV6cProps) {
+export default function TacticsBoardV6c({ riders, partLabels, allOrders, summary, taskLabel, costLabel, onRole, onLevel, onPart, onStep, onExtra, onLock, onFollowTeam }: TacticsBoardV6cProps) {
   const { t } = useTranslation("tactics") as unknown as { t: TFn };
   const report = useV6TacticsSummary();
   const summaryStage = summary?.stage ?? null;
@@ -107,6 +112,7 @@ export default function TacticsBoardV6c({ riders, partLabels, allOrders, summary
       name: r.name,
       shortName: shortName(r.name),
       nation: r.nation,
+      marks: <><RiderChampionJersey riderId={r.id} /><RiderTalentMark riderId={r.id} /></>,
       abandoned: r.abandoned,
       roleLabel: r.roleLabel,
       roleButton: <RoleButton label={r.roleLabel} open={r.roleOpen} disabled={!r.roleEditable} ariaLabel={r.roleLabel} onClick={() => onRole(r.id)} />,
@@ -137,8 +143,13 @@ export default function TacticsBoardV6c({ riders, partLabels, allOrders, summary
           ),
         };
       }) ?? null,
-      extra: r.extras.length ? (
+      extra: r.extras.length || r.canFollowTeam ? (
         <>
+          {r.canFollowTeam && (
+            <button type="button" onClick={() => onFollowTeam(r.id)} className="inline-flex h-7 items-center whitespace-nowrap rounded-cz border border-cz-border bg-cz-card px-2 text-xs font-medium text-cz-1 hover:bg-cz-subtle [@media(max-width:640px),(pointer:coarse)]:h-11">
+              {t("orders.followTeam")}
+            </button>
+          )}
           {r.extras.map((x) => (
             <ExtraChip key={x.key} label={t(`orders.${x.key}`)} on={x.on} disabled={x.disabled} reason={x.reason} onToggle={() => onExtra(r.id, x.key)} />
           ))}

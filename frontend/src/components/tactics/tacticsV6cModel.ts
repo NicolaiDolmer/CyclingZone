@@ -124,34 +124,53 @@ export type EffortLevel = "easy" | "medium" | "hard";
 export const EFFORT_LEVELS: readonly EffortLevel[] = ["easy", "medium", "hard"];
 
 /**
- * Kæderne bag de tre valg (wireframets effortPlan). Easy: i ly hele vejen og kør ind de
- * sidste 10 km. Hard: lederen følger de bedste og angriber i finalen (resultat på en etape
- * uden stigninger); en hjælper kører tempo hele vejen. Medium: holdplanens kæde for
- * rytteren (eller assistentens forslag). Kun kæder rollen må gemme; ellers rollens nærmeste.
+ * Kæderne bag de tre valg (ejer 17/11: "Ingen lyser = følger holdets plan"). Valgene er
+ * rytterens EGNE; uden et valg kører han holdets plan (Today's plan).
+ * Easy: i ly hele vejen og kør ind de sidste 10 km.
+ * Medium: en ægte mellem-dag, ingen rutedel hårdere end Medium: hjælperen holder lederen
+ *   fremme hele vejen, de andre bliver i ly og kører for et resultat i finalen.
+ * Hard: lederen følger de bedste og angriber i finalen (resultat uden stigninger); en
+ *   hjælper kører tempo hele vejen.
+ * Kun kæder rollen må gemme; ellers rollens nærmeste.
  */
-export function levelPlans(role: StagePlanRole, route: StagePlanRoute, parts: readonly RoutePart[], medium: StagePlanLeg[] | null, finaleHasClimb: boolean): Record<EffortLevel, StagePlanLeg[] | null> {
+export function levelPlans(role: StagePlanRole, route: StagePlanRoute, parts: readonly RoutePart[], finaleHasClimb: boolean): Record<EffortLevel, StagePlanLeg[] | null> {
   const fit = (task: StagePlanTask, fallback: StagePlanTask): StagePlanTask => (TASK_ROLES[task].includes(role) ? task : fallback);
   const n = parts.length;
-  const easy = Array.from({ length: n }, (_, i) => (i === n - 1 ? "ride_in" : "stay_sheltered") as StagePlanTask);
+  const last = (i: number) => i === n - 1;
+  const easy = Array.from({ length: n }, (_, i) => (last(i) ? "ride_in" : "stay_sheltered") as StagePlanTask);
+  const support = TASK_ROLES.shelter_leader.includes(role);
+  const medium = support
+    ? Array.from({ length: n }, () => "shelter_leader" as StagePlanTask)
+    : Array.from({ length: n }, (_, i) => (last(i) ? fit("ride_for_result", "stay_sheltered") : "stay_sheltered") as StagePlanTask);
   const leader = TASK_ROLES.attack.includes(role);
   const hard = leader
-    ? Array.from({ length: n }, (_, i) => (i === n - 1 ? fit(finaleHasClimb ? "attack" : "ride_for_result", "ride_for_result") : fit("follow_moves", "stay_sheltered")))
+    ? Array.from({ length: n }, (_, i) => (last(i) ? fit(finaleHasClimb ? "attack" : "ride_for_result", "ride_for_result") : fit("follow_moves", "stay_sheltered")))
     : Array.from({ length: n }, () => fit("tempo", "stay_sheltered"));
   const build = (tasks: StagePlanTask[]) => {
     const legs = legsFromParts(tasks, parts, role, route);
     return validateStagePlanLegs(legs, role, route) === null ? legs : null;
   };
-  return { easy: build(easy), medium: medium && medium.length ? medium : null, hard: build(hard) };
+  return { easy: build(easy), medium: build(medium), hard: build(hard) };
 }
 
 const sameLegs = (a: readonly StagePlanLeg[] | null | undefined, b: readonly StagePlanLeg[] | null | undefined) =>
   !!a && !!b && JSON.stringify(a) === JSON.stringify(b);
 
-/** Hvilket af de tre valg kæden er. Alt andet end Easy og Hard er Medium (holdplanen eller spillerens egen). */
-export function levelOfLegs(legs: readonly StagePlanLeg[] | null | undefined, plans: Record<EffortLevel, StagePlanLeg[] | null>): EffortLevel {
-  if (sameLegs(legs, plans.easy)) return "easy";
-  if (sameLegs(legs, plans.hard)) return "hard";
-  return "medium";
+/**
+ * Hvilket valg der lyser. Følger kæden holdets plan, lyser intet (også når holdets plan
+ * tilfældigvis er den samme som et af valgene). Ellers lyser det valg, kæden er; en kæde
+ * spilleren selv har sat pr. rutedel, lyser heller ikke (rækken siger, hvad den giver).
+ */
+export function levelOfLegs(legs: readonly StagePlanLeg[] | null | undefined, plans: Record<EffortLevel, StagePlanLeg[] | null>, team: readonly StagePlanLeg[] | null | undefined): EffortLevel | null {
+  if (!legs || sameLegs(legs, team)) return null;
+  for (const level of EFFORT_LEVELS) if (sameLegs(legs, plans[level])) return level;
+  return null;
+}
+
+/** Medium er aldrig hårdere end Medium: hver rutedels prisord er højst "medium". */
+export function maxPartCost(tasks: readonly StagePlanTask[], costOf: (task: StagePlanTask) => string): string {
+  const order = ["easy", "medium", "hard", "veryHard"];
+  return tasks.map(costOf).reduce((a, b) => (order.indexOf(b) > order.indexOf(a) ? b : a), "easy");
 }
 
 /** Uden etapeplan (tidskørsel, eller planen er slået fra): de tre valg er indsats-trin. */

@@ -2,9 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   dayLoadOfEffort, dayLoadOfLegs, fatigueTone, legsFromParts, levelOfEffort, levelOfLegs, levelPlans,
-  partTaskOptions, partTasks, routeParts, setPartTask, todayLine, withLockedRiders, effortForLevel,
+  partTaskOptions, partTasks, routeParts, setPartTask, todayLine, withLockedRiders, effortForLevel, maxPartCost,
 } from "./tacticsV6cModel.ts";
 import { validateStagePlanLegs, type StagePlanRoute } from "../race/StagePlanModel.ts";
+import { taskCostWord } from "../race/tacticsReady7864.ts";
 
 // Wireframets etape 2: to stigninger undervejs og topafslutning (topafslutningen er ikke et skift-punkt).
 const route: StagePlanRoute = {
@@ -51,17 +52,26 @@ test("rutedelens valg følger rollen", () => {
   assert.ok(!partTaskOptions(["stay_sheltered", "stay_sheltered", "stay_sheltered"], 1, parts, "helper", route).includes("breakaway"));
 });
 
-test("Easy, Medium og Hard bygger gyldige kæder, og valget læses af kæden", () => {
-  const medium = [{ task: "stay_sheltered" as const }, { task: "follow_moves" as const, from: { at: "kom" as const, kom_index: 1 } }];
-  const plans = levelPlans("captain", route, parts, medium, true);
-  assert.ok(plans.easy && plans.hard);
-  assert.equal(validateStagePlanLegs(plans.hard, "captain", route), null);
+test("Easy, Medium og Hard bygger gyldige kæder; Medium er aldrig hårdere end Medium", () => {
+  const plans = levelPlans("captain", route, parts, true);
+  for (const level of ["easy", "medium", "hard"] as const) assert.equal(validateStagePlanLegs(plans[level], "captain", route), null, level);
   assert.equal(plans.hard?.[plans.hard.length - 1].task, "attack");
-  assert.equal(levelOfLegs(plans.easy, plans), "easy");
-  assert.equal(levelOfLegs(plans.hard, plans), "hard");
-  assert.equal(levelOfLegs(medium, plans), "medium");
-  const helper = levelPlans("helper", route, parts, null, true);
-  assert.deepEqual(helper.hard, [{ task: "tempo" }]);
+  for (const role of ["captain", "helper", "hunter", "sprint_captain", "free_role"] as const) {
+    const p = levelPlans(role, route, parts, true);
+    const tasks = partTasks(p.medium, route, parts) ?? [];
+    assert.ok(["easy", "medium"].includes(maxPartCost(tasks, taskCostWord)), `${role}: ${tasks}`);
+  }
+  assert.deepEqual(levelPlans("helper", route, parts, true).hard, [{ task: "tempo" }]);
+});
+
+test("ingen lyser, når rytteren følger holdets plan; ellers det valg kæden er", () => {
+  const plans = levelPlans("captain", route, parts, true);
+  const team = [{ task: "stay_sheltered" as const }, { task: "follow_moves" as const, from: { at: "kom" as const, kom_index: 1 } }];
+  assert.equal(levelOfLegs(team, plans, team), null);
+  assert.equal(levelOfLegs(plans.easy, plans, team), "easy");
+  assert.equal(levelOfLegs(plans.hard, plans, team), "hard");
+  assert.equal(levelOfLegs(plans.easy, plans, plans.easy), null, "holdets plan vinder, også når den er lig et valg");
+  assert.equal(levelOfLegs(null, plans, team), null);
 });
 
 test("uden etapeplan er valgene indsats-trin", () => {

@@ -47,6 +47,8 @@ export interface TacticsRiderRow {
   /** "R. Yamada" til telefonens tids-akse. */
   shortName: string;
   nation: string | null;
+  /** Mestertrøje og talentmærke ved navnet (rytterens egne komponenter), eller null. */
+  marks: ReactNode | null;
   abandoned: boolean;
   roleLabel: string;
   /** Rollen ER knappen (dropdown). */
@@ -151,13 +153,13 @@ function LockButton({ lock }: { lock: TacticsRiderRow["lock"] }) {
   );
 }
 
-function Name({ row, link = true }: { row: TacticsRiderRow; link?: boolean }) {
+/** Navnecellen (ejerens faste regel 17/11): flag + hover-ikon + navn på én linje, typen aldrig i navnet. */
+function Name({ row }: { row: TacticsRiderRow }) {
   return (
-    <span className="flex min-w-0 flex-col gap-0.5">
-      {row.nation && <span className="inline-flex items-center"><Flag code={row.nation} className="shrink-0" /></span>}
-      {link ? (
-        <RiderLink id={row.id} className="min-w-0 text-cz-1 underline decoration-dotted decoration-cz-3 underline-offset-4 hover:text-cz-accent-t">{row.name || "—"}</RiderLink>
-      ) : <span className="text-cz-1">{row.name || "—"}</span>}
+    <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 whitespace-nowrap" title={row.name ?? undefined}>
+      {row.nation && <Flag code={row.nation} className="shrink-0" />}
+      <RiderLink id={row.id} className="min-w-0 truncate text-cz-1 underline decoration-dotted decoration-cz-3 underline-offset-4 hover:text-cz-accent-t">{row.name || "—"}</RiderLink>
+      {row.marks}
     </span>
   );
 }

@@ -59,7 +59,8 @@
     "noSprintCaptain": "Your team has no sprint captain.",
     "trainAfterBreak": "A rider in the break can't lead out the sprint.",
     "trainSelf": "He is the sprinter.",
-    "noRoadOrders": "No road orders in a time trial."
+    "noRoadOrders": "No road orders in a time trial.",
+    "followTeam": "Follow team plan"
   },
   "short": {
     "stay_sheltered": "Sheltered",

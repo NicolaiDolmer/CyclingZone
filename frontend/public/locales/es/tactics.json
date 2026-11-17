@@ -59,7 +59,8 @@
     "noSprintCaptain": "Tu equipo no tiene capitán de sprint.",
     "trainAfterBreak": "Un corredor en la escapada no puede lanzar el sprint.",
     "trainSelf": "Él es el sprinter.",
-    "noRoadOrders": "Sin órdenes de ruta en una contrarreloj."
+    "noRoadOrders": "Sin órdenes de ruta en una contrarreloj.",
+    "followTeam": "Seguir el plan del equipo"
   },
   "short": {
     "stay_sheltered": "Resguardado",

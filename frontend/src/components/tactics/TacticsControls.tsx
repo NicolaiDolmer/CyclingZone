@@ -4,7 +4,6 @@
 import { useRef, useState, type ReactNode } from "react";
 import { useDismiss } from "../ui/useDismiss.js";
 import { ChevronDownIcon as ChevronDownIconJs } from "../ui/index.js";
-import { Segmented } from "../race/stagePageV2/ui.ts";
 import type { TaskCostWord } from "../race/tacticsReady7864.ts";
 import { COST_CLASS } from "./TacticsRiderTable.tsx";
 import { EFFORT_LEVELS, type EffortLevel } from "./tacticsV6cModel.ts";
@@ -26,16 +25,29 @@ export function RoleButton({ label, open, disabled, ariaLabel, onClick }: { labe
   );
 }
 
-/** Easy | Medium | Hard på én linje, let til venstre (ejer 16/11 + 17/11). */
+/**
+ * Easy | Medium | Hard på én linje, let til venstre (ejer 16/11 + 17/11). Ingen lyser = rytteren
+ * følger holdets plan; et tryk på den valgte knap igen sender ham tilbage dertil (onPick med
+ * samme værdi). Samme udseende som kittets Segmented (hairline, aktiv = guld-tekst på 10 % guld).
+ */
 export function LevelSegmented({ label, value, labelFor, disabled, onPick, fill = false }: { label: string; value: EffortLevel | null; labelFor: (l: EffortLevel) => string; disabled: boolean; onPick: (l: EffortLevel) => void; fill?: boolean }) {
   return (
-    <Segmented
-      label={label}
-      value={value ?? ""}
-      onChange={(next: string) => { if (!disabled) onPick(next as EffortLevel); }}
-      options={EFFORT_LEVELS.map((l) => ({ value: l, label: labelFor(l), disabled }))}
-      className={`max-w-full ${fill ? "flex w-full [&>button]:min-w-0 [&>button]:flex-1" : "[&>button]:whitespace-nowrap [&>button]:px-2"}`}
-    />
+    <div role="group" aria-label={label} className={`inline-flex max-w-full overflow-hidden rounded-cz border border-cz-border bg-cz-card ${fill ? "flex w-full" : ""}`}>
+      {EFFORT_LEVELS.map((l) => (
+        <button
+          key={l}
+          type="button"
+          aria-pressed={value === l}
+          disabled={disabled}
+          onClick={() => onPick(l)}
+          className={`border-s border-cz-border px-2 py-1 text-xs whitespace-nowrap transition-colors duration-150 first:border-s-0 disabled:cursor-not-allowed disabled:opacity-60 [@media(max-width:640px),(pointer:coarse)]:min-h-11 ${fill ? "min-w-0 flex-1" : ""} ${
+            value === l ? "bg-cz-accent/10 font-semibold text-cz-accent-t" : "font-medium text-cz-2 hover:text-cz-1"
+          }`}
+        >
+          {labelFor(l)}
+        </button>
+      ))}
+    </div>
   );
 }
 

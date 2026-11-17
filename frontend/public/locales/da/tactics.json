@@ -59,7 +59,8 @@
     "noSprintCaptain": "Holdet har ingen spurtkaptajn.",
     "trainAfterBreak": "En rytter i udbruddet kan ikke trække spurten.",
     "trainSelf": "Han er sprinteren.",
-    "noRoadOrders": "Ingen vej-ordrer på en tidskørsel."
+    "noRoadOrders": "Ingen vej-ordrer på en tidskørsel.",
+    "followTeam": "Følg holdets plan"
   },
   "short": {
     "stay_sheltered": "I ly",
