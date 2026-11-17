@@ -1234,6 +1234,11 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       return {
         id: rider.rider_id,
         name: rider.name,
+        // #8298: flag, rating, form og traethed nu fra stage-roles (samme tal som Holdfanen, #4613).
+        nation: typeof rider.nationality_code === "string" ? rider.nationality_code.toLowerCase() : null,
+        rating: typeof rider.rating === "number" ? rider.rating : null,
+        form: typeof rider.form === "number" ? Math.round(rider.form) : null,
+        fatigue: typeof rider.fatigue === "number" ? Math.round(rider.fatigue) : null,
         role: renderRoleCell(rider, { mobile: true }),
         roleMobile: renderRoleCell(rider, { mobile: true }),
         routeMatch: renderRouteMatchCell(rider),
@@ -1331,7 +1336,10 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
             columns={{
               rider: t("intention.colRider"),
               role: t("intention.colRole"),
+              rating: t("intention.colRating"),
+              form: t("selection.form"),
               routeMatch: routeMatchColumn,
+              fatigue: t("selection.fatigue"),
               today: t("stagePageV2.today"),
               effort: t("tacticsOrders.effortLabel"),
               orders: ordersColumn,
