@@ -230,6 +230,101 @@ export function previewAssistantProposals(raceIds: string[], overrides: Record<s
   return { ok: true, proposals, skipped };
 }
 
+/**
+ * "Belastning" i preview-mocken (GET /api/races/:id/expected-load har ingen server her). Kun en troværdig
+ * illustration til billederne: haardere og laengere loeb giver et haardere ord. Det rigtige ord regnes af
+ * serveren med motorens model (backend/lib/planningExpectedLoad7535.js), aldrig her.
+ */
+const PREVIEW_STAGE_WEIGHT: Record<string, number> = { flat: 1, rolling: 2, mountain: 3, high_mountain: 4, itt: 1 };
+export function previewExpectedLoad(raceId: string): Record<string, string> | null {
+  const def = RACE_DEFS.find((d) => d[0] === raceId);
+  if (!def) return null;
+  const types = def[3];
+  const race = types.reduce((sum, type) => sum + (PREVIEW_STAGE_WEIGHT[type] ?? 2), 0);
+  const out: Record<string, string> = {};
+  for (const [id, , , , , fatigue] of RIDER_DEFS) {
+    const score = race + (fatigue >= 30 ? 2 : fatigue >= 25 ? 1 : 0);
+    out[id] = score <= 6 ? "light" : score <= 10 ? "medium" : "hard";
+  }
+  return out;
+}
+
+// Formtop i preview-mocken: samme form som GET /api/peak-plans/board, med seedets ryttere og loeb.
+let previewPeaks: Array<{ id: string; riderId: string; raceId: string }> = [
+  { id: "pk-1", riderId: "wb-r10", raceId: "wb-jura" },
+  { id: "pk-2", riderId: "wb-r01", raceId: "wb-navarra" },
+  { id: "pk-3", riderId: "wb-r01", raceId: "wb-appenninica" },
+  { id: "pk-4", riderId: "wb-r05", raceId: "wb-dender" },
+  { id: "pk-5", riderId: "wb-r15", raceId: "wb-preview" },
+  // Ikke udtaget til wb-preview: viser Formtop-advarslen (ejervalg 16/11, punkt 6 B).
+  { id: "pk-6", riderId: "wb-r13", raceId: "wb-preview" },
+];
+const PREVIEW_PEAK_MAX = 2;
+
+export function previewPeakBoard() {
+  const raceById = new Map(RACES.map((r, i) => [r.id, { race: r, start: RACE_DEFS[i][4], end: RACE_DEFS[i][5] }]));
+  return {
+    enabled: true,
+    season: { id: "season-preview-planning", number: 5 },
+    maxPerRider: PREVIEW_PEAK_MAX,
+    today: TODAY,
+    leadupDays: 14,
+    paybackDays: 7,
+    riders: RIDER_DEFS.map(([id, name, type, ab, form, fatigue], i) => {
+      const [firstname, ...rest] = name.split(" ");
+      return {
+        id,
+        firstname,
+        lastname: rest.join(" "),
+        nationality: NATIONS[i] ?? null,
+        primaryType: type,
+        squad: "senior",
+        rating: Math.round(Object.values(ab).reduce((s, v) => s + v, 0) / Math.max(1, Object.values(ab).length)),
+        form,
+        fatigue,
+        peaks: previewPeaks
+          .filter((p) => p.riderId === id)
+          .map((p) => {
+            const hit = raceById.get(p.raceId);
+            return {
+              id: p.id,
+              targetRaceId: p.raceId,
+              targetRaceName: hit?.race.name ?? null,
+              isSuggestion: false,
+              locked: false,
+              windowStart: hit ? day(Math.max(0, hit.start - 3)) : null,
+              windowEnd: hit ? day(hit.end + 1) : null,
+              status: "pending",
+              value: { floor: 3, ceiling: 6, current: null, payback: -3 },
+              paybackCollisions: [],
+            };
+          }),
+      };
+    }),
+    races: RACES.map((r, i) => ({ id: r.id, name: r.name, isMine: true, started: false, date: day(RACE_DEFS[i][4]), dateEnd: day(RACE_DEFS[i][5]) })),
+  };
+}
+
+export function previewApplyPeaks(pairs: Array<{ riderId: string; raceId: string }>) {
+  let created = 0;
+  const skipped: Array<{ rider_id: string; target_race_id: string; reason: string }> = [];
+  for (const { riderId, raceId } of pairs) {
+    const mine = previewPeaks.filter((p) => p.riderId === riderId);
+    if (mine.some((p) => p.raceId === raceId)) skipped.push({ rider_id: riderId, target_race_id: raceId, reason: "duplicate_target" });
+    else if (mine.length >= PREVIEW_PEAK_MAX) skipped.push({ rider_id: riderId, target_race_id: raceId, reason: "max_peaks_reached" });
+    else {
+      previewPeaks = [...previewPeaks, { id: `pk-${Date.now()}-${created}`, riderId, raceId }];
+      created += 1;
+    }
+  }
+  return { ok: true, created, skipped };
+}
+
+export function previewRemovePeak(planId: string) {
+  previewPeaks = previewPeaks.filter((p) => p.id !== planId);
+  return { ok: true };
+}
+
 /** Saeson-belastning (GET /api/races/distribution, seasonLoadByRider) ud fra seedets egne udtagelser. */
 export const PLANNING_SEASON_LOAD: Record<string, { races: number; raceDays: number }> = {};
 for (const [raceId, ids] of Object.entries(PICKS)) {

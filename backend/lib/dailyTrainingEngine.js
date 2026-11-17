@@ -845,6 +845,14 @@ async function runPressDayFromMemory({
     || dateDays.join() !== held.dateDays.join()) return null;
   const plan = planPressDay(pressMemory.selection, { raceDay, eligibleRiderIds, unresolvedSlotsByRider, deadlineReached, dirtyRiderIds: pressMemory.dirtyRiderIds });
   if (!plan) return null;
+  // #6490 B: the evening run asks the roster again, as each of its day fields did, so a rider released
+  // since is departed by the full read (instead of quarantined by the save guard).
+  if (executedBy === "assistant") {
+    const roster = plan.dateWork.expected_rider_ids.filter((id) => !(plan.dateWork.quarantined_rider_ids ?? []).includes(id));
+    // pagination-safe: én række pr. id i datoens frosne trup (ét holds trup, bounded af rostergrænsen)
+    const { data, error } = await supabase.from("riders").select("id, team_id, is_retired").in("id", roster);
+    if (error || (data ?? []).length !== roster.length || data.some((row) => row.team_id == null || row.is_retired === true)) return null;
+  }
   const frame = raceDayFrame({ useRaceDayKey: true, conditionPerDate: true, raceDay, dateDays, dateGameDays, seasonId, tickDate });
   const riderIds = plan.riders.map((rider) => rider.id);
   // #4854: "the day after a stage" is read on the date's first race day only; such a day reads.

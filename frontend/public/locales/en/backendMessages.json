@@ -322,6 +322,11 @@
       "title": "Something you voted for is live",
       "message": "You voted high on {item}, and it is live now. Thank you for helping me choose what to build."
     },
+    "boardMidSeason": {
+      "title": "Mid-season check (season {season})",
+      "lowSatisfaction": "The board is concerned. Satisfaction is down to {satisfaction}. See which goals are behind on the Board page and work on them before the season ends. If the pressure is financial, you can take a loan on the Finance page.",
+      "manyBehind": "The board is concerned. At least half of this season's goals are behind schedule. See which ones on the Board page and work on them before the season ends. If the pressure is financial, you can take a loan on the Finance page."
+    },
     "riderRetired": {
       "title": "{name} has retired",
       "message": "{name} has retired from professional cycling at age {age}. His place in your squad is now free."

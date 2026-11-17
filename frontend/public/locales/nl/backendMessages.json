@@ -322,6 +322,11 @@
       "title": "Iets waar je op stemde is live",
       "message": "Je stemde hoog op {item}, en het is nu live. Bedankt dat je me helpt kiezen wat ik bouw."
     },
+    "boardMidSeason": {
+      "title": "Controle halverwege het seizoen (seizoen {season})",
+      "lowSatisfaction": "Het bestuur maakt zich zorgen. De tevredenheid is gedaald tot {satisfaction}. Bekijk op de pagina Bestuur welke doelen achterlopen en werk eraan voordat het seizoen eindigt. Is de druk financieel, dan kun je een lening afsluiten op de pagina Financiën.",
+      "manyBehind": "Het bestuur maakt zich zorgen. Minstens de helft van de doelen van dit seizoen loopt achter. Bekijk welke op de pagina Bestuur en werk eraan voordat het seizoen eindigt. Is de druk financieel, dan kun je een lening afsluiten op de pagina Financiën."
+    },
     "riderRetired": {
       "title": "{name} is gestopt",
       "message": "{name} is op {age}-jarige leeftijd gestopt met het profwielrennen. Zijn plek in je selectie is nu vrij."
