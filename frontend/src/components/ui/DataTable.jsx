@@ -415,11 +415,10 @@ function MobileColumnChips({ columns, selected, onPick, fullTable, onToggleFullT
     "[@media(max-width:640px),(pointer:coarse)]:min-h-11 [@media(max-width:640px),(pointer:coarse)]:min-w-11";
   return (
     <div className="mb-2 flex items-center gap-1.5">
-      <div
-        className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto"
-        role="group"
-        aria-label={t("table.columnsLabel")}
-      >
+      {/* #8278: rækken ruller som én, men "Vælg kolonner"-gruppen indeholder KUN
+          kolonne-chips; visnings-tilstanden er sin egen gruppe ved siden af, så
+          en skærmlæser (og testenes gruppe-opslag) ikke blander de to. */}
+      <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto">
         {modes && (
           <div role="group" aria-label={modes.label} className="flex flex-none gap-1.5">
             {modes.options.map((option) => {
@@ -441,6 +440,8 @@ function MobileColumnChips({ columns, selected, onPick, fullTable, onToggleFullT
           </div>
         )}
         {modes && columns.length > 0 && <span aria-hidden="true" className="w-px flex-none self-stretch bg-cz-border" />}
+        {columns.length > 0 && (
+        <div role="group" aria-label={t("table.columnsLabel")} className="flex flex-none gap-1.5">
         {columns.map((col) => {
           const active = selected.includes(col.key);
           return (
@@ -458,6 +459,8 @@ function MobileColumnChips({ columns, selected, onPick, fullTable, onToggleFullT
             </button>
           );
         })}
+        </div>
+        )}
       </div>
       {onToggleFullTable && (
         <button
