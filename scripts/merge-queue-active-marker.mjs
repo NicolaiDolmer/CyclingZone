@@ -127,26 +127,61 @@ function sleepSync(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
+function lockAgeMs(lock) {
+  try { return Date.now() - statSync(lock).mtimeMs; } catch { return null; }
+}
+
+/**
+ * Fjerner en efterladt laas uden at kunne ramme en ny (Codex-review): kun den proces
+ * der holder <lock>.recover maa slette, og alderen maales igen under den. To koeer der
+ * begge saa den gamle laas, kan derfor ikke slette en afloeser. En efterladt .recover
+ * (proces draebt midt i oprydningen) ryddes ikke automatisk: acquire fejler lukket.
+ */
+function recoverStaleLock(lock) {
+  const guard = `${lock}.recover`;
+  try { mkdirSync(guard); } catch (err) {
+    if (err?.code === 'EEXIST') return;
+    throw err;
+  }
+  try {
+    const age = lockAgeMs(lock);
+    if (age !== null && age > LOCK_STALE_MS) rmSync(lock, { recursive: true, force: true });
+  } finally { rmSync(guard, { recursive: true, force: true }); }
+}
+
 /**
  * Koerer fn under en fil-laas (<file>.lock som mappe). mkdir lykkes kun for een
  * proces ad gangen, saa laes-og-skriv inde i fn er atomisk i forhold til andre
- * `acquire`-kald. Kaster, hvis laasen ikke kan tages inden timeoutMs.
+ * `acquire`-kald. Laasen baerer et ejer-token og fjernes kun af sin ejer.
+ * Kaster, hvis laasen ikke kan tages inden timeoutMs (kalderen fejler lukket).
  */
 export function withFileLock(file, fn, { timeoutMs = 10_000, sleep = sleepSync } = {}) {
   const lock = `${file}.lock`;
+  const token = `${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   mkdirSync(dirname(file), { recursive: true });
   const deadline = Date.now() + timeoutMs;
   for (;;) {
     try { mkdirSync(lock); break; } catch (err) {
       if (err?.code !== 'EEXIST') throw err;
-      let age = 0;
-      try { age = Date.now() - statSync(lock).mtimeMs; } catch { continue; }
-      if (age > LOCK_STALE_MS) { rmSync(lock, { recursive: true, force: true }); continue; }
-      if (Date.now() >= deadline) throw new Error(`markoer-laasen ${lock} er optaget`);
+      const age = lockAgeMs(lock);
+      if (age === null) continue;
+      if (age > LOCK_STALE_MS) {
+        recoverStaleLock(lock);
+        if (lockAgeMs(lock) === null) continue;
+      }
+      if (Date.now() >= deadline) throw new Error(`markoer-laasen ${lock} er optaget (efterladt? slet mappen, naar ingen koe koerer)`);
       sleep(20 + Math.floor(Math.random() * 30));
     }
   }
-  try { return fn(); } finally { rmSync(lock, { recursive: true, force: true }); }
+  const ownerFile = join(lock, 'owner');
+  try {
+    writeFileSync(ownerFile, token, 'utf8');
+    return fn();
+  } finally {
+    let owner = null;
+    try { owner = readFileSync(ownerFile, 'utf8'); } catch { /* token aldrig skrevet */ }
+    if (owner === null || owner === token) rmSync(lock, { recursive: true, force: true });
+  }
 }
 
 /**

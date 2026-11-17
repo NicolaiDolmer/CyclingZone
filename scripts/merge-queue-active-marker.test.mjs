@@ -149,43 +149,109 @@ test('CLI acquire: exit 0 = ours, 3 = another live queue, 4 = no proven ownershi
   } finally { t.cleanup(); }
 });
 
-test('withFileLock clears a lock left by a killed process and always releases its own', () => {
+function ageDir(dir) {
+  const old = new Date(Date.now() - LOCK_STALE_MS - 5_000);
+  utimesSync(dir, old, old);
+}
+
+test('withFileLock clears a lock left by a killed process and only ever removes its own', () => {
   const t = tmpFile();
   try {
     mkdirSync(`${t.file}.lock`, { recursive: true });
-    const old = new Date(Date.now() - LOCK_STALE_MS - 5_000);
-    utimesSync(`${t.file}.lock`, old, old);
+    ageDir(`${t.file}.lock`);
     assert.equal(withFileLock(t.file, () => 'ran', { timeoutMs: 1_000 }), 'ran');
     assert.throws(() => withFileLock(t.file, () => { throw new Error('boom'); }), /boom/);
     assert.equal(existsSync(`${t.file}.lock`), false);
+    // En laas der under fn blev overtaget af en anden (token skiftet), fjernes ikke.
+    withFileLock(t.file, () => writeFileSync(join(`${t.file}.lock`, 'owner'), 'someone-else'));
+    assert.equal(existsSync(`${t.file}.lock`), true, 'a replacement lock survives the old owner release');
   } finally { t.cleanup(); }
 });
+
+test('a recovery left by a killed process fails closed (no endless wait, no double entry)', () => {
+  const t = tmpFile();
+  try {
+    mkdirSync(`${t.file}.lock`, { recursive: true });
+    ageDir(`${t.file}.lock`);
+    mkdirSync(`${t.file}.lock.recover`);
+    let ran = false;
+    assert.throws(() => withFileLock(t.file, () => { ran = true; }, { timeoutMs: 50, sleep: () => {} }), /optaget/);
+    assert.equal(ran, false);
+  } finally { t.cleanup(); }
+});
+
+// Hver "koe" er sin egen proces, der lever under hele kapploebet (som pwsh-koeen).
+// Ingen vaeg-ur-vinduer (AGENTS.md): faelles injiceret tid, og testen styrer
+// start og slut med filer, saa vinderen lever, til alle har svaret.
+const RACE_CHILD = `const { existsSync } = await import('node:fs');
+const { main } = await import(process.env.RACE_MODULE);
+const pause = () => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2);
+const giveUp = () => { process.stdout.write('TIMEOUT\\n'); process.exit(9); };
+let spins = 0;
+process.stdout.write('READY\\n');
+while (!existsSync(process.env.RACE_GO)) { pause(); if (++spins > 30000) giveUp(); }
+const code = main(['acquire', '--pid', String(process.pid), '--prs', '1'], { now: new Date(process.env.RACE_NOW), out: () => {} });
+process.stdout.write('CODE=' + code + '\\n');
+spins = 0;
+while (!existsSync(process.env.RACE_RELEASE)) { pause(); if (++spins > 30000) giveUp(); }`;
+
+async function raceQueues(t, contenders) {
+  const env = {
+    ...process.env,
+    MERGE_QUEUE_MARKER_FILE: t.file,
+    RACE_MODULE: new URL('./merge-queue-active-marker.mjs', import.meta.url).href,
+    RACE_NOW: NOW.toISOString(),
+    RACE_GO: join(t.dir, 'go'),
+    RACE_RELEASE: join(t.dir, 'release'),
+  };
+  let ready = 0;
+  let answered = 0;
+  let onReady;
+  let onAnswered;
+  const allReady = new Promise((r) => { onReady = r; });
+  const allAnswered = new Promise((r) => { onAnswered = r; });
+  const finished = Array.from({ length: contenders }, () => new Promise((resolveRun, reject) => {
+    const p = spawn(process.execPath, ['--input-type=module', '-e', RACE_CHILD], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+    let stdout = '';
+    let stderr = '';
+    p.stdout.on('data', (d) => {
+      const before = stdout;
+      stdout += d;
+      if (!before.includes('READY') && stdout.includes('READY') && ++ready === contenders) onReady();
+      if (!before.includes('CODE=') && stdout.includes('CODE=') && ++answered === contenders) onAnswered();
+    });
+    p.stderr.on('data', (d) => { stderr += d; });
+    p.on('error', reject);
+    p.on('close', (exit) => {
+      if (!stdout.includes('CODE=')) { onReady(); onAnswered(); }
+      resolveRun({ code: Number(/CODE=(\d+)/.exec(stdout)?.[1] ?? -1), exit, stderr: stderr.slice(-400) });
+    });
+  }));
+  await allReady;
+  writeFileSync(env.RACE_GO, '');
+  await allAnswered;
+  writeFileSync(env.RACE_RELEASE, '');
+  return Promise.all(finished);
+}
 
 test('race: queues that start at the same instant -> exactly one acquires the marker', async () => {
   const t = tmpFile();
   try {
-    const moduleUrl = new URL('./merge-queue-active-marker.mjs', import.meta.url).href;
-    // Hver "koe" er sin egen proces, der lever under hele kapploebet (som pwsh-koeen).
-    const child = `const { main } = await import(${JSON.stringify(moduleUrl)});
-const startAt = Number(process.env.RACE_START_AT);
-while (Date.now() < startAt) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1);
-const code = main(['acquire', '--pid', String(process.pid), '--prs', '1'], { out: () => {} });
-process.stdout.write('CODE=' + code + '\\n');
-Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, Math.max(0, startAt + 3000 - Date.now()));`;
-    const env = { ...process.env, MERGE_QUEUE_MARKER_FILE: t.file, RACE_START_AT: String(Date.now() + 2500) };
-    const runOne = () => new Promise((resolveRun, reject) => {
-      const p = spawn(process.execPath, ['--input-type=module', '-e', child], { env, stdio: ['ignore', 'pipe', 'pipe'] });
-      let stdout = '';
-      let stderr = '';
-      p.stdout.on('data', (d) => { stdout += d; });
-      p.stderr.on('data', (d) => { stderr += d; });
-      p.on('error', reject);
-      p.on('close', () => resolveRun({ code: Number(/CODE=(\d+)/.exec(stdout)?.[1] ?? -1), stderr }));
-    });
-    const results = await Promise.all(Array.from({ length: 6 }, runOne));
-    const codes = results.map((r) => r.code).sort();
-    assert.deepEqual(codes, [0, 3, 3, 3, 3, 3], `exactly one winner: ${JSON.stringify(results)}`);
+    const results = await raceQueues(t, 6);
+    assert.deepEqual(results.map((r) => r.code).sort(), [0, 3, 3, 3, 3, 3], `exactly one winner: ${JSON.stringify(results)}`);
     assert.equal(existsSync(`${t.file}.lock`), false);
+  } finally { t.cleanup(); }
+});
+
+test('race: queues that all find the same abandoned lock -> exactly one acquires the marker', async () => {
+  const t = tmpFile();
+  try {
+    mkdirSync(`${t.file}.lock`, { recursive: true });
+    ageDir(`${t.file}.lock`);
+    const results = await raceQueues(t, 6);
+    assert.deepEqual(results.map((r) => r.code).sort(), [0, 3, 3, 3, 3, 3], `exactly one winner: ${JSON.stringify(results)}`);
+    assert.equal(existsSync(`${t.file}.lock`), false);
+    assert.equal(existsSync(`${t.file}.lock.recover`), false);
   } finally { t.cleanup(); }
 });
 
