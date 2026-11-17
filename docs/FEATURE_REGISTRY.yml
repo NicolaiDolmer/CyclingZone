@@ -1545,6 +1545,8 @@ features:
     epic: 954
     verified: 2026-11-16
     note: "Bag patch_notes_v2_8049 (off = gammel side). Ejer: merge + beta 16/11."
+    decision: ejer-beslutning
+    decide_by: 2026-11-23
 
   - id: in-app-survey
     area: comms
