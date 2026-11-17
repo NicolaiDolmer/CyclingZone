@@ -348,6 +348,23 @@ test('train validation and CLI exit codes', () => {
   assert.ok(ok.at(-1).includes('1 kommentar(er)'));
 });
 
+test('#8346: patch notes nummereres kun efter et verificeret tog, med --repo/--dry-run, og fail-soft', () => {
+  const seen = [];
+  const numberPatchNotes = (opts) => { seen.push(opts); return ['patch notes: 1 fragment(er) nummereret']; };
+  const train = JSON.stringify([{ number: 5, sha: SHA_A }]);
+  const out = [];
+  main(['merged', '--train', train, '--repo', 'o/r'], { gh: fakeGh({ prs: { 5: { title: 't', body: '' } } }).gh, out: (l) => out.push(l), now: NOW, numberPatchNotes });
+  assert.equal(seen.length, 0, 'merged-fasen nummererer aldrig');
+  main(['run', '--train', train, '--repo', 'o/r', '--dry-run'], { gh: fakeGh({ prs: { 5: { title: 't', body: '' } } }).gh, out: (l) => out.push(l), now: NOW, numberPatchNotes });
+  assert.deepEqual(seen, [{ repo: 'o/r', dryRun: true }]);
+  assert.ok(out.includes('patch notes: 1 fragment(er) nummereret'));
+  const failing = [];
+  const code = main(['run', '--train', train, '--repo', 'o/r'], { gh: fakeGh({ prs: { 5: { title: 't', body: '' } } }).gh, out: (l) => failing.push(l), now: NOW, numberPatchNotes: () => { throw new Error('boom'); } });
+  assert.equal(code, 0);
+  assert.ok(failing.includes('close-out ADVARSEL: patch notes-nummerering: boom'));
+  assert.ok(failing.at(-1).startsWith('close-out faerdig'));
+});
+
 // --- merge-queue.ps1-integration: den rigtige Close-OpenTrain + Invoke-TrainCloseOut ---
 const queue = readFileSync(new URL('./merge-queue.ps1', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const psQuote = (value) => "'" + value.replaceAll("'", "''") + "'";
