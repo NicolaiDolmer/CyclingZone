@@ -1,0 +1,108 @@
+{
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Races",
+      "en": {
+        "title": "Price words in colour on every order",
+        "body": "Every race order with a price now shows its price word in the same colour as the stage plan, so Easy, Medium, Hard and Very hard read the same everywhere."
+      },
+      "da": {
+        "title": "Prisord i farver på alle ordrer",
+        "body": "Alle løbsordrer med en pris viser nu prisordet i samme farve som etapeplanen, så Let, Middel, Hård og Meget hård læses ens alle steder."
+      },
+      "refs": [
+        7638
+      ]
+    },
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Board",
+      "en": {
+        "title": "The board shows the same everywhere",
+        "body": "The board page and the dashboard now show the same category numbers. The mid-season message no longer points to a board request that does not exist."
+      },
+      "da": {
+        "title": "Bestyrelsen viser det samme alle steder",
+        "body": "Bestyrelsessiden og dashboardet viser nu de samme kategorital. Halvsæson-beskeden peger ikke længere på en bestyrelsesanmodning, der ikke findes."
+      },
+      "refs": [
+        7963,
+        8116
+      ]
+    },
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Auctions",
+      "en": {
+        "title": "Auction countdown follows an extension",
+        "body": "When a late bid extends an auction, the countdown ring and the time now change together with the new price."
+      },
+      "da": {
+        "title": "Auktionens nedtælling følger forlængelsen",
+        "body": "Når et sent bud forlænger en auktion, skifter nedtællingsringen og tiden nu sammen med den nye pris."
+      },
+      "refs": [
+        8290
+      ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Auctions",
+      "en": {
+        "title": "Auctions without the first-bid banner",
+        "body": "The first-bid banner above the list is gone, so the riders come right under the filters. The tour now starts on the page you are on when you press Show me around."
+      },
+      "da": {
+        "title": "Auktioner uden første-buds-banner",
+        "body": "Første-buds-banneret over listen er væk, så rytterne står lige under filtrene. Rundvisningen starter nu på den side, du står på, når du trykker Vis mig rundt."
+      },
+      "refs": [
+        8069
+      ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Interface",
+      "en": {
+        "title": "Tidier tables and training on phones",
+        "body": "Rider tables on phones put the name on its own line, and My team shows its figures at the top. Compare on the league page only appears once you have picked a team. On Training, the Assistant and the rider picker sit in one row."
+      },
+      "da": {
+        "title": "Ryddeligere tabeller og træning på telefonen",
+        "body": "Rytterlister på telefonen har navnet på egen linje, og Mit hold viser sine tal øverst. Sammenlign på ligasiden vises først, når du har valgt et hold. På Træning står Assistent og Vælg ryttere i én række."
+      },
+      "refs": [
+        8278,
+        8279
+      ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Interface",
+      "en": {
+        "title": "Calmer look",
+        "body": "One gold button per view, the display font only on the rider's name on the rider page, and line icons instead of emoji in game text."
+      },
+      "da": {
+        "title": "Roligere udtryk",
+        "body": "Én guld-knap pr. visning, overskriftsskriften kun på rytterens navn på rytterprofilen, og streg-ikoner i stedet for emoji i spilteksten."
+      },
+      "refs": [
+        8069
+      ]
+    }
+  ]
+}
