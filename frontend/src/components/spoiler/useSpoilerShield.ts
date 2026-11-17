@@ -54,7 +54,14 @@ export function useRaceSpoilerShield(raceId: string | null): RaceSpoilerShield {
   const [saveFailed, setSaveFailed] = useState(false);
   const viewRef = useRef(view);
   viewRef.current = view;
+  // Hvert skift af kontakten får et nummer; kun det seneste må rulle tilbage eller melde fejl, og kun
+  // for det løb, det blev sendt for (review af Codex-rettelsen #8302).
+  const seqRef = useRef(0);
+  const raceRef = useRef(raceId);
+  raceRef.current = raceId;
   useEffect(() => {
+    seqRef.current += 1;
+    setSaveFailed(false);
     if (!raceId) { setView(OFF_VIEW); return undefined; }
     let alive = true;
     fetchSpoilerShield(raceId).then((next) => {
@@ -75,14 +82,18 @@ export function useRaceSpoilerShield(raceId: string | null): RaceSpoilerShield {
   // løbet er beskyttet, mens notifikationer og andre enheder stadig bruger den gamle indstilling.
   const setRaceShield = useCallback((on: boolean) => {
     if (!raceId) return;
-    const before = viewRef.current;
+    const seq = ++seqRef.current;
+    // Kun kontaktens felt rulles tilbage, ikke hele visningen (en åbnet etape imens bliver stående).
+    const prevRace = viewRef.current.race;
+    const prev = { shield: prevRace?.shield ?? null, shielded: prevRace?.shielded ?? false };
     setSaveFailed(false);
     setView((v) => withRaceShield(v, on));
     if (on) rememberShield(true);
     void call(`/races/${encodeURIComponent(raceId)}`, { method: "PUT", body: { shield: on } }).then((res) => {
-      if (res?.ok) return;
-      setView(before);
-      rememberShield(raceShielded(before));
+      if (res?.ok || seq !== seqRef.current || raceRef.current !== raceId) return;
+      setView((v) => (v.race ? { ...v, race: { ...v.race, shield: prev.shield, shielded: prev.shielded } } : v));
+      const now = viewRef.current;
+      rememberShield(prev.shielded || (now.enabled && now.settings.shieldAll));
       setSaveFailed(true);
     });
   }, [raceId]);
@@ -106,16 +117,23 @@ export function useSpoilerSettings(): {
     });
     return () => { alive = false; };
   }, []);
+  const saveSeq = useRef(0);
   const save = useCallback((patch: Partial<SpoilerSettings>) => {
+    const seq = ++saveSeq.current;
     setState((s) => ({ ...s, settings: { ...s.settings, ...patch } }));
     if (patch.shieldAll !== undefined) rememberShield(patch.shieldAll);
     setSaveState("saving");
     void call("/settings", { method: "PUT", body: patch }).then((res) => {
+      // Et svar fletter kun de felter, kaldet selv sendte (et tidligere svar kan ellers vise et gammelt valg),
+      // og kun det seneste kald bestemmer, hvad "Gemt"/"Kunne ikke gemme" viser.
       if (res?.ok) {
         const saved = parseSettings((res.data as { settings?: unknown } | null)?.settings);
-        setState((s) => ({ ...s, settings: saved }));
-        setSaveState("saved");
-      } else setSaveState("failed");
+        const mine: Partial<SpoilerSettings> = {};
+        if (patch.shieldAll !== undefined) mine.shieldAll = saved.shieldAll;
+        if (patch.openFinishedIn !== undefined) mine.openFinishedIn = saved.openFinishedIn;
+        setState((s) => ({ ...s, settings: { ...s.settings, ...mine } }));
+        if (seq === saveSeq.current) setSaveState("saved");
+      } else if (seq === saveSeq.current) setSaveState("failed");
     });
   }, []);
   return { ...state, saveState, save };
