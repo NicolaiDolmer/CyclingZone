@@ -6,6 +6,8 @@ import { createRoot } from "react-dom/client";
 import "../../../index.css";
 import Sketch from "./Sketch.tsx";
 import Direction4 from "./R4.tsx";
+import { ProgramView, Questions } from "./R4Extras.tsx";
+const view = new URLSearchParams(window.location.search).get("view");
 
 const IDS = ["r4", "r1", "r2", "r3"] as const;
 type Id = (typeof IDS)[number];
@@ -71,7 +73,9 @@ createRoot(document.getElementById("root")!).render(
     {id === "r4" ? (
       <div className="min-h-screen bg-cz-body">
         <Banner4 />
-        <Direction4 key={`r4-${pressed}-${dateParam}`} pressedAtStart={pressed} dateAtStart={dateParam} mobile={mobile} />
+        {view === "q" ? <Questions /> : view === "program" ? <ProgramView /> : (
+          <Direction4 key={`r4-${pressed}-${dateParam}`} pressedAtStart={pressed} dateAtStart={dateParam} mobile={mobile} />
+        )}
       </div>
     ) : (
       <Sketch key={`${id}-${pressed}`} id={id} pressed={pressed} openDay={openDay} />

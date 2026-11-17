@@ -33,7 +33,20 @@ const DATES = [
 const TODAY = 1;
 const RACE_ON: Record<number, string> = { 0: "Etape 2", 1: "Etape 3 + endagsløb", 2: "Etape 4", 3: "Etape 5" };
 
-const FLAG: Record<string, string> = { SE: "se", FR: "fr", BE: "be", DK: "dk", NL: "nl", CH: "ch", NO: "no" };
+// Ejerens hold (prod, kun SELECT 17/11): navne, nation og ryttertype er ægte.
+// Træningstallene (træthed, felter, XP) er eksempler.
+const REAL: Record<string, { name: string; nation: string; type: string }> = {
+  r1: { name: "Nicolò Vitali", nation: "it", type: "Klatrer" },
+  r2: { name: "Frederik Pedersen", nation: "dk", type: "Rouleur" },
+  r3: { name: "Aron Bizimana", nation: "er", type: "Brostensrytter" },
+  r4: { name: "Bram Janssen", nation: "be", type: "Puncheur" },
+  r5: { name: "Elias Fuchs", nation: "de", type: "Enkeltstartsrytter" },
+  r6: { name: "Henrik Nyström", nation: "no", type: "Rouleur" },
+  r7: { name: "Felix Schmidt", nation: "ch", type: "Allround" },
+  r8: { name: "Matthias Werner", nation: "de", type: "Allround" },
+  r9: { name: "Enzo Lemaire", nation: "fr", type: "Rouleur" },
+};
+const TEAM: SketchRider[] = RIDERS.map((r) => ({ ...r, ...REAL[r.id] }));
 
 type Origin = { source: BaseSource; label: string };
 const ORIGIN: Record<string, Origin> = {
@@ -44,7 +57,7 @@ const ORIGIN: Record<string, Origin> = {
   r5: { source: "program", label: "Program: Enkeltstart-uge" },
   r6: { source: "group", label: "Gruppe: Rouleur-gruppen" },
   r7: { source: "team", label: "Holdrytmen" },
-  r8: { source: "default", label: "Ingen plan · standard for Klatrer" },
+  r8: { source: "default", label: "Ingen plan · standard for Allround" },
   r9: { source: "team", label: "Holdrytmen" },
 };
 
@@ -225,7 +238,7 @@ function RiderCell({ rider, override, dateLabel, onRemove }: { rider: SketchRide
   return (
     <div className="min-w-0">
       <div className="flex items-center gap-1.5">
-        <Flag code={FLAG[rider.nation]} title={rider.nation} />
+        <Flag code={rider.nation} />
         <a href="#rider" className="truncate text-[13.5px] font-medium text-cz-1 hover:underline">{rider.name}</a>
       </div>
       <div className="truncate font-data text-3xs uppercase tracking-[.04em] text-cz-3">{rider.type}</div>
@@ -278,7 +291,7 @@ export default function Direction4({ pressedAtStart, dateAtStart, mobile }: { pr
   const write = (id: string, d: number, next: DateState) =>
     setPlans((p) => ({ ...p, [id]: { ...(p[id] ?? {}), [d]: next } }));
 
-  const rows = useMemo(() => RIDERS.map((r) => {
+  const rows = useMemo(() => TEAM.map((r) => {
     const st = stateOf(r.id, date);
     let fields = resolveDate(baseFor(r, date), st.quick, st.manual);
     if (pressed && isToday) fields = fields.map((f) => (f.kind === "train" ? { ...f, done: true } : f));
@@ -289,10 +302,10 @@ export default function Direction4({ pressedAtStart, dateAtStart, mobile }: { pr
   for (const byDate of Object.values(plans)) for (const [d, st] of Object.entries(byDate)) if (hasDateOverride(st.quick, st.manual)) changedDates.add(Number(d));
 
   const counts = {
-    needsPlan: RIDERS.filter((r) => ORIGIN[r.id].source === "default").length,
+    needsPlan: TEAM.filter((r) => ORIGIN[r.id].source === "default").length,
     racing: rows.filter((x) => x.fields.some((f) => f.kind === "stage")).length,
     training: rows.filter((x) => x.fields.some((f) => f.kind === "train" && levelOf(f.session) > 0)).length,
-    tired: RIDERS.filter((r) => r.tone === "risk" || r.ruleNote !== null).length,
+    tired: TEAM.filter((r) => r.tone === "risk" || r.ruleNote !== null).length,
   };
   const readOnly = isPast || (pressed && isToday);
 
@@ -380,10 +393,10 @@ export default function Direction4({ pressedAtStart, dateAtStart, mobile }: { pr
       {!readOnly && (
         <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-cz border border-cz-border bg-cz-card px-3 py-2 text-xs">
           <span className="font-semibold text-cz-1">Dagens beslutning</span>
-          <span className="text-cz-2">Pieter Claes er over grænsen: Aktiv restitution</span>
+          <span className="text-cz-2">Aron Bizimana er over grænsen: Aktiv restitution</span>
           <button type="button" className="font-medium text-cz-1 underline decoration-cz-border underline-offset-2">Brug</button>
           <span className="text-cz-3">·</span>
-          <span className="text-cz-2">Tobias Keller mangler plan: Mellem mod Klatrer</span>
+          <span className="text-cz-2">Matthias Werner mangler plan: Mellem mod Allround</span>
           <button type="button" className="font-medium text-cz-1 underline decoration-cz-border underline-offset-2">Brug</button>
           <span className="ms-auto text-cz-2"><button type="button" className="font-medium text-cz-1 underline decoration-cz-border underline-offset-2">Assistentens forslag (3)</button></span>
         </div>
@@ -476,7 +489,7 @@ export default function Direction4({ pressedAtStart, dateAtStart, mobile }: { pr
         <span className="inline-flex items-center gap-1"><LevelTicks level={2} /> mellem</span>
         <span className="inline-flex items-center gap-1"><LevelTicks level={3} /> hård</span>
         <span className="inline-flex items-center gap-1"><LockIcon size={11} aria-hidden="true" /> etape, låst af løbet</span>
-        <span>Kilde under feltet: Manuel vinder over Hurtigvalg, som vinder over Program, Gruppe, Holdrytme og Standard. Træthed = holdets træthedsregel.</span>
+        <span>Kilde under feltet: Manuel vinder over Hurtigvalg, som vinder over Program, Gruppe, Holdrytme og Standard. Træthed = holdets træthedsregel. Navne og typer er dit hold; træningstallene er eksempler.</span>
       </p>
     </main>
   );
