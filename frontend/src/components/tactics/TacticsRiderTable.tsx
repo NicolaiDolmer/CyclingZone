@@ -50,9 +50,11 @@ const TD = "px-2 py-2 align-top";
 
 export default function TacticsRiderTable({ rows, showOrders, columns, routeMatchTitle, mobileRouteMatchLabel, sortDir, onSort }: TacticsRiderTableProps) {
   const span = showOrders ? 6 : 5;
+  // #8350: tabellen afhaenger af PANELETS bredde, ikke skaermens. I planlaegningens smalle loebspanel
+  // (ca. 700 px paa en 1280-skaerm) blev indsatskolonnen skaaret af; der bruges kortene i stedet.
   return (
-    <>
-      <div className="hidden overflow-x-auto sm:block">
+    <div className="@container">
+      <div className="hidden overflow-x-auto @4xl:block">
         <table data-sortable className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-cz-border">
@@ -88,7 +90,7 @@ export default function TacticsRiderTable({ rows, showOrders, columns, routeMatc
         </table>
       </div>
 
-      <ul className="m-0 -mx-4 list-none divide-y divide-cz-border border-y border-cz-border p-0 sm:hidden">
+      <ul className="m-0 -mx-4 list-none divide-y divide-cz-border border-y border-cz-border p-0 sm:-mx-5 @4xl:hidden">
         {rows.map((row) => (
           <li key={row.id} data-tactics-rider={row.id} className="flex flex-col gap-2 px-4 py-3">
             <div className="flex items-baseline justify-between gap-3">
@@ -107,6 +109,6 @@ export default function TacticsRiderTable({ rows, showOrders, columns, routeMatc
           </li>
         ))}
       </ul>
-    </>
+    </div>
   );
 }

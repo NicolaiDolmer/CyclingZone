@@ -65,7 +65,7 @@
     "restored": "Restored your unsaved changes.",
     "saveTactics": "Save tactics",
     "savePeaks": "{count, plural, =0 {Apply to selected} other {Apply to selected (#)}}",
-    "saveSquadAndTactics": "Save squad and set tactics"
+    "saveSquadAndTactics": "Save squad and tactics"
   },
   "copy": {
     "title": "Copy squad from",
@@ -217,7 +217,7 @@
       "title": "Save a squad first",
       "description": "Tactics are set for the riders in the saved squad."
     },
-    "squadUnsaved": "The squad has unsaved changes. \"Save squad and set tactics\" saves it and shows the tactics.",
+    "squadUnsaved": "The squad has unsaved changes. \"Save squad and tactics\" saves it and shows the tactics.",
     "shared": "Same tactics as on the race page: a plan saved here shows there, and the other way round.",
     "saveInTab": "You have unsaved tactics. Save them first with \"Save tactics\".",
     "saveFirst": "You have unsaved tactics. Save them with \"Save tactics\" before saving the squad, or they are lost."

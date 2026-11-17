@@ -65,7 +65,7 @@
     "restored": "Dine ikke gemte ændringer er genskabt.",
     "saveTactics": "Gem taktik",
     "savePeaks": "{count, plural, =0 {Anvend på valgte} other {Anvend på valgte (#)}}",
-    "saveSquadAndTactics": "Gem trup og sæt taktik"
+    "saveSquadAndTactics": "Gem trup og taktik"
   },
   "copy": {
     "title": "Kopiér trup fra",
@@ -217,7 +217,7 @@
       "title": "Gem en trup først",
       "description": "Taktikken sættes for rytterne i den gemte trup."
     },
-    "squadUnsaved": "Truppen har ugemte ændringer. \"Gem trup og sæt taktik\" gemmer den og viser taktikken.",
+    "squadUnsaved": "Truppen har ugemte ændringer. \"Gem trup og taktik\" gemmer den og viser taktikken.",
     "shared": "Samme taktik som på løbssiden: en plan gemt her står dér, og omvendt.",
     "saveInTab": "Du har ugemt taktik. Gem den først med \"Gem taktik\".",
     "saveFirst": "Du har ugemt taktik. Gem den med \"Gem taktik\", før du gemmer truppen, ellers går den tabt."
