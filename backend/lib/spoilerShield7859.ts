@@ -252,6 +252,7 @@ type AuthedRequest = Request & { user?: { id?: string } };
 
 export function createSpoilerShieldRouter({
   supabase, requireAuth, isViewerBetaTester, readLimiter, writeLimiter, reportError = () => {},
+  nowIso = () => new Date().toISOString(),
 }: {
   supabase: Db;
   requireAuth: RequestHandler;
@@ -259,6 +260,8 @@ export function createSpoilerShieldRouter({
   readLimiter: RequestHandler;
   writeLimiter: RequestHandler;
   reportError?: (error: unknown, context?: Record<string, unknown>) => void;
+  /** Uret til updated_at (AGENTS regel 16: injicerbart; default = det rigtige ur). */
+  nowIso?: () => string;
 }) {
   const router = Router();
   const userIdOf = (req: Request): string | null => (req as AuthedRequest).user?.id ?? null;
@@ -291,7 +294,7 @@ export function createSpoilerShieldRouter({
     if (!checked.ok) return res.status(400).json({ error: checked.error, reason: checked.reason });
     try {
       if (!(await enabledFor(req))) return res.status(404).json({ error: "Not available", reason: "spoiler_off" });
-      const out = await writeSettings(supabase, userId, checked.patch);
+      const out = await writeSettings(supabase, userId, checked.patch, nowIso);
       if (!out.available) return res.status(503).json({ error: "Not available yet", reason: "spoiler_unavailable" });
       return res.json({ ok: true, settings: out.settings });
     } catch (error) {
@@ -309,7 +312,7 @@ export function createSpoilerShieldRouter({
     if (shield !== null && typeof shield !== "boolean") return res.status(400).json({ error: "shield must be a boolean or null", reason: "spoiler_invalid_value" });
     try {
       if (!(await enabledFor(req))) return res.status(404).json({ error: "Not available", reason: "spoiler_off" });
-      const out = await writeRaceShield(supabase, userId, raceId, shield as boolean | null);
+      const out = await writeRaceShield(supabase, userId, raceId, shield as boolean | null, nowIso);
       if (!out.available) return res.status(503).json({ error: "Not available yet", reason: "spoiler_unavailable" });
       return res.json({ ok: true, shield });
     } catch (error) {

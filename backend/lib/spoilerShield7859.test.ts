@@ -238,6 +238,9 @@ test("løbs-notifikationen: med skjoldet uden de bedste ryttere og uden rubrik",
 
 // ── Ruterne ───────────────────────────────────────────────────────────────
 
+// AGENTS regel 16: testens skrivninger faar et fast ur, aldrig new Date().
+const FIXED_NOW_ISO = "2026-11-17T12:00:00.000Z";
+
 async function serve(t: { after: (fn: () => unknown) => void }, tables: Record<string, Row[]>, { beta = false, userId = A } = {}) {
   const supabase = fakeSupabase(tables);
   clearFlagStageCache({ client: supabase });
@@ -245,7 +248,7 @@ async function serve(t: { after: (fn: () => unknown) => void }, tables: Record<s
   app.use(express.json());
   const requireAuth: express.RequestHandler = (req, _res, next) => { (req as express.Request & { user?: { id: string } }).user = { id: userId }; next(); };
   const pass: express.RequestHandler = (_req, _res, next) => next();
-  app.use("/api/me/spoiler-shield", createSpoilerShieldRouter({ supabase, requireAuth, isViewerBetaTester: async () => beta, readLimiter: pass, writeLimiter: pass }));
+  app.use("/api/me/spoiler-shield", createSpoilerShieldRouter({ supabase, requireAuth, isViewerBetaTester: async () => beta, readLimiter: pass, writeLimiter: pass, nowIso: () => FIXED_NOW_ISO }));
   const srv = app.listen(0);
   t.after(() => srv.close());
   await new Promise((r) => srv.once("listening", r));
@@ -276,10 +279,12 @@ test("ruterne: tændt kontakt læser og skriver kun den indloggedes rækker", as
   const rowB = tables.user_spoiler_shield_7859.find((r) => r.user_id === B)!;
   assert.deepEqual({ user_id: rowB.user_id, open_finished_in: rowB.open_finished_in }, { user_id: B, open_finished_in: "story" });
   assert.equal("shield_all" in rowB, false, "et felt kaldet ikke sendte, skrives ikke");
+  assert.equal(rowB.updated_at, FIXED_NOW_ISO, "routeren bruger det injicerede ur (AGENTS regel 16)");
   const opened = await call(`/races/${RACE}/opened`, { method: "POST", body: JSON.stringify({ stage: 1 }) });
   assert.deepEqual(opened.body, { ok: true, openedStages: [1, 2] });
   assert.equal((await call(`/races/${RACE}`, { method: "PUT", body: JSON.stringify({ shield: null }) })).status, 200);
   assert.equal(tables.user_spoiler_races_7859.find((r) => r.user_id === B)!.shield, null);
+  assert.equal(tables.user_spoiler_races_7859.find((r) => r.user_id === B)!.updated_at, FIXED_NOW_ISO, "også kontakten pr. løb");
   assert.deepEqual(tables.user_spoiler_races_7859.find((r) => r.user_id === B)!.opened_stages, [1, 2], "kontakten rører ikke de åbnede etaper");
 });
 
