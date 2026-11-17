@@ -25,6 +25,7 @@ import { validateDevelopmentXpParams, type DevelopmentXpParams } from "./develop
 import { validateParams as validatePotentialEstimateParams } from "./potentialEstimate.js";
 import { validateRaceDayRoleYieldParams } from "./raceDayRoleYieldParams.js";
 import { validateTalentMarksParams } from "./talentMarksParams.js";
+import { validatePlanningExpectedLoadThresholds } from "./planningExpectedLoad7535Params.js";
 import { parseWeeklyEngineDriftThresholds, type WeeklyEngineDriftThresholds } from "./weeklyEngineDriftThresholds.ts";
 
 export interface TalentMarksParams {
@@ -95,6 +96,11 @@ export const PRIVATE_CONFIG_KEYS = Object.freeze({
     private: true,
     parse: validatePotentialEstimateParams,
   }) as PrivateConfigKeySpec<Record<string, unknown>>,
+  planning_expected_load_7535: Object.freeze({
+    description: "Grænserne bag belastningsordene let/mellem/hård på planlægningssiden (#7535/#8294). Læses af planningExpectedLoad7535.js.",
+    private: true,
+    parse: validatePlanningExpectedLoadThresholds,
+  }) as PrivateConfigKeySpec<{ lightBelow: number; hardFrom: number }>,
 });
 
 export type PrivateConfigKey = keyof typeof PRIVATE_CONFIG_KEYS;

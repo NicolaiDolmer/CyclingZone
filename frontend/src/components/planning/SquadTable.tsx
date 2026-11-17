@@ -1,20 +1,25 @@
-// #7535 · Trup-tabellen (Squad-visningen). En raekke pr. rytter: vaelg, rolle, status, rating,
-// form, traethed, rute-match for hele loebet og en kolonne pr. rutetype i loebet. Hver kolonne
+// #7535 · Trup-tabellen (Squad-visningen). Kolonnerne er wireframets (ejervalg 16/11, punkt 7): vaelg,
+// rytter, status, rolle i loebet, type, rating, form, traethed, belastning og rute-match. Hver kolonne
 // sorterer (cybersimon 2/11). Standardsortering er rute-match for hele loebet.
 //
-// Mobil (D-047, 640 px og smalere): navnecellen (med afkrydsning og rolle) + de tre kolonner
-// rute-match, form og traethed. Resten staar i desktop-tabellen. Ingen vandret scroll paa mobil.
+// Rute-match staar som tal paa ratingens gradient-plade (statColor), uden bjaelke og uden guld. Hvornaar
+// rytteren formtopper staar ved Form, aldrig i Status. "Belastning" er et ord (let/mellem/haard, punkt 5).
+//
+// Mobil (punkt 2, kompakt): navnecellen (afkrydsning, navn, rolle som lille vaelger eller typen) og de
+// tal-kolonner spilleren har valgt i chip-raekken (hoejst tre), med kolonneoverskrifter. Ingen vandret scroll.
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { SortableTh, Select, RiderNameCell, RiderBadges, BestRoleTag, TerrainTypeGlyph, Flag, isU23, injuryTimeLeft } from "./primitives.ts";
+import { SortableTh, Select, RiderNameCell, RiderBadges, Flag, isU23, injuryTimeLeft, statPlateStyle, RIDER_TYPE_KEYS } from "./primitives.ts";
 import { formatShortDate } from "./planningUi.tsx";
 import { injuryFitAgainDate } from "../../lib/injuryExplain.ts";
 import type { RiderDetail, SeasonLoad } from "../../lib/planningWorkbenchData.ts";
 import {
   availableRoles,
   roleOf,
-  bestOf,
-  type ProfileColumn,
+  DEFAULT_MOBILE_COLUMNS,
+  type LoadWord,
+  type MobileColumn,
+  type PeakNext,
   type RoleKey,
   type Selection,
   type SquadRow,
@@ -22,9 +27,11 @@ import {
   type SquadSortKey,
 } from "../../lib/planningWorkbench.ts";
 
+// TASTE: 5 px radius (rounded-cz) paa alle smaa maerker, ingen piller.
 const CHIP =
-  "inline-flex items-center justify-center text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded shrink-0";
+  "inline-flex items-center justify-center text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded-cz shrink-0";
 const NEUTRAL = "bg-cz-subtle text-cz-2 border border-cz-border";
+const TYPES = new Set(RIDER_TYPE_KEYS);
 
 function StatusCell({ row, detail, seasonYear, compact = false }: { row: SquadRow; detail?: RiderDetail; seasonYear: number | null; compact?: boolean }) {
   const { t } = useTranslation("planning");
@@ -35,22 +42,25 @@ function StatusCell({ row, detail, seasonYear, compact = false }: { row: SquadRo
   const fitAgain = row.injured && detail ? injuryFitAgainDate(detail.injuredUntil) : null;
   const approx = detail ? injuryTimeLeft({ injured_until: detail.injuredUntil, injury_race_days_left: detail.injuryRaceDaysLeft }).unit === "race_day" : false;
   return (
-    // Paa pc staar maerker og "Rask igen <dato>" paa én linje (ejer 14/11): en dato under maerket eller
-    // over flere linjer gjorde raekken hoejere end de andre. Paa mobil maa de bryde under navnet.
+    // Paa pc staar maerker og "Rask igen <dato>" paa én linje (ejer 14/11); paa mobil maa de bryde under navnet.
     <span className="inline-flex flex-wrap items-center gap-1 sm:flex-nowrap">
       <RiderBadges badges={badges} />
-      {/* Altid én linje (ejer 14/11): en dato over flere linjer gjorde raekken hoejere end de andre. */}
-      {fitAgain && (
-        <span className="whitespace-nowrap text-2xs leading-tight text-cz-3" data-testid="planning-fit-again">
-          {tRider(approx ? "condition.fitAgainApprox" : "condition.fitAgain", { date: formatShortDate(fitAgain, i18n.language, false) })}
-        </span>
-      )}
+      {fitAgain && (() => {
+        const date = formatShortDate(fitAgain, i18n.language, false);
+        const full = tRider(approx ? "condition.fitAgainApprox" : "condition.fitAgain", { date });
+        // Trang tabel: kun datoen (hele teksten i titlen), saa tabellen bliver i kortet.
+        return (
+          <span className="whitespace-nowrap text-2xs leading-tight text-cz-3" data-testid="planning-fit-again" title={full}>
+            {compact ? date : full}
+          </span>
+        );
+      })()}
       {row.overAge && <span className={`${CHIP} ${NEUTRAL}`}>{t("status.overAge")}</span>}
       {row.trainNowLocked && <span className={`${CHIP} ${NEUTRAL}`}>{t("status.trainNow")}</span>}
       {row.busyIn && (
         // Hele "I <loeb>" i almindelig skrift; kun et meget langt navn afkortes (titlen har resten).
         <span
-          className={`inline-block ${compact ? "max-w-[4.5rem]" : "max-w-[6.5rem]"} truncate rounded border border-cz-border bg-cz-subtle px-1.5 py-0.5 text-2xs leading-none text-cz-2`}
+          className={`inline-block ${compact ? "max-w-[4rem]" : "max-w-[6.5rem]"} truncate rounded-cz border border-cz-border bg-cz-subtle px-1.5 py-0.5 text-2xs leading-none text-cz-2`}
           title={t("status.busyTitle", { race: row.busyIn })}
         >
           {t("status.busy", { race: row.busyIn })}
@@ -70,12 +80,60 @@ function FatigueCell({ value, compact }: { value: number | null; compact: boolea
   );
 }
 
+/** Rute-match paa ratingens gradient-plade (punkt 7): samme farver som ratings, intet guld, ingen bjaelke. */
+export function RouteMatchPlate({ value }: { value: number | null }) {
+  if (value == null) return <span className="text-cz-3">-</span>;
+  return (
+    <span
+      className="inline-flex min-w-[2.125rem] items-center justify-center rounded-cz px-1 py-0.5 font-data text-[13px] font-semibold leading-none tabular-nums"
+      style={statPlateStyle(value, { scale: "rating" })}
+      data-testid="planning-route-match"
+    >
+      {value}
+    </span>
+  );
+}
+
+/** Belastningen som ord (punkt 5). Haard staar i advarselsfarven. */
+function LoadCell({ value }: { value: LoadWord | null | undefined }) {
+  const { t } = useTranslation("planning");
+  if (!value) return <span className="text-cz-3">-</span>;
+  const tone = value === "hard" ? "font-semibold text-cz-warning" : value === "medium" ? "text-cz-1" : "text-cz-2";
+  return (
+    <span className={`whitespace-nowrap text-[13px] ${tone}`} data-testid="planning-load" data-load={value}>
+      {t(`squad.loadWord.${value}`)}
+    </span>
+  );
+}
+
+/** Dato som tal (fx 22.11.), saa formtop-maerket under formtallet er smalt. */
+function numericDate(date: string, language: string): string {
+  try {
+    return new Intl.DateTimeFormat(language, { day: "numeric", month: "numeric", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
+  } catch {
+    return date;
+  }
+}
+
+/** Rytterens naeste formtop ved Form (punkt 7): kort dato, hele navnet og dagene i titlen. */
+function PeakMark({ peak }: { peak: PeakNext }) {
+  const { t, i18n } = useTranslation("planning");
+  return (
+    <span
+      className="whitespace-nowrap font-data text-3xs tabular-nums text-cz-3"
+      title={t("squad.peakTitle", { race: peak.name, date: formatShortDate(peak.date, i18n.language), count: peak.days })}
+      data-testid="planning-peak-mark"
+    >
+      {t("squad.peakShort", { date: numericDate(peak.date, i18n.language) })}
+    </span>
+  );
+}
+
 interface SquadTableProps {
   rows: SquadRow[];
   selection: Selection;
   sort: SquadSort;
   onSort: (key: SquadSortKey) => void;
-  profileCols: ProfileColumn[];
   max: number;
   readOnly: boolean;
   sprintLeaderAllowed: boolean;
@@ -86,6 +144,12 @@ interface SquadTableProps {
   /** Saeson-belastning pr. rytter, samme tal som rytter-chippen paa /planning. */
   seasonLoad?: Record<string, SeasonLoad>;
   seasonYear?: number | null;
+  /** Kolonnen "Belastning" (ord); vises ikke, naar modellen er slukket. */
+  showLoad?: boolean;
+  /** Rytterens naeste formtop (fra Formtop-board'et). */
+  peakNext?: Map<string, PeakNext>;
+  /** Mobilens valgte tal-kolonner (chip-raekken). */
+  mobileColumns?: MobileColumn[];
 }
 
 export default function SquadTable({
@@ -93,7 +157,6 @@ export default function SquadTable({
   selection,
   sort,
   onSort,
-  profileCols,
   max,
   readOnly,
   sprintLeaderAllowed,
@@ -102,23 +165,25 @@ export default function SquadTable({
   details,
   seasonLoad,
   seasonYear = null,
+  showLoad = false,
+  peakNext,
+  mobileColumns = DEFAULT_MOBILE_COLUMNS,
 }: SquadTableProps) {
   const { t } = useTranslation("planning");
   const { t: tRaces } = useTranslation("races");
+  const { t: tTypes } = useTranslation("riderTypes");
   const picked = new Set(selection.riderIds);
   const atMax = selection.riderIds.length >= max;
   const roles = availableRoles(sprintLeaderAllowed);
-  const bestMatch = bestOf(rows, (r) => r.routeMatch);
-  const bestByProfile = Object.fromEntries(profileCols.map((c) => [c.profileType, bestOf(rows, (r) => r.byProfile[c.profileType] ?? null)]));
+  const typeLabel = (type: string | null | undefined) => (type && TYPES.has(type) ? tTypes(`types.${type}`) : null);
 
-  // Uden vandret scroll paa pc (ejer 14/11): har tabellen ikke plads i kortet (fx et etapeloeb med
-  // mange rutetyper ved siden af loebslisten), falder pynten vaek, foerst traethedsbjaelken og
-  // rollemaerket ved ratingen. Tallene staar altid. Bredden med pynt huskes, saa den kommer igen,
-  // naar der bliver plads (fx naar loebslisten skjules).
+  // Uden vandret scroll paa pc (ejer 14/11): har tabellen ikke plads i kortet, falder pynten vaek (foerst
+  // traethedsbjaelken og saeson-belastningen ved navnet). Tallene staar altid. Bredden med pynt huskes,
+  // saa den kommer igen, naar der bliver plads (fx naar loebslisten skjules).
   const wrapRef = useRef<HTMLDivElement>(null);
   const [compact, setCompact] = useState(false);
   const fullWidth = useRef(0);
-  const shape = `${rows.length}|${profileCols.map((c) => c.profileType).join(",")}`;
+  const shape = `${rows.length}|${showLoad ? 1 : 0}`;
   useLayoutEffect(() => {
     const box = wrapRef.current;
     const table = box?.firstElementChild as HTMLElement | null;
@@ -140,15 +205,11 @@ export default function SquadTable({
     return () => ro.disconnect();
   }, [compact, shape]);
 
-  // Luft til kortets kant (ejer 14/11): foerste og sidste kolonne faar kortets egen indrykning paa pc,
-  // saa Traethed (eller den sidste rutetype) aldrig staar helt ude ved kanten.
-  const lastKey: SquadSortKey = profileCols.length ? (`profile:${profileCols[profileCols.length - 1].profileType}` as SquadSortKey) : "fatigue";
-  const edge = (key: SquadSortKey) => (key === "pick" ? (compact ? "sm:ps-3" : "sm:ps-4") : key === lastKey ? "sm:pe-4" : "");
-  const th = (
-    key: SquadSortKey,
-    label: ReactNode,
-    { numeric = true, hideMobile = true, title }: { numeric?: boolean; hideMobile?: boolean; title?: string } = {},
-  ) => (
+  // Paa mobil staar kun de valgte tal-kolonner; paa pc alle.
+  const onMobile = (key: MobileColumn) => (mobileColumns.includes(key) ? "table-cell" : "hidden sm:table-cell");
+  // Luft til kortets kant (ejer 14/11): foerste og sidste kolonne faar kortets egen indrykning paa pc.
+  const edge = (key: SquadSortKey) => (key === "pick" ? (compact ? "sm:ps-3" : "sm:ps-4") : key === "routeMatch" ? "pe-3 sm:pe-4" : "");
+  const th = (key: SquadSortKey, label: ReactNode, { numeric = true, visibility = "hidden sm:table-cell", title }: { numeric?: boolean; visibility?: string; title?: string } = {}) => (
     <SortableTh
       key={key}
       sortKey={key}
@@ -156,35 +217,34 @@ export default function SquadTable({
       sortDir={sort.dir}
       onSort={onSort}
       title={title}
-      className={`px-1.5 py-2 font-data text-2xs font-semibold uppercase tracking-normal text-cz-3 sm:px-1.5 sm:tracking-wide ${numeric ? "text-right" : "text-left"} bg-cz-subtle ${hideMobile ? "hidden sm:table-cell" : ""} ${edge(key)}`}
+      className={`px-1.5 py-2 font-data text-2xs font-semibold uppercase tracking-normal text-cz-3 sm:px-1.5 sm:tracking-wide ${numeric ? "text-right" : "text-left"} bg-cz-subtle ${visibility} ${edge(key)}`}
     >
       {label}
     </SortableTh>
   );
+  const td = "px-1.5 py-[7px] font-data text-[13px] tabular-nums";
 
   return (
-    <div ref={wrapRef} className="overflow-x-clip sm:overflow-x-auto" data-testid="planning-squad-table" data-compact={compact ? "true" : undefined}>
+    <div
+      ref={wrapRef}
+      className={`overflow-x-clip sm:overflow-x-auto ${compact ? "[&_td]:px-1 [&_th]:px-1 sm:[&_td:first-child]:ps-3 sm:[&_th:first-child]:ps-3 sm:[&_td:last-child]:pe-3 sm:[&_th:last-child]:pe-3" : ""}`}
+      data-testid="planning-squad-table"
+      data-compact={compact ? "true" : undefined}
+    >
       <table data-sortable className="w-full border-collapse">
         <thead>
           {/* Hver kolonne sorterer: th() bygger en SortableTh med onSort (guard: tableSortIntent.test.js). */}
           <tr>
-            {th("pick", compact ? <span className="sr-only">{t("squad.pick")}</span> : t("squad.pick"), { numeric: false, hideMobile: true, title: t("squad.pick") })}
-            {th("name", t("squad.rider"), { numeric: false, hideMobile: false })}
+            {th("pick", compact ? <span className="sr-only">{t("squad.pick")}</span> : t("squad.pick"), { numeric: false, title: t("squad.pick") })}
+            {th("name", t("squad.rider"), { numeric: false, visibility: "table-cell" })}
             {th("status", t("squad.status"), { numeric: false })}
             {th("role", t("squad.role"), { numeric: false })}
-            {th("rating", t("squad.rating"))}
-            {th("routeMatch", t("squad.routeMatch"), { hideMobile: false })}
-            {th("form", t("squad.form"), { hideMobile: false })}
-            {th("fatigue", t("squad.fatigue"), { hideMobile: false })}
-            {/* Rutetypen som ikon (navnet staar i ikonets titel), saa kolonnerne er smalle nok til kortet. */}
-            {profileCols.map((c) =>
-              th(`profile:${c.profileType}` as SquadSortKey, (
-                <span className="inline-flex flex-col items-end gap-0.5">
-                  <TerrainTypeGlyph profileType={c.profileType} size={14} />
-                  <span className="tabular-nums">{`×${c.count}`}</span>
-                </span>
-              )),
-            )}
+            {th("type", t("squad.type"), { numeric: false })}
+            {th("rating", t("squad.rating"), { visibility: onMobile("rating") })}
+            {th("form", t("squad.form"), { visibility: onMobile("form") })}
+            {th("fatigue", t("squad.fatigue"), { visibility: onMobile("fatigue") })}
+            {showLoad && th("load", t("squad.load"), { numeric: false, visibility: onMobile("load"), title: t("squad.loadTitle") })}
+            {th("routeMatch", t("squad.routeMatch"), { visibility: onMobile("routeMatch") })}
           </tr>
         </thead>
         <tbody>
@@ -195,6 +255,8 @@ export default function SquadTable({
             const dim = !row.selectable && !checked;
             const detail = details?.get(row.id);
             const load = seasonLoad?.[row.id] ?? null;
+            const peak = peakNext?.get(row.id) ?? null;
+            const type = typeLabel(row.type);
             return (
               <tr
                 key={row.id}
@@ -203,7 +265,7 @@ export default function SquadTable({
                 className={`border-t border-cz-border sm:h-[46px] ${checked ? "bg-cz-subtle" : ""} ${dim ? "text-cz-3" : ""}`}
               >
                 <td className={`hidden px-1.5 py-[7px] sm:table-cell ${edge("pick")}`}>
-                  <label className={`flex h-11 w-11 items-center justify-center sm:h-auto sm:w-auto ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
+                  <label className={`flex items-center justify-center ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
                     <input
                       type="checkbox"
                       className="h-4 w-4 accent-cz-accent disabled:cursor-not-allowed"
@@ -214,9 +276,10 @@ export default function SquadTable({
                     />
                   </label>
                 </td>
-                <td className="w-full px-1.5 py-[7px] text-left sm:w-auto">
+                <td className="w-full px-1.5 py-1 text-left sm:w-auto sm:py-[7px]">
                   <div className="flex items-start gap-1 sm:block">
-                    <label className={`-ms-2 flex h-11 w-11 shrink-0 items-center justify-center sm:hidden ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
+                    {/* Mobil: afkrydsningen i navnecellen med en tommelflade paa 44 x 44. */}
+                    <label className={`-ms-1.5 flex h-11 w-11 shrink-0 items-center justify-center sm:hidden ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
                       <input
                         type="checkbox"
                         className="h-4 w-4 accent-cz-accent disabled:cursor-not-allowed"
@@ -227,18 +290,15 @@ export default function SquadTable({
                       />
                     </label>
                     <div className="min-w-0 pt-2.5 sm:pt-0">
-                      {/* Navnet brydes kun paa mobil; paa pc staar det paa én linje som paa de nuvaerende sider. */}
-                      {/* Navnecellens faste raekkefoelge (TASTE P12): nation, navn, derefter status. Belastningen
-                          staar ved navnet som paa rytter-chippen paa /planning og gaar under navnet, naar tabellen er trang. */}
-                      {/* Paa pc staar belastningen altid paa navnets linje, saa lange navne ikke giver ujaevne raekker. */}
+                      {/* Navnecellens faste raekkefoelge (TASTE P12): nation, navn, derefter status. */}
                       <span className="inline-flex max-w-full flex-wrap items-center gap-x-1.5 sm:flex-nowrap">
                         <span className="inline-flex min-w-0 items-center gap-1.5">
                           {detail?.nationality && <Flag code={detail.nationality} className="shrink-0 text-2xs" />}
                           <RiderNameCell id={row.id} name={row.name} wrap className="text-[13.5px] font-medium text-cz-1 hover:text-cz-accent-t sm:whitespace-nowrap" />
                         </span>
-                        {load != null && load.raceDays > 0 && (
+                        {load != null && load.raceDays > 0 && !compact && (
                           <span
-                            className="shrink-0 whitespace-nowrap font-mono text-3xs tabular-nums text-cz-3"
+                            className="hidden shrink-0 whitespace-nowrap font-mono text-3xs tabular-nums text-cz-3 sm:inline"
                             data-testid="planning-season-load"
                             title={tRaces("racehub.pool.loadTitle", { races: load.races, days: load.raceDays })}
                           >
@@ -246,14 +306,18 @@ export default function SquadTable({
                           </span>
                         )}
                       </span>
-                      <div className="mt-1 sm:hidden">
+                      {/* Mobil (kompakt): rollen som lille vaelger ved navnet, ellers typen; status og formtop under. */}
+                      <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 sm:hidden">
+                        {checked && !readOnly ? (
+                          <RoleSelect row={row} selection={selection} roles={roles} onRole={onRole} className="h-7 min-w-0 py-0 pe-7 ps-2 text-2xs" />
+                        ) : checked ? (
+                          <span className={`${CHIP} ${NEUTRAL}`}>{t(`role.${roleOf(selection, row.id)}`)}</span>
+                        ) : (
+                          type && <span className="text-2xs text-cz-3">{type}</span>
+                        )}
                         <StatusCell row={row} detail={detail} seasonYear={seasonYear} />
+                        {peak && <PeakMark peak={peak} />}
                       </div>
-                      {checked && !readOnly && (
-                        <div className="mt-1.5 sm:hidden">
-                          <RoleSelect row={row} selection={selection} roles={roles} onRole={onRole} className="w-full min-w-0" />
-                        </div>
-                      )}
                     </div>
                   </div>
                 </td>
@@ -265,41 +329,40 @@ export default function SquadTable({
                     readOnly ? (
                       <span className="text-[13px] text-cz-2">{t(`role.${roleOf(selection, row.id)}`)}</span>
                     ) : (
-                      <RoleSelect row={row} selection={selection} roles={roles} onRole={onRole} className={compact ? "min-w-[7.25rem]" : undefined} />
+                      <RoleSelect row={row} selection={selection} roles={roles} onRole={onRole} className={compact ? "min-w-[6.75rem]" : undefined} />
                     )
                   ) : (
                     <span className="text-cz-3">-</span>
                   )}
                 </td>
-                <td className="hidden px-1.5 py-[7px] text-right font-data text-[13px] tabular-nums sm:table-cell">
-                  {row.rating != null ? (
-                    <span className="inline-flex items-center justify-end gap-1.5">
-                      <span>{row.rating}</span>
-                      {row.ratingRole && !compact && <BestRoleTag role={row.ratingRole} />}
+                <td className="hidden px-1.5 py-[7px] text-left text-[13px] text-cz-2 sm:table-cell">
+                  {type ? (
+                    <span className={`block truncate ${compact ? "max-w-[4rem]" : ""}`} title={type}>
+                      {type}
                     </span>
                   ) : (
                     <span className="text-cz-3">-</span>
                   )}
                 </td>
-                <td className={`whitespace-nowrap px-1.5 py-[7px] text-right font-data text-[13px] tabular-nums ${row.selectable && row.routeMatch != null && row.routeMatch === bestMatch ? "font-semibold text-cz-accent-t" : ""}`}>
-                  {row.routeMatch ?? <span className="text-cz-3">-</span>}
+                <td className={`${onMobile("rating")} whitespace-nowrap text-right ${td}`}>{row.rating ?? <span className="text-cz-3">-</span>}</td>
+                <td className={`${onMobile("form")} whitespace-nowrap text-right ${td}`}>
+                  {/* Formtoppen staar under formtallet (pc), saa kolonnen ikke bliver bredere. */}
+                  <span className="inline-flex flex-col items-end leading-tight">
+                    <span>{row.form ?? <span className="text-cz-3">-</span>}</span>
+                    {peak && <span className="hidden sm:inline"><PeakMark peak={peak} /></span>}
+                  </span>
                 </td>
-                <td className="whitespace-nowrap px-1.5 py-[7px] text-right font-data text-[13px] tabular-nums">{row.form ?? <span className="text-cz-3">-</span>}</td>
-                <td className={`whitespace-nowrap px-1.5 py-[7px] text-right font-data text-[13px] tabular-nums ${edge("fatigue")}`}>
+                <td className={`${onMobile("fatigue")} whitespace-nowrap text-right ${td}`}>
                   <FatigueCell value={row.fatigue} compact={compact} />
                 </td>
-                {profileCols.map((c) => {
-                  const v = row.byProfile[c.profileType] ?? null;
-                  const best = row.selectable && v != null && v === bestByProfile[c.profileType];
-                  return (
-                    <td
-                      key={c.profileType}
-                      className={`hidden px-1.5 py-[7px] text-right font-data text-[13px] tabular-nums sm:table-cell ${edge(`profile:${c.profileType}` as SquadSortKey)} ${best ? "font-semibold text-cz-accent-t" : ""}`}
-                    >
-                      {v ?? <span className="text-cz-3">-</span>}
-                    </td>
-                  );
-                })}
+                {showLoad && (
+                  <td className={`${onMobile("load")} px-1.5 py-[7px] text-left`}>
+                    <LoadCell value={row.load} />
+                  </td>
+                )}
+                <td className={`${onMobile("routeMatch")} whitespace-nowrap text-right ${td} ${edge("routeMatch")}`}>
+                  <RouteMatchPlate value={row.routeMatch} />
+                </td>
               </tr>
             );
           })}
