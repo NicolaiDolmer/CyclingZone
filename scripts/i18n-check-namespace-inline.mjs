@@ -62,6 +62,7 @@ const INLINE_EXEMPT = new Set([
   "forum", // ForumPage + ForumPostPage — ready-gate
   "results", // ResultaterPage — ready-gate
   "calendar", // CalendarPage (tab i PlanningHubPage) — ready-gate
+  "academyV2", // #8081 udgave A af AcademyPage (bag kontakten academy_page_v2_8081) — I18nReadyGate i AcademyPage
   "planning", // PlanningWorkbenchPage (#7535, bag kontakten planning_workbench) — ready-gate i App.jsx
   "pro", // ProUpgradePage — ready-gate
   "watchlist", // WatchlistPage — ready-gate
@@ -69,6 +70,8 @@ const INLINE_EXEMPT = new Set([
   "standings",
   "squad", // #5519 SquadPage (U23 team / Junior team): I18nReadyGate i App.jsx
   "pwa", // #6584 InstallPrompt: mountInstallPrompt venter paa loadNamespaces + ready-gate
+  "spoiler", // #7859 spoiler-skjoldet (bag kontakten spoiler_shield_7859): I18nReadyGate i components/spoiler/
+  "academyLedger", // #8060 AcademyLedgerTab (fane i akademisiden udgave A) — ready-gate
 
   // #4231: backendMessages var det tungeste tilbagevaerende inlinede namespace
   // (56 KB raw da+en, ~15 KB gzipped). Backend sender {code, params}; frontend

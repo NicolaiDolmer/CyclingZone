@@ -1,0 +1,29 @@
+{
+  "switch": "Spoiler shield",
+  "hero": {
+    "hidden": "Stage finished · result hidden by your spoiler shield"
+  },
+  "results": {
+    "hidden": "Results are hidden by your spoiler shield",
+    "show": "Show results",
+    "loading": "Checking your spoiler shield"
+  },
+  "story": {
+    "inResults": "Your day and the result are in Results",
+    "finaleAhead": "The finale is ahead · keep watching"
+  },
+  "settings": {
+    "title": "Results and spoilers",
+    "intro": "How results reach you.",
+    "all": "Spoiler shield for all races",
+    "allHint": "Hides winners and results until you open the stage. Each race page also has its own switch.",
+    "notifications": "Notifications",
+    "notificationsHint": "With the shield on, the inbox, the bell and browser notifications only say that a stage is finished.",
+    "openIn": "Open a finished stage in",
+    "openInHint": "The shield always opens a finished stage in Story.",
+    "results": "Results",
+    "story": "Story",
+    "saved": "Saved",
+    "failed": "Could not save. Try again."
+  }
+}

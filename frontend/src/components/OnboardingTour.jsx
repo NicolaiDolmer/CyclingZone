@@ -4,6 +4,7 @@ import { readTour, advanceTour, endTour, TOUR_START_EVENT } from "../lib/onboard
 import { findVisibleTarget } from "../lib/onboardingTourTarget.js";
 import { computeTooltipPlacement } from "../lib/onboardingTourPlacement.js";
 import { ChevronRightIcon } from "./ui/icons";
+import { buttonClass } from "./ui/buttonStyles.js";
 
 // #3008: MobileQuickNav (fixed bund-nav, kun < md) er 56px høj — tooltip'en må
 // ikke lægge sig bag den på mobil. Samme breakpoint som Tailwinds md:hidden.
@@ -215,7 +216,7 @@ export default function OnboardingTour({ pageKey, steps }) {
           </button>
           <button
             onClick={handleNext}
-            className="inline-flex items-center gap-0.5 bg-cz-accent text-cz-on-accent px-3 py-1.5 rounded-cz text-xs font-bold hover:brightness-110 transition-all"
+            className={`${buttonClass({ variant: "primary", size: "sm" })} gap-0.5`}
           >
             {isLast ? t("onboardingTour.done") : (
               <>

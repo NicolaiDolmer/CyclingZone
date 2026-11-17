@@ -24,12 +24,17 @@
 
 set +e
 
+# Kraever bash 4+ (declare -A, printf %(%s)T). Fail-open: et hook maa aldrig blokere paa gammel bash.
+[ "${BASH_VERSINFO[0]:-0}" -ge 4 ] || exit 0
+
 CWD="$PWD"
 # Sikkerhed (Codex/Vercel 16/11): loggen skal have et unikt, sikkert navn pr. kørsel.
 # Et fast navn i en delt tmp-mappe kan peges om via et symlink og tømme en anden fil.
 # Fejler mktemp, skrives der ingen log (aldrig et forudsigeligt navn).
 LOG="$(mktemp -t cm-cleanup.XXXXXX 2>/dev/null)" || LOG=/dev/null
 [ -n "$LOG" ] || LOG=/dev/null
+# Logfilen slettes igen ved afslutning (ogsaa ved exit midtvejs); /dev/null roeres aldrig.
+trap '[ "$LOG" = /dev/null ] || rm -f -- "$LOG"' EXIT
 exec 2>"$LOG"
 
 # Detect repo root portably. Skip silently if not in a git repo.
@@ -78,11 +83,18 @@ dir_mtime() {
   stat -c %Y "$p" 2>/dev/null || stat -f %m "$p" 2>/dev/null || echo 0
 }
 
-printf -v NOW_EPOCH '%(%s)T' -1
+# Referencetid: systemuret. Tests giver et fast tidspunkt via CZ_CLEANUP_NOW_EPOCH
+# (AGENTS.md regel 16: ingen test maa laese det rigtige ur). Kun et rent heltal bruges.
+if [[ "${CZ_CLEANUP_NOW_EPOCH:-}" =~ ^[0-9]+$ ]]; then
+  NOW_EPOCH="$CZ_CLEANUP_NOW_EPOCH"
+else
+  printf -v NOW_EPOCH '%(%s)T' -1
+fi
 ACTIVITY_GUARD_SEC=1800  # 30 minutes
 
 # 1. Sync with origin: ONE fetch, then the same FF-only merge `git pull --ff-only
-#    origin main` did (no-op if non-FF). Tidligere hentede pull'en en gang til.
+#    origin main` did (merger ind i den udtjekkede gren, hvilken som helst; kun en
+#    fast-forward flytter den, ellers sker intet). Tidligere hentede pull'en en gang til.
 #    Sikkerhed (Vercel 16/11): hent KUN main med eksplicit refspec og brug det fuldt
 #    kvalificerede navn. Et tag ved navn "origin/main" ville ellers vinde over
 #    remote-branchen og kunne fast-forwarde til ugennemgaaet kode, som hooks derefter koerer.

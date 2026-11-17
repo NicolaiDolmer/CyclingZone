@@ -1,0 +1,29 @@
+{
+  "switch": "Escudo anti-spoiler",
+  "hero": {
+    "hidden": "Etapa terminada · resultado oculto por tu escudo anti-spoiler"
+  },
+  "results": {
+    "hidden": "Los resultados están ocultos por tu escudo anti-spoiler",
+    "show": "Mostrar resultados",
+    "loading": "Comprobando tu escudo anti-spoiler"
+  },
+  "story": {
+    "inResults": "Tu día y el resultado están en Resultados",
+    "finaleAhead": "Queda el final · sigue viendo"
+  },
+  "settings": {
+    "title": "Resultados y spoilers",
+    "intro": "Cómo te llegan los resultados.",
+    "all": "Escudo anti-spoiler en todas las carreras",
+    "allHint": "Oculta ganadores y resultados hasta que abras la etapa. Cada página de carrera tiene también su propio interruptor.",
+    "notifications": "Notificaciones",
+    "notificationsHint": "Con el escudo activado, la bandeja, la campana y las notificaciones del navegador solo dicen que la etapa ha terminado.",
+    "openIn": "Abrir una etapa terminada en",
+    "openInHint": "El escudo siempre abre una etapa terminada en Historia.",
+    "results": "Resultados",
+    "story": "Historia",
+    "saved": "Guardado",
+    "failed": "No se pudo guardar. Inténtalo de nuevo."
+  }
+}
