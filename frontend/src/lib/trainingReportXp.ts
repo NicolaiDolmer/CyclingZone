@@ -33,7 +33,7 @@ import { orderAbilities } from "./trainingReceiptView.ts";
 type Numbers = Record<string, number>;
 export interface XpBar { xp: number; price: number }
 /** PROPOSED (not in the payload today): XP per ability on one slot. */
-export type XpActivity = TrainingActivity & { xp?: Numbers | null };
+export type XpActivity = TrainingActivity & { xp?: Numbers | null; bar_paid?: Numbers | null };
 /** PROPOSED (not in the payload today): the bar in XP after the date, per ability. */
 export type XpRiderReceipt = DailyRiderReceipt & {
   xp_bar?: Record<string, XpBar> | null;
@@ -185,8 +185,16 @@ function byDate(runs: ReadonlyArray<XpReceipt>): Map<string, XpReceipt> {
 }
 
 /** Points paid out from the bar for one ability: never more than the points that landed. */
-export function paidPoints(row: Pick<XpRiderReceipt, "gains" | "bar_paid">, key: string): number {
-  return Math.min(Math.floor(positive(row.bar_paid?.[key])), positive(row.gains?.[key]));
+export function paidPoints(row: Pick<XpRiderReceipt, "gains" | "bar_paid"> & { activities?: ReadonlyArray<{ bar_paid?: Numbers | null }> }, key: string): number {
+  // The server writes bar_paid on the slot where the payout happens (often the
+  // date's first). aggregateTrainingRuns keeps every raw slot in `activities` but
+  // copies only the last slot onto the row, so the slots are summed when they
+  // carry the field; a row-level date total is the fallback.
+  const slots = (row.activities ?? []).filter(a => a?.bar_paid && typeof a.bar_paid === "object");
+  const paid = slots.length > 0
+    ? slots.reduce((sum, a) => sum + positive(a.bar_paid?.[key]), 0)
+    : positive(row.bar_paid?.[key]);
+  return Math.min(Math.floor(paid), positive(row.gains?.[key]));
 }
 
 function riderTotals(row: XpRiderReceipt) {
@@ -227,7 +235,9 @@ function single(entries: Array<[string, number]>): string | null {
 export function buildTodayView(runs: ReadonlyArray<XpReceipt>, date: string | null, options: XpViewOptions = {}): XpTodayView | null {
   const days = xpDays(runs);
   if (days.length === 0) return null;
-  const index = Math.max(0, date ? days.findIndex(d => d.date === date) : days.length - 1);
+  // A picked date that is no longer in the receipts (e.g. after a refetch) falls back to the latest day.
+  const found = date ? days.findIndex(d => d.date === date) : -1;
+  const index = found >= 0 ? found : days.length - 1;
   const day = days[index] ?? days.at(-1)!;
   const run = byDate(runs).get(day.date)!;
   const month = days.slice(-MONTH_DAYS);

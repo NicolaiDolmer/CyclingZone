@@ -30,8 +30,12 @@ const xp = (n: number) => formatNumber(Math.round(n));
 
 /** The owner's phone name form (18/9): "A. Brandvig". The receipt carries one full name. */
 export function shortName(name: string): string {
-  const [first, ...rest] = name.trim().split(/\s+/);
-  return riderShortName({ firstname: first, lastname: rest.join(" ") });
+  return riderShortName(nameParts(name));
+}
+/** First and last name for the name cell's full accessible name when the short form shows (#5383). */
+export function nameParts(name: string): { firstname: string; lastname: string } {
+  const [first = "", ...rest] = name.trim().split(/\s+/);
+  return { firstname: first, lastname: rest.join(" ") };
 }
 /** Below the table breakpoint the name cell uses the short form. */
 export const usePhoneNames = () => !useMediaQuery("(min-width: 1024px)");
@@ -269,7 +273,7 @@ export default function XpToday({ view, onPickDate, switcher }: { view: XpTodayV
                   className={`grid min-h-11 w-full cursor-pointer items-center gap-x-2 hover:bg-cz-subtle lg:gap-x-3 ${ROW_GRID} ${isPicked ? "xl:bg-cz-subtle" : ""}`}>
                   <span className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap" data-testid="xp-name-cell">
                     {rider.nation && <Flag code={rider.nation} className="shrink-0" />}
-                    <span className="min-w-0"><RiderNameCell id={rider.id} name={phone ? shortName(rider.name) : rider.name} stopPropagation className="text-[13px] font-semibold text-cz-1 hover:text-cz-accent-t" /></span>
+                    <span className="min-w-0"><RiderNameCell id={rider.id} {...nameParts(rider.name)} name={phone ? shortName(rider.name) : rider.name} stopPropagation className="text-[13px] font-semibold text-cz-1 hover:text-cz-accent-t" /></span>
                   </span>
                   <span className="hidden min-w-0 lg:block"><TypeCell type={rider.type} /></span>
                   <span className={`hidden text-right text-xs text-cz-2 lg:block ${NUM}`}>{rider.training > 0 ? `+${xp(rider.training)}` : "0"}</span>

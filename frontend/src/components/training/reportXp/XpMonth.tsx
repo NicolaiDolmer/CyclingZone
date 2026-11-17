@@ -7,7 +7,7 @@ import { Flag, RiderNameCell, formatDay } from "./ui.ts";
 import { formatNumber } from "../../../lib/intl.js";
 import { filterMonthRiders, xpOfPrice, TIRED_FATIGUE, type MonthFilter, type XpMonthView } from "../../../lib/trainingReportXp.ts";
 import { XpBar, XpColumn, XpLegend, XpSpark } from "./XpBar.tsx";
-import { FormPlate, PaidNote, PointsMark, PaidMark, TypeCell, shortName, usePhoneNames } from "./XpToday.tsx";
+import { FormPlate, PaidNote, PointsMark, PaidMark, TypeCell, nameParts, shortName, usePhoneNames } from "./XpToday.tsx";
 
 // #7627 · "30 days" in XP. The squad's XP per day (training and race) on top, a
 // tap on a day opens Today for that day; below, each rider's 30 days, his XP and
@@ -95,7 +95,7 @@ export default function XpMonth({ view, onOpenDay, switcher }: { view: XpMonthVi
             <div key={r.id} className={`grid min-h-11 items-center gap-x-2 border-t border-cz-border py-1.5 lg:gap-x-3 ${ROW_GRID}`} data-testid="xp-month-row">
               <span className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap" data-testid="xp-name-cell">
                 {r.nation && <Flag code={r.nation} className="shrink-0" />}
-                <span className="min-w-0"><RiderNameCell id={r.id} name={phone ? shortName(r.name) : r.name} className="text-[13px] font-semibold text-cz-1 hover:text-cz-accent-t" /></span>
+                <span className="min-w-0"><RiderNameCell id={r.id} {...nameParts(r.name)} name={phone ? shortName(r.name) : r.name} className="text-[13px] font-semibold text-cz-1 hover:text-cz-accent-t" /></span>
               </span>
               <span className="hidden min-w-0 lg:block"><TypeCell type={r.type} /></span>
               <span className="hidden min-w-0 lg:block"><XpSpark values={r.spark} /></span>

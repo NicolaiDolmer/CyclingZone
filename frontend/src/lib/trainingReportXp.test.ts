@@ -225,3 +225,20 @@ test("live path: the page's receipts are aggregated once, and the report reads t
   const src = readFileSync(new URL("../components/training/reportXp/TrainingReportXp.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(src, /aggregateTrainingRuns\(/);
 });
+
+test("bar_paid written on the date's first slot survives aggregation (review P2)", () => {
+  // Rest day: the payout lands on slot 0, where the bar already covered a point.
+  const raw = [0, 1, 2, 3, 4].map(day => ({
+    tick_date: "2026-11-15", season_id: "s", created_at: `2026-11-15T0${day}:00:00Z`,
+    report: { game_day: day, riders: [{ rider_id: "a", name: "A B", game_day: day, intensity: "rest",
+      gains: day === 0 ? { climbing: 1 } : {}, ...(day === 0 ? { bar_paid: { climbing: 1 } } : {}) }] },
+  })) as unknown as TrainingRun[];
+  const rider = buildTodayView(aggregateTrainingRuns(raw) as unknown as XpReceipt[], null)!.riders[0];
+  assert.deepEqual([rider.points, rider.earned, rider.paid, rider.paidAbility], [1, 0, 1, "climbing"]);
+});
+
+test("a picked date that is gone falls back to the latest day, not the oldest (review P3)", () => {
+  const runs = [receipt("2026-11-15", [rider("a", [slot({ xp: { sprint: 1 } })])]), receipt("2026-11-14", [rider("a", [slot({ xp: { sprint: 1 } })])])];
+  assert.equal(buildTodayView(runs, "2026-10-01")!.date, "2026-11-15");
+  assert.equal(buildTodayView(runs, "2026-11-14")!.date, "2026-11-14");
+});

@@ -33,7 +33,7 @@ const loader = registerHooks({ resolve(specifier, context, nextResolve) {
   }
   return nextLoad(url, context);
 } });
-const { default: XpToday, shortName } = await import("./XpToday.tsx");
+const { default: XpToday, shortName, nameParts } = await import("./XpToday.tsx");
 const { default: XpMonth } = await import("./XpMonth.tsx");
 const { xpReportMode, previewXpReport } = await import("./XpReportSwitch.tsx");
 loader.deregister();
@@ -128,4 +128,6 @@ test("phones use the owner's short name form (18/9)", () => {
   assert.equal(shortName("Iker Zubeldia Arregi"), "I. Zubeldia Arregi");
   assert.equal(shortName("Aksel Brandvig"), "A. Brandvig");
   assert.equal(shortName("Mononym"), "Mononym");
+  // The full name stays the link's accessible name when the short form shows (#5383).
+  assert.deepEqual(nameParts("Iker Zubeldia Arregi"), { firstname: "Iker", lastname: "Zubeldia Arregi" });
 });
