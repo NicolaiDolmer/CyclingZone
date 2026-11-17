@@ -1,0 +1,41 @@
+{
+  "title": "Academiefinanciën",
+  "caption": "Kosten en verkopen tellen dezelfde renners: iedereen die je via een academieaanbod hebt gehaald of op een jeugdveiling hebt gewonnen. Kosten staan met een min.",
+  "colSeason": "Seizoen",
+  "thisSeason": "Dit seizoen",
+  "season": "Seizoen {n}",
+  "noSeason": "Zonder seizoen",
+  "offerSignings": "Gehaald via aanbod",
+  "youthAuctionBuys": "Gekocht op jeugdveiling",
+  "drift": "Werkingskosten",
+  "driftHistoric": "Werkingskosten (eerdere seizoenen)",
+  "sales": "Verkopen",
+  "salesCount": "{count, plural, one {# verkoop} other {# verkopen}}",
+  "net": "Netto",
+  "total": "Alle seizoenen",
+  "salesTitle": "Verkopen van academierenners",
+  "colRider": "Renner",
+  "colDate": "Datum",
+  "colOrigin": "Afkomstig van",
+  "colVia": "Verkocht via",
+  "colPrice": "Prijs",
+  "origin": {
+    "offer": "Academieaanbod",
+    "youthAuction": "Jeugdveiling"
+  },
+  "via": {
+    "auction": "Veiling",
+    "transfer": "Transfer"
+  },
+  "unknownRider": "Onbekende renner",
+  "allSales": "Toon alle {count} verkopen",
+  "emptySalesTitle": "Nog geen academierenners verkocht",
+  "emptySalesBody": "Als je een renner verkoopt die je via een academieaanbod hebt gehaald of op een jeugdveiling hebt gewonnen, staat de verkoop hier.",
+  "emptySalesAction": "Bekijk je team",
+  "errorTitle": "De academiefinanciën konden niet worden geladen",
+  "errorBody": "Probeer het zo meteen opnieuw.",
+  "retry": "Opnieuw proberen",
+  "noLedgerTitle": "Nog geen academieboekhouding",
+  "noLedgerBody": "De boekhouding verschijnt zodra je academie open is.",
+  "noLedgerAction": "Bekijk je ploeg"
+}

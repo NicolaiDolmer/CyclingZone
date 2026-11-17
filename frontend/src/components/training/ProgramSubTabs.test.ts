@@ -19,7 +19,8 @@ test("under-fanerne huskes i ?sub=; kataloget gates stadig af training_programs"
 
 test("Today-fanen faar een linje i overblikket, intet nyt kort", () => {
   // Linjen tegner selv intet foer reglen er aaben (data.enabled), #6030.
-  assert.match(page, /footer=\{<FatigueRuleSummary data=\{fatigueRules\.data\}/);
+  // #8279: på telefonen deler assistent-rækken kortets fod (fragment), stadig intet nyt kort.
+  assert.match(page, /footer=\{<>\s*<FatigueRuleSummary data=\{fatigueRules\.data\}/);
   assert.match(read("FatigueRuleSummary.tsx"), /if \(!data\?\.enabled\) return null;/);
   assert.match(page, /onEdit=\{\(\) => setSub\("limit"\)\}/);
 });

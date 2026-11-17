@@ -22,6 +22,8 @@ import RaceStoryCard from "./RaceStoryCard.tsx";
 import { castFrom, ownOutSentences, type RaceStory, type StoryNarrativeContext } from "./raceStoryModel.ts";
 import { stageWeather, type StageWeather } from "./stageWeather.ts";
 import { WeatherTag } from "./WeatherTag.tsx";
+import { useSpoilerStory } from "../../spoiler/spoilerStoryContext.ts"; // #7859
+import { SpoilerStoryResultsNote } from "../../spoiler/SpoilerShield.tsx"; // #7859
 import { Button, Flag, RiderLink, Section, SectionHeader, SectionStack, SkeletonLines, TerrainTypeGlyph } from "./ui.ts";
 
 function FitBar({ fit }: { fit: number }) {
@@ -146,6 +148,7 @@ export default function StageTabV2({
   const ownOut = useMemo(() => ownOutSentences(outRows, myTeamId, cast), [outRows, myTeamId, cast]);
   const weather = stageWeather(profile, phase, story);
   const whyEnabled = useRiderWhyEnabled(phase === "after");
+  const spoiler = useSpoilerStory(); // #7859: "Din dag" venter i Resultater, til etapen er åbnet
   const ranAt = narrative?.ranAt;
   const routeFits = useMemo(() => routeFitsAtRaceTime(new Map<string, number | null>(riders.map((r) => [r.rider_id, stageRouteMatch(r, stageNumber)])), ranAt, nowMs), [riders, stageNumber, ranAt, nowMs]);
   const why = useMemo<RowWhy | null>(() => (whyEnabled && !storyError ? {
@@ -157,7 +160,7 @@ export default function StageTabV2({
   if (phase === "after") {
     return (
       <SectionStack>
-        {stageErrorSlot ?? (
+        {stageErrorSlot ?? (spoiler.active ? null : (
           <YourDayCard
             results={results}
             stageNumber={stageNumber}
@@ -170,7 +173,7 @@ export default function StageTabV2({
             onOpenStandings={onOpenStandings}
             why={why}
           />
-        )}
+        ))}
         {story ? (
           <RaceStoryCard
             story={story}
@@ -188,6 +191,7 @@ export default function StageTabV2({
             onOpenStandings={onOpenStandings}
           />
         ) : profile && series && <ProfileCard profile={profile} stageLabel={stageLabel} band selectedClimb={climbIndex} onSelectClimb={setSelectedClimb} />}
+        {spoiler.active && !stageErrorSlot && <SpoilerStoryResultsNote onShow={spoiler.showResults} />}
       </SectionStack>
     );
   }
