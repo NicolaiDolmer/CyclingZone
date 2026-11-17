@@ -17,11 +17,12 @@ name: Update snapshots
 #     faar hverken skrive-token eller secrets af GitHub, og jobbet skal heller
 #     ikke proeve.
 #   - `generate` koerer PR'ens kode (npm ci, build, tests) og har derfor kun
-#     `contents: read` og ingen secrets. `commit` koerer INGEN PR-kode: den
-#     kopierer kun billedfiler fra artefaktet, afviser enhver anden sti og
-#     tjekker at det stagede diff kun er snapshot-filer foer push.
-#   - Pushet sker kun hvis branchens spids stadig er den SHA der blev
-#     renderet; ellers springes det over med en kommentar (saet labelen igen).
+#     `contents: read` og ingen secrets. `commit` koerer INGEN PR-kode og
+#     tjekker INTET arbejdstrae ud: commit'et bygges med git-plumbing i et
+#     frisk bare-repo (hooks slaaet fra), kun af billedfiler fra artefaktet,
+#     og hvert sti/mode-krav tjekkes mod PR'ens trae foer push (se steppet).
+#   - Pushet er ikke-force og bygger paa den SHA der blev renderet; er
+#     branchen flyttet, pushes intet og kommentaren siger "saet labelen igen".
 #   - Push med AUTO_MERGE_PAT, saa CI koerer paa det nye commit (et push med
 #     GITHUB_TOKEN starter ingen workflows, GitHubs anti-loop-vaern). Mangler
 #     PAT'en, pushes med GITHUB_TOKEN og kommentaren siger hvordan CI startes.
@@ -157,7 +158,9 @@ jobs:
 
   commit:
     needs: generate
-    if: always() && github.event.label.name == 'opdater snapshots' && github.event.pull_request.head.repo.full_name == github.repository && needs.generate.result != 'skipped' && needs.generate.result != 'cancelled'
+    # !cancelled(), ikke always(): en afloest koersel (ny label) maa hverken
+    # committe, kommentere eller fjerne labelen fra den nye koersel.
+    if: ${{ !cancelled() && github.event.label.name == 'opdater snapshots' && github.event.pull_request.head.repo.full_name == github.repository && needs.generate.result != 'skipped' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -169,16 +172,18 @@ jobs:
       HEAD_REF: ${{ github.event.pull_request.head.ref }}
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      # Ingen global/system-git-konfiguration i jobbet med push-tokenet.
+      GIT_CONFIG_GLOBAL: /dev/null
+      GIT_CONFIG_SYSTEM: /dev/null
+      GIT_CONFIG_NOSYSTEM: "1"
     steps:
-      # Ingen PR-kode koeres i dette job; checkout er kun git-tilstanden der
-      # committes ovenpaa. Credentials gemmes ikke i .git/config (#5441); pushet
-      # nedenfor saetter tokenet kun for det ene kald.
-      - name: Check out PR head
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          persist-credentials: false
-
+      # INGEN checkout i dette job (sikkerhedsfund paa #8348): et PR-styret
+      # arbejdstrae kan indeholde symlinks, og en kopi ind i det kan foelge et
+      # symlink til fx .git/config og koere et PR-leveret hook med push-tokenet.
+      # Commit'et bygges i stedet med git-plumbing i et frisk bare-repo (intet
+      # arbejdstrae): blobs fra artefaktet, en midlertidig index-fil og
+      # commit-tree. Intet fra PR'en skrives til filsystemet, og ingen hooks
+      # eller repo-styret konfiguration kan koere.
       - name: Download snapshots
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
@@ -193,34 +198,16 @@ jobs:
           path: ${{ runner.temp }}/snapshot-status
           merge-multiple: true
 
-      # Kun snapshot-filer: hver sti i artefaktet skal vaere
-      # <spec>-snapshots/<navn>-linux.png (eet niveau, ingen `..`, ingen
-      # symlinks). Alt andet stopper jobbet foer noget kopieres videre.
-      - name: Copy snapshot files into the tree
-        shell: bash
-        run: |
-          set -euo pipefail
-          src="$RUNNER_TEMP/snapshots"
-          copied=0
-          if [ -d "$src" ]; then
-            if [ -n "$(find "$src" ! -type f ! -type d -print -quit)" ]; then
-              echo "::error::Artefaktet indeholder andet end almindelige filer."
-              exit 1
-            fi
-            while IFS= read -r -d '' file; do
-              rel="${file#"$src"/}"
-              if [[ ! "$rel" =~ ^[A-Za-z0-9_.-]+-snapshots/[A-Za-z0-9_.-]+-linux\.png$ ]]; then
-                echo "::error::Uventet sti i artefaktet: $rel"
-                exit 1
-              fi
-              mkdir -p "frontend/tests/e2e/${rel%/*}"
-              cp -- "$file" "frontend/tests/e2e/$rel"
-              copied=$((copied + 1))
-            done < <(find "$src" -type f -print0)
-          fi
-          echo "Kopierede $copied snapshot-filer."
-
-      - name: Commit and push snapshot changes
+      # Regler (alle skal holde, ellers stopper jobbet uden push):
+      #   - artefaktet indeholder kun almindelige filer (ingen symlinks), og
+      #     hver sti er <spec>-snapshots/<navn>-linux.png (eet niveau, ingen `..`)
+      #   - i PR'ens trae er destinationen enten fraværende eller en almindelig
+      #     fil (100644), og hver foraelder-mappe er en rigtig mappe (040000);
+      #     et symlink (120000) eller andet afvises
+      #   - det faerdige diff mod PR-head indeholder kun snapshot-stier, alle 100644
+      #   - push er ikke-force: er branchen flyttet, afvises det af GitHub
+      # Alle git-kald gaar gennem g(): hooks og fsmonitor er slaaet fra.
+      - name: Build and push snapshot commit with plumbing
         id: push
         shell: bash
         env:
@@ -228,37 +215,89 @@ jobs:
           HAS_PAT: ${{ secrets.AUTO_MERGE_PAT != '' }}
         run: |
           set -euo pipefail
-          git add -- 'frontend/tests/e2e/*-snapshots/*-linux.png'
-          staged=$(git diff --cached --name-only)
-          if [ -z "$staged" ]; then
+          g() { git -c core.hooksPath=/dev/null -c core.fsmonitor=false "$@"; }
+          PATH_RE='^frontend/tests/e2e/[A-Za-z0-9_.-]+-snapshots/[A-Za-z0-9_.-]+-linux\.png$'
+          src="$RUNNER_TEMP/snapshots"
+          g init -q --bare "$RUNNER_TEMP/snapshot-repo.git"
+          export GIT_DIR="$RUNNER_TEMP/snapshot-repo.git"
+          export GIT_INDEX_FILE="$RUNNER_TEMP/snapshot-index"
+          g fetch -q --no-tags --depth=1 "https://github.com/$REPO.git" "$HEAD_SHA"
+          g read-tree "$HEAD_SHA"
+
+          # Mode for en sti i PR-head ("" = findes ikke).
+          mode_at() { g ls-tree "$HEAD_SHA" -- "$1" | awk '{print $1}'; }
+
+          added=0
+          if [ -d "$src" ]; then
+            if [ -n "$(find "$src" ! -type f ! -type d -print -quit)" ]; then
+              echo "::error::Artefaktet indeholder andet end almindelige filer."
+              exit 1
+            fi
+            while IFS= read -r -d '' file; do
+              rel="frontend/tests/e2e/${file#"$src"/}"
+              if [[ ! "$rel" =~ $PATH_RE ]]; then
+                echo "::error::Uventet sti i artefaktet: ${file#"$src"/}"
+                exit 1
+              fi
+              parent=""
+              IFS=/ read -r -a parts <<< "${rel%/*}"
+              for part in "${parts[@]}"; do
+                parent="${parent:+$parent/}$part"
+                m=$(mode_at "$parent")
+                if [ -n "$m" ] && [ "$m" != "040000" ]; then
+                  echo "::error::$parent er ikke en almindelig mappe i PR'en (mode $m)."
+                  exit 1
+                fi
+              done
+              m=$(mode_at "$rel")
+              if [ -n "$m" ] && [ "$m" != "100644" ]; then
+                echo "::error::$rel er ikke en almindelig fil i PR'en (mode $m)."
+                exit 1
+              fi
+              blob=$(g hash-object -w -- "$file")
+              g update-index --add --cacheinfo "100644,$blob,$rel"
+              added=$((added + 1))
+            done < <(find "$src" -type f -print0)
+          fi
+          echo "Behandlede $added snapshot-filer."
+
+          tree=$(g write-tree)
+          g diff-tree -r --no-renames "$HEAD_SHA" "$tree" > "$RUNNER_TEMP/diff.txt"
+          if [ ! -s "$RUNNER_TEMP/diff.txt" ]; then
             echo "result=unchanged" >> "$GITHUB_OUTPUT"
             echo "Ingen snapshot-aendringer."
             exit 0
           fi
-          bad=$(printf '%s\n' "$staged" | grep -vE '^frontend/tests/e2e/[A-Za-z0-9_.-]+-snapshots/[A-Za-z0-9_.-]+-linux\.png$' || true)
-          if [ -n "$bad" ]; then
-            echo "::error::Stagede filer uden for snapshot-moensteret:"
-            printf '%s\n' "$bad"
-            exit 1
-          fi
-          tip=$(git ls-remote origin "refs/heads/$HEAD_REF" | cut -f1)
-          if [ "$tip" != "$HEAD_SHA" ]; then
-            echo "result=moved" >> "$GITHUB_OUTPUT"
-            echo "::warning::Branchen er flyttet ($tip) siden $HEAD_SHA blev renderet. Intet pushet."
-            exit 0
-          fi
-          printf '%s\n' "$staged" > "$RUNNER_TEMP/staged.txt"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -q -m "test(e2e): opdater snapshots fra Linux-containeren" -m "Label \"opdater snapshots\" paa #$PR_NUMBER. Run: $RUN_URL"
+          # diff-tree-linje: ":<gammel mode> <ny mode> <gammel sha> <ny sha> <status>\t<sti>"
+          while IFS=$'\t' read -r meta path; do
+            newmode=$(printf '%s' "$meta" | awk '{print $2}')
+            if [[ ! "$path" =~ $PATH_RE ]] || [ "$newmode" != "100644" ]; then
+              echo "::error::Diff uden for snapshot-moensteret: $path (mode $newmode)"
+              exit 1
+            fi
+          done < "$RUNNER_TEMP/diff.txt"
+          cut -f2 "$RUNNER_TEMP/diff.txt" > "$RUNNER_TEMP/staged.txt"
+
+          commit=$(GIT_AUTHOR_NAME="github-actions[bot]" GIT_AUTHOR_EMAIL="41898282+github-actions[bot]@users.noreply.github.com" \
+            GIT_COMMITTER_NAME="github-actions[bot]" GIT_COMMITTER_EMAIL="41898282+github-actions[bot]@users.noreply.github.com" \
+            g commit-tree "$tree" -p "$HEAD_SHA" -m "test(e2e): opdater snapshots fra Linux-containeren" -m "Label \"opdater snapshots\" paa #$PR_NUMBER. Run: $RUN_URL")
           auth=$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)
           echo "::add-mask::$auth"
-          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push origin "HEAD:refs/heads/$HEAD_REF"
-          echo "result=pushed" >> "$GITHUB_OUTPUT"
-          echo "has_pat=$HAS_PAT" >> "$GITHUB_OUTPUT"
+          if g -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push -q --no-verify "https://github.com/$REPO.git" "$commit:refs/heads/$HEAD_REF"; then
+            echo "result=pushed" >> "$GITHUB_OUTPUT"
+            echo "has_pat=$HAS_PAT" >> "$GITHUB_OUTPUT"
+          else
+            tip=$(g ls-remote "https://github.com/$REPO.git" "refs/heads/$HEAD_REF" | cut -f1)
+            if [ "$tip" = "$HEAD_SHA" ]; then
+              echo "::error::Push fejlede, selvom branchen stadig staar paa $HEAD_SHA."
+              exit 1
+            fi
+            echo "result=moved" >> "$GITHUB_OUTPUT"
+            echo "::warning::Branchen er flyttet ($tip) siden $HEAD_SHA blev renderet. Intet pushet."
+          fi
 
       - name: Report on PR and remove label
-        if: always()
+        if: ${{ !cancelled() }}
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

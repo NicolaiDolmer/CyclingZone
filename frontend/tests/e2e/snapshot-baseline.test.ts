@@ -81,6 +81,32 @@ test("label-workflowet fornyer alle tre projekter og kun same-repo-PR'er", () =>
   assert.ok(forkGuards.length >= 2, "baade generate og commit skal udelukke fork-PR'er");
 });
 
+// Sikkerhedsfund paa #8348: jobbet med push-tokenet maa aldrig skrive ind i
+// et PR-styret arbejdstrae (et symlink dér kan foere en kopi ind i .git/config
+// og koere et PR-leveret hook med tokenet). Kun git-plumbing, hooks slaaet fra.
+test("commit-jobbet bygger commit'et med git-plumbing uden arbejdstrae og uden hooks", () => {
+  const start = update.indexOf("\n  commit:\n");
+  assert.ok(start > 0, "update-snapshots.yml mangler commit-jobbet");
+  const job = update.slice(start);
+  const code = job
+    .split("\n")
+    .filter((line) => !/^\s*#/.test(line))
+    .join("\n");
+  assert.doesNotMatch(code, /actions\/checkout/, "commit-jobbet maa ikke tjekke PR'ens trae ud");
+  assert.doesNotMatch(code, /(^|[\s;&|(])(cp|mv|install|rsync|tar|unzip)\s/m, "commit-jobbet maa ikke kopiere filer ind i et trae");
+  assert.match(code, /GIT_CONFIG_GLOBAL: \/dev\/null/);
+  assert.match(code, /GIT_CONFIG_SYSTEM: \/dev\/null/);
+  assert.match(code, /g\(\) \{ git -c core\.hooksPath=\/dev\/null -c core\.fsmonitor=false "\$@"; \}/);
+  assert.match(code, /g hash-object -w -- /);
+  assert.match(code, /g update-index --add --cacheinfo "100644,/);
+  assert.match(code, /g commit-tree /);
+  // Hvert git-kald ud over g()-definitionen skal gaa gennem g().
+  const rawGit = code.split("\n").filter((line) => /(^|[\s;&|($])git\s/.test(line) && !line.includes("g() { git -c core.hooksPath"));
+  assert.deepEqual(rawGit, [], "git kaldt uden om g() (hooks/fsmonitor ikke slaaet fra)");
+  assert.doesNotMatch(code, /\bg (commit|add)\s/, "kun commit-tree, aldrig porcelain commit/add");
+  assert.doesNotMatch(code, /push[^\n]*(--force|\s-f\s|\+)/, "pushet maa aldrig vaere force");
+});
+
 function trackedSnapshots(): string[] | null {
   try {
     return execFileSync("git", ["ls-files", "--", "tests/e2e"], { cwd: FRONTEND_DIR, encoding: "utf8" })
