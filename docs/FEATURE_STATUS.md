@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-154 poster: live 119 · beta 1 · dormant 10 · building 14 · spec 1 · idea 2 · retired 7. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+154 poster: live 120 · beta 1 · dormant 10 · building 13 · spec 1 · idea 2 · retired 7. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -13,9 +13,9 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## race-engine
 
-**live:** Luxury helper (`luxury-helper-role`) 2026-11-02 · All out on the decisive climb (`race-all-out-7280`) 2026-11-02 · Day form in words after the stage (`race-day-words-7725`) 2026-11-08 · Stage intention choice (`race-intention-choice`) 2026-11-02 · Time trials without the extra day roll (`race-itt-no-day-roll-7726`) 2026-11-06 · The chase is decided by the teams chasing (`race-team-chase-7730`) 2026-11-06
+**live:** Day form in words after the stage (`race-day-words-7725`) 2026-11-08 · Time trials without the extra day roll (`race-itt-no-day-roll-7726`) 2026-11-06 · The chase is decided by the teams chasing (`race-team-chase-7730`) 2026-11-06
 
-**arkiv:** `form-and-fatigue` · `race-day-form-6649` · `race-descent-task-7380` · `race-engine-profile-hills` · `race-engine-s5-profiles` · `race-engine-v3` · `race-engine-v3-scoring` · `race-engine-v4` · `race-final-km-boundary-7383` · `race-finalize-resumable` · `race-form-peaks` · `race-itt-save-7332` · `race-itt-terrain-6595` · `race-notify-outbox` · `team-selection-and-roles`
+**arkiv:** `form-and-fatigue` · `luxury-helper-role` · `race-all-out-7280` · `race-day-form-6649` · `race-descent-task-7380` · `race-engine-profile-hills` · `race-engine-s5-profiles` · `race-engine-v3` · `race-engine-v3-scoring` · `race-engine-v4` · `race-final-km-boundary-7383` · `race-finalize-resumable` · `race-form-peaks` · `race-intention-choice` · `race-itt-save-7332` · `race-itt-terrain-6595` · `race-notify-outbox` · `team-selection-and-roles`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
@@ -32,8 +32,8 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
+|Spoiler shield (`spoiler-shield`)|beta|`spoiler_shield_7859`|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7778|2026-11-17|#7859: beta 17/11 efter ejer-go; løbssiden skjuler først med race_page_v6.|
 |Race page v6, step 1 (results for a ridden stage) (`race-page-v6`)|building|`race_page_v6`|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7778|2026-11-13|#7778: trin 1 af 5 bygget; off i prod.|
-|Spoiler shield (`spoiler-shield`)|building|`spoiler_shield_7859`|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7778|2026-11-16|#7859: seedes off.|
 |Engine breakaway forecast (`race-breakaway-outlook`)|retired|-|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#6912|2026-11-13|Fjernet 13/11 (ejer); kode i #7277/#7343.|
 
 ## market
@@ -62,13 +62,12 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## training
 
-**live:** Race date as full training day (`condition-v2-race-date-training-day`) 2026-11-04 · Same potential band everywhere (`potential-single-number`) 2026-11-04 · Train now straight away (`train-now-instant`) 2026-11-16 · Train now B (`train-now-whole-day`) 2026-11-02 · Bulk training day (`training-bulk-day`) 2026-11-02 · Train now (no bonus) (`training-train-now`) 2026-11-13
+**live:** Race date as full training day (`condition-v2-race-date-training-day`) 2026-11-04 · Same potential band everywhere (`potential-single-number`) 2026-11-04 · Train now bonus (`train-now-bonus`) 2026-11-17 · Train now straight away (`train-now-instant`) 2026-11-16 · Train now (no bonus) (`training-train-now`) 2026-11-13
 
-**arkiv:** `ability-cap-per-date` · `condition-model-v2` · `daily-training` · `development-curve-b` · `peak-planner` · `race-day-role-yield` · `season-fatigue-reset` · `training-catalog-v3` · `training-condition-per-date` · `training-daily-receipt` · `training-decision-card` · `training-fatigue-rules` · `training-groups` · `training-hard-sessions-cobbles-echelon-attack` · `training-mobile-table` · `training-program-cells` · `training-programs` · `training-score` · `training-tick-per-race-day` · `training-tick-system`
+**arkiv:** `ability-cap-per-date` · `condition-model-v2` · `daily-training` · `development-curve-b` · `peak-planner` · `race-day-role-yield` · `season-fatigue-reset` · `train-now-whole-day` · `training-bulk-day` · `training-catalog-v3` · `training-condition-per-date` · `training-daily-receipt` · `training-decision-card` · `training-fatigue-rules` · `training-groups` · `training-hard-sessions-cobbles-echelon-attack` · `training-mobile-table` · `training-program-cells` · `training-programs` · `training-score` · `training-tick-per-race-day` · `training-tick-system`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
-|Train now bonus (`train-now-bonus`)|beta|`training_train_now_bonus`|[TRAINING_RULES](TRAINING_RULES.md)|#7737|2026-11-16|Beta i prod (migration #8268, læst 16/11): kun beta-testeres egne tryk får bonussen. Patch note 7.454. "on" kræver ejer-go.|
 |Development Score B in the engine (`development-score-b-engine`)|dormant|`development_score_v2`|[TRAINING_RULES](TRAINING_RULES.md)|#6110|2026-11-13|Parkeret (ejer 31/10); afgøres ved Udvikling 2.0-opsamlingen. Aldrig tændt samtidig med XP. Før tænding: #7584.|
 |Development XP (`development-xp-model`)|dormant|`development_xp_model`|[TRAINING_RULES](TRAINING_RULES.md)|#6110|2026-11-13|Off i prod 13/11 (#8041); kun ejeren tænder, efter dommer + development_xp_from_date.|
 |One potential source (`potential-estimate-display`)|dormant|`potential_estimate_display`|[6110-potentiale-et-tal-samlet-design](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md)|#6110|2026-11-05|Byggetrin 4 (#7684): fladerne læser potentialEstimateRead.js, når flaget er tændt.|
