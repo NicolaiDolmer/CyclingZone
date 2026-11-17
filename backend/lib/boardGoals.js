@@ -889,6 +889,24 @@ function externalGoalKey(goal) {
     : `${source}|${buildGoalKey(goal)}`;
 }
 
+// #8118 · Et bonusmål hører til den sæson det blev accepteret i og dømmes ved
+// dens slut. Uden denne regel bar hvert årsmøde målet videre ind i næste sæsons
+// plan: usynligt i Boardroom (det nye mandat har det ikke), men stadig talt med
+// i tilfredshed, kategorier og halvsæson-tjekket. Kun mål med et sæson-stempel
+// (buildBonusExtraGoal) kan dømmes udløbet; ustemplede ældre mål bæres som før.
+/**
+ * @param {{ source?: string | null, season_number?: number | null } | null | undefined} goal
+ * @param {number | null | undefined} seasonNumber
+ * @returns {boolean}
+ */
+export function isExpiredSeasonBoundGoal(goal, seasonNumber) {
+  if (seasonNumber == null || !Number.isFinite(Number(seasonNumber))) return false;
+  if (goal?.source !== "bonus_offer") return false;
+  const goalSeason = goal?.season_number;
+  if (goalSeason == null || !Number.isFinite(Number(goalSeason))) return false;
+  return Number(goalSeason) < Number(seasonNumber);
+}
+
 /**
  * @param {object}       args
  * @param {Array}        args.rebuiltGoals  Nyt array fra finalizeBoardGoals.
@@ -896,9 +914,11 @@ function externalGoalKey(goal) {
  *   skrivningen. Må være et array ELLER en JSON-streng — accept-stien har
  *   historisk skrevet `JSON.stringify(...)` ind i jsonb-kolonnen (målt: præcis
  *   de 11 ramte rækker stod som jsonb-`string`, resten som `array`).
+ * @param {number|null}  [args.seasonNumber] Den sæson den nye plan gælder
+ *   (issue 8118); bonusmål stemplet med en tidligere sæson følger ikke med.
  * @returns {Array} rebuiltGoals + de fremmede mål der ikke allerede er med.
  */
-export function preserveExternalGoals({ rebuiltGoals = [], previousGoals = [] } = {}) {
+export function preserveExternalGoals({ rebuiltGoals = [], previousGoals = [], seasonNumber = null } = {}) {
   const rebuilt = Array.isArray(rebuiltGoals) ? rebuiltGoals : [];
   const previous = Array.isArray(previousGoals)
     ? previousGoals
@@ -917,6 +937,7 @@ export function preserveExternalGoals({ rebuiltGoals = [], previousGoals = [] } 
   for (const goal of previous) {
     if (!goal || typeof goal !== "object") continue;
     if (isGeneratedGoalSource(goal.source)) continue;
+    if (isExpiredSeasonBoundGoal(goal, seasonNumber)) continue;
     const key = externalGoalKey(goal);
     if (seen.has(key)) continue;
     seen.add(key);
