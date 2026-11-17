@@ -358,7 +358,7 @@ function ClimbAttackReportLine({ line, current, cast, text, onJump }: {
   text: ReturnType<typeof useStoryText>;
   onJump: () => void;
 }) {
-  const { t } = useTranslation("races");
+  const { t } = useTranslation(["races", "raceFilm"]);
   const id = line.riderIds[0];
   const rider = namesList(line.riderIds, cast, 1) || (id ? cast.nameOf(id) : null) || t("stagePageV2.story.aRider");
   return (
@@ -375,7 +375,7 @@ function ClimbAttackReportLine({ line, current, cast, text, onJump }: {
           {line.time != null && <span className="font-normal text-cz-3">{formatClock(line.time)}</span>}
         </span>
         <span className="text-sm text-cz-1">
-          {t(`detail.film.event.${v6ClimbAttackCopyKey(line)}`, { rider, climb: line.climbName ?? "" })}
+          {t(v6ClimbAttackCopyKey(line), { rider, climb: line.climbName ?? "" })}
           {line.mineIds.length > 0 && (
             <span className="ml-1.5 inline-flex items-center gap-1.5 align-middle">
               <span className="rounded-cz bg-cz-1 px-1.5 py-0.5 font-data text-3xs font-bold uppercase tracking-[.08em] text-cz-body">{t("stagePageV2.story.you")}</span>

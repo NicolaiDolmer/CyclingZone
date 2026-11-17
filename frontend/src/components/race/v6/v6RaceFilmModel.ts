@@ -8,7 +8,7 @@
 // Kun data siden allerede har (ruteprofilen og løbshistoriens linjer). Opfinder intet.
 import type { Climb } from "../stagePageV2/stagePageV2Model.ts";
 import type { StoryLine } from "../stagePageV2/raceStoryModel.ts";
-import { honestTimelineEvents, type SpanClimb, type SpanTimelineEvent } from "../../../lib/stageTimelineKmSpan.ts";
+import { exactEventKm, honestTimelineEvents, type SpanClimb, type SpanTimelineEvent } from "../../../lib/stageTimelineKmSpan.ts";
 import { withAttackWording, type NarrativeEvent, type OrderEfforts } from "../../../../../backend/lib/engine/v4/mechanics/narrativeCauses6469.ts";
 
 /** Finalen dækker de sidste km, eller hele den sidste stigning når den topper i dem. */
@@ -182,10 +182,11 @@ export function v6FilmProfileGeometry({ width, profile, series, floor, ceil }: {
 
 /**
  * En referatlinje for motorens "alt ud"/angreb på en stigning (`all_out_gain` /
- * `all_out_cracked`). Ved en topankomst bliver hver hændelse TO linjer (ejerens
- * v6-valg 14, RACE_ENGINE_RULES #7965): angrebet ved foden uden resultat og uden
- * tid, og udfaldet dér hvor motoren stemplede det. Ellers én linje ved toppen,
- * som i den hidtidige film. Kun det motoren har skrevet; intet tal.
+ * `all_out_cracked`). Hver hændelse bliver ALTID to linjer i den rækkefølge det
+ * skete (RACE_ENGINE_RULES #7965, ejer 12/11 og 17/11): angrebet ved stigningens
+ * fod uden resultat og uden tid, og udfaldet dér hvor motoren stemplede det.
+ * Man kan ikke angribe og vinde tid på samme tid, så ingen linje siger begge dele.
+ * Kun det motoren har skrevet; intet tal.
  */
 export interface V6ClimbAttackLine {
   id: string;
@@ -196,8 +197,8 @@ export interface V6ClimbAttackLine {
   time: number | null;
   riderIds: string[];
   mineIds: string[];
-  /** "attack" = angrebet ved foden, "outcome" = udfaldet, "single" = én linje (ingen topankomst). */
-  phase: "attack" | "outcome" | "single";
+  /** "attack" = angrebet ved foden (uden resultat og tid), "outcome" = udfaldet. */
+  phase: "attack" | "outcome";
   held: boolean;
   /** true = rytteren angreb (opgaven Angrib eller et andet holds rytter); false = egen "Alt ud"-ordre. */
   attackTask: boolean;
@@ -231,38 +232,103 @@ export function v6ClimbAttackLines(events: readonly SpanTimelineEvent[] | null |
     ownRiderIds: opts.ownRiderIds ?? [], effortByRider: opts.effortByRider ?? null, profileType: opts.profileType ?? null,
   }) as SpanTimelineEvent[];
   const out: V6ClimbAttackLine[] = [];
+  const line = (e: SpanTimelineEvent, riderId: string, phase: V6ClimbAttackLine["phase"], km: number, time: number | null, climbName: string | null): V6ClimbAttackLine => ({
+    id: `climbAttack-${phase}-${e.type}-${riderId}-${km}`,
+    kind: "climbAttack",
+    km,
+    kmTo: null,
+    span: false,
+    time,
+    riderIds: [riderId],
+    mineIds: opts.mine?.has(riderId) ? [riderId] : [],
+    phase,
+    held: e.type === "all_out_gain",
+    attackTask: e.params?.task === "attack",
+    climbName,
+  });
   for (const e of worded) {
     if (!e || !CLIMB_ATTACK_TYPES.has(String(e.type ?? ""))) continue;
     const riderId = typeof e.params?.rider_id === "string" ? e.params.rider_id : null;
     const km = finite(e.km);
     if (!riderId || km == null) continue;
-    const phase = e.climb_phase ?? "single";
-    // Tid kun med et ægte km (motorens exact_time); angrebet ved foden har aldrig en.
-    const time = phase !== "attack" && typeof e.race_time_s === "number" && Number.isFinite(e.race_time_s) ? e.race_time_s : null;
-    out.push({
-      id: `climbAttack-${phase}-${e.type}-${riderId}-${km}`,
-      kind: "climbAttack",
-      km,
-      kmTo: null,
-      span: false,
-      time,
-      riderIds: [riderId],
-      mineIds: opts.mine?.has(riderId) ? [riderId] : [],
-      phase,
-      held: e.type === "all_out_gain",
-      attackTask: e.params?.task === "attack",
-      climbName: typeof e.climb_name === "string" && e.climb_name ? e.climb_name : null,
-    });
+    if (e.climb_phase) {
+      // Topankomsten er allerede delt i to af filmens fælles afledning (stageTimelineKmSpan).
+      // Den sætter kun navnet på angrebet; udfaldet får samme stigning fra toppen (recorded_km).
+      const top = finite(e.recorded_km) ?? km;
+      const name = (typeof e.climb_name === "string" && e.climb_name ? e.climb_name : null)
+        ?? climbEndingAt(top, opts.climbs ?? null)?.name ?? komNameNear(worded, top);
+      // Tid kun med et ægte km (motorens exact_time); angrebet ved foden har aldrig en.
+      const time = e.climb_phase === "outcome" && typeof e.race_time_s === "number" && Number.isFinite(e.race_time_s) ? e.race_time_s : null;
+      out.push(line(e, riderId, e.climb_phase, km, time, name));
+      continue;
+    }
+    // Stigningen ender før mål: samme to linjer (ejer 17/11). Foden er profilens top minus
+    // længde; kendes stigningen ikke, forrige kendte punkt (som ved topankomsten).
+    const climb = climbEndingAt(km, opts.climbs ?? null);
+    const foot = climb?.foot ?? previousKnownKm(worded, km);
+    const climbName = climb?.name ?? komNameNear(worded, km);
+    const exact = exactEventKm(e);
+    const exactTime = Number(e.params?.exact_time);
+    const time = exact != null && exact > foot && e.params?.exact_time != null && Number.isFinite(exactTime) ? exactTime : null;
+    out.push(line(e, riderId, "attack", foot, null, climbName));
+    out.push(line(e, riderId, "outcome", km, time, climbName));
   }
   return out;
 }
 
-/** Tekstnøglen (races: detail.film.event.*) for en angrebslinje, som i den hidtidige film. */
-export function v6ClimbAttackCopyKey(line: Pick<V6ClimbAttackLine, "phase" | "held" | "attackTask" | "climbName">): string {
-  if (line.phase === "attack") return line.climbName ? "climb_attack_start_named" : "climb_attack_start";
-  if (line.phase === "outcome") return line.held ? "climb_attack_held" : "climb_attack_cracked";
-  const outcome = line.held ? "gain" : "cracked";
-  return line.attackTask ? `attack_${outcome}` : `all_out_${outcome}`;
+// En top inden for denne afstand af hændelsens km er stigningen hændelsen hører til.
+const CREST_TOLERANCE_KM = 1;
+
+/** Stigningen hvis strækning (fod til top) rummer km; den nærmeste top vinder. */
+function climbEndingAt(km: number, climbs: readonly SpanClimb[] | null): { foot: number; name: string | null } | null {
+  let best: { crest: number; foot: number; name: string | null } | null = null;
+  for (const climb of climbs ?? []) {
+    if (climb?.crest_km == null || climb?.length_km == null) continue;
+    const crest = finite(climb.crest_km);
+    const length = finite(climb.length_km);
+    if (crest == null || length == null || !(length > 0)) continue;
+    const foot = Math.max(0, crest - length);
+    if (!(foot < km) || km > crest + CREST_TOLERANCE_KM) continue;
+    if (!best || Math.abs(crest - km) < Math.abs(best.crest - km)) {
+      best = { crest, foot, name: typeof climb.name === "string" && climb.name.trim() ? climb.name.trim() : null };
+    }
+  }
+  return best ? { foot: best.foot, name: best.name } : null;
+}
+
+/** Forrige kendte punkt før km (start, tjekpunkt, top eller mellemspurt). */
+function previousKnownKm(events: readonly SpanTimelineEvent[], km: number): number {
+  let best = 0;
+  for (const e of events) {
+    const at = typeof e?.km === "number" && Number.isFinite(e.km) ? e.km : null;
+    if (at == null || at >= km || at <= best) continue;
+    if (e.type === "gap_update" || e.type === "kom_passage" || e.type === "intermediate_sprint") best = at;
+  }
+  return best;
+}
+
+/** Stigningens navn fra tidslinjens egen topmarkering ved km. */
+function komNameNear(events: readonly SpanTimelineEvent[], km: number): string | null {
+  let best: { d: number; name: string } | null = null;
+  for (const e of events) {
+    if (e?.type !== "kom_passage" || typeof e.km !== "number") continue;
+    const name = e.params?.name;
+    const d = Math.abs(e.km - km);
+    if (typeof name !== "string" || !name.trim() || d > CREST_TOLERANCE_KM) continue;
+    if (!best || d < best.d) best = { d, name: name.trim() };
+  }
+  return best?.name ?? null;
+}
+
+/**
+ * Den fulde tekstnøgle for en angrebslinje. Angrebet bruger den hidtidige films tekst
+ * (races: detail.film.event.climb_attack_start*). Udfaldet siger KUN udfaldet
+ * (raceFilm: climb.*): aldrig "angriber" i samme linje som tiden eller knækket.
+ */
+export function v6ClimbAttackCopyKey(line: Pick<V6ClimbAttackLine, "phase" | "held" | "climbName">): string {
+  if (line.phase === "attack") return line.climbName ? "detail.film.event.climb_attack_start_named" : "detail.film.event.climb_attack_start";
+  const outcome = line.held ? "gained" : "cracked";
+  return `raceFilm:climb.${outcome}${line.climbName ? "Named" : ""}`;
 }
 
 /**

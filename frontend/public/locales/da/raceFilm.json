@@ -15,6 +15,12 @@
     "empty": "Tryk Afspil eller vælg et kapitel. Referatet følger filmen, så intet afsløres, før du når dertil.",
     "ahead": "Resten af etapen kommer, mens filmen kører."
   },
+  "climb": {
+    "gained": "{rider} vinder tid på stigningen.",
+    "gainedNamed": "{rider} vinder tid på {climb}.",
+    "cracked": "{rider} knækker på stigningen og bliver sat.",
+    "crackedNamed": "{rider} knækker på {climb} og bliver sat."
+  },
   "none": "Etapen har ingen løbsfilm. Hele resultatet står under Resultater.",
   "error": "Løbsfilmen kunne ikke hentes. Hele resultatet står under Resultater."
 }

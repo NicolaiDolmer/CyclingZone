@@ -151,8 +151,8 @@ test("et holdt angreb op ad sidste stigning er TO linjer: angrebet ved foden og 
     timelineVersion: 2, climbs: summitClimbs, mine: new Set(["r1"]), ownRiderIds: ["r1"], effortByRider: new Map([["r1", "all_out"]]),
   });
   assert.deepEqual(lines.map((l) => [l.phase, Math.round(l.km * 10) / 10, l.time, v6ClimbAttackCopyKey(l)]), [
-    ["attack", 143.2, null, "climb_attack_start_named"],
-    ["outcome", 155, null, "climb_attack_held"],
+    ["attack", 143.2, null, "detail.film.event.climb_attack_start_named"],
+    ["outcome", 155, null, "raceFilm:climb.gainedNamed"],
   ]);
   assert.equal(lines[0].climbName, "Salita C");
   assert.deepEqual(lines.map((l) => l.mineIds), [["r1"], ["r1"]], "egen rytter på begge linjer");
@@ -164,27 +164,79 @@ test("et knæk op ad sidste stigning er TO linjer: angrebet uden tid og knækket
     timelineVersion: 2, climbs: summitClimbs,
   });
   assert.deepEqual(lines.map((l) => [l.phase, Math.round(l.km * 10) / 10, l.time, l.held, v6ClimbAttackCopyKey(l)]), [
-    ["attack", 143.2, null, false, "climb_attack_start_named"],
-    ["outcome", 150.4, 14000, false, "climb_attack_cracked"],
+    ["attack", 143.2, null, false, "detail.film.event.climb_attack_start_named"],
+    ["outcome", 150.4, 14000, false, "raceFilm:climb.crackedNamed"],
   ]);
   assert.deepEqual(lines[0].mineIds, [], "andres ryttere er ikke dine");
 });
 
-test("uden topankomst er angrebet én linje ved toppen med den hidtidige films tekst", () => {
+// Ejer 17/11 (afvist montage runde 3): "Det er ikke kronologisk muligt at angribe og vinde
+// tid på samme tid." Også når stigningen ender før mål er det TO linjer, aldrig én.
+test("uden topankomst er angrebet også TO linjer: angrebet ved foden uden tid, udfaldet ved toppen med løbstid", () => {
   const events = [
     { type: "stage_start", km: 0, params: { distance_km: 170 } },
-    { type: "all_out_gain", km: 150, params: { rider_id: "r3" } },
+    { type: "gap_update", km: 120, params: { gap_seconds: 30 } },
+    { type: "all_out_gain", km: 150, params: { rider_id: "r3", exact_km: 150, exact_time: 12000 } },
+    { type: "all_out_cracked", km: 150, params: { rider_id: "r4", exact_km: 147.5, exact_time: 11800 } },
     { type: "finish", km: 170, params: {} },
   ];
-  const [line, ...rest] = v6ClimbAttackLines(events, { timelineVersion: 2, climbs: [{ crest_km: 150, length_km: 8 }] });
-  assert.equal(rest.length, 0);
-  assert.equal(line.phase, "single");
-  assert.equal(line.km, 150);
-  // Et andet holds rytter (ingen kendt ordre) "angriber" (#7707); egen "Alt ud"-ordre giver all_out-teksten.
-  assert.equal(v6ClimbAttackCopyKey(line), "attack_gain");
-  assert.equal(v6ClimbAttackCopyKey({ ...line, attackTask: false, held: false }), "all_out_cracked");
-  assert.equal(v6ClimbAttackCopyKey({ ...line, phase: "attack", climbName: null }), "climb_attack_start");
+  const lines = v6ClimbAttackLines(events, { timelineVersion: 2, climbs: [{ name: "Monte X", crest_km: 150, length_km: 8 }] });
+  // Løbsloggen står i filmens km-rækkefølge: knækket ved km 147,5 kommer før toppen.
+  assert.deepEqual(lines.map((l) => [l.riderIds[0], l.phase, l.km, l.time, v6ClimbAttackCopyKey(l)]), [
+    ["r4", "attack", 142, null, "detail.film.event.climb_attack_start_named"],
+    ["r4", "outcome", 147.5, 11800, "raceFilm:climb.crackedNamed"],
+    ["r3", "attack", 142, null, "detail.film.event.climb_attack_start_named"],
+    ["r3", "outcome", 150, 12000, "raceFilm:climb.gainedNamed"],
+  ]);
+  assert.ok(lines.every((l) => l.phase === "attack" || l.phase === "outcome"), "ingen kombineret linje");
+  // Kendes stigningen ikke: forrige kendte punkt er angrebspunktet, stadig to linjer.
+  const unknown = v6ClimbAttackLines(events.slice(0, 3).concat(events[4]), { timelineVersion: 2, climbs: [] });
+  assert.deepEqual(unknown.map((l) => [l.phase, l.km, l.time, v6ClimbAttackCopyKey(l)]), [
+    ["attack", 120, null, "detail.film.event.climb_attack_start"],
+    ["outcome", 150, 12000, "raceFilm:climb.gained"],
+  ]);
   assert.deepEqual(v6ClimbAttackLines([{ type: "finish", km: 10 }], { timelineVersion: 2 }), [], "ingen angreb, ingen linjer");
+});
+
+test("preview-mockens referat: Pedersen og Brekke er to linjer hver, angrebet ved foden af Colle di Anteprima før udfaldet ved toppen", async () => {
+  const { film7861Timeline } = await import("../../../preview/raceFilm7861PreviewMock.ts");
+  const { SEED_STAGE_PROFILES } = await import("../../../preview/seedData.js");
+  const timeline = film7861Timeline("/api/races/race-live-1/timeline?stage=2") as { timeline_version: number; events: Parameters<typeof v6ClimbAttackLines>[0] };
+  const profile = (SEED_STAGE_PROFILES as Array<{ race_id: string; stage_number: number; climbs: unknown[] }>).find((p) => p.race_id === "race-live-1" && p.stage_number === 2);
+  const lines = v6ClimbAttackLines(timeline.events, {
+    timelineVersion: timeline.timeline_version, climbs: profile?.climbs as Parameters<typeof v6ClimbAttackLines>[1]["climbs"], mine: new Set(["rider-1"]), ownRiderIds: ["rider-1"],
+  });
+  assert.deepEqual(lines.map((l) => [l.riderIds[0], l.phase, Math.round(l.km * 10) / 10, l.time != null, v6ClimbAttackCopyKey(l)]), [
+    ["rider-1", "attack", 114.6, false, "detail.film.event.climb_attack_start_named"],
+    ["rider-1", "outcome", 121, true, "raceFilm:climb.gainedNamed"],
+    ["rider-702", "attack", 114.6, false, "detail.film.event.climb_attack_start_named"],
+    ["rider-702", "outcome", 121, true, "raceFilm:climb.crackedNamed"],
+  ]);
+  assert.ok(lines.every((l) => l.climbName === "Colle di Anteprima"));
+  // I referatet: begge angreb ved foden står før begge udfald.
+  const merged = v6ReportLines([], lines);
+  assert.deepEqual(merged.map((l) => (l as { phase?: string }).phase), ["attack", "attack", "outcome", "outcome"]);
+  assert.deepEqual(v6VisibleLines(merged, 118).map((l) => (l as { phase?: string }).phase), ["attack", "attack"], "udfaldet afsløres først ved toppen");
+});
+
+test("udfaldets tekst siger kun udfaldet, angrebets tekst kun angrebet (EN+DA, ejer 17/11)", () => {
+  const locale = (lang: string, ns: string) => JSON.parse(read(`../../../../public/locales/${lang}/${ns}.json`));
+  for (const lang of ["en", "da"]) {
+    const film = locale(lang, "raceFilm").climb;
+    const races = locale(lang, "races").detail.film.event;
+    const keys = ["gained", "gainedNamed", "cracked", "crackedNamed"];
+    for (const key of keys) {
+      assert.equal(typeof film[key], "string", `${lang} raceFilm:climb.${key}`);
+      assert.doesNotMatch(film[key], /attack|angreb|angrib/i, `${lang} ${key}: udfaldet nævner ikke angrebet`);
+      assert.match(film[key], /\{rider\}/);
+    }
+    assert.match(film.gainedNamed, /\{climb\}/);
+    assert.match(film.crackedNamed, /\{climb\}/);
+    for (const key of ["climb_attack_start", "climb_attack_start_named"]) {
+      assert.match(races[key], /attack|angrib/i, `${lang} ${key} er angrebet`);
+      assert.doesNotMatch(races[key], /gain|time|tid|tom|empty|crack|knæk/i, `${lang} ${key}: angrebet har intet udfald`);
+    }
+  }
 });
 
 test("referatet fletter angrebslinjerne efter km; målet står sidst på samme km, og referatet følger filmen", () => {

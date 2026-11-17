@@ -15,6 +15,12 @@
     "empty": "Press Play or pick a chapter. The report follows the film, so nothing is given away before you get there.",
     "ahead": "The rest of the stage follows as the film plays."
   },
+  "climb": {
+    "gained": "{rider} gains time on the climb.",
+    "gainedNamed": "{rider} gains time on {climb}.",
+    "cracked": "{rider} cracks on the climb and is dropped.",
+    "crackedNamed": "{rider} cracks on {climb} and is dropped."
+  },
   "none": "This stage has no race film. The full result is in Results.",
   "error": "The race film could not be loaded. The full result is in Results."
 }
