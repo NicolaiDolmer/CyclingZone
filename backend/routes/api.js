@@ -18487,6 +18487,8 @@ router.post("/board/sign", requireAuth, boardWriteLimiter, async (req, res) => {
         negotiationIndexes,
       }),
       previousGoals: existingBoard?.current_goals ?? [],
+      // #8118 · bonusmål fra en tidligere sæson er dømt og følger ikke med.
+      seasonNumber: activeSeason?.number ?? null,
     });
 
     const upsertData = {
