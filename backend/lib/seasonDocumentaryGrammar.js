@@ -226,34 +226,33 @@ export function isRealNeighbour(rival, standing) {
   return Math.abs(myRank - theirRank) === 1;
 }
 
+// Naboen kan ligge langt fra i point, så teksten siger kun det der er sandt:
+// pladsen og afstanden. Ingen "tæt kamp" eller "i hælene", som ikke altid holder.
 function paragraphRival({ rival, standing }, lang, variant) {
   if (!isRealNeighbour(rival, standing)) return null;
   const ahead = Number(rival.rank_in_division) < Number(standing.rank_in_division);
   const gapValue = Math.abs(Math.round(Number(rival.total_points) - Number(standing.total_points)) || 0);
   const gap = formatNumber(gapValue, lang);
+  const level = gapValue === 0;
   const name = rival.team_name;
   if (lang === "da") {
     if (ahead) {
-      const pts = gapValue === 0 ? "på samme pointtal" : `med ${gap} point mere`;
       return variant === 0
-        ? `Sæsonens tætteste rival var ${name}, én plads foran i puljen ${pts}.`
-        : `${name} sluttede lige foran i puljen, én plads højere og ${gapValue === 0 ? "på samme pointtal" : `${gap} point foran`}.`;
+        ? `Nærmeste konkurrent i puljen var ${name}, én plads foran ${level ? "på samme pointtal" : `med ${gap} point mere`}.`
+        : `${name} sluttede én plads foran i puljen, ${level ? "på samme pointtal" : `${gap} point længere fremme`}.`;
     }
-    const pts = gapValue === 0 ? "på samme pointtal" : `med ${gap} point mindre`;
     return variant === 0
-      ? `Sæsonens tætteste rival var ${name}, én plads bagved i puljen ${pts}.`
-      : `${name} var lige i hælene hele sæsonen og sluttede én plads bagved i puljen, ${gapValue === 0 ? "på samme pointtal" : `${gap} point efter`}.`;
+      ? `Nærmeste konkurrent i puljen var ${name}, én plads bagved ${level ? "på samme pointtal" : `med ${gap} point mindre`}.`
+      : `${name} sluttede én plads bagved i puljen, ${level ? "på samme pointtal" : `${gap} point efter`}.`;
   }
   if (ahead) {
-    const pts = gapValue === 0 ? "level on points" : `with ${gap} more points`;
     return variant === 0
-      ? `The season's closest rival was ${name}, one place ahead in the pool ${pts}.`
-      : `${name} finished just ahead in the pool, one place higher and ${gapValue === 0 ? "level on points" : `${gap} points clear`}.`;
+      ? `The nearest rival in the pool was ${name}, one place ahead ${level ? "level on points" : `with ${gap} more points`}.`
+      : `${name} finished one place ahead in the pool, ${level ? "level on points" : `${gap} points clear`}.`;
   }
-  const pts = gapValue === 0 ? "level on points" : `with ${gap} fewer points`;
   return variant === 0
-    ? `The season's closest rival was ${name}, one place behind in the pool ${pts}.`
-    : `${name} were on their heels all season and finished one place behind in the pool, ${gapValue === 0 ? "level on points" : `${gap} points back`}.`;
+    ? `The nearest rival in the pool was ${name}, one place behind ${level ? "level on points" : `with ${gap} fewer points`}.`
+    : `${name} finished one place behind in the pool, ${level ? "level on points" : `${gap} points back`}.`;
 }
 
 const SECTIONS = [
