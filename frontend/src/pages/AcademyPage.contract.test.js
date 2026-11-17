@@ -280,9 +280,12 @@ test("#8081: udgave A vises kun bag kontakten; den normale gren og kortet er uæ
   assert.match(pageSource, /regularIntake\.map\(renderIntakeCard\)/);
   assert.match(pageSource, /\{!showLanding && landing\.movedToU23 && \(/);
   assert.match(pageSource, /showLanding && landing\.squad && \(/);
-  // Regnskabet er et separat stykke: AcademyPnl uændret nederst, ingen regnskabsfane.
-  assert.match(pageSource, /footer=\{<AcademyPnl \/>\}/);
-  assert.doesNotMatch(v2Source, /tabs\.ledger|value="ledger"/);
+  // #8060 (ejervalg 16/11, godkendt 17/11): regnskabet er en fane i udgave A; det gamle AcademyPnl
+  // vises ikke under fanerne der (det ville modsige fanen). Den gamle side har det stadig.
+  assert.match(pageSource, /footer=\{null\}/);
+  assert.match(v2Source, /<Tab value="ledger">/);
+  assert.match(v2Source, /<TabPanel value="ledger">\s*<AcademyLedgerTab \/>/);
+  assert.match(pageSource, /<AcademyPnl \/>/);
 });
 
 test("#8081: udgave A har ét guld, ingen saldo i sidehovedet (A2) og de rigtige trupgrænser", () => {
