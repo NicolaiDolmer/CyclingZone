@@ -231,7 +231,9 @@ export function isRealNeighbour(rival, standing) {
 function paragraphRival({ rival, standing }, lang, variant) {
   if (!isRealNeighbour(rival, standing)) return null;
   const ahead = Number(rival.rank_in_division) < Number(standing.rank_in_division);
-  const gapValue = Math.abs(Math.round(Number(rival.total_points) - Number(standing.total_points)) || 0);
+  // Stillingen rangerer efter point minus strafpoint, så afstanden gør det samme.
+  const effective = (s) => (Number(s.total_points) || 0) - (Number(s.penalty_points) || 0);
+  const gapValue = Math.abs(Math.round(effective(rival) - effective(standing)));
   const gap = formatNumber(gapValue, lang);
   const level = gapValue === 0;
   const name = rival.team_name;

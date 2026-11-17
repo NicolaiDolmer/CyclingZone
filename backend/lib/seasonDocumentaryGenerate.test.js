@@ -215,6 +215,7 @@ describe("#8361 get_season_documentary_facts: rival from the team's own pool", (
     const f = await facts(ids.me);
     assert.equal(f.rival.team_id, ids.b);
     assert.equal(f.rival.league_division_id, ids.poolP);
+    assert.equal(Number(f.rival.penalty_points), 0);
     assert.equal(f.myStanding.league_division_id, ids.poolP);
 
     const doc = buildSeasonDocumentary(f, { teamId: ids.me, teamName: "Hold Mig", seasonNumber: 4 });

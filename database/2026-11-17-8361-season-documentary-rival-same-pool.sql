@@ -18,8 +18,9 @@
 -- ingen pulje, findes der ingen rival, og grammatikken udelader sætningen
 -- (backend/lib/seasonDocumentaryGrammar.js tjekker det samme igen, så facts fra
 -- før denne migration heller ikke giver en forkert sætning).
--- Rivalen får `league_division_id` med i outputtet, så grammatikken kan
--- kontrollere puljen.
+-- Rivalen får `league_division_id` og `penalty_points` med i outputtet, så
+-- grammatikken kan kontrollere puljen og regne afstanden som stillingen gør
+-- (point minus strafpoint, samme rangering som recompute_season_standings).
 --
 -- Udgangspunktet er PRODS `pg_get_functiondef` (hentet read-only 17/11; md5 af
 -- prosrc var lig repoets 2026-09-25-5535-version). Kun `rival`-CTE'en er ændret;
@@ -88,8 +89,8 @@ AS $function$
   ),
   rival AS (
     SELECT ss.team_id, t.name AS team_name, ss.total_points, ss.rank_in_division,
-           ss.league_division_id,  -- #8361: puljen med i outputtet
-           ABS(ss.total_points - (SELECT total_points FROM my_standing)) AS gap
+           ss.league_division_id, ss.penalty_points,  -- #8361: pulje og strafpoint med i outputtet
+           ABS((ss.total_points - COALESCE(ss.penalty_points, 0)) - (SELECT total_points - COALESCE(penalty_points, 0) FROM my_standing)) AS gap  -- #8361: afstand som i stillingen (efter strafpoint)
     FROM season_standings ss
     JOIN teams t ON t.id = ss.team_id
     WHERE ss.season_id = p_season_id

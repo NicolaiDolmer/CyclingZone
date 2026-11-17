@@ -169,6 +169,18 @@ test("#8361: the neighbour directly above is named as ahead, never as chasing", 
   }
 });
 
+test("#8361: the gap uses points after penalties, the same order the standings use", () => {
+  // Hold Mig har flere rå point end naboen over sig, men strafpoint sender det ned.
+  const penalised = { ...ME, total_points: 1000, penalty_points: 300 };
+  const above = { team_name: "Hold A", total_points: 900, penalty_points: 0, rank_in_division: 1, league_division_id: POOL };
+  const en = rivalParagraph(above, "en", penalised).rivalText;
+  const da = rivalParagraph(above, "da", penalised).rivalText;
+  assert.match(en, /ahead/);
+  assert.match(en, /\b200\b/);
+  assert.match(da, /\b200\b/);
+  assert.doesNotMatch(en, /\b100\b/);
+});
+
 test("#8361: equal points read as level, not as zero points ahead", () => {
   const level = { team_name: "Hold B", total_points: 5000, rank_in_division: 3, league_division_id: POOL };
   assert.match(rivalParagraph(level, "en").rivalText, /level on points/);
