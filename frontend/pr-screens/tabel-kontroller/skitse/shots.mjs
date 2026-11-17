@@ -1,7 +1,7 @@
 // #8280: levende wireframes af kontrolomraadet over tabeller, tre retninger.
 //
-//   node frontend/src/preview/sketches/tabel-kontroller/shots.mjs        # A, B og C
-//   node frontend/src/preview/sketches/tabel-kontroller/shots.mjs B      # kun B
+//   node frontend/pr-screens/tabel-kontroller/skitse/shots.mjs        # A, B og C
+//   node frontend/pr-screens/tabel-kontroller/skitse/shots.mjs B      # kun B
 //
 // Starter selv Vite med preview-mocken (VITE_PREVIEW_MOCK, ingen login, ingen
 // backend, ingen prod-data) i SAMME proces, tager billederne med Playwright fra
@@ -19,8 +19,8 @@ import { installSketchLib } from "./sketchLib.mjs";
 import { rankings, riders, team } from "./recipes.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const FRONTEND = resolve(HERE, "../../../..");
-const OUT = resolve(FRONTEND, "pr-screens/tabel-kontroller");
+const FRONTEND = resolve(HERE, "../../..");
+const OUT = resolve(HERE, "..");
 const require = createRequire(resolve(FRONTEND, "package.json"));
 mkdirSync(OUT, { recursive: true });
 
@@ -163,8 +163,9 @@ const server = await createServer({
 });
 await server.listen();
 const base = `http://127.0.0.1:${port}`;
-const browser = await chromium.launch({ executablePath: findChromium() });
+let browser = null;
 try {
+  browser = await chromium.launch({ executablePath: findChromium() });
   const now = {};
   for (const r of ROWS) for (const vw of [390, 1440]) now[`${r.page}-${r.theme}-${vw}`] = await shoot(browser, base, { ...r, vw });
   const summary = [];
@@ -195,6 +196,6 @@ try {
   writeFileSync(resolve(OUT, "maalinger.json"), JSON.stringify(summary, null, 1) + "\n");
   console.log("skrevet maalinger.json");
 } finally {
-  await browser.close();
+  if (browser) await browser.close();
   await server.close();
 }
