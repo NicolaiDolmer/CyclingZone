@@ -34,6 +34,8 @@ Planning Center er den flade hvor en manager beslutter **hvem der kører hvad, h
 | `POST /races/selection/auto/propose` | planlægningssidens "Lad assistenten udtage" over mange løb (#7535) — **læser kun**; samme regler som `/selection/auto`, egne valg bliver, forslaget gemmes via bulk | samme, ét kald |
 | `POST /races/withdrawals/bulk` | planlægningssidens "Afmeld" over mange løb (#7535) — atomart (én upsert), `dry_run` kontrollerer uden at skrive | samme, ét kald |
 
+Planlægningssiden runde 3 (#7535) bygger ingen ny skrivevej: Taktik er løbssidens taktik-fane (samme endpoints), Formtop bruger Form-fanens `POST /peak-plans/bulk` og `DELETE /peak-plans/:id`, og "Belastning" læser `GET /races/:raceId/expected-load` (motorens `conditionModelV2`, skriver intet; kun ordet let/mellem/hård forlader serveren, ejervalg 16/11). Grænserne mellem ordene står kun i den lukkede `private_config` (nøglen `planning_expected_load_7535`, #8294); mangler eller er rækken ugyldig, svarer endpointet som slukket model, og kolonnen skjules.
+
 **Bulk er atomart.** Enten går hele planen ind, eller ingen af den. Delvis succes findes ikke — spilleren må aldrig se halvdelen af sit arbejde gemt. Bulk-vejen orkestrerer kun; valideringen (binding, trupgrænse, tilgængelighed) er den samme som enkelt-endpointets.
 
 **Grænsen er grunden.** 40 celler via enkelt-endpointet ville fejle efter de 30 første. Se `backend/lib/rateLimiters.js:64`.
@@ -195,3 +197,10 @@ Spiller-preview live: `frontend/public/race-planning-preview.html` (#4022), som 
 ## Genindmelding efter frivillig udtrækning (#7153, ejer 28/10)
 
 Managerens egne PUT-gem i udtagelsespanel og sæsonmatrix annullerer en frivillig udtrækning før feltet låses efter raceStartLock-reglen. Den nye udtagelse erstatter alle holdets gamle entries. Sletning af gamle entries, sletning af udtrækning og indsættelse af nye entries sker i samme transaktion, i netop den rækkefølge, via service-role-only replace_manager_race_selections. Et bulk-gem er fortsat alt eller intet. En ny valgt rytter bundet i et andet løb afvises med navn og løb; genindmeldingen flytter aldrig automatisk ryttere. Assistent, autofill, generator og runner annullerer aldrig en udtrækning. did_not_start ændres aldrig. Feltets lås gælder også når afviklingen er pauset. Testplan: lokal PG17 med de faktiske bindingstriggere, API-kontrakter, frontend-unit, fuld suite og panel/matrix i mobil og desktop med fixture-data. Ejer-design: issuecomment-6468132613 på #7153.
+
+## Formplan: divisionsvælger og forventet division ([#5841](https://github.com/NicolaiDolmer/CyclingZone/issues/5841), ejer 16/11)
+
+- **`expectedDivision`** i peak-plan-brættets svar (`backend/routes/api.js`, ved `divisionPending`): holdets NUVÆRENDE divisionstier, kun når `divisionPending` er sand; ellers `null`. Samme kontrakt som kalenderen (`docs/CALENDAR_RULES.md` §17): et udgangspunkt for visningen, aldrig en placering, og det ændrer ikke `isMine`/mine-filteret.
+- **Divisionsvælgeren** (`SeasonPlannerPage.jsx`) vises, når brættet viser alle løb ("Alle løb", eller en kommende sæson). Standard: holdets division; i en kommende sæson `expectedDivision`, mærket "forventet" (`defaultPlannerDivision`, `frontend/src/components/planner/plannerShared.js`). "Alle divisioner" kan vælges. Puljernes ens løb står én gang (`plannerBoardRaces`).
+- **Sæsonskift nulstiller valget** på alle veje (sæsonknapperne og "Næste sæson"-knappen går gennem én `switchSeason`), så et divisionsvalg aldrig følger med til en anden sæson.
+- Teksterne ligger i `planner`-navnerummet (route-gatet), ikke i `common`, så de ikke vejer på første indlæsning.

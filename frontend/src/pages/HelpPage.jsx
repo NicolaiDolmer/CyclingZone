@@ -385,6 +385,8 @@ const SECTION_DEFS = [
       // #7737: Traen nu-tvillingerne (HELP_BLOCK_FLAGS); begge kun i loebsdags-modellen, som runDayNow.
       { id: "trainNowBeta", kind: "text", flag: "training_tick_per_race_day" },
       { id: "trainNowInstant", kind: "text", flag: "training_tick_per_race_day" },
+      // #7741: bonussen foer eget tryk; kun naar Traen nu virker (flag her) OG bonus-kontakten er on (HELP_BLOCK_FLAGS).
+      { id: "trainNowBonus", kind: "text", flag: "training_train_now_instant" },
       // #4164: a race replaces the day's session rather than adding to it, and
       // it settles once per day no matter how many stages were ridden. Asked in
       // #dansk-snak 24/8 and unanswerable from the page as it stood.
@@ -437,6 +439,8 @@ const SECTION_DEFS = [
       { id: "ceilingReached", kind: "text" },
       { id: "ceilingReachedCurveB", kind: "text" },
       { id: "readingReport", kind: "text" },
+      // #7627: hvor fremgangen kom fra (traening/loeb pr. evne, TrainingReport raceSource).
+      { id: "raceSource", kind: "text" },
       // #3721: wired in — the copy already lived in help.json (translated,
       // en+da) but was never listed here, so the "Weekly rhythm" panel and its
       // per-rider override had no reachable documentation. The Training page's
@@ -534,10 +538,14 @@ const SECTION_DEFS = [
       // translated copy but no reachable docs; it belongs right after
       // roles, since it's the stage-race-specific extension of them.
       { id: "stageTactics", kind: "text" },
+      // #7003: de spaerrede ordre-kombinationer (oppositeOrders.js) og planens regel.
+      { id: "oppositeOrders", kind: "text" },
       // #6746: ét sandt afsnit om indsatstrinnene (fem trin; kontakten fjernet, #6641).
       { id: "effortSteps", kind: "text" },
       // #7864: holdplaner og prisord; vises foerst med samme kontakt som holdplanerne selv.
       { id: "teamPlans", kind: "text", flag: "tactics_ready_7864" },
+      // #7638: hvilken opgave faar hvilket prisord (EFFORT_COST_WORD + undtagelsen udbrud).
+      { id: "taskPrices", kind: "text", flag: "tactics_ready_7864" },
       { id: "strategy", kind: "text" },
       { id: "breakaway", kind: "text" },
       { id: "ordersGc", kind: "text" }, // #6067: orders_gc_v1

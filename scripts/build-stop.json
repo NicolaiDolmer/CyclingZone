@@ -1473,6 +1473,56 @@
       "issue": 8081,
       "reason": "Akademiet som ét designvalg (+#8060, #8036, #6944). Ejer-go 16/11 (Claude Code, Dolmer PC, AskUserQuestion: Ja, alle tre); arbejdsfordeling i referatet: https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6914665328",
       "since": "2026-11-16"
+    },
+    {
+      "issue": 8060,
+      "reason": "Akademiets regnskab pr. sæson på akademisiden (fanen Akademi-regnskab), parallelt med udgave A. Ejer-go 16/11 PC1 (AskUserQuestion: \"Ja, parallelt nu\"; placering A).",
+      "since": "2026-11-16"
+    },
+    {
+      "issue": 8069,
+      "reason": "Designsystem og TASTE: regler F1-F8. Ejer-go 16/11 PC1 (AskUserQuestion: \"Ja, tilføj #8069\"; F1=A, F2-F8 \"merge\").",
+      "since": "2026-11-16"
+    },
+    {
+      "issue": 8278,
+      "reason": "Mobil rettelse 1, 8, 13. Del af #8073. Ejer-go 16/11 PC1 (AskUserQuestion: \"Ja, sæt i gang\").",
+      "since": "2026-11-16"
+    },
+    {
+      "issue": 8279,
+      "reason": "Mobil rettelse 3, 11, 15. Del af #8073. Ejer-go 16/11 PC1 (AskUserQuestion: \"Ja, sæt i gang\").",
+      "since": "2026-11-16"
+    },
+    {
+      "issue": 8280,
+      "reason": "Skitser: tabel-kontroller og indbakke (mobil 6, 9). Del af #8073. Ejer-go 16/11 PC1 (AskUserQuestion: \"Ja, sæt i gang\").",
+      "since": "2026-11-16"
+    },
+    {
+      "issue": 8281,
+      "reason": "Skitser: rytterprofil med billede (mobil 7). Del af #8073. Ejer-go 16/11 PC1 (AskUserQuestion: \"Ja, sæt i gang\").",
+      "since": "2026-11-16"
+    },
+    {
+      "issue": 8116,
+      "reason": "Forkert info: halvsæson-beskeden henviser til 'board request', der ikke findes. Ejer-go 17/11 PC1 natplan (AskUserQuestion 9/12: Bestyrelsen #7963/#8116/#8118).",
+      "since": "2026-11-17"
+    },
+    {
+      "issue": 8118,
+      "reason": "Forkert info: bestyrelsen utilfreds selvom alle mål er nået. Ejer-go 17/11 PC1 natplan (AskUserQuestion 9/12: Bestyrelsen #7963/#8116/#8118).",
+      "since": "2026-11-17"
+    },
+    {
+      "issue": 8003,
+      "reason": "Ranglisten venter ~13 min efter et løb (uge 47-milestone, MASTERPLAN). Ejer-go 17/11 PC1 natplan (AskUserQuestion 9/12: Ranglisten #8003); måling + design før første PR.",
+      "since": "2026-11-17"
+    },
+    {
+      "issue": 8327,
+      "reason": "Ejer 17/11 morgen (PC1, AskUserQuestion): 'Løft 2 KB nu + trim som opfølgning'. Loftet for første indlæsning +2 KB (#8328), main ved loftet blokerede PR'er bag slukkede kontakter; trim index-chunken og sænk loftet igen.",
+      "since": "2026-11-17"
     }
   ]
 }

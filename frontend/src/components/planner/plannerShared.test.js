@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { dateToOrdinal, monthTicks, formatOrdinalShort, formatRaceDateLabel, statusMeta, riderShortName, nextPlannableSeason, effectivePlannerFilter } from "./plannerShared.js";
+import { dateToOrdinal, monthTicks, formatOrdinalShort, formatRaceDateLabel, statusMeta, riderShortName, nextPlannableSeason, effectivePlannerFilter, plannerDivisions, defaultPlannerDivision, plannerBoardRaces } from "./plannerShared.js";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -133,4 +133,46 @@ test("formatRaceDateLabel: manglende dateEnd viser startdatoen alene, ikke et op
 test("formatRaceDateLabel: ugyldig startdato giver tom streng", () => {
   assert.equal(formatRaceDateLabel({ date: null, dateEnd: "2026-09-12" }, MONTHS), "");
   assert.equal(formatRaceDateLabel(null, MONTHS), "");
+});
+
+// ── #5841: Formplans divisionsvaelger + een kopi pr. loeb ──────────────────────
+
+const strip = (...terrains) => terrains.map((terrain, i) => ({ stage: i + 1, terrain, summit: false }));
+const boardRace = (id, division, extra = {}) => ({
+  id, name: "Ronde X", division, date: "2026-12-01", dateEnd: "2026-12-02", stages: 2,
+  stageProfiles: strip("flat", "hilly"), isMine: false, ...extra,
+});
+
+test("plannerDivisions: distinkte divisioner, sorteret, uden huller", () => {
+  assert.deepEqual(plannerDivisions([boardRace("a", 3), boardRace("b", 1), boardRace("c", 3), { id: "d", division: null }]), [1, 3]);
+  assert.deepEqual(plannerDivisions(null), []);
+});
+
+test("defaultPlannerDivision: kommende saeson starter paa den forventede, ellers holdets egen", () => {
+  const races = [boardRace("a", 1), boardRace("b", 2, { isMine: true })];
+  assert.equal(defaultPlannerDivision(races, { divisionPending: true, expectedDivision: 3 }), 3);
+  assert.equal(defaultPlannerDivision(races, { divisionPending: true, expectedDivision: null }), null, "ukendt = alle divisioner");
+  assert.equal(defaultPlannerDivision(races, { divisionPending: false }), 2);
+  assert.equal(defaultPlannerDivision([boardRace("a", 1)], {}), null);
+});
+
+test("plannerBoardRaces: puljernes ens loeb staar een gang, holdets eget vinder", () => {
+  const races = [boardRace("a", 3), boardRace("b", 3, { isMine: true }), boardRace("c", 3), boardRace("d", 3)];
+  const out = plannerBoardRaces(races, { division: 3 });
+  assert.equal(out.length, 1);
+  assert.equal(out[0].id, "b");
+  assert.equal(plannerBoardRaces(races.filter((r) => !r.isMine), { division: 3 })[0].id, "a", "uden eget loeb vinder den foerste pulje");
+});
+
+test("plannerBoardRaces: divisionsfilteret og afvigende ruter/datoer holder loebene adskilt", () => {
+  const races = [
+    boardRace("a", 3),
+    boardRace("b", 3, { stageProfiles: strip("flat", "mountain") }),
+    boardRace("c", 3, { date: "2026-12-03", dateEnd: "2026-12-04" }),
+    boardRace("d", 1),
+  ];
+  assert.deepEqual(plannerBoardRaces(races, { division: 3 }).map((r) => r.id), ["a", "b", "c"]);
+  assert.deepEqual(plannerBoardRaces(races, { division: 1 }).map((r) => r.id), ["d"]);
+  assert.deepEqual(plannerBoardRaces(races, { division: null }).map((r) => r.id), ["a", "b", "c", "d"], "null = alle divisioner");
+  assert.deepEqual(plannerBoardRaces(null), []);
 });

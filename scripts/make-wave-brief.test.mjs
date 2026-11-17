@@ -322,17 +322,42 @@ test("kind: 'investigate' skriver den tvungne aflevering ordret ind i briefen", 
   assert.match(brief, /Lever ALDRIG et tredje svar/);
 });
 
-// CodeRabbit (#5220): et undersoegelsesspor bygger intet - briefen maa IKKE
-// samtidig kraeve commit/push/draft-PR/CodeRabbit-CLI/gh pr ready.
+// CodeRabbit (#5220): et undersoegelsesspor bygger ingen kode - briefen maa
+// IKKE kraeve livstegn, TIER-verifikation, CodeRabbit-CLI eller gh pr ready.
 test("kind: 'investigate' udelader ALLE build-only-blokke (livstegn, TIER-verifikation, PR-skabelon)", () => {
   const brief = generateBrief({ ...baseConfig, kind: "investigate" });
   assert.doesNotMatch(brief, /# Livstegn/);
   assert.doesNotMatch(brief, /# Verifikation, niveau TIER WAVE/);
   assert.doesNotMatch(brief, /# PR-skabelon/);
-  assert.doesNotMatch(brief, /guard-commit-branch\.sh/);
   assert.doesNotMatch(brief, /codex review/);
-  assert.doesNotMatch(brief, /gh pr ready/);
+  assert.doesNotMatch(brief, /^- .*`gh pr ready <N>`/m, "intet trin markerer PR'en klar");
   assert.match(brief, /Dette spor bygger INTET/);
+});
+
+// #8233: to gange 16/11 endte et undersoegelsesspors resultat kun i scratch.
+// Rapporten skal committes bag guarden og leveres i en draft-PR.
+test("#8233: kind: 'investigate' med deliverPr leverer rapporten i en draft-PR, aldrig kun i scratch", () => {
+  const brief = generateBrief({ ...baseConfig, kind: "investigate", deliverPr: true });
+  assert.match(brief, /# Leverance \(#8233, bindende\)/);
+  assert.match(brief, /docs\/audits\/undersoegelse-chore-4918-wave-ops\.md/);
+  assert.match(brief, /guard-commit-branch\.sh" chore\/4918-wave-ops /, "commit kun bag guarden paa sporets branch");
+  assert.match(brief, /gh pr create --draft --base main --head chore\/4918-wave-ops /);
+  assert.match(brief, /Refs #4918/);
+  assert.doesNotMatch(brief, /Closes #4918/);
+  assert.match(brief, /aldrig `gh pr ready`, aldrig merge/);
+  assert.match(brief, /not-delivered/);
+  assert.match(brief, /kun den linje taeller som levering/);
+  assert.doesNotMatch(brief, /ingen push, ingen PR/, "den gamle 'ingen PR'-regel maa ikke staa tilbage");
+});
+
+// Codex-fund (#8233): Codex-runtimen (codex-wave.mjs) koerer undersoegelser med
+// read-only .git og kalder generateBrief uden deliverPr - dens brief er uaendret.
+test("#8233: kind: 'investigate' uden deliverPr beholder den gamle 'ingen PR'-brief", () => {
+  const brief = generateBrief({ ...baseConfig, kind: "investigate" });
+  assert.doesNotMatch(brief, /# Leverance/);
+  assert.doesNotMatch(brief, /guard-commit-branch\.sh/);
+  assert.doesNotMatch(brief, /gh pr create/);
+  assert.match(brief, /intet commit, ingen push, ingen PR/);
 });
 
 test("et ugyldigt kind falder tilbage til 'build' (ingen undersoegelsesspor-blok)", () => {

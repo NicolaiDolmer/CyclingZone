@@ -382,15 +382,23 @@
     },
     "runNow": {
       "title": "Lance l'entraînement du jour",
-      "body": "Lancer maintenant entraîne tout l'effectif aujourd'hui, y compris les coureurs sans jour fixé : ils font ce que ton assistant choisit pour leur type. Appuyer ne donne aucun bonus. Passe ton tour et ton assistant lance la même séance automatiquement."
+      "body": "Lancer maintenant entraîne tout l'effectif aujourd'hui, y compris les coureurs sans jour fixé : ils font ce que ton assistant choisit pour leur type. Passe ton tour et ton assistant lance la même séance automatiquement."
     },
     "runTodayDayClose": {
       "title": "Lance l'entraînement du jour",
-      "body": "Appuie ici pour lancer l'entraînement du jour maintenant plutôt que d'attendre. C'est le même entraînement que le lancement automatique, sans bonus : la journée se lance aussi toute seule une fois la dernière course terminée."
+      "body": "Appuie ici pour lancer l'entraînement du jour maintenant plutôt que d'attendre. La journée se lance aussi toute seule une fois la dernière course terminée."
     },
     "runNowDayClose": {
       "title": "Lance l'entraînement du jour",
-      "body": "Lancer maintenant entraîne tout l'effectif aujourd'hui, y compris les coureurs sans jour fixé : ils font ce que ton assistant choisit pour leur type. C'est le même entraînement que le lancement automatique, sans bonus : la journée se lance aussi toute seule une fois la dernière course terminée."
+      "body": "Lancer maintenant entraîne tout l'effectif aujourd'hui, y compris les coureurs sans jour fixé : ils font ce que ton assistant choisit pour leur type. La journée se lance aussi toute seule une fois la dernière course terminée."
+    },
+    "runTodayDayCloseBonus": {
+      "title": "Lance l'entraînement du jour",
+      "body": "Appuie ici pour lancer l'entraînement du jour maintenant plutôt que d'attendre. L'entraînement que tu lances toi-même donne un petit bonus ; le lancement automatique n'en donne jamais. La journée se lance aussi toute seule une fois la dernière course terminée."
+    },
+    "runNowDayCloseBonus": {
+      "title": "Lance l'entraînement du jour",
+      "body": "Lancer maintenant entraîne tout l'effectif aujourd'hui, y compris les coureurs sans jour fixé : ils font ce que ton assistant choisit pour leur type. L'entraînement que tu lances toi-même donne un petit bonus ; le lancement automatique n'en donne jamais. La journée se lance aussi toute seule une fois la dernière course terminée."
     },
     "runStatus": {
       "title": "Entraîne-toi une fois par jour",
@@ -604,6 +612,10 @@
       "pending": "Cette date n'est pas encore entièrement réglée. Les changements finaux de progression et de condition sont encore en attente.",
       "reconciliation": "Certaines activités demandent un rapprochement. Une preuve manquante n'est jamais affichée comme une progression nulle.",
       "recorded": "Les activités enregistrées sont combinées pour cette date. Les rapports plus anciens peuvent ne pas contenir toute la preuve de progression ou de règlement."
+    },
+    "bonus": {
+      "mark": "Bonus S'entraîner maintenant",
+      "detail": "Tu as appuyé sur S'entraîner maintenant avant le lancement de l'entraînement automatique, donc l'entraînement de ce coureur a reçu le bonus."
     },
     "riderReceipts": "Reçus des coureurs",
     "trainedNow": "{count, plural, one {Entraîné maintenant · jour de course {range}} other {Entraînés maintenant · jours de course {range}}}",

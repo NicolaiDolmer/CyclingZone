@@ -189,6 +189,23 @@ run "block-blocking-shell: jq fed via pipe allowed" \
   '{"tool_name":"Bash","tool_input":{"command":"curl -s https://example.com | jq ."}}' \
   0 "" ""
 
+# #8240: filnavn i en variabel + pipe inde i et citeret filter var en falsk
+# positiv - den naive split paa "|" skar filteret over.
+run "block-blocking-shell: jq with quoted pipe filter and \$F file allowed (#8240)" \
+  scripts/hooks/block-blocking-shell-commands.sh \
+  '{"tool_name":"Bash","tool_input":{"command":"jq -r \".relations.riders.columns | keys\" \"$F\"","description":"Read columns"}}' \
+  0 "" ""
+
+run "block-blocking-shell: jq single-quoted pipe filter on \$F in a chain allowed (#8240)" \
+  scripts/hooks/block-blocking-shell-commands.sh \
+  '{"tool_name":"Bash","tool_input":{"command":"F=database/schema-snapshot.json && jq -r '"'"'.a | .b'"'"' \"$F\" | head -5"}}' \
+  0 "" ""
+
+run "block-blocking-shell: jq quoted pipe filter WITHOUT file still blocked (#8240)" \
+  scripts/hooks/block-blocking-shell-commands.sh \
+  '{"tool_name":"Bash","tool_input":{"command":"F=x.json && jq -r \".a | .b\""}}' \
+  2 "" "BLOCKED"
+
 # ---- ensure-scheduled-tasks.sh (auto-install on new PC) ----
 
 SCHED_DIR="$HOME/.claude/scheduled-tasks/weekly-memory-audit"

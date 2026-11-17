@@ -221,5 +221,12 @@
     "title": "Ta division de la saison {number} se décide au changement de saison",
     "body": "La promotion et la relégation se règlent à la clôture de la saison en cours, je ne peux donc pas encore te dire quel calendrier est le tien. Les courses de la saison {number} de chaque division sont listées ci-dessous, tu peux donc quand même étudier le parcours.",
     "hint": "Les pics de la saison {number} ouvrent dès que ta division est confirmée."
+  },
+  "expectedDivision": {
+    "label": "Division",
+    "all": "Toutes les divisions",
+    "option": "Division {n}",
+    "optionExpected": "Division {n} (prévue)",
+    "plannerBody": "Les montées et descentes sont fixées à la clôture de la saison en cours. Le tableau démarre sur la division {n}, celle où tu es maintenant. Choisis une autre division plus haut pour étudier ses parcours de la saison {number}."
   }
 }

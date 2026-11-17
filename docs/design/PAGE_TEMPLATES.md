@@ -9,7 +9,7 @@ Artboards (visual handoff for the 3 templates): `docs/design/design_handoff_page
 ```markdown
 ## Page templates (binding)
 Every manager-app page uses one of the 3 canonical templates in docs/design/PAGE_TEMPLATES.md:
-T1 standard content (max-w-4xl), T2 wide data (max-w-[1600px]), T3 profile/detail (hero + tabs, max-w-5xl).
+T1 standard content (max-w-4xl), T2 wide data (max-w-[1600px]), T3 profile/detail (hero + tabs, max-w-5xl; max-w-[1600px] when its tabs hold tables).
 Never invent a new page header, container width, section-card padding, or loading/empty/error markup —
 compose the recipes from that file. One gold primary button per view, hairline borders (no shadows),
 5px card radius, tabular figures for all numerics, stroke icons only (no emoji).
@@ -24,7 +24,8 @@ compose the recipes from that file. One gold primary button per view, hairline b
   - Action cluster (optional, right): EITHER **one** `Select` (sm) + **one** primary `Button` (sm), OR up to **two** quiet utility actions (secondary sm) with no primary. Never two gold. Nothing else. Mobile: cluster wraps below the title block. *(Widened 2026-07-25: the original "one select + one primary, nothing else" was silently violated by Notifications / Activity / Auctions, which all legitimately need two utility actions — the spec now describes the real contract instead of being routed around.)*
   - **No orphan action rows.** Controls belonging to the page (toggles, view switchers, "show stats") live in this cluster — never in a free-floating row between the header and the content.
 - **Page width, ONE system (owner 2026-11-12, #8070):** the width follows the content on every page: reading text **896px** (T1), a profile/detail page without tables **1024px** (T3), anything with tables **up to 1600px** (T2, and T3 wide below). Pages are reviewed against this one at a time; until a page has been reviewed it keeps its current width.
-- **No banners at the top of any page (owner 2026-11-12, #8070; extends the 2026-11-09 profile rule, #7951):** a deadline and the page's ONE gold button stand in the header's action row (T3: the hero card's action row).
+- **No banners at the top of any page (owner 2026-11-12, #8070; extends the 2026-11-09 profile rule, #7951):** a deadline and the page's ONE gold button stand in the header's action row (T3: the hero card's action row). A deadline is one line of text there ("Deadline in 12 h" / "Frist om 12 t"), never a box between the header and the content. First-visit tips count as banners too: they live in the onboarding tour or in Help, not above the content.
+- **One look on web, mobile and app (owner 2026-11-12, #8076; TASTE P20):** the app is the mobile site. It uses the same `components/ui` primitives, tokens, fonts and icons; screens differ in geometry only (D-047, the P16 touch floor), never in look. No app-only component and no platform-native control where the kit has its own.
 - **"Saved" is the word (owner 2026-11-12, #8070):** when something has been saved the copy says "Saved" (DA "Gemt") everywhere, never "confirmed" ("bekræftet").
 - **A view choice is remembered on the user (owner 2026-11-12, #8070):** a choice such as "Hide route" is stored on the account and follows the player across pages and devices, not in the browser. (The D-047 column-chip choice below keeps its own per-column-set storage.)
 - **Section card (the ONE recipe):** `Card` = `--bg-card`, 1px `--border`, **5px radius**, **padding 20px** (16px mobile), no shadow. **No left accent bar** — that is a fifth priority signal on top of the four gold is rationed for (§ below). `Section` throws in dev if `className` carries a `border-l-*` utility (#4625); it has no `accent`/`leftBar` prop and never will.
@@ -115,7 +116,7 @@ Sider må ikke vokse i højden ved at nye features stabler nye kort ovenpå. Reg
   ikke et nyt kort.
 
 ## Hard don'ts
-No gradients · no drop shadows (overlay shadow is for modals/popovers only) · no rounded-2xl (ONE surface radius: 5px `rounded-cz` everywhere — cards, table wraps, modals, state insets; pills use `rounded-cz-pill`, skeleton lines 4px; converged 2026-07-24) · no emoji (stroke icon set only) · no second gold button per view · no per-page header or container inventions · **no arbitrary `text-[Npx]` below 12px** — `text-2xs` / `text-3xs` only (converged 2026-07-25).
+No gradients · no drop shadows (overlay shadow is for modals/popovers only) · no rounded-2xl (ONE surface radius: 5px `rounded-cz` everywhere — cards, table wraps, modals, state insets; pills use `rounded-cz-pill`, skeleton lines 4px; converged 2026-07-24) · no emoji (stroke icon set only) · no second gold button per view · no hand-rolled gold button (`bg-cz-accent text-cz-on-accent` on a `<button>`/link): gold is `Button`/`buttonClass({ variant: "primary" })` only, so the row guard and the per-view count can see it · no per-page header or container inventions · **no arbitrary `text-[Npx]` below 12px** — `text-2xs` / `text-3xs` only (converged 2026-07-25).
 
 ## Migration order (suggested)
 Dashboard → Standings → Riders → the rest of Marked → Season & results → League → settings pages. One template per PR batch; check each page against the artboards in `Manager Page Templates (standalone).html`.
