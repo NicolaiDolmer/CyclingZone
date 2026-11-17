@@ -4,9 +4,9 @@
       "results": "Results",
       "stage": "Stage",
       "story": "Story",
-      "startlist": "Start list",
       "tactics": "Tactics",
-      "team": "Team"
+      "team": "Team",
+      "start": "Start list"
     },
     "mode": { "aria": "Stage view" },
     "hero": {
@@ -1651,7 +1651,8 @@
       "points": "Points",
       "mountain": "Mountain",
       "young": "Youth",
-      "team": "Teams"
+      "team": "Teams",
+      "passages": "Sprints & climbs"
     },
     "teamFilter": {
       "label": "Team",
@@ -2239,6 +2240,10 @@
     "table": {
       "prizePoints": "Prize points",
       "jerseyPoints": "Jersey points",
+      "colPos": "Pos",
+      "colRider": "Rider",
+      "colTeam": "Team",
+      "colTime": "Time",
       "prizePointsShort": "Prize",
       "jerseyPointsShort": "Jersey"
     },

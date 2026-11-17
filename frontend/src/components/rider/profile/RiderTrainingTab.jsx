@@ -119,7 +119,7 @@ function FocusCard({ rider, training, t, onOpenPanel, actionError }) {
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
       <div className="flex items-baseline justify-between gap-2 mb-[11px]">
-        <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0">
+        <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0">
           {t("profile.training.title")}
         </h3>
         {total != null && (
@@ -291,7 +291,7 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
       <div className="flex items-baseline justify-between gap-2 mb-[11px]">
-        <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0">
+        <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0">
           {tTraining("receipt.title")}
         </h3>
         {seasonStart && seasonState !== SEASON_RECEIPT_UNKNOWN && (
@@ -347,7 +347,7 @@ function DailyLogCard({ riderId, runs, t }) {
     .slice(0, LOG_DAYS);
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
-      <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mb-[9px]">
+      <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0 mb-[9px]">
         {t("profile.training.log.title")}
       </h3>
       {entries.length === 0 ? (
@@ -441,7 +441,7 @@ function FormCard({ riderId, condition, t }) {
   if (!condition) {
     return (
       <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
-        <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mb-[9px]">
+        <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0 mb-[9px]">
           {t("profile.training.form.title")}
         </h3>
         <p className="text-[12px] text-cz-3 py-1">{t("profile.training.form.pending")}</p>
@@ -456,7 +456,7 @@ function FormCard({ riderId, condition, t }) {
   const days = injury.count;
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
-      <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mb-[9px]">
+      <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0 mb-[9px]">
         {t("profile.training.form.title")}
       </h3>
       <div className="flex flex-col gap-[11px]">
@@ -503,7 +503,7 @@ function NoticeCard({ title, body }) {
       <span className="text-cz-3 inline-flex">
         <IconBase size={26} strokeWidth={1.7}>{LOCK_PATH}</IconBase>
       </span>
-      <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 mt-[11px] mb-[5px]">{title}</h3>
+      <h3 className="text-[15px] font-semibold leading-tight text-cz-1 mt-[11px] mb-[5px]">{title}</h3>
       <p className="text-[12.5px] text-cz-2 max-w-[42ch] mx-auto leading-relaxed">{body}</p>
     </div>
   );

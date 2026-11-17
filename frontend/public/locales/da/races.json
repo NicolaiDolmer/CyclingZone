@@ -4,9 +4,9 @@
       "results": "Resultater",
       "stage": "Etape",
       "story": "Historie",
-      "startlist": "Startliste",
       "tactics": "Taktik",
-      "team": "Hold"
+      "team": "Hold",
+      "start": "Startliste"
     },
     "mode": { "aria": "Etapens visning" },
     "hero": {
@@ -1651,7 +1651,8 @@
       "points": "Point",
       "mountain": "Bjerg",
       "young": "Ungdom",
-      "team": "Hold"
+      "team": "Hold",
+      "passages": "Spurter og stigninger"
     },
     "teamFilter": {
       "label": "Hold",
@@ -2239,6 +2240,10 @@
     "table": {
       "prizePoints": "Præmiepoint",
       "jerseyPoints": "Trøjepoint",
+      "colPos": "Nr",
+      "colRider": "Rytter",
+      "colTeam": "Hold",
+      "colTime": "Tid",
       "prizePointsShort": "Præmie",
       "jerseyPointsShort": "Trøje"
     },

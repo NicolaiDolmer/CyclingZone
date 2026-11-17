@@ -15,12 +15,18 @@ export const TOUR_PAGE_BY_STEP = {
   board_plan_set: "board",
 };
 
+// #8069: en allerede monteret <OnboardingTour> laeser kun localStorage ved mount.
+// Et "Vis mig rundt"-klik paa samme side startede derfor ingen tour foer naeste
+// sideskift. Eventet faar den monterede tour til at genlaese tilstanden straks.
+export const TOUR_START_EVENT = "cz-onboarding-tour-start";
+
 export function startTour(page) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ page, step: 0 }));
   } catch {
     // localStorage utilgængelig (private browsing) — tour springes blot over
   }
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(TOUR_START_EVENT));
 }
 
 export function readTour() {

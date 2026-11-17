@@ -44,15 +44,14 @@ test("en gyldig ?tab= vinder; Resultater staar foerst", () => {
   }
 });
 
-test("#7861: fanerne som wireframet; Stillinger er ingen fane, Startliste kun naar siden har den", () => {
-  assert.deepEqual([...v6Tabs()], ["results", "stage", "tactics", "team"]);
-  assert.deepEqual([...v6TabButtons()], ["stage", "tactics", "team"]);
-  assert.deepEqual([...v6TabButtons(true)], ["stage", "startlist", "tactics", "team"]);
+test("#7861: fanerne som wireframet; Stillinger er ingen fane, Startliste er (#7862)", () => {
+  assert.deepEqual([...v6Tabs()], ["results", "stage", "start", "tactics", "team"]);
+  assert.deepEqual([...v6TabButtons()], ["stage", "start", "tactics", "team"]);
   // Et gammelt link til Stillinger lander paa Etape-fanens standard (Resultater for en koert etape).
   assert.equal(resolveV6Tab("standings", { ridden: true, isStageRace: true }), "results");
+  assert.equal(resolveV6Tab("start", { ridden: true, isStageRace: false }), "start");
   assert.equal(resolveV6Tab("standings", { ridden: true, isStageRace: false }), "results");
   assert.equal(resolveV6Tab("startlist", { ridden: true, isStageRace: true }), "results");
-  assert.equal(resolveV6Tab("startlist", { ridden: true, isStageRace: true, hasStartList: true }), "startlist");
   // Resultater og Historie er begge Etape-fanen.
   assert.equal(v6TabButtonFor("results"), "stage");
   assert.equal(v6TabButtonFor("stage"), "stage");
@@ -121,9 +120,10 @@ test("#7865: een etapestribe; paa Taktik foelger den Taktik-fanens etape og styr
   assert.deepEqual(v6Strip({ activeTab: "tactics", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 3, target: "tactics" });
   assert.deepEqual(v6Strip({ activeTab: "results", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 1, target: "page" });
   assert.deepEqual(v6Strip({ activeTab: "stage", isStageRace: true, selectedStage: 2, tacticsStage: 3 }), { selected: 2, target: "page" });
-  // Udgave E: striben er hovedkortets bund og staar paa alle faner; fra Startliste og Hold aabner den etapen.
-  assert.deepEqual(v6Strip({ activeTab: "startlist", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 1, target: "open" });
-  assert.deepEqual(v6Strip({ activeTab: "team", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 1, target: "open" });
+  // Udgave E: striben er hovedkortets bund og staar paa alle faner; fra Startliste aabner den etapen.
+  assert.deepEqual(v6Strip({ activeTab: "start", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 1, target: "open" });
+  // #7862 (valg 13): Hold følger etapeskiftet i striben i stedet for at åbne etapen.
+  assert.deepEqual(v6Strip({ activeTab: "team", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 1, target: "page" });
   assert.equal(v6StageTabFor(2, 3), "results");
   assert.equal(v6StageTabFor(4, 3), "stage");
   assert.equal(v6Strip({ activeTab: "tactics", isStageRace: false, selectedStage: 1, tacticsStage: 1 }), null);

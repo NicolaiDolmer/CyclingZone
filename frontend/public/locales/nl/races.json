@@ -4,9 +4,9 @@
       "results": "Uitslagen",
       "stage": "Etappe",
       "story": "Verhaal",
-      "startlist": "Startlijst",
       "tactics": "Tactiek",
-      "team": "Ploeg"
+      "team": "Ploeg",
+      "start": "Startlijst"
     },
     "mode": { "aria": "Etappeweergave" },
     "hero": {
@@ -1668,7 +1668,8 @@
       "points": "Punten",
       "mountain": "Berg",
       "young": "Jeugd",
-      "team": "Ploegen"
+      "team": "Ploegen",
+      "passages": "Sprints en beklimmingen"
     },
     "teamFilter": {
       "label": "Team",
@@ -2256,6 +2257,10 @@
     "table": {
       "prizePoints": "Prijspunten",
       "jerseyPoints": "Truipunten",
+      "colPos": "Pos",
+      "colRider": "Renner",
+      "colTeam": "Ploeg",
+      "colTime": "Tijd",
       "prizePointsShort": "Prijs",
       "jerseyPointsShort": "Trui"
     },

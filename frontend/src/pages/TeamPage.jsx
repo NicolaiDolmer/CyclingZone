@@ -44,7 +44,7 @@ import ContractsTab from "../components/team/ContractsTab.tsx"; // #6855
 import { readSquadSort, writeSortParams, SQUAD_SORT_PARAM, SQUAD_DIR_PARAM } from "../components/team/contractsTabModel.ts"; // #6855
 import { useRiderReputation } from "../lib/useRiderReputation.ts";
 import { riderReputationBandKey, riderReputationProgress, riderReputationValue } from "../lib/riderReputationView.ts";
-import { AmountInput, PageHeader, Button, BikeIcon, ChevronRightIcon, PageLoader, EmptyState, DataTable, Tabs, TabList, Tab, Segmented } from "../components/ui";
+import { AmountInput, PageHeader, Button, BikeIcon, ChevronRightIcon, PageLoader, EmptyState, DataTable, Tabs, TabList, Tab, Segmented, HeroStats } from "../components/ui";
 import { controlClass } from "../components/ui/fieldStyles.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 
@@ -909,7 +909,11 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
   // rows". Kontrollerne styrer kun tabellen, så de flyttes ind i tabellens egen
   // toolbar (inde i hairline-rammen, over kolonne-headeren). De tre hånd-
   // rullede segment-idiomer er samtidig samlet i ÉT: kittets Segmented.
-  const squadToolbar = (
+  // #8278 (rettelse 13): toolbaren findes kun, når der er noget i den. Overblik/
+  // Evner er flyttet til DataTable's `viewModes` (nedenfor), så på mobil står den
+  // i chip-rækken, og en tom toolbar-række på 44 px ville være ren chrome.
+  const groupFilterToolbar = squadGroupFilterToolbar(squadFilter, viewRiders);
+  const squadToolbar = (groupFilterToolbar || hasTransfers) ? (
     <>
       {/* #1929-redesign: gruppe-filtre — inkludér/ekskludér seniorer og
           akademiryttere uafhængigt. Default begge på = hele holdet vist. Kun
@@ -919,7 +923,7 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
           uden handler (1.306 dead clicks, Clarity 27/7-3/8).
           #5075: markup + state udtrukket, delt med Stats-fanen.
           #5631: Senior / U23 / Junior, se SquadGroupFilter.tsx. */}
-      {squadGroupFilterToolbar(squadFilter, viewRiders)}
+      {groupFilterToolbar}
 
       {/* #1095: segmenteret nuværende/kommende-visning */}
       {hasTransfers && (
@@ -934,19 +938,20 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
         />
       )}
 
-      {/* #2906 punkt 1: kolonne-tilstand. "Evner" viser alle 15 evner samtidig. */}
-      <Segmented
-        className="ms-auto"
-        label={t("squad.mode.ariaLabel")}
-        value={tableMode}
-        onChange={setTableMode}
-        options={[
-          { value: "overview", label: t("squad.mode.overview") },
-          { value: "abilities", label: t("squad.mode.abilities") },
-        ]}
-      />
     </>
-  );
+  ) : null;
+
+  // #2906 punkt 1: kolonne-tilstand. "Evner" viser alle 15 evner samtidig.
+  const squadViewModes = {
+    label: t("squad.mode.ariaLabel"),
+    value: tableMode,
+    onChange: setTableMode,
+    options: [
+      { value: "overview", label: t("squad.mode.overview") },
+      { value: "abilities", label: t("squad.mode.abilities") },
+    ],
+  };
+
 
   return (
     <div>
@@ -1000,6 +1005,7 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
           sortDir={sortDir}
           onSort={handleSort}
           toolbar={squadToolbar}
+          viewModes={squadViewModes}
           /* Trup har ryttere, men den valgte visning/filter er tom. #4628:
              tomtilstanden swapper <tbody> i stedet for hele kortet, så
              filter-kontrollerne i toolbaren stadig kan slås fra igen. */
@@ -1253,45 +1259,58 @@ export function TeamPage() {
           : (team?.name || t("page.fallbackTitle"))}
         subtitle={team?.manager_name ? t("page.managerLabel", { name: team.manager_name }) : undefined}
       />
-      {/* Stats-linje (balance/division/cap/løn/værdi) er ikke del af PageHeader-
-          recipen (kun titel/subtitle/actions) — forbliver som eget meta-afsnit.
+      {/* #8278 (rettelse 8, ejer-go 16/11): holdets tal står i kittets HeroStats
+          i stedet for som løse tekstlinjer over fire rækker (y 120-440 på 390 px).
+          Fem tal giver HeroStats' 3-kolonne-gitter på mobil (to rækker, #5008),
+          og den uændrede vandrette række fra sm og op.
 
-          #4500: linjen var appens tætteste rage-click-klynge på /team (Clarity
-          25/8-5/9: 225 døde klik og 42 rage clicks på netop dette element,
-          maskeret som "▫▫▫.▫▫▫ CZ$Division ▫▫▫/▫"). Balancen stod i
-          `text-cz-accent-t` — guld-teksten er per TASTE §6 fork 3 reserveret til
-          QUIET ACTIONS og aktiv fane, altså appens eget link-signal — og var
-          alligevel et inert <span>. Samme klasse som #1421's fund ("Løn-tal på
-          /team — rage + dead clicks, forventet drill-down"), der aldrig blev
-          rettet, og samme svar som #3188 gav holdnavnet: destinationen FINDES
-          allerede, så et rigtigt link er billigere og mere nyttigt end at fjerne
-          affordancen. Balance og løn peger på /finance (kontobevægelser +
-          løntabellen), division på /standings (divisionstabellen). Resten af
-          linjen er grå tælletekst uden link-signal og forbliver <span>. */}
-      <div className="-mt-4 mb-5 flex gap-4 flex-wrap text-sm">
-        <Link to="/finance" className="text-cz-accent-t font-mono font-bold hover:underline" title={t("page.balanceTooltip")}>{t("page.balance", { value: formatNumber(team?.balance ?? 0) })}</Link>
-        <Link to="/standings" className="text-cz-3 hover:text-cz-2 transition-colors" title={t("page.divisionTooltip")}>{t("page.division", { n: team?.division })}</Link>
-        <span className={`text-cz-3${seniorCount > squadCap ? " text-cz-danger" : ""}`} title={t("page.seniorCapTooltip", { cap: squadCap })}>{t("page.ridersCount", { count: seniorCount, cap: squadCap })}</span>
-        {(u23Count > 0 || juniorCount > 0) && (
-          <span className="text-cz-3 text-xs" title={t("page.youthSquadCountsTooltip")}>
-            {t("page.youthSquadCounts", { u23: u23Count, junior: juniorCount })}
-          </span>
-        )}
-        {incomingCount > 0 && <span className="text-cz-success text-xs">{t("page.incomingCount", { count: incomingCount })}</span>}
-        {outgoingCount > 0 && <span className="text-cz-danger text-xs">{t("page.outgoingCount", { count: outgoingCount })}</span>}
-        <Link to="/finance" className="text-cz-3 hover:text-cz-2 transition-colors" title={t("page.salaryPerSeasonTooltip")}>{t("page.salaryPerSeason", { value: formatNumber(totalSalary) })}</Link>
-        <span className="text-cz-3">{t("page.teamValue", { value: formatNumber(totalValue) })}</span>
-      </div>
+          #4500 lever videre: balance og løn fører til /finance, division til
+          /standings. Balancen beholder guld-teksten, fordi den er et link (TASTE
+          §6 fork 3: guld-tekst = quiet action); et guld-<span> uden destination
+          var 42 rage clicks. */}
+      <HeroStats
+        flush
+        className="-mt-2 mb-5 border-t border-cz-border pt-4"
+        items={[
+          {
+            label: t("auctions:stats.balance"),
+            value: <Link to="/finance" className="text-cz-accent-t hover:underline" title={t("page.balanceTooltip")}>{formatNumber(team?.balance ?? 0)}</Link>,
+          },
+          {
+            label: t("manager.thDivision"),
+            value: <Link to="/standings" className="hover:text-cz-accent-t transition-colors" title={t("page.divisionTooltip")}>{team?.division ?? "–"}</Link>,
+          },
+          {
+            label: t("page.stats.seniorRiders"),
+            value: <span className={seniorCount > squadCap ? "text-cz-danger" : ""} title={t("page.seniorCapTooltip", { cap: squadCap })}>{`${seniorCount}/${squadCap}`}</span>,
+            sub: (u23Count > 0 || juniorCount > 0 || incomingCount > 0 || outgoingCount > 0) ? (
+              <span className="inline-flex flex-wrap gap-x-2">
+                {(u23Count > 0 || juniorCount > 0) && (
+                  <span title={t("page.youthSquadCountsTooltip")}>{t("page.youthSquadCounts", { u23: u23Count, junior: juniorCount })}</span>
+                )}
+                {incomingCount > 0 && <span className="text-cz-success">{t("page.incomingCount", { count: incomingCount })}</span>}
+                {outgoingCount > 0 && <span className="text-cz-danger">{t("page.outgoingCount", { count: outgoingCount })}</span>}
+              </span>
+            ) : undefined,
+          },
+          {
+            label: t("page.stats.salaryPerSeason"),
+            value: <Link to="/finance" className="hover:text-cz-accent-t transition-colors" title={t("page.salaryPerSeasonTooltip")}>{formatNumber(totalSalary)}</Link>,
+          },
+          { label: t("profile.statTeamValue"), value: formatNumber(totalValue) },
+        ]}
+      />
 
-      {/* #2183: tydelig indikator når egne ryttere er under aktiv auktion — manageren
-          skal ikke selv skulle opdage det ved at gå til /auctions. */}
+      {/* #2183: egne ryttere på auktion skal stadig kunne ses uden at gå til
+          /auctions. #8278 (rettelse 8): men som én stille linje, ikke et guld-
+          banner øverst (PAGE_TEMPLATES "No banners at the top", #8070; guld er
+          rationeret, P3). Linjen er en 44 px-trykflade (P16). */}
       {Object.keys(ownAuctions).length > 0 && (
         <Link
           to="/auctions?tab=my-situation"
-          className="mb-5 flex items-center justify-between gap-3 rounded-cz border border-cz-accent/30 bg-cz-accent/10 px-4 py-3 text-sm text-cz-accent-t hover:bg-cz-accent/15 transition-colors"
+          className="-mt-2 mb-5 flex min-h-11 items-center justify-between gap-3 border-b border-cz-border text-sm text-cz-2 hover:text-cz-1 transition-colors"
         >
-          <span className="font-medium">{t("page.ownAuctionsBanner", { count: Object.keys(ownAuctions).length })}</span>
-          {/* #4628: unicode-pilen var et tegn brugt som ikon (TASTE P7 / forbudslisten). */}
+          <span>{t("page.ownAuctionsLine", { count: Object.keys(ownAuctions).length })}</span>
           <ChevronRightIcon size={14} aria-hidden="true" />
         </Link>
       )}

@@ -13,33 +13,32 @@ import { classificationRowsForStage } from "../../../lib/raceStageClassification
 /**
  * Fanerne i ?tab= (valg 5: Resultater først). #7861 (ejervalg 16/11, wireframe v6c): Etape-fanen
  * har to tilstande, "results" (Resultater) og "stage" (Historie efter etapen, forhåndsvisningen før);
- * Stillinger er ikke længere en fane (klassementerne står under Resultater). Startlisten er en fane,
- * når siden har den (#7862).
+ * Stillinger er ikke længere en fane (klassementerne står under Resultater).
+ * #7862 (valg 9/10): "start" = Startliste-fanen (V6StartList), løbets felt med rygnumre og favoritter.
  */
-export const RACE_PAGE_V6_TABS = ["results", "stage", "startlist", "tactics", "team"] as const;
+export const RACE_PAGE_V6_TABS = ["results", "stage", "start", "tactics", "team"] as const;
 export type RacePageV6Tab = (typeof RACE_PAGE_V6_TABS)[number];
 
-/** Faner der handler om én etape og derfor viser etapestriben. */
-export const STAGE_SCOPED_TABS: readonly RacePageV6Tab[] = ["results", "stage"];
+/** Faner der handler om én etape og derfor viser etapestriben. #7862 (valg 13): Hold følger etapeskiftet. */
+export const STAGE_SCOPED_TABS: readonly RacePageV6Tab[] = ["results", "stage", "team"];
 
 /**
  * ?tab= → fane. Uden (gyldig) fane åbner en kørt etape på Resultater og en
  * kommende etape på Etape. Et gammelt ?tab=standings lander samme sted (#7861).
  */
-export function resolveV6Tab(param: string | null, { ridden, hasStartList = false }: { ridden: boolean; isStageRace?: boolean; hasStartList?: boolean }): RacePageV6Tab {
-  const tabs = v6Tabs(hasStartList);
-  if (param && (tabs as readonly string[]).includes(param)) return param as RacePageV6Tab;
+export function resolveV6Tab(param: string | null, { ridden }: { ridden: boolean; isStageRace?: boolean }): RacePageV6Tab {
+  if (param && (RACE_PAGE_V6_TABS as readonly string[]).includes(param)) return param as RacePageV6Tab;
   return ridden ? "results" : "stage";
 }
 
-/** De gyldige ?tab=-værdier; Startliste kun når siden har den (#7862). */
-export function v6Tabs(hasStartList = false): readonly RacePageV6Tab[] {
-  return hasStartList ? RACE_PAGE_V6_TABS : RACE_PAGE_V6_TABS.filter((t) => t !== "startlist");
+/** De gyldige ?tab=-værdier (endagsløb og etapeløb har de samme). */
+export function v6Tabs(): readonly RacePageV6Tab[] {
+  return RACE_PAGE_V6_TABS;
 }
 
 /** #7861: fanerækken som wireframet: Etape, Startliste, Taktik, Hold ("results" er Etape-fanens Resultater). */
-export function v6TabButtons(hasStartList = false): readonly RacePageV6Tab[] {
-  return v6Tabs(hasStartList).filter((t) => t !== "results");
+export function v6TabButtons(): readonly RacePageV6Tab[] {
+  return RACE_PAGE_V6_TABS.filter((t) => t !== "results");
 }
 
 /** #7861: fanen der står valgt for en ?tab= (Resultater og Historie er begge Etape). */
@@ -111,7 +110,7 @@ export function v6Strip({ activeTab, isStageRace, selectedStage, tacticsStage }:
   return { selected: selectedStage, target: "open" };
 }
 
-/** Udgave E: fanen et klik i striben åbner fra Startliste og Hold (valg 5); også Etape-fanens klik. */
+/** Udgave E: fanen et klik i striben åbner fra Startliste (valg 5; Hold følger etapen, #7862); også Etape-fanens klik. */
 export function v6StageTabFor(stage: number, stagesCompleted: number): RacePageV6Tab {
   return stage <= stagesCompleted ? "results" : "stage";
 }

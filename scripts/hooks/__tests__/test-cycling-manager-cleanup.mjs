@@ -10,7 +10,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync, execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync, utimesSync, readdirSync, copyFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -95,4 +95,63 @@ test('uden for et git-repo: exit 0 og ingen output', () => {
     assert.equal(res.status, 0, res.stderr);
     assert.equal(res.stdout, '');
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+// Samlet pwsh-fjernelse (#8246/#8269): to flettede, gamle claude/*-worktrees; det foerste
+// er laast (fjernelsen fejler, det skal blive), det andet har en apostrof i stien (ps_q)
+// og skal fjernes. Svaret er kandidatens indeks, saa et forkert indeks ville ramme det
+// forkerte worktree/gren.
+test('samlet pwsh-fjernelse: indeks-mapping og apostrof i sti', { skip: spawnSync('pwsh', ['-NoProfile', '-Command', 'exit 0']).status !== 0 }, () => {
+  const { base, repo } = setup('CyclingZone-origin');
+  const archive = join(base, 'archive');
+  try {
+    // Hooken dot-sourcer arkiv-biblioteket fra repoets egen scripts-mappe.
+    mkdirSync(join(repo, 'scripts/lib'), { recursive: true });
+    copyFileSync(join(root, 'scripts/lib/archive-worktree-unversioned.ps1'), join(repo, 'scripts/lib/archive-worktree-unversioned.ps1'));
+    copyFileSync(join(root, 'scripts/lib/balance-internals.ps1'), join(repo, 'scripts/lib/balance-internals.ps1'));
+    copyFileSync(join(root, 'scripts/close-out-cleanup-junctions.ps1'),join(repo, 'scripts/close-out-cleanup-junctions.ps1'));
+    // Fast referencetid (regel 16): hooken faar samme tidspunkt via CZ_CLEANUP_NOW_EPOCH.
+    const NOW_EPOCH = 1893456000; // 2030-01-01T00:00:00Z
+    const old = new Date((NOW_EPOCH - 3 * 3600) * 1000);
+    const locked = join(repo, '.claude/worktrees/a-locked');
+    const quoted = join(repo, ".claude/worktrees/b-o'quote");
+    git(repo, 'branch', 'claude/locked', 'main~1');
+    git(repo, 'branch', 'claude/quoted', 'main~1');
+    git(repo, 'worktree', 'add', '-q', locked, 'claude/locked');
+    git(repo, 'worktree', 'add', '-q', quoted, 'claude/quoted');
+    git(repo, 'worktree', 'lock', locked);
+    utimesSync(locked, old, old);
+    utimesSync(quoted, old, old);
+    const res = spawnSync(bash, ['--noprofile', '--norc', hook], { cwd: repo, encoding: 'utf8', input: '{}', env: { ...process.env, CZ_WORKTREE_ARCHIVE_ROOT: archive, CZ_CLEANUP_NOW_EPOCH: String(NOW_EPOCH) } });
+    assert.equal(res.status, 0, res.stderr);
+    assert.equal(existsSync(quoted), false, 'worktree med apostrof skal vaere fjernet');
+    assert.equal(existsSync(locked), true, 'laast worktree skal blive');
+    const bs = branches(repo);
+    assert.equal(bs.includes('claude/quoted'), false, 'grenen for det fjernede worktree skal vaere slettet');
+    assert.equal(bs.includes('claude/locked'), true, 'grenen for det beholdte worktree skal blive');
+  } finally { rmSync(base, { recursive: true, force: true }); }
+});
+
+// Et tag ved navn "origin/main" maa aldrig vinde over remote-branchen.
+test('tag ved navn origin/main forvirrer ikke hooken', () => {
+  const { base, repo, originHead } = setup('CyclingZone-origin');
+  try {
+    git(repo, 'tag', 'origin/main', git(repo, 'rev-parse', 'feat/unmerged'));
+    const res = runHook(repo);
+    assert.equal(res.status, 0, res.stderr);
+    assert.equal(git(repo, 'rev-parse', 'main'), originHead, 'main skal fast-forwardes til remote-branchen, ikke til tagget');
+    assert.equal(branches(repo).includes('feat/unmerged'), true);
+    assert.equal(branches(repo).includes('fix/merged'), false);
+  } finally { rmSync(base, { recursive: true, force: true }); }
+});
+
+test('logfilen i temp-mappen ryddes efter koerslen', () => {
+  const { base, repo } = setup('CyclingZone-origin');
+  const tmp = join(base, 'tmpdir');
+  mkdirSync(tmp);
+  try {
+    const res = spawnSync(bash, ['--noprofile', '--norc', hook], { cwd: repo, encoding: 'utf8', input: '{}', env: { ...process.env, TMPDIR: tmp, TMP: tmp, TEMP: tmp } });
+    assert.equal(res.status, 0, res.stderr);
+    assert.deepEqual(readdirSync(tmp), [], 'mktemp-logfilen skal vaere slettet');
+  } finally { rmSync(base, { recursive: true, force: true }); }
 });

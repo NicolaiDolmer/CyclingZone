@@ -23,7 +23,8 @@ import { apiFetch } from "../../lib/apiFetch.ts";
 import { fetchPlayerFeatureFlags } from "../../lib/playerFeatureFlags.js"; // #7636
 import { riderInFrontOrFieldAt, ridersSplitKm, stagePlanContactFacts, type TimelineEvent as SplitTimelineEvent } from "../../lib/stageSplitTimes.ts"; // #7636, #7706
 import SortableTh from "../ui/SortableTh.jsx";
-import { taskCostKey, teamPlanRouteFromProfile } from "./tacticsReady7864.ts";
+import { taskCostKey, taskCostWord, teamPlanRouteFromProfile } from "./tacticsReady7864.ts";
+import CostWord from "./CostWord.tsx";
 import { Button, CheckIcon, ChevronRightIcon, InfoIcon, LockIcon, MessageIcon, MinusIcon, PlusIcon, Select, XIcon } from "../ui/index.js";
 import {
   clearRiderPlan,
@@ -87,7 +88,7 @@ function TaskChip({ t, task, dashed = false, compact = false, showCost = false }
       } ${dashed ? "border-dashed border-cz-border text-cz-3" : "border-cz-border bg-cz-subtle text-cz-1"}`}
     >
       {compact && !showCost ? <span className="truncate">{t(`stagePlan.task.${task}`)}</span> : <span className="min-w-0 whitespace-normal">{t(`stagePlan.task.${task}`)}</span>}
-      {showCost && <span className="ml-1 text-cz-2" data-testid="stage-plan-task-cost">{t(taskCostKey(task))}</span>}
+      {showCost && <CostWord t={t} word={taskCostWord(task)} className="ml-1" testId="stage-plan-task-cost" />}
     </span>
   );
 }

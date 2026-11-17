@@ -353,7 +353,7 @@ ITEMS.T05 = (b) => fourUp(b, { id: "T05", title: "Rytterprofilen: Bebas kun på 
 // ---------- T06: emoji ud af copy ----------
 const ZAP = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>';
 const emojiBefore = async (p) => p.evaluate(() => { const e = [...document.querySelectorAll("body *")].find((x) => x.children.length === 0 && /⚡/.test(x.textContent)); window.__box(e, "1", "emoji"); });
-const emojiAfter = async (p) => p.evaluate((zap) => { const e = [...document.querySelectorAll("body *")].find((x) => x.children.length === 0 && /⚡/.test(x.textContent)); if (e) { e.innerHTML = zap + e.textContent.replace(/⚡\s*/, ""); window.__box(e, "1", "stroke-ikon"); } }, ZAP);
+const emojiAfter = async (p) => p.evaluate((zap) => { const e = [...document.querySelectorAll("body *")].find((x) => x.children.length === 0 && /⚡/.test(x.textContent)); if (e) { e.textContent = e.textContent.replace(/⚡\s*/, ""); e.insertAdjacentHTML("afterbegin", zap); window.__box(e, "1", "stroke-ikon"); } }, ZAP);
 ITEMS.T06 = (b) => fourUp(b, { id: "T06", title: "Emoji ud af spillervendt tekst", sentence: "⚡, ✅, 🎉, 🚨 og ⭐ bliver spillets stroke-ikoner; teksten står alene.", url: "/riders/rider-1", before: emojiBefore, after: emojiAfter,
   notes: ["Eksempel: '⚡ Active auction' på rytterprofilen. Samme mønster i toasts på Transfers ('✅ Offer sent!') og Watchlist (⭐ i tom tilstand).", "Toasts har deres egen ikonplads, så emojien står der to gange. EN først, DA bagefter; copy-ordlyd til ejerens review."], file: "T06-emoji-ud.png" });
 

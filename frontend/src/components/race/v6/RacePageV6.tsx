@@ -52,9 +52,12 @@ import V6YourDay from "./V6YourDay.tsx";
 import V6RaceFilm from "./V6RaceFilm.tsx"; // #7861
 import { v6StoryStripCells } from "./v6RaceFilmModel.ts"; // #7861
 import V6RouteLine, { type V6StageMode } from "./V6RouteLine.tsx"; // #7861
+import V6StartList from "./V6StartList.tsx"; // #7862
 import { V6TacticsSavedContext } from "./v6TacticsSaved.ts";
 import { Button, EmptyState, FlagIcon } from "./v6Ui.ts";
 import V6RaceHeroCard, { type RacePageV6Hero } from "./V6RaceHeroCard.tsx";
+import { useRacePageSpoiler } from "../../spoiler/useRacePageSpoiler.tsx"; // #7859
+import { SpoilerStoryContext } from "../../spoiler/spoilerStoryContext.ts"; // #7859
 
 export type { RacePageV6Hero };
 
@@ -85,12 +88,10 @@ export interface RacePageV6Props extends Omit<StagePageV2Props, "activeTab" | "o
   renderTactics?: (stageNumber: number) => ReactNode;
   /** Udgave E: løbshovedet (ét kort med etapestriben som bund). */
   hero: RacePageV6Hero;
-  /** Udgave E: åbn en etape på en bestemt fane i ét skridt (klik i striben fra Stillinger og Hold). */
+  /** Udgave E: åbn en etape på en bestemt fane i ét skridt (klik i striben fra Startliste). */
   onOpenStage?: (stageNumber: number, tab: RacePageV6Tab) => void;
   /** Udgave E: cellens tidspunkt (kun klokkeslæt i dag, ellers ugedag og klokkeslæt). */
   whenLabelFor?: (date: Date) => string | null;
-  /** #7861: Startliste-fanens indhold (bygges i #7862); uden den står fanen ikke. */
-  startListSlot?: ReactNode;
 }
 
 /**
@@ -118,11 +119,14 @@ function useV6SavedStages(raceId: string | null, enabled: boolean, refreshKey: s
 export default function RacePageV6(props: RacePageV6Props) {
   const {
     isStageRace, totalStages, stagesCompleted, selectedStage, onSelectStage,
-    activeTab, onChangeTab, profileByStage, schedule, timeLabelFor, results, stagePointRows, stageLoaded,
+    activeTab: requestedTab, onChangeTab, profileByStage, schedule, timeLabelFor, results, stagePointRows, stageLoaded,
     myTeamId, stageRoles, dnfRows = [], standingsSlot, raceId = null, renderResults,
     raceFinished, nowMs, onOpenTactics, tacticsStageRequest = null, loadStage, stageStateFor, stageErrorFor,
-    renderTactics, tacticsSlot, hero, onOpenStage, whenLabelFor, startListSlot,
+    renderTactics, tacticsSlot, hero, onOpenStage, whenLabelFor,
   } = props;
+  // #7859: spoiler-skjoldet (slukket kontakt = alt som i dag). En skjult etape åbner i Story.
+  const spoiler = useRacePageSpoiler({ raceId, selectedStage, stagesCompleted, onShowResults: useCallback(() => onChangeTab("results"), [onChangeTab]) });
+  const activeTab = spoiler.shownTab(requestedTab);
   const { t } = useTranslation("races");
   const profileId = useId();
   const [routeHidden, setRouteHidden, routeSaveState] = useUiPref("race_route_hidden", false);
@@ -135,8 +139,8 @@ export default function RacePageV6(props: RacePageV6Props) {
   const bestByStage = useMemo(() => myBestByStage(stagePointRows, myTeamId, nameById), [stagePointRows, myTeamId, nameById]);
   const phase = stagePhase(selectedStage, stagesCompleted);
   // StagePageV2 maaler sine egne faner; Resultater er v6's egen og maales her.
-  // #7861: Historie efter etapen er også v6's egen (filmen), ikke StagePageV2's.
-  useRaceViewTelemetry({ raceId: activeTab === "results" || (activeTab === "stage" && phase === "after") ? raceId : null, tab: activeTab, stage: selectedStage, phase });
+  // #7861: Historie efter etapen er også v6s egen (filmen), ikke StagePageV2s.
+  useRaceViewTelemetry({ raceId: activeTab === "results" || activeTab === "start" || (activeTab === "stage" && phase === "after") ? raceId : null, tab: activeTab, stage: selectedStage, phase });
 
   // #7865: Taktik-fanens etape. Siden ejer den seneste eksplicitte navigation (striben
   // og hovedets guld-knap går samme vej) og glemmer den, når fanen forlades.
@@ -149,7 +153,7 @@ export default function RacePageV6(props: RacePageV6Props) {
   }, [tacticsResults, tacticsStage, loadStage]);
   const selectTacticsStage = (n: number) => onOpenTactics(n);
 
-  const tabs = v6TabButtons(startListSlot != null);
+  const tabs = v6TabButtons();
   const tabIdBase = useId();
   const tabId = (key: string) => `${tabIdBase}-tab-${key}`;
   // Udgave E: én celle pr. etape, kun med data siden allerede har (v6StripCells).
@@ -179,9 +183,9 @@ export default function RacePageV6(props: RacePageV6Props) {
   const stripCells = useMemo(() => v6StripCells({
     totalStages, stagesCompleted, raceFinished, schedule, nowMs,
     profileTypeByStage: Object.fromEntries(Object.entries(profileByStage).map(([n, p]) => [n, p && profileLabelKey(p.profile_type) ? p.profile_type : null])),
-    winners, myBest: bestByStage, riders, overrides, savedStages,
+    winners: spoiler.visible(winners), myBest: spoiler.visible(bestByStage), riders, overrides, savedStages, // #7859
     whenFor: whenLabelFor ?? timeLabelFor,
-  }), [totalStages, stagesCompleted, raceFinished, schedule, nowMs, profileByStage, winners, bestByStage, riders, overrides, savedStages, whenLabelFor, timeLabelFor]);
+  }), [totalStages, stagesCompleted, raceFinished, schedule, nowMs, profileByStage, winners, bestByStage, riders, overrides, savedStages, whenLabelFor, timeLabelFor, spoiler.visible]);
   // #7865 (punkt 2): én etapestribe. På Taktik styrer den editoren (som ingen egen vælger har).
   const strip = v6Strip({ activeTab, isStageRace, selectedStage, tacticsStage });
   // #8253: rutekortet viser altid den valgte etapes rute (opslaget tjekker etapenummeret).
@@ -227,8 +231,9 @@ export default function RacePageV6(props: RacePageV6Props) {
         <V6RaceFilm key={selectedStage} raceId={raceId} stageNumber={selectedStage} isStageRace={isStageRace} profile={profile} results={results} myTeamId={myTeamId} stageRoles={stageRoles} onShowResults={() => onChangeTab("results")} />
       </div>
     );
-  } else if (activeTab === "startlist") {
-    body = <div data-race-section="startlist">{startListSlot}</div>;
+  } else if (activeTab === "start") {
+    // #7862 (valg 9/10): løbets felt med rygnumre og favoritter.
+    body = <V6StartList raceId={raceId} isStageRace={isStageRace} stagesCompleted={stagesCompleted} results={results} myTeamId={myTeamId} firstStartMs={scheduleFor(schedule, 1)?.getTime() ?? null} nowMs={nowMs} />;
   } else if (activeTab !== "results") {
     body = (
       <StagePageV2
@@ -240,6 +245,9 @@ export default function RacePageV6(props: RacePageV6Props) {
         hideOrdersRecap
       />
     );
+  } else if (spoiler.resultsBody) {
+    // #7859 billede 3: Resultater bag "Show results"; #7861: rutelinjen fører tilbage til Historie.
+    body = phase === "after" ? <div className="flex flex-col gap-[14px]">{routeLine("results")}{spoiler.resultsBody}</div> : spoiler.resultsBody;
   } else if (!isStageRace) {
     // Endagsloebets resultat er det nuvaerende (maaltavle); #7861: filmen og referatet staar i Historie.
     body = (
@@ -284,18 +292,18 @@ export default function RacePageV6(props: RacePageV6Props) {
   const selectFromStrip = (n: number) => {
     if (!strip) return;
     if (strip.target === "tactics") selectTacticsStage(n);
-    else if (strip.target === "open" && onOpenStage) onOpenStage(n, v6StageTabFor(n, stagesCompleted));
+    else if (strip.target === "open" && onOpenStage) onOpenStage(n, spoiler.tabFor(n, v6StageTabFor(n, stagesCompleted)));
     else onSelectStage(n);
   };
 
   return (
     <div data-race-page data-race-page-version="v6" className="flex flex-col gap-[14px]">
       {/* Udgave E: ét kort med striben som bund. Guld kun i stregen øverst og på den ene knap. */}
-      <V6RaceHeroCard hero={hero} strip={strip ? <V6StageStrip cells={activeTab === "stage" && phase === "after" ? v6StoryStripCells(stripCells, selectedStage) : stripCells}profileByStage={profileByStage} selected={strip.selected} onSelect={selectFromStrip} /> : null} />
+      <V6RaceHeroCard hero={spoiler.hero(hero)} aside={spoiler.heroAside} note={spoiler.heroNote} strip={strip ? <V6StageStrip cells={activeTab === "stage" && phase === "after" ? v6StoryStripCells(stripCells, selectedStage) : stripCells} profileByStage={profileByStage} selected={strip.selected} onSelect={selectFromStrip} /> : null} />
       {/* Fanerne står 8 px under kortet (gap 14 minus 14, plus 8 px luft i den klæbende række). */}
       <div className="sticky top-0 z-20 -mt-[14px] -mb-2 bg-cz-body pt-2 pb-2">
         {/* #7861: Etape er én fane med Historie | Resultater i rutelinjen; den åbner en kørt etape på Resultater (valg 5). */}
-        <Tabs value={v6TabButtonFor(activeTab)} onChange={(v) => onChangeTab(v === "stage" ? v6StageTabFor(selectedStage, stagesCompleted) : v as RacePageV6Tab)}>
+        <Tabs value={v6TabButtonFor(activeTab)} onChange={(v) => onChangeTab(v === "stage" ? spoiler.tabFor(selectedStage, v6StageTabFor(selectedStage, stagesCompleted)) : v as RacePageV6Tab)}>
           <TabList label={t("stagePageV2.tabsAria")} accent>
             {tabs.map((key) => (
               <Tab key={key} value={key} id={tabId(key)}>{t(`racePageV6.tab.${key}`)}</Tab>
@@ -306,7 +314,7 @@ export default function RacePageV6(props: RacePageV6Props) {
       {/* #7865 (review-punkt d): panelet har samme bredde og placering som kortet og
           fanerne over det, så intet står venstrestillet under et bredere kort ved 1600 px+. */}
       <div role="tabpanel" aria-labelledby={tabId(v6TabButtonFor(activeTab))} data-race-body-width="card" className="w-full">
-        {body}
+        <SpoilerStoryContext.Provider value={spoiler.story}>{body}</SpoilerStoryContext.Provider>
       </div>
     </div>
   );

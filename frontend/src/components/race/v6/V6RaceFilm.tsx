@@ -8,7 +8,7 @@
 // står ved har aria-current. Referatet viser kun linjerne op til filmens position,
 // så vinderen først står der, når filmen er i mål. "Din dag" og resultatet står i
 // Resultater, ikke her. Kilde: kun løbsloggens historie (samme model som før).
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import I18nReadyGate from "../../I18nReadyGate.jsx";
 import { useStageTimeline } from "../../../hooks/useStageTimeline.js";
@@ -27,6 +27,9 @@ import { elevationAt, elevationSeries, profileScale, sortedClimbs, type ResultRo
 import { useStoryText } from "../stagePageV2/storyText.ts";
 import { Button, Section, SectionHeader, SkeletonLines } from "../stagePageV2/ui.ts";
 import V6Route from "./V6Route.tsx";
+import { useSpoilerStory } from "../../spoiler/spoilerStoryContext.ts"; // #7859
+import { SpoilerFinaleAhead, SpoilerStoryResultsNote } from "../../spoiler/SpoilerShield.tsx"; // #7859
+import { filmAtFinish } from "../../spoiler/spoilerShieldModel.ts"; // #7859
 import {
   isClimbAttackLine, v6ChapterAt, v6ClimbAttackCopyKey, v6ClimbAttackLines, v6CurrentLine, v6FilmChapters, v6FilmProfileGeometry, v6MoreAhead,
   v6NextChapter, v6PlayStep, v6ReportLines, v6VisibleLines, type V6Chapter, type V6ClimbAttackLine,
@@ -169,6 +172,17 @@ function FilmBody({ story, profile, cast, narrative, timelineVersion, ownRiders,
     return () => clearInterval(id);
   }, [playing, D]);
 
+  // #7859: med spoiler-skjoldet åbner filmen etapen, når den er spillet (eller trukket) i mål,
+  // samme regel som den hidtidige film. Filmen starter altid ved start, så referatet allerede
+  // stopper ved positionen; vinderen står først, når filmen er i mål.
+  const spoiler = useSpoilerStory();
+  const filmBelowFinish = useRef(false);
+  useEffect(() => {
+    if (!spoiler.active) { filmBelowFinish.current = false; return; }
+    if (!filmAtFinish(km, D)) { filmBelowFinish.current = true; return; }
+    if (filmBelowFinish.current) spoiler.open(); else setKm(0);
+  }, [spoiler, km, D]);
+
   function togglePlay() {
     if (playing) { setPlaying(false); return; }
     // Reduceret bevægelse: Afspil hopper til næste kapitel i stedet for at rulle.
@@ -296,11 +310,12 @@ function FilmBody({ story, profile, cast, narrative, timelineVersion, ownRiders,
                 : <ReportLine key={l.id} line={l} current={current?.id === l.id} text={text} onJump={() => jump(lineReplayKm(l, D || null))} />))}
             </ol>
           )}
-          {!timeTrial && ahead && visible.length > 0 && (
+          {!timeTrial && spoiler.active ? <SpoilerFinaleAhead /> : !timeTrial && ahead && visible.length > 0 && (
             <p className="m-0 border-t border-dashed border-cz-border pt-2.5 text-xs text-cz-3">{t("raceFilm:report.ahead")}</p>
           )}
         </Section>
       </div>
+      {spoiler.active && <div className="mt-[14px]"><SpoilerStoryResultsNote onShow={spoiler.showResults} /></div>}
     </div>
   );
 }
