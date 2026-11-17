@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo, useRef } from "react";
+﻿import { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuctionData, useAuctionEvents } from "../data/auctionData.ts";
 
@@ -19,8 +19,8 @@ import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import ValueDeltaBadge from "../components/rider/ValueDeltaBadge";
 import { useScouting } from "../lib/useScouting";
 import { scoutSortValue } from "../lib/scouting";
-import AuctionsFirstBidHint from "../components/AuctionsFirstBidHint";
 import OnboardingTour from "../components/OnboardingTour";
+import { startTour } from "../lib/onboardingTour";
 import { pickFirstBidRecommendation } from "../lib/firstBidRecommendation";
 import AuctionsSidebarFeed from "../components/AuctionsSidebarFeed";
 import OverbidToast from "../components/OverbidToast";
@@ -123,6 +123,13 @@ const DEFAULT_FILTER = "my-situation";
 // i18n Fase 3b: konstrueres via t() ved render-tid så sproget følger user's locale.
 function getAuctionsTourSteps(t) {
   return [
+    // #8069 T10: indledningen fra det gamle foerste-buds-banner over listen er nu
+    // rundvisningens foerste trin (TASTE F3: tip bor i rundvisningen, ikke i toppen).
+    {
+      target: "[data-tour='auctions-tabs']",
+      title: t("auctions:hint.title"),
+      body: t("auctions:hint.body"),
+    },
     {
       target: "[data-tour='auctions-bid-input']",
       title: t("auctions:tour.placeBid.title"),
@@ -157,7 +164,9 @@ function Countdown({ end, status }) {
     });
   }, [end, status, i18n.language]);
 
-  useEffect(() => {
+  // #8290: layout effect, so a new end (a realtime extension) reaches text and ring in the same
+  // commit as the new price. A passive effect painted the stale ring first and fixed it a pass later.
+  useLayoutEffect(() => {
     if (status === "completed") { setText(t("timer.completed")); return; }
     function update() {
       const diff = new Date(end) - new Date();
@@ -1050,8 +1059,10 @@ export default function AuctionsPage() {
   // #194 race-confirm: { auctionId, newPrice, newMinBid } når server returnerer 409 price_changed
   const [raceConfirm, setRaceConfirm] = useState(null);
   const [auctionSort, setAuctionSort] = useState({ key: null, dir: "desc" });
-  const [showFirstBidHint, setShowFirstBidHint] = useState(false);
-  const [firstBidDismissed] = useState(
+  // #8069 T10: manageren har ikke budt endnu → anbefalet raekke i listen (#3007)
+  // og rundvisningen starter selv EN gang (i stedet for et banner over listen).
+  const [needsFirstBid, setNeedsFirstBid] = useState(false);
+  const [firstBidTourShown, setFirstBidTourShown] = useState(
     () => typeof window !== "undefined" && localStorage.getItem("cz-first-bid-shown") === "1",
   );
   // #196: realtime UX — recentBidEvents driver både ticker og sidebar-feed,
@@ -1143,9 +1154,8 @@ export default function AuctionsPage() {
     return riderFilters.filters.sort_dir;
   }
 
-  // Onboarding v2 Slice 1b — vis first-bid hint indtil manager har afgivet et bud (eller dismissed)
+  // Onboarding v2 Slice 1b — har manageren afgivet sit foerste bud?
   useEffect(() => {
-    if (firstBidDismissed) return;
     async function checkFirstBid() {
       try {
         const headers = await getHeaders();
@@ -1155,21 +1165,34 @@ export default function AuctionsPage() {
         if (!res.ok) return; // dækker også limited/unauthorized (begge sætter ok:false)
         const prog = res.data;
         const firstBid = prog.steps?.find(s => s.key === "first_bid_placed");
-        if (firstBid && !firstBid.done) setShowFirstBidHint(true);
+        if (firstBid && !firstBid.done) setNeedsFirstBid(true);
       } catch {
         // best-effort — banneret skjult ved fejl
       }
     }
     checkFirstBid();
-  }, [firstBidDismissed, apiFetch, getHeaders]);
+  }, [apiFetch, getHeaders]);
 
-  // #3007: kun beregnet mens hintet rent faktisk vises (manageren har ikke
+  // #8069 T10: rundvisningen starter EN gang, naar der er auktioner at pege paa
+  // (ellers viser turen kun sin "target ikke fundet"-boks). Codex-review #8316:
+  // "Min situation" kan vaere tom, selv om markedet har auktioner. Derfor ventes
+  // der, til bud-feltet (rundvisningens trin 2) faktisk staar paa siden; foer det
+  // bruges hverken rundvisningen eller noeglen op.
+  useEffect(() => {
+    if (!needsFirstBid || firstBidTourShown || auctions.length === 0) return;
+    if (typeof document === "undefined" || !document.querySelector("[data-tour='auctions-bid-input']")) return;
+    try { localStorage.setItem("cz-first-bid-shown", "1"); } catch { /* private browsing */ }
+    setFirstBidTourShown(true);
+    startTour("auctions");
+  }, [needsFirstBid, firstBidTourShown, auctions, filter, wishlistOnly]);
+
+  // #3007: kun beregnet mens manageren ikke har afgivet sit foerste bud (har ikke
   // budt endnu) — ingen grund til at gennemløbe auktionslisten hvert sekund
   // for etablerede managere. Se frontend/src/lib/firstBidRecommendation.js
   // for hvorfor "billigste med tid tilbage" er heuristikken.
   const firstBidRecommendation = useMemo(
-    () => (showFirstBidHint ? pickFirstBidRecommendation(auctions, { myTeamId, now }) : null),
-    [showFirstBidHint, auctions, myTeamId, now],
+    () => (needsFirstBid ? pickFirstBidRecommendation(auctions, { myTeamId, now }) : null),
+    [needsFirstBid, auctions, myTeamId, now],
   );
   // #3007 målbarhed: log ÉN gang pr. besøg at en anbefaling faktisk kunne vises
   // (ikke hvert sekund `now` tikker, som ville oversvømme player_events).
@@ -1546,21 +1569,20 @@ export default function AuctionsPage() {
         }
       />
 
+
       {/* #4628: de tre visnings-filtre er nu kanoniske underline-Tabs
           (PAGE_TEMPLATES: "Tabs are underline-tabs, never buttons"), ikke seks
           guld-tintede knapper i en loesreven raekke. Guld staar kun paa den
           aktive fanes 2 px underline. */}
-      <Tabs value={displayFilter} onChange={pickFilter} className="mb-3">
-        <TabList label={t("auctions:page.title")}>
-          {FILTER_TABS.map(tab => (
-            <Tab key={tab.key} value={tab.key} className="tabular-nums">{tab.label}</Tab>
-          ))}
-        </TabList>
-      </Tabs>
-
-      {/* #8279 (rettelse 3): forklaringen er én Hjælp-linje under fanerne, ikke et
-          kort over dem (PAGE_TEMPLATES: førstegangs-tip bor i Hjælp, #8070). */}
-      {showFirstBidHint && <AuctionsFirstBidHint />}
+      <div data-tour="auctions-tabs">
+        <Tabs value={displayFilter} onChange={pickFilter} className="mb-3">
+          <TabList label={t("auctions:page.title")}>
+            {FILTER_TABS.map(tab => (
+              <Tab key={tab.key} value={tab.key} className="tabular-nums">{tab.label}</Tab>
+            ))}
+          </TabList>
+        </Tabs>
+      </div>
 
       {/* #4628: DEN kanoniske T2-filterlinje. Soegefelt + ønskeliste-checkbox +
           taellelinje paa ÉN raekke; det fulde RiderFilters-panel (11 felter +

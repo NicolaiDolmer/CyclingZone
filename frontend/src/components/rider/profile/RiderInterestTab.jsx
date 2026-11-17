@@ -133,7 +133,7 @@ export default function RiderInterestTab({ viewer = "own", watchlistCount = 0, v
 
   return (
     <div className="flex flex-col gap-[13px]">
-      <div className="bg-cz-card border border-cz-border border-l-2 border-l-cz-accent rounded-cz py-[15px] px-[17px]">
+      <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
         <p className="m-0 text-[13px] text-cz-1 leading-normal">{summary}</p>
       </div>
 
@@ -154,7 +154,7 @@ export default function RiderInterestTab({ viewer = "own", watchlistCount = 0, v
 
       {isOwn && (
         <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
-          <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mb-2">
+          <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0 mb-2">
             {t("profile.interest.whoScouts.title")}
           </h3>
           {(interest.scouts ?? []).length === 0 ? (

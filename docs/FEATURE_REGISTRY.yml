@@ -158,7 +158,7 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7855
     verified: 2026-11-13
-    note: '#8052 merget 13/11, kontakt jersey_hunt_7855 off i prod; tændes kun af ejeren efter dommer.'
+    note: 'Off i prod 13/11 (#8052); kun ejeren tænder, efter dommer.'
     decision: ejer-beslutning
     decide_by: 2026-11-21
   - id: race-itt-no-day-roll-7726
@@ -622,7 +622,7 @@ features:
     verified: 2026-11-15
     decision: ejer-beslutning
     decide_by: 2026-11-29
-    note: Kontakt training_settle_race_session off i prod 15/11 (serverdel merget, #8195). Tændes kun sammen med fatigue_now_7801 (ejer 15/11). Skærmdelen er ikke bygget.
+    note: Off i prod 15/11 (server merget, #8195). Tændes kun med fatigue_now_7801 (ejer). Skærmdelen mangler.
 
   - id: rider-loans
     area: market
@@ -965,6 +965,18 @@ features:
     epic: 932
     verified: 2026-09-06
 
+  - id: academy-page-v2-8081
+    area: academy
+    title_en: Academy page with tabs and age focus
+    title_da: Akademisiden med faner og aldersfokus
+    state: building
+    ssot: docs/YOUTH_RULES.md
+    epic: 8081
+    verified: 2026-11-16
+    note: Slukket; trækket læser ikke aldersfokus.
+    decision: ejer-beslutning
+    decide_by: 2026-11-30
+
   - id: scout-system
     area: academy
     title_en: Scouting
@@ -1262,7 +1274,7 @@ features:
     flag: development_score_v2
     ssot: docs/TRAINING_RULES.md
     epic: 6110
-    note: "Parkeret (ejer 31/10). Ejer 13/11: besluttes ved opsamlingen på Udvikling 2.0. Kan ikke være tændt samtidig med XP. Før tænding: #7584."
+    note: "Parkeret (ejer 31/10); afgøres ved Udvikling 2.0-opsamlingen. Aldrig tændt samtidig med XP. Før tænding: #7584."
     verified: 2026-11-13
     decision: ejer-beslutning
     decide_by: 2026-11-21
@@ -1275,7 +1287,7 @@ features:
     flag: development_xp_model
     ssot: docs/TRAINING_RULES.md
     epic: 6110
-    note: '#8041 merget; development_xp_model off i prod 13/11; tændes kun af ejeren efter dommer (+ development_xp_from_date).'
+    note: 'Off i prod 13/11 (#8041); kun ejeren tænder, efter dommer + development_xp_from_date.'
     verified: 2026-11-13
     decision: taend
     decide_by: 2026-11-21
@@ -1651,11 +1663,13 @@ features:
     area: training
     title_en: Train now bonus
     title_da: Træn nu-bonus
-    state: building
+    state: beta
     flag: training_train_now_bonus
     ssot: docs/TRAINING_RULES.md
     epic: 7737
-    verified: 2026-11-10
+    verified: 2026-11-16
     decision: goer-faerdigt
     decide_by: 2026-11-16
-    note: 'OFF. Tekster, Hjælp, kvitteringsmærke bygget (#7741): bonus kun ved eget tryk.'
+    note: 'Beta i prod (migration #8268, læst 16/11): kun beta-testeres egne tryk får bonussen. Patch note 7.454. "on" kræver ejer-go.'
+    roadmap_en: "Press Train now yourself and get 15% extra development that day."
+    roadmap_da: "Tryk selv på Træn nu, og få 15 % ekstra udvikling den dag."

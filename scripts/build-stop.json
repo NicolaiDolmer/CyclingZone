@@ -1503,6 +1503,46 @@
       "issue": 8281,
       "reason": "Skitser: rytterprofil med billede (mobil 7). Del af #8073. Ejer-go 16/11 PC1 (AskUserQuestion: \"Ja, sæt i gang\").",
       "since": "2026-11-16"
+    },
+    {
+      "issue": 8116,
+      "reason": "Forkert info: halvsæson-beskeden henviser til 'board request', der ikke findes. Ejer-go 17/11 PC1 natplan (AskUserQuestion 9/12: Bestyrelsen #7963/#8116/#8118).",
+      "since": "2026-11-17"
+    },
+    {
+      "issue": 8118,
+      "reason": "Forkert info: bestyrelsen utilfreds selvom alle mål er nået. Ejer-go 17/11 PC1 natplan (AskUserQuestion 9/12: Bestyrelsen #7963/#8116/#8118).",
+      "since": "2026-11-17"
+    },
+    {
+      "issue": 8003,
+      "reason": "Ranglisten venter ~13 min efter et løb (uge 47-milestone, MASTERPLAN). Ejer-go 17/11 PC1 natplan (AskUserQuestion 9/12: Ranglisten #8003); måling + design før første PR.",
+      "since": "2026-11-17"
+    },
+    {
+      "issue": 8327,
+      "reason": "Ejer 17/11 morgen (PC1, AskUserQuestion): 'Løft 2 KB nu + trim som opfølgning'. Loftet for første indlæsning +2 KB (#8328), main ved loftet blokerede PR'er bag slukkede kontakter; trim index-chunken og sænk loftet igen.",
+      "since": "2026-11-17"
+    },
+    {
+      "issue": 8331,
+      "reason": "CI-planen trin 1-5 (samleissue; trin 1 er PR #8330). Ejer 17/11 (PC1): 'Ja, trin 1-4' om morgenen (#8331) og 'Ja, start' i PC1-dirigentens session (AskUserQuestion). Merges må aldrig gå i stå igen: GitHubs kø er flaskehalsen.",
+      "since": "2026-11-17"
+    },
+    {
+      "issue": 8346,
+      "reason": "CI-trin 2: patch notes som fragmenter pr. PR, nummer ved merge (del af #8331). Ejer 17/11 (PC1): 'Ja, trin 1-4' om morgenen (#8331) og 'Ja, start' i PC1-dirigentens session (AskUserQuestion). Merges må aldrig gå i stå igen: GitHubs kø er flaskehalsen.",
+      "since": "2026-11-17"
+    },
+    {
+      "issue": 8347,
+      "reason": "CI-trin 3: små vagter samlet i 2-3 jobs, e2e bygget én gang; Fable-design først (del af #8331). Ejer 17/11 (PC1): 'Ja, trin 1-4' om morgenen (#8331) og 'Ja, start' i PC1-dirigentens session (AskUserQuestion). Merges må aldrig gå i stå igen: GitHubs kø er flaskehalsen.",
+      "since": "2026-11-17"
+    },
+    {
+      "issue": 8348,
+      "reason": "CI-trin 4: snapshots på Linux i låst container + label der fornyer dem (del af #8331). Ejer 17/11 (PC1): 'Ja, trin 1-4' om morgenen (#8331) og 'Ja, start' i PC1-dirigentens session (AskUserQuestion). Merges må aldrig gå i stå igen: GitHubs kø er flaskehalsen.",
+      "since": "2026-11-17"
     }
   ]
 }

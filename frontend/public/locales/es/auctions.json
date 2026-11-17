@@ -26,7 +26,14 @@
     }
   },
   "hint": {
-    "helpLine": "Cómo funcionan las subastas"
+    "title": "Gana la puja y el ciclista se une a tu equipo",
+    "body": "El ciclista corre para ti desde tu próxima selección de plantilla. Pujas contra mánagers reales, no compras a un precio fijo.",
+    "minBidLabel": "Hacer una puja:",
+    "minBidBody": "El campo viene rellenado con el mínimo, al menos 1 CZ$ por encima de la puja actual. Pulsa Pujar y ya estás dentro.",
+    "autoExtendLabel": "Prórroga automática de 10 min:",
+    "autoExtendBody": "Una puja que toma el liderato en los últimos 10 minutos prolonga la subasta, para que nadie pueda ganarla en el último segundo.",
+    "startTour": "Enséñame el juego",
+    "jumpToRecommendation": "Ver una opción asequible"
   },
   "ticker": {
     "bidCount": "{count, plural, one {1 puja reciente} other {# pujas recientes}}"

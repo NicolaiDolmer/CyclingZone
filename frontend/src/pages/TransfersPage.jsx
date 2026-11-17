@@ -52,6 +52,7 @@ import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
 import TeamCell from "../components/rider/TeamCell";
 import ValueDeltaBadge from "../components/rider/ValueDeltaBadge";
+import { buttonClass } from "../components/ui/buttonStyles.js";
 
 // #2329: markedstabellens ÉN kanoniske sort-state (useSortState) — headers og
 // de gamle knapper/evne-dropdown deler samme { sort, dir }, så de aldrig kan
@@ -382,7 +383,7 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true, autoListing = 
                   className={`w-full bg-cz-subtle border ${counterBlocked ? "border-cz-danger" : "border-cz-border"} rounded-cz px-3 py-2 text-cz-1 font-mono focus-visible:outline-2 focus-visible:outline-cz-accent`} />
                 <button onClick={() => doAction("counter", { counter_amount: counterAmt, message: msg })}
                   disabled={loading || counterAmt <= 0 || counterBlocked}
-                  className="min-h-[44px] w-full sm:w-auto px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50">
+                  className={`${buttonClass({ variant: "primary" })} w-full sm:w-auto`}>
                   {autoPrice > 0 ? t("autoAccept.sendCounter",{defaultValue:t("offerCard.buttons.send")}) : t("offerCard.buttons.send")}
                 </button>
               </div>
@@ -554,7 +555,7 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
                   className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono focus:outline-hidden focus:border-cz-accent" />
                 <button onClick={() => doAction("new_offer", { counter_amount: newAmt, message: msg })}
                   disabled={loading || newAmt <= 0}
-                  className="min-h-[44px] w-full sm:w-auto px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50">
+                  className={`${buttonClass({ variant: "primary" })} w-full sm:w-auto`}>
                   {t("offerCard.buttons.send")}
                 </button>
               </div>
@@ -722,7 +723,7 @@ function SwapCard({ swap, myTeamId, onAction, showArchive = true }) {
                     derfor IKKE negeres på vej ud. */}
                 <button onClick={() => doAction("counter", { counter_cash: counterCash })}
                   disabled={loading}
-                  className="min-h-[44px] px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50">
+                  className={buttonClass({ variant: "primary" })}>
                   {t("swapCard.buttons.send")}
                 </button>
               </div>
@@ -768,7 +769,7 @@ function SwapCard({ swap, myTeamId, onAction, showArchive = true }) {
                   className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono focus:outline-hidden focus:border-cz-accent" />
                 <button onClick={() => doAction("counter", { counter_cash: counterCash })}
                   disabled={loading}
-                  className="min-h-[44px] px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50">
+                  className={buttonClass({ variant: "primary" })}>
                   {t("swapCard.buttons.send")}
                 </button>
               </div>

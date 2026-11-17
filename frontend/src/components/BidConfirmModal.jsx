@@ -5,6 +5,7 @@ import { formatNumber } from "../lib/intl";
 import { GavelIcon, AlertTriangleIcon, BriefcaseIcon } from "./ui/icons";
 import { RETIREMENT_WINDOW_START_AGE, RETIREMENT_GUARANTEED_AGE } from "../lib/riderAge";
 import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../lib/reloadGate.js";
+import { buttonClass } from "./ui/buttonStyles.js";
 
 // Ikonet er ikke oversættelig tekst — det vælges af mode, ikke i18n.
 const MODE_ICON = { bid: GavelIcon, proxy: AlertTriangleIcon, transfer: BriefcaseIcon };
@@ -92,8 +93,7 @@ export function BidConfirmModal({ show, mode = "bid", riderName, amount, retirem
           <button
             onClick={onConfirm}
             disabled={busy}
-            className="flex-1 px-4 py-2.5 rounded-cz text-sm font-bold
-              bg-cz-accent text-cz-on-accent hover:brightness-110 transition-all disabled:opacity-60"
+            className={`${buttonClass({ variant: "primary" })} flex-1`}
           >
             {busy ? t("common:actions.loadingShort") : l.action}
           </button>

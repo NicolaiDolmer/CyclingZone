@@ -16,6 +16,7 @@ import { formatNumber } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import { reportActionFailure } from "../lib/actionTelemetry.js";
 import RiderManageActions from "../components/rider/RiderManageActions.jsx";
+import { PanelSlotContext, usePanelSlotState, useExclusivePanel, useAnyPanelOpen } from "../components/rider/panelSlot.ts"; // #8069 T02
 import { useScouting } from "../lib/useScouting";
 import { useTraining } from "../lib/useTraining";
 import { useTrainingHistory } from "../lib/useTrainingHistory";
@@ -121,7 +122,7 @@ const ACTION_PANEL = "order-2 w-full";
 
 function SwapOfferButton({ rider, myTeamId }) {
   const { t } = useTranslation("rider");
-  const [show, setShow]         = useState(false);
+  const [show, setShow]         = useExclusivePanel("swap");
   const [myRiders, setMyRiders] = useState([]);
   const [offeredId, setOfferedId] = useState("");
   const [cash, setCash]         = useState(0);
@@ -200,7 +201,7 @@ function SwapOfferButton({ rider, myTeamId }) {
           </div>
           <p className="text-cz-3 text-xs">{t("swapOffer.cashHint")}</p>
           <button onClick={sendSwap} disabled={loading || !offeredId}
-            className="w-full min-h-[44px] py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50 transition-all">
+            className={buttonClass({ variant: "primary", fullWidth: true })}>
             {loading ? t("swapOffer.sending") : t("swapOffer.submit")}
           </button>
         </div>
@@ -211,7 +212,10 @@ function SwapOfferButton({ rider, myTeamId }) {
 
 function DirectOfferButton({ rider, seasonYear }) {
   const { t } = useTranslation("rider");
-  const [show, setShow]       = useState(false);
+  const [show, setShow]       = useExclusivePanel("offer");
+  // #8069 T02: guld kun naar ingen formular er aaben; ellers er formularens
+  // afsendeknap sidens ene guld-knap.
+  const anyPanelOpen = useAnyPanelOpen();
   const [amount, setAmount]   = useState(getRiderMarketValue(rider));
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -263,7 +267,7 @@ function DirectOfferButton({ rider, seasonYear }) {
         </div>
       )}
       {/* Primær CTA i scouting-visningen (én accent-knap pr. kontekst). */}
-      <button type="button" onClick={() => setShow(!show)} className={`${triggerClass(false, "primary")} inline-flex items-center gap-1`}>
+      <button type="button" onClick={() => setShow(!show)} className={`${triggerClass(show, anyPanelOpen ? "secondary" : "primary")} inline-flex items-center gap-1`}>
         <ExchangeIcon size={14} aria-hidden="true" />
         {t("directOffer.buttonOpen")}
       </button>
@@ -276,7 +280,7 @@ function DirectOfferButton({ rider, seasonYear }) {
             placeholder={t("directOffer.messagePlaceholder")}
             className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-base sm:text-sm focus:outline-hidden focus:border-cz-accent" />
           <button onClick={sendOffer} disabled={loading || amount <= 0}
-            className="w-full min-h-[44px] py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50 transition-all">
+            className={buttonClass({ variant: "primary", fullWidth: true })}>
             {loading ? t("directOffer.sending") : t("directOffer.submit")}
           </button>
         </div>
@@ -305,7 +309,7 @@ function TransferListButton({ rider, onChanged }) {
   const { t } = useTranslation("rider");
   // #5917: U23-/Junior-tabellens Sælg-handling linker hertil med ?sell=1.
   const [searchParams] = useSearchParams();
-  const [show, setShow]       = useState(() => searchParams.get("sell") === "1");
+  const [show, setShow]       = useExclusivePanel("sell", searchParams.get("sell") === "1");
   const [listing, setListing] = useState(/** @type {any} */ (null));
   const [price, setPrice]     = useState(getRiderMarketValue(rider));
   const [loading, setLoading] = useState(false);
@@ -567,7 +571,7 @@ function TransferListButton({ rider, onChanged }) {
             </div>
           )}
           <button onClick={submit} disabled={loading || priceInvalid || autoInvalid}
-            className="w-full min-h-[44px] py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50 transition-all">
+            className={buttonClass({ variant: "primary", fullWidth: true })}>
             {loading ? t("sellRider.sending") : listing ? t(autoEnabled ? "sellRider.submitUpdatePrices" : "sellRider.submitUpdate") : t("sellRider.submit")}
           </button>
         </div>
@@ -699,11 +703,12 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, seniorCo
               disabled={bidStatus === "loading"}
               {...bidBlock.blockedProps}
               aria-label={imWinning ? t("auctionPanel.bidRaiseAria") : t("auctionPanel.bidPlaceAria")}
-              className={`min-h-[44px] px-4 py-2 rounded-cz text-sm font-bold transition-all whitespace-nowrap
-                ${bidStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
-                  bidStatus === "success" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
-                  imWinning ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40 hover:bg-cz-accent/25" : "bg-cz-accent text-cz-on-accent hover:brightness-110"}
-                disabled:opacity-50 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed`}>
+              className={`${bidStatus === "error" || bidStatus === "success" || imWinning
+                ? `min-h-[44px] px-4 py-2 rounded-cz text-sm font-semibold transition-colors border ${
+                    bidStatus === "error" ? "bg-cz-danger-bg text-cz-danger border-cz-danger/30" :
+                    bidStatus === "success" ? "bg-cz-success-bg text-cz-success border-cz-success/30" :
+                    "bg-cz-accent/10 text-cz-accent-t border-cz-accent/40 hover:bg-cz-accent/25"} disabled:opacity-50`
+                : buttonClass({ variant: "primary" })} whitespace-nowrap aria-disabled:opacity-50 aria-disabled:cursor-not-allowed`}>
               {bidStatus === "loading" ? t("common:actions.loadingShort") : bidStatus === "error" ? t("auctionPanel.bidError") : bidStatus === "success" ? <CheckIcon size={16} aria-hidden="true" /> : imWinning ? t("auctionPanel.bidRaise") : t("auctionPanel.bidPlace")}
             </button>
           </div>
@@ -805,7 +810,7 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
   // Ejer-feedback 3/7: pris-formularen var altid udfoldet og fyldte hero'en —
   // nu en kompakt trigger-knap der folder formularen ud (samme mønster som
   // salgs-/bud-knapperne).
-  const [open, setOpen]             = useState(false);
+  const [open, setOpen]             = useExclusivePanel("auction");
   const [price, setPrice]           = useState(riderValue);
   const [loading, setLoading]       = useState(false);
   const [flash, setFlash]           = useState(false);
@@ -922,8 +927,7 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
             <button
               onClick={handleSubmit}
               disabled={loading || priceError || Boolean(!(ddActive && flash) && endTimeIssue)}
-              className={`w-full sm:w-auto min-h-[44px] px-4 py-2 font-bold rounded-cz text-sm transition-all disabled:opacity-50
-                ${flash ? "bg-cz-danger text-white hover:brightness-110" : "bg-cz-accent text-cz-on-accent hover:brightness-110"}`}>
+              className={`${buttonClass({ variant: flash ? "danger" : "primary" })} w-full sm:w-auto`}>
               {loading ? t("auctionStart.buttons.loading") : flash ? t("auctionStart.buttons.startFlash") : t("auctionStart.buttons.start")}
             </button>
           </div>
@@ -949,6 +953,8 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
 }
 
 export default function RiderStatsPage() {
+  // #8069 T02: handlingsraekkens formularer deler EN aaben-plads (een guld-knap).
+  const panelSlot = usePanelSlotState();
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -2043,6 +2049,7 @@ export default function RiderStatsPage() {
                  action row) — udvidede formularer folder ud i fuld bredde under
                  rækken (hver komponents wrapper skifter selv til w-full). Fuld-
                  bredde-elementer (notiser, fejl, bid-panel) er w-full-børn. */
+              <PanelSlotContext.Provider value={panelSlot}>
               <div className="flex flex-wrap items-start gap-2">
                 {isPendingTransfer && (
                   <p className="w-full text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-cz border border-cz-border">
@@ -2131,6 +2138,7 @@ export default function RiderStatsPage() {
               {canDirectOffer && <DirectOfferButton rider={rider} seasonYear={seasonYear} />}
               {canDirectOffer && <SwapOfferButton rider={rider} myTeamId={myTeamId} />}
             </div>
+              </PanelSlotContext.Provider>
           }
         />
         </section>

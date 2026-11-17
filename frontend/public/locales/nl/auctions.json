@@ -26,7 +26,14 @@
     }
   },
   "hint": {
-    "helpLine": "Zo werken veilingen"
+    "title": "Win het bod, dan komt de renner bij je team",
+    "body": "De renner koerst voor je vanaf je volgende selectie. Je biedt tegen echte managers, je koopt niet tegen een vaste prijs.",
+    "minBidLabel": "Een bod doen:",
+    "minBidBody": "Het veld is al ingevuld met het minimum, minstens 1 CZ$ boven het huidige bod. Druk op Bieden en je doet mee.",
+    "autoExtendLabel": "Automatische verlenging van 10 min:",
+    "autoExtendBody": "Een bod dat in de laatste 10 minuten de leiding neemt, verlengt de veiling, zodat niemand in de laatste seconde kan snipen.",
+    "startTour": "Laat me rondkijken",
+    "jumpToRecommendation": "Bekijk een betaalbare keuze"
   },
   "ticker": {
     "bidCount": "{count, plural, one {1 recent bod} other {# recente biedingen}}"

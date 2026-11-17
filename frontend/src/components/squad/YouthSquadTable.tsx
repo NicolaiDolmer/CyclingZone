@@ -46,7 +46,7 @@ import { useRiderReputation } from "../../lib/useRiderReputation.ts";
 import { riderReputationBandKey, riderReputationValue } from "../../lib/riderReputationView.ts";
 import { isRiderInjured } from "../../lib/training.js";
 import { ABILITY_STATS } from "../../lib/abilities.js";
-import { DataTable, RiderBadges, RiderLink, Segmented, WithBestRole, type DataTableColumn } from "./squadUi.ts";
+import { DataTable, RiderBadges, RiderLink, WithBestRole, type DataTableColumn } from "./squadUi.ts";
 import { ABILITY_MODE_MOBILE_DEFAULTS, useAbilityColumns } from "./abilityColumns.tsx";
 import type { YouthSquadRider } from "./useYouthSquad.ts";
 
@@ -295,18 +295,17 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
       sort={sort}
       sortDir={sortDir}
       onSort={handleSort}
-      toolbar={
-        <Segmented
-          className="ms-auto"
-          label={t("squad.mode.ariaLabel")}
-          value={tableMode}
-          onChange={(next) => setTableMode(next as TableMode)}
-          options={[
-            { value: "overview", label: t("squad.mode.overview") },
-            { value: "abilities", label: t("squad.mode.abilities") },
-          ]}
-        />
-      }
+      // #8278 (rettelse 13): DataTable lægger tilstanden i toolbaren på desktop og
+      // forrest i chip-rækken på mobil, så den ikke fylder sin egen række.
+      viewModes={{
+        label: t("squad.mode.ariaLabel"),
+        value: tableMode,
+        onChange: (next: string) => setTableMode(next as TableMode),
+        options: [
+          { value: "overview", label: t("squad.mode.overview") },
+          { value: "abilities", label: t("squad.mode.abilities") },
+        ],
+      }}
       count={t("squad.count", { count: rows.length })}
     />
   );

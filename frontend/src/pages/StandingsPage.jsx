@@ -567,7 +567,7 @@ export default function StandingsPage() {
               title={t("compare.selectHint")}
               className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-cz border font-data text-xs font-bold transition-colors
                 ${isSelected
-                  ? "border-cz-accent bg-cz-accent text-cz-on-accent"
+                  ? "border-cz-accent/40 bg-cz-accent/10 text-cz-accent-t"
                   : "border-cz-border hover:border-cz-accent/50 hover:bg-cz-subtle " + (i === 0 ? "text-cz-accent-t" : i <= 2 ? "text-cz-2" : "text-cz-3")}`}
             >
               {isSelected ? <CheckIcon size={13} aria-hidden="true" /> : (i + 1)}

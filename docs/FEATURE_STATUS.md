@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-152 poster: live 119 · dormant 10 · building 13 · spec 1 · idea 2 · retired 7. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+153 poster: live 119 · beta 1 · dormant 10 · building 13 · spec 1 · idea 2 · retired 7. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -20,7 +20,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
 |Long descent chase cap (`race-descent-regroup-cap-7644`)|dormant|`descent_regroup_cap_7644`|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7644|2026-11-04|Slukket; tændes af ejeren.|
-|Jersey hunt in the stage plan (`race-jersey-hunt-7855`)|dormant|`jersey_hunt_7855`|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7855|2026-11-13|#8052 merget 13/11, kontakt jersey_hunt_7855 off i prod; tændes kun af ejeren efter dommer.|
+|Jersey hunt in the stage plan (`race-jersey-hunt-7855`)|dormant|`jersey_hunt_7855`|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7855|2026-11-13|Off i prod 13/11 (#8052); kun ejeren tænder, efter dommer.|
 |Tired riders can miss the time limit, with a warning (`race-time-limit-fatigue-7715`)|building|-|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7715|2026-11-07|Nøgle time_limit_fatigue_7715 uden række (off).|
 |Official time persistence revision (`race-official-times-v1`)|retired|-|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#6284|2026-10-16|Frosset prototype.|
 
@@ -67,15 +67,15 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
-|Development Score B in the engine (`development-score-b-engine`)|dormant|`development_score_v2`|[TRAINING_RULES](TRAINING_RULES.md)|#6110|2026-11-13|Parkeret (ejer 31/10). Ejer 13/11: besluttes ved opsamlingen på Udvikling 2.0. Kan ikke være tændt samtidig med XP. Før tænding: #7584.|
-|Development XP (`development-xp-model`)|dormant|`development_xp_model`|[TRAINING_RULES](TRAINING_RULES.md)|#6110|2026-11-13|#8041 merget; development_xp_model off i prod 13/11; tændes kun af ejeren efter dommer (+ development_xp_from_date).|
+|Train now bonus (`train-now-bonus`)|beta|`training_train_now_bonus`|[TRAINING_RULES](TRAINING_RULES.md)|#7737|2026-11-16|Beta i prod (migration #8268, læst 16/11): kun beta-testeres egne tryk får bonussen. Patch note 7.454. "on" kræver ejer-go.|
+|Development Score B in the engine (`development-score-b-engine`)|dormant|`development_score_v2`|[TRAINING_RULES](TRAINING_RULES.md)|#6110|2026-11-13|Parkeret (ejer 31/10); afgøres ved Udvikling 2.0-opsamlingen. Aldrig tændt samtidig med XP. Før tænding: #7584.|
+|Development XP (`development-xp-model`)|dormant|`development_xp_model`|[TRAINING_RULES](TRAINING_RULES.md)|#6110|2026-11-13|Off i prod 13/11 (#8041); kun ejeren tænder, efter dommer + development_xp_from_date.|
 |One potential source (`potential-estimate-display`)|dormant|`potential_estimate_display`|[6110-potentiale-et-tal-samlet-design](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md)|#6110|2026-11-05|Byggetrin 4 (#7684): fladerne læser potentialEstimateRead.js, når flaget er tændt.|
 |Catch-up via racing (`race-day-catchup`)|dormant|`race_day_catchup_enabled`|[TRAINING_RULES](TRAINING_RULES.md)|#6950|2026-10-25|Ejer, med Udvikling 2.0.|
 |Race day role base day (`race-day-role-base-day`)|dormant|`race_day_role_base_day_enabled`|[TRAINING_RULES](TRAINING_RULES.md)|#6110|2026-11-03|#5950 løsning A (ejer-valg 3/11), underkontakt til race-day-role-yield. Off.|
 |Stored potential estimates (`potential-estimate-writes`)|building|-|[6110-potentiale-et-tal-samlet-design](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md)|#6110|2026-11-05|Trin 5 (#7685): søndagsjob, holdskifte og nye kig; flaget seedes off.|
 |Injuries heal over the off-season (`season-injury-reset`)|building|`season_injury_reset_mode`|[TRAINING_RULES](TRAINING_RULES.md)|#5865|2026-11-16|Bygget bag season_injury_reset_mode = off; ejeren vælger clear/cap/light før S6-skiftet.|
-|Race session settles when the stage is decided (`settle-race-session-after-stage`)|building|-|[TRAINING_RULES](TRAINING_RULES.md)|#7982|2026-11-15|Kontakt training_settle_race_session off i prod 15/11 (serverdel merget, #8195). Tændes kun sammen med fatigue_now_7801 (ejer 15/11). Skærmdelen er ikke bygget.|
-|Train now bonus (`train-now-bonus`)|building|`training_train_now_bonus`|[TRAINING_RULES](TRAINING_RULES.md)|#7737|2026-11-10|OFF. Tekster, Hjælp, kvitteringsmærke bygget (#7741): bonus kun ved eget tryk.|
+|Race session settles when the stage is decided (`settle-race-session-after-stage`)|building|-|[TRAINING_RULES](TRAINING_RULES.md)|#7982|2026-11-15|Off i prod 15/11 (server merget, #8195). Tændes kun med fatigue_now_7801 (ejer). Skærmdelen mangler.|
 |Fatigue now counts today's earlier stages (`training-fatigue-now-7801`)|building|-|[TRAINING_RULES](TRAINING_RULES.md)|#7801|2026-11-13|Kontakt fatigue_now_7801 findes ikke i prod app_config (13/11) = slukket; ejer tænder.|
 
 ## academy
@@ -86,6 +86,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 |-|-|-|-|-|-|-|
 |AI academy pull (`academy-ai-weekly-pull`)|dormant|-|[YOUTH_RULES](YOUTH_RULES.md)|#6666|2026-10-25|Flag academy_ai_weekly_pull_enabled; ikke nu.|
 |Season academy intake (`season-academy-intake`)|dormant|`season_academy_intake_enabled`|[YOUTH_RULES](YOUTH_RULES.md)|#2911|2026-10-15|Sikkerhedsventil efter ejer-beslutning (#2911); off i prod, kun ejeren flipper.|
+|Academy page with tabs and age focus (`academy-page-v2-8081`)|building|-|[YOUTH_RULES](YOUTH_RULES.md)|#8081|2026-11-16|Slukket; trækket læser ikke aldersfokus.|
 |Three squads (`three-squads`)|spec|-|[YOUTH_RULES](YOUTH_RULES.md)|#2492|2026-09-06|Slice 0 er leveret; resten er spec.|
 
 ## season
