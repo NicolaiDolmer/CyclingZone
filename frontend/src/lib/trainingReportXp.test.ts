@@ -6,6 +6,8 @@ import {
   type XpActivity, type XpReceipt, type XpRiderReceipt,
 } from "./trainingReportXp.ts";
 import { buildXpReportFixture, XP_FIXTURE_LAST_DATE } from "../components/training/reportXp/xpReportFixture.ts";
+import { readFileSync } from "node:fs";
+import { aggregateTrainingRuns, type TrainingRun } from "./trainingDailyReceipt.ts";
 
 const slot = (over: Partial<XpActivity>): XpActivity => ({ rider_id: "a", game_day: 0, ...over });
 function rider(id: string, activities: XpActivity[], over: Partial<XpRiderReceipt> = {}): XpRiderReceipt {
@@ -200,4 +202,26 @@ test("the preview fixture is deterministic and complete", () => {
     if (ab.bar && ab.bar.xp >= ab.bar.price) assert.ok(ab.points > 0, `${r.id} ${ab.key}`);
     if (ab.bar) assert.ok(xpOfPrice(ab.bar).xp < xpOfPrice(ab.bar).price, `${r.id} ${ab.key}`);
   }
+});
+
+test("live path: the page's receipts are aggregated once, and the report reads them as they are (Codex P2)", () => {
+  // Five raw slots for one date, as the backend stores them.
+  const raw = [0, 1, 2, 3, 4].map(day => ({
+    tick_date: "2026-11-15", season_id: "s", created_at: `2026-11-15T0${day}:00:00Z`,
+    report: { game_day: day, riders: [{ rider_id: "a", name: "A B", game_day: day, intensity: "hard", focus: "tempo",
+      gains: day === 4 ? { tempo: 1 } : {}, xp: { tempo: 8 },
+      ...(day === 4 ? { bar_paid: {}, xp_bar: { tempo: { xp: 3, price: 40 } } } : {}) }] },
+  })) as unknown as TrainingRun[];
+  // useTraining / useTrainingHistory aggregate once; that is what the page hands over.
+  const receipts = aggregateTrainingRuns(raw) as unknown as XpReceipt[];
+  const rider = buildTodayView(receipts, null)!.riders[0];
+  assert.equal(rider.sessions.length, 5);
+  assert.equal(rider.xp, 40);
+  assert.deepEqual(rider.abilities[0].bar, { xp: 3, price: 40 });
+  // A second aggregation would read each daily row as one slot and lose the day.
+  const twice = buildTodayView(aggregateTrainingRuns(receipts as unknown as TrainingRun[]) as unknown as XpReceipt[], null)!.riders[0];
+  assert.notEqual(twice.sessions.length, 5);
+  // The surface never aggregates again.
+  const src = readFileSync(new URL("../components/training/reportXp/TrainingReportXp.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(src, /aggregateTrainingRuns\(/);
 });

@@ -1,7 +1,7 @@
 import { lazy, useEffect, useState, type ReactNode } from "react";
 import { fetchPlayerFeatureFlags } from "../../../lib/playerFeatureFlags.js";
 import { hasXpFields } from "../../../lib/trainingReportXp.ts";
-import type { TrainingRun } from "../../../lib/trainingDailyReceipt.ts";
+import type { DailyTrainingReceipt } from "../../../lib/trainingDailyReceipt.ts";
 import type { ReceiptScoreView } from "../../../lib/trainingScoreView.ts";
 
 // #7627 · Which report the Report tab shows.
@@ -22,7 +22,7 @@ export function previewXpReport(isPreview: boolean, search: string): boolean {
   return isPreview && new URLSearchParams(search).get(XP_REPORT_PREVIEW_PARAM) === "on";
 }
 
-export function xpReportMode({ preview, flagOn, runs }: { preview: boolean; flagOn: boolean; runs: TrainingRun[] | null | undefined }): XpReportMode {
+export function xpReportMode({ preview, flagOn, runs }: { preview: boolean; flagOn: boolean; runs: DailyTrainingReceipt[] | null | undefined }): XpReportMode {
   if (preview) return "fixture";
   return flagOn && hasXpFields(runs as never) ? "live" : "off";
 }
@@ -30,7 +30,7 @@ export function xpReportMode({ preview, flagOn, runs }: { preview: boolean; flag
 const TrainingReportXp = lazy(() => import("./TrainingReportXp.tsx"));
 
 export default function XpReportSwitch({ runs, roster, trainingScore, children }: {
-  runs: TrainingRun[]; roster?: Array<{ id: string; nationality_code?: string | null }> | null;
+  runs: DailyTrainingReceipt[]; roster?: Array<{ id: string; nationality_code?: string | null }> | null;
   trainingScore?: Record<string, ReceiptScoreView> | null; children: ReactNode;
 }) {
   const isPreview = Boolean(import.meta.env.VITE_PREVIEW_MOCK);

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import Section, { SectionStack } from "../../ui/Section.jsx";
 import { SkeletonLines } from "../../ui/Skeleton.jsx";
 import Segmented from "../../ui/Segmented.jsx";
-import { aggregateTrainingRuns, type TrainingRun } from "../../../lib/trainingDailyReceipt.ts";
+import type { DailyTrainingReceipt } from "../../../lib/trainingDailyReceipt.ts";
 import { receiptPassScore, type ReceiptScoreView } from "../../../lib/trainingScoreView.ts";
 import { buildMonthView, buildTodayView, type XpReceipt, type XpViewOptions } from "../../../lib/trainingReportXp.ts";
 import { buildXpReportFixture, fixtureScoreOf } from "./xpReportFixture.ts";
@@ -18,7 +18,7 @@ type View = "today" | "days30";
 type RosterRider = { id: string; nationality_code?: string | null; primary_type?: string | null; secondary_type?: string | null };
 
 export default function TrainingReportXp({ runs, roster, trainingScore = null, fixture = false }: {
-  runs: TrainingRun[]; roster?: RosterRider[] | null; trainingScore?: Record<string, ReceiptScoreView> | null; fixture?: boolean;
+  runs: DailyTrainingReceipt[]; roster?: RosterRider[] | null; trainingScore?: Record<string, ReceiptScoreView> | null; fixture?: boolean;
 }) {
   // trainingXp is not inlined (bundle budget): it loads with this lazy surface, so
   // the surface waits for it behind the canonical skeleton instead of raw keys.
@@ -31,7 +31,10 @@ export default function TrainingReportXp({ runs, roster, trainingScore = null, f
       return { receipts: fx.receipts, options: { nations: fx.nations, types: fx.types, scoreOf: fixtureScoreOf(fx.scores) } };
     }
     return {
-      receipts: aggregateTrainingRuns(runs) as XpReceipt[],
+      // The training page hands over receipts that useTraining/useTrainingHistory
+      // already aggregated per date. Aggregating again would read each daily row as
+      // one raw slot and drop the earlier slots' XP and sessions (Codex P2 on #8210).
+      receipts: (runs ?? []) as XpReceipt[],
       options: {
         nations: Object.fromEntries((roster ?? []).map(r => [r.id, r.nationality_code ?? null])),
         types: Object.fromEntries((roster ?? []).map(r => [r.id, { primary: r.primary_type ?? null, secondary: r.secondary_type ?? null }])),
