@@ -17,7 +17,14 @@
 // startede for laenge siden (MAX_AGE_MS). Ulaeselig fil = ingen markoer, saa
 // hooken falder tilbage til sin gamle adfaerd (fail-open mod paamindelsen).
 //
-// CLI (alle kald er fail-soft og exit'er 0, undtagen `covers`):
+// CI-plan trin 1 (Codex P2 paa #8330): EEN koe ad gangen tages ATOMISK med `acquire`.
+// Foer laeste koeen `status` og skrev saa `start`; to koeer der startede samtidig saa
+// begge en tom markoer og kom begge ind. `acquire` laeser, afviser en levende ejer og
+// skriver markoeren under en kort fil-laas (mkdir er atomisk paa tvaers af processer).
+//
+// CLI (alle kald er fail-soft og exit'er 0, undtagen `covers` og `acquire`):
+//   node scripts/merge-queue-active-marker.mjs acquire --pid <pid> --prs "1,2,3"
+//     exit 0 = markoeren er vores, 3 = en anden levende koe ejer den, 4 = fejl (fail-closed)
 //   node scripts/merge-queue-active-marker.mjs start  --pid <pid> --prs "1,2,3"
 //   node scripts/merge-queue-active-marker.mjs merged --pid <pid> --pr <N> --sha <40 hex>
 //   node scripts/merge-queue-active-marker.mjs stop   --pid <pid>
@@ -30,7 +37,7 @@
 // Tests: node --test scripts/merge-queue-active-marker.test.mjs
 
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
 export const MARKER_RELATIVE = join('.claude', 'run', 'merge-queue-active.json');
@@ -112,6 +119,48 @@ export function startMarker(file, { pid, prs, now = new Date() }) {
   return marker;
 }
 
+export const ACQUIRE_EXIT = Object.freeze({ OK: 0, BUSY: 3, ERROR: 4 });
+// En laas der er saa gammel, er efterladt af en draebt proces (den kritiske sektion tager ms).
+export const LOCK_STALE_MS = 30_000;
+
+function sleepSync(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/**
+ * Koerer fn under en fil-laas (<file>.lock som mappe). mkdir lykkes kun for een
+ * proces ad gangen, saa laes-og-skriv inde i fn er atomisk i forhold til andre
+ * `acquire`-kald. Kaster, hvis laasen ikke kan tages inden timeoutMs.
+ */
+export function withFileLock(file, fn, { timeoutMs = 10_000, sleep = sleepSync } = {}) {
+  const lock = `${file}.lock`;
+  mkdirSync(dirname(file), { recursive: true });
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    try { mkdirSync(lock); break; } catch (err) {
+      if (err?.code !== 'EEXIST') throw err;
+      let age = 0;
+      try { age = Date.now() - statSync(lock).mtimeMs; } catch { continue; }
+      if (age > LOCK_STALE_MS) { rmSync(lock, { recursive: true, force: true }); continue; }
+      if (Date.now() >= deadline) throw new Error(`markoer-laasen ${lock} er optaget`);
+      sleep(20 + Math.floor(Math.random() * 30));
+    }
+  }
+  try { return fn(); } finally { rmSync(lock, { recursive: true, force: true }); }
+}
+
+/**
+ * Atomisk "kun een koe": tager markoeren, medmindre en anden LEVENDE koe ejer den.
+ * En stale, ulaeselig eller manglende markoer overtages. { ok, marker } eller { ok: false, owner }.
+ */
+export function acquireMarker(file, { pid, prs, now = new Date(), isAlive = isPidAlive, lockOpts } = {}) {
+  return withFileLock(file, () => {
+    const current = readMarkerFile(file);
+    if (current && current.pid !== pid && !isStale(current, { now, isAlive })) return { ok: false, owner: current };
+    return { ok: true, marker: startMarker(file, { pid, prs, now }) };
+  }, lockOpts);
+}
+
 // Kun ejer-processens markoer opdateres; en anden (nyere) koes markoer roeres ikke.
 export function recordMerge(file, { pid, pr, sha }) {
   const marker = readMarkerFile(file);
@@ -135,7 +184,7 @@ function argValue(argv, name) {
   return i >= 0 ? argv[i + 1] : undefined;
 }
 
-export function main(argv = process.argv.slice(2), { file = markerFilePath(), now = new Date(), isAlive = isPidAlive, out = (l) => process.stdout.write(`${l}\n`) } = {}) {
+export function main(argv = process.argv.slice(2), { file = markerFilePath(), now = new Date(), isAlive = isPidAlive, out = (l) => process.stdout.write(`${l}\n`), lockOpts } = {}) {
   const cmd = argv[0];
   const pid = Number(argValue(argv, '--pid'));
   if (cmd === 'covers') {
@@ -147,8 +196,21 @@ export function main(argv = process.argv.slice(2), { file = markerFilePath(), no
     out(marker ? JSON.stringify(marker) : 'ingen levende merge-tog-markoer');
     return 0;
   }
+  if (cmd === 'acquire') {
+    // Fail-closed: koeen maa kun starte, naar markoeren beviseligt er dens egen.
+    if (!Number.isSafeInteger(pid) || pid <= 0) { out('markoer: --pid mangler eller er ugyldig.'); return ACQUIRE_EXIT.ERROR; }
+    try {
+      const res = acquireMarker(file, { pid, prs: parsePrList(argValue(argv, '--prs')), now, isAlive, lockOpts });
+      if (res.ok) return ACQUIRE_EXIT.OK;
+      out(`pid ${res.owner.pid}, startet ${res.owner.startedAt}, PR'er ${res.owner.prs.join(',') || '-'}`);
+      return ACQUIRE_EXIT.BUSY;
+    } catch (err) {
+      out(`markoer: kunne ikke tages (${err?.message ?? err})`);
+      return ACQUIRE_EXIT.ERROR;
+    }
+  }
   if (!['start', 'merged', 'stop'].includes(cmd)) {
-    out('Brug: node scripts/merge-queue-active-marker.mjs start|merged|stop|status|covers ...');
+    out('Brug: node scripts/merge-queue-active-marker.mjs acquire|start|merged|stop|status|covers ...');
     return 1;
   }
   if (!Number.isSafeInteger(pid) || pid <= 0) { out('markoer: --pid mangler eller er ugyldig.'); return 0; }
@@ -172,6 +234,6 @@ if (process.argv[1]?.endsWith('merge-queue-active-marker.mjs')) {
   // Injicerbar klokke (AGENTS.md regel 16): Stop-hooken og dens test deler samme tid.
   const epoch = Number(process.env.CHECK_NOW_MD_NOW_EPOCH);
   const now = Number.isFinite(epoch) && epoch > 0 ? new Date(epoch * 1000) : new Date();
-  try { code = main(process.argv.slice(2), { now }); } catch (err) { process.stdout.write(`markoer ADVARSEL: uventet fejl: ${err?.message ?? err}\n`); code = process.argv[2] === 'covers' ? 1 : 0; }
+  try { code = main(process.argv.slice(2), { now }); } catch (err) { process.stdout.write(`markoer ADVARSEL: uventet fejl: ${err?.message ?? err}\n`); code = process.argv[2] === 'covers' ? 1 : process.argv[2] === 'acquire' ? ACQUIRE_EXIT.ERROR : 0; }
   process.exitCode = code;
 }
