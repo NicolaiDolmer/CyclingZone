@@ -1519,6 +1519,10 @@
         "title": "Reading the training report",
         "text": "After training runs, the report opens with a day summary: how many riders trained, how many had a breakthrough (an ability rose +1), and how many are in peak form. Each row shows the focus ability's progress toward its next +1, and a breakthrough is highlighted with the actual jump, for example 71 to 72. The roster table shows the same progress bar, so you can steer a focus toward a rider who is close to a breakthrough."
       },
+      "raceSource": {
+        "title": "Where the progress came from",
+        "text": "Open a rider in the training report to see where his progress came from, ability by ability: Training, Race and Total. Race progress is drawn hatched in a neutral colour and is already part of the day's total, so it is never counted twice. A rider who only trained shows only Training, and a rider who only raced shows only Race. When an ability landed a whole point, the row shows it with the jump, for example 54 to 56. On a date your team raced, a line under the key numbers says how much of the squad's progress came from races. Older reports that did not store each activity on its own keep the old lists and show no split."
+      },
       "trainingHistory": {
         "title": "Training history",
         "text": "Every daily training run is kept. The Daily Training page lists your last 30 days below the roster, each day showing how many riders trained, breakthroughs and riders in peak form; expand a day to see the full per-rider report. Each rider's profile has its own training history under the Development tab, listing that rider's focus, intensity, gains and form day by day."
@@ -1837,7 +1841,7 @@
       },
       "taskPrices": {
         "title": "What each task costs",
-        "text": "In races with a stage plan, every task shows its price word in the plan and in the list of tasks, so you see the price before you pick. The word is a price for the legs, never a number. Easy: Grupetto, Stay sheltered and Ride in easy. Medium: Keep the leader up front, Ride for a result and Sprint train. Hard: Set the tempo, Follow the moves, Go in the break, and Go for sprint points or Go for KOM points when the race has them. Very hard: Attack. When a plan switches task along the way, each step shows its own word. A stronger rider does not move a task to an easier word."
+        "text": "In races with a stage plan, every task shows its price word in the plan and in the list of tasks, so you see the price before you pick. The word is a price for the legs, never a number. Easy: Grupetto, Stay sheltered and Ride in easy. Medium: Keep the leader up front, Ride for a result and Sprint train. Hard: Set the tempo, Follow the moves, Go in the break, and Go for sprint points or Go for KOM points when the race has them. Very hard: Attack. When a plan switches task along the way, each step shows its own word. A stronger rider does not move a task to an easier word. The same word, in the same colour, shows everywhere an order has a price: the effort steps in a time trial and in races without a stage plan (Grupetto and Ride easy: Easy, Normal: Medium, the work step: Hard, All out: Very hard), the Try the break (Hard) and Sprint train (Medium) buttons, and the team's answer to the break. There the word is the price for the riders who chase: Chase is Hard, because every rider who is not a leader pulls; Read the race is Medium, because the team only works when the race calls for it, such as a break that threatens its leader; Leave the chase to others is Easy, because the team keeps out of the chase."
       },
       "effortStepsThree": {
         "title": "Effort steps",
@@ -2271,7 +2275,7 @@
     },
     "midSeasonCheckFaq": {
       "q": "What is the mid-season check, and why am I getting an 'Action required' notification mid-season?",
-      "a": "When half of the season's race days are over, the board checks your plan status. If satisfaction is under 50% OR at least half of your plan targets are 'behind' after half-time -> you get a 'Mid-season check' notification in the inbox 'Action required'. The notification is informational: the board is worried but doesn't act automatically. You can respond by sending a board request (pivot plan targets), requesting a budget loan on the Economy page, or simply sharpening focus for the rest of the season. The banner only fires once per season per board."
+      "a": "When half of the season's race days are over, the board checks your plan status. If satisfaction is under 50% OR at least half of your plan targets are 'behind' after half-time -> you get a 'Mid-season check' notification in the inbox 'Action required'. The notification is informational: the board is worried but doesn't act automatically. The notification says which of the two triggered it. The plan for the season is signed, so you respond by working on the targets that are behind (the Board page shows which), or by taking a loan on the Finance page if the pressure is financial. The banner only fires once per season per board."
     },
     "majorPivotCooldown": {
       "q": "What is pivot cooldown and a 'major pivot'?",

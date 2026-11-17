@@ -12,6 +12,7 @@ import {
   countSmallPx,
   countShadow,
   countGradient,
+  countGoldButton,
   scanSource,
   scanRepo,
   compareAgainstBaseline,
@@ -93,7 +94,19 @@ test("countGradient does not false-positive on the cycling term 'gradient'", () 
 
 test("scanSource returns per-category counts (arrow/smallpx/shadow/gradient)", () => {
   const r = scanSource('<div className="shadow-xl text-[9px] bg-gradient-to-r">Næste →</div>');
-  assert.deepEqual(r, { arrow: 1, smallpx: 1, shadow: 1, gradient: 1 });
+  assert.deepEqual(r, { arrow: 1, smallpx: 1, shadow: 1, gradient: 1, goldbtn: 0 });
+});
+
+test("countGoldButton flags hand-rolled gold on buttons and links, not on badges (#8069 T02)", () => {
+  assert.equal(countGoldButton('<button onClick={go} className="px-4 py-2 bg-cz-accent text-cz-on-accent font-bold">Go</button>'), 1);
+  assert.equal(countGoldButton('<Link to="/x" className="text-cz-on-accent bg-cz-accent rounded-cz">Go</Link>'), 1);
+  // "<" i en prop (counterAmt <= 0) er ikke et tag
+  assert.equal(countGoldButton('<button disabled={n <= 0}\n className="bg-cz-accent text-cz-on-accent">Send</button>'), 1);
+  // ledermarkoer/pille: tilladt guld (P3)
+  assert.equal(countGoldButton('<span className="bg-cz-accent text-cz-on-accent rounded-full">3</span>'), 0);
+  // 10 % guld (aktiv tilstand) og kittet selv taelles ikke
+  assert.equal(countGoldButton('<button className="bg-cz-accent/10 text-cz-accent-t">On</button>'), 0);
+  assert.equal(countGoldButton('<button className={buttonClass({ variant: "primary" })}>Go</button>'), 0);
 });
 
 test("compareAgainstBaseline only flags increases over baseline", () => {

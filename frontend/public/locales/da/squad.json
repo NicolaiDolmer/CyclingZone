@@ -12,9 +12,11 @@
       "u23": "U23-hold, ryttere på 22 år og yngre",
       "junior": "Juniorhold, ryttere på 18 år og yngre"
     },
-    "squadValue": "Trupværdi: {value} CZ$",
-    "rosterCount": "{count}/{cap} ryttere i truppen",
-    "seniorsStayHint": "Ryttere på seniortruppen bliver seniorer, indtil du flytter dem. Åbn rytteren og brug Flyt trup."
+    "seniorsStayHint": "Ryttere på seniortruppen bliver seniorer, indtil du flytter dem. Åbn rytteren og brug Flyt trup.",
+    "stats": {
+      "riders": "Ryttere",
+      "squadValue": "Trupværdi"
+    }
   },
   "tabs": {
     "ariaLabel": "Truppens afsnit",

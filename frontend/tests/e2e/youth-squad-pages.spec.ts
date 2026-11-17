@@ -178,6 +178,6 @@ test.describe("U23 team- og Junior team-siderne (#5519)", () => {
     await expect(page.locator("main").getByRole("link", { name: /Go to academy|Gå til akademiet/ })).toHaveAttribute("href", "/academy");
     await expect(page.locator("main table")).toHaveCount(0);
     // #5631: en tom trup viser stadig sit loft i stedet for at skjule meta-linjen.
-    await expect(page.getByText(/^0\/12 riders in the squad$|^0\/12 ryttere i truppen$/)).toBeVisible();
+    await expect(page.getByText(/^0\/12$/) /* #8278: HeroStats viser loftet som tallet n/loft */).toBeVisible();
   });
 });

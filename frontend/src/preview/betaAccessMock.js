@@ -40,6 +40,7 @@ let flags = [
   { key: "board_mandate_model_enabled", area: "board", label: "Bestyrelse — mandat-modellen", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
   { key: "academy_enabled", area: "academy", label: "Akademi", stage: "on", raw_value: "on", boolean_only: false, configured: true, unknown_value: false },
   { key: "academy_intake_pull_enabled", area: "academy", label: "Akademi — træk af nye talenter", stage: "off", raw_value: "off", boolean_only: false, configured: true, unknown_value: false },
+  { key: "academy_page_v2_8081", area: "academy", label: "Akademisiden udgave A + aldersfokus", stage: "off", raw_value: "off", boolean_only: false, configured: true, unknown_value: false },
   { key: "daily_training_enabled", area: "training", label: "Daglig træning", stage: "on", raw_value: true, boolean_only: true, configured: true, unknown_value: false },
   { key: "training_score_visible", area: "training", label: "Træningsscore 1-99 (visning)", stage: "off", raw_value: "false", boolean_only: false, configured: true, unknown_value: true },
   { key: "peak_planner_enabled", area: "training", label: "Form-planlægger", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
@@ -91,6 +92,7 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "champion_jerseys_7824", // #7824
   "rider_why_button", // #7717
   "race_page_v6", // #7778 (off; ?racePageV6=on paa preview)
+  "spoiler_shield_7859", // #7859 (off)
   "talent_marks_7879", // #7879
   "tactics_ready_7864", // Missing stage keeps this preview feature off.
   "rider_hover_card", // #2009
@@ -106,6 +108,7 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "training_train_now_instant", // #8031 (kun patch-noten om Traen nu-kvitteringen)
   "sale_escrow_enabled", // #6181 Hjaelp (binaert, som pengelaasen)
   "training_history_from_ticks_6490", // #6490 traeningssidens laesevej (binaert)
+  "academy_page_v2_8081", // #8081 akademisiden udgave A (off)
   "training_train_now_bonus", // #7741 bonusmaerket og teksterne (off paa preview; ?trainNowBonus=on viser dem)
 ];
 
