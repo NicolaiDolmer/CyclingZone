@@ -12,7 +12,7 @@
 import { useState, type ReactNode } from "react";
 import { RiderLink } from "../race/stagePageV2/ui.ts";
 import { Flag as FlagJs } from "../Flag.jsx";
-import { ArrowDownIcon as ArrowDownIconJs, ArrowUpIcon as ArrowUpIconJs, ChevronDownIcon as ChevronDownIconJs, LockIcon as LockIconJs, UserIcon as UserIconJs } from "../ui/index.js";
+import { ArrowDownIcon as ArrowDownIconJs, ArrowUpIcon as ArrowUpIconJs, ChevronDownIcon as ChevronDownIconJs, LockIcon as LockIconJs } from "../ui/index.js";
 import { statPlateStyle as statPlateStyleJs } from "../../lib/statColor.js";
 import { RouteMatchPlate } from "../planning/SquadTable.tsx";
 import { DAY_LOAD_ARROW, dayLoadTone, fatigueTone, type DayLoad } from "./tacticsV6cModel.ts";
@@ -22,7 +22,6 @@ type IconProps = { size?: number; className?: string; "aria-hidden"?: boolean | 
 const Flag = FlagJs as unknown as (props: { code: string | null | undefined; className?: string }) => ReactNode;
 const ChevronDownIcon = ChevronDownIconJs as unknown as (props: IconProps) => ReactNode;
 const LockIcon = LockIconJs as unknown as (props: IconProps) => ReactNode;
-const UserIcon = UserIconJs as unknown as (props: IconProps) => ReactNode;
 const ArrowUpIcon = ArrowUpIconJs as unknown as (props: IconProps) => ReactNode;
 const ArrowDownIcon = ArrowDownIconJs as unknown as (props: IconProps) => ReactNode;
 const statPlateStyle = statPlateStyleJs as unknown as (value: number, opts?: { scale?: string }) => Record<string, string>;
@@ -155,10 +154,7 @@ function LockButton({ lock }: { lock: TacticsRiderRow["lock"] }) {
 function Name({ row, link = true }: { row: TacticsRiderRow; link?: boolean }) {
   return (
     <span className="flex min-w-0 flex-col gap-0.5">
-      <span className="inline-flex items-center gap-1.5 text-cz-3">
-        {row.nation && <Flag code={row.nation} className="shrink-0" />}
-        <UserIcon size={11} aria-hidden="true" />
-      </span>
+      {row.nation && <span className="inline-flex items-center"><Flag code={row.nation} className="shrink-0" /></span>}
       {link ? (
         <RiderLink id={row.id} className="min-w-0 text-cz-1 underline decoration-dotted decoration-cz-3 underline-offset-4 hover:text-cz-accent-t">{row.name || "—"}</RiderLink>
       ) : <span className="text-cz-1">{row.name || "—"}</span>}
@@ -342,7 +338,7 @@ export default function TacticsRiderTable({ rows, allOrders, partLabels, columns
                     {row.parts?.map((part) => (
                       <div key={part.label} className="flex flex-col gap-1">
                         <span className="text-2xs text-cz-3">{part.label}</span>
-                        <div className="[&>*]:w-full">{part.control}</div>
+                        <div className="[&>div]:block [&_button[aria-haspopup]]:w-full [&_button[aria-haspopup]]:justify-center">{part.control}</div>
                       </div>
                     ))}
                     {row.steps && (

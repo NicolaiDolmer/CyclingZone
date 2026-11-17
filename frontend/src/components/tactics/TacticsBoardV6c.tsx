@@ -36,6 +36,8 @@ export interface BoardRider {
   levelText: string | null;
   parts: Array<{ task: StagePlanTask; options: StagePlanTask[]; editable: boolean }> | null;
   dropped: StagePlanTask | null;
+  /** "No plan yet. He rides on his role." (allerede oversat), eller null. */
+  noPlanNote: string | null;
   steps: { steps: string[]; value: string; labelFor: (s: string) => string; blocked: (s: string) => string | null; editable: boolean } | null;
   extras: Array<{ key: "tryBreak" | "sprintTrain"; on: boolean; disabled: boolean; reason: string | null }>;
   lock: { on: boolean; disabled: boolean } | null;
@@ -142,7 +144,7 @@ export default function TacticsBoardV6c({ riders, partLabels, allOrders, summary
           ))}
         </>
       ) : null,
-      note: r.dropped ? t("orders.ifDropped", { task: taskLabel(r.dropped) }) : null,
+      note: r.noPlanNote ?? (r.dropped ? t("orders.ifDropped", { task: taskLabel(r.dropped) }) : null),
       steps: r.steps ? (
         <EffortSegmented
           label={`${t("orders.steps")}: ${r.name || "—"}`}

@@ -153,6 +153,7 @@ import {
 } from "../tactics/tacticsV6cModel.ts";
 import { isLuxuryHelperRole, isTimeTrialProfile, setRiderPlan, suggestStagePlan, TASK_ROLES, withJerseyHunt7855 } from "./StagePlanModel.ts";
 import { waypointsFor } from "../../lib/stageRouteProfile.js";
+import I18nReadyGate from "../I18nReadyGate.jsx"; // #8298: "tactics" er route-gatet
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -1307,7 +1308,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         lock: rider.abandoned ? null : { on: lockedSet.has(id), disabled: stageLocked || saving },
       };
       if (rider.abandoned) {
-        return { ...base, today: { key: "abandoned", text: t("intention.riderAbandoned") }, level: null, levelEditable: false, levelText: "—", parts: null, dropped: null, steps: null, extras: [], dayLoad: null };
+        return { ...base, today: { key: "abandoned", text: t("intention.riderAbandoned") }, level: null, levelEditable: false, levelText: "—", parts: null, dropped: null, noPlanNote: null, steps: null, extras: [], dayLoad: null };
       }
 
       if (stagePlanOn) {
@@ -1341,6 +1342,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
           levelText: stageLocked ? (legs ? null : t("intention.roleDefault")) : null,
           parts: tasks.map((task, index) => ({ task, options: editable ? partTaskOptions(tasks, index, parts, role, planRoute) : [task], editable })),
           dropped: droppedLeg(shown)?.task ?? null,
+          noPlanNote: legs ? null : t("stagePlan.noPlan"),
           steps: null,
           extras: [
             { key: "tryBreak", on: breakOn, disabled: !editable || breakReason != null, reason: breakReason, toggle: () => writeTasks(setPartTask(tasks, 0, breakOn ? firstOff : "breakaway")) },
@@ -1368,6 +1370,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         levelText: stageLocked ? (effort === DEFAULT_EFFORT ? t("intention.roleDefault") : effortLabel(rider)(effort)) : null,
         parts: null,
         dropped: null,
+        noPlanNote: null,
         steps: { steps, value: effort, labelFor: effortLabel(rider), blocked: effortReason(rider), editable },
         extras: roadOn ? [
           { key: "tryBreak", on: ro.try_break === true, disabled: !editable || !!breakBlocked, reason: reasonText(breakBlocked), toggle: () => updateOrder((o) => toggleTryBreak(o, id)) },
@@ -1462,6 +1465,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       </div>
     );
     return (
+      <I18nReadyGate ns="tactics" fallback={<Section><SectionHeader title={t("racePage.tactics.title")} /><SkeletonLines lines={6} /></Section>}>
       <Suspense fallback={<Section><SectionHeader title={t("racePage.tactics.title")} /><SkeletonLines lines={6} /></Section>}>
       <TacticsPanel
         route={routeCard}
@@ -1536,6 +1540,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         }}
       />
       </Suspense>
+      </I18nReadyGate>
     );
   }
 

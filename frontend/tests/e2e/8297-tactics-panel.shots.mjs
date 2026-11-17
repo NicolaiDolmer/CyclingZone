@@ -58,14 +58,34 @@ for (const vp of VIEWPORTS) {
     await page.screenshot({ path: resolve(OUT, `wireframe-v6c-taktik-${vp.name}.png`), fullPage: true });
   } else {
     await loginPreview(page);
-    await page.goto(`/races/${RACE}?tab=tactics&racePageV6=on`);
+    // #8298: SHOT_QUERY="&stagePlan=1" slår etapeplanen til i mocken; SHOT_ALL=1 vælger "All orders",
+    // SHOT_OPEN=1 åbner første rytters kort på telefon.
+    await page.goto(`/races/${RACE}?tab=tactics&racePageV6=on${process.env.SHOT_QUERY || ""}`);
     await page.locator('[data-race-page-version="v6"]').waitFor({ timeout: 30000 });
     await page.getByTestId("race-tactics-tab").first().waitFor({ timeout: 30000 });
     // En kommende etape (redigerbar), så indsats-linjen og guldknappen er med.
     const stage = process.env.SHOT_STAGE || "4";
     await page.locator(`[data-race-strip] [data-stage="${stage}"]`).first().click();
     await page.waitForTimeout(900);
-    await page.screenshot({ path: resolve(OUT, `taktik-${RACE}-${vp.name}.png`), fullPage: true });
+    if (process.env.SHOT_PLAN) {
+      await page.getByTestId(`team-plan-${process.env.SHOT_PLAN}`).first().click();
+      await page.waitForTimeout(400);
+    }
+    // Fanebjælken klæber ellers hen over ruten i et element-skud (billedfejl 35).
+    await page.addStyleTag({ content: "[data-race-page] .sticky{position:static !important}" });
+    if (process.env.SHOT_ALL === "1" && !vp.mobile) {
+      await page.getByRole("button", { name: /^(All orders|Alle ordrer)$/ }).first().click();
+      await page.waitForTimeout(400);
+    }
+    if (process.env.SHOT_OPEN === "1" && vp.mobile) {
+      await page.locator("[data-tactics-timeline] li > button").first().click();
+      await page.waitForTimeout(400);
+    }
+    const tag = process.env.SHOT_TAG ? `-${process.env.SHOT_TAG}` : "";
+    // Kun selve fanen (fanebjælken klæber ellers hen over ruten i et fuldside-skud, billedfejl 35).
+    const panel = page.locator("[data-tactics-panel]").first();
+    if (await panel.count()) await panel.screenshot({ path: resolve(OUT, `taktik-${RACE}-${vp.name}${tag}.png`) });
+    else await page.screenshot({ path: resolve(OUT, `taktik-${RACE}-${vp.name}${tag}.png`), fullPage: true });
   }
   console.log(`[8297] ${mode} ${vp.name} ok`);
   await ctx.close();
