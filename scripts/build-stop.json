@@ -631,6 +631,10 @@
     {
       "issue": 8152,
       "why": "Forsiden viser vinder og tilmeldte ca. 7 sekunder for sent, naar det valgfrie profil-opslag fejler (bibliotekets gentagelser ved 503). Ejer 13/11 i Claude-session paa kort om, hvornaar den skal rettes: 'I morgen på PC1, først (Recommended)'. Ingen ny spillertekst."
+    },
+    {
+      "issue": 8359,
+      "why": "Rester af kontakter, der aldrig kommer i brug (markeds-eftersynets tre rækker og tomme logtabel, auktions-adgang for nye konti, spørgeskema-banneret). Ejer 17/11 (PC1, AskUserQuestion, én kontakt ad gangen): 'Ja, fjern resterne', 'Fjern rækken', 'Fjern de to rækker'. Én migration + ét oprydningscommit."
     }
   ],
   "brandList": [
@@ -1542,6 +1546,26 @@
     {
       "issue": 8348,
       "reason": "CI-trin 4: snapshots på Linux i låst container + label der fornyer dem (del af #8331). Ejer 17/11 (PC1): 'Ja, trin 1-4' om morgenen (#8331) og 'Ja, start' i PC1-dirigentens session (AskUserQuestion). Merges må aldrig gå i stå igen: GitHubs kø er flaskehalsen.",
+      "since": "2026-11-17"
+    },
+    {
+      "issue": 7456,
+      "reason": "Træningsprogrammer som rotation og ugeblokke (fanen Program på træningssiden). Ejer 17/11 (PC1) med de to godkendte wireframes: 'som selvfølgelig også skal planlægges ind i de ting vi skal følge helt til dørs disse dage ... sørge for også, at den prioriteres meget højt'.",
+      "since": "2026-11-17"
+    },
+    {
+      "issue": 8364,
+      "reason": "Farveskala overalt: form som rating, træthed varm skala, rutematch som tal på plade. Ejer 17/11 (PC1, AskUserQuestion med tre viste forslag): 'C: form som rating'. Rating må ikke ændres nu.",
+      "since": "2026-11-17"
+    },
+    {
+      "issue": 8357,
+      "reason": "Til rådighed i sidebjælken og på auktionssiden (to forskellige saldotal). Ejer 17/11 (PC1): 'Byg dette i næste uge som anbefalet'; fører den gamle aftale fra #3508 (7/8) ud de sidste to steder.",
+      "since": "2026-11-17"
+    },
+    {
+      "issue": 8363,
+      "reason": "Træn nu-øjeblikket med ejerens animation, i egen visning som også er kvitteringen. Ejer 17/11 (PC1): 'B: egen visning = kvitteringen' og 'Vi venter til at Xp er færdigt'; bygges når XP er tændt.",
       "since": "2026-11-17"
     }
   ]
