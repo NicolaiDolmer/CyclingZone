@@ -85,14 +85,32 @@ export function droppedLeg(legs: readonly StagePlanLeg[] | null | undefined): St
  * Kæden for en opgave pr. rutedel. Ens nabo-dele bliver ét led; en afsluttende opgave
  * (sprinttog, grupetto, kør ind) slutter kæden. Et eksisterende "hvis han bliver sat"-led
  * bevares, hvis kæden stadig er gyldig med det. Ugyldigt = længste gyldige begyndelse.
+ *
+ * `original` (Codex P1 #8298): den gemte kæde. En rutedel, hvis opgave ikke er ændret, beholder
+ * sine oprindelige led med deres egne skift-punkter (fx et angreb fra den ANDEN stigning inde i
+ * delen), så en ændring i én del aldrig flytter ordrer i en anden. Kun en ændret del får delens
+ * skift-punkt.
  */
-export function legsFromParts(tasks: readonly StagePlanTask[], parts: readonly RoutePart[], role: StagePlanRole, route: StagePlanRoute, keepDropped: StagePlanLeg | null = null): StagePlanLeg[] {
-  const legs: StagePlanLeg[] = [];
+export function legsFromParts(tasks: readonly StagePlanTask[], parts: readonly RoutePart[], role: StagePlanRole, route: StagePlanRoute, keepDropped: StagePlanLeg | null = null, original: readonly StagePlanLeg[] | null = null): StagePlanLeg[] {
+  const before = original ? partTasks(original, route, parts) : null;
+  const positioned = (original ?? [])
+    .map((leg, i) => ({ leg, km: i === 0 ? 0 : triggerKm(leg.from, route) }))
+    .filter((l): l is { leg: StagePlanLeg; km: number } => l.km !== null);
+  const candidates: StagePlanLeg[] = [];
   tasks.forEach((task, i) => {
-    const prev = legs[legs.length - 1];
-    if (prev && (prev.task === task || TERMINAL_TASKS.has(prev.task))) return;
+    const end = parts[i + 1]?.km ?? Infinity;
+    const kept = before && before[i] === task
+      ? positioned.filter((l) => (i === 0 ? l.km < end : l.km >= parts[i].km && l.km < end)).map((l) => l.leg)
+      : [];
+    if (kept.length) { candidates.push(...kept); return; }
     const from = parts[i]?.from;
-    legs.push(i === 0 || !from ? { task } : { task, from });
+    candidates.push(i === 0 || !from ? { task } : { task, from });
+  });
+  const legs: StagePlanLeg[] = [];
+  candidates.forEach((leg, i) => {
+    const prev = legs[legs.length - 1];
+    if (prev && (prev.task === leg.task || TERMINAL_TASKS.has(prev.task))) return;
+    legs.push(i === 0 || legs.length === 0 ? { task: leg.task } : leg);
   });
   if (keepDropped && !TERMINAL_TASKS.has(legs[legs.length - 1].task)) {
     const withDropped = [...legs, keepDropped];
@@ -104,11 +122,11 @@ export function legsFromParts(tasks: readonly StagePlanTask[], parts: readonly R
 const PICKABLE: readonly StagePlanTask[] = STAGE_PLAN_TASKS.filter((t) => t !== "hunt_points" && t !== "hunt_kom");
 
 /** De opgaver en rutedel kan få for rollen: kun dem kæden kan gemme med. */
-export function partTaskOptions(tasks: readonly StagePlanTask[], index: number, parts: readonly RoutePart[], role: StagePlanRole, route: StagePlanRoute): StagePlanTask[] {
+export function partTaskOptions(tasks: readonly StagePlanTask[], index: number, parts: readonly RoutePart[], role: StagePlanRole, route: StagePlanRoute, original: readonly StagePlanLeg[] | null = null): StagePlanTask[] {
   return PICKABLE.filter((task) => {
     if (!TASK_ROLES[task].includes(role)) return false;
     const next = setPartTask(tasks, index, task);
-    const legs = legsFromParts(next, parts, role, route);
+    const legs = legsFromParts(next, parts, role, route, null, original);
     return validateStagePlanLegs(legs, role, route) === null && partTasks(legs, route, parts)?.[index] === task;
   });
 }

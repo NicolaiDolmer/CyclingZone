@@ -111,3 +111,16 @@ test("låste ryttere beholder deres række, når holdplanen lægges på", () => 
   const plan = { riders: [{ rider_id: "a", plan: [{ task: "stay_sheltered" }] }, { rider_id: "b", plan: [{ task: "tempo" }] }] };
   assert.deepEqual(withLockedRiders(plan, current, new Set(["a"])).riders, [{ rider_id: "a", plan: [{ task: "attack" }] }, { rider_id: "b", plan: [{ task: "tempo" }] }]);
 });
+
+test("Codex P1: en ændring i én rutedel flytter aldrig ordrer i en anden (skift-punkter bevares)", () => {
+  // Angreb fra den ANDEN stigning (km 123) ligger inde i delen, der begynder ved den første (km 87).
+  const saved = [{ task: "stay_sheltered" as const }, { task: "attack" as const, from: { at: "kom" as const, kom_index: 1 } }];
+  const tasks = partTasks(saved, route, parts)!;
+  assert.deepEqual(tasks, ["stay_sheltered", "attack", "attack"]);
+  const next = setPartTask(tasks, 2, "ride_in");
+  const legs = legsFromParts(next, parts, "captain", route, null, saved);
+  assert.deepEqual(legs, [{ task: "stay_sheltered" }, { task: "attack", from: { at: "kom", kom_index: 1 } }, { task: "ride_in", from: { at: "final_km" } }]);
+  assert.equal(validateStagePlanLegs(legs, "captain", route), null);
+  // Uden ændring er kæden uændret.
+  assert.deepEqual(legsFromParts(tasks, parts, "captain", route, null, saved), saved);
+});

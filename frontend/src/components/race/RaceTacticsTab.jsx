@@ -1343,7 +1343,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         const tasks = partTasks(shown, planRoute, parts) ?? parts.map(() => "stay_sheltered");
         const editable = planEditable(rider);
         const writeTasks = (next) => {
-          const legsNext = legsFromParts(next, parts, role, planRoute, droppedLeg(legs ?? shown));
+          const legsNext = legsFromParts(next, parts, role, planRoute, droppedLeg(legs ?? shown), legs ?? shown);
           updateOrder((o) => setRiderPlan(o, id, legsNext));
         };
         const firstOff = (() => { const m = partTasks(medium, planRoute, parts)?.[0]; return m && m !== "breakaway" ? m : "stay_sheltered"; })();
@@ -1361,7 +1361,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
           level,
           levelEditable: editable,
           levelText: stageLocked ? (legs ? null : t("intention.roleDefault")) : null,
-          parts: tasks.map((task, index) => ({ task, options: editable ? partTaskOptions(tasks, index, parts, role, planRoute) : [task], editable })),
+          parts: tasks.map((task, index) => ({ task, options: editable ? partTaskOptions(tasks, index, parts, role, planRoute, legs ?? shown) : [task], editable })),
           dropped: droppedLeg(shown)?.task ?? null,
           noPlanNote: legs ? null : t("stagePlan.noPlan"),
           steps: null,

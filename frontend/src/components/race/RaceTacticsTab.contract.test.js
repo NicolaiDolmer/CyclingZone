@@ -308,7 +308,7 @@ test("#8297/#8298: panelet bruger samme gem, kopi, holdplaner og spærrede valg 
   has(panelV6c, "teamPlan={ready7864 && stagePlanOn ? {");
   // Etapeplanen skrives som serverens kæde (setRiderPlan), valideret af modellen.
   has(panelV6c, "updateOrder((o) => setRiderPlan(o, id, legsNext));");
-  has(panelV6c, "const legsNext = legsFromParts(next, parts, role, planRoute, droppedLeg(legs ?? shown));");
+  has(panelV6c, "const legsNext = legsFromParts(next, parts, role, planRoute, droppedLeg(legs ?? shown), legs ?? shown);");
   // Udgået rytter og låst etape: ingen vælgere, kun det der blev sendt.
   has(panelV6c, "if (rider.abandoned) {");
   has(panelV6c, "levelText: stageLocked ?");
