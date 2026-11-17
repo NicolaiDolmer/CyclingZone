@@ -914,6 +914,23 @@ test("curateMoments: en samlet split-linje har slutpunktets tid, og ingen linje 
   assert.deepEqual(times, [...times].sort((a, b) => a - b), "tiderne vokser med de viste km");
 });
 
+// #8377 (Codex): bogfoering efter maal-tiden filtreres foer klyngerne, saa en aegte hentning lige foer maal bliver.
+test("curateMoments: en hentning paa km 99 overlever bogfoering paa maal-km efter maal-tiden", () => {
+  const events = [
+    ev(0, "stage_start", { distance_km: 100, field_count: 20, exact_km: 0, exact_time: 0 }),
+    ev(10, "breakaway_formed", { group_id: "breakaway-0", rider_ids: ["b1", "b2"], exact_km: 10, exact_time: 900 }),
+    ev(20, "gap_update", { group_id: "peloton-0", gap_seconds: 60, exact_km: 20, exact_time: 1860 }),
+    ev(99, "breakaway_caught", { group_id: "breakaway-0", rider_ids: ["b1"], chase_group_id: "peloton-0", exact_km: 99, exact_time: 8910 }),
+    ev(100, "breakaway_caught", { group_id: "breakaway-0", rider_ids: ["b2"], chase_group_id: "peloton-0", exact_km: 100, exact_time: 9020 }),
+    ev(100, "finish", { exact_km: 100, exact_time: 9000 }),
+  ];
+  const lines = curateMoments(asStory(buildRaceStory({ events, timelineVersion: 2 })) as RaceStory, cast(), 99);
+  const caught = lines.filter((l) => l.kind === "caught");
+  assert.equal(caught.length, 1, "hentningen paa km 99 staar i referatet");
+  assert.equal(caught[0].km, 99);
+  assert.deepEqual(caught[0].riderIds, ["b1"], "bogfoeringen efter maal-tiden er udeladt");
+});
+
 // #8377 (Codex): afstands-linjen siger kun "udbruddet", naar fronten er udbruddet.
 test("curateMoments: afstands-linjens front er udbruddet kun naar udbruddet foerer", () => {
   const withBreak = curateMoments(story(hillyTimeline()), cast()).find((l) => l.kind === "gap");

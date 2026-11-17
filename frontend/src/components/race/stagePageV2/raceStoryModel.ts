@@ -520,23 +520,18 @@ export function curateMoments(story: RaceStory, cast: Cast, max = MAX_STORY_LINE
     }
   }
 
-  const all = [
-    ...single,
-    ...cluster(caught, "caught", 1),
-    ...cluster(splits, "split", 4),
-    ...cluster(dropped, "dropped", 5),
-    ...cluster(joins, "joined", 6),
-  ];
   // En gruppe der kommer i maal efter vinderen, er ikke "hentet": udelad gruppe-
   // bogfoering paa maal-km der ligger efter maal-tiden (eller uden tid at sammenligne).
-  const fin = all.find((l) => l.kind === "finish");
-  if (fin) {
-    const bookkeeping = new Set(["caught", "joined", "split", "dropped"]);
-    for (let i = all.length - 1; i >= 0; i--) {
-      const l = all[i];
-      if (bookkeeping.has(l.kind) && lineDisplayKm(l) >= fin.km - 1e-6 && (fin.time == null || l.time == null || l.time > fin.time)) all.splice(i, 1);
-    }
-  }
+  // Foer klyngerne samles, saa en aegte hentning lige foer maal ikke forsvinder med bogfoeringen.
+  const fin = single.find((l) => l.kind === "finish");
+  const afterFinish = (l: StoryLine) => Boolean(fin) && l.km >= (fin as StoryLine).km - 1e-6 && ((fin as StoryLine).time == null || l.time == null || l.time > (fin as StoryLine).time!);
+  const all = [
+    ...single,
+    ...cluster(caught.filter((l) => !afterFinish(l)), "caught", 1),
+    ...cluster(splits.filter((l) => !afterFinish(l)), "split", 4),
+    ...cluster(dropped.filter((l) => !afterFinish(l)), "dropped", 5),
+    ...cluster(joins.filter((l) => !afterFinish(l)), "joined", 6),
+  ];
   for (const line of all) if (line.mineIds.length && line.kind !== "finish") line.priority = Math.max(0, line.priority - 1);
   // Unikke id'er (samme slags paa samme km kan forekomme to gange).
   const seen = new Map<string, number>();
