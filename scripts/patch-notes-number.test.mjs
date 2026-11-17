@@ -33,6 +33,7 @@ const change = (over = {}) => ({
   audience: 'player',
   rollout: 'live',
   topic: 'Calendar',
+  area: 'races',
   en: { title: 'Each race once', body: 'The calendar shows each race once.' },
   da: { title: 'Hvert løb én gang', body: 'Kalenderen viser hvert løb én gang.' },
   refs: [5841],

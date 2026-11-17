@@ -76,7 +76,8 @@ En spiller skal kunne se, om en ændring gælder ham nu, kun beta-gruppen, eller
 ## 2b. Område, ugens nyhed og billede (ejer 12/11 + 16/11, [#8049](https://github.com/NicolaiDolmer/CyclingZone/issues/8049))
 
 Den nye patch notes-side (bag kontakten `patch_notes_v2_8049`, slukket = den gamle side) grupperer ugen efter
-område. Nye, valgfrie felter på en change i `patchNotes.js`:
+område. Nye felter på en change. De skrives i PR'ens fragment under `pending/` (§1) og følger med, når merge-toget
+nummererer noten ind i `patchNotes.js`; guarden kræver `area` på hvert ventende fragment med en spillervendt change:
 
 | Felt | Betyder | Regel |
 |---|---|---|
@@ -90,6 +91,14 @@ område. Nye, valgfrie felter på en change i `patchNotes.js`:
 - **Gamle noter røres ikke.** Deres område står i `frontend/src/lib/patchNotesAreaData.ts` (nøgle `version#index`)
   og i `TOPIC_AREA` i `frontend/src/lib/patchNotesArea.ts`; hvad der ikke kunne placeres sikkert, ligger i
   "Andet" og vises kun i arkivet. Klassificeringen og dens kilder: [`docs/design/reviews/2026-11-16-8049-klassificering.md`](design/reviews/2026-11-16-8049-klassificering.md).
+- **Hvem sætter området, og med hvilken model.** Forfatteren af noten sætter `area` i fragmentet; ingen model
+  klassificerer nye noter automatisk. Backfill af de gamle noter blev lavet én gang af Opus (tabellen ovenfor),
+  aldrig Haiku. Den eneste model, der gentagne gange skriver tekst til siden, er oversættelsen af sidens egne
+  strenge (`scripts/i18n-translate-delta.mjs`): `patchnotes`-namespacet kører på Opus (`NAMESPACE_MODELS`), resten
+  på `DEFAULT_MODEL`, og `--model` vinder altid. Haiku bruges ikke til spillertekst (`docs/AI_CHANNEL_ROUTING.md`).
+- Siden viser kun nummererede noter fra `patchNotes.js`. Et ventende fragment i `pending/` når aldrig spillerne
+  (låst af `frontend/vite-plugins/patch-notes-v2.test.ts`).
+- Den åbnede uge og arkivmånederne (variant B) har kolonneoverskrifter: "Område" og "Vigtigst" (ejer 16/11).
 - Filerne siden henter (`patch-notes-data/recent|index|<måned>.<sprog>.json`) genereres i build af
   `frontend/vite-plugins/patch-notes-v2.ts`; de committes aldrig. Åbning af siden henter kun `recent` (en test
   holder den under 40 KB pakket).

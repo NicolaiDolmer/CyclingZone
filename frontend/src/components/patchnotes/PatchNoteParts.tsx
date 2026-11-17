@@ -205,6 +205,16 @@ export function AreaRowsB({ items, t, liveFlags, marker, areaLabel, expanded, to
   items: PatchItem[]; prefix: string;
 }) {
   return (
+    <>
+      {/* Kolonneoverskrifter (ejer 16/11, #8049): samme to kolonner som rækkerne, tabelopskriftens
+          overskriftsceller (text-2xs, versaler, .06em, text-3). Kun synlig pyntning; rækkerne er knapper
+          i en liste og har selv deres navn. Skjult på mobil, hvor rækken stables. */}
+      <div aria-hidden="true" data-testid="patchnotes-b-head"
+        className="grid grid-cols-[150px_minmax(0,1fr)_16px] items-center gap-3 border-b border-cz-border pb-2 font-data text-2xs uppercase tracking-[.06em] text-cz-3 max-sm:hidden">
+        <span>{t("v2.area.label")}</span>
+        <span>{t("v2.mostImportant")}</span>
+        <span />
+      </div>
     <ul>
       {(groupByArea(items, liveFlags) as [string, PatchItem[]][]).map(([area, list]) => {
         const key = `${prefix}:b:${area}`;
@@ -248,5 +258,6 @@ export function AreaRowsB({ items, t, liveFlags, marker, areaLabel, expanded, to
         );
       })}
     </ul>
+    </>
   );
 }
