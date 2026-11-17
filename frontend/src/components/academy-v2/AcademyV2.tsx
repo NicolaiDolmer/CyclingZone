@@ -11,8 +11,9 @@
 //   A3 hjælpelinjer i --text-2.
 //   A4 ingen link-lignende farvet tekst; guld kun på sidens ene handling (hent ugens kandidater).
 //
-// Akademi-regnskabet er et separat stykke (placeringen er ikke valgt): AcademyPnl står uændret
-// under fanerne, og der er ingen regnskabsfane.
+// #8060 (ejervalg 16/11, godkendt 17/11): Akademi-regnskab er sin egen fane (AcademyLedgerTab, pr. saeson
+// med rigtige tal). Det gamle AcademyPnl under fanerne vises ikke i udgave A, fordi det taeller andre
+// ryttere og ville modsige fanen; den gamle side (kontakten slukket) er uaendret.
 import { useEffect, useRef, useState } from "react";
 import type { ComponentType, ReactNode } from "react";
 import { Link } from "react-router";
@@ -27,6 +28,7 @@ import { squadCapRows, type SquadCounts } from "../../lib/squadCaps.ts";
 import TalentTable, { type TalentRider } from "./TalentTable.tsx";
 import { useAcademyAgeFocus, type ProfileWithAgeFocus } from "./useAcademyAgeFocus.ts";
 import { useTalentOrigins } from "./useTalentOrigins.ts";
+import { AcademyLedgerTab } from "../academy-ledger/index.ts";
 import { ageFocusChoice, initialAcademyTab, ownAcademyTalents, AGE_FOCUS_MIXED, type AcademyV2Tab } from "./academyV2Model.ts";
 
 // Kit-primitiverne er utypede .jsx; kontrakten skrives ned her (samme greb som AcademyProfileCard.tsx).
@@ -144,6 +146,7 @@ export default function AcademyV2(props: AcademyV2Props) {
           <TabList label={t("academyV2:v2.tabsLabel")} className="mb-5">
             <Tab value="intake">{t("academyV2:v2.tabs.intake")}</Tab>
             <Tab value="talents">{t("academyV2:v2.tabs.talents")}</Tab>
+            <Tab value="ledger">{t("academyV2:v2.tabs.ledger")}</Tab>
             {showProfileTab ? <Tab value="profile">{t("academyV2:v2.tabs.profile")}</Tab> : null}
           </TabList>
 
@@ -194,6 +197,10 @@ export default function AcademyV2(props: AcademyV2Props) {
             ) : (
               <TalentTable roster={ownTalents} seasonYear={seasonYear} emptyAction={goToIntake} />
             )}
+          </TabPanel>
+
+          <TabPanel value="ledger">
+            <AcademyLedgerTab />
           </TabPanel>
 
           {showProfileTab ? (

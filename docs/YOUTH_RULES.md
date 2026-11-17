@@ -235,7 +235,17 @@ Indtil tier-modellen findes, må spillet vise strukturen, men aldrig lade som om
 | U23/U25-grænser | `backend/lib/riderSeasonAge.js` `isU23ForSeason` (< 23), `isU25ForSeason` (≤ 25, UCI-regel #4587, 2/9) | ét sted for alle kopier |
 | Årgangsmærke | `riders.generation_tag` ('s<sæson>') | sættes på alle ungdoms-genererede ryttere (#2493-fundament) |
 | Akademi-regnskab | `backend/lib/academyPnl.ts` (#2485) | P&L pr. akademi, kun realiseret værdi |
+| Akademi-regnskab pr. sæson (#8060, ejer 16/11) | `backend/lib/academyPnl.ts` (`buildAcademyRiderPool`, `buildLedgerSales`, `buildSeasonLedger`, `seasonForDate`) + `academyPnlLoad.ts`; feltet `ledger` på `GET /api/academy/pnl` | **Bag kontakten `academy_page_v2_8081`** (fail-closed: ikke seedet/fejl/off = slukket); slukket er svaret uændret og uden `ledger`. Se reglerne under tabellen |
 | AI-holdenes ungdomstrupper (A6, #5518) | `backend/scripts/generateYouthSquadsS4.js` | **Bygget, IKKE kørt.** Engangs-kuld ved S4-cutover, dry-run default, apply ejer-gated. Se afsnittet under tabellen for hvad kuldet rører |
+
+**Akademi-regnskabet pr. sæson (#8060, gælder `ledger`-feltet):**
+- **Rytterkredsen** er alle ryttere holdet har hentet fra et akademitilbud (`academy_intake` med status `signed`) ELLER vundet på ungdomsauktion (`auctions.is_youth = true`, `current_bidder_id` = holdet). Før talte udgiften begge kilder, mens salget kun kendte tilbuddene; derfor var netto for negativ.
+- **Udgift** deles efter kilde: "Hentet fra tilbud" (`finance_transactions` `academy_signing`/`academy_drift`) og "Købt på ungdomsauktion" (genkendt på metadata eller, for ældre posteringer, nøglen `youth_auction_winner:`).
+- **Salg** er senior-auktioner (`is_youth = false`, `seller_team_id` = holdet) og accepterede `transfer_offers` for rytterkredsen.
+- **Sæson:** en postering med `season_id` hører til den sæson. Ellers afgøres sæsonen af tidspunktet med SAMME regel som holdets handelshistorik (`buildSeasonResolver` i `teamTransferHistory.js`): slutdagen er inklusiv, en delt grænsedag hører til den gamle sæson (#984), handler i pausen før næste sæsons start hører til den KOMMENDE sæson (#7285), og en nul-bred sæson taber sin grænsedag (#1776). Ét salg står derfor i samme sæson i regnskabet og i historikken.
+- **Drift** vises kun, når der er bogført drift, og mærkes "tidligere sæsoner", når der ikke er bogført drift i denne sæson.
+- **Svaret** (`ledger`): rækker pr. sæson (nyeste øverst) med `offerSignings`, `youthAuctionBuys`, `drift`, `salesCount`, `salesProceeds`, `net` (= salg minus de tre udgifter), en total for alle sæsoner og listen over salg. Al historik hentes pagineret med stabil sortering.
+- **Fladen** er `frontend/src/components/academy-ledger/AcademyLedgerTab.tsx` (fanen "Akademi-regnskab" i udgave A, #8081), tekster i det route-gatede navnerum `academyLedger`.
 
 **Hvad A6-kuldet rører på AI-holdene (tjekket 23/9 mod prod-skema og kode, read-only):**
 
