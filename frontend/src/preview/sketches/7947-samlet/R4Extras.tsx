@@ -146,7 +146,7 @@ function ProgramCard({ name, mode, days, labels, riders, lockedSlot, note }: {
         <span className="ms-auto text-xs text-cz-2">Eget program · kan gemmes og gives til ryttere eller grupper</span>
       </header>
       <div className="overflow-x-auto px-4 py-3">
-        <table className="w-full min-w-[640px] table-fixed text-xs" data-sort-intent="none">
+        <table className="w-full min-w-[640px] table-fixed text-xs" data-sort-exempt="skitse uden data">
           <thead>
             <tr>
               <th className="w-[120px] pb-1 text-start font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3">{mode === "Rotation" ? "Dag i rotationen" : "Ugedag"}</th>

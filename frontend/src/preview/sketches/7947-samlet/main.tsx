@@ -1,5 +1,6 @@
 // Indgang for #7947 samlet design. Aabnes via vite dev paa
 //   /src/preview/sketches/7947-samlet/index.html?v=r1|r2|r3&pressed=1&open=r4:1&shot=1
+//   R5: ?v=r5&tab=program&mode=rotation&view=moment&frame=0.5&sessions=all&open=r5&menu=r4&filter=tired&date=2&theme=dark
 // Ingen app-router, ingen backend, intet login. Dansk, fordi billederne er til ejeren.
 
 import { createRoot } from "react-dom/client";
@@ -7,13 +8,14 @@ import "../../../index.css";
 import Sketch from "./Sketch.tsx";
 import Direction4 from "./R4.tsx";
 import { ProgramView, Questions } from "./R4Extras.tsx";
+import Direction5, { type R5Init } from "./R5.tsx";
 const view = new URLSearchParams(window.location.search).get("view");
 
-const IDS = ["r4", "r1", "r2", "r3"] as const;
+const IDS = ["r5", "r4", "r1", "r2", "r3"] as const;
 type Id = (typeof IDS)[number];
 const q = new URLSearchParams(window.location.search);
 const raw = q.get("v");
-const id: Id = (IDS as readonly string[]).includes(raw ?? "") ? (raw as Id) : "r4";
+const id: Id = (IDS as readonly string[]).includes(raw ?? "") ? (raw as Id) : "r5";
 document.documentElement.lang = "da";
 if (q.get("theme") === "dark") document.documentElement.setAttribute("data-theme", "dark");
 const shot = q.get("shot") === "1";
@@ -23,7 +25,7 @@ const openDay = openRaw && openRaw.includes(":")
   ? { id: openRaw.split(":")[0], day: Number(openRaw.split(":")[1]) || 0 }
   : null;
 
-const LABELS: Record<Id, string> = { r4: "Retning 4 · samlet (anbefalet)", r1: "Retning 1", r2: "Retning 2", r3: "Retning 3" };
+const LABELS: Record<Id, string> = { r5: "Retning 5 · ejerens beslutninger 17/11", r4: "Retning 4", r1: "Retning 1", r2: "Retning 2", r3: "Retning 3" };
 const dateParam = Number(q.get("date") ?? "1");
 const mobile = window.innerWidth < 640;
 
@@ -67,10 +69,28 @@ function Nav() {
   );
 }
 
+// Retning 5: alt styres af URL-parametre, saa hvert billede er en fast tilstand.
+const r5Init: R5Init = {
+  tab: q.get("tab") === "program" ? "program" : "day",
+  moment: q.get("view") === "moment",
+  frame: q.get("frame") === null ? null : Math.max(0, Math.min(1, Number(q.get("frame")))),
+  pressed,
+  date: Math.max(0, Math.min(7, Number(q.get("date") ?? "0") || 0)),
+  allSessions: q.get("sessions") === "all",
+  open: (q.get("open") ?? "").split(",").filter(Boolean),
+  menu: q.get("menu"),
+  filter: (["training", "racing", "tired", "noProgram"] as const).find((f) => f === q.get("filter")) ?? null,
+  mode: q.get("mode") === "rotation" ? "rotation" : "week",
+};
+
 createRoot(document.getElementById("root")!).render(
   <>
     {!shot && <Nav />}
-    {id === "r4" ? (
+    {id === "r5" ? (
+      <div className="min-h-screen bg-cz-body">
+        <Direction5 init={r5Init} mobile={mobile} />
+      </div>
+    ) : id === "r4" ? (
       <div className="min-h-screen bg-cz-body">
         <Banner4 />
         {view === "q" ? <Questions /> : view === "program" ? <ProgramView /> : (

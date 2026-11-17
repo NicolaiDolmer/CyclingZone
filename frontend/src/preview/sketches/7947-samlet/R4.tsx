@@ -435,7 +435,7 @@ export default function Direction4({ pressedAtStart, dateAtStart, mobile }: { pr
         </ul>
       ) : (
         <div className="overflow-hidden rounded-b-cz border border-cz-border bg-cz-card">
-          <table className="w-full table-fixed text-xs" data-sort-intent="none">
+          <table className="w-full table-fixed text-xs" data-sort-exempt="skitse uden data">
             <thead className="bg-cz-subtle">
               <tr>
                 <th className="w-[28px]" />
