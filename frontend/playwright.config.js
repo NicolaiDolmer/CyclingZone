@@ -31,12 +31,23 @@ process.env.AXE_RUN_ID ||= process.env.GITHUB_RUN_ID
 // mobil-Safari-dækning der findes, og uden CI kunne dens snapshots drive uset.
 // Det skete: planner-snapshottet drev 5/8 (#3378) og blev først opdaget 6/8 —
 // og rettet ved et tilfælde af en anden PR's snapshot-refresh. Se #3429.
+//
+// #8348: Playwrights headless Chromium paa Linux bruger fuld font-hinting som
+// standard, og saa rundes hvert tegns bredde op/ned til hele pixels. Paa
+// Windows, macOS, Android og i almindelig Chrome er bredderne broekdele. Maalt
+// i containeren: "Form og peak" i DM Sans 12px/500 blev 78 px mod 76,3 px paa
+// Windows, saa matrix-linsen paa 390 px broed over to linjer, og alle
+// baselines var tegnet med afrundede bredder. Uden hinting maaler containeren
+// det samme som Windows og rigtige telefoner (WebKit runder ikke). Flaget er
+// uden virkning paa Windows og macOS.
+export const CHROMIUM_LAUNCH_ARGS = ["--font-render-hinting=none"];
 const ALL_PROJECTS = [
   {
     name: "desktop-chromium",
     use: {
       ...devices["Desktop Chrome"],
       viewport: { width: 1280, height: 900 },
+      launchOptions: { args: CHROMIUM_LAUNCH_ARGS },
     },
   },
   {
@@ -44,6 +55,7 @@ const ALL_PROJECTS = [
     use: {
       ...devices["Pixel 5"],
       viewport: { width: 393, height: 852 },
+      launchOptions: { args: CHROMIUM_LAUNCH_ARGS },
     },
   },
   {

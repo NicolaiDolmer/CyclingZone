@@ -43,6 +43,21 @@ test("playwright.config.js definerer de tre projekter (#536)", () => {
   assert.deepEqual([...projectNames].sort(), ["desktop-chromium", "mobile-chromium", "mobile-webkit"]);
 });
 
+// Headless Chromium paa Linux runder tegnbredder til hele pixels med fuld
+// font-hinting; uden flaget broed en matrix-linse over to linjer kun i
+// containeren, og baselines blev tegnet med andre bredder end paa rigtige
+// enheder. Hvert chromium-projekt skal starte med hinting slaaet fra.
+test("chromium-projekterne starter uden font-hinting (Linux-bredder = rigtige enheder)", () => {
+  assert.match(config, /export const CHROMIUM_LAUNCH_ARGS = \[[^\]]*"--font-render-hinting=none"[^\]]*\];/);
+  const blocks = config.split(/^\s*name:\s*"/m).slice(1);
+  const chromiumBlocks = blocks.filter((block) => block.startsWith("desktop-chromium") || block.startsWith("mobile-chromium"));
+  assert.equal(chromiumBlocks.length, 2, "forventede to chromium-projekter");
+  for (const block of chromiumBlocks) {
+    const body = block.slice(0, block.indexOf("\n  },"));
+    assert.match(body, /launchOptions:\s*\{\s*args:\s*CHROMIUM_LAUNCH_ARGS\s*\}/, `${body.split('"')[0]} mangler launchOptions.args = CHROMIUM_LAUNCH_ARGS`);
+  }
+});
+
 test("begge workflows bruger eet og samme Playwright-image, pinnet paa digest", () => {
   const smokeImages = imagesIn(smoke);
   const updateImages = imagesIn(update);
