@@ -285,6 +285,8 @@ export function applyDailyTick({
   trainNowBonus = false,
   // #6110 R15b: { profileType, catalogV3 } fra withRaceDayRoleYieldXp, kun under XP. Laeses kun i XP-grenen.
   xpRaceDayFit = null,
+  // #6110 R16 (ejervalg 16/11): evnens point tidligere paa datoen og taendingsnattens undtagelse. Kun XP.
+  xpDateUsedGains = null, xpStoredBarPayout = false,
 }) {
   const cfg = DAILY_TRAINING_CONFIG;
   const trainNowBonusFactor = trainNowBonus === true && program?.intensity !== 'rest'
@@ -332,8 +334,8 @@ export function applyDailyTick({
   // ticks paa en dato deler den, ogsaa paa loebsdags-aksen. Uden variationsfelter er den 1.
   if (developmentXp) {
     const xpVariation = developmentXpDayVariation({ riderId, dateStr }, developmentXp.variation);
-    // #6110 R9 (ejer 7/11 + 12/11): under XP bremser kun prisen. Den gamle regel om
-    // +1 pr. loebsdag (hardDailyCap) gaelder kun dagens model og klipper ikke XP-koebet.
+    // #6110: den gamle regel om +1 pr. loebsdag (hardDailyCap) gaelder kun dagens model.
+    // Under XP gaelder datoreglen (R16, ejervalg A 16/11: +2 kun ungt toptalent paa meget lav evne) i developmentXpTick.
     const dayXpFor = (ability) => dailyAbilityDelta({ ability, age, program, potentiale, staff, facilityTier, riderLevel, academyRateMult, primaryType, secondaryType, trainingCfg, budgetDivisor, developmentXp,
       xpYieldMult: abilityYieldMult?.[ability] > 0 ? abilityYieldMult[ability] : 1 });
     // #6110 R15b (ejer 13/11): paa en etape, der passer rytterens primaere type, loeftes
@@ -343,8 +345,8 @@ export function applyDailyTick({
       program, fit: xpRaceDayFit, academyRateMult,
       rider: { age, potentiale, primaryType, secondaryType, staff, facilityTier, riderLevel, trainingCfg, budgetDivisor },
     }, developmentXp) : null;
-    return { ...developmentXpTick({ abilities, progress,
-      xpFor: (ability) => (raceFitDay ? raceFitDay[ability] ?? 0 : dayXpFor(ability))
+    return { ...developmentXpTick({ abilities, progress, dateUsedGains: xpDateUsedGains, storedBarPayout: xpStoredBarPayout === true,
+      rider: { age, potentiale }, xpFor: (ability) => (raceFitDay ? raceFitDay[ability] ?? 0 : dayXpFor(ability))
         * trainNowBonusFactor * xpVariation }, developmentXp),
     trainingScore, noise, status: noise > 1.05 ? "over" : noise < 0.95 ? "under" : "normal" };
   }

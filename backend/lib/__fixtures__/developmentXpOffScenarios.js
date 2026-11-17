@@ -50,6 +50,9 @@ export const XP_TEST_PARAMS = Object.freeze({
   offFocusShare: 0.1,
   raceOffFocusShare: 0.2,
   typeShare: { signatur: 1, sekundaer: 0.8, haandvaerk: 0.5, andenRolle: 0.3, svaghed: 0.1 },
+  // Datoreglens grænser (ejervalg A 16/11), opdigtede: r1 (23 år, potentiale 4, evner fra 40)
+  // er et ungt toptalent på en meget lav evne og må få +2; r2 er det ikke.
+  datePlus2: { maxAge: 23, minPotential: 4, belowLevel: 45 },
 });
 
 // Syntetiske kurve B-params (samme som developmentCurveB.test.ts).
