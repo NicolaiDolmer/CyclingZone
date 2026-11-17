@@ -526,6 +526,8 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     verified: 2026-11-17
     note: "#7859: beta 17/11 efter ejer-go; løbssiden skjuler først med race_page_v6."
+    roadmap_en: "Spoiler shield: watch the race before you see who won"
+    roadmap_da: "Spoiler-skjold: se løbet, før du ser, hvem der vandt"
 
   - id: rider-hover-card
     area: squad
