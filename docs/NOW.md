@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11 · slet `backup_5902_20261112_*` ~26/11 · slet `backup_8078/8080/8099_20261113_*` ~27/11.
 >
-> **🎯 Next action (17/11 aften):** PC1-dirigenten kører fra **overdragelsen #8344**; 20 PR'er merget 17/11 (bl.a. CI-trin 1 #8330, patch notes-fragmenter #8353, spoiler-skjold #8302, akademi-regnskab #8288 + #8362). Tændt 17/11: `config_cache_8143`, `training_train_now_bonus` (alle) og `training_sweep_memory_6490` (kl. 15:52, #6490; mål kørslen kl. 20). I gang: XP-gaten #8276 og Linux-billeder #8352 (bølge), taktik #8298 bygges om efter wireframe v6c (ejer afviste 1. udgave), udgave-skift #8303. Træningssiden rettes til med ejeren (#7947), programmer #7456 højt prioriteret. Uge 48: plan #8358, sæson-dokumentar #8361, oprydning #8359.
+> **🎯 Next action (17/11 aften):** Primær session er nu **Opus på Dolmer PC**, og den kører fra **overdragelsen #8374**. 27 PR'er merget 17/11 (patch notes til 7.459). Tændt 17/11: `config_cache_8143`, `training_train_now_bonus` (alle), `training_sweep_memory_6490` og `spoiler_shield_7859` (beta). **Første tog:** #8303, #8368, #8321, #8210 (grønne, mærker sat). Taktik #8298: tre åbne Codex-fund, og dens patch note skal ud før merge (kontakten er slukket). Mål aftentræningen kl. 20 i tre aftener (#6490). XP-målingen er færdig; ejeren skal vælge, hvordan der tændes (privat). Derefter: resten af #8374.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** PC1-dirigent 17/11 (Fable) aktiv; Dolmer PC-dagsession bygger (#8302 #8303 #8298); bølge for #8346 + #8348.
+> **🤖 Working agent:** Primær session: Opus på Dolmer PC (fra 17/11 aften, #8374). PC1-dirigenten (Fable) har afleveret og kører ingen kø.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
