@@ -4,8 +4,11 @@
 // HVAD DEN GOER. Naar stage-scheduleren har afgjort etaper, koerer motoren KUN den session
 // (loebsdag), loebet ligger i, for loebets ryttere. To etaper samme dato: efter hver etape.
 // Sessionerne foer og efter loebet roeres ikke; de koeres kl. 20 eller ved Traen nu som i dag.
-// Loebets form og traethed skrives som foreloebige tal straks (samme mekanisme som Traen nu's
-// foreloebige kondition); datoen lukkes stadig paa rytterens sidste manglende session.
+// Loebssessionen skriver INGEN kondition (Fable-dom 15/11): rider_condition staar paa datoens
+// aabning, og alle laesere laegger datoens uforbrugte etapebelastninger ovenpaa, saa etapen
+// taeller praecis een gang. Databasen afviser foreloebig kondition for en loebssession og beholder
+// aabningstjekket for den. Form og traethed afregnes foerst, naar datoen lukkes paa rytterens
+// sidste manglende session.
 //
 // HVOR. Kaldes fra startTrainingDayCloseAfterStages (trainingDayCloseTrigger.js), aldrig fra
 // etapens egen afslutning (raceRunner.js): en fejl her maa aldrig kunne vaelte en etape. Alt er
