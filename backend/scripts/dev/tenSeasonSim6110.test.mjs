@@ -707,7 +707,7 @@ test("R16 i kørslen: løbsdatoer og enkeltstarter tælles for sig, og dommen er
   const c = r16Check(h);
   assert.equal(c.all, h.all["3+"] ?? 0);
   assert.equal(c.verdict, c.all === 0);
-  assert.deepEqual(r16Check({ all: { 1: 4 }, raceDate: {}, trainingDate: {} }), { all: 0, raceDate: 0, timeTrialDate: 0, verdict: true }, "gamle kørsler uden enkeltstart");
+  assert.deepEqual(r16Check({ all: { 1: 4 }, raceDate: {}, trainingDate: {} }), { all: 0, raceDate: 0, timeTrialDate: 0, payout: 0, verdict: true }, "gamle kørsler uden enkeltstart");
   assert.equal(r16Check({ all: { "3+": 1 }, raceDate: { "3+": 1 }, timeTrialDate: { "3+": 1 } }).verdict, false);
   assert.equal(r16Check(null).verdict, null);
 });
@@ -755,6 +755,29 @@ test("R16-dommen (Fable-dom 15/11, fund 3): brud dømmes 'holder IKKE', dagsloft
   assert.equal(resultCapPerDate(oldFree), false);
   assert.equal(resultCapPerDate({ variant: "nu" }), false);
   assert.equal(resultCapPerDate({ variant: "kurveB" }), true);
+});
+
+test("R16 grænse 2 (ejervalg 16/11): leddet _cap2 er motorens regel, dømmes, og tændingsnattens udbetaling står for sig", () => {
+  const opts = { ...XP_OPTS, seasons: 1, raceShareByAge: [{ maxAge: 99, share: 0.5 }], xpVariants: XP_BIG };
+  const v = xpVariant("xp_stor_cap2", opts);
+  assert.deepEqual([v.capPerDate, v.dateCap], [true, 2]);
+  assert.equal(xpRunInputs(v, opts).dateCap, 2, "grænse 2 er en anden kørsel");
+  assert.equal("dateCap" in xpRunInputs(xpVariant("xp_stor", opts), opts), false, "kørsler uden _cap2 har samme identitet som før");
+  // En verden med gemt fremgang fra dagens model: tændingsnatten udbetaler den helt.
+  const snap = syntheticSnapshot();
+  for (const row of snap.abilities) row.ability_progress = { climbing: 4.5, sprint: 4.5 };
+  const res = runVariant(snap, v, opts);
+  assert.ok(res.dateGains.max <= 2, "det optjente stiger aldrig mere end 2 på en dato");
+  const udbetalt = Object.values(res.dateGains.payout ?? {}).reduce((sum, n) => sum + n, 0);
+  assert.ok(udbetalt > 0 && (res.dateGains.payout["3+"] ?? 0) > 0, "tændingsnatten udbetaler mere end +2, og det tælles for sig");
+  assert.equal(res.dateLimit, 2);
+  const c = r16Check(res.dateGains, { capPerDate: res.capPerDate, dateLimit: res.dateLimit });
+  assert.deepEqual([c.all, c.verdict], [0, true], "grænse 2 dømmes, og dommen holder");
+  // Udbetaling og optjent skelnes: en udbetaling på +3 er undtaget, et optjent +3 er et brud.
+  assert.deepEqual(r16Check({ all: { 2: 5 }, raceDate: {}, payout: { "3+": 4 } }, { capPerDate: true, dateLimit: 2 }),
+    { all: 0, raceDate: 0, timeTrialDate: 0, payout: 4, verdict: true });
+  assert.equal(r16Check({ all: { "3+": 1 }, payout: {} }, { capPerDate: false }).verdict, false);
+  assert.equal(r16Check({ all: {} }, { capPerDate: true, dateLimit: 1 }).reason, "ikke målt (dagsloft)", "et +1-loft måler stadig intet");
 });
 
 test("motorens hook: kørslen bruger de injicerede funktioner, og kilden står i kørslens identitet", () => {

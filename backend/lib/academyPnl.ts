@@ -301,11 +301,27 @@ function toTime(iso: unknown): number | null {
  * - en nul-bred sæson (start = slut) taber sin grænsedag til en senere sæson (#1776).
  */
 const resolverCache = new WeakMap<readonly SeasonInput[], (iso: string) => number | null>();
+
+/**
+ * #8060 review 5: en AELDRE saeson uden slutdato ville fange alle senere datoer (resolveren ser
+ * den som aaben). Her lukkes den dagen foer naeste saeson starter. Kun den seneste saeson maa
+ * vaere aaben. Handelshistorikkens resolver (teamTransferHistory.js) er uaendret.
+ */
+export function closeOpenSeasons(seasons: readonly SeasonInput[]): SeasonInput[] {
+  const sorted = [...seasons].filter((s) => s?.start_date).sort((a, b) => (toTime(a.start_date) ?? 0) - (toTime(b.start_date) ?? 0));
+  return seasons.map((s) => {
+    if (s?.end_date || !s?.start_date) return s;
+    const next = sorted.find((o) => (toTime(o.start_date) ?? 0) > (toTime(s.start_date) ?? 0));
+    if (!next) return s;
+    const end = new Date((toTime(next.start_date) as number) - 86_400_000).toISOString().slice(0, 10);
+    return { ...s, end_date: end };
+  });
+}
 export function seasonForDate(seasons: readonly SeasonInput[] | null | undefined, iso: unknown): SeasonInput | null {
   if (toTime(iso) == null || !Array.isArray(seasons) || seasons.length === 0) return null;
   let resolve = resolverCache.get(seasons);
   if (!resolve) {
-    resolve = buildSeasonResolver(seasons as SeasonInput[]) as (iso: string) => number | null;
+    resolve = buildSeasonResolver(closeOpenSeasons(seasons)) as (iso: string) => number | null;
     resolverCache.set(seasons, resolve);
   }
   const number = resolve(String(iso));
@@ -358,7 +374,16 @@ export function buildLedgerSales({
     if (price <= 0) continue;
     raw.push({ riderId: o.rider_id, soldAt: o.updated_at || null, price, via: "transfer" });
   }
-  return raw
+  // #8060 review 1: en rytter der saelges, koebes tilbage og saelges igen, er kun akademisalg
+  // FOERSTE gang (dér forlod han akademiet). Senere salg er holdets almindelige handel.
+  const firstByRider = new Map<string, (typeof raw)[number]>();
+  for (const s of raw) {
+    const prev = firstByRider.get(s.riderId);
+    const t = toTime(s.soldAt) ?? Number.POSITIVE_INFINITY;
+    const pt = prev ? (toTime(prev.soldAt) ?? Number.POSITIVE_INFINITY) : Number.POSITIVE_INFINITY;
+    if (!prev || t < pt) firstByRider.set(s.riderId, s);
+  }
+  return [...firstByRider.values()]
     .map((s) => {
       const member = pool.get(s.riderId);
       const season = seasonForDate(seasons, s.soldAt);

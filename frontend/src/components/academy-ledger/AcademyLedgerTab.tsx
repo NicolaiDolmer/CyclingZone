@@ -15,11 +15,14 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import type { TFunction } from "i18next";
 import RiderLink from "../RiderLink.jsx";
-import { Button, EmptyState, ErrorState as ErrorStateJs, SkeletonLines } from "../ui/index.js";
+import { Button, EmptyState, ErrorState as ErrorStateJs, SectionHeader as SectionHeaderJs, SkeletonLines } from "../ui/index.js";
 import { buttonClass } from "../ui/buttonStyles.js";
 import { formatCz } from "../../lib/marketValues.js";
 import { formatDate } from "../../lib/intl.js";
 import { useAcademyLedger } from "./useAcademyLedger.ts";
+
+// #8060 review 4: titler fra det faelles SectionHeader (skabelonens 15px/600), ingen egne maal.
+const SectionHeader = SectionHeaderJs as unknown as (props: { title: ReactNode; as?: string; className?: string }) => ReactNode;
 import { SALES_PREVIEW, ledgerLines, netTone, signedAmount } from "./academyLedgerModel.ts";
 import type { AcademyLedger, LedgerSale, LedgerSeasonRow, LedgerTotals, LineDef } from "./academyLedgerModel.ts";
 
@@ -28,7 +31,7 @@ const ErrorState = ErrorStateJs as unknown as ComponentType<{ title: ReactNode; 
 
 const TH = "px-3 py-2 font-data text-2xs font-semibold uppercase tracking-wide text-cz-3";
 // whitespace-nowrap: et beløb må aldrig knække over to linjer (390 px, 17/11).
-const TDN = "px-3 py-[9px] text-right font-data tabular-nums whitespace-nowrap";
+const TDN = "px-3 py-[7px] text-right font-data tabular-nums whitespace-nowrap";
 
 const TONE = { positive: "text-cz-success", negative: "text-cz-danger", neutral: "text-cz-2" } as const;
 
@@ -88,7 +91,7 @@ function SeasonTable({ t, ledger, lines }: { t: TFunction; ledger: AcademyLedger
         <tbody>
           {ledger.seasons.map((row) => (
             <tr key={row.seasonId ?? "none"} className="border-b border-cz-border hover:bg-cz-subtle">
-              <th scope="row" className={`px-3 py-[9px] text-left font-normal ${row.isCurrent ? "font-semibold text-cz-1" : "text-cz-2"}`}>
+              <th scope="row" className={`px-3 py-[7px] text-left font-normal ${row.isCurrent ? "font-semibold text-cz-1" : "text-cz-2"}`}>
                 {seasonLabel(t, row)}
               </th>
               {lines.map((l) => (
@@ -103,7 +106,7 @@ function SeasonTable({ t, ledger, lines }: { t: TFunction; ledger: AcademyLedger
             </tr>
           ))}
           <tr className="bg-cz-subtle">
-            <th scope="row" className="px-3 py-[9px] text-left font-semibold text-cz-1">{t("total")}</th>
+            <th scope="row" className="px-3 py-[7px] text-left font-semibold text-cz-1">{t("total")}</th>
             {lines.map((l) => (
               <td key={l.key} className={TDN}>
                 <Money value={signedAmount(ledger.total[l.key], l.sign)} />
@@ -147,17 +150,17 @@ function SalesTable({ t, sales }: { t: TFunction; sales: LedgerSale[] }) {
         <tbody>
           {shown.map((s, i) => (
             <tr key={`${s.riderId}-${s.soldAt ?? i}`} className="border-b border-cz-border last:border-0 hover:bg-cz-subtle">
-              <td className="px-3 py-[9px]">
-                <RiderLink id={s.riderId} className="text-[13.5px] font-medium text-cz-1 hover:text-cz-accent-t">
+              <td className="px-3 py-[7px]">
+                <RiderLink id={s.riderId} className="text-sm font-medium text-cz-1 hover:text-cz-accent-t">
                   {s.riderName ?? t("unknownRider")}
                 </RiderLink>
               </td>
-              <td className="px-3 py-[9px] text-cz-2">
+              <td className="px-3 py-[7px] text-cz-2">
                 <span className="font-data tabular-nums">{s.soldAt ? formatDate(s.soldAt) : "–"}</span>
                 {s.seasonNumber != null && <span className="block text-3xs text-cz-3">{t("season", { n: s.seasonNumber })}</span>}
               </td>
-              <td className="hidden px-3 py-[9px] text-xs text-cz-2 sm:table-cell">{t(`origin.${s.origin}`)}</td>
-              <td className="hidden px-3 py-[9px] text-xs text-cz-2 sm:table-cell">{t(`via.${s.via}`)}</td>
+              <td className="hidden px-3 py-[7px] text-xs text-cz-2 sm:table-cell">{t(`origin.${s.origin}`)}</td>
+              <td className="hidden px-3 py-[7px] text-xs text-cz-2 sm:table-cell">{t(`via.${s.via}`)}</td>
               <td className={TDN}><Money value={s.price} /></td>
             </tr>
           ))}
@@ -190,14 +193,23 @@ export default function AcademyLedgerTab() {
       />
     );
   }
-  if (!ledger) return null;
+  // #8060 review 3: intet regnskab (akademiet er lukket for holdet) = et forklarende felt, aldrig tomt.
+  if (!ledger) {
+    return (
+      <EmptyState
+        title={t("noLedgerTitle")}
+        description={t("noLedgerBody")}
+        action={<Link to="/team" className={buttonClass({ variant: "secondary", size: "sm" })}>{t("noLedgerAction")}</Link>}
+      />
+    );
+  }
 
   const lines = ledgerLines(ledger);
   return (
     <section className="flex flex-col gap-4" data-testid="academy-ledger-tab" aria-labelledby="academy-ledger-title">
-      <div>
-        <h2 id="academy-ledger-title" className="text-[15px] font-semibold text-cz-1">{t("title")}</h2>
-        <p className="mt-1 text-xs text-cz-2">{t("caption")}</p>
+      <div id="academy-ledger-title">
+        <SectionHeader title={t("title")} className="!mb-1" />
+        <p className="text-xs text-cz-2">{t("caption")}</p>
       </div>
       <SeasonTable t={t} ledger={ledger} lines={lines} />
       <div className="flex flex-col gap-3 sm:hidden">
@@ -206,7 +218,7 @@ export default function AcademyLedgerTab() {
         ))}
         <SeasonCard t={t} lines={lines} row={ledger.total} title={t("total")} muted />
       </div>
-      <h3 className="pt-2 text-[15px] font-semibold text-cz-1">{t("salesTitle")}</h3>
+      <SectionHeader title={t("salesTitle")} as="h3" className="!mb-0 pt-2" />
       <SalesTable t={t} sales={ledger.sales} />
     </section>
   );

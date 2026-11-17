@@ -34,5 +34,8 @@
   "emptySalesAction": "Bekijk je team",
   "errorTitle": "De academiefinanciën konden niet worden geladen",
   "errorBody": "Probeer het zo meteen opnieuw.",
-  "retry": "Opnieuw proberen"
+  "retry": "Opnieuw proberen",
+  "noLedgerTitle": "Nog geen academieboekhouding",
+  "noLedgerBody": "De boekhouding verschijnt zodra je academie open is.",
+  "noLedgerAction": "Bekijk je ploeg"
 }

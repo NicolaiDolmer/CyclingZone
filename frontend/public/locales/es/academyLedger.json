@@ -34,5 +34,8 @@
   "emptySalesAction": "Ver tu equipo",
   "errorTitle": "No se pudieron cargar las cuentas de la academia",
   "errorBody": "Inténtalo de nuevo en un momento.",
-  "retry": "Reintentar"
+  "retry": "Reintentar",
+  "noLedgerTitle": "Aún no hay contabilidad de la academia",
+  "noLedgerBody": "La contabilidad aparece cuando tu academia está abierta.",
+  "noLedgerAction": "Ver tu equipo"
 }
