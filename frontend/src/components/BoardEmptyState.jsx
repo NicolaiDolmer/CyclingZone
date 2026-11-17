@@ -9,6 +9,7 @@
 
 import { useTranslation } from "react-i18next";
 import { ClipboardIcon, ChevronRightIcon } from "./ui/icons";
+import { buttonClass } from "./ui/buttonStyles.js";
 
 const EMPTY_STATE_PLANS = [
   { id: "oneYear",   badge: "1" },
@@ -65,7 +66,7 @@ export default function BoardEmptyState({ onOpenWizard, onStartTour }) {
       <div className="flex flex-wrap items-center gap-2">
         <button
           onClick={onOpenWizard}
-          className="w-full sm:w-auto inline-flex items-center justify-center gap-1 bg-cz-accent text-cz-on-accent px-4 py-2.5 rounded-cz text-sm font-bold hover:brightness-110 transition-all"
+          className={`${buttonClass({ variant: "primary" })} w-full sm:w-auto gap-1`}
         >
           {t("emptyState.ctaNegotiate")}
           <ChevronRightIcon size={14} aria-hidden="true" />

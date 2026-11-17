@@ -171,7 +171,7 @@ test.describe("U23 team og Junior team på niveau med My Team (#5631)", () => {
       return json(route, { seasonNumber: 1, squads: { u23: { riderIds: [] }, junior: { riderIds: [] } }, caps: { u23: 12, junior: 10 } });
     });
     await page.reload();
-    await expect(page.getByText(/^0\/12 riders in the squad$|^0\/12 ryttere i truppen$/)).toBeVisible();
+    await expect(page.getByText(/^0\/12$/) /* #8278: HeroStats viser loftet som tallet n/loft */).toBeVisible();
     if (takeShots) await shots(page, "cap-u23-empty");
   });
 

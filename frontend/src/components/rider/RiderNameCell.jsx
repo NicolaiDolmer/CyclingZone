@@ -30,7 +30,12 @@ export default function RiderNameCell({
   const fullName = `${firstname ?? ""} ${lastname ?? ""}`.trim();
   const shown = name ?? fullName;
   return (
-    <span className={`inline-flex items-center gap-1.5 flex-wrap max-w-full ${wrap ? "min-w-0" : ""}`}>
+    // #8278 (rettelse 1): `in-data-[name-stack]:*` gælder kun inde i DataTables
+    // mobil-navnecelle (D-047). Dér bliver cellen en fuld-bredde flex-linje,
+    // inderste gruppe opløses (`contents`), og linket tager hele første linje
+    // (`basis-full`), så navnet kun knækker mellem ord, og mærkerne står samlet
+    // på linjen under. Alle andre steder er cellen uændret.
+    <span className={`inline-flex items-center gap-1.5 flex-wrap max-w-full ${wrap ? "min-w-0" : ""} in-data-[name-stack]:flex in-data-[name-stack]:w-full in-data-[name-stack]:gap-y-1`}>
       {/* #5124: KUN `min-w-0` (bryd ved ordgrænser), ikke `wrap-break-word` — sidstnævnte
           tillader browseren at bryde MIDT i et ord, hvilket i en tabel med
           table-layout:auto (og en `max-w-0`-kolonnehint, se TransfersPage.jsx's
@@ -43,11 +48,11 @@ export default function RiderNameCell({
       {/* #7879: hover-ikonet står til venstre for navnet (RiderLink), mærker og trøje lige til
           højre på samme linje. Et langt navn forkortes med ellipsis (kun når kolonnen er
           begrænset) i stedet for at skubbe mærkerne ned; mærkerne krymper aldrig. */}
-      <span className={`inline-flex items-center gap-1.5 min-w-0 max-w-full`}>
+      <span className={`inline-flex items-center gap-1.5 min-w-0 max-w-full in-data-[name-stack]:contents`}>
         <RiderLink
           id={id}
           stopPropagation={stopPropagation}
-          className={`${className} inline-flex items-center min-w-0 ${wrap ? "" : "whitespace-nowrap"}`}
+          className={`${className} inline-flex items-center min-w-0 ${wrap ? "" : "whitespace-nowrap"} in-data-[name-stack]:basis-full`}
           aria-label={fullName && shown !== fullName ? fullName : undefined}
           title={fullName && shown !== fullName ? fullName : undefined}
         >
