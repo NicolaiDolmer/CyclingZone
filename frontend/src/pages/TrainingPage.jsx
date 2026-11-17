@@ -1854,7 +1854,7 @@ export default function TrainingPage() {
           type="button"
           onClick={startMobilePick}
           data-testid="training-mobile-select-riders"
-          className={`flex min-h-11 flex-none items-center px-4 font-medium text-cz-accent-t hover:underline ${showPhoneAssistant ? "border-s border-cz-border" : "ms-auto"}`}
+          className={`flex min-h-11 flex-none items-center px-4 font-medium text-cz-1 hover:underline ${showPhoneAssistant ? "border-s border-cz-border" : "ms-auto"}`}
         >
           {t("mobile.selectRiders")}
         </button>
