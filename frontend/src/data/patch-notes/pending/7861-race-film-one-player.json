@@ -1,0 +1,20 @@
+{
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "beta",
+      "topic": "Races",
+      "flag": "race_page_v6",
+      "en": {
+        "title": "The race film is one player",
+        "body": "On the new race page a ridden stage has Story and Results under the Stage tab. Story is one race film on the stage's coloured route, with chapters (start, the break, climbs, sprints, the chase, the finale) and one report next to it. Click a line in the report and the film jumps there. The report only shows what has happened up to where you are in the film, so the winner is not given away before the finish."
+      },
+      "da": {
+        "title": "Løbsfilmen er én afspiller",
+        "body": "På den nye løbsside har en kørt etape Historie og Resultater under Etape-fanen. Historie er én løbsfilm på etapens farvede rute med kapitler (start, udbruddet, stigningerne, spurterne, jagten, finalen) og ét referat ved siden af. Klik på en linje i referatet, og filmen hopper dertil. Referatet viser kun det, der er sket, op til hvor du er i filmen, så vinderen ikke afsløres før mål."
+      },
+      "refs": [7861]
+    }
+  ]
+}
