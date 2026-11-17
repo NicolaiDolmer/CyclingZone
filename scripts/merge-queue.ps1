@@ -690,8 +690,9 @@ function Invoke-TrainCloseOut {
 function Confirm-PatchNotesCommit([string]$Sha) {
   $short = $Sha.Substring(0, [Math]::Min(8, $Sha.Length))
   Write-Host "  Patch notes-commit ${short}: verificerer main-CI + deploy for det nye main-commit, foer close-out er faerdig." -ForegroundColor Cyan
-  $ciOk = Wait-ForWorkflowRun -WorkflowFile 'ci.yml' -Sha $Sha -TimeoutMinutes $CiTimeoutMinutes -Label "CI (main) patch notes $short" -StallMinutes $StallMinutes
-  if (-not $ciOk) {
+  # Egne variabelnavne: merge-queue-train.test.mjs laeser togets foerste `$ciOk`/`$gate`-blok som tekst.
+  $patchCiOk = Wait-ForWorkflowRun -WorkflowFile 'ci.yml' -Sha $Sha -TimeoutMinutes $CiTimeoutMinutes -Label "CI (main) patch notes $short" -StallMinutes $StallMinutes
+  if (-not $patchCiOk) {
     if ($script:queueStall) { Stop-QueueStall }
     if ($script:workflowRunState -eq 'failure') {
       Write-Host "STOP: main-CI er ROED for patch notes-commit $short. Fix main FOER naeste merge i koeen." -ForegroundColor Red
@@ -700,15 +701,15 @@ function Confirm-PatchNotesCommit([string]$Sha) {
     }
     exit 1
   }
-  $deployState = Wait-ForDeployVerification -Sha $Sha -TimeoutMinutes $DeployVerifyTimeoutMinutes -StallMinutes $StallMinutes
-  if ($deployState -eq 'stalled') { Stop-QueueStall }
-  $gate = Get-DeployGateAction $deployState
-  if ($gate -eq 'pending') {
+  $patchDeployState = Wait-ForDeployVerification -Sha $Sha -TimeoutMinutes $DeployVerifyTimeoutMinutes -StallMinutes $StallMinutes
+  if ($patchDeployState -eq 'stalled') { Stop-QueueStall }
+  $patchGate = Get-DeployGateAction $patchDeployState
+  if ($patchGate -eq 'pending') {
     Write-Host "AFVENTER: deploy-verifikation for patch notes-commit $short er ikke faerdig. Ingen naeste merge." -ForegroundColor Yellow
     exit 75
   }
-  if ($gate -ne 'continue') {
-    Write-Host "STOP: deploy-verifikation for patch notes-commit $short er $deployState. Ingen naeste merge uden positivt bevis." -ForegroundColor Red
+  if ($patchGate -ne 'continue') {
+    Write-Host "STOP: deploy-verifikation for patch notes-commit $short er $patchDeployState. Ingen naeste merge uden positivt bevis." -ForegroundColor Red
     exit 1
   }
   Write-Host "  [ok] patch notes-commit ${short}: main-CI + deploy-verifikation groenne." -ForegroundColor Green
