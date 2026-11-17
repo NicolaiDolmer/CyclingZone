@@ -35,7 +35,8 @@
       "title": "Show the whole season",
       "description": "There are no upcoming races in this view. The whole season lets you plan ahead.",
       "action": "Show whole season"
-    }
+    },
+    "peaks": "{count, plural, one {Peak form · # rider} other {Peak form · # riders}}"
   },
   "status": {
     "ready": "Ready",
@@ -61,7 +62,10 @@
     "copiedAll": "Copied from {name}. Review it and save.",
     "locked": "This race has started, so the squad is locked.",
     "withdrawn": "Your team has withdrawn from this race. Saving a squad enters it again.",
-    "restored": "Restored your unsaved changes."
+    "restored": "Restored your unsaved changes.",
+    "saveTactics": "Save tactics",
+    "savePeaks": "{count, plural, =0 {Apply to selected} other {Apply to selected (#)}}",
+    "saveSquadAndTactics": "Save squad and set tactics"
   },
   "copy": {
     "title": "Copy squad from",
@@ -83,6 +87,25 @@
     "empty": {
       "title": "Reload the riders",
       "description": "No riders are available to your team for this race right now."
+    },
+    "type": "Type",
+    "load": "Load",
+    "loadTitle": "Expected load of the race at normal effort",
+    "loadNote": "Load: how hard the race is expected to be at normal effort (light, medium, hard).",
+    "loadWord": {
+      "light": "Light",
+      "medium": "Medium",
+      "hard": "Hard"
+    },
+    "peakShort": "Peak {date}",
+    "peakTitle": "Peak form: {race}, {date} ({count, plural, =0 {today} one {in # day} other {in # days}})",
+    "columns": "Columns",
+    "mobileColumn": {
+      "routeMatch": "Match",
+      "form": "Form",
+      "fatigue": "Fatigue",
+      "load": "Load",
+      "rating": "Rating"
     }
   },
   "role": {
@@ -105,8 +128,8 @@
     "hide": "Hide profile",
     "show": "Show profile",
     "unavailable": "No route data for this stage yet.",
-    "showFull": "Show full profile",
-    "hideFull": "Hide full profile"
+    "km": "{km} km",
+    "gain": "{gain} m"
   },
   "unsavedBar": {
     "label": "Unsaved changes",
@@ -114,7 +137,8 @@
     "next": "Opening {race}.",
     "stay": "Stay here",
     "discard": "Discard",
-    "saveAndOpen": "Save and open"
+    "saveAndOpen": "Save and open",
+    "saveAndClose": "Save and close"
   },
   "bulk": {
     "menu": "Actions",
@@ -176,5 +200,57 @@
   "noSelection": {
     "title": "Pick a race to plan",
     "description": "Choose a race from the list to set its squad."
+  },
+  "views": {
+    "label": "View",
+    "squad": "Squad",
+    "tactics": "Tactics",
+    "peak": "Peak form",
+    "hint": {
+      "squad": "Pick riders and give them a role · every column sorts",
+      "tactics": "The plan follows the stage shown in the profile",
+      "peak": "Tick riders and apply peak form for this race"
+    }
+  },
+  "tactics": {
+    "noSquad": {
+      "title": "Save a squad first",
+      "description": "Tactics are set for the riders in the saved squad."
+    },
+    "squadUnsaved": "The squad has unsaved changes. \"Save squad and set tactics\" saves it and shows the tactics.",
+    "shared": "Same tactics as on the race page: a plan saved here shows there, and the other way round.",
+    "saveInTab": "You have unsaved tactics. Save them first with \"Save tactics\".",
+    "saveFirst": "You have unsaved tactics. Save them with \"Save tactics\" before saving the squad, or they are lost."
+  },
+  "peak": {
+    "target": "Peak target: {race}, starts {date}. Tick riders and apply.",
+    "targetClosed": "{race} can no longer be a peak target (it has started or is not in your calendar).",
+    "selected": "{count, plural, =0 {None selected} other {# selected}}",
+    "col": {
+      "target": "Peak target",
+      "start": "Race starts"
+    },
+    "inDays": "{count, plural, =0 {today} one {in # day} other {in # days}}",
+    "here": "Peak here",
+    "remove": "Remove",
+    "removed": "Peak removed.",
+    "clear": "Clear selection",
+    "full": "Has {max} targets already",
+    "notSenior": "Not in the senior squad",
+    "applied": "{count, plural, one {Peak set for # rider.} other {Peak set for # riders.}}",
+    "appliedPartial": "{created} set, {skipped} skipped (target limit, or the race is no longer open).",
+    "count": "{shown} riders · {open} can peak here · max {max} per rider",
+    "group": {
+      "inSquad": "In the squad · {count}",
+      "outside": "Not picked · {count}"
+    },
+    "notPicked": "{name} peaks for {race}, but is not picked. Without the race the peak is wasted.",
+    "pickForRace": "Pick for the race"
+  },
+  "sheet": {
+    "prev": "Previous race",
+    "next": "Next race",
+    "close": "Close",
+    "position": "{n} / {total}"
   }
 }

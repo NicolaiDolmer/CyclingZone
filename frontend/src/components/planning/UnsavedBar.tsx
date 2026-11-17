@@ -10,6 +10,7 @@ export default function UnsavedBar({
   onStay,
   onDiscard,
   onSaveAndOpen,
+  saveLabelKey = "unsavedBar.saveAndOpen",
 }: {
   raceName: string;
   nextName?: string;
@@ -17,6 +18,8 @@ export default function UnsavedBar({
   onStay: () => void;
   onDiscard: () => void;
   onSaveAndOpen: () => void;
+  /** Teksten paa gem-knappen (standard "Gem og aabn"; mobil-arkets luk bruger "Gem og luk"). */
+  saveLabelKey?: string;
 }) {
   const { t } = useTranslation("planning");
   return (
@@ -38,7 +41,7 @@ export default function UnsavedBar({
           {t("unsavedBar.discard")}
         </Button>
         <Button variant="secondary" size="sm" onClick={onSaveAndOpen} loading={busy}>
-          {t("unsavedBar.saveAndOpen")}
+          {t(saveLabelKey)}
         </Button>
       </div>
     </div>
