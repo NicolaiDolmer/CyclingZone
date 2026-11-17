@@ -336,7 +336,7 @@
         "incident": "{name} {kind, select, crash {styrter} mechanical {får defekt} other {har et uheld}}{outcome, select, abandoned { og udgår} loss { og taber {loss}} other {}}",
         "climb": "Toppen af {name}",
         "climbFirst": "{rider} først over {name}",
-        "gap": "Udbruddet har nu {after} til {group, select, rest {feltet} other {jagtgruppen}}",
+        "gap": "{front, select, break {Udbruddet} other {Gruppen forrest}} har nu {after} til {group, select, rest {feltet} other {jagtgruppen}}",
         "split": "{count, plural, one {En gruppe bliver sat} other {# grupper bliver sat}}",
         "dropped": "{count, plural, one {{names} bliver sat af udbruddet} other {{names} bliver sat af udbruddet}}",
         "formedAhead": "{count, plural, one {# rytter kører væk foran feltet} other {# ryttere kører væk foran feltet}}",

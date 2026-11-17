@@ -44,6 +44,7 @@ export function useStoryText(cast: Cast) {
           : t("stagePageV2.story.line.climb", { name: String(d.name ?? "") });
       case "gap":
         return t("stagePageV2.story.line.gap", {
+          front: d.front === "break" ? "break" : "lead", // #8377: kun udbruddet hedder udbrud
           group: d.group === "rest" ? "rest" : "chase",
           dir: d.dir === "grew" ? "grew" : "shrank",
           before: formatClock(Number(d.before)),

@@ -80,7 +80,7 @@ test("curateMoments: hoejst 8 linjer i km-orden; 4 splits paa 0,3 km er EEN linj
   const s = story();
   const lines = curateMoments(s, cast());
   assert.ok(lines.length <= MAX_STORY_LINES);
-  assert.deepEqual(lines.map((l) => l.km), [...lines.map((l) => l.km)].sort((a, b) => a - b));
+  assert.deepEqual(lines.map(lineDisplayKm), [...lines.map(lineDisplayKm)].sort((a, b) => a - b));
   const splits = lines.filter((l) => l.kind === "split");
   assert.equal(splits.length, 1);
   assert.equal(splits[0].count, 4);
@@ -893,4 +893,42 @@ test("curateMoments: afstands-linjen staar paa ét km (slutpunktet) med tid, og 
   for (const l of lines) assert.equal(lineDisplayKm(l), l.kmTo ?? l.km, `${l.kind} viser ét km`);
   assert.equal(lineDisplayKm({ km: 25, kmTo: 48 }), 48);
   assert.equal(lineDisplayKm({ km: 25, kmTo: null }), 25);
+});
+
+// #8377 (Codex): en samlet linje staar paa slut-km, og tid og raekkefoelge foelger det viste km.
+test("curateMoments: en samlet split-linje har slutpunktets tid, og ingen linje staar foer en tidligere km", () => {
+  const split = curateMoments(story(hillyTimeline()), cast()).find((l) => l.kind === "split");
+  assert.ok(split);
+  assert.equal(lineDisplayKm(split), 58.4);
+  assert.equal(split.time, 5330, "tiden hoerer til det viste punkt (sidste split), ikke det foerste");
+
+  const events = hillyTimeline();
+  events.splice(6, 0, ev(58, "finale_attack", { kind: "late_attack", rider_id: "w", group_id: "solo-58", source_group_id: "peloton-0", gained_seconds: 9, exact_km: 58.25, exact_time: 5315 }));
+  const lines = curateMoments(story(events), cast());
+  const shown = lines.map(lineDisplayKm);
+  assert.deepEqual(shown, [...shown].sort((a, b) => a - b), "viste km staar i orden");
+  const attackAt = lines.findIndex((l) => l.kind === "attack" && lineDisplayKm(l) === 58.25);
+  const splitAt = lines.findIndex((l) => l.kind === "split");
+  assert.ok(attackAt >= 0 && splitAt > attackAt, "angrebet paa 58,25 staar foer splittet der vises paa 58,4");
+  const times = lines.map((l) => l.time).filter((t): t is number => t != null);
+  assert.deepEqual(times, [...times].sort((a, b) => a - b), "tiderne vokser med de viste km");
+});
+
+// #8377 (Codex): afstands-linjen siger kun "udbruddet", naar fronten er udbruddet.
+test("curateMoments: afstands-linjens front er udbruddet kun naar udbruddet foerer", () => {
+  const withBreak = curateMoments(story(hillyTimeline()), cast()).find((l) => l.kind === "gap");
+  assert.equal(withBreak?.data.front, "break", "udbruddet foerer: linjen maa kalde det udbrud");
+
+  const pelotonLeads = [
+    ev(0, "stage_start", { exact_km: 0, exact_time: 0, distance_km: 100, field_count: 12, profile_type: "hilly" }),
+    ev(40, "peloton_splits", { group_id: "gruppetto-1", source_group_id: "peloton-0", rider_ids: ["x1", "x2"], gap_seconds: 20, exact_km: 40, exact_time: 3800 }),
+    ev(50, "gap_update", { group_id: "gruppetto-1", gap_seconds: 60, exact_km: 50, exact_time: 4700 }),
+    ev(70, "gap_update", { group_id: "gruppetto-1", gap_seconds: 180, exact_km: 70, exact_time: 6500 }),
+    ev(100, "finish", { win_type: "bunch", exact_km: 100, exact_time: 8600 }),
+  ];
+  const s = story(pelotonLeads);
+  assert.equal(s.breakaway, null, "ingen udbrud i denne etape");
+  const gaps = curateMoments(s, cast()).filter((l) => l.kind === "gap");
+  assert.ok(gaps.length > 0, "forudsaetning: hul-linjen findes uden et udbrud");
+  for (const g of gaps) assert.equal(g.data.front, "lead", "feltet foerer: gruppen forrest, aldrig udbruddet");
 });
