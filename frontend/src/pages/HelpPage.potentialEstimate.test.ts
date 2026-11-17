@@ -60,6 +60,22 @@ test("FAQ-tvillingerne foelger samme kontakt", () => {
   assert.equal(isHelpFaqVisible("typeRatingScaleFaq", { potential_estimate_display: true }), false);
 });
 
+// #7685: taendingen viser teksten paa alle sprog spillet har; en manglende tvilling i et
+// sprog ville faa den nye blok til at falde tilbage til engelsk eller staa tom.
+for (const lang of ["en", "da", "es", "fr", "nl"] as const) {
+  test(`[${lang}] alle tal + ord-tvillinger findes og er udfyldt`, () => {
+    const help = locale(lang);
+    for (const [section, , newId] of BLOCK_TWINS) {
+      const block = help.sections[section]?.[newId];
+      assert.ok(block?.title?.trim() && block?.text?.trim(), `${lang}: ${section}.${newId}`);
+    }
+    for (const [, newId] of FAQ_TWINS) {
+      const faq = help.faq[newId];
+      assert.ok(faq?.q?.trim() && faq?.a?.trim(), `${lang}: faq.${newId}`);
+    }
+  });
+}
+
 for (const [lang, forbidden] of [
   ["en", /\b(range|band|ceiling|interval)\b/i],
   ["da", /\b(interval|bånd|loft)/i],

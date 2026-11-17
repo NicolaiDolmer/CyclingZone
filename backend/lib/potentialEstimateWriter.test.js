@@ -9,8 +9,8 @@ import { knowledgeLevel, planEstimateWrite } from "./potentialEstimate.js";
 import { PRIVATE_CONFIG_KEYS, privateConfigHash, validatePrivateConfigValue } from "./privateConfig.ts";
 import {
   POTENTIAL_ESTIMATE_PARAMS_KEY, POTENTIAL_ESTIMATES_TABLE, formerRiderKnowledgeSteps, knowledgeForOrigin,
-  loadEstimateDevelopmentXp, loadEstimateTeamIds, loadEstimateWriteConfig,
-  planTeamEstimates, recordScoutLooks, scoutKnowledgeForWrite, writeTeamEstimates,
+  loadEstimateDevelopmentXp, loadEstimateTeamIds, loadEstimateWriteConfig, loadExpectedTops,
+  planTeamEstimates, planTeamEstimatesFromDb, recordScoutLooks, scoutKnowledgeForWrite, writeTeamEstimates,
 } from "./potentialEstimateWriter.js";
 import { validateDevelopmentXpParams } from "./developmentXp.ts";
 import { expectedTopRating } from "./developmentXpExpectedTop.ts";
@@ -646,4 +646,45 @@ test("slots-ruten skriver skønnet efter indsættelsen", () => {
   assert.ok(insert > 0);
   const hook = src.indexOf("await recordScoutLooks({ supabase, teamId: req.team.id, riderIds: [riderId] })", insert);
   assert.ok(hook > insert && hook - insert < 300, "recordScoutLooks skal stå lige efter scout_actions-indsættelsen");
+});
+
+// ── Kørsels-cachen (#7685 tændingens backfill + søndagskørslen) ──────────────
+
+const counting = (sb) => {
+  const reads = { riders: 0, rider_derived_abilities: 0 };
+  const from = sb.from;
+  sb.from = (table) => {
+    if (table in reads) reads[table] += 1;
+    return from(table);
+  };
+  return reads;
+};
+
+test("XP: cachen regner og læser en rytter én gang på tværs af hold, med samme tal", async () => {
+  const sb = xpClient();
+  const reads = counting(sb);
+  const cache = new Map();
+  const first = await loadExpectedTops(sb, ["r1"], XP, { cache });
+  const second = await loadExpectedTops(sb, ["r1", "r1"], XP, { cache });
+  assert.equal(first.get("r1"), xpTruth());
+  assert.deepEqual([...second], [["r1", xpTruth()]]);
+  assert.deepEqual(reads, { riders: 1, rider_derived_abilities: 1 });
+  const uncached = await loadExpectedTops(sb, ["r1"], XP);
+  assert.equal(uncached.get("r1"), xpTruth());
+  assert.equal(reads.riders, 2, "uden cache læses der som før");
+});
+
+test("planTeamEstimatesFromDb planlægger uden at skrive, og writeTeamEstimates skriver præcis planen", async () => {
+  const sb = xpClient();
+  const config = await loadEstimateWriteConfig(sb, { now: new Date(NOW) });
+  const plan = await planTeamEstimatesFromDb({ supabase: sb, teamId: "t1", riders: [XP_RIDER], trigger: "backfill", config, now: new Date(NOW) });
+  assert.equal(plan.rows.length, 1);
+  assert.equal(plan.rows[0].ceiling_at_write, xpTruth());
+  assert.equal(sb.state[POTENTIAL_ESTIMATES_TABLE].length, 0);
+  assert.equal(plan.context.teamId, "t1");
+  const counts = await writeTeamEstimates({ supabase: sb, teamId: "t1", riders: [XP_RIDER], trigger: "backfill", config, now: new Date(NOW) });
+  assert.equal(counts.written, 1);
+  assert.deepEqual(sb.state[POTENTIAL_ESTIMATES_TABLE].map(({ id: _id, ...row }) => row), plan.rows);
+  const empty = await planTeamEstimatesFromDb({ supabase: sb, teamId: "t1", riders: [], trigger: "backfill", config });
+  assert.deepEqual(empty, { rows: [], counts: { written: 0, changed: 0, kept: 0, noKnowledge: 0, noCeiling: 0 }, context: null });
 });
