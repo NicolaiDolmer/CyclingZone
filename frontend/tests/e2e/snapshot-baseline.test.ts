@@ -22,7 +22,8 @@ const FRONTEND_DIR = path.resolve(E2E_DIR, "../..");
 const REPO_ROOT = path.resolve(FRONTEND_DIR, "..");
 const WORKFLOWS = path.join(REPO_ROOT, ".github", "workflows");
 
-const read = (p: string): string => fs.readFileSync(p, "utf8");
+// CRLF normaliseres: Windows-checkouts med core.autocrlf har CRLF i workflows.
+const read = (p: string): string => fs.readFileSync(p, "utf8").replace(/\r\n/g, "\n");
 const smoke = read(path.join(WORKFLOWS, "playwright-smoke.yml"));
 const update = read(path.join(WORKFLOWS, "update-snapshots.yml"));
 const config = read(path.join(FRONTEND_DIR, "playwright.config.js"));

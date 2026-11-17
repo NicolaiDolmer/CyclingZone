@@ -113,8 +113,9 @@ jobs:
             exit 1
           fi
           printf 'Spec: %s\n' "${specs[@]}"
-          npx playwright test "${specs[@]}" --project="$PW_PROJECT" --update-snapshots=changed
-          status=$?
+          # Actions' `shell: bash` koerer med -e; && / || fanger exit-koden uden at stoppe.
+          status=0
+          npx playwright test "${specs[@]}" --project="$PW_PROJECT" --update-snapshots=changed || status=$?
           echo "status=$status" >> "$GITHUB_OUTPUT"
           exit 0
 
