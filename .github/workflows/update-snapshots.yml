@@ -74,6 +74,12 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
 
+      # Samme som e2e-shard: root i containeren, checkout ejet af runneren, saa
+      # git afviser mappen ("dubious ownership") uden denne linje.
+      - name: Trust the checkout (container git)
+        shell: bash
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:

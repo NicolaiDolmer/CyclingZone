@@ -93,7 +93,7 @@ function WattProfile({ riderCurve, divCurve, unit, lang, division, t }) {
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
       <div className="flex items-baseline justify-between gap-2 mb-0.5">
-        <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0">{t("profile.physio.profile.title")}</h3>
+        <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0">{t("profile.physio.profile.title")}</h3>
         {divCurve && (
           <span className="text-3xs text-cz-3 inline-flex items-center gap-1.5">
             {t("profile.physio.divMeanShort", { division })}
@@ -128,7 +128,7 @@ function CriticalPowerCard({ cp, lang, t }) {
   if (!cp) return null;
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
-      <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mb-2.5">{t("profile.physio.cp.title")}</h3>
+      <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0 mb-2.5">{t("profile.physio.cp.title")}</h3>
       <div className="flex gap-[18px] flex-wrap">
         <div>
           <div className="font-mono tabular-nums text-xl font-bold text-cz-1">{fmtW(cp.cpWatts, lang)} <span className="text-2xs font-normal text-cz-3">W</span></div>
@@ -159,7 +159,7 @@ function ZonesCard({ zones, ftpWatts, lang, t }) {
   };
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
-      <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mb-2.5">{t("profile.physio.zones.title")}</h3>
+      <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0 mb-2.5">{t("profile.physio.zones.title")}</h3>
       <div className="flex h-[13px] rounded-[4px] overflow-hidden border border-cz-border" aria-hidden="true">
         {zones.map((z) => (
           <div key={z.z} style={{ flex: (z.hiFrac - z.loFrac) / total, background: ZONE_COLORS[z.z], borderRight: "1px solid var(--bg-card)" }} />
@@ -225,7 +225,7 @@ export default function RiderPhysiologyTab({ physiology, benchmark }) {
         <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
           <div className="flex items-center justify-between gap-2.5 flex-wrap mb-1.5">
             <div>
-              <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0">{t("profile.physio.curve.title")}</h3>
+              <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0">{t("profile.physio.curve.title")}</h3>
               <span className="text-3xs text-cz-3">{t("profile.physio.curve.subtitle")}</span>
             </div>
             <div className="inline-flex bg-cz-subtle rounded-cz p-0.5">

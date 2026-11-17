@@ -37,7 +37,7 @@ export default function RiderOverviewPhysiology({ physiology, weight, onGoFysiol
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
       <div className="flex items-baseline justify-between gap-2 mb-2.5">
-        <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0">
+        <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0">
           {t("profile.overview.physio.title")}
         </h3>
         {Number.isFinite(Number(weight)) && (

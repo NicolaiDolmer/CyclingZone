@@ -212,6 +212,17 @@ jobs:
         with:
           persist-credentials: false
 
+      # #8348: containeren koerer som root, men checkout-mappen ejes af
+      # runner-brugeren. actions/checkout markerer kun mappen som sikker i sin
+      # EGEN midlertidige git-konfiguration, saa hvert senere git-kald fejlede
+      # med "dubious ownership": base-fetch'en nedenfor, git ls-files i
+      # snapshot-baseline.test.ts (sprang stille over) og git diff i
+      # rent-trae-vagten (#3554), der saa meldte falsk "aendrede filer".
+      # Saettes een gang for hele jobbet, foer foerste git-kald.
+      - name: Trust the checkout (container git)
+        shell: bash
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
@@ -346,9 +357,16 @@ jobs:
         if: always()
         shell: bash
         working-directory: .
+        # Exit 1 = diff (den aegte fejl); alt andet = git kunne ikke laese
+        # traeet (fx dubious ownership, #8348) og meldes som det, ikke som diff.
         run: |
-          if ! git diff --exit-code --stat; then
+          rc=0
+          git diff --exit-code --stat || rc=$?
+          if [ "$rc" -eq 1 ]; then
             echo "::error::e2e-suiten ændrede committede filer. Alt genereret skal skrives til test-results/ (se evidenceShotPath i frontend/tests/e2e/fixtures.js, #3554)."
+            exit 1
+          elif [ "$rc" -ne 0 ]; then
+            echo "::error::Vagten kunne ikke laese arbejdstraeet (git diff exit $rc), saa et rent trae kan ikke bekraeftes. Se git-fejlen ovenfor."
             exit 1
           fi
 

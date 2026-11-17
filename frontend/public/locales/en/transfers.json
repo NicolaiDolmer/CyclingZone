@@ -86,8 +86,8 @@
     "from": "From",
     "to": "To",
     "round": "Round {round}",
-    "squadCriticalReceived": "🚨 Below minimum",
-    "squadCriticalSent": "🚨 Seller below min.",
+    "squadCriticalReceived": "Below minimum",
+    "squadCriticalSent": "Seller below min.",
     "offerLabel": "Offer",
     "counterLabel": "Your counter",
     "counterAmountLabel": "Counter offer",
@@ -98,16 +98,16 @@
     "contractExpires": "Exp. after season {season}",
     "noContract": "Free agent",
     "buttons": {
-      "accept": "✓ Accept",
+      "accept": "Accept",
       "counter": "Counter",
-      "reject": "✕ Reject",
+      "reject": "Reject",
       "send": "Send",
-      "acceptCounter": "✓ Accept ({amount} CZ$)",
+      "acceptCounter": "Accept ({amount} CZ$)",
       "newOffer": "New offer",
       "withdraw": "Withdraw",
       "withdrawOffer": "Withdraw offer",
       "withdrawCounter": "Withdraw counter offer",
-      "confirmDeal": "✓ Confirm deal ({amount} CZ$)",
+      "confirmDeal": "Confirm deal ({amount} CZ$)",
       "cancelDeal": "Cancel deal",
       "archive": "Archive"
     },
@@ -132,14 +132,14 @@
     "cashFrom": "+{amount} CZ$ from {team}",
     "counterTag": "(counter)",
     "buttons": {
-      "accept": "✓ Accept",
+      "accept": "Accept",
       "counter": "Counter",
-      "reject": "✕ Reject",
-      "acceptCounter": "✓ Accept counter",
+      "reject": "Reject",
+      "acceptCounter": "Accept counter",
       "send": "Send",
       "withdraw": "Withdraw proposal",
       "rejectShort": "Reject",
-      "confirmSwap": "✓ Confirm swap",
+      "confirmSwap": "Confirm swap",
       "cancelSwap": "Cancel deal",
       "archive": "Archive"
     },
@@ -252,12 +252,12 @@
     "ctaListRider": "Open my squad"
   },
   "toast": {
-    "offerSent": "✅ Offer sent!",
-    "listingRemoved": "✅ Rider removed from transfer list",
+    "offerSent": "Offer sent!",
+    "listingRemoved": "Rider removed from transfer list",
     "listingRemoveFailed": "Could not remove listing",
-    "offerAcceptedBuyer": "✅ Accepted · buyer must now confirm the deal",
-    "offerAcceptedSeller": "✅ Accepted · seller must now confirm the deal",
-    "confirmedAwaiting": "✅ Confirmed · awaiting the other party's confirmation",
+    "offerAcceptedBuyer": "Accepted · buyer must now confirm the deal",
+    "offerAcceptedSeller": "Accepted · seller must now confirm the deal",
+    "confirmedAwaiting": "Confirmed · awaiting the other party's confirmation",
     "dealCancelled": "Deal cancelled",
     "transferRejected": "Transfer rejected",
     "counterSent": "Counter sent",
@@ -265,27 +265,27 @@
     "newOfferSent": "New offer sent",
     "offerWithdrawn": "Offer withdrawn",
     "offerArchived": "Offer archived",
-    "updated": "✅ Updated",
-    "swapAccepted": "✅ Accepted · awaiting confirmation",
-    "swapConfirmedAwaiting": "✅ Confirmed · awaiting the other party",
+    "updated": "Updated",
+    "swapAccepted": "Accepted · awaiting confirmation",
+    "swapConfirmedAwaiting": "Confirmed · awaiting the other party",
     "swapCancelled": "Swap cancelled",
     "swapRejected": "Swap rejected",
     "proposalWithdrawn": "Proposal withdrawn",
     "swapArchived": "Proposal archived",
-    "priceUpdated": "✅ Asking price updated",
+    "priceUpdated": "Asking price updated",
     "priceUpdateFailed": "Could not update the price"
   },
   "celebration": {
     "transferDone": {
-      "title": "Transfer complete! 🎉",
+      "title": "Transfer complete!",
       "subtitle": "The rider is now on your team"
     },
     "swapDone": {
-      "title": "Swap complete! 🎉",
+      "title": "Swap complete!",
       "subtitle": "Riders have been exchanged"
     },
     "buyoutDone": {
-      "title": "Rider bought! 🎉",
+      "title": "Rider bought!",
       "subtitle": "The buy option has been exercised"
     }
   },

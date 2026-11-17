@@ -82,6 +82,39 @@ test("label-workflowet fornyer alle tre projekter og kun same-repo-PR'er", () =>
   assert.ok(forkGuards.length >= 2, "baade generate og commit skal udelukke fork-PR'er");
 });
 
+// I containeren er git-brugeren root, men checkout-mappen ejes af runneren.
+// Uden safe.directory fejler hvert git-kald efter checkout med "dubious
+// ownership" (base-fetch, git ls-files herunder, rent-trae-vagten).
+function jobSteps(source: string, jobKey: string): string {
+  const start = source.indexOf(`\n  ${jobKey}:\n`);
+  assert.ok(start > 0, `mangler jobbet ${jobKey}`);
+  const next = source.slice(start + 1).search(/\n {2}[a-z][a-z0-9-]*:\n/);
+  return next < 0 ? source.slice(start) : source.slice(start, start + 1 + next);
+}
+
+test("container-jobbene markerer checkout'en som safe.directory foer foerste git-kald", () => {
+  const trust = 'git config --global --add safe.directory "$GITHUB_WORKSPACE"';
+  for (const [name, job] of [
+    ["playwright-smoke.yml e2e-shard", jobSteps(smoke, "e2e-shard")],
+    ["update-snapshots.yml generate", jobSteps(update, "generate")],
+  ] as const) {
+    const code = job.split("\n").filter((line) => !/^\s*#/.test(line)).join("\n");
+    const checkout = code.indexOf("actions/checkout@");
+    const trustAt = code.indexOf(trust);
+    assert.ok(checkout > 0, `${name}: ingen checkout`);
+    assert.ok(trustAt > checkout, `${name}: safe.directory skal saettes efter checkout`);
+    const firstGit = code.slice(checkout).search(/(^|[\s;&|(!])git\s(?!config --global --add safe\.directory)/m);
+    assert.ok(firstGit < 0 || checkout + firstGit >= trustAt, `${name}: git kaldes foer safe.directory er sat`);
+  }
+});
+
+test("rent-trae-vagten skelner en aegte diff (exit 1) fra en git-fejl", () => {
+  const guard = jobSteps(smoke, "e2e-shard").split("Verify e2e left the working tree clean")[1] ?? "";
+  assert.match(guard, /git diff --exit-code --stat \|\| rc=\$\?/);
+  assert.match(guard, /if \[ "\$rc" -eq 1 \]; then\n\s*echo "::error::e2e-suiten ændrede committede filer/);
+  assert.match(guard, /elif \[ "\$rc" -ne 0 \]; then/);
+});
+
 // Sikkerhedsfund paa #8348: jobbet med push-tokenet maa aldrig skrive ind i
 // et PR-styret arbejdstrae (et symlink dér kan foere en kopi ind i .git/config
 // og koere et PR-leveret hook med tokenet). Kun git-plumbing, hooks slaaet fra.
