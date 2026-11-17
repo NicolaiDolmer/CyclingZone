@@ -1,5 +1,28 @@
 export const PATCHES = [
 {
+  "version": "7.461",
+  "date": "2026-11-17",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Interface",
+      "en": {
+        "title": "Deleted messages stay deleted",
+        "body": "If you delete the message about a graduating academy rider or a squad below the minimum, it no longer comes back the next night."
+      },
+      "da": {
+        "title": "Slettede beskeder bliver væk",
+        "body": "Sletter du beskeden om en akademirytter, der er klar til oprykning, eller om en for lille trup, kommer den ikke igen næste nat."
+      },
+      "refs": [
+        8196
+      ]
+    }
+  ]
+},
+{
   "version": "7.460",
   "date": "2026-11-17",
   "changes": [
