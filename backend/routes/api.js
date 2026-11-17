@@ -6570,6 +6570,7 @@ async function withNationAndRating8298(riders) {
   const list = Array.isArray(riders) ? riders : [];
   const ids = list.map((r) => r.rider_id).filter(Boolean);
   if (!ids.length) return list;
+  // pagination-safe: ids er holdets udtagne ryttere til ÉT løb (truppens loft, højst ~10 rækker).
   const { data, error } = await supabase.from("riders").select("id, nationality_code, best_role_rating").in("id", ids);
   if (error) {
     captureException(error, { tags: { route: "stage-roles", part: "nation-rating-8298" } });
