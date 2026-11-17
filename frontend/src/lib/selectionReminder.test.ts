@@ -5,6 +5,8 @@ import {
   normalizeSelectionReminder,
   resolveNavDotTone,
   deadlineCountdown,
+  pickHeaderRace,
+  hasHeaderDeadline,
   EMPTY_SELECTION_REMINDER,
 } from "./selectionReminder.ts";
 
@@ -117,4 +119,23 @@ test("deadlineCountdown: passeret frist er 'past', ikke et negativt tal", () => 
   assert.deepEqual(deadlineCountdown(0), { unit: "past", value: 0 });
   assert.deepEqual(deadlineCountdown(-3), { unit: "past", value: 0 });
   assert.deepEqual(deadlineCountdown(Number.NaN), { unit: "past", value: 0 });
+});
+
+// #8069 T01 + Codex-review #8317
+test("pickHeaderRace: roed tone vaelger tidligste roede loeb, ikke et tidligere gult", () => {
+  const race = (id: string, hours_until: number, tone: "warning" | "urgent") =>
+    ({ id, name: id, deadline_at: "2026-11-17T00:00:00Z", hours_until, entry_count: 5, target_size: 8, tone });
+  const base = { enabled: true, count: 2, window_hours: 36, urgent_hours: 24 };
+  assert.equal(pickHeaderRace({ ...base, tone: "urgent", races: [race("gul", 4, "warning"), race("roed", 8, "urgent")] })?.id, "roed");
+  assert.equal(pickHeaderRace({ ...base, tone: "warning", races: [race("b", 30, "warning"), race("a", 12, "warning")] })?.id, "a");
+  assert.equal(pickHeaderRace({ ...base, tone: "none", races: [] }), null);
+});
+
+// #8069 T01: ingen frist -> ingen undertitel (ellers et tomt <p> i PageHeader)
+test("hasHeaderDeadline: kun naar paamindelsen er aktiv og har loeb", () => {
+  assert.equal(hasHeaderDeadline(EMPTY_SELECTION_REMINDER), false);
+  assert.equal(hasHeaderDeadline(null), false);
+  assert.equal(hasHeaderDeadline({ ...EMPTY_SELECTION_REMINDER, tone: "warning", races: [] }), false);
+  assert.equal(hasHeaderDeadline({ ...EMPTY_SELECTION_REMINDER, enabled: false, tone: "warning", races: [{ id: "r", name: "r", deadline_at: "x", hours_until: 1, entry_count: 1, target_size: 8, tone: "warning" }] }), false);
+  assert.equal(hasHeaderDeadline({ ...EMPTY_SELECTION_REMINDER, tone: "warning", races: [{ id: "r", name: "r", deadline_at: "x", hours_until: 1, entry_count: 1, target_size: 8, tone: "warning" }] }), true);
 });
