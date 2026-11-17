@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-153 poster: live 119 · beta 1 · dormant 10 · building 13 · spec 1 · idea 2 · retired 7. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+154 poster: live 119 · beta 1 · dormant 10 · building 14 · spec 1 · idea 2 · retired 7. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -32,7 +32,8 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
-|Race page v6, step 1 (results for a ridden stage) (`race-page-v6`)|building|`race_page_v6`|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7778|2026-11-13|#7778/#8062: kun trin 1 af 5 er bygget (kun visning); kontakt race_page_v6 off i prod 13/11.|
+|Race page v6, step 1 (results for a ridden stage) (`race-page-v6`)|building|`race_page_v6`|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7778|2026-11-13|#7778: trin 1 af 5 bygget; off i prod.|
+|Spoiler shield (`spoiler-shield`)|building|`spoiler_shield_7859`|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7778|2026-11-16|#7859: seedes off.|
 |Engine breakaway forecast (`race-breakaway-outlook`)|retired|-|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#6912|2026-11-13|Fjernet 13/11 (ejer); kode i #7277/#7343.|
 
 ## market

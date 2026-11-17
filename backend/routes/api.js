@@ -285,6 +285,7 @@ import { trainingRunResponse } from "../lib/trainingRunResponse.ts";
 import { createFirstRaceCardRouter } from "./firstRaceCard.js"; // #1140
 import { createRaceLibraryV2Router } from "../lib/raceLibraryV2Flag.js"; // #6514
 import { createPushRouter } from "./pushRoutes.ts"; // #6590
+import { createSpoilerShieldRouter } from "../lib/spoilerShield7859.ts"; // #7859
 import { TRAINING_MOBILE_TABLE_FLAG_KEY } from "../lib/trainingMobileTableFlag.js";
 import { TRAINING_DECISION_FLAG_KEY } from "../lib/trainingDecisionFlag.js"; // #6110 S26
 import { loadFatigueStreaks } from "../lib/trainingFatigueStreak.js"; // #6110 S26
@@ -1025,6 +1026,7 @@ router.use("/academy/v2", createAcademyV2Router({ supabase, requireAuth, writeLi
 router.use(createFirstRaceCardRouter({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, reportError: captureException })); // #1140
 router.use(createRaceLibraryV2Router({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, reportError: captureException })); // #6514
 router.use("/push", createPushRouter({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, writeLimiter: marketWriteLimiter, reportError: captureException })); // #6590
+router.use("/me/spoiler-shield", createSpoilerShieldRouter({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, writeLimiter: marketWriteLimiter, reportError: captureException })); // #7859
 // #4629: traeningsprogrammer (beta). Monteret HER, foer `/training/:riderId`, saa
 // "programs" aldrig matches som et rytter-id.
 // #4847: efter et "Train now"-tryk er dagens traeningsfelter laast til aftenopgoerelsen.
@@ -19431,6 +19433,17 @@ router.get("/academy/me", requireAuth, async (req, res) => {
 //     oprettelse) — et 100% realiseret, historisk tal, ingen fremskrivning.
 //     Transfermarkeds-salg har ingen tilsvarende baseline og bidrager derfor
 //     kun til salesProceeds, ikke valueCreation (se academyPnl.js).
+// #8060 review 2: fejler saeson-regnskabet, maa det ikke vaelte hele svaret (det gamle regnskab
+// og siden). Fejlen meldes, `ledger` udelades, og `ledger_unavailable` lader fanen sige det.
+async function academyLedgerPart8060(teamId) {
+  try {
+    return { ledger: await loadAcademySeasonLedger(supabase, { teamId }) };
+  } catch (err) {
+    captureException(err, { tags: { route: "academy/pnl", part: "ledger-8060" } });
+    return { ledger_unavailable: true };
+  }
+}
+
 router.get("/academy/pnl", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
@@ -19506,7 +19519,7 @@ router.get("/academy/pnl", requireAuth, async (req, res) => {
       enabled: true,
       ...summarizeAcademyPnl({ current, driftPaid, signingFeesPaid, sales }),
       // #8060: regnskab pr. sæson kun bag academy_page_v2_8081; slukket er svaret som før.
-      ...((await isAcademyLedgerEnabled(supabase, { isBetaTester })) ? { ledger: await loadAcademySeasonLedger(supabase, { teamId }) } : {}),
+      ...((await isAcademyLedgerEnabled(supabase, { isBetaTester })) ? await academyLedgerPart8060(teamId) : {}),
     });
   } catch (err) {
     captureException(err);

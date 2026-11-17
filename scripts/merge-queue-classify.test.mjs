@@ -59,6 +59,7 @@ test("(c) docs uden spillertekst, CI/hooks, test-only, og kombinationer", () => 
 test("docs MED spillertekst er ejer-go: patch notes, locales, TONE-flader", () => {
   for (const f of [
     "frontend/src/data/patchNotes.js",
+    "frontend/src/data/patch-notes/pending/8346-x.json",
     "frontend/public/locales/en/help.json",
     "frontend/public/locales/da/help.json",
     "backend/locales/en.json",
