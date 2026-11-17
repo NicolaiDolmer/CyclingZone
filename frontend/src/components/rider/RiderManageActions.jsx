@@ -32,8 +32,8 @@ import { reportActionFailure } from "../../lib/actionTelemetry.js";
 // release (api.js:1834), saa den delte GET /api/transfers-kopi bliver stale.
 import { invalidateTransferListings2176 } from "../../lib/sharedRequestCache.js";
 import MoveSquadDialog from "../MoveSquadDialog.tsx";
-import { ReleasePendingLine } from "./LeavingAfterRaceBadge.jsx"; // #8153
-import { pendingRaceFromQuote, isPendingReleaseResult, pendingRaceLabel } from "../../lib/pendingReleaseModel8153.js"; // #8153
+import { ReleasePendingLine } from "./LeavingAfterRaceBadge.tsx"; // #8153
+import { pendingRaceFromQuote, isPendingReleaseResult, pendingRaceLabel } from "../../lib/pendingReleaseModel8153.ts"; // #8153
 import { buttonClass } from "../ui/buttonStyles.js";
 
 // Trigger-knapper (ejer-feedback 3/7): appens delte buttonStyles, kompakt

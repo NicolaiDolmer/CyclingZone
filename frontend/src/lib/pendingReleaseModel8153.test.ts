@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   pendingRaceFromQuote, isPendingReleaseResult, pendingRaceLabel, pendingReleasesByRider,
-} from "./pendingReleaseModel8153.js";
+} from "./pendingReleaseModel8153.ts";
 
 // #8153: skaermdelen af "frigivelse midt i et etapeloeb venter til loebets slut".
 
@@ -47,7 +47,7 @@ test("8153: holdets ventende frigivelser bliver et opslag pr. rytter; skrald giv
 });
 
 // Teksterne er ejer-godkendt 14/11 (docs/superpowers/specs/2026-11-14-8153-frigivelse-venter-design.md).
-const read = (lang) => JSON.parse(readFileSync(new URL(`../../public/locales/${lang}/rider.json`, import.meta.url), "utf8"));
+const read = (lang: string) => JSON.parse(readFileSync(new URL(`../../public/locales/${lang}/rider.json`, import.meta.url), "utf8"));
 
 test("8153: de godkendte tekster staar ordret i EN og DA", () => {
   const en = read("en").manage.release;

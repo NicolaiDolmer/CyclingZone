@@ -26,9 +26,9 @@ import { WithBestRole } from "../components/rider/BestRoleTag.jsx";
 import { getSquadLimits } from "../lib/dashboardSquadStats.js";
 import { formatNumber } from "../lib/intl";
 import MoveSquadDialog from "../components/MoveSquadDialog.tsx"; // #5748
-import LeavingAfterRaceBadge, { ReleasePendingLine } from "../components/rider/LeavingAfterRaceBadge.jsx"; // #8153
-import { pendingRaceFromQuote, isPendingReleaseResult, pendingRaceLabel } from "../lib/pendingReleaseModel8153.js"; // #8153
-import { usePendingReleases8153 } from "../lib/usePendingReleases8153.js"; // #8153
+import LeavingAfterRaceBadge, { ReleasePendingLine } from "../components/rider/LeavingAfterRaceBadge.tsx"; // #8153
+import { pendingRaceFromQuote, isPendingReleaseResult, pendingRaceLabel } from "../lib/pendingReleaseModel8153.ts"; // #8153
+import { usePendingReleases8153 } from "../lib/usePendingReleases8153.ts"; // #8153
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import { useScouting } from "../lib/useScouting";
 import { scoutSortValue } from "../lib/scouting";

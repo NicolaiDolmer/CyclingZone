@@ -62,7 +62,7 @@ import RiderResultsTab from "../components/rider/profile/RiderResultsTab.jsx";
 import RiderPalmaresTab from "../components/rider/profile/RiderPalmaresTab.jsx";
 import RiderInterestTab from "../components/rider/profile/RiderInterestTab.jsx";
 import { useRiderReputation } from "../lib/useRiderReputation.ts";
-import { OwnRiderLeavingBadge } from "../components/rider/LeavingAfterRaceBadge.jsx"; // #8153
+import { OwnRiderLeavingBadge } from "../components/rider/LeavingAfterRaceBadge.tsx"; // #8153
 
 const API = import.meta.env.VITE_API_URL;
 
