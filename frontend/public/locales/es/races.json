@@ -137,7 +137,7 @@
     "huntOption": "{task} · {price}",
     "price": { "hard": "Dura" },
     "huntNote": "Caza de puntos en los sprints: disputa los sprints intermedios de su tramo desde el grupo en el que va. Una fuga por delante se lleva los puntos primero. Los sprints que solo disputa por la tarea suman un poco a su fatiga.",
-    "huntNoteKom": "Los puntos de montaña solo se cazan con la fuga: disputa las subidas de su tramo mientras va en ella. Si no entra en la fuga o lo alcanzan, la caza de montaña termina.",
+    "huntNoteKom": "Los puntos de montaña solo cuentan en una escapada, nunca desde el pelotón.",
     "huntChoice": { "hunt_points": "Meterse en la fuga + ir a por puntos de sprint", "hunt_kom": "Meterse en la fuga + ir a por puntos de montaña" },
     "huntPrice": { "sprint": "{price}, más un poco por sprint", "kom": "{price}, más un poco por subida" },
 

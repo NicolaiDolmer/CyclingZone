@@ -136,10 +136,10 @@
     "effortNote": "L'effort suit la tâche.",
     "huntOption": "{task} · {price}",
     "price": { "hard": "Dure" },
-    "huntNote": "Chasse aux points des sprints : il dispute les sprints intermédiaires de son tronçon depuis le groupe où il se trouve. Une échappée devant prend toujours les points en premier. Les sprints qu'il ne dispute qu'à cause de la tâche ajoutent un peu à sa fatigue.",
-    "huntNoteKom": "Les points de la montagne se chassent seulement avec l'échappée : il dispute les côtes de son tronçon tant qu'il est dedans. S'il rate l'échappée ou se fait reprendre, la chasse en montagne s'arrête.",
-    "huntChoice": { "hunt_points": "Prendre l'échappée + chasser les points des sprints", "hunt_kom": "Prendre l'échappée + chasser les points de la montagne" },
-    "huntPrice": { "sprint": "{price}, plus un peu par sprint", "kom": "{price}, plus un peu par côte" },
+    "huntNote": "Il dispute les sprints de son tronçon depuis son groupe ; chaque sprint en plus le fatigue un peu.",
+    "huntNoteKom": "Les points de la montagne ne comptent qu'en échappée.",
+    "huntChoice": { "hunt_points": "Prendre l'échappée + points des sprints", "hunt_kom": "Prendre l'échappée + points de la montagne" },
+    "huntPrice": { "sprint": "{price} + un peu par sprint", "kom": "{price} + un peu par côte" },
 
     "huntOffNote": "La chasse aux points est désactivée sur cette course, il roule donc à l’abri sur cette partie du plan.",
     "rulesNote": "L'échappée ne peut être que la première tâche. Le gruppetto, rentrer et le train de sprint viennent toujours en dernier.",
@@ -1246,7 +1246,7 @@
       "stage_plan_hunt_no_climb": "Aller chercher les points de la montagne exige une côte catégorisée sur son secteur. Choisis une autre tâche ou déplace le changement.",
 
       "stage_plan_hunt_after_dropped": "Un coureur lâché ne peut pas aller chercher des points. Choisis une autre tâche pour cette étape du plan.",
-      "stage_plan_hunt_needs_breakaway": "La chasse aux points avec l'échappée ne va que sur l'étape d'échappée, la première. Choisis une ligne 'Prendre l'échappée +' et enregistre à nouveau."
+      "stage_plan_hunt_needs_breakaway": "La chasse avec l'échappée ne va qu'en première étape."
     }
   },
   "tacticsOrders": {

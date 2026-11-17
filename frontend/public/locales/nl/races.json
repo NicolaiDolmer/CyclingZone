@@ -137,7 +137,7 @@
     "huntOption": "{task} · {price}",
     "price": { "hard": "Zwaar" },
     "huntNote": "Puntenjacht in de sprints: hij rijdt om de tussensprints op zijn stuk vanuit de groep waarin hij zit. Een vlucht vooruit pakt de punten nog steeds eerst. Sprints die hij alleen door de taak rijdt, tellen een beetje mee in zijn vermoeidheid.",
-    "huntNoteKom": "Bergpunten pakt hij alleen met de vlucht: hij rijdt om de klimmen op zijn stuk zolang hij erin zit. Mist hij de vlucht of wordt hij ingehaald, dan stopt de bergjacht.",
+    "huntNoteKom": "Bergpunten tellen alleen in een ontsnapping, nooit vanuit het peloton.",
     "huntChoice": { "hunt_points": "Mee in de vlucht + punten pakken in de sprints", "hunt_kom": "Mee in de vlucht + bergpunten pakken" },
     "huntPrice": { "sprint": "{price}, plus een beetje per sprint", "kom": "{price}, plus een beetje per klim" },
 
