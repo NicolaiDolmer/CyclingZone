@@ -19,11 +19,9 @@ import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import ValueDeltaBadge from "../components/rider/ValueDeltaBadge";
 import { useScouting } from "../lib/useScouting";
 import { scoutSortValue } from "../lib/scouting";
-import AuctionsFirstBidHint from "../components/AuctionsFirstBidHint";
 import OnboardingTour from "../components/OnboardingTour";
 import { startTour } from "../lib/onboardingTour";
 import { pickFirstBidRecommendation } from "../lib/firstBidRecommendation";
-import { findVisibleTarget } from "../lib/onboardingTourTarget";
 import AuctionsSidebarFeed from "../components/AuctionsSidebarFeed";
 import OverbidToast from "../components/OverbidToast";
 import CountdownRing from "../components/CountdownRing";
@@ -125,6 +123,13 @@ const DEFAULT_FILTER = "my-situation";
 // i18n Fase 3b: konstrueres via t() ved render-tid så sproget følger user's locale.
 function getAuctionsTourSteps(t) {
   return [
+    // #8069 T10: indledningen fra det gamle foerste-buds-banner over listen er nu
+    // rundvisningens foerste trin (TASTE F3: tip bor i rundvisningen, ikke i toppen).
+    {
+      target: "[data-tour='auctions-tabs']",
+      title: t("auctions:hint.title"),
+      body: t("auctions:hint.body"),
+    },
     {
       target: "[data-tour='auctions-bid-input']",
       title: t("auctions:tour.placeBid.title"),
@@ -1054,14 +1059,12 @@ export default function AuctionsPage() {
   // #194 race-confirm: { auctionId, newPrice, newMinBid } når server returnerer 409 price_changed
   const [raceConfirm, setRaceConfirm] = useState(null);
   const [auctionSort, setAuctionSort] = useState({ key: null, dir: "desc" });
-  const [showFirstBidHint, setShowFirstBidHint] = useState(false);
-  const [firstBidDismissed, setFirstBidDismissed] = useState(
+  // #8069 T10: manageren har ikke budt endnu → anbefalet raekke i listen (#3007)
+  // og rundvisningen starter selv EN gang (i stedet for et banner over listen).
+  const [needsFirstBid, setNeedsFirstBid] = useState(false);
+  const [firstBidTourShown, setFirstBidTourShown] = useState(
     () => typeof window !== "undefined" && localStorage.getItem("cz-first-bid-shown") === "1",
   );
-  // #3007: id manageren pegede på ("Se en rytter jeg har råd til") — venter til
-  // filter/sort er skiftet og rækken faktisk er i DOM'et, så useEffect nedenfor
-  // kan scrolle til den i stedet for at ramme et element der endnu ikke findes.
-  const [scrollToAuctionId, setScrollToAuctionId] = useState(null);
   // #196: realtime UX — recentBidEvents driver både ticker og sidebar-feed,
   // flashingAuctionIds driver pulse-animation, toasts vises ved overbud.
   const [recentBidEvents, setRecentBidEvents] = useState([]);
@@ -1151,9 +1154,8 @@ export default function AuctionsPage() {
     return riderFilters.filters.sort_dir;
   }
 
-  // Onboarding v2 Slice 1b — vis first-bid hint indtil manager har afgivet et bud (eller dismissed)
+  // Onboarding v2 Slice 1b — har manageren afgivet sit foerste bud?
   useEffect(() => {
-    if (firstBidDismissed) return;
     async function checkFirstBid() {
       try {
         const headers = await getHeaders();
@@ -1163,21 +1165,34 @@ export default function AuctionsPage() {
         if (!res.ok) return; // dækker også limited/unauthorized (begge sætter ok:false)
         const prog = res.data;
         const firstBid = prog.steps?.find(s => s.key === "first_bid_placed");
-        if (firstBid && !firstBid.done) setShowFirstBidHint(true);
+        if (firstBid && !firstBid.done) setNeedsFirstBid(true);
       } catch {
         // best-effort — banneret skjult ved fejl
       }
     }
     checkFirstBid();
-  }, [firstBidDismissed, apiFetch, getHeaders]);
+  }, [apiFetch, getHeaders]);
 
-  // #3007: kun beregnet mens hintet rent faktisk vises (manageren har ikke
+  // #8069 T10: rundvisningen starter EN gang, naar der er auktioner at pege paa
+  // (ellers viser turen kun sin "target ikke fundet"-boks). Codex-review #8316:
+  // "Min situation" kan vaere tom, selv om markedet har auktioner. Derfor ventes
+  // der, til bud-feltet (rundvisningens trin 2) faktisk staar paa siden; foer det
+  // bruges hverken rundvisningen eller noeglen op.
+  useEffect(() => {
+    if (!needsFirstBid || firstBidTourShown || auctions.length === 0) return;
+    if (typeof document === "undefined" || !document.querySelector("[data-tour='auctions-bid-input']")) return;
+    try { localStorage.setItem("cz-first-bid-shown", "1"); } catch { /* private browsing */ }
+    setFirstBidTourShown(true);
+    startTour("auctions");
+  }, [needsFirstBid, firstBidTourShown, auctions, filter, wishlistOnly]);
+
+  // #3007: kun beregnet mens manageren ikke har afgivet sit foerste bud (har ikke
   // budt endnu) — ingen grund til at gennemløbe auktionslisten hvert sekund
   // for etablerede managere. Se frontend/src/lib/firstBidRecommendation.js
   // for hvorfor "billigste med tid tilbage" er heuristikken.
   const firstBidRecommendation = useMemo(
-    () => (showFirstBidHint ? pickFirstBidRecommendation(auctions, { myTeamId, now }) : null),
-    [showFirstBidHint, auctions, myTeamId, now],
+    () => (needsFirstBid ? pickFirstBidRecommendation(auctions, { myTeamId, now }) : null),
+    [needsFirstBid, auctions, myTeamId, now],
   );
   // #3007 målbarhed: log ÉN gang pr. besøg at en anbefaling faktisk kunne vises
   // (ikke hvert sekund `now` tikker, som ville oversvømme player_events).
@@ -1189,41 +1204,6 @@ export default function AuctionsPage() {
     }
   }, [firstBidRecommendation]);
 
-  function dismissFirstBidHint() {
-    localStorage.setItem("cz-first-bid-shown", "1");
-    setFirstBidDismissed(true);
-    setShowFirstBidHint(false);
-  }
-
-  function handleStartFirstBidTour() {
-    startTour("auctions");
-    dismissFirstBidHint();
-  }
-
-  // #3007: "Se en rytter jeg har råd til" — færre skridt end at browse en
-  // tabel med 20+ auktioner uden noget "start her"-signal. Skifter til Alle-
-  // fanen, sorterer billigste bud først, og scroller til den anbefalede række
-  // (useEffect nedenfor, når DOM'et rent faktisk indeholder den efter re-render).
-  function handleJumpToFirstBidRecommendation() {
-    if (!firstBidRecommendation) return;
-    pickFilter("all");
-    setWishlistOnly(false);
-    setAuctionSort({ key: "current_price", dir: "asc" });
-    logEvent("onboarding_first_bid_recommendation_clicked");
-    setScrollToAuctionId(firstBidRecommendation.id);
-  }
-
-  useEffect(() => {
-    if (!scrollToAuctionId) return;
-    // #3007: samme mobil-kort/desktop-tabel-dublet-mønster som OnboardingTour
-    // (#3279) — begge rendrer et element med samme data-auction-row-værdi,
-    // kun ét er synligt pr. viewport. findVisibleTarget vælger det synlige.
-    const el = findVisibleTarget(`[data-auction-row="${scrollToAuctionId}"]`);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-      setScrollToAuctionId(null);
-    }
-  }, [scrollToAuctionId, filter, auctionSort]);
 
   useEffect(() => {
     if (!recentBids.length) return;
@@ -1589,25 +1569,20 @@ export default function AuctionsPage() {
         }
       />
 
-      {showFirstBidHint && (
-        <AuctionsFirstBidHint
-          onDismiss={dismissFirstBidHint}
-          onStartTour={handleStartFirstBidTour}
-          onJumpToRecommendation={firstBidRecommendation ? handleJumpToFirstBidRecommendation : null}
-        />
-      )}
 
       {/* #4628: de tre visnings-filtre er nu kanoniske underline-Tabs
           (PAGE_TEMPLATES: "Tabs are underline-tabs, never buttons"), ikke seks
           guld-tintede knapper i en loesreven raekke. Guld staar kun paa den
           aktive fanes 2 px underline. */}
-      <Tabs value={displayFilter} onChange={pickFilter} className="mb-3">
-        <TabList label={t("auctions:page.title")}>
-          {FILTER_TABS.map(tab => (
-            <Tab key={tab.key} value={tab.key} className="tabular-nums">{tab.label}</Tab>
-          ))}
-        </TabList>
-      </Tabs>
+      <div data-tour="auctions-tabs">
+        <Tabs value={displayFilter} onChange={pickFilter} className="mb-3">
+          <TabList label={t("auctions:page.title")}>
+            {FILTER_TABS.map(tab => (
+              <Tab key={tab.key} value={tab.key} className="tabular-nums">{tab.label}</Tab>
+            ))}
+          </TabList>
+        </Tabs>
+      </div>
 
       {/* #4628: DEN kanoniske T2-filterlinje. Soegefelt + ønskeliste-checkbox +
           taellelinje paa ÉN raekke; det fulde RiderFilters-panel (11 felter +
