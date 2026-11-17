@@ -2275,7 +2275,7 @@
     },
     "midSeasonCheckFaq": {
       "q": "Hvad er mid-season check, og hvorfor får jeg pludselig en 'Skal handles'-notif midt i sæsonen?",
-      "a": "Når halvdelen af sæsonens løbsdage er ovre, tjekker bestyrelsen din plan-status. Hvis tilfredsheden er under 50% ELLER mindst halvdelen af dine plan-mål ligger 'bagud' efter halvtid -> får du en 'Mid-season check'-notif i Indbakke 'Skal handles'. Notifen er informativ: bestyrelsen er bekymret men handler ikke automatisk. Du kan reagere ved at sende en board request (dreje plan-mål), anmode om budget-lån på Økonomi-siden, eller bare skærpe fokus resten af sæsonen. Banneret fyrer kun én gang pr. sæson pr. board."
+      "a": "Når halvdelen af sæsonens løbsdage er ovre, tjekker bestyrelsen din plan-status. Hvis tilfredsheden er under 50% ELLER mindst halvdelen af dine plan-mål ligger 'bagud' efter halvtid -> får du en 'Halvsæson-tjek'-notif i Indbakke 'Skal handles'. Notifen er informativ: bestyrelsen er bekymret men handler ikke automatisk. Notifen siger, hvilken af de to der udløste den. Sæsonens plan er underskrevet, så du reagerer ved at arbejde med de mål, der er bagud (Bestyrelse-siden viser hvilke), eller ved at optage et lån på Økonomi-siden, hvis presset er økonomisk. Banneret fyrer kun én gang pr. sæson pr. board."
     },
     "majorPivotCooldown": {
       "q": "Hvad er drej-cooldown og 'stor drejning'?",
