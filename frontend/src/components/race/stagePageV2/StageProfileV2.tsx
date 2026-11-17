@@ -53,6 +53,8 @@ export interface StageProfileV2Props {
   progressKm?: number | null;
   /** #6570 replay: eget lag oeverst i profilen (grupperne som prikker). */
   overlay?: (geo: ProfileGeometry) => ReactNode;
+  /** #8253: false = stigningernes navn og tal udelades (v6-ruten tegner sine egne etiketter). */
+  climbText?: boolean;
 }
 
 export interface ProfileGeometry {
@@ -66,7 +68,7 @@ export interface ProfileGeometry {
   narrow: boolean;
 }
 
-export default function StageProfileV2({ profile, series, climbs, selectedClimb, onSelectClimb, band = false, bandTall = false, progressKm = null, overlay }: StageProfileV2Props) {
+export default function StageProfileV2({ profile, series, climbs, selectedClimb, onSelectClimb, band = false, bandTall = false, progressKm = null, overlay, climbText = true }: StageProfileV2Props) {
   const { t } = useTranslation("races");
   const [wrapRef, width] = useMeasuredWidth<HTMLDivElement>();
   const [hoverKm, setHoverKm] = useState<number | null>(null);
@@ -230,7 +232,7 @@ export default function StageProfileV2({ profile, series, climbs, selectedClimb,
                     <line x1={tx} x2={tx} y1={ty} y2={ty - 26} stroke="var(--text-3)" strokeWidth={1} />
                     <rect x={tx - 11} y={ty - 48} width={22} height={20} rx={3} fill={cat === "HC" || cat === "1" ? "rgb(var(--climb-grad-4))" : "rgb(var(--climb-grad-3))"} />
                     <text x={tx} y={ty - 34} textAnchor="middle" fontSize={cat === "HC" ? 10 : 12} fontWeight={700} fill="white" className="font-data">{cat}</text>
-                    {!narrow && climbTextSide[i] && (
+                    {climbText && !narrow && climbTextSide[i] && (
                       <>
                         <text x={tx + (climbTextSide[i] === "left" ? -16 : 16)} y={ty - 40} textAnchor={climbTextSide[i] === "left" ? "end" : "start"} fontSize={12} fontWeight={700} fill="var(--text-1)" className="font-data">{c.name}</text>
                         <text x={tx + (climbTextSide[i] === "left" ? -16 : 16)} y={ty - 26} textAnchor={climbTextSide[i] === "left" ? "end" : "start"} fontSize={11} fill="var(--text-2)" className="font-data tabular-nums">

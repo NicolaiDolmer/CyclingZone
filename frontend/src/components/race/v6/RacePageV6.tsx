@@ -41,7 +41,7 @@ import { useRaceViewTelemetry } from "../../../lib/useRaceViewTelemetry.ts";
 import { useRiderNames } from "../../../lib/useRiderNames.js";
 import { useUiPref } from "../../../lib/userUiPrefs.ts";
 import {
-  tacticsCta, v6NamesFromResults, v6ResultsPhase, v6SavedStages, v6SavedStagesRefreshKey, v6StageTabFor, v6Strip, v6StripCells, v6StripWinners, v6Tabs,
+  tacticsCta, v6NamesFromResults, v6ResultsPhase, v6RouteProfile, v6SavedStages, v6SavedStagesRefreshKey, v6StageTabFor, v6Strip, v6StripCells, v6StripWinners, v6Tabs,
   v6TacticsResults, v6TacticsStage, v6WinnerIdsByStage, v6WinnersByStage,
   type RacePageV6Tab, type StageResultsState, type V6ResultRow,
 } from "./racePageV6Model.ts";
@@ -49,6 +49,7 @@ import V6StageStrip from "./V6StageStrip.tsx";
 import V6RouteProfile from "./V6RouteProfile.tsx";
 import V6TacticsAfter from "./V6TacticsAfter.tsx";
 import V6YourDay from "./V6YourDay.tsx";
+import V6StartList from "./V6StartList.tsx"; // #7862
 import { V6TacticsSavedContext } from "./v6TacticsSaved.ts";
 import { Button, EmptyState, FlagIcon } from "./v6Ui.ts";
 import V6RaceHeroCard, { type RacePageV6Hero } from "./V6RaceHeroCard.tsx";
@@ -129,7 +130,7 @@ export default function RacePageV6(props: RacePageV6Props) {
   const bestByStage = useMemo(() => myBestByStage(stagePointRows, myTeamId, nameById), [stagePointRows, myTeamId, nameById]);
   const phase = stagePhase(selectedStage, stagesCompleted);
   // StagePageV2 maaler sine egne faner; Resultater er v6's egen og maales her.
-  useRaceViewTelemetry({ raceId: activeTab === "results" ? raceId : null, tab: activeTab, stage: selectedStage, phase });
+  useRaceViewTelemetry({ raceId: activeTab === "results" || activeTab === "start" ? raceId : null, tab: activeTab, stage: selectedStage, phase });
 
   // #7865: Taktik-fanens etape. Siden ejer den seneste eksplicitte navigation (striben
   // og hovedets guld-knap går samme vej) og glemmer den, når fanen forlades.
@@ -177,7 +178,8 @@ export default function RacePageV6(props: RacePageV6Props) {
   }), [totalStages, stagesCompleted, raceFinished, schedule, nowMs, profileByStage, winners, bestByStage, riders, overrides, savedStages, whenLabelFor, timeLabelFor]);
   // #7865 (punkt 2): én etapestribe. På Taktik styrer den editoren (som ingen egen vælger har).
   const strip = v6Strip({ activeTab, isStageRace, selectedStage, tacticsStage });
-  const profile = profileByStage[selectedStage] ?? null;
+  // #8253: rutekortet viser altid den valgte etapes rute (opslaget tjekker etapenummeret).
+  const profile = v6RouteProfile(profileByStage, selectedStage);
   const canShowRoute = profile != null && hasRouteData(profile);
   const routeShown = canShowRoute && !routeHidden;
   const resultsPhase = v6ResultsPhase({ selectedStage, stagesCompleted, raceFinished, schedule, nowMs });
@@ -199,7 +201,7 @@ export default function RacePageV6(props: RacePageV6Props) {
             results={results}
             myTeamId={myTeamId}
             stageRoles={stageRoles}
-            profile={profileByStage[tacticsStage] ?? null}
+            profile={v6RouteProfile(profileByStage, tacticsStage)}
             resultsState={tacticsResults}
             resultsErrorSlot={tacticsResults === "failed" ? stageErrorFor?.(tacticsStage) ?? null : null}
           />
@@ -209,6 +211,9 @@ export default function RacePageV6(props: RacePageV6Props) {
         </V6TacticsSavedContext.Provider>
       </div>
     );
+  } else if (activeTab === "start") {
+    // #7862 (valg 9/10): løbets felt med rygnumre og favoritter.
+    body = <V6StartList raceId={raceId} isStageRace={isStageRace} stagesCompleted={stagesCompleted} results={results} myTeamId={myTeamId} firstStartMs={scheduleFor(schedule, 1)?.getTime() ?? null} nowMs={nowMs} />;
   } else if (activeTab !== "results") {
     body = (
       <StagePageV2

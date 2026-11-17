@@ -1,4 +1,4 @@
-// #7860 · Resultater i v6: søgefelt og "Mit hold"-knap i resultattabellens hoved.
+// #7860 · Resultater i v6: søgefelt og "Mit hold"-knap i resultattabellens hoved. #7862: nationsfilter.
 // Styret komponent: tilstanden ejes af tabellen, filtreringen bor i resultsControlsModel.
 // Ingen guld: sidens ene primærknap bor andetsteds (TASTE). Hairline-kanter, 44 px på touch.
 import type { ReactNode } from "react";
@@ -21,9 +21,11 @@ export interface V6ResultsControlsProps {
   total: number;
   /** #7865: filtrerer tabellen selv lige nu? Mit hold kan ejes af holdvælgeren; uden = afledt af state. */
   counting?: boolean;
+  /** #7862: nationerne i listen; vælgeren vises, når der er mindst to. */
+  nations?: Array<{ code: string; name: string }>;
 }
 
-export default function V6ResultsControls({ state, onChange, hasMyTeam, shown, total, counting }: V6ResultsControlsProps) {
+export default function V6ResultsControls({ state, onChange, hasMyTeam, shown, total, counting, nations = [] }: V6ResultsControlsProps) {
   const { t } = useTranslation("results");
   const filtering = counting ?? isFiltering(state);
   return (
@@ -66,6 +68,19 @@ export default function V6ResultsControls({ state, onChange, hasMyTeam, shown, t
         >
           {t("raceResultsV6.myTeam")}
         </button>
+      )}
+      {nations.length > 1 && (
+        <select
+          value={state.nation ?? "all"}
+          onChange={(e) => onChange({ ...state, nation: e.target.value })}
+          aria-label={t("raceResultsV6.nation")}
+          className={`max-w-56 cursor-pointer rounded-cz border px-3 py-2 text-sm font-medium transition-colors focus:outline-hidden focus:ring-1 focus:ring-cz-accent ${TOUCH} ${
+            (state.nation ?? "all") !== "all" ? "border-cz-accent/30 bg-cz-accent/10 text-cz-accent-t" : "border-cz-border bg-cz-card text-cz-2"
+          }`}
+        >
+          <option value="all">{t("raceResultsV6.allNations")}</option>
+          {nations.map((n) => <option key={n.code} value={n.code}>{n.name}</option>)}
+        </select>
       )}
       <span className="ms-auto font-data text-2xs tabular-nums text-cz-3" aria-live="polite">
         {filtering ? t("raceResultsV6.matchCount", { shown, total }) : ""}
