@@ -657,7 +657,7 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
           {/* S-02g · Tradeoff-stramning indikator. Vises når et mål er hævet pga. tidligere
               approved board request (lower_results_pressure / ease_identity_requirements). */}
           {goal.tradeoff_tightened && (
-            <span className="text-xs text-cz-warning/80" title={t("goal.tightenedTitle")}>{t("goal.tightenedBadge")}</span>
+            <span className="inline-flex items-center gap-1 text-xs text-cz-warning/80" title={t("goal.tightenedTitle")}><LockIcon size={12} aria-hidden="true" />{t("goal.tightenedBadge")}</span>
           )}
           {goal.satisfaction_bonus > 0 && (
             <span className="text-xs text-cz-success/70">{t("goal.satisfactionBonus", { count: goal.satisfaction_bonus })}</span>
@@ -795,7 +795,7 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
       <div className="flex flex-wrap gap-2 mb-4">
         {goal.importance === "required" && <span className="text-xs bg-cz-subtle text-cz-3 px-2 py-0.5 rounded-cz border border-cz-border">{t("goal.obligatory")}</span>}
         {goal.cumulative && <span className="text-xs bg-cz-info-bg text-cz-info px-2 py-0.5 rounded-cz">{t("goal.cumulative")}</span>}
-        {goal.tradeoff_tightened && <span className="text-xs text-cz-warning/80">{t("goal.tightenedBadge")}</span>}
+        {goal.tradeoff_tightened && <span className="inline-flex items-center gap-1 text-xs text-cz-warning/80"><LockIcon size={12} aria-hidden="true" />{t("goal.tightenedBadge")}</span>}
         {goal.satisfaction_bonus > 0 && <span className="text-xs text-cz-success/70">{t("goal.satisfactionBonus", { count: goal.satisfaction_bonus })}</span>}
         {goal.satisfaction_penalty > 0 && <span className="text-xs text-cz-danger/70">{t("goal.satisfactionPenalty", { count: goal.satisfaction_penalty })}</span>}
         {goal.negotiated && <span className="text-xs text-cz-info/70">{t("goal.negotiated")}</span>}
@@ -2025,7 +2025,7 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
               {current?.satisfaction_penalty > 0 && (
                 <span className="text-xs text-cz-danger/70">{t("goal.satisfactionPenalty", { count: current?.satisfaction_penalty })}</span>
               )}
-              {current?.negotiated && <span className="text-xs text-cz-info/70">{t("wizard.negotiatedTick")}</span>}
+              {current?.negotiated && <span className="inline-flex items-center gap-1 text-xs text-cz-info/70"><CheckIcon size={12} aria-hidden="true" />{t("wizard.negotiatedTick")}</span>}
             </div>
           </div>
         </div>

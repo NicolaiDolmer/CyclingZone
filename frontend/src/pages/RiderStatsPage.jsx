@@ -45,7 +45,7 @@ import { ABILITY_KEYS, topAbilityKey } from "../lib/abilities.js";
 import { ageForSeason, retirementBidWarningTier, seasonNumberFromReferenceYear } from "../lib/riderAge.js";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { useActionSummary } from "../hooks/useActionSummary.js";
-import { AmountInput, BlockedNote, Button, Card, CheckIcon, ChevronLeftIcon, ErrorState, ExchangeIcon, PageLoader, XIcon } from "../components/ui";
+import { AmountInput, BlockedNote, Button, Card, CheckIcon, ChevronLeftIcon, ErrorState, ExchangeIcon, LightningIcon, LockIcon, PageLoader, XIcon } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import RiderProfileHero from "../components/rider/profile/RiderProfileHero.jsx";
 import RiderSwitcherBar from "../components/rider/profile/RiderSwitcherBar.jsx";
@@ -651,7 +651,7 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, seniorCo
   return (
     <div className={`rounded-cz border p-4 ${imWinning ? "border-cz-accent/40 bg-cz-accent/4" : "border-cz-border bg-cz-subtle"}`}>
       <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
-        <p className="text-cz-3 text-xs uppercase tracking-widest">{t("auctionPanel.activeLabel")}</p>
+        <p className="inline-flex items-center gap-1 text-cz-3 text-xs uppercase tracking-widest"><LightningIcon size={12} aria-hidden="true" />{t("auctionPanel.activeLabel")}</p>
         <div className="flex items-center gap-1.5 flex-wrap">
           {imWinning && <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-2 py-0.5 rounded font-semibold">{t("auctionPanel.badges.leading")}</span>}
           {isSeller && <span className="text-3xs uppercase bg-cz-info-bg text-cz-info px-2 py-0.5 rounded font-semibold">{t("auctionPanel.badges.selling")}</span>}
@@ -872,7 +872,7 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
               <div className="flex items-center gap-2">
                 <input type="checkbox" checked={flash} onChange={e => setFlash(e.target.checked)}
                   className="rounded accent-cz-danger" />
-                <span className="text-sm text-cz-danger font-medium">{t("auctionStart.flash.label")}</span>
+                <span className="inline-flex items-center gap-1 text-sm text-cz-danger font-medium"><LightningIcon size={13} aria-hidden="true" />{t("auctionStart.flash.label")}</span>
               </div>
               <span className="text-xs text-cz-3 sm:ms-0 ms-6">{t("auctionStart.flash.hint")}</span>
             </label>
@@ -2053,6 +2053,7 @@ export default function RiderStatsPage() {
               <div className="flex flex-wrap items-start gap-2">
                 {isPendingTransfer && (
                   <p className="w-full text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-cz border border-cz-border">
+                    <LockIcon size={12} aria-hidden="true" className="inline-block me-1 align-[-2px]" />
                     {t("blocked.pendingTransfer")}
                   </p>
                 )}
