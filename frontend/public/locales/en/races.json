@@ -136,9 +136,9 @@
     "effortNote": "The effort follows the task.",
     "huntOption": "{task} · {price}",
     "price": { "hard": "Hard" },
-    "huntNote": "He contests the sprints on his stretch from his group; each extra sprint tires him a little.",
+    "huntNote": "He contests the sprints on his stretch from his group; each tires him a little.",
     "huntNoteKom": "KOM points only count in a break.",
-    "huntChoice": { "hunt_points": "Go in the break + go for sprint points", "hunt_kom": "Go in the break + go for KOM points" },
+    "huntChoice": { "hunt_points": "Go in the break + sprint points", "hunt_kom": "Go in the break + KOM points" },
     "huntPrice": { "sprint": "{price} + a little per sprint", "kom": "{price} + a little per climb" },
 
     "huntOffNote": "Going for points is off in this race, so he rides sheltered on that part of the plan.",
@@ -1229,7 +1229,7 @@
       "stage_plan_hunt_no_climb": "Going for KOM points needs a categorised climb on his stretch. Pick another task or change the switch point.",
 
       "stage_plan_hunt_after_dropped": "A rider can't go for points once he is dropped. Pick another task for that step.",
-      "stage_plan_hunt_needs_breakaway": "Points with the break only work on the first step."
+      "stage_plan_hunt_needs_breakaway": "Points with the break: first step only."
     }
   },
   "tacticsOrders": {
