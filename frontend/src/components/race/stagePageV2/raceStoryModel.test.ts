@@ -10,7 +10,7 @@ import { buildRaceStory, replayFrames, storyInputsFromResults } from "../../../.
 import { withEventPlaces } from "../../../../../backend/lib/raceTimeline.js";
 import {
   asStory, isTimeTrialStory, buildReport, castFrom, curateMoments, dayWordsByRider, dayWordSentences, finaleData, finaleEndTime, finaleMarkerLabelsShown, finaleStateAt, formatClock, frameAt,
-  groupMembersAt, groupOfRider, leaderKmAt, lineReplayKm, mainGroupId, MAX_STORY_LINES, namesList, ownOutSentences, ownTimeLoss, parseGap, pickGroups,
+  groupMembersAt, groupOfRider, leaderKmAt, lineReplayKm, lineDisplayKm, mainGroupId, MAX_STORY_LINES, namesList, ownOutSentences, ownTimeLoss, parseGap, pickGroups,
   replayGroupsAt, reportTextKey, splitRows, wholeStageFrames, myBestRider,
   type RaceStory, type StoryLine,
 } from "./raceStoryModel.ts";
@@ -419,7 +419,7 @@ test("#7704: hul-linjen siger kun feltet om hovedgruppen", () => {
   const s = story(shatteredTimeline());
   const gaps = s.moments.filter((m) => m.key === "story.gap_grew" || m.key === "story.gap_shrank");
   const lines = curateMoments(s, cast(), 50).filter((l) => l.kind === "gap");
-  const groupAt = (km: number, id: string) => lines.find((l) => l.km === km && gaps.some((m) => m.km === km && m.data.group_id === id))?.data.group;
+  const groupAt = (km: number, id: string) => lines.find((l) => l.km === (gaps.find((m) => m.km === km && m.data.group_id === id)?.km_span?.to ?? km) && gaps.some((m) => m.km === km && m.data.group_id === id))?.data.group;
   const afterSplit = gaps.find((m) => m.data.group_id === "peloton-0" && m.km >= 40);
   assert.ok(afterSplit, "startgruppens hul flytter sig efter splittet");
   assert.equal(groupAt(afterSplit.km, "peloton-0"), "chase", "startgruppen er ikke feltet efter splittet");
@@ -435,6 +435,7 @@ test("#8124: hul-linjen ved stregen bruger snapshottet PAA stregen, ikke det lig
   // 50 km: her ligger snapshottet 0,01 km foer stregen inden for den gamle margin (flydende tal).
   assert.ok(Math.abs(50 - Math.round((50 - 0.01) * 100) / 100) < 0.01, "forudsaetning: begge snapshots er inden for 0,01 km");
   m.km = 50;
+  m.km_span = { from: 50, to: 50 };
   delete (m as { recorded_km?: number }).recorded_km;
   const base = s.snapshots[s.snapshots.length - 1];
   const g = (group_id: string, size: number, gap_s: number, includes_rest = false) => ({ ...base.groups[0], group_id, size, gap_s, includes_rest });
@@ -447,6 +448,7 @@ test("#8124: hul-linjen ved stregen bruger snapshottet PAA stregen, ikke det lig
   assert.equal(line.data.group, "rest", "ved stregen er startgruppen feltet; snapshottet lige foer maa ikke vinde");
   // Et moment lige foer stregen bruger stadig snapshottet lige foer.
   m.km = 49.99;
+  m.km_span = { from: 49.99, to: 49.99 };
   const before = curateMoments(s, cast(), 50).find((l) => l.kind === "gap" && l.km === 49.99);
   assert.equal(before?.data.group, "chase", "snapshottet lige foer bruges til et moment lige foer");
 });
@@ -875,4 +877,20 @@ test("#7705: en årsag uden tekst forklarer intet, og uden præcise tider siges 
   assert.equal(loss.unknown, "Lost", "linjen uden tekst forklarer ham ikke");
   const noTimes = buildRaceStory({ events: [ev(0, "stage_start", { distance_km: 180 }), ev(180, "bad_day", { rider_id: "b", reason: "illness" }), ev(180, "finish", {})], timelineVersion: 1 }) as unknown as RaceStory;
   assert.deepEqual(ownTimeLoss(noTimes, castFrom(LOSS_RESULTS, [], 10, "t-me"), { events: [] }), { entries: [], unknown: "" });
+});
+
+// #8377: et referat viser aldrig et km-interval; afstands-linjen staar paa slutpunktet med efter-vaerdien og tiden.
+test("curateMoments: afstands-linjen staar paa ét km (slutpunktet) med tid, og ingen linje viser et interval", () => {
+  const s = story(hillyTimeline());
+  const lines = curateMoments(s, cast());
+  const gap = lines.find((l) => l.kind === "gap");
+  assert.ok(gap, "afstands-linjen findes");
+  assert.equal(gap.kmTo, null);
+  assert.equal(gap.span, false);
+  assert.notEqual(gap.time, null, "afstands-linjen har loebstid som de andre linjer");
+  assert.equal(gap.km, 40, "slutpunktet, hvor afstanden er maalt");
+  assert.equal(gap.data.after, 200);
+  for (const l of lines) assert.equal(lineDisplayKm(l), l.kmTo ?? l.km, `${l.kind} viser ét km`);
+  assert.equal(lineDisplayKm({ km: 25, kmTo: 48 }), 48);
+  assert.equal(lineDisplayKm({ km: 25, kmTo: null }), 25);
 });

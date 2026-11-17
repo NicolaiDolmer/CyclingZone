@@ -448,12 +448,21 @@ export function curateMoments(story: RaceStory, cast: Cast, max = MAX_STORY_LINE
         if (m.importance !== "key") break;
         const before = num(m.data.gap_before_s), after = num(m.data.gap_after_s);
         if (before == null || after == null) break;
-        single.push(baseLine(m, "gap", 4, cast, {
+        const gapLine = baseLine(m, "gap", 4, cast, {
           dir: m.key === "story.gap_grew" ? "grew" : "shrank",
           group: gapLineGroup(story, m),
           before,
           after,
-        }));
+        });
+        // #8377: afstanden er maalt ved slutpunktet; linjen staar paa det ene km med den tid, ikke som km-interval.
+        if (m.km_span) {
+          gapLine.km = m.km_span.to;
+          gapLine.kmTo = null;
+          gapLine.span = false;
+          gapLine.time = m.race_time_s;
+          gapLine.id = `gap-${gapLine.km}-${m.type}`;
+        }
+        single.push(gapLine);
         break;
       }
       case "story.split": {
@@ -520,6 +529,11 @@ export function curateMoments(story: RaceStory, cast: Cast, max = MAX_STORY_LINE
   const chosen = [...all].sort((a, b) => a.priority - b.priority || weight(b) - weight(a) || b.km - a.km).slice(0, max);
   const selected = chosen.sort((a, b) => a.km - b.km || Number(a.kind === "finish") - Number(b.kind === "finish") || (a.time ?? 0) - (b.time ?? 0) || a.priority - b.priority);
   return attachNarratives(selected, story, cast, narrative);
+}
+
+/** #8377: et referat viser aldrig et km-interval; en linje der daekker et stykke vej staar paa slut-km. */
+export function lineDisplayKm(line: Pick<StoryLine, "km" | "kmTo">): number {
+  return line.kmTo ?? line.km;
 }
 
 /** km hvor replayet skal staa naar man trykker paa linjen (slut-km for et stykke vej). */

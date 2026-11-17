@@ -2,7 +2,7 @@
 // (antal, navne, km, huller fra loggen). Copy: races.json stagePageV2.story.*
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../../../lib/intl.js";
-import { formatClock, kmValue, namesList, type Cast, type StoryLine } from "./raceStoryModel.ts";
+import { formatClock, kmValue, lineDisplayKm, namesList, type Cast, type StoryLine } from "./raceStoryModel.ts";
 
 /** Linjer hvor dine ryttere allerede staar i selve teksten (kun et YOU-maerke). */
 const NAMED_KINDS = new Set(["attack", "incident", "climb", "gcLead", "crack", "finish"]);
@@ -12,10 +12,7 @@ export function useStoryText(cast: Cast) {
   const km = (v: number) => formatNumber(kmValue(v), { maximumFractionDigits: 1 });
 
   function kmLabel(line: StoryLine): string {
-    if (line.kmTo != null && Math.round(line.kmTo * 10) !== Math.round(line.km * 10)) {
-      return t("stagePageV2.story.kmSpan", { from: km(line.km), to: km(line.kmTo) });
-    }
-    return t("stagePageV2.story.kmAt", { km: km(line.km) });
+    return t("stagePageV2.story.kmAt", { km: km(lineDisplayKm(line)) }); // #8377: aldrig et km-interval
   }
 
   function lineText(line: StoryLine): string {
