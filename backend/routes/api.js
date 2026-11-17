@@ -339,6 +339,7 @@ import { handleListPendingRequest, handlePromotePendingRequest } from "../lib/pr
 import { promote as promoteAcademyRider, demote as demoteAcademyRider, resolveDemoteSalary, hasCompleteContract, demoteTargetSquad, handleMoveSquadRequest } from "../lib/academyTransfer.js";
 import { countFutureRaceEntries, countOngoingRaceEntries, clearFutureRaceEntriesSafe } from "../lib/raceEntryCleanup.js";
 import { computeAcademyCurrent, computeAcademyCumulative, buildAcademySales, summarizeAcademyPnl } from "../lib/academyPnl.ts";
+import { isAcademyLedgerEnabled, loadAcademySeasonLedger } from "../lib/academyPnlLoad.ts"; // #8060
 import { buildFictionalPopulationPreview } from "../lib/fictionalPopulationPreview.js";
 import {
   getTeamAcademyCount,
@@ -352,6 +353,7 @@ import { buildIntake2View } from "../lib/academyIntake2View.ts"; // #6666
 import { isPotentialEstimateDisplayEnabled } from "../lib/potentialEstimateFlag.js"; // #7684
 import { buildAcademyFromViews, buildEstimatesFromViews, buildProjectionFromView, buildScoutingReportFromView } from "../lib/potentialEstimateRead.js"; // #7684
 import { saveAcademyProfile } from "../lib/academyIntakeProfile.ts"; // #6666
+import { createAcademyV2Router } from "../lib/academyAgeFocus.ts"; // #8081
 import { computeFrozenSalary } from "../lib/contractSeed.js";
 import {
   computeDebtRatio,
@@ -1019,6 +1021,7 @@ router.use("/rankings", rankingReadWithFallback7664(supabase, createRankingsRout
   }),
 }), { captureExceptionFn: captureException }));
 router.use("/feature-flags", createFeatureFlagsRouter({ supabase, requireAuth, isViewerBetaTester, reportError: captureException })); // #4948
+router.use("/academy/v2", createAcademyV2Router({ supabase, requireAuth, writeLimiter: marketWriteLimiter, isViewerBetaTester, reportError: captureException })); // #8081
 router.use(createFirstRaceCardRouter({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, reportError: captureException })); // #1140
 router.use(createRaceLibraryV2Router({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, reportError: captureException })); // #6514
 router.use("/push", createPushRouter({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, writeLimiter: marketWriteLimiter, reportError: captureException })); // #6590
@@ -19119,7 +19122,7 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       // rytter-/auktions-/holdsiden); current_production_value er det felt
       // computeFrozenSalary/projectSeniorSalary regner senior-lønnen ud fra —
       // uden det viste promote-dialogen fallback-lønnen 161 CZ$ for ALLE ryttere.
-      .select("id, firstname, lastname, birthdate, nationality_code, team_id, is_academy, salary, contract_length, contract_end_season, base_value, market_value, prize_earnings_bonus, primary_type, secondary_type, current_production_value")
+      .select("id, firstname, lastname, birthdate, nationality_code, team_id, is_academy, squad, salary, contract_length, contract_end_season, base_value, market_value, prize_earnings_bonus, primary_type, secondary_type, current_production_value") // #8081: squad til "Dine talenter"
       .eq("team_id", teamId)
       .eq("is_academy", true);
     if (rosterErr) throw new Error(rosterErr.message);
@@ -19502,6 +19505,8 @@ router.get("/academy/pnl", requireAuth, async (req, res) => {
     res.json({
       enabled: true,
       ...summarizeAcademyPnl({ current, driftPaid, signingFeesPaid, sales }),
+      // #8060: regnskab pr. sæson kun bag academy_page_v2_8081; slukket er svaret som før.
+      ...((await isAcademyLedgerEnabled(supabase, { isBetaTester })) ? { ledger: await loadAcademySeasonLedger(supabase, { teamId }) } : {}),
     });
   } catch (err) {
     captureException(err);

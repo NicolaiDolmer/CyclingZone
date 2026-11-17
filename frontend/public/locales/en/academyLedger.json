@@ -1,0 +1,38 @@
+{
+  "title": "Academy ledger",
+  "caption": "Costs and sales count the same riders: everyone you signed from an academy offer or won at a youth auction. Costs are shown with a minus.",
+  "colSeason": "Season",
+  "thisSeason": "This season",
+  "season": "Season {n}",
+  "noSeason": "No season",
+  "offerSignings": "Signed from offers",
+  "youthAuctionBuys": "Bought at youth auction",
+  "drift": "Running costs",
+  "driftHistoric": "Running costs (earlier seasons)",
+  "sales": "Sales",
+  "salesCount": "{count, plural, one {# sale} other {# sales}}",
+  "net": "Net",
+  "total": "All seasons",
+  "salesTitle": "Sales of academy riders",
+  "colRider": "Rider",
+  "colDate": "Date",
+  "colOrigin": "Came from",
+  "colVia": "Sold via",
+  "colPrice": "Price",
+  "origin": {
+    "offer": "Academy offer",
+    "youthAuction": "Youth auction"
+  },
+  "via": {
+    "auction": "Auction",
+    "transfer": "Transfer"
+  },
+  "unknownRider": "Unknown rider",
+  "allSales": "Show all {count} sales",
+  "emptySalesTitle": "No academy riders sold yet",
+  "emptySalesBody": "When you sell a rider you signed from an academy offer or won at a youth auction, the sale shows here.",
+  "emptySalesAction": "See your team",
+  "errorTitle": "Could not load the academy ledger",
+  "errorBody": "Try again in a moment.",
+  "retry": "Try again"
+}

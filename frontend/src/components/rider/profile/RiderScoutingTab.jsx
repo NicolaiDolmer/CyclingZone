@@ -114,12 +114,12 @@ function PrimaryTypeRow({ typeKey, now, progLo, progHi, label, roleLabel, progre
       </span>
       <div className="flex items-center gap-3 mt-1.5">
         <span
-          className="inline-flex items-center justify-center min-w-[42px] h-[32px] px-2 rounded-cz font-display text-[19px] tabular-nums"
+          className="inline-flex items-center justify-center min-w-[42px] h-[32px] px-2 rounded-cz font-data text-[17px] font-semibold tabular-nums"
           style={statPlateStyle(now)}
         >
           {now}
         </span>
-        <span className="font-display text-[19px] leading-none tracking-[0.02em] uppercase text-cz-1">
+        <span className="text-[15px] font-semibold leading-tight text-cz-1">
           {label}
         </span>
         <span className="ms-auto text-right">
@@ -479,7 +479,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
                 : t("profile.scouting.provenanceNamed", { name: scoutMeta?.name, tier: scoutMeta?.tier })}
             </p>
             <div className="flex items-center gap-2.5 mt-2 flex-wrap">
-              <h3 className="font-display text-[21px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0">
+              <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0">
                 {verdict ? t(`profile.scouting.headline_${verdict.headlineKey}`) : t("profile.scouting.capsMissingTitle")}
               </h3>
               {verdict && (
@@ -581,7 +581,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
       {orderedTypes.length > 0 && (
         <SectionCard>
           <div className="flex items-baseline justify-between gap-2 mb-3">
-            <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0">
+            <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0">
               {t("profile.scouting.typesTitle")}
             </h3>
             <span className="text-3xs text-cz-3">

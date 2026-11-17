@@ -212,6 +212,8 @@ test("hent-knappen vises uanset åbne tilbud, og 'provisional value' kun på pul
 // #6666 Optag 2.0 (ejer-beslutninger 15/10).
 const localesDir = join(__dirname, "..", "..", "public", "locales");
 const academyLocale = (lng) => JSON.parse(readFileSync(join(localesDir, lng, "academy.json"), "utf8"));
+// #8081: udgave A's tekster ligger i det route-gatede navnerum academyV2 (perf-gaten: academy hentes ved første indlæsning).
+const academyV2Locale = (lng) => JSON.parse(readFileSync(join(localesDir, lng, "academyV2.json"), "utf8"));
 
 test("hent-knappen siger aldrig 'scout' (#6666 punkt 3)", () => {
   assert.equal(academyLocale("en").intakePull.pullBtn, "Bring in this week's intake");
@@ -265,4 +267,98 @@ test("profil-kortet vises kun med Optag 2.0 og har ingen guld-knap (#6666 punkt 
   const card = readFileSync(join(__dirname, "..", "components", "AcademyProfileCard.tsx"), "utf8");
   assert.doesNotMatch(card, /variant="primary"/, "sidens eneste guld er hent-knappen (TASTE: ét guld pr. view)");
   assert.match(apiSource, /router\.put\("\/academy\/profile"/);
+});
+
+// #8081 (ejervalg 16/11): udgave A bag kontakten academy_page_v2_8081. Slukket = siden som før.
+const v2Source = readFileSync(join(__dirname, "..", "components", "academy-v2", "AcademyV2.tsx"), "utf8");
+
+test("#8081: udgave A vises kun bag kontakten; den normale gren og kortet er uændrede", () => {
+  assert.match(pageSource, /const pageV2 = useAcademyPageV2Flag\(\);/);
+  // Udgave A står bag en ready-gate for det lazy navnerum academyV2 (perf-gaten).
+  assert.match(pageSource, /if \(pageV2\) \{\s*return \([\s\S]{0,300}?<I18nReadyGate ns="academyV2">\s*<AcademyV2\b/);
+  // Den normale side kalder stadig kortet via .map, og "Lander på" kræver showLanding.
+  assert.match(pageSource, /regularIntake\.map\(renderIntakeCard\)/);
+  assert.match(pageSource, /\{!showLanding && landing\.movedToU23 && \(/);
+  assert.match(pageSource, /showLanding && landing\.squad && \(/);
+  // #8060 (ejervalg 16/11, godkendt 17/11): regnskabet er en fane i udgave A; det gamle AcademyPnl
+  // vises ikke under fanerne der (det ville modsige fanen). Den gamle side har det stadig.
+  assert.match(pageSource, /footer=\{null\}/);
+  assert.match(v2Source, /<Tab value="ledger">/);
+  assert.match(v2Source, /<TabPanel value="ledger">\s*<AcademyLedgerTab \/>/);
+  assert.match(pageSource, /<AcademyPnl \/>/);
+});
+
+test("#8081: udgave A har ét guld, ingen saldo i sidehovedet (A2) og de rigtige trupgrænser", () => {
+  assert.equal((v2Source.match(/variant="primary"/g) || []).length, 1, "kun hent-knappen er guld");
+  assert.doesNotMatch(v2Source, /t\("balance"/, "A2: saldoen står allerede i sidebjælken");
+  assert.match(v2Source, /squadCapRows\(squadCounts\)/, "#7932: lofterne fra squadCaps.ts (spejl af backend SQUAD_CAPS)");
+  assert.doesNotMatch(v2Source, /\b30\b|\b60\b/, "ingen 30/30/30 eller 60 (ikke besluttet bygget)");
+  assert.doesNotMatch(v2Source, /text-cz-3/, "A3/A4: hjælpelinjer i --text-2");
+});
+
+// #8081 opfølgning 16/11 aften: skitse A's "Kom via", fordelingen pr. alder og to TASTE-rettelser.
+const v2Dir = join(__dirname, "..", "components", "academy-v2");
+const talentSource = readFileSync(join(v2Dir, "TalentTable.tsx"), "utf8");
+const ageFieldSource = readFileSync(join(v2Dir, "AgeFocusField.tsx"), "utf8");
+const originsSource = readFileSync(join(v2Dir, "useTalentOrigins.ts"), "utf8");
+const dataTableSource = readFileSync(join(__dirname, "..", "components", "ui", "DataTable.jsx"), "utf8");
+
+test("#8081: en fuld trup står i neutral tekst med ordet Fuld, ingen advarselsfarve (TASTE: ét guld/én farve)", () => {
+  assert.doesNotMatch(v2Source, /text-cz-warning|text-cz-accent|text-cz-gold/, "overblikkets tal står neutralt");
+  assert.match(v2Source, /row\.full && <span className="[^"]*text-cz-2[^"]*">\{t\("academyV2:v2\.stats\.full"\)\}/);
+  assert.equal(academyV2Locale("en").v2.stats.full, "Full");
+  assert.equal(academyV2Locale("da").v2.stats.full, "Fuld");
+});
+
+test("#8081: talenttabellens mobil-chips er firkantede (5px), kun på akademiet", () => {
+  // Kun akademiets wrapper gør pillerne firkantede; den delte DataTable er uændret (første indlæsning).
+  assert.match(talentSource, /data-testid="academy-v2-talents" className="\[&_\.rounded-cz-pill\]:rounded-cz"/);
+  assert.doesNotMatch(dataTableSource, /squareChips/);
+  assert.match(dataTableSource, /rounded-cz-pill/);
+});
+
+test("#8081 (ejer 16/11): Dine talenter viser kun egen avl; oprindelsen læses read-only og pagineret", () => {
+  // Listen filtreres til akademi-tilbud, så "Kom via" (altid samme ord) er fjernet fra tabellen.
+  assert.doesNotMatch(talentSource, /key: "via"|colVia|_via/);
+  assert.match(v2Source, /useTalentOrigins\(/);
+  assert.match(v2Source, /ownAcademyTalents\(roster, origins\)/);
+  assert.match(v2Source, /<TalentTable roster=\{ownTalents\}/);
+  assert.equal((originsSource.match(/fetchAllRows\(/g) || []).length, 2, "begge hentninger er pagineret");
+  assert.equal((originsSource.match(/\.order\("id"\)\) as Promise/g) || []).length, 2, "stabil orden pr. side");
+  assert.match(originsSource, /\.from\("academy_intake"\)[\s\S]*?\.eq\("status", "signed"\)/);
+  assert.match(originsSource, /\.from\("auctions"\)[\s\S]*?\.eq\("is_youth", true\)[\s\S]*?\.eq\("current_bidder_id", teamId\)/);
+  assert.doesNotMatch(originsSource, /\.(insert|update|upsert|delete|rpc)\(/, "kun læsning");
+  assert.equal(academyV2Locale("da").v2.talents.colVia, undefined);
+});
+
+test("#8081: fordelingen pr. alder står under aldersvælgeren i ord og følger det valgte fokus (ingen tal)", () => {
+  assert.match(ageFieldSource, /const distribution = ageFocusDistribution\(value\);/);
+  assert.ok(ageFieldSource.indexOf("<Segmented") < ageFieldSource.indexOf('data-testid="academy-age-distribution"'), "linjen står under vælgeren");
+  for (const lng of ["en", "da", "es", "fr", "nl"]) {
+    const age = academyV2Locale(lng).v2.age;
+    for (const word of Object.values(age.share)) assert.doesNotMatch(String(word), /\d|%/, `${lng}: kun ord, ingen tal`);
+    assert.doesNotMatch(age.row, /%/, `${lng}: ingen procent`);
+  }
+  assert.deepEqual(academyV2Locale("da").v2.age.share, { many: "mange", some: "nogle", few: "få" });
+});
+
+test("#8081 (Codex-fund): en fejlet genhentning efter et gemt valg viser ikke 'intet blev ændret'", () => {
+  const hook = readFileSync(join(v2Dir, "useAcademyAgeFocus.ts"), "utf8");
+  assert.match(hook, /const refreshed = await load\(\{ keepOnFailure: true \}\);/);
+  assert.match(hook, /\} else if \(!keepOnFailure\) \{\s*setError\(true\);/);
+});
+
+test("#8081: v2-teksterne findes på alle fem sprog med samme nøgler og uden em-dash", () => {
+  const flat = (obj, prefix = "") => Object.entries(obj).flatMap(([k, v]) => (v && typeof v === "object" ? flat(v, `${prefix}${k}.`) : [[`${prefix}${k}`, v]]));
+  const en = flat(academyV2Locale("en").v2).map(([k]) => k).sort();
+  for (const lng of ["da", "es", "fr", "nl"]) {
+    assert.deepEqual(flat(academyV2Locale(lng).v2).map(([k]) => k).sort(), en, `${lng}: v2-nøglerne afviger fra en`);
+  }
+  for (const lng of ["en", "da", "es", "fr", "nl"]) {
+    for (const [key, text] of flat(academyV2Locale(lng).v2)) assert.doesNotMatch(String(text), /—/, `${lng}: em-dash i v2.${key}`);
+  }
+  assert.equal(academyV2Locale("en").v2.tabs.talents, "Your talents");
+  assert.equal(academyV2Locale("da").v2.tabs.profile, "Profil og alder");
+  // academy.json må ikke længere bære v2 (det ville igen veje på første indlæsning).
+  for (const lng of ["en", "da", "es", "fr", "nl"]) assert.equal(academyLocale(lng).v2, undefined, `${lng}: v2 ligger stadig i academy.json`);
 });

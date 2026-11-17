@@ -2,20 +2,19 @@
   "page": {
     "fallbackTitle": "Mijn team",
     "managerLabel": "Manager: {name}",
-    "ridersCount": "{count}/{cap} seniorenrenners",
     "youthSquadCounts": "+{u23} U23 · +{junior} junioren",
     "seniorCapTooltip": "De selectielimiet is {cap} seniorenrenners. Academierenners tellen daar niet voor mee.",
     "youthSquadCountsTooltip": "U23- en juniorenrenners hebben hun eigen selectielimieten (12 en 10) en tellen niet mee voor de seniorenlimiet.",
     "incomingCount": "+{count} komen binnen",
     "outgoingCount": "-{count} vertrekken",
-    "salaryPerSeason": "Salaris/seizoen: {value} CZ$",
     "salaryPerSeasonTooltip": "Totaal salaris dat je selectie per seizoen verdient",
-    "teamValue": "Teamwaarde: {value} CZ$",
-    "division": "Divisie {n}",
     "divisionTooltip": "Jouw competitieniveau. Divisie 1 is het hoogste niveau, Divisie 4 het instapniveau.",
-    "balance": "{value} CZ$",
     "balanceTooltip": "CZ$ is de valuta in het spel. Je verdient het door te spelen en het is niet met echt geld te koop.",
-    "ownAuctionsBanner": "{count, plural, one {# van je renners staat in veiling} other {# van je renners staan in veiling}} · bekijk veilingen"
+    "ownAuctionsLine": "{count, plural, one {# renner in veiling} other {# renners in veiling}}",
+    "stats": {
+      "seniorRiders": "Seniorenrenners",
+      "salaryPerSeason": "Salaris/seizoen"
+    }
   },
   "promotionPending": {
     "title": "Wacht op promotie",

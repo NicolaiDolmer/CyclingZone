@@ -63,9 +63,9 @@ test("team.json har i18n-nøgler til egen-auktion-indikatoren i både en og da (
   for (const lng of ["en", "da"]) {
     const teamJson = JSON.parse(readFileSync(join(localesDir, lng, "team.json"), "utf8"));
     assert.equal(
-      typeof teamJson?.page?.ownAuctionsBanner,
+      typeof teamJson?.page?.ownAuctionsLine,
       "string",
-      `${lng}/team.json mangler page.ownAuctionsBanner — sammendrags-banneret viser så en rå i18n-nøgle`,
+      `${lng}/team.json mangler page.ownAuctionsLine (#8278) — auktions-linjen viser så en rå i18n-nøgle`,
     );
     assert.equal(
       typeof teamJson?.squad?.ownAuctionTooltip,
