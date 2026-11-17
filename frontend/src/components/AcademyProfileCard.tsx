@@ -25,6 +25,10 @@ type SelectChange = ChangeEvent<HTMLSelectElement>;
 import { buttonClass } from "./ui/buttonStyles.js";
 import { getCountryName } from "../lib/countryUtils";
 import { formatDate } from "../lib/intl.js";
+// #8081 / #6944: aldersfokus som fjerde felt, kun når akademisiden udgave A sender `ageFocus`.
+import AgeFocusField from "./academy-v2/AgeFocusField.tsx";
+import { ageFocusChoice, ageFocusForSave } from "./academy-v2/academyV2Model.ts";
+import type { AgeFocusState, ProfileWithAgeFocus } from "./academy-v2/useAcademyAgeFocus.ts";
 
 const REGION = "region:";
 const TYPE = "type:";
@@ -64,16 +68,29 @@ export function choiceToProfile({ origin, type, extra }: Choice): ProfileValue {
   return { origins: [...new Set(origins)], types: [...new Set(types)] };
 }
 
-export default function AcademyProfileCard({ profile, onSave }: {
+/**
+ * #8081: med `ageFocus` får kortet aldersfokus som fjerde felt, og Gem sender hele profilen
+ * inkl. alderen til `ageFocus.onSave` (én række, ét ur). Uden `ageFocus` er kortet uændret.
+ */
+export interface AgeFocusProps {
+  state: AgeFocusState;
+  onSave: (profile: ProfileWithAgeFocus) => Promise<SaveResult>;
+  describe: (value: string | null) => string;
+}
+
+export default function AcademyProfileCard({ profile, onSave, ageFocus = null }: {
   profile: AcademyProfile | null;
   onSave: (profile: ProfileValue) => Promise<SaveResult>;
+  ageFocus?: AgeFocusProps | null;
 }) {
-  const { t, i18n } = useTranslation("academy");
+  const { t, i18n } = useTranslation(["academy", "academyV2"]);
   const { t: tTypes } = useTranslation("riderTypes");
   const slots = profile?.slots ?? { origins: 0, types: 0, extra: 0 };
   const options = profile?.options ?? { nations: [], regions: [], types: [], delayDays: 14 };
   const locked = (profile?.tier ?? 0) === 0 || slots.origins === 0;
   const [choice, setChoice] = useState(() => initialChoice(profile?.pending ?? profile?.active));
+  const savedAge = ageFocusChoice((ageFocus?.state.pending ?? ageFocus?.state.active)?.ageFocus ?? null);
+  const [age, setAge] = useState(savedAge);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
@@ -84,6 +101,11 @@ export default function AcademyProfileCard({ profile, onSave }: {
     ...(p?.origins ?? []).map(originLabel),
     ...(p?.types ?? []).map((k: string) => tTypes(`types.${k}`)),
   ].join(" · ");
+  // #8081: med aldersfokus står alderen i samme linje som profilen (samme række, samme ur).
+  const describeLine = (p: ProfileValue | null | undefined, age: string | null | undefined): string => {
+    const base = describe(p) || t("profile.none");
+    return ageFocus ? `${base} · ${t("academyV2:v2.age.inline", { focus: ageFocus.describe(age ?? null) })}` : base;
+  };
 
   const nations = useMemo(
     () => [...options.nations].sort((a, b) => getCountryName(a, i18n.language).localeCompare(getCountryName(b, i18n.language))),
@@ -112,12 +134,13 @@ export default function AcademyProfileCard({ profile, onSave }: {
     extra: slots.extra > 0 ? choice.extra : "",
   });
   const saved = profile?.pending ?? profile?.active ?? { origins: [], types: [] };
-  const dirty = JSON.stringify(current) !== JSON.stringify({ origins: saved.origins ?? [], types: saved.types ?? [] });
+  const dirty = JSON.stringify(current) !== JSON.stringify({ origins: saved.origins ?? [], types: saved.types ?? [] })
+    || (ageFocus != null && age !== savedAge);
 
   async function handleSave() {
     setBusy(true);
     setMessage(null);
-    const res = await onSave(current);
+    const res = ageFocus ? await ageFocus.onSave({ ...current, ageFocus: ageFocusForSave(age) }) : await onSave(current);
     setBusy(false);
     setMessage(res.ok
       ? { kind: "ok", text: t("profile.saved", { date: formatDate(res.result?.effectiveFrom) }) }
@@ -165,12 +188,13 @@ export default function AcademyProfileCard({ profile, onSave }: {
                 </Select>
               </Field>
             </div>
+            {ageFocus && <AgeFocusField value={age} onChange={setAge} />}
             <div className="flex flex-col gap-3 border-t border-cz-border pt-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0 text-xs text-cz-2 space-y-0.5">
-                <p>{profile?.active ? t("profile.active", { profile: describe(profile.active) || t("profile.none") }) : t("profile.activeNone")}</p>
+                <p>{profile?.active ? t("profile.active", { profile: describeLine(profile.active, ageFocus?.state.active?.ageFocus) }) : t("profile.activeNone")}</p>
                 {profile?.pending && (
                   <p className="text-cz-3">
-                    {t("profile.pending", { date: formatDate(profile.pending.effectiveFrom), profile: describe(profile.pending) || t("profile.none") })}
+                    {t("profile.pending", { date: formatDate(profile.pending.effectiveFrom), profile: describeLine(profile.pending, ageFocus?.state.pending?.ageFocus) })}
                   </p>
                 )}
                 {!profile?.pending && <p className="text-cz-3">{t("profile.delayNote", { days: options.delayDays })}</p>}

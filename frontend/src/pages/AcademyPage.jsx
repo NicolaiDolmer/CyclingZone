@@ -44,6 +44,10 @@ import { ChevronRightIcon, GiftIcon } from "../components/ui/icons/index.jsx";
 import { ABILITY_KEYS, ABILITY_SHORT, flattenAbilities } from "../lib/abilities.js"; // #6666
 import { riderOverallRating } from "../lib/riderRating.js";
 import { statPlateStyle } from "../lib/statColor.js";
+// #8081: udgave A (overblik + faner) bag kontakten academy_page_v2_8081. Slukket = siden som før.
+import AcademyV2 from "../components/academy-v2/AcademyV2.tsx";
+import I18nReadyGate from "../components/I18nReadyGate.jsx";
+import { useAcademyPageV2Flag } from "../components/academy-v2/useAcademyPageV2Flag.ts";
 
 // #5844: academy_intake.source for bestyrelsens gave-kuld (backend academyIntakeSource.js).
 const BOARD_GIFT_SOURCE = "board_gift";
@@ -84,7 +88,7 @@ function daysUntil(deadline) {
 const SQUAD_PAGE_PATH = { u23: "/squads/u23", junior: "/squads/junior" };
 
 export default function AcademyPage() {
-  const { t } = useTranslation("academy");
+  const { t } = useTranslation(["academy", "academyV2"]);
   // #3071: sæson-referenceår til alders-visning (intake) — se riderAge.js.
   const seasonYear = useActiveSeasonYear();
   // #5519: med U23/Junior-siderne tændt erstatter links Youth squads-kortet (3a).
@@ -92,8 +96,10 @@ export default function AcademyPage() {
   const {
     enabled, squads, intake, graduations, balance,
     intakePull, loading, error, signCandidate, rejectCandidate,
-    pullIntake, academyProfile, saveProfile,
+    pullIntake, academyProfile, saveProfile, roster, refresh,
   } = useAcademy();
+  // #8081: null = kontakten hentes endnu (siden venter i PageLoader, som på akademi-data).
+  const pageV2 = useAcademyPageV2Flag();
   // #5844: bestyrelsens gave-kuld ("A thank-you from the board") vises i sin
   // egen sektion og tæller IKKE med i ugens optag: pull-knappen afgøres kun af
   // de normale tilbud, så gaven aldrig skjuler ugens hentning.
@@ -160,7 +166,7 @@ export default function AcademyPage() {
   }
 
   // Loading — PageLoader reserverer højde (#1794 CLS).
-  if (loading) return <PageLoader label={t("title")} />;
+  if (loading || pageV2 === null) return <PageLoader label={t("title")} />;
 
   // #2796: en backend-fejl efterlod `enabled` false og ramte derfor "kommer
   // snart"-grenen nedenfor — spilleren fik at vide at featuren ikke fandtes.
@@ -203,7 +209,11 @@ export default function AcademyPage() {
 
   // #5844: ét intake-kort. Delt af det normale optag og bestyrelsens gave-kuld,
   // så de to aldrig driver fra hinanden (samme sign/afvis, samme trup-spærring).
-  const renderIntakeCard = (item) => {
+  // #8081: `opts.showLanding` (kun udgave A) viser altid "Lander på <trup>" (#7932) i
+  // stedet for kun U23-linjen. Den normale side kalder via .map, så opts er her indekset.
+  /** @param {any} item @param {{ showLanding?: boolean } | number} [opts] */
+  const renderIntakeCard = (item, opts) => {
+    const showLanding = typeof opts === "object" && opts?.showLanding === true;
     const rider = item.rider;
     const isBoardGift = item.source === BOARD_GIFT_SOURCE;
     const isPull = item.source === PULL_SOURCE;
@@ -348,8 +358,14 @@ export default function AcademyPage() {
 
         {/* #6155: juniortruppen er fuld, men U23 har plads: sig hvor han kommer hen,
             FØR det irreversible klik. */}
-        {landing.movedToU23 && (
+        {!showLanding && landing.movedToU23 && (
           <p className="text-xs text-cz-2" data-testid="intake-lands-u23">{t("landsOnU23")}</p>
+        )}
+        {/* #8081/#7932: trupgrænserne er de gældende lofter (squadCaps.ts = backend SQUAD_CAPS). */}
+        {showLanding && landing.squad && (
+          <p className="text-xs text-cz-2" data-testid="intake-lands-on">
+            {t("academyV2:v2.landsOn", { squad: t(`academyV2:v2.squad.${landing.squad}`) })}
+          </p>
         )}
 
         {/* Fejlbesked */}
@@ -383,6 +399,33 @@ export default function AcademyPage() {
       </Card>
     );
   };
+
+  // #8081: udgave A. Samme intake-kort, samme sign/afvis/hent; kun opbygningen er ny.
+  // Regnskabet (AcademyPnl) står uændret nederst, til dets placering er valgt.
+  if (pageV2) {
+    return (
+      // #8081: udgave A's tekster ligger i det route-gatede navnerum academyV2 (ikke i
+      // academy, som hentes ved første indlæsning), så siden venter på det.
+      <I18nReadyGate ns="academyV2">
+      <AcademyV2
+        graduationCount={graduations.length}
+        giftIntake={giftIntake}
+        regularIntake={regularIntake}
+        renderIntakeCard={renderIntakeCard}
+        intakePull={intakePull}
+        pullBusy={pullBusy}
+        pullError={pullError}
+        onPull={handlePullIntake}
+        roster={roster ?? []}
+        seasonYear={seasonYear}
+        squadCounts={squadCounts}
+        academyProfile={academyProfile}
+        refreshAcademy={refresh}
+        footer={<AcademyPnl />}
+      />
+      </I18nReadyGate>
+    );
+  }
 
   // #3454: T2 (max-w-[1600px]). Layout.jsx's WIDE_CONTENT_ROUTES matcher
   // /academy, så shellen giver fuld bredde til denne cap; kandidatkortene står

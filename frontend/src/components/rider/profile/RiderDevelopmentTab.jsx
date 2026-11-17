@@ -119,7 +119,7 @@ function ChartCard({ snapshots, chartTypes, projection, t }) {
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
-      <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mb-1.5">
+      <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0 mb-1.5">
         {t("profile.development.chart.title")}
       </h3>
       <svg viewBox={`0 0 ${VB.w} ${VB.h}`} className="block w-full h-auto" aria-hidden="true">
@@ -303,7 +303,7 @@ function GrowthCard({ primaryLabel, growth, totalPoints, trackedSince, projectio
   ];
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
-      <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mb-[9px]">
+      <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0 mb-[9px]">
         {t("profile.development.growth.title")}
       </h3>
       <div className="flex flex-col gap-[9px]">
@@ -318,12 +318,12 @@ function GrowthCard({ primaryLabel, growth, totalPoints, trackedSince, projectio
   );
 }
 
-// ── Læsning (guld venstre-kant) ──────────────────────────────────────────────────
+// ── Læsning (hairline-kort; venstre-bjælken fjernet, TASTE §3, #8069) ──────────────────────────────────────────────────
 function ReadingCard({ viewer, growth, primaryLabel, t }) {
   const rising = Boolean(growth && growth.delta > 0);
   const key = `profile.development.reading.${viewer === "own" ? "own" : "scouting"}.${rising ? "rising" : "flat"}`;
   return (
-    <div className="bg-cz-card border border-cz-border border-l-2 border-l-cz-accent rounded-cz py-[15px] px-[17px]">
+    <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
       <span className="font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-accent-t">
         {t("profile.development.reading.title")}
       </span>
@@ -339,7 +339,7 @@ function LogCard({ viewer, entries, t }) {
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
       <div className="flex items-baseline justify-between gap-2 flex-wrap mb-0.5">
-        <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0">
+        <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0">
           {t("profile.development.log.title")}
         </h3>
         <span className="text-3xs text-cz-3">{t("profile.development.log.hint")}</span>

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import Section from "../ui/Section.jsx";
 import { EditIcon } from "../ui/icons/index.jsx";
 import { getDnaCopy, getDnaRationale, getDnaSlotLabel } from "./dnaCopy.js";
+import { buttonClass } from "../ui/buttonStyles.js";
 
 // ── S-02f · Klub-DNA-komponenter ───────────────────────────────────────────────
 //
@@ -74,8 +75,7 @@ export function ClubDnaSelectionCard({
                   type="button"
                   disabled={busy}
                   onClick={() => onChoose(suggestion.key)}
-                  className="mt-auto py-2 bg-cz-accent text-cz-on-accent text-sm font-semibold rounded-cz
-                    hover:brightness-110 disabled:opacity-50 transition-all"
+                  className={`${buttonClass({ variant: "secondary" })} mt-auto`}
                 >
                   {busy ? t("dna.saving") : t(chooseLabelKey)}
                 </button>
