@@ -421,7 +421,8 @@ export default function AcademyPage() {
         squadCounts={squadCounts}
         academyProfile={academyProfile}
         refreshAcademy={refresh}
-        footer={<AcademyPnl />}
+        // #8060: regnskabet er en fane i udgave A; det gamle AcademyPnl ville modsige den.
+        footer={null}
       />
       </I18nReadyGate>
     );
