@@ -319,6 +319,9 @@ test("#8298: låste ryttere beholder planen, og det valgte kort afledes af rytte
   has(source, "setDraftMatrix((matrix) => applyTeamPlanRoles(matrix, stage, applied.roleChanges, applied.editableRiderIds));");
   has(source, "order: withLockedRiders(plan.order, order, lockedSet),");
   has(source, "return bestCount * 2 > active.length ? best : null;");
+  // Codex P1: en plan, der skifter en låst rytters rolle, er spærret (ellers to kaptajner og overlap ved gem).
+  has(source, "const change = plan?.roleChanges?.find((c) => lockedSet.has(c.riderId));");
+  has(source, "if (lockedRoleConflict(plan)) return; // #8298: kortet er spærret med forklaring");
   // Låsen gemmes med etapens ordre (serveren tager kun imod den med etapeplanen).
   has(source, "const lockedSet = new Set((order.riders ?? []).filter((r) => r.locked === true).map((r) => r.rider_id));");
   const payload = readFileSync(join(__dirname, "../../lib/tacticsOrderPayload7864.ts"), "utf8");

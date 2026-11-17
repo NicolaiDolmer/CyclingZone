@@ -23,7 +23,8 @@
     "stage": "The team works for the rider who suits today's route best.",
     "sprint": "The team saves him for the finish, with a train in the last 10 km.",
     "break": "Two riders try the break. The rest ride easy.",
-    "save": "Everyone rides in. Lowest fatigue tonight."
+    "save": "Everyone rides in. Lowest fatigue tonight.",
+    "lockedConflict": "Unlock {name} to use this plan. It changes his role."
   },
   "col": {
     "rider": "Rider",

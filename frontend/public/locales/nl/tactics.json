@@ -23,7 +23,8 @@
     "stage": "Het team werkt voor de renner die het best bij de route van vandaag past.",
     "sprint": "Het team spaart hem voor de finish, met een trein in de laatste 10 km.",
     "break": "Twee renners proberen de vlucht. De rest rijdt rustig.",
-    "save": "Iedereen rijdt binnen. Minste vermoeidheid vanavond."
+    "save": "Iedereen rijdt binnen. Minste vermoeidheid vanavond.",
+    "lockedConflict": "Ontgrendel {name} om dit plan te gebruiken. Het verandert zijn rol."
   },
   "col": {
     "rider": "Renner",

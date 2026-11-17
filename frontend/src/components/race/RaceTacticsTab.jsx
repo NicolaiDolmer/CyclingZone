@@ -657,7 +657,11 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     // Ordrerne kopieres med: "kopiér til etape N+1" skal flytte HELE dagens
     // plan, ikke halvdelen af den. Etapen der kopieres TIL skal stadig gemmes
     // selv (den er en anden etapes PUT).
-    setOrdersByStage((cur) => ({ ...cur, [nextStage]: withoutStagePlans(cur[activeStage] ?? order) })); // #7003: planen haenger paa ruten
+    // #7003: planen haenger paa ruten. #8298: laasen hoerer til etapens plan og foelger ikke med.
+    setOrdersByStage((cur) => {
+      const copied = withoutStagePlans(cur[activeStage] ?? order);
+      return { ...cur, [nextStage]: { ...copied, riders: (copied.riders ?? []).map(({ locked: _locked, ...r }) => r) } };
+    });
     if (status !== "idle") setStatus("idle");
   }
 
@@ -886,6 +890,13 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     editableRiderIds: plan.editableRiderIds.filter((id) => !lockedSet.has(id)),
   });
   const currentFingerprint = teamPlanFingerprint(order, readyRoles);
+  // #8298 (Codex P1): en holdplan, der vil skifte en LÅST rytters rolle, kan ikke lægges på; ellers
+  // beholder den låste sin rolle, mens planen giver den til en anden (fx to kaptajner), og serveren
+  // afviser gemmet (stage_roles_role_overlap). Den låste rytter, der står i vejen, eller null.
+  const lockedRoleConflict = (plan) => {
+    const change = plan?.roleChanges?.find((c) => lockedSet.has(c.riderId));
+    return change ? riders.find((r) => r.rider_id === change.riderId) ?? null : null;
+  };
   // #8298 (ejer 17/11): det valgte kort afledes af rytternes planer, så det huskes efter gem.
   // Ryttere med eget valg (Easy | Medium | Hard) eller lås følger ikke holdets plan, men holdets
   // plan er stadig valgt: kortet er det, flest ryttere kører (mere end halvdelen af dem, der kører).
@@ -926,6 +937,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   function applyReadyPlan(plan) {
     const stage = activeStage;
     if (!ready7864 || saving || stageLocked || stage == null || stage <= stagesCompleted) return;
+    if (lockedRoleConflict(plan)) return; // #8298: kortet er spærret med forklaring
     detachBulkStages([stage]);
     const applied = planWithLocks(plan); // #8298: låste ryttere røres ikke
     setDraftMatrix((matrix) => applyTeamPlanRoles(matrix, stage, applied.roleChanges, applied.editableRiderIds));
@@ -1488,12 +1500,12 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
             <>
               <TeamPlanCards
                 groupLabel={tt("panel.todaysPlan")}
-                plans={readyPlans}
+                plans={/** @type {typeof readyPlans} */ (Object.fromEntries(TEAM_PLAN_KINDS.map((kind) => [kind, lockedRoleConflict(readyPlans[kind]) ? null : readyPlans[kind]])))}
                 active={selectedTeamPlan}
                 disabled={saving || stageLocked}
                 name={(kind, p) => (p?.target?.name && ["gc", "stage", "sprint"].includes(kind) ? t(`stagePlanReady.${kind}.named`, { name: surname(p.target.name) }) : t(`stagePlanReady.${kind}.name`))}
                 description={(kind) => tt(`plan.${kind}`)}
-                unavailable={(kind) => (kind === "gc" ? t("tacticsOrders.plan.noCaptain") : kind === "sprint" ? t("racePage.tactics.sprintTrainNone") : null)}
+                unavailable={(kind) => (lockedRoleConflict(readyPlans[kind]) ? tt("plan.lockedConflict", { name: lockedRoleConflict(readyPlans[kind])?.name ?? "" }) : kind === "gc" ? t("tacticsOrders.plan.noCaptain") : kind === "sprint" ? t("racePage.tactics.sprintTrainNone") : null)}
                 onApply={applyReadyPlan}
               />
               {multiStageShown && (

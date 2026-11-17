@@ -23,7 +23,8 @@
     "stage": "Holdet arbejder for den rytter, der passer bedst til dagens rute.",
     "sprint": "Holdet sparer ham til finalen, med et tog de sidste 10 km.",
     "break": "To ryttere prøver udbruddet. Resten kører roligt.",
-    "save": "Alle kører i mål. Mindst træthed i aften."
+    "save": "Alle kører i mål. Mindst træthed i aften.",
+    "lockedConflict": "Lås {name} op for at bruge denne plan. Den skifter hans rolle."
   },
   "col": {
     "rider": "Rytter",

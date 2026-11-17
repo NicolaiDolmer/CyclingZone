@@ -23,7 +23,8 @@
     "stage": "L'équipe travaille pour le coureur à qui le parcours du jour convient le mieux.",
     "sprint": "L'équipe le garde pour l'arrivée, avec un train dans les 10 derniers km.",
     "break": "Deux coureurs tentent l'échappée. Les autres roulent tranquillement.",
-    "save": "Tout le monde rentre. Fatigue la plus basse ce soir."
+    "save": "Tout le monde rentre. Fatigue la plus basse ce soir.",
+    "lockedConflict": "Déverrouille {name} pour utiliser ce plan. Il change son rôle."
   },
   "col": {
     "rider": "Coureur",

@@ -23,7 +23,8 @@
     "stage": "El equipo trabaja para el corredor al que mejor le va la ruta de hoy.",
     "sprint": "El equipo lo guarda para el final, con un tren en los últimos 10 km.",
     "break": "Dos corredores intentan la escapada. El resto rueda tranquilo.",
-    "save": "Todos ruedan hasta meta. Menos fatiga esta noche."
+    "save": "Todos ruedan hasta meta. Menos fatiga esta noche.",
+    "lockedConflict": "Desbloquea a {name} para usar este plan. Cambia su rol."
   },
   "col": {
     "rider": "Corredor",
