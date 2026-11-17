@@ -24,7 +24,7 @@ test("en gyldig ?tab= vinder; Resultater staar foerst", () => {
 });
 
 test("endagsloeb har ingen Stillinger-fane", () => {
-  assert.deepEqual([...v6Tabs(false)], ["results", "stage", "tactics", "team"]);
+  assert.deepEqual([...v6Tabs(false)], ["results", "stage", "start", "tactics", "team"]);
   assert.equal(resolveV6Tab("standings", { ridden: true, isStageRace: false }), "results");
 });
 
@@ -92,7 +92,8 @@ test("#7865: een etapestribe; paa Taktik foelger den Taktik-fanens etape og styr
   assert.deepEqual(v6Strip({ activeTab: "stage", isStageRace: true, selectedStage: 2, tacticsStage: 3 }), { selected: 2, target: "page" });
   // Udgave E: striben er hovedkortets bund og staar paa alle faner; fra Stillinger og Hold aabner den etapen.
   assert.deepEqual(v6Strip({ activeTab: "standings", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 1, target: "open" });
-  assert.deepEqual(v6Strip({ activeTab: "team", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 1, target: "open" });
+  // #7862 (valg 13): Hold følger etapeskiftet i striben i stedet for at åbne etapen.
+  assert.deepEqual(v6Strip({ activeTab: "team", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 1, target: "page" });
   assert.equal(v6StageTabFor(2, 3), "results");
   assert.equal(v6StageTabFor(4, 3), "stage");
   assert.equal(v6Strip({ activeTab: "tactics", isStageRace: false, selectedStage: 1, tacticsStage: 1 }), null);

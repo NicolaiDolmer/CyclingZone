@@ -7,17 +7,17 @@ export const PATCHES = [
       "category": "improved",
       "audience": "player",
       "rollout": "live",
-      "topic": "Team",
+      "topic": "Planning",
       "en": {
-        "title": "Squad tables read better on phones",
-        "body": "Rider names in tables get their own line on phones and only wrap between words; jerseys and badges sit on the line below. My Team, U23 and Junior show their numbers in one block at the top, a rider on auction is one quiet line instead of a banner, and Overview/Abilities sits in the chip row above the table."
+        "title": "Squad deadline in the Planning heading",
+        "body": "When a squad is missing riders, Planning shows it as one line in the page heading with the nearest deadline, such as Squad selection missing · in 12h. The box above the tabs is gone, so the tabs and your races come first."
       },
       "da": {
-        "title": "Trup-tabellerne er lettere at læse på telefonen",
-        "body": "Rytternavne i tabeller får deres egen linje på telefonen og knækker kun mellem ord; trøjer og mærker står på linjen under. Mit hold, U23 og Junior viser deres tal i én blok øverst, en rytter på auktion er én stille linje i stedet for et banner, og Overblik/Evner står i chip-rækken over tabellen."
+        "title": "Trup-fristen står i Planlægnings sidehoved",
+        "body": "Mangler en trup ryttere, viser Planlægning det som én linje i sidehovedet med den nærmeste frist, fx Trup mangler · om 12 t. Boksen over fanerne er væk, så fanerne og dine løb står først."
       },
       "refs": [
-        8278
+        8069
       ]
     }
   ]

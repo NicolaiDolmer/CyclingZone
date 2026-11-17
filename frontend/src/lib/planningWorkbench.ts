@@ -817,7 +817,7 @@ export type BulkStore = ReturnType<typeof createBulkStore>;
  * Hvilket kald der koerer: fladens gem, en afmelding/deltag igen, sidens masse-gem, eller assistentens
  * forslag til kladden (det laeser kun, men kladden maa ikke aendres, mens et gem er undervejs).
  */
-export type WriteKind = "save" | "withdraw" | "bulk" | "assist";
+export type WriteKind = "save" | "withdraw" | "bulk" | "assist" | "peak";
 
 export type WriteResult<T> = { ran: true; value: T } | { ran: false };
 
@@ -900,6 +900,10 @@ export interface SquadRow {
   ratingRole: string | null;
   form: number | null;
   fatigue: number | null;
+  /** Rytterens naturlige type (riders.primary_type), kolonnen Type. */
+  type?: string | null;
+  /** Forventet belastning af loebet som ord (serveren sender kun ordet); null = ukendt. */
+  load?: LoadWord | null;
   routeMatch: number | null;
   /** Rute-match pr. rutetype (profile_type) i loebet. */
   byProfile: Record<string, number | null>;
@@ -991,6 +995,7 @@ export function buildSquadRows(
       busyIn,
       rating: best?.rating ?? null,
       ratingRole: best?.role ?? null,
+      type: r.primaryType ?? null,
       form: r.form ?? null,
       fatigue: r.fatigue ?? null,
       routeMatch: r.suitability ?? null,
@@ -1007,6 +1012,8 @@ export type SquadSortKey =
   | "rating"
   | "form"
   | "fatigue"
+  | "load"
+  | "type"
   | "routeMatch"
   | `profile:${string}`;
 
@@ -1020,7 +1027,7 @@ export const DEFAULT_SQUAD_SORT: SquadSort = { key: "routeMatch", dir: "desc" };
 
 /** Naturlig foerste retning: tekst stigende, tal faldende. */
 export function defaultSortDir(key: SquadSortKey): "asc" | "desc" {
-  return key === "name" || key === "status" || key === "role" ? "asc" : "desc";
+  return key === "name" || key === "status" || key === "role" || key === "type" ? "asc" : "desc";
 }
 
 export function nextSort(current: SquadSort, key: SquadSortKey): SquadSort {
@@ -1044,6 +1051,10 @@ function sortValue(row: SquadRow, key: SquadSortKey, sel: Selection): number | s
       return row.form;
     case "fatigue":
       return row.fatigue;
+    case "load":
+      return row.load ? LOAD_WORDS.indexOf(row.load) : null;
+    case "type":
+      return row.type ?? null;
     case "routeMatch":
       return row.routeMatch;
     default:
@@ -1180,4 +1191,241 @@ export function copySquadFrom(args: {
     sel = setRiderRole(sel, e.riderId, role);
   }
   return { selection: sel, skipped: candidates.length - kept.length };
+}
+
+// ── Runde 3: visningerne Trup | Taktik | Formtop, "Efter loebet" og mobil-arket ──
+
+export const WORKBENCH_VIEWS = ["squad", "tactics", "peak"] as const;
+export type WorkbenchView = (typeof WORKBENCH_VIEWS)[number];
+
+export function isWorkbenchView(value: unknown): value is WorkbenchView {
+  return typeof value === "string" && (WORKBENCH_VIEWS as readonly string[]).includes(value);
+}
+
+/**
+ * Hovedets ene guld-knap gemmer det, spilleren ser (ejervalg 16/11, punkt 8 B): Trup = "Gem trup",
+ * Taktik = "Gem taktik", Taktik med en ugemt trup = "Gem trup og saet taktik", Formtop = "Anvend paa valgte".
+ */
+export function saveLabelKey(view: WorkbenchView, { squadDirty = false }: { squadDirty?: boolean } = {}): string {
+  if (view === "tactics") return squadDirty ? "race.saveSquadAndTactics" : "race.saveTactics";
+  return view === "peak" ? "race.savePeaks" : "race.save";
+}
+
+// ── Ejervalg 16/11: belastning i ord, kolonnevalg paa mobil, formtop i trup og liste ──
+
+/** Forventet belastning som ord (punkt 5). Raekkefoelgen er sorteringens: let foerst. */
+export const LOAD_WORDS = ["light", "medium", "hard"] as const;
+export type LoadWord = (typeof LOAD_WORDS)[number];
+
+export function isLoadWord(value: unknown): value is LoadWord {
+  return typeof value === "string" && (LOAD_WORDS as readonly string[]).includes(value);
+}
+
+/** Saet serverens ord paa raekkerne; alt andet end et kendt ord er ukendt (null). */
+export function withLoad(rows: SquadRow[], byRider: Record<string, unknown> | null | undefined): SquadRow[] {
+  if (!byRider) return rows;
+  return rows.map((row) => {
+    const v = byRider[row.id];
+    return { ...row, load: isLoadWord(v) ? v : null };
+  });
+}
+
+/** Mobilens kolonnevalg (punkt 2): navnet staar altid, plus op til tre tal-kolonner. */
+export const MOBILE_COLUMNS = ["routeMatch", "form", "fatigue", "load", "rating"] as const;
+export type MobileColumn = (typeof MOBILE_COLUMNS)[number];
+export const MOBILE_COLUMN_MAX = 3;
+export const DEFAULT_MOBILE_COLUMNS: MobileColumn[] = ["routeMatch", "form", "fatigue"];
+
+/** Gyldige, unikke kolonner i den viste raekkefoelge; tomt eller ugyldigt giver standarden. */
+export function normalizeMobileColumns(value: unknown): MobileColumn[] {
+  if (!Array.isArray(value)) return DEFAULT_MOBILE_COLUMNS;
+  const picked = MOBILE_COLUMNS.filter((c) => value.includes(c)).slice(0, MOBILE_COLUMN_MAX);
+  return picked.length ? picked : DEFAULT_MOBILE_COLUMNS;
+}
+
+/** Slaa en kolonne til eller fra. Mindst én og hoejst tre; en fjerde skubber den aeldste ud. */
+export function toggleMobileColumn(current: MobileColumn[], column: MobileColumn): MobileColumn[] {
+  if (current.includes(column)) return current.length > 1 ? current.filter((c) => c !== column) : current;
+  const next = [...current, column];
+  const kept = next.length > MOBILE_COLUMN_MAX ? next.slice(next.length - MOBILE_COLUMN_MAX) : next;
+  return MOBILE_COLUMNS.filter((c) => kept.includes(c));
+}
+
+/** Rytterens naeste formtop (punkt 7): hvornaar han topper, vist ved Form, aldrig i Status. */
+export interface PeakNext {
+  name: string;
+  date: string;
+  days: number;
+}
+
+export function nextPeakByRider(rows: PeakRow[]): Map<string, PeakNext> {
+  const out = new Map<string, PeakNext>();
+  for (const row of rows) if (row.next) out.set(row.id, row.next);
+  return out;
+}
+
+/** Antal ryttere med en formtop mod hvert loeb (punkt 3, loebslistens formtop-maerke). */
+export function peakCountsByRace(riders: PeakBoardRider[] | null | undefined): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const r of riders ?? []) {
+    const races = new Set((r.peaks ?? []).filter((p) => !p.isSuggestion && p.targetRaceId).map((p) => String(p.targetRaceId)));
+    for (const id of races) out.set(id, (out.get(id) ?? 0) + 1);
+  }
+  return out;
+}
+
+/**
+ * Formtop-visningen med udtagne ryttere oeverst (punkt 6 B): "I truppen" og "Ikke udtaget", hver i sin
+ * egen sortering. `warn` = formtoppen rammer det aabne loeb, men rytteren er ikke udtaget.
+ */
+export function groupPeakRows(rows: PeakRow[], selectedIds: readonly string[]): { inSquad: PeakRow[]; outside: PeakRow[]; warn: Set<string> } {
+  const picked = new Set(selectedIds);
+  const inSquad = rows.filter((r) => picked.has(r.id));
+  const outside = rows.filter((r) => !picked.has(r.id));
+  const warn = new Set(outside.filter((r) => r.here != null).map((r) => r.id));
+  return { inSquad, outside, warn };
+}
+
+/** Forrige eller naeste loeb i listen (mobil-arkets pile). Null i enderne. */
+export function adjacentRace<T extends { id: string }>(races: T[], id: string | null | undefined, dir: -1 | 1): T | null {
+  const i = races.findIndex((r) => r.id === id);
+  if (i < 0) return null;
+  return races[i + dir] ?? null;
+}
+
+/** Hele dage fra `from` til `to` (YYYY-MM-DD); negativ naar `to` er passeret. */
+export function daysBetween(from: string, to: string): number {
+  return Math.round((parseDate(to).getTime() - parseDate(from).getTime()) / 86_400_000);
+}
+
+// Formtop: samme data og samme kald som /planning's Form-fane (GET /api/peak-plans/board, POST /bulk).
+export interface PeakPlan {
+  id?: string | null;
+  targetRaceId: string | null;
+  targetRaceName?: string | null;
+  isSuggestion?: boolean;
+  locked?: boolean;
+  windowStart?: string | null;
+  windowEnd?: string | null;
+  [key: string]: unknown;
+}
+
+export interface PeakBoardRider {
+  id: string;
+  firstname?: string | null;
+  lastname?: string | null;
+  nationality?: string | null;
+  squad?: string | null;
+  rating?: number | null;
+  form?: number | null;
+  fatigue?: number | null;
+  peaks?: PeakPlan[];
+  [key: string]: unknown;
+}
+
+export interface PeakBoardRace {
+  id: string;
+  name: string;
+  date?: string | null;
+  isMine?: boolean;
+  started?: boolean;
+  [key: string]: unknown;
+}
+
+export type PeakRowState = "here" | "open" | "full" | "notSenior";
+
+export interface PeakRow {
+  id: string;
+  name: string;
+  nationality: string | null;
+  rating: number | null;
+  form: number | null;
+  fatigue: number | null;
+  /** Rytterens rigtige formtop-mål (assistentens forslag er ikke et mål). */
+  targets: PeakPlan[];
+  /** Formtoppen mod det aabne loeb, hvis den findes. */
+  here: PeakPlan | null;
+  /** Det naermeste kommende mål: navn, startdato og dage til start. */
+  next: { name: string; date: string; days: number } | null;
+  state: PeakRowState;
+}
+
+export function peakRiderName(r: PeakBoardRider): string {
+  return [r.firstname, r.lastname].filter(Boolean).join(" ") || r.id;
+}
+
+/** Raekkerne i Formtop-visningen for det aabne loeb. Kun seniortruppen kan planlaegge (som Form-fanen). */
+export function buildPeakRows(args: { riders: PeakBoardRider[]; races: PeakBoardRace[]; raceId: string; maxPerRider: number; today: string }): PeakRow[] {
+  const raceById = new Map(args.races.map((r) => [r.id, r]));
+  return (args.riders ?? []).map((r) => {
+    const targets = (r.peaks ?? []).filter((p) => !p.isSuggestion && p.targetRaceId);
+    const here = targets.find((p) => p.targetRaceId === args.raceId) ?? null;
+    const upcoming = targets
+      .map((p) => {
+        const race = raceById.get(p.targetRaceId as string);
+        const date = race?.date ?? null;
+        return date ? { name: race?.name ?? p.targetRaceName ?? "", date, days: daysBetween(args.today, date) } : null;
+      })
+      .filter((x): x is { name: string; date: string; days: number } => x != null && x.days >= 0)
+      .sort((a, b) => a.date.localeCompare(b.date));
+    const senior = (r.squad ?? "senior") === "senior";
+    const state: PeakRowState = here ? "here" : !senior ? "notSenior" : targets.length >= args.maxPerRider ? "full" : "open";
+    return {
+      id: r.id,
+      name: peakRiderName(r),
+      nationality: r.nationality ?? null,
+      rating: r.rating ?? null,
+      form: r.form ?? null,
+      fatigue: r.fatigue ?? null,
+      targets,
+      here,
+      next: upcoming[0] ?? null,
+      state,
+    };
+  });
+}
+
+/** Kan det aabne loeb vaelges som formtop-mål? Kun holdets egne loeb, der ikke er startet (som Form-fanen). */
+export function peakTargetOpen(race: PeakBoardRace | null | undefined, today: string): boolean {
+  if (!race || race.isMine === false || race.started === true) return false;
+  return !race.date || race.date >= today;
+}
+
+/** De afkrydsede ryttere, der faktisk kan faa en formtop mod loebet ("Apply to selected"). */
+export function peakApplyPairs(rows: PeakRow[], checked: Set<string>, raceId: string): Array<{ riderId: string; raceId: string }> {
+  return rows.filter((r) => checked.has(r.id) && r.state === "open").map((r) => ({ riderId: r.id, raceId }));
+}
+
+export type PeakSortKey = "name" | "rating" | "form" | "fatigue" | "target" | "start";
+
+export function sortPeakRows(rows: PeakRow[], sort: { key: PeakSortKey; dir: "asc" | "desc" }): PeakRow[] {
+  const sign = sort.dir === "asc" ? 1 : -1;
+  const value = (r: PeakRow): number | string | null => {
+    switch (sort.key) {
+      case "name":
+        return r.name;
+      case "rating":
+        return r.rating;
+      case "form":
+        return r.form;
+      case "fatigue":
+        return r.fatigue;
+      case "target":
+        return r.here ? 2 : r.targets.length ? 1 : 0;
+      case "start":
+        return r.next ? r.next.days : null;
+      default:
+        return null;
+    }
+  };
+  return rows
+    .map((row, index) => ({ row, index, v: value(row) }))
+    .sort((a, b) => {
+      if (a.v == null && b.v == null) return a.index - b.index;
+      if (a.v == null) return 1;
+      if (b.v == null) return -1;
+      const cmp = typeof a.v === "string" || typeof b.v === "string" ? String(a.v).localeCompare(String(b.v)) : a.v - b.v;
+      return cmp !== 0 ? sign * cmp : a.index - b.index;
+    })
+    .map((x) => x.row);
 }
