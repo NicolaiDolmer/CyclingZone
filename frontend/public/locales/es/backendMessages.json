@@ -322,6 +322,11 @@
       "title": "Algo por lo que votaste ya está disponible",
       "message": "Votaste alto por {item}, y ya está disponible. Gracias por ayudarme a elegir qué construir."
     },
+    "boardMidSeason": {
+      "title": "Revisión de mitad de temporada (temporada {season})",
+      "lowSatisfaction": "La directiva está preocupada. La satisfacción ha bajado a {satisfaction}. Mira en la página Directiva qué objetivos van retrasados y trabaja en ellos antes de que termine la temporada. Si la presión es económica, puedes pedir un préstamo en la página Finanzas.",
+      "manyBehind": "La directiva está preocupada. Al menos la mitad de los objetivos de esta temporada van retrasados. Mira cuáles en la página Directiva y trabaja en ellos antes de que termine la temporada. Si la presión es económica, puedes pedir un préstamo en la página Finanzas."
+    },
     "riderRetired": {
       "title": "{name} se ha retirado",
       "message": "{name} se ha retirado del ciclismo profesional a los {age} años. Su plaza en tu plantilla queda libre."

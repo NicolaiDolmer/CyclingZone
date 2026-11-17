@@ -57,7 +57,10 @@ function RaceRow({
   onSelect,
   check = null,
   mark = null,
+  peaks = 0,
 }: {
+  /** Ryttere med formtop mod loebet (punkt 3, formtop-maerket). */
+  peaks?: number;
   race: SeasonRace;
   readiness: Readiness;
   overlaps: SeasonRace[];
@@ -103,6 +106,12 @@ function RaceRow({
             <span>{t("raceList.sharesDays", { races: overlaps.map((o) => o.name).join(", ") })}</span>
           </span>
         )}
+        {peaks > 0 && (
+          // Formtop-maerket (ejervalg 16/11, punkt 3 B): hvor mange af holdets ryttere topper til loebet.
+          <span className="mt-1 block font-data text-2xs uppercase tracking-wide text-cz-2" data-testid="planning-race-peaks">
+            {t("raceList.peaks", { count: peaks })}
+          </span>
+        )}
       </span>
       <span className="flex flex-col items-end gap-1 self-start">
         <ReadinessBadge readiness={readiness} />
@@ -135,6 +144,8 @@ interface RaceListProps {
   counts: Map<string, number>;
   withdrawn: Set<string>;
   terrain: Map<string, string[]>;
+  /** Ryttere med formtop pr. loeb (formtop-maerket). */
+  peakCounts?: Map<string, number>;
   selectedId?: string | null;
   onSelect: (id: string) => void;
   scope: RaceScope;
@@ -157,6 +168,7 @@ export default function RaceList({
   counts,
   withdrawn,
   terrain,
+  peakCounts,
   selectedId,
   onSelect,
   scope,
@@ -239,6 +251,7 @@ export default function RaceList({
                     onSelect={onSelect}
                     check={checks ? { checked: checks.checked.has(race.id), onToggle: () => checks.onToggle(race.id) } : null}
                     mark={rowMark?.(race.id)}
+                    peaks={peakCounts?.get(race.id) ?? 0}
                   />
                 ))}
             </section>

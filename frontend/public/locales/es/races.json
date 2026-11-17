@@ -6,7 +6,8 @@
       "story": "Historia",
       "standings": "Clasificaciones",
       "tactics": "Táctica",
-      "team": "Equipo"
+      "team": "Equipo",
+      "start": "Lista de salida"
     },
     "hero": {
       "stageLocks": "La etapa {number} se cierra a las {time} · {countdown}",
@@ -1667,7 +1668,8 @@
       "points": "Puntos",
       "mountain": "Montaña",
       "young": "Jóvenes",
-      "team": "Equipos"
+      "team": "Equipos",
+      "passages": "Sprints y puertos"
     },
     "teamFilter": {
       "label": "Equipo",
@@ -2255,6 +2257,10 @@
     "table": {
       "prizePoints": "Puntos de premio",
       "jerseyPoints": "Puntos de maillot",
+      "colPos": "Pos.",
+      "colRider": "Ciclista",
+      "colTeam": "Equipo",
+      "colTime": "Tiempo",
       "prizePointsShort": "Premio",
       "jerseyPointsShort": "Maillot"
     },

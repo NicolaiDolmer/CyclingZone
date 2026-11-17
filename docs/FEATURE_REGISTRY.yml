@@ -1651,11 +1651,13 @@ features:
     area: training
     title_en: Train now bonus
     title_da: Træn nu-bonus
-    state: building
+    state: beta
     flag: training_train_now_bonus
     ssot: docs/TRAINING_RULES.md
     epic: 7737
-    verified: 2026-11-10
+    verified: 2026-11-16
     decision: goer-faerdigt
     decide_by: 2026-11-16
-    note: 'OFF. Tekster, Hjælp, kvitteringsmærke bygget (#7741): bonus kun ved eget tryk.'
+    note: 'Beta: app_config = "beta" og migrationen fra #8268 er i prod (triggeren godkender "beta"), læst 16/11. Kun beta-testernes egne tryk får bonussen. Patch note 7.454. Alle: værdien til "on" kræver ejer-go.'
+    roadmap_en: "Press Train now yourself and get 15% extra development that day."
+    roadmap_da: "Tryk selv på Træn nu, og få 15 % ekstra udvikling den dag."

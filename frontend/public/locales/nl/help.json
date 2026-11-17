@@ -1519,6 +1519,10 @@
         "title": "Het trainingsrapport lezen",
         "text": "Nadat de training is gedraaid, opent het rapport met een daguitsplitsing: hoeveel renners hebben getraind, hoeveel een doorbraak hadden (een vaardigheid steeg +1) en hoeveel in topvorm zijn. Elke rij toont de voortgang van de focusvaardigheid richting zijn volgende +1, en een doorbraak wordt gemarkeerd met de echte sprong, bijvoorbeeld 71 naar 72. De selectietabel toont dezelfde voortgangsbalk, zodat je een focus kunt sturen richting een renner die dicht bij een doorbraak zit."
       },
+      "raceSource": {
+        "title": "Waar de voortgang vandaan kwam",
+        "text": "Klap een renner open in het trainingsrapport om te zien waar zijn voortgang vandaan kwam, vaardigheid per vaardigheid: Training, Koers en Totaal. Voortgang uit koersen wordt gearceerd getoond in een neutrale kleur en zit al in het dagtotaal, dus hij telt nooit twee keer. Een renner die alleen trainde toont alleen Training, en een renner die alleen koerste toont alleen Koers. Als een vaardigheid een heel punt erbij kreeg, toont de rij dat met de sprong, bijvoorbeeld 54 naar 56. Op een dag waarop je ploeg koerste, staat onder de kerncijfers hoeveel van de voortgang van de ploeg uit koersen kwam. Oudere rapporten die niet elke activiteit apart bewaarden, houden de oude lijsten en tonen geen verdeling."
+      },
       "trainingHistory": {
         "title": "Trainingsgeschiedenis",
         "text": "Elke dagelijkse trainingsrun wordt bewaard. De pagina Dagelijkse training toont je laatste 30 dagen onder de selectie, waarbij elke dag laat zien hoeveel renners trainden, doorbraken en renners in topvorm; klap een dag uit om het volledige rapport per renner te zien. Het profiel van elke renner heeft zijn eigen trainingsgeschiedenis onder het tabblad Ontwikkeling, met de focus, intensiteit, winst en vorm van die renner dag voor dag."
@@ -2271,7 +2275,7 @@
     },
     "midSeasonCheckFaq": {
       "q": "Wat is de controle halverwege het seizoen, en waarom krijg ik halverwege het seizoen een melding 'Actie vereist'?",
-      "a": "Als de helft van de koersdagen van het seizoen voorbij is, controleert het bestuur de status van je plan. Als de tevredenheid onder 50% ligt OF minstens de helft van je plandoelen na de rust 'achter' ligt -> krijg je een melding 'Controle halverwege het seizoen' in de inbox 'Actie vereist'. De melding is informatief: het bestuur maakt zich zorgen maar handelt niet automatisch. Je kunt reageren door een verzoek aan het bestuur te sturen (plandoelen bijsturen), een budgetlening aan te vragen op de pagina Economie, of gewoon de focus voor de rest van het seizoen aan te scherpen. De banner verschijnt maar één keer per seizoen per bestuur."
+      "a": "Als de helft van de koersdagen van het seizoen voorbij is, controleert het bestuur de status van je plan. Als de tevredenheid onder 50% ligt OF minstens de helft van je plandoelen na de rust 'achter' ligt -> krijg je een melding 'Controle halverwege het seizoen' in de inbox 'Actie vereist'. De melding is informatief: het bestuur maakt zich zorgen maar handelt niet automatisch. De melding zegt welke van de twee hem activeerde. Het plan voor het seizoen is getekend, dus je reageert door te werken aan de doelen die achterlopen (de pagina Bestuur laat zien welke), of door een lening af te sluiten op de pagina Financiën als de druk financieel is. De banner verschijnt maar één keer per seizoen per bestuur."
     },
     "majorPivotCooldown": {
       "q": "Wat is de afkoelperiode voor bijsturen en een 'grote koerswijziging'?",

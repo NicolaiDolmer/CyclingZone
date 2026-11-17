@@ -90,11 +90,38 @@
     "retry": "Prøv igen"
   },
   "raceResultsV6": {
-    "searchLabel": "Søg i resultatet efter rytter eller hold",
-    "searchPlaceholder": "Søg rytter eller hold",
+    "searchLabel": "Søg i resultatet efter rytter, hold eller nation",
+    "searchPlaceholder": "Søg rytter, hold eller nation",
     "clearSearch": "Ryd søgning",
     "myTeam": "Mit hold",
     "matchCount": "Viser {shown} af {total}",
-    "noMatch": "Ingen rytter eller hold matcher søgningen."
+    "noMatch": "Ingen rytter eller hold matcher søgningen.",
+    "nation": "Nation",
+    "allNations": "Alle nationer"
+  },
+  "raceStartList": {
+    "favouritesTitle": "Favoritter til løbet",
+    "favouritesFor": "Favoritter i",
+    "favouriteLine": "Nr. {rank} {after}",
+    "afterStage": "efter etape {number}",
+    "afterRace": "i løbet",
+    "favouritesEmpty": "Favoritterne vises, når løbet har en stilling, som alle kan se.",
+    "favouritesFoot": "Fra stillingen i løbet. Aldrig form, træthed, rutematch eller andre holds roller.",
+    "fieldTitle": "Alle ryttere",
+    "fieldMeta": "{riders, plural, one {# rytter} other {# ryttere}} · {teams, plural, one {# hold} other {# hold}}",
+    "searchPlaceholder": "Søg rytter, hold eller nation",
+    "clearSearch": "Ryd søgning",
+    "myTeam": "Mit hold",
+    "nation": "Nation",
+    "allNations": "Alle nationer",
+    "matchCount": "Viser {shown} af {total}",
+    "noMatch": "Ingen ryttere passer. Ryd søgningen eller filtrene.",
+    "opensIn": "{count, plural, one {Startlisten åbner om # dag.} other {Startlisten åbner om # dage.}}",
+    "loadError": "Startlisten kunne ikke hentes.",
+    "retry": "Prøv igen",
+    "empty": "Der er ingen hold på startlisten endnu.",
+    "unnamedTeam": "Hold",
+    "bibAria": "Rygnummer {bib}",
+    "rating": "Rating"
   }
 }
