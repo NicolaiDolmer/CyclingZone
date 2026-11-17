@@ -20,21 +20,29 @@ import { isReleaseDeferEnabled, PENDING_RELEASES_TABLE, isMissingPendingReleases
  * stille for hele spillet, og vagten paa riders holder stadig ejerskabet fast.
  *
  * @param {any} supabase
+ * @param {{ pageSize?: number }} [opts] pageSize kun til proever (Data API-loftet er 1000 raekker)
  * @returns {Promise<Set<string>>}
  */
-export async function loadLeavingRiderIds8153(supabase) {
+export async function loadLeavingRiderIds8153(supabase, { pageSize = 1000 } = {}) {
   try {
     if (!(await isReleaseDeferEnabled(supabase, { fresh: false }))) return new Set();
-    // pagination-safe: kun aktive bestillinger (hoejst een pr. rytter, faa ad gangen).
-    const { data, error } = await supabase
-      .from(PENDING_RELEASES_TABLE)
-      .select("rider_id")
-      .eq("status", "pending");
-    if (error) {
-      if (isMissingPendingReleasesTable(error)) return new Set();
-      throw new Error(error.message);
+    const ids = new Set();
+    // Ordnet paginering paa den unikke noegle: hele spillets aktive bestillinger, uanset raekkeloftet.
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await supabase
+        .from(PENDING_RELEASES_TABLE)
+        .select("rider_id")
+        .eq("status", "pending")
+        .order("rider_id", { ascending: true })
+        .range(from, from + pageSize - 1);
+      if (error) {
+        if (isMissingPendingReleasesTable(error)) return new Set();
+        throw new Error(error.message);
+      }
+      for (const row of data || []) if (row.rider_id) ids.add(row.rider_id);
+      if (!data || data.length < pageSize) break;
     }
-    return new Set((data || []).map((r) => r.rider_id).filter(Boolean));
+    return ids;
   } catch (err) {
     // best-effort: fail-open med log; den manuelle udtagelse og vagten paa riders er de haarde graenser.
     console.error(`[pendingRelease8153] auto-udtagelsen kunne ikke laese bestilte frigivelser: ${pendingReleaseErrorMessage(err)}`);

@@ -82,6 +82,13 @@ test("8153: taendt kontakt = kun aktive bestillinger (udfoerte taeller ikke)", a
   assert.deepEqual([...(await loadLeavingRiderIds8153(fakeSupabase(state)))], ["r1"]);
 });
 
+test("8153: flere sider end raekkeloftet: alle aktive bestillinger kommer med", async () => {
+  const rows = Array.from({ length: 7 }, (_, i) => pending(`r${i}`));
+  const state = { app_config: [flagOn], pending_rider_releases: rows };
+  const ids = await loadLeavingRiderIds8153(fakeSupabase(state), { pageSize: 3 });
+  assert.equal(ids.size, 7);
+});
+
 test("8153: en laesefejl giver tomt saet (fail-open, logget), aldrig en kastet fejl", async (t) => {
   const errors = [];
   t.mock.method(console, "error", (msg) => errors.push(String(msg)));
