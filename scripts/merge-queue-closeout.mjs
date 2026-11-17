@@ -44,6 +44,7 @@
 // Tests: node --test scripts/merge-queue-closeout.test.mjs
 
 import { spawnSync } from 'node:child_process';
+import { numberPendingOnMain } from './patch-notes-number.mjs';
 
 export const DEFAULT_REPO = 'NicolaiDolmer/CyclingZone';
 export const MARKER_PREFIX = 'merge-queue-closeout:v1';
@@ -339,7 +340,7 @@ function argValue(argv, name) {
   return i >= 0 ? argv[i + 1] : undefined;
 }
 
-export function main(argv = process.argv.slice(2), { gh = defaultGh, out = (l) => process.stdout.write(`${l}\n`), now = new Date() } = {}) {
+export function main(argv = process.argv.slice(2), { gh = defaultGh, out = (l) => process.stdout.write(`${l}\n`), now = new Date(), numberPatchNotes = null } = {}) {
   if (argv[0] !== 'run' && argv[0] !== 'merged') { out('Brug: node scripts/merge-queue-closeout.mjs run|merged --train <json> [--repo owner/name] [--dry-run]'); return 1; }
   const phase = argv[0] === 'merged' ? 'merged' : 'verified';
   const train = parseJson(argValue(argv, '--train') ?? '');
@@ -350,12 +351,16 @@ export function main(argv = process.argv.slice(2), { gh = defaultGh, out = (l) =
   const result = runCloseOut({ train, repo, dryRun, deployVerified, phase, gh, now, log: out });
   for (const err of result.errors) out(`close-out ADVARSEL: ${err}`);
   if (result.nowLine) out(`NOW-LINJE (commit selv i docs/NOW.md ved close-out): ${result.nowLine}`);
+  // #8346: kun efter et verificeret tog faar ventende patch notes nummer + dato (eet chore-commit paa main). Fail-soft.
+  if (phase === 'verified' && numberPatchNotes) {
+    try { for (const line of numberPatchNotes({ repo, dryRun })) out(line); } catch (err) { out(`close-out ADVARSEL: patch notes-nummerering: ${err?.message ?? err}`); }
+  }
   out(`close-out ${dryRun ? '[dry-run] ' : ''}${phase === 'merged' ? '(straks efter merge) ' : ''}faerdig: ${result.comments.length} kommentar(er), ${result.updatedComments.length} opdateret, ${result.skippedComments.length} fandtes allerede, ${result.flips.length} flip, ${result.errors.length} advarsel(er).`);
   return 0;
 }
 
 if (process.argv[1]?.endsWith('merge-queue-closeout.mjs')) {
   let code = 0;
-  try { code = main(); } catch (err) { process.stdout.write(`close-out ADVARSEL: uventet fejl: ${err?.message ?? err}\n`); code = 0; }
+  try { code = main(process.argv.slice(2), { numberPatchNotes: numberPendingOnMain }); } catch (err) { process.stdout.write(`close-out ADVARSEL: uventet fejl: ${err?.message ?? err}\n`); code = 0; }
   process.exitCode = code;
 }
