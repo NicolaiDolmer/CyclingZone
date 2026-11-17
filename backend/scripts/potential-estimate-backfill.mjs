@@ -246,12 +246,19 @@ export function evaluateEstimateGates(rows, { params, limits = null, h2Writes = 
   const attackMin = limits?.h6?.attackMinRatio;
   const poolMin = limits?.h6?.poolMinRatio;
   const h6HasLimit = typeof attackMin === "number" || typeof poolMin === "number";
-  const h6Pass = (typeof attackMin !== "number" || attackRatio == null || attackRatio >= attackMin)
-    && (typeof poolMin !== "number" || poolRatio == null || poolRatio >= poolMin);
+  // Codex P2 (#8368): en sammenligning med en grænse, der ikke kunne måles (fx ingen rytter med
+  // skøn fra to hold), er umålt og blokerer: null er aldrig "bestået".
+  const unmeasured = [
+    ...(typeof attackMin === "number" && attackRatio == null ? ["attack"] : []),
+    ...(typeof poolMin === "number" && poolRatio == null ? ["pool"] : []),
+  ];
+  const h6Pass = (typeof attackMin !== "number" || (attackRatio != null && attackRatio >= attackMin))
+    && (typeof poolMin !== "number" || (poolRatio != null && poolRatio >= poolMin));
   const h6 = {
     attack: attackStats, bestSingleLevel: bestStats, attackRatio,
     pooled: pooledStats, bestSingleTeam: singleStats, poolRatio,
-    status: status(h6Pass, h6HasLimit),
+    unmeasured,
+    status: unmeasured.length ? "no_data" : status(h6Pass, h6HasLimit),
   };
 
   const gates = {

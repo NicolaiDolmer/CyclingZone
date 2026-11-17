@@ -243,6 +243,12 @@ test("evaluateEstimateGates: private grænser dømmer, og en søndag der ville s
   assert.equal(pooled.h6.poolRatio, 2);
   assert.equal(pooled.h6.status, "green");
   assert.equal(evaluateEstimateGates(rows, { params: PARAMS, limits: { h6: { poolMinRatio: 3 } } }).h6.status, "red");
+  // Codex P2: ingen rytter med skøn fra to hold = sammenlægningen er umålt og blokerer, aldrig grøn.
+  const single = evaluateEstimateGates(rows.filter((r) => r.team_id === "t1"), { params: PARAMS, limits: { h6: { poolMinRatio: 1 } } });
+  assert.equal(single.h6.pooled.n, 0);
+  assert.equal(single.h6.status, "no_data");
+  assert.deepEqual(single.h6.unmeasured, ["pool"]);
+  assert.ok(blockingGates(single).includes("h6"));
   const empty = evaluateEstimateGates([], { params: PARAMS, limits: { h1: { sure: { p90Max: 3 } } } });
   assert.deepEqual(["h1", "h2", "h3", "h4", "h6"].map((key) => empty[key].status), Array(5).fill("no_data"), "en tom kørsel er aldrig grøn");
   assert.deepEqual(blockingGates(empty), ["h1", "h2", "h3", "h4", "h6"]);
