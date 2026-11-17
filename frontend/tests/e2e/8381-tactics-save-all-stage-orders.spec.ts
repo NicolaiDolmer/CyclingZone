@@ -7,7 +7,12 @@
 // Moenster som race-tactics-tab.spec.js: stabilizePage -> installNetworkMocks ->
 // spec-specifikke routes (LIFO) -> login -> goto.
 import { test, expect } from "./e2e-base.js";
+import type { Locator, Page } from "@playwright/test";
 import { installNetworkMocks, login, stabilizePage, json, corsHeaders, raceResultsRoute } from "./fixtures.js";
+
+type Override = { stage_number: number; rider_id: string; race_role: string; effort: string };
+type OrderRider = { rider_id: string; try_break?: boolean; effort?: string };
+type OrderPut = { stage: number; body: { riders: OrderRider[] } };
 
 const RACE_ID = "00000000-0000-4000-8000-000000008381";
 const FIVE_STEPS = ["grupetto", "save", "normal", "protect", "all_out"];
@@ -16,7 +21,7 @@ const RIDERS = [
   { rider_id: "r2", name: "Rider Two", race_role: "helper", abandoned: false },
 ];
 const STAGES = 4;
-const visible = (locator) => locator.filter({ visible: true }).first();
+const visible = (locator: Locator) => locator.filter({ visible: true }).first();
 
 const RACE = {
   id: RACE_ID,
@@ -37,14 +42,14 @@ const LIVE_RESULTS = [
   { id: "res-2", stage_number: 1, result_type: "leader", rank: 2, rider_id: "r2", rider_name: "Rider Two", team_id: "team-e2e", team_name: "E2E Team", finish_time: "+0:12" },
 ];
 
-const flatProfile = (stageNumber) => ({
+const flatProfile = (stageNumber: number) => ({
   race_id: RACE_ID, stage_number: stageNumber, profile_type: "flat", finale_type: null,
   distance_km: 180, elevation_gain_m: 300, climbs: [], sprints: [], sectors: [], weather: null,
 });
 
 /** Mocker loebet, stage-roles (som den rigtige server) og team-orders. Returnerer ordre-PUT'erne. */
-async function mockRace(page, { failOrderStage = null } = {}) {
-  let served = [];
+async function mockRace(page: Page, { failOrderStage = null as number | null } = {}): Promise<OrderPut[]> {
+  let served: Override[] = [];
   await page.route("**/rest/v1/races**", (route) => {
     const wantsObject = (route.request().headers().accept || "").includes("vnd.pgrst.object");
     return json(route, wantsObject ? RACE : [RACE]);
@@ -56,7 +61,7 @@ async function mockRace(page, { failOrderStage = null } = {}) {
     const request = route.request();
     if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
     if (request.method() === "PUT") {
-      const body = JSON.parse(request.postData() || "{}");
+      const body = JSON.parse(request.postData() || "{}") as { stages?: number[]; overrides?: Override[] };
       const written = body.stages ?? [];
       served = [...served.filter((o) => !written.includes(o.stage_number)), ...(body.overrides ?? []).filter((o) => written.includes(o.stage_number))];
       return json(route, { ok: true });
@@ -66,8 +71,8 @@ async function mockRace(page, { failOrderStage = null } = {}) {
       stages_completed: 1, stage_count: STAGES, riders: RIDERS, overrides: served, role_scope_choice: false,
     });
   });
-  const puts = [];
-  const failed = [];
+  const puts: OrderPut[] = [];
+  const failed: number[] = [];
   await page.route(`**/api/races/${RACE_ID}/team-orders**`, (route) => {
     const request = route.request();
     if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
@@ -90,7 +95,7 @@ async function mockRace(page, { failOrderStage = null } = {}) {
   return puts;
 }
 
-async function openTactics(page) {
+async function openTactics(page: Page): Promise<Locator> {
   await login(page);
   await page.goto(`/races/${RACE_ID}?tab=tactics`);
   const panel = page.getByTestId("race-tactics-tab");
@@ -99,8 +104,8 @@ async function openTactics(page) {
   return panel;
 }
 
-const stageButton = (panel, n) => visible(panel.getByRole("button", { name: `Intentioner for etape ${n}`, exact: true }));
-const breakFor = (panel, name) => visible(panel.getByRole("button", { name: `${name} forsøger at komme med i udbruddet` }));
+const stageButton = (panel: Locator, n: number) => visible(panel.getByRole("button", { name: `Intentioner for etape ${n}`, exact: true }));
+const breakFor = (panel: Locator, name: string) => visible(panel.getByRole("button", { name: `${name} forsøger at komme med i udbruddet` }));
 
 test("taktik (#8381): ordrer aendret paa en anden etape sendes med, og 'ikke gemt' ses fra alle etaper", async ({ page }) => {
   await stabilizePage(page);
