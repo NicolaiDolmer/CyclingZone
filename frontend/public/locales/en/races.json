@@ -6,7 +6,8 @@
       "story": "Story",
       "standings": "Standings",
       "tactics": "Tactics",
-      "team": "Team"
+      "team": "Team",
+      "start": "Start list"
     },
     "hero": {
       "stageLocks": "Stage {number} locks at {time} · {countdown}",
@@ -18,7 +19,9 @@
       "earlier": "Earlier stages",
       "later": "Later stages",
       "you": "You #{rank}",
-      "plan": "{done} of {total} done"
+      "planSaved": "Saved",
+      "planDefault": "Default plan",
+      "planNotSaved": "Not saved"
     },
     "route": {
       "aria": "Stage route",
@@ -1648,7 +1651,8 @@
       "points": "Points",
       "mountain": "Mountain",
       "young": "Youth",
-      "team": "Teams"
+      "team": "Teams",
+      "passages": "Sprints & climbs"
     },
     "teamFilter": {
       "label": "Team",
@@ -2236,6 +2240,10 @@
     "table": {
       "prizePoints": "Prize points",
       "jerseyPoints": "Jersey points",
+      "colPos": "Pos",
+      "colRider": "Rider",
+      "colTeam": "Team",
+      "colTime": "Time",
       "prizePointsShort": "Prize",
       "jerseyPointsShort": "Jersey"
     },

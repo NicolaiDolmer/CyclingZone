@@ -52,10 +52,19 @@ export function rememberedFor(remembered: RememberedRacePageV6, currentUserId: s
 }
 
 /**
- * Serverens svar (GET /api/feature-flags) → hvad der skal huskes. null = svaret kendte
- * ikke kontakten (fejl eller {}): slukket nu, men det huskede overskrives ikke.
+ * Serverens svar (GET /api/feature-flags) for kontakten. null = svaret kendte ikke
+ * kontakten (fejl eller {}); det er slukket, ligesom serverens egen fail-safe.
  */
 export function rememberedFromFlags(flags: Record<string, unknown> | null | undefined, key: string): boolean | null {
   const value = flags?.[key];
   return typeof value === "boolean" ? value : null;
+}
+
+/**
+ * #7865 (review-punkt e): hvad der huskes efter ET HVERT svar. Kun et udtrykkeligt
+ * "til" for en kendt konto huskes som til; alt andet (slukket, fejl, {}) rydder det
+ * huskede, så den huskede værdi aldrig viser v6 igen, efter serveren har sagt slukket.
+ */
+export function rememberAfterAnswer(flags: Record<string, unknown> | null | undefined, key: string, userId: string | null): RememberedRacePageV6 {
+  return { userId, on: userId != null && rememberedFromFlags(flags, key) === true };
 }

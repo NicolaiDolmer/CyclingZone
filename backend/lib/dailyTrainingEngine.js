@@ -828,7 +828,9 @@ async function prefetchPressRaceDays({
  * #7982 trin 4a: a later day field of the press. Fetch from the press's memory (and the race
  * lookups it fetched ahead, or the same lookups now if it could not), compute with the same
  * function as every other day field, save with the same function. Returns null, before any
- * database call, when the memory does not hold this day field; the caller then reads.
+ * database call, when the memory does not hold this day field; the caller then reads. #7982: with
+ * fatigue_now_7801 on it also returns null when the database refused the save because a receipt
+ * was saved meanwhile (nothing was saved); the caller then reads and saves as before.
  */
 async function runPressDayFromMemory({
   supabase, teamId, seasonId, seasonNumber, executedBy, now, gameDay, dateGameDays, tickDate, squadKey,
@@ -843,6 +845,14 @@ async function runPressDayFromMemory({
     || dateDays.join() !== held.dateDays.join()) return null;
   const plan = planPressDay(pressMemory.selection, { raceDay, eligibleRiderIds, unresolvedSlotsByRider, deadlineReached, dirtyRiderIds: pressMemory.dirtyRiderIds });
   if (!plan) return null;
+  // #6490 B: the evening run asks the roster again, as each of its day fields did, so a rider released
+  // since is departed by the full read (instead of quarantined by the save guard).
+  if (executedBy === "assistant") {
+    const roster = plan.dateWork.expected_rider_ids.filter((id) => !(plan.dateWork.quarantined_rider_ids ?? []).includes(id));
+    // pagination-safe: én række pr. id i datoens frosne trup (ét holds trup, bounded af rostergrænsen)
+    const { data, error } = await supabase.from("riders").select("id, team_id, is_retired").in("id", roster);
+    if (error || (data ?? []).length !== roster.length || data.some((row) => row.team_id == null || row.is_retired === true)) return null;
+  }
   const frame = raceDayFrame({ useRaceDayKey: true, conditionPerDate: true, raceDay, dateDays, dateGameDays, seasonId, tickDate });
   const riderIds = plan.riders.map((rider) => rider.id);
   // #4854: "the day after a stage" is read on the date's first race day only; such a day reads.
@@ -861,7 +871,12 @@ async function runPressDayFromMemory({
   // counts nobody provisionally). If the ledger changed since the press fetched (a stage settled,
   // and with it perhaps a race session's receipt, trainingSettleRaceSession7982.js), the memory
   // steps aside and this day field reads everything, exactly as before.
-  if (pressProvisionalRiderIds({ riderIds, plan, instantPress, dateDays, raceDay, unresolvedSlotsByRider }).length) {
+  // #7801 (Fable-gentjek 15/11 på #8148, fund A): with fatigue_now_7801 on, the fatigue rule of every
+  // day field counts the date's settled stages, also in the free day fields before the provisional
+  // one. So with the switch on, every day field of the memory with a stamped rider asks the race-load
+  // question again (as main did in every day field). Off: exactly the reads above, nothing more.
+  const fatigueNowAsks = held.fatigueNowOn === true && riderIds.some((id) => plan.instantRiderIds.has(id));
+  if (fatigueNowAsks || pressProvisionalRiderIds({ riderIds, plan, instantPress, dateDays, raceDay, unresolvedSlotsByRider }).length) {
     const { data, error } = await supabase.from('training_race_loads').select('*')
       .eq('season_id', seasonId).eq('tick_date', tickDate).in('rider_id', riderIds);
     if (error) throw new Error(`race condition ledger load: ${error.message}`);
@@ -883,11 +898,25 @@ async function runPressDayFromMemory({
   const tick = computeTrainingDayTick(input);
   pressTimer?.lap("compute");
   await resolveConditionInjuryDates({ supabase, teamId, seasonId, useRaceDayKey: true, conditionUpserts: tick.conditionUpserts, pressPath: true });
-  const saved = await commitTrainingDateTick({
-    supabase, teamId, seasonId, squadKey, raceDay, tickDate, dateDays, executedBy, bonus: input.bonus,
-    lastSlotSettles: input.lastSlotSettles, deadlineReached, now, instantRiderIds: input.instantRiderIds,
-    raceLoadRows, settlingRiderIds: tick.settlingRiderIds, tick, pressMemory,
-  });
+  let saved;
+  try {
+    saved = await commitTrainingDateTick({
+      supabase, teamId, seasonId, squadKey, raceDay, tickDate, dateDays, executedBy, bonus: input.bonus,
+      lastSlotSettles: input.lastSlotSettles, deadlineReached, now, instantRiderIds: input.instantRiderIds,
+      raceLoadRows, settlingRiderIds: tick.settlingRiderIds, tick, pressMemory,
+    });
+  } catch (err) {
+    // #7982: a race session settled at its stage (trainingSettleRaceSession7982.js) may save a receipt
+    // after the press fetched. The database then refuses this day field's save as a whole (nothing is
+    // saved). Main read the receipts again in every day field and went on, so with fatigue_now_7801
+    // on (training_settle_race_session is only switched on together with it) the memory steps aside
+    // and this day field reads everything and is saved as on main. Off: the refusal stands, as before.
+    if (held.fatigueNowOn === true && /receipt snapshot changed/i.test(String(err?.message ?? ""))) {
+      pressMemory.forget();
+      return null;
+    }
+    throw err;
+  }
   pressTimer?.lap("save");
   return saved;
 }

@@ -6,8 +6,6 @@ const {
   classifyFiles,
   hasOptOut,
   hasSkipLabel,
-  parseVersions,
-  suggestNextVersion,
   evaluate,
 } = require("./check-patch-notes-coverage.js");
 
@@ -46,6 +44,23 @@ test("classifyFiles: detects patch notes data file touched", () => {
   assert.equal(patchNoteTouched, true);
 });
 
+test("#8346 classifyFiles: a new pending fragment counts as a patch note", () => {
+  const { userFacingFiles, patchNoteTouched } = classifyFiles([
+    "frontend/src/pages/RacesPage.jsx",
+    "frontend/src/data/patch-notes/pending/8069-planning-deadline.json",
+  ]);
+  assert.equal(patchNoteTouched, true);
+  assert.deepEqual(userFacingFiles, ["frontend/src/pages/RacesPage.jsx"]);
+});
+
+test("#8346 classifyFiles: the fragment README is not a patch note", () => {
+  const { patchNoteTouched } = classifyFiles([
+    "frontend/src/pages/RacesPage.jsx",
+    "frontend/src/data/patch-notes/README.md",
+  ]);
+  assert.equal(patchNoteTouched, false);
+});
+
 test("classifyFiles: PatchNotesPage.jsx alone does not count as the data file", () => {
   // The rendering component is not the source of truth; frontend/src/data/patchNotes.js is.
   const { patchNoteTouched } = classifyFiles([
@@ -82,18 +97,6 @@ test("hasSkipLabel: recognizes docs-only and backend-only", () => {
   assert.equal(hasSkipLabel(["priority:med"]), false);
   assert.equal(hasSkipLabel([]), false);
   assert.equal(hasSkipLabel(undefined), false);
-});
-
-// ---- Version suggestion ----------------------------------------------------
-
-test("parseVersions + suggestNextVersion: bumps the last segment of the top version", () => {
-  const content = `export const PATCHES = [\n  { version: "7.116", date: "2026-08-10" },\n  { version: "7.115", date: "2026-08-09" },\n];\n`;
-  assert.deepEqual(parseVersions(content), ["7.116", "7.115"]);
-  assert.equal(suggestNextVersion(content), "7.117");
-});
-
-test("suggestNextVersion: returns null when no versions are found", () => {
-  assert.equal(suggestNextVersion("export const PATCHES = [];\n"), null);
 });
 
 // ---- Design principle 5 (#3564): prove the guard against #623's 4 known
@@ -190,10 +193,13 @@ test("control: test-file-only frontend change never flags", () => {
   assert.equal(result.reason, "no-user-facing-files");
 });
 
-test("evaluate: includes a version suggestion when flagged and patch notes content is available", () => {
-  const changedFiles = ["frontend/src/pages/AuctionsPage.jsx"];
-  const patchNotesContent = `export const PATCHES = [\n  { version: "7.116", date: "2026-08-10" },\n];\n`;
-  const result = evaluate({ changedFiles, prBody: "", labels: [], patchNotesContent });
-  assert.equal(result.flagged, true);
-  assert.equal(result.suggestedVersion, "7.117");
+test("#8346 control: a pending fragment satisfies the guard, and no version is suggested", () => {
+  const changedFiles = [
+    "frontend/src/pages/AuctionsPage.jsx",
+    "frontend/src/data/patch-notes/pending/8260-auto-bid-colour.json",
+  ];
+  const result = evaluate({ changedFiles, prBody: "", labels: [] });
+  assert.equal(result.flagged, false);
+  assert.equal(result.reason, "patch-notes-updated");
+  assert.equal(evaluate({ changedFiles: ["frontend/src/pages/AuctionsPage.jsx"], prBody: "", labels: [] }).suggestedVersion, undefined);
 });

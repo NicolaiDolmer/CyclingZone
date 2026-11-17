@@ -158,7 +158,7 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7855
     verified: 2026-11-13
-    note: '#8052 merget 13/11, kontakt jersey_hunt_7855 off i prod; tændes kun af ejeren efter dommer.'
+    note: 'Off i prod 13/11 (#8052); kun ejeren tænder, efter dommer.'
     decision: ejer-beslutning
     decide_by: 2026-11-21
   - id: race-itt-no-day-roll-7726
@@ -512,7 +512,20 @@ features:
     epic: 7778
     ssot: docs/RACE_ENGINE_RULES.md
     verified: 2026-11-13
-    note: "#7778/#8062: kun trin 1 af 5 er bygget (kun visning); kontakt race_page_v6 off i prod 13/11."
+    note: "#7778: trin 1 af 5 bygget; off i prod."
+
+  - id: spoiler-shield
+    area: race-day
+    title_en: Spoiler shield
+    title_da: Spoiler-skjold
+    state: building
+    flag: spoiler_shield_7859
+    decision: ejer-beslutning
+    decide_by: 2026-11-30
+    epic: 7778
+    ssot: docs/RACE_ENGINE_RULES.md
+    verified: 2026-11-16
+    note: "#7859: seedes off."
 
   - id: rider-hover-card
     area: squad
@@ -622,7 +635,7 @@ features:
     verified: 2026-11-15
     decision: ejer-beslutning
     decide_by: 2026-11-29
-    note: Kontakt training_settle_race_session off i prod 15/11 (serverdel merget, #8195). Tændes kun sammen med fatigue_now_7801 (ejer 15/11). Skærmdelen er ikke bygget.
+    note: Off i prod 15/11 (server merget, #8195). Tændes kun med fatigue_now_7801 (ejer). Skærmdelen mangler.
 
   - id: rider-loans
     area: market
@@ -855,6 +868,19 @@ features:
     verified: 2026-10-27
     note: "PR #7288 merget; fælles start over nul. Historik bruger loggens startFatigue."
 
+  - id: season-injury-reset
+    area: training
+    title_en: Injuries heal over the off-season
+    title_da: Skader heler i sæsonpausen
+    state: building
+    flag: season_injury_reset_mode
+    ssot: docs/TRAINING_RULES.md
+    epic: 5865
+    verified: 2026-11-16
+    note: 'Bygget bag season_injury_reset_mode = off; ejeren vælger clear/cap/light før S6-skiftet.'
+    decision: ejer-beslutning
+    decide_by: 2026-11-28
+
   - id: training-programs
     area: training
     title_en: Training programs per race day
@@ -951,6 +977,18 @@ features:
     ssot: docs/YOUTH_RULES.md
     epic: 932
     verified: 2026-09-06
+
+  - id: academy-page-v2-8081
+    area: academy
+    title_en: Academy page with tabs and age focus
+    title_da: Akademisiden med faner og aldersfokus
+    state: building
+    ssot: docs/YOUTH_RULES.md
+    epic: 8081
+    verified: 2026-11-16
+    note: Slukket; trækket læser ikke aldersfokus.
+    decision: ejer-beslutning
+    decide_by: 2026-11-30
 
   - id: scout-system
     area: academy
@@ -1222,14 +1260,12 @@ features:
     area: training
     title_en: Train now straight away
     title_da: Træn nu med det samme
-    state: beta
+    state: live
     flag: training_train_now_instant
     ssot: docs/TRAINING_RULES.md
     epic: 7737
-    verified: 2026-11-10
-    decision: goer-faerdigt
-    decide_by: 2026-11-16
-    note: 'Beta i prod 10/11; on for alle efter beta-feedback (ejer-go).'
+    verified: 2026-11-16
+    note: 'On for alle 16/11 kl. 09:16 (ejer "kør"; ejertryk 4,6 s, Fable bevist med forbehold). Sluk: værdien tilbage til "beta". Aftenspids 18-20 måles; over 8 s eller fejl = tilbage til beta (ejer 16/11).'
     roadmap_en: "Train now takes effect immediately: today's free training applies at once, and form and fatigue carry into today's races."
     roadmap_da: "Træn nu virker med det samme: dagens ledige træning udføres straks, og form og træthed tæller med i dagens løb."
 
@@ -1251,7 +1287,7 @@ features:
     flag: development_score_v2
     ssot: docs/TRAINING_RULES.md
     epic: 6110
-    note: "Parkeret (ejer 31/10). Ejer 13/11: besluttes ved opsamlingen på Udvikling 2.0. Kan ikke være tændt samtidig med XP. Før tænding: #7584."
+    note: "Parkeret (ejer 31/10); afgøres ved Udvikling 2.0-opsamlingen. Aldrig tændt samtidig med XP. Før tænding: #7584."
     verified: 2026-11-13
     decision: ejer-beslutning
     decide_by: 2026-11-21
@@ -1264,7 +1300,7 @@ features:
     flag: development_xp_model
     ssot: docs/TRAINING_RULES.md
     epic: 6110
-    note: '#8041 merget; development_xp_model off i prod 13/11; tændes kun af ejeren efter dommer (+ development_xp_from_date).'
+    note: 'Off i prod 13/11 (#8041); kun ejeren tænder, efter dommer + development_xp_from_date.'
     verified: 2026-11-13
     decision: taend
     decide_by: 2026-11-21
@@ -1640,11 +1676,13 @@ features:
     area: training
     title_en: Train now bonus
     title_da: Træn nu-bonus
-    state: building
+    state: beta
     flag: training_train_now_bonus
     ssot: docs/TRAINING_RULES.md
     epic: 7737
-    verified: 2026-11-10
+    verified: 2026-11-16
     decision: goer-faerdigt
     decide_by: 2026-11-16
-    note: 'OFF seed; owner 10/11: own activation card after Train now is proven alone.'
+    note: 'Beta i prod (migration #8268, læst 16/11): kun beta-testeres egne tryk får bonussen. Patch note 7.454. "on" kræver ejer-go.'
+    roadmap_en: "Press Train now yourself and get 15% extra development that day."
+    roadmap_da: "Tryk selv på Træn nu, og få 15 % ekstra udvikling den dag."

@@ -391,14 +391,15 @@ test("(1) guidet tur: når guld-knappen selv kører dagen, peger trin 2 på den 
   await expect(page.getByRole("dialog")).toContainText("Train once a day");
 });
 
-test("(1) guidet tur med dayClose (#4847): turen lover ingen bonus, men siger at dagen også kører af sig selv", async ({ page }) => {
+test("(1) guidet tur med dayClose (#4847): turen lover ingen bonus-tal, og siger at dagen også kører af sig selv (#7741)", async ({ page }) => {
   await startTourAtRunStep(page);
   await openTraining(page, 1440, 900, trainingMe({ dayClose: { open: true, opensAtHour: 20 } }));
   const anchor = page.locator("[data-tour='training-run-today']");
   await expect(anchor.getByTestId("training-run-now")).toBeVisible();
   const tour = page.getByRole("dialog");
-  await expect(tour).toContainText("with no bonus");
+  await expect(tour).toContainText("runs on its own");
   await expect(tour).not.toContainText("+25%");
+  await expect(tour).not.toContainText("15%");
 });
 
 test("(2)+(6) markeringen: A får en dag i sin egen vælger → 'Saved' ses, '2 selected', og A overskrives ikke", async ({ page }) => {
@@ -464,7 +465,9 @@ test("(3) assistenten desktop: en rigtig sekundær knap med ramme i tabellens v�
 });
 
 {
-  test("(3) assistenten telefon 390: rækken står lige under overblikket, over rækkerne", async ({ page }) => {
+  // #8279 (rettelse 15): rækken står nu INDE i overblikskortet (under træthedslinjen),
+  // ikke som eget kort under det. Stadig over rytterrækkerne og 44 px høj.
+  test("(3) assistenten telefon 390: rækken står i overblikskortet, over rækkerne", async ({ page }) => {
     await openTraining(page, 390, 844);
     const row = page.getByTestId("training-assistant-row");
     await expect(row).toBeVisible();
@@ -472,7 +475,8 @@ test("(3) assistenten desktop: en rigtig sekundær knap med ramme i tabellens v�
     const rowBox = await row.boundingBox();
     const tableBox = await page.getByTestId("training-onetap-rows").boundingBox();
     expect(overviewBox && rowBox && tableBox).toBeTruthy();
-    expect(rowBox!.y).toBeGreaterThanOrEqual(overviewBox!.y + overviewBox!.height);
+    expect(rowBox!.y).toBeGreaterThanOrEqual(overviewBox!.y);
+    expect(rowBox!.y + rowBox!.height).toBeLessThanOrEqual(overviewBox!.y + overviewBox!.height + 1);
     expect(rowBox!.y + rowBox!.height).toBeLessThanOrEqual(tableBox!.y);
     // 44 px tryk-mål (#1602).
     expect(rowBox!.height).toBeGreaterThanOrEqual(44);

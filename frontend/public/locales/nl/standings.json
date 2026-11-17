@@ -46,9 +46,6 @@
   "onlineNow": "Nu online",
   "offline": "Offline",
   "movement": {
-    "label": "Verschuiving",
-    "up": "{count} promoveren",
-    "down": "{count} degraderen",
     "ruleBoth": "De top {up} promoveert, de onderste {down} degradeert",
     "ruleBothPerPool": "In elk van de {pools} poules promoveert de top {up} en degradeert de onderste {down}",
     "ruleDown": "De onderste {down} degradeert",

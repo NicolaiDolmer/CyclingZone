@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { runMissedGraduateSweep, findMissedGraduates, findPendingWithoutNotification } from "./missedGraduateSweep.js";
+import { runMissedGraduateSweep, findMissedGraduates, findPendingWithoutNotification, markGraduationsNotified } from "./missedGraduateSweep.js";
 import { GRADUATION, buildGraduationReadyNotification, notifyGraduationReady } from "./academyGraduation.js";
 import { notifyTeamOwner } from "./notificationService.js";
 import { translate } from "./i18nServer.js";
@@ -39,9 +39,11 @@ function makeMock({
   teams = [{ id: "t-human", user_id: "u-human" }, { id: "t-other", user_id: "u-other" }],
   notifications = [],
   insertError = null,
+  updateError = null,
+  missingNotifiedColumn = false,
   maxInIds = Infinity,
 } = {}) {
-  const rec = { inserts: [], inQueries: [] };
+  const rec = { inserts: [], inQueries: [], updates: [], selects: [] };
   const query = (table, rows, extra) => tableQuery(rows, extra, (col, ids) => {
     rec.inQueries.push({ table, col, count: ids.length });
     if (ids.length > maxInIds) throw new Error("Bad Request: oversized URL filter");
@@ -63,7 +65,20 @@ function makeMock({
       if (table === "teams") return query(table, () => teams);
       if (table === "notifications") return query(table, () => notifications);
       if (table === "academy_graduation") {
-        return tableQuery(() => graduations, {
+        // #8196: kolonnen findes ikke før migrationen er kørt (42703 på select).
+        const columnMissing = { code: "42703", message: "column academy_graduation.notified_at does not exist" };
+        const failing = {
+          eq() { return failing; }, order() { return failing; }, in() { return failing; },
+          range() { return Promise.resolve({ data: null, error: columnMissing }); },
+        };
+        const base = tableQuery(() => graduations);
+        const realSelect = base.select.bind(base);
+        return Object.assign(base, {
+          select(columns) {
+            rec.selects.push(String(columns));
+            if (missingNotifiedColumn && String(columns).includes("notified_at")) return failing;
+            return realSelect(columns);
+          },
           insert(row) {
             rec.inserts.push(row);
             if (insertError) return Promise.resolve({ error: insertError });
@@ -75,6 +90,21 @@ function makeMock({
               season_id: row.season_id, status: row.status, deadline: row.deadline, created_at: row.deadline,
             });
             return Promise.resolve({ error: null });
+          },
+          // #8196: "sendt"-mærket skrives med update().in("id").is(col, null).
+          update(patch) {
+            rec.updates.push(patch);
+            const filters = [];
+            const u = {
+              in(col, vals) { filters.push((r) => vals.includes(r[col])); return u; },
+              is(col, val) { filters.push((r) => (r[col] ?? null) === val); return u; },
+              then(resolve, reject) {
+                if (updateError) return Promise.resolve({ error: updateError }).then(resolve, reject);
+                for (const r of graduations) if (filters.every((f) => f(r))) Object.assign(r, patch);
+                return Promise.resolve({ error: null }).then(resolve, reject);
+              },
+            };
+            return u;
           },
         });
       }
@@ -472,4 +502,117 @@ test("findMissedGraduates: kun ryttere uden nogen grad-række", async () => {
   const res = await findMissedGraduates(mock.supabase, { now: NOW, seasonNumber: 3 });
   assert.deepEqual(res.missed.map((m) => m.riderId), ["r-missed"]);
   assert.equal(res.checked, 2);
+});
+
+// =====================================================================
+// #8196 · en slettet graduerings-besked må ikke sendes igen
+// =====================================================================
+// Før var notifikations-rækken selv beviset for levering. Slettede manageren
+// beskeden, så det natlige sweep rækken som "aldrig notificeret" og eftersendte
+// den hver nat, så længe vinduet stod åbent. Mærket bor nu på grad-rækken.
+
+const OPEN_ROW = () => ({
+  id: "g-open", rider_id: "r-missed", team_id: "t-human", season_id: "s3", status: "pending",
+  deadline: "2026-09-15T08:00:00.000Z", created_at: "2026-09-10T08:00:00.000Z",
+});
+
+test("#8196: slettes graduerings-beskeden i indbakken, sender næste nat den IKKE igen", async () => {
+  const mock = makeMock({ riders: [MISSED], graduations: [OPEN_ROW()] });
+  const notify = spyNotify(mock);
+
+  const first = await runMissedGraduateSweep({ supabase: mock.supabase, now: NOW, isEnabled: enabled, notify });
+  assert.equal(first.notificationsSent, 1, "den manglende besked eftersendes");
+  assert.equal(mock.graduations[0].notified_at, NOW.toISOString(), "mærket sættes på grad-rækken");
+
+  mock.notifications.length = 0; // manageren sletter beskeden
+
+  const second = await runMissedGraduateSweep({ supabase: mock.supabase, now: NOW, isEnabled: enabled, notify });
+  assert.equal(second.notificationsSent, 0);
+  assert.equal(notify.calls.length, 1, "ingen ny besked efter sletning");
+  assert.deepEqual(second.missingNotifications, []);
+});
+
+test("#8196: en besked sendt før mærket (fx af sæsonskiftet) får mærket, så en senere sletning ikke giver en ny", async () => {
+  const mock = makeMock({
+    riders: [MISSED],
+    graduations: [OPEN_ROW()],
+    notifications: [{ user_id: "u-human", related_id: "r-missed", type: "academy_graduation_ready" }],
+  });
+  const notify = spyNotify(mock);
+
+  await runMissedGraduateSweep({ supabase: mock.supabase, now: NOW, isEnabled: enabled, notify });
+  assert.equal(notify.calls.length, 0);
+  assert.equal(mock.graduations[0].notified_at, NOW.toISOString());
+
+  mock.notifications.length = 0;
+  const second = await runMissedGraduateSweep({ supabase: mock.supabase, now: NOW, isEnabled: enabled, notify });
+  assert.equal(second.notificationsSent, 0);
+  assert.equal(notify.calls.length, 0, "ingen ny besked efter sletning");
+});
+
+test("#8196: mangler kolonnen endnu (migration ikke kørt), virker sweepet som før og vælter ikke", async () => {
+  const mock = makeMock({ riders: [MISSED], graduations: [OPEN_ROW()], missingNotifiedColumn: true });
+  const notify = spyNotify(mock);
+  const res = await runMissedGraduateSweep({ supabase: mock.supabase, now: NOW, isEnabled: enabled, notify });
+  assert.equal(res.notificationsSent, 1, "det gamle værn gælder: beskeden mangler, så den sendes");
+  assert.equal(res.failed, 0);
+  assert.deepEqual(res.errors, []);
+  assert.equal(mock.rec.updates.length, 0, "ingen skrivning til en kolonne, der ikke findes");
+  assert.ok(mock.rec.selects.some((s) => !s.includes("notified_at")), "faldvejen læser uden kolonnen");
+});
+
+test("#8196: fejler mærke-skrivningen, er beskeden stadig leveret og sweepet vælter ikke", async () => {
+  const mock = makeMock({
+    riders: [MISSED], graduations: [OPEN_ROW()],
+    updateError: { code: "57014", message: "canceling statement due to statement timeout" },
+  });
+  const res = await runMissedGraduateSweep({ supabase: mock.supabase, now: NOW, isEnabled: enabled, notify: spyNotify(mock) });
+  assert.equal(res.notificationsSent, 1);
+  assert.equal(res.failed, 0, "en mærke-fejl er ikke en rytter-fejl");
+  assert.equal(res.errors.length, 1);
+  assert.equal(res.errors[0].phase, "notified_marker");
+  assert.equal(mock.graduations[0].notified_at, undefined);
+});
+
+test("#8196: bliver beskeden IKKE leveret, sættes mærket ikke", async () => {
+  const mock = makeMock({ riders: [MISSED], graduations: [OPEN_ROW()] });
+  const res = await runMissedGraduateSweep({
+    supabase: mock.supabase, now: NOW, isEnabled: enabled,
+    notify: async () => ({ delivered: false, deduped: false, reason: "missing_user" }),
+  });
+  assert.equal(res.failed, 0);
+  assert.equal(mock.graduations[0].notified_at, undefined, "næste nat må prøve igen");
+  assert.equal(mock.rec.updates.length, 0);
+});
+
+test("#8196: dry-run sætter intet mærke, heller ikke for en besked der findes", async () => {
+  const mock = makeMock({
+    riders: [MISSED],
+    graduations: [OPEN_ROW()],
+    notifications: [{ user_id: "u-human", related_id: "r-missed", type: "academy_graduation_ready" }],
+  });
+  await runMissedGraduateSweep({ supabase: mock.supabase, now: NOW, dryRun: true, isEnabled: enabled, notify: spyNotify(mock) });
+  assert.equal(mock.rec.updates.length, 0);
+});
+
+// Codex P2 (#8214): mange id'er opdateres i bidder, og en fejlet bid beholder de mærkede.
+test("8196 markGraduationsNotified: opdaterer i bidder og beholder mærker før en fejlet bid", async () => {
+  const calls = [];
+  const supabase = {
+    from: () => ({
+      update: () => ({
+        in: (_col, chunk) => ({
+          is: async () => {
+            calls.push(chunk.length);
+            return calls.length === 3 ? { error: { message: "boom" } } : { error: null };
+          },
+        }),
+      }),
+    }),
+  };
+  const ids = Array.from({ length: 250 }, (_, i) => `g-${i}`);
+  const res = await markGraduationsNotified(supabase, { ids, now: new Date("2026-11-16T09:00:00.000Z") });
+  assert.deepEqual(calls, [100, 100, 50]);
+  assert.equal(res.marked, 200);
+  assert.equal(res.error, "boom");
 });

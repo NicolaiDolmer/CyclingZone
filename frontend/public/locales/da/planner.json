@@ -221,5 +221,12 @@
     "title": "Din division i sæson {number} afgøres ved sæsonskiftet",
     "body": "Op- og nedrykning falder først på plads når den nuværende sæson lukker, så jeg kan ikke vise dig hvilken kalender der er din endnu. Alle divisioners løb i sæson {number} står nedenfor, så du kan nå at studere ruterne.",
     "hint": "Peaks for sæson {number} åbner så snart din division er bekræftet."
+  },
+  "expectedDivision": {
+    "label": "Division",
+    "all": "Alle divisioner",
+    "option": "Division {n}",
+    "optionExpected": "Division {n} (forventet)",
+    "plannerBody": "Op- og nedrykning falder først på plads når den nuværende sæson lukker. Brættet starter på division {n}, som du er i nu. Vælg en anden division ovenfor for at studere dens ruter i sæson {number}."
   }
 }

@@ -407,6 +407,9 @@ video {
   --color-cz-danger-bg: var(--danger-bg);
   --color-cz-warning: rgb(var(--warning));
   --color-cz-warning-bg: var(--warning-bg);
+  --color-cz-success-t: rgb(var(--success-t)); /* #7638 tekst-varianter (AA paa alle flader), som accent-t */
+  --color-cz-warning-t: rgb(var(--warning-t));
+  --color-cz-danger-t: rgb(var(--danger-t));
   --color-cz-info: rgb(var(--info));
   --color-cz-info-bg: var(--info-bg);
 
@@ -649,6 +652,10 @@ video {
   --danger:     168 30 30;     /* #a81e1e */
   --warning:    154 91 0;      /* #9a5b00 */
   --info:       26 71 192;     /* #1a47c0 */
+  /* #7638: tekst-toner til smaa ord (prisord) - samme farve, dybere, saa de holder AA ogsaa paa subtle og guld-tonet flade. */
+  --success-t:  18 106 42;     /* #126a2a */
+  --warning-t:  135 79 0;      /* #874f00 */
+  --danger-t:   168 30 30;     /* #a81e1e */
 
   /* Status-flader (#2849 boelge 6, ejer-valg 25/7 "mulighed C"). Lyst tema brugte
      faste pasteller (#dcfce7 osv.), men 69 callsites blandede i praksis deres egen
@@ -754,6 +761,10 @@ video {
   --danger-bg:  rgba(251, 132, 132, 0.12);
   --warning:    240 168 48;   /* #f0a830 */
   --warning-bg: rgba(240, 168, 48, 0.12);
+  /* #7638: moerke toner holder allerede AA paa alle flader - tekst-varianten = basen. */
+  --success-t:  95 217 138;
+  --warning-t:  240 168 48;
+  --danger-t:   251 132 132;
   --info:       122 176 251;  /* #7ab0fb */
   --info-bg:    rgba(122, 176, 251, 0.12);
 
@@ -1083,51 +1094,17 @@ tr:hover .sticky-name-cell {
 
 /* #7778 udgave E: v6's etapestribe (V6StageStrip.tsx), bunden af løbshovedets kort.
    Modern Web Guidance (carousel, scrollability-affordance-hints): vandret
-   rullecontainer, scroll-snap "proximity" (cellerne er valg, ikke slides), kant-fade
-   når der er mere, og scroll-padding-inline lig faden, så en celle aldrig snapper
-   eller får fokus inde i faden. Faden følger rullepositionen med en scroll-drevet
-   animation; uden den sætter komponenten data-more-start/-end (fallback nedenfor). */
-@property --v6-fade-start {
-  syntax: "<length>";
-  inherits: false;
-  initial-value: 0px;
-}
-@property --v6-fade-end {
-  syntax: "<length>";
-  inherits: false;
-  initial-value: 0px;
-}
-@keyframes v6-reveal-fade-start {
-  to { --v6-fade-start: var(--v6-fade-size); }
-}
-@keyframes v6-hide-fade-end {
-  from { --v6-fade-end: var(--v6-fade-size); }
-}
+   rullecontainer, scroll-snap "proximity" (cellerne er valg, ikke slides). Kanten
+   markeres af pileknapperne: opak kort-baggrund + hairline, ingen udtoning og
+   ingen skygge (TASTE §3, review-punkt a på #7865). */
 @layer utilities {
   .v6-strip-scroller {
-    --v6-fade-size: 2rem;
     overflow-x: auto;
     overscroll-behavior-x: contain;
     scroll-snap-type: x proximity;
-    scroll-padding-inline: var(--v6-fade-size);
     scrollbar-width: none;
-    mask:
-      linear-gradient(black, black) no-clip subtract,
-      linear-gradient(to right, black, transparent) 0 0 / var(--v6-fade-start) 100% no-repeat no-clip,
-      linear-gradient(to right, transparent, black) 100% 0 / var(--v6-fade-end) 100% no-repeat no-clip;
   }
   .v6-strip-scroller::-webkit-scrollbar { display: none; }
-  @supports (animation-timeline: scroll()) {
-    .v6-strip-scroller {
-      animation: v6-reveal-fade-start linear both, v6-hide-fade-end linear both;
-      animation-timeline: scroll(self inline);
-      animation-range: 0 var(--v6-fade-size), calc(100% - var(--v6-fade-size)) 100%;
-    }
-  }
-  @supports not (animation-timeline: scroll()) {
-    .v6-strip-scroller[data-more-start="true"] { --v6-fade-start: var(--v6-fade-size); }
-    .v6-strip-scroller[data-more-end="true"] { --v6-fade-end: var(--v6-fade-size); }
-  }
   .v6-strip-cell {
     position: relative;
     scroll-snap-align: start;
@@ -1138,7 +1115,7 @@ tr:hover .sticky-name-cell {
     position: absolute;
     inset: 0;
     border: 1.5px solid var(--text-1);
-    border-radius: 3px;
+    border-radius: 5px;
     pointer-events: none;
   }
   /* Fokus står inden for cellen, så rullecontaineren ikke klipper den. */
@@ -1150,6 +1127,7 @@ tr:hover .sticky-name-cell {
     justify-content: center;
     width: 44px;
     border-color: var(--border);
+    background: var(--bg-card);
     color: var(--text-2);
   }
   .v6-strip-nav:hover:not(:disabled) { background: var(--bg-subtle); color: var(--text-1); }

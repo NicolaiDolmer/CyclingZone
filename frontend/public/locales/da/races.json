@@ -6,7 +6,8 @@
       "story": "Historie",
       "standings": "Stillinger",
       "tactics": "Taktik",
-      "team": "Hold"
+      "team": "Hold",
+      "start": "Startliste"
     },
     "hero": {
       "stageLocks": "Etape {number} låses kl. {time} · {countdown}",
@@ -18,7 +19,9 @@
       "earlier": "Tidligere etaper",
       "later": "Senere etaper",
       "you": "Du #{rank}",
-      "plan": "{done} af {total} klar"
+      "planSaved": "Gemt",
+      "planDefault": "Standardplan",
+      "planNotSaved": "Ikke gemt"
     },
     "route": {
       "aria": "Etapens rute",
@@ -1648,7 +1651,8 @@
       "points": "Point",
       "mountain": "Bjerg",
       "young": "Ungdom",
-      "team": "Hold"
+      "team": "Hold",
+      "passages": "Spurter og stigninger"
     },
     "teamFilter": {
       "label": "Hold",
@@ -2236,6 +2240,10 @@
     "table": {
       "prizePoints": "Præmiepoint",
       "jerseyPoints": "Trøjepoint",
+      "colPos": "Nr",
+      "colRider": "Rytter",
+      "colTeam": "Hold",
+      "colTime": "Tid",
       "prizePointsShort": "Præmie",
       "jerseyPointsShort": "Trøje"
     },

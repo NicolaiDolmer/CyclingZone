@@ -33,6 +33,8 @@
 // dropper ethvert hold under det, uanset trup). Én notifikation pr. hold+trup+
 // sæson: dedupe-nøglen (team, squad, season) ligger i metadata og slås op før
 // hver levering, så en genkørsel af transitionen aldrig varsler samme trup to gange.
+// #8196: værnet er et holdbart mærke (notification_sent_markers) med samme nøgle,
+// ikke indbakke-rækken, så en slettet besked ikke sendes igen ved en genkørsel.
 //
 // Additivt + isoleret (samme disciplin som contract_expiry_release/
 // retirement_release i seasonTransition.js): kaldes EFTER begge frigivelses-faser
@@ -225,6 +227,68 @@ export function planSquadsBelowMinimum({ teams, counts, minRiders = MIN_RACE_ENT
   return affected;
 }
 
+// ─── #8196 · Holdbart "sendt"-mærke ─────────────────────────────────────────
+// Før var notifikations-rækken med dedupe-nøglen det eneste værn mod gentagelse.
+// Indbakken sletter rækker fysisk, så slettede manageren beskeden, og blev
+// transitionen kørt igen (den er bygget til re-run efter delvis fejl), fik han
+// samme besked igen. Mærket bor i notification_sent_markers med samme nøgle og
+// slettes aldrig sammen med beskeden.
+export const NOTIFICATION_SENT_MARKERS_TABLE = "notification_sent_markers";
+
+// "Tabellen findes ikke endnu" (42P01 / PGRST205): reelt i vinduet mellem deploy
+// og auto-migrate (#2642). Samme test som selectionWarningSweep.isMissingReceiptsTableError.
+export function isMissingSentMarkersTableError(error) {
+  if (!error) return false;
+  const code = String(error.code || "");
+  if (code === "42P01" || code === "PGRST205") return true;
+  return /notification_sent_markers.* does not exist|could not find the table/i.test(String(error.message || ""));
+}
+
+async function defaultHasSentMarker({ supabase, dedupeKey }) {
+  const { data, error } = await supabase
+    .from(NOTIFICATION_SENT_MARKERS_TABLE)
+    .select("dedupe_key")
+    .eq("dedupe_key", dedupeKey)
+    .limit(1);
+  if (error) throw error;
+  return Array.isArray(data) && data.length > 0;
+}
+
+async function defaultMarkSent({ supabase, dedupeKey, sentAtIso }) {
+  const { error } = await supabase
+    .from(NOTIFICATION_SENT_MARKERS_TABLE)
+    .upsert({ dedupe_key: dedupeKey, sent_at: sentAtIso }, { onConflict: "dedupe_key", ignoreDuplicates: true });
+  if (error) throw error;
+}
+
+export const defaultSquadSentMarkers = Object.freeze({ has: defaultHasSentMarker, mark: defaultMarkSent });
+
+/**
+ * #8196 · Kald en mærke-operation uden at den kan vælte fasen. Manglende tabel
+ * slår mærket fra for resten af kørslen (det gamle værn gælder så); andre fejl
+ * rapporteres, og kørslen fortsætter, som om mærket ikke fandtes.
+ *
+ * @returns {Promise<{ok:boolean, value?:unknown}>}
+ */
+async function sentMarkerSafely(state, op, args, entry) {
+  try {
+    return { ok: true, value: await state.markers[op](args) };
+  } catch (err) {
+    if (isMissingSentMarkersTableError(err)) {
+      // best-effort: forventet i auto-migrate-vinduet (#2642); én log-linje, ingen Sentry.
+      console.warn("  ⚠️  squad-below-minimum: notification_sent_markers mangler, bruger gammelt gentagelsesvaern (#8196)");
+      state.markers = null;
+    } else {
+      console.error(`  ⚠️  squad-below-minimum: sent marker ${op} failed (hold ${entry.teamId}, trup ${entry.squad}):`, err?.message || err);
+      captureException(err, {
+        tags: { flow: "notifications", stage: `squad-below-minimum-marker-${op}` },
+        extra: { teamId: entry.teamId, squad: entry.squad },
+      });
+    }
+    return { ok: false };
+  }
+}
+
 /** Er der allerede leveret en notifikation med denne dedupe-nøgle? */
 export async function defaultHasNotificationForKey({ supabase, userId, dedupeKey }) {
   const { data, error } = await supabase
@@ -260,6 +324,9 @@ export async function defaultHasNotificationForKey({ supabase, userId, dedupeKey
  * @param {Function} [args.fetchHumanTeams] — injicerbar (test)
  * @param {Function} [args.fetchSquadRiderCounts] — injicerbar (test)
  * @param {Function} [args.hasNotificationForKey] — injicerbar (test)
+ * @param {{has:Function, mark:Function}|null} [args.sentMarkers] — #8196 holdbart mærke. Default kun
+ *   aktivt med det ægte notifikations-opslag; tests injicerer en store. null = slået fra.
+ * @param {Date} [args.now] — tidsstempel for mærket (injicerbart, hard rule 16)
  * @returns {Promise<{checked:number, belowMinimum:number, notified:number, deduped:number, notifyFailed:number, bySquad:object, teams:Array}>}
  */
 export async function detectAndNotifySquadsBelowMinimum({
@@ -270,8 +337,12 @@ export async function detectAndNotifySquadsBelowMinimum({
   fetchHumanTeams = defaultFetchHumanTeams,
   fetchSquadRiderCounts = defaultFetchSquadRiderCounts,
   hasNotificationForKey = defaultHasNotificationForKey,
+  sentMarkers = hasNotificationForKey === defaultHasNotificationForKey ? defaultSquadSentMarkers : null,
+  now = new Date(),
 }) {
   const stats = { checked: 0, belowMinimum: 0, notified: 0, deduped: 0, notifyFailed: 0, bySquad: {}, teams: [] };
+  const markerState = { markers: sentMarkers };
+  const sentAtIso = now.toISOString();
   if (!supabase?.from) throw new Error("Supabase client required");
 
   let teams;
@@ -304,13 +375,28 @@ export async function detectAndNotifySquadsBelowMinimum({
         activeRiders: entry.activeRiders, minRiders, squad: entry.squad, teamId: entry.teamId, seasonNumber,
       });
       const dedupeKey = payload.metadata?.dedupeKey;
-      if (dedupeKey && entry.userId && await hasNotificationForKey({ supabase, userId: entry.userId, dedupeKey })) {
+      const keyed = Boolean(dedupeKey && entry.userId);
+      const markerArgs = { supabase, dedupeKey, sentAtIso };
+      // #8196: mærket er sandheden; indbakke-rækken kan være slettet af manageren.
+      if (keyed && markerState.markers) {
+        const seen = await sentMarkerSafely(markerState, "has", markerArgs, entry);
+        if (seen.ok && seen.value) {
+          stats.deduped += 1;
+          continue;
+        }
+      }
+      if (keyed && await hasNotificationForKey({ supabase, userId: entry.userId, dedupeKey })) {
         stats.deduped += 1;
+        // Beskeden findes (sendt før mærket fandtes) → sæt mærket, så en senere sletning ikke giver en ny.
+        if (markerState.markers) await sentMarkerSafely(markerState, "mark", markerArgs, entry);
         continue;
       }
       const res = await notify({ supabase, userId: entry.userId, ...payload });
       if (res?.delivered) stats.notified += 1;
       else if (res?.deduped) stats.deduped += 1;
+      if (keyed && markerState.markers && (res?.delivered || res?.deduped)) {
+        await sentMarkerSafely(markerState, "mark", markerArgs, entry);
+      }
     } catch (err) {
       stats.notifyFailed += 1;
       console.error(`  ❌ squad-below-minimum-notifikation fejlede (hold ${entry.teamId}, trup ${entry.squad}):`, err?.message || err);

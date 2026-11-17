@@ -3,6 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
+  effectiveNation,
   EMPTY_RESULTS_CONTROLS,
   filterResultRows,
   isFiltering,
@@ -117,4 +118,13 @@ test("#7865: med delt valg skriver knappen til holdvaelgeren og filtrerer ikke s
   const own = sharedMineControls({ query: "", mineOnly: true }, null);
   assert.equal(own.filter.mineOnly, true);
   assert.deepEqual(own.change({ query: "x", mineOnly: false }), { query: "x", mineOnly: false });
+});
+
+test("#7862 effectiveNation: et valg uden for listen eller under to nationer gælder som alle", () => {
+  const two = [{ code: "dk" }, { code: "fr" }];
+  assert.equal(effectiveNation("dk", two), "dk");
+  assert.equal(effectiveNation("it", two), "all", "Italien er ikke længere i listen (fx efter Mit hold)");
+  assert.equal(effectiveNation("dk", [{ code: "dk" }]), "all", "under to nationer står vælgeren ikke");
+  assert.equal(effectiveNation(undefined, two), "all");
+  assert.equal(effectiveNation("all", two), "all");
 });

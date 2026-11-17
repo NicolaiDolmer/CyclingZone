@@ -6,7 +6,8 @@
       "story": "Verhaal",
       "standings": "Klassementen",
       "tactics": "Tactiek",
-      "team": "Ploeg"
+      "team": "Ploeg",
+      "start": "Startlijst"
     },
     "hero": {
       "stageLocks": "Etappe {number} sluit om {time} · {countdown}",
@@ -18,7 +19,9 @@
       "earlier": "Eerdere etappes",
       "later": "Latere etappes",
       "you": "Jij #{rank}",
-      "plan": "{done} van {total} klaar"
+      "planSaved": "Opgeslagen",
+      "planDefault": "Standaardplan",
+      "planNotSaved": "Niet opgeslagen"
     },
     "route": {
       "aria": "Parcours van de etappe",
@@ -1665,7 +1668,8 @@
       "points": "Punten",
       "mountain": "Berg",
       "young": "Jeugd",
-      "team": "Ploegen"
+      "team": "Ploegen",
+      "passages": "Sprints en beklimmingen"
     },
     "teamFilter": {
       "label": "Team",
@@ -2253,6 +2257,10 @@
     "table": {
       "prizePoints": "Prijspunten",
       "jerseyPoints": "Truipunten",
+      "colPos": "Pos",
+      "colRider": "Renner",
+      "colTeam": "Ploeg",
+      "colTime": "Tijd",
       "prizePointsShort": "Prijs",
       "jerseyPointsShort": "Trui"
     },

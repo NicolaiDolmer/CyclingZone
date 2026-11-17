@@ -3,8 +3,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  RACE_PAGE_V6_TABS, resolveV6Tab, tacticsAfterView, tacticsCta, v6BodyIsWide, v6ResultsPhase, v6StageTabFor, v6Strip, v6Tabs, v6TacticsResults, v6TacticsStage,
+  RACE_PAGE_V6_TABS, resolveV6Tab, tacticsAfterView, tacticsCta, v6ResultsPhase, v6RouteProfile, v6StageTabFor, v6Strip, v6Tabs, v6TacticsResults, v6TacticsStage,
 } from "./racePageV6Model.ts";
+import { SEED_STAGE_PROFILES } from "../../../preview/seedData.js";
 
 // Linjeskift normaliseres, saa kildeproeverne virker med CRLF-checkout (Windows) og LF (CI).
 const read = (rel: string) => readFileSync(new URL(rel, import.meta.url), "utf8").replace(/\r\n/g, "\n");
@@ -23,7 +24,7 @@ test("en gyldig ?tab= vinder; Resultater staar foerst", () => {
 });
 
 test("endagsloeb har ingen Stillinger-fane", () => {
-  assert.deepEqual([...v6Tabs(false)], ["results", "stage", "tactics", "team"]);
+  assert.deepEqual([...v6Tabs(false)], ["results", "stage", "start", "tactics", "team"]);
   assert.equal(resolveV6Tab("standings", { ridden: true, isStageRace: false }), "results");
 });
 
@@ -91,7 +92,8 @@ test("#7865: een etapestribe; paa Taktik foelger den Taktik-fanens etape og styr
   assert.deepEqual(v6Strip({ activeTab: "stage", isStageRace: true, selectedStage: 2, tacticsStage: 3 }), { selected: 2, target: "page" });
   // Udgave E: striben er hovedkortets bund og staar paa alle faner; fra Stillinger og Hold aabner den etapen.
   assert.deepEqual(v6Strip({ activeTab: "standings", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 1, target: "open" });
-  assert.deepEqual(v6Strip({ activeTab: "team", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 1, target: "open" });
+  // #7862 (valg 13): Hold følger etapeskiftet i striben i stedet for at åbne etapen.
+  assert.deepEqual(v6Strip({ activeTab: "team", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 1, target: "page" });
   assert.equal(v6StageTabFor(2, 3), "results");
   assert.equal(v6StageTabFor(4, 3), "stage");
   assert.equal(v6Strip({ activeTab: "tactics", isStageRace: false, selectedStage: 1, tacticsStage: 1 }), null);
@@ -153,12 +155,10 @@ test("#7865: ordre-oversigten findes eet sted under v6 (Taktik), ikke under Stil
   assert.match(page, /hideOrdersRecap\n/, "og stadig ikke under Historie");
 });
 
-test("#7865: kun v6's egen resultatvisning er bred; de genbrugte faner staar paa max-w-5xl", () => {
-  assert.equal(v6BodyIsWide({ activeTab: "results", isStageRace: true }), true);
-  for (const tab of ["stage", "standings", "tactics", "team"] as const) assert.equal(v6BodyIsWide({ activeTab: tab, isStageRace: true }), false, tab);
-  assert.equal(v6BodyIsWide({ activeTab: "results", isStageRace: false }), false, "endagsloebets resultat er den gamle visning");
+test("#7865 review-punkt d: panelet har kortets bredde og placering paa alle faner", () => {
   const page = read("./RacePageV6.tsx");
-  assert.match(page, /"w-full max-w-5xl"/);
+  assert.match(page, /role="tabpanel" aria-labelledby=\{tabId\(activeTab\)\} data-race-body-width="card" className="w-full">/);
+  assert.doesNotMatch(page, /max-w-5xl/, "intet panel staar venstrestillet under et bredere kort");
 });
 
 // ── PR #8173-review: Taktik-fanens etape og etapens resultater ──
@@ -196,4 +196,62 @@ test("Taktik paa en koert etape: etapens resultater hentes, med indlaesning og f
   assert.match(detail, /loadStage=\{startStageFetch\}/);
   assert.match(detail, /stageStateFor=\{\(n\) => stageFetchState\(n, \{ loaded: loadedStages, failed: failedStages \}\)\}/);
   assert.match(detail, /stageErrorFor=\{stageLoadErrorFor\}/);
+});
+
+// #8253: rutekortet skal altid vise den valgte etapes rute. Siden nøgler profilerne som
+// RaceDetailPage gør (stage_number ?? 1); prøven går ALLE etaper i alle preview-løb igennem.
+function profilesKeyedLikeThePage(rows: Array<{ stage_number?: number | null }>) {
+  const out: Record<number, (typeof rows)[number]> = {};
+  for (const p of rows) out[p.stage_number ?? 1] = p;
+  return out;
+}
+
+test("#8253: rutekortet viser den valgte etapes rute for hver etape i hvert løb", () => {
+  type Row = { race_id: string; stage_number: number; distance_km: number; profile_type: string };
+  const rows = SEED_STAGE_PROFILES as Row[];
+  const races = [...new Set(rows.map((r) => r.race_id))];
+  assert.ok(races.length >= 3, "flere løb i prøven");
+  let checked = 0;
+  for (const race of races) {
+    const own = rows.filter((r) => r.race_id === race);
+    const byStage = profilesKeyedLikeThePage(own);
+    for (const row of own) {
+      const shown = v6RouteProfile(byStage, row.stage_number);
+      assert.equal(shown, row, `${race} etape ${row.stage_number}: kortet viser netop etapens række`);
+      checked++;
+    }
+    // En etape uden profil viser intet kort (aldrig naboens rute).
+    const missing = Math.max(...own.map((r) => r.stage_number)) + 1;
+    assert.equal(v6RouteProfile(byStage, missing), null);
+  }
+  assert.ok(checked >= 10, `alle etaper gennemgået (${checked})`);
+});
+
+test("#8253: en profil der står under en anden etapes nøgle vises aldrig", () => {
+  const stage2 = { stage_number: 2, distance_km: 168 };
+  assert.equal(v6RouteProfile({ 1: stage2 }, 1), null, "forkert nøgle: intet kort frem for en anden etapes rute");
+  assert.equal(v6RouteProfile({ 1: { stage_number: null, distance_km: 90 } }, 1)?.distance_km, 90, "række uden nummer = etape 1");
+  assert.equal(v6RouteProfile({}, 3), null);
+});
+
+test("#8253: Resultater tegner rute, liste og Din dag for den samme valgte etape", () => {
+  const page = read("./RacePageV6.tsx");
+  assert.match(page, /const profile = v6RouteProfile\(profileByStage, selectedStage\);/);
+  assert.match(page, /body = renderResults\(selectedStage, \{/, "listen er den valgte etapes");
+  assert.match(page, /<V6RouteProfile[\s\S]*?profile=\{profile\}/, "kortet får netop den profil");
+  assert.match(page, /<V6YourDay results=\{results\} stageNumber=\{selectedStage\}/);
+  assert.match(page, /profile=\{v6RouteProfile\(profileByStage, tacticsStage\)\}/, "Taktik: samme opslag for Taktiks etape");
+  assert.doesNotMatch(page, /profileByStage\[(selectedStage|tacticsStage)\]/, "intet direkte opslag uden tjek");
+  const detail = read("../../../pages/RaceDetailPage.jsx");
+  assert.match(detail, /for \(const p of stageProfiles\) out\[p\.stage_number \?\? 1\] = p;/, "siden nøgler profilerne som prøven");
+});
+
+test("#8253: underrækken (klassementet) er Segmented, hovedfanerne er understregede faner", () => {
+  const detail = read("../../../pages/RaceDetailPage.jsx");
+  const v6Branch = detail.slice(detail.indexOf("if (v6Layout) {"), detail.indexOf("if (v6Layout) {") + 2200);
+  assert.match(v6Branch, /<Segmented label=\{t\("detail\.classTab\.ariaLabel"\)\} value=\{classTab\} onChange=\{setClassTab\}/);
+  assert.doesNotMatch(v6Branch, /<TabList label=\{t\("detail\.classTab\.ariaLabel"\)\}/, "ingen anden fanerække under v6");
+  assert.match(v6Branch, /overflow-x-auto/, "ruller vandret på mobil i stedet for at brække");
+  const page = read("./RacePageV6.tsx");
+  assert.match(page, /<TabList label=\{t\("stagePageV2\.tabsAria"\)\} accent>/, "hovedfanerne er stadig understregede faner");
 });

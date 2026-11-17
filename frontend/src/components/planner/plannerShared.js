@@ -117,6 +117,42 @@ export function effectivePlannerFilter(filter, divisionPending) {
   return divisionPending ? "all" : filter;
 }
 
+// #5841: de divisioner boardet har løb i, sorteret (driver Formplans divisionsvælger).
+/** @param {any[]|null|undefined} races @returns {number[]} */
+export function plannerDivisions(races) {
+  return [...new Set((races || []).map((r) => r?.division).filter((d) => Number.isFinite(d)))].sort((a, b) => a - b);
+}
+
+// #5841: hvilken division vælgeren starter på. Kommende sæson: holdets nuværende (forventet),
+// ellers holdets egen (afledt af isMine). null = alle divisioner (ingen kendt division).
+/** @param {any[]|null|undefined} races @param {{ divisionPending?: boolean, expectedDivision?: number|null }} [opts] @returns {number|null} */
+export function defaultPlannerDivision(races, { divisionPending = false, expectedDivision = null } = {}) {
+  if (divisionPending) return Number.isFinite(expectedDivision) ? expectedDivision : null;
+  const own = (races || []).find((r) => r?.isMine && Number.isFinite(r.division));
+  return own ? own.division : null;
+}
+
+// #5841: løbene Formplans bræt tegner når alle løb vises: kun den valgte division (null = alle),
+// og hvert løb én gang. Puljerne i en division kører de samme løb på de samme datoer med de
+// samme ruter, så boardet havde én kopi pr. pulje (D2 to gange, D3/D4 fire). Holdets eget løb
+// (isMine) vinder; ellers det første (boardet sorterer puljerne efter nummer). Ren funktion.
+/** @param {any[]|null|undefined} races @param {{ division?: number|null }} [opts] @returns {any[]} */
+export function plannerBoardRaces(races, { division = null } = {}) {
+  const keyOf = (r) => [
+    r.division ?? "", r.name, r.date || "", r.dateEnd || "", r.stages ?? 1,
+    (r.stageProfiles || []).map((s) => `${s.stage}:${s.terrain}:${s.summit ? 1 : 0}`).join("|"),
+  ].join("#");
+  const byKey = new Map();
+  for (const r of races || []) {
+    if (!r) continue;
+    if (division != null && r.division !== division) continue;
+    const key = keyOf(r);
+    const prev = byKey.get(key);
+    if (!prev || (r.isMine && !prev.isMine)) byKey.set(key, r);
+  }
+  return [...byKey.values()];
+}
+
 // Trænings-status-chip: farve + redundant ikon-glyf (ikke kun farve — a11y §5.4).
 export function statusMeta(status) {
   switch (status) {

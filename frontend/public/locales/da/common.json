@@ -173,6 +173,10 @@
     "columnsLabel": "Vælg kolonner",
     "moreRight": "Flere kolonner til højre"
   },
+  "expectedDivision": {
+    "optionExpected": "Division {n} (forventet)",
+    "note": "Viser division {n}, som du er i nu. Din division i sæson {number} afgøres ved sæsonskiftet."
+  },
   "networkError": "Kan ikke nå serveren lige nu. Tjek din forbindelse og prøv igen.",
   "push": {
     "title": "Push-notifikationer",

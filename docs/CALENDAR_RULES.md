@@ -1704,3 +1704,10 @@ eksplicit `stages <= 5` på hver juniorrække.
 Testkørsler pakkes altid i `scripts/verify-lock.ps1 -Max 2 -Timeout 1800`.
 Ingen patch note i dette forberedende draft-spor, jf. briefen; spillerkommunikation
 hører til aktiveringen af ungdomskalenderen.
+
+## §17 Kommende sæson: forventet division og puljer ([#5841](https://github.com/NicolaiDolmer/CyclingZone/issues/5841), ejer 16/11)
+
+- **`expectedDivision`** i `GET /api/races/calendar` (`backend/routes/api.js`, svaret ved `ownPoolId`/`divisionPending`): holdets NUVÆRENDE divisionstier (`teams.league_division_id` → `league_divisions.tier`). Sættes KUN når `divisionPending` er sand (en kommende sæson, hvor op/nedrykning ikke er afgjort); ellers `null`.
+- Feltet er et **udgangspunkt for visningen, ikke en placering.** Det ændrer aldrig `ownPoolId`, `isMine` eller hvilke løb der tilskrives holdet; holdets rigtige pulje og division fastlægges først ved sæsonskiftet. UI'et mærker det "forventet"/"expected".
+- **Visning:** Kalenderens "Vis" starter på `expectedDivision`, når den er sat; spilleren kan vælge en anden division eller alle. Holdudtagelse sæson (`SeasonView.jsx`) tegner den forventede divisions løb (én pulje), skrivebeskyttet.
+- **Puljetvillinger:** puljer i samme division har identiske løb og ruter (målt S5). `mergePoolTwins` (`frontend/src/lib/calendarGrid.js`) viser hvert løb én gang pr. division (nøgle: navn + datoer + rute); har holdet en pulje, peger løbet på holdets egen, ellers puljen med lavest nummer (`expectedPoolId` for den kommende sæson). Gælder også den aktive sæson.
