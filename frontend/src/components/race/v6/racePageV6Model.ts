@@ -10,11 +10,12 @@ import { activeRiders, lineupFor, scheduleFor, tacticsProgress, type RoleOverrid
 // er kortets bund og står over fanerne (v6Strip, v6StripCells, v6Overall nedenfor).
 
 /** Resultater først (valg 5). "stage" er etapens nuværende indhold (historien efter etapen). */
-export const RACE_PAGE_V6_TABS = ["results", "stage", "standings", "tactics", "team"] as const;
+// #7862 (valg 9/10): "start" = Startliste-fanen (V6StartList), løbets felt med rygnumre og favoritter.
+export const RACE_PAGE_V6_TABS = ["results", "stage", "standings", "start", "tactics", "team"] as const;
 export type RacePageV6Tab = (typeof RACE_PAGE_V6_TABS)[number];
 
-/** Faner der handler om én etape og derfor viser etapestriben. */
-export const STAGE_SCOPED_TABS: readonly RacePageV6Tab[] = ["results", "stage"];
+/** Faner der handler om én etape og derfor viser etapestriben. #7862 (valg 13): Hold følger etapeskiftet. */
+export const STAGE_SCOPED_TABS: readonly RacePageV6Tab[] = ["results", "stage", "team"];
 
 /**
  * ?tab= → fane. Uden (gyldig) fane åbner en kørt etape på Resultater og en
@@ -95,7 +96,7 @@ export function v6Strip({ activeTab, isStageRace, selectedStage, tacticsStage }:
   return { selected: selectedStage, target: "open" };
 }
 
-/** Udgave E: fanen et klik i striben åbner fra Stillinger og Hold (valg 5). */
+/** Udgave E: fanen et klik i striben åbner fra Stillinger og Startliste (valg 5; Hold følger etapen, #7862). */
 export function v6StageTabFor(stage: number, stagesCompleted: number): RacePageV6Tab {
   return stage <= stagesCompleted ? "results" : "stage";
 }
