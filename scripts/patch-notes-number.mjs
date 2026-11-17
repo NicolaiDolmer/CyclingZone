@@ -49,8 +49,10 @@ const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const CATEGORIES = ['new', 'improved', 'fixed'];
 const AUDIENCES = ['player', 'internal'];
 const FRAGMENT_KEYS = ['changes', 'label'];
-// Samme laek-moenster som frontend/src/lib/patchNotes.data.test.js: interne signaler
-// hoerer ikke hjemme i en spillertekst.
+// Samme regler som frontend/src/lib/patchNotes.data.test.js (gyldig stage, laek-moenster):
+// den test ser foerst noten paa main efter nummereringen, saa fragmentet maa ikke kunne
+// slippe igennem med noget den afviser.
+const STAGES = ['beta'];
 const LEAK_RE = /(\bSELECT \b|\bINSERT \b|\bGRANT \b|service_role|\.sql\b|scripts\/|\bRLS\b|\.github\/)/i;
 
 export function isPendingFragmentPath(file) {
@@ -91,6 +93,7 @@ export function validateFragment(name, text) {
     if (!c || typeof c !== 'object' || Array.isArray(c)) return at('en change skal vaere et objekt');
     if (!CATEGORIES.includes(c.category)) at(`category skal vaere ${CATEGORIES.join('|')}`);
     if (!AUDIENCES.includes(c.audience)) at(`audience skal vaere ${AUDIENCES.join('|')}`);
+    if (c.stage !== undefined && !STAGES.includes(c.stage)) at(`stage (hvis sat) skal vaere ${STAGES.join('|')}`);
     const langs = ['en', 'da'].filter((lang) => c[lang] !== undefined);
     if (!langs.some((lang) => typeof c[lang]?.body === 'string' && c[lang].body.trim())) at('mindst eet sprog (en/da) skal have en body');
     for (const lang of langs) {
@@ -353,6 +356,7 @@ export function numberPendingOnMain({ repo = DEFAULT_REPO, dryRun = false, git =
     const res = writeCommitViaApi({ gh, repo, baseSha, baseTree, source, removed: assigned.map((a) => a.path), message: commitMessage(assigned) });
     if (res.ok) {
       lines.push(`patch notes: ${assigned.length} fragment(er) nummereret paa main som ${String(res.sha).slice(0, 8)}: ${summary}.`);
+      lines.push(`patch notes: ${res.sha} er et nyt main-commit efter dette togs verifikation; main-CI og deploy for det ses af naeste tog (dets merge bygger oven paa det) eller tjekkes paa main-HEAD.`);
       return lines;
     }
     if (!res.notFastForward || attempt === attempts) throw new Error(res.error);

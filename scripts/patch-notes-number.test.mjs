@@ -87,6 +87,9 @@ test('validateFragment: filnavn, JSON, felter, sprog, laek og refs', () => {
   assert.ok(validateFragment('8346-x-y.json', fragmentText({ en: undefined, da: undefined })).errors.some((e) => e.includes('mindst eet sprog')));
   assert.ok(validateFragment('8346-x-y.json', fragmentText({ en: { title: 't', body: 'Runs scripts/foo.mjs' } })).errors.some((e) => e.includes('interne signaler')));
   assert.ok(validateFragment('8346-x-y.json', fragmentText({ refs: ['8346'] })).errors.some((e) => e.includes('refs')));
+  // Datatesten paa main afviser enhver anden stage end beta; fragmentet maa ikke slippe forbi.
+  assert.ok(validateFragment('8346-x-y.json', fragmentText({ stage: 'preview' })).errors.some((e) => e.includes('stage')));
+  assert.deepEqual(validateFragment('8346-x-y.json', fragmentText({ stage: 'beta' })).errors, []);
   // En intern note maa gerne naevne interne stier.
   assert.deepEqual(validateFragment('8346-x-y.json', fragmentText({ audience: 'internal', en: { title: 't', body: 'scripts/foo.mjs' } })).errors, []);
 });
@@ -287,7 +290,8 @@ test('numberPendingOnMain: eet commit via API oven paa origin/main, fragmenter s
     const head = sh(work, ['rev-parse', 'origin/main']).trim();
     const { gh, calls } = fakeGh();
     const lines = numberPendingOnMain({ repo: 'o/r', git: defaultGit(work), gh });
-    assert.match(lines.at(-1), /2 fragment\(er\) nummereret paa main som cccccccc: 7\.457 <- 2000-merged-first\.json, 7\.458 <- 1000-merged-second\.json/);
+    assert.match(lines.join('\n'), /2 fragment\(er\) nummereret paa main som cccccccc: 7\.457 <- 2000-merged-first\.json, 7\.458 <- 1000-merged-second\.json/);
+    assert.match(lines.at(-1), /c{40} er et nyt main-commit efter dette togs verifikation/);
     assert.deepEqual(calls.map((c) => c.endpoint), ['repos/o/r/git/blobs', 'repos/o/r/git/trees', 'repos/o/r/git/commits', 'repos/o/r/git/refs/heads/main']);
     const written = Buffer.from(calls[0].body.content, 'base64').toString('utf8');
     assert.deepEqual(parsePatchesSource(written).map((p) => p.version), ['7.458', '7.457', '7.456', '7.455']);
