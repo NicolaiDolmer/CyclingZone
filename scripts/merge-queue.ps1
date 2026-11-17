@@ -674,9 +674,45 @@ function Invoke-TrainCloseOut {
     $code = $LASTEXITCODE
     foreach ($line in $out) { Write-Host "  $line" -ForegroundColor DarkCyan }
     if ($code -ne 0) { Write-Host "  (close-out exit ${code}: merge og verifikation er uaendrede; koer scripts/merge-queue-closeout.mjs manuelt)" -ForegroundColor DarkYellow }
+    # #8346 (Codex P1, PR #8353): patch notes-nummereringen laver et NYT main-commit efter
+    # togets verifikation. Dets SHA gives tilbage til kalderen, som verificerer det.
+    $patchNotesSha = $null
+    foreach ($line in $out) { if ("$line".Trim() -match '^PATCH-NOTES-SHA: ([0-9a-f]{40})$') { $patchNotesSha = $Matches[1] } }
+    return $patchNotesSha
   } catch {
     Write-Host '  (close-out fejlede; merget er stadig verificeret. Koer scripts/merge-queue-closeout.mjs manuelt.)' -ForegroundColor DarkYellow
   }
+}
+
+# #8346 (Codex P1, PR #8353; AGENTS regel 20): patch notes-commit'et fra close-out er et nyt
+# main-commit med spillersynlig tekst (frontend/ = Vercel-deploy). Close-out er foerst faerdig,
+# naar main-CI og deploy-verifikation er groenne for netop den SHA; ellers samme stop som et tog.
+function Confirm-PatchNotesCommit([string]$Sha) {
+  $short = $Sha.Substring(0, [Math]::Min(8, $Sha.Length))
+  Write-Host "  Patch notes-commit ${short}: verificerer main-CI + deploy for det nye main-commit, foer close-out er faerdig." -ForegroundColor Cyan
+  # Egne variabelnavne: merge-queue-train.test.mjs laeser togets foerste `$ciOk`/`$gate`-blok som tekst.
+  $patchCiOk = Wait-ForWorkflowRun -WorkflowFile 'ci.yml' -Sha $Sha -TimeoutMinutes $CiTimeoutMinutes -Label "CI (main) patch notes $short" -StallMinutes $StallMinutes
+  if (-not $patchCiOk) {
+    if ($script:queueStall) { Stop-QueueStall }
+    if ($script:workflowRunState -eq 'failure') {
+      Write-Host "STOP: main-CI er ROED for patch notes-commit $short. Fix main FOER naeste merge i koeen." -ForegroundColor Red
+    } else {
+      Write-Host "STOP: main-CI er endnu ikke verificeret groen for patch notes-commit $short. Kontroller koerslen foer naeste merge." -ForegroundColor Yellow
+    }
+    exit 1
+  }
+  $patchDeployState = Wait-ForDeployVerification -Sha $Sha -TimeoutMinutes $DeployVerifyTimeoutMinutes -StallMinutes $StallMinutes
+  if ($patchDeployState -eq 'stalled') { Stop-QueueStall }
+  $patchGate = Get-DeployGateAction $patchDeployState
+  if ($patchGate -eq 'pending') {
+    Write-Host "AFVENTER: deploy-verifikation for patch notes-commit $short er ikke faerdig. Ingen naeste merge." -ForegroundColor Yellow
+    exit 75
+  }
+  if ($patchGate -ne 'continue') {
+    Write-Host "STOP: deploy-verifikation for patch notes-commit $short er $patchDeployState. Ingen naeste merge uden positivt bevis." -ForegroundColor Red
+    exit 1
+  }
+  Write-Host "  [ok] patch notes-commit ${short}: main-CI + deploy-verifikation groenne." -ForegroundColor Green
 }
 
 # #7587: tog-markoer (.claude/run/merge-queue-active.json, scripts/merge-queue-active-marker.mjs),
@@ -1033,8 +1069,11 @@ function Close-OpenTrain {
 
   Write-Host "  [ok] $batchLabel faerdig - klar til naeste i koeen." -ForegroundColor Green
   # #7587 punkt 6: foerst nu er toget verificeret. Fail-soft (ogsaa hvis funktionen mangler).
-  try { Invoke-TrainCloseOut -Entries $closeOutEntries -DeployVerified $closeOutDeploys }
+  $patchNotesSha = $null
+  try { $patchNotesSha = Invoke-TrainCloseOut -Entries $closeOutEntries -DeployVerified $closeOutDeploys }
   catch { Write-Host '  (close-out kunne ikke startes; merget er stadig verificeret.)' -ForegroundColor DarkYellow }
+  # #8346 (Codex P1, PR #8353): nyt patch notes-commit = main-CI + deploy-verifikation foer koeen gaar videre.
+  if ($patchNotesSha) { Confirm-PatchNotesCommit $patchNotesSha }
   # #7585: loesrevet auto-bevis (dry-run foerste uge) for togets PR'er efter close-out. Fail-soft, ingen ventetid, gater aldrig koeen.
   try { $proofPrs = (@($closeOutEntries | Where-Object { $null -ne $_ } | ForEach-Object { [int]$_.number }) -join ','); if ($proofPrs) { Start-Process -FilePath node -ArgumentList @((Join-Path $PSScriptRoot 'til-doers-proof.mjs'), 'run', '--pr', $proofPrs, '--dry-run', '--repo', $Repo) -WindowStyle Hidden | Out-Null } } catch {}
 }
@@ -1183,7 +1222,7 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
     }
     Write-Host "  [dry-run] ville merge nu: gh pr merge $n --squash --delete-branch --admin" -ForegroundColor DarkGray
     # #7587: forhaandsvisning af close-out efter verifikation (read-only, --dry-run).
-    try { Invoke-TrainCloseOut -Entries @([pscustomobject]@{ number = $n; sha = $null }) }
+    try { $null = Invoke-TrainCloseOut -Entries @([pscustomobject]@{ number = $n; sha = $null }) }
     catch { Write-Host '  (close-out-forhaandsvisning kunne ikke startes.)' -ForegroundColor DarkYellow }
     if ($entryRailway) { $script:batchRailway = $true }
     if ($entryBackend) { $script:batchBackend = $true }
@@ -1289,7 +1328,7 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   $script:batchShas += $sha
   # #7587: merge-SHA i markoeren + SHA-kommentar STRAKS (verifikation afventer; Close-OpenTrain opdaterer den).
   Invoke-ActiveMarker @('merged', '--pr', "$n", '--sha', $sha)
-  try { Invoke-TrainCloseOut -Entries @([pscustomobject]@{ number = $n; sha = $sha }) -Phase 'merged' } catch {}
+  try { $null = Invoke-TrainCloseOut -Entries @([pscustomobject]@{ number = $n; sha = $sha }) -Phase 'merged' } catch {}
   $script:trainEntries += [pscustomobject]@{ number = $n; sha = $sha; needsMigration = [bool]($entry.needsMigration -or $fresh.needsMigration); touchesBackend = [bool]$entryBackend; touchesRailway = [bool]$entryRailway; touchesVercel = [bool]($entry.touchesVercel -or $fresh.touchesVercel) }
   if ($entryRailway) { $script:batchRailway = $true }
   if ($entryBackend) { $script:batchBackend = $true }

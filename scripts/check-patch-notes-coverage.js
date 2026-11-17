@@ -29,9 +29,12 @@
 
 const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
-const path = require("node:path");
 
 const PATCH_NOTES_DATA_FILE = "frontend/src/data/patchNotes.js";
+// #8346: a PR now writes its note as a fragment (no version); the merge train
+// numbers it. Same path rule as scripts/patch-notes-number.mjs, kept local on
+// purpose (see the parseVersions note below about coupling to gate scripts).
+const PATCH_NOTES_FRAGMENT = /^frontend\/src\/data\/patch-notes\/pending\/[^/]+\.json$/;
 
 const USER_FACING_EXT = /\.(jsx|tsx|js|ts|css)$/;
 const TEST_FILE = /\.test\.(jsx?|tsx?)$/i;
@@ -58,7 +61,7 @@ function isUserFacingFile(file) {
 
 function classifyFiles(files) {
   const userFacingFiles = files.filter(isUserFacingFile);
-  const patchNoteTouched = files.includes(PATCH_NOTES_DATA_FILE);
+  const patchNoteTouched = files.includes(PATCH_NOTES_DATA_FILE) || files.some((file) => PATCH_NOTES_FRAGMENT.test(file));
   return { userFacingFiles, patchNoteTouched };
 }
 
@@ -70,26 +73,11 @@ function hasSkipLabel(labels) {
   return (labels || []).some((label) => SKIP_LABELS.includes(label));
 }
 
-// Same version-list parser as check-patch-notes-version.js (kept independent
-// on purpose — this script must never import from a required-gate script and
-// accidentally couple their failure modes).
-function parseVersions(content) {
-  return [...content.matchAll(/"?version"?:\s*["'](\d+(?:\.\d+){1,2})["']/g)].map((m) => m[1]);
-}
-
-// #623 Q2 finding: version-suggestion is trivially "max + 1 on the last
-// segment" — a smarter guess isn't worth building. Collision risk (two PRs
-// merging same day both suggest the same next version) is called out in the
-// rendered message, not solved here.
-function suggestNextVersion(patchNotesContent) {
-  const versions = parseVersions(patchNotesContent);
-  if (versions.length === 0) return null;
-  const parts = versions[0].split(".").map(Number);
-  parts[parts.length - 1] += 1;
-  return parts.join(".");
-}
-
-function evaluate({ changedFiles, prBody, labels, patchNotesContent }) {
+// The version suggestion (#623 Q2, "max + 1") is gone with #8346: a fragment
+// carries no version, the merge train assigns it, so two PRs can no longer
+// collide on a number. This script still never imports from a required-gate
+// script, so their failure modes stay separate.
+function evaluate({ changedFiles, prBody, labels }) {
   const { userFacingFiles, patchNoteTouched } = classifyFiles(changedFiles);
 
   if (userFacingFiles.length === 0) {
@@ -104,12 +92,7 @@ function evaluate({ changedFiles, prBody, labels, patchNotesContent }) {
   if (hasOptOut(prBody)) {
     return { flagged: false, reason: "opt-out-line", userFacingFiles };
   }
-  return {
-    flagged: true,
-    reason: "missing-patch-note",
-    userFacingFiles,
-    suggestedVersion: patchNotesContent ? suggestNextVersion(patchNotesContent) : null,
-  };
+  return { flagged: true, reason: "missing-patch-note", userFacingFiles };
 }
 
 module.exports = {
@@ -118,8 +101,6 @@ module.exports = {
   classifyFiles,
   hasOptOut,
   hasSkipLabel,
-  parseVersions,
-  suggestNextVersion,
   evaluate,
 };
 
@@ -135,10 +116,6 @@ function run(cmd, args) {
   }
 }
 
-function repoRoot() {
-  return run("git", ["rev-parse", "--show-toplevel"]) || process.cwd();
-}
-
 function loadPullRequestEvent() {
   const eventPath = process.env.GITHUB_EVENT_PATH;
   if (!eventPath) return null;
@@ -151,7 +128,6 @@ function loadPullRequestEvent() {
 }
 
 function main() {
-  const root = repoRoot();
   const baseRef = process.env.PATCH_NOTES_BASE_REF || "origin/main";
   const diff = run("git", ["diff", "--name-only", `${baseRef}...HEAD`]);
   const changedFiles = diff ? diff.split(/\r?\n/).filter(Boolean) : [];
@@ -160,14 +136,7 @@ function main() {
   const prBody = pr?.body || "";
   const labels = (pr?.labels || []).map((label) => label.name);
 
-  let patchNotesContent = "";
-  try {
-    patchNotesContent = fs.readFileSync(path.join(root, PATCH_NOTES_DATA_FILE), "utf8");
-  } catch {
-    patchNotesContent = "";
-  }
-
-  const result = evaluate({ changedFiles, prBody, labels, patchNotesContent });
+  const result = evaluate({ changedFiles, prBody, labels });
 
   if (!result.flagged) {
     const message = `patch-notes-coverage: ok (${result.reason}, ${result.userFacingFiles.length} user-facing file(s) checked).`;
@@ -182,20 +151,19 @@ function main() {
   lines.push("### ⚠️ Patch notes coverage (advisory)");
   lines.push("");
   lines.push(
-    `Denne PR rører brugerrettede filer, men \`${PATCH_NOTES_DATA_FILE}\` er ikke ændret, og der er hverken en ` +
+    "Denne PR rører brugerrettede filer, men tilføjer ingen patch note (et fragment i " +
+    "`frontend/src/data/patch-notes/pending/`), og der er hverken en " +
     "\`docs-only\`/\`backend-only\`-label eller en `patch-notes: n/a — <grund>`-linje i PR-body."
   );
   lines.push("");
   lines.push("**Brugerrettede filer:**");
   for (const file of result.userFacingFiles) lines.push(`- \`${file}\``);
   lines.push("");
-  if (result.suggestedVersion) {
-    lines.push(
-      `**Foreslået næste version:** \`${result.suggestedVersion}\` — verificér mod ${baseRef}'s aktuelle max ` +
-      "version før commit (to PR'er merget samme dag kan foreslå samme nummer, jf. #623 Q2)."
-    );
-    lines.push("");
-  }
+  lines.push(
+    "**Patch note:** tilføj én ny fil `frontend/src/data/patch-notes/pending/<issue>-<slug>.json` uden version og " +
+    "dato (format: `frontend/src/data/patch-notes/README.md`). Merge-toget giver nummer og dato (#8346)."
+  );
+  lines.push("");
   lines.push(
     "Dette er en advisory og blokerer ikke merge. Tilføj en patch note, en skip-label, eller en " +
     "`patch-notes: n/a — <grund>`-linje i PR-body hvis flaget er forkert."

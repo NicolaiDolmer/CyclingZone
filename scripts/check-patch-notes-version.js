@@ -124,6 +124,20 @@ function fail(message) {
   process.exitCode = 1;
 }
 
+// #8346: en PR skriver sin note som et fragment i frontend/src/data/patch-notes/pending/
+// (uden version og dato); merge-toget giver nummer og dato efter et verificeret tog
+// (scripts/patch-notes-number.mjs). Fragmenterne valideres her med samme regler som en ny
+// post: alle eksporterede missing*-regler nedenfor (rollout, flag, og hvad der kommer til)
+// koeres paa hvert fragment, plus format, em-dash og doede produkttermer.
+async function checkPendingFragments() {
+  const { validatePendingDir } = await import(pathToFileURL(path.join(__dirname, "patch-notes-number.mjs")).href);
+  const newEntryChecks = Object.entries(module.exports)
+    .filter(([name, fn]) => /^missing[A-Z]/.test(name) && typeof fn === "function");
+  const { fragments, errors } = await validatePendingDir(repoRoot(), { newEntryChecks });
+  for (const error of errors) fail(`pending patch note: ${error}`);
+  return fragments.length;
+}
+
 // #4308: regex-parsingen ovenfor (parseVersions/parseDatedVersions) læser rå
 // tekst og opdager derfor ALDRIG en syntaksfejl (fx en uafsluttet klamme) i
 // patchNotes.js. Den slags brækker kun frontend-build senere i samme CI-run,
@@ -251,6 +265,12 @@ async function main() {
     if (!addedNewTopVersion) {
       fail(`Top PatchNotes version ${currentTop} must be greater than ${baseRef}'s ${baseTop}.`);
     }
+    if (addedNewTopVersion && eventName === "pull_request") {
+      console.log(
+        `patch-notes-check: note: new versions in ${PATCH_FILE} still work, but a fragment in `
+        + `frontend/src/data/patch-notes/pending/ avoids conflicts; the merge train numbers it (#8346).`
+      );
+    }
     if (!nowChanged && eventName === "pull_request") {
       fail(`${NOW_FILE} must be updated when ${PATCH_FILE} changes.`);
     }
@@ -273,8 +293,10 @@ async function main() {
     }
   }
 
+  const pending = await checkPendingFragments();
+
   if (!process.exitCode) {
-    console.log(`patch-notes-check: ok (${versions.length} versions, top ${versions[0]}).`);
+    console.log(`patch-notes-check: ok (${versions.length} versions, top ${versions[0]}, ${pending} pending fragment(s)).`);
   }
 }
 

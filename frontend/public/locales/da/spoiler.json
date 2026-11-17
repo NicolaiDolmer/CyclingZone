@@ -1,0 +1,29 @@
+{
+  "switch": "Spoiler-skjold",
+  "hero": {
+    "hidden": "Etapen er færdig · resultatet er skjult af dit spoiler-skjold"
+  },
+  "results": {
+    "hidden": "Resultaterne er skjult af dit spoiler-skjold",
+    "show": "Vis resultater",
+    "loading": "Tjekker dit spoiler-skjold"
+  },
+  "story": {
+    "inResults": "Din dag og resultatet står under Resultater",
+    "finaleAhead": "Finalen venter · se videre"
+  },
+  "settings": {
+    "title": "Resultater og spoilere",
+    "intro": "Sådan når resultaterne frem til dig.",
+    "all": "Spoiler-skjold for alle løb",
+    "allHint": "Skjuler vindere og resultater, til du åbner etapen. Hver løbsside har også sin egen kontakt.",
+    "notifications": "Notifikationer",
+    "notificationsHint": "Med skjoldet siger indbakken, klokken og browser-notifikationer kun, at etapen er færdig.",
+    "openIn": "Åbn en færdig etape i",
+    "openInHint": "Skjoldet åbner altid en færdig etape i Historie.",
+    "results": "Resultater",
+    "story": "Historie",
+    "saved": "Gemt",
+    "failed": "Kunne ikke gemme. Prøv igen."
+  }
+}

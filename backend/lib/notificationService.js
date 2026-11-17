@@ -8,6 +8,7 @@ import { SUPABASE_IN_CHUNK_SIZE, fetchAllRows } from "./supabasePagination.js";
 import { buildRaceResultNarrative, buildStageResultNarrative, buildPersonalResultText, capitalize, isHeadlineAboutOwnRiders } from "./raceNarrativeNotification.js";
 import { fetchRaceTopResults, formatTopResults } from "./raceInboxTopResults.js";
 import { buildContractRosterNotification, contractNoticeRider } from "./contractNoticeRoster.js";
+import { fetchShieldedRecipients } from "./spoilerShield7859.ts"; // #7859
 
 const RECENT_DUPLICATE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -452,6 +453,8 @@ export async function emitRaceResultNotifications({
   fetchRaceNarrative = buildRaceResultNarrative,
   // #7085: managerens bedste ryttere (op til 3) i selve beskeden.
   fetchTopResults = fetchRaceTopResults,
+  // #7859: modtagere med spoiler-skjoldet faar den neutrale tekst (tomt saet = som i dag).
+  fetchShielded = fetchShieldedRecipients,
 }) {
   const stats = { eligible: 0, delivered: 0, deduped: 0, failed: 0 };
   if (!race?.id) return stats;
@@ -468,10 +471,12 @@ export async function emitRaceResultNotifications({
   const firstTimers = await fetchFirstTimeManagers({ supabase, race, userIds: eligible });
   const narrative = await fetchRaceNarrative({ supabase, race });
   const topResults = await fetchTopResults({ supabase, race });
+  const shielded = await fetchShielded({ supabase, raceId: race.id, userIds: eligible, reportError: captureException });
   for (const userId of eligible) {
     const isFirst = firstTimers.has(userId);
+    const shield = shielded.has(userId);
     // #7085: "Your best: Rider (#2), Rider (#5)" — null => uændret copy.
-    const topText = formatTopResults(topResults?.get(userId));
+    const topText = shield ? null : formatTopResults(topResults?.get(userId));
     // #3399: narrativ tilstand kræver BÅDE en rubrik OG et personligt resultat
     // for DENNE manager — delvis data (fx rubrik uden ranks) degraderer helt
     // til standard-copy i stedet for en halv/inkonsistent besked.
@@ -480,7 +485,7 @@ export async function emitRaceResultNotifications({
     // egne ryttere — ellers degraderer vi ærligt til standard-copy i stedet
     // for at fortælle spilleren om en rival-rytters sejr i egen indbakke
     // (spillerreaktion på #3399, se isHeadlineAboutOwnRiders' doc-comment).
-    const useNarrative = Boolean(narrative?.headlineText && personalText && isHeadlineAboutOwnRiders(narrative, userId));
+    const useNarrative = !shield && Boolean(narrative?.headlineText && personalText && isHeadlineAboutOwnRiders(narrative, userId));
     try {
       const res = await notify({
         supabase,
@@ -772,6 +777,8 @@ export async function emitStageResultNotifications({
   // #3399: narrativ rubrik for DENNE etape + pr.-manager ranks. Ærlig
   // degradering til standard-copy for gamle/PCM-løb eller v3-slukkede etaper.
   fetchStageNarrative = buildStageResultNarrative,
+  // #7859: samme skjold som emitRaceResultNotifications; en aabnet etape er ikke skjult.
+  fetchShielded = fetchShieldedRecipients,
 }) {
   const stats = { eligible: 0, delivered: 0, deduped: 0, failed: 0 };
   if (!race?.id || !stageNumber) return stats;
@@ -797,12 +804,15 @@ export async function emitStageResultNotifications({
 
   const raceName = race.name ?? "your race";
   const narrative = await fetchStageNarrative({ supabase, race, stageNumber });
+  const shielded = await fetchShielded({ supabase, raceId: race.id, userIds: bestByManager.keys(), stageNumber, reportError: captureException });
   for (const [userId, best] of bestByManager) {
-    const riderName = best.riderName ?? "your rider";
-    const position = best.rank ?? null;
+    // #7859: med skjoldet "Stage N of X is done." uden rytter og placering.
+    const shield = shielded.has(userId);
+    const riderName = shield ? null : best.riderName ?? "your rider";
+    const position = shield ? null : best.rank ?? null;
     const personalText = buildPersonalResultText(ranksByManager.get(userId));
     // #3493: samme relevans-guard som emitRaceResultNotifications ovenfor.
-    const useNarrative = Boolean(narrative?.headlineText && personalText && isHeadlineAboutOwnRiders(narrative, userId));
+    const useNarrative = !shield && Boolean(narrative?.headlineText && personalText && isHeadlineAboutOwnRiders(narrative, userId));
     try {
       const res = await notify({
         supabase,
