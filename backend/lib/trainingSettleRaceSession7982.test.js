@@ -419,6 +419,29 @@ describe("klarhed pr. session", () => {
     });
     assert.equal(moved.length, 1, "traeningen foelger rytteren i datoens frosne trup");
   });
+
+  // Fable 15/11 punkt 3: datoen fryses ved foerste etape. En rytter, der derefter skifter hold, er i
+  // det gamle holds frosne trup; det nye hold (uden aabnet dato) maa ikke tage ham med i planen og
+  // dermed aabne sin dato for hans skyld (register_training_date_work giver ham alligevel ikke dertil).
+  test("planen: en rytter i et andet holds frosne trup tages ikke med af det nye hold (holdskifte efter foerste etape)", () => {
+    const days = [41, 42, 43, 44, 45];
+    const base = {
+      teams: [{ id: "T1", league_division_id: "D" }, { id: "T2", league_division_id: "D" }],
+      riders: [{ id: "x", team_id: "T2", acquired_at: "2026-11-09T16:45:00Z" }, { id: "y", team_id: "T2" }, { id: "z", team_id: "T1" }],
+      readyByDay: new Map([[44, ["x", "y", "z"]]]), receiptKeys: new Set(),
+      gameDaysByDivision: new Map([["D", days]]), dateEnd: new Date("2026-11-09T23:00:00Z"),
+    };
+    const t1Work = (quarantined = []) => ({ team_id: "T1", status: "partial", game_days: days, expected_rider_ids: ["x", "z"], quarantined_rider_ids: quarantined });
+    const plan = planRaceSessionSettlement({ ...base, workByTeam: new Map([["T1", t1Work()]]) });
+    assert.deepEqual(plan, [
+      { teamId: "T1", gameDay: 44, days, riderIds: ["x", "z"] },
+      { teamId: "T2", gameDay: 44, days, riderIds: ["y"] },
+    ]);
+    // I karantaene paa det gamle hold: saa maa det nye hold registrere ham (samme regel som databasen).
+    const quarantined = planRaceSessionSettlement({ ...base, workByTeam: new Map([["T1", t1Work(["x"])]]) });
+    assert.deepEqual(quarantined.find((p) => p.teamId === "T2").riderIds, ["x", "y"]);
+    assert.deepEqual(quarantined.find((p) => p.teamId === "T1").riderIds, ["z"]);
+  });
 });
 
 describe("delkoerslen", () => {
@@ -456,6 +479,32 @@ describe("delkoerslen", () => {
         riders: state.riders.map((r, i) => ({ ...r, team_id: i === 2 ? "00000000-0000-4000-8000-000000000003" : r.team_id })) }),
       runDay: async () => { calls++; if (calls === 1) throw new Error("boom"); return { alreadyRan: false }; } });
     assert.equal(out.failed, 1); assert.equal(out.settled, 1); assert.equal(calls, 2);
+  });
+
+  test("holdskifte efter foerste etape, hele vejen: det nye hold aabner ingen dato, det gamle lukker rytterens dato een gang", async () => {
+    const T2 = "00000000-0000-4000-8000-000000000003";
+    const state = seedState({ count: 6, entered: [1, 2], flags: { training_settle_race_session: "on" } });
+    placeRace(state, 43); finishStage1(state);
+    // Etapens delkoersel registrerer holdets dato, men gemme-kaldet fejler: sessionen ligger aaben.
+    let failed = false;
+    const fake = fakeWithRaceSessionRule(state, { failRpc: ({ base }) => base === "commit_training_date_tick" && !failed && (failed = true) });
+    const first = await settle(state, fake);
+    assert.equal(first.failed, 1);
+    assert.deepEqual(state.training_date_work.map((w) => w.team_id), [state.teams[0].id], "datoen er frosset ved foerste etape");
+    // Salget kl. 17:45: rytter 1 staar nu paa et andet hold i samme pulje.
+    state.teams.push({ ...structuredClone(state.teams[0]), id: T2, user_id: null });
+    Object.assign(state.riders.find((r) => r.id === hRider(1)), { team_id: T2, acquired_at: "2026-11-09T16:45:00Z" });
+    const second = await settle(state, fake, new Date("2026-11-09T18:10:00Z"));
+    assert.equal(second.failed, 0);
+    assert.deepEqual(state.training_date_work.map((w) => w.team_id), [state.teams[0].id], "det nye hold aabner ingen dato for ham");
+    assert.deepEqual(state.training_rider_ticks.map((t) => [t.rider_id, t.game_day, t.team_id]).sort(),
+      [[hRider(1), 43, state.teams[0].id], [hRider(2), 43, state.teams[0].id]].sort(), "loebssessionen gemmes paa holdet, der aabnede datoen");
+    // Aftenen paa det gamle hold: rytteren faar sine fem kvitteringer og een afregning, ingen karantaene.
+    const evening = await sweep(state, fake);
+    assert.ok(evening.every((r) => !r.error), JSON.stringify(evening));
+    assert.equal(state.training_rider_ticks.filter((t) => t.rider_id === hRider(1)).length, 5);
+    assert.equal(state.training_condition_settlements.filter((s) => s.rider_id === hRider(1)).length, 1);
+    assert.deepEqual(state.training_date_work[0].quarantined_rider_ids, []);
   });
 
   test("bevis 4: en etape med finalize_state sat afregnes aldrig (hele vejen gennem delkoerslen)", async () => {

@@ -64,6 +64,15 @@ async function checked(query, label) {
  */
 export function planRaceSessionSettlement({ teams, riders, readyByDay, workByTeam, receiptKeys, gameDaysByDivision, dateEnd }) {
   const plan = [];
+  // #6439 + Fable 15/11 punkt 3: en rytter i et andet holds frosne trup paa datoen (fx solgt efter
+  // foerste etape) traenes dér. Samme regel som register_training_date_work: det nye hold faar ham
+  // ikke paa samme dato, saa planen maa heller ikke aabne det nye holds dato for hans skyld.
+  const frozenElsewhere = new Map();
+  for (const [teamId, work] of workByTeam) {
+    for (const id of work.expected_rider_ids ?? []) {
+      if (!(work.quarantined_rider_ids ?? []).includes(id)) frozenElsewhere.set(id, teamId);
+    }
+  }
   for (const team of teams) {
     const work = workByTeam.get(team.id) ?? null;
     if (work && ["complete", "needs_reconciliation"].includes(work.status)) continue;
@@ -77,7 +86,8 @@ export function planRaceSessionSettlement({ teams, riders, readyByDay, workByTea
       ? work.expected_rider_ids.filter((id) => !(work.quarantined_rider_ids ?? []).includes(id))
       : riders.filter((rider) => rider.team_id === team.id
         && (!rider.created_at || new Date(rider.created_at) < dateEnd)
-        && (!rider.acquired_at || new Date(rider.acquired_at) < dateEnd)).map((rider) => rider.id);
+        && (!rider.acquired_at || new Date(rider.acquired_at) < dateEnd)
+        && !(frozenElsewhere.has(rider.id) && frozenElsewhere.get(rider.id) !== team.id)).map((rider) => rider.id);
     const owned = new Set(roster);
     for (const gameDay of [...readyByDay.keys()].sort((a, b) => a - b)) {
       if (!days.includes(gameDay)) continue;
