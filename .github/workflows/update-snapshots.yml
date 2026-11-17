@@ -212,16 +212,22 @@ jobs:
         shell: bash
         env:
           PUSH_TOKEN: ${{ secrets.AUTO_MERGE_PAT || secrets.GITHUB_TOKEN }}
+          READ_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HAS_PAT: ${{ secrets.AUTO_MERGE_PAT != '' }}
         run: |
           set -euo pipefail
           g() { git -c core.hooksPath=/dev/null -c core.fsmonitor=false "$@"; }
+          # Anonym git-adgang fejlede paa runneren ("could not read Username"),
+          # saa fetch/ls-remote laeser med jobbets GITHUB_TOKEN; kun push bruger PUSH_TOKEN.
+          read_auth=$(printf 'x-access-token:%s' "$READ_TOKEN" | base64 -w0)
+          echo "::add-mask::$read_auth"
+          gr() { g -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $read_auth" "$@"; }
           PATH_RE='^frontend/tests/e2e/[A-Za-z0-9_.-]+-snapshots/[A-Za-z0-9_.-]+-linux\.png$'
           src="$RUNNER_TEMP/snapshots"
           g init -q --bare "$RUNNER_TEMP/snapshot-repo.git"
           export GIT_DIR="$RUNNER_TEMP/snapshot-repo.git"
           export GIT_INDEX_FILE="$RUNNER_TEMP/snapshot-index"
-          g fetch -q --no-tags --depth=1 "https://github.com/$REPO.git" "$HEAD_SHA"
+          gr fetch -q --no-tags --depth=1 "https://github.com/$REPO.git" "$HEAD_SHA"
           g read-tree "$HEAD_SHA"
 
           # Mode for en sti i PR-head ("" = findes ikke).
@@ -287,7 +293,7 @@ jobs:
             echo "result=pushed" >> "$GITHUB_OUTPUT"
             echo "has_pat=$HAS_PAT" >> "$GITHUB_OUTPUT"
           else
-            tip=$(g ls-remote "https://github.com/$REPO.git" "refs/heads/$HEAD_REF" | cut -f1)
+            tip=$(gr ls-remote "https://github.com/$REPO.git" "refs/heads/$HEAD_REF" | cut -f1)
             if [ "$tip" = "$HEAD_SHA" ]; then
               echo "::error::Push fejlede, selvom branchen stadig staar paa $HEAD_SHA."
               exit 1
