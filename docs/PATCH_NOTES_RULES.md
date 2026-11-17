@@ -14,7 +14,21 @@
 - Sitet (`cyclingzone.org/patch-notes`) er den eneste kilde til patch note-*indhold*. Discord citerer den,
   skriver aldrig sit eget (§3).
 - Patch notes er obligatoriske ved enhver brugerrettet ændring (hard rule, se `CLAUDE.md`/`AGENTS.md`).
-  `scripts/check-patch-notes-version.js` er CI-gate: blokerer merge uden versionsbump.
+- **En PR skriver sin note som et fragment, aldrig direkte i `patchNotes.js`** ([#8346](https://github.com/NicolaiDolmer/CyclingZone/issues/8346)):
+  ÉN ny fil `frontend/src/data/patch-notes/pending/<issue>-<kort-slug>.json` med samme felter som en post, men
+  uden `version` og `date` (format: [`frontend/src/data/patch-notes/README.md`](../frontend/src/data/patch-notes/README.md)).
+  To PR'er rører derfor aldrig samme fil, og ingen gætter et versionsnummer.
+- **Nummer og dato gives ved merge.** Efter et verificeret merge-tog kører close-out
+  `scripts/patch-notes-number.mjs`: ventende fragmenter får nummer i merge-rækkefølge og dato = merge-dagen
+  (Europe/Copenhagen), flyttes øverst i `patchNotes.js` og slettes, som ét chore-commit på main. Køen
+  (`scripts/merge-queue.ps1`) venter derefter på main-CI og deploy-verifikation for netop det commit, før
+  close-out er færdig (AGENTS regel 20). Ventende fragmenter vises ikke for spillerne, før de har nummer.
+  Manuel fallback: `node scripts/patch-notes-number.mjs plan --ref origin/main` og `... push`; kør du `push`
+  selv, verificerer du også selv main-CI og deploy for det nye commit.
+- `scripts/check-patch-notes-version.js` er CI-gate (required, i `frontend-build`): validerer hvert ventende
+  fragment med de samme regler som en ny post (rollout, `flag` på beta-noter, em-dash, døde produkttermer,
+  læk-mønster). Lokalt: `node scripts/patch-notes-number.mjs check`. En ny version direkte i `patchNotes.js`
+  accepteres stadig i en overgang, men vagten skriver en note om at bruge et fragment.
 - `scripts/check-patch-notes-coverage.js` er **rådgivende, ikke blokerende** ([#3638](https://github.com/NicolaiDolmer/CyclingZone/issues/3638),
   eksplicit ejer-beslutning: *"Flaggeren bør foreslå, ikke blokere"*): den flager sandsynlige manglende
   entries på frontend-ændringer, exitcode 0 altid.
@@ -76,9 +90,13 @@ issue-tråden ("Discord-opsamlingen... er POSTET af ejeren 2/9") og i memory-reg
 Discord-server (`COMMS_PLAYBOOK.md` §2.1, MCP nede 8/9, ❓-status). Er navnet ændret siden, skal ejeren
 selv finde den rigtige kanal, ikke stole blindt på navnet her.
 
-**Ingen patch note i en bølge-lane-PR:** bølge-worker-PR'er samler ikke patch notes undervejs; de lægges
-samlet ved close-out for at undgå merge-konflikter i `patchNotes.js` (`feedback_parallel_workers_e2e_slot.md`).
-Discord-udkastet følger samme rytme: det skrives når entries er samlet, ikke pr. enkelt-PR.
+**Bølge-lane-PR'er skriver deres egen note som fragment (#8346):** tidligere samlede bølger patch notes ved
+close-out for at undgå merge-konflikter i `patchNotes.js` (`feedback_parallel_workers_e2e_slot.md`). Med
+fragmenter er konflikten væk: en lane lægger sin note i sin egen fil under `pending/` i samme PR som
+ændringen, og merge-toget nummererer den (§1). Siger en bølge-brief stadig "ingen patch note i PR'en",
+afleverer lanen teksten (EN + DA) i sin rapport, og orkestratoren lægger den som ét fragment pr. note.
+Ingen redigerer `patchNotes.js` direkte, heller ikke ved close-out. Discord-udkastet skrives fortsat ud fra
+de nummererede entries i `patchNotes.js`, ikke ud fra fragmenterne.
 
 **Kadence (åbent, ikke låst):** Der er endnu ingen fast ejer-besluttet regel for *hvornår* en Discord-catch-up
 postes. Praksis indtil nu er ad hoc-opsamlinger der dækker perioden siden sidste post (2/9 dækkede 7.148-7.231,
@@ -124,10 +142,11 @@ at Discord er kommet bagud.
 | Format-regler (felter, ét tal, EN/DA, em-dash) | [`TONE_OF_VOICE.md`](TONE_OF_VOICE.md) §"Patch notes · format", låst 14/8, [#3680](https://github.com/NicolaiDolmer/CyclingZone/issues/3680) |
 | "Udsnit, ikke ny tekst"-reglen | ToV §2.2, samme afsnit |
 | Udsnit-praksis (eksempel) | [`docs/drafts/discord-patch-notes-2026-09-17.md`](drafts/discord-patch-notes-2026-09-17.md) |
-| CI-gate (version) | `scripts/check-patch-notes-version.js` |
+| Fragmenter + nummer ved merge | §1, [#8346](https://github.com/NicolaiDolmer/CyclingZone/issues/8346), `scripts/patch-notes-number.mjs`, `frontend/src/data/patch-notes/README.md` |
+| CI-gate (version + fragmenter) | `scripts/check-patch-notes-version.js` |
 | Advisory coverage-guard | `scripts/check-patch-notes-coverage.js`, [#3638](https://github.com/NicolaiDolmer/CyclingZone/issues/3638) |
 | Efterkontrol-værktøj | `scripts/patchnotes-audit.sh` |
 | Ejeren poster selv | Issue [#4521](https://github.com/NicolaiDolmer/CyclingZone/issues/4521) kommentarer 2/9 + 6/9; memory `feedback_never_send_player_messages_on_owners_behalf.md` |
-| Ingen patch note i bølge-lane-PR | memory `feedback_parallel_workers_e2e_slot.md` |
+| Bølge-lane-PR skriver sit eget fragment (afløser "ingen patch note i bølge-lane-PR") | §3, [#8346](https://github.com/NicolaiDolmer/CyclingZone/issues/8346) |
 | Kanaler (Discord) | [`COMMS_PLAYBOOK.md`](COMMS_PLAYBOOK.md) §2.1 |
 | Åben kadence-diskussion | Issue [#4521](https://github.com/NicolaiDolmer/CyclingZone/issues/4521), kommentar 6/9 |

@@ -7,7 +7,7 @@ import { isYouthSquad, type YouthSquad } from "../../lib/youthSquadPages.ts";
 
 export const ACADEMY_PAGE_V2_FLAG_KEY = "academy_page_v2_8081";
 
-export type AcademyV2Tab = "intake" | "talents" | "profile";
+export type AcademyV2Tab = "intake" | "talents" | "ledger" | "profile";
 
 /** Blandet + de fire aldre. Spejl af backend/lib/academyAgeFocus.js (AGE_FOCUS_VALUES). */
 export const AGE_FOCUS_MIXED = "mixed";
