@@ -1,5 +1,64 @@
 export const PATCHES = [
 {
+  "version": "7.455",
+  "date": "2026-11-16",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Calendar",
+      "en": {
+        "title": "Each race once in the calendar",
+        "body": "With a division chosen, the calendar and the form plan show each race once instead of once for every pool in the division. For the coming season, the season view under Team selection shows the races of the division you are in now, marked (expected), and the form plan has a Division picker when it shows all races. Your division is still decided at the season switch."
+      },
+      "da": {
+        "title": "Hvert løb én gang i kalenderen",
+        "body": "Med en division valgt viser kalenderen og formplanen hvert løb én gang i stedet for én gang for hver pulje i divisionen. For den kommende sæson viser sæsonvisningen under Holdudtagelse løbene i den division, du er i nu, mærket (forventet), og formplanen har en Division-vælger, når den viser alle løb. Din division afgøres stadig ved sæsonskiftet."
+      },
+      "refs": [
+        5841
+      ]
+    },
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Notifications",
+      "en": {
+        "title": "Auto-bid good news is no longer red",
+        "body": "When your auto-bid holds the lead, the inbox shows it in a neutral colour instead of as a red warning. A stopped, cancelled or used-up auto-bid is still shown as a warning."
+      },
+      "da": {
+        "title": "God nyhed om autobud er ikke længere rød",
+        "body": "Når dit autobud holder føringen, viser indbakken det i en neutral farve i stedet for som en rød advarsel. Et stoppet, annulleret eller opbrugt autobud vises stadig som en advarsel."
+      },
+      "refs": [
+        8260
+      ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Help",
+      "en": {
+        "title": "Help: task prices, blocked orders and race progress",
+        "body": "Help now lists which stage plan task gets which price word, from Easy to Very hard, and which orders a rider cannot get at the same time. It also explains the training report's split between progress from training and progress from races."
+      },
+      "da": {
+        "title": "Hjælp: opgavepriser, spærrede ordrer og fremgang fra løb",
+        "body": "Hjælp viser nu, hvilken opgave i etapeplanen der får hvilket prisord, fra Let til Meget hård, og hvilke ordrer en rytter ikke kan få samtidig. Den forklarer også træningsrapportens opdeling i fremgang fra træning og fremgang fra løb."
+      },
+      "refs": [
+        7638,
+        7003,
+        7627
+      ]
+    }
+  ]
+},
+{
   "version": "7.454",
   "date": "2026-11-16",
   "changes": [
