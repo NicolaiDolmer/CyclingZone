@@ -81,6 +81,7 @@ export async function loadActiveSeasonNumber({ supabase } = {}) {
     }
     return data?.number != null && Number.isFinite(Number(data.number)) ? Number(data.number) : null;
   } catch (error) {
+    // best-effort: et manglende sæson-stempel må aldrig koste spilleren et allerede betalt bonusmål.
     console.warn(`  ⚠️  bonus goal: active season lookup threw (#8118): ${error?.message}`);
     return null;
   }

@@ -160,7 +160,7 @@ export function evaluateBoardSeason({ board, standing, team, context = {} } = {}
 export function calculateBoardPerformance({ board, standing, team, context = {} } = {}) {
   // #8118 · et bonusmål fra en tidligere sæson er allerede dømt og tæller ikke igen.
   const goals = parseBoardGoals(board?.current_goals)
-    .filter((goal) => !isExpiredSeasonBoundGoal(goal, context.seasonNumber));
+    .filter((goal) => !isExpiredSeasonBoundGoal(goal, /** @type {{ seasonNumber?: number | null }} */ (context).seasonNumber ?? null));
   const identityProfile = deriveTeamIdentityProfile({
     team,
     riders: team?.riders || [],
