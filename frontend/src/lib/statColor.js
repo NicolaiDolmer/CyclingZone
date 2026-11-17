@@ -229,7 +229,7 @@ export function statTextColor(value, opts) {
 
 /**
  * Inline-style til en evne-badge: farvet baggrund + kontrast-tekst.
- * Brug: <span className="...rounded" style={statStyle(value)}>{value}</span>
+ * Brug: <span className="...rounded-cz" style={statStyle(value)}>{value}</span>
  * Rating-tal: statStyle(value, { scale: "rating" }).
  */
 export function statStyle(value, opts) {

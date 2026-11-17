@@ -35,7 +35,8 @@
       "title": "Muestra toda la temporada",
       "description": "No hay carreras próximas en esta vista. Con toda la temporada puedes planificar con antelación.",
       "action": "Mostrar toda la temporada"
-    }
+    },
+    "peaks": "{count, plural, one {Pico de forma · # corredor} other {Pico de forma · # corredores}}"
   },
   "status": {
     "ready": "Listo",
@@ -61,7 +62,10 @@
     "copiedAll": "Copiado de {name}. Revísalo y guárdalo.",
     "locked": "La carrera ya ha empezado, así que el equipo está bloqueado.",
     "withdrawn": "Tu equipo se ha retirado de esta carrera. Al guardar un equipo se vuelve a inscribir.",
-    "restored": "Se han recuperado tus cambios sin guardar."
+    "restored": "Se han recuperado tus cambios sin guardar.",
+    "saveTactics": "Guardar táctica",
+    "savePeaks": "{count, plural, =0 {Aplicar a seleccionados} other {Aplicar a seleccionados (#)}}",
+    "saveSquadAndTactics": "Guardar equipo y fijar táctica"
   },
   "copy": {
     "title": "Copiar equipo de",
@@ -83,6 +87,25 @@
     "empty": {
       "title": "Vuelve a cargar los corredores",
       "description": "Ahora mismo tu equipo no tiene corredores disponibles para esta carrera."
+    },
+    "type": "Tipo",
+    "load": "Carga",
+    "loadTitle": "Carga esperada de la carrera con esfuerzo normal",
+    "loadNote": "Carga: lo dura que se espera la carrera con esfuerzo normal (ligera, media, dura).",
+    "loadWord": {
+      "light": "Ligera",
+      "medium": "Media",
+      "hard": "Dura"
+    },
+    "peakShort": "Pico {date}",
+    "peakTitle": "Pico de forma: {race}, {date} ({count, plural, =0 {hoy} one {en # día} other {en # días}})",
+    "columns": "Columnas",
+    "mobileColumn": {
+      "routeMatch": "Encaje",
+      "form": "Forma",
+      "fatigue": "Fatiga",
+      "load": "Carga",
+      "rating": "Valoración"
     }
   },
   "role": {
@@ -105,8 +128,8 @@
     "hide": "Ocultar perfil",
     "show": "Mostrar perfil",
     "unavailable": "Todavía no hay datos del recorrido para esta etapa.",
-    "showFull": "Ver perfil completo",
-    "hideFull": "Ocultar perfil completo"
+    "km": "{km} km",
+    "gain": "{gain} m"
   },
   "unsavedBar": {
     "label": "Cambios sin guardar",
@@ -114,7 +137,8 @@
     "next": "Se abrirá {race}.",
     "stay": "Quedarme aquí",
     "discard": "Descartar",
-    "saveAndOpen": "Guardar y abrir"
+    "saveAndOpen": "Guardar y abrir",
+    "saveAndClose": "Guardar y cerrar"
   },
   "bulk": {
     "menu": "Acciones",
@@ -176,5 +200,57 @@
   "noSelection": {
     "title": "Elige una carrera para planificar",
     "description": "Elige una carrera de la lista para fijar su equipo."
+  },
+  "views": {
+    "label": "Vista",
+    "squad": "Equipo",
+    "tactics": "Táctica",
+    "peak": "Pico de forma",
+    "hint": {
+      "squad": "Elige corredores y dales un rol · todas las columnas ordenan",
+      "tactics": "El plan sigue la etapa del perfil",
+      "peak": "Marca corredores y aplica el pico de forma a esta carrera"
+    }
+  },
+  "tactics": {
+    "noSquad": {
+      "title": "Guarda primero un equipo",
+      "description": "La táctica se define para los corredores del equipo guardado."
+    },
+    "squadUnsaved": "El equipo tiene cambios sin guardar. \"Guardar equipo y fijar táctica\" lo guarda y muestra la táctica.",
+    "shared": "La misma táctica que en la página de la carrera: un plan guardado aquí aparece allí, y al revés.",
+    "saveInTab": "Tienes táctica sin guardar. Guárdala primero con \"Guardar táctica\".",
+    "saveFirst": "Tienes táctica sin guardar. Guárdala con \"Guardar táctica\" antes de guardar el equipo, o se perderá."
+  },
+  "peak": {
+    "target": "Objetivo de pico: {race}, empieza el {date}. Marca corredores y aplica.",
+    "targetClosed": "{race} ya no puede ser objetivo de pico (ha empezado o no está en tu calendario).",
+    "selected": "{count, plural, =0 {Ninguno seleccionado} one {# seleccionado} other {# seleccionados}}",
+    "col": {
+      "target": "Objetivo de pico",
+      "start": "Inicio"
+    },
+    "inDays": "{count, plural, =0 {hoy} one {en # día} other {en # días}}",
+    "here": "Pico aquí",
+    "remove": "Quitar",
+    "removed": "Pico quitado.",
+    "clear": "Borrar selección",
+    "full": "Ya tiene {max} objetivos",
+    "notSenior": "No está en el equipo sénior",
+    "applied": "{count, plural, one {Pico fijado para # corredor.} other {Pico fijado para # corredores.}}",
+    "appliedPartial": "{created} fijados, {skipped} omitidos (límite de objetivos, o la carrera ya no está abierta).",
+    "count": "{shown} corredores · {open} pueden tener pico aquí · máx. {max} por corredor",
+    "group": {
+      "inSquad": "En el equipo · {count}",
+      "outside": "No seleccionados · {count}"
+    },
+    "notPicked": "{name} tiene su pico para {race}, pero no está seleccionado. Sin la carrera el pico se desperdicia.",
+    "pickForRace": "Seleccionar para la carrera"
+  },
+  "sheet": {
+    "prev": "Carrera anterior",
+    "next": "Carrera siguiente",
+    "close": "Cerrar",
+    "position": "{n} / {total}"
   }
 }

@@ -6,7 +6,8 @@
       "story": "Récit",
       "standings": "Classements",
       "tactics": "Tactique",
-      "team": "Équipe"
+      "team": "Équipe",
+      "start": "Liste de départ"
     },
     "hero": {
       "stageLocks": "L'étape {number} se verrouille à {time} · {countdown}",
@@ -1667,7 +1668,8 @@
       "points": "Points",
       "mountain": "Montagne",
       "young": "Jeunes",
-      "team": "Équipes"
+      "team": "Équipes",
+      "passages": "Sprints et ascensions"
     },
     "teamFilter": {
       "label": "Équipe",
@@ -2255,6 +2257,10 @@
     "table": {
       "prizePoints": "Points de gains",
       "jerseyPoints": "Points de maillot",
+      "colPos": "Pos.",
+      "colRider": "Coureur",
+      "colTeam": "Équipe",
+      "colTime": "Temps",
       "prizePointsShort": "Gains",
       "jerseyPointsShort": "Maillot"
     },
