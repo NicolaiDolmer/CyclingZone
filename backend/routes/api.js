@@ -19431,6 +19431,17 @@ router.get("/academy/me", requireAuth, async (req, res) => {
 //     oprettelse) — et 100% realiseret, historisk tal, ingen fremskrivning.
 //     Transfermarkeds-salg har ingen tilsvarende baseline og bidrager derfor
 //     kun til salesProceeds, ikke valueCreation (se academyPnl.js).
+// #8060 review 2: fejler saeson-regnskabet, maa det ikke vaelte hele svaret (det gamle regnskab
+// og siden). Fejlen meldes, `ledger` udelades, og `ledger_unavailable` lader fanen sige det.
+async function academyLedgerPart8060(teamId) {
+  try {
+    return { ledger: await loadAcademySeasonLedger(supabase, { teamId }) };
+  } catch (err) {
+    captureException(err, { tags: { route: "academy/pnl", part: "ledger-8060" } });
+    return { ledger_unavailable: true };
+  }
+}
+
 router.get("/academy/pnl", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
@@ -19506,7 +19517,7 @@ router.get("/academy/pnl", requireAuth, async (req, res) => {
       enabled: true,
       ...summarizeAcademyPnl({ current, driftPaid, signingFeesPaid, sales }),
       // #8060: regnskab pr. sæson kun bag academy_page_v2_8081; slukket er svaret som før.
-      ...((await isAcademyLedgerEnabled(supabase, { isBetaTester })) ? { ledger: await loadAcademySeasonLedger(supabase, { teamId }) } : {}),
+      ...((await isAcademyLedgerEnabled(supabase, { isBetaTester })) ? await academyLedgerPart8060(teamId) : {}),
     });
   } catch (err) {
     captureException(err);

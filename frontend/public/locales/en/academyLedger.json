@@ -34,5 +34,8 @@
   "emptySalesAction": "See your team",
   "errorTitle": "Could not load the academy ledger",
   "errorBody": "Try again in a moment.",
-  "retry": "Try again"
+  "retry": "Try again",
+  "noLedgerTitle": "No academy ledger yet",
+  "noLedgerBody": "The ledger shows once your academy is open.",
+  "noLedgerAction": "See your team"
 }

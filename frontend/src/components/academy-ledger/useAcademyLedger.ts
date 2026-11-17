@@ -39,6 +39,11 @@ export function useAcademyLedger(): AcademyLedgerState {
         setError((res.data as { error?: string } | null)?.error ?? "failed");
         return;
       }
+      // #8060 review 2: serveren kunne ikke regne regnskabet; fanen viser fejlen med "Proev igen".
+      if ((res.data as { ledger_unavailable?: boolean } | null)?.ledger_unavailable === true) {
+        setError("ledger_unavailable");
+        return;
+      }
       setLedger(parseAcademyLedger(res.data));
     } catch {
       setError("network");
