@@ -1,0 +1,2289 @@
+{
+  "_note": "#6490 B frozen golden: trainingSweepMemory6490.harness.js run on the merge base (no switch there), switch value ignored. Never regenerate with the new code.",
+  "mergeBase": "82bdf0a3bf37a0b8fb953a73da8c506a0b670a98",
+  "scenarios": {
+    "aften_etape_koert": {
+      "outcome": {
+        "receiptDays": {
+          "000": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "001": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "002": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "003": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "004": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "005": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "006": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "007": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "008": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "009": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "010": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "011": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "012": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "013": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "014": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "015": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "016": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "017": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "018": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "019": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "020": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "021": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "022": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "023": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "024": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "025": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "026": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "027": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "028": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "029": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "030": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "031": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "032": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "033": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "034": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "035": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "036": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "037": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "038": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "039": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "040": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "041": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "042": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "043": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "044": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "045": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "046": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ]
+        },
+        "quarantined": [],
+        "departed": [],
+        "status": "complete"
+      },
+      "answers": "babba37b7e523feb3a58",
+      "writes": "f0eeda792e35b46e5928",
+      "state": "4c2187f87e83a63d48aa",
+      "reads": "f2b3979d23a03031c932",
+      "unsupported": [],
+      "sweeps": [
+        {
+          "total": 240,
+          "reads": 229,
+          "writes": 0,
+          "rpc": 11,
+          "gen": 5,
+          "rounds": 182,
+          "byTarget": {
+            "rpc:register_training_date_work": 6,
+            "read:app_config": 90,
+            "read:training_day_runs": 10,
+            "read:training_date_work": 5,
+            "read:riders": 5,
+            "read:training_train_now_locks": 10,
+            "read:training_rider_ticks": 5,
+            "read:training_race_loads": 6,
+            "read:private_config": 2,
+            "read:teams": 11,
+            "read:race_entry_days": 5,
+            "read:rider_derived_abilities": 5,
+            "read:training_plans": 5,
+            "read:rider_condition": 5,
+            "read:training_week_plans": 5,
+            "read:races": 6,
+            "read:race_stage_schedule": 6,
+            "read:team_training_rules": 5,
+            "read:training_groups": 5,
+            "read:team_facilities": 10,
+            "read:team_staff": 10,
+            "read:staff_derived_abilities": 5,
+            "read:training_condition_settlements": 5,
+            "rpc:commit_training_date_tick": 5,
+            "read:race_simulation_runs": 2,
+            "read:race_incidents": 1,
+            "read:race_results": 2,
+            "read:race_stage_profiles": 1,
+            "read:race_stage_roles": 1,
+            "read:race_team_orders": 1
+          }
+        },
+        {
+          "total": 0,
+          "reads": 0,
+          "writes": 0,
+          "rpc": 0,
+          "gen": 0,
+          "rounds": 0,
+          "byTarget": {}
+        }
+      ]
+    },
+    "aften_foer_og_efter_etape": {
+      "outcome": {
+        "receiptDays": {
+          "000": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "001": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "002": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "003": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "004": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "005": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "006": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "007": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "008": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "009": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "010": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "011": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "012": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "013": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "014": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "015": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "016": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "017": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "018": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "019": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ]
+        },
+        "quarantined": [],
+        "departed": [],
+        "status": "complete"
+      },
+      "answers": "1c5e962b0283c568a396",
+      "writes": "bc7ac2b4cfbd29ee61a1",
+      "state": "93e1b1922bd08a03216e",
+      "reads": "14f361ce24434d03b8c0",
+      "unsupported": [],
+      "sweeps": [
+        {
+          "total": 223,
+          "reads": 212,
+          "writes": 0,
+          "rpc": 11,
+          "gen": 5,
+          "rounds": 168,
+          "byTarget": {
+            "rpc:register_training_date_work": 6,
+            "read:app_config": 85,
+            "read:training_day_runs": 10,
+            "read:training_date_work": 5,
+            "read:riders": 5,
+            "read:training_train_now_locks": 10,
+            "read:training_rider_ticks": 5,
+            "read:training_race_loads": 5,
+            "read:private_config": 2,
+            "read:teams": 11,
+            "read:race_entry_days": 5,
+            "read:rider_derived_abilities": 5,
+            "read:training_plans": 5,
+            "read:rider_condition": 5,
+            "read:training_week_plans": 5,
+            "read:races": 6,
+            "read:race_stage_schedule": 6,
+            "read:team_training_rules": 5,
+            "read:training_groups": 5,
+            "read:team_facilities": 10,
+            "read:team_staff": 10,
+            "read:training_condition_settlements": 5,
+            "rpc:commit_training_date_tick": 5,
+            "read:race_results": 2
+          }
+        },
+        {
+          "total": 223,
+          "reads": 213,
+          "writes": 0,
+          "rpc": 10,
+          "gen": 5,
+          "rounds": 165,
+          "byTarget": {
+            "read:app_config": 85,
+            "read:training_day_runs": 10,
+            "read:training_date_work": 5,
+            "rpc:register_training_date_work": 5,
+            "read:riders": 5,
+            "read:training_train_now_locks": 10,
+            "read:training_rider_ticks": 5,
+            "read:training_race_loads": 5,
+            "read:teams": 10,
+            "read:race_entry_days": 5,
+            "read:rider_derived_abilities": 5,
+            "read:training_plans": 5,
+            "read:rider_condition": 5,
+            "read:training_week_plans": 5,
+            "read:races": 5,
+            "read:race_stage_schedule": 5,
+            "read:team_training_rules": 5,
+            "read:training_groups": 5,
+            "read:team_facilities": 10,
+            "read:team_staff": 10,
+            "read:training_condition_settlements": 5,
+            "rpc:commit_training_date_tick": 5,
+            "read:race_simulation_runs": 2,
+            "read:race_incidents": 1,
+            "read:race_results": 2,
+            "read:race_stage_profiles": 1,
+            "read:race_stage_roles": 1,
+            "read:race_team_orders": 1
+          }
+        }
+      ]
+    },
+    "aften_efter_fristen": {
+      "outcome": {
+        "receiptDays": {
+          "000": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "001": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "002": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "003": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "004": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "005": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "006": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "007": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "008": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "009": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "010": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "011": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "012": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "013": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "014": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "015": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "016": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "017": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "018": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "019": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ]
+        },
+        "quarantined": [],
+        "departed": [],
+        "status": "needs_reconciliation"
+      },
+      "answers": "17e184fb6d861500370e",
+      "writes": "5b3d0e90643a447f339b",
+      "state": "dbbb254c699f461eddf4",
+      "reads": "7e6d1150ed8714dfb462",
+      "unsupported": [],
+      "sweeps": [
+        {
+          "total": 220,
+          "reads": 209,
+          "writes": 0,
+          "rpc": 11,
+          "gen": 5,
+          "rounds": 165,
+          "byTarget": {
+            "rpc:register_training_date_work": 6,
+            "read:app_config": 85,
+            "read:training_day_runs": 10,
+            "read:training_date_work": 5,
+            "read:riders": 5,
+            "read:training_train_now_locks": 10,
+            "read:training_rider_ticks": 5,
+            "read:training_race_loads": 5,
+            "read:private_config": 2,
+            "read:teams": 10,
+            "read:race_entry_days": 5,
+            "read:rider_derived_abilities": 5,
+            "read:training_plans": 5,
+            "read:rider_condition": 5,
+            "read:training_week_plans": 5,
+            "read:races": 5,
+            "read:race_stage_schedule": 5,
+            "read:team_training_rules": 5,
+            "read:training_groups": 5,
+            "read:team_facilities": 10,
+            "read:team_staff": 10,
+            "read:training_condition_settlements": 5,
+            "rpc:commit_training_date_tick": 5,
+            "read:race_results": 2
+          }
+        },
+        {
+          "total": 217,
+          "reads": 207,
+          "writes": 0,
+          "rpc": 10,
+          "gen": 5,
+          "rounds": 162,
+          "byTarget": {
+            "read:app_config": 85,
+            "read:training_day_runs": 10,
+            "read:training_date_work": 5,
+            "rpc:register_training_date_work": 5,
+            "read:riders": 5,
+            "read:training_train_now_locks": 10,
+            "read:training_rider_ticks": 5,
+            "read:training_race_loads": 5,
+            "read:teams": 10,
+            "read:race_entry_days": 5,
+            "read:rider_derived_abilities": 5,
+            "read:training_plans": 5,
+            "read:rider_condition": 5,
+            "read:training_week_plans": 5,
+            "read:races": 5,
+            "read:race_stage_schedule": 5,
+            "read:team_training_rules": 5,
+            "read:training_groups": 5,
+            "read:team_facilities": 10,
+            "read:team_staff": 10,
+            "read:training_condition_settlements": 5,
+            "rpc:commit_training_date_tick": 5,
+            "read:race_results": 2
+          }
+        }
+      ]
+    },
+    "tryk_saa_aften": {
+      "outcome": {
+        "receiptDays": {
+          "000": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "001": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "002": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "003": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "004": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "005": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "006": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "007": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "008": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "009": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "010": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "011": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "012": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "013": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "014": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "015": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "016": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "017": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "018": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "019": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "020": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "021": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "022": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "023": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "024": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "025": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "026": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "027": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "028": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "029": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "030": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "031": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "032": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "033": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "034": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "035": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "036": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "037": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "038": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "039": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "040": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "041": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "042": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "043": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "044": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "045": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "046": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ]
+        },
+        "quarantined": [],
+        "departed": [],
+        "status": "complete"
+      },
+      "answers": "e7a80e9b4c9bb31151b3",
+      "writes": "acf417366b7685cbe531",
+      "state": "29f002f4636dee56ab6c",
+      "reads": "99aa0eccd3bc84fa52d4",
+      "unsupported": [],
+      "sweeps": [
+        {
+          "total": 111,
+          "reads": 105,
+          "writes": 0,
+          "rpc": 6,
+          "gen": 5,
+          "rounds": 97,
+          "byTarget": {
+            "read:app_config": 46,
+            "read:training_day_runs": 6,
+            "read:training_date_work": 5,
+            "rpc:register_training_date_work": 5,
+            "read:riders": 5,
+            "read:training_train_now_locks": 10,
+            "read:training_rider_ticks": 5,
+            "read:training_race_loads": 1,
+            "read:teams": 3,
+            "read:race_entry_days": 1,
+            "read:rider_derived_abilities": 1,
+            "read:training_plans": 1,
+            "read:rider_condition": 1,
+            "read:training_week_plans": 1,
+            "read:races": 2,
+            "read:race_simulation_runs": 2,
+            "read:race_stage_schedule": 2,
+            "read:race_incidents": 1,
+            "read:race_results": 1,
+            "read:race_stage_profiles": 1,
+            "read:race_stage_roles": 1,
+            "read:race_team_orders": 1,
+            "read:team_training_rules": 1,
+            "read:training_groups": 1,
+            "read:team_facilities": 2,
+            "read:team_staff": 2,
+            "read:staff_derived_abilities": 1,
+            "read:training_condition_settlements": 1,
+            "rpc:commit_training_date_tick": 1
+          }
+        }
+      ]
+    },
+    "almindeligt_tryk_saa_aften": {
+      "outcome": {
+        "receiptDays": {
+          "000": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "001": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "002": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "003": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "004": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "005": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "006": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "007": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "008": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "009": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "010": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "011": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "012": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "013": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "014": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "015": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "016": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "017": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "018": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "019": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "020": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "021": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "022": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "023": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "024": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "025": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "026": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "027": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "028": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "029": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "030": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "031": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "032": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "033": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "034": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "035": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "036": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "037": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "038": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "039": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "040": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "041": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "042": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "043": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "044": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "045": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "046": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ]
+        },
+        "quarantined": [],
+        "departed": [],
+        "status": "complete"
+      },
+      "answers": "926cd216f3ae978fed10",
+      "writes": "3344f45d5edd3d85ce8d",
+      "state": "205547df79805eea758d",
+      "reads": "960ae41e7dd1dc9a5570",
+      "unsupported": [],
+      "sweeps": [
+        {
+          "total": 237,
+          "reads": 227,
+          "writes": 0,
+          "rpc": 10,
+          "gen": 5,
+          "rounds": 179,
+          "byTarget": {
+            "read:app_config": 90,
+            "read:training_day_runs": 10,
+            "read:training_date_work": 5,
+            "rpc:register_training_date_work": 5,
+            "read:riders": 5,
+            "read:training_train_now_locks": 10,
+            "read:training_rider_ticks": 5,
+            "read:training_race_loads": 6,
+            "read:teams": 11,
+            "read:race_entry_days": 5,
+            "read:rider_derived_abilities": 5,
+            "read:training_plans": 5,
+            "read:rider_condition": 5,
+            "read:training_week_plans": 5,
+            "read:races": 6,
+            "read:race_stage_schedule": 6,
+            "read:team_training_rules": 5,
+            "read:training_groups": 5,
+            "read:team_facilities": 10,
+            "read:team_staff": 10,
+            "read:staff_derived_abilities": 5,
+            "read:training_condition_settlements": 5,
+            "rpc:commit_training_date_tick": 5,
+            "read:race_simulation_runs": 2,
+            "read:race_incidents": 1,
+            "read:race_results": 2,
+            "read:race_stage_profiles": 1,
+            "read:race_stage_roles": 1,
+            "read:race_team_orders": 1
+          }
+        }
+      ]
+    },
+    "rytter_frigivet_og_solgt": {
+      "outcome": {
+        "receiptDays": {
+          "000": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "001": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "002": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "003": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "004": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "005": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "006": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "007": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "008": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "010": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "011": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "012": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "013": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ]
+        },
+        "quarantined": [
+          "009"
+        ],
+        "departed": [
+          "009"
+        ],
+        "status": "complete"
+      },
+      "answers": "46d20f5fca775c030b83",
+      "writes": "a2af0b3c0e04674d1264",
+      "state": "68d74dbc6bf546458c5c",
+      "reads": "315754600061eb73a13e",
+      "unsupported": [],
+      "sweeps": [
+        {
+          "total": 220,
+          "reads": 209,
+          "writes": 0,
+          "rpc": 11,
+          "gen": 5,
+          "rounds": 165,
+          "byTarget": {
+            "rpc:register_training_date_work": 6,
+            "read:app_config": 85,
+            "read:training_day_runs": 10,
+            "read:training_date_work": 5,
+            "read:riders": 5,
+            "read:training_train_now_locks": 10,
+            "read:training_rider_ticks": 5,
+            "read:training_race_loads": 5,
+            "read:private_config": 2,
+            "read:teams": 10,
+            "read:race_entry_days": 5,
+            "read:rider_derived_abilities": 5,
+            "read:training_plans": 5,
+            "read:rider_condition": 5,
+            "read:training_week_plans": 5,
+            "read:races": 5,
+            "read:race_stage_schedule": 5,
+            "read:team_training_rules": 5,
+            "read:training_groups": 5,
+            "read:team_facilities": 10,
+            "read:team_staff": 10,
+            "read:training_condition_settlements": 5,
+            "rpc:commit_training_date_tick": 5,
+            "read:race_results": 2
+          }
+        },
+        {
+          "total": 240,
+          "reads": 218,
+          "writes": 0,
+          "rpc": 22,
+          "gen": 5,
+          "rounds": 182,
+          "byTarget": {
+            "rpc:depart_training_date_riders": 6,
+            "rpc:quarantine_training_date_riders": 6,
+            "read:app_config": 85,
+            "read:training_day_runs": 10,
+            "read:training_date_work": 5,
+            "rpc:register_training_date_work": 5,
+            "read:riders": 5,
+            "read:teams": 15,
+            "read:training_train_now_locks": 10,
+            "read:training_rider_ticks": 5,
+            "read:training_race_loads": 5,
+            "read:race_entry_days": 5,
+            "read:rider_derived_abilities": 5,
+            "read:training_plans": 5,
+            "read:rider_condition": 5,
+            "read:training_week_plans": 5,
+            "read:races": 5,
+            "read:race_stage_schedule": 5,
+            "read:team_training_rules": 5,
+            "read:training_groups": 5,
+            "read:team_facilities": 10,
+            "read:team_staff": 10,
+            "read:training_condition_settlements": 5,
+            "rpc:commit_training_date_tick": 5,
+            "read:race_simulation_runs": 2,
+            "read:race_incidents": 1,
+            "read:race_results": 2,
+            "read:race_stage_profiles": 1,
+            "read:race_stage_roles": 1,
+            "read:race_team_orders": 1
+          }
+        }
+      ]
+    },
+    "karantaene": {
+      "outcome": {
+        "receiptDays": {
+          "000": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "001": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "002": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "004": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "005": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "006": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "007": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "008": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "009": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "010": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "011": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ]
+        },
+        "quarantined": [
+          "003"
+        ],
+        "departed": [],
+        "status": "needs_reconciliation"
+      },
+      "answers": "a0364a083c5c5f700ef1",
+      "writes": "c5445f556e65d20be870",
+      "state": "393ced5344bf1a8862d9",
+      "reads": "7f54f025f30038847390",
+      "unsupported": [],
+      "sweeps": [
+        {
+          "total": 220,
+          "reads": 209,
+          "writes": 0,
+          "rpc": 11,
+          "gen": 5,
+          "rounds": 165,
+          "byTarget": {
+            "rpc:register_training_date_work": 6,
+            "read:app_config": 85,
+            "read:training_day_runs": 10,
+            "read:training_date_work": 5,
+            "read:riders": 5,
+            "read:training_train_now_locks": 10,
+            "read:training_rider_ticks": 5,
+            "read:training_race_loads": 5,
+            "read:private_config": 2,
+            "read:teams": 10,
+            "read:race_entry_days": 5,
+            "read:rider_derived_abilities": 5,
+            "read:training_plans": 5,
+            "read:rider_condition": 5,
+            "read:training_week_plans": 5,
+            "read:races": 5,
+            "read:race_stage_schedule": 5,
+            "read:team_training_rules": 5,
+            "read:training_groups": 5,
+            "read:team_facilities": 10,
+            "read:team_staff": 10,
+            "read:training_condition_settlements": 5,
+            "rpc:commit_training_date_tick": 5,
+            "read:race_results": 2
+          }
+        },
+        {
+          "total": 224,
+          "reads": 213,
+          "writes": 0,
+          "rpc": 11,
+          "gen": 5,
+          "rounds": 166,
+          "byTarget": {
+            "rpc:quarantine_training_date_riders": 1,
+            "read:app_config": 85,
+            "read:training_day_runs": 10,
+            "read:training_date_work": 5,
+            "rpc:register_training_date_work": 5,
+            "read:riders": 5,
+            "read:training_train_now_locks": 10,
+            "read:training_rider_ticks": 5,
+            "read:training_race_loads": 5,
+            "read:teams": 10,
+            "read:race_entry_days": 5,
+            "read:rider_derived_abilities": 5,
+            "read:training_plans": 5,
+            "read:rider_condition": 5,
+            "read:training_week_plans": 5,
+            "read:races": 5,
+            "read:race_stage_schedule": 5,
+            "read:team_training_rules": 5,
+            "read:training_groups": 5,
+            "read:team_facilities": 10,
+            "read:team_staff": 10,
+            "read:training_condition_settlements": 5,
+            "rpc:commit_training_date_tick": 5,
+            "read:race_simulation_runs": 2,
+            "read:race_incidents": 1,
+            "read:race_results": 2,
+            "read:race_stage_profiles": 1,
+            "read:race_stage_roles": 1,
+            "read:race_team_orders": 1
+          }
+        }
+      ]
+    },
+    "frigivet_midt_i_holdet": {
+      "outcome": {
+        "receiptDays": {
+          "000": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "001": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "002": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "003": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "004": [
+            41
+          ],
+          "005": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "006": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "007": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "008": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "009": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ]
+        },
+        "quarantined": [
+          "004"
+        ],
+        "departed": [
+          "004"
+        ],
+        "status": "complete"
+      },
+      "answers": "b2abaf65f77987522c4e",
+      "writes": "bdffbecc59a2127c5f47",
+      "state": "70d2c7e09554beff4113",
+      "reads": "9831a7b3e5e361b5d4fe",
+      "unsupported": [],
+      "sweeps": [
+        {
+          "total": 228,
+          "reads": 216,
+          "writes": 0,
+          "rpc": 12,
+          "gen": 5,
+          "rounds": 170,
+          "byTarget": {
+            "rpc:register_training_date_work": 6,
+            "read:app_config": 85,
+            "read:training_day_runs": 10,
+            "read:training_date_work": 5,
+            "read:riders": 5,
+            "read:training_train_now_locks": 10,
+            "read:training_rider_ticks": 5,
+            "read:training_race_loads": 5,
+            "read:private_config": 2,
+            "read:teams": 11,
+            "read:race_entry_days": 5,
+            "read:rider_derived_abilities": 5,
+            "read:training_plans": 5,
+            "read:rider_condition": 5,
+            "read:training_week_plans": 5,
+            "read:races": 5,
+            "read:race_stage_schedule": 5,
+            "read:team_training_rules": 5,
+            "read:training_groups": 5,
+            "read:team_facilities": 10,
+            "read:team_staff": 10,
+            "read:training_condition_settlements": 5,
+            "rpc:commit_training_date_tick": 5,
+            "rpc:depart_training_date_riders": 1,
+            "read:race_simulation_runs": 2,
+            "read:race_incidents": 1,
+            "read:race_results": 2,
+            "read:race_stage_profiles": 1,
+            "read:race_stage_roles": 1,
+            "read:race_team_orders": 1
+          }
+        }
+      ]
+    },
+    "gemmekald_fejler": {
+      "outcome": {
+        "receiptDays": {
+          "000": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "001": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "002": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "003": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "004": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "005": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "006": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "007": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "008": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "009": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "010": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "011": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "012": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "013": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ]
+        },
+        "quarantined": [],
+        "departed": [],
+        "status": "complete"
+      },
+      "answers": "2c1bcff66fba6e179ce7",
+      "writes": "2fb3deb53fee252c73cd",
+      "state": "745e9764a71fb7c32531",
+      "reads": "d4a8074c162088f84a25",
+      "unsupported": [],
+      "sweeps": [
+        {
+          "total": 139,
+          "reads": 132,
+          "writes": 0,
+          "rpc": 7,
+          "gen": 3,
+          "rounds": 103,
+          "byTarget": {
+            "rpc:register_training_date_work": 4,
+            "read:app_config": 51,
+            "read:training_day_runs": 6,
+            "read:training_date_work": 3,
+            "read:riders": 3,
+            "read:training_train_now_locks": 6,
+            "read:training_rider_ticks": 3,
+            "read:training_race_loads": 3,
+            "read:private_config": 2,
+            "read:teams": 6,
+            "read:race_entry_days": 3,
+            "read:rider_derived_abilities": 3,
+            "read:training_plans": 3,
+            "read:rider_condition": 3,
+            "read:training_week_plans": 3,
+            "read:races": 3,
+            "read:race_stage_schedule": 3,
+            "read:team_training_rules": 3,
+            "read:training_groups": 3,
+            "read:team_facilities": 6,
+            "read:team_staff": 6,
+            "read:training_condition_settlements": 3,
+            "rpc:commit_training_date_tick": 3,
+            "read:race_simulation_runs": 2,
+            "read:race_incidents": 1,
+            "read:race_results": 1,
+            "read:race_stage_profiles": 1,
+            "read:race_stage_roles": 1,
+            "read:race_team_orders": 1
+          }
+        },
+        {
+          "total": 165,
+          "reads": 157,
+          "writes": 0,
+          "rpc": 8,
+          "gen": 5,
+          "rounds": 129,
+          "byTarget": {
+            "read:app_config": 65,
+            "read:training_day_runs": 8,
+            "read:training_date_work": 5,
+            "rpc:register_training_date_work": 5,
+            "read:riders": 5,
+            "read:training_train_now_locks": 10,
+            "read:training_rider_ticks": 5,
+            "read:training_race_loads": 3,
+            "read:teams": 6,
+            "read:race_entry_days": 3,
+            "read:rider_derived_abilities": 3,
+            "read:training_plans": 3,
+            "read:rider_condition": 3,
+            "read:training_week_plans": 3,
+            "read:races": 3,
+            "read:race_simulation_runs": 2,
+            "read:race_stage_schedule": 3,
+            "read:race_incidents": 1,
+            "read:race_results": 2,
+            "read:race_stage_profiles": 1,
+            "read:race_stage_roles": 1,
+            "read:race_team_orders": 1,
+            "read:team_training_rules": 3,
+            "read:training_groups": 3,
+            "read:team_facilities": 6,
+            "read:team_staff": 6,
+            "read:training_condition_settlements": 3,
+            "rpc:commit_training_date_tick": 3
+          }
+        }
+      ]
+    }
+  }
+}
