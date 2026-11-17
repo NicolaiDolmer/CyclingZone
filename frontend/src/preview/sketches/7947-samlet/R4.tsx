@@ -238,7 +238,7 @@ function RiderCell({ rider, override, dateLabel, onRemove }: { rider: SketchRide
   return (
     <div className="min-w-0">
       <div className="flex items-center gap-1.5">
-        <Flag code={rider.nation} />
+        <Flag code={rider.nation} title={undefined} />
         <a href="#rider" className="truncate text-[13.5px] font-medium text-cz-1 hover:underline">{rider.name}</a>
       </div>
       <div className="truncate font-data text-3xs uppercase tracking-[.04em] text-cz-3">{rider.type}</div>
