@@ -86,8 +86,8 @@
     "from": "Van",
     "to": "Naar",
     "round": "Ronde {round}",
-    "squadCriticalReceived": "🚨 Onder het minimum",
-    "squadCriticalSent": "🚨 Verkoper onder min.",
+    "squadCriticalReceived": "Onder het minimum",
+    "squadCriticalSent": "Verkoper onder min.",
     "offerLabel": "Aanbieding",
     "counterLabel": "Jouw tegenbod",
     "counterAmountLabel": "Tegenbod",
@@ -98,16 +98,16 @@
     "contractExpires": "Verloopt na seizoen {season}",
     "noContract": "Transfervrij",
     "buttons": {
-      "accept": "✓ Accepteren",
+      "accept": "Accepteren",
       "counter": "Tegenbod",
-      "reject": "✕ Afwijzen",
+      "reject": "Afwijzen",
       "send": "Versturen",
-      "acceptCounter": "✓ Accepteren ({amount} CZ$)",
+      "acceptCounter": "Accepteren ({amount} CZ$)",
       "newOffer": "Nieuwe aanbieding",
       "withdraw": "Intrekken",
       "withdrawOffer": "Aanbieding intrekken",
       "withdrawCounter": "Tegenbod intrekken",
-      "confirmDeal": "✓ Deal bevestigen ({amount} CZ$)",
+      "confirmDeal": "Deal bevestigen ({amount} CZ$)",
       "cancelDeal": "Deal annuleren",
       "archive": "Archiveren"
     },
@@ -132,14 +132,14 @@
     "cashFrom": "+{amount} CZ$ van {team}",
     "counterTag": "(tegenbod)",
     "buttons": {
-      "accept": "✓ Accepteren",
+      "accept": "Accepteren",
       "counter": "Tegenbod",
-      "reject": "✕ Afwijzen",
-      "acceptCounter": "✓ Tegenbod accepteren",
+      "reject": "Afwijzen",
+      "acceptCounter": "Tegenbod accepteren",
       "send": "Versturen",
       "withdraw": "Voorstel intrekken",
       "rejectShort": "Afwijzen",
-      "confirmSwap": "✓ Ruil bevestigen",
+      "confirmSwap": "Ruil bevestigen",
       "cancelSwap": "Deal annuleren",
       "archive": "Archiveren"
     },
@@ -252,12 +252,12 @@
     "ctaListRider": "Mijn selectie openen"
   },
   "toast": {
-    "offerSent": "✅ Aanbieding verstuurd!",
-    "listingRemoved": "✅ Renner van de transferlijst gehaald",
+    "offerSent": "Aanbieding verstuurd!",
+    "listingRemoved": "Renner van de transferlijst gehaald",
     "listingRemoveFailed": "De aanbieding kon niet worden verwijderd",
-    "offerAcceptedBuyer": "✅ Geaccepteerd · de koper moet de deal nu bevestigen",
-    "offerAcceptedSeller": "✅ Geaccepteerd · de verkoper moet de deal nu bevestigen",
-    "confirmedAwaiting": "✅ Bevestigd · wacht op bevestiging van de andere partij",
+    "offerAcceptedBuyer": "Geaccepteerd · de koper moet de deal nu bevestigen",
+    "offerAcceptedSeller": "Geaccepteerd · de verkoper moet de deal nu bevestigen",
+    "confirmedAwaiting": "Bevestigd · wacht op bevestiging van de andere partij",
     "dealCancelled": "Deal geannuleerd",
     "transferRejected": "Transfer afgewezen",
     "counterSent": "Tegenbod verstuurd",
@@ -265,27 +265,27 @@
     "newOfferSent": "Nieuwe aanbieding verstuurd",
     "offerWithdrawn": "Aanbieding ingetrokken",
     "offerArchived": "Aanbieding gearchiveerd",
-    "updated": "✅ Bijgewerkt",
-    "swapAccepted": "✅ Geaccepteerd · wacht op bevestiging",
-    "swapConfirmedAwaiting": "✅ Bevestigd · wacht op de andere partij",
+    "updated": "Bijgewerkt",
+    "swapAccepted": "Geaccepteerd · wacht op bevestiging",
+    "swapConfirmedAwaiting": "Bevestigd · wacht op de andere partij",
     "swapCancelled": "Ruil geannuleerd",
     "swapRejected": "Ruil afgewezen",
     "proposalWithdrawn": "Voorstel ingetrokken",
     "swapArchived": "Voorstel gearchiveerd",
-    "priceUpdated": "✅ Vraagprijs bijgewerkt",
+    "priceUpdated": "Vraagprijs bijgewerkt",
     "priceUpdateFailed": "De prijs kon niet worden bijgewerkt"
   },
   "celebration": {
     "transferDone": {
-      "title": "Transfer afgerond! 🎉",
+      "title": "Transfer afgerond!",
       "subtitle": "De renner zit nu in je team"
     },
     "swapDone": {
-      "title": "Ruil afgerond! 🎉",
+      "title": "Ruil afgerond!",
       "subtitle": "De renners zijn uitgewisseld"
     },
     "buyoutDone": {
-      "title": "Renner gekocht! 🎉",
+      "title": "Renner gekocht!",
       "subtitle": "De koopoptie is uitgeoefend"
     }
   },

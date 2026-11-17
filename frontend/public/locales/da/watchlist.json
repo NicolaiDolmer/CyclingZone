@@ -3,7 +3,7 @@
   "subtitle": "{count} ryttere på din ønskeliste, kun synlig for dig",
   "addRiders": "+ Tilføj ryttere",
   "emptyTitle": "Din ønskeliste er tom",
-  "emptyBody": "Klik på ⭐ ved siden af en rytter i rytterdatabasen for at tilføje dem her",
+  "emptyBody": "Klik på stjernen ved siden af en rytter i rytterdatabasen for at tilføje dem her",
   "emptyCta": "Gå til Ryttere",
   "searchPlaceholder": "Søg ryttere...",
   "searchAria": "Søg ryttere",

@@ -90,10 +90,10 @@ esac
 #   2. ucommittede aendringer i arbejdstraeet.
 #   3. nye untrackede filer (ellers taeller en helt ny kildefil ikke med).
 # Ingen aendringer = intet at preflighte.
-git rev-parse --verify origin/main >/dev/null 2>&1 || return 0
+git rev-parse --verify refs/remotes/origin/main >/dev/null 2>&1 || return 0
 CHANGED=$(
   {
-    git diff --name-only origin/main...HEAD 2>/dev/null
+    git diff --name-only refs/remotes/origin/main...HEAD 2>/dev/null
     git diff --name-only HEAD 2>/dev/null
     git ls-files --others --exclude-standard 2>/dev/null
   } | sort -u

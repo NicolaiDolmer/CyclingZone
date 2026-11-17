@@ -52,7 +52,8 @@ test("DataTable har en toolbar-slot inde i rammen, over scrolleren", () => {
   assert.match(dataTable, /toolbar = null/, "toolbar er en opt-in prop");
   assert.match(
     dataTable,
-    /\{toolbar &&[\s\S]{0,320}?border-b border-cz-border[\s\S]{0,200}?<div className=\{SCROLLER\}>/,
+    // #8278: rækken findes også, når kun `viewModes` (Overblik/Evner) er sat.
+    /\{\(toolbar \|\| viewModes\) &&[\s\S]{0,320}?border-b border-cz-border[\s\S]{0,260}?<div className=\{SCROLLER\}>/,
     "toolbaren skal staa inde i WRAP, over SCROLLER, adskilt af en hairline",
   );
 });
