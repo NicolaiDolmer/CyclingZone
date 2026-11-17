@@ -36,15 +36,15 @@ const RACE_ON: Record<number, string> = { 0: "Etape 2", 1: "Etape 3 + endagsløb
 // Ejerens hold (prod, kun SELECT 17/11): navne, nation og ryttertype er ægte.
 // Træningstallene (træthed, felter, XP) er eksempler.
 const REAL: Record<string, { name: string; nation: string; type: string }> = {
-  r1: { name: "Nicolò Vitali", nation: "it", type: "Klatrer" },
-  r2: { name: "Frederik Pedersen", nation: "dk", type: "Rouleur" },
-  r3: { name: "Aron Bizimana", nation: "er", type: "Brostensrytter" },
-  r4: { name: "Bram Janssen", nation: "be", type: "Puncheur" },
-  r5: { name: "Elias Fuchs", nation: "de", type: "Enkeltstartsrytter" },
-  r6: { name: "Henrik Nyström", nation: "no", type: "Rouleur" },
-  r7: { name: "Felix Schmidt", nation: "ch", type: "Allround" },
-  r8: { name: "Matthias Werner", nation: "de", type: "Allround" },
-  r9: { name: "Enzo Lemaire", nation: "fr", type: "Rouleur" },
+  r1: { name: "Henok Nguse", nation: "er", type: "Klatrer" },
+  r2: { name: "Zhi Deng", nation: "cn", type: "Rouleur" },
+  r3: { name: "Zhen Qian", nation: "cn", type: "Brostensrytter" },
+  r4: { name: "Gabriele Moretti", nation: "it", type: "Puncheur" },
+  r5: { name: "Sota Morita", nation: "jp", type: "Enkeltstartsrytter" },
+  r6: { name: "Lachlan Sutton", nation: "gb", type: "Rouleur" },
+  r7: { name: "Óscar Bermúdez", nation: "co", type: "Allround" },
+  r8: { name: "Rigoberto Guerrero", nation: "co", type: "Rouleur" },
+  r9: { name: "Jiwoo Hong", nation: "kr", type: "Sprinter" },
 };
 const TEAM: SketchRider[] = RIDERS.map((r) => ({ ...r, ...REAL[r.id] }));
 
@@ -57,7 +57,7 @@ const ORIGIN: Record<string, Origin> = {
   r5: { source: "program", label: "Program: Enkeltstart-uge" },
   r6: { source: "group", label: "Gruppe: Rouleur-gruppen" },
   r7: { source: "team", label: "Holdrytmen" },
-  r8: { source: "default", label: "Ingen plan · standard for Allround" },
+  r8: { source: "default", label: "Ingen plan · standard for Rouleur" },
   r9: { source: "team", label: "Holdrytmen" },
 };
 
@@ -393,10 +393,10 @@ export default function Direction4({ pressedAtStart, dateAtStart, mobile }: { pr
       {!readOnly && (
         <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-cz border border-cz-border bg-cz-card px-3 py-2 text-xs">
           <span className="font-semibold text-cz-1">Dagens beslutning</span>
-          <span className="text-cz-2">Aron Bizimana er over grænsen: Aktiv restitution</span>
+          <span className="text-cz-2">Zhen Qian er over grænsen: Aktiv restitution</span>
           <button type="button" className="font-medium text-cz-1 underline decoration-cz-border underline-offset-2">Brug</button>
           <span className="text-cz-3">·</span>
-          <span className="text-cz-2">Matthias Werner mangler plan: Mellem mod Allround</span>
+          <span className="text-cz-2">Rigoberto Guerrero mangler plan: Mellem mod Rouleur</span>
           <button type="button" className="font-medium text-cz-1 underline decoration-cz-border underline-offset-2">Brug</button>
           <span className="ms-auto text-cz-2"><button type="button" className="font-medium text-cz-1 underline decoration-cz-border underline-offset-2">Assistentens forslag (3)</button></span>
         </div>

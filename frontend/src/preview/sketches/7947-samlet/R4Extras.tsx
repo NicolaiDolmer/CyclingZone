@@ -80,7 +80,7 @@ function Compare({ n, question, rec, alt }: {
 export function Questions() {
   return (
     <main className="mx-auto flex max-w-[1100px] flex-col gap-4 px-4 pb-16 pt-6 sm:px-8">
-      <p className="text-sm text-cz-2">Bram Janssen (puncheur) følger programmet Ardennerne. Tirsdag (i dag) har du sat hurtigvalget <b className="text-cz-1">Hård mod Puncheur</b>. Sådan ser hans onsdag og torsdag ud:</p>
+      <p className="text-sm text-cz-2">Gabriele Moretti (puncheur) følger programmet Ardennerne. Tirsdag (i dag) har du sat hurtigvalget <b className="text-cz-1">Hård mod Puncheur</b>. Sådan ser hans onsdag og torsdag ud:</p>
       <Compare
         n={1}
         question="Hvad gælder på en dato, du ikke har rørt: programmet eller dit seneste hurtigvalg?"
@@ -186,11 +186,11 @@ export function ProgramView() {
       <p className="text-sm text-cz-2">Fanen Program. Ét programobjekt med to former. <b className="text-cz-1">Uge</b> følger ugedagene. <b className="text-cz-1">Rotation</b> kører dag 1, 2, 3 … og rykker kun frem på dage med træning, så et løb skubber rotationen i stedet for at springe en dag over (#7456).</p>
       <ProgramCard
         name="Ardennerne" mode="Rotation" days={ROTATION} labels={["Dag 1", "Dag 2", "Dag 3", "Dag 4 · hvile"]}
-        riders="Følges af Bram Janssen" lockedSlot={0}
-        note="Felt 1 er låst: kører Bram et løb, tager løbet dagens mindst vigtige pas, og Punch-intervallerne bliver stående. I dag er han på dag 1; hurtigvalget i dag gælder kun i dag, og rotationen fortsætter med dag 2 i morgen."
+        riders="Følges af Gabriele Moretti" lockedSlot={0}
+        note="Felt 1 er låst: kører Gabriele et løb, tager løbet dagens mindst vigtige pas, og Punch-intervallerne bliver stående. I dag er han på dag 1; hurtigvalget i dag gælder kun i dag, og rotationen fortsætter med dag 2 i morgen."
       />
       <ProgramCard
-        name="Enkeltstart-uge" mode="Uge" days={WEEK} labels={WEEKDAY} riders="Følges af Elias Fuchs" lockedSlot={null}
+        name="Enkeltstart-uge" mode="Uge" days={WEEK} labels={WEEKDAY} riders="Følges af Sota Morita" lockedSlot={null}
         note="Samme objekt i formen Uge: det, holdets 35 felter (7 dage × 5 felter) er i dag. Et program gives til en rytter, en gruppe eller hele holdet, og rækken på Dag viser altid, hvilket program feltet kommer fra."
       />
     </main>
