@@ -399,7 +399,9 @@ test("#7855 valg A: ikke med i udbruddet = jager fra sin gruppe; et sat-led efte
   advanceStagePlan(withDropped, { state: groups7855(false), segment: seg7855(0, 30), segmentIndex: 0, entrants: ENTRANTS });
   const events = advanceStagePlan(withDropped, { state: groups7855(false), segment: seg7855(30, 90), segmentIndex: 1, entrants: ENTRANTS });
   assert.deepEqual(events.map((e) => e.params), [{ rider_id: "h1", leg: 1, task: "ride_in", reason: "missed_break" }]);
-  assert.equal(stagePlanHuntTasks7855(withDropped), undefined);
+  // Hul 1 (Fable-dom PR #8218, ejer 16/11): jagten venter paa udbruddet; den gaelder kun, mens han ligger i et udbrud.
+  assert.deepEqual(stagePlanHuntTasks7855(withDropped), { h1: "hunt_kom" });
+  assert.deepEqual(stagePlanHuntWindows7855(withDropped), { h1: { fromKm: 0, toKm: Infinity, escapeOnly: true } });
   // Med i udbruddet bliver han paa udbrudsleddet og jager videre.
   const inBreak = createStagePlanRuntime(huntOrder7855([{ task: "breakaway", hunt: "hunt_kom" }, { task: "ride_in", from: { at: "dropped" } }]), HUNT_ROUTE_7855, ENTRANTS, { jerseyHunt7855: true })!;
   advanceStagePlan(inBreak, { state: groups7855(true), segment: seg7855(0, 30), segmentIndex: 0, entrants: ENTRANTS });
