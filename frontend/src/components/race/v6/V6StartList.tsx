@@ -138,7 +138,7 @@ export default function V6StartList({ raceId, isStageRace, stagesCompleted, resu
                 <span className="flex min-w-0 items-center gap-1.5">
                   {f.nation && <Flag code={f.nation} className="flex-none" />}
                   <RiderLink id={f.riderId} className="truncate text-sm font-semibold text-cz-1 hover:text-cz-accent-t">{f.name}</RiderLink>
-                  {f.mine && <span className="flex-none rounded-sm bg-cz-1 px-1.5 py-0.5 font-data text-3xs font-bold uppercase tracking-[.08em] text-cz-body">{t("stagePageV2.favourites.you")}</span>}
+                  {f.mine && <span className="flex-none rounded-cz bg-cz-1 px-1.5 py-0.5 font-data text-3xs font-bold uppercase tracking-[.08em] text-cz-body">{t("stagePageV2.favourites.you")}</span>}
                 </span>
                 <span className="text-2xs text-cz-2">
                   {f.teamName ? <TeamLink id={f.teamId} className="hover:text-cz-accent-t">{f.teamName}</TeamLink> : null}
@@ -238,7 +238,7 @@ export default function V6StartList({ raceId, isStageRace, stagesCompleted, resu
                 <section key={team.teamId} aria-label={team.name} className="rounded-cz border border-cz-border bg-cz-card px-2.5 py-2" data-start-team={team.mine ? "mine" : ""}>
                   <h3 className="m-0 mb-1 flex items-center justify-between gap-2 text-sm font-semibold text-cz-1">
                     <TeamLink id={team.teamId} className="min-w-0 truncate hover:text-cz-accent-t">{team.name || ts("raceStartList.unnamedTeam")}</TeamLink>
-                    {team.mine && <span className="flex-none rounded-sm bg-cz-1 px-1.5 py-0.5 font-data text-3xs font-bold uppercase tracking-[.08em] text-cz-body">{t("stagePageV2.favourites.you")}</span>}
+                    {team.mine && <span className="flex-none rounded-cz bg-cz-1 px-1.5 py-0.5 font-data text-3xs font-bold uppercase tracking-[.08em] text-cz-body">{t("stagePageV2.favourites.you")}</span>}
                   </h3>
                   <ul className="m-0 list-none p-0">
                     {team.riders.map((r) => (

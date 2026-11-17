@@ -322,6 +322,11 @@
       "title": "Noget du stemte på er live",
       "message": "Du stemte højt på {itemDa}, og det er live nu. Tak fordi du hjælper mig med at vælge, hvad jeg bygger."
     },
+    "boardMidSeason": {
+      "title": "Halvsæson-tjek (sæson {season})",
+      "lowSatisfaction": "Bestyrelsen er bekymret. Tilfredsheden er nede på {satisfaction}. Se på Bestyrelse-siden, hvilke mål der er bagud, og arbejd med dem, inden sæsonen slutter. Er presset økonomisk, kan du optage et lån på Økonomi-siden.",
+      "manyBehind": "Bestyrelsen er bekymret. Mindst halvdelen af sæsonens mål er bagud. Se hvilke på Bestyrelse-siden, og arbejd med dem, inden sæsonen slutter. Er presset økonomisk, kan du optage et lån på Økonomi-siden."
+    },
     "riderRetired": {
       "title": "{name} har indstillet karrieren",
       "message": "{name} har indstillet sin karriere som professionel cykelrytter som {age}-årig. Hans plads i truppen er nu fri."

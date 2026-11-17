@@ -129,6 +129,8 @@ import { buildBoardEvalContext, loadGoalContextForBoard } from "./boardGoalConte
 import { sumActiveLoanDebt, sumRiderSalaries } from "./boardUtils.js";
 import { sampleVoiceLine, BoardVoiceEmptyBucketError } from "./boardVoice.js";
 import { MANDATE_CATEGORIES, resolveMandateDisplayGoals } from "./boardMandate.js";
+// #7963 · Kategorimetrene regnes af SAMME funktion som dashboardets kort (/board/status → buildBoardOutlook).
+import { calculateBoardPerformance } from "./boardEvaluation.js";
 import { BOARD_MANDATE_MODEL_FLAG_KEY } from "./boardMandateFlag.js";
 import { queryCurrentSeasonActiveMandate } from "./boardMandateEngine.js";
 import { readFlagStage } from "./featureStage.js";
@@ -465,6 +467,26 @@ export function deriveBonusOffer({ rows = [], currentSeasonId = null } = {}) {
  * navne direkte af goal-objektet. Delt mellem mandate.goals[] og
  * vision.milestones[] — begge kommer fra samme rå mål-form.
  */
+/**
+ * #7963 · Tillidskortets fire kategorimetre, regnet LIVE af den samme motor-
+ * funktion som dashboardets bestyrelseskort (/board/status → buildBoardOutlook →
+ * calculateBoardPerformance). Før læste Boardroom `board_relations.category_scores`,
+ * et øjebliksbillede fra seneste løbsweekend, mens dashboardet regnede nu: samme
+ * økonomi-mål kunne derfor stå med to forskellige procenter. Ét regnestykke, to
+ * visninger. Tom liste når der intet 1yr-board er (kalderen beholder da det
+ * gemte billede).
+ */
+export function deriveLiveCategoryScores({ board, standing = null, team = null, context = {} } = {}) {
+  if (!board) return [];
+  const { scoreBreakdown } = calculateBoardPerformance({ board, standing, team, context });
+  const categories = scoreBreakdown?.categories || {};
+  // Dashboardet viser `score_pct` (loftet ved 100). Samme felt her, ikke en ny
+  // afrunding af `score`, ellers kan de to afvige med et point.
+  return MANDATE_CATEGORIES
+    .filter((key) => categories[key]?.score_pct != null && Number.isFinite(Number(categories[key].score_pct)))
+    .map((key) => ({ key, score: Math.max(0, Math.min(100, Number(categories[key].score_pct))) }));
+}
+
 export function buildGoalLabelSource(goal = {}) {
   return {
     type: goal?.type ?? null,
@@ -598,7 +620,8 @@ export async function buildBoardRoomPayload({
     // (sponsor_growth-målets ikke-baseline-halvdel, se boardGoalContext.js).
     // #1237 · balance tilføjet: nettostilling-input til no_outstanding_debt
     // (scoreFinanceHealthGoal).
-    supabase.from("teams").select("team_dna_key, created_at, sponsor_income, balance").eq("id", teamId).maybeSingle(),
+    // #7963 · division: identitetsprofilen i deriveLiveCategoryScores (samme felt som /board/status).
+    supabase.from("teams").select("team_dna_key, created_at, sponsor_income, balance, division").eq("id", teamId).maybeSingle(),
     activeSeasonPromise,
     // #4557 (1/9-tillæg) · Hele sæson-listen, kun til board.members[].sinceSeason
     // (deriveFoundingSeasonNumber). Lille tabel (én række pr. sæson) — billig
@@ -845,7 +868,8 @@ export async function buildBoardRoomPayload({
     // nedenfor skal bruge det PERSISTEREDE tal sponsorEngine/economyEngine
     // faktisk anvender (economyEngine.js:1784, sponsorEngine.js:199), ikke kun
     // et fallback udregnet af confidence.value — se kommentaren ved kaldet.
-    const BOARD_PROFILE_SELECT = "id, plan_type, seasons_completed, plan_start_season_number, "
+    // #7963 · focus: kategorivægtene i deriveLiveCategoryScores (samme række som /board/status).
+    const BOARD_PROFILE_SELECT = "id, plan_type, focus, seasons_completed, plan_start_season_number, "
       + "plan_start_sponsor_income, current_goals, negotiation_status, negotiated_at, budget_modifier";
     try {
       const fromBoardId = mandateRow.source?.from_board_id ?? null;
@@ -935,6 +959,17 @@ export async function buildBoardRoomPayload({
       seasonNumber: currentSeasonNumber,
       extra: { assignedMembers, reputationEnabled },
     });
+
+    // #7963 · Én sandhed for kategorimetrene: live, som dashboardet.
+    if (oneYearBoard) {
+      const liveCategories = deriveLiveCategoryScores({
+        board: oneYearBoard,
+        standing,
+        team: { division: teamRes.data?.division ?? null, riders },
+        context: evalContext,
+      });
+      if (liveCategories.length) confidence.categories = liveCategories;
+    }
 
     // #5618/#5751 · En AFSLUTTET legacy 1yr-forhandling (board_profiles.current_goals)
     // overtager target/label pr. mål uanset tidsstempel — men KUN i 'beta'/'off'
