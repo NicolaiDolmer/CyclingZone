@@ -71,6 +71,16 @@ for (const vp of VIEWPORTS) {
       await page.getByTestId(`team-plan-${process.env.SHOT_PLAN}`).first().click();
       await page.waitForTimeout(400);
     }
+    // #8298: SHOT_PICK=1 giver første rytter sit eget valg (Hard) og låser den anden, så billedet viser
+    // både "følger holdets plan" (intet lyser) og et eget valg.
+    if (process.env.SHOT_PICK === "1") {
+      const scope = vp.mobile ? page.locator("[data-tactics-timeline]") : page.locator("table[data-sortable]");
+      if (vp.mobile) { /* kortet åbnes nedenfor; valget sker i kortet */ } else {
+        await scope.locator("tr[data-tactics-rider]").nth(0).getByRole("button", { name: /^Hard$/ }).click();
+        await scope.locator("tr[data-tactics-rider]").nth(1).getByRole("button", { name: /^Lock / }).click();
+        await page.waitForTimeout(300);
+      }
+    }
     // Fanebjælken klæber ellers hen over ruten i et element-skud (billedfejl 35).
     await page.addStyleTag({ content: "[data-race-page] .sticky{position:static !important}" });
     if (process.env.SHOT_ALL === "1" && !vp.mobile) {
@@ -81,6 +91,7 @@ for (const vp of VIEWPORTS) {
       await page.locator("[data-tactics-timeline] li > button").first().click();
       await page.waitForTimeout(400);
     }
+    await page.waitForLoadState("networkidle").catch(() => {}); // flag-spritet hentes lazy
     const tag = process.env.SHOT_TAG ? `-${process.env.SHOT_TAG}` : "";
     // Kun selve fanen (fanebjælken klæber ellers hen over ruten i et fuldside-skud, billedfejl 35).
     const panel = page.locator("[data-tactics-panel]").first();

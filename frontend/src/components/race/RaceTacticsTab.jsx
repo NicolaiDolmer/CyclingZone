@@ -887,17 +887,25 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   });
   const currentFingerprint = teamPlanFingerprint(order, readyRoles);
   // #8298 (ejer 17/11): det valgte kort afledes af rytternes planer, så det huskes efter gem.
-  // Valget i denne fane (readyChoice) vinder, så længe kladden stadig svarer til det.
-  const selectedTeamPlan = readyChoice && readyChoice.raceId === raceId && readyChoice.stage === activeStage && readyChoice.fingerprint === currentFingerprint
-    ? readyChoice.kind
-    : (layout === "v6c" && ready7864 && stagePlanOn
-      ? TEAM_PLAN_KINDS.find((kind) => {
-        const plan = readyPlans[kind];
-        if (!plan) return false;
-        const applied = planWithLocks(plan);
-        return teamPlanFingerprint(applied.order, applied.roles) === currentFingerprint;
-      }) ?? null
-      : null);
+  // Ryttere med eget valg (Easy | Medium | Hard) eller lås følger ikke holdets plan, men holdets
+  // plan er stadig valgt: kortet er det, flest ryttere kører (mere end halvdelen af dem, der kører).
+  // Valget i denne fane (readyChoice) vinder for den etape.
+  const v6cSelectedPlan = () => {
+    const active = riders.filter((r) => !r.abandoned).map((r) => r.rider_id);
+    let best = null;
+    let bestCount = 0;
+    for (const kind of TEAM_PLAN_KINDS) {
+      const plan = readyPlans[kind];
+      if (!plan) continue;
+      const rows = new Map((plan.order.riders ?? []).map((r) => [r.rider_id, JSON.stringify(r.plan ?? null)]));
+      const count = active.filter((id) => rows.get(id) === JSON.stringify(orderByRider.get(id)?.plan ?? null) && planRole(roleFor(riders.find((r) => r.rider_id === id))) === plan.roles[id]).length;
+      if (count > bestCount) { best = kind; bestCount = count; }
+    }
+    return bestCount * 2 > active.length ? best : null;
+  };
+  const selectedTeamPlan = layout === "v6c" && ready7864 && stagePlanOn
+    ? (readyChoice && readyChoice.raceId === raceId && readyChoice.stage === activeStage ? readyChoice.kind : v6cSelectedPlan())
+    : (readyChoice && readyChoice.raceId === raceId && readyChoice.stage === activeStage && readyChoice.fingerprint === currentFingerprint ? readyChoice.kind : null);
   const savedStageNumbers = new Set([...(orders?.savedStageNumbers ?? []), ...(orders?.orders ?? []).map(row => row.stage_number), ...(Array.isArray(roles.overrides) ? roles.overrides : []).map(row => row.stage_number)]);
   const manualDraftStages = new Set([...changedStages(draftMatrix, initialMatrix), ...stageNumbers.filter(sn => JSON.stringify(ordersByStage[sn]) !== JSON.stringify(initialOrdersByStage[sn]))]);
   const sameTypePlans = ready7864 && stagePlanOn && orders?.atomicStageSave === true && selectedTeamPlan && activeStage != null

@@ -252,7 +252,7 @@ export default function TacticsRiderTable({ rows, allOrders, partLabels, columns
               const shown = hasOrders(row) && (allOrders || open[row.id] === true);
               return [
                 <tr key={row.id} data-tactics-rider={row.id} className={shown ? "" : "border-b border-cz-border"}>
-                  <td className={`${TD} max-w-[150px] font-medium`}><Name row={row} /></td>
+                  <td className={`${TD} max-w-[200px] font-medium`}><Name row={row} /></td>
                   <td className={TD}>{row.roleButton}</td>
                   <td className={`${TD} text-right`}><NumPlate value={row.rating} /></td>
                   <td className={`${TD} text-right`}><NumPlate value={row.form} /></td>
