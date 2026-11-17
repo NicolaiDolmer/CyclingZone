@@ -57,7 +57,7 @@ export default function BestRoleTag({ rider = null, role = null, variant = "shor
   const pad = variant === "short" ? "px-1.5 py-0.5" : "px-2 py-1";
   return (
     <span
-      className={`inline-flex items-center rounded font-medium leading-none whitespace-nowrap bg-cz-2/10 text-cz-2 ${text} ${pad} ${className}`}
+      className={`inline-flex items-center rounded-cz font-medium leading-none whitespace-nowrap bg-cz-2/10 text-cz-2 ${text} ${pad} ${className}`}
       title={t("bestRole.title", { role: full })}
       data-best-role={key}
       {...(testId ? { "data-testid": testId } : {})}

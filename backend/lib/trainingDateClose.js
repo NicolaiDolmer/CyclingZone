@@ -6,6 +6,33 @@ import { isTrainingDateTeam, loadTrainingDateContext, loadTrainingDateTeams, nex
 import { loadFinalTrainingDate, TRAINING_DATE_SETTLEMENT_HOUR } from './seasonTransitionReadiness.js';
 import { ADMIN_ACTION_TYPE } from './economyConstants.js';
 import { TRANSITION_PHASE_LOG_SOURCE, TRANSITION_PHASE_STATUS } from './seasonTransitionPhaseLog.js';
+import { createTrainNowPressMemory } from './trainNowPressMemory.js';
+import { evaluateFlagStage } from './featureStage.js';
+
+/**
+ * #6490 B: the evening run settles a team's five race days with the train-now press's
+ * memory (trainNowPressMemory.js): the first race day reads, the later ones are counted
+ * from that read and saved with the same database function. Off (seed) = the sweep
+ * calls runDay exactly as before, one full read per race day.
+ */
+export const TRAINING_SWEEP_MEMORY_KEY = 'training_sweep_memory_6490';
+
+/**
+ * Read once per sweep, fresh (never cached): only "on" (or legacy true) switches it on.
+ * A failed read is off, so the switch can never stop the evening run.
+ * @param {any} supabase
+ * @returns {Promise<boolean>}
+ */
+export async function isTrainingSweepMemoryEnabled(supabase) {
+  try {
+    const { data, error } = await supabase.from('app_config').select('value').eq('key', TRAINING_SWEEP_MEMORY_KEY).maybeSingle();
+    if (error) return false;
+    return evaluateFlagStage(data?.value ?? null);
+  } catch {
+    // best-effort: an unreadable switch means the old read-per-race-day path (off).
+    return false;
+  }
+}
 
 /**
  * #6536: who gets the division-less calendar-day tick (gameDay null)?
@@ -312,8 +339,14 @@ export async function runNormalizedTrainingDateSweep({
   elapsedClock = () => performance.now(),
   // #5911: how many teams settle at once. 1 = the old sequential sweep.
   teamConcurrency = 1,
+  // #6490 B: whether a team's race days share the press memory (read lazily, once per sweep).
+  loadSweepMemory = isTrainingSweepMemoryEnabled,
 }) {
   const startedAt = elapsedClock();
+  // #6490 B: one switch read per sweep, and only when a team reaches its race days, so a
+  // sweep with nothing to settle asks nothing more than before.
+  let sweepMemoryPromise = null;
+  const sweepMemoryOn = () => (sweepMemoryPromise ??= Promise.resolve().then(() => loadSweepMemory(supabase)).then(Boolean, () => false));
   const index = await loadIndex({ supabase, now });
   const summary = { ran: false, tickDate: index.today, gameDays: [], divisions: 0, planned: 0, swept: 0, alreadyRan: 0, failed: 0, failures: [], pending: 0, quarantined: 0, departed: 0, durationMs: 0 };
   const allDays = new Set(), divisions = new Set();
@@ -440,6 +473,13 @@ export async function runNormalizedTrainingDateSweep({
         if (!readiness.deadlineReached && Object.keys(readiness.unresolvedSlotsByRider).length) waitingForDate = true;
         if (!readiness.eligibleRiderIds.length) return;
         if (divisionId) divisions.add(divisionId);
+        // #6490 B: one memory per team and date, gone with this call (never shared between
+        // teams or sweeps). Every race day asks for the same ready riders, so the press plan
+        // is the date's race days with that one list. Off: runDay gets exactly the old arguments.
+        const memory = await sweepMemoryOn()
+          ? { pressReads: true, pressMemory: createTrainNowPressMemory(),
+            pressRuns: work.game_days.map(gameDay => ({ gameDay, riderIds: [...readiness.eligibleRiderIds] })) }
+          : null;
         for (const gameDay of work.game_days) {
           failingGameDay = gameDay;
           allDays.add(gameDay); summary.planned++;
@@ -448,6 +488,7 @@ export async function runNormalizedTrainingDateSweep({
             now, tickDateOverride: job.tickDate, gameDay, dateGameDays: work.game_days, executedBy: 'assistant',
             eligibleRiderIds: readiness.eligibleRiderIds, unresolvedSlotsByRider: readiness.unresolvedSlotsByRider,
             deadlineAt: readiness.deadlineAt.toISOString(), deadlineReached: readiness.deadlineReached,
+            ...memory,
           });
           summary.ran = true;
           if (result?.alreadyRan) summary.alreadyRan++; else summary.swept++;

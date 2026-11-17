@@ -49,7 +49,8 @@ test("#5419 de nye stribe-props har trygge defaults (renderer intet stribe-relat
   );
   assert.match(
     raceTeamTab,
-    /\{onSelectStage && \(\s*\n\s*<StageStripe/,
+    // #7862: under v6 skjules fanens egen stribe også (hovedkortets etapestribe er den ene vælger).
+    /\{onSelectStage && !hideStageStripe && \(\s*\n\s*<StageStripe/,
     "stribe-linjen skal gates bag onSelectStage, så en fremtidig kalder uden callback ikke render'er en dødt-klik-stribe",
   );
 });
@@ -89,5 +90,13 @@ test("#5419 et etapeskift via changeStage rammer PRÆCIS de props der allerede f
     raceDetailPage,
     /const selectedStageIndexForPanel = scheduledStageNums\.indexOf\(scheduledStage\)/,
     "selectedStageIndexForPanel skal stadig udledes af scheduledStage — det er DEN variabel changeStage (nu kaldt fra Hold-fanens stribe) skriver til via ?stage=",
+  );
+});
+
+test("#7862 under v6 navngiver Hold-fanens overskrift den valgte etape (wireframe v6c), ellers uændret", () => {
+  assert.match(
+    raceTeamTab,
+    /title=\{!isOneDay && roleStage != null \? `\$\{t\("racePage\.team\.title"\)\} · \$\{t\("detail\.tabStage", \{ number: roleStage \}\)\}` : t\("racePage\.team\.title"\)\}/,
+    "overskriften skal være \"Hold · Etape N\", når rollerne følger en valgt etape, og ellers kun \"Hold\"",
   );
 });

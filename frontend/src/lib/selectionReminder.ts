@@ -155,3 +155,25 @@ export function deadlineCountdown(hoursUntil: number): DeadlineCountdown {
   if (hoursUntil < 48) return { unit: "hours", value: Math.floor(hoursUntil) };
   return { unit: "days", value: Math.floor(hoursUntil / 24) };
 }
+
+/**
+ * #8069 T01: skal Planlaegnings sidehoved vise en fristlinje? Bruges af siden til
+ * kun at give PageHeader en undertitel, naar der er noget at vise (ellers
+ * renderer PageHeader et tomt <p> med margen, og hovedet bliver hoejere).
+ */
+export function hasHeaderDeadline(reminder: SelectionReminder | null | undefined): boolean {
+  return Boolean(reminder?.enabled && reminder.tone !== "none" && reminder.races?.length);
+}
+
+/**
+ * #8069 T01: hvilket loeb fristen i Planlaegnings sidehoved handler om. Det
+ * tidligste loeb, men ved roed samlet tone det tidligste ROEDE loeb, saa
+ * "Holdet stiller ikke op" og fristen beskriver samme loeb (Codex-review #8317;
+ * jf. backend/lib/selectionDeadlineReminder.test.js: 6/8 om 4 t + 5/8 om 8 t).
+ */
+export function pickHeaderRace(reminder: SelectionReminder): SelectionReminderRace | null {
+  if (!reminder?.races?.length) return null;
+  const urgent = reminder.tone === "urgent" ? reminder.races.filter((race) => race.tone === "urgent") : [];
+  const pool = urgent.length ? urgent : reminder.races;
+  return pool.reduce((a, b) => (b.hours_until < a.hours_until ? b : a));
+}
