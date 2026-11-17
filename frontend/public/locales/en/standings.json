@@ -46,9 +46,6 @@
   "onlineNow": "Online now",
   "offline": "Offline",
   "movement": {
-    "label": "Movement",
-    "up": "{count} promoting",
-    "down": "{count} relegating",
     "ruleBoth": "Top {up} go up, bottom {down} go down",
     "ruleBothPerPool": "Top {up} up, bottom {down} down in each of the {pools} pools",
     "ruleDown": "Bottom {down} go down",

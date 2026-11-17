@@ -198,7 +198,8 @@ export default function TodayRowsMobile({
                           disabled={disabled}
                           data-choice={choice}
                           onClick={active ? undefined : () => onChoose(rider.id, choice)}
-                          className={`min-h-10 px-2 text-xs font-medium transition-colors duration-150 ${
+                          // #8279 (rettelse 15): 44 px trykflade (P16), var 40.
+                          className={`min-h-11 px-2 text-xs font-medium transition-colors duration-150 ${
                             i > 0 ? "border-s border-cz-border" : ""
                           } ${
                             active
