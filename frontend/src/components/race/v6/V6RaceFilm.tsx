@@ -378,7 +378,7 @@ function ClimbAttackReportLine({ line, current, cast, text, onJump }: {
           {t(`detail.film.event.${v6ClimbAttackCopyKey(line)}`, { rider, climb: line.climbName ?? "" })}
           {line.mineIds.length > 0 && (
             <span className="ml-1.5 inline-flex items-center gap-1.5 align-middle">
-              <span className="rounded-sm bg-cz-1 px-1.5 py-0.5 font-data text-3xs font-bold uppercase tracking-[.08em] text-cz-body">{t("stagePageV2.story.you")}</span>
+              <span className="rounded-cz bg-cz-1 px-1.5 py-0.5 font-data text-3xs font-bold uppercase tracking-[.08em] text-cz-body">{t("stagePageV2.story.you")}</span>
             </span>
           )}
         </span>
@@ -406,7 +406,7 @@ function ReportLine({ line, current, text, onJump }: { line: StoryLine; current:
           {text.lineText(line)}
           {note !== null && (
             <span className="ml-1.5 inline-flex items-center gap-1.5 align-middle">
-              <span className="rounded-sm bg-cz-1 px-1.5 py-0.5 font-data text-3xs font-bold uppercase tracking-[.08em] text-cz-body">{t("stagePageV2.story.you")}</span>
+              <span className="rounded-cz bg-cz-1 px-1.5 py-0.5 font-data text-3xs font-bold uppercase tracking-[.08em] text-cz-body">{t("stagePageV2.story.you")}</span>
               {note && <span className="text-xs font-semibold text-cz-1">{note}</span>}
             </span>
           )}

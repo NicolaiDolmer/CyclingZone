@@ -312,6 +312,20 @@ export function v6StripCells({
   return out;
 }
 
+/**
+ * #8253: rutekortets profil for den valgte etape. Kun en profil hvis etapenummer er
+ * præcis den valgte etape (en række uden nummer er etape 1, som siden selv nøgler
+ * den); ellers null, så kortet hellere udelades end viser en anden etapes rute.
+ * Taktik bruger samme opslag, så rute og plan altid handler om samme etape.
+ */
+export function v6RouteProfile<P extends { stage_number?: number | null }>(
+  profileByStage: Record<number, P | null | undefined>, stageNumber: number,
+): P | null {
+  const p = profileByStage[stageNumber] ?? null;
+  if (!p) return null;
+  return (p.stage_number ?? 1) === stageNumber ? p : null;
+}
+
 /** Piletaster i striben: næste/forrige etape, Home/End til første/sidste. null = ingen flytning. */
 export function v6StripKeyTarget(key: string, current: number, total: number): number | null {
   if (total < 1) return null;
