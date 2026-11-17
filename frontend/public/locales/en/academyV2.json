@@ -1,0 +1,54 @@
+{
+  "v2": {
+    "overview": "Academy overview",
+    "tabsLabel": "Academy sections",
+    "tabs": {
+      "intake": "This week's intake",
+      "talents": "Your talents",
+      "profile": "Profile and age"
+    },
+    "stats": {
+      "intake": "Intake",
+      "junior": "Junior squad",
+      "u23": "U23 squad",
+      "talents": "Talents",
+      "ageFocus": "Age focus",
+      "full": "Full"
+    },
+    "squad": {
+      "junior": "Junior",
+      "u23": "U23"
+    },
+    "landsOn": "Lands on the {squad} squad",
+    "talents": {
+      "colNation": "Nat.",
+      "colRider": "Rider",
+      "colType": "Rider type",
+      "colSquad": "Squad",
+      "colAge": "Age",
+      "colPrognosis": "Prognosis",
+      "count": "{count, plural, one {# talent} other {# talents}}",
+      "emptyTitle": "No talents yet",
+      "emptyBody": "Riders you sign from the intake show up here with their rider type.",
+      "emptyAction": "Go to this week's intake",
+      "errorTitle": "Your talents could not be loaded",
+      "errorBody": "Try again in a moment. Your squads are unchanged."
+    },
+    "age": {
+      "label": "Age focus",
+      "mixed": "Mixed",
+      "distributionLabel": "Expected intake by age",
+      "row": "{age}: {share}",
+      "share": {
+        "many": "many",
+        "some": "some",
+        "few": "few"
+      },
+      "intro": "Pick the age your weekly candidates lean towards. Every age still turns up.",
+      "toU23": "19-year-olds always join the U23 squad.",
+      "inline": "age focus {focus}",
+      "errorTitle": "The academy profile didn't load",
+      "errorBody": "Nothing was changed. Reload the page to try again."
+    }
+  }
+}
