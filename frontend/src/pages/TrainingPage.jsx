@@ -80,7 +80,9 @@ import { useTrainNow } from "../components/training/TrainNowClient.ts";
 import { trainNowRunGate, trainNowSaveErrorKey, trainNowNeedsConfirm, trainNowWarnings, trainNowInstantConfirm } from "../components/training/TrainNowState.ts";
 import TrainNowNote from "../components/training/TrainNowNote.tsx";
 import FatigueForecast from "../components/training/FatigueForecast.tsx";
-import { useFatigueForecast, raceSlotsFor } from "../components/training/FatigueForecastData.ts";
+import { useFatigueForecast } from "../components/training/FatigueForecastData.ts";
+import { todayLockedSlots, ranSlotsFor } from "../components/training/settleAfterStage7982/settleAfterStageModel.ts"; // #7982
+import RaceSessionNote from "../components/training/settleAfterStage7982/RaceSessionNote.tsx";
 import { programSessionToday, PROGRAM_SLOTS, isProgramPlan } from "../lib/trainingPrograms.ts";
 import TrainingMobileRiderCard from "../components/training/mobile/TrainingMobileRiderCard.tsx";
 import {
@@ -2049,7 +2051,8 @@ export default function TrainingPage() {
           group={activeGroup}
           client={trainingGroups}
           forecast={fatigueForecast.forecast}
-          lockedFor={(id) => raceSlotsFor(fatigueForecast.forecast, id)}
+          lockedFor={(id) => todayLockedSlots(fatigueForecast.forecast, id)}
+          ranFor={(id) => ranSlotsFor(fatigueForecast.forecast, id)}
           catalog={programs.catalog}
           riderShortName={(id) => `${riderByIdMap.get(id)?.firstname?.charAt(0) ?? ""}. ${riderByIdMap.get(id)?.lastname ?? ""}`}
           onEdit={() => setGroupDialog({ group: activeGroup })}
@@ -2074,7 +2077,8 @@ export default function TrainingPage() {
         days: isSeed ? seedDays : ownDays,
         isSeed,
         program: programs.catalog.find((p) => p.key === programs.assigned?.[key]) ?? null,
-        lockedToday: raceSlotsFor(fatigueForecast.forecast, key),
+        lockedToday: todayLockedSlots(fatigueForecast.forecast, key),
+        ranToday: ranSlotsFor(fatigueForecast.forecast, key),
         busy: programs.busy,
         onSetCell: async (weekday, slotIndex, session) => {
           const result = await programs.setCell(key, weekday, slotIndex, session);
@@ -2476,6 +2480,7 @@ export default function TrainingPage() {
 
       {isMobile && primaryButton}
       <TrainNowNote status={trainNow.status} result={trainNow.result} error={trainNow.error} className="mb-3" />
+      <RaceSessionNote forecast={fatigueForecast.forecast} className="mb-3" />
       {/* #6740: the press locks every rider for today, so a race below the start floor
           can no longer be topped up and the team will not start. Asked once, here. */}
       <Modal
