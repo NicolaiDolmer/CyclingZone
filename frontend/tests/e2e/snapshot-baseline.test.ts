@@ -22,18 +22,20 @@ const FRONTEND_DIR = path.resolve(E2E_DIR, "../..");
 const REPO_ROOT = path.resolve(FRONTEND_DIR, "..");
 const WORKFLOWS = path.join(REPO_ROOT, ".github", "workflows");
 
-const read = (p) => fs.readFileSync(p, "utf8");
+const read = (p: string): string => fs.readFileSync(p, "utf8");
 const smoke = read(path.join(WORKFLOWS, "playwright-smoke.yml"));
 const update = read(path.join(WORKFLOWS, "update-snapshots.yml"));
 const config = read(path.join(FRONTEND_DIR, "playwright.config.js"));
-const lock = JSON.parse(read(path.join(FRONTEND_DIR, "package-lock.json")));
+const lock = JSON.parse(read(path.join(FRONTEND_DIR, "package-lock.json"))) as {
+  packages: Record<string, { version?: string } | undefined>;
+};
 
 const IMAGE_LINE = /^\s*image:\s*(mcr\.microsoft\.com\/playwright:\S+)\s*$/gm;
 const PINNED_IMAGE = /^mcr\.microsoft\.com\/playwright:v(\d+\.\d+\.\d+)-noble@sha256:[0-9a-f]{64}$/;
-const projectNames = [...config.matchAll(/^\s*name:\s*"([a-z-]+)",\s*$/gm)].map((m) => m[1]);
+const projectNames: string[] = [...config.matchAll(/^\s*name:\s*"([a-z-]+)",\s*$/gm)].map((m) => m[1] ?? "");
 
-function imagesIn(source) {
-  return [...source.matchAll(IMAGE_LINE)].map((m) => m[1]);
+function imagesIn(source: string): string[] {
+  return [...source.matchAll(IMAGE_LINE)].map((m) => m[1] ?? "");
 }
 
 test("playwright.config.js definerer de tre projekter (#536)", () => {
@@ -50,7 +52,8 @@ test("begge workflows bruger eet og samme Playwright-image, pinnet paa digest", 
 });
 
 test("image-versionen matcher @playwright/test i frontend/package-lock.json", () => {
-  const [, imageVersion] = imagesIn(smoke)[0].match(PINNED_IMAGE);
+  const imageVersion = (imagesIn(smoke)[0] ?? "").match(PINNED_IMAGE)?.[1];
+  assert.ok(imageVersion, "playwright-smoke.yml mangler et pinnet Playwright-image");
   const installed = lock.packages["node_modules/@playwright/test"]?.version;
   assert.ok(installed, "@playwright/test mangler i package-lock.json");
   assert.equal(
@@ -73,12 +76,12 @@ test("snapshot-sammenligning er slaaet til i begge workflows og kun i containere
 test("label-workflowet fornyer alle tre projekter og kun same-repo-PR'er", () => {
   const matrix = update.match(/^\s*project:\s*\[([^\]]+)\]\s*$/m);
   assert.ok(matrix, "update-snapshots.yml mangler project-matrixen");
-  assert.deepEqual(matrix[1].split(",").map((s) => s.trim()).sort(), [...projectNames].sort());
+  assert.deepEqual((matrix[1] ?? "").split(",").map((s) => s.trim()).sort(), [...projectNames].sort());
   const forkGuards = update.match(/github\.event\.pull_request\.head\.repo\.full_name == github\.repository/g) ?? [];
   assert.ok(forkGuards.length >= 2, "baade generate og commit skal udelukke fork-PR'er");
 });
 
-function trackedSnapshots() {
+function trackedSnapshots(): string[] | null {
   try {
     return execFileSync("git", ["ls-files", "--", "tests/e2e"], { cwd: FRONTEND_DIR, encoding: "utf8" })
       .split("\n")
@@ -100,13 +103,14 @@ test("alle committede baselines er Linux-container-billeder, komplette pr. proje
 
   const projectAlt = projectNames.join("|");
   const shape = new RegExp(`^(.+)-(${projectAlt})-linux\\.png$`);
-  const byName = new Map();
+  const byName = new Map<string, Set<string>>();
   for (const file of files) {
     const m = file.match(shape);
     assert.ok(m, `ukendt projekt i ${file}`);
-    const set = byName.get(m[1]) ?? new Set();
-    set.add(m[2]);
-    byName.set(m[1], set);
+    const name = m[1] ?? "";
+    const set = byName.get(name) ?? new Set<string>();
+    set.add(m[2] ?? "");
+    byName.set(name, set);
   }
   for (const [name, projects] of byName) {
     assert.equal(projects.size, projectNames.length, `${name} mangler for: ${projectNames.filter((p) => !projects.has(p)).join(", ")}`);

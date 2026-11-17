@@ -50,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # SKAL vaere identisk med e2e-shard i playwright-smoke.yml
-    # (frontend/tests/e2e/snapshot-baseline.test.js haandhaever det).
+    # (frontend/tests/e2e/snapshot-baseline.test.ts haandhaever det).
     container:
       image: mcr.microsoft.com/playwright:v1.65.0-noble@sha256:9beb546099e11f52d62e505537914870e01a67e0e6b00ae41da4775324e73dbe
       options: --ipc=host

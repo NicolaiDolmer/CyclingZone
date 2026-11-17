@@ -37,7 +37,7 @@ name: Playwright Smoke
 # Foer var runneren windows-latest og baselines win32, saa de kun kunne fornyes
 # paa een maskine. Fornyelse nu: label "opdater snapshots" (update-snapshots.yml).
 # Image-tag, digest og @playwright/test-versionen holdes ens af
-# frontend/tests/e2e/snapshot-baseline.test.js.
+# frontend/tests/e2e/snapshot-baseline.test.ts.
 #
 # Værn mod stille e2e-spec-rot (2026-07-02): da rytterprofil-redesignet (#2000,
 # PR #2037) fjernede "Effektprofil"-sektionen, FANGEDE dette job regressionen i
@@ -190,7 +190,7 @@ jobs:
     # kommer fra imaget, ikke fra `npx playwright install`. Derfor er pixel-
     # baselines reproducerbare. Bump: ret tag+digest her OG i
     # update-snapshots.yml sammen med @playwright/test, og forny snapshots med
-    # labelen (snapshot-baseline.test.js fejler ved uoverensstemmelse).
+    # labelen (snapshot-baseline.test.ts fejler ved uoverensstemmelse).
     # --ipc=host: Chromium loeber ellers toer for delt hukommelse i Docker.
     container:
       image: mcr.microsoft.com/playwright:v1.65.0-noble@sha256:9beb546099e11f52d62e505537914870e01a67e0e6b00ae41da4775324e73dbe
@@ -237,7 +237,7 @@ jobs:
       # #3429: CI kører alle tre projekter (desktop-chromium, mobile-chromium,
       # mobile-webkit). #8348: browserne ligger i container-imaget, saa der er
       # intet install-step; et versionsbrud mellem image og @playwright/test
-      # fanges statisk af snapshot-baseline.test.js (naeste step).
+      # fanges statisk af snapshot-baseline.test.ts (naeste step).
 
       # #1342: byg frontend FØR Playwright, så webServer-kommandoen i CI kun er
       # den statiske server (én proces). `npm run build && npm run preview` i én
@@ -258,7 +258,7 @@ jobs:
       # committet sti). Den kører her fordi den er sekunder og skal fejle før
       # suiten, ikke efter.
       - name: Run e2e guards (static)
-        run: node --test tests/e2e/guards.test.js tests/e2e/snapshot-baseline.test.js
+        run: node --test tests/e2e/guards.test.js tests/e2e/snapshot-baseline.test.ts
 
       # Selve lanen. `--grep-invert @flaky` er karantæne-mekanismen: en test
       # der tagges `@flaky` køres stadig (steppet nedenfor), men kan ikke gøre
