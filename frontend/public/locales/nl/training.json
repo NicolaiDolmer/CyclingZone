@@ -114,7 +114,6 @@
     "colSeasonPoints": "Seizoenspnt",
     "colFatigueTonight": "Vermoeidheid nu / vanavond",
     "fatigueTonightAria": "Vermoeidheid nu {now}, vanavond circa {value}. {band}",
-    "fatigueAtStart": "{now} nu, circa {value} bij de start",
     "selectRider": "{name} selecteren",
     "applyTo": "Toepassen op {n}",
     "bulkLead": "De dag van vandaag instellen voor",
