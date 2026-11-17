@@ -12,9 +12,11 @@
       "u23": "Équipe U23, coureurs de 22 ans ou moins",
       "junior": "Équipe juniors, coureurs de 18 ans ou moins"
     },
-    "squadValue": "Valeur de l'effectif : {value} CZ$",
-    "rosterCount": "{count}/{cap} coureurs dans l'effectif",
-    "seniorsStayHint": "Les coureurs de ton effectif senior restent seniors tant que tu ne les déplaces pas. Ouvre un coureur et utilise Changer d'effectif."
+    "seniorsStayHint": "Les coureurs de ton effectif senior restent seniors tant que tu ne les déplaces pas. Ouvre un coureur et utilise Changer d'effectif.",
+    "stats": {
+      "riders": "Coureurs",
+      "squadValue": "Valeur de l'effectif"
+    }
   },
   "tabs": {
     "ariaLabel": "Sections de l'effectif",

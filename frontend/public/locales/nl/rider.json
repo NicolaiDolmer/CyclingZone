@@ -56,8 +56,8 @@
     "watchlistToggleFailed": "Je volglijst kon niet worden bijgewerkt. Probeer het opnieuw.",
     "compare": "⇄ Vergelijken",
     "compareTitle": "Vergelijken met andere renners",
-    "watchlistCount": "👁 {count, plural, one {1 manager volgt deze renner} other {# managers volgen deze renner}}",
-    "visitors": "👀 {count, plural, one {1 unieke bezoeker} other {# unieke bezoekers}} (7d)",
+    "watchlistCount": "{count, plural, one {1 manager volgt deze renner} other {# managers volgen deze renner}}",
+    "visitors": "{count, plural, one {1 unieke bezoeker} other {# unieke bezoekers}} (7d)",
     "visitors24h": "{count, plural, one {1 in de laatste 24u} other {# in de laatste 24u}}",
     "visitorsNew": "Nieuw",
     "visitorsTrendUp": "{pct}% hoger dan de vorige 7 dagen",
@@ -75,7 +75,7 @@
     "freeAgent": "Transfervrij",
     "nextSeasonPrefix": "Binnenkomend:",
     "pendingTransfer": "Sluit zich aan bij {team} zodra zijn huidige etappekoers is afgelopen",
-    "activeAuctionBadge": "⚡ Actieve veiling",
+    "activeAuctionBadge": "Actieve veiling",
     "highestBidLabel": "Hoogste bod: {amount} CZ$",
     "valueLabel": "Waarde CZ$",
     "contractSalary": "Salaris CZ$",
@@ -88,7 +88,7 @@
     "newValueBetaTooltip": "Voorbeeld van de komende waardering op basis van vaardigheden. Wordt nog niet gebruikt voor kopen, verkopen of salaris."
   },
   "blocked": {
-    "pendingTransfer": "🔒 De renner is verhandeld en sluit zich bij zijn nieuwe team aan zodra zijn huidige etappekoers is afgelopen. Tot dan kan hij niet opnieuw worden verhandeld.",
+    "pendingTransfer": "De renner is verhandeld en sluit zich bij zijn nieuwe team aan zodra zijn huidige etappekoers is afgelopen. Tot dan kan hij niet opnieuw worden verhandeld.",
     "retired": "De renner is gestopt en kan niet worden verhandeld.",
     "errorFallback": "Er ging iets mis"
   },
@@ -722,13 +722,13 @@
     }
   },
   "auctionPanel": {
-    "activeLabel": "⚡ Actieve veiling",
+    "activeLabel": "Actieve veiling",
     "badges": {
       "leading": "Jij staat aan de leiding",
       "selling": "Jij verkoopt",
       "outbid": "Je bent overboden",
-      "extended": "⚡ Verl.",
-      "flash": "⚡ Flash"
+      "extended": "Verl.",
+      "flash": "Flash"
     },
     "highestBid": "Hoogste bod",
     "leaderFallback": "",
@@ -760,7 +760,7 @@
       "saveAria": "Limiet voor automatisch bieden opslaan",
       "cancelAria": "Bewerken van automatisch bod annuleren",
       "error": "Fout",
-      "saved": "✓"
+      "saved": "Opgeslagen"
     },
     "riderNameFallback": "renner"
   },
@@ -779,7 +779,7 @@
       "free": "Veiling starten (transfervrije renner)"
     },
     "flash": {
-      "label": "⚡ Flitsveiling (30 min)",
+      "label": "Flitsveiling (30 min)",
       "hint": "Deadline Day: eindigt precies 30 minuten na de start"
     },
     "end": {
@@ -789,7 +789,7 @@
     },
     "buttons": {
       "start": "Veiling starten",
-      "startFlash": "⚡ Flitsveiling starten",
+      "startFlash": "Flitsveiling starten",
       "loading": "..."
     },
     "priceError": "De startprijs moet minstens gelijk zijn aan de waarde ({amount} CZ$)",
@@ -803,8 +803,8 @@
     "submit": "Aanbieding versturen",
     "sending": "Versturen...",
     "toast": {
-      "success": "✅ Aanbieding verstuurd!",
-      "errorPrefix": "❌"
+      "success": "Aanbieding verstuurd!",
+      "errorPrefix": "Fout:"
     }
   },
   "sellRider": {
@@ -821,10 +821,10 @@
     "confirmRemove": "Ja, verwijderen",
     "cancel": "Annuleren",
     "toast": {
-      "listed": "✅ Te koop gezet!",
-      "priceUpdated": "✅ Vraagprijs bijgewerkt",
-      "removed": "✅ Van de transferlijst gehaald",
-      "errorPrefix": "❌",
+      "listed": "Te koop gezet!",
+      "priceUpdated": "Vraagprijs bijgewerkt",
+      "removed": "Van de transferlijst gehaald",
+      "errorPrefix": "Fout:",
       "autoNotSaved": "De autoprijs is niet opgeslagen:"
     },
     "editPrices": "Prijzen aanpassen",
@@ -886,12 +886,12 @@
     "submit": "Ruil versturen",
     "sending": "Versturen...",
     "toast": {
-      "success": "✅ Ruil voorgesteld!",
-      "errorPrefix": "❌"
+      "success": "Ruil voorgesteld!",
+      "errorPrefix": "Fout:"
     }
   },
   "celebration": {
-    "title": "Je hebt de veiling gewonnen! 🏆",
+    "title": "Je hebt de veiling gewonnen!",
     "subtitle": "De renner zit nu in je team"
   },
   "compare": {

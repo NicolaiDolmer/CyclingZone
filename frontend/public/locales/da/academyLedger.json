@@ -1,0 +1,41 @@
+{
+  "title": "Akademi-regnskab",
+  "caption": "Udgifter og salg tæller de samme ryttere: alle du har hentet fra et akademitilbud eller vundet på ungdomsauktion. Udgifter står med minus.",
+  "colSeason": "Sæson",
+  "thisSeason": "Denne sæson",
+  "season": "Sæson {n}",
+  "noSeason": "Uden sæson",
+  "offerSignings": "Hentet fra tilbud",
+  "youthAuctionBuys": "Købt på ungdomsauktion",
+  "drift": "Drift",
+  "driftHistoric": "Drift (tidligere sæsoner)",
+  "sales": "Salg",
+  "salesCount": "{count, plural, one {# salg} other {# salg}}",
+  "net": "Netto",
+  "total": "Alle sæsoner",
+  "salesTitle": "Salg af akademiryttere",
+  "colRider": "Rytter",
+  "colDate": "Dato",
+  "colOrigin": "Kom fra",
+  "colVia": "Solgt via",
+  "colPrice": "Pris",
+  "origin": {
+    "offer": "Akademitilbud",
+    "youthAuction": "Ungdomsauktion"
+  },
+  "via": {
+    "auction": "Auktion",
+    "transfer": "Transfer"
+  },
+  "unknownRider": "Ukendt rytter",
+  "allSales": "Vis alle {count} salg",
+  "emptySalesTitle": "Ingen akademiryttere solgt endnu",
+  "emptySalesBody": "Når du sælger en rytter, du har hentet fra et akademitilbud eller vundet på ungdomsauktion, står salget her.",
+  "emptySalesAction": "Se dit hold",
+  "errorTitle": "Akademi-regnskabet kunne ikke hentes",
+  "errorBody": "Prøv igen om lidt.",
+  "retry": "Prøv igen",
+  "noLedgerTitle": "Intet akademi-regnskab endnu",
+  "noLedgerBody": "Regnskabet vises, når dit akademi er åbent.",
+  "noLedgerAction": "Se dit hold"
+}

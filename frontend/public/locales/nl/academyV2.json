@@ -1,0 +1,55 @@
+{
+  "v2": {
+    "overview": "Overzicht van de academie",
+    "tabsLabel": "Onderdelen van de academie",
+    "tabs": {
+      "intake": "Instroom van deze week",
+      "talents": "Jouw talenten",
+      "ledger": "Academieboekhouding",
+      "profile": "Profiel en leeftijd"
+    },
+    "stats": {
+      "intake": "Instroom",
+      "junior": "Juniorenploeg",
+      "u23": "U23-ploeg",
+      "talents": "Talenten",
+      "ageFocus": "Leeftijdsfocus",
+      "full": "Vol"
+    },
+    "squad": {
+      "junior": "Junioren",
+      "u23": "U23"
+    },
+    "landsOn": "Komt in de {squad}-ploeg",
+    "talents": {
+      "colNation": "Nat.",
+      "colRider": "Renner",
+      "colType": "Rennerstype",
+      "colSquad": "Ploeg",
+      "colAge": "Leeftijd",
+      "colPrognosis": "Prognose",
+      "count": "{count, plural, one {# talent} other {# talenten}}",
+      "emptyTitle": "Nog geen talenten",
+      "emptyBody": "Renners die je uit de instroom tekent, staan hier met hun rennerstype.",
+      "emptyAction": "Naar de instroom van deze week",
+      "errorTitle": "Je talenten konden niet worden geladen",
+      "errorBody": "Probeer het zo opnieuw. Je selecties zijn ongewijzigd."
+    },
+    "age": {
+      "label": "Leeftijdsfocus",
+      "mixed": "Gemengd",
+      "distributionLabel": "Verwachte instroom per leeftijd",
+      "row": "{age}: {share}",
+      "share": {
+        "many": "veel",
+        "some": "enkele",
+        "few": "weinig"
+      },
+      "intro": "Kies de leeftijd waar je wekelijkse kandidaten naar neigen. Alle leeftijden blijven voorkomen.",
+      "toU23": "19-jarigen gaan altijd naar de U23-ploeg.",
+      "inline": "leeftijdsfocus {focus}",
+      "errorTitle": "Het academieprofiel kon niet worden geladen",
+      "errorBody": "Er is niets gewijzigd. Laad de pagina opnieuw om het nog eens te proberen."
+    }
+  }
+}

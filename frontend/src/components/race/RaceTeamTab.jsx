@@ -56,6 +56,7 @@ import {
   isJerseyLeaderCaptainOnAllRemainingStages,
 } from "../../lib/stageRoleMatrixLogic.js";
 import { DEFAULT_EFFORT } from "../../lib/raceIntention.js";
+import { stageRouteMatch } from "../../lib/lineupInsight.js"; // #7862: rute-match pr. valgt etape
 import { roleLabelKey } from "../../lib/stageRoleVocabulary.ts";
 import { showsTimeLimitRisk } from "../../lib/timeLimitRisk7715.ts"; // #7715
 
@@ -68,7 +69,7 @@ const roleLabel = (t, role) => {
   return key ? t(key) : "—";
 };
 
-function ReadOnlyRoster({ t, riders, stageNumbers, overridesMap, gcRankByRider, showStages, isOneDay, nextStage }) {
+function ReadOnlyRoster({ t, riders, stageNumbers, overridesMap, gcRankByRider, showStages, isOneDay, nextStage, roleStage = /** @type {number | null} */ (null) }) {
   return (
     <div className={WRAP}>
       <div className={SCROLLER}>
@@ -106,9 +107,10 @@ function ReadOnlyRoster({ t, riders, stageNumbers, overridesMap, gcRankByRider, 
                     : !showStages && showsTimeLimitRisk(rider, nextStage, resolveCell({ rider, stageNumber: nextStage, overridesMap }).effort) && <div className="mt-1"><TimeLimitRiskMark /></div>}
                 </td>
                 <td className="px-4 py-2.5">
-                  <div className="text-cz-1 text-xs">{roleLabel(t, baseRoleForRider(rider))}</div>
+                  {/* #7862 (valg 13): med en valgt etape (v6) er rollen etapens, ellers grundrollen. */}
+                  <div className="text-cz-1 text-xs">{roleStage != null ? roleLabel(t, resolveCell({ rider, stageNumber: roleStage, overridesMap }).race_role) : roleLabel(t, baseRoleForRider(rider))}</div>
                   <div className="text-3xs uppercase tracking-wider text-cz-3 mt-0.5">
-                    {isOneDay ? t("intention.thisRace") : t("intention.allRace")}
+                    {isOneDay ? t("intention.thisRace") : roleStage != null ? t("racePage.team.stageShort", { number: roleStage }) : t("intention.allRace")}
                   </div>
                 </td>
                 {showStages ? (
@@ -130,7 +132,8 @@ function ReadOnlyRoster({ t, riders, stageNumbers, overridesMap, gcRankByRider, 
                   </>
                 ) : (
                   <>
-                    <td className="px-4 py-2.5 text-right"><FitBar score={rider.fit} /></td>
+                    {/* #7862: med en valgt etape (v6) er rute-matchet etapens (som Taktik), ellers løbets snit. */}
+                    <td className="px-4 py-2.5 text-right">{roleStage == null ? <FitBar score={rider.fit} /> : stageRouteMatch(rider, roleStage) != null ? <FitBar score={stageRouteMatch(rider, roleStage)} /> : <span className="font-data text-xs text-cz-3">—</span>}</td>
                     <td className="px-4 py-2.5 text-right font-data text-xs tabular-nums text-cz-2">{rider.form ?? "—"}</td>
                     <td className="px-4 py-2.5 text-right font-data text-xs tabular-nums text-cz-2">{rider.fatigue ?? "—"}</td>
                   </>
@@ -171,6 +174,10 @@ export default function RaceTeamTab({
   stageStripeActiveStage = null,
   onSelectStage = null,
   stageStripeTimes = null,
+  // #7862 (valg 13): under v6 den valgte etape i hovedets stribe; rollerne følger den. null = grundrollen.
+  roleStage = /** @type {number | null} */ (null),
+  // #7862: under v6 er hovedkortets etapestribe den ene vælger, så fanens egen stribe udgår.
+  hideStageStripe = /** @type {boolean} */ (false),
 }) {
   const { t } = useTranslation("races");
   // FØR løbet bruges svaret ikke: fanen ER holdudtagelsen, og RaceSelectionPanel
@@ -199,7 +206,7 @@ export default function RaceTeamTab({
             uden at hoppe via Etaper-fanen. Ren navigation (delt ?stage=); ændrer
             intet af hvad udtagelsen gemmer. StageStripe no-op'er selv på
             endagsløb (stages.length < 2). */}
-        {onSelectStage && (
+        {onSelectStage && !hideStageStripe && (
           <StageStripe
             stages={stageStripeStages}
             activeStage={stageStripeActiveStage}
@@ -313,7 +320,8 @@ export default function RaceTeamTab({
     {profileRow}
     <Section data-testid="race-team-tab">
       <SectionHeader
-        title={t("racePage.team.title")}
+        // #7862 (wireframe v6c): under v6 navngiver overskriften etapen, rollerne følger.
+        title={!isOneDay && roleStage != null ? `${t("racePage.team.title")} · ${t("detail.tabStage", { number: roleStage })}` : t("racePage.team.title")}
         meta={t("racePage.team.riderCount", { count: riders.length })}
       />
       <p className="text-cz-3 text-xs mb-3 flex items-center gap-1.5">
@@ -342,6 +350,7 @@ export default function RaceTeamTab({
         showStages={afterRace}
         isOneDay={isOneDay}
         nextStage={nextEditableStage}
+        roleStage={isOneDay ? null : roleStage}
       />
       {afterRace && (
         <p className="mt-3 pt-3 border-t border-cz-border text-3xs text-cz-3">

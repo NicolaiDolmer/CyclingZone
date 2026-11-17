@@ -657,7 +657,7 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
           {/* S-02g · Tradeoff-stramning indikator. Vises når et mål er hævet pga. tidligere
               approved board request (lower_results_pressure / ease_identity_requirements). */}
           {goal.tradeoff_tightened && (
-            <span className="text-xs text-cz-warning/80" title={t("goal.tightenedTitle")}>{t("goal.tightenedBadge")}</span>
+            <span className="inline-flex items-center gap-1 text-xs text-cz-warning/80" title={t("goal.tightenedTitle")}><LockIcon size={12} aria-hidden="true" />{t("goal.tightenedBadge")}</span>
           )}
           {goal.satisfaction_bonus > 0 && (
             <span className="text-xs text-cz-success/70">{t("goal.satisfactionBonus", { count: goal.satisfaction_bonus })}</span>
@@ -795,7 +795,7 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
       <div className="flex flex-wrap gap-2 mb-4">
         {goal.importance === "required" && <span className="text-xs bg-cz-subtle text-cz-3 px-2 py-0.5 rounded-cz border border-cz-border">{t("goal.obligatory")}</span>}
         {goal.cumulative && <span className="text-xs bg-cz-info-bg text-cz-info px-2 py-0.5 rounded-cz">{t("goal.cumulative")}</span>}
-        {goal.tradeoff_tightened && <span className="text-xs text-cz-warning/80">{t("goal.tightenedBadge")}</span>}
+        {goal.tradeoff_tightened && <span className="inline-flex items-center gap-1 text-xs text-cz-warning/80"><LockIcon size={12} aria-hidden="true" />{t("goal.tightenedBadge")}</span>}
         {goal.satisfaction_bonus > 0 && <span className="text-xs text-cz-success/70">{t("goal.satisfactionBonus", { count: goal.satisfaction_bonus })}</span>}
         {goal.satisfaction_penalty > 0 && <span className="text-xs text-cz-danger/70">{t("goal.satisfactionPenalty", { count: goal.satisfaction_penalty })}</span>}
         {goal.negotiated && <span className="text-xs text-cz-info/70">{t("goal.negotiated")}</span>}
@@ -1284,9 +1284,7 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
               type="button"
               onClick={onAcceptPreview}
               disabled={accepting}
-              className="flex-1 py-2.5 rounded-cz text-sm font-semibold border transition-all
-                bg-cz-accent text-cz-on-accent border-cz-accent/40 hover:brightness-110
-                disabled:bg-cz-subtle disabled:text-cz-3 disabled:border-cz-border disabled:cursor-not-allowed"
+              className={`${buttonClass({ variant: "primary" })} flex-1`}
             >
               {accepting ? t("request.applying") : t("request.accept")}
             </button>
@@ -1955,8 +1953,7 @@ function WizardStep1({ identityProfile, teamDna = null, focus, setFocus, planTyp
         onClick={startBlock.guard(onStart)}
         disabled={previewLoading}
         {...startBlock.blockedProps}
-        className="w-full py-3 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110
-          disabled:opacity-50 transition-all inline-flex items-center justify-center gap-1"
+        className={`${buttonClass({ variant: "primary", fullWidth: true })} gap-1`}
       >
         {t("wizard.startNegotiation")}
         <ChevronRightIcon size={14} aria-hidden="true" />
@@ -2028,7 +2025,7 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
               {current?.satisfaction_penalty > 0 && (
                 <span className="text-xs text-cz-danger/70">{t("goal.satisfactionPenalty", { count: current?.satisfaction_penalty })}</span>
               )}
-              {current?.negotiated && <span className="text-xs text-cz-info/70">{t("wizard.negotiatedTick")}</span>}
+              {current?.negotiated && <span className="inline-flex items-center gap-1 text-xs text-cz-info/70"><CheckIcon size={12} aria-hidden="true" />{t("wizard.negotiatedTick")}</span>}
             </div>
           </div>
         </div>
@@ -2054,7 +2051,7 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
                 )}
           </button>
           <button onClick={onAccept}
-            className="flex-1 py-3 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 transition-all">
+            className={`${buttonClass({ variant: "primary" })} flex-1`}>
             <span className="inline-flex items-center justify-center gap-1">
               {t("wizard.accept")}
               <ChevronRightIcon size={15} aria-hidden="true" />
@@ -2068,7 +2065,7 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
             <p className="text-cz-info text-xs mt-1">{t("wizard.compromiseBody")}</p>
           </div>
           <button onClick={onAcceptNegotiated}
-            className="w-full py-3 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 transition-all">
+            className={buttonClass({ variant: "primary", fullWidth: true })}>
             <span className="inline-flex items-center justify-center gap-1">
               {t("wizard.acceptNegotiated")}
               <ChevronRightIcon size={15} aria-hidden="true" />
@@ -2143,8 +2140,7 @@ function WizardStep3({ finalGoals, planType, onSign, saving, onBack, hasExisting
       )}
 
       <button onClick={onSign} disabled={saving}
-        className="w-full py-3 bg-cz-accent text-cz-on-accent font-bold rounded-cz
-          hover:brightness-110 disabled:opacity-50 transition-all">
+        className={buttonClass({ variant: "primary", fullWidth: true })}>
         {saving ? t("wizard.signing") : t("wizard.sign")}
       </button>
     </div>
@@ -3009,7 +3005,7 @@ export default function BoardPage() {
                   <div key={n} className={`flex items-center ${i < 2 ? "flex-1" : ""}`}>
                     <div className="flex items-center gap-2 shrink-0">
                       <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold
-                        ${wizardStep === n ? "bg-cz-accent text-cz-on-accent"
+                        ${wizardStep === n ? "border border-cz-accent/40 bg-cz-accent/10 text-cz-accent-t"
                           : wizardStep > n ? "bg-cz-success-bg text-cz-success"
                           : "bg-cz-subtle text-cz-3"}`}>
                         {wizardStep > n ? (

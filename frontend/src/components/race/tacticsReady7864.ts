@@ -116,6 +116,27 @@ export const EFFORT_COST_WORD: Readonly<Record<StagePlanEffort, TaskCostWord>> =
 export const TASK_COST_EXCEPTIONS: Readonly<Partial<Record<StagePlanTask, TaskCostWord>>> = Object.freeze({ breakaway:'hard' });
 export function taskCostWord(task: StagePlanTask): TaskCostWord { return TASK_COST_EXCEPTIONS[task] ?? EFFORT_COST_WORD[TASK_EFFORT[task]]; }
 export function taskCostKey(task: StagePlanTask): string { return `stagePlanReady.price.${taskCostWord(task)}`; }
+export function costWordKey(word: TaskCostWord): string { return `stagePlanReady.price.${word}`; }
+/** #7638: the effort step's own word (rider picker without a stage plan, time trials). Unknown step = no word. */
+export function effortCostWord(effort: unknown): TaskCostWord | null {
+  return typeof effort === 'string' && Object.prototype.hasOwnProperty.call(EFFORT_COST_WORD, effort) ? EFFORT_COST_WORD[effort as StagePlanEffort] : null;
+}
+/**
+ * #7638: the team's breakaway stance priced for the riders who chase. The engine charges
+ * chase work only to the riders an order or a reaction puts on the front: "chase" pulls
+ * on every non-leader in the chasing group, "neutral" only works when the GC rider is
+ * threatened, and "let_go" pulls out of the chase (backend/lib/engine/v4/mechanics/breakaway.ts).
+ */
+export const BREAKAWAY_STANCE_COST_WORD: Readonly<Record<string, TaskCostWord>> = Object.freeze({ chase:'hard', neutral:'medium', let_go:'easy' });
+export function stanceCostWord(stance: unknown): TaskCostWord | null {
+  return typeof stance === 'string' && Object.prototype.hasOwnProperty.call(BREAKAWAY_STANCE_COST_WORD, stance) ? BREAKAWAY_STANCE_COST_WORD[stance] : null;
+}
+/** #7638: the old order buttons cost what the stage plan's matching task costs. */
+export const ORDER_TOGGLE_TASK: Readonly<Record<'try_break' | 'leadout', StagePlanTask>> = Object.freeze({ try_break:'breakaway', leadout:'sprint_train' });
+/** #7638: one colour per word everywhere (the wireframe's Easy green, Medium neutral, Hard orange, Very hard red), via the -t text tones so each word holds WCAG AA on every surface. */
+export const COST_WORD_CLASS: Readonly<Record<TaskCostWord, string>> = Object.freeze({
+  easy:'text-cz-success-t', medium:'text-cz-1', hard:'text-cz-warning-t', veryHard:'text-cz-danger-t',
+});
 type Matrix = Record<number, Record<string, {race_role:string;effort:string}>>;
 export function applyTeamPlanRoles<T extends Matrix>(matrix: T, stage: number, changes: TeamPlanRoleChange[], editableIds?: string[]): T {
   const ordered=[...changes].sort((a,b)=>Number(leaders.has(planRole(a.role)))-Number(leaders.has(planRole(b.role))));

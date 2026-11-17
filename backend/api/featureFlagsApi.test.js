@@ -138,6 +138,7 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     stage_page_v2: false,
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
+    academy_page_v2_8081: false,
 
     development_v2_aging_enabled: false,
 
@@ -157,6 +158,7 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     tactics_ready_7864: false,
     rider_why_button: false,
     race_page_v6: false,
+    spoiler_shield_7859: false,
     talent_marks_7879: false,
     rider_hover_card: false,
     day_words_7725: false,
@@ -214,6 +216,7 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
     stage_page_v2: false,
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
+    academy_page_v2_8081: false,
 
     development_v2_aging_enabled: false,
 
@@ -233,6 +236,7 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
     tactics_ready_7864: false,
     rider_why_button: false,
     race_page_v6: false,
+    spoiler_shield_7859: false,
     talent_marks_7879: false,
     rider_hover_card: false,
     day_words_7725: false,
@@ -298,6 +302,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     stage_page_v2: false,
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
+    academy_page_v2_8081: false,
 
     development_v2_aging_enabled: false,
 
@@ -317,6 +322,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     tactics_ready_7864: false,
     rider_why_button: false,
     race_page_v6: false,
+    spoiler_shield_7859: false,
     talent_marks_7879: false,
     rider_hover_card: false,
     day_words_7725: false,
@@ -343,6 +349,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     stage_page_v2: false,
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
+    academy_page_v2_8081: false,
 
     development_v2_aging_enabled: false,
 
@@ -362,6 +369,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     tactics_ready_7864: false,
     rider_why_button: false,
     race_page_v6: false,
+    spoiler_shield_7859: false,
     talent_marks_7879: false,
     rider_hover_card: false,
     day_words_7725: false,

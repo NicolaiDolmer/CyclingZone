@@ -8,13 +8,17 @@ import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
 
 import {
+  QUEUE_CI_TIMEOUT_MINUTES,
+  TRAIN_MAX_BATCH,
   completeFileList,
   confirmBeforeQueue,
   decideAction,
+  deployImpact,
   evaluatePr,
   hasOwnerMergeApproval,
   mainVerifiedFromRuns,
   parseArgs,
+  queueArgs,
   requiredChecksStatus,
   reviewGateStatus,
   run,
@@ -32,8 +36,11 @@ function pr(overrides = {}) {
   return { number: 100, title: 'docs: noget', isDraft: false, baseRefName: 'main', mergeable: 'MERGEABLE', headRefOid: HEAD, labels: [], comments: [], ...overrides };
 }
 
+const QUIET = { deploys: false, solo: false };
+const DEPLOYS = { deploys: true, solo: false };
+
 function evalWith(overrides = {}, ctx = {}) {
-  return evaluatePr(pr(overrides), { requiredChecks: GREEN_REQUIRED, allChecks: GREEN_ALL, classification: STANDING, ownerLogin: OWNER, ...ctx });
+  return evaluatePr(pr(overrides), { requiredChecks: GREEN_REQUIRED, allChecks: GREEN_ALL, classification: STANDING, ownerLogin: OWNER, deploy: QUIET, ...ctx });
 }
 
 describe('requiredChecksStatus', () => {
@@ -121,6 +128,58 @@ describe('evaluatePr (udvaelgelse)', () => {
   });
 });
 
+describe('#8331 eet samlet tog + deploy-reglen', () => {
+  it('op til TRAIN_MAX_BATCH (5) PR\'er i eet tog, aeldste foerst', () => {
+    const list = [1, 2, 3, 4, 5, 6, 7].map((n) => evalWith({ number: n }));
+    assert.equal(TRAIN_MAX_BATCH, 5);
+    assert.deepEqual(selectTrain(list), [1, 2, 3, 4, 5]);
+  });
+  it('hoejst een deploy-PR (den aeldste), og den sidst i toget', () => {
+    const list = [
+      evalWith({ number: 10 }, { deploy: DEPLOYS }),
+      evalWith({ number: 11 }),
+      evalWith({ number: 12 }, { deploy: DEPLOYS }),
+      evalWith({ number: 13 }),
+    ];
+    assert.deepEqual(selectTrain(list), [11, 13, 10]);
+  });
+  it('fuldt tog: deploy-PR\'en faar sin plads, de stille venter', () => {
+    const list = [evalWith({ number: 1 }, { deploy: DEPLOYS }), ...[2, 3, 4, 5, 6].map((n) => evalWith({ number: n }))];
+    assert.deepEqual(selectTrain(list), [2, 3, 4, 5, 1]);
+    assert.deepEqual(selectTrain(list, { maxBatch: 1 }), [1]);
+  });
+  it('ukendt deploy-status taeller som deploy (fail-safe)', () => {
+    const unknown = evaluatePr(pr({ number: 7 }), { requiredChecks: GREEN_REQUIRED, allChecks: GREEN_ALL, classification: STANDING, ownerLogin: OWNER });
+    assert.equal(unknown.deploys, true);
+    assert.deepEqual(selectTrain([unknown, evalWith({ number: 8 }, { deploy: DEPLOYS })]), [7]);
+  });
+  it('deployImpact bruger koeens fil-regler (merge-queue-files.mjs)', () => {
+    assert.deepEqual(deployImpact([{ path: 'docs/GITHUB_WORKFLOW.md' }, { path: 'pr-screens/a.png' }]), { deploys: false, solo: false });
+    assert.equal(deployImpact([{ path: 'backend/lib/economy.js' }]).deploys, true);
+    assert.equal(deployImpact(['scripts/x.mjs']).deploys, true, 'Railway bygger igen');
+    assert.deepEqual(deployImpact([{ path: 'database/2026-11-17-x.sql' }]), { deploys: true, solo: true });
+    assert.deepEqual(deployImpact([]), { deploys: true, solo: true });
+    assert.deepEqual(deployImpact(null), { deploys: true, solo: true });
+  });
+  it('queueArgs: eet tog, hoved pr. PR, CI-frist 90 min og een deploy pr. tog', () => {
+    const args = queueArgs({ script: 'q.ps1', train: [11, 13, 10], repo: 'o/r', expectHeads: ['a'.repeat(40), 'b'.repeat(40), 'c'.repeat(40)] });
+    const val = (name) => args[args.indexOf(name) + 1];
+    assert.equal(val('-Pr'), '11,13,10');
+    assert.equal(val('-ExpectHead'), `${'a'.repeat(40)},${'b'.repeat(40)},${'c'.repeat(40)}`);
+    assert.equal(QUEUE_CI_TIMEOUT_MINUTES, 90);
+    assert.equal(val('-CiTimeoutMinutes'), '90');
+    assert.equal(val('-MaxBatch'), String(TRAIN_MAX_BATCH));
+    assert.equal(val('-MaxDeployBatch'), '1');
+    assert.equal(val('-Repo'), 'o/r');
+  });
+  it('merge-queue.ps1: samme MaxBatch-loft, og -ExpectHead er een SHA pr. PR', () => {
+    const ps = readFileSync(new URL('./merge-queue.ps1', import.meta.url), 'utf8');
+    assert.equal(Number(/\[int\] \$MaxBatch = (\d+)/.exec(ps)?.[1]), TRAIN_MAX_BATCH);
+    assert.ok(ps.includes('$ExpectHeads["$($PrNumbers[$i])"] = $expectList[$i]'), 'hoved pr. PR i -Pr-raekkefoelgen');
+    assert.ok(ps.includes('$expectList.Count -ne $PrNumbers.Count'), 'antallet skal passe');
+  });
+});
+
 describe('completeFileList', () => {
   it('kraever at REST-listen er komplet (ellers null = ejer-go)', () => {
     const pages = [[{ filename: 'docs/a.md', additions: 1, deletions: 0 }]];
@@ -200,7 +259,7 @@ describe('run (IO injiceret)', () => {
     assert.throws(() => readFileSync(stateFile, 'utf8'));
   });
 
-  it('koerer koeen een PR ad gangen med -Repo og lader ejer-go vente', async () => {
+  it('#8331: koerer koeen EEN gang med eet samlet tog og lader ejer-go vente', async () => {
     const selected = [evalWith({ number: 21 }), evalWith({ number: 23 }), evalWith({ number: 22 }, { classification: OWNER_GO })];
     const calls = [];
     const result = await run({
@@ -208,8 +267,19 @@ describe('run (IO injiceret)', () => {
       readMarker: () => null, evaluate: () => selected, reevaluate: sameAgain(selected),
       runQueue: ({ train, repo }) => { calls.push({ train, repo }); return 0; },
     });
-    assert.deepEqual(calls, [{ train: [21], repo: 'o/r' }, { train: [23], repo: 'o/r' }]);
+    assert.deepEqual(calls, [{ train: [21, 23], repo: 'o/r' }]);
     assert.deepEqual(result.queued, [21, 23]);
+  });
+
+  it('#8331: deploy-PR\'en koerer sidst i det samlede tog', async () => {
+    const selected = [evalWith({ number: 24 }, { deploy: DEPLOYS }), evalWith({ number: 25 }), evalWith({ number: 26 }, { deploy: DEPLOYS })];
+    const calls = [];
+    await run({
+      argv: [], now: NOW, repoRoot: dir, blockFile: join(dir, 'b-deploy.json'), out: quiet,
+      readMarker: () => null, evaluate: () => selected, reevaluate: sameAgain(selected),
+      runQueue: ({ train }) => { calls.push(train); return 0; },
+    });
+    assert.deepEqual(calls, [[25, 24]]);
   });
 
   it('nyt hoved efter udvaelgelsen: PR\'en springes over (arver ikke kategori eller ejer-go)', async () => {
@@ -225,32 +295,56 @@ describe('run (IO injiceret)', () => {
     assert.deepEqual(res.queued, [32]);
   });
 
-  it('en anden koe der starter undervejs stopper resten', async () => {
+  it('en anden koe der starter under den friske vurdering: intet tog', async () => {
     const selected = [evalWith({ number: 41 }), evalWith({ number: 42 })];
     let markerReads = 0;
     const calls = [];
-    await run({
+    const res = await run({
       argv: [], now: NOW, repoRoot: dir, out: quiet,
-      // 1. laesning: ingen koe. 2. (foer #41): ingen. 3. (foer #42): en anden koe koerer.
-      readMarker: () => (++markerReads >= 3 ? { pid: 7, startedAt: '2026-11-04T11:59:00Z', prs: [], merged: [] } : null),
+      // 1. laesning: ingen koe. 2. (lige foer koeen startes): en anden koe koerer.
+      readMarker: () => (++markerReads >= 2 ? { pid: 7, startedAt: '2026-11-04T11:59:00Z', prs: [], merged: [] } : null),
       evaluate: () => selected, reevaluate: sameAgain(selected),
       runQueue: ({ train }) => { calls.push(train); return 0; },
     });
-    assert.deepEqual(calls, [[41]]);
+    assert.deepEqual(calls, []);
+    assert.equal(res.action, 'skip-active');
   });
 
-  it('Codex P1 #7657: koeen faar det vurderede hoved med (-ExpectHead)', async () => {
-    const selected = [evalWith({ number: 51 })];
+  it('exit 3 (en anden koe naaede at tage markoeren): ingen laas', async () => {
+    const blockFile = join(dir, 'b-busy.json');
+    const selected = [evalWith({ number: 43 })];
+    const res = await run({
+      argv: [], now: NOW, repoRoot: dir, blockFile, out: quiet,
+      readMarker: () => null, evaluate: () => selected, reevaluate: sameAgain(selected),
+      runQueue: () => 3,
+    });
+    assert.deepEqual(res.results, [{ prs: [43], exit: 3 }]);
+    assert.equal(existsSync(blockFile), false);
+  });
+
+  it('exit 2 (nogle sprunget over, resten verificeret af koeen): ingen laas', async () => {
+    const blockFile = join(dir, 'b-partial.json');
+    const selected = [evalWith({ number: 44 }), evalWith({ number: 45 })];
+    await run({
+      argv: [], now: NOW, repoRoot: dir, blockFile, out: quiet,
+      readMarker: () => null, evaluate: () => selected, reevaluate: sameAgain(selected),
+      runQueue: () => 2,
+    });
+    assert.equal(existsSync(blockFile), false);
+  });
+
+  it('Codex P1 #7657: koeen faar det vurderede hoved pr. PR med (-ExpectHead)', async () => {
+    const selected = [evalWith({ number: 51 }), evalWith({ number: 52, headRefOid: 'c'.repeat(40) })];
     const calls = [];
     await run({
       argv: [], now: NOW, repoRoot: dir, blockFile: join(dir, 'b7.json'), out: quiet,
       readMarker: () => null, evaluate: () => selected, reevaluate: sameAgain(selected),
-      runQueue: ({ train, expectHead }) => { calls.push({ train, expectHead }); return 0; },
+      runQueue: ({ train, expectHeads }) => { calls.push({ train, expectHeads }); return 0; },
     });
-    assert.deepEqual(calls, [{ train: [51], expectHead: selected[0].headSha }]);
+    assert.deepEqual(calls, [{ train: [51, 52], expectHeads: [HEAD, 'c'.repeat(40)] }]);
     const ps = readFileSync(new URL('./merge-queue.ps1', import.meta.url), 'utf8');
-    assert.ok(ps.includes('[string] $ExpectHead') && ps.includes('$fresh.headSha -ne $ExpectHead'), 'merge-queue.ps1 stopper ved et andet hoved end det godkendte');
-    assert.ok(ps.includes('$recheck.headSha -ne $ExpectHead'), 'og igen lige foer merge (efter ventetid/baseline-loesning)');
+    assert.ok(ps.includes('[string] $ExpectHead') && ps.includes('$fresh.headSha -ne $expectedHead'), 'merge-queue.ps1 merger aldrig et andet hoved end det godkendte');
+    assert.ok(ps.includes('$recheck.headSha -ne $expectedHead'), 'og igen lige foer merge (efter ventetid/baseline-loesning)');
   });
 
   it('Codex P1 #7657: exit != 0 stopper toget og laaser, til main er verificeret', async () => {
@@ -262,8 +356,8 @@ describe('run (IO injiceret)', () => {
       readMarker: () => null, evaluate: () => selected, reevaluate: sameAgain(selected),
     };
     const first = await run({ ...base, runQueue: ({ train }) => { calls.push(train); return 75; } });
-    assert.deepEqual(calls, [[61]], 'ingen naeste PR efter en fejlet/uverificeret koe');
-    assert.deepEqual(first.results, [{ pr: 61, exit: 75 }]);
+    assert.deepEqual(calls, [[61, 62]], 'eet tog, ingen ny koe efter en fejlet/uverificeret koe');
+    assert.deepEqual(first.results, [{ prs: [61, 62], exit: 75 }]);
     assert.equal(JSON.parse(readFileSync(blockFile, 'utf8')).pr, 61);
     const blocked = await run({ ...base, checkMain: () => ({ ok: false, reason: 'CI koerer' }), runQueue: () => { throw new Error('maa ikke kaldes'); } });
     assert.equal(blocked.action, 'blocked');

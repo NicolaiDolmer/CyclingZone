@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { checkHistory } from './check-patch-notes-history.mjs';
+import { numberFragments } from './patch-notes-number.mjs';
 
 const entry = (version, title = 'A ring of riders') => ({ version, date: '2026-10-01', changes: [{ en: { title, body: 'History' } }] });
 const source = entries => `export const PATCHES = ${JSON.stringify(entries)};`;
@@ -42,4 +44,14 @@ test('executable mutations and alternate exports cannot evade static history', (
     'export { PATCHES as default };',
     'export const other = [];',
   ]) assert.throws(() => checkHistory(before, before + tail), /static|literal|PATCHES/);
+});
+
+test('#8346: the merge train numbering commit is a pure prepend of the real history', () => {
+  const real = readFileSync(new URL('../frontend/src/data/patchNotes.js', import.meta.url), 'utf8');
+  const fragment = { changes: [{ category: 'fixed', audience: 'player', rollout: 'live', en: { title: 'T', body: 'B' }, refs: [8346] }] };
+  const { source: numbered } = numberFragments(real, [
+    { path: 'frontend/src/data/patch-notes/pending/a.json', order: 0, date: '2026-11-17', data: fragment },
+    { path: 'frontend/src/data/patch-notes/pending/b.json', order: 1, date: '2026-11-17', data: fragment },
+  ]);
+  assert.deepEqual(checkHistory(real, numbered), []);
 });

@@ -44,7 +44,7 @@ function ensureSupabase(supabase) {
  * Bygger selve mål-objektet. Samme form i BEGGE tabeller — mandatet og
  * profilen skal ikke drifte fra hinanden på feltnavne.
  */
-export function buildBonusExtraGoal({ extraGoal, baseline = null, offerId = null, reputationEnabled = false }) {
+export function buildBonusExtraGoal({ extraGoal, baseline = null, offerId = null, reputationEnabled = false, seasonNumber = null }) {
   return {
     type: extraGoal?.type,
     ...(reputationEnabled && extraGoal?.type === "signature_rider" ? { star_score_basis: "reputation" } : {}),
@@ -54,7 +54,37 @@ export function buildBonusExtraGoal({ extraGoal, baseline = null, offerId = null
     label: extraGoal?.label,
     baseline,
     bonus_offer_id: offerId ?? null,
+    // #8118 · Sæsonen målet hører til. Et bonusmål dømmes ved DEN sæsons slut
+    // (help: "added to this season's mandate"); preserveExternalGoals bruger
+    // stemplet til ikke at bære det med ind i en ny sæsons plan.
+    ...(seasonNumber != null && Number.isFinite(Number(seasonNumber)) ? { season_number: Number(seasonNumber) } : {}),
   };
+}
+
+/**
+ * #8118 · Den aktive sæsons nummer til bonusmålets sæson-stempel. Samme valg
+ * som baselinen ovenfor (nyeste aktive sæson). Best-effort: en fejl giver null
+ * (intet stempel = adfærden før #8118), aldrig et tabt bonusmål.
+ */
+export async function loadActiveSeasonNumber({ supabase } = {}) {
+  try {
+    const { data, error } = await supabase
+      .from("seasons")
+      .select("id, number")
+      .eq("status", "active")
+      .order("number", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) {
+      console.warn(`  ⚠️  bonus goal: active season lookup failed (#8118): ${error.message}`);
+      return null;
+    }
+    return data?.number != null && Number.isFinite(Number(data.number)) ? Number(data.number) : null;
+  } catch (error) {
+    // best-effort: et manglende sæson-stempel må aldrig koste spilleren et allerede betalt bonusmål.
+    console.warn(`  ⚠️  bonus goal: active season lookup threw (#8118): ${error?.message}`);
+    return null;
+  }
 }
 
 /**
@@ -264,6 +294,7 @@ export async function applyAcceptedBonusGoal({
   extraGoal,
   loadGoalContext = loadGoalContextForBoard,
   isMandateModelEnabled = isBoardMandateModelEnabled,
+  loadSeasonNumber = loadActiveSeasonNumber,
 } = {}) {
   ensureSupabase(supabase);
   if (!teamId) throw new Error("teamId is required");
@@ -290,7 +321,8 @@ export async function applyAcceptedBonusGoal({
     loadGoalContext,
   });
 
-  const goal = buildBonusExtraGoal({ extraGoal, baseline, offerId, reputationEnabled });
+  const seasonNumber = await loadSeasonNumber({ supabase });
+  const goal = buildBonusExtraGoal({ extraGoal, baseline, offerId, reputationEnabled, seasonNumber });
 
   const profile = await appendBonusGoalToBoardProfile({ supabase, teamId, goal, offerId, board: oneYrBoard });
 

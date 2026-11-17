@@ -141,7 +141,12 @@ function headingRe() {
  * efter, tages afsnittet indtil en tom linje.
  */
 export function extractPatchNoteDraft(body) {
-  const lines = String(body || '').replace(/<!--[\s\S]*?-->/g, '').split(/\r?\n/);
+  // CodeQL #394: fjern HTML-kommentarer til der ikke er flere (et enkelt pass
+  // kan efterlade "<!--" fra indlejrede/sammenflettede kommentarer).
+  let text = String(body || '');
+  for (let prev = null; prev !== text;) { prev = text; text = text.replace(/<!--[\s\S]*?-->/g, ''); }
+  text = text.replace(/<!--/g, '');
+  const lines = text.split(/\r?\n/);
   const start = lines.findIndex((l) => /^#{1,6}\s*patch[\s-]?notes?\b/i.test(l));
   if (start < 0) return null;
   let end = lines.length;
@@ -304,7 +309,8 @@ export function masterplanMentions(markdown, n) {
  */
 export function parseBackupReminders(nowMd, today) {
   const out = [];
-  const re = /slet\s+((?:`[^`]+`\s*(?:\+|,|og)?\s*)+)~\s*(\d{1,2})\/(\d{1,2})/gi;
+  // CodeQL #392: ingen tvetydig gentagelse (\s* paa begge sider af et valgfrit skilletegn).
+  const re = /slet\s+(`[^`]+`(?:\s*(?:(?:\+|,|og)\s*)?`[^`]+`)*)\s*~\s*(\d{1,2})\/(\d{1,2})/gi;
   const year = Number(String(today).slice(0, 4));
   for (const m of String(nowMd || '').matchAll(re)) {
     const names = [...m[1].matchAll(/`([^`]+)`/g)].map((x) => x[1]).filter((x) => /^backup_/i.test(x));
@@ -594,7 +600,7 @@ export function renderDraft({ day, days, results, masterplan, roadmap, backups, 
 
   L.push('### MASTERPLAN: linjer der nævner leverede issues', '');
   if (!masterplan.length) L.push('Ingen.', '');
-  for (const m of masterplan) L.push(`- #${m.issue} (PR #${m.pr}) i "${oneLine(m.section, 60)}": ${m.excerpt.replace(/\|/g, '\\|')}`);
+  for (const m of masterplan) L.push(`- #${m.issue} (PR #${m.pr}) i "${oneLine(m.section, 60)}": ${m.excerpt.replace(/\\/g, '\\\\').replace(/\|/g, '\\|')}`);
   if (masterplan.length) L.push('');
 
   const due = backups.filter((b) => b.status !== 'senere');
