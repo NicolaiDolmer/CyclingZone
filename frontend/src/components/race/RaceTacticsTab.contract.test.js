@@ -242,7 +242,9 @@ test("etapeplanens tabel og mobilkort tegner rute-match", () => {
   assert.match(board, /<SortableTh\s+sortKey="routeMatch"/);
   assert.match(board, /routeMatch\.renderCell\(rider\)/);
   assert.match(board, /routeMatch\.renderCell\(rider, \{ numberOnly: true \}\)/);
-  assert.match(board, /colSpan=\{routeMatch \? 4 : 3\}/);
+  // #8356: rytter, rolle, rating, form, [rute-match], træthed, hurtigvalg, plan.
+  assert.match(board, /const columnCount = \(routeMatch \? 8 : 7\);/);
+  assert.match(board, /colSpan=\{columnCount\}/);
 });
 
 test("#7332 enkeltstart: tre trin, gamle valg vises som save, kopi og gem skriver aldrig grupetto/protect", () => {

@@ -23,6 +23,9 @@ import { apiFetch } from "../../lib/apiFetch.ts";
 import { fetchPlayerFeatureFlags } from "../../lib/playerFeatureFlags.js"; // #7636
 import { riderInFrontOrFieldAt, ridersSplitKm, stagePlanContactFacts, type TimelineEvent as SplitTimelineEvent } from "../../lib/stageSplitTimes.ts"; // #7636, #7706
 import SortableTh from "../ui/SortableTh.jsx";
+import { Flag as FlagJs } from "../Flag.jsx";
+import EffortSegmented from "../tactics/EffortSegmented.tsx";
+import { QUICK_EFFORTS, QUICK_TASK, applyQuickEffort, quickEffortOf, type QuickEffort } from "../tactics/quickEffort8356.ts";
 import { taskCostKey, teamPlanRouteFromProfile } from "./tacticsReady7864.ts";
 import { Button, CheckIcon, ChevronRightIcon, InfoIcon, LockIcon, MessageIcon, MinusIcon, PlusIcon, Select, XIcon } from "../ui/index.js";
 import {
@@ -53,7 +56,16 @@ import {
 import type { StagePlanLeg, StagePlanRecapItem, StagePlanRole, StagePlanRoute, StagePlanTask, StagePlanTrigger } from "./StagePlanModel.ts";
 
 type TFn = (key: string, opts?: Record<string, unknown>) => string;
-type PlanRider = { rider_id: string; name?: string | null; abandoned?: boolean };
+type PlanRider = {
+  rider_id: string; name?: string | null; abandoned?: boolean;
+  // #8356: wireframets kolonner (stage-roles, #8298). null/mangler = "—".
+  nationality_code?: string | null; rating?: number | null; form?: number | null; fatigue?: number | null;
+};
+const Flag = FlagJs as unknown as (props: { code: string | null | undefined; className?: string; title?: string }) => React.ReactNode;
+// #8356: hurtigvalgets trin i serverens skala-navne (EffortSegmented sorterer efter dem), vist som Let | Normal | Hård.
+const QUICK_STEP: Record<string, QuickEffort> = { save: "easy", normal: "normal", all_out: "hard" };
+const STEP_OF: Record<QuickEffort, string> = { easy: "save", normal: "normal", hard: "all_out" };
+const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? String(Math.round(v)) : "—");
 type PlanOrderRider = { rider_id: string; plan?: StagePlanLeg[] | null } & Record<string, unknown>;
 type PlanOrder = { riders?: PlanOrderRider[] } & Record<string, unknown>;
 type StageProfile = { climbs?: unknown; distance_km?: unknown; profile_type?: unknown } & Record<string, unknown>;
@@ -421,6 +433,40 @@ export default function StagePlanBoard({
   }
 
   const planColumn = isOneDay ? t("stagePlan.colPlanRaceDay") : t("stagePlan.colPlan", { number: activeStage });
+
+  // #8356: hurtigvalget. En genvej der saetter rytterens opgaver langs ruten til rollens opgave for
+  // indsatsen (samme gem som planen). Linjen under viser, hvad hvert trin goer for netop den rolle.
+  function renderQuick(rider: PlanRider, fill = false) {
+    if (!editable(rider) || stageCompleted) return null;
+    const role = planRole(roleFor(rider));
+    const current = quickEffortOf(planByRider.get(rider.rider_id), role);
+    return (
+      <div className="flex min-w-0 flex-col items-start gap-1" data-testid="stage-plan-quick">
+        <EffortSegmented
+          label={t("stagePlan.quick.aria", { name: rider.name || "—" })}
+          steps={["save", "normal", "all_out"]}
+          value={current ? STEP_OF[current] : ""}
+          labelFor={(step) => t(`stagePlan.quick.${QUICK_STEP[step]}`)}
+          disabled={saving}
+          fill={fill}
+          onPick={(step) => setPlan(rider.rider_id, applyQuickEffort(planByRider.get(rider.rider_id) ?? suggestionFor(rider), role, QUICK_STEP[step], route))}
+        />
+        <p className="m-0 text-3xs leading-snug text-cz-3">
+          {QUICK_EFFORTS.map((e) => t("stagePlan.quick.does", { effort: t(`stagePlan.quick.${e}`), task: t(`stagePlan.task.${QUICK_TASK[role][e]}`) })).join(" · ")}
+        </p>
+      </div>
+    );
+  }
+  const nameCell = (rider: PlanRider, className: string) => (
+    <span className={`inline-flex min-w-0 items-center gap-1.5 ${className}`}>
+      {rider.nationality_code && <Flag code={rider.nationality_code.toLowerCase()} className="shrink-0" />}
+      <span className="min-w-0 truncate">{rider.name || "—"}</span>
+    </span>
+  );
+  const TH = "px-4 py-2 text-left font-medium text-xs uppercase tracking-wide text-cz-3";
+  const THN = "px-3 py-2 text-right font-medium text-xs uppercase tracking-wide text-cz-3";
+  const TDN = "px-3 py-2.5 align-top text-right font-data tabular-nums text-cz-1";
+  const columnCount = (routeMatch ? 8 : 7);
   // Uden plan: "efter sin rolle" kun naar det er sandt; ellers de valg han faktisk koerer paa.
   const orderRiderById = new Map((order?.riders ?? []).map((r) => [r.rider_id, r]));
   const ownOrderKeys = (rider: PlanRider) => fallbackOrderKeys(effortFor?.(rider), orderRiderById.get(rider.rider_id), roleDefaultFor?.(rider.rider_id));
@@ -553,6 +599,8 @@ export default function StagePlanBoard({
             <tr className="border-b border-cz-border">
               <th className="px-4 py-2 text-left font-medium text-xs uppercase tracking-wide text-cz-3">{t("intention.colRider")}</th>
               <th className="px-4 py-2 text-left font-medium text-xs uppercase tracking-wide text-cz-3">{t("intention.colRole")}</th>
+              <th className={THN}>{t("intention.colRating")}</th>
+              <th className={THN}>{t("selection.form")}</th>
               {routeMatch && (
                 <SortableTh
                   sortKey="routeMatch"
@@ -565,7 +613,9 @@ export default function StagePlanBoard({
                   {routeMatch.label}
                 </SortableTh>
               )}
-              <th className="px-4 py-2 text-left font-medium text-xs uppercase tracking-wide text-cz-3">{planColumn}</th>
+              <th className={THN}>{t("selection.fatigue")}</th>
+              <th className={TH}>{t("stagePlan.quick.label")}</th>
+              <th className={TH}>{planColumn}</th>
             </tr>
           </thead>
           <tbody>
@@ -575,9 +625,13 @@ export default function StagePlanBoard({
               const has = Boolean(planByRider.get(rider.rider_id));
               return [
                 <tr key={rider.rider_id} className={`border-b border-cz-border ${open || rolePicker ? "" : "last:border-0"}`}>
-                  <td className="px-4 py-2.5 align-top text-cz-1 font-medium">{rider.name || "—"}</td>
+                  <td className="px-4 py-2.5 align-top text-cz-1 font-medium">{nameCell(rider, "")}</td>
                   <td className="px-4 py-2.5 align-top">{renderRoleCell(rider)}</td>
+                  <td className={TDN}>{num(rider.rating)}</td>
+                  <td className={TDN}>{num(rider.form)}</td>
                   {routeMatch && <td className="px-4 py-2.5 align-top">{routeMatch.renderCell(rider)}</td>}
+                  <td className={TDN}>{num(rider.fatigue)}</td>
+                  <td className="px-4 py-2.5 align-top">{renderQuick(rider)}</td>
                   <td className="px-4 py-2.5 align-top">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">{renderPlanCell(rider)}</div>
@@ -597,7 +651,7 @@ export default function StagePlanBoard({
                 </tr>,
                 open || rolePicker ? (
                   <tr key={`${rider.rider_id}-edit`} className="border-b border-cz-border last:border-0 bg-cz-subtle">
-                    <td colSpan={routeMatch ? 4 : 3} className="px-4 pb-3.5 pt-0">{rolePicker ?? renderEditor(rider)}</td>
+                    <td colSpan={columnCount} className="px-4 pb-3.5 pt-0">{rolePicker ?? renderEditor(rider)}</td>
                   </tr>
                 ) : null,
               ];
@@ -613,7 +667,7 @@ export default function StagePlanBoard({
           return (
             <li key={rider.rider_id} className="px-4 py-3">
               <div className="flex items-baseline justify-between gap-3">
-                <span className="text-cz-1 font-medium text-sm min-w-0 truncate">{rider.name || "—"}</span>
+                {nameCell(rider, "text-cz-1 font-medium text-sm")}
                 {routeMatch && (
                   <span className="flex items-baseline gap-1.5 whitespace-nowrap shrink-0">
                     <span className="text-3xs uppercase tracking-wider text-cz-3">{routeMatch.mobileLabel}</span>
@@ -621,8 +675,17 @@ export default function StagePlanBoard({
                   </span>
                 )}
               </div>
+              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs">
+                {([[t("intention.colRating"), rider.rating], [t("selection.form"), rider.form], [t("selection.fatigue"), rider.fatigue]] as const).map(([label, value]) => (
+                  <span key={label} className="inline-flex items-baseline gap-1.5">
+                    <span className="text-3xs uppercase tracking-wider text-cz-3">{label}</span>
+                    <span className="font-data tabular-nums text-cz-1">{num(value)}</span>
+                  </span>
+                ))}
+              </div>
               <div className="mt-0.5">{renderRoleCell(rider, { mobile: true })}</div>
               {routeMatch?.renderMark?.(rider)}
+              {renderQuick(rider, true) && <div className="mt-2">{renderQuick(rider, true)}</div>}
               {editable(rider) && !stageCompleted ? (
                 <button
                   type="button"

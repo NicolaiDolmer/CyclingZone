@@ -97,6 +97,14 @@
     }
   },
   "stagePlan": {
+    "quick": {
+      "label": "Hurtigvalg",
+      "easy": "Let",
+      "normal": "Normal",
+      "hard": "Hård",
+      "aria": "Hurtigvalg for {name}",
+      "does": "{effort}: {task}"
+    },
     "title": "Etapeplan",
     "help": "Hver rytter får en kort plan langs ruten. Opgaven skifter ved en stigning, på de sidste 10 km eller når han er sat.",
     "useAssistant": "Brug assistentens plan",

@@ -97,6 +97,14 @@
     }
   },
   "stagePlan": {
+    "quick": {
+      "label": "Choix rapide",
+      "easy": "Facile",
+      "normal": "Normal",
+      "hard": "Dur",
+      "aria": "Choix rapide pour {name}",
+      "does": "{effort} : {task}"
+    },
     "title": "Plan d'étape",
     "help": "Chaque coureur a un court plan le long du parcours. La tâche change à une montée, dans les 10 derniers km ou quand il est lâché.",
     "useAssistant": "Utiliser le plan de l'assistant",

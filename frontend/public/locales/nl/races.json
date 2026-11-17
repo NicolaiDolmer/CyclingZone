@@ -97,6 +97,14 @@
     }
   },
   "stagePlan": {
+    "quick": {
+      "label": "Snelkeuze",
+      "easy": "Licht",
+      "normal": "Normaal",
+      "hard": "Zwaar",
+      "aria": "Snelkeuze voor {name}",
+      "does": "{effort}: {task}"
+    },
     "title": "Etappeplan",
     "help": "Elke renner krijgt een kort plan langs het parcours. De taak wisselt bij een klim, in de laatste 10 km of als hij gelost wordt.",
     "useAssistant": "Gebruik het plan van de assistent",

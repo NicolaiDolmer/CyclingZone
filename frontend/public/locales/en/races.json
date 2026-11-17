@@ -97,6 +97,14 @@
     }
   },
   "stagePlan": {
+    "quick": {
+      "label": "Quick choice",
+      "easy": "Easy",
+      "normal": "Normal",
+      "hard": "Hard",
+      "aria": "Quick choice for {name}",
+      "does": "{effort}: {task}"
+    },
     "title": "Stage plan",
     "help": "Each rider gets a short plan along the route. The task switches at a climb, in the last 10 km or when he is dropped.",
     "useAssistant": "Use the assistant's plan",
