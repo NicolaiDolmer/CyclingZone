@@ -1870,6 +1870,10 @@
       "scouting": {
         "title": "Andere divisies scouten",
         "text": "Zet het koershub op 'Mijn divisie' of 'Andere divisies' om de komende startlijsten van elke poule te bekijken, alleen-lezen. Startlijsten openen zeven dagen voor elke koers en tonen alleen brutoselecties (welke renners een team heeft ingeschreven), zodat je het verwachte veld kunt inschatten. Rollen, vorm en vermoeidheid blijven verborgen, en koersen verder weg blijven vergrendeld tot hun startlijst opent."
+      },
+      "spoilerShield": {
+        "title": "Spoilerschild",
+        "text": "Het spoilerschild houdt winnaars en plaatsen buiten je meldingen, tot jij zelf wilt kijken. Zet het aan in Instellingen, onder Meldingen, in de kaart Uitslagen en spoilers (Spoilerschild voor alle koersen). Het staat standaard uit. Met het schild aan zeggen de inbox, de bel en browsermeldingen alleen dat een etappe gereden is. Ze noemen geen winnaar en geen plaats. De nieuwe koerspagina krijgt een schakelaar voor elke koers en verbergt daar de uitslag tot je op Toon uitslagen drukt. Zolang de nieuwe koerspagina niet voor jou aanstaat, toont de koerspagina de uitslag zoals voorheen."
       }
     },
     "raceDay": {

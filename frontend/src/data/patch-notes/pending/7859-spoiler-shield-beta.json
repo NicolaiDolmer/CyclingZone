@@ -1,0 +1,20 @@
+{
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "flag": "spoiler_shield_7859",
+      "topic": "Spoiler shield",
+      "en": {
+        "title": "Spoiler shield for notifications",
+        "body": "I added a spoiler shield. Switch it on in Settings, under Notifications, in the card Results and spoilers. It is off by default. With the shield on, your inbox, the bell and browser notifications only say that a stage is finished, with no winner and no placing. The race page itself only hides the result with the new race page."
+      },
+      "da": {
+        "title": "Spoiler-skjold til notifikationer",
+        "body": "Jeg har bygget et spoiler-skjold. Slå det til under Indstillinger, under Notifikationer, i kortet Resultater og spoilere. Det er slået fra som standard. Med skjoldet til siger din indbakke, klokken og browser-notifikationerne kun, at en etape er færdig, uden vinder og placering. Selve løbssiden skjuler først resultatet med den nye løbsside."
+      },
+      "refs": [7859]
+    }
+  ]
+}
