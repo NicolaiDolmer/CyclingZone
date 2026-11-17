@@ -204,7 +204,7 @@ test("preview-mockens referat: Pedersen og Brekke er to linjer hver, angrebet ve
   const timeline = film7861Timeline("/api/races/race-live-1/timeline?stage=2") as { timeline_version: number; events: Parameters<typeof v6ClimbAttackLines>[0] };
   const profile = (SEED_STAGE_PROFILES as Array<{ race_id: string; stage_number: number; climbs: unknown[] }>).find((p) => p.race_id === "race-live-1" && p.stage_number === 2);
   const lines = v6ClimbAttackLines(timeline.events, {
-    timelineVersion: timeline.timeline_version, climbs: profile?.climbs as Parameters<typeof v6ClimbAttackLines>[1]["climbs"], mine: new Set(["rider-1"]), ownRiderIds: ["rider-1"],
+    timelineVersion: timeline.timeline_version, climbs: profile?.climbs as NonNullable<Parameters<typeof v6ClimbAttackLines>[1]>["climbs"], mine: new Set(["rider-1"]), ownRiderIds: ["rider-1"],
   });
   assert.deepEqual(lines.map((l) => [l.riderIds[0], l.phase, Math.round(l.km * 10) / 10, l.time != null, v6ClimbAttackCopyKey(l)]), [
     ["rider-1", "attack", 114.6, false, "detail.film.event.climb_attack_start_named"],
