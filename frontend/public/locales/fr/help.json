@@ -1519,6 +1519,10 @@
         "title": "Lire le rapport d'entraînement",
         "text": "Une fois l'entraînement lancé, le rapport s'ouvre sur un résumé du jour : combien de coureurs se sont entraînés, combien ont eu une percée (une aptitude a gagné +1), et combien sont au pic de forme. Chaque ligne montre la progression de l'aptitude de l'axe vers son prochain +1, et une percée est mise en évidence avec le saut réel, par exemple 71 à 72. Le tableau de l'effectif montre la même barre de progression, tu peux donc orienter un axe vers un coureur proche d'une percée."
       },
+      "raceSource": {
+        "title": "D'où vient la progression",
+        "text": "Ouvre un coureur dans le rapport d'entraînement pour voir d'où vient sa progression, aptitude par aptitude : Entraînement, Course et Total. La progression des courses est hachurée dans une couleur neutre et elle est déjà comprise dans le total du jour, elle n'est donc jamais comptée deux fois. Un coureur qui s'est seulement entraîné n'affiche qu'Entraînement, et un coureur qui a seulement couru n'affiche que Course. Quand une aptitude a gagné un point entier, la ligne l'indique avec le saut, par exemple de 54 à 56. Un jour où ton équipe a couru, une ligne sous les chiffres clés indique quelle part de la progression de l'équipe vient des courses. Les anciens rapports qui n'enregistraient pas chaque activité séparément gardent les anciennes listes et n'affichent pas de répartition."
+      },
       "trainingHistory": {
         "title": "Historique d'entraînement",
         "text": "Chaque entraînement quotidien est conservé. La page Entraînement quotidien liste tes 30 derniers jours sous l'effectif, chaque jour montrant combien de coureurs se sont entraînés, les percées et les coureurs au pic de forme ; développe un jour pour voir le rapport complet par coureur. Le profil de chaque coureur a son propre historique d'entraînement sous l'onglet Progression, listant l'axe, l'intensité, les gains et la forme de ce coureur jour par jour."

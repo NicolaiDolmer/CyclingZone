@@ -50,6 +50,16 @@ test("countSlop flags rounded-xl/2xl/3xl, glow, backdrop-blur, blob-blur", () =>
   assert.equal(countSlop("blur-2xl blur-3xl"), 2);
 });
 
+test("countSlop flags bare rounded (4 px) and rounded-sm as classes only (#8069 T03)", () => {
+  assert.equal(countSlop('className="px-1 rounded bg-cz-subtle"'), 1);
+  assert.equal(countSlop('className={`rounded ${x}`}'), 1);
+  assert.equal(countSlop('className="sm:rounded px-1"'), 1);
+  assert.equal(countSlop('className="rounded-sm rounded-t-sm"'), 2);
+  assert.equal(countSlop("const rounded = Math.round(x);"), 0);
+  assert.equal(countSlop("return rounded;"), 0);
+  assert.equal(countSlop('className="rounded-cz rounded-full"'), 0);
+});
+
 test("countSlop allows on-spec tokens (rounded-cz, shadow-overlay)", () => {
   assert.equal(countSlop("rounded-cz rounded-cz-pill shadow-overlay"), 0);
   assert.equal(countSlop("// avoid rounded-2xl in new UI"), 0); // comment stripped

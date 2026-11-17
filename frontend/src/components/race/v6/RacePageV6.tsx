@@ -41,7 +41,7 @@ import { useRaceViewTelemetry } from "../../../lib/useRaceViewTelemetry.ts";
 import { useRiderNames } from "../../../lib/useRiderNames.js";
 import { useUiPref } from "../../../lib/userUiPrefs.ts";
 import {
-  tacticsCta, v6NamesFromResults, v6ResultsPhase, v6SavedStages, v6SavedStagesRefreshKey, v6StageTabFor, v6Strip, v6StripCells, v6StripWinners, v6Tabs,
+  tacticsCta, v6NamesFromResults, v6ResultsPhase, v6RouteProfile, v6SavedStages, v6SavedStagesRefreshKey, v6StageTabFor, v6Strip, v6StripCells, v6StripWinners, v6Tabs,
   v6TacticsResults, v6TacticsStage, v6WinnerIdsByStage, v6WinnersByStage,
   type RacePageV6Tab, type StageResultsState, type V6ResultRow,
 } from "./racePageV6Model.ts";
@@ -181,7 +181,8 @@ export default function RacePageV6(props: RacePageV6Props) {
   }), [totalStages, stagesCompleted, raceFinished, schedule, nowMs, profileByStage, winners, bestByStage, riders, overrides, savedStages, whenLabelFor, timeLabelFor, spoiler.visible]);
   // #7865 (punkt 2): én etapestribe. På Taktik styrer den editoren (som ingen egen vælger har).
   const strip = v6Strip({ activeTab, isStageRace, selectedStage, tacticsStage });
-  const profile = profileByStage[selectedStage] ?? null;
+  // #8253: rutekortet viser altid den valgte etapes rute (opslaget tjekker etapenummeret).
+  const profile = v6RouteProfile(profileByStage, selectedStage);
   const canShowRoute = profile != null && hasRouteData(profile);
   const routeShown = canShowRoute && !routeHidden;
   const resultsPhase = v6ResultsPhase({ selectedStage, stagesCompleted, raceFinished, schedule, nowMs });
@@ -203,7 +204,7 @@ export default function RacePageV6(props: RacePageV6Props) {
             results={results}
             myTeamId={myTeamId}
             stageRoles={stageRoles}
-            profile={profileByStage[tacticsStage] ?? null}
+            profile={v6RouteProfile(profileByStage, tacticsStage)}
             resultsState={tacticsResults}
             resultsErrorSlot={tacticsResults === "failed" ? stageErrorFor?.(tacticsStage) ?? null : null}
           />

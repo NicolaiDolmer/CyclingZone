@@ -115,6 +115,7 @@ import {
 // forveksles med "stiller op" (race_entries bevares bevidst ved afmelding, #4306).
 import { findRejoinConflicts, loadWithdrawnPairs, loadWithdrawnRaceIdsForTeam, withdrawalKey, splitWithdrawals, DID_NOT_START_REASON } from "../lib/raceWithdrawal.js";
 import { planningBulkRoute7535, proposeAssistantSquads7535, withdrawRacesBulk7535 } from "../lib/planningBulkActions7535.js"; // #7535
+import { loadExpectedLoad7535 } from "../lib/planningExpectedLoad7535.js"; // #7535 ejervalg 16/11 punkt 5
 import { loadTeamsInStartedField } from "../lib/raceStartOutlook.js"; // #6740
 import { planningDidNotStart } from "../lib/planningDidNotStart.ts"; // #7518
 import { teamDistributionColumns } from "../lib/raceDistributionColumns.ts"; // #7553
@@ -256,7 +257,7 @@ import { programForChoice, normalizeProgram, smartDefaultSession } from "../lib/
 import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer, V3_TRAINING_FOCUSES } from "../lib/trainingCatalogV3.js"; // #5319
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, isValidWeekPlanDays, cappedVisibleAbilities } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
-import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
+import { readFlagStage, evaluateFlagStage, clearFlagStageCache } from "../lib/featureStage.js";
 import {
   STAGE_FLAGS, findStageFlag, isValidFlagStage, normalizeStageValue,
   PLAYER_VISIBLE_BINARY_FLAG_KEYS, // #6181
@@ -6372,6 +6373,17 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
 const planningBulkCtx7535 = { supabase, isViewerBetaTester, captureException, invalidateNamespace };
 router.post("/races/selection/auto/propose", requireAuth, marketWriteLimiter, planningBulkRoute7535(proposeAssistantSquads7535, planningBulkCtx7535));
 router.post("/races/withdrawals/bulk", requireAuth, marketWriteLimiter, planningBulkRoute7535(withdrawRacesBulk7535, planningBulkCtx7535));
+// #7535 (ejervalg 16/11): "Belastning" i trup-tabellen som ord (laeser kun). Se lib/planningExpectedLoad7535.js.
+router.get("/races/:raceId/expected-load", requireAuth, presencePulseLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const out = await loadExpectedLoad7535({ supabase, teamId: req.team.id, raceId: req.params.raceId });
+    res.status(out.status).json(out.body);
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: "expected_load_failed" });
+  }
+});
 
 // POST /api/races/:raceId/selection/auto — #2180 one-click "auto-udtag" (indbakke-
 // knappen på 36t-varslet, selectionWarningSweep.js). Assistenten bygger + gemmer
@@ -15857,6 +15869,7 @@ router.patch("/admin/feature-flags/:key", requireAdmin, adminWriteLimiter, async
       { onConflict: "key" },
     );
     if (error) throw error;
+    clearFlagStageCache({ client: supabase, key }); // #8143 (H): skiftet slår igennem straks
 
     // best-effort: flaget ER flyttet. En fejlet log-raekke maa ikke faa admin
     // til at trykke igen paa noget der allerede er sket.
