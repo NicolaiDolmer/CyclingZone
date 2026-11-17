@@ -85,7 +85,8 @@ param(
   [Parameter(Mandatory)]
   [string] $Pr,
   [switch] $DryRun,
-  # Codex P1 (#7657): auto-toget sender det vurderede/godkendte hoved; et andet hoved = STOP foer merge (kun med een PR).
+  # Codex P1 (#7657): auto-toget sender det vurderede/godkendte hoved pr. PR (komma-liste i
+  # samme raekkefoelge som -Pr); et andet hoved merges aldrig (SKIP, eller STOP lige foer merge).
   [string] $ExpectHead = "",
   # Owner renewal 28/10: real CodeRabbit instead of Claude for #7313 only.
   [switch] $CodeRabbitNight,
@@ -111,7 +112,10 @@ param(
   [string] $Repo = "NicolaiDolmer/CyclingZone",
   # #6318: over deploy-verify.yml's timeout-minutes (100) + oprettelses-slack.
   [int] $DeployVerifyTimeoutMinutes = 140,
-  [int] $CiTimeoutMinutes = 25,
+  # CI-plan trin 1 (ejer 17/11): main-CI tog 76-110 min i koe-spidser 16-17/11; 25 min gav
+  # falske timeouts, der laaste auto-toget. Stall-vagten (45 min uden fremskridt) stopper stadig
+  # et reelt haengende tog.
+  [int] $CiTimeoutMinutes = 90,
   # 23/10 (ejer: "een PR ad gangen"): en PR hvis checks ikke er groenne endnu, stilles
   # bagerst i koeen een gang (klar-foerst). Naar den igen er forrest, ventes hoejst saa
   # mange minutter. Stadig ikke groen = PR'en springes over (SKIP), koeen fortsaetter.
@@ -141,7 +145,12 @@ $script:ActiveMarkerScript = Join-Path $PSScriptRoot 'merge-queue-active-marker.
 
 $PrNumbers = @($Pr -split '[,\s]+' | Where-Object { $_ } | ForEach-Object { [int]$_ })
 if ($PrNumbers.Count -eq 0) { Write-Error "Ingen gyldige PR-numre i -Pr '$Pr'."; exit 1 }
-if ($ExpectHead -and ($PrNumbers.Count -ne 1 -or $ExpectHead -notmatch '^[0-9a-f]{40}$')) { Write-Error "-ExpectHead kraever praecis een PR og en fuld SHA."; exit 1 }
+$ExpectHeads = @{}
+if ($ExpectHead) {
+  $expectList = @($ExpectHead -split '[,\s]+' | Where-Object { $_ })
+  if ($expectList.Count -ne $PrNumbers.Count -or @($expectList | Where-Object { $_ -notmatch '^[0-9a-f]{40}$' }).Count -gt 0) { Write-Error "-ExpectHead kraever een fuld SHA pr. PR i samme raekkefoelge som -Pr."; exit 1 }
+  for ($i = 0; $i -lt $PrNumbers.Count; $i++) { $ExpectHeads["$($PrNumbers[$i])"] = $expectList[$i] }
+}
 
 if ($CodeRabbitNight -and ($Repo -ne 'NicolaiDolmer/CyclingZone' -or @($PrNumbers | Where-Object { $_ -notin @(7313) }).Count -gt 0)) {
   throw 'CodeRabbitNight er kun ejer-godkendt for #7313 i CyclingZone.'
@@ -1030,8 +1039,30 @@ function Close-OpenTrain {
   try { $proofPrs = (@($closeOutEntries | Where-Object { $null -ne $_ } | ForEach-Object { [int]$_.number }) -join ','); if ($proofPrs) { Start-Process -FilePath node -ArgumentList @((Join-Path $PSScriptRoot 'til-doers-proof.mjs'), 'run', '--pr', $proofPrs, '--dry-run', '--repo', $Repo) -WindowStyle Hidden | Out-Null } } catch {}
 }
 
+# CI-plan trin 1 (ejer 17/11): kun EEN koe ad gangen, haandhaevet i koden (ikke kun en
+# hukommelses-regel). 16/11 blokerede manuelle koeer auto-toget i timevis, og to samtidige
+# koeer genstarter hinandens CI. En levende markoer fra en anden proces = stop foer noget merges.
+# Codex P2 (#8330): markoeren TAGES atomisk (`acquire` laeser, afviser en levende ejer og
+# skriver i eet trin under en fil-laas), saa to koeer der starter samtidig ikke begge kommer
+# ind. Uden bevist ejerskab merges intet (fail-closed). -DryRun tager ingen markoer.
+if (-not $DryRun) {
+  $acquireOut = @()
+  $acquireExit = 4
+  try {
+    $acquireOut = @(& node $script:ActiveMarkerScript acquire --prs ($PrNumbers -join ',') --pid "$PID" 2>&1 | ForEach-Object { "$_" })
+    $acquireExit = $LASTEXITCODE
+  } catch { $acquireExit = 4 }
+  $acquireMsg = ($acquireOut -join ' ').Trim()
+  if ($acquireExit -eq 3) {
+    Write-Host "STOP: en anden merge-koe koerer allerede ($acquireMsg). Vent til den er faerdig; koer aldrig to koeer samtidig." -ForegroundColor Red
+    exit 3
+  }
+  if ($acquireExit -ne 0) {
+    Write-Host "STOP: koe-markoeren kunne ikke tages ($acquireMsg). Intet merges; koer koeen igen." -ForegroundColor Red
+    exit 1
+  }
+}
 # #7587: markoeren lever fra foerste merge-forsoeg til koeen slutter; finally (nederst) fjerner den ogsaa ved STOP/exit.
-Invoke-ActiveMarker @('start', '--prs', ($PrNumbers -join ','))
 try {
 for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   $entry = $plan[$idx]
@@ -1079,8 +1110,15 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
 
   $fresh = Get-PrPlanEntry $n
   # Codex P1 (#7657): hovedet skal vaere det, kalderen vurderede; ellers merges et ikke-godkendt commit.
-  if ($ExpectHead -and $fresh.headSha -ne $ExpectHead) {
-    Write-Host "STOP: PR #$n har hoved $($fresh.headSha) - ikke det godkendte $ExpectHead. Intet merges." -ForegroundColor Red
+  # Samlet tog (#8331): kun den PR springes over; resten af toget fortsaetter (-StopOnRedPr = STOP).
+  $expectedHead = $ExpectHeads["$n"]
+  if ($expectedHead -and $fresh.headSha -ne $expectedHead) {
+    if (-not $StopOnRedPr -and -not $DryRun) {
+      Write-Host "SKIP: PR #$n har hoved $($fresh.headSha) - ikke det godkendte $expectedHead. Den merges ikke; koeen fortsaetter." -ForegroundColor Yellow
+      $script:skipped += $n
+      continue
+    }
+    Write-Host "STOP: PR #$n har hoved $($fresh.headSha) - ikke det godkendte $expectedHead. Intet merges." -ForegroundColor Red
     Exit-Queue 1
   }
   # #7628: konflikt KUN i TS-baseline-filerne loeses af modulet (exit 0); alt andet = uaendret adfaerd.
@@ -1189,8 +1227,8 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   }
   # Codex P1 (#7657): sidste vagt lige foer merge - et push under Wait-PrGreen eller en
   # baseline-loesning maa aldrig merge et andet hoved end det, kalderen godkendte.
-  if ($ExpectHead -and $recheck.headSha -ne $ExpectHead) {
-    Write-Host "STOP: PR #$n har hoved $($recheck.headSha) lige foer merge - ikke det godkendte $ExpectHead. Intet merges." -ForegroundColor Red
+  if ($expectedHead -and $recheck.headSha -ne $expectedHead) {
+    Write-Host "STOP: PR #$n har hoved $($recheck.headSha) lige foer merge - ikke det godkendte $expectedHead. Intet merges." -ForegroundColor Red
     Exit-Queue 1
   }
   Write-Host "  Merger: gh pr merge $n --squash --delete-branch --admin"

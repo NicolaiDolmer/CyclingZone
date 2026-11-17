@@ -24,7 +24,9 @@ concurrency:
 jobs:
   audit:
     name: league-size-invariant
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.event == 'pull_request'
+    # CI-plan trin 1 (ejer 17/11): kun efter en GROEN CI-koersel (70 % af CI-koerslerne blev
+    # annulleret og startede alligevel en audit). Roed/annulleret CI = PR'en er ikke klar alligevel.
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

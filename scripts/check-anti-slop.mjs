@@ -114,6 +114,32 @@ const SHADOW_ALLOWED = new Set(["shadow-overlay", "shadow-none"]);
 // cykel-stigningsprocent-copy i denne kodebase).
 const GRADIENT_RE = /\bbg-gradient-to-[a-z]+\b|\b(?:linear|radial|conic)-gradient\s*\(/g;
 
+// #8069 T02 (TASTE §3, F7): haandrullet guld-knap. `bg-cz-accent` + `text-cz-on-accent`
+// i samme streng paa et <button>/<a>/<Link>/<NavLink> er en kopi af
+// buttonClass({ variant: "primary" }) og usynlig for "Button variant=primary"-
+// taellingen og TableRowContext-vagten. Maerker/piller (<span>) taelles ikke:
+// guld er tilladt paa ledermarkoerer (P3). Tag-opslaget er en heuristik (seneste
+// "<Tag" foer strengen); ratchet'en fryser resten.
+const GOLD_PAIR_RE = /bg-cz-accent(?![\w/-])[^"'`]*?text-cz-on-accent|text-cz-on-accent[^"'`]*?bg-cz-accent(?![\w/-])/g;
+// Seneste "<Ident" foer strengen. Ikke [^<]*$: JSX-props som `counterAmt <= 0`
+// indeholder "<" uden at vaere et tag.
+const GOLD_TAG_RE = /<([A-Za-z][\w.]*)/g;
+const GOLD_TAGS = new Set(["button", "a", "Link", "NavLink"]);
+
+export function countGoldButton(src) {
+  const clean = stripComments(src);
+  let n = 0;
+  let m;
+  GOLD_PAIR_RE.lastIndex = 0;
+  while ((m = GOLD_PAIR_RE.exec(clean)) !== null) {
+    const before = clean.slice(Math.max(0, m.index - 2000), m.index);
+    let tag = null;
+    for (const t of before.matchAll(GOLD_TAG_RE)) tag = t[1];
+    if (tag && GOLD_TAGS.has(tag)) n++;
+  }
+  return n;
+}
+
 export function countArrow(src) {
   const matches = stripComments(src).match(ARROW_RE);
   return matches ? matches.length : 0;
@@ -168,6 +194,7 @@ export function scanSource(src) {
     smallpx: countSmallPx(src),
     shadow: countShadow(src),
     gradient: countGradient(src),
+    goldbtn: countGoldButton(src),
   };
 }
 
@@ -205,21 +232,21 @@ export function scanRepo() {
     const rel = relative(ROOT, file).replaceAll("\\", "/");
     if (EXEMPT_FILES.has(rel)) continue;
     const r = scanSource(readFileSync(file, "utf8"));
-    if (r.arrow || r.smallpx || r.shadow || r.gradient) counts[rel] = r;
+    if (r.arrow || r.smallpx || r.shadow || r.gradient || r.goldbtn) counts[rel] = r;
   }
   for (const file of walk(LOCALES_DIR, matchLocale)) {
     const rel = relative(ROOT, file).replaceAll("\\", "/");
     if (EXEMPT_FILES.has(rel)) continue;
     const arrow = countArrow(readFileSync(file, "utf8"));
-    if (arrow) counts[rel] = { arrow, smallpx: 0, shadow: 0, gradient: 0 };
+    if (arrow) counts[rel] = { arrow, smallpx: 0, shadow: 0, gradient: 0, goldbtn: 0 };
   }
   return counts;
 }
 
 // --- Baseline-ratchet (kun stigninger fejler) -------------------------------
 
-const CATS = ["arrow", "smallpx", "shadow", "gradient"];
-const ZERO = { arrow: 0, smallpx: 0, shadow: 0, gradient: 0 };
+const CATS = ["arrow", "smallpx", "shadow", "gradient", "goldbtn"];
+const ZERO = { arrow: 0, smallpx: 0, shadow: 0, gradient: 0, goldbtn: 0 };
 
 export function compareAgainstBaseline(findings, baseline) {
   const base = baseline.files || {};
@@ -252,7 +279,7 @@ function buildBaseline(findings) {
   for (const file of Object.keys(findings).sort()) files[file] = findings[file];
   return {
     $comment:
-      "Kendte anti-slop-overtraedelser (ratchet, maa kun skrumpe). Kategorier: arrow/smallpx/shadow/gradient. Genereret af scripts/check-anti-slop.mjs --update-baseline. Refs #4626, #3422. Nye overtraedelser maa IKKE tilfoejes her: brug stroke-ikoner (ikke pile), text-2xs/text-3xs (ikke arbitraer px), shadow-overlay (ikke andre shadow-*), eller (legitimt) udvid EXEMPT_FILES i lint-ui-slop.mjs med begrundelse (delt med denne guard).",
+      "Kendte anti-slop-overtraedelser (ratchet, maa kun skrumpe). Kategorier: arrow/smallpx/shadow/gradient/goldbtn. Genereret af scripts/check-anti-slop.mjs --update-baseline. Refs #4626, #3422. Nye overtraedelser maa IKKE tilfoejes her: brug stroke-ikoner (ikke pile), text-2xs/text-3xs (ikke arbitraer px), shadow-overlay (ikke andre shadow-*), eller (legitimt) udvid EXEMPT_FILES i lint-ui-slop.mjs med begrundelse (delt med denne guard).",
     files,
   };
 }
@@ -312,7 +339,7 @@ function main() {
   if (updateBaseline) {
     writeFileSync(BASELINE_PATH, JSON.stringify(buildBaseline(findings), null, 2) + "\n");
     const total = Object.values(findings).reduce(
-      (s, c) => s + c.arrow + c.smallpx + c.shadow + c.gradient,
+      (s, c) => s + c.arrow + c.smallpx + c.shadow + c.gradient + (c.goldbtn || 0),
       0
     );
     console.log(`Baseline skrevet til scripts/anti-slop-baseline.json (${Object.keys(findings).length} filer, ${total} overtraedelser).`);
@@ -348,6 +375,11 @@ Fix:
                        box-shadow/boxShadow-styles.
   - Gradient        -> ingen bg-gradient-to-* eller linear-/radial-/conic-
                        gradient(); flad farve/token i stedet.
+  - Guld-knap (goldbtn) -> brug <Button variant="primary"> eller
+                       buttonClass({ variant: "primary" }), aldrig
+                       bg-cz-accent + text-cz-on-accent paa en knap i haanden
+                       (TASTE §3, #8069). Valgt/aktiv tilstand er guld-TEKST
+                       paa 10 % guld (P3), ikke fyldt guld.
   - Legitim undtagelse? -> udvid EXEMPT_FILES i scripts/lint-ui-slop.mjs
                        (delt med denne guard) med begrundelse.
 Baseline maa IKKE udvides med nye overtraedelser (ratchet, Refs #4626).`);

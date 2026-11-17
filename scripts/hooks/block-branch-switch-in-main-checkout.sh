@@ -201,7 +201,7 @@ cat >&2 <<EOF
 
   Brug et worktree i stedet:
 
-    pwsh -File scripts/new-worktree.ps1 -Branch $TARGET -FromBranch origin/main
+    pwsh -File scripts/new-worktree.ps1 -Branch $TARGET -FromBranch refs/remotes/origin/main
 
   Aabn derefter arbejdet i:
 

@@ -86,8 +86,8 @@
     "from": "Fra",
     "to": "Til",
     "round": "Runde {round}",
-    "squadCriticalReceived": "🚨 Under minimum",
-    "squadCriticalSent": "🚨 Sælger under min.",
+    "squadCriticalReceived": "Under minimum",
+    "squadCriticalSent": "Sælger under min.",
     "offerLabel": "Tilbud",
     "counterLabel": "Dit modbud",
     "counterAmountLabel": "Modbud",
@@ -98,16 +98,16 @@
     "contractExpires": "Udl. efter sæson {season}",
     "noContract": "Fri agent",
     "buttons": {
-      "accept": "✓ Accepter",
+      "accept": "Accepter",
       "counter": "Modbud",
-      "reject": "✕ Afvis",
+      "reject": "Afvis",
       "send": "Send",
-      "acceptCounter": "✓ Accepter ({amount} CZ$)",
+      "acceptCounter": "Accepter ({amount} CZ$)",
       "newOffer": "Nyt bud",
       "withdraw": "Træk tilbage",
       "withdrawOffer": "Træk tilbud tilbage",
       "withdrawCounter": "Træk modbud tilbage",
-      "confirmDeal": "✓ Bekræft handel ({amount} CZ$)",
+      "confirmDeal": "Bekræft handel ({amount} CZ$)",
       "cancelDeal": "Annuller handel",
       "archive": "Arkivér"
     },
@@ -132,14 +132,14 @@
     "cashFrom": "+{amount} CZ$ fra {team}",
     "counterTag": "(modbud)",
     "buttons": {
-      "accept": "✓ Accepter",
+      "accept": "Accepter",
       "counter": "Modbud",
-      "reject": "✕ Afvis",
-      "acceptCounter": "✓ Accepter modbud",
+      "reject": "Afvis",
+      "acceptCounter": "Accepter modbud",
       "send": "Send",
       "withdraw": "Træk forslag tilbage",
       "rejectShort": "Afvis",
-      "confirmSwap": "✓ Bekræft byttehandel",
+      "confirmSwap": "Bekræft byttehandel",
       "cancelSwap": "Annuller handel",
       "archive": "Arkivér"
     },
@@ -252,12 +252,12 @@
     "ctaListRider": "Åbn min trup"
   },
   "toast": {
-    "offerSent": "✅ Tilbud sendt!",
-    "listingRemoved": "✅ Rytter fjernet fra transferlisten",
+    "offerSent": "Tilbud sendt!",
+    "listingRemoved": "Rytter fjernet fra transferlisten",
     "listingRemoveFailed": "Kunne ikke fjerne listingen",
-    "offerAcceptedBuyer": "✅ Accepteret · køber skal nu bekræfte handlen",
-    "offerAcceptedSeller": "✅ Accepteret · sælger skal nu bekræfte handlen",
-    "confirmedAwaiting": "✅ Bekræftet · afventer den anden parts bekræftelse",
+    "offerAcceptedBuyer": "Accepteret · køber skal nu bekræfte handlen",
+    "offerAcceptedSeller": "Accepteret · sælger skal nu bekræfte handlen",
+    "confirmedAwaiting": "Bekræftet · afventer den anden parts bekræftelse",
     "dealCancelled": "Handel annulleret",
     "transferRejected": "Transfer afvist",
     "counterSent": "Modbud sendt",
@@ -265,27 +265,27 @@
     "newOfferSent": "Nyt bud sendt",
     "offerWithdrawn": "Tilbud trukket tilbage",
     "offerArchived": "Tilbud arkiveret",
-    "updated": "✅ Opdateret",
-    "swapAccepted": "✅ Accepteret · afventer bekræftelse",
-    "swapConfirmedAwaiting": "✅ Bekræftet · afventer den anden part",
+    "updated": "Opdateret",
+    "swapAccepted": "Accepteret · afventer bekræftelse",
+    "swapConfirmedAwaiting": "Bekræftet · afventer den anden part",
     "swapCancelled": "Byttehandel annulleret",
     "swapRejected": "Byttehandel afvist",
     "proposalWithdrawn": "Forslag trukket tilbage",
     "swapArchived": "Forslag arkiveret",
-    "priceUpdated": "✅ Pris opdateret",
+    "priceUpdated": "Pris opdateret",
     "priceUpdateFailed": "Kunne ikke opdatere prisen"
   },
   "celebration": {
     "transferDone": {
-      "title": "Transfer gennemført! 🎉",
+      "title": "Transfer gennemført!",
       "subtitle": "Rytteren er nu på dit hold"
     },
     "swapDone": {
-      "title": "Byttehandel gennemført! 🎉",
+      "title": "Byttehandel gennemført!",
       "subtitle": "Ryttere er nu skiftet"
     },
     "buyoutDone": {
-      "title": "Rytter købt! 🎉",
+      "title": "Rytter købt!",
       "subtitle": "Købsoptionen er udnyttet"
     }
   },

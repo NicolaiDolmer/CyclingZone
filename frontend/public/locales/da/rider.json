@@ -55,8 +55,8 @@
     "watchlistToggleFailed": "Kunne ikke opdatere din ønskeliste. Prøv igen.",
     "compare": "⇄ Sammenlign",
     "compareTitle": "Sammenlign med andre ryttere",
-    "watchlistCount": "👁 {count, plural, one {1 manager følger denne rytter} other {# managere følger denne rytter}}",
-    "visitors": "👀 {count, plural, one {1 unik besøgende} other {# unikke besøgende}} (7d)",
+    "watchlistCount": "{count, plural, one {1 manager følger denne rytter} other {# managere følger denne rytter}}",
+    "visitors": "{count, plural, one {1 unik besøgende} other {# unikke besøgende}} (7d)",
     "visitors24h": "{count, plural, one {1 de seneste 24t} other {# de seneste 24t}}",
     "visitorsNew": "Ny",
     "visitorsTrendUp": "Op {pct}% ift. de forrige 7 dage",
@@ -73,7 +73,7 @@
     "freeAgent": "Fri agent",
     "nextSeasonPrefix": "På vej til:",
     "pendingTransfer": "Skifter til {team}, når hans igangværende etapeløb er kørt færdigt",
-    "activeAuctionBadge": "⚡ Aktiv auktion",
+    "activeAuctionBadge": "Aktiv auktion",
     "highestBidLabel": "Højeste bud: {amount} CZ$",
     "valueLabel": "Værdi CZ$",
     "overall": "Rating",
@@ -87,7 +87,7 @@
     "newValueBetaTooltip": "Forhåndsvisning af det kommende evne-baserede værdisystem. Bruges endnu ikke til køb, salg eller løn."
   },
   "blocked": {
-    "pendingTransfer": "🔒 Rytteren er handlet og skifter til sit nye hold, når hans igangværende etapeløb er kørt færdigt. Han kan ikke handles igen før da.",
+    "pendingTransfer": "Rytteren er handlet og skifter til sit nye hold, når hans igangværende etapeløb er kørt færdigt. Han kan ikke handles igen før da.",
     "retired": "Rytteren er pensioneret og kan ikke handles.",
     "errorFallback": "Noget gik galt"
   },
@@ -721,13 +721,13 @@
     }
   },
   "auctionPanel": {
-    "activeLabel": "⚡ Aktiv auktion",
+    "activeLabel": "Aktiv auktion",
     "badges": {
       "leading": "Du fører",
       "selling": "Du sælger",
       "outbid": "Du er overbudt",
-      "extended": "⚡ Forlænget",
-      "flash": "⚡ Flash"
+      "extended": "Forlænget",
+      "flash": "Flash"
     },
     "highestBid": "Højeste bud",
     "leaderFallback": "",
@@ -759,7 +759,7 @@
       "saveAria": "Gem autobud-loft",
       "cancelAria": "Annullér autobud-redigering",
       "error": "Fejl",
-      "saved": "✓"
+      "saved": "Gemt"
     },
     "riderNameFallback": "rytter"
   },
@@ -778,7 +778,7 @@
       "free": "Start auktion (fri rytter)"
     },
     "flash": {
-      "label": "⚡ Flash Auktion (30 min)",
+      "label": "Flash Auktion (30 min)",
       "hint": "Deadline Day: afsluttes præcis 30 min efter start"
     },
     "end": {
@@ -788,7 +788,7 @@
     },
     "buttons": {
       "start": "Start auktion",
-      "startFlash": "⚡ Start Flash Auktion",
+      "startFlash": "Start Flash Auktion",
       "loading": "..."
     },
     "priceError": "Startpris skal mindst matche Værdi ({amount} CZ$)",
@@ -802,8 +802,8 @@
     "submit": "Send tilbud",
     "sending": "Sender...",
     "toast": {
-      "success": "✅ Tilbud sendt!",
-      "errorPrefix": "❌"
+      "success": "Tilbud sendt!",
+      "errorPrefix": "Fejl:"
     }
   },
   "sellRider": {
@@ -820,10 +820,10 @@
     "confirmRemove": "Ja, fjern",
     "cancel": "Annullér",
     "toast": {
-      "listed": "✅ Sat på transferlisten!",
-      "priceUpdated": "✅ Pris opdateret",
-      "removed": "✅ Fjernet fra transferlisten",
-      "errorPrefix": "❌",
+      "listed": "Sat på transferlisten!",
+      "priceUpdated": "Pris opdateret",
+      "removed": "Fjernet fra transferlisten",
+      "errorPrefix": "Fejl:",
       "autoNotSaved": "Auto-prisen blev ikke gemt:"
     },
     "editPrices": "Redigér priser",
@@ -882,12 +882,12 @@
     "submit": "Send byttehandel",
     "sending": "Sender...",
     "toast": {
-      "success": "✅ Byttehandel foreslået!",
-      "errorPrefix": "❌"
+      "success": "Byttehandel foreslået!",
+      "errorPrefix": "Fejl:"
     }
   },
   "celebration": {
-    "title": "Du vandt auktionen! 🏆",
+    "title": "Du vandt auktionen!",
     "subtitle": "Rytteren er nu på dit hold"
   },
   "compare": {
