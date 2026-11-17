@@ -156,6 +156,7 @@ import {
 import * as transferNotif from "../lib/transferNotifications.js";
 import { withdrawCounterOffer, claimCounterForAccept, buildCounterOfferWithdrawnNotification } from "../lib/counterOfferWithdraw.js"; // #6463
 import { getParkedRiderReleaseIssue, getParkedRiderTradeIssue } from "../lib/parkedRiderGuard6181.js"; // #6181
+import { loadLeavingRiderIds8153, withoutLeavingRiders8153 } from "../lib/riderRelease8153.js"; // #8153: auto-udtagelse
 import { releaseDeferContext8153, orderPendingRelease, countPendingReleasesForTeam, getPendingReleaseTradeIssue, loadPendingReleasesForTeam, countPendingReleasesForTransition, PENDING_RELEASE_FORCE_BLOCKED_ERROR, PENDING_RELEASE_SQUAD_CODE, getPendingReleaseSquadIssue, pendingReleaseSquadResponse } from "../lib/riderReleaseDefer8153.js"; // #8153
 import { countSellerAuctionOutgoing, checkAutoAcceptMutation, isAutoAcceptEnabled, getListingPriceUpdateErrorResponse, getOfferAutoAcceptIssue, registerAutoAcceptRoutes, releaseRiderUnderTeamLock } from "../lib/autoAccept2176.js"; // #2176
 import { sanitizeDmPrefs } from "../lib/discordDmPrefs.js";
@@ -6462,7 +6463,8 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
     if ((existingEntries || []).some((e) => autoLock.riderIds.has(e.rider_id))) {
       return res.status(409).json({ error: "selection_train_now_locked" });
     }
-    const teamRiderIds = (teamRiders || []).map((r) => r.id).filter((id) => !autoLock.riderIds.has(id));
+    const autoLeaving8153 = await loadLeavingRiderIds8153(supabase); // #8153: bestilt frigivelse -> ikke til senere loeb
+    const teamRiderIds = (teamRiders || []).map((r) => r.id).filter((id) => !autoLock.riderIds.has(id) && !autoLeaving8153.has(id));
     if (!teamRiderIds.length) return res.status(409).json({ error: "selection_no_eligible_riders" });
 
     const abilityCols = ["rider_id", ...RACE_SIM_ABILITY_KEYS].join(", ");
@@ -7029,7 +7031,7 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     const { data: teamRiders } = await applyRiderEligibilityFilter(
       supabase.from("riders").select("id").eq("team_id", req.team.id)
     );
-    const teamRiderIds = (teamRiders || []).map((r) => r.id);
+    const teamRiderIds = withoutLeavingRiders8153(teamRiders, await loadLeavingRiderIds8153(supabase)).map((r) => r.id); // #8153
     const abilityCols = ["rider_id", ...RACE_SIM_ABILITY_KEYS].join(", ");
     const [{ data: abilities }, { data: conditions }] = await Promise.all([
       supabase.from("rider_derived_abilities").select(abilityCols).in("rider_id", teamRiderIds),
