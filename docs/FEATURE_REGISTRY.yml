@@ -364,6 +364,8 @@ features:
     note: "#7535: beta 17/11 efter ejerens kør; belastningsordenes grænser i private_config (planning_expected_load_7535)."
     decision: taend
     decide_by: 2026-11-28
+    roadmap_en: "One planning page: race list, week board, route profile, squad, tactics and peak form in one place."
+    roadmap_da: "Én planlægningsside: løbsliste, ugeoversigt, ruteprofil, trup, taktik og formtop samlet ét sted."
 
   - id: luxury-helper-role
     area: race-engine
