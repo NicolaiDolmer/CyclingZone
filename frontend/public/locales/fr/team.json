@@ -2,20 +2,19 @@
   "page": {
     "fallbackTitle": "Mon équipe",
     "managerLabel": "Manager : {name}",
-    "ridersCount": "{count}/{cap} coureurs seniors",
     "youthSquadCounts": "+{u23} U23 · +{junior} juniors",
     "seniorCapTooltip": "Le plafond d'effectif est de {cap} coureurs seniors. Les coureurs de l'académie n'y comptent pas.",
     "youthSquadCountsTooltip": "Les coureurs U23 et juniors ont leurs propres plafonds d'effectif (12 et 10) et ne comptent pas dans le plafond senior.",
     "incomingCount": "+{count} entrants",
     "outgoingCount": "-{count} sortants",
-    "salaryPerSeason": "Salaire/saison : {value} CZ$",
     "salaryPerSeasonTooltip": "Salaire total que ton effectif touche par saison",
-    "teamValue": "Valeur de l'équipe : {value} CZ$",
-    "division": "Division {n}",
     "divisionTooltip": "Ton niveau de ligue. La division 1 est le plus haut niveau, la division 4 le niveau d'entrée.",
-    "balance": "{value} CZ$",
     "balanceTooltip": "Le CZ$ est la monnaie du jeu. Tu en gagnes en jouant, et il ne s'achète pas avec de l'argent réel.",
-    "ownAuctionsBanner": "{count, plural, one {# de tes coureurs est aux enchères} other {# de tes coureurs sont aux enchères}} · voir les enchères"
+    "ownAuctionsLine": "{count, plural, one {# coureur aux enchères} other {# coureurs aux enchères}}",
+    "stats": {
+      "seniorRiders": "Coureurs seniors",
+      "salaryPerSeason": "Salaire/saison"
+    }
   },
   "promotionPending": {
     "title": "En attente de promotion",

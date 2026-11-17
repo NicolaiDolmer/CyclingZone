@@ -12,9 +12,11 @@
       "u23": "U23-team, renners van 22 jaar of jonger",
       "junior": "Juniorenteam, renners van 18 jaar of jonger"
     },
-    "squadValue": "Selectiewaarde: {value} CZ$",
-    "rosterCount": "{count}/{cap} renners in de selectie",
-    "seniorsStayHint": "Renners in je seniorenselectie blijven senior tot je ze verplaatst. Open een renner en gebruik Selectie wisselen."
+    "seniorsStayHint": "Renners in je seniorenselectie blijven senior tot je ze verplaatst. Open een renner en gebruik Selectie wisselen.",
+    "stats": {
+      "riders": "Renners",
+      "squadValue": "Selectiewaarde"
+    }
   },
   "tabs": {
     "ariaLabel": "Selectieonderdelen",
