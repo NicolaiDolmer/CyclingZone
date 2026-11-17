@@ -1,5 +1,5 @@
 import { invalidateTransferListings2176 } from "../lib/sharedRequestCache.js";
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { Link, useLocation, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
@@ -41,7 +41,8 @@ import { buttonClass } from "../components/ui/buttonStyles.js";
 // #5402: fanerne og deres sektioner (ren modul, testet i ProfilePage.test.tsx).
 import { SETTINGS_TABS, resolveSettingsTab, settingsSectionId } from "../lib/settingsTabs.ts";
 import PushNotificationsCard from "../pwa/push/PushNotificationsCard.tsx"; // #6590: usynlig mens push er slukket
-import SpoilerShieldSettingsCard from "../components/spoiler/SpoilerShieldSettingsCard.tsx"; // #7859: usynlig mens skjoldet er slukket
+// #7859: usynlig mens skjoldet er slukket. Lazy, så skjoldets kode ikke lægger vægt på første indlæsning.
+const SpoilerShieldSettingsCard = lazy(() => import("../components/spoiler/SpoilerShieldSettingsCard.tsx"));
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -867,7 +868,7 @@ export default function ProfilePage() {
 
         <TabPanel value="notifications">
           <PushNotificationsCard />
-          <SpoilerShieldSettingsCard />
+          <Suspense fallback={null}><SpoilerShieldSettingsCard /></Suspense>
           {/* Paamindelse foer udtagelsesfristen (#4983) — vises ALTID: den er ren
               UI-tilstand og afhaenger ikke af assistentens tilstand. */}
           <Card id={settingsSectionId("selection-reminder")} className="p-5 mb-4">
