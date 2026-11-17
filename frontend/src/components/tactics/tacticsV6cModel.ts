@@ -81,6 +81,12 @@ export function droppedLeg(legs: readonly StagePlanLeg[] | null | undefined): St
   return last && last.from?.at === "dropped" ? last : null;
 }
 
+/** Et led som kædens første: uden skift-punkt, men med al anden metadata (fx trøjejagten `hunt`). */
+function openingLeg(leg: StagePlanLeg): StagePlanLeg {
+  const { from: _from, ...rest } = leg;
+  return rest;
+}
+
 /**
  * Kæden for en opgave pr. rutedel. Ens nabo-dele bliver ét led; en afsluttende opgave
  * (sprinttog, grupetto, kør ind) slutter kæden. Et eksisterende "hvis han bliver sat"-led
@@ -110,7 +116,8 @@ export function legsFromParts(tasks: readonly StagePlanTask[], parts: readonly R
   candidates.forEach((leg, i) => {
     const prev = legs[legs.length - 1];
     if (prev && (prev.task === leg.task || TERMINAL_TASKS.has(prev.task))) return;
-    legs.push(i === 0 || legs.length === 0 ? { task: leg.task } : leg);
+    // Første led har intet skift-punkt, men beholder resten (Codex P1 #8298: udbrudsleddets `hunt`).
+    legs.push(i === 0 || legs.length === 0 ? openingLeg(leg) : leg);
   });
   if (keepDropped && !TERMINAL_TASKS.has(legs[legs.length - 1].task)) {
     const withDropped = [...legs, keepDropped];

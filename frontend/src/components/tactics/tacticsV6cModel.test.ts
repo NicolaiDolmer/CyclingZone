@@ -124,3 +124,17 @@ test("Codex P1: en ændring i én rutedel flytter aldrig ordrer i en anden (skif
   // Uden ændring er kæden uændret.
   assert.deepEqual(legsFromParts(tasks, parts, "captain", route, null, saved), saved);
 });
+
+test("Codex P1: et uændret første led beholder trøjejagten (hunt), når en senere rutedel ændres", () => {
+  const huntRoute: StagePlanRoute = { ...route, jersey_hunt_7855: true, sprints: [{ index: 0, km: 60, name: null }] };
+  const huntParts = routeParts(huntRoute, named);
+  const saved = [{ task: "breakaway" as const, hunt: "hunt_points" as const }];
+  assert.equal(validateStagePlanLegs(saved, "hunter", huntRoute), null);
+  const tasks = partTasks(saved, huntRoute, huntParts)!;
+  const legs = legsFromParts(setPartTask(tasks, 2, "ride_in"), huntParts, "hunter", huntRoute, null, saved);
+  assert.deepEqual(legs[0], { task: "breakaway", hunt: "hunt_points" });
+  assert.equal(legs[legs.length - 1].task, "ride_in");
+  assert.equal(validateStagePlanLegs(legs, "hunter", huntRoute), null);
+  // Uden ændring er kæden uændret, også med jagten.
+  assert.deepEqual(legsFromParts(tasks, huntParts, "hunter", huntRoute, null, saved), saved);
+});
