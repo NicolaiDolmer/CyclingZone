@@ -153,11 +153,14 @@ export function withFileLock(file, fn, { timeoutMs = 10_000, sleep = sleepSync }
  * Atomisk "kun een koe": tager markoeren, medmindre en anden LEVENDE koe ejer den.
  * En stale, ulaeselig eller manglende markoer overtages. { ok, marker } eller { ok: false, owner }.
  */
-export function acquireMarker(file, { pid, prs, now = new Date(), isAlive = isPidAlive, lockOpts } = {}) {
+export function acquireMarker(file, { pid, prs, now = () => new Date(), isAlive = isPidAlive, lockOpts } = {}) {
   return withFileLock(file, () => {
+    // Uret laeses INDE i laasen: et tidspunkt fra foer ventetiden ville faa en netop
+    // skrevet markoer til at se ud som "startet i fremtiden" (= stale) og blive overtaget.
+    const at = typeof now === 'function' ? now() : now;
     const current = readMarkerFile(file);
-    if (current && current.pid !== pid && !isStale(current, { now, isAlive })) return { ok: false, owner: current };
-    return { ok: true, marker: startMarker(file, { pid, prs, now }) };
+    if (current && current.pid !== pid && !isStale(current, { now: at, isAlive })) return { ok: false, owner: current };
+    return { ok: true, marker: startMarker(file, { pid, prs, now: at }) };
   }, lockOpts);
 }
 
@@ -184,7 +187,8 @@ function argValue(argv, name) {
   return i >= 0 ? argv[i + 1] : undefined;
 }
 
-export function main(argv = process.argv.slice(2), { file = markerFilePath(), now = new Date(), isAlive = isPidAlive, out = (l) => process.stdout.write(`${l}\n`), lockOpts } = {}) {
+export function main(argv = process.argv.slice(2), { file = markerFilePath(), now: injectedNow, isAlive = isPidAlive, out = (l) => process.stdout.write(`${l}\n`), lockOpts } = {}) {
+  const now = injectedNow ?? new Date();
   const cmd = argv[0];
   const pid = Number(argValue(argv, '--pid'));
   if (cmd === 'covers') {
@@ -200,7 +204,7 @@ export function main(argv = process.argv.slice(2), { file = markerFilePath(), no
     // Fail-closed: koeen maa kun starte, naar markoeren beviseligt er dens egen.
     if (!Number.isSafeInteger(pid) || pid <= 0) { out('markoer: --pid mangler eller er ugyldig.'); return ACQUIRE_EXIT.ERROR; }
     try {
-      const res = acquireMarker(file, { pid, prs: parsePrList(argValue(argv, '--prs')), now, isAlive, lockOpts });
+      const res = acquireMarker(file, { pid, prs: parsePrList(argValue(argv, '--prs')), now: injectedNow ?? (() => new Date()), isAlive, lockOpts });
       if (res.ok) return ACQUIRE_EXIT.OK;
       out(`pid ${res.owner.pid}, startet ${res.owner.startedAt}, PR'er ${res.owner.prs.join(',') || '-'}`);
       return ACQUIRE_EXIT.BUSY;
@@ -233,7 +237,7 @@ if (process.argv[1]?.endsWith('merge-queue-active-marker.mjs')) {
   let code = 0;
   // Injicerbar klokke (AGENTS.md regel 16): Stop-hooken og dens test deler samme tid.
   const epoch = Number(process.env.CHECK_NOW_MD_NOW_EPOCH);
-  const now = Number.isFinite(epoch) && epoch > 0 ? new Date(epoch * 1000) : new Date();
+  const now = Number.isFinite(epoch) && epoch > 0 ? new Date(epoch * 1000) : undefined;
   try { code = main(process.argv.slice(2), { now }); } catch (err) { process.stdout.write(`markoer ADVARSEL: uventet fejl: ${err?.message ?? err}\n`); code = process.argv[2] === 'covers' ? 1 : process.argv[2] === 'acquire' ? ACQUIRE_EXIT.ERROR : 0; }
   process.exitCode = code;
 }

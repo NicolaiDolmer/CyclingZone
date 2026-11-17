@@ -1,12 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import {
-  MAX_AGE_MS, isPidAlive, isStale, main, markerCovers, markerFilePath, parsePrList,
-  readActiveMarker, readMarkerFile, recordMerge, startMarker, stopMarker,
+  ACQUIRE_EXIT, LOCK_STALE_MS, MAX_AGE_MS, acquireMarker, isPidAlive, isStale, main, markerCovers, markerFilePath, parsePrList,
+  readActiveMarker, readMarkerFile, recordMerge, startMarker, stopMarker, withFileLock,
 } from './merge-queue-active-marker.mjs';
 
 const SHA_A = 'a'.repeat(40);
@@ -116,12 +116,93 @@ test('isPidAlive and parsePrList', () => {
   assert.deepEqual(parsePrList('1,2 3,,x,-4,2'), [1, 2, 3]);
 });
 
+// --- Codex P2 (#8330): koe-markoeren tages atomisk ---
+test('acquireMarker refuses a live owner and takes over a missing, stale or broken marker', () => {
+  const t = tmpFile();
+  try {
+    assert.equal(acquireMarker(t.file, { pid: 100, prs: [1], now: NOW, isAlive: alive }).ok, true, 'empty -> ours');
+    const busy = acquireMarker(t.file, { pid: 200, prs: [2], now: NOW, isAlive: alive });
+    assert.equal(busy.ok, false, 'a live owner is never overwritten');
+    assert.equal(busy.owner.pid, 100);
+    assert.deepEqual(readMarkerFile(t.file).prs, [1], 'the owner marker is untouched');
+    assert.equal(acquireMarker(t.file, { pid: 100, prs: [1, 3], now: NOW, isAlive: alive }).ok, true, 'the owner may re-acquire');
+    assert.equal(acquireMarker(t.file, { pid: 200, prs: [2], now: NOW, isAlive: dead }).ok, true, 'dead owner -> take over');
+    assert.equal(readMarkerFile(t.file).pid, 200);
+    writeFileSync(t.file, '{not json');
+    assert.equal(acquireMarker(t.file, { pid: 300, prs: [4], now: NOW, isAlive: alive }).ok, true, 'broken file -> take over');
+    assert.equal(existsSync(`${t.file}.lock`), false, 'the lock is released');
+  } finally { t.cleanup(); }
+});
+
+test('CLI acquire: exit 0 = ours, 3 = another live queue, 4 = no proven ownership', () => {
+  const t = tmpFile();
+  try {
+    const out = [];
+    const opts = { file: t.file, now: NOW, isAlive: alive, out: (l) => out.push(l) };
+    assert.equal(main(['acquire', '--pid', '11', '--prs', '5,6'], opts), ACQUIRE_EXIT.OK);
+    assert.equal(main(['acquire', '--pid', '12', '--prs', '7'], opts), ACQUIRE_EXIT.BUSY);
+    assert.match(out.at(-1), /pid 11.*5,6/);
+    assert.equal(main(['acquire', '--prs', '7'], opts), ACQUIRE_EXIT.ERROR, 'missing --pid fails closed');
+    mkdirSync(`${t.file}.lock`);
+    assert.equal(main(['acquire', '--pid', '12'], { ...opts, isAlive: dead, lockOpts: { timeoutMs: 50, sleep: () => {} } }), ACQUIRE_EXIT.ERROR, 'a held lock fails closed');
+    assert.equal(readMarkerFile(t.file).pid, 11);
+  } finally { t.cleanup(); }
+});
+
+test('withFileLock clears a lock left by a killed process and always releases its own', () => {
+  const t = tmpFile();
+  try {
+    mkdirSync(`${t.file}.lock`, { recursive: true });
+    const old = new Date(Date.now() - LOCK_STALE_MS - 5_000);
+    utimesSync(`${t.file}.lock`, old, old);
+    assert.equal(withFileLock(t.file, () => 'ran', { timeoutMs: 1_000 }), 'ran');
+    assert.throws(() => withFileLock(t.file, () => { throw new Error('boom'); }), /boom/);
+    assert.equal(existsSync(`${t.file}.lock`), false);
+  } finally { t.cleanup(); }
+});
+
+test('race: queues that start at the same instant -> exactly one acquires the marker', async () => {
+  const t = tmpFile();
+  try {
+    const moduleUrl = new URL('./merge-queue-active-marker.mjs', import.meta.url).href;
+    // Hver "koe" er sin egen proces, der lever under hele kapploebet (som pwsh-koeen).
+    const child = `const { main } = await import(${JSON.stringify(moduleUrl)});
+const startAt = Number(process.env.RACE_START_AT);
+while (Date.now() < startAt) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1);
+const code = main(['acquire', '--pid', String(process.pid), '--prs', '1'], { out: () => {} });
+process.stdout.write('CODE=' + code + '\\n');
+Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, Math.max(0, startAt + 3000 - Date.now()));`;
+    const env = { ...process.env, MERGE_QUEUE_MARKER_FILE: t.file, RACE_START_AT: String(Date.now() + 2500) };
+    const runOne = () => new Promise((resolveRun, reject) => {
+      const p = spawn(process.execPath, ['--input-type=module', '-e', child], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+      let stdout = '';
+      let stderr = '';
+      p.stdout.on('data', (d) => { stdout += d; });
+      p.stderr.on('data', (d) => { stderr += d; });
+      p.on('error', reject);
+      p.on('close', () => resolveRun({ code: Number(/CODE=(\d+)/.exec(stdout)?.[1] ?? -1), stderr }));
+    });
+    const results = await Promise.all(Array.from({ length: 6 }, runOne));
+    const codes = results.map((r) => r.code).sort();
+    assert.deepEqual(codes, [0, 3, 3, 3, 3, 3], `exactly one winner: ${JSON.stringify(results)}`);
+    assert.equal(existsSync(`${t.file}.lock`), false);
+  } finally { t.cleanup(); }
+});
+
 // --- merge-queue.ps1: markoeren skrives ikke i -DryRun og fjernes i finally ---
 const queue = readFileSync(new URL('./merge-queue.ps1', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 
-test('merge-queue.ps1 starts the marker before the loop, records every merge and stops it in finally', () => {
-  const start = queue.indexOf("Invoke-ActiveMarker @('start', '--prs', ($PrNumbers -join ','))\ntry {\nfor ($idx = 0;");
-  assert.ok(start > 0, 'marker start + try wraps the merge loop');
+test('merge-queue.ps1 acquires the marker atomically before the loop, records every merge and stops it in finally', () => {
+  const acquire = queue.indexOf('& node $script:ActiveMarkerScript acquire --prs ($PrNumbers -join \',\') --pid "$PID"');
+  assert.ok(acquire > 0, 'the queue takes the marker with acquire (Codex P2 #8330), not status + start');
+  assert.ok(!queue.includes("Invoke-ActiveMarker @('start'"), 'no unconditional start that could overwrite a live owner');
+  assert.ok(!queue.includes('ActiveMarkerScript status'), 'no separate status read (the race window)');
+  const busy = queue.indexOf('if ($acquireExit -eq 3) {', acquire);
+  const failed = queue.indexOf('if ($acquireExit -ne 0) {', acquire);
+  const loop = queue.indexOf('try {\nfor ($idx = 0;');
+  assert.ok(busy > acquire && failed > busy && loop > failed, 'busy -> exit 3, any other failure -> stop, both before the merge loop');
+  assert.match(queue.slice(busy, failed), /exit 3/);
+  assert.match(queue.slice(failed, loop), /exit 1/, 'fail-closed: no proven ownership, no merges');
   assert.match(queue, /\} finally \{\n[^\n]*\n  Invoke-ActiveMarker @\('stop'\)\n\}\n?$/, 'finally at the end of the script removes the marker');
   const merged = queue.indexOf("Invoke-ActiveMarker @('merged', '--pr', \"$n\", '--sha', $sha)");
   assert.ok(merged > queue.indexOf('$script:batchShas += $sha'), 'merge SHA is recorded after it is known');
