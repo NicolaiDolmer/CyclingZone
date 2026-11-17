@@ -27,7 +27,8 @@ import type { AcademyLedger, LedgerSale, LedgerSeasonRow, LedgerTotals, LineDef 
 const ErrorState = ErrorStateJs as unknown as ComponentType<{ title: ReactNode; description?: ReactNode; action?: ReactNode }>;
 
 const TH = "px-3 py-2 font-data text-2xs font-semibold uppercase tracking-wide text-cz-3";
-const TDN = "px-3 py-[9px] text-right font-data tabular-nums";
+// whitespace-nowrap: et beløb må aldrig knække over to linjer (390 px, 17/11).
+const TDN = "px-3 py-[9px] text-right font-data tabular-nums whitespace-nowrap";
 
 const TONE = { positive: "text-cz-success", negative: "text-cz-danger", neutral: "text-cz-2" } as const;
 
