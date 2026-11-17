@@ -74,6 +74,10 @@ export const STAGE_FLAGS = Object.freeze([
   // #6490 trin c: peak-signalet (motorens input) læser fra kvitteringerne. Egen kontakt, seedet off,
   // binær (kun "on" tænder). Ejer-only flip; se #8180 om rækkeloftet på den gamle læsning.
   { key: "training_peak_from_ticks_6490", area: "training", label: "Peak-signal fra kvitteringerne (motor)" },
+  // #6490 B: aftenkørslen genbruger Træn nu-hukommelsen (samme resultat, færre DB-kald). Binær, seedet off.
+  { key: "training_sweep_memory_6490", area: "training", label: "Aftentræningen: hent én gang pr. hold" },
+  // #8143 H: én delt hukommelse for indstillinger på serveren (60 s). Binær, seedet off.
+  { key: "config_cache_8143", area: "ops", label: "Indstillinger huskes delt på serveren" },
   { key: "peak_planner_enabled", area: "training", label: "Form-planlægger" },
   // #7536: motoren laeser kun "on" (beta = off); Hjaelp-blokken foelger samme svar.
   { key: "condition_v2_race_date_training_day", area: "training", label: "Træning på løbsdato vejer et helt døgn" },

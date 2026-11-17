@@ -256,7 +256,7 @@ import { programForChoice, normalizeProgram, smartDefaultSession } from "../lib/
 import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer, V3_TRAINING_FOCUSES } from "../lib/trainingCatalogV3.js"; // #5319
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, isValidWeekPlanDays, cappedVisibleAbilities } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
-import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
+import { readFlagStage, evaluateFlagStage, clearFlagStageCache } from "../lib/featureStage.js";
 import {
   STAGE_FLAGS, findStageFlag, isValidFlagStage, normalizeStageValue,
   PLAYER_VISIBLE_BINARY_FLAG_KEYS, // #6181
@@ -4855,6 +4855,8 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
       // kan vise den ærlige "din division afgøres ved sæsonskiftet"-tilstand i
       // stedet for et tomt bræt (mine-filteret ville ellers matche nul løb).
       divisionPending: !divisionSettled,
+      // #5841: samme "forventet"-division som kalenderen (holdets nuværende), kun mens divisionen er uafgjort.
+      expectedDivision: divisionPending ? (divisionsRes.data || []).find((d) => d.id === req.team.league_division_id)?.tier ?? null : null,
       maxPerRider: MAX_PEAK_PLANS_PER_SEASON,
       today,
       leadupDays: leadup,
@@ -5269,6 +5271,8 @@ router.get("/races/calendar", requireAuth, cached({
       availableSeasons,
       ownPoolId,
       divisionPending,
+      // #5841: holdets nuværende division, vist som "forventet" mens den kommende sæsons division er uafgjort.
+      expectedDivision: divisionPending ? (divisions || []).find((d) => d.id === req.team?.league_division_id)?.tier ?? null : null,
       days: model.days,
       divisions: model.divisions,
       entries: model.entries.map(toCalendarWireEntry),
@@ -15853,6 +15857,7 @@ router.patch("/admin/feature-flags/:key", requireAdmin, adminWriteLimiter, async
       { onConflict: "key" },
     );
     if (error) throw error;
+    clearFlagStageCache({ client: supabase, key }); // #8143 (H): skiftet slår igennem straks
 
     // best-effort: flaget ER flyttet. En fejlet log-raekke maa ikke faa admin
     // til at trykke igen paa noget der allerede er sket.
