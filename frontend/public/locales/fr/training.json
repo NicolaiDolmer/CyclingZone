@@ -114,7 +114,6 @@
     "colSeasonPoints": "Pts saison",
     "colFatigueTonight": "Fatigue maintenant / ce soir",
     "fatigueTonightAria": "Fatigue maintenant {now}, ce soir environ {value}. {band}",
-    "fatigueAtStart": "{now} maintenant, environ {value} au départ",
     "selectRider": "Sélectionner {name}",
     "applyTo": "Appliquer à {n}",
     "bulkLead": "Fixer le jour du jour pour",
