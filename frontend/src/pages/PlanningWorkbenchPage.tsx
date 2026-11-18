@@ -67,6 +67,7 @@ import {
   copenhagenToday,
   dateIndex,
   groupRacesByWeek,
+  guardUnload,
   isRacePast,
   mondayOf,
   pickedCounts,
@@ -379,16 +380,9 @@ function Workbench() {
   }, [selected]);
 
   // Browserens egen advarsel ved luk/genindlaes, saa en ugemt trup eller kladde aldrig forsvinder tavst.
+  // `dirty` daekker ogsaa en ugemt taktik-kladde (#8306).
   const hasDraft = draft.kinds.size > 0;
-  useEffect(() => {
-    if (!dirty && !hasDraft) return undefined;
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [dirty, hasDraft]);
+  useEffect(() => guardUnload(window, dirty || hasDraft), [dirty, hasDraft]);
 
   // Mobil-arket lukkes (kryds, Escape, baggrund, stryg ned): en ugemt trup eller taktik-kladde ville
   // forsvinde med fladen, saa spilleren spoerges foerst (Bliv her / Kassér / Gem og luk).

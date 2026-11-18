@@ -50,6 +50,7 @@ import {
   toPutBody,
   saveLabelKey,
   withLoad,
+  workbenchUnsaved,
   WORKBENCH_VIEWS,
   type MobileColumn,
   type WorkbenchView,
@@ -272,9 +273,10 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     };
   }, [load]);
 
+  // Siden faar ogsaa taktik-kladden at vide, saa luk-advarslen vogter den (#8306).
   useEffect(() => {
-    onDirtyChange?.(dirty);
-  }, [dirty, onDirtyChange]);
+    onDirtyChange?.(workbenchUnsaved({ squadDirty: dirty, tacticsDraft: tacticsCanSave }));
+  }, [dirty, tacticsCanSave, onDirtyChange]);
 
   // Et ugemt udkast huskes (overlever en navigation); en ren flade glemmer det.
   useEffect(() => {

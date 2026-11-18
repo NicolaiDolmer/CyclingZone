@@ -99,6 +99,30 @@ export function mergePoolTwins(entries, { divisions = [], preferPoolId = null } 
   });
 }
 
+// #5841 (udgave-skiftet): hvert løbs puljetvillinger efter samme regel som mergePoolTwins, i
+// divisionstræets orden. Map<løbs-id, [{ id, poolId, poolIndex }]>; et løb uden tvillinger er udeladt.
+/** @param {any[]|null|undefined} entries @param {{ divisions?: any[] }} [opts] @returns {Map<any, {id:any, poolId:any, poolIndex:number|null}[]>} */
+export function poolTwinsByRaceId(entries, { divisions = [] } = {}) {
+  const poolById = new Map();
+  let i = 0;
+  for (const d of divisions || []) for (const p of d.pools || []) poolById.set(p.id, { rank: i++, poolIndex: p.poolIndex ?? null });
+  const groups = new Map();
+  for (const e of entries || []) {
+    const key = poolTwinKey(e);
+    groups.set(key, [...(groups.get(key) || []), e]);
+  }
+  const out = new Map();
+  for (const list of groups.values()) {
+    if (list.length < 2) continue;
+    const twins = list
+      .map((e) => ({ id: e.id, poolId: e.poolId ?? null, poolIndex: poolById.get(e.poolId)?.poolIndex ?? null, rank: poolById.get(e.poolId)?.rank ?? Number.MAX_SAFE_INTEGER }))
+      .sort((a, b) => a.rank - b.rank)
+      .map(({ rank: _rank, ...twin }) => twin);
+    for (const e of list) out.set(e.id, twins);
+  }
+  return out;
+}
+
 // #5841: den pulje en kommende sæsons tidslinje vises fra, mens holdets division ikke er afgjort:
 // den første pulje (laveste nummer) i den forventede division, der har løb. null hvis ingen.
 /** @param {{ divisions?: any[], entries?: any[], expectedDivision?: number|null }} [opts] @returns {number|null} */

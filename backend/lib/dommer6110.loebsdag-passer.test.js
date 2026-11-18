@@ -98,7 +98,9 @@ const ROLLETAL = {
   // #5950 A (underkontakten "rollen styrer ogsaa basis-dagen").
   rolleStyrerBasis: Object.freeze({ ...validateRaceDayRoleYieldParams({ stageBonus: 0.2, leadShare: 0.5 }), roleDrivesBaseDay: true }),
 };
-const RIGELIG = await xpParams(RIGELIG_XP_RAA);
+// Ejervalg A (16/11): +2 kun for et ungt toptalent paa en meget lav evne. Opdigtede graenser,
+// saa KLATRER (19 aar, stort talent) paa en lav klatre-evne er netop saadan et talent.
+const RIGELIG = await xpParams({ ...RIGELIG_XP_RAA, datePlus2: { maxAge: 21, minPotential: 5.5, belowLevel: 20 } });
 const DATO = "2026-11-16";
 const dato = (n) => new Date(Date.UTC(2026, 10, 15) + n * 86_400_000).toISOString().slice(0, 10);
 
@@ -372,7 +374,8 @@ test("R15b + R15: den loeftede loebsdag er stadig mindst en haard dag i hver evn
   }
 });
 
-test("R15b + R9: gulvet er ikke et loft, og den gamle regel om +1 pr. loebsdag klipper heller ikke den loeftede dag", () => {
+// R9 er vendt af ejervalg 16/11 (R16): under XP koebes hoejst +2 pr. evne pr. dato, resten venter paa bjaelken.
+test("R15b + R16: gulvet er ikke et loft, den gamle regel om +1 pr. loebsdag klipper ikke, og datoen giver hoejst +2", () => {
   // RIGELIG_XP_RAA giver med vilje alt for meget XP; det er den eneste maade at se et skjult loft.
   const lav = Object.freeze({ ...KLATRER, riderId: "dommer-lav-klatrer", abilities: evner(30, { climbing: 12, endurance: 14 }) });
   for (const akse of [false, true]) {
@@ -383,7 +386,8 @@ test("R15b + R9: gulvet er ikke et loft, og den gamle regel om +1 pr. loebsdag k
     assert.deepEqual(medGammelRegel.gains, fri.gains, "hardDailyCap maa ikke klippe koebet");
     const facit = koebMedPrisliste({ level: 12, xp: fri.xp.climbing }, (niveau) => xpPriceForNextPoint(niveau, RIGELIG));
     assert.ok(facit.point >= 2, `scenariet skal give mindst 2 point i klatring (gav ${facit.point})`);
-    assert.equal(fri.gains.climbing, facit.point, "alle point, XP'en raekker til, koebes samme dato");
+    assert.equal(fri.gains.climbing, Math.min(facit.point, 2), "alle point op til +2 koebes; resten venter paa bjaelken (ejervalg 16/11)");
+    if (facit.point > 2) assert.ok(fri.progress.climbing > 1, "resten staar paa bjaelken");
     const bedste = bedsteHaardePas(lav, valg);
     assert.ok(rund(sum(fri.xp)) >= rund(bedste.iAlt), `rigelig XP${akse ? " (loebsdags-aksen)" : ""}: loebsdag ${sum(fri.xp).toFixed(1)} < bedste haarde pas ${bedste.iAlt.toFixed(1)}`);
   }

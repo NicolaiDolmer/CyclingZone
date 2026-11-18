@@ -370,6 +370,37 @@ export function selectionDirty(draft: Selection, saved: Selection): boolean {
   );
 }
 
+/**
+ * #8306 · Har arbejdsfladen noget ugemt? En ugemt trup ELLER en ugemt taktik-kladde. Siden bruger svaret
+ * til browserens luk-advarsel, saa en taktik-kladde ikke forsvinder tavst ved genindlaes eller luk af fanen.
+ */
+export function workbenchUnsaved({ squadDirty, tacticsDraft }: { squadDirty: boolean; tacticsDraft: boolean }): boolean {
+  return squadDirty || tacticsDraft;
+}
+
+export interface UnloadEventLike {
+  preventDefault: () => void;
+  returnValue: unknown;
+}
+export interface UnloadTarget {
+  addEventListener: (type: "beforeunload", handler: (e: UnloadEventLike) => void) => void;
+  removeEventListener: (type: "beforeunload", handler: (e: UnloadEventLike) => void) => void;
+}
+
+/**
+ * Browserens egen advarsel ved luk/genindlaes, saa intet ugemt forsvinder tavst. Returnerer oprydningen
+ * (til en effect), eller undefined naar der intet er at vogte.
+ */
+export function guardUnload(target: UnloadTarget, active: boolean): (() => void) | undefined {
+  if (!active) return undefined;
+  const handler = (e: UnloadEventLike) => {
+    e.preventDefault();
+    e.returnValue = "";
+  };
+  target.addEventListener("beforeunload", handler);
+  return () => target.removeEventListener("beforeunload", handler);
+}
+
 /** Body til PUT /api/races/:id/selection (samme form som udtagelsespanelet sender). */
 export function toPutBody(sel: Selection, sprintLeaderAllowed: boolean): Record<string, unknown> {
   const inSquad = (id: string | null) => (id != null && sel.riderIds.includes(id) ? id : null);

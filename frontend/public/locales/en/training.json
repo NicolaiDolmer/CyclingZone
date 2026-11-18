@@ -559,6 +559,12 @@
     "restSelected": "Set to rest",
     "pickHint": "Tap the riders you want to change."
   },
+  "settleAfterStage": {
+    "ran": "Run",
+    "ranTitle": "This session has run and can no longer be changed",
+    "note": "{n, plural, one {# rider's race session is settled after the stage.} other {# riders' race sessions are settled after the stage.}} Sessions that have not run can still be changed.",
+    "fatigueNow": "The fatigue shown already includes the race."
+  },
   "programs": {
     "title": "Training programs",
     "intro": "Pick a program and put it on a rider or the whole squad. It is copied into the plan, so you can change any day afterwards.",

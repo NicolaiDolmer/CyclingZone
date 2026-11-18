@@ -72,6 +72,7 @@ const INLINE_EXEMPT = new Set([
   "pwa", // #6584 InstallPrompt: mountInstallPrompt venter paa loadNamespaces + ready-gate
   "spoiler", // #7859 spoiler-skjoldet (bag kontakten spoiler_shield_7859): I18nReadyGate i components/spoiler/
   "academyLedger", // #8060 AcademyLedgerTab (fane i akademisiden udgave A) — ready-gate
+  "trainingXp", // #7627 TrainingReportXp (lazy, bag XP-kontakten/preview) — ready-gate + skelet
 
   // #4231: backendMessages var det tungeste tilbagevaerende inlinede namespace
   // (56 KB raw da+en, ~15 KB gzipped). Backend sender {code, params}; frontend

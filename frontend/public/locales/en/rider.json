@@ -25,6 +25,7 @@
     "retireRisk": "High retirement risk: riders typically retire between ages 36 and 40",
     "contractExpiring": "Contract expires at the next season change: this rider becomes a free agent unless the contract is extended first",
     "junior": "Junior rider (on your junior squad)",
+    "leavesAfter": "Leaves after {race}",
     "label": {
       "u23": "U23",
       "u25": "U25",
@@ -863,7 +864,10 @@
       "working": "Releasing…",
       "cancel": "Cancel",
       "success": "Rider released.",
-      "errorPrefix": "Couldn't release:"
+      "errorPrefix": "Couldn't release:",
+      "pendingLine": "He is riding {race}. He leaves your team after the final stage. The fee is charged now and the release cannot be undone.",
+      "pendingSuccess": "{rider} will be released after {race}. The fee of {fee} CZ$ has been charged.",
+      "pendingRaceFallback": "the stage race"
     },
     "move": {
       "button": "Move squad",

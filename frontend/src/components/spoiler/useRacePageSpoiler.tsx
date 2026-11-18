@@ -36,6 +36,8 @@ export interface RacePageSpoiler {
   hero: <H extends { stats: Array<{ spoiler?: boolean }> }>(hero: H) => H;
   heroAside: ReactNode;
   heroNote: ReactNode;
+  /** #8303: en kørt etape i løbet er skjult (eller svaret hentes); udgave-skiftet viser da ingen vinder. */
+  resultsHidden: boolean;
   /** Resultater for den valgte etape, når den er skjult; null = som i dag. */
   resultsBody: ReactNode;
   story: SpoilerStory;
@@ -75,6 +77,7 @@ export function useRacePageSpoiler({ raceId, selectedStage, stagesCompleted, onS
   const shielded = raceShielded(view);
   return {
     shownTab, tabFor, visible, hero, story,
+    resultsHidden: anyHidden,
     heroAside: view.enabled ? <SpoilerHeroSwitch id={switchId} on={shielded} onChange={setRaceShield} failed={saveFailed} /> : null,
     heroNote: view.enabled && selectedHidden ? <SpoilerHeroNote /> : null,
     resultsBody: selectedHidden ? (view.pending ? <SpoilerResultsPending /> : <SpoilerResultsHidden onShow={show} />) : null,

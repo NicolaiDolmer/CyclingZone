@@ -28,8 +28,10 @@
 //  - Catch-up via løb (race_day_catchup_enabled) er ikke udtrykt i XP endnu (#6950).
 //    Samme regel: der kastes, så de to aldrig kører sammen.
 //  - Dato-loftet (ability_cap_per_date_enabled, #6210): gælder kun kurve B og dagens
-//    model. Under XP er der intet +1-loft pr. evne pr. dato; kun prisen bremser (#7739).
-//  - Gemt bjælke-fremgang udbetales helt på tændingsnatten (ejer 12/11, #6110 R10).
+//    model. Under XP gælder i stedet højst +2 pr. evne pr. dato (#6110 R16, ejervalg 16/11),
+//    i selve XP-tick'et (developmentXp.ts).
+//  - Gemt bjælke-fremgang udbetales helt på tændingsnatten (ejer 12/11, #6110 R10), også
+//    over +2 (ejervalg 2 = A, 16/11). Natten er startdatoen; motoren læser den selv.
 //    Der findes ingen dryp-regel: overgangsvinduet (development_xp_transition_cap_dates)
 //    er fjernet, og en sådan nøgle i app_config læses ikke.
 //
@@ -53,7 +55,7 @@ const LOG_TAG = "[development-xp]";
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 type DbClient = { from(table: string): any };
-type Log = Pick<Console, "warn">;
+type Log = Pick<Console, "warn"> & Partial<Pick<Console, "error">>;
 
 // strict = dato-stiens atomare sti: en fejlet læsning kaster i stedet for at blive
 // tolket som "off" og committe dagens model på en tick, der ikke kan køres igen.
@@ -133,9 +135,17 @@ export async function loadDevelopmentXp({
   }
   // Modellen vælges på tick-datoen: før startdatoen (også efterslæb) er det dagens model.
   if (typeof tickDate !== "string" || !DATE_RE.test(tickDate) || tickDate < fromDate) return null;
-  const params = await readDevelopmentXpParams({ supabase, log, strict, now });
+  const entry = await readPrivateConfigEntry<DevelopmentXpParams>(supabase, DEVELOPMENT_XP_PARAMS_KEY, {
+    strict, log, now, schema: PRIVATE_CONFIG_KEYS.development_xp_params.parse,
+  });
+  const params = entry.status === "ok" ? entry.value : null;
   if (!params) {
-    log?.warn?.(`${LOG_TAG} ${DEVELOPMENT_XP_FLAG_KEY} is on, but ${DEVELOPMENT_XP_PARAMS_KEY} (private_config) is missing or invalid - running today's model`);
+    // Fable-fund 3b (16/11): kontakten er tændt for datoen, men talfilen kan ikke bruges.
+    // Det er en fejl, ikke en advarsel: ellers sker tændingsnattens udbetaling aldrig, uden
+    // at nogen ser det. Adfærden er uændret (dagens model); kun loggen er højlydt.
+    const message = `${LOG_TAG} ${DEVELOPMENT_XP_FLAG_KEY} is on for ${tickDate}, but ${DEVELOPMENT_XP_PARAMS_KEY} (private_config) is ${entry.status} - running today's model`;
+    if (typeof log?.error === "function") log.error(message);
+    else log?.warn?.(message);
     return null;
   }
   if (developmentScoreB) {
