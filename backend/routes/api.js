@@ -6570,6 +6570,30 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
 const RACE_ROLE_SCOPE_CHOICE_FLAG_KEY = "race_role_scope_choice";
 
 // GET /api/races/:raceId/stage-roles — kontekst til managerens taktik-panel.
+// #8298: flag og rating i det faelles taktikpanel. Lagt paa her (ikke i getStageRolesContext),
+// saa dens frosne digest (#7801) er uaendret. Holdets egne ryttere: intet fog of war-problem.
+// En fejl giver blot null-felter; taktikken virker som foer.
+async function withNationAndRating8298(riders) {
+  const list = Array.isArray(riders) ? riders : [];
+  const ids = list.map((r) => r.rider_id).filter(Boolean);
+  if (!ids.length) return list;
+  // pagination-safe: ids er holdets udtagne ryttere til ÉT løb (truppens loft, højst ~10 rækker).
+  const { data, error } = await supabase.from("riders").select("id, nationality_code, best_role_rating").in("id", ids);
+  if (error) {
+    captureException(error, { tags: { route: "stage-roles", part: "nation-rating-8298" } });
+    return list.map((r) => ({ ...r, nationality_code: null, rating: null }));
+  }
+  const byId = new Map((data || []).map((r) => [r.id, r]));
+  return list.map((r) => {
+    const row = byId.get(r.rider_id);
+    return {
+      ...r,
+      nationality_code: row?.nationality_code ?? null,
+      rating: typeof row?.best_role_rating === "number" ? row.best_role_rating : null,
+    };
+  });
+}
+
 router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
@@ -6602,7 +6626,7 @@ router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
       // #5945: stiller holdet op? starts:false = under startgulvet (min) og kan ikke fyldes op.
       start_outlook: ctx.start_outlook,
       stage_count: ctx.stage_count,
-      riders: ctx.riders,
+      riders: await withNationAndRating8298(ctx.riders),
       overrides: ctx.overrides,
     });
   } catch (err) {

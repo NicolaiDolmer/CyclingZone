@@ -1,0 +1,130 @@
+{
+  "panel": {
+    "ordersFor": "Órdenes para la etapa {number}",
+    "ordersForRaceDay": "Órdenes para el día de carrera",
+    "simple": "Simple",
+    "allOrders": "Todas las órdenes",
+    "ordersView": "Mostrar órdenes",
+    "howItWorks": "Cómo funciona la táctica",
+    "todaysPlan": "Plan de hoy",
+    "planMeta": "una elección para todo el equipo"
+  },
+  "team": {
+    "label": "El equipo",
+    "question": "¿Perseguir la escapada?",
+    "chase": "Perseguir",
+    "neutral": "Decidir en carrera",
+    "let_go": "Dejarlo a otros",
+    "reacts": "Reacciona si la escapada amenaza la general de {name}.",
+    "reactsNoLeader": "Reacciona si la escapada amenaza tu general."
+  },
+  "plan": {
+    "gc": "Todos corren para tu líder de la general y lo mantienen fuera de problemas.",
+    "stage": "El equipo trabaja para el corredor al que mejor le va la ruta de hoy.",
+    "sprint": "El equipo lo guarda para el final, con un tren en los últimos 10 km.",
+    "break": "Dos corredores intentan la escapada. El resto rueda tranquilo.",
+    "save": "Todos ruedan hasta meta. Menos fatiga esta noche.",
+    "lockedConflict": "Desbloquea a {name} para usar este plan. Cambia su rol."
+  },
+  "col": {
+    "rider": "Corredor",
+    "role": "Rol",
+    "rating": "Valoración",
+    "form": "Forma",
+    "routeMatch": "Encaje con la ruta",
+    "fatigueNow": "Fatiga ahora",
+    "today": "Hoy",
+    "effort": "Esfuerzo",
+    "orders": "Órdenes",
+    "lock": "Bloqueo",
+    "dayLoad": "Carga del día"
+  },
+  "level": {
+    "easy": "Fácil",
+    "medium": "Medio",
+    "hard": "Duro",
+    "aria": "Esfuerzo de {name}"
+  },
+  "orders": {
+    "button": "Órdenes",
+    "buttonAria": "Órdenes de {name}",
+    "extra": "Órdenes extra",
+    "ifDropped": "Si se descuelga: {task}",
+    "steps": "Niveles de esfuerzo",
+    "toClimb": "Hasta {name}",
+    "toLastTen": "Hasta los últimos 10 km",
+    "lastTen": "Últimos 10 km",
+    "tryBreak": "Intentar la escapada",
+    "sprintTrain": "Tren de sprint",
+    "notForRole": "No para este rol.",
+    "noSprintCaptain": "Tu equipo no tiene capitán de sprint.",
+    "trainAfterBreak": "Un corredor en la escapada no puede lanzar el sprint.",
+    "trainSelf": "Él es el sprinter.",
+    "noRoadOrders": "Sin órdenes de ruta en una contrarreloj.",
+    "followTeam": "Seguir el plan del equipo"
+  },
+  "short": {
+    "stay_sheltered": "Resguardado",
+    "shelter_leader": "Proteger líder",
+    "tempo": "Ritmo",
+    "follow_moves": "Seguir",
+    "ride_for_result": "Resultado",
+    "attack": "Ataque",
+    "breakaway": "Escapada",
+    "sprint_train": "Lanzador",
+    "grupetto": "Grupetto",
+    "ride_in": "A meta",
+    "hunt_points": "Puntos",
+    "hunt_kom": "Montaña"
+  },
+  "today": {
+    "breakaway": "Intenta la escapada",
+    "attack": "Ataca en {climb}",
+    "attackFinale": "Ataca en el final",
+    "ride_for_result": "Corre por un resultado",
+    "follow_moves": "Sigue a los mejores",
+    "tempo": "Marca el ritmo",
+    "shelterLeader": "Mantiene a {leader} delante",
+    "shelterLeaderNone": "Mantiene al líder delante",
+    "stay_sheltered": "Se resguarda",
+    "grupetto": "Grupetto, se guarda",
+    "sprint_train": "Lanza el sprint",
+    "ride_in": "Rueda tranquilo a meta",
+    "huntPoints": "Va por puntos",
+    "roleDefault": "Corre su rol",
+    "effort": {
+      "grupetto": "Grupetto, se guarda",
+      "save": "Rueda tranquilo",
+      "normal": "Corre su rol",
+      "protect": "Trabaja para el equipo",
+      "all_out": "Lo da todo"
+    }
+  },
+  "dayLoad": {
+    "easy": "Día fácil",
+    "light": "Día suave",
+    "normal": "Día normal",
+    "hard": "Día duro",
+    "veryHard": "Día muy duro"
+  },
+  "lock": {
+    "on": "Desbloquear a {name}",
+    "off": "Bloquear a {name}",
+    "title": "Un corredor bloqueado mantiene su plan cuando cambias el plan del equipo."
+  },
+  "legend": {
+    "cost": "Coste:",
+    "dayLoad": "Carga del día:",
+    "sort": "Haz clic en una columna para ordenar. Un corredor bloqueado mantiene su plan cuando cambias el plan del equipo."
+  },
+  "footer": {
+    "notSavedLine": "Si no haces nada, corren exactamente así"
+  },
+  "hero": {
+    "assistant_one": "{count} corredor sigue el plan del asistente",
+    "assistant_other": "{count} corredores siguen el plan del asistente"
+  },
+  "mobile": {
+    "numbers": "Valoración {rating} · forma {form} · encaje {match} · fatiga ahora {fatigue}"
+  }
+}

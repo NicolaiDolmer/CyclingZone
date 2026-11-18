@@ -1142,6 +1142,7 @@
     "helpRaceDay": "Le rôle vaut pour toute la course. La consigne est ce que tu attends de lui le jour de la course.",
     "colRider": "Coureur",
     "colRole": "Rôle",
+    "colRating": "Note",
     "colIntention": "Consigne · étape {number}",
     "colIntentionRaceDay": "Consigne · jour de course",
     "allRace": "Toute la course",
