@@ -65,7 +65,7 @@
     "restored": "Tes modifications non enregistrées ont été rétablies.",
     "saveTactics": "Enregistrer la tactique",
     "savePeaks": "{count, plural, =0 {Appliquer à la sélection} other {Appliquer à la sélection (#)}}",
-    "saveSquadAndTactics": "Enregistrer l'équipe et fixer la tactique"
+    "saveSquadAndTactics": "Enregistrer l'équipe et la tactique"
   },
   "copy": {
     "title": "Copier l'équipe de",
@@ -217,7 +217,7 @@
       "title": "Enregistrez d'abord une équipe",
       "description": "La tactique se règle pour les coureurs de l'équipe enregistrée."
     },
-    "squadUnsaved": "L'équipe a des modifications non enregistrées. \"Enregistrer l'équipe et fixer la tactique\" l'enregistre et affiche la tactique.",
+    "squadUnsaved": "L'équipe a des modifications non enregistrées. \"Enregistrer l'équipe et la tactique\" l'enregistre et affiche la tactique.",
     "shared": "Même tactique que sur la page de la course : un plan enregistré ici y apparaît, et inversement.",
     "saveInTab": "Vous avez une tactique non enregistrée. Enregistrez-la d'abord avec \"Enregistrer la tactique\".",
     "saveFirst": "Vous avez une tactique non enregistrée. Enregistrez-la avec \"Enregistrer la tactique\" avant l'équipe, sinon elle est perdue."

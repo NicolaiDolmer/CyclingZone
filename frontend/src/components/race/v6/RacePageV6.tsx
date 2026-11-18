@@ -51,6 +51,7 @@ import V6TacticsAfter from "./V6TacticsAfter.tsx";
 import V6YourDay from "./V6YourDay.tsx";
 import V6RaceFilm from "./V6RaceFilm.tsx"; // #7861
 import { v6StoryStripCells } from "./v6RaceFilmModel.ts"; // #7861
+import { markV6ResultsSeen, v6ResultsShown } from "./v6StoryExtrasModel.ts"; // #8383
 import V6RouteLine, { type V6StageMode } from "./V6RouteLine.tsx"; // #7861
 import V6StartList from "./V6StartList.tsx"; // #7862
 import { V6TacticsSavedContext, V6TacticsSummaryContext, useV6TacticsSummaryNote } from "./v6TacticsSaved.ts";
@@ -141,6 +142,10 @@ export default function RacePageV6(props: RacePageV6Props) {
   const nameById = useMemo(() => new Map(riders.map((r) => [String(r.rider_id), r.name ?? ""])), [riders]);
   const bestByStage = useMemo(() => myBestByStage(stagePointRows, myTeamId, nameById), [stagePointRows, myTeamId, nameById]);
   const phase = stagePhase(selectedStage, stagesCompleted);
+  // #8383: Din dag-sætningen under filmen må stå, når Resultater er set for etapen.
+  // #8387 (Codex P2): kun når de rigtige, uskjulte resultater faktisk er vist.
+  const resultsShown = v6ResultsShown({ activeTab, phase, stageLoaded, shielded: Boolean(spoiler.resultsBody), stageState: stageStateFor?.(selectedStage) ?? null });
+  useEffect(() => { if (resultsShown) markV6ResultsSeen(raceId, selectedStage); }, [resultsShown, raceId, selectedStage]);
   // StagePageV2 maaler sine egne faner; Resultater er v6's egen og maales her.
   // #7861: Historie efter etapen er også v6s egen (filmen), ikke StagePageV2s.
   useRaceViewTelemetry({ raceId: activeTab === "results" || activeTab === "start" || (activeTab === "stage" && phase === "after") ? raceId : null, tab: activeTab, stage: selectedStage, phase });
@@ -236,7 +241,7 @@ export default function RacePageV6(props: RacePageV6Props) {
     body = (
       <div className="flex flex-col gap-[14px]">
         {routeLine("story")}
-        <V6RaceFilm key={selectedStage} raceId={raceId} stageNumber={selectedStage} isStageRace={isStageRace} profile={profile} results={results} myTeamId={myTeamId} stageRoles={stageRoles} onShowResults={() => onChangeTab("results")} />
+        <V6RaceFilm key={selectedStage} raceId={raceId} stageNumber={selectedStage} isStageRace={isStageRace} profile={profile} results={results} myTeamId={myTeamId} stageRoles={stageRoles} dnfRows={dnfRows} onShowResults={() => onChangeTab("results")} />
       </div>
     );
   } else if (activeTab === "start") {

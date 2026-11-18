@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-155 poster: live 120 · beta 1 · dormant 10 · building 14 · spec 1 · idea 2 · retired 7. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+155 poster: live 120 · beta 2 · dormant 10 · building 13 · spec 1 · idea 2 · retired 7. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -95,8 +95,8 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
+|One planning page (`planning-workbench`)|beta|`planning_workbench`|[PLANNING_CENTER_RULES](PLANNING_CENTER_RULES.md)|#7535|2026-11-17|#7535: beta 17/11 efter ejerens kør; belastningsordenes grænser i private_config (planning_expected_load_7535).|
 |Auto-generated season calendar (`auto-calendar`)|building|-|[CALENDAR_RULES](CALENDAR_RULES.md)|-|2026-11-13|Ingen række i prod (= off). Ejer 13/11: spørg igen mandag 16/11.|
-|One planning page (`planning-workbench`)|building|-|[PLANNING_CENTER_RULES](PLANNING_CENTER_RULES.md)|#7535|2026-11-14|Kontakt planning_workbench ikke seedet = slukket.|
 |Season documentary (LLM) (`season-documentary-llm`)|building|`season_documentary_llm_enabled`|-|-|2026-09-06|-|
 |Automatic season transition cron (`season-auto-transition`)|retired|-|[SEASON_CUTOVER_RUNBOOK](SEASON_CUTOVER_RUNBOOK.md)|#1155|2026-10-17|Fjernet 17/10 (#6796); sæsonskiftet er manuelt.|
 
