@@ -336,7 +336,7 @@
         "incident": "{name} {kind, select, crash {crashes} mechanical {has a mechanical} other {has an incident}}{outcome, select, abandoned { and abandons} loss { and loses {loss}} other {}}",
         "climb": "Top of {name}",
         "climbFirst": "{rider} first over {name}",
-        "gap": "The gap to {group, select, rest {the peloton} other {the chase}} {dir, select, grew {grows} other {shrinks}} from {before} to {after}",
+        "gap": "{front, select, break {The break} other {The leading group}} now has {after} on {group, select, rest {the peloton} other {the chase}}",
         "split": "{count, plural, one {A group splits off} other {# groups split off}}",
         "dropped": "{count, plural, one {{names} is dropped from the break} other {{names} are dropped from the break}}",
         "formedAhead": "{count, plural, one {# rider goes clear ahead of the peloton} other {# riders go clear ahead of the peloton}}",

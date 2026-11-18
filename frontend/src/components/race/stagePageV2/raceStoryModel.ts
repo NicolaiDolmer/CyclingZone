@@ -202,6 +202,12 @@ export function mainGroupId(groups: ReadonlyArray<Pick<FrameGroup, "group_id" | 
 
 /** Referatets hul-linje: "feltet" kun om hovedgruppen ved tjekpunktet, ellers "jagten". */
 function gapLineGroup(story: RaceStory, m: StoryMoment): "rest" | "chase" {
+  const snapshot = gapSnapshot(story, m);
+  const isMain = snapshot ? mainGroupId(snapshot.groups) === m.data.group_id : m.data.includes_rest === true;
+  return isMain ? "rest" : "chase";
+}
+
+function gapSnapshot(story: RaceStory, m: StoryMoment): RaceStory["snapshots"][number] | undefined {
   const km = m.recorded_km ?? m.km;
   // Det NAERMESTE snapshot, ikke det foerste: ved stregen ligger der ogsaa et lige foer (#7900),
   // og margenen alene kan ikke skelne dem (flydende tal). Ved uafgjort vinder det senere.
@@ -210,8 +216,22 @@ function gapLineGroup(story: RaceStory, m: StoryMoment): "rest" | "chase" {
     const d = Math.abs(s.km - km);
     if (d < 0.01 && (!snapshot || d <= Math.abs(snapshot.km - km))) snapshot = s;
   }
-  const isMain = snapshot ? mainGroupId(snapshot.groups) === m.data.group_id : m.data.includes_rest === true;
-  return isMain ? "rest" : "chase";
+  return snapshot;
+}
+
+/**
+ * #8377: hul-linjen maaler fronten mod den foerste gruppe bagved. Kun er fronten
+ * udbruddet (og ikke et felt der foerer, eller et udbrud der allerede er hentet),
+ * hedder den udbruddet; ellers "gruppen forrest".
+ */
+function gapFront(story: RaceStory, m: StoryMoment): "break" | "lead" {
+  const morning = story.breakaway ? new Set(story.breakaway.morning_rider_ids) : null;
+  const snapshot = gapSnapshot(story, m);
+  if (!morning || !snapshot) return "lead";
+  const frontIds = new Set(strs(m.data.front_group_ids));
+  const front = snapshot.groups.filter((g) => (frontIds.size ? frontIds.has(g.group_id) : g.gap_s === 0) && !g.includes_rest);
+  const isBreak = front.some((g) => g.group_id.startsWith("breakaway") && (!g.rider_ids.length || g.rider_ids.some((id) => morning.has(id))));
+  return isBreak ? "break" : "lead";
 }
 
 /** Din bedste rytter i etapen: bedste placering, ellers den foerste i historien. */
@@ -329,9 +349,10 @@ function cluster(lines: StoryLine[], kind: LineKind, priority: number): StoryLin
     if (last && line.km - lastKm <= CLUSTER_KM && line.km - last.km <= CLUSTER_MAX_SPAN_KM) {
       const ids = [...new Set([...last.riderIds, ...line.riderIds])];
       const end = Math.max(last.kmTo ?? last.km, line.kmTo ?? line.km);
+      // #8377: linjen vises paa slut-km, saa tiden hoerer til det sidste punkt i klyngen, ikke det foerste.
+      if ((line.kmTo ?? line.km) >= (last.kmTo ?? last.km)) last.time = line.span ? null : line.time;
       last.kmTo = end > last.km ? end : null;
       last.span = last.span || line.span;
-      last.time = last.span ? null : last.time;
       last.count += 1;
       last.riderIds = ids;
       last.mineIds = [...new Set([...last.mineIds, ...line.mineIds])];
@@ -448,12 +469,22 @@ export function curateMoments(story: RaceStory, cast: Cast, max = MAX_STORY_LINE
         if (m.importance !== "key") break;
         const before = num(m.data.gap_before_s), after = num(m.data.gap_after_s);
         if (before == null || after == null) break;
-        single.push(baseLine(m, "gap", 4, cast, {
+        const gapLine = baseLine(m, "gap", 4, cast, {
           dir: m.key === "story.gap_grew" ? "grew" : "shrank",
           group: gapLineGroup(story, m),
+          front: gapFront(story, m),
           before,
           after,
-        }));
+        });
+        // #8377: afstanden er maalt ved slutpunktet; linjen staar paa det ene km med den tid, ikke som km-interval.
+        if (m.km_span) {
+          gapLine.km = m.km_span.to;
+          gapLine.kmTo = null;
+          gapLine.span = false;
+          gapLine.time = m.race_time_s;
+          gapLine.id = `gap-${gapLine.km}-${m.type}`;
+        }
+        single.push(gapLine);
         break;
       }
       case "story.split": {
@@ -489,23 +520,18 @@ export function curateMoments(story: RaceStory, cast: Cast, max = MAX_STORY_LINE
     }
   }
 
-  const all = [
-    ...single,
-    ...cluster(caught, "caught", 1),
-    ...cluster(splits, "split", 4),
-    ...cluster(dropped, "dropped", 5),
-    ...cluster(joins, "joined", 6),
-  ];
   // En gruppe der kommer i maal efter vinderen, er ikke "hentet": udelad gruppe-
   // bogfoering paa maal-km der ligger efter maal-tiden (eller uden tid at sammenligne).
-  const fin = all.find((l) => l.kind === "finish");
-  if (fin) {
-    const bookkeeping = new Set(["caught", "joined", "split", "dropped"]);
-    for (let i = all.length - 1; i >= 0; i--) {
-      const l = all[i];
-      if (bookkeeping.has(l.kind) && l.km >= fin.km - 1e-6 && (fin.time == null || l.time == null || l.time > fin.time)) all.splice(i, 1);
-    }
-  }
+  // Foer klyngerne samles, saa en aegte hentning lige foer maal ikke forsvinder med bogfoeringen.
+  const fin = single.find((l) => l.kind === "finish");
+  const afterFinish = (l: StoryLine) => Boolean(fin) && l.km >= (fin as StoryLine).km - 1e-6 && ((fin as StoryLine).time == null || l.time == null || l.time > (fin as StoryLine).time!);
+  const all = [
+    ...single,
+    ...cluster(caught.filter((l) => !afterFinish(l)), "caught", 1),
+    ...cluster(splits.filter((l) => !afterFinish(l)), "split", 4),
+    ...cluster(dropped.filter((l) => !afterFinish(l)), "dropped", 5),
+    ...cluster(joins.filter((l) => !afterFinish(l)), "joined", 6),
+  ];
   for (const line of all) if (line.mineIds.length && line.kind !== "finish") line.priority = Math.max(0, line.priority - 1);
   // Unikke id'er (samme slags paa samme km kan forekomme to gange).
   const seen = new Map<string, number>();
@@ -517,9 +543,14 @@ export function curateMoments(story: RaceStory, cast: Cast, max = MAX_STORY_LINE
   // Samme prioritet: det stoerste (flest grupper/ryttere, stoerste hul) foerst,
   // derefter det senere i etapen (taettere paa afgoerelsen).
   const weight = (l: StoryLine) => (l.kind === "gap" ? Math.abs(Number(l.data.after) - Number(l.data.before)) / 60 : l.kind === "split" || l.kind === "joined" ? l.count : 0);
-  const chosen = [...all].sort((a, b) => a.priority - b.priority || weight(b) - weight(a) || b.km - a.km).slice(0, max);
-  const selected = chosen.sort((a, b) => a.km - b.km || Number(a.kind === "finish") - Number(b.kind === "finish") || (a.time ?? 0) - (b.time ?? 0) || a.priority - b.priority);
+  const chosen = [...all].sort((a, b) => a.priority - b.priority || weight(b) - weight(a) || lineDisplayKm(b) - lineDisplayKm(a)).slice(0, max);
+  const selected = chosen.sort((a, b) => lineDisplayKm(a) - lineDisplayKm(b) || Number(a.kind === "finish") - Number(b.kind === "finish") || (a.time ?? 0) - (b.time ?? 0) || a.priority - b.priority);
   return attachNarratives(selected, story, cast, narrative);
+}
+
+/** #8377: et referat viser aldrig et km-interval; en linje der daekker et stykke vej staar paa slut-km. */
+export function lineDisplayKm(line: Pick<StoryLine, "km" | "kmTo">): number {
+  return line.kmTo ?? line.km;
 }
 
 /** km hvor replayet skal staa naar man trykker paa linjen (slut-km for et stykke vej). */

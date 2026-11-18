@@ -353,7 +353,7 @@
         "incident": "{name} {kind, select, crash {se cae} mechanical {sufre una avería} other {sufre un incidente}}{outcome, select, abandoned { y abandona} loss { y pierde {loss}} other {}}",
         "climb": "Cima de {name}",
         "climbFirst": "{rider} primero en {name}",
-        "gap": "La diferencia con {group, select, rest {el pelotón} other {los perseguidores}} {dir, select, grew {aumenta} other {se reduce}} de {before} a {after}",
+        "gap": "{front, select, break {La fuga} other {El grupo de cabeza}} tiene ahora {after} sobre {group, select, rest {el pelotón} other {los perseguidores}}",
         "split": "{count, plural, one {Un grupo se descuelga} other {# grupos se descuelgan}}",
         "dropped": "{count, plural, one {{names} se descuelga de la escapada} other {{names} se descuelgan de la escapada}}",
         "formedAhead": "{count, plural, one {# corredor se escapa por delante del pelotón} other {# corredores se escapan por delante del pelotón}}",
