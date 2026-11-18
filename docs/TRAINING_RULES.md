@@ -1450,3 +1450,17 @@ Ren ydelsesændring: samme afregning, færre databasekald pr. hold. Ingen ny mek
 - **Slukket = som før, bevist:** `runDay` får nøjagtig de gamle argumenter. `trainingSweepMemory6490.test.js` kører den rigtige aftenkørsel i aften-scenarier (etape kørt, før/efter etape, frist, tryk før aften, frigivet/solgt, karantæne, frigivet midt i holdet, fejlet gemmekald) og sammenligner med en frossen golden fra merge-basen (`trainingSweepMemory6490.golden.json`, aldrig genereret med den nye kode): slukket bit for bit; tændt samme svar, skrivninger, sluttilstand og udfald med færre ventetrin.
 - **Aktiveringskrav:** Fable-dom før merge (motor/træning); tænding kun med ejer-go, aldrig autonomt. Første aften med kontakten tændt måles (første til sidste afregning, langsomme kald) mod baseline i `docs/audits/2026-11-16-6490-aftentraening-baseline.md`; målingerne før tænding er fra en stedfortræder-database, ikke rigtig PostgreSQL. Samspil med flere hold ad gangen (`teamConcurrency`) er kun prøvet via pariteten (hukommelsen er pr. hold).
 - **Rul tilbage:** kontakten til `"off"`. Næste kørsel bruger den gamle vej (kontakten læses friskt pr. kørsel); der er intet data at rydde, fordi hukommelsen kun lever i kaldet.
+
+### 13.7 XP-udvikling: datoreglen og tændingslisten (#6110, PR #8276; bag slukket kontakt)
+
+Kontakt `development_xp_model` med startdato `development_xp_from_date`; slukket, intet ændrer sig for spillerne. Modellen og alle beslutninger står i [spec 6/11](superpowers/specs/2026-11-06-6110-xp-udvikling-design.md) og [`PROGRESSION_RULES.md` §11.1](PROGRESSION_RULES.md); tal kun i `balance-internals/6110/` og `private_config` (hard rule 17).
+
+- **Datoreglen (spec §4.3):** under XP stiger en evne højst +1 pr. dato på tværs af datoens ticks og stier (Træn nu, aftenkørslen, løbsdags-aksen). +2 kun for et ungt toptalent på en meget lav evne ved datoens start (ejervalg A 16/11). Grænserne står i talfilen (`datePlus2`); uden dem gælder +1 for alle. XP over grænsen bliver på bjælken og købes de næste datoer.
+- **Tændingsnatten (spec §7.3):** gemt fremgang udbetales helt på én nat, undtaget datoreglen; dagens nye XP følger reglen.
+
+**Tændingslisten (hårde ja/nej-tjek på tænd-kortet, Fable-dom 16/11; spec §7.2).** Et nej stopper tændingen.
+
+1. **Talfilen er gyldig på startdatoen (fund 3b).** `development_xp_params` i `private_config` består `validateDevelopmentXpParams` for netop startdatoen, læst som motoren gør (`loadDevelopmentXp`), og har datoreglens grænser (`datePlus2`). En ugyldig talfil får motoren til at falde tilbage til dagens model (højlydt fejl i loggen), og så sker tændingsnattens udbetaling aldrig. Tjekket sker før natten, ikke i loggen bagefter.
+2. **Ryttere uden tick på tændingsnatten (fund 3a).** En skadet rytter eller en bundet hviledag har intet tick den nat; hans gemte fremgang kommer så ud med datoreglen over de næste datoer i stedet for på én nat. Tænd-kortet viser, hvor mange det gælder, og ejeren godkender det eller beder om en rettelse før tænding.
+3. **"Optjent i dag" skilt fra "udbetalt fra bjælken" (fund 5, #8210).** Opsparet XP købes også på hviledage og efter skift af fokus; spilleren må aldrig se et point fra bjælken som dagens træning.
+4. **Dommerkørslen over 15 sæsoner** med motorens egen datoregel, kohorte og kurve B som facit er lavet på den kode, der tændes, plus ny Fable-dom og ejerens ordrette "kør" efter at have set den live tilstand.

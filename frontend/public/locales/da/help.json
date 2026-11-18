@@ -1870,6 +1870,10 @@
       "scouting": {
         "title": "Scout andre divisioner",
         "text": "Skift race hub'en til 'Min division' eller 'Andre divisioner' for at se enhver puljes kommende startlister, skrivebeskyttet. Startlister åbner syv dage før hvert løb og viser kun bruttotrupper (hvilke ryttere et hold har meldt til), så du kan vurdere det forventede felt. Roller, form og træthed forbliver skjult, og løb længere ude er låst, indtil deres startliste åbner."
+      },
+      "spoilerShield": {
+        "title": "Spoiler-skjold",
+        "text": "Spoiler-skjoldet holder vindere og placeringer ude af dine beskeder, til du selv vil se dem. Slå det til under Indstillinger, under Notifikationer, i kortet Resultater og spoilere (Spoiler-skjold for alle løb). Det er slået fra som standard. Med skjoldet til siger indbakken, klokken og browser-notifikationerne kun, at en etape er færdig. De nævner hverken vinder eller placering. Den nye løbsside får en kontakt til hvert løb og skjuler resultatet der, til du trykker Vis resultater. Indtil den nye løbsside er tændt for dig, viser løbssiden resultatet som før."
       }
     },
     "raceDay": {

@@ -25,6 +25,7 @@
     "retireRisk": "Høj pensionsrisiko: ryttere stopper typisk mellem 36 og 40 år",
     "contractExpiring": "Kontrakten udløber ved næste sæsonskifte: rytteren bliver fri agent, medmindre kontrakten forlænges først",
     "junior": "Juniorrytter (på din juniortrup)",
+    "leavesAfter": "Forlader holdet efter {race}",
     "label": {
       "u23": "U23",
       "u25": "U25",
@@ -863,7 +864,10 @@
       "working": "Fyrer…",
       "cancel": "Annullér",
       "success": "Rytter fyret.",
-      "errorPrefix": "Kunne ikke fyre:"
+      "errorPrefix": "Kunne ikke fyre:",
+      "pendingLine": "Han kører {race}. Han forlader dit hold efter sidste etape. Gebyret trækkes nu, og frigivelsen kan ikke fortrydes.",
+      "pendingSuccess": "{rider} frigives efter {race}. Gebyret på {fee} CZ$ er trukket.",
+      "pendingRaceFallback": "etapeløbet"
     },
     "move": {
       "button": "Flyt trup",

@@ -556,6 +556,8 @@ const SECTION_DEFS = [
       // #4066: wired in — read-only scouting of other divisions' start
       // lists already had translated copy but no reachable docs.
       { id: "scouting", kind: "text" },
+      // #7859: spoiler-skjoldet; vises foerst for dem kontakten er taendt for.
+      { id: "spoilerShield", kind: "text", flag: "spoiler_shield_7859" },
     ],
   },
   // #4910 · Race engine v4 + løbsdagens intention (#4632). Copy'en ligger klar

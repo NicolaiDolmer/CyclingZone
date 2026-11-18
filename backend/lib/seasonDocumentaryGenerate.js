@@ -61,7 +61,8 @@ export async function generateSeasonDocumentary({
   polish = polishSeasonDocumentary,
 }) {
   const facts = await fetchFacts(supabase, seasonId, teamId);
-  const ctx = { teamId, teamName: teamName || "—", seasonNumber };
+  // #8361: intet "—" som holdnavn i prosaen; grammatikken vælger selv et neutralt subjekt.
+  const ctx = { teamId, teamName: teamName || null, seasonNumber };
   const deterministic = buildSeasonDocumentary(facts, ctx);
 
   let llmEn = null;

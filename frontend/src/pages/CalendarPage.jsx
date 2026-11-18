@@ -14,10 +14,13 @@ import {
   groupStageEventsByDate,
   mergePoolTwins,
   monthsWithRaces,
+  poolTwinsByRaceId,
   stepMonth,
 } from "../lib/calendarGrid.js";
 import { useRaceLibraryV2 } from "../lib/raceLibraryV2Flag.ts"; // #6514
-import { myRaceStatus, bucketProfileType } from "../lib/racePeek.ts"; // #6514
+import { myRaceStatus, bucketProfileType, raceDetailHref } from "../lib/racePeek.ts"; // #6514
+import { useRacePageV6Enabled } from "../components/race/v6/racePageV6Flag.ts"; // #5841
+import { V6PoolButtons } from "../components/race/v6/V6EditionSwitch.tsx"; // #5841
 import RacePeekCard from "../components/calendar/RacePeekCard.tsx"; // #6514
 import CalendarViewSwitch from "../components/calendar/CalendarViewSwitch.tsx"; // #6683
 import { lazyWithRetry } from "../lib/lazyWithRetry.js";
@@ -235,6 +238,9 @@ export default function CalendarPage() {
   const [peekStage, setPeekStage] = useState(null); // klikket etape, bevares til "Aabn loeb"
   // #5841: kortet viser det sammenlagte løb (uden én puljes navn), samme som chippen.
   const entryById = useMemo(() => new Map(viewEntries.map((e) => [e.id, e])), [viewEntries]);
+  // #5841 udgave-skift (bag race_page_v6): kortets "Runs in N pools" efter samme tvillingeregel.
+  const racePageV6 = useRacePageV6Enabled();
+  const twinsByRace = useMemo(() => (racePageV6 ? poolTwinsByRaceId(data?.entries || [], { divisions: data?.divisions || [] }) : null), [racePageV6, data]);
   const statusByRace = useMemo(() => {
     if (!libraryV2) return null;
     const list = data?.entries || [];
@@ -520,6 +526,7 @@ export default function CalendarPage() {
           t={t}
           locale={i18n.language}
           stage={peekStage}
+          poolsRow={twinsByRace && peekRaceId ? <V6PoolButtons twins={twinsByRace.get(peekRaceId)} ownPoolId={data.ownPoolId} hrefFor={(id) => raceDetailHref(id, peekStage)} onNavigate={() => { setPeekRaceId(null); setPeekStage(null); }} t={t} /> : null}
           onClose={() => { setPeekRaceId(null); setPeekStage(null); }}
         />
       )}

@@ -1870,6 +1870,10 @@
       "scouting": {
         "title": "Ojear otras divisiones",
         "text": "Cambia el centro de carreras a “Mi división” u “Otras divisiones” para explorar las listas de salida próximas de cualquier grupo, en modo solo lectura. Las listas de salida se abren siete días antes de cada carrera y solo muestran plantillas en bruto (qué ciclistas ha inscrito un equipo), para que puedas calcular el pelotón esperado. Los roles, la forma y la fatiga siguen ocultos, y las carreras más lejanas siguen bloqueadas hasta que se abre su lista de salida."
+      },
+      "spoilerShield": {
+        "title": "Escudo anti-spoiler",
+        "text": "El escudo anti-spoiler deja fuera de tus avisos a los ganadores y las clasificaciones hasta que tú decidas mirar. Actívalo en Ajustes, en Notificaciones, en la tarjeta Resultados y spoilers (Escudo anti-spoiler en todas las carreras). Viene desactivado de serie. Con el escudo activado, la bandeja, la campana y las notificaciones del navegador solo dicen que una etapa ha terminado. No nombran ni al ganador ni la posición. La nueva página de carrera añade un interruptor para cada carrera y oculta ahí el resultado hasta que pulses Mostrar resultados. Mientras la nueva página de carrera no esté activada para ti, la página de carrera muestra el resultado como antes."
       }
     },
     "raceDay": {
