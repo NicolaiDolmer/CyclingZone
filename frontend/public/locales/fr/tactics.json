@@ -41,7 +41,7 @@
   },
   "level": {
     "easy": "Facile",
-    "medium": "Moyen",
+    "medium": "Normal",
     "hard": "Dur",
     "aria": "Effort de {name}"
   },

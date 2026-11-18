@@ -41,7 +41,7 @@
   },
   "level": {
     "easy": "Let",
-    "medium": "Middel",
+    "medium": "Normal",
     "hard": "Hård",
     "aria": "Indsats for {name}"
   },

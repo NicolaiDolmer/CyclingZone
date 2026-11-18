@@ -41,7 +41,7 @@
   },
   "level": {
     "easy": "Licht",
-    "medium": "Middel",
+    "medium": "Normaal",
     "hard": "Zwaar",
     "aria": "Inspanning voor {name}"
   },
