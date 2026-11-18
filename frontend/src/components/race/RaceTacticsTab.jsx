@@ -1486,7 +1486,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
             ))}
           </span>
         </p>
-        <p className="m-0">{tt("legend.sort")}</p>
+        <p className="m-0 @max-[58.5rem]/tactics:hidden">{tt("legend.sort")}</p>{/* #8386: telefonen har ingen kolonner */}
       </>
     );
     const ordersToggle = (
