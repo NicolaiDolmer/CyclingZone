@@ -1432,11 +1432,11 @@ export const SEED_SELECTION = {
 // klatreren topper), etape 2 er kuperet. Uden variation ville kolonnen se ud
 // som loebs-snittet skrevet fem gange — praecis det den IKKE er.
 const INTENTION_RIDERS = [
-  { rider_id: RIDERS[0].id, name: `${RIDERS[0].firstname} ${RIDERS[0].lastname}`, race_role: "captain", abandoned: false, fit: 81, stage_fit: { 1: 58, 2: 79, 3: 92, 4: 61, 5: 88 }, form: 74, fatigue: 22 },
-  { rider_id: "rider-97", name: "Théo Journal", race_role: "hunter", abandoned: false, fit: 68, stage_fit: { 1: 64, 2: 81, 3: 55, 4: 67, 5: 59 }, form: 66, fatigue: 31 },
-  { rider_id: "rider-96", name: "Eskil Damgaard", race_role: "helper", abandoned: false, fit: 54, stage_fit: { 1: 49, 2: 57, 3: 62, 4: 51, 5: 60 }, form: 71, fatigue: 18 },
-  { rider_id: "rider-95", name: "Ruben Halvorsen", race_role: "sprint_captain", abandoned: false, fit: 47, stage_fit: { 1: 86, 2: 44, 3: 21, 4: 83, 5: 26 }, form: 58, fatigue: 44 },
-  { rider_id: "rider-98", name: "Malthe Juul", race_role: "helper", abandoned: true, fit: 39, stage_fit: { 1: 42, 2: 38, 3: 35, 4: 44, 5: 33 }, form: 52, fatigue: 61 },
+  { rider_id: RIDERS[0].id, name: `${RIDERS[0].firstname} ${RIDERS[0].lastname}`, race_role: "captain", abandoned: false, fit: 81, stage_fit: { 1: 58, 2: 79, 3: 92, 4: 61, 5: 88 }, form: 74, fatigue: 22, nationality_code: "IT", rating: 78 },
+  { rider_id: "rider-97", name: "Théo Journal", race_role: "hunter", abandoned: false, fit: 68, stage_fit: { 1: 64, 2: 81, 3: 55, 4: 67, 5: 59 }, form: 66, fatigue: 31, nationality_code: "FR", rating: 71 },
+  { rider_id: "rider-96", name: "Eskil Damgaard", race_role: "helper", abandoned: false, fit: 54, stage_fit: { 1: 49, 2: 57, 3: 62, 4: 51, 5: 60 }, form: 71, fatigue: 18, nationality_code: "DK", rating: 69 },
+  { rider_id: "rider-95", name: "Ruben Halvorsen", race_role: "sprint_captain", abandoned: false, fit: 47, stage_fit: { 1: 86, 2: 44, 3: 21, 4: 83, 5: 26 }, form: 58, fatigue: 44, nationality_code: "NO", rating: 74 },
+  { rider_id: "rider-98", name: "Malthe Juul", race_role: "helper", abandoned: true, fit: 39, stage_fit: { 1: 42, 2: 38, 3: 35, 4: 44, 5: 33 }, form: 52, fatigue: 61, nationality_code: "DK", rating: 63 },
 ];
 
 // Femtrins-vokabularet, i skala-raekkefoelge — praecis det serveren sender naar

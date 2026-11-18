@@ -1,0 +1,130 @@
+{
+  "panel": {
+    "ordersFor": "Orders voor etappe {number}",
+    "ordersForRaceDay": "Orders voor de koersdag",
+    "simple": "Eenvoudig",
+    "allOrders": "Alle orders",
+    "ordersView": "Orders tonen",
+    "howItWorks": "Zo werkt tactiek",
+    "todaysPlan": "Plan van vandaag",
+    "planMeta": "één keuze voor het hele team"
+  },
+  "team": {
+    "label": "Het team",
+    "question": "De vlucht achtervolgen?",
+    "chase": "Achtervolgen",
+    "neutral": "Onderweg beoordelen",
+    "let_go": "Aan anderen overlaten",
+    "reacts": "Reageert als de vlucht het klassement van {name} bedreigt.",
+    "reactsNoLeader": "Reageert als de vlucht je klassement bedreigt."
+  },
+  "plan": {
+    "gc": "Iedereen rijdt voor je klassementsrenner en houdt hem uit de problemen.",
+    "stage": "Het team werkt voor de renner die het best bij de route van vandaag past.",
+    "sprint": "Het team spaart hem voor de finish, met een trein in de laatste 10 km.",
+    "break": "Twee renners proberen de vlucht. De rest rijdt rustig.",
+    "save": "Iedereen rijdt binnen. Minste vermoeidheid vanavond.",
+    "lockedConflict": "Ontgrendel {name} om dit plan te gebruiken. Het verandert zijn rol."
+  },
+  "col": {
+    "rider": "Renner",
+    "role": "Rol",
+    "rating": "Rating",
+    "form": "Vorm",
+    "routeMatch": "Routematch",
+    "fatigueNow": "Vermoeidheid nu",
+    "today": "Vandaag",
+    "effort": "Inspanning",
+    "orders": "Orders",
+    "lock": "Slot",
+    "dayLoad": "Dagbelasting"
+  },
+  "level": {
+    "easy": "Licht",
+    "medium": "Middel",
+    "hard": "Zwaar",
+    "aria": "Inspanning voor {name}"
+  },
+  "orders": {
+    "button": "Orders",
+    "buttonAria": "Orders voor {name}",
+    "extra": "Extra orders",
+    "ifDropped": "Als hij gelost wordt: {task}",
+    "steps": "Inspanningsniveaus",
+    "toClimb": "Naar {name}",
+    "toLastTen": "Naar de laatste 10 km",
+    "lastTen": "Laatste 10 km",
+    "tryBreak": "Vlucht proberen",
+    "sprintTrain": "Sprinttrein",
+    "notForRole": "Niet voor deze rol.",
+    "noSprintCaptain": "Je team heeft geen sprintkapitein.",
+    "trainAfterBreak": "Een renner in de vlucht kan de sprint niet aantrekken.",
+    "trainSelf": "Hij is de sprinter.",
+    "noRoadOrders": "Geen wegorders in een tijdrit.",
+    "followTeam": "Teamplan volgen"
+  },
+  "short": {
+    "stay_sheltered": "Uit de wind",
+    "shelter_leader": "Kopman hoeden",
+    "tempo": "Tempo",
+    "follow_moves": "Volgen",
+    "ride_for_result": "Resultaat",
+    "attack": "Aanval",
+    "breakaway": "Vlucht",
+    "sprint_train": "Lead-out",
+    "grupetto": "Grupetto",
+    "ride_in": "Binnenrijden",
+    "hunt_points": "Punten",
+    "hunt_kom": "Berg"
+  },
+  "today": {
+    "breakaway": "Probeert de vlucht",
+    "attack": "Valt aan op {climb}",
+    "attackFinale": "Valt aan in de finale",
+    "ride_for_result": "Rijdt voor een resultaat",
+    "follow_moves": "Volgt de besten",
+    "tempo": "Rijdt tempo",
+    "shelterLeader": "Houdt {leader} vooraan",
+    "shelterLeaderNone": "Houdt de kopman vooraan",
+    "stay_sheltered": "Blijft uit de wind",
+    "grupetto": "Grupetto, spaart zich",
+    "sprint_train": "Trekt de sprint aan",
+    "ride_in": "Rijdt rustig binnen",
+    "huntPoints": "Gaat voor punten",
+    "roleDefault": "Rijdt zijn rol",
+    "effort": {
+      "grupetto": "Grupetto, spaart zich",
+      "save": "Rijdt rustig",
+      "normal": "Rijdt zijn rol",
+      "protect": "Werkt voor het team",
+      "all_out": "Geeft alles"
+    }
+  },
+  "dayLoad": {
+    "easy": "Lichte dag",
+    "light": "Rustige dag",
+    "normal": "Normale dag",
+    "hard": "Zware dag",
+    "veryHard": "Zeer zware dag"
+  },
+  "lock": {
+    "on": "{name} ontgrendelen",
+    "off": "{name} vergrendelen",
+    "title": "Een vergrendelde renner houdt zijn plan als je het teamplan wijzigt."
+  },
+  "legend": {
+    "cost": "Kosten:",
+    "dayLoad": "Dagbelasting:",
+    "sort": "Klik op een kolom om te sorteren. Een vergrendelde renner houdt zijn plan als je het teamplan wijzigt."
+  },
+  "footer": {
+    "notSavedLine": "Doe je niets, dan rijden ze precies zo"
+  },
+  "hero": {
+    "assistant_one": "{count} renner rijdt het plan van de assistent",
+    "assistant_other": "{count} renners rijden het plan van de assistent"
+  },
+  "mobile": {
+    "numbers": "Rating {rating} · vorm {form} · routematch {match} · vermoeidheid nu {fatigue}"
+  }
+}
