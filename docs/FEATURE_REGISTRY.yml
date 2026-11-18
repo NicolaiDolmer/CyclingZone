@@ -516,6 +516,8 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     verified: 2026-11-18
     note: "#7778: beta 18/11 efter ejerens kør (film, mellemtider, taktik v6c, farvet rute); kendt spoilerhul #8409."
+    roadmap_en: "New race page: the race film, your orders and the results in one place"
+    roadmap_da: "Ny løbsside: løbsfilmen, dine ordrer og resultaterne samlet ét sted"
 
   - id: spoiler-shield
     area: race-day
