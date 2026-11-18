@@ -9,6 +9,7 @@ import { seedState, createFake, sweep, TEAM, rider } from "./trainNowSameResult7
 import { placeRace, finishStage1, contextOf } from "./trainingSettleRaceSession7982.facit.test.js";
 import {
   captureProdImage, captureTeamTables, runProdImage, compareWithProd, readOnlyFetch, IGNITION_FLAGS,
+  proofFailures, PROOF_ALLOWED_RECEIPT_FIELDS,
 } from "./trainingSettleRaceSession7982.prodImage.js";
 
 const CAPTURE_AT = new Date("2026-11-09T18:30:00Z"); // 19:30 dansk tid: efter etapen, foer aftenkoerslen
@@ -143,4 +144,25 @@ test("kun-laesning paa netvaerksniveau: GET og HEAD gaar igennem, alt andet afvi
   await assert.rejects(guarded(new Request("https://example.invalid/rest/v1/riders", { method: "POST" })), /kun laesning/);
   assert.deepEqual(stats, { calls: 2, blocked: 5 });
   assert.deepEqual(seen, ["GET", "HEAD"]);
+});
+
+test("#8391: proeven bestaar kun, naar de dokumenterede betingelser holder (ikke blot ingen fejl)", async () => {
+  assert.deepEqual([...PROOF_ALLOWED_RECEIPT_FIELDS].sort(), [...SNAPSHOT_FIELDS].sort(), "samme tilladte felter som facit");
+  const good = { valid: true, settled: { planned: 1, settled: 1, failed: 0 }, raceSessions: 3, numbersEqual: true, receiptsPlainEqual: true, receiptFieldsThatDiffer: ["progress_after", "form"] };
+  assert.deepEqual(proofFailures(good), []);
+  const broken = (patch) => proofFailures({ ...good, ...patch });
+  assert.deepEqual(broken({ numbersEqual: false }), ["numbersEqual"]);
+  assert.deepEqual(broken({ receiptsPlainEqual: false }), ["receiptsPlainEqual"]);
+  assert.deepEqual(broken({ receiptFieldsThatDiffer: ["gains", "progress_after"] }), ["receiptFields:gains"]);
+  assert.deepEqual(broken({ receiptFieldsThatDiffer: ["(antal kvitteringer)"] }), ["receiptFields:(antal kvitteringer)"]);
+  assert.deepEqual(broken({ raceSessions: 0 }), ["raceSessions"]);
+  assert.deepEqual(broken({ valid: false }), ["valid"]);
+  // Tidlig afregning sprunget over eller fejlet: aftenen alene beviser intet.
+  assert.deepEqual(broken({ settled: null }), ["settled:missing"]);
+  assert.deepEqual(broken({ settled: { planned: 0, settled: 0, failed: 0, skipped: "no_closed_stage" } }), ["settled:skipped:no_closed_stage", "settled:none"]);
+  assert.deepEqual(broken({ settled: { planned: 1, settled: 0, failed: 1 } }), ["settled:failed", "settled:none"]);
+
+  // Den rigtige vej fra et syntetisk billede bestaar.
+  const { image } = await capture(syntheticProd());
+  assert.deepEqual(proofFailures(await runProdImage(image)), []);
 });

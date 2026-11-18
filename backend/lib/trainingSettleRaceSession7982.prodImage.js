@@ -252,6 +252,34 @@ export async function runProdImage(image, { flags = IGNITION_FLAGS, ...times } =
   };
 }
 
+// Kvitteringens oejebliksfelter, der maa afvige mellem "alt kl. 20" og "tidligt" (facit 13.5):
+// fremgangen foer/efter sessionen, og form/traethed naar loebet er datoens sidste session.
+export const PROOF_ALLOWED_RECEIPT_FIELDS = Object.freeze(["fatigue", "fatigue_delta", "form", "progress_after", "progress_before"]);
+
+/**
+ * #8391 (Codex P2): proeven er kun bestaaet, naar de dokumenterede betingelser holder, ikke blot
+ * naar koerslen ikke fejlede. Den tidlige afregning skal faktisk have koert (ingen skipped, ingen
+ * fejl, mindst én afregnet) og givet loebssessioner, spillets tal og kvitteringernes vaerdier skal
+ * vaere ens, og kun tilladte oejebliksfelter maa afvige. Returnerer de brudte betingelser.
+ */
+export function proofFailures(result) {
+  const failures = [];
+  if (!result.valid) failures.push("valid");
+  const settled = result.settled;
+  if (!settled) failures.push("settled:missing");
+  else {
+    if (settled.skipped) failures.push(`settled:skipped:${settled.skipped}`);
+    if (settled.failed) failures.push("settled:failed");
+    if (!(settled.settled > 0)) failures.push("settled:none");
+  }
+  if (!(result.raceSessions > 0)) failures.push("raceSessions");
+  if (!result.numbersEqual) failures.push("numbersEqual");
+  if (!result.receiptsPlainEqual) failures.push("receiptsPlainEqual");
+  const extra = (result.receiptFieldsThatDiffer ?? []).filter((field) => !PROOF_ALLOWED_RECEIPT_FIELDS.includes(field));
+  if (extra.length) failures.push(`receiptFields:${extra.join(",")}`);
+  return failures;
+}
+
 // Kolonner, der beskriver HVORNAAR/HVORDAN en raekke blev gemt i prod (id'er, tidsstempler), og som
 // stedfortraederen ikke saetter. Spillets tal sammenlignes uden dem.
 // En kolonne, prod udfylder med null, og som stedfortraederen slet ikke saetter, er samme vaerdi.

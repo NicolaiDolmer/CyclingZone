@@ -21,7 +21,7 @@
 //   node backend/scripts/dev/facit7982ProdImage.mjs run --image <fil>
 //   infisical run --env=prod --silent -- node backend/scripts/dev/facit7982ProdImage.mjs compare --image <fil>
 //
-// Godt: capture/run giver valid=true, numbersEqual=true, receiptsPlainEqual=true, raceSessions>0 og
+// Godt (#8391: exit 0 kun da, ellers exit 1 med proofFailures): capture/run giver valid=true, numbersEqual=true, receiptsPlainEqual=true, raceSessions>0 og
 // kun oejebliksfelter i receiptFieldsThatDiffer (progress_*, og form/fatigue/fatigue_delta naar
 // loebet er datoens sidste session). compare giver equal=true og blocked=0.
 import { createHash } from "node:crypto";
@@ -32,7 +32,7 @@ import { createClient } from "@supabase/supabase-js";
 
 import { loadDayCloseSpans } from "../../lib/trainingDayCloseTrigger.js";
 import {
-  captureProdImage, captureTeamTables, compareWithProd, readOnlyFetch, runProdImage,
+  captureProdImage, captureTeamTables, compareWithProd, proofFailures, readOnlyFetch, runProdImage,
 } from "../../lib/trainingSettleRaceSession7982.prodImage.js";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -53,6 +53,7 @@ function prodClient() {
 
 // Kun aggregater og fingeraftryk til konsollen.
 const summaryOf = (result) => ({
+  passed: proofFailures(result).length === 0, proofFailures: proofFailures(result),
   valid: result.valid, errors: result.errors.length, unsupported: result.unsupported, missingTables: result.missingTables,
   settled: result.settled ? { planned: result.settled.planned, settled: result.settled.settled, failed: result.settled.failed, skipped: result.settled.skipped ?? null } : null,
   raceSessions: result.raceSessions, numbersEqual: result.numbersEqual, firstDifference: result.firstDifference,
@@ -78,14 +79,14 @@ if (command === "capture") {
   console.log(JSON.stringify({ team: short(teamId), tickDate: image.tickDate, riders: image.riderIds.length,
     loads: image.tables.training_race_loads.length, receiptsAlready: image.tables.training_rider_ticks.length,
     image: path.relative(REPO, file), run: summaryOf(result), network: stats }, null, 2));
-  process.exit(stats.blocked === 0 && result.valid ? 0 : 1);
+  process.exit(stats.blocked === 0 && proofFailures(result).length === 0 ? 0 : 1);
 }
 
 if (command === "run") {
   const { image } = loadImage();
   const result = await runProdImage(image);
   console.log(JSON.stringify(summaryOf(result), null, 2));
-  process.exit(result.valid ? 0 : 1);
+  process.exit(proofFailures(result).length === 0 ? 0 : 1);
 }
 
 if (command === "compare") {
