@@ -56,6 +56,7 @@ import V6RouteLine, { type V6StageMode } from "./V6RouteLine.tsx"; // #7861
 import V6StartList from "./V6StartList.tsx"; // #7862
 import { V6TacticsSavedContext, V6TacticsSummaryContext, useV6TacticsSummaryNote } from "./v6TacticsSaved.ts";
 import { TacticsLayoutContext } from "../../tactics/tacticsLayout.ts"; // #8297
+import { V6TacticsResultsHiddenContext } from "./v6TacticsSpoiler.ts"; // #8388
 import { Button, EmptyState, FlagIcon } from "./v6Ui.ts";
 import V6RaceHeroCard, { type RacePageV6Hero } from "./V6RaceHeroCard.tsx";
 import V6EditionSwitch from "./V6EditionSwitch.tsx"; // #5841
@@ -223,11 +224,15 @@ export default function RacePageV6(props: RacePageV6Props) {
             stageRoles={stageRoles}
             profile={v6RouteProfile(profileByStage, tacticsStage)}
             resultsState={tacticsResults}
+            spoilerSlot={spoiler.hiddenSlotFor(tacticsStage)} // #8388
             resultsErrorSlot={tacticsResults === "failed" ? stageErrorFor?.(tacticsStage) ?? null : null}
           />
         ) : null}
         <TacticsLayoutContext.Provider value="v6c"><V6TacticsSavedContext.Provider value={onTacticsSaved}><V6TacticsSummaryContext.Provider value={tacticsSummary.report}>
-          {renderTactics ? renderTactics(tacticsStage) : tacticsSlot}
+          {/* #8388: skjult etape = etapeplanen viser kun planen, aldrig udfaldet. */}
+          <V6TacticsResultsHiddenContext.Provider value={spoiler.hiddenSlotFor(tacticsStage) != null}>
+            {renderTactics ? renderTactics(tacticsStage) : tacticsSlot}
+          </V6TacticsResultsHiddenContext.Provider>
         </V6TacticsSummaryContext.Provider></V6TacticsSavedContext.Provider></TacticsLayoutContext.Provider>
       </div>
     );

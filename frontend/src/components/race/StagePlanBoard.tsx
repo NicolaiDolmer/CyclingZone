@@ -25,6 +25,7 @@ import { riderInFrontOrFieldAt, ridersSplitKm, stagePlanContactFacts, type Timel
 import SortableTh from "../ui/SortableTh.jsx";
 import { taskCostKey, taskCostWord, teamPlanRouteFromProfile } from "./tacticsReady7864.ts";
 import CostWord from "./CostWord.tsx";
+import { useV6TacticsResultsHidden } from "./v6/v6TacticsSpoiler.ts"; // #8388
 import { Button, CheckIcon, ChevronRightIcon, InfoIcon, LockIcon, MessageIcon, MinusIcon, PlusIcon, Select, XIcon } from "../ui/index.js";
 import {
   clearRiderPlan,
@@ -391,7 +392,9 @@ export default function StagePlanBoard({
   const [openId, setOpenId] = useState<string | null>(null);
   const route = useMemo(() => withJerseyHunt7855(routeForProfile(profile), jerseyHunt7855 === true), [profile, jerseyHunt7855]); // #7855
   const features = useMemo(() => stagePlanFeaturesFromRaw(profile), [profile]); // #7383
-  const { events, ranks } = useStageTimeline(raceId, activeStage, stageCompleted, isOneDay, riders.map((r) => r.rider_id));
+  // #8388: spoiler-skjoldet skjuler etapen = forløbet hentes ikke, og cellen viser kun planen.
+  const resultsHidden = useV6TacticsResultsHidden();
+  const { events, ranks } = useStageTimeline(raceId, activeStage, stageCompleted && !resultsHidden, isOneDay, riders.map((r) => r.rider_id));
   // #7636: kontakten laeses fra GET /api/feature-flags (binaer; fejl = slukket = som foer).
   const [crossCheck7636, setCrossCheck7636] = useState(false);
   useEffect(() => {

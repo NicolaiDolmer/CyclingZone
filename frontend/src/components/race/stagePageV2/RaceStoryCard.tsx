@@ -12,7 +12,7 @@ import { filmKmValue } from "../../../lib/stageTimelineKmSpan.ts";
 import { LossRow } from "../StageSplitTimes.jsx";
 import type { Climb, ElevationSeries, StageProfile } from "./stagePageV2Model.ts";
 import {
-  buildReport, curateMoments, dayWordSentences, finaleData, formatClock, lineReplayKm, myBestRider, namesList, pickGroups,
+  buildReport, curateMoments, dayWordSentences, finaleData, formatClock, lineDisplayKm, lineReplayKm, myBestRider, namesList, pickGroups,
   replayGroupsAt, reportTextKey, splitRows, wholeStageFrames, frameAt,
   isTimeTrialStory, castNames, ownTimeLoss, type Cast, type RaceStory, type ReplayGroup, type ReportSentence, type SplitRow, type StoryLine, type StoryNarrativeContext,
 } from "./raceStoryModel.ts";
@@ -280,7 +280,7 @@ function StorySection({ story, lines, cast, km, onJump, ownOut, narrative, dayWo
   const rows = useMemo(() => splitRows(story, me), [story, me]);
   const report = useMemo(() => buildReport(story, lines, cast, ownOut, dayWords), [story, lines, cast, ownOut, dayWords]);
   const loss = useMemo(() => ownTimeLoss(story, cast, narrative), [story, cast, narrative]);
-  const current = km == null ? null : [...lines].reverse().find((l) => l.km <= km + 1e-6) ?? null;
+  const current = km == null ? null : [...lines].reverse().find((l) => lineDisplayKm(l) <= km + 1e-6) ?? null;
 
   return (
     <div className="mt-4 grid grid-cols-1 gap-6 border-t border-cz-border pt-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
@@ -288,7 +288,7 @@ function StorySection({ story, lines, cast, km, onJump, ownOut, narrative, dayWo
         <h3 className="m-0 mb-1 font-data text-3xs font-semibold uppercase tracking-[.16em] text-cz-3">{t("stagePageV2.story.unfolded")}</h3>
         <ol className="m-0 list-none p-0">
           {lines.map((l) => {
-            const later = km != null && l.km > km + 1e-6;
+            const later = km != null && lineDisplayKm(l) > km + 1e-6;
             const note = text.mineNote(l);
             return (
               <li key={l.id}>
