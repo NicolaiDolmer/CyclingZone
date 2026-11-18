@@ -353,13 +353,19 @@ export function v6StripTabStop(numbers: readonly number[], focused: number | nul
  * at sammenligne (enkeltstart og holdtidskørsel, ingen optegnelse, ingen egne
  * ryttere i optegnelsen), så oversigten står alene i stedet for en tom besked.
  */
-export type TacticsAfterView = "hidden" | "loading" | "error" | "no_orders" | "compare";
+export type TacticsAfterView = "hidden" | "spoiler" | "loading" | "error" | "no_orders" | "compare";
 
-export function tacticsAfterView({ timeTrial, resultsState, timelineLoading, timelineMissing, ordersPending, ordersMissing, riderCount }: {
-  timeTrial: boolean; resultsState: StageResultsState; timelineLoading: boolean; timelineMissing: boolean;
+/**
+ * #8388: skjuler spoiler-skjoldet etapen, viser fanen kun skjoldets pladsholder
+ * ("spoiler"), aldrig placeringer, tider eller hvem der blev sat. Det gælder før
+ * hentetilstanden, så hverken en fejl eller en ventende hentning afslører noget.
+ */
+export function tacticsAfterView({ timeTrial, spoilerHidden = false, resultsState, timelineLoading, timelineMissing, ordersPending, ordersMissing, riderCount }: {
+  timeTrial: boolean; spoilerHidden?: boolean; resultsState: StageResultsState; timelineLoading: boolean; timelineMissing: boolean;
   ordersPending: boolean; ordersMissing: boolean; riderCount: number;
 }): TacticsAfterView {
   if (timeTrial) return "hidden";
+  if (spoilerHidden) return "spoiler";
   if (resultsState === "failed") return "error";
   if (resultsState === "loading" || timelineLoading) return "loading";
   if (timelineMissing) return "hidden";
