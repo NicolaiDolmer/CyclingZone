@@ -59,6 +59,8 @@
     "notForRole": "Niet voor deze rol.",
     "noSprintCaptain": "Je team heeft geen sprintkapitein.",
     "trainAfterBreak": "Een renner in de vlucht kan de sprint niet aantrekken.",
+    "quickNoOpeningTask": "Het plan begint met een slottaak.",
+    "quickInvalidPlan": "Deze keuze maakt het ritplan ongeldig.",
     "trainSelf": "Hij is de sprinter.",
     "noRoadOrders": "Geen wegorders in een tijdrit.",
     "followTeam": "Teamplan volgen"
