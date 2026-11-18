@@ -19,12 +19,13 @@
 
 **Loft:** højst 3 initiativer; fejl hos spillerne går foran. Tænding = bevis i prod + patch note + Hjælp + roadmap + issue lukket. Tænde-blok kl. 07. **Ejer 18/11:** løbssiden v6 + taktik, de nye træningsting og XP live hurtigst muligt.
 
-1. **Træning og udvikling først:** aftentræning #6490 målt 3 aftener; XP #6110 (Midt B, princip 17/11 måles) tændes ved dom + talfil, potentialet #7685 efter; træthed nu #7801/#7982 (valg D) ons/tor; #7947 R5; #7456 design.
-2. **Løbssiden v6 #7778:** taktik v6c #8298, mellemtider #8383, spoiler i Taktik #8388, telefon B #8386; så tænding.
+1. **Træning og udvikling først:** aftentræning #6490 målt 3 aftener; XP #6110: tændes ikke 18/11 (ejer); ny måling uden aldersfald mod gammel og nuværende model, ejeren vælger på billeder, så dom + talfil; potentialet #7685 efter; træthed nu #7801/#7982 (valg D) ons/tor; #7947 R5; #7456 design.
+2. **Løbssiden v6 #7778:** taktik v6c #8298, mellemtider #8383, spoiler i Taktik #8388, telefon B #8386; så tænding. Mellemtider som linjer i det ene referat #8343 (19/11).
 3. **Motor:** trøjejagt #7855 tor; #7715 og #8045 næste uge (ejer 17/11); #8189; #7884.
 4. **Planlægningssiden #7535:** beta 17/11; alle efter testerne.
 5. **Resten af ugen:** #5101 (skitser), #5950 B (design), #3813 næste uge, patch notes-side #8258, #8153 (slukket), #8084, #6584, #8085.
-6. **Roadmappet:** trækbar tavle + 40 idéer (ejeren vælger 20); flyt kun efter ejerens ja pr. punkt.
+6. **Roadmappet:** trækbar tavle + 40 idéer: ejeren vælger 20, de lægges på det offentlige roadmap til spillernes afstemning FØR noget bygges (ejer 18/11); flyt kun efter ejerens ja pr. punkt.
+7. **19/11 (Claude på PC1, ejer 18/11):** #8343 referat-linjer; #8355 indsats-tekster vist som billed-muligheder (ingen motorændring); #8359 oprydning af kontakt-rester udføres af Claude, tidspunkt planlægges; akademi #8400 designet med ejeren 18/11, bygges af Codex. Codex arbejder ikke i løbsside, planlægning, taktik eller træning.
 - **Ranglisten, uge 47 (milestone):** #7664 → #8003 → #7139 (målt 11/11: ~13 min ventetid + ~5 min beregning).
 - **Før 28/11:** skiftet afprøves på en kopi #7325, graduering/salg #7323.
 - **Motor:** #6912, #7899, #7645, #7902.
