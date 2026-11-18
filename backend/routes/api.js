@@ -2903,8 +2903,14 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
       riders: [rider], abilitiesByRider: new Map([[rider.id, ab]]),
       seasonNumber: await getActiveSeasonNumber(), scout, developmentXp: prognosisXp,
     });
-    if (academyPrognoses.has(rider.id)) {
-      return res.json({ own: true, ...academyEstimate(academyPrognoses.get(rider.id)) });
+    const academyPrognosis = academyPrognoses.get(rider.id);
+    if (academyPrognosis) {
+      const types = academyPrognosis.stage === "final" ? academyPrognosis.types : null;
+      return res.json({
+        own: true,
+        ...academyEstimate(academyPrognosis),
+        ...(types?.length ? { types, primaryKey: rider.primary_type } : {}),
+      });
     }
 
     const currentYear = new Date().getFullYear();
