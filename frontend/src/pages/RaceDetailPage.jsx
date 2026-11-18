@@ -1176,8 +1176,8 @@ export default function RaceDetailPage() {
   // tacticsStage: etapen Tactics-fanen skal aabne paa.
   // #7865: v6Stage = v6's etapestribe styrer editoren (ingen egen vælger, ingen genstart
   // pr. etape, så kladden overlever et etapeskift); hideOrdersRecap = ordre-oversigten
-  // står i v6's Taktik, ikke under Stillinger.
-  const renderTabContent = (tab, { tacticsStage = null, v6Stage = null, hideOrdersRecap = false } = {}) => (
+  // står i v6's Taktik, ikke under Stillinger. #7861: hideFilm = filmen og referatet står i v6's Historie.
+  const renderTabContent = (tab, { tacticsStage = null, v6Stage = null, hideOrdersRecap = false, hideFilm = false } = {}) => (
     <>
           {tab === "team" && (
             <RaceTeamTab
@@ -1288,7 +1288,7 @@ export default function RaceDetailPage() {
                   ? <StageTab key={n} stage={n} results={results} stagePointsRows={stagePointsRows} profile={profileByStage[n]} profileByStage={profileByStage}
                       filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} incidents={incidents}
                       moments={moments} riderNameById={riderNameById} teamNameById={teamNameById}
-                      raceId={race.id} raceName={race.name} raceSquad={race.squad} passages={passages} stageRoles={stageRoles} rulesRevision={rulesRevision} t={t} hideOrdersRecap={hideOrdersRecap} />
+                      raceId={race.id} raceName={race.name} raceSquad={race.squad} passages={passages} stageRoles={stageRoles} rulesRevision={rulesRevision} t={t} hideOrdersRecap={hideOrdersRecap} hideFilm={hideFilm} />
                   : <Section key={n}><SkeletonLines lines={6} /></Section>
               ))}
             </div>
@@ -1320,17 +1320,17 @@ export default function RaceDetailPage() {
                 </SectionStack>
                 <SectionStack>
                   {/* #6512: endagsløb får samme "story of the stage" + løbsfilm som etapefanen (tidslinjen hentes allerede ovenfor). */}
-                  <StoryOfTheStageSection
+                  {!hideFilm && <StoryOfTheStageSection
                     timeline={oneDayTimeline}
                     raceId={race.id} stageNumber={1} profile={profileByStage[1]}
                     riderNameById={riderNameById} teamNameById={teamNameById}
                     stageLabel={race.name} startlist={oneDayStartlist}
                     ownRiderIds={oneDayOwnRiderIds} effortByRider={undefined} onToggleFinalKm={undefined}
-                  />
+                  />}
                   {!hideOrdersRecap && (oneDayTimeline?.timeline_version ?? 1) >= 2 && <StageOrdersRecap raceId={race.id} stageNumber={1} riderIds={oneDayOwnRiderIds ?? []} nameOf={(id) => riderNameById?.get?.(id) ?? null} profileType={profileByStage[1]?.profile_type ?? null} stageRoles={stageRoles} ranAt={oneDayTimeline?.created_at ?? null} />}
                   {/* #4373: endagsløb har præcis ÉN etape, så dens profil ER
                       løbets disciplin — en enkeltstart må ikke omtales som spurt. */}
-                  <RaceRecap results={oneDayResults} scopeType="overall" incidents={incidents} profileType={profileByStage[1]?.profile_type ?? null} timelineEvents={oneDayTimeline?.events} teamNameById={teamNameById} startlist={oneDayStartlist} />
+                  {!hideFilm && <RaceRecap results={oneDayResults} scopeType="overall" incidents={incidents} profileType={profileByStage[1]?.profile_type ?? null} timelineEvents={oneDayTimeline?.events} teamNameById={teamNameById} startlist={oneDayStartlist} />}
                   <WhyPanel moments={moments} stageNumber={1} mode="full" riderNameById={riderNameById} t={t} />
                   <DnfSection incidents={incidents} scopeType="overall" raceType={race.race_type} t={t} />
                 </SectionStack>
@@ -1377,7 +1377,7 @@ export default function RaceDetailPage() {
     stageRoles,
     careerEvents,
     dnfRows: v2DnfRows,
-    standingsSlot: renderTabContent("results", { hideOrdersRecap: v6 }),
+    standingsSlot: renderTabContent("results", { hideOrdersRecap: v6, hideFilm: v6 }),
     teamSlot: renderTabContent("team"),
     tacticsSlot: renderTabContent("tactics", { tacticsStage: v2TacticsStage }),
     nowMs,
@@ -2021,7 +2021,7 @@ function LiveOverallTab({ byType, stage, filterRows, myTeamId, myOwnTeamId, mome
  * #7778: v6-layoutet (layout B) for Resultater på en kørt etape. null = etapefanen som i dag.
  * @typedef {{ profileSlot: any, sideSlot: any, loaded: boolean, teamFilter: any, mine?: { on: boolean, set: (on: boolean) => void } | null }} StageTabV6Layout
  */
-function StageTab({ stage, results, stagePointsRows, profile, profileByStage, filterRows, myTeamId, myOwnTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, raceSquad = /** @type {string | undefined} */ (undefined), passages, stageRoles = null, rulesRevision = /** @type {string | null} */ (null), t, v6Layout = /** @type {StageTabV6Layout | null} */ (null), hideOrdersRecap = false }) {
+function StageTab({ stage, results, stagePointsRows, profile, profileByStage, filterRows, myTeamId, myOwnTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, raceSquad = /** @type {string | undefined} */ (undefined), passages, stageRoles = null, rulesRevision = /** @type {string | null} */ (null), t, v6Layout = /** @type {StageTabV6Layout | null} */ (null), hideOrdersRecap = false, hideFilm = false }) {
   // #7031: U23-/juniorløb har ingen Ungdom-fane.
   const classTabs = raceHasYouthClassification(raceSquad) ? STAGE_CLASS_TABS : STAGE_CLASS_TABS.filter((k) => k !== "young");
   const [classTab, setClassTab] = useState("stage");
@@ -2210,7 +2210,7 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
               film", nu MED en stille "The Final Kilometre"-knap ved siden af.
               Gater selv på tidslinje-data OG Final Kilometre-availability
               (renderer kun helt intet hvis INGEN af de to findes). */}
-          <StoryOfTheStageSection
+          {!hideFilm && <StoryOfTheStageSection
             timeline={timeline}
             raceId={raceId} stageNumber={stage} profile={profile}
             riderNameById={riderNameById} teamNameById={teamNameById}
@@ -2219,19 +2219,19 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
             finalKmOpen={finalKmOpen}
             onToggleFinalKm={() => setFinalKmOpen(o => !o)}
             ownRiderIds={ownRiderIds} effortByRider={effortByRider} startlist={stageStartlist}
-          />
-          {finalKmOpen && finalKmPlayback.available && (
+          />}
+          {!hideFilm && finalKmOpen && finalKmPlayback.available && (
             <Suspense fallback={null}>
               <FinalKilometrePlayback rows={finalKmRows} moments={moments} stageNumber={stage} stageLabel={stageLabel} />
             </Suspense>
           )}
-          <RaceReportPanel
+          {!hideFilm && <RaceReportPanel
             raceId={raceId} raceName={raceName} stageNumber={stage} moments={moments}
             results={reportResults} incidents={incidents} myTeamId={myTeamId}
             riderNameById={riderNameById} teamNameById={teamNameById} timelineEvents={timeline?.events}
             profileType={profile?.profile_type ?? null} startlist={stageStartlist} ownAbandons={ownAbandons} ownTeamId={myOwnTeamId} t={t}
-          />
-          <StageSplitTimes events={timeline?.events} ownRiderIds={ownRiderIds} effortByRider={effortByRider} riderNameById={riderNameById} teamNameById={teamNameById} climbs={profile?.climbs} t={t} />
+          />}
+          {!hideFilm && <StageSplitTimes events={timeline?.events} ownRiderIds={ownRiderIds} effortByRider={effortByRider} riderNameById={riderNameById} teamNameById={teamNameById} climbs={profile?.climbs} t={t} />}
           {isV4Timeline && !hideOrdersRecap && <StageOrdersRecap raceId={raceId} stageNumber={stage} riderIds={ownRiderIds} nameOf={(id) => riderNameById?.get?.(id) ?? null} profileType={profile?.profile_type ?? null} stageRoles={stageRoles} ranAt={timeline?.created_at ?? null} teamOrders={teamOrders} />}
           <WhyPanel moments={moments} stageNumber={stage} mode="full" riderNameById={riderNameById} t={t} />
           <DnfSection incidents={incidents} scopeType="stage" stageNumber={stage} t={t} />

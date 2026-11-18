@@ -1,0 +1,27 @@
+{
+  "title": "Film de la course",
+  "meta": "Un seul lecteur · le parcours est la ligne du temps",
+  "play": "Lecture",
+  "chaptersAria": "Chapitres",
+  "chapter": {
+    "start": "Départ",
+    "break": "L'échappée",
+    "sprint": "Sprint km {km}",
+    "chase": "La poursuite",
+    "finale": "Final"
+  },
+  "report": {
+    "title": "Ce qui s'est passé",
+    "meta": "Cliquez sur une ligne pour y aller",
+    "empty": "Appuie sur Lecture ou choisis un chapitre. Le récit suit le film, donc rien n'est dévoilé avant que tu y arrives.",
+    "ahead": "La suite de l'étape arrive au fil du film."
+  },
+  "climb": {
+    "gained": "{rider} gagne du temps dans l'ascension.",
+    "gainedNamed": "{rider} gagne du temps dans {climb}.",
+    "cracked": "{rider} craque dans l'ascension et est lâché.",
+    "crackedNamed": "{rider} craque dans {climb} et est lâché."
+  },
+  "none": "Cette étape n'a pas de film de la course. Le résultat complet est dans Résultats.",
+  "error": "Le film de la course n'a pas pu être chargé. Le résultat complet est dans Résultats."
+}
