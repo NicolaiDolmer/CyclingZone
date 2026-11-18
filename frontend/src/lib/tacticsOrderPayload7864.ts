@@ -7,6 +7,7 @@ export function tacticsOrderPayload7864(rawOrder:TeamPlanOrder,stagePlan:boolean
  return {breakaway_stance:order.breakaway_stance,riders:(order.riders??[]).map(rider=>({
   rider_id:rider.rider_id,effort:rider.effort,try_break:rider.try_break===true,leadout:rider.leadout===true,
   ...(stagePlan&&Array.isArray(rider.plan)&&rider.plan.length?{plan:rider.plan}:{}),
+  ...(stagePlan&&rider.locked===true?{locked:true}:{}), // #8298: låsen gemmes med etapens ordre
  }))};
 }
 function stable(value:unknown):unknown{
