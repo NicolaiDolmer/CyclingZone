@@ -14,6 +14,7 @@ import { contractsBatchMockRoute } from "./contractsBatchMock.ts"; // #6855
 import { previewLockedSalesPayload } from "./lockedSalesMock.ts"; // #6181
 import { boardMeetingMockRoute } from "./boardMeetingMock.js";
 import { betaAccessMockRoute } from "./betaAccessMock.js"; // #5259
+import { spoilerShieldPreviewRoute } from "./spoilerShieldPreviewMock.ts"; // #8388
 import { trainingProgramsMockRoute, previewSingleRaceDay, PREVIEW_TRAINING_PROGRAMS } from "./trainingProgramsMock.js"; // #4629
 import { trainingGroupsMockRoute } from "../components/training/groups/trainingGroupsPreviewMock.ts"; // #6000
 import { trainingFatigueRulesMockRoute } from "./trainingFatigueRulesMock.js"; // #4854
@@ -556,7 +557,7 @@ export function installPreviewMock() {
       // { ok: true } på POST — og så ville tavlen stå tom og opt-in-kortet
       // aldrig skifte tilstand ved et klik.
       {
-        const betaResponse = betaAccessMockRoute(url, method, init);
+        const betaResponse = betaAccessMockRoute(url, method, init) ?? spoilerShieldPreviewRoute(url, method, init); // #8388: ?spoilerShield=on
         if (betaResponse) return betaResponse;
       }
 
