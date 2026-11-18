@@ -65,7 +65,7 @@
     "restored": "Se han recuperado tus cambios sin guardar.",
     "saveTactics": "Guardar táctica",
     "savePeaks": "{count, plural, =0 {Aplicar a seleccionados} other {Aplicar a seleccionados (#)}}",
-    "saveSquadAndTactics": "Guardar equipo y fijar táctica"
+    "saveSquadAndTactics": "Guardar equipo y táctica"
   },
   "copy": {
     "title": "Copiar equipo de",
@@ -217,7 +217,7 @@
       "title": "Guarda primero un equipo",
       "description": "La táctica se define para los corredores del equipo guardado."
     },
-    "squadUnsaved": "El equipo tiene cambios sin guardar. \"Guardar equipo y fijar táctica\" lo guarda y muestra la táctica.",
+    "squadUnsaved": "El equipo tiene cambios sin guardar. \"Guardar equipo y táctica\" lo guarda y muestra la táctica.",
     "shared": "La misma táctica que en la página de la carrera: un plan guardado aquí aparece allí, y al revés.",
     "saveInTab": "Tienes táctica sin guardar. Guárdala primero con \"Guardar táctica\".",
     "saveFirst": "Tienes táctica sin guardar. Guárdala con \"Guardar táctica\" antes de guardar el equipo, o se perderá."

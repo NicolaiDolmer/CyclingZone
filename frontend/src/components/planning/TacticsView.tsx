@@ -10,10 +10,12 @@
 //
 // Hovedets ene guld-knap (ejervalg 16/11, punkt 8 B) gemmer taktikken: fanens egen gem-knap skjules her og
 // trykkes af hovedets "Gem taktik", saa der kun er ét guld i visningen. Samme gem, samme validering. Det er
-// en bro, indtil den faelles taktik-komponent (punkt 1, #8289) giver et gem udefra.
+// en bro, indtil den faelles taktik-komponent (punkt 1, #8289) giver et gem udefra. Siden #8350 tegnes
+// fanen med den faelles komponent (v6c); broen rammer stadig panelets eneste guld-knap.
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { RaceTacticsTab, Button } from "./primitives.ts";
+import { TacticsLayoutContext } from "../tactics/tacticsLayout.ts";
 import type { StageProfileRow } from "../../lib/planningWorkbenchData.ts";
 
 export interface TacticsViewHandle {
@@ -141,13 +143,16 @@ function TacticsBody({
           en taktik-kladde ikke forsvinder. Et gem af truppen henter fanen paa ny (squadVersion). */}
       <div hidden={squadDirty}>
         <p className="border-b border-cz-border px-4 py-2 text-2xs leading-snug text-cz-3">{t("tactics.shared")}</p>
-        <RaceTacticsTab
-          key={`${raceId}:${squadVersion}`}
-          raceId={raceId}
-          profileByStage={profileByStage}
-          stage={isStageRace ? stageNumber : null}
-          hideStagePicker={isStageRace}
-        />
+        {/* #8350: samme faelles taktik-komponent som loebssiden v6 (wireframe v6c, #8297), ikke den gamle. */}
+        <TacticsLayoutContext.Provider value="v6c">
+          <RaceTacticsTab
+            key={`${raceId}:${squadVersion}`}
+            raceId={raceId}
+            profileByStage={profileByStage}
+            stage={isStageRace ? stageNumber : null}
+            hideStagePicker={isStageRace}
+          />
+        </TacticsLayoutContext.Provider>
       </div>
     </div>
   );
