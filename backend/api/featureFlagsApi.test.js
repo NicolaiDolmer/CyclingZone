@@ -592,14 +592,15 @@ test("#2176: staged auto-accept requires eligible viewer and money transport", a
 
 test("Codex P2 #8376: development_xp_model er kun true, naar motoren faar en XP-model i dag", async () => {
   const { XP_TEST_PARAMS } = await import("../lib/__fixtures__/developmentXpOffScenarios.js");
-  const { copenhagenDateString } = await import("../lib/copenhagenTime.js");
-  const today = copenhagenDateString();
-  const flag = (rows, opts) => readPlayerFeatureFlags(fakeSupabase(rows, opts)).then((f) => f.development_xp_model);
-  assert.equal(await flag({ development_xp_model: "on" }), false, "ingen startdato");
-  assert.equal(await flag({ development_xp_model: "on", development_xp_from_date: "2999-01-01", development_xp_params: XP_TEST_PARAMS }), false, "startdatoen er ikke naaet");
-  assert.equal(await flag({ development_xp_model: "on", development_xp_from_date: today }), false, "params mangler");
-  assert.equal(await flag({ development_xp_model: "on", development_xp_from_date: today, development_xp_params: {} }), false, "ugyldige params");
-  assert.equal(await flag({ development_xp_model: "on", development_xp_from_date: today, development_xp_params: XP_TEST_PARAMS }, { failKeys: ["development_xp_params"] }), false, "ulaeselig raekke");
-  assert.equal(await flag({ development_xp_model: "on", development_xp_from_date: today, development_xp_params: XP_TEST_PARAMS }), true, "taendt, dato naaet, gyldige params");
-  assert.equal(await flag({ development_xp_model: "beta", development_xp_from_date: today, development_xp_params: XP_TEST_PARAMS }), false, "binaer: beta er off");
+  const START = "2026-12-01";
+  const flag = (rows, today, opts) => readPlayerFeatureFlags(fakeSupabase(rows, opts), { today: () => today }).then((f) => f.development_xp_model);
+  const full = { development_xp_model: "on", development_xp_from_date: START, development_xp_params: XP_TEST_PARAMS };
+  assert.equal(await flag({ development_xp_model: "on" }, START), false, "ingen startdato");
+  assert.equal(await flag(full, "2026-11-30"), false, "dagen foer startdatoen");
+  assert.equal(await flag(full, START), true, "paa startdatoen");
+  assert.equal(await flag(full, "2026-12-02"), true, "efter startdatoen");
+  assert.equal(await flag({ ...full, development_xp_params: undefined }, START), false, "params mangler");
+  assert.equal(await flag({ ...full, development_xp_params: {} }, START), false, "ugyldige params");
+  assert.equal(await flag(full, START, { failKeys: ["development_xp_params"] }), false, "ulaeselig raekke");
+  assert.equal(await flag({ ...full, development_xp_model: "beta" }, START), false, "binaer: beta er off");
 });

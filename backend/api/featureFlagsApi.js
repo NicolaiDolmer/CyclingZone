@@ -49,7 +49,8 @@ import { FATIGUE_NOW_7801_FLAG_KEY, evaluateFatigueNow7801Flag } from "../lib/ri
  * #5319: `onDegraded` kaldes når batchen fejlede, så endpointet kan sige at
  * svaret er "ukendt", ikke "slukket". Værdierne er de samme (alt off).
  */
-export async function readPlayerFeatureFlags(supabase, { isBetaTester = false, reportError = () => {}, onDegraded = () => {} } = {}) {
+// `today` (dansk dato) injiceres i tests (AGENTS.md regel 16); i drift er det dagens dato i Koebenhavn.
+export async function readPlayerFeatureFlags(supabase, { isBetaTester = false, reportError = () => {}, onDegraded = () => {}, today = copenhagenDateString } = {}) {
   const keys = PLAYER_VISIBLE_FLAG_KEYS;
   let stages;
   try {
@@ -80,7 +81,7 @@ export async function readPlayerFeatureFlags(supabase, { isBetaTester = false, r
   // tavs her (motoren logger selv hoejlydt ved tick), og en fejl er off.
   if (flags[DEVELOPMENT_XP_FLAG_KEY]) {
     try {
-      const model = await loadDevelopmentXp({ supabase, tickDate: copenhagenDateString(), log: { warn() {}, error() {} } });
+      const model = await loadDevelopmentXp({ supabase, tickDate: today(), log: { warn() {}, error() {} } });
       if (!model) flags[DEVELOPMENT_XP_FLAG_KEY] = false;
     } catch (error) {
       flags[DEVELOPMENT_XP_FLAG_KEY] = false;
