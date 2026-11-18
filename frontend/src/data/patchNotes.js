@@ -1,5 +1,29 @@
 export const PATCHES = [
 {
+  "version": "7.465",
+  "date": "2026-11-18",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Academy",
+      "area": "academy",
+      "en": {
+        "title": "All role forecasts for academy riders",
+        "body": "I now show the forecast for every role in the rider’s scouting report once your academy reaches its final estimate."
+      },
+      "da": {
+        "title": "Prognoser for alle akademirytterens roller",
+        "body": "Jeg viser nu prognosen for hver rolle i rytterens scoutrapport, når dit akademi er nået til endeligt bud."
+      },
+      "refs": [
+        8400
+      ]
+    }
+  ]
+},
+{
   "version": "7.464",
   "date": "2026-11-18",
   "changes": [
