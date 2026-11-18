@@ -3,6 +3,7 @@
 // giver området (TOPIC_AREA i patchNotesArea.ts) står ikke her. Nye noter skriver
 // selv `area` i data/patchNotes.js; denne fil vokser ikke.
 export const AREA_BY_KEY: Readonly<Record<string, string>> = Object.freeze({
+  "7.463#0": "tactics", // Gem sender alle etapers ordrer (#8382), nummereret paa main 18/11
   "7.462#0": "races", // the race report note numbered on main
   "7.461#0": "interface", // landet paa main efter klassificeringen (topic Interface, slettede beskeder)
   "7.460#0": "races", // topic Season; saesondokumentaren er loebsfilm, ikke brugerflade
