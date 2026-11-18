@@ -24,7 +24,8 @@ import { useStoryText } from "../stagePageV2/storyText.ts";
 import { Section } from "../stagePageV2/ui.ts";
 import { WeatherTag, weatherSentenceKey } from "../stagePageV2/WeatherTag.tsx";
 import { useSpoilerStory } from "../../spoiler/spoilerStoryContext.ts";
-import { v6DaySentences, v6ExtrasView, v6ResultsSeen } from "./v6StoryExtrasModel.ts";
+import { v6DaySentences, v6ExtrasView, v6ResultsSeen, v6SplitRider } from "./v6StoryExtrasModel.ts";
+import { filmAtFinish } from "../../spoiler/spoilerShieldModel.ts";
 
 /** Filmens position og det filmen allerede har regnet ud (V6RaceFilm). */
 export interface V6FilmPosition {
@@ -61,7 +62,10 @@ export default function V6StoryExtras({
   const outRows = useMemo<DnfRowInput[]>(() => withTimeLimitFatigue(dnfRows, events), [dnfRows, events]);
   const ownOut = useMemo(() => ownOutSentences(outRows, myTeamId, cast), [outRows, myTeamId, cast]);
   const dayWords = useMemo(() => dayWordSentences(events, cast), [events, cast]);
-  const me = useMemo(() => myBestRider(story, cast), [story, cast]);
+  const finalBest = useMemo(() => myBestRider(story, cast), [story, cast]);
+  // #8387 (review): før målet vælges "din" rytter uden den endelige placering.
+  const atFinish = filmAtFinish(km, distanceKm);
+  const me = useMemo(() => v6SplitRider(story, cast.mine, km, atFinish, finalBest), [story, cast.mine, km, atFinish, finalBest]);
   const allRows = useMemo(() => (timeTrial ? [] : splitRows(story, me)), [timeTrial, story, me]);
   const report = useMemo(() => (timeTrial ? [] : buildReport(story, lines, cast, ownOut, dayWords)), [timeTrial, story, lines, cast, ownOut, dayWords]);
   const loss = useMemo(() => ownTimeLoss(story, cast, narrative), [story, cast, narrative]);

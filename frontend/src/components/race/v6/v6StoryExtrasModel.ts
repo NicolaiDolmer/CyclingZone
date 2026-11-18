@@ -9,7 +9,7 @@
 // Resultater er åbnet for etapen.
 import { parseGapSeconds } from "../../../lib/raceLiveStandings.js";
 import { filmAtFinish } from "../../spoiler/spoilerShieldModel.ts";
-import type { SplitRow } from "../stagePageV2/raceStoryModel.ts";
+import { checkpointGapForRider, type RaceStory, type SplitRow } from "../stagePageV2/raceStoryModel.ts";
 import { formatGap, yourDay, type DnfRowInput, type ResultRow } from "../stagePageV2/stagePageV2Model.ts";
 
 export interface V6DaySentence { key: string; params: Record<string, string | number> }
@@ -70,6 +70,29 @@ export function v6ExtrasView({ km, distanceKm, spoilerActive, resultsSeen, split
     day: full || resultsSeen,
     rows: full ? [...splitRows] : splitRows.filter((r) => r.kind !== "finish" && r.km <= km + 1e-6),
   };
+}
+
+/**
+ * #8387 (review): "din" rytter i mellemtids-tabellen må ikke vælges ud fra den endelige
+ * placering, før filmen er i mål; navnet ville ellers afsløre, hvem af dine ryttere der
+ * ender bedst. Før målet: den af dine ryttere, der lå bedst ved det seneste viste
+ * mellemtidspunkt (et tal filmen allerede har vist). I mål: `finalBest` (bedste placering).
+ */
+export function v6SplitRider(story: RaceStory, mine: ReadonlySet<string>, km: number, atFinish: boolean, finalBest: string | null): string | null {
+  if (atFinish) return finalBest;
+  const ids = [...mine].sort(); // neutral orden: Settet følger resultatlisten (= endelig placering)
+  if (ids.length <= 1) return ids[0] ?? null;
+  const shown = story.checkpoints.filter((c) => c.kind !== "finish" && c.km <= km + 1e-6);
+  for (let i = shown.length - 1; i >= 0; i -= 1) {
+    let best: string | null = null;
+    let bestGap = Infinity;
+    for (const id of ids) {
+      const g = checkpointGapForRider(shown[i], id);
+      if (g && g.gap_s < bestGap) { best = id; bestGap = g.gap_s; }
+    }
+    if (best) return best;
+  }
+  return ids[0];
 }
 
 // Resultater åbnet for en etape i denne fane (kun hukommelse, ingen lagring): Din dag-

@@ -4,7 +4,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import type { SplitRow } from "../stagePageV2/raceStoryModel.ts";
 import type { ResultRow } from "../stagePageV2/stagePageV2Model.ts";
-import { markV6ResultsSeen, v6DaySentences, v6ExtrasView, v6ResultsSeen, v6ResultsShown } from "./v6StoryExtrasModel.ts";
+import { markV6ResultsSeen, v6DaySentences, v6ExtrasView, v6ResultsSeen, v6ResultsShown, v6SplitRider } from "./v6StoryExtrasModel.ts";
+import type { RaceStory } from "../stagePageV2/raceStoryModel.ts";
 
 const read = (rel: string) => readFileSync(new URL(rel, import.meta.url), "utf8").replace(/\r\n/g, "\n");
 
@@ -111,4 +112,22 @@ test("#8387: Resultater tæller kun som set, når de rigtige resultater står p�
   assert.equal(v6ResultsShown({ ...base, shielded: true }), false, "skjoldets Show results-flade");
   assert.equal(v6ResultsShown({ ...base, phase: "before" }), false, "kommende etape");
   assert.equal(v6ResultsShown({ ...base, activeTab: "stage" }), false, "Historie er åben");
+});
+
+test("#8387 review: 'din' rytter i mellemtiderne afslører ikke den endelige placering før målet", () => {
+  // "b" ender bedst (finalBest), men lå bagerst ved km 50; "a" og "b" i feltet ved km 20.
+  const grp = (id: string, gap: number, riders: string[], rest = false) => ({ group_id: id, gap_s: gap, time_s: null, rider_ids: riders, includes_rest: rest });
+  const story = {
+    checkpoints: [
+      { kind: "sprint", km: 20, groups: [grp("p", 0, [], true)] },
+      { kind: "climb", km: 50, groups: [grp("f", 0, ["a"]), grp("p", 40, [], true)] },
+      { kind: "finish", km: 100, groups: [grp("f", 0, ["b"]), grp("p", 30, [], true)] },
+    ],
+  } as unknown as RaceStory;
+  const mine = new Set(["b", "a"]); // Settet følger resultatlisten: b først
+  assert.equal(v6SplitRider(story, mine, 10, false, "b"), "a", "intet punkt vist: neutral orden, ikke resultatlisten");
+  assert.equal(v6SplitRider(story, mine, 30, false, "b"), "a", "lige ved km 20: neutral orden");
+  assert.equal(v6SplitRider(story, mine, 60, false, "b"), "a", "a lå forrest ved km 50");
+  assert.equal(v6SplitRider(story, mine, 100, true, "b"), "b", "i mål: bedste endelige placering");
+  assert.equal(v6SplitRider(story, new Set(["b"]), 30, false, "b"), "b", "én rytter afslører intet");
 });
