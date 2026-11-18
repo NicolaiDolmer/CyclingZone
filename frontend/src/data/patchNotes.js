@@ -1,5 +1,30 @@
 export const PATCHES = [
 {
+  "version": "7.469",
+  "date": "2026-11-18",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "topic": "Interface",
+      "area": "interface",
+      "flag": "patch_notes_v2_8049",
+      "en": {
+        "title": "Patch notes by area, week by week (beta)",
+        "body": "The patch notes page shows this week grouped by area, with the week's biggest change at the top. Earlier weeks and a monthly archive sit below, and search covers the archive. What is new since your last visit now follows your account, so your phone and your computer agree."
+      },
+      "da": {
+        "title": "Patch notes efter område, uge for uge (beta)",
+        "body": "Patch notes-siden viser denne uge samlet efter område, med ugens største nyhed øverst. Tidligere uger og et arkiv pr. måned står nedenunder, og søgningen dækker også arkivet. Hvad der er nyt siden sidst følger nu din konto, så telefon og computer er enige."
+      },
+      "refs": [
+        8049
+      ]
+    }
+  ]
+},
+{
   "version": "7.468",
   "date": "2026-11-18",
   "changes": [
