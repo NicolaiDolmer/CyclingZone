@@ -3,6 +3,16 @@
 // giver området (TOPIC_AREA i patchNotesArea.ts) står ikke her. Nye noter skriver
 // selv `area` i data/patchNotes.js; denne fil vokser ikke.
 export const AREA_BY_KEY: Readonly<Record<string, string>> = Object.freeze({
+  "7.461#0": "interface", // landet paa main efter klassificeringen (topic Interface, slettede beskeder)
+  "7.460#0": "races", // topic Season; saesondokumentaren er loebsfilm, ikke brugerflade
+  "7.459#0": "tactics", // topic Races; prisord paa ordrer i etapeplanen (som 7.438)
+  "7.459#1": "board",
+  "7.459#2": "market",
+  "7.459#3": "market",
+  "7.459#4": "mobile", // tabeller og traening paa telefonen
+  "7.459#5": "interface",
+  "7.458#0": "training",
+  "7.457#0": "races", // topic Spoiler shield; spoiler-skjold for loebsnotifikationer
   "7.456#0": "tactics", // landet paa main efter klassificeringen (#8317, topic Planning = Taktik); udgivet note uroert
   "7.455#0": "races", // landet paa main efter klassificeringen (samme mapping som topic Calendar)
   "7.455#1": "interface", // topic Notifications
