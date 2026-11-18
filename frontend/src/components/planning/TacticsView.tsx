@@ -131,7 +131,7 @@ function TacticsBody({
       ref={boxRef}
       // Ruteprofilen staar allerede over visningen: fanens egen tynde profilraekke skjules (etapeplanens
       // profil med stigningsvalg bliver, den er en del af planen). Fanens kort faar ingen ekstra ramme.
-      className="border-t border-cz-border [&_[data-testid=race-stage-profile-row].rounded-cz]:hidden [&_[data-testid=race-tactics-tab]]:rounded-none [&_[data-testid=race-tactics-tab]]:border-0 [&_[data-testid=race-tactics-tab]_button.bg-cz-accent]:hidden"
+      className="border-t border-cz-border [&_[data-testid=race-stage-profile-row]]:hidden [&_[data-testid=race-tactics-tab]]:rounded-none [&_[data-testid=race-tactics-tab]]:border-0 [&_[data-testid=race-tactics-tab]_button.bg-cz-accent]:hidden"
       data-testid="planning-tactics"
     >
       {squadDirty && (
