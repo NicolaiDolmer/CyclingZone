@@ -251,9 +251,14 @@ export async function runProdImage(image, { flags = IGNITION_FLAGS, ...times } =
 
 // Kolonner, der beskriver HVORNAAR/HVORDAN en raekke blev gemt i prod (id'er, tidsstempler), og som
 // stedfortraederen ikke saetter. Spillets tal sammenlignes uden dem.
+// En kolonne, prod udfylder med null, og som stedfortraederen slet ikke saetter, er samme vaerdi.
+// Datoregnskabet sammenlignes paa trup, karantaene, status og aabning; dets beviser baerer
+// koerslens klokkeslaet og er ikke spillets tal.
 const PROD_ONLY = new Set(["id", "created_at", "settled_at", "updated_at", "imported_at"]);
+const WORK_FIELDS = ["team_id", "season_id", "tick_date", "game_days", "expected_rider_ids", "quarantined_rider_ids", "status", "opening_conditions"];
 const withoutProdOnly = (tables) => Object.fromEntries(Object.entries(tables).map(([table, list]) => [table,
-  (list ?? []).map((row) => Object.fromEntries(Object.entries(row).filter(([key]) => !PROD_ONLY.has(key))))]));
+  (list ?? []).map((row) => Object.fromEntries(Object.entries(row)
+    .filter(([key, value]) => !PROD_ONLY.has(key) && value !== null && (table !== "training_date_work" || WORK_FIELDS.includes(key)))))]));
 
 /**
  * Trin 3, kun laesning: efter prods aftenkoersel. `prodTables` er holdets raekker laest med samme
