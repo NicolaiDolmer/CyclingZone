@@ -55,7 +55,8 @@ import { markV6ResultsSeen, v6ResultsShown } from "./v6StoryExtrasModel.ts"; // 
 import V6RouteLine, { type V6StageMode } from "./V6RouteLine.tsx"; // #7861
 import V6StartList from "./V6StartList.tsx"; // #7862
 import { V6TacticsSavedContext, V6TacticsSummaryContext, useV6TacticsSummaryNote } from "./v6TacticsSaved.ts";
-import { TacticsLayoutContext } from "../../tactics/tacticsLayout.ts"; // #8297
+import { TacticsLayoutContext, TacticsRouteContext } from "../../tactics/tacticsLayout.ts"; // #8297
+import V6TacticsRoute from "./V6TacticsRoute.tsx"; // ejer 18/11: Taktik-fanen bruger den farvede rute
 import { V6TacticsResultsHiddenContext } from "./v6TacticsSpoiler.ts"; // #8388
 import { Button, EmptyState, FlagIcon } from "./v6Ui.ts";
 import V6RaceHeroCard, { type RacePageV6Hero } from "./V6RaceHeroCard.tsx";
@@ -155,6 +156,7 @@ export default function RacePageV6(props: RacePageV6Props) {
   const openTactics = tacticsCta({ stagesCompleted, totalStages, raceFinished, schedule, riders, overrides, nowMs });
   const tacticsStage = v6TacticsStage({ requested: tacticsStageRequest, ctaStage: openTactics?.stage, selectedStage });
   // En kørt etape: planen mod det der skete, når etapens resultater er hentet.
+  const tacticsRouteProfile = v6RouteProfile(profileByStage, tacticsStage); // Taktik-fanens farvede rute
   const tacticsResults = v6TacticsResults({ activeTab, stage: tacticsStage, stagesCompleted, stateFor: stageStateFor });
   useEffect(() => {
     if (tacticsResults !== null) loadStage?.(tacticsStage);
@@ -228,12 +230,12 @@ export default function RacePageV6(props: RacePageV6Props) {
             resultsErrorSlot={tacticsResults === "failed" ? stageErrorFor?.(tacticsStage) ?? null : null}
           />
         ) : null}
-        <TacticsLayoutContext.Provider value="v6c"><V6TacticsSavedContext.Provider value={onTacticsSaved}><V6TacticsSummaryContext.Provider value={tacticsSummary.report}>
+        <TacticsLayoutContext.Provider value="v6c"><TacticsRouteContext.Provider value={tacticsRouteProfile ? <V6TacticsRoute profile={tacticsRouteProfile} /> : null}><V6TacticsSavedContext.Provider value={onTacticsSaved}><V6TacticsSummaryContext.Provider value={tacticsSummary.report}>
           {/* #8388: skjult etape = etapeplanen viser kun planen, aldrig udfaldet. */}
           <V6TacticsResultsHiddenContext.Provider value={spoiler.hiddenSlotFor(tacticsStage) != null}>
             {renderTactics ? renderTactics(tacticsStage) : tacticsSlot}
           </V6TacticsResultsHiddenContext.Provider>
-        </V6TacticsSummaryContext.Provider></V6TacticsSavedContext.Provider></TacticsLayoutContext.Provider>
+        </V6TacticsSummaryContext.Provider></V6TacticsSavedContext.Provider></TacticsRouteContext.Provider></TacticsLayoutContext.Provider>
       </div>
     );
   } else if (activeTab === "stage" && phase === "after") {

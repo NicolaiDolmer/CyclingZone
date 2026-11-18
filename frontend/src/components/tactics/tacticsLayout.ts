@@ -3,7 +3,7 @@
 // er der ingen provider, og editoren tegner præcis som før ("classic").
 // Logikken (gem-vejen, valideringen, holdplanerne) er den samme i begge udseender:
 // kun visningen skifter.
-import { createContext, useContext } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 
 export type TacticsLayout = "classic" | "v6c";
 
@@ -12,4 +12,12 @@ export const TacticsLayoutContext = createContext<TacticsLayout>("classic");
 /** Editorens udseende; "classic" uden provider. */
 export function useTacticsLayout(): TacticsLayout {
   return useContext(TacticsLayoutContext);
+}
+
+// Løbssiden v6 giver Taktik-fanen sin egen farvede rute (V6Route, som Etape-fanen og wireframe v6c).
+// undefined = ingen provider: editoren tegner sin egen rute som før. null = ingen rute.
+export const TacticsRouteContext = createContext<ReactNode | undefined>(undefined);
+
+export function useTacticsRoute(): ReactNode | undefined {
+  return useContext(TacticsRouteContext);
 }
