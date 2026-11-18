@@ -186,6 +186,8 @@ function Workbench() {
   const [sheetOpen, setSheetOpen] = useState(false);
   // Arket kraever en liste at vaelge fra: er baade listen og ugeoversigten skjult, staar loebet paa siden.
   const useSheet = narrow && (showList || showWeek);
+  // #8350: paa computeren staar Taktik i fuld bredde (wireframe v6c); listen vises igen i Trup og Formtop.
+  const listColumn = showList && (narrow || view !== "tactics");
   const useSheetRef = useRef(useSheet);
   useSheetRef.current = useSheet;
   // Sidens skrive-laas: ÉT sted ejer "der er et kald i gang" (fladens gem, afmeld, masse-gem, assistenten).
@@ -710,8 +712,10 @@ function Workbench() {
           onUndo={() => bulk.undo()}
           onSave={saveDraft}
         />
-        <div className={`grid items-start gap-3.5 ${showList ? "lg:grid-cols-[296px_minmax(0,1fr)]" : ""}`}>
-          {showList && (
+        {/* #8350: Taktik står i fuld bredde som wireframe v6c (planlaegning-1280): listen ved siden af
+            pressede panelet ned i telefon-layoutet. Paa computeren skjules listen, mens Taktik er valgt. */}
+        <div className={`grid items-start gap-3.5 ${listColumn ? "lg:grid-cols-[296px_minmax(0,1fr)]" : ""}`}>
+          {listColumn && (
             <RaceList
               races={listRaces}
               allRaces={allRaces}
