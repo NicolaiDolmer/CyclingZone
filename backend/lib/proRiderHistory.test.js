@@ -188,6 +188,37 @@ test("#6286 compareHistoryRows: dato, saa kilde-prioritet, saa loebsdag, saa kil
   assert.deepEqual(order([...rows].reverse()), expected);
 });
 
+// #7982 (Fable 15/11): loebssessionen kan gemme datoens SIDSTE loebsdag foerst (kl. 15 ved
+// etapen) og de tidligere sessioner kl. 20. Det senest gemte billede er datoens slut-tilstand.
+test("#7982 compareHistoryRows: senest gemte loebsdags-raekke sorteres sidst; samme gemmetid = loebsdagen", () => {
+  const calendar = { snapshot_date: "2026-11-09", source: "daily_training", abilities: { climbing: 50 } };
+  const race45 = { snapshot_date: "2026-11-09", source: "daily_training", game_day: 45, created_at: "2026-11-09T14:31:00Z" };
+  const evening44 = { snapshot_date: "2026-11-09", source: "daily_training", game_day: 44, created_at: "2026-11-09T19:05:00Z" };
+  const evening42 = { snapshot_date: "2026-11-09", source: "daily_training", game_day: 42, created_at: "2026-11-09T19:05:00Z" };
+  const order = (input) => [...input].sort(compareHistoryRows).map((r) => r.game_day ?? "-");
+  for (const input of [[calendar, race45, evening44, evening42], [evening42, evening44, race45, calendar], [race45, calendar, evening42, evening44]]) {
+    assert.deepEqual(order(input), ["-", 45, 42, 44]);
+  }
+  // Uden gemmetid (aeldre raekker i proever) gaelder loebsdagen som foer.
+  const { created_at: _a, ...old45 } = race45; const { created_at: _b, ...old44 } = evening44;
+  assert.deepEqual(order([old45, old44]), [44, 45]);
+});
+
+test("#7982 proRiderHistory: saesonens slut er det senest gemte loebsdags-billede, ikke den hoejeste loebsdag", async () => {
+  const historyRows = [{ snapshot_date: "2026-11-09", season_number: 5, source: "daily_training", abilities: { climbing: 50 } }];
+  const raceDayRows = [
+    // Loebet var datoens sidste session og blev afregnet ved etapen; aftenen gemte de andre bagefter.
+    { snapshot_date: "2026-11-09", season_number: 5, source: "daily_training", game_day: 45, created_at: "2026-11-09T14:31:00Z", abilities: { climbing: 51 } },
+    { snapshot_date: "2026-11-09", season_number: 5, source: "daily_training", game_day: 44, created_at: "2026-11-09T19:05:00Z", abilities: { climbing: 52 } },
+  ];
+  for (const rows of [raceDayRows, [...raceDayRows].reverse()]) {
+    const handler = createProRiderHistoryHandler({ now: NOW, supabase: fakeSupabase({ sub: ACTIVE, historyRows, raceDayRows: rows }) });
+    const r = res();
+    await handler({ team: { id: "t1" }, params: { riderId: "r1" } }, r);
+    assert.deepEqual(r.body.seasons, [{ season_number: 5, abilities: { climbing: 52 } }]);
+  }
+});
+
 test("#6286 live-punkt: nuvaerende evner erstatter den aktive saesons punkt og markeres live", async () => {
   const historyRows = [
     { snapshot_date: "2026-08-01", season_number: 3, source: "daily_training", abilities: { climbing: 48 } },
