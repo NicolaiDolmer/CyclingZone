@@ -6,7 +6,7 @@
       "rollout": "beta",
       "flag": "race_page_v6",
       "topic": "Race page",
-      "area": "race",
+      "area": "races",
       "en": {
         "title": "Spoiler shield covers more of the race page",
         "body": "I now hide unopened results in the Start list, Stage and Team tabs when your spoiler shield is on."
