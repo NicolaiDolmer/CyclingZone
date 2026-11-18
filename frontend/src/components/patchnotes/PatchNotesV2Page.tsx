@@ -24,7 +24,7 @@ import {
   ErrorState, PageLoader, SkeletonLines, SearchIcon, XIcon,
 } from "../ui";
 import {
-  AreaBlocksA, AreaRowsB, PatchHero, PatchTag, NewDot, QuietButton, TOUCH,
+  AreaBlocksA, AreaRowsB, PatchHero, PatchTag, NewDot, QuietButton, DisclosureLabel, TOUCH,
   type PatchItem, type Translate, type LiveFlags,
 } from "./PatchNoteParts.tsx";
 
@@ -42,7 +42,7 @@ interface RecentFile { latest: string | null; recentStart: string | null; seenKe
 interface MonthState { status: "loading" | "ready" | "error"; items?: PatchItem[] }
 interface IndexState { status: "idle" | "loading" | "ready" | "error"; lang: string | null; items: PatchItem[] }
 
-const PREVIOUS_WEEKS = 4;
+const PREVIOUS_WEEKS = 5;
 const ARCHIVE_MONTHS_SHOWN = 3;
 const SEARCH_MIN = 2;
 const SEARCH_PAGE = 40;
@@ -408,9 +408,7 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }: { 
                         {i === 1 && thin && !expanded.has("week:1") ? ` · ${t("v2.openOnMonday")}` : ""}
                       </span>
                       <span className="flex-1" />
-                      <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium text-cz-accent-t">
-                        {open ? t("v2.close") : t("v2.openWeek")}
-                      </span>
+                      <DisclosureLabel label={t(open ? "v2.close" : "v2.openWeek")} open={open} locale={locale} />
                     </button>
                     {open ? (
                       list.length > 0 ? (
@@ -457,7 +455,7 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }: { 
                             {t("v2.changes", { count: data?.status === "ready" ? list.length : n })}
                           </span>
                           <span className="flex-1" />
-                          <span className="whitespace-nowrap text-xs font-medium text-cz-accent-t">{open ? t("v2.close") : t("v2.open")}</span>
+                          <DisclosureLabel label={t(open ? "v2.close" : "v2.open")} open={open} locale={locale} />
                         </button>
                         {open && (
                           <div className="mb-2.5 rounded-cz border border-cz-border px-3.5 py-1" aria-busy={data?.status === "loading" || undefined}>

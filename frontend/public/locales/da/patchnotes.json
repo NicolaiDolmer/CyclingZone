@@ -59,6 +59,8 @@
     "subtitle": "Det nye i Cycling Zone, uge for uge og efter område",
     "newSince": "{count, plural, one {# ny siden sidst} other {# nye siden sidst}}",
     "newDot": "Ny siden sidst",
+    "heroGameLink": "Se det i spillet",
+    "heroHelpLink": "Læs mere i Hjælp",
     "heroImageAlt": "Skærmbillede fra spillet: {title}",
     "search": {
       "ariaLabel": "Søg i alle patch notes",

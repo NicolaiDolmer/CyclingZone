@@ -1,0 +1,130 @@
+{
+  "panel": {
+    "ordersFor": "Consignes pour l'étape {number}",
+    "ordersForRaceDay": "Consignes pour le jour de course",
+    "simple": "Simple",
+    "allOrders": "Toutes les consignes",
+    "ordersView": "Afficher les consignes",
+    "howItWorks": "Comment fonctionne la tactique",
+    "todaysPlan": "Plan du jour",
+    "planMeta": "un choix pour toute l'équipe"
+  },
+  "team": {
+    "label": "L'équipe",
+    "question": "Chasser l'échappée ?",
+    "chase": "Chasser",
+    "neutral": "Juger en course",
+    "let_go": "Laisser faire les autres",
+    "reacts": "Réagit si l'échappée menace le classement de {name}.",
+    "reactsNoLeader": "Réagit si l'échappée menace ton classement."
+  },
+  "plan": {
+    "gc": "Tout le monde roule pour ton leader au général et le tient à l'abri des ennuis.",
+    "stage": "L'équipe travaille pour le coureur à qui le parcours du jour convient le mieux.",
+    "sprint": "L'équipe le garde pour l'arrivée, avec un train dans les 10 derniers km.",
+    "break": "Deux coureurs tentent l'échappée. Les autres roulent tranquillement.",
+    "save": "Tout le monde rentre. Fatigue la plus basse ce soir.",
+    "lockedConflict": "Déverrouille {name} pour utiliser ce plan. Il change son rôle."
+  },
+  "col": {
+    "rider": "Coureur",
+    "role": "Rôle",
+    "rating": "Note",
+    "form": "Forme",
+    "routeMatch": "Adéquation au parcours",
+    "fatigueNow": "Fatigue actuelle",
+    "today": "Aujourd'hui",
+    "effort": "Effort",
+    "orders": "Consignes",
+    "lock": "Verrou",
+    "dayLoad": "Charge du jour"
+  },
+  "level": {
+    "easy": "Facile",
+    "medium": "Moyen",
+    "hard": "Dur",
+    "aria": "Effort de {name}"
+  },
+  "orders": {
+    "button": "Consignes",
+    "buttonAria": "Consignes de {name}",
+    "extra": "Consignes supplémentaires",
+    "ifDropped": "S'il est lâché : {task}",
+    "steps": "Niveaux d'effort",
+    "toClimb": "Jusqu'à {name}",
+    "toLastTen": "Jusqu'aux 10 derniers km",
+    "lastTen": "10 derniers km",
+    "tryBreak": "Tenter l'échappée",
+    "sprintTrain": "Train du sprint",
+    "notForRole": "Pas pour ce rôle.",
+    "noSprintCaptain": "Ton équipe n'a pas de capitaine de sprint.",
+    "trainAfterBreak": "Un coureur dans l'échappée ne peut pas lancer le sprint.",
+    "trainSelf": "C'est lui le sprinteur.",
+    "noRoadOrders": "Pas de consignes de route en contre-la-montre.",
+    "followTeam": "Suivre le plan d'équipe"
+  },
+  "short": {
+    "stay_sheltered": "Abrité",
+    "shelter_leader": "Garder leader",
+    "tempo": "Tempo",
+    "follow_moves": "Suivre",
+    "ride_for_result": "Résultat",
+    "attack": "Attaque",
+    "breakaway": "Échappée",
+    "sprint_train": "Poisson-pilote",
+    "grupetto": "Grupetto",
+    "ride_in": "Rentrer",
+    "hunt_points": "Points",
+    "hunt_kom": "Montagne"
+  },
+  "today": {
+    "breakaway": "Tente l'échappée",
+    "attack": "Attaque dans {climb}",
+    "attackFinale": "Attaque dans le final",
+    "ride_for_result": "Roule pour un résultat",
+    "follow_moves": "Suit les meilleurs",
+    "tempo": "Fait le tempo",
+    "shelterLeader": "Garde {leader} devant",
+    "shelterLeaderNone": "Garde le leader devant",
+    "stay_sheltered": "Reste abrité",
+    "grupetto": "Grupetto, s'économise",
+    "sprint_train": "Lance le sprint",
+    "ride_in": "Rentre tranquillement",
+    "huntPoints": "Va chercher des points",
+    "roleDefault": "Joue son rôle",
+    "effort": {
+      "grupetto": "Grupetto, s'économise",
+      "save": "Roule tranquillement",
+      "normal": "Joue son rôle",
+      "protect": "Travaille pour l'équipe",
+      "all_out": "Donne tout"
+    }
+  },
+  "dayLoad": {
+    "easy": "Journée facile",
+    "light": "Journée légère",
+    "normal": "Journée normale",
+    "hard": "Journée dure",
+    "veryHard": "Journée très dure"
+  },
+  "lock": {
+    "on": "Déverrouiller {name}",
+    "off": "Verrouiller {name}",
+    "title": "Un coureur verrouillé garde son plan quand tu changes le plan d'équipe."
+  },
+  "legend": {
+    "cost": "Coût :",
+    "dayLoad": "Charge du jour :",
+    "sort": "Clique sur une colonne pour trier. Un coureur verrouillé garde son plan quand tu changes le plan d'équipe."
+  },
+  "footer": {
+    "notSavedLine": "Si tu ne fais rien, ils courent exactement ainsi"
+  },
+  "hero": {
+    "assistant_one": "{count} coureur suit le plan de l'assistant",
+    "assistant_other": "{count} coureurs suivent le plan de l'assistant"
+  },
+  "mobile": {
+    "numbers": "Note {rating} · forme {form} · adéquation {match} · fatigue actuelle {fatigue}"
+  }
+}

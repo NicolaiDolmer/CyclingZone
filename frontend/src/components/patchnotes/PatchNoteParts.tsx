@@ -4,6 +4,7 @@
 // radius (ikke piller), hairlines, tabulære tal, stroke-ikoner.
 import { tagOf, isNewSince, groupByArea, countTags } from "../../lib/patchNotes.js";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { Link } from "react-router";
 import { ChevronRightIcon, ChevronDownIcon } from "../ui";
 
 /** Et punkt fra patch-notes-data (kompakte nøgler, se lib/patchNotes.js). */
@@ -69,6 +70,16 @@ export function QuietButton({ children, className = "", chevron = "right", ...re
   );
 }
 
+export function DisclosureLabel({ label, open, locale }: { label: string; open: boolean; locale: string }) {
+  const Icon = open ? ChevronDownIcon : ChevronRightIcon;
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-medium text-cz-accent-t">
+      {label.charAt(0).toLocaleLowerCase(locale) + label.slice(1)}
+      <Icon size={13} aria-hidden="true" />
+    </span>
+  );
+}
+
 function FallbackNote({ item, t }: { item: PatchItem; t: Translate }) {
   if (!item.fb) return null;
   return <span className="ms-1 text-xs text-cz-3">({t(`fallbackLang.${item.fb}`)})</span>;
@@ -106,22 +117,33 @@ export function PatchLine({ item, t, liveFlags, marker, open, onToggle, quietTit
   );
 }
 
+// Redaktionelle valg for noter, hvor genvejen har en specifik destination.
+const HERO_LINKS: Readonly<Partial<Record<string, { game?: string; help?: string }>>> = {
+  "7.451#0": { game: "/training", help: "/help?section=dailytraining" },
+};
+
 /** Ugens store nyhed: neutral flade, billede kun når noten har et (ejer 16/11, valg 4). */
 export function PatchHero({ item, t, liveFlags, marker, areaLabel }: {
   item: PatchItem; t: Translate; liveFlags: LiveFlags; marker: string | null; areaLabel: string;
 }) {
+  const links = HERO_LINKS[item.k];
+  const focusTrainNow = item.img === "/patch-notes-images/train-now-instant-7737.webp";
   return (
     <div className={`mb-5 rounded-cz bg-cz-subtle p-3.5 ${item.img ? "sm:grid sm:grid-cols-[208px_minmax(0,1fr)] sm:gap-4" : ""}`}>
       {item.img && (
-        <img
-          src={item.img}
-          alt={t("v2.heroImageAlt", { title: item.ti })}
-          width={640}
-          height={310}
-          loading="lazy"
-          decoding="async"
-          className="mb-3 aspect-[2/1] w-full rounded-cz border border-cz-border object-cover object-left-top sm:mb-0 sm:aspect-[16/9]"
-        />
+        <div className="relative mb-3 aspect-[2/1] w-full overflow-hidden rounded-cz border border-cz-border sm:mb-0 sm:aspect-[16/9]">
+          <img
+            src={item.img}
+            alt={t("v2.heroImageAlt", { title: item.ti })}
+            width={640}
+            height={310}
+            loading="lazy"
+            decoding="async"
+            className={focusTrainNow
+              ? "absolute right-0 top-0 h-auto w-[200%] max-w-none"
+              : "h-full w-full object-cover object-left-top"}
+          />
+        </div>
       )}
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
@@ -134,8 +156,23 @@ export function PatchHero({ item, t, liveFlags, marker, areaLabel }: {
           <FallbackNote item={item} t={t} />
         </h3>
         {item.b && <p className="whitespace-pre-line text-[13px] leading-normal text-cz-2">{item.b}</p>}
+        {(links?.game || links?.help) && (
+          <div className="mt-1 flex flex-wrap items-center gap-x-4">
+            {links.game && <HeroLink to={links.game}>{t("v2.heroGameLink")}</HeroLink>}
+            {links.help && <HeroLink to={links.help}>{t("v2.heroHelpLink")}</HeroLink>}
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+function HeroLink({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <Link to={to} className={`inline-flex items-center gap-1 text-xs font-medium text-cz-accent-t hover:underline ${TOUCH}`}>
+      {children}
+      <ChevronRightIcon size={13} aria-hidden="true" />
+    </Link>
   );
 }
 

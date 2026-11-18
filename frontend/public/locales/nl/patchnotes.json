@@ -59,6 +59,8 @@
     "subtitle": "Wat er nieuw is in Cycling Zone, per week en per onderdeel",
     "newSince": "{count, plural, one {# nieuw sinds je laatste bezoek} other {# nieuw sinds je laatste bezoek}}",
     "newDot": "Nieuw sinds je laatste bezoek",
+    "heroGameLink": "Dagelijkse training",
+    "heroHelpLink": "Help",
     "heroImageAlt": "Schermafbeelding uit het spel: {title}",
     "search": {
       "ariaLabel": "Zoek in alle patch notes",

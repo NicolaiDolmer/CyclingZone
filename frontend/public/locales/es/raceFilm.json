@@ -1,0 +1,27 @@
+{
+  "title": "Película de la carrera",
+  "meta": "Un reproductor · la ruta es la línea de tiempo",
+  "play": "Reproducir",
+  "chaptersAria": "Capítulos",
+  "chapter": {
+    "start": "Salida",
+    "break": "La escapada",
+    "sprint": "Sprint km {km}",
+    "chase": "La persecución",
+    "finale": "Final"
+  },
+  "report": {
+    "title": "Qué pasó",
+    "meta": "Pulsa una línea para saltar",
+    "empty": "Pulsa Reproducir o elige un capítulo. El relato sigue a la película, así que nada se desvela antes de llegar.",
+    "ahead": "El resto de la etapa llega mientras avanza la película."
+  },
+  "climb": {
+    "gained": "{rider} gana tiempo en la subida.",
+    "gainedNamed": "{rider} gana tiempo en {climb}.",
+    "cracked": "{rider} se rompe en la subida y se descuelga.",
+    "crackedNamed": "{rider} se rompe en {climb} y se descuelga."
+  },
+  "none": "Esta etapa no tiene película de la carrera. El resultado completo está en Resultados.",
+  "error": "No se pudo cargar la película de la carrera. El resultado completo está en Resultados."
+}

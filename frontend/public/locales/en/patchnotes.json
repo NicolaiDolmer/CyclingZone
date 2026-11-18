@@ -59,6 +59,8 @@
     "subtitle": "What's new in Cycling Zone, week by week and by area",
     "newSince": "{count, plural, one {# new since your last visit} other {# new since your last visit}}",
     "newDot": "New since your last visit",
+    "heroGameLink": "Daily Training",
+    "heroHelpLink": "Help",
     "heroImageAlt": "Screenshot from the game: {title}",
     "search": {
       "ariaLabel": "Search all patch notes",

@@ -15,16 +15,16 @@
 
 **Merge og tænding:** kun én session merger og tænder ad gangen. **Dommer (ejer 10/11):** før hvert tænd-kort for motor, træning og penge dømmer en uafhængig Fable-dommer med kun ejerens regler; tænd, så snart den siger bevist.
 
-## Rækkefølge (ejer 16/11: roadmappets "This week" styrer ugen)
+## Rækkefølge (ejer 16/11: roadmappets "This week" styrer ugen; status 18/11)
 
-**Loft:** højst 3 initiativer i gang; fejl hos spillerne går foran. Tænding = bevis i prod + patch note + Hjælp + roadmap flyttet + issue lukket. Tænde-blok hver morgen, højst 5 kort.
+**Loft:** højst 3 initiativer; fejl hos spillerne går foran. Tænding = bevis i prod + patch note + Hjælp + roadmap + issue lukket. Tænde-blok kl. 07. **Ejer 18/11:** løbssiden v6 + taktik, de nye træningsting og XP live hurtigst muligt.
 
-1. **Træning og udvikling først:** Træn nu til alle man 16/11, hvis ejerens tryk er under 6 s uden fejl (#7737); bonus 15 % #7741 man aften; træthed gennem løbsdagen + afregning efter etapen (#7801/#7982, tændes sammen) man, hvis dommeren når det; XP #6110 er PC1s største spor fra man kl. 8 (status ons); træningsrapporten i procent #7627/#8205, XP-udgaven #8210 følger. Enklere træningsvalg #7947: skitsevalg man.
-2. **Løbssiden v6 #7778:** beta man 16/11, alle efter betatesternes dom.
-3. **Motor:** trøjejagt #7855 og træthed ved tidsgrænsen #7715 tændes sammen man efter dagens sidste etape; de 7 domme man; sprinter-balance #8189 trin 1 derefter; langt angreb #7884 flyttet til næste uge (designkort ons).
-4. **Planlægningssiden #7535:** runde 3 bygges, vises og tændes man.
-5. **Resten af ugen:** holdplaner #7864 (skitsevalg #8187 man), forkert info (bestyrelse #7963/#8116/#8118, akademi #8060/#8185), frigivelse midt i etapeløb #8153, Web 5x #6494 (værdi gennemgås man), nye spillere #8084 (designkort tor), spillerbeskeder #8086 (tir/tor), Google Play #6584 og Pro 2.0 #8085.
-6. **Roadmappet:** "Next week" beskæres med ejeren man; patch note- og Hjælp-rettelser man.
+1. **Træning og udvikling først:** aftentræning #6490 målt 3 aftener; XP #6110 (Midt B, princip 17/11 måles) tændes ved dom + talfil, potentialet #7685 efter; træthed nu #7801/#7982 (valg D) ons/tor; #7947 R5; #7456 design.
+2. **Løbssiden v6 #7778:** taktik v6c #8298, mellemtider #8383, spoiler i Taktik #8388, telefon B #8386; så tænding.
+3. **Motor:** trøjejagt #7855 tor; #7715 og #8045 næste uge (ejer 17/11); #8189; #7884.
+4. **Planlægningssiden #7535:** beta 17/11; alle efter testerne.
+5. **Resten af ugen:** #5101 (skitser), #5950 B (design), #3813 næste uge, patch notes-side #8258, #8153 (slukket), #8084, #6584, #8085.
+6. **Roadmappet:** trækbar tavle + 40 idéer (ejeren vælger 20); flyt kun efter ejerens ja pr. punkt.
 - **Ranglisten, uge 47 (milestone):** #7664 → #8003 → #7139 (målt 11/11: ~13 min ventetid + ~5 min beregning).
 - **Før 28/11:** skiftet afprøves på en kopi #7325, graduering/salg #7323.
 - **Motor:** #6912, #7899, #7645, #7902.

@@ -1,4 +1,5 @@
 // #5259 · Statefuld preview-mock for beta-adgang (samme princip som
+import { stagePlanPreviewActive } from "../components/race/StagePlanPreviewMock.ts"; // #8298
 // clubMock/plannerMock): POST/PATCH muterer en in-memory tilstand, GET spejler
 // den. Så et screenshot-par kan tages på ægte klik i stedet for to statiske
 // payloads, og ejeren kan klikke fladen igennem på et preview uden prod-data.
@@ -191,6 +192,8 @@ function playerFlags() {
   return Object.fromEntries(PLAYER_VISIBLE_FLAG_KEYS.map((key) => {
     if (key === "race_page_v6") return [key, previewRacePageV6Enabled()];
     if (key === "patch_notes_v2_8049") return [key, previewPatchNotesV2Enabled()];
+    // #8298: holdplanerne (Today's plan) foelger ?stagePlan=1 paa preview; i prod er kontakten taendt.
+    if (key === "tactics_ready_7864" && stagePlanPreviewActive()) return [key, true];
     if (key === "training_catalog_v3") return [key, previewCatalogV3Enabled()];
     if (key === "training_train_now_bonus") return [key, previewTrainNowBonusEnabled()];
     if (key === "champion_jerseys_7824") return [key, previewChampionJerseysEnabled()];

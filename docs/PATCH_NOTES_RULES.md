@@ -98,7 +98,10 @@ nummererer noten ind i `patchNotes.js`; guarden kræver `area` på hvert ventend
   på `DEFAULT_MODEL`, og `--model` vinder altid. Haiku bruges ikke til spillertekst (`docs/AI_CHANNEL_ROUTING.md`).
 - Siden viser kun nummererede noter fra `patchNotes.js`. Et ventende fragment i `pending/` når aldrig spillerne
   (låst af `frontend/vite-plugins/patch-notes-v2.test.ts`).
-- Den åbnede uge og arkivmånederne (variant B) har kolonneoverskrifter: "Område" og "Vigtigst" (ejer 16/11).
+- Den åbnede uge og arkivmånederne (variant B) har kolonneoverskrifter: "Område" og "Vigtigst" (ejer 16/11, bekræftet 18/11).
+- Under "Denne uge" ligger fem tidligere uger. Åbnede uger og arkivmåneder har nedadpil, lukkede har højrepil.
+- Ugens nyhed kan have genveje til spillet og Hjælp. Hver genvej kræver et konkret mål for den note.
+  Træn nu-billedet fokuserer på knappen i det normale billedfelt (ejer 18/11).
 - Filerne siden henter (`patch-notes-data/recent|index|<måned>.<sprog>.json`) genereres i build af
   `frontend/vite-plugins/patch-notes-v2.ts`; de committes aldrig. Åbning af siden henter kun `recent` (en test
   holder den under 40 KB pakket).
