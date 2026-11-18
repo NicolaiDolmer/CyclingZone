@@ -1,5 +1,30 @@
 export const PATCHES = [
 {
+  "version": "7.464",
+  "date": "2026-11-18",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "flag": "planning_workbench",
+      "topic": "Planning",
+      "en": {
+        "title": "The new planning page",
+        "body": "Planning has a button, Try the new planning page. It shows your races week by week, and one race at a time with three views: Squad, Tactics and Peak form. Actions let the assistant pick, remove squads or withdraw across many races, and nothing is saved until you save. Leaving with unsaved changes, also a tactics draft, asks you first."
+      },
+      "da": {
+        "title": "Den nye planlægningsside",
+        "body": "Planlægning har en knap, Prøv den nye planlægningsside. Den viser dine løb uge for uge og ét løb ad gangen med tre visninger: Trup, Taktik og Formtop. Under Handlinger kan assistenten udtage, eller du kan fjerne udtagelser og afmelde over mange løb, og intet gemmes før du gemmer. Går du fra ikke gemte ændringer, også en taktik-kladde, spørger siden først."
+      },
+      "refs": [
+        7535,
+        8306
+      ]
+    }
+  ]
+},
+{
   "version": "7.463",
   "date": "2026-11-18",
   "changes": [
