@@ -72,9 +72,12 @@ export function useRacePageSpoiler({ raceId, selectedStage, stagesCompleted, onS
   const show = useCallback(() => openStage(selectedStage), [openStage, selectedStage]);
   const story = useMemo<SpoilerStory>(() => ({
     active: selectedHidden,
+    isStageHidden: hidden,
+    latestResultsHidden: hidden(stagesCompleted),
+    anyResultsHidden: anyHidden,
     open: show,
     showResults: () => { show(); onShowResults(); },
-  }), [selectedHidden, show, onShowResults]);
+  }), [hidden, selectedHidden, stagesCompleted, anyHidden, show, onShowResults]);
 
   // #8388: samme tekst og knap som Resultater; "Vis resultater" åbner kun etapen, fanen bliver på Taktik.
   const hiddenSlotFor = useCallback((stage: number): ReactNode => {

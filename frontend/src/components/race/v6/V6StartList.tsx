@@ -75,6 +75,7 @@ export interface V6StartListProps {
   stagesCompleted: number;
   /** Løbets resultatrækker, som siden har dem (stillingen efter den senest kørte etape). */
   results: unknown[];
+  hiddenResultsSlot?: ReactNode;
   myTeamId: string | number | null | undefined;
   /** Første etapes start (synlighed som divisionernes startlister); null = ukendt. */
   firstStartMs: number | null;
@@ -83,7 +84,7 @@ export interface V6StartListProps {
 
 const CLASS_LABEL: Record<StartListFavouriteClass, string> = { gc: "gc", points: "points", mountain: "mountain", young: "young" };
 
-export default function V6StartList({ raceId, isStageRace, stagesCompleted, results, myTeamId, firstStartMs, nowMs }: V6StartListProps) {
+export default function V6StartList({ raceId, isStageRace, stagesCompleted, results, hiddenResultsSlot = null, myTeamId, firstStartMs, nowMs }: V6StartListProps) {
   const { t, i18n } = useTranslation("races");
   // Fanens egne tekster bor i det lazy "results"-navnerum (første indlæsning holdes under budgettet).
   const { t: ts } = useTranslation("results");
@@ -108,12 +109,14 @@ export default function V6StartList({ raceId, isStageRace, stagesCompleted, resu
   const filtering = filter.mineOnly || filter.nation !== "all" || filter.query.trim() !== "";
   const hasMine = teams.some((tm) => tm.mine);
 
-  const favClasses = useMemo(() => startListFavouriteClasses(results as never, stagesCompleted), [results, stagesCompleted]);
+  // At fjerne tal alene røber stadig resultatet gennem listens udvalg og rækkefølge.
+  const resultsHidden = hiddenResultsSlot != null;
+  const favClasses = useMemo(() => resultsHidden ? [] : startListFavouriteClasses(results as never, stagesCompleted), [resultsHidden, results, stagesCompleted]);
   const [favPick, setFavPick] = useState<StartListFavouriteClass>("gc");
   const favCls = favClasses.includes(favPick) ? favPick : favClasses[0] ?? "gc";
   const favourites = useMemo(
-    () => startListFavourites(results as never, { stagesCompleted, cls: favCls, myTeamId }),
-    [results, stagesCompleted, favCls, myTeamId],
+    () => resultsHidden ? [] : startListFavourites(results as never, { stagesCompleted, cls: favCls, myTeamId }),
+    [resultsHidden, results, stagesCompleted, favCls, myTeamId],
   );
   const afterLabel = isStageRace ? ts("raceStartList.afterStage", { number: stagesCompleted }) : ts("raceStartList.afterRace");
 
@@ -129,7 +132,7 @@ export default function V6StartList({ raceId, isStageRace, stagesCompleted, resu
           className="mb-3"
         />
       )}
-      {favourites.length > 0 ? (
+      {hiddenResultsSlot ?? (favourites.length > 0 ? (
         <ol className="m-0 list-none p-0" data-start-favourites="">
           {favourites.map((f) => (
             <li key={f.riderId} className={`flex min-h-11 items-start gap-2.5 border-t border-cz-border px-1 py-2 ${f.mine ? "bg-cz-subtle" : ""}`}>
@@ -152,7 +155,7 @@ export default function V6StartList({ raceId, isStageRace, stagesCompleted, resu
         </ol>
       ) : (
         <p className="m-0 text-sm text-cz-2">{ts("raceStartList.favouritesEmpty")}</p>
-      )}
+      ))}
       <p className="m-0 mt-3 border-t border-cz-border pt-2.5 text-xs text-cz-3">{ts("raceStartList.favouritesFoot")}</p>
     </Section>
   );
