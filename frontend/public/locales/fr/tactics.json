@@ -126,5 +126,20 @@
   },
   "mobile": {
     "numbers": "Note {rating} · forme {form} · adéquation {match} · fatigue actuelle {fatigue}"
+  },
+  "phone": {
+    "planNone": "Aucun plan d'équipe choisi",
+    "sort": "Trier :",
+    "sortAria": "Trier les coureurs",
+    "open": "Ouvrir les consignes de {name}",
+    "riderOf": "Coureur {n} sur {total}",
+    "prev": "Coureur précédent",
+    "next": "Coureur suivant",
+    "close": "Fermer",
+    "lock": "Verrouiller",
+    "locked": "Verrouillé",
+    "unsaved_one": "L'étape {stages} a des modifications non enregistrées.",
+    "unsaved_other": "Les étapes {stages} ont des modifications non enregistrées.",
+    "unsavedNote": "Rien n'est perdu quand vous changez d'étape."
   }
 }

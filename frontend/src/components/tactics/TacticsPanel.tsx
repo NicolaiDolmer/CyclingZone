@@ -16,6 +16,8 @@ import StatusBadgeJs from "../ui/StatusBadge.jsx";
 import { LockIcon as LockIconJs } from "../ui/index.js";
 import { Button } from "../race/stagePageV2/ui.ts";
 import type { TacticsSaveBadge } from "./tacticsPanelModel.ts";
+import { PhoneSaveContext, PhoneSaveLine } from "./mobile/PhoneSave.tsx"; // #8386: telefonen
+import { PhoneChoiceField, PhoneTeamPlanField, UnsavedStagesBar, type PhoneChoice } from "./mobile/PhoneTeamFields.tsx";
 
 const StatusBadge = StatusBadgeJs as unknown as (props: { state: string; className?: string; children: ReactNode }) => ReactNode;
 const LockIcon = LockIconJs as unknown as (props: { size?: number; "aria-hidden"?: boolean | "true" }) => ReactNode;
@@ -56,7 +58,18 @@ export interface TacticsPanelProps {
   /** Forklaringen under tabellen (pris, dagens belastning, sortering og lås). */
   legend?: ReactNode;
   footer: TacticsPanelFooter;
+  /**
+   * #8386: telefonens udgave B (under PHONE-grænsen): holdets plan og jagten som ét felt hver med
+   * et ark, en bjælke for andre etapers ugemte ændringer og Gem fast i bunden. Udelades = som før.
+   */
+  phone?: { planValue: string; team: PhoneChoice | null; unsavedStages: number[] } | null;
 }
+
+// #8386: panelets bredde, hvor rytternes tabel afløses af telefonlisten. Samme grænse som tabellens
+// egen (@4xl = 56rem af tabellens bredde) plus kortets polstring (2 x 1,25rem), så panelet og
+// listen altid skifter samtidig.
+const HIDE_ON_PHONE = "@max-[58.5rem]/tactics:hidden";
+const HIDE_ON_DESK = "@min-[58.5rem]/tactics:hidden";
 
 function SaveBadge({ badge, labels }: { badge: TacticsSaveBadge; labels: TacticsPanelFooter["badgeLabels"] }) {
   // Uændret gemt taktik (eller intet sat endnu) får intet mærke: "Ikke gemt" er kun til en ugemt kladde (Codex #8298).
@@ -66,13 +79,16 @@ function SaveBadge({ badge, labels }: { badge: TacticsSaveBadge; labels: Tactics
     : <StatusBadge state="closing">{labels.notSaved}</StatusBadge>;
 }
 
-export default function TacticsPanel({ route, teamPlan, title, actions = null, note = null, team, teamNote = null, board, legend = null, footer }: TacticsPanelProps) {
+export default function TacticsPanel({ route, teamPlan, title, actions = null, note = null, team, teamNote = null, board, legend = null, footer, phone = null }: TacticsPanelProps) {
   return (
-    <div data-tactics-panel="v6c" className="flex min-w-0 flex-col gap-3">
+    <PhoneSaveContext.Provider value={phone ? footer : null}>
+    <div data-tactics-panel="v6c" className="@container/tactics flex min-w-0 flex-col gap-3">
+      {phone && phone.unsavedStages.length > 0 && <div className={HIDE_ON_DESK}><UnsavedStagesBar stages={phone.unsavedStages} /></div>}
       {route}
 
+      {teamPlan && phone && <div className={HIDE_ON_DESK}><PhoneTeamPlanField title={teamPlan.title} value={phone.planValue}>{teamPlan.body}</PhoneTeamPlanField></div>}
       {teamPlan && (
-        <section data-testid="tactics-today-plan" className="min-w-0 rounded-cz border border-cz-border bg-cz-card p-4 sm:p-5">
+        <section data-testid="tactics-today-plan" className={`min-w-0 rounded-cz border border-cz-border bg-cz-card p-4 sm:p-5 ${phone ? HIDE_ON_PHONE : ""}`}>
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <h2 className="m-0 text-[15px] font-semibold text-cz-1">{teamPlan.title}</h2>
             <span className="text-2xs text-cz-3">{teamPlan.meta}</span>
@@ -88,8 +104,9 @@ export default function TacticsPanel({ route, teamPlan, title, actions = null, n
         </div>
         {note && <p className="m-0 mb-2 text-xs text-cz-2">{note}</p>}
 
+        {team && phone?.team && <div className={`mb-3 ${HIDE_ON_DESK}`}><PhoneChoiceField choice={phone.team} /></div>}
         {team && (
-          <div data-testid="tactics-team-bar" className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-cz bg-cz-subtle px-2.5 py-2 text-sm">
+          <div data-testid="tactics-team-bar" className={`mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-cz bg-cz-subtle px-2.5 py-2 text-sm ${phone?.team ? HIDE_ON_PHONE : ""}`}>
             {team}
           </div>
         )}
@@ -106,7 +123,7 @@ export default function TacticsPanel({ route, teamPlan, title, actions = null, n
         ) : (
           <div className="mt-3 flex flex-col gap-3 border-t border-cz-border pt-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-cz-2">
-              <SaveBadge badge={footer.badge} labels={footer.badgeLabels} />
+              <span className={`contents ${phone ? HIDE_ON_PHONE : ""}`}><SaveBadge badge={footer.badge} labels={footer.badgeLabels} /></span>
               <div className="min-w-0">{footer.statusLine}</div>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -115,13 +132,20 @@ export default function TacticsPanel({ route, teamPlan, title, actions = null, n
                   {footer.copyLabel}
                 </Button>
               )}
-              <Button variant="primary" size="sm" disabled={footer.saveDisabled} onClick={footer.onSave} className="order-1 w-full sm:order-2 sm:w-auto">
+              <Button variant="primary" size="sm" disabled={footer.saveDisabled} onClick={footer.onSave} className={`order-1 w-full sm:order-2 sm:w-auto ${phone ? HIDE_ON_PHONE : ""}`}>
                 {footer.saveLabel}
               </Button>
             </div>
           </div>
         )}
+        {/* #8386: Gem fast i bunden på telefonen, over appens menu. */}
+        {phone && !footer.locked && (
+          <div className={`sticky bottom-(--cz-mobile-nav-offset,0px) z-20 -mx-4 -mb-4 mt-3 rounded-b-cz border-t border-cz-border bg-cz-card px-4 py-2.5 sm:-mx-5 sm:-mb-5 sm:px-5 ${HIDE_ON_DESK}`}>
+            <PhoneSaveLine save={footer} />
+          </div>
+        )}
       </section>
     </div>
+    </PhoneSaveContext.Provider>
   );
 }

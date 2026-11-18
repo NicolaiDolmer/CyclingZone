@@ -126,5 +126,20 @@
   },
   "mobile": {
     "numbers": "Valoración {rating} · forma {form} · encaje {match} · fatiga ahora {fatigue}"
+  },
+  "phone": {
+    "planNone": "Sin plan de equipo",
+    "sort": "Ordenar:",
+    "sortAria": "Ordenar corredores",
+    "open": "Abrir órdenes de {name}",
+    "riderOf": "Corredor {n} de {total}",
+    "prev": "Corredor anterior",
+    "next": "Corredor siguiente",
+    "close": "Cerrar",
+    "lock": "Bloquear",
+    "locked": "Bloqueado",
+    "unsaved_one": "La etapa {stages} tiene cambios sin guardar.",
+    "unsaved_other": "Las etapas {stages} tienen cambios sin guardar.",
+    "unsavedNote": "No se pierde nada al cambiar de etapa."
   }
 }

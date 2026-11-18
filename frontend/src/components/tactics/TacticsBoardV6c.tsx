@@ -7,6 +7,7 @@ import { useV6TacticsSummary } from "../race/v6/v6TacticsSaved.ts";
 import TacticsRiderTable, { type TacticsRiderRow } from "./TacticsRiderTable.tsx";
 import { ExtraChip, LevelSegmented, PartPicker, RoleButton } from "./TacticsControls.tsx";
 import EffortSegmented from "./EffortSegmented.tsx";
+import TacticsPhoneBoard from "./mobile/TacticsPhoneBoard.tsx"; // #8386
 import RiderChampionJersey from "../rider/ChampionJersey.tsx";
 import RiderTalentMark from "../rider/TalentMark.tsx";
 import type { DayLoad, EffortLevel, RoutePartLabel, TodayLine } from "./tacticsV6cModel.ts";
@@ -22,6 +23,8 @@ export interface BoardRider {
   name: string | null;
   nation: string | null;
   abandoned: boolean;
+  /** #8386: rollens værdi til telefonens sortering (spillets rollehierarki). */
+  role?: string | null;
   roleLabel: string;
   roleOpen: boolean;
   roleEditable: boolean;
@@ -178,7 +181,11 @@ export default function TacticsBoardV6c({ riders, partLabels, allOrders, summary
     };
   });
 
+  // #8386: under panelets telefon-grænse står udgave B (TacticsPhoneBoard) i stedet for tabellen.
   return (
+    <>
+    <div className="@min-[58.5rem]/tactics:hidden"><TacticsPhoneBoard rows={rows.map((row, i) => ({ row, role: riders[i]?.role ?? null }))} partLabels={labels} allOrders={allOrders} /></div>
+    <div className="hidden @min-[58.5rem]/tactics:block">
     <TacticsRiderTable
       rows={rows}
       allOrders={allOrders}
@@ -196,5 +203,7 @@ export default function TacticsBoardV6c({ riders, partLabels, allOrders, summary
         numbers: (row) => t("mobile.numbers", { rating: row.rating ?? "—", form: row.form ?? "—", match: row.routeMatch ?? "—", fatigue: row.fatigue ?? "—" }),
       }}
     />
+    </div>
+    </>
   );
 }
