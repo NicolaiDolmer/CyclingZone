@@ -90,6 +90,13 @@
       "improved": "Forbedring",
       "fixed": "Fejlrettelse"
     },
+    "tagCount": {
+      "on": "{count, plural, one {# tændt for alle} other {# tændt for alle}}",
+      "new": "{count, plural, one {# nyt} other {# nye}}",
+      "beta": "{count, plural, one {# beta} other {# beta}}",
+      "improved": "{count, plural, one {# forbedring} other {# forbedringer}}",
+      "fixed": "{count, plural, one {# fejlrettelse} other {# fejlrettelser}}"
+    },
     "thisWeek": "Denne uge",
     "lastWeek": "Sidste uge",
     "week": "Uge {week}",

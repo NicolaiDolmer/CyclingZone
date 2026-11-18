@@ -90,6 +90,13 @@
       "improved": "Improvement",
       "fixed": "Fix"
     },
+    "tagCount": {
+      "on": "{count, plural, one {# now for everyone} other {# now for everyone}}",
+      "new": "{count, plural, one {# new} other {# new}}",
+      "beta": "{count, plural, one {# beta} other {# beta}}",
+      "improved": "{count, plural, one {# improvement} other {# improvements}}",
+      "fixed": "{count, plural, one {# fix} other {# fixes}}"
+    },
     "thisWeek": "This week",
     "lastWeek": "Last week",
     "week": "Week {week}",

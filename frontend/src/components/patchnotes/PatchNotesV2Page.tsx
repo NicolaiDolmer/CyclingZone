@@ -211,6 +211,8 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }: { 
     new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${m}-15T12:00:00Z`)),
     locale,
   );
+  // Måned midt i en sætning ("april 2026 til juli 2026"): sprogets egen skrivemåde, ikke stort bogstav.
+  const monthName = (m: string) => new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${m}-15T12:00:00Z`));
   const weekLabel = (i: number, start: string) => (i === 0 ? t("v2.thisWeek") : i === 1 ? t("v2.lastWeek") : t("v2.week", { week: isoWeekNumber(start) }));
   const sourceLabel = (item: PatchItem) => {
     const i = weeks.findIndex((w) => item.d >= w.start && item.d <= w.end);
@@ -480,13 +482,13 @@ export default function PatchNotesV2Page({ liveFlags = null, initialMarker }: { 
                 {olderMonths.length > 0 && !olderOpen && (
                   <div className="flex items-baseline gap-2.5 border-t border-cz-border py-2.5">
                     <span className="text-[13.5px] font-medium text-cz-1">
-                      {t("v2.olderMonths", { from: monthLabel(olderMonths[olderMonths.length - 1].m), to: monthLabel(olderMonths[0].m) })}
+                      {t("v2.olderMonths", { from: monthLabel(olderMonths[olderMonths.length - 1].m), to: monthName(olderMonths[0].m) })}
                     </span>
                     <span className="font-data text-2xs uppercase tabular-nums tracking-[.08em] text-cz-3">
                       {t("v2.changes", { count: olderMonths.reduce((s, x) => s + x.n, 0) })}
                     </span>
                     <span className="flex-1" />
-                    <QuietButton chevron="down" onClick={() => toggle("months:older")}>{t("v2.showMonths")}</QuietButton>
+                    <QuietButton chevron="right" onClick={() => toggle("months:older")}>{t("v2.showMonths")}</QuietButton>
                   </div>
                 )}
               </div>

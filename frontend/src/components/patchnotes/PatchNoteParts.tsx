@@ -275,7 +275,7 @@ export function AreaRowsB({ items, t, liveFlags, marker, areaLabel, expanded, to
                 </span>
                 <span className="mt-1 flex flex-wrap gap-x-2 font-data text-3xs uppercase tracking-[.06em] tabular-nums text-cz-3">
                   {countTags(list, liveFlags).map(([tag, n]) => (
-                    <span key={tag}>{n} {t(`v2.tag.${tag}`)}</span>
+                    <span key={tag}>{t(`v2.tagCount.${tag}`, { count: n })}</span>
                   ))}
                 </span>
               </span>

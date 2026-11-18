@@ -90,6 +90,13 @@
       "improved": "Verbetering",
       "fixed": "Oplossing"
     },
+    "tagCount": {
+      "on": "{count, plural, one {# aan voor iedereen} other {# aan voor iedereen}}",
+      "new": "{count, plural, one {# nieuw} other {# nieuw}}",
+      "beta": "{count, plural, one {# beta} other {# beta}}",
+      "improved": "{count, plural, one {# verbetering} other {# verbeteringen}}",
+      "fixed": "{count, plural, one {# oplossing} other {# oplossingen}}"
+    },
     "thisWeek": "Deze week",
     "lastWeek": "Vorige week",
     "week": "Week {week}",
