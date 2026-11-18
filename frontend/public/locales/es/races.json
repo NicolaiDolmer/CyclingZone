@@ -1142,6 +1142,7 @@
     "helpRaceDay": "El rol vale para toda la carrera. La intención es lo que quieres de él el día de carrera.",
     "colRider": "Ciclista",
     "colRole": "Rol",
+    "colRating": "Valoración",
     "colIntention": "Intención · etapa {number}",
     "colIntentionRaceDay": "Intención · día de carrera",
     "allRace": "Toda la carrera",

@@ -1125,6 +1125,7 @@
     "helpRaceDay": "The role runs all race. The intention is what you want from him on race day.",
     "colRider": "Rider",
     "colRole": "Role",
+    "colRating": "Rating",
     "colIntention": "Intention · stage {number}",
     "colIntentionRaceDay": "Intention · race day",
     "allRace": "All race",

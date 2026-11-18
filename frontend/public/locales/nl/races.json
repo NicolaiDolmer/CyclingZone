@@ -1142,6 +1142,7 @@
     "helpRaceDay": "De rol loopt de hele koers. De intentie is wat je van hem wilt op de koersdag.",
     "colRider": "Renner",
     "colRole": "Rol",
+    "colRating": "Rating",
     "colIntention": "Intentie · etappe {number}",
     "colIntentionRaceDay": "Intentie · koersdag",
     "allRace": "Hele koers",
