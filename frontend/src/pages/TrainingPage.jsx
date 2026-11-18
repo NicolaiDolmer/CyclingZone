@@ -1536,7 +1536,6 @@ export default function TrainingPage() {
           meta={[riderTypeLine(rider), age != null ? `${t("colAge")} ${age}` : null].filter(Boolean).join(" · ")}
           form={cond.form ?? null}
           fatigue={cond.fatigue ?? null}
-          fatigueAtStart={phoneTodayView ? cond.fatigue_at_start ?? null : null}
           injuryLabel={injuryMsg ? t(injuryMsg.key, { days: injuryMsg.days, ...(injuryMsg.date ? { date: formatDate(injuryMsg.date, "short") } : {}) }) : null}
           dayLabel={planFor(riderId)?.focus ? dayLabel(planFor(riderId), t) : t("dayPanel.chooseDay")}
           receiptRows={receiptRowsFor(riderId)}
@@ -1920,8 +1919,6 @@ export default function TrainingPage() {
         seasonPoints: seasonPointsFor(rider.id),
         // #6025: "nu -> i aften", samme prognose som telefonens raekke (#6021).
         fatigueTonight: rowForecast(forecastFor(rider.id)),
-        // #7801: kun med fatigue_now_7801 (feltet findes ellers ikke i svaret).
-        fatigueAtStart: cond.fatigue_at_start ?? null,
         noDay: !planFor(rider.id)?.focus && !racingTodayFor(rider.id),
         squad: rider.squad ?? null,
         score: cell

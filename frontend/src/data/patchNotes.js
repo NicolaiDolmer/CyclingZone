@@ -1,5 +1,28 @@
 export const PATCHES = [
 {
+  "version": "7.463",
+  "date": "2026-11-18",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Tactics",
+      "en": {
+        "title": "Save keeps orders on every stage",
+        "body": "If you changed orders on one stage and then opened another before saving, Save only sent the open stage, and the earlier changes were lost. Save now sends the orders for every stage you changed, and Saved only shows once all of them are confirmed. The tab also tells you about unsaved changes on other stages."
+      },
+      "da": {
+        "title": "Gem tager ordrer med på alle etaper",
+        "body": "Hvis I ændrede ordrer på én etape og åbnede en anden før I gemte, sendte Gem kun den åbne etape, og de første ændringer gik tabt. Nu sender Gem ordrerne for alle etaper, I har ændret, og Gemt vises først, når de alle er bekræftet. Fanen siger også til, når en anden etape har ugemte ændringer."
+      },
+      "refs": [
+        8381
+      ]
+    }
+  ]
+},
+{
   "version": "7.462",
   "date": "2026-11-18",
   "changes": [

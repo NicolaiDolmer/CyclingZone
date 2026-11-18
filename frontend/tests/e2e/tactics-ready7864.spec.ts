@@ -309,12 +309,12 @@ test('#7864 an unsaved manual stage remains outside the batch and retains its ow
   await expect(page.getByTestId('team-plan-same-type')).toHaveText('Copy to stage 6');
   await page.getByTestId('team-plan-same-type').click();await panel.getByRole('button',{name:'Save tactics',exact:true}).click();
   await expect(page.getByTestId('team-plan-multi-stage')).toHaveCount(0);
-  expect(f.fills[0].plans.map(p=>p.stage_number)).toEqual([6]);expect(f.orders().has(3)).toBe(false);
-  await panel.getByRole('button',{name:'Intentions for stage 3',exact:true}).click();
-  await expect(panel.getByText('You have unsaved changes',{exact:true})).toBeVisible();
-  await panel.getByRole('button',{name:'Save stage 3',exact:true}).click();
+  expect(f.fills[0].plans.map(p=>p.stage_number)).toEqual([6]);
+  // #8381: stage 3 stays outside the batch, but the same Save sends its own changed orders (its own draft, never the copy).
   await expect.poll(()=>f.orders().has(3)).toBe(true);
   expect(f.orders().get(3)?.riders.filter(r=>r.plan?.[0]?.task==='breakaway')).toHaveLength(2);
+  await panel.getByRole('button',{name:'Intentions for stage 3',exact:true}).click();
+  await expect(panel.getByText('You have unsaved changes',{exact:true})).toHaveCount(0);
 });
 
 test('#7864 a newly saved plan without role changes stays out of later batch targets',async({page})=>{
