@@ -1,5 +1,81 @@
 export const PATCHES = [
 {
+  "version": "7.468",
+  "date": "2026-11-18",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "flag": "race_page_v6",
+      "topic": "Races",
+      "en": {
+        "title": "Tactics on the new race page",
+        "body": "Pick a plan for the whole team, and every rider follows it. Give a rider his own Easy, Normal or Hard day with one tap, or tap it again to send him back to the team plan. Day load shows what the day costs him. Lock a rider to keep his plan when you change the team plan. All orders shows each rider's orders along the route."
+      },
+      "da": {
+        "title": "Taktik på den nye løbsside",
+        "body": "Vælg en plan for hele holdet, og alle ryttere følger den. Giv en rytter sin egen Let, Normal eller Hård dag med ét tryk, eller tryk igen for at sende ham tilbage til holdets plan. Dagens belastning viser, hvad dagen koster ham. Lås en rytter, så han beholder sin plan, når du skifter holdplan. Alle ordrer viser hver rytters ordrer langs ruten."
+      },
+      "refs": [
+        8298,
+        8297
+      ],
+      "area": "tactics"
+    }
+  ]
+},
+{
+  "version": "7.467",
+  "date": "2026-11-18",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "flag": "race_page_v6",
+      "topic": "Races",
+      "en": {
+        "title": "Switch between pools and seasons on the race page",
+        "body": "The race header has a Pool menu and a Season menu. Your own pool carries the You mark. A finished season shows its winner and margin, the current one shows how many stages are raced. Looking at another pool, you see where your team rides, when its next stage locks, and a link back to your race."
+      },
+      "da": {
+        "title": "Skift mellem puljer og sæsoner på løbssiden",
+        "body": "Løbshovedet har en Pulje-menu og en Sæson-menu. Din egen pulje har mærket Dig. En kørt sæson viser vinder og forspring, den aktuelle viser hvor mange etaper der er kørt. Ser du en anden pulje, står der, hvor dit hold kører, hvornår holdets næste etape låser, og et link tilbage til dit løb."
+      },
+      "refs": [
+        5841
+      ],
+      "area": "races"
+    }
+  ]
+},
+{
+  "version": "7.466",
+  "date": "2026-11-18",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "beta",
+      "topic": "Races",
+      "flag": "race_page_v6",
+      "en": {
+        "title": "The race film is one player",
+        "body": "On the new race page a ridden stage has Story and Results under the Stage tab. Story is one race film on the stage's coloured route, with chapters (start, the break, climbs, sprints, the chase, the finale) and one report next to it. Click a line in the report and the film jumps there. The report only shows what has happened up to where you are in the film, so the winner is not given away before the finish."
+      },
+      "da": {
+        "title": "Løbsfilmen er én afspiller",
+        "body": "På den nye løbsside har en kørt etape Historie og Resultater under Etape-fanen. Historie er én løbsfilm på etapens farvede rute med kapitler (start, udbruddet, stigningerne, spurterne, jagten, finalen) og ét referat ved siden af. Klik på en linje i referatet, og filmen hopper dertil. Referatet viser kun det, der er sket, op til hvor du er i filmen, så vinderen ikke afsløres før mål."
+      },
+      "refs": [
+        7861
+      ],
+      "area": "races"
+    }
+  ]
+},
+{
   "version": "7.465",
   "date": "2026-11-18",
   "changes": [
