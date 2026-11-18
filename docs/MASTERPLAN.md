@@ -25,7 +25,7 @@
 4. **Planlægningssiden #7535:** beta 17/11; alle efter testerne.
 5. **Resten af ugen:** #5101 (skitser), #5950 B (design), #3813 næste uge, patch notes-side #8258, #8153 (slukket), #8084, #6584, #8085.
 6. **Roadmappet:** trækbar tavle + 40 idéer: ejeren vælger 20, de lægges på det offentlige roadmap til spillernes afstemning FØR noget bygges (ejer 18/11); flyt kun efter ejerens ja pr. punkt.
-7. **19/11 (Claude på PC1, ejer 18/11):** #8343 referat-linjer; #8355 indsats-tekster vist som billed-muligheder (ingen motorændring); #8359 oprydning af kontakt-rester udføres af Claude, tidspunkt planlægges; akademi #8400 designet med ejeren 18/11, bygges af Codex. Codex arbejder ikke i løbsside, planlægning, taktik eller træning.
+7. **Fordeling (ejer 18/11, mål: live og merget):** PC1 18/11: v6 tændes → træthed nu → patch notes-siden beta (#8258, to trin), planlægningens taktik #8350/#8356, kl. 20-måling #6490. PC1 19/11: XP #6110 først (valg på billeder, dom, tænding), #8343 referat-linjer, #8355 billed-muligheder (ingen motor), #8359 oprydning eftermiddag (Claude, arkiv + kør). Codex (Dolmer PC, én PR ad gangen, aldrig v6/planlægning/taktik/træning): #8400 del 1 (alle roller som andre ryttere; del 2 mandag), ranglisten #8003→#7664, top 5 langsomme SQL, #7663, Supabase-advarsler, CI #8347, #8327, mobil top 10 #8236, UX top 10 #8337.
 - **Ranglisten, uge 47 (milestone):** #7664 → #8003 → #7139 (målt 11/11: ~13 min ventetid + ~5 min beregning).
 - **Før 28/11:** skiftet afprøves på en kopi #7325, graduering/salg #7323.
 - **Motor:** #6912, #7899, #7645, #7902.
