@@ -90,15 +90,17 @@ function SortMenu({ value, onPick }: { value: PhoneSortKey; onPick: (k: PhoneSor
   );
 }
 
-/** Rollen, rutematch og dagens belastning under navnet. */
+/** Rollen og rutematch under navnet, dagens belastning på linjen under. */
 function Meta({ row, dayLoad }: { row: TacticsRiderRow; dayLoad: (l: DayLoad) => string }) {
   return (
-    <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-2xs text-cz-2">
-      {row.lock?.on && <LockIcon size={11} aria-hidden="true" className="text-cz-accent-t" />}
-      <span>{row.roleLabel}</span>
-      {row.routeMatch != null && <><span aria-hidden="true">·</span><RouteMatchPlate value={row.routeMatch} /></>}
-      {row.dayLoad && <><span aria-hidden="true">·</span><DayLoadCell load={row.dayLoad} label={dayLoad} /></>}
-    </span>
+    <>
+      <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-2xs text-cz-2">
+        {row.lock?.on && <LockIcon size={11} aria-hidden="true" className="text-cz-accent-t" />}
+        <span>{row.roleLabel}</span>
+        {row.routeMatch != null && <><span aria-hidden="true">·</span><RouteMatchPlate value={row.routeMatch} /></>}
+      </span>
+      {row.dayLoad && <DayLoadCell load={row.dayLoad} label={dayLoad} />}
+    </>
   );
 }
 
@@ -172,7 +174,7 @@ function RiderSheet({ row, position, total, onPrev, onNext, onClose }: { row: Ta
         {row.parts?.map((part) => (
           <div key={part.label} className="flex flex-col gap-1">
             <span className="text-xs text-cz-2">{part.label}</span>
-            <div className="[&>div]:block [&_button[aria-haspopup]]:w-full [&_button[aria-haspopup]]:justify-between">{part.control}</div>
+            <div className="[&>div]:block [&_button[aria-haspopup]]:w-full [&_button[aria-haspopup]>svg]:ml-auto">{part.control}</div>
           </div>
         ))}
         {row.steps && <div className="flex flex-col gap-1">{label("orders.steps")}{row.steps}</div>}
