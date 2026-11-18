@@ -158,7 +158,7 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7855
     verified: 2026-11-13
-    note: 'Off i prod 13/11 (#8052); kun ejeren tænder, efter dommer.'
+    note: 'Off i prod 13/11 (#8052); ejer tænder, efter dommer.'
     decision: ejer-beslutning
     decide_by: 2026-11-21
   - id: race-itt-no-day-roll-7726
@@ -258,7 +258,7 @@ features:
     ssot: docs/SEASON_CUTOVER_RUNBOOK.md
     epic: 5741
     verified: 2026-10-26
-    note: Afgjort B 18/10 (#6775): slukket i S5. Hjælp må ikke love drift.
+    note: B 18/10 (#6775): slukket i S5. Hjælp må ikke love drift.
 
   - id: form-and-fatigue
     area: race-engine
@@ -350,7 +350,7 @@ features:
     verified: 2026-11-13
     decision: taend
     decide_by: 2026-11-21
-    note: Kontakt fatigue_now_7801 findes ikke i prod app_config (13/11) = slukket; ejer tænder.
+    note: fatigue_now_7801 ikke i prod app_config (13/11) = slukket; ejer tænder.
 
   - id: planning-workbench
     area: season
@@ -628,7 +628,7 @@ features:
     verified: 2026-11-15
     decision: ejer-beslutning
     decide_by: 2026-11-29
-    note: Kontakt release_defer_8153 (seed off) kommer med migrationen; slukket = som i dag.
+    note: release_defer_8153 (seed off) følger migrationen; slukket = som i dag.
 
   - id: settle-race-session-after-stage
     area: training
@@ -640,7 +640,7 @@ features:
     verified: 2026-11-15
     decision: ejer-beslutning
     decide_by: 2026-11-29
-    note: Off i prod 15/11 (server merget, #8195). Tændes kun med fatigue_now_7801 (ejer). Skærmdelen mangler.
+    note: Off i prod 15/11 (#8195). Kun med fatigue_now_7801 (ejer). Skærmdelen mangler.
 
   - id: rider-loans
     area: market
@@ -730,7 +730,7 @@ features:
     ssot: docs/superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md
     epic: 1177
     verified: 2026-11-04
-    note: 'Kun data er bygget (#5268); motor (#5348) og mentorpar (#5349) mangler.'
+    note: 'Kun data bygget (#5268); motor (#5348), mentorpar (#5349) mangler.'
 
   - id: champion-jerseys
     area: squad
@@ -882,7 +882,7 @@ features:
     ssot: docs/TRAINING_RULES.md
     epic: 5865
     verified: 2026-11-16
-    note: 'Bygget bag season_injury_reset_mode = off; ejeren vælger clear/cap/light før S6-skiftet.'
+    note: 'Bag season_injury_reset_mode = off; ejer vælger clear/cap/light før S6.'
     decision: ejer-beslutning
     decide_by: 2026-11-28
 
@@ -1065,7 +1065,7 @@ features:
     ssot: docs/YOUTH_RULES.md
     epic: 2911
     verified: 2026-10-15
-    note: Sikkerhedsventil efter ejer-beslutning (#2911); off i prod, kun ejeren flipper.
+    note: Sikkerhedsventil (#2911); off i prod, ejer flipper.
 
   - id: three-squads
     area: academy
@@ -1245,7 +1245,7 @@ features:
     ssot: docs/superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md
     epic: 6110
     verified: 2026-11-05
-    note: 'Byggetrin 4 (#7684): fladerne læser potentialEstimateRead.js, når flaget er tændt.'
+    note: 'Trin 4 (#7684): fladerne læser potentialEstimateRead.js, når flaget er på.'
     decision: goer-faerdigt
     decide_by: 2026-12-31
 
@@ -1292,7 +1292,7 @@ features:
     flag: development_score_v2
     ssot: docs/TRAINING_RULES.md
     epic: 6110
-    note: "Parkeret (ejer 31/10); afgøres ved Udvikling 2.0-opsamlingen. Aldrig tændt samtidig med XP. Før tænding: #7584."
+    note: "Parkeret (ejer 31/10) til Udvikling 2.0. Aldrig samtidig med XP. Før tænding: #7584."
     verified: 2026-11-13
     decision: ejer-beslutning
     decide_by: 2026-11-21
@@ -1305,7 +1305,7 @@ features:
     flag: development_xp_model
     ssot: docs/TRAINING_RULES.md
     epic: 6110
-    note: 'Off i prod 13/11 (#8041); kun ejeren tænder, efter dommer + development_xp_from_date.'
+    note: 'Off i prod 13/11 (#8041); ejer tænder, efter dommer + development_xp_from_date.'
     verified: 2026-11-13
     decision: taend
     decide_by: 2026-11-21
@@ -1342,7 +1342,7 @@ features:
     flag: race_day_role_base_day_enabled
     ssot: docs/TRAINING_RULES.md
     epic: 6110
-    note: "#5950 løsning A (ejer-valg 3/11), underkontakt til race-day-role-yield. Off."
+    note: "#5950 løsning A (ejer 3/11), underkontakt til race-day-role-yield. Off."
     verified: 2026-11-03
     decision: ejer-beslutning
     decide_by: 2026-11-17
@@ -1565,6 +1565,18 @@ features:
     epic: 4616
     verified: 2026-10-15
     note: Velkomst-, dag 1- og løbsoversigt-mails on for alle. Win-back (winback_send_enabled=false) er kill-switch, kun pr. kørsel (#2760).
+
+  - id: patch-notes-v2
+    area: comms
+    title_en: Patch notes by area, week by week
+    title_da: Patch notes efter område, uge for uge
+    state: building
+    ssot: docs/PATCH_NOTES_RULES.md
+    epic: 954
+    verified: 2026-11-16
+    note: Bag patch_notes_v2_8049, slukket.
+    decision: ejer-beslutning
+    decide_by: 2026-11-23
 
   - id: in-app-survey
     area: comms

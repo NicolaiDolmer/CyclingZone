@@ -34,7 +34,8 @@
 //   --dry-run          vis hvad der ville ske; ingen API-kald, ingen skrivning
 //   --lng <kode>       kun ét målsprog (default: alle mapper under locales/ undtagen en/en-XA)
 //   --ns <navn>        kun ét namespace (default: alle EN-namespaces)
-//   --model <id>       overstyr modellen (default DEFAULT_MODEL nedenfor)
+//   --model <id>       overstyr modellen for ALLE namespaces (ellers modelFor() nedenfor:
+//                      NAMESPACE_MODELS, ellers DEFAULT_MODEL)
 //   --max-keys <N>     sikkerhedsloft for antal nøgler pr. kørsel (default 500)
 //   --mark-reviewed    flip status til `reviewed` for nøgler hvis hash matcher EN
 //
@@ -50,6 +51,18 @@ import { valueHasDoubleBrace } from "./i18n-check-icu-braces.mjs";
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
 
 export const DEFAULT_MODEL = "claude-sonnet-5";
+
+// Namespaces der bevidst koerer paa en staerkere model end DEFAULT_MODEL. `patchnotes` er den nye
+// patch notes-side (#8049): teksten staar offentligt og er ejerens ansigt udadtil, og ejeren har
+// bedt om Opus frem for en billig model til den. Namespacet er lille (se en/patchnotes.json), saa
+// merprisen pr. koersel er begraenset; en eksplicit --model vinder altid. Haiku bruges aldrig til
+// spillertekst (docs/AI_CHANNEL_ROUTING.md).
+export const NAMESPACE_MODELS = Object.freeze({ patchnotes: "claude-opus-5-5" });
+
+/** Modellen for et namespace: eksplicit valg > NAMESPACE_MODELS > DEFAULT_MODEL. */
+export function modelFor(ns, requested = null) {
+  return requested || NAMESPACE_MODELS[ns] || DEFAULT_MODEL;
+}
 export const DEFAULT_MAX_KEYS = 500;
 export const MAX_KEYS_PER_REQUEST = 60;
 export const PLACEHOLDER = "__MISSING__";
@@ -473,7 +486,7 @@ export async function runTranslateDelta({
   statePath,
   lng: lngFilter = null,
   ns: nsFilter = null,
-  model = DEFAULT_MODEL,
+  model = null,
   dryRun = false,
   markReviewed = false,
   maxKeys = DEFAULT_MAX_KEYS,
@@ -546,7 +559,7 @@ export async function runTranslateDelta({
       for (const batch of chunk(delta.toTranslate, MAX_KEYS_PER_REQUEST)) {
         let result;
         try {
-          result = await callModel({ model, systemPrompt, lng, ns, entries: batch });
+          result = await callModel({ model: modelFor(ns, model), systemPrompt, lng, ns, entries: batch });
         } catch (err) {
           failed += batch.length;
           failures.push(`[${lng}/${ns}] batch på ${batch.length} nøgler fejlede: ${err.message}`);
@@ -612,7 +625,7 @@ export async function runTranslateDelta({
 
   if (!dryRun) writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
 
-  printReport({ rows, failures, dryRun, model, log });
+  printReport({ rows, failures, dryRun, model: [...new Set(plans.map((pl) => modelFor(pl.ns, model)))].join(", ") || modelFor(null, model), log });
 
   return { rows, failures, exitCode: failures.length > 0 ? 1 : 0 };
 }
@@ -702,7 +715,7 @@ function printReport({ rows, failures, dryRun, model, log }) {
 // ---------------------------------------------------------------------------
 
 export function parseArgs(argv) {
-  const opts = { dryRun: false, markReviewed: false, lng: null, ns: null, model: DEFAULT_MODEL, maxKeys: DEFAULT_MAX_KEYS };
+  const opts = { dryRun: false, markReviewed: false, lng: null, ns: null, model: null, maxKeys: DEFAULT_MAX_KEYS };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === "--dry-run") opts.dryRun = true;

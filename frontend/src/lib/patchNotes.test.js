@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {
   flattenChanges, pickLang, filterChanges, groupByDay, computeNewDays,
   effectiveRollout, filterByRollout,
+  weekStartOf, addDaysIso, isoWeekNumber, tagOf, dedupeWeek, pickHero, groupByArea, isNewSince, latestSeenKey,
+  isThinWeek, filterV2Items, matchesQuery, normalizeQuery, weekSummary, countTags, PATCH_NOTES_V2_FLAG, isPatchNotesV2Stage,
 } from "./patchNotes.js";
 import { PATCHES as REAL_PATCHES } from "../data/patchNotes.js";
 import { PLAYER_VISIBLE_FLAG_KEYS } from "../../../backend/lib/stageFlagCatalog.js";
@@ -104,4 +106,92 @@ test("hver note med flag i patchNotes.js har en noegle i PLAYER_VISIBLE_FLAG_KEY
     missing, [],
     "flag mangler i PLAYER_VISIBLE_FLAG_KEYS (backend/lib/stageFlagCatalog.js), saa maerket skifter aldrig: " + missing.join(", "),
   );
+});
+
+// ── #8049: den nye side ──────────────────────────────────────────────────────
+const it8049 = (k, extra = {}) => ({ k, v: k.split("#")[0], d: "2026-11-16", s: "2026-11-16T00:01", a: "training", c: "improved", ti: k, b: "", ...extra });
+
+test("#8049: uger starter mandag, ISO-ugenummer og dage lægges til i UTC", () => {
+  assert.equal(weekStartOf("2026-11-16"), "2026-11-16"); // mandag
+  assert.equal(weekStartOf("2026-11-22"), "2026-11-16"); // søndag
+  assert.equal(weekStartOf("2026-11-15"), "2026-11-09");
+  assert.equal(addDaysIso("2026-11-30", 1), "2026-12-01");
+  assert.equal(isoWeekNumber("2026-11-16"), 47);
+  assert.equal(isoWeekNumber("2026-01-01"), 1);
+});
+
+test("#8049: mærket: udrulning vinder over kategori, beta følger sin kontakt", () => {
+  assert.equal(tagOf({ c: "fixed" }), "fixed");
+  assert.equal(tagOf({ c: "new", r: "beta" }), "beta");
+  assert.equal(tagOf({ c: "new", r: "switched_on" }), "on");
+  assert.equal(tagOf({ c: "improved", r: "beta_to_live" }), "on");
+  assert.equal(tagOf({ c: "new", r: "beta", f: "k" }, { k: true }), "on");
+  assert.equal(tagOf({ c: "new", r: "event" }), "new");
+});
+
+test("#8049: beta og tændt samme uge: kun den seneste vises (valg 6)", () => {
+  const beta = it8049("7.1#0", { r: "beta", f: "talent" });
+  const on = it8049("7.2#0", { r: "beta_to_live", f: "talent" });
+  const other = it8049("7.2#1", { r: "beta", f: "andet" });
+  assert.deepEqual(dedupeWeek([on, beta, other]).map((x) => x.k), ["7.2#0", "7.2#1"]);
+  const replaced = it8049("7.3#0", { rp: "7.2#1" });
+  assert.deepEqual(dedupeWeek([replaced, other]).map((x) => x.k), ["7.3#0"]);
+  assert.deepEqual(dedupeWeek([beta]).map((x) => x.k), ["7.1#0"]);
+});
+
+test("#8049: ugens nyhed: highlight > Tændt for alle > Nyt > Beta, aldrig en fejlrettelse (valg 3)", () => {
+  const fix = it8049("7.9#0", { c: "fixed", s: "2026-11-16T00:09" });
+  const neu = it8049("7.5#0", { c: "new", s: "2026-11-16T00:05" });
+  const on = it8049("7.4#0", { r: "switched_on", s: "2026-11-16T00:04" });
+  const beta = it8049("7.6#0", { r: "beta", s: "2026-11-16T00:06" });
+  assert.equal(pickHero([fix, neu, on, beta]).k, "7.4#0");
+  assert.equal(pickHero([fix, neu, beta]).k, "7.5#0");
+  assert.equal(pickHero([fix, beta]).k, "7.6#0");
+  assert.equal(pickHero([fix]), null);
+  assert.equal(pickHero([fix, on, it8049("7.1#0", { hl: true })]).k, "7.1#0");
+});
+
+test("#8049: områder i fast rækkefølge, Andet sidst", () => {
+  const items = [it8049("1#0", { a: "help" }), it8049("2#0", { a: "other" }), it8049("3#0", { a: "tactics" }), it8049("4#0", { a: "ukendt" })];
+  assert.deepEqual(groupByArea(items).map(([a, l]) => [a, l.length]), [["tactics", 1], ["help", 1], ["other", 2]]);
+});
+
+test("#8049: nyt siden sidst: dato-markør = hele dagen set; seenKey fanger samme dag", () => {
+  const item = it8049("7.453#0", { d: "2026-11-16", s: "2026-11-16T00:03" });
+  assert.equal(isNewSince(item, null), false); // første besøg: ingen prikker
+  assert.equal(isNewSince(item, "2026-11-16"), false);
+  assert.equal(isNewSince(item, "2026-11-15"), true);
+  assert.equal(isNewSince(item, "2026-11-16T00:02"), true);
+  assert.equal(isNewSince(item, "2026-11-16T00:03"), false);
+  assert.equal(latestSeenKey([item, it8049("x#0", { s: "2026-11-16T00:01" })]), "2026-11-16T00:03");
+});
+
+test("#8049: mandagsreglen åbner sidste uge under 10 ændringer (valg 2)", () => {
+  assert.equal(isThinWeek(0), true);
+  assert.equal(isThinWeek(9), true);
+  assert.equal(isThinWeek(10), false);
+});
+
+test("#8049: filtre, søgning, resumé og antal pr. mærke", () => {
+  const a = it8049("1#0", { a: "market", r: "beta", ti: "Auto-pris", b: "Byd" });
+  const b = it8049("2#0", { a: "training", c: "fixed", ti: "Træning", s: "2026-11-16T00:02" });
+  assert.deepEqual(filterV2Items([a, b], { area: "market" }).map((x) => x.k), ["1#0"]);
+  assert.deepEqual(filterV2Items([a, b], { betaOnly: true }).map((x) => x.k), ["1#0"]);
+  assert.deepEqual(filterV2Items([a, b], { onlyNew: true, marker: "2026-11-16T00:01" }).map((x) => x.k), ["2#0"]);
+  assert.equal(matchesQuery(a, normalizeQuery("  AUTO ")), true);
+  assert.equal(matchesQuery(a, "byd"), true);
+  assert.equal(matchesQuery(b, "auto"), false);
+  const sum = weekSummary([a, b]);
+  assert.deepEqual(sum.top.map((x) => x.k), ["1#0"]);
+  assert.deepEqual(sum.areas, [["training", 1], ["market", 1]]);
+  assert.deepEqual(countTags([a, b]), [["beta", 1], ["fixed", 1]]);
+});
+
+test("#8049: kontakten: kun beta og on giver den nye side", () => {
+  assert.equal(PATCH_NOTES_V2_FLAG, "patch_notes_v2_8049");
+  assert.equal(isPatchNotesV2Stage("off"), false);
+  assert.equal(isPatchNotesV2Stage(undefined), false);
+  assert.equal(isPatchNotesV2Stage("beta"), true);
+  assert.equal(isPatchNotesV2Stage("on"), true);
+  assert.ok(PLAYER_VISIBLE_FLAG_KEYS.includes(PATCH_NOTES_V2_FLAG), "kontakten skal kunne læses af spillersiden");
 });
