@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-155 poster: live 120 · beta 2 · dormant 10 · building 13 · spec 1 · idea 2 · retired 7. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+155 poster: live 120 · beta 3 · dormant 10 · building 12 · spec 1 · idea 2 · retired 7. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -32,8 +32,8 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
+|Race page v6, step 1 (results for a ridden stage) (`race-page-v6`)|beta|`race_page_v6`|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7778|2026-11-18|#7778: beta 18/11 efter ejerens kør (film, mellemtider, taktik v6c, farvet rute); kendt spoilerhul #8409.|
 |Spoiler shield (`spoiler-shield`)|beta|`spoiler_shield_7859`|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7778|2026-11-17|#7859: beta 17/11 efter ejer-go; løbssiden skjuler først med race_page_v6.|
-|Race page v6, step 1 (results for a ridden stage) (`race-page-v6`)|building|`race_page_v6`|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7778|2026-11-13|#7778: trin 1 af 5 bygget; off i prod.|
 |Engine breakaway forecast (`race-breakaway-outlook`)|retired|-|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#6912|2026-11-13|Fjernet 13/11 (ejer); kode i #7277/#7343.|
 
 ## market
@@ -126,9 +126,9 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## stats
 
-**live:** Calendar race card and race history library (`race-library-v2`) 2026-11-03 · Independent ranking shadow pass (`ranking-shadow-decoupled`) 2026-11-14
+**live:** Independent ranking shadow pass (`ranking-shadow-decoupled`) 2026-11-14
 
-**arkiv:** `profiles` · `results-archive` · `standings-and-rankings`
+**arkiv:** `profiles` · `race-library-v2` · `results-archive` · `standings-and-rankings`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|

@@ -508,14 +508,14 @@ features:
     area: race-day
     title_en: Race page v6, step 1 (results for a ridden stage)
     title_da: Løbssiden v6, trin 1 (resultater for en kørt etape)
-    state: building
+    state: beta
     flag: race_page_v6
     decision: ejer-beslutning
     decide_by: 2026-11-26
     epic: 7778
     ssot: docs/RACE_ENGINE_RULES.md
-    verified: 2026-11-13
-    note: "#7778: trin 1 af 5 bygget; off i prod."
+    verified: 2026-11-18
+    note: "#7778: beta 18/11 efter ejerens kør (film, mellemtider, taktik v6c, farvet rute); kendt spoilerhul #8409."
 
   - id: spoiler-shield
     area: race-day
