@@ -138,8 +138,7 @@
     "close": "Fermer",
     "lock": "Verrouiller",
     "locked": "Verrouillé",
-    "unsaved_one": "L'étape {stages} a des modifications non enregistrées.",
-    "unsaved_other": "Les étapes {stages} ont des modifications non enregistrées.",
+    "unsaved": "{count, plural, one {L'étape {stages} a des modifications non enregistrées.} other {Les étapes {stages} ont des modifications non enregistrées.}}",
     "unsavedNote": "Rien n'est perdu quand vous changez d'étape."
   }
 }

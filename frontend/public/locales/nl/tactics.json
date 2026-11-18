@@ -138,8 +138,7 @@
     "close": "Sluiten",
     "lock": "Vastzetten",
     "locked": "Vast",
-    "unsaved_one": "Etappe {stages} heeft wijzigingen die je niet hebt opgeslagen.",
-    "unsaved_other": "Etappes {stages} hebben wijzigingen die je niet hebt opgeslagen.",
+    "unsaved": "{count, plural, one {Etappe {stages} heeft wijzigingen die je niet hebt opgeslagen.} other {Etappes {stages} hebben wijzigingen die je niet hebt opgeslagen.}}",
     "unsavedNote": "Er gaat niets verloren als je van etappe wisselt."
   }
 }

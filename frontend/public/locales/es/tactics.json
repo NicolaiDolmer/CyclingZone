@@ -138,8 +138,7 @@
     "close": "Cerrar",
     "lock": "Bloquear",
     "locked": "Bloqueado",
-    "unsaved_one": "La etapa {stages} tiene cambios sin guardar.",
-    "unsaved_other": "Las etapas {stages} tienen cambios sin guardar.",
+    "unsaved": "{count, plural, one {La etapa {stages} tiene cambios sin guardar.} other {Las etapas {stages} tienen cambios sin guardar.}}",
     "unsavedNote": "No se pierde nada al cambiar de etapa."
   }
 }

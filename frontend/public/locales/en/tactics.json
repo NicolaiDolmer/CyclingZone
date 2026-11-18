@@ -138,8 +138,7 @@
     "close": "Close",
     "lock": "Lock",
     "locked": "Locked",
-    "unsaved_one": "Stage {stages} has changes you have not saved.",
-    "unsaved_other": "Stages {stages} have changes you have not saved.",
+    "unsaved": "{count, plural, one {Stage {stages} has changes you have not saved.} other {Stages {stages} have changes you have not saved.}}",
     "unsavedNote": "Nothing is lost when you switch stage."
   }
 }

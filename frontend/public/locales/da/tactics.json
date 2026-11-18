@@ -138,8 +138,7 @@
     "close": "Luk",
     "lock": "Lås",
     "locked": "Låst",
-    "unsaved_one": "Etape {stages} har ændringer, du ikke har gemt.",
-    "unsaved_other": "Etaperne {stages} har ændringer, du ikke har gemt.",
+    "unsaved": "{count, plural, one {Etape {stages} har ændringer, du ikke har gemt.} other {Etaperne {stages} har ændringer, du ikke har gemt.}}",
     "unsavedNote": "Intet går tabt, når du skifter etape."
   }
 }
