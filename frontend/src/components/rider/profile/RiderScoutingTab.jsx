@@ -143,7 +143,7 @@ function PrimaryTypeRow({ typeKey, now, progLo, progHi, label, roleLabel, progre
   );
 }
 
-function RolePrognosis({ types, primaryKey, secondaryKey, children }) {
+function RolePrognosis({ types, primaryKey, secondaryKey, children = /** @type {import("react").ReactNode} */ (null) }) {
   const { t } = useTranslation("rider");
   const { t: tTypes } = useTranslation("riderTypes");
   const orderedTypes = TYPE_ORDER
