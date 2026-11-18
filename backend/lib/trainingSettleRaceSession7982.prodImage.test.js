@@ -84,6 +84,45 @@ test("efter prods aftenkoersel: 'alt kl. 20' fra billedet er lig det, prod skrev
   assert.equal(abilities.keys.abilities.equal, false);
 });
 
+// Offset-paginering over 1000 raekker er kun korrekt med en unik sortering. Primaernoeglerne er
+// fra database/*.sql; en tabel, fangsten laeser uden at staa her, fejler testen.
+const PRIMARY_KEYS = {
+  app_config: ["key"], private_config: ["key"], seasons: ["id"], riders: ["id"],
+  rider_derived_abilities: ["rider_id"], rider_condition: ["rider_id"], race_entries: ["race_id", "rider_id"],
+  race_entry_days: ["race_id", "rider_id", "game_day"], race_incidents: ["id"],
+  training_race_loads: ["rider_id", "race_id", "stage_number"], training_rider_ticks: ["rider_id", "season_id", "game_day"],
+  training_condition_settlements: ["rider_id", "season_id", "tick_date"], training_train_now_locks: ["rider_id", "tick_date"],
+  rider_derived_ability_history: ["id"], rider_ability_race_day_history: ["id"], rider_training_scores: ["id"],
+  training_plans: ["id"], training_week_plans: ["id"], team_training_rules: ["id"], training_groups: ["id"],
+  team_staff: ["id"], team_facilities: ["id"], training_date_work: ["team_id", "season_id", "tick_date"],
+  training_day_runs: ["id"], training_group_members: ["rider_id"], staff_derived_abilities: ["staff_id"], races: ["id"],
+  race_stage_schedule: ["race_id", "stage_number"], race_simulation_runs: ["id"], race_stage_profiles: ["id"],
+  race_team_orders: ["team_id", "race_id", "stage_number"], race_stage_roles: ["race_id", "stage_number", "rider_id"],
+  race_results: ["id"],
+};
+
+test("fangsten pagineres paa hver tabels primaernoegle, saa ingen raekke springes over eller kommer to gange", async () => {
+  const { prod, image } = await capture(syntheticProd());
+  const orders = {};
+  const supabase = { ...prod.supabase, from(table) {
+    const query = prod.supabase.from(table);
+    const select = query.select.bind(query);
+    query.select = (...args) => {
+      const built = select(...args);
+      const order = built.order.bind(built);
+      orders[table] = [];
+      built.order = (column, options) => { orders[table].push(column); return order(column, options); };
+      return built;
+    };
+    return query;
+  } };
+  await captureTeamTables({ supabase, teamId: TEAM, seasonId: image.season.id, tickDate: image.tickDate,
+    riderIds: image.riderIds, todayRaceIds: image.context.stages.map((row) => row.race_id) });
+  const paged = Object.fromEntries(Object.entries(orders).filter(([, columns]) => columns.length));
+  assert.ok(Object.keys(paged).length > 20, "fangsten pagineres");
+  for (const [table, columns] of Object.entries(paged)) assert.deepEqual(columns, PRIMARY_KEYS[table], table);
+});
+
 test("selvtjek: en tabel, motoren laeser, men billedet mangler, goer koerslen ugyldig (aldrig groen)", async () => {
   const { image } = await capture(syntheticProd());
   delete image.tables.team_training_rules;

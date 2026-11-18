@@ -57,7 +57,10 @@ async function rows(query, label) {
   if (error) throw new Error(`${label}: ${error.message}`);
   return data ?? [];
 }
-const all = (supabase, table, scope, order) => fetchAllRows(() => scope(supabase.from(table).select("*")).order(order));
+// Offset-paginering kraever en UNIK sortering, ellers kan raekker springes over eller komme to gange
+// mellem siderne. `order` er derfor tabellens primaernoegle, evt. sammensat (liste af kolonner).
+const all = (supabase, table, scope, order) => fetchAllRows(() => [order].flat()
+  .reduce((query, column) => query.order(column), scope(supabase.from(table).select("*"))));
 const unique = (values) => [...new Set(values.filter((value) => value != null))];
 
 /**
@@ -78,26 +81,26 @@ export async function captureTeamTables({ supabase, teamId, seasonId, tickDate, 
   const perRider = [
     ["rider_derived_abilities", (q) => q.in("rider_id", riderIds), "rider_id"],
     ["rider_condition", (q) => q.in("rider_id", riderIds), "rider_id"],
-    ["race_entries", (q) => q.in("rider_id", riderIds), "race_id"],
-    ["race_entry_days", (q) => q.in("rider_id", riderIds).eq("season_id", seasonId), "rider_id"],
+    ["race_entries", (q) => q.in("rider_id", riderIds), ["race_id", "rider_id"]],
+    ["race_entry_days", (q) => q.in("rider_id", riderIds).eq("season_id", seasonId), ["race_id", "rider_id", "game_day"]],
     ["race_incidents", (q) => q.in("rider_id", riderIds), "id"],
-    ["training_race_loads", (q) => q.in("rider_id", riderIds).eq("season_id", seasonId).eq("tick_date", tickDate), "rider_id"],
-    ["training_rider_ticks", (q) => q.in("rider_id", riderIds).eq("season_id", seasonId).eq("tick_date", tickDate), "rider_id"],
-    ["training_condition_settlements", (q) => q.in("rider_id", riderIds).eq("season_id", seasonId), "rider_id"],
-    ["training_train_now_locks", (q) => q.in("rider_id", riderIds).eq("tick_date", tickDate), "rider_id"],
-    ["rider_derived_ability_history", (q) => q.in("rider_id", riderIds).eq("snapshot_date", tickDate), "rider_id"],
-    ["rider_ability_race_day_history", (q) => q.in("rider_id", riderIds).eq("snapshot_date", tickDate), "rider_id"],
-    ["rider_training_scores", (q) => q.in("rider_id", riderIds).eq("tick_date", tickDate), "rider_id"],
+    ["training_race_loads", (q) => q.in("rider_id", riderIds).eq("season_id", seasonId).eq("tick_date", tickDate), ["rider_id", "race_id", "stage_number"]],
+    ["training_rider_ticks", (q) => q.in("rider_id", riderIds).eq("season_id", seasonId).eq("tick_date", tickDate), ["rider_id", "season_id", "game_day"]],
+    ["training_condition_settlements", (q) => q.in("rider_id", riderIds).eq("season_id", seasonId), ["rider_id", "season_id", "tick_date"]],
+    ["training_train_now_locks", (q) => q.in("rider_id", riderIds).eq("tick_date", tickDate), ["rider_id", "tick_date"]],
+    ["rider_derived_ability_history", (q) => q.in("rider_id", riderIds).eq("snapshot_date", tickDate), "id"],
+    ["rider_ability_race_day_history", (q) => q.in("rider_id", riderIds).eq("snapshot_date", tickDate), "id"],
+    ["rider_training_scores", (q) => q.in("rider_id", riderIds).eq("tick_date", tickDate), "id"],
   ];
   const perTeam = [
-    ["training_plans", (q) => q.eq("team_id", teamId), "rider_id"],
-    ["training_week_plans", (q) => q.eq("team_id", teamId), "team_id"],
-    ["team_training_rules", (q) => q.eq("team_id", teamId), "team_id"],
+    ["training_plans", (q) => q.eq("team_id", teamId), "id"],
+    ["training_week_plans", (q) => q.eq("team_id", teamId), "id"],
+    ["team_training_rules", (q) => q.eq("team_id", teamId), "id"],
     ["training_groups", (q) => q.eq("team_id", teamId), "id"],
     ["team_staff", (q) => q.eq("team_id", teamId), "id"],
-    ["team_facilities", (q) => q.eq("team_id", teamId), "team_id"],
-    ["training_date_work", (q) => q.eq("team_id", teamId).eq("season_id", seasonId).eq("tick_date", tickDate), "team_id"],
-    ["training_day_runs", (q) => q.eq("team_id", teamId).eq("season_id", seasonId).eq("tick_date", tickDate), "game_day"],
+    ["team_facilities", (q) => q.eq("team_id", teamId), "id"],
+    ["training_date_work", (q) => q.eq("team_id", teamId).eq("season_id", seasonId).eq("tick_date", tickDate), ["team_id", "season_id", "tick_date"]],
+    ["training_day_runs", (q) => q.eq("team_id", teamId).eq("season_id", seasonId).eq("tick_date", tickDate), "id"],
   ];
   for (const [table, scope, order] of [...perRider, ...perTeam]) tables[table] = await all(supabase, table, scope, order);
   const groupIds = unique(tables.training_groups.map((row) => row.id));
@@ -106,11 +109,11 @@ export async function captureTeamTables({ supabase, teamId, seasonId, tickDate, 
   tables.staff_derived_abilities = staffIds.length ? await all(supabase, "staff_derived_abilities", (q) => q.in("staff_id", staffIds), "staff_id") : [];
   tables.races = await all(supabase, "races", (q) => q.eq("season_id", seasonId).in("league_division_id", divisions.length ? divisions : ["00000000-0000-0000-0000-000000000000"]), "id");
   const raceIds = unique([...tables.races.map((row) => row.id), ...todayRaceIds]);
-  tables.race_stage_schedule = raceIds.length ? await all(supabase, "race_stage_schedule", (q) => q.in("race_id", raceIds), "race_id") : [];
+  tables.race_stage_schedule = raceIds.length ? await all(supabase, "race_stage_schedule", (q) => q.in("race_id", raceIds), ["race_id", "stage_number"]) : [];
   const today = unique(todayRaceIds);
   for (const [table, extra, order] of [
-    ["race_simulation_runs", (q) => q, "race_id"], ["race_stage_profiles", (q) => q, "race_id"],
-    ["race_team_orders", (q) => q, "race_id"], ["race_stage_roles", (q) => q.in("rider_id", riderIds), "race_id"],
+    ["race_simulation_runs", (q) => q, "id"], ["race_stage_profiles", (q) => q, "id"],
+    ["race_team_orders", (q) => q, ["team_id", "race_id", "stage_number"]], ["race_stage_roles", (q) => q.in("rider_id", riderIds), ["race_id", "stage_number", "rider_id"]],
     ["race_results", (q) => q.in("rider_id", riderIds), "id"],
   ]) tables[table] = today.length ? await all(supabase, table, (q) => extra(q.in("race_id", today)), order) : [];
   return tables;
