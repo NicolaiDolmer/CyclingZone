@@ -80,6 +80,24 @@ export function markV6ResultsSeen(raceId: string | null, stageNumber: number): v
   if (raceId) resultsSeenStages.add(`${raceId}:${stageNumber}`);
 }
 
+/**
+ * #8387 (Codex P2): Resultater tæller først som set, når de rigtige resultater for en
+ * kørt etape står på skærmen: Resultater-fanen er åben, etapen er kørt, rækkerne er
+ * hentet, og skjoldet viser ikke sin "Show results"-flade. En pladsholder under
+ * indlæsning, en fejl, en kommende etape eller skjoldets flade tæller ikke, så et
+ * kig forbi Resultater aldrig kan omgå filmens spoiler-regel.
+ */
+export function v6ResultsShown(input: {
+  activeTab: string;
+  phase: string;
+  stageLoaded: boolean | undefined;
+  shielded: boolean;
+  stageState?: "loaded" | "loading" | "failed" | null;
+}): boolean {
+  return input.activeTab === "results" && input.phase === "after" && input.stageLoaded === true
+    && !input.shielded && input.stageState !== "loading" && input.stageState !== "failed";
+}
+
 export function v6ResultsSeen(raceId: string | null, stageNumber: number): boolean {
   return raceId ? resultsSeenStages.has(`${raceId}:${stageNumber}`) : false;
 }

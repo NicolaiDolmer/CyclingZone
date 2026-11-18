@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import type { SplitRow } from "../stagePageV2/raceStoryModel.ts";
 import type { ResultRow } from "../stagePageV2/stagePageV2Model.ts";
-import { markV6ResultsSeen, v6DaySentences, v6ExtrasView, v6ResultsSeen } from "./v6StoryExtrasModel.ts";
+import { markV6ResultsSeen, v6DaySentences, v6ExtrasView, v6ResultsSeen, v6ResultsShown } from "./v6StoryExtrasModel.ts";
 
 const read = (rel: string) => readFileSync(new URL(rel, import.meta.url), "utf8").replace(/\r\n/g, "\n");
 
@@ -92,11 +92,23 @@ test("kobling: filmen viser delene under sig, siden husker Resultater og sender 
   const film = read("./V6RaceFilm.tsx");
   assert.match(film, /extras\?\.\(\{ km, distanceKm: D, lines: storyLines, timeTrial \}\)/);
   const page = read("./RacePageV6.tsx");
-  assert.match(page, /if \(activeTab === "results"\) markV6ResultsSeen\(raceId, selectedStage\);/);
+  assert.match(page, /useEffect\(\(\) => \{ if \(resultsShown\) markV6ResultsSeen\(raceId, selectedStage\); \}/);
+  assert.doesNotMatch(page, /if \(activeTab === "results"\) markV6ResultsSeen/);
   assert.match(page, /<V6RaceFilm [^\n]*dnfRows=\{dnfRows\}/);
   const extras = read("./V6StoryExtras.tsx");
   // Den gamle sides egne dele, ikke kopier: mellemtidstabellen, tabt tid og vejret.
   assert.match(extras, /import \{ SplitTable \} from "\.\.\/stagePageV2\/RaceStoryCard\.tsx";/);
   assert.match(extras, /import \{ LossRow \} from "\.\.\/StageSplitTimes\.jsx";/);
   assert.match(extras, /import \{ WeatherTag, weatherSentenceKey \} from "\.\.\/stagePageV2\/WeatherTag\.tsx";/);
+});
+
+test("#8387: Resultater tæller kun som set, når de rigtige resultater står på skærmen", () => {
+  const base = { activeTab: "results", phase: "after", stageLoaded: true, shielded: false, stageState: "loaded" as const };
+  assert.equal(v6ResultsShown(base), true);
+  assert.equal(v6ResultsShown({ ...base, stageLoaded: false }), false, "pladsholder under indlæsning");
+  assert.equal(v6ResultsShown({ ...base, stageState: "loading" }), false, "etapen hentes stadig");
+  assert.equal(v6ResultsShown({ ...base, stageState: "failed" }), false, "fejlet indlæsning");
+  assert.equal(v6ResultsShown({ ...base, shielded: true }), false, "skjoldets Show results-flade");
+  assert.equal(v6ResultsShown({ ...base, phase: "before" }), false, "kommende etape");
+  assert.equal(v6ResultsShown({ ...base, activeTab: "stage" }), false, "Historie er åben");
 });
