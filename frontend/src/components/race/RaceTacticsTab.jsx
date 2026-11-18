@@ -135,7 +135,7 @@ import { tacticsOrderPayload7864, sameStageOrder7864 } from "../../lib/tacticsOr
 import { fetchPlayerFeatureFlags } from "../../lib/playerFeatureFlags.js";
 import { hardestPlanEffort, stagePlanReplacesControls, withStagePlanFields, withoutStagePlans } from "./StagePlanModel.ts"; // #7003
 import { blockedReasonKey, oppositeOrderError } from "../../lib/oppositeOrders.js"; // #7003 spec §3
-import { advanceBaseline, keepMineAfterConflict, runTacticsSave, withConfirmedVersions, stageEqual } from "../../lib/tacticsSaveFlow.ts"; // #7327
+import { advanceBaseline, dirtyOrderStages, keepMineAfterConflict, runTacticsSave, withConfirmedVersions, stageEqual } from "../../lib/tacticsSaveFlow.ts"; // #7327
 import TacticsSaveStatus from "./TacticsSaveStatus.tsx"; // #7327
 import { useV6TacticsSaved } from "./v6/v6TacticsSaved.ts"; // #7778: løbssiden v6 får besked om et lykket gem
 // #8297: det fælles taktikpanel (wireframe v6c). Kun løbssiden v6 vælger det; ellers som før.
@@ -615,7 +615,9 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   const order = ordersByStage[activeStage] ?? orderForStage(orders, activeStage, profileByStage[activeStage]?.profile_type);
   const initialOrder = initialOrdersByStage[activeStage];
   const ordersDirty = JSON.stringify(order) !== JSON.stringify(initialOrder);
-  const dirty = !stageLocked && (isDirty(draftMatrix, initialMatrix) || (showOrders && ordersDirty) || Object.keys(bulkDrafts).length > 0);
+  // #8381: ordrekladden ligger pr. etape; "ikke gemt" og Gem tæller alle etapers ordrer (kopi-etaper gemmes af fill).
+  const otherDirtyOrderStages = showOrders ? dirtyOrderStages(ordersByStage, initialOrdersByStage, editableStages).filter((sn) => sn !== activeStage && bulkDrafts[sn] === undefined) : [];
+  const dirty = !stageLocked && (isDirty(draftMatrix, initialMatrix) || (showOrders && ordersDirty) || otherDirtyOrderStages.length > 0 || Object.keys(bulkDrafts).length > 0);
   const nextStage = nextEditableStage({ editableStages, stageNumber: activeStage });
   const lockTime = stageLockTime(activeMeta.scheduled_at);
 
@@ -708,12 +710,16 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     const ordersNeeded = showOrders && (fillSource === undefined
       ? ordersDirty || stages.length > 0
       : JSON.stringify(ordersStageSnapshot) !== JSON.stringify(initialOrdersByStage[fillSource]) || stages.includes(fillSource));
+    // #8381: ogsaa andre etapers aendrede ordrer sendes, hver med sin egen kvittering.
+    const orderStages = [...new Set([...(ordersNeeded ? [ordersStage] : []), ...otherDirtyOrderStages])];
+    const orderSnapshotOf = (sn) => (sn === ordersStage ? ordersStageSnapshot : ordersSnapshot[sn]);
     const outcome = await runTacticsSave({
       stages,
       baseVersions: Object.fromEntries(stages.map((sn) => [sn, roles?.stage_versions?.[sn] ?? "empty"])),
       sentMatrix: normalize(draftSnapshot),
       baselineMatrix: normalize(initialMatrix),
-      ordersNeeded,
+      ordersNeeded: orderStages.length > 0,
+      orderStages,
     }, {
       putRoles: async (sts, base) => {
         const res = await apiFetch(`${API}/api/races/${raceId}/stage-roles`, { method: "PUT", headers, body: JSON.stringify({ overrides: diffToOverrides({ matrix: normalize(draftSnapshot), riders }), stages: sts, base_versions: base }) });
@@ -727,7 +733,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       // Ordren for DEN ÅBNE etape (én-etape-scopet). #6647: bærer intentionens indsats;
       // #7003: med etapeplanen foelger indsatsen opgaven.
       // #7317: ingen vej-ordrer paa enkeltstart/holdtidskoersel.
-      putOrders: () => saveTacticsCard({ raceId, stage: ordersStage, order: withoutRoadOrders(withIntentionEfforts(ordersStageSnapshot, (riderId) => effortForStage(intentionFor({ matrix: draftSnapshot, stageNumber: ordersStage, riderId }), profileTypeOfStage(ordersStage))), profileTypeOfStage(ordersStage)), stagePlan: orders?.stagePlanEnabled === true }),
+      putOrders: (sn = ordersStage) => saveTacticsCard({ raceId, stage: sn, order: withoutRoadOrders(withIntentionEfforts(orderSnapshotOf(sn), (riderId) => effortForStage(intentionFor({ matrix: draftSnapshot, stageNumber: sn, riderId }), profileTypeOfStage(sn))), profileTypeOfStage(sn)), stagePlan: orders?.stagePlanEnabled === true }),
     });
     if (outcome.status !== "conflict") {
       // Konflikt: versionerne flyttes FØRST ved "Behold mine" (overskrivningsbeskyttelsen).
@@ -736,8 +742,8 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       setInitialMatrix((prev) => advanceBaseline(prev, draftSnapshot, outcome.confirmedStages));
     }
     // En ordre der ikke blev bekræftet har ingen kvittering (null = stadig ugemt).
-    if (outcome.parts.orders !== "notNeeded") setInitialOrdersByStage((prev) => ({ ...prev, [ordersStage]: outcome.parts.orders === "saved" ? ordersStageSnapshot : null }));
-    const savedNow = [...outcome.confirmedStages, ...(outcome.parts.orders === "saved" ? [ordersStage] : [])];
+    if (outcome.parts.orders !== "notNeeded") setInitialOrdersByStage((prev) => ({ ...prev, ...Object.fromEntries(orderStages.map((sn) => [sn, outcome.ordersSaved.includes(sn) ? orderSnapshotOf(sn) : null])) }));
+    const savedNow = [...outcome.confirmedStages, ...outcome.ordersSaved];
     if (savedNow.length) setOrders(prev => prev ? { ...prev, savedStageNumbers: [...new Set([...prev.savedStageNumbers, ...savedNow])] } : prev);
     if (outcome.status !== "saved" || !Object.keys(bulkSnapshot).length) {
       setSaveOutcome(outcome);
