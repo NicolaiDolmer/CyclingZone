@@ -589,3 +589,17 @@ test("#2176: staged auto-accept requires eligible viewer and money transport", a
     assert.equal(flags.auto_accept_enabled,isBetaTester);
   }
 });
+
+test("Codex P2 #8376: development_xp_model er kun true, naar motoren faar en XP-model i dag", async () => {
+  const { XP_TEST_PARAMS } = await import("../lib/__fixtures__/developmentXpOffScenarios.js");
+  const { copenhagenDateString } = await import("../lib/copenhagenTime.js");
+  const today = copenhagenDateString();
+  const flag = (rows, opts) => readPlayerFeatureFlags(fakeSupabase(rows, opts)).then((f) => f.development_xp_model);
+  assert.equal(await flag({ development_xp_model: "on" }), false, "ingen startdato");
+  assert.equal(await flag({ development_xp_model: "on", development_xp_from_date: "2999-01-01", development_xp_params: XP_TEST_PARAMS }), false, "startdatoen er ikke naaet");
+  assert.equal(await flag({ development_xp_model: "on", development_xp_from_date: today }), false, "params mangler");
+  assert.equal(await flag({ development_xp_model: "on", development_xp_from_date: today, development_xp_params: {} }), false, "ugyldige params");
+  assert.equal(await flag({ development_xp_model: "on", development_xp_from_date: today, development_xp_params: XP_TEST_PARAMS }, { failKeys: ["development_xp_params"] }), false, "ulaeselig raekke");
+  assert.equal(await flag({ development_xp_model: "on", development_xp_from_date: today, development_xp_params: XP_TEST_PARAMS }), true, "taendt, dato naaet, gyldige params");
+  assert.equal(await flag({ development_xp_model: "beta", development_xp_from_date: today, development_xp_params: XP_TEST_PARAMS }), false, "binaer: beta er off");
+});

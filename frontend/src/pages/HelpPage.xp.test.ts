@@ -148,8 +148,8 @@ test("hver XP-tvilling er gatet, registreret i HelpPage.jsx og staar lige efter 
 });
 
 const OWNER_SENTENCE = {
-  en: "There is no fixed ceiling any more, so a rider's weaker abilities keep improving, just more slowly than his best ones. Older riders earn less XP than before: from his late twenties it drops season by season, so veterans develop much more slowly than young riders.",
-  da: "Der er ikke længere et fast loft, så rytterens svagere evner bliver ved med at stige, bare langsommere end hans bedste. Ældre ryttere optjener mindre XP end før: fra sidst i tyverne falder det sæson for sæson, så veteraner udvikler sig meget langsommere end unge ryttere.",
+  en: "There is no fixed ceiling any more, so a rider's weaker abilities keep improving, just more slowly than his best ones. Older riders earn less XP than before: it drops from his late twenties and then holds at a lower level. Veterans develop clearly more slowly than young riders, but they keep earning XP for their whole career.",
+  da: "Der er ikke længere et fast loft, så rytterens svagere evner bliver ved med at stige, bare langsommere end hans bedste. Ældre ryttere optjener mindre XP end før: det falder fra sidst i tyverne og ligger derefter fast på et lavere niveau. Veteraner udvikler sig tydeligt langsommere end unge ryttere, men de optjener XP hele karrieren.",
 };
 
 test("XP-afsnittet bringer ejerens godkendte saetning ordret (17/11)", () => {

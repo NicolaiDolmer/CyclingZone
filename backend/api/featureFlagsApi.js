@@ -32,6 +32,8 @@ import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { evaluateFlagStage } from "../lib/featureStage.js";
 import { PLAYER_VISIBLE_BINARY_FLAG_KEYS, PLAYER_VISIBLE_FLAG_KEYS } from "../lib/stageFlagCatalog.js";
 import { DEVELOPMENT_CURVE_B_FLAG_KEY, readDevelopmentCurveBParams } from "../lib/developmentCurveBFlag.ts";
+import { DEVELOPMENT_XP_FLAG_KEY, loadDevelopmentXp } from "../lib/developmentXpFlag.ts";
+import { copenhagenDateString } from "../lib/copenhagenTime.js";
 import { isConditionModelV2Enabled, RACE_DATE_TRAINING_DAY_FLAG_KEY } from "../lib/conditionModelV2Flag.js";
 import { DAY_WORDS_7725_FLAG_KEY, evaluateDayWords7725Flag } from "../lib/dayWords7725Flag.js";
 import { FATIGUE_NOW_7801_FLAG_KEY, evaluateFatigueNow7801Flag } from "../lib/riderFatigueNowFlag.js";
@@ -71,6 +73,19 @@ export async function readPlayerFeatureFlags(supabase, { isBetaTester = false, r
   // kun et ja/nej forlader serveren, aldrig tallene.
   if (flags[DEVELOPMENT_CURVE_B_FLAG_KEY] && !(await readDevelopmentCurveBParams({ supabase }))) {
     flags[DEVELOPMENT_CURVE_B_FLAG_KEY] = false;
+  }
+  // Codex P2 #8376: XP er kun reelt taendt, naar motoren faar en model for dagens dato
+  // (startdatoen naaet + gyldige params i private_config). Hjaelp foelger motoren, saa
+  // XP-teksten aldrig vises foer XP koerer. Kun et ja/nej forlader serveren; loggen er
+  // tavs her (motoren logger selv hoejlydt ved tick), og en fejl er off.
+  if (flags[DEVELOPMENT_XP_FLAG_KEY]) {
+    try {
+      const model = await loadDevelopmentXp({ supabase, tickDate: copenhagenDateString(), log: { warn() {}, error() {} } });
+      if (!model) flags[DEVELOPMENT_XP_FLAG_KEY] = false;
+    } catch (error) {
+      flags[DEVELOPMENT_XP_FLAG_KEY] = false;
+      reportError(error, { tags: { route: "/feature-flags", read: "development_xp" } });
+    }
   }
   // #7536: motoren bruger kun reglen under condition_model_v2 (og dens forudsaetninger),
   // saa Hjaelp-blokken foelger samme kaede. En fejlet eller ugyldig kaede er off.
