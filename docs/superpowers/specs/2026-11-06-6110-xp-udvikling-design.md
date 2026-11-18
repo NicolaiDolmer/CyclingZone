@@ -25,6 +25,7 @@ Lagt sammen med ejeren 18/11 aften. Tal og billeder kun privat i `balance-intern
 | E10 | **Dato-reglen (R16):** alderen fjernes fra undtagelsen. +2 på én dato gælder et toptalent på en meget lav evne, uanset alder. Ellers +1. |
 | E11 | **Ryttertypen** er uændret: en andel af XP, anlæg, ikke et loft (§4.7). Å4 og spillerinput 5/11 står åbne. |
 | E12 | **Spillerne** får besked, når designet er målt og dømt. Hjælpeteksten (PR #8376) holdes til da. |
+| E13 | **Talent giver XP, aldrig rabat.** Prisen er ens for alle ryttere. Et stort talent tjener mere XP om dagen og træner sig derfor højere. Forklaringen til spillerne skal kunne siges i én sætning (ejer 18/11: "den bedste udvikling af ryttere i noget managerspil"). |
 
 **Kravene til målingen:** E7, E8, talenterne når deres top, 0 datoer med 3+, +2 kun efter E10, ingen synlige ratingfald midt i sæsonen, alle tre planer (standard med Træn nu, roterende, hårdeste indsats), flere frø, uafhængig dom og billeder til ejeren.
 
