@@ -262,7 +262,9 @@ export function installPreviewMock() {
         if (["POST", "PATCH", "PUT", "DELETE"].includes(method)) {
           // #2863: en RPC med seed-data svares FØR den generiske mutations-linje,
           // ellers ville enhver RPC-drevet flade stå tom på preview.
-          const rpcPayload = rpcResponse(parseRpc(url));
+          const rpcName = parseRpc(url);
+          if (rpcName === "get_team_result_history_page") return jsonResponse({ code: "PGRST202" }, 404);
+          const rpcPayload = rpcResponse(rpcName);
           if (rpcPayload !== undefined) return jsonResponse(rpcPayload);
           // Optimistisk mutation: ét objekt eller tomt array afhængig af Prefer/Accept.
           return jsonResponse(wantsObject(accept) ? {} : []);
