@@ -139,7 +139,7 @@ import { advanceBaseline, dirtyOrderStages, keepMineAfterConflict, runTacticsSav
 import TacticsSaveStatus from "./TacticsSaveStatus.tsx"; // #7327
 import { useV6TacticsSaved } from "./v6/v6TacticsSaved.ts"; // #7778: løbssiden v6 får besked om et lykket gem
 // #8297: det fælles taktikpanel (wireframe v6c). Kun løbssiden v6 vælger det; ellers som før.
-import { useTacticsLayout } from "../tactics/tacticsLayout.ts";
+import { useTacticsLayout, useTacticsRoute } from "../tactics/tacticsLayout.ts";
 import { saveBadge } from "../tactics/tacticsPanelModel.ts";
 // Panelets dele hentes foerst, naar panelet vises (kun under v6): den gamle sides stykke vokser ikke.
 const loadTactics = () => import("../tactics/index.ts");
@@ -366,6 +366,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   const { t } = useTranslation("races");
   // #8297: "v6c" under løbssiden v6 (provider i RacePageV6), ellers "classic" = uændret.
   const layout = useTacticsLayout();
+  const routeOverride = useTacticsRoute(); // løbssiden v6: den farvede rute (V6Route)
   // #8298: panelets tekster (eget namespace, hentes først med panelet). Klassisk = races (ubrugt).
   const { t: tt, ready: tacticsTextReady } = useTranslation(layout === "v6c" ? "tactics" : "races");
   // #8298: "Simple" (standard) | "All orders".
@@ -1223,7 +1224,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   // én gang her og sættes ind af det klassiske kort og af det fælles panel (v6c).
   /* #4979: profilen for den ABNE etape, over kortet. Rykker med etape-
      vaelgeren nedenfor, saa man ser hvad man saetter taktik til. */
-  const routeCard = ready7864 && stagePlanOn ? (
+  const routeCard = routeOverride !== undefined ? routeOverride : ready7864 && stagePlanOn ? (
     <div data-testid="race-stage-profile-row">
       <StageProfileCard profile={profileByStage[activeStage]} stageLabel={isOneDay ? null : t("intention.stage", { number: activeStage })} hasClassifications={!isOneDay} showClimbChoices />
     </div>
