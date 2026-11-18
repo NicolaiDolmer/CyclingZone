@@ -99,3 +99,14 @@ test("#8388: siden giver skjoldets pladsholder for Taktik-etapen videre med én 
   const hook = readFileSync(new URL("../../spoiler/useRacePageSpoiler.tsx", import.meta.url), "utf8");
   assert.match(hook, /if \(!hidden\(stage\)\) return null;/, "kun en skjult etape får en pladsholder");
 });
+
+test("#8388: etapeplanen under Taktik henter ikke forløbet og viser kun planen, når skjoldet skjuler etapen", () => {
+  const page = readFileSync(new URL("./RacePageV6.tsx", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  assert.match(page, /<V6TacticsResultsHiddenContext\.Provider value=\{spoiler\.hiddenSlotFor\(tacticsStage\) != null\}>\n\s+\{renderTactics \? renderTactics\(tacticsStage\) : tacticsSlot\}/);
+  const board = readFileSync(new URL("../StagePlanBoard.tsx", import.meta.url), "utf8");
+  assert.match(board, /const resultsHidden = useV6TacticsResultsHidden\(\);/);
+  assert.match(board, /useStageTimeline\(raceId, activeStage, stageCompleted && !resultsHidden, /,
+    "skjult etape: ingen hentning af forløb og placering, så cellen falder tilbage til planen alene");
+  // Uden forløb (events === null) viser cellen planen uden udfald.
+  assert.match(board, /if \(events === null\) return <PlanChain /);
+});
