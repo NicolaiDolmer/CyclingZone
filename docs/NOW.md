@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11 · slet `backup_5902_20261112_*` ~26/11 · slet `backup_8078/8080/8099_20261113_*` ~27/11.
 >
-> **🎯 Next action (17/11 nat):** Primær session Opus på Dolmer PC (#8374). Merget i aften: #8303 udgave-skift, #8367 planlægning (beta-klar), #8368 potentiale, #8213 "Kørt", #8369 dokumentar (migration verificeret), #8378 patch note; #8321 og #8275 i auto-toget. Aftentræning 17/11: 10,5 min mod ~45 (#6490, aften 1 af 3). **XP (#6110) venter:** ejerens nye princip (ingen aldersfald, prisen bremser) måles; derefter valg, ny dom og "kør". Bølge: #8377 afstandslinje, #7801 træthed nu kun tal, #8381 gem alle etapers ordrer, #8298 oprydning. Roadmap-tavle (privat artifact) klar til ejerens flytninger.
+> **🎯 Next action (18/11 morgen):** PC1 er primær Claude-session resten af dagen (Opus, medium); overdragelsen står på [#8374](https://github.com/NicolaiDolmer/CyclingZone/issues/8374#issuecomment-6978815127). Auto-toget stod stille fra 17/11 23:25; 8 PR'er har ejer-markør, og #8275/#8258/#8387/#8391 mangler en uafhængig Claude-markør. Tændinger i ejerens rækkefølge: løbssiden v6 (når #8275, #8298, #8387 og #8392 er merget og set), XP (#6110) i aften (ejervalg A: aldersgulv, tal privat; mangler #8376, fund 3a, talfil og "kør"), træthed nu torsdag (#8380 + #8391). Dolmer PC kører Codex på #8258 (patch notes-siden mod beta).
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** Primær session: Opus på Dolmer PC (fra 17/11 aften, #8374), bølge med 4 spor.
+> **🤖 Working agent:** PC1 primær Claude (fra 18/11 morgen, #8374); Dolmer PC: Codex på #8258.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
