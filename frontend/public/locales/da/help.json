@@ -1497,7 +1497,7 @@
       },
       "trainNowBonusXp": {
         "title": "Træn nu-bonus",
-        "text": "Når Træn nu-bonussen er tændt, får ryttere, du selv træner med Træn nu, en lille ekstra bonus på dagens træningsfremgang. Den gælder kun, når du selv trykker på Træn nu, før dit holds automatiske træning er kørt for dagen. Træning, der kører automatisk, giver aldrig bonus. Kvitteringen markerer de ryttere, der fik den. Bonussen lægges oven i dagens XP. Grænsen pr. evne pr. dato gælder stadig, og XP ud over den bliver stående på bjælken."
+        "text": "Når Træn nu-bonussen er tændt, får ryttere, du selv træner med Træn nu, en ekstra bonus på dagens trænings-XP. Den gælder kun, når du selv trykker på Træn nu, før dit holds automatiske træning er kørt for dagen. Træning, der kører automatisk, giver aldrig bonus. Kvitteringen markerer de ryttere, der fik den. Bonussen lægges oven i dagens XP. Grænsen pr. evne pr. dato gælder stadig, og XP ud over den bliver stående på bjælken."
       },
       "raceDays": {
         "title": "Løbsdage og træning",
@@ -1541,7 +1541,7 @@
       },
       "progressBarsXp": {
         "title": "Fremskridtslinjer og evnepoint",
-        "text": "Rytterprofiler viser en fremskridtslinje for hver evne der trænes. Linjen fylder op efterhånden som træning akkumuleres. Når linjen er fuld, stiger rytteren +1 i den evne, og linjen starter forfra mod NÆSTE point, så en lav eller næsten tom linje lige efter en fremgang er et godt tegn, ikke et tab. Trænings-siden viser også et \"+N i dag\"-mærkat på ryttere der har vundet hele point i dagens session. Der er intet fast loft: hver evne bliver ved med at optjene XP, men nær toppen koster et point meget. En bjælke kan også rumme mere end ét point: XP ud over datoens grænse bliver stående og udbetales de næste datoer. Rytterprofilens Træning-fane viser alle 17 evner med hvad hver enkelt står på nu, hvor mange hele point rytteren har fået i denne sæson, og hvor langt der er til næste point. En procent som \"Flad +10%\" i en træningsrapport er dagens fremskridt talt i evnepoint: 100% svarer til ét helt point. Fremskridtet bevares dag for dag. Intet nulstilles midt i sæsonen. Tællingen for \"denne sæson\" dækker kun dage inde i den aktive sæson. Mellem to sæsoner viser den startdatoen i stedet for et tal, mens evneværdierne og linjerne stadig tæller hvert pas med. En ny sæsons tælling starter tom og fyldes ud fra dens første træningsdag."
+        "text": "Rytterprofiler viser en fremskridtslinje for hver evne der trænes. Linjen fylder op efterhånden som træning akkumuleres. Når linjen er fuld, stiger rytteren +1 i den evne, og linjen starter forfra mod NÆSTE point, så en lav eller næsten tom linje lige efter en fremgang er et godt tegn, ikke et tab. Trænings-siden viser også et \"+N i dag\"-mærkat på ryttere der har vundet hele point i dagens session. Der er intet fast loft: hver evne bliver ved med at optjene XP, men nær toppen koster et point meget. En bjælke kan også rumme mere end ét point: XP ud over datoens grænse bliver stående og udbetales de næste datoer. Rytterprofilens Træning-fane viser alle 17 evner med hvad hver enkelt står på nu, hvor mange hele point rytteren har fået i denne sæson, og hvor langt der er til næste point. I en træningsrapport viser hver evne sin fremgang i XP: 'x af y XP' er det, der står på bjælken, og hvad næste point koster. Fremgang, som en rytter havde gemt på sine bjælker før den nye udvikling, udbetales helt på hans første udviklingsdag med XP. Fremskridtet bevares dag for dag. Intet nulstilles midt i sæsonen. Tællingen for \"denne sæson\" dækker kun dage inde i den aktive sæson. Mellem to sæsoner viser den startdatoen i stedet for et tal, mens evneværdierne og linjerne stadig tæller hvert pas med. En ny sæsons tælling starter tom og fyldes ud fra dens første træningsdag."
       },
       "trainingScore": {
         "title": "Træningsscoren",
@@ -2103,7 +2103,7 @@
     },
     "trainingFocusXpFaq": {
       "q": "Hvordan træner jeg en rytter?",
-      "a": "Åbn en af dine egne ryttere og sæt et træningsfokus under 'Træningsfokus' på profilen: vælg en retning og en intensitet. De trænede evner optjener mest XP, dag for dag mens træningen kører. Du kan sætte fokus på så mange ryttere du vil. Højere intensitet træner hurtigere og bygger mere træthed op, men risikerer aldrig et tilbageslag; at ændre et eksisterende fokus koster intet, og træning er gratis."
+      "a": "Åbn en af dine egne ryttere og sæt et træningsfokus under 'Træningsfokus' på profilen: vælg et pas, og belastningen følger med passet. De trænede evner optjener mest XP, dag for dag mens træningen kører. Du kan sætte fokus på så mange ryttere du vil. Hårde pas træner mere og bygger mere træthed op, men risikerer aldrig et tilbageslag; at ændre et eksisterende fokus koster intet, og træning er gratis."
     },
     "restForDevelopedFaq": {
       "q": "Min rytter er færdigudviklet. Skal jeg bare sætte hvile?",

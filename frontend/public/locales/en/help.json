@@ -1497,7 +1497,7 @@
       },
       "trainNowBonusXp": {
         "title": "Train now bonus",
-        "text": "When the Train now bonus is on, riders you train yourself with Train now get a small extra bonus on that day's training progress. It only counts when you press Train now yourself, before your team's automatic training has run for the day. Training that runs automatically never gives the bonus. The receipt marks the riders who got it. The bonus is added to that day's XP. The limit per ability per date still holds, and XP above it stays on the bar."
+        "text": "When the Train now bonus is on, riders you train yourself with Train now get an extra bonus on that day's training XP. It only counts when you press Train now yourself, before your team's automatic training has run for the day. Training that runs automatically never gives the bonus. The receipt marks the riders who got it. The bonus is added to that day's XP. The limit per ability per date still holds, and XP above it stays on the bar."
       },
       "raceDays": {
         "title": "Race days and training",
@@ -1541,7 +1541,7 @@
       },
       "progressBarsXp": {
         "title": "Progress bars and ability points",
-        "text": "Rider profiles show a progress bar for each ability being trained. The bar fills as training accumulates. When the bar reaches full, the rider gains +1 in that ability and the bar starts over toward the NEXT point, so right after a gain, a low or near-empty bar is a good sign, not a lost one. The Training page also shows a '+N today' badge on riders who gained whole points in today's session. There is no fixed ceiling: every ability keeps earning XP, but near the top a point costs a lot. A bar can also hold more than one point: XP above the date's limit stays on it and is paid out on the next dates. The rider profile's Training tab lists all 17 abilities with what each one is now, how many whole points the rider has gained this season, and how far along the next point is. A percentage like 'Flat +10%' in a training report is the day's progress counted in ability points: 100% equals one whole point. Progress carries over day to day. Nothing resets mid-season. The 'this season' count only covers days inside the active season. Between two seasons it shows the start date instead of a number, while the ability values and the bars keep counting every session. A new season's count starts empty and fills in from its first training day."
+        "text": "Rider profiles show a progress bar for each ability being trained. The bar fills as training accumulates. When the bar reaches full, the rider gains +1 in that ability and the bar starts over toward the NEXT point, so right after a gain, a low or near-empty bar is a good sign, not a lost one. The Training page also shows a '+N today' badge on riders who gained whole points in today's session. There is no fixed ceiling: every ability keeps earning XP, but near the top a point costs a lot. A bar can also hold more than one point: XP above the date's limit stays on it and is paid out on the next dates. The rider profile's Training tab lists all 17 abilities with what each one is now, how many whole points the rider has gained this season, and how far along the next point is. In a training report each ability shows its progress in XP: 'x of y XP' is what is on the bar and what the next point costs. Progress a rider saved on his bars before the new development is paid out in full on his first day of development with XP. Progress carries over day to day. Nothing resets mid-season. The 'this season' count only covers days inside the active season. Between two seasons it shows the start date instead of a number, while the ability values and the bars keep counting every session. A new season's count starts empty and fills in from its first training day."
       },
       "trainingScore": {
         "title": "The training score",
@@ -2103,7 +2103,7 @@
     },
     "trainingFocusXpFaq": {
       "q": "How do I train a rider?",
-      "a": "Open one of your own riders and set a training focus under 'Training focus' on the profile: pick a direction and an intensity. The trained abilities earn the most XP, day by day as the training runs. You can set a focus on as many riders as you like. Higher intensity trains faster and builds more fatigue, but never risks losing progress; changing an existing focus costs nothing, and training is free."
+      "a": "Open one of your own riders and set a training focus under 'Training focus' on the profile: pick a session, and the effort comes with it. The trained abilities earn the most XP, day by day as the training runs. You can set a focus on as many riders as you like. Hard sessions train more and build more fatigue, but never risk losing progress; changing an existing focus costs nothing, and training is free."
     },
     "restForDevelopedFaq": {
       "q": "My rider is fully developed. Should I just set them to Rest?",
