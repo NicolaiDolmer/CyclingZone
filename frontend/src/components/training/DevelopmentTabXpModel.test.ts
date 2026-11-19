@@ -130,3 +130,11 @@ test("the preview fixture fills every column", () => {
   assert.ok(rows.some(r => r.top.kind === "view"));
   assert.ok(rows.every(r => r.xp30 > 0 && r.spark.length === 30));
 });
+
+test("expected top: an academy intake rider keeps his academy prognosis (estimates send only academyPrognosis)", () => {
+  const prognosis = { band: { lo: 50, hi: 60 }, learning: false };
+  const top = topOf({ academyPrognosis: prognosis });
+  assert.equal(top.kind, "academy");
+  assert.equal(top.kind === "academy" ? top.prognosis : null, prognosis);
+  assert.equal(topSortValue(top), null);
+});

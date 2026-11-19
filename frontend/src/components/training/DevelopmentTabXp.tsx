@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { ChevronDownIcon as ChevronDownJs, ChevronRightIcon as ChevronRightJs, LockIcon as LockJs, SortIcon as SortJs } from "../ui/icons/index.jsx";
 import { SkeletonLines as SkeletonLinesJs } from "../ui/Skeleton.jsx";
 import PotentialEstimate from "../rider/PotentialEstimate.tsx";
+import AcademyPrognosisCell, { type AcademyPrognosis } from "../rider/AcademyPrognosisCell.tsx";
 import { fetchPlayerFeatureFlags } from "../../lib/playerFeatureFlags.js";
 import { hasXpFields, type XpReceipt, type XpRiderType } from "../../lib/trainingReportXp.ts";
 import { riderOverallRating as riderOverallRatingJs } from "../../lib/riderRating.js";
@@ -180,6 +181,7 @@ function Rating({ value }: { value: number | null }) {
 function Top({ top }: { top: TopValue }) {
   if (top.kind === "view") return <PotentialEstimate view={top.view} />;
   if (top.kind === "band") return <span className={`text-[13px] text-cz-1 ${NUM}`}>{bandText(top)}</span>;
+  if (top.kind === "academy") return <AcademyPrognosisCell prognosis={top.prognosis as AcademyPrognosis} />;
   return <span className="text-cz-3">—</span>;
 }
 

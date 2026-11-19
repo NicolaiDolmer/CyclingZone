@@ -20,6 +20,8 @@ export const MAX_ABILITIES = 6;
 export type TopValue =
   | { kind: "view"; view: PotentialView; value: number | null }
   | { kind: "band"; lo: number; hi: number }
+  // Akademiets intake-ryttere: estimates-endpointet sender kun academyPrognosis (api.js academyEstimate).
+  | { kind: "academy"; prognosis: unknown }
   | { kind: "none" };
 
 export type DevRiderInput = {
@@ -66,6 +68,8 @@ export function topOf(estimate: unknown): TopValue {
   if (view) return { kind: "view", view, value: potentialViewValue(view) };
   const prog = (estimate as { prog?: { lo?: unknown; hi?: unknown } } | null | undefined)?.prog;
   if (prog && finite(prog.lo) && finite(prog.hi)) return { kind: "band", lo: Math.min(prog.lo, prog.hi), hi: Math.max(prog.lo, prog.hi) };
+  const academy = (estimate as { academyPrognosis?: unknown } | null | undefined)?.academyPrognosis;
+  if (academy) return { kind: "academy", prognosis: academy };
   return { kind: "none" };
 }
 
