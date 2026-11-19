@@ -183,3 +183,20 @@ test("13.5 (ejervalg 19/11): et point maa staa paa en anden af datoens sessioner
   assert.equal(progressWithinTolerance(row(0.5), row(0.5 + PROGRESS_TOLERANCE * 2)), false);
   assert.equal(progressWithinTolerance(row(0.5), [...row(0.5), ...row(0.5)]), false, "forskelligt antal raekker");
 });
+
+test("Fable 19/11 A-B: score-sum, gains_detail og tolerancen kun paa evner med gevinst", async () => {
+  const m = await import("./trainingSettleRaceSession7982.prodImage.js");
+  const r = (rider, day, score, gains = {}, detail = {}) => ({ rider_id: rider, tick_date: "2026-11-19", game_day: day, report: { score, gains, gains_detail: detail } });
+  // Score-summen: inden for ét afrundingstrin pr. kvittering er godt, mere er ikke.
+  assert.equal(m.scoreTotalsEqual([r("a", 1, 0.5), r("a", 2, 0.3)], [r("a", 1, 0.3), r("a", 2, 0.51)]), true);
+  assert.equal(m.scoreTotalsEqual([r("a", 1, 0.5), r("a", 2, 0.3)], [r("a", 1, 0.5), r("a", 2, 0.5)]), false);
+  // gains_detail skal stemme med gains.
+  assert.equal(m.detailMatchesGains([r("a", 1, 0, { sprint: 1 }, { sprint: { from: 30, to: 31 } })]), true);
+  assert.equal(m.detailMatchesGains([r("a", 1, 0, { sprint: 1 }, {})]), false);
+  assert.equal(m.detailMatchesGains([r("a", 1, 0, { sprint: 1 }, { sprint: { from: 30, to: 32 } })]), false);
+  // Tolerancen: 1/1000 kun for rytter og evne med gevinst; ellers skal fremgangen vaere ens.
+  const row = (p) => [{ rider_id: "a", ability_progress: { sprint: p } }];
+  const gained = new Set(["a#sprint"]);
+  assert.equal(m.progressWithinTolerance(row(0.5), row(0.5005), gained), true);
+  assert.equal(m.progressWithinTolerance(row(0.5), row(0.5005), new Set()), false, "ingen gevinst: skal vaere ens");
+});
