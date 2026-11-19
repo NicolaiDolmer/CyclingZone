@@ -254,7 +254,7 @@ function DesktopTable({ rows, open, toggle, sort, onSort }: { rows: DevRow[]; op
   const { t } = useTranslation("training");
   const { t: tRider } = useTranslation("rider");
   return (
-    <table className="w-full table-fixed text-xs" data-testid="development-xp-table">
+    <table className="w-full table-fixed text-xs" data-sortable data-testid="development-xp-table">
       <thead>
         <tr className="border-b border-cz-border">
           <th className="w-[44px]"><span className="sr-only">{t("developmentXp.abilitiesCol")}</span></th>
