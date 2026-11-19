@@ -576,7 +576,7 @@ export default function RiderFilters({
           testId: "filter-name",
         }}
         filters={{
-          count: hiddenActiveCount + (filters.show_ai ? 1 : 0),
+          count: hiddenActiveCount,
           onReset,
           footer: resetButton,
           children: (

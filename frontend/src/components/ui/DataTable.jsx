@@ -190,9 +190,11 @@ export function DataTable({
 
   // #8280 (P21): med en titellinje er kolonnevalget en knap i linjen (ark), ikke en
   // chip-række over tabellen. Samme state og samme FIFO-bytte som chip-rækken.
-  // Kolonner uden tekst-label (handlings-ikoner som sammenlign/ønskeliste) vises ikke
-  // som rækker i arket: et rå kolonne-nøgle-navn er ingen oversat label.
-  const isPickableColumn = (col) => mobileColumnLabel(col) !== col.key || typeof col.header === "string";
+  // Rene handlings-kolonner uden tekst-label og uden sortering (ikon-headere som
+  // sammenlign/ønskeliste) vises ikke som rækker i arket: et rå kolonne-nøgle-navn er
+  // ingen oversat label. Datakolonner (sorterbare, eller med tekst/mobileLabel) er altid med.
+  const isPickableColumn = (col) =>
+    mobileColumnLabel(col) !== col.key || typeof col.header === "string" || col.sortKey != null;
   const pickableColumns = swappable.filter(isPickableColumn);
   const mobileColumnsControl =
     titleBar && hasChips

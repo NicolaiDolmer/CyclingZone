@@ -17,6 +17,7 @@ import { filterByDivisionPool, ALL_POOLS_VALUE } from "../lib/resultsFilter";
 import { resolveDivisionSelectionFromParams, ALL_DIVISIONS_VALUE } from "../lib/riderRankingDivisionLink";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
 import { withActiveSeniorPools } from "../lib/seniorScope.ts";
+import { useIsMobileViewport } from "../hooks/useMediaQuery.ts";
 import {
   Select,
   Button,
@@ -110,6 +111,7 @@ function StatCell({ value, active }) {
 
 export default function RiderRankingsPage() {
   const navigate = useNavigate();
+  const isMobile = useIsMobileViewport();
   const { t } = useTranslation("riders");
   const [searchParams, setSearchParams] = useSearchParams();
   // #2175: rangliste-data (sæson + færdig-aggregerede rytter-stats) kommer fra
@@ -333,6 +335,7 @@ export default function RiderRankingsPage() {
     {
       key: "points",
       header: <ColHeader t={t} labelKey="rankings.colPoints" shortKey="rankings.shortPoints" />,
+      mobileLabel: t("rankings.colPoints"),
       numeric: true,
       sortKey: "points",
       render: (rider) => (
@@ -345,7 +348,7 @@ export default function RiderRankingsPage() {
     ...WIN_COLS.map(col => ({
       key: col.key,
       header: <ColHeader t={t} labelKey={col.labelKey} shortKey={col.shortKey} />,
-      mobileLabel: t(col.shortKey),
+      mobileLabel: t(col.labelKey),
       numeric: true,
       sortKey: col.key,
       render: (rider) => <StatCell value={rider[col.key]} active={sortKey === col.key} />,
@@ -354,6 +357,7 @@ export default function RiderRankingsPage() {
     {
       key: "total_wins",
       header: <ColHeader t={t} labelKey="rankings.colTotalWins" shortKey="rankings.shortTotalWins" />,
+      mobileLabel: t("rankings.colTotalWins"),
       numeric: true,
       sortKey: "total_wins",
       render: (rider) => <StatCell value={rider.total_wins} active={sortKey === "total_wins"} />,
@@ -362,6 +366,7 @@ export default function RiderRankingsPage() {
     {
       key: "prize_earned",
       header: <ColHeader t={t} labelKey="rankings.colPrize" shortKey="rankings.shortPrize" />,
+      mobileLabel: t("rankings.colPrize"),
       numeric: true,
       sortKey: "prize_earned",
       render: (rider) => (
@@ -371,9 +376,12 @@ export default function RiderRankingsPage() {
       ),
     },
     // Valgfri kolonner.
-    ...visibleOptionalCols.map(col => ({
+    // Telefon: alle valgfrie kolonner er valgbare i kolonne-arket (det erstatter
+    // kolonne-menuen dér); computer: dem kolonne-knappen har slået til.
+    ...(isMobile ? OPTIONAL_COLS : visibleOptionalCols).map(col => ({
       key: col.key,
       header: <ColHeader t={t} labelKey={col.labelKey} shortKey={col.shortKey} />,
+      mobileLabel: t(col.labelKey),
       numeric: true,
       sortKey: col.key,
       render: (rider) => <StatCell value={rider[col.key]} active={sortKey === col.key} />,
