@@ -1,0 +1,219 @@
+// #7947 · The Development tab in XP (direction 5, sketch R5Development in PR #8248).
+// Pure view model: it never computes development. It reads what the stored
+// receipts carry (the same XP fields the XP report reads, lib/trainingReportXp.ts)
+// plus the squad and the shared potential estimate, and lays it out as one line
+// per rider. No React, so `node --test` runs it.
+import { buildMonthView, buildTodayView, xpBySource, type XpReceipt, type XpRiderType } from "../../lib/trainingReportXp.ts";
+import { potentialViewOf, potentialViewValue, type PotentialView } from "../../lib/potentialEstimateDisplay.ts";
+
+/** "Close to the next point": three quarters of the bar or more (a display line, not a game rule). */
+export const CLOSE_PCT = 75;
+/** The opened row lists at most this many abilities, so it stays one glance. */
+export const MAX_ABILITIES = 6;
+
+/**
+ * Expected top. `view` = the shared potential estimate (number + word, #7686).
+ * `band` = today's field while that switch is off: lo and hi, shown as one number
+ * when they are equal, never as an interval without width ("66-66").
+ */
+export type TopValue =
+  | { kind: "view"; view: PotentialView; value: number | null }
+  | { kind: "band"; lo: number; hi: number }
+  | { kind: "none" };
+
+export type DevRiderInput = {
+  id: string;
+  name: string;
+  nation: string | null;
+  type: XpRiderType | null;
+  rating: number | null;
+  /** Ability values now, keyed like the receipts (climbing, flat, ...). */
+  abilities: Record<string, number | null | undefined>;
+  top: TopValue;
+  racingToday: boolean;
+};
+
+export type DevAbility = { key: string; now: number | null; season: number | null; pct: number | null };
+export type XpTodayCell = { state: "locked" } | { state: "none" } | { state: "xp"; xp: number; point: string | null };
+
+export type DevRow = {
+  id: string; name: string; nation: string | null; type: XpRiderType | null;
+  rating: number | null; top: TopValue;
+  season: number | null;
+  today: XpTodayCell;
+  spark: number[]; xp30: number;
+  next: { key: string; pct: number } | null;
+  abilities: DevAbility[];
+};
+
+export type DevSummary = { riders: number; xpToday: number; unsettled: number; xp30: number; seasonPoints: number | null; close: number };
+
+const finite = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
+
+/** Share of the way to the next point in whole percent. Never 100: a full bar has paid out. */
+export function barPct(bar: { xp?: number | null; price?: number | null } | null | undefined): number | null {
+  if (!bar || !finite(bar.price) || bar.price <= 0) return null;
+  const xp = finite(bar.xp) && bar.xp > 0 ? bar.xp : 0;
+  return Math.max(0, Math.min(99, Math.floor((xp / bar.price) * 100)));
+}
+
+/** Expected top from one estimate (useScouting's payload). */
+export function topOf(estimate: unknown): TopValue {
+  const view = potentialViewOf(estimate as never);
+  if (view) return { kind: "view", view, value: potentialViewValue(view) };
+  const prog = (estimate as { prog?: { lo?: unknown; hi?: unknown } } | null | undefined)?.prog;
+  if (prog && finite(prog.lo) && finite(prog.hi)) return { kind: "band", lo: Math.min(prog.lo, prog.hi), hi: Math.max(prog.lo, prog.hi) };
+  return { kind: "none" };
+}
+
+/** The band as text: one number when lo equals hi (never "66-66"). */
+export function bandText(top: { lo: number; hi: number }): string {
+  return top.lo === top.hi ? String(top.hi) : `${top.lo}-${top.hi}`;
+}
+
+/** A number to sort expected top on: the estimate, or the band's top. */
+export function topSortValue(top: TopValue): number | null {
+  if (top.kind === "view") return top.value;
+  if (top.kind === "band") return top.hi;
+  return null;
+}
+
+/** The newest stored bar per rider and ability (receipts may come newest first). */
+function latestBars(runs: readonly XpReceipt[]): Map<string, Record<string, { xp: number; price: number }>> {
+  const out = new Map<string, Record<string, { xp: number; price: number }>>();
+  const oldestFirst = [...runs].sort((a, b) => a.tick_date.localeCompare(b.tick_date));
+  for (const run of oldestFirst) {
+    for (const row of run.report?.riders ?? []) {
+      if (row.xp_bar && typeof row.xp_bar === "object" && Object.keys(row.xp_bar).length > 0) out.set(row.rider_id, row.xp_bar);
+    }
+  }
+  return out;
+}
+
+export type BuildInput = {
+  runs: readonly XpReceipt[];
+  riders: readonly DevRiderInput[];
+  /** Today's date key (Copenhagen). */
+  todayKey: string;
+  /** Season points per rider and ability; null = the season has nothing to count yet. */
+  seasonGains: Record<string, Record<string, number> | null | undefined>;
+  /** Preview only: treat today's races as not yet settled. */
+  forceUnsettled?: boolean;
+};
+
+export function buildDevelopmentRows({ runs, riders, todayKey, seasonGains, forceUnsettled = false }: BuildInput): DevRow[] {
+  const todayRun = runs.find(run => run.tick_date === todayKey) ?? null;
+  const settled = !forceUnsettled && todayRun?.receipt_status === "complete";
+  const todayView = todayRun ? buildTodayView(runs, todayKey) : null;
+  const todayById = new Map((todayView?.date === todayKey ? todayView.riders : []).map(r => [r.id, r]));
+  const todayRowById = new Map((todayRun?.report?.riders ?? []).map(r => [r.rider_id, r]));
+  const month = buildMonthView(runs);
+  const monthById = new Map((month?.riders ?? []).map(r => [r.id, r]));
+  const days = month?.days.length ?? 0;
+  const bars = latestBars(runs);
+
+  return riders.map((rider): DevRow => {
+    const m = monthById.get(rider.id);
+    const gains = seasonGains[rider.id];
+    const season = gains ? Object.values(gains).reduce((sum, n) => sum + (finite(n) && n > 0 ? n : 0), 0) : null;
+
+    let today: XpTodayCell;
+    if (rider.racingToday && !settled) today = { state: "locked" };
+    else if (!todayRun) today = { state: "none" };
+    else {
+      const view = todayById.get(rider.id);
+      const raw = todayRowById.get(rider.id);
+      const xp = view?.xp ?? Object.values(xpBySource(raw?.activities)).reduce((s, v) => s + v.training + v.race, 0);
+      today = { state: "xp", xp, point: view?.pointAbility ?? null };
+    }
+
+    const bar = bars.get(rider.id) ?? {};
+    const keys = new Set<string>([...Object.keys(bar), ...Object.entries(gains ?? {}).filter(([, n]) => finite(n) && n > 0).map(([k]) => k)]);
+    const abilities = [...keys].map((key): DevAbility => ({
+      key,
+      now: finite(rider.abilities[key]) ? (rider.abilities[key] as number) : null,
+      season: gains ? (finite(gains[key]) && gains[key]! > 0 ? gains[key]! : 0) : null,
+      pct: barPct(bar[key]),
+    })).sort((a, b) => (b.season ?? 0) - (a.season ?? 0) || (b.pct ?? -1) - (a.pct ?? -1) || a.key.localeCompare(b.key))
+      .slice(0, MAX_ABILITIES);
+
+    const nextKey = m?.next?.key ?? null;
+    const nextPct = m?.next ? barPct(m.next) : null;
+    return {
+      id: rider.id, name: rider.name, nation: rider.nation, type: rider.type,
+      rating: rider.rating, top: rider.top, season, today,
+      spark: m?.spark ?? Array.from({ length: days }, () => 0),
+      xp30: m?.xp ?? 0,
+      next: nextKey && nextPct != null ? { key: nextKey, pct: nextPct } : null,
+      abilities,
+    };
+  });
+}
+
+export function devSummary(rows: readonly DevRow[]): DevSummary {
+  const seasons = rows.map(r => r.season).filter(finite);
+  return {
+    riders: rows.length,
+    xpToday: rows.reduce((a, r) => a + (r.today.state === "xp" ? r.today.xp : 0), 0),
+    unsettled: rows.filter(r => r.today.state === "locked").length,
+    xp30: rows.reduce((a, r) => a + r.xp30, 0),
+    seasonPoints: seasons.length ? seasons.reduce((a, b) => a + b, 0) : null,
+    close: rows.filter(r => (r.next?.pct ?? 0) >= CLOSE_PCT).length,
+  };
+}
+
+export type SortKey = "rider" | "type" | "rating" | "top" | "season" | "xpToday" | "xp30" | "next";
+export type SortState = { key: SortKey; dir: 1 | -1 };
+export const DEFAULT_SORT: SortState = { key: "xp30", dir: -1 };
+
+/** Text columns sort A-Z first; numbers sort highest first. */
+export function nextSort(current: SortState, key: SortKey): SortState {
+  if (current.key === key) return { key, dir: current.dir === 1 ? -1 : 1 };
+  return { key, dir: key === "rider" || key === "type" ? 1 : -1 };
+}
+
+function sortValue(row: DevRow, key: SortKey): string | number | null {
+  switch (key) {
+    case "rider": return row.name;
+    case "type": return row.type?.primary ?? null;
+    case "rating": return row.rating;
+    case "top": return topSortValue(row.top);
+    case "season": return row.season;
+    case "xpToday": return row.today.state === "xp" ? row.today.xp : null;
+    case "xp30": return row.xp30;
+    case "next": return row.next?.pct ?? null;
+  }
+}
+
+/** Sorted copy. Missing values always go last, whatever the direction; ties keep name order. */
+export function sortDevRows(rows: readonly DevRow[], sort: SortState): DevRow[] {
+  return [...rows].sort((a, b) => {
+    const va = sortValue(a, sort.key), vb = sortValue(b, sort.key);
+    if (va == null && vb == null) return a.name.localeCompare(b.name);
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    const c = typeof va === "string" || typeof vb === "string" ? String(va).localeCompare(String(vb)) : va - vb;
+    return c * sort.dir || a.name.localeCompare(b.name);
+  });
+}
+
+// --- Which surface the tab shows -------------------------------------------------
+//
+//   off      (default) today's Development tab, exactly as before.
+//   live     the XP switch (development_xp_model) reads as on for this viewer AND the
+//            stored receipts carry XP (the same gate as the XP report, #7627).
+//   fixture  preview build only (VITE_PREVIEW_MOCK) with ?xp=1: invented riders.
+export const XP_DEV_FLAG_KEY = "development_xp_model";
+export const XP_DEV_PREVIEW_PARAM = "xp";
+export type XpDevMode = "off" | "live" | "fixture";
+
+export function previewXpDevelopment(isPreview: boolean, search: string): boolean {
+  if (!isPreview) return false;
+  const value = new URLSearchParams(search).get(XP_DEV_PREVIEW_PARAM);
+  return value === "1" || value === "on";
+}
+
+export function xpDevelopmentMode({ preview, flagOn, hasXp }: { preview: boolean; flagOn: boolean; hasXp: boolean }): XpDevMode {
+  if (preview) return "fixture";
+  return flagOn && hasXp ? "live" : "off";
+}
