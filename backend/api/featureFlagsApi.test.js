@@ -138,6 +138,7 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     stage_page_v2: false,
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
+    academy_page_v2_8081: false,
 
     development_v2_aging_enabled: false,
 
@@ -157,12 +158,15 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     tactics_ready_7864: false,
     rider_why_button: false,
     race_page_v6: false,
+    spoiler_shield_7859: false,
     talent_marks_7879: false,
     rider_hover_card: false,
+    patch_notes_v2_8049: false, // #8049
     day_words_7725: false,
     fatigue_now_7801: false,
     planning_workbench: false,
     training_train_now_instant: false,
+    training_train_now_bonus: false, // #7741
     sale_escrow_enabled: false, // #6181
   });
   assert.equal(f.betaLookups(), 0, "en anonym forespoergsel maa ikke slaa en bruger op");
@@ -213,6 +217,7 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
     stage_page_v2: false,
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
+    academy_page_v2_8081: false,
 
     development_v2_aging_enabled: false,
 
@@ -232,12 +237,15 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
     tactics_ready_7864: false,
     rider_why_button: false,
     race_page_v6: false,
+    spoiler_shield_7859: false,
     talent_marks_7879: false,
     rider_hover_card: false,
+    patch_notes_v2_8049: false, // #8049
     day_words_7725: false,
     fatigue_now_7801: false,
     planning_workbench: false,
     training_train_now_instant: false,
+    training_train_now_bonus: false, // #7741
     sale_escrow_enabled: false, // #6181
   });
 });
@@ -296,6 +304,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     stage_page_v2: false,
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
+    academy_page_v2_8081: false,
 
     development_v2_aging_enabled: false,
 
@@ -315,12 +324,15 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     tactics_ready_7864: false,
     rider_why_button: false,
     race_page_v6: false,
+    spoiler_shield_7859: false,
     talent_marks_7879: false,
     rider_hover_card: false,
+    patch_notes_v2_8049: false, // #8049
     day_words_7725: false,
     fatigue_now_7801: false,
     planning_workbench: false,
     training_train_now_instant: false,
+    training_train_now_bonus: false, // #7741
     sale_escrow_enabled: false, // #6181
   });
   assert.deepEqual(await readPlayerFeatureFlags(supabase, { isBetaTester: true }), {
@@ -340,6 +352,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     stage_page_v2: false,
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
+    academy_page_v2_8081: false,
 
     development_v2_aging_enabled: false,
 
@@ -359,12 +372,15 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     tactics_ready_7864: false,
     rider_why_button: false,
     race_page_v6: false,
+    spoiler_shield_7859: false,
     talent_marks_7879: false,
     rider_hover_card: false,
+    patch_notes_v2_8049: false, // #8049
     day_words_7725: false,
     fatigue_now_7801: false,
     planning_workbench: false,
     training_train_now_instant: false,
+    training_train_now_bonus: false, // #7741
     sale_escrow_enabled: false, // #6181
   });
 });
@@ -444,6 +460,16 @@ test("#7725: day_words_7725 er binaert og strengt som motoren (kun strengen on t
   }
   const on = await readPlayerFeatureFlags(fakeSupabase({ day_words_7725: "on" }));
   assert.equal(on.day_words_7725, true);
+});
+
+test("#7741: training_train_now_bonus foelger motoren: beta taender kun for beta-testere", async () => {
+  assert.ok(!PLAYER_VISIBLE_BINARY_FLAG_KEYS.includes("training_train_now_bonus"), "motoren laeser beta for beta-testere (isTrainNowBonusEnabled)");
+  assert.ok(PLAYER_VISIBLE_FLAG_KEYS.includes("training_train_now_bonus"));
+  const beta = fakeSupabase({ training_train_now_bonus: "beta" });
+  assert.equal((await readPlayerFeatureFlags(beta, { isBetaTester: true })).training_train_now_bonus, true);
+  assert.equal((await readPlayerFeatureFlags(beta, { isBetaTester: false })).training_train_now_bonus, false);
+  assert.equal((await readPlayerFeatureFlags(fakeSupabase({ training_train_now_bonus: "on" }))).training_train_now_bonus, true);
+  assert.equal((await readPlayerFeatureFlags(fakeSupabase({ training_train_now_bonus: "off" }), { isBetaTester: true })).training_train_now_bonus, false);
 });
 
 test("#7536: Hjaelp-flaget er off naar condition_model_v2 eller dens forudsaetning er off", async () => {

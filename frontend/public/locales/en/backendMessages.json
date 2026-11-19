@@ -30,7 +30,7 @@
     "loanReceivedShort": "Short-term loan taken out (fee: {fee} CZ$)",
     "loanReceivedLong": "Long-term loan taken out (fee: {fee} CZ$)",
     "loanRepayment": "Loan installment paid",
-    "loanRepaymentFinal": "Loan installment paid. Loan fully repaid! 🎉",
+    "loanRepaymentFinal": "Loan installment paid. Loan fully repaid!",
     "loanRepaymentRemaining": "Loan installment paid (remaining: {remaining} CZ$)",
     "forcedDebtRepaymentFinal": "Forced sale proceeds paid off your loan in full",
     "forcedDebtRepaymentRemaining": "Forced sale proceeds paid down debt (remaining: {remaining} CZ$)",
@@ -123,11 +123,11 @@
       "message": "You took out a long-term loan of {principal} CZ$. Fee: {fee} CZ$. Total repayment: {totalOwed} CZ$."
     },
     "emergencyLoan": {
-      "title": "⚠️ Emergency loan opened",
+      "title": "Emergency loan opened",
       "message": "Your team couldn't cover wages. An emergency loan of {amount} CZ$ was opened automatically with a {feeRate}% fee and {interestRate}% interest. Total debt: {totalOwed} CZ$."
     },
     "emergencyLoanBreach": {
-      "title": "🚨 Debt cap exceeded",
+      "title": "Debt cap exceeded",
       "message": "Your emergency loan pushes the team's debt {breachAmount} CZ$ over the division cap of {ceiling} CZ$. You can keep operating, but you MUST cut costs (sell riders, drop star contracts) before the next season ends to avoid a debt spiral."
     },
     "emergencyLoanEscalation": {
@@ -147,7 +147,7 @@
       "message": "Your debt of {debt} CZ$ stayed over your division cap of {ceiling} CZ$ for {streak} seasons in a row, so the board sold {riders} for {proceeds} CZ$ and put the money straight into your loans. Your debt is now {remainingDebt} CZ$ and transfers stay frozen until you are back under the cap. If you are still over it at the next season change, the board will sell again. Repay loans, sell riders yourself, or cut wages before then."
     },
     "loanPaidOff": {
-      "title": "✅ Loan repaid",
+      "title": "Loan repaid",
       "message": "Congratulations! You've fully repaid your loan."
     },
     "boardPlanExpired": {
@@ -186,7 +186,7 @@
       "message": "The board is impressed ({satisfaction}% satisfaction, {goalsMet}/{goalsTotal} goals met). They offer +{bonusAmount} CZ$ for an extra goal: {goalLabel}. Accept or decline on the Board page."
     },
     "divisionPromoted": {
-      "title": "Promoted! 🎉",
+      "title": "Promoted!",
       "message": "Congratulations! Your team moves up to Division {division}."
     },
     "divisionRelegated": {
@@ -322,6 +322,11 @@
       "title": "Something you voted for is live",
       "message": "You voted high on {item}, and it is live now. Thank you for helping me choose what to build."
     },
+    "boardMidSeason": {
+      "title": "Mid-season check (season {season})",
+      "lowSatisfaction": "The board is concerned. Satisfaction is down to {satisfaction}. See which goals are behind on the Board page and work on them before the season ends. If the pressure is financial, you can take a loan on the Finance page.",
+      "manyBehind": "The board is concerned. At least half of this season's goals are behind schedule. See which ones on the Board page and work on them before the season ends. If the pressure is financial, you can take a loan on the Finance page."
+    },
     "riderRetired": {
       "title": "{name} has retired",
       "message": "{name} has retired from professional cycling at age {age}. His place in your squad is now free."
@@ -415,7 +420,7 @@
       "message": "{winnerName} snatched {rider} for {price} CZ$, {overBid} CZ$ over your top bid of {yourMax} CZ$."
     },
     "debtWarning": {
-      "title": "⚠️ Negative balance",
+      "title": "Negative balance",
       "message": "Your team has a negative balance. Check the Finances page for details."
     },
     "deadlineDay": {

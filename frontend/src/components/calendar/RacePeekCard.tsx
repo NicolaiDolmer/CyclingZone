@@ -93,9 +93,10 @@ interface RacePeekCardProps {
   locale?: string;
   onClose: () => void;
   stage?: number | null; // klikket etape, bevares i loebslinket
+  poolsRow?: ReactNode; // #5841: "Runs in N pools" (bag race_page_v6), en <dl>-række
 }
 
-export default function RacePeekCard({ entry, status, days, seasonNumber, t, locale, onClose, stage = null }: RacePeekCardProps) {
+export default function RacePeekCard({ entry, status, days, seasonNumber, t, locale, onClose, stage = null, poolsRow = null }: RacePeekCardProps) {
   const open = entry != null;
   const raceId = entry?.id ?? null;
   const [profiles, setProfiles] = useState<StageProfileLike[] | null>(null); // null = henter
@@ -203,6 +204,7 @@ export default function RacePeekCard({ entry, status, days, seasonNumber, t, loc
               <StatusBadge state={STATUS_BADGE[status]}>{t(`peek.status.${status}`)}</StatusBadge>
             </Row>
           )}
+          {poolsRow}
         </dl>
       </div>
     </Modal>

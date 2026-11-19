@@ -10,14 +10,9 @@ import {
   ChevronRightIcon as ChevronRightIconJs,
 } from "../../ui/icons/index.jsx";
 import HeroStatsJs from "../../ui/HeroStats.jsx";
-import StageProfileGraphJs from "../StageProfileGraph.jsx";
 
 interface EmptyStateProps { icon?: ReactNode; title: ReactNode; description?: ReactNode; action: ReactNode }
 interface IconProps { size?: number; className?: string; "aria-hidden"?: boolean | "true" }
-interface StageProfileGraphProps {
-  profile: unknown; tier?: "full" | "compact" | "mini"; width?: number; height?: number;
-  uid?: string; hasClassifications?: boolean; heightClass?: string;
-}
 
 interface ButtonProps {
   variant?: "primary" | "secondary" | "ghost";
@@ -40,6 +35,6 @@ export const CheckIcon = CheckIconJs as unknown as (props: IconProps) => ReactNo
 export const ChevronLeftIcon = ChevronLeftIconJs as unknown as (props: IconProps) => ReactNode;
 export const ChevronRightIcon = ChevronRightIconJs as unknown as (props: IconProps) => ReactNode;
 /** T3-heroens talrække (#4628). `flush` = uden egen top-streg og luft (udgave E: rækken står mellem hovedkortets hairlines). */
-export interface HeroStatItem { label: string; value: ReactNode; sub?: ReactNode | null }
+/** `spoiler` (#7859): tallet afslører et resultat og står ikke, mens spoiler-skjoldet skjuler en kørt etape. */
+export interface HeroStatItem { label: string; value: ReactNode; sub?: ReactNode | null; spoiler?: boolean }
 export const HeroStats = HeroStatsJs as unknown as (props: { items: HeroStatItem[]; className?: string; flush?: boolean }) => ReactNode;
-export const StageProfileGraph = StageProfileGraphJs as unknown as (props: StageProfileGraphProps) => ReactNode;

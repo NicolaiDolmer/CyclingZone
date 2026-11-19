@@ -1,0 +1,538 @@
+{
+  "mergeBase": "f5c70ec17cd114ff7695437ff71ad960be12bd7c",
+  "note": "Genereret af merge-basens kode; kun hashes og antal. Genereres aldrig med den nye kode.",
+  "cases": {
+    "off_stort_beta_etape_nej_session_nej": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 91,
+      "reads": 79,
+      "raceLoadReads": 3,
+      "attempts": "d28755e6120fdccff187",
+      "applied": "4f9decf7d77c296f82db",
+      "provisional": "b50db910219c68b85447",
+      "state": {
+        "rider_derived_abilities": "544f9d919ae0ef49b9c7",
+        "rider_condition": "0dce01b6de5afe737aee",
+        "training_rider_ticks": "5960e9c9f92ad967c01c",
+        "training_condition_settlements": "b0c72d5bbf1268b51523",
+        "training_race_loads": "4f53cda18c2baa0c0354",
+        "training_date_work": "b008f9c9c54a276acd51",
+        "training_day_runs": "bb8c070fdeeec14efc25"
+      }
+    },
+    "off_stort_beta_etape_1_session_nej": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 107,
+      "reads": 94,
+      "raceLoadReads": 4,
+      "attempts": "e134524c03c036c620a1",
+      "applied": "ccd62d18cfa77104af22",
+      "provisional": "62d76d44213fcdb0df14",
+      "state": {
+        "rider_derived_abilities": "544f9d919ae0ef49b9c7",
+        "rider_condition": "51715b897cc65bdc84ae",
+        "training_rider_ticks": "5960e9c9f92ad967c01c",
+        "training_condition_settlements": "b0c72d5bbf1268b51523",
+        "training_race_loads": "9f0d054a2b9754b86cc2",
+        "training_date_work": "b008f9c9c54a276acd51",
+        "training_day_runs": "bb8c070fdeeec14efc25"
+      }
+    },
+    "off_stort_beta_etape_2_session_nej": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 107,
+      "reads": 94,
+      "raceLoadReads": 4,
+      "attempts": "e134524c03c036c620a1",
+      "applied": "ccd62d18cfa77104af22",
+      "provisional": "62d76d44213fcdb0df14",
+      "state": {
+        "rider_derived_abilities": "544f9d919ae0ef49b9c7",
+        "rider_condition": "51715b897cc65bdc84ae",
+        "training_rider_ticks": "5960e9c9f92ad967c01c",
+        "training_condition_settlements": "b0c72d5bbf1268b51523",
+        "training_race_loads": "9f0d054a2b9754b86cc2",
+        "training_date_work": "b008f9c9c54a276acd51",
+        "training_day_runs": "bb8c070fdeeec14efc25"
+      }
+    },
+    "off_stort_beta_etape_3_session_nej": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 107,
+      "reads": 94,
+      "raceLoadReads": 4,
+      "attempts": "e134524c03c036c620a1",
+      "applied": "ccd62d18cfa77104af22",
+      "provisional": "62d76d44213fcdb0df14",
+      "state": {
+        "rider_derived_abilities": "544f9d919ae0ef49b9c7",
+        "rider_condition": "51715b897cc65bdc84ae",
+        "training_rider_ticks": "5960e9c9f92ad967c01c",
+        "training_condition_settlements": "b0c72d5bbf1268b51523",
+        "training_race_loads": "9f0d054a2b9754b86cc2",
+        "training_date_work": "b008f9c9c54a276acd51",
+        "training_day_runs": "bb8c070fdeeec14efc25"
+      }
+    },
+    "off_stort_beta_etape_4_session_nej": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 107,
+      "reads": 94,
+      "raceLoadReads": 4,
+      "attempts": "e134524c03c036c620a1",
+      "applied": "ccd62d18cfa77104af22",
+      "provisional": "62d76d44213fcdb0df14",
+      "state": {
+        "rider_derived_abilities": "544f9d919ae0ef49b9c7",
+        "rider_condition": "51715b897cc65bdc84ae",
+        "training_rider_ticks": "5960e9c9f92ad967c01c",
+        "training_condition_settlements": "b0c72d5bbf1268b51523",
+        "training_race_loads": "9f0d054a2b9754b86cc2",
+        "training_date_work": "b008f9c9c54a276acd51",
+        "training_day_runs": "bb8c070fdeeec14efc25"
+      }
+    },
+    "off_stort_beta_etape_1_session_1": {
+      "status": "kast: daily condition commit: Training receipt snapshot changed; retry with current rider development",
+      "retryStatus": 200,
+      "calls": 212,
+      "reads": 192,
+      "raceLoadReads": 4,
+      "attempts": "18a4ebdc8de53319b0d0",
+      "applied": "6dd29dc10ec4d984bae2",
+      "provisional": "4f53cda18c2baa0c0354",
+      "state": {
+        "rider_derived_abilities": "8c260e53c5c434573d4a",
+        "rider_condition": "131b8c7c1f3488588a26",
+        "training_rider_ticks": "36ac3801651887543d89",
+        "training_condition_settlements": "a0948729554e91fcfed4",
+        "training_race_loads": "6c2a73dfa8d8ea7371af",
+        "training_date_work": "5114521c313cc8682d26",
+        "training_day_runs": "f1f30de8a57abe5792c6"
+      }
+    },
+    "off_stort_beta_etape_2_session_2": {
+      "status": "kast: daily condition commit: Training receipt snapshot changed; retry with current rider development",
+      "retryStatus": 200,
+      "calls": 221,
+      "reads": 199,
+      "raceLoadReads": 4,
+      "attempts": "6c00c49d1d6296df8040",
+      "applied": "76854ceee9f350f28adc",
+      "provisional": "4f53cda18c2baa0c0354",
+      "state": {
+        "rider_derived_abilities": "8c260e53c5c434573d4a",
+        "rider_condition": "131b8c7c1f3488588a26",
+        "training_rider_ticks": "ccf32f4345cbddc3861c",
+        "training_condition_settlements": "a0948729554e91fcfed4",
+        "training_race_loads": "6c2a73dfa8d8ea7371af",
+        "training_date_work": "5114521c313cc8682d26",
+        "training_day_runs": "88698bc22954b216cf39"
+      }
+    },
+    "off_stort_beta_etape_4_session_4": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 159,
+      "reads": 144,
+      "raceLoadReads": 5,
+      "attempts": "926e9f7ae02cbff21a01",
+      "applied": "ec383fa9e53bc64c9a24",
+      "provisional": "4f53cda18c2baa0c0354",
+      "state": {
+        "rider_derived_abilities": "8c260e53c5c434573d4a",
+        "rider_condition": "474e0bab89f1b09a363f",
+        "training_rider_ticks": "63216d5d8ea947a70344",
+        "training_condition_settlements": "5f03517060236643f2da",
+        "training_race_loads": "79e46864304589957116",
+        "training_date_work": "fe56b14aa6ff5dc7cf4e",
+        "training_day_runs": "9f3d6236b821571a4557"
+      }
+    },
+    "off_stort_beta_etape_1_session_2": {
+      "status": "kast: daily condition commit: Training receipt snapshot changed; retry with current rider development",
+      "retryStatus": 200,
+      "calls": 221,
+      "reads": 199,
+      "raceLoadReads": 4,
+      "attempts": "6c00c49d1d6296df8040",
+      "applied": "76854ceee9f350f28adc",
+      "provisional": "4f53cda18c2baa0c0354",
+      "state": {
+        "rider_derived_abilities": "8c260e53c5c434573d4a",
+        "rider_condition": "131b8c7c1f3488588a26",
+        "training_rider_ticks": "ccf32f4345cbddc3861c",
+        "training_condition_settlements": "a0948729554e91fcfed4",
+        "training_race_loads": "6c2a73dfa8d8ea7371af",
+        "training_date_work": "5114521c313cc8682d26",
+        "training_day_runs": "88698bc22954b216cf39"
+      }
+    },
+    "off_stort_beta_etape_1_session_3": {
+      "status": "kast: daily condition commit: Training receipt snapshot changed; retry with current rider development",
+      "retryStatus": 200,
+      "calls": 221,
+      "reads": 199,
+      "raceLoadReads": 4,
+      "attempts": "6c00c49d1d6296df8040",
+      "applied": "76854ceee9f350f28adc",
+      "provisional": "4f53cda18c2baa0c0354",
+      "state": {
+        "rider_derived_abilities": "8c260e53c5c434573d4a",
+        "rider_condition": "131b8c7c1f3488588a26",
+        "training_rider_ticks": "b5c9bac08d5ba745e995",
+        "training_condition_settlements": "a0948729554e91fcfed4",
+        "training_race_loads": "6c2a73dfa8d8ea7371af",
+        "training_date_work": "5114521c313cc8682d26",
+        "training_day_runs": "43700794ad536b4e0e57"
+      }
+    },
+    "off_stort_beta_etape_1_session_4": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 159,
+      "reads": 144,
+      "raceLoadReads": 5,
+      "attempts": "926e9f7ae02cbff21a01",
+      "applied": "ec383fa9e53bc64c9a24",
+      "provisional": "4f53cda18c2baa0c0354",
+      "state": {
+        "rider_derived_abilities": "8c260e53c5c434573d4a",
+        "rider_condition": "474e0bab89f1b09a363f",
+        "training_rider_ticks": "63216d5d8ea947a70344",
+        "training_condition_settlements": "5f03517060236643f2da",
+        "training_race_loads": "79e46864304589957116",
+        "training_date_work": "fe56b14aa6ff5dc7cf4e",
+        "training_day_runs": "9f3d6236b821571a4557"
+      }
+    },
+    "off_stort_beta_etape_3_session_4": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 159,
+      "reads": 144,
+      "raceLoadReads": 5,
+      "attempts": "926e9f7ae02cbff21a01",
+      "applied": "ec383fa9e53bc64c9a24",
+      "provisional": "4f53cda18c2baa0c0354",
+      "state": {
+        "rider_derived_abilities": "8c260e53c5c434573d4a",
+        "rider_condition": "474e0bab89f1b09a363f",
+        "training_rider_ticks": "63216d5d8ea947a70344",
+        "training_condition_settlements": "5f03517060236643f2da",
+        "training_race_loads": "79e46864304589957116",
+        "training_date_work": "fe56b14aa6ff5dc7cf4e",
+        "training_day_runs": "9f3d6236b821571a4557"
+      }
+    },
+    "off_stort_almindeligt": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 87,
+      "reads": 77,
+      "raceLoadReads": 2,
+      "attempts": "23af8640d7f31016a556",
+      "applied": "f1f93ac5073c64ab3dfd",
+      "provisional": "4f53cda18c2baa0c0354",
+      "state": {
+        "rider_derived_abilities": "0fc0a674c17dafe5c84c",
+        "rider_condition": "a30dad816337bdafe53b",
+        "training_rider_ticks": "ca981d94e0f3b5435210",
+        "training_condition_settlements": "b0c72d5bbf1268b51523",
+        "training_race_loads": "4f53cda18c2baa0c0354",
+        "training_date_work": "b008f9c9c54a276acd51",
+        "training_day_runs": "5b4474c0e2564882991b"
+      }
+    },
+    "off_stort_almindeligt_etape_2": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 87,
+      "reads": 77,
+      "raceLoadReads": 2,
+      "attempts": "23af8640d7f31016a556",
+      "applied": "f1f93ac5073c64ab3dfd",
+      "provisional": "4f53cda18c2baa0c0354",
+      "state": {
+        "rider_derived_abilities": "0fc0a674c17dafe5c84c",
+        "rider_condition": "a30dad816337bdafe53b",
+        "training_rider_ticks": "ca981d94e0f3b5435210",
+        "training_condition_settlements": "b0c72d5bbf1268b51523",
+        "training_race_loads": "9f0d054a2b9754b86cc2",
+        "training_date_work": "b008f9c9c54a276acd51",
+        "training_day_runs": "5b4474c0e2564882991b"
+      }
+    },
+    "off_lille_hold": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 81,
+      "reads": 71,
+      "raceLoadReads": 1,
+      "attempts": "766633b815d14072bac4",
+      "applied": "61ae0054c5a22e5d2b58",
+      "provisional": "4f53cda18c2baa0c0354",
+      "state": {
+        "rider_derived_abilities": "4854fb8c146e756f277c",
+        "rider_condition": "c17752c2a6afb33d9178",
+        "training_rider_ticks": "1ad19ce55cc66d128fdb",
+        "training_condition_settlements": "3abe28408237a0d22521",
+        "training_race_loads": "4f53cda18c2baa0c0354",
+        "training_date_work": "50391b3a065d7066cc6e",
+        "training_day_runs": "eb1b2d9d0444e016ee5b"
+      }
+    },
+    "off_etape_koert_session_2": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 160,
+      "reads": 147,
+      "raceLoadReads": 4,
+      "attempts": "1a4d8c1d95fbe5f56476",
+      "applied": "8c9d678a452195f6bdcc",
+      "provisional": "4f53cda18c2baa0c0354",
+      "state": {
+        "rider_derived_abilities": "8c260e53c5c434573d4a",
+        "rider_condition": "b759397eb4352735aec0",
+        "training_rider_ticks": "0025d5250a856ed9e6f7",
+        "training_condition_settlements": "8467a089bdd34aaabfeb",
+        "training_race_loads": "822fcba3018138e93a52",
+        "training_date_work": "25161619a5522a1e26c7",
+        "training_day_runs": "77aa807bfdc0076841c8"
+      }
+    },
+    "main_on_stort_beta_etape_nej_session_nej": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 144,
+      "reads": 128,
+      "raceLoadReads": 6,
+      "attempts": "d28755e6120fdccff187",
+      "applied": "4f9decf7d77c296f82db",
+      "provisional": "b50db910219c68b85447",
+      "state": {
+        "rider_derived_abilities": "544f9d919ae0ef49b9c7",
+        "rider_condition": "0dce01b6de5afe737aee",
+        "training_rider_ticks": "5960e9c9f92ad967c01c",
+        "training_condition_settlements": "b0c72d5bbf1268b51523",
+        "training_race_loads": "4f53cda18c2baa0c0354",
+        "training_date_work": "b008f9c9c54a276acd51",
+        "training_day_runs": "bb8c070fdeeec14efc25"
+      }
+    },
+    "main_on_stort_beta_etape_1_session_nej": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 144,
+      "reads": 128,
+      "raceLoadReads": 6,
+      "attempts": "9b7e65b107a0b02b4e52",
+      "applied": "03e355c571b44bd49dc4",
+      "provisional": "62d76d44213fcdb0df14",
+      "state": {
+        "rider_derived_abilities": "544f9d919ae0ef49b9c7",
+        "rider_condition": "51715b897cc65bdc84ae",
+        "training_rider_ticks": "742a89ee6e18ed8d3f9d",
+        "training_condition_settlements": "b0c72d5bbf1268b51523",
+        "training_race_loads": "9f0d054a2b9754b86cc2",
+        "training_date_work": "b008f9c9c54a276acd51",
+        "training_day_runs": "cea75e3241fc44bb734d"
+      }
+    },
+    "main_on_stort_beta_etape_2_session_nej": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 144,
+      "reads": 128,
+      "raceLoadReads": 6,
+      "attempts": "9b7e65b107a0b02b4e52",
+      "applied": "03e355c571b44bd49dc4",
+      "provisional": "62d76d44213fcdb0df14",
+      "state": {
+        "rider_derived_abilities": "544f9d919ae0ef49b9c7",
+        "rider_condition": "51715b897cc65bdc84ae",
+        "training_rider_ticks": "742a89ee6e18ed8d3f9d",
+        "training_condition_settlements": "b0c72d5bbf1268b51523",
+        "training_race_loads": "9f0d054a2b9754b86cc2",
+        "training_date_work": "b008f9c9c54a276acd51",
+        "training_day_runs": "cea75e3241fc44bb734d"
+      }
+    },
+    "main_on_stort_beta_etape_3_session_nej": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 144,
+      "reads": 128,
+      "raceLoadReads": 6,
+      "attempts": "9b7e65b107a0b02b4e52",
+      "applied": "03e355c571b44bd49dc4",
+      "provisional": "62d76d44213fcdb0df14",
+      "state": {
+        "rider_derived_abilities": "544f9d919ae0ef49b9c7",
+        "rider_condition": "51715b897cc65bdc84ae",
+        "training_rider_ticks": "742a89ee6e18ed8d3f9d",
+        "training_condition_settlements": "b0c72d5bbf1268b51523",
+        "training_race_loads": "9f0d054a2b9754b86cc2",
+        "training_date_work": "b008f9c9c54a276acd51",
+        "training_day_runs": "cea75e3241fc44bb734d"
+      }
+    },
+    "main_on_stort_beta_etape_4_session_nej": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 144,
+      "reads": 128,
+      "raceLoadReads": 6,
+      "attempts": "8a74cfbd6f56c9fe90b3",
+      "applied": "dbb91a71c3e6836cb1f8",
+      "provisional": "62d76d44213fcdb0df14",
+      "state": {
+        "rider_derived_abilities": "544f9d919ae0ef49b9c7",
+        "rider_condition": "51715b897cc65bdc84ae",
+        "training_rider_ticks": "c622412060255c0a8612",
+        "training_condition_settlements": "b0c72d5bbf1268b51523",
+        "training_race_loads": "9f0d054a2b9754b86cc2",
+        "training_date_work": "b008f9c9c54a276acd51",
+        "training_day_runs": "2afd0803b720cd3e7fcf"
+      }
+    },
+    "main_on_stort_beta_etape_1_session_1": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 196,
+      "reads": 178,
+      "raceLoadReads": 7,
+      "attempts": "cf1b6e44e6fa5146960a",
+      "applied": "a185bbca7e7e8d15a88f",
+      "provisional": "4f53cda18c2baa0c0354",
+      "state": {
+        "rider_derived_abilities": "8c260e53c5c434573d4a",
+        "rider_condition": "474e0bab89f1b09a363f",
+        "training_rider_ticks": "4c51689f71faa38e19a7",
+        "training_condition_settlements": "5f03517060236643f2da",
+        "training_race_loads": "79e46864304589957116",
+        "training_date_work": "fe56b14aa6ff5dc7cf4e",
+        "training_day_runs": "bbd47469c04b6e6ec4b6"
+      }
+    },
+    "main_on_stort_beta_etape_2_session_2": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 196,
+      "reads": 178,
+      "raceLoadReads": 7,
+      "attempts": "97720c4975fc8f46394b",
+      "applied": "00a514f7f27097ede13e",
+      "provisional": "4f53cda18c2baa0c0354",
+      "state": {
+        "rider_derived_abilities": "8c260e53c5c434573d4a",
+        "rider_condition": "474e0bab89f1b09a363f",
+        "training_rider_ticks": "274a8d126ecc3064114d",
+        "training_condition_settlements": "5f03517060236643f2da",
+        "training_race_loads": "79e46864304589957116",
+        "training_date_work": "fe56b14aa6ff5dc7cf4e",
+        "training_day_runs": "8dbc186cca7468e18517"
+      }
+    },
+    "main_on_stort_beta_etape_4_session_4": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 196,
+      "reads": 178,
+      "raceLoadReads": 7,
+      "attempts": "36d3d01eab4286e65042",
+      "applied": "a5ab12e52642c66fa2f2",
+      "provisional": "4f53cda18c2baa0c0354",
+      "state": {
+        "rider_derived_abilities": "8c260e53c5c434573d4a",
+        "rider_condition": "474e0bab89f1b09a363f",
+        "training_rider_ticks": "194c634c0b26c406b03c",
+        "training_condition_settlements": "5f03517060236643f2da",
+        "training_race_loads": "79e46864304589957116",
+        "training_date_work": "fe56b14aa6ff5dc7cf4e",
+        "training_day_runs": "7c0dcda25e8898b0fbc1"
+      }
+    },
+    "main_on_stort_beta_etape_1_session_2": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 196,
+      "reads": 178,
+      "raceLoadReads": 7,
+      "attempts": "97720c4975fc8f46394b",
+      "applied": "00a514f7f27097ede13e",
+      "provisional": "4f53cda18c2baa0c0354",
+      "state": {
+        "rider_derived_abilities": "8c260e53c5c434573d4a",
+        "rider_condition": "474e0bab89f1b09a363f",
+        "training_rider_ticks": "274a8d126ecc3064114d",
+        "training_condition_settlements": "5f03517060236643f2da",
+        "training_race_loads": "79e46864304589957116",
+        "training_date_work": "fe56b14aa6ff5dc7cf4e",
+        "training_day_runs": "8dbc186cca7468e18517"
+      }
+    },
+    "main_on_stort_beta_etape_1_session_3": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 196,
+      "reads": 178,
+      "raceLoadReads": 7,
+      "attempts": "97720c4975fc8f46394b",
+      "applied": "00a514f7f27097ede13e",
+      "provisional": "4f53cda18c2baa0c0354",
+      "state": {
+        "rider_derived_abilities": "8c260e53c5c434573d4a",
+        "rider_condition": "474e0bab89f1b09a363f",
+        "training_rider_ticks": "5344442aa00eb2a5d75d",
+        "training_condition_settlements": "5f03517060236643f2da",
+        "training_race_loads": "79e46864304589957116",
+        "training_date_work": "fe56b14aa6ff5dc7cf4e",
+        "training_day_runs": "599dfe2e4c965e52b77c"
+      }
+    },
+    "main_on_stort_beta_etape_1_session_4": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 196,
+      "reads": 178,
+      "raceLoadReads": 7,
+      "attempts": "7779049082187c133239",
+      "applied": "692c2f23a7a4acb14ebc",
+      "provisional": "4f53cda18c2baa0c0354",
+      "state": {
+        "rider_derived_abilities": "8c260e53c5c434573d4a",
+        "rider_condition": "474e0bab89f1b09a363f",
+        "training_rider_ticks": "faa984a7901591b89c20",
+        "training_condition_settlements": "5f03517060236643f2da",
+        "training_race_loads": "79e46864304589957116",
+        "training_date_work": "fe56b14aa6ff5dc7cf4e",
+        "training_day_runs": "37e4535e16522ec63ee8"
+      }
+    },
+    "main_on_stort_beta_etape_3_session_4": {
+      "status": 200,
+      "retryStatus": null,
+      "calls": 196,
+      "reads": 178,
+      "raceLoadReads": 7,
+      "attempts": "7779049082187c133239",
+      "applied": "692c2f23a7a4acb14ebc",
+      "provisional": "4f53cda18c2baa0c0354",
+      "state": {
+        "rider_derived_abilities": "8c260e53c5c434573d4a",
+        "rider_condition": "474e0bab89f1b09a363f",
+        "training_rider_ticks": "faa984a7901591b89c20",
+        "training_condition_settlements": "5f03517060236643f2da",
+        "training_race_loads": "79e46864304589957116",
+        "training_date_work": "fe56b14aa6ff5dc7cf4e",
+        "training_day_runs": "37e4535e16522ec63ee8"
+      }
+    }
+  }
+}

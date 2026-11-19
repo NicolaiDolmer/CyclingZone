@@ -114,7 +114,6 @@
     "colSeasonPoints": "Pts temporada",
     "colFatigueTonight": "Fatiga ahora / esta noche",
     "fatigueTonightAria": "Fatiga ahora {now}, esta noche aprox. {value}. {band}",
-    "fatigueAtStart": "{now} ahora, aprox. {value} al inicio",
     "selectRider": "Seleccionar a {name}",
     "applyTo": "Aplicar a {n}",
     "bulkLead": "Fijar el día de hoy para",
@@ -382,15 +381,23 @@
     },
     "runNow": {
       "title": "Ejecuta el entrenamiento de hoy",
-      "body": "Ejecutar ahora entrena hoy a toda la plantilla, incluidos los ciclistas sin día asignado: entrenan lo que tu asistente elige para su tipo. Pulsarlo no da ninguna bonificación. Sáltatelo y tu asistente ejecuta la misma sesión automáticamente."
+      "body": "Ejecutar ahora entrena hoy a toda la plantilla, incluidos los ciclistas sin día asignado: entrenan lo que tu asistente elige para su tipo. Sáltatelo y tu asistente ejecuta la misma sesión automáticamente."
     },
     "runTodayDayClose": {
       "title": "Ejecuta el entrenamiento de hoy",
-      "body": "Pulsa esto para ejecutar el entrenamiento de hoy ahora en lugar de esperar. Es el mismo entrenamiento que la ejecución automática, sin bonificación: el día también se ejecuta solo cuando termina la última carrera."
+      "body": "Pulsa esto para ejecutar el entrenamiento de hoy ahora en lugar de esperar. El día también se ejecuta solo cuando termina la última carrera."
     },
     "runNowDayClose": {
       "title": "Ejecuta el entrenamiento de hoy",
-      "body": "Ejecutar ahora entrena hoy a toda la plantilla, incluidos los ciclistas sin día asignado: entrenan lo que tu asistente elige para su tipo. Es el mismo entrenamiento que la ejecución automática, sin bonificación: el día también se ejecuta solo cuando termina la última carrera."
+      "body": "Ejecutar ahora entrena hoy a toda la plantilla, incluidos los ciclistas sin día asignado: entrenan lo que tu asistente elige para su tipo. El día también se ejecuta solo cuando termina la última carrera."
+    },
+    "runTodayDayCloseBonus": {
+      "title": "Ejecuta el entrenamiento de hoy",
+      "body": "Pulsa esto para ejecutar el entrenamiento de hoy ahora en lugar de esperar. El entrenamiento que lanzas tú mismo da una pequeña bonificación; la ejecución automática nunca la da. El día también se ejecuta solo cuando termina la última carrera."
+    },
+    "runNowDayCloseBonus": {
+      "title": "Ejecuta el entrenamiento de hoy",
+      "body": "Ejecutar ahora entrena hoy a toda la plantilla, incluidos los ciclistas sin día asignado: entrenan lo que tu asistente elige para su tipo. El entrenamiento que lanzas tú mismo da una pequeña bonificación; la ejecución automática nunca la da. El día también se ejecuta solo cuando termina la última carrera."
     },
     "runStatus": {
       "title": "Entrena una vez al día",
@@ -551,6 +558,12 @@
     "restSelected": "Poner en descanso",
     "pickHint": "Toca los ciclistas que quieras cambiar."
   },
+  "settleAfterStage": {
+    "ran": "Hecha",
+    "ranTitle": "Esta sesión ya se ha hecho y no se puede cambiar",
+    "note": "{n, plural, one {La sesión de carrera de # ciclista se liquida tras la etapa.} other {Las sesiones de carrera de # ciclistas se liquidan tras la etapa.}} Las sesiones que no se han hecho aún se pueden cambiar.",
+    "fatigueNow": "La fatiga mostrada ya incluye la carrera."
+  },
   "programs": {
     "title": "Programas de entrenamiento",
     "intro": "Elige un programa y aplícaselo a un ciclista o a toda la plantilla. Se copia al plan, así que luego puedes cambiar cualquier día.",
@@ -604,6 +617,10 @@
       "pending": "Esta fecha aún no está del todo liquidada. Los cambios finales de desarrollo y condición siguen pendientes.",
       "reconciliation": "Algunas actividades requieren conciliación. La evidencia que falta nunca se muestra como desarrollo cero.",
       "recorded": "Las actividades registradas se combinan para esta fecha. Los informes más antiguos pueden no incluir la evidencia completa de progreso o liquidación."
+    },
+    "bonus": {
+      "mark": "Bonificación Entrenar ahora",
+      "detail": "Pulsaste Entrenar ahora antes de que se ejecutara el entrenamiento automático, así que el entrenamiento de este ciclista recibió la bonificación de Entrenar ahora."
     },
     "riderReceipts": "Recibos de ciclistas",
     "trainedNow": "{count, plural, one {Entrenado ahora · día de carrera {range}} other {Entrenado ahora · días de carrera {range}}}",

@@ -43,6 +43,8 @@ export interface V6TacticsAfterProps {
   resultsState?: StageResultsState;
   /** Fejl-tilstanden med "Prøv igen", når etapens resultater ikke kunne hentes. */
   resultsErrorSlot?: ReactNode;
+  /** #8388: spoiler-skjoldet skjuler etapen. Skjoldets pladsholder ("Vis resultater") står i stedet for sammenligningen, og intet hentes. */
+  spoilerSlot?: ReactNode;
 }
 
 /** Ikonet og tonen for hver markering; ordet står altid ved, så farven aldrig er alene. */
@@ -109,8 +111,9 @@ function StepRow({ t, step, climbs }: { t: TFn; step: PlanStep; climbs: Readonly
   );
 }
 
-export default function V6TacticsAfter({ raceId, stageNumber, isStageRace, results, myTeamId, stageRoles, profile, resultsState = "loaded", resultsErrorSlot = null }: V6TacticsAfterProps) {
+export default function V6TacticsAfter({ raceId, stageNumber, isStageRace, results, myTeamId, stageRoles, profile, resultsState = "loaded", resultsErrorSlot = null, spoilerSlot = null }: V6TacticsAfterProps) {
   const { t } = useTranslation("races");
+  const spoilerHidden = spoilerSlot != null;
   // #7636: samme kontakt som Taktik-fanens opsummering (binær; fejl = slukket = som før).
   const [crossCheck7636, setCrossCheck7636] = useState(false);
   useEffect(() => {
@@ -119,20 +122,20 @@ export default function V6TacticsAfter({ raceId, stageNumber, isStageRace, resul
     return () => { alive = false; };
   }, []);
   const timeTrial = isTimeTrialProfile(profile?.profile_type ?? null);
-  const { timeline, loading, error } = useStageTimeline(timeTrial ? null : raceId, stageNumber) as {
+  const { timeline, loading, error } = useStageTimeline(timeTrial || spoilerHidden ? null : raceId, stageNumber) as {
     timeline: { events?: unknown[]; timeline_version?: number | null } | null; loading: boolean; error: boolean;
   };
 
   // Kun eget hold: GET team-orders svarer for den indloggede managers hold alene.
   const [orders, setOrders] = useState<{ raceId: string; value: TeamOrdersLike | null } | null>(null);
   useEffect(() => {
-    if (!raceId || timeTrial) return undefined;
+    if (!raceId || timeTrial || spoilerHidden) return undefined;
     let live = true;
     fetchTeamOrders({ raceId })
       .then((value) => { if (live) setOrders({ raceId, value: value as TeamOrdersLike | null }); })
       .catch(() => { if (live) setOrders({ raceId, value: null }); /* catch-ok: ukendte ordrer viser ingen plan, aldrig en gættet */ });
     return () => { live = false; };
-  }, [raceId, timeTrial]);
+  }, [raceId, timeTrial, spoilerHidden]);
   const knownOrders = orders && orders.raceId === raceId ? orders : null;
 
   const climbs = useMemo(() => teamPlanRouteFromProfile(profile as Record<string, unknown> | null).climbs, [profile]);
@@ -156,7 +159,7 @@ export default function V6TacticsAfter({ raceId, stageNumber, isStageRace, resul
   );
 
   const riders = useMemo(() => {
-    if (!timeline || !knownOrders?.value) return [];
+    if (spoilerHidden || !timeline || !knownOrders?.value) return [];
     return planVsActual({
       orders: knownOrders.value,
       stageRoles,
@@ -169,7 +172,7 @@ export default function V6TacticsAfter({ raceId, stageNumber, isStageRace, resul
       rankOf: (id) => rankById.get(id) ?? null,
       crossCheck: crossCheck7636,
     });
-  }, [timeline, knownOrders, stageRoles, stageNumber, riderIds, nameById, profile, rankById, crossCheck7636]);
+  }, [spoilerHidden, timeline, knownOrders, stageRoles, stageNumber, riderIds, nameById, profile, rankById, crossCheck7636]);
 
   const title = t("racePageV6.tacticsAfter.title");
   const meta = isStageRace ? t("racePageV6.tacticsAfter.metaStage", { number: stageNumber }) : t("racePageV6.tacticsAfter.metaRace");
@@ -178,6 +181,7 @@ export default function V6TacticsAfter({ raceId, stageNumber, isStageRace, resul
   // uden egne ryttere i optegnelsen viser intet her; den låste oversigt under står alene.
   const view = tacticsAfterView({
     timeTrial,
+    spoilerHidden,
     resultsState,
     timelineLoading: loading,
     timelineMissing: !timeline || error,
@@ -188,7 +192,11 @@ export default function V6TacticsAfter({ raceId, stageNumber, isStageRace, resul
   if (view === "hidden") return null;
 
   let body: ReactNode;
-  if (view === "error") {
+  if (view === "spoiler") {
+    // #8388: ingen placering, tider, km-skift eller "sat": kun skjoldets egen tekst og knap.
+    // Spillerens egen plan står i den låste oversigt under.
+    body = spoilerSlot;
+  } else if (view === "error") {
     // Uden etapens resultater mangler placeringerne og hvem der kørte: ærlig fejl, ingen halv sammenligning.
     body = resultsErrorSlot;
   } else if (view === "loading") {

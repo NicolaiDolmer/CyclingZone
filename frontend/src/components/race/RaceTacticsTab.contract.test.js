@@ -103,7 +103,9 @@ test("ét gem rammer begge endpoints for den åbne etape", () => {
   assert.match(source, /\/api\/races\/\$\{raceId\}\/stage-roles/);
   // #6647: ordren gemmes med intentionens indsats, ikke rollens "normal".
   // #8013 g: paa en kopi-etape er det kildeetapens ordre (ordersStage), ellers den aabne etape.
-  assert.match(source, /saveTacticsCard\(\{ raceId, stage: ordersStage, order: withoutRoadOrders\(withIntentionEfforts\(ordersStageSnapshot, /); // #7317
+  // #8381: putOrders faar etapen; default er ordersStage, og dens snapshot er ordersStageSnapshot.
+  assert.match(source, /putOrders: \(sn = ordersStage\) => saveTacticsCard\(\{ raceId, stage: sn, order: withoutRoadOrders\(withIntentionEfforts\(orderSnapshotOf\(sn\), /); // #7317
+  assert.match(source, /const orderSnapshotOf = \(sn\) => \(sn === ordersStage \? ordersStageSnapshot : ordersSnapshot\[sn\]\);/);
   assert.match(source, /const ordersStage = fillSource \?\? stage;/);
   assert.match(source, /const ordersStageSnapshot = fillSource === undefined \? orderSnapshot : /);
   // Ordrerne gemmes EFTER intentionen (runTacticsSave: putRoles foer putOrders), saa
@@ -150,7 +152,7 @@ test("kolonnen er sorterbar, og listen står i holdets rækkefølge indtil man k
   assert.match(source, /routeSortDir \? \[\.\.\.riders\]\.sort\(routeMatchComparator\(activeStage, routeSortDir\)\) : riders/);
   // Sorteringen gælder BEGGE flader — ellers viser mobil en anden rækkefølge
   // end desktop for de samme data.
-  assert.equal((source.match(/visibleRiders\.map\(/g) || []).length, 2, "både tabellen og mobil-listen tegner den sorterede liste");
+  assert.equal((source.match(/visibleRiders\.map\(/g) || []).length, 3, "tabellen, mobil-listen og det fælles panel (#8297) tegner den sorterede liste");
 });
 
 test("colSpan for den udfoldede vælger følger antallet af kolonner", () => {
@@ -247,13 +249,15 @@ test("etapeplanens tabel og mobilkort tegner rute-match", () => {
 
 test("#7332 enkeltstart: tre trin, gamle valg vises som save, kopi og gem skriver aldrig grupetto/protect", () => {
   // Vaelgeren faar etapens trin (begge layouts), aldrig serverens raa liste.
+  // #8298: det fælles panels indsatstrin (bag "All orders") faar de samme trin.
   assert.equal((source.match(/steps=\{steps\}/g) || []).length, 2);
+  assert.match(source, /steps: \{ steps, value: effort, labelFor: effortLabel\(rider\), blocked: effortReason\(rider\), editable \}/);
   assert.match(source, /const steps = effortsForStage\(roles\?\.valid_efforts, stageProfileType\);/);
   // Aaben etape: visningen gaar gennem effortForStage; laast etape viser det der blev sendt.
   assert.match(source, /: effortForStage\(intentionFor\(\{ matrix: draftMatrix, stageNumber: activeStage, riderId: rider\.rider_id \}\), stageProfileType\)\);/);
   // Kopi kender maal-etapens profil; ordren gemmes med den normaliserede indsats.
   assert.match(source, /copyStageIntentions\(\{ matrix: m, fromStage: activeStage, toStage: nextStage, riders, fromProfileType: profileTypeOfStage\(activeStage\), toProfileType: profileTypeOfStage\(nextStage\) \}\)/);
-  assert.match(source, /withIntentionEfforts\(ordersStageSnapshot, \(riderId\) => effortForStage\(intentionFor\(/);
+  assert.match(source, /withIntentionEfforts\(orderSnapshotOf\(sn\), \(riderId\) => effortForStage\(intentionFor\(/);
 });
 
 test("#8013 b: delstatus efter fill beholder de faktiske kvitteringer for roller og ordrer", () => {
@@ -268,10 +272,75 @@ test("#8013 g: gem fra en kopi-etape sender kildeetapens beskidte ordrer foer fi
   // Kildens ordre er beskidt mod sin egen kvittering, eller dens intention er aendret.
   assert.match(source, /JSON\.stringify\(ordersStageSnapshot\) !== JSON\.stringify\(initialOrdersByStage\[fillSource\]\) \|\| stages\.includes\(fillSource\)/);
   // Kvitteringen lander paa kildeetapen, og fill koerer kun efter et helt gemt forloeb.
-  assert.match(source, /\[ordersStage\]: outcome\.parts\.orders === "saved" \? ordersStageSnapshot : null/);
+  // #8381: pr. etape; kun en bekraeftet ordre faar kvittering, resten staar som ugemt (null).
+  assert.match(source, /orderStages\.map\(\(sn\) => \[sn, outcome\.ordersSaved\.includes\(sn\) \? orderSnapshotOf\(sn\) : null\]\)/);
+  assert.match(source, /const orderStages = \[\.\.\.new Set\(\[\.\.\.\(ordersNeeded \? \[ordersStage\] : \[\]\), \.\.\.otherDirtyOrderStages\]\)\];/);
   assert.match(source, /if \(outcome\.status !== "saved" \|\| !Object\.keys\(bulkSnapshot\)\.length\) \{/);
 });
 
 test("#7864: kopi-knappen bruger flertal ved flere etaper og ental ved en", () => {
   assert.match(source, /sameTypePlans\.length === 1\s*\? t\("intention\.copyToStage", \{ number: sameTypePlans\[0\]\.stage \}\)\s*: t\("intention\.copyToStages", \{ numbers: /);
 });
+
+
+// ── #8297: det fælles taktikpanel (wireframe v6c) under løbssiden v6 ──────────
+
+const panel = readFileSync(join(__dirname, '../tactics/TacticsPanel.tsx'), 'utf8');
+const panelV6c = source.slice(source.indexOf('function renderPanelV6c()'), source.indexOf('if (layout === "v6c") return renderPanelV6c();'));
+const has = (text, needle, message) => assert.ok(text.includes(needle), message ?? `mangler: ${needle}`);
+
+test("#8297: kun v6 vælger panelet; uden provider tegnes det klassiske kort uændret", () => {
+  has(source, "const layout = useTacticsLayout();");
+  has(source, 'if (layout === "v6c") return renderPanelV6c();');
+  const ctx = readFileSync(join(__dirname, "../tactics/tacticsLayout.ts"), "utf8");
+  has(ctx, 'createContext<TacticsLayout>("classic")', "uden provider: classic");
+  const page = readFileSync(join(__dirname, "v6/RacePageV6.tsx"), "utf8");
+  has(page, '<TacticsLayoutContext.Provider value="v6c">');
+});
+
+test("#8297/#8298: panelet bruger samme gem, kopi, holdplaner og spærrede valg som det klassiske kort", () => {
+  assert.ok(panelV6c.length > 0, "renderPanelV6c findes");
+  has(panelV6c, "onSave: save,");
+  has(panelV6c, "onCopy: copyToNextStage,");
+  has(panelV6c, 'saveDisabled: !dirty || saving || status === "conflict",');
+  has(panelV6c, "onApply={applyReadyPlan}");
+  has(panelV6c, "onStep={(id, step) => pickIntention(id, step)}");
+  has(panelV6c, "const key = effortBlockedKey(rider, step);");
+  has(panelV6c, "onClick={() => updateOrder((o) => setBreakawayStance(o, stance))}");
+  // Rollens vælger: samme som det klassiske kort (én definition, samme pickRole).
+  has(panelV6c, "rolePicker: rolePickerFor(rider),");
+  has(panelV6c, "teamPlan={ready7864 && stagePlanOn ? {");
+  // Etapeplanen skrives som serverens kæde (setRiderPlan), valideret af modellen.
+  has(panelV6c, "updateOrder((o) => setRiderPlan(o, id, legsNext));");
+  has(panelV6c, "const legsNext = legsFromParts(next, parts, role, planRoute, droppedLeg(legs ?? shown), legs ?? shown);");
+  // Udgået rytter og låst etape: ingen vælgere, kun det der blev sendt.
+  has(panelV6c, "if (rider.abandoned) {");
+  has(panelV6c, "levelText: stageLocked ?");
+});
+
+test("#8298: låste ryttere beholder planen, og det valgte kort afledes af rytternes planer", () => {
+  has(source, "const applied = planWithLocks(plan); // #8298: låste ryttere røres ikke");
+  has(source, "setDraftMatrix((matrix) => applyTeamPlanRoles(matrix, stage, applied.roleChanges, applied.editableRiderIds));");
+  has(source, "order: withLockedRiders(plan.order, order, lockedSet),");
+  has(source, "return bestCount * 2 > active.length ? best : null;");
+  // Codex P1: en plan, der skifter en låst rytters rolle, er spærret (ellers to kaptajner og overlap ved gem).
+  has(source, "const change = plan?.roleChanges?.find((c) => lockedSet.has(c.riderId));");
+  has(source, "if (lockedRoleConflict(plan)) return; // #8298: kortet er spærret med forklaring");
+  // Låsen gemmes med etapens ordre (serveren tager kun imod den med etapeplanen).
+  has(source, "const lockedSet = new Set((order.riders ?? []).filter((r) => r.locked === true).map((r) => r.rider_id));");
+  const payload = readFileSync(join(__dirname, "../../lib/tacticsOrderPayload7864.ts"), "utf8");
+  has(payload, "...(stagePlan&&rider.locked===true?{locked:true}:{})");
+  // Ingen lyser = følger holdets plan; den valgte knap igen = tilbage til holdets plan.
+  has(panelV6c, "const level = levelOfLegs(legs, plans, medium);");
+  has(panelV6c, "const next = picked === level ? medium : plans[picked];");
+  // Teksterne ligger i det route-gatede namespace "tactics"; panelet venter på dem.
+  has(source, 'useTranslation(layout === "v6c" ? "tactics" : "races")');
+  has(panelV6c, "if (!tacticsTextReady) {");
+});
+
+test("#8297: panelet har præcis én guldknap, og den gemmer", () => {
+  assert.equal((panel.match(/variant="primary"/g) || []).length, 1);
+  assert.match(panel, /<Button variant="primary"[^>]*onClick=\{footer\.onSave\}/);
+  assert.equal((panelV6c.match(/variant="primary"/g) || []).length, 0, "værten tilføjer ingen guldknap");
+});
+

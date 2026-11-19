@@ -31,7 +31,8 @@
 // kun human teams loades, division-standings batch-loades én gang.
 
 import { BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
-import { parseBoardGoals, evaluateGoalProgress } from "./boardGoals.js";
+import { parseBoardGoals, evaluateGoalProgress, isExpiredSeasonBoundGoal } from "./boardGoals.js";
+import { buildKeyedNotification } from "./notificationKeys.js";
 // #1237 · wageBillPerSeason-input til no_outstanding_debt (scoreFinanceHealthGoal).
 import { sumRiderSalaries } from "./boardUtils.js";
 import { unlockExtraordinaryRequestForTeam as unlockExtraordinaryRequestForTeamShared } from "./boardMandateEngine.js";
@@ -305,7 +306,9 @@ async function processTeamMidSeason({
   // Hent ryttere ved trigger-evaluering — vi har brug for is_u25 + popularity til
   // signature_rider/u25-mål. Holdt minimal: først tjek satisfaction, så lazy-load riders.
   const satisfaction = Number(board.satisfaction ?? 50);
-  const goals = parseBoardGoals(board.current_goals);
+  // #8118 · samme regel som sæson-evalueringen: et bonusmål fra en tidligere sæson tæller ikke.
+  const goals = parseBoardGoals(board.current_goals)
+    .filter((goal) => !isExpiredSeasonBoundGoal(goal, activeSeason?.number ?? null));
 
   // Lazy-loaded — kun hvis satisfaction-tjek ikke giver klar trigger.
   let riders = null;
@@ -335,12 +338,14 @@ async function processTeamMidSeason({
 
   if (!trigger) return { banner_sent: false };
 
-  const message = buildMidSeasonMessage({ reason, satisfaction });
+  const keyed = buildMidSeasonNotification({ reason, satisfaction, seasonNumber: activeSeason.number });
   const result = await notifyUser({
     userId: team.user_id,
     type: "board_critical",
+    // Titlen er gentagelsesværnets nøgle ovenfor og skal forblive den engelske tekst.
     title,
-    message,
+    message: keyed.message,
+    metadata: keyed.metadata,
     relatedId: board.id,
     now,
   });
@@ -435,11 +440,19 @@ function countBehindGoals({ goals, standing, team, divisionManagerCount, finance
   }).length;
 }
 
-// #2520: spillervendt tekst, skal være på engelsk. #8196: sendes kun i spillet (ingen DM).
-function buildMidSeasonMessage({ reason, satisfaction }) {
-  const intro = reason === "low_satisfaction"
-    ? `The board is concerned. Satisfaction is down to ${Math.round(satisfaction)}.`
-    : "The board is concerned. At least half of the plan's goals are behind schedule.";
-  const actions = "You can still adjust the plan via a board request — or request a budget loan on the Economy page if the pressure is financial. The board expects to see action before the season ends.";
-  return `${intro} ${actions}`;
+// #8196: sendes kun i spillet (ingen DM).
+// #8116: beskeden henviste til en "board request", som ikke findes i Boardroom.
+// Nu peger den kun på det spilleren faktisk kan: se de bagudliggende mål på
+// Bestyrelse-siden og låne på Økonomi-siden. Nøgler (#666), så en dansk spiller
+// får den på dansk; `message` er den engelske fallback fra EN-locale.
+export function buildMidSeasonNotification({ reason, satisfaction, seasonNumber }) {
+  const messageCode = reason === "low_satisfaction"
+    ? "notif.boardMidSeason.lowSatisfaction"
+    : "notif.boardMidSeason.manyBehind";
+  return buildKeyedNotification({
+    titleCode: "notif.boardMidSeason.title",
+    titleParams: { season: seasonNumber },
+    messageCode,
+    messageParams: reason === "low_satisfaction" ? { satisfaction: Math.round(Number(satisfaction)) } : {},
+  });
 }

@@ -55,6 +55,85 @@ export function groupEntriesByDate(entries) {
   return map;
 }
 
+// #5841: puljerne i en division kører samme løb på samme datoer med samme ruter (én kopi pr.
+// pulje i databasen). Uden sammenlægning viste divisionsfilteret hvert løb én gang pr. pulje.
+// Nøglen er division + navn + løbstype + etapeplanen (etape, dato, rute). Klokkeslæt er ikke
+// med: samme løb på samme dag er samme løb for spilleren. Afviger blot én etape, er det to løb.
+function poolTwinKey(e) {
+  const sched = e.stageSchedule && e.stageSchedule.length
+    ? e.stageSchedule.map((s) => `${s.stage}@${s.date || ""}@${s.profileType || s.terrain || ""}`)
+    : [`1@${e.date || ""}@${e.terrain || ""}`];
+  return [e.division ?? "", e.name, e.raceType || "", e.stages ?? 1, sched.join("|")].join("#");
+}
+
+// Slår puljernes ens løb sammen til ét pr. division. Har holdet en pulje (preferPoolId), peger
+// løbet på holdets eget; ellers på puljen der står først i divisionstræet (laveste nummer).
+// Et løb der kun findes i én pulje er uændret. poolLabel ryddes på et sammenlagt løb der ikke er
+// holdets eget, fordi én puljes navn ville påstå at løbet kun køres der. Ren, bevarer rækkefølgen.
+/** @param {any[]|null|undefined} entries @param {{ divisions?: any[], preferPoolId?: number|null }} [opts] @returns {any[]} */
+export function mergePoolTwins(entries, { divisions = [], preferPoolId = null } = {}) {
+  const rank = new Map();
+  let i = 0;
+  for (const d of divisions || []) for (const p of d.pools || []) rank.set(p.id, i++);
+  const rankOf = (e) => (e.poolId != null && rank.has(e.poolId) ? rank.get(e.poolId) : Number.MAX_SAFE_INTEGER);
+  const better = (a, b) => {
+    const aOwn = preferPoolId != null && a.poolId === preferPoolId;
+    const bOwn = preferPoolId != null && b.poolId === preferPoolId;
+    if (aOwn !== bOwn) return aOwn;
+    return rankOf(a) < rankOf(b);
+  };
+  const groups = new Map();
+  const order = [];
+  for (const e of entries || []) {
+    const key = poolTwinKey(e);
+    const g = groups.get(key);
+    if (!g) { groups.set(key, { best: e, count: 1 }); order.push(key); continue; }
+    g.count += 1;
+    if (better(e, g.best)) g.best = e;
+  }
+  return order.map((key) => {
+    const { best, count } = groups.get(key);
+    if (count === 1) return best;
+    const own = preferPoolId != null && best.poolId === preferPoolId;
+    return own ? best : { ...best, poolLabel: null };
+  });
+}
+
+// #5841 (udgave-skiftet): hvert løbs puljetvillinger efter samme regel som mergePoolTwins, i
+// divisionstræets orden. Map<løbs-id, [{ id, poolId, poolIndex }]>; et løb uden tvillinger er udeladt.
+/** @param {any[]|null|undefined} entries @param {{ divisions?: any[] }} [opts] @returns {Map<any, {id:any, poolId:any, poolIndex:number|null}[]>} */
+export function poolTwinsByRaceId(entries, { divisions = [] } = {}) {
+  const poolById = new Map();
+  let i = 0;
+  for (const d of divisions || []) for (const p of d.pools || []) poolById.set(p.id, { rank: i++, poolIndex: p.poolIndex ?? null });
+  const groups = new Map();
+  for (const e of entries || []) {
+    const key = poolTwinKey(e);
+    groups.set(key, [...(groups.get(key) || []), e]);
+  }
+  const out = new Map();
+  for (const list of groups.values()) {
+    if (list.length < 2) continue;
+    const twins = list
+      .map((e) => ({ id: e.id, poolId: e.poolId ?? null, poolIndex: poolById.get(e.poolId)?.poolIndex ?? null, rank: poolById.get(e.poolId)?.rank ?? Number.MAX_SAFE_INTEGER }))
+      .sort((a, b) => a.rank - b.rank)
+      .map(({ rank: _rank, ...twin }) => twin);
+    for (const e of list) out.set(e.id, twins);
+  }
+  return out;
+}
+
+// #5841: den pulje en kommende sæsons tidslinje vises fra, mens holdets division ikke er afgjort:
+// den første pulje (laveste nummer) i den forventede division, der har løb. null hvis ingen.
+/** @param {{ divisions?: any[], entries?: any[], expectedDivision?: number|null }} [opts] @returns {number|null} */
+export function expectedPoolId({ divisions = [], entries = [], expectedDivision = null } = {}) {
+  if (expectedDivision == null) return null;
+  const tier = (divisions || []).find((d) => d.division === expectedDivision);
+  if (!tier) return null;
+  const withRaces = new Set((entries || []).map((e) => e.poolId));
+  return (tier.pools || []).find((p) => withRaces.has(p.id))?.id ?? null;
+}
+
 // Expands each race entry into ONE event PER STAGE (from entry.stageSchedule), so a stage race
 // shows up on every day it runs ("1. etape" on its day, "2. etape" the next, …). Falls back to a
 // single event on the entry's start date if no per-stage schedule is present (defensive).

@@ -443,6 +443,8 @@ export async function writeLegacyOneYearBoard(supabase, {
   const finalGoals = preserveExternalGoals({
     rebuiltGoals: goals,
     previousGoals: existingBoard?.current_goals ?? [],
+    // #8118 · bonusmål fra en tidligere sæson er dømt og følger ikke med.
+    seasonNumber,
   });
 
   const upsertData = {

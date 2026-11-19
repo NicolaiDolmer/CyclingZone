@@ -9,9 +9,13 @@
 //      (samme regel som scripts/lib/league-check.ps1), MERGEABLE, og en
 //      staaende kategori fra scripts/merge-queue-classify.mjs (hard rule 35).
 //      EJER-GO koerer kun med ejerens eksplicitte merge-markoer (se nedenfor);
-//   3. kalder scripts/merge-queue.ps1 -Pr "<N>" -Repo <repo>, een PR ad gangen
-//      efter en frisk vurdering (hovedet maa ikke have flyttet sig), og kun hvis
-//      ingen anden koe koerer (tog-markoeren fra #7633: levende markoer = goer intet);
+//   3. kalder scripts/merge-queue.ps1 EEN gang med ET samlet tog (ejer 17/11, #8331):
+//      op til TRAIN_MAX_BATCH klare PR'er, hoejst een deploy-PR og den sidst i toget.
+//      Hver PR vurderes frisk lige foer koeen startes, og koeen faar det vurderede
+//      hoved pr. PR (-ExpectHead); et andet hoved merges aldrig (Codex P1 #7657).
+//      Koeen faar -CiTimeoutMinutes 90 (17/11: 25 min gav falsk timeout og laaste toget,
+//      mens main-CI stod i GitHubs koe). Kun hvis ingen anden koe koerer (tog-markoeren
+//      fra #7633: levende markoer = goer intet; koeen tager den selv atomisk, exit 3).
 //
 // Ejerens merge-markoer: EJER-GO-PR'er (ogsaa dem med den klaebende
 // klassifikator-markoer "merge-queue-category: ejer-go") medtages KUN naar en
@@ -40,8 +44,16 @@ import { fileURLToPath } from 'node:url';
 import { CATEGORY, DEFAULT_REPO, classifyPr, fetchMigrationFacts, formatClassification } from './merge-queue-classify.mjs';
 import { gitCommonRoot, markerFilePath, readActiveMarker } from './merge-queue-active-marker.mjs';
 import { deploymentAttemptState, handedOffRunVerdict } from './ci/deploy-verification-state.mjs';
+import { classifyPrFiles, mustRunAlone, touchesVercel } from './merge-queue-files.mjs';
 
 export const LOG_RELATIVE = join('.claude', 'run', 'merge-autotrain.log');
+// Samme loft som merge-queue.ps1's -MaxBatch (testen laaser de to sammen).
+export const TRAIN_MAX_BATCH = 5;
+// main-CI tog 76-110 min i koe-spidser 16-17/11; sendes eksplicit til koeen.
+export const QUEUE_CI_TIMEOUT_MINUTES = 90;
+// merge-queue.ps1: 2 = nogle PR'er sprunget over, men det merged er verificeret; 3 = en anden koe ejer markoeren.
+export const QUEUE_EXIT_PARTIAL = 2;
+export const QUEUE_EXIT_BUSY = 3;
 // Codex P1 (#7657): en koe der sluttede uden exit 0 (main-CI/deploy roed eller uverificeret)
 // laaser toget paa tvaers af koersler, til main's HEAD er positivt verificeret.
 export const BLOCK_RELATIVE = join('.claude', 'run', 'merge-autotrain-block.json');
@@ -114,13 +126,27 @@ export function precheck(pr, { baseBranch = 'main' } = {}) {
   return null;
 }
 
-export function evaluatePr(pr, { requiredChecks, allChecks, classification, ownerLogin, baseBranch = 'main' }) {
+/**
+ * Udloeser PR'en et deploy (samme regel som merge-queue.ps1: backend, Railway eller
+ * Vercel), eller skal den koere alene (migration/motor)? Ukendt filliste = ja (fail-safe).
+ */
+export function deployImpact(files) {
+  const paths = Array.isArray(files) ? files.map((f) => (typeof f === 'string' ? f : f?.path)) : null;
+  if (!paths?.length || paths.some((p) => typeof p !== 'string')) return { deploys: true, solo: true };
+  const { touchesBackend, touchesRailway } = classifyPrFiles(paths);
+  const solo = mustRunAlone(paths);
+  return { deploys: Boolean(touchesBackend || touchesRailway || touchesVercel(paths) || solo), solo };
+}
+
+export function evaluatePr(pr, { requiredChecks, allChecks, classification, ownerLogin, baseBranch = 'main', deploy = null }) {
   const out = {
     number: Number(pr?.number),
     title: String(pr?.title ?? ''),
     headSha: String(pr?.headRefOid ?? ''),
     ready: false,
     eligible: false,
+    deploys: deploy ? Boolean(deploy.deploys) : true,
+    solo: deploy ? Boolean(deploy.solo) : true,
     category: classification?.category ?? null,
     classification: classification ? formatClassification(classification) : null,
     reason: '',
@@ -141,9 +167,18 @@ export function evaluatePr(pr, { requiredChecks, allChecks, classification, owne
   return { ...ready, reason: 'klar, men kraever ejer-go' };
 }
 
-/** PR-numre til toget, aeldste foerst (stabil raekkefoelge). */
-export function selectTrain(evaluations) {
-  return evaluations.filter((e) => e.eligible).map((e) => e.number).sort((a, b) => a - b);
+/**
+ * PR-numre til ET samlet tog (ejer 17/11, #8331), aeldste foerst, hoejst maxBatch.
+ * Deploy-reglen: hoejst een deploy-PR (den aeldste), og den sidst i toget, saa togets
+ * sidste merge-SHA baerer deploy-verifikationen (Codex P1 #6861). Resten venter til
+ * naeste koersel.
+ */
+export function selectTrain(evaluations, { maxBatch = TRAIN_MAX_BATCH } = {}) {
+  const eligible = (evaluations ?? []).filter((e) => e?.eligible).sort((a, b) => a.number - b.number);
+  const deploy = eligible.find((e) => e.deploys !== false);
+  const quiet = eligible.filter((e) => e.deploys === false).map((e) => e.number);
+  const room = Math.max(0, maxBatch - (deploy ? 1 : 0));
+  return [...quiet.slice(0, room), ...(deploy && maxBatch > 0 ? [deploy.number] : [])];
 }
 
 /** Gaa intet, hvis en koe allerede koerer (levende tog-markoer). */
@@ -217,6 +252,7 @@ export function evaluateOne(pr, { repo, ownerLogin, gh, log = () => {} }) {
   const requiredChecks = gh.json(['pr', 'checks', String(pr.number), '--repo', repo, '--required', '--json', 'name,bucket'], { allowExit: CHECKS_EXIT }) ?? [];
   const allChecks = gh.json(['pr', 'checks', String(pr.number), '--repo', repo, '--json', 'name,bucket,startedAt,event'], { allowExit: CHECKS_EXIT }) ?? [];
   let classification = null;
+  let deploy = null;
   if (requiredChecksStatus(requiredChecks).green && reviewGateStatus(allChecks).green) {
     try {
       const rest = gh.json(['api', '--paginate', '--slurp', `repos/${repo}/pulls/${pr.number}/files?per_page=100`]);
@@ -224,6 +260,7 @@ export function evaluateOne(pr, { repo, ownerLogin, gh, log = () => {} }) {
       if (!files) {
         log(`  #${pr.number}: fillisten er ufuldstaendig; behandles som ejer-go.`);
       } else {
+        deploy = deployImpact(files);
         const full = { ...pr, files };
         Object.assign(full, fetchMigrationFacts(full, repo, { runGh: gh.text }));
         classification = classifyPr(full);
@@ -232,7 +269,7 @@ export function evaluateOne(pr, { repo, ownerLogin, gh, log = () => {} }) {
       log(`  #${pr.number}: klassifikation fejlede (${err?.message ?? err}); behandles som ejer-go.`);
     }
   }
-  return evaluatePr(pr, { requiredChecks, allChecks, classification, ownerLogin });
+  return evaluatePr(pr, { requiredChecks, allChecks, classification, ownerLogin, deploy });
 }
 
 const DEFAULT_GH = { json: ghJson, text: ghText };
@@ -325,13 +362,24 @@ function defaultCheckMain({ repo }) {
 
 const SCRIPT_ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
+/**
+ * Argumenterne til merge-queue.ps1 for et samlet tog. -ExpectHead har een SHA pr. PR i
+ * samme raekkefoelge (Codex P1 #7657), -MaxDeployBatch 1 lader koeen selv haandhaeve
+ * deploy-reglen, og -CiTimeoutMinutes er sat eksplicit (#8331).
+ */
+export function queueArgs({ script, train, repo, expectHeads }) {
+  const args = ['-NoProfile', '-NonInteractive', '-File', script, '-Pr', train.join(','), '-Repo', repo,
+    '-MaxBatch', String(TRAIN_MAX_BATCH), '-MaxDeployBatch', '1', '-CiTimeoutMinutes', String(QUEUE_CI_TIMEOUT_MINUTES)];
+  if (expectHeads?.length) args.push('-ExpectHead', expectHeads.join(','));
+  return args;
+}
+
 // Koeen koeres fra samme checkout som dette script (den planlagte opgave peger paa hoved-checkoutet).
-function defaultRunQueue({ train, repo, logFile, expectHead }) {
+function defaultRunQueue({ train, repo, logFile, expectHeads }) {
   const repoRoot = SCRIPT_ROOT;
   const script = join(repoRoot, 'scripts', 'merge-queue.ps1');
-  const args = ['-NoProfile', '-NonInteractive', '-File', script, '-Pr', train.join(','), '-Repo', repo];
-  // Codex P1 (#7657): koeen merger kun det hoved, der blev vurderet og godkendt her.
-  if (expectHead) args.push('-ExpectHead', expectHead);
+  // Codex P1 (#7657): koeen merger kun de hoveder, der blev vurderet og godkendt her.
+  const args = queueArgs({ script, train, repo, expectHeads });
   let fd = null;
   try {
     if (logFile) fd = openSync(logFile, 'a');
@@ -361,7 +409,7 @@ export function parseArgs(argv) {
 
 /**
  * Een koersel. Alle IO-afhaengigheder kan injiceres (tests).
- * Raekkefoelge: tog-markoer -> vurdering -> koe (een PR ad gangen, frisk tjek foer hver).
+ * Raekkefoelge: tog-markoer -> vurdering -> frisk tjek af hver PR -> koe (eet samlet tog).
  */
 export async function run({
   argv = process.argv.slice(2),
@@ -424,17 +472,15 @@ export async function run({
     return { action: 'none', train };
   }
   if (opts.dryRun) {
-    log(`  DRY-RUN: ville koere merge-queue.ps1 -Repo ${opts.repo} een PR ad gangen: ${train.map((n) => `-Pr "${n}"`).join(', ')} (${decision.reason}).`);
+    log(`  DRY-RUN: ville koere merge-queue.ps1 -Pr "${train.join(',')}" -Repo ${opts.repo} som eet tog (${decision.reason}).`);
     return { action: 'dry-run', train };
   }
-  // Een PR pr. koe-koersel, og frisk vurdering lige foer: merge-queue.ps1 binder ikke
-  // merget til det hoved der blev vurderet her, saa et push efter udvaelgelsen maa
-  // ikke arve kategori eller ejer-go. Ventetiden mellem tjek og merge er da koeens egen.
+  // ET samlet tog (ejer 17/11, #8331). Frisk vurdering af hver PR lige foer koeen
+  // startes: et push efter udvaelgelsen maa ikke arve kategori eller ejer-go, og koeen
+  // faar det friske hoved pr. PR (-ExpectHead) og merger aldrig et andet (Codex P1 #7657).
   const byNumber = new Map(evaluations.map((e) => [e.number, e]));
-  const queued = [];
-  const results = [];
+  const confirmed = [];
   for (const n of train) {
-    if (readMarker()) { log('  En anden merge-koe er startet; resten venter til naeste koersel.'); break; }
     let fresh;
     try {
       fresh = reevaluate(n, { repo: opts.repo, ownerLogin, log });
@@ -444,20 +490,35 @@ export async function run({
     }
     const confirm = confirmBeforeQueue(byNumber.get(n), fresh);
     if (!confirm.ok) { log(`  #${n}: ${confirm.reason}; springes over.`); continue; }
-    log(`  Starter merge-queue.ps1 -Pr "${n}" -Repo ${opts.repo}.`);
-    const code = runQueue({ train: [n], repo: opts.repo, logFile, expectHead: fresh.headSha });
-    log(`  merge-queue.ps1 (#${n}) sluttede med exit ${code}.`);
-    queued.push(n);
-    results.push({ pr: n, exit: code });
-    if (code !== 0) {
-      // Codex P1 (#7657): roed/uverificeret main eller deploy stopper toget, og laasen
-      // holder paa tvaers af koersler, til main er positivt verificeret.
-      try { writeState(blockPath, { pr: n, exit: code, at: now.toISOString() }); } catch (err) { log(`  ADVARSEL: laasen kunne ikke gemmes (${err?.message ?? err}).`); }
-      log(`  Toget stopper efter exit ${code} paa #${n}; laast til main er verificeret.`);
-      break;
-    }
+    confirmed.push(fresh);
   }
-  return { action: 'queue', train, queued, results };
+  // Deploy-reglen igen paa de friske vurderinger (en PR kan have aendret filer).
+  const finalTrain = selectTrain(confirmed);
+  if (!finalTrain.length) {
+    log('  Ingen koe: ingen PR\'er bekraeftet ved den friske vurdering.');
+    return { action: 'none', train: [] };
+  }
+  if (readMarker()) {
+    log('  En anden merge-koe er startet; toget venter til naeste koersel.');
+    return { action: 'skip-active', train: finalTrain };
+  }
+  const freshBy = new Map(confirmed.map((e) => [e.number, e]));
+  const expectHeads = finalTrain.map((n) => freshBy.get(n).headSha);
+  log(`  Starter merge-queue.ps1 -Pr "${finalTrain.join(',')}" -Repo ${opts.repo} som eet tog (CI-frist ${QUEUE_CI_TIMEOUT_MINUTES} min).`);
+  const code = runQueue({ train: finalTrain, repo: opts.repo, logFile, expectHeads });
+  log(`  merge-queue.ps1 (${finalTrain.map((n) => `#${n}`).join(', ')}) sluttede med exit ${code}.`);
+  const results = [{ prs: finalTrain, exit: code }];
+  if (code === QUEUE_EXIT_BUSY) {
+    // Koeen tog ikke markoeren (en anden koe naaede foerst): intet er merget, ingen laas.
+    log('  En anden merge-koe ejer markoeren; intet merget. Proever igen naeste koersel.');
+  } else if (code !== 0 && code !== QUEUE_EXIT_PARTIAL) {
+    // Codex P1 (#7657): roed/uverificeret main eller deploy stopper toget, og laasen
+    // holder paa tvaers af koersler, til main er positivt verificeret. Exit 2 (nogle
+    // PR'er sprunget over) er verificeret af koeen selv og laaser ikke.
+    try { writeState(blockPath, { pr: finalTrain[0], prs: finalTrain, exit: code, at: now.toISOString() }); } catch (err) { log(`  ADVARSEL: laasen kunne ikke gemmes (${err?.message ?? err}).`); }
+    log(`  Toget sluttede med exit ${code}; laast til main er verificeret.`);
+  }
+  return { action: 'queue', train: finalTrain, queued: finalTrain, results };
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {

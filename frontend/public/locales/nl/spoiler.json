@@ -1,0 +1,29 @@
+{
+  "switch": "Spoilerschild",
+  "hero": {
+    "hidden": "Etappe gereden · uitslag verborgen door je spoilerschild"
+  },
+  "results": {
+    "hidden": "De uitslagen zijn verborgen door je spoilerschild",
+    "show": "Toon uitslagen",
+    "loading": "Je spoilerschild wordt gecontroleerd"
+  },
+  "story": {
+    "inResults": "Je dag en de uitslag staan bij Uitslagen",
+    "finaleAhead": "De finale komt nog · blijf kijken"
+  },
+  "settings": {
+    "title": "Uitslagen en spoilers",
+    "intro": "Hoe uitslagen je bereiken.",
+    "all": "Spoilerschild voor alle koersen",
+    "allHint": "Verbergt winnaars en uitslagen tot je de etappe opent. Elke koerspagina heeft ook een eigen schakelaar.",
+    "notifications": "Meldingen",
+    "notificationsHint": "Met het schild aan zeggen de inbox, de bel en browsermeldingen alleen dat de etappe gereden is.",
+    "openIn": "Open een gereden etappe in",
+    "openInHint": "Het schild opent een gereden etappe altijd in Verhaal.",
+    "results": "Uitslagen",
+    "story": "Verhaal",
+    "saved": "Opgeslagen",
+    "failed": "Opslaan mislukt. Probeer het opnieuw."
+  }
+}

@@ -33,8 +33,13 @@ export function WithBestRole({ children, rider = null, role = null, variant = "s
   return (
     <span className={`inline-flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 ${className}`}>
       {children}
+      {/* #8278 (rettelse 1): på mobil står chippen UNDER pladen, og pladsens
+          `ch` blev regnet i cellens text-sm, ikke chippens text-3xs. Det gjorde
+          pladsen 69 px og Rating-kolonnen 85 px, som navnet betalte for.
+          `max-sm:text-3xs` regner pladsen i chippens egen skriftstørrelse
+          (ca. 55 px); desktop er uændret. */}
       <span
-        className="inline-flex justify-center sm:justify-start"
+        className="inline-flex justify-center sm:justify-start max-sm:text-3xs"
         style={{ minWidth: CHIP_SLOT_WIDTH[variant] || CHIP_SLOT_WIDTH.short }}
       >
         <BestRoleTag rider={rider} role={role} variant={variant} />
@@ -57,7 +62,7 @@ export default function BestRoleTag({ rider = null, role = null, variant = "shor
   const pad = variant === "short" ? "px-1.5 py-0.5" : "px-2 py-1";
   return (
     <span
-      className={`inline-flex items-center rounded font-medium leading-none whitespace-nowrap bg-cz-2/10 text-cz-2 ${text} ${pad} ${className}`}
+      className={`inline-flex items-center rounded-cz font-medium leading-none whitespace-nowrap bg-cz-2/10 text-cz-2 ${text} ${pad} ${className}`}
       title={t("bestRole.title", { role: full })}
       data-best-role={key}
       {...(testId ? { "data-testid": testId } : {})}

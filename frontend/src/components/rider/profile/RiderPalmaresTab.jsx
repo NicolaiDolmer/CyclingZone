@@ -105,7 +105,7 @@ export default function RiderPalmaresTab({ riderId, seasonRows, loadFailed = fal
   if (races.length === 0) {
     return (
       <div className="bg-cz-card border border-cz-border rounded-cz p-6 text-center">
-        <h3 className="font-display text-lg tracking-[0.02em] uppercase text-cz-1 m-0 mb-1.5">
+        <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0 mb-1.5">
           {t("profile.palmares.emptyTitle")}
         </h3>
         <p className="text-cz-3 text-sm m-0">{t("profile.palmares.emptyBody")}</p>
@@ -145,7 +145,7 @@ export default function RiderPalmaresTab({ riderId, seasonRows, loadFailed = fal
           kronologisk (ældste først), så profilen læses som et CV. */}
       {careerEvents.length > 0 && (
         <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
-          <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mb-3">
+          <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0 mb-3">
             {t("profile.palmares.careerFirstsTitle")}
           </h3>
           {careerEvents.map((event) => (
@@ -155,7 +155,7 @@ export default function RiderPalmaresTab({ riderId, seasonRows, loadFailed = fal
       )}
 
       <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
-        <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mb-3">
+        <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0 mb-3">
           {t("profile.palmares.trophyTitle")}
         </h3>
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-x-3 gap-y-3">
@@ -178,7 +178,7 @@ export default function RiderPalmaresTab({ riderId, seasonRows, loadFailed = fal
       </div>
 
       <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
-        <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mb-3">
+        <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0 mb-3">
           {t("profile.palmares.totalsTitle")}
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-3">
@@ -193,14 +193,14 @@ export default function RiderPalmaresTab({ riderId, seasonRows, loadFailed = fal
 
       <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
         <div className="py-2 px-4 border-b border-cz-border">
-          <h3 className="font-display text-[15px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0">
+          <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0">
             {t("profile.palmares.seasonHonoursTitle")}
           </h3>
         </div>
         {honours.map((entry, idx) => (
           <div key={entry.season} className={`px-4 py-3 ${idx > 0 ? "border-t border-cz-border" : ""}`}>
             <div className="flex items-center gap-2 flex-wrap mb-2">
-              <h4 className="font-display text-[13px] leading-none tracking-[0.02em] uppercase text-cz-2 m-0">
+              <h4 className="text-[13px] font-semibold leading-tight text-cz-2 m-0">
                 {t("season.row", { n: entry.season })}
               </h4>
               {entry.teamNames.length > 0 ? (

@@ -1,0 +1,130 @@
+{
+  "panel": {
+    "ordersFor": "Orders for stage {number}",
+    "ordersForRaceDay": "Orders for the race day",
+    "simple": "Simple",
+    "allOrders": "All orders",
+    "ordersView": "Show orders",
+    "howItWorks": "How tactics work",
+    "todaysPlan": "Today's plan",
+    "planMeta": "one choice for the whole team"
+  },
+  "team": {
+    "label": "The team",
+    "question": "Chase the break?",
+    "chase": "Chase",
+    "neutral": "Judge it on the road",
+    "let_go": "Leave it to others",
+    "reacts": "Reacts if the break threatens {name}'s GC.",
+    "reactsNoLeader": "Reacts if the break threatens your GC."
+  },
+  "plan": {
+    "gc": "Everyone rides for your GC leader and keeps him out of trouble.",
+    "stage": "The team works for the rider who suits today's route best.",
+    "sprint": "The team saves him for the finish, with a train in the last 10 km.",
+    "break": "Two riders try the break. The rest ride easy.",
+    "save": "Everyone rides in. Lowest fatigue tonight.",
+    "lockedConflict": "Unlock {name} to use this plan. It changes his role."
+  },
+  "col": {
+    "rider": "Rider",
+    "role": "Role",
+    "rating": "Rating",
+    "form": "Form",
+    "routeMatch": "Route match",
+    "fatigueNow": "Fatigue now",
+    "today": "Today",
+    "effort": "Effort",
+    "orders": "Orders",
+    "lock": "Lock",
+    "dayLoad": "Day load"
+  },
+  "level": {
+    "easy": "Easy",
+    "medium": "Normal",
+    "hard": "Hard",
+    "aria": "Effort for {name}"
+  },
+  "orders": {
+    "button": "Orders",
+    "buttonAria": "Orders for {name}",
+    "extra": "Extra orders",
+    "ifDropped": "If dropped: {task}",
+    "steps": "Effort steps",
+    "toClimb": "To {name}",
+    "toLastTen": "To the last 10 km",
+    "lastTen": "Last 10 km",
+    "tryBreak": "Try the break",
+    "sprintTrain": "Sprint train",
+    "notForRole": "Not for this role.",
+    "noSprintCaptain": "Your team has no sprint captain.",
+    "trainAfterBreak": "A rider in the break can't lead out the sprint.",
+    "trainSelf": "He is the sprinter.",
+    "noRoadOrders": "No road orders in a time trial.",
+    "followTeam": "Follow team plan"
+  },
+  "short": {
+    "stay_sheltered": "Sheltered",
+    "shelter_leader": "Guard leader",
+    "tempo": "Tempo",
+    "follow_moves": "Follow",
+    "ride_for_result": "Result",
+    "attack": "Attack",
+    "breakaway": "Break",
+    "sprint_train": "Lead-out",
+    "grupetto": "Grupetto",
+    "ride_in": "Ride in",
+    "hunt_points": "Points",
+    "hunt_kom": "KOM"
+  },
+  "today": {
+    "breakaway": "Tries the break",
+    "attack": "Attacks on {climb}",
+    "attackFinale": "Attacks in the finale",
+    "ride_for_result": "Rides for a result",
+    "follow_moves": "Follows the best",
+    "tempo": "Sets the tempo",
+    "shelterLeader": "Keeps {leader} up front",
+    "shelterLeaderNone": "Keeps the leader up front",
+    "stay_sheltered": "Stays sheltered",
+    "grupetto": "Grupetto, saves himself",
+    "sprint_train": "Leads out the sprint",
+    "ride_in": "Rides in easy",
+    "huntPoints": "Goes for points",
+    "roleDefault": "Rides his role",
+    "effort": {
+      "grupetto": "Grupetto, saves himself",
+      "save": "Rides easy",
+      "normal": "Rides his role",
+      "protect": "Works for the team",
+      "all_out": "Goes all out"
+    }
+  },
+  "dayLoad": {
+    "easy": "Easy day",
+    "light": "Light day",
+    "normal": "Normal day",
+    "hard": "Hard day",
+    "veryHard": "Very hard day"
+  },
+  "lock": {
+    "on": "Unlock {name}",
+    "off": "Lock {name}",
+    "title": "A locked rider keeps his plan when you change the team plan."
+  },
+  "legend": {
+    "cost": "Cost:",
+    "dayLoad": "Day load:",
+    "sort": "Click a column to sort. A locked rider keeps his plan when you change the team plan."
+  },
+  "footer": {
+    "notSavedLine": "If you do nothing, they ride exactly this"
+  },
+  "hero": {
+    "assistant_one": "{count} rider rides the assistant's plan",
+    "assistant_other": "{count} riders ride the assistant's plan"
+  },
+  "mobile": {
+    "numbers": "Rating {rating} · form {form} · route match {match} · fatigue now {fatigue}"
+  }
+}

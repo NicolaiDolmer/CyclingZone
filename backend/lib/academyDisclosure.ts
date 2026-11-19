@@ -18,7 +18,8 @@ export async function isAcademyKnowledgeEnabled(supabase: any): Promise<boolean>
 
 type Row = Record<string, any>;
 export function academyEstimate(prognosis: RosterPrognosis) {
-  return { academyPrognosis: prognosis };
+  const { stage, daysOnTeam, nextStageDays, band } = prognosis;
+  return { academyPrognosis: { stage, daysOnTeam, nextStageDays, band } };
 }
 
 export async function loadAcademyPrognoses(supabase: any, { enabled, teamId, riders, abilitiesByRider, seasonNumber, scout, developmentXp = null }: {

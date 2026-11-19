@@ -1,4 +1,5 @@
 // #5259 · Statefuld preview-mock for beta-adgang (samme princip som
+import { stagePlanPreviewActive } from "../components/race/StagePlanPreviewMock.ts"; // #8298
 // clubMock/plannerMock): POST/PATCH muterer en in-memory tilstand, GET spejler
 // den. Så et screenshot-par kan tages på ægte klik i stedet for to statiske
 // payloads, og ejeren kan klikke fladen igennem på et preview uden prod-data.
@@ -40,6 +41,7 @@ let flags = [
   { key: "board_mandate_model_enabled", area: "board", label: "Bestyrelse — mandat-modellen", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
   { key: "academy_enabled", area: "academy", label: "Akademi", stage: "on", raw_value: "on", boolean_only: false, configured: true, unknown_value: false },
   { key: "academy_intake_pull_enabled", area: "academy", label: "Akademi — træk af nye talenter", stage: "off", raw_value: "off", boolean_only: false, configured: true, unknown_value: false },
+  { key: "academy_page_v2_8081", area: "academy", label: "Akademisiden udgave A + aldersfokus", stage: "off", raw_value: "off", boolean_only: false, configured: true, unknown_value: false },
   { key: "daily_training_enabled", area: "training", label: "Daglig træning", stage: "on", raw_value: true, boolean_only: true, configured: true, unknown_value: false },
   { key: "training_score_visible", area: "training", label: "Træningsscore 1-99 (visning)", stage: "off", raw_value: "false", boolean_only: false, configured: true, unknown_value: true },
   { key: "peak_planner_enabled", area: "training", label: "Form-planlægger", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
@@ -91,6 +93,7 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "champion_jerseys_7824", // #7824
   "rider_why_button", // #7717
   "race_page_v6", // #7778 (off; ?racePageV6=on paa preview)
+  "spoiler_shield_7859", // #7859 (off)
   "talent_marks_7879", // #7879
   "tactics_ready_7864", // Missing stage keeps this preview feature off.
   "rider_hover_card", // #2009
@@ -106,6 +109,9 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "training_train_now_instant", // #8031 (kun patch-noten om Traen nu-kvitteringen)
   "sale_escrow_enabled", // #6181 Hjaelp (binaert, som pengelaasen)
   "training_history_from_ticks_6490", // #6490 traeningssidens laesevej (binaert)
+  "academy_page_v2_8081", // #8081 akademisiden udgave A (off)
+  "training_train_now_bonus", // #7741 bonusmaerket og teksterne (off paa preview; ?trainNowBonus=on viser dem)
+  "patch_notes_v2_8049", // #8049 (off; ?patchNotesV2=on paa preview)
 ];
 
 // Spejler PLAYER_VISIBLE_BINARY_FLAG_KEYS i backenden: "beta" er off.
@@ -154,13 +160,42 @@ function previewRacePageV6Enabled() {
 }
 previewRacePageV6Enabled();
 
+// #8049: den nye patch notes-side er OFF på preview (som i prod); ?patchNotesV2=on viser den.
+function previewPatchNotesV2Enabled() {
+  try {
+    const param = new URLSearchParams(window.location.search).get("patchNotesV2");
+    if (param === "on") localStorage.setItem("cz_mock_patch_notes_v2", "1");
+    if (param === "off") localStorage.setItem("cz_mock_patch_notes_v2", "0");
+    return localStorage.getItem("cz_mock_patch_notes_v2") === "1";
+  } catch {
+    return false;
+  }
+}
+previewPatchNotesV2Enabled();
+
+// #7741: Træn nu-bonussen er OFF på preview (som i prod), men ?trainNowBonus=on viser mærket og teksterne.
+export function previewTrainNowBonusEnabled() {
+  try {
+    const param = new URLSearchParams(window.location.search).get("trainNowBonus");
+    if (param === "on") localStorage.setItem("cz_mock_train_now_bonus", "1");
+    if (param === "off") localStorage.setItem("cz_mock_train_now_bonus", "0");
+    return localStorage.getItem("cz_mock_train_now_bonus") === "1";
+  } catch {
+    return false;
+  }
+}
+
 // #7778: visningsvalg på brugeren (GET/PUT /api/me/ui-prefs), i hukommelsen.
 let uiPrefs = {};
 
 function playerFlags() {
   return Object.fromEntries(PLAYER_VISIBLE_FLAG_KEYS.map((key) => {
     if (key === "race_page_v6") return [key, previewRacePageV6Enabled()];
+    if (key === "patch_notes_v2_8049") return [key, previewPatchNotesV2Enabled()];
+    // #8298: holdplanerne (Today's plan) foelger ?stagePlan=1 paa preview; i prod er kontakten taendt.
+    if (key === "tactics_ready_7864" && stagePlanPreviewActive()) return [key, true];
     if (key === "training_catalog_v3") return [key, previewCatalogV3Enabled()];
+    if (key === "training_train_now_bonus") return [key, previewTrainNowBonusEnabled()];
     if (key === "champion_jerseys_7824") return [key, previewChampionJerseysEnabled()];
     if (key === "potential_estimate_display") return [key, previewPotentialEstimateEnabled()];
     const stage = flags.find((f) => f.key === key)?.stage;

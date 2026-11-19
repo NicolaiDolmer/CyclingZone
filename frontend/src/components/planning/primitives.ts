@@ -15,6 +15,8 @@ import LegacyStageProfileCardBase from "../race/LegacyStageProfileCard.jsx";
 import { buttonClass as buttonClassBase } from "../ui/buttonStyles.js";
 import { statusBadgeClass as statusBadgeClassBase } from "../ui/badgeStyles.js";
 import { hasRouteData as hasRouteDataBase } from "../../lib/stageRouteProfile.js";
+import { statPlateStyle as statPlateStyleBase } from "../../lib/statColor.js";
+import { RIDER_TYPE_KEYS as RIDER_TYPE_KEYS_BASE } from "../../lib/riderTypeKeys.js";
 import { riderBestRole as riderBestRoleBase } from "../../lib/riderRating.js";
 import { validateSelectionClient as validateSelectionClientBase, partialSquadOutlook as partialSquadOutlookBase } from "../../lib/raceSelectionLogic.js";
 import {
@@ -26,11 +28,20 @@ import {
 import { Flag as FlagBase } from "../Flag.jsx";
 import { isU23 as isU23Base } from "../../lib/riderAge.js";
 import { injuryTimeLeft as injuryTimeLeftBase } from "../../lib/training.js";
-import { useReloadBlock as useReloadBlockBase, RELOAD_BLOCK_REASONS as RELOAD_BLOCK_REASONS_BASE } from "../../lib/reloadGate.js";
+import { useReloadBlock as useReloadBlockBase, RELOAD_BLOCK_REASONS as RELOAD_BLOCK_REASONS_BASE, isReloadAllowed as isReloadAllowedBase } from "../../lib/reloadGate.js";
 import { useDismiss as useDismissBase } from "../ui/useDismiss.js";
 import { useModalA11y as useModalA11yBase } from "../../hooks/useModalA11y.js";
 
+// Runde 3: Taktik er loebssidens egen taktik-fane (samme etapeplan, samme gem, samme validering), og
+// Formtop-maalets vaerdi og payback er Form-fanens egen linje. Ingen kopi af nogen af dem.
+import RaceTacticsTabBase from "../race/RaceTacticsTab.jsx";
+import { PeakValue as PeakValueBase } from "../planner/PlannerSquad.jsx";
+
 type AnyComponent = (props: any) => any;
+
+export const Segmented: AnyComponent = ui.Segmented as any;
+export const RaceTacticsTab: AnyComponent = RaceTacticsTabBase as any;
+export const PeakValue: AnyComponent = PeakValueBase as any;
 
 export const Button: AnyComponent = ui.Button as any;
 export const EmptyState: AnyComponent = ui.EmptyState as any;
@@ -64,6 +75,9 @@ export const LegacyStageProfileCard: AnyComponent = LegacyStageProfileCardBase a
 export const buttonClass: (opts?: { variant?: string; size?: string; fullWidth?: boolean }) => string = buttonClassBase as any;
 export const statusBadgeClass: (state: string, opts?: { emphasis?: boolean }) => string = statusBadgeClassBase as any;
 export const hasRouteData: (profile: unknown) => boolean = hasRouteDataBase as any;
+/** Ratingens gradient-plade (statColor, samme farver som ratings i hele spillet). */
+export const statPlateStyle: (value: number, opts?: { scale?: string }) => Record<string, string> = statPlateStyleBase as any;
+export const RIDER_TYPE_KEYS: readonly string[] = RIDER_TYPE_KEYS_BASE as any;
 export const riderBestRole: (flat: Record<string, unknown>) => { rating: number | null; role: string | null } = riderBestRoleBase as any;
 export const validateSelectionClient: (args: Record<string, unknown>) => string[] = validateSelectionClientBase as any;
 export const isU23: (birthdate: string | null, seasonYear: number | null) => boolean = isU23Base as any;
@@ -73,6 +87,8 @@ export const injuryTimeLeft: (condition: { injured_until?: string | null; injury
 } = injuryTimeLeftBase as any;
 export const useReloadBlock: (active: boolean, reason?: string) => void = useReloadBlockBase as any;
 export const RELOAD_BLOCK_REASONS: { DIRTY: string } = RELOAD_BLOCK_REASONS_BASE as any;
+/** Holder en flade paa siden en ugemt kladde (fx taktik-fanen)? Samme laas som genindlaesnings-vagten. */
+export const isReloadAllowed: () => boolean = isReloadAllowedBase as any;
 export const useDismiss: (ref: { current: HTMLElement | null }, onDismiss: () => void, active?: boolean) => void = useDismissBase as any;
 export const useModalA11y: (onClose: (() => void) | null, active?: boolean) => { current: HTMLDivElement | null } = useModalA11yBase as any;
 

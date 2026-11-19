@@ -54,5 +54,85 @@
   "footer": {
     "hiddenNote": "Interne og tekniske noter vises ikke på denne side.",
     "rolloutNote": "Beta: kun beta-gruppen har det. Intet mærke: live for alle."
+  },
+  "v2": {
+    "subtitle": "Det nye i Cycling Zone, uge for uge og efter område",
+    "newSince": "{count, plural, one {# ny siden sidst} other {# nye siden sidst}}",
+    "newDot": "Ny siden sidst",
+    "heroGameLink": "Se det i spillet",
+    "heroHelpLink": "Læs mere i Hjælp",
+    "heroImageAlt": "Skærmbillede fra spillet: {title}",
+    "search": {
+      "ariaLabel": "Søg i alle patch notes",
+      "placeholder": "Søg i alle patch notes, også arkivet"
+    },
+    "area": {
+      "label": "Område",
+      "all": "Alle områder",
+      "tactics": "Taktik",
+      "races": "Løb og løbsfilm",
+      "engine": "Løbsmotor",
+      "training": "Træning",
+      "development": "Udvikling",
+      "market": "Marked",
+      "academy": "Akademi og ungdom",
+      "board": "Bestyrelse",
+      "economy": "Økonomi",
+      "interface": "Brugerflade",
+      "mobile": "Mobil",
+      "help": "Hjælp",
+      "other": "Andet"
+    },
+    "tag": {
+      "on": "Tændt for alle",
+      "new": "Nyt",
+      "beta": "Beta",
+      "improved": "Forbedring",
+      "fixed": "Fejlrettelse"
+    },
+    "tagCount": {
+      "on": "{count, plural, one {# tændt for alle} other {# tændt for alle}}",
+      "new": "{count, plural, one {# nyt} other {# nye}}",
+      "beta": "{count, plural, one {# beta} other {# beta}}",
+      "improved": "{count, plural, one {# forbedring} other {# forbedringer}}",
+      "fixed": "{count, plural, one {# fejlrettelse} other {# fejlrettelser}}"
+    },
+    "thisWeek": "Denne uge",
+    "lastWeek": "Sidste uge",
+    "week": "Uge {week}",
+    "weekMeta": "{range} · {count, plural, one {# ændring} other {# ændringer}}",
+    "earlierWeeks": "Tidligere uger",
+    "archive": "Arkiv",
+    "changes": "{count, plural, one {# ændring} other {# ændringer}}",
+    "olderMonths": "{from} til {to}",
+    "showMonths": "Vis månederne",
+    "open": "Åbn",
+    "openWeek": "Åbn ugen",
+    "close": "Luk",
+    "openOnMonday": "åben, mens denne uge er stille",
+    "moreIn": "+{count} mere i {area}",
+    "fixesCount": "{count, plural, one {# rettelse} other {# rettelser}}",
+    "show": "Vis",
+    "showFixes": "Vis rettelserne i {area}",
+    "mostImportant": "Vigtigst",
+    "otherCount": "andet {count}",
+    "emptyWeek": "Ingen ændringer endnu i denne uge.",
+    "emptyWeekFiltered": "Ingen ændringer passer til dine filtre her.",
+    "searchResults": "Søgeresultat",
+    "hits": "{count, plural, one {# fund} other {# fund}}",
+    "showing": "Viser {shown} af {total}",
+    "showMore": "Vis flere",
+    "clear": "Ryd filtre",
+    "searchEmpty": {
+      "title": "Intet passer til din søgning",
+      "description": "Prøv et andet ord, eller ryd filtrene."
+    },
+    "filterEmpty": {
+      "title": "Intet passer til dine filtre",
+      "description": "Ryd filtrene for at se alle ændringer."
+    },
+    "indexError": "Ældre patch notes kan ikke søges lige nu. De seneste uger søges stadig.",
+    "monthError": "Måneden kunne ikke hentes. Intet er gået tabt.",
+    "showInArchive": "Vis i arkivet"
   }
 }

@@ -22,6 +22,8 @@ import RaceStoryCard from "./RaceStoryCard.tsx";
 import { castFrom, ownOutSentences, type RaceStory, type StoryNarrativeContext } from "./raceStoryModel.ts";
 import { stageWeather, type StageWeather } from "./stageWeather.ts";
 import { WeatherTag } from "./WeatherTag.tsx";
+import { useSpoilerStory } from "../../spoiler/spoilerStoryContext.ts"; // #7859
+import { SpoilerStoryResultsNote } from "../../spoiler/SpoilerShield.tsx"; // #7859
 import { Button, Flag, RiderLink, Section, SectionHeader, SectionStack, SkeletonLines, TerrainTypeGlyph } from "./ui.ts";
 
 function FitBar({ fit }: { fit: number }) {
@@ -136,7 +138,8 @@ export default function StageTabV2({
   const riders = useMemo(() => (stageRoles ? stageRoles.riders ?? [] : []), [stageRoles]);
   const overrides = stageRoles ? stageRoles.overrides ?? [] : [];
   const lineup = lineupFor(riders, overrides, stageNumber);
-  const favourites = favouritesFor(results, stagePointRows, stageNumber, myTeamId, stagesCompleted, profileByStage);
+  const spoiler = useSpoilerStory();
+  const favourites = favouritesFor(results, stagePointRows, stageNumber, myTeamId, stagesCompleted, profileByStage, undefined, spoiler.isStageHidden);
   const fitById = new Map(lineup.map((r) => [r.riderId, r.fit]));
   const demands = dayDemands(profile?.demand_vector);
   const climbIndex = Math.min(selectedClimb, Math.max(0, climbs.length - 1));
@@ -157,7 +160,7 @@ export default function StageTabV2({
   if (phase === "after") {
     return (
       <SectionStack>
-        {stageErrorSlot ?? (
+        {stageErrorSlot ?? (spoiler.active ? null : (
           <YourDayCard
             results={results}
             stageNumber={stageNumber}
@@ -170,7 +173,7 @@ export default function StageTabV2({
             onOpenStandings={onOpenStandings}
             why={why}
           />
-        )}
+        ))}
         {story ? (
           <RaceStoryCard
             story={story}
@@ -188,6 +191,7 @@ export default function StageTabV2({
             onOpenStandings={onOpenStandings}
           />
         ) : profile && series && <ProfileCard profile={profile} stageLabel={stageLabel} band selectedClimb={climbIndex} onSelectClimb={setSelectedClimb} />}
+        {spoiler.active && !stageErrorSlot && <SpoilerStoryResultsNote onShow={spoiler.showResults} />}
       </SectionStack>
     );
   }

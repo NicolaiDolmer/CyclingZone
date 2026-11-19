@@ -9815,6 +9815,20 @@ export type Database = {
       get_season_honours: { Args: { p_season_id: string }; Returns: Json }
       get_season_recap: { Args: { p_season_id: string }; Returns: Json }
       get_sprint_metrics: { Args: { p_window?: string }; Returns: Json }
+      get_team_result_history_page: {
+        Args: { p_offset: number; p_page_size: number; p_team_id: string }
+        Returns: {
+          id: string
+          points_earned: number | null
+          prize_money: number | null
+          race: Json
+          rank: number | null
+          result_type: string
+          rider: Json
+          rider_name: string | null
+          stage_number: number | null
+        }[]
+      }
       increment_balance_with_audit: {
         Args: { p_delta: number; p_finance_payload: Json; p_team_id: string }
         Returns: number

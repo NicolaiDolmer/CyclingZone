@@ -425,6 +425,7 @@ export default function StandingsPage() {
   const compareBlock = useBlockedAction(compareBlockedReason);
 
   const effectivePts = (s) => ((s?.total_points || 0) - (s?.penalty_points || 0));
+
   const matchesSearch = (s) => !search || (s.team?.name || "").toLowerCase().includes(search.toLowerCase());
 
   // Pulje-id pr. række: foretræk holdets pulje (team.league_division_id), fald tilbage
@@ -511,11 +512,17 @@ export default function StandingsPage() {
   const relegationDormant = canRelegate &&
     standings.filter(s => s.team?.division === relegationTargetTier).length === 0;
 
-  // Antal i den aktuelle visning ("Alle" = hele tieren, ellers kun den valgte pulje), så
-  // summarie-tallene matcher det man faktisk ser på fanen.
-  const inCurrentPool = (s) => matchesPoolTab(rowPoolId(s), poolTab, hasPoolSubtabs);
-  const promoteCount = tierPointSorted.filter(s => inCurrentPool(s) && promoteIds.has(s.team_id)).length;
-  const relegateCount = tierPointSorted.filter(s => inCurrentPool(s) && relegateIds.has(s.team_id)).length;
+  // #1745/#1760: op-/nedrykningens regel. #8279 (rettelse 11): én linje i
+  // tabellens fod i stedet for et kort mellem filtrene og tabellen (P1).
+  const movementRule = !canPromote && !canRelegate
+    ? null
+    : canPromote && canRelegate
+      ? (hasPoolSubtabs && poolTab === POOL_ALL
+          ? t("movement.ruleBothPerPool", { up: PROMOTE_N, down: RELEGATE_N, pools: tierPools.length })
+          : t("movement.ruleBoth", { up: PROMOTE_N, down: RELEGATE_N }))
+      : canRelegate
+        ? t("movement.ruleDown", { down: RELEGATE_N })
+        : t("movement.ruleUp", { up: PROMOTE_N });
 
   const maxPts = effectivePts(divStandingsBase[0]) || 1;
   const maxValue = lens === LENS_STRENGTH ? (strengthVal(divRanked[0]) || 1) : 1;
@@ -560,7 +567,7 @@ export default function StandingsPage() {
               title={t("compare.selectHint")}
               className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-cz border font-data text-xs font-bold transition-colors
                 ${isSelected
-                  ? "border-cz-accent bg-cz-accent text-cz-on-accent"
+                  ? "border-cz-accent/40 bg-cz-accent/10 text-cz-accent-t"
                   : "border-cz-border hover:border-cz-accent/50 hover:bg-cz-subtle " + (i === 0 ? "text-cz-accent-t" : i <= 2 ? "text-cz-2" : "text-cz-3")}`}
             >
               {isSelected ? <CheckIcon size={13} aria-hidden="true" /> : (i + 1)}
@@ -807,6 +814,11 @@ export default function StandingsPage() {
             placeholder={t("searchPlaceholder")}
           />
         </div>
+        {/* #8279 (rettelse 11): Compare er en valg-tilstand. Gruppen vises først, når
+            et hold er valgt (rang-badgen er checkboxen, #4749), og begrundelsen
+            (#3012) først efter et blokeret tryk, så ingen står med en gul advarsel
+            uden at have gjort noget (P8). Knappen er aria-disabled, aldrig død. */}
+        {selected.length > 0 && (
         <div className="ms-auto flex flex-col items-end gap-1">
           {/* #4749: fast tæller ("1 af 2 valgt") uafhængigt af blokeret-tilstanden
               nedenfor — den skal vise fremdrift ved 0/1/2 valgte, ikke kun forklare
@@ -821,46 +833,14 @@ export default function StandingsPage() {
           >
             {t("compare.action", { count: selected.length })}
           </Button>
-          {compareBlock.blocked && (
+          {compareBlock.blocked && compareBlock.pulseKey > 0 && (
             <BlockedNote id={compareBlock.reasonId} pulseKey={compareBlock.pulseKey} className="text-3xs">
               {compareBlock.reason}
             </BlockedNote>
           )}
         </div>
+        )}
       </div>
-
-      {/* #1745/#1760: entydig op-/nedryknings-summarie. Tallene er antal i den aktuelle
-          visning; regel-teksten forklarer per-pulje-mekanikken (top 2 op, bund 4 ned).
-          Kun i Linse A uden aktiv søgning, og kun når tieren faktisk kan rykke. */}
-      {lens === LENS_STANDINGS && !search && divStandings.length > 0 && (canPromote || canRelegate) && (
-        <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-cz border border-cz-border bg-cz-card px-3.5 py-2.5 text-xs text-cz-2">
-          <span className="text-3xs font-medium uppercase tracking-wide text-cz-3">{t("movement.label")}</span>
-          {canPromote && (
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-sm border border-cz-success/40 bg-cz-success-bg" />
-              {t("movement.up", { count: promoteCount })}
-            </span>
-          )}
-          {canRelegate && (
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-sm border border-cz-danger/40 bg-cz-danger-bg" />
-              {t("movement.down", { count: relegateCount })}
-            </span>
-          )}
-          <span className="text-cz-3">
-            {canPromote && canRelegate
-              ? (hasPoolSubtabs && poolTab === POOL_ALL
-                  ? t("movement.ruleBothPerPool", { up: PROMOTE_N, down: RELEGATE_N, pools: tierPools.length })
-                  : t("movement.ruleBoth", { up: PROMOTE_N, down: RELEGATE_N }))
-              : canRelegate
-                ? t("movement.ruleDown", { down: RELEGATE_N })
-                : t("movement.ruleUp", { up: PROMOTE_N })}
-          </span>
-          {relegationDormant && (
-            <span className="italic text-cz-3">{t("movement.dormant", { n: relegationTargetTier })}</span>
-          )}
-        </div>
-      )}
 
       {lens === LENS_STRENGTH && strengthError ? (
         <ErrorState
@@ -898,6 +878,12 @@ export default function StandingsPage() {
                   </span>
                 )}
                 <span className="ms-auto">{t("racesPlayed", { count: races.length })}</span>
+                {!search && movementRule && (
+                  <p className="basis-full text-cz-3">
+                    {movementRule}
+                    {relegationDormant && <> · {t("movement.dormant", { n: relegationTargetTier })}</>}
+                  </p>
+                )}
               </div>
             ) : (
               <div className="flex flex-wrap items-center gap-4">

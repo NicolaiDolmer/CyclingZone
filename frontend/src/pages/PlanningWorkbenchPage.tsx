@@ -1,7 +1,7 @@
 // #7535 · Planlaegningssiden (Planning Workbench), trin 1. Erstatter paa sigt de fire faner
 // (Udtagelse, Form, Strategi, Kalender) med én side: loebsliste, ugeoversigt, ruteprofil og
-// trup-tabel, med en bjaelke for ugemte aendringer. Taktik (trin 2) og Peak form + mobil-ark
-// (trin 3) kommer senere.
+// trup-tabel, med en bjaelke for ugemte aendringer. Runde 3: visningerne Trup | Taktik | Formtop under
+// ruteprofilen, kolonnen "Efter loebet" og mobil-arket (loebslisten foerst, loebet som bundark).
 //
 // Findes KUN bag kontakten planning_workbench (off|beta|on, standard off). Slukket: ruten sender
 // videre til den nuvaerende planlaegningsside, som er uroert. Siden henter og gemmer gennem de
@@ -18,6 +18,8 @@ import WeekBoard from "../components/planning/WeekBoard.tsx";
 import RaceList from "../components/planning/RaceList.tsx";
 import RaceWorkbench, { type RaceWorkbenchHandle } from "../components/planning/RaceWorkbench.tsx";
 import UnsavedBar from "../components/planning/UnsavedBar.tsx";
+import RaceSheet from "../components/planning/RaceSheet.tsx";
+import { usePeakBoardData } from "../components/planning/PeakView.tsx";
 import { BulkMenu, BulkDraftBar, BulkRowMark, BulkOpenRaceNote, CheckedCount, type BulkPlan } from "../components/planning/BulkActions.tsx";
 import SelectionDeadlineReminder from "../components/planning/SelectionDeadlineReminder.tsx";
 import { useSelectionReminder, refreshSelectionReminder } from "../hooks/useSelectionReminder.ts";
@@ -37,6 +39,12 @@ import {
 } from "../lib/planningWorkbenchData.ts";
 import {
   addDays,
+  adjacentRace,
+  isWorkbenchView,
+  normalizeMobileColumns,
+  peakCountsByRace,
+  type MobileColumn,
+  type WorkbenchView,
   actionTargets,
   capToRoom,
   createBulkStore,
@@ -59,6 +67,7 @@ import {
   copenhagenToday,
   dateIndex,
   groupRacesByWeek,
+  guardUnload,
   isRacePast,
   mondayOf,
   pickedCounts,
@@ -102,6 +111,21 @@ function writePref(key: string, value: unknown) {
   }
 }
 
+// Smal skaerm (under lg): loebslisten er foerste skaerm, og loebet aabner som bundark (spec "Mobile").
+const NARROW_QUERY = "(max-width: 1023px)";
+function subscribeNarrow(cb: () => void) {
+  if (typeof window === "undefined" || !window.matchMedia) return () => {};
+  const mq = window.matchMedia(NARROW_QUERY);
+  mq.addEventListener?.("change", cb);
+  return () => mq.removeEventListener?.("change", cb);
+}
+function readNarrow() {
+  return typeof window !== "undefined" && !!window.matchMedia?.(NARROW_QUERY).matches;
+}
+function useNarrow() {
+  return useSyncExternalStore(subscribeNarrow, readNarrow, () => false);
+}
+
 function Toggle({ pressed, onClick, children }: { pressed: boolean; onClick: () => void; children: ReactNode }) {
   return (
     <Button variant="secondary" size="sm" aria-pressed={pressed} onClick={onClick} className={pressed ? "border-cz-3 bg-cz-subtle" : ""}>
@@ -138,8 +162,34 @@ function Workbench() {
   // Ugeoversigten staar fremme som i wireframet (#7535); spillerens eget valg huskes derefter.
   const [showWeek, setShowWeek] = useState(() => readPref("week", true));
   const [showList, setShowList] = useState(() => readPref("list", true));
+  // "Skjul profil" huskes for alle loeb (punkt 4 D). Mobil-arket har sit eget valg, foldet som standard
+  // (punkt 2, kompakt), saa rytterne staar tidligt paa en lille skaerm.
   const [profileHidden, setProfileHidden] = useState(() => readPref("profileHidden", false));
-  const [profileFull, setProfileFull] = useState(() => readPref("profileFull", false));
+  const [sheetProfileHidden, setSheetProfileHidden] = useState(() => readPref("sheetProfileHidden", true));
+  // Mobilens tal-kolonner i trup-tabellen (chip-raekken); spillerens valg huskes.
+  const [mobileColumns, setMobileColumns] = useState<MobileColumn[]>(() => normalizeMobileColumns(readPref<unknown>("mobileColumns", null)));
+  const changeMobileColumns = useCallback((next: MobileColumn[]) => {
+    setMobileColumns(next);
+    writePref("mobileColumns", next);
+  }, []);
+  // Visningen under ruteprofilen (Trup | Taktik | Formtop): spillerens sidste valg huskes.
+  const [view, setView] = useState<WorkbenchView>(() => {
+    const saved = readPref<unknown>("view", "squad");
+    return isWorkbenchView(saved) ? saved : "squad";
+  });
+  const changeView = useCallback((next: WorkbenchView) => {
+    setView(next);
+    writePref("view", next);
+  }, []);
+  const narrow = useNarrow();
+  // Mobil-arket er aabent, naar spilleren har trykket paa et loeb (aldrig af sig selv ved indlaesning).
+  const [sheetOpen, setSheetOpen] = useState(false);
+  // Arket kraever en liste at vaelge fra: er baade listen og ugeoversigten skjult, staar loebet paa siden.
+  const useSheet = narrow && (showList || showWeek);
+  // #8350: paa computeren staar Taktik i fuld bredde (wireframe v6c); listen vises igen i Trup og Formtop.
+  const listColumn = showList && (narrow || view !== "tactics");
+  const useSheetRef = useRef(useSheet);
+  useSheetRef.current = useSheet;
   // Sidens skrive-laas: ÉT sted ejer "der er et kald i gang" (fladens gem, afmeld, masse-gem, assistenten).
   // Alle veje der sender eller anvender noget (gem, Handlinger, Fortryd, Gem, loebsskift) laeser den,
   // og kun det kald der tog den, kan slippe den.
@@ -280,6 +330,8 @@ function Workbench() {
   const selectRace = useCallback(
     (id: string) => {
       userPicked.current = true;
+      setCloseAsk(false);
+      setSheetOpen(true);
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev);
@@ -305,6 +357,8 @@ function Workbench() {
         writing: gate.current(),
         dirty: workbenchRef.current?.isDirty() ?? dirty,
       });
+      // Paa en smal skaerm aabner et tryk altid arket (ogsaa paa det valgte loeb eller med bjaelken for ugemte aendringer).
+      setSheetOpen(true);
       if (step === "queue") setQueuedId(id);
       else if (step === "ask") setPendingId(id);
       else if (step === "go") selectRace(id);
@@ -321,22 +375,38 @@ function Workbench() {
   useEffect(() => {
     if (!userPicked.current || !selected) return;
     userPicked.current = false;
+    if (useSheetRef.current) return; // arket viser loebet; listen bliver staaende bagved
     if (typeof window !== "undefined" && window.matchMedia?.("(max-width: 1023px)").matches) {
       anchorRef.current?.scrollIntoView?.({ block: "start", behavior: "auto" });
     }
   }, [selected]);
 
   // Browserens egen advarsel ved luk/genindlaes, saa en ugemt trup eller kladde aldrig forsvinder tavst.
+  // `dirty` daekker ogsaa en ugemt taktik-kladde (#8306).
   const hasDraft = draft.kinds.size > 0;
-  useEffect(() => {
-    if (!dirty && !hasDraft) return undefined;
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [dirty, hasDraft]);
+  useEffect(() => guardUnload(window, dirty || hasDraft), [dirty, hasDraft]);
+
+  // Mobil-arket lukkes (kryds, Escape, baggrund, stryg ned): en ugemt trup eller taktik-kladde ville
+  // forsvinde med fladen, saa spilleren spoerges foerst (Bliv her / Kassér / Gem og luk).
+  const [closeAsk, setCloseAsk] = useState(false);
+  const requestCloseSheet = () => {
+    if (gate.current()) return;
+    if (workbenchRef.current?.isDirty()) setCloseAsk(true);
+    else setSheetOpen(false);
+  };
+  const discardAndClose = () => {
+    if (gate.current()) return;
+    workbenchRef.current?.discard();
+    setCloseAsk(false);
+    setSheetOpen(false);
+  };
+  const saveAndClose = async () => {
+    const ok = await workbenchRef.current?.save();
+    if (ok) {
+      setCloseAsk(false);
+      setSheetOpen(false);
+    }
+  };
 
   const pendingRace = pendingId ? allRaces.find((r) => r.id === pendingId) : null;
   const stay = () => setPendingId(null);
@@ -465,13 +535,17 @@ function Workbench() {
     writePref("list", !showList);
   };
   const toggleProfile = () => {
+    if (useSheet) {
+      setSheetProfileHidden(!sheetProfileHidden);
+      writePref("sheetProfileHidden", !sheetProfileHidden);
+      return;
+    }
     setProfileHidden(!profileHidden);
     writePref("profileHidden", !profileHidden);
   };
-  const toggleProfileFull = () => {
-    setProfileFull(!profileFull);
-    writePref("profileFull", !profileFull);
-  };
+  // Formtop-board'et én gang for siden: formtop i Trup, maerket i loebslisten og Formtop-visningen.
+  const peakData = usePeakBoardData(load.state === "ready");
+  const peakCounts = useMemo(() => peakCountsByRace(peakData.board?.riders), [peakData.board]);
 
   const upcomingNeed = allRaces.filter(
     (r) => !isRacePast(r) && (raceStartDate(r, dates) ?? "9999") <= addDays(today, 8) && raceReadiness(r, counts.get(r.id) ?? 0, shownWithdrawn).state === "missing",
@@ -499,6 +573,69 @@ function Workbench() {
         {t("monthCalendar")}
       </Link>
     </div>
+  );
+
+  const unsavedBar =
+    pendingRace && selected ? (
+      <UnsavedBar
+        raceName={selected.name}
+        nextName={pendingRace.name}
+        busy={writing !== null}
+        onStay={stay}
+        onDiscard={discardAndOpen}
+        onSaveAndOpen={saveAndOpen}
+      />
+    ) : null;
+
+  // Mobil-arkets pile foelger loebslisten, som spilleren ser den (filter og omfang); ellers alle kommende.
+  const sheetRaces = listRaces.length ? listRaces : boardRaces;
+  const sheetIndex = sheetRaces.findIndex((r) => r.id === selected?.id);
+  const prevRace = adjacentRace(sheetRaces, selected?.id, -1);
+  const nextRace = adjacentRace(sheetRaces, selected?.id, 1);
+
+  const workbenchPane = (
+    <>
+      {selected && <BulkOpenRaceNote kind={draft.kinds.get(selected.id) ?? null} />}
+      {selected ? (
+        <RaceWorkbench
+          key={`${selected.id}:${workbenchVersion}`}
+          ref={workbenchRef}
+          race={selected}
+          allRaces={allRaces}
+          entries={shownEntries}
+          withdrawn={shownWithdrawn}
+          riderDetails={riderDetails}
+          seasonLoad={seasonLoad}
+          seasonYear={seasonYear}
+          profileHidden={useSheet ? sheetProfileHidden : profileHidden}
+          onToggleProfileHidden={toggleProfile}
+          peakData={peakData}
+          mobileColumns={mobileColumns}
+          onMobileColumns={changeMobileColumns}
+          onEdit={dropFromDraft}
+          gate={gate}
+          onDirtyChange={setDirty}
+          onSaved={onSaved}
+          onWithdrawnChange={onWithdrawnChange}
+          view={view}
+          onView={changeView}
+          today={today}
+          raceStart={raceStartDate(selected, dates)}
+          inSheet={useSheet}
+        />
+      ) : (
+        <EmptyState
+          icon={<FlagIcon size={26} aria-hidden="true" />}
+          title={t("noSelection.title")}
+          description={t("noSelection.description")}
+          action={
+            <Button variant="secondary" size="sm" onClick={() => setScope("season")}>
+              {t("raceList.scopeSeason")}
+            </Button>
+          }
+        />
+      )}
+    </>
   );
 
   let content;
@@ -564,16 +701,7 @@ function Workbench() {
             canNext={lastMonday != null && activeMonday < lastMonday}
           />
         )}
-        {pendingRace && selected && (
-          <UnsavedBar
-            raceName={selected.name}
-            nextName={pendingRace.name}
-            busy={writing !== null}
-            onStay={stay}
-            onDiscard={discardAndOpen}
-            onSaveAndOpen={saveAndOpen}
-          />
-        )}
+        {!useSheet && unsavedBar}
         <BulkDraftBar
           summary={draftSummary(draft, entries)}
           hasDraft={hasDraft}
@@ -584,8 +712,10 @@ function Workbench() {
           onUndo={() => bulk.undo()}
           onSave={saveDraft}
         />
-        <div className={`grid items-start gap-3.5 ${showList ? "lg:grid-cols-[296px_minmax(0,1fr)]" : ""}`}>
-          {showList && (
+        {/* #8350: Taktik står i fuld bredde som wireframe v6c (planlaegning-1280): listen ved siden af
+            pressede panelet ned i telefon-layoutet. Paa computeren skjules listen, mens Taktik er valgt. */}
+        <div className={`grid items-start gap-3.5 ${listColumn ? "lg:grid-cols-[296px_minmax(0,1fr)]" : ""}`}>
+          {listColumn && (
             <RaceList
               races={listRaces}
               allRaces={allRaces}
@@ -593,6 +723,7 @@ function Workbench() {
               counts={counts}
               withdrawn={shownWithdrawn}
               terrain={terrain}
+              peakCounts={peakCounts}
               selectedId={selected?.id}
               onSelect={requestSelect}
               scope={scope}
@@ -620,43 +751,34 @@ function Workbench() {
               rowMark={(raceId: string) => <BulkRowMark kind={draft.kinds.get(raceId) ?? null} />}
             />
           )}
-          <div ref={anchorRef} className="min-w-0 scroll-mt-4">
-            {selected && <BulkOpenRaceNote kind={draft.kinds.get(selected.id) ?? null} />}
-            {selected ? (
-              <RaceWorkbench
-                key={`${selected.id}:${workbenchVersion}`}
-                ref={workbenchRef}
-                race={selected}
-                allRaces={allRaces}
-                entries={shownEntries}
-                withdrawn={shownWithdrawn}
-                riderDetails={riderDetails}
-                seasonLoad={seasonLoad}
-                seasonYear={seasonYear}
-                profileHidden={profileHidden}
-                onToggleProfileHidden={toggleProfile}
-                profileFull={profileFull}
-                onToggleProfileFull={toggleProfileFull}
-                onEdit={dropFromDraft}
-                gate={gate}
-                onDirtyChange={setDirty}
-                onSaved={onSaved}
-                onWithdrawnChange={onWithdrawnChange}
-              />
-            ) : (
-              <EmptyState
-                icon={<FlagIcon size={26} aria-hidden="true" />}
-                title={t("noSelection.title")}
-                description={t("noSelection.description")}
-                action={
-                  <Button variant="secondary" size="sm" onClick={() => setScope("season")}>
-                    {t("raceList.scopeSeason")}
-                  </Button>
-                }
+          {!useSheet && (
+            <div ref={anchorRef} className="min-w-0 scroll-mt-4">
+              {workbenchPane}
+            </div>
+          )}
+        </div>
+        {useSheet && sheetOpen && selected && (
+          <RaceSheet
+            title={selected.name}
+            position={sheetIndex >= 0 ? t("sheet.position", { n: sheetIndex + 1, total: sheetRaces.length }) : null}
+            onPrev={prevRace ? () => requestSelect(prevRace.id) : null}
+            onNext={nextRace ? () => requestSelect(nextRace.id) : null}
+            onClose={requestCloseSheet}
+          >
+            {unsavedBar}
+            {closeAsk && !pendingRace && (
+              <UnsavedBar
+                raceName={selected.name}
+                busy={writing !== null}
+                onStay={() => setCloseAsk(false)}
+                onDiscard={discardAndClose}
+                onSaveAndOpen={saveAndClose}
+                saveLabelKey="unsavedBar.saveAndClose"
               />
             )}
-          </div>
-        </div>
+            {workbenchPane}
+          </RaceSheet>
+        )}
       </>
     );
   }
@@ -669,3 +791,4 @@ function Workbench() {
     </div>
   );
 }
+

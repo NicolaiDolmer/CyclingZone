@@ -173,6 +173,10 @@
     "columnsLabel": "Kolommen kiezen",
     "moreRight": "Meer kolommen aan de rechterkant"
   },
+  "expectedDivision": {
+    "optionExpected": "Divisie {n} (verwacht)",
+    "note": "Divisie {n} wordt getoond, waar je nu in zit. Je divisie voor seizoen {number} wordt bepaald bij de seizoenswissel."
+  },
   "networkError": "De server is op dit moment niet bereikbaar. Controleer je verbinding en probeer het opnieuw.",
   "push": {
     "title": "Pushmeldingen",

@@ -78,7 +78,7 @@ import { ensureCurveBIgnition, curveBTransitionForDate, loadCurveBTransitionRost
 import { loadRaceDayEffortByRider, raceDayIntentionYieldMultiplier } from "./raceDayIntentionYield.js"; // #6641 variant B
 import { loadRaceDayRoleYield, loadRaceDayRoleByRider } from "./raceDayRoleYield5950.js"; // #5950 haard dag + rolle (kaldes via withRaceDayRoleYieldXp)
 import { loadDevelopmentScoreB, developmentTickArgs } from "./developmentScoreWiring.js"; // #6950 Udviklingsscore B
-import { loadDevelopmentXp, withRaceDayRoleYieldXp } from "./developmentXpFlag.ts"; // #6110 XP-modellen (slukket)
+import { loadDevelopmentXp, readDevelopmentXpFromDate, withRaceDayRoleYieldXp } from "./developmentXpFlag.ts"; // #6110 XP-modellen (slukket)
 import { loadTrainNowBonusRiderIds } from './trainNowBonus7737.ts';
 import { loadRaceCatchUp } from "./raceCatchUpWiring.js"; // #6950 catch-up via loeb
 import { assessIllness } from "./conditionIllness.js"; // #6938 sygdom af langvarig ekstrem traethed
@@ -828,7 +828,9 @@ async function prefetchPressRaceDays({
  * #7982 trin 4a: a later day field of the press. Fetch from the press's memory (and the race
  * lookups it fetched ahead, or the same lookups now if it could not), compute with the same
  * function as every other day field, save with the same function. Returns null, before any
- * database call, when the memory does not hold this day field; the caller then reads.
+ * database call, when the memory does not hold this day field; the caller then reads. #7982: with
+ * fatigue_now_7801 on it also returns null when the database refused the save because a receipt
+ * was saved meanwhile (nothing was saved); the caller then reads and saves as before.
  */
 async function runPressDayFromMemory({
   supabase, teamId, seasonId, seasonNumber, executedBy, now, gameDay, dateGameDays, tickDate, squadKey,
@@ -843,6 +845,14 @@ async function runPressDayFromMemory({
     || dateDays.join() !== held.dateDays.join()) return null;
   const plan = planPressDay(pressMemory.selection, { raceDay, eligibleRiderIds, unresolvedSlotsByRider, deadlineReached, dirtyRiderIds: pressMemory.dirtyRiderIds });
   if (!plan) return null;
+  // #6490 B: the evening run asks the roster again, as each of its day fields did, so a rider released
+  // since is departed by the full read (instead of quarantined by the save guard).
+  if (executedBy === "assistant") {
+    const roster = plan.dateWork.expected_rider_ids.filter((id) => !(plan.dateWork.quarantined_rider_ids ?? []).includes(id));
+    // pagination-safe: én række pr. id i datoens frosne trup (ét holds trup, bounded af rostergrænsen)
+    const { data, error } = await supabase.from("riders").select("id, team_id, is_retired").in("id", roster);
+    if (error || (data ?? []).length !== roster.length || data.some((row) => row.team_id == null || row.is_retired === true)) return null;
+  }
   const frame = raceDayFrame({ useRaceDayKey: true, conditionPerDate: true, raceDay, dateDays, dateGameDays, seasonId, tickDate });
   const riderIds = plan.riders.map((rider) => rider.id);
   // #4854: "the day after a stage" is read on the date's first race day only; such a day reads.
@@ -861,7 +871,12 @@ async function runPressDayFromMemory({
   // counts nobody provisionally). If the ledger changed since the press fetched (a stage settled,
   // and with it perhaps a race session's receipt, trainingSettleRaceSession7982.js), the memory
   // steps aside and this day field reads everything, exactly as before.
-  if (pressProvisionalRiderIds({ riderIds, plan, instantPress, dateDays, raceDay, unresolvedSlotsByRider }).length) {
+  // #7801 (Fable-gentjek 15/11 på #8148, fund A): with fatigue_now_7801 on, the fatigue rule of every
+  // day field counts the date's settled stages, also in the free day fields before the provisional
+  // one. So with the switch on, every day field of the memory with a stamped rider asks the race-load
+  // question again (as main did in every day field). Off: exactly the reads above, nothing more.
+  const fatigueNowAsks = held.fatigueNowOn === true && riderIds.some((id) => plan.instantRiderIds.has(id));
+  if (fatigueNowAsks || pressProvisionalRiderIds({ riderIds, plan, instantPress, dateDays, raceDay, unresolvedSlotsByRider }).length) {
     const { data, error } = await supabase.from('training_race_loads').select('*')
       .eq('season_id', seasonId).eq('tick_date', tickDate).in('rider_id', riderIds);
     if (error) throw new Error(`race condition ledger load: ${error.message}`);
@@ -883,11 +898,25 @@ async function runPressDayFromMemory({
   const tick = computeTrainingDayTick(input);
   pressTimer?.lap("compute");
   await resolveConditionInjuryDates({ supabase, teamId, seasonId, useRaceDayKey: true, conditionUpserts: tick.conditionUpserts, pressPath: true });
-  const saved = await commitTrainingDateTick({
-    supabase, teamId, seasonId, squadKey, raceDay, tickDate, dateDays, executedBy, bonus: input.bonus,
-    lastSlotSettles: input.lastSlotSettles, deadlineReached, now, instantRiderIds: input.instantRiderIds,
-    raceLoadRows, settlingRiderIds: tick.settlingRiderIds, tick, pressMemory,
-  });
+  let saved;
+  try {
+    saved = await commitTrainingDateTick({
+      supabase, teamId, seasonId, squadKey, raceDay, tickDate, dateDays, executedBy, bonus: input.bonus,
+      lastSlotSettles: input.lastSlotSettles, deadlineReached, now, instantRiderIds: input.instantRiderIds,
+      raceLoadRows, settlingRiderIds: tick.settlingRiderIds, tick, pressMemory,
+    });
+  } catch (err) {
+    // #7982: a race session settled at its stage (trainingSettleRaceSession7982.js) may save a receipt
+    // after the press fetched. The database then refuses this day field's save as a whole (nothing is
+    // saved). Main read the receipts again in every day field and went on, so with fatigue_now_7801
+    // on (training_settle_race_session is only switched on together with it) the memory steps aside
+    // and this day field reads everything and is saved as on main. Off: the refusal stands, as before.
+    if (held.fatigueNowOn === true && /receipt snapshot changed/i.test(String(err?.message ?? ""))) {
+      pressMemory.forget();
+      return null;
+    }
+    throw err;
+  }
   pressTimer?.lap("save");
   return saved;
 }
@@ -1227,11 +1256,8 @@ export async function runTeamTrainingDay({
   // dato-kvitteringerne (training_rider_ticks, rytter-noeglet, laest paa tvaers af hold).
   // Kalenderdags-stien (useRaceDayKey=false: rollback eller fallback) laeser ogsaa.
   let sameDateRunReports = [];
-  // #7982 trin 3: one group (readTogether); the evening run reads them one by one in this order.
-  const [capPerDateOn, , , [raceDayEngineOn, raceDayDevelopmentOn, developmentV2On, curveB]] = await readTogether(pressReads, [
-  () => isAbilityCapPerDateEnabled(supabase, { strict: conditionPerDate }),
-  async (earlier) => {
-  if (await earlier(0)) {
+  // #6110 R16: XP (hoejst +2 pr. dato) laeser dem ogsaa, naar #6210-flaget er slukket (Codex P1).
+  const loadSameDateRunReports = async () => {
     let query = supabase.from("training_day_runs").select("game_day, season_id, squad, report")
       .eq("team_id", teamId).eq("tick_date", tickDate);
     // Med dato-kvitteringer kommer loebsdagene derfra; kun kalenderdags-raekker her.
@@ -1244,7 +1270,12 @@ export async function runTeamTrainingDay({
     sameDateRunReports = (data ?? []).filter((row) => !isThisRun(row) && (row.game_day == null
       || (!conditionPerDate && row.season_id === seasonId)))
       .flatMap((row) => row.report?.riders ?? []);
-  }
+  };
+  // #7982 trin 3: one group (readTogether); the evening run reads them one by one in this order.
+  const [capPerDateOn, , , [raceDayEngineOn, raceDayDevelopmentOn, developmentV2On, curveB]] = await readTogether(pressReads, [
+  () => isAbilityCapPerDateEnabled(supabase, { strict: conditionPerDate }),
+  async (earlier) => {
+  if (await earlier(0)) await loadSameDateRunReports();
   },
   async () => {
   if (conditionPerDate) {
@@ -1286,7 +1317,7 @@ export async function runTeamTrainingDay({
   const curveBRoster = curveBTransition ? await loadCurveBTransitionRoster(supabase, { transition: curveBTransition, riderIds, strict: conditionPerDate }) : null;
   // #7982 trin 3: one group (readTogether) from here to the illness history. A read that
   // needs an earlier one awaits it; the evening run reads them one by one in this order.
-  let developmentScoreB, raceCatchUp, raceRoleYield, developmentXp;
+  let developmentScoreB, raceCatchUp, raceRoleYield, developmentXp, developmentXpIgnition = false;
   let developmentAllowed = true;
   let abilityRows, planRows, conditionRows, weekPlanRow, raceDayResult;
   let boundRiderIds = new Set();
@@ -1326,6 +1357,9 @@ export async function runTeamTrainingDay({
   await earlier(0);
   // #6110: XP-modellen for tick-datoen. null = dagens model, bit-identisk; kaster sammen med Score B/catch-up.
   developmentXp = await loadDevelopmentXp({ supabase, tickDate, strict: conditionPerDate, developmentScoreB, raceCatchUp, now: () => +now });
+  // #6110 R16 (ejervalg 16/11, valg 2 = A): paa taendingsnatten udbetales gemt fremgang helt.
+  if (developmentXp) developmentXpIgnition = tickDate === await readDevelopmentXpFromDate(supabase, { strict: conditionPerDate });
+  if (developmentXp && !capPerDateOn) await loadSameDateRunReports(); // #6110 R16: datoens tidligere gevinster
 
   // #6500: holdets raekke hentes ÉN gang, og kun naar flaget er taendt. Regel-gate,
   // ikke berigelse: et gaet ville enten give et AI-hold udvikling eller tage den
@@ -1525,7 +1559,7 @@ export async function runTeamTrainingDay({
     dateReceipts, instantRiderIds, trainNowBonusRiderIds, unresolvedSlotsByRider, deadlineReached,
     instantPress, sameDateRunReports, raceLoadRows, canonicalLoadRows, conditionModelV2On,
     raceDateTrainingDayOn, fatigueNowOn, capPerDateOn, raceDayEngineOn, raceDayDevelopmentOn, curveB,
-    curveBRoster, developmentScoreB, raceCatchUp, raceRoleYield, developmentXp, developmentAllowed,
+    curveBRoster, developmentScoreB, raceCatchUp, raceRoleYield, developmentXp, developmentXpIgnition, developmentAllowed,
     abilityRows, planRows, conditionRows, weekPlanRow, raceDayResult, boundRiderIds, racedRiderIds,
     racedRiderProfileByRider, raceDayEffortByRider, raceDayRoleByRiderMap, programsOn, catalogV3On,
     stageOnDateRiderIds, fatigueRules, stageYesterdayRiderIds, trainingFacilityTier, trainingStaff,
@@ -1729,7 +1763,7 @@ export function computeTrainingDayTick(input) {
     dateReceipts, instantRiderIds, trainNowBonusRiderIds, unresolvedSlotsByRider, deadlineReached,
     instantPress, sameDateRunReports, raceLoadRows, canonicalLoadRows, conditionModelV2On,
     raceDateTrainingDayOn, fatigueNowOn, capPerDateOn, raceDayEngineOn, raceDayDevelopmentOn, curveB,
-    curveBRoster, developmentScoreB, raceCatchUp, raceRoleYield, developmentXp, developmentAllowed,
+    curveBRoster, developmentScoreB, raceCatchUp, raceRoleYield, developmentXp, developmentXpIgnition, developmentAllowed,
     abilityRows, planRows, conditionRows, weekPlanRow, raceDayResult, boundRiderIds, racedRiderIds,
     racedRiderProfileByRider, raceDayEffortByRider, raceDayRoleByRiderMap, programsOn, catalogV3On,
     stageOnDateRiderIds, fatigueRules, stageYesterdayRiderIds, trainingFacilityTier, trainingStaff,
@@ -1962,6 +1996,14 @@ export function computeTrainingDayTick(input) {
     let tickResult = null;
     if (!injuredToday && !boundRestToday && !unknownSlot && age != null) {
       const condMult = conditionMultiplier(conditionPerDate ? conditionBeforeDate : { form: Number(cond.form ?? 50), fatigue: preFatigue });
+      // #6210: datoens tidligere gevinster for rytteren, paa tvaers af datoens loebsdage og
+      // stier. Paa loebsdags-aksen ogsaa dato-kvitteringerne; kalenderdags-stien (flag slukket,
+      // rollback eller loebsdags-fallback, Codex P1) kun datoens tidligere tick-rapporter.
+      const dateUsedGains = () => sumDateGains([
+        ...(useRaceDayKey && conditionPerDate ? dateReceipts.filter((row) => row.rider_id === rider.id
+          && row.tick_date === tickDate && row.game_day !== raceDay).map((row) => row.report) : []),
+        ...sameDateRunReports.filter((row) => row.rider_id === rider.id),
+      ]);
       // Fælles parametre for begge tick-typer — samme program/condition/staff/
       // facility/academy-kæde uanset kilde (design-krav: skrivestien er blind
       // for kilden, se applyRaceDevelopmentTick's docblok).
@@ -2013,6 +2055,8 @@ export function computeTrainingDayTick(input) {
         curveB,
         curveBTransition: riderCurveBTransition, // #7382
         developmentXp, // #6110: null = dagens model
+        // #6110 R16: hoejst +2 pr. evne pr. dato under XP. Kun med XP, saa dagens model er uroert.
+        ...(developmentXp ? { xpDateUsedGains: dateUsedGains(), xpStoredBarPayout: developmentXpIgnition === true } : {}),
       };
       if (racedToday) {
         // #4850 variant A (ejer 24/9, S1 valgt efter simuleringen i #5640):
@@ -2043,20 +2087,12 @@ export function computeTrainingDayTick(input) {
       // nulstille DET HER (i stedet for at springe tick'et over) er form, traethed,
       // skade og scoren bit-identiske med et managerhold, og alle nedstroems
       // forbrugere (patch, historik, rapport) ser automatisk "ingen gevinst".
-      // #6210: datoens tidligere gevinster for rytteren, paa tvaers af datoens loebsdage og
-      // stier. Paa loebsdags-aksen ogsaa dato-kvitteringerne; kalenderdags-stien (flag slukket,
-      // rollback eller loebsdags-fallback, Codex P1) kun datoens tidligere tick-rapporter.
-      const dateUsedGains = () => sumDateGains([
-        ...(useRaceDayKey && conditionPerDate ? dateReceipts.filter((row) => row.rider_id === rider.id
-          && row.tick_date === tickDate && row.game_day !== raceDay).map((row) => row.report) : []),
-        ...sameDateRunReports.filter((row) => row.rider_id === rider.id),
-      ]);
       if (!developmentAllowed) {
         tickResult = { ...tickResult, abilities: { ...abilities }, gains: {}, progress: preProgress };
       } else if (developmentXp) {
-        // #7739 (ejer 7/11): under XP er der intet +1-loft pr. evne pr. dato; kun prisen
-        // bremser, og intet dato-loft betyder ingen kvittering for det. Gemt fremgang
-        // udbetales helt paa én nat; der findes ingen dryp-regel (#6110 R10, ejer 12/11).
+        // #6110 R16 (ejervalg 16/11): under XP gaelder hoejst +2 pr. evne pr. dato inde i
+        // tick'et (xpDateUsedGains ovenfor); resten staar paa bjaelken, saa der er intet at
+        // klippe og ingen kvittering her. Taendingsnatten udbetaler gemt fremgang helt.
       } else if (!capPerDateOn) {
         // #6210-flaget slukket: ingen dato-loft (bit-identisk med foer #7075).
       } else {

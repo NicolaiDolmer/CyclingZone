@@ -124,6 +124,20 @@ function fail(message) {
   process.exitCode = 1;
 }
 
+// #8346: en PR skriver sin note som et fragment i frontend/src/data/patch-notes/pending/
+// (uden version og dato); merge-toget giver nummer og dato efter et verificeret tog
+// (scripts/patch-notes-number.mjs). Fragmenterne valideres her med samme regler som en ny
+// post: alle eksporterede missing*-regler nedenfor (rollout, flag, og hvad der kommer til)
+// koeres paa hvert fragment, plus format, em-dash og doede produkttermer.
+async function checkPendingFragments() {
+  const { validatePendingDir } = await import(pathToFileURL(path.join(__dirname, "patch-notes-number.mjs")).href);
+  const newEntryChecks = Object.entries(module.exports)
+    .filter(([name, fn]) => /^missing[A-Z]/.test(name) && typeof fn === "function");
+  const { fragments, errors } = await validatePendingDir(repoRoot(), { newEntryChecks });
+  for (const error of errors) fail(`pending patch note: ${error}`);
+  return fragments.length;
+}
+
 // #4308: regex-parsingen ovenfor (parseVersions/parseDatedVersions) læser rå
 // tekst og opdager derfor ALDRIG en syntaksfejl (fx en uafsluttet klamme) i
 // patchNotes.js. Den slags brækker kun frontend-build senere i samme CI-run,
@@ -171,6 +185,26 @@ function missingFlag(patches, baseVersions) {
   return bad;
 }
 
+// #8049: en NY spillervendt note skal bære sit område (`area`), så den nye patch notes-side
+// kan gruppere ugen efter område (PATCH_NOTES_RULES §2b). Listen SKAL matche PATCH_NOTE_AREAS i
+// frontend/src/lib/patchNotes.js (låst af patchNotesArea.test.ts). Gamle noter røres ikke;
+// deres område slås op i frontend/src/lib/patchNotesArea.ts.
+const PATCH_NOTE_AREAS = [
+  "tactics", "races", "engine", "training", "development", "market",
+  "academy", "board", "economy", "interface", "mobile", "help",
+];
+function missingArea(patches, baseVersions) {
+  const known = new Set(baseVersions);
+  const bad = [];
+  for (const p of patches || []) {
+    if (known.has(p.version)) continue;
+    (p.changes || []).forEach((c, i) => {
+      if (c.audience === "player" && !PATCH_NOTE_AREAS.includes(c.area)) bad.push(`${p.version}#${i}`);
+    });
+  }
+  return bad;
+}
+
 async function main() {
   const root = repoRoot();
   const baseRef = process.env.PATCH_NOTES_BASE_REF || "origin/main";
@@ -181,7 +215,7 @@ async function main() {
   if (!importResult.ok) {
     fail(
       `${PATCH_FILE} could not be imported (syntax error?): `
-      + `${importResult.error && importResult.error.message}`
+      + `${importResult.error && /** @type {any} */ (importResult.error).message}`
     );
     return;
   }
@@ -236,6 +270,14 @@ async function main() {
     );
   }
 
+  const noArea = baseVersions.length > 0 ? missingArea(importResult.mod.PATCHES, baseVersions) : [];
+  if (noArea.length > 0) {
+    fail(
+      `New player changes without a valid "area" (${PATCH_NOTE_AREAS.join("|")}): ${noArea.join(", ")}. `
+      + `See docs/PATCH_NOTES_RULES.md §2b.`
+    );
+  }
+
   const noFlag = baseVersions.length > 0 ? missingFlag(importResult.mod.PATCHES, baseVersions) : [];
   if (noFlag.length > 0) {
     fail(
@@ -250,6 +292,12 @@ async function main() {
     const addedNewTopVersion = compareVersion(currentTop, baseTop) > 0;
     if (!addedNewTopVersion) {
       fail(`Top PatchNotes version ${currentTop} must be greater than ${baseRef}'s ${baseTop}.`);
+    }
+    if (addedNewTopVersion && eventName === "pull_request") {
+      console.log(
+        `patch-notes-check: note: new versions in ${PATCH_FILE} still work, but a fragment in `
+        + `frontend/src/data/patch-notes/pending/ avoids conflicts; the merge train numbers it (#8346).`
+      );
     }
     if (!nowChanged && eventName === "pull_request") {
       fail(`${NOW_FILE} must be updated when ${PATCH_FILE} changes.`);
@@ -273,8 +321,10 @@ async function main() {
     }
   }
 
+  const pending = await checkPendingFragments();
+
   if (!process.exitCode) {
-    console.log(`patch-notes-check: ok (${versions.length} versions, top ${versions[0]}).`);
+    console.log(`patch-notes-check: ok (${versions.length} versions, top ${versions[0]}, ${pending} pending fragment(s)).`);
   }
 }
 
@@ -289,6 +339,8 @@ module.exports = {
   importCheck,
   missingRollout,
   missingFlag,
+  missingArea,
+  PATCH_NOTE_AREAS,
 };
 
 if (require.main === module) {

@@ -1704,3 +1704,11 @@ eksplicit `stages <= 5` på hver juniorrække.
 Testkørsler pakkes altid i `scripts/verify-lock.ps1 -Max 2 -Timeout 1800`.
 Ingen patch note i dette forberedende draft-spor, jf. briefen; spillerkommunikation
 hører til aktiveringen af ungdomskalenderen.
+
+## §17 Kommende sæson: forventet division og puljer ([#5841](https://github.com/NicolaiDolmer/CyclingZone/issues/5841), ejer 16/11)
+
+- **`expectedDivision`** i `GET /api/races/calendar` (`backend/routes/api.js`, svaret ved `ownPoolId`/`divisionPending`): holdets NUVÆRENDE divisionstier (`teams.league_division_id` → `league_divisions.tier`). Sættes KUN når `divisionPending` er sand (en kommende sæson, hvor op/nedrykning ikke er afgjort); ellers `null`.
+- Feltet er et **udgangspunkt for visningen, ikke en placering.** Det ændrer aldrig `ownPoolId`, `isMine` eller hvilke løb der tilskrives holdet; holdets rigtige pulje og division fastlægges først ved sæsonskiftet. UI'et mærker det "forventet"/"expected".
+- **Visning:** Kalenderens "Vis" starter på `expectedDivision`, når den er sat; spilleren kan vælge en anden division eller alle. Holdudtagelse sæson (`SeasonView.jsx`) tegner den forventede divisions løb (én pulje), skrivebeskyttet.
+- **Puljetvillinger:** puljer i samme division har identiske løb og ruter (målt S5). `mergePoolTwins` (`frontend/src/lib/calendarGrid.js`) viser hvert løb én gang pr. division (nøgle: navn + datoer + rute); har holdet en pulje, peger løbet på holdets egen, ellers puljen med lavest nummer (`expectedPoolId` for den kommende sæson). Gælder også den aktive sæson.
+- **Kalenderkortets puljer (udgave-skiftet, variant A, bag `race_page_v6`):** løbskortet (`RacePeekCard`, bag `race_library_v2`) får rækken "Runs in N pools" med én knap pr. pulje, der åbner den puljes løbsside (klikket etape bevares). Puljerne findes med samme tvillingeregel som `mergePoolTwins` (`poolTwinsByRaceId` i `calendarGrid.js`), i divisionstræets orden; bogstavet er puljens `poolIndex` (0 = A). Holdets pulje markeres med en prik, aldrig guld. Et løb med én pulje får ingen række. Slukket `race_page_v6` = kortet som før. Løbssidens udgave-skift (samme nøgle `pool_race_id`) står i RACE_ENGINE_RULES.md under "Udgave-skiftet".

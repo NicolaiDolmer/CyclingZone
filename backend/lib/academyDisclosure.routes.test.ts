@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
+import { academyEstimate } from "./academyDisclosure.ts";
 const source = readFileSync(new URL("../routes/api.js", import.meta.url), "utf8");
 const prognosis = { stage: "learning", daysOnTeam: 0, nextStageDays: 1, band: null };
 const rider = { id: "a", team_id: "own", is_academy: true, primary_type: "climber" };
@@ -28,7 +29,7 @@ function route(method: string, path: string, extra: Record<string, unknown> = {}
     isPotentialEstimateOn: async () => false,
     loadEstimateDevelopmentXp: async () => null, // #6110 F1: XP-modellen slukket
     loadAcademyPrognoses: async () => new Map([[rider.id, prognosis]]),
-    academyEstimate: (p: unknown) => ({ academyPrognosis: p }),
+    academyEstimate,
     buildScoutEstimate() { throw new Error("full scout estimate must not be computed"); },
     ...extra,
   };
@@ -45,10 +46,20 @@ test("My Team and profile hero estimates return only academy knowledge", async (
   const out = await route("post", "/scouting/estimates")();
   assert.deepEqual(out.estimates.a, { academyPrognosis: prognosis });
 });
-test("profile scouting tab cannot obtain stars, verdict or other role forecasts", async () => {
+test("early academy scouting reports contain only the academy prognosis", async () => {
   const out = await route("get", "/riders/:id/scouting-report")();
   assert.deepEqual(out, { own: true, academyPrognosis: prognosis });
 });
+test("#8400: only the scouting report gets other role forecasts at the final stage", async () => {
+  const types = [{ key: "climber", now: 30, progLo: 41, progHi: 49 }];
+  const final = { ...prognosis, stage: "final", nextStageDays: null, band: { role: "climber", lo: 41, hi: 49 } };
+  const extra = { loadAcademyPrognoses: async () => new Map([[rider.id, { ...final, types }]]) };
+  const report = await route("get", "/riders/:id/scouting-report", extra)();
+  assert.deepEqual(report, { own: true, academyPrognosis: final, types, primaryKey: "climber" });
+  const batch = await route("post", "/scouting/estimates", extra)();
+  assert.deepEqual(batch.estimates.a, { academyPrognosis: final });
+});
+
 test("legacy development projection cannot disclose hidden ability caps", async () => {
   const out = await route("get", "/riders/:id/development-projection")();
   assert.deepEqual(out, { own: true, capsMissing: true });
