@@ -876,7 +876,7 @@ export default function DashboardPage() {
       )}
 
       {/* Onboarding completion — vis engang når alle 4 trin er gennemført */}
-      {!completionDismissed && onboardingProgress && onboardingProgress.completed_count === onboardingProgress.total_count && (
+      {!onboardingDismissed && !completionDismissed && onboardingProgress && onboardingProgress.completed_count === onboardingProgress.total_count && (
         <OnboardingCompletionCard onDismiss={dismissCompletion} />
       )}
 

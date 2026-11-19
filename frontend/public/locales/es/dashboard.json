@@ -486,7 +486,7 @@
       "secondaryCta": "Elegirlo yo",
       "resultLine": "Semana ejecutada: {count, plural, one {# ciclista entrenado} other {# ciclistas entrenados}}.",
       "resultLink": "Ver entrenamiento",
-      "alreadyRun": "Esta semana ya está ejecutada.",
+      "alreadyRun": "Entrenó hoy.",
       "error": "No se pudo ejecutar el entrenamiento de esta semana. Inténtalo de nuevo."
     },
     "tour": "Enséñame cómo",
