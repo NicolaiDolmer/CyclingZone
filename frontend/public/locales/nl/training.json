@@ -202,7 +202,8 @@
     "pctLabel": "{pct} procent van de weg naar het volgende punt",
     "sparkLabel": "{name}: XP per dag, laatste 30 dagen",
     "sparkTitle": "XP per dag, laatste 30 dagen",
-    "seasonValue": "{value} punten",
+    "colRatingSeason": "Rating, seizoen",
+    "ratingSeasonTitle": "Ratingverandering dit seizoen: nu tegenover de start van het seizoen",
     "ability": "Vaardigheid",
     "now": "Nu",
     "noAbilities": "Nog geen XP op een vaardigheid."

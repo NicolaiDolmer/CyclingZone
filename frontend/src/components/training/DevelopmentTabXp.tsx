@@ -3,12 +3,12 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { ChevronDownIcon as ChevronDownJs, ChevronRightIcon as ChevronRightJs, LockIcon as LockJs, SortIcon as SortJs } from "../ui/icons/index.jsx";
 import { SkeletonLines as SkeletonLinesJs } from "../ui/Skeleton.jsx";
-import RiderTypeBadgeJs from "../rider/RiderTypeBadge.jsx";
+import BestRoleTagJs from "../rider/BestRoleTag.jsx";
 import PotentialEstimate from "../rider/PotentialEstimate.tsx";
 import AcademyPrognosisCell, { type AcademyPrognosis } from "../rider/AcademyPrognosisCell.tsx";
 import { fetchPlayerFeatureFlags } from "../../lib/playerFeatureFlags.js";
 import { hasXpFields, type XpReceipt, type XpRiderType } from "../../lib/trainingReportXp.ts";
-import { riderOverallRating as riderOverallRatingJs } from "../../lib/riderRating.js";
+import { riderBestRole as riderBestRoleJs } from "../../lib/riderRating.js";
 import { copenhagenDayKey as copenhagenDayKeyJs } from "../../lib/raceCentre.js";
 import { formatNumber as formatNumberJs } from "../../lib/intl.js";
 import { useMediaQuery } from "../../hooks/useMediaQuery.ts";
@@ -16,14 +16,14 @@ import { riderShortName } from "../../lib/riderName.ts";
 import { Flag, RiderNameCell } from "./reportXp/ui.ts";
 import { XpSpark } from "./reportXp/XpBar.tsx";
 import {
-  bandText, buildDevelopmentFixture, buildDevelopmentRows, devSummary, nextSort, previewXpDevelopment, sortDevRows, topOf,
+  bandText, buildDevelopmentFixture, buildDevelopmentRows, devSummary, nextSort, previewXpDevelopment, signedText, sortDevRows, topOf,
   xpDevelopmentMode, DEFAULT_SORT, DEV_FIXTURE_TODAY, XP_DEV_FLAG_KEY,
   type DevRiderInput, type DevRow, type SortKey, type SortState, type TopValue, type XpTodayCell,
 } from "./DevelopmentTabXpModel.ts";
 
 // #7947 · The Development tab in XP (direction 5, ejer 19/11): one line per rider with
 // XP today and over 30 days as the one development number, the expected top (the
-// shared potential estimate from #7686, no new display), points this season and the
+// shared potential estimate from #7686, no new display), the rating's change this season and the
 // way to the next point; the abilities open as a sub-row. Only behind the XP switch
 // (development_xp_model) with XP in the receipts, or on the preview build with ?xp=1.
 // Otherwise the tab is exactly today's (the children).
@@ -34,9 +34,11 @@ const ChevronRightIcon = ChevronRightJs as unknown as Icon;
 const LockIcon = LockJs as unknown as Icon;
 const SortIcon = SortJs as unknown as Icon;
 const SkeletonLines = SkeletonLinesJs as unknown as ComponentType<{ lines?: number }>;
-// Ejer 19/11: ryttertypen som i spillets andre tabeller (truppen): RiderTypeBadge, primær + sekundær, stacked.
-const RiderTypeBadge = RiderTypeBadgeJs as unknown as ComponentType<{ primaryType: string; secondaryType?: string | null; stacked?: boolean }>;
-const riderOverallRating = riderOverallRatingJs as unknown as (rider: unknown) => number | null;
+// Ejer 19/11 aften: ryttertypen er den rolle, han er bedst i NU, ikke den naturlige. Spillets
+// eget maerke for netop det er BestRoleTag (neutral, "Best role now" i tooltip); det guldfarvede
+// RiderTypeBadge betyder "Natural role" i tooltip og aria, saa det ville vise forkert info her.
+const BestRoleTag = BestRoleTagJs as unknown as ComponentType<{ role: string; variant?: "short" | "full" }>;
+const riderBestRole = riderBestRoleJs as unknown as (rider: unknown) => { rating: number | null; role: string | null };
 const copenhagenDayKey = copenhagenDayKeyJs as unknown as (ms: number) => string;
 const formatNumber = formatNumberJs as unknown as (n: number) => string;
 
@@ -92,18 +94,24 @@ function DevelopmentTabXp({ fixture, runs, roster, estimateFor, seasonGains, rac
       return buildDevelopmentRows({ runs: fx.runs, riders: fx.riders, todayKey: DEV_FIXTURE_TODAY, seasonGains: fx.seasonGains, forceUnsettled: true });
     }
     if (!roster) return null;
-    const riders = roster.map((r): DevRiderInput => ({
-      id: r.id,
-      name: `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim() || r.id,
-      firstname: r.firstname ?? null, lastname: r.lastname ?? null,
-      nation: r.nationality_code ?? null,
-      type: r.primary_type ? { primary: r.primary_type, secondary: r.secondary_type ?? null } as XpRiderType : null,
-      rating: riderOverallRating(r),
-      age: ageFor?.(r.id) ?? null,
-      abilities: r as Record<string, number | null | undefined>,
-      top: topOf(estimateFor(r.id)),
-      racingToday: racingToday?.[r.id] != null,
-    }));
+    const riders = roster.map((r): DevRiderInput => {
+      const estimate = estimateFor(r.id);
+      const best = riderBestRole(r);
+      // Same rule as the old Development tab: the estimate's own role, else today's best role, else the natural one.
+      const role = (estimate as { role?: string | null } | null | undefined)?.role ?? best.role ?? r.primary_type ?? null;
+      return {
+        id: r.id,
+        name: `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim() || r.id,
+        firstname: r.firstname ?? null, lastname: r.lastname ?? null,
+        nation: r.nationality_code ?? null,
+        type: role ? { primary: role, secondary: null } as XpRiderType : null,
+        rating: best.rating,
+        age: ageFor?.(r.id) ?? null,
+        abilities: r as Record<string, number | null | undefined>,
+        top: topOf(estimate),
+        racingToday: racingToday?.[r.id] != null,
+      };
+    });
     return buildDevelopmentRows({ runs: runs as XpReceipt[], riders, todayKey: copenhagenDayKey(Date.now()), seasonGains });
   }, [fixture, runs, roster, estimateFor, seasonGains, racingToday, ageFor]);
 
@@ -152,11 +160,12 @@ function TitleLine({ summary }: { summary: ReturnType<typeof devSummary> }) {
   );
 }
 
-function SortHead({ k, label, className = "", sort, onSort }: { k: SortKey; label: string; className?: string; sort: SortState; onSort: (k: SortKey) => void }) {
+/** `wrap`: a two-word label may break onto a second line instead of widening a narrow number column. */
+function SortHead({ k, label, title, wrap = false, className = "", sort, onSort }: { k: SortKey; label: string; title?: string; wrap?: boolean; className?: string; sort: SortState; onSort: (k: SortKey) => void }) {
   const active = sort.key === k;
   return (
     <th className={`px-3 py-2 text-start ${HEAD} ${className}`} aria-sort={active ? (sort.dir === 1 ? "ascending" : "descending") : undefined}>
-      <button type="button" onClick={() => onSort(k)} className={`inline-flex items-center gap-1 whitespace-nowrap uppercase hover:text-cz-1 ${active ? "text-cz-1" : ""}`}>
+      <button type="button" onClick={() => onSort(k)} title={title} className={`inline-flex items-center gap-1 text-start uppercase hover:text-cz-1 ${wrap ? "" : "whitespace-nowrap"} ${active ? "text-cz-1" : ""}`}>
         {label}<SortIcon size={11} aria-hidden="true" />
       </button>
     </th>
@@ -177,7 +186,7 @@ function Name({ row, short = false }: { row: DevRow; short?: boolean }) {
 
 function TypeText({ type }: { type: XpRiderType | null }) {
   if (!type?.primary) return <span className="text-cz-3">—</span>;
-  return <RiderTypeBadge primaryType={type.primary} secondaryType={type.secondary} stacked />;
+  return <BestRoleTag role={type.primary} variant="short" />;
 }
 
 function Rating({ value }: { value: number | null }) {
@@ -192,11 +201,10 @@ function Top({ top }: { top: TopValue }) {
   return <span className="text-cz-3">—</span>;
 }
 
-function Season({ value, unit = false }: { value: number | null; unit?: boolean }) {
-  const { t } = useTranslation("training");
+/** Ejer 19/11 aften: the rating's change this season ('+3'), not the ability points. */
+function RatingSeason({ value }: { value: number | null }) {
   if (value == null) return <span className="text-cz-3">—</span>;
-  const text = value > 0 ? `+${formatNumber(value)}` : "0";
-  return <span className={`text-[13px] text-cz-1 ${NUM}`}>{unit ? t("developmentXp.seasonValue", { value: text }) : text}</span>;
+  return <span className={`text-[13px] text-cz-1 ${NUM}`} data-testid="development-xp-rating-season">{signedText(value)}</span>;
 }
 
 function XpToday({ cell }: { cell: XpTodayCell }) {
@@ -271,11 +279,11 @@ function DesktopTable({ rows, open, toggle, sort, onSort }: { rows: DevRow[]; op
         <tr className="border-b border-cz-border">
           <th className="w-[44px]"><span className="sr-only">{t("developmentXp.abilitiesCol")}</span></th>
           <SortHead k="rider" label={t("colRider")} className="w-[192px]" sort={sort} onSort={onSort} />
-          <SortHead k="type" label={t("colType")} className="w-[112px]" sort={sort} onSort={onSort} />
+          <SortHead k="type" label={t("colType")} className="w-[92px]" sort={sort} onSort={onSort} />
           <SortHead k="age" label={tRiders("table.age")} className="w-[52px]" sort={sort} onSort={onSort} />
           <SortHead k="rating" label={t("developmentXp.colRating")} className="w-[70px]" sort={sort} onSort={onSort} />
           <SortHead k="top" label={t("developmentXp.colTop")} className="w-[118px]" sort={sort} onSort={onSort} />
-          <SortHead k="season" label={t("developmentXp.colSeason")} className="w-[72px]" sort={sort} onSort={onSort} />
+          <SortHead k="season" label={t("developmentXp.colRatingSeason")} title={t("developmentXp.ratingSeasonTitle")} wrap className="w-[92px]" sort={sort} onSort={onSort} />
           <SortHead k="xpToday" label={t("developmentXp.colXpToday")} className="w-[116px]" sort={sort} onSort={onSort} />
           <SortHead k="xp30" label={t("developmentXp.colXp30")} className="w-[184px]" sort={sort} onSort={onSort} />
           <SortHead k="next" label={t("developmentXp.colNext")} sort={sort} onSort={onSort} />
@@ -298,7 +306,7 @@ function DesktopTable({ rows, open, toggle, sort, onSort }: { rows: DevRow[]; op
                 <td className={`px-3 py-[7px] text-[13px] text-cz-1 ${NUM}`}>{row.age ?? "—"}</td>
                 <td className="px-3 py-[7px]"><Rating value={row.rating} /></td>
                 <td className="px-3 py-[7px]"><Top top={row.top} /></td>
-                <td className="px-3 py-[7px]"><Season value={row.season} /></td>
+                <td className="px-3 py-[7px]"><RatingSeason value={row.ratingSeason} /></td>
                 <td className="px-3 py-[7px]"><XpToday cell={row.today} /></td>
                 <td className="px-3 py-[7px]">
                   <span className="inline-flex items-center gap-2">
@@ -360,7 +368,7 @@ function PhoneList({ rows, open, toggle }: { rows: DevRow[]; open: Set<string>; 
                     <div><div className={LABEL}>{t("colType")}</div><TypeText type={row.type} /></div>
                     <div><div className={LABEL}>{t("developmentXp.colTop")}</div><Top top={row.top} /></div>
                     <div><div className={LABEL}>{t("developmentXp.colXpToday")}</div><XpToday cell={row.today} /></div>
-                    <div><div className={LABEL}>{t("developmentXp.colSeason")}</div><Season value={row.season} unit /></div>
+                    <div><div className={LABEL} title={t("developmentXp.ratingSeasonTitle")}>{t("developmentXp.colRatingSeason")}</div><RatingSeason value={row.ratingSeason} /></div>
                   </div>
                   <div>
                     <div className={LABEL}>{t("developmentXp.sparkTitle")}</div>

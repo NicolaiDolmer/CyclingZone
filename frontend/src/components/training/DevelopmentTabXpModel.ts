@@ -6,6 +6,11 @@
 import { buildMonthView, buildTodayView, xpBySource, type XpReceipt, type XpRiderType } from "../../lib/trainingReportXp.ts";
 import { potentialViewOf, potentialViewValue, type PotentialView } from "../../lib/potentialEstimateDisplay.ts";
 import { buildXpReportFixture, XP_FIXTURE_LAST_DATE } from "./reportXp/xpReportFixture.ts";
+import { ABILITY_KEYS as ABILITY_KEYS_BASE } from "../../lib/generated/abilityRegistry.js";
+import { riderBestRole as riderBestRoleBase } from "../../lib/riderRating.js";
+
+const ABILITY_KEYS = ABILITY_KEYS_BASE as unknown as readonly string[];
+const riderBestRole = riderBestRoleBase as unknown as (rider: Record<string, unknown>) => { rating: number | null; role: string | null };
 
 /** "Close to the next point": three quarters of the bar or more (a display line, not a game rule). */
 export const CLOSE_PCT = 75;
@@ -46,7 +51,10 @@ export type XpTodayCell = { state: "locked" } | { state: "none" } | { state: "xp
 export type DevRow = {
   id: string; name: string; firstname: string | null; lastname: string | null; nation: string | null; type: XpRiderType | null;
   rating: number | null; age: number | null; top: TopValue;
+  /** Ability points this season (the summary line and the opened row count these). */
   season: number | null;
+  /** Ejer 19/11: the rating's change this season (now minus at season start); null = unknown. */
+  ratingSeason: number | null;
   today: XpTodayCell;
   spark: number[]; xp30: number;
   next: { key: string; pct: number } | null;
@@ -85,6 +93,38 @@ export function topSortValue(top: TopValue): number | null {
   if (top.kind === "view") return top.value;
   if (top.kind === "band") return top.hi;
   return null;
+}
+
+/** Only the ability values, so the rating never falls back to a cached number. */
+function abilitiesOnly(abilities: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(ABILITY_KEYS.map(key => [key, abilities[key]]));
+}
+
+/**
+ * The rating's change this season, without new server data: the rating from the
+ * abilities now minus the rating from the same abilities with this season's points
+ * taken off (the same rating as everywhere else, best role now). Null when the
+ * season has nothing to count yet or the rating cannot be read.
+ */
+export function seasonRatingChange(
+  abilities: Record<string, unknown>,
+  gains: Record<string, number> | null | undefined,
+): number | null {
+  if (!gains) return null;
+  const now = abilitiesOnly(abilities);
+  const start: Record<string, unknown> = { ...now };
+  for (const [key, n] of Object.entries(gains)) {
+    if (finite(n) && n > 0 && finite(start[key])) start[key] = (start[key] as number) - n;
+  }
+  const ratingNow = riderBestRole(now).rating;
+  const ratingStart = riderBestRole(start).rating;
+  return finite(ratingNow) && finite(ratingStart) ? ratingNow - ratingStart : null;
+}
+
+/** The rating change as text: '+3', '0', '-1', and a dash when unknown. */
+export function signedText(value: number | null): string {
+  if (value == null) return "—";
+  return value > 0 ? `+${value}` : String(value);
 }
 
 /** The newest stored bar per rider and ability (receipts may come newest first). */
@@ -150,7 +190,8 @@ export function buildDevelopmentRows({ runs, riders, todayKey, seasonGains, forc
     const nextPct = m?.next ? barPct(m.next) : null;
     return {
       id: rider.id, name: rider.name, firstname: rider.firstname ?? null, lastname: rider.lastname ?? null, nation: rider.nation, type: rider.type,
-      rating: rider.rating, age: rider.age ?? null, top: rider.top, season, today,
+      rating: rider.rating, age: rider.age ?? null, top: rider.top, season,
+      ratingSeason: seasonRatingChange(rider.abilities, gains), today,
       spark: m?.spark ?? Array.from({ length: days }, () => 0),
       xp30: m?.xp ?? 0,
       next: nextKey && nextPct != null ? { key: nextKey, pct: nextPct } : null,
@@ -188,7 +229,7 @@ function sortValue(row: DevRow, key: SortKey): string | number | null {
     case "age": return row.age;
     case "rating": return row.rating;
     case "top": return topSortValue(row.top);
-    case "season": return row.season;
+    case "season": return row.ratingSeason;
     case "xpToday": return row.today.state === "xp" ? row.today.xp : null;
     case "xp30": return row.xp30;
     case "next": return row.next?.pct ?? null;
@@ -256,12 +297,17 @@ export function buildDevelopmentFixture(): { runs: XpReceipt[]; riders: DevRider
   }
   const riders = (latest?.report.riders ?? []).map((row, index): DevRiderInput => {
     const id = row.rider_id;
-    const rating = between(fixtureHash(id, "rating"), 61, 76);
-    const keys = new Set([...Object.keys(row.xp_bar ?? {}), ...Object.keys(seasonGains[id] ?? {})]);
-    const abilities = Object.fromEntries([...keys].map(key => [key, between(fixtureHash(id, key, "now"), rating - 12, rating + 6)]));
+    const base = between(fixtureHash(id, "rating"), 61, 76);
+    // Every ability, so the rating and the role are read the same way as on the live tab.
+    const abilities = Object.fromEntries(ABILITY_KEYS.map(key => [key, between(fixtureHash(id, key, "now"), base - 12, base + 6)]));
+    const best = riderBestRole(abilities);
+    const rating = best.rating ?? base;
     const certainty = CERTAINTY_WORDS[index % CERTAINTY_WORDS.length];
     return {
-      id, name: row.name || id, nation: fx.nations[id] ?? null, type: fx.types[id] ?? null, rating, abilities,
+      id, name: row.name || id, nation: fx.nations[id] ?? null,
+      // Ejer 19/11: the role he is best in now, not the natural one.
+      type: best.role ? { primary: best.role, secondary: null } as XpRiderType : fx.types[id] ?? null,
+      rating, abilities,
       age: between(fixtureHash(id, "age"), 20, 33),
       top: { kind: "view", value: rating + between(fixtureHash(id, "top"), 2, 9),
         view: { hidden: false, value: rating + between(fixtureHash(id, "top"), 2, 9), certainty, previousValue: null, previousCertainty: null, changedAt: null } },

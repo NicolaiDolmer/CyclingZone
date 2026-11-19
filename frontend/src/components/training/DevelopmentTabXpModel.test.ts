@@ -2,9 +2,12 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   bandText, barPct, buildDevelopmentRows, devSummary, nextSort, previewXpDevelopment, sortDevRows, topOf, topSortValue,
-  xpDevelopmentMode, buildDevelopmentFixture, DEFAULT_SORT, DEV_FIXTURE_TODAY, MAX_ABILITIES, type DevRiderInput,
+  xpDevelopmentMode, buildDevelopmentFixture, seasonRatingChange, signedText, DEFAULT_SORT, DEV_FIXTURE_TODAY, MAX_ABILITIES, type DevRiderInput,
 } from "./DevelopmentTabXpModel.ts";
 import type { XpReceipt } from "../../lib/trainingReportXp.ts";
+import { riderOverallRating as riderOverallRatingJs } from "../../lib/riderRating.js";
+
+const riderOverallRating = riderOverallRatingJs as unknown as (rider: Record<string, unknown>) => number | null;
 
 // Invented receipts: two dates, two riders. Numbers are test values, not the model's.
 function receipt(date: string, status: XpReceipt["receipt_status"], riders: Array<{ id: string; xp: Record<string, number>; race?: boolean; gains?: Record<string, number>; bar?: Record<string, { xp: number; price: number }> }>): XpReceipt {
@@ -137,4 +140,53 @@ test("expected top: an academy intake rider keeps his academy prognosis (estimat
   assert.equal(top.kind, "academy");
   assert.equal(top.kind === "academy" ? top.prognosis : null, prognosis);
   assert.equal(topSortValue(top), null);
+});
+
+test("rating this season: the rating now minus the rating with this season's points taken off (ejer 19/11)", () => {
+  const rows = buildDevelopmentRows({ runs: RUNS, riders: [rider("a"), rider("b")], todayKey: "2026-11-19", seasonGains: { a: { climbing: 3, flat: 0 }, b: null } });
+  const expected = riderOverallRating({ climbing: 72, flat: 60 })! - riderOverallRating({ climbing: 69, flat: 60 })!;
+  assert.ok(expected > 0, "the test values must move the rating");
+  assert.equal(rows.find(r => r.id === "a")!.ratingSeason, expected);
+  assert.equal(rows.find(r => r.id === "a")!.season, 3, "the ability points stay for the summary line and the opened row");
+  assert.equal(rows.find(r => r.id === "b")!.ratingSeason, null, "no season data shows a dash");
+  assert.equal(signedText(rows.find(r => r.id === "b")!.ratingSeason), "—");
+});
+
+test("rating this season: unknown stays unknown, no gains is a measured zero, losses are not points", () => {
+  assert.equal(seasonRatingChange({ climbing: 72 }, null), null);
+  assert.equal(seasonRatingChange({ climbing: 72 }, undefined), null);
+  assert.equal(seasonRatingChange({ climbing: 72, flat: 60 }, {}), 0);
+  assert.equal(seasonRatingChange({ climbing: 72, flat: 60 }, { climbing: -2 }), 0);
+  assert.equal(seasonRatingChange({}, { climbing: 3 }), null, "no abilities, no rating");
+  // A cached rating on the row is never read as the rating at season start.
+  assert.equal(seasonRatingChange({ best_role: "climber", best_role_rating: 70 }, { climbing: 3 }), null);
+  // A point on an ability the rider has no value for is skipped, not subtracted from nothing.
+  assert.equal(seasonRatingChange({ climbing: 72 }, { flat: 3 }), 0);
+});
+
+test("signedText: '+3', '0', '-1' and a dash", () => {
+  assert.equal(signedText(3), "+3");
+  assert.equal(signedText(0), "0");
+  assert.equal(signedText(-1), "-1");
+  assert.equal(signedText(null), "—");
+});
+
+test("sorting the season column sorts on the rating change; unknown last", () => {
+  const rows = buildDevelopmentRows({
+    runs: RUNS, riders: [rider("a"), rider("b"), rider("c")], todayKey: "2026-11-19",
+    seasonGains: { a: { climbing: 1 }, b: null, c: { climbing: 5 } },
+  });
+  assert.deepEqual(sortDevRows(rows, { key: "season", dir: -1 }).map(r => r.id), ["c", "a", "b"]);
+  assert.deepEqual(sortDevRows(rows, { key: "season", dir: 1 }).map(r => r.id), ["a", "c", "b"]);
+});
+
+test("the preview fixture shows the rating change and the role he is best in now", () => {
+  const fx = buildDevelopmentFixture();
+  const rows = buildDevelopmentRows({ runs: fx.runs, riders: fx.riders, todayKey: DEV_FIXTURE_TODAY, seasonGains: fx.seasonGains, forceUnsettled: true });
+  assert.ok(rows.every(r => typeof r.ratingSeason === "number"));
+  assert.ok(rows.some(r => (r.ratingSeason ?? 0) > 0));
+  for (const r of fx.riders) {
+    assert.equal(r.rating, riderOverallRating(r.abilities as Record<string, unknown>), "the rating is read from the same abilities");
+    assert.equal(r.type?.secondary, null, "one role only");
+  }
 });

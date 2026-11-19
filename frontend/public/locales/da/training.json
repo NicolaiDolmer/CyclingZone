@@ -202,7 +202,8 @@
     "pctLabel": "{pct} procent af vejen til næste point",
     "sparkLabel": "{name}: XP pr. dag, sidste 30 dage",
     "sparkTitle": "XP pr. dag, sidste 30 dage",
-    "seasonValue": "{value} point",
+    "colRatingSeason": "Rating, sæson",
+    "ratingSeasonTitle": "Ratingens ændring i sæsonen: nu mod sæsonstart",
     "ability": "Evne",
     "now": "Nu",
     "noAbilities": "Ingen XP på en evne endnu."

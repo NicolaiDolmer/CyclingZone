@@ -202,7 +202,8 @@
     "pctLabel": "{pct} percent of the way to the next point",
     "sparkLabel": "{name}: XP per day, last 30 days",
     "sparkTitle": "XP per day, last 30 days",
-    "seasonValue": "{value} points",
+    "colRatingSeason": "Rating, season",
+    "ratingSeasonTitle": "Rating change this season: now against the start of the season",
     "ability": "Ability",
     "now": "Now",
     "noAbilities": "No XP on any ability yet."
