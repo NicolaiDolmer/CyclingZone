@@ -2051,7 +2051,7 @@
     },
     "restForDevelopedFaq": {
       "q": "My rider is fully developed. Should I just set them to Rest?",
-      "a": "There is almost always more to gain: the higher an ability already is, the more each point costs, so progress near the top is slow, but training still moves it up to the highest level his role allows. Normal or Hard still builds Fatigue, and Hard carries the usual injury risk, so Rest makes sense when Fatigue is high or the gain is too small to be worth the load. Rest gives no development on a training day, so otherwise a focus on abilities that are still lower moves him faster. Riders hold their level up to and including 30; from the season after that, his physical abilities drop a little at each season change. Race days and hard training days slow that decline, Rest doesn't."
+      "a": "Usually there is more to gain: the higher an ability already is, the more each point costs, so progress near the top is slow but keeps going until the ability reaches the highest level his role allows; from there, training it adds nothing. Normal or Hard still builds Fatigue, and Hard carries the usual injury risk, so Rest makes sense when Fatigue is high or the gain is too small to be worth the load. Rest gives no development on a training day, so otherwise a focus on abilities that are still lower moves him faster. Riders hold their level up to and including 30; from the season after that, his physical abilities drop a little at each season change. Race days and hard training days slow that decline, Rest doesn't."
     },
     "raceDayIntensityFaq": {
       "q": "Does my chosen intensity still matter on a day my rider races?",
