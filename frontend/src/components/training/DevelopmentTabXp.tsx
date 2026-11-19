@@ -10,6 +10,7 @@ import { riderOverallRating as riderOverallRatingJs } from "../../lib/riderRatin
 import { copenhagenDayKey as copenhagenDayKeyJs } from "../../lib/raceCentre.js";
 import { formatNumber as formatNumberJs } from "../../lib/intl.js";
 import { useMediaQuery } from "../../hooks/useMediaQuery.ts";
+import { riderShortName } from "../../lib/riderName.ts";
 import { Flag, RiderNameCell } from "./reportXp/ui.ts";
 import { XpSpark } from "./reportXp/XpBar.tsx";
 import {
@@ -150,11 +151,14 @@ function SortHead({ k, label, className = "", sort, onSort }: { k: SortKey; labe
   );
 }
 
-function Name({ row, wrap = false }: { row: DevRow; wrap?: boolean }) {
+/** Flag + the canonical name cell; only the name, never broken inside a word. The phone shows the short form (#5383). */
+function Name({ row, short = false }: { row: DevRow; short?: boolean }) {
+  const [first = "", ...rest] = row.name.trim().split(/\s+/);
+  const parts = { firstname: row.firstname ?? first, lastname: row.lastname ?? rest.join(" ") };
   return (
-    <span className={`flex min-w-0 gap-1.5 ${wrap ? "items-start" : "items-center"}`} data-testid="development-xp-name">
-      {row.nation && <Flag code={row.nation} className={`shrink-0 ${wrap ? "mt-0.5" : ""}`} />}
-      <span className="min-w-0"><RiderNameCell id={row.id} name={row.name} wrap className="text-[13px] font-medium text-cz-1 hover:text-cz-accent-t" /></span>
+    <span className="flex min-w-0 items-center gap-1.5" data-testid="development-xp-name">
+      {row.nation && <Flag code={row.nation} className="shrink-0" />}
+      <span className="min-w-0"><RiderNameCell id={row.id} {...parts} name={short ? riderShortName(parts) : row.name} wrap className="text-[13px] font-medium text-cz-1 hover:text-cz-accent-t" /></span>
     </span>
   );
 }
@@ -215,7 +219,7 @@ function PctBar({ pct }: { pct: number }) {
 function Spark({ row }: { row: DevRow }) {
   const { t } = useTranslation("training");
   return (
-    <span className="block w-[120px]" role="img" aria-label={t("developmentXp.sparkLabel", { name: row.name })}>
+    <span className="block w-[100px]" role="img" aria-label={t("developmentXp.sparkLabel", { name: row.name })}>
       <XpSpark values={row.spark} />
     </span>
   );
@@ -254,13 +258,13 @@ function DesktopTable({ rows, open, toggle, sort, onSort }: { rows: DevRow[]; op
       <thead>
         <tr className="border-b border-cz-border">
           <th className="w-[44px]"><span className="sr-only">{t("developmentXp.abilitiesCol")}</span></th>
-          <SortHead k="rider" label={t("colRider")} className="w-[220px]" sort={sort} onSort={onSort} />
-          <SortHead k="type" label={t("colType")} className="w-[130px]" sort={sort} onSort={onSort} />
-          <SortHead k="rating" label={t("developmentXp.colRating")} className="w-[86px]" sort={sort} onSort={onSort} />
-          <SortHead k="top" label={t("developmentXp.colTop")} className="w-[150px]" sort={sort} onSort={onSort} />
-          <SortHead k="season" label={t("developmentXp.colSeason")} className="w-[86px]" sort={sort} onSort={onSort} />
-          <SortHead k="xpToday" label={t("developmentXp.colXpToday")} className="w-[150px]" sort={sort} onSort={onSort} />
-          <SortHead k="xp30" label={t("developmentXp.colXp30")} className="w-[200px]" sort={sort} onSort={onSort} />
+          <SortHead k="rider" label={t("colRider")} className="w-[200px]" sort={sort} onSort={onSort} />
+          <SortHead k="type" label={t("colType")} className="w-[118px]" sort={sort} onSort={onSort} />
+          <SortHead k="rating" label={t("developmentXp.colRating")} className="w-[76px]" sort={sort} onSort={onSort} />
+          <SortHead k="top" label={t("developmentXp.colTop")} className="w-[140px]" sort={sort} onSort={onSort} />
+          <SortHead k="season" label={t("developmentXp.colSeason")} className="w-[76px]" sort={sort} onSort={onSort} />
+          <SortHead k="xpToday" label={t("developmentXp.colXpToday")} className="w-[132px]" sort={sort} onSort={onSort} />
+          <SortHead k="xp30" label={t("developmentXp.colXp30")} className="w-[176px]" sort={sort} onSort={onSort} />
           <SortHead k="next" label={t("developmentXp.colNext")} sort={sort} onSort={onSort} />
         </tr>
       </thead>
@@ -276,7 +280,7 @@ function DesktopTable({ rows, open, toggle, sort, onSort }: { rows: DevRow[]; op
                     {o ? <ChevronDownIcon size={14} aria-hidden="true" /> : <ChevronRightIcon size={14} aria-hidden="true" />}
                   </button>
                 </td>
-                <td className="px-3 py-[7px]"><Name row={row} wrap /></td>
+                <td className="px-3 py-[7px]"><Name row={row} /></td>
                 <td className="px-3 py-[7px]"><TypeText type={row.type} /></td>
                 <td className="px-3 py-[7px]"><Rating value={row.rating} /></td>
                 <td className="px-3 py-[7px]"><Top top={row.top} /></td>
@@ -290,8 +294,8 @@ function DesktopTable({ rows, open, toggle, sort, onSort }: { rows: DevRow[]; op
                 </td>
                 <td className="px-3 py-[7px]">
                   {row.next ? (
-                    <span className="inline-flex min-w-0 items-center gap-3">
-                      <span className="w-[92px] truncate text-[13px] text-cz-1">{tRider(`racePreview.derived.${row.next.key}`)}</span>
+                    <span className="inline-flex min-w-0 items-center gap-2">
+                      <span className="w-[84px] truncate text-[13px] text-cz-1">{tRider(`racePreview.derived.${row.next.key}`)}</span>
                       <PctBar pct={row.next.pct} />
                     </span>
                   ) : <span className="text-cz-3">—</span>}
@@ -325,7 +329,7 @@ function PhoneList({ rows, open, toggle }: { rows: DevRow[]; open: Set<string>; 
           return (
             <li key={row.id} className="border-t border-cz-border first:border-t-0" data-testid="development-xp-row">
               <div className={`grid min-h-11 w-full items-center gap-2 px-3 py-2 ${PHONE_GRID} ${o ? "bg-cz-subtle/60" : ""}`}>
-                <Name row={row} wrap />
+                <Name row={row} short />
                 <span><Rating value={row.rating} /></span>
                 <span className={`text-[13px] font-semibold text-cz-1 ${NUM}`}>{formatNumber(row.xp30)}</span>
                 <button type="button" onClick={() => toggle(row.id)} aria-expanded={o} aria-label={t("developmentXp.openAbilities", { name: row.name })}

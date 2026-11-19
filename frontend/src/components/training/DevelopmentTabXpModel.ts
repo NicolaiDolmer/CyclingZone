@@ -25,6 +25,8 @@ export type TopValue =
 export type DevRiderInput = {
   id: string;
   name: string;
+  /** First and last name when known, so the phone can show the short form ("A. Brandvig"). */
+  firstname?: string | null; lastname?: string | null;
   nation: string | null;
   type: XpRiderType | null;
   rating: number | null;
@@ -38,7 +40,7 @@ export type DevAbility = { key: string; now: number | null; season: number | nul
 export type XpTodayCell = { state: "locked" } | { state: "none" } | { state: "xp"; xp: number; point: string | null };
 
 export type DevRow = {
-  id: string; name: string; nation: string | null; type: XpRiderType | null;
+  id: string; name: string; firstname: string | null; lastname: string | null; nation: string | null; type: XpRiderType | null;
   rating: number | null; top: TopValue;
   season: number | null;
   today: XpTodayCell;
@@ -141,7 +143,7 @@ export function buildDevelopmentRows({ runs, riders, todayKey, seasonGains, forc
     const nextKey = m?.next?.key ?? null;
     const nextPct = m?.next ? barPct(m.next) : null;
     return {
-      id: rider.id, name: rider.name, nation: rider.nation, type: rider.type,
+      id: rider.id, name: rider.name, firstname: rider.firstname ?? null, lastname: rider.lastname ?? null, nation: rider.nation, type: rider.type,
       rating: rider.rating, top: rider.top, season, today,
       spark: m?.spark ?? Array.from({ length: days }, () => 0),
       xp30: m?.xp ?? 0,
