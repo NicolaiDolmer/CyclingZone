@@ -185,7 +185,7 @@ Kriterie: oprettet før 17/9/2026, ikke nævnt i `MASTERPLAN.md`/`NOW.md`, og in
 | #941 | 2026-06-02 | aldrig | priority:med, type:investigation, cat:founder | Regnskabsprogram: vælg + opsæt |
 | #1283 | 2026-06-11 | aldrig | priority:med, type:docs, cat:founder | ToV-session: definér founder-stemmen (ejer-ledet): struktur fra AI, prosa fra N |
 | #1569 | 2026-06-20 | 2026-09-10 | priority:high, type:bug, cat:user-feature | Ny-spiller onboarding-audit (2026-06-20): prioriteret handlingsplan |
-| #1819 | 2026-06-23 | 2026-08-31 | priority:high, type:feature | Opfølgning efter præmie ÷20: bekræft økonomi-coherence + ryd backup |
+| #1819 | 2026-06-23 | 2026-08-31 | priority:high, type:feature | Opfølgning efter præmienedskæringen: bekræft økonomi-coherence + ryd backup |
 | #2480 | 2026-07-16 | aldrig | priority:low, type:investigation | Motor-ops: ML-assisteret kalibreringsforslag fra live drift (systemet foreslår,  |
 | #2645 | 2026-07-18 | 2026-08-05 | priority:med, type:bug, cat:user-feature | [bug/balance] Peak/loft-beskeder inkonsistente: 'approaching ceiling' ved 29/90+ |
 | #2670 | 2026-07-18 | 2026-08-05 | priority:med, type:investigation | [balance] Udvikl-og-sælg: re-mål ROI mod ægte markedsadfærd + ejer-beslutning om |
@@ -225,7 +225,7 @@ Kriterie: oprettet før 17/9/2026, ikke nævnt i `MASTERPLAN.md`/`NOW.md`, og in
 | #4985 | 2026-09-07 | aldrig | priority:low, type:feature, cat:user-feature | [feature] Gruppér enslydende beskeder i indbakken paa tvaers af flere haendelser |
 | #5031 | 2026-09-08 | aldrig | priority:low, type:feature, cat:infra | Ejer-direktiv 7/9: ryd op i admin-funktioner der aldrig bruges eller er blevet o |
 | #5131 | 2026-09-11 | 2026-09-11 | priority:high, type:feature, cat:user-feature | Ejer-direktiv 10/9: hele hjemmesiden skal hastighedsoptimeres OG mobiloptimeres  |
-| #5256 | 2026-09-15 | aldrig | priority:med, type:bug, cat:balance | [balance] Taktik vægter 18 % på holdtidskørsel ved en fejl - ejeren vil fjerne d |
+| #5256 | 2026-09-15 | aldrig | priority:med, type:bug, cat:balance | [balance] Taktik vægter med på holdtidskørsel ved en fejl - ejeren vil fjerne d |
 
 ### B. Luk som not planned (icebox / post-launch) (34)
 
@@ -348,7 +348,7 @@ Kriterie: oprettet før 17/9/2026, ikke nævnt i `MASTERPLAN.md`/`NOW.md`, og in
 | #3131 | 2026-07-30 | 2026-09-08 | priority:med, type:feature | [Epic] Financial Fair Play & Anti-Cheat: bevis, forebyggelse, detektion, håndte |
 | #3328 | 2026-08-04 | 2026-08-25 | priority:med, type:bug, cat:balance | [balance] Løbsklasse og etapeantal er afkoblet: 32 af 36 D2-etapeløb er ProSerie |
 | #3337 | 2026-08-04 | 2026-08-22 | priority:med, type:investigation, cat:balance | [investigation] Betaler specialisering sig? Bjergryttere vs. brede allroundere o |
-| #3349 | 2026-08-04 | 2026-08-05 | priority:med, type:bug, cat:balance | [balance] Spillets terræn-mix er skævt mod fladt: kuperet 27,7% mod virkelighede |
+| #3349 | 2026-08-04 | 2026-08-05 | priority:med, type:bug, cat:balance | [balance] Spillets terræn-mix er skævt mod fladt: kuperet under virkelighede |
 | #3350 | 2026-08-04 | 2026-08-20 | priority:med, type:feature, cat:user-feature | [produkt] Spillerne gætter på reglerne: fire testere byggede fire private model |
 | #3372 | 2026-08-05 | 2026-08-09 | priority:med, type:investigation, cat:user-feature | [bug] Ungdoms-scoutrapport faldt drastisk, og TT står fast på 90% trods anbefale |
 | #3395 | 2026-08-05 | 2026-08-06 | priority:med, type:feature | [Epic] Verdensklasse-planen 2026-08: løbsdagen som teater + levende presse + lev |
@@ -371,7 +371,7 @@ Kriterie: oprettet før 17/9/2026, ikke nævnt i `MASTERPLAN.md`/`NOW.md`, og in
 | #3711 | 2026-08-14 | 2026-08-14 | priority:med, type:feature | [ops] cross-pc-sync har ingen oprydning: 2,8 GB og 9.777 transcript-filer i OneD |
 | #3719 | 2026-08-14 | 2026-08-23 | priority:med, type:feature, cat:balance | [balance] Kalenderen har intet præmiepulje-budget pr. division: variations-besl |
 | #3729 | 2026-08-14 | 2026-08-14 | priority:med, type:feature, cat:balance | [balance/HOEJ] Markedet er forbudt at prissaette over modellen - 23 konkurrenceh |
-| #3732 | 2026-08-14 | 2026-08-20 | priority:med, type:feature, cat:balance | [balance/HOEJ] Vaerdimodellen er pengepolitik, ikke en prisseddel - 53,3 % af al |
+| #3732 | 2026-08-14 | 2026-08-20 | priority:med, type:feature, cat:balance | [balance/HOEJ] Vaerdimodellen er pengepolitik, ikke en prisseddel - en stor del af al |
 | #3733 | 2026-08-14 | 2026-08-20 | priority:med, type:feature, cat:user-feature | [ux] Soendags-kvittering paa vaerdien: spilleren skal kunne se HVORFOR hans rytt |
 | #3743 | 2026-08-14 | 2026-08-14 | priority:med, type:feature | [balance] Assistentens traeningsvalg skal afhaenge af traenerens evner - i dag e |
 | #3763 | 2026-08-14 | 2026-08-14 | priority:med, type:feature | [ux] Managers skal kunne se form stige og falde af traening - dataene ligger all |
@@ -409,7 +409,7 @@ Kriterie: oprettet før 17/9/2026, ikke nævnt i `MASTERPLAN.md`/`NOW.md`, og in
 | #4220 | 2026-08-25 | 2026-08-26 | priority:med, type:bug | [calendar/realisme] Enkeltstarter skal ligne virkelighedens cykelsport - researc |
 | #4263 | 2026-08-26 | 2026-09-03 | priority:med, type:investigation, cat:user-feature | [ux] Rytterens vaerdi falder 240k paa to maaneder mens evnerne stiger - intet i  |
 | #4264 | 2026-08-26 | 2026-09-02 | priority:low, type:feature, cat:user-feature | [feature] Skjul andre holds rytter-evner - scouting afsloerer gradvist et interv |
-| #4278 | 2026-08-26 | 2026-09-03 | priority:med, type:feature, cat:balance | [balance] D4 er den mest bjergrige division - samlet opad 41,9 % mod baandet 25- |
+| #4278 | 2026-08-26 | 2026-09-03 | priority:med, type:feature, cat:balance | [balance] D4 er den mest bjergrige division - samlet opad over baandet |
 | #4328 | 2026-08-27 | 2026-08-31 | priority:med, type:refactor | [refactor] finance_transactions.type: CHECK-constraint → Postgres-enum (pensione |
 | #4364 | 2026-08-28 | 2026-08-30 | priority:med, type:refactor | [ops] NOW.md og MASTERPLAN.md ligger paa deres token-lofter - hver ny note kraev |
 | #4423 | 2026-08-30 | 2026-08-31 | priority:med, type:bug | [bug] Akademikontrakt skrevet midt i et igangvaerende etapeloeb fjerner rytteren |
@@ -486,7 +486,7 @@ Kriterie: oprettet før 17/9/2026, ikke nævnt i `MASTERPLAN.md`/`NOW.md`, og in
 | #2923 | 2026-07-25 | aldrig | priority:med, type:feature | Marked-/auktionsfrys som app_config-flag (bruges ved hvert skifte og ved inciden |
 | #2964 | 2026-07-25 | aldrig | priority:med, type:feature, cat:infra | [infra] Fuldt PR-preview: backend-preview pr. branch + DB-strategi: ejeren skal |
 | #2990 | 2026-07-25 | aldrig | priority:med, type:refactor | refactor(teams): migrer de 10 resterende menneske-hold-queries til humanTeamFilt |
-| #3010 | 2026-07-25 | aldrig | priority:med, type:feature | [feature] Prologer mangler eget distance-bånd: WT_DISTANCE_BANDS.itt [15,40] ma |
+| #3010 | 2026-07-25 | aldrig | priority:med, type:feature | [feature] Prologer mangler eget distance-bånd: enkeltstartens distance-bånd bruges |
 | #3087 | 2026-07-27 | aldrig | priority:med, type:feature | [planner etape 3] Mål-løb-modellen: markér de løb du vil vinde, assistenten plan |
 | #3112 | 2026-07-28 | aldrig | priority:med, type:bug | [ops] Parallel session slettede ucommitteret arbejde i delt checkout: NOW.md-cl |
 | #3139 | 2026-07-30 | aldrig | priority:med, cat:user-feature, type:task | [fair-play/H] Sanktionstrappe, sagsskabelon og spiller-vendte fair play-regler |
@@ -509,8 +509,8 @@ Kriterie: oprettet før 17/9/2026, ikke nævnt i `MASTERPLAN.md`/`NOW.md`, og in
 | #4025 | 2026-08-20 | aldrig | priority:med, type:feature | [design] Oekonomisiderne: alt for meget tekst paa fladen - flyt manualprosa til  |
 | #4076 | 2026-08-21 | aldrig | priority:med, type:feature | [feature] Staaende ordrer: kvittering + 'goer det til en regel' - een auto-fyld- |
 | #4101 | 2026-08-22 | aldrig | priority:med, type:investigation, cat:balance | [investigation] Ingen frie agenter paa 35+ gik paa pension - kun ryttere paa hol |
-| #4181 | 2026-08-24 | aldrig | priority:med, type:investigation, cat:balance | [balance/HOEJ] TT-rytteren er ikke bedst til enkeltstart, og rouleuren (17 % af  |
-| #4206 | 2026-08-24 | aldrig | priority:med, type:bug, cat:balance | [balance/HOEJ] 965 ryttere (15 %) har identiske stats i alle 14 felter - over ha |
+| #4181 | 2026-08-24 | aldrig | priority:med, type:investigation, cat:balance | [balance/HOEJ] TT-rytteren er ikke bedst til enkeltstart, og rouleuren (en del af  |
+| #4206 | 2026-08-24 | aldrig | priority:med, type:bug, cat:balance | [balance/HOEJ] mange ryttere har identiske stats i alle 14 felter - over ha |
 | #4327 | 2026-08-27 | aldrig | priority:med, type:refactor | [refactor] Typet Supabase-klient i backend (vejen til at pensionere schema-colum |
 | #4341 | 2026-08-28 | aldrig | priority:med, type:feature, cat:user-feature | [ux] Peak-markoer mangler i holdudtagelsen - man kan kun se hvem der peaker FOER |
 | #4342 | 2026-08-28 | aldrig | priority:med, type:feature, cat:user-feature | [feature] Vis paa traeningssiden om rytteren er udtaget til et loeb - og hvor ma |
@@ -561,13 +561,13 @@ Kriterie: ikke nævnt i `MASTERPLAN.md`/`NOW.md` (heller ikke via "Del af #M" ti
 | #941 | founder | 2026-06-02 | Regnskabsprogram: vælg + opsæt |
 | #1283 | founder | 2026-06-11 | ToV-session: definér founder-stemmen (ejer-ledet): struktur fra AI, prosa fra Nicolai |
 | #1569 | high | 2026-06-20 | Ny-spiller onboarding-audit (2026-06-20): prioriteret handlingsplan |
-| #1819 | high | 2026-06-23 | Opfølgning efter præmie ÷20: bekræft økonomi-coherence + ryd backup |
+| #1819 | high | 2026-06-23 | Opfølgning efter præmienedskæringen: bekræft økonomi-coherence + ryd backup |
 | #2236 | founder | 2026-07-06 | Organic community outreach: Reddit + Discord posting |
 | #2259 | next | 2026-07-10 | [chore] Supabase DB-hygiejne: ryd ~20 backup_*-tabeller + covering-index på unindexed fore |
 | #2480 | ejer i titel | 2026-07-16 | Motor-ops: ML-assisteret kalibreringsforslag fra live drift (systemet foreslår, ejer beslu |
 | #2557 | high | 2026-07-17 | [balance/HØJ] LIVE drift i race v3: hold-dominans (share4+) RØD 3 dage i træk + favorit-wi |
 | #2645 | ejer i titel | 2026-07-18 | [bug/balance] Peak/loft-beskeder inkonsistente: 'approaching ceiling' ved 29/90+: Del B p |
-| #2670 | ejer i titel | 2026-07-18 | [balance] Udvikl-og-sælg: re-mål ROI mod ægte markedsadfærd + ejer-beslutning om 250%-loft |
+| #2670 | ejer i titel | 2026-07-18 | [balance] Udvikl-og-sælg: re-mål ROI mod ægte markedsadfærd + ejer-beslutning om ROI-loft |
 | #2675 | ejer i titel | 2026-07-18 | [verify+decision] 19/7 aften: første stemplede udløbs-auktioner + kreditering: og ejer-va |
 | #2682 | high | 2026-07-18 | AI-audit 19/7: NOW.md 2x over token-budget + CLAUDE.md-trim; gør token-WARN til FAIL |
 | #2758 | ejer i titel | 2026-07-20 | [ops/rutine] Faste rutiner: Discord-triage → GitHub-issues (dagligt) + done-audit-sweep (u |
@@ -605,7 +605,7 @@ Kriterie: ikke nævnt i `MASTERPLAN.md`/`NOW.md` (heller ikke via "Del af #M" ti
 | #4616 | founder | 2026-09-02 | [session] Infisical-session: EUR-planer i Alunta, Railway-noegler, Resend-noegler, checkou |
 | #4622 | ejer i titel | 2026-09-02 | [epic] Designsystem til naeste niveau: taste-doc, audit af 63 sider, kit, CI-vagter, Claud |
 | #4751 | ejer i titel | 2026-09-04 | Ejer-direktiv 3/9: forum- og social-pakke - klikbare navne, profilbillede, DM/indbakke mel |
-| #4765 | ejer i titel | 2026-09-04 | [balance/beslutning inden 11/9] Udviklingshastighed for svagheder: ROLE_CLASS_RATE.svaghed |
+| #4765 | ejer i titel | 2026-09-04 | [balance/beslutning inden 11/9] Udviklingshastighed for svagheder: én intern rate |
 | #4812 | ejer i titel, next | 2026-09-05 | [ci] dependabot-auto-merge.yml er sandsynligvis doed af samme aarsag som #4404 - tredje me |
 | #4814 | ejer i titel | 2026-09-05 | [design/beslutning] Rytterprofilens foto-plads uden feature + skyggerne paa /seasons (doku |
 | #4820 | ejer i titel | 2026-09-05 | Ejer-direktiv 4/9: indholdsplan for forum-indlaeg (9 emner) + spoergeskema til spillerne |
@@ -622,7 +622,7 @@ Kriterie: ikke nævnt i `MASTERPLAN.md`/`NOW.md` (heller ikke via "Del af #M" ti
 | #5131 | ejer i titel, high | 2026-09-11 | Ejer-direktiv 10/9: hele hjemmesiden skal hastighedsoptimeres OG mobiloptimeres (paraply + |
 | #5151 | next | 2026-09-11 | [design-kit] Tailwind 4 trin 2/3: migrer spillet (frontend/) fra 3.4 til 4.x + radius-konv |
 | #5157 | next | 2026-09-11 | [process] To drafts aeldre end en maaned (#3512, #4736): faerdig eller luk + 14-dages draf |
-| #5256 | ejer i titel | 2026-09-15 | [balance] Taktik vægter 18 % på holdtidskørsel ved en fejl - ejeren vil fjerne det sammen  |
+| #5256 | ejer i titel | 2026-09-15 | [balance] Taktik vægter med på holdtidskørsel ved en fejl - ejeren vil fjerne det sammen  |
 | #5327 | high | 2026-09-17 | [ryttere] Faerdiggoer PR #3512 arketype-prior: WIP-cherry-pick, groen test, foer/efter-for |
 | #5348 | ejer i titel | 2026-09-17 | [evner] Holdarbejde i loebsmotoren v4 bag flag teamwork_in_engine + harness-gate H6 + kemi |
 | #5349 | ejer i titel | 2026-09-17 | [evner] Lederskab: mentorpar (data + flader) + mentor-delta bag flag mentor_pairs_enabled  |

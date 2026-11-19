@@ -31,7 +31,7 @@
     },
     {
      "nummer": 2670,
-     "titel": "Udvikl-og-sælg: re-mål ROI mod ægte markedsadfærd + ejer-beslutning om 250%-loftet (opfølgning #2591)",
+     "titel": "Udvikl-og-sælg: re-mål ROI mod ægte markedsadfærd + ejer-beslutning om ROI-loftet (opfølgning #2591)",
      "oprettet": "2026-07-18",
      "prioritet": "med",
      "signal": [
@@ -85,7 +85,7 @@
     },
     {
      "nummer": 4765,
-     "titel": "Udviklingshastighed for svagheder: ROLE_CLASS_RATE.svaghed = 0,05 er den bindende knap",
+     "titel": "Udviklingshastighed for svagheder: én intern rate er den bindende knap",
      "oprettet": "2026-09-04",
      "prioritet": "med",
      "signal": [
@@ -440,7 +440,7 @@
     },
     {
      "nummer": 2557,
-     "titel": "LIVE drift i race v3: hold-dominans (share4+) RØD 3 dage i træk + favorit-win-rate 51% og stigende",
+     "titel": "LIVE drift i race v3: hold-dominans (share4+) RØD 3 dage i træk + favorittens sejrsrate stiger",
      "oprettet": "2026-07-17",
      "prioritet": "high",
      "signal": [
@@ -492,7 +492,7 @@
     },
     {
      "nummer": 5256,
-     "titel": "Taktik vægter 18 % på holdtidskørsel ved en fejl - ejeren vil fjerne det sammen med de nye stats",
+     "titel": "Taktik vægter med på holdtidskørsel ved en fejl - ejeren vil fjerne det sammen med de nye stats",
      "oprettet": "2026-09-15",
      "prioritet": "med",
      "signal": [
@@ -930,7 +930,7 @@
    "issues": [
     {
      "nummer": 1819,
-     "titel": "Opfølgning efter præmie ÷20: bekræft økonomi-coherence + ryd backup",
+     "titel": "Opfølgning efter præmienedskæringen: bekræft økonomi-coherence + ryd backup",
      "oprettet": "2026-06-23",
      "prioritet": "high",
      "signal": [
