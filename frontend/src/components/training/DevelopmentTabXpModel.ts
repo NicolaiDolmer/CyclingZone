@@ -32,6 +32,8 @@ export type DevRiderInput = {
   nation: string | null;
   type: XpRiderType | null;
   rating: number | null;
+  /** Age this season (ejer 19/11: aldrig mindre end den gamle Udvikling-fane). */
+  age?: number | null;
   /** Ability values now, keyed like the receipts (climbing, flat, ...). */
   abilities: Record<string, number | null | undefined>;
   top: TopValue;
@@ -43,7 +45,7 @@ export type XpTodayCell = { state: "locked" } | { state: "none" } | { state: "xp
 
 export type DevRow = {
   id: string; name: string; firstname: string | null; lastname: string | null; nation: string | null; type: XpRiderType | null;
-  rating: number | null; top: TopValue;
+  rating: number | null; age: number | null; top: TopValue;
   season: number | null;
   today: XpTodayCell;
   spark: number[]; xp30: number;
@@ -148,7 +150,7 @@ export function buildDevelopmentRows({ runs, riders, todayKey, seasonGains, forc
     const nextPct = m?.next ? barPct(m.next) : null;
     return {
       id: rider.id, name: rider.name, firstname: rider.firstname ?? null, lastname: rider.lastname ?? null, nation: rider.nation, type: rider.type,
-      rating: rider.rating, top: rider.top, season, today,
+      rating: rider.rating, age: rider.age ?? null, top: rider.top, season, today,
       spark: m?.spark ?? Array.from({ length: days }, () => 0),
       xp30: m?.xp ?? 0,
       next: nextKey && nextPct != null ? { key: nextKey, pct: nextPct } : null,
@@ -169,7 +171,7 @@ export function devSummary(rows: readonly DevRow[]): DevSummary {
   };
 }
 
-export type SortKey = "rider" | "type" | "rating" | "top" | "season" | "xpToday" | "xp30" | "next";
+export type SortKey = "rider" | "type" | "age" | "rating" | "top" | "season" | "xpToday" | "xp30" | "next";
 export type SortState = { key: SortKey; dir: 1 | -1 };
 export const DEFAULT_SORT: SortState = { key: "xp30", dir: -1 };
 
@@ -183,6 +185,7 @@ function sortValue(row: DevRow, key: SortKey): string | number | null {
   switch (key) {
     case "rider": return row.name;
     case "type": return row.type?.primary ?? null;
+    case "age": return row.age;
     case "rating": return row.rating;
     case "top": return topSortValue(row.top);
     case "season": return row.season;
@@ -259,6 +262,7 @@ export function buildDevelopmentFixture(): { runs: XpReceipt[]; riders: DevRider
     const certainty = CERTAINTY_WORDS[index % CERTAINTY_WORDS.length];
     return {
       id, name: row.name || id, nation: fx.nations[id] ?? null, type: fx.types[id] ?? null, rating, abilities,
+      age: between(fixtureHash(id, "age"), 20, 33),
       top: { kind: "view", value: rating + between(fixtureHash(id, "top"), 2, 9),
         view: { hidden: false, value: rating + between(fixtureHash(id, "top"), 2, 9), certainty, previousValue: null, previousCertainty: null, changedAt: null } },
       racingToday: row.activities?.some(a => a.race_day === true) ?? false,

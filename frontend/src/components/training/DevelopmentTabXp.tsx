@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { ChevronDownIcon as ChevronDownJs, ChevronRightIcon as ChevronRightJs, LockIcon as LockJs, SortIcon as SortJs } from "../ui/icons/index.jsx";
 import { SkeletonLines as SkeletonLinesJs } from "../ui/Skeleton.jsx";
+import RiderTypeBadgeJs from "../rider/RiderTypeBadge.jsx";
 import PotentialEstimate from "../rider/PotentialEstimate.tsx";
 import AcademyPrognosisCell, { type AcademyPrognosis } from "../rider/AcademyPrognosisCell.tsx";
 import { fetchPlayerFeatureFlags } from "../../lib/playerFeatureFlags.js";
@@ -33,6 +34,8 @@ const ChevronRightIcon = ChevronRightJs as unknown as Icon;
 const LockIcon = LockJs as unknown as Icon;
 const SortIcon = SortJs as unknown as Icon;
 const SkeletonLines = SkeletonLinesJs as unknown as ComponentType<{ lines?: number }>;
+// Ejer 19/11: ryttertypen som i spillets andre tabeller (truppen): RiderTypeBadge, primær + sekundær, stacked.
+const RiderTypeBadge = RiderTypeBadgeJs as unknown as ComponentType<{ primaryType: string; secondaryType?: string | null; stacked?: boolean }>;
 const riderOverallRating = riderOverallRatingJs as unknown as (rider: unknown) => number | null;
 const copenhagenDayKey = copenhagenDayKeyJs as unknown as (ms: number) => string;
 const formatNumber = formatNumberJs as unknown as (n: number) => string;
@@ -48,10 +51,12 @@ type Props = {
   estimateFor: (riderId: string) => unknown;
   seasonGains: Record<string, Record<string, number> | null | undefined>;
   racingToday: Record<string, unknown> | null | undefined;
+  /** Alder i sæsonen pr. rytter (samme som den gamle Udvikling-fane, ageForSeason). */
+  ageFor?: (riderId: string) => number | null;
   children: ReactNode;
 };
 
-export default function DevelopmentXpSwitch({ runs, roster, estimateFor, seasonGains, racingToday, children }: Props) {
+export default function DevelopmentXpSwitch({ runs, roster, estimateFor, seasonGains, racingToday, ageFor, children }: Props) {
   const isPreview = Boolean(import.meta.env.VITE_PREVIEW_MOCK);
   const preview = previewXpDevelopment(isPreview, typeof window === "undefined" ? "" : window.location.search);
   const [flagOn, setFlagOn] = useState(false);
@@ -63,7 +68,7 @@ export default function DevelopmentXpSwitch({ runs, roster, estimateFor, seasonG
   }, [isPreview]);
   const mode = xpDevelopmentMode({ preview, flagOn, hasXp: hasXpFields(runs as never) });
   if (mode === "off") return <>{children}</>;
-  return <DevelopmentTabXp fixture={mode === "fixture"} runs={runs} roster={roster} estimateFor={estimateFor} seasonGains={seasonGains} racingToday={racingToday} />;
+  return <DevelopmentTabXp fixture={mode === "fixture"} runs={runs} roster={roster} estimateFor={estimateFor} seasonGains={seasonGains} racingToday={racingToday} ageFor={ageFor} />;
 }
 
 const NUM = "font-data tabular-nums";
@@ -72,7 +77,7 @@ const LABEL = "mb-1 font-data text-3xs font-semibold uppercase tracking-[.06em] 
 const RATING_PLATE = `inline-flex min-w-[2.125rem] items-center justify-center rounded-cz border border-cz-border bg-cz-subtle px-1 py-0.5 text-[13px] font-semibold leading-none text-cz-1 ${NUM}`;
 const PHONE_GRID = "grid-cols-[minmax(0,1fr)_2.75rem_3.75rem_5.5rem]";
 
-function DevelopmentTabXp({ fixture, runs, roster, estimateFor, seasonGains, racingToday }: Omit<Props, "children"> & { fixture: boolean }) {
+function DevelopmentTabXp({ fixture, runs, roster, estimateFor, seasonGains, racingToday, ageFor }: Omit<Props, "children"> & { fixture: boolean }) {
   const { t } = useTranslation("training");
   const desktop = useMediaQuery("(min-width: 1024px)");
   const [open, setOpen] = useState<Set<string>>(() => new Set());
@@ -91,12 +96,13 @@ function DevelopmentTabXp({ fixture, runs, roster, estimateFor, seasonGains, rac
       nation: r.nationality_code ?? null,
       type: r.primary_type ? { primary: r.primary_type, secondary: r.secondary_type ?? null } as XpRiderType : null,
       rating: riderOverallRating(r),
+      age: ageFor?.(r.id) ?? null,
       abilities: r as Record<string, number | null | undefined>,
       top: topOf(estimateFor(r.id)),
       racingToday: racingToday?.[r.id] != null,
     }));
     return buildDevelopmentRows({ runs: runs as XpReceipt[], riders, todayKey: copenhagenDayKey(Date.now()), seasonGains });
-  }, [fixture, runs, roster, estimateFor, seasonGains, racingToday]);
+  }, [fixture, runs, roster, estimateFor, seasonGains, racingToday, ageFor]);
 
   if (!rows) return <div className="rounded-cz border border-cz-border bg-cz-card p-5"><SkeletonLines lines={10} /></div>;
   const sorted = sortDevRows(rows, sort);
@@ -167,10 +173,8 @@ function Name({ row, short = false }: { row: DevRow; short?: boolean }) {
 }
 
 function TypeText({ type }: { type: XpRiderType | null }) {
-  const { t } = useTranslation("riderTypes");
   if (!type?.primary) return <span className="text-cz-3">—</span>;
-  const full = type.secondary && type.secondary !== type.primary ? `${t(`types.${type.primary}`)}/${t(`types.${type.secondary}`)}` : t(`types.${type.primary}`);
-  return <span className="block truncate text-[13px] text-cz-2" title={full}>{t(`types.${type.primary}`)}</span>;
+  return <RiderTypeBadge primaryType={type.primary} secondaryType={type.secondary} stacked />;
 }
 
 function Rating({ value }: { value: number | null }) {
@@ -257,17 +261,19 @@ function Abilities({ row, phone }: { row: DevRow; phone: boolean }) {
 function DesktopTable({ rows, open, toggle, sort, onSort }: { rows: DevRow[]; open: Set<string>; toggle: (id: string) => void; sort: SortState; onSort: (k: SortKey) => void }) {
   const { t } = useTranslation("training");
   const { t: tRider } = useTranslation("rider");
+  const { t: tRiders } = useTranslation("riders");
   return (
     <table className="w-full min-w-[1160px] table-fixed text-xs" data-sortable data-testid="development-xp-table">
       <thead>
         <tr className="border-b border-cz-border">
           <th className="w-[44px]"><span className="sr-only">{t("developmentXp.abilitiesCol")}</span></th>
           <SortHead k="rider" label={t("colRider")} className="w-[200px]" sort={sort} onSort={onSort} />
-          <SortHead k="type" label={t("colType")} className="w-[118px]" sort={sort} onSort={onSort} />
-          <SortHead k="rating" label={t("developmentXp.colRating")} className="w-[76px]" sort={sort} onSort={onSort} />
-          <SortHead k="top" label={t("developmentXp.colTop")} className="w-[140px]" sort={sort} onSort={onSort} />
-          <SortHead k="season" label={t("developmentXp.colSeason")} className="w-[76px]" sort={sort} onSort={onSort} />
-          <SortHead k="xpToday" label={t("developmentXp.colXpToday")} className="w-[132px]" sort={sort} onSort={onSort} />
+          <SortHead k="type" label={t("colType")} className="w-[112px]" sort={sort} onSort={onSort} />
+          <SortHead k="age" label={tRiders("table.age")} className="w-[52px]" sort={sort} onSort={onSort} />
+          <SortHead k="rating" label={t("developmentXp.colRating")} className="w-[70px]" sort={sort} onSort={onSort} />
+          <SortHead k="top" label={t("developmentXp.colTop")} className="w-[118px]" sort={sort} onSort={onSort} />
+          <SortHead k="season" label={t("developmentXp.colSeason")} className="w-[72px]" sort={sort} onSort={onSort} />
+          <SortHead k="xpToday" label={t("developmentXp.colXpToday")} className="w-[116px]" sort={sort} onSort={onSort} />
           <SortHead k="xp30" label={t("developmentXp.colXp30")} className="w-[176px]" sort={sort} onSort={onSort} />
           <SortHead k="next" label={t("developmentXp.colNext")} sort={sort} onSort={onSort} />
         </tr>
@@ -286,6 +292,7 @@ function DesktopTable({ rows, open, toggle, sort, onSort }: { rows: DevRow[]; op
                 </td>
                 <td className="px-3 py-[7px]"><Name row={row} /></td>
                 <td className="px-3 py-[7px]"><TypeText type={row.type} /></td>
+                <td className={`px-3 py-[7px] text-[13px] text-cz-1 ${NUM}`}>{row.age ?? "—"}</td>
                 <td className="px-3 py-[7px]"><Rating value={row.rating} /></td>
                 <td className="px-3 py-[7px]"><Top top={row.top} /></td>
                 <td className="px-3 py-[7px]"><Season value={row.season} /></td>
@@ -308,7 +315,7 @@ function DesktopTable({ rows, open, toggle, sort, onSort }: { rows: DevRow[]; op
               {o && (
                 <tr className="bg-cz-subtle/40">
                   <td />
-                  <td colSpan={8} className="px-3 pb-3 pt-1"><div className="max-w-[560px]"><Abilities row={row} phone={false} /></div></td>
+                  <td colSpan={9} className="px-3 pb-3 pt-1"><div className="max-w-[560px]"><Abilities row={row} phone={false} /></div></td>
                 </tr>
               )}
             </Fragment>
