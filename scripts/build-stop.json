@@ -1731,6 +1731,31 @@
       "issue": 8448,
       "reason": "Ejer-go 19/11 (PC1, dashboard-gennemgang): \"Ja, først i Codex dashboardspor\".",
       "since": "2026-11-19"
+    },
+    {
+      "issue": 8419,
+      "reason": "Ejer-go 19/11 (PC1): planlægningens seks beta-forslag som levende skitser, ét ad gangen til ejeren.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8449,
+      "reason": "Ejer-go 19/11 (PC1): patch notes-siden med datoer, færre kolonner og tydeligt nyt før tænding for alle.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8458,
+      "reason": "Ejer-go 19/11 (PC1): advarsel ved Kør roligt i mål for kaptajner.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8446,
+      "reason": "Ejer-go 19/11 (PC1): rytterens top A + popularitet som ord + store mærker, design og byg uge 48.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8450,
+      "reason": "Ejer-go 19/11 (PC1 + ejer 18/11 i staff-chat): startlisten viser ratings, ikke konkurrenternes rutematch.",
+      "since": "2026-11-19"
     }
   ]
 }
