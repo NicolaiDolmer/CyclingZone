@@ -355,6 +355,7 @@ const SECTION_DEFS = [
       // #6499: den nye aldring er eneste regel (ugatet); AI/frie ryttere følger
       // stadig development_v2_aging_enabled (HELP_BLOCK_FLAGS.riders).
       { id: "agingV2", kind: "text" },
+      { id: "agingV2Xp", kind: "text" }, // #6110 kandidat B (HELP_BLOCK_FLAGS.riders)
       { id: "aiRidersV2", kind: "text" },
       { id: "potentialBestRole", kind: "text" },
       { id: "potentialBestRoleEstimate", kind: "text" }, // #6110 tal + ord (HELP_BLOCK_FLAGS.riders)

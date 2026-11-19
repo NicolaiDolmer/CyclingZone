@@ -38,6 +38,7 @@ const BLOCK_TWINS: Array<[string, string, string]> = [
   ["dailytraining", "ceilingReachedCurveB", "ceilingReachedXp"],
   ["academy", "dailyTrainingBoostCurveB", "dailyTrainingBoostXp"],
   ["riders", "riderType", "riderTypeXp"],
+  ["riders", "agingV2", "agingV2Xp"], // ejervalg 19/11, kandidat B
 ];
 const FAQ_TWINS: Array<[string, string]> = [
   ["raceDayAcademyPerRaceDayFaq", "raceDayAcademyPerRaceDayXpFaq"],
@@ -147,15 +148,17 @@ test("hver XP-tvilling er gatet, registreret i HelpPage.jsx og staar lige efter 
   }
 });
 
+// Ejervalg 19/11 (kandidat B): XP er næsten ens hele karrieren; alderen ændrer kroppen, ikke farten.
+// Afløser den godkendte sætning fra 17/11 ("Older riders earn less XP than before ...").
 const OWNER_SENTENCE = {
-  en: "There is no fixed ceiling any more, so a rider's weaker abilities keep improving, just more slowly than his best ones. Older riders earn less XP than before: it drops from his late twenties and then holds at a lower level. Veterans develop clearly more slowly than young riders, but they keep earning XP for their whole career.",
-  da: "Der er ikke længere et fast loft, så rytterens svagere evner bliver ved med at stige, bare langsommere end hans bedste. Ældre ryttere optjener mindre XP end før: det falder fra sidst i tyverne og ligger derefter fast på et lavere niveau. Veteraner udvikler sig tydeligt langsommere end unge ryttere, men de optjener XP hele karrieren.",
+  en: "His XP stays almost the same for his whole career, so age doesn't decide how fast he develops; the price does.",
+  da: "Hans XP er næsten den samme hele karrieren, så det er ikke alderen, der afgør, hvor hurtigt han udvikler sig; det gør prisen.",
 };
 
-test("XP-afsnittet bringer ejerens godkendte saetning ordret (17/11)", () => {
+test("XP-afsnittet bringer model B: XP ens hele karrieren (ejervalg 19/11)", () => {
   for (const lng of ["en", "da"] as const) {
     const text = String(HELP[lng].sections.dailytraining.developmentXp?.text);
-    assert.ok(text.includes(OWNER_SENTENCE[lng]), `${lng}: ejerens saetning mangler eller er aendret`);
+    assert.ok(text.includes(OWNER_SENTENCE[lng]), `${lng}: model B-saetningen mangler`);
   }
 });
 

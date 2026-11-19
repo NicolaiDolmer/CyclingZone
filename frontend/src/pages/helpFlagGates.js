@@ -52,8 +52,8 @@ const RACE_DAY_TICK_OFF = Object.freeze({ flag: "training_tick_per_race_day", wh
 const RACE_DAY_TICK_ON = Object.freeze({ flag: "training_tick_per_race_day", when: true });
 // #6110 (Udvikling 2.0 del 1): "aiRidersV2" (AI- og frie ryttere udvikler sig
 // ikke dagligt) foelger flaget, fordi den daglige traening stadig gater paa det.
-// Aldrings-teksten "agingV2" er ugatet (#6499): saesonskiftet kender kun den nye
-// aldring, saa den gamle tekst ("agingAndDecline") er fjernet fra siden.
+// Aldrings-teksten "agingV2" (#6499) er gatet paa XP fra 19/11: under XP aeldes kroppen
+// efter talfilen, og "agingV2Xp" afloeser den. Den gamle "agingAndDecline" er fjernet.
 // #7801: reglen om trætheden lige nu (flader, træningens regler, assistentens udtagelse).
 // Off = dagens tekst om datoens start, on = "<blok>Now"-tvillingen.
 const FATIGUE_NOW_OFF = Object.freeze({ flag: "fatigue_now_7801", when: false });
@@ -82,6 +82,10 @@ export const HELP_BLOCK_FLAGS = Object.freeze({
   riders: Object.freeze({
     riderType: XP_OFF,
     riderTypeXp: XP_ON,
+    // #6110 ejervalg 19/11 (kandidat B): under XP aeldes kroppen efter talfilen (fra 29,
+    // sent fald i mentale evner). Off = dagens aldringstekst, on = XP-tvillingen.
+    agingV2: XP_OFF,
+    agingV2Xp: XP_ON,
     aiRidersV2: AGING_V2_ON,
     potentialBestRole: POTENTIAL_ESTIMATE_OFF,
     potentialBestRoleEstimate: POTENTIAL_ESTIMATE_ON,

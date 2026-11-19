@@ -1366,6 +1366,10 @@
         "title": "Age and decline",
         "text": "Riders hold their level until 30. From the season after that, their physical abilities and cobbles drop a little at each season change, and the drop grows the further past 30 they are. Technique, tactics and the other mental abilities never drop. Racing slows the decline: every race day in the season that just ended counts, and hard training days help too. A rider with a full season of racing behind him keeps most of his legs. Nobody grows at the season change itself; your riders develop through their daily training."
       },
+      "agingV2Xp": {
+        "title": "Age and decline",
+        "text": "Riders peak in their late twenties. After that the body slowly ages: at each season change his physical abilities and cobbles drop a little, and the drop grows the older he gets. Late in his career, technique, tactics and the other mental abilities drop a little too. Racing slows all of it: every race day in the season that just ended counts, and hard training days help too, so a rider who races keeps his level longer. Nobody grows at the season change itself; your riders develop through their daily training, and his XP stays almost the same his whole career, so a veteran can still improve when the work is there."
+      },
       "aiRidersV2": {
         "title": "AI riders and free agents",
         "text": "Riders on AI teams and riders without a contract don't develop. They still age like everyone else. When one of them joins your team, he starts developing through your training from the next day."
@@ -1457,7 +1461,7 @@
       },
       "ceilingReachedXp": {
         "title": "My rider's ability has stopped rising",
-        "text": "An ability has no fixed ceiling, but near the top a point costs a lot of XP, so a high ability can go many days between points while its bar keeps filling. If an ability really has stopped, it is almost always one of three things: the rider is older and earns little XP, his sessions don't work on that ability so it only gets a little XP, or he is past his peak, where physical abilities drop at the season change instead of growing. The number next to an ability is always its current value."
+        "text": "An ability has no fixed ceiling, but near the top a point costs a lot of XP, so a high ability can go many days between points while its bar keeps filling. If an ability really has stopped, it is almost always one of three things: his potential is low, so he earns little XP, his sessions don't work on that ability so it only gets a little XP, or he is past his peak, where physical abilities drop at the season change instead of growing. The number next to an ability is always its current value."
       },
       "longTermGrowthCurveB": {
         "title": "Long-term growth",
@@ -1465,11 +1469,11 @@
       },
       "developmentXp": {
         "title": "Development with XP",
-        "text": "Every ability grows through XP. Each day your rider trains or races, he earns XP: most in the abilities the session or stage works on, and a little in the rest. His potential decides how much XP he earns a day, and it stays the same for his whole career. Every ability has a bar. When the bar is full, the ability rises one point, and any XP left over carries on toward the next point, so nothing is lost. Each point costs more XP the higher the ability already is, and the price is the same for every rider, so a big talent gets there sooner because he earns more, not because his points are cheaper. Near the top a point simply costs a lot. An ability rises at most +1 per date. The only exception is a young top talent on a very low ability, who can rise +2. XP above that isn't lost: it stays on the bar and is paid out on the next dates, also on rest days, so a point can arrive on a day he didn't train. Abilities outside his type earn a little less XP. There is no fixed ceiling any more, so a rider's weaker abilities keep improving, just more slowly than his best ones. Older riders earn less XP than before: it drops from his late twenties and then holds at a lower level. Veterans develop clearly more slowly than young riders, but they keep earning XP for their whole career. For the mental abilities the XP drop starts later than for the physical ones, and mental abilities never lose points with age. When you press Train now yourself, the Train now bonus adds extra XP to that day. The XP he earns varies from day to day, so judge a rider over several weeks, not one day."
+        "text": "Every ability grows through XP. Each day your rider trains or races, he earns XP: most in the abilities the session or stage works on, and a little in the rest. His potential decides how much XP he earns a day, and it stays the same for his whole career. Every ability has a bar. When the bar is full, the ability rises one point, and any XP left over carries on toward the next point, so nothing is lost. Each point costs more XP the higher the ability already is, and the price is the same for every rider, so a big talent gets there sooner because he earns more, not because his points are cheaper. Near the top a point simply costs a lot. An ability rises at most +1 per date. The only exception is a top talent on a very low ability, who can rise +2. XP above that isn't lost: it stays on the bar and is paid out on the next dates, also on rest days, so a point can arrive on a day he didn't train. Abilities outside his type earn a little less XP. There is no fixed ceiling any more, so a rider's weaker abilities keep improving, just more slowly than his best ones. His XP stays almost the same for his whole career, so age doesn't decide how fast he develops; the price does. What age changes is his body: riders peak in their late twenties, and after that his physical abilities drop a little at each season change, less for a rider who races. Late in his career the mental abilities drop a little too. When you press Train now yourself, the Train now bonus adds extra XP to that day. The XP he earns varies from day to day, so judge a rider over several weeks, not one day."
       },
       "longTermGrowthXp": {
         "title": "Long-term growth",
-        "text": "Three things decide where an ability ends up. His potential decides how much XP he earns a day. The price decides how far that XP goes: every point costs more the higher the ability already is, the same for every rider, so a rider moves quickly at a low level and slowly near the top. And his type: abilities his type is built for earn the most XP, abilities outside it a little less. Age gives no extra speed, but his XP drops as he gets older. There is no fixed ceiling: near the top a point simply costs a lot."
+        "text": "Three things decide where an ability ends up. His potential decides how much XP he earns a day. The price decides how far that XP goes: every point costs more the higher the ability already is, the same for every rider, so a rider moves quickly at a low level and slowly near the top. And his type: abilities his type is built for earn the most XP, abilities outside it a little less. Age neither speeds him up nor slows his XP: it stays almost the same his whole career, while his body slowly ages after his late twenties. There is no fixed ceiling: near the top a point simply costs a lot."
       },
       "trainToday": {
         "title": "Run today's training now",
@@ -1505,7 +1509,7 @@
       },
       "raceDaysPerRaceDayXp": {
         "title": "Race days and training",
-        "text": "On a race day your rider either races or trains, never both. When he races, his program doesn't run for that race day, and the race brings its own fatigue instead. A stage race binds him from the first stage to the last, rest days included, so he doesn't train until it's over. Racing develops him too: a race day gives what a hard session would give in the abilities the stage profile demands, plus a little extra, so a mountain stage trains climbing and a flat stage trains sprinting, within the limit of +1 per ability per date (+2 for a young top talent on a very low ability). His role decides where the extra lands: a captain or breakaway hunter gains most in the ability that decides the stage, a domestique in the abilities he uses to help, and a rider on free role gets a mix. Your training plan doesn't change what the race gives; the stage and his role do. Every division has 140 race days per season, and every race day without a race for your rider is a training day. Keep an eye on Fatigue for the riders you enter often, and give them easier sessions or rest between their races."
+        "text": "On a race day your rider either races or trains, never both. When he races, his program doesn't run for that race day, and the race brings its own fatigue instead. A stage race binds him from the first stage to the last, rest days included, so he doesn't train until it's over. Racing develops him too: a race day gives what a hard session would give in the abilities the stage profile demands, plus a little extra, so a mountain stage trains climbing and a flat stage trains sprinting, within the limit of +1 per ability per date (+2 for a top talent on a very low ability). His role decides where the extra lands: a captain or breakaway hunter gains most in the ability that decides the stage, a domestique in the abilities he uses to help, and a rider on free role gets a mix. Your training plan doesn't change what the race gives; the stage and his role do. Every division has 140 race days per season, and every race day without a race for your rider is a training day. Keep an eye on Fatigue for the riders you enter often, and give them easier sessions or rest between their races."
       },
       "smartDefault": {
         "title": "What trains a rider with no focus set?",
@@ -1537,7 +1541,7 @@
       },
       "progressBarsXp": {
         "title": "Progress bars and ability points",
-        "text": "Rider profiles show a progress bar for each ability being trained. The bar fills as training accumulates. When the bar reaches full, the rider gains +1 in that ability and the bar starts over toward the NEXT point, so right after a gain, a low or near-empty bar is a good sign, not a lost one. The Training page also shows a '+N today' badge on riders who gained whole points in today's session. There is no fixed ceiling: every ability keeps earning XP, but near the top a point costs a lot, and older riders earn less. A bar can also hold more than one point: XP above the date's limit stays on it and is paid out on the next dates. The rider profile's Training tab lists all 17 abilities with what each one is now, how many whole points the rider has gained this season, and how far along the next point is. A percentage like 'Flat +10%' in a training report is the day's progress counted in ability points: 100% equals one whole point. Progress carries over day to day. Nothing resets mid-season. The 'this season' count only covers days inside the active season. Between two seasons it shows the start date instead of a number, while the ability values and the bars keep counting every session. A new season's count starts empty and fills in from its first training day."
+        "text": "Rider profiles show a progress bar for each ability being trained. The bar fills as training accumulates. When the bar reaches full, the rider gains +1 in that ability and the bar starts over toward the NEXT point, so right after a gain, a low or near-empty bar is a good sign, not a lost one. The Training page also shows a '+N today' badge on riders who gained whole points in today's session. There is no fixed ceiling: every ability keeps earning XP, but near the top a point costs a lot. A bar can also hold more than one point: XP above the date's limit stays on it and is paid out on the next dates. The rider profile's Training tab lists all 17 abilities with what each one is now, how many whole points the rider has gained this season, and how far along the next point is. A percentage like 'Flat +10%' in a training report is the day's progress counted in ability points: 100% equals one whole point. Progress carries over day to day. Nothing resets mid-season. The 'this season' count only covers days inside the active season. Between two seasons it shows the start date instead of a number, while the ability values and the bars keep counting every session. A new season's count starts empty and fills in from its first training day."
       },
       "trainingScore": {
         "title": "The training score",
@@ -1549,7 +1553,7 @@
       },
       "maxOnePerDayXp": {
         "title": "At most +1 per ability per date",
-        "text": "An ability can rise at most 1 point per date, across Train now, the automatic training and race days. The only exception is a young top talent on a very low ability, who can rise 2. XP above that isn't lost: it stays on the bar and is paid out on the next dates, also on rest days."
+        "text": "An ability can rise at most 1 point per date, across Train now, the automatic training and race days. The only exception is a top talent on a very low ability, who can rise 2, at any age. XP above that isn't lost: it stays on the bar and is paid out on the next dates, also on rest days."
       },
       "todaysDecision": {
         "title": "Today's decision (beta)",
@@ -1712,7 +1716,7 @@
       },
       "dailyTrainingBoostXp": {
         "title": "Daily training in the academy",
-        "text": "Academy riders follow exactly the same training model as your senior squad. There is no separate academy system: set a focus and an intensity, and XP builds day by day in the same way. Low abilities are cheap, so a young rider moves quickly at first. Age gives no extra speed. His potential decides how much XP he earns a day, so a bigger talent gets further sooner, while a smaller talent grows into a solid domestique. A young top talent on a very low ability can rise +2 on a date; every other rider rises at most +1."
+        "text": "Academy riders follow exactly the same training model as your senior squad. There is no separate academy system: set a focus and an intensity, and XP builds day by day in the same way. Low abilities are cheap, so a young rider moves quickly at first. Age gives no extra speed. His potential decides how much XP he earns a day, so a bigger talent gets further sooner, while a smaller talent grows into a solid domestique. A top talent on a very low ability can rise +2 on a date; every other rider rises at most +1."
       },
       "youthAuctions": {
         "title": "Youth auctions",
@@ -2107,7 +2111,7 @@
     },
     "restForDevelopedXpFaq": {
       "q": "My rider is fully developed. Should I just set them to Rest?",
-      "a": "No ability is ever fully developed: training always earns XP, but near the top a point costs a lot, and an older rider earns less. Rest earns no new XP, though XP he has saved on a bar can still be paid out. Rest makes sense when Fatigue is high or the gain is too small to be worth the load; otherwise a focus on abilities that are still lower moves him faster. His decline after his peak happens at the season change, and neither training nor Rest changes it."
+      "a": "No ability is ever fully developed: training always earns XP, but near the top a point costs a lot. Rest earns no new XP, though XP he has saved on a bar can still be paid out. Rest makes sense when Fatigue is high or the gain is too small to be worth the load; otherwise a focus on abilities that are still lower moves him faster. His decline with age happens at the season change: race days and hard training days slow it, Rest doesn't."
     },
     "raceDayIntensityFaq": {
       "q": "Does my chosen intensity still matter on a day my rider races?",
@@ -2131,7 +2135,7 @@
     },
     "raceDayAcademyPerRaceDayXpFaq": {
       "q": "Is it worth racing young Academy talents, or is Academy training always better?",
-      "a": "Both develop him, in different ways. On a race day your talent races or trains, never both. A race day he races counts as a hard session in the abilities the stage demands, plus a little extra shaped by his role, within the limit of +1 per ability per date (+2 for a young top talent on a very low ability). A training day lets you pick exactly what he works on, but in the abilities the stage demands a race gives more. A stage race takes every race day from the first stage to the last, and on its rest days he earns no new XP. There's no Academy-specific penalty: the same rule applies to every rider. If one ability matters most, train it; if you want him developing broadly while he learns to race, race him on stages that suit it."
+      "a": "Both develop him, in different ways. On a race day your talent races or trains, never both. A race day he races counts as a hard session in the abilities the stage demands, plus a little extra shaped by his role, within the limit of +1 per ability per date (+2 for a top talent on a very low ability). A training day lets you pick exactly what he works on, but in the abilities the stage demands a race gives more. A stage race takes every race day from the first stage to the last, and on its rest days he earns no new XP. There's no Academy-specific penalty: the same rule applies to every rider. If one ability matters most, train it; if you want him developing broadly while he learns to race, race him on stages that suit it."
     },
     "lowerDivisionTrainingFaq": {
       "q": "Do lower divisions get more training?",
@@ -2515,7 +2519,7 @@
     },
     "teamworkLeadershipTrainingXpFaq": {
       "q": "What controls how fast Teamwork and Leadership train, and do they have hidden potential?",
-      "a": "Teamwork and Leadership earn XP like every other ability and follow the same price list: every point costs more the higher the ability already is. They aren't part of any training session, so they grow mostly through racing, shaped by his role, and a little through the rest of his training. His potential decides how much XP he earns a day on these two as well, and like the other mental abilities their XP drops later with age than for the physical ones."
+      "a": "Teamwork and Leadership earn XP like every other ability and follow the same price list: every point costs more the higher the ability already is. They aren't part of any training session, so they grow mostly through racing, shaped by his role, and a little through the rest of his training. His potential decides how much XP he earns a day on these two as well, and late in his career they drop a little, like the other mental abilities."
     },
     "riderPoolNationalityFaq": {
       "q": "Why are some nations like South Korea, China and Japan so visible in the rider pool?",
