@@ -12,8 +12,11 @@ const ROWS = [
   { rider_id: "d", ability_progress: { tempo: 1 } },
 ];
 
-/** En stedfortræder, der husker forespørgslen og svarer med `ticks`. */
-function fakeSupabase(ticks, { error = null } = {}) {
+/**
+ * En stedfortræder, der husker forespørgslerne. `ticks` er svaret på opslaget efter tidligere
+ * XP-udvikling; `ignition` er svaret på opslaget efter kvitteringer fra startdatoen (forbehold 4).
+ */
+function fakeSupabase(ticks, { error = null, ignition = null } = {}) {
   const calls = [];
   return {
     calls,
@@ -27,7 +30,10 @@ function fakeSupabase(ticks, { error = null } = {}) {
         lt(col, v) { q.filters.push(["lt", col, v]); return b; },
         eq(col, v) { q.filters.push(["eq", col, v]); return b; },
         order() { return b; },
-        range(from, to) { return Promise.resolve(error ? { data: null, error } : { data: ticks.slice(from, to + 1), error: null }); },
+        range(from, to) {
+          const rows = q.filters.some(([, col]) => col === "report->>xp_ignition_manager") ? (ignition ?? []) : ticks;
+          return Promise.resolve(error ? { data: null, error } : { data: rows.slice(from, to + 1), error: null });
+        },
       };
       return b;
     },
@@ -42,12 +48,20 @@ test("kun ryttere med en bjælke på mindst ét point er kandidater", () => {
 });
 
 test("rytter uden tidligere XP-udvikling efter startdatoen får udbetalingen; en med gør ikke", async () => {
-  const supabase = fakeSupabase([{ rider_id: "d" }]);
+  const supabase = fakeSupabase([{ rider_id: "d" }], { ignition: [{ rider_id: "a" }] });
   const ids = await loadXpFirstDatePayoutRiderIds({ ...base, supabase });
   assert.deepEqual([...ids], ["a"]);
   const q = supabase.calls[0];
   assert.equal(q.table, "training_rider_ticks");
   assert.deepEqual(q.filters, [["in", "rider_id", ["a", "d"]], ["gte", "tick_date", FROM], ["lt", "tick_date", "2026-11-25"], ["eq", "report->>xp_developed", "true"]]);
+  assert.deepEqual(supabase.calls[1].filters, [["in", "rider_id", ["a"]], ["eq", "tick_date", FROM], ["eq", "report->>xp_ignition_manager", "true"]]);
+});
+
+test("forbehold 4: kun ryttere på et managerhold på startdatoen får udbetalingen", async () => {
+  const none = await loadXpFirstDatePayoutRiderIds({ ...base, supabase: fakeSupabase([], { ignition: [] }) });
+  assert.equal(none.size, 0, "ingen kvittering fra et managerhold på startdatoen: ingen udbetaling");
+  const onlyD = await loadXpFirstDatePayoutRiderIds({ ...base, supabase: fakeSupabase([], { ignition: [{ rider_id: "d" }] }) });
+  assert.deepEqual([...onlyD], ["d"]);
 });
 
 test("null (startdatoen alene gælder) uden XP, på startdatoen, uden dato-kvitteringer, for ikke-managerhold og før startdatoen", async () => {

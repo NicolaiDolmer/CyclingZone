@@ -10,6 +10,10 @@
 // Reglen: på en dato efter startdatoen er udbetalingen tændt for en rytter, der ikke har en
 // kvittering (training_rider_ticks) fra en tidligere XP-dato, hvor udviklingen kørte
 // (`report.xp_developed === true`). På startdatoen selv gælder den for alle som før.
+// Ejervalg 19/11 (forbehold 4, "kun ryttere på managerhold ved tænding"): rytteren skal også
+// have en kvittering fra startdatoen fra et managerhold (`report.xp_ignition_manager === true`).
+// En rytter på et AI-hold, i banken eller fri på startdatoen får ingen udbetaling; hans bjælke
+// følger datoreglen som alle andres.
 //
 // Kun med XP tændt og dato-kvitteringerne (training_condition_per_date); ellers er svaret
 // null, og motoren bruger startdatoen alene (som før). Kun ryttere med en bjælke på mindst ét
@@ -47,5 +51,14 @@ export async function loadXpFirstDatePayoutRiderIds({
     .order("rider_id")
     .order("tick_date"));
   const alreadyDeveloped = new Set(rows.map((row) => row.rider_id));
-  return new Set(candidates.filter((id) => !alreadyDeveloped.has(id)));
+  const pending = candidates.filter((id) => !alreadyDeveloped.has(id));
+  if (pending.length === 0) return new Set();
+  // Kun ryttere, der stod på et managerhold på startdatoen (én kvittering pr. løbsdag, så få rækker).
+  const ignition = await fetchAllRows(() => supabase.from("training_rider_ticks").select("rider_id")
+    .in("rider_id", pending)
+    .eq("tick_date", xpFromDate)
+    .eq("report->>xp_ignition_manager", "true")
+    .order("rider_id"));
+  const onManagerAtIgnition = new Set(ignition.map((row) => row.rider_id));
+  return new Set(pending.filter((id) => onManagerAtIgnition.has(id)));
 }

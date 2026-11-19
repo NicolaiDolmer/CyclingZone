@@ -2425,6 +2425,10 @@ export function computeTrainingDayTick(input) {
       // #6110 (ejervalg B 19/11): udviklingen koerte under XP i dag. Rytterens foerste saadanne dato
       // udbetaler hans gemte fremgang helt (developmentXpFirstDate.js). Kun med XP (dagens model uroert).
       ...(developmentXp && developmentAllowed && tickResult ? { xp_developed: true } : {}),
+      // #6110 (ejervalg 19/11, forbehold 4): rytteren stod paa et managerhold paa XP-startdatoen.
+      // Kun de ryttere kan faa den gemte fremgang udbetalt paa deres foerste XP-dato; ogsaa naar
+      // de var skadede den nat (kvitteringen skrives uden udviklings-tick).
+      ...(developmentXp && developmentAllowed && developmentXpIgnition === true ? { xp_ignition_manager: true } : {}),
       // #6210: point udskudt til naeste dato af dato-loftet (kun naar det bandt).
       ...(tickResult?.capped_by_date ? { gains_deferred_by_date_cap: tickResult.capped_by_date } : {}),
       // #3924 trin 2: pre-tick fremdrift — kun til frontend-udledning af dagens

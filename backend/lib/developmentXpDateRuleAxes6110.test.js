@@ -28,13 +28,22 @@ const XP_ON = { development_xp_model: "on", development_xp_from_date: "2026-11-0
  * udviklet sig under XP på en tidligere dato (ejervalg B 19/11: ellers er datoen hans første
  * XP-dato, og den gemte fremgang udbetales helt), så datoreglen gælder.
  */
-function xpState(datePlus2, { developedBefore = true } = {}) {
+function xpState(datePlus2, { developedBefore = true, managerAtIgnition = true } = {}) {
   const state = seedState({ count: 1, flags: XP_ON });
   Object.assign(state.riders[0], { potentiale: 5, birthdate: "2010-03-15" }); // 20 aar i saeson 5 (saeson-alder)
   state.rider_derived_abilities[0].ability_progress = { [ABILITY]: STORED };
   state.private_config = [{ key: "development_xp_params", value: { ...XP_TEST_PARAMS, datePlus2 } }];
   if (developedBefore) state.training_rider_ticks.push(earlierReceipt(state, { xp_developed: true }));
+  // Ejervalg 19/11 (forbehold 4): kvitteringen fra startdatoen viser, at han stod på et managerhold
+  // (her skadet den nat, så ingen udvikling og intet xp_developed).
+  if (managerAtIgnition) state.training_rider_ticks.push(ignitionReceipt(state));
   return state;
+}
+
+/** Kvitteringen fra XP-startdatoen (2026-11-01) for en managerrytter, der var skadet den nat. */
+function ignitionReceipt(state) {
+  return { rider_id: RIDER, season_id: state.seasons[0].id, game_day: 30, tick_date: "2026-11-01", team_id: state.riders[0].team_id,
+    report: { injured: true, gains: {}, xp_ignition_manager: true } };
 }
 
 /** En kvittering fra en tidligere dato efter startdatoen (opdigtet løbsdag 40). */
@@ -186,4 +195,46 @@ test("#6110 ejervalg B: datoens senere løbsdage udbetaler intet igen efter udbe
   assert.ok(rows[0].report.gains[ABILITY] > 1, "datoens første løbsdag tager udbetalingen");
   for (const row of rows.slice(1)) assert.equal(row.report.gains?.[ABILITY], undefined, `løbsdag ${row.game_day} udbetaler intet igen`);
   assert.equal(state.rider_derived_abilities[0][ABILITY] - level0, rows[0].report.gains[ABILITY], "gemt evne = første løbsdags udbetaling");
+});
+
+// ── Ejervalg 19/11 (forbehold 4): kun ryttere på managerhold ved tænding ────────────────────
+test("#6110 forbehold 4 (a): rytter på et AI-hold ved tænding, købt senere: ingen udbetaling, almindelig datoregel", async () => {
+  const state = xpState(TOO_OLD, { developedBefore: false, managerAtIgnition: false });
+  // På startdatoen stod han på et AI-hold: kvitteringen findes, men uden markøren.
+  state.training_rider_ticks.push({ ...ignitionReceipt(state), team_id: "ai-team", report: { gains: {} } });
+  const before = state.rider_derived_abilities[0][ABILITY];
+  await sweep(state, createFake(state), { deadlineReached: true });
+  assert.equal(state.rider_derived_abilities[0][ABILITY] - before, 1, "datoreglen: højst +1, resten venter på bjælken");
+  assert.ok(state.rider_derived_abilities[0].ability_progress[ABILITY] >= 1, "bjælken står (intet tabt, intet udbetalt på én nat)");
+});
+
+test("#6110 forbehold 4: fri rytter uden kvittering på startdatoen: ingen udbetaling", async () => {
+  const state = xpState(TOO_OLD, { developedBefore: false, managerAtIgnition: false });
+  const before = state.rider_derived_abilities[0][ABILITY];
+  await press(state, createFake(state));
+  assert.equal(state.rider_derived_abilities[0][ABILITY] - before, 1);
+});
+
+test("#6110 forbehold 4 (b): managerrytter skadet ved tænding får udbetalingen på sin første XP-dato", async () => {
+  const state = xpState(TOO_OLD, { developedBefore: false }); // tændings-kvittering fra managerhold, skadet
+  const before = state.rider_derived_abilities[0][ABILITY];
+  await sweep(state, createFake(state), { deadlineReached: true });
+  assert.ok(state.rider_derived_abilities[0][ABILITY] - before > 1, "hele den gemte fremgang på én dato");
+});
+
+test("#6110 forbehold 4 (c): managerrytter solgt til et AI-hold før sin første XP-dato: ingen udbetaling", async () => {
+  const state = xpState(TOO_OLD, { developedBefore: false });
+  const team = state.teams.find((row) => row.id === state.riders[0].team_id);
+  Object.assign(team, { is_ai: true, user_id: null }); // holdet er nu et AI-hold (rytteren er solgt dertil)
+  const before = state.rider_derived_abilities[0][ABILITY];
+  await sweep(state, createFake(state), { deadlineReached: true });
+  assert.equal(state.rider_derived_abilities[0][ABILITY] - before, 0, "ingen udvikling på et AI-hold, heller ingen udbetaling");
+  assert.ok(receipts(state).every((row) => row.report?.xp_ignition_manager === undefined && row.report?.xp_developed === undefined));
+});
+
+test("#6110 forbehold 4: tændingsnatten markerer managerryttere, også uden udviklings-tick", async () => {
+  const state = xpState(TOO_OLD, { developedBefore: false, managerAtIgnition: false });
+  state.app_config = state.app_config.map((row) => (row.key === "development_xp_from_date" ? { ...row, value: DATE1 } : row));
+  await sweep(state, createFake(state), { deadlineReached: true });
+  assert.ok(receipts(state).every((row) => row.report?.xp_ignition_manager === true), "alle datoens kvitteringer bærer markøren");
 });
