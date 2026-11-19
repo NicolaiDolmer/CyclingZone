@@ -2,7 +2,7 @@ import { Skeleton } from "../components/ui/index.js";
 import { useState, useEffect, Fragment } from "react";
 import { useDashboardData } from "../data/dashboardData.ts"; // #6494
 import { useTodayStagesData } from "../data/todayStagesData.ts"; // #6494
-import { useFirstRaceCardData } from "../data/dashboardCards.ts"; // #1140/#6494
+import { useFirstRaceCardData, useSurveyInviteData } from "../data/dashboardCards.ts"; // #1140/#6494
 import { useTranslation } from "react-i18next";
 import ReservedBody from "../components/ui/ReservedBody.tsx";
 import AuthLoading from "../components/ui/AuthLoading.tsx";
@@ -195,11 +195,11 @@ export default function DashboardPage() {
   const standings = core?.standings ?? EMPTY_LIST;
   const pools = core?.pools ?? EMPTY_LIST;
   const poolStages = core?.poolStages ?? null;
-  const board = core?.board ?? null;
-  const boardSatisfaction = core?.boardSatisfaction ?? null;
-  const boardOutlook = core?.boardOutlook ?? null;
-  const boardPlanMissing = core?.boardPlanMissing ?? false;
-  const boardStatusLoaded = core?.boardStatusLoaded ?? false;
+  const board = dashboard.boardStatus?.board ?? null;
+  const boardSatisfaction = dashboard.boardStatus?.boardSatisfaction ?? null;
+  const boardOutlook = dashboard.boardStatus?.boardOutlook ?? null;
+  const boardPlanMissing = dashboard.boardStatus?.boardPlanMissing ?? false;
+  const boardStatusLoaded = dashboard.boardStatus?.boardStatusLoaded ?? false;
   const showDiscordNudge = Boolean(dashboard.discordStatus && !dashboard.discordStatus.discord_id) && !discordNudgeDismissed;
   // #2439: server er sandheden: et tidligere dismiss eller et "etableret hold" skjuler kortet.
   const onboardingDismissed = onboardingDismissedLocal || Boolean(onboardingProgress?.dismissed || onboardingProgress?.established);
@@ -219,7 +219,8 @@ export default function DashboardPage() {
   useRealtimeRefetch("dashboard-live", REALTIME_TABLES, dashboard.refreshLive);
   // #6569: paa topniveau (foer early-return) saa stribens fetch starter naar team er kendt.
   const todayStages = withoutPausedUpcoming(useTodayStagesData(), Boolean(racePause)); // #6970
-  const initialDataReady = !loading && optionalModulesSettled && (!team || (!todayStages.loading && selectionReady && (!myLatestResultVisible || myLatestResultSettled)));
+  const surveyInvite = useSurveyInviteData();
+  const initialDataReady = !loading && optionalModulesSettled && surveyInvite.settled && (!team || (!todayStages.loading && selectionReady && (!myLatestResultVisible || myLatestResultSettled)));
   useEffect(() => {
     if (initialDataReady) setInitialWaitExpired(true);
   }, [initialDataReady]);
@@ -582,11 +583,11 @@ export default function DashboardPage() {
 
       {/* #4943 (ejer-bestilling 8/9): flyttet til TOPPEN af dashboardet, som
           første element under sidehovedet — over squad-/kontrakt-advarslerne.
-          Indgang til det aktive spoergeskema. Selv-hentende og renderer intet
+          Indgang til det aktive spoergeskema. Renderer intet
           naar der ikke er et aabent skema, spilleren har gennemfoert, eller
           kortet er lukket inden for 3 dage. Sekundaer CTA: dashboardets ene
           guld-primaere element ejes af computeDashboardGoldCta. */}
-      <SurveyInviteCard />
+      <SurveyInviteCard survey={surveyInvite.survey} hide={surveyInvite.hide} />
 
       {/* Squad warning + kontrakt-fornyelses-advarsel — ALLERØVERST i
           indholdsflowet, over dagens etaper. #3915 satte oprindeligt dagens
@@ -1366,13 +1367,13 @@ export default function DashboardPage() {
             gridets sidste plads, parret med Global Rank-widget'en (docs/
             DASHBOARD_RULES.md §4 — /board har 959 sessions mod Mit Holds 5.955,
             så den fyldte mest og blev brugt mindst). */}
-        {isVisible("board") && board && (
+        {isVisible("board") && (board || dashboard.boardPending) && (
         <Section>
           <SectionHeader
             title={t("dashboard:cards.board.title")}
             action={<SectionAction as={Link} to="/board">{t("dashboard:cards.board.linkAll")}</SectionAction>}
           />
-          <div>
+          {board ? <div>
               <div className="grid sm:grid-cols-3 gap-4">
                 <div>
                   <p className="font-data text-2xs uppercase tracking-[.08em] text-cz-3 mb-2">{t("dashboard:cards.board.satisfaction")}</p>
@@ -1437,7 +1438,16 @@ export default function DashboardPage() {
                   </div>
                 </div>
               )}
+          </div> : (
+            <div aria-hidden="true" className="grid gap-4 sm:grid-cols-3">
+              {[0, 1, 2].map(index => (
+                <div key={index}>
+                  <Skeleton className="mb-2 h-3 w-20 max-w-full" />
+                  <Skeleton className="h-5 w-full" />
+                </div>
+              ))}
             </div>
+          )}
         </Section>
         )}
 

@@ -61,29 +61,43 @@ export interface DashboardCore {
   seniorRosterReady: boolean;
   pendingIncomingCount: number;
   nextRaces: Row[];
+  standings: Row[];
+}
+
+interface DashboardBoard {
   board: Row | null;
   boardSatisfaction: number | null;
   boardOutlook: Row | null;
   boardPlanMissing: boolean;
   boardStatusLoaded: boolean;
-  standings: Row[];
+}
+
+async function readBoard(runtime: DataRuntime, scope: DataScope, signal: AbortSignal): Promise<DashboardBoard | null> {
+  const revision = await runtime.beforeRead(signal);
+  const headers = await scopedHeaders(runtime, scope, false);
+  const res = await apiFetch("/api/board/status", { headers, signal });
+  runtime.assertReadCurrent(scope, revision);
+  if (res.networkError) throw res;
+  const boardStatus = res.ok && !res.limited && !res.unauthorized ? res.data as Row | null : null;
+  if (!boardStatus) return null;
+  const activePlan = boardStatus?.plans?.["1yr"] || boardStatus?.plans?.["3yr"] || boardStatus?.plans?.["5yr"] || null;
+  return {
+    board: activePlan?.board || null,
+    boardSatisfaction: computeOverallBoardSatisfaction(boardStatus.plans),
+    boardOutlook: activePlan?.outlook || null,
+    boardPlanMissing: !boardStatus.is_baseline_phase && !hasSignedBoardPlan(boardStatus.plans),
+    boardStatusLoaded: true,
+  };
 }
 
 async function readCore(runtime: DataRuntime, scope: DataScope, team: Row, activeSeason: Row | null, signal: AbortSignal): Promise<DashboardCore> {
   const revision = await runtime.beforeRead(signal);
-  const headers = await scopedHeaders(runtime, scope, false);
-  // #5322: the board status is on the blocking path, so "never reached the server" raises
-  // the page's offline state instead of a silently half-empty dashboard.
-  const boardStatusPromise = apiFetch("/api/board/status", { headers, signal }).then((res) => {
-    if (res.networkError) throw res;
-    return res.limited || res.unauthorized ? null : (res.ok ? res.data : null);
-  });
   // #1829: all races in the manager's own pool (incl. finished) for the per-pool day counter.
   const poolRacesPromise: Promise<SupabaseResult> = activeSeason && team.league_division_id != null
     ? Promise.resolve(supabase.from("races").select("stages, stages_completed, status")
       .eq("season_id", activeSeason.id).eq("league_division_id", team.league_division_id).abortSignal(signal))
     : Promise.resolve({ data: [] });
-  const [teamsRes, ridersRes, squadCountInputs, racesRes, standingsRes, boardStatus, poolRacesRes, poolsRes, reservedBalanceValue] = await Promise.all([
+  const [teamsRes, ridersRes, squadCountInputs, racesRes, standingsRes, poolRacesRes, poolsRes, reservedBalanceValue] = await Promise.all([
     // #2182/#3506: same "real team" scope as the standings page (AI teams count).
     supabase.from("teams").select("id, name, division, is_ai, league_division_id")
       .eq("is_test_account", false).eq("is_frozen", false).order("division").order("name").abortSignal(signal),
@@ -102,18 +116,17 @@ async function readCore(runtime: DataRuntime, scope: DataScope, team: Row, activ
       ? supabase.from("season_standings").select("*, team:team_id(id, name, division, is_ai, league_division_id)")
         .eq("season_id", activeSeason.id).order("total_points", { ascending: false }).abortSignal(signal)
       : Promise.resolve({ data: [] }),
-    boardStatusPromise,
     poolRacesPromise,
     // #2182/#5648: active senior pools only.
     withActiveSeniorPools((poolScope) => poolScope(supabase.from("league_divisions").select("id, tier, pool_index, label"))),
     // #3508: reserved in leading bids + proxy max, shared with the finance page.
     fetchReservedBalance(supabase, team.id),
-  ]) as [SupabaseResult, SupabaseResult, { pendingIncomingCount: number }, SupabaseResult, SupabaseResult, any, SupabaseResult, SupabaseResult, number];
+  ]) as [SupabaseResult, SupabaseResult, { pendingIncomingCount: number }, SupabaseResult, SupabaseResult, SupabaseResult, SupabaseResult, number];
   runtime.assertReadCurrent(scope, revision);
+  if (teamsRes.error && ridersRes.error) throw ridersRes.error;
   // #2328: all of the team's coming pool races, sorted by the calendar date.
   const nextRaces = [...(racesRes.data || [])]
     .sort((a: Row, b: Row) => dateTextToDayOfYear(a.pool_race?.date_text) - dateTextToDayOfYear(b.pool_race?.date_text));
-  const activePlan = boardStatus?.plans?.["1yr"] || boardStatus?.plans?.["3yr"] || boardStatus?.plans?.["5yr"] || null;
   const standingsMap: Record<string, Row> = {};
   for (const row of standingsRes.data || []) standingsMap[row.team_id] = row;
   return {
@@ -124,12 +137,6 @@ async function readCore(runtime: DataRuntime, scope: DataScope, team: Row, activ
     seniorRosterReady: !ridersRes.error,
     pendingIncomingCount: squadCountInputs.pendingIncomingCount,
     nextRaces,
-    board: activePlan?.board || null,
-    // #1830: aggregated across all plans, same helper as the board page.
-    boardSatisfaction: computeOverallBoardSatisfaction(boardStatus?.plans),
-    boardOutlook: activePlan?.outlook || null,
-    boardPlanMissing: Boolean(boardStatus) && !boardStatus.is_baseline_phase && !hasSignedBoardPlan(boardStatus?.plans),
-    boardStatusLoaded: Boolean(boardStatus),
     standings: mergeStandings(teamsRes.data || [], standingsMap),
   };
 }
@@ -186,6 +193,13 @@ export function useDashboardData(options: DashboardOptions) {
     queryFn: ({ signal }) => readCore(runtime, scope, team as Row, season, signal),
   }, client);
   const core = coreQuery.data;
+
+  const boardQuery = useQuery({
+    queryKey: privateKey(scope, "dashboard:board-status"),
+    enabled: hasTeam,
+    placeholderData: keep,
+    queryFn: ({ signal }) => readBoard(runtime, scope, signal),
+  }, client);
 
   const auctionsQuery = useQuery({
     queryKey: privateKey(scope, "dashboard:auctions"),
@@ -439,6 +453,8 @@ export function useDashboardData(options: DashboardOptions) {
     refreshLive,
     season,
     core,
+    boardStatus: boardQuery.data ?? null,
+    boardPending: hasTeam && boardQuery.isPending,
     allAuctions: auctionsQuery.data ?? EMPTY_ROWS,
     activeOffers,
     cardReady: {

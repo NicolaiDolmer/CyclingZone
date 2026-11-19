@@ -11,8 +11,8 @@ import { fileURLToPath } from "node:url";
 // `board` (udledt af activePlan?.board) bliver null — men kortet renderede
 // alligevel den tomme "No board data"-state.
 //
-// Fix: gate kortet på `isVisible("board") && board`, så det kun vises når en
-// rigtig plan-board findes. Den nu-døde `!board`-tom-state-gren er fjernet.
+// Bekræftet fravær skjuler kortet. En afventende forespørgsel reserverer kun
+// kortets ramme, og indholdet kræver stadig et etableret board.
 //
 // Repoet kører `node --test` uden DOM-renderer, så vi guard'er invarianten
 // kildekode-strukturelt (samme mønster som FinancePage.loadStates.test.js).
@@ -21,12 +21,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(__dirname, "DashboardPage.jsx"), "utf8");
 const dataSource = readFileSync(join(__dirname, "..", "data", "dashboardData.ts"), "utf8"); // #6494: server data moved to the data layer
 
-test("#1488 board-kortet er gated på BÅDE modul-synlighed OG en etableret board", () => {
+test("#1488 board-kortet er skjult ved bekræftet fravær, men bevarer en pending-ramme", () => {
   assert.match(
     source,
-    /\{isVisible\("board"\)\s*&&\s*board\s*&&\s*\(/,
-    'board-kortet skal gates på `isVisible("board") && board` — ellers vises det tomt i baseline-fasen',
+    /\{isVisible\("board"\)\s*&&\s*\(board \|\| dashboard\.boardPending\)\s*&&\s*\(/,
+    "rammen vises kun for et etableret board eller en afventende læsning",
   );
+  assert.match(source, /\{board \? <div>/, "boardets indhold kræver et etableret board");
+  assert.match(dataSource, /boardPending: hasTeam && boardQuery\.isPending/);
 });
 
 test("#1488 board udledes fra activePlan (kun non-null når en plan findes)", () => {
