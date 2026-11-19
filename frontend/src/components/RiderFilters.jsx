@@ -17,7 +17,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { getCountryName } from "../lib/countryUtils";
 import { Flag } from "./Flag";
-import { Card, ChevronRightIcon, FilterBar, Input, Select, XIcon } from "./ui";
+import { Card, Checkbox, ChevronRightIcon, FilterBar, Input, Select, TableTitleBar, XIcon } from "./ui";
 import { parseAmountInput } from "../lib/amountInput.js";
 
 // #3495: filter-chippen viste tidligere parseInt(filters.min_x) — samme
@@ -263,6 +263,13 @@ export default function RiderFilters({
   layout = "panel",
   // Valgfri hoejre-stillet meta-linje i baren (fx "463 riders").
   meta = null,
+  // #8280 (P21) — layout "titleline": filtrene er tabellens titellinje (ord med pil,
+  // søg, filter-ikon). `columnsControl` kommer fra DataTable (kolonne-knappen),
+  // `sheetExtra` lægges øverst i filter-arket (fx gemte filtre), `framed` giver
+  // linjen sin egen ramme når den står uden for en DataTable.
+  columnsControl = null,
+  sheetExtra = null,
+  framed = false,
 }) {
   const { t, i18n } = useTranslation("riderFilters");
   const { t: tTypes } = useTranslation("riderTypes");
@@ -420,7 +427,7 @@ export default function RiderFilters({
 
   // #2238: show_ai (default false = skjul AI-hold-ryttere) vises KUN paa rytter-
   // databasen (showAiToggle) — de andre lister har ingen AI-ryttere.
-  const showAiInGrid = showAiToggle && layout !== "bar";
+  const showAiInGrid = showAiToggle && layout !== "bar" && layout !== "titleline";
   const toggleKeys = [
     { key: "free_agent", label: t("toggles.freeAgent") },
     { key: "u25", label: t("toggles.u25") },
@@ -550,6 +557,65 @@ export default function RiderFilters({
   // Soegefelt + land + ryttertype paa én linje; alt andet bag "More filters",
   // lukket som default. Chippene staar under baren, saa et filter der er sat bag
   // folden stadig er synligt og kan fjernes med ét klik.
+  if (layout === "titleline") {
+    // Kun det der ligger BAG filter-ikonet tælles dér; søg, land og ryttertype
+    // står synligt i selve linjen.
+    const hiddenActiveCount =
+      activeFilterCount - (filters.q ? 1 : 0) - (filters.nationality_code ? 1 : 0) - (filters.rider_type ? 1 : 0);
+    return (
+      <TableTitleBar
+        page="rider_database"
+        tour="riders-filters"
+        framed={framed}
+        choices={barFilters.slice(0, 2).map(f => ({ ...f, value: f.value ?? "" }))}
+        search={{
+          value: filters.q,
+          onChange: e => onChange("q", e.target.value),
+          placeholder: t("fields.namePlaceholder"),
+          ariaLabel: t("fields.name"),
+          testId: "filter-name",
+        }}
+        filters={{
+          count: hiddenActiveCount + (filters.show_ai ? 1 : 0),
+          onReset,
+          children: (
+            <div className="flex flex-col gap-4">
+              {sheetExtra}
+              <div>
+                <label className={labelClass()}>{tTypes("bestRole.label")}</label>
+                {bestRoleSelect}
+              </div>
+              {teamSelect && (
+                <div>
+                  <label className={labelClass()}>{t("fields.team")}</label>
+                  {teamSelect}
+                </div>
+              )}
+              {rangeFieldNodes}
+              {contractSelect && (
+                <div>
+                  <label className={labelClass()}>{t("fields.contractBy")}</label>
+                  {contractSelect}
+                </div>
+              )}
+              {extraCheckbox && (
+                <Checkbox
+                  id={extraCheckbox.id}
+                  label={extraCheckbox.label}
+                  checked={extraCheckbox.checked}
+                  onChange={extraCheckbox.onChange}
+                />
+              )}
+              {togglesNode}
+              {abilitiesNode}
+            </div>
+          ),
+        }}
+        columns={columnsControl}
+      />
+    );
+  }
+
   if (layout === "bar") {
     return (
       <>

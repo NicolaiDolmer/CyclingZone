@@ -4,6 +4,7 @@ import { SortIndicator } from "./SortableTh.jsx";
 import { WRAP, SCROLLER, MOBILE_SCROLLER, TABLE, COUNT, thClass, tdClass, mergeRowProps, zonePillClass } from "./dataTableStyles.js";
 import { TableRowContext } from "./tableRowContext.js";
 import { Segmented } from "./Segmented.jsx";
+import TableTitleBar from "./TableTitleBar.jsx";
 import { ChevronRightIcon, TableIcon } from "./icons/index.jsx";
 import { useIsMobileViewport } from "../../hooks/useMediaQuery.ts";
 import {
@@ -99,6 +100,7 @@ export function DataTable({
   empty = null,
   mobileDefaults = null,
   viewModes = /** @type {any} */ (null),
+  titleBar = /** @type {any} */ (null),
 }) {
   const { t } = useTranslation("common");
   const isMobile = useIsMobileViewport();
@@ -186,21 +188,41 @@ export function DataTable({
   const hasChips = mobileStandard && swappable.length > MOBILE_COLUMN_COUNT;
   const visibleMobileCols = hasChips && !fullTable ? orderMobileColumns(columns, mobileKeys) : swappable;
 
+  // #8280 (P21): med en titellinje er kolonnevalget en knap i linjen (ark), ikke en
+  // chip-række over tabellen. Samme state og samme FIFO-bytte som chip-rækken.
+  const mobileColumnsControl =
+    titleBar && hasChips
+      ? {
+          count: fullTable ? swappable.length : MOBILE_COLUMN_COUNT,
+          total: swappable.length,
+          hint: t("table.titleBar.swapHint"),
+          items: applyMobileChipOrder(columns, chipOrder).map((col) => ({
+            key: col.key,
+            label: mobileColumnLabel(col),
+            checked: mobileKeys.includes(col.key),
+            disabled: fullTable,
+          })),
+          onToggle: pickColumn,
+          footer: { label: t("table.fullTable"), checked: fullTable, onToggle: () => setFullTable((v) => !v) },
+        }
+      : null;
+
   if (mobileStandard) {
     return (
       <div className={className}>
-        {(hasChips || viewModes) && (
+        {((hasChips && !titleBar) || viewModes) && (
           <MobileColumnChips
-            columns={hasChips ? applyMobileChipOrder(columns, chipOrder) : []}
+            columns={hasChips && !titleBar ? applyMobileChipOrder(columns, chipOrder) : []}
             selected={mobileKeys}
             onPick={pickColumn}
             fullTable={fullTable}
-            onToggleFullTable={hasChips ? () => setFullTable((v) => !v) : undefined}
+            onToggleFullTable={hasChips && !titleBar ? () => setFullTable((v) => !v) : undefined}
             modes={viewModes}
             t={t}
           />
         )}
         <div className={WRAP}>
+          {renderTitleBar(titleBar, mobileColumnsControl)}
           {toolbar && (
             <div className="flex flex-wrap items-center gap-2 border-b border-cz-border px-4 py-2.5">{toolbar}</div>
           )}
@@ -243,7 +265,7 @@ export function DataTable({
                               er tilovers og GIVER den fra sig igen naar tallene
                               bliver brede — sammen med `wrap` nedenfor er det
                               det der holder tabellen inden for 375px. */}
-                          <td className={`${tdClass({ ...edges, zone: zones[i], compact: true, dense })} w-full max-w-0`}>
+                          <td className={`${tdClass({ ...edges, zone: zones[i], compact: true, dense })} w-full max-w-0 min-w-24`}>
                             {renderStickyCell(entityCol, row, i, foldCols, true)}
                           </td>
                           {visibleMobileCols.map((col) => (
@@ -278,6 +300,7 @@ export function DataTable({
   return (
     <div className={className}>
       <div className={WRAP}>
+        {renderTitleBar(titleBar, null)}
         {/* #4628 (slice 3 af #4622) — tabellens egen kontrol-bjaelke. Kontroller
             der KUN styrer tabellen (gruppe-filtre, visnings-segmenter) laa foer
             som en fritsvaevende raekke mellem sidehovedet og tabellen; det er
@@ -328,6 +351,15 @@ export function DataTable({
       {count && <div className={COUNT}>{count}</div>}
     </div>
   );
+}
+
+// #8280 (P21): `titleBar` er enten props til <TableTitleBar> eller en funktion
+// (columnsControl) => node, så en side med sin egen filter-komponent kan bygge
+// linjen selv og stadig få tabellens kolonne-valg med.
+function renderTitleBar(titleBar, columnsControl) {
+  if (!titleBar) return null;
+  if (typeof titleBar === "function") return titleBar(columnsControl);
+  return <TableTitleBar {...titleBar} columns={columnsControl ?? titleBar.columns ?? null} />;
 }
 
 function zoneEdges(zones, i) {
@@ -749,7 +781,7 @@ function renderStickyCell(col, row, i, foldCols, wrap = false) {
   // ikon (troejeprikken foran et rytternavn) staa alene paa foerste linje, fordi
   // flex bryder mellem boernene og ikke inde i navnet.
   const nowrap = wrap
-    ? "min-w-0 wrap-break-word *:min-w-0 **:whitespace-normal"
+    ? "min-w-0 wrap-normal *:min-w-0 **:whitespace-normal" /* #8280: navnet brydes kun mellem ord, aldrig midt i et ord */
     : "whitespace-nowrap";
   return (
     <>

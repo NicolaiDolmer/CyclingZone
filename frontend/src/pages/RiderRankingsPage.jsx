@@ -18,11 +18,8 @@ import { resolveDivisionSelectionFromParams, ALL_DIVISIONS_VALUE } from "../lib/
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
 import { withActiveSeniorPools } from "../lib/seniorScope.ts";
 import {
-  Input,
   Select,
   Button,
-  Checkbox,
-  Dropdown,
   DataTable,
   EmptyState,
   ErrorState,
@@ -383,80 +380,49 @@ export default function RiderRankingsPage() {
     })),
   ];
 
-  return (
-    <div>
-      {/* #3104 etape C: sæson + antal fra det tidligere PageHeader-subtitle som
-          fane-intro (RacePointsPage-mønsteret) — hubben ejer sidehovedet. */}
-      <p className="mb-3 text-[13px] text-cz-2">
-        {season
-          ? `${t("rankings.season", { n: season.number })}${filtered.length > 0 ? ` · ${t("rankings.ridersCount", { count: filtered.length })}` : ""}`
-          : t("rankings.noActiveSeason")}
-        {/* #4225 — mellem to sæsoner viser ranglisten sidste AFSLUTTEDE sæson,
-            fordi den kommende har nul løbsdage. Uden denne etiket ville tallene
-            ligne den igangværende sæsons. Ejer-beslutning 25/8. */}
-        {isStale && (
-          <span className="ms-2 text-cz-3">{t("rankings.completedSeasonNote")}</span>
-        )}
-        {!isStale && <UpdatedAtLine at={updatedAt} />}{/* #7664: kun naar de nye tabeller laeses */}
-        {/* #3507 — tydelig filter-indikator når man er landet her via
-            dashboardets division-scopede "Fuld rangliste →"-link (eller har
-            valgt en division manuelt), så det er soleklart at listen IKKE er
-            sæson-global lige nu. */}
-        {selection.tier != null && (
-          <span className="ms-2 font-medium text-cz-accent-t">
-            · {t("rankings.filterIndicator", { division: selection.tier })}
-          </span>
-        )}
-      </p>
-
-      {/* Filter-bar (T2-recept): search Input + op til 3 Selects, kolonne-toggle
-          højrestillet (samme mønster som StandingsPage's Compare-knap, #2849 bølge 1). */}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="w-60">
-          <Input
-            type="text" size="sm" value={search} onChange={e => setSearch(e.target.value)}
-            placeholder={t("rankings.searchPlaceholder")}
-          />
-        </div>
-        {/* #3507 — division(+pulje)-filter, samme model som ResultaterPage
-            (#3197): fravaerende param = alle divisioner (uændret default). */}
+  // #8280 (P21): kontrollerne bor i ÉN titellinje inde i tabellens ramme. Valgene
+  // står som ord (division · pulje · ejer), søg yderst til højre, hold-valget bag
+  // filter-ikonet og kolonne-valget bag kolonne-knappen. Sæson, antal og
+  // "opdateret"-tid står i tællelinjen under tabellen (P9), ikke i en løs linje
+  // mellem fanerne og tabellen.
+  const titleBar = {
+    page: "rider_rankings",
+    choices: [
+      {
+        key: "division",
+        ariaLabel: t("rankings.divisionFilterLabel"),
+        value: selection.tier ?? ALL_DIVISIONS_VALUE,
+        onChange: e => changeDivision(e.target.value),
+        options: [
+          { value: ALL_DIVISIONS_VALUE, label: t("rankings.divisionFilterAll") },
+          ...ALL_DIVISIONS.map(d => ({ value: String(d), label: t("rankings.divisionFilterOption", { n: d }) })),
+        ],
+      },
+      ...(hasPoolSubtabs ? [{
+        key: "pool",
+        ariaLabel: t("rankings.poolFilterLabel"),
+        value: selection.poolId ?? ALL_POOLS_VALUE,
+        onChange: e => changePool(e.target.value),
+        options: [
+          { value: ALL_POOLS_VALUE, label: t("rankings.poolFilterAll") },
+          ...tierPools.map(p => ({ value: String(p.id), label: p.label })),
+        ],
+      }] : []),
+      {
+        key: "owner",
+        ariaLabel: t("rankings.ownerFilterLabel"),
+        value: ownerFilter,
+        onChange: e => setOwnerFilter(e.target.value),
+        options: OWNER_FILTERS.map(f => ({ value: f.key, label: t(f.labelKey) })),
+      },
+    ],
+    // #1004: filter på ét konkret hold (fx for at se egne ryttere samlet).
+    filters: {
+      label: t("rankings.teamFilterLabel"),
+      count: teamFilter !== "all" ? 1 : 0,
+      onReset: () => setTeamFilter("all"),
+      children: (
         <Select
-          size="sm"
-          aria-label={t("rankings.divisionFilterLabel")}
-          value={selection.tier ?? ALL_DIVISIONS_VALUE}
-          onChange={e => changeDivision(e.target.value)}
-        >
-          <option value={ALL_DIVISIONS_VALUE}>{t("rankings.divisionFilterAll")}</option>
-          {ALL_DIVISIONS.map(d => (
-            <option key={d} value={d}>{t("rankings.divisionFilterOption", { n: d })}</option>
-          ))}
-        </Select>
-        {hasPoolSubtabs && (
-          <Select
-            size="sm"
-            aria-label={t("rankings.poolFilterLabel")}
-            value={selection.poolId ?? ALL_POOLS_VALUE}
-            onChange={e => changePool(e.target.value)}
-          >
-            <option value={ALL_POOLS_VALUE}>{t("rankings.poolFilterAll")}</option>
-            {tierPools.map(p => (
-              <option key={p.id} value={p.id}>{p.label}</option>
-            ))}
-          </Select>
-        )}
-        <Select
-          size="sm"
-          aria-label={t("rankings.ownerFilterLabel")}
-          value={ownerFilter}
-          onChange={e => setOwnerFilter(e.target.value)}
-        >
-          {OWNER_FILTERS.map(f => (
-            <option key={f.key} value={f.key}>{t(f.labelKey)}</option>
-          ))}
-        </Select>
-        {/* #1004: filter på ét konkret hold (fx for at se egne ryttere samlet). */}
-        <Select
-          size="sm"
           aria-label={t("rankings.teamFilterLabel")}
           value={teamFilter}
           onChange={e => setTeamFilter(e.target.value)}
@@ -466,50 +432,52 @@ export default function RiderRankingsPage() {
             <option key={team.id} value={team.id}>{team.name}</option>
           ))}
         </Select>
+      ),
+    },
+    search: {
+      value: search,
+      onChange: e => setSearch(e.target.value),
+      placeholder: t("rankings.searchPlaceholder"),
+    },
+    // Computer: de valgfrie kolonner. Telefon: DataTable bytter selv til sit eget
+    // kolonne-ark (tre kolonner + "Fuld tabel").
+    columns: {
+      label: t("rankings.columnsHeading"),
+      count: visibleOptionalCols.length,
+      total: OPTIONAL_COLS.length,
+      items: OPTIONAL_COLS.map(col => ({ key: col.key, label: t(col.labelKey), checked: !!colVisible[col.key] })),
+      onToggle: toggleColumn,
+    },
+  };
 
-        {/* Kolonne-synlighed. */}
-        <Dropdown
-          align="right"
-          className="ms-auto"
-          trigger={({ open, toggle }) => (
-            <Button type="button" variant="secondary" size="sm" onClick={toggle} aria-expanded={open}>
-              {t("rankings.columnsButton")}
-            </Button>
-          )}
-        >
-          <p className="px-2.5 py-1 text-xs font-medium text-cz-3">{t("rankings.columnsHeading")}</p>
-          <div className="flex flex-col gap-1.5 px-2.5 py-1.5">
-            {OPTIONAL_COLS.map(col => (
-              <Checkbox
-                key={col.key}
-                id={`rankings-col-${col.key}`}
-                label={t(col.labelKey)}
-                checked={!!colVisible[col.key]}
-                onChange={() => toggleColumn(col.key)}
-              />
-            ))}
-          </div>
-        </Dropdown>
-      </div>
+  const seasonLine = season
+    ? t("rankings.season", { n: season.number })
+    : t("rankings.noActiveSeason");
 
+  return (
+    <div>
       {!season ? (
         <EmptyState icon={<CalendarIcon size={26} aria-hidden="true" />} title={t("rankings.noActiveSeason")} />
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          icon={<SearchIcon size={26} aria-hidden="true" />}
-          title={search ? t("rankings.noResultsFor", { q: search }) : t("rankings.noResults")}
-          action={hasActiveFilters
-            ? <Button size="sm" variant="secondary" onClick={clearFilters}>{t("common:controls.clearFilters")}</Button>
-            : null}
-        />
       ) : (
         <DataTable
           label={t("rankings.title")}
           columns={columns}
           rows={filtered}
           rowKey={(rider) => rider.id}
+          titleBar={titleBar}
+          /* Titellinjen bliver monteret også når et filter tømmer tabellen (samme
+             træ, så søgefeltet beholder fokus og filteret kan slås fra igen). */
+          empty={
+            <EmptyState
+              icon={<SearchIcon size={26} aria-hidden="true" />}
+              title={search ? t("rankings.noResultsFor", { q: search }) : t("rankings.noResults")}
+              action={hasActiveFilters
+                ? <Button size="sm" variant="secondary" onClick={clearFilters}>{t("common:controls.clearFilters")}</Button>
+                : null}
+            />
+          }
           /* D-047 (#5102): en rangliste laeses paa point, sejre og praemiepenge;
-             kategori-sejrene ligger bag chip-raekken og "Fuld tabel". */
+             kategori-sejrene ligger bag kolonne-knappen og "Fuld tabel". */
           mobileDefaults={["points", "total_wins", "prize_earned"]}
           sort={sortKey}
           sortDir={sortAsc ? "asc" : "desc"}
@@ -533,7 +501,14 @@ export default function RiderRankingsPage() {
               <span>{t("rankings.legendPcl")}</span>
               <span>{t("rankings.legendMtn")}</span>
               <span>{t("rankings.legendU25")}</span>
-              <span className="ms-auto">{t("rankings.ridersCount", { count: filtered.length })}</span>
+              <span className="ms-auto">
+                {seasonLine} · {t("rankings.ridersCount", { count: filtered.length })}
+                {/* #4225 — mellem to sæsoner viser ranglisten sidste AFSLUTTEDE sæson,
+                    fordi den kommende har nul løbsdage. Uden denne etiket ville tallene
+                    ligne den igangværende sæsons. Ejer-beslutning 25/8. */}
+                {isStale && <span className="ms-2 text-cz-3">{t("rankings.completedSeasonNote")}</span>}
+                {!isStale && <UpdatedAtLine at={updatedAt} />}{/* #7664: kun naar de nye tabeller laeses */}
+              </span>
             </div>
           }
         />

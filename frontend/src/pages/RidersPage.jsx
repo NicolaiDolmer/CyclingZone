@@ -59,7 +59,6 @@ import {
   BikeIcon,
   ToastViewport,
 } from "../components/ui";
-import { WRAP } from "../components/ui/dataTableStyles.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 
 const API = import.meta.env.VITE_API_URL;
@@ -205,7 +204,6 @@ export default function RidersPage() {
   const { t } = useTranslation("riders");
   const { t: tCommon } = useTranslation("common");
   const { t: tRider } = useTranslation("rider"); // #1592: fulde evne-navne til tooltips + legende
-  const { t: tTypes } = useTranslation("riderTypes"); // #2849 bølge 2: mobil-fold-tekst for ryttertype
   const reputationOn = useRiderReputation();
   const typeColumnLabel = useTypeColumnLabel(); // #5435
   const navigate = useNavigate();
@@ -621,19 +619,10 @@ export default function RidersPage() {
       // #5435: badget er anlægget ("Natural role") når rating-kontakten er tændt.
       header: typeColumnLabel,
       sortKey: "primary_type",
-      fold: true,
-      // #5383: KORT type-etiket i mobilens meta-linje. Det fulde navn
-      // ("Bjergrytter/Etapeløbsrytter" = 27 tegn i eet ord) var linjens
-      // laengste tekst og loeb ud over kolonnen. `riderTypes.short.*` findes
-      // allerede i repoet (rytterprofilens type-radar bruger dem), saa dette er
-      // ikke ny copy. Desktop-badget nedenfor er uaendret — det fulde navn
-      // staar stadig i sin egen kolonne dér.
-      foldValue: (r) => {
-        if (!r.primary_type) return "";
-        const primary = tTypes(`short.${r.primary_type}`);
-        const hasSecondary = r.secondary_type && r.secondary_type !== r.primary_type;
-        return hasSecondary ? `${primary}/${tTypes(`short.${r.secondary_type}`)}` : primary;
-      },
+      // #8280 (P21): typen har sin egen kolonne også på telefon (ikke foldet ind i
+      // navnecellen), så navnecellen kun bærer navnet. På telefon vælges den i
+      // kolonne-arket; badget viser det fulde navn som på computeren.
+      mobileLabel: typeColumnLabel,
       render: (r) => <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} />,
     },
     {
@@ -670,6 +659,38 @@ export default function RidersPage() {
     })),
   ];
 
+  // #8280 (P21): tabellen er altid monteret; loading/fejl/tom vises i dens tomme række.
+  const showRows = !loading && !error;
+  const tableEmpty = loading ? (
+    <SkeletonLines lines={6} />
+  ) : error ? (
+    // #2849 bølge 2 (audit-fund): en fejlet hoved-fetch viser ErrorState med retry,
+    // ikke en tavs tom liste.
+    <ErrorState
+      title={t("loadError")}
+      action={<Button size="sm" variant="secondary" onClick={() => loadRiders()}>{t("retry")}</Button>}
+    />
+  ) : riders.length === 0 ? (
+    <EmptyState
+      icon={<BikeIcon size={26} aria-hidden="true" />}
+      title={tCommon("controls.noFilterResults")}
+      action={<Button size="sm" onClick={onReset}>{tCommon("controls.clearFilters")}</Button>}
+    />
+  ) : null;
+
+  // Computer: kolonne-knappen styrer evne-kolonnerne (tidligere "Vis stats" i
+  // sidehovedet). Telefon: DataTable leverer sit eget kolonne-ark.
+  const abilityColumnsControl = {
+    label: tCommon("controls.statsToggleHeading"),
+    count: visibleStats.size,
+    total: STATS.length,
+    items: STATS.map(({ key, label }) => ({ key, label, checked: visibleStats.has(key) })),
+    onToggle: toggleStat,
+    footer: visibleStats.size === STATS.length
+      ? { label: tCommon("controls.statsToggleHideAll"), checked: false, onToggle: hideAll }
+      : { label: tCommon("controls.statsToggleShowAll"), checked: false, onToggle: showAll },
+  };
+
   return (
     <div className="mx-auto max-w-[1600px]">
       <OnboardingTour pageKey="riders" steps={ridersTourSteps} />
@@ -682,12 +703,17 @@ export default function RidersPage() {
         subtitle={t("page.subtitle", { count: formatNumber(total) })}
         actions={
           <>
-            <StatsToggle
-              visibleStats={visibleStats}
-              onToggleStat={toggleStat}
-              onShowAll={showAll}
-              onHideAll={hideAll}
-            />
+            {/* #8280: på computer er evne-kolonnerne en del af kolonne-knappen i tabellens
+                titellinje; på telefon (hvor kolonne-arket kun bytter de tre synlige
+                kolonner) bliver "Vis stats" stående her. */}
+            <span className="contents sm:hidden">
+              <StatsToggle
+                visibleStats={visibleStats}
+                onToggleStat={toggleStat}
+                onShowAll={showAll}
+                onHideAll={hideAll}
+              />
+            </span>
             <Link
               to="/watchlist"
               data-tour="riders-watchlist"
@@ -707,84 +733,69 @@ export default function RidersPage() {
         />
       )}
 
-      {/* #4628: T2-filterlinjen (TASTE fork 1), soeg + land + ryttertype paa én
-          linje, resten bag "Flere filtre" lukket som default. Erstatter det aabne
-          8-felts panel + evne-folden, som stod mellem spilleren og foerste rytter. */}
-      <div data-tour="riders-filters">
-        <RiderFilters
-          layout="bar"
-          filters={filters}
-          onChange={setFilter}
-          onReset={onReset}
-          showTeamFilter={false}
-          nationalities={nationalities}
-          showAiToggle={true}
-          contractSeasonNumber={seasonNumberFromReferenceYear(seasonYear)}
+      {/* #8280 (P21): kontrollerne er tabellens titellinje, inde i tabellens ramme
+          (valg som ord, filter-ikon, kolonne-knap, søg). Tabellen er ALTID monteret:
+          loading, fejl og "ingen resultater" vises i tabellens egen tomme række, så
+          titellinjen (og søgefeltets fokus) står urørt mens listen hentes igen, og
+          et filter der tømmer tabellen kan slås fra igen. Gemte filtre og
+          mobil-sortering ligger i filter-arket i stedet for som løse rækker. */}
+      <div data-tour="riders-list">
+        <DataTable
+          label={t("page.title")}
+          columns={columns}
+          rows={showRows ? riders : []}
+          rowKey={(r) => r.id}
+          titleBar={(columnsControl) => (
+            <RiderFilters
+              layout="titleline"
+              filters={filters}
+              onChange={setFilter}
+              onReset={onReset}
+              showTeamFilter={false}
+              nationalities={nationalities}
+              showAiToggle={true}
+              contractSeasonNumber={seasonNumberFromReferenceYear(seasonYear)}
+              columnsControl={columnsControl ?? abilityColumnsControl}
+              sheetExtra={
+                <>
+                  {/* #9: mobil-sortering — nation/hold/status er foldet ind i navnecellen
+                      på telefon og kan ikke sorteres med en overskrift. */}
+                  <MobileSortControl
+                    sort={displaySort}
+                    sortDir={filters.sort_dir}
+                    onSort={handleSort}
+                    reputationOn={reputationOn}
+                    statCols={visibleStatCols}
+                    t={t}
+                  />
+                  {/* #4649: gemte filtre (Pro v1.1 del C). */}
+                  <SavedFiltersBar
+                    userId={userId}
+                    filters={filters}
+                    onApply={(saved) => setFilters({ ...FILTER_DEFAULTS, ...saved, page: 1 })}
+                    teamId={myTeam?.id}
+                  />
+                </>
+              }
+            />
+          )}
+          empty={tableEmpty}
+          /* #5292, design A: scouting is available without opening a
+             profile. Salary and abilities remain one column-pick away. */
+          mobileDefaults={["rating", "value", "potential"]}
+          rowProps={(r) => ({ onClick: () => navigate(`/riders/${r.id}`), className: "cursor-pointer" })}
+          sort={displaySort}
+          sortDir={filters.sort_dir}
+          onSort={handleSort}
+          count={showRows && riders.length > 0
+            ? t("pagination.showing", {
+              from: Math.min((filters.page - 1) * 50 + 1, total),
+              to: Math.min(filters.page * 50, total),
+              total: formatNumber(total),
+            })
+            : null}
         />
       </div>
-
-      {/* #4649: gemte filtre (Pro v1.1 del C), som en raekke under filterlinjen
-          (chips + "Save current filter"). */}
-      <SavedFiltersBar
-        userId={userId}
-        filters={filters}
-        onApply={(saved) => setFilters({ ...FILTER_DEFAULTS, ...saved, page: 1 })}
-        teamId={myTeam?.id}
-      />
-
-      {loading ? (
-        <div className={`${WRAP} p-5`}>
-          <SkeletonLines lines={6} />
-        </div>
-      ) : error ? (
-        // #2849 bølge 2 (audit-fund): tidligere tavs fejl-degradering (console.error
-        // + tom liste) — en fejlet hoved-fetch viser nu ErrorState med retry.
-        <ErrorState
-          title={t("loadError")}
-          action={<Button size="sm" variant="secondary" onClick={() => loadRiders()}>{t("retry")}</Button>}
-        />
-      ) : (
-        <>
-          {/* #9: mobil-sortering — desktop sorterer via kolonne-headers, men de
-              fleste er skjult på mobil. Denne kontrol eksponerer samme sort-nøgler. */}
-          <MobileSortControl
-            sort={displaySort}
-            sortDir={filters.sort_dir}
-            onSort={handleSort}
-            reputationOn={reputationOn}
-            statCols={visibleStatCols}
-            t={t}
-          />
-          <div data-tour="riders-list">
-            {riders.length === 0 ? (
-              <EmptyState
-                icon={<BikeIcon size={26} aria-hidden="true" />}
-                title={tCommon("controls.noFilterResults")}
-                action={<Button size="sm" onClick={onReset}>{tCommon("controls.clearFilters")}</Button>}
-              />
-            ) : (
-              <DataTable
-                label={t("page.title")}
-                columns={columns}
-                rows={riders}
-                rowKey={(r) => r.id}
-                /* #5292, design A: scouting is available without opening a
-                   profile. Salary and abilities remain one column-chip away. */
-                mobileDefaults={["rating", "value", "potential"]}
-                rowProps={(r) => ({ onClick: () => navigate(`/riders/${r.id}`), className: "cursor-pointer" })}
-                sort={displaySort}
-                sortDir={filters.sort_dir}
-                onSort={handleSort}
-                count={t("pagination.showing", {
-                  from: Math.min((filters.page - 1) * 50 + 1, total),
-                  to: Math.min(filters.page * 50, total),
-                  total: formatNumber(total),
-                })}
-              />
-            )}
-          </div>
-        </>
-      )}
 
       {/* #1592: evne-kode-legenden staar UNDER tabellen (#4628) — samme plads som
           zone-forklaringen paa Stillinger. Den forklarer kolonner man foerst har
