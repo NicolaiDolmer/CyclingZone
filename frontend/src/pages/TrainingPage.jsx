@@ -2596,7 +2596,7 @@ export default function TrainingPage() {
           scout-knap eller slots-tilstand at vise her. */}
       <TabPanel value="development">
         <Suspense fallback={<TabFallback />}>
-        <DevelopmentXpSwitch runs={receiptRuns} roster={ridersLoading ? null : riders} estimateFor={estimateFor} seasonGains={seasonGainsByRider} racingToday={racingToday} ageFor={(id) => { const r = riders.find((x) => x.id === id); return r ? ageForSeason(r.birthdate, seasonYear) : null; }}>
+        <DevelopmentXpSwitch runs={receiptRuns} roster={ridersLoading ? null : riders} estimateFor={estimateFor} seasonGains={seasonGainsByRider} racingToday={racingToday} ageFor={(id) => { const r = /** @type {any[]} */ (riders).find((/** @type {any} */ x) => x.id === id); return r ? ageForSeason(r.birthdate, seasonYear) : null; }}>
         {/* #6025 (ejer-valg A 1/10): saesonens fremgang staar oeverst her
             i stedet for i Today-tabellen. Samme tal og samme kvittering. */}
         {!ridersLoading && (
