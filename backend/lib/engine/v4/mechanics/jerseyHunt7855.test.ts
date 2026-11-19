@@ -157,8 +157,8 @@ test("#7855 ejer 19/11: misser han morgenudbruddet, koerer han om pointene i et 
     // Uden for et udbrud styrer sat-leddet: ingen jagt fra feltet. Uden sat-led er reglen uaendret
     // (pointjagten ogsaa fra feltet, bjergjagten kun i udbruddet).
     assert.deepEqual(hunters([brk(["x"]), pel(["sat", "alone"])], passageKm), kind === "sprint" ? ["alone"] : [], `${hunt}: i feltet`);
-    // Et soloangreb er ikke et udbrud.
-    assert.deepEqual(hunters([{ id: "a", kind: "solo", origin: "attack", rider_ids: ["sat"], gap_seconds: 0, cohesion: 1 } as RaceGroup, pel(["alone", "x"])], passageKm), kind === "sprint" ? ["alone"] : [], `${hunt}: angreb`);
+    // Et soloangreb (her et nedkoerselsangreb) er ikke et udbrud.
+    assert.deepEqual(hunters([{ id: "a", kind: "solo", origin: "descent", rider_ids: ["sat"], gap_seconds: 0, cohesion: 1 } as RaceGroup, pel(["alone", "x"])], passageKm), kind === "sprint" ? ["alone"] : [], `${hunt}: angreb`);
   }
 });
 
