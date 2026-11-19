@@ -129,7 +129,14 @@ export function programFields(rider: R5Rider, date: number): Array<Session | "st
   const follower = FOLLOWERS.find((f) => f.id === rider.id);
   if (follower) {
     // Samme rotation som fanen Program, saa de to faner viser det samme.
-    const { week } = fillRotation(ROTATION, follower.start, follower.blocked, () => "Race");
+    // Rotationen fortsaetter uge efter uge: hver uge starter, hvor den forrige slap.
+    let start = follower.start;
+    let blocked = follower.blocked;
+    for (let w = 0; w < Math.floor((date + 1) / 7); w += 1) {
+      start = fillRotation(ROTATION, start, blocked, () => "Race").nextStart;
+      blocked = Array.from({ length: 7 }, free);
+    }
+    const { week } = fillRotation(ROTATION, start, blocked, () => "Race");
     return week[weekday(date)].map((c) => (c.kind === "race" ? "stage" : c.kind === "restDay" ? "rest" : c.session));
   }
   if (date === 0) {

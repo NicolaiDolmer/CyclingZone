@@ -511,7 +511,7 @@ export default function Direction5({ init, mobile }: { init: R5Init; mobile: boo
       </div>
       <ul>
         {shown.map((r) => {
-          const o = open.has(r.rider.id);
+          const o = isOpen(r.rider.id);
           const todayWord = r.racing ? (
             <span className="inline-flex items-center gap-1 whitespace-nowrap font-semibold text-cz-1"><LockIcon size={11} aria-hidden="true" className="shrink-0 text-cz-3" />{DATES[date].race}</span>
           ) : done ? (

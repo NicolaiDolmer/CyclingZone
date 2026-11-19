@@ -20,9 +20,11 @@ function reducedMotion(): boolean {
 
 export default function TodaysTraining({ mobile, frame, onDone }: { mobile: boolean; frame: number | null; onDone: () => void }) {
   const [t, setT] = useState(frame ?? (reducedMotion() ? 1 : 0));
+  // Skip stopper tegnefilmen, saa naeste billede ikke skriver fremdriften tilbage.
+  const [skipped, setSkipped] = useState(false);
 
   useEffect(() => {
-    if (frame !== null || reducedMotion()) return;
+    if (frame !== null || skipped || reducedMotion()) return;
     const start = performance.now();
     let raf = 0;
     const tick = (now: number) => {
@@ -32,7 +34,7 @@ export default function TodaysTraining({ mobile, frame, onDone }: { mobile: bool
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [frame]);
+  }, [frame, skipped]);
 
   const trainers = MOMENT.filter((m) => m.kind === "train");
   const best = Math.max(...trainers.map((m) => (m.kind === "train" ? m.xp : 0)));
@@ -92,7 +94,7 @@ export default function TodaysTraining({ mobile, frame, onDone }: { mobile: bool
           <p className="mt-1 text-[13px] text-cz-2">Tuesday 17 November · {TEAM.length} riders · same order every day</p>
         </div>
         <div className="flex items-center gap-2 max-sm:w-full">
-          {!finished && <Button variant="secondary" size="sm" onClick={() => setT(1)} className="max-sm:w-full">Skip</Button>}
+          {!finished && <Button variant="secondary" size="sm" onClick={() => { setSkipped(true); setT(1); }} className="max-sm:w-full">Skip</Button>}
         </div>
       </header>
 
