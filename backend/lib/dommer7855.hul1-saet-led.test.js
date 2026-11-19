@@ -1,86 +1,120 @@
-// #7855 HUL 1 MED "NAAR HAN ER SAT"-LED (Fable-dom PR #8218 16/11, ejer 16/11: "Vi kan foelge din anbefaling").
-//   Fable 16/11: planen skifter led ved "kom ikke med", foer det udbrud han ender i er dannet, saa
-//   jagten forsvinder, selv om han senere kommer med. Preview-rytteren har netop den plan:
-//   "Gaa i udbrud + Hent bjergpoint", derefter "Koer ind, naar han er sat".
-//   Ejer 16/11 (S2): jagten slutter, naar han ikke kommer med i udbruddet; ingen bjergjagt fra feltet.
-//   Ejer 14/11 (hul 1): kom han med i et sent dannet udbrud, betaler han som rent udbrud plus det,
-//   han faktisk koerte efter.
+// #7855 HUL 1 MED "NAAR HAN ER SAT"-LED (Fable-dom PR #8218 16/11; ejerbeslutning 16/11 og 17/11).
+//   Ejer 17/11: "Planen venter, til udbruddet er dannet. Kommer rytteren ikke med, er jagten slut, og
+//   han gaar videre til naeste led." Formen hvor jagten foelger med og kan komme igen i et senere
+//   udbrud, er afvist (urealistisk; bryder "alt har en aegte aarsag").
+//   Ejer 16/11 (S2): ingen bjergjagt fra feltet.
+//   Fable-dom 17/11 fund 2: pointjagt med sat-led og "hentet" skal ogsaa have en pris- og loebsproeve.
 //
-// LAESNING (maalt paa proeve-etaperne 17/11): det sene udbrud er et NYT udbrud efter en tidlig
-// indhentning. Planen gaar videre til "naar han er sat" som et rent udbrud (samme indsats og pris),
-// men jagten venter paa udbruddet: kommer han med i det nye udbrud, gaelder jagten igen, mens han
-// ligger i det. Kommer han aldrig med, er dagen praecis som samme plan uden jagt.
+// DOMMERENS LAESNING:
+//   - "Planen venter": "kom ikke med" afgoeres kun ved en graense, hvor dagens udbrud ligger paa vejen.
+//   - "Jagten er slut": efter skiftet (kom ikke med, eller hentet) koerer han ikke om en eneste top
+//     eller spurt, heller ikke naar han senere ligger i et nyt udbrud.
+//   - Kom han aldrig med, eller koerte han aldrig om en passage, er dagen praecis som samme plan uden
+//     jagt (samme loeb, samme pris). Jagten er aldrig billigere.
+//   Etape 107 (ejerens ord) og to etapeformer, hvor et nyt udbrud efter en tidlig indhentning tager
+//   hjaelperen med; pointjagten paa flade dage med spurter og paa etape 107 med spurter.
 //
 // Proeven kender ingen tal fra motoren. Den sammenligner kun motorens egne svar.
 
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { koerEtape, etape, passager, medIUdbrud, jagede, betalte, pris, loebet, hash, HJAELPERE } from "./dommer7855.fixtures.mjs";
+import { koerEtape, etape, medSpurter, fladMedSpurter, passager, medIUdbrud, jagede, betalte, pris, loebet, hash, HJAELPERE } from "./dommer7855.fixtures.mjs";
 
-const MED_JAGT = [{ task: "breakaway", hunt: "hunt_kom" }, { task: "ride_in", from: { at: "dropped" } }];
-const UDEN_JAGT = [{ task: "breakaway" }, { task: "ride_in", from: { at: "dropped" } }];
-// Etape 107 (ejerens ord) og to etapeformer, hvor et nyt udbrud efter en tidlig indhentning tager hjaelperen med.
-const ETAPER = [107, 53, 17];
+const SAT = { task: "ride_in", from: { at: "dropped" } };
+const UDEN_JAGT = [{ task: "breakaway" }, SAT];
 const FROE = ["s2-a", "s2-b", "s2-c", "h-5"];
 
-// Gruppebillederne baerer kun gruppens art (som S2-proeven laeser dem).
-const liggerIUdbrud = (b, id) => (b.groups ?? []).some((g) => (g.kind === "breakaway" || g.kind === "solo") && g.rider_ids.includes(id));
-/** Laa han i udbruddet ved toppen? Gruppebilledet lige foer og lige efter, og intet "hentet" med ham imellem. */
-function iUdbruddetVed(k, id, km) {
-  const bs = k.output.groupSnapshots ?? [];
-  const foer = bs.filter((b) => b.km < km).at(-1);
-  const efter = bs.find((b) => b.km >= km);
-  if (!foer || !efter || !liggerIUdbrud(foer, id) || !liggerIUdbrud(efter, id)) return false;
-  return !(k.output.timeline?.events ?? []).some((e) => e.type === "breakaway_caught" && e.km > foer.km && e.km <= km && (e.params?.rider_ids ?? []).includes(id));
+/** Etape 107 med dommerens egne spurter undervejs (andele af distancen, saa de altid ligger foer maal). */
+function etape107MedSpurter() {
+  const row = etape(107);
+  return medSpurter(row, [0.3, 0.55, 0.8].map((f) => Math.round(row.distance_km * f)));
 }
-const skiftede = (k, id) => (k.output.timeline?.events ?? []).find((e) => e.type === "stage_plan_leg" && e.params?.rider_id === id && (e.params.reason === "missed_break" || e.params.reason === "caught"));
+
+const ARTER = {
+  kom: { jagt: "hunt_kom", passage: "kom", etaper: () => [107, 53, 17].map((nr) => [`etape ${nr}`, etape(nr)]) },
+  sprint: { jagt: "hunt_points", passage: "sprint", etaper: () => [["flad 3 spurter", fladMedSpurter(3)], ["flad 2 spurter", fladMedSpurter(2)], ["etape 107 med spurter", etape107MedSpurter()]] },
+};
+
+const foran = (b, id) => (b?.groups ?? []).some((g) => (g.kind === "breakaway" || g.kind === "solo") && g.rider_ids.includes(id));
+const udbrudPaaVejen = (b) => (b?.groups ?? []).some((g) => (g.kind === "breakaway" || g.kind === "solo") && g.rider_ids.length > 0);
+/** Gruppebilledet ved km (det seneste foer eller paa km). */
+const billedeVed = (k, km) => (k.output.groupSnapshots ?? []).filter((b) => b.km <= km).at(-1);
+const skiftet = (k, id) => (k.output.timeline?.events ?? []).find((e) => e.type === "stage_plan_leg" && e.params?.rider_id === id && (e.params.reason === "missed_break" || e.params.reason === "caught"));
 
 const cache = new Map();
-async function dage() {
-  if (cache.has("d")) return cache.get("d");
+async function dage(art) {
+  if (cache.has(art)) return cache.get(art);
+  const a = ARTER[art];
   const ud = [];
-  cache.set("d", ud);
-  for (const nr of ETAPER) for (const id of HJAELPERE) for (const froe of FROE) {
-    const k = await koerEtape(etape(nr), froe, { planer: { [id]: MED_JAGT } });
-    const rent = await koerEtape(etape(nr), froe, { planer: { [id]: UDEN_JAGT } });
-    const skift = skiftede(k, id);
-    const toppe = passager(k, "kom").map((p) => ({ km: p.km, jaget: (p.hunters ?? []).includes(id), foran: iUdbruddetVed(k, id, p.km) }));
+  cache.set(art, ud);
+  for (const [navn, row] of a.etaper()) for (const id of HJAELPERE) for (const froe of FROE) {
+    const k = await koerEtape(row, froe, { planer: { [id]: [{ task: "breakaway", hunt: a.jagt }, SAT] } });
+    const rent = await koerEtape(row, froe, { planer: { [id]: UDEN_JAGT } });
+    const skift = skiftet(k, id);
+    const ps = passager(k, a.passage).map((p) => ({ km: p.km, jaget: (p.hunters ?? []).includes(id), foran: foran(billedeVed(k, p.km), id) }));
     ud.push({
-      navn: `etape ${nr} ${id} ${froe}`, id, k, rent,
+      navn: `${art} ${navn} ${id} ${froe}`, id, k, rent, skift,
       komMed: await medIUdbrud(k, id),
-      efterSkift: skift ? toppe.filter((t) => t.km > skift.km) : [],
-      toppe,
+      efterSkift: skift ? ps.filter((p) => p.km > skift.km) : [],
+      jagede: jagede(k, id, a.passage),
+      ps,
     });
   }
   return ud;
 }
 
-test("hul 1 + saet-led: kom han med i et senere udbrud efter skiftet, gaelder jagten paa hver top, han ligger i udbruddet ved", async () => {
-  const sene = (await dage()).filter((d) => d.efterSkift.some((t) => t.foran));
+for (const art of Object.keys(ARTER)) {
+  test(`hul 1 + saet-led (${art}): "kom ikke med" afgoeres foerst, naar udbruddet ligger paa vejen`, async () => {
+    const missede = (await dage(art)).filter((d) => d.skift?.params.reason === "missed_break");
+    assert.ok(missede.length >= 3, "proeven skal ramme dage, hvor han ikke kom med");
+    for (const d of missede) {
+      const b = billedeVed(d.k, d.skift.km);
+      assert.ok(udbrudPaaVejen(b), `${d.navn}: planen gik videre ved km ${d.skift.km}, foer udbruddet var dannet`);
+      assert.ok(!foran(b, d.id), `${d.navn}: "kom ikke med", men han laa i udbruddet`);
+    }
+  });
+
+  test(`hul 1 + saet-led (${art}): kom han ikke med, eller er han hentet, er jagten slut, ogsaa i et senere udbrud`, async () => {
+    const alle = await dage(art);
+    assert.ok(alle.some((d) => d.skift?.params.reason === "caught"), "proeven skal ramme dage, hvor han er hentet");
+    for (const d of alle) {
+      for (const p of d.efterSkift) assert.ok(!p.jaget, `${d.navn}: koerte om en passage km ${p.km} efter skiftet (${d.skift.params.reason})`);
+    }
+  });
+
+  test(`hul 1 + saet-led (${art}): kom han aldrig med, er dagen praecis som samme plan uden jagt (loeb og pris)`, async () => {
+    const ikkeMed = (await dage(art)).filter((d) => !d.komMed);
+    assert.ok(ikkeMed.length >= 3, "proeven skal ramme dage, hvor han ikke kom med");
+    for (const d of ikkeMed) {
+      assert.equal(d.jagede, 0, `${d.navn}: jagt uden udbrud paa et udbrudsled med saet-led`);
+      assert.equal(betalte(d.k, d.id, ARTER[art].passage), 0, `${d.navn}: betalte for en passage uden udbrud`);
+      assert.equal(hash(loebet(d.k)), hash(loebet(d.rent)), `${d.navn}: loebet skal vaere som uden jagt`);
+      assert.equal(await pris(d.k, d.id), await pris(d.rent, d.id), `${d.navn}: prisen skal vaere som uden jagt`);
+    }
+  });
+
+  test(`hul 1 + saet-led (${art}): koerte han aldrig om en passage, er dagen som uden jagt; jagten er aldrig billigere`, async () => {
+    const alle = await dage(art);
+    const uden = alle.filter((d) => d.jagede === 0);
+    assert.ok(uden.length >= 3, "proeven skal ramme dage uden jagt");
+    for (const d of uden) {
+      assert.equal(hash(loebet(d.k)), hash(loebet(d.rent)), `${d.navn}: loebet skal vaere som uden jagt`);
+      assert.equal(await pris(d.k, d.id), await pris(d.rent, d.id), `${d.navn}: prisen skal vaere som uden jagt`);
+    }
+    for (const d of alle) assert.ok((await pris(d.k, d.id)) >= (await pris(d.rent, d.id)), `${d.navn}: billigere med jagt`);
+  });
+}
+
+test("hul 1 + saet-led (kom): proeven rammer et senere udbrud efter skiftet, og han laa foran uden at jage", async () => {
+  // Formen ejeren afviste 17/11 lod jagten gaelde her. Uden saadanne dage har proeven ingen taender.
+  const sene = (await dage("kom")).filter((d) => d.efterSkift.some((p) => p.foran));
   assert.ok(sene.length >= 2, "proeven skal ramme dage, hvor han kom med i et senere udbrud efter skiftet");
-  for (const d of sene) {
-    for (const t of d.efterSkift.filter((x) => x.foran)) assert.ok(t.jaget, `${d.navn}: laa i udbruddet ved toppen km ${t.km}, men jagten var vaek`);
-  }
+  for (const d of sene) assert.ok(d.efterSkift.every((p) => !p.jaget), `${d.navn}: jagten fulgte med til et senere udbrud`);
 });
 
-test("hul 1 + saet-led: ingen bjergjagt fra feltet, ogsaa efter skiftet", async () => {
-  for (const d of await dage()) {
-    for (const t of d.toppe) if (t.jaget) assert.ok(t.foran || d.k.output.groupSnapshots === undefined, `${d.navn}: koerte om toppen km ${t.km} uden at ligge i udbruddet`);
+test("hul 1 + saet-led (kom): ingen bjergjagt fra feltet", async () => {
+  for (const d of await dage("kom")) {
+    for (const p of d.ps) if (p.jaget) assert.ok(p.foran || d.k.output.groupSnapshots === undefined, `${d.navn}: koerte om toppen km ${p.km} uden at ligge i udbruddet`);
   }
-});
-
-test("hul 1 + saet-led: kom han aldrig med, er dagen praecis som samme plan uden jagt (loeb og pris)", async () => {
-  const ikkeMed = (await dage()).filter((d) => !d.komMed);
-  assert.ok(ikkeMed.length >= 3, "proeven skal ramme dage, hvor han ikke kom med");
-  for (const d of ikkeMed) {
-    assert.equal(jagede(d.k, d.id, "kom"), 0, `${d.navn}: bjergjagt uden udbrud`);
-    assert.equal(betalte(d.k, d.id, "kom"), 0, `${d.navn}: betalte for en top uden udbrud`);
-    assert.equal(hash(loebet(d.k)), hash(loebet(d.rent)), `${d.navn}: loebet skal vaere som uden jagt`);
-    assert.equal(await pris(d.k, d.id), await pris(d.rent, d.id), `${d.navn}: prisen skal vaere som uden jagt`);
-  }
-});
-
-test("hul 1 + saet-led: jagten er aldrig billigere end samme plan uden jagt", async () => {
-  for (const d of await dage()) assert.ok((await pris(d.k, d.id)) >= (await pris(d.rent, d.id)), `${d.navn}: billigere med jagt`);
 });
