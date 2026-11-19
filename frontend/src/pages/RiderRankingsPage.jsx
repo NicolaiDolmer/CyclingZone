@@ -467,7 +467,7 @@ export default function RiderRankingsPage() {
           titleBar={titleBar}
           /* Titellinjen bliver monteret også når et filter tømmer tabellen (samme
              træ, så søgefeltet beholder fokus og filteret kan slås fra igen). */
-          empty={
+          empty={/** @type {any} */ (
             <EmptyState
               icon={<SearchIcon size={26} aria-hidden="true" />}
               title={search ? t("rankings.noResultsFor", { q: search }) : t("rankings.noResults")}
@@ -475,7 +475,7 @@ export default function RiderRankingsPage() {
                 ? <Button size="sm" variant="secondary" onClick={clearFilters}>{t("common:controls.clearFilters")}</Button>
                 : null}
             />
-          }
+          )}
           /* D-047 (#5102): en rangliste laeses paa point, sejre og praemiepenge;
              kategori-sejrene ligger bag kolonne-knappen og "Fuld tabel". */
           mobileDefaults={["points", "total_wins", "prize_earned"]}

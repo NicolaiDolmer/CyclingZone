@@ -779,7 +779,7 @@ export default function RidersPage() {
               }
             />
           )}
-          empty={tableEmpty}
+          empty={/** @type {any} */ (tableEmpty)}
           /* #5292, design A: scouting is available without opening a
              profile. Salary and abilities remain one column-pick away. */
           mobileDefaults={["rating", "value", "potential"]}

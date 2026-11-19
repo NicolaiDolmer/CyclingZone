@@ -25,7 +25,7 @@ export function choiceLabel(choice) {
  * rytter-, hold- eller bruger-id. Formålet er at kunne vælge standardvalg ud fra
  * brug; det kræver ikke persondata.
  */
-export function tableControlPayload(page, control, item = null) {
+export function tableControlPayload(page, control, item = /** @type {string | null} */ (null)) {
   const payload = { page: String(page || "unknown"), control: String(control) };
   if (item != null) payload.item = String(item);
   return payload;

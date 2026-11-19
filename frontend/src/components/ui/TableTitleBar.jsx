@@ -52,7 +52,7 @@ export default function TableTitleBar({
   // Én hændelse pr. kontrol pr. besøg på siden: formålet er at se HVILKE
   // kontroller der bruges (så standardvalg kan afgøres ud fra brug), ikke at
   // tælle hvert tryk. Kun side + kontrolnavn sendes, aldrig værdier.
-  function track(control, item = null) {
+  function track(/** @type {string} */ control, /** @type {string | null} */ item = null) {
     const id = `${control}:${item ?? ""}`;
     if (loggedRef.current.has(id)) return;
     loggedRef.current.add(id);

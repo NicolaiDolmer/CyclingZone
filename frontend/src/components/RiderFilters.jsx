@@ -267,8 +267,8 @@ export default function RiderFilters({
   // søg, filter-ikon). `columnsControl` kommer fra DataTable (kolonne-knappen),
   // `sheetExtra` lægges øverst i filter-arket (fx gemte filtre), `framed` giver
   // linjen sin egen ramme når den står uden for en DataTable.
-  columnsControl = null,
-  sheetExtra = null,
+  columnsControl = /** @type {any} */ (null),
+  sheetExtra = /** @type {any} */ (null),
   framed = false,
 }) {
   const { t, i18n } = useTranslation("riderFilters");
