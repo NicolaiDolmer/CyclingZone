@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#8013 sketch: fill exceptions and disabled-plan reason</title>
+<!-- Self-contained living sketch (no build, no network). Opens straight from disk.
+     Fixed clock, anonymised data (Rider A..E, Race X). Not shipped: lives under preview/sketches only. -->
+<style>
+:root{
+  --bg-body:#f4f2ec;--bg-card:#fcfbf7;--bg-subtle:#ece9e1;--border:#e5e0d5;--border-strong:#827f96;
+  --t1:#0e0f15;--t2:#4c4a5e;--t3:#67657e;--accent:rgb(232 197 71);--accent-t:rgb(160 120 0);
+  --accent-bg:rgb(232 197 71 / .14);--ok:#2f6b3f;--warn:#9a4a12;--warn-bg:#fbf1e9;--locked:#67657e;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg-body:#0e0f15;--bg-card:#161824;--bg-subtle:#14161e;--border:#2a2d40;--border-strong:#8a88a6;
+  --t1:#f2f1f7;--t2:#b4b2c8;--t3:#9896b0;--accent-t:rgb(232 197 71);--accent-bg:rgb(232 197 71 / .12);
+  --ok:#7fc08f;--warn:#e7a26a;--warn-bg:#2a1d12;--locked:#9896b0;}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg-body);color:var(--t1);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;font-variant-numeric:tabular-nums}
+.wrap{max-width:1600px;margin:0 auto;padding:24px 16px 56px}
+h1{font-size:20px;margin:0 0 4px}
+h2{font-size:16px;margin:32px 0 4px}
+.sub{color:var(--t2);font-size:13px;margin:0 0 14px;max-width:70ch}
+.variants{display:grid;gap:16px;grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:1100px){.variants{grid-template-columns:1fr}}
+.v{border:1px solid var(--border);border-radius:5px;background:var(--bg-card);padding:14px;min-width:0}
+.v>.tag{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-t);font-weight:600}
+.v>h3{font-size:14px;margin:2px 0 4px}
+.v>p.d{font-size:12px;color:var(--t2);margin:0 0 12px}
+.pros{font-size:12px;color:var(--t2);margin:12px 0 0;padding-left:16px}
+.pros li{margin:2px 0}
+.stagebar{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+.chip{border:1px solid var(--border);border-radius:5px;background:var(--bg-card);padding:6px 8px;min-width:58px;min-height:44px;text-align:left;font:inherit;color:inherit}
+.chip b{display:block;font-size:12px}
+.chip span{display:block;font-size:11px;color:var(--t2)}
+.chip.src{border-color:var(--accent-t)}
+.chip.locked{background:var(--bg-subtle);color:var(--locked)}
+.chip.on{background:var(--accent-bg);border-color:var(--accent-t)}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--t2)}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dot.fill{background:var(--accent-t)} .dot.man{background:var(--t1)} .dot.empty{border:1px solid var(--t3)} .dot.lock{background:var(--locked)}
+.btn{font:inherit;font-size:12px;font-weight:600;border:1px solid var(--border-strong);background:var(--bg-card);color:var(--t1);border-radius:5px;padding:8px 12px;min-height:44px;cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#1c1708}
+.btn[disabled],.btn[aria-disabled="true"]{opacity:.55;cursor:not-allowed}
+.btn:focus-visible,.chip:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--accent-t);outline-offset:2px}
+.note{border:1px solid var(--border);border-radius:5px;background:var(--bg-subtle);padding:8px 10px;font-size:12px;color:var(--t2);margin:8px 0}
+.note.warn{background:var(--warn-bg);border-color:#efd6c3;color:var(--warn)}
+.list{border:1px solid var(--border);border-radius:5px;background:var(--bg-card);margin:8px 0}
+.row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-top:1px solid var(--border);min-height:44px;font-size:12px}
+.row:first-child{border-top:0}
+.row .n{font-weight:600;min-width:64px}
+.row .g{flex:1;color:var(--t2);min-width:0}
+.row label{display:flex;align-items:center;gap:8px;flex:1;cursor:pointer;min-height:44px}
+.row input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent-t)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.result{font-size:12px;color:var(--ok);margin-top:8px;min-height:18px}
+.plans{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.plan{text-align:left;border:1px solid var(--border-strong);background:var(--bg-card);color:var(--t1);border-radius:5px;padding:8px 10px;min-height:44px;font:inherit;cursor:pointer}
+.plan b{display:block;font-size:12px}
+.plan span{display:block;font-size:11px;color:var(--t2);line-height:1.35;margin-top:2px}
+.plan.dis{border-color:var(--border);color:var(--t3);cursor:not-allowed;background:var(--bg-subtle)}
+.plan.dis span.why{color:var(--warn);font-size:11px}
+.plan.sel{border-color:var(--accent-t);background:var(--accent-bg)}
+.plan.save{grid-column:1/-1}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--t2);margin:0 0 8px}
+.seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:5px;overflow:hidden;margin:0 0 10px}
+.seg button{font:inherit;font-size:12px;padding:8px 12px;min-height:44px;background:var(--bg-card);color:var(--t2);border:0;border-left:1px solid var(--border);cursor:pointer}
+.seg button:first-child{border-left:0}
+.seg button[aria-pressed="true"]{background:var(--accent-bg);color:var(--accent-t);font-weight:600}
+.pin{font-size:11px;color:var(--t2);display:flex;align-items:center;gap:4px}
+.pin svg{width:12px;height:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>#8013 a and c: fill exceptions, and why a plan is unavailable</h1>
+  <p class="sub">Living sketch on anonymised data. Race X, 8 stages. Stage 2 is the source stage (flat). Stages 4 and 8 were filled from stage 2 earlier, stage 6 is a plan the owner set by hand, stage 1 has been ridden, stage 3, 5 and 7 are other profile types. Nothing here is saved or sent.</p>
+
+  <h2>a. Re-applying a changed plan to filled stages</h2>
+  <p class="sub">Problem today: a stage saved through fill and a stage saved by hand look the same, so a later changed team plan cannot safely be re-applied to the filled stages without risking the hand-made one. Each variant below separates the two and says in plain words what will be touched.</p>
+  <div class="legend" aria-label="Legend">
+    <span class="badge"><i class="dot fill"></i>Filled from another stage</span>
+    <span class="badge"><i class="dot man"></i>Set by you</span>
+    <span class="badge"><i class="dot empty"></i>No plan yet</span>
+    <span class="badge"><i class="dot lock"></i>Ridden, locked</span>
+  </div>
+  <div class="variants" id="a-variants"></div>
+
+  <h2>c. Why a team plan is unavailable</h2>
+  <p class="sub">Problem today: an unavailable plan is just greyed out. The reason exists only as a hover title, which touch and keyboard users never see. Test case: the team has no sprint captain and no GC captain yet.</p>
+  <div class="variants" id="c-variants"></div>
+</div>
+
+<script>
+(function(){
+  // Fixed fixture, fixed clock: nothing here depends on the real date.
+  var STAGES=[
+    {n:1,type:'Flat',state:'lock'},
+    {n:2,type:'Flat',state:'man',src:true},
+    {n:3,type:'Hilly',state:'man'},
+    {n:4,type:'Flat',state:'fill',from:2},
+    {n:5,type:'Mountain',state:'empty'},
+    {n:6,type:'Flat',state:'man'},
+    {n:7,type:'TT',state:'empty'},
+    {n:8,type:'Flat',state:'fill',from:2}
+  ];
+  var DOT={fill:'fill',man:'man',empty:'empty',lock:'lock'};
+  var LABEL={fill:'Filled',man:'Yours',empty:'No plan',lock:'Ridden'};
+  function el(tag,cls,html){var e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;return e;}
+  function targets(){return STAGES.filter(function(s){return s.type==='Flat'&&!s.src&&s.state!=='lock';});}
+  function strip(opts){
+    var bar=el('div','stagebar');
+    STAGES.forEach(function(s){
+      var b=el('div','chip'+(s.src?' src':'')+(s.state==='lock'?' locked':''));
+      b.innerHTML='<b>Stage '+s.n+'</b><span>'+s.type+'</span><span class="badge"><i class="dot '+DOT[s.state]+'"></i>'+(s.src?'Source':LABEL[s.state])+(opts&&opts.pin&&opts.pin[s.n]?' · pinned':'')+'</span>';
+      bar.appendChild(b);
+    });
+    return bar;
+  }
+  function shell(tag,title,desc){
+    var v=el('div','v');v.appendChild(el('div','tag',tag));v.appendChild(el('h3','',title));v.appendChild(el('p','d',desc));return v;
+  }
+  function pros(list){var u=el('ul','pros');list.forEach(function(x){u.appendChild(el('li','',x));});return u;}
+
+  // ---- A: origin marker + one plain sentence, no extra step -------------
+  function varA(){
+    var v=shell('Variant A','Origin marker and one sentence','Every stage shows how its plan got there. Re-applying needs no extra choices: filled stages follow the new plan, your own stay.');
+    v.appendChild(strip());
+    var t=targets(),upd=t.filter(function(s){return s.state==='fill';}),kept=t.filter(function(s){return s.state==='man';});
+    v.appendChild(el('div','note','Apply <b>Stage win</b> to <b>'+upd.length+'</b> filled stages ('+upd.map(function(s){return s.n;}).join(', ')+'). Stage '+kept.map(function(s){return s.n;}).join(', ')+' stays as you set it. Stage 1 is ridden.'));
+    var res=el('div','result');res.setAttribute('role','status');
+    var a=el('div','actions');var b=el('button','btn primary','Apply to '+upd.length+' filled stages');b.type='button';
+    b.onclick=function(){res.textContent='Applied to stage '+upd.map(function(s){return s.n;}).join(' and ')+'. Stage '+kept.map(function(s){return s.n;}).join(', ')+' kept.';};
+    a.appendChild(b);v.appendChild(a);v.appendChild(res);
+    v.appendChild(pros(['Pro: zero extra clicks, the safe default is the only default.','Pro: smallest change to the screen that exists today.','Con: no way to include a stage you set by hand without editing it yourself.','Con: the "Yours" state is inferred, so editing a filled stage must flip it to Yours.']));
+    return v;
+  }
+
+  // ---- B: explicit checklist, per-stage override ------------------------
+  function varB(){
+    var v=shell('Variant B','Checklist with safe defaults','Before applying, a short list shows every same-type stage. Filled stages are ticked, your own are off but can be ticked on purpose.');
+    var list=el('div','list');list.setAttribute('role','group');list.setAttribute('aria-label','Stages to update');
+    var boxes=[];
+    targets().forEach(function(s){
+      var r=el('div','row');var l=el('label');var cb=document.createElement('input');cb.type='checkbox';cb.checked=s.state==='fill';cb.dataset.n=s.n;boxes.push(cb);
+      l.appendChild(cb);l.appendChild(el('span','n','Stage '+s.n));l.appendChild(el('span','g',s.state==='fill'?'Filled from stage '+s.from:'Set by you, replaces your plan if ticked'));
+      r.appendChild(l);list.appendChild(r);
+    });
+    var r1=el('div','row');r1.appendChild(el('span','n','Stage 1'));r1.appendChild(el('span','g','Ridden, cannot change'));list.insertBefore(r1,list.firstChild);
+    v.appendChild(list);
+    var res=el('div','result');res.setAttribute('role','status');
+    var a=el('div','actions');var b=el('button','btn primary','Apply');b.type='button';
+    function count(){var c=boxes.filter(function(x){return x.checked;}).length;b.textContent='Apply to '+c+' stage'+(c===1?'':'s');b.disabled=c===0;var over=boxes.some(function(x){return x.checked&&STAGES[x.dataset.n-1].state==='man';});note.style.display=over?'block':'none';}
+    var note=el('div','note warn','You ticked a stage you set by hand. Its plan is replaced.');note.style.display='none';
+    boxes.forEach(function(x){x.addEventListener('change',count);});
+    b.onclick=function(){var ns=boxes.filter(function(x){return x.checked;}).map(function(x){return x.dataset.n;});res.textContent='Applied to stage '+ns.join(' and ')+'.';};
+    v.appendChild(note);a.appendChild(b);v.appendChild(a);v.appendChild(res);count();
+    v.appendChild(pros(['Pro: full control, the result is exactly what the ticks say.','Pro: replacing a hand-made plan is possible, but never by accident.','Con: one extra step every time, even when the answer is always the same.','Con: longest list on a race with many same-type stages.']));
+    return v;
+  }
+
+  // ---- C: persistent pin per stage ---------------------------------------
+  function varC(){
+    var v=shell('Variant C','Pin a stage to keep it','A pin on a stage is a standing exception. Pinned stages are skipped by every re-apply until unpinned. Hand-made stages start pinned, filled stages start unpinned.');
+    var pin={};STAGES.forEach(function(s){if(s.state==='man'&&!s.src&&s.type==='Flat')pin[s.n]=true;});
+    var list=el('div','list');
+    var res=el('div','result');res.setAttribute('role','status');
+    var ab;
+    function draw(){
+      list.innerHTML='';
+      targets().forEach(function(s){
+        var r=el('div','row');r.appendChild(el('span','n','Stage '+s.n));r.appendChild(el('span','g',s.state==='fill'?'Filled from stage '+s.from:'Set by you'));
+        var p=el('button','btn',pin[s.n]?'Pinned':'Pin');p.type='button';p.setAttribute('aria-pressed',pin[s.n]?'true':'false');p.setAttribute('aria-label',(pin[s.n]?'Unpin':'Pin')+' stage '+s.n);
+        p.onclick=function(){pin[s.n]=!pin[s.n];draw();};r.appendChild(p);list.appendChild(r);
+      });
+      var open=targets().filter(function(s){return !pin[s.n];});
+      ab.textContent='Apply to '+open.length+' unpinned stage'+(open.length===1?'':'s');ab.disabled=open.length===0;
+      ab.onclick=function(){res.textContent='Applied to stage '+open.map(function(s){return s.n;}).join(' and ')+'. Pinned stages kept.';};
+    }
+    v.appendChild(list);
+    var a=el('div','actions');ab=el('button','btn primary','Apply');ab.type='button';a.appendChild(ab);v.appendChild(a);v.appendChild(res);draw();
+    v.appendChild(pros(['Pro: the exception is remembered, so the next re-apply is safe too.','Pro: also protects a filled stage you like but did not edit.','Con: a new concept (pin) that has to be learned and kept in sync.','Con: needs a stored flag per stage, which means a database change and a technical design first.']));
+    return v;
+  }
+
+  var av=document.getElementById('a-variants');av.appendChild(varA());av.appendChild(varB());av.appendChild(varC());
+
+  // ---- c: disabled plan reason ------------------------------------------
+  var PLANS=[
+    {k:'gc',name:'Ride for GC',d:'The domestiques ride for your GC leader. A shared captain rides the same plan, a free role rides his own race.',ok:false,why:'No captain set yet. Set your lineup above.'},
+    {k:'stage',name:'Stage win for Rider A',d:'The domestiques work for the rider who suits today’s route best.',ok:true},
+    {k:'sprint',name:'Sprint',d:'The team saves him for the finish, with a train in the last 10 km.',ok:false,why:'No sprint captain in this team.'},
+    {k:'break',name:'Go for the break',d:'Two riders try the break. The rest ride easy.',ok:true},
+    {k:'save',name:'Save the legs',d:'Everyone rides in. The lightest of the five plans.',ok:true}
+  ];
+  function planGrid(mode,onWhy){
+    var g=el('div','plans');g.setAttribute('role','group');g.setAttribute('aria-label','Team plan');
+    PLANS.forEach(function(p){
+      var b=el('button','plan'+(p.ok?'':' dis')+(p.k==='save'?' save':''));b.type='button';
+      b.innerHTML='<b>'+p.name+'</b><span>'+p.d+'</span>';
+      if(!p.ok){
+        if(mode==='inline'){b.setAttribute('aria-disabled','true');b.innerHTML+='<span class="why">'+p.why+'</span>';}
+        else if(mode==='line'){b.setAttribute('aria-disabled','true');b.onclick=function(){onWhy(p);};b.addEventListener('focus',function(){onWhy(p);});}
+        else if(mode==='tap'){b.setAttribute('aria-disabled','true');b.onclick=function(){onWhy(p);};}
+      }else{b.onclick=function(){[].forEach.call(g.children,function(c){c.classList.remove('sel');c.setAttribute('aria-pressed','false');});b.classList.add('sel');b.setAttribute('aria-pressed','true');};b.setAttribute('aria-pressed','false');}
+      g.appendChild(b);
+    });
+    return g;
+  }
+  function cv1(){
+    var v=shell('Variant 1','Reason inside the plan card','The reason replaces nothing and hides nothing: it is a second, coloured line on the unavailable card itself.');
+    v.appendChild(planGrid('inline'));
+    v.appendChild(pros(['Pro: visible at once on touch, keyboard and screen reader (read as part of the button).','Pro: no extra state or interaction.','Con: cards grow taller, so the grid is less even.','Con: the reason competes with the description for space on 390 px.']));
+    return v;
+  }
+  function cv2(){
+    var v=shell('Variant 2','One shared reason line under the grid','Unavailable cards stay as small as today. Focus or tap on one fills a single status line under the grid.');
+    var line=el('div','note','Pick an unavailable plan to see why.');line.setAttribute('role','status');
+    v.appendChild(planGrid('line',function(p){line.textContent=p.name+': '+p.why;line.className='note warn';}));
+    v.appendChild(line);
+    v.appendChild(pros(['Pro: grid keeps its shape.','Pro: one live region announces the reason for screen readers.','Con: the reason is hidden until you ask for it.','Con: a user who never taps a grey card never learns why.']));
+    return v;
+  }
+  function cv3(){
+    var v=shell('Variant 3','Summary of everything unavailable','One short line above the grid lists every unavailable plan with its reason, whether or not anyone interacts.');
+    var dis=PLANS.filter(function(p){return !p.ok;});
+    var n=el('div','note warn','<b>Unavailable now:</b> '+dis.map(function(p){return p.name+' ('+p.why+')';}).join('; ')+'.');
+    v.appendChild(n);
+    v.appendChild(planGrid('none'));
+    v.appendChild(pros(['Pro: reasons are shown once, together, with no interaction.','Pro: cards stay as small as today.','Con: the link between a reason and its card is by name only.','Con: always-on text above the grid is noise for a team where every plan works.']));
+    return v;
+  }
+  var cvv=document.getElementById('c-variants');cvv.appendChild(cv1());cvv.appendChild(cv2());cvv.appendChild(cv3());
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,148 @@
+{
+ "/team|light": [
+  {
+   "id": "color-contrast",
+   "impact": "serious",
+   "n": 5,
+   "ex": [
+    "Element has insufficient color contrast of 3.62 (foreground color: #a07800, background color: #f4f2ec, font size: 10.5pt (14px), font weight @ .hover\\:underline",
+    "Element has insufficient color contrast of 3.48 (foreground color: #a07800, background color: #f3eedc, font size: 10.5pt (14px), font weight @ .gap-3 > .font-medium",
+    "Element has insufficient color contrast of 3.74 (foreground color: #a07800, background color: #faf6e5, font size: 9.0pt (12px), font weight: @ .py-1\\.5.cursor-default.bg-cz-accent\\/10"
+   ]
+  }
+ ],
+ "/squads/u23|light": [
+  {
+   "id": "color-contrast",
+   "impact": "serious",
+   "n": 1,
+   "ex": [
+    "Element has insufficient color contrast of 3.74 (foreground color: #a07800, background color: #faf6e5, font size: 9.0pt (12px), font weight: @ .bg-cz-accent\\/10"
+   ]
+  }
+ ],
+ "/riders/rider-1|light": [
+  {
+   "id": "color-contrast",
+   "impact": "serious",
+   "n": 2,
+   "ex": [
+    "Element has insufficient color contrast of 3.74 (foreground color: #a07800, background color: #faf6e5, font size: 9.0pt (12px), font weight: @ .bg-cz-accent\\/10 > .text-xs:nth-child(2)",
+    "Element has insufficient color contrast of 3.91 (foreground color: #a07800, background color: #fcfbf7, font size: 8.3pt (11px), font weight: @ .-my-1"
+   ]
+  }
+ ],
+ "/training|light": [
+  {
+   "id": "color-contrast",
+   "impact": "serious",
+   "n": 3,
+   "ex": [
+    "Element has insufficient color contrast of 3.91 (foreground color: #a07800, background color: #fcfbf7, font size: 9.0pt (12px), font weight: @ .sm\\:min-h-0",
+    "Element has insufficient color contrast of 3.91 (foreground color: #a07800, background color: #fcfbf7, font size: 9.0pt (12px), font weight: @ .disabled\\:cursor-not-allowed",
+    "Element has insufficient color contrast of 3.74 (foreground color: #a07800, background color: #faf6e5, font size: 9.0pt (12px), font weight: @ .bg-cz-accent\\/10"
+   ]
+  }
+ ],
+ "/training?tab=report|light": [],
+ "/academy|light": [
+  {
+   "id": "color-contrast",
+   "impact": "serious",
+   "n": 4,
+   "ex": [
+    "Element has insufficient color contrast of 3.64 (foreground color: #a07800, background color: #f9f3dd, font size: 7.5pt (10px), font weight: @ .bg-cz-accent\\/15",
+    "Element has insufficient color contrast of 3.74 (foreground color: #a07800, background color: #faf6e5, font size: 7.5pt (10px), font weight: @ .p-4.bg-cz-card.gap-3:nth-child(1) > .bg-cz-accent\\/10.self-start.rounded > .tex",
+    "Element has insufficient color contrast of 3.74 (foreground color: #a07800, background color: #faf6e5, font size: 7.5pt (10px), font weight: @ .p-4.bg-cz-card.gap-3:nth-child(2) > .bg-cz-accent\\/10.self-start.rounded > .tex"
+   ]
+  }
+ ],
+ "/scouting|light": [
+  {
+   "id": "color-contrast",
+   "impact": "serious",
+   "n": 1,
+   "ex": [
+    "Element has insufficient color contrast of 3.91 (foreground color: #a07800, background color: #fcfbf7, font size: 7.5pt (10px), font weight: @ .text-cz-accent-t"
+   ]
+  },
+  {
+   "id": "select-name",
+   "impact": "critical",
+   "n": 1,
+   "ex": [
+    "Element does not have an implicit (wrapped) <label> @ select"
+   ]
+  }
+ ],
+ "/notifications|light": [],
+ "/forum|light": [
+  {
+   "id": "color-contrast",
+   "impact": "serious",
+   "n": 4,
+   "ex": [
+    "Element has insufficient color contrast of 3.91 (foreground color: #a07800, background color: #fcfbf7, font size: 8.3pt (11px), font weight: @ .gap-x-2.gap-y-0\\.5.flex-wrap > .text-cz-accent-t:nth-child(1)",
+    "Element has insufficient color contrast of 3.91 (foreground color: #a07800, background color: #fcfbf7, font size: 8.3pt (11px), font weight: @ a[href$=\"forum-pinned-1\"] > .gap-x-2.gap-y-0\\.5.flex-wrap > .text-cz-accent-t:nt",
+    "Element has insufficient color contrast of 3.91 (foreground color: #a07800, background color: #fcfbf7, font size: 7.5pt (10px), font weight: @ span[title=\"Founder no. 23 of 50\"]"
+   ]
+  }
+ ],
+ "/help|light": [
+  {
+   "id": "color-contrast",
+   "impact": "serious",
+   "n": 7,
+   "ex": [
+    "Element has insufficient color contrast of 3.91 (foreground color: #a07800, background color: #fcfbf7, font size: 9.0pt (12px), font weight: @ li:nth-child(1) > .text-cz-accent-t.mt-0\\.5.font-bold",
+    "Element has insufficient color contrast of 3.91 (foreground color: #a07800, background color: #fcfbf7, font size: 9.0pt (12px), font weight: @ li:nth-child(2) > .text-cz-accent-t.mt-0\\.5.font-bold",
+    "Element has insufficient color contrast of 3.91 (foreground color: #a07800, background color: #fcfbf7, font size: 9.0pt (12px), font weight: @ li:nth-child(3) > .text-cz-accent-t.mt-0\\.5.font-bold"
+   ]
+  }
+ ],
+ "/patch-notes|light": [
+  {
+   "id": "color-contrast",
+   "impact": "serious",
+   "n": 1,
+   "ex": [
+    "Element has insufficient color contrast of 3.48 (foreground color: #a07800, background color: #f3eedc, font size: 9.0pt (12px), font weight: @ .bg-cz-accent\\/10"
+   ]
+  }
+ ],
+ "/roadmap|light": [],
+ "/profile|light": [],
+ "/team|dark": [],
+ "/squads/u23|dark": [],
+ "/riders/rider-1|dark": [
+  {
+   "id": "color-contrast",
+   "impact": "serious",
+   "n": 15,
+   "ex": [
+    "Element has insufficient color contrast of 4.3 (foreground color: #888ba0, background color: #2b2928, font size: 7.5pt (10px), font weight:  @ span[data-testid=\"rider-type-natural-label\"]",
+    "Element has insufficient color contrast of 3.57 (foreground color: #3f7889, background color: #161824, font size: 9.4pt (12.5px), font weigh @ .py-\\[15px\\].px-\\[17px\\].bg-cz-card:nth-child(1) > .gap-\\[9px\\].py-\\[3\\.5px\\].fl",
+    "Element has insufficient color contrast of 3.93 (foreground color: #3d808f, background color: #161824, font size: 9.4pt (12.5px), font weigh @ .py-\\[15px\\].px-\\[17px\\].bg-cz-card:nth-child(1) > .gap-\\[9px\\].py-\\[3\\.5px\\].fl"
+   ]
+  }
+ ],
+ "/training|dark": [],
+ "/training?tab=report|dark": [],
+ "/academy|dark": [],
+ "/scouting|dark": [
+  {
+   "id": "select-name",
+   "impact": "critical",
+   "n": 1,
+   "ex": [
+    "Element does not have an implicit (wrapped) <label> @ select"
+   ]
+  }
+ ],
+ "/notifications|dark": [],
+ "/forum|dark": [],
+ "/help|dark": [],
+ "/patch-notes|dark": [],
+ "/roadmap|dark": [],
+ "/profile|dark": []
+}
