@@ -13,6 +13,7 @@ import { supabase } from "../lib/supabase";
 import { statStyle, statPlateStyle } from "../lib/statColor";
 import { riderOverallRating } from "../lib/riderRating";
 import { useTypeColumnLabel } from "../lib/useTypeColumnLabel.ts";
+import { useIsMobileViewport } from "../hooks/useMediaQuery.ts";
 import { WithBestRole } from "../components/rider/BestRoleTag.jsx";
 import { useNavigate, Link, useSearchParams, useLocation, useNavigationType } from "react-router";
 import NationCell from "../components/rider/NationCell";
@@ -205,6 +206,8 @@ export default function RidersPage() {
   const { t: tCommon } = useTranslation("common");
   const { t: tRider } = useTranslation("rider"); // #1592: fulde evne-navne til tooltips + legende
   const reputationOn = useRiderReputation();
+  const { t: tTypes } = useTranslation("riderTypes"); // #8280: korte type-navne i telefonens type-kolonne
+  const isMobile = useIsMobileViewport();
   const typeColumnLabel = useTypeColumnLabel(); // #5435
   const navigate = useNavigate();
   // #3071: sæson-referenceår til alders-visning/badges/filtre (se riderAge.js).
@@ -621,9 +624,12 @@ export default function RidersPage() {
       sortKey: "primary_type",
       // #8280 (P21): typen har sin egen kolonne også på telefon (ikke foldet ind i
       // navnecellen), så navnecellen kun bærer navnet. På telefon vælges den i
-      // kolonne-arket; badget viser det fulde navn som på computeren.
+      // kolonne-arket. Telefon: korte navne (riderTypes.short, #5383) der må bryde ved
+      // skråstregen; de fulde navne i et nowrap-badge sprængte 375 px.
       mobileLabel: typeColumnLabel,
-      render: (r) => <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} />,
+      render: (r) => isMobile
+        ? <span className="whitespace-normal text-xs text-cz-2">{[r.primary_type, r.secondary_type !== r.primary_type ? r.secondary_type : null].filter(Boolean).map((k) => tTypes(`short.${k}`)).join("/\u200b")}</span>
+        : <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} />,
     },
     {
       key: "salary",

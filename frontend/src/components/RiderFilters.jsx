@@ -466,7 +466,7 @@ export default function RiderFilters({
       </button>
 
       {statsOpen && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-4 mt-4">
+        <div className={layout === "titleline" ? "mt-4 grid grid-cols-1 gap-y-4" /* #8280: arket er smalt (360 px) uanset skærmbredde */ : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-4 mt-4"}>
           {STAT_KEYS.map(key => (
             <DualStatSlider
               key={key}
