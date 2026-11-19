@@ -5,6 +5,7 @@
 // per rider. No React, so `node --test` runs it.
 import { buildMonthView, buildTodayView, xpBySource, type XpReceipt, type XpRiderType } from "../../lib/trainingReportXp.ts";
 import { potentialViewOf, potentialViewValue, type PotentialView } from "../../lib/potentialEstimateDisplay.ts";
+import { buildXpReportFixture, XP_FIXTURE_LAST_DATE } from "./reportXp/xpReportFixture.ts";
 
 /** "Close to the next point": three quarters of the bar or more (a display line, not a game rule). */
 export const CLOSE_PCT = 75;
@@ -216,4 +217,46 @@ export function previewXpDevelopment(isPreview: boolean, search: string): boolea
 export function xpDevelopmentMode({ preview, flagOn, hasXp }: { preview: boolean; flagOn: boolean; hasXp: boolean }): XpDevMode {
   if (preview) return "fixture";
   return flagOn && hasXp ? "live" : "off";
+}
+
+// --- PREVIEW FIXTURE, NOT GAME DATA ---------------------------------------------
+//
+// The XP report's invented receipts (reportXp/xpReportFixture.ts) plus invented
+// ratings, abilities and estimates, so the owner can see the tab on the preview
+// build before XP is switched on. No number here is a measurement or a balance
+// number, and none of it is the model's.
+export const DEV_FIXTURE_TODAY = XP_FIXTURE_LAST_DATE;
+const CERTAINTY_WORDS = ["unsure", "fair", "sure"] as const;
+
+function fixtureHash(...parts: Array<string | number>): number {
+  let h = 2166136261;
+  for (const ch of parts.join("|")) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  return ((h >>> 0) % 10000) / 10000;
+}
+const between = (n: number, lo: number, hi: number) => Math.round(lo + n * (hi - lo));
+
+export function buildDevelopmentFixture(): { runs: XpReceipt[]; riders: DevRiderInput[]; seasonGains: Record<string, Record<string, number>> } {
+  const fx = buildXpReportFixture();
+  const latest = fx.receipts.find(r => r.tick_date === DEV_FIXTURE_TODAY) ?? fx.receipts[0];
+  const seasonGains: Record<string, Record<string, number>> = {};
+  for (const run of fx.receipts) {
+    for (const row of run.report.riders) {
+      const out = (seasonGains[row.rider_id] ??= {});
+      for (const [key, n] of Object.entries(row.gains ?? {})) if (finite(n) && n > 0) out[key] = (out[key] ?? 0) + n;
+    }
+  }
+  const riders = (latest?.report.riders ?? []).map((row, index): DevRiderInput => {
+    const id = row.rider_id;
+    const rating = between(fixtureHash(id, "rating"), 61, 76);
+    const keys = new Set([...Object.keys(row.xp_bar ?? {}), ...Object.keys(seasonGains[id] ?? {})]);
+    const abilities = Object.fromEntries([...keys].map(key => [key, between(fixtureHash(id, key, "now"), rating - 12, rating + 6)]));
+    const certainty = CERTAINTY_WORDS[index % CERTAINTY_WORDS.length];
+    return {
+      id, name: row.name || id, nation: fx.nations[id] ?? null, type: fx.types[id] ?? null, rating, abilities,
+      top: { kind: "view", value: rating + between(fixtureHash(id, "top"), 2, 9),
+        view: { hidden: false, value: rating + between(fixtureHash(id, "top"), 2, 9), certainty, previousValue: null, previousCertainty: null, changedAt: null } },
+      racingToday: row.activities?.some(a => a.race_day === true) ?? false,
+    };
+  });
+  return { runs: fx.receipts, riders, seasonGains };
 }

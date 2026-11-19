@@ -113,6 +113,8 @@ const SeasonOverview = tabPart("SeasonOverview");
 const DevelopmentGlyph = tabPart("DevelopmentGlyph");
 const TrainingHistory = tabPart("TrainingHistory");
 const TrainingMoment = tabPart("TrainingMoment");
+// #7947: fanen Udvikling i XP, kun bag XP-kontakten eller preview ?xp=1; ellers uaendret.
+const DevelopmentXpSwitch = lazyWithRetry(() => import("../components/training/DevelopmentTabXp.tsx"));
 
 // Skelet mens en lazy fane hentes (samme markup som Development-fanens egen
 // indlaesning: Card + SkeletonLines).
@@ -2594,6 +2596,7 @@ export default function TrainingPage() {
           scout-knap eller slots-tilstand at vise her. */}
       <TabPanel value="development">
         <Suspense fallback={<TabFallback />}>
+        <DevelopmentXpSwitch runs={receiptRuns} roster={ridersLoading ? null : riders} estimateFor={estimateFor} seasonGains={seasonGainsByRider} racingToday={racingToday}>
         {/* #6025 (ejer-valg A 1/10): saesonens fremgang staar oeverst her
             i stedet for i Today-tabellen. Samme tal og samme kvittering. */}
         {!ridersLoading && (
@@ -2712,6 +2715,7 @@ export default function TrainingPage() {
             </div>
           </Card>
         )}
+        </DevelopmentXpSwitch>
         </Suspense>
       </TabPanel>
 
