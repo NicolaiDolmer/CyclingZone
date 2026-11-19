@@ -1,0 +1,22 @@
+{
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Squad",
+      "area": "market",
+      "en": {
+        "title": "A released rider finishes his stage race first",
+        "body": "If you release a rider while he is riding a stage race, he now finishes the race and leaves right after it. Before, he could disappear from the race. His profile shows when he leaves."
+      },
+      "da": {
+        "title": "En fyret rytter kører sit etapeløb færdigt",
+        "body": "Fyrer du en rytter, mens han kører et etapeløb, kører han nu løbet færdigt og forlader holdet lige bagefter. Før kunne han forsvinde fra løbet. Hans profil viser, hvornår han stopper."
+      },
+      "refs": [
+        8153
+      ]
+    }
+  ]
+}
