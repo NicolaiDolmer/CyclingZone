@@ -1721,6 +1721,16 @@
       "issue": 8300,
       "reason": "Ejer-go 19/11 (PC1): dashboardet retning C, design nu med brugerdata (GitHub, Discord, Clarity), telefon først; ud på roadmappet som idéer til afstemning.",
       "since": "2026-11-19"
+    },
+    {
+      "issue": 8447,
+      "reason": "Ejer-go 19/11 (PC1, dashboard-gennemgang): \"9+10 rettes som fejl\".",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8448,
+      "reason": "Ejer-go 19/11 (PC1, dashboard-gennemgang): \"Ja, først i Codex dashboardspor\".",
+      "since": "2026-11-19"
     }
   ]
 }
