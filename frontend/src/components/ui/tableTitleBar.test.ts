@@ -69,7 +69,7 @@ test("søg er ikon på telefon og felt på computer", () => {
 });
 
 test("DataTable bruger titellinjen i tabellens ramme og dropper chip-rækken på mobil", () => {
-  assert.match(dataTableSrc, /import TableTitleBar from "\.\/TableTitleBar\.jsx"/);
+  assert.match(dataTableSrc, /import TableTitleBar from "\.\/TableTitleBar\.tsx"/);
   assert.match(dataTableSrc, /renderTitleBar\(titleBar, mobileColumnsControl\)/);
   assert.match(dataTableSrc, /\(hasChips && !titleBar\) \|\| viewModes/);
 });

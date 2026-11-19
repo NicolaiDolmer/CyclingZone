@@ -578,6 +578,7 @@ export default function RiderFilters({
         filters={{
           count: hiddenActiveCount + (filters.show_ai ? 1 : 0),
           onReset,
+          footer: resetButton,
           children: (
             <div className="flex flex-col gap-4">
               {sheetExtra}

@@ -45,6 +45,8 @@ type TableTitleBarProps = {
     label?: string;
     count?: number;
     onReset?: () => void;
+    /** Overstyrer standard-nulstilleren i arkets fod (fx sidens egen knap med tæller). */
+    footer?: ReactNode;
     children?: ReactNode;
   } | null;
   columns?: TitleBarColumns | null;
@@ -112,6 +114,7 @@ export default function TableTitleBar({
             />
             <Input
               ref={searchRef}
+              data-testid={search.testId ? `${search.testId}-mobile` : undefined}
               type="search"
               size="sm"
               value={search.value}
@@ -128,6 +131,7 @@ export default function TableTitleBar({
             type="button"
             className={ICON_BTN}
             aria-label={t("table.titleBar.closeSearch")}
+            data-testid="table-search-close"
             onClick={() => setSearchOpen(false)}
           >
             <XIcon size={16} aria-hidden="true" />
@@ -174,6 +178,7 @@ export default function TableTitleBar({
             type="button"
             className={`${ICON_BTN} ${filterCount > 0 ? "text-cz-1" : ""}`}
             aria-label={filters.label ?? t("table.titleBar.filters")}
+            data-testid="table-filters-open"
             aria-haspopup="dialog"
             onClick={() => {
               track("filters");
@@ -190,6 +195,7 @@ export default function TableTitleBar({
             type="button"
             className={ICON_BTN}
             aria-label={columns.label ?? t("table.titleBar.columns")}
+            data-testid="table-columns-open"
             aria-haspopup="dialog"
             onClick={() => {
               track("columns");
@@ -209,6 +215,7 @@ export default function TableTitleBar({
               type="button"
               className={`${ICON_BTN} sm:hidden ${hasSearchValue ? "text-cz-1" : ""}`}
               aria-label={search.ariaLabel ?? search.placeholder}
+              data-testid={search.testId ? `${search.testId}-open` : undefined}
               onClick={() => setSearchOpen(true)}
             >
               <SearchIcon size={16} aria-hidden="true" />
@@ -245,7 +252,7 @@ export default function TableTitleBar({
           title={filters.label ?? t("table.titleBar.filters")}
           closeLabel={t("table.titleBar.close")}
           footer={
-            filters.onReset && filterCount > 0 ? (
+            filters.footer ?? (filters.onReset && filterCount > 0 ? (
               <button
                 type="button"
                 onClick={filters.onReset}
@@ -253,7 +260,7 @@ export default function TableTitleBar({
               >
                 {t("controls.clearFilters")}
               </button>
-            ) : null
+            ) : null)
           }
         >
           {filters.children}
