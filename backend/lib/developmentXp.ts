@@ -545,18 +545,69 @@ export interface XpDateStart {
   paid?: Record<string, unknown> | null;
 }
 
-/** Bjælken i XP og prisen for næste point pr. synlig evne ("x af y XP"). */
+/**
+ * Bjælken i XP og prisen for næste point pr. synlig evne ("x af y XP"), afrundet til hele tal
+ * som i visningen (uafrundede tal gør talent og forhold nøjagtigt aflæselige, H6b/X9).
+ * `only` begrænser til de evner, der står i den (rapporten: evner med XP eller bjælke).
+ */
 export function xpBarsFor(
   abilities: Record<string, unknown>, progress: Record<string, unknown> | null | undefined, params: DevelopmentXpParams,
+  { only = null }: { only?: ReadonlySet<string> | null } = {},
 ): Record<string, { xp: number; price: number }> {
   const out: Record<string, { xp: number; price: number }> = {};
   for (const ability of VISIBLE_ABILITIES as readonly string[]) {
+    if (only && !only.has(ability)) continue;
     const level = Number(abilities?.[ability]);
     if (!Number.isFinite(level)) continue;
     const view = xpBarView({ level, bar: Number(progress?.[ability] ?? 0) }, params);
-    out[ability] = { xp: Math.round(view.xp * 100) / 100, price: Math.round(view.price * 100) / 100 };
+    out[ability] = { xp: Math.round(view.xp), price: Math.round(view.price) };
   }
   return out;
+}
+
+/** XP pr. evne afrundet til hele tal som i visningen; evner, der runder til 0, udelades. */
+export function roundedXp(xp: Record<string, unknown> | null | undefined): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [ability, value] of Object.entries(xp ?? {})) {
+    const n = Math.round(Number(value));
+    if (Number.isFinite(n) && n > 0) out[ability] = n;
+  }
+  return out;
+}
+
+/** En tidligere rapportlinje på samme dato for samme rytter (kvittering eller kalenderdags-rapport). */
+export interface XpDateRow {
+  progress_before?: Record<string, unknown> | null;
+  bar_paid?: Record<string, unknown> | null;
+  xp_slot_seq?: unknown;
+  game_day?: unknown;
+}
+
+/**
+ * Datoens start ud fra datoens tidligere rapportlinjer: bjælken før datoens FØRSTE afregnede slot
+ * (lavest `xp_slot_seq`; slots kan afregnes ude af løbsdags-rækkefølge: tryk, etape, aften), point
+ * allerede betalt fra bjælken, og dette slots løbenummer på datoen. Ingen tidligere linjer = datoens
+ * første slot (dateStart null, seq 1).
+ */
+export function xpDateStartFromRows(rows: ReadonlyArray<XpDateRow | null | undefined>): { dateStart: XpDateStart | null; seq: number } {
+  const earlier = rows.filter((row): row is XpDateRow => Boolean(row) && typeof row === "object");
+  if (earlier.length === 0) return { dateStart: null, seq: 1 };
+  const rank = (row: XpDateRow) => {
+    const seq = Number(row.xp_slot_seq);
+    return Number.isFinite(seq) ? seq : Number.MAX_SAFE_INTEGER; // ældre linjer uden løbenummer sidst
+  };
+  const first = [...earlier].sort((a, b) => rank(a) - rank(b) || (Number(a.game_day ?? -Infinity) - Number(b.game_day ?? -Infinity)))[0];
+  const paid: Record<string, number> = {};
+  let maxSeq = 0;
+  for (const row of earlier) {
+    for (const [ability, n] of Object.entries(row.bar_paid ?? {})) {
+      const v = Number(n);
+      if (Number.isFinite(v) && v > 0) paid[ability] = (paid[ability] ?? 0) + v;
+    }
+    const seq = Number(row.xp_slot_seq);
+    maxSeq = Math.max(maxSeq, Number.isFinite(seq) ? seq : 0);
+  }
+  return { dateStart: { progress: first.progress_before ?? null, paid }, seq: Math.max(maxSeq, earlier.length) + 1 };
 }
 
 /** Det, datoreglen skal vide om rytteren. Ukendt alder eller potentiale = det lave tal. */

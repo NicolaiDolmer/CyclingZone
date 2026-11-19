@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 
 import { seedState, createFake, press, sweep, rider, DATE1, DAYS1 } from "./trainNowSameResult7982.harness.js";
 import { XP_TEST_PARAMS } from "./__fixtures__/developmentXpOffScenarios.js";
-import { developmentXpTick, xpBarsFor, xpBarView, xpPriceForNextPoint } from "./developmentXp.ts";
+import { developmentXpTick, roundedXp, xpBarsFor, xpBarView, xpDateStartFromRows, xpPriceForNextPoint } from "./developmentXp.ts";
 import { trainingProgressView } from "./trainingProgressView.js";
 
 const RIDER = rider(0);
@@ -44,6 +44,16 @@ for (const [label, run] of [["aftenkørslen", (s, f) => sweep(s, f, { deadlineRe
       assert.ok(bar && bar.price > 0 && bar.xp >= 0, `løbsdag ${row.game_day}: xp_bar { xp, price }`);
     }
     assert.ok(rows.some((row) => Object.values(row.report.xp).some((v) => v > 0)), "der er tjent XP på datoen");
+    for (const row of rows) {
+      for (const v of Object.values(row.report.xp)) assert.ok(Number.isInteger(v) && v > 0, "XP i hele tal");
+      for (const bar of Object.values(row.report.xp_bar)) assert.ok(Number.isInteger(bar.xp) && Number.isInteger(bar.price), "bjælken i hele tal");
+      const progress = row.report.progress_after ?? {};
+      for (const ability of Object.keys(row.report.xp_bar)) {
+        assert.ok(row.report.xp[ability] > 0 || Number(progress[ability]) > 0, `xp_bar kun for evner med XP eller bjælke (${ability})`);
+      }
+    }
+    // Løbenummer pr. dato i afregningsrækkefølge.
+    assert.deepEqual(rows.map((row) => row.report.xp_slot_seq), rows.map((_, i) => i + 1));
   });
 
   test(`#6110 rapport (${label}): point fra den gemte bjælke er bar_paid, ikke dagens træning`, async () => {
@@ -97,14 +107,30 @@ test("developmentXpTick: barPaid tæller kun point, som XP gemt før datoen dæk
   assert.equal(later.barPaid[ABILITY], undefined, "datoens anden point er tjent af datoens egen XP");
 });
 
-test("xpBarsFor: bjælken i XP er brøken gange prisen for næste point", () => {
+test("xpBarsFor: bjælken i XP er brøken gange prisen for næste point, i hele tal; `only` begrænser", () => {
   const bars = xpBarsFor({ [ABILITY]: 40, sprint: 70 }, { [ABILITY]: 0.25 }, XP_TEST_PARAMS);
   assert.deepEqual(Object.keys(bars).sort(), [ABILITY, "sprint"].sort());
   const view = xpBarView({ level: 40, bar: 0.25 }, XP_TEST_PARAMS);
-  assert.equal(bars[ABILITY].price, Math.round(view.price * 100) / 100);
-  assert.equal(bars[ABILITY].xp, Math.round(view.xp * 100) / 100);
+  assert.equal(bars[ABILITY].price, Math.round(view.price));
+  assert.equal(bars[ABILITY].xp, Math.round(view.xp));
   assert.equal(bars.sprint.xp, 0);
   assert.ok(bars.sprint.price > bars[ABILITY].price, "en højere evne koster mere");
+  assert.deepEqual(Object.keys(xpBarsFor({ [ABILITY]: 40, sprint: 70 }, {}, XP_TEST_PARAMS, { only: new Set([ABILITY]) })), [ABILITY]);
+  assert.deepEqual(roundedXp({ a: 2.6, b: 0.3, c: Number.NaN }), { a: 3 });
+});
+
+test("xpDateStartFromRows: løbsfeltet afregnet først (løbsdag 43 før 41) afgør datoens start", () => {
+  const raceFirst = { game_day: 43, xp_slot_seq: 1, progress_before: { [ABILITY]: 3 }, bar_paid: { [ABILITY]: 1 } };
+  const thenDay41 = { game_day: 41, xp_slot_seq: 2, progress_before: { [ABILITY]: 2.4 }, bar_paid: {} };
+  const out = xpDateStartFromRows([thenDay41, raceFirst]);
+  assert.deepEqual(out.dateStart.progress, { [ABILITY]: 3 }, "bjælken før datoens FØRSTE afregnede slot, ikke den laveste løbsdag");
+  assert.deepEqual(out.dateStart.paid, { [ABILITY]: 1 });
+  assert.equal(out.seq, 3, "næste slot får løbenummer 3");
+  assert.deepEqual(xpDateStartFromRows([]), { dateStart: null, seq: 1 });
+  // Ældre linjer uden løbenummer: laveste løbsdag vælges, og nummeret tæller dem med.
+  const legacy = xpDateStartFromRows([{ game_day: 42, progress_before: { [ABILITY]: 1 } }, { game_day: 41, progress_before: { [ABILITY]: 2 } }]);
+  assert.deepEqual(legacy.dateStart.progress, { [ABILITY]: 2 });
+  assert.equal(legacy.seq, 3);
 });
 
 test("trainingProgressView: slukket = progress og capped som før; XP = ingen lofter og x af y XP", () => {
