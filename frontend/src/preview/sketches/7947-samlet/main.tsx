@@ -14,6 +14,10 @@ import PlanVisibility from "./R5PlanVisibility.tsx";
 import NextPoint from "./R5NextPoint.tsx";
 import Fixes from "./R5Fixes.tsx";
 import PlanCard from "./R5PlanCard.tsx";
+import RiderTrainingPage from "./R5RiderTrainingPage.tsx";
+import PlanLineCompare from "./R5PlanLineCompare.tsx";
+import TodayPlanReal from "./R5TodayPlanReal.tsx";
+import TodayDesktopPlan from "./R5TodayDesktopPlan.tsx";
 const view = new URLSearchParams(window.location.search).get("view");
 
 const IDS = ["r5", "r4", "r1", "r2", "r3"] as const;
@@ -91,8 +95,16 @@ const r5Init: R5Init = {
 
 createRoot(document.getElementById("root")!).render(
   <>
-    {!shot && view !== "over100" && view !== "plan" && view !== "nextpoint" && view !== "fix" && view !== "plancard" && <Nav />}
-    {view === "plancard" ? (
+    {!shot && view !== "over100" && view !== "plan" && view !== "nextpoint" && view !== "fix" && view !== "plancard" && view !== "ridertraining" && view !== "planline" && view !== "todayplan" && view !== "todaydesk" && <Nav />}
+    {view === "todaydesk" ? (
+      <div className="min-h-screen bg-cz-body"><TodayDesktopPlan /></div>
+    ) : view === "todayplan" ? (
+      <div className="min-h-screen bg-cz-body"><TodayPlanReal /></div>
+    ) : view === "planline" ? (
+      <div className="min-h-screen bg-cz-body"><PlanLineCompare /></div>
+    ) : view === "ridertraining" ? (
+      <div className="min-h-screen bg-cz-body"><RiderTrainingPage v={(["a","b","c"].includes(q.get("v2") ?? "") ? q.get("v2") : "b") as "a" | "b" | "c"} /></div>
+    ) : view === "plancard" ? (
       <div className="min-h-screen bg-cz-body"><PlanCard /></div>
     ) : view === "fix" ? (
       <div className="min-h-screen bg-cz-body"><Fixes n={q.get("n") ?? "1"} /></div>

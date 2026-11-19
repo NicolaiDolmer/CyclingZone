@@ -18,12 +18,12 @@ function Link() {
   return <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-cz-accent-t">Ret planen på træningssiden<ChevronRightIcon size={12} aria-hidden="true" /></span>;
 }
 
-function A() {
+export function A() {
   return <Shell><Plan /><Link /></Shell>;
 }
 
 // B: dagens fem pas, praecis som planen saetter dem; et loeb staar som loeb.
-function B() {
+export function B() {
   const passes: [string, string, string][] = [["1", "Lange stigninger", "Hård"], ["2", "Løb · Tour de Preview, etape 3", "Løbsdag"], ["3", "Tempo", "Normal"], ["4", "Udholdenhed", "Let"], ["5", "Aktiv restitution", "Hvile"]];
   return (
     <Shell>
@@ -42,7 +42,7 @@ function B() {
 }
 
 // C: planens uge som smaa dage; i dag markeret, loebsdage som loeb.
-function C() {
+export function C() {
   const days: [string, string, boolean][] = [["Man", "Hård", false], ["Tir", "Løb", false], ["Ons", "Hård", true], ["Tor", "Let", false], ["Fre", "Løb", false], ["Lør", "Normal", false], ["Søn", "Hvile", false]];
   return (
     <Shell>
