@@ -48,10 +48,15 @@ export function riderXpBars(xpBar: unknown, riderId: string | null | undefined):
  * untouched, so today's view cannot change. With bars every row gets `xpLine`
  * (null = no bar for that ability, shown as a dash) and is never locked.
  */
-export function withXpLines<T extends { ability: string; locked?: boolean; pct?: number | null }>(
+type ReceiptLike = { ability: string; locked?: boolean; pct?: number | null };
+type WithXp<T> = Array<T & { xpLine?: XpLine | null }>;
+export function withXpLines<T extends ReceiptLike>(rows: T[], bars: XpBarsByAbility | null | undefined): WithXp<T>;
+export function withXpLines<T extends ReceiptLike>(rows: T[] | null, bars: XpBarsByAbility | null | undefined): WithXp<T> | null;
+export function withXpLines<T extends ReceiptLike>(rows: T[] | null | undefined, bars: XpBarsByAbility | null | undefined): WithXp<T> | null | undefined;
+export function withXpLines<T extends ReceiptLike>(
   rows: T[] | null | undefined,
   bars: XpBarsByAbility | null | undefined,
-): Array<T & { xpLine?: XpLine | null }> | null | undefined {
+): WithXp<T> | null | undefined {
   if (!bars || !Array.isArray(rows)) return rows;
   return rows.map((row) => {
     const line = xpLine(bars[row.ability]);
