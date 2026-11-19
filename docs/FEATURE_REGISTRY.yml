@@ -624,13 +624,13 @@ features:
     area: market
     title_en: Release waits for the end of a stage race
     title_da: Frigivelse venter til etapeløbets slut
-    state: building
+    state: live
+    flag: release_defer_8153
     ssot: docs/TRANSFER_MARKET_RULES.md
     epic: 8153
-    verified: 2026-11-15
-    decision: ejer-beslutning
-    decide_by: 2026-11-29
-    note: release_defer_8153 (seed off) følger migrationen; slukket = som i dag.
+    verified: 2026-11-19
+    note: "Taendt for alle 19/11 (ejer: koer, naar teksterne er merget). Hjaelp og patch note 7.471 via #8455."
+
 
   - id: settle-race-session-after-stage
     area: training
