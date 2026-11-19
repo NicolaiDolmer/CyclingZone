@@ -655,6 +655,10 @@
     {
       "issue": 8359,
       "why": "Rester af kontakter, der aldrig kommer i brug (markeds-eftersynets tre rækker og tomme logtabel, auktions-adgang for nye konti, spørgeskema-banneret). Ejer 17/11 (PC1, AskUserQuestion, én kontakt ad gangen): 'Ja, fjern resterne', 'Fjern rækken', 'Fjern de to rækker'. Én migration + ét oprydningscommit."
+    },
+    {
+      "issue": 8341,
+      "why": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): gamle skitse-PR'er merges som arkiv eller lukkes med note; fund bliver issues før lukning."
     }
   ],
   "brandList": [
@@ -1651,6 +1655,61 @@
     {
       "issue": 8431,
       "reason": "Ejer-go 19/11 (PC1, gennemgang af UX 1/4 første oplevelse, PR #8286): forsiden \"Næste uge med forsiden\" (#8285).",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8433,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): guld-kontrast \"nu\" (PR #8283).",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8434,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): UX hold og udvikling (PR #8283), uge 48.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8435,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): UX hold og udvikling (PR #8283), uge 48.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8436,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): UX hold og udvikling (PR #8283), uge 48.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8437,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): UX hold og udvikling (PR #8283), uge 48.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8438,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): UX marked og økonomi (PR #8284), uge 48.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8439,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): UX marked og økonomi (PR #8284), uge 48.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8440,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): UX marked og økonomi (PR #8284), uge 48.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8441,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): UX marked og økonomi (PR #8284), uge 48.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8442,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): mobil-rest (PR #8236), Codex uge 48.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8230,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): plan-hul-tjek \"Færdiggør og kør hver mandag\" (PR #8231), inkl. AGENTS-regel 42.",
       "since": "2026-11-19"
     }
   ]
