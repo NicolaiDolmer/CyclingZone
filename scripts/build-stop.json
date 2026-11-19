@@ -342,7 +342,7 @@
     {
       "issue": 8400,
       "area": "academy",
-      "why": "Ejer-go 18/11 eftermiddag (PC1-session, Codex-listen på #8374). Kun del 1: prognose pr. rolle ved endeligt bud."
+      "why": "Ejer-go 18/11 eftermiddag (PC1-session, Codex-listen på #8374). Kun del 1: prognose pr. rolle ved endeligt bud. Ejer-go 18/11 aften (PC1, overdragelsen på #8374). Opfølgning A: kun roster-API'ets payload (fjern prognosis.types fra /api/academy/me-rosteren)."
     },
     {
       "issue": 5153,
@@ -1587,6 +1587,41 @@
       "issue": 8363,
       "reason": "Træn nu-øjeblikket med ejerens animation, i egen visning som også er kvitteringen. Ejer 17/11 (PC1): 'B: egen visning = kvitteringen' og 'Vi venter til at Xp er færdigt'; bygges når XP er tændt.",
       "since": "2026-11-17"
+    },
+    {
+      "issue": 8336,
+      "reason": "Ejer-go 18/11 aften (PC1, overdragelsen på #8374). B: flag på rytterprofilen.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8335,
+      "reason": "Ejer-go 18/11 aften (PC1, overdragelsen på #8374). B: Bebas kun på navnet i Klub-korttitler og RiderSwitcherBar.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8340,
+      "reason": "Ejer-go 18/11 aften (PC1, overdragelsen på #8374). D: arkivér de to hints efter regel 38 og flyt first_bid_recommendation_clicked ind i rundvisningen.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8401,
+      "reason": "Ejer-go 18/11 aften (PC1, overdragelsen på #8374). E: godkendt forklaring under spærrede holdplankort, desktop og mobil, EN/DA/ES/FR/NL.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 6850,
+      "reason": "Ejer-go 19/11 morgen (PC1, AskUserQuestion: \"Ja, ret den som fejl\"). Holdpoint og resultater viser holdet på løbsdagen. Måling + design før første PR.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8425,
+      "reason": "Ejer-go 19/11 morgen (PC1, AskUserQuestion: \"Forkert info nu\"). Grøn below est. value ved startpris er vildledende.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 7032,
+      "reason": "Ejer-go 19/11 morgen (PC1, roadmap-gennemgang): resten er bygget i #7118; kun flag på fanen Udvikling mangler (lille rettelse, ikke afstemning).",
+      "since": "2026-11-19"
     }
   ]
 }
