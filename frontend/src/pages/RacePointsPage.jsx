@@ -166,7 +166,7 @@ export default function RacePointsPage() {
             onClick={() => setActiveClass(c)}
             className={`shrink-0 px-3 py-1.5 rounded-cz-pill text-sm font-medium transition-colors whitespace-nowrap
               ${activeClass === c
-                ? "bg-cz-accent text-cz-on-accent"
+                ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40"
                 : "bg-cz-card border border-cz-border text-cz-2 hover:border-cz-accent/30 hover:text-cz-accent-t"
               }`}
           >
