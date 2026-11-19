@@ -159,10 +159,13 @@ export default function AbilityReceiptRow({ row, inFocus = false }) {
           rå tal som gold-segmentet ovenfor (yesterdayGainPct), altid til stede
           som fast bredde (også for låst/ingen-data-rækker) så listens højre
           kant ikke hopper ræk-for-ræk. Ingen data/reel 0 % = stille streg,
-          aldrig teksten "0 %" (den skal ikke læses som en fejl). */}
-      <span className="flex-none w-[92px] text-right font-mono tabular-nums text-3xs text-cz-3">
-        {yesterdayGainPct != null ? t(gainKey, gainVars) : "—"}
-      </span>
+          aldrig teksten "0 %" (den skal ikke læses som en fejl). #7947: under XP
+          vises ingen procent; dagens XP står i Rapport-fanen. */}
+      {!xpMode && (
+        <span className="flex-none w-[92px] text-right font-mono tabular-nums text-3xs text-cz-3">
+          {yesterdayGainPct != null ? t(gainKey, gainVars) : "—"}
+        </span>
+      )}
     </div>
   );
 }
@@ -181,7 +184,7 @@ export function AbilityReceiptHeader({ xp = false }) {
       {/* #5539: uden label, samme spacer-princip som dot-kolonnen ovenfor — den
           nye kolonne er en supplerende annotation (tit en stille streg), ikke
           endnu en formel datakolonne. */}
-      <span className="flex-none w-[92px]" aria-hidden="true" />
+      {!xp && <span className="flex-none w-[92px]" aria-hidden="true" />}
     </div>
   );
 }
