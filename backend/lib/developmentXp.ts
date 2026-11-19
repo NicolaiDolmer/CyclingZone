@@ -530,6 +530,33 @@ export interface XpTickResult {
   xp: Record<string, number>;
   /** Kvitteringen som i dag: summen af tickets fremdrift målt i point. */
   score: number;
+  /**
+   * #6110 tændingsliste pkt. 2 (#8210): hele point på dette tick, som XP gemt FØR datoen
+   * betalte (bjælken ved datoens start). Resten af tickets point er tjent af datoens egen XP.
+   */
+  barPaid: Record<string, number>;
+  /** Bjælken i XP og prisen for næste point pr. synlig evne efter tick'et ("x af y XP"). */
+  xpBar: Record<string, { xp: number; price: number }>;
+}
+
+/** Datoens start for én rytter: bjælken ved datoens start og point, der allerede er betalt fra den. */
+export interface XpDateStart {
+  progress?: Record<string, unknown> | null;
+  paid?: Record<string, unknown> | null;
+}
+
+/** Bjælken i XP og prisen for næste point pr. synlig evne ("x af y XP"). */
+export function xpBarsFor(
+  abilities: Record<string, unknown>, progress: Record<string, unknown> | null | undefined, params: DevelopmentXpParams,
+): Record<string, { xp: number; price: number }> {
+  const out: Record<string, { xp: number; price: number }> = {};
+  for (const ability of VISIBLE_ABILITIES as readonly string[]) {
+    const level = Number(abilities?.[ability]);
+    if (!Number.isFinite(level)) continue;
+    const view = xpBarView({ level, bar: Number(progress?.[ability] ?? 0) }, params);
+    out[ability] = { xp: Math.round(view.xp * 100) / 100, price: Math.round(view.price * 100) / 100 };
+  }
+  return out;
 }
 
 /** Det, datoreglen skal vide om rytteren. Ukendt alder eller potentiale = det lave tal. */
@@ -590,6 +617,7 @@ export function xpDatePointAllowance(
 export function developmentXpTick(
   {
     abilities, progress, maxPointsPerTick = Infinity, dateUsedGains = null, storedBarPayout = false, rider = null, xpFor,
+    dateStart = null,
   }: {
     abilities: Record<string, unknown>;
     progress?: Record<string, unknown> | null;
@@ -600,6 +628,8 @@ export function developmentXpTick(
     /** Alder og potentiale til datoreglen (xpDatePointCap). Udeladt = det lave tal. */
     rider?: XpDateRider | null;
     xpFor: (ability: string) => number;
+    /** Bjælken ved datoens start og point betalt fra den tidligere på datoen. Udeladt = dette tick er datoens første. */
+    dateStart?: XpDateStart | null;
   },
   params: DevelopmentXpParams,
 ): XpTickResult {
@@ -607,6 +637,7 @@ export function developmentXpTick(
   const nextProgress = { ...(progress ?? {}) } as Record<string, number>;
   const gains: Record<string, number> = {};
   const xp: Record<string, number> = {};
+  const barPaid: Record<string, number> = {};
   let score = 0;
   for (const ability of VISIBLE_ABILITIES as readonly string[]) {
     const level = Number(nextAbilities[ability] ?? 0);
@@ -630,7 +661,19 @@ export function developmentXpTick(
     if (out.points > 0) {
       gains[ability] = out.points;
       nextAbilities[ability] = out.level;
+      // Point betalt af XP gemt før datoen: det, bjælken ved datoens start alene kunne købe fra
+      // evnens niveau ved datoens start, minus det, der allerede er betalt fra den på datoen.
+      const startBar = dateStart?.progress ? Number(dateStart.progress[ability] ?? 0) : bar;
+      const paidRaw = Number(dateStart?.paid?.[ability]);
+      const paidBefore = Number.isFinite(paidRaw) && paidRaw > 0 ? paidRaw : 0;
+      const coverable = startBar >= 1
+        ? buyPoints({ level: level - used, bar: startBar, xp: 0 }, params).points : 0;
+      const paid = Math.max(0, Math.min(out.points, coverable - paidBefore));
+      if (paid > 0) barPaid[ability] = paid;
     }
   }
-  return { abilities: nextAbilities, progress: nextProgress, gains, xp, score: Math.round(score * 100) / 100 };
+  return {
+    abilities: nextAbilities, progress: nextProgress, gains, xp, score: Math.round(score * 100) / 100,
+    barPaid, xpBar: xpBarsFor(nextAbilities, nextProgress, params),
+  };
 }
