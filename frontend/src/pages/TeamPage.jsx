@@ -11,6 +11,7 @@ import { sharedRequestCache, SHARED_KEYS, SHARED_TTL_MS, invalidateTransferListi
 import { statStyle, statPlateStyle } from "../lib/statColor";
 import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
+import { squadBadgeKey } from "../lib/squadBadge.ts";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import { ageBadgeKey, getRiderAge, retirementRiskBadgeKey, contractExpiringBadgeKey, seasonNumberFromReferenceYear } from "../lib/riderAge.js";
 import { isContractAwaitingRelease } from "../../../backend/lib/contractOfferEligibility.js"; // #6638
@@ -694,10 +695,13 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
       <>
         {r._isIncoming && <span className="w-2 h-2 rounded-full bg-cz-success shrink-0" />}
         {r._isOutgoing && <span className="w-2 h-2 rounded-full bg-cz-danger shrink-0" />}
-        <RiderLink id={r.id} stopPropagation
-          className="text-cz-1 hover:text-cz-accent-t transition-colors">
-          {r.firstname} {r.lastname}
-        </RiderLink>
+        <span className="inline-flex min-w-0 max-w-full flex-wrap items-center gap-x-1">
+          <RiderLink id={r.id} stopPropagation
+            className="min-w-0 wrap-break-word text-cz-1 hover:text-cz-accent-t transition-colors">
+            {r.firstname} {r.lastname}
+          </RiderLink>
+          <RiderBadges badges={[squadBadgeKey(r.squad)]} />
+        </span>
       </>
     ),
   };
