@@ -34,19 +34,19 @@ const ICON_BTN =
 
 export default function TableTitleBar({
   page,
-  choices = [],
-  filters = null,
-  columns = null,
-  search = null,
-  trailing = null,
+  choices = /** @type {any[]} */ ([]),
+  filters = /** @type {any} */ (null),
+  columns = /** @type {any} */ (null),
+  search = /** @type {any} */ (null),
+  trailing = /** @type {any} */ (null),
   framed = false,
-  tour = undefined,
+  tour = /** @type {string | undefined} */ (undefined),
   className = "",
 }) {
   const { t } = useTranslation("common");
-  const [sheet, setSheet] = useState(null); // "filters" | "columns" | null
+  const [sheet, setSheet] = useState(/** @type {string | null} */ (null)); // "filters" | "columns" | null
   const [searchOpen, setSearchOpen] = useState(false);
-  const searchRef = useRef(null);
+  const searchRef = useRef(/** @type {HTMLInputElement | null} */ (null));
   const loggedRef = useRef(new Set());
 
   // Én hændelse pr. kontrol pr. besøg på siden: formålet er at se HVILKE
@@ -287,7 +287,7 @@ export default function TableTitleBar({
 
 // Ark (TASTE P18): bund-ark på telefon, panel i højre side på computer. Samme
 // focus-trap/Escape/scroll-lås som Modal via useModalA11y.
-function TableSheet({ open, onClose, title, closeLabel, footer = null, children }) {
+function TableSheet({ open, onClose, title, closeLabel, footer = /** @type {any} */ (null), children }) {
   const ref = useModalA11y(open ? onClose : null, Boolean(open));
   if (!open) return null;
   return (

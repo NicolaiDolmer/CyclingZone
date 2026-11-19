@@ -1,0 +1,82 @@
+[
+ {
+  "page": "rytterrangliste",
+  "theme": "light",
+  "vw": 390,
+  "anchor": 164,
+  "theadTop": 230,
+  "chrome": 66,
+  "barHeight": 45,
+  "hScroll": false
+ },
+ {
+  "page": "rytterrangliste",
+  "theme": "light",
+  "vw": 1440,
+  "anchor": 125,
+  "theadTop": 190,
+  "chrome": 65,
+  "barHeight": 44,
+  "hScroll": false
+ },
+ {
+  "page": "rytterrangliste",
+  "theme": "dark",
+  "vw": 390,
+  "anchor": 164,
+  "theadTop": 230,
+  "chrome": 66,
+  "barHeight": 45,
+  "hScroll": false
+ },
+ {
+  "page": "rytterrangliste",
+  "theme": "dark",
+  "vw": 1440,
+  "anchor": 125,
+  "theadTop": 190,
+  "chrome": 65,
+  "barHeight": 44,
+  "hScroll": false
+ },
+ {
+  "page": "rytterdatabase",
+  "theme": "light",
+  "vw": 390,
+  "anchor": 179,
+  "theadTop": 249,
+  "chrome": 70,
+  "barHeight": 45,
+  "hScroll": false
+ },
+ {
+  "page": "rytterdatabase",
+  "theme": "light",
+  "vw": 1440,
+  "anchor": 82,
+  "theadTop": 151,
+  "chrome": 69,
+  "barHeight": 44,
+  "hScroll": false
+ },
+ {
+  "page": "rytterdatabase",
+  "theme": "dark",
+  "vw": 390,
+  "anchor": 179,
+  "theadTop": 249,
+  "chrome": 70,
+  "barHeight": 45,
+  "hScroll": false
+ },
+ {
+  "page": "rytterdatabase",
+  "theme": "dark",
+  "vw": 1440,
+  "anchor": 82,
+  "theadTop": 151,
+  "chrome": 69,
+  "barHeight": 44,
+  "hScroll": false
+ }
+]
