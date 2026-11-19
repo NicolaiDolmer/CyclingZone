@@ -113,7 +113,7 @@ test("F2: sæsonskiftet med standard-læseren og kontakten slukket ælder efter 
   };
   let summary: Record<string, unknown> | null = null;
   try {
-    summary = await developRidersForSeason({ supabase: db, seasonId: "s2", seasonNumber: 2, notify: false, seasonLoadByRider: new Map() });
+    summary = await developRidersForSeason({ supabase: db, seasonId: "s2", seasonNumber: 2, notify: false, now: DK_MIDNIGHT_START, seasonLoadByRider: new Map() });
   } catch (e) {
     // Mock'en dækker ikke hele skrivestien; vi tester kun reglens valg, som sættes før skrivning.
     assert.fail(`skiftet fejlede: ${(e as Error).message}`);
