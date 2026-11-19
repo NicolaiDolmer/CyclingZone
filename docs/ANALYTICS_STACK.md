@@ -188,6 +188,10 @@ Navne med præfikset `feature_` grupperes af `get_sprint_metrics` som "top featu
 | `app_version_reload` | ja | `useReleaseWatch.js:73` og `:115` | Release-koordineringen ([#5033](https://github.com/NicolaiDolmer/CyclingZone/issues/5033)/[#5159](https://github.com/NicolaiDolmer/CyclingZone/issues/5159)). Bærer `{from, to, fromSha, sha, trigger, outcome}`. `outcome` er selve målingen: `arrived` (landede på den nye frontend), `no_effect` (reloadet ændrede ingenting) eller `deferred` (ny frontend fundet, men spilleren havde ugemt arbejde, så banneret blev vist i stedet). Et event alene er IKKE bevis for en undgået ChunkLoadError |
 | `discord_invite_clicked` | ja | `DiscordJoinLink.jsx:28`, `NotificationsPage.jsx:708` | Klik på Discord-invitationen. Bærer `{source}`: `notification` (velkomstbeskeden i indbakken) eller `discord_join_link_<variant>` (footer/knap). Måler konvertering fra velkomstbeskeden ([#5130](https://github.com/NicolaiDolmer/CyclingZone/issues/5130)) |
 
+### Dashboard (kun PostHog, #8448)
+
+`dashboard_card_viewed` registrerer første synlighed af et kort pr. dashboardbesøg. `dashboard_card_clicked` registrerer klik i kortet, også hvor der ingen aktiv handling er. Begge har den faste, ikke-personlige egenskab `card_id`. Hændelserne bruger PostHogs eksisterende samtykke- og kontogate og skrives ikke til `player_events`.
+
 ### Løbssiden (kun PostHog og Clarity, #7778)
 
 Ikke i `player_events`: `capturePosthogEvent` direkte, kun med samtykke.
