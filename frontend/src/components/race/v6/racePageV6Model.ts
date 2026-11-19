@@ -6,12 +6,17 @@
 // #7865: hovedet er løbets og står stille, når man klikker i etapestriben; tal-rækken,
 // statuschippen, låse-fristen og guld-knappen står sammen (tacticsCta nedenfor).
 import { activeRiders, lineupFor, scheduleFor, tacticsProgress, type RoleOverride, type RoleRider, type ScheduleRow } from "../stagePageV2/stagePageV2Model.ts";
+import { classificationRowsForStage } from "../../../lib/raceStageClassifications.js";
 // Udgave E (#7778 valg 20-22, ejer 15/11): hoved og etapestribe er ét kort; striben
 // er kortets bund og står over fanerne (v6Strip, v6StripCells, v6Overall nedenfor).
 
-/** Resultater først (valg 5). "stage" er etapens nuværende indhold (historien efter etapen). */
-// #7862 (valg 9/10): "start" = Startliste-fanen (V6StartList), løbets felt med rygnumre og favoritter.
-export const RACE_PAGE_V6_TABS = ["results", "stage", "standings", "start", "tactics", "team"] as const;
+/**
+ * Fanerne i ?tab= (valg 5: Resultater først). #7861 (ejervalg 16/11, wireframe v6c): Etape-fanen
+ * har to tilstande, "results" (Resultater) og "stage" (Historie efter etapen, forhåndsvisningen før);
+ * Stillinger er ikke længere en fane (klassementerne står under Resultater).
+ * #7862 (valg 9/10): "start" = Startliste-fanen (V6StartList), løbets felt med rygnumre og favoritter.
+ */
+export const RACE_PAGE_V6_TABS = ["results", "stage", "start", "tactics", "team"] as const;
 export type RacePageV6Tab = (typeof RACE_PAGE_V6_TABS)[number];
 
 /** Faner der handler om én etape og derfor viser etapestriben. #7862 (valg 13): Hold følger etapeskiftet. */
@@ -19,17 +24,26 @@ export const STAGE_SCOPED_TABS: readonly RacePageV6Tab[] = ["results", "stage", 
 
 /**
  * ?tab= → fane. Uden (gyldig) fane åbner en kørt etape på Resultater og en
- * kommende etape på Etape. Et endagsløb har ingen Stillinger-fane: resultatet
- * står på Resultater.
+ * kommende etape på Etape. Et gammelt ?tab=standings lander samme sted (#7861).
  */
-export function resolveV6Tab(param: string | null, { ridden, isStageRace }: { ridden: boolean; isStageRace: boolean }): RacePageV6Tab {
-  const tabs = v6Tabs(isStageRace);
-  if (param && (tabs as readonly string[]).includes(param)) return param as RacePageV6Tab;
+export function resolveV6Tab(param: string | null, { ridden }: { ridden: boolean; isStageRace?: boolean }): RacePageV6Tab {
+  if (param && (RACE_PAGE_V6_TABS as readonly string[]).includes(param)) return param as RacePageV6Tab;
   return ridden ? "results" : "stage";
 }
 
-export function v6Tabs(isStageRace: boolean): readonly RacePageV6Tab[] {
-  return isStageRace ? RACE_PAGE_V6_TABS : RACE_PAGE_V6_TABS.filter((t) => t !== "standings");
+/** De gyldige ?tab=-værdier (endagsløb og etapeløb har de samme). */
+export function v6Tabs(): readonly RacePageV6Tab[] {
+  return RACE_PAGE_V6_TABS;
+}
+
+/** #7861: fanerækken som wireframet: Etape, Startliste, Taktik, Hold ("results" er Etape-fanens Resultater). */
+export function v6TabButtons(): readonly RacePageV6Tab[] {
+  return RACE_PAGE_V6_TABS.filter((t) => t !== "results");
+}
+
+/** #7861: fanen der står valgt for en ?tab= (Resultater og Historie er begge Etape). */
+export function v6TabButtonFor(tab: RacePageV6Tab): RacePageV6Tab {
+  return tab === "results" ? "stage" : tab;
 }
 
 export interface TacticsCta {
@@ -96,7 +110,7 @@ export function v6Strip({ activeTab, isStageRace, selectedStage, tacticsStage }:
   return { selected: selectedStage, target: "open" };
 }
 
-/** Udgave E: fanen et klik i striben åbner fra Stillinger og Startliste (valg 5; Hold følger etapen, #7862). */
+/** Udgave E: fanen et klik i striben åbner fra Startliste (valg 5; Hold følger etapen, #7862); også Etape-fanens klik. */
 export function v6StageTabFor(stage: number, stagesCompleted: number): RacePageV6Tab {
   return stage <= stagesCompleted ? "results" : "stage";
 }
@@ -339,13 +353,19 @@ export function v6StripTabStop(numbers: readonly number[], focused: number | nul
  * at sammenligne (enkeltstart og holdtidskørsel, ingen optegnelse, ingen egne
  * ryttere i optegnelsen), så oversigten står alene i stedet for en tom besked.
  */
-export type TacticsAfterView = "hidden" | "loading" | "error" | "no_orders" | "compare";
+export type TacticsAfterView = "hidden" | "spoiler" | "loading" | "error" | "no_orders" | "compare";
 
-export function tacticsAfterView({ timeTrial, resultsState, timelineLoading, timelineMissing, ordersPending, ordersMissing, riderCount }: {
-  timeTrial: boolean; resultsState: StageResultsState; timelineLoading: boolean; timelineMissing: boolean;
+/**
+ * #8388: skjuler spoiler-skjoldet etapen, viser fanen kun skjoldets pladsholder
+ * ("spoiler"), aldrig placeringer, tider eller hvem der blev sat. Det gælder før
+ * hentetilstanden, så hverken en fejl eller en ventende hentning afslører noget.
+ */
+export function tacticsAfterView({ timeTrial, spoilerHidden = false, resultsState, timelineLoading, timelineMissing, ordersPending, ordersMissing, riderCount }: {
+  timeTrial: boolean; spoilerHidden?: boolean; resultsState: StageResultsState; timelineLoading: boolean; timelineMissing: boolean;
   ordersPending: boolean; ordersMissing: boolean; riderCount: number;
 }): TacticsAfterView {
   if (timeTrial) return "hidden";
+  if (spoilerHidden) return "spoiler";
   if (resultsState === "failed") return "error";
   if (resultsState === "loading" || timelineLoading) return "loading";
   if (timelineMissing) return "hidden";
@@ -378,4 +398,17 @@ export function v6TacticsResults({ activeTab, stage, stagesCompleted, stateFor }
 }): StageResultsState | null {
   if (activeTab !== "tactics" || stage > stagesCompleted) return null;
   return stateFor ? stateFor(stage) : "loaded";
+}
+
+/**
+ * #7861 (Codex P2): "Din dag" på et kørt endagsløb. Et endagsløb kan have resultatet som
+ * klassement-rækker alene (ingen etape-rækker); samme regel som den nuværende side
+ * (YourDayCard): mangler etape-rækkerne, læses klassementets rækker som etapens, så
+ * egne ryttere og deres Hvorfor? står der. Med etape-rækker er listen uændret.
+ */
+export function v6OneDayDayResults<T extends { result_type: string; stage_number?: number | null }>(results: readonly T[], stageNumber: number): T[] {
+  if ((classificationRowsForStage(results, stageNumber, "stage") as T[]).length) return [...results];
+  const overall = classificationRowsForStage(results, stageNumber, "gc") as T[];
+  if (!overall.length) return [...results];
+  return [...results, ...overall.map((r) => ({ ...r, result_type: "stage", stage_number: stageNumber }))];
 }

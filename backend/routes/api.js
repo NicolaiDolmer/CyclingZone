@@ -156,6 +156,7 @@ import {
 import * as transferNotif from "../lib/transferNotifications.js";
 import { withdrawCounterOffer, claimCounterForAccept, buildCounterOfferWithdrawnNotification } from "../lib/counterOfferWithdraw.js"; // #6463
 import { getParkedRiderReleaseIssue, getParkedRiderTradeIssue } from "../lib/parkedRiderGuard6181.js"; // #6181
+import { loadLeavingRiderIds8153, withoutLeavingRiders8153 } from "../lib/riderRelease8153.js"; // #8153: auto-udtagelse
 import { releaseDeferContext8153, orderPendingRelease, countPendingReleasesForTeam, getPendingReleaseTradeIssue, loadPendingReleasesForTeam, countPendingReleasesForTransition, PENDING_RELEASE_FORCE_BLOCKED_ERROR, PENDING_RELEASE_SQUAD_CODE, getPendingReleaseSquadIssue, pendingReleaseSquadResponse } from "../lib/riderReleaseDefer8153.js"; // #8153
 import { countSellerAuctionOutgoing, checkAutoAcceptMutation, isAutoAcceptEnabled, getListingPriceUpdateErrorResponse, getOfferAutoAcceptIssue, registerAutoAcceptRoutes, releaseRiderUnderTeamLock } from "../lib/autoAccept2176.js"; // #2176
 import { sanitizeDmPrefs } from "../lib/discordDmPrefs.js";
@@ -2902,8 +2903,14 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
       riders: [rider], abilitiesByRider: new Map([[rider.id, ab]]),
       seasonNumber: await getActiveSeasonNumber(), scout, developmentXp: prognosisXp,
     });
-    if (academyPrognoses.has(rider.id)) {
-      return res.json({ own: true, ...academyEstimate(academyPrognoses.get(rider.id)) });
+    const academyPrognosis = academyPrognoses.get(rider.id);
+    if (academyPrognosis) {
+      const types = academyPrognosis.stage === "final" ? academyPrognosis.types : null;
+      return res.json({
+        own: true,
+        ...academyEstimate(academyPrognosis),
+        ...(types?.length ? { types, primaryKey: rider.primary_type } : {}),
+      });
     }
 
     const currentYear = new Date().getFullYear();
@@ -6462,7 +6469,8 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
     if ((existingEntries || []).some((e) => autoLock.riderIds.has(e.rider_id))) {
       return res.status(409).json({ error: "selection_train_now_locked" });
     }
-    const teamRiderIds = (teamRiders || []).map((r) => r.id).filter((id) => !autoLock.riderIds.has(id));
+    const autoLeaving8153 = await loadLeavingRiderIds8153(supabase); // #8153: bestilt frigivelse -> ikke til senere loeb
+    const teamRiderIds = (teamRiders || []).map((r) => r.id).filter((id) => !autoLock.riderIds.has(id) && !autoLeaving8153.has(id));
     if (!teamRiderIds.length) return res.status(409).json({ error: "selection_no_eligible_riders" });
 
     const abilityCols = ["rider_id", ...RACE_SIM_ABILITY_KEYS].join(", ");
@@ -6568,6 +6576,30 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
 const RACE_ROLE_SCOPE_CHOICE_FLAG_KEY = "race_role_scope_choice";
 
 // GET /api/races/:raceId/stage-roles — kontekst til managerens taktik-panel.
+// #8298: flag og rating i det faelles taktikpanel. Lagt paa her (ikke i getStageRolesContext),
+// saa dens frosne digest (#7801) er uaendret. Holdets egne ryttere: intet fog of war-problem.
+// En fejl giver blot null-felter; taktikken virker som foer.
+async function withNationAndRating8298(riders) {
+  const list = Array.isArray(riders) ? riders : [];
+  const ids = list.map((r) => r.rider_id).filter(Boolean);
+  if (!ids.length) return list;
+  // pagination-safe: ids er holdets udtagne ryttere til ÉT løb (truppens loft, højst ~10 rækker).
+  const { data, error } = await supabase.from("riders").select("id, nationality_code, best_role_rating").in("id", ids);
+  if (error) {
+    captureException(error, { tags: { route: "stage-roles", part: "nation-rating-8298" } });
+    return list.map((r) => ({ ...r, nationality_code: null, rating: null }));
+  }
+  const byId = new Map((data || []).map((r) => [r.id, r]));
+  return list.map((r) => {
+    const row = byId.get(r.rider_id);
+    return {
+      ...r,
+      nationality_code: row?.nationality_code ?? null,
+      rating: typeof row?.best_role_rating === "number" ? row.best_role_rating : null,
+    };
+  });
+}
+
 router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
@@ -6600,7 +6632,7 @@ router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
       // #5945: stiller holdet op? starts:false = under startgulvet (min) og kan ikke fyldes op.
       start_outlook: ctx.start_outlook,
       stage_count: ctx.stage_count,
-      riders: ctx.riders,
+      riders: await withNationAndRating8298(ctx.riders),
       overrides: ctx.overrides,
     });
   } catch (err) {
@@ -7029,7 +7061,7 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     const { data: teamRiders } = await applyRiderEligibilityFilter(
       supabase.from("riders").select("id").eq("team_id", req.team.id)
     );
-    const teamRiderIds = (teamRiders || []).map((r) => r.id);
+    const teamRiderIds = withoutLeavingRiders8153(teamRiders, await loadLeavingRiderIds8153(supabase)).map((r) => r.id); // #8153
     const abilityCols = ["rider_id", ...RACE_SIM_ABILITY_KEYS].join(", ");
     const [{ data: abilities }, { data: conditions }] = await Promise.all([
       supabase.from("rider_derived_abilities").select(abilityCols).in("rider_id", teamRiderIds),

@@ -113,3 +113,14 @@ test("#7003: konteksten bruger etape-rollen foran holdudtagelsens rolle", async 
   assert.equal(ctx.route.climbs.length, 1);
   assert.equal(ctx.hasRoute, true);
 });
+
+test("#8298: låsen pr. rytter følger etapeplanen, skal være boolean og gemmes kun når den er sat", () => {
+  const locked = { riders: [{ rider_id: "h1", effort: "normal", try_break: false, leadout: false, plan: HELPER_PLAN, locked: true }] };
+  assert.deepEqual(validateTeamOrder({ ...BASE, order: locked }).errors, ["team_orders_unknown_field"], "uden etapeplan: ukendt felt");
+  assert.equal(validateTeamOrder({ ...BASE, order: locked, stagePlan: STAGE_PLAN }).ok, true);
+  const bad = { riders: [{ rider_id: "h1", effort: "normal", locked: "yes" }] };
+  assert.deepEqual(validateTeamOrder({ ...BASE, order: bad, stagePlan: STAGE_PLAN }).errors, ["team_orders_invalid_locked"]);
+  assert.equal(normalizeTeamOrder(locked).riders[0].locked, true);
+  const open = normalizeTeamOrder({ riders: [{ rider_id: "c1", effort: "save", locked: false }] });
+  assert.equal("locked" in open.riders[0], false);
+});

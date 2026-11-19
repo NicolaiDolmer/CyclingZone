@@ -117,3 +117,22 @@ test("#6853 rosterPrognosis: viser rollen med hoejest potentiale og maerker baan
   const p = rosterPrognosis({ ...base, daysOnTeam: KNOWLEDGE_DAYS.final });
   assert.equal(p.band.bestRole, true);
 });
+
+test("#8400: only final knowledge exposes the eight report rows and preserves the display band", () => {
+  for (const daysOnTeam of [0, KNOWLEDGE_DAYS.broad, KNOWLEDGE_DAYS.final - 1]) {
+    const prognosis = rosterPrognosis({ ...base, daysOnTeam });
+    assert.equal(prognosis.types, undefined);
+  }
+
+  const final = rosterPrognosis({ ...base, daysOnTeam: KNOWLEDGE_DAYS.final });
+  assert.deepEqual(final.types.map((row) => row.key).sort(), [
+    "baroudeur", "brostensrytter", "climber", "gc", "puncheur", "rouleur", "sprinter", "tt",
+  ]);
+  for (const row of final.types) {
+    assert.deepEqual(Object.keys(row).sort(), ["key", "now", "progHi", "progLo"]);
+    assert.ok([row.now, row.progLo, row.progHi].every(Number.isFinite));
+  }
+  const selected = final.types.find(({ key }) => key === final.band.role);
+  assert.equal(selected.progLo, final.band.lo);
+  assert.equal(selected.progHi, final.band.hi);
+});

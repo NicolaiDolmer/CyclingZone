@@ -5,12 +5,37 @@
 **Bygger på:** [samlet design 23/10](2026-10-23-6110-potentiale-et-tal-samlet-design.md) · [del 2 catch-up](2026-10-23-6110-del2-catchup-design.md) · [spec 3/10](2026-10-03-udvikling-2-design.md) · [katalog v3](2026-10-29-training-catalog-v3-design.md). Hvor de er i modstrid med denne spec, gælder §10.
 **Tal:** privat i `balance-internals/6110/xp-model-grundlag-2026-11-06.md` (hard rule 17). Dette dokument er kvalitativt. Det private grundlags afsnit 7 er modellens startpunkt. Kørslens tal ligger i samme mappe.
 
+## Ejerens design 18/11: XP er ens hele livet (afløser B3, B5 og aldersdelen af §0 punkt 4)
+
+Lagt sammen med ejeren 18/11 aften. Tal og billeder kun privat i `balance-internals/6110/design-sammen-2026-11-18/` (`beslutninger.md`). Tændingskandidaterne fra 17-18/11 (aldersfald i XP med gulv) er afløst. Intet er tændt; tænding venter, til designet er målt, dømt og testet under alle reglerne her, og ejeren har sagt "kør".
+
+**Grundprincip (ejer, ordret):** "Jeg ønsker ikke, at alder skal bestemme udviklingshastigheden." "Vi skal ikke have dumme regler skabt og bundet op på alderen af rytteren." Designet bruger kun evne-knapper: prisen, potentialets XP og typens andel. Kurven pr. alder er et resultat af dem, aldrig en regel.
+
+| # | Regel |
+|---|---|
+| E1 | **XP er ens hele karrieren.** Eneste undtagelse er et lille sikkerhedsnet sent i karrieren, ens for fysiske og mentale evner. Det fjernes, hvis målingen viser, at det ingen virkning har. |
+| E2 | **Prisen** er fælles og afhænger kun af evnens niveau (B1). Dens stejlhed søges i målingen, i retning af fladere end i dag, så toptalenter kan nå meget højt. |
+| E3 | **Ingen lofter pr. evne** (B4). En pris efter rytterens "egen top" er afvist, fordi den er et loft ad bagdøren. `ability_caps` fjernes som eget skridt (§12). |
+| E4 | **Kroppens aldring** (sæsonskiftets fald i fysiske evner) begynder tidligere end i dag, og hele trappen flyttes frem (ejervalg 19/11, kandidat B; den bløde start fra 18/11 er afløst). Løbsbremsen er uændret. Det er en ændring af en live regel og kræver patch note. |
+| E5 | **Teknik og mentale evner** falder fortsat aldrig. Målingen viser, om veteraner løber løbsk; et lille sent fald er med som forslag, og ejeren vælger med tal. |
+| E6 | **Inflation** måles på niveauet efter aldersfaldet (rating), ikke på købte point. |
+| E7 | **Niveauloft:** gennemsnit og almindelige ryttere højst som den model, der var klar til tænding 18/11, for hvert potentialebånd og for de bedste 10 %. |
+| E8 | **Toppen:** et toptalent (højeste potentialer) skal kunne nå meget højt i sin bedste evne, som dagens stjerner; kun de højeste potentialer når dertil; toppen i bedste evne ligger sidst i 20'erne; antallet af stjerner pr. evne svarer til i dag. |
+| E9 | **De unge:** ingen regel på alder. De vokser hurtigt, fordi deres evner er lave og billige. |
+| E10 | **Dato-reglen (R16):** alderen fjernes fra undtagelsen. +2 på én dato gælder et toptalent på en meget lav evne, uanset alder. Ellers +1. |
+| E11 | **Ryttertypen** er uændret: en andel af XP, anlæg, ikke et loft (§4.7). Å4 og spillerinput 5/11 står åbne. |
+| E12 | **Spillerne** får besked, når designet er målt og dømt. Hjælpeteksten (PR #8376) holdes til da. |
+| E13 | **Talent giver XP, aldrig rabat.** Prisen er ens for alle ryttere. Et stort talent tjener mere XP om dagen og træner sig derfor højere. Forklaringen til spillerne skal kunne siges i én sætning (ejer 18/11: "den bedste udvikling af ryttere i noget managerspil"). |
+| E14 | **Prisen flader ud helt i toppen, ens for alle** (måling 18-19/11): kun sådan kan toptalenter nå meget højt, uden at almindelige ryttere stiger og uden at svage ryttere knuses. Kræver et nyt, valgfrit tal i prisen i motoren. |
+
+**Kravene til målingen:** E7, E8, talenterne når deres top, 0 datoer med 3+, +2 kun efter E10, ingen synlige ratingfald midt i sæsonen, alle tre planer (standard med Træn nu, roterende, hårdeste indsats), flere frø, uafhængig dom og billeder til ejeren.
+
 ## 0. Kort fortalt
 
 1. Alle ryttere bruger **én fælles prisliste**. Næste point i en evne koster XP efter evnens værdi, og intet andet.
 2. **Potentialet afgør, hvor meget XP rytteren tjener om dagen.** Forskellen mellem ryttere ligger i XP, ikke i prisen.
 3. Der er **intet hårdt loft pr. evne**. Stejl pris i toppen og lavt XP ved lavt potentiale gør, at svage ryttere reelt ikke når toppen.
-4. **XP falder tydeligt fra ca. 29 år.** Før det tjener samme rytter ca. det samme som 19-årig og 28-årig. Han stiger langsommere, fordi evnerne bliver dyrere.
+4. **(Afløst 18/11, se "Ejerens design 18/11" øverst: XP er ens hele livet.)** **XP falder tydeligt fra ca. 29 år.** Før det tjener samme rytter ca. det samme som 19-årig og 28-årig. Han stiger langsommere, fordi evnerne bliver dyrere.
 5. En træning giver **mest XP i sessionens fokus og lidt i resten**. Manageren vælger, hvad rytteren skal blive god til, og en ensidig plan efterlader ikke resten på nul.
 6. **Evner uden for rytterens type giver lidt mindre XP.** Alt kan trænes, men en ren sprinter bliver ikke topklatrer.
 7. **Ét tal: XP,** vist for i dag og de sidste 30 dage. Træningerne varierer fra dag til dag, så potentialet først kan estimeres over tid.

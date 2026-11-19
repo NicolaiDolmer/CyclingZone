@@ -128,7 +128,7 @@ test("striben: rigtige knapper, aria-current, proximity-snap, opakt kantmaerke u
 test("fanerne: underline, guld-tekst paa den aktive, panel med aria-labelledby og uden aria-controls", () => {
   const page = read("./RacePageV6.tsx");
   assert.match(page, /<TabList label=\{t\("stagePageV2\.tabsAria"\)\} accent>/);
-  assert.match(page, /role="tabpanel" aria-labelledby=\{tabId\(activeTab\)\}/);
+  assert.match(page, /role="tabpanel" aria-labelledby=\{tabId\(v6TabButtonFor\(activeTab\)\)\}/);
   assert.doesNotMatch(page, /aria-controls/);
   const styles = read("../../ui/tabsStyles.js");
   assert.match(styles, /border-cz-accent \$\{accent \? "text-cz-accent-t" : "text-cz-1"\}/);

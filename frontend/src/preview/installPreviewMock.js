@@ -14,6 +14,7 @@ import { contractsBatchMockRoute } from "./contractsBatchMock.ts"; // #6855
 import { previewLockedSalesPayload } from "./lockedSalesMock.ts"; // #6181
 import { boardMeetingMockRoute } from "./boardMeetingMock.js";
 import { betaAccessMockRoute } from "./betaAccessMock.js"; // #5259
+import { spoilerShieldPreviewRoute } from "./spoilerShieldPreviewMock.ts"; // #8388
 import { trainingProgramsMockRoute, previewSingleRaceDay, PREVIEW_TRAINING_PROGRAMS } from "./trainingProgramsMock.js"; // #4629
 import { trainingGroupsMockRoute } from "../components/training/groups/trainingGroupsPreviewMock.ts"; // #6000
 import { trainingFatigueRulesMockRoute } from "./trainingFatigueRulesMock.js"; // #4854
@@ -34,6 +35,7 @@ import { NPS_MIN_RACE_DAYS } from "../lib/npsGating.js";
 import { buildMockSurveyResults } from "./surveyResultsMock.js"; // #4943
 import { stagePlanPreviewActive, stagePlanPreviewTimeline, withStagePlanPreview } from "../components/race/StagePlanPreviewMock.ts"; // #7003
 import { luxuryHelperPreviewActive, withLuxuryHelperSelection, withLuxuryHelperStageRoles, withSeasonRoles } from "./luxuryHelperPreviewMock.ts"; // #5982
+import { film7861Profiles, film7861Results, film7861Timeline } from "./raceFilm7861PreviewMock.ts"; // #7861
 
 // [epic #4592 del 3] "Tilmeld dig næste sæson" (#452) — statefuld in-memory
 // toggle, samme princip som klubMock/plannerMock: POST flipper den, GET
@@ -260,12 +262,18 @@ export function installPreviewMock() {
         if (["POST", "PATCH", "PUT", "DELETE"].includes(method)) {
           // #2863: en RPC med seed-data svares FØR den generiske mutations-linje,
           // ellers ville enhver RPC-drevet flade stå tom på preview.
-          const rpcPayload = rpcResponse(parseRpc(url));
+          const rpcName = parseRpc(url);
+          if (rpcName === "get_team_result_history_page") return jsonResponse({ code: "PGRST202" }, 404);
+          const rpcPayload = rpcResponse(rpcName);
           if (rpcPayload !== undefined) return jsonResponse(rpcPayload);
           // Optimistisk mutation: ét objekt eller tomt array afhængig af Prefer/Accept.
           return jsonResponse(wantsObject(accept) ? {} : []);
         }
         const table = parseTable(url);
+        if (!wantsObject(accept)) {
+          const filmRows = film7861Results(url, restRows(table, url)) ?? film7861Profiles(url, restRows(table, url)); // #7861
+          if (filmRows) return jsonResponse(filmRows);
+        }
         return jsonResponse(wantsObject(accept) ? restObject(table, url) : restRows(table, url));
       }
 
@@ -424,6 +432,9 @@ export function installPreviewMock() {
       if (method === "GET" && stagePlanPreviewActive() && /\/api\/races\/race-live-1\/timeline\?stage=2(?:&|$)/.test(url)) {
         return jsonResponse(stagePlanPreviewTimeline()); // #7003
       }
+      // #7861: etape 2 i race-live-1 har en rigtig løbshistorie, så løbsfilmen kan ses.
+      const film7861 = method === "GET" ? film7861Timeline(url) : null;
+      if (film7861) return jsonResponse(film7861);
       if (method === "PUT" && /\/api\/races\/[^/]+\/team-orders\/[0-9]+$/.test(url)) {
         return jsonResponse({ ok: true });
       }
@@ -556,7 +567,7 @@ export function installPreviewMock() {
       // { ok: true } på POST — og så ville tavlen stå tom og opt-in-kortet
       // aldrig skifte tilstand ved et klik.
       {
-        const betaResponse = betaAccessMockRoute(url, method, init);
+        const betaResponse = betaAccessMockRoute(url, method, init) ?? spoilerShieldPreviewRoute(url, method, init); // #8388: ?spoilerShield=on
         if (betaResponse) return betaResponse;
       }
 

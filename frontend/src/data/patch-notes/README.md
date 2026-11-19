@@ -14,6 +14,7 @@ En PR skriver sin patch note som ÉN ny fil i `pending/`. Den rører ikke `../pa
       "audience": "player",
       "rollout": "live",
       "topic": "Calendar",
+      "area": "races",
       "en": { "title": "Each race once in the calendar", "body": "..." },
       "da": { "title": "Hvert løb én gang i kalenderen", "body": "..." },
       "refs": [5841]
@@ -21,6 +22,8 @@ En PR skriver sin patch note som ÉN ny fil i `pending/`. Den rører ikke `../pa
   ]
 }
 ```
+
+En spillervendt change skal have `"area"` (en af `tactics`, `races`, `engine`, `training`, `development`, `market`, `academy`, `board`, `economy`, `interface`, `mobile`, `help`), så den nye patch notes-side kan gruppere ugen; `scripts/check-patch-notes-version.js` afviser et fragment uden gyldigt område. `highlight`, `image` og `replaces` er valgfri (`docs/PATCH_NOTES_RULES.md` §2b).
 
 Reglerne for teksten står i `docs/PATCH_NOTES_RULES.md` (rollout, `flag` på beta-noter, tone). `scripts/check-patch-notes-version.js` validerer fragmentet i CI med de samme regler som en ny post. Lokalt: `node scripts/patch-notes-number.mjs check`.
 

@@ -27,8 +27,12 @@ export interface RacePageV6Hero {
 /** Stribens højde, mens v6-rammen hentes (samme højde som cellerne, så intet hopper). */
 export const V6_STRIP_RESERVED_CLASS = "h-[81px] border-t border-cz-border";
 
-/** #7859: `aside` = spoiler-kontakten til højre i række 1; `note` = linjen under navnet, når etapen er skjult. */
-export default function V6RaceHeroCard({ hero, strip, aside = null, note = null }: { hero: RacePageV6Hero; strip: ReactNode; aside?: ReactNode; note?: ReactNode }) {
+/**
+ * #7859: `aside` = spoiler-kontakten til højre i række 1; `note` = linjen under navnet, når etapen er skjult.
+ * #8298: `actionNote` = taktikkens linje efter fristen ("7 riders ride the assistant's plan").
+ * #5841: `editions` = udgave-skiftet (Pool/Season), til højre i række 1 foran spoiler-kontakten (skitse A).
+ */
+export default function V6RaceHeroCard({ hero, strip, aside = null, note = null, editions = null, actionNote = null }: { hero: RacePageV6Hero; strip: ReactNode; aside?: ReactNode; note?: ReactNode; editions?: ReactNode; actionNote?: string | null }) {
   return (
     <section data-race-hero="e" aria-label={hero.name} className="overflow-hidden rounded-cz border border-cz-border border-t-2 border-t-cz-accent bg-cz-card">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 pt-3.5 pb-3 md:px-5">
@@ -38,7 +42,8 @@ export default function V6RaceHeroCard({ hero, strip, aside = null, note = null 
           {/* #7566: et endagsløb gentager ikke typen fra mærket ved siden af (siden bygger linjen). */}
           {hero.meta && <span className="font-data text-2xs uppercase tracking-[.08em] tabular-nums text-cz-3">{hero.meta}</span>}
         </div>
-        {aside && <div className="ms-auto">{aside}</div>}
+        {editions}
+        {aside && <div className={editions ? "" : "ms-auto"}>{aside}</div>}
         {note}
       </div>
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-cz-border px-4 py-2.5 md:px-5">
@@ -47,7 +52,7 @@ export default function V6RaceHeroCard({ hero, strip, aside = null, note = null 
           // Fristen står over knappen (højrestillet fra sm), så tal og handling holder
           // én række også ved 1280 px uden at hovedet bliver højere.
           <div data-race-hero-action className="flex w-full flex-col items-stretch gap-1.5 sm:ms-auto sm:w-auto sm:items-end">
-            <p className="m-0 font-data text-xs tabular-nums text-cz-2">{hero.action.lock}</p>
+            <p className="m-0 font-data text-xs tabular-nums text-cz-2">{hero.action.lock}{actionNote ? ` · ${actionNote}` : ""}</p>
             <Button variant="primary" size="md" fullWidth className="sm:w-auto" onClick={hero.action.onClick}>{hero.action.label}</Button>
           </div>
         )}

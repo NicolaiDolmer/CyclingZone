@@ -88,3 +88,39 @@ test("2/11 har kun ét \"Små rettelser\"-punkt (#7543)", async () => {
   const titles = notes.filter((v) => v.date === "2026-11-02").flatMap((v) => v.changes).map((c) => c.da.title);
   assert.equal(titles.filter((x) => x === "Små rettelser").length, 1);
 });
+
+// ── #8049: kontakten vælger siden; den gamle side er uændret bag "off" ──────
+const partsSrc = readFileSync(join(__dirname, "../components/patchnotes/PatchNoteParts.tsx"), "utf8");
+const v2Src = readFileSync(join(__dirname, "../components/patchnotes/PatchNotesV2Page.tsx"), "utf8");
+
+test("#8049: kontakten læses med viewerens login, og ukendt/fejl er den gamle side", () => {
+  assert.match(src, /loadFeatureFlagStages\(\)/);
+  assert.match(src, /stages\?\.\[PATCH_NOTES_V2_FLAG\] \?\? "off"/);
+  assert.match(src, /\.catch\(\(\) => \{ if \(active\) setStage\("off"\); \}\)/);
+  assert.ok(src.includes("isPatchNotesV2Stage(stage) ? <PatchNotesV2Route arrivalMarker={arrivalMarker} /> : <LegacyPatchNotesPage arrivalMarker={arrivalMarker} />"));
+  // "Sidst set" fanges ved ankomst, før menuen når at markere siden som set.
+  assert.match(src, /const \[arrivalMarker\] = useState\(\(\) => readLocalSeenMarker\("patch_notes"\)\)/);
+  // Den nye side er sin egen chunk: den gamle side henter ikke et byte mere.
+  assert.match(src, /lazyWithRetry\(\(\) => import\("\.\.\/components\/patchnotes\/PatchNotesV2Page\.tsx"\)\)/);
+  // Den gamle side henter stadig hele patch-notes.json, som før.
+  assert.match(src, /function LegacyPatchNotesPage\(\{ arrivalMarker = undefined \}\)[\s\S]*loadPatches\(\)/);
+  // Også den gamle side bruger "sidst set" fra ankomsten (menuen kan nå at markere imens).
+  assert.match(src, /if \(arrivalMarker !== undefined\) return arrivalMarker;/);
+});
+
+test("#8049: mærkerne er firkantede (5px), aldrig piller; ingen guld-knap; stroke-ikoner", () => {
+  const tag = partsSrc.slice(partsSrc.indexOf("export function PatchTag"), partsSrc.indexOf("export function NewDot"));
+  assert.match(tag, /rounded-cz border/);
+  assert.doesNotMatch(tag, /rounded-cz-pill|rounded-full/);
+  assert.doesNotMatch(v2Src, /variant="primary"/);
+  assert.doesNotMatch(v2Src + partsSrc, /shadow-|gradient/);
+});
+
+test("#8049: arkivmåneder og titelindekset hentes først ved klik eller søgning", () => {
+  assert.match(v2Src, /patchNotesRecentUrl\(lang\)/);
+  assert.match(v2Src, /const toggleMonth = [\s\S]*loadMonth\(m\)/);
+  // Indekset hentes først ved søgning, og kun ét pr. sprog (cache pr. sprog, Codex 16/11).
+  assert.match(v2Src, /if \(!searching\) return undefined;[\s\S]*indexCacheRef\.current\.get\(lang\)[\s\S]*patchNotesIndexUrl\(lang\)/);
+  assert.doesNotMatch(v2Src, /indexLoadedRef/);
+  assert.match(v2Src, /markSeen\("patch_notes", recent\.seenKey\)/);
+});

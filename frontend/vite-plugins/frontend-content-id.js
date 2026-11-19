@@ -96,7 +96,8 @@ export function computeFrontendContentId({ assetNames = [], files = [] } = {}) {
     hash.update(value);
   };
   // Sorteret, saa to forskellige lister ikke kan hashe ens.
-  for (const name of [...assetNames].filter((n) => !IGNORED_BUNDLE_FILES.has(n)).sort()) {
+  // #8049: den nye patch notes-sides datafiler (patch-notes-data/) hører heller ikke til runtime-id'et.
+  for (const name of [...assetNames].filter((n) => !IGNORED_BUNDLE_FILES.has(n) && !n.startsWith("patch-notes-data/")).sort()) {
     hash.update("a");
     field(name);
   }

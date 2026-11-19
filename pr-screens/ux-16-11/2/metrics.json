@@ -1,0 +1,2523 @@
+{
+ "auctions-390": {
+  "url": "http://localhost:5173/auctions?tab=all",
+  "docW": 390,
+  "hScroll": false,
+  "docH": 1482,
+  "h1": "Auctions",
+  "firstRowY": 0,
+  "smallCount": 8,
+  "small": [
+   {
+    "w": 131,
+    "h": 16,
+    "y": 470,
+    "t": "See an affordable pick"
+   },
+   {
+    "w": 94,
+    "h": 16,
+    "y": 470,
+    "t": "Show me around"
+   },
+   {
+    "w": 16,
+    "h": 16,
+    "y": 630,
+    "t": ""
+   },
+   {
+    "w": 358,
+    "h": 16,
+    "y": 660,
+    "t": "More filters"
+   },
+   {
+    "w": 46,
+    "h": 16,
+    "y": 775,
+    "t": "Reset all"
+   },
+   {
+    "w": 42,
+    "h": 32,
+    "y": 721,
+    "t": "Sorting descending, tap for ascending"
+   },
+   {
+    "w": 115,
+    "h": 20,
+    "y": 782,
+    "t": "Mikkel Hansen"
+   },
+   {
+    "w": 63,
+    "h": 21,
+    "y": 1005,
+    "t": "Scout"
+   }
+  ],
+  "gold": []
+ },
+ "auction-history-390": {
+  "url": "http://localhost:5173/auctions/history",
+  "docW": 390,
+  "hScroll": false,
+  "docH": 844,
+  "h1": "Auctions",
+  "firstRowY": 443,
+  "smallCount": 7,
+  "small": [
+   {
+    "w": 68,
+    "h": 34,
+    "y": 135,
+    "t": "Active"
+   },
+   {
+    "w": 92,
+    "h": 34,
+    "y": 135,
+    "t": "History (1)"
+   },
+   {
+    "w": 42,
+    "h": 34,
+    "y": 357,
+    "t": "All"
+   },
+   {
+    "w": 92,
+    "h": 34,
+    "y": 357,
+    "t": "Bought (1)"
+   },
+   {
+    "w": 74,
+    "h": 34,
+    "y": 357,
+    "t": "Sold (1)"
+   },
+   {
+    "w": 103,
+    "h": 18,
+    "y": 454,
+    "t": "Théo Journal"
+   },
+   {
+    "w": 74,
+    "h": 13,
+    "y": 500,
+    "t": "View bid war"
+   }
+  ],
+  "gold": []
+ },
+ "transfers-390": {
+  "url": "http://localhost:5173/transfers?tab=market",
+  "docW": 390,
+  "hScroll": false,
+  "docH": 844,
+  "h1": "Transfers",
+  "firstRowY": null,
+  "smallCount": 6,
+  "small": [
+   {
+    "w": 46,
+    "h": 16,
+    "y": 345,
+    "t": "Reset all"
+   },
+   {
+    "w": 358,
+    "h": 16,
+    "y": 387,
+    "t": "More filters"
+   },
+   {
+    "w": 114,
+    "h": 34,
+    "y": 779,
+    "t": "Free agent"
+   },
+   {
+    "w": 114,
+    "h": 34,
+    "y": 779,
+    "t": "U25"
+   },
+   {
+    "w": 114,
+    "h": 34,
+    "y": 779,
+    "t": "U23"
+   },
+   {
+    "w": 100,
+    "h": 16,
+    "y": 850,
+    "t": "Stat filters"
+   }
+  ],
+  "gold": []
+ },
+ "finance-390": {
+  "url": "http://localhost:5173/finance",
+  "docW": 390,
+  "hScroll": false,
+  "docH": 2440,
+  "h1": "Finance",
+  "firstRowY": null,
+  "smallCount": 5,
+  "small": [
+   {
+    "w": 84,
+    "h": 16,
+    "y": 299,
+    "t": "board modifier"
+   },
+   {
+    "w": 94,
+    "h": 28,
+    "y": 1447,
+    "t": "1 season2 seasons3 seasons4 seasons5 sea"
+   },
+   {
+    "w": 155,
+    "h": 30,
+    "y": 1666,
+    "t": "This season (S1)"
+   },
+   {
+    "w": 155,
+    "h": 30,
+    "y": 1666,
+    "t": "Next season (S2)"
+   },
+   {
+    "w": 291,
+    "h": 33,
+    "y": 2274,
+    "t": "How is the forecast calculated?"
+   }
+  ],
+  "gold": [
+   "Show me around"
+  ]
+ },
+ "sponsors-390": {
+  "url": "http://localhost:5173/sponsors",
+  "docW": 390,
+  "hScroll": false,
+  "docH": 844,
+  "h1": "Sponsors",
+  "firstRowY": null,
+  "smallCount": 1,
+  "small": [
+   {
+    "w": 104,
+    "h": 16,
+    "y": 459,
+    "t": "Go to Next season"
+   }
+  ],
+  "gold": []
+ },
+ "board-390": {
+  "url": "http://localhost:5173/board",
+  "docW": 390,
+  "hScroll": false,
+  "docH": 1430,
+  "h1": "Boardroom",
+  "firstRowY": null,
+  "smallCount": 4,
+  "small": [
+   {
+    "w": 101,
+    "h": 16,
+    "y": 656,
+    "t": "Open mandate"
+   },
+   {
+    "w": 42,
+    "h": 16,
+    "y": 1044,
+    "t": "Decline"
+   },
+   {
+    "w": 84,
+    "h": 16,
+    "y": 1162,
+    "t": "Open vision"
+   },
+   {
+    "w": 85,
+    "h": 16,
+    "y": 1287,
+    "t": "Open board"
+   }
+  ],
+  "gold": [
+   "Enter annual meeting"
+  ]
+ },
+ "watchlist-390": {
+  "url": "http://localhost:5173/watchlist",
+  "docW": 390,
+  "hScroll": false,
+  "docH": 844,
+  "h1": "Talent scout",
+  "firstRowY": null,
+  "smallCount": 0,
+  "small": [],
+  "gold": [
+   "Go to Riders"
+  ]
+ },
+ "klub-390": {
+  "url": "http://localhost:5173/klub",
+  "docW": 390,
+  "hScroll": false,
+  "docH": 1291,
+  "h1": "Club",
+  "firstRowY": null,
+  "smallCount": 3,
+  "small": [
+   {
+    "w": 82,
+    "h": 16,
+    "y": 384,
+    "t": "Sofie Lindqvist"
+   },
+   {
+    "w": 94,
+    "h": 16,
+    "y": 384,
+    "t": "Bjarne Holmqvist"
+   },
+   {
+    "w": 75,
+    "h": 16,
+    "y": 682,
+    "t": "No staff hired"
+   }
+  ],
+  "gold": [
+   "Upgrade · 26,000"
+  ]
+ },
+ "team-390": {
+  "url": "http://localhost:5173/team",
+  "docW": 390,
+  "hScroll": false,
+  "docH": 844,
+  "h1": "E2E Racing",
+  "firstRowY": 556,
+  "smallCount": 5,
+  "small": [
+   {
+    "w": 101,
+    "h": 24,
+    "y": 68,
+    "t": "E2E Racing"
+   },
+   {
+    "w": 89,
+    "h": 20,
+    "y": 127,
+    "t": "500,000 CZ$"
+   },
+   {
+    "w": 62,
+    "h": 20,
+    "y": 127,
+    "t": "Division 2"
+   },
+   {
+    "w": 174,
+    "h": 20,
+    "y": 163,
+    "t": "Salary/season: 42,000 CZ$"
+   },
+   {
+    "w": 106,
+    "h": 20,
+    "y": 565,
+    "t": "Ada Pedersen"
+   }
+  ],
+  "gold": []
+ },
+ "rider-profile-390": {
+  "url": "http://localhost:5173/riders/rider-1",
+  "docW": 390,
+  "hScroll": false,
+  "docH": 2154,
+  "h1": "Ada Pedersen",
+  "firstRowY": null,
+  "smallCount": 3,
+  "small": [
+   {
+    "w": 44,
+    "h": 16,
+    "y": 68,
+    "t": "Back"
+   },
+   {
+    "w": 73,
+    "h": 20,
+    "y": 311,
+    "t": "E2E Racing"
+   },
+   {
+    "w": 57,
+    "h": 23,
+    "y": 2021,
+    "t": "All types"
+   }
+  ],
+  "gold": [
+   "Extend contract"
+  ]
+ },
+ "auctions-1440": {
+  "url": "http://localhost:5173/auctions?tab=all",
+  "docW": 1440,
+  "hScroll": false,
+  "docH": 900,
+  "h1": "Auctions",
+  "firstRowY": 443,
+  "smallCount": 72,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 181,
+    "t": "Clubhouse"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 218,
+    "t": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 255,
+    "t": "Market"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 290,
+    "t": "Riders"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 325,
+    "t": "Auctions"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 361,
+    "t": "Transfers"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 396,
+    "t": "Transfer list"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 432,
+    "t": "Watchlist"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 473,
+    "t": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 575,
+    "t": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 611,
+    "t": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 646,
+    "t": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 682,
+    "t": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 717,
+    "t": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 753,
+    "t": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 788,
+    "t": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 824,
+    "t": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 863,
+    "t": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "t": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "t": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "t": "Change language"
+   },
+   {
+    "w": 99,
+    "h": 30,
+    "y": 40,
+    "t": "Live bids"
+   },
+   {
+    "w": 68,
+    "h": 30,
+    "y": 40,
+    "t": "History"
+   },
+   {
+    "w": 131,
+    "h": 16,
+    "y": 214,
+    "t": "See an affordable pick"
+   },
+   {
+    "w": 94,
+    "h": 16,
+    "y": 214,
+    "t": "Show me around"
+   },
+   {
+    "w": 135,
+    "h": 42,
+    "y": 259,
+    "t": "My auctions (0)"
+   },
+   {
+    "w": 67,
+    "h": 42,
+    "y": 259,
+    "t": "All (1)"
+   },
+   {
+    "w": 158,
+    "h": 42,
+    "y": 259,
+    "t": "Other managers (1)"
+   },
+   {
+    "w": 240,
+    "h": 30,
+    "y": 314,
+    "t": "Search riders on auction"
+   },
+   {
+    "w": 16,
+    "h": 16,
+    "y": 321,
+    "t": ""
+   },
+   {
+    "w": 1168,
+    "h": 16,
+    "y": 356,
+    "t": "More filters"
+   },
+   {
+    "w": 129,
+    "h": 30,
+    "y": 384,
+    "t": "Show stats(5/17)"
+   },
+   {
+    "w": 46,
+    "h": 16,
+    "y": 443,
+    "t": "Reset all"
+   },
+   {
+    "w": 278,
+    "h": 38,
+    "y": 492,
+    "t": "Country"
+   },
+   {
+    "w": 278,
+    "h": 38,
+    "y": 492,
+    "t": "Natural role"
+   },
+   {
+    "w": 278,
+    "h": 38,
+    "y": 492,
+    "t": "Best role now"
+   },
+   {
+    "w": 137,
+    "h": 38,
+    "y": 492,
+    "t": "Min"
+   },
+   {
+    "w": 137,
+    "h": 38,
+    "y": 492,
+    "t": "Max"
+   },
+   {
+    "w": 137,
+    "h": 38,
+    "y": 559,
+    "t": "Min"
+   },
+   {
+    "w": 137,
+    "h": 38,
+    "y": 559,
+    "t": "Max"
+   }
+  ],
+  "gold": []
+ },
+ "auction-history-1440": {
+  "url": "http://localhost:5173/auctions/history",
+  "docW": 1440,
+  "hScroll": false,
+  "docH": 900,
+  "h1": "Auctions",
+  "firstRowY": 278,
+  "smallCount": 29,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 181,
+    "t": "Clubhouse"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 218,
+    "t": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 255,
+    "t": "Market"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 290,
+    "t": "Riders"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 325,
+    "t": "Auctions"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 361,
+    "t": "Transfers"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 396,
+    "t": "Transfer list"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 432,
+    "t": "Watchlist"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 473,
+    "t": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 575,
+    "t": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 611,
+    "t": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 646,
+    "t": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 682,
+    "t": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 717,
+    "t": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 753,
+    "t": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 788,
+    "t": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 824,
+    "t": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 863,
+    "t": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "t": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "t": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "t": "Change language"
+   },
+   {
+    "w": 68,
+    "h": 34,
+    "y": 38,
+    "t": "Active"
+   },
+   {
+    "w": 92,
+    "h": 34,
+    "y": 38,
+    "t": "History (1)"
+   },
+   {
+    "w": 42,
+    "h": 34,
+    "y": 192,
+    "t": "All"
+   },
+   {
+    "w": 92,
+    "h": 34,
+    "y": 192,
+    "t": "Bought (1)"
+   },
+   {
+    "w": 74,
+    "h": 34,
+    "y": 192,
+    "t": "Sold (1)"
+   },
+   {
+    "w": 103,
+    "h": 18,
+    "y": 289,
+    "t": "Théo Journal"
+   },
+   {
+    "w": 74,
+    "h": 13,
+    "y": 335,
+    "t": "View bid war"
+   },
+   {
+    "w": 71,
+    "h": 18,
+    "y": 311,
+    "t": "E2E Racing"
+   }
+  ],
+  "gold": []
+ },
+ "transfers-1440": {
+  "url": "http://localhost:5173/transfers?tab=market",
+  "docW": 1440,
+  "hScroll": false,
+  "docH": 900,
+  "h1": "Transfers",
+  "firstRowY": null,
+  "smallCount": 46,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 181,
+    "t": "Clubhouse"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 218,
+    "t": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 255,
+    "t": "Market"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 290,
+    "t": "Riders"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 325,
+    "t": "Auctions"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 361,
+    "t": "Transfers"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 396,
+    "t": "Transfer list"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 432,
+    "t": "Watchlist"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 473,
+    "t": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 575,
+    "t": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 611,
+    "t": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 646,
+    "t": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 682,
+    "t": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 717,
+    "t": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 753,
+    "t": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 788,
+    "t": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 824,
+    "t": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 863,
+    "t": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "t": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "t": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "t": "Change language"
+   },
+   {
+    "w": 95,
+    "h": 42,
+    "y": 106,
+    "t": "To handle"
+   },
+   {
+    "w": 115,
+    "h": 42,
+    "y": 106,
+    "t": "Negotiations"
+   },
+   {
+    "w": 78,
+    "h": 42,
+    "y": 106,
+    "t": "Market"
+   },
+   {
+    "w": 95,
+    "h": 42,
+    "y": 106,
+    "t": "All trades"
+   },
+   {
+    "w": 240,
+    "h": 30,
+    "y": 161,
+    "t": "Name"
+   },
+   {
+    "w": 144,
+    "h": 30,
+    "y": 161,
+    "t": "Country"
+   },
+   {
+    "w": 151,
+    "h": 30,
+    "y": 161,
+    "t": "Natural role"
+   },
+   {
+    "w": 151,
+    "h": 30,
+    "y": 161,
+    "t": "Best role now"
+   },
+   {
+    "w": 46,
+    "h": 16,
+    "y": 168,
+    "t": "Reset all"
+   },
+   {
+    "w": 104,
+    "h": 16,
+    "y": 168,
+    "t": "More filters"
+   },
+   {
+    "w": 26,
+    "h": 38,
+    "y": 261,
+    "t": "Min"
+   },
+   {
+    "w": 26,
+    "h": 38,
+    "y": 261,
+    "t": "Max"
+   },
+   {
+    "w": 26,
+    "h": 38,
+    "y": 261,
+    "t": "Min"
+   },
+   {
+    "w": 26,
+    "h": 38,
+    "y": 261,
+    "t": "Max"
+   },
+   {
+    "w": 26,
+    "h": 38,
+    "y": 246,
+    "t": "Min"
+   },
+   {
+    "w": 26,
+    "h": 38,
+    "y": 246,
+    "t": "Max"
+   },
+   {
+    "w": 26,
+    "h": 38,
+    "y": 276,
+    "t": "Min"
+   },
+   {
+    "w": 26,
+    "h": 38,
+    "y": 276,
+    "t": "Max"
+   },
+   {
+    "w": 26,
+    "h": 38,
+    "y": 402,
+    "t": "Min"
+   }
+  ],
+  "gold": []
+ },
+ "finance-1440": {
+  "url": "http://localhost:5173/finance",
+  "docW": 1440,
+  "hScroll": false,
+  "docH": 1656,
+  "h1": "Finance",
+  "firstRowY": null,
+  "smallCount": 36,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 181,
+    "t": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 216,
+    "t": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 251,
+    "t": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 287,
+    "t": "Forum"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 322,
+    "t": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 358,
+    "t": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 393,
+    "t": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 429,
+    "t": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 464,
+    "t": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 500,
+    "t": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 535,
+    "t": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 577,
+    "t": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 614,
+    "t": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 651,
+    "t": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 753,
+    "t": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 788,
+    "t": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 824,
+    "t": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 859,
+    "t": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 895,
+    "t": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 930,
+    "t": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 966,
+    "t": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1001,
+    "t": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1041,
+    "t": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "t": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "t": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "t": "Change language"
+   },
+   {
+    "w": 42,
+    "h": 30,
+    "y": 117,
+    "t": "Hide"
+   },
+   {
+    "w": 84,
+    "h": 16,
+    "y": 246,
+    "t": "board modifier"
+   },
+   {
+    "w": 122,
+    "h": 30,
+    "y": 493,
+    "t": "Show me around"
+   },
+   {
+    "w": 51,
+    "h": 30,
+    "y": 493,
+    "t": "Skip"
+   },
+   {
+    "w": 93,
+    "h": 42,
+    "y": 564,
+    "t": "Overview"
+   },
+   {
+    "w": 71,
+    "h": 42,
+    "y": 564,
+    "t": "Loans"
+   },
+   {
+    "w": 87,
+    "h": 42,
+    "y": 564,
+    "t": "Sponsor"
+   },
+   {
+    "w": 79,
+    "h": 42,
+    "y": 564,
+    "t": "History"
+   },
+   {
+    "w": 94,
+    "h": 28,
+    "y": 939,
+    "t": "1 season2 seasons3 seasons4 seasons5 sea"
+   },
+   {
+    "w": 174,
+    "h": 16,
+    "y": 1539,
+    "t": "How is the forecast calculated?"
+   }
+  ],
+  "gold": [
+   "Show me around"
+  ]
+ },
+ "sponsors-1440": {
+  "url": "http://localhost:5173/sponsors",
+  "docW": 1440,
+  "hScroll": false,
+  "docH": 900,
+  "h1": "Sponsors",
+  "firstRowY": null,
+  "smallCount": 31,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 181,
+    "t": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 216,
+    "t": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 251,
+    "t": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 287,
+    "t": "Forum"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 322,
+    "t": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 358,
+    "t": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 393,
+    "t": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 429,
+    "t": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 464,
+    "t": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 500,
+    "t": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 535,
+    "t": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 577,
+    "t": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 614,
+    "t": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 651,
+    "t": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 753,
+    "t": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 788,
+    "t": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 824,
+    "t": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 859,
+    "t": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 895,
+    "t": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 930,
+    "t": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 966,
+    "t": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1001,
+    "t": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1041,
+    "t": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "t": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "t": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "t": "Change language"
+   },
+   {
+    "w": 93,
+    "h": 42,
+    "y": 106,
+    "t": "Overview"
+   },
+   {
+    "w": 61,
+    "h": 42,
+    "y": 106,
+    "t": "Deal"
+   },
+   {
+    "w": 97,
+    "h": 42,
+    "y": 106,
+    "t": "Payments"
+   },
+   {
+    "w": 113,
+    "h": 42,
+    "y": 106,
+    "t": "Next season"
+   },
+   {
+    "w": 104,
+    "h": 16,
+    "y": 347,
+    "t": "Go to Next season"
+   }
+  ],
+  "gold": []
+ },
+ "board-1440": {
+  "url": "http://localhost:5173/board",
+  "docW": 1440,
+  "hScroll": false,
+  "docH": 900,
+  "h1": "Boardroom",
+  "firstRowY": null,
+  "smallCount": 36,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 181,
+    "t": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 216,
+    "t": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 251,
+    "t": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 287,
+    "t": "Forum"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 322,
+    "t": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 358,
+    "t": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 393,
+    "t": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 429,
+    "t": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 464,
+    "t": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 500,
+    "t": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 535,
+    "t": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 577,
+    "t": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 614,
+    "t": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 651,
+    "t": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 753,
+    "t": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 788,
+    "t": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 824,
+    "t": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 859,
+    "t": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 895,
+    "t": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 930,
+    "t": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 966,
+    "t": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1001,
+    "t": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1041,
+    "t": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "t": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "t": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "t": "Change language"
+   },
+   {
+    "w": 149,
+    "h": 30,
+    "y": 40,
+    "t": "Enter annual meeting"
+   },
+   {
+    "w": 93,
+    "h": 42,
+    "y": 106,
+    "t": "Overview"
+   },
+   {
+    "w": 90,
+    "h": 42,
+    "y": 106,
+    "t": "Mandate"
+   },
+   {
+    "w": 72,
+    "h": 42,
+    "y": 106,
+    "t": "Vision"
+   },
+   {
+    "w": 71,
+    "h": 42,
+    "y": 106,
+    "t": "Board"
+   },
+   {
+    "w": 101,
+    "h": 16,
+    "y": 399,
+    "t": "Open mandate"
+   },
+   {
+    "w": 99,
+    "h": 30,
+    "y": 554,
+    "t": "Accept offer"
+   },
+   {
+    "w": 42,
+    "h": 16,
+    "y": 561,
+    "t": "Decline"
+   },
+   {
+    "w": 84,
+    "h": 16,
+    "y": 645,
+    "t": "Open vision"
+   },
+   {
+    "w": 85,
+    "h": 16,
+    "y": 695,
+    "t": "Open board"
+   }
+  ],
+  "gold": [
+   "Enter annual meeting"
+  ]
+ },
+ "watchlist-1440": {
+  "url": "http://localhost:5173/watchlist",
+  "docW": 1440,
+  "hScroll": false,
+  "docH": 900,
+  "h1": "Talent scout",
+  "firstRowY": null,
+  "smallCount": 22,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 181,
+    "t": "Clubhouse"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 218,
+    "t": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 255,
+    "t": "Market"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 290,
+    "t": "Riders"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 325,
+    "t": "Auctions"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 361,
+    "t": "Transfers"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 396,
+    "t": "Transfer list"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 432,
+    "t": "Watchlist"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 473,
+    "t": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 575,
+    "t": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 611,
+    "t": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 646,
+    "t": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 682,
+    "t": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 717,
+    "t": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 753,
+    "t": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 788,
+    "t": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 824,
+    "t": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 863,
+    "t": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "t": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "t": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "t": "Change language"
+   },
+   {
+    "w": 97,
+    "h": 30,
+    "y": 254,
+    "t": "Go to Riders"
+   }
+  ],
+  "gold": [
+   "Go to Riders"
+  ]
+ },
+ "klub-1440": {
+  "url": "http://localhost:5173/klub",
+  "docW": 1440,
+  "hScroll": false,
+  "docH": 900,
+  "h1": "Club",
+  "firstRowY": null,
+  "smallCount": 33,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 181,
+    "t": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 216,
+    "t": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 251,
+    "t": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 287,
+    "t": "Forum"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 322,
+    "t": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 358,
+    "t": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 393,
+    "t": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 429,
+    "t": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 464,
+    "t": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 500,
+    "t": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 535,
+    "t": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 577,
+    "t": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 614,
+    "t": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 651,
+    "t": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 753,
+    "t": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 788,
+    "t": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 824,
+    "t": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 859,
+    "t": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 895,
+    "t": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 930,
+    "t": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 966,
+    "t": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1001,
+    "t": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1041,
+    "t": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "t": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "t": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "t": "Change language"
+   },
+   {
+    "w": 90,
+    "h": 42,
+    "y": 111,
+    "t": "Facilities"
+   },
+   {
+    "w": 64,
+    "h": 42,
+    "y": 111,
+    "t": "Staff"
+   },
+   {
+    "w": 82,
+    "h": 16,
+    "y": 320,
+    "t": "Sofie Lindqvist"
+   },
+   {
+    "w": 94,
+    "h": 16,
+    "y": 320,
+    "t": "Bjarne Holmqvist"
+   },
+   {
+    "w": 130,
+    "h": 30,
+    "y": 463,
+    "t": "Upgrade · 50,000"
+   },
+   {
+    "w": 75,
+    "h": 16,
+    "y": 320,
+    "t": "No staff hired"
+   },
+   {
+    "w": 130,
+    "h": 30,
+    "y": 463,
+    "t": "Upgrade · 26,000"
+   }
+  ],
+  "gold": [
+   "Upgrade · 26,000"
+  ]
+ },
+ "team-1440": {
+  "url": "http://localhost:5173/team",
+  "docW": 1440,
+  "hScroll": false,
+  "docH": 900,
+  "h1": "E2E Racing",
+  "firstRowY": 342,
+  "smallCount": 39,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 181,
+    "t": "Clubhouse"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 216,
+    "t": "Dashboard"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 251,
+    "t": "Inbox"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 287,
+    "t": "Forum"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 322,
+    "t": "My Team"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 358,
+    "t": "Daily Training"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 393,
+    "t": "Finance"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 429,
+    "t": "Board"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 464,
+    "t": "Sponsors"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 500,
+    "t": "Scouting"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 535,
+    "t": "Club"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 577,
+    "t": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 614,
+    "t": "Market"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 651,
+    "t": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 753,
+    "t": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 788,
+    "t": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 824,
+    "t": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 859,
+    "t": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 895,
+    "t": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 930,
+    "t": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 966,
+    "t": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1001,
+    "t": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 1041,
+    "t": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "t": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "t": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "t": "Change language"
+   },
+   {
+    "w": 101,
+    "h": 24,
+    "y": 31,
+    "t": "E2E Racing"
+   },
+   {
+    "w": 89,
+    "h": 20,
+    "y": 90,
+    "t": "500,000 CZ$"
+   },
+   {
+    "w": 62,
+    "h": 20,
+    "y": 90,
+    "t": "Division 2"
+   },
+   {
+    "w": 174,
+    "h": 20,
+    "y": 90,
+    "t": "Salary/season: 42,000 CZ$"
+   },
+   {
+    "w": 93,
+    "h": 42,
+    "y": 196,
+    "t": "Squad (1)"
+   },
+   {
+    "w": 98,
+    "h": 42,
+    "y": 196,
+    "t": "Contracts"
+   },
+   {
+    "w": 120,
+    "h": 42,
+    "y": 196,
+    "t": "Development"
+   },
+   {
+    "w": 66,
+    "h": 42,
+    "y": 196,
+    "t": "Stats"
+   },
+   {
+    "w": 135,
+    "h": 42,
+    "y": 196,
+    "t": "Transfer history"
+   },
+   {
+    "w": 77,
+    "h": 28,
+    "y": 271,
+    "t": "Overview"
+   },
+   {
+    "w": 70,
+    "h": 28,
+    "y": 271,
+    "t": "Abilities"
+   },
+   {
+    "w": 106,
+    "h": 20,
+    "y": 355,
+    "t": "Ada Pedersen"
+   },
+   {
+    "w": 99,
+    "h": 30,
+    "y": 351,
+    "t": "Sell / Auction"
+   }
+  ],
+  "gold": []
+ },
+ "rider-profile-1440": {
+  "url": "http://localhost:5173/riders/rider-1",
+  "docW": 1440,
+  "hScroll": false,
+  "docH": 1529,
+  "h1": "Ada Pedersen",
+  "firstRowY": null,
+  "smallCount": 29,
+  "small": [
+   {
+    "w": 207,
+    "h": 33,
+    "y": 181,
+    "t": "Clubhouse"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 218,
+    "t": "Planning"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 255,
+    "t": "Market"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 290,
+    "t": "Riders"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 325,
+    "t": "Auctions"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 361,
+    "t": "Transfers"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 396,
+    "t": "Transfer list"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 432,
+    "t": "Watchlist"
+   },
+   {
+    "w": 207,
+    "h": 33,
+    "y": 473,
+    "t": "Results"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 575,
+    "t": "My Manager Profile"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 611,
+    "t": "Settings"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 646,
+    "t": "Pro"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 682,
+    "t": "Help"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 717,
+    "t": "Rules"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 753,
+    "t": "RoadmapNew roadmap items"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 788,
+    "t": "Patch NotesNew patch notes"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 824,
+    "t": "Contact"
+   },
+   {
+    "w": 191,
+    "h": 36,
+    "y": 863,
+    "t": "Join Discord"
+   },
+   {
+    "w": 54,
+    "h": 15,
+    "y": 867,
+    "t": "Log out"
+   },
+   {
+    "w": 28,
+    "h": 28,
+    "y": 860,
+    "t": "Join Discord"
+   },
+   {
+    "w": 74,
+    "h": 24,
+    "y": 862,
+    "t": "Change language"
+   },
+   {
+    "w": 44,
+    "h": 16,
+    "y": 27,
+    "t": "Back"
+   },
+   {
+    "w": 170,
+    "h": 24,
+    "y": 157,
+    "t": "U23 world champion"
+   },
+   {
+    "w": 101,
+    "h": 24,
+    "y": 157,
+    "t": "Top Talent"
+   },
+   {
+    "w": 73,
+    "h": 20,
+    "y": 189,
+    "t": "E2E Racing"
+   },
+   {
+    "w": 144,
+    "h": 42,
+    "y": 517,
+    "t": "Extend contract"
+   },
+   {
+    "w": 133,
+    "h": 42,
+    "y": 517,
+    "t": "List for sale"
+   },
+   {
+    "w": 122,
+    "h": 42,
+    "y": 517,
+    "t": "Release rider"
+   },
+   {
+    "w": 57,
+    "h": 23,
+    "y": 1428,
+    "t": "All types"
+   }
+  ],
+  "gold": [
+   "Extend contract"
+  ]
+ }
+}

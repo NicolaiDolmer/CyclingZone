@@ -101,7 +101,8 @@ test("Taktik giver v6 besked ved et lykket gem; siden taeller op med en stabil c
   assert.match(tab, /if \(status === "saved" \|\| status === "partial"\) onV6Saved\?\.\(\);/, "kun et (delvist) lykket gem, aldrig fejl eller konflikt");
   const page = read("./RacePageV6.tsx");
   assert.match(page, /const onTacticsSaved = useCallback\(\(\) => setTacticsSaves\(\(n\) => n \+ 1\), \[\]\);/, "stabil, ellers genudloeses effekten ved hver render");
-  assert.match(page, /<V6TacticsSavedContext\.Provider value=\{onTacticsSaved\}>\n\s+\{renderTactics \? renderTactics\(tacticsStage\) : tacticsSlot\}/);
+  // #8298 + #8388: summary-provideren og skjoldets kontekst ligger inden i gem-beskeden; editoren inderst.
+  assert.match(page, /<V6TacticsSavedContext\.Provider value=\{onTacticsSaved\}><V6TacticsSummaryContext\.Provider value=\{tacticsSummary\.report\}>\n(?:\s+\{\/\*[^\n]*\*\/\}\n\s+<V6TacticsResultsHiddenContext\.Provider [^\n]*>\n)?\s+\{renderTactics \? renderTactics\(tacticsStage\) : tacticsSlot\}/);
   const ctx = read("./v6TacticsSaved.ts");
   assert.match(ctx, /createContext<\(\(\) => void\) \| null>\(null\)/, "uden v6 (ingen provider) er beskeden null, og Taktik opfoerer sig som foer");
 });

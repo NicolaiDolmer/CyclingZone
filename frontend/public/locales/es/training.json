@@ -114,7 +114,6 @@
     "colSeasonPoints": "Pts temporada",
     "colFatigueTonight": "Fatiga ahora / esta noche",
     "fatigueTonightAria": "Fatiga ahora {now}, esta noche aprox. {value}. {band}",
-    "fatigueAtStart": "{now} ahora, aprox. {value} al inicio",
     "selectRider": "Seleccionar a {name}",
     "applyTo": "Aplicar a {n}",
     "bulkLead": "Fijar el día de hoy para",
@@ -558,6 +557,12 @@
     "selectDone": "Hecho",
     "restSelected": "Poner en descanso",
     "pickHint": "Toca los ciclistas que quieras cambiar."
+  },
+  "settleAfterStage": {
+    "ran": "Hecha",
+    "ranTitle": "Esta sesión ya se ha hecho y no se puede cambiar",
+    "note": "{n, plural, one {La sesión de carrera de # ciclista se liquida tras la etapa.} other {Las sesiones de carrera de # ciclistas se liquidan tras la etapa.}} Las sesiones que no se han hecho aún se pueden cambiar.",
+    "fatigueNow": "La fatiga mostrada ya incluye la carrera."
   },
   "programs": {
     "title": "Programas de entrenamiento",

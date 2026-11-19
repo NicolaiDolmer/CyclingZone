@@ -16,7 +16,23 @@ const {
   importCheck,
   missingRollout,
   missingFlag,
+  missingArea,
 } = require("./check-patch-notes-version.js");
+
+test("#8049: nye player-changes kræver et gyldigt område; historiske og interne gør ikke", () => {
+  const patches = [
+    { version: "2.1", changes: [
+      { audience: "player", area: "training" },
+      { audience: "player" },
+      { audience: "player", area: "other" },
+      { audience: "player", area: "Training" },
+      { audience: "internal" },
+    ] },
+    { version: "2.0", changes: [{ audience: "player" }] },
+  ];
+  assert.deepEqual(missingArea(patches, ["2.0"]), ["2.1#1", "2.1#2", "2.1#3"]);
+  assert.deepEqual(missingArea(patches, ["2.1", "2.0"]), []);
+});
 
 test("#6014: nye player-changes kræver rollout; historiske og interne gør ikke", () => {
   const patches = [
@@ -240,7 +256,7 @@ function runGuardIn(fragments) {
 }
 
 const goodChange = {
-  category: "fixed", audience: "player", rollout: "live", topic: "Calendar",
+  category: "fixed", audience: "player", rollout: "live", topic: "Calendar", area: "races",
   en: { title: "Each race once", body: "The calendar shows each race once." },
   da: { title: "Hvert løb én gang", body: "Kalenderen viser hvert løb én gang." },
   refs: [5841],
@@ -262,4 +278,29 @@ test("#8346: fragment med version, uden rollout eller med em-dash fejler vagten"
   assert.match(res.stderr, /1-has-version\.json: "version" gives ved merge/);
   assert.match(res.stderr, /2-no-rollout\.json: fejler missingRollout/);
   assert.match(res.stderr, /em-dash: .*3-em-dash\.json/);
+});
+
+// #8049 + #8346 mødes her: en ny spillervendt note skal have et gyldigt område, også når den
+// ligger som fragment. `missingArea` samles op af fragment-vagten fordi den hedder missing*.
+test("#8049: et fragment uden gyldigt område fejler vagten; med område består det", () => {
+  const noArea = runGuardIn({ "8049-no-area.json": { changes: [{ ...goodChange, area: undefined }] } });
+  assert.equal(noArea.status, 1);
+  assert.match(noArea.stderr, /8049-no-area\.json: fejler missingArea/);
+
+  const badArea = runGuardIn({ "8049-bad-area.json": { changes: [{ ...goodChange, area: "other" }] } });
+  assert.equal(badArea.status, 1, "\"other\" er reserven og kan ikke skrives af en redaktør");
+  assert.match(badArea.stderr, /8049-bad-area\.json: fejler missingArea/);
+
+  const internal = runGuardIn({ "8049-internal.json": { changes: [{ ...goodChange, audience: "internal", area: undefined }] } });
+  assert.equal(internal.status, 0, internal.stderr);
+
+  const ok = runGuardIn({ "8049-area.json": { changes: [goodChange] } });
+  assert.equal(ok.status, 0, ok.stderr);
+});
+
+test("#8049: fragmentets område overlever nummereringen (hele posten skrives til patchNotes.js)", async () => {
+  const { validateFragment } = await import(require("node:url").pathToFileURL(path.join(__dirname, "patch-notes-number.mjs")).href);
+  const { data, errors } = validateFragment("8049-area.json", JSON.stringify({ changes: [goodChange] }));
+  assert.deepEqual(errors, []);
+  assert.equal(data.changes[0].area, "races");
 });

@@ -128,7 +128,7 @@ test("før første etape er der ingen favoritter (ingen synlige resultater i lø
 
 test("faneplanen har Startliste; Hold følger etapen i striben (valg 13)", () => {
   assert.ok((RACE_PAGE_V6_TABS as readonly string[]).includes("start"));
-  assert.ok(v6Tabs(false).includes("start"));
+  assert.ok(v6Tabs().includes("start"));
   assert.equal(resolveV6Tab("start", { ridden: false, isStageRace: true }), "start");
   assert.ok(STAGE_SCOPED_TABS.includes("team"));
   assert.deepEqual(v6Strip({ activeTab: "team", isStageRace: true, selectedStage: 3, tacticsStage: 4 }), { selected: 3, target: "page" });

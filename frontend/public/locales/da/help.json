@@ -1537,7 +1537,7 @@
       },
       "fatigueNow": {
         "title": "Træthed lige nu",
-        "text": "Træthedstallet på Træningssiden viser, hvor træt din rytter er lige nu. Holdudtagelsen, løbets Hold-fane og rytterkortet viser samme tal. Det tæller allerede de etaper, han har kørt tidligere i dag, selv om aftenens opgørelse ikke er kørt endnu, så tallet er aldrig en dag bagud. Hver etape lægger sin belastning til og giver et døgns restitution, på samme måde som aftenens opgørelse, så tallet kan falde efter en let etape; restitutionen følger det, der sker i spillet, ikke uret. Har din rytter en etape i dag eller i morgen, viser en ekstra linje skønnet ved starten af den etape. Skønnet ser kun frem til hans næste etape, for længere ude er planen et gæt. Til en etape i dag er det tallet nu, for etaperne før den er kørt. Til en etape i morgen er det samme tal som Træthed i aften, fx \"62 nu, ca. 70 ved start\". Automatisk træning tæller med ved aftenens opgørelse. Træn nu tæller med, når du trykker. Når assistenten udfylder en trup, regner den trætheden fra starten af løbets første etape og ikke fra det øjeblik, du trykker på knappen, så udtagelsen er den samme, uanset hvornår du trykker. Etaper kørt tidligere på samme dato som den start tæller med, for dem tager rytteren med ind i løbet. Kan det levende tal ikke læses, står der en streg i stedet for et tal. Assistentens udtagelse bruger så tallet fra dagens start."
+        "text": "Træthedstallet på Træningssiden viser, hvor træt din rytter er lige nu. Holdudtagelsen, løbets Hold-fane og rytterkortet viser samme tal. Det tæller allerede de etaper, han har kørt tidligere i dag, selv om aftenens opgørelse ikke er kørt endnu, så tallet er aldrig en dag bagud. Hver etape lægger sin belastning til og giver et døgns restitution, på samme måde som aftenens opgørelse, så tallet kan falde efter en let etape; restitutionen følger det, der sker i spillet, ikke uret. Automatisk træning tæller med ved aftenens opgørelse. Træn nu tæller med, når du trykker. Når assistenten udfylder en trup, regner den trætheden fra starten af løbets første etape og ikke fra det øjeblik, du trykker på knappen, så udtagelsen er den samme, uanset hvornår du trykker. Etaper kørt tidligere på samme dato som den start tæller med, for dem tager rytteren med ind i løbet. Kan det levende tal ikke læses, står der en streg i stedet for et tal. Assistentens udtagelse bruger så tallet fra dagens start."
       },
       "fatigueLimit": {
         "title": "Træthedsgrænse",
@@ -1870,6 +1870,10 @@
       "scouting": {
         "title": "Scout andre divisioner",
         "text": "Skift race hub'en til 'Min division' eller 'Andre divisioner' for at se enhver puljes kommende startlister, skrivebeskyttet. Startlister åbner syv dage før hvert løb og viser kun bruttotrupper (hvilke ryttere et hold har meldt til), så du kan vurdere det forventede felt. Roller, form og træthed forbliver skjult, og løb længere ude er låst, indtil deres startliste åbner."
+      },
+      "spoilerShield": {
+        "title": "Spoiler-skjold",
+        "text": "Spoiler-skjoldet holder vindere og placeringer ude af dine beskeder, til du selv vil se dem. Slå det til under Indstillinger, under Notifikationer, i kortet Resultater og spoilere (Spoiler-skjold for alle løb). Det er slået fra som standard. Med skjoldet til siger indbakken, klokken og browser-notifikationerne kun, at en etape er færdig. De nævner hverken vinder eller placering. Den nye løbsside får en kontakt til hvert løb og skjuler resultatet der, til du trykker Vis resultater. Indtil den nye løbsside er tændt for dig, viser løbssiden resultatet som før."
       }
     },
     "raceDay": {
