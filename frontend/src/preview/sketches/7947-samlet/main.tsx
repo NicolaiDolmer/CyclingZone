@@ -10,6 +10,10 @@ import Direction4 from "./R4.tsx";
 import { ProgramView, Questions } from "./R4Extras.tsx";
 import Direction5, { type R5Init } from "./R5.tsx";
 import Over100 from "./R5Over100.tsx";
+import PlanVisibility from "./R5PlanVisibility.tsx";
+import NextPoint from "./R5NextPoint.tsx";
+import Fixes from "./R5Fixes.tsx";
+import PlanCard from "./R5PlanCard.tsx";
 const view = new URLSearchParams(window.location.search).get("view");
 
 const IDS = ["r5", "r4", "r1", "r2", "r3"] as const;
@@ -87,8 +91,16 @@ const r5Init: R5Init = {
 
 createRoot(document.getElementById("root")!).render(
   <>
-    {!shot && view !== "over100" && <Nav />}
-    {view === "over100" ? (
+    {!shot && view !== "over100" && view !== "plan" && view !== "nextpoint" && view !== "fix" && view !== "plancard" && <Nav />}
+    {view === "plancard" ? (
+      <div className="min-h-screen bg-cz-body"><PlanCard /></div>
+    ) : view === "fix" ? (
+      <div className="min-h-screen bg-cz-body"><Fixes n={q.get("n") ?? "1"} /></div>
+    ) : view === "nextpoint" ? (
+      <div className="min-h-screen bg-cz-body"><NextPoint /></div>
+    ) : view === "plan" ? (
+      <div className="min-h-screen bg-cz-body"><PlanVisibility which={q.get("w") === "profile" ? "profile" : "mobile"} /></div>
+    ) : view === "over100" ? (
       <div className="min-h-screen bg-cz-body"><Over100 which={q.get("w") === "a2" ? "a2" : "a1"} mobile={mobile} /></div>
     ) : id === "r5" ? (
       <div className="min-h-screen bg-cz-body">
