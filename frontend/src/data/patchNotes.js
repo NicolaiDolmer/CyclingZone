@@ -1,5 +1,30 @@
 export const PATCHES = [
 {
+  "version": "7.470",
+  "date": "2026-11-19",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "beta",
+      "flag": "race_page_v6",
+      "topic": "Race page",
+      "area": "races",
+      "en": {
+        "title": "Spoiler shield covers more of the race page",
+        "body": "I now hide unopened results in the Start list, Stage and Team tabs when your spoiler shield is on."
+      },
+      "da": {
+        "title": "Spoilerskjoldet dækker mere af løbssiden",
+        "body": "Jeg skjuler nu uåbnede resultater på Startliste, Etape og Hold, når dit spoilerskjold er slået til."
+      },
+      "refs": [
+        8409
+      ]
+    }
+  ]
+},
+{
   "version": "7.469",
   "date": "2026-11-18",
   "changes": [
