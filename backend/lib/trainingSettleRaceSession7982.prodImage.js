@@ -226,6 +226,34 @@ export function defaultTimes(image) {
   return { settleAt: new Date(image.capturedAt), eveningAt: copenhagenWallTimeToUTC(image.tickDate, 20, 5) };
 }
 
+// 13.5: "Evnepoint er ens; fremgangen mod naeste point kan afvige hoejst 1/1000 point."
+// Motorens udvikling pr. session afhaenger af rytterens hele evnepoint (afstanden til loftet), saa
+// naar loebssessionen gemmes foer datoens tidligere sessioner, kan et helt point krydses i en anden
+// session. Det flytter pointet mellem kvitteringerne (gains, gains_detail, den raa sum score) og
+// loebsdagshistorikkens raekke, og fremgangen glider en smule. Datoens sum pr. rytter er ens.
+export const PROGRESS_TOLERANCE = 1e-3;
+const ORDER_FOLLOWING_RECEIPT_FIELDS = Object.freeze(["gains", "gains_detail", "score"]);
+export const gainTotals = (receipts) => {
+  const totals = {};
+  for (const r of receipts) for (const [ability, gain] of Object.entries(r.report?.gains ?? {})) {
+    const key = `${r.rider_id}#${r.tick_date}#${ability}`;
+    totals[key] = (totals[key] ?? 0) + Number(gain);
+  }
+  return totals;
+};
+export const progressWithinTolerance = (late, early) => late.length === early.length && late.every((row, i) => {
+  const a = row.ability_progress ?? {}, b = early[i].ability_progress ?? {};
+  return [...new Set([...Object.keys(a), ...Object.keys(b)])].every((k) => Math.abs(Number(a[k] ?? 0) - Number(b[k] ?? 0)) <= PROGRESS_TOLERANCE);
+});
+// Spillets tal uden det, der foelger gemmeraekkefoelgen: evnepoint eksakt (fremgangen proeves med
+// tolerance ovenfor), loebsdagshistorikken som rytterens billeder uden loebsdag og kilde.
+const orderInvariant = ({ receipts: _receipts, abilities, raceDayHistory, ...rest }) => ({
+  ...rest,
+  abilities: abilities.map(({ ability_progress: _progress, ...row }) => row),
+  raceDayHistory: raceDayHistory.map(({ game_day: _day, source: _source, ...row }) => row)
+    .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
+});
+
 /**
  * Trin 2: "alt kl. 20" mod "tidligt" fra samme billede, med taendings-kontakterne (eller `flags`).
  * Spillets tal skal vaere ens; kvitteringernes oejebliksbilleder maa afvige som i facit (13.5).
@@ -235,18 +263,28 @@ export async function runProdImage(image, { flags = IGNITION_FLAGS, ...times } =
   const late = await runPath(image, { early: false, flags, settleAt, eveningAt });
   const early = await runPath(image, { early: true, flags: { ...flags, [SETTLE_FLAG]: "on" }, settleAt, eveningAt });
   const lateNumbers = numbersOf(late.state), earlyNumbers = numbersOf(early.state);
-  const { receipts: lateReceipts, ...lateRest } = lateNumbers;
-  const { receipts: earlyReceipts, ...earlyRest } = earlyNumbers;
-  const plain = (list) => list.map((r) => ({ id: `${r.rider_id}#${r.game_day}`, gains: r.report.gains, gains_detail: r.report.gains_detail, score: r.report.score, intensity: r.report.intensity, status: r.report.status, injured: r.report.injured }));
+  const { receipts: lateReceipts } = lateNumbers;
+  const { receipts: earlyReceipts } = earlyNumbers;
+  // 13.5: evnepoint og datoens gevinst pr. rytter er ens; kun HVILKEN session der krydser pointet
+  // foelger gemmeraekkefoelgen (og dermed fremgangen, hoejst 1/1000 point).
+  const lateRest = orderInvariant(lateNumbers), earlyRest = orderInvariant(earlyNumbers);
+  const gainTotalsEqual = digest(gainTotals(lateReceipts)) === digest(gainTotals(earlyReceipts));
+  const progressOk = progressWithinTolerance(lateNumbers.abilities, earlyNumbers.abilities);
+  const orderFollowing = gainTotalsEqual ? ORDER_FOLLOWING_RECEIPT_FIELDS : [];
+  const plain = (list) => list.map((r) => ({ id: `${r.rider_id}#${r.game_day}`, intensity: r.report.intensity, status: r.report.status, injured: r.report.injured,
+    ...(gainTotalsEqual ? {} : { gains: r.report.gains, gains_detail: r.report.gains_detail, score: r.report.score }) }));
   const raceSessions = early.state.training_rider_ticks.filter((t) => t.report?.race_session_7982 === true).length;
   const errors = [...late.evening, ...early.evening].filter((row) => row.error).map((row) => row.error);
   const valid = !late.unsupported.length && !early.unsupported.length && !late.missingTables.length && !early.missingTables.length && !errors.length;
   return {
     valid, errors, unsupported: unique([...late.unsupported, ...early.unsupported]), missingTables: unique([...late.missingTables, ...early.missingTables]),
     settled: early.settled, raceSessions,
-    numbersEqual: digest(lateRest) === digest(earlyRest), firstDifference: firstDiff(lateRest, earlyRest),
+    numbersEqual: digest(lateRest) === digest(earlyRest) && gainTotalsEqual && progressOk,
+    firstDifference: firstDiff(lateRest, earlyRest) ?? (gainTotalsEqual ? null : ".gainTotals") ?? (progressOk ? null : ".abilities.ability_progress (> 1/1000)"),
+    gainTotalsEqual, progressWithinTolerance: progressOk,
     receiptsPlainEqual: digest(plain(lateReceipts)) === digest(plain(earlyReceipts)),
-    receiptFieldsThatDiffer: lateReceipts.length === earlyReceipts.length ? receiptFieldsThatDiffer(lateNumbers, earlyNumbers) : ["(antal kvitteringer)"],
+    receiptFieldsThatDiffer: lateReceipts.length === earlyReceipts.length
+      ? receiptFieldsThatDiffer(lateNumbers, earlyNumbers).filter((field) => !orderFollowing.includes(field)) : ["(antal kvitteringer)"],
     digests: { late: digest(lateNumbers), early: digest(earlyNumbers) },
     late, early,
   };

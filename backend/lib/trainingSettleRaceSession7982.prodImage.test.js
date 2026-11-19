@@ -166,3 +166,20 @@ test("#8391: proeven bestaar kun, naar de dokumenterede betingelser holder (ikke
   const { image } = await capture(syntheticProd());
   assert.deepEqual(proofFailures(await runProdImage(image)), []);
 });
+
+test("13.5 (ejervalg 19/11): et point maa staa paa en anden af datoens sessioner, men datoens sum og evnepoint skal vaere ens", async () => {
+  const { gainTotals, progressWithinTolerance, PROGRESS_TOLERANCE } = await import("./trainingSettleRaceSession7982.prodImage.js");
+  const r = (rider, day, gains) => ({ rider_id: rider, tick_date: "2026-11-19", game_day: day, report: { gains } });
+  // Samme point paa en anden session: summen er ens.
+  const late = [r("a", 111, { sprint: 1 }), r("a", 112, {})];
+  const early = [r("a", 111, {}), r("a", 112, { sprint: 1 })];
+  assert.deepEqual(gainTotals(late), gainTotals(early));
+  // Et ekstra point i den ene vej: summen er forskellig (proeven skal fejle).
+  const extra = [r("a", 111, { sprint: 1 }), r("a", 112, { sprint: 1 })];
+  assert.notDeepEqual(gainTotals(late), gainTotals(extra));
+  // Fremgangen: inden for 1/1000 point er godt, over er ikke.
+  const row = (p) => [{ ability_progress: { sprint: p } }];
+  assert.equal(progressWithinTolerance(row(0.5), row(0.5 + PROGRESS_TOLERANCE / 2)), true);
+  assert.equal(progressWithinTolerance(row(0.5), row(0.5 + PROGRESS_TOLERANCE * 2)), false);
+  assert.equal(progressWithinTolerance(row(0.5), [...row(0.5), ...row(0.5)]), false, "forskelligt antal raekker");
+});
