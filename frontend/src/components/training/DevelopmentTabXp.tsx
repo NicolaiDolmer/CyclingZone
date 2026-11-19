@@ -86,6 +86,7 @@ function DevelopmentTabXp({ fixture, runs, roster, estimateFor, seasonGains, rac
     const riders = roster.map((r): DevRiderInput => ({
       id: r.id,
       name: `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim() || r.id,
+      firstname: r.firstname ?? null, lastname: r.lastname ?? null,
       nation: r.nationality_code ?? null,
       type: r.primary_type ? { primary: r.primary_type, secondary: r.secondary_type ?? null } as XpRiderType : null,
       rating: riderOverallRating(r),
@@ -107,7 +108,8 @@ function DevelopmentTabXp({ fixture, runs, roster, estimateFor, seasonGains, rac
       <div className="overflow-hidden rounded-cz border border-cz-border bg-cz-card">
         <TitleLine summary={summary} />
         {desktop
-          ? <DesktopTable rows={sorted} open={open} toggle={toggle} sort={sort} onSort={onSort} />
+          // Below the content width the table needs, it scrolls sideways instead of clipping columns.
+          ? <div className="overflow-x-auto"><DesktopTable rows={sorted} open={open} toggle={toggle} sort={sort} onSort={onSort} /></div>
           : <PhoneList rows={sorted} open={open} toggle={toggle} />}
       </div>
       <p className="mt-3 text-2xs text-cz-3">
@@ -254,7 +256,7 @@ function DesktopTable({ rows, open, toggle, sort, onSort }: { rows: DevRow[]; op
   const { t } = useTranslation("training");
   const { t: tRider } = useTranslation("rider");
   return (
-    <table className="w-full table-fixed text-xs" data-sortable data-testid="development-xp-table">
+    <table className="w-full min-w-[1160px] table-fixed text-xs" data-sortable data-testid="development-xp-table">
       <thead>
         <tr className="border-b border-cz-border">
           <th className="w-[44px]"><span className="sr-only">{t("developmentXp.abilitiesCol")}</span></th>

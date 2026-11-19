@@ -88,6 +88,13 @@ test("before today's training there is no XP today, not a zero", () => {
   assert.deepEqual(rows[0].today, { state: "none" });
 });
 
+test("a rider missing from today's receipt (e.g. signed after training) is unknown, not a measured zero", () => {
+  const rows = buildDevelopmentRows({ runs: RUNS, riders: [rider("new")], todayKey: "2026-11-19", seasonGains: {} });
+  assert.deepEqual(rows[0].today, { state: "none" });
+  assert.equal(rows[0].next, null);
+  assert.equal(rows[0].xp30, 0);
+});
+
 test("the summary line adds up the rows", () => {
   const rows = buildDevelopmentRows({ runs: RUNS, riders: [rider("a"), rider("b", { racingToday: true })], todayKey: "2026-11-19", seasonGains: { a: { climbing: 3 } }, forceUnsettled: true });
   assert.deepEqual(devSummary(rows), { riders: 2, xpToday: 30, unsettled: 1, xp30: 115, seasonPoints: 3, close: 1 });

@@ -122,7 +122,7 @@ export function buildDevelopmentRows({ runs, riders, todayKey, seasonGains, forc
 
     let today: XpTodayCell;
     if (rider.racingToday && !settled) today = { state: "locked" };
-    else if (!todayRun) today = { state: "none" };
+    else if (!todayRun || !todayRowById.has(rider.id)) today = { state: "none" }; // no row = unknown, never a measured zero
     else {
       const view = todayById.get(rider.id);
       const raw = todayRowById.get(rider.id);
