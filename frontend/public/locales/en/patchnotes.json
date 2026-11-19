@@ -54,5 +54,85 @@
   "footer": {
     "hiddenNote": "Internal and technical notes are hidden from this page.",
     "rolloutNote": "Beta: only the beta group has it. No label: live for everyone."
+  },
+  "v2": {
+    "subtitle": "What's new in Cycling Zone, week by week and by area",
+    "newSince": "{count, plural, one {# new since your last visit} other {# new since your last visit}}",
+    "newDot": "New since your last visit",
+    "heroGameLink": "Daily Training",
+    "heroHelpLink": "Help",
+    "heroImageAlt": "Screenshot from the game: {title}",
+    "search": {
+      "ariaLabel": "Search all patch notes",
+      "placeholder": "Search all patch notes, including the archive"
+    },
+    "area": {
+      "label": "Area",
+      "all": "All areas",
+      "tactics": "Tactics",
+      "races": "Races and race film",
+      "engine": "Race engine",
+      "training": "Training",
+      "development": "Development",
+      "market": "Market",
+      "academy": "Academy and youth",
+      "board": "Board",
+      "economy": "Economy",
+      "interface": "Interface",
+      "mobile": "Mobile",
+      "help": "Help",
+      "other": "Other"
+    },
+    "tag": {
+      "on": "Now for everyone",
+      "new": "New",
+      "beta": "Beta",
+      "improved": "Improvement",
+      "fixed": "Fix"
+    },
+    "tagCount": {
+      "on": "{count, plural, one {# now for everyone} other {# now for everyone}}",
+      "new": "{count, plural, one {# new} other {# new}}",
+      "beta": "{count, plural, one {# beta} other {# beta}}",
+      "improved": "{count, plural, one {# improvement} other {# improvements}}",
+      "fixed": "{count, plural, one {# fix} other {# fixes}}"
+    },
+    "thisWeek": "This week",
+    "lastWeek": "Last week",
+    "week": "Week {week}",
+    "weekMeta": "{range} · {count, plural, one {# change} other {# changes}}",
+    "earlierWeeks": "Earlier weeks",
+    "archive": "Archive",
+    "changes": "{count, plural, one {# change} other {# changes}}",
+    "olderMonths": "{from} to {to}",
+    "showMonths": "Show months",
+    "open": "Open",
+    "openWeek": "Open week",
+    "close": "Close",
+    "openOnMonday": "open while this week is quiet",
+    "moreIn": "+{count} more in {area}",
+    "fixesCount": "{count, plural, one {# fix} other {# fixes}}",
+    "show": "Show",
+    "showFixes": "Show the fixes in {area}",
+    "mostImportant": "Most important",
+    "otherCount": "other {count}",
+    "emptyWeek": "No changes yet this week.",
+    "emptyWeekFiltered": "No changes match your filters here.",
+    "searchResults": "Search results",
+    "hits": "{count, plural, one {# result} other {# results}}",
+    "showing": "Showing {shown} of {total}",
+    "showMore": "Show more",
+    "clear": "Clear filters",
+    "searchEmpty": {
+      "title": "Nothing matches your search",
+      "description": "Try another word or clear the filters."
+    },
+    "filterEmpty": {
+      "title": "Nothing matches your filters",
+      "description": "Clear the filters to see every change."
+    },
+    "indexError": "Older patch notes could not be searched right now. Recent weeks are still searched.",
+    "monthError": "This month could not be loaded. Nothing was lost.",
+    "showInArchive": "Show in the archive"
   }
 }

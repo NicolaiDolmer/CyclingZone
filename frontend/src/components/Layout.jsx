@@ -34,7 +34,7 @@ import { reportActionFailure } from "../lib/actionTelemetry.js";
 import { subscribeUnreadSync } from "./notifications/unreadSync.js"; // #6473
 import {
   loadPatchNotesMeta, isPatchNotesUnread, readLastSeenPatchNotes, writeLastSeenPatchNotes,
-  buildNavDotFlags, resolveNavDot,
+  buildNavDotFlags, resolveNavDot, pickPatchNotesMarker,
 } from "../lib/patchNotesUnread.js";
 import {
   isRoadmapUnread, readLastSeenRoadmap, latestRoadmapCreatedAt,
@@ -526,7 +526,7 @@ export default function Layout() {
   // #3811: ulæst-prik ved "Patch Notes" — patchNotesLatestDate er nyeste patch-
   // dato (fra den lette patch-notes-meta.json), patchNotesUnread er den afledte
   // boolean NavItem viser prikken ud fra. Se effekten nederst i komponenten.
-  const [patchNotesLatestDate, setPatchNotesLatestDate] = useState(null);
+  const [patchNotesMeta, setPatchNotesMeta]             = useState(null); // #8049: {version, date, seenKey}
   const [patchNotesUnread, setPatchNotesUnread]         = useState(false);
   // #5673: samme prik-recipe, men nyeste dato kommer fra roadmap_items
   // (Supabase, offentligt læsbar — se fetchLatestRoadmapDate nedenfor) i
@@ -568,6 +568,7 @@ export default function Layout() {
   // #5404: off|beta|on pr. spiller-synlig kontakt (lib/featureStage.ts) —
   // KUN til Beta-badgen, ikke til at gate synlighed (den mekanik er uændret).
   const [flagStages, setFlagStages] = useState({});
+  const patchNotesLatestDate = pickPatchNotesMarker(patchNotesMeta, /** @type {Record<string, string>} */ (flagStages).patch_notes_v2_8049); // #8049
   const boardMandateBeta = isBetaStage(flagStages.board_mandate_model_enabled);
   // #3102 etape 3: peak_planner-nav-gaten (usePlanner) udgik — Formplan er en
   // fane i Planlægnings-hubben, og fanen selv viser tom-staten ved kill-switch.
@@ -825,7 +826,7 @@ export default function Layout() {
   useEffect(() => {
     let active = true;
     loadPatchNotesMeta()
-      .then((meta) => { if (active && meta?.date) setPatchNotesLatestDate(meta.date); })
+      .then((meta) => { if (active && meta?.date) setPatchNotesMeta(meta); })
       .catch(() => { /* netværksfejl: prikken forbliver skjult */ });
     return () => { active = false; };
   }, []);

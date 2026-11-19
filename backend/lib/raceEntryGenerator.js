@@ -28,6 +28,7 @@ import { DEFAULT_SQUAD } from "./squads.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { notifyAssistantFilledSquad } from "./assistantFilledSquadNotification.js";
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFillSource.js";
+import { loadLeavingRiderIds8153 } from "./riderRelease8153.js"; // #8153
 import { captureException } from "./sentry.js";
 import { invalidateNamespace } from "./responseCache.js"; // #6680
 import { loadOptedOutKeys, optOutKey } from "./youthRaceOptOut.ts";
@@ -836,7 +837,9 @@ export async function runRaceEntryGenerator({
       injuredIds = new Set((injured || []).map((r) => r.rider_id));
     }
 
+    const leavingIds = await loadLeavingRiderIds8153(supabase); // #8153: bestilt frigivelse -> aldrig kandidat (slukket = tomt)
     for (const r of riders) {
+      if (leavingIds.has(r.id)) continue;
       const abRow = abilityByRider.get(r.id);
       if (!abRow) continue; // rytter uden abilities kan ikke scores → spring over (mirror raceRunner).
       if (injuredIds.has(r.id)) continue; // #2637: skadet → aldrig kandidat til auto-udtagelse.

@@ -338,6 +338,26 @@
     {
       "issue": 6570,
       "area": "race-engine"
+    },
+    {
+      "issue": 8400,
+      "area": "academy",
+      "why": "Ejer-go 18/11 eftermiddag (PC1-session, Codex-listen på #8374). Kun del 1: prognose pr. rolle ved endeligt bud."
+    },
+    {
+      "issue": 5153,
+      "area": "web-quality",
+      "why": "Ejer-go 18/11 eftermiddag (PC1-session, Codex-listen på #8374)"
+    },
+    {
+      "issue": 8236,
+      "area": "web-experience",
+      "why": "Ejer-go 18/11 eftermiddag (PC1-session, Codex-listen på #8374)"
+    },
+    {
+      "issue": 8337,
+      "area": "web-experience",
+      "why": "Ejer-go 18/11 eftermiddag (PC1-session, Codex-listen på #8374). Dokument med UX top 10."
     }
   ],
   "cleanupList": [
@@ -631,6 +651,10 @@
     {
       "issue": 8152,
       "why": "Forsiden viser vinder og tilmeldte ca. 7 sekunder for sent, naar det valgfrie profil-opslag fejler (bibliotekets gentagelser ved 503). Ejer 13/11 i Claude-session paa kort om, hvornaar den skal rettes: 'I morgen på PC1, først (Recommended)'. Ingen ny spillertekst."
+    },
+    {
+      "issue": 8359,
+      "why": "Rester af kontakter, der aldrig kommer i brug (markeds-eftersynets tre rækker og tomme logtabel, auktions-adgang for nye konti, spørgeskema-banneret). Ejer 17/11 (PC1, AskUserQuestion, én kontakt ad gangen): 'Ja, fjern resterne', 'Fjern rækken', 'Fjern de to rækker'. Én migration + ét oprydningscommit."
     }
   ],
   "brandList": [
@@ -1116,7 +1140,7 @@
     },
     {
       "issue": 7659,
-      "reason": "Supabase uden fejl: DB genstartede 25/10 og 4/11 med fejlsvar til spillerne; ejer valgte retning A 4/11 (MASTERPLAN Brand)",
+      "reason": "Supabase uden fejl: DB genstartede 25/10 og 4/11 med fejlsvar til spillerne; ejer valgte retning A 4/11 (MASTERPLAN Brand) Ejer-go 18/11 eftermiddag (PC1-session, Codex-listen på #8374). Dagens mandat dækker de fem langsomste SQL-kald.",
       "since": "2026-11-04"
     },
     {
@@ -1126,12 +1150,12 @@
     },
     {
       "issue": 7663,
-      "reason": "#7659 trin 4: kontakt-cache + lokalt login-tjek (JWT)",
+      "reason": "#7659 trin 4: kontakt-cache + lokalt login-tjek (JWT) Ejer-go 18/11 eftermiddag (PC1-session, Codex-listen på #8374)",
       "since": "2026-11-04"
     },
     {
       "issue": 7664,
-      "reason": "#7659 trin 3: team_race_points_mv billigere (målt før/efter)",
+      "reason": "#7659 trin 3: team_race_points_mv billigere (målt før/efter) Ejer-go 18/11 eftermiddag (PC1-session, Codex-listen på #8374)",
       "since": "2026-11-04"
     },
     {
@@ -1516,12 +1540,52 @@
     },
     {
       "issue": 8003,
-      "reason": "Ranglisten venter ~13 min efter et løb (uge 47-milestone, MASTERPLAN). Ejer-go 17/11 PC1 natplan (AskUserQuestion 9/12: Ranglisten #8003); måling + design før første PR.",
+      "reason": "Ranglisten venter ~13 min efter et løb (uge 47-milestone, MASTERPLAN). Ejer-go 17/11 PC1 natplan (AskUserQuestion 9/12: Ranglisten #8003); måling + design før første PR. Ejer-go 18/11 eftermiddag (PC1-session, Codex-listen på #8374)",
       "since": "2026-11-17"
     },
     {
       "issue": 8327,
-      "reason": "Ejer 17/11 morgen (PC1, AskUserQuestion): 'Løft 2 KB nu + trim som opfølgning'. Loftet for første indlæsning +2 KB (#8328), main ved loftet blokerede PR'er bag slukkede kontakter; trim index-chunken og sænk loftet igen.",
+      "reason": "Ejer 17/11 morgen (PC1, AskUserQuestion): 'Løft 2 KB nu + trim som opfølgning'. Loftet for første indlæsning +2 KB (#8328), main ved loftet blokerede PR'er bag slukkede kontakter; trim index-chunken og sænk loftet igen. Ejer-go 18/11 eftermiddag (PC1-session, Codex-listen på #8374)",
+      "since": "2026-11-17"
+    },
+    {
+      "issue": 8331,
+      "reason": "CI-planen trin 1-5 (samleissue; trin 1 er PR #8330). Ejer 17/11 (PC1): 'Ja, trin 1-4' om morgenen (#8331) og 'Ja, start' i PC1-dirigentens session (AskUserQuestion). Merges må aldrig gå i stå igen: GitHubs kø er flaskehalsen.",
+      "since": "2026-11-17"
+    },
+    {
+      "issue": 8346,
+      "reason": "CI-trin 2: patch notes som fragmenter pr. PR, nummer ved merge (del af #8331). Ejer 17/11 (PC1): 'Ja, trin 1-4' om morgenen (#8331) og 'Ja, start' i PC1-dirigentens session (AskUserQuestion). Merges må aldrig gå i stå igen: GitHubs kø er flaskehalsen.",
+      "since": "2026-11-17"
+    },
+    {
+      "issue": 8347,
+      "reason": "CI-trin 3: små vagter samlet i 2-3 jobs, e2e bygget én gang; Fable-design først (del af #8331). Ejer 17/11 (PC1): 'Ja, trin 1-4' om morgenen (#8331) og 'Ja, start' i PC1-dirigentens session (AskUserQuestion). Merges må aldrig gå i stå igen: GitHubs kø er flaskehalsen. Ejer-go 18/11 eftermiddag (PC1-session, Codex-listen på #8374)",
+      "since": "2026-11-17"
+    },
+    {
+      "issue": 8348,
+      "reason": "CI-trin 4: snapshots på Linux i låst container + label der fornyer dem (del af #8331). Ejer 17/11 (PC1): 'Ja, trin 1-4' om morgenen (#8331) og 'Ja, start' i PC1-dirigentens session (AskUserQuestion). Merges må aldrig gå i stå igen: GitHubs kø er flaskehalsen.",
+      "since": "2026-11-17"
+    },
+    {
+      "issue": 7456,
+      "reason": "Træningsprogrammer som rotation og ugeblokke (fanen Program på træningssiden). Ejer 17/11 (PC1) med de to godkendte wireframes: 'som selvfølgelig også skal planlægges ind i de ting vi skal følge helt til dørs disse dage ... sørge for også, at den prioriteres meget højt'.",
+      "since": "2026-11-17"
+    },
+    {
+      "issue": 8364,
+      "reason": "Farveskala overalt: form som rating, træthed varm skala, rutematch som tal på plade. Ejer 17/11 (PC1, AskUserQuestion med tre viste forslag): 'C: form som rating'. Rating må ikke ændres nu.",
+      "since": "2026-11-17"
+    },
+    {
+      "issue": 8357,
+      "reason": "Til rådighed i sidebjælken og på auktionssiden (to forskellige saldotal). Ejer 17/11 (PC1): 'Byg dette i næste uge som anbefalet'; fører den gamle aftale fra #3508 (7/8) ud de sidste to steder.",
+      "since": "2026-11-17"
+    },
+    {
+      "issue": 8363,
+      "reason": "Træn nu-øjeblikket med ejerens animation, i egen visning som også er kvitteringen. Ejer 17/11 (PC1): 'B: egen visning = kvitteringen' og 'Vi venter til at Xp er færdigt'; bygges når XP er tændt.",
       "since": "2026-11-17"
     }
   ]

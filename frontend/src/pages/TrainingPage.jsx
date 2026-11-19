@@ -80,7 +80,9 @@ import { useTrainNow } from "../components/training/TrainNowClient.ts";
 import { trainNowRunGate, trainNowSaveErrorKey, trainNowNeedsConfirm, trainNowWarnings, trainNowInstantConfirm } from "../components/training/TrainNowState.ts";
 import TrainNowNote from "../components/training/TrainNowNote.tsx";
 import FatigueForecast from "../components/training/FatigueForecast.tsx";
-import { useFatigueForecast, raceSlotsFor } from "../components/training/FatigueForecastData.ts";
+import { useFatigueForecast } from "../components/training/FatigueForecastData.ts";
+import { todayLockedSlots, ranSlotsFor } from "../components/training/settleAfterStage7982/settleAfterStageModel.ts"; // #7982
+import RaceSessionNote from "../components/training/settleAfterStage7982/RaceSessionNote.tsx";
 import { programSessionToday, PROGRAM_SLOTS, isProgramPlan } from "../lib/trainingPrograms.ts";
 import TrainingMobileRiderCard from "../components/training/mobile/TrainingMobileRiderCard.tsx";
 import {
@@ -94,6 +96,7 @@ import { DISPLAY_RECIPES } from "../lib/generated/displayRecipes.js";
 import TodayRowsMobile from "../components/training/TodayRowMobile.tsx";
 import { pressedChoice, pressedChoiceFromSession, rowLocked, rowForecast, hasOwnProgram } from "../components/training/todayRowModel.ts";
 import ResetToTeamProgram from "../components/training/ResetToTeamProgram.tsx";
+import XpReportSwitch from "../components/training/reportXp/XpReportSwitch.tsx"; // #7627
 // #6030: fanerne Program, Development og Report hentes foerst naar de aabnes
 // (lazyWithRetry, #5014), saa foerste visning af Today henter mindre. Fallback er den
 // kanoniske skelet-markup (PAGE_TEMPLATES: aldrig en spinner i kort).
@@ -778,7 +781,7 @@ export default function TrainingPage() {
         // allerede henter server-side via effectiveSquad.
         const { data } = await supabase
           .from("riders")
-          .select(`id, firstname, lastname, birthdate, contract_end_season, primary_type, secondary_type, is_academy, squad, ${ABILITY_SELECT}`)
+          .select(`id, firstname, lastname, birthdate, nationality_code, contract_end_season, primary_type, secondary_type, is_academy, squad, ${ABILITY_SELECT}`)
           .eq("team_id", myTeam.id)
           .order("lastname");
         setRiders((data || []).map(flattenAbilities));
@@ -1533,7 +1536,6 @@ export default function TrainingPage() {
           meta={[riderTypeLine(rider), age != null ? `${t("colAge")} ${age}` : null].filter(Boolean).join(" · ")}
           form={cond.form ?? null}
           fatigue={cond.fatigue ?? null}
-          fatigueAtStart={phoneTodayView ? cond.fatigue_at_start ?? null : null}
           injuryLabel={injuryMsg ? t(injuryMsg.key, { days: injuryMsg.days, ...(injuryMsg.date ? { date: formatDate(injuryMsg.date, "short") } : {}) }) : null}
           dayLabel={planFor(riderId)?.focus ? dayLabel(planFor(riderId), t) : t("dayPanel.chooseDay")}
           receiptRows={receiptRowsFor(riderId)}
@@ -1825,45 +1827,42 @@ export default function TrainingPage() {
   // under overblikkets fire tal, over tabellen, i begge telefon-visninger
   // (beta-tabellen og #5124's D-047-gren). Samme lukkede række med tælling som
   // mockup 2; trykket åbner det samme panel lige under rækken.
-  const assistantRow = (
-    <div className="space-y-3">
-      {/* #5620/#5485: "Select riders" står i SAMME række som assistenten, så
-          indgangen til hurtig hvile ikke skubber tabellen ned (mindst 8 ryttere
-          på første skærm, 390 × 844). Kun telefonens tabel-visning. */}
-      <div className="flex items-stretch gap-2">
-      {/* #6110 S26 (ejer 25/10, valg A): vises Dagens beslutning, skjules den
-          gamle assistent-linje. Select riders bliver staaende. */}
-      {!(decisionCardOn && !ridersLoading) && (
-      <button
-        type="button"
-        onClick={handleOpenAssistantPanel}
-        data-testid="training-assistant-row"
-        className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-cz border border-cz-border bg-cz-card px-3 text-start text-xs transition-colors hover:bg-cz-subtle"
-      >
-        <StarIcon size={14} className="flex-none text-cz-3" aria-hidden="true" />
-        <span className="flex-1 text-xs font-semibold text-cz-1">{t("mobile.assistantTitle")}</span>
-        <span className="font-data text-2xs tabular-nums text-cz-3">
-          {t("mobile.assistantCount", { n: assistantSuggestionRows.length })}
-        </span>
-        <ChevronRightIcon size={14} className="flex-none text-cz-3" aria-hidden="true" />
-      </button>
-      )}
-      {phoneTodayView && activeTab === "today" && !mobilePickMode && (
-        <Button
+  // #8279 (rettelse 15, ejer-go 16/11): på telefonen står assistenten og "Select
+  // riders" som en hairline-række INDE i overblikskortet under træthedslinjen,
+  // i stedet for et eget kort mellem overblikket og tabellen. Samme handlere og
+  // test-id'er som den tidligere assistent-række; panelet (assistantPanel) folder stadig ud
+  // under kortet.
+  const showPhoneAssistant = !(decisionCardOn && !ridersLoading);
+  const showPhoneSelect = phoneTodayView && activeTab === "today" && !mobilePickMode;
+  const phoneAssistantFooterRow = (showPhoneAssistant || showPhoneSelect) ? (
+    <div className="flex min-w-0 items-stretch border-t border-cz-border text-xs">
+      {showPhoneAssistant && (
+        <button
           type="button"
-          variant="secondary"
-          size="sm"
-          className="min-h-11 flex-none"
+          onClick={handleOpenAssistantPanel}
+          data-testid="training-assistant-row"
+          className="flex min-h-11 min-w-0 flex-1 items-center gap-2 px-4 text-start text-xs transition-colors hover:bg-cz-subtle"
+        >
+          <StarIcon size={14} className="flex-none text-cz-3" aria-hidden="true" />
+          <span className="flex-1 truncate font-semibold text-cz-1">{t("mobile.assistantTitle")}</span>
+          <span className="font-data text-2xs tabular-nums text-cz-3">
+            {t("mobile.assistantCount", { n: assistantSuggestionRows.length })}
+          </span>
+          <ChevronRightIcon size={14} className="flex-none text-cz-3" aria-hidden="true" />
+        </button>
+      )}
+      {showPhoneSelect && (
+        <button
+          type="button"
           onClick={startMobilePick}
           data-testid="training-mobile-select-riders"
+          className={`flex min-h-11 flex-none items-center px-4 font-medium text-cz-1 hover:underline ${showPhoneAssistant ? "border-s border-cz-border" : "ms-auto"}`}
         >
           {t("mobile.selectRiders")}
-        </Button>
+        </button>
       )}
-      </div>
-      {assistantPanel}
     </div>
-  );
+  ) : null;
 
   function renderBulkDayOptions() {
     return (
@@ -1920,8 +1919,6 @@ export default function TrainingPage() {
         seasonPoints: seasonPointsFor(rider.id),
         // #6025: "nu -> i aften", samme prognose som telefonens raekke (#6021).
         fatigueTonight: rowForecast(forecastFor(rider.id)),
-        // #7801: kun med fatigue_now_7801 (feltet findes ellers ikke i svaret).
-        fatigueAtStart: cond.fatigue_at_start ?? null,
         noDay: !planFor(rider.id)?.focus && !racingTodayFor(rider.id),
         squad: rider.squad ?? null,
         score: cell
@@ -2051,7 +2048,8 @@ export default function TrainingPage() {
           group={activeGroup}
           client={trainingGroups}
           forecast={fatigueForecast.forecast}
-          lockedFor={(id) => raceSlotsFor(fatigueForecast.forecast, id)}
+          lockedFor={(id) => todayLockedSlots(fatigueForecast.forecast, id)}
+          ranFor={(id) => ranSlotsFor(fatigueForecast.forecast, id)}
           catalog={programs.catalog}
           riderShortName={(id) => `${riderByIdMap.get(id)?.firstname?.charAt(0) ?? ""}. ${riderByIdMap.get(id)?.lastname ?? ""}`}
           onEdit={() => setGroupDialog({ group: activeGroup })}
@@ -2076,7 +2074,8 @@ export default function TrainingPage() {
         days: isSeed ? seedDays : ownDays,
         isSeed,
         program: programs.catalog.find((p) => p.key === programs.assigned?.[key]) ?? null,
-        lockedToday: raceSlotsFor(fatigueForecast.forecast, key),
+        lockedToday: todayLockedSlots(fatigueForecast.forecast, key),
+        ranToday: ranSlotsFor(fatigueForecast.forecast, key),
         busy: programs.busy,
         onSetCell: async (weekday, slotIndex, session) => {
           const result = await programs.setCell(key, weekday, slotIndex, session);
@@ -2478,6 +2477,7 @@ export default function TrainingPage() {
 
       {isMobile && primaryButton}
       <TrainNowNote status={trainNow.status} result={trainNow.result} error={trainNow.error} className="mb-3" />
+      <RaceSessionNote forecast={fatigueForecast.forecast} className="mb-3" />
       {/* #6740: the press locks every rider for today, so a race below the start floor
           can no longer be topped up and the team will not start. Asked once, here. */}
       <Modal
@@ -2547,14 +2547,25 @@ export default function TrainingPage() {
           onToggle={toggleOverviewFilter}
           variant={overviewVariant}
           status={overviewStatus}
-          footer={<FatigueRuleSummary data={fatigueRules.data} onEdit={() => setSub("limit")} />}
+          footer={<>
+            <FatigueRuleSummary data={fatigueRules.data} onEdit={() => setSub("limit")} />
+            {phoneTodayView && overviewVariant !== "chips" && phoneAssistantFooterRow}
+          </>}
         />
       </div>
       {/* #5485 (ejer-go 23/9): assistenten rykket OP på telefonen — rækken
           lige under overblikkets fire tal, over tabellen, i begge telefon-
           visninger. Desktop (og telefon på langs uden beta) har knappen i
           tabellens værktøjslinje. */}
-      {phoneTodayView && assistantRow}
+      {/* Codex på #8311: chips-varianten (telefon på langs) tegner ikke overblikkets
+          fod, så dér står rækken i sit eget hairline-kort, ellers ville Assistant
+          og Select riders forsvinde i den retning. */}
+      {phoneTodayView && overviewVariant === "chips" && phoneAssistantFooterRow && (
+        <div className="overflow-hidden rounded-cz border border-cz-border bg-cz-card [&>div]:border-t-0">
+          {phoneAssistantFooterRow}
+        </div>
+      )}
+      {phoneTodayView && assistantPanel}
       {/* #3643/#5485: desktop (og telefon på langs) får den nye tabel,
           telefonen sin løbsdags-tabel. #6030: training_mobile_table er on for
           alle, så #5124's D-047-gren (telefonen uden flaget) er slettet. */}
@@ -2711,7 +2722,10 @@ export default function TrainingPage() {
         <Suspense fallback={<TabFallback />}>
         {/* #6030: training_daily_receipt er on for alle (1/10); den gamle
             rapport-gren (legacy-tabellen + gaarsdagens fold-ud) er slettet. */}
+        {/* #7627: XP-rapporten kun bag XP-kontakten eller preview ?xpreport=on; ellers uaendret. */}
+        <XpReportSwitch runs={receiptRuns} roster={ridersLoading ? null : riders} trainingScore={trainingScore}>
         <TrainingHistory history={{ ...history, runs: receiptRuns }} trainingScore={trainingScore} condition={condition} today={today} roster={ridersLoading ? null : riders} />
+        </XpReportSwitch>
         <TrainingMoment latestRun={latestRun} isToday={latestIsToday} progressByRider={progress} pastRuns={pastRuns} />
         </Suspense>
       </TabPanel>

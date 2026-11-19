@@ -172,6 +172,8 @@ Sæsonskiftets særskilte [læser-/snapshot-bevis](audits/5692-season-rollover-s
 viser samme snapshots og læsning under concurrent writer-lock; begge forsøg
 rulles tilbage. Det er ikke en fuld løbsdagsmåling.
 
+**Legacy-holdpoint (#7664).** Den uafhængige team_race_points_mv summerer præmier pr. løb og rytter og slår derefter rytterens nuværende hold op. Kun seniorløb tæller. NULL-summer og sæsonnøgler bevares. Migrationen bevarer viewets læsenavn, indeksnøgler og adgang for de eksisterende læsere. Den skifter navnene i én transaktion under ranglistens writerlås og afviser en aktiv lease, afvigende grants eller afhængige katalogobjekter. Den gamle definition opbevares med ejeradgang til rollback.
+
 **Inkrementel M1-skygge (#6765, design PR #6849, build-mandat 19/10):**
 De eksisterende matviews serverer læserne, medmindre #7664's betingede
 læsekilde nedenfor er tændt; selve skyggen er ingen M2-aktivering.

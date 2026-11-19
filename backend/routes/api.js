@@ -156,6 +156,7 @@ import {
 import * as transferNotif from "../lib/transferNotifications.js";
 import { withdrawCounterOffer, claimCounterForAccept, buildCounterOfferWithdrawnNotification } from "../lib/counterOfferWithdraw.js"; // #6463
 import { getParkedRiderReleaseIssue, getParkedRiderTradeIssue } from "../lib/parkedRiderGuard6181.js"; // #6181
+import { loadLeavingRiderIds8153, withoutLeavingRiders8153 } from "../lib/riderRelease8153.js"; // #8153: auto-udtagelse
 import { releaseDeferContext8153, orderPendingRelease, countPendingReleasesForTeam, getPendingReleaseTradeIssue, loadPendingReleasesForTeam, countPendingReleasesForTransition, PENDING_RELEASE_FORCE_BLOCKED_ERROR, PENDING_RELEASE_SQUAD_CODE, getPendingReleaseSquadIssue, pendingReleaseSquadResponse } from "../lib/riderReleaseDefer8153.js"; // #8153
 import { countSellerAuctionOutgoing, checkAutoAcceptMutation, isAutoAcceptEnabled, getListingPriceUpdateErrorResponse, getOfferAutoAcceptIssue, registerAutoAcceptRoutes, releaseRiderUnderTeamLock } from "../lib/autoAccept2176.js"; // #2176
 import { sanitizeDmPrefs } from "../lib/discordDmPrefs.js";
@@ -285,6 +286,7 @@ import { trainingRunResponse } from "../lib/trainingRunResponse.ts";
 import { createFirstRaceCardRouter } from "./firstRaceCard.js"; // #1140
 import { createRaceLibraryV2Router } from "../lib/raceLibraryV2Flag.js"; // #6514
 import { createPushRouter } from "./pushRoutes.ts"; // #6590
+import { createSpoilerShieldRouter } from "../lib/spoilerShield7859.ts"; // #7859
 import { TRAINING_MOBILE_TABLE_FLAG_KEY } from "../lib/trainingMobileTableFlag.js";
 import { TRAINING_DECISION_FLAG_KEY } from "../lib/trainingDecisionFlag.js"; // #6110 S26
 import { loadFatigueStreaks } from "../lib/trainingFatigueStreak.js"; // #6110 S26
@@ -339,6 +341,7 @@ import { handleListPendingRequest, handlePromotePendingRequest } from "../lib/pr
 import { promote as promoteAcademyRider, demote as demoteAcademyRider, resolveDemoteSalary, hasCompleteContract, demoteTargetSquad, handleMoveSquadRequest } from "../lib/academyTransfer.js";
 import { countFutureRaceEntries, countOngoingRaceEntries, clearFutureRaceEntriesSafe } from "../lib/raceEntryCleanup.js";
 import { computeAcademyCurrent, computeAcademyCumulative, buildAcademySales, summarizeAcademyPnl } from "../lib/academyPnl.ts";
+import { isAcademyLedgerEnabled, loadAcademySeasonLedger } from "../lib/academyPnlLoad.ts"; // #8060
 import { buildFictionalPopulationPreview } from "../lib/fictionalPopulationPreview.js";
 import {
   getTeamAcademyCount,
@@ -352,6 +355,7 @@ import { buildIntake2View } from "../lib/academyIntake2View.ts"; // #6666
 import { isPotentialEstimateDisplayEnabled } from "../lib/potentialEstimateFlag.js"; // #7684
 import { buildAcademyFromViews, buildEstimatesFromViews, buildProjectionFromView, buildScoutingReportFromView } from "../lib/potentialEstimateRead.js"; // #7684
 import { saveAcademyProfile } from "../lib/academyIntakeProfile.ts"; // #6666
+import { createAcademyV2Router } from "../lib/academyAgeFocus.ts"; // #8081
 import { computeFrozenSalary } from "../lib/contractSeed.js";
 import {
   computeDebtRatio,
@@ -1019,9 +1023,11 @@ router.use("/rankings", rankingReadWithFallback7664(supabase, createRankingsRout
   }),
 }), { captureExceptionFn: captureException }));
 router.use("/feature-flags", createFeatureFlagsRouter({ supabase, requireAuth, isViewerBetaTester, reportError: captureException })); // #4948
+router.use("/academy/v2", createAcademyV2Router({ supabase, requireAuth, writeLimiter: marketWriteLimiter, isViewerBetaTester, reportError: captureException })); // #8081
 router.use(createFirstRaceCardRouter({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, reportError: captureException })); // #1140
 router.use(createRaceLibraryV2Router({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, reportError: captureException })); // #6514
 router.use("/push", createPushRouter({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, writeLimiter: marketWriteLimiter, reportError: captureException })); // #6590
+router.use("/me/spoiler-shield", createSpoilerShieldRouter({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, writeLimiter: marketWriteLimiter, reportError: captureException })); // #7859
 // #4629: traeningsprogrammer (beta). Monteret HER, foer `/training/:riderId`, saa
 // "programs" aldrig matches som et rytter-id.
 // #4847: efter et "Train now"-tryk er dagens traeningsfelter laast til aftenopgoerelsen.
@@ -2897,8 +2903,14 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
       riders: [rider], abilitiesByRider: new Map([[rider.id, ab]]),
       seasonNumber: await getActiveSeasonNumber(), scout, developmentXp: prognosisXp,
     });
-    if (academyPrognoses.has(rider.id)) {
-      return res.json({ own: true, ...academyEstimate(academyPrognoses.get(rider.id)) });
+    const academyPrognosis = academyPrognoses.get(rider.id);
+    if (academyPrognosis) {
+      const types = academyPrognosis.stage === "final" ? academyPrognosis.types : null;
+      return res.json({
+        own: true,
+        ...academyEstimate(academyPrognosis),
+        ...(types?.length ? { types, primaryKey: rider.primary_type } : {}),
+      });
     }
 
     const currentYear = new Date().getFullYear();
@@ -6457,7 +6469,8 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
     if ((existingEntries || []).some((e) => autoLock.riderIds.has(e.rider_id))) {
       return res.status(409).json({ error: "selection_train_now_locked" });
     }
-    const teamRiderIds = (teamRiders || []).map((r) => r.id).filter((id) => !autoLock.riderIds.has(id));
+    const autoLeaving8153 = await loadLeavingRiderIds8153(supabase); // #8153: bestilt frigivelse -> ikke til senere loeb
+    const teamRiderIds = (teamRiders || []).map((r) => r.id).filter((id) => !autoLock.riderIds.has(id) && !autoLeaving8153.has(id));
     if (!teamRiderIds.length) return res.status(409).json({ error: "selection_no_eligible_riders" });
 
     const abilityCols = ["rider_id", ...RACE_SIM_ABILITY_KEYS].join(", ");
@@ -6563,6 +6576,30 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
 const RACE_ROLE_SCOPE_CHOICE_FLAG_KEY = "race_role_scope_choice";
 
 // GET /api/races/:raceId/stage-roles — kontekst til managerens taktik-panel.
+// #8298: flag og rating i det faelles taktikpanel. Lagt paa her (ikke i getStageRolesContext),
+// saa dens frosne digest (#7801) er uaendret. Holdets egne ryttere: intet fog of war-problem.
+// En fejl giver blot null-felter; taktikken virker som foer.
+async function withNationAndRating8298(riders) {
+  const list = Array.isArray(riders) ? riders : [];
+  const ids = list.map((r) => r.rider_id).filter(Boolean);
+  if (!ids.length) return list;
+  // pagination-safe: ids er holdets udtagne ryttere til ÉT løb (truppens loft, højst ~10 rækker).
+  const { data, error } = await supabase.from("riders").select("id, nationality_code, best_role_rating").in("id", ids);
+  if (error) {
+    captureException(error, { tags: { route: "stage-roles", part: "nation-rating-8298" } });
+    return list.map((r) => ({ ...r, nationality_code: null, rating: null }));
+  }
+  const byId = new Map((data || []).map((r) => [r.id, r]));
+  return list.map((r) => {
+    const row = byId.get(r.rider_id);
+    return {
+      ...r,
+      nationality_code: row?.nationality_code ?? null,
+      rating: typeof row?.best_role_rating === "number" ? row.best_role_rating : null,
+    };
+  });
+}
+
 router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
@@ -6595,7 +6632,7 @@ router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
       // #5945: stiller holdet op? starts:false = under startgulvet (min) og kan ikke fyldes op.
       start_outlook: ctx.start_outlook,
       stage_count: ctx.stage_count,
-      riders: ctx.riders,
+      riders: await withNationAndRating8298(ctx.riders),
       overrides: ctx.overrides,
     });
   } catch (err) {
@@ -7024,7 +7061,7 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     const { data: teamRiders } = await applyRiderEligibilityFilter(
       supabase.from("riders").select("id").eq("team_id", req.team.id)
     );
-    const teamRiderIds = (teamRiders || []).map((r) => r.id);
+    const teamRiderIds = withoutLeavingRiders8153(teamRiders, await loadLeavingRiderIds8153(supabase)).map((r) => r.id); // #8153
     const abilityCols = ["rider_id", ...RACE_SIM_ABILITY_KEYS].join(", ");
     const [{ data: abilities }, { data: conditions }] = await Promise.all([
       supabase.from("rider_derived_abilities").select(abilityCols).in("rider_id", teamRiderIds),
@@ -19119,7 +19156,7 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       // rytter-/auktions-/holdsiden); current_production_value er det felt
       // computeFrozenSalary/projectSeniorSalary regner senior-lønnen ud fra —
       // uden det viste promote-dialogen fallback-lønnen 161 CZ$ for ALLE ryttere.
-      .select("id, firstname, lastname, birthdate, nationality_code, team_id, is_academy, salary, contract_length, contract_end_season, base_value, market_value, prize_earnings_bonus, primary_type, secondary_type, current_production_value")
+      .select("id, firstname, lastname, birthdate, nationality_code, team_id, is_academy, squad, salary, contract_length, contract_end_season, base_value, market_value, prize_earnings_bonus, primary_type, secondary_type, current_production_value") // #8081: squad til "Dine talenter"
       .eq("team_id", teamId)
       .eq("is_academy", true);
     if (rosterErr) throw new Error(rosterErr.message);
@@ -19428,6 +19465,17 @@ router.get("/academy/me", requireAuth, async (req, res) => {
 //     oprettelse) — et 100% realiseret, historisk tal, ingen fremskrivning.
 //     Transfermarkeds-salg har ingen tilsvarende baseline og bidrager derfor
 //     kun til salesProceeds, ikke valueCreation (se academyPnl.js).
+// #8060 review 2: fejler saeson-regnskabet, maa det ikke vaelte hele svaret (det gamle regnskab
+// og siden). Fejlen meldes, `ledger` udelades, og `ledger_unavailable` lader fanen sige det.
+async function academyLedgerPart8060(teamId) {
+  try {
+    return { ledger: await loadAcademySeasonLedger(supabase, { teamId }) };
+  } catch (err) {
+    captureException(err, { tags: { route: "academy/pnl", part: "ledger-8060" } });
+    return { ledger_unavailable: true };
+  }
+}
+
 router.get("/academy/pnl", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
@@ -19502,6 +19550,8 @@ router.get("/academy/pnl", requireAuth, async (req, res) => {
     res.json({
       enabled: true,
       ...summarizeAcademyPnl({ current, driftPaid, signingFeesPaid, sales }),
+      // #8060: regnskab pr. sæson kun bag academy_page_v2_8081; slukket er svaret som før.
+      ...((await isAcademyLedgerEnabled(supabase, { isBetaTester })) ? await academyLedgerPart8060(teamId) : {}),
     });
   } catch (err) {
     captureException(err);

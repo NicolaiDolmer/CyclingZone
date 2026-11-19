@@ -1,0 +1,41 @@
+{
+  "title": "Comptes de l'académie",
+  "caption": "Les dépenses et les ventes comptent les mêmes coureurs : tous ceux que tu as recrutés via une offre de l'académie ou remportés lors d'une enchère jeunes. Les dépenses sont affichées avec un signe moins.",
+  "colSeason": "Saison",
+  "thisSeason": "Cette saison",
+  "season": "Saison {n}",
+  "noSeason": "Sans saison",
+  "offerSignings": "Recrutés via les offres",
+  "youthAuctionBuys": "Achetés aux enchères jeunes",
+  "drift": "Frais de fonctionnement",
+  "driftHistoric": "Frais de fonctionnement (saisons précédentes)",
+  "sales": "Ventes",
+  "salesCount": "{count, plural, one {# vente} other {# ventes}}",
+  "net": "Net",
+  "total": "Toutes les saisons",
+  "salesTitle": "Ventes de coureurs de l'académie",
+  "colRider": "Coureur",
+  "colDate": "Date",
+  "colOrigin": "Provenance",
+  "colVia": "Vendu via",
+  "colPrice": "Prix",
+  "origin": {
+    "offer": "Offre de l'académie",
+    "youthAuction": "Enchère jeunes"
+  },
+  "via": {
+    "auction": "Enchère",
+    "transfer": "Transfert"
+  },
+  "unknownRider": "Coureur inconnu",
+  "allSales": "Voir les {count} ventes",
+  "emptySalesTitle": "Aucun coureur de l'académie vendu pour l'instant",
+  "emptySalesBody": "Quand tu vends un coureur recruté via une offre de l'académie ou remporté lors d'une enchère jeunes, la vente s'affiche ici.",
+  "emptySalesAction": "Voir ton équipe",
+  "errorTitle": "Impossible de charger les comptes de l'académie",
+  "errorBody": "Réessaie dans un instant.",
+  "retry": "Réessayer",
+  "noLedgerTitle": "Pas encore de comptes de l'académie",
+  "noLedgerBody": "Les comptes s'affichent quand ton académie est ouverte.",
+  "noLedgerAction": "Voir ton équipe"
+}

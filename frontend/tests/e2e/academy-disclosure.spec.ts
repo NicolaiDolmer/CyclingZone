@@ -14,7 +14,11 @@ const stages = [
 ];
 const shots = process.env.ACADEMY_DISCLOSURE_SHOTS;
 const before = process.env.ACADEMY_DISCLOSURE_BEFORE === "1";
-for (const width of [1440, 375]) {
+const roleShots = process.env.ACADEMY_FINAL_ROLE_SHOTS;
+const legacyFinal = process.env.ACADEMY_FINAL_ROLE_BEFORE === "1";
+const roleKeys = ["sprinter", "puncheur", "brostensrytter", "baroudeur", "rouleur", "tt", "gc", "climber"];
+const types = roleKeys.map((key, i) => ({ key, now: 29 - i, progLo: 39 - i, progHi: 49 - i }));
+for (const width of [1440, roleShots ? 390 : 375]) {
   // Separate stages keep CI WebKit page loads within each test budget.
   for (const stage of (before ? [stages[0]] : stages)) {
     test(`academy ${stage.stage} knowledge matches on all surfaces at ${width}px`, async ({ page }) => {
@@ -24,6 +28,7 @@ for (const width of [1440, 375]) {
       await stabilizePage(page);
       await page.clock.setFixedTime(fixedNow);
       const prognosis = stage;
+      const hasRoleReport = stage.stage === "final" && !legacyFinal;
       const rider = { ...RIDERS[0], birthdate: "2003-04-12", is_academy: true, squad: "u23" };
       await page.route("**/rest/v1/riders?**", (route) => {
         const url = new URL(route.request().url());
@@ -38,7 +43,11 @@ for (const width of [1440, 375]) {
       }));
       await page.route("**/api/riders/rider-1/scouting-report", route => {
         if (before) return route.fallback();
-        return json(route, { own: true, academyPrognosis: prognosis });
+        return json(route, {
+          own: true,
+          academyPrognosis: prognosis,
+          ...(hasRoleReport ? { types, primaryKey: "sprinter" } : {}),
+        });
       });
       await page.route("**/api/academy/me**", route => json(route, {
         ...SEED_ACADEMY, roster: [{ ...rider, prognosis }],
@@ -53,13 +62,22 @@ for (const width of [1440, 375]) {
         await test.step(surface, async () => {
           await page.goto(path);
           if (surface === "development") await expect(page.getByRole("tab", { name: /^(Development|Udvikling)$/i })).toHaveAttribute("aria-selected", "true");
-          if (surface === "team" && width === 375) {
+          if (surface === "team" && width <= 390) {
             const chip = page.getByRole("button", { name: /^(Potential|Potentiale)$/i }).first();
             await expect(chip).toBeVisible();
             if (await chip.getAttribute("aria-pressed") !== "true") await chip.click();
           }
           // #6155: /academy har ingen rytterliste længere, så den er ikke en flade her.
-          if (!before) {
+          if (surface === "scouting" && hasRoleReport) {
+            const rows = page.locator("[data-type]");
+            await expect(rows).toHaveCount(roleKeys.length);
+            for (const { key, progLo, progHi } of types) {
+              await expect(page.locator("[data-type=\"" + key + "\"]")).toContainText(progLo + "–" + progHi);
+            }
+            await expect(page.getByTestId("academy-scouting-prognosis")).toHaveCount(0);
+            await rows.first().scrollIntoViewIfNeeded();
+            expect(await page.locator("main").evaluate(el => el.scrollWidth)).toBeLessThanOrEqual(width);
+          } else if (!before) {
             const cells = page.getByTestId(surface === "scouting"
               ? "academy-scouting-band"
               : stage.band ? "academy-prognosis-band" : "academy-prognosis-learning");
@@ -98,6 +116,15 @@ for (const width of [1440, 375]) {
           if (surface === "graduation") {
             const verdict = before || stage.stage === "final" ? "climbing" : stage.band ? "unproven" : "unknown";
             await expect(page.getByTestId("graduation-coach-verdict")).toHaveText(coachCopy[verdict]);
+          }
+          if (roleShots && stage.stage === "final" && surface === "scouting") {
+            const report = hasRoleReport
+              ? page.getByRole("heading", { name: "Prognose pr. ryttertype" }).locator("../..")
+              : page.getByTestId("academy-scouting-prognosis");
+            await report.evaluate(el => el.scrollIntoView({ block: "center" }));
+            if (hasRoleReport) await expect(page.locator("[data-type]").last()).toBeInViewport();
+            mkdirSync(resolve(roleShots), { recursive: true });
+            await page.screenshot({ path: resolve(roleShots, (legacyFinal ? "before-" : "after-") + width + ".png") });
           }
           if (shots && stage.stage === "learning") {
             mkdirSync(resolve(shots), { recursive: true });

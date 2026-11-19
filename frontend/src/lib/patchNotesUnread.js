@@ -39,7 +39,21 @@ export async function loadPatchNotesMeta(url = PATCH_NOTES_META_URL, fetchImpl =
 export function isPatchNotesUnread(latestDate, lastSeen) {
   if (!latestDate) return false;
   if (!lastSeen) return true;
+  // #8049: en markør uden klokkeslæt (skrevet af den gamle side) betyder "set alt til
+  // og med den dag", så kun datoen sammenlignes. Med to datoer er det præcis som før.
+  if (lastSeen.length <= 10) return latestDate.slice(0, 10) > lastSeen;
   return latestDate > lastSeen;
+}
+
+/**
+ * #8049: hvad menuens prik sammenligner med. Bag patch_notes_v2_8049 (beta/on for
+ * viewer'en) bruges seenKey (dato + løbenummer), så en note der lander senere samme
+ * dag også giver en prik; slukket er det datoen som altid.
+ */
+export function pickPatchNotesMarker(meta, v2Stage) {
+  if (!meta?.date) return null;
+  const v2 = v2Stage === "beta" || v2Stage === "on";
+  return v2 && typeof meta.seenKey === "string" && meta.seenKey.startsWith(meta.date) ? meta.seenKey : meta.date;
 }
 
 export function readLastSeenPatchNotes() {

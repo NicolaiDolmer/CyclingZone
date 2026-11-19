@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import {
   advanceBaseline,
   classifyStages,
+  dirtyOrderStages,
   keepMineAfterConflict,
   runTacticsSave,
   stageEqual,
@@ -318,4 +319,79 @@ test("automatisk genforsoeg lykkes men fremmed gemning foer kvitteringen: konfli
   assert.equal(out.status, "conflict");
   assert.deepEqual(out.confirmedStages, []);
   assert.equal(out.receipt?.stage_versions?.["2"], server.versionOf(2));
+});
+
+// #8381: ordrekladden ligger pr. etape. Et gem sender alle etaper med aendrede
+// ordrer, hver med sin egen kvittering, og "saved" kraever dem alle.
+function ordersDeps(server: ReturnType<typeof fakeServer>, failOnce: number[] = []) {
+  const { deps, calls } = makeDeps({ server, sent: DRAFT });
+  const sent: Array<number | undefined> = [];
+  const failing = new Set(failOnce);
+  deps.putOrders = async (stage?: number) => {
+    sent.push(stage);
+    if (stage !== undefined && failing.delete(stage)) throw new Error("team_orders_save_failed_500");
+  };
+  return { deps, calls, sent };
+}
+
+test("#8381 dirtyOrderStages: alle etaper tælles, en ordre uden kvittering er ugemt", () => {
+  const order = (b: boolean) => ({ breakaway_stance: "neutral", riders: [{ rider_id: "a", try_break: b }] });
+  const current = { 2: order(true), 3: order(false), 4: order(false), 5: order(false) };
+  const baseline = { 2: order(false), 3: order(false), 4: null, 5: order(false) };
+  assert.deepEqual(dirtyOrderStages(current, baseline, [2, 3, 4, 5]), [2, 4]);
+  // Kun de redigerbare etaper, og en etape uden kladde er aldrig beskidt.
+  assert.deepEqual(dirtyOrderStages(current, baseline, [3, 4, 6]), [4]);
+});
+
+test("#8381 ordrer paa flere etaper: alle sendes, gemt kun naar alle er bekraeftet", async () => {
+  const server = fakeServer(BASE);
+  const { deps, sent } = ordersDeps(server);
+  const out = await runTacticsSave(planFor(server, { orderStages: [3, 2] }), deps);
+  assert.equal(out.status, "saved");
+  assert.deepEqual(out.parts, { roles: "saved", orders: "saved" });
+  assert.deepEqual(sent, [3, 2]);
+  assert.deepEqual(out.ordersSaved, [3, 2]);
+});
+
+test("#8381 kun ordrer paa en anden etape (ingen intention aendret): sendes og kvitteres", async () => {
+  const server = fakeServer(BASE);
+  const { deps, calls, sent } = ordersDeps(server);
+  const out = await runTacticsSave(planFor(server, { stages: [], baseVersions: {}, orderStages: [2] }), deps);
+  assert.equal(out.status, "saved");
+  assert.deepEqual(out.parts, { roles: "notNeeded", orders: "saved" });
+  assert.deepEqual(sent, [2]);
+  assert.equal(calls.putRoles.length, 0);
+});
+
+test("#8381 een etapes ordre fejler: delvis, de andre er kvitteret, genforsoeg sender kun den manglende", async () => {
+  const server = fakeServer(BASE);
+  const { deps, sent } = ordersDeps(server, [2]);
+  const first = await runTacticsSave(planFor(server, { stages: [], baseVersions: {}, orderStages: [3, 2] }), deps);
+  assert.equal(first.status, "partial", "en bekraeftet ordre og en fejlet er delvis, aldrig gemt");
+  assert.deepEqual(first.parts, { roles: "notNeeded", orders: "failed" });
+  assert.deepEqual(first.ordersSaved, [3]);
+  assert.equal(first.errorKey, "team_orders_save_failed_500");
+
+  const missing = [3, 2].filter((sn) => !first.ordersSaved.includes(sn));
+  const retry = await runTacticsSave(planFor(server, { stages: [], baseVersions: {}, orderStages: missing }), deps);
+  assert.equal(retry.status, "saved");
+  assert.deepEqual(sent, [3, 2, 2]);
+});
+
+test("#8381 alle ordrer fejler uden intention: fejlet, ingen kvittering", async () => {
+  const server = fakeServer(BASE);
+  const { deps } = ordersDeps(server, [2, 3]);
+  const out = await runTacticsSave(planFor(server, { stages: [], baseVersions: {}, orderStages: [2, 3] }), deps);
+  assert.equal(out.status, "failed");
+  assert.deepEqual(out.ordersSaved, []);
+});
+
+test("#8381 intentionen afvist: ingen etapes ordre sendes", async () => {
+  const server = fakeServer(BASE);
+  const { deps, sent } = ordersDeps(server);
+  deps.putRoles = async () => ({ ok: false, status: 400, error: "stage_roles_role_overlap" });
+  const out = await runTacticsSave(planFor(server, { orderStages: [2, 3] }), deps);
+  assert.equal(out.status, "failed");
+  assert.deepEqual(out.parts, { roles: "failed", orders: "skipped" });
+  assert.deepEqual(sent, []);
 });

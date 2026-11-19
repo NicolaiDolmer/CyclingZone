@@ -32,7 +32,10 @@ import { reportActionFailure } from "../../lib/actionTelemetry.js";
 // release (api.js:1834), saa den delte GET /api/transfers-kopi bliver stale.
 import { invalidateTransferListings2176 } from "../../lib/sharedRequestCache.js";
 import MoveSquadDialog from "../MoveSquadDialog.tsx";
+import { ReleasePendingLine } from "./LeavingAfterRaceBadge.tsx"; // #8153
+import { pendingRaceFromQuote, isPendingReleaseResult, pendingRaceLabel } from "../../lib/pendingReleaseModel8153.ts"; // #8153
 import { buttonClass } from "../ui/buttonStyles.js";
+import { useExclusivePanel, useAnyPanelOpen } from "./panelSlot.ts"; // #8069 T02
 
 // Trigger-knapper (ejer-feedback 3/7): appens delte buttonStyles, kompakt
 // auto-bredde — komponenten renderes med display:contents så knapperne indgår
@@ -41,7 +44,7 @@ import { buttonClass } from "../ui/buttonStyles.js";
 // ACTION_PANEL) — den tintede/ring-markerede trigger viser tilhørsforholdet.
 const ACTION_PANEL = "order-2 w-full";
 // Bekræft-knap inde i udfoldede paneler (fuld bredde i panelet).
-const BTN_PRIMARY = "w-full min-h-[44px] py-2 rounded-cz text-sm font-bold transition-all bg-cz-accent text-cz-on-accent hover:brightness-110 disabled:opacity-50 inline-flex items-center justify-center gap-2";
+const BTN_PRIMARY = buttonClass({ variant: "primary", fullWidth: true });
 
 // #2718: en knap der arbejder skal SE ud som om den arbejder. Den bare "..." vi
 // viste før er ikke et arbejds-signal — spilleren tror knappen er død og trykker
@@ -106,7 +109,8 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
   const canMoveSquad = hasMoveTarget(currentSquadOf(rider, seasonAge), seasonAge);
 
   // Inline udvidelses-paneler (forlæng/fyr).
-  const [extendOpen, setExtendOpen] = useState(false);
+  const [extendOpen, setExtendOpen] = useExclusivePanel("extend");
+  const anyPanelOpen = useAnyPanelOpen();
   const [extendQuote, setExtendQuote] = useState(null);
   const [extendErr, setExtendErr] = useState(null);
   const [extendBusy, setExtendBusy] = useState(false);
@@ -156,7 +160,9 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
   // #2849 KS2 / #5748: Forlæng er rækkens eneste gold-primær. "Move squad" er
   // secondary for både senior- og ungdomsryttere, så der aldrig står to
   // gold-primærer side om side (én gold pr. view).
-  const extendVariant = "primary";
+  // #8069 T02 (ejer 16/11): er en formular aaben (forlæng, sælg, auktion …), er
+  // dens afsendeknap den ene guld-knap, og Forlæng bliver sekundær.
+  const extendVariant = anyPanelOpen ? "secondary" : "primary";
 
   const [releaseOpen, setReleaseOpen] = useState(false);
   const [releaseQuote, setReleaseQuote] = useState(null);
@@ -213,7 +219,7 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
       finally { if (!cancelled) setExtendLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [rider.id]);
+  }, [rider.id, setExtendOpen]);
 
   // ── Forlæng kontrakt (#1720) ────────────────────────────────────────────────
   async function openExtend() {
@@ -328,7 +334,14 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
         invalidateTransferListings2176(); // #5089
         setReleaseOpen(false);
         setReleaseQuote(null);
-        flashResult(true, t("manage.release.success"));
+        // #8153: rytteren koerer et etapeloeb -> frigivelsen er bestilt, han bliver til efter sidste etape.
+        flashResult(true, isPendingReleaseResult(data)
+          ? t("manage.release.pendingSuccess", {
+            rider: `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim(),
+            race: pendingRaceLabel(/** @type {any} */ (data).race, t("manage.release.pendingRaceFallback")),
+            fee: formatNumber(/** @type {any} */ (data).fee ?? 0),
+          })
+          : t("manage.release.success"));
         onChanged?.();
       } else {
         flashResult(false, `${t("manage.release.errorPrefix")} ${resolveApiError(data, t)}`);
@@ -360,7 +373,7 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
           knappen klikbar igen efter den forlængelse der brugte sidste sæson. */}
       <button type="button" onClick={openExtend} disabled={extendCap.atCap || extendLoading}
         aria-busy={extendLoading || undefined}
-        className={`${buttonClass({ variant: extendVariant })} ${extendOpen && extendVariant === "primary" ? "ring-1 ring-cz-accent/60" : ""}`}>
+        className={`${buttonClass({ variant: extendVariant })} ${extendOpen ? "border-cz-accent/40! text-cz-accent-t! bg-cz-accent/5!" : ""}`}>
         {extendLoading && <BusyDot />}
         {t("manage.extend.button")}
       </button>
@@ -446,6 +459,8 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
           ) : (
             <>
               <p className="text-cz-3 text-xs">{t("manage.release.description")}</p>
+              {/* #8153: rytteren koerer et etapeloeb -> frigivelsen venter til sidste etape. */}
+              <ReleasePendingLine race={pendingRaceFromQuote(releaseQuote)} />
               <div className="space-y-1.5 text-sm rounded-cz border border-cz-border bg-cz-subtle p-3">
                 <div className="flex items-center justify-between">
                   <span className="text-cz-3 text-xs">{t("manage.release.fee")}</span>

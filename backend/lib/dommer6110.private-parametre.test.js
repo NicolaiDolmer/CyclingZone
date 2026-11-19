@@ -3,11 +3,12 @@
 //       "naesten intet" er ca. en fjerdedel af fuld udvikling ved 31 (ejer 14/11).
 //   R6  Mentale evner vokser laengere end fysiske (ejer 6/11).
 //   R11 Daglig variation ca. 50-150 %, ingen hukommelse/saeson-perioder (ejer 12/11).
-//   R16 Design uden store spring: en evne stiger normalt hoejst 1 point pr. dato, sjaeldent 2
-//       (ungt toptalent, fokus, meget lav evne), aldrig 3 eller mere. Loeses i prisliste og
-//       XP pr. dag, ikke med et loft (ejer 12/11). Lave evner goeres dyrere med en fast
-//       prisbund (ejervalg A 14/11). Gaelder ogsaa loebsdage, ogsaa enkeltstart, hvor
-//       loebsdags-gulvet (R15b) laegger hele loeftet i etapens faa evner.
+//   R16 Design uden store spring: en evne stiger normalt hoejst 1 point pr. dato, sjaeldent 2,
+//       aldrig 3 eller mere (ejer 12/11). Ejervalg 16/11: reglen holdes af motoren selv,
+//       hoejst +2 pr. evne pr. dato, resten venter paa bjaelken; ingen prisbund. Erstatter
+//       "loeses i prisliste, ikke med et loft" (12/11) og prisbunden (valg A 14/11). Gaelder
+//       ogsaa loebsdage og enkeltstart, hvor loebsdags-gulvet (R15b) laegger hele loeftet i
+//       etapens faa evner. Proeverne koeber derfor datoen GENNEM MOTORENS TICK.
 //
 // Proeven laeser de parametre, der skal taendes med. De er private (hard rule 17) og
 // ligger ikke i repoet, saa proeven springes over, hvor filen ikke findes (fx i CI).
@@ -24,8 +25,8 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { kraev, koebMedPrisliste, STAERK_TRAENER, BEDSTE_FACILITET } from "./dommer6110.fixtures.mjs";
-import { traeningsdatoBrud, bundUdenforLavtOmraade, ALDRE, POTENTIALER } from "./dommer6110.r16traening.mjs";
+import { kraev, STAERK_TRAENER, BEDSTE_FACILITET } from "./dommer6110.fixtures.mjs";
+import { traeningsdatoBrud, motorensDatoKoeb, ALDRE, POTENTIALER } from "./dommer6110.r16traening.mjs";
 import { aldersforloebBrud } from "./dommer6110.r5aldersforloeb.mjs";
 
 const HER = path.dirname(fileURLToPath(import.meta.url));
@@ -37,18 +38,12 @@ const FIL = process.env.CZ_XP_PARAMS_FIL
 // R5's "naesten intet" (ca. en fjerdedel), "ca." og "jaevnt fald" staar i dommer6110.r5aldersforloeb.mjs.
 // R6: mentale evner har intet eget loft (ejer 6/11: "samme prisliste, intet saerskilt loft";
 // 13/11: "nogle aar laengere" end de fysiske, uden et tal), saa proeven saetter ingen oevre graense.
-const UNGT_TOPTALENT = { maxAlder: 22, minPotentiale: 5 };
-const MEGET_LAV_EVNE = 30;
+// R16 "sjaeldent 2": ejervalg A (16/11 aften, Fable-fund 4): +2 paa én dato kun for et ungt
+// toptalent paa en meget lav evne; alle andre hoejst +1. Hvad "ung", "toptalent" og "meget lav"
+// er i tal, er balancetal (hard rule 17): dommerens laesning staar i talfilen (dommer.plus2:
+// maxAlder, minPotentiale, megetLavEvne), aldrig her. Motorens egne graenser (xp.datePlus2)
+// maa ikke vaere loesere end dommerens laesning.
 const TRAEN_NU = 1.15; // ejer 7/11
-// Oevre graense for "lave evner", som prisbunden maa goere dyrere (ejervalg A 14/11: "kun
-// lave evner dyrere, top og midte er uroert"). EJEREN SKAL BEKRAEFTE TALLET: det er
-// dommerens laesning, sat til samme vaerdi som "meget lav evne" ovenfor. Det er IKKE en
-// regel i motoren (validPriceFloor), kun i dommerens proeve. Fable-dom 15/11 maalte, at
-// motoren foerst er fri for +3 ved en graense et stykke over denne; ejeren vaelger mellem
-// en hoejere graense og en anden loesning (fx en hoejere bund-pris).
-// Ejervalg 15/11: graensen staar i den private talfil (dommer.lavEvneGraense), ikke her
-// (hard rule 17). Mangler den, gaelder dommerens foreloebige laesning.
-const LAV_EVNE_GRAENSE_FORELOEBIG = MEGET_LAV_EVNE;
 
 async function laesParametre() {
   if (!existsSync(FIL)) return null;
@@ -58,8 +53,10 @@ async function laesParametre() {
   const raa = hele?.xp;
   const { validateDevelopmentXpParams } = await kraev("./developmentXp.ts", "validateDevelopmentXpParams");
   // Loebsdagens rolletillaeg og roller, som proevekoerslen bruger (valgfrie i filen).
-  const lavEvneGraense = Number.isFinite(hele?.dommer?.lavEvneGraense) ? hele.dommer.lavEvneGraense : LAV_EVNE_GRAENSE_FORELOEBIG;
-  return { raa, lavEvneGraense, params: validateDevelopmentXpParams(raa), rolleTillaeg: hele?.sim?.raceRoleYield ?? null, roller: hele?.sim?.raceRoles ?? null };
+  return {
+    raa, params: validateDevelopmentXpParams(raa), rolleTillaeg: hele?.sim?.raceRoleYield ?? null, roller: hele?.sim?.raceRoles ?? null,
+    plus2: hele?.dommer?.plus2 ?? null,
+  };
 }
 
 const laest = await laesParametre();
@@ -99,7 +96,7 @@ test("R11 private parametre: daglig variation ca. 50-150 % uden hukommelse", { s
 // R16 paa traeningsdage regnes GENNEM MOTOREN (Fable-dom 15/11, fund 1): datoens XP er
 // motorens developmentXpAbilityDelta over alle traeningspas i begge kataloger, saa
 // sessionens vaegt (op til 2 i dag, 1,5 i v3) er med. Se dommer6110.r16traening.mjs.
-test("R16 private parametre: aldrig 3 point eller mere paa én dato, heller ikke paa rytterens bedste dag", { skip: spring }, async () => {
+test("R16 private parametre: aldrig 3 point eller mere paa én dato gennem motoren, heller ikke paa rytterens bedste dag", { skip: spring }, async () => {
   const { xpPriceForNextPoint } = await kraev("./developmentXp.ts", "xpPriceForNextPoint");
   const { TRAIN_NOW_BONUS_FACTOR } = await kraev("./trainNowBonus7737.ts", "TRAIN_NOW_BONUS_FACTOR");
   assert.equal(TRAIN_NOW_BONUS_FACTOR, TRAEN_NU, "Traen nu-bonussen er ejerens 1,15 (7/11)");
@@ -108,38 +105,68 @@ test("R16 private parametre: aldrig 3 point eller mere paa én dato, heller ikke
   const brud = await traeningsdatoBrud({
     params: laest.params, pris: (niveau) => xpPriceForNextPoint(niveau, laest.params),
     staff: STAERK_TRAENER, facilityTier: BEDSTE_FACILITET, dagMult: TRAEN_NU * godDag, bar: 0.999,
-    aldre: ALDRE, potentialer: POTENTIALER, graense: () => 2,
+    aldre: ALDRE, potentialer: POTENTIALER, graense: () => 2, koeb: await motorensDatoKoeb(laest.params),
   });
   assert.equal(brud.length, 0, `${brud.length} tilfaelde med +3 eller mere paa én dato, fx ${brud.slice(0, 3).map((b) => b.tekst).join("; ")}`);
 });
 
-test("R16 private parametre: normalt hoejst 1 point pr. dato; 2 kun for et ungt toptalent i fokus paa en meget lav evne", { skip: spring }, async () => {
+/** Dommerens laesning af "ungt toptalent paa meget lav evne" fra talfilen (dommer.plus2). */
+function ungtToptalentPaaMegetLavEvne() {
+  const p = laest.plus2;
+  assert.ok(p && [p.maxAlder, p.minPotentiale, p.megetLavEvne].every(Number.isFinite),
+    "talfilen mangler dommerens laesning af ejervalg A (dommer.plus2: maxAlder, minPotentiale, megetLavEvne)");
+  return (alder, potentiale, niveau) => alder <= p.maxAlder && potentiale >= p.minPotentiale && niveau < p.megetLavEvne;
+}
+
+test("R16 private parametre (ejervalg A): motorens graenser for +2 er sat og ikke loesere end dommerens laesning", { skip: spring }, () => {
+  ungtToptalentPaaMegetLavEvne();
+  const p = laest.plus2;
+  const m = laest.params.datePlus2;
+  assert.ok(m, "talfilen har ingen xp.datePlus2: motoren giver da ingen +2; ejervalg A kraever graenserne");
+  assert.ok(m.maxAge <= p.maxAlder, "motoren kalder aeldre ryttere unge end dommeren");
+  assert.ok(m.minPotential >= p.minPotentiale, "motoren kalder lavere potentialer toptalenter end dommeren");
+  assert.ok(m.belowLevel <= p.megetLavEvne, "motoren kalder hoejere evner meget lave end dommeren");
+});
+
+test("R16 private parametre: en normal dato giver hoejst 1; +2 kun for et ungt toptalent paa en meget lav evne (ejervalg A)", { skip: spring }, async () => {
   const { xpPriceForNextPoint } = await kraev("./developmentXp.ts", "xpPriceForNextPoint");
+  const ungtToptalent = ungtToptalentPaaMegetLavEvne();
   // En normal dato: hvert pas i begge kataloger, ingen traener, ingen bonus, almindelig dag, tom bjaelke.
+  // Datoen koebes gennem motorens tick med rytterens alder og potentiale (motorensDatoKoeb).
   const brud = await traeningsdatoBrud({
     params: laest.params, pris: (niveau) => xpPriceForNextPoint(niveau, laest.params),
-    aldre: ALDRE, potentialer: POTENTIALER,
-    graense: (alder, potentiale, niveau) => (
-      alder <= UNGT_TOPTALENT.maxAlder && potentiale >= UNGT_TOPTALENT.minPotentiale && niveau < MEGET_LAV_EVNE ? 2 : 1),
+    aldre: ALDRE, potentialer: POTENTIALER, koeb: await motorensDatoKoeb(laest.params),
+    graense: (alder, potentiale, niveau) => (ungtToptalent(alder, potentiale, niveau) ? 2 : 1),
   });
   assert.equal(brud.length, 0, `${brud.length} tilfaelde over graensen paa en normal dato, fx ${brud.slice(0, 3).map((b) => b.tekst).join("; ")}`);
 });
 
-test("R16 private parametre: prisbunden goer kun lave evner dyrere; top og midte er formlens egen", { skip: spring }, async () => {
+test("R16 private parametre (ejervalg A): heller ikke paa rytterens bedste dag faar et aeldre eller middeltalent +2", { skip: spring }, async () => {
   const { xpPriceForNextPoint } = await kraev("./developmentXp.ts", "xpPriceForNextPoint");
-  const fejl = bundUdenforLavtOmraade(laest.params, laest.lavEvneGraense, { xpPriceForNextPoint });
-  assert.deepEqual(fejl, [], fejl.join("; "));
+  const ungtToptalent = ungtToptalentPaaMegetLavEvne();
+  const godDag = 1 + (laest.raa?.variation?.span ?? 0.5);
+  const brud = await traeningsdatoBrud({
+    params: laest.params, pris: (niveau) => xpPriceForNextPoint(niveau, laest.params),
+    staff: STAERK_TRAENER, facilityTier: BEDSTE_FACILITET, dagMult: TRAEN_NU * godDag, bar: 0.999,
+    aldre: ALDRE, potentialer: POTENTIALER, koeb: await motorensDatoKoeb(laest.params),
+    graense: (alder, potentiale, niveau) => (ungtToptalent(alder, potentiale, niveau) ? 2 : 1),
+  });
+  assert.equal(brud.length, 0, `${brud.length} tilfaelde, fx ${brud.slice(0, 3).map((b) => b.tekst).join("; ")}`);
+});
+
+test("R16 private parametre: ingen prisbund (ejervalg 16/11)", { skip: spring }, () => {
+  assert.equal(laest.raa?.price?.floor, undefined, "talfilen har stadig en prisbund; ejervalg 16/11 fjernede den");
 });
 
 // ── R16 paa loebsdage (ejer 14/11): samme regel, ogsaa naar loebsdags-gulvet loefter ──
 // En loebsdato regnes som motoren: hver af datoens loebsdage giver XP efter
 // developmentXpAbilityDelta (med gulvet mod en haard dag), R15b loefter en etape, der
 // passer rytteren, og den gode dag ganges paa. Datoens XP koeber point fra en naesten
-// fuld bjaelke. Graensetilfaeldet: alle datoens loebsdage paa samme profil, bedste
+// fuld bjaelke, gennem motorens tick for hver af datoens loebsdage. Graensetilfaeldet: alle datoens loebsdage paa samme profil, bedste
 // traener og facilitet, hoejeste intention og hver rolle. XP stiger med potentialet og
 // er fuld til 26 (R5), saa det hoejeste potentiale i fuld alder daekker resten.
 async function loebsdatoBrud({ profiler }) {
-  const { developmentXpAbilityDelta, xpPriceForNextPoint } = await kraev("./developmentXp.ts", "developmentXpAbilityDelta", "xpPriceForNextPoint");
+  const { developmentXpAbilityDelta, developmentXpTick } = await kraev("./developmentXp.ts", "developmentXpAbilityDelta", "developmentXpTick");
   const { developmentXpRaceFitFloor, XP_RACE_FIT_HOME_STAGES } = await kraev("./developmentXpRaceFit.ts", "developmentXpRaceFitFloor", "XP_RACE_FIT_HOME_STAGES");
   const { withRaceDayRoleYieldXp } = await kraev("./developmentXpFlag.ts", "withRaceDayRoleYieldXp");
   const { raceDayProgram } = await kraev("./raceDayYield.js", "raceDayProgram");
@@ -149,7 +176,6 @@ async function loebsdatoBrud({ profiler }) {
   const { EVNER } = await import("./dommer6110.fixtures.mjs");
 
   const params = laest.params;
-  const pris = (niveau) => xpPriceForNextPoint(niveau, params);
   const godDag = 1 + (laest.raa?.variation?.span ?? 0.5);
   const intention = Math.max(...["grupetto", "save", "normal", "protect", "all_out"].map(effortDevelopmentMultiplier));
   const loebsdage = TRAINING_RACE_DAY_CONFIG.raceDaysPerDate;
@@ -173,11 +199,15 @@ async function loebsdatoBrud({ profiler }) {
             ...rider, ability, program, academyRateMult: intention, yieldMult: tillaeg[ability] > 0 ? tillaeg[ability] : 1,
           }, params)]));
           const loeftet = developmentXpRaceFitFloor({ day: dag, program, fit: kald.xpRaceDayFit, academyRateMult: intention, rider }, params) ?? dag;
-          for (const ability of EVNER) {
-            const xp = (loeftet[ability] ?? 0) * godDag * loebsdage;
-            if (!(xp > 0)) continue;
-            for (let niveau = 1; niveau <= 96; niveau++) {
-              const { point } = koebMedPrisliste({ level: niveau, bar: 0.999, xp }, pris);
+          // Datoens loebsdage koebes gennem motorens tick, hver med datoens tidligere gevinster.
+          for (let niveau = 1; niveau <= 96; niveau++) {
+            let tilstand = { abilities: Object.fromEntries(EVNER.map((a) => [a, niveau])), progress: Object.fromEntries(EVNER.map((a) => [a, 0.999])) };
+            const brugt = {};
+            for (let dag = 0; dag < loebsdage; dag++) {
+              tilstand = developmentXpTick({ ...tilstand, dateUsedGains: { ...brugt }, rider: { age: alder, potentiale }, xpFor: (a) => (loeftet[a] ?? 0) * godDag }, params);
+              for (const [a, n] of Object.entries(tilstand.gains)) brugt[a] = (brugt[a] ?? 0) + n;
+            }
+            for (const [ability, point] of Object.entries(brugt)) {
               if (point >= 3) brud.push(`${primaryType} ${profileType} ${role} alder ${alder} ${ability} evne ${niveau}: +${point}`);
             }
           }

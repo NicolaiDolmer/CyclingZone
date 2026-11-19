@@ -114,7 +114,6 @@
     "colSeasonPoints": "Sæsonpoint",
     "colFatigueTonight": "Træthed nu / i aften",
     "fatigueTonightAria": "Træthed nu {now}, i aften ca. {value}. {band}",
-    "fatigueAtStart": "{now} nu, ca. {value} ved start",
     "selectRider": "Vælg {name}",
     "applyTo": "Brug på {n}",
     "bulkLead": "Sæt dagens dag for",
@@ -558,6 +557,12 @@
     "selectDone": "Færdig",
     "restSelected": "Sæt til hvile",
     "pickHint": "Tryk på de ryttere, du vil ændre."
+  },
+  "settleAfterStage": {
+    "ran": "Kørt",
+    "ranTitle": "Sessionen er kørt og kan ikke længere ændres",
+    "note": "{n, plural, one {# rytters løbssession er afregnet efter etapen.} other {# rytteres løbssessioner er afregnet efter etapen.}} Sessioner, der ikke er kørt, kan stadig ændres.",
+    "fatigueNow": "Den viste træthed har allerede løbet med."
   },
   "programs": {
     "title": "Træningsprogrammer",

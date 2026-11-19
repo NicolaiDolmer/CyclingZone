@@ -114,7 +114,6 @@
     "colSeasonPoints": "Seizoenspnt",
     "colFatigueTonight": "Vermoeidheid nu / vanavond",
     "fatigueTonightAria": "Vermoeidheid nu {now}, vanavond circa {value}. {band}",
-    "fatigueAtStart": "{now} nu, circa {value} bij de start",
     "selectRider": "{name} selecteren",
     "applyTo": "Toepassen op {n}",
     "bulkLead": "De dag van vandaag instellen voor",
@@ -558,6 +557,12 @@
     "selectDone": "Klaar",
     "restSelected": "Op rust zetten",
     "pickHint": "Tik op de renners die je wilt wijzigen."
+  },
+  "settleAfterStage": {
+    "ran": "Gedaan",
+    "ranTitle": "Deze sessie is gedaan en kan niet meer worden gewijzigd",
+    "note": "{n, plural, one {De koerssessie van # renner is na de etappe verwerkt.} other {De koerssessies van # renners zijn na de etappe verwerkt.}} Sessies die nog niet gedaan zijn, kun je nog wijzigen.",
+    "fatigueNow": "De getoonde vermoeidheid bevat de koers al."
   },
   "programs": {
     "title": "Trainingsprogramma's",

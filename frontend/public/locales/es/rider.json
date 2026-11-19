@@ -25,6 +25,7 @@
     "retireRisk": "Alto riesgo de retirada: los ciclistas suelen retirarse entre los 36 y los 40 años",
     "contractExpiring": "El contrato caduca en el próximo cambio de temporada: este ciclista pasará a ser agente libre salvo que antes se amplíe el contrato",
     "junior": "Ciclista júnior (en tu plantilla júnior)",
+    "leavesAfter": "Se va después de {race}",
     "label": {
       "u23": "S23",
       "u25": "S25",
@@ -863,7 +864,10 @@
       "working": "Liberando…",
       "cancel": "Cancelar",
       "success": "Ciclista liberado.",
-      "errorPrefix": "No se pudo liberar:"
+      "errorPrefix": "No se pudo liberar:",
+      "pendingLine": "Está corriendo {race}. Dejará tu equipo después de la última etapa. La tarifa se cobra ahora y la rescisión no se puede deshacer.",
+      "pendingSuccess": "{rider} será liberado después de {race}. Se ha cobrado la tarifa de {fee} CZ$.",
+      "pendingRaceFallback": "la vuelta por etapas"
     },
     "move": {
       "button": "Cambiar de plantilla",

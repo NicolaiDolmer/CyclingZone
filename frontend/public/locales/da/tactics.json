@@ -1,0 +1,130 @@
+{
+  "panel": {
+    "ordersFor": "Ordrer til etape {number}",
+    "ordersForRaceDay": "Ordrer til løbsdagen",
+    "simple": "Enkel",
+    "allOrders": "Alle ordrer",
+    "ordersView": "Vis ordrer",
+    "howItWorks": "Sådan virker taktik",
+    "todaysPlan": "Dagens plan",
+    "planMeta": "ét valg for hele holdet"
+  },
+  "team": {
+    "label": "Holdet",
+    "question": "Jagter vi udbruddet?",
+    "chase": "Jag",
+    "neutral": "Vurder undervejs",
+    "let_go": "Overlad det til andre",
+    "reacts": "Reagerer, hvis udbruddet truer {name}s klassement.",
+    "reactsNoLeader": "Reagerer, hvis udbruddet truer dit klassement."
+  },
+  "plan": {
+    "gc": "Alle kører for din klassementsrytter og holder ham ude af problemer.",
+    "stage": "Holdet arbejder for den rytter, der passer bedst til dagens rute.",
+    "sprint": "Holdet sparer ham til finalen, med et tog de sidste 10 km.",
+    "break": "To ryttere prøver udbruddet. Resten kører roligt.",
+    "save": "Alle kører i mål. Mindst træthed i aften.",
+    "lockedConflict": "Lås {name} op for at bruge denne plan. Den skifter hans rolle."
+  },
+  "col": {
+    "rider": "Rytter",
+    "role": "Rolle",
+    "rating": "Rating",
+    "form": "Form",
+    "routeMatch": "Rutematch",
+    "fatigueNow": "Træthed nu",
+    "today": "I dag",
+    "effort": "Indsats",
+    "orders": "Ordrer",
+    "lock": "Lås",
+    "dayLoad": "Dagens belastning"
+  },
+  "level": {
+    "easy": "Let",
+    "medium": "Normal",
+    "hard": "Hård",
+    "aria": "Indsats for {name}"
+  },
+  "orders": {
+    "button": "Ordrer",
+    "buttonAria": "Ordrer for {name}",
+    "extra": "Ekstra ordrer",
+    "ifDropped": "Hvis han bliver sat: {task}",
+    "steps": "Indsatstrin",
+    "toClimb": "Til {name}",
+    "toLastTen": "Til de sidste 10 km",
+    "lastTen": "De sidste 10 km",
+    "tryBreak": "Prøv udbruddet",
+    "sprintTrain": "Sprinttog",
+    "notForRole": "Ikke for denne rolle.",
+    "noSprintCaptain": "Holdet har ingen spurtkaptajn.",
+    "trainAfterBreak": "En rytter i udbruddet kan ikke trække spurten.",
+    "trainSelf": "Han er sprinteren.",
+    "noRoadOrders": "Ingen vej-ordrer på en tidskørsel.",
+    "followTeam": "Følg holdets plan"
+  },
+  "short": {
+    "stay_sheltered": "I ly",
+    "shelter_leader": "Vogt lederen",
+    "tempo": "Tempo",
+    "follow_moves": "Følg",
+    "ride_for_result": "Resultat",
+    "attack": "Angreb",
+    "breakaway": "Udbrud",
+    "sprint_train": "Tog",
+    "grupetto": "Grupetto",
+    "ride_in": "Kør ind",
+    "hunt_points": "Point",
+    "hunt_kom": "Bjerg"
+  },
+  "today": {
+    "breakaway": "Prøver udbruddet",
+    "attack": "Angriber på {climb}",
+    "attackFinale": "Angriber i finalen",
+    "ride_for_result": "Kører for et resultat",
+    "follow_moves": "Følger de bedste",
+    "tempo": "Kører tempo",
+    "shelterLeader": "Holder {leader} fremme",
+    "shelterLeaderNone": "Holder lederen fremme",
+    "stay_sheltered": "Bliver i ly",
+    "grupetto": "Grupetto, sparer sig selv",
+    "sprint_train": "Trækker spurten",
+    "ride_in": "Kører roligt i mål",
+    "huntPoints": "Går efter point",
+    "roleDefault": "Kører sin rolle",
+    "effort": {
+      "grupetto": "Grupetto, sparer sig selv",
+      "save": "Kører roligt",
+      "normal": "Kører sin rolle",
+      "protect": "Arbejder for holdet",
+      "all_out": "Giver alt"
+    }
+  },
+  "dayLoad": {
+    "easy": "Let dag",
+    "light": "Rolig dag",
+    "normal": "Normal dag",
+    "hard": "Hård dag",
+    "veryHard": "Meget hård dag"
+  },
+  "lock": {
+    "on": "Lås {name} op",
+    "off": "Lås {name}",
+    "title": "En låst rytter beholder sin plan, når du skifter holdplan."
+  },
+  "legend": {
+    "cost": "Pris:",
+    "dayLoad": "Dagens belastning:",
+    "sort": "Klik på en kolonne for at sortere. En låst rytter beholder sin plan, når du skifter holdplan."
+  },
+  "footer": {
+    "notSavedLine": "Gør du intet, kører de præcis sådan her"
+  },
+  "hero": {
+    "assistant_one": "{count} rytter kører assistentens plan",
+    "assistant_other": "{count} ryttere kører assistentens plan"
+  },
+  "mobile": {
+    "numbers": "Rating {rating} · form {form} · rutematch {match} · træthed nu {fatigue}"
+  }
+}

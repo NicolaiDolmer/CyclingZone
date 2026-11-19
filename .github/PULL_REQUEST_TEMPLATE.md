@@ -58,7 +58,7 @@ Refs #
 ## Close-out (efter merge til main)
 <!-- Tjekliste der gælder både @claude-bot OG manuel session. Drop punkter der ikke gælder. -->
 
-- [ ] **Patch notes** (`frontend/src/data/patchNotes.js`) opdateret med ny version — påkrævet ved enhver brugerrettet ændring (ellers note hvorfor ikke i PR-body)
+- [ ] **Patch note** som ét nyt fragment `frontend/src/data/patch-notes/pending/<issue>-<slug>.json` uden version og dato (format i `frontend/src/data/patch-notes/README.md`; merge-toget giver nummer og dato, #8346) — påkrævet ved enhver brugerrettet ændring (ellers `patch-notes: n/a - <grund>` i PR-body). Rør ikke `patchNotes.js` direkte.
 - [ ] **`docs/NOW.md`** opdateret: tilføj entry i "Senest leveret", flyt issue ud af "Næste session" hvis listet, hold filen ≤ 30 linjer (arkivér til `docs/archive/` ved behov)
 - [ ] **`docs/FEATURE_REGISTRY.yml`** opdateret hvis et flag er flippet, en feature er lukket/retired eller en ny kernefunktion er født (`docs/FEATURE_STATUS.md` genereres: `node scripts/generate-feature-status.mjs`)
 - [ ] **`.claude/learnings/<dato>-<slug>.md`** oprettet hvis denne PR fixer en bug (root cause + fix + læring)

@@ -67,6 +67,8 @@ export type CellEditor = {
   isSeed: boolean;
   program: CatalogProgram | null;
   lockedToday: ReadonlySet<number>;
+  // #7982: felter med kvittering i dag (kun med training_settle_race_session on); de skrives "Run".
+  ranToday?: ReadonlySet<number>;
   busy: boolean;
   onSetCell: (weekday: string, slotIndex: number | null, session: string) => void;
   message: string | null;
@@ -248,16 +250,20 @@ export default function TrainingPlanCard({
                     const cellLabel = `${t(`weekday_${weekday}`)} · ${t("mobile.raceDayShort", { n: column.index })}`;
                     // #5932 regel A: i dag er et felt med en etape laast af loebet.
                     if (isToday && cells.lockedToday.has(slot)) {
+                      // #7982: et koert felt siger det med ord, ikke kun med farve.
+                      const ran = cells.ranToday?.has(slot) === true;
+                      const lockTitle = t(ran ? "settleAfterStage.ranTitle" : "programs.stageLockedTitle");
                       return (
                         <span
                           key={column.key}
-                          title={t("programs.stageLockedTitle")}
-                          aria-label={`${cellLabel} · ${t("programs.stageLockedTitle")}`}
+                          title={lockTitle}
+                          aria-label={`${cellLabel} · ${lockTitle}`}
                           data-testid="training-program-cell-locked"
+                          {...(ran ? { "data-ran": "true" } : {})}
                           className={`flex min-h-11 items-center justify-center border-s border-t border-cz-border px-0.5 sm:min-h-0 sm:py-1 ${rowBg}`}
                         >
                           <span className="truncate rounded-cz bg-cz-1 px-1 font-data text-3xs font-semibold text-cz-card sm:text-2xs">
-                            {t("programs.stageLocked")}
+                            {t(ran ? "settleAfterStage.ran" : "programs.stageLocked")}
                           </span>
                         </span>
                       );

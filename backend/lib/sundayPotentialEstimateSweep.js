@@ -45,11 +45,20 @@ async function loadForeignRiders(supabase, teamId, ownIds, xp) {
     .from("riders").select(ESTIMATE_RIDER_COLUMNS).in("id", chunk), xp).order("id"));
 }
 
-async function sweepTeam({ supabase, teamId, config, now }) {
-  const xp = Boolean(config.developmentXp);
+/**
+ * Alle ryttere holdet skal have et skøn på: egne ryttere og fremmede, holdet ved
+ * noget om. Samme udvalg bruges af tændingens backfill
+ * (backend/scripts/potential-estimate-backfill.mjs), så de to aldrig ser forskellige ryttere.
+ */
+export async function loadEstimateRiders(supabase, teamId, { xp = false } = {}) {
   const own = await loadOwnRiders(supabase, teamId, xp);
   const foreign = await loadForeignRiders(supabase, teamId, new Set(own.map((rider) => rider.id)), xp);
-  return writeTeamEstimates({ supabase, teamId, riders: [...own, ...foreign], trigger: "sunday", config, now });
+  return [...own, ...foreign];
+}
+
+async function sweepTeam({ supabase, teamId, config, now }) {
+  const riders = await loadEstimateRiders(supabase, teamId, { xp: Boolean(config.developmentXp) });
+  return writeTeamEstimates({ supabase, teamId, riders, trigger: "sunday", config, now });
 }
 
 /**
@@ -62,8 +71,10 @@ export async function runSundayPotentialEstimateSweep({ supabase, now = new Date
   if (copenhagenHour(now) < SUNDAY_VALUE_FROM_HOUR) return { ran: false, runDate, skipped: "before_window" };
   if (state.cleanRunDate === runDate) return { ran: false, runDate, skipped: "already_ran" };
 
-  const config = await loadEstimateWriteConfig(supabase, { now });
-  if (!config.enabled) return { ran: false, runDate, skipped: config.reason };
+  const loaded = await loadEstimateWriteConfig(supabase, { now });
+  if (!loaded.enabled) return { ran: false, runDate, skipped: loaded.reason };
+  // Én cache for hele kørslen: en rytter, som mange hold har scoutet, regnes én gang.
+  const config = { ...loaded, truthCache: new Map() };
 
   const teamIds = await loadEstimateTeamIds(supabase);
   const totals = { written: 0, changed: 0, kept: 0 };

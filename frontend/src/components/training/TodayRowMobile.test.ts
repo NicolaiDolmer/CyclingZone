@@ -18,6 +18,8 @@ test("raekken regner ingen prognose selv (I5): kun rowForecast fra modellen", ()
 
 test("touch-targets er mindst 40 px og ingen piller", () => {
   assert.match(row, /min-h-10/);
+  // #8279 (rettelse 15): Rest/Recovery/Program er 44 px (P16).
+  assert.match(row, /className=\{`min-h-11 px-2 text-xs font-medium/);
   assert.doesNotMatch(row, /rounded-full|rounded-cz-pill/);
 });
 
