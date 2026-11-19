@@ -11,7 +11,7 @@ En spiller skrev 14/11, at sprintere vinder de fleste kuperede etaper. Målingen
 
 - **Kuperet (`hilly`):** sprinter-typer vinder mange gange oftere end i sæson 4. Før var det sjældent; nu er det et almindeligt udfald.
 - **Bølget (`rolling`):** sprinter-typer gik fra en lille minoritet til et klart flertal af sejrene.
-- **Punchere og udbrud er næsten væk** på begge profiler. Udbruddet holder praktisk talt aldrig på bølget.
+- **Punchere og udbrud er næsten væk** på begge profiler. Udbruddet holder for sjældent på bølget.
 - Begge sæsoner kørte på v4. Springet følger de nye S5-etapeprofiler, ikke en motorændring.
 - Forbehold fra målingen: ryttertypen er sat ud fra evnerne i dag, ikke på løbsdagen.
 
@@ -111,7 +111,7 @@ Kørt for hver løsning som en midlertidig, ikke-committet ændring (alle rullet
 
 | Variant | Sprintere på kuperet | Sprintere på bølget | Punchere | Udbrudssejre |
 |---|---|---|---|---|
-| I dag | en stor del af etaperne; næsten alle kuperede flade spurter | næsten alle | få | under RULES-båndet på kuperet, nul på bølget |
+| I dag | en stor del af etaperne; næsten alle kuperede flade spurter | næsten alle | få | under RULES-båndet på kuperet, for få på bølget |
 | A | mærkbart færre | færre, stadig klart flertal | flere (bakke-/mur-etaperne) | uændret |
 | B | lidt færre | lidt færre | uændret | uændret |
 | C | færrest | færrest, stadig flertal | flere | uændret |
@@ -122,7 +122,7 @@ Det benchen viser:
 1. **Benchen gengiver problemet** (endda skarpere end prod: et rent AI-felt).
 2. **Generator-vægtene (A) flytter mest.** Men den del af vægten der flyttes til stigende spurt, går stadig til sprintere. Den endelige A skal flytte til bakke, mur og nedkørsel.
 3. **At omdøbe den hårde spurt til reduceret spurt (B) hjælper kun lidt**, og mindre jagt oveni (B3) ændrer næsten intet. Udbruddet kommer ikke tilbage af jagt-knapperne alene.
-4. **Udbruddet er nul på bølget i alle varianter.** Årsagen er ikke jagten i finalen, men at udbruddet ikke får et forspring på en spurtdag (dannelse, AI-holdenes udbrudsvilje på sprintdage, lad-gå-loftet på bølget). Det er et selvstændigt spor.
+4. **Udbruddet vinder for sjældent på bølget i alle varianter (tal privat).** Årsagen er ikke jagten i finalen, men at udbruddet ikke får et forspring på en spurtdag (dannelse, AI-holdenes udbrudsvilje på sprintdage, lad-gå-loftet på bølget). Det er et selvstændigt spor.
 
 **Hvad benchen ikke dækker:**
 - Feltet er ét anonymiseret Giro-felt med kun AI-hold. Menneskeholdenes udbrudsvilje (#6804 P0) er ikke med; prod-felter i lavere divisioner er bredere.
@@ -142,7 +142,7 @@ Det benchen viser:
 
 **C i to trin, med et ejervalg om bølget først.**
 
-1. **Ejervalg om bølget** (ét spørgsmål): skal "bølget" være (a) S5's definition, en sprinterdag med småbakker, hvor spillet så forklarer det tydeligt (etapekort og Hjælp), eller (b) ejerens retning fra #4596, en udbrudsdag mellem kuperet og mellembjerg? Anbefaling: **(a) nu**, fordi rutetypen faktisk er en sprinterdag, og (b) kræver nye ruter (flere og hårdere stigninger) og en ny terrænregel. Udbruddets nul på bølget skal rettes under begge valg.
+1. **Ejervalg om bølget** (ét spørgsmål): skal "bølget" være (a) S5's definition, en sprinterdag med småbakker, hvor spillet så forklarer det tydeligt (etapekort og Hjælp), eller (b) ejerens retning fra #4596, en udbrudsdag mellem kuperet og mellembjerg? Anbefaling: **(a) nu**, fordi rutetypen faktisk er en sprinterdag, og (b) kræver nye ruter (flere og hårdere stigninger) og en ny terrænregel. At udbruddet vinder for sjældent på bølget, skal rettes under begge valg.
 2. **Trin 1 (A, generator, lav risiko):** tæl benchmarken op igen med kort 5's regel og flyt kuperet flad spurt-vægt til bakke, mur og nedkørsel. Virker fra næste sæsons kalender; kørte og genererede etaper i den aktive sæson røres ikke.
 3. **Trin 2 (B, motorrevision, Fable-dom):** den hårde spurt som reduceret spurt med durability-hybrid, plus et selvstændigt udbruds-spor for spurtdage på kuperet og bølget (dannelse og lad-gå, ikke kun jagt). Måles i testporten med prod-startlister før ejerens "tænd".
 
