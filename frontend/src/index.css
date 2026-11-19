@@ -606,7 +606,7 @@ video {
   --text-2:      #4c4a5e;   /* AA+ (ejer B 15/10, #6681) - was #66637a */
   --text-3:      #67657e;   /* AA fix (ejer B 15/10, #6681) - was #9896b0 (2,4-2,8:1, FAILed AA) */
   --accent:      232 197 71;
-  --accent-t:    160 120 0;
+  --accent-t:    134 100 0;   /* #866400: AA paa side, kort og indsaenket (ejer 19/11, #8433); var 160 120 0 */
   --on-accent:   #1a1f38;
 
   /* Fundament-tokens (#671 design system) */
