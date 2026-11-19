@@ -12,6 +12,8 @@
 //   1. PRISEN: næste point koster XP efter evnens værdi og intet andet. Den er ens
 //      for alle ryttere, typer, aldre og evner, stiger stejlt mod toppen af skalaen
 //      og er endelig helt op til 99. Der er ingen mur og ingen prisbund (ejervalg 16/11).
+//      Ejervalg 19/11 (kandidat B): talfilen kan give prisen en højere "top" end
+//      skalaens, så prisen flader ud helt i toppen. Stadig ens for alle (E13/E14).
 //   2. XP PR. DAG: potentialet står fast gennem karrieren og afgør, hvor meget
 //      rytteren tjener. Forskellen mellem ryttere ligger i XP, aldrig i prisen.
 //   3. ALDER: fuld XP til et stykke ind i karrieren, derefter tydeligt faldende.
@@ -23,8 +25,12 @@
 //   6. BJÆLKEN: gemmes som en andel af næste point. Når et point købes, regnes
 //      overskuddet om til den nye pris, så ingen XP går tabt eller opstår.
 //   7. DATOEN (R16, ejervalg 16/11): en evne stiger højst XP_POINTS_PER_DATE point pr.
-//      dato, på tværs af datoens ticks; XP_MAX_POINTS_PER_DATE kun for et ungt toptalent
-//      på en meget lav evne (ejervalg A, xpDatePointCap). Resten bliver stående på bjælken, omregnet
+//      dato, på tværs af datoens ticks; XP_MAX_POINTS_PER_DATE kun for et toptalent
+//      på en meget lav evne (ejervalg A, xpDatePointCap). Alderskravet er valgfrit i
+//      talfilen; udeladt gælder reglen uanset alder (ejervalg 19/11).
+//   8. KROPPENS ALDRING (ejervalg 19/11): talfilen kan bære sæsonskiftets aldring
+//      (`aging`). Den bruges af sæsonskiftet (xpAgingConfig i riderProgression.js), kun når XP-kontakten er tændt
+//      (riderProgressionEngine.js). Udeladt = dagens AGING_V2_CONFIG, bit-identisk. Resten bliver stående på bjælken, omregnet
 //      til den nye pris, og købes en senere dato. Eneste undtagelse er tændingsnatten:
 //      dér udbetales gemt fremgang fra dagens model på én nat (ejervalg 2 = A).
 //
@@ -70,7 +76,9 @@ export const XP_MAX_POINTS_PER_DATE = 2;
 export const XP_POINTS_PER_DATE = 1;
 
 export interface DevelopmentXpParams {
-  price: { base: number; exponent: number };
+  // `top` (valgfri, ejervalg 19/11): skalaens top i prisen. Højere end skalaen = prisen
+  // flader ud helt i toppen, ens for alle ryttere. Udeladt = skalaens top (dagens pris).
+  price: { base: number; exponent: number; top?: number };
   // XP på en hård dato i en signatur-fokusevne. Lineært mellem punkterne, fladt uden for
   // dem. Punkter frem for faste trin, så omregningen til 1-99 kun flytter tal, ikke kode.
   potentialXp: readonly XpCurvePoint[];
@@ -83,26 +91,74 @@ export interface DevelopmentXpParams {
   // Dagsvariationen (§5.2). Udeladt = ingen variation. Nøglen ligger ikke på objektet
   // (developmentXpVariation.ts), så params kan skrives ud uden at afsløre den.
   variation?: XpVariation;
-  // Hvem må få det høje antal point på én dato (ejervalg A 16/11): højst `maxAge` år,
-  // mindst `minPotential` i potentiale og en evne under `belowLevel` ved datoens start.
-  // Udeladt = ingen får det høje antal; alle har det lave (fail-safe, aldrig løsere).
+  // Hvem må få det høje antal point på én dato (ejervalg A 16/11): mindst `minPotential`
+  // i potentiale og en evne under `belowLevel` ved datoens start; `maxAge` er valgfri
+  // (ejervalg 19/11: uden alder). Udeladt = ingen får det høje antal (fail-safe).
   datePlus2?: XpDatePlus2;
+  // Sæsonskiftets aldring under XP (ejervalg 19/11). Udeladt = dagens AGING_V2_CONFIG.
+  aging?: XpAging;
 }
 
 export interface XpDatePlus2 {
-  maxAge: number;
+  maxAge?: number;
   minPotential: number;
   belowLevel: number;
+}
+
+// Kroppens aldring ved sæsonskiftet, når XP er tændt. Samme form som AGING_V2_CONFIG
+// (riderProgression.js), plus et valgfrit sent fald i de evner, der ellers aldrig falder.
+export interface XpAging {
+  plateauThroughAge: number;
+  declineByYearsPastPlateau: readonly { maxYears: number; drop: number }[];
+  // Teknik og mentale evner (alt uden for de fysiske + brosten) falder `drop` pr. sæson
+  // fra `fromAge`, bremset af løb og hård træning som de fysiske. Udeladt = aldrig fald.
+  late?: { fromAge: number; drop: number };
 }
 
 function validDatePlus2(raw: unknown): XpDatePlus2 | null | undefined {
   if (raw === undefined) return undefined;
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
-  if (!isNum(r.maxAge) || !(r.maxAge > 0)) return null;
+  // Alderen er valgfri (ejervalg 19/11), men sat skal den være gyldig.
+  if (r.maxAge !== undefined && (!isNum(r.maxAge) || !(r.maxAge > 0))) return null;
   if (!isNum(r.minPotential) || !(r.minPotential > 0)) return null;
   if (!isNum(r.belowLevel) || !(r.belowLevel > 0 && r.belowLevel <= SCALE_TOP)) return null;
-  return Object.freeze({ maxAge: r.maxAge, minPotential: r.minPotential, belowLevel: r.belowLevel });
+  return Object.freeze({
+    ...(r.maxAge !== undefined ? { maxAge: r.maxAge as number } : {}),
+    minPotential: r.minPotential, belowLevel: r.belowLevel,
+  });
+}
+
+// Sæsonskiftets aldring. Udeladt = undefined (dagens aldring); sat, men ugyldig = null,
+// så hele params afvises (fail-safe: XP kører aldrig med en halv aldring).
+function validAging(raw: unknown): XpAging | null | undefined {
+  if (raw === undefined) return undefined;
+  if (!raw || typeof raw !== "object") return null;
+  const a = raw as Record<string, unknown>;
+  const plateau = a.plateauThroughAge;
+  if (!isNum(plateau) || !Number.isInteger(plateau) || plateau < 20 || plateau > 40) return null;
+  const steps = a.declineByYearsPastPlateau;
+  if (!Array.isArray(steps) || steps.length < 1) return null;
+  const out: { maxYears: number; drop: number }[] = [];
+  for (const s of steps) {
+    const step = s as Record<string, unknown> | null;
+    if (!step || typeof step !== "object") return null;
+    if (!isNum(step.maxYears) || !Number.isInteger(step.maxYears) || step.maxYears < 1) return null;
+    if (!isNum(step.drop) || step.drop < 0 || step.drop > 10) return null;
+    // Trinene står i stigende år, og faldet bliver aldrig mindre med alderen.
+    const prev = out[out.length - 1];
+    if (prev && (step.maxYears <= prev.maxYears || step.drop < prev.drop)) return null;
+    out.push(Object.freeze({ maxYears: step.maxYears, drop: step.drop }));
+  }
+  let late: { fromAge: number; drop: number } | undefined;
+  if (a.late !== undefined) {
+    const l = a.late as Record<string, unknown> | null;
+    if (!l || typeof l !== "object") return null;
+    if (!isNum(l.fromAge) || !Number.isInteger(l.fromAge) || l.fromAge <= plateau || l.fromAge > 50) return null;
+    if (!isNum(l.drop) || !(l.drop > 0) || l.drop > 5) return null;
+    late = Object.freeze({ fromAge: l.fromAge, drop: l.drop });
+  }
+  return Object.freeze({ plateauThroughAge: plateau, declineByYearsPastPlateau: Object.freeze(out), ...(late ? { late } : {}) });
 }
 
 const isNum = (x: unknown): x is number => typeof x === "number" && Number.isFinite(x);
@@ -160,6 +216,9 @@ export function validateDevelopmentXpParams(raw: unknown): DevelopmentXpParams |
   // Ingen prisbund (ejervalg 16/11): en talfil med en bund er fra før valget og afvises
   // hel, så motoren falder tilbage til dagens model i stedet for at regne en halv model.
   if (price.floor !== undefined) return null;
+  // Toppen (ejervalg 19/11) er valgfri; sat skal den ligge over skalaens top, så 99 aldrig
+  // bliver dyrere end i dag, og under et loft, så prisen ikke bliver flad.
+  if (price.top !== undefined && (!isNum(price.top) || !(price.top > SCALE_TOP && price.top <= 10 * SCALE_TOP))) return null;
 
   const potentialXp = validCurve(p.potentialXp);
   if (!potentialXp || potentialXp.length < 2) return null;
@@ -199,9 +258,11 @@ export function validateDevelopmentXpParams(raw: unknown): DevelopmentXpParams |
   // Samme regel for datoreglens grænser: sat, men ugyldig, gør hele params ugyldige.
   const datePlus2 = validDatePlus2(p.datePlus2);
   if (datePlus2 === null) return null;
+  const aging = validAging(p.aging);
+  if (aging === null) return null;
 
   return Object.freeze({
-    price: Object.freeze({ base: price.base, exponent: price.exponent }),
+    price: Object.freeze({ base: price.base, exponent: price.exponent, ...(price.top !== undefined ? { top: price.top as number } : {}) }),
     potentialXp: freezeCurve(potentialXp),
     ageShare: Object.freeze({ physical: freezeCurve(physical), mental: freezeCurve(mental) }),
     offFocusShare: p.offFocusShare,
@@ -210,13 +271,14 @@ export function validateDevelopmentXpParams(raw: unknown): DevelopmentXpParams |
     // Kun med, når den er sat, så params uden variation har samme form som før.
     ...(variation ? { variation } : {}),
     ...(datePlus2 ? { datePlus2 } : {}),
+    ...(aging ? { aging } : {}),
   });
 }
 
 /** XP for næste point. Afhænger kun af evnens værdi og er endelig helt op til 99. */
 export function xpPriceForNextPoint(level: number, params: DevelopmentXpParams): number {
   const l = Math.min(MAX_ABILITY, Math.max(0, Number(level) || 0));
-  return params.price.base * Math.pow(1 - l / SCALE_TOP, -params.price.exponent);
+  return params.price.base * Math.pow(1 - l / (params.price.top ?? SCALE_TOP), -params.price.exponent);
 }
 
 /** Andel af fuld XP efter alder. Ukendt alder er fuld XP, som en voksen, aldrig en turbo. */
@@ -469,8 +531,10 @@ export function xpDatePointCap(
   params: DevelopmentXpParams,
 ): number {
   const rule = params.datePlus2;
-  if (!rule || !isNum(age) || !isNum(potentiale) || !isNum(startLevel)) return XP_POINTS_PER_DATE;
-  const young = age <= rule.maxAge;
+  if (!rule || !isNum(potentiale) || !isNum(startLevel)) return XP_POINTS_PER_DATE;
+  // Alderskravet gælder kun, når talfilen sætter det (ejervalg 19/11: uden alder).
+  // Sat, men ukendt alder = det lave tal (fail-safe, som før).
+  const young = rule.maxAge === undefined || (isNum(age) && age <= rule.maxAge);
   const topTalent = potentiale >= rule.minPotential;
   const veryLow = startLevel < rule.belowLevel;
   return young && topTalent && veryLow ? XP_MAX_POINTS_PER_DATE : XP_POINTS_PER_DATE;

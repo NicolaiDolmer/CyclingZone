@@ -35,9 +35,10 @@ import { fetchAllRows } from "./supabasePagination.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import {
-  developRiderSeasonV2, buildCapsForRider, sameCaps, resolveSeasonRetirement,
+  developRiderSeasonV2, buildCapsForRider, sameCaps, resolveSeasonRetirement, xpAgingConfig,
 } from "./riderProgression.js";
 import { loadSeasonDevelopmentLoad } from "./seasonDevelopmentLoad.js";
+import { loadDevelopmentXp } from "./developmentXpFlag.ts";
 import {
   RETIREMENT_NOTICE_COLUMNS,
   frozenNoticeFor,
@@ -168,6 +169,16 @@ async function runBatched(items, concurrency, fn) {
 }
 
 /**
+ * #6110 (ejervalg 19/11): aldrings-cfg for sæsonskiftet. XP-kontakten og startdatoen
+ * læses for skiftets danske dato (samme regel som den daglige motor). Kontakt off,
+ * dato før startdatoen eller talfil uden `aging` = null (dagens aldring).
+ */
+export async function loadXpAgingCfg({ supabase, now = new Date() }) {
+  const params = await loadDevelopmentXp({ supabase, tickDate: copenhagenDateString(now), strict: true });
+  return xpAgingConfig(params);
+}
+
+/**
  * Udvikl alle aktive ryttere én sæson frem. Idempotent + deterministisk.
  *
  * Udvikling 2.0 del 1 (#6499) er eneste vej: ingen sæsonvækst for nogen, kun
@@ -186,6 +197,9 @@ async function runBatched(items, concurrency, fn) {
  * @param {Date}    [args.now]          — til notifikations-dedup (default new Date())
  * @param {Map}     [args.seasonLoadByRider] — injiceret belastning (rider_id → { raceDays, hardDays })
  *                  for den afsluttede sæson; udeladt → hentes af loadSeasonDevelopmentLoadFn.
+ * @param {Function} [args.loadAgingCfgFn] — #6110 (ejervalg 19/11): aldrings-cfg under XP,
+ *                  eller null for dagens aldring. Default læser XP-kontakten for skiftets
+ *                  danske dato; tests injicerer.
  * @returns {Promise<object>} summary
  */
 export async function developRidersForSeason({
@@ -195,9 +209,16 @@ export async function developRidersForSeason({
   detectGraduatesFn = detectGraduates,
   seasonLoadByRider: seasonLoadByRiderArg,
   loadSeasonDevelopmentLoadFn = loadSeasonDevelopmentLoad,
+  loadAgingCfgFn = loadXpAgingCfg,
 }) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!seasonId) throw new Error("seasonId required");
+
+  // #6110 (ejervalg 19/11, kandidat B): er XP tændt for skiftets dato, og har talfilen en
+  // aldring, ældes kroppen efter den. Ellers dagens AGING_V2_CONFIG, bit-identisk.
+  // Læses strengt FØR noget skrives: en fejlet læsning kaster, og skiftet kan køres igen
+  // (idempotent via dev-loggen), så ingen rytter ældes efter den forkerte regel.
+  const agingCfg = await loadAgingCfgFn({ supabase, now });
 
   // ── Belastningen for den AFSLUTTEDE sæson (seasonNumber − 1) hentes FØR noget
   //    skrives. Fejler den, kaster vi: uden belastning ville alle få fuldt fald,
@@ -248,7 +269,7 @@ export async function developRidersForSeason({
     grew: 0, declined: 0, retired: 0, caps_initialised: 0,
     retirement_notice_frozen: 0,  // ryttere hvis pensionsvarsel blev skrevet ned her (#5073)
     retirement_notice_read: 0,    // ryttere hvor cutover LÆSTE et allerede frosset varsel (#5073)
-    aging_v2: { riders_with_load: 0, ability_points_declined: 0 },
+    aging_v2: { riders_with_load: 0, ability_points_declined: 0, rule: agingCfg ? "xp" : "v2" },
   };
 
   for (const r of riders) {
@@ -291,7 +312,7 @@ export async function developRidersForSeason({
     const isManagerRider = r.team_id != null && humanTeamIds.has(r.team_id);
     const load = rawLoad && !isManagerRider ? { ...rawLoad, hardDays: 0 } : rawLoad;
     if (load) summary.aging_v2.riders_with_load++;
-    const developed = developRiderSeasonV2(riderInput, abilities, seasonNumber, { load });
+    const developed = developRiderSeasonV2(riderInput, abilities, seasonNumber, agingCfg ? { load, cfg: agingCfg } : { load });
     summary.aging_v2.ability_points_declined += developed.aging.totalDrop;
     const { next, retirement } = developed;
 
