@@ -636,6 +636,10 @@ export function resolveSeasonRetirement(rider, age, season, cfg = PROGRESSION_CO
 //     mellem sæsoner (ingen migration).
 //   • Pensionen er uændret (samme resolveSeasonRetirement som i dag).
 //   • Lofterne (ability_caps) skrives stadig af motoren som i dag.
+//   • #6110 ejervalg 19/11 (kandidat B): under XP kan sæsonskiftet få en anden cfg
+//     (xpAgingConfig nedenfor, talfilen i private_config): tidligere start
+//     og et valgfrit `late`-fald i teknik og mentale evner fra en sen alder, bremset
+//     som de fysiske. Uden `late` er resultatet bit-identisk med i dag.
 export const AGING_V2_CONFIG = Object.freeze({
   plateauThroughAge: 30,
   declineByYearsPastPlateau: Object.freeze([
@@ -648,6 +652,20 @@ export const AGING_V2_CONFIG = Object.freeze({
   brakeLoadDays: 120,
   hardTrainingDayWeight: 0.5,
 });
+
+// #6110 (ejervalg 19/11): sæsonskiftets cfg under XP. `xpParams` er de validerede
+// XP-params (developmentXp.ts); uden `aging` = null, og sæsonskiftet bruger dagens
+// AGING_V2_CONFIG uændret. Bremsen og typefaktoren er dagens.
+export function xpAgingConfig(xpParams) {
+  const aging = xpParams?.aging;
+  if (!aging) return null;
+  return Object.freeze({
+    ...AGING_V2_CONFIG,
+    plateauThroughAge: aging.plateauThroughAge,
+    declineByYearsPastPlateau: aging.declineByYearsPastPlateau,
+    ...(aging.late ? { late: aging.late } : {}),
+  });
+}
 
 // De evner der kan falde med alderen: registrets fysiske evner + brosten.
 // Udledt af evne-registret (ikke en håndholdt liste), så en ny fysisk evne
@@ -728,14 +746,27 @@ export function developRiderSeasonV2(rider, abilities, season, options = {}) {
 
   const changed = [];
   let totalDrop = 0;
-  declining.forEach((ability, i) => {
-    if (drops[i] <= 0) return;
+  const applyDrops = (abilityList, dropList) => abilityList.forEach((ability, i) => {
+    if (dropList[i] <= 0) return;
     const before = next[ability];
-    const after = clamp(before - drops[i], 0, 99);
+    const after = clamp(before - dropList[i], 0, 99);
     next[ability] = after;
     totalDrop += before - after;
     if (after !== before) changed.push(ability);
   });
+  applyDrops(declining, drops);
+
+  // #6110 ejervalg 19/11: sent fald i teknik og mentale evner, kun når cfg.late er sat
+  // (talfilen under XP). Egen seed, så de fysiske evners afrunding er uændret.
+  const late = cfg.late;
+  if (late && Number.isFinite(age) && age >= late.fromAge) {
+    const lateAbilities = VISIBLE_ABILITIES.filter((ability) =>
+      !AGING_V2_DECLINING_ABILITIES.includes(ability) && Number.isFinite(next[ability]));
+    const lateRaw = lateAbilities.map(() => late.drop * brake);
+    if (lateRaw.reduce((s, d) => s + d, 0) > 0) {
+      applyDrops(lateAbilities, systematicRound(lateRaw, seededUnitMixed(`age2late:${rider.id}:${season}`)));
+    }
+  }
 
   return {
     next,
