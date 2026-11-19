@@ -72,6 +72,8 @@ export default function DevelopmentXpSwitch({ runs, roster, estimateFor, seasonG
 }
 
 const NUM = "font-data tabular-nums";
+// Ejer 19/11: XP de sidste 30 dage viser ogsaa gennemsnittet pr. dag (hele tal som al XP i visningen).
+const xpAvgPerDay = (row: { xp30: number; spark: readonly number[] }) => Math.round(row.xp30 / Math.max(1, row.spark.length));
 const HEAD = "font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3";
 const LABEL = "mb-1 font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3";
 const RATING_PLATE = `inline-flex min-w-[2.125rem] items-center justify-center rounded-cz border border-cz-border bg-cz-subtle px-1 py-0.5 text-[13px] font-semibold leading-none text-cz-1 ${NUM}`;
@@ -267,14 +269,14 @@ function DesktopTable({ rows, open, toggle, sort, onSort }: { rows: DevRow[]; op
       <thead>
         <tr className="border-b border-cz-border">
           <th className="w-[44px]"><span className="sr-only">{t("developmentXp.abilitiesCol")}</span></th>
-          <SortHead k="rider" label={t("colRider")} className="w-[200px]" sort={sort} onSort={onSort} />
+          <SortHead k="rider" label={t("colRider")} className="w-[192px]" sort={sort} onSort={onSort} />
           <SortHead k="type" label={t("colType")} className="w-[112px]" sort={sort} onSort={onSort} />
           <SortHead k="age" label={tRiders("table.age")} className="w-[52px]" sort={sort} onSort={onSort} />
           <SortHead k="rating" label={t("developmentXp.colRating")} className="w-[70px]" sort={sort} onSort={onSort} />
           <SortHead k="top" label={t("developmentXp.colTop")} className="w-[118px]" sort={sort} onSort={onSort} />
           <SortHead k="season" label={t("developmentXp.colSeason")} className="w-[72px]" sort={sort} onSort={onSort} />
           <SortHead k="xpToday" label={t("developmentXp.colXpToday")} className="w-[116px]" sort={sort} onSort={onSort} />
-          <SortHead k="xp30" label={t("developmentXp.colXp30")} className="w-[176px]" sort={sort} onSort={onSort} />
+          <SortHead k="xp30" label={t("developmentXp.colXp30")} className="w-[184px]" sort={sort} onSort={onSort} />
           <SortHead k="next" label={t("developmentXp.colNext")} sort={sort} onSort={onSort} />
         </tr>
       </thead>
@@ -299,7 +301,10 @@ function DesktopTable({ rows, open, toggle, sort, onSort }: { rows: DevRow[]; op
                 <td className="px-3 py-[7px]"><XpToday cell={row.today} /></td>
                 <td className="px-3 py-[7px]">
                   <span className="inline-flex items-center gap-2">
-                    <span className={`w-14 text-[13px] font-semibold text-cz-1 ${NUM}`}>{formatNumber(row.xp30)}</span>
+                    <span className="w-16 leading-tight">
+                      <span className={`block text-[13px] font-semibold text-cz-1 ${NUM}`}>{formatNumber(row.xp30)}</span>
+                      <span className={`block whitespace-nowrap text-2xs text-cz-3 ${NUM}`} data-testid="development-xp-avg">{t("developmentXp.avgPerDay", { value: formatNumber(xpAvgPerDay(row)) })}</span>
+                    </span>
                     <Spark row={row} />
                   </span>
                 </td>
@@ -342,7 +347,10 @@ function PhoneList({ rows, open, toggle }: { rows: DevRow[]; open: Set<string>; 
               <div className={`grid min-h-11 w-full items-center gap-2 px-3 py-2 ${PHONE_GRID} ${o ? "bg-cz-subtle/60" : ""}`}>
                 <Name row={row} short />
                 <span><Rating value={row.rating} /></span>
-                <span className={`text-[13px] font-semibold text-cz-1 ${NUM}`}>{formatNumber(row.xp30)}</span>
+                <span className="leading-tight">
+                  <span className={`block text-[13px] font-semibold text-cz-1 ${NUM}`}>{formatNumber(row.xp30)}</span>
+                  <span className={`block whitespace-nowrap text-2xs text-cz-3 ${NUM}`}>{t("developmentXp.avgPerDay", { value: formatNumber(xpAvgPerDay(row)) })}</span>
+                </span>
                 <button type="button" onClick={() => toggle(row.id)} aria-expanded={o} aria-label={t("developmentXp.openAbilities", { name: row.name })}
                   className="flex min-h-11 items-start justify-between gap-1 text-start text-xs">
                   {row.next

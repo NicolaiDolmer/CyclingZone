@@ -193,6 +193,7 @@
     "colSeason": "Seizoen",
     "colXpToday": "XP vandaag",
     "colXp30": "XP, 30 dagen",
+    "avgPerDay": "gem. {value}/dag",
     "colXp30Short": "XP, 30 d",
     "colNext": "Volgend punt",
     "openAbilities": "Vaardigheden van {name}",

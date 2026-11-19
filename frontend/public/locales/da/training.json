@@ -193,6 +193,7 @@
     "colSeason": "Sæson",
     "colXpToday": "XP i dag",
     "colXp30": "XP, 30 dage",
+    "avgPerDay": "snit {value}/dag",
     "colXp30Short": "XP, 30 d",
     "colNext": "Næste point",
     "openAbilities": "Evner for {name}",

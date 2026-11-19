@@ -193,6 +193,7 @@
     "colSeason": "Temporada",
     "colXpToday": "XP hoy",
     "colXp30": "XP, 30 días",
+    "avgPerDay": "media {value}/día",
     "colXp30Short": "XP, 30 d",
     "colNext": "Próximo punto",
     "openAbilities": "Habilidades de {name}",

@@ -193,6 +193,7 @@
     "colSeason": "Season",
     "colXpToday": "XP today",
     "colXp30": "XP, 30 days",
+    "avgPerDay": "avg {value}/day",
     "colXp30Short": "XP, 30 d",
     "colNext": "Next point",
     "openAbilities": "Abilities for {name}",
