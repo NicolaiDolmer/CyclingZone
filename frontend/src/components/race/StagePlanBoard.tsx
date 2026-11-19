@@ -255,8 +255,8 @@ function PlanEditor({ t, riderName, legs, role, route, suggestion, showsSuggesti
                   </Select>
                 </label>
               )}
-              {/* #7855: bredden foelger den laengste linje ("Gaa i udbrud + Hent bjergpoint" med prisen), mindst som foer. */}
-              <label className="flex-1 min-w-[9rem] sm:flex-none sm:w-auto sm:min-w-56 sm:max-w-full">
+              {/* #7855 (kun med kontakten): bredden foelger den laengste linje ("Gaa i udbrud + Hent bjergpoint" med prisen), mindst som foer. Slukket: som foer. */}
+              <label className={`flex-1 min-w-[9rem] sm:flex-none ${route.jersey_hunt_7855 === true ? "sm:w-auto sm:min-w-56 sm:max-w-full" : "sm:w-56"}`}>
                 <span className="sr-only">{t("stagePlan.taskLabel")}</span>
                 <Select
                   size="sm"
