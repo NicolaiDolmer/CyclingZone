@@ -1,6 +1,6 @@
 // Indgang for #7947 samlet design. Aabnes via vite dev paa
 //   /src/preview/sketches/7947-samlet/index.html?v=r1|r2|r3&pressed=1&open=r4:1&shot=1
-//   R5: ?v=r5&tab=program&mode=rotation&view=moment&frame=0.5&sessions=all&open=r5&menu=r4&filter=tired&date=2&theme=dark
+//   R5: ?v=r5&tab=program|development|report&range=30&mode=rotation&view=moment&frame=0.5&sessions=all&open=r5&menu=r4&filter=tired&date=2&theme=dark
 // Ingen app-router, ingen backend, intet login. Dansk, fordi billederne er til ejeren.
 
 import { createRoot } from "react-dom/client";
@@ -71,7 +71,8 @@ function Nav() {
 
 // Retning 5: alt styres af URL-parametre, saa hvert billede er en fast tilstand.
 const r5Init: R5Init = {
-  tab: q.get("tab") === "program" ? "program" : "day",
+  tab: (["program", "development", "report"] as const).find((t) => t === q.get("tab")) ?? "day",
+  range: q.get("range") === "30" ? "30" : "today",
   moment: q.get("view") === "moment",
   frame: q.get("frame") === null ? null : Math.max(0, Math.min(1, Number(q.get("frame")))),
   pressed,

@@ -24,9 +24,12 @@ import { DATES, RACE, SESSION_EN, SESSION_GROUPS_EN, TEAM, programFields, type R
 import TodaysTraining from "./R5Moment.tsx";
 import { ArrowMark, FatiguePlate, RiderName } from "./R5Parts.tsx";
 import ProgramTab from "./R5Program.tsx";
+import DevelopmentTab from "./R5Development.tsx";
+import ReportTab, { type ReportRange } from "./R5Report.tsx";
 
 export type R5Init = {
-  tab: "day" | "program";
+  tab: "day" | "program" | "development" | "report";
+  range: ReportRange;
   moment: boolean;
   frame: number | null;
   pressed: boolean;
@@ -323,17 +326,17 @@ export default function Direction5({ init, mobile }: { init: R5Init; mobile: boo
             {pressed ? "Bonus earned: +15 % for pressing it yourself" : "+15 % when you press it yourself · otherwise it runs at 20:00"}
           </span>
         </div>
-      ) : (
+      ) : tab === "program" ? (
         <div className="flex items-center gap-2 max-sm:w-full">
           <Button variant="secondary" size="sm" className="max-sm:flex-1">Copy to riders</Button>
           <Button size="sm" className="max-sm:flex-1">Save plan</Button>
         </div>
-      )}
+      ) : null}
     </header>
   );
 
   const tabs = (
-    <Tabs value={tab} onChange={(v: string) => (v === "day" || v === "program") && setTab(v)} className="mb-4">
+    <Tabs value={tab} onChange={(v: string) => (v === "day" || v === "program" || v === "development" || v === "report") && setTab(v)} className="mb-4">
       <TabList label="Training">
         <Tab value="day">Day</Tab>
         <Tab value="program">Program</Tab>
@@ -349,6 +352,18 @@ export default function Direction5({ init, mobile }: { init: R5Init; mobile: boo
         {header}
         {tabs}
         <ProgramTab mode={init.mode} mobile={mobile} />
+      </main>
+    );
+  }
+
+  if (tab === "development" || tab === "report") {
+    return (
+      <main className={`mx-auto max-w-[1600px] pb-16 pt-7 ${mobile ? "px-4" : "px-8"}`}>
+        {header}
+        {tabs}
+        {tab === "development"
+          ? <DevelopmentTab mobile={mobile} openIds={init.open} />
+          : <ReportTab mobile={mobile} range={init.range} openIds={init.open} />}
       </main>
     );
   }
