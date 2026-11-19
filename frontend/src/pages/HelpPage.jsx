@@ -546,6 +546,7 @@ const SECTION_DEFS = [
       { id: "teamPlans", kind: "text", flag: "tactics_ready_7864" },
       // #7638: hvilken opgave faar hvilket prisord (EFFORT_COST_WORD + undtagelsen udbrud).
       { id: "taskPrices", kind: "text", flag: "tactics_ready_7864" },
+      { id: "jerseyHunt", kind: "text", flag: "jersey_hunt_7855" }, // #7855: troejejagten i etapeplanen
       { id: "strategy", kind: "text" },
       { id: "breakaway", kind: "text" },
       { id: "ordersGc", kind: "text" }, // #6067: orders_gc_v1
