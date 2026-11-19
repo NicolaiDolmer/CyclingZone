@@ -115,11 +115,6 @@ export type StagePlanRuntime = {
    * (`fromField`, se noteHuntFromField7855). Udeladt = ingen saadan rytter (bit-identisk).
    */
   missedBreakHunt7855?: MissedBreakHunt7855;
-  /**
-   * #7855 hul 1 (ejer 16/11, KUN kontakten): jagten fra et udbrudsled, han forlod paa "kom ikke med"
-   * eller "hentet", med udbrudsleddets straekning. Gaelder kun, mens han ligger i et udbrud. Udeladt = ingen.
-   */
-  huntFollows7855?: Map<string, { hunt: StagePlanTask; fromKm: number; toKm: number }>;
 };
 
 /**
@@ -477,6 +472,8 @@ export function advanceStagePlan(
   // #7855 valg 3 + hul 1 og 2: spurterne i segmentet, der lige er koert (tom uden kontakten).
   const missed = rt.missedBreakHunt7855;
   const sprints = missed ? takeNewSprints7855(missed, state) : [];
+  // #7855 hul 1 (KUN kontakten): ligger dagens udbrud paa vejen ved denne graense?
+  const breakOnRoad = huntRoute !== undefined && state.groups.some((g) => isEscape(g) && g.rider_ids.length > 0);
   for (const riderId of rt.riderIds) {
     if (state.riders[riderId]?.status !== "racing") continue;
     const legs = rt.legs.get(riderId)!;
@@ -498,17 +495,16 @@ export function advanceStagePlan(
       behind7635 = streak >= STAGE_PLAN_DROPPED_7635_TUNING.consecutiveChecks;
     }
     const dropped = breakawayLeg ? !inEscape : (front ? behind7635 : isRiderDropped(riderId, state, entrants));
+    // #7855 hul 1 (ejer 16/11 + 17/11, KUN kontakten og kun et udbrudsled med jagt): planen venter,
+    // til udbruddet er dannet. "Kom ikke med" afgoeres foerst, naar der ligger et udbrud paa vejen;
+    // indtil da proever han stadig at komme med. Kom han ikke med, eller er han hentet, gaar planen
+    // videre til naeste led, og jagten er slut: den foelger aldrig med til et senere udbrud.
+    const waitsForBreak = huntRoute !== undefined && breakawayLeg && legs[cur].hunt !== null && !rt.everInEscape.has(riderId) && !breakOnRoad;
     let next = cur;
     let reason: StagePlanSwitchReason | null = null;
-    if (!atStart && droppedIdx > cur && dropped) {
+    if (!atStart && droppedIdx > cur && dropped && !waitsForBreak) {
       next = droppedIdx;
       reason = breakawayLeg ? (rt.everInEscape.has(riderId) ? "caught" : "missed_break") : "dropped";
-      // #7855 hul 1 (ejer 16/11, KUN kontakten): planen gaar videre til "naar han er sat" som et rent
-      // udbrud (samme indsats og pris), men jagten venter paa udbruddet: kommer han siden med i et
-      // udbrud (fx et nyt efter en tidlig indhentning), gaelder jagten igen, mens han ligger i det.
-      if (huntRoute !== undefined && breakawayLeg && legs[cur].hunt !== null) {
-        (rt.huntFollows7855 ??= new Map()).set(riderId, { hunt: legs[cur].hunt as StagePlanTask, fromKm: legs[cur].fromKm ?? 0, toKm: legs[cur + 1]?.fromKm ?? Infinity });
-      }
     } else {
       while (next + 1 < legs.length && legs[next + 1].fromKm !== null && switchesNow(legs[next + 1]) && !holdsForHunt(legs[next], legs[next + 1].fromKm as number)) {
         next += 1;
@@ -595,22 +591,18 @@ export function stagePlanCurrentTasks(rt: StagePlanRuntime): Record<string, Stag
  * #7855: straekningen hver rytter paa et jagt-led kaemper paa (som valideringen: efter leddets
  * rutepunkt, til og med naeste leds rutepunkt). undefined uden kontakten eller uden jaegere.
  */
-export function stagePlanHuntWindows7855(rt: StagePlanRuntime): Record<string, HuntWindow7855> | undefined {
+export function stagePlanHuntWindows7855(rt: StagePlanRuntime): Record<string, { fromKm: number; toKm: number }> | undefined {
   if (!rt.huntRoute7855) return undefined;
-  let out: Record<string, HuntWindow7855> | undefined;
+  let out: Record<string, { fromKm: number; toKm: number }> | undefined;
   for (const riderId of rt.riderIds) {
     const legs = rt.legs.get(riderId)!;
     const cur = rt.current.get(riderId) ?? 0;
-    const follows = legs[cur].hunt ? undefined : rt.huntFollows7855?.get(riderId); // #7855 hul 1
-    if (!legs[cur].hunt && !follows) continue;
+    if (!legs[cur].hunt) continue;
     out ??= {};
-    out[riderId] = follows ? { fromKm: follows.fromKm, toKm: follows.toKm, escapeOnly: true } : { fromKm: legs[cur].fromKm ?? 0, toKm: legs[cur + 1]?.fromKm ?? Infinity };
+    out[riderId] = { fromKm: legs[cur].fromKm ?? 0, toKm: legs[cur + 1]?.fromKm ?? Infinity };
   }
   return out;
 }
-
-/** #7855: en jaegers straekning. `escapeOnly`: jagten gaelder kun, mens han ligger i et udbrud (hul 1). */
-export type HuntWindow7855 = { fromKm: number; toKm: number; escapeOnly?: true };
 
 /**
  * #7855: den jagt-opgave hver rytter koerer segmentet med (et jagt-led, eller udbrudsleddets jagt,
@@ -619,13 +611,14 @@ export type HuntWindow7855 = { fromKm: number; toKm: number; escapeOnly?: true }
  * kontakten eller uden jaegere (samme betingelse som stagePlanHuntWindows7855).
  * #7855 S2 (ejer 16/11, "jagten slutter"): bjergjagten staar her hele udbrudsleddet, men gaelder kun
  * de toppe, han ligger i udbruddet ved. Det afgoeres ved selve passagen, ikke her ved segmentets
- * start, saa et sent dannet udbrud (hul 1) taeller (mechanics/jerseyHunt7855.jerseyHuntersForPassage7855).
+ * start, saa et udbrud dannet sent i segmentet taeller (mechanics/jerseyHunt7855.jerseyHuntersForPassage7855).
+ * Hul 1 (ejer 17/11): kun det aktuelle led baerer en jagt; efter "kom ikke med" eller "hentet" er den slut.
  */
 export function stagePlanHuntTasks7855(rt: StagePlanRuntime): Record<string, StagePlanTask> | undefined {
   if (!rt.huntRoute7855) return undefined;
   let out: Record<string, StagePlanTask> | undefined;
   for (const riderId of rt.riderIds) {
-    const hunt = rt.legs.get(riderId)![rt.current.get(riderId) ?? 0].hunt ?? rt.huntFollows7855?.get(riderId)?.hunt; // #7855 hul 1
+    const hunt = rt.legs.get(riderId)![rt.current.get(riderId) ?? 0].hunt;
     if (!hunt) continue;
     out ??= {};
     out[riderId] = hunt;

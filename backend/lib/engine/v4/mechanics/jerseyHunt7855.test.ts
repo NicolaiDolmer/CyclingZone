@@ -117,18 +117,6 @@ test("#7855 S2 (ejer 16/11): bjergjagten gaelder kun i udbruddet ved selve toppe
   assert.equal(inEscapeAtPassage7855([pel], "kom2"), false);
 });
 
-test("#7855 hul 1 (Fable-dom PR #8218): en jagt der fulgte ham fra udbrudsleddet gaelder kun i udbruddet, ogsaa i spurterne", () => {
-  const tasks = { a: "hunt_points", b: "hunt_points" } as const;
-  const racing = () => true;
-  const windows = { a: { fromKm: 0, toKm: Infinity, escapeOnly: true as const }, b: { fromKm: 0, toKm: Infinity } };
-  const brk = { origin: "breakaway", kind: "breakaway", rider_ids: ["a"] };
-  const pel = { origin: "start", kind: "peloton", rider_ids: ["a", "b"] };
-  // I udbruddet: begge koerer om spurten.
-  assert.deepEqual(jerseyHuntersForPassage7855(tasks, "sprint", racing, { km: 50, windows, groups: [brk, { ...pel, rider_ids: ["b"] }] }), ["a", "b"]);
-  // I feltet: kun den almindelige pointjagt (valg 3), ikke den der fulgte ham efter "kom ikke med".
-  assert.deepEqual(jerseyHuntersForPassage7855(tasks, "sprint", racing, { km: 50, windows, groups: [pel] }), ["b"]);
-});
-
 test("#7855 C (Codex-review): loftet paa arbejdet i front goer aldrig en passage gratis", () => {
   const sprints = (n: number) => ({ groupSnapshots: [{ km: 100, groups: [{ kind: "breakaway", rider_ids: ["h"] }] }], passages: Array.from({ length: n }, () => ({ kind: "sprint", hunt_work_7855: ["h"] })) });
   const exp = (n: number) => exposureOf(sprints(n), "flat").get("h")!;

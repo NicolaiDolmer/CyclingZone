@@ -4,7 +4,10 @@
 // Designnote og maalt baseline: #7855 (tal privat i balance-internals/7855/).
 // Ejerens tre valg 12/11 (docs/superpowers/specs/2026-11-12-7855-troejejagt-ejervalg.md):
 //   A. Udbrud og jagt sammen: udbrudsleddet kan baere jagten (stagePlan.ts `hunt`). Han proever
-//      udbruddet og koerer om pointene fra start, i udbruddet eller i den gruppe han ender i.
+//      udbruddet og koerer om pointene fra start: bjergpoint kun i udbruddet (S2, ejer 16/11),
+//      spurtpoint ogsaa fra den gruppe han ender i, saa laenge han er paa udbrudsleddet. Har
+//      planen et led "naar han er sat", venter leddet, til udbruddet er dannet; kom han ikke med,
+//      eller er han hentet, gaar planen videre, og jagten er slut (hul 1, ejer 17/11).
 //   B. Evnen afgoer mod dem, der kaemper: jaegeren slaar kun ryttere, der ikke koerer med om
 //      pointene. Mod andre kaempende i gruppen (andre jaegere, sprinterkaptajner, troejens foerer,
 //      #6937-bjergjaegere, ogsaa AI-holdenes) afgoer evnen og passagens spredning, som mellem to
@@ -14,9 +17,9 @@
 //
 // HVAD OPGAVEN AENDRER (og intet andet):
 //   1. Hvem kaemper om passagen. En rytter hvis aktuelle jagt (ctx.stagePlanHuntTasks7855) gaelder
-//      netop denne art passage paa hans egen straekning, kaemper om den i den gruppe han sidder i,
-//      ogsaa i feltet. Gruppen afgoer stadig foerst: et udbrud foran tager pointene foran ham.
-//      Ingen ny terning.
+//      netop denne art passage paa hans egen straekning, kaemper om den i den gruppe han sidder i:
+//      en spurt ogsaa i feltet, en bjergtop kun i udbruddet (S2). Gruppen afgoer stadig foerst: et
+//      udbrud foran tager pointene foran ham. Ingen ny terning.
 //   2. Prisen: i loebet er det opgavens indsats (TASK_EFFORT). I traetheden bagefter taeller et
 //      jagt-led med samme indsats (som tempo og foelg med), saa opgaven aldrig er en billigere vej
 //      til samme loeb (dom 2, "frikortet"). Hver passage han koerte med om, fordi opgaven bad ham,
@@ -74,14 +77,17 @@ export function inEscapeAtPassage7855(groups: readonly HuntGroup7855[], riderId:
  * bjergjaeger kaemper kun om en top, mens han ligger i udbruddet. Kom han ikke med, eller er han
  * hentet, er jagten slut: ingen bjergjagt fra feltet. Det afgoeres paa gruppebilledet ved selve
  * passagen (`groups`), ikke ved segmentets start, saa et udbrud der foerst dannes sent i segmentet
- * (hul 1) stadig taeller, naar han kom med. Pointjagten i spurterne er uaendret.
+ * stadig taeller, naar han kom med. Pointjagten i spurterne er uaendret.
+ * Hul 1 (ejer 17/11): en jagt foelger aldrig med til et senere led. Har planen et led "naar han er
+ * sat", venter udbrudsleddet, til udbruddet er dannet (stagePlanEngine.advanceStagePlan); kom han
+ * ikke med, eller er han hentet, gaar planen videre, og jagten er slut.
  */
 export function jerseyHuntersForPassage7855(
   huntTasks: Readonly<Record<string, StagePlanTask>> | null | undefined,
   kind: "sprint" | "kom",
   isRacing: (riderId: string) => boolean,
   /** Passagens km og hver jaegers straekning: et jagt-led kaemper kun om passager paa sin egen straekning. */
-  passage?: { km: number; windows: Readonly<Record<string, { fromKm: number; toKm: number; escapeOnly?: true }>> | undefined; groups?: readonly HuntGroup7855[] },
+  passage?: { km: number; windows: Readonly<Record<string, { fromKm: number; toKm: number }>> | undefined; groups?: readonly HuntGroup7855[] },
 ): string[] {
   if (!huntTasks) return [];
   const task = JERSEY_HUNT_TASK_BY_KIND_7855[kind];
@@ -89,10 +95,9 @@ export function jerseyHuntersForPassage7855(
     const window = passage?.windows?.[id];
     return !window || (passage!.km > window.fromKm && passage!.km <= window.toKm);
   };
-  // S2: bjergjagten, og (hul 1) en jagt der fulgte ham fra udbrudsleddet (`escapeOnly`), gaelder kun
-  // i udbruddet. Kun naar passagens gruppebillede er givet.
+  // S2: bjergjagten gaelder kun i udbruddet. Kun naar passagens gruppebillede er givet.
   const groups = passage?.groups;
-  const withBreak = (id: string) => groups === undefined || !(kind === "kom" || passage?.windows?.[id]?.escapeOnly) || inEscapeAtPassage7855(groups, id);
+  const withBreak = (id: string) => groups === undefined || kind !== "kom" || inEscapeAtPassage7855(groups, id);
   return Object.keys(huntTasks)
     .filter((id) => huntTasks[id] === task && isRacing(id) && onStretch(id) && withBreak(id))
     .sort();
