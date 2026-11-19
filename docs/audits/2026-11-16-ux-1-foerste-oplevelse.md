@@ -4,6 +4,8 @@ Refs #8282 (spilleren vender tilbage) · bygger på [mobil-top10](2026-11-16-mob
 
 **Område:** forsiden for anonyme, login/opret, sæsontilmelding, rundvisning, første dag (dashboard, første løbskort, første træning) og en manager, der kommer tilbage efter inaktivitet. Hvert flow er gået igennem som ny og som tilbagevendende spiller ved 390 px og 1440 px i lys og mørk tilstand.
 
+> **Rå billeder:** `raw/` er taget ud ved merge (ejer 19/11) og ligger i commit `66b6a5603` på branchen `claude/quirky-galileo-k9rafu`.
+
 ## Metode
 
 - **Kørsel:** `VITE_PREVIEW_MOCK=1` med de falske `VITE_SUPABASE_*` fra `frontend/playwright.config.js` og `cz_consent_v1` sat. Playwright Chromium, 390 × 844 (`isMobile`, DPR 2) og 1440 × 900, `locale en-US`, tidszone Europe/Copenhagen.
