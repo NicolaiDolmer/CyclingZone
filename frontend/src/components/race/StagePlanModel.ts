@@ -173,6 +173,15 @@ export function legHuntTask(leg: StagePlanLeg): JerseyHuntTask | null {
   return leg.hunt !== undefined && JERSEY_HUNT_TASKS[leg.hunt] !== undefined ? leg.hunt : null;
 }
 
+/**
+ * #7855 hul 1 (ejer 17/11): udbrudsleddet baerer en jagt, og planen har et led "naar han er hentet"
+ * efter det. Saa slutter jagten, hvis han ikke kommer med i udbruddet eller bliver hentet (motoren:
+ * stagePlanEngine.advanceStagePlan). Noten siger det, kun naar det gaelder.
+ */
+export function huntEndsWhenCaught7855(legs: readonly StagePlanLeg[]): boolean {
+  return legs[0]?.task === "breakaway" && legHuntTask(legs[0]) !== null && legs.some((l) => l.from?.at === "dropped");
+}
+
 /** #7855 (reviewfund): samme regel som serveren (stagePlan.ts), holdt ens af paritetstesten. */
 export function planHasJerseyHunt(legs: readonly StagePlanLeg[]): boolean {
   return legs.some((leg) => legHuntTask(leg) !== null);

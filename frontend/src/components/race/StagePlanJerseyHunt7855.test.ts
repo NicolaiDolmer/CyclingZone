@@ -3,6 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
+  huntEndsWhenCaught7855,
   orderWithoutJerseyHunt,
   setLegTask,
   taskChoiceKey,
@@ -143,6 +144,18 @@ test("#7855 egne linjer: tekster for linjerne, prisen, noterne og fejlkoden paa 
   }
   const en = JSON.parse(readFileSync(new URL("../../../public/locales/en/races.json", import.meta.url), "utf8"));
   assert.ok(!/climb/i.test(en.stagePlan.huntNote), "pointnoten lover ikke stigninger");
+});
+
+test("#7855 hul 1 (ejer 17/11): noten om at jagten slutter vises kun med jagt paa udbrudsleddet og et led 'naar han er hentet'", () => {
+  const caught = { task: "ride_in", from: { at: "dropped" } } as StagePlanLeg;
+  assert.equal(huntEndsWhenCaught7855([{ task: "breakaway", hunt: "hunt_points" }, caught]), true);
+  assert.equal(huntEndsWhenCaught7855([{ task: "breakaway", hunt: "hunt_kom" }, caught]), true);
+  assert.equal(huntEndsWhenCaught7855([{ task: "breakaway", hunt: "hunt_points" }]), false, "uden led efter: han bliver paa udbrudsleddet");
+  assert.equal(huntEndsWhenCaught7855([{ task: "breakaway" }, caught]), false, "uden jagt: ingen note");
+  for (const lang of ["en", "da", "es", "fr", "nl"]) {
+    const j = JSON.parse(readFileSync(new URL(`../../../public/locales/${lang}/races.json`, import.meta.url), "utf8"));
+    assert.ok(typeof j.stagePlan.huntNoteEnds === "string" && j.stagePlan.huntNoteEnds.includes(j.stagePlan.from.caught), `${lang}: noten bruger leddets eget ord`);
+  }
 });
 
 const legs: StagePlanLeg[] = [{ task: "hunt_kom" }, { task: "ride_in", from: { at: "kom", kom_index: 1 } }];

@@ -46,6 +46,7 @@ import {
   suggestStagePlan,
   suggestionReasonKey,
   legHuntTask,
+  huntEndsWhenCaught7855,
   taskChoiceKey,
   taskChoiceOptions,
   triggerKey,
@@ -325,6 +326,7 @@ function PlanEditor({ t, riderName, legs, role, route, suggestion, showsSuggesti
       {(["hunt_points", "hunt_kom"] as const).filter((h) => legs.some((l) => legHuntTask(l) === h)).map((h) => (
         <p key={h} className="px-3.5 py-2 border-t border-cz-border text-3xs text-cz-2">{t(h === "hunt_kom" ? "stagePlan.huntNoteKom" : "stagePlan.huntNote")}</p>
       ))}
+      {huntEndsWhenCaught7855(legs) && <p className="px-3.5 py-2 border-t border-cz-border text-3xs text-cz-2" data-testid="stage-plan-hunt-ends">{t("stagePlan.huntNoteEnds")}</p>}
       <p className="px-3.5 py-2 border-t border-cz-border text-3xs text-cz-3">{t("stagePlan.rulesNote")}</p>
     </div>
   );

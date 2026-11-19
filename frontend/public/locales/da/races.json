@@ -140,6 +140,7 @@
     "price": { "hard": "Hård" },
     "huntNote": "Pointjagt i spurterne: han kører om de indlagte spurter på sin strækning fra den gruppe, han sidder i. Et udbrud foran tager stadig pointene først. Spurter, han kun kører om på grund af opgaven, lægger lidt oveni hans træthed.",
     "huntNoteKom": "Bjergpoint tæller kun i et udbrud, aldrig fra feltet.",
+    "huntNoteEnds": "Med et trin 'når han er hentet' slutter jagten, hvis han ikke kommer med i udbruddet eller bliver hentet.",
     "huntChoice": { "hunt_points": "Gå i udbrud + Hent point", "hunt_kom": "Gå i udbrud + Hent bjergpoint" },
     "huntPrice": { "sprint": "{price}, plus lidt pr. spurt", "kom": "{price}, plus lidt pr. stigning" },
 

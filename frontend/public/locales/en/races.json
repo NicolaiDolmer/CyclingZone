@@ -138,8 +138,9 @@
     "effortNote": "The effort follows the task.",
     "huntOption": "{task} · {price}",
     "price": { "hard": "Hard" },
-    "huntNote": "He contests the sprints on his stretch from his group; each tires him a little.",
+    "huntNote": "He contests the sprints on his stretch from his group.",
     "huntNoteKom": "KOM points only count in a break.",
+    "huntNoteEnds": "With a 'when caught' step, the hunt ends if he misses the break or is caught.",
     "huntChoice": { "hunt_points": "Go in the break + sprint points", "hunt_kom": "Go in the break + KOM points" },
     "huntPrice": { "sprint": "{price} + a little per sprint", "kom": "{price} + a little per climb" },
 

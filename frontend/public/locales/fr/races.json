@@ -138,8 +138,9 @@
     "effortNote": "L'effort suit la tâche.",
     "huntOption": "{task} · {price}",
     "price": { "hard": "Dure" },
-    "huntNote": "Il dispute les sprints de son tronçon depuis son groupe ; chacun le fatigue un peu.",
+    "huntNote": "Il dispute les sprints de son tronçon depuis son groupe.",
     "huntNoteKom": "Points de la montagne : seulement en échappée.",
+    "huntNoteEnds": "Avec une étape 'quand il est repris', la chasse s'arrête s'il rate l'échappée ou est repris.",
     "huntChoice": { "hunt_points": "Prendre l'échappée + points des sprints", "hunt_kom": "Prendre l'échappée + points de la montagne" },
     "huntPrice": { "sprint": "{price} + un peu par sprint", "kom": "{price} + un peu par côte" },
 
