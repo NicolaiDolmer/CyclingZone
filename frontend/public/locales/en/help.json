@@ -1368,7 +1368,7 @@
       },
       "agingV2Xp": {
         "title": "Age and decline",
-        "text": "Riders peak in their late twenties. After that the body slowly ages: at each season change his physical abilities and cobbles drop a little, and the drop grows the older he gets. Late in his career, technique, tactics and the other mental abilities drop a little too. Racing slows all of it: every race day in the season that just ended counts, and hard training days help too, so a rider who races keeps his level longer. Nobody grows at the season change itself; your riders develop through their daily training, and he earns the same XP until late in his career, so a veteran can still improve when the work is there."
+        "text": "Riders peak in their late twenties. After that the body slowly ages: at each season change his physical abilities and cobbles drop a little, and the drop grows the older he gets. Late in his career, technique, tactics and the other mental abilities drop a little too. Racing slows all of it: every race day in the season that just ended counts, and hard training days help too, so a rider who races keeps his level longer. Nobody grows at the season change itself; your riders develop through their daily training, and he earns the same XP until late in his career, so a veteran can still improve when the work is there. This aging starts at the first season change after the new XP development went live; until then the earlier rule applies."
       },
       "aiRidersV2": {
         "title": "AI riders and free agents",

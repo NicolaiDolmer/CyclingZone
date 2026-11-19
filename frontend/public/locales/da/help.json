@@ -1368,7 +1368,7 @@
       },
       "agingV2Xp": {
         "title": "Alder og tilbagegang",
-        "text": "Ryttere topper sidst i tyverne. Derefter ældes kroppen langsomt: ved hvert sæsonskifte falder de fysiske evner og brosten lidt, og faldet bliver større, jo ældre han bliver. Sent i karrieren falder teknik, taktik og de andre mentale evner også en smule. Løb bremser det hele: hver løbsdag i den sæson, der lige er slut, tæller med, og hårde træningsdage hjælper også, så en rytter, der kører løb, holder sit niveau længere. Ingen vokser ved selve sæsonskiftet; dine ryttere udvikler sig gennem den daglige træning, og han tjener samme XP til langt hen i karrieren, så en veteran kan stadig blive bedre, når arbejdet er der."
+        "text": "Ryttere topper sidst i tyverne. Derefter ældes kroppen langsomt: ved hvert sæsonskifte falder de fysiske evner og brosten lidt, og faldet bliver større, jo ældre han bliver. Sent i karrieren falder teknik, taktik og de andre mentale evner også en smule. Løb bremser det hele: hver løbsdag i den sæson, der lige er slut, tæller med, og hårde træningsdage hjælper også, så en rytter, der kører løb, holder sit niveau længere. Ingen vokser ved selve sæsonskiftet; dine ryttere udvikler sig gennem den daglige træning, og han tjener samme XP til langt hen i karrieren, så en veteran kan stadig blive bedre, når arbejdet er der. Denne aldring gælder fra det første sæsonskifte efter, at den nye XP-udvikling blev tændt; indtil da gælder den tidligere regel."
       },
       "aiRidersV2": {
         "title": "AI-ryttere og frie ryttere",
