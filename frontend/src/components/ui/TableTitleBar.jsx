@@ -109,7 +109,7 @@ export default function TableTitleBar({
       <div className={`flex min-w-0 flex-1 items-center gap-x-1 ${search && searchOpen ? "max-sm:hidden" : ""}`}>
         <div className="flex min-w-0 flex-1 items-center overflow-hidden">
           {choices.map((choice, index) => (
-            <span key={choice.key} className="flex min-w-0 flex-none items-center">
+            <span key={choice.key} className="flex min-w-0 shrink items-center">
               {index > 0 && (
                 <span aria-hidden="true" className="px-0.5 text-cz-3">
                   ·
