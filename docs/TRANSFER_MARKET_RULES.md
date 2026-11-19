@@ -751,7 +751,7 @@ Sweepen findes fordi flushen kun kaldes fra ét sted: Vasco Fernandes stod parke
 22/6→4/8 (over 40 dage) med en betalt, aldrig-leveret handel, og spilleren rapporterede det
 selv i Discord (#3330, `deferredTransferHealSweep.js:1-22`).
 
-### 10.1 Frigivelse midt i et etapeløb venter (#8153, bag kontakten `release_defer_8153`, slukket)
+### 10.1 Frigivelse midt i et etapeløb venter (#8153, bag kontakten `release_defer_8153`, tændt for alle 19/11)
 
 Slukket (seed `off`; kun `on` tænder, `beta` tæller som slukket) frigives en rytter straks som i dag. Tændt: fyrer holdet en seniorrytter, der kører et aktivt etapeløb (samme afgrænsning som tabellen ovenfor, og holdet er ikke afmeldt løbet), bestilles frigivelsen i stedet. Rytteren kører løbet færdigt og forlader holdet efter sidste etape.
 
