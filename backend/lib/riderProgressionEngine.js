@@ -38,7 +38,6 @@ import {
   developRiderSeasonV2, buildCapsForRider, sameCaps, resolveSeasonRetirement, xpAgingConfig,
 } from "./riderProgression.js";
 import { loadSeasonDevelopmentLoad } from "./seasonDevelopmentLoad.js";
-import { loadDevelopmentXp } from "./developmentXpFlag.ts";
 import {
   RETIREMENT_NOTICE_COLUMNS,
   frozenNoticeFor,
@@ -174,6 +173,10 @@ async function runBatched(items, concurrency, fn) {
  * dato før startdatoen eller talfil uden `aging` = null (dagens aldring).
  */
 export async function loadXpAgingCfg({ supabase, now = new Date() }) {
+  // Dynamisk import: holder XP-kontaktens modulgraf (dailyTraining m.fl.) ude af
+  // sæsonmotorens statiske graf og dermed ude af frontendens typetjek (#7148).
+  const XP_FLAG_MODULE = "./developmentXpFlag.ts";
+  const { loadDevelopmentXp } = await import(XP_FLAG_MODULE);
   const params = await loadDevelopmentXp({ supabase, tickDate: copenhagenDateString(now), strict: true });
   return xpAgingConfig(params);
 }
@@ -197,7 +200,7 @@ export async function loadXpAgingCfg({ supabase, now = new Date() }) {
  * @param {Date}    [args.now]          — til notifikations-dedup (default new Date())
  * @param {Map}     [args.seasonLoadByRider] — injiceret belastning (rider_id → { raceDays, hardDays })
  *                  for den afsluttede sæson; udeladt → hentes af loadSeasonDevelopmentLoadFn.
- * @param {Function} [args.loadAgingCfgFn] — #6110 (ejervalg 19/11): aldrings-cfg under XP,
+ * @param {Function} [args.loadAgingCfgFn] aldrings-cfg under XP (sag 6110, ejervalg 19/11),
  *                  eller null for dagens aldring. Default læser XP-kontakten for skiftets
  *                  danske dato; tests injicerer.
  * @returns {Promise<object>} summary
