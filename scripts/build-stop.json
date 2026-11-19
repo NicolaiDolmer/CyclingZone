@@ -1756,6 +1756,11 @@
       "issue": 8450,
       "reason": "Ejer-go 19/11 (PC1 + ejer 18/11 i staff-chat): startlisten viser ratings, ikke konkurrenternes rutematch.",
       "since": "2026-11-19"
+    },
+    {
+      "issue": 8476,
+      "reason": "Ejer-go 19/11 (PC1, AskUserQuestion): \"Rettelser af forkert info\" + \"Træn nu-animationen (A)\" + \"Ny træningsside: Udvikling\" + \"Program med programmer\" (skitse). Gennemgang af alle trænings- og udviklingsvisninger før XP-tænding; forkert info rettes straks.",
+      "since": "2026-11-19"
     }
   ]
 }
