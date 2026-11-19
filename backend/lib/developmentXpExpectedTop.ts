@@ -33,7 +33,7 @@ import { resolveProgram } from "./dailyTraining.js";
 import { applyTrainingCatalog, v3SmartDefaultFocus } from "./trainingCatalogV3.js";
 import { TRAINING_CONFIG, TRAINING_FOCUSES, programAbilityWeight } from "./training.js";
 import { RECOVERY_INTENSITY, dayTypeForProgram } from "./trainingDayTypes.js";
-import { PROGRESSION_CONFIG, abilityRoleClass, developRiderSeasonV2 } from "./riderProgression.js";
+import { PROGRESSION_CONFIG, abilityRoleClass, developRiderSeasonV2, xpAgingConfig } from "./riderProgression.js";
 import { abilityMeta } from "./abilityRegistry.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { bestRoleForAbilities } from "./riderBestRoleCache.js";
@@ -160,6 +160,7 @@ export function expectedCareer(
   let top = ratingNow;
   let topAbilities = { ...state };
   let topAge = age;
+  const agingCfg = xpAgingConfig(params);
   for (let a = age; a <= career.endAge; a++) {
     const physical = xpPerDate({ potentiale: rider.potentiale, age: a }, params);
     const mental = xpPerDate({ potentiale: rider.potentiale, age: a, mental: true }, params);
@@ -184,7 +185,8 @@ export function expectedCareer(
     // Sæsonskiftet: alderen i den nye sæson, seedet som motoren.
     const dev = developRiderSeasonV2(
       { id: rider.id, primary_type: primaryType, potentiale: rider.potentiale, age: a + 1 },
-      state, a, { load: career.declineLoad },
+      // #6110 (ejervalg 19/11): samme aldring som sæsonskiftet under XP (talfilens `aging`).
+      state, a, agingCfg ? { load: career.declineLoad, cfg: agingCfg } : { load: career.declineLoad },
     );
     state = { ...state, ...(dev.next as Record<string, number>) };
   }
