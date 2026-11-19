@@ -32,6 +32,7 @@ import { ABILITY_CATEGORIES } from "../../../lib/abilities.js";
 import { formatDate } from "../../../lib/intl.js";
 import { copenhagenDayKey } from "../../../lib/raceCentre.js";
 import AbilityReceiptRow, { AbilityReceiptHeader } from "../../training/AbilityReceiptRow.jsx";
+import { riderXpBars, withXpLines } from "../../../lib/xpAbilityLine.ts"; // #7947
 import FocusPanel from "../../training/FocusPanel.jsx";
 import { dayTypeForProgram, sessionForProgram } from "../../../lib/trainingDayTypes.js";
 import IconBase from "../../ui/icons/IconBase.jsx";
@@ -275,8 +276,10 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
   // <dato>" i begge. Kun den ikke-begyndte sæson siger "Starter <dato>".
   const seasonBegun = seasonRunning || seasonState === SEASON_RECEIPT_NO_DAYS;
   const seasonNoteKey = seasonRunning && seasonGains == null ? "receipt.pending" : SEASON_RECEIPT_NOTE_KEY[seasonState] ?? "receipt.pending";
+  // #7947: under XP "x / y XP" i stedet for procent (null = XP slukket, dagens visning).
+  const xpBars = riderXpBars(training.xpBar, rider.id);
   const rowsByAbility = Object.fromEntries(
-    abilityReceipt(ABILITY_CATEGORIES.flatMap((c) => c.keys), {
+    withXpLines(abilityReceipt(ABILITY_CATEGORIES.flatMap((c) => c.keys), {
       abilities: rider.abilities,
       progress,
       capped: capped?.[rider.id],
@@ -285,7 +288,7 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
       progressBefore,
       gainsToday,
       gainDay,
-    }).map((row) => [row.ability, row]),
+    }), xpBars).map((row) => [row.ability, row]),
   );
 
   return (
@@ -311,7 +314,7 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
               {t(`stats.categories.${cat.key}`)}
             </span>
             <div className="mt-[5px]">
-              <AbilityReceiptHeader />
+              <AbilityReceiptHeader xp={xpBars != null} />
               {cat.keys.map((key) => (
                 <AbilityReceiptRow
                   key={key}

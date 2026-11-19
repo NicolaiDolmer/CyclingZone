@@ -42,6 +42,9 @@ export default function AbilityReceiptRow({ row, inFocus = false }) {
   const { t } = useTranslation("training");
   const { t: tRider } = useTranslation("rider");
   const { ability, value, gained, pct, locked, gainDay } = row;
+  // #7947: under XP (lib/xpAbilityLine.ts) the line carries `xpLine`; the key exists
+  // only then, so without XP the row below is exactly today's.
+  const xpMode = Object.hasOwn(row, "xpLine");
   const label = tRider(`racePreview.derived.${ability}`);
   const yesterdayGainPct = abilityReceiptGainPct(row);
   const { gainKey, contributionKey } = receiptGainKeys(gainDay);
@@ -79,7 +82,7 @@ export default function AbilityReceiptRow({ row, inFocus = false }) {
           allerede den entydige besked, og en "ikke loftet"-tooltip ville modsige det. */}
       <span
         className="flex-none w-[24px] text-right font-mono tabular-nums text-2xs text-cz-1 cursor-help"
-        title={locked ? undefined : t("receipt.nowTooltip")}
+        title={locked ? undefined : t(xpMode ? "receipt.nowTooltipXp" : "receipt.nowTooltip")}
       >
         {value ?? "—"}
       </span>
@@ -94,8 +97,29 @@ export default function AbilityReceiptRow({ row, inFocus = false }) {
         {gained == null ? "—" : `+${gained}`}
       </span>
 
-      {/* På vej mod næste point, eller "færdig" på en låst evne. */}
-      {locked ? (
+      {/* På vej mod næste point, eller "færdig" på en låst evne. #7947: under XP
+          "x / y XP" med bjælke; ingen bjælke for evnen = stille streg. */}
+      {xpMode ? (
+        row.xpLine ? (
+          <span
+            className="flex-none w-[124px] flex items-center gap-1.5"
+            title={t("receipt.xpTitle", { xp: row.xpLine.xp, price: row.xpLine.price })}
+            data-testid="ability-receipt-xp"
+          >
+            <span className="relative h-1 min-w-[28px] flex-1 rounded-full bg-cz-subtle" aria-hidden="true">
+              <span
+                className="absolute left-0 top-0 h-full rounded-full bg-cz-accent/85 transition-[width] duration-500"
+                style={{ width: `${row.xpLine.pct}%` }}
+              />
+            </span>
+            <span className="flex-none whitespace-nowrap text-right font-mono tabular-nums text-3xs text-cz-3">
+              {t("receipt.xpLine", { xp: row.xpLine.xp, price: row.xpLine.price })}
+            </span>
+          </span>
+        ) : (
+          <span className="flex-none w-[124px] text-right font-mono tabular-nums text-3xs text-cz-3">—</span>
+        )
+      ) : locked ? (
         <span
           className="flex-none w-[72px] text-right font-data text-3xs uppercase tracking-[.06em] text-cz-3 cursor-help"
           title={t("receipt.doneTitle")}
@@ -145,7 +169,7 @@ export default function AbilityReceiptRow({ row, inFocus = false }) {
 
 // Kolonne-overskrift til en blok af AbilityReceiptRow. Samme faste bredder, så
 // overskriften står præcis over sin kolonne.
-export function AbilityReceiptHeader() {
+export function AbilityReceiptHeader({ xp = false }) {
   const { t } = useTranslation("training");
   return (
     <div className="flex items-center gap-2 pb-1 border-b border-cz-border font-data text-3xs uppercase tracking-[.08em] text-cz-3">
@@ -153,7 +177,7 @@ export function AbilityReceiptHeader() {
       <span className="flex-1 min-w-0 truncate">{t("receipt.colAbility")}</span>
       <span className="flex-none w-[24px] text-right">{t("receipt.colNow")}</span>
       <span className="flex-none w-[28px] text-right">{t("receipt.colSeason")}</span>
-      <span className="flex-none w-[72px] text-right">{t("receipt.colProgress")}</span>
+      <span className={`flex-none ${xp ? "w-[124px]" : "w-[72px]"} text-right`}>{t("receipt.colProgress")}</span>
       {/* #5539: uden label, samme spacer-princip som dot-kolonnen ovenfor — den
           nye kolonne er en supplerende annotation (tit en stille streg), ikke
           endnu en formel datakolonne. */}
