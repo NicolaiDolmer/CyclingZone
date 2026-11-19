@@ -1711,6 +1711,16 @@
       "issue": 8230,
       "reason": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): plan-hul-tjek \"Færdiggør og kør hver mandag\" (PR #8231), inkl. AGENTS-regel 42.",
       "since": "2026-11-19"
+    },
+    {
+      "issue": 8282,
+      "reason": "Ejer-go 19/11 (PC1): velkommen tilbage står på roadmappets Næste uge (lovet); UX 1/4 fund 2.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8300,
+      "reason": "Ejer-go 19/11 (PC1): dashboardet retning C, design nu med brugerdata (GitHub, Discord, Clarity), telefon først; ud på roadmappet som idéer til afstemning.",
+      "since": "2026-11-19"
     }
   ]
 }
