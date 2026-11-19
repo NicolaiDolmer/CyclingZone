@@ -25,6 +25,7 @@
     "retireRisk": "High retirement risk: riders typically retire between ages 36 and 40",
     "contractExpiring": "Contract expires at the next season change: this rider becomes a free agent unless the contract is extended first",
     "junior": "Junior rider (on your junior squad)",
+    "leavesAfter": "Leaves after {race}",
     "label": {
       "u23": "U23",
       "u25": "U25",
@@ -55,8 +56,8 @@
     "watchlistToggleFailed": "Could not update your watchlist. Please try again.",
     "compare": "⇄ Compare",
     "compareTitle": "Compare with other riders",
-    "watchlistCount": "👁 {count, plural, one {1 manager follows this rider} other {# managers follow this rider}}",
-    "visitors": "👀 {count, plural, one {1 unique visitor} other {# unique visitors}} (7d)",
+    "watchlistCount": "{count, plural, one {1 manager follows this rider} other {# managers follow this rider}}",
+    "visitors": "{count, plural, one {1 unique visitor} other {# unique visitors}} (7d)",
     "visitors24h": "{count, plural, one {1 in the last 24h} other {# in the last 24h}}",
     "visitorsNew": "New",
     "visitorsTrendUp": "Up {pct}% vs the previous 7 days",
@@ -74,7 +75,7 @@
     "freeAgent": "Free agent",
     "nextSeasonPrefix": "Incoming:",
     "pendingTransfer": "Joining {team} once his current stage race finishes",
-    "activeAuctionBadge": "⚡ Active auction",
+    "activeAuctionBadge": "Active auction",
     "highestBidLabel": "Highest bid: {amount} CZ$",
     "valueLabel": "Value CZ$",
     "contractSalary": "Salary CZ$",
@@ -87,7 +88,7 @@
     "newValueBetaTooltip": "Preview of the upcoming ability-based valuation. Not yet used for buying, selling or salary."
   },
   "blocked": {
-    "pendingTransfer": "🔒 The rider has been traded and joins his new team once his current stage race finishes. He cannot be traded again until then.",
+    "pendingTransfer": "The rider has been traded and joins his new team once his current stage race finishes. He cannot be traded again until then.",
     "retired": "The rider is retired and cannot be traded.",
     "errorFallback": "Something went wrong"
   },
@@ -721,13 +722,13 @@
     }
   },
   "auctionPanel": {
-    "activeLabel": "⚡ Active auction",
+    "activeLabel": "Active auction",
     "badges": {
       "leading": "You're leading",
       "selling": "You're selling",
       "outbid": "You've been outbid",
-      "extended": "⚡ Ext",
-      "flash": "⚡ Flash"
+      "extended": "Ext",
+      "flash": "Flash"
     },
     "highestBid": "Highest bid",
     "leaderFallback": "",
@@ -759,7 +760,7 @@
       "saveAria": "Save auto-bid limit",
       "cancelAria": "Cancel auto-bid editing",
       "error": "Error",
-      "saved": "✓"
+      "saved": "Saved"
     },
     "riderNameFallback": "rider"
   },
@@ -778,7 +779,7 @@
       "free": "Start auction (free agent)"
     },
     "flash": {
-      "label": "⚡ Flash auction (30 min)",
+      "label": "Flash auction (30 min)",
       "hint": "Deadline Day: ends exactly 30 minutes after start"
     },
     "end": {
@@ -788,7 +789,7 @@
     },
     "buttons": {
       "start": "Start auction",
-      "startFlash": "⚡ Start Flash auction",
+      "startFlash": "Start Flash auction",
       "loading": "..."
     },
     "priceError": "Start price must at least match Value ({amount} CZ$)",
@@ -802,8 +803,8 @@
     "submit": "Send offer",
     "sending": "Sending...",
     "toast": {
-      "success": "✅ Offer sent!",
-      "errorPrefix": "❌"
+      "success": "Offer sent!",
+      "errorPrefix": "Error:"
     }
   },
   "sellRider": {
@@ -820,10 +821,10 @@
     "confirmRemove": "Yes, remove",
     "cancel": "Cancel",
     "toast": {
-      "listed": "✅ Listed for sale!",
-      "priceUpdated": "✅ Asking price updated",
-      "removed": "✅ Removed from the transfer list",
-      "errorPrefix": "❌",
+      "listed": "Listed for sale!",
+      "priceUpdated": "Asking price updated",
+      "removed": "Removed from the transfer list",
+      "errorPrefix": "Error:",
       "autoNotSaved": "The auto-accept price wasn't saved:"
     },
     "editPrices": "Edit prices",
@@ -863,7 +864,10 @@
       "working": "Releasing…",
       "cancel": "Cancel",
       "success": "Rider released.",
-      "errorPrefix": "Couldn't release:"
+      "errorPrefix": "Couldn't release:",
+      "pendingLine": "He is riding {race}. He leaves your team after the final stage. The fee is charged now and the release cannot be undone.",
+      "pendingSuccess": "{rider} will be released after {race}. The fee of {fee} CZ$ has been charged.",
+      "pendingRaceFallback": "the stage race"
     },
     "move": {
       "button": "Move squad",
@@ -882,12 +886,12 @@
     "submit": "Send swap",
     "sending": "Sending...",
     "toast": {
-      "success": "✅ Swap proposed!",
-      "errorPrefix": "❌"
+      "success": "Swap proposed!",
+      "errorPrefix": "Error:"
     }
   },
   "celebration": {
-    "title": "You won the auction! 🏆",
+    "title": "You won the auction!",
     "subtitle": "The rider is now on your team"
   },
   "compare": {

@@ -3,9 +3,30 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  RACE_PAGE_V6_TABS, resolveV6Tab, tacticsAfterView, tacticsCta, v6ResultsPhase, v6RouteProfile, v6StageTabFor, v6Strip, v6Tabs, v6TacticsResults, v6TacticsStage,
+  RACE_PAGE_V6_TABS, resolveV6Tab, tacticsAfterView, tacticsCta, v6OneDayDayResults, v6ResultsPhase, v6RouteProfile, v6StageTabFor, v6Strip, v6TabButtonFor, v6TabButtons, v6Tabs, v6TacticsResults, v6TacticsStage,
 } from "./racePageV6Model.ts";
+import { yourDay } from "../stagePageV2/stagePageV2Model.ts";
 import { SEED_STAGE_PROFILES } from "../../../preview/seedData.js";
+
+test("#7861 Codex P2: endagsloebets Din dag finder egne ryttere, ogsaa naar resultatet kun er klassement-raekker", () => {
+  const gcOnly = [
+    { result_type: "gc", stage_number: 1, rank: 1, rider_id: "r1", rider_name: "Rytter A", team_id: "t1" },
+    { result_type: "gc", stage_number: 1, rank: 2, rider_id: "r2", rider_name: "Rytter B", team_id: "t2" },
+  ];
+  assert.equal(yourDay(gcOnly, 1, "t1", "stage").mine.length, 0, "uden normalisering er Din dag tom (fejlen)");
+  const mine = yourDay(v6OneDayDayResults(gcOnly, 1), 1, "t1", "stage").mine;
+  assert.deepEqual(mine.map((r) => [r.riderId, r.rank]), [["r1", 1]]);
+  // Med etape-raekker er listen uaendret (samme regel som YourDayCard).
+  const withStage = [...gcOnly, { result_type: "stage", stage_number: 1, rank: 1, rider_id: "r1", rider_name: "Rytter A", team_id: "t1" }];
+  assert.deepEqual(v6OneDayDayResults(withStage, 1), withStage);
+  assert.deepEqual(v6OneDayDayResults([], 1), []);
+});
+
+test("#7861 Codex P2: endagsloebets Resultater giver Din dag de normaliserede raekker", () => {
+  const src = read("./RacePageV6.tsx");
+  assert.match(src, /isStageRace \? results : v6OneDayDayResults\(results, selectedStage\)/);
+  assert.match(src, /phase === "after" && <V6YourDay results=\{oneDayDayResults\}/);
+});
 
 // Linjeskift normaliseres, saa kildeproeverne virker med CRLF-checkout (Windows) og LF (CI).
 const read = (rel: string) => readFileSync(new URL(rel, import.meta.url), "utf8").replace(/\r\n/g, "\n");
@@ -18,14 +39,23 @@ test("en koert etape aabner paa Resultater, en kommende paa Etape (valg 5)", () 
 
 test("en gyldig ?tab= vinder; Resultater staar foerst", () => {
   assert.equal(RACE_PAGE_V6_TABS[0], "results");
-  for (const tab of ["results", "stage", "standings", "tactics", "team"]) {
+  for (const tab of ["results", "stage", "tactics", "team"]) {
     assert.equal(resolveV6Tab(tab, { ridden: true, isStageRace: true }), tab);
   }
 });
 
-test("endagsloeb har ingen Stillinger-fane", () => {
-  assert.deepEqual([...v6Tabs(false)], ["results", "stage", "tactics", "team"]);
+test("#7861: fanerne som wireframet; Stillinger er ingen fane, Startliste er (#7862)", () => {
+  assert.deepEqual([...v6Tabs()], ["results", "stage", "start", "tactics", "team"]);
+  assert.deepEqual([...v6TabButtons()], ["stage", "start", "tactics", "team"]);
+  // Et gammelt link til Stillinger lander paa Etape-fanens standard (Resultater for en koert etape).
+  assert.equal(resolveV6Tab("standings", { ridden: true, isStageRace: true }), "results");
+  assert.equal(resolveV6Tab("start", { ridden: true, isStageRace: false }), "start");
   assert.equal(resolveV6Tab("standings", { ridden: true, isStageRace: false }), "results");
+  assert.equal(resolveV6Tab("startlist", { ridden: true, isStageRace: true }), "results");
+  // Resultater og Historie er begge Etape-fanen.
+  assert.equal(v6TabButtonFor("results"), "stage");
+  assert.equal(v6TabButtonFor("stage"), "stage");
+  assert.equal(v6TabButtonFor("team"), "team");
 });
 
 const riders = [{ rider_id: "r1", name: "A", race_role: "captain" }, { rider_id: "r2", name: "B", race_role: "helper" }];
@@ -90,9 +120,10 @@ test("#7865: een etapestribe; paa Taktik foelger den Taktik-fanens etape og styr
   assert.deepEqual(v6Strip({ activeTab: "tactics", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 3, target: "tactics" });
   assert.deepEqual(v6Strip({ activeTab: "results", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 1, target: "page" });
   assert.deepEqual(v6Strip({ activeTab: "stage", isStageRace: true, selectedStage: 2, tacticsStage: 3 }), { selected: 2, target: "page" });
-  // Udgave E: striben er hovedkortets bund og staar paa alle faner; fra Stillinger og Hold aabner den etapen.
-  assert.deepEqual(v6Strip({ activeTab: "standings", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 1, target: "open" });
-  assert.deepEqual(v6Strip({ activeTab: "team", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 1, target: "open" });
+  // Udgave E: striben er hovedkortets bund og staar paa alle faner; fra Startliste aabner den etapen.
+  assert.deepEqual(v6Strip({ activeTab: "start", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 1, target: "open" });
+  // #7862 (valg 13): Hold følger etapeskiftet i striben i stedet for at åbne etapen.
+  assert.deepEqual(v6Strip({ activeTab: "team", isStageRace: true, selectedStage: 1, tacticsStage: 3 }), { selected: 1, target: "page" });
   assert.equal(v6StageTabFor(2, 3), "results");
   assert.equal(v6StageTabFor(4, 3), "stage");
   assert.equal(v6Strip({ activeTab: "tactics", isStageRace: false, selectedStage: 1, tacticsStage: 1 }), null);
@@ -147,7 +178,7 @@ test("#7865: Resultater for en etape paa vejen siger det; en kommende etape som 
 
 test("#7865: ordre-oversigten findes eet sted under v6 (Taktik), ikke under Stillinger", () => {
   const detail = read("../../../pages/RaceDetailPage.jsx");
-  assert.match(detail, /standingsSlot: renderTabContent\("results", \{ hideOrdersRecap: v6 \}\)/);
+  assert.match(detail, /standingsSlot: renderTabContent\("results", \{ hideOrdersRecap: v6, hideFilm: v6 \}\)/);
   assert.match(detail, /isV4Timeline && !hideOrdersRecap && <StageOrdersRecap/);
   assert.match(detail, /!hideOrdersRecap && \(oneDayTimeline\?\.timeline_version \?\? 1\) >= 2 && <StageOrdersRecap/);
   const page = read("./RacePageV6.tsx");
@@ -156,7 +187,7 @@ test("#7865: ordre-oversigten findes eet sted under v6 (Taktik), ikke under Stil
 
 test("#7865 review-punkt d: panelet har kortets bredde og placering paa alle faner", () => {
   const page = read("./RacePageV6.tsx");
-  assert.match(page, /role="tabpanel" aria-labelledby=\{tabId\(activeTab\)\} data-race-body-width="card" className="w-full">/);
+  assert.match(page, /role="tabpanel" aria-labelledby=\{tabId\(v6TabButtonFor\(activeTab\)\)\} data-race-body-width="card" className="w-full">/);
   assert.doesNotMatch(page, /max-w-5xl/, "intet panel staar venstrestillet under et bredere kort");
 });
 
@@ -236,9 +267,9 @@ test("#8253: en profil der står under en anden etapes nøgle vises aldrig", () 
 test("#8253: Resultater tegner rute, liste og Din dag for den samme valgte etape", () => {
   const page = read("./RacePageV6.tsx");
   assert.match(page, /const profile = v6RouteProfile\(profileByStage, selectedStage\);/);
-  assert.match(page, /body = renderResults\(selectedStage, \{/, "listen er den valgte etapes");
+  assert.match(page, /body = (?:<div[^>]*>\{routeLine\("results"\)\}\{)?renderResults\(selectedStage, \{/, "listen er den valgte etapes"); // #7861: filmens rute-linje kan staa foran listen
   assert.match(page, /<V6RouteProfile[\s\S]*?profile=\{profile\}/, "kortet får netop den profil");
-  assert.match(page, /<V6YourDay results=\{results\} stageNumber=\{selectedStage\}/);
+  assert.match(page, /<V6YourDay results=\{(?:results|oneDayDayResults)\} stageNumber=\{selectedStage\}/); // #7861: endagsloeb normaliseres
   assert.match(page, /profile=\{v6RouteProfile\(profileByStage, tacticsStage\)\}/, "Taktik: samme opslag for Taktiks etape");
   assert.doesNotMatch(page, /profileByStage\[(selectedStage|tacticsStage)\]/, "intet direkte opslag uden tjek");
   const detail = read("../../../pages/RaceDetailPage.jsx");

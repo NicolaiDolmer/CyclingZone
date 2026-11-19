@@ -114,7 +114,6 @@
     "colSeasonPoints": "Pts saison",
     "colFatigueTonight": "Fatigue maintenant / ce soir",
     "fatigueTonightAria": "Fatigue maintenant {now}, ce soir environ {value}. {band}",
-    "fatigueAtStart": "{now} maintenant, environ {value} au départ",
     "selectRider": "Sélectionner {name}",
     "applyTo": "Appliquer à {n}",
     "bulkLead": "Fixer le jour du jour pour",
@@ -558,6 +557,12 @@
     "selectDone": "Terminé",
     "restSelected": "Mettre au repos",
     "pickHint": "Touche les coureurs que tu veux changer."
+  },
+  "settleAfterStage": {
+    "ran": "Faite",
+    "ranTitle": "Cette séance est faite et ne peut plus être modifiée",
+    "note": "{n, plural, one {La séance de course de # coureur est réglée après l'étape.} other {Les séances de course de # coureurs sont réglées après l'étape.}} Les séances qui ne sont pas faites peuvent encore être modifiées.",
+    "fatigueNow": "La fatigue affichée inclut déjà la course."
   },
   "programs": {
     "title": "Programmes d'entraînement",

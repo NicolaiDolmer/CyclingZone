@@ -23,7 +23,9 @@ import { apiFetch } from "../../lib/apiFetch.ts";
 import { fetchPlayerFeatureFlags } from "../../lib/playerFeatureFlags.js"; // #7636
 import { riderInFrontOrFieldAt, ridersSplitKm, stagePlanContactFacts, type TimelineEvent as SplitTimelineEvent } from "../../lib/stageSplitTimes.ts"; // #7636, #7706
 import SortableTh from "../ui/SortableTh.jsx";
-import { taskCostKey, teamPlanRouteFromProfile } from "./tacticsReady7864.ts";
+import { taskCostKey, taskCostWord, teamPlanRouteFromProfile } from "./tacticsReady7864.ts";
+import CostWord from "./CostWord.tsx";
+import { useV6TacticsResultsHidden } from "./v6/v6TacticsSpoiler.ts"; // #8388
 import { Button, CheckIcon, ChevronRightIcon, InfoIcon, LockIcon, MessageIcon, MinusIcon, PlusIcon, Select, XIcon } from "../ui/index.js";
 import {
   clearRiderPlan,
@@ -105,7 +107,10 @@ function TaskChip({ t, task, hunt, dashed = false, compact = false, showCost = f
       } ${dashed ? "border-dashed border-cz-border text-cz-3" : "border-cz-border bg-cz-subtle text-cz-1"}`}
     >
       {compact && !showCost ? <span className="truncate">{label}</span> : <span className="min-w-0 whitespace-normal">{label}</span>}
-      {showCost && <span className="ml-1 text-cz-2" data-testid="stage-plan-task-cost">{taskPrice(t, task, hunt)}</span>}
+      {/* #7855: udbrudsleddet med jagt siger prisen med ord ("Middel, plus lidt pr. spurt"); ellers prisordet (#7638). */}
+      {showCost && (task === "breakaway" && hunt !== undefined
+        ? <span className="ml-1 text-cz-2" data-testid="stage-plan-task-cost">{taskPrice(t, task, hunt)}</span>
+        : <CostWord t={t} word={taskCostWord(task)} className="ml-1" testId="stage-plan-task-cost" />)}
     </span>
   );
 }
@@ -418,7 +423,9 @@ export default function StagePlanBoard({
   const [openId, setOpenId] = useState<string | null>(null);
   const route = useMemo(() => withJerseyHunt7855(routeForProfile(profile), jerseyHunt7855 === true), [profile, jerseyHunt7855]); // #7855
   const features = useMemo(() => stagePlanFeaturesFromRaw(profile), [profile]); // #7383
-  const { events, ranks } = useStageTimeline(raceId, activeStage, stageCompleted, isOneDay, riders.map((r) => r.rider_id));
+  // #8388: spoiler-skjoldet skjuler etapen = forløbet hentes ikke, og cellen viser kun planen.
+  const resultsHidden = useV6TacticsResultsHidden();
+  const { events, ranks } = useStageTimeline(raceId, activeStage, stageCompleted && !resultsHidden, isOneDay, riders.map((r) => r.rider_id));
   // #7636: kontakten laeses fra GET /api/feature-flags (binaer; fejl = slukket = som foer).
   const [crossCheck7636, setCrossCheck7636] = useState(false);
   useEffect(() => {

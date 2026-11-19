@@ -158,7 +158,7 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7855
     verified: 2026-11-13
-    note: '#8052 merget 13/11, kontakt jersey_hunt_7855 off i prod; tændes kun af ejeren efter dommer.'
+    note: 'Off i prod 13/11 (#8052); ejer tænder, efter dommer.'
     decision: ejer-beslutning
     decide_by: 2026-11-21
   - id: race-itt-no-day-roll-7726
@@ -258,7 +258,7 @@ features:
     ssot: docs/SEASON_CUTOVER_RUNBOOK.md
     epic: 5741
     verified: 2026-10-26
-    note: Afgjort B 18/10 (#6775): slukket i S5. Hjælp må ikke love drift.
+    note: B 18/10 (#6775): slukket i S5. Hjælp må ikke love drift.
 
   - id: form-and-fatigue
     area: race-engine
@@ -350,19 +350,22 @@ features:
     verified: 2026-11-13
     decision: taend
     decide_by: 2026-11-21
-    note: Kontakt fatigue_now_7801 findes ikke i prod app_config (13/11) = slukket; ejer tænder.
+    note: fatigue_now_7801 ikke i prod app_config (13/11) = slukket; ejer tænder.
 
   - id: planning-workbench
     area: season
     title_en: One planning page
     title_da: Én planlægningsside (ugeoversigt, løbsliste, trup)
-    state: building
+    state: beta
+    flag: planning_workbench
     ssot: docs/PLANNING_CENTER_RULES.md
     epic: 7535
-    verified: 2026-11-14
-    note: Kontakt planning_workbench ikke seedet = slukket.
-    decision: ejer-beslutning
+    verified: 2026-11-17
+    note: "#7535: beta 17/11 efter ejerens kør; belastningsordenes grænser i private_config (planning_expected_load_7535)."
+    decision: taend
     decide_by: 2026-11-28
+    roadmap_en: "One planning page: race list, week board, route profile, squad, tactics and peak form in one place."
+    roadmap_da: "Én planlægningsside: løbsliste, ugeoversigt, ruteprofil, trup, taktik og formtop samlet ét sted."
 
   - id: luxury-helper-role
     area: race-engine
@@ -505,14 +508,31 @@ features:
     area: race-day
     title_en: Race page v6, step 1 (results for a ridden stage)
     title_da: Løbssiden v6, trin 1 (resultater for en kørt etape)
-    state: building
+    state: beta
     flag: race_page_v6
     decision: ejer-beslutning
     decide_by: 2026-11-26
     epic: 7778
     ssot: docs/RACE_ENGINE_RULES.md
-    verified: 2026-11-13
-    note: "#7778/#8062: kun trin 1 af 5 er bygget (kun visning); kontakt race_page_v6 off i prod 13/11."
+    verified: 2026-11-18
+    note: "#7778: beta 18/11 efter ejerens kør (film, mellemtider, taktik v6c, farvet rute); kendt spoilerhul #8409."
+    roadmap_en: "New race page: the race film, your orders and the results in one place"
+    roadmap_da: "Ny løbsside: løbsfilmen, dine ordrer og resultaterne samlet ét sted"
+
+  - id: spoiler-shield
+    area: race-day
+    title_en: Spoiler shield
+    title_da: Spoiler-skjold
+    state: beta
+    flag: spoiler_shield_7859
+    decision: taend
+    decide_by: 2026-11-30
+    epic: 7778
+    ssot: docs/RACE_ENGINE_RULES.md
+    verified: 2026-11-17
+    note: "#7859: beta 17/11 efter ejer-go; løbssiden skjuler først med race_page_v6."
+    roadmap_en: "Spoiler shield: watch the race before you see who won"
+    roadmap_da: "Spoiler-skjold: se løbet, før du ser, hvem der vandt"
 
   - id: rider-hover-card
     area: squad
@@ -610,7 +630,7 @@ features:
     verified: 2026-11-15
     decision: ejer-beslutning
     decide_by: 2026-11-29
-    note: Kontakt release_defer_8153 (seed off) kommer med migrationen; slukket = som i dag.
+    note: release_defer_8153 (seed off) følger migrationen; slukket = som i dag.
 
   - id: settle-race-session-after-stage
     area: training
@@ -622,7 +642,7 @@ features:
     verified: 2026-11-15
     decision: ejer-beslutning
     decide_by: 2026-11-29
-    note: Kontakt training_settle_race_session off i prod 15/11 (serverdel merget, #8195). Tændes kun sammen med fatigue_now_7801 (ejer 15/11). Skærmdelen er ikke bygget.
+    note: Off i prod 15/11 (#8195). Kun med fatigue_now_7801 (ejer). Skærmdelen mangler.
 
   - id: rider-loans
     area: market
@@ -712,7 +732,7 @@ features:
     ssot: docs/superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md
     epic: 1177
     verified: 2026-11-04
-    note: 'Kun data er bygget (#5268); motor (#5348) og mentorpar (#5349) mangler.'
+    note: 'Kun data bygget (#5268); motor (#5348), mentorpar (#5349) mangler.'
 
   - id: champion-jerseys
     area: squad
@@ -864,7 +884,7 @@ features:
     ssot: docs/TRAINING_RULES.md
     epic: 5865
     verified: 2026-11-16
-    note: 'Bygget bag season_injury_reset_mode = off; ejeren vælger clear/cap/light før S6-skiftet.'
+    note: 'Bag season_injury_reset_mode = off; ejer vælger clear/cap/light før S6.'
     decision: ejer-beslutning
     decide_by: 2026-11-28
 
@@ -965,6 +985,18 @@ features:
     epic: 932
     verified: 2026-09-06
 
+  - id: academy-page-v2-8081
+    area: academy
+    title_en: Academy page with tabs and age focus
+    title_da: Akademisiden med faner og aldersfokus
+    state: building
+    ssot: docs/YOUTH_RULES.md
+    epic: 8081
+    verified: 2026-11-16
+    note: Slukket; trækket læser ikke aldersfokus.
+    decision: ejer-beslutning
+    decide_by: 2026-11-30
+
   - id: scout-system
     area: academy
     title_en: Scouting
@@ -1035,7 +1067,7 @@ features:
     ssot: docs/YOUTH_RULES.md
     epic: 2911
     verified: 2026-10-15
-    note: Sikkerhedsventil efter ejer-beslutning (#2911); off i prod, kun ejeren flipper.
+    note: Sikkerhedsventil (#2911); off i prod, ejer flipper.
 
   - id: three-squads
     area: academy
@@ -1215,7 +1247,7 @@ features:
     ssot: docs/superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md
     epic: 6110
     verified: 2026-11-05
-    note: 'Byggetrin 4 (#7684): fladerne læser potentialEstimateRead.js, når flaget er tændt.'
+    note: 'Trin 4 (#7684): fladerne læser potentialEstimateRead.js, når flaget er på.'
     decision: goer-faerdigt
     decide_by: 2026-12-31
 
@@ -1262,7 +1294,7 @@ features:
     flag: development_score_v2
     ssot: docs/TRAINING_RULES.md
     epic: 6110
-    note: "Parkeret (ejer 31/10). Ejer 13/11: besluttes ved opsamlingen på Udvikling 2.0. Kan ikke være tændt samtidig med XP. Før tænding: #7584."
+    note: "Parkeret (ejer 31/10) til Udvikling 2.0. Aldrig samtidig med XP. Før tænding: #7584."
     verified: 2026-11-13
     decision: ejer-beslutning
     decide_by: 2026-11-21
@@ -1275,7 +1307,7 @@ features:
     flag: development_xp_model
     ssot: docs/TRAINING_RULES.md
     epic: 6110
-    note: '#8041 merget; development_xp_model off i prod 13/11; tændes kun af ejeren efter dommer (+ development_xp_from_date).'
+    note: 'Off i prod 13/11 (#8041); ejer tænder, efter dommer + development_xp_from_date.'
     verified: 2026-11-13
     decision: taend
     decide_by: 2026-11-21
@@ -1312,7 +1344,7 @@ features:
     flag: race_day_role_base_day_enabled
     ssot: docs/TRAINING_RULES.md
     epic: 6110
-    note: "#5950 løsning A (ejer-valg 3/11), underkontakt til race-day-role-yield. Off."
+    note: "#5950 løsning A (ejer 3/11), underkontakt til race-day-role-yield. Off."
     verified: 2026-11-03
     decision: ejer-beslutning
     decide_by: 2026-11-17
@@ -1536,6 +1568,18 @@ features:
     verified: 2026-10-15
     note: Velkomst-, dag 1- og løbsoversigt-mails on for alle. Win-back (winback_send_enabled=false) er kill-switch, kun pr. kørsel (#2760).
 
+  - id: patch-notes-v2
+    area: comms
+    title_en: Patch notes by area, week by week
+    title_da: Patch notes efter område, uge for uge
+    state: building
+    ssot: docs/PATCH_NOTES_RULES.md
+    epic: 954
+    verified: 2026-11-16
+    note: Bag patch_notes_v2_8049, slukket.
+    decision: ejer-beslutning
+    decide_by: 2026-11-23
+
   - id: in-app-survey
     area: comms
     title_en: In-app player survey
@@ -1651,13 +1695,13 @@ features:
     area: training
     title_en: Train now bonus
     title_da: Træn nu-bonus
-    state: beta
+    state: live
     flag: training_train_now_bonus
     ssot: docs/TRAINING_RULES.md
     epic: 7737
-    verified: 2026-11-16
-    decision: goer-faerdigt
-    decide_by: 2026-11-16
-    note: 'Beta: app_config = "beta" og migrationen fra #8268 er i prod (triggeren godkender "beta"), læst 16/11. Kun beta-testernes egne tryk får bonussen. Patch note 7.454. Alle: værdien til "on" kræver ejer-go.'
+    verified: 2026-11-17
+    decision: taend
+    decide_by: 2026-12-01
+    note: 'On for alle 17/11 efter ejer-go (#7741), læst tilbage i prod. Beta 16/11 (migration #8268). Svartid målt før tændingen; måling efter tændingen og fejlrate mangler.'
     roadmap_en: "Press Train now yourself and get 15% extra development that day."
     roadmap_da: "Tryk selv på Træn nu, og få 15 % ekstra udvikling den dag."

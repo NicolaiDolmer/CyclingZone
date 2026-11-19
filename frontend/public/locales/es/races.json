@@ -4,10 +4,11 @@
       "results": "Resultados",
       "stage": "Etapa",
       "story": "Historia",
-      "standings": "Clasificaciones",
       "tactics": "Táctica",
-      "team": "Equipo"
+      "team": "Equipo",
+      "start": "Lista de salida"
     },
+    "mode": { "aria": "Vista de la etapa", "story": "Historia · película y crónica", "results": "Resultados · lista completa" },
     "hero": {
       "stageLocks": "La etapa {number} se cierra a las {time} · {countdown}",
       "locks": "Se cierra a las {time} · {countdown}",
@@ -26,6 +27,7 @@
       "aria": "Recorrido de la etapa",
       "km": "{km} km",
       "gain": "{gain} m de desnivel",
+      "elevation": "{gain} m",
       "climbs": "{count, plural, one {# subida} other {# subidas}}",
       "hide": "Ocultar recorrido",
       "show": "Mostrar recorrido",
@@ -355,7 +357,7 @@
         "incident": "{name} {kind, select, crash {se cae} mechanical {sufre una avería} other {sufre un incidente}}{outcome, select, abandoned { y abandona} loss { y pierde {loss}} other {}}",
         "climb": "Cima de {name}",
         "climbFirst": "{rider} primero en {name}",
-        "gap": "La diferencia con {group, select, rest {el pelotón} other {los perseguidores}} {dir, select, grew {aumenta} other {se reduce}} de {before} a {after}",
+        "gap": "{front, select, break {La fuga} other {El grupo de cabeza}} tiene ahora {after} sobre {group, select, rest {el pelotón} other {los perseguidores}}",
         "split": "{count, plural, one {Un grupo se descuelga} other {# grupos se descuelgan}}",
         "dropped": "{count, plural, one {{names} se descuelga de la escapada} other {{names} se descuelgan de la escapada}}",
         "formedAhead": "{count, plural, one {# corredor se escapa por delante del pelotón} other {# corredores se escapan por delante del pelotón}}",
@@ -1143,6 +1145,7 @@
     "helpRaceDay": "El rol vale para toda la carrera. La intención es lo que quieres de él el día de carrera.",
     "colRider": "Ciclista",
     "colRole": "Rol",
+    "colRating": "Valoración",
     "colIntention": "Intención · etapa {number}",
     "colIntentionRaceDay": "Intención · día de carrera",
     "allRace": "Toda la carrera",
@@ -1671,7 +1674,8 @@
       "points": "Puntos",
       "mountain": "Montaña",
       "young": "Jóvenes",
-      "team": "Equipos"
+      "team": "Equipos",
+      "passages": "Sprints y puertos"
     },
     "teamFilter": {
       "label": "Equipo",
@@ -2259,6 +2263,10 @@
     "table": {
       "prizePoints": "Puntos de premio",
       "jerseyPoints": "Puntos de maillot",
+      "colPos": "Pos.",
+      "colRider": "Ciclista",
+      "colTeam": "Equipo",
+      "colTime": "Tiempo",
       "prizePointsShort": "Premio",
       "jerseyPointsShort": "Maillot"
     },

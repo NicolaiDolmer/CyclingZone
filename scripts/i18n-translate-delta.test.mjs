@@ -10,6 +10,8 @@ import { join } from "node:path";
 
 import {
   DEFAULT_MODEL,
+  NAMESPACE_MODELS,
+  modelFor,
   PLACEHOLDER,
   buildSystemPrompt,
   computeNamespaceDelta,
@@ -455,7 +457,8 @@ test("runTranslateDelta: uden ANTHROPIC_API_KEY fejler kørslen med en henvisnin
 // ---------------------------------------------------------------------------
 
 test("parseArgs: flag-parsing og defaults", () => {
-  assert.deepEqual(parseArgs([]), { dryRun: false, markReviewed: false, lng: null, ns: null, model: DEFAULT_MODEL, maxKeys: 500 });
+  // model: null = ingen eksplicit model; modelFor() vælger pr. namespace.
+  assert.deepEqual(parseArgs([]), { dryRun: false, markReviewed: false, lng: null, ns: null, model: null, maxKeys: 500 });
   assert.deepEqual(parseArgs(["--dry-run", "--lng", "da", "--ns", "common", "--model", "x", "--max-keys", "10"]), {
     dryRun: true,
     markReviewed: false,
@@ -469,4 +472,12 @@ test("parseArgs: flag-parsing og defaults", () => {
 
 test("DEFAULT_MODEL er eksplicit og pinned", () => {
   assert.equal(DEFAULT_MODEL, "claude-sonnet-5");
+});
+
+test("modelFor: eksplicit model > namespace-model > DEFAULT_MODEL; patch notes kører på Opus, aldrig Haiku (#8049)", () => {
+  assert.equal(modelFor("common"), DEFAULT_MODEL);
+  assert.equal(modelFor("patchnotes"), "claude-opus-5-5");
+  assert.equal(modelFor("patchnotes", "x"), "x");
+  assert.equal(modelFor("common", "x"), "x");
+  for (const model of [DEFAULT_MODEL, ...Object.values(NAMESPACE_MODELS)]) assert.doesNotMatch(model, /haiku/i);
 });

@@ -5,12 +5,37 @@
 **Bygger på:** [samlet design 23/10](2026-10-23-6110-potentiale-et-tal-samlet-design.md) · [del 2 catch-up](2026-10-23-6110-del2-catchup-design.md) · [spec 3/10](2026-10-03-udvikling-2-design.md) · [katalog v3](2026-10-29-training-catalog-v3-design.md). Hvor de er i modstrid med denne spec, gælder §10.
 **Tal:** privat i `balance-internals/6110/xp-model-grundlag-2026-11-06.md` (hard rule 17). Dette dokument er kvalitativt. Det private grundlags afsnit 7 er modellens startpunkt. Kørslens tal ligger i samme mappe.
 
+## Ejerens design 18/11: XP er ens hele livet (afløser B3, B5 og aldersdelen af §0 punkt 4)
+
+Lagt sammen med ejeren 18/11 aften. Tal og billeder kun privat i `balance-internals/6110/design-sammen-2026-11-18/` (`beslutninger.md`). Tændingskandidaterne fra 17-18/11 (aldersfald i XP med gulv) er afløst. Intet er tændt; tænding venter, til designet er målt, dømt og testet under alle reglerne her, og ejeren har sagt "kør".
+
+**Grundprincip (ejer, ordret):** "Jeg ønsker ikke, at alder skal bestemme udviklingshastigheden." "Vi skal ikke have dumme regler skabt og bundet op på alderen af rytteren." Designet bruger kun evne-knapper: prisen, potentialets XP og typens andel. Kurven pr. alder er et resultat af dem, aldrig en regel.
+
+| # | Regel |
+|---|---|
+| E1 | **XP er ens hele karrieren.** Eneste undtagelse er et lille sikkerhedsnet sent i karrieren, ens for fysiske og mentale evner. Det fjernes, hvis målingen viser, at det ingen virkning har. |
+| E2 | **Prisen** er fælles og afhænger kun af evnens niveau (B1). Dens stejlhed søges i målingen, i retning af fladere end i dag, så toptalenter kan nå meget højt. |
+| E3 | **Ingen lofter pr. evne** (B4). En pris efter rytterens "egen top" er afvist, fordi den er et loft ad bagdøren. `ability_caps` fjernes som eget skridt (§12). |
+| E4 | **Kroppens aldring** (sæsonskiftets fald i fysiske evner) begynder tidligere end i dag, og hele trappen flyttes frem (ejervalg 19/11, kandidat B; den bløde start fra 18/11 er afløst). Løbsbremsen er uændret. Det er en ændring af en live regel og kræver patch note. |
+| E5 | **Teknik og mentale evner** falder fortsat aldrig. Målingen viser, om veteraner løber løbsk; et lille sent fald er med som forslag, og ejeren vælger med tal. |
+| E6 | **Inflation** måles på niveauet efter aldersfaldet (rating), ikke på købte point. |
+| E7 | **Niveauloft:** gennemsnit og almindelige ryttere højst som den model, der var klar til tænding 18/11, for hvert potentialebånd og for de bedste 10 %. |
+| E8 | **Toppen:** et toptalent (højeste potentialer) skal kunne nå meget højt i sin bedste evne, som dagens stjerner; kun de højeste potentialer når dertil; toppen i bedste evne ligger sidst i 20'erne; antallet af stjerner pr. evne svarer til i dag. |
+| E9 | **De unge:** ingen regel på alder. De vokser hurtigt, fordi deres evner er lave og billige. |
+| E10 | **Dato-reglen (R16):** alderen fjernes fra undtagelsen. +2 på én dato gælder et toptalent på en meget lav evne, uanset alder. Ellers +1. |
+| E11 | **Ryttertypen** er uændret: en andel af XP, anlæg, ikke et loft (§4.7). Å4 og spillerinput 5/11 står åbne. |
+| E12 | **Spillerne** får besked, når designet er målt og dømt. Hjælpeteksten (PR #8376) holdes til da. |
+| E13 | **Talent giver XP, aldrig rabat.** Prisen er ens for alle ryttere. Et stort talent tjener mere XP om dagen og træner sig derfor højere. Forklaringen til spillerne skal kunne siges i én sætning (ejer 18/11: "den bedste udvikling af ryttere i noget managerspil"). |
+| E14 | **Prisen flader ud helt i toppen, ens for alle** (måling 18-19/11): kun sådan kan toptalenter nå meget højt, uden at almindelige ryttere stiger og uden at svage ryttere knuses. Kræver et nyt, valgfrit tal i prisen i motoren. |
+
+**Kravene til målingen:** E7, E8, talenterne når deres top, 0 datoer med 3+, +2 kun efter E10, ingen synlige ratingfald midt i sæsonen, alle tre planer (standard med Træn nu, roterende, hårdeste indsats), flere frø, uafhængig dom og billeder til ejeren.
+
 ## 0. Kort fortalt
 
 1. Alle ryttere bruger **én fælles prisliste**. Næste point i en evne koster XP efter evnens værdi, og intet andet.
 2. **Potentialet afgør, hvor meget XP rytteren tjener om dagen.** Forskellen mellem ryttere ligger i XP, ikke i prisen.
 3. Der er **intet hårdt loft pr. evne**. Stejl pris i toppen og lavt XP ved lavt potentiale gør, at svage ryttere reelt ikke når toppen.
-4. **XP falder tydeligt fra ca. 29 år.** Før det tjener samme rytter ca. det samme som 19-årig og 28-årig. Han stiger langsommere, fordi evnerne bliver dyrere.
+4. **(Afløst 18/11, se "Ejerens design 18/11" øverst: XP er ens hele livet.)** **XP falder tydeligt fra ca. 29 år.** Før det tjener samme rytter ca. det samme som 19-årig og 28-årig. Han stiger langsommere, fordi evnerne bliver dyrere.
 5. En træning giver **mest XP i sessionens fokus og lidt i resten**. Manageren vælger, hvad rytteren skal blive god til, og en ensidig plan efterlader ikke resten på nul.
 6. **Evner uden for rytterens type giver lidt mindre XP.** Alt kan trænes, men en ren sprinter bliver ikke topklatrer.
 7. **Ét tal: XP,** vist for i dag og de sidste 30 dage. Træningerne varierer fra dag til dag, så potentialet først kan estimeres over tid.
@@ -62,7 +87,8 @@ Ejeren svarede 6/11 på Å1, Å2, Å3, Å6 og Å7 og 7/11 på Å4 og Å5 (efter 
 | E1 | Tempo: grundtabellen er XP kalibreret mod kurve B; næste kørsel følger kun nye ryttere fra 16 til 40 år plus en særskilt måling af, at spillet ikke løber løbsk | §8, privat kort |
 | E2 | Løbsdag: en løbsdag giver altid mindst det samme som en hård træningsdag med rytterens træner og facilitet, og mere i det, etapen kræver. Gate X8 skal være grøn før tænding. 13/11 (R15b): når etapen passer rytterens primære type, giver løbsdagen i alle roller mindst hans bedste hårde træningspas i alt, uden Træn nu og ikke når han kører roligt | §4.9 |
 | E3 | Træn nu-bonus: valgt blandt de tre målte niveauer, tændes sammen med XP (#7737) | §4.2 |
-| E4 | Intet loft på +1 point pr. evne pr. dato under XP. Kun prisen bremser. Kræver ny måling (X6, X1, inflation) før tænding | §4.3, #7739 |
+| E4 | Intet loft på +1 point pr. evne pr. dato under XP. Kun prisen bremser. Kræver ny måling (X6, X1, inflation) før tænding. **Afløst 16/11 (E5)** | §4.3, #7739 |
+| E5 | 16/11 (#6110 R16): højst +1 point pr. evne pr. dato under XP; +2 kun for et ungt toptalent på en meget lav evne (ejervalg A på Fable-fund 4, 16/11). Resten bliver stående på bjælken; ingen prisbund. Tændingsnattens udbetaling af gemt fremgang er undtaget (valg 2 = A). Lidt mere XP til alle og ekstra til de største talenter (valg 3 = B, tal private). Ny dommerkørsel og Fable-dom før tænding | §4.1, §4.3, §7.3 |
 
 **Byg-go 12/11:** #6110 bygges færdigt hurtigst muligt bag den slukkede kontakt. 14/11 er kun gulvet for selve tændingen (første XP-dato tidligst 15/11), ikke for byggeriet. Løbsdags-kravet E2 er nok; en sammenligning med den gamle model er ikke et krav. Ordet er Potentiale overalt.
 
@@ -85,7 +111,7 @@ Målt baseline (AGENTS regel 36) står i grundlagets afsnit 1 og 2.
 
 ### 4.1 Prisen
 
-Pris for næste point er en ren funktion af evnens værdi. Den er ens for alle ryttere, alle typer, alle aldre og alle evner, også de mentale. Prisen stiger stejlt mod toppen af skalaen, men er endelig helt op til 99. Der er ingen mur, og en evne på 99 køber ikke flere point. Tallene er private. Det valgte niveau er et kompromis mellem top og bund, ikke et optimum.
+Pris for næste point er en ren funktion af evnens værdi. Den er ens for alle ryttere, alle typer, alle aldre og alle evner, også de mentale. Prisen stiger stejlt mod toppen af skalaen, men er endelig helt op til 99. Der er ingen mur og ingen prisbund (ejervalg 16/11, #6110 R16: prisbunden fra valg A 14/11 er fjernet, og en talfil med en bund afvises), og en evne på 99 køber ikke flere point. Tallene er private. Det valgte niveau er et kompromis mellem top og bund, ikke et optimum.
 
 ### 4.2 XP pr. dag
 
@@ -114,7 +140,7 @@ Form og træthed er ikke led i XP (S29). Træthed koster gennem form og skadesri
 
 - Bjælken gemmes **fortsat som en andel** i `ability_progress`. Vist XP = andel gange prisen for næste point.
 - Når et point købes, regnes overskuddet om til den nye pris, så ingen XP går tabt eller opstår. Dagens `bar -= 1` kan ikke genbruges, fordi prisen skifter mellem to point.
-- **Intet +1-loft pr. evne pr. dato under XP** (ejer 7/11, #7739): kun prisen bremser. `ability_cap_per_date_enabled` gælder fortsat kurve B og dagens model. Ejer 12/11 (#6110 R9): heller ikke løbsdagens gamle regel pr. tick (`hardDailyCap`) bremser XP-købet; den gælder kun dagens model. Standardkarrieren bag skøn og prognose køber også uden loft pr. dato, så skøn, prognose og motor siger det samme. Der er ingen undtagelser (§7.3).
+- **Højst +1 point pr. evne pr. dato under XP; +2 kun for et ungt toptalent på en meget lav evne** (ejervalg 16/11, #6110 R16, strammet med ejervalg A på Fable-fund 4 samme aften; erstatter "kun prisen bremser" fra 7/11 og 12/11, #7739). Standarden er +1 (`XP_POINTS_PER_DATE`). Undtagelsen +2 (`XP_MAX_POINTS_PER_DATE`) kræver alle tre: rytteren er ung, er et toptalent, og evnen er meget lav **ved datoens start** (`xpDatePointCap`), så datoens tal står fast på tværs af ticks og stier, også når evnen krydser grænsen undervejs. Hvad "ung", "toptalent" og "meget lav" betyder, står kun i talfilen (`datePlus2`). Mangler de felter, eller er alder eller potentiale ukendt, gælder +1 for alle (fail-safe). Grænsen gælder på tværs af datoens ticks og stier (Træn nu, aftenkørslen, løbsdags-aksen): motoren sender datoens tidligere gevinster ind i tick'et (`developmentXpTick`). XP ud over grænsen bliver stående på bjælken, omregnet til prisen for det nye næste point, så intet XP går tabt eller opstår; en bjælke over 1 købes de næste datoer, højst datoens tal ad gangen. Dommerens kørsel 16/11 viste, at lave evner uden grænse stiger +3 eller mere på én dato, og at en prisbund bremser hele bestanden for meget. `ability_cap_per_date_enabled` (+1) gælder fortsat kun kurve B og dagens model, og løbsdagens gamle regel pr. tick (`hardDailyCap`) bremser ikke XP-købet. Standardkarrieren bag skøn og prognose bruger samme datoregel pr. rytter, så skøn, prognose og motor siger det samme. Eneste undtagelse er tændingsnatten (§7.3).
 - Fremdrift gemmes altid (S8). Falder en evne ved sæsonskiftet, står andelen uændret.
 - XP-tallet skrives i tick-rapporten (`training_rider_ticks.report`), som også kan bære løbsdage. Ny tabel er ikke nødvendig.
 
@@ -242,11 +268,18 @@ Tændes **kun mellem to datoer**. En dato må aldrig afregnes med to modeller, h
 
 **Krav før tænding:** Å4 og Å5 afgjort, §8 grøn, frossen golden grøn, ejerens valg af Træn nu-bonus og af, hvordan XP, værdien og omregningen tændes sammen (B15, B16), privat tænd-kort, ejerens ordrette "kør" på netop det skridt, efter at ejeren har set den live tilstand. Hjælp en+da, patch note og Discord-udkast er klar samme dag.
 
+**Tændingslisten (hårde tjek, Fable-dom 16/11 på #8276).** Hvert punkt er et ja/nej på tænd-kortet; et nej stopper tændingen.
+
+1. **Talfilen er gyldig på startdatoen (fund 3b).** `development_xp_params` i `private_config` består `validateDevelopmentXpParams` for netop startdatoen (samme læsning som motoren, `loadDevelopmentXp`), og den har datoreglens grænser (`datePlus2`, ejervalg A). En ugyldig talfil får motoren til at falde tilbage til dagens model, så tændingsnattens udbetaling aldrig sker; loggen siger det højt som fejl (`[development-xp] ... is missing/invalid/error - running today's model`), men tjekket skal ske før natten, ikke i loggen bagefter. Uden `datePlus2` får ingen det høje tal på én dato (fail-safe), og ejervalg A er så ikke tændt.
+2. **Rapporten skelner "optjent i dag" fra "udbetalt fra bjælken" (fund 5, #8210).** Opsparet XP købes også på hviledage og efter skift af fokus. Spilleren må aldrig se et point, der kommer fra bjælken, som dagens træning. Visningen er #8210; uden den tændes XP ikke.
+3. **Ryttere uden tick på tændingsnatten (fund 3a).** En skadet rytter eller en bundet hviledag har intet tick den nat, og så kommer hans gemte fremgang ud med datoreglen (§4.3) over de næste datoer i stedet for på én nat. Tænd-kortet viser, hvor mange det gælder, og ejeren godkender det eller beder om en rettelse før tænding.
+4. **Dommerkørslen over 15 sæsoner med motorens egen grænse (`_cap2`) og ny Fable-dom** er lavet på den kode, der tændes (ejer 16/11). Tal kun i `balance-internals/6110/`.
+
 ### 7.3 Eksisterende ryttere og data
 
 - **Ingen evne ændres, og ingen rating falder ved tænding.** Der køres ingen massemutation og ingen omregning.
 - Bjælken bevarer sin andel. Ingen data skal migreres.
-- Evner, der står fast ved det gamle hårde tag eller i klippet lige under et point, begynder at købe point igen. Baren over 1 betales helt ud på tændingsnatten, til prisen, også på en hviledag (ejer 12/11, kort 1, #6110 R10). Der findes ingen dryp-regel: overgangsvinduet fra #7739 (`development_xp_transition_cap_dates`) er fjernet fra koden, og nøglen læses ikke. Forklaringen i træningsrapporten, når gemt fremgang udbetales, venter på billedet af XP-visningen (Å4). Gate X6 måler den første uge.
+- Evner, der står fast ved det gamle hårde tag eller i klippet lige under et point, begynder at købe point igen. Baren over 1 betales helt ud på tændingsnatten, til prisen, også på en hviledag (ejer 12/11, kort 1, #6110 R10). Udbetalingen er undtaget fra datoreglen i §4.3, men kun den nat og kun den gemte fremgang (ejervalg 2 = A, 16/11): dagens nye XP følger reglen, og fra næste dato gælder §4.3 for alt (+1, og +2 kun for et ungt toptalent på en meget lav evne). Motoren kender natten som `development_xp_from_date`. Der findes ingen dryp-regel: overgangsvinduet fra #7739 (`development_xp_transition_cap_dates`) er fjernet fra koden, og nøglen læses ikke. Forklaringen i træningsrapporten, når gemt fremgang udbetales, venter på billedet af XP-visningen (Å4). Gate X6 måler den første uge.
 - **Ingen ny glidende overgang og intet nyt øjebliksbillede.** #7382 og D5 fandtes, fordi evner over et loft ellers ville bremse brat. Uden loft findes gruppen ikke. Tabellen fra #7382 røres ikke.
 - Ryttere med lavt potentiale og lave evner får lidt mindre pr. dag, og ryttere over det gamle bløde loft får mere. Kørslen viser hvor meget. Er ændringen synlig for en gruppe, får ejeren et kort før tænding.
 

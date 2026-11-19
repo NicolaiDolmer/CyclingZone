@@ -4,10 +4,11 @@
       "results": "Resultater",
       "stage": "Etape",
       "story": "Historie",
-      "standings": "Stillinger",
       "tactics": "Taktik",
-      "team": "Hold"
+      "team": "Hold",
+      "start": "Startliste"
     },
+    "mode": { "aria": "Etapens visning", "story": "Historie · film og referat", "results": "Resultater · hele listen" },
     "hero": {
       "stageLocks": "Etape {number} låses kl. {time} · {countdown}",
       "locks": "Låses kl. {time} · {countdown}",
@@ -26,6 +27,7 @@
       "aria": "Etapens rute",
       "km": "{km} km",
       "gain": "{gain} m stigning",
+      "elevation": "{gain} m",
       "climbs": "{count, plural, one {# stigning} other {# stigninger}}",
       "hide": "Skjul rute",
       "show": "Vis rute",
@@ -338,7 +340,7 @@
         "incident": "{name} {kind, select, crash {styrter} mechanical {får defekt} other {har et uheld}}{outcome, select, abandoned { og udgår} loss { og taber {loss}} other {}}",
         "climb": "Toppen af {name}",
         "climbFirst": "{rider} først over {name}",
-        "gap": "Hullet til {group, select, rest {feltet} other {jagten}} {dir, select, grew {vokser} other {skrumper}} fra {before} til {after}",
+        "gap": "{front, select, break {Udbruddet} other {Gruppen forrest}} har nu {after} til {group, select, rest {feltet} other {jagtgruppen}}",
         "split": "{count, plural, one {En gruppe bliver sat} other {# grupper bliver sat}}",
         "dropped": "{count, plural, one {{names} bliver sat af udbruddet} other {{names} bliver sat af udbruddet}}",
         "formedAhead": "{count, plural, one {# rytter kører væk foran feltet} other {# ryttere kører væk foran feltet}}",
@@ -1126,6 +1128,7 @@
     "helpRaceDay": "Rollen gælder hele løbet. Intentionen er, hvad du vil have ud af ham på løbsdagen.",
     "colRider": "Rytter",
     "colRole": "Rolle",
+    "colRating": "Rating",
     "colIntention": "Intention · etape {number}",
     "colIntentionRaceDay": "Intention · løbsdag",
     "allRace": "Hele løbet",
@@ -1654,7 +1657,8 @@
       "points": "Point",
       "mountain": "Bjerg",
       "young": "Ungdom",
-      "team": "Hold"
+      "team": "Hold",
+      "passages": "Spurter og stigninger"
     },
     "teamFilter": {
       "label": "Hold",
@@ -2242,6 +2246,10 @@
     "table": {
       "prizePoints": "Præmiepoint",
       "jerseyPoints": "Trøjepoint",
+      "colPos": "Nr",
+      "colRider": "Rytter",
+      "colTeam": "Hold",
+      "colTime": "Tid",
       "prizePointsShort": "Præmie",
       "jerseyPointsShort": "Trøje"
     },

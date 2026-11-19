@@ -1,0 +1,27 @@
+{
+  "title": "Koersfilm",
+  "meta": "Eén speler · de route is de tijdlijn",
+  "play": "Afspelen",
+  "chaptersAria": "Hoofdstukken",
+  "chapter": {
+    "start": "Start",
+    "break": "De vlucht",
+    "sprint": "Sprint km {km}",
+    "chase": "De achtervolging",
+    "finale": "Finale"
+  },
+  "report": {
+    "title": "Wat er gebeurde",
+    "meta": "Klik op een regel om te springen",
+    "empty": "Druk op Afspelen of kies een hoofdstuk. Het verslag volgt de film, dus niets wordt verklapt voor je er bent.",
+    "ahead": "De rest van de etappe volgt terwijl de film loopt."
+  },
+  "climb": {
+    "gained": "{rider} wint tijd op de klim.",
+    "gainedNamed": "{rider} wint tijd op {climb}.",
+    "cracked": "{rider} kraakt op de klim en moet lossen.",
+    "crackedNamed": "{rider} kraakt op {climb} en moet lossen."
+  },
+  "none": "Deze etappe heeft geen koersfilm. De volledige uitslag staat bij Uitslagen.",
+  "error": "De koersfilm kon niet worden geladen. De volledige uitslag staat bij Uitslagen."
+}

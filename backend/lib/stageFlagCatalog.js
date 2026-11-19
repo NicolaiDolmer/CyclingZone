@@ -34,6 +34,8 @@ export const STAGE_FLAGS = Object.freeze([
   // ── Spiller-vendte funktioner ─────────────────────────────────────────────
   { key: "academy_enabled", area: "academy", label: "Akademi" },
   { key: "academy_intake_pull_enabled", area: "academy", label: "Akademi — træk af nye talenter" },
+  // #8081: akademisiden udgave A (overblik + faner) og aldersfokus i profilen. Seedet off; ejer-only flip.
+  { key: "academy_page_v2_8081", area: "academy", label: "Akademisiden udgave A + aldersfokus" },
   { key: "intake_offer_expiry_enabled", area: "academy", label: "Akademi — udløb på tilbud" },
   { key: "season_academy_intake_enabled", area: "academy", label: "Akademi — sæsonoptag" },
   { key: "board_mandate_model_enabled", area: "board", label: "Bestyrelse — mandat-modellen" },
@@ -72,6 +74,10 @@ export const STAGE_FLAGS = Object.freeze([
   // #6490 trin c: peak-signalet (motorens input) læser fra kvitteringerne. Egen kontakt, seedet off,
   // binær (kun "on" tænder). Ejer-only flip; se #8180 om rækkeloftet på den gamle læsning.
   { key: "training_peak_from_ticks_6490", area: "training", label: "Peak-signal fra kvitteringerne (motor)" },
+  // #6490 B: aftenkørslen genbruger Træn nu-hukommelsen (samme resultat, færre DB-kald). Binær, seedet off.
+  { key: "training_sweep_memory_6490", area: "training", label: "Aftentræningen: hent én gang pr. hold" },
+  // #8143 H: én delt hukommelse for indstillinger på serveren (60 s). Binær, seedet off.
+  { key: "config_cache_8143", area: "ops", label: "Indstillinger huskes delt på serveren" },
   { key: "peak_planner_enabled", area: "training", label: "Form-planlægger" },
   // #7536: motoren laeser kun "on" (beta = off); Hjaelp-blokken foelger samme svar.
   { key: "condition_v2_race_date_training_day", area: "training", label: "Træning på løbsdato vejer et helt døgn" },
@@ -110,12 +116,16 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "rider_why_button", area: "race-day", label: "Hvorfor?-knappen ved rytterne (Your day)" },
   // #7778: løbssiden v6 trin 1 (Resultater for en kørt etape). Kun visning, seedet off; beta først.
   { key: "race_page_v6", area: "race-day", label: "Løbssiden v6 — Resultater for en kørt etape" },
+  // #7859: spoiler-skjoldet (løbssiden, neutrale resultat-notifikationer, indstillingen). Kun visning, seedet off.
+  { key: "spoiler_shield_7859", area: "race-day", label: "Spoiler-skjold — skjul vinderen til etapen åbnes" },
   // #7879: talentmærker ved rytternavne. Kun visning, seedet off.
   { key: "talent_marks_7879", area: "squad", label: "Talentmærker ved rytternavne (Toptalent, Næste generation)" },
   // #2009: hover-miniprofil på rytternavne. Kun visning, seedet off; beta først (ejer 7/11).
   { key: "rider_hover_card", area: "squad", label: "Hover-miniprofil på ryttere" },
   // #7535: den nye planlægningsside (løbsliste, ugeoversigt, trup-tabel, ruteprofil). Kun visning, beta først.
   { key: "planning_workbench", area: "race-day", label: "Ny planlægningsside (/planning/workbench)" },
+  // #8049: den nye patch notes-side (uge for uge, efter område, arkiv pr. måned). Kun visning, seedet off.
+  { key: "patch_notes_v2_8049", area: "onboarding", label: "Patch notes: ny side efter område og uge" },
 
   // ── Motorer og batch-jobs (spilleren ser resultatet, ikke kontakten) ──────
   { key: "race_engine_v2_enabled", area: "race-engine", label: "Løbsmotor v2" },
@@ -320,10 +330,14 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "rider_why_button",
   // #7778: loebssiden vaelger v6-rammen (Resultater for en koert etape) paa dette flag.
   "race_page_v6",
+  // #7859: Hjaelp og preview-mocken laeser spoiler-skjoldets kontakt herfra (siden selv spoerger /api/me/spoiler-shield).
+  "spoiler_shield_7859",
   // #7879: navnecellen, rytterprofilen og Hjaelp viser talentmaerkerne paa dette flag.
   "talent_marks_7879",
   // #2009: rytternavnene viser hover-miniprofilen paa dette flag.
   "rider_hover_card",
+  // #8049: patch notes-siden vaelger den nye side paa dette flag (ogsaa for udloggede, naar det er on).
+  "patch_notes_v2_8049",
   // #7725: Hjaelp viser svaret om dagsformen i ord paa dette flag (binaert, som motoren).
   "day_words_7725",
   // #7801: Hjaelp viser traethed lige nu og regel-teksten paa dette flag (binaert, som motoren).
@@ -338,6 +352,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "sale_escrow_enabled",
   // #6490: traeningssiden vaelger laesevej paa dette flag (binaert, som backend og peak-signalet).
   "training_history_from_ticks_6490",
+  // #8081: akademisiden vaelger udgave A paa dette flag.
+  "academy_page_v2_8081",
 ]);
 
 // #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,

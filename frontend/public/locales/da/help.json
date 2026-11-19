@@ -1537,7 +1537,7 @@
       },
       "fatigueNow": {
         "title": "Træthed lige nu",
-        "text": "Træthedstallet på Træningssiden viser, hvor træt din rytter er lige nu. Holdudtagelsen, løbets Hold-fane og rytterkortet viser samme tal. Det tæller allerede de etaper, han har kørt tidligere i dag, selv om aftenens opgørelse ikke er kørt endnu, så tallet er aldrig en dag bagud. Hver etape lægger sin belastning til og giver et døgns restitution, på samme måde som aftenens opgørelse, så tallet kan falde efter en let etape; restitutionen følger det, der sker i spillet, ikke uret. Har din rytter en etape i dag eller i morgen, viser en ekstra linje skønnet ved starten af den etape. Skønnet ser kun frem til hans næste etape, for længere ude er planen et gæt. Til en etape i dag er det tallet nu, for etaperne før den er kørt. Til en etape i morgen er det samme tal som Træthed i aften, fx \"62 nu, ca. 70 ved start\". Automatisk træning tæller med ved aftenens opgørelse. Træn nu tæller med, når du trykker. Når assistenten udfylder en trup, regner den trætheden fra starten af løbets første etape og ikke fra det øjeblik, du trykker på knappen, så udtagelsen er den samme, uanset hvornår du trykker. Etaper kørt tidligere på samme dato som den start tæller med, for dem tager rytteren med ind i løbet. Kan det levende tal ikke læses, står der en streg i stedet for et tal. Assistentens udtagelse bruger så tallet fra dagens start."
+        "text": "Træthedstallet på Træningssiden viser, hvor træt din rytter er lige nu. Holdudtagelsen, løbets Hold-fane og rytterkortet viser samme tal. Det tæller allerede de etaper, han har kørt tidligere i dag, selv om aftenens opgørelse ikke er kørt endnu, så tallet er aldrig en dag bagud. Hver etape lægger sin belastning til og giver et døgns restitution, på samme måde som aftenens opgørelse, så tallet kan falde efter en let etape; restitutionen følger det, der sker i spillet, ikke uret. Automatisk træning tæller med ved aftenens opgørelse. Træn nu tæller med, når du trykker. Når assistenten udfylder en trup, regner den trætheden fra starten af løbets første etape og ikke fra det øjeblik, du trykker på knappen, så udtagelsen er den samme, uanset hvornår du trykker. Etaper kørt tidligere på samme dato som den start tæller med, for dem tager rytteren med ind i løbet. Kan det levende tal ikke læses, står der en streg i stedet for et tal. Assistentens udtagelse bruger så tallet fra dagens start."
       },
       "fatigueLimit": {
         "title": "Træthedsgrænse",
@@ -1841,7 +1841,7 @@
       },
       "taskPrices": {
         "title": "Hvad hver opgave koster",
-        "text": "I løb med etapeplan viser hver opgave sit prisord i planen og i listen over opgaver, så du ser prisen, før du vælger. Ordet er en pris for benene, aldrig et tal. Let: Grupetto, Bliv i læ og Kør roligt i mål. Middel: Hold lederen fremme, Kør for resultat og Sprinttog. Hård: Kør tempo, Følg angrebene, Gå i udbrud, og Hent point i spurterne eller Hent bjergpoint, når løbet har dem. Meget hård: Angrib. Skifter planen opgave undervejs, viser hvert led sit eget ord. En stærkere rytter flytter ikke en opgave til et lettere ord."
+        "text": "I løb med etapeplan viser hver opgave sit prisord i planen og i listen over opgaver, så du ser prisen, før du vælger. Ordet er en pris for benene, aldrig et tal. Let: Grupetto, Bliv i læ og Kør roligt i mål. Middel: Hold lederen fremme, Kør for resultat og Sprinttog. Hård: Kør tempo, Følg angrebene, Gå i udbrud, og Hent point i spurterne eller Hent bjergpoint, når løbet har dem. Meget hård: Angrib. Skifter planen opgave undervejs, viser hvert led sit eget ord. En stærkere rytter flytter ikke en opgave til et lettere ord. Samme ord i samme farve står alle steder, hvor en ordre har en pris: indsatstrinnene på en enkeltstart og i løb uden etapeplan (Grupetto og Kør roligt: Let, Normal: Middel, arbejdstrinnet: Hård, Alt ud: Meget hård), knapperne Forsøg udbrud (Hård) og Sprint-tog (Middel) og holdets svar på udbruddet. Dér er ordet prisen for de ryttere, der jager: Jag er Hård, fordi alle ryttere, der ikke er ledere, trækker; Vurder undervejs er Middel, fordi holdet kun arbejder, når løbet kræver det, fx et udbrud der truer lederen; Overlad jagten til andre er Let, fordi holdet holder sig ude af jagten."
       },
       "effortStepsThree": {
         "title": "Indsatstrin",
@@ -1870,6 +1870,10 @@
       "scouting": {
         "title": "Scout andre divisioner",
         "text": "Skift race hub'en til 'Min division' eller 'Andre divisioner' for at se enhver puljes kommende startlister, skrivebeskyttet. Startlister åbner syv dage før hvert løb og viser kun bruttotrupper (hvilke ryttere et hold har meldt til), så du kan vurdere det forventede felt. Roller, form og træthed forbliver skjult, og løb længere ude er låst, indtil deres startliste åbner."
+      },
+      "spoilerShield": {
+        "title": "Spoiler-skjold",
+        "text": "Spoiler-skjoldet holder vindere og placeringer ude af dine beskeder, til du selv vil se dem. Slå det til under Indstillinger, under Notifikationer, i kortet Resultater og spoilere (Spoiler-skjold for alle løb). Det er slået fra som standard. Med skjoldet til siger indbakken, klokken og browser-notifikationerne kun, at en etape er færdig. De nævner hverken vinder eller placering. Den nye løbsside får en kontakt til hvert løb og skjuler resultatet der, til du trykker Vis resultater. Indtil den nye løbsside er tændt for dig, viser løbssiden resultatet som før."
       }
     },
     "raceDay": {
@@ -2275,7 +2279,7 @@
     },
     "midSeasonCheckFaq": {
       "q": "Hvad er mid-season check, og hvorfor får jeg pludselig en 'Skal handles'-notif midt i sæsonen?",
-      "a": "Når halvdelen af sæsonens løbsdage er ovre, tjekker bestyrelsen din plan-status. Hvis tilfredsheden er under 50% ELLER mindst halvdelen af dine plan-mål ligger 'bagud' efter halvtid -> får du en 'Mid-season check'-notif i Indbakke 'Skal handles'. Notifen er informativ: bestyrelsen er bekymret men handler ikke automatisk. Du kan reagere ved at sende en board request (dreje plan-mål), anmode om budget-lån på Økonomi-siden, eller bare skærpe fokus resten af sæsonen. Banneret fyrer kun én gang pr. sæson pr. board."
+      "a": "Når halvdelen af sæsonens løbsdage er ovre, tjekker bestyrelsen din plan-status. Hvis tilfredsheden er under 50% ELLER mindst halvdelen af dine plan-mål ligger 'bagud' efter halvtid -> får du en 'Halvsæson-tjek'-notif i Indbakke 'Skal handles'. Notifen er informativ: bestyrelsen er bekymret men handler ikke automatisk. Notifen siger, hvilken af de to der udløste den. Sæsonens plan er underskrevet, så du reagerer ved at arbejde med de mål, der er bagud (Bestyrelse-siden viser hvilke), eller ved at optage et lån på Økonomi-siden, hvis presset er økonomisk. Banneret fyrer kun én gang pr. sæson pr. board."
     },
     "majorPivotCooldown": {
       "q": "Hvad er drej-cooldown og 'stor drejning'?",

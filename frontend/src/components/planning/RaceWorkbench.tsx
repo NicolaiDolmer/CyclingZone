@@ -6,6 +6,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRe
 import { useTranslation } from "react-i18next";
 import {
   Button,
+  Segmented,
   EmptyState,
   ErrorState,
   SkeletonLines,
@@ -13,6 +14,7 @@ import {
   validateSelectionClient,
   riderBestRole,
   useReloadBlock,
+  isReloadAllowed,
   RELOAD_BLOCK_REASONS,
   partialSquadOutlook,
   rememberSelectionDraft,
@@ -22,8 +24,10 @@ import {
 } from "./primitives.ts";
 import RouteProfile from "./RouteProfile.tsx";
 import SquadTable from "./SquadTable.tsx";
+import TacticsView, { type TacticsViewHandle } from "./TacticsView.tsx";
+import PeakView, { usePeakBoard, type PeakBoardData } from "./PeakView.tsx";
 import { ReadinessMark } from "./planningUi.tsx";
-import { loadRaceSelection, saveRaceSelection, setRaceWithdrawal, loadStageProfiles, type StageProfileRow, type RiderDetail, type SeasonLoad } from "../../lib/planningWorkbenchData.ts";
+import { loadRaceSelection, saveRaceSelection, setRaceWithdrawal, loadStageProfiles, loadExpectedLoad, type StageProfileRow, type RiderDetail, type SeasonLoad } from "../../lib/planningWorkbenchData.ts";
 import { deadlineCountdown } from "../../lib/selectionReminder.ts";
 import {
   DEFAULT_SQUAD_SORT,
@@ -35,13 +39,21 @@ import {
   entriesFromSelection,
   nextSort,
   overlappingRaces,
-  profileColumns,
+  nextPeakByRider,
+  toggleMobileColumn,
+  MOBILE_COLUMNS,
   selectionDirty,
   selectionFromServer,
   setRiderRole,
   sortSquadRows,
   suggestSquad,
   toPutBody,
+  saveLabelKey,
+  withLoad,
+  workbenchUnsaved,
+  WORKBENCH_VIEWS,
+  type MobileColumn,
+  type WorkbenchView,
   type RoleKey,
   type Selection,
   type SeasonEntry,
@@ -101,9 +113,11 @@ interface RaceWorkbenchProps {
   seasonYear?: number | null;
   profileHidden: boolean;
   onToggleProfileHidden: () => void;
-  /** Loebssidens fulde ruteprofil i stedet for det kompakte kort ("Vis fuld profil"). */
-  profileFull?: boolean;
-  onToggleProfileFull?: () => void;
+  /** Formtop-board'et, hentet én gang for siden (formtop i Trup, maerket i listen og Formtop-visningen). */
+  peakData: PeakBoardData;
+  /** Mobilens valgte tal-kolonner i trup-tabellen (chip-raekken); siden husker valget. */
+  mobileColumns?: MobileColumn[];
+  onMobileColumns?: (columns: MobileColumn[]) => void;
   /**
    * Spilleren aendrer loebets trup selv paa fladen: loebet forlader sidens Handlinger-kladde (spillerens
    * eget valg vinder; fladen viser altid den gemte trup plus spillerens egne aendringer).
@@ -117,6 +131,14 @@ interface RaceWorkbenchProps {
   onDirtyChange?: (dirty: boolean) => void;
   onSaved?: (raceId: string, entries: SeasonEntry[]) => void;
   onWithdrawnChange?: (raceId: string, withdrawn: boolean) => void;
+  /** Visningen under ruteprofilen: Trup | Taktik | Formtop (siden husker valget). */
+  view?: WorkbenchView;
+  onView?: (view: WorkbenchView) => void;
+  /** I dag (Europe/Copenhagen) og loebets startdato, til Formtop-visningen. */
+  today?: string;
+  raceStart?: string | null;
+  /** Mobil-arket: hovedet staar i arket selv, saa fladen viser ikke sit eget navn igen. */
+  inSheet?: boolean;
 }
 
 interface SaveError {
@@ -138,13 +160,19 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     seasonYear = null,
     profileHidden,
     onToggleProfileHidden,
-    profileFull = false,
-    onToggleProfileFull,
+    peakData,
+    mobileColumns,
+    onMobileColumns,
     onEdit,
     gate,
     onDirtyChange,
     onSaved,
     onWithdrawnChange,
+    view = "squad",
+    onView,
+    today = "",
+    raceStart = null,
+    inSheet = false,
   },
   ref,
 ) {
@@ -167,6 +195,25 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
   const [copyOpen, setCopyOpen] = useState(false);
   const [profiles, setProfiles] = useState<StageProfileRow[]>([]);
   const [profilesLoading, setProfilesLoading] = useState(true);
+  // Ruteprofilens etape (0-baseret); Taktik foelger den, saa der kun er én etapevaelger.
+  const [stageIndex, setStageIndex] = useState(0);
+  // "Belastning": serverens ord (let/mellem/haard) med motorens model; null = slukket model eller ukendt.
+  const [expectedLoad, setExpectedLoad] = useState<Record<string, string> | null>(null);
+  // Taktik-visningens gem (fanens eget, trykket af hovedets guld-knap) og om det kan trykkes lige nu.
+  const tacticsRef = useRef<TacticsViewHandle>(null);
+  // Fanens gem kan kun trykkes, naar fanen har en ugemt kladde: det er ogsaa tegnet paa en taktik-kladde.
+  const [tacticsCanSave, setTacticsCanSave] = useState(false);
+  const tacticsDraftRef = useRef(false);
+  tacticsDraftRef.current = tacticsCanSave;
+  // Taktik-visningen monteres foerste gang den aabnes og bliver monteret ved visningsskift (kladden overlever).
+  const [tacticsMounted, setTacticsMounted] = useState(view === "tactics");
+  useEffect(() => {
+    if (view === "tactics") setTacticsMounted(true);
+  }, [view]);
+  const tacticsMountedRef = useRef(tacticsMounted);
+  tacticsMountedRef.current = tacticsMounted;
+  // Taeller op ved hvert gemt trup, saa taktik-fanen henter den nye trup.
+  const [squadVersion, setSquadVersion] = useState(0);
   const generation = useRef(0);
   const latest = useRef<{ ready: boolean; sel: Selection; saved: Selection; readOnly: boolean; clientErrors: string[]; sprintLeaderAllowed: boolean; size: { min: number; max: number } } | null>(null);
 
@@ -184,6 +231,11 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     setSel(EMPTY_SELECTION);
     setSaved(EMPTY_SELECTION);
     setProfilesLoading(true);
+    setStageIndex(0);
+    setExpectedLoad(null);
+    loadExpectedLoad(race.id).then((map) => {
+      if (gen === generation.current) setExpectedLoad(map);
+    });
     loadStageProfiles(race.id).then((rows) => {
       if (gen !== generation.current) return;
       setProfiles(rows);
@@ -221,9 +273,10 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     };
   }, [load]);
 
+  // Siden faar ogsaa taktik-kladden at vide, saa luk-advarslen vogter den (#8306).
   useEffect(() => {
-    onDirtyChange?.(dirty);
-  }, [dirty, onDirtyChange]);
+    onDirtyChange?.(workbenchUnsaved({ squadDirty: dirty, tacticsDraft: tacticsCanSave }));
+  }, [dirty, tacticsCanSave, onDirtyChange]);
 
   // Et ugemt udkast huskes (overlever en navigation); en ren flade glemmer det.
   useEffect(() => {
@@ -237,11 +290,13 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     [profiles],
   );
   const rows = useMemo(
-    () => (data?.riders ? buildSquadRows(data, stageTypes, (flat) => riderBestRole(flat)) : []),
-    [data, stageTypes],
+    () => (data?.riders ? withLoad(buildSquadRows(data, stageTypes, (flat) => riderBestRole(flat)), expectedLoad) : []),
+    [data, stageTypes, expectedLoad],
   );
+  const peak = usePeakBoard({ data: peakData, raceId: race.id, today, gate });
+  // Hvornaar rytteren formtopper (punkt 7): staar ved Form i Trup, aldrig i Status.
+  const peakNext = useMemo(() => nextPeakByRider(peak.rows), [peak.rows]);
   const sortedRows = useMemo(() => sortSquadRows(rows, sort, sel), [rows, sort, sel]);
-  const profileCols = useMemo(() => profileColumns(stageTypes), [stageTypes]);
 
   const size = data?.size ?? { min: 1, max: race.sizeMax };
   const sprintLeaderAllowed = data?.sprint_leader_allowed === true;
@@ -304,6 +359,18 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
   const save = useCallback(async () => {
     const current = latest.current;
     if (!current || current.readOnly || current.clientErrors.length > 0) return false;
+    // Kun en taktik-kladde er ugemt: den gemmes med fanens egen knap, aldrig af et trup-gem ("Gem og aabn").
+    if (!selectionDirty(current.sel, current.saved) && tacticsMountedRef.current && !gate.current() && !isReloadAllowed()) {
+      setNote(t("tactics.saveInTab"));
+      onView?.("tactics");
+      return false;
+    }
+    // En ugemt taktik-kladde ville gaa tabt, naar et trup-gem henter taktik-fanen paa ny: gem taktikken foerst.
+    if (tacticsDraftRef.current && !gate.current()) {
+      setNote(t("tactics.saveFirst"));
+      onView?.("tactics");
+      return false;
+    }
     const result = await gate.run("save", async () => {
       setSaveError(null);
       try {
@@ -320,6 +387,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
           return false;
         }
         setSaved(current.sel);
+        setSquadVersion((v) => v + 1);
         setData((d: SelectionResponse) => (d ? { ...d, withdrawn: false } : d)); // et gem melder holdet til igen
         setSaveState("saved");
         onSaved?.(race.id, entriesFromSelection(race.id, current.sel)); // siden tager loebet ud af sin kladde
@@ -331,7 +399,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
       }
     });
     return result.ran ? result.value : false;
-  }, [gate, race.id, onSaved]);
+  }, [gate, race.id, onSaved, onView, t]);
 
   const discard = useCallback(() => {
     if (!latest.current || gate.current()) return;
@@ -371,10 +439,14 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     }
   }, [race.id]);
 
+  // Ugemt trup ELLER en ugemt taktik-kladde. Taktik-fanen er loebssidens egen og melder sin kladde gennem
+  // genindlaesnings-vagten; holder fladen ingen laas selv (ren trup, intet kald), er en laas fanens kladde.
   const isDirty = useCallback(() => {
     const current = latest.current;
-    return !!current && current.ready && selectionDirty(current.sel, current.saved);
-  }, []);
+    if (!current || !current.ready) return false;
+    if (selectionDirty(current.sel, current.saved) || tacticsDraftRef.current) return true;
+    return tacticsMountedRef.current && !gate.current() && !isReloadAllowed();
+  }, [gate]);
 
   latest.current = { ready: state === "ready", sel, saved, readOnly, clientErrors, sprintLeaderAllowed, size };
   useImperativeHandle(ref, () => ({ save, discard, markSaved, refreshAvailability, isDirty }), [save, discard, markSaved, refreshAvailability, isDirty]);
@@ -464,6 +536,80 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
       </div>
     ) : null;
 
+  // Hovedets ENE guld-knap gemmer det, spilleren ser (ejervalg 16/11, punkt 8 B): Trup = "Gem trup";
+  // Taktik = "Gem taktik" (fanens eget gem), eller "Gem trup og saet taktik" naar truppen er ugemt (truppen
+  // gemmes, og taktikken hentes paa den nye trup); Formtop = "Anvend paa valgte". I mobil-arket staar
+  // knappen fast i bunden af arket. Taktikken kan gemmes, ogsaa naar truppen er laast (et etapeloeb i gang:
+  // de senere etaper kan stadig planlaegges); fanen afgoer selv, om der er noget at gemme. En ugemt
+  // taktik-kladde gemmes altid foer truppen (ellers ville et trup-gem hente fanen paa ny og tabe den).
+  const tacticsSquadFirst = view === "tactics" && dirty && !readOnly && !tacticsCanSave;
+  const tacticsSavable = data?.eligible !== false && data?.did_not_start !== true;
+  const primaryButton =
+    state !== "ready" ? null : view === "tactics" ? (
+      !tacticsSavable ? null : (
+      <Button
+        variant="primary"
+        size="sm"
+        onClick={tacticsSquadFirst ? save : () => tacticsRef.current?.save()}
+        loading={tacticsSquadFirst && saving}
+        disabled={locked || (tacticsSquadFirst ? clientErrors.length > 0 : !tacticsCanSave)}
+        data-testid="planning-tactics-save"
+        className={inSheet ? "w-full" : undefined}
+      >
+        {t(saveLabelKey("tactics", { squadDirty: tacticsSquadFirst }))}
+      </Button>
+      )
+    ) : readOnly ? null : view === "peak" ? (
+      <Button
+        variant="primary"
+        size="sm"
+        onClick={peak.apply}
+        loading={writing === "peak"}
+        disabled={locked || peak.pairs.length === 0}
+        data-testid="planning-peak-apply"
+        className={inSheet ? "w-full" : undefined}
+      >
+        {t(saveLabelKey("peak"), { count: peak.pairs.length })}
+      </Button>
+    ) : view === "squad" ? (
+      <Button
+        variant="primary"
+        size="sm"
+        onClick={save}
+        loading={saving}
+        disabled={!dirty || locked || clientErrors.length > 0}
+        className={inSheet ? "w-full" : undefined}
+      >
+        {t(saveLabelKey("squad"))}
+      </Button>
+    ) : null;
+
+  // Fanerne Trup | Taktik | Formtop (den kanoniske Segmented). Paa pc under profilen med visningens
+  // korte hjaelp til hoejre (wireframet); i mobil-arket fast oeverst (punkt 2).
+  const viewSwitch = onView ? (
+    <div
+      className={`flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 ${inSheet ? "sticky -top-2 z-sticky border-b border-cz-border bg-cz-card px-3 py-2" : ""}`}
+      data-testid="planning-view-switch"
+    >
+      <Segmented
+        label={t("views.label")}
+        value={view}
+        onChange={(next: WorkbenchView) => onView(next)}
+        options={WORKBENCH_VIEWS.map((v) => ({ value: v, label: t(`views.${v}`) }))}
+      />
+      {!inSheet && <p className="text-xs text-cz-3">{t(`views.hint.${view}`)}</p>}
+    </div>
+  ) : null;
+
+  // Formtop-advarslens "Udtag til loebet" (punkt 6 B): rytteren kommer i trup-kladden, intet gemmes.
+  const canPickRider = (riderId: string) => {
+    if (sel.riderIds.includes(riderId) || sel.riderIds.length >= size.max) return false;
+    return rows.some((r) => r.id === riderId && r.selectable);
+  };
+  const pickFromPeak = (riderId: string) => {
+    if (canPickRider(riderId)) toggle(riderId);
+  };
+
   let body;
   if (state === "loading") {
     body = (
@@ -508,11 +654,42 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
           loading={profilesLoading}
           hidden={profileHidden}
           onToggleHidden={onToggleProfileHidden}
-          full={profileFull}
-          onToggleFull={onToggleProfileFull}
           hasClassifications={race.stages > 1}
+          index={stageIndex}
+          onIndex={setStageIndex}
         />
-        {rows.length === 0 ? (
+        {/* Fanerne under profilen (wireframet, punkt 4 D). I mobil-arket staar de fast oeverst i stedet. */}
+        {!inSheet && viewSwitch}
+        {tacticsMounted && (
+          // Monteret fra foerste besoeg; skjult (ikke afmonteret) i de andre visninger, saa kladden bliver.
+          <div hidden={view !== "tactics"}>
+            <TacticsView
+              ref={tacticsRef}
+              onCanSave={setTacticsCanSave}
+              raceId={race.id}
+              profiles={profiles}
+              stageIndex={stageIndex}
+              isStageRace={race.stages > 1}
+              // En taktik-kladde holder fanen synlig, saa den kan gemmes foer truppen.
+              squadDirty={dirty && !tacticsCanSave}
+              savedCount={saved.riderIds.length}
+              squadVersion={squadVersion}
+              onShowSquad={() => onView?.("squad")}
+            />
+          </div>
+        )}
+        {view === "tactics" ? null : view === "peak" ? (
+          <PeakView
+            peak={peak}
+            raceName={race.name}
+            raceStart={raceStart}
+            locked={locked}
+            compactMobile={inSheet}
+            selectedIds={sel.riderIds}
+            onPick={pickFromPeak}
+            canPick={(riderId: string) => !readOnly && canPickRider(riderId)}
+          />
+        ) : rows.length === 0 ? (
           <div className="p-4">
             <EmptyState
               icon={<FlagIcon size={26} aria-hidden="true" />}
@@ -530,13 +707,37 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
         ) : (
           <>
             {/* Én linje kontekst om tallene, samme tekst som loebstavlen paa /planning (P9). */}
-            <p className="border-t border-cz-border px-4 py-2 text-2xs leading-snug text-cz-3">{tr("racehub.column.numbersExplanation")}</p>
+            {/* Paa mobil staar forklaringen ikke over hver tabel (ejer 16/11: én gang, ikke overalt). */}
+            <p className="hidden border-t border-cz-border px-4 py-2 text-2xs leading-snug text-cz-3 sm:block">
+              {tr("racehub.column.numbersExplanation")}
+              {expectedLoad != null && <span className="hidden sm:inline"> {t("squad.loadNote")}</span>}
+            </p>
+            {/* Mobil (punkt 2, kompakt): chip-raekken vaelger op til tre tal-kolonner; valget huskes. */}
+            {onMobileColumns && (
+              <div className="flex flex-nowrap items-center gap-0.5 overflow-hidden border-t border-cz-border px-2.5 sm:hidden" role="group" aria-label={t("squad.columns")} data-testid="planning-column-chips">
+                {MOBILE_COLUMNS.filter((c) => c !== "load" || expectedLoad != null).map((c) => {
+                  const on = (mobileColumns ?? []).includes(c);
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => onMobileColumns(toggleMobileColumn(mobileColumns ?? [], c))}
+                      className="min-h-11 shrink-0 px-0.5 font-data text-3xs font-semibold uppercase tracking-wide"
+                    >
+                      <span className={`inline-flex items-center rounded-cz border px-1.5 py-1 ${on ? "border-cz-1 bg-cz-subtle text-cz-1" : "border-cz-border text-cz-3"}`}>
+                        {t(`squad.mobileColumn.${c}`)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             <SquadTable
               rows={sortedRows}
               selection={sel}
               sort={sort}
               onSort={(key: SquadSortKey) => setSort((current) => nextSort(current, key))}
-              profileCols={profileCols}
               max={size.max}
               readOnly={readOnly || locked}
               sprintLeaderAllowed={sprintLeaderAllowed}
@@ -545,6 +746,9 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
               details={riderDetails}
               seasonLoad={seasonLoad}
               seasonYear={seasonYear}
+              showLoad={expectedLoad != null}
+              peakNext={peakNext}
+              mobileColumns={mobileColumns}
             />
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-cz-border px-4 py-1.5">
               <p className="py-1 font-data text-xs tabular-nums text-cz-3">
@@ -564,10 +768,13 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
       data-testid="planning-workbench"
       className="min-w-0 rounded-cz border border-cz-border bg-cz-card"
     >
-      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-cz-border px-4 py-3.5">
+      {/* Mobil-arket (punkt 2, kompakt): fanerne staar fast oeverst i arket. */}
+      {inSheet && viewSwitch}
+      <header className="border-b border-cz-border px-4 py-3.5">
         <div className="min-w-0">
           <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold text-cz-1">
-            <span className="min-w-0 break-words">{race.name}</span>
+            {/* I mobil-arket staar navnet i arkets hoved (med pilene); her kun for skaermlaesere. */}
+            <span className={inSheet ? "sr-only" : "min-w-0 break-words"}>{race.name}</span>
             {dirty && (
               <span className="inline-flex items-center gap-1.5 font-data text-2xs font-semibold uppercase tracking-wide text-cz-warning" data-testid="planning-unsaved-marker">
                 <ReadinessMark state="missing" />
@@ -590,27 +797,37 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
             <p className="mt-1 text-2xs text-cz-warning">{t("raceList.sharesDays", { races: overlaps.map((o) => o.name).join(", ") })}</p>
           )}
         </div>
-        {state === "ready" && !readOnly && (
-          <div className="relative flex flex-wrap items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setCopyOpen((v) => !v)} aria-expanded={copyOpen} disabled={locked}>
-              {t("race.copyFrom")}
-            </Button>
-            <Button variant="secondary" size="sm" onClick={suggest} disabled={locked || rows.length === 0}>
-              {t("race.suggest")}
-            </Button>
+        {state === "ready" && (!readOnly || (view === "tactics" && primaryButton && !inSheet)) && (
+          // Hovedets knapper under loebets linje, som wireframet: Kopiér trup fra, Foreslaa trup og den ene
+          // guld-knap, der gemmer det man ser (punkt 8 B). Formtop har desuden "Ryd valg". En laast trup har
+          // kun taktikkens gem tilbage.
+          <div className="relative mt-3 flex flex-wrap items-center gap-2" data-testid="planning-head-actions">
+            {!readOnly && (
+              <>
+                <Button variant="secondary" size="sm" onClick={() => setCopyOpen((v) => !v)} aria-expanded={copyOpen} disabled={locked}>
+                  {t("race.copyFrom")}
+                </Button>
+                <Button variant="secondary" size="sm" onClick={suggest} disabled={locked || rows.length === 0}>
+                  {t("race.suggest")}
+                </Button>
+              </>
+            )}
+            {!inSheet && primaryButton}
             {dirty && (
               <Button variant="ghost" size="sm" onClick={discard} disabled={locked}>
                 {t("race.discard")}
               </Button>
             )}
-            <Button variant="primary" size="sm" onClick={save} loading={saving} disabled={!dirty || locked || clientErrors.length > 0}>
-              {t("race.save")}
-            </Button>
+            {view === "peak" && peak.checked.size > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => peak.setChecked(new Set())} disabled={locked}>
+                {t("peak.clear")}
+              </Button>
+            )}
             {copyOpen && (
               <div
                 role="dialog"
                 aria-label={t("copy.title")}
-                className="absolute end-0 top-full z-dropdown mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-cz border border-cz-border bg-cz-card p-1.5 shadow-overlay"
+                className="absolute start-0 top-full z-dropdown mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-cz border border-cz-border bg-cz-card p-1.5 shadow-overlay"
               >
                 {copySources.length === 0 ? (
                   <p className="px-2.5 py-2 text-[13px] text-cz-2">{t("copy.none")}</p>
@@ -653,6 +870,11 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
       )}
 
       {body}
+      {inSheet && primaryButton && (
+        <div className="sticky bottom-0 z-sticky border-t border-cz-border bg-cz-card px-3 py-2" data-testid="planning-sheet-save">
+          {primaryButton}
+        </div>
+      )}
     </section>
   );
 });

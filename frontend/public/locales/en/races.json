@@ -4,10 +4,11 @@
       "results": "Results",
       "stage": "Stage",
       "story": "Story",
-      "standings": "Standings",
       "tactics": "Tactics",
-      "team": "Team"
+      "team": "Team",
+      "start": "Start list"
     },
+    "mode": { "aria": "Stage view", "story": "Story · film and report", "results": "Results · full list" },
     "hero": {
       "stageLocks": "Stage {number} locks at {time} · {countdown}",
       "locks": "Locks at {time} · {countdown}",
@@ -26,6 +27,7 @@
       "aria": "Stage route",
       "km": "{km} km",
       "gain": "{gain} m climbing",
+      "elevation": "{gain} m",
       "climbs": "{count, plural, one {# climb} other {# climbs}}",
       "hide": "Hide route",
       "show": "Show route",
@@ -338,7 +340,7 @@
         "incident": "{name} {kind, select, crash {crashes} mechanical {has a mechanical} other {has an incident}}{outcome, select, abandoned { and abandons} loss { and loses {loss}} other {}}",
         "climb": "Top of {name}",
         "climbFirst": "{rider} first over {name}",
-        "gap": "The gap to {group, select, rest {the peloton} other {the chase}} {dir, select, grew {grows} other {shrinks}} from {before} to {after}",
+        "gap": "{front, select, break {The break} other {The leading group}} now has {after} on {group, select, rest {the peloton} other {the chase}}",
         "split": "{count, plural, one {A group splits off} other {# groups split off}}",
         "dropped": "{count, plural, one {{names} is dropped from the break} other {{names} are dropped from the break}}",
         "formedAhead": "{count, plural, one {# rider goes clear ahead of the peloton} other {# riders go clear ahead of the peloton}}",
@@ -1126,6 +1128,7 @@
     "helpRaceDay": "The role runs all race. The intention is what you want from him on race day.",
     "colRider": "Rider",
     "colRole": "Role",
+    "colRating": "Rating",
     "colIntention": "Intention · stage {number}",
     "colIntentionRaceDay": "Intention · race day",
     "allRace": "All race",
@@ -1654,7 +1657,8 @@
       "points": "Points",
       "mountain": "Mountain",
       "young": "Youth",
-      "team": "Teams"
+      "team": "Teams",
+      "passages": "Sprints & climbs"
     },
     "teamFilter": {
       "label": "Team",
@@ -2242,6 +2246,10 @@
     "table": {
       "prizePoints": "Prize points",
       "jerseyPoints": "Jersey points",
+      "colPos": "Pos",
+      "colRider": "Rider",
+      "colTeam": "Team",
+      "colTime": "Time",
       "prizePointsShort": "Prize",
       "jerseyPointsShort": "Jersey"
     },

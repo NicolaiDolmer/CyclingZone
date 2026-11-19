@@ -1,5 +1,452 @@
 export const PATCHES = [
 {
+  "version": "7.470",
+  "date": "2026-11-19",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "beta",
+      "flag": "race_page_v6",
+      "topic": "Race page",
+      "area": "races",
+      "en": {
+        "title": "Spoiler shield covers more of the race page",
+        "body": "I now hide unopened results in the Start list, Stage and Team tabs when your spoiler shield is on."
+      },
+      "da": {
+        "title": "Spoilerskjoldet dækker mere af løbssiden",
+        "body": "Jeg skjuler nu uåbnede resultater på Startliste, Etape og Hold, når dit spoilerskjold er slået til."
+      },
+      "refs": [
+        8409
+      ]
+    }
+  ]
+},
+{
+  "version": "7.469",
+  "date": "2026-11-18",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "topic": "Interface",
+      "area": "interface",
+      "flag": "patch_notes_v2_8049",
+      "en": {
+        "title": "Patch notes by area, week by week (beta)",
+        "body": "The patch notes page shows this week grouped by area, with the week's biggest change at the top. Earlier weeks and a monthly archive sit below, and search covers the archive. What is new since your last visit now follows your account, so your phone and your computer agree."
+      },
+      "da": {
+        "title": "Patch notes efter område, uge for uge (beta)",
+        "body": "Patch notes-siden viser denne uge samlet efter område, med ugens største nyhed øverst. Tidligere uger og et arkiv pr. måned står nedenunder, og søgningen dækker også arkivet. Hvad der er nyt siden sidst følger nu din konto, så telefon og computer er enige."
+      },
+      "refs": [
+        8049
+      ]
+    }
+  ]
+},
+{
+  "version": "7.468",
+  "date": "2026-11-18",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "flag": "race_page_v6",
+      "topic": "Races",
+      "en": {
+        "title": "Tactics on the new race page",
+        "body": "Pick a plan for the whole team, and every rider follows it. Give a rider his own Easy, Normal or Hard day with one tap, or tap it again to send him back to the team plan. Day load shows what the day costs him. Lock a rider to keep his plan when you change the team plan. All orders shows each rider's orders along the route."
+      },
+      "da": {
+        "title": "Taktik på den nye løbsside",
+        "body": "Vælg en plan for hele holdet, og alle ryttere følger den. Giv en rytter sin egen Let, Normal eller Hård dag med ét tryk, eller tryk igen for at sende ham tilbage til holdets plan. Dagens belastning viser, hvad dagen koster ham. Lås en rytter, så han beholder sin plan, når du skifter holdplan. Alle ordrer viser hver rytters ordrer langs ruten."
+      },
+      "refs": [
+        8298,
+        8297
+      ],
+      "area": "tactics"
+    }
+  ]
+},
+{
+  "version": "7.467",
+  "date": "2026-11-18",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "flag": "race_page_v6",
+      "topic": "Races",
+      "en": {
+        "title": "Switch between pools and seasons on the race page",
+        "body": "The race header has a Pool menu and a Season menu. Your own pool carries the You mark. A finished season shows its winner and margin, the current one shows how many stages are raced. Looking at another pool, you see where your team rides, when its next stage locks, and a link back to your race."
+      },
+      "da": {
+        "title": "Skift mellem puljer og sæsoner på løbssiden",
+        "body": "Løbshovedet har en Pulje-menu og en Sæson-menu. Din egen pulje har mærket Dig. En kørt sæson viser vinder og forspring, den aktuelle viser hvor mange etaper der er kørt. Ser du en anden pulje, står der, hvor dit hold kører, hvornår holdets næste etape låser, og et link tilbage til dit løb."
+      },
+      "refs": [
+        5841
+      ],
+      "area": "races"
+    }
+  ]
+},
+{
+  "version": "7.466",
+  "date": "2026-11-18",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "beta",
+      "topic": "Races",
+      "flag": "race_page_v6",
+      "en": {
+        "title": "The race film is one player",
+        "body": "On the new race page a ridden stage has Story and Results under the Stage tab. Story is one race film on the stage's coloured route, with chapters (start, the break, climbs, sprints, the chase, the finale) and one report next to it. Click a line in the report and the film jumps there. The report only shows what has happened up to where you are in the film, so the winner is not given away before the finish."
+      },
+      "da": {
+        "title": "Løbsfilmen er én afspiller",
+        "body": "På den nye løbsside har en kørt etape Historie og Resultater under Etape-fanen. Historie er én løbsfilm på etapens farvede rute med kapitler (start, udbruddet, stigningerne, spurterne, jagten, finalen) og ét referat ved siden af. Klik på en linje i referatet, og filmen hopper dertil. Referatet viser kun det, der er sket, op til hvor du er i filmen, så vinderen ikke afsløres før mål."
+      },
+      "refs": [
+        7861
+      ],
+      "area": "races"
+    }
+  ]
+},
+{
+  "version": "7.465",
+  "date": "2026-11-18",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Academy",
+      "area": "academy",
+      "en": {
+        "title": "All role forecasts for academy riders",
+        "body": "I now show the forecast for every role in the rider’s scouting report once your academy reaches its final estimate."
+      },
+      "da": {
+        "title": "Prognoser for alle akademirytterens roller",
+        "body": "Jeg viser nu prognosen for hver rolle i rytterens scoutrapport, når dit akademi er nået til endeligt bud."
+      },
+      "refs": [
+        8400
+      ]
+    }
+  ]
+},
+{
+  "version": "7.464",
+  "date": "2026-11-18",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "flag": "planning_workbench",
+      "topic": "Planning",
+      "en": {
+        "title": "The new planning page",
+        "body": "Planning has a button, Try the new planning page. It shows your races week by week, and one race at a time with three views: Squad, Tactics and Peak form. Actions let the assistant pick, remove squads or withdraw across many races, and nothing is saved until you save. Leaving with unsaved changes, also a tactics draft, asks you first."
+      },
+      "da": {
+        "title": "Den nye planlægningsside",
+        "body": "Planlægning har en knap, Prøv den nye planlægningsside. Den viser dine løb uge for uge og ét løb ad gangen med tre visninger: Trup, Taktik og Formtop. Under Handlinger kan assistenten udtage, eller du kan fjerne udtagelser og afmelde over mange løb, og intet gemmes før du gemmer. Går du fra ikke gemte ændringer, også en taktik-kladde, spørger siden først."
+      },
+      "refs": [
+        7535,
+        8306
+      ]
+    }
+  ]
+},
+{
+  "version": "7.463",
+  "date": "2026-11-18",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Tactics",
+      "en": {
+        "title": "Save keeps orders on every stage",
+        "body": "If you changed orders on one stage and then opened another before saving, Save only sent the open stage, and the earlier changes were lost. Save now sends the orders for every stage you changed, and Saved only shows once all of them are confirmed. The tab also tells you about unsaved changes on other stages."
+      },
+      "da": {
+        "title": "Gem tager ordrer med på alle etaper",
+        "body": "Hvis I ændrede ordrer på én etape og åbnede en anden før I gemte, sendte Gem kun den åbne etape, og de første ændringer gik tabt. Nu sender Gem ordrerne for alle etaper, I har ændret, og Gemt vises først, når de alle er bekræftet. Fanen siger også til, når en anden etape har ugemte ændringer."
+      },
+      "refs": [
+        8381
+      ]
+    }
+  ]
+},
+{
+  "version": "7.462",
+  "date": "2026-11-18",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Races",
+      "en": {
+        "title": "The race report shows one exact kilometre per line",
+        "body": "Every line in \"How it unfolded\" now stands at one exact kilometre, never a stretch like 25 to 48 km. The gap line says how much the group at the front has on the peloton at that point, and it only calls the front group the break when it really is the break. When several events are grouped into one line, the time and the order follow the kilometre shown."
+      },
+      "da": {
+        "title": "Løbsreferatet viser ét præcist kilometer pr. linje",
+        "body": "Hver linje i \"Sådan gik det\" står nu ved ét præcist kilometer og aldrig ved et stykke som 25 til 48 km. Afstands-linjen siger, hvor meget gruppen forrest har til feltet på det punkt, og den kalder kun fronten for udbruddet, når det faktisk er udbruddet. Når flere hændelser samles i én linje, følger tid og rækkefølge det viste kilometer."
+      },
+      "refs": [
+        8377
+      ]
+    }
+  ]
+},
+{
+  "version": "7.461",
+  "date": "2026-11-17",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Interface",
+      "en": {
+        "title": "Deleted messages stay deleted",
+        "body": "If you delete the message about a graduating academy rider or a squad below the minimum, it no longer comes back the next night."
+      },
+      "da": {
+        "title": "Slettede beskeder bliver væk",
+        "body": "Sletter du beskeden om en akademirytter, der er klar til oprykning, eller om en for lille trup, kommer den ikke igen næste nat."
+      },
+      "refs": [
+        8196
+      ]
+    }
+  ]
+},
+{
+  "version": "7.460",
+  "date": "2026-11-17",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Season",
+      "en": {
+        "title": "The season documentary names a real rival",
+        "body": "The rival in your season documentary is now the team right above or below you in your own pool. If that team is not a manager team, the rival sentence is left out instead of naming a team from another pool. A top result that was not a win is now written as a placing, and the text no longer uses long dashes. This applies from the season 6 switch; earlier documentaries are unchanged."
+      },
+      "da": {
+        "title": "Sæson-dokumentaren nævner en ægte rival",
+        "body": "Rivalen i din sæson-dokumentar er nu holdet lige over eller under dig i din egen pulje. Er det hold ikke et managerhold, udelades rival-sætningen i stedet for at nævne et hold fra en anden pulje. Et topresultat, der ikke var en sejr, skrives nu som en placering, og teksten bruger ikke længere lange tankestreger eller engelske ord. Det gælder fra sæson 6-skiftet; tidligere dokumentarer er uændrede."
+      },
+      "refs": [
+        8361
+      ]
+    }
+  ]
+},
+{
+  "version": "7.459",
+  "date": "2026-11-17",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Races",
+      "en": {
+        "title": "Price words in colour on every order",
+        "body": "Every race order with a price now shows its price word in the same colour as the stage plan, so Easy, Medium, Hard and Very hard read the same everywhere."
+      },
+      "da": {
+        "title": "Prisord i farver på alle ordrer",
+        "body": "Alle løbsordrer med en pris viser nu prisordet i samme farve som etapeplanen, så Let, Middel, Hård og Meget hård læses ens alle steder."
+      },
+      "refs": [
+        7638
+      ]
+    },
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Board",
+      "en": {
+        "title": "The board shows the same everywhere",
+        "body": "The board page and the dashboard now show the same category numbers. The mid-season message no longer points to a board request that does not exist."
+      },
+      "da": {
+        "title": "Bestyrelsen viser det samme alle steder",
+        "body": "Bestyrelsessiden og dashboardet viser nu de samme kategorital. Halvsæson-beskeden peger ikke længere på en bestyrelsesanmodning, der ikke findes."
+      },
+      "refs": [
+        7963,
+        8116
+      ]
+    },
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Auctions",
+      "en": {
+        "title": "Auction countdown follows an extension",
+        "body": "When a late bid extends an auction, the countdown ring and the time now change together with the new price."
+      },
+      "da": {
+        "title": "Auktionens nedtælling følger forlængelsen",
+        "body": "Når et sent bud forlænger en auktion, skifter nedtællingsringen og tiden nu sammen med den nye pris."
+      },
+      "refs": [
+        8290
+      ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Auctions",
+      "en": {
+        "title": "Auctions without the first-bid banner",
+        "body": "The first-bid banner above the list is gone, so the riders come right under the filters. The tour now starts on the page you are on when you press Show me around."
+      },
+      "da": {
+        "title": "Auktioner uden første-buds-banner",
+        "body": "Første-buds-banneret over listen er væk, så rytterne står lige under filtrene. Rundvisningen starter nu på den side, du står på, når du trykker Vis mig rundt."
+      },
+      "refs": [
+        8069
+      ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Interface",
+      "en": {
+        "title": "Tidier tables and training on phones",
+        "body": "Rider tables on phones put the name on its own line, and My team shows its figures at the top. Compare on the league page only appears once you have picked a team. On Training, the Assistant and the rider picker sit in one row."
+      },
+      "da": {
+        "title": "Ryddeligere tabeller og træning på telefonen",
+        "body": "Rytterlister på telefonen har navnet på egen linje, og Mit hold viser sine tal øverst. Sammenlign på ligasiden vises først, når du har valgt et hold. På Træning står Assistent og Vælg ryttere i én række."
+      },
+      "refs": [
+        8278,
+        8279
+      ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Interface",
+      "en": {
+        "title": "Calmer look",
+        "body": "One gold button per view, the display font only on the rider's name on the rider page, and line icons instead of emoji in game text."
+      },
+      "da": {
+        "title": "Roligere udtryk",
+        "body": "Én guld-knap pr. visning, overskriftsskriften kun på rytterens navn på rytterprofilen, og streg-ikoner i stedet for emoji i spilteksten."
+      },
+      "refs": [
+        8069
+      ]
+    }
+  ]
+},
+{
+  "version": "7.458",
+  "date": "2026-11-17",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "beta_to_live",
+      "topic": "Training",
+      "en": {
+        "title": "Train now bonus is now for everyone",
+        "body": "The Train now bonus is out of beta. When you press Train now yourself, before your team's automatic training has run, your riders get a small extra training bonus for the day. Automatic training gives no bonus."
+      },
+      "da": {
+        "title": "Træn nu-bonussen er nu for alle",
+        "body": "Træn nu-bonussen er ude af beta. Når du selv trykker Træn nu, før holdets automatiske træning har kørt, får dine ryttere en lille ekstra træningsbonus for dagen. Automatisk træning giver ingen bonus."
+      },
+      "refs": [
+        7741
+      ]
+    }
+  ]
+},
+{
+  "version": "7.457",
+  "date": "2026-11-17",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "flag": "spoiler_shield_7859",
+      "topic": "Spoiler shield",
+      "en": {
+        "title": "Spoiler shield for notifications",
+        "body": "I added a spoiler shield. Switch it on in Settings, under Notifications, in the card Results and spoilers. It is off by default. With the shield on, your inbox, the bell and browser notifications only say that a stage is finished, with no winner and no placing. The race page itself only hides the result with the new race page."
+      },
+      "da": {
+        "title": "Spoiler-skjold til notifikationer",
+        "body": "Jeg har bygget et spoiler-skjold. Slå det til under Indstillinger, under Notifikationer, i kortet Resultater og spoilere. Det er slået fra som standard. Med skjoldet til siger din indbakke, klokken og browser-notifikationerne kun, at en etape er færdig, uden vinder og placering. Selve løbssiden skjuler først resultatet med den nye løbsside."
+      },
+      "refs": [
+        7859
+      ]
+    }
+  ]
+},
+{
+  "version": "7.456",
+  "date": "2026-11-16",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Planning",
+      "en": {
+        "title": "Squad deadline in the Planning heading",
+        "body": "When a squad is missing riders, Planning shows it as one line in the page heading with the nearest deadline, such as Squad selection missing · in 12h. The box above the tabs is gone, so the tabs and your races come first."
+      },
+      "da": {
+        "title": "Trup-fristen står i Planlægnings sidehoved",
+        "body": "Mangler en trup ryttere, viser Planlægning det som én linje i sidehovedet med den nærmeste frist, fx Trup mangler · om 12 t. Boksen over fanerne er væk, så fanerne og dine løb står først."
+      },
+      "refs": [
+        8069
+      ]
+    }
+  ]
+},
+{
   "version": "7.455",
   "date": "2026-11-16",
   "changes": [

@@ -25,6 +25,7 @@
     "retireRisk": "Risque de retraite élevé : les coureurs prennent généralement leur retraite entre 36 et 40 ans",
     "contractExpiring": "Le contrat expire au prochain changement de saison : ce coureur devient agent libre sauf si le contrat est d'abord prolongé",
     "junior": "Coureur junior (dans ton effectif juniors)",
+    "leavesAfter": "Part après {race}",
     "label": {
       "u23": "U23",
       "u25": "U25",
@@ -863,7 +864,10 @@
       "working": "Libération…",
       "cancel": "Annuler",
       "success": "Coureur libéré.",
-      "errorPrefix": "Libération impossible :"
+      "errorPrefix": "Libération impossible :",
+      "pendingLine": "Il court {race}. Il quitte ton équipe après la dernière étape. Les frais sont prélevés maintenant et la libération ne peut pas être annulée.",
+      "pendingSuccess": "{rider} sera libéré après {race}. Les frais de {fee} CZ$ ont été prélevés.",
+      "pendingRaceFallback": "la course par étapes"
     },
     "move": {
       "button": "Changer d'effectif",

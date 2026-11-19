@@ -26,11 +26,12 @@ const here = dirname(fileURLToPath(import.meta.url));
 const teamPageSource = readFileSync(join(here, "TeamPage.jsx"), "utf8");
 const localesDir = join(here, "..", "..", "public", "locales");
 
-// Meta-linjen: <div className="-mt-4 mb-5 flex gap-4 flex-wrap text-sm"> ... </div>
+// #8278: meta-linjen er nu kittets HeroStats (rettelse 8). Blokken er fra
+// `<HeroStats` til næste `/>` på egen linje efter items-arrayet.
 function metaLineBlock(): string {
-  const start = teamPageSource.indexOf('<div className="-mt-4 mb-5 flex gap-4 flex-wrap text-sm">');
-  assert.notEqual(start, -1, "meta-linjen skal kunne findes i TeamPage.jsx");
-  const end = teamPageSource.indexOf("</div>", start);
+  const start = teamPageSource.indexOf("<HeroStats");
+  assert.notEqual(start, -1, "holdets tal skal stå i HeroStats i TeamPage.jsx");
+  const end = teamPageSource.indexOf("]}\n      />", start);
   assert.notEqual(end, -1);
   return teamPageSource.slice(start, end);
 }
@@ -39,15 +40,15 @@ test("#4500 balancen paa /team er et link, ikke guld-tekst uden destination", ()
   const block = metaLineBlock();
   assert.match(
     block,
-    /<Link to="\/finance" className="text-cz-accent-t font-mono font-bold/,
+    /label: t\("auctions:stats\.balance"\),\s*value: <Link to="\/finance" className="text-cz-accent-t/,
     "guld-balancen skal foere til /finance — guld-tekst uden destination var 42 rage clicks",
   );
 });
 
 test("#4500 loen pr. saeson og division paa /team har hver sin destination", () => {
   const block = metaLineBlock();
-  assert.match(block, /<Link to="\/finance"[^>]*>\{t\("page\.salaryPerSeason"/, "loen/saeson skal foere til /finance");
-  assert.match(block, /<Link to="\/standings"[^>]*>\{t\("page\.division"/, "division skal foere til /standings");
+  assert.match(block, /label: t\("page\.stats\.salaryPerSeason"\),\s*value: <Link to="\/finance"/, "loen/saeson skal foere til /finance");
+  assert.match(block, /label: t\("manager\.thDivision"\),\s*value: <Link to="\/standings"/, "division skal foere til /standings");
 });
 
 test("#4500 meta-linjen har ingen tilbagevendende guld-span uden destination", () => {

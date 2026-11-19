@@ -465,7 +465,9 @@ test("(3) assistenten desktop: en rigtig sekundær knap med ramme i tabellens v�
 });
 
 {
-  test("(3) assistenten telefon 390: rækken står lige under overblikket, over rækkerne", async ({ page }) => {
+  // #8279 (rettelse 15): rækken står nu INDE i overblikskortet (under træthedslinjen),
+  // ikke som eget kort under det. Stadig over rytterrækkerne og 44 px høj.
+  test("(3) assistenten telefon 390: rækken står i overblikskortet, over rækkerne", async ({ page }) => {
     await openTraining(page, 390, 844);
     const row = page.getByTestId("training-assistant-row");
     await expect(row).toBeVisible();
@@ -473,7 +475,8 @@ test("(3) assistenten desktop: en rigtig sekundær knap med ramme i tabellens v�
     const rowBox = await row.boundingBox();
     const tableBox = await page.getByTestId("training-onetap-rows").boundingBox();
     expect(overviewBox && rowBox && tableBox).toBeTruthy();
-    expect(rowBox!.y).toBeGreaterThanOrEqual(overviewBox!.y + overviewBox!.height);
+    expect(rowBox!.y).toBeGreaterThanOrEqual(overviewBox!.y);
+    expect(rowBox!.y + rowBox!.height).toBeLessThanOrEqual(overviewBox!.y + overviewBox!.height + 1);
     expect(rowBox!.y + rowBox!.height).toBeLessThanOrEqual(tableBox!.y);
     // 44 px tryk-mål (#1602).
     expect(rowBox!.height).toBeGreaterThanOrEqual(44);

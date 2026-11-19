@@ -195,9 +195,14 @@ export function validateTeamOrder({
   // Ingen side-kanaler: præcis kontraktens felter, hverken flere eller andre.
   for (const r of riders) {
     const unknown = Object.keys(r ?? {}).some(
-      (k) => !VALID_RIDER_ORDER_FIELDS.includes(k) && !REJECTED_RIDER_ORDER_FIELDS.includes(k) && !(stagePlan && k === "plan"),
+      (k) => !VALID_RIDER_ORDER_FIELDS.includes(k) && !REJECTED_RIDER_ORDER_FIELDS.includes(k) && !(stagePlan && (k === "plan" || k === "locked")),
     );
     if (unknown) { errors.push("team_orders_unknown_field"); break; }
+  }
+  // #8298 (ejer 17/11, valg A): låsen pr. rytter pr. etape. Kun med etapeplanen, kun boolean.
+  // Motoren læser den ikke; den siger kun, at holdplanen ikke må røre rytterens plan.
+  for (const r of riders) {
+    if (r?.locked !== undefined && typeof r.locked !== "boolean") { errors.push("team_orders_invalid_locked"); break; }
   }
   const planError = stagePlan ? validateRiderPlans(riders, stagePlan) : null; // #7003
   if (planError) errors.push(planError);
@@ -253,6 +258,7 @@ export function normalizeTeamOrder(order) {
       effort: r.effort,
       try_break: r.try_break === true,
       leadout: r.leadout === true,
+      ...(r.locked === true ? { locked: true } : {}), // #8298: kun gemt naar den er sat (validateTeamOrder tog kun imod den med etapeplanen)
     }, r)), // #7003: planens felter udledes af kaeden (kun naar validateTeamOrder tog imod en plan)
   };
 }

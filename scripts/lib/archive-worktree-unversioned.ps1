@@ -39,7 +39,7 @@ function Save-WorktreeUnversioned {
   # Returnerer [pscustomobject] { Ok; Dir; Files; Skipped; Errors }.
   param(
     [Parameter(Mandatory)][string]$WorktreePath,
-    [string]$BaseRef = 'origin/main',
+    [string]$BaseRef = 'refs/remotes/origin/main',
     [switch]$DryRun
   )
   $errors = @()
@@ -140,7 +140,7 @@ function Remove-WorktreeSafely {
   param(
     [Parameter(Mandatory)][string]$WorktreePath,
     [Parameter(Mandatory)][string]$RepoRoot,
-    [string]$BaseRef = 'origin/main',
+    [string]$BaseRef = 'refs/remotes/origin/main',
     [switch]$DryRun
   )
   $links = Remove-WorktreeJunctions -WorktreePath $WorktreePath -DryRun:$DryRun

@@ -34,7 +34,7 @@ import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { getRiderMarketValue } from "../lib/marketValues.js";
 import { formatNumber } from "../lib/intl.js";
 import { isYouthSquad, type YouthSquad } from "../lib/youthSquadPages.ts";
-import { PageLoader } from "../components/ui/index.js";
+import { HeroStats, PageLoader } from "../components/ui/index.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import TeamDevelopmentTab from "../components/TeamDevelopmentTab.jsx";
 import TeamStatsTab from "../components/TeamStatsTab.jsx";
@@ -110,18 +110,23 @@ function YouthSquadView({ squad }: { squad: YouthSquad }) {
         />
       ) : (
         <>
-          {/* Meta-linjen som på My Team (TeamPage.jsx). #5631: truppens loft
-              (SQUAD_CAPS, live siden #5626) vises altid, også ved en tom trup
-              (0/12) — løn og trupværdi kun når der er ryttere at summere. */}
-          <div className="-mt-4 mb-5 flex gap-4 flex-wrap text-sm text-cz-3 tabular-nums">
-            <span>{t("page.rosterCount", { count: riders.length, cap })}</span>
-            {riders.length > 0 && (
-              <>
-                <span>{tTeam("page.salaryPerSeason", { value: formatNumber(totalSalary) })}</span>
-                <span>{t("page.squadValue", { value: formatNumber(totalValue) })}</span>
-              </>
-            )}
-          </div>
+          {/* #8278 (rettelse 8): samme HeroStats som My Team (TeamPage.jsx).
+              #5631: truppens loft (SQUAD_CAPS, live siden #5626) vises altid,
+              også ved en tom trup (0/12); løn og trupværdi kun når der er
+              ryttere at summere. */}
+          <HeroStats
+            flush
+            className="-mt-2 mb-5 border-t border-cz-border pt-4"
+            items={[
+              { label: t("page.stats.riders"), value: `${riders.length}/${cap}` },
+              ...(riders.length > 0
+                ? [
+                    { label: tTeam("page.stats.salaryPerSeason"), value: formatNumber(totalSalary) },
+                    { label: t("page.stats.squadValue"), value: formatNumber(totalValue) },
+                  ]
+                : []),
+            ]}
+          />
 
           {optOutControl("mobile")}
           {optOut.saveError && <YouthRaceOptOutError message={t("optOut.saveError")} />}
