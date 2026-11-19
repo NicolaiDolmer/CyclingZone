@@ -32,7 +32,7 @@ export interface BoardRider {
   fatigue: number | null;
   routeMatch: number | null;
   timeLimitMark: ReactNode | null;
-  today: BoardToday;
+  today: readonly BoardToday[];
   level: EffortLevel | null;
   levelEditable: boolean;
   quickEffort?: { role: StagePlanRole; value: QuickEffort | null; errors: Record<string, string | null> };
@@ -95,7 +95,8 @@ export default function TacticsBoardV6c({ riders, partLabels, allOrders, summary
     switch (today.key) {
       case "abandoned": return today.text;
       case "effort": return t(`today.effort.${today.effort}`);
-      case "attack": return today.climb ? t("today.attack", { climb: today.climb }) : t("today.attackFinale");
+      case "attack": return t("today.attack", { climb: today.climb });
+      case "attackUnspecified": return t("short.attack");
       case "shelterLeader": return today.leader ? t("today.shelterLeader", { leader: today.leader }) : t("today.shelterLeaderNone");
       default: return t(`today.${today.key}`);
     }
@@ -149,7 +150,7 @@ export default function TacticsBoardV6c({ riders, partLabels, allOrders, summary
       fatigue: r.fatigue,
       routeMatch: r.routeMatch,
       timeLimitMark: r.timeLimitMark,
-      today: todayText(r.today),
+      today: r.today.map(todayText).join(" · "),
       effort: level(false),
       effortMobile: level(true),
       parts: r.parts?.map((part, index) => {

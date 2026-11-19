@@ -127,3 +127,39 @@ test("the road shortcuts merge redundant legs, leave mixed plans unselected and 
   await expect.poll(() => saved.length).toBe(1);
   expect(saved[0].riders.find(r => r.rider_id === "r2")?.plan).toEqual([{ task: "tempo" }, helpers[2]]);
 });
+
+test.describe("captain's day", () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test("shows the opening and finale after picking Hard", async ({ page, isMobile }) => {
+    if (isMobile) await page.setViewportSize({ width: 390, height: 900 });
+    const { panel, width } = await openRoadTactics(page);
+    const captain = panel.locator('[data-tactics-rider="r1"]').filter({ visible: true });
+    if (width === 390) await captain.locator("button[aria-expanded]").first().click();
+    const group = captain.getByRole("group", { name: /Indsats for/ });
+    await group.getByRole("button", { name: /^Hård.*Følg angrebene/ }).click();
+
+    if (shots && page.context().browser()?.browserType().name() === "chromium") {
+      await captain.scrollIntoViewIfNeeded();
+      await page.evaluate(() => document.fonts.ready.then(() => undefined));
+      await page.screenshot({
+        path: evidenceShotPath(`pr-screens/8415/${before ? "before" : "after"}-${width}.png`),
+        scale: "css",
+      });
+    }
+
+    if (width === 1440) {
+      const shelter = group.getByText("Bliv i læ", { exact: true });
+      const lineCount = await shelter.evaluate(label => {
+        const range = document.createRange();
+        range.selectNodeContents(label);
+        return range.getClientRects().length;
+      });
+      expect.soft(lineCount).toBe(1);
+      await expect(captain.getByRole("cell", { name: "Følger de bedste · Kører roligt i mål" })).toBeVisible();
+    } else {
+      await expect(captain.locator("button[aria-expanded]").first()).toContainText("Følg");
+      await expect(captain.locator("button[aria-expanded]").first()).toContainText("Kør ind");
+    }
+  });
+});

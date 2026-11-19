@@ -217,20 +217,27 @@ export function fatigueTone(value: number | null | undefined): { tone: "neutral"
 
 export type TodayLine =
   | { key: "breakaway" }
-  | { key: "attack"; climb: string | null }
+  | { key: "attack"; climb: string } | { key: "attackFinale" } | { key: "attackUnspecified" }
   | { key: "shelterLeader"; leader: string | null }
   | { key: Exclude<StagePlanTask, "attack" | "shelter_leader" | "breakaway" | "hunt_points" | "hunt_kom"> }
   | { key: "huntPoints" };
 
-/** Dagens linje ud fra kæden: udbruddet, ellers finalens opgave. */
-export function todayLine(legs: readonly StagePlanLeg[], decisiveClimb: string | null, leader: string | null): TodayLine {
-  if (legs[0]?.task === "breakaway") return { key: "breakaway" };
-  const positioned = legs.filter((l) => l.from?.at !== "dropped");
-  const last = (positioned[positioned.length - 1] ?? legs[0]).task;
-  if (last === "attack") return { key: "attack", climb: decisiveClimb };
-  if (last === "shelter_leader") return { key: "shelterLeader", leader };
-  if (last === "hunt_points" || last === "hunt_kom") return { key: "huntPoints" };
-  return { key: last } as TodayLine;
+/** Dagens plan i rækkefølge. Ordren ved afsætning vises under ordrer. */
+export function todayTasks(legs: readonly StagePlanLeg[], climbs: StagePlanRoute["climbs"], leader: string | null): TodayLine[] {
+  const positioned = legs.filter((leg) => leg.from?.at !== "dropped");
+  return (positioned.length ? positioned : legs).map(({ task, from }): TodayLine => {
+    switch (task) {
+      case "attack": {
+        if (from?.at === "final_km") return { key: "attackFinale" };
+        const climb = from?.at === "kom" ? climbs.find(c => c.index === from.kom_index)?.name : null;
+        return climb ? { key: "attack", climb } : { key: "attackUnspecified" };
+      }
+      case "shelter_leader": return { key: "shelterLeader", leader };
+      case "hunt_points":
+      case "hunt_kom": return { key: "huntPoints" };
+      default: return { key: task };
+    }
+  });
 }
 
 // ── Låsen ────────────────────────────────────────────────────────────────────

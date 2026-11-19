@@ -30,7 +30,7 @@ export default function EffortSegmented({ label, steps, value, labelFor, describ
     const description = describeFor?.(step);
     return {
       value: step,
-      label: description ? <>{label}<span className="block whitespace-normal text-2xs font-normal leading-tight">{description}</span></> : label,
+      label: description ? <>{label}<span className={`block text-2xs font-normal leading-tight ${fill ? "whitespace-normal" : "whitespace-nowrap"}`}>{description}</span></> : label,
       title: reason ?? undefined,
       disabled: disabled || reason != null,
     };
