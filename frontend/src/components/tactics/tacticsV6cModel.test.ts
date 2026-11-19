@@ -90,11 +90,11 @@ test("dagens linje viser opgaver fra starten til finalen og udelader ordren ved 
   assert.deepEqual(todayTasks([
     { task: "attack" },
     { task: "ride_in", from: { at: "final_km" } },
-  ], [{ index: 1, km: 75, name: "Monte Zoncolaro" }], null), [{ key: "attackUnspecified" }, { key: "ride_in" }]);
+  ], [{ index: 1, km: 75, name: "Monte Zoncolaro", category: "1" }], null), [{ key: "attackUnspecified" }, { key: "ride_in" }]);
   assert.deepEqual(todayTasks([
     { task: "stay_sheltered" },
     { task: "attack", from: { at: "kom", kom_index: 0 } },
-  ], [{ index: 0, km: 25, name: "Col du Verger" }, { index: 1, km: 75, name: "Monte Zoncolaro" }], null),
+  ], [{ index: 0, km: 25, name: "Col du Verger", category: "2" }, { index: 1, km: 75, name: "Monte Zoncolaro", category: "1" }], null),
   [{ key: "stay_sheltered" }, { key: "attack", climb: "Col du Verger" }]);
   assert.deepEqual(todayTasks([{ task: "shelter_leader" }], [], "Yamada"), [{ key: "shelterLeader", leader: "Yamada" }]);
 });
