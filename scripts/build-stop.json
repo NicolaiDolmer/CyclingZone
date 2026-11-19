@@ -1622,6 +1622,11 @@
       "issue": 7032,
       "reason": "Ejer-go 19/11 morgen (PC1, roadmap-gennemgang): resten er bygget i #7118; kun flag på fanen Udvikling mangler (lille rettelse, ikke afstemning).",
       "since": "2026-11-19"
+    },
+    {
+      "issue": 7233,
+      "reason": "Ejer-go 19/11 (PC1, roadmap-gennemgang: \"Byg den (lille)\"). JR/U23-mærket fra træningssiden genbruges på Mit hold, så U23 og junior kan skelnes under filteret Akademi.",
+      "since": "2026-11-19"
     }
   ]
 }
