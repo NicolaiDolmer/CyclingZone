@@ -104,7 +104,9 @@ export async function installNetworkMocks(page) {
     if (["POST", "PATCH", "PUT", "DELETE"].includes(request.method())) {
       // #2863: samme rækkefølge som installPreviewMock — seedede RPC'er svares
       // før den generiske mutations-linje, så e2e og preview ser det samme.
-      const rpcPayload = rpcResponse(parseRpc(request.url()));
+      const rpcName = parseRpc(request.url());
+      if (rpcName === "get_team_result_history_page") return json(route, { code: "PGRST202" }, 404);
+      const rpcPayload = rpcResponse(rpcName);
       if (rpcPayload !== undefined) return json(route, rpcPayload);
       return json(route, wantsObject(accept) ? {} : []);
     }
