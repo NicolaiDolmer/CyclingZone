@@ -79,6 +79,7 @@ import { loadRaceDayEffortByRider, raceDayIntentionYieldMultiplier } from "./rac
 import { loadRaceDayRoleYield, loadRaceDayRoleByRider } from "./raceDayRoleYield5950.js"; // #5950 haard dag + rolle (kaldes via withRaceDayRoleYieldXp)
 import { loadDevelopmentScoreB, developmentTickArgs } from "./developmentScoreWiring.js"; // #6950 Udviklingsscore B
 import { loadDevelopmentXp, readDevelopmentXpFromDate, withRaceDayRoleYieldXp } from "./developmentXpFlag.ts"; // #6110 XP-modellen (slukket)
+import { loadXpFirstDatePayoutRiderIds } from "./developmentXpFirstDate.js"; // #6110 ejervalg B 19/11
 import { loadTrainNowBonusRiderIds } from './trainNowBonus7737.ts';
 import { loadRaceCatchUp } from "./raceCatchUpWiring.js"; // #6950 catch-up via loeb
 import { assessIllness } from "./conditionIllness.js"; // #6938 sygdom af langvarig ekstrem traethed
@@ -1318,6 +1319,8 @@ export async function runTeamTrainingDay({
   // #7982 trin 3: one group (readTogether) from here to the illness history. A read that
   // needs an earlier one awaits it; the evening run reads them one by one in this order.
   let developmentScoreB, raceCatchUp, raceRoleYield, developmentXp, developmentXpIgnition = false;
+  // #6110 (ejervalg B 19/11): startdatoen og de ryttere, hvis foerste XP-dato er i dag (null = kun startdatoen).
+  let developmentXpFromDate = null, xpPayoutRiderIds = null;
   let developmentAllowed = true;
   let abilityRows, planRows, conditionRows, weekPlanRow, raceDayResult;
   let boundRiderIds = new Set();
@@ -1358,7 +1361,10 @@ export async function runTeamTrainingDay({
   // #6110: XP-modellen for tick-datoen. null = dagens model, bit-identisk; kaster sammen med Score B/catch-up.
   developmentXp = await loadDevelopmentXp({ supabase, tickDate, strict: conditionPerDate, developmentScoreB, raceCatchUp, now: () => +now });
   // #6110 R16 (ejervalg 16/11, valg 2 = A): paa taendingsnatten udbetales gemt fremgang helt.
-  if (developmentXp) developmentXpIgnition = tickDate === await readDevelopmentXpFromDate(supabase, { strict: conditionPerDate });
+  if (developmentXp) {
+    developmentXpFromDate = await readDevelopmentXpFromDate(supabase, { strict: conditionPerDate });
+    developmentXpIgnition = tickDate === developmentXpFromDate;
+  }
   if (developmentXp && !capPerDateOn) await loadSameDateRunReports(); // #6110 R16: datoens tidligere gevinster
 
   // #6500: holdets raekke hentes ÉN gang, og kun naar flaget er taendt. Regel-gate,
@@ -1537,6 +1543,16 @@ export async function runTeamTrainingDay({
   async () => {
   illnessHistoryByRider = illnessOn ? await loadIllnessFatigueHistory(supabase, riders.map((r) => r.id), tickDate) : new Map();
   },
+  async (earlier) => {
+  // #6110 (ejervalg B 19/11): en rytter uden udviklings-tick paa startdatoen (skadet, bunden
+  // hviledag) faar sin gemte fremgang helt ud paa sin foerste XP-dato, ikke over mange datoer.
+  await earlier(2); // XP-modellen, startdatoen og holdets raekke
+  await earlier(3); // evnerne (kun ryttere med en bjaelke paa mindst et point slaas op)
+  xpPayoutRiderIds = await loadXpFirstDatePayoutRiderIds({
+    supabase, developmentXp, developmentXpIgnition, xpFromDate: developmentXpFromDate, conditionPerDate,
+    developmentAllowed, tickDate, abilityRows,
+  });
+  },
   // #7982 trin 4a: the press's first day field also sends the race lookups of the date's later
   // race days, all at once. They are in tables a press never writes, so they may move ahead of
   // the first save; they are the same lookups those day fields made before. Last in the list:
@@ -1560,6 +1576,7 @@ export async function runTeamTrainingDay({
     instantPress, sameDateRunReports, raceLoadRows, canonicalLoadRows, conditionModelV2On,
     raceDateTrainingDayOn, fatigueNowOn, capPerDateOn, raceDayEngineOn, raceDayDevelopmentOn, curveB,
     curveBRoster, developmentScoreB, raceCatchUp, raceRoleYield, developmentXp, developmentXpIgnition, developmentAllowed,
+    xpPayoutRiderIds,
     abilityRows, planRows, conditionRows, weekPlanRow, raceDayResult, boundRiderIds, racedRiderIds,
     racedRiderProfileByRider, raceDayEffortByRider, raceDayRoleByRiderMap, programsOn, catalogV3On,
     stageOnDateRiderIds, fatigueRules, stageYesterdayRiderIds, trainingFacilityTier, trainingStaff,
@@ -1764,6 +1781,7 @@ export function computeTrainingDayTick(input) {
     instantPress, sameDateRunReports, raceLoadRows, canonicalLoadRows, conditionModelV2On,
     raceDateTrainingDayOn, fatigueNowOn, capPerDateOn, raceDayEngineOn, raceDayDevelopmentOn, curveB,
     curveBRoster, developmentScoreB, raceCatchUp, raceRoleYield, developmentXp, developmentXpIgnition, developmentAllowed,
+    xpPayoutRiderIds = null,
     abilityRows, planRows, conditionRows, weekPlanRow, raceDayResult, boundRiderIds, racedRiderIds,
     racedRiderProfileByRider, raceDayEffortByRider, raceDayRoleByRiderMap, programsOn, catalogV3On,
     stageOnDateRiderIds, fatigueRules, stageYesterdayRiderIds, trainingFacilityTier, trainingStaff,
@@ -2056,7 +2074,8 @@ export function computeTrainingDayTick(input) {
         curveBTransition: riderCurveBTransition, // #7382
         developmentXp, // #6110: null = dagens model
         // #6110 R16: hoejst +2 pr. evne pr. dato under XP. Kun med XP, saa dagens model er uroert.
-        ...(developmentXp ? { xpDateUsedGains: dateUsedGains(), xpStoredBarPayout: developmentXpIgnition === true } : {}),
+        // #6110 (ejervalg B 19/11): ogsaa paa rytterens foerste XP-dato, naar han ikke udviklede sig paa startdatoen.
+        ...(developmentXp ? { xpDateUsedGains: dateUsedGains(), xpStoredBarPayout: developmentXpIgnition === true || xpPayoutRiderIds?.has(rider.id) === true } : {}),
       };
       if (racedToday) {
         // #4850 variant A (ejer 24/9, S1 valgt efter simuleringen i #5640):
@@ -2403,6 +2422,9 @@ export function computeTrainingDayTick(input) {
       score: tickResult?.score ?? 0,
       gains: tickResult?.gains ?? {},
       gains_detail: gainsDetail,
+      // #6110 (ejervalg B 19/11): udviklingen koerte under XP i dag. Rytterens foerste saadanne dato
+      // udbetaler hans gemte fremgang helt (developmentXpFirstDate.js). Kun med XP (dagens model uroert).
+      ...(developmentXp && developmentAllowed && tickResult ? { xp_developed: true } : {}),
       // #6210: point udskudt til naeste dato af dato-loftet (kun naar det bandt).
       ...(tickResult?.capped_by_date ? { gains_deferred_by_date_cap: tickResult.capped_by_date } : {}),
       // #3924 trin 2: pre-tick fremdrift — kun til frontend-udledning af dagens

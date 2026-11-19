@@ -23,13 +23,23 @@ const STORED = 6; // seks point gemt på bjælken: rækker langt over datoens ta
 // XP tændt fra før datoen, så datoen ikke er tændingsnatten (der udbetales gemt fremgang helt).
 const XP_ON = { development_xp_model: "on", development_xp_from_date: "2026-11-01" };
 
-/** Én ung toptalent-rytter på en lav evne; `datePlus2` afgør, om han får +2. */
-function xpState(datePlus2) {
+/**
+ * Én ung toptalent-rytter på en lav evne; `datePlus2` afgør, om han får +2. Han har allerede
+ * udviklet sig under XP på en tidligere dato (ejervalg B 19/11: ellers er datoen hans første
+ * XP-dato, og den gemte fremgang udbetales helt), så datoreglen gælder.
+ */
+function xpState(datePlus2, { developedBefore = true } = {}) {
   const state = seedState({ count: 1, flags: XP_ON });
   Object.assign(state.riders[0], { potentiale: 5, birthdate: "2010-03-15" }); // 20 aar i saeson 5 (saeson-alder)
   state.rider_derived_abilities[0].ability_progress = { [ABILITY]: STORED };
   state.private_config = [{ key: "development_xp_params", value: { ...XP_TEST_PARAMS, datePlus2 } }];
+  if (developedBefore) state.training_rider_ticks.push(earlierReceipt(state, { xp_developed: true }));
   return state;
+}
+
+/** En kvittering fra en tidligere dato efter startdatoen (opdigtet løbsdag 40). */
+function earlierReceipt(state, report) {
+  return { rider_id: RIDER, season_id: state.seasons[0].id, game_day: 40, tick_date: "2026-11-08", team_id: state.riders[0].team_id, report };
 }
 
 // Opdigtede grænser: rytteren er ung, toptalent og på en meget lav evne ...
@@ -93,4 +103,60 @@ test("#6110 R16 forudsætning: uden XP giver samme opsætning dagens model (prø
   const total = receipts(state).reduce((sum, row) => sum + (row.report?.gains?.[ABILITY] ?? 0), 0);
   assert.ok(total <= 1, `dagens model: +${total}`);
   assert.ok(receipts(state).some((row) => row.report?.gains_deferred_by_date_cap?.[ABILITY] > 0), "dagens model kvitterer det klippede point");
+});
+
+// ── #6110 ejervalg B (19/11): gemt fremgang udbetales helt på rytterens første XP-dato ──────
+// En rytter, der ikke udviklede sig på startdatoen (skadet, bunden hviledag), får sin gemte
+// fremgang helt ud den første dato, han udvikler sig under XP. Derefter gælder datoreglen.
+const datePoints = (state) => receipts(state).reduce((sum, row) => sum + (row.report?.gains?.[ABILITY] ?? 0), 0);
+
+for (const [label, run] of [["aftenkørslen", (state, fake) => sweep(state, fake, { deadlineReached: true })], ["presset", (state, fake) => press(state, fake)]]) {
+  test(`#6110 ejervalg B (${label}): første XP-dato efter startdatoen udbetaler den gemte bjælke helt`, async () => {
+    const state = xpState(TOO_OLD, { developedBefore: false });
+    const levelBefore = state.rider_derived_abilities[0][ABILITY];
+    const fake = createFake(state);
+    await run(state, fake);
+    const gained = state.rider_derived_abilities[0][ABILITY] - levelBefore;
+    assert.ok(gained > 1, `${label}: den gemte fremgang kom ud på én dato (+${gained}), ikke højst +1`);
+    assert.equal(datePoints(state), gained, `${label}: gemt evne = kvitteringernes sum`);
+    // Præcis som hvis datoen var startdatoen (tændingsnatten): samme evner, samme bjælker.
+    const ignition = xpState(TOO_OLD, { developedBefore: false });
+    ignition.app_config = ignition.app_config.map((row) => (row.key === "development_xp_from_date" ? { ...row, value: DATE1 } : row));
+    await run(ignition, createFake(ignition));
+    assert.deepEqual(state.rider_derived_abilities[0], ignition.rider_derived_abilities[0], `${label}: samme udfald som tændingsnatten`);
+    assert.ok(receipts(state).some((row) => row.report?.xp_developed === true), `${label}: kvitteringen markerer, at XP-udviklingen kørte`);
+  });
+
+  test(`#6110 ejervalg B (${label}): en tidligere dato, hvor han var skadet, tæller ikke som hans første XP-dato`, async () => {
+    const state = xpState(TOO_OLD, { developedBefore: false });
+    state.training_rider_ticks.push(earlierReceipt(state, { injured: true, gains: {} })); // ingen xp_developed
+    const levelBefore = state.rider_derived_abilities[0][ABILITY];
+    const fake = createFake(state);
+    await run(state, fake);
+    assert.ok(state.rider_derived_abilities[0][ABILITY] - levelBefore > 1, `${label}: udbetalingen kommer, når han udvikler sig første gang`);
+  });
+
+  test(`#6110 ejervalg B (${label}): har han udviklet sig under XP før, gælder datoreglen (ingen ny udbetaling)`, async () => {
+    const state = xpState(TOO_OLD); // tidligere kvittering med xp_developed
+    const levelBefore = state.rider_derived_abilities[0][ABILITY];
+    const fake = createFake(state);
+    await run(state, fake);
+    assert.equal(state.rider_derived_abilities[0][ABILITY] - levelBefore, 1, `${label}: højst +1, resten venter`);
+  });
+}
+
+test("#6110 ejervalg B: en kvittering fra FØR startdatoen tæller ikke (dagens model kørte dér)", async () => {
+  const state = xpState(TOO_OLD, { developedBefore: false });
+  state.training_rider_ticks.push({ ...earlierReceipt(state, { xp_developed: true }), tick_date: "2026-10-31", game_day: 30 });
+  const levelBefore = state.rider_derived_abilities[0][ABILITY];
+  await sweep(state, createFake(state), { deadlineReached: true });
+  assert.ok(state.rider_derived_abilities[0][ABILITY] - levelBefore > 1, "første XP-dato efter startdatoen udbetaler stadig");
+});
+
+test("#6110 ejervalg B: slukket XP skriver intet xp_developed (dagens model uroert)", async () => {
+  const state = xpState(ELIGIBLE, { developedBefore: false });
+  state.app_config = state.app_config.filter((row) => row.key !== "development_xp_model");
+  await sweep(state, createFake(state), { deadlineReached: true });
+  assert.ok(receipts(state).length > 0);
+  assert.ok(receipts(state).every((row) => !("xp_developed" in (row.report ?? {}))), "intet nyt felt uden XP");
 });
