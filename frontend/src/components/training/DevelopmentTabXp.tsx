@@ -75,7 +75,7 @@ export default function DevelopmentXpSwitch({ runs, roster, estimateFor, seasonG
 
 const NUM = "font-data tabular-nums";
 // Ejer 19/11: summen over 30 dage er uoverskuelig; kolonnen viser gennemsnittet pr. dag (hele tal).
-const XP_WINDOW_DAYS = 30;
+// Rækken og linjen over tabellen deler samme nævner: dagene med kvittering (højst 30).
 const xpAvgPerDay = (row: { xp30: number; spark: readonly number[] }) => Math.round(row.xp30 / Math.max(1, row.spark.length));
 const HEAD = "font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3";
 const LABEL = "mb-1 font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3";
@@ -97,8 +97,9 @@ function DevelopmentTabXp({ fixture, runs, roster, estimateFor, seasonGains, rac
     const riders = roster.map((r): DevRiderInput => {
       const estimate = estimateFor(r.id);
       const best = riderBestRole(r);
-      // Same rule as the old Development tab: the estimate's own role, else today's best role, else the natural one.
-      const role = (estimate as { role?: string | null } | null | undefined)?.role ?? best.role ?? r.primary_type ?? null;
+      // The role he rates highest in now, the same role as the rating beside it. Not the
+      // estimate's role: that is the role with the highest potential, which can differ.
+      const role = best.role ?? r.primary_type ?? null;
       return {
         id: r.id,
         name: `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim() || r.id,
@@ -151,7 +152,7 @@ function TitleLine({ summary }: { summary: ReturnType<typeof devSummary> }) {
       <span>{t("developmentXp.xpToday")} <span className={strong}>{formatNumber(summary.xpToday)}</span>
         {summary.unsettled > 0 && <span className="text-cz-3"> {t("developmentXp.unsettled", { count: summary.unsettled })}</span>}</span>
       {dot}
-      <span>{t("developmentXp.xp30")} <span className={strong}>{formatNumber(Math.round(summary.xp30 / XP_WINDOW_DAYS / Math.max(1, summary.riders)))}</span></span>
+      <span>{t("developmentXp.xp30")} <span className={strong}>{formatNumber(Math.round(summary.xp30 / Math.max(1, summary.days) / Math.max(1, summary.riders)))}</span></span>
       {dot}
       <span><span className={strong}>{summary.seasonPoints != null ? formatNumber(summary.seasonPoints) : "—"}</span> {t("developmentXp.seasonPoints")}</span>
       {dot}

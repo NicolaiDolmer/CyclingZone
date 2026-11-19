@@ -61,7 +61,8 @@ export type DevRow = {
   abilities: DevAbility[];
 };
 
-export type DevSummary = { riders: number; xpToday: number; unsettled: number; xp30: number; seasonPoints: number | null; close: number };
+/** `days` = the dates with a receipt in the window (at most 30), the same divisor as each row's XP per day. */
+export type DevSummary = { riders: number; days: number; xpToday: number; unsettled: number; xp30: number; seasonPoints: number | null; close: number };
 
 const finite = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
 
@@ -204,6 +205,7 @@ export function devSummary(rows: readonly DevRow[]): DevSummary {
   const seasons = rows.map(r => r.season).filter(finite);
   return {
     riders: rows.length,
+    days: rows[0]?.spark.length ?? 0,
     xpToday: rows.reduce((a, r) => a + (r.today.state === "xp" ? r.today.xp : 0), 0),
     unsettled: rows.filter(r => r.today.state === "locked").length,
     xp30: rows.reduce((a, r) => a + r.xp30, 0),

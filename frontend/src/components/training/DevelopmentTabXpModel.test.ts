@@ -100,7 +100,8 @@ test("a rider missing from today's receipt (e.g. signed after training) is unkno
 
 test("the summary line adds up the rows", () => {
   const rows = buildDevelopmentRows({ runs: RUNS, riders: [rider("a"), rider("b", { racingToday: true })], todayKey: "2026-11-19", seasonGains: { a: { climbing: 3 } }, forceUnsettled: true });
-  assert.deepEqual(devSummary(rows), { riders: 2, xpToday: 30, unsettled: 1, xp30: 115, seasonPoints: 3, close: 1 });
+  assert.deepEqual(devSummary(rows), { riders: 2, days: 2, xpToday: 30, unsettled: 1, xp30: 115, seasonPoints: 3, close: 1 });
+  assert.equal(rows[0].spark.length, devSummary(rows).days, "the summary divides by the same days as each row");
   assert.equal(devSummary([]).seasonPoints, null);
 });
 
