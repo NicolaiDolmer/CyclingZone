@@ -151,8 +151,8 @@ test("hver XP-tvilling er gatet, registreret i HelpPage.jsx og staar lige efter 
 // Ejervalg 19/11 (kandidat B): XP er næsten ens hele karrieren; alderen ændrer kroppen, ikke farten.
 // Afløser den godkendte sætning fra 17/11 ("Older riders earn less XP than before ...").
 const OWNER_SENTENCE = {
-  en: "His XP stays almost the same for his whole career, so age doesn't decide how fast he develops; the price does.",
-  da: "Hans XP er næsten den samme hele karrieren, så det er ikke alderen, der afgør, hvor hurtigt han udvikler sig; det gør prisen.",
+  en: "He earns the same XP until late in his career, so age doesn't decide how fast he develops; the price does.",
+  da: "Han tjener samme XP til langt hen i karrieren, så det er ikke alderen, der afgør, hvor hurtigt han udvikler sig; det gør prisen.",
 };
 
 test("XP-afsnittet bringer model B: XP ens hele karrieren (ejervalg 19/11)", () => {
