@@ -69,6 +69,8 @@ Bestyrelsen mistede sin `lg:col-span-2` i omlægningen: /board har 959 sessions 
 
 ## 5. Tjekliste før du tilføjer et modul
 
+Kalenderhandlingerne på dashboardet åbner `/planning?tab=calendar`. Det gælder sæsonstatus, kortet Kommende løb og kalenderlinks i tomtilstandene for Seneste resultater og Rytterrangliste. Refs #8447.
+
 1. Kan det være i halv bredde? Hvis ja, hører det i gridet. Hvis nej, skriv hvorfor i kodekommentaren.
 2. Rører placeringen en af rækkerne i §2? Så skal ejeren spørges først.
 3. Er det registreret i `DashboardCustomizeMenu`?

@@ -1066,7 +1066,7 @@ export default function DashboardPage() {
         <Section>
           <SectionHeader
             title={t("dashboard:cards.races.title")}
-            action={<SectionAction as={Link} to="/planning">{t("dashboard:cards.races.linkAll")}</SectionAction>}
+            action={<SectionAction as={Link} to="/planning?tab=calendar">{t("dashboard:cards.races.linkAll")}</SectionAction>}
           />
           <ReservedBody name="races" loading={!teamRaceIdsLoaded} rows={3} rowHeight={64}>
           {displayedRaces.length === 0 ? (
@@ -1074,7 +1074,7 @@ export default function DashboardPage() {
               title={t("dashboard:cards.races.empty")}
               description={t("dashboard:cards.races.emptyHint")}
               action={
-                <Link to="/planning" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                <Link to="/planning?tab=calendar" className={buttonClass({ variant: "secondary", size: "sm" })}>
                   {t("dashboard:cards.races.emptyCta")}
                 </Link>
               }
@@ -1246,7 +1246,7 @@ export default function DashboardPage() {
             <EmptyState
               title={t("dashboard:cards.recentResults.empty")}
               action={
-                <Link to="/planning" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                <Link to="/planning?tab=calendar" className={buttonClass({ variant: "secondary", size: "sm" })}>
                   {t("dashboard:cards.recentResults.emptyCta")}
                 </Link>
               }
@@ -1327,7 +1327,7 @@ export default function DashboardPage() {
             <EmptyState
               title={t("dashboard:cards.riderRanking.empty")}
               action={
-                <Link to="/planning" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                <Link to="/planning?tab=calendar" className={buttonClass({ variant: "secondary", size: "sm" })}>
                   {t("dashboard:cards.riderRanking.emptyCta")}
                 </Link>
               }
