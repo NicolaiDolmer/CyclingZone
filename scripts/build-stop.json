@@ -1627,6 +1627,31 @@
       "issue": 7233,
       "reason": "Ejer-go 19/11 (PC1, roadmap-gennemgang: \"Byg den (lille)\"). JR/U23-mærket fra træningssiden genbruges på Mit hold, så U23 og junior kan skelnes under filteret Akademi.",
       "since": "2026-11-19"
+    },
+    {
+      "issue": 8427,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af UX 1/4 første oplevelse, PR #8286): fund 1 \"Nu, før S5-tilmeldingen\", fund 3 \"I denne uge\".",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8428,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af UX 1/4 første oplevelse, PR #8286): login \"I denne uge\".",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8429,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af UX 1/4 første oplevelse, PR #8286): rundvisningen \"I denne uge\", sammen med #8340.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8430,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af UX 1/4 første oplevelse, PR #8286): små tekster fund 12-15 \"I denne uge\".",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8431,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af UX 1/4 første oplevelse, PR #8286): forsiden \"Næste uge med forsiden\" (#8285).",
+      "since": "2026-11-19"
     }
   ]
 }
