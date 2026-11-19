@@ -179,7 +179,6 @@ export default function TableTitleBar({
           <button
             type="button"
             className={`${ICON_BTN} ${filterCount > 0 ? "text-cz-1" : ""}`}
-            aria-label={filters.label ?? t("table.titleBar.filters")}
             data-testid="table-filters-open"
             aria-haspopup="dialog"
             onClick={() => {
@@ -187,6 +186,10 @@ export default function TableTitleBar({
               setSheet("filters");
             }}
           >
+            {/* Navnet er label + det synlige tal (fx "Filtre 2"), ikke et aria-label der
+                skjuler tallet: axe label-content-name-mismatch, og talestyring skal kunne
+                sige det man ser. */}
+            <span className="sr-only">{filters.label ?? t("table.titleBar.filters")}</span>
             <FilterIcon size={16} aria-hidden="true" />
             {filterCount > 0 && <span className="font-data text-2xs font-semibold tabular-nums">{filterCount}</span>}
           </button>
@@ -196,7 +199,6 @@ export default function TableTitleBar({
           <button
             type="button"
             className={ICON_BTN}
-            aria-label={columns.label ?? t("table.titleBar.columns")}
             data-testid="table-columns-open"
             aria-haspopup="dialog"
             onClick={() => {
@@ -204,6 +206,7 @@ export default function TableTitleBar({
               setSheet("columns");
             }}
           >
+            <span className="sr-only">{columns.label ?? t("table.titleBar.columns")}</span>
             <TableIcon size={16} aria-hidden="true" />
             <span className="font-data text-2xs font-semibold tabular-nums">
               {columnsSummary(columns.count, columns.total)}

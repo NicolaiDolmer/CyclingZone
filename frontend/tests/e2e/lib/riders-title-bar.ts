@@ -1,4 +1,4 @@
-import type { Locator, Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 // #8280 (TASTE P21): Rytterdatabasens filtre bor i tabellens titellinje. Søgefeltet
 // er et felt på computer og et ikon der folder et felt ud på telefon; nulstil ligger
@@ -11,6 +11,24 @@ export async function riderSearchInput(page: Page): Promise<Locator> {
   if (await desktop.isVisible()) return desktop;
   await page.getByTestId("filter-name-open").click();
   return page.getByTestId("filter-name-mobile");
+}
+
+/**
+ * Telefon: henter en kolonne frem via kolonne-knappen i titellinjen (arket afløser
+ * chip-rækken, P21). Computer viser alle kolonner, så dér er det en no-op.
+ */
+export async function revealTitleBarColumn(page: Page, label: RegExp): Promise<void> {
+  if ((page.viewportSize()?.width ?? 1280) > 640) return;
+  await page.getByTestId("table-columns-open").click();
+  const sheet = page.getByRole("dialog");
+  const item = sheet.getByRole("button", { name: label }).first();
+  await item.waitFor({ state: "visible" });
+  if ((await item.getAttribute("aria-pressed")) !== "true") {
+    await item.click();
+    await expect(item).toHaveAttribute("aria-pressed", "true");
+  }
+  await page.keyboard.press("Escape");
+  await sheet.waitFor({ state: "detached" });
 }
 
 /** Åbner filter-arket, trykker "Nulstil alt" og lukker arket igen. */

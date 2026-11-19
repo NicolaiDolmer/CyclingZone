@@ -1,5 +1,6 @@
 import { test, expect } from "./e2e-base.js";
-import { installNetworkMocks, login, stabilizePage, json, corsHeaders, RIDERS, evidenceShotPath, revealMobileTableColumn } from "./fixtures.js";
+import { installNetworkMocks, login, stabilizePage, json, corsHeaders, RIDERS, evidenceShotPath } from "./fixtures.js";
+import { revealTitleBarColumn } from "./lib/riders-title-bar.ts";
 
 test("reputation sorting spans every server page and uses the displayed number", async ({ page }, testInfo) => {
   await page.clock.setFixedTime(new Date("2026-10-05T12:00:00Z"));
@@ -47,7 +48,8 @@ test("reputation sorting spans every server page and uses the displayed number",
   expect(metadataPages).toBeGreaterThan(1);
   await page.waitForLoadState("networkidle");
   await expect(page.locator("main")).not.toContainText("reputation.band.");
-  await revealMobileTableColumn(page, /^(Reputation|Omdømme)$/);
+  // #8280 (P21): Rytterdatabasen vælger kolonner i titellinjens kolonne-ark, ikke chip-rækken.
+  await revealTitleBarColumn(page, /^(Reputation|Omdømme)$/);
   await page.getByRole("columnheader", {name:/Reputation|Omdømme/}).filter({visible:true}).first().scrollIntoViewIfNeeded();
   await page.screenshot({path:evidenceShotPath("pr-screens/6209/after-"+testInfo.project.name+".png"),fullPage:false});
   await page.goto("/riders?sort=popularity&sort_dir=desc");
