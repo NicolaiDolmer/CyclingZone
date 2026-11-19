@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-155 poster: live 120 · beta 3 · dormant 10 · building 12 · spec 1 · idea 2 · retired 7. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+155 poster: live 121 · beta 3 · dormant 10 · building 11 · spec 1 · idea 2 · retired 7. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -26,9 +26,9 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## race-day
 
-**live:** Stage replay and timeline film (`race-replay`) 2026-11-04 · Why? button beside riders in Your day (`rider-why-button`) 2026-11-05 · Team plans (`tactics-ready`) 2026-11-13
+**live:** Why? button beside riders in Your day (`rider-why-button`) 2026-11-05 · Team plans (`tactics-ready`) 2026-11-13
 
-**arkiv:** `auto-entry-generator` · `race-day-development` · `race-day-engine` · `race-detail-page` · `race-page-tabs-v2` · `role-scope-choice` · `stage-page-v2` · `stage-plan-v1` · `stage-scheduler`
+**arkiv:** `auto-entry-generator` · `race-day-development` · `race-day-engine` · `race-detail-page` · `race-page-tabs-v2` · `race-replay` · `role-scope-choice` · `stage-page-v2` · `stage-plan-v1` · `stage-scheduler`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
@@ -38,13 +38,12 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## market
 
-**live:** Auto-accept price (`market-auto-accept`) 2026-11-15 · Bid commitment gate (`market-commitment`) 2026-11-12 · Sale escrow (`sale-escrow`) 2026-11-15
+**live:** Auto-accept price (`market-auto-accept`) 2026-11-15 · Bid commitment gate (`market-commitment`) 2026-11-12 · Release waits for the end of a stage race (`release-defer-stage-race`) 2026-11-19 · Sale escrow (`sale-escrow`) 2026-11-15
 
 **arkiv:** `auctions` · `direct-transfers` · `rider-swaps` · `rider-valuation-v5`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
-|Release waits for the end of a stage race (`release-defer-stage-race`)|building|-|[TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md)|#8153|2026-11-15|release_defer_8153 (seed off) følger migrationen; slukket = som i dag.|
 |AI and unsolicited bids (`ai-unsolicited-bids`)|idea|-|[TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md)|#1310|2026-09-06|Findes ikke i kode.|
 |Market value blend sweep (`market-value-blend`)|retired|-|[ECONOMY_RULES](ECONOMY_RULES.md)|#3448|2026-10-15|Afløst af v6 (#4449).|
 |Rider loans (`rider-loans`)|retired|-|[TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md)|#1994|2026-09-06|Afviklet; kun lån findes.|
@@ -62,9 +61,9 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## training
 
-**live:** Race date as full training day (`condition-v2-race-date-training-day`) 2026-11-04 · Same potential band everywhere (`potential-single-number`) 2026-11-04 · Train now bonus (`train-now-bonus`) 2026-11-17 · Train now straight away (`train-now-instant`) 2026-11-16 · Train now (no bonus) (`training-train-now`) 2026-11-13
+**live:** Train now bonus (`train-now-bonus`) 2026-11-17 · Train now straight away (`train-now-instant`) 2026-11-16 · Train now (no bonus) (`training-train-now`) 2026-11-13
 
-**arkiv:** `ability-cap-per-date` · `condition-model-v2` · `daily-training` · `development-curve-b` · `peak-planner` · `race-day-role-yield` · `season-fatigue-reset` · `train-now-whole-day` · `training-bulk-day` · `training-catalog-v3` · `training-condition-per-date` · `training-daily-receipt` · `training-decision-card` · `training-fatigue-rules` · `training-groups` · `training-hard-sessions-cobbles-echelon-attack` · `training-mobile-table` · `training-program-cells` · `training-programs` · `training-score` · `training-tick-per-race-day` · `training-tick-system`
+**arkiv:** `ability-cap-per-date` · `condition-model-v2` · `condition-v2-race-date-training-day` · `daily-training` · `development-curve-b` · `peak-planner` · `potential-single-number` · `race-day-role-yield` · `season-fatigue-reset` · `train-now-whole-day` · `training-bulk-day` · `training-catalog-v3` · `training-condition-per-date` · `training-daily-receipt` · `training-decision-card` · `training-fatigue-rules` · `training-groups` · `training-hard-sessions-cobbles-echelon-attack` · `training-mobile-table` · `training-program-cells` · `training-programs` · `training-score` · `training-tick-per-race-day` · `training-tick-system`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
