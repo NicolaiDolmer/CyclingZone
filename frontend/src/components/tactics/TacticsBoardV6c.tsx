@@ -13,7 +13,7 @@ import type { DayLoad, EffortLevel, RoutePartLabel, TodayLine } from "./tacticsV
 import type { StagePlanTask } from "../race/StagePlanModel.ts";
 import { taskCostWord, type TaskCostWord } from "../race/tacticsReady7864.ts";
 
-type TFn = (key: string, opts?: Record<string, unknown>) => string;
+type TFn = { (key: string): string; (key: string, opts: Record<string, unknown>): string };
 
 export type BoardToday = TodayLine | { key: "effort"; effort: string } | { key: "roleDefault" } | { key: "abandoned"; text: string };
 

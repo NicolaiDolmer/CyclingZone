@@ -12,7 +12,7 @@ export interface PatchItem {
   k: string; v?: string; d: string; s?: string; a: string; c?: string; ti?: string; b?: string;
   r?: string; f?: string; fb?: string; img?: string; hl?: boolean; rp?: string;
 }
-export type Translate = (key: string, options?: Record<string, unknown>) => string;
+export type Translate = { (key: string): string; (key: string, opts: Record<string, unknown>): string };
 export type LiveFlags = Record<string, boolean> | null;
 type AreaLabel = (area: string) => string;
 
