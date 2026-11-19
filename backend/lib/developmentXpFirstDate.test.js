@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { loadXpFirstDatePayoutRiderIds, xpStoredBarRiderIds } from "./developmentXpFirstDate.js";
+import { loadXpFirstDatePayoutRiderIds, teamAtTime, xpStoredBarRiderIds } from "./developmentXpFirstDate.js";
 
 const FROM = "2026-11-20";
 const ROWS = [
@@ -83,4 +83,14 @@ test("ingen kandidater = intet opslag og ingen udbetaling", async () => {
 test("en databasefejl kaster, så tick'et prøves igen i stedet for at udbetale forkert", async () => {
   const supabase = fakeSupabase([], { error: { message: "boom", code: "XX000" } });
   await assert.rejects(() => loadXpFirstDatePayoutRiderIds({ ...base, supabase }));
+});
+
+test("teamAtTime: holdet ved startdatoens slutning ud fra ejerskifterne", () => {
+  const END = "2026-11-20T23:00:00.000Z";
+  const ev = (from, to, at) => ({ from_team_id: from, to_team_id: to, occurred_at: at });
+  assert.equal(teamAtTime([], "now", END), "now", "ingen skifte: det nuværende hold");
+  assert.equal(teamAtTime([ev("A", "B", "2026-11-10T10:00:00Z")], "C", END), "B", "seneste skifte før slutningen");
+  assert.equal(teamAtTime([ev("A", "B", "2026-11-25T10:00:00Z")], "B", END), "A", "første skifte efter: afsenderholdet");
+  assert.equal(teamAtTime([ev(null, "B", "2026-11-25T10:00:00Z")], "B", END), null, "fri på startdatoen");
+  assert.equal(teamAtTime([ev("A", "B", "2026-11-25T10:00:00Z"), ev("X", "A", "2026-11-10T10:00:00Z")], "B", END), "A", "uordnet input sorteres");
 });

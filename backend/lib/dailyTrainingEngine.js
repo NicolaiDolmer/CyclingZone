@@ -1550,7 +1550,7 @@ export async function runTeamTrainingDay({
   await earlier(3); // evnerne (kun ryttere med en bjaelke paa mindst et point slaas op)
   xpPayoutRiderIds = await loadXpFirstDatePayoutRiderIds({
     supabase, developmentXp, developmentXpIgnition, xpFromDate: developmentXpFromDate, conditionPerDate,
-    developmentAllowed, tickDate, abilityRows,
+    developmentAllowed, tickDate, abilityRows, teamId,
   });
   },
   // #7982 trin 4a: the press's first day field also sends the race lookups of the date's later

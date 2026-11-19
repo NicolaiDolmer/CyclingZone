@@ -10,15 +10,22 @@
 // Reglen: på en dato efter startdatoen er udbetalingen tændt for en rytter, der ikke har en
 // kvittering (training_rider_ticks) fra en tidligere XP-dato, hvor udviklingen kørte
 // (`report.xp_developed === true`). På startdatoen selv gælder den for alle som før.
-// Ejervalg 19/11 (forbehold 4, "kun ryttere på managerhold ved tænding"): rytteren skal også
-// have en kvittering fra startdatoen fra et managerhold (`report.xp_ignition_manager === true`).
-// En rytter på et AI-hold, i banken eller fri på startdatoen får ingen udbetaling; hans bjælke
-// følger datoreglen som alle andres.
+// Ejervalg 19/11 (forbehold 4, "kun ryttere på managerhold ved tænding"): rytteren skal have
+// stået på et managerhold ved startdatoens slutning. Det afgøres af ejerskabet (Fable-dom 19/11,
+// fund A): holdet efter rytterens seneste ejerskifte før startdatoens slutning
+// (rider_ownership_events), ellers afsenderholdet i det første skifte bagefter, ellers hans
+// nuværende hold. Kvitteringens markør (`report.xp_ignition_manager`) tæller også som bevis.
+// Så mister en managerrytter i karantæne, på et frosset eller divisionsløst hold eller i en
+// trup købt samme dag ikke udbetalingen, fordi kvitteringen mangler. En rytter på et AI-hold,
+// i banken, på et testhold eller fri på startdatoen får ingen udbetaling; hans bjælke følger
+// datoreglen som alle andres.
 //
 // Kun med XP tændt og dato-kvitteringerne (training_condition_per_date); ellers er svaret
 // null, og motoren bruger startdatoen alene (som før). Kun ryttere med en bjælke på mindst ét
 // point kan få noget udbetalt, så kun de slås op.
 import { fetchAllRows } from "./supabasePagination.js";
+import { trainingDateBounds } from "./trainingDateReadiness.js";
+import { isManagerTeamForDevelopment } from "./dailyTrainingEngine.js";
 
 /** Ryttere med en gemt bjælke på mindst ét point i en evne (kun de kan få noget udbetalt). */
 export function xpStoredBarRiderIds(abilityRows) {
@@ -36,8 +43,29 @@ export function xpStoredBarRiderIds(abilityRows) {
  * XP-dato efter startdatoen. null = reglen gælder ikke her (motoren bruger startdatoen alene).
  * Kaster ved en databasefejl, så tick'et prøves igen i stedet for at udbetale forkert.
  */
+/**
+ * Holdet, rytteren stod på ved `endIso`, ud fra hans ejerskifter (sorteret efter tid) og hans
+ * nuværende hold. null = fri (intet hold).
+ */
+export function teamAtTime(events, currentTeamId, endIso) {
+  const end = new Date(endIso).getTime();
+  const sorted = [...(events ?? [])].sort((a, b) => new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime());
+  let before = null;
+  let firstAfter = null;
+  for (const event of sorted) {
+    const at = new Date(event.occurred_at).getTime();
+    if (!Number.isFinite(at)) continue;
+    if (at < end) before = event;
+    else if (!firstAfter) firstAfter = event;
+  }
+  if (before) return before.to_team_id ?? null;
+  if (firstAfter) return firstAfter.from_team_id ?? null;
+  return currentTeamId ?? null;
+}
+
 export async function loadXpFirstDatePayoutRiderIds({
   supabase, developmentXp, developmentXpIgnition, xpFromDate, conditionPerDate, developmentAllowed, tickDate, abilityRows,
+  teamId = null, currentTeam = null,
 }) {
   if (!developmentXp || developmentXpIgnition === true || !conditionPerDate || developmentAllowed === false) return null;
   if (typeof xpFromDate !== "string" || typeof tickDate !== "string" || !(tickDate > xpFromDate)) return null;
@@ -60,5 +88,27 @@ export async function loadXpFirstDatePayoutRiderIds({
     .eq("report->>xp_ignition_manager", "true")
     .order("rider_id"));
   const onManagerAtIgnition = new Set(ignition.map((row) => row.rider_id));
+  const unmarked = pending.filter((id) => !onManagerAtIgnition.has(id));
+  if (unmarked.length > 0) {
+    // Ejerskabet ved startdatoens slutning (fund A): også uden kvittering den dato.
+    const endIso = trainingDateBounds(xpFromDate).end.toISOString();
+    const events = await fetchAllRows(() => supabase.from("rider_ownership_events")
+      .select("rider_id, from_team_id, to_team_id, occurred_at")
+      .in("rider_id", unmarked)
+      .order("rider_id")
+      .order("occurred_at"));
+    const byRider = new Map();
+    for (const event of events) byRider.set(event.rider_id, [...(byRider.get(event.rider_id) ?? []), event]);
+    const ignitionTeam = new Map(unmarked.map((id) => [id, teamAtTime(byRider.get(id), teamId, endIso)]));
+    const otherTeamIds = [...new Set([...ignitionTeam.values()].filter((id) => id != null && id !== teamId))];
+    const teams = otherTeamIds.length ? await fetchAllRows(() => supabase.from("teams")
+      .select("id, user_id, is_ai, is_bank, is_test_account")
+      .in("id", otherTeamIds)
+      .order("id")) : [];
+    const managerTeams = new Set(teams.filter((team) => isManagerTeamForDevelopment(team)).map((team) => team.id));
+    // Det nuværende hold er et managerhold (ellers kører reglen ikke: developmentAllowed).
+    if (teamId != null && (currentTeam == null || isManagerTeamForDevelopment(currentTeam))) managerTeams.add(teamId);
+    for (const id of unmarked) if (managerTeams.has(ignitionTeam.get(id))) onManagerAtIgnition.add(id);
+  }
   return new Set(pending.filter((id) => onManagerAtIgnition.has(id)));
 }
