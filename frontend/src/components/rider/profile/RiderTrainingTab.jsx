@@ -276,10 +276,8 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
   // <dato>" i begge. Kun den ikke-begyndte sæson siger "Starter <dato>".
   const seasonBegun = seasonRunning || seasonState === SEASON_RECEIPT_NO_DAYS;
   const seasonNoteKey = seasonRunning && seasonGains == null ? "receipt.pending" : SEASON_RECEIPT_NOTE_KEY[seasonState] ?? "receipt.pending";
-  // #7947: under XP "x / y XP" i stedet for procent (null = XP slukket, dagens visning).
-  const xpBars = riderXpBars(training.xpBar, rider.id);
-  const rowsByAbility = Object.fromEntries(
-    withXpLines(abilityReceipt(ABILITY_CATEGORIES.flatMap((c) => c.keys), {
+  const receiptRows = Object.fromEntries(
+    abilityReceipt(ABILITY_CATEGORIES.flatMap((c) => c.keys), {
       abilities: rider.abilities,
       progress,
       capped: capped?.[rider.id],
@@ -288,8 +286,13 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
       progressBefore,
       gainsToday,
       gainDay,
-    }), xpBars).map((row) => [row.ability, row]),
+    }).map((row) => [row.ability, row]),
   );
+  // #7947: under XP "x / y XP" i stedet for procent (null = XP slukket, dagens visning).
+  const xpBars = riderXpBars(training.xpBar, rider.id);
+  const rowsByAbility = xpBars
+    ? Object.fromEntries(withXpLines(Object.values(receiptRows), xpBars).map((row) => [row.ability, row]))
+    : receiptRows;
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
