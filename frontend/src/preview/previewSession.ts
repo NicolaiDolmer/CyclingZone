@@ -1,7 +1,7 @@
 // #3430: seed en mock-Supabase-session i localStorage på preview-deploys, så
 // route-guarden ser en logget ind bruger i stedet for at redirecte til signup.
 // Rene funktioner (testbare i node). Selve kaldet sker i previewSessionBoot.ts.
-import { TEST_USER } from "./seedData.js";
+import { TEST_USER } from "./previewUser.ts";
 
 type StorageLike = Pick<Storage, "getItem" | "setItem">;
 
