@@ -4,7 +4,7 @@ import { SortIndicator } from "./SortableTh.jsx";
 import { WRAP, SCROLLER, MOBILE_SCROLLER, TABLE, COUNT, thClass, tdClass, mergeRowProps, zonePillClass } from "./dataTableStyles.js";
 import { TableRowContext } from "./tableRowContext.js";
 import { Segmented } from "./Segmented.jsx";
-import TableTitleBar from "./TableTitleBar.jsx";
+import TableTitleBar from "./TableTitleBar.tsx";
 import { ChevronRightIcon, TableIcon } from "./icons/index.jsx";
 import { useIsMobileViewport } from "../../hooks/useMediaQuery.ts";
 import {

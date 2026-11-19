@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { logEvent } from "../../lib/logEvent.js";
 import { useModalA11y } from "../../hooks/useModalA11y.js";
@@ -7,7 +7,13 @@ import Input from "./Input.jsx";
 import { WRAP } from "./dataTableStyles.js";
 import { backdropClass } from "./modalStyles.js";
 import { CheckIcon, ChevronDownIcon, FilterIcon, SearchIcon, TableIcon, XIcon } from "./icons/index.jsx";
-import { choiceLabel, columnsSummary, tableControlPayload } from "./tableTitleBar.js";
+import {
+  choiceLabel,
+  columnsSummary,
+  tableControlPayload,
+  type TitleBarChoice,
+  type TitleBarColumns,
+} from "./tableTitleBar.ts";
 
 // #8280 (TASTE P21, ejer 19/11) — tabellens titellinje. ÉN linje (min. 44 px)
 // inde i tabellens ramme, i stedet for kasse-selects, chip-række og løsrevne
@@ -32,27 +38,50 @@ const ICON_BTN =
   "relative inline-flex h-11 min-w-11 flex-none items-center justify-center gap-1.5 rounded-cz px-2 " +
   "text-cz-2 transition-colors duration-150 hover:text-cz-1 sm:h-9 sm:min-w-9";
 
+type TableTitleBarProps = {
+  page?: string;
+  choices?: TitleBarChoice[];
+  filters?: {
+    label?: string;
+    count?: number;
+    onReset?: () => void;
+    children?: ReactNode;
+  } | null;
+  columns?: TitleBarColumns | null;
+  search?: {
+    value: string;
+    onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+    placeholder?: string;
+    ariaLabel?: string;
+    testId?: string;
+  } | null;
+  trailing?: ReactNode;
+  framed?: boolean;
+  tour?: string;
+  className?: string;
+};
+
 export default function TableTitleBar({
   page,
-  choices = /** @type {any[]} */ ([]),
-  filters = /** @type {any} */ (null),
-  columns = /** @type {any} */ (null),
-  search = /** @type {any} */ (null),
-  trailing = /** @type {any} */ (null),
+  choices = [],
+  filters = null,
+  columns = null,
+  search = null,
+  trailing = null,
   framed = false,
-  tour = /** @type {string | undefined} */ (undefined),
+  tour = undefined,
   className = "",
-}) {
+}: TableTitleBarProps) {
   const { t } = useTranslation("common");
-  const [sheet, setSheet] = useState(/** @type {string | null} */ (null)); // "filters" | "columns" | null
+  const [sheet, setSheet] = useState<"filters" | "columns" | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
-  const searchRef = useRef(/** @type {HTMLInputElement | null} */ (null));
-  const loggedRef = useRef(new Set());
+  const searchRef = useRef<HTMLInputElement | null>(null);
+  const loggedRef = useRef<Set<string>>(new Set());
 
   // Én hændelse pr. kontrol pr. besøg på siden: formålet er at se HVILKE
   // kontroller der bruges (så standardvalg kan afgøres ud fra brug), ikke at
   // tælle hvert tryk. Kun side + kontrolnavn sendes, aldrig værdier.
-  function track(/** @type {string} */ control, /** @type {string | null} */ item = null) {
+  function track(control: string, item: string | null = null) {
     const id = `${control}:${item ?? ""}`;
     if (loggedRef.current.has(id)) return;
     loggedRef.current.add(id);
@@ -86,7 +115,7 @@ export default function TableTitleBar({
               type="search"
               size="sm"
               value={search.value}
-              onChange={(e) => {
+              onChange={(e: ChangeEvent<HTMLInputElement>) => {
                 track("search");
                 search.onChange(e);
               }}
@@ -195,7 +224,7 @@ export default function TableTitleBar({
                 type="search"
                 size="sm"
                 value={search.value}
-                onChange={(e) => {
+                onChange={(e: ChangeEvent<HTMLInputElement>) => {
                   track("search");
                   search.onChange(e);
                 }}
@@ -268,7 +297,7 @@ export default function TableTitleBar({
               aria-pressed={columns.footer.checked}
               onClick={() => {
                 track("column", "full-table");
-                columns.footer.onToggle();
+                columns.footer?.onToggle();
               }}
               className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-cz-1"
             >
@@ -287,7 +316,21 @@ export default function TableTitleBar({
 
 // Ark (TASTE P18): bund-ark på telefon, panel i højre side på computer. Samme
 // focus-trap/Escape/scroll-lås som Modal via useModalA11y.
-function TableSheet({ open, onClose, title, closeLabel, footer = /** @type {any} */ (null), children }) {
+function TableSheet({
+  open,
+  onClose,
+  title,
+  closeLabel,
+  footer = null,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  closeLabel: string;
+  footer?: ReactNode;
+  children?: ReactNode;
+}) {
   const ref = useModalA11y(open ? onClose : null, Boolean(open));
   if (!open) return null;
   return (

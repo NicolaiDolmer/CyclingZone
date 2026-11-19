@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { choiceLabel, columnsSummary, tableControlPayload } from "./tableTitleBar.js";
+import { choiceLabel, columnsSummary, tableControlPayload } from "./tableTitleBar.ts";
 
 const dir = dirname(fileURLToPath(import.meta.url));
-const src = readFileSync(join(dir, "TableTitleBar.jsx"), "utf8");
+const src = readFileSync(join(dir, "TableTitleBar.tsx"), "utf8");
 const dataTableSrc = readFileSync(join(dir, "DataTable.jsx"), "utf8");
 
 // #8280 (TASTE P21) — tabellens titellinje.
