@@ -25,7 +25,7 @@
 // point kan få noget udbetalt, så kun de slås op.
 import { fetchAllRows } from "./supabasePagination.js";
 import { trainingDateBounds } from "./trainingDateReadiness.js";
-import { isManagerTeamForDevelopment } from "./dailyTrainingEngine.js";
+import { isManagerTeamForDevelopment } from "./managerTeamForDevelopment.js";
 
 /** Ryttere med en gemt bjælke på mindst ét point i en evne (kun de kan få noget udbetalt). */
 export function xpStoredBarRiderIds(abilityRows) {
@@ -49,7 +49,9 @@ export function xpStoredBarRiderIds(abilityRows) {
  */
 export function teamAtTime(events, currentTeamId, endIso) {
   const end = new Date(endIso).getTime();
-  const sorted = [...(events ?? [])].sort((a, b) => new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime());
+  // Ens tidsstempler: id afgør rækkefølgen, så svaret er stabilt.
+  const sorted = [...(events ?? [])].sort((a, b) => (new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime())
+    || String(a.id ?? "").localeCompare(String(b.id ?? "")));
   let before = null;
   let firstAfter = null;
   for (const event of sorted) {
@@ -65,7 +67,7 @@ export function teamAtTime(events, currentTeamId, endIso) {
 
 export async function loadXpFirstDatePayoutRiderIds({
   supabase, developmentXp, developmentXpIgnition, xpFromDate, conditionPerDate, developmentAllowed, tickDate, abilityRows,
-  teamId = null, currentTeam = null,
+  teamId = null,
 }) {
   if (!developmentXp || developmentXpIgnition === true || !conditionPerDate || developmentAllowed === false) return null;
   if (typeof xpFromDate !== "string" || typeof tickDate !== "string" || !(tickDate > xpFromDate)) return null;
@@ -93,13 +95,27 @@ export async function loadXpFirstDatePayoutRiderIds({
     // Ejerskabet ved startdatoens slutning (fund A): også uden kvittering den dato.
     const endIso = trainingDateBounds(xpFromDate).end.toISOString();
     const events = await fetchAllRows(() => supabase.from("rider_ownership_events")
-      .select("rider_id, from_team_id, to_team_id, occurred_at")
+      .select("id, rider_id, from_team_id, to_team_id, occurred_at")
       .in("rider_id", unmarked)
       .order("rider_id")
       .order("occurred_at"));
     const byRider = new Map();
     for (const event of events) byRider.set(event.rider_id, [...(byRider.get(event.rider_id) ?? []), event]);
-    const ignitionTeam = new Map(unmarked.map((id) => [id, teamAtTime(byRider.get(id), teamId, endIso)]));
+    // Fable-dom 19/11: ejerskiftet logges ikke på alle veje (starttrup, akademi-indtag og -overførsel,
+    // best-effort-logning). En rytter uden ejerskifter skal have stået på holdet før startdatoens
+    // slutning (acquired_at, ellers created_at); ellers kom han efter tænding og får ingen udbetaling.
+    const withoutEvents = unmarked.filter((id) => !byRider.has(id));
+    const riderRows = withoutEvents.length ? await fetchAllRows(() => supabase.from("riders")
+      .select("id, created_at, acquired_at")
+      .in("id", withoutEvents)
+      .order("id")) : [];
+    const endMs = new Date(endIso).getTime();
+    const arrivedBefore = new Set(riderRows.filter((row) => {
+      const at = new Date(row.acquired_at ?? row.created_at ?? Number.NaN).getTime();
+      return Number.isFinite(at) && at < endMs;
+    }).map((row) => row.id));
+    const ignitionTeam = new Map(unmarked.map((id) => [id,
+      byRider.has(id) ? teamAtTime(byRider.get(id), teamId, endIso) : (arrivedBefore.has(id) ? teamId : null)]));
     const otherTeamIds = [...new Set([...ignitionTeam.values()].filter((id) => id != null && id !== teamId))];
     const teams = otherTeamIds.length ? await fetchAllRows(() => supabase.from("teams")
       .select("id, user_id, is_ai, is_bank, is_test_account")
@@ -107,7 +123,7 @@ export async function loadXpFirstDatePayoutRiderIds({
       .order("id")) : [];
     const managerTeams = new Set(teams.filter((team) => isManagerTeamForDevelopment(team)).map((team) => team.id));
     // Det nuværende hold er et managerhold (ellers kører reglen ikke: developmentAllowed).
-    if (teamId != null && (currentTeam == null || isManagerTeamForDevelopment(currentTeam))) managerTeams.add(teamId);
+    if (teamId != null) managerTeams.add(teamId);
     for (const id of unmarked) if (managerTeams.has(ignitionTeam.get(id))) onManagerAtIgnition.add(id);
   }
   return new Set(pending.filter((id) => onManagerAtIgnition.has(id)));

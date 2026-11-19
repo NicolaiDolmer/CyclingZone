@@ -94,3 +94,18 @@ test("teamAtTime: holdet ved startdatoens slutning ud fra ejerskifterne", () => 
   assert.equal(teamAtTime([ev(null, "B", "2026-11-25T10:00:00Z")], "B", END), null, "fri på startdatoen");
   assert.equal(teamAtTime([ev("A", "B", "2026-11-25T10:00:00Z"), ev("X", "A", "2026-11-10T10:00:00Z")], "B", END), "A", "uordnet input sorteres");
 });
+
+test("teamAtTime: et skifte præcis ved startdatoens slutning (midnat) tæller som efter tænding", () => {
+  const END = "2026-11-20T23:00:00.000Z";
+  assert.equal(teamAtTime([{ from_team_id: "ai", to_team_id: "mgr", occurred_at: END }], "mgr", END), "ai");
+  assert.equal(teamAtTime([{ from_team_id: "ai", to_team_id: "mgr", occurred_at: "2026-11-20T22:59:59.999Z" }], "mgr", END), "mgr");
+});
+
+test("teamAtTime: ens tidsstempler afgøres af id (stabilt svar)", () => {
+  const END = "2026-11-20T23:00:00.000Z";
+  const at = "2026-11-10T10:00:00Z";
+  const a = { id: "a", from_team_id: "X", to_team_id: "Y", occurred_at: at };
+  const b = { id: "b", from_team_id: "Y", to_team_id: "Z", occurred_at: at };
+  assert.equal(teamAtTime([b, a], "Z", END), "Z");
+  assert.equal(teamAtTime([a, b], "Z", END), "Z");
+});

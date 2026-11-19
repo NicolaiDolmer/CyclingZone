@@ -80,6 +80,7 @@ import { loadRaceDayRoleYield, loadRaceDayRoleByRider } from "./raceDayRoleYield
 import { loadDevelopmentScoreB, developmentTickArgs } from "./developmentScoreWiring.js"; // #6950 Udviklingsscore B
 import { loadDevelopmentXp, readDevelopmentXpFromDate, withRaceDayRoleYieldXp } from "./developmentXpFlag.ts"; // #6110 XP-modellen (slukket)
 import { loadXpFirstDatePayoutRiderIds } from "./developmentXpFirstDate.js"; // #6110 ejervalg B 19/11
+import { isManagerTeamForDevelopment } from "./managerTeamForDevelopment.js"; // #6500 D6
 import { loadTrainNowBonusRiderIds } from './trainNowBonus7737.ts';
 import { loadRaceCatchUp } from "./raceCatchUpWiring.js"; // #6950 catch-up via loeb
 import { assessIllness } from "./conditionIllness.js"; // #6938 sygdom af langvarig ekstrem traethed
@@ -268,10 +269,8 @@ async function isDevelopmentV2AgingEnabled(supabase, { strict = false } = {}) {
  * traenes ikke af sweepen i forvejen, og issuets afgraensning naevner det ikke.
  * @param {{user_id?:string|null,is_ai?:boolean|null,is_bank?:boolean|null,is_test_account?:boolean|null}} team
  */
-export function isManagerTeamForDevelopment(team) {
-  if (!team) return false;
-  return team.user_id != null && team.is_ai !== true && team.is_bank !== true && team.is_test_account !== true;
-}
+// Reglen bor i managerTeamForDevelopment.js (delt med developmentXpFirstDate.js); eksporteres her som før.
+export { isManagerTeamForDevelopment };
 
 /**
  * #7982 trin 3: a group of reads that do not depend on each other. With `together`

@@ -281,3 +281,19 @@ test("#6110 fund C: Træn nu-presset på startdatoen markerer managerryttere", a
   assert.ok(receipts(state).length > 0);
   assert.ok(receipts(state).every((row) => row.report?.xp_ignition_manager === true));
 });
+
+test("#6110 Fable 19/11: rytter uden ejerskifter, der kom til holdet efter startdatoen (akademi-indtag), får ingen udbetaling", async () => {
+  const state = xpState(TOO_OLD, { developedBefore: false, managerAtIgnition: false });
+  Object.assign(state.riders[0], { created_at: "2026-11-05T08:00:00Z", acquired_at: null }); // oprettet efter tænding, intet ejerskifte
+  const before = state.rider_derived_abilities[0][ABILITY];
+  await sweep(state, createFake(state), { deadlineReached: true });
+  assert.equal(state.rider_derived_abilities[0][ABILITY] - before, 1, "datoreglen, ingen fuld udbetaling");
+});
+
+test("#6110 Fable 19/11: rytter uden ejerskifter med acquired_at efter startdatoen får ingen udbetaling", async () => {
+  const state = xpState(TOO_OLD, { developedBefore: false, managerAtIgnition: false });
+  Object.assign(state.riders[0], { acquired_at: "2026-11-03T12:00:00Z" });
+  const before = state.rider_derived_abilities[0][ABILITY];
+  await press(state, createFake(state));
+  assert.equal(state.rider_derived_abilities[0][ABILITY] - before, 1);
+});
