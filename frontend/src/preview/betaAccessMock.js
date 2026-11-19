@@ -112,10 +112,11 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "academy_page_v2_8081", // #8081 akademisiden udgave A (off)
   "training_train_now_bonus", // #7741 bonusmaerket og teksterne (off paa preview; ?trainNowBonus=on viser dem)
   "patch_notes_v2_8049", // #8049 (off; ?patchNotesV2=on paa preview)
+  "development_xp_model", // #6110 Hjaelp XP-tvillingerne (binaert, off)
 ];
 
 // Spejler PLAYER_VISIBLE_BINARY_FLAG_KEYS i backenden: "beta" er off.
-const BINARY_FLAG_KEYS = ["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801", "sale_escrow_enabled", "training_history_from_ticks_6490"];
+const BINARY_FLAG_KEYS = ["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801", "sale_escrow_enabled", "training_history_from_ticks_6490", "development_xp_model"];
 
 // #5319: træningskatalog v3 er OFF på preview (som i prod), men kan tændes med
 // ?catalogV3=on for at se de nye sessioner i vælgerne. Huskes i localStorage

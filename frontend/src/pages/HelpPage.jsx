@@ -349,11 +349,13 @@ const SECTION_DEFS = [
       { id: "reputation", kind: "text" },
       { id: "abilitiesExplained", kind: "rows" },
       { id: "riderType", kind: "text" },
+      { id: "riderTypeXp", kind: "text" }, // #6110 XP (HELP_BLOCK_FLAGS.riders)
       { id: "typeOverview", kind: "textRows" },
       { id: "development", kind: "text" },
       // #6499: den nye aldring er eneste regel (ugatet); AI/frie ryttere følger
       // stadig development_v2_aging_enabled (HELP_BLOCK_FLAGS.riders).
       { id: "agingV2", kind: "text" },
+      { id: "agingV2Xp", kind: "text" }, // #6110 kandidat B (HELP_BLOCK_FLAGS.riders)
       { id: "aiRidersV2", kind: "text" },
       { id: "potentialBestRole", kind: "text" },
       { id: "potentialBestRoleEstimate", kind: "text" }, // #6110 tal + ord (HELP_BLOCK_FLAGS.riders)
@@ -376,7 +378,9 @@ const SECTION_DEFS = [
       // they belong right after "Setting programs" since they explain the
       // two choices a program is made of.
       { id: "dayTypes", kind: "text" },
+      { id: "dayTypesXp", kind: "text" }, // #6110 XP: hver *Xp er on-tvilling til blokken lige foer (HELP_BLOCK_FLAGS)
       { id: "focusAbilities", kind: "text" },
+      { id: "focusAbilitiesXp", kind: "text" },
       { id: "trainToday", kind: "text" },
       // #4847: den samlede daglige kørsel når dagens sidste løb er lukket, og den
       // frivillige knap uden bonus. Står EFTER trainToday, fordi den erstatter den
@@ -387,6 +391,7 @@ const SECTION_DEFS = [
       { id: "trainNowInstant", kind: "text", flag: "training_tick_per_race_day" },
       // #7741: bonussen foer eget tryk; kun naar Traen nu virker (flag her) OG bonus-kontakten er on (HELP_BLOCK_FLAGS).
       { id: "trainNowBonus", kind: "text", flag: "training_train_now_instant" },
+      { id: "trainNowBonusXp", kind: "text", flag: "training_train_now_instant" },
       // #4164: a race replaces the day's session rather than adding to it, and
       // it settles once per day no matter how many stages were ridden. Asked in
       // #dansk-snak 24/8 and unanswerable from the page as it stood.
@@ -394,6 +399,7 @@ const SECTION_DEFS = [
       // #4849: raceDays' tvilling for loebsdags-modellen (loeb ELLER traening,
       // etapeloebet binder inkl. hviledage). Kun én af de to vises ad gangen.
       { id: "raceDaysPerRaceDay", kind: "text" },
+      { id: "raceDaysPerRaceDayXp", kind: "text" },
       // #4066: wired in — what trains a rider with no focus set follows the
       // "Train today" action it applies to.
       { id: "smartDefault", kind: "text" },
@@ -420,6 +426,7 @@ const SECTION_DEFS = [
       { id: "catalogV3", kind: "text", flag: "training_catalog_v3" },
       { id: "injuryRisk", kind: "text" },
       { id: "progressBars", kind: "text" },
+      { id: "progressBarsXp", kind: "text" },
       // #4851: the training score is the other half of "how much did today move" —
       // the bars show what the rider got, the score shows how good the session was.
       // #5274: gated direkte via SECTION_DEFS' `flag`-egenskab (ikke
@@ -427,17 +434,22 @@ const SECTION_DEFS = [
       // naar training_score_visible er beta (viewer i beta-gruppen) eller on.
       { id: "trainingScore", kind: "text", flag: "training_score_visible" },
       { id: "maxOnePerDay", kind: "text", flag: "ability_cap_per_date_enabled" },
+      { id: "maxOnePerDayXp", kind: "text" }, // #6110: XP-modellens egen datogrænse, ingen ekstra kontakt
       { id: "todaysDecision", kind: "text", flag: "training_decision_card" },
       { id: "longTermGrowth", kind: "text" },
       { id: "longTermGrowthCurveB", kind: "text" },
+      { id: "developmentXp", kind: "text" }, // #6110: nyt afsnit, kun med XP on
+      { id: "longTermGrowthXp", kind: "text" },
       // #4066: wired in — the type-gating percentages and the "why did my
       // ability stop rising" FAQ both elaborate on longTermGrowth directly
       // above.
       // #3564 kurve B: hver *CurveB er on-tvilling til blokken lige foer (HELP_BLOCK_FLAGS.dailytraining).
       { id: "typeGating", kind: "text" },
       { id: "typeGatingCurveB", kind: "text" },
+      { id: "typeGatingXp", kind: "text" },
       { id: "ceilingReached", kind: "text" },
       { id: "ceilingReachedCurveB", kind: "text" },
+      { id: "ceilingReachedXp", kind: "text" },
       { id: "readingReport", kind: "text" },
       // #7627: hvor fremgangen kom fra (traening/loeb pr. evne, TrainingReport raceSource).
       { id: "raceSource", kind: "text" },
@@ -466,6 +478,7 @@ const SECTION_DEFS = [
       { id: "academySize", kind: "text" },
       { id: "dailyTrainingBoost", kind: "text" },
       { id: "dailyTrainingBoostCurveB", kind: "text" }, // #3564 kurve B (HELP_BLOCK_FLAGS.academy)
+      { id: "dailyTrainingBoostXp", kind: "text" }, // #6110 XP (HELP_BLOCK_FLAGS.academy)
       { id: "youthAuctions", kind: "text" },
       { id: "upkeepCost", kind: "text" },
       { id: "graduation", kind: "text" },
@@ -619,7 +632,9 @@ const FAQ_KEYS = [
   "developmentProjectionFaq",
   "developmentProjectionEstimateFaq",
   "trainingFocusFaq",
+  "trainingFocusXpFaq", // #6110 XP (HELP_FAQ_FLAGS)
   "restForDevelopedFaq",
+  "restForDevelopedXpFaq", // #6110 XP (HELP_FAQ_FLAGS)
   // #4261: løb-som-træning-FAQ — svar på fem konkrete spørgsmål fra Discord om
   // hvordan løbsdage og daglig træning spiller sammen i sæson 3 (dev-flag off).
   "raceDayIntensityFaq",
@@ -629,6 +644,7 @@ const FAQ_KEYS = [
   "raceDayProfileMatchFaq",
   "raceDayAcademyFaq",
   "raceDayAcademyPerRaceDayFaq",
+  "raceDayAcademyPerRaceDayXpFaq", // #6110 XP (HELP_FAQ_FLAGS)
   // #4849: tre nye loebsdags-FAQ'er, kun synlige naar loebsdags-modellen er
   // taendt (lavere divisioner, flere etaper samme dag #4164, hviledag i etapeloeb).
   "lowerDivisionTrainingFaq",
@@ -733,6 +749,7 @@ const FAQ_KEYS = [
   "sharpFlatTrainingDaysFaq",
   "teamworkLeadershipTrainingFaq",
   "teamworkLeadershipTrainingCurveBFaq", // #3564 kurve B (HELP_FAQ_FLAGS)
+  "teamworkLeadershipTrainingXpFaq", // #6110 XP (HELP_FAQ_FLAGS)
   "riderPoolNationalityFaq",
   "retirementAgeWindowFaq",
   "scoutCancelRefundFaq",
