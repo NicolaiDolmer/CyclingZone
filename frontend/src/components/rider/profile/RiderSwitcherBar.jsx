@@ -62,7 +62,7 @@ export default function RiderSwitcherBar({ prevRider, nextRider, teamId, teamNam
           {teamName && (
             <TeamLink
               id={teamId}
-              className="font-display uppercase tracking-[0.04em] text-cz-1 text-sm truncate hover:text-cz-accent-t transition-colors"
+              className="text-sm font-semibold text-cz-1 truncate hover:text-cz-accent-t transition-colors"
             >
               {teamName}
             </TeamLink>
