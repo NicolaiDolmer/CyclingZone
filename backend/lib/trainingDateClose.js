@@ -1,3 +1,4 @@
+import { isCalendarTickAiOnly } from "./trainingCalendarTickFlag.js"; // #6110 ejer 19/11
 import { trainingDateRpc } from "./trainingDateRpc.js";
 import { copenhagenDateString, copenhagenHour } from './copenhagenTime.js';
 import { fetchAllRows } from './supabasePagination.js';
@@ -49,11 +50,16 @@ export async function isTrainingSweepMemoryEnabled(supabase) {
  * Both writers use this one rule: buildSweepPlan (trainingDayCloseTrigger.js)
  * and the per-date sweep below.
  *
+ * #6110 ejer 19/11 ("hold uden division skal ikke træne"): med `aiOnly` (kontakten
+ * training_calendar_tick_ai_only) får kun AI-hold uden division tick'et; et menneskehold
+ * uden division træner ikke. Slukket = præcis som før.
+ *
  * @param {{league_division_id?: string|null, is_ai?: boolean|null, parked_at?: string|null}} team
+ * @param {{ aiOnly?: boolean }} [opts]
  * @returns {boolean}
  */
-export function isLegacyCalendarTickTeam(team) {
-  return !team?.league_division_id && team?.parked_at == null;
+export function isLegacyCalendarTickTeam(team, { aiOnly = false } = {}) {
+  return !team?.league_division_id && team?.parked_at == null && (!aiOnly || team?.is_ai === true);
 }
 
 async function checked(query, label) {
@@ -373,6 +379,9 @@ export async function runNormalizedTrainingDateSweep({
     let waitingForDate = false, untrackedFailure = false, legacyRanPromise = null;
     // One lookup per date even when teams run in parallel; a failed lookup is
     // retried by the next division-less team, as in the sequential loop.
+    // #6110 ejer 19/11: kontakten for reservevejen læses én gang pr. dato, kun når et hold uden division findes.
+    let calendarAiOnlyPromise = null;
+    const loadCalendarAiOnly = () => (calendarAiOnlyPromise ??= isCalendarTickAiOnly(supabase));
     const loadLegacyRan = () => (legacyRanPromise ??= Promise.resolve()
       .then(() => loadLegacyRuns({ supabase, tickDate: job.tickDate }))
       .catch((error) => { legacyRanPromise = null; throw error; }));
@@ -410,7 +419,7 @@ export async function runNormalizedTrainingDateSweep({
       // Division-less AI teams retain their existing calendar-day fallback. A
       // division-less human team is parked (#6536) and gets no tick at all.
       if (!divisionId && !workByTeam.has(team.id)) {
-        if (!isLegacyCalendarTickTeam(team)) return;
+        if (!isLegacyCalendarTickTeam(team, { aiOnly: await loadCalendarAiOnly() })) return;
         try {
           const legacyRan = await loadLegacyRan();
           if (legacyRan.has(team.id)) return;
