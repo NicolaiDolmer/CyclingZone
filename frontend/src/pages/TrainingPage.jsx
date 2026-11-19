@@ -113,6 +113,8 @@ const SeasonOverview = tabPart("SeasonOverview");
 const DevelopmentGlyph = tabPart("DevelopmentGlyph");
 const TrainingHistory = tabPart("TrainingHistory");
 const TrainingMoment = tabPart("TrainingMoment");
+// #8363: "Today's training" after Train now (behind the XP switch; own chunk, loaded only after a press).
+const TrainNowMoment = lazyWithRetry(() => import("../components/training/TrainNowMoment.tsx"));
 
 // Skelet mens en lazy fane hentes (samme markup som Development-fanens egen
 // indlaesning: Card + SkeletonLines).
@@ -522,6 +524,10 @@ export default function TrainingPage() {
   const [groupDialog, setGroupDialog] = useState(null);
   // #4847: med flaget on ER guld-knappen "Train now" (aaben hele datoen indtil trykket).
   const trainNow = useTrainNow({ onSettled: training.refresh });
+  const [trainNowMomentOpen, setTrainNowMomentOpen] = useState(false); // #8363
+  // #8363: "Se rapporten" åbner altid dagens rapport. Ny nøgle = rapporten monteres forfra
+  // (i dag, dagsvisning), også hvis spilleren stod på en ældre dato eller 30 dage.
+  const [reportKey, setReportKey] = useState(0);
   const runGate = trainNowRunGate(trainNow.status, { trainedToday: !!todayRun, dayClose });
   const programsOn = programs.enabled;
   // #5932: de 35 felter for alle (eget flag, training_program_cells). #6030:
@@ -810,6 +816,7 @@ export default function TrainingPage() {
       // #6740: the server re-checks at the press; something changed since the page loaded.
       const pressed = await trainNow.press();
       if (pressed?.error === "short_races_confirm") setConfirmTrainNow(true);
+      if (pressed?.ok) setTrainNowMomentOpen(true); // #8363
       return;
     }
     const result = await runToday();
@@ -2477,6 +2484,9 @@ export default function TrainingPage() {
 
       {isMobile && primaryButton}
       <TrainNowNote status={trainNow.status} result={trainNow.result} error={trainNow.error} className="mb-3" />
+      {trainNowMomentOpen && <Suspense fallback={null}><TrainNowMoment open onClose={() => setTrainNowMomentOpen(false)}
+        onOpenReport={() => { setTrainNowMomentOpen(false); setReportKey((k) => k + 1); setTab("report"); }} runs={receiptRuns} roster={riders}
+        seasonYear={seasonYear} tickDate={trainNow.status.tickDate} result={trainNow.result} /></Suspense>}
       <RaceSessionNote forecast={fatigueForecast.forecast} className="mb-3" />
       {/* #6740: the press locks every rider for today, so a race below the start floor
           can no longer be topped up and the team will not start. Asked once, here. */}
@@ -2496,6 +2506,7 @@ export default function TrainingPage() {
                 // race since then comes back as 409 and the dialog opens again.
                 const pressed = await trainNow.press({ confirmedShortRaceIds: trainNow.status.shortRaces.map((r) => r.id) });
                 if (pressed?.error === "short_races_confirm") setConfirmTrainNow(true);
+                if (pressed?.ok) setTrainNowMomentOpen(true); // #8363
               }}>
               {t(instantOnly ? "trainNow.confirm.goNow" : "trainNow.confirm.go")}
             </Button>
@@ -2723,7 +2734,7 @@ export default function TrainingPage() {
         {/* #6030: training_daily_receipt er on for alle (1/10); den gamle
             rapport-gren (legacy-tabellen + gaarsdagens fold-ud) er slettet. */}
         {/* #7627: XP-rapporten kun bag XP-kontakten eller preview ?xpreport=on; ellers uaendret. */}
-        <XpReportSwitch runs={receiptRuns} roster={ridersLoading ? null : riders} trainingScore={trainingScore}>
+        <XpReportSwitch key={reportKey} runs={receiptRuns} roster={ridersLoading ? null : riders} trainingScore={trainingScore}>
         <TrainingHistory history={{ ...history, runs: receiptRuns }} trainingScore={trainingScore} condition={condition} today={today} roster={ridersLoading ? null : riders} />
         </XpReportSwitch>
         <TrainingMoment latestRun={latestRun} isToday={latestIsToday} progressByRider={progress} pastRuns={pastRuns} />
