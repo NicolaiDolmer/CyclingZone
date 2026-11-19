@@ -1476,7 +1476,11 @@ export default function AuctionsPage() {
     // #2849 bølge 1: ÉN container-ramme om hele siden (T2, cap 1600px) —
     // erstatter det tidligere miks af max-w-full + spredte max-w-[1600px].
     <div className="max-w-[1600px] mx-auto">
-      <OnboardingTour pageKey="auctions" steps={auctionsTourSteps} />
+      <OnboardingTour
+        pageKey="auctions"
+        steps={auctionsTourSteps}
+        finishLink={{ to: "/dashboard", label: t("common:nav.item.dashboard") }}
+      />
       <ConfettiModal
         show={!!celebration}
         onClose={() => setCelebration(null)}

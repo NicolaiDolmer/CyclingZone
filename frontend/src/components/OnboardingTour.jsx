@@ -1,5 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 import { readTour, advanceTour, endTour, TOUR_START_EVENT } from "../lib/onboardingTour";
 import { findVisibleTarget } from "../lib/onboardingTourTarget.js";
 import { computeTooltipPlacement } from "../lib/onboardingTourPlacement.js";
@@ -19,11 +20,8 @@ const FALLBACK_HEIGHT_ESTIMATE = 160;
 // Mounted på de sider hvor tour-trin findes (RidersPage, AuctionsPage).
 // Aktiveres når localStorage cz-onboarding-tour-step matcher pageKey.
 //
-// Props:
-//   pageKey: "riders" | "auctions"
-//   steps: [{ target: cssSelector, title, body }]
-
-export default function OnboardingTour({ pageKey, steps }) {
+/** @param {{ pageKey: string, steps: { target: string, title: string, body: string }[], finishLink?: { to: string, label: string } }} props */
+export default function OnboardingTour({ pageKey, steps, finishLink }) {
   const { t } = useTranslation("auth");
   const [tour, setTour] = useState(() => readTour());
   const [rect, setRect] = useState(null);
@@ -124,10 +122,22 @@ export default function OnboardingTour({ pageKey, steps }) {
     setTour(null);
   }
 
-  if (!isActive) return null;
+  if (!current || !tour) return null;
 
   // Fallback: tour aktiv, men target ikke fundet (fx 0 aktive auktioner) — vis kun escape-knap
   if (!rect) {
+    if (finishLink) {
+      return (
+        <div role="dialog" aria-label={t("onboardingTour.ariaLabel")} className="fixed bottom-20 right-4 z-overlay flex items-center gap-3 rounded-cz border border-cz-border bg-cz-card p-3 md:bottom-4">
+          <button type="button" onClick={handleSkip} className={buttonClass({ variant: "secondary", size: "sm" })}>
+            {t("onboardingTour.end")}
+          </button>
+          <Link to={finishLink.to} onClick={handleSkip} className={buttonClass({ variant: "primary", size: "sm" })}>
+            {finishLink.label}
+          </Link>
+        </div>
+      );
+    }
     return (
       <div className="fixed bottom-4 right-4 z-overlay bg-cz-card border border-cz-accent/40 rounded-cz shadow-xl p-3 max-w-xs">
         <p className="text-cz-2 text-xs mb-2">
@@ -214,17 +224,23 @@ export default function OnboardingTour({ pageKey, steps }) {
           >
             {t("onboardingTour.skip")}
           </button>
-          <button
-            onClick={handleNext}
-            className={`${buttonClass({ variant: "primary", size: "sm" })} gap-0.5`}
-          >
-            {isLast ? t("onboardingTour.done") : (
-              <>
-                {t("onboardingTour.next")}
-                <ChevronRightIcon size={12} aria-hidden="true" />
-              </>
-            )}
-          </button>
+          {isLast && finishLink ? (
+            <Link to={finishLink.to} onClick={handleSkip} className={buttonClass({ variant: "primary", size: "sm" })}>
+              {finishLink.label}
+            </Link>
+          ) : (
+            <button
+              onClick={handleNext}
+              className={`${buttonClass({ variant: "primary", size: "sm" })} gap-0.5`}
+            >
+              {isLast ? t("onboardingTour.done") : (
+                <>
+                  {t("onboardingTour.next")}
+                  <ChevronRightIcon size={12} aria-hidden="true" />
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </>
