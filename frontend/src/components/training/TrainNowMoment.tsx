@@ -187,20 +187,8 @@ export default function TrainNowMoment({ open, onClose, onOpenReport, runs, rost
       description={t("trainNowMoment.subtitle", { date: formatDay(view.date, { weekday: "long", day: "numeric", month: "long" }), count })}
       closeLabel={t("trainNowMoment.close")}
       titleId="train-now-moment-title"
-      footer={finished ? (
-        <>
-          <p className="me-auto flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 self-center text-[13px] text-cz-1" data-testid="train-now-moment-summary">
-            <span className="font-semibold">{t("trainNowMoment.summaryRiders", { count: view.riders })}</span>
-            <span className="text-cz-3" aria-hidden="true">·</span>
-            <span className={NUM}>{t("trainNowMoment.summaryXp", { xp: formatNumber(view.xp) })}</span>
-            <span className="text-cz-3" aria-hidden="true">·</span>
-            <span>{t("trainNowMoment.summaryPoints", { count: view.points })}</span>
-          </p>
-          <Button variant="primary" onClick={onOpenReport} className="shrink-0" data-testid="train-now-moment-report">{t("trainNowMoment.openReport")}</Button>
-        </>
-      ) : (
-        <Button variant="secondary" onClick={skip} data-testid="train-now-moment-skip">{t("trainNowMoment.skip")}</Button>
-      )}
+      ariaLabelledby="train-now-moment-title"
+      footer={null}
     >
       <div className="-mx-2 grid gap-3 sm:grid-cols-2" data-testid="train-now-moment" data-finished={finished || undefined}>
         {columns.map((col, c) => (
@@ -208,6 +196,23 @@ export default function TrainNowMoment({ open, onClose, onOpenReport, runs, rost
             {col.map((row, i) => <Row key={row.id} row={row} p={rowProgress(t01, c * half + i, count)} />)}
           </ul>
         ))}
+      </div>
+      {/* The action bar sticks to the bottom of the dialog, so Skip is one tap on a phone too (the list scrolls under it). */}
+      <div className="sticky bottom-0 z-10 -mx-6 -mb-5 mt-5 flex flex-wrap items-center justify-end gap-x-3 gap-y-2 border-t border-cz-border bg-cz-card px-6 py-4">
+        {finished ? (
+          <>
+            <p className="me-auto flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-cz-1" data-testid="train-now-moment-summary">
+              <span className="font-semibold">{t("trainNowMoment.summaryRiders", { count: view.riders })}</span>
+              <span className="text-cz-3" aria-hidden="true">·</span>
+              <span className={NUM}>{t("trainNowMoment.summaryXp", { xp: formatNumber(view.xp) })}</span>
+              <span className="text-cz-3" aria-hidden="true">·</span>
+              <span>{t("trainNowMoment.summaryPoints", { count: view.points })}</span>
+            </p>
+            <Button variant="primary" onClick={onOpenReport} className="shrink-0 max-sm:w-full" data-testid="train-now-moment-report">{t("trainNowMoment.openReport")}</Button>
+          </>
+        ) : (
+          <Button variant="secondary" onClick={skip} className="max-sm:w-full" data-testid="train-now-moment-skip">{t("trainNowMoment.skip")}</Button>
+        )}
       </div>
     </Modal>
   );
