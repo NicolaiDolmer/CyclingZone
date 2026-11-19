@@ -65,7 +65,7 @@ test("#7982: the read is scoped to the team and the runs' dates", async () => {
   const two = [run(111, [rider("a", 111)]), run(112, [rider("a", 112)])];
   const out = await attachReceiptSaveOrder7982({ supabase, teamId: "t1", runs: two });
   assert.deepEqual(calls.filter(c => c[0] === "from" || c[0] === "eq" || c[0] === "in"), [
-    ["from", "training_rider_ticks"], ["eq", "team_id", "t1"], ["in", "tick_date", ["2026-11-19"]],
+    ["from", "training_rider_ticks"], ["eq", "team_id", "t1"], ["in", "tick_date", ["2026-11-19"]], ["in", "season_id", ["s1"]],
   ]);
   assert.equal(out[1].report.riders[0].settled_at, "2026-11-19T16:05:00Z");
   assert.equal(out[0].report.riders[0].settled_at, undefined);

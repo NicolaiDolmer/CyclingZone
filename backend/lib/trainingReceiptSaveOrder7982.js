@@ -49,13 +49,19 @@ export async function attachReceiptSaveOrder7982({ supabase, teamId, runs, logge
   if (!Array.isArray(runs) || runs.length < 2 || !teamId || !supabase?.from) return runs;
   const tickDates = [...new Set(runs.map((run) => run?.tick_date).filter(Boolean).map((d) => String(d).slice(0, 10)))];
   if (!tickDates.length) return runs;
+  // Fable 20/11: saesonen med i filteret, saa laesningen rammer indekset (team_id, season_id, tick_date)
+  // og ikke holdets kvitteringer paa tvaers af saesoner.
+  const seasonIds = [...new Set(runs.map((run) => run?.season_id).filter(Boolean))];
   try {
-    const ticks = await fetchAllRows(() => supabase.from("training_rider_ticks")
-      .select("rider_id,season_id,tick_date,game_day,settled_at")
-      .eq("team_id", teamId)
-      .in("tick_date", tickDates)
-      .order("rider_id")
-      .order("game_day"));
+    const ticks = await fetchAllRows(() => {
+      let q = supabase.from("training_rider_ticks")
+        .select("rider_id,season_id,tick_date,game_day,settled_at")
+        .eq("team_id", teamId)
+        .in("tick_date", tickDates);
+      if (seasonIds.length) q = q.in("season_id", seasonIds);
+      return q.order("rider_id")
+        .order("game_day");
+    });
     return withReceiptSaveOrder(runs, ticks);
   } catch (error) {
     // best-effort: without the save time the receipt keeps race-day order, as before #7982.
