@@ -65,8 +65,9 @@ test("#5539 kolonnen har fast bredde og er til stede i alle tre grene (låst/ing
   );
 });
 
-test("#5539 header reserverer samme bredde (92px) som rækkerne, uden at overtage en formel kolonne-label", () => {
-  assert.match(source, /<span className="flex-none w-\[92px\]" aria-hidden="true" \/>/);
+test("#5539 header reserverer samme bredde som rækkerne (92px, under XP 64px), uden at overtage en formel kolonne-label", () => {
+  assert.match(source, /<span className=\{`flex-none \$\{xp \? "w-\[64px\]" : "w-\[92px\]"\}`\} aria-hidden="true" \/>/);
+  assert.match(source, /data-testid="ability-receipt-xp-day"/, "under XP staar dagens XP i samme kolonne");
 });
 
 test("#5539 i18n-nøglen 'receipt.yesterdayGain' findes i BÅDE en og da training.json (key-parity)", () => {
