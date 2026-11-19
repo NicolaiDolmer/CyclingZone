@@ -16,7 +16,8 @@
 // aldrig serveren. Derfor læses de kolonner slet ikke her.
 
 import { publicEstimateView } from "./potentialEstimate.js";
-import { DISPLAY_SEASONS, PEAK_AGE, projectTrack } from "./developmentProjection.js";
+import { DISPLAY_SEASONS, projectTrack } from "./developmentProjection.js";
+import { loadPastPeakAging, pastPeakFromAging } from "./pastPeakView.js"; // #7947: efter peak som motoren
 import { buildVerdict, ratingFromAbilities } from "./scoutingReport.js";
 import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
 import { bestRoleForAbilities } from "./riderBestRoleCache.js";
@@ -135,7 +136,7 @@ export async function buildScoutingReportFromView(supabase, { teamId, rider, own
     level, maxLevel, own, looks,
     primaryKey: rider.primary_type ?? null,
     verdict: estimateVerdict({ view: potentialView, age, own, level, maxLevel, rating }),
-    pastPeak: age != null && age > PEAK_AGE,
+    pastPeak: pastPeakFromAging(age, await loadPastPeakAging(supabase)),
     scout, generatedAt,
   };
 }
@@ -161,7 +162,7 @@ export async function buildProjectionFromView(supabase, { teamId, rider, own, le
     now,
     estimateLine: canDraw ? buildEstimateLine({ now, value: potentialView.value, age }) : [],
     potentialView,
-    pastPeak: age != null && age > PEAK_AGE,
+    pastPeak: pastPeakFromAging(age, await loadPastPeakAging(supabase)),
   };
 }
 

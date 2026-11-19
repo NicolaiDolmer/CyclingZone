@@ -253,7 +253,8 @@ import {
   buildTypeCeilingBands, buildVerdict, scoutPrecisionInfo,
   buildTypePrognosisBands, roleCeilRating, ratingFromAbilities,
 } from "../lib/scoutingReport.js";
-import { projectCeilingBand, ceilingTiming, PEAK_AGE, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
+import { projectCeilingBand, ceilingTiming, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
+import { agingCfgForXp, loadPastPeakAging, pastPeakFromAging } from "../lib/pastPeakView.js"; // #7947 / #8476 pkt. 5
 import { programForChoice, normalizeProgram, smartDefaultSession } from "../lib/trainingDayTypes.js";
 import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer, V3_TRAINING_FOCUSES } from "../lib/trainingCatalogV3.js"; // #5319
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, isValidWeekPlanDays, cappedVisibleAbilities } from "../lib/training.js";
@@ -2577,10 +2578,10 @@ router.post("/scouting/estimates", requireAuth, presencePulseLimiter, async (req
             // (se roleCeilRating/buildTypePrognosisBands i scoutingReport.js).
             estimate.loft = band.loft ?? null;
             // #4039: forbi-peak-flaget klienten dæmper loft-visningen med (samme
-            // PEAK_AGE-kilde som /development-projection's pastPeak, #2645). Loftet
+            // aldringskilde som /development-projection's pastPeak, pastPeakView.js, #2645). Loftet
             // selv forbliver ABSOLUT (ejer-beslutning 20/8) — flaget ændrer kun
             // hvordan det FORKLARES, ikke tallet.
-            estimate.pastPeak = age > PEAK_AGE;
+            estimate.pastPeak = pastPeakFromAging(age, agingCfgForXp(prognosisXp)); // #7947
           }
         }
       }
@@ -2983,7 +2984,7 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
         capsMissing: false,
         // #4039: samme forbi-peak-flag som /scouting/estimates — loftet er
         // rytterens, ikke pr. rolle, så det sidder på top-niveau af rapporten.
-        pastPeak: age > PEAK_AGE,
+        pastPeak: pastPeakFromAging(age, agingCfgForXp(prognosisXp)), // #7947
         scout: scoutMeta, generatedAt,
       });
     }
@@ -3064,7 +3065,7 @@ router.get("/riders/:id/development-projection", requireAuth, async (req, res) =
       ceil: { lo: primaryRow.ceilLo, hi: primaryRow.ceilHi },
       band: projectCeilingBand({ ...projInput, seasons: DISPLAY_SEASONS }),
       timing: ceilingTiming(projInput),
-      pastPeak: age > PEAK_AGE,
+      pastPeak: pastPeakFromAging(age, await loadPastPeakAging(supabase)), // #7947: som motoren
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
