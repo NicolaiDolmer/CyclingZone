@@ -124,8 +124,8 @@ export async function traeningsdatoBrud({
  * Motorens eget koeb paa én dato (ejervalg 16/11, R16): datoens XP koebes gennem
  * developmentXpTick i to ticks paa samme dato (fx Traen nu om morgenen og aftenkoerslen),
  * hvor det andet tick faar det foerste ticks point som datoens tidligere gevinster.
- * Rytterens alder og potentiale sendes med, saa motorens egen datoregel (ejervalg A 16/11:
- * +2 kun for et ungt toptalent paa en meget lav evne) afgoer datoens tal.
+ * Rytterens alder og potentiale sendes med, saa motorens egen datoregel (ejervalg A 16/11 og
+ * ejervalg 19/11: +2 kun for et toptalent paa en meget lav evne, uanset alder) afgoer datoens tal.
  * Svarer med datoens point i alt, som koebMedPrisliste.
  */
 export async function motorensDatoKoeb(params) {

@@ -26,8 +26,11 @@ export function evner(basis, overskriv = {}) {
 }
 
 // ── Dommerens XP-parametre (foelger ejerens regler 6/11, 7/11 og 12/11) ─────────
-// Alder: fuld til og med 26, faldende for hvert aar fra 27, naesten intet fra 31.
-// Mentale evner vokser laengere. Type: alt kan traenes, signaturen mest.
+// Alderskurven her (fuld til og med 26, faldende fra 27, mentale evner laengere) er ejerens
+// regel fra FOER 19/11. Den er afloest af ejervalg 19/11 (se DOMMER_B_RAA nedenfor) og
+// bevares kun, fordi de faste facit i de oevrige proever (loebsdagen, prognosen) er taget
+// med netop disse tal. Proeverne af alder, aldring og datoreglen bruger DOMMER_B_RAA.
+// Type: alt kan traenes, signaturen mest.
 export const DOMMER_XP_RAA = Object.freeze({
   price: { base: 400, exponent: 3 },
   potentialXp: [{ at: 1, value: 20 }, { at: 3.5, value: 60 }, { at: 6, value: 120 }],
@@ -46,11 +49,37 @@ export const DOMMER_XP_RAA = Object.freeze({
   typeShare: { signatur: 1, sekundaer: 0.8, haandvaerk: 0.6, andenRolle: 0.4, svaghed: 0.3 },
 });
 
+// ── Ejervalg 19/11 (kandidat B): dommerens parametre efter de nye regler ────────
+// Pris: ens for alle og flader ud helt i toppen (`top` over skalaens top).
+// XP: ens hele livet, og ens for fysiske og mentale evner.
+// Kroppens aldring ved saesonskiftet (`aging`): intet fald til og med 28, foerste fald som
+// 29-aarig, og dagens trappe (AGING_V2_CONFIG, offentlig i repoet) flyttet 2 aar frem.
+// Teknik, taktik og de andre mentale evner faar et lille, sent fald (`late`); alderen og
+// stoerrelsen er dommerens egne tal, ikke de private.
+export const DOMMER_ALDRING_RAA = Object.freeze({
+  plateauThroughAge: 28,
+  declineByYearsPastPlateau: [
+    { maxYears: 3, drop: 1.0 }, { maxYears: 6, drop: 1.8 }, { maxYears: 99, drop: 2.6 },
+  ],
+  late: { fromAge: 34, drop: 0.4 },
+});
+export const DOMMER_B_RAA = Object.freeze({
+  ...DOMMER_XP_RAA,
+  price: { ...DOMMER_XP_RAA.price, top: 120 },
+  ageShare: { physical: [{ at: 16, value: 1 }], mental: [{ at: 16, value: 1 }] },
+  aging: DOMMER_ALDRING_RAA,
+});
+
 // Samme model, men med saa meget XP, at flere point kan koebes paa én dato. Bruges
 // kun til at vise, at motoren ikke har et skjult loft (ejer 7/11 og 12/11).
 export const RIGELIG_XP_RAA = Object.freeze({
   ...DOMMER_XP_RAA,
   potentialXp: [{ at: 1, value: 900 }, { at: 3.5, value: 2400 }, { at: 6, value: 5000 }],
+});
+// Det samme efter ejervalg 19/11 (XP ens hele livet), til datoreglen "uanset alder".
+export const RIGELIG_B_RAA = Object.freeze({
+  ...DOMMER_B_RAA,
+  potentialXp: RIGELIG_XP_RAA.potentialXp,
 });
 
 // Daglig variation efter ejervalget 12/11: ca. 50-150 % pr. dag, ingen hukommelse.
