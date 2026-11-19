@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  MOMENT_TOTAL_MS, buildMomentView, momentMode, orderRiders, previewMoment, rowProgress, xpAt, xpTier,
+  MOMENT_TOTAL_MS, buildMomentView, momentMode, momentWaitingIds, orderRiders, previewMoment, rowProgress, xpAt, xpTier,
 } from "./TrainNowMomentModel.ts";
 import { buildXpReportFixture, XP_FIXTURE_LAST_DATE } from "./reportXp/xpReportFixture.ts";
 import type { XpReceipt, XpRiderReceipt } from "../../lib/trainingReportXp.ts";
@@ -87,6 +87,12 @@ test("a rider racing today waits for the stage instead of showing +0", () => {
   assert.equal(byId.r.name, "Rasmus Ny");
   assert.equal(byId.ghost, undefined, "no row without a name to show");
   assert.equal(view.riders, 3, "waiting riders are not counted as trained");
+});
+
+test("waiting = racing riders the press did not train now", () => {
+  assert.deepEqual(momentWaitingIds(null), []);
+  assert.deepEqual(momentWaitingIds({ afterRaceRiderIds: ["r1", "r2"] }), ["r1", "r2"]);
+  assert.deepEqual(momentWaitingIds({ afterRaceRiderIds: ["r1", "r2"], instantRiderIds: ["r1"] }), ["r2"]);
 });
 
 test("the moment never shows another date's receipt", () => {

@@ -6,6 +6,24 @@
     "waiting": "El entrenamiento de hoy se ejecuta solo cuando termina la última carrera, a partir de las {hour}:00.",
     "ready": "El entrenamiento de hoy está listo. Ejecútalo ahora o deja que se ejecute solo."
   },
+  "trainNowMoment": {
+    "title": "El entrenamiento de hoy",
+    "subtitle": "{date} · {count, plural, one {# ciclista} other {# ciclistas}} · mismo orden cada día",
+    "skip": "Saltar",
+    "openReport": "Ver el informe",
+    "close": "Cerrar",
+    "listLabel": "El entrenamiento de hoy, ciclista por ciclista",
+    "age": "{age} años",
+    "xp": "+{xp} XP",
+    "best": "El mejor de hoy",
+    "waiting": "Corre hoy · se liquida después de la etapa",
+    "raced": "Día de carrera",
+    "rest": "Día de descanso",
+    "points": "{count, plural, one {+# punto} other {+# puntos}}",
+    "summaryRiders": "{count, plural, one {# ciclista} other {# ciclistas}}",
+    "summaryXp": "{xp} XP en total",
+    "summaryPoints": "{count, plural, one {# punto} other {# puntos}}"
+  },
   "trainNow": {
     "button": "Entrenar ahora",
     "running": "En curso…",

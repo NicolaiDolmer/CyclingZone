@@ -158,6 +158,13 @@ export function buildMomentView(runs: ReadonlyArray<XpReceipt>, date: string, {
   };
 }
 
+/** From the press's answer: racing riders who did not train now (with instant on, racing riders train their free fields now). */
+export function momentWaitingIds(result: { afterRaceRiderIds?: ReadonlyArray<string>; instantRiderIds?: ReadonlyArray<string> } | null | undefined): string[] {
+  if (!result) return [];
+  const trainedNow = new Set(result.instantRiderIds ?? []);
+  return (result.afterRaceRiderIds ?? []).filter(id => !trainedNow.has(id));
+}
+
 /**
  * How far one row has come at playback time t (0..1). Rows start one after the
  * other in the fixed order but overlap, so any team size ends at t = 1.
