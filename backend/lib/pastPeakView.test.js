@@ -41,6 +41,6 @@ test("#7947 ukendt alder er aldrig 'efter peak'", () => {
 
 test("#7947 en fejlet XP-læsning giver dagens regel (best effort)", async () => {
   const broken = { from() { throw new Error("db nede"); } };
-  const cfg = await loadPastPeakAging(broken, { log: null });
+  const cfg = await loadPastPeakAging(broken, { log: null, now: new Date("2026-11-19T12:00:00Z") });
   assert.equal(cfg, AGING_V2_CONFIG);
 });
