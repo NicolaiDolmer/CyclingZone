@@ -416,8 +416,9 @@ export async function runNormalizedTrainingDateSweep({
       if (!currentIds.length && !workByTeam.has(team.id)) return;
       const divisionId = final ? (seasonDivisions.get(team.id) ?? team.league_division_id) : team.league_division_id;
       const days = workByTeam.get(team.id)?.game_days ?? context.gameDaysByDivision.get(divisionId);
-      // Division-less AI teams retain their existing calendar-day fallback. A
-      // division-less human team is parked (#6536) and gets no tick at all.
+      // Division-less teams use the calendar-day fallback (isLegacyCalendarTickTeam). A parked team
+      // never ticks (#6536). Switch off: an unparked human team without a division still ticks;
+      // with training_calendar_tick_ai_only on, only AI teams do (#6110, owner 19/11).
       if (!divisionId && !workByTeam.has(team.id)) {
         if (!isLegacyCalendarTickTeam(team, { aiOnly: await loadCalendarAiOnly() })) return;
         try {
