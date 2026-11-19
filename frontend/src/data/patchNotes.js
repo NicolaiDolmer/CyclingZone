@@ -1,5 +1,29 @@
 export const PATCHES = [
 {
+  "version": "7.472",
+  "date": "2026-11-19",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Interface",
+      "area": "interface",
+      "en": {
+        "title": "Gold text is easier to read",
+        "body": "In light mode, links and numbers in gold are a little darker, so they are easier to read on every page. Gold buttons, the leader's jersey and dark mode are unchanged."
+      },
+      "da": {
+        "title": "Guld-tekst er lettere at læse",
+        "body": "I lys tilstand er links og tal i guld lidt mørkere, så de er lettere at læse på alle sider. Guldknapper, førertrøjen og mørk tilstand er uændrede."
+      },
+      "refs": [
+        8433
+      ]
+    }
+  ]
+},
+{
   "version": "7.471",
   "date": "2026-11-19",
   "changes": [
