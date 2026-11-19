@@ -18,7 +18,8 @@ import { legacyOrderFromPlan, planHasJerseyHunt, planWithoutJerseyHunt, type Sta
 import { stageWorkExposure, stageCaughtBreakaway } from "../../../raceFatigue.js";
 import { stageLoadV2 } from "../../../conditionModelV2.js";
 import { deriveParticipationHistory } from "../../../raceParticipationHistory.ts";
-import type { AbilityKey, Entrant, EngineState, RaceGroup, RiderState, StageInput, StageOutput, StagePassage } from "../types.ts";
+import { STAGE_PLAN_ORDER_KIND, advanceStagePlan, createStagePlanRuntime, stagePlanHuntTasks7855, stagePlanHuntWindows7855 } from "../../../stagePlanEngine.ts"; // #7855 ejer 19/11
+import type { AbilityKey, Entrant, EngineState, RaceGroup, RiderState, RouteV2, Segment, StageInput, StageOutput, StagePassage, TeamOrder } from "../types.ts";
 
 // ── B: passagens raekkefoelge (enhed, stoej 0) ──────────────────────────────
 
@@ -115,6 +116,50 @@ test("#7855 S2 (ejer 16/11): bjergjagten gaelder kun i udbruddet ved selve toppe
   assert.deepEqual(jerseyHuntersForPassage7855(tasks, "sprint", racing, { km: 50, windows: undefined, groups: [{ ...pel, rider_ids: ["kom1", "kom2", "pts"] }] }), ["pts"]);
   assert.equal(inEscapeAtPassage7855([brk], "kom1"), true);
   assert.equal(inEscapeAtPassage7855([pel], "kom2"), false);
+});
+
+test("#7855 ejer 19/11: misser han morgenudbruddet, koerer han om pointene i et senere udbrud, uanset planens opbygning", () => {
+  const route = {
+    distance_km: 120, profile_type: "hilly",
+    waypoints: [
+      { kind: "sprint", index: 0, name: "S1", km: 40 },
+      { kind: "kom", index: 0, name: "Col A", km: 60, category: "2", summit_finish: false },
+      { kind: "sprint", index: 1, name: "S2", km: 80 },
+      { kind: "kom", index: 1, name: "Col B", km: 100, category: "1", summit_finish: false },
+      { kind: "finish", index: 0, name: "Finish", km: 120 },
+    ],
+  } as unknown as RouteV2;
+  const entrants = { sat: { rider_id: "sat", team_id: "A", role: "helper" }, alone: { rider_id: "alone", team_id: "A", role: "helper" }, x: { rider_id: "x", team_id: "B", role: "helper" } } as unknown as Record<string, Entrant>;
+  const racers = (ids: string[]) => Object.fromEntries(ids.map((id) => [id, { rider_id: id, status: "racing" }])) as unknown as EngineState["riders"];
+  const ids = ["sat", "alone", "x"];
+  const brk = (riders: string[]) => ({ id: "b", kind: "breakaway", origin: "breakaway", rider_ids: riders, gap_seconds: 0, cohesion: 1 }) as RaceGroup;
+  const pel = (riders: string[]) => ({ id: "p", kind: "peloton", rider_ids: riders, gap_seconds: 120, cohesion: 1 }) as RaceGroup;
+  const at = (groups: RaceGroup[]) => ({ km: 0, groups, riders: racers(ids), virtual_gc: {} }) as unknown as EngineState;
+  const seg = (from_km: number, to_km: number) => ({ from_km, to_km, kind: "flat" }) as unknown as Segment;
+  const SAT_LEG = { task: "ride_in", from: { at: "dropped" } };
+
+  for (const hunt of ["hunt_kom", "hunt_points"] as const) {
+    const kind = hunt === "hunt_kom" ? "kom" : "sprint";
+    const order = [{ team_id: "A", kind: STAGE_PLAN_ORDER_KIND, params: { riders: [
+      { rider_id: "sat", legs: [{ task: "breakaway", hunt }, SAT_LEG] },
+      { rider_id: "alone", legs: [{ task: "breakaway", hunt }] },
+    ] } }] as unknown as TeamOrder[];
+    const rt = createStagePlanRuntime(order, route, entrants, { jerseyHunt7855: true })!;
+    advanceStagePlan(rt, { state: at([pel(ids)]), segment: seg(0, 30), segmentIndex: 0, entrants });
+    // Morgenudbruddet koerer uden dem: planen med sat-led gaar videre ("kom ikke med").
+    const ev = advanceStagePlan(rt, { state: at([brk(["x"]), pel(["sat", "alone"])]), segment: seg(30, 50), segmentIndex: 1, entrants });
+    assert.deepEqual(ev.map((e) => [e.params.rider_id, e.params.reason]), [["sat", "missed_break"]], hunt);
+    const hunters = (groups: RaceGroup[], km: number) =>
+      jerseyHuntersForPassage7855(stagePlanHuntTasks7855(rt), kind, () => true, { km, windows: stagePlanHuntWindows7855(rt), groups });
+    const passageKm = kind === "kom" ? 100 : 80;
+    // Senere udbrud med begge: begge planer koerer om passagen, ens.
+    assert.deepEqual(hunters([brk(["sat", "alone", "x"]), pel([])], passageKm), ["alone", "sat"], `${hunt}: et senere udbrud`);
+    // Uden for et udbrud styrer sat-leddet: ingen jagt fra feltet. Uden sat-led er reglen uaendret
+    // (pointjagten ogsaa fra feltet, bjergjagten kun i udbruddet).
+    assert.deepEqual(hunters([brk(["x"]), pel(["sat", "alone"])], passageKm), kind === "sprint" ? ["alone"] : [], `${hunt}: i feltet`);
+    // Et soloangreb er ikke et udbrud.
+    assert.deepEqual(hunters([{ id: "a", kind: "solo", origin: "attack", rider_ids: ["sat"], gap_seconds: 0, cohesion: 1 } as RaceGroup, pel(["alone", "x"])], passageKm), kind === "sprint" ? ["alone"] : [], `${hunt}: angreb`);
+  }
 });
 
 test("#7855 C (Codex-review): loftet paa arbejdet i front goer aldrig en passage gratis", () => {

@@ -395,7 +395,7 @@ test("#7855 valg A: udbrudsleddet med jagt proever udbruddet og jager fra start;
   assert.equal(stagePlanHuntTasks7855(plain), undefined);
 });
 
-test("#7855 valg A: ikke med i udbruddet = jager fra sin gruppe; et sat-led efter udbruddet slutter jagten", () => {
+test("#7855 valg A + ejer 19/11: ikke med i udbruddet = jager fra sin gruppe; efter sat-leddet kun i et senere udbrud", () => {
   const alone = createStagePlanRuntime(huntOrder7855([{ task: "breakaway", hunt: "hunt_kom" }]), HUNT_ROUTE_7855, ENTRANTS, { jerseyHunt7855: true })!;
   advanceStagePlan(alone, { state: groups7855(false), segment: seg7855(0, 30), segmentIndex: 0, entrants: ENTRANTS });
   advanceStagePlan(alone, { state: groups7855(false), segment: seg7855(30, 90), segmentIndex: 1, entrants: ENTRANTS });
@@ -404,20 +404,40 @@ test("#7855 valg A: ikke med i udbruddet = jager fra sin gruppe; et sat-led efte
   advanceStagePlan(withDropped, { state: groups7855(false), segment: seg7855(0, 30), segmentIndex: 0, entrants: ENTRANTS });
   const events = advanceStagePlan(withDropped, { state: breakWithout7855(), segment: seg7855(30, 90), segmentIndex: 1, entrants: ENTRANTS });
   assert.deepEqual(events.map((e) => e.params), [{ rider_id: "h1", leg: 1, task: "ride_in", reason: "missed_break" }]);
-  // Hul 1 (ejer 17/11): kom han ikke med, er jagten slut; den foelger ikke med til et senere udbrud.
-  assert.equal(stagePlanHuntTasks7855(withDropped), undefined);
-  assert.equal(stagePlanHuntWindows7855(withDropped), undefined);
-  assert.deepEqual(advanceStagePlan(withDropped, { state: groups7855(true), segment: seg7855(90, 120), segmentIndex: 2, entrants: ENTRANTS }), [], "et senere udbrud aendrer intet");
-  assert.equal(stagePlanHuntTasks7855(withDropped), undefined, "heller ikke i et senere udbrud");
+  // Ejer 19/11: kom han ikke med, koerer han sat-leddet, men udbrudsleddets jagt gaelder stadig i et
+  // senere udbrud paa udbrudsleddets straekning (vinduet er kun-i-udbrud).
+  assert.deepEqual(stagePlanHuntTasks7855(withDropped), { h1: "hunt_kom" });
+  assert.deepEqual(stagePlanHuntWindows7855(withDropped), { h1: { fromKm: 0, toKm: Infinity, inBreakOnly: true } });
+  assert.equal(stagePlanCurrentTasks(withDropped)["h1"], "ride_in", "uden for et udbrud styrer sat-leddet");
+  assert.deepEqual(advanceStagePlan(withDropped, { state: groups7855(true), segment: seg7855(90, 120), segmentIndex: 2, entrants: ENTRANTS }), [], "et senere udbrud skifter ikke led");
+  assert.deepEqual(stagePlanHuntTasks7855(withDropped), { h1: "hunt_kom" }, "jagten staar i et senere udbrud");
   // Med i udbruddet bliver han paa udbrudsleddet og jager videre.
   const inBreak = createStagePlanRuntime(huntOrder7855([{ task: "breakaway", hunt: "hunt_kom" }, { task: "ride_in", from: { at: "dropped" } }]), HUNT_ROUTE_7855, ENTRANTS, { jerseyHunt7855: true })!;
   advanceStagePlan(inBreak, { state: groups7855(true), segment: seg7855(0, 30), segmentIndex: 0, entrants: ENTRANTS });
   assert.deepEqual(advanceStagePlan(inBreak, { state: groups7855(true), segment: seg7855(30, 90), segmentIndex: 1, entrants: ENTRANTS }), []);
   assert.deepEqual(stagePlanHuntTasks7855(inBreak), { h1: "hunt_kom" });
-  // Hentet: planen gaar videre, og jagten er slut.
+  // Hentet: planen gaar videre til sat-leddet; jagten gaelder kun, hvis han kommer med i et nyt udbrud.
   const caught = advanceStagePlan(inBreak, { state: groups7855(false), segment: seg7855(90, 120), segmentIndex: 2, entrants: ENTRANTS });
   assert.deepEqual(caught.map((e) => e.params), [{ rider_id: "h1", leg: 1, task: "ride_in", reason: "caught" }]);
-  assert.equal(stagePlanHuntTasks7855(inBreak), undefined);
+  assert.deepEqual(stagePlanHuntWindows7855(inBreak), { h1: { fromKm: 0, toKm: Infinity, inBreakOnly: true } });
+});
+
+test("#7855 ejer 19/11: efter skiftet beholder udbrudsjagten udbrudsleddets straekning, og kun udbrudsleddet baerer den", () => {
+  // Et rutepunkt efter udbrudsleddet afgraenser straekningen ogsaa efter skiftet.
+  const plan = [{ task: "breakaway", hunt: "hunt_kom" }, { task: "tempo", from: { at: "kom", kom_index: 1 } }, { task: "ride_in", from: { at: "dropped" } }];
+  const rt = createStagePlanRuntime(huntOrder7855(plan), HUNT_ROUTE_7855, ENTRANTS, { jerseyHunt7855: true })!;
+  advanceStagePlan(rt, { state: groups7855(false), segment: seg7855(0, 30), segmentIndex: 0, entrants: ENTRANTS });
+  const ev = advanceStagePlan(rt, { state: breakWithout7855(), segment: seg7855(30, 90), segmentIndex: 1, entrants: ENTRANTS });
+  assert.deepEqual(ev.map((e) => e.params.reason), ["missed_break"]);
+  assert.deepEqual(stagePlanHuntWindows7855(rt), { h1: { fromKm: 0, toKm: 90, inBreakOnly: true } });
+  // Et rent udbrud uden jagt faar intet.
+  const plain = createStagePlanRuntime(huntOrder7855([{ task: "breakaway" }, plan[2]]), HUNT_ROUTE_7855, ENTRANTS, { jerseyHunt7855: true })!;
+  advanceStagePlan(plain, { state: groups7855(false), segment: seg7855(0, 30), segmentIndex: 0, entrants: ENTRANTS });
+  advanceStagePlan(plain, { state: breakWithout7855(), segment: seg7855(30, 90), segmentIndex: 1, entrants: ENTRANTS });
+  assert.equal(stagePlanHuntTasks7855(plain), undefined);
+  assert.equal(stagePlanHuntWindows7855(plain), undefined);
+  // Slukket findes jagten ikke (planen er ugyldig uden kontakten og ignoreres).
+  assert.equal(createStagePlanRuntime(huntOrder7855(plan), HUNT_ROUTE_7855, ENTRANTS), null);
 });
 
 test("#7855 hul 1 (ejer 16/11 + 17/11): udbrudsleddet med jagt venter, til udbruddet er dannet", () => {
