@@ -1731,6 +1731,11 @@
       "issue": 8448,
       "reason": "Ejer-go 19/11 (PC1, dashboard-gennemgang): \"Ja, først i Codex dashboardspor\".",
       "since": "2026-11-19"
+    },
+    {
+      "issue": 8476,
+      "reason": "Ejer-go 19/11 (PC1, AskUserQuestion): \"Rettelser af forkert info\" + \"Træn nu-animationen (A)\" + \"Ny træningsside: Udvikling\" + \"Program med programmer\" (skitse). Gennemgang af alle trænings- og udviklingsvisninger før XP-tænding; forkert info rettes straks.",
+      "since": "2026-11-19"
     }
   ]
 }
