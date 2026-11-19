@@ -40,7 +40,46 @@ export function momentMode({ preview, flagOn, runs, date }: {
 
 export type MomentTier = "low" | "mid" | "best";
 
-export interface MomentGain { key: string; from: number | null; to: number | null; points: number }
+/**
+ * One ability's new points, split by kind (TRAINING_RULES, Fable verdict on #8210):
+ * "earned" was bought by today's XP (green), "paid" was paid out from XP saved on the
+ * bar before today (outlined, named in words). Never shown as one.
+ */
+export interface MomentGain { key: string; kind: "earned" | "paid"; from: number | null; to: number | null; points: number }
+
+/**
+ * Splits one ability's jump into its paid part and its earned part. Paid points land
+ * at the date's start, before today's XP (lib/trainingReportXp DATA CONTRACT, 3),
+ * so the paid jump comes first and the earned jump continues from there.
+ */
+export function splitGains(a: { key: string; from: number | null; to: number | null; earned: number; paid: number }): MomentGain[] {
+  const out: MomentGain[] = [];
+  const mid = a.from != null && a.to != null && a.paid > 0 ? a.from + a.paid : null;
+  if (a.paid > 0) out.push({ key: a.key, kind: "paid", from: a.from, to: mid ?? null, points: a.paid });
+  const earnedFrom = a.paid > 0 ? mid : a.from;
+  if (a.earned > 0) out.push({ key: a.key, kind: "earned", from: earnedFrom, to: earnedFrom != null ? a.to : null, points: a.earned });
+  return out;
+}
+
+/**
+ * #6027: a Train now date is often still pending (the evening settlement or a race
+ * day is to come). The receipt then keeps what the press already trained apart in
+ * `trained_now` and clears `gains`, so season totals keep treating the date as open.
+ * The moment shows that trained part, for the press's own date only, on a copy.
+ */
+export function withTrainedNow(runs: ReadonlyArray<XpReceipt>, date: string): XpReceipt[] {
+  return runs.map(run => run.tick_date !== date ? run : {
+    ...run,
+    report: {
+      ...run.report,
+      riders: run.report.riders.map(row => {
+        const now = row.trained_now;
+        if (row.receipt_status !== "pending" || !now || Object.keys(row.gains ?? {}).length > 0) return row;
+        return { ...row, gains: { ...(now.gains ?? {}) }, gains_detail: { ...(now.gains_detail ?? {}) } };
+      }),
+    },
+  });
+}
 
 export interface MomentRow {
   id: string;
@@ -53,7 +92,10 @@ export interface MomentRow {
   /** Racing today and not trained yet: "settles after the stage", never "+0". */
   waiting: boolean;
   xp: number;
+  /** Points earned by today's XP. */
   points: number;
+  /** Points paid out from the bar. */
+  paid: number;
   gains: MomentGain[];
   tier: MomentTier;
   /** 0..1 of the day's best, the bar's full length. */
@@ -66,7 +108,10 @@ export interface MomentView {
   /** Riders who trained (waiting riders not counted). */
   riders: number;
   xp: number;
+  /** Points earned by today's XP. */
   points: number;
+  /** Points paid out from XP saved before today: always its own figure. */
+  paid: number;
   bestId: string | null;
 }
 
@@ -116,7 +161,7 @@ export function buildMomentView(runs: ReadonlyArray<XpReceipt>, date: string, {
   waitingIds?: ReadonlyArray<string>;
   options?: XpViewOptions;
 } = {}): MomentView | null {
-  const view = buildTodayView(runs, date, options);
+  const view = buildTodayView(withTrainedNow(runs, date), date, options);
   // buildTodayView falls back to the latest date; the moment only ever shows the press's own date.
   if (!view || view.date !== date) return null;
   const byId = new Map(roster.map(r => [r.id, r]));
@@ -132,8 +177,8 @@ export function buildMomentView(runs: ReadonlyArray<XpReceipt>, date: string, {
     return {
       id: rider.id, name: rider.name, type: rider.type ?? known?.type ?? null, age: known?.age ?? null,
       focus: focusOf(rider), raced: rider.raced, waiting: isWaiting,
-      xp: isWaiting ? 0 : rider.xp, points: isWaiting ? 0 : rider.points,
-      gains: isWaiting ? [] : rider.abilities.filter(a => a.points > 0).map(a => ({ key: a.key, from: a.from, to: a.to, points: a.points })),
+      xp: isWaiting ? 0 : rider.xp, points: isWaiting ? 0 : rider.earned, paid: isWaiting ? 0 : rider.paid,
+      gains: isWaiting ? [] : rider.abilities.filter(a => a.points > 0).flatMap(splitGains),
       tier,
       share: !isWaiting && best > 0 ? Math.min(1, rider.xp / best) : 0,
     };
@@ -144,7 +189,7 @@ export function buildMomentView(runs: ReadonlyArray<XpReceipt>, date: string, {
     const known = byId.get(id);
     if (inReceipt.has(id) || !known) continue;
     rows.push({ id, name: known.name, type: known.type ?? null, age: known.age, focus: null, raced: true, waiting: true,
-      xp: 0, points: 0, gains: [], tier: "low", share: 0 });
+      xp: 0, points: 0, paid: 0, gains: [], tier: "low", share: 0 });
   }
   const ordered = orderRiders(rows, roster.map(r => r.id));
   const trained = ordered.filter(r => !r.waiting);
@@ -154,6 +199,7 @@ export function buildMomentView(runs: ReadonlyArray<XpReceipt>, date: string, {
     riders: trained.length,
     xp: trained.reduce((sum, r) => sum + r.xp, 0),
     points: trained.reduce((sum, r) => sum + r.points, 0),
+    paid: trained.reduce((sum, r) => sum + r.paid, 0),
     bestId,
   };
 }

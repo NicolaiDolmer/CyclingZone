@@ -22,7 +22,9 @@
     "points": "{count, plural, one {+# punt} other {+# punten}}",
     "summaryRiders": "{count, plural, one {# renner} other {# renners}}",
     "summaryXp": "{xp} XP in totaal",
-    "summaryPoints": "{count, plural, one {# punt} other {# punten}}"
+    "summaryPoints": "{count, plural, one {# punt verdiend} other {# punten verdiend}}",
+    "summaryPaid": "{count, plural, one {# punt} other {# punten}} uitbetaald uit de balk",
+    "fromBar": "uit de balk"
   },
   "trainNow": {
     "button": "Nu trainen",

@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  MOMENT_TOTAL_MS, buildMomentView, momentMode, momentWaitingIds, orderRiders, previewMoment, rowProgress, xpAt, xpTier,
+  MOMENT_TOTAL_MS, buildMomentView, momentMode, momentWaitingIds, orderRiders, previewMoment, rowProgress, splitGains,
+  withTrainedNow, xpAt, xpTier,
 } from "./TrainNowMomentModel.ts";
 import { buildXpReportFixture, XP_FIXTURE_LAST_DATE } from "./reportXp/xpReportFixture.ts";
 import type { XpReceipt, XpRiderReceipt } from "../../lib/trainingReportXp.ts";
@@ -66,7 +67,7 @@ test("the summary is the receipt's own numbers, and one gold row for the day's b
   assert.equal(byId.c.tier, "mid");
   assert.equal(byId.b.tier, "low");
   assert.equal(byId.d.xp, 0);
-  assert.deepEqual(byId.a.gains, [{ key: "climbing", from: 70, to: 71, points: 1 }]);
+  assert.deepEqual(byId.a.gains, [{ key: "climbing", kind: "earned", from: 70, to: 71, points: 1 }]);
   assert.equal(byId.a.share, 1);
 });
 
@@ -93,6 +94,41 @@ test("waiting = racing riders the press did not train now", () => {
   assert.deepEqual(momentWaitingIds(null), []);
   assert.deepEqual(momentWaitingIds({ afterRaceRiderIds: ["r1", "r2"] }), ["r1", "r2"]);
   assert.deepEqual(momentWaitingIds({ afterRaceRiderIds: ["r1", "r2"], instantRiderIds: ["r1"] }), ["r2"]);
+});
+
+test("a pending date shows what the press already trained (trained_now), on a copy", () => {
+  const pending = [receipt(DATE, [rider("p", "Per Holm", { tempo: 40 }, {
+    receipt_status: "pending", gains: {}, gains_detail: {},
+    trained_now: { gains: { tempo: 1 }, gains_detail: { tempo: { from: 54, to: 55 } }, gain_percent: {} },
+  } as Partial<XpRiderReceipt>)])];
+  const view = buildMomentView(pending, DATE)!;
+  assert.equal(view.points, 1);
+  assert.deepEqual(view.rows[0].gains, [{ key: "tempo", kind: "earned", from: 54, to: 55, points: 1 }]);
+  assert.deepEqual(pending[0].report.riders[0].gains, {}, "the stored receipt is not changed");
+  // A settled date keeps its own gains; trained_now is never read there.
+  const settled = withTrainedNow([receipt(DATE, [rider("q", "Q", { tempo: 5 }, { receipt_status: "complete", gains: {},
+    trained_now: { gains: { tempo: 1 }, gains_detail: {}, gain_percent: {} } } as Partial<XpRiderReceipt>)])], DATE);
+  assert.deepEqual(settled[0].report.riders[0].gains, {});
+});
+
+test("points paid out from the bar are never shown as today's training", () => {
+  const paidRuns = [receipt(DATE, [
+    // Rest day: no XP today, one climbing point paid out from saved XP.
+    rider("r", "Rest Rider", null, { gains: { climbing: 1 }, gains_detail: { climbing: { from: 75, to: 76 } }, bar_paid: { climbing: 1 } } as Partial<XpRiderReceipt>),
+    // Both kinds on one ability: one paid first, then one earned.
+    rider("m", "Mixed Rider", { climbing: 50 }, { gains: { climbing: 2 }, gains_detail: { climbing: { from: 60, to: 62 } }, bar_paid: { climbing: 1 } } as Partial<XpRiderReceipt>),
+  ])];
+  const view = buildMomentView(paidRuns, DATE)!;
+  const byId = Object.fromEntries(view.rows.map(r => [r.id, r]));
+  assert.deepEqual(byId.r.gains, [{ key: "climbing", kind: "paid", from: 75, to: 76, points: 1 }]);
+  assert.equal(byId.r.points, 0);
+  assert.deepEqual(byId.m.gains, [
+    { key: "climbing", kind: "paid", from: 60, to: 61, points: 1 },
+    { key: "climbing", kind: "earned", from: 61, to: 62, points: 1 },
+  ]);
+  assert.equal(view.points, 1, "earned today");
+  assert.equal(view.paid, 2, "paid out from the bar, its own figure");
+  assert.deepEqual(splitGains({ key: "x", from: null, to: null, earned: 1, paid: 1 }).map(g => [g.kind, g.from, g.to]), [["paid", null, null], ["earned", null, null]]);
 });
 
 test("the moment never shows another date's receipt", () => {

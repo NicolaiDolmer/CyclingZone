@@ -102,11 +102,15 @@ function Row({ row, p }: { row: MomentRow; p: number }) {
             <span className="flex shrink-0 flex-wrap justify-end gap-1">
               {done && row.tier === "best" && <span className="text-2xs font-semibold text-cz-accent-t">{t("trainNowMoment.best")}</span>}
               {done && row.gains.map(g => (
-                <span key={g.key} className={`inline-flex items-center gap-0.5 rounded-cz bg-cz-success-bg px-1.5 py-px text-2xs font-semibold text-cz-success ${NUM}`} data-testid="train-now-moment-gain">
+                // Earned today: green. Paid out from the bar: outlined and named, never read as today's training.
+                <span key={`${g.key}-${g.kind}`} data-testid="train-now-moment-gain" data-kind={g.kind}
+                  className={`inline-flex items-center gap-0.5 rounded-cz px-1.5 py-px text-2xs font-semibold ${NUM} ${g.kind === "earned"
+                    ? "bg-cz-success-bg text-cz-success" : "border border-dashed border-cz-border-strong text-cz-2"}`}>
                   {tRider(`racePreview.derived.${g.key}`)}
                   {g.from != null && g.to != null
                     ? <>{" "}{formatNumber(g.from)}<ChevronRightIcon size={10} aria-hidden="true" />{formatNumber(g.to)}</>
                     : <>{" "}{t("trainNowMoment.points", { count: g.points })}</>}
+                  {g.kind === "paid" && <span className="ms-1 font-normal">{t("trainNowMoment.fromBar")}</span>}
                 </span>
               ))}
             </span>
@@ -207,6 +211,10 @@ export default function TrainNowMoment({ open, onClose, onOpenReport, runs, rost
               <span className={NUM}>{t("trainNowMoment.summaryXp", { xp: formatNumber(view.xp) })}</span>
               <span className="text-cz-3" aria-hidden="true">·</span>
               <span>{t("trainNowMoment.summaryPoints", { count: view.points })}</span>
+              {view.paid > 0 && <>
+                <span className="text-cz-3" aria-hidden="true">·</span>
+                <span className="text-cz-2" data-testid="train-now-moment-summary-paid">{t("trainNowMoment.summaryPaid", { count: view.paid })}</span>
+              </>}
             </p>
             <Button variant="primary" onClick={onOpenReport} className="shrink-0 max-sm:w-full" data-testid="train-now-moment-report">{t("trainNowMoment.openReport")}</Button>
           </>

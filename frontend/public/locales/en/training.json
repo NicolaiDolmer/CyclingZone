@@ -22,7 +22,9 @@
     "points": "{count, plural, one {+# point} other {+# points}}",
     "summaryRiders": "{count, plural, one {# rider} other {# riders}}",
     "summaryXp": "{xp} XP in total",
-    "summaryPoints": "{count, plural, one {# point} other {# points}}"
+    "summaryPoints": "{count, plural, one {# point earned} other {# points earned}}",
+    "summaryPaid": "{count, plural, one {# point} other {# points}} paid out from the bar",
+    "fromBar": "from the bar"
   },
   "trainNow": {
     "button": "Train now",
