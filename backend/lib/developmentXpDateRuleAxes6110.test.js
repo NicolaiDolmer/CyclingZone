@@ -14,7 +14,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { seedState, createFake, press, sweep, rider, DATE1, DAYS1 } from "./trainNowSameResult7982.harness.js";
+import { seedState, createFake, press, sweep, rider, DATE1, DAYS1, DATE2 } from "./trainNowSameResult7982.harness.js";
 import { XP_TEST_PARAMS } from "./__fixtures__/developmentXpOffScenarios.js";
 
 const RIDER = rider(0);
@@ -159,4 +159,31 @@ test("#6110 ejervalg B: slukket XP skriver intet xp_developed (dagens model uroe
   await sweep(state, createFake(state), { deadlineReached: true });
   assert.ok(receipts(state).length > 0);
   assert.ok(receipts(state).every((row) => !("xp_developed" in (row.report ?? {}))), "intet nyt felt uden XP");
+});
+
+// Fable-dom 19/11 på #8468, fund 1: kæden med motorens egen kvittering, og datoens senere løbsdage.
+test("#6110 ejervalg B: kæden over to datoer bruger motorens egen kvittering (ingen anden fuld udbetaling)", async () => {
+  const state = xpState(TOO_OLD, { developedBefore: false });
+  const fake = createFake(state);
+  const level0 = state.rider_derived_abilities[0][ABILITY];
+  await sweep(state, fake, { deadlineReached: true });
+  const level1 = state.rider_derived_abilities[0][ABILITY];
+  assert.ok(level1 - level0 > 1, "dato 1 er hans første XP-dato: udbetalingen kommer");
+  assert.ok(receipts(state).every((row) => row.report?.xp_developed === true), "motoren skrev xp_developed på dato 1");
+  // Bjælken fyldes igen (fx XP ud over datoreglen); dato 2 må ikke udbetale den helt igen.
+  state.rider_derived_abilities[0].ability_progress[ABILITY] = STORED;
+  await sweep(state, fake, { tickDate: DATE2, now: new Date("2026-11-10T19:30:00Z"), deadlineReached: true });
+  assert.ok(state.training_rider_ticks.some((row) => row.tick_date === DATE2), "dato 2 er afregnet");
+  assert.equal(state.rider_derived_abilities[0][ABILITY] - level1, 1, "dato 2: datoreglen, højst +1, resten venter");
+});
+
+test("#6110 ejervalg B: datoens senere løbsdage udbetaler intet igen efter udbetalingen", async () => {
+  const state = xpState(TOO_OLD, { developedBefore: false });
+  const level0 = state.rider_derived_abilities[0][ABILITY];
+  await sweep(state, createFake(state), { deadlineReached: true });
+  const rows = receipts(state);
+  assert.deepEqual(rows.map((row) => row.game_day), DAYS1, "alle fem løbsdage er afregnet");
+  assert.ok(rows[0].report.gains[ABILITY] > 1, "datoens første løbsdag tager udbetalingen");
+  for (const row of rows.slice(1)) assert.equal(row.report.gains?.[ABILITY], undefined, `løbsdag ${row.game_day} udbetaler intet igen`);
+  assert.equal(state.rider_derived_abilities[0][ABILITY] - level0, rows[0].report.gains[ABILITY], "gemt evne = første løbsdags udbetaling");
 });
