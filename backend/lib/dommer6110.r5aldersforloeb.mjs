@@ -86,8 +86,10 @@ export function aldringstrappeBrud(basisfald, dagens) {
  * R6: det lille, sene fald i teknik og mentale evner. `sentFald(alder)` er faldet pr. saeson
  * pr. evne foer bremsen, `basisfald(alder)` kroppens fald i en kerneevne. Tom liste = holder.
  */
-export function sentFaldBrud(sentFald, basisfald, sentFra = SENT_FRA) {
+// `praecis` (kun den private proeve): faldet SKAL begynde netop ved `sentFra`, ikke senere.
+export function sentFaldBrud(sentFald, basisfald, sentFra = SENT_FRA, praecis = false) {
   const fejl = [];
+  if (praecis && !(sentFald(sentFra) > 0)) fejl.push(`${sentFra} aar: ejerens sene fald skal begynde her`);
   let foerste = null;
   for (let alder = 16; alder <= 45; alder++) {
     const fald = sentFald(alder);

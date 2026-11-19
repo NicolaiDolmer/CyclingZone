@@ -100,6 +100,9 @@ test("R6-reglen sent fald: et lille fald sent holder; intet fald, et tidligt fal
   const krop = trappe(FOERSTE_FALD - 1, DAGENS_TRIN);
   const sent = (fra, stoerrelse) => (alder) => (alder >= fra ? stoerrelse : 0);
   assert.deepEqual(sentFaldBrud(sent(SENT_FRA + 1, 0.4), krop), []);
+  // Praecis start (syntetisk): et fald, der begynder senere end den angivne alder, er roedt.
+  assert.deepEqual(sentFaldBrud(sent(SENT_FRA + 1, 0.4), krop, SENT_FRA + 1, true), []);
+  assert.ok(sentFaldBrud(sent(SENT_FRA + 4, 0.4), krop, SENT_FRA + 1, true).some((f) => /skal begynde her/.test(f)));
   assert.ok(sentFaldBrud(() => 0, krop).some((f) => /en smule sent i karrieren/.test(f)), "intet sent fald er ejerens gamle loefte, ikke den nye regel");
   assert.ok(sentFaldBrud(sent(FOERSTE_FALD, 0.4), krop).some((f) => /er sent/.test(f)), "et fald fra kroppens foerste aar er ikke sent");
   assert.ok(sentFaldBrud(sent(SENT_FRA + 1, 1.8), krop).some((f) => /er lille/.test(f)), "samme fald som kroppen er ikke lille");

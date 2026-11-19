@@ -140,7 +140,7 @@ test("R6 private parametre gennem saesonskiftet: teknik og mentale evner falder 
     for (const r of ryttere) assert.ok(stoersteFald(r, efter, TEKNIK_MENTAL) <= 1, `${r.id}: hoejst ét point i en evne pr. saeson (en smule)`);
   }
   // Reglen staar i dommer6110.r5aldersforloeb.mjs: sent (tidligst efter kroppens foerste trin) og lille.
-  const fejl = sentFaldBrud((alder) => maalt.get(alder), (alder) => agingV2BaseDrop(alder, cfg), laest.alder?.sentFra);
+  const fejl = sentFaldBrud((alder) => maalt.get(alder), (alder) => agingV2BaseDrop(alder, cfg), laest.alder?.sentFra, Boolean(laest.alder));
   assert.deepEqual(fejl, [], fejl.join("; "));
   // Bremset af loeb som de fysiske: en fuld saeson stopper faldet, en halv tager en del af det.
   const sent = [...maalt.entries()].find(([, v]) => v > 0)[0];
