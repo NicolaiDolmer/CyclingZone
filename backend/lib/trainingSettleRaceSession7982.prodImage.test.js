@@ -200,3 +200,13 @@ test("Fable 19/11 A-B: score-sum, gains_detail og tolerancen kun paa evner med g
   assert.equal(m.progressWithinTolerance(row(0.5), row(0.5005), gained), true);
   assert.equal(m.progressWithinTolerance(row(0.5), row(0.5005), new Set()), false, "ingen gevinst: skal vaere ens");
 });
+
+test("Codex P2 #8491: en rytter uden loebssession med gevinst faar ikke den loese tolerance", async () => {
+  const m = await import("./trainingSettleRaceSession7982.prodImage.js");
+  const gained = new Set(["racer#sprint", "home#sprint"]);
+  const relaxed = m.relaxedKeys(gained, new Set(["racer"]));
+  assert.deepEqual([...relaxed], ["racer#sprint"]);
+  const rows = (racer, home) => [{ rider_id: "home", ability_progress: { sprint: home } }, { rider_id: "racer", ability_progress: { sprint: racer } }];
+  assert.equal(m.progressWithinTolerance(rows(0.5, 0.5), rows(0.5005, 0.5), relaxed), true, "rytter med loeb: inden for 1/1000");
+  assert.equal(m.progressWithinTolerance(rows(0.5, 0.5), rows(0.5, 0.5005), relaxed), false, "rytter uden loeb: skal vaere ens");
+});

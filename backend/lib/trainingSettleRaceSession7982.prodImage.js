@@ -251,6 +251,8 @@ export const progressWithinTolerance = (late, early, gainedKeys = null) => late.
     return Math.abs(Number(a[k] ?? 0) - Number(b[k] ?? 0)) <= tol;
   });
 });
+/** Codex P2 #8491: den loese tolerance kun for ryttere med en tidlig loebssession (alle andre helt ens). */
+export const relaxedKeys = (gainedKeys, raceRiders) => new Set([...gainedKeys].filter((key) => raceRiders.has(key.split("#")[0])));
 /** Rytter og evne med gevinst paa datoen i mindst én af vejene. */
 export const gainedRiderAbilities = (...receiptLists) => new Set(receiptLists.flat()
   .flatMap((r) => Object.entries(r.report?.gains ?? {}).filter(([, g]) => Number(g) > 0).map(([ability]) => `${r.rider_id}#${ability}`)));
@@ -309,7 +311,7 @@ export async function runProdImage(image, { flags = IGNITION_FLAGS, ...times } =
   const gainTotalsEqual = digest(gainTotals(lateReceipts)) === digest(gainTotals(earlyReceipts));
   const scoresOk = scoreTotalsEqual(lateReceipts, earlyReceipts);
   const detailOk = detailMatchesGains(lateReceipts) && detailMatchesGains(earlyReceipts);
-  const progressOk = progressWithinTolerance(lateNumbers.abilities, earlyNumbers.abilities, gainedRiderAbilities(lateReceipts, earlyReceipts));
+  const progressOk = progressWithinTolerance(lateNumbers.abilities, earlyNumbers.abilities, relaxedKeys(gainedRiderAbilities(lateReceipts, earlyReceipts), raceRiders));
   const orderOk = gainTotalsEqual && scoresOk && detailOk;
   const orderFollowing = orderOk ? ORDER_FOLLOWING_RECEIPT_FIELDS : [];
   const plain = (list) => list.map((r) => ({ id: `${r.rider_id}#${r.game_day}`, intensity: r.report.intensity, status: r.report.status, injured: r.report.injured,
