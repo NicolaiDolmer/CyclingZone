@@ -54,14 +54,13 @@ test("#3510 fejlet load renderer den kanoniske ErrorState med retry, ikke et tom
 
 test("#5322 et 'naaede aldrig serveren'-resultat loeftes til sidens fejlflade, ikke stille til null", () => {
   // apiFetch kaster ikke laengere ved en transportfejl (#5322). Uden dette
-  // loeft ville de to BLOKERENDE kald falde ned i deres `res.ok`-gren, og
+  // loeft ville bestyrelseskaldet falde ned i sin `res.ok`-gren, og
   // spilleren ville se et halvtomt dashboard i stedet for "kan ikke naa
   // serveren" — praecis den tilstand #5312 handlede om.
-  // #6494: the blocking core read is in the data layer.
   assert.match(
     dataSource,
     /apiFetch\("\/api\/board\/status"[\s\S]{0,120}?if \(res\.networkError\) throw res;/,
-    "board/status (blokerende) skal loefte et netvaerks-resultat til fejlfladen",
+    "board/status skal loefte et netvaerks-resultat til fejlfladen",
   );
   // #2230: my-offers is independent; failure must not replace the whole page.
 

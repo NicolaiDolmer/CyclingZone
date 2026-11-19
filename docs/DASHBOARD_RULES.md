@@ -47,7 +47,7 @@
 - **Maks én nudge-banner ad gangen.** Discord-nudgen er den ene i dag. Nye moduler bygges som `Card`, ikke som banner, så de ikke tælles med i den regel.
 - **Betingede moduler må ikke efterlade tomme grid-celler.** Er et par sat op, og det ene modul er skjult, skal cellen kollapse.
 - **Alt kan slås fra.** Nye moduler registreres i `DashboardCustomizeMenu` ([#1005](https://github.com/NicolaiDolmer/CyclingZone/issues/1005)) efter det eksisterende mønster.
-- **Et modul må aldrig kunne vælte dashboardet.** Fejler dets datakald, forsvinder modulet stille — dashboardet viser ikke en fejltilstand på grund af et sekundært kort.
+- **Sekundære kort håndterer egne fejl.** Bestyrelsesstatus indlæses separat. Et HTTP-fejlsvar skjuler bestyrelsens data. Ved netværksfejl viser dashboardet sin offline-tilstand, og Prøv igen henter bestyrelsesstatus igen (#5322).
 - Design i øvrigt: `docs/design/PAGE_TEMPLATES.md`. Hairline-borders, 5px radius, tabular figures, stroke-ikoner, ingen emoji, farver kun via cz-tokens.
 - **Indlæsning (ejer 11/11, #2230, valg A):** hvert fast kort viser indhold, når det er klart; resten beholder stille grå pladsholdere. Den fælles `ReservedBody` reserverer kortets listekapacitet gennem loading/content/empty. Ramme og overskrift bliver stående. Refresh beholder de kendte data. Betingede kort skal stadig følge synlighedsreglerne ovenfor; en midlertidig stribe må ikke skubbe resten af siden, når den viser sig at være tom.
 

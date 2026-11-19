@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase.ts";
 import { apiFetch } from "../lib/apiFetch.ts";
+import { isNetworkError } from "../lib/networkErrorGuards.ts";
 import { timeoutSignal } from "../lib/timeoutSignal.ts";
 import { fetchSquadCountInputs } from "../lib/dashboardSquadStats.js";
 import { mergeStandings } from "../lib/standingsMerge.js";
@@ -23,9 +24,8 @@ import { LIVE_RESOURCES, isScopeResource, cancelledWithoutData, settledList, sam
 
 // #6494: the Dashboard's page-owned server data. Every resource is one Query key under the
 // viewer/team scope; the page keeps only UI state (dismissals, menus, pending submits).
-// Module semantics are unchanged from the legacy loadAll (DASHBOARD_RULES.md §3: a module
-// never takes the dashboard down): only the core block and the team bootstrap can raise the
-// page error, every other module settles to its own empty/absent state.
+// Core and team bootstrap can raise the page error. The independent board status
+// read can also show the offline state on transport failure (#5322, DASHBOARD_RULES.md §3).
 
 type Row = Record<string, any>;
 type SupabaseResult = { data: any; error?: unknown; count?: number | null };
@@ -408,7 +408,8 @@ export function useDashboardData(options: DashboardOptions) {
 
   const coreError = core === undefined ? coreQuery.error : null;
   const bootstrapError = team ? null : context.error;
-  const error = bootstrapError ?? coreError ?? null;
+  const boardError = isNetworkError(boardQuery.error) ? boardQuery.error : null;
+  const error = bootstrapError ?? coreError ?? boardError;
   const loading = !signedOut && (!ready || context.bootstrapLoading || (hasTeam && (!seasonSettled || core === undefined) && !coreError));
 
   const refreshLive = useCallback(() => client.invalidateQueries(

@@ -78,3 +78,19 @@ test("naar serveren svarer, faar spilleren ikke besked om sit eget netvaerk", as
   await expect(page.getByText(OFFLINE_COPY)).toHaveCount(0);
   await expect(page.getByText(GENERIC_COPY)).toHaveCount(0);
 });
+
+test("dashboardet viser offline naar kun bestyrelseskaldet fejler og gendannes ved genforsoeg", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  await page.route("**/api/board/status", (route) => route.abort("failed"));
+
+  await login(page);
+  await page.goto("/dashboard");
+
+  const alert = page.getByRole("alert").filter({ hasText: OFFLINE_COPY });
+  await expect(alert).toBeVisible();
+  await page.unroute("**/api/board/status");
+  await page.getByRole("button", { name: "Prøv igen" }).click();
+  await expect(alert).toHaveCount(0);
+  await expect(page.getByText("Division 2 · 1 rytter")).toBeVisible();
+});
