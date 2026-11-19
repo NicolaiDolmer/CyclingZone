@@ -8,13 +8,21 @@ import { createContext, useContext } from "react";
 export interface SpoilerStory {
   /** Etapens resultat er skjult: filmen starter ved start, referatet stopper ved filmen. */
   active: boolean;
+  /** Samme regel for andre kørte etaper som for Story og Resultater. */
+  isStageHidden: (stage: number) => boolean;
+  /** Synlighed fra løbssidens egen etapetæller, uafhængig af holdets roster-svar. */
+  latestResultsHidden: boolean;
+  anyResultsHidden: boolean;
   /** Filmen er i mål: etapen åbnes (overalt og på alle enheder). */
   open: () => void;
   /** "Show results": etapen åbnes, og Resultater vises. */
   showResults: () => void;
 }
 
-export const INACTIVE_SPOILER_STORY: SpoilerStory = Object.freeze({ active: false, open: () => {}, showResults: () => {} });
+export const INACTIVE_SPOILER_STORY: SpoilerStory = Object.freeze({
+  active: false, isStageHidden: () => false, latestResultsHidden: false, anyResultsHidden: false,
+  open: () => {}, showResults: () => {},
+});
 
 export const SpoilerStoryContext = createContext<SpoilerStory>(INACTIVE_SPOILER_STORY);
 

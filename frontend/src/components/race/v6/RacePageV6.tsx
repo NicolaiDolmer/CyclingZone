@@ -248,7 +248,7 @@ export default function RacePageV6(props: RacePageV6Props) {
     );
   } else if (activeTab === "start") {
     // #7862 (valg 9/10): løbets felt med rygnumre og favoritter.
-    body = <V6StartList raceId={raceId} isStageRace={isStageRace} stagesCompleted={stagesCompleted} results={results} myTeamId={myTeamId} firstStartMs={scheduleFor(schedule, 1)?.getTime() ?? null} nowMs={nowMs} />;
+    body = <V6StartList raceId={raceId} isStageRace={isStageRace} stagesCompleted={stagesCompleted} results={results} myTeamId={myTeamId} firstStartMs={scheduleFor(schedule, 1)?.getTime() ?? null} nowMs={nowMs} hiddenResultsSlot={spoiler.hiddenSlotFor(stagesCompleted)} />;
   } else if (activeTab !== "results") {
     body = (
       <StagePageV2

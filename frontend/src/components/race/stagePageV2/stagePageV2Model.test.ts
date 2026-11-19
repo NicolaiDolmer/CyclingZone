@@ -393,3 +393,15 @@ test("#7289: alle tegne-flader hentes fra buildProfileSeries, ingen egen hoejdes
   assert.doesNotMatch(src("stagePageV2/stagePageV2Model.ts"), /ep\.h\.map/);
   for (const f of ["RaceStageProfileRow.jsx", "StageStripe.jsx"]) assert.match(src(f), /StageProfileGraph/);
 });
+
+test("#8409: a hidden previous classification supplies no Stage favourites", () => {
+  assert.deepEqual(favouritesFor(GC_AFTER_4, STAGES, 5, MINE, 4, PROFILES, undefined, (n) => n === 4), []);
+});
+
+test("#8409: hidden earlier wins do not contribute after the latest stage is opened", () => {
+  const favourites = favouritesFor(GC_AFTER_4, STAGES, 5, MINE, 4, PROFILES, undefined, (n) => n === 1);
+  assert.ok(favourites.length > 0);
+  const reasons = favourites.flatMap((f) => f.reasons);
+  assert.ok(reasons.some((reason) => reason.key === "wonStage" && reason.params.number === 3));
+  assert.ok(!reasons.some((reason) => reason.key === "wonStage" && reason.params.number === 1));
+});

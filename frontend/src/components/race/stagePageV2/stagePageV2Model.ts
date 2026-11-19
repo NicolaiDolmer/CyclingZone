@@ -544,12 +544,13 @@ const FAVOURITE_OVERALL_SLOTS: Record<FavouriteTerrain, number> = { flat: 0, hil
 export function favouritesFor(
   results: ResultRow[], stagePointRows: ResultRow[], stageNumber: number, myTeamId: string | null, stagesCompleted: number,
   profileByStage: Record<number, { profile_type?: string | null } | null | undefined> = {}, limit = 5,
+  isStageHidden?: (stage: number) => boolean,
 ): Favourite[] {
   const terrain = favouriteTerrain(profileByStage[stageNumber]?.profile_type);
   if (!terrain) return [];
   // Det seneste samlede FOER etape N som findes: etape N-1, eller den senest koerte.
   const prev = Math.min(stageNumber - 1, stagesCompleted);
-  if (prev < 1) return [];
+  if (prev < 1 || isStageHidden?.(prev)) return [];
   const gc = (classificationRowsForStage(results, prev, "gc") as ResultRow[]).filter((r) => r.rider_id && rowName(r));
   if (!gc.length) return [];
 
@@ -558,7 +559,7 @@ export function favouritesFor(
   for (const r of stagePointRows || []) {
     const n = r.stage_number ?? 1;
     const rank = Number(r.rank);
-    if (r.result_type !== "stage" || !r.rider_id || n > prev || !(rank >= 1 && rank <= 10)) continue;
+    if (r.result_type !== "stage" || !r.rider_id || n > prev || isStageHidden?.(n) || !(rank >= 1 && rank <= 10)) continue;
     if (favouriteTerrain(profileByStage[n]?.profile_type) !== terrain) continue;
     const f = form.get(r.rider_id) ?? { score: 0, placed: 0, lastWin: null };
     f.score += 11 - rank;
