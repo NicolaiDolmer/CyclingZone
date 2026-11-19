@@ -64,6 +64,8 @@ async function laesParametre() {
   return {
     raa, params: validateDevelopmentXpParams(raa), rolleTillaeg: hele?.sim?.raceRoleYield ?? null, roller: hele?.sim?.raceRoles ?? null,
     plus2: hele?.dommer?.plus2 ?? null,
+    // Ejerens praecise aldersgraenser (18-19/11) staar kun i talfilen (hard rule 17).
+    alder: hele?.dommer?.alder ?? null,
   };
 }
 
@@ -77,9 +79,11 @@ test("private parametre: filen er gyldig for motoren", { skip: spring }, () => {
 test("R5 og R6 private parametre: XP er ens hele livet, og ens for fysiske og mentale evner (ejervalg 19/11)", { skip: spring }, async () => {
   const { xpAgeShare } = await kraev("./developmentXp.ts", "xpAgeShare");
   // Reglen staar i dommer6110.r5aldersforloeb.mjs: samme XP til langt hen i karrieren, aldrig en turbo.
+  assert.ok(laest.alder, "talfilen mangler dommer.alder (ejerens praecise aldersgraenser)");
   const fejl = xpAlderBrud(
     (alder) => xpAgeShare(alder, laest.params),
     (alder) => xpAgeShare(alder, laest.params, { mental: true }),
+    laest.alder,
   );
   assert.deepEqual(fejl, [], fejl.join("; "));
 });
@@ -136,7 +140,7 @@ test("R6 private parametre gennem saesonskiftet: teknik og mentale evner falder 
     for (const r of ryttere) assert.ok(stoersteFald(r, efter, TEKNIK_MENTAL) <= 1, `${r.id}: hoejst ét point i en evne pr. saeson (en smule)`);
   }
   // Reglen staar i dommer6110.r5aldersforloeb.mjs: sent (tidligst efter kroppens foerste trin) og lille.
-  const fejl = sentFaldBrud((alder) => maalt.get(alder), (alder) => agingV2BaseDrop(alder, cfg));
+  const fejl = sentFaldBrud((alder) => maalt.get(alder), (alder) => agingV2BaseDrop(alder, cfg), laest.alder?.sentFra);
   assert.deepEqual(fejl, [], fejl.join("; "));
   // Bremset af loeb som de fysiske: en fuld saeson stopper faldet, en halv tager en del af det.
   const sent = [...maalt.entries()].find(([, v]) => v > 0)[0];

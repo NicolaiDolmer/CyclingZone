@@ -24,7 +24,7 @@ import assert from "node:assert/strict";
 import { kraev, DOMMER_B_RAA, DOMMER_ALDRING_RAA } from "./dommer6110.fixtures.mjs";
 import {
   xpAlderBrud, aldringstrappeBrud, sentFaldBrud, koerSkifte, kohorte, fasteSkifteRyttere, fald, stoersteFald,
-  skifteFingeraftryk, KROP, TEKNIK_MENTAL, FOERSTE_FALD, FLYTTET_AAR, LANGT_HEN, NET_FRA, NET_ANDEL, SENT_FRA, START_S6_DANSK_DATO, SKIFTE_UR,
+  skifteFingeraftryk, KROP, TEKNIK_MENTAL, FOERSTE_FALD, FLYTTET_AAR, LANGT_HEN, SENT_FRA, START_S6_DANSK_DATO, SKIFTE_UR,
 } from "./dommer6110.r5aldersforloeb.mjs";
 
 const DAGENS_REGEL = "42b31826bf4692bc59d2260dee1c6ddb99c76bc39e30495f14426c667b9b7910";
@@ -58,13 +58,14 @@ const dagensTrappe = trappe(FOERSTE_FALD + FLYTTET_AAR - 1, DAGENS_TRIN);
 // ═══ REGLERNE SELV (proeven af proeven) ══════════════════════════════════════════
 
 test("R5-reglen XP: ens hele livet holder; ejerens gamle fald fra 27 og en turbo er roede", () => {
-  // Ejerens regel 18/11: fuld XP til og med 33, praecis 80 % fra 34.
-  const ejerens = kurve([[LANGT_HEN, 1], [NET_FRA, NET_ANDEL]]);
-  assert.deepEqual(xpAlderBrud(ejerens), []);
-  // Helt flad (intet net) og et net, der starter for tidligt eller er et andet tal, er roede.
-  assert.ok(xpAlderBrud(() => 1).some((f) => /sikkerhedsnet er praecis/.test(f)));
-  assert.ok(xpAlderBrud(kurve([[32, 1], [33, 0.8]])).some((f) => /^33 aar: XP skal vaere den samme/.test(f)));
-  assert.ok(xpAlderBrud(kurve([[LANGT_HEN, 1], [NET_FRA, 0.7]])).some((f) => /sikkerhedsnet er praecis/.test(f)));
+  assert.deepEqual(xpAlderBrud(() => 1), []);
+  // Et lille sikkerhedsnet langt hen i karrieren er stadig "samme XP til langt hen i karrieren" (syntetisk eksempel).
+  assert.deepEqual(xpAlderBrud(kurve([[LANGT_HEN, 1], [LANGT_HEN + 2, 0.7]])), []);
+  // Med en (syntetisk) praecis graense er et net, der starter for tidligt, roedt.
+  const net = { fuldTil: LANGT_HEN + 1, netFra: LANGT_HEN + 2, netAndel: 0.7 };
+  assert.deepEqual(xpAlderBrud(kurve([[LANGT_HEN + 1, 1], [LANGT_HEN + 2, 0.7]]), undefined, net), []);
+  assert.ok(xpAlderBrud(kurve([[LANGT_HEN, 1], [LANGT_HEN + 1, 0.7]]), undefined, net).some((f) => /fuld XP/.test(f)));
+  assert.ok(xpAlderBrud(() => 1, undefined, net).some((f) => /sikkerhedsnet/.test(f)));
   // Ejerens regel fra 12/11 (fuld til 26, et fald hvert aar fra 27) er afloest og skal vaere roed.
   const gammel = xpAlderBrud(kurve([[26, 1], [27, 0.85], [28, 0.7], [29, 0.55], [30, 0.4], [31, 0.25]]));
   assert.ok(gammel.some((f) => /^27 aar: XP skal vaere den samme/.test(f)), gammel.join("; "));
@@ -77,9 +78,8 @@ test("R5-reglen XP: ens hele livet holder; ejerens gamle fald fra 27 og en turbo
 
 test("R6-reglen XP: mentale evner har samme XP som fysiske; 'vokser laengere' (ejer 6/11) er afloest og roed", () => {
   const flad = () => 1;
-  const ejerens = kurve([[LANGT_HEN, 1], [NET_FRA, NET_ANDEL]]);
-  assert.deepEqual(xpAlderBrud(ejerens, ejerens), []);
-  const laengere = xpAlderBrud(ejerens, flad);
+  assert.deepEqual(xpAlderBrud(flad, flad), []);
+  const laengere = xpAlderBrud(kurve([[LANGT_HEN, 1], [LANGT_HEN + 2, 0.7]]), flad);
   assert.ok(laengere.some((f) => /mentale evner skal have samme XP/.test(f)), laengere.join("; "));
 });
 

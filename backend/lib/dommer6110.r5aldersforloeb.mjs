@@ -23,11 +23,9 @@ export const FOERSTE_FALD = 29; // ejer 19/11: "kroppens aldring fra 29" (aldere
 export const FLYTTET_AAR = 2; // dagens foerste fald er som 31-aarig; "hele trappen flyttes frem"
 
 // ── Dommerens laesning (meldt til ejeren som spoergsmaal) ────────────────────────
-export const LANGT_HEN = 33; // ejer 18/11 kl. 18.14 "A: 80 % fra 34": fuld XP til og med 33 aar
-export const NET_FRA = 34; // ejer 18/11: sikkerhedsnettet begynder ved 34 (ens for fysiske og mentale, kl. 19.01)
-export const NET_ANDEL = 0.8; // ejer 18/11: "80 % fra 34"
+export const LANGT_HEN = 32; // "samme XP til langt hen i karrieren": mindst til og med 32 aar (offentlig nedre graense)
 export const DET_MESTE = 0.5; // "XP er ens hele livet": et sent sikkerhedsnet tager aldrig det meste
-export const SENT_FRA = 34; // ejer 18/11 kl. 18.37 "lillefald fra 34" + 19/11 EJER-GO "brug det maalte forslag (batch C)"
+export const SENT_FRA = FOERSTE_FALD + 3; // "sent": tidligst efter kroppens foerste trin (offentlig nedre graense)
 export const LILLE = 0.5; // "lille": hoejst halvdelen af kroppens fald i en kerneevne ved samme alder
 
 // Ejerens ord: de fysiske evner + brosten aeldes med kroppen; teknik, taktik og de andre
@@ -44,7 +42,9 @@ const ens = (a, b) => Math.abs(a - b) <= 1e-12;
  * R5/R6: XP efter alder. `fysisk(alder)` og `mental(alder)` er andelen af fuld XP.
  * Tom liste = holder. Ejer 19/11: ens hele livet, og ens for fysiske og mentale evner.
  */
-export function xpAlderBrud(fysisk, mental = fysisk) {
+// `net` (valgfri, kun fra den private talfil, hard rule 17): ejerens praecise graenser
+// { fuldTil, netFra, netAndel }. Uden `net` proeves kun de offentlige nedre graenser.
+export function xpAlderBrud(fysisk, mental = fysisk, net = null) {
   const fejl = [];
   const fuld = fysisk(20);
   if (!(fuld > 0)) return ["en 20-aarig skal have XP"];
@@ -55,7 +55,8 @@ export function xpAlderBrud(fysisk, mental = fysisk) {
     if (!(fysisk(alder) <= fuld + 1e-12)) fejl.push(`${alder} aar: alder er aldrig en turbo`);
     if (!(fysisk(alder) <= fysisk(alder - 1) + 1e-12)) fejl.push(`${alder} aar: XP stiger aldrig igen med alderen`);
     if (!(fysisk(alder) >= DET_MESTE * fuld)) fejl.push(`${alder} aar: XP er ens hele livet; et sent sikkerhedsnet maa ikke tage det meste`);
-    if (alder >= NET_FRA && !ens(fysisk(alder), NET_ANDEL * fuld)) fejl.push(`${alder} aar: ejerens sikkerhedsnet er praecis ${NET_ANDEL * 100} % fra ${NET_FRA}`);
+    if (net && alder <= net.fuldTil && !ens(fysisk(alder), fuld)) fejl.push(`${alder} aar: ejerens graense for fuld XP er ikke overholdt`);
+    if (net && alder >= net.netFra && !ens(fysisk(alder), net.netAndel * fuld)) fejl.push(`${alder} aar: ejerens sikkerhedsnet er ikke overholdt`);
   }
   for (let alder = 16; alder <= 45; alder++) {
     if (!ens(mental(alder), fysisk(alder))) fejl.push(`${alder} aar: mentale evner skal have samme XP som fysiske`);
@@ -85,13 +86,13 @@ export function aldringstrappeBrud(basisfald, dagens) {
  * R6: det lille, sene fald i teknik og mentale evner. `sentFald(alder)` er faldet pr. saeson
  * pr. evne foer bremsen, `basisfald(alder)` kroppens fald i en kerneevne. Tom liste = holder.
  */
-export function sentFaldBrud(sentFald, basisfald) {
+export function sentFaldBrud(sentFald, basisfald, sentFra = SENT_FRA) {
   const fejl = [];
   let foerste = null;
   for (let alder = 16; alder <= 45; alder++) {
     const fald = sentFald(alder);
     if (fald > 0 && foerste === null) foerste = alder;
-    if (alder < SENT_FRA && fald !== 0) fejl.push(`${alder} aar: faldet i teknik og mentale evner er sent, tidligst fra ${SENT_FRA}`);
+    if (alder < sentFra && fald !== 0) fejl.push(`${alder} aar: faldet i teknik og mentale evner er sent, tidligst fra ${sentFra}`);
     if (fald > 0 && !(fald <= LILLE * basisfald(alder))) fejl.push(`${alder} aar: faldet er lille, hoejst halvdelen af kroppens fald ved samme alder`);
     if (foerste !== null && !(fald > 0)) fejl.push(`${alder} aar: det sene fald holder ikke op igen`);
   }

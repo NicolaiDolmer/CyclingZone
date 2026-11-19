@@ -61,7 +61,7 @@ export const DOMMER_ALDRING_RAA = Object.freeze({
   declineByYearsPastPlateau: [
     { maxYears: 3, drop: 1.0 }, { maxYears: 6, drop: 1.8 }, { maxYears: 99, drop: 2.6 },
   ],
-  late: { fromAge: 34, drop: 0.4 },
+  late: { fromAge: 33, drop: 0.4 },
 });
 export const DOMMER_B_RAA = Object.freeze({
   ...DOMMER_XP_RAA,
