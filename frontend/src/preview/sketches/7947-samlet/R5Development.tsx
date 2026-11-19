@@ -10,7 +10,7 @@ import { ChevronDownIcon, ChevronRightIcon, LockIcon } from "../../../components
 import { TEAM, type R5Rider } from "./r5data.ts";
 import { DEV, devXp30, type DevRow } from "./r5devdata.ts";
 import { devSummary, num } from "./r5devmodel.ts";
-import { PctBar, RiderName, SortHead, Spark, type SortState } from "./R5Parts.tsx";
+import { PctBar, RiderName, SortHead, Spark, type SortState, TypeCell } from "./R5Parts.tsx";
 
 type Key = "rider" | "type" | "rating" | "top" | "season" | "xpToday" | "xp30" | "next";
 type Row = { rider: R5Rider; dev: DevRow; xp30: number };
@@ -123,7 +123,7 @@ export default function DevelopmentTab({ mobile, openIds }: { mobile: boolean; o
                 </button>
               </td>
               <td className="px-3 py-[7px]"><RiderName rider={rider} /></td>
-              <td className="px-3 py-[7px] text-[13px] text-cz-2">{rider.type}</td>
+              <td className="px-3 py-[7px]"><TypeCell id={rider.id} /></td>
               <td className="px-3 py-[7px]"><span className={RATING_PLATE}>{dev.rating}</span></td>
               <td className="px-3 py-[7px]" title={TOP_TIP}>
                 <span className="inline-flex items-center gap-2">
@@ -181,7 +181,7 @@ export default function DevelopmentTab({ mobile, openIds }: { mobile: boolean; o
               {o && (
                 <div className="flex flex-col gap-3 border-t border-cz-border bg-cz-subtle/60 px-3 pb-4 pt-3">
                   <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div><div className={LABEL}>Type</div><div className="text-[13px] text-cz-1">{rider.type}</div></div>
+                    <div><div className={LABEL}>Type</div><div><TypeCell id={rider.id} /></div></div>
                     <div><div className={LABEL}>Expected top</div>
                       <span className="inline-flex items-center gap-2"><span className="font-data text-[13px] font-semibold tabular-nums text-cz-1">{dev.top}</span><TopTrack now={dev.rating} top={dev.top} /></span>
                     </div>

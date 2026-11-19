@@ -13,7 +13,9 @@ import { SESSION_EN, TEAM, type R5Rider } from "./r5data.ts";
 import { DEV, POINTS_30, REPORT, REPORT_DAYS, reportXp, devXp30, type DevRow, type ReportRow } from "./r5devdata.ts";
 import { EFFORT_TONE, EFFORT_WORD, effortOf } from "./r5model.ts";
 import { num, raceShare30, reportSummary, summary30 } from "./r5devmodel.ts";
-import { FatiguePlate, PctBar, RiderName, SortHead, Spark, type SortState } from "./R5Parts.tsx";
+import { FormPlate } from "../../../components/training/reportXp/XpToday.tsx";
+import { Swatch, XpBar } from "../../../components/training/reportXp/XpBar.tsx";
+import { FORM, FORM_DELTA, FatiguePlate, PctBar, RiderName, SortHead, Spark, type SortState, TypeCell, FilterWords } from "./R5Parts.tsx";
 
 export type ReportRange = "today" | "30";
 type TodayKey = "rider" | "type" | "training" | "race" | "xp" | "points" | "fatigue";
@@ -77,7 +79,7 @@ function Detail({ rider, row, mobile }: { rider: R5Rider; row: ReportRow; mobile
               <li key={a.name} className={`grid items-center gap-x-3 border-b border-cz-border py-1.5 last:border-b-0 ${mobile ? "grid-cols-[1fr_52px_92px]" : "grid-cols-[150px_70px_150px_1fr]"}`}>
                 <span className="truncate text-cz-1">{a.name}</span>
                 <span className="text-end font-data tabular-nums text-cz-1">+{a.xp} XP</span>
-                <PctBar pct={a.pct} />
+                {SPLIT ? <SplitBar pct={a.pct} xp={a.xp} point={a.point} raceShare={row.race / Math.max(1, row.training + row.race)} /> : <PctBar pct={a.pct} />}
                 {!mobile && (
                   <span className="whitespace-nowrap text-2xs text-cz-2">
                     {a.point ? (row.points.find((p) => p.ability === a.name)?.fromBar ? "Point paid out from the bar" : "Point earned today") : ""}
@@ -87,9 +89,36 @@ function Detail({ rider, row, mobile }: { rider: R5Rider; row: ReportRow; mobile
             ))}
           </ul>
         )}
-        <p className="mt-2 text-2xs text-cz-3">{rider.name}: fatigue {row.fatigue} after the day.</p>
+        {SPLIT && (
+          <span className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-2xs text-cz-2">
+            <span className="inline-flex items-center gap-1.5"><Swatch part="before" />Before today</span>
+            <span className="inline-flex items-center gap-1.5"><Swatch part="training" />Training today</span>
+            <span className="inline-flex items-center gap-1.5"><Swatch part="race" />Race today</span>
+          </span>
+        )}
+        <p className="mt-2 text-2xs text-cz-3">{rider.name}: form {(FORM[rider.id] ?? 0) - (FORM_DELTA[rider.id] ?? 0)} to {FORM[rider.id] ?? "—"} from the sessions, fatigue {row.fatigue} after the day.</p>
       </div>
     </div>
+  );
+}
+
+// Ejer 19/11 spm. 4: ?bars=split viser bjaelken delt i "foer i dag" (graa) og "i dag" (groen).
+// Eksempel: prisen for et point saettes til 1.200 XP, saa dagens del = XP / 12 %.
+const SPLIT = new URLSearchParams(window.location.search).get("bars") === "split";
+function SplitBar({ pct, xp, point, raceShare }: { pct: number; xp: number; point: boolean; raceShare: number }) {
+  // Spillets egen rapportbjaelke (XpBar, #7627): foer i dag, traening (fyldt) og loeb (skraveret).
+  // Point i dag: bjaelken startede forfra, saa kun resten efter pointet staar.
+  const today = Math.min(point ? 100 : pct, Math.round(xp / 12));
+  const before = point ? 0 : pct - today;
+  const shown = point ? today : pct;
+  const race = Math.round(today * raceShare);
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="block w-24 overflow-hidden rounded-cz">
+        <XpBar before={before / 100} training={(today - race) / 100} race={race / 100} label={`${shown} percent of the way to the next point`} />
+      </span>
+      <span className="font-data text-2xs tabular-nums text-cz-2">{shown} %</span>
+    </span>
   );
 }
 
@@ -195,6 +224,7 @@ export default function ReportTab({ mobile, range, openIds }: { mobile: boolean;
           options={[{ value: "today", label: "Today" }, { value: "30", label: "30 days" }]} className={mobile ? "w-full" : ""} />
       </div>
       {stats}
+      <FilterWords />
       {!mobile && <div className="ms-auto">{columnsMenu}</div>}
     </div>
   );
@@ -219,6 +249,7 @@ export default function ReportTab({ mobile, range, openIds }: { mobile: boolean;
           <SortHead<TodayKey> k="race" label="Race XP" right cls="w-[100px] whitespace-nowrap" sort={sort} onSort={(k) => setSort((x) => next(x, k, false))} />
           <SortHead<TodayKey> k="xp" label="XP" right cls="w-[90px]" sort={sort} onSort={(k) => setSort((x) => next(x, k, false))} />
           <SortHead<TodayKey> k="points" label="Points" cls="w-[250px]" sort={sort} onSort={(k) => setSort((x) => next(x, k, false))} />
+          <th className="w-[110px] px-3 py-2 text-start font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3">Form</th>
           <SortHead<TodayKey> k="fatigue" label="Fatigue" cls="" sort={sort} onSort={(k) => setSort((x) => next(x, k, false))} />
         </tr>
       </thead>
@@ -234,17 +265,18 @@ export default function ReportTab({ mobile, range, openIds }: { mobile: boolean;
                 </button>
               </td>
               <td className="px-3 py-[7px]"><RiderName rider={rider} /></td>
-              <td className="px-3 py-[7px] text-[13px] text-cz-2">{rider.type}</td>
+              <td className="px-3 py-[7px]"><TypeCell id={rider.id} /></td>
               <td className={`px-3 py-[7px] text-end ${NUM} ${row.training ? "text-cz-1" : "text-cz-3"}`}>{num(row.training)}</td>
               <td className={`px-3 py-[7px] text-end ${NUM} ${row.race ? "text-cz-1" : "text-cz-3"}`}>{num(row.race)}</td>
               <td className={`px-3 py-[7px] text-end ${NUM} font-semibold ${reportXp(row) ? "text-cz-1" : "text-cz-3"}`}>{num(reportXp(row))}</td>
               <td className="px-3 py-[7px]"><Points row={row} /></td>
+              <td className="px-3 py-[7px]"><span className="inline-flex items-center gap-2"><FormPlate value={FORM[rider.id] ?? null} /><Delta n={FORM_DELTA[rider.id] ?? 0} /></span></td>
               <td className="px-3 py-[7px]"><span className="inline-flex items-center gap-2"><FatiguePlate value={row.fatigue} label="Fatigue after the day" /><Delta n={row.delta} /></span></td>
             </tr>,
             o && (
               <tr key={`${rider.id}-d`} className="bg-cz-subtle/40">
                 <td />
-                <td colSpan={7} className="px-3 pb-3 pt-1"><Detail rider={rider} row={row} mobile={false} /></td>
+                <td colSpan={8} className="px-3 pb-3 pt-1"><Detail rider={rider} row={row} mobile={false} /></td>
               </tr>
             ),
           ];
@@ -282,7 +314,7 @@ export default function ReportTab({ mobile, range, openIds }: { mobile: boolean;
               {o && (
                 <div className="flex flex-col gap-3 border-t border-cz-border bg-cz-subtle/60 px-3 pb-4 pt-3">
                   <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div><div className={LABEL}>Type</div><div className="text-[13px] text-cz-1">{rider.type}</div></div>
+                    <div><div className={LABEL}>Type</div><div><TypeCell id={rider.id} /></div></div>
                     <div><div className={LABEL}>Fatigue change</div><Delta n={row.delta} /></div>
                     <div><div className={LABEL}>Training XP</div><div className={`${NUM} text-cz-1`}>{num(row.training)}</div></div>
                     <div><div className={LABEL}>Race XP</div><div className={`${NUM} text-cz-1`}>{num(row.race)}</div></div>
@@ -318,7 +350,7 @@ export default function ReportTab({ mobile, range, openIds }: { mobile: boolean;
         {days.map(({ rider, dev }) => (
           <tr key={rider.id} className="border-t border-cz-border first:border-t-0">
             <td className="px-3 py-[7px]"><RiderName rider={rider} /></td>
-            <td className="px-3 py-[7px] text-[13px] text-cz-2">{rider.type}</td>
+            <td className="px-3 py-[7px]"><TypeCell id={rider.id} /></td>
             <td className={`px-3 py-[7px] text-end ${NUM} font-semibold text-cz-1`}>{num(devXp30(dev))}</td>
             <td className="px-3 py-[7px]"><Spark values={dev.spark} label={`${rider.name}: XP per day, last 30 days`} /></td>
             <td className={`px-3 py-[7px] text-end ${NUM} text-cz-1`}>{POINTS_30[rider.id].points}</td>

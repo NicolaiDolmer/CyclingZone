@@ -22,7 +22,8 @@ import {
 } from "./r5model.ts";
 import { DATES, RACE, SESSION_EN, SESSION_GROUPS_EN, TEAM, programFields, type R5Rider } from "./r5data.ts";
 import TodaysTraining from "./R5Moment.tsx";
-import { ArrowMark, FatiguePlate, RiderName } from "./R5Parts.tsx";
+import { ArrowMark, FORM, FatiguePlate, RiderName, TypeCell, FilterWords } from "./R5Parts.tsx";
+import { FormPlate } from "../../../components/training/reportXp/XpToday.tsx";
 import ProgramTab from "./R5Program.tsx";
 import DevelopmentTab from "./R5Development.tsx";
 import ReportTab, { type ReportRange } from "./R5Report.tsx";
@@ -82,8 +83,18 @@ function DayLoadCell({ fields, overLimit, compact = false }: { fields: readonly 
   );
 }
 
+// Ejer 19/11: hvor langt programmet er naaet. ?progress=under (graa linje under knappen) | inline (i knappen).
+const PROGRESS_MODE = new URLSearchParams(window.location.search).get("progress");
+const PROGRESS: Record<string, [string, string]> = {
+  "Team week": ["Day 3 of 7", "3/7"], Ardennes: ["Week 2 of 4", "2/4"], "Time trial block": ["Day 5 of 14", "5/14"],
+};
+function ProgramProgress({ rider }: { rider: R5Rider }) {
+  if (PROGRESS_MODE !== "under" || !rider.program || !PROGRESS[rider.program]) return null;
+  return <div className="mt-0.5 font-data text-2xs tabular-nums text-cz-3">{PROGRESS[rider.program][0]}</div>;
+}
 function ProgramButton({ rider, defaultOpen, full = false }: { rider: R5Rider; defaultOpen: boolean; full?: boolean }) {
-  const label = rider.program ?? "No program";
+  const short = PROGRESS_MODE === "inline" && rider.program ? PROGRESS[rider.program]?.[1] : null;
+  const label = rider.program ? (short ? `${rider.program} · ${short}` : rider.program) : "No program";
   return (
     <Dropdown
       defaultOpen={defaultOpen}
@@ -92,9 +103,9 @@ function ProgramButton({ rider, defaultOpen, full = false }: { rider: R5Rider; d
         <button type="button" onClick={toggle} aria-expanded={open} aria-haspopup="menu"
           aria-label={`${rider.name}: program ${label}`}
           className={`inline-flex max-w-full items-center justify-between gap-1.5 rounded-cz border px-2 py-1 text-xs font-medium hover:border-cz-3 max-sm:min-h-11 ${full ? "w-full" : "w-[150px]"} ${
-            rider.program ? "border-cz-border text-cz-1" : "border-cz-warning/50 text-cz-warning"}`}>
+            rider.program ? "border-cz-border text-cz-1" : "border-cz-border text-cz-2"}`}>
           <span className="inline-flex min-w-0 items-center gap-1">
-            {!rider.program && <AlertTriangleIcon size={12} aria-hidden="true" className="shrink-0" />}
+            {/* Ejer 19/11: ingen advarsel ved "No program"; at undlade et program er et aktivt valg. */}
             <span className="truncate">{label}</span>
           </span>
           <ChevronDownIcon size={12} aria-hidden="true" className="shrink-0 text-cz-3" />
@@ -442,6 +453,7 @@ export default function Direction5({ init, mobile }: { init: R5Init; mobile: boo
           <button type="button" onClick={() => setChoice("r3", "rest")} className="font-medium text-cz-1 underline decoration-cz-border underline-offset-2">Use</button>
         </span>
       )}
+      <FilterWords />
       <div className={mobile ? "[&_button]:flex-1" : "ms-auto"}>
         <Segmented label="Sessions" value={allSessions ? "all" : "simple"} onChange={(v: string) => setAllSessions(v === "all")}
           options={[{ value: "simple", label: "Simple" }, { value: "all", label: "All sessions" }]} className={mobile ? "w-full" : ""} />
@@ -459,6 +471,7 @@ export default function Direction5({ init, mobile }: { init: R5Init; mobile: boo
           <SortTh k={"rider"} label="Rider" cls="w-[230px]" sort={sort} onSort={onSort} />
           <SortTh k={"type"} label="Type" cls="w-[140px]" sort={sort} onSort={onSort} />
           <SortTh k={"program"} label="Program" cls="w-[180px]" sort={sort} onSort={onSort} />
+          <SortTh k={null} label="Form" cls="w-[80px]" sort={sort} onSort={onSort} />
           <SortTh k={"fatigue"} label="Fatigue now" cls="w-[130px] whitespace-nowrap" sort={sort} onSort={onSort} />
           <SortTh k={"load"} label="Day load" cls="w-[160px]" sort={sort} onSort={onSort} />
           <SortTh k={null} label="Today" cls="" sort={sort} onSort={onSort} />
@@ -476,8 +489,9 @@ export default function Direction5({ init, mobile }: { init: R5Init; mobile: boo
                 </button>
               </td>
               <td className="px-3 py-[7px]"><RiderName rider={r.rider} /></td>
-              <td className="px-3 py-[7px] text-[13px] text-cz-2">{r.rider.type}</td>
-              <td className="px-3 py-[7px]"><ProgramButton rider={r.rider} defaultOpen={init.menu === r.rider.id} /></td>
+              <td className="px-3 py-[7px]"><TypeCell id={r.rider.id} /></td>
+              <td className="px-3 py-[7px]"><ProgramButton rider={r.rider} defaultOpen={init.menu === r.rider.id} /><ProgramProgress rider={r.rider} /></td>
+              <td className="px-3 py-[7px]"><FormPlate value={FORM[r.rider.id] ?? null} /></td>
               <td className="px-3 py-[7px]"><FatiguePlate value={r.rider.fatigue} /></td>
               <td className="px-3 py-[7px]"><DayLoadCell fields={r.fields} overLimit={r.rider.overLimit} /></td>
               <td className="px-3 py-[7px]">
@@ -490,7 +504,7 @@ export default function Direction5({ init, mobile }: { init: R5Init; mobile: boo
             o && (
               <tr key={`${r.rider.id}-s`} className="bg-cz-subtle/40">
                 <td />
-                <td colSpan={6} className="px-3 pb-3 pt-0.5">
+                <td colSpan={7} className="px-3 pb-3 pt-0.5">
                   <SessionsRow rider={r.rider} fields={r.fields} manual={r.man} done={done} date={date}
                     onSet={(i, s) => setField(r.rider.id, i, s)} />
                 </td>
@@ -506,8 +520,8 @@ export default function Direction5({ init, mobile }: { init: R5Init; mobile: boo
   // resten (type, program, hurtigvalget og de fem felter) i rytterens aabne kort.
   const mobileList = (
     <div>
-      <div className="grid grid-cols-[1fr_40px_76px_76px] gap-2 border-b border-cz-border px-3 py-2 font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3">
-        <span>Rider</span><span>Fatigue</span><span>Day load</span><span>Today</span>
+      <div className="grid grid-cols-[1fr_36px_40px_76px_76px] gap-2 border-b border-cz-border px-3 py-2 font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3">
+        <span>Rider</span><span>Form</span><span>Fatigue</span><span>Day load</span><span>Today</span>
       </div>
       <ul>
         {shown.map((r) => {
@@ -524,8 +538,9 @@ export default function Direction5({ init, mobile }: { init: R5Init; mobile: boo
           return (
             <li key={r.rider.id} className="border-t border-cz-border first:border-t-0">
               <button type="button" onClick={() => toggle(r.rider.id)} aria-expanded={o}
-                className={`grid min-h-11 w-full grid-cols-[1fr_40px_76px_76px] items-center gap-2 px-3 py-2 text-start ${o ? "bg-cz-subtle/60" : ""}`}>
+                className={`grid min-h-11 w-full grid-cols-[1fr_36px_40px_76px_76px] items-center gap-2 px-3 py-2 text-start ${o ? "bg-cz-subtle/60" : ""}`}>
                 <RiderName rider={r.rider} wrap />
+                <span><FormPlate value={FORM[r.rider.id] ?? null} /></span>
                 <span><FatiguePlate value={r.rider.fatigue} /></span>
                 <span><DayLoadCell fields={r.fields} overLimit={r.rider.overLimit} compact /></span>
                 <span className="flex items-start justify-between gap-1 text-xs">
@@ -536,8 +551,8 @@ export default function Direction5({ init, mobile }: { init: R5Init; mobile: boo
               {o && (
                 <div className="flex flex-col gap-3 border-t border-cz-border bg-cz-subtle/60 px-3 pb-4 pt-3">
                   <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div><div className="mb-1 font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3">Type</div><div className="text-[13px] text-cz-1">{r.rider.type}</div></div>
-                    <div><div className="mb-1 font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3">Program</div><ProgramButton rider={r.rider} defaultOpen={init.menu === r.rider.id} full /></div>
+                    <div><div className="mb-1 font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3">Type</div><div><TypeCell id={r.rider.id} /></div></div>
+                    <div><div className="mb-1 font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3">Program</div><ProgramButton rider={r.rider} defaultOpen={init.menu === r.rider.id} full /><ProgramProgress rider={r.rider} /></div>
                   </div>
                   <div>
                     <div className="mb-1 font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3">Today</div>

@@ -1,3 +1,6 @@
+import { Dropdown, MenuItem } from "../../../components/ui/Menu.jsx";
+import { ChevronDownIcon as FilterChevron, FilterIcon } from "../../../components/ui/icons/index.jsx";
+import RiderTypeBadge from "../../../components/rider/RiderTypeBadge.jsx";
 // #7947 retning 5: smaa faelles byggesten (navnecellen, traethedspladen, pilen).
 import { Flag } from "../../../components/Flag.jsx";
 import { ArrowDownIcon, ArrowUpIcon, SortIcon, UserIcon } from "../../../components/ui/icons/index.jsx";
@@ -82,6 +85,51 @@ export function RiderName({ rider, wrap = false }: { rider: R5Rider; wrap?: bool
       <Flag code={rider.nation} title={rider.country} className="shrink-0" />
       <UserIcon size={13} aria-hidden="true" className="shrink-0 text-cz-3" />
       <a href="#rider" className={`text-[13.5px] font-medium text-cz-1 hover:underline ${wrap ? "leading-tight" : "truncate"}`}>{rider.name}</a>
+    </span>
+  );
+}
+
+// Ejer 19/11: formen paa fanen Day og formens udvikling i rapporten. Eksempeldata pr. rytter.
+export const FORM: Record<string, number> = { r1: 71, r2: 64, r3: 58, r4: 66, r5: 69, r6: 62, r7: 60, r8: 55, r9: 67 };
+export const FORM_DELTA: Record<string, number> = { r1: 2, r2: 1, r3: -3, r4: 2, r5: 3, r6: 2, r7: 1, r8: 0, r9: 2 };
+
+// Ejer 19/11: ryttertypen som i spillets andre tabeller (RiderTypeBadge, primaer + sekundaer, stacked).
+const TYPES: Record<string, [string, string]> = {
+  r1: ["climber", "gc"], r2: ["rouleur", "tt"], r3: ["brostensrytter", "rouleur"], r4: ["puncheur", "baroudeur"],
+  r5: ["tt", "rouleur"], r6: ["rouleur", "baroudeur"], r7: ["gc", "climber"], r8: ["rouleur", "sprinter"], r9: ["sprinter", "puncheur"],
+};
+export function TypeCell({ id }: { id: string }) {
+  const t = TYPES[id];
+  return t ? <RiderTypeBadge primaryType={t[0]} secondaryType={t[1]} stacked /> : null;
+}
+
+// Ejer 19/11: filtre paa traeningen og i rapporten (alder, grupper, ryttertype) som P21-ord med lille pil.
+const FILTERS: Array<[string, string[]]> = [
+  ["All ages", ["All ages", "Under 23", "Under 25", "25 and over"]],
+  ["All groups", ["All groups", "Climbers", "Sprinters", "Classics", "No group"]],
+  ["All types", ["All types", "Climber", "Sprinter", "Time trialist", "Puncheur", "Cobbles", "Baroudeur", "Rouleur", "GC"]],
+];
+export function FilterWords() {
+  return (
+    <span className="inline-flex flex-wrap items-center gap-x-1 text-xs" data-testid="r5-filter-words">
+      {FILTERS.map(([label, items], i) => (
+        <span key={label} className="inline-flex items-center">
+          {i > 0 && <span className="px-1 text-cz-3">·</span>}
+          <Dropdown
+            trigger={({ open, toggle }: { open: boolean; toggle: () => void }) => (
+              <button type="button" onClick={toggle} aria-expanded={open} aria-haspopup="menu"
+                className="inline-flex items-center gap-0.5 font-medium text-cz-1 hover:text-cz-accent-t max-sm:min-h-11">
+                {label}<FilterChevron size={11} aria-hidden="true" className="text-cz-3" />
+              </button>
+            )}
+          >
+            {items.map((it) => <MenuItem key={it}>{it}</MenuItem>)}
+          </Dropdown>
+        </span>
+      ))}
+      <button type="button" aria-label="More filters: injured, racing, program" className="ms-1 inline-flex h-7 w-7 items-center justify-center rounded-cz text-cz-2 hover:bg-cz-subtle hover:text-cz-1 max-sm:h-11 max-sm:w-11">
+        <FilterIcon size={14} aria-hidden="true" />
+      </button>
     </span>
   );
 }

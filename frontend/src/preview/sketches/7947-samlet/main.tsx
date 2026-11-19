@@ -4,6 +4,8 @@
 // Ingen app-router, ingen backend, intet login. Dansk, fordi billederne er til ejeren.
 
 import { createRoot } from "react-dom/client";
+import "../../../i18n/index.js";
+import i18n from "i18next";
 import "../../../index.css";
 import Sketch from "./Sketch.tsx";
 import Direction4 from "./R4.tsx";
@@ -93,7 +95,8 @@ const r5Init: R5Init = {
   mode: q.get("mode") === "rotation" ? "rotation" : "week",
 };
 
-createRoot(document.getElementById("root")!).render(
+const i18nReady = i18n.changeLanguage(id === "r5" && !view ? "en" : i18n.language || "en").then(() => i18n.loadNamespaces(["riderTypes", "trainingXp", "training", "common"]));
+void i18nReady.then(() => createRoot(document.getElementById("root")!).render(
   <>
     {!shot && view !== "over100" && view !== "plan" && view !== "nextpoint" && view !== "fix" && view !== "plancard" && view !== "ridertraining" && view !== "planline" && view !== "todayplan" && view !== "todaydesk" && <Nav />}
     {view === "todaydesk" ? (
@@ -129,4 +132,4 @@ createRoot(document.getElementById("root")!).render(
       <Sketch key={`${id}-${pressed}`} id={id} pressed={pressed} openDay={openDay} />
     )}
   </>,
-);
+));

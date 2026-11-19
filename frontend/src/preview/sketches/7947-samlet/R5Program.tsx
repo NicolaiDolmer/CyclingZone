@@ -158,6 +158,11 @@ function Rotation({ mobile }: { mobile: boolean }) {
   );
 }
 
+// Ejer 19/11 spm. 8: ?locks=many viser flere laaste pas pr. dag (tirsdag 3, torsdag alle 5).
+const MANY_LOCKS = new URLSearchParams(window.location.search).get("locks") === "many";
+const LOCKS_MANY: Record<number, number[]> = { 1: [0, 1, 2], 3: [0, 1, 2, 3, 4] };
+const isLocked = (b: { locked: number | null }, d: number, i: number) => (MANY_LOCKS && LOCKS_MANY[d] ? LOCKS_MANY[d].includes(i) : b.locked === i);
+
 function WeekBlocks({ mobile }: { mobile: boolean }) {
   return (
     <div className="flex flex-col gap-3">
@@ -178,13 +183,16 @@ function WeekBlocks({ mobile }: { mobile: boolean }) {
                 <li key={i} className="flex items-center gap-1.5 border-t border-cz-border px-2 py-1.5 first:border-t-0">
                   <span className="w-3 shrink-0 font-data text-2xs tabular-nums text-cz-3">{i + 1}</span>
                   <span className="min-w-0 flex-1">
-                    <span className={`block truncate text-xs ${b.locked === i ? "font-semibold text-cz-1" : "text-cz-1"}`}>{SESSION_EN[s]}</span>
+                    <span className={`block truncate text-xs ${isLocked(b, d, i) ? "font-semibold text-cz-1" : "text-cz-1"}`}>{SESSION_EN[s]}</span>
                     <span className={`block text-3xs ${EFFORT_TONE[effortOf(s)]}`}>{EFFORT_WORD[effortOf(s)]}</span>
                   </span>
-                  {b.locked === i && <LockIcon size={12} aria-label="Locked: a race never takes it" className="shrink-0 text-cz-1" />}
+                  {isLocked(b, d, i) && <LockIcon size={12} aria-label="Locked: a race never takes it" className="shrink-0 text-cz-1" />}
                 </li>
               ))}
             </ol>
+            {MANY_LOCKS && d === 3 && (
+              <p className="border-t border-cz-border px-2 py-1.5 text-3xs text-cz-warning">All 5 locked. A race on Thursday has no free field.</p>
+            )}
           </section>
         ))}
       </div>
