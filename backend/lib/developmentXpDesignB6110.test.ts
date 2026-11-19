@@ -25,6 +25,9 @@ const AGING = Object.freeze({
   late: { fromAge: 32, drop: 0.5 },
 });
 const v = (patch: Record<string, unknown>) => validateDevelopmentXpParams({ ...RAW, ...patch });
+// Kandidat B er én pakke: prisens top og aldringen følges ad (dommer-fund F1).
+const TOP = Object.freeze({ ...RAW.price, top: 140 });
+const vB = (patch: Record<string, unknown> = {}) => v({ price: TOP, aging: AGING, ...patch });
 
 test("prisens top: udeladt = dagens pris, bit for bit", () => {
   const today = v({}) as DevelopmentXpParams;
@@ -33,7 +36,7 @@ test("prisens top: udeladt = dagens pris, bit for bit", () => {
 });
 
 test("prisens top: højere top gør toppen billigere, ens for alle, og prisen stiger stadig", () => {
-  const flat = v({ price: { ...RAW.price, top: 140 } }) as DevelopmentXpParams;
+  const flat = vB() as DevelopmentXpParams;
   assert.equal(flat.price.top, 140);
   assert.ok(Object.isFrozen(flat.price));
   const today = v({}) as DevelopmentXpParams;
@@ -46,7 +49,7 @@ test("prisens top: højere top gør toppen billigere, ens for alle, og prisen st
 
 test("prisens top: ugyldig top afviser hele talfilen (fail-safe)", () => {
   for (const top of [100, 99, 0, -5, 1001, "140", null, Number.NaN]) {
-    assert.equal(v({ price: { ...RAW.price, top } }), null, `top ${String(top)}`);
+    assert.equal(vB({ price: { ...RAW.price, top } }), null, `top ${String(top)}`);
   }
 });
 
@@ -54,8 +57,11 @@ test("datoreglen uden alder: +2 for toptalent på meget lav evne uanset alder", 
   const p = v({ datePlus2: { minPotential: 5, belowLevel: 30 } }) as DevelopmentXpParams;
   assert.ok(p);
   assert.equal(p.datePlus2?.maxAge, undefined);
-  for (const age of [17, 25, 33, 38, null, undefined]) {
+  for (const age of [17, 25, 33, 38]) {
     assert.equal(xpDatePointCap({ startLevel: 20, age, potentiale: 5 }, p), XP_MAX_POINTS_PER_DATE, `alder ${age}`);
+  }
+  for (const age of [null, undefined]) {
+    assert.equal(xpDatePointCap({ startLevel: 20, age, potentiale: 5 }, p), XP_POINTS_PER_DATE, "ukendt alder = lavt tal (fail-safe)");
   }
   assert.equal(xpDatePointCap({ startLevel: 30, age: 19, potentiale: 6 }, p), XP_POINTS_PER_DATE, "ikke meget lav");
   assert.equal(xpDatePointCap({ startLevel: 10, age: 19, potentiale: 4.5 }, p), XP_POINTS_PER_DATE, "ikke toptalent");
@@ -73,7 +79,7 @@ test("datoreglen med alder (som før): alderen gælder stadig, når talfilen sæ
 });
 
 test("aldring i talfilen: valideres og bliver dagens cfg med nye trin og sent fald", () => {
-  const p = v({ aging: AGING }) as DevelopmentXpParams;
+  const p = vB() as DevelopmentXpParams;
   assert.ok(p?.aging);
   assert.ok(Object.isFrozen(p.aging));
   const cfg = xpAgingConfig(p) as Record<string, unknown>;
@@ -98,7 +104,9 @@ test("aldring i talfilen: ugyldig aldring afviser hele talfilen (fail-safe)", ()
     { ...AGING, late: { fromAge: 32, drop: 0 } },
     { ...AGING, late: null },
   ];
-  for (const aging of bad) assert.equal(v({ aging }), null, JSON.stringify(aging));
+  for (const aging of bad) assert.equal(vB({ aging }), null, JSON.stringify(aging));
+  assert.equal(vB({ aging: { ...AGING, declineByYearsPastPlateau: [{ maxYears: 3, drop: 0 }] } }), null, "aldring uden fald");
+  assert.equal(vB({ aging: { ...AGING, declineByYearsPastPlateau: [{ maxYears: 3, drop: 6 }] } }), null, "for stort fald");
 });
 
 const ABILITIES = Object.freeze(Object.fromEntries(VISIBLE_ABILITIES.map((k, i) => [k, 50 + (i % 20)])));
@@ -106,7 +114,9 @@ const LATE_ABILITIES = VISIBLE_ABILITIES.filter((a) => !AGING_V2_DECLINING_ABILI
 const sum = (o: Record<string, number>, keys: readonly string[]) => keys.reduce((s, k) => s + o[k], 0);
 
 test("aldring: dagens cfg = dagens resultat, og en cfg uden `late` rører aldrig teknik/mentalt", () => {
-  const cfgNoLate = xpAgingConfig(v({ aging: { ...AGING, late: undefined } }) as DevelopmentXpParams);
+  const { late: _late, ...agingNoLate } = AGING;
+  const cfgNoLate = xpAgingConfig(vB({ aging: agingNoLate }) as DevelopmentXpParams);
+  assert.ok(cfgNoLate);
   for (const age of [27, 30, 33, 36, 40]) {
     const rider = { id: `r-${age}`, primary_type: "climber", age };
     const today = developRiderSeasonV2(rider, ABILITIES, 7);
@@ -118,7 +128,7 @@ test("aldring: dagens cfg = dagens resultat, og en cfg uden `late` rører aldrig
 });
 
 test("aldring under XP: tidligere start, og sent fald i teknik/mentalt fra fromAge, bremset af løb", () => {
-  const cfg = xpAgingConfig(v({ aging: AGING }) as DevelopmentXpParams);
+  const cfg = xpAgingConfig(vB() as DevelopmentXpParams);
   // Starten: 27-årig falder i den nye regel (plateau 26), ikke i dagens (plateau 30).
   const r27 = { id: "r27", primary_type: "climber", age: 27 };
   assert.equal(developRiderSeasonV2(r27, ABILITIES, 7).aging.totalDrop, 0);
@@ -135,4 +145,27 @@ test("aldring under XP: tidligere start, og sent fald i teknik/mentalt fra fromA
     { cfg, load: { raceDays: AGING_V2_CONFIG.brakeLoadDays, hardDays: 0 } });
   assert.equal(raced.aging.totalDrop, 0);
   assert.deepEqual(raced.next, Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, ABILITIES[k]])));
+});
+
+test("dommer-fund F1: stavefejl og ukendte nøgler afviser hele talfilen", () => {
+  assert.ok(vB(), "den rigtige pakke er gyldig");
+  const bad: Record<string, Record<string, unknown>> = {
+    "price.Top": { price: { ...RAW.price, Top: 140 }, aging: AGING },
+    ageing: { price: TOP, ageing: AGING },
+    "aging.Late": { price: TOP, aging: { ...AGING, Late: AGING.late } },
+    "aging.late.from": { price: TOP, aging: { ...AGING, late: { from: 32, drop: 0.5 } } },
+    "aging-trin": { price: TOP, aging: { ...AGING, declineByYearsPastPlateau: [{ maxYears: 3, drop: 1, extra: 1 }] } },
+    "datePlus2.maxage": { price: TOP, aging: AGING, datePlus2: { maxage: 22, minPotential: 5, belowLevel: 30 } },
+    "ageShare.fysisk": { price: TOP, aging: AGING, ageShare: { ...RAW.ageShare, fysisk: RAW.ageShare.physical } },
+    "typeShare.ekstra": { price: TOP, aging: AGING, typeShare: { ...RAW.typeShare, ekstra: 0.1 } },
+    "øverste niveau": { price: TOP, aging: AGING, ukendt: 1 },
+  };
+  for (const [name, patch] of Object.entries(bad)) assert.equal(v(patch), null, name);
+});
+
+test("dommer-fund F1: prisens top og aldringen følges ad (kandidat B er én pakke)", () => {
+  assert.equal(v({ price: TOP }), null, "top uden aldring");
+  assert.equal(v({ aging: AGING }), null, "aldring uden top");
+  assert.ok(v({}), "ingen af dem = dagens model");
+  assert.ok(vB(), "begge = kandidat B");
 });
