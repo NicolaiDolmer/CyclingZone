@@ -6,6 +6,7 @@ import { supabase, authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
 import { getAuthedUser } from "../lib/getAuthedUser.js";
 import { apiFetch } from "../lib/apiFetch.ts"; // #5089: Retry-After-respekt for development-historik
 import { formatCz, getRiderMarketValue, getRiderSalary, detectStartPriceTypo, computeBidValueDelta } from "../lib/marketValues.js";
+import { refreshMarketBalance } from "../data/marketBalance.ts";
 import { sharedRequestCache, SHARED_KEYS, SHARED_TTL_MS, invalidateTransferListings2176, transferListingsKeyForHeaders2176 } from "../lib/sharedRequestCache.js";
 import { fetchPlayerFeatureFlags } from "../lib/playerFeatureFlags.js";
 import RiderAutoPriceStrip from "../components/transfers/buyerCard8016/RiderAutoPriceStrip.js"; // #8016
@@ -1692,6 +1693,7 @@ export default function RiderStatsPage() {
       }
     }
     if (res.ok) {
+      refreshMarketBalance();
       apiFetch(`${API}/api/achievements/check`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
@@ -1720,7 +1722,7 @@ export default function RiderStatsPage() {
       body: JSON.stringify({ max_amount: maxAmount }),
     });
     if (res.networkError) throw res.error ?? new Error("Network request failed"); // #5242/#3619, se handleAuctionBid
-    if (res.ok) { loadActiveAuctionFull(rider); return { ok: true }; }
+    if (res.ok) { refreshMarketBalance(); loadActiveAuctionFull(rider); return { ok: true }; }
     const data = res.data || {};
     return { ok: false, error: resolveApiError(data, t, t("auctionPanel.proxyErrorFallback")) };
   }
@@ -1733,7 +1735,7 @@ export default function RiderStatsPage() {
       headers: { Authorization: `Bearer ${session.access_token}` },
     });
     if (res.networkError) throw res.error ?? new Error("Network request failed"); // #5242/#3619, se handleAuctionBid
-    if (res.ok) { loadActiveAuctionFull(rider); return { ok: true }; }
+    if (res.ok) { refreshMarketBalance(); loadActiveAuctionFull(rider); return { ok: true }; }
     const data = res.data || {};
     return { ok: false, error: resolveApiError(data, t, t("auctionPanel.proxyRemoveErrorFallback")) };
   }
@@ -1805,6 +1807,7 @@ export default function RiderStatsPage() {
             points,
           }));
         }
+        refreshMarketBalance();
         navigate("/auctions");
       } else {
         const data = res.data || {};

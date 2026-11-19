@@ -53,24 +53,27 @@ export function computeAvailableBalance(balance, reserved) {
 }
 
 /**
- * Henter holdets leading-auktioner + proxy-bud og beregner reserveret
- * beløb. Samme to queries som FinancePage har brugt siden #44 — genbruges
- * nu også af Dashboard-headeren så begge sider forbliver synkrone uden at
- * skulle huske at holde to query-implementeringer i sync.
+ * Henter de samme førende bud og autobud som Økonomi. En fejlet læsning
+ * må ikke vises som om der ingen binding er.
  *
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} teamId
+ * @param {AbortSignal} [signal]
  * @returns {Promise<number>}
  */
-export async function fetchReservedBalance(supabase, teamId) {
+export async function fetchReservedBalance(supabase, teamId, signal) {
+  const leading = supabase.from("auctions")
+    .select("id, current_price")
+    .in("status", ["active", "extended"])
+    .eq("current_bidder_id", teamId);
+  const proxies = supabase.from("auction_proxy_bids")
+    .select("auction_id, max_amount, auction:auction_id(status)")
+    .eq("team_id", teamId);
   const [leadingRes, proxiesRes] = await Promise.all([
-    supabase.from("auctions")
-      .select("id, current_price")
-      .in("status", ["active", "extended"])
-      .eq("current_bidder_id", teamId),
-    supabase.from("auction_proxy_bids")
-      .select("auction_id, max_amount, auction:auction_id(status)")
-      .eq("team_id", teamId),
+    signal ? leading.abortSignal(signal) : leading,
+    signal ? proxies.abortSignal(signal) : proxies,
   ]);
+  if (leadingRes.error) throw leadingRes.error;
+  if (proxiesRes.error) throw proxiesRes.error;
   return computeReservedBalance(leadingRes.data || [], proxiesRes.data || []);
 }

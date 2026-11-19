@@ -10,7 +10,6 @@ import { hasSignedBoardPlan } from "../lib/boardCopy.js";
 import { dateTextToDayOfYear } from "../lib/raceCalendar.js";
 import { poolStageTotals, deriveRaceStatus } from "../lib/raceHubLogic.js";
 import { withActiveSeniorPools } from "../lib/seniorScope.ts";
-import { fetchReservedBalance } from "../lib/availableBalance.js";
 import { teamNudgeCandidates } from "../lib/dashboardNextRace.ts";
 import { isSquadSelectionMissing } from "../lib/raceSquadSelectionStatus.js";
 import { resolveSeasonMovement } from "../lib/seasonRecapData.js";
@@ -54,7 +53,6 @@ async function readApi(runtime: DataRuntime, scope: DataScope, path: string, sig
 }
 
 export interface DashboardCore {
-  reservedBalance: number;
   pools: Row[];
   poolStages: ReturnType<typeof poolStageTotals>;
   riders: Row[];
@@ -83,7 +81,7 @@ async function readCore(runtime: DataRuntime, scope: DataScope, team: Row, activ
     ? Promise.resolve(supabase.from("races").select("stages, stages_completed, status")
       .eq("season_id", activeSeason.id).eq("league_division_id", team.league_division_id).abortSignal(signal))
     : Promise.resolve({ data: [] });
-  const [teamsRes, ridersRes, squadCountInputs, racesRes, standingsRes, boardStatus, poolRacesRes, poolsRes, reservedBalanceValue] = await Promise.all([
+  const [teamsRes, ridersRes, squadCountInputs, racesRes, standingsRes, boardStatus, poolRacesRes, poolsRes] = await Promise.all([
     // #2182/#3506: same "real team" scope as the standings page (AI teams count).
     supabase.from("teams").select("id, name, division, is_ai, league_division_id")
       .eq("is_test_account", false).eq("is_frozen", false).order("division").order("name").abortSignal(signal),
@@ -106,9 +104,7 @@ async function readCore(runtime: DataRuntime, scope: DataScope, team: Row, activ
     poolRacesPromise,
     // #2182/#5648: active senior pools only.
     withActiveSeniorPools((poolScope) => poolScope(supabase.from("league_divisions").select("id, tier, pool_index, label"))),
-    // #3508: reserved in leading bids + proxy max, shared with the finance page.
-    fetchReservedBalance(supabase, team.id),
-  ]) as [SupabaseResult, SupabaseResult, { pendingIncomingCount: number }, SupabaseResult, SupabaseResult, any, SupabaseResult, SupabaseResult, number];
+  ]) as [SupabaseResult, SupabaseResult, { pendingIncomingCount: number }, SupabaseResult, SupabaseResult, any, SupabaseResult, SupabaseResult];
   runtime.assertReadCurrent(scope, revision);
   // #2328: all of the team's coming pool races, sorted by the calendar date.
   const nextRaces = [...(racesRes.data || [])]
@@ -117,7 +113,6 @@ async function readCore(runtime: DataRuntime, scope: DataScope, team: Row, activ
   const standingsMap: Record<string, Row> = {};
   for (const row of standingsRes.data || []) standingsMap[row.team_id] = row;
   return {
-    reservedBalance: reservedBalanceValue || 0,
     pools: poolsRes.data || [],
     poolStages: poolStageTotals(poolRacesRes.data || []),
     riders: ridersRes.data || [],
