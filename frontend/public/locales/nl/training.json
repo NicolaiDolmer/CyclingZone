@@ -307,6 +307,9 @@
     "yesterdayGain": "gisteren +{pct}%",
     "todayGain": "vandaag +{pct}%",
     "datedGain": "{date} +{pct}%",
+    "yesterdayGainXp": "gisteren +{xp} XP",
+    "todayGainXp": "vandaag +{xp} XP",
+    "datedGainXp": "{date} +{xp} XP",
     "todayContribution": "{pct}% van deze balk kwam van de sessie van vandaag.",
     "datedContribution": "{pct}% van deze balk kwam van de sessie van {date}."
   },

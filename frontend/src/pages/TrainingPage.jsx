@@ -97,7 +97,7 @@ import TodayRowsMobile from "../components/training/TodayRowMobile.tsx";
 import { pressedChoice, pressedChoiceFromSession, rowLocked, rowForecast, hasOwnProgram } from "../components/training/todayRowModel.ts";
 import ResetToTeamProgram from "../components/training/ResetToTeamProgram.tsx";
 import XpReportSwitch from "../components/training/reportXp/XpReportSwitch.tsx"; // #7627
-import { riderXpBars, withXpLines } from "../lib/xpAbilityLine.ts"; // #7947
+import { dayXpByAbility, riderXpBars, withXpLines } from "../lib/xpAbilityLine.ts"; // #7947
 // #6030: fanerne Program, Development og Report hentes foerst naar de aabnes
 // (lazyWithRetry, #5014), saa foerste visning af Today henter mindre. Fallback er den
 // kanoniske skelet-markup (PAGE_TEMPLATES: aldrig en spinner i kort).
@@ -1498,7 +1498,7 @@ export default function TrainingPage() {
       gainsToday: receiptRowByRider[riderId]?.gains ?? null,
       gainPercentToday: receiptRowByRider[riderId]?.gain_percent,
       gainDay: receiptDay,
-    }), riderXpBars(training.xpBar, riderId));
+    }), riderXpBars(training.xpBar, riderId), dayXpByAbility(receiptRowByRider[riderId]?.activities));
   }
   function seasonPointsFor(riderId) {
     const gains = seasonGainsByRider[riderId];

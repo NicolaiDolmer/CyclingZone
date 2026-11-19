@@ -49,17 +49,30 @@ export function riderXpBars(xpBar: unknown, riderId: string | null | undefined):
  * (null = no bar for that ability, shown as a dash) and is never locked.
  */
 type ReceiptLike = { ability: string; locked?: boolean; pct?: number | null };
-type WithXp<T> = Array<T & { xpLine?: XpLine | null }>;
-export function withXpLines<T extends ReceiptLike>(rows: T[], bars: XpBarsByAbility | null | undefined): WithXp<T>;
-export function withXpLines<T extends ReceiptLike>(rows: T[] | null, bars: XpBarsByAbility | null | undefined): WithXp<T> | null;
-export function withXpLines<T extends ReceiptLike>(rows: T[] | null | undefined, bars: XpBarsByAbility | null | undefined): WithXp<T> | null | undefined;
+type WithXp<T> = Array<T & { xpLine?: XpLine | null; xpDay?: number | null }>;
+/** XP pr. evne paa kvitteringsdagen (traening + loeb), eller null for evner uden XP. */
+export type XpDayByAbility = Record<string, number> | null | undefined;
+export function withXpLines<T extends ReceiptLike>(rows: T[], bars: XpBarsByAbility | null | undefined, dayXp?: XpDayByAbility): WithXp<T>;
+export function withXpLines<T extends ReceiptLike>(rows: T[] | null, bars: XpBarsByAbility | null | undefined, dayXp?: XpDayByAbility): WithXp<T> | null;
+export function withXpLines<T extends ReceiptLike>(rows: T[] | null | undefined, bars: XpBarsByAbility | null | undefined, dayXp?: XpDayByAbility): WithXp<T> | null | undefined;
 export function withXpLines<T extends ReceiptLike>(
   rows: T[] | null | undefined,
   bars: XpBarsByAbility | null | undefined,
+  dayXp?: XpDayByAbility,
 ): WithXp<T> | null | undefined {
   if (!bars || !Array.isArray(rows)) return rows;
   return rows.map((row) => {
     const line = xpLine(bars[row.ability]);
-    return { ...row, locked: false, pct: line ? line.pct : null, xpLine: line };
+    // Ejer/spiller 19/11: dagens XP pr. evne ("i dag +54 XP") som i dag-kolonnen i procent-visningen.
+    const day = Number(dayXp?.[row.ability]);
+    return { ...row, locked: false, pct: line ? line.pct : null, xpLine: line, xpDay: Number.isFinite(day) && day > 0 ? Math.round(day) : null };
   });
+}
+
+/** Dagens XP pr. evne fra rytterens kvitteringsraekke (aktiviteternes `xp`, traening + loeb). */
+export function dayXpByAbility(activities: ReadonlyArray<{ xp?: Record<string, unknown> | null }> | null | undefined): Record<string, number> | null {
+  if (!Array.isArray(activities)) return null;
+  const out: Record<string, number> = {};
+  for (const a of activities) for (const [k, v] of Object.entries(a?.xp ?? {})) { const n = Number(v); if (Number.isFinite(n) && n > 0) out[k] = (out[k] ?? 0) + n; }
+  return out;
 }

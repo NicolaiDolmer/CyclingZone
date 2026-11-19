@@ -307,6 +307,9 @@
     "yesterdayGain": "yesterday +{pct}%",
     "todayGain": "today +{pct}%",
     "datedGain": "{date} +{pct}%",
+    "yesterdayGainXp": "yesterday +{xp} XP",
+    "todayGainXp": "today +{xp} XP",
+    "datedGainXp": "{date} +{xp} XP",
     "todayContribution": "{pct}% of this bar came from today's session.",
     "datedContribution": "{pct}% of this bar came from the session on {date}."
   },

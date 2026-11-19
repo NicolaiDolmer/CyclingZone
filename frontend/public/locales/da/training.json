@@ -307,6 +307,9 @@
     "yesterdayGain": "i går +{pct} %",
     "todayGain": "i dag +{pct} %",
     "datedGain": "{date} +{pct} %",
+    "yesterdayGainXp": "i går +{xp} XP",
+    "todayGainXp": "i dag +{xp} XP",
+    "datedGainXp": "{date} +{xp} XP",
     "todayContribution": "{pct}% af denne bar kom fra dagens pas.",
     "datedContribution": "{pct}% af denne bar kom fra passet {date}."
   },

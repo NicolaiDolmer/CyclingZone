@@ -43,6 +43,18 @@ export function previewXpBars(body: Body): Bars {
   return bars;
 }
 
+/** 19/11: dagens XP pr. evne paa kvitteringens aktiviteter (opdigtet), saa "i dag +x XP" kan ses i preview. */
+function withPreviewActivityXp(run: any): any {
+  const riders = run?.report?.riders;
+  if (!Array.isArray(riders)) return run;
+  const keys = ABILITY_KEYS as readonly string[];
+  // Som prod (#8484): XP pr. evne staar paa hver sessions raekke (`xp`); kvitteringen samler dem som activities.
+  return { ...run, report: { ...run.report, riders: riders.map((row: any) => ({
+    ...row,
+    xp: Object.fromEntries(keys.filter((k) => hash(`${row?.rider_id}:${k}:on`) > 0.55).map((k) => [k, 5 + Math.round(hash(`${row?.rider_id}:${k}:xp`) * 50)])),
+  })) } };
+}
+
 /** Post-processes a mock response: with ?xp=1 the training payload carries XP. */
 export async function withXpLinesPreview(url: string, method: string, response: Response): Promise<Response> {
   if (!previewXpLinesActive() || method !== "GET" || !response) return response;
@@ -52,6 +64,6 @@ export async function withXpLinesPreview(url: string, method: string, response: 
   let body: Body;
   try { body = await response.clone().json(); } catch { return response; }
   if (!body || typeof body !== "object") return response;
-  const next = { ...body, capped: {}, xp_bar: previewXpBars(body) };
+  const next = { ...body, capped: {}, xp_bar: previewXpBars(body), todayRun: withPreviewActivityXp(body.todayRun) };
   return new Response(JSON.stringify(next), { status: 200, headers: { "Content-Type": "application/json" } });
 }

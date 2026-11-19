@@ -32,7 +32,7 @@ import { ABILITY_CATEGORIES } from "../../../lib/abilities.js";
 import { formatDate } from "../../../lib/intl.js";
 import { copenhagenDayKey } from "../../../lib/raceCentre.js";
 import AbilityReceiptRow, { AbilityReceiptHeader } from "../../training/AbilityReceiptRow.jsx";
-import { riderXpBars, withXpLines } from "../../../lib/xpAbilityLine.ts"; // #7947
+import { dayXpByAbility, riderXpBars, withXpLines } from "../../../lib/xpAbilityLine.ts"; // #7947
 import FocusPanel from "../../training/FocusPanel.jsx";
 import { dayTypeForProgram, sessionForProgram } from "../../../lib/trainingDayTypes.js";
 import IconBase from "../../ui/icons/IconBase.jsx";
@@ -291,7 +291,7 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
   // #7947: under XP "x / y XP" i stedet for procent (null = XP slukket, dagens visning).
   const xpBars = riderXpBars(training.xpBar, rider.id);
   const rowsByAbility = xpBars
-    ? Object.fromEntries(withXpLines(Object.values(receiptRows), xpBars).map((row) => [row.ability, row]))
+    ? Object.fromEntries(withXpLines(Object.values(receiptRows), xpBars, dayXpByAbility(dayRow?.activities ?? runRow?.activities)).map((row) => [row.ability, row]))
     : receiptRows;
 
   return (

@@ -47,3 +47,13 @@ test("#7947 XP on: every line shows XP and none is ever 'done'", () => {
   ]);
   assert.equal(rows[0].locked, true, "the input rows are not mutated");
 });
+
+test("dagens XP pr. evne (19/11): aktiviteternes xp summeres, og raekken faar xpDay", async () => {
+  const { dayXpByAbility, withXpLines } = await import("./xpAbilityLine.ts");
+  const day = dayXpByAbility([{ xp: { sprint: 30, tempo: 0 } }, { xp: { sprint: 24.4 } }, {}]);
+  assert.deepEqual(day, { sprint: 54.4 });
+  assert.equal(dayXpByAbility(null), null);
+  const rows = withXpLines([{ ability: "sprint" }, { ability: "tempo" }], { sprint: { xp: 10, price: 100 } }, day);
+  assert.equal(rows[0].xpDay, 54);
+  assert.equal(rows[1].xpDay, null);
+});

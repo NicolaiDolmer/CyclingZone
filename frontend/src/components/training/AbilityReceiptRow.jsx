@@ -102,11 +102,11 @@ export default function AbilityReceiptRow({ row, inFocus = false }) {
       {xpMode ? (
         row.xpLine ? (
           <span
-            className="flex-none w-[124px] flex items-center gap-1.5"
+            className="flex-none w-[100px] flex items-center gap-1"
             title={t("receipt.xpTitle", { xp: row.xpLine.xp, price: row.xpLine.price })}
             data-testid="ability-receipt-xp"
           >
-            <span className="relative h-1 min-w-[28px] flex-1 rounded-full bg-cz-subtle" aria-hidden="true">
+            <span className="relative h-1 min-w-[16px] flex-1 rounded-full bg-cz-subtle" aria-hidden="true">
               <span
                 className="absolute left-0 top-0 h-full rounded-full bg-cz-accent/85 transition-[width] duration-500"
                 style={{ width: `${row.xpLine.pct}%` }}
@@ -117,7 +117,7 @@ export default function AbilityReceiptRow({ row, inFocus = false }) {
             </span>
           </span>
         ) : (
-          <span className="flex-none w-[124px] text-right font-mono tabular-nums text-3xs text-cz-3">—</span>
+          <span className="flex-none w-[100px] text-right font-mono tabular-nums text-3xs text-cz-3">—</span>
         )
       ) : locked ? (
         <span
@@ -161,7 +161,11 @@ export default function AbilityReceiptRow({ row, inFocus = false }) {
           kant ikke hopper ræk-for-ræk. Ingen data/reel 0 % = stille streg,
           aldrig teksten "0 %" (den skal ikke læses som en fejl). #7947: under XP
           vises ingen procent; dagens XP står i Rapport-fanen. */}
-      {!xpMode && (
+      {xpMode ? (
+        <span className="flex-none w-[64px] whitespace-nowrap text-right font-mono tabular-nums text-3xs text-cz-3" data-testid="ability-receipt-xp-day">
+          {row.xpDay != null ? t(`${gainKey}Xp`, { ...gainVars, xp: row.xpDay }) : "—"}
+        </span>
+      ) : (
         <span className="flex-none w-[92px] text-right font-mono tabular-nums text-3xs text-cz-3">
           {yesterdayGainPct != null ? t(gainKey, gainVars) : "—"}
         </span>
@@ -180,11 +184,11 @@ export function AbilityReceiptHeader({ xp = false }) {
       <span className="flex-1 min-w-0 truncate">{t("receipt.colAbility")}</span>
       <span className="flex-none w-[24px] text-right">{t("receipt.colNow")}</span>
       <span className="flex-none w-[28px] text-right">{t("receipt.colSeason")}</span>
-      <span className={`flex-none ${xp ? "w-[124px]" : "w-[72px]"} text-right`}>{t("receipt.colProgress")}</span>
+      <span className={`flex-none ${xp ? "w-[100px]" : "w-[72px]"} text-right`}>{t("receipt.colProgress")}</span>
       {/* #5539: uden label, samme spacer-princip som dot-kolonnen ovenfor — den
           nye kolonne er en supplerende annotation (tit en stille streg), ikke
           endnu en formel datakolonne. */}
-      {!xp && <span className="flex-none w-[92px]" aria-hidden="true" />}
+      <span className={`flex-none ${xp ? "w-[64px]" : "w-[92px]"}`} aria-hidden="true" />
     </div>
   );
 }
