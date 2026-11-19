@@ -9,6 +9,7 @@ import Sketch from "./Sketch.tsx";
 import Direction4 from "./R4.tsx";
 import { ProgramView, Questions } from "./R4Extras.tsx";
 import Direction5, { type R5Init } from "./R5.tsx";
+import Over100 from "./R5Over100.tsx";
 const view = new URLSearchParams(window.location.search).get("view");
 
 const IDS = ["r5", "r4", "r1", "r2", "r3"] as const;
@@ -86,8 +87,10 @@ const r5Init: R5Init = {
 
 createRoot(document.getElementById("root")!).render(
   <>
-    {!shot && <Nav />}
-    {id === "r5" ? (
+    {!shot && view !== "over100" && <Nav />}
+    {view === "over100" ? (
+      <div className="min-h-screen bg-cz-body"><Over100 which={q.get("w") === "a2" ? "a2" : "a1"} mobile={mobile} /></div>
+    ) : id === "r5" ? (
       <div className="min-h-screen bg-cz-body">
         <Direction5 init={r5Init} mobile={mobile} />
       </div>
