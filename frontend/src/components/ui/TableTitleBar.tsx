@@ -149,7 +149,9 @@ export default function TableTitleBar({
                 </span>
               )}
               <label className="relative inline-flex h-11 min-w-0 cursor-pointer items-center gap-1 rounded-cz px-1.5 text-[13.5px] font-medium text-cz-1 has-[select:focus-visible]:outline-2 has-[select:focus-visible]:outline-offset-[-2px] has-[select:focus-visible]:outline-cz-accent-t sm:h-9">
-                <span className="truncate">{choiceLabel(choice)}</span>
+                <span className="truncate" title={choiceLabel(choice)}>
+                  {choiceLabel(choice)}
+                </span>
                 <ChevronDownIcon size={12} aria-hidden="true" className="flex-none text-cz-3" />
                 <select
                   aria-label={choice.ariaLabel}
@@ -158,7 +160,7 @@ export default function TableTitleBar({
                     track(`choice:${choice.key}`);
                     choice.onChange(e);
                   }}
-                  className="absolute inset-0 h-full w-full cursor-pointer appearance-none opacity-0 focus-visible:outline-hidden"
+                  className="absolute inset-0 h-full w-full cursor-pointer appearance-none bg-transparent opacity-0 focus-visible:outline-hidden"
                 >
                   {choice.options.map((o) => (
                     <option key={o.value} value={o.value}>
