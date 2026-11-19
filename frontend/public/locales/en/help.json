@@ -2051,7 +2051,7 @@
     },
     "restForDevelopedFaq": {
       "q": "My rider is fully developed. Should I just set them to Rest?",
-      "a": "Once every ability in a rider's chosen focus has reached its lifetime ceiling, every line in that focus reads 'done', and more training there adds nothing: the daily gain comes from the gap between current ability and ceiling, and at zero gap it stays zero at any intensity. Normal or Hard on a maxed-out rider still builds Fatigue, and Hard still carries the same injury risk as usual, for no ability gain in return, so Rest is the safer pick: it removes Fatigue instead of adding it. A rider's post-peak decline from around age 28 runs at the same fixed, age-based rate every season change regardless of what intensity you trained at, so neither training nor Rest speeds it up or slows it down. If a different focus still has room, switching there beats resting."
+      "a": "There is almost always more to gain: the higher an ability already is, the more each point costs, so progress near the top is slow, but training still moves it up to the highest level his role allows. Normal or Hard still builds Fatigue, and Hard carries the usual injury risk, so Rest makes sense when Fatigue is high or the gain is too small to be worth the load. Rest gives no development on a training day, so otherwise a focus on abilities that are still lower moves him faster. Riders hold their level up to and including 30; from the season after that, his physical abilities drop a little at each season change. Race days and hard training days slow that decline, Rest doesn't."
     },
     "raceDayIntensityFaq": {
       "q": "Does my chosen intensity still matter on a day my rider races?",
@@ -2435,7 +2435,7 @@
     },
     "trainWeaknessesFaq": {
       "q": "Should I train my weak abilities?",
-      "a": "Usually not. A rider's type sets a ceiling per ability, and a weakness has a low ceiling, so it stops growing early. The closer an ability gets to its ceiling, the less each training day adds. Train the abilities his type is built for, and put weaknesses second. A weak ability still counts in a stage, but it matters mostly where the stage asks for it."
+      "a": "Usually not first. His type decides how fast each ability develops: the abilities his primary and secondary type are built for develop fastest, and abilities outside his roles develop slower. Every point also costs more the higher an ability already is. Train the abilities his type is built for, and put weaknesses second. A weak ability still counts in a stage, but it matters mostly where the stage asks for it."
     },
     "raceFatigueSameFatigueFaq": {
       "q": "Is the fatigue from race effort the same as the Fatigue on the training page?",

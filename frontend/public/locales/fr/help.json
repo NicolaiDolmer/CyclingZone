@@ -2051,7 +2051,7 @@
     },
     "restForDevelopedFaq": {
       "q": "Mon coureur est entièrement développé. Dois-je simplement le mettre au repos ?",
-      "a": "Une fois que chaque aptitude de l'axe choisi d'un coureur a atteint son plafond à vie, chaque ligne de cet axe affiche “terminé”, et s'entraîner davantage là-dessus n'apporte rien : le gain quotidien vient de l'écart entre l'aptitude actuelle et le plafond, et à écart nul il reste nul à n'importe quelle intensité. Normal ou Dur sur un coureur au maximum accumule quand même de la fatigue, et Dur comporte toujours le même risque de blessure, sans aucun gain d'aptitude en retour, donc le Repos est le choix le plus sûr : il retire de la fatigue au lieu d'en ajouter. Le déclin d'un coureur après son pic, à partir d'environ 28 ans, suit à chaque changement de saison le même rythme fixe lié à l'âge quelle que soit l'intensité à laquelle tu l'as entraîné, ni l'entraînement ni le Repos ne l'accélèrent ou ne le ralentissent. Si un autre axe a encore de la marge, y passer vaut mieux que se reposer."
+      "a": "Il reste presque toujours quelque chose à gagner : plus une aptitude est déjà haute, plus chaque point coûte cher, donc la progression près du sommet est lente, mais l'entraînement la fait encore monter jusqu'au niveau le plus haut que permet son rôle. Normal ou Dur accumule quand même de la fatigue, et Dur comporte le risque de blessure habituel, donc le Repos a du sens quand la fatigue est élevée ou que le gain est trop faible pour valoir la charge. Le Repos ne donne aucun développement un jour d'entraînement, donc sinon un axe sur des aptitudes encore plus basses le fait progresser plus vite. Les coureurs gardent leur niveau jusqu'à 30 ans inclus ; à partir de la saison suivante, leurs capacités physiques baissent un peu à chaque changement de saison. Les jours de course et les jours d'entraînement dur freinent cette baisse, le Repos non."
     },
     "raceDayIntensityFaq": {
       "q": "L'intensité que j'ai choisie compte-t-elle encore un jour où mon coureur court ?",
@@ -2435,7 +2435,7 @@
     },
     "trainWeaknessesFaq": {
       "q": "Dois-je entraîner mes capacités faibles ?",
-      "a": "En général non. Le type d'un coureur fixe un plafond par capacité, et une faiblesse a un plafond bas, donc elle cesse vite de progresser. Plus une capacité approche de son plafond, moins chaque jour d'entraînement apporte. Entraîne les capacités pour lesquelles son type est fait, et mets les faiblesses en second. Une capacité faible compte quand même dans une étape, mais surtout là où l'étape l'exige."
+      "a": "En général pas en premier. Son type décide à quelle vitesse chaque capacité se développe : les capacités pour lesquelles ses types principal et secondaire sont faits se développent le plus vite, et celles en dehors de ses rôles plus lentement. Chaque point coûte aussi plus cher à mesure qu'une capacité est déjà haute. Entraîne les capacités pour lesquelles son type est fait, et mets les faiblesses en second. Une capacité faible compte quand même dans une étape, mais surtout là où l'étape l'exige."
     },
     "raceFatigueSameFatigueFaq": {
       "q": "La fatigue de l'effort en course est-elle la même que la Fatigue de la page d'entraînement ?",
