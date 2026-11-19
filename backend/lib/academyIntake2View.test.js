@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { buildIntake2View, displaySafeAbilities, maskPullCandidate, rosterPrognosis } from "./academyIntake2View.ts";
 import { KNOWLEDGE_DAYS } from "./academyProspectKnowledge.ts";
 import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
+import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
 
 test("maskPullCandidate: intet potentiale forlader serveren for en hentet kandidat (punkt 1)", () => {
   const item = { source: "pull", is_serious: true, potentialEstimate: { lo: 2, hi: 3 }, potentialBand: { prog: { lo: 40, hi: 60 } } };
@@ -95,6 +96,33 @@ const base = {
   teamId: "t1",
   scout: null,
 };
+
+test("#8400: the academy roster response contains one display band at final knowledge", async () => {
+  const supabase = createFakeSupabase({
+    app_config: [{ key: "development_xp_model", value: "off" }],
+    riders: [{ ...base.potRow, id: base.rider.id }],
+    rider_derived_abilities: [abilities],
+    team_staff: [],
+    team_facilities: [],
+    scout_actions: [],
+    scout_assignments: [],
+    academy_intake_profiles: [],
+    rider_training_days: [],
+    training_date_rider_days: [],
+    academy_intake: [],
+  });
+  const view = await buildIntake2View(supabase, {
+    teamId: base.teamId,
+    roster: [base.rider],
+    intake: [],
+    seasonNumber: base.seasonNumber,
+    now: new Date("2026-11-19T12:00:00Z"),
+  });
+  const { prognosis } = view.roster[0];
+  assert.equal(prognosis.stage, "final");
+  assert.ok(prognosis.band);
+  assert.equal("types" in prognosis, false);
+});
 
 test("rosterPrognosis: intet baand foer de foerste traeningsloebsdage", () => {
   const p = rosterPrognosis({ ...base, daysOnTeam: 3 });
