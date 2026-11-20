@@ -1,0 +1,21 @@
+{
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "switched_on",
+      "flag": "development_xp_model",
+      "topic": "Development",
+      "area": "development",
+      "en": {
+        "title": "The Development tab shows XP",
+        "body": "With XP switched on, the Development tab in Daily training shows one line per rider: XP today, XP per day over 30 days, the rating's change this season and how close he is to the next point. Open a rider to see his abilities. The rider type is shown as his natural type. With the column button you can also show the role he rates highest in now, or swap one for the other."
+      },
+      "da": {
+        "title": "Udvikling-fanen viser XP",
+        "body": "Når XP er tændt, viser fanen Udvikling i Daglig træning én linje pr. rytter: XP i dag, XP pr. dag over 30 dage, ratingens ændring i sæsonen og hvor tæt han er på næste point. Åbn en rytter for at se hans evner. Ryttertypen vises som hans naturlige type. Med kolonneknappen kan du også vise den rolle, han har højest rating i nu, eller bytte den ene ud med den anden."
+      },
+      "refs": [7947]
+    }
+  ]
+}
