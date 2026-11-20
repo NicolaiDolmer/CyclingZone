@@ -54,7 +54,7 @@ import {
 } from "./StagePlanModel.ts";
 import type { StagePlanLeg, StagePlanRecapItem, StagePlanRole, StagePlanRoute, StagePlanTask, StagePlanTrigger } from "./StagePlanModel.ts";
 
-type TFn = (key: string, opts?: Record<string, unknown>) => string;
+type TFn = { (key: string): string; (key: string, opts: Record<string, unknown>): string };
 type PlanRider = { rider_id: string; name?: string | null; abandoned?: boolean };
 type PlanOrderRider = { rider_id: string; plan?: StagePlanLeg[] | null } & Record<string, unknown>;
 type PlanOrder = { riders?: PlanOrderRider[] } & Record<string, unknown>;
@@ -176,7 +176,7 @@ function PlanRecap({ t, legs, route, events, riderId, rank = null, leader = null
               <span className="font-medium">{t(`stagePlan.task.${item.task}`)}</span>
               {line ? <>{", "}<span className="tabular-nums">{line}</span></> : null}
               {/* Ordet er med, saa markeringen aldrig kun er en farve. Uden bevis staar der intet (#7706). */}
-              {word && <span className="ml-1.5 text-3xs text-cz-3 tabular-nums whitespace-nowrap">{t(word.key, word.params)}</span>}
+              {word && <span className="ml-1.5 text-3xs text-cz-3 tabular-nums whitespace-nowrap">{t(word.key, word.params ?? {})}</span>}
             </span>
           </li>
         );

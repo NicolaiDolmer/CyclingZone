@@ -45,7 +45,7 @@ export type RosterPrognosis = {
 };
 export type Intake2View = {
   intake: IntakeItem[];
-  roster: (RosterRider & { prognosis: RosterPrognosis })[];
+  roster: (RosterRider & { prognosis: Omit<RosterPrognosis, "types"> })[];
   profile: {
     tier: number;
     candidatesPerWeek: number;
@@ -168,9 +168,8 @@ export async function buildIntake2View(supabase: Db, { teamId, roster, intake, s
 
   return {
     intake: (intake ?? []).map((item) => maskPullCandidate(item, abById.get(item?.riderId ?? item?.rider?.id))),
-    roster: (roster ?? []).map((rider) => ({
-      ...rider,
-      prognosis: rosterPrognosis({
+    roster: (roster ?? []).map((rider) => {
+      const { stage, daysOnTeam, nextStageDays, band } = rosterPrognosis({
         rider,
         abilities: abById.get(rider.id),
         potRow: potById.get(rider.id),
@@ -181,8 +180,9 @@ export async function buildIntake2View(supabase: Db, { teamId, roster, intake, s
         teamId,
         scout,
         developmentXp,
-      }),
-    })),
+      });
+      return { ...rider, prognosis: { stage, daysOnTeam, nextStageDays, band } };
+    }),
     profile: {
       tier: profileState.tier,
       candidatesPerWeek: profileState.rules.candidates,

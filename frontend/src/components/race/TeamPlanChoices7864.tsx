@@ -1,7 +1,7 @@
 import { Button } from '../ui/index.js';
 import { TEAM_PLAN_KINDS, type TeamPlanKind, type TeamPlanResult } from './tacticsReady7864.ts';
 
-type TFn = (key:string, options?:Record<string,unknown>)=>string;
+type TFn = { (key: string): string; (key: string, opts: Record<string, unknown>): string };
 export default function TeamPlanChoices7864({t,plans,active,disabled,onApply}:{t:TFn;plans:Record<TeamPlanKind,TeamPlanResult|null>;active:TeamPlanKind|null;disabled:boolean;onApply:(plan:TeamPlanResult)=>void}) {
   return <div data-testid="team-plan-choices" role="group" aria-label={t('stagePlan.title')} className="grid grid-cols-2 gap-2 border-b border-cz-border p-4 lg:grid-cols-5">
     {TEAM_PLAN_KINDS.map(kind=>{
