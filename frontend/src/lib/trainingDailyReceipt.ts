@@ -27,6 +27,8 @@ export interface TrainingActivity {
   settlement_status?: string;
   missing_evidence?: unknown[];
   score?: number;
+  /** #7982: when this session's receipt was stored (training_rider_ticks.settled_at), sent by the server. */
+  settled_at?: string | null;
   [key: string]: unknown;
 }
 export interface TrainingRun {
@@ -90,6 +92,31 @@ const order = (a: TrainingRun, b: TrainingRun) =>
   (dayOf(a) ?? -1) - (dayOf(b) ?? -1)
   || String(a.created_at ?? "").localeCompare(String(b.created_at ?? ""))
   || String(a.id ?? "").localeCompare(String(b.id ?? ""));
+
+/**
+ * #7982 (Fable krav 7): a date's sessions can be SAVED out of race-day order (a race
+ * session settled at its stage, a Train now press), so the date's opening progress is
+ * the first saved session's progress_before and its closing progress the last saved
+ * one's progress_after. The save order comes from the session itself: `xp_slot_seq`
+ * (the XP engine's slot counter) or `settled_at` (when the receipt was stored, sent
+ * by the server). Only when EVERY session of the rider carries the same kind of key;
+ * otherwise, and on ties, race-day order stands, exactly as before.
+ */
+function savedOrder(evidence: Evidence[]): Evidence[] {
+  const seq = (row: TrainingActivity) => typeof row.xp_slot_seq === "number" && Number.isFinite(row.xp_slot_seq) ? row.xp_slot_seq : null;
+  const at = (row: TrainingActivity) => {
+    const ms = typeof row.settled_at === "string" ? Date.parse(row.settled_at) : NaN;
+    return Number.isFinite(ms) ? ms : null;
+  };
+  for (const key of [seq, at]) {
+    const keys = evidence.map(e => key(e.row));
+    if (keys.every((k): k is number => k != null)) {
+      // Array.prototype.sort is stable: equal keys keep their race-day order.
+      return evidence.map((e, i) => ({ e, k: keys[i] })).sort((a, b) => a.k - b.k).map(x => x.e);
+    }
+  }
+  return evidence;
+}
 
 /**
  * #5915: ticks written before `progress_after` existed (29/9 and 30/9) carry
@@ -261,9 +288,13 @@ export function aggregateTrainingRuns(input: TrainingRun[] | null | undefined): 
       const finished = normalized && last.settled
         && (ownExpected.length > 0 ? ownExpected.every(day => present.has(day)) : present.size === 5);
       const state: ReceiptStatus = quarantine ? "reconciliation" : normalized ? (finished ? "complete" : "pending") : "recorded";
+      // #7982: progress and the point chain follow the order the sessions were saved.
+      const saved = savedOrder(evidence);
+      const opening = saved[0];
+      const closing = saved.at(-1)!;
       const gains: Numbers = {};
       const details: Record<string, Jump> = {};
-      for (const {row} of evidence) {
+      for (const {row} of saved) {
         for (const [ability, n] of Object.entries(row.gains ?? {})) {
           if (!finite(n) || n <= 0) continue;
           gains[ability] = (gains[ability] ?? 0) + n;
@@ -276,15 +307,15 @@ export function aggregateTrainingRuns(input: TrainingRun[] | null | undefined): 
       for (const [ability, jump] of Object.entries(details)) {
         if (jump.to - jump.from !== gains[ability]) delete details[ability];
       }
-      const progressBefore = { ...(first.row.progress_before ?? {}) };
+      const progressBefore = { ...(opening.row.progress_before ?? {}) };
       const gainPercent: Record<string, number | null> = {};
-      const stored = last.row.progress_after;
+      const stored = closing.row.progress_after;
       const derived = !stored && normalized && evidence.every(e => e.normalized)
         ? nextStart.get(`${first.season}:${id}:${date}`) : undefined;
       const progressAfter = stored ?? derived;
       const keys = new Set([...Object.keys(progressBefore), ...Object.keys(progressAfter ?? {}), ...Object.keys(gains)]);
       for (const ability of keys) {
-        const before = progressValue(first.row.progress_before, ability), after = progressValue(progressAfter, ability);
+        const before = progressValue(opening.row.progress_before, ability), after = progressValue(progressAfter, ability);
         const raw = finite(before) && finite(after) ? (gains[ability] ?? 0) + after - before : null;
         // A derived end point that would mean negative progress is inconsistent
         // evidence (something other than training moved it): say unknown, not 0.

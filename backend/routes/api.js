@@ -285,6 +285,7 @@ import { isTrainingConditionPerDateEnabled } from "../lib/trainingDateConditionF
 import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "../lib/raceDayDevelopmentFlag.js";
 import { TRAINING_SCORE_VISIBLE_FLAG_KEY, TRAINING_DAILY_RECEIPT_FLAG_KEY } from "../lib/trainingScoreFlag.js";
 import { trainingRunResponse } from "../lib/trainingRunResponse.ts";
+import { attachReceiptSaveOrder7982 } from "../lib/trainingReceiptSaveOrder7982.js"; // #7982 krav 7
 import { createFirstRaceCardRouter } from "./firstRaceCard.js"; // #1140
 import { createRaceLibraryV2Router } from "../lib/raceLibraryV2Flag.js"; // #6514
 import { createPushRouter } from "./pushRoutes.ts"; // #6590
@@ -3286,7 +3287,8 @@ router.get("/training/me", requireAuth, async (req, res) => {
     ]);
 
     if (todayRunResult.error) throw new Error(todayRunResult.error.message);
-    const { todayRuns, todayRun } = trainingRunResponse(todayRunResult.data);
+    // #7982: the receipt follows the order the sessions were saved (settled_at); read-only, best-effort.
+    const { todayRuns, todayRun } = trainingRunResponse(await attachReceiptSaveOrder7982({ supabase, teamId, runs: todayRunResult.data }));
     const weekPlanRows = weekPlanResult.data ?? [];
     const weekPlan = weekPlanRows.find((r) => r.rider_id == null)?.days ?? null;
     // #1895 PR 2: kun holdets EGNE ryttere — weekPlanRows er allerede scoped til
