@@ -791,5 +791,84 @@
     "programs": "Programmer",
     "limit": "Træthedsgrænse",
     "limitShort": "Grænse"
+  },
+  "r5": {
+    "saved": "Gemt",
+    "trained": "Trænet",
+    "race": "Løb",
+    "quickLabel": "{name}: træning i dag",
+    "effort": {
+      "rest": "Hvile",
+      "easy": "Let",
+      "medium": "Mellem",
+      "hard": "Hård"
+    },
+    "load": {
+      "easy": "Let dag",
+      "light": "Rolig dag",
+      "normal": "Normal dag",
+      "hard": "Hård dag",
+      "veryHard": "Meget hård dag"
+    },
+    "status": {
+      "days70": "{n, plural, one {# dag} other {# dage}} på {from}+"
+    },
+    "card": {
+      "days70": "Dage i træk med træthed {from} eller mere: {n}"
+    },
+    "program": {
+      "none": "Intet program",
+      "own": "Egen plan",
+      "aria": "{name}: program {program}",
+      "changeToday": "Skift dagens pas",
+      "editPlan": "Rediger plan",
+      "choose": "Vælg et program",
+      "backToTeam": "Tilbage til holdets program"
+    },
+    "source": {
+      "program": "Program",
+      "group": "Gruppe",
+      "own": "Din dag",
+      "noDay": "Ingen dag endnu",
+      "useAssistant": "Brug {session}"
+    },
+    "session": "Pas {n}",
+    "sessionAria": "{name}, pas {n}: {session}",
+    "overview": {
+      "today": "I dag, {date}",
+      "training": "{n} træner",
+      "racing": "{n} kører løb",
+      "tired": "{n} trætte",
+      "noProgram": "{n} uden program"
+    },
+    "filter": {
+      "age_all": "Alle aldre",
+      "age_u23": "Under 23",
+      "age_u25": "Under 25",
+      "age_25plus": "25 og derover",
+      "groupAll": "Alle grupper",
+      "groupNone": "Ingen gruppe",
+      "typeAll": "Alle typer",
+      "clear": "Ryd filtre"
+    },
+    "team": {
+      "whole": "Hele holdet i dag",
+      "selected": "{n} markerede i dag"
+    },
+    "sessions": {
+      "label": "Pas",
+      "simple": "Enkel",
+      "all": "Alle pas"
+    },
+    "col": {
+      "program": "Program",
+      "fatigueNow": "Træthed nu",
+      "dayLoad": "Dagens belastning",
+      "today": "I dag"
+    },
+    "selectAll": "Markér alle",
+    "selectRider": "Markér {name}",
+    "openRider": "Pas og detaljer for {name}",
+    "sortBy": "Sortér: {col}"
   }
 }

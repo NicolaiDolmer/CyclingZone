@@ -791,5 +791,84 @@
     "programs": "Programmes",
     "limit": "Limite de fatigue",
     "limitShort": "Limite"
+  },
+  "r5": {
+    "saved": "Enregistré",
+    "trained": "Entraîné",
+    "race": "Course",
+    "quickLabel": "{name} : entraînement du jour",
+    "effort": {
+      "rest": "Repos",
+      "easy": "Facile",
+      "medium": "Moyen",
+      "hard": "Dur"
+    },
+    "load": {
+      "easy": "Journée facile",
+      "light": "Journée légère",
+      "normal": "Journée normale",
+      "hard": "Journée dure",
+      "veryHard": "Journée très dure"
+    },
+    "status": {
+      "days70": "{n, plural, one {# jour} other {# jours}} à {from}+"
+    },
+    "card": {
+      "days70": "Jours d'affilée avec une fatigue de {from} ou plus : {n}"
+    },
+    "program": {
+      "none": "Aucun programme",
+      "own": "Plan perso",
+      "aria": "{name} : programme {program}",
+      "changeToday": "Changer les séances du jour",
+      "editPlan": "Modifier le plan",
+      "choose": "Choisir un programme",
+      "backToTeam": "Revenir au programme de l'équipe"
+    },
+    "source": {
+      "program": "Programme",
+      "group": "Groupe",
+      "own": "Ta journée",
+      "noDay": "Pas encore de journée",
+      "useAssistant": "Utiliser {session}"
+    },
+    "session": "Séance {n}",
+    "sessionAria": "{name}, séance {n} : {session}",
+    "overview": {
+      "today": "Aujourd'hui, {date}",
+      "training": "{n} s'entraînent",
+      "racing": "{n} en course",
+      "tired": "{n} fatigués",
+      "noProgram": "{n} sans programme"
+    },
+    "filter": {
+      "age_all": "Tous les âges",
+      "age_u23": "Moins de 23 ans",
+      "age_u25": "Moins de 25 ans",
+      "age_25plus": "25 ans et plus",
+      "groupAll": "Tous les groupes",
+      "groupNone": "Sans groupe",
+      "typeAll": "Tous les types",
+      "clear": "Effacer les filtres"
+    },
+    "team": {
+      "whole": "Toute l'équipe aujourd'hui",
+      "selected": "{n} sélectionnés aujourd'hui"
+    },
+    "sessions": {
+      "label": "Séances",
+      "simple": "Simple",
+      "all": "Toutes les séances"
+    },
+    "col": {
+      "program": "Programme",
+      "fatigueNow": "Fatigue actuelle",
+      "dayLoad": "Charge du jour",
+      "today": "Aujourd'hui"
+    },
+    "selectAll": "Tout sélectionner",
+    "selectRider": "Sélectionner {name}",
+    "openRider": "Séances et détails de {name}",
+    "sortBy": "Trier : {col}"
   }
 }

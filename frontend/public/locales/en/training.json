@@ -791,5 +791,84 @@
     "programs": "Programs",
     "limit": "Fatigue limit",
     "limitShort": "Limit"
+  },
+  "r5": {
+    "saved": "Saved",
+    "trained": "Trained",
+    "race": "Race",
+    "quickLabel": "{name}: training today",
+    "effort": {
+      "rest": "Rest",
+      "easy": "Easy",
+      "medium": "Medium",
+      "hard": "Hard"
+    },
+    "load": {
+      "easy": "Easy day",
+      "light": "Light day",
+      "normal": "Normal day",
+      "hard": "Hard day",
+      "veryHard": "Very hard day"
+    },
+    "status": {
+      "days70": "{n, plural, one {# day} other {# days}} at {from}+"
+    },
+    "card": {
+      "days70": "Days in a row at fatigue {from} or more: {n}"
+    },
+    "program": {
+      "none": "No program",
+      "own": "Own plan",
+      "aria": "{name}: program {program}",
+      "changeToday": "Change today's sessions",
+      "editPlan": "Edit plan",
+      "choose": "Choose a program",
+      "backToTeam": "Back to team program"
+    },
+    "source": {
+      "program": "Program",
+      "group": "Group",
+      "own": "Your day",
+      "noDay": "No day yet",
+      "useAssistant": "Use {session}"
+    },
+    "session": "Session {n}",
+    "sessionAria": "{name}, session {n}: {session}",
+    "overview": {
+      "today": "Today, {date}",
+      "training": "{n} training",
+      "racing": "{n} racing",
+      "tired": "{n} tired",
+      "noProgram": "{n} no program"
+    },
+    "filter": {
+      "age_all": "All ages",
+      "age_u23": "Under 23",
+      "age_u25": "Under 25",
+      "age_25plus": "25 and over",
+      "groupAll": "All groups",
+      "groupNone": "No group",
+      "typeAll": "All types",
+      "clear": "Clear filters"
+    },
+    "team": {
+      "whole": "Whole team today",
+      "selected": "{n} selected today"
+    },
+    "sessions": {
+      "label": "Sessions",
+      "simple": "Simple",
+      "all": "All sessions"
+    },
+    "col": {
+      "program": "Program",
+      "fatigueNow": "Fatigue now",
+      "dayLoad": "Day load",
+      "today": "Today"
+    },
+    "selectAll": "Select all",
+    "selectRider": "Select {name}",
+    "openRider": "Sessions and details for {name}",
+    "sortBy": "Sort: {col}"
   }
 }

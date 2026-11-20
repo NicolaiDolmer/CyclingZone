@@ -791,5 +791,84 @@
     "programs": "Programma's",
     "limit": "Vermoeidheidslimiet",
     "limitShort": "Limiet"
+  },
+  "r5": {
+    "saved": "Opgeslagen",
+    "trained": "Getraind",
+    "race": "Koers",
+    "quickLabel": "{name}: training vandaag",
+    "effort": {
+      "rest": "Rust",
+      "easy": "Licht",
+      "medium": "Gemiddeld",
+      "hard": "Zwaar"
+    },
+    "load": {
+      "easy": "Lichte dag",
+      "light": "Rustige dag",
+      "normal": "Normale dag",
+      "hard": "Zware dag",
+      "veryHard": "Zeer zware dag"
+    },
+    "status": {
+      "days70": "{n, plural, one {# dag} other {# dagen}} op {from}+"
+    },
+    "card": {
+      "days70": "Dagen op rij met vermoeidheid {from} of meer: {n}"
+    },
+    "program": {
+      "none": "Geen programma",
+      "own": "Eigen plan",
+      "aria": "{name}: programma {program}",
+      "changeToday": "Sessies van vandaag wijzigen",
+      "editPlan": "Plan bewerken",
+      "choose": "Kies een programma",
+      "backToTeam": "Terug naar teamprogramma"
+    },
+    "source": {
+      "program": "Programma",
+      "group": "Groep",
+      "own": "Jouw dag",
+      "noDay": "Nog geen dag",
+      "useAssistant": "Gebruik {session}"
+    },
+    "session": "Sessie {n}",
+    "sessionAria": "{name}, sessie {n}: {session}",
+    "overview": {
+      "today": "Vandaag, {date}",
+      "training": "{n} trainen",
+      "racing": "{n} koersen",
+      "tired": "{n} moe",
+      "noProgram": "{n} zonder programma"
+    },
+    "filter": {
+      "age_all": "Alle leeftijden",
+      "age_u23": "Onder 23",
+      "age_u25": "Onder 25",
+      "age_25plus": "25 en ouder",
+      "groupAll": "Alle groepen",
+      "groupNone": "Geen groep",
+      "typeAll": "Alle types",
+      "clear": "Filters wissen"
+    },
+    "team": {
+      "whole": "Hele team vandaag",
+      "selected": "{n} geselecteerd vandaag"
+    },
+    "sessions": {
+      "label": "Sessies",
+      "simple": "Eenvoudig",
+      "all": "Alle sessies"
+    },
+    "col": {
+      "program": "Programma",
+      "fatigueNow": "Vermoeidheid nu",
+      "dayLoad": "Dagbelasting",
+      "today": "Vandaag"
+    },
+    "selectAll": "Alles selecteren",
+    "selectRider": "{name} selecteren",
+    "openRider": "Sessies en details van {name}",
+    "sortBy": "Sorteren: {col}"
   }
 }

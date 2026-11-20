@@ -243,7 +243,7 @@ function sortValue(row: R5Row, key: SortKey): string | number | null {
 }
 
 /** Sorterer stabilt; manglende vaerdier staar altid sidst, uanset retning. */
-export function sortR5Rows(rows: readonly R5Row[], sort: Sort): R5Row[] {
+export function sortR5Rows<T extends R5Row>(rows: readonly T[], sort: Sort): T[] {
   if (!sort) return [...rows];
   return rows
     .map((row, i) => ({ row, i, v: sortValue(row, sort.key) }))

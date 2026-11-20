@@ -97,6 +97,7 @@ import TodayRowsMobile from "../components/training/TodayRowMobile.tsx";
 import { pressedChoice, pressedChoiceFromSession, rowLocked, rowForecast, hasOwnProgram } from "../components/training/todayRowModel.ts";
 import ResetToTeamProgram from "../components/training/ResetToTeamProgram.tsx";
 import XpReportSwitch from "../components/training/reportXp/XpReportSwitch.tsx"; // #7627
+import { useTrainingPageR5 } from "../components/training/r5/trainingPageR5Flag.ts"; // #7947
 // #6030: fanerne Program, Development og Report hentes foerst naar de aabnes
 // (lazyWithRetry, #5014), saa foerste visning af Today henter mindre. Fallback er den
 // kanoniske skelet-markup (PAGE_TEMPLATES: aldrig en spinner i kort).
@@ -115,6 +116,8 @@ const TrainingHistory = tabPart("TrainingHistory");
 const TrainingMoment = tabPart("TrainingMoment");
 // #8363: "Today's training" after Train now (behind the XP switch; own chunk, loaded only after a press).
 const TrainNowMoment = lazyWithRetry(() => import("../components/training/TrainNowMoment.tsx"));
+// #7947: I dag-fanen i R5-udgaven (egen chunk, hentes kun naar kontakten training_page_r5 er on).
+const TodayR5Lazy = lazyWithRetry(() => import("../components/training/r5/TodayR5.tsx"));
 
 // Skelet mens en lazy fane hentes (samme markup som Development-fanens egen
 // indlaesning: Card + SkeletonLines).
@@ -437,6 +440,7 @@ export default function TrainingPage() {
   const catalogV3 = useTrainingCatalogV3(); // #5319
 
   const tTypes = useTranslation("riderTypes").t;
+  const trainingR5 = useTrainingPageR5(); // #7947
 
   // #3721: tre faner, ?tab=-synkroniseret efter samme mønster som FinancePage/
   // RiderStatsPage (VALID_TABS-fallback). Kun læst ved mount for den initiale
@@ -1354,7 +1358,7 @@ export default function TrainingPage() {
   // grå. #3643/PR #5552: dayClose-gaten gælder på alle flader og bor derfor i
   // primaryActionFor, ét sted.
   const primaryAction = primaryActionFor({
-    needsDay: overview.needsDay.length,
+    needsDay: trainingR5 ? 0 : overview.needsDay.length, // #7947: i R5 er guldknappen altid Train now
     trainedToday: runGate.trainedToday,
     enabled,
     dayClose: runGate.dayClose,
@@ -2460,6 +2464,17 @@ export default function TrainingPage() {
           : t("notTrainedYetToday");
 
 
+  // #7947: R5-fanens data og handlinger = sidens egne (samme gemme-flow, Train now, assistent).
+  const r5Today = trainingR5 ? {
+    riders, loading: ridersLoading, phone: phoneLayout, seasonYear, activeSeasonNumber, today, todayWeekday, condition, planFor, riderWeekPlans,
+    racingToday, forecast: fatigueForecast.forecast, programAssigned: programs.assigned, programCatalog: programs.catalog ?? [], groups: trainingGroups.groups ?? [],
+    fatigueDays70: training.fatigueDays70, smartDefaultFocus, trainedToday: runGate.trainedToday, savingId, bulkApplying, justSaved: lingerIds,
+    planError: planActionError, runError, decisionRows: decisionCardOn ? decisionRows : null, fatigueRules: fatigueRules.data, assistantPanel, bulkMessage: bulkMsgNode,
+    onPlan: handlePlanChange, onBulk: applyBulkChoice, onPickSession: setFocusPanelRiderId, onReset: handleResetToTeamProgram,
+    onOpenPlan: (riderId) => { setWeekPlanFor(riderId); setTab("weekplan"); }, onOpenPrograms: () => setSub("programs"), onEditFatigueRule: () => setSub("limit"),
+    onOpenAssistant: handleOpenAssistantPanel, renderCard: renderRiderCard,
+  } : null;
+
   if (isLoading) {
     return (
       <div className="mx-auto max-w-[1600px]">
@@ -2542,6 +2557,7 @@ export default function TrainingPage() {
         </TabList>
 
       <TabPanel value="today">
+      {trainingR5 ? <Suspense fallback={<TabFallback />}><TodayR5Lazy r5={r5Today} /></Suspense> : (
       <div className="space-y-3">
       {decisionCardOn && !ridersLoading && (
         <DailyDecision
@@ -2582,6 +2598,7 @@ export default function TrainingPage() {
           alle, så #5124's D-047-gren (telefonen uden flaget) er slettet. */}
       {phoneTodayView ? renderMobileToday() : renderDesktopToday()}
       </div>
+      )}
       </TabPanel>
 
       {/* #5485 (aendring 6): fanen Week plan — holdets plan og hver rytters
