@@ -120,8 +120,11 @@ test.describe("Rytterdatabase: rating = bedste rolle nu (#5435)", () => {
     await page.screenshot({ path: evidenceShotPath("pr-screens/5435-riders-best-role-on-desktop.png"), fullPage: true });
 
     // Filter på bedste rolle nu: kun klatreren er tilbage.
+    // #8280: "Best role now" ligger i filter-arket bag filter-ikonet i tabellens titellinje.
+    await page.getByTestId("table-filters-open").click();
     const filter = page.getByLabel(BEST_ROLE_NOW).first();
     await filter.selectOption("climber");
+    await page.keyboard.press("Escape");
     await expect(page.locator("table tbody tr", { hasText: "Climbnow" })).toBeVisible();
     await expect(page.locator("table tbody tr", { hasText: "Sprintnow" })).toHaveCount(0);
 

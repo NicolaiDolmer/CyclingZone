@@ -10,6 +10,7 @@ import { after, describe, it } from 'node:test';
 import {
   QUEUE_CI_TIMEOUT_MINUTES,
   TRAIN_MAX_BATCH,
+  TRAIN_MAX_DEPLOY,
   completeFileList,
   confirmBeforeQueue,
   decideAction,
@@ -134,14 +135,25 @@ describe('#8331 eet samlet tog + deploy-reglen', () => {
     assert.equal(TRAIN_MAX_BATCH, 5);
     assert.deepEqual(selectTrain(list), [1, 2, 3, 4, 5]);
   });
-  it('hoejst een deploy-PR (den aeldste), og den sidst i toget', () => {
+  it('op til TRAIN_MAX_DEPLOY (3) deploy-PR\'er (de aeldste), sidst i toget (ejer 20/11)', () => {
     const list = [
       evalWith({ number: 10 }, { deploy: DEPLOYS }),
       evalWith({ number: 11 }),
       evalWith({ number: 12 }, { deploy: DEPLOYS }),
       evalWith({ number: 13 }),
+      evalWith({ number: 14 }, { deploy: DEPLOYS }),
+      evalWith({ number: 15 }, { deploy: DEPLOYS }),
     ];
-    assert.deepEqual(selectTrain(list), [11, 13, 10]);
+    assert.equal(TRAIN_MAX_DEPLOY, 3);
+    assert.deepEqual(selectTrain(list), [11, 13, 10, 12, 14]);
+    assert.deepEqual(selectTrain(list, { maxDeploy: 1 }), [11, 13, 10]);
+  });
+  it('en solo-PR (migration/motor) er eneste deploy-PR i toget', () => {
+    const SOLO = { deploys: true, solo: true };
+    const list = [evalWith({ number: 20 }, { deploy: SOLO }), evalWith({ number: 21 }, { deploy: DEPLOYS }), evalWith({ number: 22 })];
+    assert.deepEqual(selectTrain(list), [22, 20]);
+    const later = [evalWith({ number: 30 }, { deploy: DEPLOYS }), evalWith({ number: 31 }, { deploy: SOLO }), evalWith({ number: 32 }, { deploy: DEPLOYS })];
+    assert.deepEqual(selectTrain(later), [30, 32], 'solo venter til et tog for sig selv');
   });
   it('fuldt tog: deploy-PR\'en faar sin plads, de stille venter', () => {
     const list = [evalWith({ number: 1 }, { deploy: DEPLOYS }), ...[2, 3, 4, 5, 6].map((n) => evalWith({ number: n }))];
@@ -161,7 +173,7 @@ describe('#8331 eet samlet tog + deploy-reglen', () => {
     assert.deepEqual(deployImpact([]), { deploys: true, solo: true });
     assert.deepEqual(deployImpact(null), { deploys: true, solo: true });
   });
-  it('queueArgs: eet tog, hoved pr. PR, CI-frist 90 min og een deploy pr. tog', () => {
+  it('queueArgs: eet tog, hoved pr. PR, CI-frist 90 min og op til TRAIN_MAX_DEPLOY deploy-PRer pr. tog', () => {
     const args = queueArgs({ script: 'q.ps1', train: [11, 13, 10], repo: 'o/r', expectHeads: ['a'.repeat(40), 'b'.repeat(40), 'c'.repeat(40)] });
     const val = (name) => args[args.indexOf(name) + 1];
     assert.equal(val('-Pr'), '11,13,10');
@@ -169,7 +181,7 @@ describe('#8331 eet samlet tog + deploy-reglen', () => {
     assert.equal(QUEUE_CI_TIMEOUT_MINUTES, 90);
     assert.equal(val('-CiTimeoutMinutes'), '90');
     assert.equal(val('-MaxBatch'), String(TRAIN_MAX_BATCH));
-    assert.equal(val('-MaxDeployBatch'), '1');
+    assert.equal(val('-MaxDeployBatch'), String(TRAIN_MAX_DEPLOY));
     assert.equal(val('-Repo'), 'o/r');
   });
   it('merge-queue.ps1: samme MaxBatch-loft, og -ExpectHead er een SHA pr. PR', () => {
@@ -279,7 +291,7 @@ describe('run (IO injiceret)', () => {
       readMarker: () => null, evaluate: () => selected, reevaluate: sameAgain(selected),
       runQueue: ({ train }) => { calls.push(train); return 0; },
     });
-    assert.deepEqual(calls, [[25, 24]]);
+    assert.deepEqual(calls, [[25, 24, 26]]);
   });
 
   it('nyt hoved efter udvaelgelsen: PR\'en springes over (arver ikke kategori eller ejer-go)', async () => {

@@ -98,6 +98,8 @@ import { pressedChoice, pressedChoiceFromSession, rowLocked, rowForecast, hasOwn
 import ResetToTeamProgram from "../components/training/ResetToTeamProgram.tsx";
 import XpReportSwitch from "../components/training/reportXp/XpReportSwitch.tsx"; // #7627
 import { dayXpByAbility, riderXpBars, withXpLines } from "../lib/xpAbilityLine.ts"; // #7947
+import { useDevelopmentXpEnabled } from "../lib/developmentXpFlag.ts"; // #8476
+import { earnedGainTotal } from "../lib/trainingEarnedGains.ts"; // #8476
 // #6030: fanerne Program, Development og Report hentes foerst naar de aabnes
 // (lazyWithRetry, #5014), saa foerste visning af Today henter mindre. Fallback er den
 // kanoniske skelet-markup (PAGE_TEMPLATES: aldrig en spinner i kort).
@@ -566,14 +568,16 @@ export default function TrainingPage() {
   // #2578: dagens vundne hele point pr. rytter fra dagens kørsel — så roster-
   // rækkens progress-celle kan vise "+N i dag" når baren netop har wrappet efter
   // et gennembrud (ellers fejllæses wrappen som "ingen fremgang").
+  // #8476: under XP taeller point betalt fra bjaelken ikke som dagens traening.
+  const developmentXp = useDevelopmentXpEnabled();
   const todayGainsByRider = useMemo(() => {
     const out = {};
     for (const row of todayRun?.report?.riders ?? []) {
-      const total = todayGainTotal(row);
+      const total = developmentXp ? earnedGainTotal(row) : todayGainTotal(row);
       if (total > 0) out[row.rider_id] = total;
     }
     return out;
-  }, [todayRun]);
+  }, [todayRun, developmentXp]);
 
   // #3924 trin 2: rider_id → hele gårsdagens rapport-linje, så roster-rækkens
   // kvitteringsbar kan udlede gårsdagens bidrag (progress_before + gains pr.
@@ -2685,12 +2689,15 @@ export default function TrainingPage() {
                         </div>
                       ) : hasBand ? (
                         <>
-                          <DevelopmentGlyph now={estimate.now} progLo={estimate.prog.lo} progHi={estimate.prog.hi} loft={estimate.loft} />
+                          <DevelopmentGlyph now={estimate.now} progLo={estimate.prog.lo} progHi={estimate.prog.hi} loft={developmentXp ? null : estimate.loft} />
                           <div className="mt-1 font-mono tabular-nums text-2xs text-cz-2">
                             {roleLabel ? (
                               <span className="font-data uppercase tracking-wider text-3xs text-cz-1 me-1.5">{roleLabel}</span>
                             ) : null}
-                            {Number.isFinite(estimate.loft)
+                            {/* #8476: under XP intet loft, og ét tal naar intervallet er ét tal. */}
+                            {developmentXp && estimate.prog.lo === estimate.prog.hi
+                              ? t("development.numbersSingle", { now: estimate.now, value: estimate.prog.lo })
+                              : !developmentXp && Number.isFinite(estimate.loft)
                               ? t("development.numbers", { now: estimate.now, lo: estimate.prog.lo, hi: estimate.prog.hi, loft: estimate.loft })
                               : t("development.numbersNoLoft", { now: estimate.now, lo: estimate.prog.lo, hi: estimate.prog.hi })}
                           </div>
@@ -2739,7 +2746,7 @@ export default function TrainingPage() {
         <XpReportSwitch key={reportKey} runs={receiptRuns} roster={ridersLoading ? null : riders} trainingScore={trainingScore}>
         <TrainingHistory history={{ ...history, runs: receiptRuns }} trainingScore={trainingScore} condition={condition} today={today} roster={ridersLoading ? null : riders} />
         </XpReportSwitch>
-        <TrainingMoment latestRun={latestRun} isToday={latestIsToday} progressByRider={progress} pastRuns={pastRuns} />
+        <TrainingMoment latestRun={latestRun} isToday={latestIsToday} progressByRider={progress} pastRuns={pastRuns} xp={developmentXp} />
         </Suspense>
       </TabPanel>
       </Tabs>

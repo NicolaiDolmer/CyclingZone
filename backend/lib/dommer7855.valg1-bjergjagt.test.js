@@ -18,7 +18,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { motor, kraev, koerEtape, etape, jagede, betalte, HJAELPERE } from "./dommer7855.fixtures.mjs";
+import { motor, kraev, koerEtape, etape, jagede, betalte, medIUdbrud, HJAELPERE } from "./dommer7855.fixtures.mjs";
 import { RAA_BJERG, RAA_FLAD, ROLLER, allePlaner, harBjergjagtAlene, valideringstabel } from "./dommer7855.facit-scenarier.mjs";
 
 const M = await motor();
@@ -95,14 +95,28 @@ test("R2 valg 1 i motoren: en gemt 'Hent bjergpoint' alene bliver aldrig til bje
   assert.equal(koert, 4);
 });
 
-test("R3 valg 1 i motoren: med 'Gaa i udbrud + Hent bjergpoint' koerer han efter bjergpointene fra start", async () => {
-  let jaget = 0;
+// R3 i motoren er opdateret til ejerens S2 (16/11, issue #7855 "Ejervalg 16/11", valg 2): "jagten
+// slutter, naar rytteren ikke kommer med i udbruddet; ingen bjergjagt fra feltet". Foer S2 kraevede
+// proeven jagt i alle tre koersler, ogsaa den, hvor han ikke kom med (bjergjagt fra feltet). Nu:
+// med i udbruddet = han koerer efter bjergpointene; ikke med = ingen top og intet betalt.
+// Resten af S2 (hentet, sent dannet udbrud, pris) staar i dommer7855.s2-bjergjagt-slutter.test.js.
+test("R3 valg 1 + S2 i motoren: med 'Gaa i udbrud + Hent bjergpoint' koerer han efter bjergpointene, naar han kom med i udbruddet", async () => {
+  let med = 0;
+  let ikkeMed = 0;
   for (const froe of ["v1-a", "v1-b", "v1-c"]) {
     const id = "t1r2";
     const k = await koerEtape(etape(13), froe, { planer: { [id]: [{ task: "breakaway", hunt: "hunt_kom" }] } });
-    if (jagede(k, id, "kom") > 0) jaget++;
+    if (await medIUdbrud(k, id)) {
+      assert.ok(jagede(k, id, "kom") > 0, `${froe}: med i udbruddet, men jagten paa udbrudsleddet gjaldt ikke`);
+      med++;
+    } else {
+      assert.equal(jagede(k, id, "kom"), 0, `${froe}: ikke med i udbruddet, men koerte efter bjergpoint (S2)`);
+      assert.equal(betalte(k, id, "kom"), 0, `${froe}: ikke med i udbruddet, men betalte for bjergjagt (S2)`);
+      ikkeMed++;
+    }
   }
-  assert.equal(jaget, 3, "jagten paa udbrudsleddet skal gaelde i alle tre koersler");
+  assert.ok(med >= 1, "proeven skal ramme en koersel, hvor han kom med i udbruddet");
+  assert.equal(med + ikkeMed, 3);
 });
 
 test("R5 valg 1: fladens kopi af kontrakten giver samme svar som serveren, ogsaa for jagt paa udbrudsleddet", () => {

@@ -171,7 +171,14 @@
   "table": {
     "fullTable": "Full table",
     "columnsLabel": "Choose columns",
-    "moreRight": "More columns to the right"
+    "moreRight": "More columns to the right",
+    "titleBar": {
+      "filters": "Filters",
+      "closeSearch": "Close search",
+      "columns": "Columns",
+      "close": "Close",
+      "swapHint": "Tap a column to add it. The one you added first drops out."
+    }
   },
   "expectedDivision": {
     "optionExpected": "Division {n} (expected)",

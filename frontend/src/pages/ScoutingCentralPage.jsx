@@ -18,14 +18,14 @@
 // T1 (max-w-4xl, ingen egen container-padding — Layout leverer den globale
 // gutter). Den lokale SectionCard-dublet er slettet til fordel for ui/Section +
 // SectionHeader; alle ad hoc font-display-kort-titler ("eget editorial
-// sub-brand") er normaliseret til kanonisk SectionHeader. Sidens EGET
-// editoriale sidehoved (Bebas + border-b-bånd) er BEVARET uændret — det er
-// samme ejer-godkendte opskrift som Klub/SeasonPlanner, ikke en ny fortolkning.
+// sub-brand") er normaliseret til kanonisk SectionHeader. #8069 T08 (ejer 16/11):
+// sidens egne Bebas-sidehoved og Bebas-korttitler er afløst af PageHeader og
+// kortets 15/600-titel (P4).
 import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import {
-  EmptyState, ErrorState, PageLoader, Button, Select,
+  EmptyState, ErrorState, PageLoader, PageHeader, Button, Select,
   Section, SectionStack, SectionHeader, ChevronRightIcon,
 } from "../components/ui";
 import RiderLink from "../components/RiderLink";
@@ -47,7 +47,7 @@ function ScoutCard({ scout, capacity, t }) {
       <SectionHeader title={t("scoutCard.eyebrow")} />
       {isDefault ? (
         <>
-          <h3 className="font-display text-[21px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0">
+          <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0">
             {t("scoutCard.defaultTitle")}
           </h3>
           <p className="text-cz-2 text-[12.5px] leading-[1.55] mt-2 mb-0 max-w-prose">
@@ -56,7 +56,7 @@ function ScoutCard({ scout, capacity, t }) {
         </>
       ) : (
         <>
-          <h3 className="font-display text-[21px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0">
+          <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0">
             {scout.name}
           </h3>
           <p className="text-cz-2 text-[12.5px] mt-1 mb-0">
@@ -206,7 +206,7 @@ function TargetPoolCard({ id, name, title, subtitle, recommended, selected, onSe
         checked={selected} onChange={onSelect}
       />
       <div className="flex items-center justify-between gap-2">
-        <span className="font-display text-[14px] leading-none tracking-[0.02em] uppercase text-cz-1">
+        <span className="text-[13px] font-semibold leading-tight text-cz-1">
           {title}
         </span>
         {recommended && (
@@ -512,22 +512,20 @@ export default function ScoutingCentralPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="flex justify-between items-end border-b-[1.5px] border-cz-1 pb-[10px] mb-4">
-        <div>
-          <h1 className="font-display text-[38px] leading-none">{t("page.title")}</h1>
-          <p className="text-[12px] text-cz-2 mt-[2px]">{t("page.subtitle")}</p>
-        </div>
-        {central.scout?.id && (
-          <button
-            type="button"
-            className="inline-flex items-center gap-1 text-[12px] text-cz-2 hover:text-cz-1"
+      <PageHeader
+        title={t("page.title")}
+        subtitle={t("page.subtitle")}
+        actions={central.scout?.id ? (
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => navigate(`/staff/${central.scout.id}`)}
           >
             {t("scoutCard.viewProfile")}
             <ChevronRightIcon size={13} aria-hidden="true" />
-          </button>
-        )}
-      </div>
+          </Button>
+        ) : null}
+      />
 
       <SectionStack>
         <ScoutCard scout={central.scout} capacity={central.capacity} t={t} />
