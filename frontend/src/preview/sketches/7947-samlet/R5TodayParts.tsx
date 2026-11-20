@@ -159,7 +159,7 @@ function XpLines({ id }: { id: string }) {
   const { t: tRider } = useTranslation("rider");
   const lines = XP_LINES[id] ?? XP_LINES.r4;
   return (
-    <div data-testid="r5-xp-lines">
+    <div data-testid="r5-xp-lines" className="max-w-[560px]">
       <div className="flex items-center gap-1.5 border-b border-cz-border pb-1 font-data text-3xs uppercase tracking-[.08em] text-cz-3">
         <span className="min-w-[44px] flex-1 truncate">{t("receipt.colAbility")}</span>
         <span className="w-[28px] flex-none text-right">{t("receipt.colNow")}</span>

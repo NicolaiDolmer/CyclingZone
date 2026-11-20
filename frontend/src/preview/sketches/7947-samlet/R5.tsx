@@ -183,10 +183,10 @@ function RaceCell({ date, fields }: { date: number; fields: readonly Field[] }) 
   const field = fields.indexOf("stage") + 1;
   const label = DATES[date].race ?? "Race";
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-cz-1">
+    <span className="inline-flex max-w-full min-w-0 items-center gap-1.5 text-xs text-cz-1">
       <LockIcon size={12} aria-hidden="true" className="text-cz-3" />
-      <span className="font-semibold">{label}</span>
-      <span className="text-cz-2">· {DATES[date].event ?? RACE} · session {field} of 5</span>
+      <span className="whitespace-nowrap font-semibold">{label}</span>
+      <span className="min-w-0 truncate text-cz-2">· {DATES[date].event ?? RACE} · session {field} of 5</span>
     </span>
   );
 }
@@ -560,8 +560,8 @@ export default function Direction5({ init, mobile }: { init: R5Init; mobile: boo
           <SortTh k={null} label="Form" cls="w-[72px]" sort={sort} onSort={onSort} />
           {old ? (
             <>
-              <SortTh k={"fatigue"} label="Fatigue now / tonight" cls="w-[150px] whitespace-nowrap" sort={sort} onSort={onSort} />
-              <SortTh k={null} label="Days 70+" cls="w-[80px] whitespace-nowrap" sort={sort} onSort={onSort} />
+              <SortTh k={"fatigue"} label="Fatigue now / tonight" cls="w-[180px] whitespace-nowrap" sort={sort} onSort={onSort} />
+              <SortTh k={null} label="Days 70+" cls="w-[92px] whitespace-nowrap" sort={sort} onSort={onSort} />
             </>
           ) : (
             <>
@@ -656,11 +656,11 @@ export default function Direction5({ init, mobile }: { init: R5Init; mobile: boo
       </button>
     </div>
   );
-  const mobileCols = old ? "grid-cols-[1fr_36px_74px_70px]" : "grid-cols-[1fr_36px_40px_76px_76px]";
+  const mobileCols = old ? "grid-cols-[1fr_34px_74px_70px] gap-1.5" : "grid-cols-[1fr_34px_38px_66px_72px] gap-1.5";
   const mobileList = (
     <div>
       {mobileTools}
-      <div className={`grid ${mobileCols} gap-2 border-b border-cz-border px-3 py-2 font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3`}>
+      <div className={`grid ${mobileCols} border-b border-cz-border px-3 py-2 font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3`}>
         {old ? <><span>Rider</span><span>Form</span><span>Fatigue / tonight</span><span>Today</span></>
           : <><span>Rider</span><span>Form</span><span>Fatigue</span><span>Day load</span><span>Today</span></>}
       </div>
@@ -697,8 +697,9 @@ export default function Direction5({ init, mobile }: { init: R5Init; mobile: boo
                   {pickMode && (
                     <input type="checkbox" checked={sel} readOnly tabIndex={-1} aria-hidden="true" className="mt-0.5 h-4 w-4 flex-none rounded-[3px] accent-cz-accent" />
                   )}
-                  <RiderName rider={r.rider} wrap /><SquadBadge id={r.rider.id} />
+                  <RiderName rider={r.rider} wrap />
                 </span>
+                {STATUS[r.rider.id]?.squad && <span className="mt-0.5 ps-1"><SquadBadge id={r.rider.id} /></span>}
                 <RowStatus id={r.rider.id} />
               </span>
             );
@@ -706,7 +707,7 @@ export default function Direction5({ init, mobile }: { init: R5Init; mobile: boo
               <li key={r.rider.id} className={`border-t border-cz-border first:border-t-0 ${sel ? "bg-cz-subtle/60" : ""}`}>
                 <button type="button" onClick={() => (pickMode ? toggleSelect(r.rider.id) : toggle(r.rider.id))}
                   aria-expanded={pickMode ? undefined : o} aria-pressed={pickMode ? sel : undefined}
-                  className={`grid min-h-11 w-full ${mobileCols} items-center gap-2 px-3 py-2 text-start ${o && !pickMode ? "bg-cz-subtle/60" : ""}`}>
+                  className={`grid min-h-11 w-full ${mobileCols} items-center px-3 py-2 text-start ${o && !pickMode ? "bg-cz-subtle/60" : ""}`}>
                   {nameCell}
                   <span><FormPlate value={FORM[r.rider.id] ?? null} /></span>
                   {old ? (
@@ -724,7 +725,7 @@ export default function Direction5({ init, mobile }: { init: R5Init; mobile: boo
                 </button>
                 {/* Gammel loesning (dev=old): ET tryk i raekken vaelger dagen (TodayRowMobile). */}
                 {old && !r.racing && !done && !pickMode && (
-                  <div className="flex items-center gap-2 px-3 pb-2 [&_button]:flex-1" data-tour={tourAnchor()}>
+                  <div className="flex items-center gap-2 px-3 pb-2 [&_button]:flex-1" data-tour={tourAnchor()} data-testid="r5-old-onetap">
                     <Segmented label={`${r.rider.name}: training ${dateWord}`} value={r.choice ?? "none"} onChange={(v: Effort) => setChoice(r.rider.id, v)}
                       options={EFFORTS.map((e) => ({ value: e, label: EFFORT_WORD[e] }))} className="w-full" />
                     {savedFor(r.rider.id)}
