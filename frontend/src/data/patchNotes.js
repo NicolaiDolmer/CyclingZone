@@ -1,5 +1,53 @@
 export const PATCHES = [
 {
+  "version": "7.477",
+  "date": "2026-11-20",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Club",
+      "area": "interface",
+      "en": {
+        "title": "Calmer card titles on the Club page",
+        "body": "Facility cards on the Club page and the team link in the rider switcher now use the regular interface font instead of the big display font."
+      },
+      "da": {
+        "title": "Roligere korttitler på Klub-siden",
+        "body": "Faciliteterne på Klub-siden og holdlinket i ryttervælgeren bruger nu den almindelige skrift i stedet for den store overskriftsskrift."
+      },
+      "refs": [
+        8335
+      ]
+    }
+  ]
+},
+{
+  "version": "7.476",
+  "date": "2026-11-20",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Riders",
+      "area": "interface",
+      "en": {
+        "title": "Flag instead of country code",
+        "body": "The rider profile now shows the country flag without the country code next to it."
+      },
+      "da": {
+        "title": "Flag i stedet for landekode",
+        "body": "Rytterprofilen viser nu landets flag uden landekoden ved siden af."
+      },
+      "refs": [
+        8336
+      ]
+    }
+  ]
+},
+{
   "version": "7.475",
   "date": "2026-11-20",
   "changes": [

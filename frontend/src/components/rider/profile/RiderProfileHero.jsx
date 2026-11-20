@@ -344,11 +344,7 @@ export default function RiderProfileHero({
               {squadKey && <CategoryTag>{t(`header.${squadKey}`)}</CategoryTag>}
               {isU23 && <CategoryTag>{t("header.u23")}</CategoryTag>}
               <span className="font-data text-2xs uppercase tracking-[.08em] text-cz-3 inline-flex items-center gap-1.5">
-                {rider.nationality_code && (
-                  <span className="inline-flex items-center gap-1 normal-case">
-                    <Flag code={rider.nationality_code} /> {rider.nationality_code}
-                  </span>
-                )}
+                <Flag code={rider.nationality_code} />
                 {age != null && <span>{t("header.ageYears", { age })}</span>}
                 {rider.height != null && <span>{t("header.heightCm", { height: rider.height })}</span>}
                 {rider.weight != null && <span>{t("header.weightKg", { weight: rider.weight })}</span>}
