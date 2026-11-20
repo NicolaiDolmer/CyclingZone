@@ -121,8 +121,8 @@ test("a rider missing from today's receipt (e.g. signed after training) is unkno
 test("the summary line adds up the rows", () => {
   // ejer 20/11: the racing rider's XP so far counts in the summary, and he still counts as unsettled.
   const rows = buildDevelopmentRows({ runs: RUNS, riders: [rider("a"), rider("b", { racingToday: true })], todayKey: "2026-11-19", seasonGains: { a: { climbing: 3 } }, forceUnsettled: true });
-  assert.deepEqual(devSummary(rows), { riders: 2, days: 2, xpToday: 50, unsettled: 1, xp30: 115, seasonPoints: 3, close: 1 });
-  assert.equal(rows[0].spark.length, devSummary(rows).days, "the summary divides by the same days as each row");
+  assert.deepEqual(devSummary(rows), { riders: 2, days: 2, riderDays: 4, xpToday: 50, unsettled: 1, xp30: 115, seasonPoints: 3, close: 1 });
+  assert.equal(rows.reduce((a, r) => a + r.xpDays, 0), devSummary(rows).riderDays, "the summary divides by the same dates as the rows");
   assert.equal(devSummary([]).seasonPoints, null);
 });
 
@@ -355,4 +355,27 @@ test("rating 30 d: Train now's confirmed points count before the settlement; an 
   assert.deepEqual(gainsLast30(withTrainedNow("pending", { climbing: 1 }), "a", "2026-11-20"), { climbing: 1, flat: 1 });
   assert.equal(gainsLast30(withTrainedNow("pending", null), "a", "2026-11-20"), null, "pending without confirmed points is not a measured zero");
   assert.equal(gainsLast30(withTrainedNow("reconciliation", null), "a", "2026-11-20"), null, "a date still being reconciled is unknown");
+});
+
+// Fable 20/11: the first XP evening. The older receipts carry no XP fields, so dividing by
+// every receipt date showed ~1/30 of the real XP per day and climbed for a month.
+test("XP per day divides by the dates with XP, not by every receipt in the window", () => {
+  const withoutXp = (date: string) => {
+    const run = receipt(date, "complete", [{ id: "a", xp: {} }]);
+    for (const row of (run.report as unknown as { riders: Array<{ activities: Array<{ xp?: unknown }> }> }).riders) for (const a of row.activities) delete a.xp;
+    return run;
+  };
+  const old = Array.from({ length: 29 }, (_, i) => withoutXp(dayKeyMinus("2026-11-20", i + 1)));
+  const runs = [receipt("2026-11-20", "complete", [{ id: "a", xp: { climbing: 300 } }]), ...old];
+  const [row] = buildDevelopmentRows({ runs, riders: [rider("a")], todayKey: "2026-11-20", seasonGains: {} });
+  assert.equal(row.xpDays, 1);
+  assert.equal(row.xpPerDay, 300);
+  assert.equal(devSummary([row]).riderDays, 1);
+});
+
+test("no date with XP gives a dash, and no row for today gives no XP today", () => {
+  const rows = buildDevelopmentRows({ runs: RUNS, riders: [rider("new")], todayKey: "2026-11-20", seasonGains: {} });
+  assert.equal(rows[0].xpPerDay, null);
+  assert.equal(devSummary(rows).xpToday, null);
+  assert.equal(devSummary(rows).riderDays, 0);
 });

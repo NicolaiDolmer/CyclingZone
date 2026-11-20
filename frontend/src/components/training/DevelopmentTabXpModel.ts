@@ -75,6 +75,10 @@ export type DevRow = {
   rating30: number | null;
   today: XpTodayCell;
   spark: number[]; xp30: number;
+  /** Fable 20/11: dates in the window where this rider's receipt carries XP; the divisor for XP per day. */
+  xpDays: number;
+  /** XP per day over the dates with XP; null = no date with XP yet (shown as a dash, never a diluted number). */
+  xpPerDay: number | null;
   /** Ejer 19/11: the next point in XP ("x / y XP"); `pct` only sorts and counts "close". */
   next: { key: string; pct: number; xp: number; price: number } | null;
   abilities: DevAbility[];
@@ -82,8 +86,8 @@ export type DevRow = {
   dayXpWhen: DayXpWhen | null;
 };
 
-/** `days` = the dates with a receipt in the window (at most 30), the same divisor as each row's XP per day. */
-export type DevSummary = { riders: number; days: number; xpToday: number; unsettled: number; xp30: number; seasonPoints: number | null; close: number };
+/** `riderDays` = the rider-dates with XP in the window, the same divisor as each row's XP per day. `xpToday` null = no rider has today's row yet. */
+export type DevSummary = { riders: number; days: number; riderDays: number; xpToday: number | null; unsettled: number; xp30: number; seasonPoints: number | null; close: number };
 
 const finite = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
 
@@ -249,6 +253,19 @@ export function buildDevelopmentRows({ runs, riders, todayKey, seasonGains, forc
   const monthById = new Map((month?.riders ?? []).map(r => [r.id, r]));
   const days = month?.days.length ?? 0;
   const bars = latestBars(runs);
+  // Fable 20/11: XP per day divides by the dates that carry XP for the rider, not by every receipt date.
+  // On XP's first evening the 29 older receipts have no XP fields; dividing by them shows ~1/30 of the truth.
+  const windowDates = new Set((month?.days ?? []).map(d => d.date));
+  const xpDatesById = new Map<string, Set<string>>();
+  for (const run of runs) {
+    if (!windowDates.has(run.tick_date)) continue;
+    for (const row of run.report?.riders ?? []) {
+      if (!row.activities?.some(a => a.xp != null && typeof a.xp === "object")) continue;
+      const set = xpDatesById.get(row.rider_id) ?? new Set<string>();
+      set.add(run.tick_date);
+      xpDatesById.set(row.rider_id, set);
+    }
+  }
   // The abilities' "+N XP" comes from the newest receipt, as on the Training tab (#5539, #8488):
   // today once today has a receipt, otherwise the latest day, labelled with its date.
   const newestRun = runs.reduce<XpReceipt | null>((a, b) => (!a || b.tick_date > a.tick_date ? b : a), null);
@@ -302,6 +319,8 @@ export function buildDevelopmentRows({ runs, riders, todayKey, seasonGains, forc
       today,
       spark: m?.spark ?? Array.from({ length: days }, () => 0),
       xp30: m?.xp ?? 0,
+      xpDays: xpDatesById.get(rider.id)?.size ?? 0,
+      xpPerDay: (xpDatesById.get(rider.id)?.size ?? 0) > 0 ? Math.round((m?.xp ?? 0) / xpDatesById.get(rider.id)!.size) : null,
       next: nextKey && nextPct != null && nextLine ? { key: nextKey, pct: nextPct, xp: nextLine.xp, price: nextLine.price } : null,
       abilities,
       dayXpWhen: newestRow ? dayXpWhen : null,
@@ -314,7 +333,9 @@ export function devSummary(rows: readonly DevRow[]): DevSummary {
   return {
     riders: rows.length,
     days: rows[0]?.spark.length ?? 0,
-    xpToday: rows.reduce((a, r) => a + (r.today.state === "xp" ? r.today.xp : 0), 0),
+    riderDays: rows.reduce((a, r) => a + r.xpDays, 0),
+    // Fable 20/11: before today's training no rider has a row; a dash, not a measured 0.
+    xpToday: rows.some(r => r.today.state === "xp") ? rows.reduce((a, r) => a + (r.today.state === "xp" ? r.today.xp : 0), 0) : null,
     unsettled: rows.filter(r => r.today.state === "locked" || (r.today.state === "xp" && r.today.soFar)).length,
     xp30: rows.reduce((a, r) => a + r.xp30, 0),
     seasonPoints: seasons.length ? seasons.reduce((a, b) => a + b, 0) : null,
@@ -343,7 +364,7 @@ function sortValue(row: DevRow, key: SortKey): string | number | null {
     case "season": return row.ratingSeason;
     case "rating30": return row.rating30;
     case "xpToday": return row.today.state === "xp" ? row.today.xp : null;
-    case "xp30": return row.xp30;
+    case "xp30": return row.xpPerDay;
     case "next": return row.next?.pct ?? null;
   }
 }

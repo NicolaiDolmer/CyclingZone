@@ -81,8 +81,8 @@ export default function DevelopmentXpSwitch({ runs, roster, estimateFor, seasonG
 
 const NUM = "font-data tabular-nums";
 // Ejer 19/11: summen over 30 dage er uoverskuelig; kolonnen viser gennemsnittet pr. dag (hele tal).
-// Rækken og linjen over tabellen deler samme nævner: dagene med kvittering (højst 30).
-const xpAvgPerDay = (row: { xp30: number; spark: readonly number[] }) => Math.round(row.xp30 / Math.max(1, row.spark.length));
+// Rækken og linjen over tabellen deler samme nævner: datoerne hvor rytteren har XP (Fable 20/11), aldrig alle kvitteringsdatoer.
+const xpAvgPerDay = (row: { xpPerDay: number | null }) => (row.xpPerDay == null ? "—" : formatNumber(row.xpPerDay));
 const HEAD = "font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3";
 const LABEL = "mb-1 font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3";
 const RATING_PLATE = `inline-flex min-w-[2.125rem] items-center justify-center rounded-cz border border-cz-border bg-cz-subtle px-1 py-0.5 text-[13px] font-semibold leading-none text-cz-1 ${NUM}`;
@@ -195,10 +195,10 @@ function TitleLine({ summary }: { summary: ReturnType<typeof devSummary> }) {
     <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1 border-b border-cz-border px-3 py-2.5 text-xs text-cz-2 max-sm:gap-x-3" data-testid="development-xp-summary">
       <span className="me-1 font-semibold text-cz-1">{t("developmentXp.riders", { count: summary.riders })}</span>
       {dot}
-      <span>{t("developmentXp.xpToday")} <span className={strong}>{formatNumber(summary.xpToday)}</span>
+      <span>{t("developmentXp.xpToday")} <span className={strong}>{summary.xpToday == null ? "—" : formatNumber(summary.xpToday)}</span>
         {summary.unsettled > 0 && <span className="text-cz-3"> {t("developmentXp.unsettled", { count: summary.unsettled })}</span>}</span>
       {dot}
-      <span>{t("developmentXp.xp30")} <span className={strong}>{formatNumber(Math.round(summary.xp30 / Math.max(1, summary.days) / Math.max(1, summary.riders)))}</span></span>
+      <span>{t("developmentXp.xp30")} <span className={strong}>{summary.riderDays > 0 ? formatNumber(Math.round(summary.xp30 / summary.riderDays)) : "—"}</span></span>
       {dot}
       <span><span className={strong}>{summary.seasonPoints != null ? formatNumber(summary.seasonPoints) : "—"}</span> {t("developmentXp.seasonPoints")}</span>
       {dot}
@@ -406,7 +406,7 @@ function DesktopTable({ rows, open, toggle, sort, onSort, columns }: { rows: Dev
                 {show30 && <td className="px-3 py-[7px]"><RatingSeason value={row.rating30} testId="development-xp-rating-30" /></td>}
                 <td className="px-3 py-[7px]"><XpToday cell={row.today} /></td>
                 <td className="px-3 py-[7px]">
-                  <span className={`text-[13px] font-semibold text-cz-1 ${NUM}`} data-testid="development-xp-avg">{formatNumber(xpAvgPerDay(row))}</span>
+                  <span className={`text-[13px] font-semibold text-cz-1 ${NUM}`} data-testid="development-xp-avg">{xpAvgPerDay(row)}</span>
                 </td>
                 <td className="px-3 py-[7px]">
                   {row.next ? (
@@ -448,7 +448,7 @@ function PhoneList({ rows, open, toggle, columns }: { rows: DevRow[]; open: Set<
               <div className={`grid min-h-11 w-full items-center gap-2 px-3 py-2 ${PHONE_GRID} ${o ? "bg-cz-subtle/60" : ""}`}>
                 <Name row={row} short />
                 <span><Rating value={row.rating} /></span>
-                <span className={`text-[13px] font-semibold text-cz-1 ${NUM}`}>{formatNumber(xpAvgPerDay(row))}</span>
+                <span className={`text-[13px] font-semibold text-cz-1 ${NUM}`}>{xpAvgPerDay(row)}</span>
                 <button type="button" onClick={() => toggle(row.id)} aria-expanded={o} aria-label={t("developmentXp.openAbilities", { name: row.name })}
                   className="flex min-h-11 items-start justify-between gap-1 text-start text-xs">
                   {row.next
