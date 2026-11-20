@@ -342,7 +342,7 @@
     {
       "issue": 8400,
       "area": "academy",
-      "why": "Ejer-go 18/11 eftermiddag (PC1-session, Codex-listen på #8374). Kun del 1: prognose pr. rolle ved endeligt bud."
+      "why": "Ejer-go 18/11 eftermiddag (PC1-session, Codex-listen på #8374). Kun del 1: prognose pr. rolle ved endeligt bud. Ejer-go 18/11 aften (PC1, overdragelsen på #8374). Opfølgning A: kun roster-API'ets payload (fjern prognosis.types fra /api/academy/me-rosteren)."
     },
     {
       "issue": 5153,
@@ -655,6 +655,10 @@
     {
       "issue": 8359,
       "why": "Rester af kontakter, der aldrig kommer i brug (markeds-eftersynets tre rækker og tomme logtabel, auktions-adgang for nye konti, spørgeskema-banneret). Ejer 17/11 (PC1, AskUserQuestion, én kontakt ad gangen): 'Ja, fjern resterne', 'Fjern rækken', 'Fjern de to rækker'. Én migration + ét oprydningscommit."
+    },
+    {
+      "issue": 8341,
+      "why": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): gamle skitse-PR'er merges som arkiv eller lukkes med note; fund bliver issues før lukning."
     }
   ],
   "brandList": [
@@ -1587,6 +1591,176 @@
       "issue": 8363,
       "reason": "Træn nu-øjeblikket med ejerens animation, i egen visning som også er kvitteringen. Ejer 17/11 (PC1): 'B: egen visning = kvitteringen' og 'Vi venter til at Xp er færdigt'; bygges når XP er tændt.",
       "since": "2026-11-17"
+    },
+    {
+      "issue": 8336,
+      "reason": "Ejer-go 18/11 aften (PC1, overdragelsen på #8374). B: flag på rytterprofilen.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8335,
+      "reason": "Ejer-go 18/11 aften (PC1, overdragelsen på #8374). B: Bebas kun på navnet i Klub-korttitler og RiderSwitcherBar.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8340,
+      "reason": "Ejer-go 18/11 aften (PC1, overdragelsen på #8374). D: arkivér de to hints efter regel 38 og flyt first_bid_recommendation_clicked ind i rundvisningen.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8401,
+      "reason": "Ejer-go 18/11 aften (PC1, overdragelsen på #8374). E: godkendt forklaring under spærrede holdplankort, desktop og mobil, EN/DA/ES/FR/NL.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 6850,
+      "reason": "Ejer-go 19/11 morgen (PC1, AskUserQuestion: \"Ja, ret den som fejl\"). Holdpoint og resultater viser holdet på løbsdagen. Måling + design før første PR.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8425,
+      "reason": "Ejer-go 19/11 morgen (PC1, AskUserQuestion: \"Forkert info nu\"). Grøn below est. value ved startpris er vildledende.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 7032,
+      "reason": "Ejer-go 19/11 morgen (PC1, roadmap-gennemgang): resten er bygget i #7118; kun flag på fanen Udvikling mangler (lille rettelse, ikke afstemning).",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 7233,
+      "reason": "Ejer-go 19/11 (PC1, roadmap-gennemgang: \"Byg den (lille)\"). JR/U23-mærket fra træningssiden genbruges på Mit hold, så U23 og junior kan skelnes under filteret Akademi.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8427,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af UX 1/4 første oplevelse, PR #8286): fund 1 \"Nu, før S5-tilmeldingen\", fund 3 \"I denne uge\".",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8428,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af UX 1/4 første oplevelse, PR #8286): login \"I denne uge\".",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8429,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af UX 1/4 første oplevelse, PR #8286): rundvisningen \"I denne uge\", sammen med #8340.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8430,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af UX 1/4 første oplevelse, PR #8286): små tekster fund 12-15 \"I denne uge\".",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8431,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af UX 1/4 første oplevelse, PR #8286): forsiden \"Næste uge med forsiden\" (#8285).",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8433,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): guld-kontrast \"nu\" (PR #8283).",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8434,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): UX hold og udvikling (PR #8283), uge 48.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8435,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): UX hold og udvikling (PR #8283), uge 48.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8436,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): UX hold og udvikling (PR #8283), uge 48.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8437,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): UX hold og udvikling (PR #8283), uge 48.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8438,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): UX marked og økonomi (PR #8284), uge 48.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8439,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): UX marked og økonomi (PR #8284), uge 48.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8440,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): UX marked og økonomi (PR #8284), uge 48.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8441,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): UX marked og økonomi (PR #8284), uge 48.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8442,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): mobil-rest (PR #8236), Codex uge 48.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8230,
+      "reason": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): plan-hul-tjek \"Færdiggør og kør hver mandag\" (PR #8231), inkl. AGENTS-regel 42.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8282,
+      "reason": "Ejer-go 19/11 (PC1): velkommen tilbage står på roadmappets Næste uge (lovet); UX 1/4 fund 2.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8300,
+      "reason": "Ejer-go 19/11 (PC1): dashboardet retning C, design nu med brugerdata (GitHub, Discord, Clarity), telefon først; ud på roadmappet som idéer til afstemning.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8447,
+      "reason": "Ejer-go 19/11 (PC1, dashboard-gennemgang): \"9+10 rettes som fejl\".",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8448,
+      "reason": "Ejer-go 19/11 (PC1, dashboard-gennemgang): \"Ja, først i Codex dashboardspor\".",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8419,
+      "reason": "Ejer-go 19/11 (PC1): planlægningens seks beta-forslag som levende skitser, ét ad gangen til ejeren.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8449,
+      "reason": "Ejer-go 19/11 (PC1): patch notes-siden med datoer, færre kolonner og tydeligt nyt før tænding for alle.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8458,
+      "reason": "Ejer-go 19/11 (PC1): advarsel ved Kør roligt i mål for kaptajner.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8446,
+      "reason": "Ejer-go 19/11 (PC1): rytterens top A + popularitet som ord + store mærker, design og byg uge 48.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8450,
+      "reason": "Ejer-go 19/11 (PC1 + ejer 18/11 i staff-chat): startlisten viser ratings, ikke konkurrenternes rutematch.",
+      "since": "2026-11-19"
+    },
+    {
+      "issue": 8476,
+      "reason": "Ejer-go 19/11 (PC1, AskUserQuestion): \"Rettelser af forkert info\" + \"Træn nu-animationen (A)\" + \"Ny træningsside: Udvikling\" + \"Program med programmer\" (skitse). Gennemgang af alle trænings- og udviklingsvisninger før XP-tænding; forkert info rettes straks.",
+      "since": "2026-11-19"
     }
   ]
 }

@@ -4,7 +4,12 @@
 // Designnote og maalt baseline: #7855 (tal privat i balance-internals/7855/).
 // Ejerens tre valg 12/11 (docs/superpowers/specs/2026-11-12-7855-troejejagt-ejervalg.md):
 //   A. Udbrud og jagt sammen: udbrudsleddet kan baere jagten (stagePlan.ts `hunt`). Han proever
-//      udbruddet og koerer om pointene fra start, i udbruddet eller i den gruppe han ender i.
+//      udbruddet og koerer om pointene fra start: bjergpoint kun i udbruddet (S2, ejer 16/11),
+//      spurtpoint ogsaa fra den gruppe han ender i, saa laenge han er paa udbrudsleddet. Har
+//      planen et led "naar han er sat", venter leddet, til udbruddet er dannet; kom han ikke med,
+//      eller er han hentet, gaar planen videre (hul 1, ejer 17/11). Kommer han med i et senere
+//      udbrud paa samme etape, koerer han om pointene dér, uanset planens opbygning (ejer 19/11);
+//      "naar han er sat"-leddet styrer kun, hvad han goer uden for et udbrud.
 //   B. Evnen afgoer mod dem, der kaemper: jaegeren slaar kun ryttere, der ikke koerer med om
 //      pointene. Mod andre kaempende i gruppen (andre jaegere, sprinterkaptajner, troejens foerer,
 //      #6937-bjergjaegere, ogsaa AI-holdenes) afgoer evnen og passagens spredning, som mellem to
@@ -14,9 +19,9 @@
 //
 // HVAD OPGAVEN AENDRER (og intet andet):
 //   1. Hvem kaemper om passagen. En rytter hvis aktuelle jagt (ctx.stagePlanHuntTasks7855) gaelder
-//      netop denne art passage paa hans egen straekning, kaemper om den i den gruppe han sidder i,
-//      ogsaa i feltet. Gruppen afgoer stadig foerst: et udbrud foran tager pointene foran ham.
-//      Ingen ny terning.
+//      netop denne art passage paa hans egen straekning, kaemper om den i den gruppe han sidder i:
+//      en spurt ogsaa i feltet, en bjergtop kun i udbruddet (S2). Gruppen afgoer stadig foerst: et
+//      udbrud foran tager pointene foran ham. Ingen ny terning.
 //   2. Prisen: i loebet er det opgavens indsats (TASK_EFFORT). I traetheden bagefter taeller et
 //      jagt-led med samme indsats (som tempo og foelg med), saa opgaven aldrig er en billigere vej
 //      til samme loeb (dom 2, "frikortet"). Hver passage han koerte med om, fordi opgaven bad ham,
@@ -54,16 +59,40 @@ export const JERSEY_HUNT_WORK_7855: Readonly<Record<"sprint" | "kom", number>> =
   kom: 0.13,
 });
 
+/** En gruppe, som passagen ser den (kun det jagten laeser). */
+type HuntGroup7855 = { origin?: string; kind?: string; rider_ids: readonly string[] };
+
+/**
+ * #7855 S2 (ejer 16/11, "jagten slutter"): ligger rytteren i dagens udbrud ved passagen? Samme
+ * regel som etapeplanens udbrud (stagePlanEngine.isEscape): en gruppe skabt af udbruddet, foran
+ * som udbrud eller alene.
+ */
+export function inEscapeAtPassage7855(groups: readonly HuntGroup7855[], riderId: string): boolean {
+  return groups.some((g) => g.origin === "breakaway" && (g.kind === "breakaway" || g.kind === "solo") && g.rider_ids.includes(riderId));
+}
+
 /**
  * Rytterne der i dette segment jager passager af arten `kind`, i rider_id-orden. Kun ryttere der
  * stadig er i loebet (udgaaede er ikke paa vejen). Tom uden plan eller uden jagt.
+ *
+ * #7855 S2 (ejer 16/11): bjergjagten findes kun sammen med udbruddet (valg 1 af 13/11), saa en
+ * bjergjaeger kaemper kun om en top, mens han ligger i udbruddet. Kom han ikke med, eller er han
+ * hentet, er jagten slut: ingen bjergjagt fra feltet. Det afgoeres paa gruppebilledet ved selve
+ * passagen (`groups`), ikke ved segmentets start, saa et udbrud der foerst dannes sent i segmentet
+ * stadig taeller, naar han kom med. Pointjagten i spurterne er uaendret.
+ * Hul 1 (ejer 17/11): har planen et led "naar han er sat", venter udbrudsleddet, til udbruddet er
+ * dannet (stagePlanEngine.advanceStagePlan); kom han ikke med, eller er han hentet, gaar planen videre.
+ * Ejer 19/11: kommer han med i et senere udbrud paa samme etape, koerer han om pointene dér, uanset
+ * planens opbygning. Hans vindue er da maerket `inBreakOnly` (stagePlanEngine.stagePlanHuntWindows7855):
+ * jagten gaelder kun, naar han ligger i udbruddet ved selve passagen, for bjerg- og pointjagt ens.
+ * Uden for et udbrud koerer han sit "naar han er sat"-led uden jagt.
  */
 export function jerseyHuntersForPassage7855(
   huntTasks: Readonly<Record<string, StagePlanTask>> | null | undefined,
   kind: "sprint" | "kom",
   isRacing: (riderId: string) => boolean,
   /** Passagens km og hver jaegers straekning: et jagt-led kaemper kun om passager paa sin egen straekning. */
-  passage?: { km: number; windows: Readonly<Record<string, { fromKm: number; toKm: number }>> | undefined },
+  passage?: { km: number; windows: Readonly<Record<string, { fromKm: number; toKm: number; inBreakOnly?: boolean }>> | undefined; groups?: readonly HuntGroup7855[] },
 ): string[] {
   if (!huntTasks) return [];
   const task = JERSEY_HUNT_TASK_BY_KIND_7855[kind];
@@ -71,8 +100,15 @@ export function jerseyHuntersForPassage7855(
     const window = passage?.windows?.[id];
     return !window || (passage!.km > window.fromKm && passage!.km <= window.toKm);
   };
+  // S2: bjergjagten gaelder kun i udbruddet. Kun naar passagens gruppebillede er givet.
+  // Ejer 19/11: en jagt efter skiftet (`inBreakOnly`) gaelder kun i et udbrud, ogsaa i spurterne.
+  const groups = passage?.groups;
+  const withBreak = (id: string) => {
+    if (passage?.windows?.[id]?.inBreakOnly === true) return groups !== undefined && inEscapeAtPassage7855(groups, id);
+    return groups === undefined || kind !== "kom" || inEscapeAtPassage7855(groups, id);
+  };
   return Object.keys(huntTasks)
-    .filter((id) => huntTasks[id] === task && isRacing(id) && onStretch(id))
+    .filter((id) => huntTasks[id] === task && isRacing(id) && onStretch(id) && withBreak(id))
     .sort();
 }
 

@@ -1,11 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  dayLoadOfEffort, dayLoadOfLegs, fatigueTone, legsFromParts, levelOfEffort, levelOfLegs, levelPlans,
-  partTaskOptions, partTasks, routeParts, setPartTask, todayLine, withLockedRiders, effortForLevel, maxPartCost,
+  dayLoadOfEffort, dayLoadOfLegs, fatigueTone, legsFromParts, levelOfEffort,
+  partTaskOptions, partTasks, routeParts, setPartTask, todayTasks, withLockedRiders, effortForLevel,
 } from "./tacticsV6cModel.ts";
 import { validateStagePlanLegs, type StagePlanRoute } from "../race/StagePlanModel.ts";
-import { taskCostWord } from "../race/tacticsReady7864.ts";
 
 // Wireframets etape 2: to stigninger undervejs og topafslutning (topafslutningen er ikke et skift-punkt).
 const route: StagePlanRoute = {
@@ -52,28 +51,6 @@ test("rutedelens valg følger rollen", () => {
   assert.ok(!partTaskOptions(["stay_sheltered", "stay_sheltered", "stay_sheltered"], 1, parts, "helper", route).includes("breakaway"));
 });
 
-test("Easy, Medium og Hard bygger gyldige kæder; Medium er aldrig hårdere end Medium", () => {
-  const plans = levelPlans("captain", route, parts, true);
-  for (const level of ["easy", "medium", "hard"] as const) assert.equal(validateStagePlanLegs(plans[level], "captain", route), null, level);
-  assert.equal(plans.hard?.[plans.hard.length - 1].task, "attack");
-  for (const role of ["captain", "helper", "hunter", "sprint_captain", "free_role"] as const) {
-    const p = levelPlans(role, route, parts, true);
-    const tasks = partTasks(p.medium, route, parts) ?? [];
-    assert.ok(["easy", "medium"].includes(maxPartCost(tasks, taskCostWord)), `${role}: ${tasks}`);
-  }
-  assert.deepEqual(levelPlans("helper", route, parts, true).hard, [{ task: "tempo" }]);
-});
-
-test("ingen lyser, når rytteren følger holdets plan; ellers det valg kæden er", () => {
-  const plans = levelPlans("captain", route, parts, true);
-  const team = [{ task: "stay_sheltered" as const }, { task: "follow_moves" as const, from: { at: "kom" as const, kom_index: 1 } }];
-  assert.equal(levelOfLegs(team, plans, team), null);
-  assert.equal(levelOfLegs(plans.easy, plans, team), "easy");
-  assert.equal(levelOfLegs(plans.hard, plans, team), "hard");
-  assert.equal(levelOfLegs(plans.easy, plans, plans.easy), null, "holdets plan vinder, også når den er lig et valg");
-  assert.equal(levelOfLegs(null, plans, team), null);
-});
-
 test("uden etapeplan er valgene indsats-trin", () => {
   assert.equal(levelOfEffort("grupetto"), "easy");
   assert.equal(levelOfEffort("normal"), "medium");
@@ -100,10 +77,26 @@ test("trætheds-skalaen er neutral, rav, rød", () => {
   assert.equal(fatigueTone(null).tone, "neutral");
 });
 
-test("dagens linje", () => {
-  assert.deepEqual(todayLine([{ task: "stay_sheltered" }, { task: "attack", from: { at: "final_km" } }], "Monte Zoncolaro", "Yamada"), { key: "attack", climb: "Monte Zoncolaro" });
-  assert.deepEqual(todayLine([{ task: "breakaway" }], null, null), { key: "breakaway" });
-  assert.deepEqual(todayLine([{ task: "shelter_leader" }, { task: "grupetto", from: { at: "dropped" } }], null, "Yamada"), { key: "shelterLeader", leader: "Yamada" });
+test("dagens linje viser opgaver fra starten til finalen og udelader ordren ved afsætning", () => {
+  assert.deepEqual(todayTasks([
+    { task: "follow_moves" },
+    { task: "ride_in", from: { at: "final_km" } },
+    { task: "grupetto", from: { at: "dropped" } },
+  ], [], null), [{ key: "follow_moves" }, { key: "ride_in" }]);
+  assert.deepEqual(todayTasks([
+    { task: "breakaway" },
+    { task: "attack", from: { at: "final_km" } },
+  ], [], null), [{ key: "breakaway" }, { key: "attackFinale" }]);
+  assert.deepEqual(todayTasks([
+    { task: "attack" },
+    { task: "ride_in", from: { at: "final_km" } },
+  ], [{ index: 1, km: 75, name: "Monte Zoncolaro", category: "1" }], null), [{ key: "attackUnspecified" }, { key: "ride_in" }]);
+  assert.deepEqual(todayTasks([
+    { task: "stay_sheltered" },
+    { task: "attack", from: { at: "kom", kom_index: 0 } },
+  ], [{ index: 0, km: 25, name: "Col du Verger", category: "2" }, { index: 1, km: 75, name: "Monte Zoncolaro", category: "1" }], null),
+  [{ key: "stay_sheltered" }, { key: "attack", climb: "Col du Verger" }]);
+  assert.deepEqual(todayTasks([{ task: "shelter_leader" }], [], "Yamada"), [{ key: "shelterLeader", leader: "Yamada" }]);
 });
 
 test("låste ryttere beholder deres række, når holdplanen lægges på", () => {

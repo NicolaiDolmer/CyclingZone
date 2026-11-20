@@ -486,7 +486,7 @@
       "secondaryCta": "Zelf kiezen",
       "resultLine": "Week gedraaid: {count, plural, one {# renner getraind} other {# renners getraind}}.",
       "resultLink": "Bekijk training",
-      "alreadyRun": "Deze week is al gedraaid.",
+      "alreadyRun": "Vandaag getraind.",
       "error": "De training van deze week kon niet worden gedraaid. Probeer het opnieuw."
     },
     "tour": "Laat me zien hoe",

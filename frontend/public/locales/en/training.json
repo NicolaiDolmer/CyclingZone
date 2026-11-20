@@ -6,6 +6,26 @@
     "waiting": "Today's training runs on its own once the last race is done, from {hour}:00.",
     "ready": "Today's training is ready. Run it now, or let it run on its own."
   },
+  "trainNowMoment": {
+    "title": "Today's training",
+    "subtitle": "{date} · {count, plural, one {# rider} other {# riders}} · same order every day",
+    "skip": "Skip",
+    "openReport": "See the report",
+    "close": "Close",
+    "listLabel": "Today's training, rider by rider",
+    "age": "{age} yrs",
+    "xp": "+{xp} XP",
+    "best": "Best today",
+    "waiting": "Racing today · settles after the stage",
+    "raced": "Race day",
+    "rest": "Rest day",
+    "points": "{count, plural, one {+# point} other {+# points}}",
+    "summaryRiders": "{count, plural, one {# rider} other {# riders}}",
+    "summaryXp": "{xp} XP in total",
+    "summaryPoints": "{count, plural, one {# point earned} other {# points earned}}",
+    "summaryPaid": "{count, plural, one {# point} other {# points}} paid out from the bar",
+    "fromBar": "from the bar"
+  },
   "trainNow": {
     "button": "Train now",
     "running": "Running…",
@@ -175,6 +195,7 @@
     "ageRoleLine": "Age {age} · {role}",
     "numbers": "{now} · {lo}-{hi} · ceiling {loft}",
     "numbersNoLoft": "{now} · {lo}-{hi}",
+    "numbersSingle": "{now} · {value}",
     "noForecastYet": "No forecast yet"
   },
   "injuryRisk": "High injury risk",

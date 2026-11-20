@@ -148,9 +148,10 @@ const TacticsBoardV6c = lazyWithRetry(() => loadTactics().then((m) => ({ default
 const TeamPlanCards = lazyWithRetry(() => loadTactics().then((m) => ({ default: m.TeamPlanCards })));
 // #8298: wireframe v6c's regler (rutedele, Easy | Medium | Hard, Day load, låsen). Ren logik, lille.
 import {
-  dayLoadOfEffort, dayLoadOfLegs, droppedLeg, effortForLevel, legsFromParts, levelOfEffort, levelOfLegs, levelPlans,
-  partTaskOptions, partTasks, routeParts, setPartTask, todayLine, withLockedRiders,
+  dayLoadOfEffort, dayLoadOfLegs, droppedLeg, effortForLevel, legsFromParts, levelOfEffort,
+  partTaskOptions, partTasks, routeParts, setPartTask, todayTasks, withLockedRiders,
 } from "../tactics/tacticsV6cModel.ts";
+import { applyQuickEffort, quickEffortOf, QUICK_EFFORTS } from "../tactics/quickEffort8356.ts";
 import { isLuxuryHelperRole, isTimeTrialProfile, setRiderPlan, suggestStagePlan, TASK_ROLES, withJerseyHunt7855 } from "./StagePlanModel.ts";
 import { waypointsFor } from "../../lib/stageRouteProfile.js";
 import I18nReadyGate from "../I18nReadyGate.jsx"; // #8298: "tactics" er route-gatet
@@ -1297,9 +1298,8 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     const planRoute = withJerseyHunt7855(readyRoute, orders?.jerseyHunt7855 === true);
     const namedClimbs = waypointsFor(profileByStage[/** @type {number} */ (activeStage)] ?? null)
       .filter((w) => w.kind === "kom")
-      .map((w) => ({ km: Number(w.km), name: w.name ?? null, summit: w.summit_finish === true, category: w.category }));
+      .map((w) => ({ km: Number(w.km), name: w.name ?? null, summit: w.summit_finish === true }));
     const parts = stagePlanOn ? routeParts(planRoute, namedClimbs) : [];
-    const decisiveClimb = [...namedClimbs].reverse().find((c) => c.category !== "4")?.name ?? null;
     const surname = (name) => (name ? String(name).trim().split(/\s+/).slice(-1)[0] : null);
     const activePlan = selectedTeamPlan ? readyPlans[selectedTeamPlan] : null;
     const leaderName = surname(activePlan?.target?.name ?? (selectedTeamPlan === "sprint" ? sprintCaptain?.name : captain?.name) ?? null);
@@ -1334,7 +1334,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         lock: rider.abandoned || !stagePlanOn ? null : { on: lockedSet.has(id), disabled: stageLocked || saving },
       };
       if (rider.abandoned) {
-        return { ...base, today: { key: "abandoned", text: t("intention.riderAbandoned") }, level: null, levelEditable: false, levelText: "—", parts: null, dropped: null, noPlanNote: null, steps: null, extras: [], dayLoad: null };
+        return { ...base, today: [{ key: "abandoned", text: t("intention.riderAbandoned") }], level: null, levelEditable: false, levelText: "—", onQuickEffort: null, parts: null, dropped: null, noPlanNote: null, steps: null, extras: [], dayLoad: null };
       }
 
       if (stagePlanOn) {
@@ -1344,9 +1344,10 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         // "Holdets plan" (ejer 17/11): Today's plan for rytteren, ellers assistentens forslag.
         const teamRow = activePlan?.order?.riders?.find((r) => r.rider_id === id)?.plan;
         const medium = Array.isArray(teamRow) && teamRow.length ? teamRow : assistant;
-        const plans = levelPlans(role, planRoute, parts, namedClimbs.length > 0);
-        const level = levelOfLegs(legs, plans, medium);
-        const shown = legs ?? medium ?? plans.medium;
+        const shown = legs ?? medium;
+        const quickPlans = new Map(QUICK_EFFORTS.map(pick => [pick, applyQuickEffort(shown, role, pick, planRoute)]));
+        const selected = JSON.stringify(legs) === JSON.stringify(medium) ? null : quickEffortOf(legs, role);
+        const level = selected && !quickPlans.get(selected)?.error ? selected : null;
         const tasks = partTasks(shown, planRoute, parts) ?? parts.map(() => "stay_sheltered");
         const editable = planEditable(rider);
         const writeTasks = (next) => {
@@ -1364,8 +1365,9 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         const breakReason = TASK_ROLES.breakaway.includes(role) ? null : tt("orders.notForRole");
         return {
           ...base,
-          today: legs ? todayLine(legs, decisiveClimb, leaderName) : { key: "effort", effort },
-          level,
+          today: legs ? todayTasks(legs, planRoute.climbs, leaderName) : [{ key: "effort", effort }],
+          level: null,
+          quickEffort: { role, value: level, errors: Object.fromEntries([...quickPlans].map(([pick, plan]) => [pick, plan.error])) },
           levelEditable: editable,
           levelText: stageLocked ? (legs ? null : t("intention.roleDefault")) : null,
           parts: tasks.map((task, index) => ({ task, options: editable ? partTaskOptions(tasks, index, parts, role, planRoute, legs ?? shown) : [task], editable })),
@@ -1377,8 +1379,11 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
             { key: "sprintTrain", on: trainOn, disabled: !editable || (!trainOn && trainReason != null), reason: trainOn ? null : trainReason, toggle: () => writeTasks(trainOn ? tasks.map((x) => (x === "sprint_train" ? lastOff : x)) : setPartTask(tasks, tasks.length - 1, "sprint_train")) },
           ],
           dayLoad: legs ? dayLoadOfLegs(legs) : dayLoadOfEffort(effort, false),
-          // Et tryk på den valgte knap igen sender rytteren tilbage til holdets plan.
-          onLevel: (picked) => { const next = picked === level ? medium : plans[picked]; if (next) updateOrder((o) => setRiderPlan(o, id, next)); },
+          onLevel: null,
+          onQuickEffort: (picked) => {
+            const next = quickPlans.get(picked)?.legs;
+            if (editable && next) updateOrder((o) => setRiderPlan(o, id, next));
+          },
           followTeam: editable && legs && medium && JSON.stringify(legs) !== JSON.stringify(medium) ? () => updateOrder((o) => setRiderPlan(o, id, medium)) : null,
           onPart: (index, task) => writeTasks(setPartTask(tasks, index, task)),
         };
@@ -1394,7 +1399,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       const editable = !stageLocked && !saving;
       return {
         ...base,
-        today: { key: "effort", effort },
+        today: [{ key: "effort", effort }],
         level: levelOfEffort(effort),
         levelEditable: editable,
         levelText: stageLocked ? (effort === DEFAULT_EFFORT ? t("intention.roleDefault") : effortLabel(rider)(effort)) : null,
@@ -1407,6 +1412,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
           { key: "sprintTrain", on: ro.leadout === true, disabled: !editable || (ro.leadout !== true && !!trainBlocked), reason: reasonText(trainBlocked), toggle: () => updateOrder((o) => toggleLeadout(o, id)) },
         ] : [],
         dayLoad: dayLoadOfEffort(effort, timeTrial),
+        onQuickEffort: null,
         onLevel: (level) => {
           const step = effortForLevel(level, steps);
           if (step && !effortBlockedKey(rider, step)) pickIntention(id, step);
@@ -1537,14 +1543,16 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
           : null}
         board={(
           <TacticsBoardV6c
-            riders={boardRiders.map(({ onLevel: _l, onPart: _p, followTeam, extras, ...rest }) => ({ ...rest, canFollowTeam: !!followTeam, extras: extras.map(({ toggle: _t, ...x }) => x) }))}
+            riders={boardRiders.map(({ onLevel: _l, onQuickEffort: _q, onPart: _p, followTeam, extras, ...rest }) => ({ ...rest, canFollowTeam: !!followTeam, extras: extras.map(({ toggle: _t, ...x }) => x) }))}
             partLabels={parts.map((p) => p.label)}
             allOrders={allOrders}
             summary={stagePlanOn && activeStage != null ? { stage: activeStage, assistant: assistantCount } : null}
             taskLabel={(task) => t(`stagePlan.task.${task}`)}
             costLabel={(cost) => t(`stagePlanReady.price.${cost}`)}
             onRole={(id) => { setOpenRoleRiderId(openRoleRiderId === id ? null : id); setOpenRiderId(null); setRoleScopeChoice("rest"); }}
-            onLevel={(id, level) => byId.get(id)?.onLevel(level)}
+            onLevel={(id, level) => byId.get(id)?.onLevel?.(level)}
+            onQuickEffort={(id, pick) => byId.get(id)?.onQuickEffort?.(pick)}
+            normalEffortLabel={t("intention.step.normal")}
             onPart={(id, index, task) => byId.get(id)?.onPart(index, task)}
             onStep={(id, step) => pickIntention(id, step)}
             onExtra={(id, key) => byId.get(id)?.extras.find((x) => x.key === key)?.toggle()}

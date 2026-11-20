@@ -1299,6 +1299,10 @@
         "title": "Hvad ryttertype faktisk betyder",
         "text": "Rytterens primære og sekundære type (klatrer, sprinter, GC og så videre) viser hvad han kan blive ved sit loft, ikke hvad han tilfældigvis er bedst til lige nu. Den sættes én gang og forbliver den samme resten af karrieren, så en ung rytters type ikke skifter hver sæson i takt med at hans stats udvikler sig. Det er med vilje: typen er en talent-vurdering, ikke en formrapport. Vil du vide hvem der passer bedst til et konkret løb lige nu, så tjek egnethed-scoren på holdudtagelsen; den beregnes friskt ud fra hver rytters nuværende evner og løbets terræn. Type og egnethed svarer på to forskellige spørgsmål: type er hvem en rytter ER, egnethed er hvem der passer til DETTE løb i dag."
       },
+      "riderTypeXp": {
+        "title": "Hvad ryttertype faktisk betyder",
+        "text": "Rytterens primære og sekundære type (klatrer, sprinter, GC og så videre) viser, hvad han er bygget til, ikke hvad han tilfældigvis er bedst til lige nu. Den sættes én gang og forbliver den samme resten af karrieren, så en ung rytters type ikke skifter hver sæson i takt med at hans stats udvikler sig. Det er med vilje: typen er en talent-vurdering, ikke en formrapport. Vil du vide hvem der passer bedst til et konkret løb lige nu, så tjek egnethed-scoren på holdudtagelsen; den beregnes friskt ud fra hver rytters nuværende evner og løbets terræn. Type og egnethed svarer på to forskellige spørgsmål: type er hvem en rytter ER, egnethed er hvem der passer til DETTE løb i dag."
+      },
       "typeOverview": {
         "title": "De 8 ryttertyper",
         "text": "Hver type er bygget om et sæt speciale-evner, som vokser hurtigst når du rammer dem med den rigtige session på en Trænings- eller Færdighedsdag (se Daglig træning). Den brede type Etapeløbsrytter har ikke bare én rigtig session; han bruger flere.",
@@ -1362,6 +1366,10 @@
         "title": "Alder og tilbagegang",
         "text": "Ryttere holder deres niveau til og med 30 år. Fra sæsonen efter falder de fysiske evner og brosten lidt ved hvert sæsonskifte, og faldet bliver større, jo længere de er forbi 30. Teknik, taktik og de andre mentale evner falder aldrig. Løb bremser faldet: hver løbsdag i den sæson, der lige er slut, tæller med, og hårde træningsdage hjælper også. En rytter med en hel sæson af løb bag sig beholder det meste af sine ben. Ingen vokser ved selve sæsonskiftet; dine ryttere udvikler sig gennem den daglige træning."
       },
+      "agingV2Xp": {
+        "title": "Alder og tilbagegang",
+        "text": "Ryttere topper omkring de tredive. Derefter ældes kroppen langsomt: ved hvert sæsonskifte falder de fysiske evner og brosten lidt, og faldet bliver større, jo ældre han bliver. Sent i karrieren falder teknik, taktik og de andre mentale evner også en smule. Løb bremser det hele: hver løbsdag i den sæson, der lige er slut, tæller med, og hårde træningsdage hjælper også, så en rytter, der kører løb, holder sit niveau længere. Ingen vokser ved selve sæsonskiftet; dine ryttere udvikler sig gennem den daglige træning, og han tjener samme XP til langt hen i karrieren, så en veteran kan stadig blive bedre, når arbejdet er der. Denne aldring gælder fra det første sæsonskifte efter, at den nye XP-udvikling blev tændt; indtil da gælder den tidligere regel."
+      },
       "aiRidersV2": {
         "title": "AI-ryttere og frie ryttere",
         "text": "Ryttere på AI-hold og ryttere uden kontrakt udvikler sig ikke. De ældes stadig som alle andre. Når en af dem kommer på dit hold, begynder han at udvikle sig gennem din træning fra næste dag."
@@ -1377,6 +1385,10 @@
       "trainingFocus": {
         "title": "Træningsfokus",
         "text": "Fra profilen på en af dine egne ryttere kan du sætte et sæson-langt træningsfokus: en retning (VO2max, Tærskel/TT, Spurt, Udholdenhed, Teknik, Aero eller Løbslære). Belastningen følger sessionstypen og er ikke et selvstændigt valg: intervaller, tærskel og sprint er hårde, tempo er mellem, resten er lette. Trænede evner udvikler sig hurtigere mod deres loft gennem den daglige træning, der kører hver aften, mens øvrige evner vokser en anelse langsommere. Hårde sessioner bygger mere træthed op, men har ingen risiko for at miste fremgang. Du kan sætte træningsfokus på så mange ryttere du vil; at ændre et eksisterende fokus koster intet. Træning er gratis og koster ikke penge. Ryttere, der kører løb, udvikler sig fra løbet i stedet for det planlagte pas, også ved endagsløb. Udtagne ryttere, der ikke starter, følger deres program under hensyn til skader. Træthed, form og risiko for træningsskader vurderes ud fra dagens samlede løbs- og træningsaktivitet ved aftenopgørelsen. Huller mellem etaper giver ikke ekstra restitution. Hård træning er fortsat mere belastende end normal træning."
+      },
+      "trainingFocusXp": {
+        "title": "Træningsfokus",
+        "text": "Fra profilen på en af dine egne ryttere kan du sætte et sæson-langt træningsfokus: en retning (VO2max, Tærskel/TT, Spurt, Udholdenhed, Teknik, Aero eller Løbslære). Belastningen følger sessionstypen og er ikke et selvstændigt valg: intervaller, tærskel og sprint er hårde, tempo er mellem, resten er lette. Trænede evner tjener XP hurtigere gennem den daglige træning, der kører hver aften, mens øvrige evner vokser en anelse langsommere. Hårde sessioner bygger mere træthed op, men har ingen risiko for at miste fremgang. Du kan sætte træningsfokus på så mange ryttere du vil; at ændre et eksisterende fokus koster intet. Træning er gratis og koster ikke penge. Ryttere, der kører løb, udvikler sig fra løbet i stedet for det planlagte pas, også ved endagsløb. Udtagne ryttere, der ikke starter, følger deres program under hensyn til skader. Træthed, form og risiko for træningsskader vurderes ud fra dagens samlede løbs- og træningsaktivitet ved aftenopgørelsen. Huller mellem etaper giver ikke ekstra restitution. Hård træning er fortsat mere belastende end normal træning."
       },
       "scoutingEstimate": {
         "title": "Scouting af potentiale",
@@ -1419,9 +1431,17 @@
         "title": "De fire slags dage",
         "text": "Hvile trækker trætheden mest ned og udvikler ingenting. Aktiv restitution trækker den lidt mindre ned og giver en smule på Restitution, hvilket gør den til den eneste dag der gør begge dele. En færdighedsdag er lav belastning og bygger kun håndværk, med en fast langsommere fart uanset hvad rytteren er bygget til, så den kan aldrig slå en hård dag på hans eget speciale. Træning udvikler fysiske evner på niveauet for den session du vælger."
       },
+      "dayTypesXp": {
+        "title": "De fire slags dage",
+        "text": "Hvile trækker trætheden mest ned og optjener intet nyt XP, men XP, der allerede er sparet op på en bjælke, kan stadig blive udbetalt. Aktiv restitution trækker den lidt mindre ned og giver en smule på Restitution, hvilket gør den til den eneste dag der gør begge dele. En færdighedsdag er lav belastning og bygger kun håndværk, med en fast langsommere fart uanset hvad rytteren er bygget til, så den kan aldrig slå en hård dag på hans eget speciale. Træning udvikler fysiske evner på niveauet for den session du vælger."
+      },
       "focusAbilities": {
         "title": "Hvad hver session træner",
         "text": "Hver session udvikler et bestemt sæt evner hurtigere mod deres loft, mens rytterens øvrige evner fortsætter lidt langsommere. Lang tur træner Udholdenhed, Restitution og Robusthed. Tempo træner Tempo, Fladt og Robusthed. Blandede intervaller træner Bjerg, Punch og Tempo med lige stor andel. Klatreintervaller træner Bjerg og Tempo, og Bjerg får mere end i den blandede session, men Punch trænes slet ikke. Punch-intervaller er spejlbilledet: Punch og Tempo, hvor Punch får mere, og Bjerg er ude. De tre dækker den samme mængde arbejde, så et andet valg flytter dit udbytte, det lægger ikke noget til. Tærskel træner Enkeltstart og Tempo. Sprint træner Sprint og Acceleration. Brostenssektorer træner Brosten, Robusthed og Positionering, hvor Brosten får mest. Vifteøvelser træner Fladt, Positionering og Robusthed, hvor Fladt får mest. Angrebsintervaller træner Angrebslyst, Punch og Acceleration, hvor Angrebslyst får mest. Teknik træner Nedkørsel og Brosten. Aero træner Enkeltstart og Fladt. Løbslære træner Positionering, Taktik og Angrebslyst. Belastningen følger med sessionen og er ikke et selvstændigt valg: en lang tur er let, tempo er mellem, og intervaller, tærskel, sprint, Brostenssektorer, Vifteøvelser og Angrebsintervaller er alle hårde; teknik, aero og løbslære er alle lette. Hårde sessioner bygger mere træthed op end lette, men har ingen risiko for tilbageslag."
+      },
+      "focusAbilitiesXp": {
+        "title": "Hvad hver session træner",
+        "text": "Hver session giver mest XP til et bestemt sæt evner og lidt til rytterens øvrige evner. Lang tur træner Udholdenhed, Restitution og Robusthed. Tempo træner Tempo, Fladt og Robusthed. Blandede intervaller træner Bjerg, Punch og Tempo med lige stor andel. Klatreintervaller træner Bjerg og Tempo, og Bjerg får mere end i den blandede session, men Punch trænes slet ikke. Punch-intervaller er spejlbilledet: Punch og Tempo, hvor Punch får mere, og Bjerg er ude. De tre dækker den samme mængde arbejde, så et andet valg flytter dit udbytte, det lægger ikke noget til. Tærskel træner Enkeltstart og Tempo. Sprint træner Sprint og Acceleration. Brostenssektorer træner Brosten, Robusthed og Positionering, hvor Brosten får mest. Vifteøvelser træner Fladt, Positionering og Robusthed, hvor Fladt får mest. Angrebsintervaller træner Angrebslyst, Punch og Acceleration, hvor Angrebslyst får mest. Teknik træner Nedkørsel og Brosten. Aero træner Enkeltstart og Fladt. Løbslære træner Positionering, Taktik og Angrebslyst. Belastningen følger med sessionen og er ikke et selvstændigt valg: en lang tur er let, tempo er mellem, og intervaller, tærskel, sprint, Brostenssektorer, Vifteøvelser og Angrebsintervaller er alle hårde; teknik, aero og løbslære er alle lette. Hårde sessioner bygger mere træthed op end lette, men har ingen risiko for tilbageslag."
       },
       "typeGating": {
         "title": "Hvorfor vokser et fokus hurtigere for nogle ryttere?",
@@ -1435,13 +1455,29 @@
         "title": "Hvorfor vokser et fokus hurtigere for nogle ryttere?",
         "text": "Hver rytter har en primær OG en sekundær type (sprinter, klatrer, tidskører, klassementsrytter og så videre) samt et potentiale, alt fastlagt da rytteren blev skabt. Typen afgør hvilke evner der kan nå højest: en evne hans primære type er bygget til når højest og vokser hurtigst, og hans sekundære type ligger tæt på. Positionering og taktik er håndværk: ingen fødes med dem, så alle ryttere kan nå et ordentligt niveau, men de bygges langsomt op. En evne uden for begge hans roller bliver lav og vokser langsomt, og en evne hans type direkte modarbejder rykker sig knap nok. Hver type dækker flere evner end den, den er opkaldt efter: en GC-type dækker også enkeltstart. Potentialet afgør hvor højt han samlet kan nå, og et større talent kommer også hurtigere derhen. Hvert point koster mere jo højere evnen allerede er, så de sidste point kommer langsomst. Tjek begge type-mærker før du vælger fokus. Tempoet justeres løbende som en del af balanceringen af spillet, så den daglige fremgang kan føles anderledes fra én opdatering til den næste."
       },
+      "typeGatingXp": {
+        "title": "Hvorfor vokser et fokus hurtigere for nogle ryttere?",
+        "text": "Hver rytter har en primær OG en sekundær type (sprinter, klatrer, tidskører, klassementsrytter og så videre) samt et potentiale, alt fastlagt da rytteren blev skabt. Typen afgør, hvor meget XP hver evne giver: en evne, hans primære type er bygget til, giver mest, hans sekundære type ligger tæt på, håndværk som positionering og taktik ligger midt imellem, og evner uden for hans roller giver mindre. Alt kan trænes, men en ren sprinter bliver ikke topklatrer. Potentialet afgør, hvor meget XP han optjener om dagen, og hvert point koster mere, jo højere evnen allerede er, så de sidste point kommer langsomst. Typen er en del af ham og flytter sig ikke, når du træner ham om; hans bedste rolle følger evnerne. Tjek begge type-mærker, før du vælger fokus."
+      },
       "ceilingReachedCurveB": {
         "title": "Min rytters evne er holdt op med at stige",
         "text": "Fremgangen aftager jo højere en evne allerede er, og jo tættere den kommer på det loft, hans type og potentiale sætter, men den står aldrig stille dér: over loftet vokser en evne stadig langsomt. En værdi der står stille i nogle dage, er som regel bare langsom fremgang. Er en evne virkelig holdt op, er det næsten altid en af to ting. Enten er rytteren forbi sit højdepunkt, hvor evner falder ved sæsonskiftet i stedet for at vokse. Eller også har evnen nået det højeste niveau, hans rolle tillader. Tallet ved siden af en evne er altid dens nuværende værdi, aldrig loftet, som aldrig vises som et tal noget sted i spillet."
       },
+      "ceilingReachedXp": {
+        "title": "Min rytters evne er holdt op med at stige",
+        "text": "En evne har intet fast loft, men nær toppen koster et point meget XP, så en høj evne kan gå mange dage mellem to point, mens bjælken stadig fyldes. Er en evne virkelig holdt op, er det næsten altid en af tre ting: potentialet er lavt, så han optjener lidt XP, hans pas arbejder ikke med den evne, så den kun får lidt XP, eller han er forbi sit højdepunkt, hvor de fysiske evner falder ved sæsonskiftet i stedet for at vokse. Tallet ved siden af en evne er altid dens nuværende værdi."
+      },
       "longTermGrowthCurveB": {
         "title": "Udvikling på lang sigt",
         "text": "Tre ting afgør hvor en evne ender. Typen afgør hvilke evner der kan nå højest. Potentialet afgør hvor højt: et større talent har et højere loft og udvikler sig også hurtigere. Og selve niveauet: hvert point koster mere jo højere evnen allerede er, så en rytter rykker hurtigt på et lavt niveau og langsomt nær toppen. Alder får ingen til at udvikle sig hurtigere. De yngste ryttere tåler endnu ikke fuld træning, så på samme niveau rykker de lidt langsommere, indtil de gør. Tæt på loftet aftager fremgangen, men den står aldrig stille, helt op til det højeste niveau, hans rolle tillader."
+      },
+      "developmentXp": {
+        "title": "Udvikling med XP",
+        "text": "Hver evne vokser gennem XP. Hver dag din rytter træner eller kører løb, optjener han XP: mest i de evner, passet eller etapen arbejder med, og lidt i resten. Potentialet afgør, hvor meget XP han optjener om dagen, og det står fast hele karrieren. Hver evne har en bjælke. Når bjælken er fuld, stiger evnen ét point, og det XP, der er tilovers, går videre mod næste point, så intet går tabt. Hvert point koster mere XP, jo højere evnen allerede er, og prisen er den samme for alle ryttere. Et stort talent kommer altså hurtigere frem, fordi han optjener mere, ikke fordi hans point er billigere. Nær toppen koster et point bare meget. En evne stiger højst +1 pr. dato. Eneste undtagelse er et toptalent på en meget lav evne, som kan stige +2. XP ud over det går ikke tabt: det bliver stående på bjælken og udbetales de næste datoer, også på hviledage, så et point kan komme på en dag, hvor han ikke trænede. Evner uden for hans type giver lidt mindre XP. Der er ikke længere et fast loft, så rytterens svagere evner bliver ved med at stige, bare langsommere end hans bedste. Han tjener samme XP til langt hen i karrieren, så det er ikke alderen, der afgør, hvor hurtigt han udvikler sig; det gør prisen. Det, alderen ændrer, er kroppen: ryttere topper omkring de tredive, og derefter falder de fysiske evner lidt ved hvert sæsonskifte, mindre for en rytter, der kører løb. Sent i karrieren falder de mentale evner også en smule. Når du selv trykker Træn nu, giver Træn nu-bonussen ekstra XP den dag. Det XP, han optjener, svinger fra dag til dag, så bedøm en rytter over flere uger, ikke over én dag."
+      },
+      "longTermGrowthXp": {
+        "title": "Udvikling på lang sigt",
+        "text": "Tre ting afgør, hvor en evne ender. Potentialet afgør, hvor meget XP han optjener om dagen. Prisen afgør, hvor langt det XP rækker: hvert point koster mere, jo højere evnen allerede er, ens for alle ryttere, så en rytter rykker hurtigt på et lavt niveau og langsomt nær toppen. Og typen: evner, hans type er bygget til, giver mest XP, evner uden for den lidt mindre. Alderen hverken giver ekstra fart eller sænker hans XP: han tjener samme XP til langt hen i karrieren, mens kroppen langsomt ældes efter slutningen af tyverne. Der er intet fast loft: nær toppen koster et point bare meget."
       },
       "trainToday": {
         "title": "Kør dagens træning nu",
@@ -1463,6 +1499,10 @@
         "title": "Træn nu-bonus",
         "text": "Når Træn nu-bonussen er tændt, får ryttere, du selv træner med Træn nu, en lille ekstra bonus på dagens træningsfremgang. Den gælder kun, når du selv trykker på Træn nu, før dit holds automatiske træning er kørt for dagen. Træning, der kører automatisk, giver aldrig bonus. Kvitteringen markerer de ryttere, der fik den. Evnernes lofter gælder stadig: bonussen løfter aldrig en rytter over det, han kan nå."
       },
+      "trainNowBonusXp": {
+        "title": "Træn nu-bonus",
+        "text": "Når Træn nu-bonussen er tændt, får ryttere, du selv træner med Træn nu, en ekstra bonus på dagens trænings-XP. Den gælder kun, når du selv trykker på Træn nu, før dit holds automatiske træning er kørt for dagen. Træning, der kører automatisk, giver aldrig bonus. Kvitteringen markerer de ryttere, der fik den. Bonussen lægges oven i dagens XP. Grænsen pr. evne pr. dato gælder stadig, og XP ud over den bliver stående på bjælken."
+      },
       "raceDays": {
         "title": "Løbsdage og træning",
         "text": "En løbsdag ændrer ikke dagens træning. Rytteren gennemfører stadig det pas du har planlagt, og løbet lægger sin egen træthed oven i træningsbelastningen. Selve løbet hæver ikke evner: udviklingen kommer fra træningen, uanset om rytteren kører løb den dag eller ej. Det løb koster, er friskhed, og hver etape lægger sin egen belastning på, mens restitutionen kun kommer én gang i døgnet, så en rytter i et tungt etapeløb bliver hurtigt træt. Hold øje med træthed på de ryttere du stiller op ofte, og giv dem lettere pas eller hvile inden formen falder fra."
@@ -1470,6 +1510,10 @@
       "raceDaysPerRaceDay": {
         "title": "Løbsdage og træning",
         "text": "På en løbsdag kører din rytter enten løb eller træner, aldrig begge dele. Når han kører løb, gælder hans program ikke den løbsdag, og løbet giver sin egen træthed i stedet. Et etapeløb binder ham fra første til sidste etape, hviledage medregnet, så han træner ikke, før løbet er slut. Løbet udvikler ham også: en løbsdag giver det, et hårdt pas ville give i de evner etapens profil kræver, plus lidt ekstra, så en bjergetape træner klatring og en flad etape træner spurt, med højst ét point pr. evne pr. løbsdag. Hans rolle afgør, hvor det ekstra lander: en kaptajn eller udbrudsjæger får mest i den evne, der afgør etapen, en hjælper i de evner, han hjælper med, og en rytter på fri rolle får en blanding. Din træningsplan ændrer ikke, hvad løbet giver; det gør etapen og hans rolle. Alle divisioner har 140 løbsdage pr. sæson, og hver løbsdag uden løb for din rytter er en træningsdag. Hold øje med træthed på de ryttere du stiller op ofte, og giv dem lettere pas eller hvile mellem deres løb."
+      },
+      "raceDaysPerRaceDayXp": {
+        "title": "Løbsdage og træning",
+        "text": "På en løbsdag kører din rytter enten løb eller træner, aldrig begge dele. Når han kører løb, gælder hans program ikke den løbsdag, og løbet giver sin egen træthed i stedet. Et etapeløb binder ham fra første til sidste etape, hviledage medregnet, så han træner ikke, før løbet er slut. Løbet udvikler ham også: en løbsdag giver det, et hårdt pas ville give i de evner etapens profil kræver, plus lidt ekstra, så en bjergetape træner klatring og en flad etape træner spurt, inden for grænsen på +1 pr. evne pr. dato (+2 for et toptalent på en meget lav evne). Hans rolle afgør, hvor det ekstra lander: en kaptajn eller udbrudsjæger får mest i den evne, der afgør etapen, en hjælper i de evner, han hjælper med, og en rytter på fri rolle får en blanding. Din træningsplan ændrer ikke, hvad løbet giver; det gør etapen og hans rolle. Alle divisioner har 140 løbsdage pr. sæson, og hver løbsdag uden løb for din rytter er en træningsdag. Hold øje med træthed på de ryttere du stiller op ofte, og giv dem lettere pas eller hvile mellem deres løb."
       },
       "smartDefault": {
         "title": "Hvad træner en rytter uden valgt fokus?",
@@ -1499,6 +1543,10 @@
         "title": "Fremskridtslinjer og evnepoint",
         "text": "Rytterprofiler viser en fremskridtslinje for hver evne der trænes. Linjen fylder op efterhånden som træning akkumuleres. Når linjen er fuld, stiger rytteren +1 i den evne, og linjen starter forfra mod NÆSTE point, så en lav eller næsten tom linje lige efter en fremgang er et godt tegn, ikke et tab. Trænings-siden viser også et \"+N i dag\"-mærkat på ryttere der har vundet hele point i dagens session. Hver evne har et skjult livstidsloft bestemt af rytterens type og alder; en evne der har nået det, står som \"færdig\" på sin egen linje i stedet for en bar. Rytterprofilens Træning-fane viser alle 17 evner med hvad hver enkelt står på nu, hvor mange hele point rytteren har fået i denne sæson, og hvor langt der er til næste point. Skift fokus hvis et andet område stadig har plads, eller nyd rytteren i fuld styrke. Ældre ryttere forbi karriere-toppen har naturligt lidt eller ingen plads tilbage. En procent som \"Flad +10%\" i en træningsrapport er dagens fremskridt talt i evnepoint: 100% svarer til ét helt point. Fremskridtet bevares dag for dag. Intet nulstilles midt i sæsonen. Tællingen for \"denne sæson\" dækker kun dage inde i den aktive sæson. Mellem to sæsoner viser den startdatoen i stedet for et tal, mens evneværdierne og linjerne stadig tæller hvert pas med. En ny sæsons tælling starter tom og fyldes ud fra dens første træningsdag."
       },
+      "progressBarsXp": {
+        "title": "Fremskridtslinjer og evnepoint",
+        "text": "Rytterprofiler viser en fremskridtslinje for hver evne der trænes. Linjen fylder op efterhånden som træning akkumuleres. Når linjen er fuld, stiger rytteren +1 i den evne, og linjen starter forfra mod NÆSTE point, så en lav eller næsten tom linje lige efter en fremgang er et godt tegn, ikke et tab. Trænings-siden viser også et \"+N i dag\"-mærkat på ryttere der har vundet hele point i dagens session. Der er intet fast loft: hver evne bliver ved med at optjene XP, men nær toppen koster et point meget. En bjælke kan også rumme mere end ét point: XP ud over datoens grænse bliver stående og udbetales de næste datoer. Rytterprofilens Træning-fane viser alle 17 evner med hvad hver enkelt står på nu, hvor mange hele point rytteren har fået i denne sæson, og hvor langt der er til næste point. I en træningsrapport viser hver evne sin fremgang i XP: 'x af y XP' er det, der står på bjælken, og hvad næste point koster. Fremgang, som rytterne på dit hold havde gemt på deres bjælker før den nye udvikling, udbetales helt på deres første udviklingsdag med XP. Fremskridtet bevares dag for dag. Intet nulstilles midt i sæsonen. Tællingen for \"denne sæson\" dækker kun dage inde i den aktive sæson. Mellem to sæsoner viser den startdatoen i stedet for et tal, mens evneværdierne og linjerne stadig tæller hvert pas med. En ny sæsons tælling starter tom og fyldes ud fra dens første træningsdag."
+      },
       "trainingScore": {
         "title": "Træningsscoren",
         "text": "Hvert pas en rytter gennemfører får en træningsscore fra 1 til 99. Den måler KVALITETEN af passet, ikke hvad rytteren fik ud af det: hvor krævende passet var, hvor godt det ramte rytterens styrker, rytterens form og træthed den dag, træneren og faciliteterne bag, rytterens talent og alder, og dagen selv. Scoren er det, der driver udviklingen: et bedre pas rykker evnerne mere. Den afhænger ikke af, hvor tæt en evne er på sit loft, så en rytter der næsten er færdig i sine fokus-evner, får stadig en ærlig aflæsning af, hvor godt passet var. Hviledage får ingen score, for der var intet pas at måle. På en dag hvor et løb træder i stedet for passet, står der 'Løb' i kolonnen i stedet for et tal. Dagens tal kommer når dagens pas er kørt, og indtil da viser kolonnen det seneste tal i gråt. Kun du kan se scorerne for dine egne ryttere."
@@ -1506,6 +1554,10 @@
       "maxOnePerDay": {
         "title": "Højst +1 pr. evne pr. dag",
         "text": "En evne kan vokse højst 1 point pr. dag, på tværs af træning og løbsdage. Fremgang ud over det går ikke tabt: den flytter med til næste dag."
+      },
+      "maxOnePerDayXp": {
+        "title": "Højst +1 pr. evne pr. dato",
+        "text": "En evne kan stige højst 1 point pr. dato, på tværs af Træn nu, den automatiske træning og løbsdage. Eneste undtagelse er et toptalent på en meget lav evne, som kan stige 2, uanset alder. XP ud over det går ikke tabt: det bliver stående på bjælken og udbetales de næste datoer, også på hviledage."
       },
       "todaysDecision": {
         "title": "Dagens beslutning (beta)",
@@ -1666,6 +1718,10 @@
         "title": "Daglig træning i akademiet",
         "text": "Akademi-ryttere følger nøjagtig samme træningsmodel som din seniortrup. Der findes ikke et særskilt akademi-system: sæt et fokus og en intensitet, og gevinsterne samler sig dag for dag på samme måde. Lave evner er billige at bygge, så en ung rytter rykker stadig hurtigt i starten. Alder giver ingen ekstra fart. Den eneste forskel er, at de yngste ryttere endnu ikke tåler fuld træning, så de udvikler sig lidt langsommere end en ældre rytter på samme niveau, indtil de gør. Typen afgør hvilke evner der kan nå højest, og potentialet afgør hvor højt de kommer og hvor hurtigt, så et større talent når højere og kommer hurtigere derhen, mens et mindre talent vokser til en solid hjælperytter."
       },
+      "dailyTrainingBoostXp": {
+        "title": "Daglig træning i akademiet",
+        "text": "Akademi-ryttere følger nøjagtig samme træningsmodel som din seniortrup. Der findes ikke et særskilt akademi-system: sæt et fokus og en intensitet, og XP'en samler sig dag for dag på samme måde. Lave evner er billige, så en ung rytter rykker hurtigt i starten. Alder giver ingen ekstra fart. Potentialet afgør, hvor meget XP han optjener om dagen, så et større talent når længere og hurtigere, mens et mindre talent vokser til en solid hjælperytter. Et toptalent på en meget lav evne kan stige +2 på én dato; alle andre stiger højst +1."
+      },
       "youthAuctions": {
         "title": "Ungdomsauktioner",
         "text": "Når du afviser et intake-prospekt, kommer de på en ungdomsauktion (markeret Ungdom) som ethvert hold kan byde på. Du kan kun byde, hvis du har plads til rytteren, enten en ledig senior-plads eller en ledig akademi-plads; er begge fulde, er bud-knappen deaktiveret. Det vindende hold betaler det vindende bud, og prospektet ryger på senior-truppen, når der er en ledig plads (med senior-kontrakt og tæller mod 30-rytter-grænsen), og falder først tilbage til Akademiet (en plads på U23- eller juniorholdet efter hans alder), når senior-truppen er fuld. Hver auktion viser, hvor rytteren lander. Et prospekt ingen byder på forlader sporten for altid, så at afvise en kandidat er en ægte beslutning. Der er aldrig rigtige penge involveret, kun in-game-point."
@@ -1689,7 +1745,7 @@
       },
       "promoteDemote": {
         "title": "Flyt ryttere mellem trupper",
-        "text": "Brug Flyt trup på rytterens side eller på Mit hold for at sætte ham på din senior-, U23- eller juniortrup. Dialogen viser alle tre trupper med brugte og ledige pladser, markerer hans nuværende trup, og gør en trup grå hvis han er for gammel til den eller den er fuld, med grunden. Opad er altid tilladt, så en junior kan stå på U23-holdet. Nedad virker kun inden for truppens aldersgrænse: junior til og med sæsonalder 18, U23 til og med 22. Hver ungdomstrup har et loft: {u23SquadCap} på U23-holdet og {juniorSquadCap} på juniorholdet. En rytter, der allerede har en kontrakt, beholder den præcis som den er, i begge retninger; kun en rytter uden kontrakt får en standard-kontrakt på vej op i senior-truppen. Flyttes en rytter ned, tages han ud af alle kommende løb, han var udtaget til. Dialogen viser hele effekten, før du bekræfter. Du kan også forlænge en kontrakt eller fyre en rytter direkte fra rytterens egen side, og forlængelse virker også direkte på ungdomsryttere."
+        "text": "Brug Flyt trup på rytterens side eller på Mit hold for at sætte ham på din senior-, U23- eller juniortrup. Dialogen viser alle tre trupper med brugte og ledige pladser, markerer hans nuværende trup, og gør en trup grå hvis han er for gammel til den eller den er fuld, med grunden. Opad er altid tilladt, så en junior kan stå på U23-holdet. Nedad virker kun inden for truppens aldersgrænse: junior til og med sæsonalder 18, U23 til og med 22. Hver ungdomstrup har et loft: {u23SquadCap} på U23-holdet og {juniorSquadCap} på juniorholdet. En rytter, der allerede har en kontrakt, beholder den præcis som den er, i begge retninger; kun en rytter uden kontrakt får en standard-kontrakt på vej op i senior-truppen. Flyttes en rytter ned, tages han ud af alle kommende løb, han var udtaget til. Dialogen viser hele effekten, før du bekræfter. Du kan også forlænge en kontrakt eller fyre en rytter direkte fra rytterens egen side, og forlængelse virker også direkte på ungdomsryttere. Fyrer du en rytter, mens han kører et etapeløb, kører han løbet færdigt og forlader holdet lige bagefter. Indtil da viser hans profil, hvornår han stopper, og han kan ikke udtages til et nyt løb."
       }
     },
     "youthSquads": {
@@ -1842,6 +1898,10 @@
       "taskPrices": {
         "title": "Hvad hver opgave koster",
         "text": "I løb med etapeplan viser hver opgave sit prisord i planen og i listen over opgaver, så du ser prisen, før du vælger. Ordet er en pris for benene, aldrig et tal. Let: Grupetto, Bliv i læ og Kør roligt i mål. Middel: Hold lederen fremme, Kør for resultat og Sprinttog. Hård: Kør tempo, Følg angrebene, Gå i udbrud, og Hent point i spurterne eller Hent bjergpoint, når løbet har dem. Meget hård: Angrib. Skifter planen opgave undervejs, viser hvert led sit eget ord. En stærkere rytter flytter ikke en opgave til et lettere ord. Samme ord i samme farve står alle steder, hvor en ordre har en pris: indsatstrinnene på en enkeltstart og i løb uden etapeplan (Grupetto og Kør roligt: Let, Normal: Middel, arbejdstrinnet: Hård, Alt ud: Meget hård), knapperne Forsøg udbrud (Hård) og Sprint-tog (Middel) og holdets svar på udbruddet. Dér er ordet prisen for de ryttere, der jager: Jag er Hård, fordi alle ryttere, der ikke er ledere, trækker; Vurder undervejs er Middel, fordi holdet kun arbejder, når løbet kræver det, fx et udbrud der truer lederen; Overlad jagten til andre er Let, fordi holdet holder sig ude af jagten."
+      },
+      "jerseyHunt": {
+        "title": "Trøjejagt: Hent point og Hent bjergpoint",
+        "text": "I etapeløb kan etapeplanen sende en rytter efter point til pointtrøjen og bjergtrøjen. Hent point i spurterne er en opgave for sig: han kører om de indlagte spurter på sin strækning fra den gruppe, han sidder i, og opgaven findes kun, når strækningen har en indlagt spurt. Et udbrud foran tager stadig pointene først. På første trin står to linjer mere: Gå i udbrud + Hent point og Gå i udbrud + Hent bjergpoint. Han prøver at komme med i udbruddet og kører om pointene derfra. Bjergpoint tæller kun i et udbrud, aldrig fra feltet. Kommer han ikke med, kører han om spurtpointene fra sin gruppe, medmindre planen har et trin 'når han er hentet'. Så kører han det trin, og kommer han med i et senere udbrud, kører han stadig om pointene dér. Hent point kan gives til spurtkaptajnen, hjælpere, udbrudsjægeren og en rytter i fri rolle, Hent bjergpoint til hjælpere, udbrudsjægeren og fri rolle. Kaptajner kører for klassementet og får dem aldrig. Prisen: Hent point er Hård. Gå i udbrud + Hent koster som udbruddet, plus lidt for hver spurt eller stigning, han kun kører om på grund af opgaven. Kun etapeløb: et endagsløb giver ingen point undervejs."
       },
       "effortStepsThree": {
         "title": "Indsatstrin",
@@ -2049,9 +2109,17 @@
       "q": "Hvordan træner jeg en rytter?",
       "a": "Åbn en af dine egne ryttere og sæt et træningsfokus under 'Træningsfokus' på profilen: vælg en retning og en intensitet. De trænede evner udvikler sig hurtigere mod deres loft, dag for dag mens træningen kører. Du kan sætte fokus på så mange ryttere du vil. Højere intensitet træner hurtigere og bygger mere træthed op, men risikerer aldrig et tilbageslag; at ændre et eksisterende fokus koster intet, og træning er gratis."
     },
+    "trainingFocusXpFaq": {
+      "q": "Hvordan træner jeg en rytter?",
+      "a": "Åbn en af dine egne ryttere og sæt et træningsfokus under 'Træningsfokus' på profilen: vælg et pas, og belastningen følger med passet. De trænede evner optjener mest XP, dag for dag mens træningen kører. Du kan sætte fokus på så mange ryttere du vil. Hårde pas træner mere og bygger mere træthed op, men risikerer aldrig et tilbageslag; at ændre et eksisterende fokus koster intet, og træning er gratis."
+    },
     "restForDevelopedFaq": {
       "q": "Min rytter er færdigudviklet. Skal jeg bare sætte hvile?",
       "a": "Når alle evner i rytterens valgte fokus har nået deres livstidsloft, står hver linje i det fokus som \"færdig\", og mere træning i det fokus giver intet ekstra: dagens gevinst beregnes ud fra afstanden mellem nuværende evne og loftet, og ved nul afstand forbliver den nul uanset intensitet. Kører du Normal eller Hård på en færdigudviklet rytter, bygger det stadig Træthed op, og Hård har stadig samme skaderisiko som for enhver anden rytter, for ingen evnegevinst til gengæld, så Hvile er det sikre valg: det fjerner Træthed i stedet for at bygge den op. Rytterens fald efter toppen omkring 28 år kører under alle omstændigheder med en fast, alders-bestemt hastighed ved hvert sæsonskifte, uanset hvilken intensitet du trænede med, så hverken træning eller Hvile fremskynder eller bremser det. Har rytteren stadig plads i et andet fokus, er det at skifte fokus det bedre valg frem for hvile."
+    },
+    "restForDevelopedXpFaq": {
+      "q": "Min rytter er færdigudviklet. Skal jeg bare sætte hvile?",
+      "a": "Ingen evne er nogensinde færdigudviklet: træning giver altid XP, men nær toppen koster et point meget. Hvile giver intet nyt XP, men XP, han har sparet op på en bjælke, kan stadig blive udbetalt. Hvile giver mening, når trætheden er høj, eller gevinsten er for lille til at være belastningen værd; ellers flytter et fokus på evner, der stadig er lavere, ham hurtigere. Hans fald med alderen sker ved sæsonskiftet: løbsdage og hårde træningsdage bremser det, hvile gør ikke."
     },
     "raceDayIntensityFaq": {
       "q": "Betyder min valgte intensitet stadig noget den dag min rytter kører løb?",
@@ -2072,6 +2140,10 @@
     "raceDayAcademyPerRaceDayFaq": {
       "q": "Kan det betale sig at køre løb med unge akademi-talenter, eller er akademi-træning altid bedre?",
       "a": "Begge dele udvikler ham, på hver sin måde. På en løbsdag kører dit talent løb eller træner, aldrig begge dele. En løbsdag han kører løb, tæller som et hårdt pas i de evner etapen kræver plus lidt ekstra formet af hans rolle, med højst ét point pr. evne pr. løbsdag. På en træningsdag vælger du præcis, hvad han arbejder med, men i de evner etapen kræver, giver et løb mere. Et etapeløb tager alle løbsdage fra første til sidste etape, og på dets hviledage får han intet. Der er ingen akademi-specifik straf: samme regel gælder for alle ryttere. Betyder én evne mest, så træn den; vil du have ham udviklet bredt, mens han lærer at køre løb, så kør ham på etaper der passer til det."
+    },
+    "raceDayAcademyPerRaceDayXpFaq": {
+      "q": "Kan det betale sig at køre løb med unge akademi-talenter, eller er akademi-træning altid bedre?",
+      "a": "Begge dele udvikler ham, på hver sin måde. På en løbsdag kører dit talent løb eller træner, aldrig begge dele. En løbsdag han kører løb, tæller som et hårdt pas i de evner etapen kræver plus lidt ekstra formet af hans rolle, inden for grænsen på +1 pr. evne pr. dato (+2 for et toptalent på en meget lav evne). På en træningsdag vælger du præcis, hvad han arbejder med, men i de evner etapen kræver, giver et løb mere. Et etapeløb tager alle løbsdage fra første til sidste etape, og på dets hviledage optjener han intet nyt XP. Der er ingen akademi-specifik straf: samme regel gælder for alle ryttere. Betyder én evne mest, så træn den; vil du have ham udviklet bredt, mens han lærer at køre løb, så kør ham på etaper der passer til det."
     },
     "lowerDivisionTrainingFaq": {
       "q": "Får lavere divisioner mere træning?",
@@ -2452,6 +2524,10 @@
     "teamworkLeadershipTrainingCurveBFaq": {
       "q": "Hvad styrer, hvor hurtigt Holdarbejde og Lederskab bliver trænet, og har de skjult potentiale?",
       "a": "Holdarbejde og Lederskab trænes gennem det samme daglige system som alle andre evner: hvert point koster mere jo højere evnen allerede er, og fremgangen aftager jo tættere rytteren kommer på sit loft. De fleste evner har et loft formet af, hvor central evnen er for rytterens type, så en klatrers klatre-loft ligger langt over en sprinters. Holdarbejde og Lederskab virker ikke sådan: alle ryttere træner mod det samme fælles loft, uanset type. Potentialet afgør derefter, hvor højt en rytter kan nå, og hvor hurtigt han kommer derhen, på hver evne, også Holdarbejde og Lederskab. Så ja, en rytter med højt potentiale har også mere plads på de to."
+    },
+    "teamworkLeadershipTrainingXpFaq": {
+      "q": "Hvad styrer, hvor hurtigt Holdarbejde og Lederskab bliver trænet, og har de skjult potentiale?",
+      "a": "Holdarbejde og Lederskab optjener XP som alle andre evner og følger samme prisliste: hvert point koster mere, jo højere evnen allerede er. De indgår ikke i nogen træningssession, så de vokser mest gennem løb, formet af hans rolle, og lidt gennem resten af træningen. Potentialet afgør også her, hvor meget XP han optjener om dagen, og sent i karrieren falder de en smule, som de andre mentale evner."
     },
     "riderPoolNationalityFaq": {
       "q": "Hvorfor er nogle nationer som Sydkorea, Kina og Japan så synlige i rytterpuljen?",

@@ -6,6 +6,26 @@
     "waiting": "Dagens træning kører af sig selv, når det sidste løb er kørt, fra kl. {hour}.",
     "ready": "Dagens træning er klar. Kør den nu, eller lad den køre af sig selv."
   },
+  "trainNowMoment": {
+    "title": "Dagens træning",
+    "subtitle": "{date} · {count, plural, one {# rytter} other {# ryttere}} · samme rækkefølge hver dag",
+    "skip": "Spring over",
+    "openReport": "Se rapporten",
+    "close": "Luk",
+    "listLabel": "Dagens træning, rytter for rytter",
+    "age": "{age} år",
+    "xp": "+{xp} XP",
+    "best": "Dagens bedste",
+    "waiting": "Kører løb i dag · afregnes efter etapen",
+    "raced": "Løbsdag",
+    "rest": "Hviledag",
+    "points": "{count, plural, one {+# point} other {+# point}}",
+    "summaryRiders": "{count, plural, one {# rytter} other {# ryttere}}",
+    "summaryXp": "{xp} XP i alt",
+    "summaryPoints": "{count, plural, one {# point optjent} other {# point optjent}}",
+    "summaryPaid": "{count, plural, one {# point} other {# point}} udbetalt fra bjælken",
+    "fromBar": "fra bjælken"
+  },
   "trainNow": {
     "button": "Træn nu",
     "running": "Kører…",
@@ -175,6 +195,7 @@
     "ageRoleLine": "Alder {age} · {role}",
     "numbers": "{now} · {lo}-{hi} · loft {loft}",
     "numbersNoLoft": "{now} · {lo}-{hi}",
+    "numbersSingle": "{now} · {value}",
     "noForecastYet": "Ingen prognose endnu"
   },
   "injuryRisk": "Høj skaderisiko",

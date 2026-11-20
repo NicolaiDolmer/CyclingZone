@@ -40,6 +40,8 @@ import { SkeletonLines } from "../../ui/Skeleton.jsx";
 import RiderTrainingScoreCard from "./RiderTrainingScoreCard.tsx";
 import InjuryChip from "../ConditionChips.jsx";
 import { useCrashOrigin } from "../useCrashOrigin.ts";
+import { useDevelopmentXpEnabled } from "../../../lib/developmentXpFlag.ts"; // #8476
+import { earnedGainTotal, earnedJumps } from "../../../lib/trainingEarnedGains.ts"; // #8476
 
 const LOG_DAYS = 7;
 
@@ -338,7 +340,9 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
 }
 
 // ── Daglig træningslog (sidste 7 dage) ──────────────────────────────────────────
-function DailyLogCard({ riderId, runs, t }) {
+// #8476: `xp` = XP-kontakten er taendt. Saa taeller kun point tjent paa datoen (point
+// betalt fra bjaelken er ikke dagens traening), og skarp/flad dag findes ikke.
+function DailyLogCard({ riderId, runs, t, xp = false }) {
   const { t: tTraining } = useTranslation("training");
   // Kun dage inden for de sidste 7 KALENDERDAGE, så overskriften er sand selv for
   // en nyligt købt rytter der ikke indgik i hver dags kørsel.
@@ -356,7 +360,7 @@ function DailyLogCard({ riderId, runs, t }) {
         entries.map(({ tick_date, row }) => {
           const isRest = !row.intensity || row.intensity === "rest";
           // #6111: en uafregnet dato viser sine gemte loebsdages gevinster (#6027).
-          const jumps = breakthroughJumps(row.trained_now ?? row);
+          const jumps = xp ? earnedJumps(row, row.trained_now ?? row) : breakthroughJumps(row.trained_now ?? row);
           const focusLabel = row.focus ? t(`profile.training.focus.${row.focus}`) : "—";
           const intensityLabel = t(`training.intensity_${isRest ? "rest" : row.intensity}`);
           let result;
@@ -373,10 +377,10 @@ function DailyLogCard({ riderId, runs, t }) {
             // Flere evner samme dag: opsummér så den kompakte række ikke flyder over.
             result = t("profile.training.log.gains", { count: jumps.reduce((s, j) => s + j.n, 0) });
             resultClass = "text-cz-success";
-          } else if (row.status === "over") {
+          } else if (!xp && row.status === "over") {
             result = t("profile.training.log.sharp");
             resultClass = "text-cz-success";
-          } else if (row.status === "under") {
+          } else if (!xp && row.status === "under") {
             result = t("profile.training.log.flat");
           } else {
             result = "—";
@@ -398,25 +402,27 @@ function DailyLogCard({ riderId, runs, t }) {
 }
 
 // ── 30-dages trænings-trend (midlertidig erstatning for Træningsscore) ───────────
-function TrendCard({ riderId, runs, t }) {
+// #8476: under XP taeller gennembrud kun dage med point tjent ved traening, og feltet
+// "Skarpe dage" findes ikke.
+function TrendCard({ riderId, runs, t, xp = false }) {
   const entries = riderHistoryFromRuns(runs, riderId);
   let trained = 0, breakthroughs = 0, sharp = 0;
   for (const { row } of entries) {
     if (!row.injured && row.intensity && row.intensity !== "rest") trained++;
-    if (isBreakthrough(row.trained_now ?? row)) breakthroughs++;
+    if (xp ? earnedGainTotal(row, row.trained_now ?? row) > 0 : isBreakthrough(row.trained_now ?? row)) breakthroughs++;
     if (row.status === "over") sharp++;
   }
   const tiles = [
     { value: trained, label: t("profile.training.trend.trained") },
     { value: breakthroughs, label: t("profile.training.trend.breakthroughs") },
-    { value: sharp, label: t("profile.training.trend.sharp") },
+    ...(xp ? [] : [{ value: sharp, label: t("profile.training.trend.sharp") }]),
   ];
   return (
     <div className="bg-cz-card border border-cz-border border-l-2 border-l-cz-border rounded-cz py-[15px] px-[17px]">
       <span className="font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-accent-t">
         {t("profile.training.trend.title")}
       </span>
-      <div className="grid grid-cols-3 gap-2 mt-2.5">
+      <div className={`grid ${xp ? "grid-cols-2" : "grid-cols-3"} gap-2 mt-2.5`}>
         {tiles.map((tile) => (
           <div key={tile.label}>
             <div className="font-mono tabular-nums text-2xl font-bold leading-none text-cz-1">{tile.value}</div>
@@ -519,6 +525,7 @@ export default function RiderTrainingTab({ rider, training, trainingHistory, pro
   // #2465: setPlan/clearPlan returnerer eksplicit {ok, error} — en fejl
   // (udløbet session, netværk, backend-afvisning) skal vises, ikke forsvinde.
   const [actionError, setActionError] = useState(null);
+  const developmentXp = useDevelopmentXpEnabled(); // #8476
 
   async function handlePanelSave(dayType, session) {
     setActionError(null);
@@ -583,14 +590,14 @@ export default function RiderTrainingTab({ rider, training, trainingHistory, pro
             actionError={actionError}
             onOpenPanel={() => setPanelOpen(true)}
           />
-          <DailyLogCard riderId={rider.id} runs={runs} t={t} />
+          <DailyLogCard riderId={rider.id} runs={runs} t={t} xp={developmentXp} />
         </div>
         <div className="flex flex-col gap-[13px] min-w-0">
           {/* #4851: kortet erstatter 30-dages-boksen naar flaget er on. */}
           {scoreVisible ? (
             <RiderTrainingScoreCard score={riderScore} t={t} />
           ) : (
-            <TrendCard riderId={rider.id} runs={runs} t={t} />
+            <TrendCard riderId={rider.id} runs={runs} t={t} xp={developmentXp} />
           )}
           <FormCard riderId={rider.id} condition={condition} t={t} />
         </div>

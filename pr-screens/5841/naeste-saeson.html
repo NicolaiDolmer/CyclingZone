@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#5841 Næste sæsons kalender: skitse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Tokens kopieret fra frontend/src/index.css (lys + mørk). Skitsen bruger kun tokens. */
+:root {
+  --bg-body:#f4f2ec; --bg-card:#fcfbf7; --bg-elevated:#ffffff; --bg-subtle:#ece9e1;
+  --border:#e5e0d5; --border-strong:#827f96;
+  --text-1:#0e0f15; --text-2:#4c4a5e; --text-3:#67657e;
+  --accent:232 197 71; --accent-t:160 120 0; --on-accent:#1a1f38;
+  --bg-sidebar:#1a1f38;
+  --info:43 108 176; --info-bg:rgba(43,108,176,.10);
+  --danger:200 60 60; --danger-bg:rgba(200,60,60,.08);
+  --success:40 140 80; --success-bg:rgba(40,140,80,.10);
+  --terrain-flat:#2a7366; --terrain-rolling:#567326; --terrain-hilly:#80651a; --terrain-medium-mountain:#8e4d1f;
+  --terrain-mountain:#962f2a; --terrain-high-mountain:#62388f; --terrain-time-trial:#2b5f99; --terrain-cobbles:#5e5a52; --terrain-gravel:#7d6234;
+}
+:root[data-theme="dark"] {
+  --bg-body:#0e0f15; --bg-card:#161824; --bg-elevated:#1f2233; --bg-subtle:#14161e;
+  --border:#2a2d3a; --border-strong:#6a6e86;
+  --text-1:#ededf2; --text-2:#9da0b3; --text-3:#888ba0;
+  --accent-t:255 217 102;
+  --info:122 176 251; --info-bg:rgba(122,176,251,.12);
+  --danger:251 132 132; --danger-bg:rgba(251,132,132,.12);
+  --success:95 217 138; --success-bg:rgba(95,217,138,.12);
+  --terrain-flat:#5fae9f; --terrain-rolling:#97b46a; --terrain-hilly:#c9aa55; --terrain-medium-mountain:#cf8c5a;
+  --terrain-mountain:#cf6f69; --terrain-high-mountain:#a885c9; --terrain-time-trial:#6f9fd4; --terrain-cobbles:#a29d94; --terrain-gravel:#bba584;
+}
+* { box-sizing:border-box; }
+html,body { margin:0; }
+body { background:var(--bg-body); color:var(--text-1); font:14px/1.45 Inter, system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+.page { max-width:1600px; margin:0 auto; padding:28px 32px 64px; }
+.data, .num { font-family:"Inter Tight", Inter, system-ui, sans-serif; font-variant-numeric:tabular-nums; }
+h1 { font:700 20px/1.2 "Inter Tight", Inter, sans-serif; letter-spacing:-.01em; margin:0; }
+.sub { font-size:13px; color:var(--text-2); margin-top:4px; }
+.pagehead { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px; flex-wrap:wrap; }
+.section-title { display:flex; align-items:baseline; gap:10px; margin:36px 0 12px; }
+.section-title h2 { font:700 17px/1.2 "Inter Tight", Inter, sans-serif; margin:0; }
+.tag { font:600 11px/1 "Inter Tight", Inter, sans-serif; text-transform:uppercase; letter-spacing:.08em; color:var(--text-3); }
+.card { background:var(--bg-card); border:1px solid var(--border); border-radius:5px; padding:20px; }
+.card-h { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:14px; }
+.card-h h3 { font:600 15px/1.3 Inter, sans-serif; margin:0; }
+.meta { font:600 11px/1.2 "Inter Tight", Inter, sans-serif; text-transform:uppercase; letter-spacing:.08em; color:var(--text-3); }
+.grid3 { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px; }
+.grid2 { display:grid; grid-template-columns:1.6fr 1fr; gap:14px; }
+.stack { display:grid; grid-template-columns:minmax(0,1fr); gap:14px; }
+.stack > *, .grid2 > *, .grid3 > * { min-width:0; }
+.muted { color:var(--text-2); }
+.small { font-size:12px; }
+.ctx { display:flex; gap:6px; align-items:flex-start; font-size:13px; color:var(--text-2); margin:10px 0 12px; }
+.ctx svg { flex:none; margin-top:3px; color:var(--text-3); }
+/* Kontroller */
+.toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; border-bottom:1px solid var(--border); padding-bottom:12px; }
+.lbl { font:600 11px/1 "Inter Tight", Inter, sans-serif; text-transform:uppercase; letter-spacing:.12em; color:var(--text-3); }
+.select { display:inline-flex; align-items:center; gap:8px; height:32px; padding:0 10px; border:1px solid var(--border-strong); border-radius:5px; background:var(--bg-elevated); font-size:13px; color:var(--text-1); white-space:nowrap; }
+.select .hint { color:var(--text-3); font-size:12px; }
+.seg { display:inline-flex; border:1px solid var(--border); border-radius:5px; overflow:hidden; }
+.seg span { padding:6px 11px; font-size:12px; font-weight:500; color:var(--text-2); border-right:1px solid var(--border); white-space:nowrap; }
+.seg span:last-child { border-right:0; }
+.seg span.on { color:rgb(var(--accent-t)); background:var(--bg-subtle); font-weight:600; }
+.ms-auto { margin-left:auto; }
+.monthnav { display:inline-flex; align-items:center; gap:6px; font-size:13px; color:var(--text-1); }
+.monthnav b { font-weight:600; }
+.chev { color:var(--text-2); padding:2px 4px; }
+/* Kalender-gitter */
+.cal-wrap { overflow-x:auto; margin-top:12px; }
+.cal { min-width:630px; display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); border-left:1px solid var(--border); border-top:1px solid var(--border); }
+.cal .wd { background:var(--bg-subtle); border-right:1px solid var(--border); border-bottom:1px solid var(--border); padding:6px 8px; text-align:center; font:700 10px/1 "Inter Tight", Inter, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:var(--text-3); }
+.cal .day { border-right:1px solid var(--border); border-bottom:1px solid var(--border); min-height:132px; padding:6px; background:var(--bg-card); }
+.cal .day.off { background:var(--bg-subtle); }
+.cal .dn { font:600 11px/1 "Inter Tight", Inter, sans-serif; color:var(--text-3); margin-bottom:6px; }
+.ev { display:flex; align-items:center; gap:5px; font-size:11px; line-height:1.25; padding:3px 4px; border:1px solid var(--border); border-radius:5px; margin-bottom:3px; background:var(--bg-elevated); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ev .nm { overflow:hidden; text-overflow:ellipsis; }
+.ev .st { color:var(--text-3); font-family:"Inter Tight", Inter, sans-serif; font-variant-numeric:tabular-nums; margin-left:auto; padding-left:4px; }
+.ev.dup { border-style:dashed; color:var(--text-2); }
+.more { font-size:11px; color:var(--text-2); padding:2px 4px; }
+.ico { width:14px; height:14px; flex:none; }
+/* Liste-rækker */
+.rows { border-top:1px solid var(--border); }
+.row { display:grid; grid-template-columns:92px minmax(0,1.4fr) minmax(0,1.6fr) 60px 74px; gap:12px; align-items:center; padding:11px 4px; border-bottom:1px solid var(--border); }
+.row .nm { font-size:13.5px; font-weight:500; }
+.row .sl { font:600 10px/1.3 "Inter Tight", Inter, sans-serif; text-transform:uppercase; letter-spacing:.06em; color:var(--text-3); margin-top:2px; }
+.row .r { text-align:right; }
+.row.open { background:var(--bg-subtle); }
+.week { display:flex; align-items:baseline; gap:10px; padding:16px 4px 6px; }
+.week b { font:700 13px/1 "Inter Tight", Inter, sans-serif; }
+.strip { display:flex; flex-wrap:wrap; gap:2px; }
+.strip .s { width:20px; height:20px; border-radius:4px; display:grid; place-items:center; background:var(--bg-elevated); border:1px solid var(--border); }
+.strip .s svg { width:14px; height:14px; }
+.stagerows { padding:4px 0 8px 104px; }
+.stg { display:grid; grid-template-columns:44px 60px 22px minmax(0,1fr) 70px 80px 120px; gap:10px; align-items:center; font-size:12.5px; padding:6px 0; border-bottom:1px solid var(--border); }
+.stg:last-child { border-bottom:0; }
+.prof { height:22px; }
+.prof path { fill:var(--bg-subtle); stroke:var(--text-1); stroke-width:1.5; }
+.hd { display:grid; grid-template-columns:92px minmax(0,1.4fr) minmax(0,1.6fr) 60px 74px; gap:12px; padding:6px 4px; }
+/* Tidslinje (Holdudtagelse · Sæson) */
+.tl { position:relative; border:1px solid var(--border); border-radius:5px; background:var(--bg-card); padding:14px 14px 10px; overflow-x:auto; }
+.tl-inner { position:relative; min-width:640px; }
+.ticks { display:flex; justify-content:space-between; font:600 10px/1 "Inter Tight", Inter, sans-serif; color:var(--text-3); letter-spacing:.08em; border-bottom:1px solid var(--border); padding-bottom:6px; margin-bottom:8px; }
+.band { position:absolute; height:26px; border-radius:5px; font-size:11px; padding:5px 7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; border:1px solid var(--border); background:var(--bg-subtle); color:var(--text-2); }
+.band.multi { background:var(--bg-sidebar); color:#e7e8ef; border-color:var(--bg-sidebar); }
+.band.mon { background:var(--bg-sidebar); color:#ffffff; font-weight:700; border:1px solid var(--text-1); }
+/* Tomme tilstande og noter */
+.empty { border:1px dashed var(--border-strong); border-radius:5px; padding:22px; text-align:center; color:var(--text-2); }
+.empty .t { font-weight:600; font-size:15px; color:var(--text-1); margin:8px 0 4px; }
+.n { display:inline-grid; place-items:center; width:18px; height:18px; border-radius:999px; background:var(--text-1); color:var(--bg-card); font:700 11px/1 "Inter Tight", Inter, sans-serif; flex:none; }
+.notes { margin:12px 0 0; padding:0; list-style:none; display:grid; gap:8px; }
+.notes li { display:flex; gap:8px; font-size:13px; color:var(--text-2); }
+.notes li b { color:var(--text-1); font-weight:600; }
+.badge { display:inline-flex; align-items:center; gap:4px; font:600 10px/1 "Inter Tight", Inter, sans-serif; text-transform:uppercase; letter-spacing:.08em; padding:3px 6px; border-radius:999px; border:1px solid var(--border); color:var(--text-2); }
+.badge.bad { color:rgb(var(--danger)); border-color:rgb(var(--danger) / .4); background:var(--danger-bg); }
+.badge.good { color:rgb(var(--success)); border-color:rgb(var(--success) / .4); background:var(--success-bg); }
+.pin { position:absolute; }
+.rel { position:relative; }
+.cmp { width:100%; border-collapse:collapse; font-size:13px; }
+.cmp th { text-align:left; font:600 11px/1.2 "Inter Tight", Inter, sans-serif; text-transform:uppercase; letter-spacing:.06em; color:var(--text-3); padding:8px 10px; border-bottom:1px solid var(--border); }
+.cmp td { padding:10px; border-bottom:1px solid var(--border); vertical-align:top; color:var(--text-2); }
+.cmp td:first-child { color:var(--text-1); font-weight:600; white-space:nowrap; }
+.rec { border:1px solid var(--border); border-radius:5px; padding:16px 20px; background:var(--bg-card); }
+.rec h3 { margin:0 0 6px; font:700 15px/1.3 "Inter Tight", Inter, sans-serif; }
+.btn { display:inline-flex; align-items:center; height:32px; padding:0 12px; border-radius:5px; font-size:13px; font-weight:600; background:rgb(var(--accent)); color:var(--on-accent); }
+.qa { display:grid; gap:10px; margin-top:10px; }
+.q { display:grid; grid-template-columns:22px 1fr; gap:8px; font-size:13px; }
+.q b { color:var(--text-1); }
+.q p { margin:2px 0 0; color:var(--text-2); }
+.hide-m { }
+.show-m { display:none; }
+@media (max-width: 640px) {
+  .page { padding:20px 16px 48px; }
+  .grid3, .grid2 { grid-template-columns:1fr; }
+  .row { grid-template-columns:64px minmax(0,1fr) 58px; }
+  .row .c-strip, .row .c-km { display:none; }
+  .row .strip-m { grid-column:2 / 4; }
+  .hd { display:none; }
+  .stagerows { padding-left:0; }
+  .stg { grid-template-columns:34px 52px 22px minmax(0,1fr) 62px; }
+  .stg .c-hm, .stg .c-prof { display:none; }
+  .hide-m { display:none; }
+  .show-m { display:block; }
+  .select { height:44px; }
+  .seg span { padding:12px 12px; }
+  .cmp, .cmp tbody, .cmp tr, .cmp td { display:block; width:100%; }
+  .cmp thead { display:none; }
+  .cmp td:first-child { padding-top:14px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="pagehead">
+    <div>
+      <h1>Næste sæsons kalender (#5841)</h1>
+      <div class="sub">Skitse til ejeren. Ægte løb, datoer, etapetyper, distancer og højdemeter fra S5's første halvanden uge, vist som om det var S6. S6 er ikke bygget endnu. Ingen spillernavne.</div>
+    </div>
+    <span class="tag" id="themeTag">Lys</span>
+  </div>
+
+  <!-- ===================== FØR ===================== -->
+  <div class="section-title"><h2>Før: de tre flader i dag</h2><span class="tag">origin/main 16/11</span></div>
+  <div class="grid3">
+    <div class="card">
+      <div class="card-h"><h3>Kalender</h3><span class="meta">Planlægning · Kalender</span></div>
+      <div class="toolbar">
+        <span class="lbl">Vis</span><span class="select">Alle divisioner <span class="hint">▾</span></span>
+        <span class="seg"><span class="on">Kalender</span><span>Tabel</span></span>
+        <span class="select ms-auto">S5 <span class="hint">▾</span></span>
+      </div>
+      <div class="ctx"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/></svg><span>Sæson 6 er ikke startet endnu. Din division afgøres ved sæsonskiftet, så dine egne løb er ikke markeret.</span></div>
+      <div id="beforeCal"></div>
+      <ul class="notes">
+        <li><span class="n">1</span><span><b>S6 findes ikke i vælgeren.</b> Kalenderen er ikke bygget. Uden den kan ingen af fladerne vise noget.</span></li>
+        <li><span class="n">2</span><span><b>Når S6 er bygget, starter "Vis" på Alle divisioner,</b> fordi holdets division ikke er afgjort. 437 løb (S5-tal) i én kalender.</span></li>
+        <li><span class="n">3</span><span><b>Vælger man en division, står hvert løb én gang pr. pulje.</b> D2 to gange, D3 og D4 fire gange. Målt i S5: puljerne har præcis samme ruter.</span></li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Holdudtagelse · Sæson</h3><span class="meta">Planlægning · Holdudtagelse</span></div>
+      <div class="toolbar">
+        <span class="seg"><span class="on">Sæson</span><span>Dag</span></span>
+        <span class="seg"><span>S5</span><span class="on">S6</span></span>
+      </div>
+      <div style="margin-top:14px" class="empty">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color:var(--text-3)"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>
+        <div class="t">Ingen løb på kalenderen endnu</div>
+        <div class="small">Vises selv om S6 har 437 løb.</div>
+      </div>
+      <ul class="notes">
+        <li><span class="n">4</span><span><b>Kommende sæson er altid tom her.</b> Visningen tegner kun holdets egen pulje, og den er ukendt før skiftet. <span class="data small">SeasonView.jsx:55, :184, :312</span></span></li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Formplan</h3><span class="meta">Planlægning · Formplan</span></div>
+      <div class="toolbar">
+        <span class="lbl">Sæson</span><span class="seg"><span>S5</span><span class="on">S6</span></span>
+      </div>
+      <div class="ctx"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/></svg><span>Din division i sæson 6 afgøres ved sæsonskiftet. Alle divisioners løb i sæson 6 står nedenfor.</span></div>
+      <div id="beforePlanner"></div>
+      <ul class="notes">
+        <li><span class="n">5</span><span><b>Alle fire divisioners løb i én liste</b>, uden divisionsvalg. Det er "alt for mange løb". <span class="data small">plannerShared.js:116</span></span></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===================== VARIANT A ===================== -->
+  <div class="section-title"><h2>Variant A: sæsonvælger på de tre flader</h2><span class="tag">efter</span></div>
+  <div class="stack">
+    <div class="card">
+      <div class="card-h"><h3>Kalender</h3><span class="meta">Planlægning · Kalender</span></div>
+      <div class="toolbar">
+        <span class="lbl">Vis</span><span class="select">Division 1 <span class="hint">forventet ▾</span></span>
+        <span class="seg"><span class="on">Kalender</span><span>Tabel</span></span>
+        <span class="monthnav ms-auto"><span class="chev">‹</span><b>Oktober 2026</b><span class="chev">›</span></span>
+        <span class="seg"><span>S5</span><span class="on">S6 kommende</span></span>
+      </div>
+      <div class="ctx"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/></svg><span>S6 starter foreløbig mandag 30/11. Viser din nuværende division, D1. Den kan ændre sig ved sæsonskiftet lørdag 28/11.</span></div>
+      <div class="cal-wrap"><div class="cal" id="afterCal"></div></div>
+      <ul class="notes">
+        <li><span class="n">1</span><span><b>Sæson som to knapper, "S5 | S6 kommende",</b> i stedet for en lille S-liste. Kommende sæson står med ordet, ikke kun et tal.</span></li>
+        <li><span class="n">2</span><span><b>"Vis" starter på holdets nuværende division</b> med ordet "forventet", ikke på alle fire. De andre divisioner er ét klik væk.</span></li>
+        <li><span class="n">3</span><span><b>Hvert løb én gang pr. division.</b> Har holdet en pulje, peger løbet på holdets eget; ellers på puljen med lavest nummer. Gælder også S5 i dag.</span></li>
+      </ul>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <div class="card-h"><h3>Holdudtagelse · Sæson</h3><span class="meta">Planlægning · Holdudtagelse</span></div>
+        <div class="toolbar">
+          <span class="seg"><span class="on">Sæson</span><span>Dag</span></span>
+          <span class="seg"><span>S5</span><span class="on">S6 kommende</span></span>
+          <span class="small muted">S6 · Division 1 (forventet) · 37 løb</span>
+        </div>
+        <div style="margin-top:12px" class="tl"><div class="tl-inner" id="afterTl"></div></div>
+        <ul class="notes">
+          <li><span class="n">4</span><span><b>Tidslinjen viser den forventede divisions løb</b> i stedet for "Ingen løb". Skrivebeskyttet, som i dag for en kommende sæson.</span></li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Formplan</h3><span class="meta">Planlægning · Formplan</span></div>
+        <div class="toolbar">
+          <span class="lbl">Sæson</span><span class="seg"><span>S5</span><span class="on">S6</span></span>
+          <span class="select ms-auto">Division 1 <span class="hint">forventet ▾</span></span>
+        </div>
+        <div id="afterPlanner" style="margin-top:8px"></div>
+        <ul class="notes">
+          <li><span class="n">5</span><span><b>Ny divisionsvælger, kun mens divisionen er uafgjort.</b> Starter på den nuværende. Peaks for S6 åbner stadig først når divisionen er afgjort.</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== VARIANT B ===================== -->
+  <div class="section-title"><h2>Variant B: samlet "Næste sæson"-overblik med ruter</h2><span class="tag">efter</span></div>
+  <div class="card">
+    <div class="card-h"><h3>Kalender · Overblik</h3><span class="meta">Planlægning · Kalender</span></div>
+    <div class="toolbar">
+      <span class="seg"><span>Kalender</span><span>Tabel</span><span class="on">Overblik</span></span>
+      <span class="seg"><span class="on">D1</span><span>D2</span><span>D3</span><span>D4</span></span>
+      <span class="small muted hide-m">37 løb · 16 etapeløb · 21 endagsløb (S5-tal)</span>
+      <span class="seg ms-auto"><span>S5</span><span class="on">S6 kommende</span></span>
+    </div>
+    <div class="ctx"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/></svg><span>D1 er valgt fordi holdet kører der nu. Divisionen for S6 afgøres lørdag 28/11.</span></div>
+    <div class="hd"><span class="meta">Dato</span><span class="meta">Løb</span><span class="meta c-strip">Etaper</span><span class="meta r">Etaper</span><span class="meta r">Km</span></div>
+    <div class="rows" id="overview"></div>
+    <ul class="notes">
+      <li><span class="n">6</span><span><b>Ugevis liste med etapebjælke</b>: ét terrænikon pr. etape, så man ser bjerge, brosten og enkeltstart uden at klikke. Etapeløb foldes ud til etaper med profil, distance og højdemeter.</span></li>
+      <li><span class="n">7</span><span><b>Det er designet ejeren godkendte 18/8 i #3900</b> (uge-grupperet, terræn-tag, rute-silhuet, fold-ud), nu bundet til næste sæson og én division.</span></li>
+      <li><span class="n">8</span><span><b>Ny visning ved siden af Kalender og Tabel</b>, ingen ny side og intet nyt menupunkt. Profilen er spillets lille ruteprofil (P19).</span></li>
+    </ul>
+  </div>
+
+  <!-- ===================== ANBEFALING ===================== -->
+  <div class="section-title"><h2>Sammenligning og anbefaling</h2></div>
+  <div class="grid2">
+    <div class="card">
+      <table class="cmp">
+        <thead><tr><th></th><th>A: vælger på de tre flader</th><th>B: samlet overblik</th></tr></thead>
+        <tbody>
+          <tr><td>Ejerens tre billeder</td><td>Alle tre flader virker for næste sæson.</td><td>Kun kalenderen. Holdudtagelse og Formplan er stadig tomme eller for fulde, hvis A ikke også bygges.</td></tr>
+          <tr><td>"Alt for mange løb"</td><td>Løst: én division, hvert løb én gang.</td><td>Løst i overblikket, ikke på de andre flader.</td></tr>
+          <tr><td>Ruter til planlægning</td><td>Som i dag: etapeikon i kalenderen, ruten ét klik væk.</td><td>Bedst: alle etaper og profiler på én skærm.</td></tr>
+          <tr><td>Størrelse</td><td>Lille. Kun visning, ingen migration, ingen motor.</td><td>Mellem. Ny visning og ruteprofil-data i kalendersvaret.</td></tr>
+          <tr><td>Klar før skiftet 28/11</td><td>Ja, hvis S6-kalenderen bygges senest lørdag 21/11.</td><td>Stramt.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="rec">
+      <h3>Anbefaling: A nu, B bagefter</h3>
+      <p class="muted" style="margin:0 0 10px">A løser alle tre billeder og kan nå skiftet. B er det store overblik fra #3900 og bygges oven på A, når S6 kører. Uden S6-kalenderen i databasen viser ingen af dem noget.</p>
+      <span class="btn">Vælg A</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ---------- Ægte data: S5, division 1 og 2, første halvanden uge (prod, læst 16/11) ----------
+// t = profile_type, km = distance, hm = højdemeter, d = dato (MM-DD), f = finale
+const D1 = [
+ {n:"De Openingsklassieker",c:"WorldTour C",st:[{d:"10-28",t:"cobbles",km:150,hm:1335,f:"Spurt"}]},
+ {n:"La Course au Soleil",c:"WorldTour A",st:[{d:"10-28",t:"itt",km:29,hm:232,f:"Enkeltstart"},{d:"10-28",t:"rolling",km:155,hm:1568,f:"Spurt"},{d:"10-29",t:"rolling",km:185,hm:1675,f:"Spurt op ad bakke"},{d:"10-29",t:"flat",km:155,hm:1384,f:"Spurt"},{d:"10-30",t:"rolling",km:165,hm:1509,f:"Spurt"},{d:"10-30",t:"rolling",km:180,hm:1692,f:"Spurt"},{d:"10-31",t:"mountain",km:150,hm:3474,f:"Lang stigning"},{d:"10-31",t:"rolling",km:165,hm:1485,f:"Spurt"}]},
+ {n:"Tour des Volcans d'Auvergne",c:"WorldTour A",st:[{d:"10-28",t:"flat",km:195,hm:1560},{d:"10-28",t:"mountain",km:155,hm:2275},{d:"10-29",t:"high_mountain",km:150,hm:5520},{d:"10-29",t:"itt",km:21,hm:168},{d:"10-30",t:"high_mountain",km:160,hm:3994},{d:"10-30",t:"high_mountain",km:155,hm:4609},{d:"10-31",t:"medium_mountain",km:175,hm:2710},{d:"10-31",t:"high_mountain",km:165,hm:5229}]},
+ {n:"Kasseienklassieker van Geraardsbergen",c:"WorldTour B",st:[{d:"10-29",t:"cobbles",km:165,hm:1423}]},
+ {n:"Terre di Toscana",c:"WorldTour B",st:[{d:"10-30",t:"gravel",km:195,hm:2437}]},
+ {n:"Strade Bianche del Nord",c:"WorldTour A",st:[{d:"10-31",t:"gravel",km:215,hm:2739}]},
+ {n:"Giro della Penisola",c:"Grand Tour",st:[{d:"11-01",t:"itt",km:13,hm:104},{d:"11-01",t:"flat",km:170,hm:1375},{d:"11-02",t:"flat",km:190,hm:1650},{d:"11-02",t:"hilly",km:180,hm:2301},{d:"11-03",t:"hilly",km:195,hm:2331},{d:"11-03",t:"medium_mountain",km:185,hm:2382},{d:"11-03",t:"medium_mountain",km:175,hm:3123},{d:"11-04",t:"mountain",km:185,hm:3667},{d:"11-04",t:"mountain",km:165,hm:4186},{d:"11-05",t:"high_mountain",km:180,hm:3592},{d:"11-05",t:"hilly",km:180,hm:1860},{d:"11-05",t:"hilly",km:190,hm:1682},{d:"11-05",t:"mountain",km:185,hm:3955},{d:"11-06",t:"mountain",km:170,hm:3498},{d:"11-06",t:"itt",km:32,hm:624},{d:"11-06",t:"high_mountain",km:175,hm:4580},{d:"11-06",t:"flat",km:185,hm:1480}]},
+ {n:"Grote Prijs van Oostende",c:"WorldTour A",st:[{d:"11-01",t:"flat",km:200,hm:1600}]},
+ {n:"Tour of South Australia",c:"WorldTour A",st:[{d:"11-01",t:"flat",km:185,hm:1480},{d:"11-01",t:"mountain",km:190,hm:2495},{d:"11-02",t:"hilly",km:210,hm:2032},{d:"11-02",t:"high_mountain",km:165,hm:2174},{d:"11-03",t:"itt",km:18,hm:144},{d:"11-03",t:"high_mountain",km:140,hm:3615}]},
+ {n:"Grand Prix de Lille",c:"WorldTour A",st:[{d:"11-02",t:"flat",km:155,hm:1402}]},
+ {n:"Gran Premio de Valencia",c:"WorldTour A",st:[{d:"11-04",t:"flat",km:195,hm:1676}]},
+ {n:"Grand Prix de Bordeaux",c:"WorldTour A",st:[{d:"11-04",t:"flat",km:170,hm:1360}]},
+ {n:"Le Mur de Huy",c:"WorldTour B",st:[{d:"11-04",t:"hilly",km:160,hm:1961}]},
+ {n:"Clásica del Cantábrico",c:"WorldTour B",st:[{d:"11-05",t:"hilly",km:240,hm:2896}]},
+ {n:"Klassieker van Harelbeke",c:"WorldTour B",st:[{d:"11-06",t:"cobbles",km:165,hm:1505}]},
+ {n:"Milano–Riviera",c:"Monument",mon:true,st:[{d:"11-07",t:"rolling",km:290,hm:2000}]},
+];
+const D2_FIRST = [ // D2 har to puljer: samme løb, samme rute
+ {n:"Klassieker van Kuurne",st:[{d:"10-28",t:"cobbles"}]},
+ {n:"Ocean Road Classic",st:[{d:"10-28",t:"hilly"}]},
+ {n:"Tour des Émirats",st:[{d:"10-28",t:"mountain"},{d:"10-28",t:"mountain"}]},
+];
+const GLYPH = {
+  flat:["flat",'<path d="M7 12h10"/>'],
+  rolling:["rolling",'<path d="M6 13.5h3.5l2.5-2.5 2.5 2.5H18"/>'],
+  hilly:["hilly",'<path d="M5.5 14.5l2.6-3.6 2.2 2.4 2.8-4.3 2.4 3.3 3-1.3"/>'],
+  medium_mountain:["medium-mountain",'<path d="M5.5 16.5l3.5-4 2 1.5 4-7 4 9.5"/>'],
+  mountain:["mountain",'<path d="M5 16.5l3.5-8 3 5.5 3-8 4.5 10.5"/>'],
+  high_mountain:["high-mountain",'<path d="M5 17l4-6 2 3 4-9 4.5 12"/><path d="M13.6 8.3l1.4 1.1 1.5-1"/>'],
+  itt:["time-trial",'<circle cx="13.5" cy="12" r="4.5"/><path d="M13.5 10v2l1.5 1"/><path d="M5.5 10.5h3M6.5 13.5h2"/>'],
+  cobbles:["cobbles",'<rect x="6" y="7" width="5" height="4" rx=".8"/><rect x="13" y="7" width="5" height="4" rx=".8"/><rect x="9.5" y="13" width="5" height="4" rx=".8"/>'],
+  gravel:["gravel",'<path d="M6 15.5h12"/><circle cx="8" cy="10.5" r="1"/><circle cx="12" cy="9" r=".8"/><circle cx="15.8" cy="11" r="1.1"/><circle cx="10.5" cy="12.6" r=".7"/>'],
+};
+const TYPE_DA = {flat:"Flad",rolling:"Rullende",hilly:"Kuperet",medium_mountain:"Mellembjerg",mountain:"Bjerg",high_mountain:"Højbjerg",itt:"Enkeltstart",cobbles:"Brosten",gravel:"Grus"};
+const icon = (t, cls="ico") => { const [c, p] = GLYPH[t] || GLYPH.flat; return `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="var(--terrain-${c})" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="${TYPE_DA[t]||t}">${p}</svg>`; };
+const ddmm = (d) => { const [m, dd] = d.split("-"); return `${+dd}/${+m}`; };
+const WD = ["man","tir","ons","tor","fre","lør","søn"];
+const qs = new URLSearchParams(location.search);
+if (qs.get("theme") === "dark") { document.documentElement.dataset.theme = "dark"; document.getElementById("themeTag").textContent = "Mørk"; }
+
+// Før: kalender-celler med dubletter (alle divisioner, puljer gentaget)
+(function(){
+  const ev = [];
+  for (const r of D1.slice(0,3)) ev.push(`<div class="ev" title="${r.n}">${icon(r.st[0].t)}<span class="nm">${r.n}</span><span class="st">D1</span></div>`);
+  for (const r of D2_FIRST) for (const p of ["A","B"]) ev.push(`<div class="ev${p==="B"?" dup":""}" title="${r.n}">${icon(r.st[0].t)}<span class="nm">${r.n}</span><span class="st">D2 ${p}</span></div>`);
+  document.getElementById("beforeCal").innerHTML = `<div class="small muted" style="margin-bottom:6px">Onsdag 28/10, én kalendercelle:</div>${ev.join("")}<div class="more">+ 24 flere</div>`;
+  const pl = [["De Openingsklassieker","D1"],["Klassieker van Kuurne","D2"],["Ocean Road Classic","D2"],["Tour des Émirats","D2"],["Grand Prix de ...","D3"],["...","D4"]];
+  document.getElementById("beforePlanner").innerHTML = `<div class="rows">${pl.map(([n,d])=>`<div style="display:flex;justify-content:space-between;padding:8px 2px;border-bottom:1px solid var(--border);font-size:13px"><span>${n}</span><span class="data small muted">${d}</span></div>`).join("")}</div><div class="small muted data" style="margin-top:6px">437 løb på tværs af 4 divisioner</div>`;
+})();
+
+// Efter A: måned-gitter (uge 28/10-1/11 og 2/11-8/11), kun D1, hvert løb én gang
+(function(){
+  const byDate = new Map();
+  for (const r of D1) r.st.forEach((s, i) => { const k = s.d; if (!byDate.has(k)) byDate.set(k, []); byDate.get(k).push({r, s, i}); });
+  let html = WD.map(w=>`<div class="wd">${w}</div>`).join("");
+  const days = ["10-26","10-27","10-28","10-29","10-30","10-31","11-01","11-02","11-03","11-04","11-05","11-06","11-07","11-08"];
+  const cap = 5;
+  for (const d of days) {
+    const list = byDate.get(d) || [];
+    const off = d < "10-28";
+    const items = list.slice(0, cap).map(({r,s,i}) => `<div class="ev" title="${r.n}">${icon(s.t)}<span class="nm">${r.n}</span><span class="st">${r.st.length>1?`E${i+1}`:""}</span></div>`).join("");
+    const more = list.length > cap ? `<div class="more">+${list.length-cap} flere</div>` : "";
+    html += `<div class="day${off?" off":""}"><div class="dn">${ddmm(d)}</div>${items}${more}</div>`;
+  }
+  document.getElementById("afterCal").innerHTML = html;
+})();
+
+// Efter A: tidslinje
+(function(){
+  const start = new Date("2026-10-28"), end = new Date("2026-11-08");
+  const span = (end - start) / 864e5 + 1;
+  const pct = (d) => ((new Date("2026-"+d) - start) / 864e5) / span * 100;
+  const bands = D1.map(r => ({ n:r.n, a:r.st[0].d, b:r.st[r.st.length-1].d, multi:r.st.length>1, mon:!!r.mon }));
+  const lanes = [];
+  for (const b of bands.sort((x,y)=>x.a.localeCompare(y.a))) {
+    let li = lanes.findIndex(l => l < b.a); if (li < 0) { li = lanes.length; lanes.push(""); }
+    lanes[li] = b.b + "z"; b.lane = li;
+  }
+  let ticks = ""; for (const d of ["10-28","10-31","11-03","11-06"]) ticks += `<span>${ddmm(d)}</span>`;
+  const h = lanes.length * 32;
+  const html = `<div class="ticks">${ticks}</div><div style="position:relative;height:${h}px">` + bands.map(b => {
+    const l = pct(b.a), w = Math.max(pct(b.b) - l + 100/span, 100/span);
+    return `<div class="band${b.mon?" mon":b.multi?" multi":""}" style="left:${l}%;width:calc(${w}% - 3px);top:${b.lane*32}px" title="${b.n}">${b.n}</div>`;
+  }).join("") + `</div>`;
+  document.getElementById("afterTl").innerHTML = html;
+})();
+
+// Efter A: formplan-rækker (kun D1)
+(function(){
+  const rows = D1.slice(0,6).map(r => `<div style="display:flex;align-items:center;gap:8px;padding:8px 2px;border-bottom:1px solid var(--border);font-size:13px">${icon(r.st[0].t)}<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.n}</span><span class="data small muted">${ddmm(r.st[0].d)}${r.st.length>1?" · "+r.st.length+" et.":""}</span></div>`).join("");
+  document.getElementById("afterPlanner").innerHTML = rows + `<div class="small muted data" style="margin-top:6px">37 løb i Division 1</div>`;
+})();
+
+// Efter B: overblik
+(function(){
+  const wk = [["Uge 1","28/10 til 1/11"],["Uge 2","2/11 til 8/11"]];
+  const prof = (s) => { // lille silhuet ud fra etapetype og højdemeter (illustration af P19's lille profil)
+    const amp = Math.min(1, (s.hm||1200) / 5500); const pts = [];
+    const shape = {flat:[.1,.12,.1,.12,.1],rolling:[.15,.3,.2,.32,.2],hilly:[.2,.5,.3,.6,.35],medium_mountain:[.2,.6,.35,.75,.4],mountain:[.2,.7,.4,.9,.6],high_mountain:[.25,.9,.45,1,.85],itt:[.1,.12,.11,.12,.1],cobbles:[.12,.18,.12,.2,.12],gravel:[.15,.3,.2,.35,.2]}[s.t] || [.1,.1,.1,.1,.1];
+    shape.forEach((v,i)=>pts.push(`${i*30},${22 - v*20*Math.max(.35,amp)}`));
+    return `<svg class="prof" viewBox="0 0 120 22" preserveAspectRatio="none" width="120"><path d="M0,22 L${pts.join(" L")} L120,22 Z"/></svg>`;
+  };
+  let html = "";
+  wk.forEach(([w, range], wi) => {
+    html += `<div class="week"><b>${w}</b><span class="meta">${range}</span></div>`;
+    const list = D1.filter(r => wi === 0 ? r.st[0].d <= "11-01" : r.st[0].d >= "11-02").sort((a,b)=>a.st[0].d.localeCompare(b.st[0].d));
+    for (const r of list) {
+      const km = r.st.reduce((a,s)=>a+(s.km||0),0);
+      const open = r.n === "La Course au Soleil";
+      const dates = r.st.length > 1 ? `${ddmm(r.st[0].d)}-${ddmm(r.st[r.st.length-1].d)}` : ddmm(r.st[0].d);
+      const strip = `<div class="strip">${r.st.map(s=>`<span class="s">${icon(s.t,"")}</span>`).join("")}</div>`;
+      html += `<div class="row${open?" open":""}"><span class="data small">${dates}</span><div><div class="nm">${r.n}</div><div class="sl">${r.c}${r.st.length>1?" · etapeløb":" · endagsløb"}</div><div class="show-m" style="margin-top:6px">${strip}</div></div><div class="c-strip">${strip}</div><span class="data r">${r.st.length}</span><span class="data r c-km">${km.toLocaleString("da-DK")}</span></div>`;
+      if (open) {
+        html += `<div class="stagerows">` + r.st.map((s,i)=>`<div class="stg"><span class="data small muted">E${i+1}</span><span class="data small">${ddmm(s.d)}</span>${icon(s.t)}<span>${TYPE_DA[s.t]}${s.f?` <span class="muted small">· ${s.f}</span>`:""}</span><span class="data r">${s.km} km</span><span class="data r c-hm muted">${s.hm.toLocaleString("da-DK")} hm</span><span class="c-prof">${prof(s)}</span></div>`).join("") + `</div>`;
+      }
+    }
+  });
+  document.getElementById("overview").innerHTML = html;
+})();
+</script>
+</body>
+</html>
