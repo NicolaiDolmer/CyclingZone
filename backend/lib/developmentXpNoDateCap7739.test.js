@@ -84,6 +84,27 @@ test("G3a motor (#8520): en talfil med datoreglens graenser (datePlus2) afvises;
   assert.deepEqual(rejected.gains, today.gains, "samme udfald som dagens model");
 });
 
+test("G3a motor (#8520): riders.talent_ceiling (P) og datoens traethed naar XP-tick'et; uden distance/fatigue i talfilen intet", async () => {
+  const G3A = { ...XP_TEST_PARAMS, distance: { h: 8 }, fatigue: { above: 70, share: 0.5 } };
+  const run = async ({ params, ceiling = null, fatigue = null }) => {
+    const state = seed({ overlay: { ...xpOn(EARLIER), params } });
+    state.rider_derived_abilities[0].ability_progress = {}; // kun dagens XP, ingen gemt bjaelke
+    if (ceiling != null) state.riders.find((r) => r.id === "r1").talent_ceiling = ceiling;
+    if (fatigue != null) for (const row of state.rider_condition.filter((r) => r.rider_id === "r1")) row.fatigue = fatigue;
+    return r1Report(await runEngine(state));
+  };
+  const sumXp = (report) => Object.values(report.xp ?? {}).reduce((a, b) => a + b, 0);
+  const plain = await run({ params: XP_TEST_PARAMS });
+  assert.ok(sumXp(plain) > 0, "forudsaetning: XP koerer");
+  const ignored = await run({ params: XP_TEST_PARAMS, ceiling: 45, fatigue: 95 });
+  assert.deepEqual([ignored.xp, ignored.gains, ignored.progress_after], [plain.xp, plain.gains, plain.progress_after], "talfil uden G3a-felter: P og traethed aendrer intet");
+  assert.deepEqual((await run({ params: G3A })).xp, plain.xp, "uden P og med lav traethed: XP som foer");
+  const nearP = await run({ params: G3A, ceiling: 45 });
+  assert.ok(sumXp(nearP) < sumXp(plain), `taet paa P: mindre XP (${sumXp(nearP)} mod ${sumXp(plain)})`);
+  const tired = await run({ params: G3A, fatigue: 95 });
+  assert.ok(sumXp(tired) < sumXp(plain), "traet over taersklen: mindre XP");
+});
+
 test("#6110 R10 motor: paa taendingsnatten udbetales gemt fremgang helt", async () => {
   const state = seed({ overlay: xpOn() });
   const before = r1Level(state);
