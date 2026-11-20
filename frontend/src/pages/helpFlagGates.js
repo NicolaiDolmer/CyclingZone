@@ -89,6 +89,9 @@ export const HELP_BLOCK_FLAGS = Object.freeze({
     aiRidersV2: AGING_V2_ON,
     potentialBestRole: POTENTIAL_ESTIMATE_OFF,
     potentialBestRoleEstimate: POTENTIAL_ESTIMATE_ON,
+    // #8476: under XP vokser en traenet evne ikke "mod sit loft"; den tjener XP hurtigere.
+    trainingFocus: XP_OFF,
+    trainingFocusXp: XP_ON,
     scouting: POTENTIAL_ESTIMATE_OFF,
     scoutingEstimate: POTENTIAL_ESTIMATE_ON,
   }),
@@ -126,6 +129,10 @@ export const HELP_BLOCK_FLAGS = Object.freeze({
     longTermGrowthXp: XP_ON,
     typeGatingXp: XP_ON,
     ceilingReachedXp: XP_ON,
+    // #8476: scoren forklares som det, der driver udviklingen mod et loft. Under XP er
+    // det ikke sandt, saa blokken skjules (den har ingen XP-tvilling). Blokken har
+    // ogsaa sin egen kontakt (training_score_visible i SECTION_DEFS); begge skal passe.
+    trainingScore: XP_OFF,
   }),
   // #6181: med saelgers pengelaas taendt betales saelgeren foerst ved holdskiftet.
   transfers: Object.freeze({
@@ -166,6 +173,8 @@ export const HELP_FAQ_FLAGS = Object.freeze({
   trainingFocusXpFaq: XP_ON,
   restForDevelopedFaq: XP_OFF,
   restForDevelopedXpFaq: XP_ON,
+  // #8476: XP-modellen har ingen skarpe eller flade traeningsdage.
+  sharpFlatTrainingDaysFaq: XP_OFF,
   developmentProjectionFaq: POTENTIAL_ESTIMATE_OFF,
   developmentProjectionEstimateFaq: POTENTIAL_ESTIMATE_ON,
   scoutedBandGuaranteeFaq: POTENTIAL_ESTIMATE_OFF,
