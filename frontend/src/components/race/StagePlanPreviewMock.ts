@@ -34,6 +34,9 @@ const STAGE_2_PLANS = {
   "rider-1": [{ task: "breakaway" }, { task: "attack", from: { at: "final_km" } }, { task: "ride_in", from: { at: "dropped" } }],
 };
 
+/** #7855: rider-97 paa etape 2 med jagten (kun `?jerseyHunt=1`); samme led som uden, plus bjergjagten. */
+const STAGE_2_HUNT_PLAN_97 = [{ task: "breakaway", hunt: "hunt_kom" }, { task: "ride_for_result", from: { at: "dropped" } }];
+
 /** team-orders-svaret med planen slaaet til og etape 2's gemte planer. */
 type OrderRow = { stage_number: number } & Record<string, unknown>;
 
@@ -65,12 +68,16 @@ function jerseyHuntPreviewSavedOff() {
 // Etape 3 (den aabne, spurt ved km 80, stigning ved km 130): en hjaelper henter point frem til stigningen.
 const STAGE_3_HUNT_PLANS = {
   "rider-96": [{ task: "hunt_points" }, { task: "shelter_leader", from: { at: "kom", kom_index: 0 } }],
+  // #7855 (ejer 16/11, egne linjer): en rytter paa "Gaa i udbrud + Hent bjergpoint", som serveren gemmer den.
+  "rider-97": [{ task: "breakaway", hunt: "hunt_kom" }, { task: "ride_in", from: { at: "dropped" } }],
 };
 
 export function withStagePlanPreview<T extends { orders?: OrderRow[] }>(body: T): T & { stage_plan_enabled: true } {
   const stage2 = (body.orders ?? []).find((o: OrderRow) => o.stage_number === 2);
-  const riders = Object.entries(STAGE_2_PLANS).map(([rider_id, plan]) => ({ rider_id, effort: "normal", try_break: false, leadout: false, plan }));
   const on = jerseyHuntPreviewActive();
+  // #7855 (ejer 19/11): med jagten paa preview koerte rider-97 etape 2 som "Gaa i udbrud + Hent bjergpoint".
+  const stage2Plans = on ? { ...STAGE_2_PLANS, "rider-97": STAGE_2_HUNT_PLAN_97 } : STAGE_2_PLANS;
+  const riders = Object.entries(stage2Plans).map(([rider_id, plan]) => ({ rider_id, effort: "normal", try_break: false, leadout: false, plan }));
   // `?jerseyHunt=off`: planen er gemt, men kontakten er slukket igen (boardet viser planen uden jagt).
   const savedOff = jerseyHuntPreviewSavedOff();
   const hunt = on || savedOff;
@@ -102,6 +109,8 @@ export function stagePlanPreviewTimeline() {
       // #7706: samme form som motoren: faldet staar paa skiftets km, og udbruddet gaar op i feltet.
       { km: 96, type: "peloton_splits", params: { cause: "climb_deficit", group_id: "gruppetto-1", rider_ids: ["rider-96"], gap_seconds: 58, source_group_id: "peloton-0" } },
       { km: 96, type: "stage_plan_leg", params: { rider_id: "rider-96", leg: 2, task: "ride_in", reason: "dropped" } },
+      // #7855: med jagten paa preview koerte han over Colle di Anteprima i udbruddet efter pointene.
+      ...(jerseyHuntPreviewActive() ? [{ km: 121, type: "kom_passage", params: { name: "Colle di Anteprima", category: "2", top: [{ rider_id: "rider-97", points: 5 }], hunters: ["rider-97"] } }] : []),
       { km: 138, type: "group_merged", params: { group_id: "breakaway-1", rider_ids: ["rider-97"], into_group_id: "peloton-0" } },
       { km: 138, type: "stage_plan_leg", params: { rider_id: "rider-97", leg: 1, task: "ride_for_result", reason: "caught" } },
       { km: 158, type: "stage_plan_leg", params: { rider_id: "rider-95", leg: 1, task: "ride_for_result", reason: "final_km" } },
