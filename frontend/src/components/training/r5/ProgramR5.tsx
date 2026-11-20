@@ -53,6 +53,7 @@ type ProgramsClient = {
   setCell: (riderId: string, weekday: string, slotIndex: number | null, session: string) => Promise<ProgramsResult>;
 };
 
+const FIRST_PROGRAMS = 5;
 const LABEL = "font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3";
 
 function loadKind(): Kind {
@@ -193,6 +194,7 @@ export default function ProgramR5({
     const result = target.kind === "group"
       ? await groups.putProgram(target.id, programKey)
       : await programs.applyProgram(programKey, target.id);
+    if (result.ok) setSubject(target);
     setNote(result.ok ? null : { tone: "error", text: t("programR5.saveError") });
   };
   const removeRider = async (riderId: string) => {
@@ -357,8 +359,9 @@ function LibraryPanel({
   const { t } = useTranslation("training");
   const [showAll, setShowAll] = useState(false);
   const inUse = library.programs.filter((p) => p.inUse);
-  const rest = library.programs.filter((p) => !p.inUse);
-  const visible = showAll || inUse.length === 0 ? library.programs : inUse;
+  // Programmer i brug; er intet i brug endnu, de foerste fra kataloget. Resten bag "All programs".
+  const short = inUse.length ? inUse : library.programs.slice(0, FIRST_PROGRAMS);
+  const visible = showAll ? library.programs : short;
   const nameOf = (key: string | null) => {
     const p = catalog.find((c) => c.key === key);
     return p ? programName(p, lang) : t("programR5.ownWeek");
@@ -391,7 +394,7 @@ function LibraryPanel({
             );
           })}
         </ul>
-        {inUse.length > 0 && rest.length > 0 && (
+        {short.length < library.programs.length && (
           <button type="button" onClick={() => setShowAll((v) => !v)} className="mt-1.5 text-xs font-medium text-cz-2 hover:text-cz-1"
             aria-expanded={showAll}>
             {showAll ? t("programR5.fewerPrograms") : t("programR5.allPrograms", { n: library.programs.length })}

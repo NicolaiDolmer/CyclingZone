@@ -527,7 +527,7 @@ export default function TrainingPage() {
   const [groupDialog, setGroupDialog] = useState(null);
   // #7456: kontakten training_page_r5 (off = fanen som i dag). Knapperne staar i sidehovedet.
   const [programR5, setProgramR5] = useState(false);
-  const [programR5Actions, setProgramR5Actions] = useState(null);
+  const [programR5Actions, setProgramR5Actions] = useState(/** @type {HTMLElement | null} */ (null));
   useEffect(() => { let live = true; fetchPlayerFeatureFlags().then((f) => { if (live) setProgramR5(f?.training_page_r5 === true); }); return () => { live = false; }; }, []);
   // #4847: med flaget on ER guld-knappen "Train now" (aaben hele datoen indtil trykket).
   const trainNow = useTrainNow({ onSettled: training.refresh });
