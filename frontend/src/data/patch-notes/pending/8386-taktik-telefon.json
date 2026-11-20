@@ -1,0 +1,21 @@
+{
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "beta",
+      "flag": "race_page_v6",
+      "topic": "Tactics",
+      "area": "tactics",
+      "en": {
+        "title": "Tactics on your phone",
+        "body": "On a phone, the new race page now shows one line per rider with Easy, Normal and Hard written out, so you can set the whole team without opening anything. The team plan and Chase the break each open a sheet from the bottom. Sort the riders by role, route match, rating, form or fatigue. Tap a rider to see all his orders, and step to the previous or next rider without closing the sheet. Save stays at the bottom, and a thin bar tells you when another stage has changes you have not saved."
+      },
+      "da": {
+        "title": "Taktik på telefonen",
+        "body": "På telefonen viser den nye løbsside nu én linje pr. rytter med Let, Normal og Hård skrevet ud, så du kan sætte hele holdet uden at åbne noget. Holdets plan og jagten på udbruddet åbner hver et ark fra bunden. Sortér rytterne efter rolle, rutematch, rating, form eller træthed. Tryk på en rytter for at se alle hans ordrer, og gå til forrige eller næste rytter uden at lukke arket. Gem står fast i bunden, og en tynd bjælke siger, når en anden etape har ændringer, du ikke har gemt."
+      },
+      "refs": [8386]
+    }
+  ]
+}
