@@ -33,6 +33,7 @@ function client(failTable = null) {
       limit(count) { rowLimit = count; return chain; },
       then(resolve, reject) { return run().then(resolve, reject); },
       range(from, to) { return run(from, to); },
+      maybeSingle() { return run().then(r => ({ data: r.data?.[0] ?? null, error: r.error })); },
     };
     return chain;
   } };
@@ -433,3 +434,18 @@ for (const scenario of ['pending', 'partial', 'missing', 'complete', 'dry_run', 
     }
   });
 }
+
+test('#6110 training_calendar_tick_ai_only on: a human team without a division needs no calendar report; an AI team still does', async () => {
+  await db.exec(`CREATE TABLE IF NOT EXISTS app_config(key text PRIMARY KEY, value jsonb);
+    DELETE FROM app_config; INSERT INTO app_config VALUES('training_calendar_tick_ai_only','"on"'::jsonb);
+    UPDATE teams SET league_division_id=null WHERE id='b'; DELETE FROM training_date_work WHERE team_id='b';`);
+  try {
+    assert.equal((await assess()).blocked, false, 'human team without a division does not train, so no proof is required');
+    await db.exec(`UPDATE teams SET is_ai=true WHERE id='b'`);
+    assert.equal((await assess()).blocked, true, 'an AI team without a division still needs its calendar report');
+    await db.exec(`UPDATE teams SET is_ai=false WHERE id='b'; UPDATE app_config SET value='"off"'::jsonb`);
+    assert.equal((await assess()).blocked, true, 'switch off: as before, the report is required');
+  } finally {
+    await db.exec(`DROP TABLE IF EXISTS app_config`);
+  }
+});

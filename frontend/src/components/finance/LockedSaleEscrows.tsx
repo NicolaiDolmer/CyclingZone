@@ -116,7 +116,7 @@ export function LockedSalesLine({ refreshKey, className = "" }: { refreshKey: un
   );
 }
 
-function endsText(t: (key: string, opts?: Record<string, unknown>) => string, daysLeft: number | null): string | null {
+function endsText(t: { (key: string): string; (key: string, opts: Record<string, unknown>): string }, daysLeft: number | null): string | null {
   const ends = endsInKey(daysLeft);
   if (!ends) return null;
   return ends.count == null ? t(ends.key) : t(ends.key, { count: ends.count });

@@ -28,7 +28,7 @@ import type { CalendarTableEntry, CalendarTableRow, SortDir } from "../../lib/ca
 // Uden dem udleder TS props af default-VÆRDIERNE (`search = null` bliver til
 // `null`). Kontrakten er læst af filerne i components/ui, samme greb som
 // AdminValuePreviewPage.tsx og RacePeekCard.tsx.
-type Translate = (key: string, opts?: Record<string, unknown>) => string;
+type Translate = { (key: string): string; (key: string, opts: Record<string, unknown>): string };
 interface Column {
   key: string;
   header: ReactNode;

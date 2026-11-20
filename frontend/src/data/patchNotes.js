@@ -1,5 +1,150 @@
 export const PATCHES = [
 {
+  "version": "7.477",
+  "date": "2026-11-20",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Club",
+      "area": "interface",
+      "en": {
+        "title": "Calmer card titles on the Club page",
+        "body": "Facility cards on the Club page and the team link in the rider switcher now use the regular interface font instead of the big display font."
+      },
+      "da": {
+        "title": "Roligere korttitler på Klub-siden",
+        "body": "Faciliteterne på Klub-siden og holdlinket i ryttervælgeren bruger nu den almindelige skrift i stedet for den store overskriftsskrift."
+      },
+      "refs": [
+        8335
+      ]
+    }
+  ]
+},
+{
+  "version": "7.476",
+  "date": "2026-11-20",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Riders",
+      "area": "interface",
+      "en": {
+        "title": "Flag instead of country code",
+        "body": "The rider profile now shows the country flag without the country code next to it."
+      },
+      "da": {
+        "title": "Flag i stedet for landekode",
+        "body": "Rytterprofilen viser nu landets flag uden landekoden ved siden af."
+      },
+      "refs": [
+        8336
+      ]
+    }
+  ]
+},
+{
+  "version": "7.475",
+  "date": "2026-11-20",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Tables",
+      "area": "interface",
+      "en": {
+        "title": "Tables get one control bar and a column picker",
+        "body": "Filters, search and a new column button now sit in one line above the tables. With the column button you choose which extra columns you see. The small grey text in the side menu is also easier to read."
+      },
+      "da": {
+        "title": "Tabellerne får én kontrollinje og kolonnevælger",
+        "body": "Filtre, søgning og en ny kolonneknap står nu i én linje over tabellerne. Med kolonneknappen vælger du selv, hvilke ekstra kolonner du ser. Den lille grå tekst i sidemenuen er også lettere at læse."
+      },
+      "refs": [
+        8280
+      ]
+    }
+  ]
+},
+{
+  "version": "7.474",
+  "date": "2026-11-20",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Auctions",
+      "area": "market",
+      "en": {
+        "title": "No value hint on the starting price",
+        "body": "Auctions no longer show a green \"below est. value\" note on the starting price. The comparison shows once someone has placed a bid."
+      },
+      "da": {
+        "title": "Ingen værdi-hint ved startprisen",
+        "body": "Auktioner viser ikke længere en grøn \"under estimeret værdi\" ved startprisen. Sammenligningen vises, når nogen har budt."
+      },
+      "refs": [
+        8425
+      ]
+    }
+  ]
+},
+{
+  "version": "7.473",
+  "date": "2026-11-20",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "flag": "race_page_v6",
+      "topic": "Tactics",
+      "area": "tactics",
+      "en": {
+        "title": "Tactics shortcuts by rider role",
+        "body": "I show the task each of the three shortcuts gives your rider. Pick one on a road stage and save it with the rest of your tactics."
+      },
+      "da": {
+        "title": "Hurtigvalg efter rytterens rolle",
+        "body": "Jeg viser, hvilken opgave de tre hurtigvalg giver rytteren. Vælg på en vejetape, og gem sammen med resten af din taktik."
+      },
+      "refs": [
+        8356
+      ]
+    }
+  ]
+},
+{
+  "version": "7.472",
+  "date": "2026-11-19",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Interface",
+      "area": "interface",
+      "en": {
+        "title": "Gold text is easier to read",
+        "body": "In light mode, links and numbers in gold are a little darker, so they are easier to read on every page. Gold buttons, the leader's jersey and dark mode are unchanged."
+      },
+      "da": {
+        "title": "Guld-tekst er lettere at læse",
+        "body": "I lys tilstand er links og tal i guld lidt mørkere, så de er lettere at læse på alle sider. Guldknapper, førertrøjen og mørk tilstand er uændrede."
+      },
+      "refs": [
+        8433
+      ]
+    }
+  ]
+},
+{
   "version": "7.471",
   "date": "2026-11-19",
   "changes": [

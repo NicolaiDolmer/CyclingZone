@@ -848,3 +848,16 @@ test("limitSnapshotTeams: beholder kun de første aktive hold og deres ryttere",
   assert.equal(lim.riders.length, 10);
   assert.equal(lim.abilities.length, 10);
 });
+
+// #6110 dommer-fund F6 (19/11): 10-sæsoners-kørslen ældes med motorens aldring under XP.
+test("F6: withXpAging giver xp-varianter talfilens aldring og lader andre varianter være", async () => {
+  const { withXpAging } = await import("./tenSeasonSim6110.mjs");
+  const { xpAgingConfig } = await import("../../lib/riderProgression.js");
+  const aging = { plateauThroughAge: 26, declineByYearsPastPlateau: [{ maxYears: 99, drop: 2 }], late: { fromAge: 32, drop: 0.5 } };
+  const opts = { seasons: 1 };
+  assert.equal(withXpAging(opts, { kind: "curveB" }), opts);
+  assert.equal(withXpAging(opts, { kind: "xp", xpParams: {} }), opts, "talfil uden aldring = dagens");
+  const out = withXpAging(opts, { kind: "xp", xpParams: { aging } });
+  assert.deepEqual(out.agingCfg, xpAgingConfig({ aging }));
+  assert.equal(out.seasons, 1);
+});

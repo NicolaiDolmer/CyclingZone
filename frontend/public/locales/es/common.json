@@ -171,7 +171,14 @@
   "table": {
     "fullTable": "Tabla completa",
     "columnsLabel": "Elegir columnas",
-    "moreRight": "Más columnas a la derecha"
+    "moreRight": "Más columnas a la derecha",
+    "titleBar": {
+      "filters": "Filtros",
+      "closeSearch": "Cerrar búsqueda",
+      "columns": "Columnas",
+      "close": "Cerrar",
+      "swapHint": "Toca una columna para añadirla. La que añadiste primero se quita."
+    }
   },
   "expectedDivision": {
     "optionExpected": "División {n} (prevista)",

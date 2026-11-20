@@ -4,11 +4,12 @@
 //       (Traen nu, aftenkoerslen, loebsdags-aksen). Resten bliver staaende paa bjaelken,
 //       omregnet til den nye pris, saa intet XP gaar tabt eller opstaar. Ingen prisbund.
 //       Erstatter "kun prisen bremser" (12/11) og prisbunden (valg A 14/11).
-//       Ejervalg A (16/11 aften): +2 kun for et ungt toptalent paa en meget lav evne; alle
-//       andre hoejst +1. Graenserne staar i talfilen (datePlus2); her opdigtede.
+//       Ejervalg A (16/11 aften): +2 kun for et toptalent paa en meget lav evne; alle andre
+//       hoejst +1. Ejervalg 19/11: toptalent er 5-6 stjerner, og reglen gaelder UANSET alder
+//       (afloeser "ungt toptalent"). "Meget lav evne" staar i talfilen (datePlus2); her opdigtet.
 //   R10 Den gamle, gemte bjaelke-fremgang udbetales alt paa én nat ved taendingen
 //       (ejervalg 2 = A, 16/11: undtagelse fra +2 kun den nat). Ingen dryp-regel.
-// RIGELIG_XP_RAA giver med vilje alt for meget XP, saa grænsen er det eneste, der bremser.
+// RIGELIG_B_RAA giver med vilje alt for meget XP, saa grænsen er det eneste, der bremser.
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -16,16 +17,18 @@ import assert from "node:assert/strict";
 import { applyDailyTick } from "./dailyTraining.js";
 import {
   kraev, findes, xpParams, koebMedPrisliste, falskDb, evner,
-  RIGELIG_XP_RAA, DOMMER_XP_RAA, DOMMER_VARIATION, UNG_KLATRER, SPRINTER, HAARD_KLATRING, NORMAL_SPURT, HVILE,
+  RIGELIG_B_RAA, DOMMER_B_RAA, DOMMER_XP_RAA, DOMMER_VARIATION, UNG_KLATRER, SPRINTER, HAARD_KLATRING, NORMAL_SPURT, HVILE,
   STAERK_TRAENER, BEDSTE_FACILITET,
 } from "./dommer6110.fixtures.mjs";
 
-const GRAENSE = 2; // ejerens ord 16/11: "hoejst +2 pr. evne pr. dato" (ungt toptalent, meget lav evne)
+const GRAENSE = 2; // ejerens ord 16/11: "hoejst +2 pr. evne pr. dato" (toptalent, meget lav evne)
 const LAV_GRAENSE = 1; // ejervalg A 16/11: alle andre
-// Opdigtede graenser: LAV_KLATRER (19 aar, stort talent, klatring 12) faar +2; UNG_KLATRER (klatring 58) ikke.
-const PLUS2 = Object.freeze({ maxAge: 21, minPotential: 5.5, belowLevel: 20 });
-const P = await xpParams({ ...DOMMER_XP_RAA, datePlus2: PLUS2 });
-const RIGELIG = await xpParams({ ...RIGELIG_XP_RAA, datePlus2: PLUS2 });
+const TOPTALENT = 5; // ejer 19/11: "5-6-stjernede"
+const MEGET_LAV = 20; // opdigtet: LAV_KLATRER (klatring 12) er under; UNG_KLATRER (klatring 58) er ikke
+// Ingen alder i reglen (ejervalg 19/11): +2 gaelder et toptalent paa en meget lav evne uanset alder.
+const PLUS2 = Object.freeze({ minPotential: TOPTALENT, belowLevel: MEGET_LAV });
+const P = await xpParams({ ...DOMMER_B_RAA, datePlus2: PLUS2 });
+const RIGELIG = await xpParams({ ...RIGELIG_B_RAA, datePlus2: PLUS2 });
 const { xpPriceForNextPoint } = await kraev("./developmentXp.ts", "xpPriceForNextPoint");
 const pris = (params) => (niveau) => xpPriceForNextPoint(niveau, params);
 const FAST_UR = () => 1_763_000_000_000;
@@ -49,15 +52,33 @@ test("R16 +2: naar XP raekker til flere point paa én dato, koebes hoejst 2, og 
   assert.ok(ud.progress.climbing > 1, "resten er mere end et helt point og venter");
 });
 
-test("R16 ejervalg A: et aeldre toptalent eller et middeltalent paa en meget lav evne faar hoejst +1, resten venter", () => {
-  for (const rytter of [
-    { ...LAV_KLATRER, riderId: "dommer-lav-aeldre", age: PLUS2.maxAge + 1 },
-    { ...LAV_KLATRER, riderId: "dommer-lav-middel", potentiale: PLUS2.minPotential - 1 },
-  ]) {
+test("R16 ejervalg 19/11: et toptalent (5-6 stjerner) paa en meget lav evne faar +2 UANSET alder", () => {
+  for (const potentiale of [5, 5.5, 6]) {
+    for (const age of [16, 19, 22, 26, 29, 33, 38]) {
+      const rytter = { ...LAV_KLATRER, riderId: `dommer-top-${potentiale}-${age}`, age, potentiale };
+      const ud = tick(rytter, HAARD_KLATRING, RIGELIG);
+      assert.ok(koebMedPrisliste({ level: 12, xp: ud.xp.climbing }, pris(RIGELIG)).point >= 3, "XP raekker til mange point");
+      assert.equal(ud.gains.climbing, GRAENSE, `${potentiale} stjerner, ${age} aar: +2 paa en meget lav evne, uanset alder`);
+      const brugt = xpPriceForNextPoint(12, RIGELIG) + xpPriceForNextPoint(13, RIGELIG);
+      assert.ok(naer(bjaelkeXp(RIGELIG, 14, ud.progress.climbing), ud.xp.climbing - brugt), "resten omregnet, intet tabt");
+    }
+  }
+});
+
+test("R16 ejervalg 19/11: alle andre faar hoejst +1 pr. evne pr. dato, resten venter", () => {
+  const andre = [
+    // Under 5 stjerner paa en meget lav evne, ogsaa som helt ung.
+    ...[4.5, 4, 3].flatMap((potentiale) => [17, 19, 30].map((age) =>
+      ({ rytter: { ...LAV_KLATRER, riderId: `dommer-middel-${potentiale}-${age}`, age, potentiale }, niveau: 12 }))),
+    // Et toptalent paa en evne, der ikke er meget lav (paa graensen og over), i alle aldre.
+    ...[MEGET_LAV, 35, 58].flatMap((niveau) => [17, 19, 30].map((age) =>
+      ({ rytter: { ...LAV_KLATRER, riderId: `dommer-top-hoej-${niveau}-${age}`, age, potentiale: 6, abilities: evner(30, { climbing: niveau }) }, niveau }))),
+  ];
+  for (const { rytter, niveau } of andre) {
     const ud = tick(rytter, HAARD_KLATRING, RIGELIG);
-    assert.ok(koebMedPrisliste({ level: 12, xp: ud.xp.climbing }, pris(RIGELIG)).point >= 3, "XP raekker til mange point");
+    assert.ok(koebMedPrisliste({ level: niveau, xp: ud.xp.climbing }, pris(RIGELIG)).point >= 3, `${rytter.riderId}: XP raekker til mange point`);
     assert.equal(ud.gains.climbing, LAV_GRAENSE, `${rytter.riderId}: hoejst +1`);
-    assert.ok(naer(bjaelkeXp(RIGELIG, 13, ud.progress.climbing), ud.xp.climbing - xpPriceForNextPoint(12, RIGELIG)), "resten omregnet, intet tabt");
+    assert.ok(naer(bjaelkeXp(RIGELIG, niveau + 1, ud.progress.climbing), ud.xp.climbing - xpPriceForNextPoint(niveau, RIGELIG)), "resten omregnet, intet tabt");
   }
 });
 
@@ -106,7 +127,7 @@ test("R16 +2 gennem applyDailyTick: flere ticks paa samme dato giver hoejst +2 i
   const { developmentXpDayVariation } = await kraev("./developmentXpVariation.ts", "developmentXpDayVariation");
   const { programAbilityWeight } = await kraev("./training.js", "programAbilityWeight");
   assert.equal(programAbilityWeight(HAARD_KLATRING, "climbing"), 2, "sessionens vaegt 2");
-  const params = await xpParams({ ...RIGELIG_XP_RAA, variation: DOMMER_VARIATION, datePlus2: PLUS2 });
+  const params = await xpParams({ ...RIGELIG_B_RAA, variation: DOMMER_VARIATION, datePlus2: PLUS2 });
   const rytter = LAV_KLATRER;
   // En god dag: den dato i november, hvor rytterens variation er hoejest.
   const datoer = Array.from({ length: 30 }, (_, i) => `2026-11-${String(i + 1).padStart(2, "0")}`);
