@@ -310,6 +310,7 @@
     "colNow": "Ahora",
     "colSeason": "Temporada",
     "colProgress": "Progreso",
+    "colLatest": "Último",
     "nowTooltip": "El valor actual del ciclista, no el techo. Mira la barra o la etiqueta “hecho” para ver si queda algo por ganar.",
     "nowTooltipXp": "El valor actual del ciclista. La barra muestra la XP hacia el siguiente punto.",
     "xpLine": "{xp} / {price} XP",

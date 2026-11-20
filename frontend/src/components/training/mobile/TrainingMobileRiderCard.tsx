@@ -24,7 +24,7 @@
 // fremskrivning, og linjen udelades helt naar grundlaget er for tyndt (P11).
 
 import { useTranslation } from "react-i18next";
-import AbilityReceiptRow from "../AbilityReceiptRow.jsx";
+import AbilityReceiptRow, { AbilityReceiptHeader } from "../AbilityReceiptRow.jsx";
 import TrainingScoreSparkline, { type TrainingScorePoint } from "../TrainingScoreSparkline.tsx";
 import RiderLink from "../../RiderLink.jsx";
 import type { CountsForRow, MobileScoreCell } from "../../../lib/trainingMobileModel.ts";
@@ -101,6 +101,8 @@ export default function TrainingMobileRiderCard({
   const tRider = useTranslation("rider").t;
   // #7947: under XP (rows carry xpLine) the chips take the game's 5px radius and hairline (TASTE P3/P21, owner 19/11); without XP unchanged.
   const xpMode = receiptRows?.some((row) => Object.hasOwn(row, "xpLine")) ?? false;
+  // #7947 (ejer 20/11): under XP faar linjerne kolonneoverskrifter, og en saeson uden tal er ingen kolonne.
+  const seasonKnown = receiptRows?.some((row) => row.gained != null) ?? false;
 
   return (
     // `aria-label` er rytterens navn: naar raekkens knap peger herhen med
@@ -186,8 +188,9 @@ export default function TrainingMobileRiderCard({
             {t("receipt.title")}
           </div>
           <div className="mt-1">
+            {xpMode && <AbilityReceiptHeader xp season={seasonKnown} />}
             {receiptRows.map((row) => (
-              <AbilityReceiptRow key={row.ability} row={row} inFocus />
+              <AbilityReceiptRow key={row.ability} row={row} inFocus season={seasonKnown} />
             ))}
           </div>
         </div>

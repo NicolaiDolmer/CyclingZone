@@ -82,7 +82,7 @@ test("Today renders every rider, the panel and the hatched race part, without go
   assert.doesNotMatch(html, /bg-cz-accent(?!\/10)/, "no gold button");
 });
 
-test("#7947 a folded rider shows 'Rating x > y' only when his rating moved", () => {
+test("#7947 the Rating column shows 'x > y' only when his rating moved", () => {
   const withAbilities = { ...options, abilities: fx.abilities };
   // The first fixture date (newest first) where some rider's rating moved.
   const date = fx.receipts.map(r => r.tick_date).find(d => buildTodayView(fx.receipts, d, withAbilities)!.riders.some(r => r.rating));
@@ -92,7 +92,12 @@ test("#7947 a folded rider shows 'Rating x > y' only when his rating moved", () 
   assert.ok(moved.length < view.riders.filter(r => r.points > 0).length, "a point does not always move the rating; then nothing shows");
   for (const r of moved) assert.notEqual(r.rating!.from, r.rating!.to);
   const html = wrap(createElement(XpToday, { view, onPickDate: () => {}, switcher: null }));
-  assert.equal(html.split('data-testid="xp-rating"').length - 1, moved.length, "one line per moved rider, none for the rest");
+  assert.equal(html.split('data-testid="xp-rating"').length - 1, moved.length, "one cell per moved rider, none for the rest");
+  // Owner 20/11: its own column after Form and Fatigue, never inline under the name.
+  assert.match(html, /data-testid="xp-head"[\s\S]*?>Fatigue<\/span><span class="hidden text-right lg:block">header\.overall<\/span>/);
+  for (const row of html.split('data-testid="xp-row"').slice(1).filter(r => r.includes('data-testid="xp-rating"'))) {
+    assert.ok(row.indexOf('data-testid="xp-rating"') > row.indexOf('data-testid="xp-form-plate"'), "the rating cell comes after Form, not under the name");
+  }
   const { from, to } = moved[0].rating!;
   assert.match(html, new RegExp(`aria-label="${from} to ${to}"`));
   assert.doesNotMatch(noSegmentGold(html), /cz-accent/, "no gold on the rating line");
@@ -103,6 +108,13 @@ test("#7947 a folded rider shows 'Rating x > y' only when his rating moved", () 
   assert.equal(date, fx.receipts[0].tick_date);
   const older = buildTodayView(fx.receipts, fx.receipts[1].tick_date, withAbilities)!;
   assert.ok(older.riders.every(r => !r.rating), "an older date shows nothing");
+});
+
+test("#7947 the XP report shows no training score (owner 20/11)", () => {
+  const view = buildTodayView(fx.receipts, null, options)!;
+  const html = wrap(createElement(XpToday, { view, onPickDate: () => {}, switcher: null }));
+  assert.doesNotMatch(html, new RegExp(`>${en.xpReport.sessionScore}<`), "no session score in the panel");
+  assert.doesNotMatch(html, />Score \d+</, "no score under the sessions");
 });
 
 test("30 days renders one column per day and never a days-to-go estimate", () => {

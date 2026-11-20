@@ -310,6 +310,7 @@
     "colNow": "Now",
     "colSeason": "Season",
     "colProgress": "Progress",
+    "colLatest": "Latest",
     "nowTooltip": "The rider's current value, not the ceiling. Check the bar or the \"done\" tag to see if there's more to gain.",
     "nowTooltipXp": "The rider's current value. The bar shows the XP toward the next point.",
     "xpLine": "{xp} / {price} XP",

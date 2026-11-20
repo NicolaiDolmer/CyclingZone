@@ -317,12 +317,14 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
               {t(`stats.categories.${cat.key}`)}
             </span>
             <div className="mt-[5px]">
-              <AbilityReceiptHeader xp={xpBars != null} />
+              {/* #7947 (ejer 20/11): under XP er en sæson uden tal ingen kolonne. */}
+              <AbilityReceiptHeader xp={xpBars != null} season={seasonGains != null} />
               {cat.keys.map((key) => (
                 <AbilityReceiptRow
                   key={key}
                   row={rowsByAbility[key]}
                   inFocus={!!focusAbilities?.has(key)}
+                  season={seasonGains != null}
                 />
               ))}
             </div>

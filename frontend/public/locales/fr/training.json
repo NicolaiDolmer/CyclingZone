@@ -310,6 +310,7 @@
     "colNow": "Maintenant",
     "colSeason": "Saison",
     "colProgress": "Progression",
+    "colLatest": "Dernier",
     "nowTooltip": "La valeur actuelle du coureur, pas le plafond. Regarde la barre ou l'étiquette “terminé” pour voir s'il reste à gagner.",
     "nowTooltipXp": "La valeur actuelle du coureur. La barre montre l'XP vers le prochain point.",
     "xpLine": "{xp} / {price} XP",

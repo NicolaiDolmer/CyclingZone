@@ -65,9 +65,31 @@ test("#5539 kolonnen har fast bredde og er til stede i alle tre grene (låst/ing
   );
 });
 
-test("#5539 header reserverer samme bredde som rækkerne (92px, under XP 64px), uden at overtage en formel kolonne-label", () => {
-  assert.match(source, /<span className=\{`flex-none \$\{xp \? "w-\[64px\]" : "w-\[92px\]"\}`\} aria-hidden="true" \/>/);
+test("#5539 header reserverer samme bredde som rækkerne (92px) uden XP, uden at overtage en formel kolonne-label", () => {
+  assert.match(source, /<span className="flex-none w-\[92px\]" aria-hidden="true" \/>/);
   assert.match(source, /data-testid="ability-receipt-xp-day"/, "under XP staar dagens XP i samme kolonne");
+});
+
+test("#7947 (ejer 20/11) under XP deler raekke og overskrift bredderne, og hver kolonne har en overskrift", () => {
+  for (const col of ["now", "season", "progress", "day"]) {
+    assert.ok(source.includes(`XP_COL.${col}`), `raekken bruger XP_COL.${col}`);
+  }
+  const head = source.slice(source.indexOf("export function AbilityReceiptHeader"));
+  for (const [key, col] of [["colNow", "now"], ["colSeason", "season"], ["colProgress", "progress"], ["colLatest", "day"]]) {
+    assert.ok(head.includes(`head("receipt.${key}", XP_COL.${col}`), `${key} staar over XP_COL.${col}`);
+  }
+  // En overskrift bredere end kolonnen afkortes, den skubber aldrig naboen.
+  assert.match(head, /\$\{width\} truncate/);
+  // Saeson uden tal = ingen kolonne, i raekke og overskrift.
+  assert.match(source, /const showSeason = !xpMode \|\| season;/);
+  assert.match(head, /\{season && head\("receipt\.colSeason"/);
+});
+
+test("#7947 receipt.colLatest findes i alle fem sprog", () => {
+  for (const lang of ["en", "da", "es", "fr", "nl"]) {
+    const dict = JSON.parse(readFileSync(join(localesDir, lang, "training.json"), "utf8"));
+    assert.equal(typeof dict.receipt?.colLatest, "string", `mangler receipt.colLatest i ${lang}`);
+  }
 });
 
 test("#5539 i18n-nøglen 'receipt.yesterdayGain' findes i BÅDE en og da training.json (key-parity)", () => {

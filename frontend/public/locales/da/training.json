@@ -310,6 +310,7 @@
     "colNow": "Nu",
     "colSeason": "Sæson",
     "colProgress": "På vej",
+    "colLatest": "Seneste",
     "nowTooltip": "Rytterens nuværende værdi, ikke loftet. Se baren eller \"færdig\"-mærket for om der er mere at hente.",
     "nowTooltipXp": "Rytterens nuværende værdi. Baren viser XP mod næste point.",
     "xpLine": "{xp} / {price} XP",
