@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { loadXpAgingCfg, developRidersForSeason } from "./riderProgressionEngine.js";
+import { loadXpAgingCfg, developRidersForSeason, seasonTransitionDate } from "./riderProgressionEngine.js";
 import { DEVELOPMENT_XP_FLAG_KEY, DEVELOPMENT_XP_FROM_DATE_KEY, DEVELOPMENT_XP_PARAMS_KEY } from "./developmentXpFlag.ts";
 import { XP_TEST_PARAMS } from "./__fixtures__/developmentXpOffScenarios.js";
 import { AGING_V2_CONFIG } from "./riderProgression.js";
@@ -20,7 +20,7 @@ const ON = { [DEVELOPMENT_XP_FLAG_KEY]: "on", [DEVELOPMENT_XP_FROM_DATE_KEY]: ST
 const DK_MIDNIGHT_START = new Date("2026-11-19T23:30:00Z");
 const DK_BEFORE_START = new Date("2026-11-19T22:30:00Z");
 
-function fakeDb({ app = {}, priv = {}, fail = null }: { app?: Record<string, unknown>; priv?: Record<string, unknown>; fail?: string | null } = {}) {
+function fakeDb({ app = {}, priv = {}, fail = null, seasons = {} }: { app?: Record<string, unknown>; priv?: Record<string, unknown>; fail?: string | null; seasons?: Record<string, unknown> } = {}) {
   return {
     from(table: string) {
       let key: string | null = null;
@@ -29,6 +29,7 @@ function fakeDb({ app = {}, priv = {}, fail = null }: { app?: Record<string, unk
         eq(_c: string, k: string) { key = k; return chain; },
         async maybeSingle() {
           if (fail === table || fail === "both") return { data: null, error: { message: `${table} nede` } };
+          if (table === "seasons") return { data: key !== null && key in seasons ? { start_date: seasons[key] } : null, error: null };
           const src = table === "app_config" ? app : priv;
           return { data: key !== null && key in src ? { value: src[key] } : null, error: null };
         },
@@ -120,4 +121,30 @@ test("F2: sæsonskiftet med standard-læseren og kontakten slukket ælder efter 
   }
   assert.equal((summary?.aging_v2 as Record<string, unknown>)?.rule, "v2", "kontakt off = dagens aldring");
   assert.ok(rpcCalls >= 0);
+});
+
+// ── Dommer-fund F3 (ejer 19/11): reglen vælges efter skiftets STABILE danske dato ──
+// (den nye sæsons start_date), så en genkørsel giver samme regel, uanset uret.
+const START_ISO = "2026-11-27T23:15:00Z"; // = 28/11 kl. 00:15 dansk tid
+
+test("F3: skiftets dato er den nye sæsons start_date i dansk tid, ikke uret", async () => {
+  const db = fakeDb({ seasons: { s6: START_ISO } });
+  assert.deepEqual(await seasonTransitionDate({ supabase: db, seasonId: "s6", now: new Date("2026-12-03T12:00:00Z") }), { date: "2026-11-28", source: "season_start" });
+  assert.deepEqual(await seasonTransitionDate({ supabase: db, seasonId: "ukendt", now: DK_MIDNIGHT_START }), { date: "2026-11-20", source: "clock" });
+  await assert.rejects(seasonTransitionDate({ supabase: fakeDb({ fail: "seasons" }), seasonId: "s6", now: DK_MIDNIGHT_START }));
+});
+
+test("F3: genkørsel efter midnat eller dage senere giver samme regel som første kørsel", async () => {
+  const START_28 = "2026-11-28";
+  const priv = { [DEVELOPMENT_XP_PARAMS_KEY]: B_PARAMS };
+  // Kontakten tændt med startdato 28/11; skiftet 28/11 bruger XP-aldringen.
+  const on28 = fakeDb({ app: { [DEVELOPMENT_XP_FLAG_KEY]: "on", [DEVELOPMENT_XP_FROM_DATE_KEY]: START_28 }, priv, seasons: { s6: START_ISO } });
+  for (const clock of ["2026-11-27T23:20:00Z", "2026-11-28T23:30:00Z", "2026-12-05T08:00:00Z"]) {
+    assert.ok(await loadXpAgingCfg({ supabase: on28, seasonId: "s6", now: new Date(clock) }), `ur ${clock}: XP`);
+  }
+  // Startdato EFTER skiftet (29/11): skiftet 28/11 bruger dagens aldring, også ved genkørsel 30/11.
+  const on29 = fakeDb({ app: { [DEVELOPMENT_XP_FLAG_KEY]: "on", [DEVELOPMENT_XP_FROM_DATE_KEY]: "2026-11-29" }, priv, seasons: { s6: START_ISO } });
+  for (const clock of ["2026-11-27T23:20:00Z", "2026-11-30T10:00:00Z"]) {
+    assert.equal(await loadXpAgingCfg({ supabase: on29, seasonId: "s6", now: new Date(clock) }), null, `ur ${clock}: dagens`);
+  }
 });

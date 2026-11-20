@@ -8,7 +8,7 @@ import type { DataScope } from "./queryRuntime.ts";
  * re-read, directly or through its dependent effects. The push modules, cards and today's
  * strip keep their own freshness. */
 export const LIVE_RESOURCES: ReadonlySet<string> = new Set([
-  "team", "dashboard:season", "dashboard:core", "dashboard:auctions", "transfer-offers",
+  "team", "dashboard:season", "dashboard:core", "dashboard:board-status", "dashboard:auctions", "transfer-offers",
   "dashboard:team-race-entries", "dashboard:forecast", "dashboard:discord", "dashboard:onboarding", "dashboard:signup",
   // Derived reads the legacy effects re-ran: a finished stage moves the countdown to the next
   // stage, and an auto-filled squad clears the selection nudge.

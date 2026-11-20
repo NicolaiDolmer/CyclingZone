@@ -14,6 +14,11 @@ import { fileURLToPath } from "node:url";
 // Fix: gate kortet på `isVisible("board") && board`, så det kun vises når en
 // rigtig plan-board findes. Den nu-døde `!board`-tom-state-gren er fjernet.
 //
+// #8019 (ejer 20/11, hurtigt men uden blink): bestyrelsen hentes for sig selv,
+// og kortet har INGEN pladsholder mens læsningen står på. En grå kasse der
+// forsvinder igen for spillere uden plan er et blink. De moduler der afhænger
+// af bestyrelsen venter i stedet stille, så intet skifter efter første visning.
+//
 // Repoet kører `node --test` uden DOM-renderer, så vi guard'er invarianten
 // kildekode-strukturelt (samme mønster som FinancePage.loadStates.test.js).
 
@@ -27,6 +32,22 @@ test("#1488 board-kortet er gated på BÅDE modul-synlighed OG en etableret boar
     /\{isVisible\("board"\)\s*&&\s*board\s*&&\s*\(/,
     'board-kortet skal gates på `isVisible("board") && board` — ellers vises det tomt i baseline-fasen',
   );
+});
+
+test("#8019 ingen pladsholder for bestyrelseskortet, mens læsningen står på", () => {
+  assert.doesNotMatch(source, /board \|\| dashboard\.boardPending/, "en afventende læsning må ikke vise kortets ramme");
+  assert.match(dataSource, /boardPending: hasTeam && boardQuery\.isPending/);
+});
+
+test("#8019 de bestyrelses-afhængige moduler skifter ikke efter første visning", () => {
+  // Næste træk kan få et bestyrelsespunkt: kortet venter i sin reserverede tilstand.
+  assert.match(source, /<NextActionsCard[\s\S]{0,200}?loading=\{[^}]*dashboard\.boardPending\}/);
+  // Global Rank står efter kortet: den vises først når bestyrelsen er afklaret,
+  // men monteres med det samme (`hidden`/`contents`, ingen ekstra grid-celle).
+  assert.match(source, /className=\{dashboard\.boardPending \? "hidden" : "contents"\}>\s*<GlobalRankWidget \/>/);
+  // Sæsonstart-guiden: siden venter på bestyrelsen i vinduet, inden for samme budget.
+  assert.match(source, /const boardHoldsReveal = dashboard\.boardPending && seasonStartWindowOpen && !seasonStartDismissed;/);
+  assert.match(source, /const initialDataReady = [^\n]*!boardHoldsReveal/);
 });
 
 test("#1488 board udledes fra activePlan (kun non-null når en plan findes)", () => {

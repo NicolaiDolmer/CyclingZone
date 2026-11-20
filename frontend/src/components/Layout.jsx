@@ -407,13 +407,13 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
       {/* Balance — guard mod undefined (jf. #446 bootstrap-race) */}
       {balance != null && (
         <div className="px-4 py-3 border-b border-cz-sidebar-border">
-          <p className="text-3xs text-cz-sidebar-3 uppercase tracking-widest mb-0.5">{t("sidebar.balance")}</p>
+          <p className="text-3xs text-cz-sidebar-2 uppercase tracking-widest mb-0.5">{t("sidebar.balance")}</p>
           <p className="text-cz-accent font-mono font-bold text-sm leading-tight" title={t("sidebar.balanceTooltip")}>
             {formatNumber(balance)} CZ$
           </p>
           <LockedSalesLine refreshKey={balance} className="text-cz-sidebar-2 text-3xs mt-0.5" />
           {team?.division != null && (
-            <p className="text-cz-sidebar-3 text-3xs mt-0.5" title={t("sidebar.divisionTooltip")}>{t("sidebar.division", { division: team.division })}</p>
+            <p className="text-cz-sidebar-2 text-3xs mt-0.5" title={t("sidebar.divisionTooltip")}>{t("sidebar.division", { division: team.division })}</p>
           )}
         </div>
       )}
@@ -423,7 +423,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
         <div className="px-4 py-2 border-b border-cz-sidebar-border">
           <span className="inline-flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-cz-success" />
-            <span className="text-cz-sidebar-3 text-3xs">{t("sidebar.onlineNow", { count: onlineCount })}</span>
+            <span className="text-cz-sidebar-2 text-3xs">{t("sidebar.onlineNow", { count: onlineCount })}</span>
           </span>
         </div>
       )}
@@ -438,7 +438,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
               <button
                 onClick={() => toggleGroup(group.key)}
                 className="w-full flex items-center justify-between px-4 pt-4 pb-1 group">
-                <span className="text-3xs font-bold uppercase tracking-[0.14em] text-cz-sidebar-3 group-hover:text-cz-sidebar-2 transition-colors">
+                <span className="text-3xs font-bold uppercase tracking-[0.14em] text-cz-sidebar-2 group-hover:text-cz-sidebar-1 transition-colors">
                   {group.label}
                 </span>
                 <ChevronDownIcon aria-hidden="true" className={`w-3 h-3 text-cz-sidebar-3 group-hover:text-cz-sidebar-2 transition-all duration-200 ${isOpen ? "rotate-180" : ""}`} />
@@ -458,7 +458,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
         {/* Bottom nav items */}
         <div className="h-px bg-cz-sidebar-border my-3 mx-4" />
         <div className="px-4 pt-4 pb-1">
-          <span className="text-3xs font-bold uppercase tracking-[0.14em] text-cz-sidebar-3">
+          <span className="text-3xs font-bold uppercase tracking-[0.14em] text-cz-sidebar-2">
             {t("nav.group.accountHelp")}
           </span>
         </div>

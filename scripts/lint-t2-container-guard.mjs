@@ -46,6 +46,12 @@ export const ALLOWLIST = {
   // T1 igen under #3454-auditten 7/8.
   "frontend/src/pages/HallOfFamePage.jsx":
     "manager-fanebladets DataTable er 4 kolonner i ét ud af tre faneblade på en ellers læse-tung side — ikke data-tung nok til T2 (#2849 bølge 3, revurderet #3454).",
+  // #8069 T07: Økonomi er en T1-læseside (PAGE_TEMPLATES T1 nævner "Finance
+  // detail"). Lånevilkårene er en opslagstabel med 5 kolonner og 2 rækker
+  // (kort/langt lån) på Lån-fanen; DataTable bruges for tabulære cifre og
+  // D-047 på mobil, ikke fordi siden er data-tung.
+  "frontend/src/pages/FinancePage.jsx":
+    "lånevilkårs-DataTable er 5 kolonner × 2 rækker på én af fire faner på en T1-læseside (#8069 T07).",
 };
 
 const DATATABLE_USE_RE = /<DataTable\b/;

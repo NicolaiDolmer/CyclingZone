@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#7456 sketch: training program rotation and locked passes</title>
+<!-- Self-contained living sketch (no build, no network). Opens straight from disk.
+     Real session names from the Sprinter program catalog. Anonymised data (Rider A/B, Race X),
+     fixed week, no balance numbers. Not shipped: lives under pr-screens only. -->
+<style>
+:root{
+  --bg-body:#f4f2ec;--bg-card:#fcfbf7;--bg-subtle:#ece9e1;--border:#e5e0d5;--border-strong:#827f96;
+  --t1:#0e0f15;--t2:#4c4a5e;--t3:#67657e;--accent:rgb(232 197 71);--accent-t:rgb(160 120 0);
+  --accent-bg:rgb(232 197 71 / .14);--ok:#2f6b3f;--warn:#9a4a12;--warn-bg:#fbf1e9;
+  --race:#2b4a8a;--race-bg:#e8eefb;--rec:#2f6b3f;--rec-bg:#e8f3ea;--hard:#0e0f15;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg-body:#0e0f15;--bg-card:#161824;--bg-subtle:#14161e;--border:#2a2d40;--border-strong:#8a88a6;
+  --t1:#f2f1f7;--t2:#b4b2c8;--t3:#9896b0;--accent-t:rgb(232 197 71);--accent-bg:rgb(232 197 71 / .12);
+  --ok:#7fc08f;--warn:#e7a26a;--warn-bg:#2a1d12;--race:#8fb0f0;--race-bg:#1a2238;--rec:#7fc08f;--rec-bg:#16241a;--hard:#f2f1f7;}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg-body);color:var(--t1);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;font-variant-numeric:tabular-nums}
+.wrap{max-width:1600px;margin:0 auto;padding:24px 16px 56px}
+h1{font-size:20px;margin:0 0 4px}
+h2{font-size:15px;margin:0 0 2px}
+.sub{color:var(--t2);font-size:13px;margin:0 0 14px;max-width:80ch}
+.card{border:1px solid var(--border);border-radius:5px;background:var(--bg-card);padding:14px;min-width:0}
+.tag{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-t);font-weight:600}
+.layout{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:16px;align-items:start}
+@media (max-width:1100px){.layout{grid-template-columns:1fr}}
+.top{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin:0 0 14px}
+.seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:5px;overflow:hidden}
+.seg button{font:inherit;font-size:13px;padding:8px 14px;min-height:44px;background:var(--bg-card);color:var(--t2);border:0;border-left:1px solid var(--border);cursor:pointer}
+.seg button:first-child{border-left:0}
+.seg button[aria-pressed="true"]{background:var(--accent-bg);color:var(--accent-t);font-weight:600}
+.btn{font:inherit;font-size:13px;font-weight:600;border:1px solid var(--border-strong);background:var(--bg-card);color:var(--t1);border-radius:5px;padding:8px 14px;min-height:44px;cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#1c1708}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent-t);outline-offset:2px}
+.copy{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.rule{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--border);font-size:13px;min-height:44px}
+.rule:first-of-type{border-top:0}
+.rule input{width:18px;height:18px;margin-top:2px;accent-color:var(--accent-t);flex:none}
+.rule label{cursor:pointer;flex:1}
+.rule small{display:block;color:var(--t2);font-size:12px}
+ol.rot{list-style:none;margin:8px 0 0;padding:0;border:1px solid var(--border);border-radius:5px}
+ol.rot li{display:flex;align-items:center;gap:10px;padding:6px 10px;border-top:1px solid var(--border);min-height:40px;font-size:13px}
+ol.rot li:first-child{border-top:0}
+ol.rot .n{width:26px;color:var(--t3);font-size:12px;text-align:right;flex:none}
+ol.rot .nm{flex:1}
+ol.rot .k{font-size:11px;color:var(--t2)}
+ol.rot li.lockrow{background:var(--accent-bg)}
+.lockbtn{border:1px solid var(--border);background:var(--bg-card);color:var(--t2);border-radius:5px;min-width:44px;min-height:36px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.lockbtn[aria-pressed="true"]{color:var(--accent-t);border-color:var(--accent-t);background:var(--accent-bg)}
+svg.ic{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.rider{margin:0 0 18px}
+.rider:last-child{margin-bottom:0}
+.rh{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline;margin:0 0 6px}
+.rh b{font-size:14px}
+.next{font-size:12px;color:var(--t2)}
+.next strong{color:var(--t1)}
+table.week{width:100%;border-collapse:separate;border-spacing:3px;table-layout:fixed}
+table.week th{font-size:11px;font-weight:600;color:var(--t3);text-align:center;padding:0 0 2px}
+table.week th.d{text-align:left;width:44px}
+table.week td.d{font-size:12px;font-weight:600;color:var(--t2)}
+.c{position:relative;border:1px solid var(--border);border-left-width:3px;border-radius:5px;background:var(--bg-card);min-height:44px;padding:4px 4px 4px 6px;font-size:11px;line-height:1.2;overflow:hidden}
+.c .nm{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.c .no{position:absolute;right:3px;top:2px;font-size:10px;color:var(--t3)}
+.c.hard{border-left-color:var(--hard)}
+.c.easy{border-left-color:var(--border-strong)}
+.c.rec{border-left-color:var(--rec);background:var(--rec-bg)}
+.c.race{border-color:var(--race);border-left-color:var(--race);background:var(--race-bg);color:var(--race);font-weight:600}
+.c.pause{background:var(--bg-subtle);color:var(--t3);border-style:dashed}
+.c.dropped{background:var(--warn-bg);color:var(--warn);border-style:dashed;text-decoration:line-through}
+.c.moved{outline:2px solid var(--accent-t);outline-offset:-2px}
+.c .lk{position:absolute;right:3px;bottom:3px;color:var(--accent-t)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--t2);margin:10px 0 0}
+.legend i{display:inline-block;width:12px;height:12px;border:1px solid var(--border-strong);border-radius:3px;vertical-align:-2px;margin-right:4px}
+.note{border:1px solid var(--border);border-radius:5px;background:var(--bg-subtle);padding:8px 10px;font-size:12px;color:var(--t2);margin:10px 0 0}
+.note.warn{background:var(--warn-bg);border-color:#efd6c3;color:var(--warn)}
+.sum{font-size:12px;color:var(--t2);margin:6px 0 0}
+.hidden{display:none}
+.rowhdr{font-size:11px;color:var(--t3);margin:0 0 4px}
+.dayctl{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2);flex-wrap:wrap}
+@media (max-width:520px){
+  .wrap{padding:16px 16px 40px}
+  .c{font-size:10px;padding:3px 2px 3px 4px;min-height:44px}
+  .c .no{position:static;display:block;font-size:9px}
+  table.week{border-spacing:2px}
+  table.week th.d{width:30px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="tag">#7456 sketch · Training › Program</p>
+  <h1>Training program: rotation with pauses, and locked passes</h1>
+  <p class="sub">The same week, two ways to keep a plan alive when races and rest land on random race-day slots. Everything on this page is live: tick the boxes, lock a pass, and the weeks recompute. Data is a fixed anonymised fixture (Rider A and B, Race X); pass names come from the Sprinter program.</p>
+
+  <div class="top">
+    <div class="seg" role="group" aria-label="Plan type">
+      <button type="button" id="m-rot" aria-pressed="true">Rotation</button>
+      <button type="button" id="m-blk" aria-pressed="false">Week blocks</button>
+    </div>
+    <div class="copy">
+      <button type="button" class="btn">Copy to riders</button>
+      <button type="button" class="btn primary">Save plan</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <section class="card" aria-labelledby="left-h">
+      <!-- ROTATION panel -->
+      <div id="p-rot">
+        <h2 id="left-h">Sprinter rotation · 10 passes</h2>
+        <p class="sub" style="margin:0">One list, in fixed order. Passes run in a ring. A race, a rest day or the fatigue limit never skips a pass: the rotation waits and carries on in the next free slot.</p>
+        <ol class="rot" id="rotlist"></ol>
+        <div class="note">Each rider has their own place in the ring (see "Next" above each week). Riders on the same program can ride different races and still lose no pass.</div>
+        <h2 style="margin-top:14px">Fatigue limit</h2>
+        <div class="rule">
+          <input type="checkbox" id="fat" checked>
+          <label for="fat">Rider A reaches the team fatigue limit on Tuesday, slot 4<small>The rest of that day becomes active recovery, and the rotation waits. Limit and exceptions stay as set on the Fatigue limit tab.</small></label>
+        </div>
+      </div>
+
+      <!-- WEEK BLOCKS panel -->
+      <div id="p-blk" class="hidden">
+        <h2>Week blocks · Rider A</h2>
+        <p class="sub" style="margin:0">Each day has its own order, highest priority first. One pass per day can be locked: a race never takes it, it moves to a free slot. A race takes the lowest priority first, and a pass it takes is not made up later.</p>
+        <div style="margin-top:8px" id="blkdays"></div>
+        <div class="note" id="blkhint">Wednesday: Race X lands on slot 5, where the locked long ride sat.</div>
+      </div>
+
+      <div class="rule" style="margin-top:10px">
+        <input type="checkbox" id="race2" checked>
+        <label for="race2">Race X on Saturday, slot 2, for both riders<small>Add or remove a race and watch both weeks.</small></label>
+      </div>
+    </section>
+
+    <section class="card" aria-label="Resulting weeks">
+      <div class="rider" id="rA"></div>
+      <div class="rider" id="rB"></div>
+      <div class="legend" aria-hidden="true">
+        <span><i style="border-left:3px solid var(--hard)"></i>Hard pass</span>
+        <span><i style="border-left:3px solid var(--border-strong)"></i>Easy pass</span>
+        <span><i style="background:var(--rec-bg);border-left:3px solid var(--rec)"></i>Recovery</span>
+        <span><i style="background:var(--race-bg);border-color:var(--race)"></i>Race</span>
+        <span><i style="border-style:dashed;background:var(--bg-subtle)"></i>Paused</span>
+        <span><i style="border-style:dashed;background:var(--warn-bg)"></i>Not made up</span>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const HARD=new Set(['Sprint','Echelon drills','Tempo','Aero','Threshold']);
+const ROT=['Sprint','Endurance','Echelon drills','Recovery','Sprint','Endurance','Tempo','Recovery','Sprint','Endurance'];
+const kind=n=>n==='Recovery'?'rec':HARD.has(n)?'hard':'easy';
+// Fixed fixture: race slots are [dayIndex, slotIndex(0-4)].
+const RACES={A:[[2,4]],B:[[5,1]]};
+const SAT_RACE=[5,1];
+let mode='rot';
+const fatigueA=[1,3]; // Tue, slot 4 (index 3): rest of day = active recovery
+// Week blocks fixture for Rider A. slot order; prio 1 = most important; lock = never taken by a race.
+const BLK=[
+ [['Sprint',1],['Endurance',3],['Echelon drills',2],['Tempo',4],['Recovery',5]],
+ [['Endurance',2],['Sprint',1],['Aero',3],['Recovery',5],['Recovery',4]],
+ [['Echelon drills',3],['Tempo',2],['Recovery',5],['Sprint',4],['Endurance',1,true]],
+ [['Recovery',2],['Recovery',3],['Endurance',1],['Recovery',4],['Recovery',5]],
+ [['Sprint',1],['Endurance',3],['Echelon drills',2],['Tempo',4],['Recovery',5]],
+ [['Endurance',1],['Endurance',2],['Tempo',3],['Recovery',5],['Recovery',4]],
+ [['Recovery',1],['Recovery',2],['Recovery',3],['Recovery',4],['Recovery',5]],
+].map(d=>d.map(([name,prio,lock])=>({name,prio,lock:!!lock})));
+
+const isRace=(rider,d,s)=>{
+  const list=(RACES[rider]||[]).filter(r=>!(r[0]===SAT_RACE[0]&&r[1]===SAT_RACE[1]));
+  if(list.some(r=>r[0]===d&&r[1]===s))return true;
+  return document.getElementById('race2').checked&&d===SAT_RACE[0]&&s===SAT_RACE[1];
+};
+
+function rotationWeek(rider,startPtr,fatigue){
+  let ptr=startPtr, cells=[];
+  for(let d=0;d<7;d++){const row=[];
+    for(let s=0;s<5;s++){
+      if(isRace(rider,d,s)){row.push({t:'race'});continue;}
+      if(fatigue&&d===fatigueA[0]&&s>=fatigueA[1]){row.push({t:'rec'});continue;}
+      row.push({t:'pass',name:ROT[ptr%ROT.length],no:(ptr%ROT.length)+1});ptr++;
+    }
+    cells.push(row);
+  }
+  return {cells,next:ptr};
+}
+
+function blockWeek(){
+  const out=[];window.droppedNames=[];
+  for(let d=0;d<7;d++){
+    const slots=BLK[d].map((p,i)=>({...p,home:i}));
+    const raceSlots=[0,1,2,3,4].filter(s=>isRace('A',d,s));
+    const row=Array(5).fill(null);
+    raceSlots.forEach(s=>row[s]={t:'race'});
+    if(raceSlots.length){
+      const unlocked=slots.filter(p=>!p.lock).sort((a,b)=>b.prio-a.prio);
+      const dropped=unlocked.slice(0,raceSlots.length);dropped.forEach(p=>window.droppedNames.push(DAYS[d]+' '+p.name));
+      const kept=slots.filter(p=>!dropped.includes(p));
+      const stay=kept.filter(p=>!raceSlots.includes(p.home));
+      const move=kept.filter(p=>raceSlots.includes(p.home));
+      stay.forEach(p=>row[p.home]={t:'pass',name:p.name,prio:p.prio,lock:p.lock});
+      const free=[0,1,2,3,4].filter(s=>!row[s]);
+      move.forEach(p=>{const s=free.shift();row[s]={t:'pass',name:p.name,prio:p.prio,lock:p.lock,moved:true};});
+      free.forEach(s=>{const dp=dropped.shift();row[s]=dp?{t:'dropped',name:dp.name,prio:dp.prio}:{t:'pause'};});
+    }else slots.forEach((p,i)=>row[i]={t:'pass',name:p.name,prio:p.prio,lock:p.lock});
+    out.push(row);
+  }
+  return out;
+}
+
+const lockSvg='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+function cell(c,idx,showNo){
+  if(c.t==='race')return `<div class="c race"><span class="nm">Race X</span></div>`;
+  if(c.t==='rec')return `<div class="c rec"><span class="nm">Active recovery</span></div>`;
+  if(c.t==='pause')return `<div class="c pause"><span class="nm">Free</span></div>`;
+  if(c.t==='dropped')return `<div class="c dropped" title="Taken by the race, not made up"><span class="nm">${c.name}</span></div>`;
+  const no=showNo&&c.no?`<span class="no">${c.no}</span>`:'';
+  const lk=c.lock?`<span class="lk" title="Locked">${lockSvg}</span>`:'';
+  return `<div class="c ${kind(c.name)}${c.moved?' moved':''}">${no}<span class="nm">${c.name}</span>${lk}</div>`;
+}
+function weekTable(cells,showNo){
+  let h='<table class="week"><thead><tr><th class="d"><span class="sr" style="position:absolute;left:-9999px">Day</span></th>';
+  for(let s=1;s<=5;s++)h+=`<th scope="col">${s}</th>`;
+  h+='</tr></thead><tbody>';
+  cells.forEach((row,d)=>{h+=`<tr><td class="d">${DAYS[d]}</td>`+row.map((c,s)=>`<td>${cell(c,s,showNo)}</td>`).join('')+'</tr>';});
+  return h+'</tbody></table>';
+}
+function render(){
+  const fat=document.getElementById('fat').checked;
+  document.getElementById('p-rot').classList.toggle('hidden',mode!=='rot');
+  document.getElementById('p-blk').classList.toggle('hidden',mode!=='blk');
+  document.getElementById('m-rot').setAttribute('aria-pressed',mode==='rot');
+  document.getElementById('m-blk').setAttribute('aria-pressed',mode==='blk');
+  const a=document.getElementById('rA'),b=document.getElementById('rB');
+  if(mode==='rot'){
+    const wa=rotationWeek('A',0,fat),wb=rotationWeek('B',6,false);
+    const nx=w=>`<strong>${ROT[w.next%ROT.length]}</strong>, pass ${(w.next%ROT.length)+1} of ${ROT.length}`;
+    const raced=w=>w.cells.flat().filter(c=>c.t==='race').length;
+    const ran=w=>w.cells.flat().filter(c=>c.t==='pass').length;
+    a.innerHTML=`<div class="rh"><b>Rider A</b><span class="next">Next week starts at ${nx(wa)}</span></div>${weekTable(wa.cells,true)}<p class="sum">${ran(wa)} passes run, ${raced(wa)} race slot${raced(wa)===1?'':'s'}${fat?', rest of Tuesday is active recovery':''}. No pass skipped.</p>`;
+    b.innerHTML=`<div class="rh"><b>Rider B</b><span class="next">Own place: next week starts at ${nx(wb)}</span></div>${weekTable(wb.cells,true)}<p class="sum">${ran(wb)} passes run, ${raced(wb)} race slot${raced(wb)===1?'':'s'}. Started the week at pass 7.</p>`;
+    const ol=document.getElementById('rotlist');
+    ol.innerHTML=ROT.map((n,i)=>`<li><span class="n">${i+1}</span><span class="nm">${n}</span><span class="k">${kind(n)==='hard'?'Hard':kind(n)==='rec'?'Recovery':'Easy'}</span></li>`).join('');
+  }else{
+    const wk=blockWeek();
+    a.innerHTML=`<div class="rh"><b>Rider A</b><span class="next">Locked passes stay. Highlighted = moved to a free slot.</span></div>${weekTable(wk,false)}<p class="sum">${window.droppedNames.length} pass(es) taken by races and not made up: ${window.droppedNames.join(', ')||'none'}.</p>`;
+    const base=BLK.map(d=>d.map(p=>({t:'pass',name:p.name,prio:p.prio,lock:p.lock})));
+    b.innerHTML=`<div class="rh"><b>The same plan with no race</b><span class="next">What the blocks look like when nothing interferes</span></div>${weekTable(base,false)}`;
+    const holder=document.getElementById('blkdays');
+    holder.innerHTML=BLK.map((d,di)=>`<div style="margin:0 0 8px"><p class="rowhdr">${DAYS[di]}</p><div style="display:flex;gap:6px;flex-wrap:wrap">`+d.map((p,pi)=>`<button type="button" class="lockbtn" style="min-width:auto;padding:4px 8px;gap:6px;font-size:12px" aria-pressed="${p.lock}" data-d="${di}" data-p="${pi}" aria-label="${p.name}, priority ${p.prio}, ${p.lock?'locked':'not locked'}"><span>${p.prio}</span><span>${p.name}</span>${p.lock?lockSvg:''}</button>`).join('')+'</div></div>').join('');
+    holder.querySelectorAll('button').forEach(btn=>btn.addEventListener('click',()=>{
+      const d=+btn.dataset.d,p=+btn.dataset.p,was=BLK[d][p].lock;
+      BLK[d].forEach(x=>x.lock=false);BLK[d][p].lock=!was;render();
+    }));
+  }
+}
+document.getElementById('m-rot').onclick=()=>{mode='rot';render();};
+document.getElementById('m-blk').onclick=()=>{mode='blk';render();};
+document.getElementById('fat').onchange=render;
+document.getElementById('race2').onchange=render;
+// Test hook: ?mode=blk opens straight on Week blocks.
+if(/mode=blk/.test(location.search))mode='blk';
+render();
+</script>
+</body>
+</html>
