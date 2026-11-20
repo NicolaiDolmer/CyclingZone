@@ -166,3 +166,42 @@ export function prognoseAbilityBands({ nowAbilities, age, primaryType, secondary
   }
   return out;
 }
+
+// ═══ SAMLET PROGNOSE (#8523, spec 2026-11-20 §5) ═════════════════════════════
+// Egne ryttere får ÉN rating: "fortsætter du den nuværende fart, ender du omkring
+// her ved toppen". Farten er rytterens udvikling i de seneste PROGNOSIS_PACE_DAYS
+// dage. Udviklingsmodellen (G3a, §3) lader farten afhænge af afstanden til
+// potentialet: langt fra går det hurtigt, tæt på næsten i stå. Prognosen læser
+// derfor farten som en andel af den afstand, der var til holdets skøn, og lader
+// samme andel virke frem til topalderen. Fremskrivningen kan dermed aldrig gå
+// over skønnet, og en rytter uden fremgang står stille på sit nu.
+//
+// Ren funktion uden opslag: kalderen (potentialEstimateRead.js) leverer ratingen
+// nu, ratingen for farten-vinduets start og holdets skøn. Skønnet er det tal,
+// holdet allerede ser, så prognosen afslører intet nyt om det skjulte potentiale.
+export const PROGNOSIS_PACE_DAYS = 30;
+
+/**
+ * Den samlede prognose som heltal, eller null når den ikke kan regnes.
+ * @param {{ now: number|null, past: number|null, daysAgo: number|null, estimate: number|null,
+ *   age: number|null, peakAge?: number, daysPerSeason?: number }} input
+ * @returns {number|null}
+ */
+export function pacePrognosis({
+  now, past, daysAgo, estimate, age,
+  peakAge = PROGRESSION_CONFIG.peakAge,
+  daysPerSeason = DAILY_TRAINING_CONFIG.daysPerSeason,
+}) {
+  if (!Number.isFinite(now) || !Number.isFinite(age) || !Number.isFinite(estimate)) return null;
+  if (age > peakAge) return null;
+  const remainingDays = Math.max(0, peakAge - age) * daysPerSeason;
+  const gain = Number.isFinite(past) && Number.isFinite(daysAgo) && daysAgo > 0 ? now - past : 0;
+  const pace = Math.max(0, gain / (daysAgo || 1));
+  const gap = estimate - now;
+  let value = now;
+  if (gap > 0 && pace > 0) {
+    const share = Math.min(1, pace / gap);
+    value = estimate - gap * (1 - share) ** remainingDays;
+  }
+  return clamp(Math.round(value), Math.round(now), 99);
+}
