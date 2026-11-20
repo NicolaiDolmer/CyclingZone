@@ -47,6 +47,7 @@ Stabile regelnumre; detaljer: `docs/AGENT_RULE_DETAILS.md#regel-N`. Core gælder
 39. **Vis arbejdet tidligt (ejer 11/11):** åbn en draft-PR, så snart planen står på issuet og første commit findes (PR-tekst: formål, plan, hvad der mangler). Push ved hvert meningsfuldt trin og mindst hver halve time. Draft er ikke færdig: "klar til Claude-review" er et separat skridt. Gælder alle bygge-sessioner, også uden for bølger; CI kører kun lette tjek på kladder.
 40. **Dommer før første kodelinje (ejer 12/11):** for motor, træning og penge skriver en uafhængig dommer ejerens regler som prøver (scenarier med forventet udfald), FØR der bygges; byggeren bygger mod dem, og samme dommer dømmer PR'en før merge. Dommeren får kun ejerens ord, ikke udviklerens konklusioner.
 41. **Spillerfejl inden for et døgn (ejer 12/11):** en fejl meldt af en spiller får rodårsag og plan på sit issue inden for 24 timer, før nyt bygges i samme område.
+42. **Intet forsvinder fra masterplanen (ejer 16/11, #8230):** et punkt må kun fjernes fra MASTERPLAN, hvis det samtidig står på roadmappet med horisont, i `docs/I_GANG.md` eller er lukket med bevis. Stop-hooken advarer ved brud; `scripts/plan-gap-audit.mjs` (kun læsning) køres hver mandag før "This week" skæres.
 
 ## Sådan deler du arbejdet op
 

@@ -249,6 +249,7 @@ import { meanPhysiology, BENCHMARK_FIELDS } from "../lib/physiologyBenchmark.js"
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
 import { getScoutState, startTargetAssignment, startMission, cancelAssignment, loadScout, loadScoutHistory } from "../lib/scoutAssignmentService.js";
 import { recordScoutLooks, loadEstimateDevelopmentXp } from "../lib/potentialEstimateWriter.js"; // #7685, #6110 F1
+import { trainingProgressView } from "../lib/trainingProgressView.js"; // #2578 + #6110 taendingsliste pkt. 2
 import {
   buildTypeCeilingBands, buildVerdict, scoutPrecisionInfo,
   buildTypePrognosisBands, roleCeilRating, ratingFromAbilities,
@@ -256,7 +257,7 @@ import {
 import { projectCeilingBand, ceilingTiming, PEAK_AGE, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
 import { programForChoice, normalizeProgram, smartDefaultSession } from "../lib/trainingDayTypes.js";
 import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer, V3_TRAINING_FOCUSES } from "../lib/trainingCatalogV3.js"; // #5319
-import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, isValidWeekPlanDays, cappedVisibleAbilities } from "../lib/training.js";
+import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, isValidWeekPlanDays } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
 import { readFlagStage, evaluateFlagStage, clearFlagStageCache } from "../lib/featureStage.js";
 import {
@@ -283,6 +284,7 @@ import { isTrainingConditionPerDateEnabled } from "../lib/trainingDateConditionF
 import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "../lib/raceDayDevelopmentFlag.js";
 import { TRAINING_SCORE_VISIBLE_FLAG_KEY, TRAINING_DAILY_RECEIPT_FLAG_KEY } from "../lib/trainingScoreFlag.js";
 import { trainingRunResponse } from "../lib/trainingRunResponse.ts";
+import { attachReceiptSaveOrder7982 } from "../lib/trainingReceiptSaveOrder7982.js"; // #7982 krav 7
 import { createFirstRaceCardRouter } from "./firstRaceCard.js"; // #1140
 import { createRaceLibraryV2Router } from "../lib/raceLibraryV2Flag.js"; // #6514
 import { createPushRouter } from "./pushRoutes.ts"; // #6590
@@ -2903,8 +2905,14 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
       riders: [rider], abilitiesByRider: new Map([[rider.id, ab]]),
       seasonNumber: await getActiveSeasonNumber(), scout, developmentXp: prognosisXp,
     });
-    if (academyPrognoses.has(rider.id)) {
-      return res.json({ own: true, ...academyEstimate(academyPrognoses.get(rider.id)) });
+    const academyPrognosis = academyPrognoses.get(rider.id);
+    if (academyPrognosis) {
+      const types = academyPrognosis.stage === "final" ? academyPrognosis.types : null;
+      return res.json({
+        own: true,
+        ...academyEstimate(academyPrognosis),
+        ...(types?.length ? { types, primaryKey: rider.primary_type } : {}),
+      });
     }
 
     const currentYear = new Date().getFullYear();
@@ -3198,7 +3206,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
     // #6490 trin b2: med kontakten tændt kommer rytterne fra kvitteringerne (samme rækker og kolonner).
     const historyFromTicks = activeSeasonId ? await isTrainingHistoryFromTicksEnabled(supabase) : false;
     const [
-      todayRunResult, conditionResult, progressResult, weekPlanResult, racingToday, scoreResult, fatigueStreaks,
+      todayRunResult, conditionResult, progressResult, weekPlanResult, racingToday, scoreResult, fatigueStreaks, trainingXp,
     ] = await Promise.all([
       activeSeasonId
         ? fetchAllRows(() => (historyFromTicks
@@ -3274,10 +3282,12 @@ router.get("/training/me", requireAuth, async (req, res) => {
         : Promise.resolve({ data: [] }),
       // #6110 S26: "Dage 70+" til holdtabellen, kun med flaget on (fail-safe, null ved fejl).
       decisionCard ? loadFatigueStreaks(supabase, { riderIds, seasonId: activeSeasonId }) : Promise.resolve(null),
+      loadEstimateDevelopmentXp(supabase), // #6110: XP i dag? null = som foer
     ]);
 
     if (todayRunResult.error) throw new Error(todayRunResult.error.message);
-    const { todayRuns, todayRun } = trainingRunResponse(todayRunResult.data);
+    // #7982: the receipt follows the order the sessions were saved (settled_at); read-only, best-effort.
+    const { todayRuns, todayRun } = trainingRunResponse(await attachReceiptSaveOrder7982({ supabase, teamId, runs: todayRunResult.data }));
     const weekPlanRows = weekPlanResult.data ?? [];
     const weekPlan = weekPlanRows.find((r) => r.rider_id == null)?.days ?? null;
     // #1895 PR 2: kun holdets EGNE ryttere — weekPlanRows er allerede scoped til
@@ -3322,18 +3332,8 @@ router.get("/training/me", requireAuth, async (req, res) => {
       };
     }
 
-    // Byg progress-map: rider_id → ability_progress (null-safe).
-    // #2578: + capped-map (rider_id → [ability]) — hvilke synlige evner står på
-    // livstidsloftet, så UI'et kan vise "færdigudviklet i dette fokus" i stedet
-    // for en død progress-bar. KUN ability-nøgler forlader serveren; selve
-    // cap-tallene forbliver server-hidden (#1162).
-    const progress = {};
-    const capped = {};
-    for (const row of progressResult.data ?? []) {
-      progress[row.rider_id] = row.ability_progress ?? {};
-      const cappedForRider = cappedVisibleAbilities(row);
-      if (cappedForRider.length) capped[row.rider_id] = cappedForRider;
-    }
+    // Byg progress-map: #2578 lofter og #6110 "x af y XP" under XP (trainingProgressView.js).
+    const { progress, capped, xpBar } = trainingProgressView(progressResult.data, trainingXp);
 
     // #4847: knappens aabne-tilstand ("Koer dagens traening nu"). Feltet udelades
     // HELT naar `training_tick_per_race_day` er off — samme kontrakt som racingToday
@@ -3364,6 +3364,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
 
     res.json({
       ...state, teamId, enabled, betaTester: isBetaTester, todayRun, todayRuns, condition, progress, capped,
+      ...(xpBar ? { xp_bar: xpBar } : {}),
       trainability, smartDefaultFocus: smartDefaultFocusByRider, weekPlan, riderWeekPlans,
       ...(dayClose ? { dayClose } : {}),
       // #3643: true ⇒ telefonen tegner den nye løbsdags-tabel; false ⇒ den

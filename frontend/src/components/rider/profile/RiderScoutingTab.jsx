@@ -143,6 +143,82 @@ function PrimaryTypeRow({ typeKey, now, progLo, progHi, label, roleLabel, progre
   );
 }
 
+function RolePrognosis({ types, primaryKey, secondaryKey, children = /** @type {import("react").ReactNode} */ (null) }) {
+  const { t } = useTranslation("rider");
+  const { t: tTypes } = useTranslation("riderTypes");
+  const orderedTypes = TYPE_ORDER
+    .map((key) => types?.find((x) => x.key === key))
+    .filter(Boolean);
+  // #3666 spec §D4: rytterens egen rolle løftes ud og vises stort; resten er
+  // kontekst. `primaryKey` kommer fra serveren (rytterens archetype_draw), ikke
+  // fra "hvilken rolle scorer højest" — en rytter må ikke skifte identitet fordi
+  // et estimat bevægede sig. Mangler den (ældre payload), falder kortet tilbage
+  // til den flade liste af otte, som før.
+  const primaryRow = primaryKey ? orderedTypes.find((r) => r.key === primaryKey) : null;
+  if (!orderedTypes.length) return null;
+
+  // #5435 (D-049, spec §2): listen deles i anlæggets to roller ("His natural
+  // roles") og de seks andre, og loft-tallene er ude (ejer 21/9). Den
+  // naturlige sekundærrolle er rytterens persisterede
+  // secondary_type — samme kilde som badget, så de to aldrig er uenige.
+  const naturalSecondaryRow = primaryRow && secondaryKey && secondaryKey !== primaryRow.key
+    ? orderedTypes.find((r) => r.key === secondaryKey) ?? null
+    : null;
+  const secondaryRows = primaryRow
+    ? orderedTypes.filter((r) => r.key !== primaryRow.key && r.key !== naturalSecondaryRow?.key)
+    : orderedTypes;
+  return (
+    <SectionCard>
+      <div className="flex items-baseline justify-between gap-2 mb-3">
+        <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0">
+          {t("profile.scouting.typesTitle")}
+        </h3>
+        <span className="text-3xs text-cz-3">
+          {t("profile.scouting.typesSubtitleNoLoft")}
+        </span>
+      </div>
+      {primaryRow && (
+        <PrimaryTypeRow
+          typeKey={primaryRow.key}
+          now={primaryRow.now}
+          progLo={primaryRow.progLo ?? primaryRow.ceilLo}
+          progHi={primaryRow.progHi ?? primaryRow.ceilHi}
+          label={tTypes(`types.${primaryRow.key}`)}
+          roleLabel={t("profile.scouting.naturalRolesLabel")}
+          extra={naturalSecondaryRow && (
+            <div className="mt-3" data-testid="scouting-natural-secondary">
+              <TypeRow typeKey={naturalSecondaryRow.key} now={naturalSecondaryRow.now}
+                progLo={naturalSecondaryRow.progLo ?? naturalSecondaryRow.ceilLo}
+                progHi={naturalSecondaryRow.progHi ?? naturalSecondaryRow.ceilHi}
+                label={tTypes(`types.${naturalSecondaryRow.key}`)} />
+            </div>
+          )}
+          progressionLabel={t("profile.scouting.primaryProgressionLabel")}
+        />
+      )}
+      {primaryRow && secondaryRows.length > 0 && (
+        <span className="block font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3 mb-2">
+          {t("profile.scouting.otherRolesNaturalLabel")}
+        </span>
+      )}
+      {primaryRow && secondaryRows.length > 0 && (
+        <p className="text-cz-3 text-3xs mt-0 mb-2">{t("profile.scouting.otherRolesNote")}</p>
+      )}
+      <div className="space-y-2">
+        {secondaryRows.map((row) => (
+          <TypeRow key={row.key} typeKey={row.key} now={row.now}
+            progLo={row.progLo ?? row.ceilLo} progHi={row.progHi ?? row.ceilHi}
+            label={tTypes(`types.${row.key}`)} />
+        ))}
+      </div>
+      <p className="text-cz-3 text-3xs mt-3 mb-0">
+        {t("profile.scouting.typesLegendNoLoft")}
+      </p>
+      {children}
+    </SectionCard>
+  );
+}
+
 // #3671 — hvad køber det næste scout-niveau? Tre tilstande, og ingen af dem må
 // være tavse: der findes en gevinst, gevinsten er for lille til at kunne ses, og
 // der er ikke flere niveauer at købe. Halvbredden vises som ± point, fordi det er
@@ -232,7 +308,6 @@ function EstimateCard({ view, report, canLookAgain, scoutAction, t }) {
 
 export default function RiderScoutingTab({ rider, scouting }) {
   const { t, i18n } = useTranslation("rider");
-  const { t: tTypes } = useTranslation("riderTypes");
   const [report, setReport] = useState(/** @type {any} */ (null));   // null = loader, ellers payload
   const [failed, setFailed] = useState(false);
   // #2465: scout() returnerer eksplicit {ok, error} — handlingen koster CZ$, så en
@@ -411,6 +486,9 @@ export default function RiderScoutingTab({ rider, scouting }) {
   }
 
   if (!estimateView && report.academyPrognosis) {
+    if (report.academyPrognosis.stage === "final" && report.types?.length) {
+      return <RolePrognosis types={report.types} primaryKey={report.primaryKey} secondaryKey={rider?.secondary_type} />;
+    }
     return <SectionCard><AcademyScoutingPrognosis prognosis={report.academyPrognosis} /></SectionCard>;
   }
 
@@ -434,29 +512,11 @@ export default function RiderScoutingTab({ rider, scouting }) {
   }
 
   const { verdict, types, stars, own, scout: scoutMeta, precision, primaryKey } = report;
-  const orderedTypes = TYPE_ORDER
-    .map((key) => types?.find((x) => x.key === key))
-    .filter(Boolean);
-  // #3666 spec §D4: rytterens egen rolle løftes ud og vises stort; resten er
-  // kontekst. `primaryKey` kommer fra serveren (rytterens archetype_draw), ikke
-  // fra "hvilken rolle scorer højest" — en rytter må ikke skifte identitet fordi
-  // et estimat bevægede sig. Mangler den (ældre payload), falder kortet tilbage
-  // til den flade liste af otte, som før.
-  const primaryRow = primaryKey ? orderedTypes.find((r) => r.key === primaryKey) : null;
+  const primaryRow = primaryKey ? types?.find((r) => r.key === primaryKey) : null;
   // #6853: det store potentiale-tal står på serverens valgte rolle (bedste
   // rolle) — samme tal som Mit hold og akademiet.
   const potentialRow = potentialRowFromReport(report) ?? primaryRow;
   const potentialShown = potentialFromReport(report);
-  // #5435 (D-049, spec §2): listen deles i anlæggets to roller ("His natural
-  // roles") og de seks andre, og loft-tallene er ude (ejer 21/9). Den
-  // naturlige sekundærrolle er rytterens persisterede
-  // secondary_type — samme kilde som badget, så de to aldrig er uenige.
-  const naturalSecondaryRow = primaryRow && rider?.secondary_type && rider.secondary_type !== primaryRow.key
-    ? orderedTypes.find((r) => r.key === rider.secondary_type) ?? null
-    : null;
-  const secondaryRows = primaryRow
-    ? orderedTypes.filter((r) => r.key !== primaryRow.key && r.key !== naturalSecondaryRow?.key)
-    : orderedTypes;
   // Ukendt/manglende scout-provenance (fx ældre klient-cache) degraderer sikkert
   // til "default"-linjen frem for at interpolere undefined navn/tier.
   const isDefaultScout = scoutMeta?.isDefault !== false;
@@ -577,67 +637,10 @@ export default function RiderScoutingTab({ rider, scouting }) {
         )}
       </SectionCard>
 
-      {/* Prognose pr. ryttertype — nu + skraveret prognose-bånd. */}
-      {orderedTypes.length > 0 && (
-        <SectionCard>
-          <div className="flex items-baseline justify-between gap-2 mb-3">
-            <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0">
-              {t("profile.scouting.typesTitle")}
-            </h3>
-            <span className="text-3xs text-cz-3">
-              {t("profile.scouting.typesSubtitleNoLoft")}
-            </span>
-          </div>
-          {primaryRow && (
-            <PrimaryTypeRow
-              typeKey={primaryRow.key}
-              now={primaryRow.now}
-              progLo={primaryRow.progLo ?? primaryRow.ceilLo}
-              progHi={primaryRow.progHi ?? primaryRow.ceilHi}
-              label={tTypes(`types.${primaryRow.key}`)}
-              roleLabel={t("profile.scouting.naturalRolesLabel")}
-              extra={naturalSecondaryRow && (
-                <div className="mt-3" data-testid="scouting-natural-secondary">
-                  <TypeRow typeKey={naturalSecondaryRow.key} now={naturalSecondaryRow.now}
-                    progLo={naturalSecondaryRow.progLo ?? naturalSecondaryRow.ceilLo}
-                    progHi={naturalSecondaryRow.progHi ?? naturalSecondaryRow.ceilHi}
-                    label={tTypes(`types.${naturalSecondaryRow.key}`)} />
-                </div>
-              )}
-              progressionLabel={t("profile.scouting.primaryProgressionLabel")}
-            />
-          )}
-          {primaryRow && secondaryRows.length > 0 && (
-            <span className="block font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3 mb-2">
-              {t("profile.scouting.otherRolesNaturalLabel")}
-            </span>
-          )}
-          {primaryRow && secondaryRows.length > 0 && (
-            <p className="text-cz-3 text-3xs mt-0 mb-2">{t("profile.scouting.otherRolesNote")}</p>
-          )}
-          <div className="space-y-2">
-            {secondaryRows.map((row) => (
-              <TypeRow key={row.key} typeKey={row.key} now={row.now}
-                progLo={row.progLo ?? row.ceilLo} progHi={row.progHi ?? row.ceilHi}
-                label={tTypes(`types.${row.key}`)} />
-            ))}
-          </div>
-          <p className="text-cz-3 text-3xs mt-3 mb-0">
-            {t("profile.scouting.typesLegendNoLoft")}
-          </p>
-          {/* #3334: den forklaring der var savnet i nosyaras sag — hvorfor
-              båndet kan se anderledes ud fra én visning til den næste, og at
-              rytterens egne evner aldrig er berørt af det. */}
-          <p className="text-cz-3 text-3xs mt-1.5 mb-0">{t("profile.scouting.recalcNote")}</p>
-          {/* #3671: hvad køber det næste scout-niveau egentlig? Knappen har hidtil
-              lovet at scouting "snævrer estimatet ind" og taget 1.000 CZ$, uden at
-              kunne vide om spillerens chefscout kan levere en indsnævring. Med det
-              gamle absolutte gulv var svaret for 150 af 203 menneskehold: nul.
-              Linjen siger nu tallet højt — og ved loftet siger den hvad der ER
-              vejen frem (en bedre chefscout), i stedet for at tie. */}
-          {precision && <PrecisionNote precision={precision} t={t} lang={i18n.language} />}
-        </SectionCard>
-      )}
+      <RolePrognosis types={types} primaryKey={primaryKey} secondaryKey={rider?.secondary_type}>
+        <p className="text-cz-3 text-3xs mt-1.5 mb-0">{t("profile.scouting.recalcNote")}</p>
+        {precision && <PrecisionNote precision={precision} t={t} lang={i18n.language} />}
+      </RolePrognosis>
 
       {report.capsMissing && (
         <SectionCard>

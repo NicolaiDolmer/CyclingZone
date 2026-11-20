@@ -41,7 +41,7 @@
   },
   "level": {
     "easy": "Easy",
-    "medium": "Medium",
+    "medium": "Normal",
     "hard": "Hard",
     "aria": "Effort for {name}"
   },
@@ -59,6 +59,8 @@
     "notForRole": "Not for this role.",
     "noSprintCaptain": "Your team has no sprint captain.",
     "trainAfterBreak": "A rider in the break can't lead out the sprint.",
+    "quickNoOpeningTask": "The plan starts with a finishing task.",
+    "quickInvalidPlan": "This choice would make the stage plan invalid.",
     "trainSelf": "He is the sprinter.",
     "noRoadOrders": "No road orders in a time trial.",
     "followTeam": "Follow team plan"

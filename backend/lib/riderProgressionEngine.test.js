@@ -10,7 +10,7 @@ import {
   willRetireAtSeasonStart,
 } from "./riderProgressionEngine.js";
 import {
-  PROGRESSION_CONFIG, AGING_V2_DECLINING_ABILITIES, developRiderSeasonV2, buildCapsForRider,
+  PROGRESSION_CONFIG, AGING_V2_CONFIG, AGING_V2_DECLINING_ABILITIES, developRiderSeasonV2, buildCapsForRider,
 } from "./riderProgression.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
@@ -19,7 +19,9 @@ import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 // belastningen eller loader-stien.
 function developRidersForSeason(args) {
   const injectsLoad = "seasonLoadByRider" in args || "loadSeasonDevelopmentLoadFn" in args;
-  return developRidersForSeasonEngine(injectsLoad ? args : { seasonLoadByRider: new Map(), ...args });
+  // #6110 (19/11): XP-kontakten læses ikke i mock'en; dagens aldring er default.
+  const withAging = "loadAgingCfgFn" in args ? args : { loadAgingCfgFn: async () => null, ...args };
+  return developRidersForSeasonEngine(injectsLoad ? withAging : { seasonLoadByRider: new Map(), ...withAging });
 }
 
 // ── Minimal in-memory Supabase-mock (kun det engine'n bruger) ──────────────────
@@ -505,6 +507,44 @@ test("#6499: managerrytter i faldalderen falder ved skiftet (tilbagegangen gæld
   const summary = await developRidersForSeason({ supabase: createMockSupabase(state), seasonId: "s2", seasonNumber: 2 });
   assert.equal(summary.declined, 1);
   assert.ok(state.rider_derived_abilities[0].sprint < 80, "evne falder for veteranen");
+});
+
+test("#6110 ejervalg 19/11: XP-aldringen bruges kun, når loaderen giver en cfg (kontakt + talfil)", async () => {
+  // sæson 2 → alder = 2027 − 1999 = 28: dagens plateau (til og med 30) giver intet fald.
+  const seed = () => seedStateWithTeams({
+    riders: [{ id: "r1", primary_type: "sprinter", potentiale: 5, birthdate: "1999-01-01", base_value: 200000, is_u25: false, is_retired: false, team_id: "human-1", firstname: "Midt", lastname: "Rytter" }],
+    abilities: [{ rider_id: "r1", sprint: 80, acceleration: 75, ability_caps: null }],
+    teams: ALL_TEAM_KINDS,
+  });
+  const off = seed();
+  const summaryOff = await developRidersForSeason({ supabase: createMockSupabase(off), seasonId: "s2", seasonNumber: 2 });
+  assert.equal(summaryOff.aging_v2.rule, "v2");
+  assert.equal(off.rider_derived_abilities[0].sprint, 80, "dagens aldring: intet fald ved 28");
+
+  const cfg = Object.freeze({ ...AGING_V2_CONFIG, plateauThroughAge: 26, declineByYearsPastPlateau: [{ maxYears: 99, drop: 2 }] });
+  const calls = [];
+  const on = seed();
+  const summaryOn = await developRidersForSeason({
+    supabase: createMockSupabase(on), seasonId: "s2", seasonNumber: 2,
+    loadAgingCfgFn: async (args) => { calls.push(args); return cfg; },
+  });
+  assert.equal(calls.length, 1, "kontakten læses én gang pr. skifte");
+  assert.equal(summaryOn.aging_v2.rule, "xp");
+  assert.ok(on.rider_derived_abilities[0].sprint < 80, "XP-aldringen: fald ved 28");
+});
+
+test("#6110: fejler læsningen af XP-kontakten, kaster skiftet før noget skrives", async () => {
+  const state = seedStateWithTeams({
+    riders: [{ id: "r1", primary_type: "sprinter", potentiale: 5, birthdate: "1993-01-01", base_value: 200000, is_u25: false, is_retired: false, team_id: "human-1", firstname: "Gml", lastname: "Rytter" }],
+    abilities: [{ rider_id: "r1", sprint: 80, acceleration: 75, ability_caps: null }],
+    teams: ALL_TEAM_KINDS,
+  });
+  await assert.rejects(developRidersForSeason({
+    supabase: createMockSupabase(state), seasonId: "s2", seasonNumber: 2,
+    loadAgingCfgFn: async () => { throw new Error("app_config nede"); },
+  }), /app_config nede/);
+  assert.equal(state.rider_derived_abilities[0].sprint, 80, "intet skrevet");
+  assert.equal((state.rider_development_log ?? []).length, 0);
 });
 
 test("#6499: anden kørsel skipper allerede-udviklede og muterer intet", async () => {

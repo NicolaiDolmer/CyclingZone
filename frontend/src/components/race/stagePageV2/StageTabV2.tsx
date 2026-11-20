@@ -138,7 +138,8 @@ export default function StageTabV2({
   const riders = useMemo(() => (stageRoles ? stageRoles.riders ?? [] : []), [stageRoles]);
   const overrides = stageRoles ? stageRoles.overrides ?? [] : [];
   const lineup = lineupFor(riders, overrides, stageNumber);
-  const favourites = favouritesFor(results, stagePointRows, stageNumber, myTeamId, stagesCompleted, profileByStage);
+  const spoiler = useSpoilerStory();
+  const favourites = favouritesFor(results, stagePointRows, stageNumber, myTeamId, stagesCompleted, profileByStage, undefined, spoiler.isStageHidden);
   const fitById = new Map(lineup.map((r) => [r.riderId, r.fit]));
   const demands = dayDemands(profile?.demand_vector);
   const climbIndex = Math.min(selectedClimb, Math.max(0, climbs.length - 1));
@@ -148,7 +149,6 @@ export default function StageTabV2({
   const ownOut = useMemo(() => ownOutSentences(outRows, myTeamId, cast), [outRows, myTeamId, cast]);
   const weather = stageWeather(profile, phase, story);
   const whyEnabled = useRiderWhyEnabled(phase === "after");
-  const spoiler = useSpoilerStory(); // #7859: "Din dag" venter i Resultater, til etapen er åbnet
   const ranAt = narrative?.ranAt;
   const routeFits = useMemo(() => routeFitsAtRaceTime(new Map<string, number | null>(riders.map((r) => [r.rider_id, stageRouteMatch(r, stageNumber)])), ranAt, nowMs), [riders, stageNumber, ranAt, nowMs]);
   const why = useMemo<RowWhy | null>(() => (whyEnabled && !storyError ? {

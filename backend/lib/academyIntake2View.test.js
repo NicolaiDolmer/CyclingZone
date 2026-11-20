@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { buildIntake2View, displaySafeAbilities, maskPullCandidate, rosterPrognosis } from "./academyIntake2View.ts";
 import { KNOWLEDGE_DAYS } from "./academyProspectKnowledge.ts";
 import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
+import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
 
 test("maskPullCandidate: intet potentiale forlader serveren for en hentet kandidat (punkt 1)", () => {
   const item = { source: "pull", is_serious: true, potentialEstimate: { lo: 2, hi: 3 }, potentialBand: { prog: { lo: 40, hi: 60 } } };
@@ -96,6 +97,33 @@ const base = {
   scout: null,
 };
 
+test("#8400: the academy roster response contains one display band at final knowledge", async () => {
+  const supabase = createFakeSupabase({
+    app_config: [{ key: "development_xp_model", value: "off" }],
+    riders: [{ ...base.potRow, id: base.rider.id }],
+    rider_derived_abilities: [abilities],
+    team_staff: [],
+    team_facilities: [],
+    scout_actions: [],
+    scout_assignments: [],
+    academy_intake_profiles: [],
+    rider_training_days: [],
+    training_date_rider_days: [],
+    academy_intake: [],
+  });
+  const view = await buildIntake2View(supabase, {
+    teamId: base.teamId,
+    roster: [base.rider],
+    intake: [],
+    seasonNumber: base.seasonNumber,
+    now: new Date("2026-11-19T12:00:00Z"),
+  });
+  const { prognosis } = view.roster[0];
+  assert.equal(prognosis.stage, "final");
+  assert.ok(prognosis.band);
+  assert.equal("types" in prognosis, false);
+});
+
 test("rosterPrognosis: intet baand foer de foerste traeningsloebsdage", () => {
   const p = rosterPrognosis({ ...base, daysOnTeam: 3 });
   assert.equal(p.stage, "learning");
@@ -116,4 +144,23 @@ test("rosterPrognosis: baandet snaevrer ind med traeningsloebsdage paa holdet", 
 test("#6853 rosterPrognosis: viser rollen med hoejest potentiale og maerker baandet", () => {
   const p = rosterPrognosis({ ...base, daysOnTeam: KNOWLEDGE_DAYS.final });
   assert.equal(p.band.bestRole, true);
+});
+
+test("#8400: only final knowledge exposes the eight report rows and preserves the display band", () => {
+  for (const daysOnTeam of [0, KNOWLEDGE_DAYS.broad, KNOWLEDGE_DAYS.final - 1]) {
+    const prognosis = rosterPrognosis({ ...base, daysOnTeam });
+    assert.equal(prognosis.types, undefined);
+  }
+
+  const final = rosterPrognosis({ ...base, daysOnTeam: KNOWLEDGE_DAYS.final });
+  assert.deepEqual(final.types.map((row) => row.key).sort(), [
+    "baroudeur", "brostensrytter", "climber", "gc", "puncheur", "rouleur", "sprinter", "tt",
+  ]);
+  for (const row of final.types) {
+    assert.deepEqual(Object.keys(row).sort(), ["key", "now", "progHi", "progLo"]);
+    assert.ok([row.now, row.progLo, row.progHi].every(Number.isFinite));
+  }
+  const selected = final.types.find(({ key }) => key === final.band.role);
+  assert.equal(selected.progLo, final.band.lo);
+  assert.equal(selected.progHi, final.band.hi);
 });

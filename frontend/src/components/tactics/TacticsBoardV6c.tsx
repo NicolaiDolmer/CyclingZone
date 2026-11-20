@@ -11,10 +11,11 @@ import TacticsPhoneBoard from "./mobile/TacticsPhoneBoard.tsx"; // #8386
 import RiderChampionJersey from "../rider/ChampionJersey.tsx";
 import RiderTalentMark from "../rider/TalentMark.tsx";
 import type { DayLoad, EffortLevel, RoutePartLabel, TodayLine } from "./tacticsV6cModel.ts";
-import type { StagePlanTask } from "../race/StagePlanModel.ts";
+import { QUICK_TASK, type QuickEffort } from "./quickEffort8356.ts";
+import type { StagePlanRole, StagePlanTask } from "../race/StagePlanModel.ts";
 import { taskCostWord, type TaskCostWord } from "../race/tacticsReady7864.ts";
 
-type TFn = (key: string, opts?: Record<string, unknown>) => string;
+type TFn = { (key: string): string; (key: string, opts: Record<string, unknown>): string };
 
 export type BoardToday = TodayLine | { key: "effort"; effort: string } | { key: "roleDefault" } | { key: "abandoned"; text: string };
 
@@ -34,9 +35,10 @@ export interface BoardRider {
   fatigue: number | null;
   routeMatch: number | null;
   timeLimitMark: ReactNode | null;
-  today: BoardToday;
+  today: readonly BoardToday[];
   level: EffortLevel | null;
   levelEditable: boolean;
+  quickEffort?: { role: StagePlanRole; value: QuickEffort | null; errors: Record<string, string | null> };
   /** Låst etape / udgået: teksten i stedet for vælgeren. */
   levelText: string | null;
   parts: Array<{ task: StagePlanTask; options: StagePlanTask[]; editable: boolean }> | null;
@@ -63,6 +65,8 @@ export interface TacticsBoardV6cProps {
   costLabel: (cost: TaskCostWord) => string;
   onRole: (id: string) => void;
   onLevel: (id: string, level: EffortLevel) => void;
+  onQuickEffort: (id: string, effort: QuickEffort) => void;
+  normalEffortLabel: string;
   onPart: (id: string, index: number, task: StagePlanTask) => void;
   onStep: (id: string, step: string) => void;
   onExtra: (id: string, key: "tryBreak" | "sprintTrain") => void;
@@ -70,13 +74,16 @@ export interface TacticsBoardV6cProps {
   onFollowTeam: (id: string) => void;
 }
 
+const QUICK_STEPS = ["save", "normal", "protect"] as const;
+const quickEffortFor = (step: string): QuickEffort => step === "save" ? "easy" : step === "protect" ? "hard" : "normal";
+
 const shortName = (name: string | null) => {
   if (!name) return "—";
   const parts = name.trim().split(/\s+/);
   return parts.length > 1 ? `${parts[0][0]}. ${parts.slice(1).join(" ")}` : name;
 };
 
-export default function TacticsBoardV6c({ riders, partLabels, allOrders, summary, taskLabel, costLabel, onRole, onLevel, onPart, onStep, onExtra, onLock, onFollowTeam }: TacticsBoardV6cProps) {
+export default function TacticsBoardV6c({ riders, partLabels, allOrders, summary, taskLabel, costLabel, onRole, onLevel, onQuickEffort, normalEffortLabel, onPart, onStep, onExtra, onLock, onFollowTeam }: TacticsBoardV6cProps) {
   const { t } = useTranslation("tactics") as unknown as { t: TFn };
   const report = useV6TacticsSummary();
   const summaryStage = summary?.stage ?? null;
@@ -91,16 +98,37 @@ export default function TacticsBoardV6c({ riders, partLabels, allOrders, summary
     switch (today.key) {
       case "abandoned": return today.text;
       case "effort": return t(`today.effort.${today.effort}`);
-      case "attack": return today.climb ? t("today.attack", { climb: today.climb }) : t("today.attackFinale");
+      case "attack": return t("today.attack", { climb: today.climb });
+      case "attackUnspecified": return t("short.attack");
       case "shelterLeader": return today.leader ? t("today.shelterLeader", { leader: today.leader }) : t("today.shelterLeaderNone");
       default: return t(`today.${today.key}`);
     }
   };
 
   const rows: TacticsRiderRow[] = riders.map((r) => {
+    const quick = r.quickEffort;
     const level = (fill: boolean) => (r.levelText != null
       ? <span className="text-xs text-cz-2">{r.levelText}</span>
-      : (
+      : quick ? (
+        <EffortSegmented
+          label={t("level.aria", { name: r.name || "—" })}
+          steps={QUICK_STEPS}
+          value={QUICK_STEPS.find(step => quickEffortFor(step) === quick.value) ?? null}
+          labelFor={(step) => step === "normal" ? normalEffortLabel : t("level." + quickEffortFor(step))}
+          describeFor={(step) => taskLabel(QUICK_TASK[quick.role][quickEffortFor(step)])}
+          blockedReason={(step) => {
+            const error = quick.errors[quickEffortFor(step)];
+            if (!error) return null;
+            if (error === "stage_plan_train_after_breakaway") return t("orders.trainAfterBreak");
+            if (error === "stage_plan_terminal_not_last") return t("orders.quickNoOpeningTask");
+            if (error === "stage_plan_task_not_for_role") return t("orders.notForRole");
+            return t("orders.quickInvalidPlan");
+          }}
+          disabled={!r.levelEditable}
+          onPick={(step) => onQuickEffort(r.id, quickEffortFor(step))}
+          fill={fill}
+        />
+      ) : (
         <LevelSegmented
           label={t("level.aria", { name: r.name || "—" })}
           value={r.level}
@@ -125,7 +153,7 @@ export default function TacticsBoardV6c({ riders, partLabels, allOrders, summary
       fatigue: r.fatigue,
       routeMatch: r.routeMatch,
       timeLimitMark: r.timeLimitMark,
-      today: todayText(r.today),
+      today: r.today.map(todayText).join(" · "),
       effort: level(false),
       effortMobile: level(true),
       parts: r.parts?.map((part, index) => {

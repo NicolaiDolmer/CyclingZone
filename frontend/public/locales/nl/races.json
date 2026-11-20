@@ -4,11 +4,11 @@
       "results": "Uitslagen",
       "stage": "Etappe",
       "story": "Verhaal",
-      "standings": "Klassementen",
       "tactics": "Tactiek",
       "team": "Ploeg",
       "start": "Startlijst"
     },
+    "mode": { "aria": "Etappeweergave", "story": "Verhaal · film en verslag", "results": "Uitslagen · volledige lijst" },
     "hero": {
       "stageLocks": "Etappe {number} sluit om {time} · {countdown}",
       "locks": "Sluit om {time} · {countdown}",
@@ -27,6 +27,7 @@
       "aria": "Parcours van de etappe",
       "km": "{km} km",
       "gain": "{gain} m klimmen",
+      "elevation": "{gain} m",
       "climbs": "{count, plural, one {# klim} other {# klimmen}}",
       "hide": "Parcours verbergen",
       "show": "Parcours tonen",
@@ -137,7 +138,11 @@
     "effortNote": "De inspanning volgt de taak.",
     "huntOption": "{task} · {price}",
     "price": { "hard": "Zwaar" },
-    "huntNote": "Puntenjacht: hij rijdt om de tussensprints of klimmen op zijn stuk vanuit de groep waarin hij zit. Een vlucht vooruit pakt de punten nog steeds eerst. De taak wordt hard gereden en telt mee in zijn vermoeidheid.",
+    "huntNote": "Puntenjacht in de sprints: hij rijdt om de tussensprints op zijn stuk vanuit de groep waarin hij zit. Een vlucht vooruit pakt de punten nog steeds eerst. Sprints die hij alleen door de taak rijdt, tellen een beetje mee in zijn vermoeidheid.",
+    "huntNoteKom": "Bergpunten tellen alleen in een ontsnapping, nooit vanuit het peloton.",
+    "huntNoteEnds": "Met een stap 'als hij gegrepen is' rijdt hij die stap als hij de vlucht mist of gegrepen wordt. Zit hij later in een nieuwe vlucht, dan rijdt hij daar nog steeds voor de punten.",
+    "huntChoice": { "hunt_points": "Mee in de vlucht + punten pakken in de sprints", "hunt_kom": "Mee in de vlucht + bergpunten pakken" },
+    "huntPrice": { "sprint": "{price}, plus een beetje per sprint", "kom": "{price}, plus een beetje per klim" },
 
     "huntOffNote": "Puntenjacht staat uit in deze koers, dus hij rijdt op dat deel van het plan uit de wind.",
     "rulesNote": "De vlucht kan alleen de eerste taak zijn. Gruppetto, binnenrijden en de sprinttrein komen altijd als laatste.",
@@ -353,7 +358,7 @@
         "incident": "{name} {kind, select, crash {valt} mechanical {heeft pech} other {heeft een incident}}{outcome, select, abandoned { en geeft op} loss { en verliest {loss}} other {}}",
         "climb": "Top van {name}",
         "climbFirst": "{rider} als eerste over {name}",
-        "gap": "De voorsprong op {group, select, rest {het peloton} other {de achtervolgers}} {dir, select, grew {groeit} other {krimpt}} van {before} naar {after}",
+        "gap": "{front, select, break {De kopgroep} other {De voorste groep}} heeft nu {after} voorsprong op {group, select, rest {het peloton} other {de achtervolgers}}",
         "split": "{count, plural, one {Een groep splitst af} other {# groepen splitsen af}}",
         "dropped": "{count, plural, one {{names} moet lossen uit de ontsnapping} other {{names} moeten lossen uit de ontsnapping}}",
         "formedAhead": "{count, plural, one {# renner rijdt weg voor het peloton} other {# renners rijden weg voor het peloton}}",
@@ -1244,7 +1249,8 @@
 
       "stage_plan_hunt_no_climb": "Voor bergpunten is een gecategoriseerde klim op zijn stuk nodig. Kies een andere taak of verplaats de wissel.",
 
-      "stage_plan_hunt_after_dropped": "Een gelost renner kan niet voor punten rijden. Kies een andere taak voor die stap."
+      "stage_plan_hunt_after_dropped": "Een gelost renner kan niet voor punten rijden. Kies een andere taak voor die stap.",
+      "stage_plan_hunt_needs_breakaway": "Puntenjacht met de vlucht kan alleen op de vluchtstap, de eerste. Kies een regel 'Mee in de vlucht +' en sla opnieuw op."
     }
   },
   "tacticsOrders": {

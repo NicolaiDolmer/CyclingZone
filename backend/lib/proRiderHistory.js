@@ -38,12 +38,24 @@ import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
 // mergeDevelopmentSnapshots() i riderDevelopmentReceipt.js.
 const SOURCE_PRIORITY = { baseline: 1, season_transition: 2, daily_training: 3, race_development: 3 };
 
-// #6286: deterministisk raekkefoelge: dato, saa kilde-prioritet, saa loebsdag
-// (kalenderraekken, game_day -1, foer datoens loebsdage), saa kildenavn og id som
-// sidste tie-break, saa vinderen aldrig afhaenger af databasens raekkefoelge.
+// #7982: en loebssession kan gemme en senere loebsdag FOER datoens tidligere sessioner,
+// saa det senest GEMTE loebsdags-billede er datoens slut-tilstand (samme regel som
+// savedLater i riderDevelopmentReceipt.js). Kun mellem to loebsdags-raekker (begge har
+// game_day og created_at); kalenderraekken har ingen game_day og sorteres foer dem som foer.
+// Gemt i samme transaktion (samme created_at): loebsdagen afgoer som foer.
+function savedOrder(a, b) {
+  if (a.game_day == null || b.game_day == null || !a.created_at || !b.created_at) return 0;
+  return Math.sign(Date.parse(a.created_at) - Date.parse(b.created_at)) || 0;
+}
+
+// #6286: deterministisk raekkefoelge: dato, saa kilde-prioritet, saa gemmetidspunkt
+// mellem loebsdags-raekker (#7982), saa loebsdag (kalenderraekken, game_day -1, foer
+// datoens loebsdage), saa kildenavn og id som sidste tie-break, saa vinderen aldrig
+// afhaenger af databasens raekkefoelge.
 export function compareHistoryRows(a, b) {
   return String(a.snapshot_date).localeCompare(String(b.snapshot_date))
     || (SOURCE_PRIORITY[a.source] ?? 0) - (SOURCE_PRIORITY[b.source] ?? 0)
+    || savedOrder(a, b)
     || (a.game_day ?? -1) - (b.game_day ?? -1)
     || String(a.source ?? "").localeCompare(String(b.source ?? ""))
     || String(a.id ?? "").localeCompare(String(b.id ?? ""));

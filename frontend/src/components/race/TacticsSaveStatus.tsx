@@ -9,7 +9,7 @@
 import { Button, CheckIcon, XIcon } from "../ui/index.js";
 import type { PartState } from "../../lib/tacticsSaveFlow.ts";
 
-type TFn = (key: string, opts?: Record<string, unknown>) => string;
+type TFn = { (key: string): string; (key: string, opts: Record<string, unknown>): string };
 
 const PART_KEYS = [
   ["roles", "racePage.tactics.saveStatus.roles"],

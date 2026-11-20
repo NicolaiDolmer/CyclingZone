@@ -40,11 +40,12 @@ export type RosterPrognosis = {
   stage: KnowledgeStageKey;
   daysOnTeam: number;
   nextStageDays: number | null;
+  types?: Pick<ReturnType<typeof buildTypePrognosisBands>[number], "key" | "now" | "progLo" | "progHi">[];
   band: { role: string; lo: number; hi: number | null; bestRole?: true } | null;
 };
 export type Intake2View = {
   intake: IntakeItem[];
-  roster: (RosterRider & { prognosis: RosterPrognosis })[];
+  roster: (RosterRider & { prognosis: Omit<RosterPrognosis, "types"> })[];
   profile: {
     tier: number;
     candidatesPerWeek: number;
@@ -119,6 +120,9 @@ export function rosterPrognosis({ rider, abilities, potRow, daysOnTeam, speed, s
     // Samme grund: defaulten null giver parametertypen null; params gives videre uaendret.
     developmentXp: developmentXp as Parameters<typeof buildTypePrognosisBands>[0]["developmentXp"],
   });
+  if (stage.stage === "final") {
+    out.types = bands.map(({ key, now, progLo, progHi }) => ({ key, now, progLo, progHi }));
+  }
   // #6853: samme rolle-regel som alle andre flader (potentialDisplayBand.js).
   const band = displayPotentialBand(bands, potRow.primary_type) as
     { key: string; progLo: number | null; progHi: number | null } | null;
@@ -164,9 +168,8 @@ export async function buildIntake2View(supabase: Db, { teamId, roster, intake, s
 
   return {
     intake: (intake ?? []).map((item) => maskPullCandidate(item, abById.get(item?.riderId ?? item?.rider?.id))),
-    roster: (roster ?? []).map((rider) => ({
-      ...rider,
-      prognosis: rosterPrognosis({
+    roster: (roster ?? []).map((rider) => {
+      const { stage, daysOnTeam, nextStageDays, band } = rosterPrognosis({
         rider,
         abilities: abById.get(rider.id),
         potRow: potById.get(rider.id),
@@ -177,8 +180,9 @@ export async function buildIntake2View(supabase: Db, { teamId, roster, intake, s
         teamId,
         scout,
         developmentXp,
-      }),
-    })),
+      });
+      return { ...rider, prognosis: { stage, daysOnTeam, nextStageDays, band } };
+    }),
     profile: {
       tier: profileState.tier,
       candidatesPerWeek: profileState.rules.candidates,

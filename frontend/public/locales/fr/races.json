@@ -4,11 +4,11 @@
       "results": "Résultats",
       "stage": "Étape",
       "story": "Récit",
-      "standings": "Classements",
       "tactics": "Tactique",
       "team": "Équipe",
       "start": "Liste de départ"
     },
+    "mode": { "aria": "Vue de l'étape", "story": "Récit · film et compte rendu", "results": "Résultats · liste complète" },
     "hero": {
       "stageLocks": "L'étape {number} se verrouille à {time} · {countdown}",
       "locks": "Se verrouille à {time} · {countdown}",
@@ -27,6 +27,7 @@
       "aria": "Parcours de l'étape",
       "km": "{km} km",
       "gain": "{gain} m de dénivelé",
+      "elevation": "{gain} m",
       "climbs": "{count, plural, one {# montée} other {# montées}}",
       "hide": "Masquer le parcours",
       "show": "Afficher le parcours",
@@ -137,7 +138,11 @@
     "effortNote": "L'effort suit la tâche.",
     "huntOption": "{task} · {price}",
     "price": { "hard": "Dure" },
-    "huntNote": "Chasse aux points : il dispute les sprints ou les côtes de son tronçon depuis le groupe où il se trouve. Une échappée devant prend toujours les points en premier. La tâche se court dur et compte dans sa fatigue.",
+    "huntNote": "Chasse aux points des sprints : il dispute les sprints intermédiaires de son tronçon depuis le groupe où il se trouve. Une échappée devant prend toujours les points en premier. Les sprints qu'il dispute seulement à cause de la tâche ajoutent un peu à sa fatigue.",
+    "huntNoteKom": "Points de la montagne : seulement en échappée.",
+    "huntNoteEnds": "Avec une étape 'quand il est repris', il suit cette étape s'il rate l'échappée ou est repris. S'il entre dans une échappée plus tard, il chasse encore les points là-bas.",
+    "huntChoice": { "hunt_points": "Prendre l'échappée + points des sprints", "hunt_kom": "Prendre l'échappée + points de la montagne" },
+    "huntPrice": { "sprint": "{price} + un peu par sprint", "kom": "{price} + un peu par côte" },
 
     "huntOffNote": "La chasse aux points est désactivée sur cette course, il roule donc à l’abri sur cette partie du plan.",
     "rulesNote": "L'échappée ne peut être que la première tâche. Le gruppetto, rentrer et le train de sprint viennent toujours en dernier.",
@@ -353,7 +358,7 @@
         "incident": "{name} {kind, select, crash {chute} mechanical {a un souci mécanique} other {a un incident}}{outcome, select, abandoned { et abandonne} loss { et perd {loss}} other {}}",
         "climb": "Sommet de {name}",
         "climbFirst": "{rider} en tête au sommet de {name}",
-        "gap": "L'écart avec {group, select, rest {le peloton} other {les poursuivants}} {dir, select, grew {augmente} other {diminue}} de {before} à {after}",
+        "gap": "{front, select, break {L'échappée a} other {Le groupe de tête a}} maintenant {after} d'avance sur {group, select, rest {le peloton} other {les poursuivants}}",
         "split": "{count, plural, one {Un groupe se détache} other {# groupes se détachent}}",
         "dropped": "{count, plural, one {{names} est lâché de l'échappée} other {{names} sont lâchés de l'échappée}}",
         "formedAhead": "{count, plural, one {# coureur s'échappe devant le peloton} other {# coureurs s'échappent devant le peloton}}",
@@ -1244,7 +1249,8 @@
 
       "stage_plan_hunt_no_climb": "Aller chercher les points de la montagne exige une côte catégorisée sur son secteur. Choisis une autre tâche ou déplace le changement.",
 
-      "stage_plan_hunt_after_dropped": "Un coureur lâché ne peut pas aller chercher des points. Choisis une autre tâche pour cette étape du plan."
+      "stage_plan_hunt_after_dropped": "Un coureur lâché ne peut pas aller chercher des points. Choisis une autre tâche pour cette étape du plan.",
+      "stage_plan_hunt_needs_breakaway": "La chasse aux points avec l'échappée n'existe que sur l'étape de l'échappée, la première. Choisis une ligne 'Prendre l'échappée +' et enregistre à nouveau."
     }
   },
   "tacticsOrders": {

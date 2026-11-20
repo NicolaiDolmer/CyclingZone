@@ -206,6 +206,11 @@ export const KNOWN_EVENTS = Object.freeze([
   // klikke sig ind på Discord-invitationen. Måler konvertering fra
   // velkomstbeskeden i indbakken.
   "discord_invite_clicked",
+  // table_control_used (#8280, TASTE P21) — fyrer første gang en spiller bruger en
+  // kontrol i en tabels titellinje (et valg, filter-arket, kolonne-knappen, søg).
+  // Bærer KUN {page, control[, item]}: aldrig søgetekst eller filterværdier. Bruges
+  // til at vælge standardfiltre og standardkolonner ud fra faktisk brug.
+  "table_control_used",
 ]);
 
 // #4321: spejl eventet til PostHog. Postgres-skrivningen nedenfor er og bliver

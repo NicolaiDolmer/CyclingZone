@@ -65,7 +65,7 @@
     "restored": "Je niet-opgeslagen wijzigingen zijn hersteld.",
     "saveTactics": "Tactiek opslaan",
     "savePeaks": "{count, plural, =0 {Toepassen op selectie} other {Toepassen op selectie (#)}}",
-    "saveSquadAndTactics": "Ploeg opslaan en tactiek zetten"
+    "saveSquadAndTactics": "Ploeg en tactiek opslaan"
   },
   "copy": {
     "title": "Selectie kopiëren van",
@@ -217,7 +217,7 @@
       "title": "Sla eerst een ploeg op",
       "description": "De tactiek geldt voor de renners in de opgeslagen ploeg."
     },
-    "squadUnsaved": "De ploeg heeft niet-opgeslagen wijzigingen. \"Ploeg opslaan en tactiek zetten\" slaat haar op en toont de tactiek.",
+    "squadUnsaved": "De ploeg heeft niet-opgeslagen wijzigingen. \"Ploeg en tactiek opslaan\" slaat haar op en toont de tactiek.",
     "shared": "Dezelfde tactiek als op de koerspagina: een plan dat je hier opslaat, staat daar ook, en andersom.",
     "saveInTab": "Je hebt niet-opgeslagen tactiek. Sla die eerst op met \"Tactiek opslaan\".",
     "saveFirst": "Je hebt niet-opgeslagen tactiek. Sla die op met \"Tactiek opslaan\" voordat je de ploeg opslaat, anders gaat ze verloren."

@@ -317,6 +317,8 @@ funktioner og runtime-kontrakter er uændrede.
 | Der er allerede en byder | `current_price + 1` CZ$ |
 | Ingen har budt endnu (udbudspris på egen-rytter-salg) | `current_price` (match tilladt) |
 
+På auktionslisten og i mobilkortet vises prisforskellen fra den estimerede markedsværdi først, når auktionen har en registreret byder (`current_bidder_id`). Markedsestimatet kan stadig vises som en selvstændig værdi.
+
 **`auctions.min_increment` er dekorativ.** Kolonnen skrives fra request-body med default 1
 (`api.js:6229, 6516`), men `getMinimumAuctionBid` bruger et hardkodet `+1` og læser aldrig
 kolonnen. Målt 30/8: **alle 4.483 rækker har `min_increment = 1`** - så divergensen har
@@ -751,7 +753,7 @@ Sweepen findes fordi flushen kun kaldes fra ét sted: Vasco Fernandes stod parke
 22/6→4/8 (over 40 dage) med en betalt, aldrig-leveret handel, og spilleren rapporterede det
 selv i Discord (#3330, `deferredTransferHealSweep.js:1-22`).
 
-### 10.1 Frigivelse midt i et etapeløb venter (#8153, bag kontakten `release_defer_8153`, slukket)
+### 10.1 Frigivelse midt i et etapeløb venter (#8153, bag kontakten `release_defer_8153`, tændt for alle 19/11)
 
 Slukket (seed `off`; kun `on` tænder, `beta` tæller som slukket) frigives en rytter straks som i dag. Tændt: fyrer holdet en seniorrytter, der kører et aktivt etapeløb (samme afgrænsning som tabellen ovenfor, og holdet er ikke afmeldt løbet), bestilles frigivelsen i stedet. Rytteren kører løbet færdigt og forlader holdet efter sidste etape.
 

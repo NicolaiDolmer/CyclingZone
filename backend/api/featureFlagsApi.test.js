@@ -139,6 +139,7 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
     academy_page_v2_8081: false,
+    jersey_hunt_7855: false, // #7855
 
     development_v2_aging_enabled: false,
 
@@ -161,12 +162,14 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     spoiler_shield_7859: false,
     talent_marks_7879: false,
     rider_hover_card: false,
+    patch_notes_v2_8049: false, // #8049
     day_words_7725: false,
     fatigue_now_7801: false,
     planning_workbench: false,
     training_train_now_instant: false,
     training_train_now_bonus: false, // #7741
     sale_escrow_enabled: false, // #6181
+    development_xp_model: false, // #6110 Hjaelp (binaert)
   });
   assert.equal(f.betaLookups(), 0, "en anonym forespoergsel maa ikke slaa en bruger op");
 });
@@ -217,6 +220,7 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
     academy_page_v2_8081: false,
+    jersey_hunt_7855: false, // #7855
 
     development_v2_aging_enabled: false,
 
@@ -239,12 +243,14 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
     spoiler_shield_7859: false,
     talent_marks_7879: false,
     rider_hover_card: false,
+    patch_notes_v2_8049: false, // #8049
     day_words_7725: false,
     fatigue_now_7801: false,
     planning_workbench: false,
     training_train_now_instant: false,
     training_train_now_bonus: false, // #7741
     sale_escrow_enabled: false, // #6181
+    development_xp_model: false, // #6110 Hjaelp (binaert)
   });
 });
 
@@ -303,6 +309,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
     academy_page_v2_8081: false,
+    jersey_hunt_7855: false, // #7855
 
     development_v2_aging_enabled: false,
 
@@ -325,12 +332,14 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     spoiler_shield_7859: false,
     talent_marks_7879: false,
     rider_hover_card: false,
+    patch_notes_v2_8049: false, // #8049
     day_words_7725: false,
     fatigue_now_7801: false,
     planning_workbench: false,
     training_train_now_instant: false,
     training_train_now_bonus: false, // #7741
     sale_escrow_enabled: false, // #6181
+    development_xp_model: false, // #6110 Hjaelp (binaert)
   });
   assert.deepEqual(await readPlayerFeatureFlags(supabase, { isBetaTester: true }), {
     auto_accept_enabled: false,
@@ -350,6 +359,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
     academy_page_v2_8081: false,
+    jersey_hunt_7855: false, // #7855
 
     development_v2_aging_enabled: false,
 
@@ -372,12 +382,14 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     spoiler_shield_7859: false,
     talent_marks_7879: false,
     rider_hover_card: false,
+    patch_notes_v2_8049: false, // #8049
     day_words_7725: false,
     fatigue_now_7801: false,
     planning_workbench: false,
     training_train_now_instant: false,
     training_train_now_bonus: false, // #7741
     sale_escrow_enabled: false, // #6181
+    development_xp_model: false, // #6110 Hjaelp (binaert)
   });
 });
 
@@ -580,4 +592,19 @@ test("#2176: staged auto-accept requires eligible viewer and money transport", a
     const flags = await readPlayerFeatureFlags(fakeSupabase({auto_accept_enabled:"beta",market_commitment_6181:"beta"}),{isBetaTester});
     assert.equal(flags.auto_accept_enabled,isBetaTester);
   }
+});
+
+test("Codex P2 #8376: development_xp_model er kun true, naar motoren faar en XP-model i dag", async () => {
+  const { XP_TEST_PARAMS } = await import("../lib/__fixtures__/developmentXpOffScenarios.js");
+  const START = "2026-12-01";
+  const flag = (rows, today, opts) => readPlayerFeatureFlags(fakeSupabase(rows, opts), { today: () => today }).then((f) => f.development_xp_model);
+  const full = { development_xp_model: "on", development_xp_from_date: START, development_xp_params: XP_TEST_PARAMS };
+  assert.equal(await flag({ development_xp_model: "on" }, START), false, "ingen startdato");
+  assert.equal(await flag(full, "2026-11-30"), false, "dagen foer startdatoen");
+  assert.equal(await flag(full, START), true, "paa startdatoen");
+  assert.equal(await flag(full, "2026-12-02"), true, "efter startdatoen");
+  assert.equal(await flag({ ...full, development_xp_params: undefined }, START), false, "params mangler");
+  assert.equal(await flag({ ...full, development_xp_params: {} }, START), false, "ugyldige params");
+  assert.equal(await flag(full, START, { failKeys: ["development_xp_params"] }), false, "ulaeselig raekke");
+  assert.equal(await flag({ ...full, development_xp_model: "beta" }, START), false, "binaer: beta er off");
 });

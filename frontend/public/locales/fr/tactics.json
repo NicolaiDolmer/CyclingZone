@@ -41,7 +41,7 @@
   },
   "level": {
     "easy": "Facile",
-    "medium": "Moyen",
+    "medium": "Normal",
     "hard": "Dur",
     "aria": "Effort de {name}"
   },
@@ -59,6 +59,8 @@
     "notForRole": "Pas pour ce rôle.",
     "noSprintCaptain": "Ton équipe n'a pas de capitaine de sprint.",
     "trainAfterBreak": "Un coureur dans l'échappée ne peut pas lancer le sprint.",
+    "quickNoOpeningTask": "Le plan commence par une tâche de fin d’étape.",
+    "quickInvalidPlan": "Ce choix rendrait le plan d’étape invalide.",
     "trainSelf": "C'est lui le sprinteur.",
     "noRoadOrders": "Pas de consignes de route en contre-la-montre.",
     "followTeam": "Suivre le plan d'équipe"

@@ -65,19 +65,31 @@ export default function TeamResultsTab({ teamId, isOwnTeam = false }) {
       setLoading(true);
       setError(null);
       try {
+        const legacyQuery = () => supabase
+          .from("race_results")
+          .select("id, rank, result_type, stage_number, points_earned, prize_money, rider_name, rider:rider_id(id, firstname, lastname), race:race_id(id, name, race_type, squad, season:season_id(number))")
+          .eq("team_id", teamId)
+          .order("id", { ascending: true });
+
+        let useLegacy = false;
+        /** @param {number} from @param {number} to */
+        async function readPage(from, to) {
+          if (!useLegacy) {
+            const result = await supabase.rpc("get_team_result_history_page", {
+              p_team_id: teamId,
+              p_offset: from,
+              p_page_size: to - from + 1,
+            }).order("id", { ascending: true });
+            // Frontend deployments can precede the database migration.
+            if (result.error?.code !== "PGRST202") return result;
+            useLegacy = true;
+          }
+          return legacyQuery().range(from, to);
+        }
+
         const [rows, seasonRes] = await Promise.all([
-          // Paginér: PostgREST capper ved 1000 — fetchAllRows' .range()-loop er
-          // OBLIGATORISK her, ikke bare defensiv. Efter #2593 (alle resultater,
-          // ikke kun pointgivende) er >1000 rækker normen for etablerede hold:
-          // prod 18/7 = 73 hold over 1000, max 4.348 rækker. Uden loopet ville
-          // .order("id", asc) stille trunkere til de 1000 ÆLDSTE rækker — dvs.
-          // netop de nyeste resultater (dem dashboard-kortet #2466 linker til)
-          // ville mangle. Stabil .order() er fetchAllRows' kontrakt.
-          fetchAllRows(() => supabase
-            .from("race_results")
-            .select("id, rank, result_type, stage_number, points_earned, prize_money, rider_name, rider:rider_id(id, firstname, lastname), race:race_id(id, name, race_type, squad, season:season_id(number))")
-            .eq("team_id", teamId)
-            .order("id", { ascending: true })),
+          // Keep every page in ID order, including results beyond PostgREST's row cap.
+          fetchAllRows(() => ({ range: readPage })),
           supabase.from("seasons").select("number").eq("status", "active").maybeSingle(),
         ]);
         if (cancelled) return;

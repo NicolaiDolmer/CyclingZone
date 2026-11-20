@@ -4,11 +4,11 @@
       "results": "Resultados",
       "stage": "Etapa",
       "story": "Historia",
-      "standings": "Clasificaciones",
       "tactics": "Táctica",
       "team": "Equipo",
       "start": "Lista de salida"
     },
+    "mode": { "aria": "Vista de la etapa", "story": "Historia · película y crónica", "results": "Resultados · lista completa" },
     "hero": {
       "stageLocks": "La etapa {number} se cierra a las {time} · {countdown}",
       "locks": "Se cierra a las {time} · {countdown}",
@@ -27,6 +27,7 @@
       "aria": "Recorrido de la etapa",
       "km": "{km} km",
       "gain": "{gain} m de desnivel",
+      "elevation": "{gain} m",
       "climbs": "{count, plural, one {# subida} other {# subidas}}",
       "hide": "Ocultar recorrido",
       "show": "Mostrar recorrido",
@@ -137,7 +138,11 @@
     "effortNote": "El esfuerzo sigue a la tarea.",
     "huntOption": "{task} · {price}",
     "price": { "hard": "Dura" },
-    "huntNote": "Caza de puntos: disputa los sprints o las subidas de su tramo desde el grupo en el que va. Una fuga por delante se lleva los puntos primero. La tarea se corre fuerte y cuenta en su fatiga.",
+    "huntNote": "Caza de puntos en los sprints: disputa los sprints intermedios de su tramo desde el grupo en el que va. Una fuga por delante se lleva los puntos primero. Los sprints que solo disputa por la tarea suman un poco a su fatiga.",
+    "huntNoteKom": "Los puntos de montaña solo cuentan en una escapada, nunca desde el pelotón.",
+    "huntNoteEnds": "Con un paso 'cuando lo cazan', sigue ese paso si no entra en la fuga o lo cazan. Si entra en una fuga más tarde, sigue yendo a por los puntos allí.",
+    "huntChoice": { "hunt_points": "Meterse en la fuga + ir a por puntos de sprint", "hunt_kom": "Meterse en la fuga + ir a por puntos de montaña" },
+    "huntPrice": { "sprint": "{price}, más un poco por sprint", "kom": "{price}, más un poco por subida" },
 
     "huntOffNote": "La caza de puntos está desactivada en esta carrera, así que irá protegido en esa parte del plan.",
     "rulesNote": "La fuga solo puede ser la primera tarea. La grupeta, llegar a meta y el tren de sprint siempre van al final.",
@@ -353,7 +358,7 @@
         "incident": "{name} {kind, select, crash {se cae} mechanical {sufre una avería} other {sufre un incidente}}{outcome, select, abandoned { y abandona} loss { y pierde {loss}} other {}}",
         "climb": "Cima de {name}",
         "climbFirst": "{rider} primero en {name}",
-        "gap": "La diferencia con {group, select, rest {el pelotón} other {los perseguidores}} {dir, select, grew {aumenta} other {se reduce}} de {before} a {after}",
+        "gap": "{front, select, break {La fuga} other {El grupo de cabeza}} tiene ahora {after} sobre {group, select, rest {el pelotón} other {los perseguidores}}",
         "split": "{count, plural, one {Un grupo se descuelga} other {# grupos se descuelgan}}",
         "dropped": "{count, plural, one {{names} se descuelga de la escapada} other {{names} se descuelgan de la escapada}}",
         "formedAhead": "{count, plural, one {# corredor se escapa por delante del pelotón} other {# corredores se escapan por delante del pelotón}}",
@@ -1244,7 +1249,8 @@
 
       "stage_plan_hunt_no_climb": "Ir a por puntos de montaña requiere una subida categorizada en su tramo. Elige otra tarea o cambia el punto de cambio.",
 
-      "stage_plan_hunt_after_dropped": "Un corredor descolgado no puede ir a por puntos. Elige otra tarea para ese paso."
+      "stage_plan_hunt_after_dropped": "Un corredor descolgado no puede ir a por puntos. Elige otra tarea para ese paso.",
+      "stage_plan_hunt_needs_breakaway": "La caza de puntos con la fuga solo va en el paso de la fuga, el primero. Elige una línea 'Meterse en la fuga +' y guarda de nuevo."
     }
   },
   "tacticsOrders": {

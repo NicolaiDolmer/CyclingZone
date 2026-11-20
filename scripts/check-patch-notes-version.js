@@ -185,6 +185,26 @@ function missingFlag(patches, baseVersions) {
   return bad;
 }
 
+// #8049: en NY spillervendt note skal bære sit område (`area`), så den nye patch notes-side
+// kan gruppere ugen efter område (PATCH_NOTES_RULES §2b). Listen SKAL matche PATCH_NOTE_AREAS i
+// frontend/src/lib/patchNotes.js (låst af patchNotesArea.test.ts). Gamle noter røres ikke;
+// deres område slås op i frontend/src/lib/patchNotesArea.ts.
+const PATCH_NOTE_AREAS = [
+  "tactics", "races", "engine", "training", "development", "market",
+  "academy", "board", "economy", "interface", "mobile", "help",
+];
+function missingArea(patches, baseVersions) {
+  const known = new Set(baseVersions);
+  const bad = [];
+  for (const p of patches || []) {
+    if (known.has(p.version)) continue;
+    (p.changes || []).forEach((c, i) => {
+      if (c.audience === "player" && !PATCH_NOTE_AREAS.includes(c.area)) bad.push(`${p.version}#${i}`);
+    });
+  }
+  return bad;
+}
+
 async function main() {
   const root = repoRoot();
   const baseRef = process.env.PATCH_NOTES_BASE_REF || "origin/main";
@@ -195,7 +215,7 @@ async function main() {
   if (!importResult.ok) {
     fail(
       `${PATCH_FILE} could not be imported (syntax error?): `
-      + `${importResult.error && importResult.error.message}`
+      + `${importResult.error && /** @type {any} */ (importResult.error).message}`
     );
     return;
   }
@@ -247,6 +267,14 @@ async function main() {
     fail(
       `New player changes without a valid "rollout" (${ROLLOUTS.join("|")}): ${noRollout.join(", ")}. `
       + `See docs/PATCH_NOTES_RULES.md §2a.`
+    );
+  }
+
+  const noArea = baseVersions.length > 0 ? missingArea(importResult.mod.PATCHES, baseVersions) : [];
+  if (noArea.length > 0) {
+    fail(
+      `New player changes without a valid "area" (${PATCH_NOTE_AREAS.join("|")}): ${noArea.join(", ")}. `
+      + `See docs/PATCH_NOTES_RULES.md §2b.`
     );
   }
 
@@ -311,6 +339,8 @@ module.exports = {
   importCheck,
   missingRollout,
   missingFlag,
+  missingArea,
+  PATCH_NOTE_AREAS,
 };
 
 if (require.main === module) {

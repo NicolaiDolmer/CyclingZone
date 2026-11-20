@@ -4,11 +4,11 @@
       "results": "Resultater",
       "stage": "Etape",
       "story": "Historie",
-      "standings": "Stillinger",
       "tactics": "Taktik",
       "team": "Hold",
       "start": "Startliste"
     },
+    "mode": { "aria": "Etapens visning", "story": "Historie · film og referat", "results": "Resultater · hele listen" },
     "hero": {
       "stageLocks": "Etape {number} låses kl. {time} · {countdown}",
       "locks": "Låses kl. {time} · {countdown}",
@@ -27,6 +27,7 @@
       "aria": "Etapens rute",
       "km": "{km} km",
       "gain": "{gain} m stigning",
+      "elevation": "{gain} m",
       "climbs": "{count, plural, one {# stigning} other {# stigninger}}",
       "hide": "Skjul rute",
       "show": "Vis rute",
@@ -137,7 +138,11 @@
     "effortNote": "Indsatsen følger opgaven.",
     "huntOption": "{task} · {price}",
     "price": { "hard": "Hård" },
-    "huntNote": "Pointjagt: han kører om spurterne eller stigningerne på sin strækning fra den gruppe, han sidder i. Et udbrud foran tager stadig pointene først. Opgaven køres hårdt og tæller med i hans træthed.",
+    "huntNote": "Pointjagt i spurterne: han kører om de indlagte spurter på sin strækning fra den gruppe, han sidder i. Et udbrud foran tager stadig pointene først. Spurter, han kun kører om på grund af opgaven, lægger lidt oveni hans træthed.",
+    "huntNoteKom": "Bjergpoint tæller kun i et udbrud, aldrig fra feltet.",
+    "huntNoteEnds": "Med et trin 'når han er hentet' kører han det trin, hvis han ikke kommer med i udbruddet eller bliver hentet. Kommer han med i et senere udbrud, kører han stadig om pointene dér.",
+    "huntChoice": { "hunt_points": "Gå i udbrud + Hent point", "hunt_kom": "Gå i udbrud + Hent bjergpoint" },
+    "huntPrice": { "sprint": "{price}, plus lidt pr. spurt", "kom": "{price}, plus lidt pr. stigning" },
 
     "huntOffNote": "Pointjagt er slået fra i dette løb, så han kører i læ på den del af planen.",
     "rulesNote": "Udbrud kan kun være første opgave. Grupetto, kør i mål og sprinttog kommer altid sidst.",
@@ -336,7 +341,7 @@
         "incident": "{name} {kind, select, crash {styrter} mechanical {får defekt} other {har et uheld}}{outcome, select, abandoned { og udgår} loss { og taber {loss}} other {}}",
         "climb": "Toppen af {name}",
         "climbFirst": "{rider} først over {name}",
-        "gap": "Hullet til {group, select, rest {feltet} other {jagten}} {dir, select, grew {vokser} other {skrumper}} fra {before} til {after}",
+        "gap": "{front, select, break {Udbruddet} other {Gruppen forrest}} har nu {after} til {group, select, rest {feltet} other {jagtgruppen}}",
         "split": "{count, plural, one {En gruppe bliver sat} other {# grupper bliver sat}}",
         "dropped": "{count, plural, one {{names} bliver sat af udbruddet} other {{names} bliver sat af udbruddet}}",
         "formedAhead": "{count, plural, one {# rytter kører væk foran feltet} other {# ryttere kører væk foran feltet}}",
@@ -1227,7 +1232,8 @@
 
       "stage_plan_hunt_no_climb": "Hent bjergpoint kræver en kategoriseret stigning på hans strækning. Vælg en anden opgave, eller flyt skiftet.",
 
-      "stage_plan_hunt_after_dropped": "En rytter kan ikke køre efter point, når han er sat. Vælg en anden opgave til det trin."
+      "stage_plan_hunt_after_dropped": "En rytter kan ikke køre efter point, når han er sat. Vælg en anden opgave til det trin.",
+      "stage_plan_hunt_needs_breakaway": "Pointjagt sammen med udbrud findes kun på udbrudsleddet, som første trin. Vælg en 'Gå i udbrud +'-linje og gem igen."
     }
   },
   "tacticsOrders": {

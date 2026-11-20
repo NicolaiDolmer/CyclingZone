@@ -41,7 +41,7 @@
   },
   "level": {
     "easy": "Let",
-    "medium": "Middel",
+    "medium": "Normal",
     "hard": "Hård",
     "aria": "Indsats for {name}"
   },
@@ -59,6 +59,8 @@
     "notForRole": "Ikke for denne rolle.",
     "noSprintCaptain": "Holdet har ingen spurtkaptajn.",
     "trainAfterBreak": "En rytter i udbruddet kan ikke trække spurten.",
+    "quickNoOpeningTask": "Planen starter med en slutopgave.",
+    "quickInvalidPlan": "Valget gør etapeplanen ugyldig.",
     "trainSelf": "Han er sprinteren.",
     "noRoadOrders": "Ingen vej-ordrer på en tidskørsel.",
     "followTeam": "Følg holdets plan"

@@ -4,11 +4,11 @@
       "results": "Results",
       "stage": "Stage",
       "story": "Story",
-      "standings": "Standings",
       "tactics": "Tactics",
       "team": "Team",
       "start": "Start list"
     },
+    "mode": { "aria": "Stage view", "story": "Story · film and report", "results": "Results · full list" },
     "hero": {
       "stageLocks": "Stage {number} locks at {time} · {countdown}",
       "locks": "Locks at {time} · {countdown}",
@@ -27,6 +27,7 @@
       "aria": "Stage route",
       "km": "{km} km",
       "gain": "{gain} m climbing",
+      "elevation": "{gain} m",
       "climbs": "{count, plural, one {# climb} other {# climbs}}",
       "hide": "Hide route",
       "show": "Show route",
@@ -137,7 +138,11 @@
     "effortNote": "The effort follows the task.",
     "huntOption": "{task} · {price}",
     "price": { "hard": "Hard" },
-    "huntNote": "Going for points: he contests the sprints or climbs on his stretch from the group he is in. A break ahead still takes the points first. The task is ridden hard and counts in his fatigue.",
+    "huntNote": "Going for sprint points: he contests the intermediate sprints on his stretch from the group he is in. A break up the road still takes the points first. Sprints he only contests because of the task add a little to his fatigue.",
+    "huntNoteKom": "KOM points only count in a break.",
+    "huntNoteEnds": "With a 'when caught' step, he rides that step if he misses the break or is caught. If he makes a later break, he still goes for the points there.",
+    "huntChoice": { "hunt_points": "Go in the break + sprint points", "hunt_kom": "Go in the break + KOM points" },
+    "huntPrice": { "sprint": "{price} + a little per sprint", "kom": "{price} + a little per climb" },
 
     "huntOffNote": "Going for points is off in this race, so he rides sheltered on that part of the plan.",
     "rulesNote": "The break can only be the first task. Grupetto, riding in and the sprint train always come last.",
@@ -336,7 +341,7 @@
         "incident": "{name} {kind, select, crash {crashes} mechanical {has a mechanical} other {has an incident}}{outcome, select, abandoned { and abandons} loss { and loses {loss}} other {}}",
         "climb": "Top of {name}",
         "climbFirst": "{rider} first over {name}",
-        "gap": "The gap to {group, select, rest {the peloton} other {the chase}} {dir, select, grew {grows} other {shrinks}} from {before} to {after}",
+        "gap": "{front, select, break {The break} other {The leading group}} now has {after} on {group, select, rest {the peloton} other {the chase}}",
         "split": "{count, plural, one {A group splits off} other {# groups split off}}",
         "dropped": "{count, plural, one {{names} is dropped from the break} other {{names} are dropped from the break}}",
         "formedAhead": "{count, plural, one {# rider goes clear ahead of the peloton} other {# riders go clear ahead of the peloton}}",
@@ -1227,7 +1232,8 @@
 
       "stage_plan_hunt_no_climb": "Going for KOM points needs a categorised climb on his stretch. Pick another task or change the switch point.",
 
-      "stage_plan_hunt_after_dropped": "A rider can't go for points once he is dropped. Pick another task for that step."
+      "stage_plan_hunt_after_dropped": "A rider can't go for points once he is dropped. Pick another task for that step.",
+      "stage_plan_hunt_needs_breakaway": "Going for points with the break only works on the break step, the first one. Pick a 'Go in the break +' line and save again."
     }
   },
   "tacticsOrders": {
