@@ -28,7 +28,7 @@ const NUM = "font-data tabular-nums";
 // One line per rider. Phone: name + three numbers (D-047) + the fold-out button.
 // #7947 (owner 20/11): Rating is its own column after Form and Fatigue on the computer;
 // on the phone it stands with them in the fold-out.
-const ROW_GRID = "grid-cols-[minmax(0,1fr)_2.5rem_2.75rem_2.75rem_2.75rem] lg:grid-cols-[minmax(0,1.8fr)_minmax(0,0.9fr)_2.75rem_2.75rem_3.25rem_minmax(4.5rem,auto)_minmax(4.5rem,auto)_2.5rem_3.25rem_4.25rem_2.75rem]";
+const ROW_GRID = "grid-cols-[minmax(0,1fr)_2.5rem_2.75rem_2.75rem_2.75rem] lg:grid-cols-[minmax(0,1.8fr)_minmax(0,0.9fr)_2.75rem_2.75rem_3.25rem_minmax(4.5rem,auto)_minmax(4.5rem,auto)_2.5rem_3.25rem_3.25rem_2.75rem]";
 const xp = (n: number) => formatNumber(Math.round(n));
 
 /** The owner's phone name form (18/9): "A. Brandvig". The receipt carries one full name. */
@@ -262,7 +262,7 @@ export default function XpToday({ view, onPickDate, switcher }: { view: XpTodayV
             <Segmented label={t("xpReport.filterLabel")} value={filter} onChange={(v: TodayFilter) => setFilter(v)} className="whitespace-nowrap"
               options={(["all", "gained", "raced", "notRaced"] as TodayFilter[]).map(key => ({ value: key, label: t(`xpReport.filter.${key}`, { count: view.counts[key] }) }))} />
           </div>
-          <div className={`grid items-end gap-x-2 py-2 lg:gap-x-3 ${ROW_GRID} ${META}`} aria-hidden="true" data-testid="xp-head">
+          <div className={`grid items-end gap-x-2 py-2 lg:gap-x-2.5 ${ROW_GRID} ${META}`} aria-hidden="true" data-testid="xp-head">
             <span>{t("training:colRider")}</span>
             <span className="hidden lg:block">{t("training:colType")}</span>
             <span className="hidden text-right lg:block">{t("xpReport.legend.training")}</span>
@@ -282,7 +282,7 @@ export default function XpToday({ view, onPickDate, switcher }: { view: XpTodayV
               <div key={rider.id} className="border-t border-cz-border" data-testid="xp-row">
                 {/* The row picks the rider (panel) or folds him out (phone); the name is its own link. */}
                 <div onClick={() => toggle(rider.id)}
-                  className={`grid min-h-11 w-full cursor-pointer items-center gap-x-2 hover:bg-cz-subtle lg:gap-x-3 ${ROW_GRID} ${isPicked ? "xl:bg-cz-subtle" : ""}`}>
+                  className={`grid min-h-11 w-full cursor-pointer items-center gap-x-2 hover:bg-cz-subtle lg:gap-x-2.5 ${ROW_GRID} ${isPicked ? "xl:bg-cz-subtle" : ""}`}>
                   <span className="flex min-w-0 flex-col justify-center">
                     <span className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap" data-testid="xp-name-cell">
                       {rider.nation && <Flag code={rider.nation} className="shrink-0" />}
