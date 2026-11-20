@@ -19,7 +19,7 @@ const BASE: { id: string; name: string; sub: string; squad: string; form: number
   { id: "d", name: "Jesper Hollund", sub: "Baroudeur · 28", squad: "senior", form: 62, fatigue: 57, day: "Udholdenhed · Normal", race: null },
 ];
 
-function Table({ mode }: { mode: "before" | "a" | "b" }) {
+function PlanTable({ mode }: { mode: "before" | "a" | "b" }) {
   const rows: TeamRowB[] = BASE.map((r) => ({
     id: r.id, name: r.name, squad: r.squad,
     sub: mode === "b" ? `${r.sub} · ${PLAN[r.id][1]}` : r.sub,
@@ -46,7 +46,7 @@ export default function TodayDesktopPlan() {
   const block = (title: string, note: string, mode: "before" | "a" | "b") => (
     <section>
       <div className="mb-1.5 font-data text-xs font-semibold text-cz-1">{title}</div>
-      <Table mode={mode} />
+      <PlanTable mode={mode} />
       <p className="mt-2 text-2xs text-cz-2">{note}</p>
     </section>
   );
