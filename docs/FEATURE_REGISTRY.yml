@@ -340,6 +340,17 @@ features:
     verified: 2026-10-31
     note: Live 31/10 efter ejer-go; kodekontakten FINAL_KM_BOUNDARY_7383_ACTIVE (motor og taktikside) fjernet 1/11 (krav 5), reglen gælder altid under s5_profiles_v3.
 
+  - id: training-no-division-human-no-tick-6110
+    area: training
+    title_en: Teams without a division do not train
+    title_da: Hold uden division træner ikke
+    state: live
+    flag: training_calendar_tick_ai_only
+    ssot: docs/TRAINING_RULES.md
+    epic: 6110
+    verified: 2026-11-20
+    note: Tændt 20/11 efter ejer-go 19/11 (#8490). Menneskehold uden division træner ikke; AI-hold uden division beholder kalenderdagens tick til de låste tal er designet.
+
   - id: training-fatigue-now-7801
     area: training
     title_en: Fatigue now counts today's earlier stages
