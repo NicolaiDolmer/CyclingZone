@@ -176,7 +176,11 @@ async function loadPaceSnapshots(supabase, { riderIds, today }) {
     .in("rider_id", chunk)
     .gte("snapshot_date", since)
     .order("rider_id")
-    .order("snapshot_date"));
+    .order("snapshot_date")
+    // Tabellen er kun unik på (rider_id, snapshot_date, source): uden source
+    // er sorteringen ikke entydig, og offset-paginering kan springe en række
+    // over eller tage den med to gange ved en sidegrænse.
+    .order("source"));
   for (const row of rows) byRider.get(row.rider_id)?.push(row);
   return byRider;
 }
