@@ -23,7 +23,7 @@ import { RIDER_TYPES } from "./riderTypes.js";
 import {
   drawYouthBirthAbilities, makeBirthRng, makeYouthBirthMarker,
 } from "./riderBirthPriors.js";
-import { drawStarsWithFactors, drawPForStars, validatePotentialPParams } from "./potentialP6110.js";
+import { drawAcademyStars, drawPForStars, validatePotentialPParams } from "./potentialP6110.js";
 
 /**
  * @param {number} n
@@ -40,7 +40,7 @@ function clamp(n, lo, hi) {
 // 'Seriøs' AFLEDES nu af trækket (pot ≥ 4.5) i stedet for at styre det.
 export const POTENTIALE_TIERS = Object.freeze([1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6]);
 export const POTENTIALE_DECAY = 0.55;
-export const POTENTIALE_WEIGHTS = Object.freeze(POTENTIALE_TIERS.map((_, k) => POTENTIALE_DECAY ** k));
+const POTENTIALE_WEIGHTS = POTENTIALE_TIERS.map((_, k) => POTENTIALE_DECAY ** k);
 const POTENTIALE_WEIGHT_SUM = POTENTIALE_WEIGHTS.reduce((a, b) => a + b, 0);
 
 // #5844: samme geometriske fordeling, men BETINGET på potentiale ≥ minTier
@@ -126,7 +126,7 @@ function pickYouthArchetype(rng, primaryDistribution = null) {
  *   type-profil: erstatter KUN primærens fordeling. null = uændret.
  * @param {import("./potentialP6110.js").PotentialPParams|null} [opts.potentialP]  (#8521) P-params
  *   fra loadAcademyPotentialP (kun når XP-kontakten er tændt). Sat: stjernerne trækkes med
- *   akademiets faktorer, og P (1-99) trækkes i trinnets ankerinterval og skrives som
+ *   akademiets faktor, og P (1-99) trækkes i trinnets ankerinterval og skrives som
  *   base_talent + talent_ceiling ved siden af stjernerne. null = dagens kuld, bit-identisk.
  * @returns {{ is_serious: boolean, rider: object }[]}
  */
@@ -151,7 +151,7 @@ export function generateAcademyCandidates({
   // Fejl tidligt og højlydt, før et eneste rng()-træk: et halvt kuld med P er værre end intet.
   if (potentialP) {
     validatePotentialPParams(potentialP);
-    if (!potentialP.academyFactors) throw new Error("generateAcademyCandidates: potentialP is missing academyFactors");
+    if (potentialP.academyDecay === undefined) throw new Error("generateAcademyCandidates: potentialP is missing academyDecay");
   }
   const ownPriors = mode === BIRTH_MODE_OWN_PRIORS;
   // ── Antal kandidater ─────────────────────────────────────────────────────────
@@ -197,14 +197,14 @@ export function generateAcademyCandidates({
     const birthdate = `${referenceYear - age}-06-15`;
 
     // Potentiale: geometrisk træk (0.5-trin, 1.0-6.0). 'Seriøs' = pot ≥ 4.5 (afledt).
-    // #8521: med P-params (XP-kontakten tændt) ganges akademiets private faktor pr. halvt
-    // trin på de samme vægte, så tilgangen matcher bestanden, og P trækkes lige efter
-    // stjernerne. Uden P-params er trækkene og deres rækkefølge præcis som før.
+    // #8521: med P-params (XP-kontakten tændt) bruger trækket akademiets private faktor
+    // pr. halvt trin, så tilgangen matcher bestanden, og P trækkes lige efter stjernerne.
+    // Uden P-params er trækkene og deres rækkefølge præcis som før.
     let potentiale;
     /** @type {number|null} */
     let p = null;
     if (potentialP) {
-      potentiale = drawStarsWithFactors(rng, potentialP, POTENTIALE_WEIGHTS, i === topTalentIndex ? topTalentMin : POTENTIALE_TIERS[0]);
+      potentiale = drawAcademyStars(rng, potentialP, i === topTalentIndex ? topTalentMin : POTENTIALE_TIERS[0]);
       p = drawPForStars(rng, potentialP, potentiale);
     } else {
       potentiale = i === topTalentIndex

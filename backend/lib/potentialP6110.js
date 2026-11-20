@@ -18,13 +18,14 @@
 //    Ingen rating ændres: funktionen læser kun ratingen.
 //
 // ═══ AKADEMIET (søndagens årgang) ════════════════════════════════════════════
-//  Stjernerne trækkes som i dag, men vægten for hvert halve trin ganges med en privat
-//  faktor, så tilgangen får samme fordeling som bestanden. P trækkes derefter jævnt i
-//  trinnets ankerinterval. Det sker kun bag XP-kontakten (loadAcademyPotentialP);
-//  slukket er akademiet bit-identisk med i dag.
+//  Stjernerne trækkes med samme geometriske form som i dag, men med akademiets egen
+//  private faktor pr. halvt trin (ejervalg: tilgangen matcher bestanden, så toppen
+//  hverken tyndes ud eller vokser). P trækkes derefter jævnt i trinnets ankerinterval.
+//  Det sker kun bag XP-kontakten (loadAcademyPotentialP); slukket er akademiet
+//  bit-identisk med i dag.
 //
 // ═══ TALLENE ═════════════════════════════════════════════════════════════════
-//  Ankerintervallerne og faktorerne er PRIVATE (hard rule 17). Der findes med vilje
+//  Ankerintervallerne og faktoren er PRIVATE (hard rule 17). Der findes med vilje
 //  ingen standardværdier her. Dry-runnet læser dem fra en lokal privat fil; akademiet
 //  læser dem fra private_config (nøglen POTENTIAL_P_PARAMS_KEY). Testene bruger en
 //  fixture med opdigtede tal.
@@ -47,7 +48,7 @@ const LOG_TAG = "[potential-p]";
 /**
  * @typedef {object} PotentialPParams
  * @property {Record<string, [number, number]>} anchors  ankerinterval [lo, hi] pr. halvt trin (nøgle "1", "1.5", ... "6")
- * @property {Record<string, number>} [academyFactors]  akademiets faktor pr. halvt trin (samme nøgler)
+ * @property {number} [academyDecay]  akademiets faktor pr. halvt trin, i (0, 1]
  */
 
 /** @param {number} stars */
@@ -81,16 +82,9 @@ export function validatePotentialPParams(raw) {
     if (lo < prevHi) throw new Error(`potentialP: anchors for ${step} overlap the step below (order would flip)`);
     prevHi = hi;
   }
-  if (params.academyFactors !== undefined) {
-    const f = params.academyFactors;
-    if (!f || typeof f !== "object") throw new Error("potentialP: academyFactors must be an object");
-    let positive = 0;
-    for (const step of STAR_STEPS) {
-      const v = f[starKey(step)];
-      if (!isFiniteNumber(v) || v < 0) throw new Error(`potentialP: academyFactors for ${step} must be a number >= 0`);
-      if (v > 0) positive++;
-    }
-    if (positive === 0) throw new Error("potentialP: at least one academyFactor must be above 0");
+  if (params.academyDecay !== undefined) {
+    const d = params.academyDecay;
+    if (!isFiniteNumber(d) || d <= 0 || d > 1) throw new Error("potentialP: academyDecay must be a number in (0, 1]");
   }
   return params;
 }
@@ -232,32 +226,40 @@ export function summarizeP(values) {
 // ── Akademiet ──────────────────────────────────────────────────────────────
 
 /**
- * Stjernetrækket med akademiets private faktorer ganget på dagens vægte. `baseWeights`
- * er dagens vægt pr. trin (samme rækkefølge som STAR_STEPS), så faktorer på 1 giver
- * dagens fordeling. minStars > 1 betinger trækket på trin >= minStars (bestyrelsens
- * garanterede talent).
+ * Akademiets vægt pr. halvt trin (samme rækkefølge som STAR_STEPS): samme geometriske
+ * form som dagens akademi, men med den private faktor.
+ * @param {PotentialPParams} params
+ * @returns {number[]}
+ */
+export function academyStarWeights(params) {
+  const decay = params.academyDecay;
+  if (!isFiniteNumber(decay)) throw new Error("potentialP: academyDecay missing (required by the academy)");
+  return STAR_STEPS.map((_, k) => decay ** k);
+}
+
+/**
+ * Stjernetrækket for akademiet. Ét rng()-kald. minStars > 1 betinger trækket på
+ * trin >= minStars (bestyrelsens garanterede talent), med de samme relative vægte.
  * @param {() => number} rng
  * @param {PotentialPParams} params
- * @param {readonly number[]} baseWeights
  * @param {number} [minStars]
  */
-export function drawStarsWithFactors(rng, params, baseWeights, minStars = STAR_STEPS[0]) {
-  const factors = params.academyFactors;
-  if (!factors) throw new Error("potentialP: academyFactors missing (required by the academy)");
+export function drawAcademyStars(rng, params, minStars = STAR_STEPS[0]) {
+  const weights = academyStarWeights(params);
   const steps = [];
   let sum = 0;
   for (let k = 0; k < STAR_STEPS.length; k++) {
     if (STAR_STEPS[k] < minStars) continue;
-    const w = baseWeights[k] * factors[starKey(STAR_STEPS[k])];
-    if (w > 0) { steps.push({ k, w }); sum += w; }
+    steps.push(k);
+    sum += weights[k];
   }
   if (!steps.length) return STAR_STEPS[STAR_STEPS.length - 1];
   let roll = rng() * sum;
-  for (const { k, w } of steps) {
-    roll -= w;
+  for (const k of steps) {
+    roll -= weights[k];
     if (roll <= 0) return STAR_STEPS[k];
   }
-  return STAR_STEPS[steps[steps.length - 1].k];
+  return STAR_STEPS[steps[steps.length - 1]];
 }
 
 /**
@@ -275,7 +277,7 @@ export function drawPForStars(rng, params, stars) {
 
 /**
  * Akademiets P-params, når XP-kontakten er tændt og talfilen er gyldig og har
- * academyFactors. Ellers null = dagens akademi, bit-identisk. Logger aldrig tallene.
+ * academyDecay. Ellers null = dagens akademi, bit-identisk. Logger aldrig tallene.
  * @param {{ supabase: { from(table: string): any }, log?: Pick<Console, "warn">, now?: () => number }} args
  * @returns {Promise<PotentialPParams|null>}
  */
@@ -287,8 +289,8 @@ export async function loadAcademyPotentialP({ supabase, log = console, now = Dat
     log, now, schema: validatePotentialPParams,
   });
   const params = entry.status === "ok" ? /** @type {PotentialPParams} */ (entry.value) : null;
-  if (!params || !params.academyFactors) {
-    log?.warn?.(`${LOG_TAG} development_xp_model is on, but ${POTENTIAL_P_PARAMS_KEY} is ${params ? "missing academyFactors" : entry.status} - academy keeps today's stars only`);
+  if (!params || params.academyDecay === undefined) {
+    log?.warn?.(`${LOG_TAG} development_xp_model is on, but ${POTENTIAL_P_PARAMS_KEY} is ${params ? "missing academyDecay" : entry.status} - academy keeps today's stars only`);
     return null;
   }
   return params;

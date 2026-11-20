@@ -268,9 +268,7 @@ const P_FIXTURE = Object.freeze({
     "1": [5, 14], "1.5": [15, 22], "2": [23, 30], "2.5": [31, 38], "3": [39, 46], "3.5": [47, 54],
     "4": [55, 62], "4.5": [63, 69], "5": [70, 75], "5.5": [76, 80], "6": [81, 84],
   },
-  academyFactors: {
-    "1": 0.5, "1.5": 1, "2": 1, "2.5": 1, "3": 1, "3.5": 1, "4": 1.5, "4.5": 1.5, "5": 2, "5.5": 2, "6": 2,
-  },
+  academyDecay: 0.7,
 });
 
 test("#8521 golden: uden P-params er kuldet bit-identisk med merge-base", () => {
@@ -315,7 +313,7 @@ test("#8521: P-params respekterer bestyrelsens garanterede talent og er determin
 test("#8521: ugyldige P-params afvises før et eneste træk", () => {
   let calls = 0;
   const rng = () => { calls++; return 0.5; };
-  assert.throws(() => generateAcademyCandidates({ rng, referenceYear: REF_YEAR, existingNames: new Set(), potentialP: { anchors: P_FIXTURE.anchors } }), /academyFactors/);
+  assert.throws(() => generateAcademyCandidates({ rng, referenceYear: REF_YEAR, existingNames: new Set(), potentialP: { anchors: P_FIXTURE.anchors } }), /academyDecay/);
   assert.throws(() => generateAcademyCandidates({ rng, referenceYear: REF_YEAR, existingNames: new Set(), potentialP: { anchors: {} } }), /anchors/);
   assert.equal(calls, 0);
 });

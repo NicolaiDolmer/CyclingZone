@@ -6,10 +6,9 @@ import assert from "node:assert/strict";
 import {
   STAR_STEPS, P_MIN, P_MAX, POTENTIAL_P_PARAMS_KEY,
   validatePotentialPParams, convertStarsToP, findRankViolations, summarizeP,
-  drawStarsWithFactors, drawPForStars, anchorFor, loadAcademyPotentialP, starKey,
+  drawAcademyStars, academyStarWeights, drawPForStars, anchorFor, loadAcademyPotentialP,
 } from "./potentialP6110.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
-import { POTENTIALE_WEIGHTS } from "./academyGenerator.js";
 import { clearPrivateConfigCache } from "./privateConfig.ts";
 
 // Opdigtet fixture: lige brede trin forneden, smallere (presset) trin foroven.
@@ -18,20 +17,19 @@ const FIXTURE = Object.freeze({
     "1": [5, 14], "1.5": [15, 22], "2": [23, 30], "2.5": [31, 38], "3": [39, 46], "3.5": [47, 54],
     "4": [55, 62], "4.5": [63, 69], "5": [70, 75], "5.5": [76, 80], "6": [81, 84],
   },
-  academyFactors: {
-    "1": 1, "1.5": 1, "2": 1, "2.5": 1, "3": 1, "3.5": 1, "4": 1, "4.5": 1, "5": 1, "5.5": 1, "6": 1,
-  },
+  academyDecay: 0.6,
 });
 
-/** Opdigtet bestand: stjerner trukket geometrisk, rating uafhængig af stjernerne. */
+/** Opdigtet bestand: stjerner trukket med fixturens form, rating uafhængig af stjernerne. */
 function makePopulation(n, seed = 8521) {
   const rng = makeRng(seed);
+  const weights = academyStarWeights(FIXTURE);
   const riders = [];
   for (let i = 0; i < n; i++) {
-    let roll = rng() * POTENTIALE_WEIGHTS.reduce((a, b) => a + b, 0);
+    let roll = rng() * weights.reduce((a, b) => a + b, 0);
     let stars = STAR_STEPS[STAR_STEPS.length - 1];
-    for (let k = 0; k < POTENTIALE_WEIGHTS.length; k++) {
-      roll -= POTENTIALE_WEIGHTS[k];
+    for (let k = 0; k < weights.length; k++) {
+      roll -= weights[k];
       if (roll <= 0) { stars = STAR_STEPS[k]; break; }
     }
     riders.push({ id: `r-${i}-${Math.floor(rng() * 1e9)}`, potentiale: stars, rating: Math.round(rng() * 70) + 0.25 });
@@ -54,10 +52,12 @@ test("validatePotentialPParams: afviser overlap, manglende trin, ikke-heltal og 
   assert.throws(() => validatePotentialPParams(bad({ "1": [0, 14] })), /integers/);
   assert.throws(() => validatePotentialPParams(bad({ "3": [46, 39] })), /integers/);
   assert.throws(() => validatePotentialPParams(null), /params missing/);
-  assert.throws(() => validatePotentialPParams({ ...FIXTURE, academyFactors: { ...FIXTURE.academyFactors, "3": -1 } }), />= 0/);
-  const zero = Object.fromEntries(STAR_STEPS.map((s) => [starKey(s), 0]));
-  assert.throws(() => validatePotentialPParams({ ...FIXTURE, academyFactors: zero }), /above 0/);
-  // Uden academyFactors er params stadig gyldige til omregningen.
+  for (const academyDecay of [0, -0.5, 1.2, Number.NaN, "0.6"]) {
+    assert.throws(() => validatePotentialPParams({ ...FIXTURE, academyDecay }), /academyDecay/);
+  }
+  // Grænser: delte endepunkter mellem to trin er tilladt (rækkefølgen holder stadig).
+  assert.doesNotThrow(() => validatePotentialPParams(bad({ "1.5": [14, 22] })));
+  // Uden academyDecay er params stadig gyldige til omregningen.
   assert.doesNotThrow(() => validatePotentialPParams({ anchors: FIXTURE.anchors }));
 });
 
@@ -172,27 +172,30 @@ test("fordelingstest med fixture: høje P er sjældne, og toppen ligger under de
 
 // ── Akademiet ───────────────────────────────────────────────────────────────
 
-test("drawStarsWithFactors: faktorer på 1 giver dagens geometriske fordeling", () => {
+test("drawAcademyStars: følger den geometriske form med akademiets faktor", () => {
   const rng = makeRng(77);
   const n = 40000;
   const counts = new Map(STAR_STEPS.map((s) => [s, 0]));
   for (let i = 0; i < n; i++) {
-    const s = drawStarsWithFactors(rng, FIXTURE, POTENTIALE_WEIGHTS);
+    const s = drawAcademyStars(rng, FIXTURE);
     counts.set(s, counts.get(s) + 1);
   }
-  const sum = POTENTIALE_WEIGHTS.reduce((a, b) => a + b, 0);
-  for (let k = 0; k < 4; k++) {
-    const expected = POTENTIALE_WEIGHTS[k] / sum;
-    assert.ok(Math.abs(counts.get(STAR_STEPS[k]) / n - expected) < 0.01, `trin ${STAR_STEPS[k]}`);
+  const weights = academyStarWeights(FIXTURE);
+  const sum = weights.reduce((a, b) => a + b, 0);
+  for (let k = 0; k < STAR_STEPS.length; k++) {
+    assert.ok(Math.abs(counts.get(STAR_STEPS[k]) / n - weights[k] / sum) < 0.01, `trin ${STAR_STEPS[k]}`);
   }
+  // Hvert halve trin er sjældnere end det forrige, når faktoren er under 1.
+  for (let k = 1; k < weights.length; k++) assert.ok(weights[k] < weights[k - 1]);
+  // Faktor 1 = alle trin lige sandsynlige.
+  assert.deepEqual(academyStarWeights({ ...FIXTURE, academyDecay: 1 }), STAR_STEPS.map(() => 1));
 });
 
-test("drawStarsWithFactors: faktor 0 udelukker et trin, minStars betinger trækket", () => {
+test("drawAcademyStars: minStars betinger trækket, manglende faktor afvises", () => {
   const rng = makeRng(5);
-  const noTwo = { ...FIXTURE, academyFactors: { ...FIXTURE.academyFactors, "2": 0 } };
-  for (let i = 0; i < 5000; i++) assert.notEqual(drawStarsWithFactors(rng, noTwo, POTENTIALE_WEIGHTS), 2);
-  for (let i = 0; i < 2000; i++) assert.ok(drawStarsWithFactors(rng, FIXTURE, POTENTIALE_WEIGHTS, 4.5) >= 4.5);
-  assert.throws(() => drawStarsWithFactors(rng, { anchors: FIXTURE.anchors }, POTENTIALE_WEIGHTS), /academyFactors missing/);
+  for (let i = 0; i < 2000; i++) assert.ok(drawAcademyStars(rng, FIXTURE, 4.5) >= 4.5);
+  assert.equal(drawAcademyStars(rng, FIXTURE, 7), 6);
+  assert.throws(() => drawAcademyStars(rng, { anchors: FIXTURE.anchors }), /academyDecay missing/);
 });
 
 test("drawPForStars: P ligger i trinnets ankerinterval og rammer begge ender", () => {
@@ -209,21 +212,21 @@ test("drawPForStars: P ligger i trinnets ankerinterval og rammer begge ender", (
   }
 });
 
-test("tilgangen matcher bestanden: faktorer valgt efter bestandens stjerner giver samme P-fordeling", () => {
-  // Opdigtet bestand med en anden stjernefordeling end dagens akademi.
-  const stockShare = [0.2, 0.18, 0.15, 0.12, 0.1, 0.08, 0.06, 0.05, 0.03, 0.02, 0.01];
-  const academyFactors = Object.fromEntries(STAR_STEPS.map((s, k) => [starKey(s), stockShare[k] / POTENTIALE_WEIGHTS[k]]));
-  const params = { ...FIXTURE, academyFactors };
+test("tilgangen matcher bestanden: en bestand med samme form som faktoren får samme P-fordeling som akademiet", () => {
+  // Opdigtet bestand, hvis stjerner har præcis den form, akademiets faktor giver.
+  const params = FIXTURE;
+  const weights = academyStarWeights(params);
+  const sum = weights.reduce((a, b) => a + b, 0);
   const rng = makeRng(2026);
   const n = 30000;
   const stock = [];
   for (let k = 0; k < STAR_STEPS.length; k++) {
-    for (let i = 0; i < Math.round(stockShare[k] * n); i++) stock.push({ id: `s${k}-${i}`, potentiale: STAR_STEPS[k] });
+    for (let i = 0; i < Math.round((weights[k] / sum) * n); i++) stock.push({ id: `s${k}-${i}`, potentiale: STAR_STEPS[k] });
   }
   const stockP = summarizeP([...convertStarsToP(stock, params).byId.values()].map((v) => v.p));
   const inflow = [];
   for (let i = 0; i < n; i++) {
-    const stars = drawStarsWithFactors(rng, params, POTENTIALE_WEIGHTS);
+    const stars = drawAcademyStars(rng, params);
     inflow.push(drawPForStars(rng, params, stars));
   }
   const inflowP = summarizeP(inflow);
