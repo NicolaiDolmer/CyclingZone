@@ -84,7 +84,7 @@ function Change({ from, to, plate = false }: { from: number | null; to: number |
 }
 
 /** #7947 · The rating change "34 > 35", the same Change as form and fatigue. Nothing when it did not move. */
-function RatingCell({ change }: { change: RatingChange | null }) {
+function RatingCell({ change }: { change?: RatingChange | null }) {
   if (!change) return null;
   return <span className="text-xs text-cz-1" data-testid="xp-rating"><Change from={change.from} to={change.to} /></span>;
 }
