@@ -985,6 +985,7 @@ test("#8522: kandidat B's trin-form under XP rører aldrig sliddet", async () =>
   const cfgB = xpAgingConfig({ aging: { plateauThroughAge: 27, declineByYearsPastPlateau: [{ maxYears: 99, drop: 2 }] } });
   const summary = await developRidersForSeasonEngine({
     supabase: spy, seasonId: "s5", seasonNumber: 5, notify: false, seasonLoadByRider: new Map(),
+    now: new Date("2026-11-28T10:00:00Z"), // regel 16: fast ur
     loadAgingCfgFn: async () => cfgB, detectGraduatesFn: async () => {},
   });
   assert.equal(summary.aging_v2.rule, "xp");
