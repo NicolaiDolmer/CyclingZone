@@ -6,6 +6,26 @@
     "waiting": "L'entraînement du jour se lance tout seul une fois la dernière course terminée, à partir de {hour}:00.",
     "ready": "L'entraînement du jour est prêt. Lance-le maintenant, ou laisse-le se lancer tout seul."
   },
+  "trainNowMoment": {
+    "title": "L'entraînement du jour",
+    "subtitle": "{date} · {count, plural, one {# coureur} other {# coureurs}} · même ordre chaque jour",
+    "skip": "Passer",
+    "openReport": "Voir le rapport",
+    "close": "Fermer",
+    "listLabel": "L'entraînement du jour, coureur par coureur",
+    "age": "{age} ans",
+    "xp": "+{xp} XP",
+    "best": "Meilleur du jour",
+    "waiting": "En course aujourd'hui · réglé après l'étape",
+    "raced": "Jour de course",
+    "rest": "Jour de repos",
+    "points": "{count, plural, one {+# point} other {+# points}}",
+    "summaryRiders": "{count, plural, one {# coureur} other {# coureurs}}",
+    "summaryXp": "{xp} XP au total",
+    "summaryPoints": "{count, plural, one {# point gagné} other {# points gagnés}}",
+    "summaryPaid": "{count, plural, one {# point versé} other {# points versés}} depuis la barre",
+    "fromBar": "depuis la barre"
+  },
   "trainNow": {
     "button": "S'entraîner maintenant",
     "running": "En cours…",

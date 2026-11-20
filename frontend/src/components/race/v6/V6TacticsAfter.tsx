@@ -29,7 +29,7 @@ const XIcon = XIconJs as unknown as IconComponent;
 const MinusIcon = MinusIconJs as unknown as IconComponent;
 const InfoIcon = InfoIconJs as unknown as IconComponent;
 
-type TFn = (key: string, opts?: Record<string, unknown>) => string;
+type TFn = { (key: string): string; (key: string, opts: Record<string, unknown>): string };
 
 export interface V6TacticsAfterProps {
   raceId: string | null;
@@ -80,7 +80,7 @@ function endText(t: TFn, climbs: ReadonlyArray<{ index: number; name: string | n
 function Line({ t, line }: { t: TFn; line: StepLine }) {
   return (
     <span className="block">
-      {t(line.key, line.params)}
+      {t(line.key, line.params ?? {})}
       {line.km != null && <span className="ml-1.5 font-data text-2xs text-cz-3 tabular-nums whitespace-nowrap">{t("racePageV6.tacticsAfter.km", { km: Math.round(line.km) })}</span>}
     </span>
   );

@@ -171,7 +171,14 @@
   "table": {
     "fullTable": "Fuld tabel",
     "columnsLabel": "Vælg kolonner",
-    "moreRight": "Flere kolonner til højre"
+    "moreRight": "Flere kolonner til højre",
+    "titleBar": {
+      "filters": "Filtre",
+      "closeSearch": "Luk søgning",
+      "columns": "Kolonner",
+      "close": "Luk",
+      "swapHint": "Tryk på en kolonne for at tilføje den. Den, du valgte først, falder ud."
+    }
   },
   "expectedDivision": {
     "optionExpected": "Division {n} (forventet)",

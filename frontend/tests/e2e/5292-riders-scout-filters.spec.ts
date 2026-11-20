@@ -1,5 +1,6 @@
 import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, json, RIDERS, TEST_TEAM, evidenceShotPath } from "./fixtures.js";
+import { riderSearchInput, resetRiderFilters } from "./lib/riders-title-bar.ts";
 
 test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime(new Date("2026-09-16T12:00:00Z"));
@@ -53,14 +54,14 @@ test("returning through history restores the URL filters while the list stays mo
     await page.getByRole("button", { name: /Åbn menu/ }).click();
   }
   await page.locator('a[href="/riders"]').filter({ visible: true }).first().click();
-  await page.getByTestId("filter-name").fill("Sofie");
+  await (await riderSearchInput(page)).fill("Sofie");
   await expect(page).toHaveURL(/q=Sofie/);
   await page.goBack();
   await expect(page.getByTestId("filter-name")).toHaveValue("Ada");
   await expect(page).toHaveURL(/q=Ada/);
   await page.goForward();
   await expect(page.getByTestId("filter-name")).toHaveValue("Sofie");
-  await page.getByTestId("filter-reset").click();
+  await resetRiderFilters(page);
   await expect(page.getByTestId("filter-name")).toHaveValue("");
   await page.reload();
   await expect(page.getByTestId("filter-name")).toHaveValue("");
@@ -71,7 +72,7 @@ test("rapid typing never loses characters to an older URL transition", async ({ 
   const cdp = await page.context().newCDPSession(page);
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
   await page.goto("/riders");
-  const input = page.getByTestId("filter-name");
+  const input = await riderSearchInput(page);
   const historyLength = await page.evaluate(() => history.length);
   for (const name of ["Mikkel Hansen", "abcdefghijklmnopqrstuv", "Ada Pedersen"]) {
     await input.fill("");
@@ -83,14 +84,14 @@ test("rapid typing never loses characters to an older URL transition", async ({ 
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
   await page.getByRole("link", { name: "Ada Pedersen", exact: true }).click();
   await page.goBack();
-  await expect(input).toHaveValue("Ada Pedersen");
+  await expect(page.getByTestId("filter-name")).toHaveValue("Ada Pedersen");
 });
 
 test("legacy filter URL normalizes once and reset stays empty after profile/back", async ({ page }) => {
   await page.goto("/riders?min_uci=150000&sort=uci_points&q=Ada");
   await expect.poll(() => new URL(page.url()).searchParams.get("min_value")).toBe("150000");
   await expect.poll(() => new URL(page.url()).searchParams.has("min_uci")).toBe(false);
-  await page.getByTestId("filter-reset").click();
+  await resetRiderFilters(page);
   await expect(page.getByTestId("filter-name")).toHaveValue("");
   await page.getByRole("link", { name: "Ada Pedersen", exact: true }).click();
   await page.goBack();
