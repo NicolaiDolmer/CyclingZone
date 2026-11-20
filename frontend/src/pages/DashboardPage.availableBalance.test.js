@@ -11,13 +11,30 @@ const riderProfile = read("./RiderStatsPage.jsx");
 
 test("#8357 uses the shared finance calculation for each balance surface", () => {
   assert.match(balance, /fetchReservedBalance\(supabase, teamId, signal\)/);
-  assert.match(balance, /computeAvailableBalance\(team\.balance, reserved\)/);
+  assert.match(balance, /resolveBalanceDisplay\(balance, reservation\.data \?\? null, \{ failed, timedOut \}\)/);
   for (const source of [dashboard, sidebar, auctions]) {
-    assert.match(source, /const marketBalance = useMarketBalance\(\)/);
-    assert.match(source, /t\("finance:balance\.available", \{ value: formatNumber\(marketBalance\.available\) \}\)/);
-    assert.match(source, /marketBalance\.reserved > 0/);
-    assert.match(source, /t\("finance:balance\.lockedInBids", \{ value: formatNumber\(marketBalance\.reserved\) \}\)/);
+    assert.match(source, /const marketBalance = useMarketBalance\((balance)?\)/);
+    assert.match(source, /t\("finance:balance\.available", \{ value: formatNumber\(marketBalance\.value\) \}\)/);
+    assert.match(source, /marketBalance\.locked > 0/);
+    assert.match(source, /t\("finance:balance\.lockedInBids", \{ value: formatNumber\(marketBalance\.locked\) \}\)/);
   }
+});
+
+test("#8357 the balance never disappears: each surface renders the raw balance when the reservation is unknown", () => {
+  for (const source of [dashboard, sidebar, auctions]) {
+    assert.match(source, /marketBalance(\?)?\.mode === "balance"|marketBalance\.mode !== "pending"/);
+    assert.doesNotMatch(source, /marketBalance\.available|marketBalance\.reserved/);
+  }
+  // The skeleton is bounded: after the wait the hook falls back to the raw balance.
+  assert.match(balance, /setTimeout\(\(\) => setTimedOut\(true\), RESERVED_WAIT_MS\)/);
+  assert.match(balance, /const failed = reservation\.isError;/);
+});
+
+test("#8357 one source: the sidebar shows the shared team balance, not its own copy", () => {
+  assert.match(balance, /const balance = team\?\.balance \?\? fallbackBalance \?\? null;/);
+  assert.match(sidebar, /const marketBalance = useMarketBalance\(balance\);/);
+  assert.match(sidebar, /\{marketBalance && \(\s*<div className="px-4 py-3 border-b border-cz-sidebar-border">/);
+  assert.doesNotMatch(sidebar, /\{formatNumber\(balance\)\} CZ\$/);
 });
 
 test("#8357 a successful auction start refreshes the reservation before navigation", () => {

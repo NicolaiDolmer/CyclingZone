@@ -170,7 +170,7 @@ test("kontakten slukket: menu, dashboard og Oekonomi viser kun det ekstra, naar 
   assert.match(finance, /<LockedSalesLine refreshKey=\{\/\*\* @type \{any\} \*\/ \(team\)\?\.balance\}/);
   assert.match(finance, /<LockedSaleEscrows refreshKey=\{\/\*\* @type \{any\} \*\/ \(team\)\?\.balance\} \/>/);
   // Saldo-tallet selv er uroert: det er stadig det, holdet kan bruge.
-  assert.match(layout, /t\("finance:balance\.available", \{ value: formatNumber\(marketBalance\.available\) \}\)/);
+  assert.match(layout, /t\("finance:balance\.available", \{ value: formatNumber\(marketBalance\.value\) \}\)/);
   assert.match(finance, /\{formatNumber\(team\?\.balance \|\| 0\)\} CZ\$/);
 });
 

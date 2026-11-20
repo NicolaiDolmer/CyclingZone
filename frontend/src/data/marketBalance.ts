@@ -1,15 +1,26 @@
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase.ts";
-import { computeAvailableBalance, fetchReservedBalance } from "../lib/availableBalance.js";
+import { fetchReservedBalance, resolveBalanceDisplay } from "../lib/availableBalance.js";
 import { privateKey, viewerKey } from "./queryRuntime.ts";
 import { appRuntime, useDataScope } from "./useDataScope.ts";
 
 const RESERVATION = "market:reserved-balance";
+// #8357: how long a surface may show a skeleton while the reservation loads. After this
+// the raw balance is shown, so the number never stays hidden behind a slow read.
+export const RESERVED_WAIT_MS = 4000;
 
-export function useMarketBalance() {
+export type MarketBalance = NonNullable<ReturnType<typeof resolveBalanceDisplay>>;
+
+/**
+ * #8357: the one balance every surface shows (sidebar, dashboard, auctions). The raw
+ * balance always comes from the shared team query, so two surfaces can never show two
+ * different numbers. `fallbackBalance` is only used before the shared team has loaded.
+ */
+export function useMarketBalance(fallbackBalance?: number | null): MarketBalance | null {
   const { runtime, scope, team, ready } = useDataScope();
   const teamId = team?.id;
-  const { data: reserved } = useQuery({
+  const reservation = useQuery({
     queryKey: privateKey(scope, RESERVATION),
     enabled: ready && Boolean(teamId),
     async queryFn({ signal }) {
@@ -20,8 +31,16 @@ export function useMarketBalance() {
       return result;
     },
   }, runtime.client);
-  if (team?.balance == null || reserved == null) return null;
-  return { available: computeAvailableBalance(team.balance, reserved), reserved };
+  const failed = reservation.isError;
+  const waiting = reservation.data === undefined && !failed;
+  const [timedOut, setTimedOut] = useState(false);
+  useEffect(() => {
+    if (!waiting) { setTimedOut(false); return undefined; }
+    const timer = setTimeout(() => setTimedOut(true), RESERVED_WAIT_MS);
+    return () => clearTimeout(timer);
+  }, [waiting]);
+  const balance = team?.balance ?? fallbackBalance ?? null;
+  return resolveBalanceDisplay(balance, reservation.data ?? null, { failed, timedOut });
 }
 
 export function refreshMarketBalance(): void {

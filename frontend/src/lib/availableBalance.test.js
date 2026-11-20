@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeReservedBalance, computeAvailableBalance, fetchReservedBalance } from "./availableBalance.js";
+import { computeReservedBalance, computeAvailableBalance, fetchReservedBalance, resolveBalanceDisplay } from "./availableBalance.js";
 
 // #3508 — dashboard-headeren viste rå team.balance mens FinancePage viste
 // disponibel saldo (rå minus bundet i førende auktionsbud + proxy-max).
@@ -104,4 +104,31 @@ test("#8357 a failed reservation read must not look like an unlocked balance", a
     },
   };
   await assert.rejects(fetchReservedBalance(/** @type {any} */ (supabase), "team"), error);
+});
+
+test("#8357 resolveBalanceDisplay: known reservation shows available as the big number and the locked amount", () => {
+  assert.deepEqual(resolveBalanceDisplay(1000, 300), { mode: "available", value: 700, locked: 300 });
+  assert.deepEqual(resolveBalanceDisplay(1000, 0), { mode: "available", value: 1000, locked: 0 });
+});
+
+test("#8357 resolveBalanceDisplay: while the reservation loads the surface shows a skeleton, not a wrong number", () => {
+  assert.deepEqual(resolveBalanceDisplay(1000, null), { mode: "pending", value: null, locked: 0 });
+  assert.deepEqual(resolveBalanceDisplay(1000, undefined), { mode: "pending", value: null, locked: 0 });
+});
+
+test("#8357 resolveBalanceDisplay: a failed reservation read falls back to the raw balance and hides the locked line", () => {
+  assert.deepEqual(resolveBalanceDisplay(1000, null, { failed: true }), { mode: "balance", value: 1000, locked: 0 });
+  // A stale reservation from before the failure is not trusted either.
+  assert.deepEqual(resolveBalanceDisplay(1000, 300, { failed: true }), { mode: "balance", value: 1000, locked: 0 });
+});
+
+test("#8357 resolveBalanceDisplay: a slow reservation read stops the skeleton and shows the raw balance", () => {
+  assert.deepEqual(resolveBalanceDisplay(1000, null, { timedOut: true }), { mode: "balance", value: 1000, locked: 0 });
+  // Once the reservation arrives, it wins over the timeout.
+  assert.deepEqual(resolveBalanceDisplay(1000, 300, { timedOut: true }), { mode: "available", value: 700, locked: 300 });
+});
+
+test("#8357 resolveBalanceDisplay: no balance at all renders nothing", () => {
+  assert.equal(resolveBalanceDisplay(null, 300), null);
+  assert.equal(resolveBalanceDisplay(undefined, null, { failed: true }), null);
 });

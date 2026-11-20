@@ -53,7 +53,7 @@
   },
   "sidebar": {
     "balance": "Saldo",
-    "balanceTooltip": "CZ$ is de valuta in het spel. Je verdient het door te spelen en het is niet met echt geld te koop.",
+    "balanceTooltip": "Beschikbaar is je saldo min wat je hebt vastgezet in biedingen waarin je aan de leiding staat. Verlies je de leiding, dan komt het bedrag weer vrij.",
     "division": "Divisie {division}",
     "divisionTooltip": "Jouw competitieniveau. Divisie 1 is het hoogste niveau, Divisie 4 het instapniveau.",
     "onlineNow": "{count} nu online",

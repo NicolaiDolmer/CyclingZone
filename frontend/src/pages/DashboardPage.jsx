@@ -548,15 +548,17 @@ export default function DashboardPage() {
                 saldoblokken læses som et link (den linker allerede til /finance). */}
             <Link to="/finance" className="flex items-center gap-1 text-right group" title={t("common:sidebar.balance")}>
               <div>
-                <p className="text-cz-accent-t font-mono font-bold text-xl group-hover:underline">
-                  {marketBalance
-                    ? t("finance:balance.available", { value: formatNumber(marketBalance.available) })
+                <p className="text-cz-accent-t font-mono font-bold text-xl tabular-nums group-hover:underline">
+                  {marketBalance?.mode === "available"
+                    ? t("finance:balance.available", { value: formatNumber(marketBalance.value) })
+                    : marketBalance?.mode === "balance" ? <>{formatNumber(marketBalance.value)} CZ$</>
                     : <Skeleton className="h-7 w-28" />}
                 </p>
-                {!marketBalance && <Skeleton className="h-4 w-28" />}
-                {marketBalance && marketBalance.reserved > 0 && (
-                  <p className="text-cz-2 text-xs">
-                    {t("finance:balance.lockedInBids", { value: formatNumber(marketBalance.reserved) })}
+                {marketBalance?.mode === "balance" && <p className="text-cz-3 text-xs">{t("common:sidebar.balance")}</p>}
+                {marketBalance?.mode !== "available" && marketBalance?.mode !== "balance" && <Skeleton className="h-4 w-28" />}
+                {marketBalance && marketBalance.locked > 0 && (
+                  <p className="text-cz-2 text-xs tabular-nums">
+                    {t("finance:balance.lockedInBids", { value: formatNumber(marketBalance.locked) })}
                   </p>
                 )}
                 {!loading && <LockedSalesLine refreshKey={/** @type {any} */ (team)?.balance} className="text-cz-2 text-xs" />}

@@ -53,6 +53,29 @@ export function computeAvailableBalance(balance, reserved) {
 }
 
 /**
+ * #8357: hvad en saldo-flade (sidemenu, dashboard, auktioner) skal vise.
+ * Saldoen må aldrig forsvinde: mens bindingen hentes vises en kort skeleton,
+ * og fejler eller trækker læsningen ud, vises den rå saldo under sit eget
+ * navn (aldrig som "til rådighed"), og "låst"-linjen skjules.
+ *
+ * @param {number|null|undefined} balance Rå team.balance (én fælles kilde).
+ * @param {number|null|undefined} reserved Bundet i bud, eller null når ukendt.
+ * @param {{ failed?: boolean, timedOut?: boolean }} [state]
+ * @returns {null
+ *   | { mode: "available", value: number, locked: number }
+ *   | { mode: "balance", value: number, locked: 0 }
+ *   | { mode: "pending", value: null, locked: 0 }}
+ */
+export function resolveBalanceDisplay(balance, reserved, state = {}) {
+  if (balance == null) return null;
+  if (!state.failed && typeof reserved === "number" && Number.isFinite(reserved)) {
+    return { mode: "available", value: computeAvailableBalance(balance, reserved), locked: Math.max(0, reserved) };
+  }
+  if (state.failed || state.timedOut) return { mode: "balance", value: balance, locked: 0 };
+  return { mode: "pending", value: null, locked: 0 };
+}
+
+/**
  * Henter de samme førende bud og autobud som Økonomi. En fejlet læsning
  * må ikke vises som om der ingen binding er.
  *

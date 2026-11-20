@@ -1539,14 +1539,16 @@ export default function AuctionsPage() {
           <span className="block font-data tabular-nums text-cz-2">
             {!loading && myTeamId && (moneyPending ? <Skeleton className="inline-block h-3 w-48 align-middle" /> :
               <>
-                {marketBalance ? (
+                {marketBalance && marketBalance.mode !== "pending" ? (
                   <>
                     <span className="block text-xl font-semibold text-cz-1">
-                      {t("finance:balance.available", { value: formatNumber(marketBalance.available) })}
+                      {marketBalance.mode === "available"
+                        ? t("finance:balance.available", { value: formatNumber(marketBalance.value) })
+                        : <>{t("auctions:stats.balance")} {formatNumber(marketBalance.value)} CZ$</>}
                     </span>
-                    {marketBalance.reserved > 0 && (
+                    {marketBalance.locked > 0 && (
                       <span className="block text-xs">
-                        {t("finance:balance.lockedInBids", { value: formatNumber(marketBalance.reserved) })}
+                        {t("finance:balance.lockedInBids", { value: formatNumber(marketBalance.locked) })}
                       </span>
                     )}
                   </>

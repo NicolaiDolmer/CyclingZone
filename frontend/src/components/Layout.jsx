@@ -24,6 +24,7 @@ import LanguageSwitcher from "./LanguageSwitcher";
 import { Wordmark } from "./Brand";
 import DiscordJoinLink from "./DiscordJoinLink";
 import { MenuIcon, BellIcon, ChevronDownIcon, ChevronLeftIcon } from "./ui/icons";
+import Skeleton from "./ui/Skeleton";
 import { resolveAcademyNavVisible, readCachedAcademyNav, writeCachedAcademyNav } from "../lib/academyNavVisibility";
 import { facilitiesNavItem } from "../lib/facilitiesNavVisibility";
 import { useFacilities } from "../lib/useFacilities";
@@ -406,16 +407,23 @@ function SidebarContent({ onNav, navigate, team, balance, marketBalance, onlineC
       </button>
 
       {/* Balance — guard mod undefined (jf. #446 bootstrap-race) */}
-      {balance != null && (
+      {marketBalance && (
         <div className="px-4 py-3 border-b border-cz-sidebar-border">
-          {marketBalance && (
-            <p className="text-cz-accent font-mono font-bold text-sm leading-tight" title={t("sidebar.balanceTooltip")}>
-              {t("finance:balance.available", { value: formatNumber(marketBalance.available) })}
+          {marketBalance.mode === "available" && (
+            <p className="text-cz-accent font-mono font-bold text-sm leading-tight tabular-nums" title={t("sidebar.balanceTooltip")}>
+              {t("finance:balance.available", { value: formatNumber(marketBalance.value) })}
             </p>
           )}
-          {marketBalance && marketBalance.reserved > 0 && (
+          {marketBalance.mode === "balance" && (
+            <>
+              <p className="text-3xs text-cz-sidebar-2 uppercase tracking-widest mb-0.5">{t("sidebar.balance")}</p>
+              <p className="text-cz-accent font-mono font-bold text-sm leading-tight tabular-nums">{formatNumber(marketBalance.value)} CZ$</p>
+            </>
+          )}
+          {marketBalance.mode === "pending" && <Skeleton className="h-4 w-28 opacity-40" />}
+          {marketBalance.locked > 0 && (
             <p className="text-cz-sidebar-2 font-mono tabular-nums text-3xs mt-0.5">
-              {t("finance:balance.lockedInBids", { value: formatNumber(marketBalance.reserved) })}
+              {t("finance:balance.lockedInBids", { value: formatNumber(marketBalance.locked) })}
             </p>
           )}
           <LockedSalesLine refreshKey={balance} className="text-cz-sidebar-2 text-3xs mt-0.5" />
@@ -524,12 +532,14 @@ function SidebarContent({ onNav, navigate, team, balance, marketBalance, onlineC
 
 export default function Layout() {
   const { t } = useTranslation("common");
-  const marketBalance = useMarketBalance();
   const navigate = useNavigate();
   const location = useLocation();
   const [session, setSession]               = useState(null);
   const [team, setTeam]                     = useState(null);
   const [balance, setBalance]               = useState(null);
+  // #8357: én kilde. Sidemenuen viser den delte holdsaldo (samme som dashboard og
+  // auktioner); Layouts egen læsning bruges kun, til den delte er hentet.
+  const marketBalance = useMarketBalance(balance);
   const [unread, setUnread]   = useState(0);
   // #3811: ulæst-prik ved "Patch Notes" — patchNotesLatestDate er nyeste patch-
   // dato (fra den lette patch-notes-meta.json), patchNotesUnread er den afledte
