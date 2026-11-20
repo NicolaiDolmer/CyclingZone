@@ -1,4 +1,6 @@
-      <div className="space-y-3">
+// #7947 · Frossen golden: I dag-panelets JSX paa merge-basen 2dbed0fa8 (TrainingPage.jsx, linjerne
+// mellem <TabPanel value="today"> og </TabPanel>). Genereres ALDRIG igen med den nye kode.
+export const TODAY_PANEL_MERGE_BASE = `      <div className="space-y-3">
       {decisionCardOn && !ridersLoading && (
         <DailyDecision
           rows={decisionRows}
@@ -38,3 +40,4 @@
           alle, så #5124's D-047-gren (telefonen uden flaget) er slettet. */}
       {phoneTodayView ? renderMobileToday() : renderDesktopToday()}
       </div>
+`;
