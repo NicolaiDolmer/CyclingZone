@@ -15,7 +15,7 @@
 // traethedsgraensen). Rotation, prioritet og laas pr. dag findes ikke i backend
 // endnu; se designnoten i PR'en. Telefonen er midlertidigt en simpel stak af
 // desktop-visningen (TODO: den endelige telefonudgave kommer i et senere spor).
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import Button from "../../ui/Button.jsx";
@@ -89,7 +89,7 @@ export default function ProgramR5({
     .sort((a, b) => `${a.lastname ?? ""} ${a.firstname ?? ""}`.localeCompare(`${b.lastname ?? ""} ${b.firstname ?? ""}`))
     .map((r) => ({ id: r.id, name: `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim(), type: r.primary_type ?? null })), [rawRiders]);
   const riderById = useMemo(() => new Map(riders.map((r) => [r.id, r])), [riders]);
-  const groupList: R5Group[] = groups.enabled ? groups.groups : [];
+  const groupList: R5Group[] = useMemo(() => (groups.enabled ? groups.groups : []), [groups.enabled, groups.groups]);
   const ownPlanIds = useMemo(
     () => new Set(Object.keys(riderWeekPlans).filter((id) => riderWeekPlans[id] != null)),
     [riderWeekPlans],
@@ -107,6 +107,14 @@ export default function ProgramR5({
   const [note, setNote] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [copyOpen, setCopyOpen] = useState(false);
   const [limitOpen, setLimitOpen] = useState(false);
+
+  // Kataloget kan lande efter fanen: vaelg da det foerste program, saa fanen aldrig staar tom.
+  const firstKey = library.programs[0]?.key ?? null;
+  useEffect(() => {
+    if (programKey || subject || !firstKey) return;
+    setProgramKey(firstKey);
+    setSubject(subjectsFor(firstKey, library)[0] ?? null);
+  }, [firstKey, programKey, subject, library]);
 
   const program = programs.catalog.find((p) => p.key === programKey) ?? null;
   const subjects = subjectsFor(programKey, library);
