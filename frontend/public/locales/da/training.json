@@ -870,6 +870,18 @@
     "selectAll": "Markér alle",
     "selectRider": "Markér {name}",
     "openRider": "Pas og detaljer for {name}",
-    "sortBy": "Sortér: {col}"
+    "sortBy": "Sortér: {col}",
+    "training": {
+      "label": "Træning:",
+      "program": "Program",
+      "aria": "{name}: træning i dag",
+      "teamAria": "{scope}: træning"
+    },
+    "yourDay": {
+      "onAll": "{n, plural, one {på # pas} other {på alle # pas}}",
+      "onSome": "på {n} af {total} pas",
+      "backToProgram": "Tilbage til programmet"
+    },
+    "teamSkippedHard": "{n, plural, one {# rytter har} other {# ryttere har}} ingen hård træning endnu. Vælg en træning, og tryk så Hård."
   }
 }

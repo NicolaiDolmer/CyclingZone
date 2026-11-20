@@ -40,17 +40,21 @@ import { hasOwnProgram } from "../todayRowModel.ts";
 import { daysOverLimit } from "../TrainingTeamTableBModel.ts";
 import { groupNameByRider, type TrainingGroup } from "../groups/trainingGroupsModel.ts";
 import { programName, programSessionToday, type CatalogProgram, type ProgramWeekDays } from "../../../lib/trainingPrograms.ts";
-import { DAY_TYPES_WITHOUT_SESSION, dayTypeForProgram, sessionForProgram, sessionI18nKey } from "../../../lib/trainingDayTypes.js";
+import {
+  DAY_TYPES_WITHOUT_SESSION, SKILL_SESSIONS, TRAINING_LEVELS, dayTypeForProgram, sessionForProgram, sessionI18nKey, sessionsByLevelFor,
+} from "../../../lib/trainingDayTypes.js";
+import { useTrainingCatalogV3 } from "../../../lib/useTrainingCatalogV3.ts";
 import { WEEKDAY_KEYS, injuryBadgeMessage, injuryTimeLeft } from "../../../lib/training.js";
 import { ageForSeason, contractExpiringBadgeKey, retirementRiskBadgeKey } from "../../../lib/riderAge.js";
 import { groupRidersByType, UNTYPED_KEY } from "../../../lib/trainingRoster.js";
 import { formatDate } from "../../../lib/intl.js";
 import {
-  AGE_FILTERS, ALL_SESSIONS_STORAGE_KEY, EFFORTS, NO_FILTERS, NO_GROUP, STAGE,
+  AGE_FILTERS, ALL_SESSIONS_STORAGE_KEY, EFFORTS, NO_FILTERS, NO_GROUP, PROGRAM_CHOICE, RECOVERY_CHOICE, STAGE,
   bulkPlan, dayEffort, dayFields, dayLoad, effortOf, filtersActive, matchesFilters, matchesOverview, nextSort,
-  overviewCounts, readStoredFlag, sortR5Rows, statusKeys, teamLine, toggleAllSelection, toggleOne, writeForEffort,
-  writeStoredFlag,
+  overviewCounts, readStoredFlag, sortR5Rows, statusKeys, teamLine, toggleAllSelection, toggleOne, trainingChoiceOf,
+  writeForEffort, writeForTraining, writeStoredFlag, yourDay,
   type Effort, type Field, type Filters, type OverviewKey, type R5Row, type Sort, type SortKey, type StatusKey,
+  type YourDay,
 } from "./todayR5Model.ts";
 
 // Knappen er .jsx; dens props skrives her een gang (samme greb som reportXp/ui.ts).
@@ -106,6 +110,8 @@ export type TodayR5Props = {
   onBulk: (choice: string, ids: string[]) => Promise<boolean>;
   onPickSession: (riderId: string) => void;
   onReset: (riderId: string) => Promise<Result>;
+  /** Fjerner kun rytterens egen dag (aldrig hans ugeplan): traeningsvaelgerens "Program". */
+  onClearPlan: (riderId: string) => Promise<boolean>;
   onOpenPlan: (riderId: string) => void;
   onOpenPrograms: () => void;
   onEditFatigueRule: () => void;
@@ -145,7 +151,14 @@ type Row = R5Row & {
   raceName: string | null;
   effective: Effort | null;
   hasOwn: boolean;
+  /** Traeningsvaelgerens vaerdi: "program" eller traeningen rytterens egen dag bygger paa. */
+  choice: string;
+  yourDay: YourDay | null;
 };
+
+// Raekkens og holdlinjens traeningsvalg, som TodayR5 holder (en traening valgt i
+// raekken huskes, saa Hard efter et Easy-tryk gaar tilbage til den).
+type Choices = { chosen: Record<string, string>; remember: (id: string, choice: string | null) => void };
 
 function StatusLine({ row, compact = false }: { row: Row; compact?: boolean }) {
   const { t } = useTranslation("training");
@@ -224,26 +237,78 @@ function RaceCell({ row, compact = false }: { row: Row; compact?: boolean }) {
   );
 }
 
+// En traenings navn i vaelgeren og i "Your day"-linjen (samme noegler som dagspanelet).
+function useTrainingName() {
+  const { t } = useTranslation("training");
+  return (choice: string) => (choice === "rest" || choice === RECOVERY_CHOICE
+    ? t(`dayPanel.dayType_${choice}`)
+    : t(sessionI18nKey("dayPanel.session", choice), { defaultValue: choice }));
+}
+
+// "Training: <fokus> ▾" (ejer 20/11). Kataloget er sidens eget: samme sessioner,
+// samme niveauer og samme v3-styring som den gamle fanes "Set day". Foerste valg
+// "Program" er som i dag. En naturlig <select>: telefonens egen liste er den
+// bedste tryk-flade, og et valg er eet tryk.
+function TrainingPicker({ value, onPick, disabled, label, full = false, testId }: {
+  value: string; onPick: (choice: string) => void; disabled: boolean; label: string; full?: boolean; testId: string;
+}) {
+  const { t } = useTranslation("training");
+  const name = useTrainingName();
+  const byLevel = sessionsByLevelFor({ catalogV3: useTrainingCatalogV3() }) as Record<string, readonly string[]>;
+  const listed = new Set<string>([PROGRAM_CHOICE, ...(SKILL_SESSIONS as readonly string[]), ...Object.values(byLevel).flat()]);
+  return (
+    <label className={`relative inline-flex min-w-0 items-center gap-1 rounded-cz border border-cz-border bg-cz-card ps-2 pe-6 text-xs hover:border-cz-3 focus-within:border-cz-1 max-sm:min-h-11 ${
+      full ? "w-full" : "max-w-[232px]"} ${disabled ? "opacity-50" : ""}`} data-testid={testId}>
+      <span className="shrink-0 text-cz-2">{t("r5.training.label")}</span>
+      <select value={value} disabled={disabled} aria-label={label} onChange={(e) => onPick(e.target.value)}
+        className="min-w-0 flex-1 cursor-pointer appearance-none truncate bg-transparent py-1 font-medium text-cz-1 outline-none disabled:cursor-default">
+        <option value={PROGRAM_CHOICE}>{t("r5.training.program")}</option>
+        {(TRAINING_LEVELS as readonly string[]).map((level) => (
+          <optgroup key={level} label={`${t("dayPanel.dayType_training")} · ${t(`dayPanel.level_${level}`)}`}>
+            {(byLevel[level] ?? []).map((s) => <option key={s} value={s}>{name(s)}</option>)}
+          </optgroup>
+        ))}
+        <optgroup label={t("dayPanel.dayType_skill")}>
+          {(SKILL_SESSIONS as readonly string[]).map((s) => <option key={s} value={s}>{name(s)}</option>)}
+        </optgroup>
+        {/* En dag vaelgeren ikke tilbyder (fx aktiv restitution fra dagspanelet) vises som den er. */}
+        {!listed.has(value) && <option value={value} disabled>{name(value)}</option>}
+      </select>
+      <ChevronDownIcon size={12} aria-hidden="true" className="pointer-events-none absolute inset-e-2 top-1/2 -translate-y-1/2 text-cz-3" />
+    </label>
+  );
+}
+
+// "Your day: Sprint, Hard on all 3 sessions · Back to team program" (ejer 20/11).
+function YourDayLine({ row, day, r5 }: { row: Row; day: YourDay; r5: TodayR5Props }) {
+  const { t } = useTranslation("training");
+  const name = useTrainingName();
+  const busy = r5.savingId === row.id || r5.bulkApplying;
+  const effort = effortOf(day.session);
+  const withEffort = day.session !== "rest" && day.session !== RECOVERY_CHOICE && effort;
+  return (
+    <span className="text-2xs text-cz-2" data-testid="r5-your-day">
+      {t("r5.source.own")}: <span className="font-medium text-cz-1">{name(day.session)}</span>
+      {withEffort && <>, <EffortWord effort={effort} /></>}{" "}
+      {day.count === day.free ? t("r5.yourDay.onAll", { n: day.count }) : t("r5.yourDay.onSome", { n: day.count, total: day.free })}
+      {!r5.trainedToday && (
+        <> · <button type="button" disabled={busy} onClick={() => { void r5.onClearPlan(row.id); }}
+          className="font-medium text-cz-1 underline decoration-cz-border underline-offset-2 hover:decoration-cz-1 disabled:opacity-50">
+          {row.program.kind === "none" ? t("r5.program.backToTeam") : t("r5.yourDay.backToProgram")}</button></>
+      )}
+    </span>
+  );
+}
+
 // Hvad raekken siger under valget: hvor dagen kommer fra, og vejen tilbage.
 function SourceLine({ row, r5 }: { row: Row; r5: TodayR5Props }) {
   const { t } = useTranslation("training");
   const busy = r5.savingId === row.id || r5.bulkApplying;
+  if (row.yourDay) return <YourDayLine row={row} day={row.yourDay} r5={r5} />;
   if (row.program.kind !== "none") {
     return (
       <span className="whitespace-nowrap text-2xs text-cz-2">
         {row.program.kind === "own" ? t("r5.program.own") : t(`r5.source.${row.program.kind}`)}: {row.effective ? <EffortWord effort={row.effective} /> : t("r5.source.noDay")}
-      </span>
-    );
-  }
-  if (row.plan?.focus && row.effective) {
-    return (
-      <span className="whitespace-nowrap text-2xs text-cz-2">
-        {t("r5.source.own")}
-        {row.hasOwn && (
-          <> · <button type="button" disabled={busy} onClick={() => { void r5.onReset(row.id); }}
-            className="font-medium text-cz-1 underline decoration-cz-border underline-offset-2 hover:decoration-cz-1 disabled:opacity-50">
-            {t("r5.program.backToTeam")}</button></>
-        )}
       </span>
     );
   }
@@ -262,7 +327,7 @@ function SourceLine({ row, r5 }: { row: Row; r5: TodayR5Props }) {
   );
 }
 
-function QuickSelect({ row, r5, full = false, tour }: { row: Row; r5: TodayR5Props; full?: boolean; tour?: string }) {
+function QuickSelect({ row, r5, choices, full = false, tour }: { row: Row; r5: TodayR5Props; choices: Choices; full?: boolean; tour?: string }) {
   const { t } = useTranslation("training");
   const busy = r5.savingId === row.id || r5.bulkApplying;
   if (r5.trainedToday) {
@@ -274,16 +339,28 @@ function QuickSelect({ row, r5, full = false, tour }: { row: Row; r5: TodayR5Pro
     );
   }
   // Det trykkede segment er rytterens egen dag; et program eller ingen dag staar i linjen under.
-  const pressed = row.plan?.focus && row.program.kind === "none" ? row.effective : null;
+  const pressed = row.yourDay ? effortOf(row.yourDay.session) : null;
   const choose = (effort: Effort) => {
-    const w = writeForEffort(effort, { storedFocus: row.plan?.focus ?? null, assistantFocus: r5.smartDefaultFocus[row.id] ?? null });
+    const w = writeForEffort(effort, {
+      storedFocus: row.plan?.focus ?? null, assistantFocus: r5.smartDefaultFocus[row.id] ?? null, chosenFocus: choices.chosen[row.id] ?? null,
+    });
     if (w.kind === "pick") r5.onPickSession(row.id);
     else void r5.onPlan(row.id, w.dayType, w.session);
+  };
+  // Et valg i vaelgeren gemmes straks paa traeningens egen indsats; "Program" fjerner kun dagen.
+  const pickTraining = (choice: string) => {
+    const w = writeForTraining(choice);
+    choices.remember(row.id, w.kind === "clear" ? null : choice);
+    if (w.kind === "clear") void r5.onClearPlan(row.id);
+    else if (w.kind === "write") void r5.onPlan(row.id, w.dayType, w.session);
   };
   const error = r5.planError?.riderId === row.id ? r5.planError.error : null;
   return (
     <div className={`flex flex-col ${full ? "items-stretch gap-1.5" : "items-start gap-1"}`} data-tour={tour}>
-      <div className={full ? "flex items-center gap-2 [&_[role=group]]:flex-1 [&_button]:flex-1" : "flex items-center gap-2"}>
+      {/* Telefon: vaelgeren staar over indsatsknapperne; computer: foer dem (brydes naar kolonnen er smal). */}
+      <div className={full ? "flex flex-col items-stretch gap-1.5 [&_[role=group]_button]:flex-1" : "flex flex-wrap items-center gap-x-2 gap-y-1"}>
+        <TrainingPicker value={row.choice} onPick={pickTraining} disabled={busy} full={full}
+          label={t("r5.training.aria", { name: row.name })} testId="r5-row-training" />
         <Segmented
           label={t("r5.quickLabel", { name: row.name })}
           value={pressed ?? "none"}
@@ -366,8 +443,8 @@ function SortTh({ k, label, cls, sort, onSort }: { k: SortKey | null; label: str
     <th className={`px-3 py-2 text-start ${HEAD} ${cls}`}
       aria-sort={sort && k === sort.key ? (sort.dir === 1 ? "ascending" : "descending") : undefined}>
       {k ? (
-        <button type="button" onClick={() => onSort(k)} className="inline-flex items-center gap-1 uppercase hover:text-cz-1">
-          {label}<SortIcon size={11} aria-hidden="true" />
+        <button type="button" onClick={() => onSort(k)} className="inline-flex max-w-full items-center gap-1 text-start uppercase hover:text-cz-1">
+          <span className="min-w-0">{label}</span><SortIcon size={11} aria-hidden="true" className="shrink-0" />
         </button>
       ) : label}
     </th>
@@ -401,6 +478,19 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
   const [open, setOpen] = useState<Set<string>>(() => new Set());
   const [groupByType, setGroupByType] = useState(false);
   const [pickMode, setPickMode] = useState(false);
+  // Traeningsvaelgerne (ejer 20/11): holdlinjens valg gaelder dens knapper; raekkens huskes pr. rytter.
+  const [teamTraining, setTeamTraining] = useState<string>(PROGRAM_CHOICE);
+  const [skippedHard, setSkippedHard] = useState(0);
+  const [chosen, setChosen] = useState<Record<string, string>>({});
+  const choices: Choices = {
+    chosen,
+    remember: (id, choice) => setChosen((prev) => {
+      const next = { ...prev };
+      if (choice) next[id] = choice;
+      else delete next[id];
+      return next;
+    }),
+  };
   // Simple | All sessions huskes pr. spiller (ejer 19/11); lukket som standard.
   const [allSessions, setAllSessionsState] = useState<boolean>(() => readStoredFlag(typeof window === "undefined" ? null : window.localStorage, ALL_SESSIONS_STORAGE_KEY));
   const setAllSessions = (on: boolean) => {
@@ -459,6 +549,10 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
       ownDay: !!plan?.focus,
       hasOwn: own.any,
       plan,
+      choice: trainingChoiceOf(plan),
+      // Linjen under raekken: dagens egen traening paa de felter den faktisk faar
+      // (et programfelt eller et loebsfelt vinder, samme stige som motoren).
+      yourDay: yourDay(fields, planSession ?? null),
       effective: dayEffort(fields),
       rider,
       daysOver70,
@@ -493,11 +587,15 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
   }, [shownKey]);
 
   const focusOf = (id: string) => ({ storedFocus: r5.planFor(id)?.focus ?? null, assistantFocus: r5.smartDefaultFocus[id] ?? null });
+  // Holdlinjen og "Set for group" bruger holdlinjens traening. En rytter uden kendt
+  // haard traening faar aldrig et gaet: han bliver staaende markeret, og linjen siger
+  // at en traening skal vaelges.
   const applyEffort = async (effort: Effort, ids: string[]) => {
-    const { calls } = bulkPlan(effort, ids, focusOf);
+    const { calls, skipped } = bulkPlan(effort, ids, focusOf, teamTraining);
+    setSkippedHard(skipped.length);
     let ok = calls.length > 0;
     for (const call of calls) ok = (await r5.onBulk(call.choice, call.ids)) && ok;
-    if (ok) setSelected(new Set());
+    if (ok) setSelected(new Set(skipped));
   };
   const toggle = (id: string) => setOpen((o) => toggleOne(o, id));
   const isOpen = (id: string) => allSessions || open.has(id);
@@ -564,10 +662,15 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
     <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-cz-border px-3 py-2 text-xs ${r5.phone ? "gap-x-2" : ""}`} data-testid="r5-team-line">
       <span className="font-semibold tabular-nums text-cz-1" data-testid="r5-team-scope">{scopeWord}</span>
       {locked ? <span className="text-cz-3">{t("oneTap.locked")}</span> : (
-        <div className={r5.phone ? "basis-full [&_[role=group]]:w-full [&_button]:flex-1" : ""}>
+        <div className={r5.phone ? "flex basis-full flex-col items-stretch gap-1.5 [&_[role=group]]:w-full [&_[role=group]_button]:flex-1" : "flex items-center gap-2"}>
+          <TrainingPicker value={teamTraining} onPick={(v) => { setTeamTraining(v); setSkippedHard(0); }} disabled={r5.bulkApplying}
+            full={r5.phone} label={t("r5.training.teamAria", { scope: scopeWord })} testId="r5-team-training" />
           <Segmented label={scopeWord} value="none" onChange={(v: Effort) => { void applyEffort(v, line.ids); }}
             options={EFFORTS.map((e) => ({ value: e, label: t(`r5.effort.${e}`), disabled: r5.bulkApplying || line.ids.length === 0 }))} />
         </div>
+      )}
+      {skippedHard > 0 && !locked && (
+        <span role="status" className="text-cz-warning" data-testid="r5-team-skipped">{t("r5.teamSkippedHard", { n: skippedHard })}</span>
       )}
       {line.kind === "selected" && (
         <button type="button" onClick={() => setSelected(new Set())} className="font-medium text-cz-1 underline decoration-cz-border underline-offset-2 max-sm:min-h-11">
@@ -611,13 +714,14 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
               aria-label={t("r5.selectAll")} className="h-4 w-4 rounded-[3px] accent-cz-accent" />
           </th>
           <th className="w-[36px]"><span className="sr-only">{t("r5.sessions.label")}</span></th>
-          <SortTh k="rider" label={t("colRider")} cls="w-[200px]" sort={sort} onSort={onSort} />
+          <SortTh k="rider" label={t("colRider")} cls="w-[192px]" sort={sort} onSort={onSort} />
           <SortTh k="type" label={t("colType")} cls="w-[128px]" sort={sort} onSort={onSort} />
           <SortTh k="age" label={t("colAge")} cls="w-[56px]" sort={sort} onSort={onSort} />
           <SortTh k="program" label={t("r5.col.program")} cls="w-[150px]" sort={sort} onSort={onSort} />
           <SortTh k="form" label={t("form")} cls="w-[64px]" sort={sort} onSort={onSort} />
-          <SortTh k="fatigue" label={t("r5.col.fatigueNow")} cls="w-[100px] whitespace-nowrap" sort={sort} onSort={onSort} />
-          <SortTh k="load" label={t("r5.col.dayLoad")} cls="w-[132px]" sort={sort} onSort={onSort} />
+          {/* Pilen stoedte op til Day load (ejer 20/11): kolonnen er bred nok, og en lang overskrift brydes inde i sin egen celle. */}
+          <SortTh k="fatigue" label={t("r5.col.fatigueNow")} cls="w-[116px]" sort={sort} onSort={onSort} />
+          <SortTh k="load" label={t("r5.col.dayLoad")} cls="w-[124px]" sort={sort} onSort={onSort} />
           <SortTh k={null} label={t("r5.col.today")} cls="" sort={sort} onSort={onSort} />
         </tr>
       </thead>
@@ -665,7 +769,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
                     <td className="px-3 py-[7px]">
                       {row.racing ? <RaceCell row={row} /> : (
                         <div className="flex items-center gap-2">
-                          <QuickSelect row={row} r5={r5} tour={tourAnchor()} />
+                          <QuickSelect row={row} r5={r5} choices={choices} tour={tourAnchor()} />
                         </div>
                       )}
                     </td>
@@ -750,7 +854,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
                   {/* Eet tryk som foer (ejer 20/11): valgknapperne staar i raekken. */}
                   {!row.racing && !pickMode && (
                     <div className="px-3 pb-2" data-testid="r5-onetap">
-                      <QuickSelect row={row} r5={r5} full tour={tourAnchor()} />
+                      <QuickSelect row={row} r5={r5} choices={choices} full tour={tourAnchor()} />
                     </div>
                   )}
                   {o && (
@@ -788,7 +892,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
       {/* Assistenten (hul 2): Dagens beslutning med flere forslag og "Use all", og panelet. */}
       {r5.decisionRows && !r5.loading && (
         <DailyDecision rows={r5.decisionRows} compact={r5.phone}
-          onUse={(row: DecisionRow) => { void r5.onPlan(row.riderId, row.dayType, null); }} />
+          onUse={(row: DecisionRow) => r5.onPlan(row.riderId, row.dayType, null)} />
       )}
       {r5.assistantPanel}
       {r5.runError && <p role="alert" className="text-sm text-cz-danger">{r5.runError}</p>}

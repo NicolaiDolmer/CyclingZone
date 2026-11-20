@@ -2474,7 +2474,7 @@ export default function TrainingPage() {
     racingToday, forecast: fatigueForecast.forecast, programAssigned: programs.assigned, programCatalog: programs.catalog ?? [], groups: trainingGroups.groups ?? [],
     fatigueDays70: training.fatigueDays70, smartDefaultFocus, trainedToday: runGate.trainedToday, savingId, bulkApplying, justSaved: lingerIds,
     planError: planActionError, runError, decisionRows: decisionCardOn ? decisionRows : null, fatigueRules: fatigueRules.data, assistantPanel, bulkMessage: bulkMsgNode,
-    onPlan: handlePlanChange, onBulk: applyBulkChoice, onPickSession: setFocusPanelRiderId, onReset: handleResetToTeamProgram,
+    onPlan: handlePlanChange, onBulk: applyBulkChoice, onPickSession: setFocusPanelRiderId, onReset: handleResetToTeamProgram, onClearPlan: handleClearPlan,
     onOpenPlan: (riderId) => { setWeekPlanFor(riderId); setTab("weekplan"); }, onOpenPrograms: () => setSub("programs"), onEditFatigueRule: () => setSub("limit"),
     onOpenAssistant: handleOpenAssistantPanel, renderCard: renderRiderCard,
   } : null;

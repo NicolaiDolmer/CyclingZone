@@ -870,6 +870,18 @@
     "selectAll": "Tout sélectionner",
     "selectRider": "Sélectionner {name}",
     "openRider": "Séances et détails de {name}",
-    "sortBy": "Trier : {col}"
+    "sortBy": "Trier : {col}",
+    "training": {
+      "label": "Entraînement :",
+      "program": "Programme",
+      "aria": "{name} : entraînement du jour",
+      "teamAria": "{scope} : entraînement"
+    },
+    "yourDay": {
+      "onAll": "{n, plural, one {sur # séance} other {sur les # séances}}",
+      "onSome": "sur {n} séances sur {total}",
+      "backToProgram": "Revenir au programme"
+    },
+    "teamSkippedHard": "{n, plural, one {# coureur n'a} other {# coureurs n'ont}} pas encore d'entraînement dur. Choisis un entraînement, puis appuie sur Dur."
   }
 }

@@ -870,6 +870,18 @@
     "selectAll": "Alles selecteren",
     "selectRider": "{name} selecteren",
     "openRider": "Sessies en details van {name}",
-    "sortBy": "Sorteren: {col}"
+    "sortBy": "Sorteren: {col}",
+    "training": {
+      "label": "Training:",
+      "program": "Programma",
+      "aria": "{name}: training vandaag",
+      "teamAria": "{scope}: training"
+    },
+    "yourDay": {
+      "onAll": "{n, plural, one {op # sessie} other {op alle # sessies}}",
+      "onSome": "op {n} van {total} sessies",
+      "backToProgram": "Terug naar programma"
+    },
+    "teamSkippedHard": "{n, plural, one {# renner heeft} other {# renners hebben}} nog geen zware training. Kies een training en druk dan op Zwaar."
   }
 }

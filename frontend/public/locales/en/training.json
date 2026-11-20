@@ -870,6 +870,18 @@
     "selectAll": "Select all",
     "selectRider": "Select {name}",
     "openRider": "Sessions and details for {name}",
-    "sortBy": "Sort: {col}"
+    "sortBy": "Sort: {col}",
+    "training": {
+      "label": "Training:",
+      "program": "Program",
+      "aria": "{name}: training today",
+      "teamAria": "{scope}: training"
+    },
+    "yourDay": {
+      "onAll": "{n, plural, one {on # session} other {on all # sessions}}",
+      "onSome": "on {n} of {total} sessions",
+      "backToProgram": "Back to program"
+    },
+    "teamSkippedHard": "{n, plural, one {# rider has} other {# riders have}} no hard training yet. Pick a training, then press Hard."
   }
 }
