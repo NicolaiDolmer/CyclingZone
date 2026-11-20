@@ -302,7 +302,12 @@ export function aggregateTrainingRuns(input: TrainingRun[] | null | undefined): 
       // (never a derived one), and never for quarantined/mixed evidence.
       const trainedNow = state === "pending" && evidence.every(e => e.normalized && !e.settled)
         ? { gains, gains_detail: details, gain_percent: activityContributions(evidence.map(e => e.row)) } : null;
-      return { ...last.row, rider_id: id, activities, receipt_status: state, trained_now: trainedNow, gains: trusted ? gains : {},
+      // #6110 (Codex on #8484): under XP the bar after the date is the slot settled LAST
+      // (highest xp_slot_seq), not the highest race day: a race slot can settle before the others.
+      const xpSlots = evidence.map(e => e.row as { xp_slot_seq?: unknown; xp_bar?: unknown })
+        .filter(row => Number.isFinite(Number(row.xp_slot_seq)) && row.xp_bar != null);
+      const xpLast = xpSlots.length ? xpSlots.reduce((a, b) => (Number(b.xp_slot_seq) > Number(a.xp_slot_seq) ? b : a)) : null;
+      return { ...last.row, ...(xpLast ? { xp_bar: xpLast.xp_bar } : {}), rider_id: id, activities, receipt_status: state, trained_now: trainedNow, gains: trusted ? gains : {},
         gains_detail: trusted ? details : {}, progress_before: trusted ? progressBefore : {}, gain_percent: trusted ? gainPercent : {},
         progress_after: trusted ? progressAfter : undefined,
         status: trusted ? last.row.status : "unknown_pending",
