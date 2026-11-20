@@ -1,5 +1,54 @@
 export const PATCHES = [
 {
+  "version": "7.484",
+  "date": "2026-11-21",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Dashboard",
+      "area": "interface",
+      "en": {
+        "title": "Calendar links open the calendar",
+        "body": "The Calendar link in Upcoming races and the race calendar buttons in the empty Recent results and Rider ranking cards now open the calendar instead of Team selection."
+      },
+      "da": {
+        "title": "Kalenderlinks åbner kalenderen",
+        "body": "Kalender-linket i Kommende løb og knapperne til løbskalenderen i de tomme kort Seneste resultater og Rytterrangliste åbner nu kalenderen i stedet for Holdudtagelse."
+      },
+      "refs": [
+        8447
+      ]
+    }
+  ]
+},
+{
+  "version": "7.483",
+  "date": "2026-11-21",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "switched_on",
+      "flag": "development_xp_model",
+      "topic": "Development",
+      "area": "development",
+      "en": {
+        "title": "The Development tab shows XP",
+        "body": "With XP switched on, the Development tab in Daily training shows one line per rider: XP today, XP per day over 30 days, the rating's change this season and how close he is to the next point. Open a rider to see his abilities. The rider type is shown as his natural type. With the column button you can also show the role he rates highest in now, or swap one for the other."
+      },
+      "da": {
+        "title": "Udvikling-fanen viser XP",
+        "body": "Når XP er tændt, viser fanen Udvikling i Daglig træning én linje pr. rytter: XP i dag, XP pr. dag over 30 dage, ratingens ændring i sæsonen og hvor tæt han er på næste point. Åbn en rytter for at se hans evner. Ryttertypen vises som hans naturlige type. Med kolonneknappen kan du også vise den rolle, han har højest rating i nu, eller bytte den ene ud med den anden."
+      },
+      "refs": [
+        7947
+      ]
+    }
+  ]
+},
+{
   "version": "7.482",
   "date": "2026-11-20",
   "changes": [
