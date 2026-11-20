@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11 · slet `backup_5902_20261112_*` ~26/11 · slet `backup_8078/8080/8099_20261113_*` ~27/11.
 >
-> **🎯 Next action (19/11 kl. 9):** PC1 Claude: XP #6110 først (ejeren vælger på målingen af #8410, så dom + talfil + tænding), så aftentræning #6490 (ikke målt 18/11), #8343, #8355 (billeder), #8359 (eftermiddag). Tændt 18/11 for beta: løbssiden v6 (#7778) og patch notes-siden (#8049). Træthed nu: prøve mod prod-billede 19/11 19.15-19.55 kræver `infisical login` på PC1. Overdragelse: [#8374](https://github.com/NicolaiDolmer/CyclingZone/issues/8374).
+> **🎯 Next action (20/11 eftermiddag, DolmerPC):** Overdragelse [#8514](https://github.com/NicolaiDolmer/CyclingZone/issues/8514). XP + Træthed nu + løbsafregning tændes i aften (mål ca. 19.30, når testet; ejerens "kør"; patch-noter #8457 + #8513 ved tænding). Trøjejagt TÆNDT 13.27. Merget i dag: auktioner, flag, klubskrift, titellinje, sidehoveder, trøjejagt, tog-rettelse (3 pr. tog), XP-rettelser. Ny træningsside R5 bag `training_page_r5`: I dag #8511 + Program #8512 (preview → beta → live). Udvikling-fanen #8479 før tænding. Merge-toget kører på PC1.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** Ingen aktiv session (PC1 Claude starter 19/11 kl. 9); Dolmer PC: Codex på listen på #8374.
+> **🤖 Working agent:** DolmerPC Claude (Opus 5.5) fra ca. 15.15 20/11; PC1-sessionen lukket, PC1 står tændt for merge-toget.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 

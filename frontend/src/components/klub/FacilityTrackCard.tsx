@@ -39,7 +39,7 @@ export default function FacilityTrackCard({ facility, onUpgrade, onOpenStaff, bu
     return (
       <Card borderClass="border-dashed border-cz-border" className="p-4 sm:p-5 bg-transparent">
         <div className="flex items-start justify-between gap-3">
-          <h3 className="font-display text-[20px] leading-none text-cz-2">{t(`tracks.${track}.name`)}</h3>
+          <h3 className="text-[15px] font-semibold text-cz-2">{t(`tracks.${track}.name`)}</h3>
           <span className={`${BADGE} text-cz-3 border border-cz-border`}>{t("facilities.comingSoon")}</span>
         </div>
         <p className="mt-3 text-xs text-cz-3 leading-relaxed">{t(`tracks.${track}.teaser`)}</p>
@@ -78,7 +78,7 @@ export default function FacilityTrackCard({ facility, onUpgrade, onOpenStaff, bu
   return (
     <Card className="p-4 sm:p-5 flex flex-col">
       <div className="flex items-start justify-between gap-3">
-        <h3 className="font-display text-[20px] leading-none">{t(`tracks.${track}.name`)}</h3>
+        <h3 className="text-[15px] font-semibold text-cz-1">{t(`tracks.${track}.name`)}</h3>
         {tier === 0 ? (
           <span className={`${BADGE} text-cz-2 border border-cz-border`}>{t("facilities.notBuilt")}</span>
         ) : (

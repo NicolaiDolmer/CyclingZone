@@ -121,6 +121,14 @@ if [ -d ".git" ]; then
   fi
 fi
 
+# (4) #8230: et issue-nummer fjernet fra MASTERPLAN skal staa et andet sted (seneste MASTERPLAN-commit, <30 min; ogsaa i worktrees).
+PLAN_LINE=$(git log -1 --format='%h %ct' -- docs/MASTERPLAN.md 2>/dev/null)
+PLAN_SHA=${PLAN_LINE%% *}; PLAN_TS=${PLAN_LINE##* }
+if [ -n "$PLAN_SHA" ] && [ $((${CHECK_NOW_MD_NOW_EPOCH:-$(date +%s)} - ${PLAN_TS:-0})) -lt 1800 ] && ! seen "plan-gap:$PLAN_SHA" && command -v node >/dev/null 2>&1; then
+  PLAN_GAP=$(node "$(dirname "$0")/plan-gap-audit.mjs" --check-commit "$PLAN_SHA" 2>/dev/null)
+  [ -n "$PLAN_GAP" ] && add "plan-gap:$PLAN_SHA" "$PLAN_GAP"
+fi
+
 # Output samlet warning
 if [ "${#WARNINGS[@]}" -gt 0 ]; then
   if [ -n "$SEEN_FILE" ]; then printf '%s

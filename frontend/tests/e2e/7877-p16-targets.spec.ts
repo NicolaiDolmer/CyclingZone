@@ -129,7 +129,9 @@ test("P16: column chips remain reachable and do not steal a neighbour's tap", as
 test("P16: field floor preserves a consumer's larger minimum width", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await login(page);
-  await page.goto("/riders");
+  // #8280 (P21): Rytterdatabasen har ikke laengere FilterBar (valgene er ord i
+  // tabellens titellinje), saa feltgulvet maales paa en side der stadig bruger den.
+  await page.goto("/transfers?tab=trades");
   const select = page.locator("select.min-w-36").first();
   await select.waitFor();
   // A short option must not collapse the FilterBar's explicit 144px minimum.

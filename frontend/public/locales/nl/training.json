@@ -6,6 +6,26 @@
     "waiting": "De training van vandaag draait vanzelf zodra de laatste koers klaar is, vanaf {hour}:00.",
     "ready": "De training van vandaag staat klaar. Draai hem nu, of laat hem vanzelf draaien."
   },
+  "trainNowMoment": {
+    "title": "De training van vandaag",
+    "subtitle": "{date} · {count, plural, one {# renner} other {# renners}} · elke dag dezelfde volgorde",
+    "skip": "Overslaan",
+    "openReport": "Bekijk het rapport",
+    "close": "Sluiten",
+    "listLabel": "De training van vandaag, renner voor renner",
+    "age": "{age} jaar",
+    "xp": "+{xp} XP",
+    "best": "Beste van vandaag",
+    "waiting": "Rijdt vandaag koers · wordt na de etappe verrekend",
+    "raced": "Koersdag",
+    "rest": "Rustdag",
+    "points": "{count, plural, one {+# punt} other {+# punten}}",
+    "summaryRiders": "{count, plural, one {# renner} other {# renners}}",
+    "summaryXp": "{xp} XP in totaal",
+    "summaryPoints": "{count, plural, one {# punt verdiend} other {# punten verdiend}}",
+    "summaryPaid": "{count, plural, one {# punt} other {# punten}} uitbetaald uit de balk",
+    "fromBar": "uit de balk"
+  },
   "trainNow": {
     "button": "Nu trainen",
     "running": "Bezig…",
@@ -175,6 +195,7 @@
     "ageRoleLine": "Leeftijd {age} · {role}",
     "numbers": "{now} · {lo}-{hi} · plafond {loft}",
     "numbersNoLoft": "{now} · {lo}-{hi}",
+    "numbersSingle": "{now} · {value}",
     "noForecastYet": "Nog geen voorspelling"
   },
   "injuryRisk": "Hoog blessurerisico",

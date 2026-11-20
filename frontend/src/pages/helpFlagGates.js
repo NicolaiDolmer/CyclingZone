@@ -30,11 +30,20 @@ export const HELP_SECTION_FLAGS = Object.freeze({
   youthSquads: "youth_squad_pages",
 });
 
+// #6110 XP (development_xp_model): XP-modellen afloeser kurve B. Off = dagens tekst,
+// on = "<blok>Xp"-tvillingen. En gate kan have en ekstra betingelse i `and`, som
+// ogsaa skal passe (fx kurve B on OG XP off), saa et par paa én kontakt kan
+// skjules af en anden uden en ny mekanisme.
+const XP_OFF = Object.freeze({ flag: "development_xp_model", when: false });
+const XP_ON = Object.freeze({ flag: "development_xp_model", when: true });
+const withXp = (gate, xp) => Object.freeze({ ...gate, and: xp });
+
 // #3564 kurve B (development_curve_b): dagens tekst (alderens turbo, potentiale =
 // kun fart) og kurve B-teksten (niveau koster, potentiale = hvor hoejt) maa aldrig
-// staa side om side. Off = den gamle blok, on = "<blok>CurveB".
-const CURVE_B_OFF = Object.freeze({ flag: "development_curve_b", when: false });
-const CURVE_B_ON = Object.freeze({ flag: "development_curve_b", when: true });
+// staa side om side. Off = den gamle blok, on = "<blok>CurveB". #6110: begge
+// forsvinder, naar XP er taendt (XP-tvillingen afloeser dem).
+const CURVE_B_OFF = withXp({ flag: "development_curve_b", when: false }, XP_OFF);
+const CURVE_B_ON = withXp({ flag: "development_curve_b", when: true }, XP_OFF);
 
 // #6746/#6641: de fem indsatstrin (effortSteps, teamworkAllOut) er altid synlige;
 // kontakten race_day_intention_enabled er fjernet (krav 5).
@@ -43,8 +52,8 @@ const RACE_DAY_TICK_OFF = Object.freeze({ flag: "training_tick_per_race_day", wh
 const RACE_DAY_TICK_ON = Object.freeze({ flag: "training_tick_per_race_day", when: true });
 // #6110 (Udvikling 2.0 del 1): "aiRidersV2" (AI- og frie ryttere udvikler sig
 // ikke dagligt) foelger flaget, fordi den daglige traening stadig gater paa det.
-// Aldrings-teksten "agingV2" er ugatet (#6499): saesonskiftet kender kun den nye
-// aldring, saa den gamle tekst ("agingAndDecline") er fjernet fra siden.
+// Aldrings-teksten "agingV2" (#6499) er gatet paa XP fra 19/11: under XP aeldes kroppen
+// efter talfilen, og "agingV2Xp" afloeser den. Den gamle "agingAndDecline" er fjernet.
 // #7801: reglen om trætheden lige nu (flader, træningens regler, assistentens udtagelse).
 // Off = dagens tekst om datoens start, on = "<blok>Now"-tvillingen.
 const FATIGUE_NOW_OFF = Object.freeze({ flag: "fatigue_now_7801", when: false });
@@ -71,9 +80,18 @@ const POTENTIAL_ESTIMATE_ON = Object.freeze({ flag: "potential_estimate_display"
  */
 export const HELP_BLOCK_FLAGS = Object.freeze({
   riders: Object.freeze({
+    riderType: XP_OFF,
+    riderTypeXp: XP_ON,
+    // #6110 ejervalg 19/11 (kandidat B): under XP aeldes kroppen efter talfilen (fra 29,
+    // sent fald i mentale evner). Off = dagens aldringstekst, on = XP-tvillingen.
+    agingV2: XP_OFF,
+    agingV2Xp: XP_ON,
     aiRidersV2: AGING_V2_ON,
     potentialBestRole: POTENTIAL_ESTIMATE_OFF,
     potentialBestRoleEstimate: POTENTIAL_ESTIMATE_ON,
+    // #8476: under XP vokser en traenet evne ikke "mod sit loft"; den tjener XP hurtigere.
+    trainingFocus: XP_OFF,
+    trainingFocusXp: XP_ON,
     scouting: POTENTIAL_ESTIMATE_OFF,
     scoutingEstimate: POTENTIAL_ESTIMATE_ON,
   }),
@@ -82,10 +100,12 @@ export const HELP_BLOCK_FLAGS = Object.freeze({
     // #7737: Traen nu med beta-forbeholdet indtil kontakten er on for viewer'en, saa uden.
     trainNowBeta: Object.freeze({ flag: "training_train_now_instant", when: false }),
     trainNowInstant: Object.freeze({ flag: "training_train_now_instant", when: true }),
-    trainNowBonus: Object.freeze({ flag: "training_train_now_bonus", when: true }),
+    trainNowBonus: withXp({ flag: "training_train_now_bonus", when: true }, XP_OFF),
+    trainNowBonusXp: withXp({ flag: "training_train_now_bonus", when: true }, XP_ON),
     trainToday: RACE_DAY_TICK_OFF,
     raceDays: RACE_DAY_TICK_OFF,
-    raceDaysPerRaceDay: RACE_DAY_TICK_ON,
+    raceDaysPerRaceDay: withXp(RACE_DAY_TICK_ON, XP_OFF),
+    raceDaysPerRaceDayXp: withXp(XP_ON, RACE_DAY_TICK_ON),
     formFatigue: RACE_DAY_TICK_OFF,
     formFatiguePerRaceDay: RACE_DAY_TICK_ON,
     fatigueLimit: FATIGUE_NOW_OFF,
@@ -96,6 +116,23 @@ export const HELP_BLOCK_FLAGS = Object.freeze({
     typeGatingCurveB: CURVE_B_ON,
     ceilingReached: CURVE_B_OFF,
     ceilingReachedCurveB: CURVE_B_ON,
+    // #6110 XP-tvillingerne. Det nye afsnit "developmentXp" findes kun med XP on.
+    dayTypes: XP_OFF,
+    dayTypesXp: XP_ON,
+    focusAbilities: XP_OFF,
+    focusAbilitiesXp: XP_ON,
+    progressBars: XP_OFF,
+    progressBarsXp: XP_ON,
+    maxOnePerDay: XP_OFF,
+    maxOnePerDayXp: XP_ON,
+    developmentXp: XP_ON,
+    longTermGrowthXp: XP_ON,
+    typeGatingXp: XP_ON,
+    ceilingReachedXp: XP_ON,
+    // #8476: scoren forklares som det, der driver udviklingen mod et loft. Under XP er
+    // det ikke sandt, saa blokken skjules (den har ingen XP-tvilling). Blokken har
+    // ogsaa sin egen kontakt (training_score_visible i SECTION_DEFS); begge skal passe.
+    trainingScore: XP_OFF,
   }),
   // #6181: med saelgers pengelaas taendt betales saelgeren foerst ved holdskiftet.
   transfers: Object.freeze({
@@ -109,6 +146,7 @@ export const HELP_BLOCK_FLAGS = Object.freeze({
   academy: Object.freeze({
     dailyTrainingBoost: CURVE_B_OFF,
     dailyTrainingBoostCurveB: CURVE_B_ON,
+    dailyTrainingBoostXp: XP_ON,
     prognosisTraining: POTENTIAL_ESTIMATE_OFF,
     prognosisTrainingEstimate: POTENTIAL_ESTIMATE_ON,
   }),
@@ -123,12 +161,20 @@ export const HELP_FAQ_FLAGS = Object.freeze({
   raceDayIntensityFaq: RACE_DAY_TICK_OFF,
   raceDayIntensityPerRaceDayFaq: RACE_DAY_TICK_ON,
   raceDayAcademyFaq: RACE_DAY_TICK_OFF,
-  raceDayAcademyPerRaceDayFaq: RACE_DAY_TICK_ON,
+  raceDayAcademyPerRaceDayFaq: withXp(RACE_DAY_TICK_ON, XP_OFF),
+  raceDayAcademyPerRaceDayXpFaq: withXp(XP_ON, RACE_DAY_TICK_ON),
   lowerDivisionTrainingFaq: RACE_DAY_TICK_ON,
   multipleStagesTrainingFaq: RACE_DAY_TICK_ON,
   stageRaceRestDayFaq: RACE_DAY_TICK_ON,
   teamworkLeadershipTrainingFaq: CURVE_B_OFF,
   teamworkLeadershipTrainingCurveBFaq: CURVE_B_ON,
+  teamworkLeadershipTrainingXpFaq: XP_ON,
+  trainingFocusFaq: XP_OFF,
+  trainingFocusXpFaq: XP_ON,
+  restForDevelopedFaq: XP_OFF,
+  restForDevelopedXpFaq: XP_ON,
+  // #8476: XP-modellen har ingen skarpe eller flade traeningsdage.
+  sharpFlatTrainingDaysFaq: XP_OFF,
   developmentProjectionFaq: POTENTIAL_ESTIMATE_OFF,
   developmentProjectionEstimateFaq: POTENTIAL_ESTIMATE_ON,
   scoutedBandGuaranteeFaq: POTENTIAL_ESTIMATE_OFF,
@@ -153,11 +199,16 @@ export const HELP_FAQ_FLAGS = Object.freeze({
 export function helpGateFlagKeys(extraKeys = []) {
   const keys = new Set(Object.values(HELP_SECTION_FLAGS));
   for (const blocks of Object.values(HELP_BLOCK_FLAGS)) {
-    for (const gate of Object.values(blocks)) keys.add(gate.flag);
+    for (const gate of Object.values(blocks)) addGateKeys(keys, gate);
   }
-  for (const gate of Object.values(HELP_FAQ_FLAGS)) keys.add(gate.flag);
+  for (const gate of Object.values(HELP_FAQ_FLAGS)) addGateKeys(keys, gate);
   for (const key of extraKeys) keys.add(key);
   return [...keys].sort();
+}
+
+function addGateKeys(keys, gate) {
+  keys.add(gate.flag);
+  if (gate.and) addGateKeys(keys, gate.and);
 }
 
 // null = flag-svaret kendes ikke endnu (siden henter stadig). Ellers er KUN
@@ -218,5 +269,6 @@ export function isHelpFaqVisible(faqId, flags) {
 
 function gateMatches(gate, flags) {
   const state = flagState(flags, gate.flag);
-  return state !== null && state === gate.when;
+  if (state === null || state !== gate.when) return false;
+  return gate.and ? gateMatches(gate.and, flags) : true;
 }

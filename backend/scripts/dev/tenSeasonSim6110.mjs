@@ -101,7 +101,7 @@ import {
 } from "../../lib/dailyTraining.js";
 import { validateDevelopmentCurveBParams } from "../../lib/developmentCurveB.ts";
 import {
-  abilityRoleClass, buildCapsForRider, developRiderSeasonV2, seededUnitMixed, youthRateForPotential,
+  abilityRoleClass, buildCapsForRider, developRiderSeasonV2, seededUnitMixed, youthRateForPotential, xpAgingConfig,
 } from "../../lib/riderProgression.js";
 import { abilityMeta } from "../../lib/abilityRegistry.js";
 import {
@@ -824,7 +824,11 @@ function transition(world, endingSeason, opts, { firstTransition = false, loadOv
     const before = bestRating(r.abilities);
     const dev = developRiderSeasonV2(
       { id: r.id, primary_type: r.primary_type, potentiale: r.potentiale, age, frozenRetirementNotice: frozen },
-      r.abilities, newSeason, { load: { raceDays, hardDays: r.seasonHardDays ?? 0 } },
+      r.abilities, newSeason, {
+        load: { raceDays, hardDays: r.seasonHardDays ?? 0 },
+        // #6110 dommer-fund F6 (19/11): XP-varianten ældes med talfilens aldring, som motoren.
+        ...(opts.agingCfg ? { cfg: opts.agingCfg } : {}),
+      },
     );
     r.abilities = { ...r.abilities, ...dev.next };
     out.agingPoints += dev.aging.totalDrop;
@@ -986,7 +990,9 @@ export function bigTalentAfterNine(riders, startSeason) {
 
 // ── Kørsel af én variant ─────────────────────────────────────────────────────────
 
-export function runVariant(snapshot, variant, opts = SIM_DEFAULTS) {
+export function runVariant(snapshot, variant, optsIn = SIM_DEFAULTS) {
+  // #6110 F6: sæsonskiftet bruger samme aldring som motoren under XP (talfilens `aging`).
+  const opts = withXpAging(optsIn, variant);
   const world = buildWorld(snapshot);
   const s0 = world.startSeason;
   const shares = fillMissingRaceShares(world.riders, s0, opts.raceShareByAge ?? null);
@@ -1090,7 +1096,8 @@ function cohortRaceTable(snapshot, opts) {
  * Kohorte-kørslen: samme sæsonløkke, samme aldring og pension som verdenen, men kun
  * kohortens ryttere og ingen erstatninger. Rytterne følges til `endAge` eller pension.
  */
-export function runCohort(snapshot, variant, opts = SIM_DEFAULTS) {
+export function runCohort(snapshot, variant, optsIn = SIM_DEFAULTS) {
+  const opts = withXpAging(optsIn, variant); // #6110 F6
   const world = buildWorld(snapshot);
   const s0 = world.startSeason;
   const startAge = opts.cohortStartAge ?? SIM_DEFAULTS.cohortStartAge;
@@ -1426,6 +1433,12 @@ function worldGateStats(world, season, { variant, seasonPoints, inSeasonRatingDr
   };
 }
 
+/** #6110 F6: xp-varianter får motorens aldrings-cfg (xpAgingConfig); andre varianter uændret. */
+export function withXpAging(opts, variant) {
+  const agingCfg = variant?.kind === "xp" ? xpAgingConfig(variant.xpParams) : null;
+  return agingCfg ? { ...opts, agingCfg } : opts;
+}
+
 /** Forventet topniveau (§6): standardkarriere fra nuværende evner, i rytterens naturlige rolle. */
 export function expectedTopRating({ id, abilities, potentiale, age, primary_type, secondary_type }, xp, { endAge = 36, datesPerSeason = 32, raceDays = 32 } = {}) {
   const program = assistantProgram(primary_type, secondary_type);
@@ -1446,7 +1459,8 @@ export function expectedTopRating({ id, abilities, potentiale, age, primary_type
       }
     }
     top = Math.max(top, bestRating(state) ?? 0);
-    const dev = developRiderSeasonV2({ id, primary_type, potentiale, age: a + 1 }, state, a, { load: { raceDays, hardDays: 0 } });
+    const agingCfg = xpAgingConfig(xp); // #6110 F6: samme aldring som motoren under XP
+    const dev = developRiderSeasonV2({ id, primary_type, potentiale, age: a + 1 }, state, a, agingCfg ? { load: { raceDays, hardDays: 0 }, cfg: agingCfg } : { load: { raceDays, hardDays: 0 } });
     state = { ...state, ...dev.next };
   }
   return top;

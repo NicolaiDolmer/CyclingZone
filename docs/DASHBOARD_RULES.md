@@ -69,6 +69,8 @@ Bestyrelsen mistede sin `lg:col-span-2` i omlægningen: /board har 959 sessions 
 
 ## 5. Tjekliste før du tilføjer et modul
 
+Begynderforløbets tjekliste og afslutningskort følger begge serverens `dismissed`- og `established`-status. Tjeklistens rundvisning er en sekundær handling. Status for udført træning vises ved træningstrinnet eller som feedback på en handling i tjeklisten.
+
 1. Kan det være i halv bredde? Hvis ja, hører det i gridet. Hvis nej, skriv hvorfor i kodekommentaren.
 2. Rører placeringen en af rækkerne i §2? Så skal ejeren spørges først.
 3. Er det registreret i `DashboardCustomizeMenu`?
