@@ -165,7 +165,7 @@ Automatisk planlægning af før-skifte-påmindelsen hører til #7250.
 
 ### 2.6 Fladerne (ejer-beslutninger i Claude Design-handoffet 2/9)
 
-Mit hold viser det fælles JR- eller U23-mærke ved rytterens navn efter den faktiske trup (`riders.squad`). En seniorrytter får intet trupmærke, uanset alder. Refs #7233.
+Mit hold viser det fælles JR- eller U23-mærke i Status-kolonnen efter den faktiske trup (`riders.squad`) i stedet for et aldersmærke; alderen står i sin egen kolonne, og navnecellen viser kun navnet. En seniorrytter får intet trupmærke, uanset alder. Øvrige statusmærker (skadet, akademi, 35+, udløb, ind/ud, auktion, transferliste) er uændrede. Refs #7233 (ejer 20/11).
 
 Kilde: [`design/youth-tiers/HANDOFF.md`](design/youth-tiers/HANDOFF.md) + hi-fi-artboards 3a-3k i `design/youth-tiers/Youth tiers hi-fi.html`. Disse beslutninger vinder over briefens §4 hvor de afviger.
 
