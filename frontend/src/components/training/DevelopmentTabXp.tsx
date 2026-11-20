@@ -322,11 +322,11 @@ function Abilities({ row, phone }: { row: DevRow; phone: boolean }) {
   );
 }
 
-// The two type columns' widths: the stacked gold badge (w-[132px]) holds the longest two-line
-// natural type, the grey tag (w-[92px]) the short role name. The table's minimum width grows
-// with the columns shown (full class names, so Tailwind sees them).
+// The two type columns: the stacked gold badge (w-[124px]) holds the longest two-line natural type, the
+// grey tag (w-[84px]) the short role name; both headers may wrap. With the default (natural only) the
+// table fits the content width at 1440 without scrolling; the minimum width grows with the columns shown.
 const MIN_WIDTH = {
-  none: "min-w-[1068px]", natural: "min-w-[1200px]", role: "min-w-[1160px]", both: "min-w-[1292px]",
+  none: "min-w-[1036px]", natural: "min-w-[1160px]", role: "min-w-[1120px]", both: "min-w-[1244px]",
 } as const;
 const BASE_COLS = 9;
 
@@ -343,13 +343,13 @@ function DesktopTable({ rows, open, toggle, sort, onSort, columns }: { rows: Dev
       <thead>
         <tr className="border-b border-cz-border">
           <th className="w-[44px]"><span className="sr-only">{t("developmentXp.abilitiesCol")}</span></th>
-          <SortHead k="rider" label={t("colRider")} className="w-[192px]" sort={sort} onSort={onSort} />
-          {showNatural && <SortHead k="natural" label={t("developmentXp.colNatural")} className="w-[132px]" sort={sort} onSort={onSort} />}
-          {showRole && <SortHead k="role" label={t("developmentXp.colRoleNow")} className="w-[92px]" sort={sort} onSort={onSort} />}
+          <SortHead k="rider" label={t("colRider")} className="w-[168px]" sort={sort} onSort={onSort} />
+          {showNatural && <SortHead k="natural" label={t("developmentXp.colNatural")} wrap className="w-[124px]" sort={sort} onSort={onSort} />}
+          {showRole && <SortHead k="role" label={t("developmentXp.colRoleNow")} wrap className="w-[84px]" sort={sort} onSort={onSort} />}
           <SortHead k="age" label={tRiders("table.age")} className="w-[52px]" sort={sort} onSort={onSort} />
           <SortHead k="rating" label={t("developmentXp.colRating")} className="w-[70px]" sort={sort} onSort={onSort} />
           <SortHead k="top" label={t("developmentXp.colTop")} className="w-[118px]" sort={sort} onSort={onSort} />
-          <SortHead k="season" label={t("developmentXp.colRatingSeason")} title={t("developmentXp.ratingSeasonTitle")} wrap className="w-[92px]" sort={sort} onSort={onSort} />
+          <SortHead k="season" label={t("developmentXp.colRatingSeason")} title={t("developmentXp.ratingSeasonTitle")} wrap className="w-[84px]" sort={sort} onSort={onSort} />
           <SortHead k="xpToday" label={t("developmentXp.colXpToday")} className="w-[116px]" sort={sort} onSort={onSort} />
           <SortHead k="xp30" label={t("developmentXp.colXp30")} className="w-[184px]" sort={sort} onSort={onSort} />
           <SortHead k="next" label={t("developmentXp.colNext")} sort={sort} onSort={onSort} />
