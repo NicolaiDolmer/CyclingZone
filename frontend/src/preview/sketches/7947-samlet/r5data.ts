@@ -20,6 +20,7 @@ export type R5Rider = {
   overLimit: boolean;
   program: string | null; // det faste program rytteren foelger
   racing: boolean; // koerer etape i dag (felt 3)
+  tonight: { value: number; tone: "ok" | "warn" | "risk" }; // "nu -> i aften ~xx" (gamle I dag, #6025)
 };
 
 const OWNER: Record<string, Omit<R5Rider, "id" | "fatigue" | "overLimit" | "program" | "racing">> = {
@@ -47,7 +48,58 @@ export const TEAM: R5Rider[] = RIDERS.map((r) => ({
   overLimit: r.tone === "risk",
   program: PROGRAM[r.id],
   racing: ["r1", "r2", "r3"].includes(r.id),
+  tonight: { value: r.fatigueTonight, tone: r.tone },
 }));
+
+// --- I dag-paritet 20/11 (#7947): det den gamle I dag viser, som R5 manglede ---
+// Status i raekken og i kortet (TrainingTodayTable + TodayRowMobile + kortets fod).
+// Alt er eksempler; alderen bruges kun i varianten "gamle loesning" (dev=old).
+export type R5Status = {
+  age: number;
+  squad: "u23" | "junior" | null; // riders.squad, aldrig alderen (#5763)
+  injuredRaceDays: number; // 0 = rask
+  highRisk: boolean; // hoej skaderisiko
+  academy: boolean;
+  contractExpiring: boolean;
+  retireRisk: boolean;
+  days70: number; // afregnede dage i traek paa hoej traethed (kolonnen "Days 70+")
+};
+const S = (age: number, more: Partial<R5Status> = {}): R5Status => ({
+  age, squad: null, injuredRaceDays: 0, highRisk: false, academy: false, contractExpiring: false, retireRisk: false, days70: 0, ...more,
+});
+export const STATUS: Record<string, R5Status> = {
+  r1: S(27), r2: S(31, { contractExpiring: true }), r3: S(29, { highRisk: true, days70: 3 }),
+  r4: S(24), r5: S(26), r6: S(33, { injuredRaceDays: 2, retireRisk: true }),
+  r7: S(28, { days70: 1 }), r8: S(19, { squad: "junior", academy: true }), r9: S(22, { squad: "u23" }),
+};
+
+// Rytterkortet: XP-linjer pr. evne (EVNE / NU / FREMDRIFT / SENESTE som #8488) og "Counts for".
+export type XpLine = { ability: string; now: number; xp: number; price: number; latest: number | null };
+export const XP_LINES: Record<string, XpLine[]> = {
+  r4: [
+    { ability: "punch", now: 72, xp: 312, price: 540, latest: 64 },
+    { ability: "acceleration", now: 68, xp: 120, price: 500, latest: 41 },
+    { ability: "climbing", now: 61, xp: 455, price: 480, latest: 22 },
+  ],
+  r5: [
+    { ability: "time_trial", now: 74, xp: 210, price: 560, latest: 70 },
+    { ability: "flat", now: 66, xp: 380, price: 500, latest: 35 },
+    { ability: "endurance", now: 63, xp: 90, price: 470, latest: null },
+  ],
+};
+export const COUNTS_FOR: Record<string, Array<{ ability: string; value: number }>> = {
+  r4: [{ ability: "punch", value: 72 }, { ability: "acceleration", value: 68 }, { ability: "climbing", value: 61 }, { ability: "sprint", value: 58 }],
+  r5: [{ ability: "time_trial", value: 74 }, { ability: "prolog", value: 70 }, { ability: "flat", value: 66 }],
+};
+
+// Hvad hvert pas traener (feltvaelgerens "trains / fits type", gamle FocusPanel). Eksempler.
+export const TRAINS: Partial<Record<Session, string[]>> = {
+  endurance: ["endurance", "flat"], tempo: ["tempo", "flat"], threshold: ["time_trial", "climbing"],
+  vo2max: ["climbing", "endurance"], vo2max_climb: ["climbing"], vo2max_punch: ["punch", "acceleration"],
+  sprint: ["sprint", "acceleration"], aero: ["time_trial", "prolog"], technique: ["descending", "positioning"],
+  loebslaere: ["tactics", "positioning"], attack_repeats: ["punch", "aggression"], cobbled_sectors: ["cobblestone"],
+  echelon_drills: ["positioning", "flat"], recovery: ["recovery"],
+};
 
 export const RACE = "Ronde van Preview";
 
