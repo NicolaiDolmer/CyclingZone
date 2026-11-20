@@ -97,6 +97,7 @@ import TodayRowsMobile from "../components/training/TodayRowMobile.tsx";
 import { pressedChoice, pressedChoiceFromSession, rowLocked, rowForecast, hasOwnProgram } from "../components/training/todayRowModel.ts";
 import ResetToTeamProgram from "../components/training/ResetToTeamProgram.tsx";
 import XpReportSwitch from "../components/training/reportXp/XpReportSwitch.tsx"; // #7627
+import { dayXpByAbility, riderXpBars, withXpLines } from "../lib/xpAbilityLine.ts"; // #7947
 import { useDevelopmentXpEnabled } from "../lib/developmentXpFlag.ts"; // #8476
 import { earnedGainTotal } from "../lib/trainingEarnedGains.ts"; // #8476
 // #6030: fanerne Program, Development og Report hentes foerst naar de aabnes
@@ -1500,7 +1501,8 @@ export default function TrainingPage() {
   function receiptRowsFor(riderId) {
     const rider = riderByIdMap.get(riderId);
     if (!rider) return null;
-    return focusAbilityReceipt(planFor(riderId)?.focus, {
+    // #7947: "x / y XP" i stedet for procent, kun når serveren sender xp_bar (XP tændt).
+    return withXpLines(focusAbilityReceipt(planFor(riderId)?.focus, {
       abilities: rider.abilities,
       progress: progress[riderId],
       capped: capped[riderId],
@@ -1509,7 +1511,7 @@ export default function TrainingPage() {
       gainsToday: receiptRowByRider[riderId]?.gains ?? null,
       gainPercentToday: receiptRowByRider[riderId]?.gain_percent,
       gainDay: receiptDay,
-    });
+    }), riderXpBars(training.xpBar, riderId), dayXpByAbility(receiptRowByRider[riderId]?.activities));
   }
   function seasonPointsFor(riderId) {
     const gains = seasonGainsByRider[riderId];

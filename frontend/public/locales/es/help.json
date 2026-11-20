@@ -2115,7 +2115,7 @@
     },
     "restForDevelopedFaq": {
       "q": "Mi ciclista está totalmente desarrollado. ¿Le pongo simplemente en Descanso?",
-      "a": "Cuando todas las habilidades del enfoque elegido de un ciclista han llegado a su techo vitalicio, cada línea de ese enfoque muestra “hecho”, y entrenar más ahí no añade nada: la ganancia diaria viene de la diferencia entre la habilidad actual y el techo, y con diferencia cero se queda en cero a cualquier intensidad. Normal o Duro en un ciclista al máximo sigue acumulando Fatiga, y Duro sigue conllevando el mismo riesgo de lesión de siempre, sin ninguna ganancia de habilidad a cambio, así que Descanso es la elección más segura: quita Fatiga en lugar de añadirla. El declive de un ciclista tras su pico, desde alrededor de los 28 años, avanza al mismo ritmo fijo y basado en la edad en cada cambio de temporada, sea cual sea la intensidad con la que entrenaste, así que ni el entrenamiento ni el Descanso lo aceleran ni lo frenan. Si otro enfoque aún tiene margen, cambiar a él es mejor que descansar."
+      "a": "Normalmente queda algo por ganar: cuanto más alta está ya una habilidad, más cuesta cada punto, así que el progreso cerca de la cima es lento, pero continúa hasta que la habilidad alcanza el nivel más alto que permite su rol; a partir de ahí, entrenarla no suma nada. Normal o Duro siguen acumulando Fatiga, y Duro conlleva el riesgo de lesión de siempre, así que Descanso tiene sentido cuando la Fatiga es alta o la ganancia es demasiado pequeña para compensar la carga. Descanso no da desarrollo en un día de entrenamiento, así que, si no, un enfoque en habilidades que todavía están más bajas lo hace avanzar más rápido. Los ciclistas mantienen su nivel hasta los 30 inclusive; a partir de la temporada siguiente, sus capacidades físicas bajan un poco en cada cambio de temporada. Los días de carrera y los días de entrenamiento duro frenan esa bajada; Descanso no."
     },
     "restForDevelopedXpFaq": {
       "q": "Mi ciclista está totalmente desarrollado. ¿Le pongo simplemente en Descanso?",
@@ -2507,7 +2507,7 @@
     },
     "trainWeaknessesFaq": {
       "q": "¿Debo entrenar mis habilidades débiles?",
-      "a": "Normalmente no. El tipo de un ciclista fija un techo por habilidad, y una debilidad tiene un techo bajo, así que deja de crecer pronto. Cuanto más cerca está una habilidad de su techo, menos suma cada día de entrenamiento. Entrena las habilidades para las que está hecho su tipo y deja las debilidades en segundo lugar. Una habilidad débil sigue contando en una etapa, pero pesa sobre todo donde la etapa la exige."
+      "a": "Normalmente no en primer lugar. Su tipo decide lo rápido que se desarrolla cada habilidad: las habilidades para las que están hechos su tipo principal y su tipo secundario se desarrollan más rápido, y las que quedan fuera de sus roles, más despacio. Además, cada punto cuesta más cuanto más alta está ya una habilidad. Entrena las habilidades para las que está hecho su tipo y deja las debilidades en segundo lugar. Una habilidad débil sigue contando en una etapa, pero pesa sobre todo donde la etapa la exige."
     },
     "raceFatigueSameFatigueFaq": {
       "q": "¿La fatiga del esfuerzo en carrera es la misma que la Fatiga de la página de entrenamiento?",
