@@ -17,6 +17,8 @@ type Seed = Record<string, unknown> & {
 
 function previewOn(): boolean {
   try {
+    // ?trainingR5Seed=1: samme fulde hold med kontakten slukket (foer-billedet side om side).
+    if (new URLSearchParams(window.location.search).get("trainingR5Seed") === "1") return true;
     const param = new URLSearchParams(window.location.search).get("trainingR5");
     if (param === "1" || param === "on") return true;
     if (param === "0" || param === "off") return false;
