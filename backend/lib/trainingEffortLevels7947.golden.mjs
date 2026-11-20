@@ -29,7 +29,7 @@ import { seedState, createFake, sweep, digest, rider } from "./trainNowSameResul
 const LEVELS = ["easy", "normal", "hard"];
 const isLevel = (v) => LEVELS.includes(v);
 const enc = (v) => (v === undefined ? "__undefined__" : v);
-const hashOf = (list) => createHash("sha256").update(JSON.stringify(list.map(enc))).digest("hex").slice(0, 24);
+export const hashOf = (list) => createHash("sha256").update(JSON.stringify(list.map(enc))).digest("hex").slice(0, 24);
 
 export const SESSIONS = Object.freeze([...PROGRAM_SESSIONS, ...V3_NEW_HARD_SESSIONS]);
 const EFFORTS = [undefined, null, "easy", "normal", "hard", "bogus"];
@@ -208,7 +208,12 @@ const SPECS = {
   // Indsats lig standardniveauet overalt (og indsats paa hvile/restitution, som ignoreres).
   standard: () => ({
     team: { effort: "hard", slotEfforts: [null, "easy", null, "hard", null] },
-    riders: RIDER_MON.map((s) => ({ effort: s === "rest" || s === "recovery" ? "hard" : intensityForSession(s) })),
+    // Rytter 1's felter har egne sessioner; dagens indsats gaelder ogsaa dem (slotEfforts ?? effort),
+    // saa standard kraever feltets eget standardniveau dér.
+    riders: RIDER_MON.map((s, n) => ({
+      effort: s === "rest" || s === "recovery" ? "hard" : intensityForSession(s),
+      ...(n === 1 ? { slotEfforts: [null, "hard", "easy", null, "normal"] } : {}),
+    })),
   }),
   // Andre niveauer end standard.
   other: () => ({
