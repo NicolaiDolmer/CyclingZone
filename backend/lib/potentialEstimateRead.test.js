@@ -8,7 +8,6 @@ import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
 import {
   TRAININGS_NEEDED,
   buildAcademyFromViews,
-  buildEstimateLine,
   buildEstimatesFromViews,
   buildPotentialView,
   buildProjectionFromView,
@@ -50,12 +49,15 @@ function fakeSupabase(tables) {
         ? row
         : Object.fromEntries(columns.split(",").map((c) => c.trim()).map((c) => [c, row[c]])));
       const rows = () => (tables[table] ?? [])
-        .filter((row) => filters.every(({ column, values }) => values.includes(row[column])))
+        .filter((row) => filters.every(({ column, values, test: match }) => (match ? match(row[column]) : values.includes(row[column]))))
         .map(project);
       const query = {
         select(selected) { columns = selected; reads.push({ table, columns: selected }); return query; },
         eq(column, value) { filters.push({ column, values: [value] }); return query; },
         in(column, values) { filters.push({ column, values }); return query; },
+        gt(column, value) { filters.push({ column, test: (cell) => cell > value }); return query; },
+        gte(column, value) { filters.push({ column, test: (cell) => cell >= value }); return query; },
+        then(resolve, reject) { return Promise.resolve({ data: rows(), error: null }).then(resolve, reject); },
         order() { return query; },
         range: async () => ({ data: rows(), error: null }),
         maybeSingle: async () => ({ data: rows()[0] ?? null, error: null }),
@@ -206,39 +208,29 @@ test("scouting-rapporten: uden skøn er der ingen vurdering", async () => {
   assert.equal(report.looks, 0);
 });
 
-test("estimateLine: starter ved nu, ender mod skønnet, heltal, aldrig bånd", () => {
-  const line = buildEstimateLine({ now: 40, value: 70, age: 20 });
-  assert.deepEqual(line[0], { season: 0, value: 40 });
-  assert.ok(line.every((point) => Object.keys(point).join() === "season,value" && Number.isInteger(point.value)));
-  assert.ok(line.at(-1).value > 40 && line.at(-1).value <= 70);
-});
-
 const projectionInput = (over = {}) => ({
   teamId: TEAM, rider: { id: "scouted", primary_type: "climber" }, own: false, level: 2, maxLevel: 3, age: 23, ...over,
 });
 
-test("development-projection: linje + potentialView, aldrig band, ceil eller timing", async () => {
+test("development-projection: potentialView, aldrig band, ceil, timing eller den gamle kurve", async () => {
   const supabase = world();
   const projection = await buildProjectionFromView(supabase, projectionInput());
   assert.equal(projection.potentialView.value, 74);
-  assert.ok(projection.estimateLine.length > 1);
-  assert.equal(projection.estimateLine[0].value, Math.round(projection.now));
-  for (const legacy of ["band", "ceil", "timing"]) assert.ok(!(legacy in projection), `${legacy} må ikke være med`);
+  for (const legacy of ["band", "ceil", "timing", "estimateLine"]) assert.ok(!(legacy in projection), `${legacy} må ikke være med`);
+  assert.ok(!("prognosisView" in projection), "andres ryttere får aldrig en prognose");
   assert.doesNotMatch(JSON.stringify(projection), FORBIDDEN);
   const abilityRead = supabase.reads.find((read) => read.table === "rider_derived_abilities");
   assert.doesNotMatch(abilityRead.columns, /ability_caps|hidden_potential|\*/);
 });
 
-test("development-projection: skjult skøn tegner ingen linje", async () => {
+test("development-projection: skjult skøn", async () => {
   const projection = await buildProjectionFromView(world(), projectionInput({ rider: { id: "stranger", primary_type: "climber" } }));
-  assert.deepEqual(projection.estimateLine, []);
   assert.equal(projection.capsMissing, false);
   assert.deepEqual(projection.potentialView, { hidden: true, reason: "unscouted" });
 });
 
 test("development-projection: skøn uden evner siger det ærligt", async () => {
   const projection = await buildProjectionFromView(world({ rider_derived_abilities: [] }), projectionInput());
-  assert.deepEqual(projection.estimateLine, []);
   assert.equal(projection.capsMissing, true);
   assert.equal(projection.potentialView.value, 74);
 });
