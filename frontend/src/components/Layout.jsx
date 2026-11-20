@@ -423,7 +423,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
         <div className="px-4 py-2 border-b border-cz-sidebar-border">
           <span className="inline-flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-cz-success" />
-            <span className="text-cz-sidebar-3 text-3xs">{t("sidebar.onlineNow", { count: onlineCount })}</span>
+            <span className="text-cz-sidebar-2 text-3xs">{t("sidebar.onlineNow", { count: onlineCount })}</span>
           </span>
         </div>
       )}

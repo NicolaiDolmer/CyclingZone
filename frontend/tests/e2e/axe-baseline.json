@@ -3,19 +3,16 @@
   "engineVersion": "4.14.0",
   "cases": {
     "desktop-chromium/calendar": {
-      "[\"color-contrast\",[\".gap-1\\\\.5.inline-flex.items-center > .text-cz-sidebar-3.text-3xs\"]]": 1,
       "[\"color-contrast\",[\".hover\\\\:text-cz-sidebar-2\"]]": 1,
       "[\"label-content-name-mismatch\",[\".gap-1.flex.items-center > .inline-block.relative > .py-1.focus\\\\:outline-hidden.focus\\\\:ring-2\"]]": 1,
       "[\"label-content-name-mismatch\",[\"a[href=\\\"/races/cal-2?stage=1\\\"]\"]]": 1,
       "[\"label-content-name-mismatch\",[\"a[href=\\\"/races/cal-5?stage=1\\\"]\"]]": 1
     },
     "desktop-chromium/dashboard": {
-      "[\"color-contrast\",[\".gap-1\\\\.5.inline-flex.items-center > .text-cz-sidebar-3.text-3xs\"]]": 1,
       "[\"color-contrast\",[\".hover\\\\:text-cz-sidebar-2\"]]": 1,
       "[\"label-content-name-mismatch\",[\".gap-1.flex.items-center > .inline-block.relative > .focus\\\\:outline-hidden.focus\\\\:ring-2.focus\\\\:ring-cz-accent\"]]": 1
     },
     "desktop-chromium/market": {
-      "[\"color-contrast\",[\".gap-1\\\\.5.inline-flex.items-center > .text-cz-sidebar-3.text-3xs\"]]": 1,
       "[\"color-contrast\",[\".hover\\\\:text-cz-sidebar-2\"]]": 1,
       "[\"heading-order\",[\"h3\"]]": 1,
       "[\"label-content-name-mismatch\",[\".gap-1.flex.items-center > .inline-block.relative > .focus\\\\:ring-2.focus\\\\:ring-cz-accent[aria-haspopup=\\\"listbox\\\"]\"]]": 1,
@@ -23,7 +20,6 @@
       "[\"landmark-unique\",[\".md\\\\:flex\"]]": 1
     },
     "desktop-chromium/race": {
-      "[\"color-contrast\",[\".gap-1\\\\.5.inline-flex.items-center > .text-cz-sidebar-3.text-3xs\"]]": 1,
       "[\"color-contrast\",[\".hover\\\\:text-cz-sidebar-2\"]]": 1,
       "[\"label-content-name-mismatch\",[\".border-cz-1\"]]": 1,
       "[\"label-content-name-mismatch\",[\".gap-1.flex.items-center > .inline-block.relative > .focus\\\\:outline-hidden.focus\\\\:ring-2.focus\\\\:ring-cz-accent\"]]": 1,
@@ -31,26 +27,22 @@
       "[\"label-content-name-mismatch\",[\"button[data-stage=\\\"3\\\"]\"]]": 1
     },
     "desktop-chromium/rider": {
-      "[\"color-contrast\",[\".gap-1\\\\.5.inline-flex.items-center > .text-cz-sidebar-3.text-3xs\"]]": 1,
       "[\"color-contrast\",[\".hover\\\\:text-cz-sidebar-2\"]]": 1,
       "[\"label-content-name-mismatch\",[\".gap-1.flex.items-center > .inline-block.relative > .focus\\\\:outline-hidden.focus\\\\:ring-2.focus\\\\:ring-cz-accent\"]]": 1
     },
     "desktop-chromium/riders": {
-      "[\"color-contrast\",[\".gap-1\\\\.5.inline-flex.items-center > .text-cz-sidebar-3.text-3xs\"]]": 1,
       "[\"color-contrast\",[\".hover\\\\:text-cz-sidebar-2\"]]": 1,
       "[\"color-contrast\",[\".text-cz-accent-t\\\\/80\"]]": 1,
       "[\"empty-table-header\",[\"thead > tr > .text-left:nth-child(4)\"]]": 1,
       "[\"label-content-name-mismatch\",[\".gap-1:nth-child(2) > .relative.inline-block > .focus\\\\:outline-hidden.focus\\\\:ring-2.focus\\\\:ring-cz-accent\"]]": 1
     },
     "desktop-chromium/tactics": {
-      "[\"color-contrast\",[\".gap-1\\\\.5.inline-flex.items-center > .text-cz-sidebar-3.text-3xs\"]]": 1,
       "[\"color-contrast\",[\".hover\\\\:text-cz-sidebar-2\"]]": 1,
       "[\"label-content-name-mismatch\",[\".gap-1.flex.items-center > .inline-block.relative > .focus\\\\:outline-hidden.focus\\\\:ring-2.focus\\\\:ring-cz-accent\"]]": 1,
       "[\"label-content-name-mismatch\",[\"td:nth-child(5) > .flex-wrap.gap-2.flex > .border-cz-accent\\\\/40.hover\\\\:bg-cz-accent\\\\/5.bg-transparent\"]]": 1,
       "[\"link-in-text-block\",[\"a[href=\\\"/help?section=raceSelection\\\"]\"]]": 1
     },
     "desktop-chromium/training": {
-      "[\"color-contrast\",[\".gap-1\\\\.5.inline-flex.items-center > .text-cz-sidebar-3.text-3xs\"]]": 1,
       "[\"color-contrast\",[\".hover\\\\:text-cz-sidebar-2\"]]": 1,
       "[\"label-content-name-mismatch\",[\".gap-1:nth-child(2) > .inline-block.relative > .focus\\\\:outline-hidden.focus\\\\:ring-2.focus\\\\:ring-cz-accent\"]]": 1
     },
