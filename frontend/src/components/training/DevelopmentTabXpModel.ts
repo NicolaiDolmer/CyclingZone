@@ -48,7 +48,16 @@ export type DevRiderInput = {
   racingToday: boolean;
 };
 
-export type DevAbility = { key: string; now: number | null; season: number | null; pct: number | null };
+/**
+ * Ejer 20/11: the opened row reads like the rider's Training tab (#8488): "x / y XP"
+ * toward the next point (`line`, null = no bar for that ability) and the day's XP on
+ * the ability (`dayXp`, null = none that day). `pct` stays for the order only.
+ */
+export type DevAbility = { key: string; now: number | null; season: number | null; pct: number | null; line: XpLineView | null; dayXp: number | null };
+/** "x / y XP" in whole numbers; `pct` (0..100) only fills the bar. */
+export type XpLineView = { xp: number; price: number; pct: number };
+/** Which day the per-ability XP is from: today, yesterday or an older date (the newest receipt, as on the Training tab). */
+export type DayXpWhen = { kind: "today" } | { kind: "yesterday" } | { kind: "dated"; date: string };
 /** Ejer 20/11: before the date is settled, a racing rider still shows the XP he has so far today (soFar). "locked" only when nothing is known yet. */
 export type XpTodayCell = { state: "locked" } | { state: "none" } | { state: "xp"; xp: number; point: string | null; soFar?: true };
 
@@ -60,10 +69,15 @@ export type DevRow = {
   season: number | null;
   /** Ejer 19/11: the rating's change this season (now minus at season start); null = unknown. */
   ratingSeason: number | null;
+  /** Ejer 20/11: the rating's change over the last 30 days (now minus 30 days ago); null = unknown, never a false zero. */
+  rating30: number | null;
   today: XpTodayCell;
   spark: number[]; xp30: number;
-  next: { key: string; pct: number } | null;
+  /** Ejer 19/11: the next point in XP ("x / y XP"); `pct` only sorts and counts "close". */
+  next: { key: string; pct: number; xp: number; price: number } | null;
   abilities: DevAbility[];
+  /** The day the abilities' "+N XP" is from; null = no receipt for this rider. */
+  dayXpWhen: DayXpWhen | null;
 };
 
 /** `days` = the dates with a receipt in the window (at most 30), the same divisor as each row's XP per day. */
@@ -127,6 +141,63 @@ export function seasonRatingChange(
   return finite(ratingNow) && finite(ratingStart) ? ratingNow - ratingStart : null;
 }
 
+// --- XP lines (ejer 20/11, the same as the rider's Training tab in #8488) ----------
+//
+// #8488 adds the shared helpers (lib/xpAbilityLine.ts: xpLine, withXpLines,
+// dayXpByAbility). They are not on main yet, so the same arithmetic lives here;
+// fold these two into the shared helpers once both PRs are merged.
+
+/** One bar as "x / y XP" in whole numbers, or null when it is not a usable { xp, price }. */
+export function xpLineOf(bar: unknown): XpLineView | null {
+  if (!bar || typeof bar !== "object") return null;
+  const { xp, price } = bar as { xp?: unknown; price?: unknown };
+  const x = Number(xp), p = Number(price);
+  if (!Number.isFinite(x) || !Number.isFinite(p) || p <= 0 || x < 0) return null;
+  const wholeXp = Math.round(x), wholePrice = Math.round(p);
+  if (wholePrice <= 0) return null;
+  // XP left over by the per-date rule stays on the bar, so xp can pass the price: the text says so, the fill stops at full.
+  return { xp: wholeXp, price: wholePrice, pct: Math.min(100, Math.max(0, Math.floor((wholeXp / wholePrice) * 100))) };
+}
+
+/** The day's XP per ability from one receipt row's activities (training and races). */
+export function dayXpByAbility(activities: ReadonlyArray<{ xp?: Record<string, unknown> | null }> | null | undefined): Record<string, number> | null {
+  if (!Array.isArray(activities)) return null;
+  const out: Record<string, number> = {};
+  for (const a of activities) for (const [k, v] of Object.entries(a?.xp ?? {})) { const n = Number(v); if (Number.isFinite(n) && n > 0) out[k] = (out[k] ?? 0) + n; }
+  return out;
+}
+
+// --- Rating, 30 days (ejer 20/11) ---------------------------------------------------
+
+/** The date key `days` days before `key` (both YYYY-MM-DD, calendar days). */
+export function dayKeyMinus(key: string, days: number): string {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d - days)).toISOString().slice(0, 10);
+}
+
+/**
+ * The points a rider gained over the last 30 days (today and the 29 days before), read
+ * from the same receipts as the rest of the tab. Null = unknown: no receipt in the window,
+ * or the rider has no row on the window's first receipt (he joined inside the window, so
+ * what he gained before is not in these receipts). Never a false zero.
+ */
+export function gainsLast30(runs: readonly XpReceipt[], riderId: string, todayKey: string): Record<string, number> | null {
+  const from = dayKeyMinus(todayKey, 29);
+  const inWindow = runs.filter(run => run.tick_date >= from && run.tick_date <= todayKey);
+  if (inWindow.length === 0) return null;
+  const first = inWindow.reduce((a, b) => (b.tick_date < a ? b.tick_date : a), inWindow[0].tick_date);
+  const firstRuns = inWindow.filter(run => run.tick_date === first);
+  if (!firstRuns.some(run => run.report?.riders?.some(r => r.rider_id === riderId))) return null;
+  const out: Record<string, number> = {};
+  for (const run of inWindow) {
+    for (const row of run.report?.riders ?? []) {
+      if (row.rider_id !== riderId) continue;
+      for (const [key, n] of Object.entries(row.gains ?? {})) if (finite(n) && n > 0) out[key] = (out[key] ?? 0) + n;
+    }
+  }
+  return out;
+}
+
 /** The rating change as text: '+3', '0', '-1', and a dash when unknown. */
 export function signedText(value: number | null): string {
   if (value == null) return "—";
@@ -181,6 +252,14 @@ export function buildDevelopmentRows({ runs, riders, todayKey, seasonGains, forc
   const monthById = new Map((month?.riders ?? []).map(r => [r.id, r]));
   const days = month?.days.length ?? 0;
   const bars = latestBars(runs);
+  // The abilities' "+N XP" comes from the newest receipt, as on the Training tab (#5539, #8488):
+  // today once today has a receipt, otherwise the latest day, labelled with its date.
+  const newestRun = runs.reduce<XpReceipt | null>((a, b) => (!a || b.tick_date > a.tick_date ? b : a), null);
+  const newestRowById = new Map((newestRun?.report?.riders ?? []).map(r => [r.rider_id, r]));
+  const dayXpWhen: DayXpWhen | null = !newestRun ? null
+    : newestRun.tick_date === todayKey ? { kind: "today" }
+    : newestRun.tick_date === dayKeyMinus(todayKey, 1) ? { kind: "yesterday" }
+    : { kind: "dated", date: newestRun.tick_date };
 
   return riders.map((rider): DevRow => {
     const m = monthById.get(rider.id);
@@ -201,26 +280,34 @@ export function buildDevelopmentRows({ runs, riders, todayKey, seasonGains, forc
     }
 
     const bar = bars.get(rider.id) ?? {};
+    const newestRow = newestRowById.get(rider.id);
+    const dayXp = newestRow ? dayXpByAbility(newestRow.activities) : null;
     const keys = new Set<string>([...Object.keys(bar), ...Object.entries(gains ?? {}).filter(([, n]) => finite(n) && n > 0).map(([k]) => k)]);
     const abilities = [...keys].map((key): DevAbility => ({
       key,
       now: finite(rider.abilities[key]) ? (rider.abilities[key] as number) : null,
       season: gains ? (finite(gains[key]) && gains[key]! > 0 ? gains[key]! : 0) : null,
       pct: barPct(bar[key]),
+      line: xpLineOf(bar[key]),
+      dayXp: dayXp && finite(dayXp[key]) && dayXp[key] > 0 ? Math.round(dayXp[key]) : null,
     })).sort((a, b) => (b.season ?? 0) - (a.season ?? 0) || (b.pct ?? -1) - (a.pct ?? -1) || a.key.localeCompare(b.key))
       .slice(0, MAX_ABILITIES);
 
     const nextKey = m?.next?.key ?? null;
     const nextPct = m?.next ? barPct(m.next) : null;
+    const nextLine = m?.next ? xpLineOf(m.next) : null;
     return {
       id: rider.id, name: rider.name, firstname: rider.firstname ?? null, lastname: rider.lastname ?? null, nation: rider.nation,
       natural: rider.natural, bestRole: rider.bestRole,
       rating: rider.rating, age: rider.age ?? null, top: rider.top, season,
-      ratingSeason: seasonRatingChange(rider.abilities, gains), today,
+      ratingSeason: seasonRatingChange(rider.abilities, gains),
+      rating30: seasonRatingChange(rider.abilities, gainsLast30(runs, rider.id, todayKey)),
+      today,
       spark: m?.spark ?? Array.from({ length: days }, () => 0),
       xp30: m?.xp ?? 0,
-      next: nextKey && nextPct != null ? { key: nextKey, pct: nextPct } : null,
+      next: nextKey && nextPct != null && nextLine ? { key: nextKey, pct: nextPct, xp: nextLine.xp, price: nextLine.price } : null,
       abilities,
+      dayXpWhen: newestRow ? dayXpWhen : null,
     };
   });
 }
@@ -238,7 +325,7 @@ export function devSummary(rows: readonly DevRow[]): DevSummary {
   };
 }
 
-export type SortKey = "rider" | "natural" | "role" | "age" | "rating" | "top" | "season" | "xpToday" | "xp30" | "next";
+export type SortKey = "rider" | "natural" | "role" | "age" | "rating" | "top" | "season" | "rating30" | "xpToday" | "xp30" | "next";
 export type SortState = { key: SortKey; dir: 1 | -1 };
 export const DEFAULT_SORT: SortState = { key: "xp30", dir: -1 };
 
@@ -257,6 +344,7 @@ function sortValue(row: DevRow, key: SortKey): string | number | null {
     case "rating": return row.rating;
     case "top": return topSortValue(row.top);
     case "season": return row.ratingSeason;
+    case "rating30": return row.rating30;
     case "xpToday": return row.today.state === "xp" ? row.today.xp : null;
     case "xp30": return row.xp30;
     case "next": return row.next?.pct ?? null;
@@ -281,10 +369,13 @@ export function sortDevRows(rows: readonly DevRow[], sort: SortState): DevRow[] 
 // button: "Natural type" (the gold badge, as in the other tables) is shown by
 // default, "Role now" (the grey tag, the role he rates highest in now) is hidden.
 // The choice is remembered in the browser, the same way as the other tables' columns.
-export type DevColumnKey = "natural" | "role";
+// Ejer 20/11: "Rating, 30 d" (the rating's change over the last 30 days) is a third
+// optional column, hidden by default.
+export type DevColumnKey = "natural" | "role" | "rating30";
 export const DEV_COLUMNS: readonly { key: DevColumnKey; defaultVisible: boolean }[] = [
   { key: "natural", defaultVisible: true },
   { key: "role", defaultVisible: false },
+  { key: "rating30", defaultVisible: false },
 ];
 export const DEV_COLUMNS_STORAGE_KEY = "cz-training-development-xp-columns";
 
@@ -317,7 +408,7 @@ export function toggleDevColumn(visible: ReadonlySet<DevColumnKey>, key: DevColu
 
 /** Hiding the column the table is sorted on falls back to the default sort. */
 export function sortAfterColumns(sort: SortState, visible: ReadonlySet<DevColumnKey>): SortState {
-  return (sort.key === "natural" || sort.key === "role") && !visible.has(sort.key) ? DEFAULT_SORT : sort;
+  return (sort.key === "natural" || sort.key === "role" || sort.key === "rating30") && !visible.has(sort.key) ? DEFAULT_SORT : sort;
 }
 
 // --- Which surface the tab shows -------------------------------------------------

@@ -12,15 +12,16 @@ import { fetchPlayerFeatureFlags } from "../../lib/playerFeatureFlags.js";
 import { hasXpFields, type XpReceipt, type XpRiderType } from "../../lib/trainingReportXp.ts";
 import { riderBestRole as riderBestRoleJs } from "../../lib/riderRating.js";
 import { copenhagenDayKey as copenhagenDayKeyJs } from "../../lib/raceCentre.js";
-import { formatNumber as formatNumberJs } from "../../lib/intl.js";
+import { formatDate as formatDateJs, formatNumber as formatNumberJs } from "../../lib/intl.js";
 import { useMediaQuery } from "../../hooks/useMediaQuery.ts";
 import { riderShortName } from "../../lib/riderName.ts";
 import { Flag, RiderNameCell } from "./reportXp/ui.ts";
+import { XpBar } from "./reportXp/XpBar.tsx";
 import {
   bandText, buildDevelopmentFixture, buildDevelopmentRows, devSummary, nextSort, previewXpDevelopment, signedText, sortDevRows, topOf,
   xpDevelopmentMode, DEFAULT_SORT, DEV_FIXTURE_TODAY, XP_DEV_FLAG_KEY,
   DEV_COLUMNS, DEV_COLUMNS_STORAGE_KEY, defaultDevColumns, parseDevColumns, serializeDevColumns, sortAfterColumns, toggleDevColumn,
-  type DevColumnKey, type DevRiderInput, type DevRow, type SortKey, type SortState, type TopValue, type XpTodayCell,
+  type DevColumnKey, type DevRiderInput, type DevRow, type DayXpWhen, type XpLineView, type SortKey, type SortState, type TopValue, type XpTodayCell,
 } from "./DevelopmentTabXpModel.ts";
 
 // #7947 · The Development tab in XP (direction 5, ejer 19/11): one line per rider with
@@ -45,6 +46,7 @@ const RiderTypeBadge = RiderTypeBadgeJs as unknown as ComponentType<{ primaryTyp
 const riderBestRole = riderBestRoleJs as unknown as (rider: unknown) => { rating: number | null; role: string | null };
 const copenhagenDayKey = copenhagenDayKeyJs as unknown as (ms: number) => string;
 const formatNumber = formatNumberJs as unknown as (n: number) => string;
+const formatDate = formatDateJs as unknown as (value: string, style: string | null, options?: Intl.DateTimeFormatOptions) => string;
 
 type RosterRider = {
   id: string; firstname?: string | null; lastname?: string | null; nationality_code?: string | null;
@@ -132,7 +134,7 @@ function DevelopmentTabXp({ fixture, runs, roster, estimateFor, seasonGains, rac
     setSort((prev) => sortAfterColumns(prev, next));
     writeStoredColumns(next);
   };
-  const columnLabel: Record<DevColumnKey, string> = { natural: t("developmentXp.colNatural"), role: t("developmentXp.colRoleNow") };
+  const columnLabel: Record<DevColumnKey, string> = { natural: t("developmentXp.colNatural"), role: t("developmentXp.colRoleNow"), rating30: t("developmentXp.colRating30") };
   const columnsControl = {
     hint: t("developmentXp.columnsHint"),
     count: columns.size,
@@ -254,9 +256,9 @@ function Top({ top }: { top: TopValue }) {
 }
 
 /** Ejer 19/11 aften: the rating's change this season ('+3'), not the ability points. */
-function RatingSeason({ value }: { value: number | null }) {
-  if (value == null) return <span className="text-cz-3">—</span>;
-  return <span className={`text-[13px] text-cz-1 ${NUM}`} data-testid="development-xp-rating-season">{signedText(value)}</span>;
+function RatingSeason({ value, testId = "development-xp-rating-season" }: { value: number | null; testId?: string }) {
+  if (value == null) return <span className="text-cz-3" data-testid={testId}>—</span>;
+  return <span className={`text-[13px] text-cz-1 ${NUM}`} data-testid={testId}>{signedText(value)}</span>;
 }
 
 function XpToday({ cell }: { cell: XpTodayCell }) {
@@ -275,30 +277,52 @@ function XpToday({ cell }: { cell: XpTodayCell }) {
   );
 }
 
-/** The way to the next point as a share of the bar (no price shown). */
-function PctBar({ pct }: { pct: number }) {
+/** Ejer 19/11: the way to the next point in XP ("312 / 540 XP"), not a percent. */
+function XpOf({ xp, price, size = "text-2xs", className = "" }: { xp: number; price: number; size?: string; className?: string }) {
   const { t } = useTranslation("training");
   return (
-    <span className="inline-flex items-center gap-1.5" role="img" aria-label={t("developmentXp.pctLabel", { pct })}>
-      <span className="relative block h-1.5 w-14 overflow-hidden rounded-cz bg-cz-border" aria-hidden="true">
-        <span className="absolute inset-y-0 start-0 bg-cz-1" style={{ width: `${pct}%` }} />
-      </span>
-      <span className={`text-2xs text-cz-2 ${NUM}`} aria-hidden="true">{pct} %</span>
+    <span className={`whitespace-nowrap ${size} text-cz-2 ${NUM} ${className}`} title={t("developmentXp.xpTitle", { xp: formatNumber(xp), price: formatNumber(price) })} data-testid="development-xp-of">
+      {t("developmentXp.xpLine", { xp: formatNumber(xp), price: formatNumber(price) })}
     </span>
   );
 }
 
+/** The day's XP on one ability, worded like the Training tab: "today +54 XP", "yesterday +54 XP" or a date. */
+function DayXp({ xp, when }: { xp: number | null; when: DayXpWhen | null }) {
+  const { t } = useTranslation("training");
+  if (xp == null || !when) return null;
+  const vars = { xp: formatNumber(xp), date: when.kind === "dated" ? formatDate(when.date, null, { day: "numeric", month: "numeric" }) : "" };
+  const key = when.kind === "today" ? "developmentXp.dayXpToday" : when.kind === "yesterday" ? "developmentXp.dayXpYesterday" : "developmentXp.dayXpDated";
+  return <span className={`whitespace-nowrap text-2xs text-cz-2 ${NUM}`} data-testid="development-xp-day">{t(key, vars)}</span>;
+}
 
+/** One ability's way to the next point: the neutral XP bar and "x / y XP". */
+function XpLineCell({ line }: { line: XpLineView }) {
+  const { t } = useTranslation("training");
+  return (
+    <span className="flex items-center gap-1.5" data-testid="development-xp-line">
+      <span className="block min-w-[16px] flex-1"><XpBar training={line.pct / 100} race={0} height={4} label={t("developmentXp.xpTitle", { xp: formatNumber(line.xp), price: formatNumber(line.price) })} /></span>
+      <XpOf xp={line.xp} price={line.price} className="flex-none" />
+    </span>
+  );
+}
+
+/**
+ * Ejer 20/11: the opened row reads like the rider's Training tab (#8488): now, season,
+ * "x / y XP" on the game's neutral XP bar (never gold, TASTE P3) and the day's "+N XP".
+ * No bar for an ability = an empty cell, never a dash (TASTE P13).
+ */
 function Abilities({ row, phone }: { row: DevRow; phone: boolean }) {
   const { t } = useTranslation("training");
   const { t: tRider } = useTranslation("rider");
-  const grid = phone ? "grid-cols-[minmax(0,1fr)_2rem_3rem_6.5rem]" : "grid-cols-[180px_60px_80px_160px]";
+  const grid = phone ? "grid-cols-[minmax(0,1fr)_2rem_2.5rem_7.5rem]" : "grid-cols-[180px_60px_80px_180px_112px]";
   if (row.abilities.length === 0) return <p className="text-xs text-cz-3">{t("developmentXp.noAbilities")}</p>;
   return (
     <div data-testid="development-xp-abilities">
       <div className={`grid items-center gap-x-3 border-b border-cz-border pb-1 ${grid} ${LABEL} mb-0`}>
         <span>{t("developmentXp.ability")}</span><span className="text-end">{t("developmentXp.now")}</span>
         <span className="text-end">{t("developmentXp.colSeason")}</span><span>{t("developmentXp.colNext")}</span>
+        {!phone && <span>{t("developmentXp.colLatest")}</span>}
       </div>
       <ul>
         {row.abilities.map((a) => (
@@ -306,7 +330,17 @@ function Abilities({ row, phone }: { row: DevRow; phone: boolean }) {
             <span className="truncate text-cz-1">{tRider(`racePreview.derived.${a.key}`)}</span>
             <span className={`text-end text-cz-1 ${NUM}`}>{a.now ?? "—"}</span>
             <span className={`text-end text-cz-2 ${NUM}`}>{a.season == null ? "—" : a.season > 0 ? `+${a.season}` : "0"}</span>
-            {a.pct != null ? <PctBar pct={a.pct} /> : <span className="text-cz-3">—</span>}
+            {phone ? (
+              <span className="flex min-w-0 flex-col gap-0.5">
+                {a.line && <XpLineCell line={a.line} />}
+                <DayXp xp={a.dayXp} when={row.dayXpWhen} />
+              </span>
+            ) : (
+              <>
+                {a.line ? <XpLineCell line={a.line} /> : <span aria-hidden="true" />}
+                <span><DayXp xp={a.dayXp} when={row.dayXpWhen} /></span>
+              </>
+            )}
           </li>
         ))}
       </ul>
@@ -314,12 +348,12 @@ function Abilities({ row, phone }: { row: DevRow; phone: boolean }) {
   );
 }
 
-// The two type columns: the stacked gold badge (w-[124px]) holds the longest two-line natural type, the
-// grey tag (w-[84px]) the short role name; both headers may wrap. With the default (natural only) the
-// table fits the content width at 1440 without scrolling; the minimum width grows with the columns shown.
-const MIN_WIDTH = {
-  none: "min-w-[1036px]", natural: "min-w-[1160px]", role: "min-w-[1120px]", both: "min-w-[1244px]",
-} as const;
+// The optional columns: the stacked gold badge (124 px) holds the longest two-line natural type, the
+// grey tag (84 px) the short role name, "Rating, 30 d" (84 px) a signed number; the headers may wrap.
+// With the default (natural only) the table fits the content width at 1440 without scrolling; the
+// minimum width grows with the columns shown.
+const BASE_MIN_WIDTH = 1036;
+const OPTIONAL_WIDTH: Record<DevColumnKey, number> = { natural: 124, role: 84, rating30: 84 };
 const BASE_COLS = 9;
 
 function DesktopTable({ rows, open, toggle, sort, onSort, columns }: { rows: DevRow[]; open: Set<string>; toggle: (id: string) => void; sort: SortState; onSort: (k: SortKey) => void; columns: ReadonlySet<DevColumnKey> }) {
@@ -328,10 +362,11 @@ function DesktopTable({ rows, open, toggle, sort, onSort, columns }: { rows: Dev
   const { t: tRiders } = useTranslation("riders");
   const showNatural = columns.has("natural");
   const showRole = columns.has("role");
-  const minWidth = MIN_WIDTH[showNatural && showRole ? "both" : showNatural ? "natural" : showRole ? "role" : "none"];
-  const colCount = BASE_COLS + (showNatural ? 1 : 0) + (showRole ? 1 : 0);
+  const show30 = columns.has("rating30");
+  const minWidth = BASE_MIN_WIDTH + [...columns].reduce((sum, key) => sum + OPTIONAL_WIDTH[key], 0);
+  const colCount = BASE_COLS + columns.size;
   return (
-    <table className={`w-full table-fixed text-xs ${minWidth}`} data-sortable data-testid="development-xp-table">
+    <table className="w-full table-fixed text-xs" style={{ minWidth }} data-sortable data-testid="development-xp-table">
       <thead>
         <tr className="border-b border-cz-border">
           <th className="w-[44px]"><span className="sr-only">{t("developmentXp.abilitiesCol")}</span></th>
@@ -342,6 +377,7 @@ function DesktopTable({ rows, open, toggle, sort, onSort, columns }: { rows: Dev
           <SortHead k="rating" label={t("developmentXp.colRating")} className="w-[70px]" sort={sort} onSort={onSort} />
           <SortHead k="top" label={t("developmentXp.colTop")} className="w-[118px]" sort={sort} onSort={onSort} />
           <SortHead k="season" label={t("developmentXp.colRatingSeason")} title={t("developmentXp.ratingSeasonTitle")} wrap className="w-[84px]" sort={sort} onSort={onSort} />
+          {show30 && <SortHead k="rating30" label={t("developmentXp.colRating30")} title={t("developmentXp.rating30Title")} wrap className="w-[84px]" sort={sort} onSort={onSort} />}
           <SortHead k="xpToday" label={t("developmentXp.colXpToday")} className="w-[116px]" sort={sort} onSort={onSort} />
           <SortHead k="xp30" label={t("developmentXp.colXp30")} className="w-[184px]" sort={sort} onSort={onSort} />
           <SortHead k="next" label={t("developmentXp.colNext")} sort={sort} onSort={onSort} />
@@ -366,15 +402,16 @@ function DesktopTable({ rows, open, toggle, sort, onSort, columns }: { rows: Dev
                 <td className="px-3 py-[7px]"><Rating value={row.rating} /></td>
                 <td className="px-3 py-[7px]"><Top top={row.top} /></td>
                 <td className="px-3 py-[7px]"><RatingSeason value={row.ratingSeason} /></td>
+                {show30 && <td className="px-3 py-[7px]"><RatingSeason value={row.rating30} testId="development-xp-rating-30" /></td>}
                 <td className="px-3 py-[7px]"><XpToday cell={row.today} /></td>
                 <td className="px-3 py-[7px]">
                   <span className={`text-[13px] font-semibold text-cz-1 ${NUM}`} data-testid="development-xp-avg">{formatNumber(xpAvgPerDay(row))}</span>
                 </td>
                 <td className="px-3 py-[7px]">
                   {row.next ? (
-                    <span className="inline-flex min-w-0 items-center gap-2">
+                    <span className="inline-flex min-w-0 items-baseline gap-2" data-testid="development-xp-next">
                       <span className="w-[84px] truncate text-[13px] text-cz-1">{tRider(`racePreview.derived.${row.next.key}`)}</span>
-                      <PctBar pct={row.next.pct} />
+                      <XpOf xp={row.next.xp} price={row.next.price} />
                     </span>
                   ) : <span className="text-cz-3">—</span>}
                 </td>
@@ -414,7 +451,7 @@ function PhoneList({ rows, open, toggle, columns }: { rows: DevRow[]; open: Set<
                 <button type="button" onClick={() => toggle(row.id)} aria-expanded={o} aria-label={t("developmentXp.openAbilities", { name: row.name })}
                   className="flex min-h-11 items-start justify-between gap-1 text-start text-xs">
                   {row.next
-                    ? <span className="min-w-0 leading-tight text-cz-1"><span className="block truncate">{tRider(`racePreview.derived.${row.next.key}`)}</span><span className={`block text-3xs text-cz-2 ${NUM}`}>{row.next.pct} %</span></span>
+                    ? <span className="min-w-0 leading-tight text-cz-1"><span className="block truncate">{tRider(`racePreview.derived.${row.next.key}`)}</span><XpOf xp={row.next.xp} price={row.next.price} size="text-3xs" className="block" /></span>
                     : <span className="text-cz-3">—</span>}
                   {o ? <ChevronDownIcon size={13} aria-hidden="true" className="mt-0.5 shrink-0 text-cz-3" /> : <ChevronRightIcon size={13} aria-hidden="true" className="mt-0.5 shrink-0 text-cz-3" />}
                 </button>
@@ -428,6 +465,7 @@ function PhoneList({ rows, open, toggle, columns }: { rows: DevRow[]; open: Set<
                     <div><div className={LABEL}>{t("developmentXp.colTop")}</div><Top top={row.top} /></div>
                     <div><div className={LABEL}>{t("developmentXp.colXpToday")}</div><XpToday cell={row.today} /></div>
                     <div><div className={LABEL} title={t("developmentXp.ratingSeasonTitle")}>{t("developmentXp.colRatingSeason")}</div><RatingSeason value={row.ratingSeason} /></div>
+                    {columns.has("rating30") && <div><div className={LABEL} title={t("developmentXp.rating30Title")}>{t("developmentXp.colRating30")}</div><RatingSeason value={row.rating30} testId="development-xp-rating-30" /></div>}
                   </div>
                   <Abilities row={row} phone />
                 </div>
