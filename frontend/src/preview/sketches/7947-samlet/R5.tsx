@@ -553,10 +553,10 @@ export default function Direction5({ init, mobile }: { init: R5Init; mobile: boo
             <input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="Select all" className="h-4 w-4 rounded-[3px] accent-cz-accent" />
           </th>
           <th className="w-[36px]" aria-label="Sessions" />
-          <SortTh k={"rider"} label="Rider" cls="w-[230px]" sort={sort} onSort={onSort} />
-          <SortTh k={"type"} label="Type" cls="w-[140px]" sort={sort} onSort={onSort} />
+          <SortTh k={"rider"} label="Rider" cls={old ? "w-[210px]" : "w-[230px]"} sort={sort} onSort={onSort} />
+          <SortTh k={"type"} label="Type" cls={old ? "w-[130px]" : "w-[140px]"} sort={sort} onSort={onSort} />
           {old && <SortTh k={null} label="Age" cls="w-[56px]" sort={sort} onSort={onSort} />}
-          <SortTh k={"program"} label="Program" cls="w-[170px]" sort={sort} onSort={onSort} />
+          <SortTh k={"program"} label="Program" cls={old ? "w-[150px]" : "w-[170px]"} sort={sort} onSort={onSort} />
           <SortTh k={null} label="Form" cls="w-[72px]" sort={sort} onSort={onSort} />
           {old ? (
             <>

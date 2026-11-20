@@ -84,7 +84,7 @@ export function RiderName({ rider, wrap = false }: { rider: R5Rider; wrap?: bool
     <span className={`flex min-w-0 items-center gap-1.5 ${wrap ? "items-start" : ""}`}>
       <Flag code={rider.nation} title={rider.country} className="shrink-0" />
       <UserIcon size={13} aria-hidden="true" className="shrink-0 text-cz-3" />
-      <a href="#rider" className={`text-[13.5px] font-medium text-cz-1 hover:underline ${wrap ? "leading-tight" : "truncate"}`}>{rider.name}</a>
+      <a href="#rider" className={`text-[13.5px] font-medium text-cz-1 hover:underline ${wrap ? "leading-tight [overflow-wrap:anywhere]" : "truncate"}`}>{rider.name}</a>
     </span>
   );
 }
