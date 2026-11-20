@@ -656,7 +656,7 @@ describe('merge-vagt: Stop-hooken (check-now-md.sh)', () => {
     assert.match(text, /^MERGE-VAGT: #8315 /);
     assert.match(text, /Spoerg ejeren nu/);
     assert.deepEqual(hookLines(s, { now: new Date('2026-11-20T23:00:00Z') }), []);
-    assert.deepEqual(hookLines(null), []);
+    assert.deepEqual(hookLines(null, { now: new Date('2026-11-20T10:05:00Z') }), []);
   });
 
   it('hooken blokerer med alert-linjen, og respekterer stop_hook_active', () => {
