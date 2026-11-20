@@ -173,6 +173,16 @@ export function legHuntTask(leg: StagePlanLeg): JerseyHuntTask | null {
   return leg.hunt !== undefined && JERSEY_HUNT_TASKS[leg.hunt] !== undefined ? leg.hunt : null;
 }
 
+/**
+ * #7855 hul 1 (ejer 17/11) + ejer 19/11: udbrudsleddet baerer en jagt, og planen har et led "naar han
+ * er hentet" efter det. Kommer han ikke med i udbruddet, eller bliver han hentet, koerer han det led;
+ * kommer han med i et senere udbrud, koerer han stadig om pointene dér (motoren:
+ * stagePlanEngine.stagePlanHuntTasks7855). Noten siger det, kun naar det gaelder.
+ */
+export function huntEndsWhenCaught7855(legs: readonly StagePlanLeg[]): boolean {
+  return legs[0]?.task === "breakaway" && legHuntTask(legs[0]) !== null && legs.some((l) => l.from?.at === "dropped");
+}
+
 /** #7855 (reviewfund): samme regel som serveren (stagePlan.ts), holdt ens af paritetstesten. */
 export function planHasJerseyHunt(legs: readonly StagePlanLeg[]): boolean {
   return legs.some((leg) => legHuntTask(leg) !== null);
@@ -422,13 +432,45 @@ export function triggerOptions(legs: StagePlanLeg[], i: number, role: StagePlanR
   });
 }
 
-export function setLegTask(legs: StagePlanLeg[], i: number, task: StagePlanTask, role: StagePlanRole, route: StagePlanRoute): StagePlanLeg[] {
-  // #7855 (Codex-review): jagten (`hunt`) hoerer kun til udbrudsleddet; skiftes opgaven vaek fra udbrud, foelger den ikke med.
-  const withTask = (l: StagePlanLeg): StagePlanLeg => {
-    if (task === "breakaway" || l.hunt === undefined) return { ...l, task };
-    const { hunt: _hunt, ...rest } = l;
-    return { ...rest, task };
-  };
+/**
+ * #7855 (ejer 16/11, "egne linjer i opgavelisten"): et valg i leddets opgaveliste. "Gaa i udbrud +
+ * Hent point" og "Gaa i udbrud + Hent bjergpoint" er egne linjer og gemmes som udbrudsleddet med
+ * `hunt` (serverens kontrakt, backend/lib/stagePlan.ts). Alle andre valg er opgaven alene.
+ */
+export type StagePlanTaskChoice = { task: StagePlanTask; hunt?: JerseyHuntTask };
+
+const JERSEY_HUNT_CHOICES: readonly JerseyHuntTask[] = ["hunt_points", "hunt_kom"];
+
+/**
+ * Valgets noegle i opgavelisten ("breakaway", "breakaway+hunt_kom", ...). Virker ogsaa paa et gemt led:
+ * `hunt` findes kun paa udbrudsleddet (valideringen).
+ */
+export function taskChoiceKey(choice: StagePlanTaskChoice): string {
+  return choice.hunt ? `${choice.task}+${choice.hunt}` : choice.task;
+}
+
+/**
+ * #7855: de valg led `i` kan faa, i opgavelistens orden. Efter "Gaa i udbrud" (kun foerste led) kommer
+ * udbrud med jagt som egne linjer, kun naar de er gyldige her (kontakten, rollen og en passage paa
+ * leddets straekning). Slukket er listen praecis opgaverne (taskOptions).
+ */
+export function taskChoiceOptions(legs: StagePlanLeg[], i: number, role: StagePlanRole, route: StagePlanRoute): StagePlanTaskChoice[] {
+  // Codex-review: jagten proeves paa planen, som "Gaa i udbrud" alene ville efterlade den (leddets
+  // egen straekning), saa et valg med jagt aldrig sletter flere af de senere led.
+  const asBreak = () => setLegTask(legs, i, "breakaway", role, route);
+  return taskOptions(legs, i, role, route).flatMap((task) => [
+    { task },
+    ...(task === "breakaway" ? JERSEY_HUNT_CHOICES.filter((hunt) => validateStagePlanLegs(asBreak().map((l, j) => (j === i ? { ...l, hunt } : l)), role, route) === null).map((hunt) => ({ task, hunt })) : []),
+  ]);
+}
+
+/**
+ * Saet leddets opgave. #7855 (ejer 16/11): valget bestemmer jagten. Udbrud med `hunt` er udbrud med
+ * jagt; alle andre valg (ogsaa "Gaa i udbrud" alene) er uden jagt (Codex-review: jagten foelger
+ * aldrig med til en anden opgave).
+ */
+export function setLegTask(legs: StagePlanLeg[], i: number, task: StagePlanTask, role: StagePlanRole, route: StagePlanRoute, hunt?: JerseyHuntTask): StagePlanLeg[] {
+  const withTask = ({ hunt: _old, ...rest }: StagePlanLeg): StagePlanLeg => (task === "breakaway" && hunt ? { ...rest, task, hunt } : { ...rest, task });
   return repairLegs(legs.map((l, j) => (j === i ? withTask(l) : l)), role, route);
 }
 
@@ -688,6 +730,8 @@ export type StagePlanRecapItem = {
   endLeg: number | null;
   /** #7636: leddets eget skift-punkt ("naar han er sat") vises ikke, fordi filmen ikke viser det. */
   fromHidden?: true;
+  /** #7855: jagten paa udbrudsleddet ("Gaa i udbrud + Hent ..."). Kun paa et udbrudsled med jagt. */
+  hunt?: JerseyHuntTask;
 };
 
 export type StagePlanRecapOptions = {
@@ -824,6 +868,39 @@ function incidentByLegEnd(list: readonly TimelineEventLike[], riderId: string, i
 
 const roundKm = (km: number) => Math.round(km);
 
+/**
+ * #7855: troejejagten. Beviset er filmens passager paa straekningerne, hvor motoren navngiver ham
+ * som jaeger; pointene er dem klassementet ogsaa viser. null = ingen saadan passage (intet bevis).
+ */
+function huntOutcome7855(list: readonly TimelineEventLike[], riderId: string, kind: "sprint" | "kom", stretches: ReadonlyArray<readonly [number, number]>): StagePlanOutcome | null {
+  const type = kind === "kom" ? "kom_passage" : "intermediate_sprint";
+  const onStretch = (km: number) => stretches.some(([from, to]) => km > from && km <= to);
+  const hunted = list.filter((e) => e?.type === type && onStretch(Number(e.km)) && eventRiderIds(e.params, "hunters").includes(riderId));
+  if (!hunted.length) return null;
+  const points = hunted.reduce((sum, e) => {
+    const top = Array.isArray(e.params?.top) ? (e.params?.top as Rec[]) : [];
+    const row = top.find((r) => r?.rider_id === riderId);
+    return sum + (typeof row?.points === "number" ? row.points : 0);
+  }, 0);
+  return points > 0 ? outcomeOf("done", kind === "kom" ? "komPoints" : "sprintPoints", { points }) : outcomeOf("failed", "noPoints");
+}
+
+/**
+ * #7855 (ejer 19/11): straekningerne hvor udbrudsleddets jagt kan staa i filmen. Udbrudsleddet selv,
+ * og de senere led han koerte uden egen jagt ("naar han er sat"): kommer han med i et senere udbrud,
+ * koerer han om pointene dér (motoren: stagePlanEngine.stagePlanHuntTasks7855). Motoren afgraenser
+ * selv jagten til udbrudsleddets straekning; her taeller kun passager, hvor filmen navngiver ham.
+ */
+function breakHuntStretches7855(items: readonly StagePlanRecapItem[], i: number): Array<readonly [number, number]> {
+  const out: Array<readonly [number, number]> = [[items[i].fromKm ?? 0, items[i].endKm ?? Infinity]];
+  for (let j = i + 1; j < items.length; j++) {
+    const it = items[j];
+    if (it.status === "skipped" || it.status === "not_reached" || it.hunt || JERSEY_HUNT_TASKS[it.task]) continue;
+    out.push([it.fromKm ?? 0, it.endKm ?? Infinity]);
+  }
+  return out;
+}
+
 /** Udfaldet af hvert led i et resume (samme raekkefoelge som `items`). */
 export function stagePlanOutcomes(
   items: readonly StagePlanRecapItem[],
@@ -837,7 +914,7 @@ export function stagePlanOutcomes(
   const finishKm = list.find((e) => e?.type === "finish")?.km;
   const filmSilent = lostContactKm === undefined;
 
-  return items.map((item): StagePlanOutcome => {
+  return items.map((item, index): StagePlanOutcome => {
     if (item.status === "skipped" || item.status === "not_reached") return outcomeOf("not_reached");
     // Linjen siger selv "udgik ved km".
     if (item.status === "abandoned") return outcomeOf("failed");
@@ -845,6 +922,11 @@ export function stagePlanOutcomes(
     if (toFinish && late) return outcomeOf("failed", "outOfTime");
 
     if (item.task === "breakaway") {
+      // #7855: "Gaa i udbrud + Hent ..." viser pointene, han koerte efter (ogsaa i et senere udbrud
+      // efter skiftet, ejer 19/11). Koerte han ikke om en eneste passage, er linjen som et rent udbrud.
+      const huntKind = item.hunt ? JERSEY_HUNT_TASKS[item.hunt] : undefined;
+      const hunted = huntKind ? huntOutcome7855(list, riderId, huntKind, breakHuntStretches7855(items, index)) : null;
+      if (hunted) return hunted;
       const made = madeTheBreak(list, riderId);
       // Et udbrud der dannes og hentes inden for samme segment: filmen navngiver ham, motoren saa det ikke.
       if (item.endReason === "missed_break") return made === true ? NOTHING_TO_SHOW : outcomeOf("failed", "failed");
@@ -859,19 +941,7 @@ export function stagePlanOutcomes(
     // navngiver ham som jaeger; pointene er dem klassementet ogsaa viser. Uden en saadan passage
     // staar der intet.
     const huntKind = JERSEY_HUNT_TASKS[item.task];
-    if (huntKind) {
-      const type = huntKind === "kom" ? "kom_passage" : "intermediate_sprint";
-      const from = item.fromKm ?? 0;
-      const to = item.endKm ?? Infinity;
-      const hunted = list.filter((e) => e?.type === type && Number(e.km) > from && Number(e.km) <= to && eventRiderIds(e.params, "hunters").includes(riderId));
-      if (!hunted.length) return NOTHING_TO_SHOW;
-      const points = hunted.reduce((sum, e) => {
-        const top = Array.isArray(e.params?.top) ? (e.params?.top as Rec[]) : [];
-        const row = top.find((r) => r?.rider_id === riderId);
-        return sum + (typeof row?.points === "number" ? row.points : 0);
-      }, 0);
-      return points > 0 ? outcomeOf("done", huntKind === "kom" ? "komPoints" : "sprintPoints", { points }) : outcomeOf("failed", "noPoints");
-    }
+    if (huntKind) return huntOutcome7855(list, riderId, huntKind, [[item.fromKm ?? 0, item.endKm ?? Infinity]]) ?? NOTHING_TO_SHOW;
 
     const behind = typeof lostContactKm === "number" && lostContactKm <= (item.endKm ?? Infinity);
     const lost = () => ({ km: roundKm(lostContactKm as number) });
@@ -919,7 +989,9 @@ function stagePlanRecapFromEvents(legs: readonly StagePlanLeg[], events: readonl
   const reached = new Map<number, number>([[0, 0]]);
   for (const s of switches) reached.set(s.leg, s.km);
   const lastReached = Math.max(...reached.keys());
-  return legs.map((leg, i): StagePlanRecapItem => {
+  // #7855: udbrudsleddet med jagt baerer jagten, saa opsummeringen kan vise pointene; alle andre er som foer.
+  const withHunt = (leg: StagePlanLeg, item: StagePlanRecapItem): StagePlanRecapItem => (leg.task === "breakaway" && leg.hunt && JERSEY_HUNT_TASKS[leg.hunt] ? { ...item, hunt: leg.hunt } : item);
+  const recapItem = (leg: StagePlanLeg, i: number): StagePlanRecapItem => {
     if (!reached.has(i)) {
       return { task: leg.task, status: i < lastReached ? "skipped" : "not_reached", endReason: null, endKm: null, fromKm: null, endLeg: null };
     }
@@ -928,5 +1000,6 @@ function stagePlanRecapFromEvents(legs: readonly StagePlanLeg[], events: readonl
     if (nextSwitch) return { task: leg.task, status: "done", endReason: nextSwitch.reason, endKm: nextSwitch.km, fromKm, endLeg: nextSwitch.leg };
     if (abandon) return { task: leg.task, status: "abandoned", endReason: "abandoned", endKm: Number(abandon.km), fromKm, endLeg: null };
     return { task: leg.task, status: "to_finish", endReason: "finish", endKm: null, fromKm, endLeg: null };
-  });
+  };
+  return legs.map((leg, i) => withHunt(leg, recapItem(leg, i)));
 }
