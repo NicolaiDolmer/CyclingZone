@@ -1,0 +1,20 @@
+{
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Onboarding",
+      "area": "help",
+      "en": {
+        "title": "Fewer wrong first-day hints",
+        "body": "Experienced managers no longer see the beginner card about the basics being done. The tour button on the getting-started card is easier to see, training status shows only at the training step, and the sign-up form uses neutral example names."
+      },
+      "da": {
+        "title": "Færre forkerte hints på første dag",
+        "body": "Erfarne managere ser ikke længere begynderkortet om, at det grundlæggende er på plads. Rundvisningsknappen på kom-i-gang-kortet er nemmere at se, træningsstatus vises kun ved træningstrinnet, og oprettelsesformularen bruger neutrale eksempelnavne."
+      },
+      "refs": [8430]
+    }
+  ]
+}
