@@ -2146,6 +2146,11 @@ export default function TrainingPage() {
   }
 
   function renderProgramTab() {
+    if (programR5) return ( // #7456: R5's Program tab behind training_page_r5
+      <ProgramR5 riders={riders} weekdays={WEEKDAY_KEYS} todayWeekday={todayWeekday} todayLocked={trainNow.status.locked && !trainNow.status.settled}
+        riderWeekPlans={riderWeekPlans} programs={programs} groups={trainingGroups} forecast={fatigueForecast.forecast} fatigueRules={fatigueRules}
+        catalogV3={catalogV3} actionsEl={programR5Actions} mobile={isMobile} onClearRider={clearRiderWeekPlan} />
+    );
     const subLabel = (sub) => (sub === "limit"
       ? (isMobile ? t("subtabs.limitShort") : t("subtabs.limit"))
       : t(`subtabs.${sub}`));
@@ -2599,11 +2604,7 @@ export default function TrainingPage() {
         {/* #5932 (ejer-godkendt mockup 1/10): fanen har under-faner, et kort
             pr. under-fane. #6030: felterne er on for alle, saa den gamle
             ugeplan-fane uden under-faner er slettet. */}
-        {programR5 ? (
-          <ProgramR5 riders={riders} weekdays={WEEKDAY_KEYS} todayWeekday={todayWeekday} todayLocked={trainNow.status.locked && !trainNow.status.settled}
-            riderWeekPlans={riderWeekPlans} programs={programs} groups={trainingGroups} forecast={fatigueForecast.forecast} fatigueRules={fatigueRules}
-            catalogV3={catalogV3} actionsEl={programR5Actions} mobile={isMobile} onClearRider={clearRiderWeekPlan} />
-        ) : renderProgramTab()}
+        {renderProgramTab()}
         </Suspense>
       </TabPanel>
 

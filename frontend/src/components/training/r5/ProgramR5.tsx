@@ -31,7 +31,7 @@ import FatigueRulePanel from "../FatigueRulePanel.tsx";
 import { SESSION_ORDER, SESSION_ORDER_V3 } from "../TrainingPlanCard.tsx";
 import { groupForecastEntry } from "../groups/trainingGroupsModel.ts";
 import { todayLockedSlots } from "../settleAfterStage7982/settleAfterStageModel.ts";
-import { raceSlotsFor, type ForecastResponse } from "../FatigueForecastModel.ts";
+import { raceSlotsFor, type ForecastEntry, type ForecastResponse } from "../FatigueForecastModel.ts";
 import type { FatigueRulesClient } from "../useFatigueRules.ts";
 import type { TrainingGroupsClient } from "../groups/useTrainingGroups.ts";
 import type { ProgramsResult } from "../useTrainingPrograms.ts";
@@ -143,9 +143,9 @@ export default function ProgramR5({
   const raceToday = slotSet((id) => raceSlotsFor(forecast, id));
   const lockedToday = slotSet((id) => todayLockedSlots(forecast, id));
   const cells = weekCells({ days, draft, weekdays, todayWeekday, raceToday, lockedToday });
-  const tonight = subject?.kind === "rider"
+  const tonight = (subject?.kind === "rider"
     ? forecast?.riders?.[subject.id] ?? null
-    : groupForecastEntry(forecast?.riders, memberIds);
+    : groupForecastEntry(forecast?.riders, memberIds)) as ForecastEntry | null;
 
   const sessionLabel = (session: string) => (session === "rest" || session === "recovery"
     ? t(`dayPanel.dayType_${session}`)
@@ -667,6 +667,9 @@ function CopyToRiders({
       onClose={onClose}
       size="sm"
       title={t("programR5.copyTitle", { name: programName(program, lang) })}
+      titleId="program-r5-copy-title"
+      ariaLabelledby={undefined}
+      description={null}
       closeLabel={t("programR5.cancel")}
       footer={(
         <>
