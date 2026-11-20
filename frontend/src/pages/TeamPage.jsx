@@ -11,8 +11,9 @@ import { sharedRequestCache, SHARED_KEYS, SHARED_TTL_MS, invalidateTransferListi
 import { statStyle, statPlateStyle } from "../lib/statColor";
 import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
+import { squadBadgeKey } from "../lib/squadBadge.ts";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
-import { ageBadgeKey, getRiderAge, retirementRiskBadgeKey, contractExpiringBadgeKey, seasonNumberFromReferenceYear } from "../lib/riderAge.js";
+import { getRiderAge, retirementRiskBadgeKey, contractExpiringBadgeKey, seasonNumberFromReferenceYear } from "../lib/riderAge.js";
 import { isContractAwaitingRelease } from "../../../backend/lib/contractOfferEligibility.js"; // #6638
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { getRiderMarketValue, detectStartPriceTypo } from "../lib/marketValues.js";
@@ -856,7 +857,9 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
           <RiderBadges badges={[
             isRiderInjured(r.injured_until) && "injured",
             r.is_academy && "academy",
-            ageBadgeKey(r, seasonYear),
+            // #7233 (ejer 20/11): trupmærket efter riders.squad i stedet for et
+            // aldersmærke; alderen står i sin egen kolonne. Senior = intet mærke.
+            squadBadgeKey(r.squad),
             !r.is_academy && retirementRiskBadgeKey(r, seasonYear),
             !r.is_academy && contractExpiringBadgeKey(r, activeSeasonNumber),
             r._isIncoming && "incoming",
