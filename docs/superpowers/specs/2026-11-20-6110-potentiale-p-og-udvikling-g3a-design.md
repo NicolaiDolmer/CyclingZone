@@ -6,7 +6,7 @@
 
 ## 1. Hvorfor
 
-Prøvekørslen af kandidat B for tændingsnatten 20/11 gav de højeste stjerner ca. fire gange så mange point pr. dag som i dag og alle andre færre. Ejeren: fordelingen skal spredes jævnt, og potentialet skal designes færdigt først. Revisionen fandt desuden, at topalderen har glidet fra den oprindelige plan (27-28, kernesystemer 11/6) til 30-35, fordi den aldrig var et krav, en dommer kunne fejle på.
+Prøvekørslen af kandidat B for tændingsnatten 20/11 gav de højeste stjerner langt flere point pr. dag end i dag og alle andre færre (tal privat). Ejeren: fordelingen skal spredes jævnt, og potentialet skal designes færdigt først. Revisionen fandt desuden, at topalderen har glidet fra den oprindelige plan (27-28, kernesystemer 11/6) til 30-35, fordi den aldrig var et krav, en dommer kunne fejle på.
 
 ## 2. Potentiale P
 
@@ -32,7 +32,7 @@ Prøvekørslen af kandidat B for tændingsnatten 20/11 gav de højeste stjerner 
 - Plateau: evnerne står næsten stille fra ca. 28 til 30-31.
 - Herefter et tydeligt, men realistisk fald; mange løb halverer det omtrent, få løb øger det.
 - Faldet sker kun ved sæsonskiftet, aldrig ved tænding eller midt i en sæson.
-- **Gate i dommeren (hård):** rating ved 28 tæt på P for alle P; plateauet dækker mindst 28-30; median topalder 28-30 ved alle løbsmængder; faldet ved 34 og 38 inden for de private mål; mange løbs fald højst ca. 60 % af få løbs; 15-sæsoners-kørslen med median topalder 28-30. Fejler gaten, tændes intet.
+- **Gate i dommeren (hård):** rating ved 28 tæt på P for alle P; plateauet dækker mindst 28-30; median topalder 28-30 ved alle løbsmængder; faldet ved 34 og 38 inden for de private mål; mange løb skal give et tydeligt mindre fald end få løb (grænse privat); 15-sæsoners-kørslen med median topalder 28-30. Fejler gaten, tændes intet.
 
 ## 5. Skøn og prognose
 
@@ -51,4 +51,4 @@ Prøvekørslen af kandidat B for tændingsnatten 20/11 gav de højeste stjerner 
 
 ## 7. Afløst
 
-Kandidat B (stejl pris, x3,5 fra 5 stjerner, "top 75/78"), "XP ens hele karrieren / samme XP til og med 32", "kun fart, intet loft" (svar 20/11 tidligt på aftenen), og alle topaldre i andre dokumenter, der afviger fra §4.
+Kandidat B (stejl pris og et hop i XP ved de højeste stjerner), "XP ens hele karrieren / samme XP til og med 32", "kun fart, intet loft" (svar 20/11 tidligt på aftenen), og alle topaldre i andre dokumenter, der afviger fra §4.
