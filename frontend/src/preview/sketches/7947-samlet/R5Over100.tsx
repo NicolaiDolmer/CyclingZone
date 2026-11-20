@@ -1,6 +1,7 @@
 // #7947 retning 5, Rapport: hvordan bjaelken viser en dag over 100 % (spiller-oenske 19/11:
 // "A fungerer perfekt, men hvad naar en rytter faar 137 % af en evne?"). To varianter, A1 og A2,
 // bygget med samme byggesten som Rapport-fanen. Tal og navne er eksempler.
+import { useId } from "react";
 import { ChevronRightIcon, UserIcon } from "../../../components/ui/icons/index.jsx";
 
 // "70 › 71": pilen som ikon (ingen pil-tegn i tekst, TASTE).
@@ -10,7 +11,21 @@ function Step({ a, b }: { a: number; b: number }) {
 
 const LABEL = "mb-1 font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3";
 const NUM = "font-data text-[13px] tabular-nums";
-const HATCH = { backgroundImage: "repeating-linear-gradient(45deg, currentColor 0 3px, transparent 3px 6px)" };
+// Skraveringen som SVG-moenster (samme opskrift som spillets XpBar), ingen CSS-gradient (anti-slop).
+function Hatch() {
+  const id = useId();
+  return (
+    <svg aria-hidden="true" className="absolute inset-0 h-full w-full">
+      <defs>
+        <pattern id={id} width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <rect width="4" height="4" className="fill-cz-1" />
+          <line x1="0" y1="0" x2="0" y2="4" strokeWidth="1.6" className="stroke-cz-card" />
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill={`url(#${id})`} />
+    </svg>
+  );
+}
 
 type Seg = { from: number; to: number; kind: "before" | "training" | "race" };
 
@@ -19,8 +34,8 @@ function Track({ segs, wide = true }: { segs: Seg[]; wide?: boolean }) {
   return (
     <span className={`relative block h-1.5 overflow-hidden rounded-cz bg-cz-border ${wide ? "w-full" : "w-24"}`}>
       {segs.map((s, i) => (
-        <span key={i} className={`absolute inset-y-0 ${s.kind === "before" ? "bg-cz-3/45" : s.kind === "training" ? "bg-cz-1" : "text-cz-1"}`}
-          style={{ left: `${s.from}%`, width: `${s.to - s.from}%`, ...(s.kind === "race" ? HATCH : {}) }} />
+        <span key={i} className={`absolute inset-y-0 ${s.kind === "before" ? "bg-cz-3/45" : s.kind === "training" ? "bg-cz-1" : "overflow-hidden"}`}
+          style={{ left: `${s.from}%`, width: `${s.to - s.from}%` }}>{s.kind === "race" && <Hatch />}</span>
       ))}
     </span>
   );
@@ -35,7 +50,7 @@ function Legend() {
     <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-2xs text-cz-3">
       <span className="inline-flex items-center gap-1.5"><span className="block h-1.5 w-4 rounded-cz bg-cz-3/45" />Before today</span>
       <span className="inline-flex items-center gap-1.5"><span className="block h-1.5 w-4 rounded-cz bg-cz-1" />Training today</span>
-      <span className="inline-flex items-center gap-1.5"><span className="block h-1.5 w-4 rounded-cz text-cz-1" style={HATCH} />Race today</span>
+      <span className="inline-flex items-center gap-1.5"><span className="relative block h-1.5 w-4 overflow-hidden rounded-cz"><Hatch /></span>Race today</span>
     </div>
   );
 }

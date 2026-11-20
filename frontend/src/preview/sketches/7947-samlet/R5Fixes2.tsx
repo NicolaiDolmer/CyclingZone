@@ -1,5 +1,5 @@
 // #8476: foer/efter for rettelse 2-10 (se R5Fixes.tsx). Eksempeldata.
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 const LBL = "mb-1.5 font-data text-3xs font-semibold uppercase tracking-[.06em]";
 
