@@ -129,7 +129,7 @@ test("#6569 DashboardPage kalder useTodayStages paa topniveau (foer early-return
   const hookIdx = page.indexOf("useTodayStagesData()");
   assert.ok(hookIdx > 0, "hook-kaldet mangler");
   assert.ok(hookIdx < page.indexOf("return <AuthLoading"), "hook skal staa foer loading-early-return");
-  assert.match(page, /\{\(loading \|\| team\) && <TodayStagesStrip stages=\{todayStages\} \/>\}/);
+  assert.match(page, /\{\(loading \|\| team\) && \(\s*<div data-dashboard-card="todayStages" className="contents"><TodayStagesStrip stages=\{todayStages\} \/><\/div>\s*\)\}/);
 });
 
 // #8152: det valgfrie profil-opslag afventes sammen med vinder og tilmeldte; et
