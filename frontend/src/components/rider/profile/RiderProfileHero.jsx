@@ -437,14 +437,17 @@ export default function RiderProfileHero({
             value: scouting ? (
               <span className="inline-block max-w-56 whitespace-normal text-[15px] font-semibold">
                 <ScoutablePotentiale rider={rider} scouting={scouting} showScout={viewer === "scouting"} labelAsTitle hideLevel estimateSize="hero" showLooks={viewer === "scouting"} />
+                {/* #8523: den samlede prognose for egne ryttere som dæmpet linje under
+                    potentialet, så stat-rækken ikke får et syvende tal og brydes. */}
+                {heroPrognosis && (
+                  <span className="mt-1 flex items-baseline gap-1.5 text-2xs font-normal text-cz-3" data-testid="rider-hero-prognosis">
+                    <span title={t("riders:potentialNumber.prognosisTitle")}>{t("riders:potentialNumber.prognosis")}</span>
+                    <PrognosisValue view={heroPrognosis} />
+                  </span>
+                )}
               </span>
             ) : "—",
           },
-          // #8523: den samlede prognose for egne ryttere, kun når serveren sender den.
-          ...(heroPrognosis ? [{
-            label: t("riders:potentialNumber.prognosis"),
-            value: <PrognosisValue view={heroPrognosis} size="hero" />,
-          }] : []),
           {
             label: t("profile.hero.valueEyebrow"),
             value: <span className="block wrap-break-word" title={valueLabel} data-testid="rider-value-amount">{valueLabel}</span>,

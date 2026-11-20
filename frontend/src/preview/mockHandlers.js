@@ -173,6 +173,11 @@ export function restRows(table, requestUrl = "") {
   switch (table) {
     case "users":
       return [{ id: TEST_USER.id, role: "manager", username: "Playwright Manager", login_streak: 3 }];
+    // #8523: kun med ?potentialEstimate=on, så akademiets talenttabel har egne talenter
+    // at vise tal + ord og prognose på. Slukket: som før (generisk tom liste).
+    case "academy_intake":
+      if (!previewPotentialEstimateEnabled()) return [];
+      return (SEED_ACADEMY.roster ?? []).map((rider, i) => ({ id: `intake-${i + 1}`, rider_id: rider.id }));
     case "teams": {
       // #3197: en .eq("user_id", ...).maybeSingle()/.single()-forespørgsel (fx
       // "min egen pulje") skal få NETOP ét hold tilbage. Uden dette filter
