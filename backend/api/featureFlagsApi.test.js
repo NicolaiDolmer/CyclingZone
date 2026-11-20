@@ -139,6 +139,7 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
     academy_page_v2_8081: false,
+    jersey_hunt_7855: false, // #7855
 
     development_v2_aging_enabled: false,
 
@@ -219,6 +220,7 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
     academy_page_v2_8081: false,
+    jersey_hunt_7855: false, // #7855
 
     development_v2_aging_enabled: false,
 
@@ -307,6 +309,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
     academy_page_v2_8081: false,
+    jersey_hunt_7855: false, // #7855
 
     development_v2_aging_enabled: false,
 
@@ -356,6 +359,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
     academy_page_v2_8081: false,
+    jersey_hunt_7855: false, // #7855
 
     development_v2_aging_enabled: false,
 

@@ -400,7 +400,7 @@ export const passagesHook = (state: EngineState, ctx: SegmentHookContext): Segme
     const isKom = wp.kind === "kom";
     // #7855 (slukket): etapeplanens jaegere paa denne art passage (tom uden kontakten). Jagten, ikke
     // opgaven: en udbrudsrytter med jagt (valg A) har opgaven "breakaway" og jagten her.
-    const hunters7855 = jerseyHuntersForPassage7855(ctx.stagePlanHuntTasks7855, isKom ? "kom" : "sprint", (id) => state.riders[id] !== undefined && state.riders[id].status !== "abandoned", { km: wp.km, windows: ctx.stagePlanHuntWindows7855 });
+    const hunters7855 = jerseyHuntersForPassage7855(ctx.stagePlanHuntTasks7855, isKom ? "kom" : "sprint", (id) => state.riders[id] !== undefined && state.riders[id].status !== "abandoned", { km: wp.km, windows: ctx.stagePlanHuntWindows7855, groups: state.groups }); // #7855 S2: bjergjagt kun i udbruddet
     const category = isKom ? (wp.category ?? null) : null;
     const pointScale = isKom ? komPointScale(category, false) : extra.intermediateSprintPoints;
     const qualityWeights = isKom
