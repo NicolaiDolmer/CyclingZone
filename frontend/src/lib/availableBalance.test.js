@@ -87,3 +87,21 @@ test("#3508 fetchReservedBalance: kører de to forventede queries (current_bidde
   assert.equal(reserved, 1000 + 250);
   assert.deepEqual(calls.sort(), ["auction_proxy_bids", "auctions"]);
 });
+
+test("#8357 a failed reservation read must not look like an unlocked balance", async () => {
+  const error = new Error("reservation read failed");
+  const supabase = {
+    from(table) {
+      const query = {
+        select() { return query; },
+        in() { return query; },
+        eq() { return query; },
+        then(resolve) {
+          return resolve(table === "auctions" ? { data: [], error: null } : { data: null, error });
+        },
+      };
+      return query;
+    },
+  };
+  await assert.rejects(fetchReservedBalance(/** @type {any} */ (supabase), "team"), error);
+});
