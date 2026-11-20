@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { makeRng, STAT_KEYS, BIRTH_MODE_PCM } from "./fictionalRiderGenerator.js";
 import {
   isBornFromPriors, deriveBirthAbilities, birthAbilityKeys, YOUTH_BIRTH_BAND,
@@ -247,4 +248,74 @@ test("#5269: ukendt mode afvises haardt", () => {
     () => generateAcademyCandidates({ rng: makeRng(1), referenceYear: REF_YEAR, existingNames: new Set(), mode: "nope" }),
     /unknown mode/,
   );
+});
+
+// ─── #8521: potentiale P (1-99) bag XP-kontakten ─────────────────────────────
+
+// Frossen golden: sha256 af kuldene nedenfor, målt på merge-base-koden (main 77e33c0a5,
+// FØR #8521 rørte generatoren). Uden P-params skal generatoren give præcis det samme,
+// også rng-trækkenes rækkefølge. Ændres hashen, er slukket ikke længere dagens adfærd.
+const GOLDEN_MERGE_BASE_SHA256 = "35ce792bb84a331aaddd1007b48a5c9bb0acf275f445a5051905eda39ee82dff";
+const GOLDEN_CASES = [
+  { seed: 1 }, { seed: 7, mode: BIRTH_MODE_PCM }, { seed: 42, countOverride: 40 },
+  { seed: 99, countOverride: 12, topTalentIndex: 0, topTalentMin: 4.5, ageBand: { min: 16, max: 18 } },
+  { seed: 2026, countOverride: 30, mode: BIRTH_MODE_PCM, topTalentIndex: 3 },
+];
+
+// Opdigtede testtal, ikke kalibrering (de rigtige er private, hard rule 17).
+const P_FIXTURE = Object.freeze({
+  anchors: {
+    "1": [5, 14], "1.5": [15, 22], "2": [23, 30], "2.5": [31, 38], "3": [39, 46], "3.5": [47, 54],
+    "4": [55, 62], "4.5": [63, 69], "5": [70, 75], "5.5": [76, 80], "6": [81, 84],
+  },
+  academyFactors: {
+    "1": 0.5, "1.5": 1, "2": 1, "2.5": 1, "3": 1, "3.5": 1, "4": 1.5, "4.5": 1.5, "5": 2, "5.5": 2, "6": 2,
+  },
+});
+
+test("#8521 golden: uden P-params er kuldet bit-identisk med merge-base", () => {
+  for (const potentialP of [undefined, null]) {
+    const out = GOLDEN_CASES.map(({ seed, ...o }) => generateAcademyCandidates({
+      rng: makeRng(seed), referenceYear: REF_YEAR, existingNames: new Set(), ...o, potentialP,
+    }));
+    assert.equal(createHash("sha256").update(JSON.stringify(out)).digest("hex"), GOLDEN_MERGE_BASE_SHA256);
+    for (const kuld of out) for (const c of kuld) {
+      assert.equal("base_talent" in c.rider, false);
+      assert.equal("talent_ceiling" in c.rider, false);
+    }
+  }
+});
+
+test("#8521: med P-params skrives både stjerner og P, og P ligger i stjernernes ankerinterval", () => {
+  const out = generateAcademyCandidates({
+    rng: makeRng(8521), referenceYear: REF_YEAR, existingNames: new Set(), countOverride: 400, potentialP: P_FIXTURE,
+  });
+  assert.equal(out.length, 400);
+  for (const c of out) {
+    const { potentiale, base_talent, talent_ceiling } = c.rider;
+    assert.ok(POTENTIALE_TIERS.includes(potentiale), `stjerner ${potentiale}`);
+    const [lo, hi] = P_FIXTURE.anchors[String(potentiale)];
+    assert.ok(Number.isInteger(base_talent) && base_talent >= lo && base_talent <= hi, `P ${base_talent} for ${potentiale}`);
+    assert.equal(talent_ceiling, base_talent);
+    assert.equal(c.is_serious, potentiale >= 4.5);
+  }
+});
+
+test("#8521: P-params respekterer bestyrelsens garanterede talent og er deterministiske", () => {
+  const opts = { referenceYear: REF_YEAR, countOverride: 5, topTalentIndex: 2, topTalentMin: 5, potentialP: P_FIXTURE };
+  for (let seed = 1; seed <= 200; seed++) {
+    const out = generateAcademyCandidates({ rng: makeRng(seed), existingNames: new Set(), ...opts });
+    assert.ok(out[2].rider.potentiale >= 5);
+  }
+  const a = generateAcademyCandidates({ rng: makeRng(3), existingNames: new Set(), ...opts });
+  const b = generateAcademyCandidates({ rng: makeRng(3), existingNames: new Set(), ...opts });
+  assert.deepEqual(a, b);
+});
+
+test("#8521: ugyldige P-params afvises før et eneste træk", () => {
+  let calls = 0;
+  const rng = () => { calls++; return 0.5; };
+  assert.throws(() => generateAcademyCandidates({ rng, referenceYear: REF_YEAR, existingNames: new Set(), potentialP: { anchors: P_FIXTURE.anchors } }), /academyFactors/);
+  assert.throws(() => generateAcademyCandidates({ rng, referenceYear: REF_YEAR, existingNames: new Set(), potentialP: { anchors: {} } }), /anchors/);
+  assert.equal(calls, 0);
 });
