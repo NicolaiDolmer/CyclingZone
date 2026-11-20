@@ -135,10 +135,11 @@ export function buildXpReportFixture(): XpFixture {
     });
   }
   receipts.reverse(); // newest first, like aggregateTrainingRuns
-  // #7947: every ability after the last date (invented levels), for the rating change.
+  // #7947: every ability after the last date, for the rating change. Untrained abilities
+  // are invented too (own salt), picked so the default day shows one rating move.
   const abilities = Object.fromEntries(RIDERS.map(r => {
     const s = state.get(r.id)!;
-    return [r.id, Object.fromEntries((ABILITY_KEYS as readonly string[]).map(key => [key, s.levels[key] ?? pick(noise(r.id, key, "lvl"), 38, 76)]))];
+    return [r.id, Object.fromEntries((ABILITY_KEYS as readonly string[]).map(key => [key, s.levels[key] ?? pick(noise(r.id, key, "ability"), 38, 76)]))];
   }));
   return { receipts, nations: Object.fromEntries(RIDERS.map(r => [r.id, r.nation])), types: Object.fromEntries(RIDERS.map(r => [r.id, { primary: r.type[0], secondary: r.type[1] }])), scores, abilities };
 }

@@ -3,10 +3,14 @@
 // (gains_detail); the rider's other abilities come from the roster. Before and
 // after are the same best-role rating the rest of the game shows (riderBestRole),
 // computed on the rider's abilities with the date's jumps set to `from` and to `to`.
-// Only the date's own points move the number, so an older date reads the same way.
+// The roster is the rider NOW, so it only describes the state after the newest date:
+// the report asks for that date alone, and a roster whose jumped abilities no longer
+// stand at `to` (it moved on) gives nothing. There is no ability snapshot per date,
+// so an older date shows nothing rather than a number built on later abilities
+// (Codex P2 on #8488).
 //
-// Pure, no React. null = nothing to show: no abilities, no usable jump, or the
-// rating did not change (the report then shows nothing, never "34 > 34").
+// Pure, no React. null = nothing to show: no abilities, no usable jump, a roster
+// past the date, or the rating did not change (never "34 > 34").
 import { riderBestRole } from "./riderRating.js";
 import { abilityValue } from "./generated/displayRecipes.js";
 
@@ -23,9 +27,9 @@ export function ratingChange(
   if (!abilities || typeof abilities !== "object" || !detail || typeof detail !== "object") return null;
   const jumps = Object.entries(detail).filter((entry): entry is [string, { from: number; to: number }] =>
     finite(entry[1]?.from) && finite(entry[1]?.to) && entry[1].to !== entry[1].from);
-  // The roster row must carry the rider's abilities (flattened); a jump alone would
-  // rate the rider on one ability and invent a number.
-  if (jumps.length === 0 || !jumps.every(([key]) => abilityValue(abilities[key]) !== null)) return null;
+  // The roster row must carry the rider's abilities (flattened) and stand exactly where
+  // the date left them; a jump alone would rate the rider on one ability and invent a number.
+  if (jumps.length === 0 || !jumps.every(([key, jump]) => abilityValue(abilities[key]) === jump.to)) return null;
   // The cached best_role_rating is a fallback for rows without abilities; it would
   // read the same before and after, so it is left out on purpose.
   const before: Record<string, unknown> = { ...abilities };

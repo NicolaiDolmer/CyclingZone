@@ -281,7 +281,8 @@ export function buildTodayView(runs: ReadonlyArray<XpReceipt>, date: string | nu
       sessions: row.activities.map((a, i) => sessionOf(a, scores[i])),
       abilities,
       sessionScore: sessionScores.length ? Math.round(sessionScores.reduce((s, n) => s + n, 0) / sessionScores.length) : null,
-      rating: ratingChange(options.abilities?.[row.rider_id], row.gains_detail),
+      // #7947: the roster is the rider now, so only the newest date has a rating change.
+      rating: index === days.length - 1 ? ratingChange(options.abilities?.[row.rider_id], row.gains_detail) : null,
     };
   }).sort((a, b) => b.points - a.points || b.xp - a.xp || byName(a, b));
   return {

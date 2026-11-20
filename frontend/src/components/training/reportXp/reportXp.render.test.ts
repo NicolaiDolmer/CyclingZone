@@ -99,6 +99,10 @@ test("#7947 a folded rider shows 'Rating x > y' only when his rating moved", () 
   // Without the roster's abilities nothing is shown.
   const bare = buildTodayView(fx.receipts, null, options)!;
   assert.ok(bare.riders.every(r => !r.rating));
+  // The roster is the rider now: only the newest date can say it (Codex P2 on #8488).
+  assert.equal(date, fx.receipts[0].tick_date);
+  const older = buildTodayView(fx.receipts, fx.receipts[1].tick_date, withAbilities)!;
+  assert.ok(older.riders.every(r => !r.rating), "an older date shows nothing");
 });
 
 test("30 days renders one column per day and never a days-to-go estimate", () => {

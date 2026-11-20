@@ -11,11 +11,11 @@ const flat = (level: number): Record<string, number> => Object.fromEntries((ABIL
 const allJump = (from: number, to: number) => Object.fromEntries((ABILITY_KEYS as readonly string[]).map(k => [k, { from, to }]));
 
 test("#7947 rating before and after the date's points, the game's best-role rating", () => {
-  assert.deepEqual(ratingChange(flat(40), allJump(40, 41)), { from: 40, to: 41 });
+  assert.deepEqual(ratingChange(flat(41), allJump(40, 41)), { from: 40, to: 41 });
 });
 
 test("#7947 the rating is the same as riderBestRole on the same abilities", () => {
-  const rider = { ...flat(40), sprint: 52, acceleration: 47 };
+  const rider = { ...flat(40), sprint: 53, acceleration: 48 };
   const detail = { sprint: { from: 51, to: 53 }, acceleration: { from: 46, to: 48 } };
   const expectFrom = riderBestRole({ ...rider, sprint: 51, acceleration: 46 }).rating;
   const expectTo = riderBestRole({ ...rider, sprint: 53, acceleration: 48 }).rating;
@@ -24,15 +24,16 @@ test("#7947 the rating is the same as riderBestRole on the same abilities", () =
   else assert.deepEqual(got, { from: expectFrom, to: expectTo });
 });
 
-test("#7947 only the date's own jumps move the number (an older date reads the same)", () => {
-  // Today the rider is higher than on the date; the jump still decides from and to.
-  assert.deepEqual(ratingChange(flat(60), allJump(40, 41)), { from: 40, to: 41 });
+test("#7947 a roster that moved on past the date gives nothing (no per-date snapshot, Codex P2)", () => {
+  // The jumped ability no longer stands where the date left it: the rider trained since.
+  assert.equal(ratingChange(flat(60), allJump(40, 41)), null);
+  assert.equal(ratingChange({ ...flat(40), sprint: 43 }, { sprint: { from: 41, to: 42 } }), null);
 });
 
 test("#7947 no change in the rating = nothing to show", () => {
   const counted = new Set(DISPLAY_RECIPES.flatMap(r => Object.keys(r.weights)));
   const uncounted = (ABILITY_KEYS as readonly string[]).find(k => !counted.has(k));
-  if (uncounted) assert.equal(ratingChange(flat(40), { [uncounted]: { from: 40, to: 41 } }), null);
+  if (uncounted) assert.equal(ratingChange({ ...flat(40), [uncounted]: 41 }, { [uncounted]: { from: 40, to: 41 } }), null);
   assert.equal(ratingChange(flat(40), { sprint: { from: 40, to: 40 } }), null);
 });
 
