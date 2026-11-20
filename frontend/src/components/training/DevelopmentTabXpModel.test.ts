@@ -345,3 +345,14 @@ test("the preview fixture fills the XP lines", () => {
   assert.ok(rows.some(r => r.abilities.some(x => x.line && x.dayXp)));
   assert.ok(rows.some(r => typeof r.rating30 === "number"));
 });
+
+test("rating 30 d: Train now's confirmed points count before the settlement; an unsettled date without them is unknown", () => {
+  const withTrainedNow = (status: XpReceipt["receipt_status"], trainedNow: Record<string, number> | null) => {
+    const run = receipt("2026-11-20", status, [{ id: "a", xp: { climbing: 5 } }]);
+    (run.report.riders[0] as unknown as Record<string, unknown>).trained_now = trainedNow ? { gains: trainedNow, gains_detail: {}, gain_percent: {} } : null;
+    return [run, receipt("2026-11-19", "complete", [{ id: "a", xp: {}, gains: { flat: 1 } }])];
+  };
+  assert.deepEqual(gainsLast30(withTrainedNow("pending", { climbing: 1 }), "a", "2026-11-20"), { climbing: 1, flat: 1 });
+  assert.equal(gainsLast30(withTrainedNow("pending", null), "a", "2026-11-20"), null, "pending without confirmed points is not a measured zero");
+  assert.equal(gainsLast30(withTrainedNow("reconciliation", null), "a", "2026-11-20"), null, "a date still being reconciled is unknown");
+});

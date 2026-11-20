@@ -8,9 +8,11 @@ import { potentialViewOf, potentialViewValue, type PotentialView } from "../../l
 import { buildXpReportFixture, XP_FIXTURE_LAST_DATE } from "./reportXp/xpReportFixture.ts";
 import { ABILITY_KEYS as ABILITY_KEYS_BASE } from "../../lib/generated/abilityRegistry.js";
 import { riderBestRole as riderBestRoleBase } from "../../lib/riderRating.js";
+import { seasonAbilityGains as seasonAbilityGainsBase } from "../../lib/trainingReport.js";
 
 const ABILITY_KEYS = ABILITY_KEYS_BASE as unknown as readonly string[];
 const riderBestRole = riderBestRoleBase as unknown as (rider: Record<string, unknown>) => { rating: number | null; role: string | null };
+const seasonAbilityGains = seasonAbilityGainsBase as unknown as (runs: readonly XpReceipt[], riderId: string, since: string) => Record<string, number> | null;
 
 /** "Close to the next point": three quarters of the bar or more (a display line, not a game rule). */
 export const CLOSE_PCT = 75;
@@ -180,6 +182,8 @@ export function dayKeyMinus(key: string, days: number): string {
  * from the same receipts as the rest of the tab. Null = unknown: no receipt in the window,
  * or the rider has no row on the window's first receipt (he joined inside the window, so
  * what he gained before is not in these receipts). Never a false zero.
+ * The sum itself is the season column's (seasonAbilityGains): Train now's confirmed points count
+ * before the evening settlement, and a date still being reconciled (or pending without them) is unknown.
  */
 export function gainsLast30(runs: readonly XpReceipt[], riderId: string, todayKey: string): Record<string, number> | null {
   const from = dayKeyMinus(todayKey, 29);
@@ -188,14 +192,7 @@ export function gainsLast30(runs: readonly XpReceipt[], riderId: string, todayKe
   const first = inWindow.reduce((a, b) => (b.tick_date < a ? b.tick_date : a), inWindow[0].tick_date);
   const firstRuns = inWindow.filter(run => run.tick_date === first);
   if (!firstRuns.some(run => run.report?.riders?.some(r => r.rider_id === riderId))) return null;
-  const out: Record<string, number> = {};
-  for (const run of inWindow) {
-    for (const row of run.report?.riders ?? []) {
-      if (row.rider_id !== riderId) continue;
-      for (const [key, n] of Object.entries(row.gains ?? {})) if (finite(n) && n > 0) out[key] = (out[key] ?? 0) + n;
-    }
-  }
-  return out;
+  return seasonAbilityGains(inWindow, riderId, from);
 }
 
 /** The rating change as text: '+3', '0', '-1', and a dash when unknown. */
