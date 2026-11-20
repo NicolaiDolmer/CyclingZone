@@ -450,6 +450,13 @@ const between = (n: number, lo: number, hi: number) => Math.round(lo + n * (hi -
 
 export function buildDevelopmentFixture(): { runs: XpReceipt[]; riders: DevRiderInput[]; seasonGains: Record<string, Record<string, number>> } {
   const fx = buildXpReportFixture();
+  // The report's invented bars can run several points past the price; a stored bar has paid
+  // those out, so the tab's preview keeps only what is left toward the next point ("x / y XP").
+  for (const run of fx.receipts) {
+    for (const row of run.report.riders) {
+      for (const bar of Object.values(row.xp_bar ?? {})) if (finite(bar?.xp) && finite(bar?.price) && bar.price > 0 && bar.xp >= bar.price) bar.xp %= bar.price;
+    }
+  }
   const latest = fx.receipts.find(r => r.tick_date === DEV_FIXTURE_TODAY) ?? fx.receipts[0];
   const seasonGains: Record<string, Record<string, number>> = {};
   for (const run of fx.receipts) {

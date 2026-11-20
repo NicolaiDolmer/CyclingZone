@@ -351,8 +351,9 @@ function Abilities({ row, phone }: { row: DevRow; phone: boolean }) {
 // The optional columns: the stacked gold badge (124 px) holds the longest two-line natural type, the
 // grey tag (84 px) the short role name, "Rating, 30 d" (84 px) a signed number; the headers may wrap.
 // With the default (natural only) the table fits the content width at 1440 without scrolling; the
-// minimum width grows with the columns shown.
-const BASE_MIN_WIDTH = 1036;
+// minimum width grows with the columns shown. Ejer 20/11: XP/day is one number now (no sparkline),
+// so its column is narrow and "Natural type" plus "Rating, 30 d" still fit at 1440.
+const BASE_MIN_WIDTH = 948;
 const OPTIONAL_WIDTH: Record<DevColumnKey, number> = { natural: 124, role: 84, rating30: 84 };
 const BASE_COLS = 9;
 
@@ -379,7 +380,7 @@ function DesktopTable({ rows, open, toggle, sort, onSort, columns }: { rows: Dev
           <SortHead k="season" label={t("developmentXp.colRatingSeason")} title={t("developmentXp.ratingSeasonTitle")} wrap className="w-[84px]" sort={sort} onSort={onSort} />
           {show30 && <SortHead k="rating30" label={t("developmentXp.colRating30")} title={t("developmentXp.rating30Title")} wrap className="w-[84px]" sort={sort} onSort={onSort} />}
           <SortHead k="xpToday" label={t("developmentXp.colXpToday")} className="w-[116px]" sort={sort} onSort={onSort} />
-          <SortHead k="xp30" label={t("developmentXp.colXp30")} className="w-[184px]" sort={sort} onSort={onSort} />
+          <SortHead k="xp30" label={t("developmentXp.colXp30")} wrap className="w-[96px]" sort={sort} onSort={onSort} />
           <SortHead k="next" label={t("developmentXp.colNext")} sort={sort} onSort={onSort} />
         </tr>
       </thead>
@@ -419,7 +420,7 @@ function DesktopTable({ rows, open, toggle, sort, onSort, columns }: { rows: Dev
               {o && (
                 <tr className="bg-cz-subtle/40">
                   <td />
-                  <td colSpan={colCount - 1} className="px-3 pb-3 pt-1"><div className="max-w-[560px]"><Abilities row={row} phone={false} /></div></td>
+                  <td colSpan={colCount - 1} className="px-3 pb-3 pt-1"><div className="max-w-[680px]"><Abilities row={row} phone={false} /></div></td>
                 </tr>
               )}
             </Fragment>
