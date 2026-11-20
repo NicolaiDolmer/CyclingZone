@@ -37,7 +37,7 @@ import {
   PEAK_FORM_THRESHOLD,
   NEAR_BREAKTHROUGH,
 } from "./trainingReport.js";
-import { earnedJumps } from "./trainingEarnedGains.js";
+import { earnedJumps } from "./trainingEarnedGains.ts";
 
 export const MOMENT_TYPES = {
   BREAKTHROUGH: "breakthrough",

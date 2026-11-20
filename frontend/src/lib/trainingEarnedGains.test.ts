@@ -4,12 +4,11 @@
 // koden foer aendringen, ikke genereret af den nye kode).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { earnedGains, earnedGainTotal, earnedJumps } from "./trainingEarnedGains.js";
+import { earnedGains, earnedGainTotal, earnedJumps } from "./trainingEarnedGains.ts";
 import { selectTrainingMoment, dayTopCandidate, MOMENT_TYPES } from "./trainingMoment.js";
 import { todayGainTotal } from "./trainingReport.js";
 
-/** @param {Record<string, any>} [overrides] @returns {any} */
-function row(overrides = {}) {
+function row(overrides: Record<string, unknown> = {}): any {
   return {
     rider_id: "r1", name: "Rytter A", focus: "vo2max", intensity: "normal", receipt_status: "complete",
     injured: false, injury_days: 0, status: null, form: 50, gains: {}, gains_detail: {}, activities: [], ...overrides,
@@ -60,12 +59,13 @@ test("earnedJumps: springet starter efter bjaelkens point", () => {
   assert.deepEqual(earnedJumps(mixed), [{ ability: "sprint", n: 1, from: 61, to: 62 }]);
 });
 
-const run = (riders, tick_date = "2026-11-20") => ({ tick_date, report: { riders } });
+const run = (riders: unknown[], tick_date = "2026-11-20") => ({ tick_date, report: { riders } });
+const pick = (...args: Parameters<typeof selectTrainingMoment>): any => selectTrainingMoment(...args);
 
 test("XP: en rytter med kun bjaelkens point er ikke dagens gennembrud", () => {
-  const moment = selectTrainingMoment(run([paidOnly]), null, [], { xp: true });
+  const moment = pick(run([paidOnly]), null, [], { xp: true });
   assert.equal(moment.type, MOMENT_TYPES.QUIET);
-  const best = selectTrainingMoment(run([paidOnly, mixed]), null, [], { xp: true });
+  const best = pick(run([paidOnly, mixed]), null, [], { xp: true });
   assert.equal(best.type, MOMENT_TYPES.BREAKTHROUGH);
   assert.equal(best.riderId, "mixed");
   assert.deepEqual([best.n, best.from, best.to], [1, 61, 62]);
@@ -73,18 +73,18 @@ test("XP: en rytter med kun bjaelkens point er ikke dagens gennembrud", () => {
 
 test("XP: den skarpe dag findes ikke", () => {
   const sharp = row({ status: "over" });
-  assert.equal(selectTrainingMoment(run([sharp]), null, [], { xp: true }).type, MOMENT_TYPES.QUIET);
+  assert.equal(pick(run([sharp]), null, [], { xp: true }).type, MOMENT_TYPES.QUIET);
   assert.equal(dayTopCandidate([sharp], { xp: true }), null);
 });
 
 test("kontakten slukket: dagens historie er som foer (bjaelkens point og skarp dag taeller)", () => {
   // Facit fra koden foer #8476: gains taeller fuldt, from/to fra gains_detail, skarp dag score 500.
-  const off = selectTrainingMoment(run([paidOnly]), null, []);
+  const off = pick(run([paidOnly]), null, []);
   assert.equal(off.type, MOMENT_TYPES.BREAKTHROUGH);
   assert.deepEqual([off.riderId, off.ability, off.n, off.from, off.to, off.score], ["paid", "climbing", 1, 70, 71, 10001]);
-  assert.deepEqual(selectTrainingMoment(run([paidOnly]), null, [], { xp: false }), off);
+  assert.deepEqual(pick(run([paidOnly]), null, [], { xp: false }), off);
   const sharp = row({ status: "over" });
   assert.deepEqual(dayTopCandidate([sharp]), { type: MOMENT_TYPES.SHARP_DAY, riderId: "r1", riderName: "Rytter A", score: 500 });
-  assert.equal(selectTrainingMoment(run([sharp]), null, []).type, MOMENT_TYPES.SHARP_DAY);
+  assert.equal(pick(run([sharp]), null, []).type, MOMENT_TYPES.SHARP_DAY);
   assert.equal(todayGainTotal(paidOnly), 1);
 });

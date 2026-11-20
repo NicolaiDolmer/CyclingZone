@@ -98,7 +98,7 @@ import { pressedChoice, pressedChoiceFromSession, rowLocked, rowForecast, hasOwn
 import ResetToTeamProgram from "../components/training/ResetToTeamProgram.tsx";
 import XpReportSwitch from "../components/training/reportXp/XpReportSwitch.tsx"; // #7627
 import { useDevelopmentXpEnabled } from "../lib/developmentXpFlag.ts"; // #8476
-import { earnedGainTotal } from "../lib/trainingEarnedGains.js"; // #8476
+import { earnedGainTotal } from "../lib/trainingEarnedGains.ts"; // #8476
 // #6030: fanerne Program, Development og Report hentes foerst naar de aabnes
 // (lazyWithRetry, #5014), saa foerste visning af Today henter mindre. Fallback er den
 // kanoniske skelet-markup (PAGE_TEMPLATES: aldrig en spinner i kort).

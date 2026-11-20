@@ -41,7 +41,7 @@ import RiderTrainingScoreCard from "./RiderTrainingScoreCard.tsx";
 import InjuryChip from "../ConditionChips.jsx";
 import { useCrashOrigin } from "../useCrashOrigin.ts";
 import { useDevelopmentXpEnabled } from "../../../lib/developmentXpFlag.ts"; // #8476
-import { earnedGainTotal, earnedJumps } from "../../../lib/trainingEarnedGains.js"; // #8476
+import { earnedGainTotal, earnedJumps } from "../../../lib/trainingEarnedGains.ts"; // #8476
 
 const LOG_DAYS = 7;
 
