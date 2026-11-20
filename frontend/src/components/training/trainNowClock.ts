@@ -50,7 +50,7 @@ export function trainNowEarlierDay(
   return new Intl.DateTimeFormat(locale, { timeZone: GAME_TZ, day: "numeric", month: "short" }).format(pressed);
 }
 
-type Translate = (key: string, options?: Record<string, unknown>) => string;
+type Translate = { (key: string): string; (key: string, opts: Record<string, unknown>): string };
 
 /**
  * #7558: the three Train now lock texts (banner title, banner body, rider badge), worded for

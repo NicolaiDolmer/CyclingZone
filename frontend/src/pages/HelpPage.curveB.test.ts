@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { HELP_BLOCK_FLAGS, HELP_FAQ_FLAGS, isHelpBlockVisible, isHelpFaqVisible } from "./helpFlagGates.js";
 import { PLAYER_VISIBLE_FLAG_KEYS } from "../../../backend/lib/stageFlagCatalog.js";
 
-type Gate = { flag: string; when: boolean };
+type Gate = { flag: string; when: boolean; and?: Gate };
 type Text = { title?: string; text?: string; q?: string; a?: string };
 type Help = { sections: Record<string, Record<string, Text>>; faq: Record<string, Text> };
 
@@ -21,6 +21,8 @@ const BLOCK_GATES = HELP_BLOCK_FLAGS as Record<string, Record<string, Gate>>;
 const FAQ_GATES = HELP_FAQ_FLAGS as Record<string, Gate>;
 
 const FLAG = "development_curve_b";
+// #6110: begge kurve-B-udgaver forsvinder, naar XP-modellen er taendt (HelpPage.xp.test.ts).
+const XP_OFF = { flag: "development_xp_model", when: false };
 const BLOCK_TWINS: Array<[string, string]> = [
   ["dailytraining", "longTermGrowth"],
   ["dailytraining", "typeGating"],
@@ -36,8 +38,8 @@ test("kurve B-flaget er spillersynligt (ellers forbliver tvillingerne skjult for
 test("blok-tvillingerne: off viser dagens tekst, on viser kurve B, aldrig begge", () => {
   for (const [section, id] of BLOCK_TWINS) {
     const curveB = `${id}CurveB`;
-    assert.deepEqual(BLOCK_GATES[section][id], { flag: FLAG, when: false }, `${section}.${id}`);
-    assert.deepEqual(BLOCK_GATES[section][curveB], { flag: FLAG, when: true }, `${section}.${curveB}`);
+    assert.deepEqual(BLOCK_GATES[section][id], { flag: FLAG, when: false, and: XP_OFF }, `${section}.${id}`);
+    assert.deepEqual(BLOCK_GATES[section][curveB], { flag: FLAG, when: true, and: XP_OFF }, `${section}.${curveB}`);
     assert.equal(isHelpBlockVisible(section, id, { [FLAG]: false }), true);
     assert.equal(isHelpBlockVisible(section, curveB, { [FLAG]: false }), false);
     assert.equal(isHelpBlockVisible(section, id, { [FLAG]: true }), false);
@@ -53,8 +55,8 @@ test("blok-tvillingerne: off viser dagens tekst, on viser kurve B, aldrig begge"
 
 test("FAQ-tvillingen foelger samme kontakt", () => {
   for (const [off, on] of FAQ_TWINS) {
-    assert.deepEqual(FAQ_GATES[off], { flag: FLAG, when: false });
-    assert.deepEqual(FAQ_GATES[on], { flag: FLAG, when: true });
+    assert.deepEqual(FAQ_GATES[off], { flag: FLAG, when: false, and: XP_OFF });
+    assert.deepEqual(FAQ_GATES[on], { flag: FLAG, when: true, and: XP_OFF });
     assert.equal(isHelpFaqVisible(off, { [FLAG]: false }), true);
     assert.equal(isHelpFaqVisible(on, { [FLAG]: false }), false);
     assert.equal(isHelpFaqVisible(off, { [FLAG]: true }), false);

@@ -56,6 +56,7 @@ import { resolveCalendarRaceDayTarget } from "./trainingRaceDayTick.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { isTrainingConditionPerDateEnabled } from './trainingDateConditionFlag.js';
 import { isLegacyCalendarTickTeam, runNormalizedTrainingDateSweep } from './trainingDateClose.js';
+import { isCalendarTickAiOnly } from './trainingCalendarTickFlag.js'; // #6110 ejer 19/11
 import { startRaceSessionSettlementAfterStages } from './trainingSettleRaceSession7982.js';
 
 /**
@@ -618,13 +619,14 @@ export async function loadDayCloseSpans({
  */
 export function buildSweepPlan({
   teams, gameDaysByDivisionMap, alreadyRanRaceDayKeys, alreadyRanLegacyTeamIds, squad = DEFAULT_SQUAD,
+  calendarTickAiOnly = false, // #6110 ejer 19/11: kun AI-hold uden division faar reservevejens tick
 }) {
   const plan = [];
   for (const team of teams ?? []) {
     if (team.parked_at != null) continue; // samme regel som managerParking.isParkedTeam
     const divisionId = team.league_division_id ?? null;
     if (!divisionId) {
-      if (isLegacyCalendarTickTeam(team) && !alreadyRanLegacyTeamIds.has(team.id)) {
+      if (isLegacyCalendarTickTeam(team, { aiOnly: calendarTickAiOnly }) && !alreadyRanLegacyTeamIds.has(team.id)) {
         plan.push({ teamId: team.id, gameDay: null, squad });
       }
       continue;
@@ -1008,6 +1010,9 @@ async function runTrainingDayCloseSweepGuarded({
       gameDaysByDivisionMap: byDivision,
       alreadyRanRaceDayKeys,
       alreadyRanLegacyTeamIds,
+      // #6110 ejer 19/11: kun laest, naar et hold uden division findes (ellers intet ekstra kald).
+      calendarTickAiOnly: (teams ?? []).some((team) => !team.league_division_id && team.parked_at == null)
+        ? await isCalendarTickAiOnly(supabase) : false,
     });
 
     // ── Eksekvering ───────────────────────────────────────────────────────────

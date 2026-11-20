@@ -226,6 +226,71 @@ export function defaultTimes(image) {
   return { settleAt: new Date(image.capturedAt), eveningAt: copenhagenWallTimeToUTC(image.tickDate, 20, 5) };
 }
 
+// 13.5: "Evnepoint er ens; fremgangen mod naeste point kan afvige hoejst 1/1000 point."
+// Motorens udvikling pr. session afhaenger af rytterens hele evnepoint (afstanden til loftet), saa
+// naar loebssessionen gemmes foer datoens tidligere sessioner, kan et helt point krydses i en anden
+// session. Det flytter pointet mellem kvitteringerne (gains, gains_detail, den raa sum score) og
+// loebsdagshistorikkens raekke, og fremgangen glider en smule. Datoens sum pr. rytter er ens.
+export const PROGRESS_TOLERANCE = 1e-3;
+const ORDER_FOLLOWING_RECEIPT_FIELDS = Object.freeze(["gains", "gains_detail", "score"]);
+export const gainTotals = (receipts) => {
+  const totals = {};
+  for (const r of receipts) for (const [ability, gain] of Object.entries(r.report?.gains ?? {})) {
+    const key = `${r.rider_id}#${r.tick_date}#${ability}`;
+    totals[key] = (totals[key] ?? 0) + Number(gain);
+  }
+  return totals;
+};
+// Fable 19/11 (B): tolerancen gaelder kun rytter og evne med gevinst paa datoen (kun dér kan et point
+// krydses i en anden session); alt andet skal vaere ens op til flydetals-stoej.
+export const EXACT_TOLERANCE = 1e-9;
+export const progressWithinTolerance = (late, early, gainedKeys = null) => late.length === early.length && late.every((row, i) => {
+  const a = row.ability_progress ?? {}, b = early[i].ability_progress ?? {};
+  return [...new Set([...Object.keys(a), ...Object.keys(b)])].every((k) => {
+    const tol = gainedKeys == null || gainedKeys.has(`${row.rider_id}#${k}`) ? PROGRESS_TOLERANCE : EXACT_TOLERANCE;
+    return Math.abs(Number(a[k] ?? 0) - Number(b[k] ?? 0)) <= tol;
+  });
+});
+/** Codex P2 #8491: den loese tolerance kun for ryttere med en tidlig loebssession (alle andre helt ens). */
+export const relaxedKeys = (gainedKeys, raceRiders) => new Set([...gainedKeys].filter((key) => raceRiders.has(key.split("#")[0])));
+/** Rytter og evne med gevinst paa datoen i mindst én af vejene. */
+export const gainedRiderAbilities = (...receiptLists) => new Set(receiptLists.flat()
+  .flatMap((r) => Object.entries(r.report?.gains ?? {}).filter(([, g]) => Number(g) > 0).map(([ability]) => `${r.rider_id}#${ability}`)));
+// Fable 19/11 (A): datoens sum af score pr. rytter skal vaere ens (inden for afrunding), og hver
+// kvitterings gains_detail skal stemme med dens gains (samme evner, to - from = gevinsten).
+// score afrundes til 2 decimaler pr. kvittering (dailyTraining.js: Math.round(score * 100) / 100), saa
+// datoens sum kan afvige med hoejst ét afrundingstrin pr. kvittering.
+export const SCORE_ROUNDING_STEP = 0.01;
+export const scoreTotals = (receipts) => {
+  const totals = {};
+  for (const r of receipts) { const key = `${r.rider_id}#${r.tick_date}`; totals[key] = (totals[key] ?? 0) + Number(r.report?.score ?? 0); }
+  return totals;
+};
+const receiptCounts = (receipts) => {
+  const n = {};
+  for (const r of receipts) { const key = `${r.rider_id}#${r.tick_date}`; n[key] = (n[key] ?? 0) + 1; }
+  return n;
+};
+export const scoreTotalsEqual = (late, early) => {
+  const a = scoreTotals(late), b = scoreTotals(early), n = receiptCounts(late);
+  return [...new Set([...Object.keys(a), ...Object.keys(b)])]
+    .every((k) => Math.abs((a[k] ?? 0) - (b[k] ?? 0)) <= SCORE_ROUNDING_STEP * Math.max(1, n[k] ?? 1) + 1e-9);
+};
+export const detailMatchesGains = (receipts) => receipts.every((r) => {
+  const gains = r.report?.gains ?? {}, detail = r.report?.gains_detail ?? {};
+  const g = Object.keys(gains).filter((k) => Number(gains[k]) !== 0).sort(), d = Object.keys(detail).sort();
+  return JSON.stringify(g) === JSON.stringify(d)
+    && d.every((k) => Math.abs(Number(detail[k]?.to) - Number(detail[k]?.from) - Number(gains[k])) <= 1e-9);
+});
+// Spillets tal uden det, der foelger gemmeraekkefoelgen: evnepoint eksakt (fremgangen proeves med
+// tolerance ovenfor), loebsdagshistorikken som rytterens billeder uden loebsdag og kilde.
+const orderInvariant = ({ receipts: _receipts, abilities, raceDayHistory, ...rest }) => ({
+  ...rest,
+  abilities: abilities.map(({ ability_progress: _progress, ...row }) => row),
+  raceDayHistory: raceDayHistory.map(({ game_day: _day, source: _source, ...row }) => row)
+    .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
+});
+
 /**
  * Trin 2: "alt kl. 20" mod "tidligt" fra samme billede, med taendings-kontakterne (eller `flags`).
  * Spillets tal skal vaere ens; kvitteringernes oejebliksbilleder maa afvige som i facit (13.5).
@@ -235,18 +300,35 @@ export async function runProdImage(image, { flags = IGNITION_FLAGS, ...times } =
   const late = await runPath(image, { early: false, flags, settleAt, eveningAt });
   const early = await runPath(image, { early: true, flags: { ...flags, [SETTLE_FLAG]: "on" }, settleAt, eveningAt });
   const lateNumbers = numbersOf(late.state), earlyNumbers = numbersOf(early.state);
-  const { receipts: lateReceipts, ...lateRest } = lateNumbers;
-  const { receipts: earlyReceipts, ...earlyRest } = earlyNumbers;
-  const plain = (list) => list.map((r) => ({ id: `${r.rider_id}#${r.game_day}`, gains: r.report.gains, gains_detail: r.report.gains_detail, score: r.report.score, intensity: r.report.intensity, status: r.report.status, injured: r.report.injured }));
+  const { receipts: lateReceipts } = lateNumbers;
+  const { receipts: earlyReceipts } = earlyNumbers;
+  // 13.5: evnepoint og datoens gevinst pr. rytter er ens; kun HVILKEN session der krydser pointet
+  // foelger gemmeraekkefoelgen (og dermed fremgangen, hoejst 1/1000 point).
+  const lateRest = orderInvariant(lateNumbers), earlyRest = orderInvariant(earlyNumbers);
+  // Fable 19/11 (C): kun ryttere med en tidlig loebssession kan faa pointet paa en anden session;
+  // alle andre gemmes i samme raekkefoelge i begge veje og skal vaere helt ens.
+  const raceRiders = new Set(early.state.training_rider_ticks.filter((t) => t.report?.race_session_7982 === true).map((t) => t.rider_id));
+  const gainTotalsEqual = digest(gainTotals(lateReceipts)) === digest(gainTotals(earlyReceipts));
+  const scoresOk = scoreTotalsEqual(lateReceipts, earlyReceipts);
+  const detailOk = detailMatchesGains(lateReceipts) && detailMatchesGains(earlyReceipts);
+  const progressOk = progressWithinTolerance(lateNumbers.abilities, earlyNumbers.abilities, relaxedKeys(gainedRiderAbilities(lateReceipts, earlyReceipts), raceRiders));
+  const orderOk = gainTotalsEqual && scoresOk && detailOk;
+  const orderFollowing = orderOk ? ORDER_FOLLOWING_RECEIPT_FIELDS : [];
+  const plain = (list) => list.map((r) => ({ id: `${r.rider_id}#${r.game_day}`, intensity: r.report.intensity, status: r.report.status, injured: r.report.injured,
+    ...(orderOk && raceRiders.has(r.rider_id) ? {} : { gains: r.report.gains, gains_detail: r.report.gains_detail, score: r.report.score }) }));
   const raceSessions = early.state.training_rider_ticks.filter((t) => t.report?.race_session_7982 === true).length;
   const errors = [...late.evening, ...early.evening].filter((row) => row.error).map((row) => row.error);
   const valid = !late.unsupported.length && !early.unsupported.length && !late.missingTables.length && !early.missingTables.length && !errors.length;
   return {
     valid, errors, unsupported: unique([...late.unsupported, ...early.unsupported]), missingTables: unique([...late.missingTables, ...early.missingTables]),
     settled: early.settled, raceSessions,
-    numbersEqual: digest(lateRest) === digest(earlyRest), firstDifference: firstDiff(lateRest, earlyRest),
+    numbersEqual: digest(lateRest) === digest(earlyRest) && orderOk && progressOk,
+    firstDifference: firstDiff(lateRest, earlyRest) ?? (gainTotalsEqual ? null : ".gainTotals") ?? (scoresOk ? null : ".scoreTotals")
+      ?? (detailOk ? null : ".gains_detail (stemmer ikke med gains)") ?? (progressOk ? null : ".abilities.ability_progress (over tolerance)"),
+    gainTotalsEqual, scoreTotalsEqual: scoresOk, gainsDetailMatchesGains: detailOk, progressWithinTolerance: progressOk,
     receiptsPlainEqual: digest(plain(lateReceipts)) === digest(plain(earlyReceipts)),
-    receiptFieldsThatDiffer: lateReceipts.length === earlyReceipts.length ? receiptFieldsThatDiffer(lateNumbers, earlyNumbers) : ["(antal kvitteringer)"],
+    receiptFieldsThatDiffer: lateReceipts.length === earlyReceipts.length
+      ? receiptFieldsThatDiffer(lateNumbers, earlyNumbers).filter((field) => !orderFollowing.includes(field)) : ["(antal kvitteringer)"],
     digests: { late: digest(lateNumbers), early: digest(earlyNumbers) },
     late, early,
   };

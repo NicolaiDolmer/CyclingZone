@@ -287,6 +287,8 @@ export function applyDailyTick({
   xpRaceDayFit = null,
   // #6110 R16 (ejervalg 16/11): evnens point tidligere paa datoen og taendingsnattens undtagelse. Kun XP.
   xpDateUsedGains = null, xpStoredBarPayout = false,
+  // #6110 tændingsliste pkt. 2: bjælken ved datoens start og point betalt fra den (bar_paid). Kun XP.
+  xpDateStart = null,
 }) {
   const cfg = DAILY_TRAINING_CONFIG;
   const trainNowBonusFactor = trainNowBonus === true && program?.intensity !== 'rest'
@@ -345,7 +347,7 @@ export function applyDailyTick({
       program, fit: xpRaceDayFit, academyRateMult,
       rider: { age, potentiale, primaryType, secondaryType, staff, facilityTier, riderLevel, trainingCfg, budgetDivisor },
     }, developmentXp) : null;
-    return { ...developmentXpTick({ abilities, progress, dateUsedGains: xpDateUsedGains, storedBarPayout: xpStoredBarPayout === true,
+    return { ...developmentXpTick({ abilities, progress, dateUsedGains: xpDateUsedGains, storedBarPayout: xpStoredBarPayout === true, dateStart: xpDateStart,
       rider: { age, potentiale }, xpFor: (ability) => (raceFitDay ? raceFitDay[ability] ?? 0 : dayXpFor(ability))
         * trainNowBonusFactor * xpVariation }, developmentXp),
     trainingScore, noise, status: noise > 1.05 ? "over" : noise < 0.95 ? "under" : "normal" };

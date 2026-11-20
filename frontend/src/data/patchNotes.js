@@ -1,5 +1,54 @@
 export const PATCHES = [
 {
+  "version": "7.473",
+  "date": "2026-11-20",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "flag": "race_page_v6",
+      "topic": "Tactics",
+      "area": "tactics",
+      "en": {
+        "title": "Tactics shortcuts by rider role",
+        "body": "I show the task each of the three shortcuts gives your rider. Pick one on a road stage and save it with the rest of your tactics."
+      },
+      "da": {
+        "title": "Hurtigvalg efter rytterens rolle",
+        "body": "Jeg viser, hvilken opgave de tre hurtigvalg giver rytteren. Vælg på en vejetape, og gem sammen med resten af din taktik."
+      },
+      "refs": [
+        8356
+      ]
+    }
+  ]
+},
+{
+  "version": "7.472",
+  "date": "2026-11-19",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Interface",
+      "area": "interface",
+      "en": {
+        "title": "Gold text is easier to read",
+        "body": "In light mode, links and numbers in gold are a little darker, so they are easier to read on every page. Gold buttons, the leader's jersey and dark mode are unchanged."
+      },
+      "da": {
+        "title": "Guld-tekst er lettere at læse",
+        "body": "I lys tilstand er links og tal i guld lidt mørkere, så de er lettere at læse på alle sider. Guldknapper, førertrøjen og mørk tilstand er uændrede."
+      },
+      "refs": [
+        8433
+      ]
+    }
+  ]
+},
+{
   "version": "7.471",
   "date": "2026-11-19",
   "changes": [

@@ -1,0 +1,20 @@
+{
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Auctions",
+      "area": "market",
+      "en": {
+        "title": "No value hint on the starting price",
+        "body": "Auctions no longer show a green \"below est. value\" note on the starting price. The comparison shows once someone has placed a bid."
+      },
+      "da": {
+        "title": "Ingen værdi-hint ved startprisen",
+        "body": "Auktioner viser ikke længere en grøn \"under estimeret værdi\" ved startprisen. Sammenligningen vises, når nogen har budt."
+      },
+      "refs": [8425]
+    }
+  ]
+}
