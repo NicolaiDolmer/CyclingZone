@@ -70,6 +70,8 @@ function fakeSupabase(stage) {
 
 const legacy = (name) => () => { throw new Error(`${name} må ikke køre, når skønnet svarer`); };
 
+const ROUTE_NOW = new Date("2026-11-05T12:00:00Z");
+
 function context(supabase, extra = {}) {
   return {
     supabase,
@@ -77,7 +79,11 @@ function context(supabase, extra = {}) {
     requireAuth() {}, presencePulseLimiter() {},
     Date: class extends Date { constructor(...args) { super(...(args.length ? args : ["2026-11-05T12:00:00Z"])); } },
     isPotentialEstimateDisplayEnabled: (client, opts) => isPotentialEstimateDisplayEnabled(client, { ...opts, now: flagClock }),
-    buildAcademyFromViews, buildEstimatesFromViews, buildProjectionFromView, buildScoutingReportFromView,
+    // regel 16: builderne får rutetestens faste ur, ikke vægur-tiden
+    buildAcademyFromViews: (c, o) => buildAcademyFromViews(c, { ...o, now: ROUTE_NOW }),
+    buildEstimatesFromViews: (c, o) => buildEstimatesFromViews(c, { ...o, now: ROUTE_NOW }),
+    buildProjectionFromView: (c, o) => buildProjectionFromView(c, { ...o, now: ROUTE_NOW }),
+    buildScoutingReportFromView: (c, o) => buildScoutingReportFromView(c, { ...o, now: ROUTE_NOW }),
     SCOUTING_CONFIG: { maxLevel: 3 },
     PEAK_AGE: 28,
     loadScoutState: async () => ({ state: { maxLevel: 3, levels: { scouted: 2 } } }),
