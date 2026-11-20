@@ -10,6 +10,9 @@
 //   R10 Den gamle, gemte bjaelke-fremgang udbetales alt paa én nat ved taendingen
 //       (ejervalg 2 = A, 16/11: undtagelse fra +2 kun den nat). Ingen dryp-regel.
 // RIGELIG_B_RAA giver med vilje alt for meget XP, saa grænsen er det eneste, der bremser.
+// G3a (spec 2026-11-20 §3, #8520, ejer 20/11): R16 er afloest; under XP er der ingen graense pr.
+// dato, og talfilen har ingen datePlus2. R16-proeverne staar tilbage som skip (AFLOEST_AF_G3A),
+// saa dommeren kan se, hvad der er afloest; G3a-dommen (spec §4) skrives i byggetrin 5.
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -25,10 +28,10 @@ const GRAENSE = 2; // ejerens ord 16/11: "hoejst +2 pr. evne pr. dato" (toptalen
 const LAV_GRAENSE = 1; // ejervalg A 16/11: alle andre
 const TOPTALENT = 5; // ejer 19/11: "5-6-stjernede"
 const MEGET_LAV = 20; // opdigtet: LAV_KLATRER (klatring 12) er under; UNG_KLATRER (klatring 58) er ikke
-// Ingen alder i reglen (ejervalg 19/11): +2 gaelder et toptalent paa en meget lav evne uanset alder.
-const PLUS2 = Object.freeze({ minPotential: TOPTALENT, belowLevel: MEGET_LAV });
-const P = await xpParams({ ...DOMMER_B_RAA, datePlus2: PLUS2 });
-const RIGELIG = await xpParams({ ...RIGELIG_B_RAA, datePlus2: PLUS2 });
+// Ingen alder i reglen (ejervalg 19/11): +2 gaelder et toptalent paa en meget lav evne uanset alder (afloest af G3a).
+const AFLOEST_AF_G3A = "R16 er afloest af G3a (spec 2026-11-20 §3, #8520): ingen graense pr. dato under XP";
+const P = await xpParams(DOMMER_B_RAA);
+const RIGELIG = await xpParams(RIGELIG_B_RAA);
 const { xpPriceForNextPoint } = await kraev("./developmentXp.ts", "xpPriceForNextPoint");
 const pris = (params) => (niveau) => xpPriceForNextPoint(niveau, params);
 const FAST_UR = () => 1_763_000_000_000;
@@ -41,7 +44,7 @@ const tick = (rytter, program, params, ekstra = {}) => applyDailyTick({
 const bjaelkeXp = (params, niveau, bar) => (bar ?? 0) * xpPriceForNextPoint(niveau, params);
 const naer = (a, b) => Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(b));
 
-test("R16 +2: naar XP raekker til flere point paa én dato, koebes hoejst 2, og resten venter omregnet", () => {
+test("R16 +2: naar XP raekker til flere point paa én dato, koebes hoejst 2, og resten venter omregnet", { skip: AFLOEST_AF_G3A }, () => {
   const ud = tick(LAV_KLATRER, HAARD_KLATRING, RIGELIG);
   const fri = koebMedPrisliste({ level: 12, xp: ud.xp.climbing }, pris(RIGELIG));
   assert.ok(fri.point >= 3, `scenariet skal kunne give mindst 3 point (gav ${fri.point})`);
@@ -52,7 +55,7 @@ test("R16 +2: naar XP raekker til flere point paa én dato, koebes hoejst 2, og 
   assert.ok(ud.progress.climbing > 1, "resten er mere end et helt point og venter");
 });
 
-test("R16 ejervalg 19/11: et toptalent (5-6 stjerner) paa en meget lav evne faar +2 UANSET alder", () => {
+test("R16 ejervalg 19/11: et toptalent (5-6 stjerner) paa en meget lav evne faar +2 UANSET alder", { skip: AFLOEST_AF_G3A }, () => {
   for (const potentiale of [5, 5.5, 6]) {
     for (const age of [16, 19, 22, 26, 29, 33, 38]) {
       const rytter = { ...LAV_KLATRER, riderId: `dommer-top-${potentiale}-${age}`, age, potentiale };
@@ -65,7 +68,7 @@ test("R16 ejervalg 19/11: et toptalent (5-6 stjerner) paa en meget lav evne faar
   }
 });
 
-test("R16 ejervalg 19/11: alle andre faar hoejst +1 pr. evne pr. dato, resten venter", () => {
+test("R16 ejervalg 19/11: alle andre faar hoejst +1 pr. evne pr. dato, resten venter", { skip: AFLOEST_AF_G3A }, () => {
   const andre = [
     // Under 5 stjerner paa en meget lav evne, ogsaa som helt ung.
     ...[4.5, 4, 3].flatMap((potentiale) => [17, 19, 30].map((age) =>
@@ -82,7 +85,7 @@ test("R16 ejervalg 19/11: alle andre faar hoejst +1 pr. evne pr. dato, resten ve
   }
 });
 
-test("R16 +2: den gamle regel om +1 pr. loebsdag (hardDailyCap) gaelder ikke under XP; graensen er 2", () => {
+test("R16 +2: den gamle regel om +1 pr. loebsdag (hardDailyCap) gaelder ikke under XP; graensen er 2", { skip: AFLOEST_AF_G3A }, () => {
   for (const ekstra of [
     { hardDailyCap: 1, budgetDivisor: 140, tickSeedKey: "dommer#gd3" }, // loebsdags-aksen, som motoren sender
     { hardDailyCap: 1 },
@@ -106,7 +109,7 @@ test("R16 +2: kontakten kraever ikke dato-loftet (#6210), og dato-loftet aendrer
   }
 });
 
-test("R16 +2: standardkarrieren bag skoen og prognose stiger ogsaa hoejst 2 pr. dato", async () => {
+test("R16 +2: standardkarrieren bag skoen og prognose stiger ogsaa hoejst 2 pr. dato", { skip: AFLOEST_AF_G3A }, async () => {
   const { expectedCareer, standardCareerShares } = await kraev("./developmentXpExpectedTop.ts", "expectedCareer", "standardCareerShares");
   const { xpPerDate } = await kraev("./developmentXp.ts", "xpPerDate");
   const rytter = { id: "dommer-karriere", abilities: evner(10), age: 20, potentiale: 6, primaryType: "climber", secondaryType: null };
@@ -123,11 +126,11 @@ test("R16 +2: standardkarrieren bag skoen og prognose stiger ogsaa hoejst 2 pr. 
 // ── NY (ejervalg 16/11): hele datoen gennem motoren, den vaerst taenkelige dag ────────
 // Flere ticks paa samme dato (Traen nu om morgenen, aftenkoerslen, loebsdags-aksen),
 // sessionens vaegt 2 (vo2max_climb), bedste traener og facilitet, Traen nu og en god dag.
-test("R16 +2 gennem applyDailyTick: flere ticks paa samme dato giver hoejst +2 i alt, og bjaelken baerer resten (intet tabt, intet opstaaet)", async () => {
+test("R16 +2 gennem applyDailyTick: flere ticks paa samme dato giver hoejst +2 i alt, og bjaelken baerer resten (intet tabt, intet opstaaet)", { skip: AFLOEST_AF_G3A }, async () => {
   const { developmentXpDayVariation } = await kraev("./developmentXpVariation.ts", "developmentXpDayVariation");
   const { programAbilityWeight } = await kraev("./training.js", "programAbilityWeight");
   assert.equal(programAbilityWeight(HAARD_KLATRING, "climbing"), 2, "sessionens vaegt 2");
-  const params = await xpParams({ ...RIGELIG_B_RAA, variation: DOMMER_VARIATION, datePlus2: PLUS2 });
+  const params = await xpParams({ ...RIGELIG_B_RAA, variation: DOMMER_VARIATION });
   const rytter = LAV_KLATRER;
   // En god dag: den dato i november, hvor rytterens variation er hoejest.
   const datoer = Array.from({ length: 30 }, (_, i) => `2026-11-${String(i + 1).padStart(2, "0")}`);
@@ -183,10 +186,9 @@ test("R10 gemt fremgang: paa taendingsnatten udbetales en bjaelke over 1 helt, o
   assert.ok(ud.gains.climbing > GRAENSE, "udbetalingen er undtaget fra +2");
   assert.equal(ud.gains.flat, undefined, "en bjaelke under 1 udbetaler intet");
   assert.equal(ud.progress.flat, 0.4);
-  // Uden for taendingsnatten gaelder datoreglen ogsaa for en gemt bjaelke: klatring 58 er ikke
-  // en meget lav evne, saa det lave tal (ejervalg A).
+  // G3a (#8520): ingen datoregel, saa ogsaa uden for taendingsnatten udbetales bjaelken helt.
   const senere = tick(UNG_KLATRER, HVILE, P, { progress: gemt });
-  assert.equal(senere.gains.climbing, LAV_GRAENSE);
+  assert.deepEqual(senere.gains, ud.gains);
 });
 
 test("R10 gemt fremgang: ingen dryp paa taendingsnatten, heller ikke naar motoren sender den gamle loebsdagsregel (+1 pr. tick)", () => {
