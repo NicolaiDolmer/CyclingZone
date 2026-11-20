@@ -195,6 +195,7 @@
     "ageRoleLine": "{age} ans · {role}",
     "numbers": "{now} · {lo}-{hi} · plafond {loft}",
     "numbersNoLoft": "{now} · {lo}-{hi}",
+    "numbersSingle": "{now} · {value}",
     "noForecastYet": "Pas encore de prévision"
   },
   "developmentXp": {

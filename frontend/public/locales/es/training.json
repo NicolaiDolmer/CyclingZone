@@ -195,6 +195,7 @@
     "ageRoleLine": "Edad {age} · {role}",
     "numbers": "{now} · {lo}-{hi} · techo {loft}",
     "numbersNoLoft": "{now} · {lo}-{hi}",
+    "numbersSingle": "{now} · {value}",
     "noForecastYet": "Aún sin pronóstico"
   },
   "developmentXp": {

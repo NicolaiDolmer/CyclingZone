@@ -153,14 +153,12 @@ features:
     area: race-engine
     title_en: Jersey hunt in the stage plan
     title_da: Trøjejagt i etapeplanen
-    state: dormant
+    state: live
     flag: jersey_hunt_7855
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7855
-    verified: 2026-11-13
-    note: 'Off i prod 13/11 (#8052); ejer tænder, efter dommer.'
-    decision: ejer-beslutning
-    decide_by: 2026-11-21
+    verified: 2026-11-20
+    note: 'Tændt 20/11 kl. 13.27 (ejer "kør") efter Fable-gentjek på 1a7928dbf (#8218); kun etapeløb stemplet ved første etape efter tænding.'
   - id: race-itt-no-day-roll-7726
     area: race-engine
     title_en: Time trials without the extra day roll
