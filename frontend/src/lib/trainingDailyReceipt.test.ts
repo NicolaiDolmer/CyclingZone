@@ -363,6 +363,96 @@ test("#6111: a settled date plus today's unsettled race days give a season total
   assert.equal(seasonAbilityGains(gap, "r1", "2026-09-01"), null);
 });
 
+// #7982 (Fable krav 7): a date with race days 111 and 112. Same opening progress either way;
+// race day 112 crosses one whole point. "All at 20" saves 111 then 112; early settlement saves
+// the race session (112) at its stage, before 111.
+const earlyDate = "2026-11-19";
+const slot7982 = (day: number, patch: Partial<TrainingActivity>) => ({
+  id: `e-${day}`, tick_date: earlyDate, season_id: "s5", squad: "senior", game_day: day,
+  created_at: `2026-11-19T19:0${day - 110}:00Z`, executed_by: "cron", bonus_applied: false,
+  report: { condition_per_date: true, condition_settled: day === 112, date_game_days: [111, 112],
+    riders: [{ rider_id: "r1", name: "Hugo", game_day: day, focus: "threshold", intensity: "normal",
+      condition_before_date: { form: 52, fatigue: 11 }, form: 52, fatigue: 11, fatigue_delta: 0,
+      settlement_status: "complete", status: "normal", gains: {}, gains_detail: {}, ...patch }] },
+});
+const point = { gains: { tempo: 1 }, gains_detail: { tempo: { from: 54, to: 55 } } };
+const allAt20 = () => [
+  slot7982(111, { progress_before: { tempo: 0.7 }, progress_after: { tempo: 0.9 }, settled_at: "2026-11-19T19:01:00.000001+00:00" }),
+  slot7982(112, { ...point, progress_before: { tempo: 0.9 }, progress_after: { tempo: 0.2 }, settled_at: "2026-11-19T19:02:00.000001+00:00" }),
+];
+const early = (key: "settled_at" | "xp_slot_seq" | null) => [
+  slot7982(111, { progress_before: { tempo: 0 }, progress_after: { tempo: 0.2 },
+    ...(key === "settled_at" ? { settled_at: "2026-11-19T19:01:00.123456+00:00" } : key ? { xp_slot_seq: 2 } : {}) }),
+  slot7982(112, { ...point, progress_before: { tempo: 0.7 }, progress_after: { tempo: 0 },
+    ...(key === "settled_at" ? { settled_at: "2026-11-19T16:05:00.5+00:00" } : key ? { xp_slot_seq: 1 } : {}) }),
+];
+const receiptView = (runs: ReturnType<typeof allAt20>) => {
+  const r = aggregateTrainingRuns(runs)[0].report.riders[0];
+  return { status: r.receipt_status, gains: r.gains, detail: r.gains_detail, before: r.progress_before, after: r.progress_after, pct: r.gain_percent };
+};
+
+test("#7982: an early-settled race day gives the same progress before/after as 'all at 20'", () => {
+  const reference = receiptView(allAt20());
+  assert.equal(reference.status, "complete");
+  assert.deepEqual(reference.before, { tempo: 0.7 });
+  assert.deepEqual(reference.after, { tempo: 0.2 });
+  assert.equal(reference.pct.tempo, 50);
+  const input = early("settled_at");
+  const before = structuredClone(input);
+  assert.deepEqual(receiptView(input), reference, "settled_at: first saved opens, last saved closes");
+  assert.deepEqual(receiptView(early("xp_slot_seq")), reference, "xp_slot_seq: same rule under XP");
+  assert.deepEqual(input, before, "projection must not mutate stored evidence");
+  // The date's sum of whole points never depends on the order.
+  assert.deepEqual(receiptView(early(null)).gains, reference.gains);
+});
+
+test("#7982: without a save-order key on every session, race-day order stands (the view before #7982)", () => {
+  const legacy = receiptView(early(null));
+  assert.deepEqual(legacy.before, { tempo: 0 });
+  assert.equal(legacy.pct.tempo, 100);
+  const mixed = early("settled_at");
+  delete (mixed[0].report.riders[0] as Record<string, unknown>).settled_at;
+  assert.deepEqual(receiptView(mixed), legacy, "one session without a key: no reordering");
+  const unparsable = early("settled_at");
+  (unparsable[0].report.riders[0] as Record<string, unknown>).settled_at = "not a time";
+  assert.deepEqual(receiptView(unparsable), legacy);
+  const textSeq = early("xp_slot_seq");
+  (textSeq[1].report.riders[0] as Record<string, unknown>).xp_slot_seq = "1";
+  assert.deepEqual(receiptView(textSeq), legacy, "only a finite number counts as xp_slot_seq");
+});
+
+test("#7982: two points in two sessions keep their from-to chain in save order", () => {
+  const runs = [
+    slot7982(111, { gains: { tempo: 1 }, gains_detail: { tempo: { from: 55, to: 56 } },
+      progress_before: { tempo: 0.9 }, progress_after: { tempo: 0.1 }, settled_at: "2026-11-19T19:01:00Z" }),
+    slot7982(112, { ...point, progress_before: { tempo: 0.7 }, progress_after: { tempo: 0.9 }, settled_at: "2026-11-19T16:05:00Z" }),
+  ];
+  const view = receiptView(runs);
+  assert.deepEqual(view.gains, { tempo: 2 });
+  assert.deepEqual(view.detail, { tempo: { from: 54, to: 56 } });
+  assert.equal(view.pct.tempo, 140);
+});
+
+// Frozen golden (#7587): the digest below was produced by the MERGE-BASE code
+// (11538b69c, before #7982) on exactly these inputs. Dates without early settlement, with or
+// without keys in race-day order, and keyless early dates must stay bit-identical to it.
+test("#7982: dates whose save order is race-day order are bit-identical to the code before #7982", async () => {
+  const { createHash } = await import("node:crypto");
+  const inOrder = (key: "settled_at" | "xp_slot_seq") => [0, 1, 2, 3, 4].map(day => run(day,
+    key === "settled_at" ? { settled_at: `2026-09-29T20:0${day}:00.000001+00:00` } : { xp_slot_seq: day + 1 }));
+  const inputs = [
+    [run(4), run(1), run(0), run(3), run(2)],
+    [run(0), run(1), run(3), run(4)],
+    [0, 1, 2, 3].map(day => run(day)),
+    inOrder("settled_at"),
+    inOrder("xp_slot_seq"),
+    allAt20(),
+    early(null),
+  ];
+  const digest = createHash("sha256").update(JSON.stringify(inputs.map(input => aggregateTrainingRuns(input)))).digest("hex");
+  assert.equal(digest, GOLDEN_7982);
+});
+const GOLDEN_7982 = "2e954014d79b1502c4dbc7923cdb92a7e1515a6e843af3c09bdbf514486dc5bd";
 test("#6110 XP: the rider's xp_bar is the slot settled last (highest xp_slot_seq), not the highest race day", () => {
   // Race day 3 settled first (seq 1), then 1, 2, 0, 4 (seq 2-5): the bar after the date is day 4's.
   const seqByDay = [4, 2, 3, 1, 5];
