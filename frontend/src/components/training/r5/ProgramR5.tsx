@@ -15,7 +15,7 @@
 // traethedsgraensen). Rotation, prioritet og laas pr. dag findes ikke i backend
 // endnu; se designnoten i PR'en. Telefonen er midlertidigt en simpel stak af
 // desktop-visningen (TODO: den endelige telefonudgave kommer i et senere spor).
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import Button from "../../ui/Button.jsx";
@@ -65,7 +65,7 @@ function saveKind(kind: Kind) {
 
 export default function ProgramR5({
   riders: rawRiders, weekdays, todayWeekday, todayLocked, riderWeekPlans, programs, groups, forecast, fatigueRules,
-  catalogV3, actionsEl, mobile, onClearRider,
+  catalogV3, actionsEl, mobile, onClearRider, drafts, onDrafts: setDrafts,
 }: {
   riders: RawRider[];
   weekdays: readonly string[];
@@ -80,6 +80,9 @@ export default function ProgramR5({
   actionsEl: HTMLElement | null;
   mobile: boolean;
   onClearRider: (riderId: string) => Promise<{ ok: boolean }>;
+  // Kladderne bor paa siden (som ugeplan-kladderne), saa et fanebyt ikke kasserer dem.
+  drafts: Record<string, Draft>;
+  onDrafts: Dispatch<SetStateAction<Record<string, Draft>>>;
 }) {
   const { t, i18n } = useTranslation("training");
   const tTypes = useTranslation("riderTypes").t;
@@ -102,7 +105,6 @@ export default function ProgramR5({
   const setKind = (next: Kind) => { setKindRaw(next); saveKind(next); };
   const [programKey, setProgramKey] = useState<string | null>(() => library.programs[0]?.key ?? null);
   const [subject, setSubject] = useState<Subject | null>(() => subjectsFor(library.programs[0]?.key ?? null, library)[0] ?? null);
-  const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [saving, setSaving] = useState(false);
   const [note, setNote] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [copyOpen, setCopyOpen] = useState(false);
@@ -191,6 +193,8 @@ export default function ProgramR5({
       }
       if (Object.keys(rest).length) left[key] = rest;
     }
+    // En rytters felt-gem goer planen til hans egen; gruppeklienten skal se det.
+    if (Object.keys(drafts).some((key) => parseSubjectKey(key)?.kind === "rider")) await groups.reload();
     setDrafts(left);
     setSaving(false);
     setNote(failed ? { tone: "error", text: t("programR5.saveError") } : { tone: "ok", text: t("programR5.saved") });
@@ -202,11 +206,14 @@ export default function ProgramR5({
     const result = target.kind === "group"
       ? await groups.putProgram(target.id, programKey)
       : await programs.applyProgram(programKey, target.id);
+    // Et program paa en rytter tager ham ud af gruppen; genindlaes saa biblioteket ser det.
+    if (target.kind === "rider") await groups.reload();
     if (result.ok) setSubject(target);
     setNote(result.ok ? null : { tone: "error", text: t("programR5.saveError") });
   };
   const removeRider = async (riderId: string) => {
     const result = await onClearRider(riderId);
+    await groups.reload();
     if (!result.ok) setNote({ tone: "error", text: t("programR5.saveError") });
   };
 
@@ -339,6 +346,7 @@ export default function ProgramR5({
               const result = await programs.applyProgram(program.key, id);
               if (result.ok) done += 1;
             }
+            if (ids.length) await groups.reload();
             setCopyOpen(false);
             setNote(done === ids.length
               ? { tone: "ok", text: t("programR5.copyDone", { n: done }) }

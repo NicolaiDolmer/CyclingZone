@@ -603,12 +603,13 @@ export default function TrainingPage() {
   // #1895 PR 2: individuel ugeplan pr. rytter (kladder indtil Gem).
   const [riderWeekDraftMap, setRiderWeekDraftMap] = useState({}); // { <rider_id>: days } — kun redigerede
   const [riderWeekMsgMap, setRiderWeekMsgMap] = useState({}); // { <rider_id>: {type,text} | null }
+  const [programR5Drafts, setProgramR5Drafts] = useState({}); // #7456: R5 Program-kladder overlever fanebyt
 
   // #5159 (B1): holdets ugerytme og de individuelle ugeplaner er kladder indtil
   // Gem. Et release-drevet reload kunne kassere dem uden en lyd — det tidligere
   // vaern ("er der fokus i en select?") holdt kun mens select'en HAVDE fokus.
   useReloadBlock(
-    weekDraft !== null || Object.keys(riderWeekDraftMap).length > 0,
+    weekDraft !== null || Object.keys(riderWeekDraftMap).length > 0 || Object.keys(programR5Drafts).length > 0,
     RELOAD_BLOCK_REASONS.DIRTY,
   );
   useReloadBlock(
@@ -2153,7 +2154,8 @@ export default function TrainingPage() {
     if (programR5) return ( // #7456: R5's Program tab behind training_page_r5
       <ProgramR5 riders={riders} weekdays={WEEKDAY_KEYS} todayWeekday={todayWeekday} todayLocked={trainNow.status.locked && !trainNow.status.settled}
         riderWeekPlans={riderWeekPlans} programs={programs} groups={trainingGroups} forecast={fatigueForecast.forecast} fatigueRules={fatigueRules}
-        catalogV3={catalogV3} actionsEl={programR5Actions} mobile={isMobile} onClearRider={clearRiderWeekPlan} />
+        catalogV3={catalogV3} actionsEl={programR5Actions} mobile={isMobile} onClearRider={clearRiderWeekPlan}
+        drafts={programR5Drafts} onDrafts={setProgramR5Drafts} />
     );
     const subLabel = (sub) => (sub === "limit"
       ? (isMobile ? t("subtabs.limitShort") : t("subtabs.limit"))
