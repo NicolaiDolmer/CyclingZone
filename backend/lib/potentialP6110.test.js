@@ -6,10 +6,11 @@ import assert from "node:assert/strict";
 import {
   STAR_STEPS, P_MIN, P_MAX, POTENTIAL_P_PARAMS_KEY,
   validatePotentialPParams, convertStarsToP, findRankViolations, summarizeP,
-  drawAcademyStars, academyStarWeights, drawPForStars, anchorFor, loadAcademyPotentialP,
+  drawAcademyStars, academyStarWeights, drawPForStars, anchorFor,
 } from "./potentialP6110.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
 import { clearPrivateConfigCache } from "./privateConfig.ts";
+import { loadAcademyPotentialP } from "./potentialP6110Load.js";
 
 // Opdigtet fixture: lige brede trin forneden, smallere (presset) trin foroven.
 const FIXTURE = Object.freeze({

@@ -21,7 +21,7 @@
 //  Stjernerne trækkes med samme geometriske form som i dag, men med akademiets egen
 //  private faktor pr. halvt trin (ejervalg: tilgangen matcher bestanden, så toppen
 //  hverken tyndes ud eller vokser). P trækkes derefter jævnt i trinnets ankerinterval.
-//  Det sker kun bag XP-kontakten (loadAcademyPotentialP); slukket er akademiet
+//  Det sker kun bag XP-kontakten (potentialP6110Load.js); slukket er akademiet
 //  bit-identisk med i dag.
 //
 // ═══ TALLENE ═════════════════════════════════════════════════════════════════
@@ -30,8 +30,8 @@
 //  læser dem fra private_config (nøglen POTENTIAL_P_PARAMS_KEY). Testene bruger en
 //  fixture med opdigtede tal.
 
-// Ingen statiske imports: modulet er rent, og akademi-generatoren (og dens sim-scripts)
-// importerer det. Kontakt- og private_config-læserne hentes først i loadAcademyPotentialP.
+// Ingen imports: modulet er rent, og akademi-generatoren (og dens sim-scripts) importerer
+// det. Kontakten og private_config læses i potentialP6110Load.js.
 
 /** Skalaens ender. Strukturelle, ikke kalibrering. */
 export const P_MIN = 1;
@@ -43,7 +43,6 @@ export const STAR_STEPS = Object.freeze([1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5,
 /** Nøglen i private_config for P-parametrene. */
 export const POTENTIAL_P_PARAMS_KEY = "potential_p_params";
 
-const LOG_TAG = "[potential-p]";
 
 /**
  * @typedef {object} PotentialPParams
@@ -276,25 +275,4 @@ export function drawPForStars(rng, params, stars) {
   if (!anchor) throw new Error(`potentialP: no anchor interval for ${stars}`);
   const [lo, hi] = anchor;
   return Math.min(hi, lo + Math.floor(rng() * (hi - lo + 1)));
-}
-
-/**
- * Akademiets P-params, når XP-kontakten er tændt og talfilen er gyldig og har
- * academyDecay. Ellers null = dagens akademi, bit-identisk. Logger aldrig tallene.
- * @param {{ supabase: { from(table: string): any }, log?: Pick<Console, "warn">, now?: () => number }} args
- * @returns {Promise<PotentialPParams|null>}
- */
-export async function loadAcademyPotentialP({ supabase, log = console, now = Date.now }) {
-  const { isDevelopmentXpEnabled } = await import("./developmentXpFlag.ts");
-  if (!(await isDevelopmentXpEnabled(supabase))) return null;
-  const { readPrivateConfigEntry } = await import("./privateConfig.ts");
-  const entry = await readPrivateConfigEntry(supabase, POTENTIAL_P_PARAMS_KEY, {
-    log, now, schema: validatePotentialPParams,
-  });
-  const params = entry.status === "ok" ? /** @type {PotentialPParams} */ (entry.value) : null;
-  if (!params || params.academyDecay === undefined) {
-    log?.warn?.(`${LOG_TAG} development_xp_model is on, but ${POTENTIAL_P_PARAMS_KEY} is ${params ? "missing academyDecay" : entry.status} - academy keeps today's stars only`);
-    return null;
-  }
-  return params;
 }
