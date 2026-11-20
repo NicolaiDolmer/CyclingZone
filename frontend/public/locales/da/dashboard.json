@@ -486,7 +486,7 @@
       "secondaryCta": "Vælg selv",
       "resultLine": "Ugen kørt: {count, plural, one {# rytter trænet} other {# ryttere trænet}}.",
       "resultLink": "Se træning",
-      "alreadyRun": "Ugen er allerede kørt.",
+      "alreadyRun": "Trænede i dag.",
       "error": "Kunne ikke køre ugens træning. Prøv igen."
     },
     "tour": "Vis mig hvordan",
