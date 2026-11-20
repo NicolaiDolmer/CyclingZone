@@ -2,7 +2,7 @@ import { Skeleton } from "../components/ui/index.js";
 import { useState, useEffect, Fragment } from "react";
 import { useDashboardData } from "../data/dashboardData.ts"; // #6494
 import { useTodayStagesData } from "../data/todayStagesData.ts"; // #6494
-import { useFirstRaceCardData } from "../data/dashboardCards.ts"; // #1140/#6494
+import { useFirstRaceCardData, useSurveyInviteData } from "../data/dashboardCards.ts"; // #1140/#6494
 import { useTranslation } from "react-i18next";
 import ReservedBody from "../components/ui/ReservedBody.tsx";
 import AuthLoading from "../components/ui/AuthLoading.tsx";
@@ -195,11 +195,11 @@ export default function DashboardPage() {
   const standings = core?.standings ?? EMPTY_LIST;
   const pools = core?.pools ?? EMPTY_LIST;
   const poolStages = core?.poolStages ?? null;
-  const board = core?.board ?? null;
-  const boardSatisfaction = core?.boardSatisfaction ?? null;
-  const boardOutlook = core?.boardOutlook ?? null;
-  const boardPlanMissing = core?.boardPlanMissing ?? false;
-  const boardStatusLoaded = core?.boardStatusLoaded ?? false;
+  const board = dashboard.boardStatus?.board ?? null;
+  const boardSatisfaction = dashboard.boardStatus?.boardSatisfaction ?? null;
+  const boardOutlook = dashboard.boardStatus?.boardOutlook ?? null;
+  const boardPlanMissing = dashboard.boardStatus?.boardPlanMissing ?? false;
+  const boardStatusLoaded = dashboard.boardStatus?.boardStatusLoaded ?? false;
   const showDiscordNudge = Boolean(dashboard.discordStatus && !dashboard.discordStatus.discord_id) && !discordNudgeDismissed;
   // #2439: server er sandheden: et tidligere dismiss eller et "etableret hold" skjuler kortet.
   const onboardingDismissed = onboardingDismissedLocal || Boolean(onboardingProgress?.dismissed || onboardingProgress?.established);
@@ -219,7 +219,12 @@ export default function DashboardPage() {
   useRealtimeRefetch("dashboard-live", REALTIME_TABLES, dashboard.refreshLive);
   // #6569: paa topniveau (foer early-return) saa stribens fetch starter naar team er kendt.
   const todayStages = withoutPausedUpcoming(useTodayStagesData(), Boolean(racePause)); // #6970
-  const initialDataReady = !loading && optionalModulesSettled && (!team || (!todayStages.loading && selectionReady && (!myLatestResultVisible || myLatestResultSettled)));
+  const surveyInvite = useSurveyInviteData();
+  // #8019: bestyrelsen hentes for sig selv og holder ikke siden tilbage. Kun i
+  // saesonstart-vinduet venter vi paa den inden for samme budget, fordi guiden
+  // ellers ville faa sit bestyrelses-flueben efter foerste visning.
+  const boardHoldsReveal = dashboard.boardPending && seasonStartWindowOpen && !seasonStartDismissed;
+  const initialDataReady = !loading && optionalModulesSettled && surveyInvite.settled && !boardHoldsReveal && (!team || (!todayStages.loading && selectionReady && (!myLatestResultVisible || myLatestResultSettled)));
   useEffect(() => {
     if (initialDataReady) setInitialWaitExpired(true);
   }, [initialDataReady]);
@@ -582,11 +587,11 @@ export default function DashboardPage() {
 
       {/* #4943 (ejer-bestilling 8/9): flyttet til TOPPEN af dashboardet, som
           første element under sidehovedet — over squad-/kontrakt-advarslerne.
-          Indgang til det aktive spoergeskema. Selv-hentende og renderer intet
+          Indgang til det aktive spoergeskema. Renderer intet
           naar der ikke er et aabent skema, spilleren har gennemfoert, eller
           kortet er lukket inden for 3 dage. Sekundaer CTA: dashboardets ene
           guld-primaere element ejes af computeDashboardGoldCta. */}
-      <SurveyInviteCard />
+      <SurveyInviteCard survey={surveyInvite.survey} hide={surveyInvite.hide} />
 
       {/* Squad warning + kontrakt-fornyelses-advarsel — ALLERØVERST i
           indholdsflowet, over dagens etaper. #3915 satte oprindeligt dagens
@@ -725,10 +730,13 @@ export default function DashboardPage() {
           )}
           {nextActionsVisible && (
             <div className={myLatestResultPaired ? undefined : "lg:col-span-2"}>
+              {/* #8019: listen kan faa et bestyrelsespunkt, saa kortet bliver i sin
+                  reserverede ventetilstand til bestyrelsen er afklaret i stedet for
+                  at skifte indhold efter foerste visning. */}
               <NextActionsCard
                 pending={actionSummary}
                 urgentAuctionCount={urgentAuctionCount}
-                loading={actionLoading || !cardReady.auctions || !selectionReady}
+                loading={actionLoading || !cardReady.auctions || !selectionReady || dashboard.boardPending}
                 squadSelectionMissingRace={squadSelectionMissingRace}
                 notTrainedToday={notTrainedToday}
                 boardPlanMissing={boardPlanMissing}
@@ -1365,7 +1373,12 @@ export default function DashboardPage() {
             #dashboard-layout-25/8: mistede sin lg:col-span-2 og flyttede til
             gridets sidste plads, parret med Global Rank-widget'en (docs/
             DASHBOARD_RULES.md §4 — /board har 959 sessions mod Mit Holds 5.955,
-            så den fyldte mest og blev brugt mindst). */}
+            så den fyldte mest og blev brugt mindst).
+            #8019: bestyrelsen hentes for sig selv og har bevidst INGEN
+            pladsholder: en graa kasse der forsvinder igen for spillere uden plan
+            er et blink (ejer 20/11). Kun Global Rank staar efter kortet, og den
+            holdes skjult til bestyrelsen er afklaret (se nedenfor), saa et sent
+            svar forlaenger siden nedad uden at flytte noget. */}
         {isVisible("board") && board && (
         <Section>
           <SectionHeader
@@ -1443,7 +1456,15 @@ export default function DashboardPage() {
 
         {/* Global Rank widget (#2453) — "#N ▲x · point", linker til /global-rank.
             Parret med Bestyrelse (docs/DASHBOARD_RULES.md §4). */}
-        {isVisible("globalRank") && <GlobalRankWidget />}
+        {/* #8019: widget'en monteres med det samme (dens læsning starter), men
+            vises først når bestyrelsen er afklaret, så et sent bestyrelseskort
+            aldrig skubber den til en ny plads. `contents` giver ingen ekstra
+            grid-celle, heller ikke når widget'en ikke har noget at vise. */}
+        {isVisible("globalRank") && (
+          <div className={dashboard.boardPending ? "hidden" : "contents"}>
+            <GlobalRankWidget />
+          </div>
+        )}
 
       </div>
 
