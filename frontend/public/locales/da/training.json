@@ -195,6 +195,7 @@
     "ageRoleLine": "Alder {age} · {role}",
     "numbers": "{now} · {lo}-{hi} · loft {loft}",
     "numbersNoLoft": "{now} · {lo}-{hi}",
+    "numbersSingle": "{now} · {value}",
     "noForecastYet": "Ingen prognose endnu"
   },
   "injuryRisk": "Høj skaderisiko",

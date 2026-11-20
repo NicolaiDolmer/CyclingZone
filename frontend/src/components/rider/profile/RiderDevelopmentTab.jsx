@@ -40,6 +40,7 @@ import { SkeletonLines } from "../../ui/Skeleton.jsx";
 import PotentialEstimate from "../PotentialEstimate";
 import { estimateLineOf, potentialViewOf } from "../../../lib/potentialEstimateDisplay";
 import I18nReadyGate from "../../I18nReadyGate";
+import { useDevelopmentXpEnabled } from "../../../lib/developmentXpFlag.ts"; // #8476
 
 const DATA_FONT = '"Inter Tight", "Inter Tight Fallback", system-ui, sans-serif';
 
@@ -386,8 +387,13 @@ function LogCard({ viewer, entries, t }) {
   );
 }
 
-export default function RiderDevelopmentTab({ rider, history = [], types = [], trainingHistory, viewer = "own", projection = null }) {
+export default function RiderDevelopmentTab({ rider, history = [], types = [], trainingHistory, viewer = "own", projection: sentProjection = null }) {
   const { t } = useTranslation("rider");
+  // #8476: under XP er der intet mål at nå. Grafen viser kun registreret rating, og
+  // vækstkortet kun rating, point og "Målt siden": ingen mål-zone, stiplet projektion,
+  // "til målet", "alder ved målet" eller udsigt. Serveren må gerne sende felterne.
+  const developmentXp = useDevelopmentXpEnabled();
+  const projection = developmentXp ? null : sentProjection;
 
   // null = fetch undervejs: vis loader, ikke en misvisende "ingen udvikling"-
   // påstand (samme mønster som Trænings-fanens loading-gate).
