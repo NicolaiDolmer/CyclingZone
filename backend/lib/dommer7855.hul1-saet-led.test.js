@@ -11,10 +11,13 @@
 //   - "Planen venter": "kom ikke med" afgoeres kun ved en graense, hvor dagens udbrud ligger paa vejen.
 //   - Efter skiftet (kom ikke med, eller hentet) koerer han ikke om en eneste top eller spurt uden for
 //     et udbrud. Ligger han i et senere udbrud ved passagen, koerer han om den (ejer 19/11).
-//   - Kom han aldrig med, eller koerte han aldrig om en passage, er dagen praecis som samme plan uden
-//     jagt (samme loeb, samme pris). Jagten er aldrig billigere.
+//   - Kom han aldrig med, eller koerte han aldrig om en passage, faar han samme point og samme pris som
+//     samme plan uden jagt. Jagten er aldrig billigere. Planen med jagt kan vente et segment laengere
+//     paa udbruddet end samme plan uden jagt; sker skiftet ved samme graense, er hele loebet det samme
+//     (Fable-dom 20/11).
 //   Etape 107 (ejerens ord) og to etapeformer, hvor et nyt udbrud efter en tidlig indhentning tager
-//   hjaelperen med; pointjagten paa flade dage med spurter og paa etape 107 med spurter.
+//   hjaelperen med; pointjagten paa flade dage med spurter og paa etape 107 med spurter. Froeet "f-5"
+//   paa de flade etaper danner udbruddet foerst efter foerste graense (proever ventereglen).
 //
 // Proeven kender ingen tal fra motoren. Den sammenligner kun motorens egne svar.
 
@@ -25,7 +28,9 @@ import { koerEtape, etape, medSpurter, fladMedSpurter, passager, medIUdbrud, jag
 
 const SAT = { task: "ride_in", from: { at: "dropped" } };
 const UDEN_JAGT = [{ task: "breakaway" }, SAT];
-const FROE = ["s2-a", "s2-b", "s2-c", "h-5"];
+// "f-5" (Fable-dom 20/11): paa den flade etape dannes udbruddet foerst efter foerste graense, saa
+// "planen venter"-proeven har taender (den bliver roed, hvis ventereglen fjernes).
+const FROE = ["s2-a", "s2-b", "s2-c", "h-5", "f-5"];
 
 /** Etape 107 med dommerens egne spurter undervejs (andele af distancen, saa de altid ligger foer maal). */
 function etape107MedSpurter() {
@@ -34,7 +39,7 @@ function etape107MedSpurter() {
 }
 
 const ARTER = {
-  kom: { jagt: "hunt_kom", passage: "kom", etaper: () => [107, 53, 17].map((nr) => [`etape ${nr}`, etape(nr)]) },
+  kom: { jagt: "hunt_kom", passage: "kom", etaper: () => [107, 53, 17, 20].map((nr) => [`etape ${nr}`, etape(nr)]) },
   sprint: { jagt: "hunt_points", passage: "sprint", etaper: () => [["flad 3 spurter", fladMedSpurter(3)], ["flad 2 spurter", fladMedSpurter(2)], ["etape 107 med spurter", etape107MedSpurter()]] },
 };
 
@@ -42,6 +47,12 @@ const foran = (b, id) => (b?.groups ?? []).some((g) => (g.kind === "breakaway" |
 const udbrudPaaVejen = (b) => (b?.groups ?? []).some((g) => (g.kind === "breakaway" || g.kind === "solo") && g.rider_ids.length > 0);
 /** Gruppebilledet ved km (det seneste foer eller paa km). */
 const billedeVed = (k, km) => (k.output.groupSnapshots ?? []).filter((b) => b.km <= km).at(-1);
+/** Gruppebilledet ved etapens foerste segmentgraense. */
+const foersteBillede = (k) => (k.output.groupSnapshots ?? [])[0];
+/** Passagernes point (loebets point uden tiderne). */
+const pointene = (k) => loebet(k).passager;
+/** Skifter planen med jagt og samme plan uden jagt ved samme graense (eller ingen af dem)? */
+const sammeGraense = (d) => (d.skift?.km ?? null) === (d.rentSkift?.km ?? null);
 const skiftet = (k, id) => (k.output.timeline?.events ?? []).find((e) => e.type === "stage_plan_leg" && e.params?.rider_id === id && (e.params.reason === "missed_break" || e.params.reason === "caught"));
 
 const cache = new Map();
@@ -56,7 +67,7 @@ async function dage(art) {
     const skift = skiftet(k, id);
     const ps = passager(k, a.passage).map((p) => ({ km: p.km, jaget: (p.hunters ?? []).includes(id), foran: foran(billedeVed(k, p.km), id) }));
     ud.push({
-      navn: `${art} ${navn} ${id} ${froe}`, id, k, rent, skift,
+      navn: `${art} ${navn} ${id} ${froe}`, id, k, rent, skift, rentSkift: skiftet(rent, id),
       komMed: await medIUdbrud(k, id),
       efterSkift: skift ? ps.filter((p) => p.km > skift.km) : [],
       jagede: jagede(k, id, a.passage),
@@ -70,11 +81,16 @@ for (const art of Object.keys(ARTER)) {
   test(`hul 1 + saet-led (${art}): "kom ikke med" afgoeres foerst, naar udbruddet ligger paa vejen`, async () => {
     const missede = (await dage(art)).filter((d) => d.skift?.params.reason === "missed_break");
     assert.ok(missede.length >= 3, "proeven skal ramme dage, hvor han ikke kom med");
+    // Taender (Fable-dom 20/11): proeven skal ramme dage, hvor udbruddet dannes EFTER foerste graense.
+    // Kun dér kan "planen venter" skelnes fra en plan, der gaar videre ved foerste graense.
+    const sene = missede.filter((d) => !udbrudPaaVejen(foersteBillede(d.k)));
+    assert.ok(sene.length >= 1, "proeven skal ramme dage, hvor udbruddet dannes efter foerste graense");
     for (const d of missede) {
       const b = billedeVed(d.k, d.skift.km);
       assert.ok(udbrudPaaVejen(b), `${d.navn}: planen gik videre ved km ${d.skift.km}, foer udbruddet var dannet`);
       assert.ok(!foran(b, d.id), `${d.navn}: "kom ikke med", men han laa i udbruddet`);
     }
+    for (const d of sene) assert.ok(d.skift.km > foersteBillede(d.k).km, `${d.navn}: planen ventede ikke paa udbruddet`);
   });
 
   test(`hul 1 + saet-led (${art}): kom han ikke med, eller er han hentet, jager han kun videre i et senere udbrud (ejer 19/11)`, async () => {
@@ -96,24 +112,32 @@ for (const art of Object.keys(ARTER)) {
     }
   });
 
-  test(`hul 1 + saet-led (${art}): kom han aldrig med, er dagen praecis som samme plan uden jagt (loeb og pris)`, async () => {
+  // Fable-dom 20/11 (ejer: "Behold, skaerp proeverne"): planen med jagt venter paa udbruddet, samme plan
+  // uden jagt goer ikke. Dannes udbruddet sent, kan han derfor skifte et segment senere, og tiderne kan
+  // flytte sig en anelse (ejeren har accepteret den bivirkning). Point og pris er altid de samme; hele
+  // loebet er det samme paa de dage, hvor skiftet sker ved samme graense i begge planer.
+  test(`hul 1 + saet-led (${art}): kom han aldrig med, er point og pris som samme plan uden jagt (loebet, naar skiftet sker ved samme graense)`, async () => {
     const ikkeMed = (await dage(art)).filter((d) => !d.komMed);
     assert.ok(ikkeMed.length >= 3, "proeven skal ramme dage, hvor han ikke kom med");
+    assert.ok(ikkeMed.filter(sammeGraense).length >= 3, "proeven skal ramme dage, hvor skiftet sker ved samme graense");
     for (const d of ikkeMed) {
       assert.equal(d.jagede, 0, `${d.navn}: jagt uden udbrud paa et udbrudsled med saet-led`);
       assert.equal(betalte(d.k, d.id, ARTER[art].passage), 0, `${d.navn}: betalte for en passage uden udbrud`);
-      assert.equal(hash(loebet(d.k)), hash(loebet(d.rent)), `${d.navn}: loebet skal vaere som uden jagt`);
+      assert.equal(hash(pointene(d.k)), hash(pointene(d.rent)), `${d.navn}: pointene skal vaere som uden jagt`);
       assert.equal(await pris(d.k, d.id), await pris(d.rent, d.id), `${d.navn}: prisen skal vaere som uden jagt`);
+      if (sammeGraense(d)) assert.equal(hash(loebet(d.k)), hash(loebet(d.rent)), `${d.navn}: skiftet sker ved samme graense, saa loebet skal vaere som uden jagt`);
     }
   });
 
-  test(`hul 1 + saet-led (${art}): koerte han aldrig om en passage, er dagen som uden jagt; jagten er aldrig billigere`, async () => {
+  test(`hul 1 + saet-led (${art}): koerte han aldrig om en passage, er point og pris som uden jagt; jagten er aldrig billigere`, async () => {
     const alle = await dage(art);
     const uden = alle.filter((d) => d.jagede === 0);
     assert.ok(uden.length >= 3, "proeven skal ramme dage uden jagt");
+    assert.ok(uden.filter(sammeGraense).length >= 3, "proeven skal ramme dage uden jagt, hvor skiftet sker ved samme graense");
     for (const d of uden) {
-      assert.equal(hash(loebet(d.k)), hash(loebet(d.rent)), `${d.navn}: loebet skal vaere som uden jagt`);
+      assert.equal(hash(pointene(d.k)), hash(pointene(d.rent)), `${d.navn}: pointene skal vaere som uden jagt`);
       assert.equal(await pris(d.k, d.id), await pris(d.rent, d.id), `${d.navn}: prisen skal vaere som uden jagt`);
+      if (sammeGraense(d)) assert.equal(hash(loebet(d.k)), hash(loebet(d.rent)), `${d.navn}: skiftet sker ved samme graense, saa loebet skal vaere som uden jagt`);
     }
     for (const d of alle) assert.ok((await pris(d.k, d.id)) >= (await pris(d.rent, d.id)), `${d.navn}: billigere med jagt`);
   });
