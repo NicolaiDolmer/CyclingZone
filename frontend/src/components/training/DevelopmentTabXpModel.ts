@@ -49,7 +49,8 @@ export type DevRiderInput = {
 };
 
 export type DevAbility = { key: string; now: number | null; season: number | null; pct: number | null };
-export type XpTodayCell = { state: "locked" } | { state: "none" } | { state: "xp"; xp: number; point: string | null };
+/** Ejer 20/11: before the date is settled, a racing rider still shows the XP he has so far today (soFar). "locked" only when nothing is known yet. */
+export type XpTodayCell = { state: "locked" } | { state: "none" } | { state: "xp"; xp: number; point: string | null; soFar?: true };
 
 export type DevRow = {
   id: string; name: string; firstname: string | null; lastname: string | null; nation: string | null;
@@ -187,13 +188,16 @@ export function buildDevelopmentRows({ runs, riders, todayKey, seasonGains, forc
     const season = gains ? Object.values(gains).reduce((sum, n) => sum + (finite(n) && n > 0 ? n : 0), 0) : null;
 
     let today: XpTodayCell;
-    if (rider.racingToday && !settled) today = { state: "locked" };
-    else if (!todayRun || !todayRowById.has(rider.id)) today = { state: "none" }; // no row = unknown, never a measured zero
+    const hasRow = Boolean(todayRun && todayRowById.has(rider.id));
+    const pendingRace = Boolean(rider.racingToday && !settled);
+    if (!hasRow) today = pendingRace ? { state: "locked" } : { state: "none" }; // no row = unknown, never a measured zero
     else {
       const view = todayById.get(rider.id);
       const raw = todayRowById.get(rider.id);
       const xp = view?.xp ?? Object.values(xpBySource(raw?.activities)).reduce((s, v) => s + v.training + v.race, 0);
-      today = { state: "xp", xp, point: view?.pointAbility ?? trainedNowPoint(raw) };
+      today = pendingRace
+        ? { state: "xp", xp, point: view?.pointAbility ?? trainedNowPoint(raw), soFar: true }
+        : { state: "xp", xp, point: view?.pointAbility ?? trainedNowPoint(raw) };
     }
 
     const bar = bars.get(rider.id) ?? {};
@@ -227,7 +231,7 @@ export function devSummary(rows: readonly DevRow[]): DevSummary {
     riders: rows.length,
     days: rows[0]?.spark.length ?? 0,
     xpToday: rows.reduce((a, r) => a + (r.today.state === "xp" ? r.today.xp : 0), 0),
-    unsettled: rows.filter(r => r.today.state === "locked").length,
+    unsettled: rows.filter(r => r.today.state === "locked" || (r.today.state === "xp" && r.today.soFar)).length,
     xp30: rows.reduce((a, r) => a + r.xp30, 0),
     seasonPoints: seasons.length ? seasons.reduce((a, b) => a + b, 0) : null,
     close: rows.filter(r => (r.next?.pct ?? 0) >= CLOSE_PCT).length,

@@ -16,7 +16,6 @@ import { formatNumber as formatNumberJs } from "../../lib/intl.js";
 import { useMediaQuery } from "../../hooks/useMediaQuery.ts";
 import { riderShortName } from "../../lib/riderName.ts";
 import { Flag, RiderNameCell } from "./reportXp/ui.ts";
-import { XpSpark } from "./reportXp/XpBar.tsx";
 import {
   bandText, buildDevelopmentFixture, buildDevelopmentRows, devSummary, nextSort, previewXpDevelopment, signedText, sortDevRows, topOf,
   xpDevelopmentMode, DEFAULT_SORT, DEV_FIXTURE_TODAY, XP_DEV_FLAG_KEY,
@@ -268,8 +267,9 @@ function XpToday({ cell }: { cell: XpTodayCell }) {
   }
   if (cell.state === "none") return <span className="text-cz-3" title={t("developmentXp.notYet")}>—</span>;
   return (
-    <span className="inline-flex items-baseline gap-1.5 whitespace-nowrap">
+    <span className="inline-flex max-w-[150px] flex-wrap items-baseline gap-x-1.5">
       <span className={`text-[13px] font-semibold text-cz-1 ${NUM}`}>{formatNumber(cell.xp)}</span>
+      {cell.soFar && <span className="text-2xs text-cz-3" data-testid="development-xp-so-far">{t("developmentXp.soFar")}</span>}
       {cell.point && <span className="truncate text-2xs text-cz-2">{t("developmentXp.pointToday", { ability: tRider(`racePreview.derived.${cell.point}`) })}</span>}
     </span>
   );
@@ -288,14 +288,6 @@ function PctBar({ pct }: { pct: number }) {
   );
 }
 
-function Spark({ row }: { row: DevRow }) {
-  const { t } = useTranslation("training");
-  return (
-    <span className="block w-[100px]" role="img" aria-label={t("developmentXp.sparkLabel", { name: row.name })}>
-      <XpSpark values={row.spark} />
-    </span>
-  );
-}
 
 function Abilities({ row, phone }: { row: DevRow; phone: boolean }) {
   const { t } = useTranslation("training");
@@ -376,10 +368,7 @@ function DesktopTable({ rows, open, toggle, sort, onSort, columns }: { rows: Dev
                 <td className="px-3 py-[7px]"><RatingSeason value={row.ratingSeason} /></td>
                 <td className="px-3 py-[7px]"><XpToday cell={row.today} /></td>
                 <td className="px-3 py-[7px]">
-                  <span className="inline-flex items-center gap-2">
-                    <span className={`w-12 text-[13px] font-semibold text-cz-1 ${NUM}`} data-testid="development-xp-avg">{formatNumber(xpAvgPerDay(row))}</span>
-                    <Spark row={row} />
-                  </span>
+                  <span className={`text-[13px] font-semibold text-cz-1 ${NUM}`} data-testid="development-xp-avg">{formatNumber(xpAvgPerDay(row))}</span>
                 </td>
                 <td className="px-3 py-[7px]">
                   {row.next ? (
@@ -439,10 +428,6 @@ function PhoneList({ rows, open, toggle, columns }: { rows: DevRow[]; open: Set<
                     <div><div className={LABEL}>{t("developmentXp.colTop")}</div><Top top={row.top} /></div>
                     <div><div className={LABEL}>{t("developmentXp.colXpToday")}</div><XpToday cell={row.today} /></div>
                     <div><div className={LABEL} title={t("developmentXp.ratingSeasonTitle")}>{t("developmentXp.colRatingSeason")}</div><RatingSeason value={row.ratingSeason} /></div>
-                  </div>
-                  <div>
-                    <div className={LABEL}>{t("developmentXp.sparkTitle")}</div>
-                    <Spark row={row} />
                   </div>
                   <Abilities row={row} phone />
                 </div>

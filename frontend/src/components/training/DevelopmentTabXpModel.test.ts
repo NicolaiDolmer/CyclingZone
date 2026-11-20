@@ -76,15 +76,18 @@ test("rows read XP today, 30 days, the next point and the season from the receip
   assert.equal(b.abilities[0].season, null);
 });
 
-test("a rider in a race today is locked until the date is settled", () => {
-  const pending = [receipt("2026-11-19", "pending", [{ id: "a", xp: { climbing: 10 } }, { id: "b", xp: {}, race: true }]), RUNS[1]];
-  const rows = buildDevelopmentRows({ runs: pending, riders: [rider("a"), rider("b", { racingToday: true })], todayKey: "2026-11-19", seasonGains: {} });
-  assert.deepEqual(rows[1].today, { state: "locked" });
+test("ejer 20/11: a rider in a race today shows his XP so far until the date is settled; locked only without a row", () => {
+  const pending = [receipt("2026-11-19", "pending", [{ id: "a", xp: { climbing: 10 } }, { id: "b", xp: { sprint: 7 }, race: true }]), RUNS[1]];
+  const rows = buildDevelopmentRows({ runs: pending, riders: [rider("a"), rider("b", { racingToday: true }), rider("c", { racingToday: true })], todayKey: "2026-11-19", seasonGains: {} });
+  assert.deepEqual(rows[1].today, { state: "xp", xp: 7, point: null, soFar: true });
+  assert.deepEqual(rows[2].today, { state: "locked" }, "no row yet = nothing known, never a measured zero");
   assert.deepEqual(rows[0].today, { state: "xp", xp: 10, point: null });
+  assert.equal(devSummary(rows).unsettled, 2);
   const settled = buildDevelopmentRows({ runs: RUNS, riders: [rider("b", { racingToday: true })], todayKey: "2026-11-19", seasonGains: {} });
   assert.equal(settled[0].today.state, "xp");
+  assert.equal(settled[0].today.state === "xp" && settled[0].today.soFar, undefined, "settled = the day's final XP");
   const preview = buildDevelopmentRows({ runs: RUNS, riders: [rider("b", { racingToday: true })], todayKey: "2026-11-19", seasonGains: {}, forceUnsettled: true });
-  assert.equal(preview[0].today.state, "locked");
+  assert.equal(preview[0].today.state === "xp" && preview[0].today.soFar, true);
 });
 
 test("Train now before the evening settlement: the point that already landed shows, a payout does not", () => {
@@ -115,8 +118,9 @@ test("a rider missing from today's receipt (e.g. signed after training) is unkno
 });
 
 test("the summary line adds up the rows", () => {
+  // ejer 20/11: the racing rider's XP so far counts in the summary, and he still counts as unsettled.
   const rows = buildDevelopmentRows({ runs: RUNS, riders: [rider("a"), rider("b", { racingToday: true })], todayKey: "2026-11-19", seasonGains: { a: { climbing: 3 } }, forceUnsettled: true });
-  assert.deepEqual(devSummary(rows), { riders: 2, days: 2, xpToday: 30, unsettled: 1, xp30: 115, seasonPoints: 3, close: 1 });
+  assert.deepEqual(devSummary(rows), { riders: 2, days: 2, xpToday: 50, unsettled: 1, xp30: 115, seasonPoints: 3, close: 1 });
   assert.equal(rows[0].spark.length, devSummary(rows).days, "the summary divides by the same days as each row");
   assert.equal(devSummary([]).seasonPoints, null);
 });
@@ -144,7 +148,7 @@ test("the preview fixture fills every column", () => {
   const fx = buildDevelopmentFixture();
   const rows = buildDevelopmentRows({ runs: fx.runs, riders: fx.riders, todayKey: DEV_FIXTURE_TODAY, seasonGains: fx.seasonGains, forceUnsettled: true });
   assert.ok(rows.length >= 8);
-  assert.ok(rows.some(r => r.today.state === "locked"));
+  assert.ok(rows.some(r => r.today.state === "locked" || (r.today.state === "xp" && r.today.soFar)), "ejer 20/11: racing riders show XP so far");
   assert.ok(rows.some(r => r.today.state === "xp"));
   assert.ok(rows.every(r => r.next && r.abilities.length > 0 && r.abilities.length <= MAX_ABILITIES));
   assert.ok(rows.some(r => r.top.kind === "view"));
