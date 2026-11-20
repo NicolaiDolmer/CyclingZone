@@ -26,7 +26,6 @@ import {
 
 const GRAENSE = 2; // ejerens ord 16/11: "hoejst +2 pr. evne pr. dato" (toptalent, meget lav evne)
 const LAV_GRAENSE = 1; // ejervalg A 16/11: alle andre
-const TOPTALENT = 5; // ejer 19/11: "5-6-stjernede"
 const MEGET_LAV = 20; // opdigtet: LAV_KLATRER (klatring 12) er under; UNG_KLATRER (klatring 58) er ikke
 // Ingen alder i reglen (ejervalg 19/11): +2 gaelder et toptalent paa en meget lav evne uanset alder (afloest af G3a).
 const AFLOEST_AF_G3A = "R16 er afloest af G3a (spec 2026-11-20 §3, #8520): ingen graense pr. dato under XP";
