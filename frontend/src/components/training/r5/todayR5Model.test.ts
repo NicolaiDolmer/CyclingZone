@@ -6,9 +6,10 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import {
-  NO_FILTERS, NO_GROUP, STAGE,
+  NO_FILTERS, NO_GROUP, PROGRAM_CHOICE, RECOVERY_CHOICE, STAGE,
   dayEffort, dayFields, dayLoad, effortOf, isTraining, matchesFilters, nextSort, overviewCounts,
-  bulkPlan, readStoredFlag, sortR5Rows, statusKeys, teamLine, toggleAllSelection, toggleOne, writeForEffort, writeStoredFlag,
+  bulkPlan, readStoredFlag, sortR5Rows, statusKeys, teamLine, toggleAllSelection, toggleOne, trainingChoiceOf,
+  writeForEffort, writeForTraining, writeStoredFlag, yourDay,
   type R5Row, type StatusInput,
 } from "./todayR5Model.ts";
 import { trainingR5On } from "./trainingPageR5Flag.ts";
@@ -52,6 +53,45 @@ test("writeForEffort: et tryk bruger spillets eksisterende gemme-kald, og Haard 
   assert.deepEqual(writeForEffort("hard", { storedFocus: "sprint", assistantFocus: "vo2max" }), { kind: "write", dayType: "training", session: "sprint" });
   assert.deepEqual(writeForEffort("hard", { storedFocus: "tempo", assistantFocus: "vo2max" }), { kind: "write", dayType: "training", session: "vo2max" });
   assert.deepEqual(writeForEffort("hard", { storedFocus: null, assistantFocus: "endurance" }), { kind: "pick" });
+});
+
+// --- Traeningsvaelgeren (ejer 20/11) -----------------------------------------------
+
+test("writeForEffort: den valgte traening vinder paa sin egen indsats, ellers som foer", () => {
+  const base = { storedFocus: "endurance", assistantFocus: "vo2max" };
+  assert.deepEqual(writeForEffort("hard", { ...base, chosenFocus: "sprint" }), { kind: "write", dayType: "training", session: "sprint" },
+    "Sprint valgt, Easy trykket og saa Hard: dagen gaar tilbage til Sprint");
+  assert.deepEqual(writeForEffort("easy", { ...base, chosenFocus: "technique" }), { kind: "write", dayType: "skill", session: "technique" });
+  assert.deepEqual(writeForEffort("easy", { ...base, chosenFocus: "sprint" }), { kind: "write", dayType: "training", session: "endurance" },
+    "Sprint findes ikke paa Let; spillets lette session bruges");
+  assert.deepEqual(writeForEffort("rest", { ...base, chosenFocus: "sprint" }), { kind: "write", dayType: "rest", session: null });
+  assert.deepEqual(writeForEffort("hard", { storedFocus: null, assistantFocus: null, chosenFocus: null }), { kind: "pick" });
+});
+
+test("trainingChoiceOf: Program uden egen dag; en hviledag beholder sin traening; aktiv restitution er sit eget valg", () => {
+  assert.equal(trainingChoiceOf(null), PROGRAM_CHOICE);
+  assert.equal(trainingChoiceOf({ focus: null, intensity: null }), PROGRAM_CHOICE);
+  assert.equal(trainingChoiceOf({ focus: "sprint", intensity: "hard" }), "sprint");
+  assert.equal(trainingChoiceOf({ focus: "sprint", intensity: "rest" }), "sprint", "serveren bevarer fokus paa en hviledag");
+  assert.equal(trainingChoiceOf({ focus: "restitution", intensity: "recovery" }), RECOVERY_CHOICE);
+});
+
+test("writeForTraining: Program fjerner kun dagen; en traening gemmes paa sin egen indsats med sidens gemme-kald", () => {
+  assert.deepEqual(writeForTraining(PROGRAM_CHOICE), { kind: "clear" });
+  assert.deepEqual(writeForTraining("sprint"), { kind: "write", dayType: "training", session: "sprint" });
+  assert.deepEqual(writeForTraining("cobbled_sectors"), { kind: "write", dayType: "training", session: "cobbled_sectors" });
+  assert.deepEqual(writeForTraining("aero"), { kind: "write", dayType: "skill", session: "aero" });
+  assert.deepEqual(writeForTraining(RECOVERY_CHOICE), { kind: "write", dayType: "recovery", session: null });
+});
+
+test("yourDay: traeningen ligger paa alle dagens ledige sessioner; loebsfeltet er aldrig ledigt; programmets felter taeller ikke", () => {
+  assert.deepEqual(yourDay(["sprint", "sprint", "sprint"], "sprint"), { session: "sprint", count: 3, free: 3 });
+  assert.deepEqual(yourDay([STAGE, "sprint", "sprint", "sprint", "sprint"], "sprint"), { session: "sprint", count: 4, free: 4 });
+  assert.deepEqual(yourDay(["vo2max", "sprint", "sprint", "sprint", "sprint"], "sprint"), { session: "sprint", count: 4, free: 5 },
+    "et programfelt vinder over dagen (spillets stige)");
+  assert.equal(yourDay(["tempo", "tempo", "tempo", "tempo", "tempo"], "sprint"), null, "programmet fylder alle felter: ingen 'Your day'");
+  assert.equal(yourDay(["tempo", "tempo"], null), null, "ingen egen dag");
+  assert.deepEqual(yourDay(["rest", "rest", "rest"], "rest"), { session: "rest", count: 3, free: 3 });
 });
 
 // --- Dagens felter og Day load ---------------------------------------------------
@@ -137,7 +177,8 @@ test("teamLine: intet markeret = hele holdet i visningen uden loebsryttere; elle
   const shown = [row({ id: "a" }), row({ id: "b", racing: true }), row({ id: "c" })];
   assert.deepEqual(teamLine(new Set(), shown), { kind: "team", ids: ["a", "c"] });
   assert.deepEqual(teamLine(new Set(["c"]), shown), { kind: "selected", ids: ["c"] });
-  assert.deepEqual(teamLine(new Set(["b"]), shown), { kind: "team", ids: ["a", "c"] }, "en loebsrytter kan ikke faa en traeningsdag");
+  assert.deepEqual(teamLine(new Set(["b"]), shown), { kind: "selected", ids: [] },
+    "kun en loebsrytter markeret: ingen traeningsdag, og markeringen bliver aldrig til hele holdet");
   assert.deepEqual(teamLine(new Set(["x"]), shown), { kind: "team", ids: ["a", "c"] }, "en skjult rytter tæller aldrig med");
 });
 
@@ -156,6 +197,16 @@ test("bulkPlan: eet masse-kald for Hvile/Let/Mellem; Haard pr. session, ukendte 
     calls: [{ choice: "sprint", ids: ["a", "c"] }, { choice: "vo2max", ids: ["b"] }],
     skipped: ["d"],
   });
+});
+
+test("bulkPlan med holdlinjens traening: den bruges paa sin indsats for alle, uden at nogen springes over", () => {
+  const of = () => ({ storedFocus: null, assistantFocus: null });
+  assert.deepEqual(bulkPlan("hard", ["a", "b"], of, "sprint"), { calls: [{ choice: "sprint", ids: ["a", "b"] }], skipped: [] });
+  assert.deepEqual(bulkPlan("easy", ["a"], of, "aero"), { calls: [{ choice: "aero", ids: ["a"] }], skipped: [] });
+  assert.deepEqual(bulkPlan("easy", ["a"], of, "sprint"), { calls: [{ choice: "endurance", ids: ["a"] }], skipped: [] },
+    "Sprint findes ikke paa Let");
+  assert.deepEqual(bulkPlan("rest", ["a"], of, "sprint"), { calls: [{ choice: "rest", ids: ["a"] }], skipped: [] });
+  assert.deepEqual(bulkPlan("hard", ["a"], of, PROGRAM_CHOICE), { calls: [], skipped: ["a"] }, "Program = som i dag");
 });
 
 test("markering: pr. rytter og alle", () => {

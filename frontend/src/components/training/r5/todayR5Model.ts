@@ -56,16 +56,25 @@ export function dayEffort(fields: readonly Field[]): Effort | null {
  * aabnes sessionsvaelgeren i stedet for at gaette (samme regel som den gamle fane).
  */
 export type QuickWrite =
-  | { kind: "write"; dayType: "rest" | "training" | "skill"; session: string | null }
+  | { kind: "write"; dayType: "rest" | "recovery" | "training" | "skill"; session: string | null }
   | { kind: "pick" };
 
+/**
+ * chosenFocus er traeningen spilleren har valgt i raekkens/holdlinjens vaelger
+ * (#7947, ejer 20/11): den vinder over rytterens gemte og assistentens session,
+ * naar den findes paa netop den indsats.
+ */
 export function writeForEffort(
   effort: Effort,
-  { storedFocus, assistantFocus }: { storedFocus: string | null | undefined; assistantFocus: string | null | undefined },
+  { storedFocus, assistantFocus, chosenFocus = null }: {
+    storedFocus: string | null | undefined;
+    assistantFocus: string | null | undefined;
+    chosenFocus?: string | null;
+  },
 ): QuickWrite {
   if (effort === "rest") return { kind: "write", dayType: "rest", session: null };
   const keep = (s: string | null | undefined) => (s && effortOf(s) === effort ? s : null);
-  const own = keep(storedFocus) ?? keep(assistantFocus);
+  const own = keep(chosenFocus) ?? keep(storedFocus) ?? keep(assistantFocus);
   if (effort === "easy") {
     const session = own ?? "endurance";
     return { kind: "write", dayType: SKILL.has(session) ? "skill" : "training", session };
@@ -74,6 +83,49 @@ export function writeForEffort(
   return own ? { kind: "write", dayType: "training", session: own } : { kind: "pick" };
 }
 const SKILL = new Set(["technique", "aero", "loebslaere"]);
+
+// --- Traeningsvaelgeren (#7947, ejer 20/11) -------------------------------------
+//
+// "Training: <fokus>" foer Rest | Easy | Medium | Hard, paa holdlinjen og i hver
+// raekke. Foerste valg "Program" er som i dag (rytteren foelger gruppe/eget program
+// eller holdets). Kataloget er sidens eget (samme sessioner som den gamle fanes
+// "Set day"); i spillet hoerer indsatsen til sessionen, saa et valg skriver altid
+// et par der findes (ingen ny backend-logik).
+
+export const PROGRAM_CHOICE = "program" as const;
+export const RECOVERY_CHOICE = "recovery" as const;
+
+/** Vaelgerens vaerdi for en rytter: "program" uden egen dag, ellers traeningen dagen bygger paa. */
+export function trainingChoiceOf(plan: { focus?: string | null; intensity?: string | null } | null | undefined): string {
+  if (!plan?.focus) return PROGRAM_CHOICE;
+  if (plan.intensity === "recovery" || plan.focus === "restitution") return RECOVERY_CHOICE;
+  return plan.focus;
+}
+
+/**
+ * Hvad et valg i raekkens vaelger skriver med sidens gemme-kald: "Program" fjerner
+ * rytterens egen dag (kun dagen, aldrig hans ugeplan); en traening gemmes straks
+ * paa sin egen indsats (eet tryk = eet valg, som den gamle "Set day").
+ */
+export function writeForTraining(choice: string): QuickWrite | { kind: "clear" } {
+  if (choice === PROGRAM_CHOICE) return { kind: "clear" };
+  if (choice === RECOVERY_CHOICE) return { kind: "write", dayType: "recovery", session: null };
+  return { kind: "write", dayType: SKILL.has(choice) ? "skill" : "training", session: choice };
+}
+
+/**
+ * Linjen under raekken naar dagen er rytterens egen: hvilken traening og paa hvor
+ * mange af dagens ledige sessioner (et loebsfelt er aldrig ledigt). null naar
+ * dagen ikke er hans egen, eller hans program fylder alle felterne.
+ */
+export type YourDay = { session: string; count: number; free: number };
+
+export function yourDay(fields: readonly Field[], daySession: string | null | undefined): YourDay | null {
+  if (!daySession) return null;
+  const free = fields.filter((f) => f !== STAGE).length;
+  const count = fields.filter((f) => f === daySession).length;
+  return count > 0 ? { session: daySession, count, free } : null;
+}
 
 // --- Dagens fem felter --------------------------------------------------------
 
@@ -270,22 +322,31 @@ export function teamLine(
 ): { kind: "selected" | "team"; ids: string[] } {
   const selectable = shown.filter((r) => !r.racing).map((r) => r.id);
   const picked = [...pruneSelection(selected, new Set(selectable))];
-  return picked.length > 0 ? { kind: "selected", ids: picked } : { kind: "team", ids: selectable };
+  if (picked.length > 0) return { kind: "selected", ids: picked };
+  // En markering af kun loebende ryttere er stadig en markering: den bliver
+  // aldrig til hele holdet (ingen skrivning paa ryttere spilleren ikke valgte).
+  const anyShownSelected = shown.some((r) => selected.has(r.id));
+  return anyShownSelected ? { kind: "selected", ids: [] } : { kind: "team", ids: selectable };
 }
 
 /**
  * Holdlinjens indsats paa flere ryttere via spillets masse-kald (eet valg pr.
- * kald). Hvile, Let og Mellem er eet kald; Haard samles pr. rytterens haarde
- * session, og en rytter uden kendt haard session springes over (aldrig et gaet).
+ * kald). Med en valgt traening (holdlinjens vaelger) bruges den paa den indsats
+ * den findes paa; ellers er Hvile, Let og Mellem eet kald, og Haard samles pr.
+ * rytterens haarde session, og en rytter uden kendt haard session springes over
+ * (aldrig et gaet).
  */
 export function bulkPlan(
   effort: Effort,
   ids: readonly string[],
   focusOf: (id: string) => { storedFocus: string | null | undefined; assistantFocus: string | null | undefined },
+  training: string = PROGRAM_CHOICE,
 ): { calls: Array<{ choice: string; ids: string[] }>; skipped: string[] } {
-  if (effort === "rest") return { calls: ids.length ? [{ choice: "rest", ids: [...ids] }] : [], skipped: [] };
-  if (effort === "easy") return { calls: ids.length ? [{ choice: "endurance", ids: [...ids] }] : [], skipped: [] };
-  if (effort === "medium") return { calls: ids.length ? [{ choice: "tempo", ids: [...ids] }] : [], skipped: [] };
+  const all = (choice: string) => ({ calls: ids.length ? [{ choice, ids: [...ids] }] : [], skipped: [] as string[] });
+  if (effort === "rest") return all("rest");
+  if (training !== PROGRAM_CHOICE && effortOf(training) === effort) return all(training);
+  if (effort === "easy") return all("endurance");
+  if (effort === "medium") return all("tempo");
   const bySession = new Map<string, string[]>();
   const skipped: string[] = [];
   for (const id of ids) {
