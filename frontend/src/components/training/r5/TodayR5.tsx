@@ -51,11 +51,19 @@ import { formatDate } from "../../../lib/intl.js";
 import {
   AGE_FILTERS, ALL_SESSIONS_STORAGE_KEY, EFFORTS, NO_FILTERS, NO_GROUP, PROGRAM_CHOICE, RECOVERY_CHOICE, STAGE,
   bulkPlan, dayEffort, dayFields, dayLoad, effortOf, filtersActive, matchesFilters, matchesOverview, nextSort,
-  overviewCounts, readStoredFlag, sortR5Rows, statusKeys, teamLine, toggleAllSelection, toggleOne, trainingChoiceOf,
+  overviewCounts, readStoredFlag, settledDayFields, sortR5Rows, statusKeys, teamLine, toggleAllSelection, toggleOne, trainingChoiceOf,
   writeForEffort, writeForTraining, writeStoredFlag, yourDay,
-  type Effort, type Field, type Filters, type OverviewKey, type R5Row, type Sort, type SortKey, type StatusKey,
+  type Effort, type Field, type Filters, type OverviewKey, type R5Row, type SettledActivity, type SettledRow, type Sort, type SortKey, type StatusKey,
   type YourDay,
 } from "./todayR5Model.ts";
+
+// Et afregnet felts traening: hviledage som deres dagtype, ellers sessionen (samme
+// stige som den gamle fanes afregnede kolonne).
+function settledSession(activity: SettledActivity): string | null {
+  if (!activity.focus && !activity.intensity) return null;
+  const day = dayTypeForProgram(activity) as string;
+  return (DAY_TYPES_WITHOUT_SESSION as readonly string[]).includes(day) ? day : (sessionForProgram(activity) as string | null);
+}
 
 // Knappen er .jsx; dens props skrives her een gang (samme greb som reportXp/ui.ts).
 const Button = ButtonJs as unknown as ComponentType<{ type?: "button"; variant?: string; size?: string; iconLeft?: ReactNode; onClick?: () => void; children?: ReactNode; "data-testid"?: string }>;
@@ -88,6 +96,8 @@ export type TodayR5Props = {
   todayWeekday: string;
   condition: Record<string, Condition | undefined>;
   planFor: (riderId: string) => Plan;
+  /** Dagens afregnede kvittering pr. rytter (TrainingPage.todayRowByRider): et koert felt laeses herfra, ikke fra planen. */
+  settledToday?: Record<string, SettledRow | undefined> | null;
   riderWeekPlans: Record<string, ProgramWeekDays | null | undefined>;
   racingToday: Record<string, { race?: string | null } | null | undefined>;
   forecast: ForecastResponse | null;
@@ -515,11 +525,13 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
     const known = raceSlotsFor(r5.forecast, id);
     const raceSlots = racing && known.size === 0 ? new Set([0]) : known;
     const weekDays = r5.riderWeekPlans[id] ?? null;
-    const fields = dayFields({
+    const planned = dayFields({
       programSlot: (slot) => programSessionToday(weekDays, WEEKDAY_KEYS, r5.todayWeekday, slot + 1),
       planSession: planSession ?? null,
       raceSlots,
     });
+    // Codex P2 paa #8511: et allerede koert felt viser kvitteringen, ikke den redigerbare plan.
+    const fields = settledDayFields(planned, r5.settledToday?.[id], settledSession);
     const programKey = r5.programAssigned?.[id] ?? null;
     const groupName = groupNames.get(id) ?? null;
     const program = programKey

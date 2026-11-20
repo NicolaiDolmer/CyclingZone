@@ -8,9 +8,9 @@ import { dirname, join } from "node:path";
 import {
   NO_FILTERS, NO_GROUP, PROGRAM_CHOICE, RECOVERY_CHOICE, STAGE,
   dayEffort, dayFields, dayLoad, effortOf, isTraining, matchesFilters, nextSort, overviewCounts,
-  bulkPlan, readStoredFlag, sortR5Rows, statusKeys, teamLine, toggleAllSelection, toggleOne, trainingChoiceOf,
+  bulkPlan, readStoredFlag, settledDayFields, sortR5Rows, statusKeys, teamLine, toggleAllSelection, toggleOne, trainingChoiceOf,
   writeForEffort, writeForTraining, writeStoredFlag, yourDay,
-  type R5Row, type StatusInput,
+  type R5Row, type SettledActivity, type SettledRow, type StatusInput,
 } from "./todayR5Model.ts";
 import { trainingR5On } from "./trainingPageR5Flag.ts";
 import { TODAY_PANEL_MERGE_BASE } from "./todayPanelMergeBase.golden.ts";
@@ -104,6 +104,43 @@ test("dayFields: loebsfeltet er laast, programmets felt vinder over den gemte da
   });
   assert.deepEqual(fields, [STAGE, "sprint", "tempo", "tempo", "tempo"]);
   assert.deepEqual(dayFields({ programSlot: () => null, planSession: null, raceSlots: new Set() }), [null, null, null, null, null]);
+});
+
+// Codex P2 paa #8511: en afregnet dag viser kvitteringen, ogsaa naar planen redigeres bagefter.
+const sessionOfTest = (a: SettledActivity): string | null =>
+  a.intensity === "rest" ? "rest" : a.intensity === "recovery" ? "recovery" : (a.focus ?? null);
+
+test("settledDayFields: en redigeret plan efter afregning aendrer hverken felter, indsats eller Day load", () => {
+  const receipt: SettledRow = {
+    focus: "vo2max", intensity: "hard",
+    // Gemt i en anden raekkefoelge end loebsdagene: felterne foelger loebsdagen.
+    activities: [
+      { game_day: 13, focus: "vo2max", intensity: "hard" },
+      { game_day: 11, race_day: true, focus: null, intensity: null },
+      { game_day: 12, focus: "vo2max", intensity: "hard" },
+      { game_day: 14, focus: null, intensity: "rest" },
+      { game_day: 15, focus: "vo2max", intensity: "hard" },
+    ],
+  };
+  const planFields = (planSession: string) => dayFields({ programSlot: () => null, planSession, raceSlots: new Set() });
+  const before = settledDayFields(planFields("vo2max"), receipt, sessionOfTest);
+  // Spilleren skifter dagen til let traening efter koerslen (gaelder fra i morgen).
+  const afterEdit = settledDayFields(planFields("endurance"), receipt, sessionOfTest);
+  assert.deepEqual(before, [STAGE, "vo2max", "vo2max", "rest", "vo2max"]);
+  assert.deepEqual(afterEdit, before);
+  assert.equal(dayEffort(afterEdit), dayEffort(before));
+  assert.equal(dayLoad(afterEdit), dayLoad(before));
+  // Uden kvitteringen ville redigeringen have flyttet visningen (det var fejlen).
+  assert.notEqual(dayLoad(planFields("endurance")), dayLoad(before));
+});
+
+test("settledDayFields: ikke-koerte felter er stadig planens; uden aktiviteter gaelder raekken; ingen kvittering = planen", () => {
+  const planned = dayFields({ programSlot: () => null, planSession: "tempo", raceSlots: new Set([4]) });
+  const partial: SettledRow = { focus: "sprint", intensity: "hard", activities: [{ game_day: 21, focus: "sprint", intensity: "hard" }, { game_day: 22, focus: "sprint", intensity: "hard" }] };
+  assert.deepEqual(settledDayFields(planned, partial, sessionOfTest), ["sprint", "sprint", "tempo", "tempo", STAGE]);
+  assert.deepEqual(settledDayFields(planned, { focus: "sprint", intensity: "hard" }, sessionOfTest), ["sprint", "sprint", "sprint", "sprint", STAGE]);
+  assert.deepEqual(settledDayFields(planned, null, sessionOfTest), planned);
+  assert.deepEqual(settledDayFields(planned, undefined, sessionOfTest), planned);
 });
 
 test("dayLoad: ord fra let til meget haard; ingen dag = intet ord", () => {

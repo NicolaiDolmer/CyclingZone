@@ -757,6 +757,17 @@ Merget 15/9 (PR #5265): `cobbled_sectors` (cobblestone 2, durability 1, position
 
 **#5456 (ejer offentligt 23/9, retning A; ejer-beslutning 23/9: "de tre nye formers vægtsum sænkes fra 4 til vo2max-familiens 3"):** alle tre nye hårde sessioner gav markant flere flerpoint-stigninger end vo2max-familien, fordi deres vægtsum (4) lå over vo2max-familiens (3). Vægtsummen for `cobbled_sectors`, `echelon_drills` OG `attack_repeats` er sænket til at matche vo2max-familien: `cobbled_sectors` (cobblestone 1, durability 1, positioning 1), `echelon_drills` (flat 1, positioning 1, durability 1), `attack_repeats` (aggression 1, punch 1, acceleration 1). Testen der pinner dette er `training.test.js` (søg #5456).
 
+### 3.3 Day load i I dag-fanen R5 (#7947, bag kontakten `training_page_r5`)
+
+Kun en visning. Day load ændrer intet i motoren, i træthed, form eller udbytte; den siger med ét ord, hvor tung rytterens dag er, så spilleren kan læse holdet uden at regne.
+
+- **Betydning:** fem ord fra let til meget hård (Easy, Light, Normal, Hard, Very hard), aldrig et tal. Hvert af dagens fem felter tæller efter sin indsats (hvile, let, mellem, hård); en etape tæller som hård. Har rytteren ingen dag på nogen felter, vises intet ord (aldrig et opdigtet).
+- **Kilde pr. felt, i denne forrang:**
+  1. **Kvitteringen.** Et felt der allerede er kørt i dag, læses fra datoens afregnede kvittering (det rytteren faktisk kørte). Planen kan ændres efter kørslen og gælder så fra i morgen, så en redigering flytter hverken felter, indsats eller Day load for en kørt dag (samme regel som den gamle fanes afregnede kolonne).
+  2. **Løbet.** Et felt med en etape er låst til etapen.
+  3. **Programmet, ellers rytterens egen dag.** Programmets felt for i dag (rytterens program, gruppe eller egen ugeplan) vinder over rytterens gemte dag; uden begge er feltet tomt.
+- **Hvor:** modellen er `frontend/src/components/training/r5/todayR5Model.ts` (`dayFields`, `settledDayFields`, `dayLoad`), pinnet i `todayR5Model.test.ts`. Båndgrænserne er en visningsregel, ikke en balancekonstant.
+
 ## 4. Ugerytme: hvem vinder når to lag siger noget forskelligt
 
 `resolveDayIntensity` (`backend/lib/training.js:372-386`) er ÉN ren funktion, delt mellem

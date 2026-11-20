@@ -152,6 +152,46 @@ export function dayFields({
   });
 }
 
+/**
+ * En afregnet kvitterings-raekke (dagens todayRun.report.riders, samlet pr. rytter):
+ * hvad rytteren FAKTISK koerte, pr. loebsdag i `activities`.
+ */
+export type SettledActivity = {
+  focus?: string | null;
+  intensity?: string | null;
+  race_day?: boolean | null;
+  game_day?: number | null;
+};
+export type SettledRow = SettledActivity & { activities?: readonly SettledActivity[] | null };
+
+/**
+ * Dagens fem felter naar dagen (helt eller delvist) er afregnet. Et afregnet felt
+ * laeses fra kvitteringen, aldrig fra planen: planen kan redigeres efter dagens
+ * koersel og gaelder saa fra i morgen (samme regel som TrainingPage.sessionFor).
+ * Et felt kvitteringen endnu ikke har, er stadig planens. En kvittering uden
+ * aktiviteter (aeldre form) gaelder for alle felter undtagen et laast loebsfelt.
+ */
+export function settledDayFields(
+  planned: readonly Field[],
+  receipt: SettledRow | null | undefined,
+  sessionOf: (activity: SettledActivity) => string | null,
+): Field[] {
+  if (!receipt) return [...planned];
+  const acts = (receipt.activities ?? [])
+    .map((a, i) => ({ a, i }))
+    .sort((x, y) => (x.a.game_day ?? Infinity) - (y.a.game_day ?? Infinity) || x.i - y.i)
+    .map((x) => x.a);
+  if (acts.length === 0) {
+    const session = sessionOf(receipt);
+    return planned.map((f) => (f === STAGE ? STAGE : session));
+  }
+  return planned.map((f, slot) => {
+    const a = acts[slot];
+    if (!a) return f;
+    return a.race_day === true ? STAGE : sessionOf(a);
+  });
+}
+
 // --- Day load: ord + pil (ejer 17/11 paa #8354) --------------------------------
 
 export type DayLoad = "easy" | "light" | "normal" | "hard" | "veryHard";

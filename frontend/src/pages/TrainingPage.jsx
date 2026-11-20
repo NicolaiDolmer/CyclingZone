@@ -2471,6 +2471,7 @@ export default function TrainingPage() {
   // #7947: R5-fanens data og handlinger = sidens egne (samme gemme-flow, Train now, assistent).
   const r5Today = trainingR5 ? {
     riders, loading: ridersLoading, phone: phoneLayout, seasonYear, activeSeasonNumber, today, todayWeekday, condition, planFor, riderWeekPlans,
+    settledToday: todayRowByRider, // #7947 Codex P2: koerte felter fra kvitteringen, ikke fra planen
     racingToday, forecast: fatigueForecast.forecast, programAssigned: programs.assigned, programCatalog: programs.catalog ?? [], groups: trainingGroups.groups ?? [],
     fatigueDays70: training.fatigueDays70, smartDefaultFocus, trainedToday: runGate.trainedToday, savingId, bulkApplying, justSaved: lingerIds,
     planError: planActionError, runError, decisionRows: decisionCardOn ? decisionRows : null, fatigueRules: fatigueRules.data, assistantPanel, bulkMessage: bulkMsgNode,
