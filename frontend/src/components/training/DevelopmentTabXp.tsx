@@ -4,6 +4,8 @@ import { Link } from "react-router";
 import { ChevronDownIcon as ChevronDownJs, ChevronRightIcon as ChevronRightJs, LockIcon as LockJs, SortIcon as SortJs } from "../ui/icons/index.jsx";
 import { SkeletonLines as SkeletonLinesJs } from "../ui/Skeleton.jsx";
 import BestRoleTagJs from "../rider/BestRoleTag.jsx";
+import RiderTypeBadgeJs from "../rider/RiderTypeBadge.jsx";
+import TableTitleBar from "../ui/TableTitleBar.tsx";
 import PotentialEstimate from "../rider/PotentialEstimate.tsx";
 import AcademyPrognosisCell, { type AcademyPrognosis } from "../rider/AcademyPrognosisCell.tsx";
 import { fetchPlayerFeatureFlags } from "../../lib/playerFeatureFlags.js";
@@ -18,7 +20,8 @@ import { XpSpark } from "./reportXp/XpBar.tsx";
 import {
   bandText, buildDevelopmentFixture, buildDevelopmentRows, devSummary, nextSort, previewXpDevelopment, signedText, sortDevRows, topOf,
   xpDevelopmentMode, DEFAULT_SORT, DEV_FIXTURE_TODAY, XP_DEV_FLAG_KEY,
-  type DevRiderInput, type DevRow, type SortKey, type SortState, type TopValue, type XpTodayCell,
+  DEV_COLUMNS, DEV_COLUMNS_STORAGE_KEY, defaultDevColumns, parseDevColumns, serializeDevColumns, sortAfterColumns, toggleDevColumn,
+  type DevColumnKey, type DevRiderInput, type DevRow, type SortKey, type SortState, type TopValue, type XpTodayCell,
 } from "./DevelopmentTabXpModel.ts";
 
 // #7947 · The Development tab in XP (direction 5, ejer 19/11): one line per rider with
@@ -34,10 +37,12 @@ const ChevronRightIcon = ChevronRightJs as unknown as Icon;
 const LockIcon = LockJs as unknown as Icon;
 const SortIcon = SortJs as unknown as Icon;
 const SkeletonLines = SkeletonLinesJs as unknown as ComponentType<{ lines?: number }>;
-// Ejer 19/11 aften: ryttertypen er den rolle, han er bedst i NU, ikke den naturlige. Spillets
-// eget maerke for netop det er BestRoleTag (neutral, "Best role now" i tooltip); det guldfarvede
-// RiderTypeBadge betyder "Natural role" i tooltip og aria, saa det ville vise forkert info her.
+// Ejer 20/11: typen vises i begge former, hver i sin kolonne, og manageren vaelger selv via
+// kolonne-knappen. "Naturlig type" er det guldfarvede RiderTypeBadge (som i spillets andre
+// tabeller, "Natural role" i tooltip og aria); "Rolle nu" er det neutrale BestRoleTag (rollen
+// han har hoejest rating i nu, samme rolle som ratingen ved siden af).
 const BestRoleTag = BestRoleTagJs as unknown as ComponentType<{ role: string; variant?: "short" | "full" }>;
+const RiderTypeBadge = RiderTypeBadgeJs as unknown as ComponentType<{ primaryType: string | null; secondaryType?: string | null; stacked?: boolean }>;
 const riderBestRole = riderBestRoleJs as unknown as (rider: unknown) => { rating: number | null; role: string | null };
 const copenhagenDayKey = copenhagenDayKeyJs as unknown as (ms: number) => string;
 const formatNumber = formatNumberJs as unknown as (n: number) => string;
@@ -87,6 +92,7 @@ function DevelopmentTabXp({ fixture, runs, roster, estimateFor, seasonGains, rac
   const desktop = useMediaQuery("(min-width: 1024px)");
   const [open, setOpen] = useState<Set<string>>(() => new Set());
   const [sort, setSort] = useState<SortState>(DEFAULT_SORT);
+  const [columns, setColumns] = useState<Set<DevColumnKey>>(readStoredColumns);
 
   const rows = useMemo((): DevRow[] | null => {
     if (fixture) {
@@ -96,16 +102,16 @@ function DevelopmentTabXp({ fixture, runs, roster, estimateFor, seasonGains, rac
     if (!roster) return null;
     const riders = roster.map((r): DevRiderInput => {
       const estimate = estimateFor(r.id);
+      // Role now: the role he rates highest in now, the same role as the rating beside it. Not the
+      // estimate's role (highest potential), and never the natural role as a stand-in.
       const best = riderBestRole(r);
-      // The role he rates highest in now, the same role as the rating beside it. Not the
-      // estimate's role: that is the role with the highest potential, which can differ.
-      const role = best.role ?? r.primary_type ?? null;
       return {
         id: r.id,
         name: `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim() || r.id,
         firstname: r.firstname ?? null, lastname: r.lastname ?? null,
         nation: r.nationality_code ?? null,
-        type: role ? { primary: role, secondary: null } as XpRiderType : null,
+        natural: r.primary_type ? { primary: r.primary_type, secondary: r.secondary_type ?? null } as XpRiderType : null,
+        bestRole: best.role,
         rating: best.rating,
         age: ageFor?.(r.id) ?? null,
         abilities: r as Record<string, number | null | undefined>,
@@ -121,15 +127,34 @@ function DevelopmentTabXp({ fixture, runs, roster, estimateFor, seasonGains, rac
   const summary = devSummary(rows);
   const toggle = (id: string) => setOpen((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   const onSort = (key: SortKey) => setSort((prev) => nextSort(prev, key));
+  const onToggleColumn = (key: string) => {
+    const next = toggleDevColumn(columns, key as DevColumnKey);
+    setColumns(next);
+    setSort((prev) => sortAfterColumns(prev, next));
+    writeStoredColumns(next);
+  };
+  const columnLabel: Record<DevColumnKey, string> = { natural: t("developmentXp.colNatural"), role: t("developmentXp.colRoleNow") };
+  const columnsControl = {
+    hint: t("developmentXp.columnsHint"),
+    count: columns.size,
+    total: DEV_COLUMNS.length,
+    items: DEV_COLUMNS.map(({ key }) => ({ key, label: columnLabel[key], checked: columns.has(key) })),
+    onToggle: onToggleColumn,
+  };
 
   return (
     <div data-testid="training-development-xp" data-source={fixture ? "fixture" : "live"}>
       <div className="overflow-hidden rounded-cz border border-cz-border bg-cz-card">
-        <TitleLine summary={summary} />
+        {/* P21: one title line. The squad in numbers on the left, the table's own column button
+            (TableTitleBar, #8280) on the right; both carry the line's hairline, so it runs unbroken. */}
+        <div className="flex items-stretch">
+          <TitleLine summary={summary} />
+          <TableTitleBar page="training-development" columns={columnsControl} className="flex-none" />
+        </div>
         {desktop
           // Below the content width the table needs, it scrolls sideways instead of clipping columns.
-          ? <div className="overflow-x-auto"><DesktopTable rows={sorted} open={open} toggle={toggle} sort={sort} onSort={onSort} /></div>
-          : <PhoneList rows={sorted} open={open} toggle={toggle} />}
+          ? <div className="overflow-x-auto"><DesktopTable rows={sorted} open={open} toggle={toggle} sort={sort} onSort={onSort} columns={columns} /></div>
+          : <PhoneList rows={sorted} open={open} toggle={toggle} columns={columns} />}
       </div>
       <p className="mt-3 text-2xs text-cz-3">
         {t("developmentXp.footnote")}{" "}
@@ -140,13 +165,33 @@ function DevelopmentTabXp({ fixture, runs, roster, estimateFor, seasonGains, rac
   );
 }
 
-/** P21: the table's one title line inside its frame, the squad in numbers. */
+/** The column choice is remembered in this browser, like the other tables' columns (useStatsToggle). */
+function readStoredColumns(): Set<DevColumnKey> {
+  if (typeof window === "undefined") return defaultDevColumns();
+  try {
+    return parseDevColumns(window.localStorage.getItem(DEV_COLUMNS_STORAGE_KEY));
+  } catch {
+    // localStorage can be blocked (private mode): the default columns, nothing remembered.
+    return defaultDevColumns();
+  }
+}
+
+function writeStoredColumns(visible: ReadonlySet<DevColumnKey>): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(DEV_COLUMNS_STORAGE_KEY, serializeDevColumns(visible));
+  } catch {
+    // localStorage can be blocked (private mode): the choice holds until the page is left.
+  }
+}
+
+/** P21: the left part of the table's one title line inside its frame, the squad in numbers. */
 function TitleLine({ summary }: { summary: ReturnType<typeof devSummary> }) {
   const { t } = useTranslation("training");
   const strong = `font-semibold text-cz-1 ${NUM}`;
   const dot = <span className="px-1 text-cz-3 max-sm:hidden" aria-hidden="true">·</span>;
   return (
-    <div className="flex flex-wrap items-center gap-x-1 gap-y-1 border-b border-cz-border px-3 py-2.5 text-xs text-cz-2 max-sm:gap-x-3" data-testid="development-xp-summary">
+    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1 border-b border-cz-border px-3 py-2.5 text-xs text-cz-2 max-sm:gap-x-3" data-testid="development-xp-summary">
       <span className="me-1 font-semibold text-cz-1">{t("developmentXp.riders", { count: summary.riders })}</span>
       {dot}
       <span>{t("developmentXp.xpToday")} <span className={strong}>{formatNumber(summary.xpToday)}</span>
@@ -185,9 +230,16 @@ function Name({ row, short = false }: { row: DevRow; short?: boolean }) {
   );
 }
 
-function TypeText({ type }: { type: XpRiderType | null }) {
-  if (!type?.primary) return <span className="text-cz-3">—</span>;
-  return <BestRoleTag role={type.primary} variant="short" />;
+/** Natural type: the gold badge, primary and secondary stacked, as in the squad table. */
+function NaturalType({ natural }: { natural: XpRiderType | null }) {
+  if (!natural?.primary) return <span className="text-cz-3">—</span>;
+  return <span data-testid="development-xp-natural"><RiderTypeBadge primaryType={natural.primary} secondaryType={natural.secondary} stacked /></span>;
+}
+
+/** Role now: the grey tag, the role he rates highest in now. */
+function RoleNow({ role }: { role: string | null }) {
+  if (!role) return <span className="text-cz-3">—</span>;
+  return <span data-testid="development-xp-role-now"><BestRoleTag role={role} variant="short" /></span>;
 }
 
 function Rating({ value }: { value: number | null }) {
@@ -270,17 +322,30 @@ function Abilities({ row, phone }: { row: DevRow; phone: boolean }) {
   );
 }
 
-function DesktopTable({ rows, open, toggle, sort, onSort }: { rows: DevRow[]; open: Set<string>; toggle: (id: string) => void; sort: SortState; onSort: (k: SortKey) => void }) {
+// The two type columns' widths: the stacked gold badge (w-[132px]) holds the longest two-line
+// natural type, the grey tag (w-[92px]) the short role name. The table's minimum width grows
+// with the columns shown (full class names, so Tailwind sees them).
+const MIN_WIDTH = {
+  none: "min-w-[1068px]", natural: "min-w-[1200px]", role: "min-w-[1160px]", both: "min-w-[1292px]",
+} as const;
+const BASE_COLS = 9;
+
+function DesktopTable({ rows, open, toggle, sort, onSort, columns }: { rows: DevRow[]; open: Set<string>; toggle: (id: string) => void; sort: SortState; onSort: (k: SortKey) => void; columns: ReadonlySet<DevColumnKey> }) {
   const { t } = useTranslation("training");
   const { t: tRider } = useTranslation("rider");
   const { t: tRiders } = useTranslation("riders");
+  const showNatural = columns.has("natural");
+  const showRole = columns.has("role");
+  const minWidth = MIN_WIDTH[showNatural && showRole ? "both" : showNatural ? "natural" : showRole ? "role" : "none"];
+  const colCount = BASE_COLS + (showNatural ? 1 : 0) + (showRole ? 1 : 0);
   return (
-    <table className="w-full min-w-[1160px] table-fixed text-xs" data-sortable data-testid="development-xp-table">
+    <table className={`w-full table-fixed text-xs ${minWidth}`} data-sortable data-testid="development-xp-table">
       <thead>
         <tr className="border-b border-cz-border">
           <th className="w-[44px]"><span className="sr-only">{t("developmentXp.abilitiesCol")}</span></th>
           <SortHead k="rider" label={t("colRider")} className="w-[192px]" sort={sort} onSort={onSort} />
-          <SortHead k="type" label={t("colType")} className="w-[92px]" sort={sort} onSort={onSort} />
+          {showNatural && <SortHead k="natural" label={t("developmentXp.colNatural")} className="w-[132px]" sort={sort} onSort={onSort} />}
+          {showRole && <SortHead k="role" label={t("developmentXp.colRoleNow")} className="w-[92px]" sort={sort} onSort={onSort} />}
           <SortHead k="age" label={tRiders("table.age")} className="w-[52px]" sort={sort} onSort={onSort} />
           <SortHead k="rating" label={t("developmentXp.colRating")} className="w-[70px]" sort={sort} onSort={onSort} />
           <SortHead k="top" label={t("developmentXp.colTop")} className="w-[118px]" sort={sort} onSort={onSort} />
@@ -303,7 +368,8 @@ function DesktopTable({ rows, open, toggle, sort, onSort }: { rows: DevRow[]; op
                   </button>
                 </td>
                 <td className="px-3 py-[7px]"><Name row={row} /></td>
-                <td className="px-3 py-[7px]"><TypeText type={row.type} /></td>
+                {showNatural && <td className="px-3 py-[7px]"><NaturalType natural={row.natural} /></td>}
+                {showRole && <td className="px-3 py-[7px]"><RoleNow role={row.bestRole} /></td>}
                 <td className={`px-3 py-[7px] text-[13px] text-cz-1 ${NUM}`}>{row.age ?? "—"}</td>
                 <td className="px-3 py-[7px]"><Rating value={row.rating} /></td>
                 <td className="px-3 py-[7px]"><Top top={row.top} /></td>
@@ -327,7 +393,7 @@ function DesktopTable({ rows, open, toggle, sort, onSort }: { rows: DevRow[]; op
               {o && (
                 <tr className="bg-cz-subtle/40">
                   <td />
-                  <td colSpan={9} className="px-3 pb-3 pt-1"><div className="max-w-[560px]"><Abilities row={row} phone={false} /></div></td>
+                  <td colSpan={colCount - 1} className="px-3 pb-3 pt-1"><div className="max-w-[560px]"><Abilities row={row} phone={false} /></div></td>
                 </tr>
               )}
             </Fragment>
@@ -338,7 +404,7 @@ function DesktopTable({ rows, open, toggle, sort, onSort }: { rows: DevRow[]; op
   );
 }
 
-function PhoneList({ rows, open, toggle }: { rows: DevRow[]; open: Set<string>; toggle: (id: string) => void }) {
+function PhoneList({ rows, open, toggle, columns }: { rows: DevRow[]; open: Set<string>; toggle: (id: string) => void; columns: ReadonlySet<DevColumnKey> }) {
   const { t } = useTranslation("training");
   const { t: tRider } = useTranslation("rider");
   return (
@@ -366,7 +432,8 @@ function PhoneList({ rows, open, toggle }: { rows: DevRow[]; open: Set<string>; 
               {o && (
                 <div className="flex flex-col gap-3 border-t border-cz-border bg-cz-subtle/60 px-3 pb-4 pt-3">
                   <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div><div className={LABEL}>{t("colType")}</div><TypeText type={row.type} /></div>
+                    {columns.has("natural") && <div><div className={LABEL}>{t("developmentXp.colNatural")}</div><NaturalType natural={row.natural} /></div>}
+                    {columns.has("role") && <div><div className={LABEL}>{t("developmentXp.colRoleNow")}</div><RoleNow role={row.bestRole} /></div>}
                     <div><div className={LABEL}>{t("developmentXp.colTop")}</div><Top top={row.top} /></div>
                     <div><div className={LABEL}>{t("developmentXp.colXpToday")}</div><XpToday cell={row.today} /></div>
                     <div><div className={LABEL} title={t("developmentXp.ratingSeasonTitle")}>{t("developmentXp.colRatingSeason")}</div><RatingSeason value={row.ratingSeason} /></div>

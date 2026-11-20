@@ -35,7 +35,10 @@ export type DevRiderInput = {
   /** First and last name when known, so the phone can show the short form ("A. Brandvig"). */
   firstname?: string | null; lastname?: string | null;
   nation: string | null;
-  type: XpRiderType | null;
+  /** Natural role (riders.primary_type/secondary_type): born with it, locked for the career. */
+  natural: XpRiderType | null;
+  /** The role he rates highest in now, the same role as the rating beside it. */
+  bestRole: string | null;
   rating: number | null;
   /** Age this season (ejer 19/11: aldrig mindre end den gamle Udvikling-fane). */
   age?: number | null;
@@ -49,7 +52,8 @@ export type DevAbility = { key: string; now: number | null; season: number | nul
 export type XpTodayCell = { state: "locked" } | { state: "none" } | { state: "xp"; xp: number; point: string | null };
 
 export type DevRow = {
-  id: string; name: string; firstname: string | null; lastname: string | null; nation: string | null; type: XpRiderType | null;
+  id: string; name: string; firstname: string | null; lastname: string | null; nation: string | null;
+  natural: XpRiderType | null; bestRole: string | null;
   rating: number | null; age: number | null; top: TopValue;
   /** Ability points this season (the summary line and the opened row count these). */
   season: number | null;
@@ -190,7 +194,8 @@ export function buildDevelopmentRows({ runs, riders, todayKey, seasonGains, forc
     const nextKey = m?.next?.key ?? null;
     const nextPct = m?.next ? barPct(m.next) : null;
     return {
-      id: rider.id, name: rider.name, firstname: rider.firstname ?? null, lastname: rider.lastname ?? null, nation: rider.nation, type: rider.type,
+      id: rider.id, name: rider.name, firstname: rider.firstname ?? null, lastname: rider.lastname ?? null, nation: rider.nation,
+      natural: rider.natural, bestRole: rider.bestRole,
       rating: rider.rating, age: rider.age ?? null, top: rider.top, season,
       ratingSeason: seasonRatingChange(rider.abilities, gains), today,
       spark: m?.spark ?? Array.from({ length: days }, () => 0),
@@ -214,20 +219,21 @@ export function devSummary(rows: readonly DevRow[]): DevSummary {
   };
 }
 
-export type SortKey = "rider" | "type" | "age" | "rating" | "top" | "season" | "xpToday" | "xp30" | "next";
+export type SortKey = "rider" | "natural" | "role" | "age" | "rating" | "top" | "season" | "xpToday" | "xp30" | "next";
 export type SortState = { key: SortKey; dir: 1 | -1 };
 export const DEFAULT_SORT: SortState = { key: "xp30", dir: -1 };
 
 /** Text columns sort A-Z first; numbers sort highest first. */
 export function nextSort(current: SortState, key: SortKey): SortState {
   if (current.key === key) return { key, dir: current.dir === 1 ? -1 : 1 };
-  return { key, dir: key === "rider" || key === "type" ? 1 : -1 };
+  return { key, dir: key === "rider" || key === "natural" || key === "role" ? 1 : -1 };
 }
 
 function sortValue(row: DevRow, key: SortKey): string | number | null {
   switch (key) {
     case "rider": return row.name;
-    case "type": return row.type?.primary ?? null;
+    case "natural": return row.natural?.primary ?? null;
+    case "role": return row.bestRole;
     case "age": return row.age;
     case "rating": return row.rating;
     case "top": return topSortValue(row.top);
@@ -248,6 +254,51 @@ export function sortDevRows(rows: readonly DevRow[], sort: SortState): DevRow[] 
     const c = typeof va === "string" || typeof vb === "string" ? String(va).localeCompare(String(vb)) : va - vb;
     return c * sort.dir || a.name.localeCompare(b.name);
   });
+}
+
+// --- The two type columns (ejer 20/11) -------------------------------------------
+//
+// The type is shown in both forms, and the manager picks with the table's column
+// button: "Natural type" (the gold badge, as in the other tables) is shown by
+// default, "Role now" (the grey tag, the role he rates highest in now) is hidden.
+// The choice is remembered in the browser, the same way as the other tables' columns.
+export type DevColumnKey = "natural" | "role";
+export const DEV_COLUMNS: readonly { key: DevColumnKey; defaultVisible: boolean }[] = [
+  { key: "natural", defaultVisible: true },
+  { key: "role", defaultVisible: false },
+];
+export const DEV_COLUMNS_STORAGE_KEY = "cz-training-development-xp-columns";
+
+export function defaultDevColumns(): Set<DevColumnKey> {
+  return new Set(DEV_COLUMNS.filter(c => c.defaultVisible).map(c => c.key));
+}
+
+/** The stored choice (a JSON list of shown columns); anything unreadable falls back to the default. */
+export function parseDevColumns(raw: string | null | undefined): Set<DevColumnKey> {
+  if (!raw) return defaultDevColumns();
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return defaultDevColumns();
+    const known = new Set<string>(DEV_COLUMNS.map(c => c.key));
+    return new Set(parsed.filter((k): k is DevColumnKey => typeof k === "string" && known.has(k)));
+  } catch {
+    return defaultDevColumns();
+  }
+}
+
+export function serializeDevColumns(visible: ReadonlySet<DevColumnKey>): string {
+  return JSON.stringify(DEV_COLUMNS.map(c => c.key).filter(k => visible.has(k)));
+}
+
+export function toggleDevColumn(visible: ReadonlySet<DevColumnKey>, key: DevColumnKey): Set<DevColumnKey> {
+  const next = new Set(visible);
+  if (next.has(key)) next.delete(key); else next.add(key);
+  return next;
+}
+
+/** Hiding the column the table is sorted on falls back to the default sort. */
+export function sortAfterColumns(sort: SortState, visible: ReadonlySet<DevColumnKey>): SortState {
+  return (sort.key === "natural" || sort.key === "role") && !visible.has(sort.key) ? DEFAULT_SORT : sort;
 }
 
 // --- Which surface the tab shows -------------------------------------------------
@@ -307,8 +358,8 @@ export function buildDevelopmentFixture(): { runs: XpReceipt[]; riders: DevRider
     const certainty = CERTAINTY_WORDS[index % CERTAINTY_WORDS.length];
     return {
       id, name: row.name || id, nation: fx.nations[id] ?? null,
-      // Ejer 19/11: the role he is best in now, not the natural one.
-      type: best.role ? { primary: best.role, secondary: null } as XpRiderType : fx.types[id] ?? null,
+      natural: fx.types[id] ?? null,
+      bestRole: best.role,
       rating, abilities,
       age: between(fixtureHash(id, "age"), 20, 33),
       top: { kind: "view", value: rating + between(fixtureHash(id, "top"), 2, 9),

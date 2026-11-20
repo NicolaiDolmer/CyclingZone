@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   bandText, barPct, buildDevelopmentRows, devSummary, nextSort, previewXpDevelopment, sortDevRows, topOf, topSortValue,
   xpDevelopmentMode, buildDevelopmentFixture, seasonRatingChange, signedText, DEFAULT_SORT, DEV_FIXTURE_TODAY, MAX_ABILITIES, type DevRiderInput,
+  DEV_COLUMNS, defaultDevColumns, parseDevColumns, serializeDevColumns, sortAfterColumns, toggleDevColumn,
 } from "./DevelopmentTabXpModel.ts";
 import type { XpReceipt } from "../../lib/trainingReportXp.ts";
 import { riderOverallRating as riderOverallRatingJs } from "../../lib/riderRating.js";
@@ -26,7 +27,7 @@ function receipt(date: string, status: XpReceipt["receipt_status"], riders: Arra
 }
 
 const rider = (id: string, extra: Partial<DevRiderInput> = {}): DevRiderInput => ({
-  id, name: id.toUpperCase(), nation: "dk", type: { primary: "climber", secondary: null }, rating: 70,
+  id, name: id.toUpperCase(), nation: "dk", natural: { primary: "climber", secondary: "puncheur" }, bestRole: "climber", rating: 70,
   abilities: { climbing: 72, flat: 60 }, top: { kind: "none" }, racingToday: false, ...extra,
 });
 
@@ -188,6 +189,42 @@ test("the preview fixture shows the rating change and the role he is best in now
   assert.ok(rows.some(r => (r.ratingSeason ?? 0) > 0));
   for (const r of fx.riders) {
     assert.equal(r.rating, riderOverallRating(r.abilities as Record<string, unknown>), "the rating is read from the same abilities");
-    assert.equal(r.type?.secondary, null, "one role only");
+    assert.equal(typeof r.bestRole, "string", "the role he is best in now");
+    assert.ok(r.natural?.primary, "the natural role, as in the other tables");
   }
+  assert.ok(fx.riders.some(r => r.natural?.primary !== r.bestRole), "the two forms can differ, which is why both exist");
+});
+
+test("type columns (ejer 20/11): Natural type shown and Role now hidden by default", () => {
+  assert.deepEqual([...defaultDevColumns()], ["natural"]);
+  assert.deepEqual(DEV_COLUMNS.map(c => c.key), ["natural", "role"]);
+});
+
+test("type columns: the stored choice is read back, and anything unreadable falls back to the default", () => {
+  assert.deepEqual([...parseDevColumns(null)], ["natural"]);
+  assert.deepEqual([...parseDevColumns("not json")], ["natural"]);
+  assert.deepEqual([...parseDevColumns("{\"natural\":true}")], ["natural"]);
+  assert.deepEqual([...parseDevColumns("[]")], [], "both hidden is a real choice");
+  assert.deepEqual([...parseDevColumns("[\"role\",\"bogus\",3]")], ["role"]);
+  const both = toggleDevColumn(defaultDevColumns(), "role");
+  assert.equal(serializeDevColumns(both), "[\"natural\",\"role\"]");
+  assert.deepEqual([...parseDevColumns(serializeDevColumns(both))].sort(), ["natural", "role"]);
+  assert.deepEqual([...toggleDevColumn(both, "natural")], ["role"]);
+});
+
+test("type columns: sorting reads each form, and hiding the sorted column falls back to the default sort", () => {
+  const rows = buildDevelopmentRows({
+    runs: RUNS, todayKey: "2026-11-19", seasonGains: {},
+    riders: [
+      rider("a", { natural: { primary: "sprinter", secondary: null }, bestRole: "climber" }),
+      rider("b", { natural: { primary: "climber", secondary: null }, bestRole: null }),
+      rider("c", { natural: null, bestRole: "baroudeur" }),
+    ],
+  });
+  assert.deepEqual(rows.map(r => [r.natural?.primary ?? null, r.bestRole]), [["sprinter", "climber"], ["climber", null], [null, "baroudeur"]]);
+  assert.deepEqual(sortDevRows(rows, nextSort(DEFAULT_SORT, "natural")).map(r => r.id), ["b", "a", "c"]);
+  assert.deepEqual(sortDevRows(rows, nextSort(DEFAULT_SORT, "role")).map(r => r.id), ["c", "a", "b"]);
+  assert.deepEqual(sortAfterColumns({ key: "role", dir: 1 }, defaultDevColumns()), DEFAULT_SORT);
+  assert.deepEqual(sortAfterColumns({ key: "natural", dir: 1 }, defaultDevColumns()), { key: "natural", dir: 1 });
+  assert.deepEqual(sortAfterColumns({ key: "rating", dir: 1 }, new Set()), { key: "rating", dir: 1 });
 });
