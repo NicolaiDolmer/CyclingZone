@@ -31,11 +31,12 @@ function capitalize(s) {
 //                and gates the injury warning line to an actual today)
 // progressByRider : live ability_progress map (useTraining's `progress`)
 // pastRuns     : runs strictly before latestRun, newest-first (cooldown only)
-export default function TrainingMoment({ latestRun, isToday, progressByRider, pastRuns }) {
+// xp           : #8476 the XP switch is on (only points earned on the date, no sharp day)
+export default function TrainingMoment({ latestRun, isToday, progressByRider, pastRuns, xp = false }) {
   const { t } = useTranslation("training");
   const tRider = useTranslation("rider").t;
 
-  const moment = selectTrainingMoment(latestRun, progressByRider, pastRuns);
+  const moment = selectTrainingMoment(latestRun, progressByRider, pastRuns, { xp });
   const injuryAlerts = isToday ? selectInjuryAlerts(latestRun) : [];
 
   if (!moment && injuryAlerts.length === 0) return null;

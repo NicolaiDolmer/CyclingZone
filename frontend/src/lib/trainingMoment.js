@@ -37,6 +37,7 @@ import {
   PEAK_FORM_THRESHOLD,
   NEAR_BREAKTHROUGH,
 } from "./trainingReport.js";
+import { earnedJumps } from "./trainingEarnedGains.js";
 
 export const MOMENT_TYPES = {
   BREAKTHROUGH: "breakthrough",
@@ -80,12 +81,16 @@ export function variantIndex(seedParts, variantCount = MOMENT_VARIANT_COUNT) {
 // roll.injured`), so it doubles as "hurt in training today" without a new
 // backend field — a rider still out from an OLDER injury (injured, but
 // injury_days === 0 today) is correctly excluded from this band.
-function candidatesFor(rows, progressByRider) {
+//
+// #8476: `xp` = XP-kontakten er taendt. Saa taeller kun point tjent paa datoen (gains
+// minus bar_paid; point betalt fra bjaelken er ikke dagens traening), og den skarpe dag
+// findes ikke (XP-modellen har ingen skarpe eller flade dage). Uden `xp` uaendret.
+function candidatesFor(rows, progressByRider, xp = false) {
   const out = [];
   for (const row of rows) {
     if (row.receipt_status === "pending" || row.receipt_status === "reconciliation") continue;
     const who = { riderId: row.rider_id, riderName: row.name };
-    const jumps = isBreakthrough(row) ? breakthroughJumps(row) : [];
+    const jumps = xp ? earnedJumps(row) : isBreakthrough(row) ? breakthroughJumps(row) : [];
     if (jumps.length > 0) {
       // Feature the single biggest jump for the rider — cleanest one-line story.
       const best = jumps.reduce((a, b) => (b.n > a.n ? b : a));
@@ -112,7 +117,7 @@ function candidatesFor(rows, progressByRider) {
     if (Number.isFinite(form) && form >= PEAK_FORM_THRESHOLD) {
       out.push({ type: MOMENT_TYPES.PEAK_FORM, ...who, form, score: 1000 + form });
     }
-    if (row.status === "over") {
+    if (!xp && row.status === "over") {
       out.push({ type: MOMENT_TYPES.SHARP_DAY, ...who, score: 500 });
     }
   }
@@ -138,18 +143,18 @@ export function selectInjuryAlerts(latestRun) {
 
 // Best single candidate for ONE day's rows, ignoring cooldown. Used to
 // reconstruct what recent days would have featured (cooldown source).
-export function dayTopCandidate(rows) {
+export function dayTopCandidate(rows, { xp = false } = {}) {
   if (!Array.isArray(rows) || rows.length === 0) return null;
-  return candidatesFor(rows, null)[0] ?? null;
+  return candidatesFor(rows, null, xp)[0] ?? null;
 }
 
 // Riders/types featured on recent days — cooldown source. pastRuns must
 // already be newest-first and exclude the day being picked for.
-export function recentSignature(pastRuns) {
+export function recentSignature(pastRuns, { xp = false } = {}) {
   const riderIds = new Set();
   const types = new Set();
   for (const run of pastRuns ?? []) {
-    const top = dayTopCandidate(run?.report?.riders);
+    const top = dayTopCandidate(run?.report?.riders, { xp });
     if (!top) continue;
     riderIds.add(top.riderId);
     types.add(top.type);
@@ -165,16 +170,17 @@ export function recentSignature(pastRuns) {
 //                       or null/undefined to skip the anticipation story
 //   pastRuns         : runs strictly BEFORE latestRun, newest-first — used
 //                       only for cooldown, never rendered
+//   options.xp       : #8476 the XP switch is on (see candidatesFor)
 // Returns a moment object ({ type, riderId?, riderName?, ability?, ... ,
 // variant }) or null when there is no report to feature at all.
-export function selectTrainingMoment(latestRun, progressByRider, pastRuns) {
+export function selectTrainingMoment(latestRun, progressByRider, pastRuns, { xp = false } = {}) {
   const recorded = latestRun?.report?.riders;
   const rows = Array.isArray(recorded) ? recorded.filter(row =>
     row.receipt_status !== "pending" && row.receipt_status !== "reconciliation") : null;
   const tickDate = latestRun?.tick_date ?? "";
   if (!Array.isArray(rows) || rows.length === 0) return null;
 
-  const candidates = candidatesFor(rows, progressByRider);
+  const candidates = candidatesFor(rows, progressByRider, xp);
 
   if (candidates.length === 0) {
     const summary = daySummary(rows);
@@ -187,7 +193,7 @@ export function selectTrainingMoment(latestRun, progressByRider, pastRuns) {
     };
   }
 
-  const cooldown = recentSignature((pastRuns ?? []).slice(0, 2));
+  const cooldown = recentSignature((pastRuns ?? []).slice(0, 2), { xp });
   // BREAKTHROUGH is exempt from the story-TYPE cooldown (rider cooldown still
   // applies): the task only asked to avoid featuring the same RIDER two days
   // running, never the same story type. Without this, a whole point for rider
