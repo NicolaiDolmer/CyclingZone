@@ -1,14 +1,16 @@
-// #7855 HUL 1 MED "NAAR HAN ER SAT"-LED (Fable-dom PR #8218 16/11; ejerbeslutning 16/11 og 17/11).
-//   Ejer 17/11: "Planen venter, til udbruddet er dannet. Kommer rytteren ikke med, er jagten slut, og
-//   han gaar videre til naeste led." Formen hvor jagten foelger med og kan komme igen i et senere
-//   udbrud, er afvist (urealistisk; bryder "alt har en aegte aarsag").
+// #7855 HUL 1 MED "NAAR HAN ER SAT"-LED (Fable-dom PR #8218 16/11; ejerbeslutning 16/11, 17/11 og 19/11).
+//   Ejer 17/11: "Planen venter, til udbruddet er dannet. Kommer rytteren ikke med, ... gaar han videre
+//   til naeste led."
+//   Ejer 19/11 (aendrer 17/11): en rytter, der misser morgenudbruddet, maa tage point, hvis han kommer
+//   med i et senere udbrud paa samme etape, uanset planens opbygning. "Naar han er sat"-leddet styrer
+//   kun, hvad han goer uden for et udbrud. Proeven er skrevet om til den regel (ejer 19/11).
 //   Ejer 16/11 (S2): ingen bjergjagt fra feltet.
 //   Fable-dom 17/11 fund 2: pointjagt med sat-led og "hentet" skal ogsaa have en pris- og loebsproeve.
 //
 // DOMMERENS LAESNING:
 //   - "Planen venter": "kom ikke med" afgoeres kun ved en graense, hvor dagens udbrud ligger paa vejen.
-//   - "Jagten er slut": efter skiftet (kom ikke med, eller hentet) koerer han ikke om en eneste top
-//     eller spurt, heller ikke naar han senere ligger i et nyt udbrud.
+//   - Efter skiftet (kom ikke med, eller hentet) koerer han ikke om en eneste top eller spurt uden for
+//     et udbrud. Ligger han i et senere udbrud ved passagen, koerer han om den (ejer 19/11).
 //   - Kom han aldrig med, eller koerte han aldrig om en passage, er dagen praecis som samme plan uden
 //     jagt (samme loeb, samme pris). Jagten er aldrig billigere.
 //   Etape 107 (ejerens ord) og to etapeformer, hvor et nyt udbrud efter en tidlig indhentning tager
@@ -75,11 +77,22 @@ for (const art of Object.keys(ARTER)) {
     }
   });
 
-  test(`hul 1 + saet-led (${art}): kom han ikke med, eller er han hentet, er jagten slut, ogsaa i et senere udbrud`, async () => {
+  test(`hul 1 + saet-led (${art}): kom han ikke med, eller er han hentet, jager han kun videre i et senere udbrud (ejer 19/11)`, async () => {
     const alle = await dage(art);
     assert.ok(alle.some((d) => d.skift?.params.reason === "caught"), "proeven skal ramme dage, hvor han er hentet");
+    assert.ok(alle.some((d) => d.skift?.params.reason === "missed_break"), "proeven skal ramme dage, hvor han ikke kom med");
     for (const d of alle) {
-      for (const p of d.efterSkift) assert.ok(!p.jaget, `${d.navn}: koerte om en passage km ${p.km} efter skiftet (${d.skift.params.reason})`);
+      for (const p of d.efterSkift) assert.ok(!p.jaget || p.foran, `${d.navn}: koerte om en passage km ${p.km} efter skiftet (${d.skift.params.reason}) uden at ligge i et udbrud`);
+    }
+  });
+
+  test(`hul 1 + saet-led (${art}): proeven rammer et senere udbrud efter skiftet, og dér koerer han om passagen (ejer 19/11)`, async () => {
+    // Ejer 19/11: misser han morgenudbruddet (eller er han hentet) og kommer med i et senere udbrud,
+    // koerer han om pointene dér, uanset planens opbygning. Uden saadanne dage har proeven ingen taender.
+    const sene = (await dage(art)).filter((d) => d.efterSkift.some((p) => p.foran));
+    assert.ok(sene.length >= 1, "proeven skal ramme dage, hvor han kom med i et senere udbrud efter skiftet");
+    for (const d of sene) {
+      for (const p of d.efterSkift) if (p.foran) assert.ok(p.jaget, `${d.navn}: laa i et senere udbrud ved km ${p.km} efter skiftet (${d.skift.params.reason}), men koerte ikke om passagen`);
     }
   });
 
@@ -106,11 +119,11 @@ for (const art of Object.keys(ARTER)) {
   });
 }
 
-test("hul 1 + saet-led (kom): proeven rammer et senere udbrud efter skiftet, og han laa foran uden at jage", async () => {
-  // Formen ejeren afviste 17/11 lod jagten gaelde her. Uden saadanne dage har proeven ingen taender.
-  const sene = (await dage("kom")).filter((d) => d.efterSkift.some((p) => p.foran));
-  assert.ok(sene.length >= 2, "proeven skal ramme dage, hvor han kom med i et senere udbrud efter skiftet");
-  for (const d of sene) assert.ok(d.efterSkift.every((p) => !p.jaget), `${d.navn}: jagten fulgte med til et senere udbrud`);
+test("hul 1 + saet-led (kom): bjergjagten rammer flere senere udbrud efter skiftet", async () => {
+  // Bjergproeven skal ramme mere end en enkelt dag med et senere udbrud, saa reglen fra 19/11 er bevist
+  // paa flere etaper og froe, ikke kun paa et tilfaelde.
+  const sene = (await dage("kom")).filter((d) => d.efterSkift.some((p) => p.foran && p.jaget));
+  assert.ok(sene.length >= 2, "proeven skal ramme dage, hvor han koerte om en top i et senere udbrud efter skiftet");
 });
 
 test("hul 1 + saet-led (kom): ingen bjergjagt fra feltet", async () => {
