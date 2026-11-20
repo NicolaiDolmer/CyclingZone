@@ -546,9 +546,23 @@ describe('merge-vagt: taeller, nulstilling og alerts', () => {
     assert.equal(restartCandidates([{ ...f, headSha: OLD }], { restarts: { 4: { headSha: HEAD } } }).length, 1);
     assert.equal(restartCandidates([finding(4, REASON.RED)], null).length, 0);
   });
-  it('genstart-registreringen ryddes, naar PR\'en ikke laengere er aaben', () => {
-    const s = nextGuardState({ restarts: { 4: { headSha: HEAD }, 5: { headSha: HEAD } } }, [], { now: t1, openNumbers: [4] });
+  it('genstarten huskes, selv naar PR\'en en koersel ikke kunne vurderes; kun meget gamle ryddes', () => {
+    const prev = { restarts: { 4: { headSha: HEAD, at: '2026-11-20T09:00:00Z' }, 5: { headSha: HEAD, at: '2026-09-01T09:00:00Z' } } };
+    const s = nextGuardState(prev, [], { now: t1, openNumbers: [] });
     assert.deepEqual(Object.keys(s.restarts), ['4']);
+    assert.equal(restartCandidates([finding(4, REASON.CI_NOT_STARTED)], s).length, 0);
+  });
+  it('fejlet genaabning bliver i alerts, til PR\'en ses aaben igen', () => {
+    const failed = { pr: 6, reason: REASON.REOPEN_FAILED, since: t1.toISOString() };
+    const s1 = nextGuardState({ reopenFailed: { 6: failed } }, [], { now: t2, openNumbers: [] });
+    assert.deepEqual(s1.alerts.map((a) => a.reason), [REASON.REOPEN_FAILED]);
+    const s2 = nextGuardState(s1, [], { now: t3, openNumbers: [6] });
+    assert.deepEqual(s2.alerts, []);
+  });
+  it('review-gate i koe er "afventer", ikke "review mangler"', () => {
+    const queued = [{ name: 'review-gate', bucket: 'pending', event: 'pull_request_target', startedAt: '2026-11-20T10:00:00Z' }];
+    const [f] = guardFindings({ evaluations: [guardEval({}, { allChecks: queued })], now: GUARD_NOW });
+    assert.equal(f.reason, REASON.PENDING);
   });
 });
 

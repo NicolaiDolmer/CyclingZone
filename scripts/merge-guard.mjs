@@ -42,6 +42,11 @@ export const CI_START_GRACE_MS = 15 * 60_000;
 export const ALERT_AFTER_RUNS = 2;
 // Stop-hooken ignorerer en tilstand, auto-toget ikke har skrevet laenge (opgaven staar stille).
 export const HOOK_MAX_AGE_MS = 6 * 60 * 60_000;
+// Saa laenge huskes en genstart pr. PR+SHA (een gang pr. hoved, ogsaa hvis PR'en en
+// koersel ikke kunne vurderes).
+export const RESTART_MEMORY_MS = 30 * 24 * 60 * 60_000;
+// En fejlet genaabning meldes, til PR'en ses aaben igen, dog hoejst saa laenge.
+export const REOPEN_ALERT_MS = 7 * 24 * 60 * 60_000;
 
 export const REASON = Object.freeze({
   DRAFT: 'kladde',
@@ -124,6 +129,8 @@ export function classifyStall(e, facts, now) {
   const red = /^checks: roed: (.*)$/.exec(reason);
   if (red) return { reason: REASON.RED, detail: red[1] };
   if (reason.startsWith('checks: afventer')) return { reason: REASON.PENDING, detail: reason.replace(/^checks: /, '') };
+  // review-gate fejler (venter ikke), naar review mangler; "afventer" er workflowet i koe.
+  if (reason === 'review-gate afventer') return { reason: REASON.PENDING, detail: reason };
   if (/review-gate/.test(reason)) return { reason: REASON.REVIEW, detail: reason };
   const head = lower(e?.headSha);
   const marker = lower(e?.ownerMarkerSha);
@@ -171,7 +178,11 @@ export function alertFor(entry) {
 /**
  * Naeste tilstand. Samme PR+aarsag som sidst = taelleren stiger og `since` bevares;
  * ny aarsag = starter forfra; PR uden fund (eligible, lukket, merget, uden markoer)
- * = nulstillet. Genstarter huskes pr. PR, saa laenge PR'en er aaben.
+ * = nulstillet.
+ * Genstarter huskes i RESTART_MEMORY_MS uanset om PR'en blev vurderet: en PR der
+ * midlertidigt ikke kunne vurderes, maa ikke faa samme hoved genstartet igen
+ * (Codex P2). En fejlet genaabning bliver i alerts, til PR'en er SET aaben igen
+ * (`openNumbers` = de vurderede PR'er) eller er over REOPEN_ALERT_MS gammel.
  */
 export function nextGuardState(prev, findings, { now = new Date(), openNumbers = [] } = {}) {
   const at = now.toISOString();
@@ -191,13 +202,24 @@ export function nextGuardState(prev, findings, { now = new Date(), openNumbers =
     };
   }
   const open = new Set((openNumbers ?? []).map(Number));
+  const ageMs = (iso) => now.getTime() - Date.parse(String(iso ?? ''));
   const restarts = {};
-  for (const [n, r] of Object.entries(prev?.restarts ?? {})) if (open.has(Number(n))) restarts[n] = r;
-  const alerts = Object.values(entries)
+  for (const [n, r] of Object.entries(prev?.restarts ?? {})) if (ageMs(r?.at) < RESTART_MEMORY_MS) restarts[n] = r;
+  const reopenFailed = {};
+  for (const [n, a] of Object.entries(prev?.reopenFailed ?? {})) {
+    if (!open.has(Number(n)) && ageMs(a?.since) < REOPEN_ALERT_MS) reopenFailed[n] = a;
+  }
+  const state = { version: 1, updatedAt: at, entries, restarts, reopenFailed, alerts: [] };
+  return withAlerts(state);
+}
+
+/** alerts = vedvarende fejlede genaabninger + PR'er sprunget over ALERT_AFTER_RUNS gange i traek. */
+export function withAlerts(state) {
+  const stalled = Object.values(state.entries ?? {})
     .filter((e) => e.count >= ALERT_AFTER_RUNS && !SILENT.has(e.reason))
-    .sort((a, b) => a.pr - b.pr)
     .map(alertFor);
-  return { version: 1, updatedAt: at, entries, restarts, alerts };
+  state.alerts = [...Object.values(state.reopenFailed ?? {}), ...stalled].sort((a, b) => a.pr - b.pr);
+  return state;
 }
 
 const COPENHAGEN = new Intl.DateTimeFormat('da-DK', { timeZone: 'Europe/Copenhagen', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -291,7 +313,8 @@ export function runMergeGuard({ evaluations, repo, repoRoot, now = new Date(), d
     if (res.ok) {
       log(`  MERGE-VAGT: #${f.pr} lukket+genaabnet, fordi CI ikke startede paa ${sha7(f.headSha)}.`);
     } else if (res.closed && !res.reopened) {
-      state.alerts.push(alertFor({ pr: f.pr, title: f.title, reason: REASON.REOPEN_FAILED, detail: res.error, since: now.toISOString(), count: 1 }));
+      state.reopenFailed[f.pr] = alertFor({ pr: f.pr, title: f.title, reason: REASON.REOPEN_FAILED, detail: res.error, since: now.toISOString(), count: 1 });
+      withAlerts(state);
       log(`  MERGE-VAGT: #${f.pr} blev lukket, men genaabning FEJLEDE (${res.error}). Genaabn straks.`);
     } else {
       log(`  MERGE-VAGT: #${f.pr} kunne ikke lukkes til genstart (${res.error}).`);
