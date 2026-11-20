@@ -64,6 +64,8 @@ export function TrainNowConfirm({ open, onClose, onGo }: { open: boolean; onClos
       open={open}
       onClose={onClose}
       size="sm"
+      description={undefined}
+      ariaLabelledby={undefined}
       title={t(instantOnly ? "trainNow.confirm.titleInstant" : status.shortRaces.every((r) => r.startsShort) ? "trainNow.confirm.titleShort" : "trainNow.confirm.title")}
       closeLabel={t("trainNow.confirm.cancel")}
       footer={(
@@ -243,9 +245,11 @@ export function RiderCardR5({ rider, sessions, mobile }: { rider: R5Rider; sessi
 export function StateBody({ state }: { state: TodayState }): ReactNode {
   const { t } = useTranslation("training");
   if (state === "loading") return <div className="p-5" data-testid="r5-state-loading"><SkeletonLines lines={12} /></div>;
-  if (state === "empty") return <EmptyState icon={<TeamIcon size={26} aria-hidden="true" />} title={t("noRiders")} />;
+  if (state === "empty") return <EmptyState icon={<TeamIcon size={26} aria-hidden="true" />} title={t("noRiders")} description={undefined} action={undefined} />;
   if (state === "error") {
-    return <ErrorState title="Could not load your squad's training." description="Check your connection and try again."
+    // ErrorState's JSDoc-type kender kun action={null}; skitsen viser knappen som spillet.
+    const ErrorBox = ErrorState as unknown as (p: { title: string; description: string; action: ReactNode }) => ReactNode;
+    return <ErrorBox title="Could not load your squad's training." description="Check your connection and try again."
       action={<Button variant="secondary" size="sm">Try again</Button>} />;
   }
   return null;

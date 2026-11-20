@@ -23,7 +23,7 @@ export type R5Rider = {
   tonight: { value: number; tone: "ok" | "warn" | "risk" }; // "nu -> i aften ~xx" (gamle I dag, #6025)
 };
 
-const OWNER: Record<string, Omit<R5Rider, "id" | "fatigue" | "overLimit" | "program" | "racing">> = {
+const OWNER: Record<string, Omit<R5Rider, "id" | "fatigue" | "overLimit" | "program" | "racing" | "tonight">> = {
   r1: { name: "Henok Nguse", nation: "er", country: "Eritrea", type: "Climber", typeKey: "Klatrer" },
   r2: { name: "Zhi Deng", nation: "cn", country: "China", type: "Rouleur", typeKey: "Rouleur" },
   r3: { name: "Zhen Qian", nation: "cn", country: "China", type: "Cobbles specialist", typeKey: "Brostensrytter" },

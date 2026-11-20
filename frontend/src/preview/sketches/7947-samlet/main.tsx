@@ -4,6 +4,7 @@
 // Ingen app-router, ingen backend, intet login. Dansk, fordi billederne er til ejeren.
 
 import { createRoot } from "react-dom/client";
+import { MemoryRouter } from "react-router";
 import "../../../i18n/index.js";
 import i18n from "i18next";
 import "../../../index.css";
@@ -93,11 +94,20 @@ const r5Init: R5Init = {
   menu: q.get("menu"),
   filter: (["training", "racing", "tired", "noProgram"] as const).find((f) => f === q.get("filter")) ?? null,
   mode: q.get("mode") === "rotation" ? "rotation" : "week",
+  // I dag-paritet 20/11: ?dev=old (gamle loesning paa de fem afvigelser), ?state=loading|empty|error|saving|tour,
+  // ?confirm=1 (Train now-dialogen), ?sel=r4,r5 (markerede), ?group=1 (Group by type), ?pick=1, ?saved=r4.
+  dev: q.get("dev") === "old" ? "old" : "r5",
+  state: (["loading", "empty", "error", "saving", "tour"] as const).find((x) => x === q.get("state")) ?? null,
+  confirm: q.get("confirm") === "1",
+  selected: (q.get("sel") ?? "").split(",").filter(Boolean),
+  group: q.get("group") === "1",
+  pick: q.get("pick") === "1",
+  saved: (q.get("saved") ?? "").split(",").filter(Boolean),
 };
 
-const i18nReady = i18n.changeLanguage(id === "r5" && !view ? "en" : i18n.language || "en").then(() => i18n.loadNamespaces(["riderTypes", "trainingXp", "training", "common"]));
+const i18nReady = i18n.changeLanguage(id === "r5" && !view ? "en" : i18n.language || "en").then(() => i18n.loadNamespaces(["riderTypes", "trainingXp", "training", "common", "rider", "auth"]));
 void i18nReady.then(() => createRoot(document.getElementById("root")!).render(
-  <>
+  <MemoryRouter>
     {!shot && view !== "over100" && view !== "plan" && view !== "nextpoint" && view !== "fix" && view !== "plancard" && view !== "ridertraining" && view !== "planline" && view !== "todayplan" && view !== "todaydesk" && <Nav />}
     {view === "todaydesk" ? (
       <div className="min-h-screen bg-cz-body"><TodayDesktopPlan /></div>
@@ -131,5 +141,5 @@ void i18nReady.then(() => createRoot(document.getElementById("root")!).render(
     ) : (
       <Sketch key={`${id}-${pressed}`} id={id} pressed={pressed} openDay={openDay} />
     )}
-  </>,
+  </MemoryRouter>,
 ));
