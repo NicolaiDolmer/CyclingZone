@@ -13,6 +13,7 @@ import {
   PROGRESSION_CONFIG, AGING_V2_CONFIG, AGING_V2_DECLINING_ABILITIES, developRiderSeasonV2, buildCapsForRider,
 } from "./riderProgression.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
+import { createHash } from "node:crypto";
 
 // #6499: motoren henter belastningen for den afsluttede sæson, før den skriver.
 // Testene injicerer en tom belastning (= ingen bremse), medmindre de selv tester
@@ -825,4 +826,34 @@ test("#6499: kan belastningen ikke læses, kaster skiftet FØR noget skrives (al
   }), /timeout/);
   assert.equal(calls.length, 0, "ingen rytter udviklet");
   assert.equal(state.rider_development_log.length, 0);
+});
+
+// ── #8522 frossen golden (#7587): sæsonskiftet med XP slukket ─────────────────
+// Digesten er regnet af MERGE-BASENS motor (før #8522). Den dækker hver RPC-skrivning,
+// summary og hvilke tabeller motoren læser: med XP slukket må motoren aldrig røre
+// slid-tabellen, så skiftet virker, også før migrationen er applied.
+test("#8522 golden: sæsonskiftet med XP slukket er bit-identisk med merge-basen", async () => {
+  const load = new Map([
+    ["young-ai", { raceDays: 40, hardDays: 90 }],
+    ["vet-human", { raceDays: 30, hardDays: 40 }],
+    ["vet-ai", { raceDays: 20, hardDays: 200 }],
+    ["vet-free", { raceDays: 5, hardDays: 0 }],
+    ["old-human", { raceDays: 0, hardDays: 60 }],
+    ["plateau-ai", { raceDays: 70, hardDays: 10 }],
+  ]);
+  const state = mixedPopulation();
+  const tables = new Set();
+  const calls = [];
+  const supabase = createMockSupabase(state);
+  const spy = {
+    from: (t) => { tables.add(t); return supabase.from(t); },
+    rpc: (fn, a) => { calls.push(JSON.parse(JSON.stringify(a))); return supabase.rpc(fn, a); },
+  };
+  const summary = await developRidersForSeasonEngine({
+    supabase: spy, seasonId: "s5", seasonNumber: 5, notify: false, now: new Date("2026-11-28T10:00:00Z"),
+    seasonLoadByRider: load, loadAgingCfgFn: async () => null, detectGraduatesFn: async () => {},
+  });
+  for (const c of calls) if (c.p_rider_patch?.retirement_notice_given_at) c.p_rider_patch.retirement_notice_given_at = "<set>";
+  const digest = createHash("sha256").update(JSON.stringify({ calls, summary, tables: [...tables].sort() })).digest("hex");
+  assert.equal(digest, "ad68724d077a5dc4f275bea6a2ee67538c901fc9ae239b88abd95e71f2ce2ed5");
 });

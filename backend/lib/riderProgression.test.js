@@ -22,6 +22,8 @@ import { DISPLAY_RECIPES, ratingForRole } from "./weights/displayRecipes.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { RIDER_TYPE_KEYS } from "./riderTypes.js";
 import { ageForSeason } from "./riderSeasonAge.js";
+import { createHash } from "node:crypto";
+import { xpAgingConfig } from "./riderProgression.js";
 
 // ── Determinisme ──────────────────────────────────────────────────────────────
 
@@ -1144,4 +1146,31 @@ test("#6499: den gamle model (developRiderSeason, kun analyse-værktøjer) er u�
     assert.equal(v1.next[k], expected, `${k}`);
   }
   assert.equal(v1.aging, undefined, "den gamle sti kender intet til v2");
+});
+
+// ── #8522 frossen golden (hard rule #7587): dagens aldring og kandidat B-aldringen ──
+// Digesten er regnet af MERGE-BASENS kode (før #8522), ikke af den nye kodes default.
+// Ændrer den sig, har sæsonskiftet med XP slukket (eller kandidat B) flyttet sig.
+function agingGoldenDigest(cfg) {
+  const loads = [null, { raceDays: 0, hardDays: 0 }, { raceDays: 17, hardDays: 9 }, { raceDays: 55, hardDays: 30 }, { raceDays: 130, hardDays: 0 }];
+  const out = [];
+  for (const type of RIDER_TYPE_KEYS) {
+    for (let age = 24; age <= 42; age++) {
+      loads.forEach((load, li) => {
+        const abilities = Object.fromEntries(VISIBLE_ABILITIES.map((k, i) => [k, 20 + ((i * 13 + age * 7 + li * 5) % 79)]));
+        const r = developRiderSeasonV2({ id: `g-${type}-${age}`, primary_type: type, potentiale: 3, age }, abilities, 4 + li, cfg ? { load, cfg } : { load });
+        out.push([type, age, li, r.next, r.aging.totalDrop, r.retirement.retire]);
+      });
+    }
+  }
+  return createHash("sha256").update(JSON.stringify(out)).digest("hex");
+}
+
+test("#8522 golden: dagens aldring (XP slukket) er bit-identisk med merge-basen", () => {
+  assert.equal(agingGoldenDigest(null), "e2e52d5047a543ea732c642ffe16b9be1f1f9174aa689e5c1910753c961c6e95");
+});
+
+test("#8522 golden: kandidat B-aldringen (talfilens trin-form) er bit-identisk med merge-basen", () => {
+  const cfg = xpAgingConfig({ aging: { plateauThroughAge: 27, declineByYearsPastPlateau: [{ maxYears: 4, drop: 1 }, { maxYears: 99, drop: 2 }], late: { fromAge: 33, drop: 0.5 } } });
+  assert.equal(agingGoldenDigest(cfg), "7035c607d0dfc10717dee9c3a9d60c28e09f06b7e346b88e9fd0162abd50475b");
 });
