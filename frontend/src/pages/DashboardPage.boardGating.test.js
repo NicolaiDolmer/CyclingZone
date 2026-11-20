@@ -11,8 +11,13 @@ import { fileURLToPath } from "node:url";
 // `board` (udledt af activePlan?.board) bliver null — men kortet renderede
 // alligevel den tomme "No board data"-state.
 //
-// Bekræftet fravær skjuler kortet. En afventende forespørgsel reserverer kun
-// kortets ramme, og indholdet kræver stadig et etableret board.
+// Fix: gate kortet på `isVisible("board") && board`, så det kun vises når en
+// rigtig plan-board findes. Den nu-døde `!board`-tom-state-gren er fjernet.
+//
+// #8019 (ejer 20/11, hurtigt men uden blink): bestyrelsen hentes for sig selv,
+// og kortet har INGEN pladsholder mens læsningen står på. En grå kasse der
+// forsvinder igen for spillere uden plan er et blink. De moduler der afhænger
+// af bestyrelsen venter i stedet stille, så intet skifter efter første visning.
 //
 // Repoet kører `node --test` uden DOM-renderer, så vi guard'er invarianten
 // kildekode-strukturelt (samme mønster som FinancePage.loadStates.test.js).
@@ -21,14 +26,28 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(__dirname, "DashboardPage.jsx"), "utf8");
 const dataSource = readFileSync(join(__dirname, "..", "data", "dashboardData.ts"), "utf8"); // #6494: server data moved to the data layer
 
-test("#1488 board-kortet er skjult ved bekræftet fravær, men bevarer en pending-ramme", () => {
+test("#1488 board-kortet er gated på BÅDE modul-synlighed OG en etableret board", () => {
   assert.match(
     source,
-    /\{isVisible\("board"\)\s*&&\s*\(board \|\| dashboard\.boardPending\)\s*&&\s*\(/,
-    "rammen vises kun for et etableret board eller en afventende læsning",
+    /\{isVisible\("board"\)\s*&&\s*board\s*&&\s*\(/,
+    'board-kortet skal gates på `isVisible("board") && board` — ellers vises det tomt i baseline-fasen',
   );
-  assert.match(source, /\{board \? <div>/, "boardets indhold kræver et etableret board");
+});
+
+test("#8019 ingen pladsholder for bestyrelseskortet, mens læsningen står på", () => {
+  assert.doesNotMatch(source, /board \|\| dashboard\.boardPending/, "en afventende læsning må ikke vise kortets ramme");
   assert.match(dataSource, /boardPending: hasTeam && boardQuery\.isPending/);
+});
+
+test("#8019 de bestyrelses-afhængige moduler skifter ikke efter første visning", () => {
+  // Næste træk kan få et bestyrelsespunkt: kortet venter i sin reserverede tilstand.
+  assert.match(source, /<NextActionsCard[\s\S]{0,200}?loading=\{[^}]*dashboard\.boardPending\}/);
+  // Global Rank står efter kortet: den vises først når bestyrelsen er afklaret,
+  // men monteres med det samme (`hidden`/`contents`, ingen ekstra grid-celle).
+  assert.match(source, /className=\{dashboard\.boardPending \? "hidden" : "contents"\}>\s*<GlobalRankWidget \/>/);
+  // Sæsonstart-guiden: siden venter på bestyrelsen i vinduet, inden for samme budget.
+  assert.match(source, /const boardHoldsReveal = dashboard\.boardPending && seasonStartWindowOpen && !seasonStartDismissed;/);
+  assert.match(source, /const initialDataReady = [^\n]*!boardHoldsReveal/);
 });
 
 test("#1488 board udledes fra activePlan (kun non-null når en plan findes)", () => {

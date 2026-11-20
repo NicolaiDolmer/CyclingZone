@@ -52,18 +52,26 @@ test("#3510 fejlet load renderer den kanoniske ErrorState med retry, ikke et tom
   );
 });
 
-test("#5322 et 'naaede aldrig serveren'-resultat loeftes til sidens fejlflade, ikke stille til null", () => {
-  // apiFetch kaster ikke laengere ved en transportfejl (#5322). Uden dette
-  // loeft ville bestyrelseskaldet falde ned i sin `res.ok`-gren, og
-  // spilleren ville se et halvtomt dashboard i stedet for "kan ikke naa
-  // serveren" — praecis den tilstand #5312 handlede om.
+test("#5322/#8019 bestyrelsen er et modul: en transportfejl skjuler kortet, aldrig hele siden", () => {
+  // apiFetch kaster ikke laengere ved en transportfejl (#5322). Bestyrelsens
+  // laesning kaster den selv, saa Query beholder kendte data ved en refresh.
   assert.match(
     dataSource,
     /apiFetch\("\/api\/board\/status"[\s\S]{0,120}?if \(res\.networkError\) throw res;/,
-    "board/status skal loefte et netvaerks-resultat til fejlfladen",
+    "board/status skal kaste et netvaerks-resultat, ikke laese det som 'ingen bestyrelse'",
   );
+  // #8019 (ejer 20/11): sidens fejlflade kommer KUN fra kernen og holdets
+  // bootstrap (DASHBOARD_RULES.md §3: et modul maa aldrig vaelte dashboardet).
+  assert.match(dataSource, /const error = bootstrapError \?\? coreError \?\? null;/);
+  assert.doesNotMatch(dataSource, /boardQuery\.error/, "bestyrelsens fejl maa ikke naa sidens fejlflade");
   // #2230: my-offers is independent; failure must not replace the whole page.
+});
 
+test("#5312/#8019 kernen siger selv til, naar spillets server ikke kan naas", () => {
+  // Bestyrelsen var det eneste kald paa den blokerende sti der kunne vise
+  // offline-tilstanden. Nu er kernen selv utilgaengelig, naar BAADE holdlisten
+  // og rytterlisten fejler, i stedet for et stille halvtomt dashboard.
+  assert.match(dataSource, /if \(teamsRes\.error && ridersRes\.error\) throw ridersRes\.error;/);
 });
 
 test("#3510 recentResults + riderRanking defaulter til null (ikke []), så post-paint-fetch kan skelnes fra bekræftet tom", () => {

@@ -47,7 +47,7 @@
 - **Maks én nudge-banner ad gangen.** Discord-nudgen er den ene i dag. Nye moduler bygges som `Card`, ikke som banner, så de ikke tælles med i den regel.
 - **Betingede moduler må ikke efterlade tomme grid-celler.** Er et par sat op, og det ene modul er skjult, skal cellen kollapse.
 - **Alt kan slås fra.** Nye moduler registreres i `DashboardCustomizeMenu` ([#1005](https://github.com/NicolaiDolmer/CyclingZone/issues/1005)) efter det eksisterende mønster.
-- **Sekundære kort håndterer egne fejl.** Bestyrelsesstatus indlæses separat. Et HTTP-fejlsvar skjuler bestyrelsens data. Ved netværksfejl viser dashboardet sin offline-tilstand, og Prøv igen henter bestyrelsesstatus igen (#5322).
+- **Et modul må aldrig kunne vælte dashboardet.** Fejler dets datakald, forsvinder modulet stille — dashboardet viser ikke en fejltilstand på grund af et sekundært kort.
 - Design i øvrigt: `docs/design/PAGE_TEMPLATES.md`. Hairline-borders, 5px radius, tabular figures, stroke-ikoner, ingen emoji, farver kun via cz-tokens.
 - **Indlæsning (ejer 11/11, #2230, valg A):** hvert fast kort viser indhold, når det er klart; resten beholder stille grå pladsholdere. Den fælles `ReservedBody` reserverer kortets listekapacitet gennem loading/content/empty. Ramme og overskrift bliver stående. Refresh beholder de kendte data. Betingede kort skal stadig følge synlighedsreglerne ovenfor; en midlertidig stribe må ikke skubbe resten af siden, når den viser sig at være tom.
 
@@ -80,4 +80,12 @@ Bestyrelsen mistede sin `lg:col-span-2` i omlægningen: /board har 959 sessions 
 
 The unknown header identity uses compact, capped skeleton widths so it does not force the action cluster onto an extra mobile row. While balance is pending, its existing optional locked-balance line holds a local skeleton; confirmed zero still removes that line. Undefined latest-result data renders the existing Card/header and quiet pending body matching the measured synthetic fixture anatomy (355px desktop / 394px mobile; other histories and first-race variants can differ): five 58px rows, plus two mobile wrapping lines. Null/error and confirmed-empty behavior remain unchanged. This reserves genuine pending data only; late conditional content and a confirmed-empty stage strip still follow their established visibility rules, and their remaining CLS must be reported separately.
 
-Bestyrelsens valgfrie data hentes parallelt med kernedata for holdet. Korthandlinger kan bruges, når deres egne data er klar. Bestyrelseskortet har en ventetilstand under læsningen. Det vises med indhold efter en etableret plan og skjules ved bekræftet fravær. Spørgeskemakortets tilstedeværelse afklares med den øvrige øvre del inden sidens eksisterende ventefrist. Refs #8019.
+### #8019 bestyrelsen for sig selv (ejer 20/11: hurtigt, men uden blink)
+
+Bestyrelsesstatus hentes parallelt med kernedata og holder ikke siden tilbage. Den er et modul som alle andre: fejler kaldet (netværk eller HTTP), skjules kun bestyrelseskortet, og dashboardet går aldrig i offline-tilstand på grund af det. Kernen siger selv til, når spillets server ikke kan nås: fejler både holdlisten og rytterlisten, er kernen utilgængelig og viser sin fejltilstand med Prøv igen (#5312).
+
+- **Ingen pladsholder for bestyrelseskortet.** Det vises først, når en etableret plan findes. En grå kasse, der forsvinder igen for spillere uden plan, er et blink.
+- **Global Rank holdes skjult, til bestyrelsen er afklaret.** Den står efter bestyrelseskortet, så et sent kort ellers ville flytte den. Widget'en monteres med det samme, så dens egen læsning ikke venter.
+- **Næste træk bliver i sin reserverede ventetilstand, til bestyrelsen er afklaret.** Listen kan få et bestyrelsespunkt og skifter derfor aldrig indhold efter første visning.
+- **Sæsonstart-guiden:** i sæsonstart-vinduet venter siden på bestyrelsen inden for det samme budget som de øvrige betingede kort, så guidens bestyrelsespunkt er afgjort ved første visning.
+- Spørgeskemakortets tilstedeværelse afklares med den øvrige øvre del inden sidens eksisterende ventefrist.

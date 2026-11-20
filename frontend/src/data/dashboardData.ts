@@ -2,7 +2,6 @@ import { useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase.ts";
 import { apiFetch } from "../lib/apiFetch.ts";
-import { isNetworkError } from "../lib/networkErrorGuards.ts";
 import { timeoutSignal } from "../lib/timeoutSignal.ts";
 import { fetchSquadCountInputs } from "../lib/dashboardSquadStats.js";
 import { mergeStandings } from "../lib/standingsMerge.js";
@@ -24,8 +23,10 @@ import { LIVE_RESOURCES, isScopeResource, cancelledWithoutData, settledList, sam
 
 // #6494: the Dashboard's page-owned server data. Every resource is one Query key under the
 // viewer/team scope; the page keeps only UI state (dismissals, menus, pending submits).
-// Core and team bootstrap can raise the page error. The independent board status
-// read can also show the offline state on transport failure (#5322, DASHBOARD_RULES.md §3).
+// Module semantics are unchanged from the legacy loadAll (DASHBOARD_RULES.md §3: a module
+// never takes the dashboard down): only the core block and the team bootstrap can raise the
+// page error, every other module settles to its own empty/absent state. #8019: the board
+// status is such a module now; a failed board read hides only the board card.
 
 type Row = Record<string, any>;
 type SupabaseResult = { data: any; error?: unknown; count?: number | null };
@@ -72,6 +73,9 @@ interface DashboardBoard {
   boardStatusLoaded: boolean;
 }
 
+/** #8019: the board status is read on its own, so a slow board never holds back the core.
+ * A transport failure is thrown (Query keeps known data on a refresh); the page never turns
+ * it into its offline state, the board card just stays hidden. */
 async function readBoard(runtime: DataRuntime, scope: DataScope, signal: AbortSignal): Promise<DashboardBoard | null> {
   const revision = await runtime.beforeRead(signal);
   const headers = await scopedHeaders(runtime, scope, false);
@@ -83,6 +87,7 @@ async function readBoard(runtime: DataRuntime, scope: DataScope, signal: AbortSi
   const activePlan = boardStatus?.plans?.["1yr"] || boardStatus?.plans?.["3yr"] || boardStatus?.plans?.["5yr"] || null;
   return {
     board: activePlan?.board || null,
+    // #1830: aggregated across all plans, same helper as the board page.
     boardSatisfaction: computeOverallBoardSatisfaction(boardStatus.plans),
     boardOutlook: activePlan?.outlook || null,
     boardPlanMissing: !boardStatus.is_baseline_phase && !hasSignedBoardPlan(boardStatus.plans),
@@ -123,6 +128,10 @@ async function readCore(runtime: DataRuntime, scope: DataScope, team: Row, activ
     fetchReservedBalance(supabase, team.id),
   ]) as [SupabaseResult, SupabaseResult, { pendingIncomingCount: number }, SupabaseResult, SupabaseResult, SupabaseResult, SupabaseResult, number];
   runtime.assertReadCurrent(scope, revision);
+  // #5312/#8019: the board read used to be the only call here that could surface "the game
+  // server cannot be reached". It is a module now, so the core says it itself: when both of
+  // its own primary reads fail, the core is unavailable (the page shows the offline or the
+  // load error with retry) instead of a silently half-empty dashboard.
   if (teamsRes.error && ridersRes.error) throw ridersRes.error;
   // #2328: all of the team's coming pool races, sorted by the calendar date.
   const nextRaces = [...(racesRes.data || [])]
@@ -408,8 +417,7 @@ export function useDashboardData(options: DashboardOptions) {
 
   const coreError = core === undefined ? coreQuery.error : null;
   const bootstrapError = team ? null : context.error;
-  const boardError = isNetworkError(boardQuery.error) ? boardQuery.error : null;
-  const error = bootstrapError ?? coreError ?? boardError;
+  const error = bootstrapError ?? coreError ?? null;
   const loading = !signedOut && (!ready || context.bootstrapLoading || (hasTeam && (!seasonSettled || core === undefined) && !coreError));
 
   const refreshLive = useCallback(() => client.invalidateQueries(
