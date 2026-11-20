@@ -714,13 +714,13 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
               aria-label={t("r5.selectAll")} className="h-4 w-4 rounded-[3px] accent-cz-accent" />
           </th>
           <th className="w-[36px]"><span className="sr-only">{t("r5.sessions.label")}</span></th>
-          <SortTh k="rider" label={t("colRider")} cls="w-[192px]" sort={sort} onSort={onSort} />
+          <SortTh k="rider" label={t("colRider")} cls="w-[184px]" sort={sort} onSort={onSort} />
           <SortTh k="type" label={t("colType")} cls="w-[128px]" sort={sort} onSort={onSort} />
           <SortTh k="age" label={t("colAge")} cls="w-[56px]" sort={sort} onSort={onSort} />
           <SortTh k="program" label={t("r5.col.program")} cls="w-[150px]" sort={sort} onSort={onSort} />
           <SortTh k="form" label={t("form")} cls="w-[64px]" sort={sort} onSort={onSort} />
           {/* Pilen stoedte op til Day load (ejer 20/11): kolonnen er bred nok, og en lang overskrift brydes inde i sin egen celle. */}
-          <SortTh k="fatigue" label={t("r5.col.fatigueNow")} cls="w-[116px]" sort={sort} onSort={onSort} />
+          <SortTh k="fatigue" label={t("r5.col.fatigueNow")} cls="w-[124px]" sort={sort} onSort={onSort} />
           <SortTh k="load" label={t("r5.col.dayLoad")} cls="w-[124px]" sort={sort} onSort={onSort} />
           <SortTh k={null} label={t("r5.col.today")} cls="" sort={sort} onSort={onSort} />
         </tr>
