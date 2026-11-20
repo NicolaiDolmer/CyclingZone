@@ -140,8 +140,9 @@ export function fillWeekBlocks(blocks: DayBlock[], races: RaceSlot[][], limitAft
         left = left.filter((f) => f !== at);
       }
     }
-    left.forEach((f, i) => { row[f] = { kind: "session", session: b.prio[i], prio: i + 1 }; });
-    taken.push(b.prio.slice(left.length));
+    // Flere ledige felter end pas i blokken: resten staar som hvile (ingen opdigtede pas).
+    left.forEach((f, i) => { if (b.prio[i]) row[f] = { kind: "session", session: b.prio[i], prio: i + 1 }; });
+    taken.push(b.prio.slice(Math.min(left.length, b.prio.length)));
     return applyLimit(row, limitAfter[d]);
   });
   return { cells, taken };
