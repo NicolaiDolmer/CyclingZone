@@ -1,5 +1,29 @@
 export const PATCHES = [
 {
+  "version": "7.477",
+  "date": "2026-11-20",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Club",
+      "area": "interface",
+      "en": {
+        "title": "Calmer card titles on the Club page",
+        "body": "Facility cards on the Club page and the team link in the rider switcher now use the regular interface font instead of the big display font."
+      },
+      "da": {
+        "title": "Roligere korttitler på Klub-siden",
+        "body": "Faciliteterne på Klub-siden og holdlinket i ryttervælgeren bruger nu den almindelige skrift i stedet for den store overskriftsskrift."
+      },
+      "refs": [
+        8335
+      ]
+    }
+  ]
+},
+{
   "version": "7.476",
   "date": "2026-11-20",
   "changes": [
