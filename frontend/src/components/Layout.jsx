@@ -438,7 +438,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
               <button
                 onClick={() => toggleGroup(group.key)}
                 className="w-full flex items-center justify-between px-4 pt-4 pb-1 group">
-                <span className="text-3xs font-bold uppercase tracking-[0.14em] text-cz-sidebar-3 group-hover:text-cz-sidebar-2 transition-colors">
+                <span className="text-3xs font-bold uppercase tracking-[0.14em] text-cz-sidebar-2 group-hover:text-cz-sidebar-1 transition-colors">
                   {group.label}
                 </span>
                 <ChevronDownIcon aria-hidden="true" className={`w-3 h-3 text-cz-sidebar-3 group-hover:text-cz-sidebar-2 transition-all duration-200 ${isOpen ? "rotate-180" : ""}`} />
@@ -458,7 +458,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
         {/* Bottom nav items */}
         <div className="h-px bg-cz-sidebar-border my-3 mx-4" />
         <div className="px-4 pt-4 pb-1">
-          <span className="text-3xs font-bold uppercase tracking-[0.14em] text-cz-sidebar-3">
+          <span className="text-3xs font-bold uppercase tracking-[0.14em] text-cz-sidebar-2">
             {t("nav.group.accountHelp")}
           </span>
         </div>
