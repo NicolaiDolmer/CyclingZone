@@ -291,9 +291,8 @@ function QuickSelect({ row, r5, full = false, tour }: { row: Row; r5: TodayR5Pro
           options={EFFORTS.map((e) => ({ value: e, label: t(`r5.effort.${e}`), disabled: busy }))}
           className={full ? "w-full" : ""}
         />
-        {full && r5.justSaved.has(row.id) && <SavedMark />}
       </div>
-      <SourceLine row={row} r5={r5} />
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5"><SourceLine row={row} r5={r5} />{r5.justSaved.has(row.id) && <SavedMark />}</div>
       {error && <span role="alert" className="text-3xs text-cz-danger">{t([`planActionError_${error}`, "planActionErrorGeneric"])}</span>}
     </div>
   );
@@ -667,7 +666,6 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
                       {row.racing ? <RaceCell row={row} /> : (
                         <div className="flex items-center gap-2">
                           <QuickSelect row={row} r5={r5} tour={tourAnchor()} />
-                          {r5.justSaved.has(row.id) && !locked && <SavedMark />}
                         </div>
                       )}
                     </td>
