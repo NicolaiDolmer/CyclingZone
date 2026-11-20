@@ -27,10 +27,10 @@
 // fra `params` (privat, hard rule 17) eller fra motorens egne konfigurationer.
 
 import {
-  buyPoints, xpDatePointCap, xpPerDate, xpSessionShare, xpTypeShare, type DevelopmentXpParams,
+  buyPoints, xpBestTypeRating, xpDistanceFactor, xpPerDate, xpSessionShare, xpTypeShare, xpWearOf, type DevelopmentXpParams,
 } from "./developmentXp.ts";
 import { resolveProgram } from "./dailyTraining.js";
-import { applyTrainingCatalog, v3SmartDefaultFocus } from "./trainingCatalogV3.js";
+import { V3_RIDER_TYPE_HARD_PAIRS, applyTrainingCatalog, v3SmartDefaultFocus } from "./trainingCatalogV3.js";
 import { TRAINING_CONFIG, TRAINING_FOCUSES, programAbilityWeight } from "./training.js";
 import { RECOVERY_INTENSITY, dayTypeForProgram } from "./trainingDayTypes.js";
 import { PROGRESSION_CONFIG, abilityRoleClass, developRiderSeasonV2, xpAgingConfig } from "./riderProgression.js";
@@ -74,15 +74,30 @@ export function standardCareerProgram(primaryType: string | null, secondaryType:
 }
 
 /**
+ * G3a (spec 2026-11-20 §6.1): den roterende plan i typens evner. Assistentens plan og
+ * typens to hårde sessioner (katalogets "par for" typen) skiftes dato for dato med
+ * assistentens intensitet, så standardkarrieren træner hele typen og ikke ét fast program.
+ * Ukendt type = kun assistentens plan.
+ */
+export function standardCareerRotation(primaryType: string | null, secondaryType: string | null = null) {
+  const base = standardCareerProgram(primaryType, secondaryType) as { focus?: string; intensity?: string };
+  const pair = (V3_RIDER_TYPE_HARD_PAIRS as Record<string, readonly string[]>)[primaryType as string] ?? [];
+  const focuses = [...new Set([base.focus as string, ...pair])];
+  return focuses.map((focus) => (focus === base.focus ? base
+    : applyTrainingCatalog({ focus, intensity: base.intensity }, { v3: true })));
+}
+
+type CareerProgram = { focus?: string; intensity?: string; focusAbilities?: readonly string[]; offFocus?: boolean };
+
+/**
  * Hver evnes andel af dagens XP i standardkarrieren: sessionens andel gange typens.
  * Samme fordeling som motorens XP-gren, uden dagens led (træner, variation, Træn nu).
+ * Uden `program` er det assistentens plan for typen.
  */
 export function standardCareerShares(
   primaryType: string | null, secondaryType: string | null, params: DevelopmentXpParams,
+  program: CareerProgram = standardCareerProgram(primaryType, secondaryType) as CareerProgram,
 ): Record<string, number> {
-  const program = standardCareerProgram(primaryType, secondaryType) as {
-    focus?: string; intensity?: string; focusAbilities?: readonly string[]; offFocus?: boolean;
-  };
   const out: Record<string, number> = {};
   if (program.intensity === "rest") return out;
   const grow = TRAINING_CONFIG.focusGrowthMult as Record<string, number>;
@@ -112,6 +127,10 @@ export interface ExpectedTopRider {
   potentiale: number | null | undefined;
   primaryType: string | null | undefined;
   secondaryType?: string | null;
+  /** Potentialet P (1-99) til afstandsfaktoren (G3a). Udeladt = faktor 1, som før. */
+  ceiling?: number | null;
+  /** Slid (spec 2026-11-20 §3), læst med xpWearOf. Udeladt = intet. */
+  wear?: number | null;
 }
 
 export interface ExpectedCareer {
@@ -155,23 +174,32 @@ export function expectedCareer(
   const ratingNow = ratingOf(state, primaryType, secondaryType);
   if (ratingNow == null) return null;
 
-  const shares = standardCareerShares(primaryType, secondaryType, params);
+  // G3a: den roterende plan i typens evner, én fordeling pr. plan, skiftet dato for dato
+  // (spec 2026-11-20 §6.1). Datotælleren løber hen over sæsonerne, så rotationen fortsætter.
+  const rotation = standardCareerRotation(primaryType, secondaryType)
+    .map((program) => Object.entries(standardCareerShares(primaryType, secondaryType, params, program as CareerProgram)));
   const bars: Record<string, number> = {};
   let top = ratingNow;
   let topAbilities = { ...state };
   let topAge = age;
   const agingCfg = xpAgingConfig(params);
+  const wear = xpWearOf(rider);
+  let date = 0;
   for (let a = age; a <= career.endAge; a++) {
     const physical = xpPerDate({ potentiale: rider.potentiale, age: a }, params);
     const mental = xpPerDate({ potentiale: rider.potentiale, age: a, mental: true }, params);
-    for (let d = 0; d < career.datesPerSeason; d++) {
-      for (const [ability, share] of Object.entries(shares)) {
+    for (let d = 0; d < career.datesPerSeason; d++, date++) {
+      // Samme afstandsfaktor som motorens tick (developmentXpTick): ud fra evnerne ved
+      // datoens start. Ingen grænse pr. dato (G3a), som i motoren.
+      const factor = xpDistanceFactor({
+        ceiling: rider.ceiling, rating: params.distance ? xpBestTypeRating(state) : null, wear,
+      }, params);
+      if (!(factor > 0)) continue;
+      for (const [ability, share] of rotation[date % rotation.length]) {
         const level = state[ability];
         if (!isNum(level)) continue;
         const riderXp = MENTAL_ABILITIES.has(ability) ? mental : physical;
-        // Samme datoregel som motoren (#6110 R16, ejervalg A 16/11): resten venter på bjælken.
-        const out = buyPoints({ level, bar: bars[ability] ?? 0, xp: riderXp * share,
-          maxPoints: xpDatePointCap({ startLevel: level, age: a, potentiale: rider.potentiale }, params) }, params);
+        const out = buyPoints({ level, bar: bars[ability] ?? 0, xp: riderXp * share * factor }, params);
         bars[ability] = out.bar;
         state[ability] = out.level;
       }
