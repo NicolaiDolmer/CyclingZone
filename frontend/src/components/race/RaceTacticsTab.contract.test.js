@@ -330,9 +330,10 @@ test("#8298: låste ryttere beholder planen, og det valgte kort afledes af rytte
   has(source, "const lockedSet = new Set((order.riders ?? []).filter((r) => r.locked === true).map((r) => r.rider_id));");
   const payload = readFileSync(join(__dirname, "../../lib/tacticsOrderPayload7864.ts"), "utf8");
   has(payload, "...(stagePlan&&rider.locked===true?{locked:true}:{})");
-  // Ingen lyser = følger holdets plan; den valgte knap igen = tilbage til holdets plan.
-  has(panelV6c, "const level = levelOfLegs(legs, plans, medium);");
-  has(panelV6c, "const next = picked === level ? medium : plans[picked];");
+  // Holdets plan markerer intet, og spilleren kan vælge den igen via rowens genvej.
+  has(panelV6c, "const selected = JSON.stringify(legs) === JSON.stringify(medium) ? null : quickEffortOf(legs, role);");
+  has(panelV6c, "const next = quickPlans.get(picked)?.legs;");
+  has(panelV6c, "onFollowTeam={(id) => byId.get(id)?.followTeam?.()}");
   // Teksterne ligger i det route-gatede namespace "tactics"; panelet venter på dem.
   has(source, 'useTranslation(layout === "v6c" ? "tactics" : "races")');
   has(panelV6c, "if (!tacticsTextReady) {");
