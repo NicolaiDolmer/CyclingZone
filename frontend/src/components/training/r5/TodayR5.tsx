@@ -187,17 +187,17 @@ function TypeCell({ row }: { row: Row }) {
   return <RiderTypeBadge primaryType={row.primaryType} secondaryType={row.secondaryType} stacked />;
 }
 
-function ProgramButton({ row, full = false, r5 }: { row: Row; full?: boolean; r5: TodayR5Props }) {
+function ProgramButton({ row, r5 }: { row: Row; r5: TodayR5Props }) {
   const { t } = useTranslation("training");
   const label = row.program.kind === "none" ? t("r5.program.none") : row.program.name ?? t("r5.program.own");
   const locked = r5.trainedToday;
   return (
     <Dropdown
-      className={full ? "w-full" : ""}
+      className="w-full"
       trigger={({ open, toggle }: { open: boolean; toggle: () => void }) => (
         <button type="button" onClick={toggle} aria-expanded={open} aria-haspopup="menu"
           aria-label={t("r5.program.aria", { name: row.name, program: label })}
-          className={`inline-flex max-w-full items-center justify-between gap-1.5 rounded-cz border border-cz-border px-2 py-1 text-xs font-medium hover:border-cz-3 max-sm:min-h-11 ${full ? "w-full" : "w-[150px]"} ${
+          className={`inline-flex max-w-full items-center justify-between gap-1.5 rounded-cz border border-cz-border px-2 py-1 text-xs font-medium hover:border-cz-3 max-sm:min-h-11 w-full ${
             row.program.kind === "none" ? "text-cz-2" : "text-cz-1"}`}>
           {/* Ejer 19/11: ingen advarsel ved "No program"; at undlade et program er et aktivt valg. */}
           <span className="truncate">{label}</span>
@@ -228,10 +228,10 @@ function RaceCell({ row, compact = false }: { row: Row; compact?: boolean }) {
 function SourceLine({ row, r5 }: { row: Row; r5: TodayR5Props }) {
   const { t } = useTranslation("training");
   const busy = r5.savingId === row.id || r5.bulkApplying;
-  if (row.program.kind === "program" || row.program.kind === "group") {
+  if (row.program.kind !== "none") {
     return (
       <span className="whitespace-nowrap text-2xs text-cz-2">
-        {t(row.program.kind === "group" ? "r5.source.group" : "r5.source.program")}: {row.effective ? <EffortWord effort={row.effective} /> : t("r5.source.noDay")}
+        {row.program.kind === "own" ? t("r5.program.own") : t(`r5.source.${row.program.kind}`)}: {row.effective ? <EffortWord effort={row.effective} /> : t("r5.source.noDay")}
       </span>
     );
   }
@@ -274,7 +274,7 @@ function QuickSelect({ row, r5, full = false, tour }: { row: Row; r5: TodayR5Pro
     );
   }
   // Det trykkede segment er rytterens egen dag; et program eller ingen dag staar i linjen under.
-  const pressed = row.plan?.focus && row.program.kind !== "program" && row.program.kind !== "group" ? row.effective : null;
+  const pressed = row.plan?.focus && row.program.kind === "none" ? row.effective : null;
   const choose = (effort: Effort) => {
     const w = writeForEffort(effort, { storedFocus: row.plan?.focus ?? null, assistantFocus: r5.smartDefaultFocus[row.id] ?? null });
     if (w.kind === "pick") r5.onPickSession(row.id);
@@ -282,7 +282,7 @@ function QuickSelect({ row, r5, full = false, tour }: { row: Row; r5: TodayR5Pro
   };
   const error = r5.planError?.riderId === row.id ? r5.planError.error : null;
   return (
-    <div className={`flex items-center gap-3 ${full ? "flex-col items-stretch gap-1.5" : ""}`} data-tour={tour}>
+    <div className={`flex flex-col ${full ? "items-stretch gap-1.5" : "items-start gap-1"}`} data-tour={tour}>
       <div className={full ? "flex items-center gap-2 [&_[role=group]]:flex-1 [&_button]:flex-1" : "flex items-center gap-2"}>
         <Segmented
           label={t("r5.quickLabel", { name: row.name })}
@@ -562,10 +562,10 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
   // --- Holdlinjen = massehandlingen (afvigelse 4: "N selected today") ---------------
   const scopeWord = line.kind === "selected" ? t("r5.team.selected", { n: line.ids.length }) : t("r5.team.whole");
   const teamLineNode = (
-    <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-cz-border px-3 py-2 text-xs ${r5.phone ? "flex-col items-stretch" : ""}`} data-testid="r5-team-line">
+    <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-cz-border px-3 py-2 text-xs ${r5.phone ? "gap-x-2" : ""}`} data-testid="r5-team-line">
       <span className="font-semibold tabular-nums text-cz-1" data-testid="r5-team-scope">{scopeWord}</span>
       {locked ? <span className="text-cz-3">{t("oneTap.locked")}</span> : (
-        <div className={r5.phone ? "[&_[role=group]]:w-full [&_button]:flex-1" : ""}>
+        <div className={r5.phone ? "basis-full [&_[role=group]]:w-full [&_button]:flex-1" : ""}>
           <Segmented label={scopeWord} value="none" onChange={(v: Effort) => { void applyEffort(v, line.ids); }}
             options={EFFORTS.map((e) => ({ value: e, label: t(`r5.effort.${e}`), disabled: r5.bulkApplying || line.ids.length === 0 }))} />
         </div>
@@ -580,7 +580,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
         {t("groupByType")}
       </button>
       {filterWords}
-      <div className={`flex items-center gap-2 ${r5.phone ? "[&_[role=group]]:flex-1 [&_button]:flex-1" : "ms-auto"}`}>
+      <div className={`flex items-center gap-2 ${r5.phone ? "" : "ms-auto"}`}>
         <Button type="button" variant="secondary" size="sm" iconLeft={<StarIcon size={13} aria-hidden="true" />} onClick={r5.onOpenAssistant} data-testid="r5-assistant-button">
           {t("mobile.assistantTitle")}
         </Button>
@@ -612,13 +612,13 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
               aria-label={t("r5.selectAll")} className="h-4 w-4 rounded-[3px] accent-cz-accent" />
           </th>
           <th className="w-[36px]"><span className="sr-only">{t("r5.sessions.label")}</span></th>
-          <SortTh k="rider" label={t("colRider")} cls="w-[230px]" sort={sort} onSort={onSort} />
-          <SortTh k="type" label={t("colType")} cls="w-[140px]" sort={sort} onSort={onSort} />
-          <SortTh k="age" label={t("colAge")} cls="w-[64px]" sort={sort} onSort={onSort} />
-          <SortTh k="program" label={t("r5.col.program")} cls="w-[170px]" sort={sort} onSort={onSort} />
-          <SortTh k="form" label={t("form")} cls="w-[72px]" sort={sort} onSort={onSort} />
-          <SortTh k="fatigue" label={t("r5.col.fatigueNow")} cls="w-[110px] whitespace-nowrap" sort={sort} onSort={onSort} />
-          <SortTh k="load" label={t("r5.col.dayLoad")} cls="w-[150px]" sort={sort} onSort={onSort} />
+          <SortTh k="rider" label={t("colRider")} cls="w-[200px]" sort={sort} onSort={onSort} />
+          <SortTh k="type" label={t("colType")} cls="w-[128px]" sort={sort} onSort={onSort} />
+          <SortTh k="age" label={t("colAge")} cls="w-[56px]" sort={sort} onSort={onSort} />
+          <SortTh k="program" label={t("r5.col.program")} cls="w-[150px]" sort={sort} onSort={onSort} />
+          <SortTh k="form" label={t("form")} cls="w-[64px]" sort={sort} onSort={onSort} />
+          <SortTh k="fatigue" label={t("r5.col.fatigueNow")} cls="w-[100px] whitespace-nowrap" sort={sort} onSort={onSort} />
+          <SortTh k="load" label={t("r5.col.dayLoad")} cls="w-[132px]" sort={sort} onSort={onSort} />
           <SortTh k={null} label={t("r5.col.today")} cls="" sort={sort} onSort={onSort} />
         </tr>
       </thead>
@@ -693,7 +693,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
     rider: t("colRider"), type: t("colType"), age: t("colAge"), program: t("r5.col.program"),
     form: t("form"), fatigue: t("r5.col.fatigueNow"), load: t("r5.col.dayLoad"),
   };
-  const mobileCols = "grid-cols-[1fr_34px_38px_78px_14px] gap-1.5";
+  const mobileCols = "grid-cols-[minmax(0,1fr)_34px_44px_76px_12px] gap-1.5";
   const mobileList = (
     <div>
       <div className="flex items-center gap-2 border-b border-cz-border px-3 py-2 text-xs" data-testid="r5-mobile-tools">
@@ -710,7 +710,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
           {pickMode ? t("selected", { n: selected.size }) : t("mobile.selectRiders")}
         </button>
       </div>
-      <div className={`grid ${mobileCols} border-b border-cz-border px-3 py-2 font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3`}>
+      <div className={`grid ${mobileCols} border-b border-cz-border px-3 py-2 font-data text-3xs font-semibold uppercase leading-tight text-cz-3`}>
         <span>{t("colRider")}</span><span>{t("form")}</span><span>{t("fatigue")}</span><span>{t("r5.col.dayLoad")}</span><span />
       </div>
       <ul>
@@ -746,7 +746,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
                     </span>
                     <span><FormPlate value={row.form} /></span>
                     <span><FatiguePlate value={row.fatigue} /></span>
-                    <span>{row.racing ? <RaceCell row={row} compact /> : <DayLoadCell load={dayLoad(row.fields)} label={(l) => t(`r5.load.${l}`)} />}</span>
+                    <span>{row.racing ? <RaceCell row={row} compact /> : <span className="[&>span]:whitespace-normal [&>span]:text-2xs [&>span]:leading-tight"><DayLoadCell load={dayLoad(row.fields)} label={(l) => t(`r5.load.${l}`)} /></span>}</span>
                     <span>{!pickMode && (o ? <ChevronDownIcon size={13} aria-hidden="true" className="text-cz-3" /> : <ChevronRightIcon size={13} aria-hidden="true" className="text-cz-3" />)}</span>
                   </button>
                   {/* Eet tryk som foer (ejer 20/11): valgknapperne staar i raekken. */}
@@ -759,7 +759,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
                     <div className="flex flex-col gap-3 border-t border-cz-border bg-cz-subtle/60 px-3 pb-4 pt-3">
                       <div className="grid grid-cols-2 gap-3 text-xs">
                         <div><div className={`mb-1 ${HEAD}`}>{t("colType")}</div><TypeCell row={row} /></div>
-                        <div><div className={`mb-1 ${HEAD}`}>{t("r5.col.program")}</div><ProgramButton row={row} r5={r5} full /></div>
+                        <div><div className={`mb-1 ${HEAD}`}>{t("r5.col.program")}</div><ProgramButton row={row} r5={r5} /></div>
                         <div><div className={`mb-1 ${HEAD}`}>{t("colAge")}</div><span className="font-data tabular-nums text-cz-1">{row.age ?? "—"}</span></div>
                       </div>
                       <RiderDetails row={row} r5={r5} mobile />
