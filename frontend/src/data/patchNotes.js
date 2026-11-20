@@ -1,5 +1,29 @@
 export const PATCHES = [
 {
+  "version": "7.481",
+  "date": "2026-11-20",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Dashboard",
+      "area": "interface",
+      "en": {
+        "title": "The dashboard is ready sooner",
+        "body": "Your dashboard no longer waits for the board before it shows your team. Squad selection and the other cards are ready sooner, and nothing jumps when the board card arrives. If the board cannot load, only the board card is hidden."
+      },
+      "da": {
+        "title": "Dashboardet er klar hurtigere",
+        "body": "Dit dashboard venter ikke længere på bestyrelsen, før det viser dit hold. Holdudtagelse og de andre kort er klar hurtigere, og intet hopper, når bestyrelseskortet kommer. Kan bestyrelsen ikke hentes, skjules kun bestyrelseskortet."
+      },
+      "refs": [
+        8019
+      ]
+    }
+  ]
+},
+{
   "version": "7.480",
   "date": "2026-11-20",
   "changes": [
