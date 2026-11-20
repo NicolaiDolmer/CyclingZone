@@ -407,13 +407,13 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
       {/* Balance — guard mod undefined (jf. #446 bootstrap-race) */}
       {balance != null && (
         <div className="px-4 py-3 border-b border-cz-sidebar-border">
-          <p className="text-3xs text-cz-sidebar-3 uppercase tracking-widest mb-0.5">{t("sidebar.balance")}</p>
+          <p className="text-3xs text-cz-sidebar-2 uppercase tracking-widest mb-0.5">{t("sidebar.balance")}</p>
           <p className="text-cz-accent font-mono font-bold text-sm leading-tight" title={t("sidebar.balanceTooltip")}>
             {formatNumber(balance)} CZ$
           </p>
           <LockedSalesLine refreshKey={balance} className="text-cz-sidebar-2 text-3xs mt-0.5" />
           {team?.division != null && (
-            <p className="text-cz-sidebar-3 text-3xs mt-0.5" title={t("sidebar.divisionTooltip")}>{t("sidebar.division", { division: team.division })}</p>
+            <p className="text-cz-sidebar-2 text-3xs mt-0.5" title={t("sidebar.divisionTooltip")}>{t("sidebar.division", { division: team.division })}</p>
           )}
         </div>
       )}
