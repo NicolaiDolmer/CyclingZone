@@ -1,0 +1,21 @@
+{
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "switched_on",
+      "flag": "fatigue_now_7801",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "Fatigue now",
+        "body": "The fatigue you see now counts today's stages straight away, not only at the evening training. Your fatigue limit is checked before every slot, so a rider worn out by today's racing rests in the next slots as you chose. Injury risk and the assistant's suggestions also use fatigue now."
+      },
+      "da": {
+        "title": "Træthed lige nu",
+        "body": "Trætheden, du ser, tæller nu dagens kørte etaper med det samme, ikke først ved aftentræningen. Din træthedsgrænse tjekkes før hvert felt, så en rytter, der bliver træt af dagens løb, hviler i de næste felter, som du har valgt. Skaderisiko og assistentens forslag bruger også træthed lige nu."
+      },
+      "refs": [7801, 8088]
+    }
+  ]
+}
