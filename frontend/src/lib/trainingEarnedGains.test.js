@@ -8,6 +8,7 @@ import { earnedGains, earnedGainTotal, earnedJumps } from "./trainingEarnedGains
 import { selectTrainingMoment, dayTopCandidate, MOMENT_TYPES } from "./trainingMoment.js";
 import { todayGainTotal } from "./trainingReport.js";
 
+/** @param {Record<string, any>} [overrides] @returns {any} */
 function row(overrides = {}) {
   return {
     rider_id: "r1", name: "Rytter A", focus: "vo2max", intensity: "normal", receipt_status: "complete",
