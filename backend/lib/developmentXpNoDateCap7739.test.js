@@ -1,8 +1,8 @@
 // #7739 (ejer 7/11 paa #6110): under XP-modellen er der intet +1-loft pr. evne pr. dato.
-// Ejervalg 16/11 (#6110 R16) vendte "kun prisen bremser": under XP stiger en evne hoejst
-// +2 pr. dato, resten venter paa bjaelken. Tallene er syntetiske (hard rule 17). Testene laaser:
-//   · XP on: hoejst +2 pr. evne pr. dato gennem motoren; dato-loftets kvittering
-//     (gains_deferred_by_date_cap) skrives ikke, for intet klippes (resten staar paa bjaelken)
+// Ejervalg 16/11 (#6110 R16) gav en graense paa +2 pr. dato; G3a (spec 2026-11-20 §3, #8520)
+// fjerner den igen: prisen og afstanden til P bremser. Tallene er syntetiske (hard rule 17). Testene laaser:
+//   · XP on: ingen graense pr. evne pr. dato gennem motoren; dato-loftets kvittering
+//     (gains_deferred_by_date_cap) skrives ikke, for intet klippes; en talfil med datePlus2 afvises
 //   · taendingsnatten (ejervalg 2 = A): gemt fremgang udbetales helt paa én nat
 //   · XP off: dagens model og kurve B holder stadig maks +1 pr. dato (bit-identiteten
 //     mod merge-basen laases af den frosne golden i developmentXpWiring.test.js)
@@ -43,24 +43,23 @@ test("#7739 forudsaetning: scenariets bjaelke raekker til flere point til prisen
   assert.ok(wallet >= xpPriceForNextPoint(level, XP) + xpPriceForNextPoint(level + 1, XP), "mindst to point uden ny XP");
 });
 
-test("#6110 R16 motor: efter taendingsnatten koeber XP hoejst +2 pr. evne pr. dato; resten venter, uden kvittering", async () => {
+test("G3a motor (#8520): efter taendingsnatten koeber XP alt, bjaelken raekker til; ingen graense pr. dato, ingen kvittering", async () => {
   for (const flags of [ENGINE_SCENARIOS.cap.flags, ENGINE_SCENARIOS.noCap.flags]) {
     const state = seed({ flags, overlay: xpOn(EARLIER) });
     const before = r1Level(state);
+    const stored = buyPoints({ level: before, bar: 4 }, XP).points;
+    assert.ok(stored > 2, "scenariet har gemt mere end +2");
     const result = await runEngine(state);
     const report = r1Report(result);
-    assert.equal(report.gains[ABILITY], 2, "hoejst +2 paa én dato, selv om bjaelken raekker til mere");
-    assert.equal(r1Level(state) - before, 2, "gemt evne = rapportens gevinst");
-    assert.ok(state.rider_derived_abilities[0].ability_progress[ABILITY] >= 1, "resten venter paa bjaelken");
-    for (const r of result.report.riders) {
-      assert.equal(r.gains_deferred_by_date_cap, undefined, "ingen dato-loft-kvittering under XP");
-      for (const n of Object.values(r.gains ?? {})) assert.ok(n <= 2, "ingen evne over +2");
-    }
+    assert.ok(report.gains[ABILITY] >= stored, "hele bjaelken koebes paa én dato (tidligere hoejst +2)");
+    assert.equal(r1Level(state) - before, report.gains[ABILITY], "gemt evne = rapportens gevinst");
+    for (const r of result.report.riders) assert.equal(r.gains_deferred_by_date_cap, undefined, "ingen dato-loft-kvittering under XP");
   }
 });
 
-test("#6110 R16 motor: datoens tidligere gevinster taeller med, ogsaa naar dato-loftet (#6210) er slukket (Codex P1)", async () => {
+test("G3a motor (#8520): datoens tidligere gevinster begraenser intet, med og uden dato-loftet (#6210)", async () => {
   for (const flags of [ENGINE_SCENARIOS.cap.flags, ENGINE_SCENARIOS.noCap.flags]) {
+    const plain = r1Report(await runEngine(seed({ flags, overlay: xpOn(EARLIER) })));
     const state = seed({ flags, overlay: xpOn(EARLIER) });
     // En tidligere koersel samme dato (loebsdags-aksen) har allerede givet +1 i evnen.
     state.training_day_runs.push({
@@ -69,25 +68,23 @@ test("#6110 R16 motor: datoens tidligere gevinster taeller med, ogsaa naar dato-
     });
     const before = r1Level(state);
     const report = r1Report(await runEngine(state));
-    assert.equal(report.gains[ABILITY], 1, `${JSON.stringify(flags)}: kun det, datoen har tilbage (+2 i alt)`);
-    assert.equal(r1Level(state) - before, 1);
+    assert.equal(report.gains[ABILITY], plain.gains[ABILITY], `${JSON.stringify(flags)}: samme koeb som uden den tidligere gevinst`);
+    assert.equal(r1Level(state) - before, report.gains[ABILITY]);
   }
 });
 
-test("#6110 R16 motor (ejervalg A): uden for de unge toptalenter paa meget lave evner koeber XP hoejst +1 pr. dato", async () => {
-  // Samme rytter og bjaelke; kun talfilens graenser goer ham "for gammel" eller evnen "for hoej".
-  for (const datePlus2 of [{ ...XP_TEST_PARAMS.datePlus2, maxAge: 20 }, { ...XP_TEST_PARAMS.datePlus2, belowLevel: 40 }, undefined]) {
-    const state = seed({ flags: ENGINE_SCENARIOS.noCap.flags, overlay: { ...xpOn(EARLIER), params: { ...XP_TEST_PARAMS, datePlus2 } } });
-    const before = r1Level(state);
-    const report = r1Report(await runEngine(state));
-    assert.equal(report.gains[ABILITY], 1, `${JSON.stringify(datePlus2)}: hoejst +1`);
-    assert.equal(r1Level(state) - before, 1);
-    assert.ok(state.rider_derived_abilities[0].ability_progress[ABILITY] >= 1, "resten venter paa bjaelken");
-    assert.equal(report.gains_deferred_by_date_cap, undefined, "ingen dato-loft-kvittering under XP");
-  }
+test("G3a motor (#8520): en talfil med datoreglens graenser (datePlus2) afvises; motoren koerer dagens model", async () => {
+  const state = seed({ flags: ENGINE_SCENARIOS.noCap.flags, overlay: { ...xpOn(EARLIER), params: { ...XP_TEST_PARAMS, datePlus2: { minPotential: 4, belowLevel: 45 } } } });
+  const xpState = seed({ flags: ENGINE_SCENARIOS.noCap.flags, overlay: xpOn(EARLIER) });
+  const old = seed({ flags: ENGINE_SCENARIOS.noCap.flags, overlay: NONE });
+  const [rejected, withXp, today] = [r1Report(await runEngine(state)), r1Report(await runEngine(xpState)), r1Report(await runEngine(old))];
+  assert.equal(validateDevelopmentXpParams({ ...XP_TEST_PARAMS, datePlus2: { minPotential: 4, belowLevel: 45 } }), null);
+  assert.ok(withXp.xp, "forudsaetning: med en gyldig talfil har rapporten XP-felter");
+  assert.equal(rejected.xp, undefined, "ingen XP-felter: XP koerte ikke");
+  assert.deepEqual(rejected.gains, today.gains, "samme udfald som dagens model");
 });
 
-test("#6110 R10 motor: paa taendingsnatten udbetales gemt fremgang helt (undtaget fra +2)", async () => {
+test("#6110 R10 motor: paa taendingsnatten udbetales gemt fremgang helt", async () => {
   const state = seed({ overlay: xpOn() });
   const before = r1Level(state);
   const payout = buyPoints({ level: before, bar: 4 }, XP).points;
@@ -98,10 +95,10 @@ test("#6110 R10 motor: paa taendingsnatten udbetales gemt fremgang helt (undtage
 });
 
 test("#7739 motor: paa en loebsdag skriver XP heller ingen dato-loft-kvittering", async () => {
-  // Loebsdagens eget loft pr. tick (#4750, spec §4.3) er uaendret og ligger i tick'et selv.
+  // G3a (#8520): ingen graense pr. dato, heller ikke paa en loebsdag; bjaelken koebes ud.
   const state = seed({ overlay: xpOn(EARLIER), raced: true });
   const result = await runEngine(state);
-  assert.ok(r1Report(result).gains[ABILITY] >= 1 && r1Report(result).gains[ABILITY] <= 2, "hoejst +2 ogsaa paa en loebsdag");
+  assert.ok(r1Report(result).gains[ABILITY] > 2, "hele bjaelken ogsaa paa en loebsdag (tidligere hoejst +2)");
   for (const r of result.report.riders) assert.equal(r.gains_deferred_by_date_cap, undefined);
 });
 
