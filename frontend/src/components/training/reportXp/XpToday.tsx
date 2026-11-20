@@ -11,6 +11,7 @@ import { riderShortName } from "../../../lib/riderName.ts";
 import { useMediaQuery } from "../../../hooks/useMediaQuery.ts";
 import { filterTodayRiders, xpOfPrice, type TodayFilter, type XpAbilityRow, type XpRiderType, type XpTodayRider, type XpTodayView } from "../../../lib/trainingReportXp.ts";
 import { Swatch, XpBar, XpLegend } from "./XpBar.tsx";
+import type { RatingChange } from "../../../lib/xpRatingChange.ts";
 
 // #7627 · "Today" in XP. Computer: the riders as a table on the left and the
 // picked rider in a panel on the right. Phone: one column, the rider folds out
@@ -76,6 +77,17 @@ function Change({ from, to, plate = false }: { from: number | null; to: number |
     <span className={`inline-flex items-center gap-1 ${NUM}`} aria-label={t("training:dailyReceipt.change", { from: formatNumber(from), to: formatNumber(to) })}>
       <span className={plate ? "text-cz-3" : undefined}>{formatNumber(from)}</span><ChevronRightIcon size={11} className="text-cz-3" aria-hidden="true" />
       {plate ? <FormPlate value={to} /> : <span>{formatNumber(to)}</span>}
+    </span>
+  );
+}
+
+/** #7947 · "Rating 34 > 35" under a folded rider's name: the same Change as form and fatigue. */
+function RatingLine({ change, className = "" }: { change: RatingChange; className?: string }) {
+  const { t: tRider } = useTranslation("rider");
+  return (
+    <span className={`flex items-center gap-1 text-2xs text-cz-2 ${className}`.trim()} data-testid="xp-rating">
+      <span className="text-cz-3">{tRider("header.overall")}</span>
+      <Change from={change.from} to={change.to} />
     </span>
   );
 }
@@ -271,9 +283,13 @@ export default function XpToday({ view, onPickDate, switcher }: { view: XpTodayV
                 {/* The row picks the rider (panel) or folds him out (phone); the name is its own link. */}
                 <div onClick={() => toggle(rider.id)}
                   className={`grid min-h-11 w-full cursor-pointer items-center gap-x-2 hover:bg-cz-subtle lg:gap-x-3 ${ROW_GRID} ${isPicked ? "xl:bg-cz-subtle" : ""}`}>
-                  <span className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap" data-testid="xp-name-cell">
-                    {rider.nation && <Flag code={rider.nation} className="shrink-0" />}
-                    <span className="min-w-0"><RiderNameCell id={rider.id} {...nameParts(rider.name)} name={phone ? shortName(rider.name) : rider.name} stopPropagation className="text-[13px] font-semibold text-cz-1 hover:text-cz-accent-t" /></span>
+                  <span className="flex min-w-0 flex-col justify-center">
+                    <span className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap" data-testid="xp-name-cell">
+                      {rider.nation && <Flag code={rider.nation} className="shrink-0" />}
+                      <span className="min-w-0"><RiderNameCell id={rider.id} {...nameParts(rider.name)} name={phone ? shortName(rider.name) : rider.name} stopPropagation className="text-[13px] font-semibold text-cz-1 hover:text-cz-accent-t" /></span>
+                    </span>
+                    {/* #7947 (owner yes 19/11): folded, the rating change on one quiet line, like form and fatigue; nothing when it did not move. */}
+                    {rider.rating && <RatingLine change={rider.rating} className={isOpen ? "max-xl:hidden" : ""} />}
                   </span>
                   <span className="hidden min-w-0 lg:block"><TypeCell type={rider.type} /></span>
                   <span className={`hidden text-right text-xs text-cz-2 lg:block ${NUM}`}>{rider.training > 0 ? `+${xp(rider.training)}` : "0"}</span>

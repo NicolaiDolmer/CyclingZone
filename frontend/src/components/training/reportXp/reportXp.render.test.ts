@@ -82,6 +82,25 @@ test("Today renders every rider, the panel and the hatched race part, without go
   assert.doesNotMatch(html, /bg-cz-accent(?!\/10)/, "no gold button");
 });
 
+test("#7947 a folded rider shows 'Rating x > y' only when his rating moved", () => {
+  const withAbilities = { ...options, abilities: fx.abilities };
+  // The first fixture date (newest first) where some rider's rating moved.
+  const date = fx.receipts.map(r => r.tick_date).find(d => buildTodayView(fx.receipts, d, withAbilities)!.riders.some(r => r.rating));
+  assert.ok(date, "the fixture has a date where a rider's rating moved");
+  const view = buildTodayView(fx.receipts, date!, withAbilities)!;
+  const moved = view.riders.filter(r => r.rating);
+  assert.ok(moved.length < view.riders.filter(r => r.points > 0).length, "a point does not always move the rating; then nothing shows");
+  for (const r of moved) assert.notEqual(r.rating!.from, r.rating!.to);
+  const html = wrap(createElement(XpToday, { view, onPickDate: () => {}, switcher: null }));
+  assert.equal(html.split('data-testid="xp-rating"').length - 1, moved.length, "one line per moved rider, none for the rest");
+  const { from, to } = moved[0].rating!;
+  assert.match(html, new RegExp(`aria-label="${from} to ${to}"`));
+  assert.doesNotMatch(noSegmentGold(html), /cz-accent/, "no gold on the rating line");
+  // Without the roster's abilities nothing is shown.
+  const bare = buildTodayView(fx.receipts, null, options)!;
+  assert.ok(bare.riders.every(r => !r.rating));
+});
+
 test("30 days renders one column per day and never a days-to-go estimate", () => {
   const view = buildMonthView(fx.receipts, options)!;
   const html = wrap(createElement(XpMonth, { view, onOpenDay: () => {}, switcher: null }));

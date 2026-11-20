@@ -7,6 +7,7 @@
 // price list, and nothing here may be read as a balance number.
 import type { TrainingActivity } from "../../../lib/trainingDailyReceipt.ts";
 import type { XpActivity, XpReceipt, XpRiderReceipt } from "../../../lib/trainingReportXp.ts";
+import { ABILITY_KEYS } from "../../../lib/abilities.js";
 
 export const XP_FIXTURE_LAST_DATE = "2026-11-15";
 const DAYS = 30;
@@ -43,7 +44,7 @@ function addDays(date: string, delta: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-export interface XpFixture { receipts: XpReceipt[]; nations: Record<string, string>; types: Record<string, { primary: string; secondary: string }>; scores: Map<string, number> }
+export interface XpFixture { receipts: XpReceipt[]; nations: Record<string, string>; types: Record<string, { primary: string; secondary: string }>; scores: Map<string, number>; abilities: Record<string, Record<string, number>> }
 
 // Invented fixture rule, not the engine's: at most this many points per ability
 // per date. XP over it stays on the bar and is paid out on a later date, which is
@@ -134,7 +135,12 @@ export function buildXpReportFixture(): XpFixture {
     });
   }
   receipts.reverse(); // newest first, like aggregateTrainingRuns
-  return { receipts, nations: Object.fromEntries(RIDERS.map(r => [r.id, r.nation])), types: Object.fromEntries(RIDERS.map(r => [r.id, { primary: r.type[0], secondary: r.type[1] }])), scores };
+  // #7947: every ability after the last date (invented levels), for the rating change.
+  const abilities = Object.fromEntries(RIDERS.map(r => {
+    const s = state.get(r.id)!;
+    return [r.id, Object.fromEntries((ABILITY_KEYS as readonly string[]).map(key => [key, s.levels[key] ?? pick(noise(r.id, key, "lvl"), 38, 76)]))];
+  }));
+  return { receipts, nations: Object.fromEntries(RIDERS.map(r => [r.id, r.nation])), types: Object.fromEntries(RIDERS.map(r => [r.id, { primary: r.type[0], secondary: r.type[1] }])), scores, abilities };
 }
 
 export const fixtureScoreOf = (scores: Map<string, number>) =>

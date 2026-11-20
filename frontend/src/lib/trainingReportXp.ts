@@ -33,6 +33,7 @@
 // are always shown apart, per rider and in total (Fable verdict on PR #8276, point 5).
 import type { DailyRiderReceipt, DailyTrainingReceipt, TrainingActivity } from "./trainingDailyReceipt.ts";
 import { orderAbilities } from "./trainingReceiptView.ts";
+import { ratingChange, type RatingChange, type RosterAbilities } from "./xpRatingChange.ts";
 
 type Numbers = Record<string, number>;
 export interface XpBar { xp: number; price: number }
@@ -79,6 +80,8 @@ export interface XpTodayRider {
   sessions: XpSession[];
   abilities: XpAbilityRow[];
   sessionScore: number | null;
+  /** #7947: best-role rating before > after the date's points; null = unchanged or no data. */
+  rating?: RatingChange | null;
 }
 export interface XpDay { date: string; training: number; race: number; points: number; earned: number; paid: number; status: DailyTrainingReceipt["receipt_status"] }
 export type TodayFilter = "all" | "gained" | "raced" | "notRaced";
@@ -114,6 +117,8 @@ export interface XpViewOptions {
   types?: Record<string, XpRiderType | null | undefined>;
   /** The session score already shown on the training page, per slot. */
   scoreOf?: (riderId: string, date: string, activity: TrainingActivity, seasonId: string | null) => number | null;
+  /** #7947: rider id -> the roster row with abilities flattened, for the rating change. */
+  abilities?: Record<string, RosterAbilities | null | undefined>;
 }
 
 /** The display boundary the fatigue colour already uses (ConditionChips.fatigueColor). */
@@ -276,6 +281,7 @@ export function buildTodayView(runs: ReadonlyArray<XpReceipt>, date: string | nu
       sessions: row.activities.map((a, i) => sessionOf(a, scores[i])),
       abilities,
       sessionScore: sessionScores.length ? Math.round(sessionScores.reduce((s, n) => s + n, 0) / sessionScores.length) : null,
+      rating: ratingChange(options.abilities?.[row.rider_id], row.gains_detail),
     };
   }).sort((a, b) => b.points - a.points || b.xp - a.xp || byName(a, b));
   return {
