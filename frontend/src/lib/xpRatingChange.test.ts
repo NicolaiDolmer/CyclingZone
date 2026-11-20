@@ -30,6 +30,13 @@ test("#7947 a roster that moved on past the date gives nothing (no per-date snap
   assert.equal(ratingChange({ ...flat(40), sprint: 43 }, { sprint: { from: 41, to: 42 } }), null);
 });
 
+test("#7947 a roster loaded before the date settled (at from) still shows the change (Codex P2 20/11)", () => {
+  // "Train now" refreshes the receipts but not the roster: the roster still stands where the date found it.
+  assert.deepEqual(ratingChange(flat(40), allJump(40, 41)), { from: 40, to: 41 });
+  // Half before, half after belongs to no single moment: nothing.
+  assert.equal(ratingChange({ ...flat(40), sprint: 41 }, { sprint: { from: 40, to: 41 }, climbing: { from: 40, to: 41 } }), null);
+});
+
 test("#7947 no change in the rating = nothing to show", () => {
   const counted = new Set(DISPLAY_RECIPES.flatMap(r => Object.keys(r.weights)));
   const uncounted = (ABILITY_KEYS as readonly string[]).find(k => !counted.has(k));

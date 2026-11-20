@@ -28,8 +28,11 @@ export function ratingChange(
   const jumps = Object.entries(detail).filter((entry): entry is [string, { from: number; to: number }] =>
     finite(entry[1]?.from) && finite(entry[1]?.to) && entry[1].to !== entry[1].from);
   // The roster row must carry the rider's abilities (flattened) and stand exactly where
-  // the date left them; a jump alone would rate the rider on one ability and invent a number.
-  if (jumps.length === 0 || !jumps.every(([key, jump]) => abilityValue(abilities[key]) === jump.to)) return null;
+  // the date left them, or (a roster loaded before "Train now" settled the date, Codex P2
+  // 20/11) exactly where the date found them; a jump alone would rate the rider on one
+  // ability and invent a number, and a roster in between belongs to no single moment.
+  const at = (side: "from" | "to") => jumps.every(([key, jump]) => abilityValue(abilities[key]) === jump[side]);
+  if (jumps.length === 0 || !(at("to") || at("from"))) return null;
   // The cached best_role_rating is a fallback for rows without abilities; it would
   // read the same before and after, so it is left out on purpose.
   const before: Record<string, unknown> = { ...abilities };
