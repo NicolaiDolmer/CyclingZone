@@ -222,7 +222,7 @@ function Row({ f, view }: { f: number; view: WeekView }) {
         const lineBelow = view.limitAfter[d] === f;
         return (
           <div key={x.short} className={`relative min-h-[50px] border-s border-t border-cz-border px-2.5 py-1.5 ${cellTone(c)}`}
-            data-mark={c.kind === "session" && c.locked && c.movedFrom !== undefined && d === 0 ? "moved" : c.kind === "session" && c.limitedFrom ? "limited" : undefined}>
+            data-mark={c.kind === "session" && c.locked && c.movedFrom !== undefined && d === 0 ? "moved" : c.kind === "session" && c.limitedFrom ? "limited" : c.kind === "race" && d === 0 && f === 0 ? "race" : undefined}>
             {c.kind === "session" && c.n !== undefined && (
               <span className="absolute end-1.5 top-1 font-data text-3xs tabular-nums text-cz-3" aria-label={`Rotation number ${c.n}`}>#{c.n}</span>
             )}
