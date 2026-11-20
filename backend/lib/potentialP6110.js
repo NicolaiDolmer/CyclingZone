@@ -96,7 +96,10 @@ export function anchorFor(params, stars) {
 
 // ── Deterministisk rækkefølge ──────────────────────────────────────────────
 
-/** FNV-1a til [0,1). Samme hash som potentialeScale99.idHashUnit. */
+/**
+ * FNV-1a til [0,1). Samme hash som potentialeScale99.idHashUnit.
+ * @param {unknown} key
+ */
 export function idHashUnit(key) {
   const s = String(key ?? "");
   let h = 2166136261;

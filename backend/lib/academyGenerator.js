@@ -204,8 +204,9 @@ export function generateAcademyCandidates({
     /** @type {number|null} */
     let p = null;
     if (potentialP) {
-      potentiale = drawAcademyStars(rng, potentialP, i === topTalentIndex ? topTalentMin : POTENTIALE_TIERS[0]);
-      p = drawPForStars(rng, potentialP, potentiale);
+      const draw = /** @type {() => number} */ (rng);
+      potentiale = drawAcademyStars(draw, potentialP, i === topTalentIndex ? topTalentMin : POTENTIALE_TIERS[0]);
+      p = drawPForStars(draw, potentialP, potentiale);
     } else {
       potentiale = i === topTalentIndex
         ? drawPotentialeAtLeast(rng, topTalentMin)
