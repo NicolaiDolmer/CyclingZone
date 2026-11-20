@@ -360,6 +360,7 @@ const SECTION_DEFS = [
       { id: "potentialBestRole", kind: "text" },
       { id: "potentialBestRoleEstimate", kind: "text" }, // #6110 tal + ord (HELP_BLOCK_FLAGS.riders)
       { id: "trainingFocus", kind: "text" },
+      { id: "trainingFocusXp", kind: "text" }, // #8476 XP (HELP_BLOCK_FLAGS.riders)
       { id: "scouting", kind: "text" },
       { id: "scoutingEstimate", kind: "text" }, // #6110 tal + ord (HELP_BLOCK_FLAGS.riders)
       { id: "talentMarks", kind: "text", flag: "talent_marks_7879" }, // #7879
