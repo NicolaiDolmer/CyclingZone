@@ -87,6 +87,21 @@ test("a rider in a race today is locked until the date is settled", () => {
   assert.equal(preview[0].today.state, "locked");
 });
 
+test("Train now before the evening settlement: the point that already landed shows, a payout does not", () => {
+  const pendingRun = (trainedNow: Record<string, number>, barPaid: Record<string, number> | null = null) => {
+    const run = receipt("2026-11-19", "pending", [{ id: "a", xp: { climbing: 20 } }]);
+    const row = run.report.riders[0] as unknown as Record<string, unknown>;
+    row.trained_now = { gains: trainedNow, gains_detail: {}, gain_percent: {} };
+    row.bar_paid = barPaid;
+    return [run, RUNS[1]];
+  };
+  const point = (runs: XpReceipt[]) => buildDevelopmentRows({ runs, riders: [rider("a")], todayKey: "2026-11-19", seasonGains: {} })[0].today;
+  assert.deepEqual(point(pendingRun({ climbing: 1 })), { state: "xp", xp: 20, point: "climbing" });
+  assert.deepEqual(point(pendingRun({ climbing: 1 }, { climbing: 1 })), { state: "xp", xp: 20, point: null }, "a payout from saved XP is not a new point");
+  assert.deepEqual(point(pendingRun({ climbing: 1, flat: 1 })), { state: "xp", xp: 20, point: null }, "two points: no single ability to name");
+  assert.deepEqual(point(pendingRun({})), { state: "xp", xp: 20, point: null });
+});
+
 test("before today's training there is no XP today, not a zero", () => {
   const rows = buildDevelopmentRows({ runs: RUNS, riders: [rider("a")], todayKey: "2026-11-20", seasonGains: {} });
   assert.deepEqual(rows[0].today, { state: "none" });

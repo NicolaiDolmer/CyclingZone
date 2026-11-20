@@ -407,6 +407,7 @@ function DesktopTable({ rows, open, toggle, sort, onSort, columns }: { rows: Dev
 function PhoneList({ rows, open, toggle, columns }: { rows: DevRow[]; open: Set<string>; toggle: (id: string) => void; columns: ReadonlySet<DevColumnKey> }) {
   const { t } = useTranslation("training");
   const { t: tRider } = useTranslation("rider");
+  const { t: tRiders } = useTranslation("riders");
   return (
     <div data-testid="development-xp-list">
       <div className={`grid gap-2 border-b border-cz-border px-3 py-2 ${PHONE_GRID} ${HEAD} text-3xs`}>
@@ -434,6 +435,7 @@ function PhoneList({ rows, open, toggle, columns }: { rows: DevRow[]; open: Set<
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     {columns.has("natural") && <div><div className={LABEL}>{t("developmentXp.colNatural")}</div><NaturalType natural={row.natural} /></div>}
                     {columns.has("role") && <div><div className={LABEL}>{t("developmentXp.colRoleNow")}</div><RoleNow role={row.bestRole} /></div>}
+                    <div><div className={LABEL}>{tRiders("table.age")}</div><span className={`text-[13px] text-cz-1 ${NUM}`} data-testid="development-xp-age">{row.age ?? "—"}</span></div>
                     <div><div className={LABEL}>{t("developmentXp.colTop")}</div><Top top={row.top} /></div>
                     <div><div className={LABEL}>{t("developmentXp.colXpToday")}</div><XpToday cell={row.today} /></div>
                     <div><div className={LABEL} title={t("developmentXp.ratingSeasonTitle")}>{t("developmentXp.colRatingSeason")}</div><RatingSeason value={row.ratingSeason} /></div>

@@ -3,7 +3,7 @@
 // receipts carry (the same XP fields the XP report reads, lib/trainingReportXp.ts)
 // plus the squad and the shared potential estimate, and lays it out as one line
 // per rider. No React, so `node --test` runs it.
-import { buildMonthView, buildTodayView, xpBySource, type XpReceipt, type XpRiderType } from "../../lib/trainingReportXp.ts";
+import { buildMonthView, buildTodayView, paidPoints, xpBySource, type XpReceipt, type XpRiderReceipt, type XpRiderType } from "../../lib/trainingReportXp.ts";
 import { potentialViewOf, potentialViewValue, type PotentialView } from "../../lib/potentialEstimateDisplay.ts";
 import { buildXpReportFixture, XP_FIXTURE_LAST_DATE } from "./reportXp/xpReportFixture.ts";
 import { ABILITY_KEYS as ABILITY_KEYS_BASE } from "../../lib/generated/abilityRegistry.js";
@@ -144,6 +144,21 @@ function latestBars(runs: readonly XpReceipt[]): Map<string, Record<string, { xp
   return out;
 }
 
+/**
+ * Train now before the evening settlement: the point that already landed sits on
+ * `trained_now.gains`, while the row's `gains` stay empty until the date settles
+ * (aggregateTrainingRuns). Same rule as the settled view: exactly one newly earned
+ * point, a payout from saved XP is not one.
+ */
+function trainedNowPoint(raw: XpRiderReceipt | undefined): string | null {
+  const gains = raw?.trained_now?.gains;
+  if (!gains) return null;
+  const earned = Object.keys(gains)
+    .map((key): [string, number] => [key, (finite(gains[key]) && gains[key] > 0 ? gains[key] : 0) - paidPoints({ gains, bar_paid: raw.bar_paid, activities: raw.activities }, key)])
+    .filter(([, n]) => n > 0);
+  return earned.length === 1 && earned[0][1] === 1 ? earned[0][0] : null;
+}
+
 export type BuildInput = {
   runs: readonly XpReceipt[];
   riders: readonly DevRiderInput[];
@@ -178,7 +193,7 @@ export function buildDevelopmentRows({ runs, riders, todayKey, seasonGains, forc
       const view = todayById.get(rider.id);
       const raw = todayRowById.get(rider.id);
       const xp = view?.xp ?? Object.values(xpBySource(raw?.activities)).reduce((s, v) => s + v.training + v.race, 0);
-      today = { state: "xp", xp, point: view?.pointAbility ?? null };
+      today = { state: "xp", xp, point: view?.pointAbility ?? trainedNowPoint(raw) };
     }
 
     const bar = bars.get(rider.id) ?? {};
