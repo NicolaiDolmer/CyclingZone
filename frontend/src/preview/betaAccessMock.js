@@ -10,6 +10,7 @@ import { stagePlanPreviewActive } from "../components/race/StagePlanPreviewMock.
 // og (#4948) spiller-svaret GET /api/feature-flags, afledt af SAMME tavle.
 
 import { previewPotentialEstimateEnabled } from "./potentialEstimateMock.ts";
+import "../components/training/r5/todayR5PreviewSeed.ts"; // #7947: ?trainingR5=1 giver I dag R5 et fuldt hold
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
