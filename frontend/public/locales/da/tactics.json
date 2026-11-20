@@ -128,5 +128,19 @@
   },
   "mobile": {
     "numbers": "Rating {rating} · form {form} · rutematch {match} · træthed nu {fatigue}"
+  },
+  "phone": {
+    "planNone": "Ingen holdplan valgt",
+    "sort": "Sortér:",
+    "sortAria": "Sortér rytterne",
+    "open": "Åbn ordrer for {name}",
+    "riderOf": "Rytter {n} af {total}",
+    "prev": "Forrige rytter",
+    "next": "Næste rytter",
+    "close": "Luk",
+    "lock": "Lås",
+    "locked": "Låst",
+    "unsaved": "{count, plural, one {Etape {stages} har ændringer, du ikke har gemt.} other {Etaperne {stages} har ændringer, du ikke har gemt.}}",
+    "unsavedNote": "Intet går tabt, når du skifter etape."
   }
 }
