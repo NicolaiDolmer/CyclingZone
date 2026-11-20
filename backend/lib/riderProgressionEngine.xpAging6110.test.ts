@@ -48,6 +48,17 @@ test("F2: kontakt off, beta eller uden række = dagens aldring (null)", async ()
   }
 });
 
+// #8522 (G3a): procent-aldringen i talfilen ændrer intet, så længe kontakten er slukket
+// eller skiftets dato ligger før startdatoen. Næste skifte (ca. 27-28/11) kører dagens regel.
+test("#8522: kontakt off eller før startdatoen med procent-talfil = dagens aldring (null)", async () => {
+  const PCT = { physical: [{ at: 30, value: 0 }, { at: 40, value: 0.1 }], mental: [{ at: 32, value: 0 }, { at: 40, value: 0.04 }] };
+  const priv = { [DEVELOPMENT_XP_PARAMS_KEY]: { ...B_PARAMS, aging: PCT } };
+  for (const flag of ["off", "beta"]) {
+    assert.equal(await load(fakeDb({ app: { ...ON, [DEVELOPMENT_XP_FLAG_KEY]: flag }, priv }), DK_MIDNIGHT_START), null, `kontakt ${flag}`);
+  }
+  assert.equal(await load(fakeDb({ app: ON, priv }), DK_BEFORE_START), null, "dagen før startdatoen");
+});
+
 test("F2: kontakt on uden startdato eller før startdatoen (dansk tid) = dagens aldring", async () => {
   const origWarn = console.warn; console.warn = quiet.warn;
   try {

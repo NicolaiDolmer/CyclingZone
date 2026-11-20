@@ -1174,3 +1174,85 @@ test("#8522 golden: kandidat B-aldringen (talfilens trin-form) er bit-identisk m
   const cfg = xpAgingConfig({ aging: { plateauThroughAge: 27, declineByYearsPastPlateau: [{ maxYears: 4, drop: 1 }, { maxYears: 99, drop: 2 }], late: { fromAge: 33, drop: 0.5 } } });
   assert.equal(agingGoldenDigest(cfg), "7035c607d0dfc10717dee9c3a9d60c28e09f06b7e346b88e9fd0162abd50475b");
 });
+
+// ── #8522 (#6110 G3a): aldring i procent under XP. Syntetiske tal. ──────────────
+const PCT_AGING = Object.freeze({
+  physical: [{ at: 30, value: 0 }, { at: 34, value: 0.04 }, { at: 40, value: 0.1 }],
+  mental: [{ at: 32, value: 0 }, { at: 36, value: 0.01 }, { at: 40, value: 0.04 }],
+});
+const PCT_CFG = xpAgingConfig({ aging: PCT_AGING });
+const PCT_ABILITIES = Object.fromEntries(VISIBLE_ABILITIES.map((k, i) => [k, 40 + ((i * 11) % 50)]));
+
+// Forventet fald over mange sæson-seeds (den systematiske afrunding er forventningsret).
+function meanDrop(rider, abilities, load, ability, seeds = 400) {
+  let sum = 0;
+  for (let s = 1; s <= seeds; s++) {
+    const r = developRiderSeasonV2({ ...rider, id: `${rider.id}-${s}` }, abilities, s, { load, cfg: PCT_CFG });
+    sum += abilities[ability] - r.next[ability];
+  }
+  return sum / seeds;
+}
+
+test("#8522: talfilens procent-form giver procent-cfg med dagens bremse; ugyldig form kaster", () => {
+  assert.ok(PCT_CFG.percent);
+  assert.equal(PCT_CFG.brakeLoadDays, AGING_V2_CONFIG.brakeLoadDays);
+  assert.equal(PCT_CFG.hardTrainingDayWeight, AGING_V2_CONFIG.hardTrainingDayWeight);
+  assert.equal(xpAgingConfig({}), null, "uden aldring = dagens");
+  assert.throws(() => xpAgingConfig({ aging: { ...PCT_AGING, physical: [{ at: 25, value: 0.1 }, { at: 40, value: 0.2 }] } }), /invalid percent aging/);
+});
+
+test("#8522: intet fald til og med plateauet; derefter fald i begge grupper, mental mindre og senere", () => {
+  for (const age of [24, 28, 30]) {
+    const r = developRiderSeasonV2({ id: `p-${age}`, primary_type: "sprinter", potentiale: 3, age }, PCT_ABILITIES, 5, { cfg: PCT_CFG });
+    assert.deepEqual(r.next, PCT_ABILITIES, `alder ${age}`);
+    assert.equal(r.aging.totalDrop, 0);
+  }
+  const at32 = developRiderSeasonV2({ id: "p-32", primary_type: "sprinter", potentiale: 3, age: 32 }, PCT_ABILITIES, 5, { cfg: PCT_CFG });
+  assert.ok(at32.aging.physicalRate > 0 && at32.aging.mentalRate === 0, "32: kun kroppen");
+  for (const k of VISIBLE_ABILITIES) {
+    if (!AGING_V2_DECLINING_ABILITIES.includes(k)) assert.equal(at32.next[k], PCT_ABILITIES[k], `${k} urørt ved 32`);
+  }
+  const at38 = developRiderSeasonV2({ id: "p-38", primary_type: "sprinter", potentiale: 3, age: 38 }, PCT_ABILITIES, 5, { cfg: PCT_CFG });
+  assert.ok(at38.aging.mentalRate > 0 && at38.aging.mentalRate < at38.aging.physicalRate);
+  for (const k of VISIBLE_ABILITIES) assert.ok(at38.next[k] <= PCT_ABILITIES[k], `${k} stiger aldrig`);
+});
+
+test("#8522: faldet er proportionalt: dobbelt så høj evne taber dobbelt så mange point i forventning", () => {
+  const rider = { id: "prop", primary_type: "climber", potentiale: 3, age: 36 };
+  const low = { ...PCT_ABILITIES, sprint: 40 };
+  const high = { ...PCT_ABILITIES, sprint: 80 };
+  const dLow = meanDrop(rider, low, null, "sprint");
+  const dHigh = meanDrop(rider, high, null, "sprint");
+  const rate = 0.06; // kurven ved 36: midt mellem punkterne 34 og 40
+  assert.ok(Math.abs(dLow - 40 * rate) < 0.15, `lav: ${dLow}`);
+  assert.ok(Math.abs(dHigh - 80 * rate) < 0.15, `høj: ${dHigh}`);
+  assert.ok(dHigh > dLow * 1.8, "de bedste taber flest point");
+  // Ingen typefaktor: en sprinters sprint og en klatrers sprint på samme værdi taber ens.
+  const sprinter = meanDrop({ ...rider, id: "prop-s", primary_type: "sprinter" }, high, null, "sprint");
+  assert.ok(Math.abs(sprinter - dHigh) < 0.2);
+});
+
+test("#8522: mange løb bremser faldet tydeligt i forhold til få løb (dagens bremse)", () => {
+  const rider = { id: "load", primary_type: "rouleur", potentiale: 3, age: 37 };
+  const few = developRiderSeasonV2(rider, PCT_ABILITIES, 7, { load: { raceDays: 5, hardDays: 0 }, cfg: PCT_CFG });
+  const many = developRiderSeasonV2(rider, PCT_ABILITIES, 7, { load: { raceDays: 60, hardDays: 0 }, cfg: PCT_CFG });
+  assert.ok(many.aging.rawTotal < few.aging.rawTotal * 0.6, `${many.aging.rawTotal} vs ${few.aging.rawTotal}`);
+  assert.ok(many.aging.totalDrop <= few.aging.totalDrop);
+  const ratio = many.aging.rawTotal / few.aging.rawTotal;
+  assert.ok(Math.abs(ratio - agingBrake({ raceDays: 60 }, PCT_CFG) / agingBrake({ raceDays: 5 }, PCT_CFG)) < 1e-9, "bremsen er præcis dagens");
+  const full = developRiderSeasonV2(rider, PCT_ABILITIES, 7, { load: { raceDays: PCT_CFG.brakeLoadDays, hardDays: 0 }, cfg: PCT_CFG });
+  assert.deepEqual(full.next, PCT_ABILITIES, "fuld bremse = intet fald, som i dag");
+});
+
+test("#8522: deterministisk pr. (rytter, sæson), afrundingen er forventningsret, og pensionen er dagens", () => {
+  const rider = { id: "det-pct", primary_type: "gc", potentiale: 3, age: 39 };
+  assert.deepEqual(
+    developRiderSeasonV2(rider, PCT_ABILITIES, 6, { cfg: PCT_CFG }),
+    developRiderSeasonV2(rider, PCT_ABILITIES, 6, { cfg: PCT_CFG }),
+  );
+  const r = developRiderSeasonV2(rider, PCT_ABILITIES, 6, { cfg: PCT_CFG });
+  assert.ok(Math.abs(r.aging.totalDrop - r.aging.rawTotal) < 2, "afrundingen flytter højst et point pr. gruppe");
+  assert.deepEqual(r.retirement, developRiderSeasonV2(rider, PCT_ABILITIES, 6).retirement);
+  const zeros = Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 0]));
+  assert.deepEqual(developRiderSeasonV2(rider, zeros, 6, { cfg: PCT_CFG }).next, zeros);
+});
