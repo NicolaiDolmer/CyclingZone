@@ -47,6 +47,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "training_calendar_tick_ai_only", area: "training", label: "Kalenderdagens tick kun for AI-hold uden division" },
   { key: "training_score_visible", area: "training", label: "Træningsscore 1-99 (visning)" },
   { key: "training_mobile_table", area: "training", label: "Træningssiden på mobil — ny tabel" },
+  // #7947 ejer 20/11: træningssidens I dag-fane i R5-udgaven. Seedet off; kun "on" tænder. Ejer-only flip.
+  { key: "training_page_r5", area: "training", label: "Træningssiden: I dag-fanen i R5-udgaven" },
   // #1140: "Your first race"-kort for nye hold paa dashboardet. Seedet off.
   { key: "first_race_card", area: "onboarding", label: "Dit første løb — kort på dashboardet (nye hold)" },
   // #6523: ingen kode laeser den laengere; raekken bliver kun for patch-noten (se PLAYER_VISIBLE_FLAG_KEYS).
@@ -360,6 +362,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "jersey_hunt_7855",
   // #6110: Hjaelp viser XP-tvillingerne (HELP_BLOCK_FLAGS/HELP_FAQ_FLAGS) paa dette flag (binaert, som kurve B).
   "development_xp_model",
+  // #7947: traeningssiden viser I dag-fanen i R5-udgaven paa dette flag (binaert: kun "on").
+  "training_page_r5",
 ]);
 
 // #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,
@@ -367,4 +371,4 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
 // en flade aldrig beskriver en model motoren ikke koerer for beta-gruppen.
 // #7536: condition_v2_race_date_training_day laeses ogsaa kun som "on" af motoren
 // (conditionModelV2Flag.isRaceDateTrainingDayEnabled).
-export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801", "sale_escrow_enabled", "training_history_from_ticks_6490", "jersey_hunt_7855", "development_xp_model"]);
+export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801", "sale_escrow_enabled", "training_history_from_ticks_6490", "jersey_hunt_7855", "development_xp_model", "training_page_r5"]);
