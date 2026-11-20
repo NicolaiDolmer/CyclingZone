@@ -317,6 +317,8 @@ funktioner og runtime-kontrakter er uændrede.
 | Der er allerede en byder | `current_price + 1` CZ$ |
 | Ingen har budt endnu (udbudspris på egen-rytter-salg) | `current_price` (match tilladt) |
 
+På auktionslisten og i mobilkortet vises prisforskellen fra den estimerede markedsværdi først, når auktionen har en registreret byder (`current_bidder_id`). Markedsestimatet kan stadig vises som en selvstændig værdi.
+
 **`auctions.min_increment` er dekorativ.** Kolonnen skrives fra request-body med default 1
 (`api.js:6229, 6516`), men `getMinimumAuctionBid` bruger et hardkodet `+1` og læser aldrig
 kolonnen. Målt 30/8: **alle 4.483 rækker har `min_increment = 1`** - så divergensen har

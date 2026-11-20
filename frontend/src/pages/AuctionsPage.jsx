@@ -261,7 +261,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
   // #2464: ét-blik-vurdering — OVR (spillets kanoniske 1-99-rating, #2000) og
   // delta mellem aktuelt bud og estimeret markedsværdi.
   const ovr = riderOverallRating(r);
-  const valueDelta = computeBidValueDelta(auction.current_price ?? 0, r);
+  const valueDelta = auction.current_bidder_id ? computeBidValueDelta(auction.current_price, r) : null;
 
   return (
     <tr data-auction-row={auction.id} className={`group border-b border-cz-border hover:bg-cz-subtle transition-colors
@@ -605,7 +605,8 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
   const age = ageForSeason(r?.birthdate, seasonYear);
   // #2464: ét-blik-vurdering — OVR (1-99, type-vægtet #2000) + bud-vs-vurdering.
   const ovr = riderOverallRating(r);
-  const valueDelta = computeBidValueDelta(auction.current_price ?? 0, r);
+  const estimatedValue = r ? getRiderMarketValue(r) : null;
+  const valueDelta = auction.current_bidder_id ? computeBidValueDelta(auction.current_price, r) : null;
   const onWatchlist = r?.id ? watchlist?.has(r.id) : false;
   const visibleStatsArr = STATS.filter(k => visibleStats?.has(k));
   const riderName = r ? `${r.firstname} ${r.lastname}` : t("auctions:fallback.rider");
@@ -728,14 +729,14 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
             køb/overpris skal kunne aflæses på ét blik, formuleret som estimat.
             Delta-linjen er den delte ValueDeltaBadge (samme indikator som
             Transferlisten mod asking_price). */}
-        {valueDelta && (
+        {estimatedValue != null && estimatedValue > 0 && (
           <div className="bg-cz-subtle rounded-cz px-3 py-2">
             <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("auctions:card.estValue")}</p>
             <p
               className="text-cz-2 font-mono text-sm font-medium"
-              title={t("auctions:valueDelta.title", { amount: formatNumber(valueDelta.value) })}
+              title={t("auctions:valueDelta.title", { amount: formatNumber(estimatedValue) })}
             >
-              {formatNumber(valueDelta.value)} CZ$
+              {formatNumber(estimatedValue)} CZ$
             </p>
             <ValueDeltaBadge valueDelta={valueDelta} ns="auctions" as="p" className="text-3xs mt-0.5" />
           </div>
