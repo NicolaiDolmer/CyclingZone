@@ -261,7 +261,7 @@ function TrainingPicker({ value, onPick, disabled, label, full = false, testId }
       full ? "w-full" : "max-w-[232px]"} ${disabled ? "opacity-50" : ""}`} data-testid={testId}>
       <span className="shrink-0 text-cz-2">{t("r5.training.label")}</span>
       <select value={value} disabled={disabled} aria-label={label} onChange={(e) => onPick(e.target.value)}
-        className="min-w-0 flex-1 cursor-pointer appearance-none truncate bg-transparent py-1 font-medium text-cz-1 outline-none disabled:cursor-default">
+        className="min-w-0 flex-1 cursor-pointer appearance-none truncate bg-transparent py-1 font-medium text-cz-1 outline-hidden disabled:cursor-default">
         <option value={PROGRAM_CHOICE}>{t("r5.training.program")}</option>
         {(TRAINING_LEVELS as readonly string[]).map((level) => (
           <optgroup key={level} label={`${t("dayPanel.dayType_training")} · ${t(`dayPanel.level_${level}`)}`}>
