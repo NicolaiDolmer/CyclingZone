@@ -2742,9 +2742,6 @@
   "src/pages/boardroom/boardroomLocale.test.js": {
     "TS2769": 1
   },
-  "src/pages/helpFlagGates.js": {
-    "TS2345": 1
-  },
   "src/preview/betaAccessMock.js": {
     "TS2322": 3
   },

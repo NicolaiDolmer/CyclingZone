@@ -362,3 +362,19 @@ test("#6111: a settled date plus today's unsettled race days give a season total
   const gap = aggregateTrainingRuns([run(0), run(1), run(3), run(4)]);
   assert.equal(seasonAbilityGains(gap, "r1", "2026-09-01"), null);
 });
+
+test("#6110 XP: the rider's xp_bar is the slot settled last (highest xp_slot_seq), not the highest race day", () => {
+  // Race day 3 settled first (seq 1), then 1, 2, 0, 4 (seq 2-5): the bar after the date is day 4's.
+  const seqByDay = [4, 2, 3, 1, 5];
+  const xpRun = (day: number) => run(day, { xp_slot_seq: seqByDay[day], xp_bar: { tempo: { xp: day * 10, price: 100 } } } as never);
+  const rider = aggregateTrainingRuns([xpRun(3), xpRun(1), xpRun(2), xpRun(0), xpRun(4)])[0].report.riders[0] as { xp_bar?: unknown };
+  assert.deepEqual(rider.xp_bar, { tempo: { xp: 40, price: 100 } });
+  // Out of order: day 4 settled first (seq 1); the last settled is day 2 (seq 5).
+  const order = [2, 3, 5, 4, 1];
+  const outOfOrder = (day: number) => run(day, { xp_slot_seq: order[day], xp_bar: { tempo: { xp: day * 10, price: 100 } } } as never);
+  const r2 = aggregateTrainingRuns([outOfOrder(4), outOfOrder(0), outOfOrder(1), outOfOrder(3), outOfOrder(2)])[0].report.riders[0] as { xp_bar?: unknown };
+  assert.deepEqual(r2.xp_bar, { tempo: { xp: 20, price: 100 } });
+  // Without XP fields the receipt carries no xp_bar (today's report, unchanged).
+  const plain = aggregateTrainingRuns([run(0), run(1), run(2), run(3), run(4)])[0].report.riders[0] as { xp_bar?: unknown };
+  assert.equal(plain.xp_bar, undefined);
+});

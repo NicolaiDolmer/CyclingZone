@@ -47,6 +47,7 @@
 
 import { copenhagenDateString, copenhagenHour } from './copenhagenTime.js';
 import { isTrainingDateTeam, loadTrainingDateTeams, trainingDateBounds } from './trainingDateReadiness.js';
+import { isCalendarTickAiOnly } from './trainingCalendarTickFlag.js'; // #6110 ejer 19/11
 
 import { FIRST_PROMOTION_RELEGATION_SEASON } from "./economyConstants.js";
 import { loadEmptyPoolFilter } from "./emptyPoolPolicy.js";
@@ -422,8 +423,14 @@ export async function assessFinalTrainingDateSettlement({ supabase, season, now 
   const teamsWithRiders = new Set(riders.filter(rider =>
     (!rider.created_at || new Date(rider.created_at) < end) &&
     (!rider.acquired_at || new Date(rider.acquired_at) < end)).map(rider => rider.team_id));
-  const missingTeams = teams.filter(team => !registered.has(team.id) &&
+  const candidateTeams = teams.filter(team => !registered.has(team.id) &&
     isTrainingDateTeam(team, registered, end) && teamsWithRiders.has(team.id));
+  // #6110 ejer 19/11 (training_calendar_tick_ai_only): et menneskehold uden division træner ikke,
+  // så det skal ikke have en kvittering for at sæsonen kan slutte. Registreret arbejde tjekkes stadig
+  // (det står i work ovenfor). Kontakten læses kun, når sådan et hold findes; slukket = som før.
+  const humanNoDivision = team => !team.league_division_id && team.is_ai !== true;
+  const aiOnly = candidateTeams.some(humanNoDivision) ? await isCalendarTickAiOnly(supabase) : false;
+  const missingTeams = aiOnly ? candidateTeams.filter(team => !humanNoDivision(team)) : candidateTeams;
 
   // Division-less teams use a calendar-day report rather than training_date_work.
   // A reservation (including writing) is never proof. This legacy key has no

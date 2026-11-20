@@ -31,7 +31,7 @@ import {
   type EditionRaceRow, type EditionResultRow, type EditionSummary, type EditionSwitchModel,
 } from "./v6EditionSwitchModel.ts";
 
-type Translate = (key: string, opts?: Record<string, unknown>) => string;
+type Translate = { (key: string): string; (key: string, opts: Record<string, unknown>): string };
 
 const EDITION_COLUMNS = "id, name, race_type, season_id, league_division_id, status, stages, stages_completed, season:season_id(number, status), division:league_division_id(tier, pool_index, label)";
 
