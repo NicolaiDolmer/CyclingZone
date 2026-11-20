@@ -8,6 +8,15 @@
   "loadError": "No se pudieron cargar los ciclistas. Inténtalo de nuevo.",
   "retry": "Reintentar",
   "watchlistToggleFailed": "No se pudo actualizar tu lista de seguimiento. Inténtalo de nuevo.",
+  "potentialNumber": {
+    "potential": "Potencial",
+    "prognosis": "Pronóstico",
+    "prognosisTitle": "Si mantienes el ritmo actual, terminará más o menos aquí en su mejor momento. Basado en sus últimos 30 días.",
+    "prognosisPastPeak": "Pasado su mejor momento",
+    "prognosisPastPeakTitle": "Ya pasó la edad en la que los ciclistas alcanzan su mejor momento.",
+    "prognosisNoEstimateTitle": "El pronóstico llega cuando tengas una estimación de su potencial.",
+    "aiTeamTitle": "Los ciclistas de equipos de la IA no se pueden ojear."
+  },
   "table": {
     "nation": "País",
     "rider": "Ciclista",

@@ -37,9 +37,8 @@ import { HISTORY_DAYS } from "../../../lib/useTrainingHistory.js";
 import { chartColor } from "../../../lib/chartPalette.js";
 import { formatDate } from "../../../lib/intl.js";
 import { SkeletonLines } from "../../ui/Skeleton.jsx";
-import PotentialEstimate from "../PotentialEstimate";
-import { estimateLineOf, potentialViewOf } from "../../../lib/potentialEstimateDisplay";
-import I18nReadyGate from "../../I18nReadyGate";
+import PotentialEstimate, { PrognosisValue } from "../PotentialEstimate";
+import { potentialViewOf, prognosisViewOf } from "../../../lib/potentialEstimateDisplay";
 import { useDevelopmentXpEnabled } from "../../../lib/developmentXpFlag.ts"; // #8476
 
 const DATA_FONT = '"Inter Tight", "Inter Tight Fallback", system-ui, sans-serif';
@@ -66,10 +65,9 @@ function ChartCard({ snapshots, chartTypes, projection, t }) {
   const segments = seasonSegments(snapshots);
   const currentSeason = segments.length > 0 ? segments[segments.length - 1].season : null;
   const hasProj = projectionActive(projection);
-  // #6110: tændt flag giver én linje mod skønnet i stedet for bånd og loft-zone.
-  const estimateLine = estimateLineOf(projection);
-  const hasLine = estimateLine.length > 1;
-  const hasFuture = hasProj || hasLine;
+  // #8523: med tændt flag tegnes kun den registrerede kurve. Den gamle kurve mod
+  // skønnet er væk; prognosen står som ét tal i Vækst-kortet.
+  const hasFuture = hasProj;
   const primaryColor = chartTypes[0]?.color ?? "rgb(var(--accent-t))";
 
   // X: registreret historik (dato-skaleret — index-baseret x ville lyve om hældningen,
@@ -90,7 +88,7 @@ function ChartCard({ snapshots, chartTypes, projection, t }) {
   // akse der starter i 1 ville skubbe den nederste linje op fra sin egen bund.
   const projVals = hasProj
     ? projection.band.flatMap((p) => [p.lo, p.hi]).concat([projection.ceil.lo, projection.ceil.hi])
-    : estimateLine.map((p) => p.value);
+    : [];
   const allRatings = seriesByKey.flatMap((s) => s.points.map((p) => p.rating)).concat(projVals);
   const lo = Math.max(0, Math.min(...allRatings) - 4);
   const hi = Math.min(99, Math.max(...allRatings) + 4);
@@ -114,9 +112,6 @@ function ChartCard({ snapshots, chartTypes, projection, t }) {
     ceilTop = yAt(projection.ceil.hi);
     ceilBot = yAt(projection.ceil.lo);
   }
-
-  const xLine = (i) => xNow + (i / Math.max(1, estimateLine.length - 1)) * (VB.x1 - xNow);
-  const lastEstimate = estimateLine[estimateLine.length - 1];
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
@@ -145,20 +140,6 @@ function ChartCard({ snapshots, chartTypes, projection, t }) {
             </text>
             <polygon points={bandArea} fill={primaryColor} opacity="0.1" />
             <polyline points={centerLine} fill="none" stroke={primaryColor} strokeWidth="1.6" strokeDasharray="3 2.5" opacity="0.85" />
-          </g>
-        )}
-
-        {/* Kurven mod skønnet (#6110). */}
-        {hasLine && (
-          <g data-testid="development-estimate-line">
-            <polyline
-              points={estimateLine.map((p, i) => `${xLine(i).toFixed(1)},${yAt(p.value).toFixed(1)}`).join(" ")}
-              fill="none" stroke={primaryColor} strokeWidth="1.6" strokeDasharray="3 2.5" opacity="0.85"
-            />
-            <circle cx={VB.x1} cy={yAt(lastEstimate.value).toFixed(1)} r="2.5" fill={primaryColor} />
-            <text x={(VB.x1 - 1).toFixed(1)} y={(yAt(lastEstimate.value) - 5).toFixed(1)} fontSize="10" fill={primaryColor} fontFamily={DATA_FONT} textAnchor="end">
-              {t("scouting:potentialEstimate.chartLabel", { value: lastEstimate.value })}
-            </text>
           </g>
         )}
 
@@ -206,7 +187,7 @@ function ChartCard({ snapshots, chartTypes, projection, t }) {
         })}
 
         <text x={(VB.x0 + VB.x1) / 2} y="168" fontSize="10" fill="var(--text-3)" fontFamily={DATA_FONT} textAnchor="middle">
-          {t(hasLine ? "scouting:potentialEstimate.chartCaption" : hasProj ? "profile.development.projection.caption" : "profile.development.chart.caption")}
+          {t(hasProj ? "profile.development.projection.caption" : "profile.development.chart.caption")}
         </text>
       </svg>
       <div className="flex gap-3.5 flex-wrap mt-2">
@@ -220,12 +201,6 @@ function ChartCard({ snapshots, chartTypes, projection, t }) {
           <span className="inline-flex items-center gap-1.5 text-2xs text-cz-2">
             <span className="w-3.5 h-[3px] rounded-sm border-t-2 border-dashed" style={{ borderColor: primaryColor }} aria-hidden="true" />
             {t("profile.development.projection.legend")}
-          </span>
-        )}
-        {hasLine && (
-          <span className="inline-flex items-center gap-1.5 text-2xs text-cz-2">
-            <span className="w-3.5 h-[3px] rounded-sm border-t-2 border-dashed" style={{ borderColor: primaryColor }} aria-hidden="true" />
-            {t("scouting:potentialEstimate.chartLegend")}
           </span>
         )}
       </div>
@@ -278,8 +253,12 @@ function ceilingRows(projection, t) {
 }
 
 // ── Vækst denne sæson ────────────────────────────────────────────────────────────
-function GrowthCard({ primaryLabel, growth, totalPoints, trackedSince, projection, t }) {
-  const estimateView = potentialViewOf(projection);
+// #8523: `estimate` er serverens svar uden XP-filteret. Med tændt flag bærer det
+// potentialet (tal + ord) og, for egne ryttere, den samlede prognose. Uden flaget
+// findes felterne ikke, og kortet er præcis som før.
+function GrowthCard({ primaryLabel, growth, totalPoints, trackedSince, projection, estimate, t }) {
+  const estimateView = potentialViewOf(estimate);
+  const prognosisView = prognosisViewOf(estimate);
   const rows = [
     {
       label: t("profile.development.growth.typeRating", { type: primaryLabel }),
@@ -300,6 +279,10 @@ function GrowthCard({ primaryLabel, growth, totalPoints, trackedSince, projectio
     // #6110: tal + ord erstatter "til målet"-rækkerne, når serveren sender skønnet.
     ...(estimateView
       ? [{ label: t("profile.scouting.potentialLabel"), value: <PotentialEstimate view={estimateView} />, cls: "font-normal" }]
+      : []),
+    // #8523: den samlede prognose (kun egne ryttere).
+    ...(prognosisView
+      ? [{ label: t("riders:potentialNumber.prognosis"), value: <PrognosisValue view={prognosisView} />, cls: "font-normal" }]
       : []),
   ];
   return (
@@ -452,14 +435,7 @@ export default function RiderDevelopmentTab({ rider, history = [], types = [], t
   return (
     <div className="flex flex-col gap-[13px]">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-[13px] items-start">
-        {/* #6110: kurvens tekster ligger i det lazy scouting-namespace. */}
-        {estimateLineOf(projection).length > 1 ? (
-          <I18nReadyGate ns="scouting" fallback={<SkeletonLines lines={4} />}>
-            <ChartCard snapshots={snapshots} chartTypes={chartTypes} projection={projection} t={t} />
-          </I18nReadyGate>
-        ) : (
-          <ChartCard snapshots={snapshots} chartTypes={chartTypes} projection={projection} t={t} />
-        )}
+        <ChartCard snapshots={snapshots} chartTypes={chartTypes} projection={projection} t={t} />
         <div className="flex flex-col gap-[13px] min-w-0">
           <GrowthCard
             primaryLabel={primaryLabel}
@@ -467,6 +443,7 @@ export default function RiderDevelopmentTab({ rider, history = [], types = [], t
             totalPoints={totalPoints}
             trackedSince={snapshots[0].snapshot_date}
             projection={projection}
+            estimate={sentProjection}
             t={t}
           />
           <ReadingCard viewer={viewer} growth={growth} primaryLabel={primaryLabel} t={t} />

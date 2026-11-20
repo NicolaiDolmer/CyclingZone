@@ -8,6 +8,15 @@
   "loadError": "Impossible de charger les coureurs. Réessaie.",
   "retry": "Réessayer",
   "watchlistToggleFailed": "Impossible de mettre à jour ta liste de suivi. Réessaie.",
+  "potentialNumber": {
+    "potential": "Potentiel",
+    "prognosis": "Pronostic",
+    "prognosisTitle": "Si tu gardes le rythme actuel, il finira à peu près ici à son pic. Basé sur ses 30 derniers jours.",
+    "prognosisPastPeak": "Après son pic",
+    "prognosisPastPeakTitle": "Il a dépassé l'âge où les coureurs atteignent leur pic.",
+    "prognosisNoEstimateTitle": "Le pronostic arrive quand tu as une estimation de son potentiel.",
+    "aiTeamTitle": "Les coureurs des équipes IA ne peuvent pas être scoutés."
+  },
   "table": {
     "nation": "Nation",
     "rider": "Coureur",

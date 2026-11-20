@@ -22,8 +22,8 @@ import { statPlateStyle } from "../../../lib/statColor";
 import { useScoutCountdown, scoutReadyClock } from "../../../lib/scoutCountdown";
 import { potentialFromReport, potentialRowFromReport } from "../../../lib/potentialDisplay6853";
 import PotentialRoleBox from "../PotentialRoleBox";
-import PotentialEstimate, { CertaintyMeter } from "../PotentialEstimate";
-import { potentialViewOf } from "../../../lib/potentialEstimateDisplay";
+import PotentialEstimate, { CertaintyMeter, PrognosisValue } from "../PotentialEstimate";
+import { potentialViewOf, prognosisViewOf } from "../../../lib/potentialEstimateDisplay";
 import I18nReadyGate from "../../I18nReadyGate";
 import { SkeletonLines } from "../../ui/Skeleton.jsx";
 
@@ -282,12 +282,20 @@ function EstimateCard({ view, report, canLookAgain, scoutAction, t }) {
     : scoutMeta?.isDefault === false
       ? t("scouting:potentialEstimate.builtOnNamed", { count: looks, name: scoutMeta.name, tier: scoutMeta.tier })
       : t("scouting:potentialEstimate.builtOnDefault", { count: looks, overall: scoutMeta?.overall ?? "—" });
+  // #8523: egne ryttere får den samlede prognose under skønnet (samme kilde som Udvikling).
+  const prognosisView = prognosisViewOf(report);
   return (
     <SectionCard>
       <div data-testid="scouting-estimate-card">
         <PotentialEstimate view={view} size="report" />
         <div className="mt-3.5"><CertaintyMeter certainty={view.certainty} /></div>
         <dl className="m-0 mt-3">
+          {prognosisView && (
+            <div className="flex items-baseline justify-between gap-4 border-t border-cz-border py-2.5" data-testid="scouting-prognosis-row">
+              <dt className="text-[12.5px] text-cz-2" title={t("riders:potentialNumber.prognosisTitle")}>{t("riders:potentialNumber.prognosis")}</dt>
+              <dd className="m-0 text-right text-[12.5px] text-cz-1"><PrognosisValue view={prognosisView} /></dd>
+            </div>
+          )}
           <div className="flex items-baseline justify-between gap-4 border-t border-cz-border py-2.5">
             <dt className="text-[12.5px] text-cz-2">{t("scouting:potentialEstimate.builtOnLabel")}</dt>
             <dd className="m-0 text-right text-[12.5px] text-cz-1 tabular-nums">{builtOn}</dd>
@@ -490,6 +498,19 @@ export default function RiderScoutingTab({ rider, scouting }) {
       return <RolePrognosis types={report.types} primaryKey={report.primaryKey} secondaryKey={rider?.secondary_type} />;
     }
     return <SectionCard><AcademyScoutingPrognosis prognosis={report.academyPrognosis} /></SectionCard>;
+  }
+
+  // #8523: AI-holdenes ryttere kan ikke scoutes. "?" og forklaringen, ingen knap.
+  if (estimateView?.hidden && estimateView.reason === "aiTeam") {
+    return (
+      <SectionCard>
+        <Eyebrow>{t("profile.scouting.eyebrowOther")}</Eyebrow>
+        <div className="mt-2"><PotentialEstimate view={estimateView} size="report" /></div>
+        <p className="text-cz-2 text-[12.5px] leading-[1.55] mt-2 mb-0 max-w-prose" data-testid="scouting-ai-team">
+          {t("riders:potentialNumber.aiTeamTitle")}
+        </p>
+      </SectionCard>
+    );
   }
 
   // FØR: uscoutet, ikke-egen rytter — intet potentiale, kun invitationen.

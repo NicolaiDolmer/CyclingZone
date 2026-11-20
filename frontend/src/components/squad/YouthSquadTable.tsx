@@ -32,6 +32,8 @@ import { supabase } from "../../lib/supabase";
 import NationCell from "../rider/NationCell.jsx";
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
 import ScoutablePotentiale from "../rider/ScoutablePotentiale.jsx";
+import { PrognosisValue } from "../rider/PotentialEstimate.tsx";
+import { prognosisViewOf } from "../../lib/potentialEstimateDisplay.ts";
 import { useTypeColumnLabel } from "../../lib/useTypeColumnLabel.ts";
 import { useTableSort } from "../../lib/useTableSort.js";
 import { riderNameSortKey } from "../../lib/riderColumnSort.js";
@@ -50,6 +52,12 @@ import { DataTable, RiderBadges, RiderLink, WithBestRole, type DataTableColumn }
 import { ABILITY_MODE_MOBILE_DEFAULTS, useAbilityColumns } from "./abilityColumns.tsx";
 import type { YouthSquadRider } from "./useYouthSquad.ts";
 
+/** #8523: prognosens tal til sortering; skjult/ukendt sidst. */
+function prognosisValue(estimate: unknown): number | null {
+  const view = prognosisViewOf(estimate);
+  return view && !view.hidden ? view.value : null;
+}
+
 interface Scouting {
   estimateFor: (riderId: string) => unknown;
 }
@@ -59,6 +67,7 @@ interface Row extends YouthSquadRider {
   _age: number | null;
   _value: number;
   _scoutMid: number | null;
+  _prognosis: number | null;
 }
 
 // Modul-konstant: useTableSort re-sorterer ellers på hver render.
@@ -70,6 +79,7 @@ const ACCESSORS: Record<string, (r: Row) => unknown> = {
   primary_type: (r) => r.primary_type,
   age: (r) => r._age,
   _scoutMid: (r) => r._scoutMid,
+  _prognosis: (r) => r._prognosis,
   _value: (r) => r._value,
   salary: (r) => r.salary,
   popularity: (r) => (Number.isFinite(r.popularity) ? r.popularity : null),
@@ -77,7 +87,7 @@ const ACCESSORS: Record<string, (r: Row) => unknown> = {
   contract_end_season: (r) => r.contract_end_season,
   ...Object.fromEntries(ABILITY_KEYS.map((k) => [k, (r: Row) => Number(r[k]) || 0])),
 };
-const DESC_FIRST = new Set(["_ovr", "age", "_scoutMid", "_value", "salary", "popularity", "reputation", "contract_end_season", ...ABILITY_KEYS]);
+const DESC_FIRST = new Set(["_ovr", "age", "_scoutMid", "_prognosis", "_value", "salary", "popularity", "reputation", "contract_end_season", ...ABILITY_KEYS]);
 const SORT_OPTS = { descFirstKeys: DESC_FIRST };
 const MOBILE_DEFAULTS = ["rating", "value", "salary"];
 
@@ -121,6 +131,7 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
 }) {
   const { t } = useTranslation("team");
   const { t: tAcademy } = useTranslation("academy");
+  const { t: tRiders } = useTranslation("riders");
   const listedIds = useListedRiderIds(useMemo(() => riders.map((r) => r.id), [riders]));
   const reputationOn = useRiderReputation();
   const typeColumnLabel = useTypeColumnLabel(); // #5435
@@ -139,8 +150,12 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
       _age: getRiderAge(r.birthdate, seasonYear) ?? null,
       _value: getRiderMarketValue(r),
       _scoutMid: scoutSortValue(scouting.estimateFor(r.id)) ?? null,
+      _prognosis: prognosisValue(scouting.estimateFor(r.id)),
     };
   }), [riders, scouting, seasonYear]);
+  // #8523: den samlede prognose får sin egen kolonne efter potentialet, men kun når
+  // serveren sender den (tændt flag). Slukket er tabellen præcis som før.
+  const prognosisOn = riders.some((r) => prognosisViewOf(scouting.estimateFor(r.id)) != null);
 
   const { rows, sort, sortDir, handleSort } = useTableSort(decorated, ACCESSORS, SORT_OPTS);
 
@@ -205,6 +220,18 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
       compact: true,
       render: (r) => <ScoutablePotentiale rider={r} scouting={scouting} labelAsTitle hideLevel />,
     },
+    ...(prognosisOn ? [{
+      key: "prognosis",
+      header: <span title={tRiders("potentialNumber.prognosisTitle")}>{tRiders("potentialNumber.prognosis")}</span>,
+      mobileLabel: tRiders("potentialNumber.prognosis"),
+      sortKey: "_prognosis",
+      compact: true,
+      numeric: true,
+      render: (r: Row) => {
+        const view = prognosisViewOf(scouting.estimateFor(r.id));
+        return view ? <PrognosisValue view={view} /> : <span className="text-cz-3">—</span>;
+      },
+    } satisfies DataTableColumn<Row>] : []),
     {
       key: "value",
       header: t("squad.headers.value"),

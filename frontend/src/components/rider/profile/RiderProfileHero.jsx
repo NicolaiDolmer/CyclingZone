@@ -30,7 +30,8 @@ import { statPlateStyle } from "../../../lib/statColor";
 import RiderTypeBadge from "../RiderTypeBadge";
 import BestRoleTag from "../BestRoleTag.jsx";
 import ScoutablePotentiale from "../ScoutablePotentiale";
-import { potentialViewOf } from "../../../lib/potentialEstimateDisplay";
+import { potentialViewOf, prognosisViewOf } from "../../../lib/potentialEstimateDisplay";
+import { PrognosisValue } from "../PotentialEstimate";
 import RiderBadges from "../RiderBadges";
 import RiderTalentMark from "../TalentMark.tsx"; // #7879
 import RiderChampionJersey from "../ChampionJersey.tsx"; // #7824
@@ -247,6 +248,7 @@ export default function RiderProfileHero({
 
   const teamName = rider.team?.name ?? t("header.freeAgent");
   // #6110: tal + ord er potentialet, ikke en prognose.
+  const heroPrognosis = viewer === "own" ? prognosisViewOf(scouting?.estimateFor?.(rider?.id)) : null;
   const potentialEyebrow = potentialViewOf(scouting?.estimateFor?.(rider?.id))
     ? t("profile.scouting.potentialLabel")
     : viewer === "scouting"
@@ -438,6 +440,11 @@ export default function RiderProfileHero({
               </span>
             ) : "—",
           },
+          // #8523: den samlede prognose for egne ryttere, kun når serveren sender den.
+          ...(heroPrognosis ? [{
+            label: t("riders:potentialNumber.prognosis"),
+            value: <PrognosisValue view={heroPrognosis} size="hero" />,
+          }] : []),
           {
             label: t("profile.hero.valueEyebrow"),
             value: <span className="block wrap-break-word" title={valueLabel} data-testid="rider-value-amount">{valueLabel}</span>,
