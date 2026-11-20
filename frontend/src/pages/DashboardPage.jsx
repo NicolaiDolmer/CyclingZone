@@ -81,7 +81,7 @@ import {
 } from "../lib/contractExpiryNotice";
 import SeasonSignupCard from "../components/SeasonSignupCard"; // [epic #4592 del 3] #452
 import { computeDashboardGoldCta } from "../lib/dashboardGoldCta.js";
-import { computeAvailableBalance } from "../lib/availableBalance.js";
+import { useMarketBalance } from "../data/marketBalance.ts";
 import { readCachedAcademyNav } from "../lib/academyNavVisibility";
 import { buildRiderRankingLink } from "../lib/riderRankingDivisionLink";
 import {
@@ -120,7 +120,7 @@ const EMPTY_LIST = /** @type {any[]} */ ([]);
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { t, i18n } = useTranslation(["dashboard", "common"]);
+  const { t, i18n } = useTranslation(["dashboard", "common", "finance"]);
   // #3697: board.json (55 KB rå pr. sprogpar) lazy-loades via HttpBackend i
   // stedet for at ligge inline i language-chunken. Dashboardets bestyrelseskort
   // er den ENESTE forbruger uden for BoardPage, og feedback-blokken er den
@@ -190,7 +190,7 @@ export default function DashboardPage() {
   const riders = core?.riders ?? EMPTY_LIST;
   const seniorRosterReady = core?.seniorRosterReady ?? false;
   const pendingIncomingCount = core?.pendingIncomingCount ?? 0;
-  const reservedBalance = core?.reservedBalance ?? 0;
+  const marketBalance = useMarketBalance();
   const nextRaces = core?.nextRaces ?? EMPTY_LIST;
   const standings = core?.standings ?? EMPTY_LIST;
   const pools = core?.pools ?? EMPTY_LIST;
@@ -548,21 +548,20 @@ export default function DashboardPage() {
                 saldoblokken læses som et link (den linker allerede til /finance). */}
             <Link to="/finance" className="flex items-center gap-1 text-right group" title={t("common:sidebar.balance")}>
               <div>
-                {/* #3508: disponibel saldo (rå minus bundet i førende bud + proxy-max) —
-                    samme beregning som FinancePage (lib/availableBalance.js), aldrig rå
-                    team.balance. Det bundne beløb er synligt nedenfor (genbruger
-                    FinancePage's "locked in bids"-formsprog). */}
-                <p className="text-cz-accent-t font-mono font-bold text-xl group-hover:underline">
-                  {loading ? <Skeleton className="h-7 w-28" /> : <>{formatNumber(computeAvailableBalance(team?.balance, reservedBalance))} CZ$</>}
+                <p className="text-cz-accent-t font-mono font-bold text-xl tabular-nums group-hover:underline">
+                  {marketBalance?.mode === "available"
+                    ? t("finance:balance.available", { value: formatNumber(marketBalance.value) })
+                    : marketBalance?.mode === "balance" ? <>{formatNumber(marketBalance.value)} CZ$</>
+                    : <Skeleton className="h-7 w-28" />}
                 </p>
-                <p className="text-cz-3 text-xs">{t("common:sidebar.balance")}</p>
-                {!loading && <LockedSalesLine refreshKey={/** @type {any} */ (team)?.balance} className="text-cz-2 text-xs" />}
-                {loading && <Skeleton className="h-4 w-28" />}
-                {!loading && reservedBalance > 0 && (
-                  <p className="text-cz-2 text-xs">
-                    {t("dashboard:header.lockedInBids", { value: formatNumber(reservedBalance) })}
+                {marketBalance?.mode === "balance" && <p className="text-cz-3 text-xs">{t("common:sidebar.balance")}</p>}
+                {marketBalance?.mode !== "available" && marketBalance?.mode !== "balance" && <Skeleton className="h-4 w-28" />}
+                {marketBalance && marketBalance.locked > 0 && (
+                  <p className="text-cz-2 text-xs tabular-nums">
+                    {t("finance:balance.lockedInBids", { value: formatNumber(marketBalance.locked) })}
                   </p>
                 )}
+                {!loading && <LockedSalesLine refreshKey={/** @type {any} */ (team)?.balance} className="text-cz-2 text-xs" />}
               </div>
               <ChevronRightIcon size={16} className="text-cz-3 group-hover:text-cz-accent-t transition-colors shrink-0" aria-hidden="true" />
             </Link>

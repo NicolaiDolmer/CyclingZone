@@ -53,7 +53,7 @@
   },
   "sidebar": {
     "balance": "Balance",
-    "balanceTooltip": "CZ$ er spillets valuta. Du tjener den ved at spille, og den kan ikke købes for rigtige penge.",
+    "balanceTooltip": "Til rådighed er din saldo minus det, du har låst i bud, hvor du fører. Mister du føringen, frigives beløbet.",
     "division": "Division {division}",
     "divisionTooltip": "Dit ligatrin. Division 1 er øverste niveau, Division 4 er startniveauet.",
     "onlineNow": "{count} online nu",

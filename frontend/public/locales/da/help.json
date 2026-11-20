@@ -225,6 +225,10 @@
       "squadAndAuctions": {
         "title": "Holdstørrelse og auktioner",
         "text": "Holdgrænser gælder stadig per division. Aktive auktioner hvor du fører, reserverer både balance og en mulig trupplads, så du ikke kan føre flere auktioner end dit hold kan rumme."
+      },
+      "availableBalance": {
+        "title": "Til rådighed",
+        "text": "Til rådighed er din saldo minus det, du har låst i bud, hvor du fører. Mister du føringen, frigives beløbet."
       }
     },
     "transfers": {

@@ -44,7 +44,7 @@
   "balance": {
     "label": "Balance",
     "division": "Division {division}",
-    "available": "{value} CZ$ tilgængelig",
+    "available": "{value} CZ$ til rådighed",
     "lockedInBids": "{value} CZ$ låst i bud",
     "lockedSales": "+{value} CZ$ låst"
   },
