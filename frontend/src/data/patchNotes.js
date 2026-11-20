@@ -1,5 +1,29 @@
 export const PATCHES = [
 {
+  "version": "7.480",
+  "date": "2026-11-20",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "My Team",
+      "area": "interface",
+      "en": {
+        "title": "Squad badge in Status",
+        "body": "Status on My Team now shows JR or U23 based on the rider's squad instead of an age badge. You'll find the age in its own column."
+      },
+      "da": {
+        "title": "Trupmærke i Status",
+        "body": "Status på Mit Hold viser nu JR eller U23 efter rytterens trup i stedet for et aldersmærke. I finder alderen i sin egen kolonne."
+      },
+      "refs": [
+        7233
+      ]
+    }
+  ]
+},
+{
   "version": "7.479",
   "date": "2026-11-20",
   "changes": [
