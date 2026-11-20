@@ -9,11 +9,11 @@
 // - programmer saettes kun paa en gruppe eller en rytter, rytterens egen plan
 //   vinder over gruppens, og "No program" faar ingen advarsel.
 
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import Portal from "../../../components/ui/Portal.jsx";
 import { useModalA11y } from "../../../hooks/useModalA11y.js";
 import {
-  CalendarIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, ClipboardIcon, FlagIcon,
+  CalendarIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, ClipboardIcon, FlagIcon, FlameIcon,
   GripVerticalIcon, LockIcon, RefreshIcon, XIcon,
 } from "../../../components/ui/icons/index.jsx";
 import type { Session } from "./model.ts";
@@ -221,7 +221,7 @@ export function CellBody({ cell, field, compact = false }: { cell: Cell; field: 
   const meta = cell.limitedFrom
     ? <span className="text-cz-danger">Fatigue limit · was {SESSION_EN[cell.limitedFrom]}</span>
     : cell.locked
-      ? <span className="inline-flex items-center gap-1 text-cz-accent-t"><LockIcon size={10} aria-hidden="true" />Locked{cell.movedFrom !== undefined ? ` · moved from LD ${cell.movedFrom + 1}` : ""}</span>
+      ? <span className="inline-flex items-center gap-1 text-cz-accent-t"><LockIcon size={10} aria-hidden="true" />Locked{cell.movedFrom !== undefined ? ` · from LD ${cell.movedFrom + 1}` : ""}</span>
       : cell.prio ? <span className="text-cz-3">Priority {cell.prio}</span> : <EffortWord session={cell.session} />;
   return (
     <span className="flex min-w-0 flex-col">
@@ -329,9 +329,16 @@ export function PhoneDayAtATime({ view, start, editable }: { view: WeekView; sta
     setDay(d);
   };
   // Startdagen staar i sporet fra foerste billede (uden glidende rul).
-  useEffect(() => {
-    const t = track.current;
-    if (t) t.scrollLeft = start * t.clientWidth;
+  useLayoutEffect(() => {
+    const place = () => {
+      const t = track.current;
+      const el = t?.children[start] as HTMLElement | undefined;
+      if (t && el) t.scrollLeft = el.offsetLeft - t.offsetLeft;
+    };
+    place();
+    // Fonte og faner kan flytte bredden efter foerste maaling; saet dagen igen naar layoutet staar.
+    const raf = requestAnimationFrame(place);
+    return () => cancelAnimationFrame(raf);
   }, [start]);
   // Fanger hvor sporet falder til ro, saa vaelgeren foelger et swipe.
   const settle = useRef<number | undefined>(undefined);
@@ -371,7 +378,7 @@ export function PhoneDayAtATime({ view, start, editable }: { view: WeekView; sta
       </div>
       <div ref={track} onScroll={onScroll} className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none]" aria-live="polite">
         {DAYS.map((x, d) => (
-          <div key={x.short} className="w-full shrink-0 snap-center snap-always" aria-hidden={d !== day} inert={d !== day}>
+          <div key={x.short} className="min-w-0 shrink-0 basis-full overflow-hidden snap-center snap-always" aria-hidden={d !== day} inert={d !== day}>
             <DayFields view={view} d={d} />
             <DayFooter view={view} d={d} />
             {editable && <DayBlockEditor d={d} />}
@@ -388,7 +395,7 @@ function MiniStrip({ cells }: { cells: Cell[] }) {
     <span className="grid grid-cols-5 gap-0.5" aria-hidden="true">
       {cells.map((c, f) => (
         <span key={f} className={`flex h-6 w-8 items-center justify-center rounded-cz border font-data text-3xs font-semibold ${
-          c.kind === "race" ? "border-cz-1 bg-cz-1 text-cz-card"
+          c.kind === "race" ? "border-cz-border-strong bg-cz-subtle text-cz-1"
             : c.kind === "session" && c.limitedFrom ? "border-dashed border-cz-danger text-cz-danger"
               : "border-cz-border text-cz-1"}`}>
           {c.kind === "race" ? <FlagIcon size={10} /> : c.kind === "restDay" ? "RE" : c.locked ? <LockIcon size={10} /> : CODE[c.session]}
@@ -441,13 +448,13 @@ export function PhoneGrid({ view, sheet }: { view: WeekView; sheet: { d: number;
         {FIELDS.map((f) => (
           <Row key={f} f={f} view={view} onOpen={(d) => setOpen({ d, f })} active={open} />
         ))}
-        <span className="flex items-center font-data text-3xs text-cz-3">Tng</span>
+        <span className="flex items-center text-cz-3"><FlameIcon size={13} aria-label="Fatigue tonight" /></span>
         {DAYS.map((x, d) => (
           <span key={x.short} className="flex justify-center pt-1"><TonightPlate value={view.fatigueTonight[d]} /></span>
         ))}
       </div>
       <p className="mt-2 text-3xs leading-relaxed text-cz-3">
-        SP Sprint · TE Tempo · EN Endurance · TQ Technique · AE Aero · VO VO2max · TH Threshold · AR Active recovery · flag = race · Tng = fatigue tonight
+        SP Sprint · TE Tempo · EN Endurance · TQ Technique · AE Aero · VO VO2max · TH Threshold · AR Active recovery · flag = race · flame = fatigue tonight
       </p>
       {open && <CellSheet view={view} at={open} onClose={() => setOpen(null)} />}
     </div>
@@ -466,7 +473,7 @@ function Row({ f, view, onOpen, active }: { f: number; view: WeekView; onOpen: (
           <button key={x.short} type="button" onClick={() => onOpen(d)}
             aria-label={`${x.long} LD ${f + 1}: ${c.kind === "race" ? `race, ${c.event}` : c.kind === "restDay" ? "rest day" : SESSION_EN[c.session]}`}
             className={`relative flex h-11 items-center justify-center rounded-cz border font-data text-xs font-semibold ${
-              c.kind === "race" ? "border-cz-1 bg-cz-1 text-cz-card"
+              c.kind === "race" ? "border-cz-border-strong bg-cz-subtle text-cz-1"
                 : limitHere ? "border-dashed border-cz-danger text-cz-danger"
                   : "border-cz-border bg-cz-card text-cz-1"} ${isActive ? "outline-2 outline-offset-1 outline-cz-accent-t" : ""}`}>
             {c.kind === "race" ? <FlagIcon size={13} aria-hidden="true" /> : c.kind === "restDay" ? "RE" : CODE[c.session]}
@@ -497,12 +504,17 @@ function CellSheet({ view, at, onClose }: { view: WeekView; at: { d: number; f: 
           </button>
           <p className={LABEL}>{DAYS[at.d].long} {DAYS[at.d].date} · LD {at.f + 1} · {FIELD_TIME[at.f]}</p>
           <h3 id={titleId} className="mt-1 text-base font-semibold text-cz-1">
-            {c.kind === "race" ? c.event : c.kind === "restDay" ? "Rest day" : SESSION_EN[c.limitedFrom ?? c.session]}
+            {c.kind === "race" ? c.event : c.kind === "restDay" ? "Rest day" : SESSION_EN[c.session]}
           </h3>
-          <div className="mt-1 text-xs"><CellBody cell={c} field={at.f} compact /></div>
+          {c.kind === "session" && c.limitedFrom && (
+            <p className="mt-1 text-xs text-cz-2">
+              Planned: <span className="font-medium text-cz-1">{SESSION_EN[c.limitedFrom]}</span>{c.locked ? " (locked)" : ""}. Fatigue tonight passes the limit after LD {at.f}, so the rest of the day is active recovery. The limit beats the lock; a race would still run.
+            </p>
+          )}
+          {c.kind === "race" && <p className="mt-1 text-xs text-cz-2">{c.stage} · races sit in their fixed field and always run.</p>}
           {c.kind === "session" && (
             <>
-              <p className={`${LABEL} mt-4 mb-1.5`}>Change session</p>
+              <p className={`${LABEL} mt-4 mb-1.5`}>Planned session</p>
               <div className="flex flex-wrap gap-1.5">
                 {PICK.map((s) => (
                   <button key={s} type="button" aria-pressed={s === (c.limitedFrom ?? c.session)}

@@ -18,7 +18,7 @@ import { ROTATION, SESSION_EN } from "./r5data.ts";
 import { RiderName } from "./R5Parts.tsx";
 import {
   CODE, CellBody, DAYS, DAY_BLOCKS, FATIGUE_LIMIT, FIELDS, FIELD_TIME, GROUPS, KindIcon, LABEL, LIBRARY,
-  LimitLine, PhoneDayAtATime, PhoneGrid, PhoneWeekList, ROTATION_RIDERS, TODAY, TonightPlate,
+  PhoneDayAtATime, PhoneGrid, PhoneWeekList, ROTATION_RIDERS, TODAY, TonightPlate,
   cellTone, programOf, riderById, rotationView, usersOf, weekBlocksView, type Kind, type WeekView,
 } from "./R5ProgramParts.tsx";
 
@@ -190,15 +190,20 @@ function WeekGrid({ view, kind }: { view: WeekView; kind: Kind }) {
         {FIELDS.map((f) => (
           <Row key={f} f={f} view={view} />
         ))}
-        <span className="flex items-center border-t border-cz-border px-2 font-data text-3xs uppercase tracking-[.06em] text-cz-3">{kind === "week" ? "Taken" : ""}</span>
+        {kind === "week" && (
+          <>
+            <span className="flex items-center border-t border-cz-border px-2 font-data text-3xs uppercase leading-tight tracking-[.06em] text-cz-3">Races took</span>
+            {DAYS.map((x, d) => (
+              <div key={x.short} className="border-s border-t border-cz-border px-2.5 py-1.5 text-3xs leading-snug text-cz-2">
+                {view.taken[d].length ? view.taken[d].map((s) => SESSION_EN[s]).join(", ") : "All sessions ridden"}
+              </div>
+            ))}
+          </>
+        )}
+        <span className="flex items-center border-t border-cz-border px-2 font-data text-3xs uppercase leading-tight tracking-[.06em] text-cz-3">Fatigue tonight</span>
         {DAYS.map((x, d) => (
-          <div key={x.short} className="flex items-center justify-between gap-2 border-s border-t border-cz-border px-2.5 py-1.5 text-3xs text-cz-2" data-mark={d === 3 ? "tonight" : undefined}>
-            <span className="min-w-0 truncate">
-              {kind === "week"
-                ? (view.taken[d].length ? view.taken[d].map((s) => SESSION_EN[s]).join(", ") : "All ridden")
-                : ""}
-            </span>
-            <span className="inline-flex shrink-0 items-center gap-1">Tonight <TonightPlate value={view.fatigueTonight[d]} /></span>
+          <div key={x.short} className="flex items-center border-s border-t border-cz-border px-2.5 py-1.5" data-mark={d === 3 ? "tonight" : undefined}>
+            <TonightPlate value={view.fatigueTonight[d]} />
           </div>
         ))}
       </div>
@@ -444,8 +449,7 @@ export default function ProgramTab({ mode: urlMode, mobile }: { mode: Kind; mobi
           <p className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-2xs text-cz-3">
             <span>Races sit in their fixed fields and always run</span>
             <span className="inline-flex items-center gap-1"><LockIcon size={10} aria-hidden="true" className="text-cz-accent-t" />Locked: never taken by a race, moves to a free field</span>
-            <span className="inline-flex w-40 items-center gap-1"><LimitLine label={false} /></span>
-            <span>Fatigue limit: the rest of the day follows your choice, even a locked session</span>
+            <span className="inline-flex items-center gap-1.5"><span className="inline-block w-6 border-t-2 border-dashed border-cz-danger" aria-hidden="true" />Fatigue limit: the rest of the day follows your choice, even a locked session</span>
             {kind === "rotation" && <span>#n = place in the rotation</span>}
           </p>
         </section>
