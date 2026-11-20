@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   bandText, barPct, buildDevelopmentRows, devSummary, nextSort, previewXpDevelopment, sortDevRows, topOf, topSortValue,
   xpDevelopmentMode, buildDevelopmentFixture, seasonRatingChange, signedText, DEFAULT_SORT, DEV_FIXTURE_TODAY, MAX_ABILITIES, type DevRiderInput,
+  dayKeyMinus, dayXpByAbility, gainsLast30, xpLineOf,
   DEV_COLUMNS, defaultDevColumns, parseDevColumns, serializeDevColumns, sortAfterColumns, toggleDevColumn,
 } from "./DevelopmentTabXpModel.ts";
 import type { XpReceipt } from "../../lib/trainingReportXp.ts";
@@ -68,7 +69,7 @@ test("rows read XP today, 30 days, the next point and the season from the receip
   assert.deepEqual(a.today, { state: "xp", xp: 30, point: "climbing" });
   assert.equal(a.xp30, 80);
   assert.deepEqual(a.spark, [50, 30]);
-  assert.deepEqual(a.next, { key: "flat", pct: 87 });
+  assert.deepEqual(a.next, { key: "flat", pct: 87, xp: 35, price: 40 }, "ejer 19/11: the next point carries x / y XP");
   assert.equal(a.season, 3);
   assert.deepEqual(a.abilities.map(x => [x.key, x.now, x.season, x.pct]), [["climbing", 72, 3, 25], ["flat", 60, 0, 87]]);
   const b = rows.find(r => r.id === "b")!;
@@ -216,7 +217,7 @@ test("the preview fixture shows the rating change and the role he is best in now
 
 test("type columns (ejer 20/11): Natural type shown and Role now hidden by default", () => {
   assert.deepEqual([...defaultDevColumns()], ["natural"]);
-  assert.deepEqual(DEV_COLUMNS.map(c => c.key), ["natural", "role"]);
+  assert.deepEqual(DEV_COLUMNS.map(c => c.key), ["natural", "role", "rating30"]);
 });
 
 test("type columns: the stored choice is read back, and anything unreadable falls back to the default", () => {
@@ -246,4 +247,101 @@ test("type columns: sorting reads each form, and hiding the sorted column falls 
   assert.deepEqual(sortAfterColumns({ key: "role", dir: 1 }, defaultDevColumns()), DEFAULT_SORT);
   assert.deepEqual(sortAfterColumns({ key: "natural", dir: 1 }, defaultDevColumns()), { key: "natural", dir: 1 });
   assert.deepEqual(sortAfterColumns({ key: "rating", dir: 1 }, new Set()), { key: "rating", dir: 1 });
+});
+
+// --- Ejer 20/11: Rating, 30 d -------------------------------------------------------
+
+test("rating 30 d: the rating now minus the rating with the last 30 days' points taken off", () => {
+  const runs = [
+    receipt("2026-11-19", "complete", [{ id: "a", xp: { climbing: 10 }, gains: { climbing: 2 } }, { id: "b", xp: {} }]),
+    receipt("2026-10-25", "complete", [{ id: "a", xp: { climbing: 10 }, gains: { climbing: 1 } }, { id: "b", xp: {} }]),
+    // Outside the window (more than 30 days back): not counted.
+    receipt("2026-10-10", "complete", [{ id: "a", xp: { climbing: 10 }, gains: { climbing: 5 } }, { id: "b", xp: {} }]),
+  ];
+  const rows = buildDevelopmentRows({ runs, riders: [rider("a"), rider("b")], todayKey: "2026-11-19", seasonGains: { a: { climbing: 8 }, b: {} } });
+  const a = rows.find(r => r.id === "a")!;
+  assert.deepEqual(gainsLast30(runs, "a", "2026-11-19"), { climbing: 3 });
+  assert.equal(a.rating30, riderOverallRating({ climbing: 72, flat: 60 })! - riderOverallRating({ climbing: 69, flat: 60 })!);
+  assert.notEqual(a.rating30, a.ratingSeason, "30 days and the season are two different windows");
+  assert.equal(rows.find(r => r.id === "b")!.rating30, 0, "receipts without points are a measured zero");
+});
+
+test("rating 30 d: unknown is a dash, never a false zero", () => {
+  // No receipt in the window at all.
+  assert.equal(gainsLast30([receipt("2026-09-01", "complete", [{ id: "a", xp: {} }])], "a", "2026-11-19"), null);
+  assert.equal(gainsLast30([], "a", "2026-11-19"), null);
+  // Joined inside the window: missing on the window's first receipt, so his earlier points are not in these receipts.
+  const runs = [
+    receipt("2026-11-19", "complete", [{ id: "a", xp: {}, gains: { climbing: 1 } }, { id: "new", xp: {}, gains: { climbing: 1 } }]),
+    receipt("2026-11-01", "complete", [{ id: "a", xp: {} }]),
+  ];
+  const rows = buildDevelopmentRows({ runs, riders: [rider("a"), rider("new")], todayKey: "2026-11-19", seasonGains: {} });
+  assert.equal(rows.find(r => r.id === "new")!.rating30, null);
+  assert.equal(signedText(rows.find(r => r.id === "new")!.rating30), "—");
+  assert.equal(typeof rows.find(r => r.id === "a")!.rating30, "number");
+});
+
+test("rating 30 d: the window is today and the 29 days before", () => {
+  assert.equal(dayKeyMinus("2026-11-19", 29), "2026-10-21");
+  assert.equal(dayKeyMinus("2026-03-01", 1), "2026-02-28");
+  const edge = [
+    receipt("2026-10-21", "complete", [{ id: "a", xp: {}, gains: { climbing: 1 } }]),
+    receipt("2026-10-20", "complete", [{ id: "a", xp: {}, gains: { climbing: 4 } }]),
+  ];
+  assert.deepEqual(gainsLast30(edge, "a", "2026-11-19"), { climbing: 1 });
+});
+
+test("rating 30 d: hidden by default, remembered, sortable, and hiding it resets the sort", () => {
+  assert.equal(defaultDevColumns().has("rating30"), false);
+  assert.equal(parseDevColumns("[\"natural\"]").has("rating30"), false, "an older stored choice keeps it hidden");
+  const shown = toggleDevColumn(defaultDevColumns(), "rating30");
+  assert.deepEqual([...parseDevColumns(serializeDevColumns(shown))].sort(), ["natural", "rating30"]);
+  assert.deepEqual(sortAfterColumns({ key: "rating30", dir: -1 }, defaultDevColumns()), DEFAULT_SORT);
+  assert.deepEqual(sortAfterColumns({ key: "rating30", dir: -1 }, shown), { key: "rating30", dir: -1 });
+  const runs = [receipt("2026-11-19", "complete", [
+    { id: "a", xp: {}, gains: { climbing: 1 } }, { id: "c", xp: {}, gains: { climbing: 6 } },
+  ])];
+  const rows = buildDevelopmentRows({ runs, riders: [rider("a"), rider("b"), rider("c")], todayKey: "2026-11-19", seasonGains: {} });
+  assert.deepEqual(sortDevRows(rows, nextSort(DEFAULT_SORT, "rating30")).map(r => r.id), ["c", "a", "b"], "highest first, unknown last");
+});
+
+// --- Ejer 20/11: XP lines as on the Training tab (#8488) -----------------------------
+
+test("xpLineOf: whole numbers, the fill stops at full, unusable bars give nothing", () => {
+  assert.deepEqual(xpLineOf({ xp: 312.4, price: 540 }), { xp: 312, price: 540, pct: 57 });
+  assert.deepEqual(xpLineOf({ xp: 600, price: 540 }), { xp: 600, price: 540, pct: 100 }, "leftover XP is told honestly");
+  assert.equal(xpLineOf({ xp: 5, price: 0 }), null);
+  assert.equal(xpLineOf({ xp: -1, price: 40 }), null);
+  assert.equal(xpLineOf(null), null);
+});
+
+test("dayXpByAbility: training and races added per ability", () => {
+  assert.deepEqual(dayXpByAbility([{ xp: { climbing: 10, flat: 0 } }, { xp: { climbing: 5, sprint: 3 } }, { xp: null }]), { climbing: 15, sprint: 3 });
+  assert.equal(dayXpByAbility(null), null);
+});
+
+test("the opened row: x / y XP per ability and the day's +N XP from the newest receipt", () => {
+  const rows = buildDevelopmentRows({ runs: RUNS, riders: [rider("a"), rider("b")], todayKey: "2026-11-19", seasonGains: { a: { climbing: 3 } } });
+  const a = rows.find(r => r.id === "a")!;
+  assert.deepEqual(a.dayXpWhen, { kind: "today" });
+  assert.deepEqual(a.abilities.map(x => [x.key, x.line, x.dayXp]), [
+    ["climbing", { xp: 10, price: 40, pct: 25 }, 30],
+    ["flat", { xp: 35, price: 40, pct: 87 }, null],
+  ]);
+  // The day after, before its receipt: the same numbers labelled as yesterday.
+  const next = buildDevelopmentRows({ runs: RUNS, riders: [rider("a")], todayKey: "2026-11-20", seasonGains: {} })[0];
+  assert.deepEqual(next.dayXpWhen, { kind: "yesterday" });
+  const later = buildDevelopmentRows({ runs: RUNS, riders: [rider("a")], todayKey: "2026-11-23", seasonGains: {} })[0];
+  assert.deepEqual(later.dayXpWhen, { kind: "dated", date: "2026-11-19" });
+  // Not in the newest receipt: no day XP and no label.
+  const outsider = buildDevelopmentRows({ runs: RUNS, riders: [rider("new")], todayKey: "2026-11-19", seasonGains: {} })[0];
+  assert.equal(outsider.dayXpWhen, null);
+});
+
+test("the preview fixture fills the XP lines", () => {
+  const fx = buildDevelopmentFixture();
+  const rows = buildDevelopmentRows({ runs: fx.runs, riders: fx.riders, todayKey: DEV_FIXTURE_TODAY, seasonGains: fx.seasonGains, forceUnsettled: true });
+  assert.ok(rows.every(r => r.next && r.next.price > 0));
+  assert.ok(rows.some(r => r.abilities.some(x => x.line && x.dayXp)));
+  assert.ok(rows.some(r => typeof r.rating30 === "number"));
 });
