@@ -108,7 +108,9 @@ export function previewAcademy<T extends { roster?: Array<Record<string, unknown
   return {
     ...academy,
     roster: (academy.roster ?? []).map((rider) => {
-      const view = viewFor(rider.id);
+      // Egne talenter er aldrig uscoutede: uden skøn læres de stadig.
+      const raw = viewFor(rider.id);
+      const view = raw.hidden && raw.reason !== "learning" ? LEARNING : raw;
       const { prognosis: _legacy, ...rest } = rider;
       return { ...rest, potentialView: view, prognosisView: prognosisFor(view) };
     }),
