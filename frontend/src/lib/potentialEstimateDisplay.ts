@@ -19,14 +19,15 @@ export type PotentialViewShown = {
   changedAt: string | null;
 };
 // #8523: "aiTeam" = rytter på et AI-hold uden holdets skøn; han kan ikke scoutes.
-export type PotentialViewUnscouted = { hidden: true; reason: "unscouted" | "aiTeam" };
+export type PotentialViewUnscouted = { hidden: true; reason: "unscouted" };
+export type PotentialViewAiTeam = { hidden: true; reason: "aiTeam" };
 export type PotentialViewLearning = {
   hidden: true;
   reason: "learning";
   trainings: number;
   trainingsNeeded: number;
 };
-export type PotentialView = PotentialViewShown | PotentialViewUnscouted | PotentialViewLearning;
+export type PotentialView = PotentialViewShown | PotentialViewUnscouted | PotentialViewAiTeam | PotentialViewLearning;
 
 function finite(n: unknown): n is number {
   return typeof n === "number" && Number.isFinite(n);
@@ -46,7 +47,8 @@ export function potentialViewOf(source: unknown): PotentialView | null {
   if (!raw || typeof raw !== "object") return null;
   const view = raw as Record<string, unknown>;
   if (view.hidden === true) {
-    if (view.reason === "unscouted" || view.reason === "aiTeam") return { hidden: true, reason: view.reason };
+    if (view.reason === "unscouted") return { hidden: true, reason: "unscouted" };
+    if (view.reason === "aiTeam") return { hidden: true, reason: "aiTeam" };
     if (view.reason === "learning" && finite(view.trainings) && finite(view.trainingsNeeded)) {
       return { hidden: true, reason: "learning", trainings: view.trainings, trainingsNeeded: view.trainingsNeeded };
     }
