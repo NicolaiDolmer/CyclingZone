@@ -35,6 +35,7 @@
 import { useTranslation } from "react-i18next";
 import { abilityReceiptGainPct, receiptGainKeys, RECEIPT_GAIN_DAY_OLDER } from "../../lib/trainingReport.js";
 import { formatDate } from "../../lib/intl.js";
+import { XpBar } from "./reportXp/XpBar.tsx";
 
 // Bredder er faste, så de fire kolonner flugter linje for linje (tabular-nums på
 // al numerik, jf. docs/design/PAGE_TEMPLATES.md).
@@ -94,30 +95,30 @@ export default function AbilityReceiptRow({ row, inFocus = false }) {
           gained > 0 ? "text-cz-success" : "text-cz-3"
         }`}
       >
-        {gained == null ? "—" : `+${gained}`}
+        {/* #7947: under XP er ukendt sæson en tom celle (TASTE P13), ikke en streg. */}
+        {gained == null ? (xpMode ? null : "—") : `+${gained}`}
       </span>
 
       {/* På vej mod næste point, eller "færdig" på en låst evne. #7947: under XP
-          "x / y XP" med bjælke; ingen bjælke for evnen = stille streg. */}
+          "x / y XP" med spillets neutrale XP-bjælke (XpBar, aldrig guld: TASTE P3,
+          ejer 19/11); ingen bjælke for evnen = tom celle, aldrig en tankestreg (P13). */}
       {xpMode ? (
         row.xpLine ? (
           <span
-            className="flex-none w-[100px] flex items-center gap-1"
+            className="flex-none w-[100px] flex items-center gap-1.5"
             title={t("receipt.xpTitle", { xp: row.xpLine.xp, price: row.xpLine.price })}
             data-testid="ability-receipt-xp"
           >
-            <span className="relative h-1 min-w-[16px] flex-1 rounded-full bg-cz-subtle" aria-hidden="true">
-              <span
-                className="absolute left-0 top-0 h-full rounded-full bg-cz-accent/85 transition-[width] duration-500"
-                style={{ width: `${row.xpLine.pct}%` }}
-              />
+            <span className="block min-w-[16px] flex-1">
+              <XpBar training={row.xpLine.pct / 100} race={0} height={4}
+                label={t("receipt.xpTitle", { xp: row.xpLine.xp, price: row.xpLine.price })} />
             </span>
-            <span className="flex-none whitespace-nowrap text-right font-mono tabular-nums text-3xs text-cz-3">
+            <span className="flex-none whitespace-nowrap text-right font-data tabular-nums text-2xs text-cz-2">
               {t("receipt.xpLine", { xp: row.xpLine.xp, price: row.xpLine.price })}
             </span>
           </span>
         ) : (
-          <span className="flex-none w-[100px] text-right font-mono tabular-nums text-3xs text-cz-3">—</span>
+          <span className="flex-none w-[100px]" aria-hidden="true" />
         )
       ) : locked ? (
         <span
@@ -162,8 +163,8 @@ export default function AbilityReceiptRow({ row, inFocus = false }) {
           aldrig teksten "0 %" (den skal ikke læses som en fejl). #7947: under XP
           vises ingen procent; dagens XP står i Rapport-fanen. */}
       {xpMode ? (
-        <span className="flex-none w-[64px] whitespace-nowrap text-right font-mono tabular-nums text-3xs text-cz-3" data-testid="ability-receipt-xp-day">
-          {row.xpDay != null ? t(`${gainKey}Xp`, { ...gainVars, xp: row.xpDay }) : "—"}
+        <span className="flex-none w-[64px] whitespace-nowrap text-right font-data tabular-nums text-3xs text-cz-3" data-testid="ability-receipt-xp-day">
+          {row.xpDay != null ? t(`${gainKey}Xp`, { ...gainVars, xp: row.xpDay }) : null}
         </span>
       ) : (
         <span className="flex-none w-[92px] text-right font-mono tabular-nums text-3xs text-cz-3">
