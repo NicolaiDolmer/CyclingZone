@@ -190,6 +190,7 @@ export async function loadRiderWear({ supabase, riderIds = null }) {
     }
     return byRider;
   } catch (err) {
-    throw new Error(`riderWear: read failed: ${err?.message ?? err}`, { cause: err });
+    const message = err && typeof err === "object" && "message" in err ? String(err.message) : String(err);
+    throw new Error(`riderWear: read failed: ${message}`, { cause: err });
   }
 }
