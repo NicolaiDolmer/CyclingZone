@@ -171,7 +171,14 @@
   "table": {
     "fullTable": "Volledige tabel",
     "columnsLabel": "Kolommen kiezen",
-    "moreRight": "Meer kolommen aan de rechterkant"
+    "moreRight": "Meer kolommen aan de rechterkant",
+    "titleBar": {
+      "filters": "Filters",
+      "closeSearch": "Zoeken sluiten",
+      "columns": "Kolommen",
+      "close": "Sluiten",
+      "swapHint": "Tik op een kolom om die toe te voegen. De eerst gekozen kolom valt weg."
+    }
   },
   "expectedDivision": {
     "optionExpected": "Divisie {n} (verwacht)",

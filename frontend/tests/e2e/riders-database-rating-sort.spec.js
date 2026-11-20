@@ -114,7 +114,9 @@ test.describe("Rytterdatabase Rating-kolonne er sorterbar (#4035)", () => {
     await page.goto("/riders");
     await expect(page.getByRole("heading", { name: /Rider Database|Rytterdatabase/ })).toBeVisible();
 
-    const sortSelect = page.getByLabel(/Sort by|Sortér efter/);
+    // #8280 (P21): mobil-sorteringen ligger i filter-arket bag titellinjens filter-ikon.
+    await page.getByTestId("table-filters-open").click();
+    const sortSelect = page.getByRole("dialog").getByLabel(/Sort by|Sortér efter/);
     await sortSelect.selectOption("rating");
     await expect(sortSelect).toHaveValue("rating");
 

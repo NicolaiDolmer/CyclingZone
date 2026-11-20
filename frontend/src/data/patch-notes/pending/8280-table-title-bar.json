@@ -1,0 +1,20 @@
+{
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Tables",
+      "area": "interface",
+      "en": {
+        "title": "Tables get one control bar and a column picker",
+        "body": "Filters, search and a new column button now sit in one line above the tables. With the column button you choose which extra columns you see. The small grey text in the side menu is also easier to read."
+      },
+      "da": {
+        "title": "Tabellerne får én kontrollinje og kolonnevælger",
+        "body": "Filtre, søgning og en ny kolonneknap står nu i én linje over tabellerne. Med kolonneknappen vælger du selv, hvilke ekstra kolonner du ser. Den lille grå tekst i sidemenuen er også lettere at læse."
+      },
+      "refs": [8280]
+    }
+  ]
+}
