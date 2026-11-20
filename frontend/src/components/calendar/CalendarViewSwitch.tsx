@@ -6,7 +6,7 @@ import type { CalendarView } from "../../lib/calendarTable.ts";
 // #6683: skifteren bor i sin egen fil, saa CalendarPage kan importere den
 // statisk og hente selve tabellen (CalendarTable.tsx) foerst naar den bruges
 // (ejer 25/10: kalenderens bundle maa ikke vokse).
-type Translate = (key: string, opts?: Record<string, unknown>) => string;
+type Translate = { (key: string): string; (key: string, opts: Record<string, unknown>): string };
 interface SegmentedProps {
   label: string;
   value: string;
