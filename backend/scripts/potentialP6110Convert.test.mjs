@@ -26,7 +26,7 @@ const ROWS = [
 test("resolveOutDir: kun under balance-internals", () => {
   const root = path.resolve("/repo");
   assert.equal(resolveOutDir(undefined, root), path.join(root, "balance-internals", "6110"));
-  assert.throws(() => resolveOutDir(path.join(root, "docs")), /balance-internals/);
+  assert.throws(() => resolveOutDir(path.join(root, "reports")), /balance-internals/);
 });
 
 test("parseParams: accepterer objektet direkte eller under potentialP, afviser ugyldige", () => {

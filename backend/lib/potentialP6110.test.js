@@ -40,6 +40,9 @@ function makePopulation(n, seed = 8521) {
 
 // ── Params ──────────────────────────────────────────────────────────────────
 
+// regel 16: testene læser aldrig vægur-tiden
+const FIXED_NOW = () => Date.parse("2026-11-20T12:00:00Z");
+
 test("validatePotentialPParams: fixturen er gyldig", () => {
   assert.equal(validatePotentialPParams(FIXTURE), FIXTURE);
 });
@@ -264,20 +267,20 @@ const quietLog = () => {
 
 test("loadAcademyPotentialP: XP-kontakten slukket = null (dagens akademi)", async () => {
   clearPrivateConfigCache();
-  assert.equal(await loadAcademyPotentialP({ supabase: fakeClient({ flag: "off", privateValue: FIXTURE }), log: quietLog() }), null);
-  assert.equal(await loadAcademyPotentialP({ supabase: fakeClient({ privateValue: FIXTURE }), log: quietLog() }), null);
+  assert.equal(await loadAcademyPotentialP({ now: FIXED_NOW, supabase: fakeClient({ flag: "off", privateValue: FIXTURE }), log: quietLog() }), null);
+  assert.equal(await loadAcademyPotentialP({ now: FIXED_NOW, supabase: fakeClient({ privateValue: FIXTURE }), log: quietLog() }), null);
 });
 
 test("loadAcademyPotentialP: tændt med gyldige params giver params; mangler de, null + advarsel uden tal", async () => {
   clearPrivateConfigCache();
-  const got = await loadAcademyPotentialP({ supabase: fakeClient({ flag: "on", privateValue: FIXTURE }), log: quietLog() });
+  const got = await loadAcademyPotentialP({ now: FIXED_NOW, supabase: fakeClient({ flag: "on", privateValue: FIXTURE }), log: quietLog() });
   assert.deepEqual(got, FIXTURE);
   clearPrivateConfigCache();
   const log = quietLog();
-  assert.equal(await loadAcademyPotentialP({ supabase: fakeClient({ flag: "on" }), log }), null);
+  assert.equal(await loadAcademyPotentialP({ now: FIXED_NOW, supabase: fakeClient({ flag: "on" }), log }), null);
   assert.ok(log.warnings.some((w) => w.includes("missing")));
   clearPrivateConfigCache();
   const log2 = quietLog();
-  assert.equal(await loadAcademyPotentialP({ supabase: fakeClient({ flag: "on", privateValue: { anchors: FIXTURE.anchors } }), log: log2 }), null);
+  assert.equal(await loadAcademyPotentialP({ now: FIXED_NOW, supabase: fakeClient({ flag: "on", privateValue: { anchors: FIXTURE.anchors } }), log: log2 }), null);
   assert.ok(log2.warnings.every((w) => !/\d{2}, \d{2}/.test(w)), "advarslen må ikke indeholde tallene");
 });
