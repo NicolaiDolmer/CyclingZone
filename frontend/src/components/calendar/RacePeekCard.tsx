@@ -40,7 +40,7 @@ const Modal = ModalBase as unknown as ComponentType<ModalProps>;
 const StatusBadge = StatusBadgeBase as unknown as ComponentType<{ state: string; children?: ReactNode }>;
 const Skeleton = SkeletonBase as unknown as ComponentType<{ className?: string }>;
 
-type Translate = (key: string, opts?: Record<string, unknown>) => string;
+type Translate = { (key: string): string; (key: string, opts: Record<string, unknown>): string };
 
 export interface PeekEntry extends CalendarEntryLike {
   name: string;

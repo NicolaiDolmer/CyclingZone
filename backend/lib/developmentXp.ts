@@ -530,6 +530,84 @@ export interface XpTickResult {
   xp: Record<string, number>;
   /** Kvitteringen som i dag: summen af tickets fremdrift målt i point. */
   score: number;
+  /**
+   * #6110 tændingsliste pkt. 2 (#8210): hele point på dette tick, som XP gemt FØR datoen
+   * betalte (bjælken ved datoens start). Resten af tickets point er tjent af datoens egen XP.
+   */
+  barPaid: Record<string, number>;
+  /** Bjælken i XP og prisen for næste point pr. synlig evne efter tick'et ("x af y XP"). */
+  xpBar: Record<string, { xp: number; price: number }>;
+}
+
+/** Datoens start for én rytter: bjælken ved datoens start og point, der allerede er betalt fra den. */
+export interface XpDateStart {
+  progress?: Record<string, unknown> | null;
+  paid?: Record<string, unknown> | null;
+}
+
+/**
+ * Bjælken i XP og prisen for næste point pr. synlig evne ("x af y XP"), afrundet til hele tal
+ * som i visningen (uafrundede tal gør talent og forhold nøjagtigt aflæselige, H6b/X9).
+ * `only` begrænser til de evner, der står i den (rapporten: evner med XP eller bjælke).
+ */
+export function xpBarsFor(
+  abilities: Record<string, unknown>, progress: Record<string, unknown> | null | undefined, params: DevelopmentXpParams,
+  { only = null }: { only?: ReadonlySet<string> | null } = {},
+): Record<string, { xp: number; price: number }> {
+  const out: Record<string, { xp: number; price: number }> = {};
+  for (const ability of VISIBLE_ABILITIES as readonly string[]) {
+    if (only && !only.has(ability)) continue;
+    const level = Number(abilities?.[ability]);
+    if (!Number.isFinite(level)) continue;
+    const view = xpBarView({ level, bar: Number(progress?.[ability] ?? 0) }, params);
+    out[ability] = { xp: Math.round(view.xp), price: Math.round(view.price) };
+  }
+  return out;
+}
+
+/** XP pr. evne afrundet til hele tal som i visningen; evner, der runder til 0, udelades. */
+export function roundedXp(xp: Record<string, unknown> | null | undefined): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [ability, value] of Object.entries(xp ?? {})) {
+    const n = Math.round(Number(value));
+    if (Number.isFinite(n) && n > 0) out[ability] = n;
+  }
+  return out;
+}
+
+/** En tidligere rapportlinje på samme dato for samme rytter (kvittering eller kalenderdags-rapport). */
+export interface XpDateRow {
+  progress_before?: Record<string, unknown> | null;
+  bar_paid?: Record<string, unknown> | null;
+  xp_slot_seq?: unknown;
+  game_day?: unknown;
+}
+
+/**
+ * Datoens start ud fra datoens tidligere rapportlinjer: bjælken før datoens FØRSTE afregnede slot
+ * (lavest `xp_slot_seq`; slots kan afregnes ude af løbsdags-rækkefølge: tryk, etape, aften), point
+ * allerede betalt fra bjælken, og dette slots løbenummer på datoen. Ingen tidligere linjer = datoens
+ * første slot (dateStart null, seq 1).
+ */
+export function xpDateStartFromRows(rows: ReadonlyArray<XpDateRow | null | undefined>): { dateStart: XpDateStart | null; seq: number } {
+  const earlier = rows.filter((row): row is XpDateRow => Boolean(row) && typeof row === "object");
+  if (earlier.length === 0) return { dateStart: null, seq: 1 };
+  const rank = (row: XpDateRow) => {
+    const seq = Number(row.xp_slot_seq);
+    return Number.isFinite(seq) ? seq : Number.MAX_SAFE_INTEGER; // ældre linjer uden løbenummer sidst
+  };
+  const first = [...earlier].sort((a, b) => rank(a) - rank(b) || (Number(a.game_day ?? -Infinity) - Number(b.game_day ?? -Infinity)))[0];
+  const paid: Record<string, number> = {};
+  let maxSeq = 0;
+  for (const row of earlier) {
+    for (const [ability, n] of Object.entries(row.bar_paid ?? {})) {
+      const v = Number(n);
+      if (Number.isFinite(v) && v > 0) paid[ability] = (paid[ability] ?? 0) + v;
+    }
+    const seq = Number(row.xp_slot_seq);
+    maxSeq = Math.max(maxSeq, Number.isFinite(seq) ? seq : 0);
+  }
+  return { dateStart: { progress: first.progress_before ?? null, paid }, seq: Math.max(maxSeq, earlier.length) + 1 };
 }
 
 /** Det, datoreglen skal vide om rytteren. Ukendt alder eller potentiale = det lave tal. */
@@ -590,6 +668,7 @@ export function xpDatePointAllowance(
 export function developmentXpTick(
   {
     abilities, progress, maxPointsPerTick = Infinity, dateUsedGains = null, storedBarPayout = false, rider = null, xpFor,
+    dateStart = null,
   }: {
     abilities: Record<string, unknown>;
     progress?: Record<string, unknown> | null;
@@ -600,6 +679,8 @@ export function developmentXpTick(
     /** Alder og potentiale til datoreglen (xpDatePointCap). Udeladt = det lave tal. */
     rider?: XpDateRider | null;
     xpFor: (ability: string) => number;
+    /** Bjælken ved datoens start og point betalt fra den tidligere på datoen. Udeladt = dette tick er datoens første. */
+    dateStart?: XpDateStart | null;
   },
   params: DevelopmentXpParams,
 ): XpTickResult {
@@ -607,6 +688,7 @@ export function developmentXpTick(
   const nextProgress = { ...(progress ?? {}) } as Record<string, number>;
   const gains: Record<string, number> = {};
   const xp: Record<string, number> = {};
+  const barPaid: Record<string, number> = {};
   let score = 0;
   for (const ability of VISIBLE_ABILITIES as readonly string[]) {
     const level = Number(nextAbilities[ability] ?? 0);
@@ -630,7 +712,19 @@ export function developmentXpTick(
     if (out.points > 0) {
       gains[ability] = out.points;
       nextAbilities[ability] = out.level;
+      // Point betalt af XP gemt før datoen: det, bjælken ved datoens start alene kunne købe fra
+      // evnens niveau ved datoens start, minus det, der allerede er betalt fra den på datoen.
+      const startBar = dateStart?.progress ? Number(dateStart.progress[ability] ?? 0) : bar;
+      const paidRaw = Number(dateStart?.paid?.[ability]);
+      const paidBefore = Number.isFinite(paidRaw) && paidRaw > 0 ? paidRaw : 0;
+      const coverable = startBar >= 1
+        ? buyPoints({ level: level - used, bar: startBar, xp: 0 }, params).points : 0;
+      const paid = Math.max(0, Math.min(out.points, coverable - paidBefore));
+      if (paid > 0) barPaid[ability] = paid;
     }
   }
-  return { abilities: nextAbilities, progress: nextProgress, gains, xp, score: Math.round(score * 100) / 100 };
+  return {
+    abilities: nextAbilities, progress: nextProgress, gains, xp, score: Math.round(score * 100) / 100,
+    barPaid, xpBar: xpBarsFor(nextAbilities, nextProgress, params),
+  };
 }

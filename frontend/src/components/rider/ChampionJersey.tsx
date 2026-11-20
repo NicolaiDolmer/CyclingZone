@@ -249,7 +249,7 @@ export function JerseyIcon({ row, size = 16 }: { row: Pick<ChampionTitleRow, "ti
 
 // ── Teksterne ────────────────────────────────────────────────────────────────
 
-type T = (key: string, opts?: Record<string, unknown>) => string;
+type T = { (key: string): string; (key: string, opts: Record<string, unknown>): string };
 
 function titleText(row: ChampionTitleRow, t: T, lang: string) {
   if (row.title === "continent") {

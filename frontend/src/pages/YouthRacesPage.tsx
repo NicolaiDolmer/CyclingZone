@@ -102,7 +102,7 @@ function YouthRacesView({ squad, initialPool }: { squad: YouthSquad; initialPool
   );
 }
 
-function poolName(pool: YouthStandingsPool, t: (key: string, opts?: Record<string, unknown>) => string): string {
+function poolName(pool: YouthStandingsPool, t: { (key: string): string; (key: string, opts: Record<string, unknown>): string }): string {
   const letter = groupLetter(pool.index);
   if (letter) return t("standings.group", { letter });
   return pool.label ?? t("standings.ownGroup");

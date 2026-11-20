@@ -148,56 +148,6 @@ export function setPartTask(tasks: readonly StagePlanTask[], index: number, task
 export type EffortLevel = "easy" | "medium" | "hard";
 export const EFFORT_LEVELS: readonly EffortLevel[] = ["easy", "medium", "hard"];
 
-/**
- * Kæderne bag de tre valg (ejer 17/11: "Ingen lyser = følger holdets plan"). Valgene er
- * rytterens EGNE; uden et valg kører han holdets plan (Today's plan).
- * Easy: i ly hele vejen og kør ind de sidste 10 km.
- * Medium: en ægte mellem-dag, ingen rutedel hårdere end Medium: hjælperen holder lederen
- *   fremme hele vejen, de andre bliver i ly og kører for et resultat i finalen.
- * Hard: lederen følger de bedste og angriber i finalen (resultat uden stigninger); en
- *   hjælper kører tempo hele vejen.
- * Kun kæder rollen må gemme; ellers rollens nærmeste.
- */
-export function levelPlans(role: StagePlanRole, route: StagePlanRoute, parts: readonly RoutePart[], finaleHasClimb: boolean): Record<EffortLevel, StagePlanLeg[] | null> {
-  const fit = (task: StagePlanTask, fallback: StagePlanTask): StagePlanTask => (TASK_ROLES[task].includes(role) ? task : fallback);
-  const n = parts.length;
-  const last = (i: number) => i === n - 1;
-  const easy = Array.from({ length: n }, (_, i) => (last(i) ? "ride_in" : "stay_sheltered") as StagePlanTask);
-  const support = TASK_ROLES.shelter_leader.includes(role);
-  const medium = support
-    ? Array.from({ length: n }, () => "shelter_leader" as StagePlanTask)
-    : Array.from({ length: n }, (_, i) => (last(i) ? fit("ride_for_result", "stay_sheltered") : "stay_sheltered") as StagePlanTask);
-  const leader = TASK_ROLES.attack.includes(role);
-  const hard = leader
-    ? Array.from({ length: n }, (_, i) => (last(i) ? fit(finaleHasClimb ? "attack" : "ride_for_result", "ride_for_result") : fit("follow_moves", "stay_sheltered")))
-    : Array.from({ length: n }, () => fit("tempo", "stay_sheltered"));
-  const build = (tasks: StagePlanTask[]) => {
-    const legs = legsFromParts(tasks, parts, role, route);
-    return validateStagePlanLegs(legs, role, route) === null ? legs : null;
-  };
-  return { easy: build(easy), medium: build(medium), hard: build(hard) };
-}
-
-const sameLegs = (a: readonly StagePlanLeg[] | null | undefined, b: readonly StagePlanLeg[] | null | undefined) =>
-  !!a && !!b && JSON.stringify(a) === JSON.stringify(b);
-
-/**
- * Hvilket valg der lyser. Følger kæden holdets plan, lyser intet (også når holdets plan
- * tilfældigvis er den samme som et af valgene). Ellers lyser det valg, kæden er; en kæde
- * spilleren selv har sat pr. rutedel, lyser heller ikke (rækken siger, hvad den giver).
- */
-export function levelOfLegs(legs: readonly StagePlanLeg[] | null | undefined, plans: Record<EffortLevel, StagePlanLeg[] | null>, team: readonly StagePlanLeg[] | null | undefined): EffortLevel | null {
-  if (!legs || sameLegs(legs, team)) return null;
-  for (const level of EFFORT_LEVELS) if (sameLegs(legs, plans[level])) return level;
-  return null;
-}
-
-/** Medium er aldrig hårdere end Medium: hver rutedels prisord er højst "medium". */
-export function maxPartCost(tasks: readonly StagePlanTask[], costOf: (task: StagePlanTask) => string): string {
-  const order = ["easy", "medium", "hard", "veryHard"];
-  return tasks.map(costOf).reduce((a, b) => (order.indexOf(b) > order.indexOf(a) ? b : a), "easy");
-}
-
 /** Uden etapeplan (tidskørsel, eller planen er slået fra): de tre valg er indsats-trin. */
 export function levelOfEffort(effort: string | null | undefined): EffortLevel {
   if (effort === "grupetto" || effort === "save") return "easy";
@@ -267,20 +217,27 @@ export function fatigueTone(value: number | null | undefined): { tone: "neutral"
 
 export type TodayLine =
   | { key: "breakaway" }
-  | { key: "attack"; climb: string | null }
+  | { key: "attack"; climb: string } | { key: "attackFinale" } | { key: "attackUnspecified" }
   | { key: "shelterLeader"; leader: string | null }
   | { key: Exclude<StagePlanTask, "attack" | "shelter_leader" | "breakaway" | "hunt_points" | "hunt_kom"> }
   | { key: "huntPoints" };
 
-/** Dagens linje ud fra kæden: udbruddet, ellers finalens opgave. */
-export function todayLine(legs: readonly StagePlanLeg[], decisiveClimb: string | null, leader: string | null): TodayLine {
-  if (legs[0]?.task === "breakaway") return { key: "breakaway" };
-  const positioned = legs.filter((l) => l.from?.at !== "dropped");
-  const last = (positioned[positioned.length - 1] ?? legs[0]).task;
-  if (last === "attack") return { key: "attack", climb: decisiveClimb };
-  if (last === "shelter_leader") return { key: "shelterLeader", leader };
-  if (last === "hunt_points" || last === "hunt_kom") return { key: "huntPoints" };
-  return { key: last } as TodayLine;
+/** Dagens plan i rækkefølge. Ordren ved afsætning vises under ordrer. */
+export function todayTasks(legs: readonly StagePlanLeg[], climbs: StagePlanRoute["climbs"], leader: string | null): TodayLine[] {
+  const positioned = legs.filter((leg) => leg.from?.at !== "dropped");
+  return (positioned.length ? positioned : legs).map(({ task, from }): TodayLine => {
+    switch (task) {
+      case "attack": {
+        if (from?.at === "final_km") return { key: "attackFinale" };
+        const climb = from?.at === "kom" ? climbs.find(c => c.index === from.kom_index)?.name : null;
+        return climb ? { key: "attack", climb } : { key: "attackUnspecified" };
+      }
+      case "shelter_leader": return { key: "shelterLeader", leader };
+      case "hunt_points":
+      case "hunt_kom": return { key: "huntPoints" };
+      default: return { key: task };
+    }
+  });
 }
 
 // ── Låsen ────────────────────────────────────────────────────────────────────

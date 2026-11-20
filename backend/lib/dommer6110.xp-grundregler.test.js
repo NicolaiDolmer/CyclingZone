@@ -2,25 +2,28 @@
 //   R2  Én faelles prisliste: hoejere evne koster mere, ingen mur (ejer 6/11).
 //   R3  Potentialet afgoer XP pr. dag; forskellen ligger i XP, ikke i prisen (ejer 6/11).
 //   R4  Alder er aldrig en turbo: samme rytter tjener ca. det samme som ung (ejer 6/11).
-//   R5  Udviklingen ebber gradvist ud fra 27 aar, naesten intet fra 31 (ejer 12/11, kort 3).
-//   R6  Mentale evner: samme prisliste, vokser laengere end fysiske (ejer 6/11).
+//   R5  XP er ens hele livet (ejervalg 19/11, kandidat B). Afloeser "ebber ud fra 27 aar,
+//       naesten intet fra 31" (ejer 12/11). Kroppen aeldes i stedet ved saesonskiftet fra 29;
+//       de scenarier staar i dommer6110.r5-aldersforloeb.test.js.
+//   R6  Mentale evner: samme prisliste og samme XP som de fysiske (ejervalg 19/11). Afloeser
+//       "vokser laengere end fysiske" (ejer 6/11). Det lille, sene fald staar i samme fil som R5.
 //   R7  Traening giver mest i fokus og lidt i resten (ejer 6/11, Aa1).
 //   R8  Typen: alt kan traenes, evner uden for typen faar mindre; typen er anlaeg (ejer 6/11).
 //   R12 En hel traeningsdag giver aldrig nul (ejer 5/11 og 6/11).
 //   R13 Form og traethed paavirker ikke udviklingen (ejer 23/10, S29).
 //   R14 Traen nu-bonus er 15 % (ejer 7/11).
-// Alle scenarier er dommerens egne. Tallene i DOMMER_XP_RAA er ikke de private parametre.
+// Alle scenarier er dommerens egne. Tallene i DOMMER_B_RAA er ikke de private parametre.
 
 import test from "node:test";
 import assert from "node:assert/strict";
 
 import { applyDailyTick } from "./dailyTraining.js";
 import {
-  kraev, xpParams, koebMedPrisliste, evner,
+  kraev, xpParams, koebMedPrisliste, evner, DOMMER_B_RAA,
   UNG_KLATRER, SPRINTER, VETERAN, HAARD_KLATRING, NORMAL_SPURT, LET_UDHOLDENHED, LOEBSLAERE, HVILE,
 } from "./dommer6110.fixtures.mjs";
 
-const P = await xpParams();
+const P = await xpParams(DOMMER_B_RAA);
 const { xpPriceForNextPoint } = await kraev("./developmentXp.ts", "xpPriceForNextPoint");
 const pris = (niveau) => xpPriceForNextPoint(niveau, P);
 
@@ -78,28 +81,29 @@ test("R4 alder er aldrig en turbo: samme rytter tjener det samme som 17-, 19-, 2
   }
 });
 
-test("R5 gradvist aldersfald: fuld til 26, mindre for hvert aar fra 27, naesten intet fra 31, aldrig nul", () => {
-  const xpVed = (age) => tick({ ...UNG_KLATRER, age }, HAARD_KLATRING).xp.climbing;
-  const fuld = xpVed(26);
-  let forrige = fuld;
-  for (const age of [27, 28, 29, 30, 31]) {
-    const nu = xpVed(age);
-    assert.ok(nu < forrige, `XP skal falde fra ${age - 1} til ${age} (intet brat stop, intet plateau)`);
-    assert.ok(nu > 0, `XP maa aldrig vaere nul (${age} aar)`);
-    forrige = nu;
+test("R5 XP er ens hele livet: samme rytter tjener det samme som 16-, 27-, 31- og 40-aarig (ejervalg 19/11)", () => {
+  // Samme rytter, samme pas, samme dag; kun alderen skifter. Alle traenede evner, ikke kun fokus.
+  for (const [rytter, program] of [[UNG_KLATRER, HAARD_KLATRING], [SPRINTER, NORMAL_SPURT], [VETERAN, LOEBSLAERE]]) {
+    const xpVed = (age) => tick({ ...rytter, age }, program).xp;
+    const tyve = xpVed(20);
+    assert.ok(Object.keys(tyve).length > 0, "passet skal give XP");
+    for (let age = 16; age <= 40; age++) {
+      const nu = xpVed(age);
+      assert.deepEqual(Object.keys(nu).sort(), Object.keys(tyve).sort(), `${age} aar: samme evner faar XP`);
+      for (const evne of Object.keys(tyve)) {
+        assert.ok(taet(nu[evne], tyve[evne]), `${rytter.riderId} ${evne}: en ${age}-aarig skal tjene det samme som en 20-aarig (${nu[evne]} mod ${tyve[evne]})`);
+      }
+    }
   }
-  assert.ok(xpVed(27) >= fuld * 0.5, "faldet er gradvist: en 27-aarig er ikke stoppet");
-  assert.ok(xpVed(31) <= fuld * 0.15, "naesten intet fra 31");
-  for (const age of [32, 34, 37]) assert.ok(xpVed(age) > 0 && xpVed(age) <= xpVed(31), `${age} aar`);
 });
 
-test("R6 mentale evner: samme prisliste, og de vokser laengere end de fysiske", () => {
+test("R6 mentale evner: samme prisliste og samme XP som de fysiske i alle aldre (ejervalg 19/11)", () => {
   // Loebslaere traener baade en fysisk-teknisk og mentale evner i samme pas.
   const andel = (age, evne) => tick({ ...VETERAN, age }, LOEBSLAERE).xp[evne] / tick({ ...VETERAN, age: 24 }, LOEBSLAERE).xp[evne];
-  for (const age of [27, 28, 29, 30, 31, 33]) {
-    assert.ok(andel(age, "tactics") >= andel(age, "positioning") - 1e-9, `${age} aar: mental maa ikke faa mindre end fysisk`);
+  for (const age of [17, 22, 27, 29, 31, 33, 36, 40]) {
+    assert.ok(taet(andel(age, "tactics"), andel(age, "positioning")), `${age} aar: mentale og fysiske evner faar samme andel af XP`);
+    assert.ok(taet(andel(age, "tactics"), 1), `${age} aar: mentale evner tjener det samme hele livet`);
   }
-  assert.ok(andel(29, "tactics") > andel(29, "positioning"), "som 29-aarig vokser de mentale evner stadig mere end de fysiske");
   // Samme prisliste: en mental og en fysisk evne paa samme niveau koster det samme.
   const ud = tick({ ...VETERAN, abilities: evner(60) }, LOEBSLAERE, { progress: { tactics: 0.5, positioning: 0.5 } });
   for (const evne of ["tactics", "positioning"]) {

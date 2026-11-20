@@ -12,8 +12,9 @@ export interface EffortSegmentedProps {
   label: string;
   /** Etapens trin (serverens valid_efforts, gennem effortsForStage). */
   steps: readonly string[];
-  value: string;
+  value: string | null;
   labelFor: (step: string) => string;
+  describeFor?: (step: string) => string;
   /** Grunden (allerede oversat) til at et trin ikke kan vælges i dag, ellers null. */
   blockedReason?: (step: string) => string | null;
   disabled?: boolean;
@@ -22,15 +23,22 @@ export interface EffortSegmentedProps {
   fill?: boolean;
 }
 
-export default function EffortSegmented({ label, steps, value, labelFor, blockedReason, disabled = false, onPick, fill = false }: EffortSegmentedProps) {
+export default function EffortSegmented({ label, steps, value, labelFor, describeFor, blockedReason, disabled = false, onPick, fill = false }: EffortSegmentedProps) {
   const options = effortSegments(steps).map((step) => {
     const reason = step === value ? null : blockedReason?.(step) ?? null;
-    return { value: step, label: labelFor(step), title: reason ?? undefined, disabled: disabled || reason != null };
+    const label = labelFor(step);
+    const description = describeFor?.(step);
+    return {
+      value: step,
+      label: description ? <>{label}<span className={`block text-2xs font-normal leading-tight ${fill ? "whitespace-normal" : "whitespace-nowrap"}`}>{description}</span></> : label,
+      title: reason ?? undefined,
+      disabled: disabled || reason != null,
+    };
   });
   return (
     <Segmented
       label={label}
-      value={value}
+      value={value ?? ""}
       onChange={(next) => { if (!disabled) onPick(next); }}
       options={options}
       className={`max-w-full ${fill ? "flex w-full [&>button]:min-w-0 [&>button]:flex-1 [&>button]:px-1 [&>button]:leading-tight" : "[&>button]:whitespace-nowrap [&>button]:px-2"}`}

@@ -168,16 +168,33 @@ async function runBatched(items, concurrency, fn) {
 }
 
 /**
- * #6110 (ejervalg 19/11): aldrings-cfg for sæsonskiftet. XP-kontakten og startdatoen
- * læses for skiftets danske dato (samme regel som den daglige motor). Kontakt off,
- * dato før startdatoen eller talfil uden `aging` = null (dagens aldring).
+ * #6110 (ejervalg 19/11): skiftets danske dato. Dommer-fund F3: reglen vælges efter en
+ * STABIL dato, ikke efter uret ved en genkørsel. Datoen er den nye sæsons start_date,
+ * som seasonTransition sætter til skiftets tidspunkt, før rytterudviklingen kører; en
+ * genkørsel af samme skifte læser derfor samme dato. Mangler den, bruges uret (dansk).
  */
-export async function loadXpAgingCfg({ supabase, now = new Date() }) {
+export async function seasonTransitionDate({ supabase, seasonId, now = new Date() }) {
+  if (seasonId) {
+    const { data, error } = await supabase.from("seasons").select("start_date").eq("id", seasonId).maybeSingle();
+    if (error) throw new Error(`agingXp: season start_date read failed: ${error.message ?? error}`);
+    const start = data?.start_date ? new Date(data.start_date) : null;
+    if (start && Number.isFinite(start.getTime())) return { date: copenhagenDateString(start), source: "season_start" };
+  }
+  return { date: copenhagenDateString(now), source: "clock" };
+}
+
+/**
+ * #6110 (ejervalg 19/11): aldrings-cfg for sæsonskiftet. XP-kontakten og startdatoen
+ * læses for skiftets danske dato (seasonTransitionDate). Kontakt off, dato før
+ * startdatoen eller talfil uden `aging` = null (dagens aldring).
+ */
+export async function loadXpAgingCfg({ supabase, now = new Date(), seasonId = null }) {
+  const { date } = await seasonTransitionDate({ supabase, seasonId, now });
   // Dynamisk import: holder XP-kontaktens modulgraf (dailyTraining m.fl.) ude af
   // sæsonmotorens statiske graf og dermed ude af frontendens typetjek (#7148).
   const XP_FLAG_MODULE = "./developmentXpFlag.ts";
   const { loadDevelopmentXp } = await import(XP_FLAG_MODULE);
-  const params = await loadDevelopmentXp({ supabase, tickDate: copenhagenDateString(now), strict: true });
+  const params = await loadDevelopmentXp({ supabase, tickDate: date, strict: true });
   return xpAgingConfig(params);
 }
 
@@ -221,7 +238,7 @@ export async function developRidersForSeason({
   // aldring, ældes kroppen efter den. Ellers dagens AGING_V2_CONFIG, bit-identisk.
   // Læses strengt FØR noget skrives: en fejlet læsning kaster, og skiftet kan køres igen
   // (idempotent via dev-loggen), så ingen rytter ældes efter den forkerte regel.
-  const agingCfg = await loadAgingCfgFn({ supabase, now });
+  const agingCfg = await loadAgingCfgFn({ supabase, now, seasonId });
 
   // ── Belastningen for den AFSLUTTEDE sæson (seasonNumber − 1) hentes FØR noget
   //    skrives. Fejler den, kaster vi: uden belastning ville alle få fuldt fald,

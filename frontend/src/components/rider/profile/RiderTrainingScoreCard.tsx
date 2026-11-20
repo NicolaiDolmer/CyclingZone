@@ -37,7 +37,7 @@ export type RiderTrainingScoreView = {
 
 // `t` kommer faerdig fra RiderTrainingTab (namespace "rider"), praecis som
 // soesterkortene (SeasonReceiptCard, TrendCard, FormCard) faar den.
-type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
+type TranslateFn = { (key: string): string; (key: string, opts: Record<string, unknown>): string };
 
 export default function RiderTrainingScoreCard({ score, t }: {
   score: RiderTrainingScoreView | null | undefined;

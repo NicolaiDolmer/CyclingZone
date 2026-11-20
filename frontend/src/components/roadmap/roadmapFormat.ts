@@ -3,7 +3,7 @@ import type { RoadmapVote } from "../../lib/roadmapModel.ts";
 import { intlLocale } from "../../lib/intlLocale.ts";
 
 export type SaveState = "saving" | "saved" | "error";
-export type Translate = (key: string, options?: Record<string, unknown>) => string;
+export type Translate = { (key: string): string; (key: string, opts: Record<string, unknown>): string };
 
 export function isDanish(language: string | undefined): boolean {
   return !!language?.startsWith("da");
