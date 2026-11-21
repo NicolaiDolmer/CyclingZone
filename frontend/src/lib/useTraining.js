@@ -21,6 +21,8 @@ export function useTraining() {
   const [condition, setCondition] = useState({}); // { <rider_id>: { form, fatigue, injured_until, risk } }
   const [progress, setProgress] = useState({});   // { <rider_id>: { ability } }
   const [capped, setCapped] = useState({});       // { <rider_id>: [ability] } — evner på livstidsloftet (#2578; kun nøgler, aldrig tal)
+  // #7947: { <rider_id>: { <evne>: { xp, price } } } kun når XP er tændt; null = dagens procent-visning.
+  const [xpBar, setXpBar] = useState(/** @type {Record<string, Record<string, { xp: number, price: number }>> | null} */ (null));
   const [trainability, setTrainability] = useState({}); // { <rider_id>: { <focus>: 'strength'|'limited'|'blocked' } } (#1974)
   const [smartDefaultFocus, setSmartDefaultFocus] = useState({}); // { <rider_id>: <focus> } — type-matchet default (#1894)
   const [weekPlan, setWeekPlanState] = useState(null); // holdets ugerytme { mon:{intensity}, ..., sun:{intensity} } | null (#1895)
@@ -45,6 +47,9 @@ export function useTraining() {
   const [decisionCard, setDecisionCard] = useState(false);
   // #6110 S26: { <rider_id>: dage i traek >= 70 } | null (kun med flaget on; null = vis streg).
   const [fatigueDays70, setFatigueDays70] = useState(/** @type {Record<string, number> | null} */ (null));
+  // #7947 PR 3: true = serveren tillader Let/Mellem/Haard pr. session (training_effort_levels).
+  // Feltet `effortLevels` mangler indtil API'et sender det; saa er det false = som i dag.
+  const [effortLevels, setEffortLevels] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState(null); // rytter under aktiv save/clear
   const [running, setRunning] = useState(false);  // runToday kører
@@ -71,6 +76,7 @@ export function useTraining() {
         setCondition(data.condition ?? {});
         setProgress(data.progress ?? {});
         setCapped(data.capped ?? {});
+        setXpBar(/** @type {{ xp_bar?: Record<string, Record<string, { xp: number, price: number }>> }} */ (data).xp_bar ?? null);
         setTrainability(data.trainability ?? {});
         setSmartDefaultFocus(data.smartDefaultFocus ?? {});
         setWeekPlanState(data.weekPlan ?? null);
@@ -90,6 +96,7 @@ export function useTraining() {
         setMobileTable(data.mobileTable === true);
         setDecisionCard(/** @type {{ decisionCard?: boolean }} */ (data).decisionCard === true);
         setFatigueDays70(/** @type {{ fatigueDays70?: Record<string, number> }} */ (data).fatigueDays70 ?? null);
+        setEffortLevels(/** @type {{ effortLevels?: boolean }} */ (data).effortLevels === true);
       }
     } catch {
       /* netværk — behold tidligere state */
@@ -106,13 +113,15 @@ export function useTraining() {
   // Serveren udleder (focus, intensity) — intensiteten er ikke længere et frit
   // valg, den er en egenskab ved sessionen. Vi sender derfor ALDRIG en
   // intensitet herfra; ellers ville fladen kunne bede om et par der ikke findes.
-  const setPlan = useCallback(async (riderId, dayType, session = null) => {
+  // #7947 PR 3: `effort` ("easy" | "normal" | "hard") sendes KUN naar indsatsvaelgeren valgte
+  // et niveau; uden den er kaldet praecis som foer.
+  const setPlan = useCallback(async (riderId, dayType, session = null, effort = null) => {
     const headers = await authHeaders();
     if (!headers) return { ok: false, error: "auth" };
     setSavingId(riderId);
     try {
       const res = await apiFetch(`${API}/api/training/${riderId}`, {
-        method: "POST", headers, body: JSON.stringify({ dayType, session }),
+        method: "POST", headers, body: JSON.stringify(effort ? { dayType, session, effort } : { dayType, session }),
       });
       const data = res.data || {};
       if (!res.ok) return { ok: false, error: data.error || "failed" };
@@ -160,7 +169,7 @@ export function useTraining() {
   // #3762: bulk saetter DAGEN paa en markering. `session` er enten en session,
   // null (hvile/restitution har ingen) eller "smart" (assistenten vaelger pr.
   // rytter, server-side, og roerer aldrig en rytter der har sit eget valg).
-  const setPlanBulk = useCallback(async (riderIds, dayType, session = null) => {
+  const setPlanBulk = useCallback(async (riderIds, dayType, session = null, effort = null) => {
     const headers = await authHeaders();
     if (!headers) return { ok: false, applied: 0, failed: [], error: "auth" };
     const ids = Array.isArray(riderIds) ? riderIds : [];
@@ -168,7 +177,7 @@ export function useTraining() {
     setBulkApplying(true);
     try {
       const res = await apiFetch(`${API}/api/training/bulk`, {
-        method: "POST", headers, body: JSON.stringify({ riderIds: ids, dayType, session }),
+        method: "POST", headers, body: JSON.stringify(effort ? { riderIds: ids, dayType, session, effort } : { riderIds: ids, dayType, session }),
       });
       const data = res.data || {};
       if (!res.ok) {
@@ -306,9 +315,9 @@ export function useTraining() {
   }, [refresh]);
 
   return {
-    slots, plans, teamId, enabled, todayRun, condition, progress, capped, trainability, smartDefaultFocus, trainingScore,
+    slots, plans, teamId, enabled, todayRun, condition, progress, capped, xpBar, trainability, smartDefaultFocus, trainingScore,
     weekPlan, savingWeekPlan, loading, savingId, running, bulkApplying,
-    riderWeekPlans, savingRiderWeekPlanId, racingToday, dayClose, mobileTable, decisionCard, fatigueDays70, dailyReceiptEnabled,
+    riderWeekPlans, savingRiderWeekPlanId, racingToday, dayClose, mobileTable, decisionCard, fatigueDays70, dailyReceiptEnabled, effortLevels,
     setPlan, setPlanBulk, clearPlan, planFor, runToday, refresh, setWeekPlan, clearWeekPlan,
     setRiderWeekPlan, clearRiderWeekPlan,
   };

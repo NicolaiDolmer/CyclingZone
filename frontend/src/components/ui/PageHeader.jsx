@@ -2,6 +2,16 @@
 // Erstatter de 9 håndrullede header-varianter fra design-audit'en.
 // Action-cluster-kontrakt: maks én Select (sm) + én primær Button (sm) — intet andet.
 // På mobil wrapper clusteret under titel-blokken (flex-wrap).
+/**
+ * @param {{
+ *   title: import("react").ReactNode,
+ *   subtitle?: import("react").ReactNode,
+ *   actions?: import("react").ReactNode,
+ *   className?: string,
+ *   mobileActionsBelow?: boolean,
+ *   [key: string]: any,
+ * }} props
+ */
 export default function PageHeader({ title, subtitle, actions = null, className = "", mobileActionsBelow = false, ...rest }) {
   return (
     <header

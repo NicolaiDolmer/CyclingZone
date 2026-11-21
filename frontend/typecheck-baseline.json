@@ -413,7 +413,7 @@
   "../backend/lib/riderProgressionEngine.js": {
     "TS1127": 3,
     "TS18046": 1,
-    "TS2339": 11
+    "TS2339": 10
   },
   "../backend/lib/riderSeasonAge.js": {
     "TS18049": 5
@@ -441,7 +441,7 @@
     "TS2339": 14
   },
   "../backend/lib/seasonDevelopmentLoad.js": {
-    "TS2322": 3
+    "TS2322": 2
   },
   "../backend/lib/seasonLookup.js": {
     "TS2339": 1,
@@ -2193,10 +2193,9 @@
     "TS2810": 1
   },
   "src/pages/AcademyPage.jsx": {
-    "TS2322": 4,
+    "TS2322": 3,
     "TS2339": 2,
-    "TS2345": 1,
-    "TS2741": 2
+    "TS2345": 1
   },
   "src/pages/ActivityPage.jsx": {
     "TS18047": 1,
@@ -2238,7 +2237,7 @@
   },
   "src/pages/AdminSurveyResultsPage.jsx": {
     "TS18046": 1,
-    "TS2322": 2,
+    "TS2322": 1,
     "TS2339": 5,
     "TS2345": 3
   },
@@ -2255,7 +2254,7 @@
     "TS2741": 2
   },
   "src/pages/AuctionHistoryPage.jsx": {
-    "TS2322": 5,
+    "TS2322": 4,
     "TS2339": 22,
     "TS2345": 3,
     "TS2362": 1,
@@ -2265,7 +2264,7 @@
   },
   "src/pages/AuctionsPage.jsx": {
     "TS18047": 4,
-    "TS2322": 20,
+    "TS2322": 19,
     "TS2339": 16,
     "TS2345": 8,
     "TS2349": 2,
@@ -2277,12 +2276,12 @@
   },
   "src/pages/BoardPage.jsx": {
     "TS18047": 2,
-    "TS2322": 5,
+    "TS2322": 4,
     "TS2339": 15,
     "TS2345": 12,
     "TS2353": 2,
     "TS2739": 3,
-    "TS2741": 13
+    "TS2741": 12
   },
   "src/pages/BoardroomPreviewPage.jsx": {
     "TS2322": 2
@@ -2297,7 +2296,7 @@
     "TS2741": 3
   },
   "src/pages/DashboardPage.jsx": {
-    "TS2322": 20,
+    "TS2322": 19,
     "TS2339": 6,
     "TS2345": 2,
     "TS2362": 3,
@@ -2315,7 +2314,7 @@
     "TS2741": 4
   },
   "src/pages/ForumPage.jsx": {
-    "TS2322": 4,
+    "TS2322": 3,
     "TS2339": 3,
     "TS2345": 5,
     "TS2698": 2,
@@ -2358,7 +2357,7 @@
     "TS2741": 1
   },
   "src/pages/KitchenSinkPage.jsx": {
-    "TS2322": 13,
+    "TS2322": 12,
     "TS2739": 2,
     "TS2741": 34,
     "TS2786": 1
@@ -2393,7 +2392,7 @@
   },
   "src/pages/NotificationsPage.jsx": {
     "TS18048": 1,
-    "TS2322": 4,
+    "TS2322": 3,
     "TS2339": 27,
     "TS2345": 19,
     "TS2362": 2,
@@ -2404,7 +2403,7 @@
   "src/pages/PatchNotesPage.jsx": {
     "TS2322": 1,
     "TS2345": 2,
-    "TS2741": 3
+    "TS2741": 1
   },
   "src/pages/PlanningHubPage.jsx": {
     "TS2345": 1
@@ -2456,8 +2455,7 @@
     "TS2739": 1
   },
   "src/pages/RankingsHubPage.jsx": {
-    "TS2345": 1,
-    "TS2741": 1
+    "TS2345": 1
   },
   "src/pages/ResetPasswordPage.a11y.test.js": {
     "TS2769": 2
@@ -2470,7 +2468,7 @@
     "TS2339": 34,
     "TS2345": 16,
     "TS2739": 2,
-    "TS2741": 4
+    "TS2741": 3
   },
   "src/pages/RiderComparePage.jsx": {
     "TS2322": 1,
@@ -2499,14 +2497,13 @@
   },
   "src/pages/RidersPage.jsx": {
     "TS18046": 1,
-    "TS2322": 8,
+    "TS2322": 7,
     "TS2339": 4,
     "TS2345": 8,
     "TS2739": 1,
     "TS2741": 2
   },
   "src/pages/RoadmapPage.jsx": {
-    "TS2322": 1,
     "TS2339": 2,
     "TS2345": 4
   },
@@ -2523,11 +2520,10 @@
   },
   "src/pages/SeasonEndPage.jsx": {
     "TS18047": 1,
-    "TS2322": 14,
+    "TS2322": 13,
     "TS2339": 98,
     "TS2345": 11,
-    "TS2353": 4,
-    "TS2741": 1
+    "TS2353": 4
   },
   "src/pages/SeasonExperiencePreviewPage.jsx": {
     "TS2322": 1,
@@ -2543,7 +2539,7 @@
   "src/pages/SponsorsPage.jsx": {
     "TS18046": 2,
     "TS18047": 3,
-    "TS2322": 18,
+    "TS2322": 17,
     "TS2339": 29,
     "TS2345": 5,
     "TS2741": 3
@@ -2582,8 +2578,7 @@
     "TS18048": 1,
     "TS2322": 4,
     "TS2339": 12,
-    "TS2345": 6,
-    "TS2741": 4
+    "TS2345": 6
   },
   "src/pages/TeamPage.jsx": {
     "TS18047": 2,
@@ -2604,12 +2599,12 @@
   "src/pages/TrainingPage.jsx": {
     "TS18047": 3,
     "TS18049": 2,
-    "TS2322": 12,
+    "TS2322": 11,
     "TS2339": 95,
     "TS2345": 9,
     "TS2353": 13,
     "TS2739": 4,
-    "TS2741": 3
+    "TS2741": 2
   },
   "src/pages/TransfersPage.jsx": {
     "TS18047": 2,
@@ -2625,7 +2620,7 @@
   },
   "src/pages/WatchlistPage.jsx": {
     "TS18047": 1,
-    "TS2322": 8,
+    "TS2322": 7,
     "TS2339": 11,
     "TS2345": 9,
     "TS2698": 2,
@@ -2701,7 +2696,7 @@
     "TS2339": 2
   },
   "src/pages/boardroom/BoardroomPage.jsx": {
-    "TS2322": 2,
+    "TS2322": 1,
     "TS2339": 4,
     "TS2345": 3
   },

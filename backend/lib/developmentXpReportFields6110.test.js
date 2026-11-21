@@ -9,13 +9,12 @@ import assert from "node:assert/strict";
 
 import { seedState, createFake, press, sweep, rider, DATE1, DAYS1 } from "./trainNowSameResult7982.harness.js";
 import { XP_TEST_PARAMS } from "./__fixtures__/developmentXpOffScenarios.js";
-import { developmentXpTick, roundedXp, xpBarsFor, xpBarView, xpDateStartFromRows, xpPriceForNextPoint } from "./developmentXp.ts";
+import { buyPoints, developmentXpTick, roundedXp, xpBarsFor, xpBarView, xpDateStartFromRows, xpPriceForNextPoint } from "./developmentXp.ts";
 import { trainingProgressView } from "./trainingProgressView.js";
 
 const RIDER = rider(0);
 const ABILITY = "climbing";
 const STORED = 6;
-const TOO_OLD = { maxAge: 18, minPotential: 5, belowLevel: 60 };
 
 /** XP tændt fra `fromDate`; rytteren har seks point gemt på bjælken. */
 function xpState(fromDate, { xpOn = true } = {}) {
@@ -23,7 +22,7 @@ function xpState(fromDate, { xpOn = true } = {}) {
   const state = seedState({ count: 1, flags });
   Object.assign(state.riders[0], { potentiale: 5, birthdate: "2010-03-15" });
   state.rider_derived_abilities[0].ability_progress = { [ABILITY]: STORED };
-  state.private_config = [{ key: "development_xp_params", value: { ...XP_TEST_PARAMS, datePlus2: TOO_OLD } }];
+  state.private_config = [{ key: "development_xp_params", value: XP_TEST_PARAMS }];
   return state;
 }
 const receipts = (state) => state.training_rider_ticks
@@ -57,14 +56,16 @@ for (const [label, run] of [["aftenkørslen", (s, f) => sweep(s, f, { deadlineRe
   });
 
   test(`#6110 rapport (${label}): point fra den gemte bjælke er bar_paid, ikke dagens træning`, async () => {
-    const state = xpState("2026-11-01"); // ikke tændingsnatten: datoreglen giver +1
+    const state = xpState("2026-11-01"); // ikke tændingsnatten; G3a (#8520): ingen datoregel
     const before = state.rider_derived_abilities[0][ABILITY];
     await run(state, createFake(state));
     const rows = receipts(state);
     const gained = state.rider_derived_abilities[0][ABILITY] - before;
+    const fromBar = buyPoints({ level: before, bar: STORED }, XP_TEST_PARAMS).points;
+    assert.ok(fromBar > 1 && gained >= fromBar, "forudsætning: bjælken alene rækker til flere point");
     assert.equal(sum(rows, "gains"), gained);
-    assert.equal(sum(rows, "bar_paid"), gained, "seks point gemt før datoen dækker datoens point: alt er fra bjælken");
-    assert.equal(rows[0].report.bar_paid[ABILITY], gained, "udbetalingen står på det slot, hvor den lander");
+    assert.equal(sum(rows, "bar_paid"), fromBar, "kun de point, seks point gemt før datoen dækker, er fra bjælken");
+    assert.equal(rows[0].report.bar_paid[ABILITY], fromBar, "udbetalingen står på det slot, hvor den lander");
     for (const row of rows.slice(1)) assert.equal(row.report.bar_paid[ABILITY], undefined, `løbsdag ${row.game_day} gentager ikke datoens total`);
   });
 
@@ -74,7 +75,10 @@ for (const [label, run] of [["aftenkørslen", (s, f) => sweep(s, f, { deadlineRe
     await run(state, createFake(state));
     const gained = state.rider_derived_abilities[0][ABILITY] - before;
     assert.ok(gained > 1, "tændingsnatten udbetaler den gemte fremgang");
-    assert.equal(sum(receipts(state), "bar_paid"), gained);
+    // G3a (#8520): datoens egen XP køber også point; bar_paid er kun det, bjælken dækker.
+    const fromBar = buyPoints({ level: before, bar: STORED }, XP_TEST_PARAMS).points;
+    assert.ok(gained >= fromBar);
+    assert.equal(sum(receipts(state), "bar_paid"), fromBar);
   });
 
   test(`#6110 rapport (${label}): slukket kontakt skriver ingen XP-felter (som i dag)`, async () => {

@@ -153,14 +153,12 @@ features:
     area: race-engine
     title_en: Jersey hunt in the stage plan
     title_da: Trøjejagt i etapeplanen
-    state: dormant
+    state: live
     flag: jersey_hunt_7855
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7855
-    verified: 2026-11-13
-    note: 'Off i prod 13/11 (#8052); ejer tænder, efter dommer.'
-    decision: ejer-beslutning
-    decide_by: 2026-11-21
+    verified: 2026-11-20
+    note: 'Tændt 20/11 kl. 13.27 (ejer "kør") efter Fable-gentjek på 1a7928dbf (#8218); kun etapeløb stemplet ved første etape efter tænding.'
   - id: race-itt-no-day-roll-7726
     area: race-engine
     title_en: Time trials without the extra day roll
@@ -355,13 +353,24 @@ features:
     area: training
     title_en: Fatigue now counts today's earlier stages
     title_da: Træthed lige nu tæller dagens tidligere etaper
-    state: building
+    state: live
+    flag: fatigue_now_7801
     ssot: docs/TRAINING_RULES.md
     epic: 7801
-    verified: 2026-11-13
+    verified: 2026-11-20
+    note: "Tændt 20/11 19.20 på ejerens kør efter Fable-dom (prøve 19.14, 110 hold ens). Patch note #8513."
+
+  - id: training-effort-levels-7947
+    area: training
+    title_en: Every session at easy, normal or hard
+    title_da: Alle træninger på Let, Mellem eller Hård
+    state: building
+    ssot: docs/TRAINING_RULES.md
+    epic: 7947
+    verified: 2026-11-20
     decision: taend
-    decide_by: 2026-11-21
-    note: fatigue_now_7801 ikke i prod app_config (13/11) = slukket; ejer tænder.
+    decide_by: 2026-11-27
+    note: "PR 1 af 4 (kontakt, lib, motorens læsesti). training_effort_levels seedes off post-merge; ejer tænder efter PR 2-4."
 
   - id: planning-workbench
     area: season
@@ -647,13 +656,12 @@ features:
     area: training
     title_en: Race session settles when the stage is decided
     title_da: Løbets session afregnes, når etapen er afgjort
-    state: building
+    state: live
+    flag: training_settle_race_session
     ssot: docs/TRAINING_RULES.md
     epic: 7982
-    verified: 2026-11-15
-    decision: ejer-beslutning
-    decide_by: 2026-11-29
-    note: Off i prod 15/11 (#8195). Kun med fatigue_now_7801 (ejer). Skærmdelen mangler.
+    verified: 2026-11-20
+    note: "Tændt 20/11 19.20 på ejerens kør sammen med fatigue_now_7801 (Fable-dom GO). Første løbsafregning 21/11 efter kl. 11-etapen. Opfølgning #7982: prøvens tolerance rettes til det målte."
 
   - id: rider-loans
     area: market
@@ -984,6 +992,19 @@ features:
     epic: 6110
     verified: 2026-10-26
     note: PR #7179 (S26). Flaget training_decision_card er on i prod (læst 26/10).
+
+  - id: training-page-r5
+    area: training
+    title_en: New Training page (R5)
+    title_da: Ny træningsside (R5)
+    state: building
+    flag: training_page_r5
+    ssot: docs/TRAINING_RULES.md
+    epic: 7947
+    verified: 2026-11-20
+    note: 'Bag training_page_r5 = off (migration #8511). I dag-fanen bygget (#8511), Program følger (#7456); ejer tænder, når siden er færdig.'
+    decision: goer-faerdigt
+    decide_by: 2026-12-04
 
   # --- academy -------------------------------------------------------------
   - id: academy

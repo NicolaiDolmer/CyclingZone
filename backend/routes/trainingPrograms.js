@@ -33,7 +33,8 @@ import {
 import { isTrainingProgramsEnabled } from "../lib/trainingProgramsFlag.js";
 import { isTrainingCellsEnabled } from "../lib/trainingWeekPlanCellsFlag.js";
 import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer, v3SmartDefaultFocus } from "../lib/trainingCatalogV3.js"; // #5319
-import { seedProgramWeekDays } from "../lib/trainingWeekPlanCells.js";
+import { seedProgramWeekDays, planRunsOffStandard } from "../lib/trainingWeekPlanCells.js";
+import { effortForWrite, isTrainingEffortLevelsEnabled } from "../lib/trainingEffortLevels.js"; // #7947
 import { loadTeamFatigueForecast } from "../lib/trainingWeekPlanForecast.js";
 import { markRidersOwnPlan, syncGroupsToSquadProgram, isMissingGroupsTable } from "../lib/trainingGroups.ts"; // #6000
 
@@ -71,6 +72,8 @@ export function createTrainingProgramsRouter({
   supabase, requireAuth, isViewerBetaTester, writeLimiter = PASS, readLimiter = PASS, captureExceptionFn = () => {},
   // #4847: "Train now" laaser dagens felter (backend/lib/trainNow.js). Default = ingen laas.
   planLock = () => PASS,
+  // Codex P1 paa #8532 (AGENTS: tests laeser aldrig vaegurets tid): tidsstempler fra en injicerbar klokke.
+  clock = () => new Date(),
 }) {
   const router = express.Router();
 
@@ -123,7 +126,13 @@ export function createTrainingProgramsRouter({
     return affected ? isTrainingCatalogV3EnabledForViewer(supabase, () => isViewerBetaTester(req)) : false;
   }
 
-  function seedsFor(riders, rows, plansByRider, catalogV3 = false) {
+  // #7947: kontakten slaas kun op, naar en rytter der skal saaes har en plan paa et andet
+  // niveau end sessionens standard (kun muligt med kontakten on). Ellers intet opslag.
+  async function seedEffortLevels(riders, plansByRider) {
+    return riders.some((r) => planRunsOffStandard(plansByRider.get(r.id))) ? isTrainingEffortLevelsEnabled(supabase) : false;
+  }
+
+  function seedsFor(riders, rows, plansByRider, catalogV3 = false, effortLevels = false) {
     const teamDays = (rows ?? []).find((r) => r.rider_id == null)?.days ?? null;
     const seeds = {};
     for (const rider of riders) {
@@ -131,7 +140,7 @@ export function createTrainingProgramsRouter({
       if (isValidProgramWeekDays(riderDays)) continue;
       seeds[rider.id] = seedProgramWeekDays({
         riderDays, teamDays, plan: plansByRider.get(rider.id) ?? null, primaryType: rider.primary_type ?? null,
-        secondaryType: rider.secondary_type ?? null, catalogV3,
+        secondaryType: rider.secondary_type ?? null, catalogV3, effortLevels,
       });
     }
     return seeds;
@@ -157,7 +166,7 @@ export function createTrainingProgramsRouter({
       let seeds = {};
       if (cellsEnabled) {
         const [riders, plansByRider] = await Promise.all([ownRiders(req.team.id), teamPlans(req.team.id)]);
-        seeds = seedsFor(riders, rows, plansByRider, await seedCatalogV3(req, riders, plansByRider));
+        seeds = seedsFor(riders, rows, plansByRider, await seedCatalogV3(req, riders, plansByRider), await seedEffortLevels(riders, plansByRider));
       }
       res.json({
         enabled: catalogOn,
@@ -213,7 +222,7 @@ export function createTrainingProgramsRouter({
     const targets = picked.filter((id) => !hasOwnRow.has(id) && !followers.has(id));
     const skipped = picked.length - targets.length + retiredPicked;
     if (targets.length === 0) return res.json({ ok: true, applied: 0, skipped, programKey: program.key });
-    const now = new Date().toISOString();
+    const now = clock().toISOString();
     const { error } = await insertRows(supabase, targets.map((riderId) => ({
       // En NY kopi pr. rytter — ingen delte objekter mellem raekkerne.
       team_id: teamId, rider_id: riderId, days: programWeekDaysFor(program.key), program_key: program.key, updated_at: now,
@@ -258,7 +267,7 @@ export function createTrainingProgramsRouter({
       const existingByRider = new Map(
         (rows ?? []).filter((r) => r.rider_id != null).map((r) => [r.rider_id, r.id]),
       );
-      const now = new Date().toISOString();
+      const now = clock().toISOString();
       const inserts = [];
       const updates = [];
       for (const riderId of targets) {
@@ -296,7 +305,8 @@ export function createTrainingProgramsRouter({
   });
 
   // PUT /api/training/programs/cell — body { riderId, weekday, slotIndex (null = hele
-  // ugedagen, 0-4 = een loebsdag), session }. Spillerens klik paa EEN celle.
+  // ugedagen, 0-4 = een loebsdag), session, effort? }. Spillerens klik paa EEN celle.
+  // #7947: `effort` (easy/normal/hard, null = foelg) gemmes kun med training_effort_levels on.
   // Proveniensen bevares (UI'et viser "Sprinter · 2 aendret").
   router.put("/cell", requireAuth, writeLimiter, planLock("programCell"), async (req, res) => {
     if (!req.team) return res.status(400).json({ error: "No team found" });
@@ -308,6 +318,9 @@ export function createTrainingProgramsRouter({
     }
     try {
       if (!(await cellsOn(req))) return res.status(404).json({ error: "not_found" });
+      // #7947: indsatsen gemmes kun med kontakten on; ikke sendt = intet opslag, som i dag.
+      const effortWrite = await effortForWrite(supabase, req.body?.effort);
+      if (!effortWrite.ok) return res.status(400).json({ error: effortWrite.reason });
       // #5319: en v3-session kan kun vaelges naar training_catalog_v3 er aaben for viewer.
       if (isV3OnlySession(session) && !(await isTrainingCatalogV3EnabledForViewer(supabase, () => isViewerBetaTester(req)))) {
         return res.status(400).json({ error: "invalid_session" });
@@ -325,12 +338,12 @@ export function createTrainingProgramsRouter({
         ? row.days
         : await (async () => {
           const plans = await teamPlans(teamId);
-          return seedsFor([rider], rows, plans, await seedCatalogV3(req, [rider], plans))[riderId];
+          return seedsFor([rider], rows, plans, await seedCatalogV3(req, [rider], plans), await seedEffortLevels([rider], plans))[riderId];
         })();
-      const days = setProgramCell(current, { weekday, slotIndex, session });
+      const days = setProgramCell(current, { weekday, slotIndex, session, effort: effortWrite.effort });
       if (!days) return res.status(400).json({ error: "invalid_cell" });
       await markRidersOwnPlan(supabase, teamId, [riderId]); // #6000: egen plan vinder over gruppen. Foer skrivningen.
-      const now = new Date().toISOString();
+      const now = clock().toISOString();
       const { error } = row
         ? await updateRow(supabase, row.id, { days, updated_at: now })
         : await insertRows(supabase, [{ team_id: teamId, rider_id: riderId, days, updated_at: now }]);
@@ -351,7 +364,7 @@ export function createTrainingProgramsRouter({
     try {
       if (!(await cellsOn(req))) return res.json({ available: false, reason: "disabled", riders: {} });
       const seasonId = await activeSeasonId();
-      const forecast = await loadTeamFatigueForecast({ supabase, team: req.team, seasonId, now: new Date() });
+      const forecast = await loadTeamFatigueForecast({ supabase, team: req.team, seasonId, now: clock() });
       res.json(forecast);
     } catch (err) {
       captureExceptionFn(err);

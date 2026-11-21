@@ -59,6 +59,7 @@ const PROJECT_KEY = import.meta.env?.VITE_POSTHOG_KEY;
 const API_HOST = "/ingest";
 
 export const POSTHOG_ENABLED = Boolean(import.meta.env?.PROD) && Boolean(PROJECT_KEY);
+export const POSTHOG_CAPTURE_READY = "cz:posthog-capture-ready";
 
 // --- Gaten (ejer 6/10) ------------------------------------------------------
 // PostHog kører for alle UNDTAGEN dem der aktivt har afvist analytics.
@@ -281,6 +282,7 @@ export async function startPosthog() {
     // kører allerede, men står opted out. Uden dette ville den tavst blive
     // ved med at kassere events.
     optIn();
+    if (typeof window !== "undefined" && isPosthogCapturing()) window.dispatchEvent(new Event(POSTHOG_CAPTURE_READY));
     return;
   }
   if (shouldSkipForAutomation()) return;
@@ -301,6 +303,7 @@ export async function startPosthog() {
     // (core læser `getPersistedProperty(OptedOut) ?? !defaultOptIn`).
     optIn();
     posthogStarted = true;
+    if (typeof window !== "undefined") window.dispatchEvent(new Event(POSTHOG_CAPTURE_READY));
   } catch (err) {
     console.error("posthog init failed:", err);
   }

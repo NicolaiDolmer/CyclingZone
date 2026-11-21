@@ -1376,7 +1376,7 @@
       },
       "potentialBestRoleEstimate": {
         "title": "Potential across the game",
-        "text": "Everywhere in the game a rider's potential is one number on the same scale as his rating, with one word next to it: Uncertain, Fair or Confident. The number is your team's estimate of how high he can reach in his natural role, and the word says how far to trust it. More looks, a better scout and, for your own riders, more training on your team make it more certain. It only moves when your team learns something new, at the Sunday update, or when he changes team."
+        "text": "Everywhere in the game a rider's potential is called Potential, with the line the scout's estimate under it. It shows as one number and one word, for example Potential 74 · Fair. The number is your team's estimate of how high he can reach in his natural role, on the same scale as his rating, and the word says how far to trust it: Uncertain, Fair or Confident, where Confident is the top. When the word is Uncertain the number shows as approx. 74 in a muted colour. The true number is never shown. For your own riders the Prognosis column shows one rating: where he ends up around his peak if he keeps his current pace, based on his last 30 days. More looks, a better scout and, for your own riders, more training on your team make the estimate more certain. It only moves when your team learns something new, at the Sunday update, or when he changes team. Nothing else in the game announces a change; this is where it is explained."
       },
       "potentialBestRole": {
         "title": "Potential across the game",
@@ -1385,6 +1385,10 @@
       "trainingFocus": {
         "title": "Training focus",
         "text": "From the profile of one of your own riders you can set a season-long training focus: a direction (VO2max, Threshold/TT, Sprint, Endurance, Technique, Aero or Race craft). The effort comes with the session type and is not a separate choice: intervals, threshold and sprint are hard, tempo is medium, the rest are easy. Trained abilities develop faster toward their ceiling through the daily training that runs each evening, while other abilities grow a little more slowly. Hard sessions build more fatigue but carry no risk of losing progress. You can set a training focus on as many of your riders as you like; changing an existing focus costs nothing. Training is free and does not cost money. Riders who race develop from the race instead of their planned session, including single-day races. Selected riders who do not start follow their programme, subject to injuries. Fatigue, form and training injury risk are assessed from the day's combined race and training activity at the evening update. Gaps between stages do not add extra recovery. Hard training remains more tiring than normal training."
+      },
+      "trainingFocusXp": {
+        "title": "Training focus",
+        "text": "From the profile of one of your own riders you can set a season-long training focus: a direction (VO2max, Threshold/TT, Sprint, Endurance, Technique, Aero or Race craft). The effort comes with the session type and is not a separate choice: intervals, threshold and sprint are hard, tempo is medium, the rest are easy. Trained abilities earn XP faster through the daily training that runs each evening, while other abilities grow a little more slowly. Hard sessions build more fatigue but carry no risk of losing progress. You can set a training focus on as many of your riders as you like; changing an existing focus costs nothing. Training is free and does not cost money. Riders who race develop from the race instead of their planned session, including single-day races. Selected riders who do not start follow their programme, subject to injuries. Fatigue, form and training injury risk are assessed from the day's combined race and training activity at the evening update. Gaps between stages do not add extra recovery. Hard training remains more tiring than normal training."
       },
       "scoutingEstimate": {
         "title": "Scouting potential",
@@ -2111,7 +2115,7 @@
     },
     "restForDevelopedFaq": {
       "q": "My rider is fully developed. Should I just set them to Rest?",
-      "a": "Once every ability in a rider's chosen focus has reached its lifetime ceiling, every line in that focus reads 'done', and more training there adds nothing: the daily gain comes from the gap between current ability and ceiling, and at zero gap it stays zero at any intensity. Normal or Hard on a maxed-out rider still builds Fatigue, and Hard still carries the same injury risk as usual, for no ability gain in return, so Rest is the safer pick: it removes Fatigue instead of adding it. A rider's post-peak decline from around age 28 runs at the same fixed, age-based rate every season change regardless of what intensity you trained at, so neither training nor Rest speeds it up or slows it down. If a different focus still has room, switching there beats resting."
+      "a": "Usually there is more to gain: the higher an ability already is, the more each point costs, so progress near the top is slow but keeps going until the ability reaches the highest level his role allows; from there, training it adds nothing. Normal or Hard still builds Fatigue, and Hard carries the usual injury risk, so Rest makes sense when Fatigue is high or the gain is too small to be worth the load. Rest gives no development on a training day, so otherwise a focus on abilities that are still lower moves him faster. Riders hold their level up to and including 30; from the season after that, his physical abilities drop a little at each season change. Race days and hard training days slow that decline, Rest doesn't."
     },
     "restForDevelopedXpFaq": {
       "q": "My rider is fully developed. Should I just set them to Rest?",
@@ -2503,7 +2507,7 @@
     },
     "trainWeaknessesFaq": {
       "q": "Should I train my weak abilities?",
-      "a": "Usually not. A rider's type sets a ceiling per ability, and a weakness has a low ceiling, so it stops growing early. The closer an ability gets to its ceiling, the less each training day adds. Train the abilities his type is built for, and put weaknesses second. A weak ability still counts in a stage, but it matters mostly where the stage asks for it."
+      "a": "Usually not first. His type decides how fast each ability develops: the abilities his primary and secondary type are built for develop fastest, and abilities outside his roles develop slower. Every point also costs more the higher an ability already is. Train the abilities his type is built for, and put weaknesses second. A weak ability still counts in a stage, but it matters mostly where the stage asks for it."
     },
     "raceFatigueSameFatigueFaq": {
       "q": "Is the fatigue from race effort the same as the Fatigue on the training page?",

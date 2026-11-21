@@ -1376,7 +1376,7 @@
       },
       "potentialBestRoleEstimate": {
         "title": "Potentiale i hele spillet",
-        "text": "Overalt i spillet er en rytters potentiale ét tal på samme skala som hans rating, med ét ord ved siden af: Usikker, Rimelig eller Sikker. Tallet er dit holds skøn over, hvor højt han kan nå i sin naturlige rolle, og ordet siger, hvor meget du kan stole på det. Flere kig, en bedre spejder og, for dine egne ryttere, mere træning på dit hold gør det mere sikkert. Det flytter sig kun, når dit hold lærer noget nyt, ved søndagsopdateringen, eller når han skifter hold."
+        "text": "Overalt i spillet hedder en rytters potentiale Potentiale, med undertitlen spejderens skøn. Det vises som ét tal og ét ord, fx Potentiale 74 · Rimelig. Tallet er dit holds skøn over, hvor højt han kan nå i sin naturlige rolle, på samme skala som hans rating, og ordet siger, hvor meget du kan stole på det: Usikker, Rimelig eller Sikker, hvor Sikker er toppen. Er ordet Usikker, står tallet som ca. 74 i en afdæmpet farve. Det sande tal vises aldrig. For dine egne ryttere viser kolonnen Prognose én samlet rating: hvor han ender omkring toppen, hvis han fortsætter den nuværende fart, bygget på hans seneste 30 dage. Flere kig, en bedre spejder og, for dine egne ryttere, mere træning på dit hold gør skønnet mere sikkert. Det flytter sig kun, når dit hold lærer noget nyt, ved søndagsopdateringen, eller når han skifter hold. Intet andet sted i spillet annoncerer en ændring; her står forklaringen."
       },
       "potentialBestRole": {
         "title": "Potentiale i hele spillet",
@@ -1385,6 +1385,10 @@
       "trainingFocus": {
         "title": "Træningsfokus",
         "text": "Fra profilen på en af dine egne ryttere kan du sætte et sæson-langt træningsfokus: en retning (VO2max, Tærskel/TT, Spurt, Udholdenhed, Teknik, Aero eller Løbslære). Belastningen følger sessionstypen og er ikke et selvstændigt valg: intervaller, tærskel og sprint er hårde, tempo er mellem, resten er lette. Trænede evner udvikler sig hurtigere mod deres loft gennem den daglige træning, der kører hver aften, mens øvrige evner vokser en anelse langsommere. Hårde sessioner bygger mere træthed op, men har ingen risiko for at miste fremgang. Du kan sætte træningsfokus på så mange ryttere du vil; at ændre et eksisterende fokus koster intet. Træning er gratis og koster ikke penge. Ryttere, der kører løb, udvikler sig fra løbet i stedet for det planlagte pas, også ved endagsløb. Udtagne ryttere, der ikke starter, følger deres program under hensyn til skader. Træthed, form og risiko for træningsskader vurderes ud fra dagens samlede løbs- og træningsaktivitet ved aftenopgørelsen. Huller mellem etaper giver ikke ekstra restitution. Hård træning er fortsat mere belastende end normal træning."
+      },
+      "trainingFocusXp": {
+        "title": "Træningsfokus",
+        "text": "Fra profilen på en af dine egne ryttere kan du sætte et sæson-langt træningsfokus: en retning (VO2max, Tærskel/TT, Spurt, Udholdenhed, Teknik, Aero eller Løbslære). Belastningen følger sessionstypen og er ikke et selvstændigt valg: intervaller, tærskel og sprint er hårde, tempo er mellem, resten er lette. Trænede evner tjener XP hurtigere gennem den daglige træning, der kører hver aften, mens øvrige evner vokser en anelse langsommere. Hårde sessioner bygger mere træthed op, men har ingen risiko for at miste fremgang. Du kan sætte træningsfokus på så mange ryttere du vil; at ændre et eksisterende fokus koster intet. Træning er gratis og koster ikke penge. Ryttere, der kører løb, udvikler sig fra løbet i stedet for det planlagte pas, også ved endagsløb. Udtagne ryttere, der ikke starter, følger deres program under hensyn til skader. Træthed, form og risiko for træningsskader vurderes ud fra dagens samlede løbs- og træningsaktivitet ved aftenopgørelsen. Huller mellem etaper giver ikke ekstra restitution. Hård træning er fortsat mere belastende end normal træning."
       },
       "scoutingEstimate": {
         "title": "Scouting af potentiale",
@@ -2111,7 +2115,7 @@
     },
     "restForDevelopedFaq": {
       "q": "Min rytter er færdigudviklet. Skal jeg bare sætte hvile?",
-      "a": "Når alle evner i rytterens valgte fokus har nået deres livstidsloft, står hver linje i det fokus som \"færdig\", og mere træning i det fokus giver intet ekstra: dagens gevinst beregnes ud fra afstanden mellem nuværende evne og loftet, og ved nul afstand forbliver den nul uanset intensitet. Kører du Normal eller Hård på en færdigudviklet rytter, bygger det stadig Træthed op, og Hård har stadig samme skaderisiko som for enhver anden rytter, for ingen evnegevinst til gengæld, så Hvile er det sikre valg: det fjerner Træthed i stedet for at bygge den op. Rytterens fald efter toppen omkring 28 år kører under alle omstændigheder med en fast, alders-bestemt hastighed ved hvert sæsonskifte, uanset hvilken intensitet du trænede med, så hverken træning eller Hvile fremskynder eller bremser det. Har rytteren stadig plads i et andet fokus, er det at skifte fokus det bedre valg frem for hvile."
+      "a": "Som regel er der mere at hente: jo højere en evne allerede står, jo mere koster hvert point, så fremgangen nær toppen er langsom, men den fortsætter, indtil evnen når det højeste niveau, hans rolle tillader; derfra giver træning af den intet. Normal eller Hård bygger stadig Træthed op, og Hård har den sædvanlige skaderisiko, så Hvile giver mening, når trætheden er høj, eller gevinsten er for lille til at være belastningen værd. Hvile giver ingen udvikling på en træningsdag, så ellers flytter et fokus på evner, der stadig er lavere, ham hurtigere. Ryttere holder deres niveau til og med 30 år; fra sæsonen efter falder hans fysiske evner lidt ved hvert sæsonskifte. Løbsdage og hårde træningsdage bremser faldet, hvile gør ikke."
     },
     "restForDevelopedXpFaq": {
       "q": "Min rytter er færdigudviklet. Skal jeg bare sætte hvile?",
@@ -2503,7 +2507,7 @@
     },
     "trainWeaknessesFaq": {
       "q": "Skal jeg træne mine svage evner?",
-      "a": "Som regel ikke. En rytters type sætter et loft pr. evne, og en svaghed har et lavt loft, så den holder op med at vokse tidligt. Jo tættere en evne kommer på sit loft, jo mindre giver hver træningsdag. Træn de evner, hans type er bygget til, og sæt svaghederne på andenpladsen. En svag evne tæller stadig i en etape, men den betyder mest, hvor etapen kræver den."
+      "a": "Som regel ikke først. Hans type bestemmer, hvor hurtigt hver evne udvikler sig: de evner, hans primære og sekundære type er bygget til, udvikler sig hurtigst, og evner uden for hans roller udvikler sig langsommere. Hvert point koster også mere, jo højere en evne allerede står. Træn de evner, hans type er bygget til, og sæt svaghederne på andenpladsen. En svag evne tæller stadig i en etape, men den betyder mest, hvor etapen kræver den."
     },
     "raceFatigueSameFatigueFaq": {
       "q": "Er træthed fra løbsindsats den samme som Træthed på træningssiden?",

@@ -1,0 +1,33 @@
+{
+  "note": "#7947 frozen on the merge base by trainingEffortLevels7947.golden.mjs (before the switch existed). Never regenerate with the new code.",
+  "mergeBase": "89f86021cb79928d0ebc55857973800e581b69f5",
+  "lib": {
+    "programForChoice": {
+      "all": "cfd61db1a4139f0632323dc8",
+      "standard": "5393b8f103926d6618e1b7e5",
+      "count": 3960
+    },
+    "normalizeProgram": {
+      "all": "4dc684e8fd77fb14fa68a5bf",
+      "standard": "a259e34a0997c6524f705ade",
+      "count": 322
+    },
+    "resolveDayProgram": {
+      "all": "aa9e87cc8a519b0a11a94c9e",
+      "standard": "88b97b7edf8328518130da3c",
+      "count": 12800
+    },
+    "setProgramCell": {
+      "all": "4f766bfd42cfb7593d017fa1"
+    },
+    "isValidProgramWeekDays": {
+      "all": "e05a0a3a464245435f8f31e5"
+    }
+  },
+  "engine": {
+    "plain": "108f6e2971d239e46c57",
+    "standard": "108f6e2971d239e46c57",
+    "other": "108f6e2971d239e46c57",
+    "ignored": "108f6e2971d239e46c57"
+  }
+}

@@ -21,6 +21,7 @@ import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { abilityMeta } from "./abilityRegistry.js";
 import { CAPS_SHAPING_WEIGHTS } from "./weights/capsShapingWeights.js";
 import { ageForSeason } from "./riderSeasonAge.js";
+import { isXpAgingPercentShape, validateXpAgingPercent, validateXpAgingBrake, agingRateAt } from "./riderWear6110.js";
 
 // ── EJER-JUSTERBARE KONSTANTER (kalibreres i previewRiderProgression.js) ────────
 export const PROGRESSION_CONFIG = Object.freeze({
@@ -655,15 +656,35 @@ export const AGING_V2_CONFIG = Object.freeze({
 
 // #6110 (ejervalg 19/11): sæsonskiftets cfg under XP. `xpParams` er de validerede
 // XP-params (developmentXp.ts); uden `aging` = null, og sæsonskiftet bruger dagens
-// AGING_V2_CONFIG uændret. Bremsen og typefaktoren er dagens.
+// AGING_V2_CONFIG uændret. Typefaktoren er dagens; bremsen er dagens, medmindre
+// talfilen kalibrerer den (#8531, nedenfor).
+//
+// #8522 (G3a, spec 2026-11-20 §3): har talfilen aldringen i procent-form (kurver,
+// riderWear6110.js), bliver cfg'en `percent`. En ugyldig
+// procent-form kaster: sæsonskiftet venter hellere end at ælde efter en halv model.
+//
+// #8531: talfilens aldring (begge former) kan kalibrere løbsbremsen (brakeLoadDays,
+// hardTrainingDayWeight, riderWear6110.validateXpAgingBrake). Kun de felter, der er
+// sat, erstatter dagens; uden dem er bremsen dagens, bit-identisk. Et ugyldigt felt
+// kaster af samme grund som en ugyldig procent-form.
 export function xpAgingConfig(xpParams) {
   const aging = xpParams?.aging;
   if (!aging) return null;
+  if (isXpAgingPercentShape(aging)) {
+    const valid = validateXpAgingPercent(aging);
+    if (!valid) throw new Error("agingXp: invalid percent aging in development_xp_params");
+    // cfg.percent er kun kurverne; bremsen står på cfg'en som i AGING_V2_CONFIG.
+    const { physical, mental, ...brake } = valid;
+    return Object.freeze({ ...AGING_V2_CONFIG, ...brake, percent: Object.freeze({ physical, mental }) });
+  }
+  const brake = validateXpAgingBrake(aging);
+  if (!brake) throw new Error("agingXp: invalid aging brake in development_xp_params");
   return Object.freeze({
     ...AGING_V2_CONFIG,
     plateauThroughAge: aging.plateauThroughAge,
     declineByYearsPastPlateau: aging.declineByYearsPastPlateau,
     ...(aging.late ? { late: aging.late } : {}),
+    ...brake,
   });
 }
 
@@ -734,6 +755,10 @@ export function developRiderSeasonV2(rider, abilities, season, options = {}) {
     next[ability] = Math.round(Number(cur));
   }
 
+  // #8522 (G3a): procent-aldringen under XP har sin egen vej; dagens regel nedenfor
+  // er urørt (frossen golden i riderProgression.test.js).
+  if (cfg.percent) return developPercentAging(rider, next, season, cfg, { age, brake, progressionCfg });
+
   const declining = AGING_V2_DECLINING_ABILITIES.filter((ability) => Number.isFinite(next[ability]));
   const raw = declining.map((ability) => {
     const isSig = signatureFactor(type, ability, progressionCfg) >= 1.0;
@@ -773,6 +798,50 @@ export function developRiderSeasonV2(rider, abilities, season, options = {}) {
     changed,
     retirement: resolveSeasonRetirement(rider, age, season, progressionCfg),
     aging: { brake, baseDrop, rawTotal, totalDrop },
+  };
+}
+
+// #8522 (G3a, spec 2026-11-20 §3-4): kroppens aldring i procent ved sæsonskiftet.
+//   • Hver evne taber en andel af sin EGEN værdi, så faldet er proportionalt: de
+//     bedste evner taber flest point, de svage færrest. Derfor ingen typefaktor.
+//   • Andelen glider med kroppens alder i den nye sæson (cfg.percent: to kurver,
+//     riderWear6110.js). De fysiske evner + brosten følger den ene, teknik og de
+//     mentale evner den anden, som taber mindre og senere.
+//   • Belastningen bremser som i dag (agingBrake, seasonDevelopmentLoad.js).
+//   • Brøkerne afrundes systematisk og seedet pr. (rytter, sæson), med hver sin seed
+//     pr. gruppe, så forventningen er præcis den rå brøk.
+// Det tabte bliver slid (motoren gemmer det); her ændres kun evnerne.
+function developPercentAging(rider, next, season, cfg, { age, brake, progressionCfg }) {
+  const physicalRate = agingRateAt(cfg.percent.physical, age);
+  const mentalRate = agingRateAt(cfg.percent.mental, age);
+  const finite = (ability) => Number.isFinite(next[ability]);
+  const groups = [
+    [AGING_V2_DECLINING_ABILITIES.filter(finite), physicalRate, `age3:${rider.id}:${season}`],
+    [VISIBLE_ABILITIES.filter((a) => finite(a) && !AGING_V2_DECLINING_ABILITIES.includes(a)), mentalRate, `age3m:${rider.id}:${season}`],
+  ];
+  const changed = [];
+  let rawTotal = 0;
+  let totalDrop = 0;
+  for (const [abilities, rate, seed] of groups) {
+    const raw = abilities.map((ability) => next[ability] * rate * brake);
+    const sum = raw.reduce((s, d) => s + d, 0);
+    rawTotal += sum;
+    if (!(sum > 0)) continue;
+    const drops = systematicRound(raw, seededUnitMixed(seed));
+    abilities.forEach((ability, i) => {
+      if (drops[i] <= 0) return;
+      const before = next[ability];
+      const after = clamp(before - drops[i], 0, 99);
+      next[ability] = after;
+      totalDrop += before - after;
+      if (after !== before) changed.push(ability);
+    });
+  }
+  return {
+    next,
+    changed,
+    retirement: resolveSeasonRetirement(rider, age, season, progressionCfg),
+    aging: { brake, baseDrop: 0, rawTotal, totalDrop, physicalRate, mentalRate },
   };
 }
 

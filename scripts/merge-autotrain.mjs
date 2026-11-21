@@ -10,7 +10,7 @@
 //      staaende kategori fra scripts/merge-queue-classify.mjs (hard rule 35).
 //      EJER-GO koerer kun med ejerens eksplicitte merge-markoer (se nedenfor);
 //   3. kalder scripts/merge-queue.ps1 EEN gang med ET samlet tog (ejer 17/11, #8331):
-//      op til TRAIN_MAX_BATCH klare PR'er, hoejst een deploy-PR og den sidst i toget.
+//      op til TRAIN_MAX_BATCH klare PR'er, hoejst TRAIN_MAX_DEPLOY deploy-PR'er sidst i toget (solo alene).
 //      Hver PR vurderes frisk lige foer koeen startes, og koeen faar det vurderede
 //      hoved pr. PR (-ExpectHead); et andet hoved merges aldrig (Codex P1 #7657).
 //      Koeen faar -CiTimeoutMinutes 90 (17/11: 25 min gav falsk timeout og laaste toget,
@@ -45,10 +45,15 @@ import { CATEGORY, DEFAULT_REPO, classifyPr, fetchMigrationFacts, formatClassifi
 import { gitCommonRoot, markerFilePath, readActiveMarker } from './merge-queue-active-marker.mjs';
 import { deploymentAttemptState, handedOffRunVerdict } from './ci/deploy-verification-state.mjs';
 import { classifyPrFiles, mustRunAlone, touchesVercel } from './merge-queue-files.mjs';
+import { latestOwnerMarkerSha, runMergeGuard } from './merge-guard.mjs';
 
 export const LOG_RELATIVE = join('.claude', 'run', 'merge-autotrain.log');
 // Samme loft som merge-queue.ps1's -MaxBatch (testen laaser de to sammen).
 export const TRAIN_MAX_BATCH = 5;
+// Ejer 20/11: op til 3 deploy-PR'er pr. tog (koeen understoetter det siden 23/10, -MaxDeployBatch);
+// togets sidste merge-SHA baerer deploy-verifikationen, og koeen lukker selv toget, hvis den sidste
+// PR ikke daekker togets deploy-maal (Codex P1 #7104). En solo-PR (migration/motor) koerer altid alene.
+export const TRAIN_MAX_DEPLOY = 3;
 // main-CI tog 76-110 min i koe-spidser 16-17/11; sendes eksplicit til koeen.
 export const QUEUE_CI_TIMEOUT_MINUTES = 90;
 // merge-queue.ps1: 2 = nogle PR'er sprunget over, men det merged er verificeret; 3 = en anden koe ejer markoeren.
@@ -150,6 +155,8 @@ export function evaluatePr(pr, { requiredChecks, allChecks, classification, owne
     category: classification?.category ?? null,
     classification: classification ? formatClassification(classification) : null,
     reason: '',
+    // Merge-vagten (#8331): seneste ejer-markoer uanset hoved.
+    ownerMarkerSha: latestOwnerMarkerSha(pr?.comments, ownerLogin),
   };
   const no = (reason) => ({ ...out, reason });
   const pre = precheck(pr, { baseBranch });
@@ -169,16 +176,20 @@ export function evaluatePr(pr, { requiredChecks, allChecks, classification, owne
 
 /**
  * PR-numre til ET samlet tog (ejer 17/11, #8331), aeldste foerst, hoejst maxBatch.
- * Deploy-reglen: hoejst een deploy-PR (den aeldste), og den sidst i toget, saa togets
- * sidste merge-SHA baerer deploy-verifikationen (Codex P1 #6861). Resten venter til
- * naeste koersel.
+ * Deploy-reglen (ejer 20/11): hoejst maxDeploy deploy-PR'er (de aeldste), sidst i toget, saa
+ * togets sidste merge-SHA baerer deploy-verifikationen (Codex P1 #6861); koeen lukker selv
+ * toget, hvis en PR ikke daekker togets deploy-maal (#7104). En solo-PR (migration/motor eller
+ * ukendt status, fail-safe) koerer altid som eneste deploy-PR. Resten venter til naeste koersel.
  */
-export function selectTrain(evaluations, { maxBatch = TRAIN_MAX_BATCH } = {}) {
+export function selectTrain(evaluations, { maxBatch = TRAIN_MAX_BATCH, maxDeploy = TRAIN_MAX_DEPLOY } = {}) {
   const eligible = (evaluations ?? []).filter((e) => e?.eligible).sort((a, b) => a.number - b.number);
-  const deploy = eligible.find((e) => e.deploys !== false);
+  const deployAll = eligible.filter((e) => e.deploys !== false);
+  const deploys = deployAll.length && deployAll[0].solo !== false
+    ? [deployAll[0]]
+    : deployAll.filter((e) => e.solo === false).slice(0, Math.max(0, Math.min(maxDeploy, maxBatch)));
   const quiet = eligible.filter((e) => e.deploys === false).map((e) => e.number);
-  const room = Math.max(0, maxBatch - (deploy ? 1 : 0));
-  return [...quiet.slice(0, room), ...(deploy && maxBatch > 0 ? [deploy.number] : [])];
+  const room = Math.max(0, maxBatch - deploys.length);
+  return [...quiet.slice(0, room), ...deploys.map((e) => e.number)];
 }
 
 /** Gaa intet, hvis en koe allerede koerer (levende tog-markoer). */
@@ -364,12 +375,12 @@ const SCRIPT_ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
 /**
  * Argumenterne til merge-queue.ps1 for et samlet tog. -ExpectHead har een SHA pr. PR i
- * samme raekkefoelge (Codex P1 #7657), -MaxDeployBatch 1 lader koeen selv haandhaeve
+ * samme raekkefoelge (Codex P1 #7657), -MaxDeployBatch TRAIN_MAX_DEPLOY (3, ejer 20/11) lader koeen selv haandhaeve
  * deploy-reglen, og -CiTimeoutMinutes er sat eksplicit (#8331).
  */
 export function queueArgs({ script, train, repo, expectHeads }) {
   const args = ['-NoProfile', '-NonInteractive', '-File', script, '-Pr', train.join(','), '-Repo', repo,
-    '-MaxBatch', String(TRAIN_MAX_BATCH), '-MaxDeployBatch', '1', '-CiTimeoutMinutes', String(QUEUE_CI_TIMEOUT_MINUTES)];
+    '-MaxBatch', String(TRAIN_MAX_BATCH), '-MaxDeployBatch', String(TRAIN_MAX_DEPLOY), '-CiTimeoutMinutes', String(QUEUE_CI_TIMEOUT_MINUTES)];
   if (expectHeads?.length) args.push('-ExpectHead', expectHeads.join(','));
   return args;
 }
@@ -422,7 +433,8 @@ export async function run({
   runQueue = defaultRunQueue,
   checkMain = defaultCheckMain,
   blockFile = null,
-  out = (line) => process.stdout.write(`${line}\n`),
+  guard = runMergeGuard,
+  out =(line) => process.stdout.write(`${line}\n`),
 } = {}) {
   const opts = parseArgs(argv);
   const logFile = opts.log && !opts.dryRun ? join(repoRoot, LOG_RELATIVE) : null;
@@ -461,6 +473,8 @@ export async function run({
   }
   log(`  ${evaluations.length} aabne PR'er vurderet, ${evaluations.filter((x) => x.ready).length} klar.`);
   for (const e of evaluations.filter((x) => x.ready)) log(`  #${e.number} klar: ${e.reason}${e.classification ? ` [${e.classification}]` : ''}`);
+  // Merge-vagten (#8331): PR'er med ejer-markoer der staar stille; fail-soft.
+  try { guard({ evaluations, repo: opts.repo, repoRoot, now, dryRun: opts.dryRun, log }); } catch (err) { log(`  MERGE-VAGT fejlede (${err?.message ?? err}).`); }
   const train = selectTrain(evaluations);
   const decision = decideAction({ activeMarker: null, train });
 
