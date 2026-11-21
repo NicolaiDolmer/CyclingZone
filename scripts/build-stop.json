@@ -378,6 +378,26 @@
       "issue": 8550,
       "area": "training-r5",
       "why": "Ejer-go 21/11 eftermiddag (PC1, AskUserQuestion): 'Den nye side til træningsprogrammerne vil jeg også gerne have lavet færdigt'; valgt omfang: telefonudgaven, rotation, prioritet + låst pas, egne programmer + ugens løb og træthed. Skitser nu, byg efter tændingen."
+    },
+    {
+      "issue": 8560,
+      "area": "training-r5",
+      "why": "Ejer-go 21/11 aften (PC1, AskUserQuestion efter skitser forslag-1-2 og forslag-3-5): Forslag 2 gruppestyring: \"Ja, byg det\". Paritetstjek mod de gamle træningssider. Byg på Dolmer PC (ejer: PC1 kun koordinering og merge)."
+    },
+    {
+      "issue": 8561,
+      "area": "training-r5",
+      "why": "Ejer-go 21/11 aften (PC1, AskUserQuestion efter skitser forslag-1-2 og forslag-3-5): Forslag 3 henter/tom/fejl + Kassér: \"Godkendt til byg\". Paritetstjek mod de gamle træningssider. Byg på Dolmer PC (ejer: PC1 kun koordinering og merge)."
+    },
+    {
+      "issue": 8562,
+      "area": "training-r5",
+      "why": "Ejer-go 21/11 aften (PC1, AskUserQuestion efter skitser forslag-1-2 og forslag-3-5): Forslag 4 Skift fokus + Rapport: \"Ja, byg det\". Paritetstjek mod de gamle træningssider. Byg på Dolmer PC (ejer: PC1 kun koordinering og merge)."
+    },
+    {
+      "issue": 8563,
+      "area": "training-r5",
+      "why": "Ejer-go 21/11 aften (PC1, AskUserQuestion efter skitser forslag-1-2 og forslag-3-5): Forslag 5 I dag telefon + Nulstil filtre: \"Ja, byg det\". Paritetstjek mod de gamle træningssider. Byg på Dolmer PC (ejer: PC1 kun koordinering og merge)."
     }
   ],
   "cleanupList": [
