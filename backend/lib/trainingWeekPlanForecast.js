@@ -42,6 +42,7 @@ import { isTrainingCellsEnabledForTeam } from "./trainingWeekPlanCellsFlag.js";
 import { isTrainingCatalogV3EnabledForTeam } from "./trainingCatalogV3.js"; // #5319
 import { loadRaceExitGameDays, dropBindingsAfterRaceExit } from "./trainingRaceDayTick.js";
 import { isTrainingSettleRaceSessionEnabled } from "./trainingSettleRaceSession7982.js"; // #7982
+import { isTrainingEffortLevelsEnabled } from "./trainingEffortLevels.js"; // #7947
 // #5932-integrationen: spillerens traethedsgraense (#4854) aendrer motorens pas
 // efter resolveDayProgram. Prognosen kalder SAMME funktion (I5).
 import {
@@ -122,6 +123,7 @@ export function buildTeamFatigueForecast({
   fatigueRules = null, stageYesterdayRiderIds = new Set(),
   fatigueNow = false, // #7801: reglen paa traetheden lige nu, samme tal som motoren (I5)
   ranSlots = false, // #7982: kun med training_settle_race_session on; slukket = feltet findes ikke
+  effortLevels = false, // #7947: samme kontakt som motoren
 }) {
   const days = [...new Set((dateGameDays ?? []).map(Number).filter(Number.isFinite))].sort((a, b) => a - b);
   if (days.length !== FORECAST_SLOTS) return {};
@@ -146,7 +148,7 @@ export function buildTeamFatigueForecast({
       const dayProgram = resolveDayProgram({
         weekday, slotIndex,
         riderOverrideDays: riderWeekDaysByRider.get(rider.id) ?? null,
-        teamWeekDays, program, hasExplicitPlan, programsOn: cellsOn, catalogV3,
+        teamWeekDays, program, hasExplicitPlan, programsOn: cellsOn, catalogV3, effortLevels,
       });
       // Samme raekkefoelge som dailyTrainingEngine.js: planens pas, derefter
       // spillerens regel vurderet paa traethed ved datoens start.
@@ -328,6 +330,9 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
   const fatigueNow = conditionModelV2 ? unwrap(await fatigueNowP) : false; // #7801, samme gate som motoren
   // Fejl i opslaget = slukket (readFlagStage giver null), som delkoerslen selv.
   const settleRaceSession = settleRaceSessionP ? (await settleRaceSessionP).value === true : false;
+  // #7947: som motoren laeses kontakten kun, naar programcellerne laeses (fejl = slukket).
+  const programCellsOn = cellsOn && weekRows.some((row) => weekDaysHaveSessions(row.days));
+  const effortLevels = programCellsOn ? await isTrainingEffortLevelsEnabled(supabase) : false;
   const forecast = buildTeamFatigueForecast({
     conditionModelV2,
     fatigueNow,
@@ -346,10 +351,11 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     recordedLoads: loads,
     plannedStages,
     boundRiderIdsByGameDay,
-    cellsOn: cellsOn && weekRows.some((row) => weekDaysHaveSessions(row.days)),
+    cellsOn: programCellsOn,
     raceDayEngineOn,
     catalogV3,
     ranSlots: settleRaceSession,
+    effortLevels,
   });
   return {
     ...base, available: true, settled: false, riders: forecast,

@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-156 poster: live 123 · beta 3 · dormant 9 · building 11 · spec 1 · idea 2 · retired 7. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+157 poster: live 123 · beta 3 · dormant 9 · building 12 · spec 1 · idea 2 · retired 7. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -74,6 +74,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 |Stored potential estimates (`potential-estimate-writes`)|building|-|[6110-potentiale-et-tal-samlet-design](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md)|#6110|2026-11-05|Trin 5 (#7685): søndagsjob, holdskifte og nye kig; flaget seedes off.|
 |Injuries heal over the off-season (`season-injury-reset`)|building|`season_injury_reset_mode`|[TRAINING_RULES](TRAINING_RULES.md)|#5865|2026-11-16|Bag season_injury_reset_mode = off; ejer vælger clear/cap/light før S6.|
 |Race session settles when the stage is decided (`settle-race-session-after-stage`)|building|-|[TRAINING_RULES](TRAINING_RULES.md)|#7982|2026-11-15|Off i prod 15/11 (#8195). Kun med fatigue_now_7801 (ejer). Skærmdelen mangler.|
+|Every session at easy, normal or hard (`training-effort-levels-7947`)|building|-|[TRAINING_RULES](TRAINING_RULES.md)|#7947|2026-11-20|PR 1 af 4 (kontakt, lib, motorens læsesti). training_effort_levels seedes off post-merge; ejer tænder efter PR 2-4.|
 |Fatigue now counts today's earlier stages (`training-fatigue-now-7801`)|building|-|[TRAINING_RULES](TRAINING_RULES.md)|#7801|2026-11-13|fatigue_now_7801 ikke i prod app_config (13/11) = slukket; ejer tænder.|
 
 ## academy
