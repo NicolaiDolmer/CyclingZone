@@ -19,6 +19,7 @@ import { trainingProgramsMockRoute, previewSingleRaceDay, PREVIEW_TRAINING_PROGR
 import { trainingGroupsMockRoute } from "../components/training/groups/trainingGroupsPreviewMock.ts"; // #6000
 import { trainingFatigueRulesMockRoute } from "./trainingFatigueRulesMock.js"; // #4854
 import { withFatigueNowPreview } from "./fatigueNow7801PreviewMock.ts"; // #7801
+import { withXpLinesPreview } from "./xpLinesPreviewMock.ts"; // #7947
 import { trainingReceiptMock } from "./trainingReceiptMock.ts";
 import { isWorkbenchPreview } from "./planningWorkbenchMock.ts"; // #7535
 import { trainNowPreviewRoute, trainNowSelectionPreview, trainNowBoardPreview, trainNowSeasonPreview } from "../components/training/TrainNowPreviewMock.ts"; // #4847/#6139/#6383
@@ -611,7 +612,8 @@ export function installPreviewMock() {
   window.fetch = async (input, init = {}) => {
     const url = typeof input === "string" ? input : (input && input.url) || "";
     const method = ((init && init.method) || (typeof input !== "string" && input && input.method) || "GET").toUpperCase();
-    return withFatigueNowPreview(url, method, await mockFetch(input, init));
+    // #7947: ?xp=1 viser evnelinjerne som "x / y XP" (opfundne tal).
+    return withXpLinesPreview(url, method, await withFatigueNowPreview(url, method, await mockFetch(input, init)));
   };
 
   console.info("[preview-mock] aktiv — seed-data serveres lokalt, prod røres ikke.");

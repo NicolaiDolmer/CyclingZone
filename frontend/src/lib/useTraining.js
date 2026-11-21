@@ -21,6 +21,8 @@ export function useTraining() {
   const [condition, setCondition] = useState({}); // { <rider_id>: { form, fatigue, injured_until, risk } }
   const [progress, setProgress] = useState({});   // { <rider_id>: { ability } }
   const [capped, setCapped] = useState({});       // { <rider_id>: [ability] } — evner på livstidsloftet (#2578; kun nøgler, aldrig tal)
+  // #7947: { <rider_id>: { <evne>: { xp, price } } } kun når XP er tændt; null = dagens procent-visning.
+  const [xpBar, setXpBar] = useState(/** @type {Record<string, Record<string, { xp: number, price: number }>> | null} */ (null));
   const [trainability, setTrainability] = useState({}); // { <rider_id>: { <focus>: 'strength'|'limited'|'blocked' } } (#1974)
   const [smartDefaultFocus, setSmartDefaultFocus] = useState({}); // { <rider_id>: <focus> } — type-matchet default (#1894)
   const [weekPlan, setWeekPlanState] = useState(null); // holdets ugerytme { mon:{intensity}, ..., sun:{intensity} } | null (#1895)
@@ -71,6 +73,7 @@ export function useTraining() {
         setCondition(data.condition ?? {});
         setProgress(data.progress ?? {});
         setCapped(data.capped ?? {});
+        setXpBar(/** @type {{ xp_bar?: Record<string, Record<string, { xp: number, price: number }>> }} */ (data).xp_bar ?? null);
         setTrainability(data.trainability ?? {});
         setSmartDefaultFocus(data.smartDefaultFocus ?? {});
         setWeekPlanState(data.weekPlan ?? null);
@@ -306,7 +309,7 @@ export function useTraining() {
   }, [refresh]);
 
   return {
-    slots, plans, teamId, enabled, todayRun, condition, progress, capped, trainability, smartDefaultFocus, trainingScore,
+    slots, plans, teamId, enabled, todayRun, condition, progress, capped, xpBar, trainability, smartDefaultFocus, trainingScore,
     weekPlan, savingWeekPlan, loading, savingId, running, bulkApplying,
     riderWeekPlans, savingRiderWeekPlanId, racingToday, dayClose, mobileTable, decisionCard, fatigueDays70, dailyReceiptEnabled,
     setPlan, setPlanBulk, clearPlan, planFor, runToday, refresh, setWeekPlan, clearWeekPlan,

@@ -172,7 +172,10 @@ test("buildEstimatesFromViews: skønnet står alene pr. rytter", async () => {
   assert.doesNotMatch(JSON.stringify(estimates), FORBIDDEN);
 });
 
+const FIXED_CLOCK = new Date("2026-11-20T12:00:00Z");
+
 const reportInput = (over = {}) => ({
+  clock: FIXED_CLOCK, // regel 16: fast ur, aldrig vægur
   teamId: TEAM,
   rider: { id: "scouted", primary_type: "climber", potentiale: 5.5 },
   own: false, level: 2, maxLevel: 3, looks: 2, age: 23,
@@ -214,6 +217,7 @@ test("estimateLine: starter ved nu, ender mod skønnet, heltal, aldrig bånd", (
 });
 
 const projectionInput = (over = {}) => ({
+  clock: FIXED_CLOCK, // regel 16: fast ur, aldrig vægur
   teamId: TEAM, rider: { id: "scouted", primary_type: "climber" }, own: false, level: 2, maxLevel: 3, age: 23, ...over,
 });
 

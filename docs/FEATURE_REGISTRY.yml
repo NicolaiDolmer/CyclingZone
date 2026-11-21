@@ -360,6 +360,18 @@ features:
     verified: 2026-11-20
     note: "Tændt 20/11 19.20 på ejerens kør efter Fable-dom (prøve 19.14, 110 hold ens). Patch note #8513."
 
+  - id: training-effort-levels-7947
+    area: training
+    title_en: Every session at easy, normal or hard
+    title_da: Alle træninger på Let, Mellem eller Hård
+    state: building
+    ssot: docs/TRAINING_RULES.md
+    epic: 7947
+    verified: 2026-11-20
+    decision: taend
+    decide_by: 2026-11-27
+    note: "PR 1 af 4 (kontakt, lib, motorens læsesti). training_effort_levels seedes off post-merge; ejer tænder efter PR 2-4."
+
   - id: planning-workbench
     area: season
     title_en: One planning page

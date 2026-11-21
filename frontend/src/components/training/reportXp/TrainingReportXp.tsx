@@ -28,7 +28,7 @@ export default function TrainingReportXp({ runs, roster, trainingScore = null, f
   const data = useMemo((): { receipts: XpReceipt[]; options: XpViewOptions } => {
     if (fixture) {
       const fx = buildXpReportFixture();
-      return { receipts: fx.receipts, options: { nations: fx.nations, types: fx.types, scoreOf: fixtureScoreOf(fx.scores) } };
+      return { receipts: fx.receipts, options: { nations: fx.nations, types: fx.types, scoreOf: fixtureScoreOf(fx.scores), abilities: fx.abilities } };
     }
     return {
       // The training page hands over receipts that useTraining/useTrainingHistory
@@ -39,6 +39,8 @@ export default function TrainingReportXp({ runs, roster, trainingScore = null, f
         nations: Object.fromEntries((roster ?? []).map(r => [r.id, r.nationality_code ?? null])),
         types: Object.fromEntries((roster ?? []).map(r => [r.id, { primary: r.primary_type ?? null, secondary: r.secondary_type ?? null }])),
         scoreOf: (id, day, activity, seasonId) => receiptPassScore(trainingScore?.[id], day, seasonId, activity),
+        // #7947: the roster rows carry the flattened abilities (TrainingPage flattenAbilities).
+        abilities: Object.fromEntries((roster ?? []).map(r => [r.id, r])),
       },
     };
   }, [fixture, runs, roster, trainingScore]);
