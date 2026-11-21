@@ -24,6 +24,7 @@ import { resolveProgram } from "./dailyTraining.js";
 import { migrationTargetFor } from "./trainingDayTypes.js";
 import { isValidProgramWeekDays, intensityForSession, isProgramSession } from "./trainingPrograms.js";
 import { v3SmartDefaultFocus } from "./trainingCatalogV3.js";
+import { isEffortLevel } from "./trainingEffortLevels.js"; // #7947
 
 function copyDays(days) {
   const out = {};
@@ -47,6 +48,15 @@ export function sessionForLegacyDay({ focus, intensity }) {
   return isProgramSession(target.session) ? target.session : "rest";
 }
 
+// #7947 (Codex-fund paa PR 2+4): en plan paa et andet niveau end sessionens standard. Med
+// kontakten training_effort_levels on kan api.js skrive den (fx Lang tur paa Haard). Den gamle
+// oversaettelse af parret ville saa skifte session eller give hvile, saa saaningen bevarer i
+// stedet sessionen og laegger niveauet i dagens indsats (effort).
+export function planRunsOffStandard(plan) {
+  return !!plan?.focus && isProgramSession(plan.focus) && isEffortLevel(plan.intensity)
+    && plan.intensity !== intensityForSession(plan.focus);
+}
+
 // Returnerer en NY, gyldig 7-dages felt-plan for rytteren.
 //   riderDays   : rytterens egen raekke (rider_id sat) eller null
 //   teamDays    : holdets raekke (rider_id IS NULL) eller null
@@ -54,7 +64,8 @@ export function sessionForLegacyDay({ focus, intensity }) {
 //   primaryType : rytterens anlaeg (resolveProgram's smart default)
 //   secondaryType, catalogV3 : #5319 - under v3 saaes en tt/gc-rytter uden plan
 //                 med itt_long, ikke Taerskel (samme regel som motoren). Off = uroert.
-export function seedProgramWeekDays({ riderDays = null, teamDays = null, plan = null, primaryType = null, secondaryType = null, catalogV3 = false } = {}) {
+//   effortLevels : #7947, kontakten training_effort_levels. Off = uroert (dagens saaning).
+export function seedProgramWeekDays({ riderDays = null, teamDays = null, plan = null, primaryType = null, secondaryType = null, catalogV3 = false, effortLevels = false } = {}) {
   if (isValidProgramWeekDays(riderDays)) return copyDays(riderDays);
   const hasExplicitPlan = !!(plan?.focus && plan?.intensity);
   const riderHasOwnDays = WEEKDAY_KEYS.some((weekday) => isValidIntensity(riderDays?.[weekday]?.intensity));
@@ -69,6 +80,11 @@ export function seedProgramWeekDays({ riderDays = null, teamDays = null, plan = 
     const intensity = resolveDayIntensity({
       weekday, riderOverrideDays: riderDays, teamWeekDays: teamDays, planIntensity: program.intensity, hasExplicitPlan,
     });
+    // #7947: planens eget niveau paa en session med et andet standardniveau bliver dagens indsats.
+    if (effortLevels && hasExplicitPlan && intensity === program.intensity && planRunsOffStandard(program)) {
+      days[weekday] = { session: program.focus, intensity: intensityForSession(program.focus), effort: intensity };
+      continue;
+    }
     const session = sessionForLegacyDay({ focus: program.focus, intensity });
     days[weekday] = { session, intensity: intensityForSession(session) };
   }
