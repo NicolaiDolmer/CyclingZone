@@ -94,7 +94,7 @@ function HeadV2({ program, riders, rider, onRider }: { program: ProgramDef; ride
         <span className="font-semibold text-cz-1">{shown.name}</span>
         {own.via === "group" && own.group ? <> via the group {own.group.name}</> : null}
         {" · "}{kindWord(shown.kind)}.{" "}
-        <button type="button" className="inline-flex min-h-11 items-center font-medium text-cz-accent-t">Change program</button>
+        <button type="button" className="inline font-medium text-cz-accent-t">Change program</button>
       </p>
     </>
   );
@@ -187,7 +187,7 @@ function WeekList({ view, open, editable }: { view: WeekView; open: number; edit
         const races = view.cells[d].filter((c) => c.kind === "race").length;
         return (
           <details key={x.short} name="program-week-names" open={d === open} className="group rounded-cz border border-cz-border bg-cz-card">
-            <summary className="grid cursor-pointer list-none grid-cols-[54px_minmax(0,1fr)_auto] items-start gap-x-2 px-3 py-2 [&::-webkit-details-marker]:hidden">
+            <summary className="grid cursor-pointer list-none grid-cols-[54px_minmax(0,1fr)_auto] items-start gap-x-2 px-3 py-1.5 [&::-webkit-details-marker]:hidden">
               <span>
                 <span className="block text-sm font-semibold tabular-nums text-cz-1">{x.short} {x.date}</span>
                 <span className="block text-3xs text-cz-2">{d === TODAY ? "Today" : races ? `${races} race${races > 1 ? "s" : ""}` : "No races"}</span>
@@ -229,35 +229,40 @@ function SaveBar() {
 // --- Samlet ------------------------------------------------------------------------------
 
 export type PhoneProps = {
-  mode: PhoneMode; head: "v1" | "v2"; startView: "day" | "week"; startDay: number;
+  mode: PhoneMode; head: "v1" | "v2"; startView: "day" | "week"; startDay: number; startOpen: number;
   kind: Kind; program: ProgramDef; riders: string[]; rider: string; onRider: (id: string) => void; view: WeekView;
 };
 
-export default function ProgramPhone({ mode, head, startView, startDay, kind, program, riders, rider, onRider, view }: PhoneProps) {
+export default function ProgramPhone({ mode, head, startView, startDay, startOpen, kind, program, riders, rider, onRider, view }: PhoneProps) {
   const [day, setDay] = useState(startDay);
   const [shown, setShown] = useState<"day" | "week">(startView);
   const asWeek = mode === "b" || (mode === "switch" && shown === "week");
   const Head = mode === "v2" || (mode === "switch" && head === "v2") ? HeadV2 : HeadV1;
   const editable = kind === "week";
+  // B har ingen skifter; dens opsummering staar under listen, saa hele ugen faar plads foer Gem-baren.
+  const summary = (
+    <div className="flex items-center justify-between gap-3" data-mark="summary">
+      <p className="min-w-0 text-3xs leading-snug text-cz-2">{view.summary}</p>
+      {mode === "switch" && (
+        <Segmented label="View" value={shown} onChange={(v: "day" | "week") => setShown(v)}
+          options={[{ value: "day", label: "Day" }, { value: "week", label: "Week" }]} />
+      )}
+    </div>
+  );
   return (
     <div className="flex flex-col gap-3 pb-8">
       <Head program={program} riders={riders} rider={rider} onRider={onRider} />
       <LimitLine1 />
-      <div className="flex items-center justify-between gap-3" data-mark="summary">
-        <p className="min-w-0 text-3xs leading-snug text-cz-2">{view.summary}</p>
-        {mode === "switch" && (
-          <Segmented label="View" value={shown} onChange={(v: "day" | "week") => setShown(v)}
-            options={[{ value: "day", label: "Day" }, { value: "week", label: "Week" }]} />
-        )}
-      </div>
+      {mode !== "b" && summary}
       {asWeek
-        ? <WeekList key={`${kind}-${rider}`} view={view} open={startDay} editable={editable} />
+        ? <WeekList key={`${kind}-${rider}`} view={view} open={startOpen} editable={editable} />
         : (
           <>
             <DayStrip view={view} day={day} onDay={setDay} />
             <DayPanel key={`${kind}-${rider}`} view={view} d={day} editable={editable} onDay={setDay} />
           </>
         )}
+      {mode === "b" && summary}
       <p className="text-3xs text-cz-3">Today's fields lock after Train now. A saved plan then applies from tomorrow.</p>
       <SaveBar />
     </div>

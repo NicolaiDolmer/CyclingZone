@@ -28,6 +28,8 @@ const PHONE: PhoneMode = PHONE_MODES.find((p) => p === Q.get("phone")) ?? "v1";
 const PHONE_HEAD = Q.get("head") === "v2" ? "v2" : "v1";
 const PHONE_VIEW = Q.get("view") === "week" ? "week" : "day";
 const PHONE_DAY = Math.max(0, Math.min(6, Number(Q.get("pday") ?? TODAY) || 0));
+// Ugelisten staar lukket, medmindre ?popen=1 aabner dagen fra ?pday.
+const PHONE_OPEN = Q.has("popen") ? PHONE_DAY : -1;
 const STORE = "cz-training-program-view";
 
 // Ejer 19/11: et nyt program starter i Week blocks, og visningen husker spillerens sidste valg.
@@ -397,7 +399,7 @@ export default function ProgramTab({ mode: urlMode, mobile }: { mode: Kind; mobi
 
   if (mobile) {
     return (
-      <ProgramPhone mode={PHONE} head={PHONE_HEAD} startView={PHONE_VIEW} startDay={PHONE_DAY} kind={kind} program={program}
+      <ProgramPhone mode={PHONE} head={PHONE_HEAD} startView={PHONE_VIEW} startDay={PHONE_DAY} startOpen={PHONE_OPEN} kind={kind} program={program}
         riders={riders} rider={rider} onRider={setRider} view={view} />
     );
   }
