@@ -86,7 +86,6 @@
     "levelAria": "{scope}: level",
     "restAria": "{scope}: rest, no focus",
     "hardHint": "Hard raises injury risk.",
-    "risk": "Injury risk {pct}%",
     "riskGeneric": "Hard raises injury risk"
   },
   "yourDay": {
