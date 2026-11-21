@@ -222,3 +222,13 @@ test("every new text exists in all five languages", () => {
     }
   }
 });
+
+// #8420 (ejervalg 19/11 B): kolonneoverskrifter maa bryde over to linjer; tal-kolonner staar fast.
+test("squad table headers may wrap and balance (#8420)", () => {
+  const src = readFileSync(new URL("./SquadTable.tsx", import.meta.url), "utf8");
+  const head = src.slice(src.indexOf("const th = ("), src.indexOf("const td ="));
+  assert.match(head, /whitespace-normal/);
+  assert.match(head, /\[text-wrap:balance\]/);
+  assert.doesNotMatch(head, /whitespace-nowrap/);
+  assert.match(src, /const td = "[^"]*tabular-nums/);
+});

@@ -217,7 +217,7 @@ export default function SquadTable({
       sortDir={sort.dir}
       onSort={onSort}
       title={title}
-      className={`px-1.5 py-2 font-data text-2xs font-semibold uppercase tracking-normal text-cz-3 sm:px-1.5 sm:tracking-wide ${numeric ? "text-right" : "text-left"} bg-cz-subtle ${visibility} ${edge(key)}`}
+      className={`whitespace-normal align-bottom px-1.5 py-2 font-data text-2xs font-semibold uppercase leading-tight tracking-normal text-cz-3 [text-wrap:balance] sm:px-1.5 sm:tracking-wide ${numeric ? "text-right" : "text-left"} bg-cz-subtle ${visibility} ${edge(key)}`}
     >
       {label}
     </SortableTh>
