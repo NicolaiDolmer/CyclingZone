@@ -602,9 +602,10 @@ export default function RiderTrainingTab({ rider, training, trainingHistory, pro
   async function handlePanelSave(dayType, session) {
     setActionError(null);
     // #8541: et valg af traening aendrer ikke dagens niveau (som i I dag R5).
-    const effort = levelsOn && session && (dayType === "training" || dayType === "skill")
-      ? writeForTrainingAtLevel(session, planEffort(training.planFor(rider.id))).effort ?? null
+    const keep = levelsOn && session && (dayType === "training" || dayType === "skill")
+      ? writeForTrainingAtLevel(session, planEffort(training.planFor(rider.id)))
       : null;
+    const effort = keep?.kind === "write" ? keep.effort : null;
     const result = await training.setPlan(rider.id, dayType, session, effort);
     if (result && !result.ok) setActionError(result.error || "failed");
     else setPanelOpen(false);
