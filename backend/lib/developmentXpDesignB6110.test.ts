@@ -1,11 +1,11 @@
-// #6110 ejervalg 19/11 (kandidat B): prisens top, datoreglen uden alder, aldring og sent fald
-// under XP. Alle tal her er syntetiske; de rigtige er private (hard rule 17). Uden de nye felter
+// #6110 ejervalg 19/11 (kandidat B): prisens top, aldring og sent fald under XP. Datoreglen er
+// fjernet (G3a, #8520). Alle tal her er syntetiske; de rigtige er private (hard rule 17). Uden de nye felter
 // i talfilen skal alt være bit-identisk med i dag.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  XP_MAX_POINTS_PER_DATE, XP_POINTS_PER_DATE, validateDevelopmentXpParams, xpDatePointCap, xpPriceForNextPoint,
+  validateDevelopmentXpParams, xpPriceForNextPoint,
 } from "./developmentXp.ts";
 import type { DevelopmentXpParams } from "./developmentXp.ts";
 import { AGING_V2_CONFIG, AGING_V2_DECLINING_ABILITIES, developRiderSeasonV2, xpAgingConfig } from "./riderProgression.js";
@@ -53,28 +53,10 @@ test("prisens top: ugyldig top afviser hele talfilen (fail-safe)", () => {
   }
 });
 
-test("datoreglen uden alder: +2 for toptalent på meget lav evne uanset alder", () => {
-  const p = v({ datePlus2: { minPotential: 5, belowLevel: 30 } }) as DevelopmentXpParams;
-  assert.ok(p);
-  assert.equal(p.datePlus2?.maxAge, undefined);
-  for (const age of [17, 25, 33, 38]) {
-    assert.equal(xpDatePointCap({ startLevel: 20, age, potentiale: 5 }, p), XP_MAX_POINTS_PER_DATE, `alder ${age}`);
-  }
-  for (const age of [null, undefined]) {
-    assert.equal(xpDatePointCap({ startLevel: 20, age, potentiale: 5 }, p), XP_POINTS_PER_DATE, "ukendt alder = lavt tal (fail-safe)");
-  }
-  assert.equal(xpDatePointCap({ startLevel: 30, age: 19, potentiale: 6 }, p), XP_POINTS_PER_DATE, "ikke meget lav");
-  assert.equal(xpDatePointCap({ startLevel: 10, age: 19, potentiale: 4.5 }, p), XP_POINTS_PER_DATE, "ikke toptalent");
-  assert.equal(xpDatePointCap({ startLevel: 10, age: 19, potentiale: null }, p), XP_POINTS_PER_DATE, "ukendt potentiale");
-});
-
-test("datoreglen med alder (som før): alderen gælder stadig, når talfilen sætter den", () => {
-  const p = v({ datePlus2: { maxAge: 22, minPotential: 5, belowLevel: 30 } }) as DevelopmentXpParams;
-  assert.equal(xpDatePointCap({ startLevel: 10, age: 22, potentiale: 5 }, p), XP_MAX_POINTS_PER_DATE);
-  assert.equal(xpDatePointCap({ startLevel: 10, age: 23, potentiale: 5 }, p), XP_POINTS_PER_DATE);
-  assert.equal(xpDatePointCap({ startLevel: 10, age: null, potentiale: 5 }, p), XP_POINTS_PER_DATE, "ukendt alder = lavt tal");
-  for (const maxAge of [0, -1, "22", null]) {
-    assert.equal(v({ datePlus2: { maxAge, minPotential: 5, belowLevel: 30 } }), null, `maxAge ${String(maxAge)}`);
+test("G3a (#8520): datoreglen er væk; en talfil med datePlus2, med eller uden alder, afvises hel", () => {
+  for (const datePlus2 of [{ minPotential: 5, belowLevel: 30 }, { maxAge: 22, minPotential: 5, belowLevel: 30 }]) {
+    assert.equal(v({ datePlus2 }), null, JSON.stringify(datePlus2));
+    assert.equal(vB({ datePlus2 }), null, `kandidat B: ${JSON.stringify(datePlus2)}`);
   }
 });
 

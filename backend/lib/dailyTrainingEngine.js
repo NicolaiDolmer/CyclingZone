@@ -1142,7 +1142,8 @@ export async function runTeamTrainingDay({
   let rosterRows = [], eligibleIds = [], waitingIds = [];
   try {
   // ── 2) Load riders (ikke-pensionerede, dette hold) ──────────────────────────
-  const riderColumns = "id, primary_type, secondary_type, potentiale, birthdate, firstname, lastname, team_id, is_academy, is_retired";
+  // #6110 G3a (#8520): talent_ceiling er potentialet P til XP-afstanden; kun laest under XP (sharedTickArgs).
+  const riderColumns = "id, primary_type, secondary_type, potentiale, talent_ceiling, birthdate, firstname, lastname, team_id, is_academy, is_retired";
   const loadRiders = async (query) => {
     const {data,error}=await query;
     if (error) throw new Error(`riders load: ${error.message}`);
@@ -2089,9 +2090,11 @@ export function computeTrainingDayTick(input) {
         curveB,
         curveBTransition: riderCurveBTransition, // #7382
         developmentXp, // #6110: null = dagens model
-        // #6110 R16: hoejst +2 pr. evne pr. dato under XP. Kun med XP, saa dagens model er uroert.
+        // #6110: datoens kvitteringer under XP (bar_paid); ingen graense pr. dato efter G3a (#8520). Kun med XP, saa dagens model er uroert.
         // #6110 (ejervalg B 19/11): ogsaa paa rytterens foerste XP-dato, naar han ikke udviklede sig paa startdatoen.
-        ...(developmentXp ? { xpDateUsedGains: dateUsedGains(), xpStoredBarPayout: developmentXpIgnition === true || xpPayoutRiderIds?.has(rider.id) === true, xpDateStart: xpDateStart?.dateStart ?? null } : {}),
+        ...(developmentXp ? { xpDateUsedGains: dateUsedGains(), xpStoredBarPayout: developmentXpIgnition === true || xpPayoutRiderIds?.has(rider.id) === true, xpDateStart: xpDateStart?.dateStart ?? null,
+          // #6110 G3a (#8520): potentialet P og traetheden ved datoens start til XP-afstanden og traetheden.
+          xpRider: { ceiling: rider.talent_ceiling == null ? null : Number(rider.talent_ceiling), fatigue: preFatigue } } : {}),
       };
       if (racedToday) {
         // #4850 variant A (ejer 24/9, S1 valgt efter simuleringen i #5640):
