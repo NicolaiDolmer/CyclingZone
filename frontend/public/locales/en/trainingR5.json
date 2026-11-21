@@ -149,6 +149,29 @@
       "dayTabs": "Day",
       "noRaces": "No races",
       "fieldsOf": "Sessions on {day}"
+    },
+    "groups": {
+      "newGroup": "New group",
+      "menu": "{name}: group options",
+      "rename": "Rename",
+      "members": "Members",
+      "limit": "Fatigue limit",
+      "delete": "Delete",
+      "deleteTitle": "Delete {name}?",
+      "deleteBody": "The riders keep the plan they have now, as their own plan. The group's fatigue limit goes away.",
+      "deleteGo": "Delete group",
+      "followAgain": "Follow the group again",
+      "followAgainAll": "Follow the group again ({n})",
+      "ownPlanOf": "Own plan. In the group {name}.",
+      "limitLabel": "Group fatigue limit",
+      "limit_team": "Team's",
+      "limit_own": "Own",
+      "limit_off": "Off",
+      "limitTeamNote": "The group follows the team rule.",
+      "limitOffNote": "No fatigue limit for the group.",
+      "limitAbove": "Above",
+      "limitRun": "run",
+      "limitInstead": "instead"
     }
   }
 }

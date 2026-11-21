@@ -149,6 +149,29 @@
       "dayTabs": "Dag",
       "noRaces": "Ingen løb",
       "fieldsOf": "Sessioner {day}"
+    },
+    "groups": {
+      "newGroup": "Ny gruppe",
+      "menu": "{name}: gruppens valg",
+      "rename": "Omdøb",
+      "members": "Medlemmer",
+      "limit": "Træthedsgrænse",
+      "delete": "Slet",
+      "deleteTitle": "Slet {name}?",
+      "deleteBody": "Rytterne beholder den plan de har nu, som deres egen plan. Gruppens træthedsgrænse forsvinder.",
+      "deleteGo": "Slet gruppe",
+      "followAgain": "Følg gruppen igen",
+      "followAgainAll": "Følg gruppen igen ({n})",
+      "ownPlanOf": "Egen plan. I gruppen {name}.",
+      "limitLabel": "Gruppens træthedsgrænse",
+      "limit_team": "Holdets",
+      "limit_own": "Egen",
+      "limit_off": "Fra",
+      "limitTeamNote": "Gruppen følger holdets regel.",
+      "limitOffNote": "Ingen træthedsgrænse for gruppen.",
+      "limitAbove": "Over",
+      "limitRun": "kør",
+      "limitInstead": "i stedet"
     }
   }
 }
