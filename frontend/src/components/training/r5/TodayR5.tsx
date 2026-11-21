@@ -138,14 +138,16 @@ const EFFORT_TONE: Readonly<Record<Effort, string>> = {
 
 function EffortWord({ effort }: { effort: Effort }) {
   const { t } = useTranslation("training");
-  return <span className={EFFORT_TONE[effort]}>{t(`r5.effort.${effort}`)}</span>;
+  const { t: tR5 } = useTranslation("trainingR5"); // #7947: lazy namespace (I18nReadyGate i TrainingPage)
+  return <span className={EFFORT_TONE[effort]}>{tR5(`effort.${effort}`)}</span>;
 }
 
 function SavedMark() {
   const { t } = useTranslation("training");
+  const { t: tR5 } = useTranslation("trainingR5"); // #7947: lazy namespace (I18nReadyGate i TrainingPage)
   return (
     <span role="status" className="inline-flex shrink-0 items-center gap-1 text-2xs font-medium text-cz-success" data-testid="r5-saved">
-      <CheckIcon size={12} aria-hidden="true" />{t("r5.saved")}
+      <CheckIcon size={12} aria-hidden="true" />{tR5("saved")}
     </span>
   );
 }
@@ -172,6 +174,7 @@ type Choices = { chosen: Record<string, string>; remember: (id: string, choice: 
 
 function StatusLine({ row, compact = false }: { row: Row; compact?: boolean }) {
   const { t } = useTranslation("training");
+  const { t: tR5 } = useTranslation("trainingR5"); // #7947: lazy namespace (I18nReadyGate i TrainingPage)
   const pills: ReactNode[] = [];
   const badges: string[] = [];
   for (const key of row.status) {
@@ -180,7 +183,7 @@ function StatusLine({ row, compact = false }: { row: Row; compact?: boolean }) {
     } else if (key === "injuryRisk") {
       pills.push(<span key={key} className="rounded-cz-pill border border-cz-warning/20 bg-cz-warning/10 px-2 py-0.5 text-3xs text-cz-warning">{t("injuryRisk")}</span>);
     } else if (key === "days70") {
-      pills.push(<span key={key} className="rounded-cz-pill border border-cz-warning/20 bg-cz-warning/10 px-2 py-0.5 font-data text-3xs tabular-nums text-cz-warning">{t("r5.status.days70", { n: row.daysOver70 ?? 0, from: TIRED_FATIGUE_FROM })}</span>);
+      pills.push(<span key={key} className="rounded-cz-pill border border-cz-warning/20 bg-cz-warning/10 px-2 py-0.5 font-data text-3xs tabular-nums text-cz-warning">{tR5("status.days70", { n: row.daysOver70 ?? 0, from: TIRED_FATIGUE_FROM })}</span>);
     } else if (key === "retirementRisk") {
       badges.push("retireRisk");
     } else {
@@ -212,14 +215,15 @@ function TypeCell({ row }: { row: Row }) {
 
 function ProgramButton({ row, r5 }: { row: Row; r5: TodayR5Props }) {
   const { t } = useTranslation("training");
-  const label = row.program.kind === "none" ? t("r5.program.none") : row.program.name ?? t("r5.program.own");
+  const { t: tR5 } = useTranslation("trainingR5"); // #7947: lazy namespace (I18nReadyGate i TrainingPage)
+  const label = row.program.kind === "none" ? tR5("program.none") : row.program.name ?? tR5("program.own");
   const locked = r5.trainedToday;
   return (
     <Dropdown
       className="w-full"
       trigger={({ open, toggle }: { open: boolean; toggle: () => void }) => (
         <button type="button" onClick={toggle} aria-expanded={open} aria-haspopup="menu"
-          aria-label={t("r5.program.aria", { name: row.name, program: label })}
+          aria-label={tR5("program.aria", { name: row.name, program: label })}
           className={`inline-flex max-w-full items-center justify-between gap-1.5 rounded-cz border border-cz-border px-2 py-1 text-xs font-medium hover:border-cz-3 max-sm:min-h-11 w-full ${
             row.program.kind === "none" ? "text-cz-2" : "text-cz-1"}`}>
           {/* Ejer 19/11: ingen advarsel ved "No program"; at undlade et program er et aktivt valg. */}
@@ -228,20 +232,21 @@ function ProgramButton({ row, r5 }: { row: Row; r5: TodayR5Props }) {
         </button>
       )}
     >
-      {!locked && <MenuItem onClick={() => r5.onPickSession(row.id)}>{t("r5.program.changeToday")}</MenuItem>}
-      <MenuItem onClick={() => r5.onOpenPlan(row.id)}>{t("r5.program.editPlan")}</MenuItem>
-      {row.program.kind === "none" && <MenuItem onClick={r5.onOpenPrograms}>{t("r5.program.choose")}</MenuItem>}
-      {row.hasOwn && !locked && <MenuItem onClick={() => { void r5.onReset(row.id); }}>{t("r5.program.backToTeam")}</MenuItem>}
+      {!locked && <MenuItem onClick={() => r5.onPickSession(row.id)}>{tR5("program.changeToday")}</MenuItem>}
+      <MenuItem onClick={() => r5.onOpenPlan(row.id)}>{tR5("program.editPlan")}</MenuItem>
+      {row.program.kind === "none" && <MenuItem onClick={r5.onOpenPrograms}>{tR5("program.choose")}</MenuItem>}
+      {row.hasOwn && !locked && <MenuItem onClick={() => { void r5.onReset(row.id); }}>{tR5("program.backToTeam")}</MenuItem>}
     </Dropdown>
   );
 }
 
 function RaceCell({ row, compact = false }: { row: Row; compact?: boolean }) {
   const { t } = useTranslation("training");
+  const { t: tR5 } = useTranslation("trainingR5"); // #7947: lazy namespace (I18nReadyGate i TrainingPage)
   return (
     <span className={`inline-flex max-w-full min-w-0 items-center gap-1.5 text-xs text-cz-1 ${compact ? "font-semibold" : ""}`}>
       <LockIcon size={12} aria-hidden="true" className="shrink-0 text-cz-3" />
-      <span className="whitespace-nowrap font-semibold">{t("r5.race")}</span>
+      <span className="whitespace-nowrap font-semibold">{tR5("race")}</span>
       {!compact && row.raceName && <span className="min-w-0 truncate text-cz-2">· {row.raceName}</span>}
     </span>
   );
@@ -263,16 +268,17 @@ function TrainingPicker({ value, onPick, disabled, label, full = false, testId }
   value: string; onPick: (choice: string) => void; disabled: boolean; label: string; full?: boolean; testId: string;
 }) {
   const { t } = useTranslation("training");
+  const { t: tR5 } = useTranslation("trainingR5"); // #7947: lazy namespace (I18nReadyGate i TrainingPage)
   const name = useTrainingName();
   const byLevel = sessionsByLevelFor({ catalogV3: useTrainingCatalogV3() }) as Record<string, readonly string[]>;
   const listed = new Set<string>([PROGRAM_CHOICE, ...(SKILL_SESSIONS as readonly string[]), ...Object.values(byLevel).flat()]);
   return (
     <label className={`relative inline-flex min-w-0 items-center gap-1 rounded-cz border border-cz-border bg-cz-card ps-2 pe-6 text-xs hover:border-cz-3 focus-within:border-cz-1 max-sm:min-h-11 ${
       full ? "w-full" : "max-w-[232px]"} ${disabled ? "opacity-50" : ""}`} data-testid={testId}>
-      <span className="shrink-0 text-cz-2">{t("r5.training.label")}</span>
+      <span className="shrink-0 text-cz-2">{tR5("training.label")}</span>
       <select value={value} disabled={disabled} aria-label={label} onChange={(e) => onPick(e.target.value)}
         className="min-w-0 flex-1 cursor-pointer appearance-none truncate bg-transparent py-1 font-medium text-cz-1 outline-hidden disabled:cursor-default">
-        <option value={PROGRAM_CHOICE}>{t("r5.training.program")}</option>
+        <option value={PROGRAM_CHOICE}>{tR5("training.program")}</option>
         {(TRAINING_LEVELS as readonly string[]).map((level) => (
           <optgroup key={level} label={`${t("dayPanel.dayType_training")} · ${t(`dayPanel.level_${level}`)}`}>
             {(byLevel[level] ?? []).map((s) => <option key={s} value={s}>{name(s)}</option>)}
@@ -292,19 +298,20 @@ function TrainingPicker({ value, onPick, disabled, label, full = false, testId }
 // "Your day: Sprint, Hard on all 3 sessions · Back to team program" (ejer 20/11).
 function YourDayLine({ row, day, r5 }: { row: Row; day: YourDay; r5: TodayR5Props }) {
   const { t } = useTranslation("training");
+  const { t: tR5 } = useTranslation("trainingR5"); // #7947: lazy namespace (I18nReadyGate i TrainingPage)
   const name = useTrainingName();
   const busy = r5.savingId === row.id || r5.bulkApplying;
   const effort = effortOf(day.session);
   const withEffort = day.session !== "rest" && day.session !== RECOVERY_CHOICE && effort;
   return (
     <span className="text-2xs text-cz-2" data-testid="r5-your-day">
-      {t("r5.source.own")}: <span className="font-medium text-cz-1">{name(day.session)}</span>
+      {tR5("source.own")}: <span className="font-medium text-cz-1">{name(day.session)}</span>
       {withEffort && <>, <EffortWord effort={effort} /></>}{" "}
-      {day.count === day.free ? t("r5.yourDay.onAll", { n: day.count }) : t("r5.yourDay.onSome", { n: day.count, total: day.free })}
+      {day.count === day.free ? tR5("yourDay.onAll", { n: day.count }) : tR5("yourDay.onSome", { n: day.count, total: day.free })}
       {!r5.trainedToday && (
         <> · <button type="button" disabled={busy} onClick={() => { void r5.onClearPlan(row.id); }}
           className="font-medium text-cz-1 underline decoration-cz-border underline-offset-2 hover:decoration-cz-1 disabled:opacity-50">
-          {row.program.kind === "none" ? t("r5.program.backToTeam") : t("r5.yourDay.backToProgram")}</button></>
+          {row.program.kind === "none" ? tR5("program.backToTeam") : tR5("yourDay.backToProgram")}</button></>
       )}
     </span>
   );
@@ -313,12 +320,13 @@ function YourDayLine({ row, day, r5 }: { row: Row; day: YourDay; r5: TodayR5Prop
 // Hvad raekken siger under valget: hvor dagen kommer fra, og vejen tilbage.
 function SourceLine({ row, r5 }: { row: Row; r5: TodayR5Props }) {
   const { t } = useTranslation("training");
+  const { t: tR5 } = useTranslation("trainingR5"); // #7947: lazy namespace (I18nReadyGate i TrainingPage)
   const busy = r5.savingId === row.id || r5.bulkApplying;
   if (row.yourDay) return <YourDayLine row={row} day={row.yourDay} r5={r5} />;
   if (row.program.kind !== "none") {
     return (
       <span className="whitespace-nowrap text-2xs text-cz-2">
-        {row.program.kind === "own" ? t("r5.program.own") : t(`r5.source.${row.program.kind}`)}: {row.effective ? <EffortWord effort={row.effective} /> : t("r5.source.noDay")}
+        {row.program.kind === "own" ? tR5("program.own") : tR5(`source.${row.program.kind}`)}: {row.effective ? <EffortWord effort={row.effective} /> : tR5("source.noDay")}
       </span>
     );
   }
@@ -326,12 +334,12 @@ function SourceLine({ row, r5 }: { row: Row; r5: TodayR5Props }) {
   const smartEffort = effortOf(smart);
   return (
     <span className="whitespace-nowrap text-2xs text-cz-2">
-      {t("r5.source.noDay")}
+      {tR5("source.noDay")}
       {smart && smartEffort && (
         <> · <button type="button" disabled={busy}
           onClick={() => { const w = writeForEffort(smartEffort, { storedFocus: smart, assistantFocus: smart }); if (w.kind === "write") void r5.onPlan(row.id, w.dayType, w.session); }}
           className="font-medium text-cz-1 underline decoration-cz-border underline-offset-2 hover:decoration-cz-1 disabled:opacity-50">
-          {t("r5.source.useAssistant", { session: t(sessionI18nKey("dayPanel.session", smart)) })}</button></>
+          {tR5("source.useAssistant", { session: t(sessionI18nKey("dayPanel.session", smart)) })}</button></>
       )}
     </span>
   );
@@ -339,11 +347,12 @@ function SourceLine({ row, r5 }: { row: Row; r5: TodayR5Props }) {
 
 function QuickSelect({ row, r5, choices, full = false, tour }: { row: Row; r5: TodayR5Props; choices: Choices; full?: boolean; tour?: string }) {
   const { t } = useTranslation("training");
+  const { t: tR5 } = useTranslation("trainingR5"); // #7947: lazy namespace (I18nReadyGate i TrainingPage)
   const busy = r5.savingId === row.id || r5.bulkApplying;
   if (r5.trainedToday) {
     return (
       <span className="inline-flex items-center gap-1 text-xs text-cz-3">
-        <CheckIcon size={12} aria-hidden="true" className="text-cz-success" />{t("r5.trained")}
+        <CheckIcon size={12} aria-hidden="true" className="text-cz-success" />{tR5("trained")}
         {row.effective && <> · <EffortWord effort={row.effective} /></>}
       </span>
     );
@@ -370,12 +379,12 @@ function QuickSelect({ row, r5, choices, full = false, tour }: { row: Row; r5: T
       {/* Telefon: vaelgeren staar over indsatsknapperne; computer: foer dem (brydes naar kolonnen er smal). */}
       <div className={full ? "flex flex-col items-stretch gap-1.5 [&_[role=group]_button]:flex-1" : "flex flex-wrap items-center gap-x-2 gap-y-1"}>
         <TrainingPicker value={row.choice} onPick={pickTraining} disabled={busy} full={full}
-          label={t("r5.training.aria", { name: row.name })} testId="r5-row-training" />
+          label={tR5("training.aria", { name: row.name })} testId="r5-row-training" />
         <Segmented
-          label={t("r5.quickLabel", { name: row.name })}
+          label={tR5("quickLabel", { name: row.name })}
           value={pressed ?? "none"}
           onChange={(v: Effort) => choose(v)}
-          options={EFFORTS.map((e) => ({ value: e, label: t(`r5.effort.${e}`), disabled: busy }))}
+          options={EFFORTS.map((e) => ({ value: e, label: tR5(`effort.${e}`), disabled: busy }))}
           className={full ? "w-full" : ""}
         />
       </div>
@@ -389,23 +398,24 @@ function QuickSelect({ row, r5, choices, full = false, tour }: { row: Row; r5: T
 // sessionsvaelger, der viser hvad passet traener og om det passer til typen (afvigelse 5).
 function SessionsRow({ row, r5, mobile = false }: { row: Row; r5: TodayR5Props; mobile?: boolean }) {
   const { t } = useTranslation("training");
+  const { t: tR5 } = useTranslation("trainingR5"); // #7947: lazy namespace (I18nReadyGate i TrainingPage)
   const locked = r5.trainedToday;
   return (
     <div className={`grid gap-2 ${mobile ? "grid-cols-1" : "grid-cols-5"}`} data-testid="r5-sessions">
       {row.fields.map((f: Field, i: number) => {
-        const head = <div className="mb-0.5 font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3">{t("r5.session", { n: i + 1 })}</div>;
+        const head = <div className="mb-0.5 font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3">{tR5("session", { n: i + 1 })}</div>;
         const wrap = (body: ReactNode) => (
           <div key={i} className={mobile ? "grid grid-cols-[76px_1fr] items-center gap-x-2" : ""}>{head}{body}</div>
         );
         if (f === STAGE) {
           return wrap(
             <span className="flex min-h-9 items-center gap-1.5 rounded-cz bg-cz-1 px-2 text-xs font-semibold text-cz-card max-sm:min-h-11">
-              <LockIcon size={12} aria-hidden="true" />{row.raceName ?? t("r5.race")}
+              <LockIcon size={12} aria-hidden="true" />{row.raceName ?? tR5("race")}
             </span>,
           );
         }
         const effort = effortOf(f);
-        const name = f ? t([sessionI18nKey("dayPanel.session", f), `dayPanel.dayType_${f}`], { defaultValue: f }) : t("r5.source.noDay");
+        const name = f ? t([sessionI18nKey("dayPanel.session", f), `dayPanel.dayType_${f}`], { defaultValue: f }) : tR5("source.noDay");
         const body = (
           <>
             <span className="inline-flex min-w-0 items-center gap-1">
@@ -422,7 +432,7 @@ function SessionsRow({ row, r5, mobile = false }: { row: Row; r5: TodayR5Props; 
           <span className="flex min-h-9 items-center justify-between gap-1 rounded-cz border border-cz-border bg-cz-subtle px-2 text-xs text-cz-3 max-sm:min-h-11">{body}</span>
         ) : (
           <button type="button" onClick={() => r5.onPickSession(row.id)}
-            aria-label={t("r5.sessionAria", { name: row.name, n: i + 1, session: name })}
+            aria-label={tR5("sessionAria", { name: row.name, n: i + 1, session: name })}
             className="flex min-h-9 w-full items-center justify-between gap-1 rounded-cz border border-cz-border bg-cz-card px-2 text-start text-xs text-cz-1 hover:border-cz-3 max-sm:min-h-11">
             {body}
           </button>
@@ -434,13 +444,14 @@ function SessionsRow({ row, r5, mobile = false }: { row: Row; r5: TodayR5Props; 
 
 function RiderDetails({ row, r5, mobile }: { row: Row; r5: TodayR5Props; mobile: boolean }) {
   const { t } = useTranslation("training");
+  const { t: tR5 } = useTranslation("trainingR5"); // #7947: lazy namespace (I18nReadyGate i TrainingPage)
   return (
     <div className="flex flex-col gap-3">
       <SessionsRow row={row} r5={r5} mobile={mobile} />
       {/* Afvigelse 3 (ejer 20/11): dage over graensen staar kun her i kortet (+ advarsel i status). */}
       {row.daysOver70 != null && (
         <p className="font-data text-2xs tabular-nums text-cz-2" data-testid="r5-days70">
-          {t("r5.card.days70", { n: row.daysOver70, from: TIRED_FATIGUE_FROM })}
+          {tR5("card.days70", { n: row.daysOver70, from: TIRED_FATIGUE_FROM })}
         </p>
       )}
       {r5.renderCard(row.id, `r5-card-${row.id}`)}
@@ -480,6 +491,7 @@ function FilterMenu({ label, items, value, onPick }: { label: string; items: Arr
 
 export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
   const { t, i18n } = useTranslation("training");
+  const { t: tR5 } = useTranslation("trainingR5"); // #7947: lazy namespace (I18nReadyGate i TrainingPage)
   const tTypes = useTranslation("riderTypes").t;
   const [sort, setSort] = useState<Sort>(null);
   const [overview, setOverview] = useState<OverviewKey | null>(null);
@@ -625,14 +637,14 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
   const overviewLine = (
     <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-xs text-cz-2" data-testid="r5-overview">
       <span className={`me-1 font-semibold text-cz-1 ${r5.phone ? "basis-full" : ""}`}>
-        {t("r5.overview.today", { date: formatDate(r5.today, "long") })}
+        {tR5("overview.today", { date: formatDate(r5.today, "long") })}
       </span>
       {(["training", "racing", "tired", "noProgram"] as const).map((key, i) => (
         <span key={key} className="inline-flex items-center">
           {(!r5.phone || i > 0) && <span className="px-1 text-cz-3" aria-hidden="true">·</span>}
           <button type="button" aria-pressed={overview === key} onClick={() => setOverview(overview === key ? null : key)}
             className={`rounded-cz px-1 py-0.5 max-sm:min-h-11 ${overview === key ? "bg-cz-subtle text-cz-1 underline underline-offset-4" : "hover:text-cz-1"}`}>
-            {t(`r5.overview.${key}`, { n: counts[key], from: TIRED_FATIGUE_FROM })}
+            {tR5(`overview.${key}`, { n: counts[key], from: TIRED_FATIGUE_FROM })}
           </button>
         </span>
       ))}
@@ -649,40 +661,40 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
   const filterWords = (
     <span className="inline-flex flex-wrap items-center gap-x-1 text-xs" data-testid="r5-filters">
       <FilterIcon size={13} aria-hidden="true" className="me-0.5 text-cz-3" />
-      <FilterMenu label={t(`r5.filter.age_${filters.age}`)} value={filters.age}
-        items={AGE_FILTERS.map((a) => [a, t(`r5.filter.age_${a}`)])} onPick={(v) => setFilters((f) => ({ ...f, age: v as Filters["age"] }))} />
+      <FilterMenu label={tR5(`filter.age_${filters.age}`)} value={filters.age}
+        items={AGE_FILTERS.map((a) => [a, tR5(`filter.age_${a}`)])} onPick={(v) => setFilters((f) => ({ ...f, age: v as Filters["age"] }))} />
       <span className="px-1 text-cz-3" aria-hidden="true">·</span>
-      <FilterMenu label={filters.group === "all" ? t("r5.filter.groupAll") : filters.group === NO_GROUP ? t("r5.filter.groupNone") : (r5.groups.find((g) => g.id === filters.group)?.name ?? t("r5.filter.groupAll"))}
+      <FilterMenu label={filters.group === "all" ? tR5("filter.groupAll") : filters.group === NO_GROUP ? tR5("filter.groupNone") : (r5.groups.find((g) => g.id === filters.group)?.name ?? tR5("filter.groupAll"))}
         value={filters.group}
-        items={[["all", t("r5.filter.groupAll")], ...r5.groups.map((g): [string, string] => [g.id, g.name]), [NO_GROUP, t("r5.filter.groupNone")]]}
+        items={[["all", tR5("filter.groupAll")], ...r5.groups.map((g): [string, string] => [g.id, g.name]), [NO_GROUP, tR5("filter.groupNone")]]}
         onPick={(v) => setFilters((f) => ({ ...f, group: v }))} />
       <span className="px-1 text-cz-3" aria-hidden="true">·</span>
-      <FilterMenu label={filters.type === "all" ? t("r5.filter.typeAll") : tTypes(`types.${filters.type}`)} value={filters.type}
-        items={[["all", t("r5.filter.typeAll")], ...typesPresent.map((ty): [string, string] => [ty, tTypes(`types.${ty}`)])]}
+      <FilterMenu label={filters.type === "all" ? tR5("filter.typeAll") : tTypes(`types.${filters.type}`)} value={filters.type}
+        items={[["all", tR5("filter.typeAll")], ...typesPresent.map((ty): [string, string] => [ty, tTypes(`types.${ty}`)])]}
         onPick={(v) => setFilters((f) => ({ ...f, type: v }))} />
       {filtersActive(filters) && (
         <button type="button" onClick={() => setFilters(NO_FILTERS)} className="ms-1 font-medium text-cz-1 underline decoration-cz-border underline-offset-2 max-sm:min-h-11">
-          {t("r5.filter.clear")}
+          {tR5("filter.clear")}
         </button>
       )}
     </span>
   );
 
   // --- Holdlinjen = massehandlingen (afvigelse 4: "N selected today") ---------------
-  const scopeWord = line.kind === "selected" ? t("r5.team.selected", { n: line.ids.length }) : t("r5.team.whole");
+  const scopeWord = line.kind === "selected" ? tR5("team.selected", { n: line.ids.length }) : tR5("team.whole");
   const teamLineNode = (
     <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-cz-border px-3 py-2 text-xs ${r5.phone ? "gap-x-2" : ""}`} data-testid="r5-team-line">
       <span className="font-semibold tabular-nums text-cz-1" data-testid="r5-team-scope">{scopeWord}</span>
       {locked ? <span className="text-cz-3">{t("oneTap.locked")}</span> : (
         <div className={r5.phone ? "flex basis-full flex-col items-stretch gap-1.5 [&_[role=group]]:w-full [&_[role=group]_button]:flex-1" : "flex items-center gap-2"}>
           <TrainingPicker value={teamTraining} onPick={(v) => { setTeamTraining(v); setSkippedHard(0); }} disabled={r5.bulkApplying}
-            full={r5.phone} label={t("r5.training.teamAria", { scope: scopeWord })} testId="r5-team-training" />
+            full={r5.phone} label={tR5("training.teamAria", { scope: scopeWord })} testId="r5-team-training" />
           <Segmented label={scopeWord} value="none" onChange={(v: Effort) => { void applyEffort(v, line.ids); }}
-            options={EFFORTS.map((e) => ({ value: e, label: t(`r5.effort.${e}`), disabled: r5.bulkApplying || line.ids.length === 0 }))} />
+            options={EFFORTS.map((e) => ({ value: e, label: tR5(`effort.${e}`), disabled: r5.bulkApplying || line.ids.length === 0 }))} />
         </div>
       )}
       {skippedHard > 0 && !locked && (
-        <span role="status" className="text-cz-warning" data-testid="r5-team-skipped">{t("r5.teamSkippedHard", { n: skippedHard })}</span>
+        <span role="status" className="text-cz-warning" data-testid="r5-team-skipped">{tR5("teamSkippedHard", { n: skippedHard })}</span>
       )}
       {line.kind === "selected" && (
         <button type="button" onClick={() => setSelected(new Set())} className="font-medium text-cz-1 underline decoration-cz-border underline-offset-2 max-sm:min-h-11">
@@ -698,8 +710,8 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
         <Button type="button" variant="secondary" size="sm" iconLeft={<StarIcon size={13} aria-hidden="true" />} onClick={r5.onOpenAssistant} data-testid="r5-assistant-button">
           {t("mobile.assistantTitle")}
         </Button>
-        <Segmented label={t("r5.sessions.label")} value={allSessions ? "all" : "simple"} onChange={(v: string) => setAllSessions(v === "all")}
-          options={[{ value: "simple", label: t("r5.sessions.simple") }, { value: "all", label: t("r5.sessions.all") }]} />
+        <Segmented label={tR5("sessions.label")} value={allSessions ? "all" : "simple"} onChange={(v: string) => setAllSessions(v === "all")}
+          options={[{ value: "simple", label: tR5("sessions.simple") }, { value: "all", label: tR5("sessions.all") }]} />
       </div>
       {r5.bulkMessage}
     </div>
@@ -710,7 +722,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
       <span className="text-cz-2">{t("today.setForGroup")}</span>
       <Segmented label={`${t("today.setForGroup")} ${g.label}`} value="none"
         onChange={(v: Effort) => { void applyEffort(v, g.rows.filter((r) => !r.racing).map((r) => r.id)); }}
-        options={EFFORTS.map((e) => ({ value: e, label: t(`r5.effort.${e}`), disabled: r5.bulkApplying }))} />
+        options={EFFORTS.map((e) => ({ value: e, label: tR5(`effort.${e}`), disabled: r5.bulkApplying }))} />
     </span>
   );
 
@@ -723,18 +735,18 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
         <tr className="border-b border-cz-border">
           <th className="w-[40px] ps-3 text-start">
             <input type="checkbox" checked={allSelected} onChange={() => setSelected(toggleAllSelection(selected, shownIds))}
-              aria-label={t("r5.selectAll")} className="h-4 w-4 rounded-[3px] accent-cz-accent" />
+              aria-label={tR5("selectAll")} className="h-4 w-4 rounded-[3px] accent-cz-accent" />
           </th>
-          <th className="w-[36px]"><span className="sr-only">{t("r5.sessions.label")}</span></th>
+          <th className="w-[36px]"><span className="sr-only">{tR5("sessions.label")}</span></th>
           <SortTh k="rider" label={t("colRider")} cls="w-[184px]" sort={sort} onSort={onSort} />
           <SortTh k="type" label={t("colType")} cls="w-[128px]" sort={sort} onSort={onSort} />
           <SortTh k="age" label={t("colAge")} cls="w-[56px]" sort={sort} onSort={onSort} />
-          <SortTh k="program" label={t("r5.col.program")} cls="w-[150px]" sort={sort} onSort={onSort} />
+          <SortTh k="program" label={tR5("col.program")} cls="w-[150px]" sort={sort} onSort={onSort} />
           <SortTh k="form" label={t("form")} cls="w-[64px]" sort={sort} onSort={onSort} />
           {/* Pilen stoedte op til Day load (ejer 20/11): kolonnen er bred nok, og en lang overskrift brydes inde i sin egen celle. */}
-          <SortTh k="fatigue" label={t("r5.col.fatigueNow")} cls="w-[124px]" sort={sort} onSort={onSort} />
-          <SortTh k="load" label={t("r5.col.dayLoad")} cls="w-[124px]" sort={sort} onSort={onSort} />
-          <SortTh k={null} label={t("r5.col.today")} cls="" sort={sort} onSort={onSort} />
+          <SortTh k="fatigue" label={tR5("col.fatigueNow")} cls="w-[124px]" sort={sort} onSort={onSort} />
+          <SortTh k="load" label={tR5("col.dayLoad")} cls="w-[124px]" sort={sort} onSort={onSort} />
+          <SortTh k={null} label={tR5("col.today")} cls="" sort={sort} onSort={onSort} />
         </tr>
       </thead>
       <tbody>
@@ -760,10 +772,10 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
                   <tr className={`border-t border-cz-border first:border-t-0 ${o || sel ? "bg-cz-subtle/40" : ""}`} data-testid="r5-row">
                     <td className="ps-3">
                       <input type="checkbox" checked={sel} onChange={() => setSelected((s) => toggleOne(s, row.id))}
-                        aria-label={t("r5.selectRider", { name: row.name })} className="h-4 w-4 rounded-[3px] accent-cz-accent" />
+                        aria-label={tR5("selectRider", { name: row.name })} className="h-4 w-4 rounded-[3px] accent-cz-accent" />
                     </td>
                     <td>
-                      <button type="button" onClick={() => toggle(row.id)} aria-expanded={o} aria-label={t("r5.openRider", { name: row.name })}
+                      <button type="button" onClick={() => toggle(row.id)} aria-expanded={o} aria-label={tR5("openRider", { name: row.name })}
                         className="flex h-7 w-7 items-center justify-center rounded-cz text-cz-2 hover:bg-cz-subtle hover:text-cz-1">
                         {o ? <ChevronDownIcon size={14} aria-hidden="true" /> : <ChevronRightIcon size={14} aria-hidden="true" />}
                       </button>
@@ -777,7 +789,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
                     <td className="px-3 py-[7px]"><ProgramButton row={row} r5={r5} /></td>
                     <td className="px-3 py-[7px]"><FormPlate value={row.form} /></td>
                     <td className="px-3 py-[7px]"><FatiguePlate value={row.fatigue} /></td>
-                    <td className="px-3 py-[7px]"><DayLoadCell load={load} label={(l) => t(`r5.load.${l}`)} /></td>
+                    <td className="px-3 py-[7px]"><DayLoadCell load={load} label={(l) => tR5(`load.${l}`)} /></td>
                     <td className="px-3 py-[7px]">
                       {row.racing ? <RaceCell row={row} /> : (
                         <div className="flex items-center gap-2">
@@ -804,8 +816,8 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
   // --- Telefonen: eet tryk i raekken, fold ud kun til detaljer -------------------------
   const sortKeys: SortKey[] = ["rider", "type", "age", "program", "form", "fatigue", "load"];
   const sortLabel: Record<SortKey, string> = {
-    rider: t("colRider"), type: t("colType"), age: t("colAge"), program: t("r5.col.program"),
-    form: t("form"), fatigue: t("r5.col.fatigueNow"), load: t("r5.col.dayLoad"),
+    rider: t("colRider"), type: t("colType"), age: t("colAge"), program: tR5("col.program"),
+    form: t("form"), fatigue: tR5("col.fatigueNow"), load: tR5("col.dayLoad"),
   };
   const mobileCols = "grid-cols-[minmax(0,1fr)_34px_44px_76px_12px] gap-1.5";
   const mobileList = (
@@ -816,7 +828,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
           <span className="sr-only">{t("mobileSort.label")}</span>
           <select value={sort?.key ?? "rider"} onChange={(e) => setSort(nextSort(null, e.target.value as SortKey))}
             className="min-h-9 flex-1 rounded-cz border border-cz-border bg-cz-card px-2 text-xs text-cz-1">
-            {sortKeys.map((k) => <option key={k} value={k}>{t("r5.sortBy", { col: sortLabel[k] })}</option>)}
+            {sortKeys.map((k) => <option key={k} value={k}>{tR5("sortBy", { col: sortLabel[k] })}</option>)}
           </select>
         </label>
         <button type="button" aria-pressed={pickMode} onClick={() => { setPickMode((p) => !p); if (pickMode) setSelected(new Set()); }}
@@ -825,7 +837,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
         </button>
       </div>
       <div className={`grid ${mobileCols} border-b border-cz-border px-3 py-2 font-data text-3xs font-semibold uppercase leading-tight text-cz-3`}>
-        <span>{t("colRider")}</span><span>{t("form")}</span><span>{t("fatigue")}</span><span>{t("r5.col.dayLoad")}</span><span />
+        <span>{t("colRider")}</span><span>{t("form")}</span><span>{t("fatigue")}</span><span>{tR5("col.dayLoad")}</span><span />
       </div>
       <ul>
         {groups.map((g) => (
@@ -838,7 +850,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
                   <div className="basis-full [&_[role=group]]:w-full [&_button]:flex-1">
                     <Segmented label={`${t("today.setForGroup")} ${g.label}`} value="none"
                       onChange={(v: Effort) => { void applyEffort(v, g.rows.filter((r) => !r.racing).map((r) => r.id)); }}
-                      options={EFFORTS.map((e) => ({ value: e, label: t(`r5.effort.${e}`), disabled: r5.bulkApplying }))} />
+                      options={EFFORTS.map((e) => ({ value: e, label: tR5(`effort.${e}`), disabled: r5.bulkApplying }))} />
                   </div>
                 )}
               </li>
@@ -860,7 +872,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
                     </span>
                     <span><FormPlate value={row.form} /></span>
                     <span><FatiguePlate value={row.fatigue} /></span>
-                    <span>{row.racing ? <RaceCell row={row} compact /> : <span className="[&>span]:whitespace-normal [&>span]:text-2xs [&>span]:leading-tight"><DayLoadCell load={dayLoad(row.fields)} label={(l) => t(`r5.load.${l}`)} /></span>}</span>
+                    <span>{row.racing ? <RaceCell row={row} compact /> : <span className="[&>span]:whitespace-normal [&>span]:text-2xs [&>span]:leading-tight"><DayLoadCell load={dayLoad(row.fields)} label={(l) => tR5(`load.${l}`)} /></span>}</span>
                     <span>{!pickMode && (o ? <ChevronDownIcon size={13} aria-hidden="true" className="text-cz-3" /> : <ChevronRightIcon size={13} aria-hidden="true" className="text-cz-3" />)}</span>
                   </button>
                   {/* Eet tryk som foer (ejer 20/11): valgknapperne staar i raekken. */}
@@ -873,7 +885,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
                     <div className="flex flex-col gap-3 border-t border-cz-border bg-cz-subtle/60 px-3 pb-4 pt-3">
                       <div className="grid grid-cols-2 gap-3 text-xs">
                         <div><div className={`mb-1 ${HEAD}`}>{t("colType")}</div><TypeCell row={row} /></div>
-                        <div><div className={`mb-1 ${HEAD}`}>{t("r5.col.program")}</div><ProgramButton row={row} r5={r5} /></div>
+                        <div><div className={`mb-1 ${HEAD}`}>{tR5("col.program")}</div><ProgramButton row={row} r5={r5} /></div>
                         <div><div className={`mb-1 ${HEAD}`}>{t("colAge")}</div><span className="font-data tabular-nums text-cz-1">{row.age ?? "—"}</span></div>
                       </div>
                       <RiderDetails row={row} r5={r5} mobile />

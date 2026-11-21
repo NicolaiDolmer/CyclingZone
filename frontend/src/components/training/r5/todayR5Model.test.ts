@@ -278,7 +278,7 @@ test("kontakten: kun et eksplicit true taender R5", () => {
 test("kontakten off: I dag-fanens gamle indhold er praecis som paa merge-basen, og R5 monteres kun bag kontakten", () => {
   const page = readFileSync(join(here, "../../../pages/TrainingPage.jsx"), "utf8").replace(/\r\n/g, "\n");
   const golden = TODAY_PANEL_MERGE_BASE;
-  const open = "      <TabPanel value=\"today\">\n      {trainingR5 ? <Suspense fallback={<TabFallback />}><TodayR5Lazy r5={r5Today} /></Suspense> : (\n";
+  const open = "      <TabPanel value=\"today\">\n      {trainingR5 ? <I18nReadyGate ns=\"trainingR5\" fallback={<TabFallback />}><Suspense fallback={<TabFallback />}><TodayR5Lazy r5={r5Today} /></Suspense></I18nReadyGate> : (\n";
   const start = page.indexOf(open);
   assert.ok(start >= 0, "I dag-panelet aabner med kontaktens gren");
   const bodyStart = start + open.length;

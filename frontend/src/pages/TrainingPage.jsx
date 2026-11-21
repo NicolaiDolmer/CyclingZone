@@ -100,6 +100,7 @@ import XpReportSwitch from "../components/training/reportXp/XpReportSwitch.tsx";
 import { dayXpByAbility, riderXpBars, withXpLines } from "../lib/xpAbilityLine.ts"; // #7947
 import { useDevelopmentXpEnabled } from "../lib/developmentXpFlag.ts"; // #8476
 import { earnedGainTotal } from "../lib/trainingEarnedGains.ts"; // #8476
+import I18nReadyGate from "../components/I18nReadyGate.jsx"; // #7947: trainingR5 er lazy
 import { useTrainingPageR5 } from "../components/training/r5/trainingPageR5Flag.ts"; // #7947/#7456: training_page_r5
 // #6030: fanerne Program, Development og Report hentes foerst naar de aabnes
 // (lazyWithRetry, #5014), saa foerste visning af Today henter mindre. Fallback er den
@@ -2158,10 +2159,10 @@ export default function TrainingPage() {
 
   function renderProgramTab() {
     if (programR5) return ( // #7456: R5's Program tab behind training_page_r5
-      <ProgramR5 riders={riders} weekdays={WEEKDAY_KEYS} todayWeekday={todayWeekday} todayLocked={trainNow.status.locked && !trainNow.status.settled}
+      <I18nReadyGate ns="trainingR5" fallback={<TabFallback />}><ProgramR5 riders={riders} weekdays={WEEKDAY_KEYS} todayWeekday={todayWeekday} todayLocked={trainNow.status.locked && !trainNow.status.settled}
         riderWeekPlans={riderWeekPlans} programs={programs} groups={trainingGroups} forecast={fatigueForecast.forecast} fatigueRules={fatigueRules}
         catalogV3={catalogV3} actionsEl={programR5Actions} mobile={isMobile} onClearRider={clearRiderWeekPlan}
-        drafts={programR5Drafts} onDrafts={setProgramR5Drafts} />
+        drafts={programR5Drafts} onDrafts={setProgramR5Drafts} /></I18nReadyGate>
     );
     const subLabel = (sub) => (sub === "limit"
       ? (isMobile ? t("subtabs.limitShort") : t("subtabs.limit"))
@@ -2578,7 +2579,7 @@ export default function TrainingPage() {
         </TabList>
 
       <TabPanel value="today">
-      {trainingR5 ? <Suspense fallback={<TabFallback />}><TodayR5Lazy r5={r5Today} /></Suspense> : (
+      {trainingR5 ? <I18nReadyGate ns="trainingR5" fallback={<TabFallback />}><Suspense fallback={<TabFallback />}><TodayR5Lazy r5={r5Today} /></Suspense></I18nReadyGate> : (
       <div className="space-y-3">
       {decisionCardOn && !ridersLoading && (
         <DailyDecision
