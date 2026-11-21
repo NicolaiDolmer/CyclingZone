@@ -424,9 +424,11 @@ describe("migrationen 2026-11-21 (PGlite)", () => {
 
 // ── Kontaktens opslag (dommerens afgoerelse 21/11 paa #8537, ejervalg #7947) ────────────────────
 // #7982-proeverne holder opslaget af training_effort_levels uden for deres optagelse. Her kraeves
-// det eksakte antal: harness-holdene har planer paa andet niveau end standarden og laeser derfor
-// kontakten; med standardpar (som alle planer i prod 21/11) laeses den aldrig.
-describe("kontaktens opslag ved planer paa andet niveau", () => {
+// det eksakte antal. #8546: kontakten laeses én gang pr. holdkoersel uanset planerne, ogsaa med
+// standardpar: en rytter uden plan, med gammel ugerytme eller sat ned af traethedsreglen koerer
+// paa et andet niveau end sessionens tabel, og det koerte niveau skal paa scoren. Antallet er
+// det samme som foer for hold med en plan paa andet niveau (ingen ekstra opslag dér).
+describe("kontaktens opslag (ét pr. holdkoersel, #8546)", () => {
   async function switchReads(name, { standardPairs = false } = {}) {
     const state = harnessSeed(HARNESS_SCENARIOS[name].seed);
     if (standardPairs) {
@@ -441,12 +443,12 @@ describe("kontaktens opslag ved planer paa andet niveau", () => {
     await quiet(() => HARNESS_SCENARIOS[name].run(state, fake, out, () => ({ state, fake })));
     return fake.effortSwitchReads.length;
   }
-  test("aftenkoersel uden tryk: 5 opslag med harness-planerne, 0 med standardpar", async () => {
+  test("aftenkoersel uden tryk: 5 opslag med harness-planerne og med standardpar", async () => {
     assert.equal(await switchReads("aftenkoersel_uden_tryk"), 5);
-    assert.equal(await switchReads("aftenkoersel_uden_tryk", { standardPairs: true }), 0);
+    assert.equal(await switchReads("aftenkoersel_uden_tryk", { standardPairs: true }), 5);
   });
-  test("stort hold, beta-tryk: 1 opslag med harness-planerne, 0 med standardpar", async () => {
+  test("stort hold, beta-tryk: 1 opslag med harness-planerne og med standardpar", async () => {
     assert.equal(await switchReads("stort_hold_beta_tryk"), 1);
-    assert.equal(await switchReads("stort_hold_beta_tryk", { standardPairs: true }), 0);
+    assert.equal(await switchReads("stort_hold_beta_tryk", { standardPairs: true }), 1);
   });
 });
