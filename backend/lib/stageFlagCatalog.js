@@ -45,6 +45,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "fatigue_now_7801", area: "training", label: "Træthed lige nu — flader og regler" },
   // #6110 ejer 19/11: "hold uden division skal ikke træne". Seedet off; ejer-only flip.
   { key: "training_calendar_tick_ai_only", area: "training", label: "Kalenderdagens tick kun for AI-hold uden division" },
+  // #7947: alle træninger på Let/Mellem/Hård. Seedet off; kun "on" tænder (trainingEffortLevels.js). Ejer-only flip.
+  { key: "training_effort_levels", area: "training", label: "Alle træninger på Let/Mellem/Hård" },
   { key: "training_score_visible", area: "training", label: "Træningsscore 1-99 (visning)" },
   { key: "training_mobile_table", area: "training", label: "Træningssiden på mobil — ny tabel" },
   // #7947 ejer 20/11: træningssidens I dag-fane i R5-udgaven. Seedet off; kun "on" tænder. Ejer-only flip.

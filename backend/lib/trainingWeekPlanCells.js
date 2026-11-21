@@ -29,7 +29,12 @@ function copyDays(days) {
   const out = {};
   for (const weekday of WEEKDAY_KEYS) {
     const entry = days[weekday];
-    out[weekday] = { session: entry.session, intensity: entry.intensity, ...(entry.slots ? { slots: [...entry.slots] } : {}) };
+    out[weekday] = {
+      session: entry.session, intensity: entry.intensity, ...(entry.slots ? { slots: [...entry.slots] } : {}),
+      // #7947: indsats-noeglerne foelger med kopien (additive; laeses kun med kontakten).
+      ...(entry.effort != null ? { effort: entry.effort } : {}),
+      ...(entry.slotEfforts ? { slotEfforts: [...entry.slotEfforts] } : {}),
+    };
   }
   return out;
 }

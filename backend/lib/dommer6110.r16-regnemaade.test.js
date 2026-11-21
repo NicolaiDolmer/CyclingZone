@@ -85,7 +85,7 @@ test("R16-regnemaaden: regnet gennem motoren over alle pas fanger +3 fra et pas 
     `bruddet skal komme fra et pas med vaegt 2 i dagens katalog, fik fx ${brud[0]?.tekst}`);
 });
 
-test("R16 datoreglen (ejervalg 16/11): de samme tal koebt gennem motorens tick giver aldrig +3 paa én dato", async () => {
+test("R16 datoreglen (ejervalg 16/11): de samme tal koebt gennem motorens tick giver aldrig +3 paa én dato", { skip: "R16 er afloest af G3a (spec 2026-11-20 §3, #8520): ingen graense pr. dato under XP" }, async () => {
   const { params } = await syntetisk();
   const { xpPriceForNextPoint } = await kraev("./developmentXp.ts", "xpPriceForNextPoint");
   const pris = (niveau) => xpPriceForNextPoint(niveau, params);
