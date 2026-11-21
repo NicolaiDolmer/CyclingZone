@@ -69,6 +69,8 @@ Bestyrelsen mistede sin `lg:col-span-2` i omlægningen: /board har 959 sessions 
 
 ## 5. Tjekliste før du tilføjer et modul
 
+Kalenderhandlingerne på dashboardet åbner `/planning?tab=calendar`. Det gælder sæsonstatus, kortet Kommende løb og kalenderlinks i tomtilstandene for Seneste resultater og Rytterrangliste. Refs #8447.
+
 Begynderforløbets tjekliste og afslutningskort følger begge serverens `dismissed`- og `established`-status. Tjeklistens rundvisning er en sekundær handling. Status for udført træning vises ved træningstrinnet eller som feedback på en handling i tjeklisten.
 
 1. Kan det være i halv bredde? Hvis ja, hører det i gridet. Hvis nej, skriv hvorfor i kodekommentaren.

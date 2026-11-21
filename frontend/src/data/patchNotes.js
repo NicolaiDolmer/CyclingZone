@@ -1,5 +1,104 @@
 export const PATCHES = [
 {
+  "version": "7.484",
+  "date": "2026-11-21",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Dashboard",
+      "area": "interface",
+      "en": {
+        "title": "Calendar links open the calendar",
+        "body": "The Calendar link in Upcoming races and the race calendar buttons in the empty Recent results and Rider ranking cards now open the calendar instead of Team selection."
+      },
+      "da": {
+        "title": "Kalenderlinks åbner kalenderen",
+        "body": "Kalender-linket i Kommende løb og knapperne til løbskalenderen i de tomme kort Seneste resultater og Rytterrangliste åbner nu kalenderen i stedet for Holdudtagelse."
+      },
+      "refs": [
+        8447
+      ]
+    }
+  ]
+},
+{
+  "version": "7.483",
+  "date": "2026-11-21",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "switched_on",
+      "flag": "development_xp_model",
+      "topic": "Development",
+      "area": "development",
+      "en": {
+        "title": "The Development tab shows XP",
+        "body": "With XP switched on, the Development tab in Daily training shows one line per rider: XP today, XP per day over 30 days, the rating's change this season and how close he is to the next point. Open a rider to see his abilities. The rider type is shown as his natural type. With the column button you can also show the role he rates highest in now, or swap one for the other."
+      },
+      "da": {
+        "title": "Udvikling-fanen viser XP",
+        "body": "Når XP er tændt, viser fanen Udvikling i Daglig træning én linje pr. rytter: XP i dag, XP pr. dag over 30 dage, ratingens ændring i sæsonen og hvor tæt han er på næste point. Åbn en rytter for at se hans evner. Ryttertypen vises som hans naturlige type. Med kolonneknappen kan du også vise den rolle, han har højest rating i nu, eller bytte den ene ud med den anden."
+      },
+      "refs": [
+        7947
+      ]
+    }
+  ]
+},
+{
+  "version": "7.482",
+  "date": "2026-11-20",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "switched_on",
+      "flag": "fatigue_now_7801",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "Fatigue now counts today's stages",
+        "body": "The fatigue you see now counts today's stages straight away, not only at the evening training. Your fatigue limit is checked before every slot, so a rider worn out by today's racing rests in the next slots as you chose. Injury risk and the assistant's suggestions also use fatigue now."
+      },
+      "da": {
+        "title": "Træthed lige nu tæller dagens etaper",
+        "body": "Trætheden, du ser, tæller nu dagens kørte etaper med det samme, ikke først ved aftentræningen. Din træthedsgrænse tjekkes før hvert felt, så en rytter, der bliver træt af dagens løb, hviler i de næste felter, som du har valgt. Skaderisiko og assistentens forslag bruger også træthed lige nu."
+      },
+      "refs": [
+        7801,
+        8088
+      ]
+    }
+  ]
+},
+{
+  "version": "7.481",
+  "date": "2026-11-20",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Dashboard",
+      "area": "interface",
+      "en": {
+        "title": "The dashboard is ready sooner",
+        "body": "Your dashboard no longer waits for the board before it shows your team. Squad selection and the other cards are ready sooner, and nothing jumps when the board card arrives. If the board cannot load, only the board card is hidden."
+      },
+      "da": {
+        "title": "Dashboardet er klar hurtigere",
+        "body": "Dit dashboard venter ikke længere på bestyrelsen, før det viser dit hold. Holdudtagelse og de andre kort er klar hurtigere, og intet hopper, når bestyrelseskortet kommer. Kan bestyrelsen ikke hentes, skjules kun bestyrelseskortet."
+      },
+      "refs": [
+        8019
+      ]
+    }
+  ]
+},
+{
   "version": "7.480",
   "date": "2026-11-20",
   "changes": [

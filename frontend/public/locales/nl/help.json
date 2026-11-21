@@ -2115,7 +2115,7 @@
     },
     "restForDevelopedFaq": {
       "q": "Mijn renner is volledig ontwikkeld. Moet ik hem gewoon op Rust zetten?",
-      "a": "Zodra elke vaardigheid in de gekozen focus van een renner zijn levenslange plafond heeft bereikt, leest elke regel in die focus 'klaar', en meer training daar voegt niets toe: de dagelijkse winst komt uit het verschil tussen huidige vaardigheid en plafond, en bij nul verschil blijft die nul op elke intensiteit. Normaal of Zwaar op een renner die is uitgemaxt bouwt nog steeds Vermoeidheid op, en Zwaar draagt nog steeds hetzelfde gebruikelijke blessurerisico, zonder vaardigheidswinst in ruil, dus Rust is de veiligere keuze: het haalt Vermoeidheid weg in plaats van toe te voegen. De achteruitgang van een renner na zijn hoogtepunt vanaf ongeveer 28 jaar verloopt bij elke seizoenswissel met hetzelfde vaste, leeftijdsafhankelijke tempo, ongeacht met welke intensiteit je trainde, dus noch training noch Rust versnelt of vertraagt het. Als een andere focus nog ruimte heeft, is daarheen wisselen beter dan rusten."
+      "a": "Meestal valt er nog iets te halen: hoe hoger een vaardigheid al staat, hoe meer elk punt kost, dus vooruitgang dicht bij de top gaat langzaam, maar gaat door tot de vaardigheid het hoogste niveau bereikt dat zijn rol toelaat; vanaf daar levert trainen ervan niets meer op. Normaal of Zwaar bouwt nog steeds Vermoeidheid op, en Zwaar draagt het gebruikelijke blessurerisico, dus Rust is zinvol als de Vermoeidheid hoog is of de winst te klein is om de belasting waard te zijn. Rust geeft geen ontwikkeling op een trainingsdag, dus anders brengt een focus op vaardigheden die nog lager staan hem sneller vooruit. Renners houden hun niveau tot en met 30; vanaf het seizoen daarna gaan zijn fysieke vaardigheden bij elke seizoenswissel een beetje achteruit. Wedstrijddagen en zware trainingsdagen remmen die achteruitgang, Rust niet."
     },
     "restForDevelopedXpFaq": {
       "q": "Mijn renner is volledig ontwikkeld. Moet ik hem gewoon op Rust zetten?",
@@ -2507,7 +2507,7 @@
     },
     "trainWeaknessesFaq": {
       "q": "Moet ik mijn zwakke eigenschappen trainen?",
-      "a": "Meestal niet. Het type van een renner bepaalt een plafond per eigenschap, en een zwakte heeft een laag plafond, dus die groeit al snel niet meer. Hoe dichter een eigenschap bij het plafond komt, hoe minder elke trainingsdag oplevert. Train de eigenschappen waarvoor zijn type gebouwd is en zet zwaktes op de tweede plaats. Een zwakke eigenschap telt nog steeds mee in een etappe, maar vooral waar de etappe erom vraagt."
+      "a": "Meestal niet als eerste. Zijn type bepaalt hoe snel elke eigenschap zich ontwikkelt: de eigenschappen waarvoor zijn primaire en secundaire type gebouwd zijn ontwikkelen het snelst, en eigenschappen buiten zijn rollen langzamer. Elk punt kost ook meer naarmate een eigenschap al hoger staat. Train de eigenschappen waarvoor zijn type gebouwd is en zet zwaktes op de tweede plaats. Een zwakke eigenschap telt nog steeds mee in een etappe, maar vooral waar de etappe erom vraagt."
     },
     "raceFatigueSameFatigueFaq": {
       "q": "Is vermoeidheid door inspanning in de koers dezelfde als de Vermoeidheid op de trainingspagina?",
