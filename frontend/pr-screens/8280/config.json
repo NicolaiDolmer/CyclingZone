@@ -1,0 +1,91 @@
+{
+  "out": ".",
+  "ref": "#8280 (mobil-rettelse 6 og 9, #8073)",
+  "sketch": "/src/preview/sketches/8280-tabel-indbakke/index.html",
+  "items": [
+    {
+      "file": "tabel-A.png",
+      "letter": "A",
+      "title": "Tabel-kontroller · Segmented kolonnesæt",
+      "line": "De runde piller bliver én firkantet Segmented inde i tabellens ramme, og sortering sker i kolonneoverskriften.",
+      "before": "/riders",
+      "query": "s=table&d=A",
+      "notes": [
+        "Søg + én Filtre-knap. Land, roller og AI-hold ligger i et ark; Sort by-select'en er væk.",
+        "Firkantet Segmented (5 px, hairline) vælger et sæt på tre kolonner: Overview, Contract, Abilities.",
+        "Alle kolonner: samme to-lags fulde tabel som i dag, nu som ikon-knap.",
+        "Tryk på en overskrift for at sortere. Pilen viser retningen."
+      ],
+      "aside": "Afviger fra D-047 på ét punkt: man vælger et navngivet sæt i stedet for at bytte én kolonne ad gangen. Enkelte kolonner vælges stadig under Columns (desktop) / Alle kolonner (mobil). Show stats og My Watchlist er ikke med i mobil-skitsen; de er uden for denne opgave og bliver stående."
+    },
+    {
+      "file": "tabel-B.png",
+      "letter": "B",
+      "title": "Tabel-kontroller · Én værktøjslinje",
+      "line": "Sort, Columns og Filters bliver tre lige store felter i én hairline-linje, og hvert felt åbner et ark.",
+      "before": "/riders",
+      "query": "s=table&d=B",
+      "notes": [
+        "Én linje til tabellens tre jobs. Hver åbner et ark (mobil) eller et svævende kort (desktop, P18).",
+        "Columns er en almindelig liste med firkantede afkrydsninger; på mobil vælger man tre, og Show all columns åbner den fulde tabel."
+      ],
+      "aside": "Mindst chrome over tabellen, men hver ændring koster et ekstra tryk (åbn ark, vælg). Show stats og My Watchlist er ikke med i mobil-skitsen; de er uden for denne opgave og bliver stående."
+    },
+    {
+      "file": "tabel-C.png",
+      "letter": "C",
+      "title": "Tabel-kontroller · Overskriften er kontrollen",
+      "line": "Ingen kontrol-række over tabellen; hver kolonneoverskrift er en lille menu til sortering og kolonnebytte.",
+      "before": "/riders",
+      "query": "s=table&d=C",
+      "notes": [
+        "Hver overskrift åbner en menu: sortér begge veje, eller vis en anden kolonne på pladsen (mobil) / skjul og flyt (desktop).",
+        "Den fulde tabel ligger som ikon i navne-overskriften."
+      ],
+      "aside": "Tættest på et regneark og mest data over folden. Risiko: man skal opdage, at overskrifterne kan trykkes på. Show stats og My Watchlist er ikke med i mobil-skitsen; de er uden for denne opgave og bliver stående."
+    },
+    {
+      "file": "indbakke-A.png",
+      "letter": "A",
+      "title": "Indbakke · Needs you + dage",
+      "line": "Det, der kræver svar, står øverst, og resten er én linje pr. besked grupperet pr. dag, med fold-ud for detaljer.",
+      "before": "/notifications",
+      "query": "s=inbox&d=A",
+      "notes": [
+        "Firkantet type-filter (Segmented) med tal i stedet for All (7)-select'en.",
+        "Needs you: kun det, der kræver en beslutning, med knappen i rækken (#2223 retning A, ejer-godkendt 7/8). Aldrig guld.",
+        "Én linje pr. besked: type-ikon, rytter og beløb med fed, tid til højre, ulæst-prik. Hele rækken er trykfladen.",
+        "Gentagne hændelser foldes til én række; tryk folder listen ud på stedet.",
+        "Ældre dage starter foldet, én linje hver."
+      ],
+      "aside": "Mine og To handle slås sammen til Inbox, som #2223-spec'en beskriver. League og My Activity er uændrede."
+    },
+    {
+      "file": "indbakke-B.png",
+      "letter": "B",
+      "title": "Indbakke · Grupperet pr. type",
+      "line": "Beskederne samles i ét kort pr. spilområde (Transfers, Auctions, Races), nyeste først.",
+      "before": "/notifications",
+      "query": "s=inbox&d=B",
+      "notes": [
+        "Unread / All i stedet for type-select'en.",
+        "Ét kort pr. område; en besked, der kræver svar, får et firkantet mærke.",
+        "Hvert kort linker til sin side (Auctions, Transfers, Results)."
+      ],
+      "aside": "#2223-README'en fravalgte typegruppering 7/8: det, der kræver handling, bliver spredt over flere kort."
+    },
+    {
+      "file": "indbakke-C.png",
+      "letter": "C",
+      "title": "Indbakke · Tidslinje med stryg",
+      "line": "Én tidslinje med to linjer pr. besked, firkantede filter-chips og stryg til venstre for Mark read og Delete.",
+      "before": "/notifications",
+      "query": "s=inbox&d=C",
+      "notes": [
+        "Firkantede filter-chips med tal i én række.",
+        "To linjer pr. besked (hvad skete / type og tid). Stryg til venstre giver Mark read og Delete; More-knappen gør det samme uden gestus."
+      ],
+      "aside": "Billigst at bygge (tættest på i dag), men det, der kræver svar, står blandet med resten."
+    }
+  ]
+}
