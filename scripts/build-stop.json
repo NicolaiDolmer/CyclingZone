@@ -398,6 +398,16 @@
       "issue": 8563,
       "area": "training-r5",
       "why": "Ejer-go 21/11 aften (PC1, AskUserQuestion efter skitser forslag-1-2 og forslag-3-5): Forslag 5 I dag telefon + Nulstil filtre: \"Ja, byg det\". Paritetstjek mod de gamle træningssider. Byg på Dolmer PC (ejer: PC1 kun koordinering og merge)."
+    },
+    {
+      "issue": 8546,
+      "area": "udvikling-2",
+      "why": "Ejer-go 21/11 aften (PC1, AskUserQuestion): \"Ja, begge nu (anbefalet)\" - rettelser til det taendte (udvikling 2.0 / Let-Mellem-Haard). Byg paa Dolmer PC."
+    },
+    {
+      "issue": 8570,
+      "area": "udvikling-2",
+      "why": "Ejer-go 21/11 aften (PC1, AskUserQuestion): \"Ja, begge nu (anbefalet)\" - rettelser til det taendte (udvikling 2.0 / Let-Mellem-Haard). Byg paa Dolmer PC."
     }
   ],
   "cleanupList": [
