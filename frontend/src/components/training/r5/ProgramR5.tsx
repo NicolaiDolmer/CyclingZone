@@ -48,7 +48,7 @@ import {
   subjectKey, subjectsFor, weekCells, type Draft, type Kind, type Library, type R5Group, type R5Rider, type Subject,
   type WeekCell,
   GROUP_LIMIT_MODES, createdGroupId, dropDrafts, followAgainTarget, groupLimitDraft, groupLimitValid, groupLimitWrite,
-  groupMenuActions, groupPatch, type GroupLimitDraft, type GroupMenuAction,
+  groupAfterPatch, groupMenuActions, groupPatch, type GroupLimitDraft, type GroupMenuAction,
 } from "./programR5Model.ts";
 import ProgramR5Phone, { type PhoneChip } from "./ProgramR5Phone.tsx";
 
@@ -271,7 +271,12 @@ export default function ProgramR5({
     let id = editing?.id ?? null;
     if (editing) {
       const patch = groupPatch(editing, name, riderIds);
-      if (patch && !(await groups.update(editing.id, patch)).ok) return false;
+      if (patch) {
+        const updated = await groups.update(editing.id, patch);
+        if (!updated.ok) return false;
+        // Fejler graensen bagefter, skal et nyt Gem sammenligne med det gemte (Codex P2).
+        setGroupDialog({ group: groupAfterPatch(editing, patch, updated.groups) });
+      }
     } else {
       const before = groups.groups.map((g) => g.id);
       const created = await groups.create(name, riderIds);

@@ -356,6 +356,26 @@ export function groupPatch(
   return Object.keys(patch).length ? patch : null;
 }
 
+// Codex P2 paa #8565: lykkes PATCH, men graensen fejler bagefter, bliver dialogen staaende.
+// Det naeste Gem skal sammenligne med det der nu ER gemt, ellers udelader groupPatch en
+// tilbagerulning af navn/medlemmer og lukker dialogen med en anden gruppe paa serveren.
+// Serverens svar vinder; uden svar bygges snapshottet af patchen.
+export function groupAfterPatch<G extends GroupLike>(
+  editing: G,
+  patch: { name?: string; riderIds?: string[] },
+  saved: readonly G[] | undefined,
+): G {
+  const fromServer = saved?.find((g) => g.id === editing.id);
+  if (fromServer) return fromServer;
+  return {
+    ...editing,
+    name: patch.name ?? editing.name,
+    members: patch.riderIds
+      ? patch.riderIds.map((riderId) => editing.members.find((m) => m.riderId === riderId) ?? { riderId, followsGroup: true })
+      : editing.members,
+  };
+}
+
 // Den nye gruppe efter "Create": den id der ikke fandtes foer.
 export function createdGroupId(before: readonly string[], after: ReadonlyArray<{ id: string }> | null | undefined): string | null {
   const known = new Set(before);

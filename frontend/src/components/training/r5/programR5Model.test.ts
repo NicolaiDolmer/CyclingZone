@@ -6,7 +6,7 @@ import {
   rememberedKind, rememberedPhoneView, riderPlan, riderWeekDays, setDraftCell, shortRiderName, startDayIndex, subjectKey,
   subjectsFor, weekCells, weekdayLong,
   GROUP_LIMIT_MODES, createdGroupId, dropDrafts, followAgainTarget, groupLimitDraft, groupLimitValid, groupLimitWrite,
-  groupMenuActions, groupPatch,
+  groupAfterPatch, groupMenuActions, groupPatch,
 } from "./programR5Model.ts";
 import type { CatalogProgram, ProgramWeekDays } from "../../../lib/trainingPrograms.ts";
 
@@ -218,4 +218,16 @@ test("#8560 graensen skrives kun ved en aendring, og et ugyldigt tal blokerer", 
     assert.equal(groupLimitValid(own(bad)), false, bad);
   }
   assert.equal(groupLimitValid({ mode: "off", threshold: "", fallback: "light" }), true);
+});
+
+test("#8560 efter et lykket PATCH sammenligner naeste Gem med det gemte (Codex P2)", () => {
+  const g = GROUPS[0];
+  const saved = { ...g, name: "Hills" };
+  // Serverens svar vinder.
+  assert.equal(groupAfterPatch(g, { name: "Hills" }, [saved]), saved);
+  // Uden svar bygges snapshottet af patchen; en tilbagerulning bliver derefter en aendring.
+  const snap = groupAfterPatch(g, { name: "Hills", riderIds: ["a"] }, undefined);
+  assert.equal(snap.name, "Hills");
+  assert.deepEqual(snap.members.map((m) => m.riderId), ["a"]);
+  assert.deepEqual(groupPatch(snap, g.name, g.members.map((m) => m.riderId)), { name: g.name, riderIds: g.members.map((m) => m.riderId) });
 });
