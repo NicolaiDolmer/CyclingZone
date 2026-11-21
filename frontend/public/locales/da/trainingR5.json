@@ -150,7 +150,7 @@
       "noRaces": "Ingen løb",
       "fieldsOf": "Sessioner {day}"
     },
-    "groups": {
+    "manage": {
       "newGroup": "Ny gruppe",
       "menu": "{name}: gruppens valg",
       "rename": "Omdøb",

@@ -313,10 +313,10 @@ export default function ProgramR5({
   };
   const followLabel = follow
     ? (subject?.kind === "group"
-      ? tR5("programR5.groups.followAgainAll", { n: follow.riderIds.length })
-      : tR5("programR5.groups.followAgain"))
+      ? tR5("programR5.manage.followAgainAll", { n: follow.riderIds.length })
+      : tR5("programR5.manage.followAgain"))
     : "";
-  const ownOfGroup = follow && subject?.kind === "rider" ? tR5("programR5.groups.ownPlanOf", { name: follow.groupName }) : null;
+  const ownOfGroup = follow && subject?.kind === "rider" ? tR5("programR5.manage.ownPlanOf", { name: follow.groupName }) : null;
 
   const actions = (
     <span className="flex items-center gap-2">
@@ -366,7 +366,7 @@ export default function ProgramR5({
           open
           onClose={() => setDeleting(null)}
           size="sm"
-          title={tR5("programR5.groups.deleteTitle", { name: deleting.name })}
+          title={tR5("programR5.manage.deleteTitle", { name: deleting.name })}
           titleId="program-r5-group-delete-title"
           ariaLabelledby={undefined}
           description={null}
@@ -375,12 +375,12 @@ export default function ProgramR5({
             <>
               <Button variant="secondary" className={mobile ? "min-h-11" : ""} onClick={() => setDeleting(null)}>{tR5("programR5.cancel")}</Button>
               <Button variant="danger" className={mobile ? "min-h-11" : ""} disabled={busy} onClick={deleteGroup} data-testid="program-r5-group-delete-go">
-                {tR5("programR5.groups.deleteGo")}
+                {tR5("programR5.manage.deleteGo")}
               </Button>
             </>
           )}
         >
-          <p className="text-xs text-cz-2" data-testid="program-r5-group-delete-body">{tR5("programR5.groups.deleteBody")}</p>
+          <p className="text-xs text-cz-2" data-testid="program-r5-group-delete-body">{tR5("programR5.manage.deleteBody")}</p>
         </Modal>
       )}
     </>
@@ -723,7 +723,7 @@ function LibraryPanel({
             <li className={row}>
               <button type="button" disabled={groupBusy} onClick={onNewGroup} data-testid="program-r5-new-group"
                 className={`${tap}flex w-full items-center gap-1.5 text-start font-medium text-cz-2 hover:text-cz-1 disabled:opacity-50`}>
-                <PlusIcon size={13} aria-hidden="true" className="shrink-0 text-cz-3" />{tR5("programR5.groups.newGroup")}
+                <PlusIcon size={13} aria-hidden="true" className="shrink-0 text-cz-3" />{tR5("programR5.manage.newGroup")}
               </button>
             </li>
           )}
@@ -769,7 +769,7 @@ function GroupMenu({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
   useDismiss(ref, () => setOpen(false), open);
-  const label = tR5("programR5.groups.menu", { name });
+  const label = tR5("programR5.manage.menu", { name });
   return (
     <div ref={ref} className="relative shrink-0">
       <button type="button" aria-haspopup="menu" aria-expanded={open} aria-label={label} title={label} disabled={disabled}
@@ -783,7 +783,7 @@ function GroupMenu({
             {actions.map((action) => (
               <MenuItem key={action} danger={action === "delete"} className={touch ? "min-h-11" : ""}
                 onClick={() => { setOpen(false); onPick(action); }} data-testid={`program-r5-group-${action}`}>
-                {tR5(`programR5.groups.${action}`)}
+                {tR5(`programR5.manage.${action}`)}
               </MenuItem>
             ))}
           </Menu>
@@ -805,28 +805,28 @@ function GroupLimitFields({
   const { t: tR5 } = useTranslation("trainingR5"); // #7456: lazy namespace (I18nReadyGate i TrainingPage)
   const valid = groupLimitValid(draft);
   const control = "min-h-11 rounded-cz border border-cz-border bg-cz-card px-2 text-[13px] text-cz-1 disabled:opacity-50 sm:min-h-9";
-  const label = tR5("programR5.groups.limitLabel");
+  const label = tR5("programR5.manage.limitLabel");
   return (
     <div className="flex flex-col gap-2 border-t border-cz-border pt-3" data-testid="program-r5-group-limit-fields">
       <span className="font-data text-2xs font-semibold uppercase tracking-[.04em] text-cz-3">{label}</span>
       <Segmented label={label} value={draft.mode} onChange={(mode: GroupLimitDraft["mode"]) => onChange({ ...draft, mode })}
-        options={GROUP_LIMIT_MODES.map((m) => ({ value: m, label: tR5(`programR5.groups.limit_${m}`), disabled: busy }))} />
+        options={GROUP_LIMIT_MODES.map((m) => ({ value: m, label: tR5(`programR5.manage.limit_${m}`), disabled: busy }))} />
       {draft.mode === "own" ? (
         <span className="flex flex-wrap items-center gap-2 text-[13px] text-cz-1">
-          <span>{tR5("programR5.groups.limitAbove")}</span>
+          <span>{tR5("programR5.manage.limitAbove")}</span>
           <input type="number" inputMode="numeric" min={0} max={100} step={1} value={draft.threshold} disabled={busy}
             onChange={(e) => onChange({ ...draft, threshold: e.target.value })}
             aria-label={t("fatigueRule.aboveLabel")} aria-invalid={!valid}
             className={`${control} w-16 font-data tabular-nums`} data-testid="program-r5-group-limit-threshold" />
-          <span>{tR5("programR5.groups.limitRun")}</span>
+          <span>{tR5("programR5.manage.limitRun")}</span>
           <select value={draft.fallback} disabled={busy} onChange={(e) => onChange({ ...draft, fallback: e.target.value })}
             aria-label={t("fatigueRule.insteadLabel")} className={control}>
             {FATIGUE_FALLBACKS.map((f) => <option key={f} value={f}>{t(`fatigueRule.fallback_${f}`)}</option>)}
           </select>
-          <span>{tR5("programR5.groups.limitInstead")}</span>
+          <span>{tR5("programR5.manage.limitInstead")}</span>
         </span>
       ) : (
-        <p className="text-xs text-cz-2">{tR5(draft.mode === "team" ? "programR5.groups.limitTeamNote" : "programR5.groups.limitOffNote")}</p>
+        <p className="text-xs text-cz-2">{tR5(draft.mode === "team" ? "programR5.manage.limitTeamNote" : "programR5.manage.limitOffNote")}</p>
       )}
       <p className="text-2xs text-cz-3">{t("groups.fatigueLadder")}</p>
     </div>

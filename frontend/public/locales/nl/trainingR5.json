@@ -149,6 +149,29 @@
       "dayTabs": "Dag",
       "noRaces": "Geen koersen",
       "fieldsOf": "Sessies op {day}"
+    },
+    "manage": {
+      "newGroup": "Nieuwe groep",
+      "menu": "{name}: groepsopties",
+      "rename": "Hernoemen",
+      "members": "Leden",
+      "limit": "Vermoeidheidsgrens",
+      "delete": "Verwijderen",
+      "deleteTitle": "{name} verwijderen?",
+      "deleteBody": "De renners houden het plan dat ze nu hebben, als eigen plan. De vermoeidheidsgrens van de groep verdwijnt.",
+      "deleteGo": "Groep verwijderen",
+      "followAgain": "De groep weer volgen",
+      "followAgainAll": "De groep weer volgen ({n})",
+      "ownPlanOf": "Eigen plan. In de groep {name}.",
+      "limitLabel": "Vermoeidheidsgrens van de groep",
+      "limit_team": "Van de ploeg",
+      "limit_own": "Eigen",
+      "limit_off": "Uit",
+      "limitTeamNote": "De groep volgt de ploegregel.",
+      "limitOffNote": "Geen vermoeidheidsgrens voor de groep.",
+      "limitAbove": "Boven",
+      "limitRun": "rijd",
+      "limitInstead": "in plaats daarvan"
     }
   }
 }

@@ -150,7 +150,7 @@
       "noRaces": "No races",
       "fieldsOf": "Sessions on {day}"
     },
-    "groups": {
+    "manage": {
       "newGroup": "New group",
       "menu": "{name}: group options",
       "rename": "Rename",
