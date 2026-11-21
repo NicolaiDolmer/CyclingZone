@@ -11,7 +11,8 @@
 // Værdien står i --text-1 og ikke i guld-tekst som på My Team: TASTE fork 3
 // forbyder guld-tal.
 //
-// Mobil (D-047): rating, værdi og løn, præcis som My Team (ejer 10/9).
+// Mobil (D-047): rating, værdi og løn som My Team (ejer 10/9); #8544: med prognosen
+// tændt i stedet rating, potentiale og prognose.
 //
 // #5631 (spillere i beta-forummet 24/9: "Abilities is also missing and is only
 // accessible from the My Team"): samme to kolonne-tilstande som My Team
@@ -90,6 +91,9 @@ const ACCESSORS: Record<string, (r: Row) => unknown> = {
 const DESC_FIRST = new Set(["_ovr", "age", "_scoutMid", "_prognosis", "_value", "salary", "popularity", "reputation", "contract_end_season", ...ABILITY_KEYS]);
 const SORT_OPTS = { descFirstKeys: DESC_FIRST };
 const MOBILE_DEFAULTS = ["rating", "value", "salary"];
+// #8544: med prognosen tændt er telefonens tre kolonner Rating, Potentiale og Prognose;
+// værdi og løn er ét tryk væk i chip-rækken. Slukket er standarden som før.
+const MOBILE_DEFAULTS_POTENTIAL = ["rating", "potential", "prognosis"];
 
 type TableMode = "overview" | "abilities";
 
@@ -316,7 +320,7 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
       columns={columns}
       rows={rows}
       rowKey={(r) => r.id}
-      mobileDefaults={tableMode === "abilities" ? ABILITY_MODE_MOBILE_DEFAULTS : MOBILE_DEFAULTS}
+      mobileDefaults={tableMode === "abilities" ? ABILITY_MODE_MOBILE_DEFAULTS : (prognosisOn ? MOBILE_DEFAULTS_POTENTIAL : MOBILE_DEFAULTS)}
       dense
       rowProps={(r) => ({ onClick: () => navigate(`/riders/${r.id}`), className: "cursor-pointer" })}
       sort={sort}
