@@ -995,7 +995,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
     <div className="p-5" data-testid="r5-empty-filtered">
       <EmptyState icon={<FilterIcon size={26} aria-hidden="true" />} title={t("overview.emptyFiltered")} description={null}
         action={canResetFilters(filters, overview) ? (
-          <Button type="button" variant="primary" size="sm" data-testid="r5-reset-filters"
+          <Button type="button" variant="secondary" size="sm" data-testid="r5-reset-filters"
             onClick={() => { const s = resetFilterState(); setFilters(s.filters); setOverview(s.overview); }}>
             {tR5("filter.reset")}
           </Button>
