@@ -1274,12 +1274,12 @@ features:
     area: training
     title_en: One potential source
     title_da: Én prognose-kilde (gemt skøn pr. rytter og hold)
-    state: live
+    state: dormant
     flag: potential_estimate_display
     ssot: docs/superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md
     epic: 6110
     verified: 2026-11-21
-    note: "Tændt 21/11 aften (ejer-kør): potentiale som tal 1-99."
+    note: "Tændt og slukket igen 21/11 aften (ejer): gemte skøn mangler (potential_estimate_writes + params + backfill, #7685). Tændes efter XP-start 22/11."
     decision: goer-faerdigt
     decide_by: 2026-12-31
 
