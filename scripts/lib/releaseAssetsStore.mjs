@@ -223,9 +223,10 @@ export function createDirStore(root) {
   };
 }
 
-const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
+// 520-524 er Cloudflares foran Supabase Storage: forbigaaende (#8566-deployet 21/11 fejlede paa en 520).
+const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524]);
 
-async function withRetry(fn, { attempts = 3, baseDelayMs = 400 } = {}) {
+async function withRetry(fn, { attempts = 4, baseDelayMs = 400 } = {}) {
   let lastErr;
   for (let i = 0; i < attempts; i += 1) {
     try {
