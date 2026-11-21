@@ -33,6 +33,8 @@
 //               De to indsats-noegler er ADDITIVE: `intensity` forbliver sessionens
 //               standardniveau, og motoren laeser dem kun med kontakten
 //               training_effort_levels (trainingEffortLevels.js). Slukket = ignoreret.
+//   lockSlot  : #8549, valgfri, heltal 0..PROGRAM_SLOTS-1. Dagens ene laaste pas (dets
+//               hjemmefelt). Godtages altid, laeses endnu ikke (trainingWeekBlocks.js).
 //
 // Gamle raekker (kun `intensity`, #1895) er uroerte og laeses praecis som i dag.
 
@@ -229,13 +231,14 @@ export function stripProgramFromWeekDays(days) {
   // #7947: indsats-noeglerne hoerer til programcellen og fjernes med den.
   const hasProgram = Object.values(days).some(
     (entry) => entry && typeof entry === "object"
-      && ("session" in entry || "slots" in entry || "effort" in entry || "slotEfforts" in entry),
+      && ("session" in entry || "slots" in entry || "effort" in entry || "slotEfforts" in entry
+        || "lockSlot" in entry), // #8549
   );
   if (!hasProgram) return days;
   const out = {};
   for (const [weekday, entry] of Object.entries(days)) {
     if (!entry || typeof entry !== "object") { out[weekday] = entry; continue; }
-    const { session: _s, slots: _sl, effort: _e, slotEfforts: _se, ...rest } = entry;
+    const { session: _s, slots: _sl, effort: _e, slotEfforts: _se, lockSlot: _ls, ...rest } = entry;
     out[weekday] = rest;
   }
   return out;
@@ -265,7 +268,10 @@ export function isValidProgramWeekDays(days) {
       if (!Array.isArray(entry.slotEfforts) || entry.slotEfforts.length > PROGRAM_SLOTS) return false;
       if (!entry.slotEfforts.every((e) => e == null || isEffortLevel(e))) return false;
     }
-    const extra = Object.keys(entry).filter((k) => !["session", "intensity", "slots", "effort", "slotEfforts"].includes(k));
+    // #8549: laesesiden kommer foer skrivesiden, saa en tilbagerulning aldrig goer en raekke ugyldig.
+    if (entry.lockSlot != null
+      && !(Number.isInteger(entry.lockSlot) && entry.lockSlot >= 0 && entry.lockSlot < PROGRAM_SLOTS)) return false;
+    const extra = Object.keys(entry).filter((k) => !["session", "intensity", "slots", "effort", "slotEfforts", "lockSlot"].includes(k));
     if (extra.length) return false;
   }
   return true;
