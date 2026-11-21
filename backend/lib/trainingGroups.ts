@@ -29,6 +29,7 @@ import { WEEKDAY_KEYS } from "./training.js";
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 import { isValidProgramWeekDays } from "./trainingPrograms.js";
 import type { FatigueRuleRow } from "./trainingFatigueRules.ts";
+import { isValidRotation, sameRotationPasses, buildRotationOnSave } from "./trainingRotation.js"; // #8548
 
 export const TRAINING_GROUPS_FLAG_KEY = "training_groups";
 export const GROUP_NAME_MAX = 40;
@@ -43,6 +44,9 @@ export type GroupRow = {
   program_key: string | null;
   fatigue_threshold: number | null;
   fallback: string | null;
+  // #8548: laeses kun med training_rotation on (kolonnerne findes foerst efter migrationen).
+  rotation?: unknown;
+  plan_kind?: string | null;
 };
 
 export type MemberRow = {
@@ -163,6 +167,36 @@ export function copyWeekDays(days: WeekDays): WeekDays {
   return out;
 }
 
+// #8548 · Gruppens rotation som KOPI i en foelgende rytters raekke (samme kopi-model
+// som felterne). Pladsen er altid pr. rytter (den ligger paa hans kvitteringer), saa
+// rev og anker bygges oven paa RYTTERENS forrige rotation, ikke gruppens:
+//   · gruppen staar paa Rotation: har rytteren allerede de samme pas (og intet "Spring
+//     til pas"), roeres hans rotation ikke; ellers en ny rev, der beholder hans plads
+//     ved samme laengde (ejer 21/11, svar 3) eller starter ved startIndex.
+//   · gruppen staar paa Week blocks, og rytteren stod paa Rotation: plan_kind foelger
+//     gruppen; hans rotation bliver liggende, saa et skift tilbage fortsaetter.
+//   · ellers intet: noeglerne skrives slet ikke (raekken er praecis som foer).
+export type RotationCopyOptions = { keepPlace?: boolean; startIndex?: number | null };
+export type RotationCopyPatch = { rotation?: unknown; plan_kind?: string | null };
+
+export function groupRotationCopyPatch(
+  group: Pick<GroupRow, "rotation" | "plan_kind">,
+  row: { rotation?: unknown; plan_kind?: string | null } | null | undefined,
+  { keepPlace = true, startIndex = null }: RotationCopyOptions = {},
+): RotationCopyPatch {
+  if (group.plan_kind === "rotation" && isValidRotation(group.rotation)) {
+    const { passes } = group.rotation as { passes: unknown[] };
+    const own = row?.rotation ?? null;
+    const unchanged = startIndex == null && sameRotationPasses(own, passes);
+    return {
+      rotation: unchanged ? own : buildRotationOnSave(own, passes, { keepPlace, startIndex: startIndex ?? undefined }),
+      plan_kind: "rotation",
+    };
+  }
+  if (row?.plan_kind === "rotation") return { plan_kind: group.plan_kind === "week" ? "week" : null };
+  return {};
+}
+
 // ── DB ─────────────────────────────────────────────────────────────────────
 
 type Supa = { from: (table: string) => any };
@@ -198,10 +232,16 @@ async function isEnabledForTeam(supabase: Supa, teamId: string): Promise<boolean
 }
 
 // Holdets grupper + medlemmer. Manglende tabeller = ingen grupper.
-export async function loadTeamGroups(supabase: Supa, teamId: string): Promise<{ groups: GroupRow[]; members: MemberRow[] }> {
+// #8548: `rotation: true` (kun med training_rotation on) laeser ogsaa rotation og plan_kind.
+export async function loadTeamGroups(
+  supabase: Supa, teamId: string, { rotation = false }: { rotation?: boolean } = {},
+): Promise<{ groups: GroupRow[]; members: MemberRow[] }> {
   const [groupsRes, membersRes] = await Promise.all([
     supabase.from(GROUPS_TABLE)
-      .select("id, team_id, name, days, program_key, fatigue_threshold, fallback")
+      // schema-columns-ok: rotation + plan_kind tilfoejes af database/2026-11-22-8548-training-rotation.sql (post-merge); kun laest med flaget on.
+      .select(rotation
+        ? "id, team_id, name, days, program_key, fatigue_threshold, fallback, rotation, plan_kind"
+        : "id, team_id, name, days, program_key, fatigue_threshold, fallback")
       .eq("team_id", teamId).order("created_at", { ascending: true }),
     supabase.from(MEMBERS_TABLE).select("rider_id, group_id, team_id, follows_group").eq("team_id", teamId),
   ]);

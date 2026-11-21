@@ -148,6 +148,51 @@ export function buildRotationOnSave(prev, passes, { keepPlace = true, startIndex
   return next;
 }
 
+// ═══ SKRIVNINGEN FRA KLIENTEN (rytterens plan og gruppens plan) ══════════════
+// Body: { planKind?, passes?, keepPlace?, startIndex? }
+//   planKind    'week' | 'rotation'. Udeladt: 'rotation' naar pas sendes, ellers uaendret.
+//   passes      den nye liste (valideres af normalizeRotationPasses i routen).
+//   keepPlace   standard true: behold pladsen ved samme laengde (ejer 21/11, svar 3).
+//   startIndex  "Spring til pas" / "Start fra pas 1" (0-baseret).
+// { ok: true, planKind, passes, keepPlace, startIndex } | { ok: false, reason }
+export function parseRotationWrite(body) {
+  const { planKind, passes, keepPlace, startIndex } = body ?? {};
+  if (planKind !== undefined && !isPlanKind(planKind)) return { ok: false, reason: "invalid_plan_kind" };
+  if (passes !== undefined && !Array.isArray(passes)) return { ok: false, reason: "invalid_passes" };
+  if (keepPlace !== undefined && typeof keepPlace !== "boolean") return { ok: false, reason: "invalid_keep_place" };
+  const hasStart = startIndex !== undefined && startIndex !== null;
+  if (hasStart && !(Number.isInteger(startIndex) && startIndex >= 0)) return { ok: false, reason: "invalid_start" };
+  if (planKind === undefined && passes === undefined && !hasStart) return { ok: false, reason: "nothing_to_write" };
+  return {
+    ok: true,
+    planKind: planKind ?? (passes !== undefined ? "rotation" : undefined),
+    passes,
+    keepPlace: keepPlace ?? true,
+    startIndex: hasStart ? startIndex : null,
+  };
+}
+
+// Den nye tilstand oven paa den gemte. `passes` er den normaliserede liste (eller
+// undefined, naar klienten ikke sendte nogen). Samme pas uden "Spring til pas" er
+// ingen aendring: rev staar stille, saa rytternes stempler stadig passer.
+// { ok: true, rotation, planKind } | { ok: false, reason }
+export function applyRotationWrite({ prev = null, prevKind = null, write, passes }) {
+  const prevValid = isValidRotation(prev) ? prev : null;
+  let rotation = prevValid;
+  if (passes !== undefined || write.startIndex != null) {
+    const base = passes ?? prevValid?.passes ?? null;
+    if (!base) return { ok: false, reason: "rotation_missing" };
+    const unchanged = write.startIndex == null && sameRotationPasses(prevValid, base);
+    if (!unchanged) {
+      rotation = buildRotationOnSave(prev, base, { keepPlace: write.keepPlace, startIndex: write.startIndex ?? undefined });
+      if (!rotation) return { ok: false, reason: "invalid_start" };
+    }
+  }
+  const planKind = write.planKind ?? (isPlanKind(prevKind) ? prevKind : null);
+  if (planKind === "rotation" && !rotation) return { ok: false, reason: "rotation_missing" };
+  return { ok: true, rotation: rotation ? copyRotation(rotation) : null, planKind };
+}
+
 function isValidStamp(stamp) {
   return isPlainObject(stamp)
     && isPositiveInt(stamp.rev)

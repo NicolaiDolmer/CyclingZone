@@ -7,6 +7,7 @@ import {
   ROTATION_MAX_PASSES, ROTATION_MIN_PASSES, ROTATION_OUTCOMES, PLAN_KINDS,
   isPlanKind, isValidRotation, isValidRotationPass, normalizeRotationPasses, copyRotation, sameRotationPasses,
   buildRotationOnSave, nextRotationIndex, advancesRotation, rotationStamp, rotationPassAt,
+  parseRotationWrite, applyRotationWrite,
 } from "./trainingRotation.js";
 
 const P = (...sessions) => sessions.map((session) => ({ session }));
@@ -117,6 +118,44 @@ test("buildRotationOnSave: en kaede af rettelser uden koersel bevarer fromRev og
 
 test("buildRotationOnSave: rev stiger ogsaa oven paa en ugyldig gammel vaerdi", () => {
   assert.equal(buildRotationOnSave({ v: 9, rev: 7 }, ABC).rev, 8);
+});
+
+// ── Skrivningen fra klienten ─────────────────────────────────────────────────
+
+test("parseRotationWrite: typer, standarder og intet at skrive", () => {
+  assert.deepEqual(parseRotationWrite({ passes: ABC }), { ok: true, planKind: "rotation", passes: ABC, keepPlace: true, startIndex: null });
+  assert.equal(parseRotationWrite({ planKind: "week" }).planKind, "week");
+  assert.equal(parseRotationWrite({ startIndex: 2 }).planKind, undefined, "kun et spring roerer ikke markoeren");
+  assert.equal(parseRotationWrite({}).reason, "nothing_to_write");
+  assert.equal(parseRotationWrite(null).reason, "nothing_to_write");
+  assert.equal(parseRotationWrite({ planKind: "blocks" }).reason, "invalid_plan_kind");
+  assert.equal(parseRotationWrite({ passes: "sprint" }).reason, "invalid_passes");
+  assert.equal(parseRotationWrite({ passes: ABC, keepPlace: "yes" }).reason, "invalid_keep_place");
+  assert.equal(parseRotationWrite({ startIndex: -1 }).reason, "invalid_start");
+  assert.equal(parseRotationWrite({ startIndex: 1.5 }).reason, "invalid_start");
+});
+
+test("applyRotationWrite: nye pas giver ny rev; samme pas staar stille", () => {
+  const first = applyRotationWrite({ write: parseRotationWrite({ passes: ABC }), passes: ABC });
+  assert.deepEqual(first, { ok: true, planKind: "rotation", rotation: { v: 1, passes: ABC, rev: 1, anchor: { rev: 1, index: 0 } } });
+  const again = applyRotationWrite({ prev: first.rotation, prevKind: "rotation", write: parseRotationWrite({ passes: ABC }), passes: ABC });
+  assert.deepEqual(again.rotation, first.rotation, "ingen rev-bump uden aendring");
+  const edited = applyRotationWrite({ prev: first.rotation, prevKind: "rotation", write: parseRotationWrite({ passes: P("rest", "endurance", "threshold") }), passes: P("rest", "endurance", "threshold") });
+  assert.deepEqual(edited.rotation.anchor, { rev: 2, index: 0, fromRev: 1 });
+});
+
+test("applyRotationWrite: Week blocks beholder rotationen, spring kraever en rotation", () => {
+  const prev = rot();
+  const toWeek = applyRotationWrite({ prev, prevKind: "rotation", write: parseRotationWrite({ planKind: "week" }) });
+  assert.deepEqual(toWeek, { ok: true, planKind: "week", rotation: prev });
+  const back = applyRotationWrite({ prev, prevKind: "week", write: parseRotationWrite({ planKind: "rotation" }) });
+  assert.deepEqual(back.rotation, prev, "et skift tilbage fortsaetter (samme rev)");
+  const jump = applyRotationWrite({ prev, prevKind: "rotation", write: parseRotationWrite({ startIndex: 2 }) });
+  assert.deepEqual([jump.planKind, jump.rotation.rev, jump.rotation.anchor], ["rotation", 2, { rev: 2, index: 2 }]);
+  assert.equal(applyRotationWrite({ prev, write: parseRotationWrite({ startIndex: 3 }) }).reason, "invalid_start");
+  assert.equal(applyRotationWrite({ write: parseRotationWrite({ startIndex: 0 }) }).reason, "rotation_missing");
+  assert.equal(applyRotationWrite({ write: parseRotationWrite({ planKind: "rotation" }) }).reason, "rotation_missing");
+  assert.deepEqual(applyRotationWrite({ write: parseRotationWrite({ planKind: "week" }) }), { ok: true, planKind: "week", rotation: null });
 });
 
 // ── Pladsen ──────────────────────────────────────────────────────────────────

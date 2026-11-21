@@ -16,6 +16,8 @@
 //   POST   /:id/program      { programKey }             "Put on" et program paa gruppen
 //   POST   /:id/follow       { riderIds }               rytterne foelger gruppen igen
 //   PUT    /:id/fatigue      { mode, threshold?, fallback? }  traethedsundtagelse for hele gruppen
+//   PUT    /:id/rotation     { planKind?, passes?, keepPlace?, startIndex? }  gruppens rotation (#8548,
+//                            bag training_rotation; off = 409 feature_disabled)
 //
 // Planen skrives som KOPI ind i hver foelgende rytters egen raekke i
 // training_week_plans (lib/trainingGroups.ts). "Train now"-laasen (#4847) gaelder
@@ -32,8 +34,11 @@ import { seedProgramWeekDays, planRunsOffStandard } from "../lib/trainingWeekPla
 import { effortForWrite, isTrainingEffortLevelsEnabled } from "../lib/trainingEffortLevels.js"; // #7947
 import {
   GROUPS_TABLE, MEMBERS_TABLE, isTrainingGroupsEnabled, loadTeamGroups, normalizeGroupName, sanitizeRiderIds,
-  followerIds, groupSeedDays, groupFatiguePatch, copyWeekDays,
+  followerIds, groupSeedDays, groupFatiguePatch, copyWeekDays, groupRotationCopyPatch,
 } from "../lib/trainingGroups.ts";
+import { isTrainingRotationEnabled } from "../lib/trainingRotationFlag.js"; // #8548
+import { rotationWriteInput, rotationView } from "../lib/trainingRotationInput.js"; // #8548
+import { applyRotationWrite } from "../lib/trainingRotation.js"; // #8548
 
 const PASS = (_req, _res, next) => next();
 
@@ -69,8 +74,12 @@ export function createTrainingGroupsRouter({
     return data ?? [];
   }
 
-  async function weekRows(teamId) {
-    const { data, error } = await supabase.from("training_week_plans").select("id, rider_id, days").eq("team_id", teamId);
+  // #8548: med training_rotation on laeses ogsaa rotation og plan_kind (kolonnerne findes foerst
+  // efter migrationen, og flag-raekken oprettes af samme migration).
+  async function weekRows(teamId, { rotation = false } = {}) {
+    const { data, error } = await supabase.from("training_week_plans")
+      // schema-columns-ok: rotation + plan_kind tilfoejes af database/2026-11-22-8548-training-rotation.sql (post-merge); kun laest med flaget on.
+      .select(rotation ? "id, rider_id, days, rotation, plan_kind" : "id, rider_id, days").eq("team_id", teamId);
     if (error) throw new Error(error.message);
     return data ?? [];
   }
@@ -88,8 +97,9 @@ export function createTrainingGroupsRouter({
 
   // Alt en gruppe-beregning skal bruge, i eet hug.
   async function context(teamId, req) {
+    const rotationOn = await isTrainingRotationEnabled(supabase, { isBetaTester: await isViewerBetaTester(req) }); // #8548
     const [riders, rows, { groups, members }, plans] = await Promise.all([
-      ownRiders(teamId), weekRows(teamId), loadTeamGroups(supabase, teamId), plansByRider(teamId),
+      ownRiders(teamId), weekRows(teamId, { rotation: rotationOn }), loadTeamGroups(supabase, teamId, { rotation: rotationOn }), plansByRider(teamId),
     ]);
     // #5319: v3-saaningen foelger viewerens katalog; flaget slaas kun op naar det kan flytte nogen.
     const v3Affected = riders.some((r) => !(plans.get(r.id)?.focus && plans.get(r.id)?.intensity) && v3SmartDefaultFocus("threshold", r, { v3: true }) !== "threshold");
@@ -108,7 +118,7 @@ export function createTrainingGroupsRouter({
         secondaryType: rider.secondary_type ?? null, catalogV3, effortLevels,
       });
     }
-    return { riders, ownIds, rows, groups, members, ownDaysByRider, seeds };
+    return { riders, ownIds, rows, groups, members, ownDaysByRider, seeds, rotationOn };
   }
 
   function groupView(group, ctx) {
@@ -126,17 +136,25 @@ export function createTrainingGroupsRouter({
       programKey: group.program_key ?? null,
       fatigue: group.fallback ? { threshold: group.fatigue_threshold ?? null, fallback: group.fallback } : null,
       members: memberRows.map((m) => ({ riderId: m.rider_id, followsGroup: m.follows_group !== false })),
+      // #8548: kun med kontakten on (off = svaret er praecis som foer).
+      ...(ctx.rotationOn ? rotationView(group) : {}),
     };
   }
 
   // Skriver gruppens uge som KOPI ind i hver rytters egen raekke.
-  async function writeCopies(teamId, rows, riderIds, days, programKey) {
-    const byRider = new Map(rows.filter((r) => r.rider_id != null).map((r) => [r.rider_id, r.id]));
+  // #8548: `rotationGroup` (kun med kontakten on) = gruppen, hvis rotation og markoer
+  // ogsaa kopieres (groupRotationCopyPatch); null = noeglerne skrives slet ikke, som foer.
+  async function writeCopies(teamId, rows, riderIds, days, programKey, rotationGroup = null) {
+    const byRider = new Map(rows.filter((r) => r.rider_id != null).map((r) => [r.rider_id, r]));
     const now = clock().toISOString();
     const inserts = [];
     for (const riderId of riderIds) {
-      const patch = { days: copyWeekDays(days), program_key: programKey ?? null, updated_at: now };
-      const id = byRider.get(riderId);
+      const row = byRider.get(riderId);
+      const patch = {
+        days: copyWeekDays(days), program_key: programKey ?? null, updated_at: now,
+        ...(rotationGroup ? groupRotationCopyPatch(rotationGroup, row) : {}),
+      };
+      const id = row?.id;
       if (id) {
         const { error } = await supabase.from("training_week_plans").update(patch).eq("id", id);
         if (error) throw new Error(error.message);
@@ -246,7 +264,7 @@ export function createTrainingGroupsRouter({
       }
       if (riderIds) {
         const added = await setMembers(req.team.id, group.id, riderIds, ctx.members);
-        if (hasDays && added.length) await writeCopies(req.team.id, ctx.rows, added, group.days, group.program_key);
+        if (hasDays && added.length) await writeCopies(req.team.id, ctx.rows, added, group.days, group.program_key, ctx.rotationOn ? group : null);
       }
       await respond(req, res);
     } catch (err) {
@@ -299,7 +317,7 @@ export function createTrainingGroupsRouter({
       if (error) throw new Error(error.message);
       // Regel A: rytterne med en etape i feltet beholder etapen (motoren springer
       // passet over paa en loebsdag han koerer), saa kopien skrives til alle.
-      await writeCopies(req.team.id, ctx.rows, followerIds(ctx.members, group.id, ctx.ownIds), days, group.program_key);
+      await writeCopies(req.team.id, ctx.rows, followerIds(ctx.members, group.id, ctx.ownIds), days, group.program_key, ctx.rotationOn ? group : null);
       await respond(req, res);
     } catch (err) {
       captureExceptionFn(err);
@@ -328,7 +346,7 @@ export function createTrainingGroupsRouter({
           .eq("group_id", group.id).in("rider_id", memberIds);
         if (followError) throw new Error(followError.message);
       }
-      await writeCopies(req.team.id, ctx.rows, memberIds, days, program.key);
+      await writeCopies(req.team.id, ctx.rows, memberIds, days, program.key, ctx.rotationOn ? group : null);
       res.json({ ok: true, applied: memberIds.length, programKey: program.key });
     } catch (err) {
       captureExceptionFn(err);
@@ -349,7 +367,7 @@ export function createTrainingGroupsRouter({
         const { error } = await supabase.from(MEMBERS_TABLE).update({ follows_group: true })
           .eq("group_id", group.id).in("rider_id", riderIds);
         if (error) throw new Error(error.message);
-        if (isValidProgramWeekDays(group.days)) await writeCopies(req.team.id, ctx.rows, riderIds, group.days, group.program_key);
+        if (isValidProgramWeekDays(group.days)) await writeCopies(req.team.id, ctx.rows, riderIds, group.days, group.program_key, ctx.rotationOn ? group : null);
       }
       await respond(req, res);
     } catch (err) {
@@ -369,6 +387,56 @@ export function createTrainingGroupsRouter({
       const { error } = await supabase.from(GROUPS_TABLE)
         .update({ ...patch, updated_at: clock().toISOString() }).eq("id", group.id).eq("team_id", req.team.id);
       if (error) throw new Error(error.message);
+      await respond(req, res);
+    } catch (err) {
+      captureExceptionFn(err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // #8548: gruppens rotation og markoer (Week blocks | Rotation). Kopieres ind i hver
+  // foelgende rytters raekke; pladsen er pr. rytter, saa hver kopi bygges oven paa
+  // rytterens egen rotation (lib/trainingGroups.ts groupRotationCopyPatch). Kontakten
+  // off = 409 feature_disabled og intet skrives.
+  router.put("/:id/rotation", requireAuth, writeLimiter, planLock("programApply"), async (req, res) => {
+    try {
+      const ctx = await writeContext(req, res);
+      if (!ctx) return;
+      if (!ctx.rotationOn) return res.status(409).json({ error: "feature_disabled" });
+      const input = await rotationWriteInput(supabase, req.body, { viewerIsBeta: () => isViewerBetaTester(req) });
+      if (!input.ok) return res.status(400).json({ error: input.reason });
+      const group = await findGroup(req, res, ctx);
+      if (!group) return;
+      const next = applyRotationWrite({ prev: group.rotation ?? null, prevKind: group.plan_kind ?? null, write: input.write, passes: input.passes });
+      if (!next.ok) return res.status(400).json({ error: next.reason });
+      const now = clock().toISOString();
+      const { error } = await supabase.from(GROUPS_TABLE)
+        .update({ rotation: next.rotation, plan_kind: next.planKind, updated_at: now })
+        .eq("id", group.id).eq("team_id", req.team.id);
+      if (error) throw new Error(error.message);
+      // Kun rotation og markoer kopieres; rytternes felter roeres ikke her.
+      const updated = { rotation: next.rotation, plan_kind: next.planKind };
+      const copyOpts = { keepPlace: input.write.keepPlace, startIndex: input.write.startIndex };
+      const byRider = new Map(ctx.rows.filter((r) => r.rider_id != null).map((r) => [r.rider_id, r]));
+      const inserts = [];
+      for (const riderId of followerIds(ctx.members, group.id, ctx.ownIds)) {
+        const row = byRider.get(riderId);
+        const patch = groupRotationCopyPatch(updated, row, copyOpts);
+        if (Object.keys(patch).length === 0) continue;
+        if (row) {
+          const { error: rowError } = await supabase.from("training_week_plans").update({ ...patch, updated_at: now }).eq("id", row.id);
+          if (rowError) throw new Error(rowError.message);
+        } else {
+          // En rytter uden raekke faar gruppens felter (eller sin saaede uge), saa motoren
+          // altid har gyldige felter at falde tilbage paa.
+          const days = isValidProgramWeekDays(group.days) ? copyWeekDays(group.days) : ctx.seeds[riderId];
+          inserts.push({ team_id: req.team.id, rider_id: riderId, days, program_key: group.program_key ?? null, ...patch, updated_at: now });
+        }
+      }
+      if (inserts.length) {
+        const { error: insError } = await supabase.from("training_week_plans").insert(inserts);
+        if (insError) throw new Error(insError.message);
+      }
       await respond(req, res);
     } catch (err) {
       captureExceptionFn(err);
