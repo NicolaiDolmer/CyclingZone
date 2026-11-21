@@ -44,7 +44,10 @@ function recordReads(fake) {
     });
     return wrapped;
   };
-  return () => reads.filter((entry) => !entry.write).map(({ table, select, calls }) => ({ table, select, calls }));
+  // Dommerens afgoerelse 21/11 (#8537): kontaktens opslag (training_effort_levels) holdes uden for
+  // fingeraftrykket; det proeves med eksakt antal i trainingEffortLevels.pr24.test.js.
+  const effortSwitch = (entry) => entry.table === "app_config" && entry.calls.some(([op, args]) => op === "eq" && args?.[0] === "key" && args?.[1] === "training_effort_levels");
+  return () => reads.filter((entry) => !entry.write && !effortSwitch(entry)).map(({ table, select, calls }) => ({ table, select, calls }));
 }
 
 async function eveningRun() {

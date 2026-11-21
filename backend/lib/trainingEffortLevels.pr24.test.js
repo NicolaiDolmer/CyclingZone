@@ -27,7 +27,7 @@ import {
   hash, OFF_FLAGS, programCellOutcome, groupCellOutcome, seasonLoadOutcome, CELL_CALLS, fakeSupabase,
 } from "./trainingEffortLevels7947b.golden.mjs";
 import { rawPairScoreRows, engineScoreRows, RAW_PAIRS } from "./trainingEffortLevels7947.golden.mjs";
-import { rider as harnessRider } from "./trainNowSameResult7982.harness.js";
+import { rider as harnessRider, SCENARIOS as HARNESS_SCENARIOS, seedState as harnessSeed, createFake as harnessFake } from "./trainNowSameResult7982.harness.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const GOLDEN = JSON.parse(readFileSync(join(here, "trainingEffortLevels7947b.golden.json"), "utf8"));
@@ -419,5 +419,34 @@ describe("migrationen 2026-11-21 (PGlite)", () => {
       assert.deepEqual(rows.map((r) => r.intensity), ["hard", null]);
     } finally { await db.exec("ROLLBACK"); }
     await assert.rejects(() => db.exec(`INSERT INTO rider_training_scores(rider_id,intensity) VALUES('${RIDERS[0]}','rest')`), /check constraint/i);
+  });
+});
+
+// ── Kontaktens opslag (dommerens afgoerelse 21/11 paa #8537, ejervalg #7947) ────────────────────
+// #7982-proeverne holder opslaget af training_effort_levels uden for deres optagelse. Her kraeves
+// det eksakte antal: harness-holdene har planer paa andet niveau end standarden og laeser derfor
+// kontakten; med standardpar (som alle planer i prod 21/11) laeses den aldrig.
+describe("kontaktens opslag ved planer paa andet niveau", () => {
+  async function switchReads(name, { standardPairs = false } = {}) {
+    const state = harnessSeed(HARNESS_SCENARIOS[name].seed);
+    if (standardPairs) {
+      const standard = sessionIntensityFor({ catalogV3: false });
+      for (const plan of state.training_plans ?? []) {
+        if (planRunsOffStandard(plan)) plan.intensity = standard[plan.focus] ?? plan.intensity;
+      }
+      assert.ok(!(state.training_plans ?? []).some(planRunsOffStandard), "alle planer er nu standardpar");
+    }
+    const fake = harnessFake(state);
+    const out = { push() {} };
+    await quiet(() => HARNESS_SCENARIOS[name].run(state, fake, out, () => ({ state, fake })));
+    return fake.effortSwitchReads.length;
+  }
+  test("aftenkoersel uden tryk: 5 opslag med harness-planerne, 0 med standardpar", async () => {
+    assert.equal(await switchReads("aftenkoersel_uden_tryk"), 5);
+    assert.equal(await switchReads("aftenkoersel_uden_tryk", { standardPairs: true }), 0);
+  });
+  test("stort hold, beta-tryk: 1 opslag med harness-planerne, 0 med standardpar", async () => {
+    assert.equal(await switchReads("stort_hold_beta_tryk"), 1);
+    assert.equal(await switchReads("stort_hold_beta_tryk", { standardPairs: true }), 0);
   });
 });
