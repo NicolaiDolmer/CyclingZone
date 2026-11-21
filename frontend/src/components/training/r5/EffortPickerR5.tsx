@@ -13,7 +13,7 @@
 import { useTranslation } from "react-i18next";
 import { Segmented } from "../../ui/Segmented.jsx";
 import { AlertTriangleIcon } from "../../ui/icons/index.jsx";
-import { LEVEL_EFFORTS, injuryRiskPercent, type Effort } from "./todayR5Model.ts";
+import { LEVEL_EFFORTS, type Effort } from "./todayR5Model.ts";
 
 export default function EffortPickerR5({ value, onPick, disabled, scope, full = false, testId }: {
   /** Det trykkede valg (et niveau eller Hvile); null = intet trykket (holdlinjen). */
@@ -52,14 +52,16 @@ export default function EffortPickerR5({ value, onPick, disabled, scope, full = 
   );
 }
 
-/** Raekkens skaderisiko-linje: vises kun naar Haard er dagens indsats. */
-export function HardRiskLine({ risk }: { risk: number | null | undefined }) {
+/**
+ * Raekkens skaderisiko-linje: vises kun naar Haard er dagens indsats. Ejer 21/11: ingen
+ * procent til spilleren, kun at Haard giver oeget skaderisiko.
+ */
+export function HardRiskLine() {
   const { t: tR5 } = useTranslation("trainingR5");
-  const pct = injuryRiskPercent(risk);
   return (
     <span className="inline-flex items-center gap-1 text-2xs text-cz-warning" data-testid="r5-hard-risk">
       <AlertTriangleIcon size={12} aria-hidden="true" className="shrink-0" />
-      <span className="tabular-nums">{pct === null ? tR5("effortPicker.riskGeneric") : tR5("effortPicker.risk", { pct })}</span>
+      <span>{tR5("effortPicker.riskGeneric")}</span>
     </span>
   );
 }

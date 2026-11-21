@@ -86,7 +86,6 @@
     "levelAria": "{scope}: niveau",
     "restAria": "{scope}: hvile, uden fokus",
     "hardHint": "Hård øger skaderisikoen.",
-    "risk": "Skaderisiko {pct} %",
     "riskGeneric": "Hård øger skaderisikoen"
   },
   "yourDay": {

@@ -237,12 +237,6 @@ export function showsInjuryRisk(effort: Effort | null | undefined): boolean {
   return effort === "hard";
 }
 
-/** Skaderisikoen (0-1 fra spillets tilstand) som hele procent, eller null naar den ikke kendes. */
-export function injuryRiskPercent(risk: unknown): number | null {
-  if (typeof risk !== "number" || !Number.isFinite(risk) || risk < 0) return null;
-  return Math.min(100, Math.round(risk * 100));
-}
-
 // --- Traeningsvaelgeren (#7947, ejer 20/11) -------------------------------------
 //
 // "Training: <fokus>" foer Rest | Easy | Medium | Hard, paa holdlinjen og i hver

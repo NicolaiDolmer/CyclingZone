@@ -86,7 +86,6 @@
     "levelAria": "{scope}: nivel",
     "restAria": "{scope}: descanso, sin enfoque",
     "hardHint": "Duro aumenta el riesgo de lesión.",
-    "risk": "Riesgo de lesión {pct} %",
     "riskGeneric": "Duro aumenta el riesgo de lesión"
   },
   "yourDay": {
