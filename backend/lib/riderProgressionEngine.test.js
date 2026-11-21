@@ -11,8 +11,10 @@ import {
 } from "./riderProgressionEngine.js";
 import {
   PROGRESSION_CONFIG, AGING_V2_CONFIG, AGING_V2_DECLINING_ABILITIES, developRiderSeasonV2, buildCapsForRider,
+  xpAgingConfig,
 } from "./riderProgression.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
+import { createHash } from "node:crypto";
 
 // #6499: motoren henter belastningen for den afsluttede sæson, før den skriver.
 // Testene injicerer en tom belastning (= ingen bremse), medmindre de selv tester
@@ -825,4 +827,169 @@ test("#6499: kan belastningen ikke læses, kaster skiftet FØR noget skrives (al
   }), /timeout/);
   assert.equal(calls.length, 0, "ingen rytter udviklet");
   assert.equal(state.rider_development_log.length, 0);
+});
+
+// ── #8522 frossen golden (#7587): sæsonskiftet med XP slukket ─────────────────
+// Digesten er regnet af MERGE-BASENS motor (før #8522). Den dækker hver RPC-skrivning,
+// summary og hvilke tabeller motoren læser: med XP slukket må motoren aldrig røre
+// slid-tabellen, så skiftet virker, også før migrationen er applied.
+test("#8522 golden: sæsonskiftet med XP slukket er bit-identisk med merge-basen", async () => {
+  const load = new Map([
+    ["young-ai", { raceDays: 40, hardDays: 90 }],
+    ["vet-human", { raceDays: 30, hardDays: 40 }],
+    ["vet-ai", { raceDays: 20, hardDays: 200 }],
+    ["vet-free", { raceDays: 5, hardDays: 0 }],
+    ["old-human", { raceDays: 0, hardDays: 60 }],
+    ["plateau-ai", { raceDays: 70, hardDays: 10 }],
+  ]);
+  const state = mixedPopulation();
+  const tables = new Set();
+  const calls = [];
+  const supabase = createMockSupabase(state);
+  const spy = {
+    from: (t) => { tables.add(t); return supabase.from(t); },
+    rpc: (fn, a) => { calls.push(JSON.parse(JSON.stringify(a))); return supabase.rpc(fn, a); },
+  };
+  const summary = await developRidersForSeasonEngine({
+    supabase: spy, seasonId: "s5", seasonNumber: 5, notify: false, now: new Date("2026-11-28T10:00:00Z"),
+    seasonLoadByRider: load, loadAgingCfgFn: async () => null, detectGraduatesFn: async () => {},
+  });
+  for (const c of calls) if (c.p_rider_patch?.retirement_notice_given_at) c.p_rider_patch.retirement_notice_given_at = "<set>";
+  const digest = createHash("sha256").update(JSON.stringify({ calls, summary, tables: [...tables].sort() })).digest("hex");
+  assert.equal(digest, "ad68724d077a5dc4f275bea6a2ee67538c901fc9ae239b88abd95e71f2ce2ed5");
+});
+
+// ── #8522 (#6110 G3a): procent-aldring + varigt slid under XP. Syntetiske tal. ──
+const PCT_CFG = xpAgingConfig({ aging: {
+  physical: [{ at: 30, value: 0 }, { at: 34, value: 0.04 }, { at: 40, value: 0.1 }],
+  mental: [{ at: 32, value: 0 }, { at: 36, value: 0.01 }, { at: 40, value: 0.04 }],
+} });
+
+// Kører et skifte med procent-aldringen. RPC-spionen spejler 2b-blokken i migrationen:
+// bærer evne-patchen ability_wear, overskrives rytterens slid-række med den.
+async function runPct(state, { seasonId = "s5", seasonNumber = 5, load = new Map(), failWear = false } = {}) {
+  state.rider_wear ??= [];
+  const calls = [];
+  const supabase = createMockSupabase(state);
+  const spy = {
+    from: (t) => {
+      if (t === "rider_wear" && failWear) {
+        const broken = { select: () => broken, order: () => broken, in: () => broken,
+          range: () => Promise.resolve({ data: null, error: { message: "relation \"rider_wear\" does not exist" } }) };
+        return broken;
+      }
+      return supabase.from(t);
+    },
+    rpc: async (fn, a) => {
+      calls.push(JSON.parse(JSON.stringify(a)));
+      const res = await supabase.rpc(fn, a);
+      if (res.data === true && a.p_ability_patch?.ability_wear) {
+        state.rider_wear = state.rider_wear.filter((w) => w.rider_id !== a.p_rider_id);
+        state.rider_wear.push({ rider_id: a.p_rider_id, wear: a.p_ability_patch.ability_wear, season_id: a.p_season_id });
+      }
+      return res;
+    },
+  };
+  const summary = await developRidersForSeasonEngine({
+    supabase: spy, seasonId, seasonNumber, notify: false, now: new Date("2026-11-28T10:00:00Z"),
+    seasonLoadByRider: load, loadAgingCfgFn: async () => PCT_CFG, detectGraduatesFn: async () => {},
+  });
+  return { summary, calls };
+}
+
+test("#8522: under procent-aldringen lægges skiftets fald til sliddet i samme RPC som evnerne", async () => {
+  const state = mixedPopulation();
+  state.rider_wear = [{ rider_id: "vet-human", wear: { sprint: 2, tactics: 1 } }];
+  const before = new Map(state.rider_derived_abilities.map((a) => [a.rider_id, { ...a }]));
+  const { summary, calls } = await runPct(state);
+  assert.equal(summary.aging_v2.rule, "xp_pct");
+  let added = 0;
+  let withWear = 0;
+  for (const c of calls) {
+    const old = before.get(c.p_rider_id);
+    const drops = {};
+    for (const k of VISIBLE_ABILITIES) {
+      if (old[k] == null || c.p_ability_patch[k] == null) continue;
+      const d = old[k] - c.p_ability_patch[k];
+      assert.ok(d >= 0, `${c.p_rider_id}.${k} stiger aldrig ved skiftet`);
+      if (d > 0) drops[k] = d;
+    }
+    const total = Object.values(drops).reduce((s, d) => s + d, 0);
+    if (total === 0) {
+      assert.equal("ability_wear" in c.p_ability_patch, false, `${c.p_rider_id}: intet fald = intet slid skrevet`);
+      continue;
+    }
+    withWear++;
+    added += total;
+    const prev = c.p_rider_id === "vet-human" ? { sprint: 2, tactics: 1 } : {};
+    const expected = { ...prev };
+    for (const [k, d] of Object.entries(drops)) expected[k] = (expected[k] ?? 0) + d;
+    assert.deepEqual(c.p_ability_patch.ability_wear, expected, `${c.p_rider_id}: gammelt slid + skiftets fald`);
+    assert.equal("ability_wear" in c.p_log.abilities, false, "dev-loggen bærer kun evner");
+  }
+  assert.ok(withWear >= 3, "veteranerne ældes");
+  assert.equal(summary.aging_v2.riders_with_new_wear, withWear);
+  assert.equal(summary.aging_v2.wear_points_added, added);
+  assert.equal(summary.aging_v2.ability_points_declined, added);
+  for (const id of ["young-ai", "young-human", "young-free", "plateau-ai"]) {
+    assert.equal(state.rider_wear.some((w) => w.rider_id === id), false, `${id}: ingen slid i plateauet eller før`);
+  }
+});
+
+test("#8522: sliddet bevares over flere skifter og kan kun vokse; en genkørsel lægger intet til", async () => {
+  const state = mixedPopulation();
+  await runPct(state, { seasonId: "s5", seasonNumber: 5 });
+  const after5 = new Map(state.rider_wear.map((w) => [w.rider_id, { ...w.wear }]));
+  const again = await runPct(state, { seasonId: "s5", seasonNumber: 5 });
+  assert.equal(again.calls.length, 0, "genkørsel af samme skifte skriver intet");
+  assert.deepEqual(new Map(state.rider_wear.map((w) => [w.rider_id, { ...w.wear }])), after5);
+  const abilitiesAfter5 = new Map(state.rider_derived_abilities.map((a) => [a.rider_id, { ...a }]));
+  await runPct(state, { seasonId: "s6", seasonNumber: 6 });
+  for (const w of state.rider_wear) {
+    const prev = after5.get(w.rider_id) ?? {};
+    const ab5 = abilitiesAfter5.get(w.rider_id);
+    const ab6 = state.rider_derived_abilities.find((a) => a.rider_id === w.rider_id);
+    for (const k of VISIBLE_ABILITIES) {
+      assert.ok((w.wear[k] ?? 0) >= (prev[k] ?? 0), `${w.rider_id}.${k} slid falder aldrig`);
+      assert.equal((w.wear[k] ?? 0) - (prev[k] ?? 0), (ab5[k] ?? 0) - (ab6[k] ?? 0), `${w.rider_id}.${k}: slid-tilvækst = sæson 6's fald`);
+    }
+  }
+});
+
+test("#8522: mange løb giver mindre fald og mindre slid end få løb", async () => {
+  const few = mixedPopulation();
+  const many = mixedPopulation();
+  const ids = few.riders.map((r) => r.id);
+  const a = await runPct(few, { load: new Map(ids.map((id) => [id, { raceDays: 5, hardDays: 0 }])) });
+  const b = await runPct(many, { load: new Map(ids.map((id) => [id, { raceDays: 70, hardDays: 0 }])) });
+  assert.ok(b.summary.aging_v2.wear_points_added < a.summary.aging_v2.wear_points_added,
+    `${b.summary.aging_v2.wear_points_added} vs ${a.summary.aging_v2.wear_points_added}`);
+});
+
+test("#8522: kan sliddet ikke læses, kaster skiftet FØR noget skrives", async () => {
+  const state = mixedPopulation();
+  const { calls } = await runPct(state, { failWear: true }).then(
+    () => assert.fail("skulle kaste"),
+    (err) => { assert.match(err.message, /riderWear: read failed/); return { calls: [] }; },
+  );
+  assert.equal(calls.length, 0);
+  assert.equal(state.rider_development_log.length, 0, "ingen rytter udviklet");
+});
+
+test("#8522: kandidat B's trin-form under XP rører aldrig sliddet", async () => {
+  const state = mixedPopulation();
+  const tables = new Set();
+  const supabase = createMockSupabase(state);
+  const calls = [];
+  const spy = { from: (t) => { tables.add(t); return supabase.from(t); }, rpc: (fn, a) => { calls.push(a); return supabase.rpc(fn, a); } };
+  const cfgB = xpAgingConfig({ aging: { plateauThroughAge: 27, declineByYearsPastPlateau: [{ maxYears: 99, drop: 2 }] } });
+  const summary = await developRidersForSeasonEngine({
+    supabase: spy, seasonId: "s5", seasonNumber: 5, notify: false, seasonLoadByRider: new Map(),
+    now: new Date("2026-11-28T10:00:00Z"), // regel 16: fast ur
+    loadAgingCfgFn: async () => cfgB, detectGraduatesFn: async () => {},
+  });
+  assert.equal(summary.aging_v2.rule, "xp");
+  assert.equal(tables.has("rider_wear"), false);
+  assert.ok(calls.every((c) => !("ability_wear" in c.p_ability_patch)));
+  assert.equal("wear_points_added" in summary.aging_v2, false);
 });
