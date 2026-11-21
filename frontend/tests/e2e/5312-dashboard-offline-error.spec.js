@@ -34,12 +34,23 @@ test("naar backenden slet ikke kan naas, siger dashboardet det - ikke 'kunne ikk
   // Alle kald mod Express-API'et fejler paa transport-niveau.
   await page.route("**/api/**", (route) => route.abort("failed"));
 
+  // #8019: bestyrelsen var det eneste API-kald paa dashboardets blokerende sti.
+  // Nu er den et modul, og kernen laeses fra databasen. "Slet ikke kan naas"
+  // betyder derfor ogsaa kernens egne laesninger (holdlisten og rytterne);
+  // saa er det kernen selv der siger til. Holdets eget opslag (user_id) faar
+  // lov at svare, saa det er netop kernens fejlflade der testes.
+  await page.route("**/rest/v1/riders?**", (route) => route.abort("failed"));
+  await page.route("**/rest/v1/teams?**", (route) => (
+    new URL(route.request().url()).searchParams.has("user_id") ? route.fallback() : route.abort("failed")
+  ));
+
   await login(page);
   await page.goto("/dashboard");
 
   // #5325: ErrorState har nu role="alert" — assert via rollen, ikke kun teksten.
+  // Databasens SDK proever en transportfejl igen et par gange, foer den giver op.
   const alert = page.getByRole("alert");
-  await expect(alert).toBeVisible();
+  await expect(alert).toBeVisible({ timeout: 20_000 });
   await expect(alert).toContainText(OFFLINE_COPY);
   // Selve bugget: den gamle, misvisende besked maa IKKE staa her.
   await expect(page.getByText(GENERIC_COPY)).toHaveCount(0);
@@ -77,4 +88,40 @@ test("naar serveren svarer, faar spilleren ikke besked om sit eget netvaerk", as
   await expect(page.getByText("Division 2 · 1 rytter")).toBeVisible();
   await expect(page.getByText(OFFLINE_COPY)).toHaveCount(0);
   await expect(page.getByText(GENERIC_COPY)).toHaveCount(0);
+});
+
+// #8019 (ejer 20/11): bestyrelsen er et modul. Fejler kun den, skjules kun
+// bestyrelseskortet; dashboardet vaelter aldrig til offline-siden.
+for (const [label, fail] of [
+  ["netvaerksfejl", (route) => route.abort("failed")],
+  ["HTTP-fejl", (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    return route.fulfill({ status: 500, contentType: "application/json", headers: corsHeaders(request), body: JSON.stringify({ error: "boom" }) });
+  }],
+]) {
+  test(`naar kun bestyrelsen fejler (${label}), skjules kun bestyrelseskortet`, async ({ page }) => {
+    await stabilizePage(page);
+    await installNetworkMocks(page);
+    await page.route("**/api/board/status", fail);
+
+    await login(page);
+    await page.goto("/dashboard");
+
+    await expect(page.getByText("Division 2 · 1 rytter")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Næste træk" })).toBeVisible();
+    await expect(page.getByText(OFFLINE_COPY)).toHaveCount(0);
+    await expect(page.getByText(GENERIC_COPY)).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Bestyrelsens status" })).toHaveCount(0);
+  });
+}
+
+test("med en etableret plan vises bestyrelseskortet, naar svaret kommer", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+
+  await login(page);
+  await page.goto("/dashboard");
+
+  await expect(page.getByRole("heading", { name: "Bestyrelsens status" })).toBeVisible();
 });

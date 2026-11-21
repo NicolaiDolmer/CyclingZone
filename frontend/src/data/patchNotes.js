@@ -1,5 +1,298 @@
 export const PATCHES = [
 {
+  "version": "7.484",
+  "date": "2026-11-21",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Dashboard",
+      "area": "interface",
+      "en": {
+        "title": "Calendar links open the calendar",
+        "body": "The Calendar link in Upcoming races and the race calendar buttons in the empty Recent results and Rider ranking cards now open the calendar instead of Team selection."
+      },
+      "da": {
+        "title": "Kalenderlinks åbner kalenderen",
+        "body": "Kalender-linket i Kommende løb og knapperne til løbskalenderen i de tomme kort Seneste resultater og Rytterrangliste åbner nu kalenderen i stedet for Holdudtagelse."
+      },
+      "refs": [
+        8447
+      ]
+    }
+  ]
+},
+{
+  "version": "7.483",
+  "date": "2026-11-21",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "switched_on",
+      "flag": "development_xp_model",
+      "topic": "Development",
+      "area": "development",
+      "en": {
+        "title": "The Development tab shows XP",
+        "body": "With XP switched on, the Development tab in Daily training shows one line per rider: XP today, XP per day over 30 days, the rating's change this season and how close he is to the next point. Open a rider to see his abilities. The rider type is shown as his natural type. With the column button you can also show the role he rates highest in now, or swap one for the other."
+      },
+      "da": {
+        "title": "Udvikling-fanen viser XP",
+        "body": "Når XP er tændt, viser fanen Udvikling i Daglig træning én linje pr. rytter: XP i dag, XP pr. dag over 30 dage, ratingens ændring i sæsonen og hvor tæt han er på næste point. Åbn en rytter for at se hans evner. Ryttertypen vises som hans naturlige type. Med kolonneknappen kan du også vise den rolle, han har højest rating i nu, eller bytte den ene ud med den anden."
+      },
+      "refs": [
+        7947
+      ]
+    }
+  ]
+},
+{
+  "version": "7.482",
+  "date": "2026-11-20",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "switched_on",
+      "flag": "fatigue_now_7801",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "Fatigue now counts today's stages",
+        "body": "The fatigue you see now counts today's stages straight away, not only at the evening training. Your fatigue limit is checked before every slot, so a rider worn out by today's racing rests in the next slots as you chose. Injury risk and the assistant's suggestions also use fatigue now."
+      },
+      "da": {
+        "title": "Træthed lige nu tæller dagens etaper",
+        "body": "Trætheden, du ser, tæller nu dagens kørte etaper med det samme, ikke først ved aftentræningen. Din træthedsgrænse tjekkes før hvert felt, så en rytter, der bliver træt af dagens løb, hviler i de næste felter, som du har valgt. Skaderisiko og assistentens forslag bruger også træthed lige nu."
+      },
+      "refs": [
+        7801,
+        8088
+      ]
+    }
+  ]
+},
+{
+  "version": "7.481",
+  "date": "2026-11-20",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Dashboard",
+      "area": "interface",
+      "en": {
+        "title": "The dashboard is ready sooner",
+        "body": "Your dashboard no longer waits for the board before it shows your team. Squad selection and the other cards are ready sooner, and nothing jumps when the board card arrives. If the board cannot load, only the board card is hidden."
+      },
+      "da": {
+        "title": "Dashboardet er klar hurtigere",
+        "body": "Dit dashboard venter ikke længere på bestyrelsen, før det viser dit hold. Holdudtagelse og de andre kort er klar hurtigere, og intet hopper, når bestyrelseskortet kommer. Kan bestyrelsen ikke hentes, skjules kun bestyrelseskortet."
+      },
+      "refs": [
+        8019
+      ]
+    }
+  ]
+},
+{
+  "version": "7.480",
+  "date": "2026-11-20",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "My Team",
+      "area": "interface",
+      "en": {
+        "title": "Squad badge in Status",
+        "body": "Status on My Team now shows JR or U23 based on the rider's squad instead of an age badge. You'll find the age in its own column."
+      },
+      "da": {
+        "title": "Trupmærke i Status",
+        "body": "Status på Mit Hold viser nu JR eller U23 efter rytterens trup i stedet for et aldersmærke. I finder alderen i sin egen kolonne."
+      },
+      "refs": [
+        7233
+      ]
+    }
+  ]
+},
+{
+  "version": "7.479",
+  "date": "2026-11-20",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Onboarding",
+      "area": "help",
+      "en": {
+        "title": "Fewer wrong first-day hints",
+        "body": "Experienced managers no longer see the beginner card about the basics being done. The tour button on the getting-started card is easier to see, training status shows only at the training step, and the sign-up form uses neutral example names."
+      },
+      "da": {
+        "title": "Færre forkerte hints på første dag",
+        "body": "Erfarne managere ser ikke længere begynderkortet om, at det grundlæggende er på plads. Rundvisningsknappen på kom-i-gang-kortet er nemmere at se, træningsstatus vises kun ved træningstrinnet, og oprettelsesformularen bruger neutrale eksempelnavne."
+      },
+      "refs": [
+        8430
+      ]
+    }
+  ]
+},
+{
+  "version": "7.478",
+  "date": "2026-11-20",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "switched_on",
+      "flag": "jersey_hunt_7855",
+      "topic": "Tactics",
+      "area": "tactics",
+      "en": {
+        "title": "Jersey hunt in the stage plan",
+        "body": "In stage races you can now send a rider after points for the points jersey or the KOM jersey with Go for sprint points and KOM points. With Go in the break + sprint points he tries to make the break and takes the points from there. If he misses the morning break, he still fights for the points if he gets into a later break. KOM points only count in a break."
+      },
+      "da": {
+        "title": "Trøjejagt i etapeplanen",
+        "body": "I etapeløb kan du nu sende en rytter efter point til pointtrøjen eller bjergtrøjen med opgaverne Hent point og Hent bjergpoint. Med Gå i udbrud + Hent point prøver han at komme med i udbruddet og kører om pointene derfra. Misser han morgenudbruddet, kæmper han stadig om pointene, hvis han kommer med i et senere udbrud. Bjergpoint tæller kun i et udbrud."
+      },
+      "refs": [
+        7855
+      ]
+    }
+  ]
+},
+{
+  "version": "7.477",
+  "date": "2026-11-20",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Club",
+      "area": "interface",
+      "en": {
+        "title": "Calmer card titles on the Club page",
+        "body": "Facility cards on the Club page and the team link in the rider switcher now use the regular interface font instead of the big display font."
+      },
+      "da": {
+        "title": "Roligere korttitler på Klub-siden",
+        "body": "Faciliteterne på Klub-siden og holdlinket i ryttervælgeren bruger nu den almindelige skrift i stedet for den store overskriftsskrift."
+      },
+      "refs": [
+        8335
+      ]
+    }
+  ]
+},
+{
+  "version": "7.476",
+  "date": "2026-11-20",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Riders",
+      "area": "interface",
+      "en": {
+        "title": "Flag instead of country code",
+        "body": "The rider profile now shows the country flag without the country code next to it."
+      },
+      "da": {
+        "title": "Flag i stedet for landekode",
+        "body": "Rytterprofilen viser nu landets flag uden landekoden ved siden af."
+      },
+      "refs": [
+        8336
+      ]
+    }
+  ]
+},
+{
+  "version": "7.475",
+  "date": "2026-11-20",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Tables",
+      "area": "interface",
+      "en": {
+        "title": "Tables get one control bar and a column picker",
+        "body": "Filters, search and a new column button now sit in one line above the tables. With the column button you choose which extra columns you see. The small grey text in the side menu is also easier to read."
+      },
+      "da": {
+        "title": "Tabellerne får én kontrollinje og kolonnevælger",
+        "body": "Filtre, søgning og en ny kolonneknap står nu i én linje over tabellerne. Med kolonneknappen vælger du selv, hvilke ekstra kolonner du ser. Den lille grå tekst i sidemenuen er også lettere at læse."
+      },
+      "refs": [
+        8280
+      ]
+    }
+  ]
+},
+{
+  "version": "7.474",
+  "date": "2026-11-20",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Auctions",
+      "area": "market",
+      "en": {
+        "title": "No value hint on the starting price",
+        "body": "Auctions no longer show a green \"below est. value\" note on the starting price. The comparison shows once someone has placed a bid."
+      },
+      "da": {
+        "title": "Ingen værdi-hint ved startprisen",
+        "body": "Auktioner viser ikke længere en grøn \"under estimeret værdi\" ved startprisen. Sammenligningen vises, når nogen har budt."
+      },
+      "refs": [
+        8425
+      ]
+    }
+  ]
+},
+{
+  "version": "7.473",
+  "date": "2026-11-20",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "flag": "race_page_v6",
+      "topic": "Tactics",
+      "area": "tactics",
+      "en": {
+        "title": "Tactics shortcuts by rider role",
+        "body": "I show the task each of the three shortcuts gives your rider. Pick one on a road stage and save it with the rest of your tactics."
+      },
+      "da": {
+        "title": "Hurtigvalg efter rytterens rolle",
+        "body": "Jeg viser, hvilken opgave de tre hurtigvalg giver rytteren. Vælg på en vejetape, og gem sammen med resten af din taktik."
+      },
+      "refs": [
+        8356
+      ]
+    }
+  ]
+},
+{
   "version": "7.472",
   "date": "2026-11-19",
   "changes": [

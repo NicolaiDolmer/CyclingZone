@@ -70,6 +70,8 @@ function fakeSupabase(stage) {
 
 const legacy = (name) => () => { throw new Error(`${name} må ikke køre, når skønnet svarer`); };
 
+const ROUTE_NOW = new Date("2026-11-05T12:00:00Z");
+
 function context(supabase, extra = {}) {
   return {
     supabase,
@@ -77,7 +79,11 @@ function context(supabase, extra = {}) {
     requireAuth() {}, presencePulseLimiter() {},
     Date: class extends Date { constructor(...args) { super(...(args.length ? args : ["2026-11-05T12:00:00Z"])); } },
     isPotentialEstimateDisplayEnabled: (client, opts) => isPotentialEstimateDisplayEnabled(client, { ...opts, now: flagClock }),
-    buildAcademyFromViews, buildEstimatesFromViews, buildProjectionFromView, buildScoutingReportFromView,
+    // regel 16: builderne får rutetestens faste ur, ikke vægur-tiden
+    buildAcademyFromViews: (c, o) => buildAcademyFromViews(c, { ...o, clock: ROUTE_NOW }),
+    buildEstimatesFromViews: (c, o) => buildEstimatesFromViews(c, { ...o, clock: ROUTE_NOW }),
+    buildProjectionFromView: (c, o) => buildProjectionFromView(c, { ...o, clock: ROUTE_NOW }),
+    buildScoutingReportFromView: (c, o) => buildScoutingReportFromView(c, { ...o, clock: ROUTE_NOW }),
     SCOUTING_CONFIG: { maxLevel: 3 },
     PEAK_AGE: 28,
     loadScoutState: async () => ({ state: { maxLevel: 3, levels: { scouted: 2 } } }),
@@ -141,7 +147,10 @@ test("estimates tændt: potentialView pr. rytter, den gamle model kører ikke", 
   assert.deepEqual(out.estimates.scouted, {
     potentialView: { hidden: false, value: 74, certainty: "fair", previousValue: null, previousCertainty: null, changedAt: null },
   });
-  assert.deepEqual(out.estimates.youth, { potentialView: { hidden: true, reason: "learning", trainings: 1, trainingsNeeded: 5 } });
+  assert.deepEqual(out.estimates.youth, {
+    potentialView: { hidden: true, reason: "learning", trainings: 1, trainingsNeeded: 5 },
+    prognosisView: { hidden: true, reason: "noEstimate" }, // #8523: egen rytter, intet skøn endnu
+  });
   assert.doesNotMatch(JSON.stringify(out), FORBIDDEN);
 });
 
@@ -191,18 +200,17 @@ test("development-projection slukket: uscoutet rytter er dagens skjulte svar ude
   assert.deepEqual(touchedEstimates(supabase), []);
 });
 
-test("development-projection tændt: estimateLine + potentialView, ingen band/ceil/timing", async () => {
+test("development-projection tændt: potentialView, ingen band/ceil/timing og ingen gammel kurve (#8523)", async () => {
   const out = await route("get", "/riders/:id/development-projection", fakeSupabase("on"))();
   assert.equal(out.potentialView.value, 74);
-  assert.ok(out.estimateLine.length > 1);
-  for (const key of ["band", "ceil", "timing"]) assert.ok(!(key in out));
+  for (const key of ["band", "ceil", "timing", "estimateLine"]) assert.ok(!(key in out));
   assert.doesNotMatch(JSON.stringify(out), FORBIDDEN);
 });
 
 test("development-projection tændt: akademiets gamle tomme svar er væk for egne ungdomsryttere", async () => {
   const out = await route("get", "/riders/:id/development-projection", fakeSupabase("on"))({ params: { id: "youth" } });
   assert.deepEqual(out.potentialView, { hidden: true, reason: "learning", trainings: 1, trainingsNeeded: 5 });
-  assert.deepEqual(out.estimateLine, []);
+  assert.deepEqual(out.prognosisView, { hidden: true, reason: "noEstimate" });
 });
 
 const academyContext = (buildIntake2View) => ({
@@ -234,7 +242,11 @@ test("akademi slukket: dagens svar uden skøn-opslag", async () => {
 
 test("akademi tændt: trup og kandidater svarer fra skønnet", async () => {
   const out = await route("get", "/academy/me", fakeSupabase("on"), academyContext(intake2))();
-  assert.deepEqual(out.roster, [{ id: "youth", potentialView: { hidden: true, reason: "learning", trainings: 1, trainingsNeeded: 5 } }]);
+  assert.deepEqual(out.roster, [{
+    id: "youth",
+    potentialView: { hidden: true, reason: "learning", trainings: 1, trainingsNeeded: 5 },
+    prognosisView: { hidden: true, reason: "noEstimate" },
+  }]);
   assert.equal(out.intake[0].potentialView.value, 74);
   assert.equal(out.intake[0].potentialBand, null);
   assert.equal(out.intake[0].is_serious, false);

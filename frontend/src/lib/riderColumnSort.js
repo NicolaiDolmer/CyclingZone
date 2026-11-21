@@ -60,9 +60,10 @@ export function compareRidersByFilter(a, b, filters) {
   // reel lav rating og give indtryk af en vurdering der ikke findes — i stedet
   // placeres `null` EKSPLICIT sidst, uanset sorteringsretning (samme kontrakt
   // som useTableSort.js's sortRows for de tabeller der ikke driver herfra).
-  if (filters.sort === "_scoutMid") {
-    const aVal = a._scoutMid;
-    const bVal = b._scoutMid;
+  // #8523: prognosen (_progValue) er null for forbi toppen og uden skøn og følger samme kontrakt.
+  if (filters.sort === "_scoutMid" || filters.sort === "_progValue") {
+    const aVal = a[filters.sort];
+    const bVal = b[filters.sort];
     const aNil = aVal == null;
     const bNil = bVal == null;
     if (aNil || bNil) {

@@ -4,6 +4,7 @@
 #  2) Advarer hvis CLAUDE.md eller MEMORY.md over budget
 #  3) Advarer hvis main har commits nyere end NOW.md (close-out glemt)
 #  4) Reminder hvis seneste main-commit har "Refs #N" men issue ikke har comment fra denne session
+#  5) Merge-vagt (#8331): PR'er med ejerens markoer, der staar stille i auto-toget
 #
 # Refs: GitHub issues #75, #76, #750, #1097, #7587 (udskydelse under et merge-tog).
 #
@@ -119,6 +120,24 @@ if [ -d ".git" ]; then
       done
     fi
   fi
+fi
+
+# (4) #8230: et issue-nummer fjernet fra MASTERPLAN skal staa et andet sted (seneste MASTERPLAN-commit, <30 min; ogsaa i worktrees).
+PLAN_LINE=$(git log -1 --format='%h %ct' -- docs/MASTERPLAN.md 2>/dev/null)
+PLAN_SHA=${PLAN_LINE%% *}; PLAN_TS=${PLAN_LINE##* }
+if [ -n "$PLAN_SHA" ] && [ $((${CHECK_NOW_MD_NOW_EPOCH:-$(date +%s)} - ${PLAN_TS:-0})) -lt 1800 ] && ! seen "plan-gap:$PLAN_SHA" && command -v node >/dev/null 2>&1; then
+  PLAN_GAP=$(node "$(dirname "$0")/plan-gap-audit.mjs" --check-commit "$PLAN_SHA" 2>/dev/null)
+  [ -n "$PLAN_GAP" ] && add "plan-gap:$PLAN_SHA" "$PLAN_GAP"
+fi
+
+# (5) #8331: merge-vagten (scripts/merge-guard.mjs, skrevet af auto-toget) melder PR'er med
+# ejerens markoer, der har staaet stille to koersler i traek. Claude skal spoerge ejeren med
+# det samme. Een linje pr. alert; noeglen bevarer "een gang pr. session" og STOP_ACTIVE.
+GUARD_JS="$(dirname "$0")/merge-guard.mjs"
+if [ -f "$GUARD_JS" ] && command -v node >/dev/null 2>&1; then
+  while IFS=$'\t' read -r GUARD_KEY GUARD_TEXT; do
+    [ -n "$GUARD_KEY" ] && [ -n "$GUARD_TEXT" ] && add "$GUARD_KEY" "$GUARD_TEXT"
+  done < <(node "$GUARD_JS" hook-lines --now-epoch "${CHECK_NOW_MD_NOW_EPOCH:-$(date +%s)}" 2>/dev/null)
 fi
 
 # Output samlet warning

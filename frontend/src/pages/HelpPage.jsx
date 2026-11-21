@@ -360,6 +360,7 @@ const SECTION_DEFS = [
       { id: "potentialBestRole", kind: "text" },
       { id: "potentialBestRoleEstimate", kind: "text" }, // #6110 tal + ord (HELP_BLOCK_FLAGS.riders)
       { id: "trainingFocus", kind: "text" },
+      { id: "trainingFocusXp", kind: "text" }, // #8476 XP (HELP_BLOCK_FLAGS.riders)
       { id: "scouting", kind: "text" },
       { id: "scoutingEstimate", kind: "text" }, // #6110 tal + ord (HELP_BLOCK_FLAGS.riders)
       { id: "talentMarks", kind: "text", flag: "talent_marks_7879" }, // #7879
@@ -559,6 +560,7 @@ const SECTION_DEFS = [
       { id: "teamPlans", kind: "text", flag: "tactics_ready_7864" },
       // #7638: hvilken opgave faar hvilket prisord (EFFORT_COST_WORD + undtagelsen udbrud).
       { id: "taskPrices", kind: "text", flag: "tactics_ready_7864" },
+      { id: "jerseyHunt", kind: "text", flag: "jersey_hunt_7855" }, // #7855: troejejagten i etapeplanen
       { id: "strategy", kind: "text" },
       { id: "breakaway", kind: "text" },
       { id: "ordersGc", kind: "text" }, // #6067: orders_gc_v1

@@ -16,7 +16,8 @@ import assert from "node:assert/strict";
 import { SCENARIOS, seedState, createFake, sweep, canon, digest, TEAM, SEASON, DIVISION } from "./trainNowSameResult7982.harness.js";
 
 // Maalt paa main og grenen (se ovenfor). Aendres aftenkoerslens laesninger med vilje, maales det igen.
-const MAIN_EVENING_READS = "4a2f0ce23748fa10ccf9";
+// #8520 G3a: rytter-opslaget henter nu ogsaa talent_ceiling (P til XP-afstanden); kolonnen findes i prod (smallint).
+const MAIN_EVENING_READS = "17b7b9c25319a6c5c3b2";
 
 /** Optager hver laesning: tabel, kolonneliste og filtrene i den raekkefoelge, koden kalder dem. */
 function recordReads(fake) {
@@ -43,7 +44,10 @@ function recordReads(fake) {
     });
     return wrapped;
   };
-  return () => reads.filter((entry) => !entry.write).map(({ table, select, calls }) => ({ table, select, calls }));
+  // Dommerens afgoerelse 21/11 (#8537): kontaktens opslag (training_effort_levels) holdes uden for
+  // fingeraftrykket; det proeves med eksakt antal i trainingEffortLevels.pr24.test.js.
+  const effortSwitch = (entry) => entry.table === "app_config" && entry.calls.some(([op, args]) => op === "eq" && args?.[0] === "key" && args?.[1] === "training_effort_levels");
+  return () => reads.filter((entry) => !entry.write && !effortSwitch(entry)).map(({ table, select, calls }) => ({ table, select, calls }));
 }
 
 async function eveningRun() {

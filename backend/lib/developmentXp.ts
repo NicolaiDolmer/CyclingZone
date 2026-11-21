@@ -14,6 +14,8 @@
 //      og er endelig helt op til 99. Der er ingen mur og ingen prisbund (ejervalg 16/11).
 //      Ejervalg 19/11 (kandidat B): talfilen kan give prisen en højere "top" end
 //      skalaens, så prisen flader ud helt i toppen. Stadig ens for alle (E13/E14).
+//      G3a (spec 2026-11-20 §3): talfilen kan i stedet give prisen formen "hvert point
+//      en fast procent dyrere end det forrige" (`price.growth`). Én form ad gangen.
 //   2. XP PR. DAG: potentialet står fast gennem karrieren og afgør, hvor meget
 //      rytteren tjener. Forskellen mellem ryttere ligger i XP, aldrig i prisen.
 //   3. ALDER: XP efter alder står i talfilen (`ageShare`). Ejervalg 19/11: ens hele
@@ -24,18 +26,22 @@
 //      ikke med, når rytteren trænes om.
 //   6. BJÆLKEN: gemmes som en andel af næste point. Når et point købes, regnes
 //      overskuddet om til den nye pris, så ingen XP går tabt eller opstår.
-//   7. DATOEN (R16, ejervalg 16/11): en evne stiger højst XP_POINTS_PER_DATE point pr.
-//      dato, på tværs af datoens ticks; XP_MAX_POINTS_PER_DATE kun for et toptalent
-//      på en meget lav evne (ejervalg A, xpDatePointCap). Alderskravet er valgfrit i
-//      talfilen; udeladt gælder reglen uanset alder (ejervalg 19/11). Resten bliver
-//      stående på bjælken, omregnet til den nye pris, og købes en senere dato. Eneste
-//      undtagelse er tændingsnatten: dér udbetales gemt fremgang fra dagens model på
-//      én nat (ejervalg 2 = A).
+//   7. DATOEN: ingen grænse pr. evne pr. dato under XP (G3a, spec 2026-11-20 §3; afløser
+//      R16 fra 16/11). Prisen og afstanden til P bremser; flere point på én dato er
+//      sjældne af sig selv. Gemt fremgang udbetales på rytterens første XP-dato.
+//   9. AFSTANDEN TIL P (G3a): XP ganges med en faktor, der er stor langt fra rytterens
+//      potentiale P og går mod nul tæt på det (xpDistanceFactor). P er et blødt mål:
+//      stagnationen opstår af sig selv. Uden P eller uden talfilens `distance` er
+//      faktoren 1, og XP er som før.
+//  10. TRÆTHED (G3a): over talfilens tærskel giver en dag lidt mindre XP
+//      (xpFatigueFactor). Udeladt i talfilen = ingen effekt.
 //   8. KROPPENS ALDRING (ejervalg 19/11): talfilen kan bære sæsonskiftets aldring
 //      (`aging`). Den bruges af sæsonskiftet (xpAgingConfig i riderProgression.js),
 //      kun når XP-kontakten er tændt (riderProgressionEngine.js). Udeladt = dagens
 //      AGING_V2_CONFIG, bit-identisk. Prisens top og aldringen er én pakke (kandidat B):
-//      talfilen har begge eller ingen af dem.
+//      talfilen har begge eller ingen af dem. #8531: aldringen kan også stå i procent-
+//      form (riderWear6110.js), og begge former kan kalibrere løbsbremsen; uden de
+//      felter er bremsen dagens.
 //
 // ═══ TAL ═════════════════════════════════════════════════════════════════════
 // Alle tal er PRIVATE (hard rule 17, balance-internals/6110/) og gives som `params`.
@@ -53,6 +59,8 @@ import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { staffTrainingBonus, facilityTrainingMultiplier } from "./staffTrainingBonus.js";
 import { TRAINING_RACE_DAY_CONFIG } from "./trainingRaceDayTick.js";
 import { validateXpVariation, type XpVariation } from "./developmentXpVariation.ts";
+import { isXpAgingPercentShape, validateXpAgingPercent, validateXpAgingBrake, XP_AGING_BRAKE_KEYS } from "./riderWear6110.js";
+import { DISPLAY_RECIPE_KEYS, ratingForRole } from "./weights/displayRecipes.js";
 
 // Skalaens top. Evner går til 99; prisen regner mod 100, så 99 aldrig koster uendeligt.
 const SCALE_TOP = 100;
@@ -70,18 +78,11 @@ export interface XpCurvePoint {
   value: number;
 }
 
-// R16 (ejervalg 16/11): højst så mange point pr. evne pr. dato. En ejerregel, ikke et
-// balancetal: resten af XP'en går aldrig tabt, den venter på bjælken.
-// Ejervalg A (16/11 aften, Fable-fund 4): det høje tal er kun for et ungt toptalent på en
-// meget lav evne; alle andre har det lave. Hvem der er "ung", "toptalent" og "meget lav" er
-// balancetal og står i talfilen (`datePlus2`), aldrig her (hard rule 17).
-export const XP_MAX_POINTS_PER_DATE = 2;
-export const XP_POINTS_PER_DATE = 1;
-
 export interface DevelopmentXpParams {
-  // `top` (valgfri, ejervalg 19/11): skalaens top i prisen. Højere end skalaen = prisen
-  // flader ud helt i toppen, ens for alle ryttere. Udeladt = skalaens top (dagens pris).
-  price: { base: number; exponent: number; top?: number };
+  // To former, aldrig begge: `exponent` (+ valgfri `top`, ejervalg 19/11: skalaens top i
+  // prisen; højere end skalaen = prisen flader ud helt i toppen) eller `growth` (G3a:
+  // hvert point en fast procent dyrere end det forrige). Ens for alle ryttere.
+  price: { base: number; exponent?: number; top?: number; growth?: number };
   // XP på en hård dato i en signatur-fokusevne. Lineært mellem punkterne, fladt uden for
   // dem. Punkter frem for faste trin, så omregningen til 1-99 kun flytter tal, ikke kode.
   potentialXp: readonly XpCurvePoint[];
@@ -94,23 +95,40 @@ export interface DevelopmentXpParams {
   // Dagsvariationen (§5.2). Udeladt = ingen variation. Nøglen ligger ikke på objektet
   // (developmentXpVariation.ts), så params kan skrives ud uden at afsløre den.
   variation?: XpVariation;
-  // Hvem må få det høje antal point på én dato (ejervalg A 16/11): mindst `minPotential`
-  // i potentiale og en evne under `belowLevel` ved datoens start; `maxAge` er valgfri
-  // (ejervalg 19/11: uden alder). Udeladt = ingen får det høje antal (fail-safe).
-  datePlus2?: XpDatePlus2;
+  // Afstanden til P (G3a). Udeladt = faktoren er 1 (XP som før, sikker standard).
+  distance?: XpDistance;
+  // Træthed over en tærskel giver lidt mindre XP (G3a). Udeladt = ingen effekt.
+  fatigue?: XpFatigue;
   // Sæsonskiftets aldring under XP (ejervalg 19/11). Udeladt = dagens AGING_V2_CONFIG.
   aging?: XpAging;
 }
 
-export interface XpDatePlus2 {
-  maxAge?: number;
-  minPotential: number;
-  belowLevel: number;
+// Afstandsfaktoren: `h` er afstanden, hvor faktoren er det halve (før `exponent`).
+// `exponent` (valgfri) gør overgangen blødere eller skarpere. Tallene er private.
+export interface XpDistance {
+  h: number;
+  exponent?: number;
 }
 
-// Kroppens aldring ved sæsonskiftet, når XP er tændt. Samme form som AGING_V2_CONFIG
-// (riderProgression.js), plus et valgfrit sent fald i de evner, der ellers aldrig falder.
-export interface XpAging {
+// Træthed over `above` giver XP gange `share` (under 1, over 0). Tallene er private.
+export interface XpFatigue {
+  above: number;
+  share: number;
+}
+
+// Løbsbremsen fra talfilens aldring (#8531, begge former). Hvert felt er valgfrit og
+// erstatter kun samme felt i AGING_V2_CONFIG; udeladt = dagens bremse. Tallene er private.
+export interface XpAgingBrake {
+  brakeLoadDays?: number;
+  hardTrainingDayWeight?: number;
+}
+
+// Kroppens aldring ved sæsonskiftet, når XP er tændt. To former, én ad gangen:
+//   • trin (kandidat B): samme form som AGING_V2_CONFIG (riderProgression.js), plus et
+//     valgfrit sent fald i de evner, der ellers aldrig falder.
+//   • procent (G3a/model E, #8531): to kurver med andelen pr. sæson; reglerne står i
+//     riderWear6110.validateXpAgingPercent, så de kun står ét sted.
+export interface XpAgingSteps extends XpAgingBrake {
   plateauThroughAge: number;
   declineByYearsPastPlateau: readonly { maxYears: number; drop: number }[];
   // Teknik og mentale evner (alt uden for de fysiske + brosten) falder `drop` pr. sæson
@@ -118,25 +136,42 @@ export interface XpAging {
   late?: { fromAge: number; drop: number };
 }
 
+export interface XpAgingPercent extends XpAgingBrake {
+  physical: readonly { at: number; value: number }[];
+  mental: readonly { at: number; value: number }[];
+}
+
+export type XpAging = XpAgingSteps | XpAgingPercent;
+
 // Dommer-fund F1 (19/11): en stavefejl (fx `price.Top`, `ageing`) må ikke give en gyldig
 // talfil uden den del. Ukendte nøgler afviser hele talfilen (fail-safe).
 function onlyKeys(obj: Record<string, unknown>, allowed: readonly string[]): boolean {
   return Object.keys(obj).every((k) => allowed.includes(k));
 }
 
-function validDatePlus2(raw: unknown): XpDatePlus2 | null | undefined {
+// Afstanden til P (G3a). Udeladt = undefined (faktor 1); sat, men ugyldig = null, så hele
+// params afvises (fail-safe: XP kører aldrig med en halv afstandsregel).
+function validDistance(raw: unknown): XpDistance | null | undefined {
   if (raw === undefined) return undefined;
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
-  if (!onlyKeys(r, ["maxAge", "minPotential", "belowLevel"])) return null;
-  // Alderen er valgfri (ejervalg 19/11), men sat skal den være gyldig.
-  if (r.maxAge !== undefined && (!isNum(r.maxAge) || !(r.maxAge > 0))) return null;
-  if (!isNum(r.minPotential) || !(r.minPotential > 0)) return null;
-  if (!isNum(r.belowLevel) || !(r.belowLevel > 0 && r.belowLevel <= SCALE_TOP)) return null;
-  return Object.freeze({
-    ...(r.maxAge !== undefined ? { maxAge: r.maxAge as number } : {}),
-    minPotential: r.minPotential, belowLevel: r.belowLevel,
-  });
+  if (!onlyKeys(r, ["h", "exponent"])) return null;
+  // `h` er en afstand i ratingskalaen: over nul og inden for skalaen.
+  if (!isNum(r.h) || !(r.h > 0 && r.h <= SCALE_TOP)) return null;
+  if (r.exponent !== undefined && (!isNum(r.exponent) || !(r.exponent > 0 && r.exponent <= 10))) return null;
+  return Object.freeze({ h: r.h, ...(r.exponent !== undefined ? { exponent: r.exponent as number } : {}) });
+}
+
+// Træthed (G3a). Udeladt = undefined (ingen effekt); sat, men ugyldig = null. Tærsklen er
+// på træthedens skala (0-100), og andelen er "lidt mindre": over nul og under 1.
+function validFatigue(raw: unknown): XpFatigue | null | undefined {
+  if (raw === undefined) return undefined;
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  if (!onlyKeys(r, ["above", "share"])) return null;
+  if (!isNum(r.above) || !(r.above >= 0 && r.above < 100)) return null;
+  if (!isNum(r.share) || !(r.share > 0 && r.share < 1)) return null;
+  return Object.freeze({ above: r.above, share: r.share });
 }
 
 // Sæsonskiftets aldring. Udeladt = undefined (dagens aldring); sat, men ugyldig = null,
@@ -144,8 +179,13 @@ function validDatePlus2(raw: unknown): XpDatePlus2 | null | undefined {
 function validAging(raw: unknown): XpAging | null | undefined {
   if (raw === undefined) return undefined;
   if (!raw || typeof raw !== "object") return null;
+  // #8531: procent-formen (kurver) valideres af sæsonskiftets egne regler, så en talfil
+  // med aldring i procent ikke afvises her og når sæsonskiftet uændret.
+  if (isXpAgingPercentShape(raw)) return validateXpAgingPercent(raw) ?? null;
   const a = raw as Record<string, unknown>;
-  if (!onlyKeys(a, ["plateauThroughAge", "declineByYearsPastPlateau", "late"])) return null;
+  if (!onlyKeys(a, ["plateauThroughAge", "declineByYearsPastPlateau", "late", ...XP_AGING_BRAKE_KEYS])) return null;
+  const brake = validateXpAgingBrake(a);
+  if (!brake) return null;
   const plateau = a.plateauThroughAge;
   if (!isNum(plateau) || !Number.isInteger(plateau) || plateau < 20 || plateau > 40) return null;
   const steps = a.declineByYearsPastPlateau;
@@ -171,7 +211,7 @@ function validAging(raw: unknown): XpAging | null | undefined {
     if (!isNum(l.drop) || !(l.drop > 0) || l.drop > 5) return null;
     late = Object.freeze({ fromAge: l.fromAge, drop: l.drop });
   }
-  return Object.freeze({ plateauThroughAge: plateau, declineByYearsPastPlateau: Object.freeze(out), ...(late ? { late } : {}) });
+  return Object.freeze({ plateauThroughAge: plateau, declineByYearsPastPlateau: Object.freeze(out), ...(late ? { late } : {}), ...brake });
 }
 
 const isNum = (x: unknown): x is number => typeof x === "number" && Number.isFinite(x);
@@ -221,17 +261,26 @@ function validAgeCurve(raw: unknown): XpCurvePoint[] | null {
 export function validateDevelopmentXpParams(raw: unknown): DevelopmentXpParams | null {
   if (!raw || typeof raw !== "object") return null;
   const p = raw as Record<string, unknown>;
-  if (!onlyKeys(p, ["price", "potentialXp", "ageShare", "offFocusShare", "raceOffFocusShare", "typeShare", "variation", "datePlus2", "aging"])) return null;
+  // Ingen grænse pr. dato under XP (G3a): en talfil med datoreglens grænser (`datePlus2`)
+  // er fra før valget og afvises hel, som prisbunden nedenfor, så motoren falder tilbage
+  // til dagens model i stedet for at regne en halv model.
+  if (!onlyKeys(p, ["price", "potentialXp", "ageShare", "offFocusShare", "raceOffFocusShare", "typeShare", "variation", "distance", "fatigue", "aging"])) return null;
 
   const price = p.price as Record<string, unknown> | null | undefined;
   if (!price || typeof price !== "object") return null;
   // `floor` står med, så en talfil fra før ejervalget 16/11 afvises af reglen nedenfor.
-  if (!onlyKeys(price, ["base", "exponent", "top", "floor"])) return null;
+  if (!onlyKeys(price, ["base", "exponent", "top", "growth", "floor"])) return null;
   if (!isNum(price.base) || !(price.base > 0)) return null;
-  if (!isNum(price.exponent) || !(price.exponent > 0)) return null;
   // Ingen prisbund (ejervalg 16/11): en talfil med en bund er fra før valget og afvises
   // hel, så motoren falder tilbage til dagens model i stedet for at regne en halv model.
   if (price.floor !== undefined) return null;
+  // G3a: prisen har præcis én form. `growth` er den faste procent pr. point, over nul og
+  // højst en fordobling, og den står aldrig sammen med kandidat B's eksponent eller top.
+  const growthForm = price.growth !== undefined;
+  if (growthForm) {
+    if (!isNum(price.growth) || !(price.growth > 0 && price.growth <= 1)) return null;
+    if (price.exponent !== undefined || price.top !== undefined) return null;
+  } else if (!isNum(price.exponent) || !(price.exponent > 0)) return null;
   // Toppen (ejervalg 19/11) er valgfri; sat skal den ligge over skalaens top, så 99 aldrig
   // bliver dyrere end i dag, og under et loft, så prisen ikke bliver flad.
   if (price.top !== undefined && (!isNum(price.top) || !(price.top > SCALE_TOP && price.top <= 10 * SCALE_TOP))) return null;
@@ -271,16 +320,21 @@ export function validateDevelopmentXpParams(raw: unknown): DevelopmentXpParams |
   // Sat, men ugyldig variation gør hele params ugyldige: XP må ikke køre uden den.
   const variation = validateXpVariation(p.variation);
   if (variation === null) return null;
-  // Samme regel for datoreglens grænser: sat, men ugyldig, gør hele params ugyldige.
-  const datePlus2 = validDatePlus2(p.datePlus2);
-  if (datePlus2 === null) return null;
+  // Samme regel for afstanden og trætheden: sat, men ugyldig, gør hele params ugyldige.
+  const distance = validDistance(p.distance);
+  if (distance === null) return null;
+  const fatigue = validFatigue(p.fatigue);
+  if (fatigue === null) return null;
   const aging = validAging(p.aging);
   if (aging === null) return null;
-  // Kandidat B er én pakke (dommer-fund F1): prisens top og aldringen følges ad.
-  if ((price.top !== undefined) !== (aging !== undefined)) return null;
+  // Kandidat B er én pakke (dommer-fund F1): prisens top og aldringen følges ad. G3a's
+  // pris (`growth`) har ingen top, så dér står aldringen frit.
+  if (!growthForm && (price.top !== undefined) !== (aging !== undefined)) return null;
 
   return Object.freeze({
-    price: Object.freeze({ base: price.base, exponent: price.exponent, ...(price.top !== undefined ? { top: price.top as number } : {}) }),
+    price: Object.freeze(growthForm
+      ? { base: price.base, growth: price.growth as number }
+      : { base: price.base, exponent: price.exponent as number, ...(price.top !== undefined ? { top: price.top as number } : {}) }),
     potentialXp: freezeCurve(potentialXp),
     ageShare: Object.freeze({ physical: freezeCurve(physical), mental: freezeCurve(mental) }),
     offFocusShare: p.offFocusShare,
@@ -288,7 +342,8 @@ export function validateDevelopmentXpParams(raw: unknown): DevelopmentXpParams |
     typeShare: Object.freeze(typeShare),
     // Kun med, når den er sat, så params uden variation har samme form som før.
     ...(variation ? { variation } : {}),
-    ...(datePlus2 ? { datePlus2 } : {}),
+    ...(distance ? { distance } : {}),
+    ...(fatigue ? { fatigue } : {}),
     ...(aging ? { aging } : {}),
   });
 }
@@ -296,7 +351,58 @@ export function validateDevelopmentXpParams(raw: unknown): DevelopmentXpParams |
 /** XP for næste point. Afhænger kun af evnens værdi og er endelig helt op til 99. */
 export function xpPriceForNextPoint(level: number, params: DevelopmentXpParams): number {
   const l = Math.min(MAX_ABILITY, Math.max(0, Number(level) || 0));
-  return params.price.base * Math.pow(1 - l / (params.price.top ?? SCALE_TOP), -params.price.exponent);
+  const { base, growth, exponent, top } = params.price;
+  // G3a: hvert point en fast procent dyrere end det forrige.
+  if (isNum(growth)) return base * Math.pow(1 + growth, l);
+  return base * Math.pow(1 - l / (top ?? SCALE_TOP), -(exponent as number));
+}
+
+/**
+ * Rytterens rating for sin bedste ryttertype: den højeste rolle-rating af evnerne, samme
+ * tal som bedste-rolle-reglen (riderBestRoleCache.bestRoleForAbilities; typerne afgør kun
+ * navnet ved lighed, aldrig tallet). null når ingen rolle kan regnes.
+ */
+export function xpBestTypeRating(abilities: Record<string, unknown> | null | undefined): number | null {
+  if (!abilities) return null;
+  let best: number | null = null;
+  for (const role of DISPLAY_RECIPE_KEYS as readonly string[]) {
+    const rating = ratingForRole(abilities, role);
+    if (isNum(rating) && (best === null || rating > best)) best = rating;
+  }
+  return best;
+}
+
+/**
+ * Rytterens slid (spec 2026-11-20 §3): det, aldringen varigt har taget af hans top. Det
+ * sænker målet, XP'en regner afstanden til. Læsefunktion, så sporet, der gemmer sliddet
+ * (#8522), kun skal fylde feltet. Ukendt eller ugyldigt = intet slid.
+ */
+export function xpWearOf(rider: { wear?: unknown } | null | undefined): number {
+  const wear = Number(rider?.wear);
+  return Number.isFinite(wear) && wear > 0 ? wear : 0;
+}
+
+/**
+ * Afstandsfaktoren (G3a): stor langt fra P, mod nul tæt på P, nul ved og over P (minus
+ * slid). Uden P (`ceiling` uden for 1-99), uden rating eller uden talfilens `distance`
+ * er faktoren 1, så XP er som før (sikker standard).
+ */
+export function xpDistanceFactor(
+  { ceiling, rating, wear = 0 }: { ceiling: number | null | undefined; rating: number | null | undefined; wear?: number },
+  params: DevelopmentXpParams,
+): number {
+  const rule = params.distance;
+  if (!rule || !isNum(ceiling) || ceiling < 1 || ceiling > MAX_ABILITY || !isNum(rating)) return 1;
+  const gap = Math.max(0, ceiling - (isNum(wear) && wear > 0 ? wear : 0) - rating);
+  const share = gap / (gap + rule.h);
+  return rule.exponent === undefined ? share : Math.pow(share, rule.exponent);
+}
+
+/** Træthedens andel af XP (G3a). Uden talfilens `fatigue` eller ukendt træthed = 1. */
+export function xpFatigueFactor(fatigue: number | null | undefined, params: DevelopmentXpParams): number {
+  const rule = params.fatigue;
+  if (!rule || !isNum(fatigue)) return 1;
+  return fatigue > rule.above ? rule.share : 1;
 }
 
 /** Andel af fuld XP efter alder. Ukendt alder er fuld XP, som en voksen, aldrig en turbo. */
@@ -360,7 +466,7 @@ export function abilityXpForTick(
 
 /**
  * Lægger XP på bjælken og køber point. `bar` er andelen af næste point til den
- * nuværende pris, og den kan ligge over 1, når datoreglen har holdt et point tilbage.
+ * nuværende pris, og den kan ligge over 1, når et tick har holdt et point tilbage (`maxPoints`).
  * Resten regnes om til prisen for det nye næste point. Fremdrift ud over `maxPoints`
  * står på bjælken til næste gang. Kun en evne på 99 mister XP: dér er intet at købe.
  */
@@ -490,7 +596,7 @@ function programAbilityXp(
 
 /**
  * XP på én evne for ét tick. Erstatter dailyAbilityDelta's andel af et point, når
- * kontakten er tændt. Kender intet loft (B4); datoreglen (R16) ligger i developmentXpTick.
+ * kontakten er tændt. Kender intet loft (B4); afstanden til P og trætheden (G3a) ganges på i developmentXpTick.
  *
  * Løbsdags-gulvet (ejer 7/11, bekræftet 12/11, gate X8): på en løbsdag er XP i hver
  * evne mindst det, en hård træningsdag i etapens evner med rytterens træner og
@@ -530,76 +636,127 @@ export interface XpTickResult {
   xp: Record<string, number>;
   /** Kvitteringen som i dag: summen af tickets fremdrift målt i point. */
   score: number;
+  /**
+   * #6110 tændingsliste pkt. 2 (#8210): hele point på dette tick, som XP gemt FØR datoen
+   * betalte (bjælken ved datoens start). Resten af tickets point er tjent af datoens egen XP.
+   */
+  barPaid: Record<string, number>;
+  /** Bjælken i XP og prisen for næste point pr. synlig evne efter tick'et ("x af y XP"). */
+  xpBar: Record<string, { xp: number; price: number }>;
 }
 
-/** Det, datoreglen skal vide om rytteren. Ukendt alder eller potentiale = det lave tal. */
-export interface XpDateRider {
+/** Datoens start for én rytter: bjælken ved datoens start og point, der allerede er betalt fra den. */
+export interface XpDateStart {
+  progress?: Record<string, unknown> | null;
+  paid?: Record<string, unknown> | null;
+}
+
+/**
+ * Bjælken i XP og prisen for næste point pr. synlig evne ("x af y XP"), afrundet til hele tal
+ * som i visningen (uafrundede tal gør talent og forhold nøjagtigt aflæselige, H6b/X9).
+ * `only` begrænser til de evner, der står i den (rapporten: evner med XP eller bjælke).
+ */
+export function xpBarsFor(
+  abilities: Record<string, unknown>, progress: Record<string, unknown> | null | undefined, params: DevelopmentXpParams,
+  { only = null }: { only?: ReadonlySet<string> | null } = {},
+): Record<string, { xp: number; price: number }> {
+  const out: Record<string, { xp: number; price: number }> = {};
+  for (const ability of VISIBLE_ABILITIES as readonly string[]) {
+    if (only && !only.has(ability)) continue;
+    const level = Number(abilities?.[ability]);
+    if (!Number.isFinite(level)) continue;
+    const view = xpBarView({ level, bar: Number(progress?.[ability] ?? 0) }, params);
+    out[ability] = { xp: Math.round(view.xp), price: Math.round(view.price) };
+  }
+  return out;
+}
+
+/** XP pr. evne afrundet til hele tal som i visningen; evner, der runder til 0, udelades. */
+export function roundedXp(xp: Record<string, unknown> | null | undefined): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [ability, value] of Object.entries(xp ?? {})) {
+    const n = Math.round(Number(value));
+    if (Number.isFinite(n) && n > 0) out[ability] = n;
+  }
+  return out;
+}
+
+/** En tidligere rapportlinje på samme dato for samme rytter (kvittering eller kalenderdags-rapport). */
+export interface XpDateRow {
+  progress_before?: Record<string, unknown> | null;
+  bar_paid?: Record<string, unknown> | null;
+  xp_slot_seq?: unknown;
+  game_day?: unknown;
+}
+
+/**
+ * Datoens start ud fra datoens tidligere rapportlinjer: bjælken før datoens FØRSTE afregnede slot
+ * (lavest `xp_slot_seq`; slots kan afregnes ude af løbsdags-rækkefølge: tryk, etape, aften), point
+ * allerede betalt fra bjælken, og dette slots løbenummer på datoen. Ingen tidligere linjer = datoens
+ * første slot (dateStart null, seq 1).
+ */
+export function xpDateStartFromRows(rows: ReadonlyArray<XpDateRow | null | undefined>): { dateStart: XpDateStart | null; seq: number } {
+  const earlier = rows.filter((row): row is XpDateRow => Boolean(row) && typeof row === "object");
+  if (earlier.length === 0) return { dateStart: null, seq: 1 };
+  const rank = (row: XpDateRow) => {
+    const seq = Number(row.xp_slot_seq);
+    return Number.isFinite(seq) ? seq : Number.MAX_SAFE_INTEGER; // ældre linjer uden løbenummer sidst
+  };
+  const first = [...earlier].sort((a, b) => rank(a) - rank(b) || (Number(a.game_day ?? -Infinity) - Number(b.game_day ?? -Infinity)))[0];
+  const paid: Record<string, number> = {};
+  let maxSeq = 0;
+  for (const row of earlier) {
+    for (const [ability, n] of Object.entries(row.bar_paid ?? {})) {
+      const v = Number(n);
+      if (Number.isFinite(v) && v > 0) paid[ability] = (paid[ability] ?? 0) + v;
+    }
+    const seq = Number(row.xp_slot_seq);
+    maxSeq = Math.max(maxSeq, Number.isFinite(seq) ? seq : 0);
+  }
+  return { dateStart: { progress: first.progress_before ?? null, paid }, seq: Math.max(maxSeq, earlier.length) + 1 };
+}
+
+/**
+ * Det, tick'et skal vide om rytteren (G3a). `ceiling` er potentialet P (1-99; riders.talent_ceiling),
+ * `fatigue` trætheden ved datoens start og `wear` sliddet (xpWearOf). Typerne følger med til
+ * kalderens egne regler. Alt udeladt = faktor 1, XP som før.
+ */
+export interface XpTickRider {
   age?: number | null;
   potentiale?: number | null;
-}
-
-/**
- * Datoens tal for én evne (ejervalg A 16/11): det høje tal kun for et ungt toptalent på
- * en meget lav evne, ellers det lave. `startLevel` er evnens niveau ved datoens start, så
- * tallet står fast hele datoen, på tværs af ticks og stier. Grænserne kommer fra
- * talfilen (`datePlus2`); uden dem og ved ukendt alder eller potentiale gælder det lave.
- */
-export function xpDatePointCap(
-  { startLevel, age, potentiale }: { startLevel: number; age?: number | null; potentiale?: number | null },
-  params: DevelopmentXpParams,
-): number {
-  const rule = params.datePlus2;
-  if (!rule || !isNum(potentiale) || !isNum(startLevel)) return XP_POINTS_PER_DATE;
-  // Alderskravet gælder kun, når talfilen sætter det (ejervalg 19/11: uden alder).
-  // Ukendt alder giver altid det lave tal (fail-safe, som før og som målingen).
-  if (!isNum(age)) return XP_POINTS_PER_DATE;
-  const young = rule.maxAge === undefined || age <= rule.maxAge;
-  const topTalent = potentiale >= rule.minPotential;
-  const veryLow = startLevel < rule.belowLevel;
-  return young && topTalent && veryLow ? XP_MAX_POINTS_PER_DATE : XP_POINTS_PER_DATE;
-}
-
-/**
- * Hvor mange point evnen må købe på tick'et efter datoreglen (R16, ejervalg 16/11):
- * det, datoen har tilbage, efter det evnen allerede har købt på datoen. På tændingsnatten
- * (`storedBarPayout`) udbetales en gemt bjælke fra dagens model helt (ejervalg 2 = A).
- * Undtagelsen gælder kun bjælken fra før XP: kun datoens første køb i evnen, og kun det,
- * bjælken selv rækker til. Dagens nye XP følger reglen. `cap` kan kun sættes af
- * 10-sæsoners-kørslen (varianter); motoren bruger altid reglens eget tal for rytteren
- * (xpDatePointCap, med evnens niveau ved datoens start).
- */
-export function xpDatePointAllowance(
-  { level, bar, used, storedBarPayout, cap, rider = null }: {
-    level: number; bar: number; used: number; storedBarPayout: boolean; cap?: number | null; rider?: XpDateRider | null;
-  },
-  params: DevelopmentXpParams,
-): number {
-  const limit = cap ?? xpDatePointCap({ startLevel: level - used, age: rider?.age, potentiale: rider?.potentiale }, params);
-  const left = Math.max(0, limit - used);
-  if (!storedBarPayout || used > 0 || !(bar >= 1)) return left;
-  return Math.max(left, buyPoints({ level, bar }, params).points);
+  ceiling?: number | null;
+  fatigue?: number | null;
+  wear?: number | null;
 }
 
 /**
  * Ét XP-tick for én rytter. `xpFor(ability)` er evnens XP på tick'et (kalderen
- * samler dailyAbilityDelta og løbsdagens tillæg). Point købes til prisen, højst
- * `maxPointsPerTick` pr. evne og højst det, datoen har tilbage (`dateUsedGains` er
- * evnens point tidligere på datoen, på tværs af ticks og stier). Resten bliver på
- * bjælken, omregnet til den nye pris (spec §4.3, §7.3). Muterer ikke input.
+ * samler dailyAbilityDelta og løbsdagens tillæg). Tick'et ganger afstanden til P og
+ * trætheden på (G3a), regnet én gang ud fra evnerne ved tick'ets start, og køber point
+ * til prisen, højst `maxPointsPerTick` pr. evne. Der er ingen grænse pr. dato (G3a);
+ * `dateUsedGains` (evnens point tidligere på datoen) bruges kun til kvitteringen for
+ * point betalt af gemt XP (`barPaid`). Resten bliver på bjælken, omregnet til den nye
+ * pris (spec §4.3, §7.3). Muterer ikke input.
  */
 export function developmentXpTick(
   {
-    abilities, progress, maxPointsPerTick = Infinity, dateUsedGains = null, storedBarPayout = false, rider = null, xpFor,
+    abilities, progress, maxPointsPerTick = Infinity, dateUsedGains = null, rider = null, xpFor,
+    dateStart = null,
   }: {
     abilities: Record<string, unknown>;
     progress?: Record<string, unknown> | null;
     maxPointsPerTick?: number;
     dateUsedGains?: Record<string, unknown> | null;
-    /** Tændingsnatten: gemt fremgang fra dagens model udbetales på én nat. */
+    /**
+     * Tændingsnatten (fra R16). Uden grænse pr. dato udbetales gemt fremgang altid helt, så
+     * feltet ændrer intet længere; det står, så motorens kald er uændret.
+     */
     storedBarPayout?: boolean;
-    /** Alder og potentiale til datoreglen (xpDatePointCap). Udeladt = det lave tal. */
-    rider?: XpDateRider | null;
+    /** Potentiale, træthed og slid til afstanden og trætheden (G3a). Udeladt = faktor 1. */
+    rider?: XpTickRider | null;
     xpFor: (ability: string) => number;
+    /** Bjælken ved datoens start og point betalt fra den tidligere på datoen. Udeladt = dette tick er datoens første. */
+    dateStart?: XpDateStart | null;
   },
   params: DevelopmentXpParams,
 ): XpTickResult {
@@ -607,21 +764,26 @@ export function developmentXpTick(
   const nextProgress = { ...(progress ?? {}) } as Record<string, number>;
   const gains: Record<string, number> = {};
   const xp: Record<string, number> = {};
+  const barPaid: Record<string, number> = {};
   let score = 0;
+  // G3a: én faktor for hele tick'et, ud fra evnerne ved tick'ets start, så rækkefølgen af
+  // evnerne i løkken aldrig flytter udbyttet.
+  const riderFactor = xpDistanceFactor({
+    ceiling: rider?.ceiling, rating: params.distance ? xpBestTypeRating(abilities) : null, wear: xpWearOf(rider),
+  }, params) * xpFatigueFactor(rider?.fatigue, params);
   for (const ability of VISIBLE_ABILITIES as readonly string[]) {
     const level = Number(nextAbilities[ability] ?? 0);
     if (!Number.isFinite(level)) continue; // korrupt input må ikke forgifte bjælken
-    const raw = Number(xpFor(ability));
+    const raw = Number(xpFor(ability)) * riderFactor;
     const earned = Number.isFinite(raw) && raw > 0 ? raw : 0;
     const bar = Number(nextProgress[ability] ?? 0);
     // En bjælke over 1 (resten fra en tidligere dato) betales ud, også uden ny XP (§7.3).
     if (!(earned > 0) && !(bar >= 1)) continue;
     const usedRaw = Number(dateUsedGains?.[ability]);
     const used = Number.isFinite(usedRaw) && usedRaw > 0 ? usedRaw : 0;
-    const limit = Math.min(maxPointsPerTick, xpDatePointAllowance({ level, bar, used, storedBarPayout, rider }, params));
-    // Datoen er brugt op og intet nyt at lægge på: bjælken står præcis, som den er.
-    if (!(earned > 0) && !(limit > 0)) continue;
-    const out = buyPoints({ level, bar, xp: earned, maxPoints: limit }, params);
+    // Intet nyt at lægge på og intet, tick'et må købe: bjælken står præcis, som den er.
+    if (!(earned > 0) && !(maxPointsPerTick > 0)) continue;
+    const out = buyPoints({ level, bar, xp: earned, maxPoints: maxPointsPerTick }, params);
     if (earned > 0) {
       xp[ability] = earned;
       score += earned / xpPriceForNextPoint(level, params);
@@ -630,7 +792,19 @@ export function developmentXpTick(
     if (out.points > 0) {
       gains[ability] = out.points;
       nextAbilities[ability] = out.level;
+      // Point betalt af XP gemt før datoen: det, bjælken ved datoens start alene kunne købe fra
+      // evnens niveau ved datoens start, minus det, der allerede er betalt fra den på datoen.
+      const startBar = dateStart?.progress ? Number(dateStart.progress[ability] ?? 0) : bar;
+      const paidRaw = Number(dateStart?.paid?.[ability]);
+      const paidBefore = Number.isFinite(paidRaw) && paidRaw > 0 ? paidRaw : 0;
+      const coverable = startBar >= 1
+        ? buyPoints({ level: level - used, bar: startBar, xp: 0 }, params).points : 0;
+      const paid = Math.max(0, Math.min(out.points, coverable - paidBefore));
+      if (paid > 0) barPaid[ability] = paid;
     }
   }
-  return { abilities: nextAbilities, progress: nextProgress, gains, xp, score: Math.round(score * 100) / 100 };
+  return {
+    abilities: nextAbilities, progress: nextProgress, gains, xp, score: Math.round(score * 100) / 100,
+    barPaid, xpBar: xpBarsFor(nextAbilities, nextProgress, params),
+  };
 }

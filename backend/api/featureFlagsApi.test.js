@@ -139,6 +139,7 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
     academy_page_v2_8081: false,
+    jersey_hunt_7855: false, // #7855
 
     development_v2_aging_enabled: false,
 
@@ -169,6 +170,7 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     training_train_now_bonus: false, // #7741
     sale_escrow_enabled: false, // #6181
     development_xp_model: false, // #6110 Hjaelp (binaert)
+    training_page_r5: false, // #7947 I dag R5 (binaert)
   });
   assert.equal(f.betaLookups(), 0, "en anonym forespoergsel maa ikke slaa en bruger op");
 });
@@ -219,6 +221,7 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
     academy_page_v2_8081: false,
+    jersey_hunt_7855: false, // #7855
 
     development_v2_aging_enabled: false,
 
@@ -249,6 +252,7 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
     training_train_now_bonus: false, // #7741
     sale_escrow_enabled: false, // #6181
     development_xp_model: false, // #6110 Hjaelp (binaert)
+    training_page_r5: false, // #7947 I dag R5 (binaert)
   });
 });
 
@@ -307,6 +311,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
     academy_page_v2_8081: false,
+    jersey_hunt_7855: false, // #7855
 
     development_v2_aging_enabled: false,
 
@@ -337,6 +342,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     training_train_now_bonus: false, // #7741
     sale_escrow_enabled: false, // #6181
     development_xp_model: false, // #6110 Hjaelp (binaert)
+    training_page_r5: false, // #7947 I dag R5 (binaert)
   });
   assert.deepEqual(await readPlayerFeatureFlags(supabase, { isBetaTester: true }), {
     auto_accept_enabled: false,
@@ -356,6 +362,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
     academy_page_v2_8081: false,
+    jersey_hunt_7855: false, // #7855
 
     development_v2_aging_enabled: false,
 
@@ -386,6 +393,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     training_train_now_bonus: false, // #7741
     sale_escrow_enabled: false, // #6181
     development_xp_model: false, // #6110 Hjaelp (binaert)
+    training_page_r5: false, // #7947 I dag R5 (binaert)
   });
 });
 

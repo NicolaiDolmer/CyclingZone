@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { EmptyState, ErrorState, PageLoader, Button, Tabs, TabList, Tab, ChevronRightIcon } from "../components/ui";
+import { EmptyState, ErrorState, PageLoader, PageHeader, Button, Tabs, TabList, Tab, ChevronRightIcon } from "../components/ui";
 import StaffOverviewPage from "./StaffOverviewPage.jsx";
 import I18nReadyGate from "../components/I18nReadyGate.jsx"; // #3697
 import { formatNumber } from "../lib/intl";
@@ -19,8 +19,8 @@ import ConfirmModal from "../components/klub/ConfirmModal";
 // i en modal (StaffPanel). Data-drevet: siden viser blot hvad API returnerer.
 //
 // #2849 bølge 6: migreret til T1 (max-w-4xl, ingen egen side-padding — Layout
-// leverer den globale gutter). Det editoriale sidehoved (font-display Bebas
-// 38px + border-b-bånd) er ejer-godkendt og bevaret uændret; facilitets-listen
+// leverer den globale gutter). #8069 T08 (ejer 16/11): det editoriale Bebas-
+// sidehoved er afløst af den kanoniske PageHeader (P4); facilitets-listen
 // er nu en kanonisk Section+SectionHeader, og en manglende load-fejltilstand
 // (facs.error) er lukket med ErrorState + retry.
 // #3104 etape C: gyldige faner — Klub (faciliteter, default) · Personale
@@ -58,12 +58,7 @@ export default function KlubPage() {
   if (facs.error) {
     return (
       <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-end border-b-[1.5px] border-cz-1 pb-[10px] mb-4">
-          <div>
-            <h1 className="font-display text-[38px] leading-none">{t("page.title")}</h1>
-            <p className="text-xs text-cz-2 mt-[2px]">{t("page.subtitle")}</p>
-          </div>
-        </div>
+        <PageHeader title={t("page.title")} subtitle={t("page.subtitle")} />
         <ErrorState
           title={t("error.load.title", { defaultValue: "Couldn't load the club" })}
           description={t("error.load.description", { defaultValue: "Nothing was lost — your facilities and staff are safe. Try again." })}
@@ -123,12 +118,7 @@ export default function KlubPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="flex justify-between items-end border-b-[1.5px] border-cz-1 pb-[10px] mb-4">
-        <div>
-          <h1 className="font-display text-[38px] leading-none">{t("page.title")}</h1>
-          <p className="text-xs text-cz-2 mt-[2px]">{t("page.subtitle")}</p>
-        </div>
-      </div>
+      <PageHeader title={t("page.title")} subtitle={t("page.subtitle")} />
 
       {/* #3104 etape C: Personale (~400 sessions/30 dage) ind som fane frem for
           eget nav-punkt — Klubhus-gruppen gik fra 10 til 9 punkter. */}

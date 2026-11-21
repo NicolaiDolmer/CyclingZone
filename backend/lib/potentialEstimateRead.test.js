@@ -8,7 +8,6 @@ import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
 import {
   TRAININGS_NEEDED,
   buildAcademyFromViews,
-  buildEstimateLine,
   buildEstimatesFromViews,
   buildPotentialView,
   buildProjectionFromView,
@@ -50,12 +49,15 @@ function fakeSupabase(tables) {
         ? row
         : Object.fromEntries(columns.split(",").map((c) => c.trim()).map((c) => [c, row[c]])));
       const rows = () => (tables[table] ?? [])
-        .filter((row) => filters.every(({ column, values }) => values.includes(row[column])))
+        .filter((row) => filters.every(({ column, values, test: match }) => (match ? match(row[column]) : values.includes(row[column]))))
         .map(project);
       const query = {
         select(selected) { columns = selected; reads.push({ table, columns: selected }); return query; },
         eq(column, value) { filters.push({ column, values: [value] }); return query; },
         in(column, values) { filters.push({ column, values }); return query; },
+        gt(column, value) { filters.push({ column, test: (cell) => cell > value }); return query; },
+        gte(column, value) { filters.push({ column, test: (cell) => cell >= value }); return query; },
+        then(resolve, reject) { return Promise.resolve({ data: rows(), error: null }).then(resolve, reject); },
         order() { return query; },
         range: async () => ({ data: rows(), error: null }),
         maybeSingle: async () => ({ data: rows()[0] ?? null, error: null }),
@@ -86,6 +88,9 @@ const world = (over = {}) => fakeSupabase({
   rider_derived_abilities: [{ rider_id: "scouted", ...abilitiesAt(50), ability_caps: { climbing: 99 }, hidden_potential: 80 }],
   ...over,
 });
+
+// regel 16: testene læser aldrig vægur-tiden
+const FIXED_CLOCK = new Date("2026-11-20T12:00:00Z");
 
 test("buildPotentialView: tal + ord er præcis kontrakten", () => {
   assert.deepEqual(buildPotentialView({ row: estimateRow(), currentRating: 60 }), {
@@ -166,13 +171,14 @@ test("loadPotentialViews: tom liste slår intet op", async () => {
 });
 
 test("buildEstimatesFromViews: skønnet står alene pr. rytter", async () => {
-  const estimates = await buildEstimatesFromViews(world(), { teamId: TEAM, riderIds: ["scouted", "stranger"] });
+  const estimates = await buildEstimatesFromViews(world(), { teamId: TEAM, riderIds: ["scouted", "stranger"], clock: FIXED_CLOCK });
   assert.deepEqual(Object.keys(estimates.scouted), ["potentialView"]);
   assert.deepEqual(estimates.stranger, { potentialView: { hidden: true, reason: "unscouted" } });
   assert.doesNotMatch(JSON.stringify(estimates), FORBIDDEN);
 });
 
 const reportInput = (over = {}) => ({
+  clock: FIXED_CLOCK, // regel 16: fast ur, aldrig vægur
   teamId: TEAM,
   rider: { id: "scouted", primary_type: "climber", potentiale: 5.5 },
   own: false, level: 2, maxLevel: 3, looks: 2, age: 23,
@@ -206,46 +212,37 @@ test("scouting-rapporten: uden skøn er der ingen vurdering", async () => {
   assert.equal(report.looks, 0);
 });
 
-test("estimateLine: starter ved nu, ender mod skønnet, heltal, aldrig bånd", () => {
-  const line = buildEstimateLine({ now: 40, value: 70, age: 20 });
-  assert.deepEqual(line[0], { season: 0, value: 40 });
-  assert.ok(line.every((point) => Object.keys(point).join() === "season,value" && Number.isInteger(point.value)));
-  assert.ok(line.at(-1).value > 40 && line.at(-1).value <= 70);
-});
-
 const projectionInput = (over = {}) => ({
+  clock: FIXED_CLOCK, // regel 16: fast ur, aldrig vægur
   teamId: TEAM, rider: { id: "scouted", primary_type: "climber" }, own: false, level: 2, maxLevel: 3, age: 23, ...over,
 });
 
-test("development-projection: linje + potentialView, aldrig band, ceil eller timing", async () => {
+test("development-projection: potentialView, aldrig band, ceil, timing eller den gamle kurve", async () => {
   const supabase = world();
   const projection = await buildProjectionFromView(supabase, projectionInput());
   assert.equal(projection.potentialView.value, 74);
-  assert.ok(projection.estimateLine.length > 1);
-  assert.equal(projection.estimateLine[0].value, Math.round(projection.now));
-  for (const legacy of ["band", "ceil", "timing"]) assert.ok(!(legacy in projection), `${legacy} må ikke være med`);
+  for (const legacy of ["band", "ceil", "timing", "estimateLine"]) assert.ok(!(legacy in projection), `${legacy} må ikke være med`);
+  assert.ok(!("prognosisView" in projection), "andres ryttere får aldrig en prognose");
   assert.doesNotMatch(JSON.stringify(projection), FORBIDDEN);
   const abilityRead = supabase.reads.find((read) => read.table === "rider_derived_abilities");
   assert.doesNotMatch(abilityRead.columns, /ability_caps|hidden_potential|\*/);
 });
 
-test("development-projection: skjult skøn tegner ingen linje", async () => {
+test("development-projection: skjult skøn", async () => {
   const projection = await buildProjectionFromView(world(), projectionInput({ rider: { id: "stranger", primary_type: "climber" } }));
-  assert.deepEqual(projection.estimateLine, []);
   assert.equal(projection.capsMissing, false);
   assert.deepEqual(projection.potentialView, { hidden: true, reason: "unscouted" });
 });
 
 test("development-projection: skøn uden evner siger det ærligt", async () => {
   const projection = await buildProjectionFromView(world({ rider_derived_abilities: [] }), projectionInput());
-  assert.deepEqual(projection.estimateLine, []);
   assert.equal(projection.capsMissing, true);
   assert.equal(projection.potentialView.value, 74);
 });
 
 test("akademiet: trup og kandidater svarer fra skønnet og mister de gamle felter", async () => {
   const out = await buildAcademyFromViews(world(), {
-    teamId: TEAM,
+    teamId: TEAM, clock: FIXED_CLOCK,
     roster: [{ id: "youth", firstname: "A", prognosis: { stage: "broad", band: { lo: 1, hi: 2 } } }],
     intake: [
       { riderId: "scouted", is_serious: true, potentialEstimate: { lo: 3, hi: 4 }, potentialBand: { prog: { lo: 60, hi: 80 } } },
@@ -268,10 +265,10 @@ test("akademiet: trup og kandidater svarer fra skønnet og mister de gamle felte
 test("H5: alle fire flader viser samme tal for samme (rytter, hold)", async () => {
   const supabase = world();
   const riderIds = ["scouted"];
-  const estimates = await buildEstimatesFromViews(supabase, { teamId: TEAM, riderIds });
+  const estimates = await buildEstimatesFromViews(supabase, { teamId: TEAM, riderIds, clock: FIXED_CLOCK });
   const report = await buildScoutingReportFromView(supabase, reportInput());
   const projection = await buildProjectionFromView(supabase, projectionInput());
-  const academy = await buildAcademyFromViews(supabase, { teamId: TEAM, roster: [{ id: "scouted" }], intake: [] });
+  const academy = await buildAcademyFromViews(supabase, { teamId: TEAM, roster: [{ id: "scouted" }], intake: [], clock: FIXED_CLOCK });
   const expected = estimates.scouted.potentialView;
   assert.deepEqual(report.potentialView, expected);
   assert.deepEqual(projection.potentialView, expected);

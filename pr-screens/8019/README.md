@@ -4,6 +4,19 @@ Public synthetic fixture evidence for draft [#8022](https://github.com/NicolaiDo
 
 Runtime before: `2b0af720f`. Runtime after: `db78ea6e3`. Evidence-only close-out does not change that runtime or its tests.
 
+## PR #8485: board loads on its own, without blink (owner 20/11)
+
+Same local E2E build and fixtures; before = `origin/main` dashboard code, after = this PR. The board status answer is delayed 2.5 s in both. `*-early.png` is taken 1.2 s after navigation, the others (full page) after the board answered. `*-noplan*` is a player without an established board plan (no board card at any time).
+
+| | 1440 | 390 |
+|---|---|---|
+| Before, 1.2 s | [plan](./before-1440-early.png) / [no plan](./before-1440-noplan-early.png) | [plan](./before-390-early.png) / [no plan](./before-390-noplan-early.png) |
+| After, 1.2 s | [plan](./after-1440-early.png) / [no plan](./after-1440-noplan-early.png) | [plan](./after-390-early.png) / [no plan](./after-390-noplan-early.png) |
+| Before, settled | [plan](./before-1440.png) / [no plan](./before-1440-noplan.png) | [plan](./before-390.png) / [no plan](./before-390-noplan.png) |
+| After, settled | [plan](./after-1440.png) / [no plan](./after-1440-noplan.png) | [plan](./after-390.png) / [no plan](./after-390-noplan.png) |
+
+Chromium layout-shift observer in the same runs: after, no layout shift at all once the board answers (plan and no plan, both widths); every remaining shift happens in the first 0.7 s, before the board answer. Before, the late reveal of the page produced a large shift around the board answer at 1440.
+
 ## Measured scope and method
 
 - Local static production/E2E builds, same synthetic authenticated fixtures; mobile **375 x 812**, desktop **1440 x 900** CSS pixels.

@@ -1,0 +1,43 @@
+// #7947 · Frossen golden: I dag-panelets JSX paa merge-basen 2dbed0fa8 (TrainingPage.jsx, linjerne
+// mellem <TabPanel value="today"> og </TabPanel>). Genereres ALDRIG igen med den nye kode.
+export const TODAY_PANEL_MERGE_BASE = `      <div className="space-y-3">
+      {decisionCardOn && !ridersLoading && (
+        <DailyDecision
+          rows={decisionRows}
+          compact={phoneLayout}
+          onUse={(row) => handlePlanChange(row.riderId, row.dayType, null)}
+        />
+      )}
+      {/* #5485 (aendring 1): overblikket øverst. Et tryk filtrerer tabellen. */}
+      <div data-tour={phoneLayout ? tourAnchor("status") : undefined}>
+        <TrainingOverview
+          cells={overviewCells}
+          active={overviewFilter}
+          onToggle={toggleOverviewFilter}
+          variant={overviewVariant}
+          status={overviewStatus}
+          footer={<>
+            <FatigueRuleSummary data={fatigueRules.data} onEdit={() => setSub("limit")} />
+            {phoneTodayView && overviewVariant !== "chips" && phoneAssistantFooterRow}
+          </>}
+        />
+      </div>
+      {/* #5485 (ejer-go 23/9): assistenten rykket OP på telefonen — rækken
+          lige under overblikkets fire tal, over tabellen, i begge telefon-
+          visninger. Desktop (og telefon på langs uden beta) har knappen i
+          tabellens værktøjslinje. */}
+      {/* Codex på #8311: chips-varianten (telefon på langs) tegner ikke overblikkets
+          fod, så dér står rækken i sit eget hairline-kort, ellers ville Assistant
+          og Select riders forsvinde i den retning. */}
+      {phoneTodayView && overviewVariant === "chips" && phoneAssistantFooterRow && (
+        <div className="overflow-hidden rounded-cz border border-cz-border bg-cz-card [&>div]:border-t-0">
+          {phoneAssistantFooterRow}
+        </div>
+      )}
+      {phoneTodayView && assistantPanel}
+      {/* #3643/#5485: desktop (og telefon på langs) får den nye tabel,
+          telefonen sin løbsdags-tabel. #6030: training_mobile_table er on for
+          alle, så #5124's D-047-gren (telefonen uden flaget) er slettet. */}
+      {phoneTodayView ? renderMobileToday() : renderDesktopToday()}
+      </div>
+`;
