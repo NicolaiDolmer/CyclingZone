@@ -55,7 +55,8 @@
     "groupAll": "Todos los grupos",
     "groupNone": "Sin grupo",
     "typeAll": "Todos los tipos",
-    "clear": "Quitar filtros"
+    "clear": "Quitar filtros",
+    "reset": "Restablecer filtros"
   },
   "team": {
     "whole": "Todo el equipo hoy",

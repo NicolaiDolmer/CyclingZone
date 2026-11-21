@@ -55,7 +55,8 @@
     "groupAll": "Tous les groupes",
     "groupNone": "Sans groupe",
     "typeAll": "Tous les types",
-    "clear": "Effacer les filtres"
+    "clear": "Effacer les filtres",
+    "reset": "Réinitialiser les filtres"
   },
   "team": {
     "whole": "Toute l'équipe aujourd'hui",

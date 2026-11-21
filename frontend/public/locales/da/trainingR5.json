@@ -55,7 +55,8 @@
     "groupAll": "Alle grupper",
     "groupNone": "Ingen gruppe",
     "typeAll": "Alle typer",
-    "clear": "Ryd filtre"
+    "clear": "Ryd filtre",
+    "reset": "Nulstil filtre"
   },
   "team": {
     "whole": "Hele holdet i dag",

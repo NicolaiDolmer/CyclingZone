@@ -514,6 +514,15 @@ export function filtersActive(f: Filters): boolean {
   return f.age !== "all" || f.group !== "all" || f.type !== "all";
 }
 
+// #8563: et tomt resultat skyldes et filter eller et oversigtsvalg; "Nulstil filtre" rydder begge.
+export function canResetFilters(f: Filters, overview: OverviewKey | null): boolean {
+  return filtersActive(f) || overview !== null;
+}
+
+export function resetFilterState(): { filters: Filters; overview: null } {
+  return { filters: NO_FILTERS, overview: null };
+}
+
 // Sortering (TASTE 7a): hver kolonne kan sorteres; tal faar de stoerste foerst.
 export type SortKey = "rider" | "type" | "age" | "program" | "form" | "fatigue" | "load";
 export type Sort = { key: SortKey; dir: 1 | -1 } | null;
