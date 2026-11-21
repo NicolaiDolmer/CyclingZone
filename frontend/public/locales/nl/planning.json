@@ -100,6 +100,12 @@
     "peakShort": "Piek {date}",
     "peakTitle": "Vormpiek: {race}, {date} ({count, plural, =0 {vandaag} one {over # dag} other {over # dagen}})",
     "columns": "Kolommen",
+    "short": {
+      "rating": "Rating",
+      "fatigue": "Verm.",
+      "load": "Belast.",
+      "routeMatch": "Match"
+    },
     "mobileColumn": {
       "routeMatch": "Match",
       "form": "Vorm",
