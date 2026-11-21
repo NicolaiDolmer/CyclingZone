@@ -26,6 +26,7 @@
 import { publicEstimateView } from "./potentialEstimate.js";
 import { PEAK_AGE } from "./developmentProjection.js";
 import { loadPastPeakAging, pastPeakFromAging } from "./pastPeakView.js"; // #7947: efter peak som motoren
+import { mergeDevelopmentSnapshots } from "./riderDevelopmentReceipt.js";
 import { buildVerdict, ratingFromAbilities } from "./scoutingReport.js";
 import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
 import { bestRoleForAbilities } from "./riderBestRoleCache.js";
@@ -173,7 +174,7 @@ async function loadPaceSnapshots(supabase, { riderIds, today }) {
   const since = isoDay(new Date(Date.parse(today) - 2 * PROGNOSIS_PACE_DAYS * DAY_MS));
   const rows = await fetchAllRowsChunkedIn(riderIds, (chunk) => supabase
     .from("rider_derived_ability_history")
-    .select("rider_id, snapshot_date, abilities")
+    .select("rider_id, snapshot_date, season_number, source, abilities")
     .in("rider_id", chunk)
     .gte("snapshot_date", since)
     .order("rider_id")
@@ -182,7 +183,23 @@ async function loadPaceSnapshots(supabase, { riderIds, today }) {
     // er sorteringen ikke entydig, og offset-paginering kan springe en række
     // over eller tage den med to gange ved en sidegrænse.
     .order("source"));
-  for (const row of rows) byRider.get(row.rider_id)?.push(row);
+  // Kalenderdagens række fryser på datoens første gevinst-tick (#5947); datoens sande
+  // slut-tilstand ligger i løbsdags-billederne. Samme fletning som udviklingshistorikken,
+  // ellers tæller senere gevinster samme dag som fremgang efter vinduets start.
+  // schema-columns-ok: rider_ability_race_day_history, database/2026-09-14-4846-training-tick-game-day.sql.
+  const raceDayRows = await fetchAllRowsChunkedIn(riderIds, (chunk) => supabase
+    .from("rider_ability_race_day_history")
+    .select("id, rider_id, snapshot_date, season_number, source, game_day, abilities, created_at")
+    .in("rider_id", chunk)
+    .gte("snapshot_date", since)
+    .order("rider_id")
+    .order("snapshot_date")
+    .order("id"));
+  const calendarBy = new Map(riderIds.map((id) => [id, []]));
+  const raceDayBy = new Map(riderIds.map((id) => [id, []]));
+  for (const row of rows) calendarBy.get(row.rider_id)?.push(row);
+  for (const row of raceDayRows) raceDayBy.get(row.rider_id)?.push(row);
+  for (const id of riderIds) byRider.set(id, mergeDevelopmentSnapshots(calendarBy.get(id), raceDayBy.get(id)));
   return byRider;
 }
 

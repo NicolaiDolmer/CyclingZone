@@ -168,6 +168,27 @@ test("estimates: uden billeder i vinduet er farten nul", async () => {
   assert.deepEqual(estimates.growing.prognosisView, { hidden: false, value: 50 });
 });
 
+// Kalenderdagens række fryser på datoens første gevinst-tick; løbsdags-billedet har dagens
+// sande slut-tilstand. Uden fletningen tæller senere gevinster samme dag som fremgang i vinduet.
+test("estimates: farten bygger på datoens sande slut-tilstand, ikke dens første tick", async () => {
+  const history = [
+    { rider_id: "growing", snapshot_date: "2026-10-21", season_number: SEASON, source: "daily_training", abilities: abilitiesAt(47) },
+  ];
+  const calendarOnly = await buildEstimatesFromViews(world({ rider_derived_ability_history: history }), {
+    teamId: TEAM, riderIds: ["growing"], clock: NOW,
+  });
+  const merged = await buildEstimatesFromViews(world({
+    rider_derived_ability_history: history,
+    rider_ability_race_day_history: [
+      { id: 1, rider_id: "growing", snapshot_date: "2026-10-21", season_number: SEASON, source: "race_development", game_day: 4, abilities: abilitiesAt(49), created_at: "2026-10-21T20:00:00.000Z" },
+    ],
+  }), { teamId: TEAM, riderIds: ["growing"], clock: NOW });
+  assert.ok(
+    merged.growing.prognosisView.value < calendarOnly.growing.prognosisView.value,
+    `fletter løbsdagen ind: ${merged.growing.prognosisView.value} < ${calendarOnly.growing.prognosisView.value}`,
+  );
+});
+
 test("estimates: historikken læses kun for egne ryttere, der stadig kan vokse", async () => {
   const supabase = world();
   await buildEstimatesFromViews(supabase, { teamId: TEAM, riderIds: ["veteran", "learner", "rival"], clock: NOW });

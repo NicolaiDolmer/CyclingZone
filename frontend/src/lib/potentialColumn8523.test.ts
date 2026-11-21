@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { prognosisViewOf, prognosisViewValue } from "./potentialEstimateDisplay.ts";
+import { compareRidersByFilter } from "./riderColumnSort.js";
 
 // #8523 (ejer 20/11): navn + undertitel, "Potentiale 74 · Rimelig", "ca. 74 · Usikker" afdæmpet,
 // egen Potentiale-kolonne efter Rating i trup-listen, prognosen i trup-listen og Udvikling-fanen.
@@ -22,6 +23,15 @@ test("prognosen som sorteringsværdi: tom tilstand giver null, så den falder si
   assert.equal(prognosisViewValue(prognosisViewOf({ prognosisView: { hidden: false, value: 66 } })), 66);
   assert.equal(prognosisViewValue(prognosisViewOf({ prognosisView: { hidden: true, reason: "pastPeak" } })), null);
   assert.equal(prognosisViewValue(null), null);
+});
+
+test("trup-listens Prognose-sortering: ryttere uden prognose står sidst i begge retninger", () => {
+  const rows = [{ id: "none", _progValue: null }, { id: "low", _progValue: 40 }, { id: "high", _progValue: 70 }];
+  const cases: Array<[string, string[]]> = [["asc", ["low", "high", "none"]], ["desc", ["high", "low", "none"]]];
+  for (const [dir, expected] of cases) {
+    const sorted = [...rows].sort((a, b) => compareRidersByFilter(a, b, { sort: "_progValue", sort_dir: dir }));
+    assert.deepEqual(sorted.map((r) => r.id), expected, dir);
+  }
 });
 
 test("Usikker viser 'ca.' og afdæmpet tal, og ordet står efter en prik", () => {
