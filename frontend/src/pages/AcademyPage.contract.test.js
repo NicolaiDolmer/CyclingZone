@@ -362,3 +362,11 @@ test("#8081: v2-teksterne findes på alle fem sprog med samme nøgler og uden em
   // academy.json må ikke længere bære v2 (det ville igen veje på første indlæsning).
   for (const lng of ["en", "da", "es", "fr", "nl"]) assert.equal(academyLocale(lng).v2, undefined, `${lng}: v2 ligger stadig i academy.json`);
 });
+
+// #8543: intake-kortet viser potentialView (tal + sikkerhedsord) når kontakten er tændt; intervallet kun uden.
+test("intake-kortet læser potentialView og viser intervallet kun uden (#8543)", () => {
+  assert.match(pageSource, /potentialViewOf\(item\)/);
+  assert.match(pageSource, /<PotentialEstimate view=\{potentialView\} \/>/);
+  assert.match(pageSource, /!item\.potentialLearned && potentialView && \(/);
+  assert.match(pageSource, /!item\.potentialLearned && !potentialView && \(item\.potentialBand \|\| potential\)/);
+});
