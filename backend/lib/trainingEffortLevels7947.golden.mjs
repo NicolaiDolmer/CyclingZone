@@ -242,19 +242,35 @@ function weekPlanRows(spec) {
 }
 
 const OUTPUT_EXCLUDED = new Set(["app_config", "training_week_plans", "training_plans"]);
-function outputDigest(state, answers) {
+// #7947 PR 4: `withoutExecutedLevel` fjerner det koerte niveau (rider_training_scores.intensity,
+// kun skrevet med kontakten on) foer fingeraftrykket. Saa kan "on + standardniveau = basens dato"
+// stadig sammenlignes med basen, mens niveauet selv proeves for sig (engineScoreRows).
+function outputDigest(state, answers, { withoutExecutedLevel = false } = {}) {
   const tables = Object.fromEntries(Object.keys(state).filter((t) => !t.startsWith("__") && !OUTPUT_EXCLUDED.has(t)).sort().map((t) => [t, state[t]]));
+  if (withoutExecutedLevel && tables.rider_training_scores) {
+    tables.rider_training_scores = tables.rider_training_scores.map(({ intensity: _level, ...row }) => row);
+  }
   return digest({ tables, answers });
 }
 
-/** Hele datoen for et scenarie. `flags` er app_config-overstyringer (basen ignorerer kontakten). */
-export async function engineDigest(specName, { flags = {} } = {}) {
+async function runEngine(specName, flags) {
   const state = seedState({ ...ENGINE_SEED, flags });
   const team = state.teams[0].id;
   state.training_week_plans = weekPlanRows(SPECS[specName]()).map((row) => ({ ...row, team_id: team }));
   const fake = createFake(state);
   const answers = await sweep(state, fake);
-  return outputDigest(state, answers);
+  return { state, answers };
+}
+
+/** Hele datoen for et scenarie. `flags` er app_config-overstyringer (basen ignorerer kontakten). */
+export async function engineDigest(specName, { flags = {}, withoutExecutedLevel = false } = {}) {
+  const { state, answers } = await runEngine(specName, flags);
+  return outputDigest(state, answers, { withoutExecutedLevel });
+}
+
+/** #7947 PR 4: datoens score-raekker for et scenarie (det koerte niveau proeves direkte). */
+export async function engineScoreRows(specName, { flags = {} } = {}) {
+  return (await runEngine(specName, flags)).state.rider_training_scores ?? [];
 }
 
 // Det raa par (session, indsats) for rytter 0-7, to veje: (A) en egen programraekke med indsats,
@@ -266,6 +282,17 @@ export const RAW_PAIRS = Object.freeze([
 ]);
 
 export async function rawPairDigest(way, { flags = {} } = {}) {
+  const { state, answers } = await runRawPair(way, flags);
+  return outputDigest(state, answers);
+}
+
+/** #7947 PR 4: score-raekkerne og kvitteringerne for de raa par (begge veje). */
+export async function rawPairScoreRows(way, { flags = {} } = {}) {
+  const { state } = await runRawPair(way, flags);
+  return { scores: state.rider_training_scores ?? [], receipts: state.training_rider_ticks ?? [] };
+}
+
+async function runRawPair(way, flags) {
   const state = seedState({ ...ENGINE_SEED, flags });
   const team = state.teams[0].id;
   state.training_plans = state.training_plans.filter((row) => !RAW_PAIRS.some((_, n) => row.rider_id === rider(n)));
@@ -280,7 +307,7 @@ export async function rawPairDigest(way, { flags = {} } = {}) {
     : [];
   const fake = createFake(state);
   const answers = await sweep(state, fake);
-  return outputDigest(state, answers);
+  return { state, answers };
 }
 
 export const ENGINE_SPECS = Object.freeze(Object.keys(SPECS));

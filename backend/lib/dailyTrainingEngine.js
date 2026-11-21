@@ -1335,7 +1335,7 @@ export async function runTeamTrainingDay({
   let raceDayEffortByRider = new Map(); // #6641 variant B: rider_id -> managerens intention paa dagens etape
   let raceDayRoleByRiderMap = new Map(); // #5950: rider_id -> rolle paa dagens etape (tom = fri rolle)
   let programsOn = false, catalogV3On = false, stageOnDateRiderIds = new Set();
-  let effortLevelsOn = false; // #7947
+  let effortLevelsOn = false, effortFlagOn = false; // #7947
   let fatigueRules = null, stageYesterdayRiderIds = new Set();
   let trainingFacilityTier, trainingStaff, teamMedicalBonus = 0, illnessHistoryByRider = new Map();
   // #6938: sygdom af langvarig ekstrem traethed. Kun under condition_model_v2 OG naar
@@ -1506,12 +1506,16 @@ export async function runTeamTrainingDay({
   // #4629: programcellerne laeses KUN naar holdet har programdata OG flaget er
   // on for holdet (beta: holdets ejer er beta-tester). Uden programdata er der
   // intet ekstra opslag, og stien er bit-identisk med foer.
-  // #7947: indsats pr. felt laeses kun for et hold med programdata, samtidig med felt-flaget
-  // (Fable-dom #8517: intet ekstra opslag i raekkefoelge); den gaelder kun naar felterne laeses.
-  [programsOn, effortLevelsOn] = (Array.isArray(weekPlanRow) ? weekPlanRow : []).some((r) => weekDaysHaveSessions(r.days))
-    ? await Promise.all([isTrainingCellsEnabledForTeam(supabase, teamId), isTrainingEffortLevelsEnabled(supabase)])
-    : [false, false];
-  effortLevelsOn = programsOn && effortLevelsOn;
+  // #7947: kontakten laeses samtidig med felt-flaget (Fable-dom #8517: ikke i raekkefoelge).
+  // Feltets indsats gaelder kun naar felterne laeses; det koerte niveau gemmes paa scoren for
+  // alle hold (aldringsbremsen), ogsaa for en plan sat paa et andet niveau via api.js.
+  [programsOn, effortFlagOn] = await Promise.all([
+    (Array.isArray(weekPlanRow) ? weekPlanRow : []).some((r) => weekDaysHaveSessions(r.days))
+      ? isTrainingCellsEnabledForTeam(supabase, teamId)
+      : false,
+    isTrainingEffortLevelsEnabled(supabase),
+  ]);
+  effortLevelsOn = programsOn && effortFlagOn;
   },
   async () => {
   // #5319: traeningskatalog v3 (beta: holdets ejer er beta-tester). Off = programmet uroert.
@@ -1585,7 +1589,7 @@ export async function runTeamTrainingDay({
     xpPayoutRiderIds,
     abilityRows, planRows, conditionRows, weekPlanRow, raceDayResult, boundRiderIds, racedRiderIds,
     racedRiderProfileByRider, raceDayEffortByRider, raceDayRoleByRiderMap, programsOn, catalogV3On,
-    effortLevelsOn, // #7947
+    effortLevelsOn, effortFlagOn, // #7947
     stageOnDateRiderIds, fatigueRules, stageYesterdayRiderIds, trainingFacilityTier, trainingStaff,
     teamMedicalBonus, illnessOn, illnessHistoryByRider,
     // #7982 (afregning efter etapen): marks the race session's receipts (race_session_7982).
@@ -1794,6 +1798,7 @@ export function computeTrainingDayTick(input) {
     stageOnDateRiderIds, fatigueRules, stageYesterdayRiderIds, trainingFacilityTier, trainingStaff,
     teamMedicalBonus, illnessOn, illnessHistoryByRider, raceSessionRiderIds = null,
     effortLevelsOn = false, // #7947
+    effortFlagOn = false, // #7947: kontakten selv; det koerte niveau gemmes paa scoren
   } = input;
   const settlingRiderIds = new Set();
   const abilityByRider = new Map((abilityRows ?? []).map((a) => [a.rider_id, a]));
@@ -2367,7 +2372,7 @@ export function computeTrainingDayTick(input) {
         intention: null,
         contributions: racedToday ? null : scoreDetail.contributions,
         // #7947: det koerte niveau til aldringsbremsen; kun med kontakten on (off = samme raekke).
-        ...(effortLevelsOn ? { intensity: racedToday ? null : executedEffortForScore(program.intensity) } : {}),
+        ...(effortFlagOn ? { intensity: racedToday ? null : executedEffortForScore(program.intensity) } : {}),
       });
     } else if (boundRestToday && rodeToday) {
       // #4847: rytteren KOERTE en etape, men fik intet tick fordi udviklingen er
