@@ -146,8 +146,9 @@ test("krav 3: on + andet niveau giver præcis det rå par (session, indsats) i a
 test("krav 3: en hel dato med en programcelle på andet niveau = samme dato med det rå par som plan", async () => {
   const other = await quiet(() => engineDigest("other", { flags: ON }));
   assert.notEqual(other, GOLDEN.engine.other, "et andet niveau ændrer udfaldet (ellers tester vi ingenting)");
-  const cells = await quiet(() => rawPairDigest("cells", { flags: ON }));
-  const plans = await quiet(() => rawPairDigest("plans", { flags: ON }));
+  // PR 4: kun programcellernes vej gemmer det koerte niveau paa scoren; udfaldet er det samme.
+  const cells = await quiet(() => rawPairDigest("cells", { flags: ON, withoutExecutedLevel: true }));
+  const plans = await quiet(() => rawPairDigest("plans", { flags: ON, withoutExecutedLevel: true }));
   assert.equal(cells, plans);
   // Og med kontakten off læses cellen på standardniveau, så de to veje skilles.
   assert.notEqual(await quiet(() => rawPairDigest("cells", { flags: {} })), plans);

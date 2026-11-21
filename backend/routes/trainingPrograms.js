@@ -33,8 +33,8 @@ import {
 import { isTrainingProgramsEnabled } from "../lib/trainingProgramsFlag.js";
 import { isTrainingCellsEnabled } from "../lib/trainingWeekPlanCellsFlag.js";
 import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer, v3SmartDefaultFocus } from "../lib/trainingCatalogV3.js"; // #5319
-import { seedProgramWeekDays } from "../lib/trainingWeekPlanCells.js";
-import { effortForWrite } from "../lib/trainingEffortLevels.js"; // #7947
+import { seedProgramWeekDays, planRunsOffStandard } from "../lib/trainingWeekPlanCells.js";
+import { effortForWrite, isTrainingEffortLevelsEnabled } from "../lib/trainingEffortLevels.js"; // #7947
 import { loadTeamFatigueForecast } from "../lib/trainingWeekPlanForecast.js";
 import { markRidersOwnPlan, syncGroupsToSquadProgram, isMissingGroupsTable } from "../lib/trainingGroups.ts"; // #6000
 
@@ -124,7 +124,13 @@ export function createTrainingProgramsRouter({
     return affected ? isTrainingCatalogV3EnabledForViewer(supabase, () => isViewerBetaTester(req)) : false;
   }
 
-  function seedsFor(riders, rows, plansByRider, catalogV3 = false) {
+  // #7947: kontakten slaas kun op, naar en rytter der skal saaes har en plan paa et andet
+  // niveau end sessionens standard (kun muligt med kontakten on). Ellers intet opslag.
+  async function seedEffortLevels(riders, plansByRider) {
+    return riders.some((r) => planRunsOffStandard(plansByRider.get(r.id))) ? isTrainingEffortLevelsEnabled(supabase) : false;
+  }
+
+  function seedsFor(riders, rows, plansByRider, catalogV3 = false, effortLevels = false) {
     const teamDays = (rows ?? []).find((r) => r.rider_id == null)?.days ?? null;
     const seeds = {};
     for (const rider of riders) {
@@ -132,7 +138,7 @@ export function createTrainingProgramsRouter({
       if (isValidProgramWeekDays(riderDays)) continue;
       seeds[rider.id] = seedProgramWeekDays({
         riderDays, teamDays, plan: plansByRider.get(rider.id) ?? null, primaryType: rider.primary_type ?? null,
-        secondaryType: rider.secondary_type ?? null, catalogV3,
+        secondaryType: rider.secondary_type ?? null, catalogV3, effortLevels,
       });
     }
     return seeds;
@@ -158,7 +164,7 @@ export function createTrainingProgramsRouter({
       let seeds = {};
       if (cellsEnabled) {
         const [riders, plansByRider] = await Promise.all([ownRiders(req.team.id), teamPlans(req.team.id)]);
-        seeds = seedsFor(riders, rows, plansByRider, await seedCatalogV3(req, riders, plansByRider));
+        seeds = seedsFor(riders, rows, plansByRider, await seedCatalogV3(req, riders, plansByRider), await seedEffortLevels(riders, plansByRider));
       }
       res.json({
         enabled: catalogOn,
@@ -330,7 +336,7 @@ export function createTrainingProgramsRouter({
         ? row.days
         : await (async () => {
           const plans = await teamPlans(teamId);
-          return seedsFor([rider], rows, plans, await seedCatalogV3(req, [rider], plans))[riderId];
+          return seedsFor([rider], rows, plans, await seedCatalogV3(req, [rider], plans), await seedEffortLevels([rider], plans))[riderId];
         })();
       const days = setProgramCell(current, { weekday, slotIndex, session, effort: effortWrite.effort });
       if (!days) return res.status(400).json({ error: "invalid_cell" });

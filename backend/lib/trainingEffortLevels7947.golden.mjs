@@ -281,9 +281,9 @@ export const RAW_PAIRS = Object.freeze([
   ["vo2max", "normal"], ["tempo", "hard"], ["aero", "hard"], ["cobbled_sectors", "easy"],
 ]);
 
-export async function rawPairDigest(way, { flags = {} } = {}) {
+export async function rawPairDigest(way, { flags = {}, withoutExecutedLevel = false } = {}) {
   const { state, answers } = await runRawPair(way, flags);
-  return outputDigest(state, answers);
+  return outputDigest(state, answers, { withoutExecutedLevel });
 }
 
 /** #7947 PR 4: score-raekkerne og kvitteringerne for de raa par (begge veje). */

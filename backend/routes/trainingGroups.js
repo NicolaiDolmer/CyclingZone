@@ -28,8 +28,8 @@ import {
 } from "../lib/trainingPrograms.js";
 import { isTrainingCellsEnabled } from "../lib/trainingWeekPlanCellsFlag.js";
 import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer, v3SmartDefaultFocus } from "../lib/trainingCatalogV3.js"; // #5319
-import { seedProgramWeekDays } from "../lib/trainingWeekPlanCells.js";
-import { effortForWrite } from "../lib/trainingEffortLevels.js"; // #7947
+import { seedProgramWeekDays, planRunsOffStandard } from "../lib/trainingWeekPlanCells.js";
+import { effortForWrite, isTrainingEffortLevelsEnabled } from "../lib/trainingEffortLevels.js"; // #7947
 import {
   GROUPS_TABLE, MEMBERS_TABLE, isTrainingGroupsEnabled, loadTeamGroups, normalizeGroupName, sanitizeRiderIds,
   followerIds, groupSeedDays, groupFatiguePatch, copyWeekDays,
@@ -92,6 +92,8 @@ export function createTrainingGroupsRouter({
     // #5319: v3-saaningen foelger viewerens katalog; flaget slaas kun op naar det kan flytte nogen.
     const v3Affected = riders.some((r) => !(plans.get(r.id)?.focus && plans.get(r.id)?.intensity) && v3SmartDefaultFocus("threshold", r, { v3: true }) !== "threshold");
     const catalogV3 = v3Affected ? await isTrainingCatalogV3EnabledForViewer(supabase, () => isViewerBetaTester(req)) : false;
+    // #7947: kontakten slaas kun op, naar en plan staar paa et andet niveau end sessionens standard.
+    const effortLevels = riders.some((r) => planRunsOffStandard(plans.get(r.id))) ? await isTrainingEffortLevelsEnabled(supabase) : false;
     const ownIds = riders.map((r) => r.id);
     const teamDays = rows.find((r) => r.rider_id == null)?.days ?? null;
     const ownDaysByRider = new Map(rows.filter((r) => r.rider_id != null).map((r) => [r.rider_id, r.days]));
@@ -101,7 +103,7 @@ export function createTrainingGroupsRouter({
       if (isValidProgramWeekDays(riderDays)) continue;
       seeds[rider.id] = seedProgramWeekDays({
         riderDays, teamDays, plan: plans.get(rider.id) ?? null, primaryType: rider.primary_type ?? null,
-        secondaryType: rider.secondary_type ?? null, catalogV3,
+        secondaryType: rider.secondary_type ?? null, catalogV3, effortLevels,
       });
     }
     return { riders, ownIds, rows, groups, members, ownDaysByRider, seeds };

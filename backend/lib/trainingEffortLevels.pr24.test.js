@@ -20,6 +20,8 @@ import {
 import { programForChoice, sessionIntensityFor, RECOVERY_FOCUS, SESSION_INTENSITY_V3 } from "./trainingDayTypes.js";
 import { computeSeasonLoad, loadSeasonDevelopmentLoad } from "./seasonDevelopmentLoad.js";
 import { copyWeekDays } from "./trainingGroups.ts";
+import { seedProgramWeekDays, planRunsOffStandard } from "./trainingWeekPlanCells.js";
+import { intensityForSession } from "./trainingPrograms.js";
 import { traeningsPas } from "./dommer6110.r16traening.mjs";
 import {
   hash, OFF_FLAGS, programCellOutcome, groupCellOutcome, seasonLoadOutcome, CELL_CALLS, fakeSupabase,
@@ -141,6 +143,43 @@ describe("felterne med kontakten on", () => {
     }
     assert.equal(state.training_week_plans.some((r) => r.rider_id === "r3"), false, "en rytter der ikke foelger gruppen faar ingen kopi");
   });
+  // Codex-fund (PR 2+4): en plan skrevet paa et andet niveau via api.js maa ikke blive til en
+  // anden session eller hvile, naar rytterens felter saaes ved foerste rettelse.
+  test("saaningen: on bevarer planens session og niveau som dagens indsats; off er dagens saaning", () => {
+    for (const [focus, intensity] of [["endurance", "hard"], ["vo2max", "easy"], ["technique", "hard"], ["tempo", "easy"]]) {
+      const plan = { focus, intensity };
+      assert.equal(planRunsOffStandard(plan), true, focus);
+      const on = seedProgramWeekDays({ plan, effortLevels: true });
+      for (const day of Object.values(on)) assert.deepEqual(day, { session: focus, intensity: intensityForSession(focus), effort: intensity }, focus);
+      assert.deepEqual(seedProgramWeekDays({ plan }), seedProgramWeekDays({ plan, effortLevels: false }));
+      assert.notDeepEqual(seedProgramWeekDays({ plan }), on, `${focus}: off er den gamle oversaettelse`);
+    }
+    for (const plan of [{ focus: "vo2max", intensity: SESSION_INTENSITY_V3.vo2max }, { focus: "sprint", intensity: "rest" }, { focus: "recovery", intensity: "recovery" }, null]) {
+      assert.equal(planRunsOffStandard(plan), false, JSON.stringify(plan));
+      assert.deepEqual(seedProgramWeekDays({ plan, primaryType: "climber", effortLevels: true }), seedProgramWeekDays({ plan, primaryType: "climber" }), JSON.stringify(plan));
+    }
+  });
+  test("programfeltet: en rytter med plan paa et andet niveau og ingen felter saaes med indsatsen (on)", async () => {
+    const state = {
+      app_config: [{ key: "training_program_cells", value: "beta" }, { key: TRAINING_EFFORT_LEVELS_KEY, value: "on" }],
+      riders: [{ id: "r1", team_id: "team-a", is_retired: false, primary_type: "climber", secondary_type: null }],
+      seasons: [{ id: "s1", status: "active" }],
+      training_plans: [{ rider_id: "r1", team_id: "team-a", season_id: "s1", focus: "endurance", intensity: "hard" }],
+      training_week_plans: [],
+    };
+    const express = (await import("express")).default;
+    const { createTrainingProgramsRouter } = await import("../routes/trainingPrograms.js");
+    const app = express(); app.use(express.json());
+    app.use("/p", createTrainingProgramsRouter({ supabase: fakeSupabase(state), requireAuth: (req, _res, next) => { req.team = { id: "team-a" }; next(); }, isViewerBetaTester: async () => true }));
+    const server = app.listen(0);
+    try {
+      const res = await fetch(`http://127.0.0.1:${server.address().port}/p/cell`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ riderId: "r1", weekday: "tue", slotIndex: 0, session: "tempo" }) });
+      assert.equal(res.status, 200);
+    } finally { await new Promise((r) => server.close(r)); }
+    const days = state.training_week_plans[0].days;
+    assert.deepEqual(days.mon, { session: "endurance", intensity: intensityForSession("endurance"), effort: "hard" });
+    assert.equal(days.tue.slots[0], "tempo");
+  });
   test("copyWeekDays: kopien bevarer indsats-noeglerne og deler ingen arrays", () => {
     const days = Object.fromEntries(["mon", "tue", "wed", "thu", "fri", "sat", "sun"].map((w) => [w, { session: "endurance", intensity: "easy" }]));
     days.mon = { ...days.mon, effort: "hard", slotEfforts: [null, "easy", null, null, null] };
@@ -168,9 +207,9 @@ describe("motoren gemmer det koerte niveau", () => {
   });
   // Det gemte niveau er det motoren KOERTE (kvitteringens intensitet), ogsaa naar
   // traethedsgraensen har sat en traet rytter ned; ellers er det parrets niveau.
-  test("on: en plan og en programcelle paa andet niveau gemmer det koerte niveau (Lang tur haardt osv.)", async () => {
+  test("on: en programcelle paa andet niveau gemmer det koerte niveau (Lang tur haardt osv.)", async () => {
     const pairRiders = new Set(RAW_PAIRS.map((_, n) => harnessRider(n)));
-    for (const way of ["plans", "cells"]) {
+    for (const way of ["cells"]) {
       const { scores, receipts } = await quiet(() => rawPairScoreRows(way, { flags: ON }));
       const rows = scores.filter((r) => r.was_race_day === false && pairRiders.has(r.rider_id));
       assert.ok(rows.length > 0, `${way}: de raa par giver score-raekker`);
@@ -183,6 +222,13 @@ describe("motoren gemmer det koerte niveau", () => {
       const longHard = rows.filter((r) => r.rider_id === harnessRider(1));
       assert.ok(longHard.length > 0 && longHard.every((r) => r.session === "endurance" && r.intensity === "hard"), way);
     }
+  });
+  // Kendt graense (se PR-body): kontakten laeses kun naar programcellerne laeses, saa aftenens
+  // laesninger er de frosne facits. Et hold uden felter faar derfor ingen intensity; bremsen
+  // taeller saa tabel-niveauet som foer. Saaningen (ovenfor) flytter planens niveau ind i felterne.
+  test("on uden programceller: ingen intensity (kontakten er ikke laest), udfaldet er det samme", async () => {
+    const { scores } = await quiet(() => rawPairScoreRows("plans", { flags: ON }));
+    assert.ok(scores.length > 0 && scores.every((row) => !("intensity" in row)));
   });
   test("on: standardniveau gemmes som standardniveauet; loebsdage og restitution har null", async () => {
     const rows = await quiet(() => engineScoreRows("standard", { flags: ON }));
