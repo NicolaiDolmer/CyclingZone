@@ -41,7 +41,7 @@ test("canResetFilters/resetFilterState (#8563): kun et aktivt filter eller overs
 
 test("TodayR5 (#8563): telefonens raekke har ingen link inde i en knap, og tomt filter har Nulstil-handlingen", () => {
   const src = readFileSync(join(here, "TodayR5.tsx"), "utf8");
-  const start = src.indexOf("{g.rows.map((row) => {");
+  const start = src.lastIndexOf("{g.rows.map((row) => {");
   const mobileRow = src.slice(start, src.indexOf("</Fragment>", start));
   // Foerste <button> i raekken er den strakte fold-ud-knap; navnet (NameCell) staar efter den, uden for en knap.
   assert.ok(mobileRow.indexOf('data-testid="r5-row-toggle"') > -1);
