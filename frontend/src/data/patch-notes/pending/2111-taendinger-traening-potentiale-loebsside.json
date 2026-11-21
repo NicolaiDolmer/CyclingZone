@@ -78,6 +78,25 @@
       "refs": [
         7535
       ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "beta_to_live",
+      "flag": "patch_notes_v2_8049",
+      "topic": "Patch notes",
+      "area": "interface",
+      "en": {
+        "title": "The new patch notes page is live for everyone",
+        "body": "Patch notes are now grouped by area, week by week, with an archive per month. A dot shows what is new since your last visit."
+      },
+      "da": {
+        "title": "Den nye side for patch notes er tændt for alle",
+        "body": "Patch notes står nu efter område, uge for uge, med et arkiv pr. måned. En prik viser, hvad der er nyt siden sidst."
+      },
+      "refs": [
+        8049
+      ]
     }
   ]
 }
