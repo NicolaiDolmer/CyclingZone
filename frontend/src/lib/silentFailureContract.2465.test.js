@@ -24,7 +24,7 @@ const raceTacticsTab = read("../components/race/RaceTacticsTab.jsx");
 // unchanged and pinned at least as tightly as before.
 test("RiderTrainingTab: panel save/clear await setPlan/clearPlan and surface {ok:false}", () => {
   assert.match(riderTrainingTab, /async function handlePanelSave\(dayType, session\)/);
-  assert.match(riderTrainingTab, /const result = await training\.setPlan\(rider\.id, dayType, session\)/);
+  assert.match(riderTrainingTab, /const result = await training\.setPlan\(rider\.id, dayType, session(?:, effort)?\)/); // #8541: valgfrit niveau
   assert.match(riderTrainingTab, /async function handlePanelClear\(\)/);
   assert.match(riderTrainingTab, /const result = await training\.clearPlan\(rider\.id\)/);
   assert.match(riderTrainingTab, /if \(result && !result\.ok\) setActionError\(result\.error \|\| "failed"\)/);

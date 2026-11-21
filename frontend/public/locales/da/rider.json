@@ -137,6 +137,7 @@
       "effectNote": "opdateres dagligt",
       "noRiskNote": "Højere intensitet vokser hurtigere, uden risiko for at miste fremgang.",
       "restNote": "Ingen evne-vækst på en hviledag; træthed falder.",
+      "levelNote": "Hård træner mere, men trætter mere. Let og Mellem sparer kræfterne.",
       "emptyFocus": "Vælg et fokus for at tildele træning.",
       "actionErrorGeneric": "Kunne ikke gemme. Prøv igen om lidt.",
       "actionErrors": {
