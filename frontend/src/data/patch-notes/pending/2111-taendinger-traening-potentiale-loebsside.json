@@ -22,25 +22,6 @@
       ]
     },
     {
-      "category": "improved",
-      "audience": "player",
-      "rollout": "switched_on",
-      "flag": "potential_estimate_display",
-      "topic": "Development",
-      "area": "development",
-      "en": {
-        "title": "Potential is a number from 1 to 99",
-        "body": "A rider's potential is now shown as a number from 1 to 99 instead of stars, with a word for how sure your scout is. Young riders never got a lower expectation than before the change."
-      },
-      "da": {
-        "title": "Potentiale er et tal fra 1 til 99",
-        "body": "En rytters potentiale vises nu som et tal fra 1 til 99 i stedet for stjerner, med et ord for, hvor sikker jeres spejder er. Ingen ung rytter fik en lavere forventning end før skiftet."
-      },
-      "refs": [
-        6110
-      ]
-    },
-    {
       "category": "new",
       "audience": "player",
       "rollout": "beta_to_live",
