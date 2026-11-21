@@ -244,6 +244,11 @@ export const MANAGER_SETUP_REGISTRY = Object.freeze([
     why: "Append-only udviklings-log pr. rytter. Historik over hvad motoren gjorde, ikke en indstilling.",
   },
   {
+    table: "rider_wear",
+    disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
+    why: "#8522: rytterens varige slid, skrevet af sæsonskiftet (apply_rider_development). Motor-output, ikke en indstilling.",
+  },
+  {
     table: "scout_actions",
     disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
     why: "Rapport-ledger for allerede udførte spejder-handlinger. Forbrugte handlinger, ikke en opsætning der kan gentages i den nye sæson.",

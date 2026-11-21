@@ -11,6 +11,7 @@ import { riderShortName } from "../../../lib/riderName.ts";
 import { useMediaQuery } from "../../../hooks/useMediaQuery.ts";
 import { filterTodayRiders, xpOfPrice, type TodayFilter, type XpAbilityRow, type XpRiderType, type XpTodayRider, type XpTodayView } from "../../../lib/trainingReportXp.ts";
 import { Swatch, XpBar, XpLegend } from "./XpBar.tsx";
+import type { RatingChange } from "../../../lib/xpRatingChange.ts";
 
 // #7627 · "Today" in XP. Computer: the riders as a table on the left and the
 // picked rider in a panel on the right. Phone: one column, the rider folds out
@@ -25,7 +26,9 @@ import { Swatch, XpBar, XpLegend } from "./XpBar.tsx";
 const META = "font-data text-2xs uppercase tracking-[.08em] text-cz-3";
 const NUM = "font-data tabular-nums";
 // One line per rider. Phone: name + three numbers (D-047) + the fold-out button.
-const ROW_GRID = "grid-cols-[minmax(0,1fr)_2.5rem_2.75rem_2.75rem_2.75rem] lg:grid-cols-[minmax(0,1.8fr)_minmax(0,0.9fr)_2.75rem_2.75rem_3.25rem_minmax(4.5rem,auto)_minmax(4.5rem,auto)_2.5rem_3.25rem_2.75rem]";
+// #7947 (owner 20/11): Rating is its own column after Form and Fatigue on the computer;
+// on the phone it stands with them in the fold-out.
+const ROW_GRID = "grid-cols-[minmax(0,1fr)_2.5rem_2.75rem_2.75rem_2.75rem] lg:grid-cols-[minmax(0,1.8fr)_minmax(0,0.9fr)_2.75rem_2.75rem_3.25rem_minmax(4.5rem,auto)_minmax(4.5rem,auto)_2.5rem_3.25rem_3.25rem_2.75rem]";
 const xp = (n: number) => formatNumber(Math.round(n));
 
 /** The owner's phone name form (18/9): "A. Brandvig". The receipt carries one full name. */
@@ -78,6 +81,12 @@ function Change({ from, to, plate = false }: { from: number | null; to: number |
       {plate ? <FormPlate value={to} /> : <span>{formatNumber(to)}</span>}
     </span>
   );
+}
+
+/** #7947 · The rating change "34 > 35", the same Change as form and fatigue. Nothing when it did not move. */
+function RatingCell({ change }: { change?: RatingChange | null }) {
+  if (!change) return null;
+  return <span className="text-xs text-cz-1" data-testid="xp-rating"><Change from={change.from} to={change.to} /></span>;
 }
 
 /** Fatigue now with its change. Neutral until #8364's shared warm scale exists. */
@@ -138,7 +147,7 @@ export function PaidNote({ className = "" }: { className?: string }) {
   );
 }
 
-/** The picked rider: earned and paid out, sessions, XP per ability, form, fatigue and session score. */
+/** The picked rider: earned and paid out, sessions, XP per ability, form, fatigue and rating. */
 export function RiderDetail({ rider, panel = false }: { rider: XpTodayRider; panel?: boolean }) {
   const { t } = useTranslation("trainingXp");
   const { t: tRider } = useTranslation("rider");
@@ -162,7 +171,8 @@ export function RiderDetail({ rider, panel = false }: { rider: XpTodayRider; pan
         {rider.sessions.map((s, i) => (
           <li key={i} className={`min-w-0 rounded-cz border px-1.5 py-1.5 ${s.kind === "race" ? "border-cz-border-strong" : "border-cz-border"}`} data-kind={s.kind}>
             <p className="flex items-center gap-1 truncate text-xs font-medium text-cz-1">{s.kind === "race" && <Swatch part="race" />}{sessionLabel(s.kind)}</p>
-            <p className={`truncate text-3xs text-cz-3 ${NUM}`}>{s.score != null ? t("xpReport.score", { score: formatNumber(s.score) }) : s.focus ? tRider(`training.focus_${s.focus}`) : " "}</p>
+            {/* #7947 (owner 20/11): no training score in the XP report; the session's focus, when it has one. */}
+            <p className="truncate text-3xs text-cz-3">{s.focus ? tRider(`training.focus_${s.focus}`) : " "}</p>
           </li>
         ))}
       </ol>
@@ -190,7 +200,7 @@ export function RiderDetail({ rider, panel = false }: { rider: XpTodayRider; pan
       <HeroStats className="mt-3" items={[
         { label: t("training:dailyReceipt.form"), value: <Change from={rider.formBefore} to={rider.form} plate /> },
         { label: t("training:dailyReceipt.fatigue"), value: <Change from={rider.fatigueBefore} to={rider.fatigue} /> },
-        { label: t("xpReport.sessionScore"), value: rider.sessionScore != null ? formatNumber(rider.sessionScore) : t("xpReport.noScore") },
+        ...(rider.rating ? [{ label: tRider("header.overall"), value: <span data-testid="xp-rating-detail"><Change from={rider.rating.from} to={rider.rating.to} /></span> }] : []),
       ]} />
     </div>
   );
@@ -198,6 +208,7 @@ export function RiderDetail({ rider, panel = false }: { rider: XpTodayRider; pan
 
 export default function XpToday({ view, onPickDate, switcher }: { view: XpTodayView; onPickDate: (date: string) => void; switcher: ReactNode }) {
   const { t } = useTranslation("trainingXp");
+  const { t: tRider } = useTranslation("rider");
   const [filter, setFilter] = useState<TodayFilter>("all");
   const [picked, setPicked] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
@@ -251,7 +262,7 @@ export default function XpToday({ view, onPickDate, switcher }: { view: XpTodayV
             <Segmented label={t("xpReport.filterLabel")} value={filter} onChange={(v: TodayFilter) => setFilter(v)} className="whitespace-nowrap"
               options={(["all", "gained", "raced", "notRaced"] as TodayFilter[]).map(key => ({ value: key, label: t(`xpReport.filter.${key}`, { count: view.counts[key] }) }))} />
           </div>
-          <div className={`grid items-end gap-x-2 py-2 lg:gap-x-3 ${ROW_GRID} ${META}`} aria-hidden="true" data-testid="xp-head">
+          <div className={`grid items-end gap-x-2 py-2 lg:gap-x-2.5 ${ROW_GRID} ${META}`} aria-hidden="true" data-testid="xp-head">
             <span>{t("training:colRider")}</span>
             <span className="hidden lg:block">{t("training:colType")}</span>
             <span className="hidden text-right lg:block">{t("xpReport.legend.training")}</span>
@@ -261,6 +272,7 @@ export default function XpToday({ view, onPickDate, switcher }: { view: XpTodayV
             <span className="text-right lg:text-left">{t("xpReport.colPaid")}</span>
             <span className="hidden text-right lg:block">{t("training:dailyReceipt.form")}</span>
             <span className="hidden text-right lg:block">{t("training:dailyReceipt.fatigue")}</span>
+            <span className="hidden text-right lg:block">{tRider("header.overall")}</span>
             <span />
           </div>
           {riders.map(rider => {
@@ -270,10 +282,12 @@ export default function XpToday({ view, onPickDate, switcher }: { view: XpTodayV
               <div key={rider.id} className="border-t border-cz-border" data-testid="xp-row">
                 {/* The row picks the rider (panel) or folds him out (phone); the name is its own link. */}
                 <div onClick={() => toggle(rider.id)}
-                  className={`grid min-h-11 w-full cursor-pointer items-center gap-x-2 hover:bg-cz-subtle lg:gap-x-3 ${ROW_GRID} ${isPicked ? "xl:bg-cz-subtle" : ""}`}>
-                  <span className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap" data-testid="xp-name-cell">
-                    {rider.nation && <Flag code={rider.nation} className="shrink-0" />}
-                    <span className="min-w-0"><RiderNameCell id={rider.id} {...nameParts(rider.name)} name={phone ? shortName(rider.name) : rider.name} stopPropagation className="text-[13px] font-semibold text-cz-1 hover:text-cz-accent-t" /></span>
+                  className={`grid min-h-11 w-full cursor-pointer items-center gap-x-2 hover:bg-cz-subtle lg:gap-x-2.5 ${ROW_GRID} ${isPicked ? "xl:bg-cz-subtle" : ""}`}>
+                  <span className="flex min-w-0 flex-col justify-center">
+                    <span className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap" data-testid="xp-name-cell">
+                      {rider.nation && <Flag code={rider.nation} className="shrink-0" />}
+                      <span className="min-w-0"><RiderNameCell id={rider.id} {...nameParts(rider.name)} name={phone ? shortName(rider.name) : rider.name} stopPropagation className="text-[13px] font-semibold text-cz-1 hover:text-cz-accent-t" /></span>
+                    </span>
                   </span>
                   <span className="hidden min-w-0 lg:block"><TypeCell type={rider.type} /></span>
                   <span className={`hidden text-right text-xs text-cz-2 lg:block ${NUM}`}>{rider.training > 0 ? `+${xp(rider.training)}` : "0"}</span>
@@ -289,6 +303,7 @@ export default function XpToday({ view, onPickDate, switcher }: { view: XpTodayV
                   </span>
                   <span className="hidden justify-self-end lg:block"><FormPlate value={rider.form} /></span>
                   <span className="hidden justify-self-end lg:block"><FatigueNow rider={rider} /></span>
+                  <span className="hidden justify-self-end lg:block"><RatingCell change={rider.rating} /></span>
                   <button type="button" aria-expanded={isOpen} aria-label={t("xpReport.details", { name: rider.name })}
                     onClick={(e) => { e.stopPropagation(); toggle(rider.id); }}
                     className="inline-flex size-11 items-center justify-center justify-self-end text-cz-3 hover:text-cz-1">
