@@ -16,7 +16,10 @@
         "title": "Ny træningsside med Let, Mellem og Hård",
         "body": "Daglig træning har fået nyt udseende. I I dag vælger I en indsats for hele holdet eller for hver rytter: Let, Mellem eller Hård. Hård giver mest fremgang, men har en skaderisiko; Let og Mellem har ikke. I Program planlægger I ugen for programmer, grupper og ryttere og gemmer med Gem plan. Siden virker også på telefon."
       },
-      "refs": [7947, 7456]
+      "refs": [
+        7947,
+        7456
+      ]
     },
     {
       "category": "improved",
@@ -33,7 +36,9 @@
         "title": "Potentiale er et tal fra 1 til 99",
         "body": "En rytters potentiale vises nu som et tal fra 1 til 99 i stedet for stjerner, med et ord for, hvor sikker jeres spejder er. Ingen ung rytter fik en lavere forventning end før skiftet."
       },
-      "refs": [6110]
+      "refs": [
+        6110
+      ]
     },
     {
       "category": "new",
@@ -50,7 +55,29 @@
         "title": "Den nye løbsside er tændt for alle",
         "body": "Den nye løbsside med løbsfilmen, mellemtider, taktik og den farvede rute er nu tændt for alle. Spoiler-skjoldet under Indstillinger skjuler nu også resultatet på løbssiden, til I åbner det."
       },
-      "refs": [7778, 7859]
+      "refs": [
+        7778,
+        7859
+      ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "beta_to_live",
+      "flag": "planning_workbench",
+      "topic": "Planning",
+      "area": "races",
+      "en": {
+        "title": "The new planning page is live for everyone",
+        "body": "The planning page, with the race list, week overview, route profile, squad and form peak in one place, is now on for everyone."
+      },
+      "da": {
+        "title": "Den nye planlægningsside er tændt for alle",
+        "body": "Planlægningssiden, med løbsliste, ugeoversigt, ruteprofil, trup og formtop ét sted, er nu tændt for alle."
+      },
+      "refs": [
+        7535
+      ]
     }
   ]
 }
