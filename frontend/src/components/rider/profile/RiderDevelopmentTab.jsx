@@ -425,7 +425,7 @@ function LogCard({ viewer, entries, t }) {
   );
 }
 
-export default function RiderDevelopmentTab({ rider, history = [], types = [], trainingHistory, viewer = "own", projection: sentProjection = null, training = null }) {
+export default function RiderDevelopmentTab({ rider, history = [], types = [], trainingHistory, viewer = "own", projection: sentProjection = null, training }) {
   const { t } = useTranslation("rider");
   // #8476: under XP er der intet mål at nå. Grafen viser kun registreret rating, og
   // vækstkortet kun rating, point og "Målt siden": ingen mål-zone, stiplet projektion,
