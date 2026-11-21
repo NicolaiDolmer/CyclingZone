@@ -146,7 +146,7 @@ export default function PotentialEstimate({ view, size = "cell", action = null, 
   const unsure = view.certainty === "unsure";
   return (
     <span className="inline-flex flex-col gap-1">
-      <span className="inline-flex items-baseline gap-x-1.5 gap-y-1 flex-wrap" data-testid="potential-estimate">
+      <span className={`inline-flex items-baseline gap-x-1.5 gap-y-1 ${size === "cell" ? "flex-nowrap" : "flex-wrap"}`} data-testid="potential-estimate">
         <span
           className={`tabular-nums whitespace-nowrap ${unsure ? "text-cz-3" : "text-cz-1"} ${NUMBER_CLASS[size]}`}
           title={t("rider:potentialEstimate.notAFact")}
