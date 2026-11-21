@@ -10,17 +10,16 @@ function Step({ a, b }: { a: number; b: number }) {
 
 const LABEL = "mb-1 font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3";
 const NUM = "font-data text-[13px] tabular-nums";
-const HATCH = { backgroundImage: "repeating-linear-gradient(45deg, currentColor 0 3px, transparent 3px 6px)" };
 
 type Seg = { from: number; to: number; kind: "before" | "training" | "race" };
 
-// Ét spor 0-100 %. Graa = foer i dag, fuld = traening i dag, skraveret = loeb i dag.
+// Ét spor 0-100 %. Graa = foer i dag, fuld = traening i dag, halv styrke = loeb i dag.
 function Track({ segs, wide = true }: { segs: Seg[]; wide?: boolean }) {
   return (
     <span className={`relative block h-1.5 overflow-hidden rounded-cz bg-cz-border ${wide ? "w-full" : "w-24"}`}>
       {segs.map((s, i) => (
-        <span key={i} className={`absolute inset-y-0 ${s.kind === "before" ? "bg-cz-3/45" : s.kind === "training" ? "bg-cz-1" : "text-cz-1"}`}
-          style={{ left: `${s.from}%`, width: `${s.to - s.from}%`, ...(s.kind === "race" ? HATCH : {}) }} />
+        <span key={i} className={`absolute inset-y-0 ${s.kind === "before" ? "bg-cz-3/45" : s.kind === "training" ? "bg-cz-1" : "bg-cz-1/60"}`}
+          style={{ left: `${s.from}%`, width: `${s.to - s.from}%` }} />
       ))}
     </span>
   );
@@ -35,7 +34,7 @@ function Legend() {
     <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-2xs text-cz-3">
       <span className="inline-flex items-center gap-1.5"><span className="block h-1.5 w-4 rounded-cz bg-cz-3/45" />Before today</span>
       <span className="inline-flex items-center gap-1.5"><span className="block h-1.5 w-4 rounded-cz bg-cz-1" />Training today</span>
-      <span className="inline-flex items-center gap-1.5"><span className="block h-1.5 w-4 rounded-cz text-cz-1" style={HATCH} />Race today</span>
+      <span className="inline-flex items-center gap-1.5"><span className="block h-1.5 w-4 rounded-cz bg-cz-1/60" />Race today</span>
     </div>
   );
 }

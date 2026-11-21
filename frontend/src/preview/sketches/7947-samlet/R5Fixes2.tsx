@@ -1,5 +1,5 @@
 // #8476: foer/efter for rettelse 2-10 (se R5Fixes.tsx). Eksempeldata.
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 
 const LBL = "mb-1.5 font-data text-3xs font-semibold uppercase tracking-[.06em]";
 
@@ -180,4 +180,4 @@ export const TITLES2: Record<string, string> = {
   "5": '5 · "Efter peak" for 29-30-årige', "6": '6 · "loft" på træningssidens Udvikling-liste', "7": "7 · Overskrift på fanen Udvikling (Denne sæson)",
   "8": "8 · MÅL-båndet i profilens graf", "9": "9 · To forkerte svar i Hjælpen", "10": '10 · Dashboardets "Loft før/nu"-kort',
 };
-export const FIXES2: Record<string, () => JSX.Element> = { "2": Fix2, "3": Fix3, "4": Fix4, "5": Fix5, "6": Fix6, "7": Fix7, "8": Fix8, "9": Fix9, "10": Fix10 };
+export const FIXES2: Record<string, () => ReactElement> = { "2": Fix2, "3": Fix3, "4": Fix4, "5": Fix5, "6": Fix6, "7": Fix7, "8": Fix8, "9": Fix9, "10": Fix10 };
