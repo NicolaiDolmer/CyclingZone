@@ -305,7 +305,7 @@ export default function ProgramR5({
       </Button>
     );
     const riderType = subject?.kind === "rider" ? riderById.get(subject.id)?.type : null;
-    const hasHints = !subject || !!riderDays?.isSeed || !!riderType;
+    const hasHints = !subject || !!riderDays?.isSeed;
     return (
       <div className="flex flex-col" data-testid="program-r5">
         {actionsEl ? createPortal(copyButton, actionsEl) : <div className="mb-3 flex justify-end">{copyButton}</div>}
@@ -314,6 +314,7 @@ export default function ProgramR5({
           subtitle={program
             ? `${tR5("programR5.kind_week")} · ${onNames.length ? tR5("programR5.on", { names: onNames.join(", ") }) : tR5("programR5.notInUse")}`
             : ""}
+          typeLabel={riderType ? tTypes(`types.${riderType}`) : null}
           chips={chips}
           onChip={(key) => setSubject(parseSubjectKey(key))}
           renderLibrary={(close) => (
@@ -341,7 +342,6 @@ export default function ProgramR5({
             : (program ? programTagline(program, lang) : intro)}
           hints={hasHints ? (
             <div className="flex flex-col gap-1">
-              {riderType && <p className="text-2xs text-cz-2">{tTypes(`types.${riderType}`)}</p>}
               {!subject && <p className="text-2xs text-cz-3">{tR5("programR5.asWrittenNote")}</p>}
               {riderDays?.isSeed && <p className="text-2xs text-cz-3">{t("programs.seededHint")}</p>}
             </div>

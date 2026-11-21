@@ -51,11 +51,12 @@ type Shared = {
 };
 
 export default function ProgramR5Phone({
-  name, subtitle, chips, onChip, renderLibrary, limitEl, summary, hints, footer,
+  name, subtitle, typeLabel, chips, onChip, renderLibrary, limitEl, summary, hints, footer,
   saveLabel, saveDisabled, onSave, ...shared
 }: Shared & {
   name: string;
   subtitle: string;
+  typeLabel: string | null;
   chips: PhoneChip[];
   onChip: (key: string) => void;
   // Biblioteket (programmer, grupper, ryttere) og "hvem programmet sidder paa" i arket "Change program".
@@ -100,7 +101,10 @@ export default function ProgramR5Phone({
       </div>
 
       <div>
-        <span className={LABEL}>{tR5("programR5.weekFor")}</span>
+        <span className="flex items-baseline justify-between gap-2">
+          <span className={LABEL}>{tR5("programR5.weekFor")}</span>
+          {typeLabel && <span className="text-2xs text-cz-2">{typeLabel}</span>}
+        </span>
         <div role="group" aria-label={tR5("programR5.weekFor")}
           className="-mx-4 mt-1 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none]" data-testid="program-r5-chips">
           {chips.map((chip) => (
@@ -114,7 +118,6 @@ export default function ProgramR5Phone({
       </div>
 
       {hints}
-      {limitEl}
 
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0 text-3xs leading-snug text-cz-2">{summary}</div>
@@ -126,6 +129,8 @@ export default function ProgramR5Phone({
         ? <DayView {...shared} day={day} onDay={setDay} />
         : <WeekList {...shared} open={openDay} onOpen={setOpenDay} />}
 
+      {/* Graensen under ugen, saa felterne faar pladsen oeverst paa en smal skaerm. */}
+      {limitEl}
       {footer}
       <p className="inline-flex items-center gap-1 text-3xs text-cz-3" data-testid="program-r5-today-lock">
         <LockIcon size={10} aria-hidden="true" />{tR5("programR5.todayLock")}
