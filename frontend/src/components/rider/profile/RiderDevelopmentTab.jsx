@@ -338,18 +338,24 @@ function AbilityXpCard({ rider, xpBars, seasonGainsByAbility, trainingHistory, t
       <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0 mb-[11px]">
         {t("profile.development.xp.title")}
       </h3>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-[18px] gap-y-[13px]">
-        {ABILITY_CATEGORIES.map((cat) => (
-          <div key={cat.key} className="min-w-0">
-            <span className="font-mono text-3xs font-bold uppercase tracking-widest text-cz-3">
-              {t(`stats.categories.${cat.key}`)}
-            </span>
-            <div className="mt-[5px]">
-              <AbilityReceiptHeader xp season />
-              {cat.keys.map((key) => (
-                <AbilityReceiptRow key={key} row={rows[key]} season />
-              ))}
-            </div>
+      {/* Med sæson-kolonnen er en linje bredere end en tredjedel af kortet: to spalter, de
+          to korte kategorier stablet i den ene, så ingen "Seneste"-kolonne klippes. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-[18px] gap-y-[13px] items-start">
+        {[ABILITY_CATEGORIES.slice(0, 1), ABILITY_CATEGORIES.slice(1)].map((group) => (
+          <div key={group[0].key} className="flex flex-col gap-[13px] min-w-0">
+            {group.map((cat) => (
+              <div key={cat.key} className="min-w-0">
+                <span className="font-mono text-3xs font-bold uppercase tracking-widest text-cz-3">
+                  {t(`stats.categories.${cat.key}`)}
+                </span>
+                <div className="mt-[5px]">
+                  <AbilityReceiptHeader xp season />
+                  {cat.keys.map((key) => (
+                    <AbilityReceiptRow key={key} row={rows[key]} season />
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         ))}
       </div>
