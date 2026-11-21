@@ -44,8 +44,12 @@ function executedLevel(row) {
   return row.intensity ?? SESSION_INTENSITY[row.session];
 }
 
+// Ejer 21/11 ("Hård er hård"): en færdighedsdag (teknik, aero, løbslære) kørt på Hård
+// tæller også. Færdighedssessioners standardniveau er aldrig hårdt, så uden et kørt
+// niveau (kontakten off) er tællingen uændret.
+const HARD_DAY_TYPES = ["training", "skill"];
 function isHardTrainingRow(row) {
-  return row?.day_type === "training"
+  return HARD_DAY_TYPES.includes(row?.day_type)
     && row.was_race_day === false
     && executedLevel(row) === "hard";
 }
@@ -145,12 +149,12 @@ export async function loadSeasonDevelopmentLoad({ supabase, seasonId = null, sea
   // To opslag: (1) sessioner hvis standardniveau er hårdt (som før; deres kørte niveau
   // kan være lavere), (2) #7947 rækker hvis kørte niveau er hårdt på en anden session.
   // Dubletter mellem de to fjernes på id.
-  const trainingQuery = (columns, narrow) => fetchAllRowsKeyset((after) => {
+  const trainingQuery = (columns, narrow, dayTypes = ["training"]) => fetchAllRowsKeyset((after) => {
     let q = narrow(supabase
       .from("rider_training_scores")
       .select(columns)
       .eq("season_id", sid)
-      .eq("day_type", "training")
+      .in("day_type", dayTypes)
       .eq("was_race_day", false))
       .order("id", { ascending: true });
     if (after != null) q = q.gt("id", after);
@@ -162,7 +166,7 @@ export async function loadSeasonDevelopmentLoad({ supabase, seasonId = null, sea
   try {
     trainingRows = await trainingQuery(`${BASE_COLUMNS}, intensity`, bySession);
     const seen = new Set(trainingRows.map((r) => r.id));
-    for (const row of await trainingQuery(`${BASE_COLUMNS}, intensity`, (q) => q.eq("intensity", "hard"))) {
+    for (const row of await trainingQuery(`${BASE_COLUMNS}, intensity`, (q) => q.eq("intensity", "hard"), HARD_DAY_TYPES)) {
       if (!seen.has(row.id)) trainingRows.push(row);
     }
   } catch (err) {

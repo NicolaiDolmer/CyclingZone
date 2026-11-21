@@ -223,12 +223,19 @@ describe("motoren gemmer det koerte niveau", () => {
       assert.ok(longHard.length > 0 && longHard.every((r) => r.session === "endurance" && r.intensity === "hard"), way);
     }
   });
-  // Kendt graense (se PR-body): kontakten laeses kun naar programcellerne laeses, saa aftenens
-  // laesninger er de frosne facits. Et hold uden felter faar derfor ingen intensity; bremsen
-  // taeller saa tabel-niveauet som foer. Saaningen (ovenfor) flytter planens niveau ind i felterne.
-  test("on uden programceller: ingen intensity (kontakten er ikke laest), udfaldet er det samme", async () => {
-    const { scores } = await quiet(() => rawPairScoreRows("plans", { flags: ON }));
-    assert.ok(scores.length > 0 && scores.every((row) => !("intensity" in row)));
+  // Ejer 21/11 (Fable-fund 1 paa #8532): et hold uden felter, men med en plan paa et andet
+  // niveau end sessionens standard (I dag-vaelgeren skriver dertil), laeser ogsaa kontakten,
+  // saa det koerte niveau gemmes og bremsen taeller rigtigt.
+  test("on uden programceller, plan paa andet niveau: det koerte niveau gemmes", async () => {
+    const pairRiders = new Set(RAW_PAIRS.map((_, n) => harnessRider(n)));
+    const { scores, receipts } = await quiet(() => rawPairScoreRows("plans", { flags: ON }));
+    const rows = scores.filter((r) => r.was_race_day === false && pairRiders.has(r.rider_id));
+    assert.ok(rows.length > 0, "plans: de raa par giver score-raekker");
+    for (const row of rows) {
+      const receipt = receipts.find((t) => t.rider_id === row.rider_id && t.game_day === row.game_day)?.report;
+      assert.ok(receipt, `plans ${row.session}: kvittering`);
+      assert.equal(row.intensity, executedEffortForScore(receipt.intensity), `plans ${row.session}`);
+    }
   });
   test("on: standardniveau gemmes som standardniveauet; loebsdage og restitution har null", async () => {
     const rows = await quiet(() => engineScoreRows("standard", { flags: ON }));
@@ -255,10 +262,12 @@ describe("aldringsbremsen", () => {
         t({ session: "tempo", intensity: "hard", tick_date: "2026-10-06" }),
         t({ session: "endurance", intensity: "hard", tick_date: "2026-10-07", was_race_day: true }),
         t({ session: "technique", intensity: "hard", tick_date: "2026-10-08", day_type: "skill" }),
+        t({ session: "technique", intensity: null, tick_date: "2026-10-09", day_type: "skill" }),
       ],
     });
-    // Lang tur koert haardt, VO2max uden koert niveau (to), Tempo koert haardt.
-    assert.deepEqual(load.get("a"), { raceDays: 0, hardDays: 4 });
+    // Lang tur koert haardt, VO2max uden koert niveau (to), Tempo koert haardt, og (ejer 21/11,
+    // "Haard er haard") teknik koert haardt. Teknik uden koert niveau er aldrig haard.
+    assert.deepEqual(load.get("a"), { raceDays: 0, hardDays: 5 });
   });
 
   function mock(tables, { missingIntensity = false } = {}) {

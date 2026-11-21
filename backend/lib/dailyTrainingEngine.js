@@ -40,6 +40,7 @@ import { loadRaceDayStagesByRider, loadRiderIdsWithStageOnGameDays } from "./rac
 import { resolveDayProgram, programSlotForRaceDay, weekDaysHaveSessions } from "./trainingPrograms.js";
 // #5932: felterne har eget flag (training_program_cells), med training_programs som fallback.
 import { isTrainingCellsEnabledForTeam } from "./trainingWeekPlanCellsFlag.js";
+import { planRunsOffStandard } from "./trainingWeekPlanCells.js"; // #7947 Fable-fund 1 paa #8532
 import { isTrainingEffortLevelsEnabled, executedEffortForScore } from "./trainingEffortLevels.js"; // #7947
 import { applyTrainingCatalog, isTrainingCatalogV3EnabledForTeam, v3SmartDefaultFocus } from "./trainingCatalogV3.js"; // #5319
 import {
@@ -1509,9 +1510,13 @@ export async function runTeamTrainingDay({
   programsOn = (Array.isArray(weekPlanRow) ? weekPlanRow : []).some((r) => weekDaysHaveSessions(r.days))
     ? await isTrainingCellsEnabledForTeam(supabase, teamId)
     : false;
-  // #7947: indsats pr. felt laeses kun naar programcellerne laeses; ellers intet opslag (aftenens
-  // laesninger er mains, frosne facit). Det koerte niveau gemmes paa scoren naar kontakten er on.
-  effortLevelsOn = programsOn ? await isTrainingEffortLevelsEnabled(supabase) : false;
+  // #7947 (ejer 21/11, Fable-fund 1 paa #8532): kontakten laeses ogsaa for hold UDEN programceller,
+  // naar en rytters plan staar paa et andet niveau end sessionens standard (I dag-vaelgeren skriver
+  // dertil), saa det koerte niveau altid gemmes paa scoren. Uden saadan en plan: intet opslag, og
+  // aftenens laesninger er mains (frosne facit). Med kontakten off kan api.js ikke skrive en.
+  effortLevelsOn = programsOn || (Array.isArray(planRows) && planRows.some(planRunsOffStandard))
+    ? await isTrainingEffortLevelsEnabled(supabase)
+    : false;
   },
   async () => {
   // #5319: traeningskatalog v3 (beta: holdets ejer er beta-tester). Off = programmet uroert.
