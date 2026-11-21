@@ -43,8 +43,33 @@ import InjuryChip from "../ConditionChips.jsx";
 import { useCrashOrigin } from "../useCrashOrigin.ts";
 import { useDevelopmentXpEnabled } from "../../../lib/developmentXpFlag.ts"; // #8476
 import { earnedGainTotal, earnedJumps } from "../../../lib/trainingEarnedGains.ts"; // #8476
+import I18nReadyGate from "../../I18nReadyGate.jsx"; // #8541: trainingR5 er et lazy namespace
+import EffortPickerR5, { HardRiskLine } from "../../training/r5/EffortPickerR5.tsx"; // #8541
+import {
+  effortOfLevel, planEffort, showsInjuryRisk, writeForLevel, writeForTrainingAtLevel,
+} from "../../training/r5/todayR5Model.ts"; // #8541
 
 const LOG_DAYS = 7;
+
+// #8541: niveau-ordet (Let/Mellem/Haard) fra I dag R5's eget namespace, saa profilen og
+// /training siger det samme. Rendres kun med training_effort_levels on (ellers hentes
+// namespacet aldrig). Ukendt niveau = det gamle ord, som foer.
+function EffortLevelWord({ intensity, fallback }) {
+  const { t: tR5 } = useTranslation("trainingR5");
+  const effort = effortOfLevel(intensity);
+  return effort ? tR5(`effort.${effort}`) : fallback;
+}
+
+// "Aktiv: <fokus> · <Let/Mellem/Hård> · træner <evner>" med niveau-ordet fra R5.
+function ActiveLevelLine({ t, focusLabel, intensity, abilities }) {
+  const { t: tR5 } = useTranslation("trainingR5");
+  const effort = effortOfLevel(intensity);
+  return t("profile.training.active", {
+    focus: focusLabel,
+    intensity: effort ? tR5(`effort.${effort}`) : t(`training.intensity_${intensity}`),
+    abilities,
+  });
+}
 
 const PENCIL_PATH = (
   <>
@@ -97,7 +122,7 @@ function fatigueColor(fatigue) {
 // der åbner panelet. "Hvert fokus træner …"-referencen er slettet: den stod som
 // et opslagsværk et sted man ikke vælger noget, og står nu i panelets
 // Træner-kolonne i det sekund valget træffes.
-function FocusCard({ rider, training, t, onOpenPanel, actionError }) {
+function FocusCard({ rider, training, t, onOpenPanel, actionError, levelsOn = false, onPickEffort }) {
   // Dagstype-navnene bor i `training`-namespacet (samme kilde som panelet), så
   // profilen og /training ikke kan komme til at kalde den samme dag to ting.
   const { t: tTraining } = useTranslation("training");
@@ -155,6 +180,21 @@ function FocusCard({ rider, training, t, onOpenPanel, actionError }) {
         </span>
       </button>
 
+      {/* #8541: med training_effort_levels on vaelges indsatsen her, med samme
+          vaelger og ord som I dag R5: Let | Mellem | Haard, og Hvile for sig. */}
+      {levelsOn && (
+        <div className="mb-3">
+          <EffortPickerR5
+            value={planEffort(plan)}
+            onPick={onPickEffort}
+            disabled={training.savingId === rider.id}
+            scope={`${rider.firstname} ${rider.lastname}`}
+            full
+            testId="profile-training-effort"
+          />
+        </div>
+      )}
+
       {/* #2465: fejl-overflade for gem/ryd af fokus — tidligere tavs. */}
       {actionError && (
         <div role="alert" className="mb-[11px] px-2.5 py-1.5 rounded-cz border border-cz-danger/30 bg-cz-danger/10 text-2xs text-cz-danger">
@@ -187,7 +227,10 @@ function FocusCard({ rider, training, t, onOpenPanel, actionError }) {
                 <IconBase size={15}>{PENCIL_PATH}</IconBase>
               </span>
               <span className="text-[13px] text-cz-1 font-semibold">
-                {t("profile.training.activeRest", { focus: t(`profile.training.focus.${focus}`) })}
+                {/* #8541: Hvile er sit eget valg, uden fokus og niveau. */}
+                {levelsOn
+                  ? tTraining("dayPanel.dayType_rest")
+                  : t("profile.training.activeRest", { focus: t(`profile.training.focus.${focus}`) })}
               </span>
             </div>
             <p className="mt-1 text-2xs text-cz-2 leading-snug">{t("profile.training.restNote")}</p>
@@ -199,7 +242,14 @@ function FocusCard({ rider, training, t, onOpenPanel, actionError }) {
                 <IconBase size={15}>{PENCIL_PATH}</IconBase>
               </span>
               <span className="text-[13px] text-cz-1 font-semibold">
-                {t("profile.training.active", {
+                {levelsOn ? (
+                  <ActiveLevelLine
+                    t={t}
+                    focusLabel={t(`profile.training.focus.${focus}`)}
+                    intensity={intensity}
+                    abilities={abilitiesLabel}
+                  />
+                ) : t("profile.training.active", {
                   focus: t(`profile.training.focus.${focus}`),
                   intensity: t(`training.intensity_${intensity}`),
                   abilities: abilitiesLabel,
@@ -212,9 +262,20 @@ function FocusCard({ rider, training, t, onOpenPanel, actionError }) {
                 #3649. Fremdriften står nu pr. evne i kvitteringen ovenfor, hvor
                 den kan holdes op mod hvad rytteren faktisk fik i sæsonen. */}
             <p className="text-3xs text-cz-3">{t("profile.training.effectNote")}</p>
-            <p className="mt-2 text-2xs text-cz-2 leading-snug">
-              {t("profile.training.noRiskNote")}
-            </p>
+            {levelsOn ? (
+              /* #8541: ingen paastand om at hoejere intensitet altid vokser hurtigere.
+                 Haard traener mere og traetter mere; skaderisikoen staar kun paa Haard. */
+              <>
+                <p className="mt-2 text-2xs text-cz-2 leading-snug">{t("profile.training.levelNote")}</p>
+                {showsInjuryRisk(planEffort(plan)) && (
+                  <div className="mt-1.5"><HardRiskLine /></div>
+                )}
+              </>
+            ) : (
+              <p className="mt-2 text-2xs text-cz-2 leading-snug">
+                {t("profile.training.noRiskNote")}
+              </p>
+            )}
           </>
         )}
 
@@ -350,7 +411,7 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
 // ── Daglig træningslog (sidste 7 dage) ──────────────────────────────────────────
 // #8476: `xp` = XP-kontakten er taendt. Saa taeller kun point tjent paa datoen (point
 // betalt fra bjaelken er ikke dagens traening), og skarp/flad dag findes ikke.
-function DailyLogCard({ riderId, runs, t, xp = false }) {
+function DailyLogCard({ riderId, runs, t, xp = false, levelsOn = false }) {
   const { t: tTraining } = useTranslation("training");
   // Kun dage inden for de sidste 7 KALENDERDAGE, så overskriften er sand selv for
   // en nyligt købt rytter der ikke indgik i hver dags kørsel.
@@ -398,7 +459,7 @@ function DailyLogCard({ riderId, runs, t, xp = false }) {
               <span className="font-mono text-2xs text-cz-3 flex-none w-[42px]">{dayLabel(tick_date, t)}</span>
               <span className="text-[12px] text-cz-1 flex-1 min-w-0 truncate">
                 {focusLabel}
-                <span className="text-cz-3"> · {intensityLabel}</span>
+                <span className="text-cz-3"> · {levelsOn && !isRest ? <EffortLevelWord intensity={row.intensity} fallback={intensityLabel} /> : intensityLabel}</span>
               </span>
               <span className={`text-2xs flex-none text-right ${resultClass}`}>{result}</span>
             </div>
@@ -535,11 +596,30 @@ export default function RiderTrainingTab({ rider, training, trainingHistory, pro
   const [actionError, setActionError] = useState(null);
   const developmentXp = useDevelopmentXpEnabled(); // #8476
 
+  // #8541: training_effort_levels (feltet `effortLevels` i traeningssvaret). Off = fanen som i dag.
+  const levelsOn = training.effortLevels === true;
+
   async function handlePanelSave(dayType, session) {
     setActionError(null);
-    const result = await training.setPlan(rider.id, dayType, session);
+    // #8541: et valg af traening aendrer ikke dagens niveau (som i I dag R5).
+    const effort = levelsOn && session && (dayType === "training" || dayType === "skill")
+      ? writeForTrainingAtLevel(session, planEffort(training.planFor(rider.id))).effort ?? null
+      : null;
+    const result = await training.setPlan(rider.id, dayType, session, effort);
     if (result && !result.ok) setActionError(result.error || "failed");
     else setPanelOpen(false);
+  }
+  // #8541: et tryk paa Let/Mellem/Haard/Hvile. Kendes ingen session til Haard, aabnes
+  // sessionsvaelgeren i stedet for at gaette (samme regel som I dag R5).
+  async function handleEffortPick(effort) {
+    setActionError(null);
+    const w = writeForLevel(effort, {
+      storedFocus: training.planFor(rider.id)?.focus ?? null,
+      assistantFocus: training.smartDefaultFocus?.[rider.id] ?? null,
+    });
+    if (w.kind === "pick") { setPanelOpen(true); return; }
+    const result = await training.setPlan(rider.id, w.dayType, w.session, w.effort);
+    if (result && !result.ok) setActionError(result.error || "failed");
   }
   async function handlePanelClear() {
     setActionError(null);
@@ -577,7 +657,7 @@ export default function RiderTrainingTab({ rider, training, trainingHistory, pro
   const condition = training.condition?.[rider.id] ?? null;
   const plan = training.planFor(rider.id);
 
-  return (
+  const body = (
     <div className="flex flex-col gap-[13px]">
       {/* #3709 trin 1: kvitteringen står øverst. "Det der fylder mest skal være
           dét rytteren fik" — en kvittering kan ikke være løgn, en forudsigelse
@@ -597,8 +677,10 @@ export default function RiderTrainingTab({ rider, training, trainingHistory, pro
             t={t}
             actionError={actionError}
             onOpenPanel={() => setPanelOpen(true)}
+            levelsOn={levelsOn}
+            onPickEffort={handleEffortPick}
           />
-          <DailyLogCard riderId={rider.id} runs={runs} t={t} xp={developmentXp} />
+          <DailyLogCard riderId={rider.id} runs={runs} t={t} xp={developmentXp} levelsOn={levelsOn} />
         </div>
         <div className="flex flex-col gap-[13px] min-w-0">
           {/* #4851: kortet erstatter 30-dages-boksen naar flaget er on. */}
@@ -630,5 +712,14 @@ export default function RiderTrainingTab({ rider, training, trainingHistory, pro
         onClear={handlePanelClear}
       />
     </div>
+  );
+
+  // #8541: niveau-ordene bor i et lazy namespace; fanen tegnes foerst naar det er hentet.
+  // Kontakten off: ingen gate, fanen er praecis som foer.
+  if (!levelsOn) return body;
+  return (
+    <I18nReadyGate ns="trainingR5" fallback={<div className="bg-cz-card border border-cz-border rounded-cz p-5" role="status" aria-label={t("profile.training.loading")}><SkeletonLines lines={4} /></div>}>
+      {body}
+    </I18nReadyGate>
   );
 }

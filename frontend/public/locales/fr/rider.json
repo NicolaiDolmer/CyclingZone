@@ -137,6 +137,7 @@
       "effectNote": "mise à jour quotidienne",
       "noRiskNote": "Une intensité plus haute fait progresser plus vite, sans risque de perdre ses acquis.",
       "restNote": "Pas de progression d'aptitude un jour de repos ; la fatigue récupère.",
+      "levelNote": "Dur entraîne davantage, mais fatigue davantage. Facile et Moyen ménagent les forces.",
       "emptyFocus": "Choisis un axe pour assigner l'entraînement.",
       "actionErrorGeneric": "Impossible d'enregistrer. Réessaie dans un instant.",
       "actionErrors": {
