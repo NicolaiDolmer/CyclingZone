@@ -1,0 +1,143 @@
+{
+  "saved": "Saved",
+  "trained": "Trained",
+  "race": "Race",
+  "quickLabel": "{name}: training today",
+  "effort": {
+    "rest": "Rest",
+    "easy": "Easy",
+    "medium": "Medium",
+    "hard": "Hard"
+  },
+  "load": {
+    "easy": "Easy day",
+    "light": "Light day",
+    "normal": "Normal day",
+    "hard": "Hard day",
+    "veryHard": "Very hard day"
+  },
+  "status": {
+    "days70": "{n, plural, one {# day} other {# days}} at {from}+"
+  },
+  "card": {
+    "days70": "Days in a row at fatigue {from} or more: {n}"
+  },
+  "program": {
+    "none": "No program",
+    "own": "Own plan",
+    "aria": "{name}: program {program}",
+    "changeToday": "Change today's sessions",
+    "editPlan": "Edit plan",
+    "choose": "Choose a program",
+    "backToTeam": "Back to team program"
+  },
+  "source": {
+    "program": "Program",
+    "group": "Group",
+    "own": "Your day",
+    "noDay": "No day yet",
+    "useAssistant": "Use {session}"
+  },
+  "session": "Session {n}",
+  "sessionAria": "{name}, session {n}: {session}",
+  "overview": {
+    "today": "Today, {date}",
+    "training": "{n} training",
+    "racing": "{n} racing",
+    "tired": "{n} tired",
+    "noProgram": "{n} no program"
+  },
+  "filter": {
+    "age_all": "All ages",
+    "age_u23": "Under 23",
+    "age_u25": "Under 25",
+    "age_25plus": "25 and over",
+    "groupAll": "All groups",
+    "groupNone": "No group",
+    "typeAll": "All types",
+    "clear": "Clear filters"
+  },
+  "team": {
+    "whole": "Whole team today",
+    "selected": "{n} selected today"
+  },
+  "sessions": {
+    "label": "Sessions",
+    "simple": "Simple",
+    "all": "All sessions"
+  },
+  "col": {
+    "program": "Program",
+    "fatigueNow": "Fatigue now",
+    "dayLoad": "Day load",
+    "today": "Today"
+  },
+  "selectAll": "Select all",
+  "selectRider": "Select {name}",
+  "openRider": "Sessions and details for {name}",
+  "sortBy": "Sort: {col}",
+  "training": {
+    "label": "Training:",
+    "program": "Program",
+    "aria": "{name}: training today",
+    "teamAria": "{scope}: training"
+  },
+  "effortPicker": {
+    "levelAria": "{scope}: level",
+    "restAria": "{scope}: rest, no focus",
+    "hardHint": "Hard raises injury risk.",
+    "risk": "Injury risk {pct}%",
+    "riskGeneric": "Hard raises injury risk"
+  },
+  "yourDay": {
+    "onAll": "{n, plural, one {on # session} other {on all # sessions}}",
+    "onSome": "on {n} of {total} sessions",
+    "backToProgram": "Back to program"
+  },
+  "teamSkippedHard": "{n, plural, one {# rider has} other {# riders have}} no hard training yet. Pick a training, then press Hard.",
+  "programR5": {
+    "library": "Program library",
+    "programs": "Programs",
+    "allPrograms": "All programs ({n})",
+    "fewerPrograms": "Only programs in use",
+    "on": "On: {names}",
+    "notInUse": "Not in use",
+    "groupsAndRiders": "Groups and riders",
+    "ownPlan": "Own plan: {name}",
+    "ownWeek": "Own week",
+    "noProgram": "No program",
+    "ownWins": "A rider's own plan wins over the group's.",
+    "title": "Training plan · {name}",
+    "noneSelected": "Choose a program",
+    "introWeek": "Each day has its own order of sessions.",
+    "kindLabel": "Plan type",
+    "kind_week": "Week blocks",
+    "kind_rotation": "Rotation",
+    "appliedOn": "On",
+    "addTarget": "Group or rider",
+    "groups": "Groups",
+    "riders": "Riders",
+    "remove": "Remove {name}",
+    "weekFor": "Week for",
+    "asWritten": "The program as written",
+    "asWrittenNote": "Put the program on a group or a rider to change its sessions.",
+    "races": "{n, plural, one {# race} other {# races}}",
+    "race": "Race",
+    "notSaved": "Not saved",
+    "copyDay": "Copy {day} to",
+    "copyAll": "All other days",
+    "copyToRiders": "Copy to riders",
+    "copyNeedsProgram": "Choose a program in the library first",
+    "savePlan": "Save plan",
+    "saved": "Plan saved",
+    "saveError": "The plan could not be saved. Try again.",
+    "copyTitle": "Copy {name} to riders",
+    "copyBody": "Each rider gets their own copy. A rider's own plan wins over the group's.",
+    "copyGo": "{n, plural, =0 {Copy} one {Copy to # rider} other {Copy to # riders}}",
+    "cancel": "Cancel",
+    "copyDone": "{n, plural, one {Copied to # rider} other {Copied to # riders}}",
+    "legendRace": "Races sit in their fixed fields and always run",
+    "legendTaken": "Sessions taken by races are not made up",
+    "todayLock": "Today's fields lock after Train now. A saved plan then applies from tomorrow."
+  }
+}
