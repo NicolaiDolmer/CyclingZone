@@ -100,6 +100,12 @@
     "peakShort": "Pic {date}",
     "peakTitle": "Pic de forme : {race}, {date} ({count, plural, =0 {aujourd'hui} one {dans # jour} other {dans # jours}})",
     "columns": "Colonnes",
+    "short": {
+      "rating": "Note",
+      "fatigue": "Fatigue",
+      "load": "Charge",
+      "routeMatch": "Profil"
+    },
     "mobileColumn": {
       "routeMatch": "Profil",
       "form": "Forme",

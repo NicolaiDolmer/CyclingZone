@@ -24,6 +24,7 @@ import {
   EMPTY_SELECTION,
   type SquadRow,
 } from "../../lib/planningWorkbench.ts";
+import { OPTIONAL_COLUMNS, normalizeOptionalColumns, toggleOptionalColumn } from "./squadColumns.ts";
 
 const row = (id: string, extra: Partial<SquadRow> = {}): SquadRow => ({
   id,
@@ -223,12 +224,57 @@ test("every new text exists in all five languages", () => {
   }
 });
 
-// #8420 (ejervalg 19/11 B): kolonneoverskrifter maa bryde over to linjer; tal-kolonner staar fast.
-test("squad table headers may wrap and balance (#8420)", () => {
+// #7535 (ejervalg 20/11, A+B): overskrifterne staar paa én linje med fuld tekst i title, ryttertypen er et
+// maerke uden afkortning, og Status/Traethed/Belastning er skjult som standard bag en kolonnevaelger.
+test("squad table headers stay on one line with the full word in the title (#7535 A)", () => {
   const src = readFileSync(new URL("./SquadTable.tsx", import.meta.url), "utf8");
   const head = src.slice(src.indexOf("const th = ("), src.indexOf("const td ="));
-  assert.match(head, /whitespace-normal/);
-  assert.match(head, /\[text-wrap:balance\]/);
-  assert.doesNotMatch(head, /whitespace-nowrap/);
+  assert.match(head, /whitespace-nowrap/);
+  assert.doesNotMatch(head, /whitespace-normal/);
+  assert.doesNotMatch(head, /text-wrap/);
+  for (const key of ["rating", "fatigue", "load", "routeMatch"]) {
+    assert.match(src, new RegExp(`t\\("squad\\.short\\.${key}"\\)`), `short header ${key}`);
+    assert.match(src, new RegExp(`title: [^\\n]*t\\("squad\\.${key}"\\)`), `full title ${key}`);
+  }
   assert.match(src, /const td = "[^"]*tabular-nums/);
+});
+
+test("squad table type is the shared badge, never truncated (#7535 A)", () => {
+  const src = readFileSync(new URL("./SquadTable.tsx", import.meta.url), "utf8");
+  assert.match(src, /import RiderTypeBadge from "..\/rider\/RiderTypeBadge\.jsx"/);
+  assert.match(src, /<RiderTypeBadge primaryType=\{row\.type\} secondaryType=\{null\} \/>/);
+  const typeCell = src.slice(src.indexOf("<RiderTypeBadge primaryType") - 250, src.indexOf("<RiderTypeBadge primaryType") + 100);
+  assert.doesNotMatch(typeCell, /truncate|max-w-\[4rem\]/);
+});
+
+test("squad columns (#7535 B): Status, Fatigue and Load are hidden by default, the choice is remembered safely", () => {
+  assert.deepEqual(OPTIONAL_COLUMNS, ["status", "fatigue", "load"]);
+  assert.deepEqual(normalizeOptionalColumns(null), []);
+  assert.deepEqual(normalizeOptionalColumns("nope"), []);
+  assert.deepEqual(normalizeOptionalColumns(["load", "bogus", "status"]), ["status", "load"]);
+  assert.deepEqual(toggleOptionalColumn([], "fatigue"), ["fatigue"]);
+  assert.deepEqual(toggleOptionalColumn(["load"], "status"), ["status", "load"]);
+  assert.deepEqual(toggleOptionalColumn(["status", "load"], "status"), ["load"]);
+  const src = readFileSync(new URL("./SquadTable.tsx", import.meta.url), "utf8");
+  const store = readFileSync(new URL("./squadColumns.ts", import.meta.url), "utf8");
+  // Lageret er aldrig paakraevet: laes og skriv er begge i try/catch, og tabellen virker uden.
+  assert.match(store, /function readColumnsPref[\s\S]*?try \{[\s\S]*?\} catch/);
+  assert.match(store, /function writeColumnsPref[\s\S]*?try \{[\s\S]*?\} catch/);
+  // Kolonnevaelgeren er sidens egen titellinje (stroke-ikon, "Kolonner"), kun paa pc; mobilens chip-raekke er uaendret.
+  assert.match(src, /<TableTitleBar[\s\S]*?columns=\{\{/);
+  assert.match(src, /className="hidden sm:block" data-testid="planning-squad-columns-bar"/);
+  const race = readFileSync(new URL("./RaceWorkbench.tsx", import.meta.url), "utf8");
+  assert.match(race, /data-testid="planning-column-chips"/);
+});
+
+test("short column headers exist in all five languages and are short (#7535 A)", () => {
+  for (const lang of ["en", "da", "es", "fr", "nl"]) {
+    const json = JSON.parse(readFileSync(new URL(`../../../public/locales/${lang}/planning.json`, import.meta.url), "utf8"));
+    for (const key of ["rating", "fatigue", "load", "routeMatch"]) {
+      const short = json.squad.short?.[key];
+      assert.equal(typeof short, "string", `${lang}: squad.short.${key}`);
+      assert.ok(short.length > 0 && short.length <= 8, `${lang}: squad.short.${key} is short`);
+      assert.ok(short.length <= json.squad[key].length, `${lang}: squad.short.${key} is not longer than the full word`);
+    }
+  }
 });
