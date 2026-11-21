@@ -141,6 +141,13 @@ Målt 10-17/11: flaskehalsen er GitHubs kø (gratis-kontoen: 20 samtidige jobs),
 - **gh API-budgettet (5000/t) deles af alle sessioner på kontoen**: ingen `gh`-polling-løkker; brug `--watch` i baggrunden eller vent på notifikationer. 17/11 kl. 08 var budgettet brugt op, og ingen session kunne merge.
 - Trin 2-4 (patch notes som fragmenter, færre jobs pr. push, Linux-snapshots) og trin 5 (GitHubs merge-kø via organisation) står i CI-planen; se issuet "CI-plan".
 
+### Merge-vagten (#8331, ejer 20/11)
+
+PR'er med ejerens markør gik i stå i stilhed. Auto-toget kører derfor `scripts/merge-guard.mjs` efter hver vurdering:
+- Hver åben PR med ejer-markør, der ikke er klar, får en årsag: markør på gammelt commit, CI ikke startet (ingen `ci.yml`-kørsel på hovedet, der er over 15 min gammelt), review mangler, konflikt, røde checks (navne), kladde, eller checks afventer (giver aldrig alarm).
+- `.claude/run/merge-guard.json` tæller kørsler i træk pr. PR og årsag; tælleren nulstilles, når PR'en er klar, merget eller lukket. Efter 2 kørsler med samme årsag kommer PR'en i `alerts` med forslag, loggen får `MERGE-VAGT: #N ...`, og Stop-hooken (`scripts/check-now-md.sh`) beder Claude spørge ejeren med det samme.
+- Eneste automatiske handling: ved "CI ikke startet" lukkes og genåbnes PR'en én gang pr. hoved-SHA. En markør flyttes aldrig; ejerens go gælder kun den SHA, ejeren har set.
+
 ## Arbejdsstandard for merges (ejer 18/10: branchens bedste praksis)
 
 Efter 18/10, hvor intet blev merget i ca. 2 timer, gælder disse regler for alle sessioner:

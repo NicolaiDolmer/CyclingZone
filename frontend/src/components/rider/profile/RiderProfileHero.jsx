@@ -30,7 +30,8 @@ import { statPlateStyle } from "../../../lib/statColor";
 import RiderTypeBadge from "../RiderTypeBadge";
 import BestRoleTag from "../BestRoleTag.jsx";
 import ScoutablePotentiale from "../ScoutablePotentiale";
-import { potentialViewOf } from "../../../lib/potentialEstimateDisplay";
+import { potentialViewOf, prognosisViewOf } from "../../../lib/potentialEstimateDisplay";
+import { PrognosisValue } from "../PotentialEstimate";
 import RiderBadges from "../RiderBadges";
 import RiderTalentMark from "../TalentMark.tsx"; // #7879
 import RiderChampionJersey from "../ChampionJersey.tsx"; // #7824
@@ -247,6 +248,7 @@ export default function RiderProfileHero({
 
   const teamName = rider.team?.name ?? t("header.freeAgent");
   // #6110: tal + ord er potentialet, ikke en prognose.
+  const heroPrognosis = viewer === "own" ? prognosisViewOf(scouting?.estimateFor?.(rider?.id)) : null;
   const potentialEyebrow = potentialViewOf(scouting?.estimateFor?.(rider?.id))
     ? t("profile.scouting.potentialLabel")
     : viewer === "scouting"
@@ -434,7 +436,21 @@ export default function RiderProfileHero({
             label: potentialEyebrow,
             value: scouting ? (
               <span className="inline-block max-w-56 whitespace-normal text-[15px] font-semibold">
+                {/* Ejer 20/11 (#8523): navnet er Potentiale, undertitlen er "spejderens skøn". */}
+                {potentialViewOf(scouting?.estimateFor?.(rider?.id)) && (
+                  <span className="mb-0.5 block text-2xs font-normal text-cz-3" data-testid="potential-subtitle">
+                    {t("riders:potentialNumber.potentialSubtitle")}
+                  </span>
+                )}
                 <ScoutablePotentiale rider={rider} scouting={scouting} showScout={viewer === "scouting"} labelAsTitle hideLevel estimateSize="hero" showLooks={viewer === "scouting"} />
+                {/* #8523: den samlede prognose for egne ryttere som dæmpet linje under
+                    potentialet, så stat-rækken ikke får et syvende tal og brydes. */}
+                {heroPrognosis && (
+                  <span className="mt-1 flex items-baseline gap-1.5 text-2xs font-normal text-cz-3" data-testid="rider-hero-prognosis">
+                    <span title={t("riders:potentialNumber.prognosisTitle")}>{t("riders:potentialNumber.prognosis")}</span>
+                    <PrognosisValue view={heroPrognosis} />
+                  </span>
+                )}
               </span>
             ) : "—",
           },

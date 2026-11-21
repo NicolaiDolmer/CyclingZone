@@ -4,8 +4,15 @@ import assert from "node:assert/strict";
 import path from "node:path";
 
 import {
-  resolveOutDir, parseParams, parseArgs, currentRating, buildReport, renderMarkdown, applyReport,
+  resolveOutDir, parseParams, parseArgs, currentRating, buildReport, renderMarkdown, applyReport, prognosisTop, prognosisTops,
 } from "./potentialP6110Convert.mjs";
+import { buildTypePrognosisBands } from "../lib/scoutingReport.js";
+import { displayPotentialBand } from "../lib/potentialDisplayBand.js";
+import { SCOUTING_CONFIG } from "../lib/scouting.js";
+import { DEFAULT_SCOUT } from "../lib/scoutEngine.js";
+import { ageForSeason } from "../lib/riderSeasonAge.js";
+import { RIDER_TYPE_KEYS } from "../lib/riderTypes.js";
+import { REGISTRY_ABILITY_KEYS } from "../lib/abilityRegistry.js";
 
 const FIXTURE = Object.freeze({
   anchors: {
@@ -70,6 +77,92 @@ test("buildReport: dry-run tæller, fordeler og hæver til rating uden at skrive
   const md = renderMarkdown(report);
   assert.match(md, /Rang-brud: 0/);
   assert.match(md, /Hævet til rating: 1/);
+});
+
+// ── Ejervalg 21/11: unge over deres nye P (#8521) ─────────────────────────────
+
+/** Fødselsdato der giver sæson-alderen `age` i sæson 1 (uden at kende referenceåret). */
+function birthdateForAge(age) {
+  const base = ageForSeason("2000-06-15", 1);
+  return `${2000 + (base - age)}-06-15`;
+}
+const TYPE = RIDER_TYPE_KEYS[0];
+/** Opdigtede, lave evner: rytteren er ung og langt fra sin top. */
+const LOW_ABILITIES = Object.freeze(Object.fromEntries(REGISTRY_ABILITY_KEYS.map((k) => [k, 30])));
+
+test("prognosisTop: samme bånd som ruterne viser for egne ryttere (maxLevel, holdet som seed, standard-scout)", () => {
+  const rider = { id: "y", potentiale: 5, primary_type: TYPE, secondary_type: null, team_id: "hold-a" };
+  const age = 21;
+  const expected = buildTypePrognosisBands({
+    nowAbilities: LOW_ABILITIES, age, primaryType: TYPE, secondaryType: null, potentiale: 5,
+    level: SCOUTING_CONFIG.maxLevel, riderId: "y", teamId: "hold-a", scout: DEFAULT_SCOUT, developmentXp: null,
+  }).find((b) => b.key === TYPE).progHi;
+  assert.equal(prognosisTop(rider, LOW_ABILITIES, { age }), expected);
+  assert.equal(prognosisTop(rider, null, { age }), null, "uden evner ingen prognose");
+  assert.equal(prognosisTop({ ...rider, primary_type: null }, LOW_ABILITIES, { age }), null);
+  assert.equal(prognosisTop(rider, LOW_ABILITIES, { age: null }), null);
+});
+
+test("buildReport: unge over deres nye P får toppen af forventet niveau og tælles for sig", () => {
+  const rows = [
+    // Ung, rating langt over 1-stjernes ankre -> prognosens top (mindst ratingen).
+    { id: "young", potentiale: 1, best_role_rating: 40, birthdate: birthdateForAge(21), primary_type: TYPE, team_id: "hold-a" },
+    // Ung uden evner -> ingen prognose -> hæves til ratingen.
+    { id: "young-noab", potentiale: 1, best_role_rating: 40, birthdate: birthdateForAge(22), primary_type: TYPE, team_id: "hold-a" },
+    // 28+ -> ratingen som i dag.
+    { id: "old", potentiale: 1, best_role_rating: 40, birthdate: birthdateForAge(30), primary_type: TYPE, team_id: "hold-b" },
+    // Ung under sit P -> uændret.
+    { id: "young-under", potentiale: 6, best_role_rating: 10, birthdate: birthdateForAge(20), primary_type: TYPE, team_id: "hold-b" },
+  ];
+  const abilitiesById = new Map([["young", LOW_ABILITIES], ["young-under", LOW_ABILITIES], ["old", LOW_ABILITIES]]);
+  const report = buildReport(rows, abilitiesById, FIXTURE, { asOf: AS_OF, source: "test", seasonNumber: 1 });
+  const by = Object.fromEntries(report.riders.map((r) => [r.id, r]));
+  const rating = by.young.rating;
+  const top = prognosisTop(rows[0], LOW_ABILITIES, { age: 21 });
+  assert.equal(by.young.age, 21);
+  assert.equal(by.young.p, Math.max(top, Math.round(rating)));
+  assert.equal(by.young.liftedToPrognosis, true);
+  assert.equal(by["young-noab"].liftedToPrognosis, false);
+  assert.equal(by["young-noab"].p, 40);
+  assert.equal(by.old.liftedToPrognosis, false);
+  assert.equal(by.old.p, Math.round(by.old.rating));
+  assert.equal(by.old.prognosisHi, null, "prognosen regnes kun for unge");
+  assert.equal(by["young-under"].lifted, false);
+  assert.equal(by["young-under"].p, by["young-under"].pBase);
+  assert.equal(report.counts.liftedToPrognosis, 1);
+  assert.equal(report.counts.liftedToRating, 2);
+  assert.equal(report.counts.youngLiftedWithoutPrognosis, 1);
+  assert.equal(report.counts.withoutAge, 0);
+  assert.equal(report.rankViolations, 0);
+  assert.equal(report.seasonNumber, 1);
+  assert.equal(report.perStars["1"].liftedToPrognosis, 1);
+  const md = renderMarkdown(report);
+  assert.match(md, /toppen af forventet niveau: 1/);
+});
+
+test("prognosisTops: viste bånd er tabellernes valg; reglen bruger stadig primær type", () => {
+  const rider = { id: "y", potentiale: 5, primary_type: TYPE, secondary_type: null, team_id: "hold-a" };
+  const bands = buildTypePrognosisBands({
+    nowAbilities: LOW_ABILITIES, age: 21, primaryType: TYPE, secondaryType: null, potentiale: 5,
+    level: SCOUTING_CONFIG.maxLevel, riderId: "y", teamId: "hold-a",
+  });
+  const tops = prognosisTops(rider, LOW_ABILITIES, { age: 21 });
+  assert.equal(tops.primaryHi, bands.find((b) => b.key === TYPE).progHi);
+  assert.equal(tops.displayHi, displayPotentialBand(bands, TYPE).progHi);
+  assert.equal(prognosisTop(rider, LOW_ABILITIES, { age: 21 }), tops.primaryHi);
+  const lowStar = { ...rider, potentiale: 1, best_role_rating: 40, birthdate: birthdateForAge(21) };
+  const report = buildReport([lowStar], new Map([["y", LOW_ABILITIES]]), FIXTURE, { asOf: AS_OF, source: "test", seasonNumber: 1 });
+  const row = report.riders[0];
+  assert.equal(row.displayHi, prognosisTops(lowStar, LOW_ABILITIES, { age: 21 }).displayHi);
+  assert.equal(report.counts.liftedToPrognosisBelowDisplayed, row.liftedToPrognosis && row.displayHi > row.p ? 1 : 0);
+});
+
+test("buildReport: uden sæson er ingen ung, og resultatet er dagens regel", () => {
+  const rows = [{ id: "young", potentiale: 1, best_role_rating: 40, birthdate: birthdateForAge(21), primary_type: TYPE, team_id: "hold-a" }];
+  const report = buildReport(rows, new Map([["young", LOW_ABILITIES]]), FIXTURE, { asOf: AS_OF, source: "test" });
+  assert.equal(report.counts.liftedToPrognosis, 0);
+  assert.equal(report.counts.withoutAge, 1);
+  assert.equal(report.riders[0].p, Math.round(report.riders[0].rating));
 });
 
 test("applyReport: skriver kun base_talent + talent_ceiling for ryttere der afviger", async () => {

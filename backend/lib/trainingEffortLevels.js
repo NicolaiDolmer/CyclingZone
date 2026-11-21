@@ -45,3 +45,30 @@ export function effortForDayEntry(entry, slotIndex = 0) {
 export async function isTrainingEffortLevelsEnabled(supabase) {
   return (await readFlagStage(supabase, TRAINING_EFFORT_LEVELS_KEY, { fresh: true })) === "on";
 }
+
+// ═══ SKRIVESTIERNE (PR 2) ════════════════════════════════════════════════════
+// Den indsats en skrivesti maa gemme (rytterens plan i api.js, et felt i
+// routes/trainingPrograms.js og routes/trainingGroups.js). `effort` er feltet fra
+// request-body, uvalideret.
+//   undefined          feltet er ikke sendt: intet opslag, skrivningen er praecis dagens.
+//   kontakten slukket  feltet ignoreres (som i dag, hvor ingen rute laeser det), ogsaa et
+//                      ugyldigt felt: en klient med en nyere skaerm faar ikke en 400.
+//   kontakten on       null (= foelg dagen / standardniveauet) eller easy/normal/hard;
+//                      alt andet afvises med invalid_effort.
+// Svarer { ok: true, effort } hvor effort === undefined betyder "roer ikke indsatsen",
+// eller { ok: false, reason: "invalid_effort" }.
+export async function effortForWrite(supabase, effort) {
+  if (effort === undefined) return { ok: true, effort: undefined };
+  if (!(await isTrainingEffortLevelsEnabled(supabase))) return { ok: true, effort: undefined };
+  if (effort === null || isEffortLevel(effort)) return { ok: true, effort };
+  return { ok: false, reason: "invalid_effort" };
+}
+
+// ═══ ALDRINGSBREMSEN (PR 4) ═════════════════════════════════════════════════
+// Det KOERTE niveau paa en traeningsdag, som motoren gemmer paa rider_training_scores
+// (kolonnen `intensity`) naar kontakten er on. Kun easy/normal/hard gemmes; alt andet
+// (hvile, restitution, et loeb) er null, og saa er sessionens standardniveau sandheden,
+// praecis som foer kolonnen fandtes.
+export function executedEffortForScore(intensity) {
+  return isEffortLevel(intensity) ? intensity : null;
+}

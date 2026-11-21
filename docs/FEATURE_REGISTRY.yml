@@ -993,6 +993,19 @@ features:
     verified: 2026-10-26
     note: PR #7179 (S26). Flaget training_decision_card er on i prod (læst 26/10).
 
+  - id: training-page-r5
+    area: training
+    title_en: New Training page (R5)
+    title_da: Ny træningsside (R5)
+    state: building
+    flag: training_page_r5
+    ssot: docs/TRAINING_RULES.md
+    epic: 7947
+    verified: 2026-11-20
+    note: 'Bag training_page_r5 = off (migration #8511). I dag-fanen bygget (#8511), Program følger (#7456); ejer tænder, når siden er færdig.'
+    decision: goer-faerdigt
+    decide_by: 2026-12-04
+
   # --- academy -------------------------------------------------------------
   - id: academy
     area: academy

@@ -39,7 +39,9 @@
 //      (`aging`). Den bruges af sæsonskiftet (xpAgingConfig i riderProgression.js),
 //      kun når XP-kontakten er tændt (riderProgressionEngine.js). Udeladt = dagens
 //      AGING_V2_CONFIG, bit-identisk. Prisens top og aldringen er én pakke (kandidat B):
-//      talfilen har begge eller ingen af dem.
+//      talfilen har begge eller ingen af dem. #8531: aldringen kan også stå i procent-
+//      form (riderWear6110.js), og begge former kan kalibrere løbsbremsen; uden de
+//      felter er bremsen dagens.
 //
 // ═══ TAL ═════════════════════════════════════════════════════════════════════
 // Alle tal er PRIVATE (hard rule 17, balance-internals/6110/) og gives som `params`.
@@ -57,6 +59,7 @@ import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { staffTrainingBonus, facilityTrainingMultiplier } from "./staffTrainingBonus.js";
 import { TRAINING_RACE_DAY_CONFIG } from "./trainingRaceDayTick.js";
 import { validateXpVariation, type XpVariation } from "./developmentXpVariation.ts";
+import { isXpAgingPercentShape, validateXpAgingPercent, validateXpAgingBrake, XP_AGING_BRAKE_KEYS } from "./riderWear6110.js";
 import { DISPLAY_RECIPE_KEYS, ratingForRole } from "./weights/displayRecipes.js";
 
 // Skalaens top. Evner går til 99; prisen regner mod 100, så 99 aldrig koster uendeligt.
@@ -113,15 +116,32 @@ export interface XpFatigue {
   share: number;
 }
 
-// Kroppens aldring ved sæsonskiftet, når XP er tændt. Samme form som AGING_V2_CONFIG
-// (riderProgression.js), plus et valgfrit sent fald i de evner, der ellers aldrig falder.
-export interface XpAging {
+// Løbsbremsen fra talfilens aldring (#8531, begge former). Hvert felt er valgfrit og
+// erstatter kun samme felt i AGING_V2_CONFIG; udeladt = dagens bremse. Tallene er private.
+export interface XpAgingBrake {
+  brakeLoadDays?: number;
+  hardTrainingDayWeight?: number;
+}
+
+// Kroppens aldring ved sæsonskiftet, når XP er tændt. To former, én ad gangen:
+//   • trin (kandidat B): samme form som AGING_V2_CONFIG (riderProgression.js), plus et
+//     valgfrit sent fald i de evner, der ellers aldrig falder.
+//   • procent (G3a/model E, #8531): to kurver med andelen pr. sæson; reglerne står i
+//     riderWear6110.validateXpAgingPercent, så de kun står ét sted.
+export interface XpAgingSteps extends XpAgingBrake {
   plateauThroughAge: number;
   declineByYearsPastPlateau: readonly { maxYears: number; drop: number }[];
   // Teknik og mentale evner (alt uden for de fysiske + brosten) falder `drop` pr. sæson
   // fra `fromAge`, bremset af løb og hård træning som de fysiske. Udeladt = aldrig fald.
   late?: { fromAge: number; drop: number };
 }
+
+export interface XpAgingPercent extends XpAgingBrake {
+  physical: readonly { at: number; value: number }[];
+  mental: readonly { at: number; value: number }[];
+}
+
+export type XpAging = XpAgingSteps | XpAgingPercent;
 
 // Dommer-fund F1 (19/11): en stavefejl (fx `price.Top`, `ageing`) må ikke give en gyldig
 // talfil uden den del. Ukendte nøgler afviser hele talfilen (fail-safe).
@@ -159,8 +179,13 @@ function validFatigue(raw: unknown): XpFatigue | null | undefined {
 function validAging(raw: unknown): XpAging | null | undefined {
   if (raw === undefined) return undefined;
   if (!raw || typeof raw !== "object") return null;
+  // #8531: procent-formen (kurver) valideres af sæsonskiftets egne regler, så en talfil
+  // med aldring i procent ikke afvises her og når sæsonskiftet uændret.
+  if (isXpAgingPercentShape(raw)) return validateXpAgingPercent(raw) ?? null;
   const a = raw as Record<string, unknown>;
-  if (!onlyKeys(a, ["plateauThroughAge", "declineByYearsPastPlateau", "late"])) return null;
+  if (!onlyKeys(a, ["plateauThroughAge", "declineByYearsPastPlateau", "late", ...XP_AGING_BRAKE_KEYS])) return null;
+  const brake = validateXpAgingBrake(a);
+  if (!brake) return null;
   const plateau = a.plateauThroughAge;
   if (!isNum(plateau) || !Number.isInteger(plateau) || plateau < 20 || plateau > 40) return null;
   const steps = a.declineByYearsPastPlateau;
@@ -186,7 +211,7 @@ function validAging(raw: unknown): XpAging | null | undefined {
     if (!isNum(l.drop) || !(l.drop > 0) || l.drop > 5) return null;
     late = Object.freeze({ fromAge: l.fromAge, drop: l.drop });
   }
-  return Object.freeze({ plateauThroughAge: plateau, declineByYearsPastPlateau: Object.freeze(out), ...(late ? { late } : {}) });
+  return Object.freeze({ plateauThroughAge: plateau, declineByYearsPastPlateau: Object.freeze(out), ...(late ? { late } : {}), ...brake });
 }
 
 const isNum = (x: unknown): x is number => typeof x === "number" && Number.isFinite(x);

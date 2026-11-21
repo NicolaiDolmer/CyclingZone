@@ -1,9 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  AVAILABLE_KINDS, buildLibrary, catalogWeekDays, copyCandidates, copyDayIntoDraft, copyDayTargets, draftSteps,
-  draftTotal, parseSubjectKey, programKeyOf, rememberedKind, riderPlan, riderWeekDays, setDraftCell, subjectKey,
-  subjectsFor, weekCells,
+  AVAILABLE_KINDS, PHONE_VIEWS, PROGRAM_PHONE_VIEW_STORE, PROGRAM_VIEW_STORE, buildLibrary, catalogWeekDays, clampDay,
+  copyCandidates, copyDayIntoDraft, copyDayTargets, dayMarks, draftSteps, draftTotal, parseSubjectKey, programKeyOf,
+  rememberedKind, rememberedPhoneView, riderPlan, riderWeekDays, setDraftCell, shortRiderName, startDayIndex, subjectKey,
+  subjectsFor, weekCells, weekdayLong,
 } from "./programR5Model.ts";
 import type { CatalogProgram, ProgramWeekDays } from "../../../lib/trainingPrograms.ts";
 
@@ -114,4 +115,39 @@ test("Copy to riders: alle uden programmet som egen kopi, intet uden program", (
   const lib = buildLibrary(INPUT);
   assert.deepEqual(copyCandidates("sprinter", lib, RIDERS).map((r) => r.id), ["a", "d", "e"]);
   assert.deepEqual(copyCandidates(null, lib, RIDERS), []);
+});
+
+test("#8547 telefon: Dag er standard, kun Dag/Uge huskes, egen noegle", () => {
+  assert.equal(rememberedPhoneView(null), "day");
+  assert.equal(rememberedPhoneView("week"), "week");
+  assert.equal(rememberedPhoneView("day"), "day");
+  assert.equal(rememberedPhoneView("rotation"), "day");
+  assert.deepEqual([...PHONE_VIEWS], ["day", "week"]);
+  assert.notEqual(PROGRAM_PHONE_VIEW_STORE, PROGRAM_VIEW_STORE); // programtypen roeres ikke
+});
+
+test("#8547 telefon: korte rytternavne, dagnavne, startdag og pile-graense", () => {
+  assert.equal(shortRiderName("Tomas Varga"), "T. Varga");
+  assert.equal(shortRiderName("  Joran   van Bekker "), "J. van Bekker");
+  assert.equal(shortRiderName("Pavel"), "Pavel");
+  assert.equal(shortRiderName(""), "");
+  assert.equal(weekdayLong("mon", "en"), "Monday");
+  assert.equal(weekdayLong("sun", "en"), "Sunday");
+  assert.equal(weekdayLong("thu", "da"), "torsdag");
+  assert.equal(weekdayLong("xyz", "en"), "");
+  assert.equal(startDayIndex(W, "thu"), 3);
+  assert.equal(startDayIndex(W, "nope"), 0);
+  assert.equal(startDayIndex(W, null), 0);
+  assert.equal(clampDay(-1, W), 0);
+  assert.equal(clampDay(7, W), 6);
+  assert.equal(clampDay(3, W), 3);
+});
+
+test("#8547 telefon: dagens tegn tael loeb og ugemte rettelser, ikke koerte felter", () => {
+  const cells = weekCells({
+    days: week("tempo"), draft: { "thu:2": "sprint", "thu:3": "sprint" }, weekdays: W, todayWeekday: "thu",
+    raceToday: new Set([1]), lockedToday: new Set([0]),
+  });
+  assert.deepEqual(dayMarks(cells[3]), { races: 1, changed: 2 });
+  assert.deepEqual(dayMarks(cells[0]), { races: 0, changed: 0 });
 });

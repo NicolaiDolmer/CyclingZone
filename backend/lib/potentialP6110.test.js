@@ -7,6 +7,7 @@ import {
   STAR_STEPS, P_MIN, P_MAX, POTENTIAL_P_PARAMS_KEY,
   validatePotentialPParams, convertStarsToP, findRankViolations, summarizeP,
   drawAcademyStars, academyStarWeights, drawPForStars, anchorFor,
+  YOUNG_AGE_LIMIT, liftP, isYoungForP,
 } from "./potentialP6110.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
 import { clearPrivateConfigCache } from "./privateConfig.ts";
@@ -130,6 +131,64 @@ test("hævning: P er aldrig under ratingen (afrundet), og kun de hævede ændres
     assert.ok(v.p >= Math.min(P_MAX, Math.round(r.rating)));
     assert.equal(v.lifted, v.p !== v.pBase);
   }
+});
+
+// ── Ejervalg 21/11: unge over deres nye P (#8521) ─────────────────────────────
+
+test("liftP: ung over sit P får prognosens top, dog mindst ratingen; klemt til 1-99", () => {
+  const young = YOUNG_AGE_LIMIT - 1;
+  // Prognosens top over ratingen -> toppen.
+  assert.deepEqual(liftP({ pBase: 30, rating: 40, age: young, prognosisHi: 52 }), { p: 52, lifted: true, liftedToPrognosis: true });
+  // Prognosens top under ratingen -> mindst ratingen.
+  assert.deepEqual(liftP({ pBase: 30, rating: 40.4, age: young, prognosisHi: 35 }), { p: 40, lifted: true, liftedToPrognosis: true });
+  // Klemt til skalaen.
+  assert.equal(liftP({ pBase: 80, rating: 90, age: young, prognosisHi: 140 }).p, P_MAX);
+  // Ung UNDER sit P: uændret, også selv om prognosen ligger højere.
+  assert.deepEqual(liftP({ pBase: 50, rating: 40, age: young, prognosisHi: 70 }), { p: 50, lifted: false, liftedToPrognosis: false });
+  // Ung med rating lig P: ikke over -> uændret.
+  assert.equal(liftP({ pBase: 40, rating: 40, age: young, prognosisHi: 70 }).p, 40);
+});
+
+test("liftP: på grænsen eller ældre, ukendt alder og ung uden prognose hæves til ratingen som før", () => {
+  const base = { pBase: 30, rating: 40, prognosisHi: 60 };
+  assert.deepEqual(liftP({ ...base, age: YOUNG_AGE_LIMIT }), { p: 40, lifted: true, liftedToPrognosis: false });
+  assert.deepEqual(liftP({ ...base, age: YOUNG_AGE_LIMIT + 6 }), { p: 40, lifted: true, liftedToPrognosis: false });
+  assert.deepEqual(liftP({ ...base, age: null }), { p: 40, lifted: true, liftedToPrognosis: false });
+  assert.deepEqual(liftP({ pBase: 30, rating: 40, age: YOUNG_AGE_LIMIT - 5, prognosisHi: null }), { p: 40, lifted: true, liftedToPrognosis: false });
+  assert.deepEqual(liftP({ pBase: 30, rating: null, age: YOUNG_AGE_LIMIT - 5, prognosisHi: 60 }), { p: 30, lifted: false, liftedToPrognosis: false });
+  assert.equal(isYoungForP(YOUNG_AGE_LIMIT - 1), true);
+  assert.equal(isYoungForP(YOUNG_AGE_LIMIT), false);
+  assert.equal(isYoungForP(null), false);
+});
+
+test("convertStarsToP: unge over P får prognosens top, ældre ratingen; pBase og rang-tjek uberørt", () => {
+  const young = YOUNG_AGE_LIMIT - 4;
+  const old = YOUNG_AGE_LIMIT + 3;
+  const riders = [
+    { id: "y1", potentiale: 2, rating: 40, age: young, prognosisHi: 58 },  // ung over -> toppen
+    { id: "y2", potentiale: 2, rating: 45, age: young, prognosisHi: 41 },  // ung over, top under rating -> rating
+    { id: "y3", potentiale: 2, rating: 10, age: young, prognosisHi: 70 },  // ung under -> pBase
+    { id: "o1", potentiale: 2, rating: 40, age: old, prognosisHi: 58 },    // ældre over -> rating
+    { id: "u1", potentiale: 2, rating: 40, age: null, prognosisHi: 58 },   // ukendt alder -> rating
+  ];
+  const withAge = convertStarsToP(riders, FIXTURE).byId;
+  const without = convertStarsToP(riders.map(({ id, potentiale, rating }) => ({ id, potentiale, rating })), FIXTURE).byId;
+  assert.equal(withAge.get("y1").p, 58);
+  assert.equal(withAge.get("y1").liftedToPrognosis, true);
+  assert.equal(withAge.get("y2").p, 45);
+  assert.equal(withAge.get("y2").liftedToPrognosis, true);
+  assert.equal(withAge.get("y3").p, withAge.get("y3").pBase);
+  assert.equal(withAge.get("y3").lifted, false);
+  assert.equal(withAge.get("o1").p, 40);
+  assert.equal(withAge.get("o1").liftedToPrognosis, false);
+  assert.equal(withAge.get("u1").p, 40);
+  for (const [id, v] of withAge) {
+    // Alder og prognose flytter aldrig P fra ankrene; uden dem er resultatet dagens regel.
+    assert.equal(v.pBase, without.get(id).pBase);
+    assert.ok(v.p >= without.get(id).p, "ingen ung rytter får lavere P end med dagens regel");
+    assert.ok(v.p >= P_MIN && v.p <= P_MAX);
+  }
+  assert.deepEqual(findRankViolations(withAge), []);
 });
 
 test("ingen rating ændres: inputtet muteres ikke", () => {

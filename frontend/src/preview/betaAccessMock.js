@@ -10,6 +10,8 @@ import { stagePlanPreviewActive } from "../components/race/StagePlanPreviewMock.
 // og (#4948) spiller-svaret GET /api/feature-flags, afledt af SAMME tavle.
 
 import { previewPotentialEstimateEnabled } from "./potentialEstimateMock.ts";
+import { previewXpLinesActive } from "./xpLinesPreviewMock.ts"; // #8540
+import "../components/training/r5/todayR5PreviewSeed.ts"; // #7947: ?trainingR5=1 giver I dag R5 et fuldt hold
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -114,10 +116,11 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "patch_notes_v2_8049", // #8049 (off; ?patchNotesV2=on paa preview)
   "jersey_hunt_7855", // #7855 Hjaelp og patch-noten (binaert, off)
   "development_xp_model", // #6110 Hjaelp XP-tvillingerne (binaert, off)
+  "training_page_r5", // #7947 I dag-fanen R5 (binaert, off; ?trainingR5=1 viser den)
 ];
 
 // Spejler PLAYER_VISIBLE_BINARY_FLAG_KEYS i backenden: "beta" er off.
-const BINARY_FLAG_KEYS = ["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801", "sale_escrow_enabled", "training_history_from_ticks_6490", "jersey_hunt_7855", "development_xp_model"];
+const BINARY_FLAG_KEYS = ["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801", "sale_escrow_enabled", "training_history_from_ticks_6490", "jersey_hunt_7855", "development_xp_model", "training_page_r5"];
 
 // #5319: træningskatalog v3 er OFF på preview (som i prod), men kan tændes med
 // ?catalogV3=on for at se de nye sessioner i vælgerne. Huskes i localStorage
@@ -187,6 +190,19 @@ export function previewTrainNowBonusEnabled() {
   }
 }
 
+// #7947: I dag-fanen R5 er OFF på preview (som i prod); ?trainingR5=1 viser den, ?trainingR5=0 slukker.
+export function previewTrainingR5Enabled() {
+  try {
+    const param = new URLSearchParams(window.location.search).get("trainingR5");
+    if (param === "1" || param === "on") localStorage.setItem("cz_mock_training_r5", "1");
+    if (param === "0" || param === "off") localStorage.setItem("cz_mock_training_r5", "0");
+    return localStorage.getItem("cz_mock_training_r5") === "1";
+  } catch {
+    return false;
+  }
+}
+previewTrainingR5Enabled();
+
 // #7778: visningsvalg på brugeren (GET/PUT /api/me/ui-prefs), i hukommelsen.
 let uiPrefs = {};
 
@@ -198,6 +214,9 @@ function playerFlags() {
     if (key === "tactics_ready_7864" && stagePlanPreviewActive()) return [key, true];
     if (key === "training_catalog_v3") return [key, previewCatalogV3Enabled()];
     if (key === "training_train_now_bonus") return [key, previewTrainNowBonusEnabled()];
+    if (key === "training_page_r5") return [key, previewTrainingR5Enabled()];
+    // #8540: ?xp=1 taender XP-kontakten paa preview, saa profilens Udvikling-fane kan ses med XP-linjer.
+    if (key === "development_xp_model" && previewXpLinesActive()) return [key, true];
     if (key === "champion_jerseys_7824") return [key, previewChampionJerseysEnabled()];
     if (key === "potential_estimate_display") return [key, previewPotentialEstimateEnabled()];
     const stage = flags.find((f) => f.key === key)?.stage;

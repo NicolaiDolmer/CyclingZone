@@ -358,6 +358,56 @@
       "issue": 8337,
       "area": "web-experience",
       "why": "Ejer-go 18/11 eftermiddag (PC1-session, Codex-listen på #8374). Dokument med UX top 10."
+    },
+    {
+      "issue": 8547,
+      "area": "training-r5",
+      "why": "Ejer-go 21/11 eftermiddag (PC1, AskUserQuestion): 'Den nye side til træningsprogrammerne vil jeg også gerne have lavet færdigt'; valgt omfang: telefonudgaven, rotation, prioritet + låst pas, egne programmer + ugens løb og træthed. Skitser nu, byg efter tændingen."
+    },
+    {
+      "issue": 8548,
+      "area": "training-r5",
+      "why": "Ejer-go 21/11 eftermiddag (PC1, AskUserQuestion): 'Den nye side til træningsprogrammerne vil jeg også gerne have lavet færdigt'; valgt omfang: telefonudgaven, rotation, prioritet + låst pas, egne programmer + ugens løb og træthed. Skitser nu, byg efter tændingen."
+    },
+    {
+      "issue": 8549,
+      "area": "training-r5",
+      "why": "Ejer-go 21/11 eftermiddag (PC1, AskUserQuestion): 'Den nye side til træningsprogrammerne vil jeg også gerne have lavet færdigt'; valgt omfang: telefonudgaven, rotation, prioritet + låst pas, egne programmer + ugens løb og træthed. Skitser nu, byg efter tændingen."
+    },
+    {
+      "issue": 8550,
+      "area": "training-r5",
+      "why": "Ejer-go 21/11 eftermiddag (PC1, AskUserQuestion): 'Den nye side til træningsprogrammerne vil jeg også gerne have lavet færdigt'; valgt omfang: telefonudgaven, rotation, prioritet + låst pas, egne programmer + ugens løb og træthed. Skitser nu, byg efter tændingen."
+    },
+    {
+      "issue": 8560,
+      "area": "training-r5",
+      "why": "Ejer-go 21/11 aften (PC1, AskUserQuestion efter skitser forslag-1-2 og forslag-3-5): Forslag 2 gruppestyring: \"Ja, byg det\". Paritetstjek mod de gamle træningssider. Byg på Dolmer PC (ejer: PC1 kun koordinering og merge)."
+    },
+    {
+      "issue": 8561,
+      "area": "training-r5",
+      "why": "Ejer-go 21/11 aften (PC1, AskUserQuestion efter skitser forslag-1-2 og forslag-3-5): Forslag 3 henter/tom/fejl + Kassér: \"Godkendt til byg\". Paritetstjek mod de gamle træningssider. Byg på Dolmer PC (ejer: PC1 kun koordinering og merge)."
+    },
+    {
+      "issue": 8562,
+      "area": "training-r5",
+      "why": "Ejer-go 21/11 aften (PC1, AskUserQuestion efter skitser forslag-1-2 og forslag-3-5): Forslag 4 Skift fokus + Rapport: \"Ja, byg det\". Paritetstjek mod de gamle træningssider. Byg på Dolmer PC (ejer: PC1 kun koordinering og merge)."
+    },
+    {
+      "issue": 8563,
+      "area": "training-r5",
+      "why": "Ejer-go 21/11 aften (PC1, AskUserQuestion efter skitser forslag-1-2 og forslag-3-5): Forslag 5 I dag telefon + Nulstil filtre: \"Ja, byg det\". Paritetstjek mod de gamle træningssider. Byg på Dolmer PC (ejer: PC1 kun koordinering og merge)."
+    },
+    {
+      "issue": 8546,
+      "area": "udvikling-2",
+      "why": "Ejer-go 21/11 aften (PC1, AskUserQuestion): \"Ja, begge nu (anbefalet)\" - rettelser til det taendte (udvikling 2.0 / Let-Mellem-Haard). Byg paa Dolmer PC."
+    },
+    {
+      "issue": 8570,
+      "area": "udvikling-2",
+      "why": "Ejer-go 21/11 aften (PC1, AskUserQuestion): \"Ja, begge nu (anbefalet)\" - rettelser til det taendte (udvikling 2.0 / Let-Mellem-Haard). Byg paa Dolmer PC."
     }
   ],
   "cleanupList": [
@@ -659,6 +709,10 @@
     {
       "issue": 8341,
       "why": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): gamle skitse-PR'er merges som arkiv eller lukkes med note; fund bliver issues før lukning."
+    },
+    {
+      "issue": 8568,
+      "why": "Perf-gaten (first load) var roed paa main efter #8556 og blokerede alle PRer; ejer-go 21/11 aften (PC1, AskUserQuestion): \"Ja, haev til 417 (anbefalet)\" + \"Du maa gerne ordne dette efter best practice\". PR #8569 haever loftet midlertidigt; lettelsen og saenkningen tilbage er resten af #8568."
     }
   ],
   "brandList": [

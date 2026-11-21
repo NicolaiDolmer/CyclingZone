@@ -50,7 +50,7 @@ test("rider.json har profile.development-nøgler i både en og da (key-parity)",
 
   for (const key of [
     "empty", "loading", "chart.title", "chart.caption", "chart.season", "chart.seasonNow",
-    "growth.title", "growth.typeRating", "growth.thisSeason", "growth.abilityPoints", "growth.trackedSince",
+    "xp.title", "growth.title", "growth.typeRating", "growth.thisSeason", "growth.abilityPoints", "growth.trackedSince",
     "reading.title", "reading.own.rising", "reading.own.flat", "reading.scouting.rising", "reading.scouting.flat",
     "log.title", "log.hint", "log.seasonNow", "log.delta", "log.note", "log.noTraining", "log.scoutingHidden",
   ]) {
@@ -65,5 +65,13 @@ test("rider.json har profile.development-nøgler i både en og da (key-parity)",
         `${lngName} profile.development.${key} indeholder em-dash — forbudt i nye keys jf. TONE_OF_VOICE.md`,
       );
     }
+  }
+});
+
+test("xp.title findes i alle fem sprog (#8540)", () => {
+  const localesDir = join(__dirname, "..", "..", "..", "..", "public", "locales");
+  for (const lng of ["da", "en", "es", "fr", "nl"]) {
+    const tree = JSON.parse(readFileSync(join(localesDir, lng, "rider.json"), "utf8"));
+    assert.ok(tree.profile.development.xp?.title, `${lng} mangler profile.development.xp.title`);
   }
 });

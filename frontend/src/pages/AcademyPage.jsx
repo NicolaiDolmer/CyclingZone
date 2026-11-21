@@ -27,6 +27,8 @@ import { useTranslation } from "react-i18next";
 import { useAcademy } from "../lib/useAcademy.js";
 import NationCell from "../components/rider/NationCell.jsx";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge.jsx";
+import PotentialEstimate, { PotentialLabel } from "../components/rider/PotentialEstimate.tsx"; // #8543
+import { potentialViewOf } from "../lib/potentialEstimateDisplay.ts"; // #8543
 import AcademyPnl from "../components/AcademyPnl.jsx";
 import AcademyProfileCard from "../components/AcademyProfileCard.tsx"; // #6666
 import {
@@ -221,6 +223,9 @@ export default function AcademyPage() {
     const busy = actionState[rider.id] != null;
     const err = actionErrors[rider.id];
     const potential = item.potentialEstimate;
+    // #8543: med tændt potential_estimate_display sender serveren potentialView (tal + ord),
+    // aldrig intervallet. null = kontakten er slukket, og kortet er som før.
+    const potentialView = potentialViewOf(item);
     const abilitiesNow = isPull ? pullCandidateAbilities(item) : null;
     // #2796: tilbuddet udløber efter 7 dage (academyIntakeExpirySweep) —
     // hjælpeteksten har lovet det siden #2627, men kortet viste det aldrig.
@@ -318,7 +323,17 @@ export default function AcademyPage() {
             <span className="text-xs text-cz-2">{t("potentialLearned")}</span>
           </div>
         )}
-        {!item.potentialLearned && (item.potentialBand || potential) && (
+        {!item.potentialLearned && potentialView && (
+          <div className="flex items-baseline gap-2 flex-wrap" data-testid="intake-potential-estimate">
+            <span className="text-xs text-cz-3"><PotentialLabel /></span>
+            {potentialView.hidden ? (
+              <span className="text-xs text-cz-3" data-testid="intake-potential-pending">{t("potentialPending")}</span>
+            ) : (
+              <PotentialEstimate view={potentialView} />
+            )}
+          </div>
+        )}
+        {!item.potentialLearned && !potentialView && (item.potentialBand || potential) && (
           <div className="flex items-center gap-2">
             <span className="text-xs text-cz-3">{t("potential")}</span>
             {item.potentialBand ? (

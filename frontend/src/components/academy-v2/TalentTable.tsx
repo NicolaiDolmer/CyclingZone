@@ -15,7 +15,8 @@ import NationCell from "../rider/NationCell.jsx";
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
 import AcademyPrognosisCell, { type AcademyPrognosis } from "../rider/AcademyPrognosisCell.tsx";
 import PotentialEstimate from "../rider/PotentialEstimate.tsx";
-import { potentialViewOf } from "../../lib/potentialEstimateDisplay.ts";
+import { PrognosisValue } from "../rider/PotentialEstimate.tsx";
+import { potentialViewOf, prognosisViewOf } from "../../lib/potentialEstimateDisplay.ts";
 import { DataTable, EmptyState, RiderLink, type DataTableColumn } from "../squad/squadUi.ts";
 import { useTableSort } from "../../lib/useTableSort.js";
 import { riderNameSortKey } from "../../lib/riderColumnSort.js";
@@ -42,6 +43,7 @@ interface Row extends TalentRider {
   _age: number | null;
   _squad: string | null;
   _band: number | null;
+  _prognosis: number | null;
 }
 
 // Modul-konstanter: useTableSort re-sorterer ellers på hver render.
@@ -52,9 +54,16 @@ const ACCESSORS: Record<string, (r: Row) => unknown> = {
   squad: (r) => r._squad,
   age: (r) => r._age,
   prognosis: (r) => r._band,
+  pacePrognosis: (r) => r._prognosis,
 };
-const SORT_OPTS = { descFirstKeys: new Set(["prognosis"]) };
+const SORT_OPTS = { descFirstKeys: new Set(["prognosis", "pacePrognosis"]) };
 const MOBILE_DEFAULTS = ["type", "age", "prognosis"];
+
+/** #8523: den samlede prognoses tal; skjult/ukendt sidst. */
+function prognosisSortValue(r: TalentRider): number | null {
+  const view = prognosisViewOf(r);
+  return view && !view.hidden ? view.value : null;
+}
 
 /** Sortering: skønnets tal, ellers prognose-båndets bund; skjult/ukendt sidst. */
 function potentialSortValue(r: TalentRider): number | null {
@@ -76,7 +85,11 @@ export default function TalentTable({ roster, seasonYear, emptyAction }: {
     _age: getRiderAge(r.birthdate, seasonYear) ?? null,
     _squad: talentSquad(r, seasonYear),
     _band: potentialSortValue(r),
+    _prognosis: prognosisSortValue(r),
   })), [roster, seasonYear]);
+  // #8523: med tændt flag er kolonnen potentialet (tal + ord), og den samlede prognose
+  // får sin egen kolonne. Slukket findes felterne ikke, og tabellen er som før.
+  const estimateOn = roster.some((r) => potentialViewOf(r) != null);
   const { rows, sort, sortDir, handleSort } = useTableSort(decorated, ACCESSORS, SORT_OPTS);
 
   const columns: DataTableColumn<Row>[] = [
@@ -124,7 +137,7 @@ export default function TalentTable({ roster, seasonYear, emptyAction }: {
     },
     {
       key: "prognosis",
-      header: t("academyV2:v2.talents.colPrognosis"),
+      header: estimateOn ? <span title={t("riders:potentialNumber.potentialTitle")}>{t("riders:potentialNumber.potential")}</span> : t("academyV2:v2.talents.colPrognosis"),
       sortKey: "prognosis",
       render: (r) => {
         const view = potentialViewOf(r);
@@ -132,6 +145,17 @@ export default function TalentTable({ roster, seasonYear, emptyAction }: {
         return r.prognosis ? <AcademyPrognosisCell prognosis={r.prognosis} /> : <span className="text-cz-2">–</span>;
       },
     },
+    ...(estimateOn ? [{
+      key: "pacePrognosis",
+      header: <span title={t("riders:potentialNumber.prognosisTitle")}>{t("riders:potentialNumber.prognosis")}</span>,
+      mobileLabel: t("riders:potentialNumber.prognosis"),
+      sortKey: "pacePrognosis",
+      numeric: true,
+      render: (r: Row) => {
+        const view = prognosisViewOf(r);
+        return view ? <PrognosisValue view={view} /> : <span className="text-cz-2">–</span>;
+      },
+    } satisfies DataTableColumn<Row>] : []),
   ];
 
   return (

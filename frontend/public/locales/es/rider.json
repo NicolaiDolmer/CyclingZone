@@ -137,6 +137,7 @@
       "effectNote": "se actualiza a diario",
       "noRiskNote": "Una intensidad mayor crece más rápido, sin riesgo de perder progreso.",
       "restNote": "Sin crecimiento de habilidades en un día de descanso; la fatiga se recupera.",
+      "levelNote": "Duro entrena más, pero cansa más. Fácil y Medio ahorran fuerzas.",
       "emptyFocus": "Elige un enfoque para asignar entrenamiento.",
       "actionErrorGeneric": "No se pudo guardar. Inténtalo de nuevo en un momento.",
       "actionErrors": {
@@ -474,6 +475,9 @@
         "thisSeason": "{delta} esta temporada",
         "abilityPoints": "Puntos de habilidad ganados",
         "trackedSince": "Seguido desde"
+      },
+      "xp": {
+        "title": "Habilidades y XP"
       },
       "reading": {
         "title": "Lectura",

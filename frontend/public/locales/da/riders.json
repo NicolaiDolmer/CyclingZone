@@ -8,6 +8,18 @@
   "loadError": "Kunne ikke indlæse rytterne. Prøv igen.",
   "retry": "Prøv igen",
   "watchlistToggleFailed": "Kunne ikke opdatere din ønskeliste. Prøv igen.",
+  "potentialNumber": {
+    "potential": "Potentiale",
+    "prognosis": "Prognose",
+    "prognosisTitle": "Fortsætter du den nuværende fart, ender han omkring her ved toppen. Bygger på hans seneste 30 dage.",
+    "prognosisPastPeak": "Forbi toppen",
+    "prognosisPastPeakTitle": "Han er forbi den alder, hvor ryttere topper.",
+    "prognosisNoEstimateTitle": "Prognosen kommer, når du har et skøn over hans potentiale.",
+    "aiTeamTitle": "AI-holdenes ryttere kan ikke scoutes.",
+    "potentialSubtitle": "spejderens skøn",
+    "potentialTitle": "Potentiale, spejderens skøn. Et skøn, ikke et facit.",
+    "approx": "ca. {value}"
+  },
   "table": {
     "nation": "Nation",
     "rider": "Rytter",

@@ -16,6 +16,11 @@
 //  - Hvor toppen presses ned, er en egenskab ved de private ankre, ikke ved koden.
 //  - Står rytterens rating for bedste type over hans nye P, hæves P til ratingen.
 //    Ingen rating ændres: funktionen læser kun ratingen.
+//  - Ejervalg 21/11: er rytteren under YOUNG_AGE_LIMIT, sættes P i stedet til toppen
+//    af det "Forventet niveau", spilleren ser i dag (prognose-båndets top for primær
+//    type), dog mindst ratingen. Så ser ingen sin unge rytters forventning falde ved
+//    skiftet. Kalderen regner prognosen og sender den ind pr. rytter; modulet er rent.
+//    Ryttere på grænsen eller ældre, og unge uden prognose, hæves til ratingen som før.
 //
 // ═══ AKADEMIET (søndagens årgang) ════════════════════════════════════════════
 //  Stjernerne trækkes med samme geometriske form som i dag, men med akademiets egen
@@ -42,6 +47,12 @@ export const STAR_STEPS = Object.freeze([1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5,
 
 /** Nøglen i private_config for P-parametrene. */
 export const POTENTIAL_P_PARAMS_KEY = "potential_p_params";
+
+/**
+ * Ejervalg 21/11 (#8521): ryttere UNDER denne sæson-alder, der står over deres nye P,
+ * får toppen af dagens prognose-bånd i stedet for ratingen. Ejerens regel, ikke kalibrering.
+ */
+export const YOUNG_AGE_LIMIT = 28;
 
 
 /**
@@ -125,16 +136,49 @@ function compareRank(a, b) {
  * @property {string} id
  * @property {number|null|undefined} potentiale  stjerner (1-6 i halve trin)
  * @property {number|null|undefined} [rating]    rytterens rating for bedste type lige nu
+ * @property {number|null|undefined} [age]       sæson-alder (null = ukendt, behandles som ikke-ung)
+ * @property {number|null|undefined} [prognosisHi]  toppen af dagens "Forventet niveau" for primær type
  */
 
 /**
  * @typedef {object} ConvertedP
- * @property {number} p        endeligt P (efter evt. hævning til ratingen)
+ * @property {number} p        endeligt P (efter evt. hævning)
  * @property {number} pBase    P fra ankrene alene
  * @property {number} stars
  * @property {number|null} rating
- * @property {boolean} lifted  true når P blev hævet til ratingen
+ * @property {number|null} age
+ * @property {number|null} prognosisHi
+ * @property {boolean} lifted  true når ratingen stod over pBase, så P blev hævet
+ * @property {boolean} liftedToPrognosis  true når hævningen gik til prognosens top (ung rytter)
  */
+
+/** @param {unknown} v @returns {number|null} */
+const clampP = (v) => (isFiniteNumber(v) ? Math.max(P_MIN, Math.min(P_MAX, Math.round(v))) : null);
+
+/**
+ * Er rytteren omfattet af ejervalget for unge? Ukendt alder tæller ikke som ung.
+ * @param {number|null|undefined} age
+ */
+export function isYoungForP(age) {
+  return isFiniteNumber(age) && age < YOUNG_AGE_LIMIT;
+}
+
+/**
+ * Det endelige P for én rytter ud fra pBase. Ren. Står ratingen ikke over pBase, er
+ * P = pBase. Ellers hæves P: en ung rytter med prognose får prognosens top (dog mindst
+ * ratingen), alle andre får ratingen. Altid inden for [P_MIN, P_MAX].
+ * @param {{ pBase: number, rating: number|null, age?: number|null, prognosisHi?: number|null }} input
+ * @returns {{ p: number, lifted: boolean, liftedToPrognosis: boolean }}
+ */
+export function liftP({ pBase, rating, age = null, prognosisHi = null }) {
+  const ratingP = clampP(rating);
+  if (ratingP == null || ratingP <= pBase) return { p: pBase, lifted: false, liftedToPrognosis: false };
+  const progP = clampP(prognosisHi);
+  if (isYoungForP(age) && progP != null) {
+    return { p: Math.max(progP, ratingP), lifted: true, liftedToPrognosis: true };
+  }
+  return { p: ratingP, lifted: true, liftedToPrognosis: false };
+}
 
 /**
  * Rang-ordnet jævn spredning over [lo, hi] via (i + 0,5)/n-kvantiler. Afrunding er
@@ -157,7 +201,8 @@ export function convertStarsToP(riders, params) {
   const byId = new Map();
   /** @type {{ id: string, reason: "invalid_potentiale" }[]} */
   const skipped = [];
-  /** @type {Map<number, {id: string, potentiale: number, rating: number|null}[]>} */
+  /** @typedef {{id: string, potentiale: number, rating: number|null, age: number|null, prognosisHi: number|null}} Bucketed */
+  /** @type {Map<number, Bucketed[]>} */
   const byStep = new Map(STAR_STEPS.map((s) => [s, []]));
   const seen = new Set();
   for (const r of riders) {
@@ -167,16 +212,19 @@ export function convertStarsToP(riders, params) {
     const bucket = r.potentiale == null ? undefined : byStep.get(stars);
     if (!bucket) { skipped.push({ id: r.id, reason: "invalid_potentiale" }); continue; }
     const rating = isFiniteNumber(r.rating) ? r.rating : null;
-    bucket.push({ id: r.id, potentiale: stars, rating });
+    const age = isFiniteNumber(r.age) ? r.age : null;
+    const prognosisHi = isFiniteNumber(r.prognosisHi) ? r.prognosisHi : null;
+    bucket.push({ id: r.id, potentiale: stars, rating, age, prognosisHi });
   }
   for (const step of STAR_STEPS) {
-    const group = /** @type {{id: string, potentiale: number, rating: number|null}[]} */ (byStep.get(step)).sort(compareRank);
+    const group = /** @type {Bucketed[]} */ (byStep.get(step)).sort(compareRank);
     const [lo, hi] = anchorFor(params, step);
     group.forEach((r, i) => {
       const pBase = spreadValue(i, group.length, lo, hi);
-      const ratingP = r.rating == null ? null : Math.max(P_MIN, Math.min(P_MAX, Math.round(r.rating)));
-      const lifted = ratingP != null && ratingP > pBase;
-      byId.set(r.id, { p: lifted ? /** @type {number} */ (ratingP) : pBase, pBase, stars: step, rating: r.rating, lifted });
+      const { p, lifted, liftedToPrognosis } = liftP({ pBase, rating: r.rating, age: r.age, prognosisHi: r.prognosisHi });
+      byId.set(r.id, {
+        p, pBase, stars: step, rating: r.rating, age: r.age, prognosisHi: r.prognosisHi, lifted, liftedToPrognosis,
+      });
     });
   }
   return { byId, skipped };
@@ -184,7 +232,8 @@ export function convertStarsToP(riders, params) {
 
 /**
  * Kontrol, ikke antagelse: gået igennem i rang-orden (stjerner, så id-hash) må P fra
- * ankrene aldrig falde. Hævningen til rating er bevidst undtaget (spec §2).
+ * ankrene aldrig falde. Hævningen (til rating eller, for unge, til prognosens top) er
+ * bevidst undtaget (spec §2, ejervalg 21/11).
  * @param {Map<string, ConvertedP>} byId
  * @returns {{ prevId: string, curId: string }[]}
  */

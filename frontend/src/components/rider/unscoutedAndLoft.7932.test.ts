@@ -27,8 +27,11 @@ test("uscoutet viser aldrig teksten 'Ikke scoutet' hverken i tal+ord-visningen e
   }
 });
 
-test("uscoutet uden knap viser en tankestreg-pladsholder", () => {
-  assert.match(estimate, /action \?\? \(\s*<span className="text-cz-3"[^>]*>—<\/span>/);
+// Ejer 20/11 (#8523): med tændt flag viser en uscoutet rytter "?" (knappen ved siden
+// af, når den findes). Den slukkede gren i ScoutablePotentiale beholder tankestregen.
+test("uscoutet viser '?' i tal+ord-visningen og tankestreg i den slukkede gren", () => {
+  assert.match(estimate, />\s*\?\s*<\/span>/);
+  assert.doesNotMatch(estimate, /action \?\? \(\s*<span className="text-cz-3"[^>]*>—<\/span>/);
   assert.match(scoutable, /<span className="text-cz-3"[^>]*>—<\/span>/);
 });
 

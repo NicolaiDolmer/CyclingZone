@@ -2,10 +2,12 @@
 // Koer: node --test scripts/merge-autotrain.test.mjs
 
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import {
   QUEUE_CI_TIMEOUT_MINUTES,
@@ -25,6 +27,17 @@ import {
   run,
   selectTrain,
 } from './merge-autotrain.mjs';
+import {
+  ALERT_AFTER_RUNS,
+  REASON,
+  guardFindings,
+  hookLines,
+  latestOwnerMarkerSha,
+  needsCiFacts,
+  nextGuardState,
+  restartCandidates,
+  runMergeGuard,
+} from './merge-guard.mjs';
 
 const HEAD = 'a'.repeat(40);
 const OWNER = 'NicolaiDolmer';
@@ -432,6 +445,251 @@ describe('#8000 no ready notifications', () => {
       assert.deepEqual(calls, [[81]]);
       assert.equal(result.action, 'queue');
       assert.equal(existsSync(join(dir, '.claude/run/merge-autotrain-state.json')), false);
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+});
+
+// ── Merge-vagten (#8331) ────────────────────────────────────────────────────
+
+const OLD = 'b'.repeat(40);
+const GUARD_NOW = new Date('2026-11-20T12:00:00Z');
+const markerComment = (sha, login = OWNER) => ({ author: { login }, body: `merge <!-- merge-autotrain: ejer-merge sha=${sha} -->` });
+// En PR med ejer-markoer, vurderet med de givne checks (standard: alt groent, ejer-go-kategori).
+function guardEval(overrides = {}, ctx = {}) {
+  return evaluatePr(pr({ comments: [markerComment(HEAD)], ...overrides }), {
+    requiredChecks: GREEN_REQUIRED, allChecks: GREEN_ALL, classification: OWNER_GO, ownerLogin: OWNER, deploy: QUIET, ...ctx,
+  });
+}
+const minutesAgo = (m) => new Date(GUARD_NOW.getTime() - m * 60_000).toISOString();
+const PENDING_REQUIRED = [{ name: 'backend-tests', bucket: 'pending' }];
+
+describe('merge-vagt: ejer-markoer', () => {
+  it('seneste markoer fra ejerens konto vinder; andre konti ignoreres', () => {
+    assert.equal(latestOwnerMarkerSha([markerComment(OLD), markerComment(HEAD)], OWNER), HEAD);
+    assert.equal(latestOwnerMarkerSha([markerComment(HEAD), markerComment(OLD, 'someone')], OWNER), HEAD);
+    assert.equal(latestOwnerMarkerSha([markerComment(HEAD, 'someone')], OWNER), null);
+    assert.equal(latestOwnerMarkerSha([], OWNER), null);
+  });
+  it('evaluatePr baerer markoeren, ogsaa ved tidlige afslag', () => {
+    assert.equal(guardEval({ isDraft: true }).ownerMarkerSha, HEAD);
+    assert.equal(evalWith().ownerMarkerSha, null);
+  });
+});
+
+describe('merge-vagt: klassifikation (guardFindings)', () => {
+  const one = (e, facts) => guardFindings({ evaluations: [e], ciFacts: facts ? { [e.number]: facts } : {}, now: GUARD_NOW });
+
+  it('eligible PR og PR uden markoer giver intet fund', () => {
+    const eligible = guardEval();
+    assert.equal(eligible.eligible, true);
+    assert.deepEqual(one(eligible), []);
+    assert.deepEqual(one(evalWith({ isDraft: true })), []);
+  });
+  it('markoer paa gammelt commit (fx efter merge af main)', () => {
+    const [f] = one(guardEval({ comments: [markerComment(OLD.slice(0, 7))] }));
+    assert.equal(f.reason, REASON.STALE_MARKER);
+    assert.match(f.detail, /bbbbbbb/);
+  });
+  it('CI ikke startet: ingen hoved-CI-koersel og hovedet er over 15 min gammelt', () => {
+    const e = guardEval({}, { requiredChecks: PENDING_REQUIRED });
+    assert.equal(needsCiFacts(e), true);
+    assert.equal(one(e, { ciRuns: 0, headCommittedAt: minutesAgo(40) })[0].reason, REASON.CI_NOT_STARTED);
+    // Nyt hoved (under fristen), koersel findes, eller ukendt commit-tid: ingen genstart.
+    assert.equal(one(e, { ciRuns: 0, headCommittedAt: minutesAgo(5) })[0].reason, REASON.PENDING);
+    assert.equal(one(e, { ciRuns: 1, headCommittedAt: minutesAgo(40) })[0].reason, REASON.PENDING);
+    assert.equal(one(e, { ciRuns: 0, headCommittedAt: '' })[0].reason, REASON.PENDING);
+    assert.equal(one(e)[0].reason, REASON.PENDING);
+  });
+  it('roede checks med navne, review mangler, konflikt, kladde, andet', () => {
+    const red = one(guardEval({}, { requiredChecks: [{ name: 'backend-tests', bucket: 'fail' }] }))[0];
+    assert.equal(red.reason, REASON.RED);
+    assert.match(red.detail, /backend-tests/);
+    const review = [{ name: 'review-gate', bucket: 'fail', event: 'pull_request_target', startedAt: '2026-11-20T10:00:00Z' }];
+    assert.equal(one(guardEval({}, { allChecks: review }))[0].reason, REASON.REVIEW);
+    assert.equal(one(guardEval({ mergeable: 'CONFLICTING' }))[0].reason, REASON.CONFLICT);
+    assert.equal(one(guardEval({ isDraft: true }))[0].reason, REASON.DRAFT);
+    assert.equal(one(guardEval({ labels: [{ name: 'hold' }] }))[0].reason, REASON.OTHER);
+  });
+  it('roede checks paa et gammelt hoved meldes som roede checks (de skal rettes foer nyt go)', () => {
+    const e = guardEval({ comments: [markerComment(OLD)] }, { requiredChecks: [{ name: 'gitleaks', bucket: 'fail' }] });
+    assert.equal(one(e)[0].reason, REASON.RED);
+  });
+});
+
+describe('merge-vagt: taeller, nulstilling og alerts', () => {
+  const finding = (pr, reason, extra = {}) => ({ pr, title: `PR ${pr}`, headSha: HEAD, reason, detail: '', ...extra });
+  const t1 = new Date('2026-11-20T10:00:00Z');
+  const t2 = new Date('2026-11-20T10:20:00Z');
+  const t3 = new Date('2026-11-20T10:40:00Z');
+
+  it('samme aarsag taeller op og bevarer since; alert foerst efter 2 koersler', () => {
+    const s1 = nextGuardState(null, [finding(1, REASON.STALE_MARKER)], { now: t1, openNumbers: [1] });
+    assert.equal(s1.entries[1].count, 1);
+    assert.deepEqual(s1.alerts, []);
+    const s2 = nextGuardState(s1, [finding(1, REASON.STALE_MARKER)], { now: t2, openNumbers: [1] });
+    assert.equal(ALERT_AFTER_RUNS, 2);
+    assert.equal(s2.entries[1].count, 2);
+    assert.equal(s2.entries[1].since, t1.toISOString());
+    assert.equal(s2.alerts.length, 1);
+    assert.equal(s2.alerts[0].pr, 1);
+    assert.equal(s2.alerts[0].since, t1.toISOString());
+    assert.match(s2.alerts[0].suggestion, /markoer/);
+  });
+  it('ny aarsag starter forfra; PR uden fund (eligible/lukket/merget) nulstilles', () => {
+    const s1 = nextGuardState(null, [finding(1, REASON.STALE_MARKER), finding(2, REASON.RED)], { now: t1, openNumbers: [1, 2] });
+    const s2 = nextGuardState(s1, [finding(1, REASON.REVIEW), finding(2, REASON.RED)], { now: t2, openNumbers: [1, 2] });
+    assert.equal(s2.entries[1].count, 1);
+    assert.equal(s2.entries[1].since, t2.toISOString());
+    assert.equal(s2.entries[2].count, 2);
+    const s3 = nextGuardState(s2, [finding(1, REASON.REVIEW)], { now: t3, openNumbers: [1] });
+    assert.equal(s3.entries[2], undefined);
+    assert.deepEqual(s3.alerts.map((a) => a.pr), [1]);
+  });
+  it('checks der afventer giver aldrig alert', () => {
+    let s = null;
+    for (const now of [t1, t2, t3]) s = nextGuardState(s, [finding(3, REASON.PENDING)], { now, openNumbers: [3] });
+    assert.equal(s.entries[3].count, 3);
+    assert.deepEqual(s.alerts, []);
+  });
+  it('genstart kun een gang pr. hoved-SHA; nyt hoved maa genstartes igen', () => {
+    const f = finding(4, REASON.CI_NOT_STARTED);
+    assert.equal(restartCandidates([f], null).length, 1);
+    assert.equal(restartCandidates([f], { restarts: { 4: { headSha: HEAD } } }).length, 0);
+    assert.equal(restartCandidates([{ ...f, headSha: OLD }], { restarts: { 4: { headSha: HEAD } } }).length, 1);
+    assert.equal(restartCandidates([finding(4, REASON.RED)], null).length, 0);
+  });
+  it('genstarten huskes, selv naar PR\'en en koersel ikke kunne vurderes; kun meget gamle ryddes', () => {
+    const prev = { restarts: { 4: { headSha: HEAD, at: '2026-11-20T09:00:00Z' }, 5: { headSha: HEAD, at: '2026-09-01T09:00:00Z' } } };
+    const s = nextGuardState(prev, [], { now: t1, openNumbers: [] });
+    assert.deepEqual(Object.keys(s.restarts), ['4']);
+    assert.equal(restartCandidates([finding(4, REASON.CI_NOT_STARTED)], s).length, 0);
+  });
+  it('fejlet genaabning bliver i alerts, til PR\'en ses aaben igen', () => {
+    const failed = { pr: 6, reason: REASON.REOPEN_FAILED, since: t1.toISOString() };
+    const s1 = nextGuardState({ reopenFailed: { 6: failed } }, [], { now: t2, openNumbers: [] });
+    assert.deepEqual(s1.alerts.map((a) => a.reason), [REASON.REOPEN_FAILED]);
+    const s2 = nextGuardState(s1, [], { now: t3, openNumbers: [6] });
+    assert.deepEqual(s2.alerts, []);
+  });
+  it('review-gate i koe er "afventer", ikke "review mangler"', () => {
+    const queued = [{ name: 'review-gate', bucket: 'pending', event: 'pull_request_target', startedAt: '2026-11-20T10:00:00Z' }];
+    const [f] = guardFindings({ evaluations: [guardEval({}, { allChecks: queued })], now: GUARD_NOW });
+    assert.equal(f.reason, REASON.PENDING);
+  });
+});
+
+describe('merge-vagt: runMergeGuard (gh injiceret)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'merge-guard-'));
+  after(() => rmSync(dir, { recursive: true, force: true }));
+
+  // Falsk gh: ingen CI-koersel, hovedet committet for 40 min siden; close/reopen registreres.
+  function fakeGh({ reopenFails = false } = {}) {
+    const calls = [];
+    const gh = (args) => {
+      calls.push(args.slice(0, 2).join(' '));
+      if (args[0] === 'run') return { status: 0, stdout: '[]', stderr: '' };
+      if (args[0] === 'api') return { status: 0, stdout: `${minutesAgo(40)}\n`, stderr: '' };
+      if (args[1] === 'reopen' && reopenFails) return { status: 1, stdout: '', stderr: 'nej' };
+      return { status: 0, stdout: '', stderr: '' };
+    };
+    return { gh, calls };
+  }
+  const stuck = () => [guardEval({ number: 8495, title: 'chore(deps): noget' }, { requiredChecks: PENDING_REQUIRED })];
+
+  it('CI ikke startet: luk+genaabn een gang, alert ved anden koersel, ingen ny genstart paa samme SHA', () => {
+    const file = join(dir, 'g1.json');
+    const lines = [];
+    const a = fakeGh();
+    const r1 = runMergeGuard({ evaluations: stuck(), repo: 'o/r', now: GUARD_NOW, gh: a.gh, file, log: (l) => lines.push(l) });
+    assert.deepEqual(a.calls.filter((c) => c.startsWith('pr ')), ['pr close', 'pr reopen']);
+    assert.equal(r1.state.restarts[8495].headSha, HEAD);
+    assert.deepEqual(r1.state.alerts, []);
+    assert.ok(lines.some((l) => /MERGE-VAGT: #8495 lukket\+genaabnet/.test(l)));
+
+    const b = fakeGh();
+    const later = new Date(GUARD_NOW.getTime() + 20 * 60_000);
+    const r2 = runMergeGuard({ evaluations: stuck(), repo: 'o/r', now: later, gh: b.gh, file, log: (l) => lines.push(l) });
+    assert.deepEqual(b.calls.filter((c) => c.startsWith('pr ')), [], 'samme SHA genstartes aldrig igen');
+    assert.equal(r2.state.alerts.length, 1);
+    assert.equal(r2.state.alerts[0].reason, REASON.CI_NOT_STARTED);
+    assert.ok(lines.some((l) => /^ {2}MERGE-VAGT: #8495 /.test(l)));
+    assert.equal(JSON.parse(readFileSync(file, 'utf8')).alerts[0].pr, 8495);
+  });
+
+  it('dry-run: ingen genstart og ingen tilstand', () => {
+    const file = join(dir, 'g2.json');
+    const a = fakeGh();
+    runMergeGuard({ evaluations: stuck(), repo: 'o/r', now: GUARD_NOW, gh: a.gh, file, dryRun: true });
+    assert.deepEqual(a.calls.filter((c) => c.startsWith('pr ')), []);
+    assert.equal(existsSync(file), false);
+  });
+
+  it('fejlet genaabning giver alert med det samme', () => {
+    const a = fakeGh({ reopenFails: true });
+    const r = runMergeGuard({ evaluations: stuck(), repo: 'o/r', now: GUARD_NOW, gh: a.gh, file: join(dir, 'g3.json') });
+    assert.deepEqual(a.calls.filter((c) => c.startsWith('pr ')), ['pr close', 'pr reopen', 'pr reopen']);
+    assert.equal(r.state.alerts[0].reason, REASON.REOPEN_FAILED);
+    assert.equal(r.state.restarts[8495].ok, false);
+  });
+
+  it('henter kun CI-fakta for PR\'er med markoer og ikke-groenne checks', () => {
+    const a = fakeGh();
+    runMergeGuard({ evaluations: [guardEval({ number: 1 }), guardEval({ number: 2, comments: [markerComment(OLD)] }), evalWith({ number: 3 })], repo: 'o/r', now: GUARD_NOW, gh: a.gh, file: join(dir, 'g4.json') });
+    assert.deepEqual(a.calls, []);
+  });
+
+  it('run() kalder vagten med vurderingerne, og en vagt-fejl stopper ikke toget', async () => {
+    const seen = [];
+    const res = await run({
+      argv: ['--dry-run'], now: GUARD_NOW, repoRoot: dir, out: () => {},
+      readMarker: () => null, evaluate: () => [evalWith({ number: 11 })],
+      guard: (opts) => { seen.push(opts); throw new Error('vagt nede'); },
+    });
+    assert.equal(res.action, 'dry-run');
+    assert.equal(seen.length, 1);
+    assert.equal(seen[0].dryRun, true);
+    assert.deepEqual(seen[0].evaluations.map((e) => e.number), [11]);
+  });
+});
+
+describe('merge-vagt: Stop-hooken (check-now-md.sh)', () => {
+  const state = (updatedAt) => nextGuardState(
+    nextGuardState(null, [{ pr: 8315, title: 'fix: noget', headSha: HEAD, reason: REASON.STALE_MARKER, detail: 'markoer bbbbbbb, hoved aaaaaaa' }], { now: new Date('2026-11-20T09:40:00Z') }),
+    [{ pr: 8315, title: 'fix: noget', headSha: HEAD, reason: REASON.STALE_MARKER, detail: 'markoer bbbbbbb, hoved aaaaaaa' }],
+    { now: new Date(updatedAt) },
+  );
+
+  it('hookLines: een linje pr. alert med stabil noegle; gammel tilstand ignoreres', () => {
+    const s = state('2026-11-20T10:00:00Z');
+    const lines = hookLines(s, { now: new Date('2026-11-20T10:05:00Z') });
+    assert.equal(lines.length, 1);
+    const [key, text] = lines[0].split('\t');
+    assert.equal(key, 'merge-guard:8315:gammel-markoer:2026-11-20T09:40:00.000Z');
+    assert.match(text, /^MERGE-VAGT: #8315 /);
+    assert.match(text, /Spoerg ejeren nu/);
+    assert.deepEqual(hookLines(s, { now: new Date('2026-11-20T23:00:00Z') }), []);
+    assert.deepEqual(hookLines(null, { now: new Date('2026-11-20T10:05:00Z') }), []);
+  });
+
+  it('hooken blokerer med alert-linjen, og respekterer stop_hook_active', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'guard-hook-'));
+    try {
+      assert.equal(spawnSync('git', ['init', '-q'], { cwd: dir }).status, 0);
+      const file = join(dir, 'merge-guard.json');
+      writeFileSync(file, JSON.stringify(state('2026-11-20T10:00:00Z')));
+      const hook = fileURLToPath(new URL('./check-now-md.sh', import.meta.url)).replaceAll('\\', '/');
+      const env = { ...process.env, HOME: dir, USERPROFILE: dir, MERGE_GUARD_FILE: file, CHECK_NOW_MD_NOW_EPOCH: String(Date.parse('2026-11-20T10:05:00Z') / 1000) };
+      const runHook = (input) => {
+        const res = spawnSync('bash', [hook], { cwd: dir, input, encoding: 'utf8', env, timeout: 60_000 });
+        assert.equal(res.status, 0, res.stderr);
+        return JSON.parse(res.stdout.trim());
+      };
+      const blocked = runHook('');
+      assert.equal(blocked.decision, 'block');
+      assert.match(blocked.reason, /MERGE-VAGT: #8315 /);
+      const active = runHook('{"stop_hook_active": true}');
+      assert.equal(active.decision, undefined);
+      assert.match(active.systemMessage, /MERGE-VAGT: #8315 /);
     } finally { rmSync(dir, { recursive: true, force: true }); }
   });
 });

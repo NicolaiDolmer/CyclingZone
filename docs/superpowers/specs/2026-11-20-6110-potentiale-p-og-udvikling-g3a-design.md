@@ -13,7 +13,7 @@ Prøvekørslen af kandidat B for tændingsnatten 20/11 gav de højeste stjerner 
 - **P (1-99) er den rating for rytterens bedste ryttertype, vi forventer han ender på.** 50 giver ca. 50, 75 ca. 75, 99 ca. 95. Spejdere leder efter tallet.
 - **Fast fra fødslen.** Kun skønnet, spilleren ser, flytter sig (afløser retning C's levende talent).
 - **P måles med gennemsnitlig træner og facilitet.** En klub med mere giver lidt over P, en med mindre lidt under.
-- **Omregning fra stjerner** (1-6 i halve trin) bevarer rækkefølgen; kun toppen presses ned (låst 11/10). Står en rytter allerede over sit nye P, hæves P til hans rating. Ingen rating ændres af omregningen.
+- **Omregning fra stjerner** (1-6 i halve trin) bevarer rækkefølgen; kun toppen presses ned (låst 11/10). Står en rytter allerede over sit nye P, hæves P til hans rating. Undtagelse (ejervalg 21/11, #8521): er rytteren under 28, sættes P i stedet til toppen af det "Forventet niveau"-interval, spilleren ser i dag (prognose-båndets top for primær type, eget hold, standard-scout), dog mindst ratingen; mangler alder eller prognose, hæves P til ratingen. Ingen rating ændres af omregningen.
 - **Fordeling:** høje potentialer er sjældne. Tilgangen (akademiet = søndagens årgang) kalibreres til samme fordeling som bestanden, så toppen hverken tyndes ud eller vokser; målet er ca. én rytter med højt potentiale pr. aktiv manager. Researchen (Football Manager, OOTP, Basketball GM, Hattrick/Sokker) viser, at tilgangen bestemmer bestanden efter én karrierelængde, og at en selvregulerende tilgang svinger.
 - **Hamstring** bremses med pris: høje potentialer er dyre.
 

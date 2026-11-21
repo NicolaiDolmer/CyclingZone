@@ -8,6 +8,18 @@
   "loadError": "Couldn't load the riders. Please try again.",
   "retry": "Try again",
   "watchlistToggleFailed": "Could not update your watchlist. Please try again.",
+  "potentialNumber": {
+    "potential": "Potential",
+    "prognosis": "Prognosis",
+    "prognosisTitle": "Keep up the current pace and he ends up around here at his peak. Based on his last 30 days.",
+    "prognosisPastPeak": "Past his peak",
+    "prognosisPastPeakTitle": "He is past the age where riders peak.",
+    "prognosisNoEstimateTitle": "The prognosis comes once you have an estimate of his potential.",
+    "aiTeamTitle": "Riders on AI teams can't be scouted.",
+    "potentialSubtitle": "the scout's estimate",
+    "potentialTitle": "Potential, the scout's estimate. An estimate, not a fact.",
+    "approx": "approx. {value}"
+  },
   "table": {
     "nation": "Nation",
     "rider": "Rider",

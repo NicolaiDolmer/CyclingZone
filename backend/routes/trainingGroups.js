@@ -11,7 +11,8 @@
 //   POST   /                 { name, riderIds }         opret (flytter ryttere fra en anden gruppe)
 //   PATCH  /:id              { name?, riderIds? }       omdoeb / saet medlemmer
 //   DELETE /:id                                         slet (rytterne beholder deres plan)
-//   PUT    /:id/cell         { weekday, slotIndex, session }  et felt for hele gruppen
+//   PUT    /:id/cell         { weekday, slotIndex, session, effort? }  et felt for hele gruppen
+//                            (#7947: effort gemmes kun med training_effort_levels on)
 //   POST   /:id/program      { programKey }             "Put on" et program paa gruppen
 //   POST   /:id/follow       { riderIds }               rytterne foelger gruppen igen
 //   PUT    /:id/fatigue      { mode, threshold?, fallback? }  traethedsundtagelse for hele gruppen
@@ -27,7 +28,8 @@ import {
 } from "../lib/trainingPrograms.js";
 import { isTrainingCellsEnabled } from "../lib/trainingWeekPlanCellsFlag.js";
 import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer, v3SmartDefaultFocus } from "../lib/trainingCatalogV3.js"; // #5319
-import { seedProgramWeekDays } from "../lib/trainingWeekPlanCells.js";
+import { seedProgramWeekDays, planRunsOffStandard } from "../lib/trainingWeekPlanCells.js";
+import { effortForWrite, isTrainingEffortLevelsEnabled } from "../lib/trainingEffortLevels.js"; // #7947
 import {
   GROUPS_TABLE, MEMBERS_TABLE, isTrainingGroupsEnabled, loadTeamGroups, normalizeGroupName, sanitizeRiderIds,
   followerIds, groupSeedDays, groupFatiguePatch, copyWeekDays,
@@ -45,6 +47,8 @@ async function passes(middleware, req, res) {
 export function createTrainingGroupsRouter({
   supabase, requireAuth, isViewerBetaTester, writeLimiter = PASS, readLimiter = PASS, captureExceptionFn = () => {},
   planLock = () => PASS,
+  // Codex P1 paa #8532 (AGENTS: tests laeser aldrig vaegurets tid): tidsstempler fra en injicerbar klokke.
+  clock = () => new Date(),
 }) {
   const router = express.Router();
 
@@ -90,6 +94,8 @@ export function createTrainingGroupsRouter({
     // #5319: v3-saaningen foelger viewerens katalog; flaget slaas kun op naar det kan flytte nogen.
     const v3Affected = riders.some((r) => !(plans.get(r.id)?.focus && plans.get(r.id)?.intensity) && v3SmartDefaultFocus("threshold", r, { v3: true }) !== "threshold");
     const catalogV3 = v3Affected ? await isTrainingCatalogV3EnabledForViewer(supabase, () => isViewerBetaTester(req)) : false;
+    // #7947: kontakten slaas kun op, naar en plan staar paa et andet niveau end sessionens standard.
+    const effortLevels = riders.some((r) => planRunsOffStandard(plans.get(r.id))) ? await isTrainingEffortLevelsEnabled(supabase) : false;
     const ownIds = riders.map((r) => r.id);
     const teamDays = rows.find((r) => r.rider_id == null)?.days ?? null;
     const ownDaysByRider = new Map(rows.filter((r) => r.rider_id != null).map((r) => [r.rider_id, r.days]));
@@ -99,7 +105,7 @@ export function createTrainingGroupsRouter({
       if (isValidProgramWeekDays(riderDays)) continue;
       seeds[rider.id] = seedProgramWeekDays({
         riderDays, teamDays, plan: plans.get(rider.id) ?? null, primaryType: rider.primary_type ?? null,
-        secondaryType: rider.secondary_type ?? null, catalogV3,
+        secondaryType: rider.secondary_type ?? null, catalogV3, effortLevels,
       });
     }
     return { riders, ownIds, rows, groups, members, ownDaysByRider, seeds };
@@ -126,7 +132,7 @@ export function createTrainingGroupsRouter({
   // Skriver gruppens uge som KOPI ind i hver rytters egen raekke.
   async function writeCopies(teamId, rows, riderIds, days, programKey) {
     const byRider = new Map(rows.filter((r) => r.rider_id != null).map((r) => [r.rider_id, r.id]));
-    const now = new Date().toISOString();
+    const now = clock().toISOString();
     const inserts = [];
     for (const riderId of riderIds) {
       const patch = { days: copyWeekDays(days), program_key: programKey ?? null, updated_at: now };
@@ -235,7 +241,7 @@ export function createTrainingGroupsRouter({
       if (riderIds && hasDays && !(await passes(planLock("programApply"), req, res))) return;
       if (name) {
         const { error } = await supabase.from(GROUPS_TABLE)
-          .update({ name, updated_at: new Date().toISOString() }).eq("id", group.id).eq("team_id", req.team.id);
+          .update({ name, updated_at: clock().toISOString() }).eq("id", group.id).eq("team_id", req.team.id);
         if (error) throw new Error(error.message);
       }
       if (riderIds) {
@@ -275,6 +281,9 @@ export function createTrainingGroupsRouter({
     try {
       const ctx = await writeContext(req, res);
       if (!ctx) return;
+      // #7947: indsatsen gemmes kun med kontakten on; ikke sendt = intet opslag, som i dag.
+      const effortWrite = await effortForWrite(supabase, req.body?.effort);
+      if (!effortWrite.ok) return res.status(400).json({ error: effortWrite.reason });
       // #5319: en v3-session kan kun vaelges naar training_catalog_v3 er aaben for viewer.
       if (isV3OnlySession(session) && !(await isTrainingCatalogV3EnabledForViewer(supabase, () => isViewerBetaTester(req)))) {
         return res.status(400).json({ error: "invalid_session" });
@@ -283,10 +292,10 @@ export function createTrainingGroupsRouter({
       if (!group) return;
       const view = groupView(group, ctx);
       if (!view.days) return res.status(409).json({ error: "group_empty" });
-      const days = setProgramCell(view.days, { weekday, slotIndex, session });
+      const days = setProgramCell(view.days, { weekday, slotIndex, session, effort: effortWrite.effort });
       if (!days) return res.status(400).json({ error: "invalid_cell" });
       const { error } = await supabase.from(GROUPS_TABLE)
-        .update({ days, updated_at: new Date().toISOString() }).eq("id", group.id).eq("team_id", req.team.id);
+        .update({ days, updated_at: clock().toISOString() }).eq("id", group.id).eq("team_id", req.team.id);
       if (error) throw new Error(error.message);
       // Regel A: rytterne med en etape i feltet beholder etapen (motoren springer
       // passet over paa en loebsdag han koerer), saa kopien skrives til alle.
@@ -308,7 +317,7 @@ export function createTrainingGroupsRouter({
       if (!group) return;
       const days = programWeekDaysFor(program.key);
       const { error } = await supabase.from(GROUPS_TABLE)
-        .update({ days, program_key: program.key, updated_at: new Date().toISOString() })
+        .update({ days, program_key: program.key, updated_at: clock().toISOString() })
         .eq("id", group.id).eq("team_id", req.team.id);
       if (error) throw new Error(error.message);
       // "Put on" en gruppe er spillerens eksplicitte valg for HELE gruppen: alle
@@ -358,7 +367,7 @@ export function createTrainingGroupsRouter({
       const group = await findGroup(req, res, ctx);
       if (!group) return;
       const { error } = await supabase.from(GROUPS_TABLE)
-        .update({ ...patch, updated_at: new Date().toISOString() }).eq("id", group.id).eq("team_id", req.team.id);
+        .update({ ...patch, updated_at: clock().toISOString() }).eq("id", group.id).eq("team_id", req.team.id);
       if (error) throw new Error(error.message);
       await respond(req, res);
     } catch (err) {

@@ -137,6 +137,7 @@
       "effectNote": "wordt dagelijks bijgewerkt",
       "noRiskNote": "Hogere intensiteit groeit sneller, zonder risico op verlies van voortgang.",
       "restNote": "Geen groei van vaardigheden op een rustdag. De vermoeidheid herstelt.",
+      "levelNote": "Zwaar traint meer, maar vermoeit meer. Licht en Gemiddeld sparen de krachten.",
       "emptyFocus": "Kies een focus om training toe te wijzen.",
       "actionErrorGeneric": "Opslaan is niet gelukt. Probeer het over een moment opnieuw.",
       "actionErrors": {
@@ -474,6 +475,9 @@
         "thisSeason": "{delta} dit seizoen",
         "abilityPoints": "Gewonnen vaardigheidspunten",
         "trackedSince": "Bijgehouden sinds"
+      },
+      "xp": {
+        "title": "Vaardigheden en XP"
       },
       "reading": {
         "title": "Duiding",

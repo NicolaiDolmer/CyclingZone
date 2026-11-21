@@ -4,9 +4,9 @@ import assert from "node:assert/strict";
 import {
   certaintyStep,
   coachInputFromView,
-  estimateLineOf,
   potentialViewOf,
   potentialViewValue,
+  prognosisViewOf,
 } from "./potentialEstimateDisplay.ts";
 
 const shown = { hidden: false, value: 74, certainty: "fair", previousValue: 71, previousCertainty: "unsure", changedAt: "2026-11-01T04:00:00.000Z" };
@@ -62,11 +62,19 @@ test("måleren har tre trin i ordenes rækkefølge", () => {
   assert.deepEqual(["unsure", "fair", "sure"].map((word) => certaintyStep(word as "fair")), [1, 2, 3]);
 });
 
-test("kurven mod skønnet sorteres og mister ugyldige punkter", () => {
-  const line = estimateLineOf({ estimateLine: [{ season: 2, value: 50 }, { season: 0, value: 40 }, { season: 1, value: null }] });
-  assert.deepEqual(line, [{ season: 0, value: 40 }, { season: 2, value: 50 }]);
-  assert.deepEqual(estimateLineOf({ band: [] }), []);
-  assert.deepEqual(estimateLineOf(null), []);
+test("#8523: AI-holdets rytter læses som en tom tilstand", () => {
+  assert.deepEqual(potentialViewOf({ potentialView: { hidden: true, reason: "aiTeam" } }), { hidden: true, reason: "aiTeam" });
+  assert.equal(potentialViewValue({ hidden: true, reason: "aiTeam" }), null);
+});
+
+test("#8523: prognosen læses som ét tal eller en af to tomme tilstande", () => {
+  assert.deepEqual(prognosisViewOf({ prognosisView: { hidden: false, value: 61 } }), { hidden: false, value: 61 });
+  assert.deepEqual(prognosisViewOf({ prognosisView: { hidden: true, reason: "pastPeak" } }), { hidden: true, reason: "pastPeak" });
+  assert.deepEqual(prognosisViewOf({ prognosisView: { hidden: true, reason: "noEstimate" } }), { hidden: true, reason: "noEstimate" });
+  assert.equal(prognosisViewOf({ prognosisView: { hidden: false, value: null } }), null);
+  assert.equal(prognosisViewOf({ prognosisView: { hidden: true, reason: "other" } }), null);
+  assert.equal(prognosisViewOf({ potentialView: {} }), null, "slukket flag: intet felt");
+  assert.equal(prognosisViewOf(null), null);
 });
 
 test("trænerens ord bygger på tallet, og kun et sikkert skøn er endeligt", () => {

@@ -1,5 +1,29 @@
 export const PATCHES = [
 {
+  "version": "7.485",
+  "date": "2026-11-21",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "Today on phone: name and row work apart",
+        "body": "On phone, tapping a rider's name in Today opens his profile, and tapping the rest of the row opens the details. When your filters hide every rider, a Reset filters button brings them all back."
+      },
+      "da": {
+        "title": "I dag på telefon: navn og række virker hver for sig",
+        "body": "På telefon åbner et tryk på rytterens navn i I dag hans profil, og et tryk på resten af rækken folder detaljerne ud. Skjuler jeres filtre alle ryttere, henter knappen Nulstil filtre dem frem igen."
+      },
+      "refs": [
+        8563
+      ]
+    }
+  ]
+},
+{
   "version": "7.484",
   "date": "2026-11-21",
   "changes": [

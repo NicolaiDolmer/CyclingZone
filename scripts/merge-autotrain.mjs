@@ -45,6 +45,7 @@ import { CATEGORY, DEFAULT_REPO, classifyPr, fetchMigrationFacts, formatClassifi
 import { gitCommonRoot, markerFilePath, readActiveMarker } from './merge-queue-active-marker.mjs';
 import { deploymentAttemptState, handedOffRunVerdict } from './ci/deploy-verification-state.mjs';
 import { classifyPrFiles, mustRunAlone, touchesVercel } from './merge-queue-files.mjs';
+import { latestOwnerMarkerSha, runMergeGuard } from './merge-guard.mjs';
 
 export const LOG_RELATIVE = join('.claude', 'run', 'merge-autotrain.log');
 // Samme loft som merge-queue.ps1's -MaxBatch (testen laaser de to sammen).
@@ -154,6 +155,8 @@ export function evaluatePr(pr, { requiredChecks, allChecks, classification, owne
     category: classification?.category ?? null,
     classification: classification ? formatClassification(classification) : null,
     reason: '',
+    // Merge-vagten (#8331): seneste ejer-markoer uanset hoved.
+    ownerMarkerSha: latestOwnerMarkerSha(pr?.comments, ownerLogin),
   };
   const no = (reason) => ({ ...out, reason });
   const pre = precheck(pr, { baseBranch });
@@ -430,7 +433,8 @@ export async function run({
   runQueue = defaultRunQueue,
   checkMain = defaultCheckMain,
   blockFile = null,
-  out = (line) => process.stdout.write(`${line}\n`),
+  guard = runMergeGuard,
+  out =(line) => process.stdout.write(`${line}\n`),
 } = {}) {
   const opts = parseArgs(argv);
   const logFile = opts.log && !opts.dryRun ? join(repoRoot, LOG_RELATIVE) : null;
@@ -469,6 +473,8 @@ export async function run({
   }
   log(`  ${evaluations.length} aabne PR'er vurderet, ${evaluations.filter((x) => x.ready).length} klar.`);
   for (const e of evaluations.filter((x) => x.ready)) log(`  #${e.number} klar: ${e.reason}${e.classification ? ` [${e.classification}]` : ''}`);
+  // Merge-vagten (#8331): PR'er med ejer-markoer der staar stille; fail-soft.
+  try { guard({ evaluations, repo: opts.repo, repoRoot, now, dryRun: opts.dryRun, log }); } catch (err) { log(`  MERGE-VAGT fejlede (${err?.message ?? err}).`); }
   const train = selectTrain(evaluations);
   const decision = decideAction({ activeMarker: null, train });
 

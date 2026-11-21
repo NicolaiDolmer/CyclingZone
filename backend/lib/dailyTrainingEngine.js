@@ -40,7 +40,8 @@ import { loadRaceDayStagesByRider, loadRiderIdsWithStageOnGameDays } from "./rac
 import { resolveDayProgram, programSlotForRaceDay, weekDaysHaveSessions } from "./trainingPrograms.js";
 // #5932: felterne har eget flag (training_program_cells), med training_programs som fallback.
 import { isTrainingCellsEnabledForTeam } from "./trainingWeekPlanCellsFlag.js";
-import { isTrainingEffortLevelsEnabled } from "./trainingEffortLevels.js"; // #7947
+import { planRunsOffStandard } from "./trainingWeekPlanCells.js"; // #7947 Fable-fund 1 paa #8532
+import { isTrainingEffortLevelsEnabled, executedEffortForScore } from "./trainingEffortLevels.js"; // #7947
 import { applyTrainingCatalog, isTrainingCatalogV3EnabledForTeam, v3SmartDefaultFocus } from "./trainingCatalogV3.js"; // #5319
 import {
   loadTeamFatigueRules, loadRiderIdsWithStageOnDate, previousDateString, applyFatigueRules,
@@ -1509,8 +1510,13 @@ export async function runTeamTrainingDay({
   programsOn = (Array.isArray(weekPlanRow) ? weekPlanRow : []).some((r) => weekDaysHaveSessions(r.days))
     ? await isTrainingCellsEnabledForTeam(supabase, teamId)
     : false;
-  // #7947: indsats pr. felt laeses kun naar programcellerne laeses; ellers intet opslag.
-  effortLevelsOn = programsOn ? await isTrainingEffortLevelsEnabled(supabase) : false;
+  // #7947 (ejer 21/11, Fable-fund 1 paa #8532): kontakten laeses ogsaa for hold UDEN programceller,
+  // naar en rytters plan staar paa et andet niveau end sessionens standard (I dag-vaelgeren skriver
+  // dertil), saa det koerte niveau altid gemmes paa scoren. Uden saadan en plan: intet opslag, og
+  // aftenens laesninger er mains (frosne facit). Med kontakten off kan api.js ikke skrive en.
+  effortLevelsOn = programsOn || (Array.isArray(planRows) && planRows.some(planRunsOffStandard))
+    ? await isTrainingEffortLevelsEnabled(supabase)
+    : false;
   },
   async () => {
   // #5319: traeningskatalog v3 (beta: holdets ejer er beta-tester). Off = programmet uroert.
@@ -2365,6 +2371,8 @@ export function computeTrainingDayTick(input) {
         was_race_day: racedToday,
         intention: null,
         contributions: racedToday ? null : scoreDetail.contributions,
+        // #7947: det koerte niveau til aldringsbremsen; kun med kontakten on (off = samme raekke).
+        ...(effortLevelsOn ? { intensity: racedToday ? null : executedEffortForScore(program.intensity) } : {}),
       });
     } else if (boundRestToday && rodeToday) {
       // #4847: rytteren KOERTE en etape, men fik intet tick fordi udviklingen er

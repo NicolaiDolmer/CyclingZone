@@ -257,6 +257,7 @@ import {
 import { projectCeilingBand, ceilingTiming, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
 import { agingCfgForXp, loadPastPeakAging, pastPeakFromAging } from "../lib/pastPeakView.js"; // #7947 / #8476 pkt. 5
 import { programForChoice, normalizeProgram, smartDefaultSession } from "../lib/trainingDayTypes.js";
+import { effortForWrite } from "../lib/trainingEffortLevels.js"; // #7947
 import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer, V3_TRAINING_FOCUSES } from "../lib/trainingCatalogV3.js"; // #5319
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, isValidWeekPlanDays } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
@@ -3090,10 +3091,11 @@ router.get("/riders/:id/development-projection", requireAuth, async (req, res) =
 //   body          : request-body
 //   previousFocus : rytterens hidtidige fokus (bevares hen over en hviledag)
 // Returnerer { ok, focus, intensity } eller { ok:false, reason }.
-function resolveTrainingWrite(body, previousFocus = null, catalogV3 = false) {
+// #7947: `effort` kommer fra effortForWrite; undefined (ikke sendt / kontakten off) = som i dag.
+function resolveTrainingWrite(body, previousFocus = null, catalogV3 = false, effort = undefined) {
   const { dayType, session, focus, intensity } = body ?? {};
   if (dayType != null) {
-    const out = programForChoice({ dayType, session: session ?? null, previousFocus, catalogV3 });
+    const out = programForChoice({ dayType, session: session ?? null, previousFocus, catalogV3, effort: effort ?? null, effortLevels: effort !== undefined });
     return out.ok ? { ok: true, focus: out.focus, intensity: out.intensity } : { ok: false, reason: out.reason };
   }
   if (!isValidFocus(focus) && !(catalogV3 && isV3OnlySession(focus))) return { ok: false, reason: "invalid_focus" };
@@ -3547,7 +3549,9 @@ router.post("/training/bulk", requireAuth, marketWriteLimiter, trainNowPlanLock(
   let bulkFocus = null;
   let bulkIntensity = null;
   if (!isSmartMode) {
-    const resolved = resolveTrainingWrite(req.body, null, await catalogV3ForTrainingWrite(req));
+    const effortWrite = await effortForWrite(supabase, req.body?.effort); // #7947
+    if (!effortWrite.ok) return res.status(400).json({ error: effortWrite.reason });
+    const resolved = resolveTrainingWrite(req.body, null, await catalogV3ForTrainingWrite(req), effortWrite.effort);
     if (!resolved.ok) return res.status(400).json({ error: resolved.reason });
     bulkFocus = resolved.focus;
     bulkIntensity = resolved.intensity;
@@ -3793,7 +3797,9 @@ router.post("/training/:riderId", requireAuth, marketWriteLimiter, trainNowPlanL
     // hvile, 252 planer i prod) ikke kan skrives igen ad bagvejen.
     // previousFocus bevarer spillerens sidste session hen over en hviledag.
     const previousFocus = state.plans[riderId]?.focus ?? null;
-    const resolved = resolveTrainingWrite(req.body, previousFocus, await catalogV3ForTrainingWrite(req, previousFocus));
+    const effortWrite = await effortForWrite(supabase, req.body?.effort); // #7947
+    if (!effortWrite.ok) return res.status(400).json({ error: effortWrite.reason });
+    const resolved = resolveTrainingWrite(req.body, previousFocus, await catalogV3ForTrainingWrite(req, previousFocus), effortWrite.effort);
     if (!resolved.ok) return res.status(400).json({ error: resolved.reason });
     const { focus, intensity } = resolved;
     if (!activeSeasonId) return res.status(409).json({ error: "No active season" });

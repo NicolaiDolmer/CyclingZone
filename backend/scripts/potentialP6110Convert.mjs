@@ -7,6 +7,12 @@
 // skriver én privat rapport lokalt: fordelingen af P, median/p90/p99, antal >= 80 og
 // >= 90, og hvor mange der blev hævet til deres rating. Ingen rating ændres nogensinde.
 //
+// Ejervalg 21/11: unge ryttere (potentialP6110.YOUNG_AGE_LIMIT) der står over deres nye P,
+// får toppen af det "Forventet niveau", spilleren ser i dag: prognose-båndet for primær
+// type fra buildTypePrognosisBands, med maxLevel, rytterens eget hold som seed og
+// standard-scout (samme kald som ruterne). Rapporten tæller dem for sig (liftedToPrognosis).
+// Alder = sæson-alder i den aktive sæson.
+//
 // --apply skriver riders.base_talent og riders.talent_ceiling (samme tal = P) og kræver
 // --owner-go (ejerens ordrette go, efter han har set dry-run-rapporten). Apply nægter at
 // skrive, hvis rapporten har rang-brud. Kolonnerne findes allerede
@@ -16,8 +22,9 @@
 //   PARAMS=<privat params.json> infisical run --env=prod -- \
 //     node backend/scripts/potentialP6110Convert.mjs
 // Kør (offline mod et dump med id, potentiale, primary_type, secondary_type,
-// best_role_rating og evt. abilities pr. rytter):
-//   ROWS_FILE=<dump.json> PARAMS=<privat params.json> node backend/scripts/potentialP6110Convert.mjs
+// best_role_rating og evt. birthdate, team_id og abilities pr. rytter; SEASON_NUMBER
+// giver alderen, ellers behandles ingen som ung):
+//   ROWS_FILE=<dump.json> [SEASON_NUMBER=<n>] PARAMS=<privat params.json> node backend/scripts/potentialP6110Convert.mjs
 //
 // PARAMS: de private tal (se PotentialPParams i potentialP6110.js). Filen kan VÆRE
 // params-objektet eller have det under nøglen "potentialP". Ingen standardværdier.
@@ -31,10 +38,14 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import {
-  STAR_STEPS, convertStarsToP, findRankViolations, summarizeP, validatePotentialPParams,
+  STAR_STEPS, YOUNG_AGE_LIMIT, convertStarsToP, findRankViolations, isYoungForP, summarizeP, validatePotentialPParams,
 } from "../lib/potentialP6110.js";
 import { bestRoleForAbilities } from "../lib/riderBestRoleCache.js";
 import { REGISTRY_ABILITY_KEYS } from "../lib/abilityRegistry.js";
+import { buildTypePrognosisBands } from "../lib/scoutingReport.js";
+import { displayPotentialBand } from "../lib/potentialDisplayBand.js";
+import { SCOUTING_CONFIG } from "../lib/scouting.js";
+import { ageForSeason } from "../lib/riderSeasonAge.js";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "../..");
 const PRIVATE_DIR_NAME = "balance-internals";
@@ -82,20 +93,68 @@ export function currentRating(rider, abilities) {
 }
 
 /**
+ * Toppen af det "Forventet niveau", ejeren af rytteren ser i dag: prognose-båndets top
+ * for primær type. Samme kald som ruterne bruger for egne ryttere (maxLevel, holdet som
+ * seed), men med standard-scout. null når det ikke kan regnes (ingen evner, type,
+ * alder eller stjerner).
+ * @param {Record<string, any>} rider  riders-række (id, potentiale, primary_type, secondary_type, team_id)
+ * @param {Record<string, any>|null|undefined} abilities
+ * @param {{ age: number|null, developmentXp?: unknown }} ctx
+ * @returns {number|null}
+ */
+export function prognosisTop(rider, abilities, ctx) {
+  return prognosisTops(rider, abilities, ctx)?.primaryHi ?? null;
+}
+
+/**
+ * Som prognosisTop, men giver også toppen af det bånd tabellerne viser
+ * (displayPotentialBand: rollen med højeste potentiale). Kun til rapportens
+ * kontroltal: reglen bruger primær type (ejervalg 21/11).
+ * @returns {{ primaryHi: number|null, displayHi: number|null }|null}
+ */
+export function prognosisTops(rider, abilities, { age, developmentXp = null }) {
+  if (!abilities || !rider.primary_type || age == null || rider.potentiale == null) return null;
+  const bands = buildTypePrognosisBands({
+    nowAbilities: abilities, age,
+    primaryType: rider.primary_type, secondaryType: rider.secondary_type,
+    potentiale: rider.potentiale,
+    level: SCOUTING_CONFIG.maxLevel, riderId: rider.id, teamId: rider.team_id ?? null,
+    developmentXp,
+  });
+  const band = bands.find((b) => b.key === rider.primary_type);
+  const shown = displayPotentialBand(bands, rider.primary_type);
+  return {
+    primaryHi: band && band.progHi != null ? band.progHi : null,
+    displayHi: shown && shown.progHi != null ? shown.progHi : null,
+  };
+}
+
+/**
  * Selve dry-runnet som ren funktion: omregner og opsummerer. Rører hverken DB eller filer.
  * @param {Array<Record<string, any>>} rows  riders-rækker
  * @param {Map<string, Record<string, any>>} abilitiesById  rider_derived_abilities pr. rytter
+ * @param {unknown} params
+ * @param {{ asOf: Date, source: string, seasonNumber?: number|null, developmentXp?: unknown }} ctx
+ *   seasonNumber: aktiv sæson (giver alderen; null = ingen behandles som ung).
+ *   developmentXp: XP-params som prognosen bruger i dag (null = prognosen som før).
  */
-export function buildReport(rows, abilitiesById, params, { asOf, source }) {
+export function buildReport(rows, abilitiesById, params, { asOf, source, seasonNumber = null, developmentXp = null }) {
   let missingPotentiale = 0;
   const inputs = [];
+  /** @type {Map<string, number|null>} */
+  const displayHiById = new Map();
   for (const r of rows) {
     if (r.potentiale == null) { missingPotentiale++; continue; }
-    inputs.push({ id: r.id, potentiale: Number(r.potentiale), rating: currentRating(r, abilitiesById.get(r.id)) });
+    const abilities = abilitiesById.get(r.id);
+    const age = Number.isFinite(seasonNumber) ? ageForSeason(r.birthdate, seasonNumber) : null;
+    // Prognosen regnes kun for unge: kun de kan bruge den.
+    const tops = isYoungForP(age) ? prognosisTops(r, abilities, { age, developmentXp }) : null;
+    displayHiById.set(r.id, tops?.displayHi ?? null);
+    inputs.push({ id: r.id, potentiale: Number(r.potentiale), rating: currentRating(r, abilities), age, prognosisHi: tops?.primaryHi ?? null });
   }
   const { byId, skipped } = convertStarsToP(inputs, params);
   const rankViolations = findRankViolations(byId);
-  const converted = [...byId.entries()].map(([id, v]) => ({ id, ...v }));
+  const converted = [...byId.entries()].map(([id, v]) => ({ id, ...v, displayHi: displayHiById.get(id) ?? null }));
 
   const perStars = {};
   for (const step of STAR_STEPS) {
@@ -104,6 +163,7 @@ export function buildReport(rows, abilitiesById, params, { asOf, source }) {
     perStars[String(step)] = {
       ...summarizeP(vals.map((v) => v.p)),
       lifted: vals.filter((v) => v.lifted).length,
+      liftedToPrognosis: vals.filter((v) => v.liftedToPrognosis).length,
     };
   }
   // Ryttere hvis P allerede er udfyldt og afviger, så en gentaget apply kan ses.
@@ -119,20 +179,35 @@ export function buildReport(rows, abilitiesById, params, { asOf, source }) {
     measuredAt: asOf.toISOString(),
     source,
     writes: "none",
+    seasonNumber: Number.isFinite(seasonNumber) ? seasonNumber : null,
+    youngAgeLimit: YOUNG_AGE_LIMIT,
+    prognosisUsesDevelopmentXp: Boolean(developmentXp),
     counts: {
       rowsRead: rows.length,
       missingPotentiale,
       converted: byId.size,
       skipped: skipped.length,
-      liftedToRating: converted.filter((v) => v.lifted).length,
+      // Hævet til ratingen (28+, ukendt alder, eller ung uden prognose).
+      liftedToRating: converted.filter((v) => v.lifted && !v.liftedToPrognosis).length,
+      // Ejervalg 21/11: unge hævet til toppen af dagens forventede niveau.
+      liftedToPrognosis: converted.filter((v) => v.liftedToPrognosis).length,
+      // Heraf unge, der kun fik ratingen, fordi prognosen ikke kunne regnes.
+      youngLiftedWithoutPrognosis: converted.filter((v) => v.lifted && !v.liftedToPrognosis && isYoungForP(v.age)).length,
+      // Kontroltal: unge hævet til primær types top, hvor tabellernes viste bånd
+      // (en anden rolle) har en højere top end det nye P.
+      liftedToPrognosisBelowDisplayed: converted.filter((v) => v.liftedToPrognosis && v.displayHi != null && v.displayHi > v.p).length,
       withoutRating: converted.filter((v) => v.rating == null).length,
+      withoutAge: converted.filter((v) => v.age == null).length,
       wouldChange: changes,
     },
     rankViolations: rankViolations.length,
     distribution: summarizeP(converted.map((v) => v.p)),
     distributionBeforeLift: summarizeP(converted.map((v) => v.pBase)),
     perStars,
-    riders: converted.map((v) => ({ id: v.id, stars: v.stars, rating: v.rating, pBase: v.pBase, p: v.p, lifted: v.lifted })),
+    riders: converted.map((v) => ({
+      id: v.id, stars: v.stars, rating: v.rating, age: v.age, prognosisHi: v.prognosisHi, displayHi: v.displayHi,
+      pBase: v.pBase, p: v.p, lifted: v.lifted, liftedToPrognosis: v.liftedToPrognosis,
+    })),
     skippedRiders: skipped,
   };
 }
@@ -147,6 +222,9 @@ export function renderMarkdown(report) {
     `- Skrivninger: ${report.writes}`,
     `- Læst: ${c.rowsRead} · omregnet: ${c.converted} · sprunget over: ${c.skipped} · uden stjerner: ${c.missingPotentiale}`,
     `- Hævet til rating: ${c.liftedToRating} · uden rating: ${c.withoutRating} · ville ændre: ${c.wouldChange}`,
+    `- Unge (under ${report.youngAgeLimit}) hævet til toppen af forventet niveau: ${c.liftedToPrognosis} · unge hævet til rating (ingen prognose): ${c.youngLiftedWithoutPrognosis} · uden alder: ${c.withoutAge}`,
+    `- Heraf hvor tabellernes viste bånd (en anden rolle end primær) har højere top end det nye P: ${c.liftedToPrognosisBelowDisplayed}`,
+    `- Sæson: ${report.seasonNumber ?? "ukendt"} · prognose med XP-model: ${report.prognosisUsesDevelopmentXp ? "ja" : "nej"} · scout: standard`,
     `- Rang-brud: ${report.rankViolations} (krav 0)`,
     "",
     "## Fordeling (P efter hævning)",
@@ -159,9 +237,9 @@ export function renderMarkdown(report) {
     "",
     "## Pr. stjernetrin",
     "",
-    "| stjerner | n | median | p90 | p99 | >= 80 | >= 90 | hævet |",
-    "|---|---|---|---|---|---|---|---|",
-    ...Object.entries(report.perStars).map(([s, q]) => `| ${s} | ${q.n} | ${q.median} | ${q.p90} | ${q.p99} | ${q.atOrAbove80} | ${q.atOrAbove90} | ${q.lifted} |`),
+    "| stjerner | n | median | p90 | p99 | >= 80 | >= 90 | hævet | heraf til prognose |",
+    "|---|---|---|---|---|---|---|---|---|",
+    ...Object.entries(report.perStars).map(([s, q]) => `| ${s} | ${q.n} | ${q.median} | ${q.p90} | ${q.p99} | ${q.atOrAbove80} | ${q.atOrAbove90} | ${q.lifted} | ${q.liftedToPrognosis} |`),
   ];
   return lines.join("\n") + "\n";
 }
@@ -215,9 +293,9 @@ async function selectAll(sb, table, columns, filter = (q) => q, orderBy = "id") 
 
 async function main() {
   const { apply } = parseArgs(process.argv.slice(2));
-  const { PARAMS, ROWS_FILE, OUT_DIR } = process.env;
+  const { PARAMS, ROWS_FILE, OUT_DIR, SEASON_NUMBER } = process.env;
   if (!PARAMS) {
-    console.error("Usage: PARAMS=<private params.json> [ROWS_FILE=<dump.json>] [OUT_DIR=<balance-internals/...>] node backend/scripts/potentialP6110Convert.mjs [--apply --owner-go]");
+    console.error("Usage: PARAMS=<private params.json> [ROWS_FILE=<dump.json> [SEASON_NUMBER=<n>]] [OUT_DIR=<balance-internals/...>] node backend/scripts/potentialP6110Convert.mjs [--apply --owner-go]");
     process.exit(1);
   }
   const outDir = resolveOutDir(OUT_DIR);
@@ -228,21 +306,32 @@ async function main() {
   let abilitiesById;
   let source;
   let sb = null;
+  let seasonNumber = null;
+  let developmentXp = null;
   if (ROWS_FILE) {
     if (apply) throw new Error("--apply needs the live database, not ROWS_FILE");
     rows = JSON.parse(fs.readFileSync(ROWS_FILE, "utf8"));
     abilitiesById = new Map(rows.filter((r) => r.abilities).map((r) => [r.id, r.abilities]));
+    seasonNumber = SEASON_NUMBER ? Number(SEASON_NUMBER) : null;
     source = `file ${path.basename(ROWS_FILE)}`;
   } else {
     sb = await liveClient();
-    rows = await selectAll(sb, "riders", "id, potentiale, primary_type, secondary_type, best_role_rating, base_talent, talent_ceiling",
+    rows = await selectAll(sb, "riders",
+      "id, potentiale, birthdate, team_id, primary_type, secondary_type, best_role_rating, base_talent, talent_ceiling",
       (q) => q.or("is_retired.is.null,is_retired.eq.false"));
     const abilityRows = await selectAll(sb, "rider_derived_abilities", `rider_id, ${REGISTRY_ABILITY_KEYS.join(", ")}`, (q) => q, "rider_id");
     abilitiesById = new Map(abilityRows.map((a) => [a.rider_id, a]));
-    source = "live SELECT riders + rider_derived_abilities";
+    // Aktiv sæson, samme opslag (og fallback) som ruternes getActiveSeasonNumber.
+    const { data: season, error: seasonErr } = await sb.from("seasons").select("number").eq("status", "active").maybeSingle();
+    if (seasonErr) throw new Error(`seasons: ${seasonErr.message}`);
+    seasonNumber = season?.number ?? 1;
+    // XP-params som prognosen bruger i dag (null = prognosen som før), samme loader som ruterne.
+    const { loadEstimateDevelopmentXp } = await import("../lib/potentialEstimateWriter.js");
+    developmentXp = await loadEstimateDevelopmentXp(sb);
+    source = "live SELECT riders + rider_derived_abilities + seasons";
   }
 
-  const report = buildReport(rows, abilitiesById, params, { asOf, source });
+  const report = buildReport(rows, abilitiesById, params, { asOf, source, seasonNumber, developmentXp });
   if (apply) report.writes = "base_talent + talent_ceiling (--apply --owner-go)";
   fs.mkdirSync(outDir, { recursive: true });
   const stamp = asOf.toISOString().replace(/[:.]/g, "-");
