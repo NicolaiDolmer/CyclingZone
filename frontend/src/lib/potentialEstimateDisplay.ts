@@ -85,6 +85,11 @@ export function prognosisViewOf(source: unknown): PrognosisView | null {
   return null;
 }
 
+/** Prognosen som sorteringsværdi. null for begge tomme tilstande, så de falder sidst. */
+export function prognosisViewValue(view: PrognosisView | null | undefined): number | null {
+  return view && !view.hidden ? view.value : null;
+}
+
 /** Tallet spilleren ser, til sortering og grafer. null for begge tomme tilstande. */
 export function potentialViewValue(view: PotentialView | null | undefined): number | null {
   return view && !view.hidden ? view.value : null;

@@ -15,7 +15,10 @@
     "prognosisPastPeak": "Over zijn hoogtepunt",
     "prognosisPastPeakTitle": "Hij is de leeftijd voorbij waarop renners pieken.",
     "prognosisNoEstimateTitle": "De prognose komt zodra je een schatting van zijn potentieel hebt.",
-    "aiTeamTitle": "Renners van AI-ploegen kun je niet scouten."
+    "aiTeamTitle": "Renners van AI-ploegen kun je niet scouten.",
+    "potentialSubtitle": "inschatting van de scout",
+    "potentialTitle": "Potentieel, de inschatting van de scout. Een inschatting, geen feit.",
+    "approx": "ca. {value}"
   },
   "table": {
     "nation": "Land",

@@ -22,7 +22,7 @@ import { statPlateStyle } from "../../../lib/statColor";
 import { useScoutCountdown, scoutReadyClock } from "../../../lib/scoutCountdown";
 import { potentialFromReport, potentialRowFromReport } from "../../../lib/potentialDisplay6853";
 import PotentialRoleBox from "../PotentialRoleBox";
-import PotentialEstimate, { CertaintyMeter, PrognosisValue } from "../PotentialEstimate";
+import PotentialEstimate, { CertaintyMeter, PotentialLabel, PrognosisValue } from "../PotentialEstimate";
 import { potentialViewOf, prognosisViewOf } from "../../../lib/potentialEstimateDisplay";
 import I18nReadyGate from "../../I18nReadyGate";
 import { SkeletonLines } from "../../ui/Skeleton.jsx";
@@ -287,6 +287,9 @@ function EstimateCard({ view, report, canLookAgain, scoutAction, t }) {
   return (
     <SectionCard>
       <div data-testid="scouting-estimate-card">
+        <div className="mb-2 font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3">
+          <PotentialLabel />
+        </div>
         <PotentialEstimate view={view} size="report" />
         <div className="mt-3.5"><CertaintyMeter certainty={view.certainty} /></div>
         <dl className="m-0 mt-3">

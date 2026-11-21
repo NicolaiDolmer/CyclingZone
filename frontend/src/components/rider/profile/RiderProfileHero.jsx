@@ -436,6 +436,12 @@ export default function RiderProfileHero({
             label: potentialEyebrow,
             value: scouting ? (
               <span className="inline-block max-w-56 whitespace-normal text-[15px] font-semibold">
+                {/* Ejer 20/11 (#8523): navnet er Potentiale, undertitlen er "spejderens skøn". */}
+                {potentialViewOf(scouting?.estimateFor?.(rider?.id)) && (
+                  <span className="mb-0.5 block text-2xs font-normal text-cz-3" data-testid="potential-subtitle">
+                    {t("riders:potentialNumber.potentialSubtitle")}
+                  </span>
+                )}
                 <ScoutablePotentiale rider={rider} scouting={scouting} showScout={viewer === "scouting"} labelAsTitle hideLevel estimateSize="hero" showLooks={viewer === "scouting"} />
                 {/* #8523: den samlede prognose for egne ryttere som dæmpet linje under
                     potentialet, så stat-rækken ikke får et syvende tal og brydes. */}

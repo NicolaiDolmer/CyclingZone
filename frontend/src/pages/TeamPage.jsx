@@ -33,6 +33,8 @@ import { usePendingReleases8153 } from "../lib/usePendingReleases8153.ts"; // #8
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import { useScouting } from "../lib/useScouting";
 import { scoutSortValue } from "../lib/scouting";
+import { potentialViewOf, prognosisViewOf, prognosisViewValue } from "../lib/potentialEstimateDisplay.ts"; // #8523
+import { PrognosisValue } from "../components/rider/PotentialEstimate.tsx"; // #8523
 import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 import TeamStatsTab from "../components/TeamStatsTab";
 import TeamDevelopmentTab from "../components/TeamDevelopmentTab";
@@ -615,6 +617,7 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
   const { t } = useTranslation("team");
   // #1131: fulde stat-navne som native tooltip på de forkortede kolonne-headers.
   const { t: tRider } = useTranslation("rider");
+  const { t: tRiders } = useTranslation("riders"); // #8523
   const typeColumnLabel = useTypeColumnLabel(); // #5435
   // #1796: hele rytter-rækken navigerer til rytter-profilen (flest dead clicks på
   // /team var klik på værdi-/potentiale-cellen). Samme row-as-link-mønster som
@@ -663,8 +666,13 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
     .map(r => ({
       ...r,
       _scoutMid: scoutSortValue(scouting.estimateFor(r.id)),
+      _progValue: prognosisViewValue(prognosisViewOf(scouting.estimateFor(r.id))), // #8523
       _ovr: riderOverallRating(r),
     }));
+  // #8523: tændt potential_estimate_display får Potentiale en egen kolonne lige efter Rating,
+  // og Prognose (egne ryttere, samlet rating) står ved siden af. Slukket er alt som i dag.
+  const estimateOn = displayRidersBase.some((r) => potentialViewOf(scouting.estimateFor(r.id)));
+  const prognosisOn = estimateOn && displayRidersBase.some((r) => prognosisViewOf(scouting.estimateFor(r.id)));
   // #6855: sorteringen står i URL'en (sort/dir), så den huskes efter et klik ind på en rytter og tilbage.
   const [searchParams, setSearchParams] = useSearchParams();
   const riderFilters = useClientRiderFilters(displayRidersBase, seasonYear, readSquadSort(searchParams));
@@ -786,10 +794,34 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
       : "—"),
     render: (r) => <NationCell code={r.nationality_code} />,
   };
+  const potentialColumn = {
+    key: "potential",
+    header: <span title={estimateOn ? tRiders("potentialNumber.potentialTitle") : t("squad.headers.potentialTitle")}>{t("squad.headers.potential")}</span>,
+    mobileLabel: t("squad.headers.potential"),
+    sortKey: "_scoutMid",
+    compact: true,
+    // #2849 bølge 6 + #2888: stjernerne alene — den kvalitative label ligger i
+    // tooltip'en (labelAsTitle) og scout-niveauet i scouting-fanen (hideLevel).
+    render: (r) => <ScoutablePotentiale rider={r} scouting={scouting} labelAsTitle hideLevel />,
+  };
+  // #8523: samlet prognose for egne ryttere ("fortsætter du den nuværende fart ...").
+  const prognosisColumn = {
+    key: "prognosis",
+    header: <span title={tRiders("potentialNumber.prognosisTitle")}>{tRiders("potentialNumber.prognosis")}</span>,
+    mobileLabel: tRiders("potentialNumber.prognosis"),
+    sortKey: "_progValue",
+    numeric: true,
+    compact: true,
+    render: (r) => {
+      const view = prognosisViewOf(scouting.estimateFor(r.id));
+      return view ? <PrognosisValue view={view} /> : <span className="text-cz-3">—</span>;
+    },
+  };
   const overviewColumns = [
     nationColumn,
     nameColumn,
     ratingColumn,
+    ...(estimateOn ? [potentialColumn, ...(prognosisOn ? [prognosisColumn] : [])] : []),
     typeColumn,
     // #1674: numerisk alder i egen kolonne (Status-badget viser kun U23/U25-tier).
     {
@@ -802,16 +834,7 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
       foldValue: (r) => String(getRiderAge(r.birthdate, seasonYear) ?? "—"),
       render: (r) => <span className="text-cz-2">{getRiderAge(r.birthdate, seasonYear) ?? "—"}</span>,
     },
-    {
-      key: "potential",
-      header: <span title={t("squad.headers.potentialTitle")}>{t("squad.headers.potential")}</span>,
-      mobileLabel: t("squad.headers.potential"),
-      sortKey: "_scoutMid",
-      compact: true,
-      // #2849 bølge 6 + #2888: stjernerne alene — den kvalitative label ligger i
-      // tooltip'en (labelAsTitle) og scout-niveauet i scouting-fanen (hideLevel).
-      render: (r) => <ScoutablePotentiale rider={r} scouting={scouting} labelAsTitle hideLevel />,
-    },
+    ...(estimateOn ? [] : [potentialColumn]),
     {
       key: "value",
       header: t("squad.headers.value"),

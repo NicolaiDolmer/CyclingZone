@@ -15,7 +15,10 @@
     "prognosisPastPeak": "Forbi toppen",
     "prognosisPastPeakTitle": "Han er forbi den alder, hvor ryttere topper.",
     "prognosisNoEstimateTitle": "Prognosen kommer, når du har et skøn over hans potentiale.",
-    "aiTeamTitle": "AI-holdenes ryttere kan ikke scoutes."
+    "aiTeamTitle": "AI-holdenes ryttere kan ikke scoutes.",
+    "potentialSubtitle": "spejderens skøn",
+    "potentialTitle": "Potentiale, spejderens skøn. Et skøn, ikke et facit.",
+    "approx": "ca. {value}"
   },
   "table": {
     "nation": "Nation",

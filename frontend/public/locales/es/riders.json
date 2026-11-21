@@ -15,7 +15,10 @@
     "prognosisPastPeak": "Pasado su mejor momento",
     "prognosisPastPeakTitle": "Ya pasó la edad en la que los ciclistas alcanzan su mejor momento.",
     "prognosisNoEstimateTitle": "El pronóstico llega cuando tengas una estimación de su potencial.",
-    "aiTeamTitle": "Los ciclistas de equipos de la IA no se pueden ojear."
+    "aiTeamTitle": "Los ciclistas de equipos de la IA no se pueden ojear.",
+    "potentialSubtitle": "estimación del ojeador",
+    "potentialTitle": "Potencial, la estimación del ojeador. Una estimación, no un hecho.",
+    "approx": "aprox. {value}"
   },
   "table": {
     "nation": "País",

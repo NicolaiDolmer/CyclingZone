@@ -214,7 +214,7 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
     },
     {
       key: "potential",
-      header: <span title={t("squad.headers.potentialTitle")}>{t("squad.headers.potential")}</span>,
+      header: <span title={prognosisOn ? tRiders("potentialNumber.potentialTitle") : t("squad.headers.potentialTitle")}>{t("squad.headers.potential")}</span>,
       mobileLabel: t("squad.headers.potential"),
       sortKey: "_scoutMid",
       compact: true,

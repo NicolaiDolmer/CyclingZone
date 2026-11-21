@@ -15,7 +15,10 @@
     "prognosisPastPeak": "Past his peak",
     "prognosisPastPeakTitle": "He is past the age where riders peak.",
     "prognosisNoEstimateTitle": "The prognosis comes once you have an estimate of his potential.",
-    "aiTeamTitle": "Riders on AI teams can't be scouted."
+    "aiTeamTitle": "Riders on AI teams can't be scouted.",
+    "potentialSubtitle": "the scout's estimate",
+    "potentialTitle": "Potential, the scout's estimate. An estimate, not a fact.",
+    "approx": "approx. {value}"
   },
   "table": {
     "nation": "Nation",

@@ -37,7 +37,7 @@ import { HISTORY_DAYS } from "../../../lib/useTrainingHistory.js";
 import { chartColor } from "../../../lib/chartPalette.js";
 import { formatDate } from "../../../lib/intl.js";
 import { SkeletonLines } from "../../ui/Skeleton.jsx";
-import PotentialEstimate, { PrognosisValue } from "../PotentialEstimate";
+import PotentialEstimate, { PotentialLabel, PrognosisValue } from "../PotentialEstimate";
 import { potentialViewOf, prognosisViewOf } from "../../../lib/potentialEstimateDisplay";
 import { useDevelopmentXpEnabled } from "../../../lib/developmentXpFlag.ts"; // #8476
 
@@ -278,7 +278,7 @@ function GrowthCard({ primaryLabel, growth, totalPoints, trackedSince, projectio
     ...ceilingRows(projection, t),
     // #6110: tal + ord erstatter "til målet"-rækkerne, når serveren sender skønnet.
     ...(estimateView
-      ? [{ label: t("profile.scouting.potentialLabel"), value: <PotentialEstimate view={estimateView} />, cls: "font-normal" }]
+      ? [{ id: "potential", label: <PotentialLabel />, value: <PotentialEstimate view={estimateView} />, cls: "font-normal" }]
       : []),
     // #8523: den samlede prognose (kun egne ryttere).
     ...(prognosisView
@@ -292,7 +292,7 @@ function GrowthCard({ primaryLabel, growth, totalPoints, trackedSince, projectio
       </h3>
       <div className="flex flex-col gap-[9px]">
         {rows.map((r) => (
-          <div key={r.label} className="flex items-center justify-between gap-2">
+          <div key={r.id ?? r.label} className="flex items-center justify-between gap-2">
             <span className="text-[12.5px] text-cz-2">{r.label}</span>
             <span className={`font-mono tabular-nums font-bold text-[13px] ${r.cls}`}>{r.value}</span>
           </div>

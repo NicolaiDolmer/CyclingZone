@@ -1376,7 +1376,7 @@
       },
       "potentialBestRoleEstimate": {
         "title": "Potentieel in het hele spel",
-        "text": "Overal in het spel is het potentieel van een renner één getal op dezelfde schaal als zijn rating, met één woord ernaast: Onzeker, Redelijk of Zeker. Het getal is de schatting van je team van hoe hoog hij kan komen in zijn natuurlijke rol, en het woord zegt hoeveel je erop kunt vertrouwen. Meer blikken, een betere scout en, bij je eigen renners, meer training bij je team maken haar zekerder. Ze beweegt alleen als je team iets nieuws leert, bij de zondagse update of als hij van team wisselt."
+        "text": "Overal in het spel heet het potentieel van een renner Potentieel, met de ondertitel inschatting van de scout. Het wordt getoond als één getal en één woord, bijvoorbeeld Potentieel 74 · Redelijk. Het getal is de schatting van je team van hoe hoog hij kan komen in zijn natuurlijke rol, op dezelfde schaal als zijn rating, en het woord zegt hoeveel je erop kunt vertrouwen: Onzeker, Redelijk of Zeker, waarbij Zeker het hoogste is. Is het woord Onzeker, dan staat het getal als ca. 74 in een gedempte kleur. Het echte getal wordt nooit getoond. Bij je eigen renners toont de kolom Prognose één rating: waar hij rond zijn hoogtepunt uitkomt als hij zijn huidige tempo vasthoudt, gebaseerd op zijn laatste 30 dagen. Meer blikken, een betere scout en, bij je eigen renners, meer training bij je team maken de schatting zekerder. Ze beweegt alleen als je team iets nieuws leert, bij de zondagse update of als hij van team wisselt. Nergens anders in het spel wordt een wijziging aangekondigd; hier staat de uitleg."
       },
       "potentialBestRole": {
         "title": "Potentieel in het hele spel",

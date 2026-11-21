@@ -137,7 +137,7 @@ export default function TalentTable({ roster, seasonYear, emptyAction }: {
     },
     {
       key: "prognosis",
-      header: estimateOn ? t("riders:potentialNumber.potential") : t("academyV2:v2.talents.colPrognosis"),
+      header: estimateOn ? <span title={t("riders:potentialNumber.potentialTitle")}>{t("riders:potentialNumber.potential")}</span> : t("academyV2:v2.talents.colPrognosis"),
       sortKey: "prognosis",
       render: (r) => {
         const view = potentialViewOf(r);

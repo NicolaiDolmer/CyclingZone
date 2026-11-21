@@ -15,22 +15,39 @@ const NUMBER_CLASS: Record<Size, string> = {
   report: "font-data text-[34px] font-[650] leading-none",
 };
 
-// Samme tre tone-trin som Scouting-fanens tillids-chip, så ordene taler ét sprog.
+// Ejer 20/11 (#8523): "Potentiale 74 · Rimelig". Ordet står som almindelig tekst efter
+// en prik, ikke som en chip. Usikker er afdæmpet, "Sikker" er toppen af skalaen.
 const WORD_CLASS: Record<Certainty, string> = {
-  unsure: "bg-cz-warning-bg text-cz-warning border-cz-warning/30",
-  fair: "bg-cz-subtle text-cz-2 border-cz-border",
-  sure: "bg-cz-success-bg text-cz-success border-cz-success/30",
+  unsure: "text-cz-3",
+  fair: "text-cz-2",
+  sure: "text-cz-success",
 };
 
 export function CertaintyWord({ certainty }: { certainty: Certainty }) {
   const { t } = useTranslation();
   return (
     <span
-      className={`inline-flex items-center rounded-cz border px-1.5 py-0.5 text-3xs font-medium leading-none whitespace-nowrap ${WORD_CLASS[certainty]}`}
+      className={`inline-flex items-baseline gap-1.5 text-xs font-medium whitespace-nowrap ${WORD_CLASS[certainty]}`}
       data-potential-certainty={certainty}
     >
+      <span aria-hidden="true" className="text-cz-3">·</span>
       {t(`rider:potentialEstimate.certainty.${certainty}`)}
     </span>
+  );
+}
+
+// Navnet er "Potentiale" med undertitlen "spejderens skøn" (ejer 20/11, #8523). Undertitlen
+// står dæmpet efter navnet, hvor der er plads; en smal tabeloverskrift har navnet og
+// lægger undertitlen i tooltip'en (potentialTitle).
+export function PotentialLabel() {
+  const { t } = useTranslation();
+  return (
+    <>
+      {t("rider:profile.scouting.potentialLabel")}
+      <span className="ml-1.5 font-normal normal-case tracking-normal text-cz-3" data-testid="potential-subtitle">
+        {t("riders:potentialNumber.potentialSubtitle")}
+      </span>
+    </>
   );
 }
 
@@ -125,15 +142,17 @@ export default function PotentialEstimate({ view, size = "cell", action = null, 
     );
   }
 
+  // Usikker: "ca. 74" i afdæmpet farve. Det sande tal vises aldrig, kun skønnet.
+  const unsure = view.certainty === "unsure";
   return (
     <span className="inline-flex flex-col gap-1">
-      <span className="inline-flex items-center gap-2 flex-wrap" data-testid="potential-estimate">
+      <span className="inline-flex items-baseline gap-x-1.5 gap-y-1 flex-wrap" data-testid="potential-estimate">
         <span
-          className={`tabular-nums whitespace-nowrap text-cz-1 ${NUMBER_CLASS[size]}`}
+          className={`tabular-nums whitespace-nowrap ${unsure ? "text-cz-3" : "text-cz-1"} ${NUMBER_CLASS[size]}`}
           title={t("rider:potentialEstimate.notAFact")}
           data-potential-value={view.value}
         >
-          {view.value}
+          {unsure ? t("riders:potentialNumber.approx", { value: view.value }) : view.value}
         </span>
         <CertaintyWord certainty={view.certainty} />
         {action}
