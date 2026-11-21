@@ -40,6 +40,12 @@ import { SkeletonLines } from "../../ui/Skeleton.jsx";
 import PotentialEstimate, { PotentialLabel, PrognosisValue } from "../PotentialEstimate";
 import { potentialViewOf, prognosisViewOf } from "../../../lib/potentialEstimateDisplay";
 import { useDevelopmentXpEnabled } from "../../../lib/developmentXpFlag.ts"; // #8476
+import { latestReceiptRun, reportRowsByRider, receiptGainDay, abilityReceipt } from "../../../lib/trainingReport.js";
+import { ABILITY_CATEGORIES } from "../../../lib/abilities.js";
+import { copenhagenDayKey } from "../../../lib/raceCentre.js";
+import { dayXpByAbility, riderXpBars, withXpLines } from "../../../lib/xpAbilityLine.ts"; // #8540
+import AbilityReceiptRow, { AbilityReceiptHeader } from "../../training/AbilityReceiptRow.jsx";
+import { useState } from "react";
 
 const DATA_FONT = '"Inter Tight", "Inter Tight Fallback", system-ui, sans-serif';
 
@@ -256,7 +262,7 @@ function ceilingRows(projection, t) {
 // #8523: `estimate` er serverens svar uden XP-filteret. Med tændt flag bærer det
 // potentialet (tal + ord) og, for egne ryttere, den samlede prognose. Uden flaget
 // findes felterne ikke, og kortet er præcis som før.
-function GrowthCard({ primaryLabel, growth, totalPoints, trackedSince, projection, estimate, t }) {
+function GrowthCard({ primaryLabel, growth, totalPoints, trackedSince, projection, estimate, showPoints = true, t }) {
   const estimateView = potentialViewOf(estimate);
   const prognosisView = prognosisViewOf(estimate);
   const rows = [
@@ -265,11 +271,14 @@ function GrowthCard({ primaryLabel, growth, totalPoints, trackedSince, projectio
       value: growth ? t("profile.development.growth.thisSeason", { delta: fmtSigned(growth.delta) }) : "—",
       cls: growth && growth.delta > 0 ? "text-cz-success" : "text-cz-1",
     },
-    {
-      label: t("profile.development.growth.abilityPoints"),
-      value: fmtSigned(totalPoints),
-      cls: totalPoints > 0 ? "text-cz-success" : "text-cz-1",
-    },
+    // #8540: med XP-linjer på siden (AbilityXpCard) står evne-point pr. evne dér.
+    ...(showPoints
+      ? [{
+        label: t("profile.development.growth.abilityPoints"),
+        value: fmtSigned(totalPoints),
+        cls: totalPoints > 0 ? "text-cz-success" : "text-cz-1",
+      }]
+      : []),
     {
       label: t("profile.development.growth.trackedSince"),
       value: trackedSince ? formatDate(trackedSince, null, { day: "numeric", month: "short" }) : "—",
@@ -295,6 +304,58 @@ function GrowthCard({ primaryLabel, growth, totalPoints, trackedSince, projectio
           <div key={r.id ?? r.label} className="flex items-center justify-between gap-2">
             <span className="text-[12.5px] text-cz-2">{r.label}</span>
             <span className={`font-mono tabular-nums font-bold text-[13px] ${r.cls}`}>{r.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── XP pr. evne (#8540) ──────────────────────────────────────────────────────────
+// Samme linjer som Træning-fanens kvittering: nu-værdi, point denne sæson og vejen til
+// næste point som "x / y XP" på den neutrale XP-bjælke. Rækkerne er AbilityReceiptRow
+// og withXpLines, ikke en ny visning. Sæsontallet kommer fra de registrerede snapshots,
+// så det er det samme tal som Vækst-kortet.
+function AbilityXpCard({ rider, xpBars, seasonGainsByAbility, trainingHistory, todayRun, t }) {
+  const [nowMs] = useState(() => Date.now());
+  const receiptRun = latestReceiptRun(todayRun, trainingHistory?.runs);
+  const runRow = reportRowsByRider(receiptRun)[rider.id] ?? null;
+  const dayRow = runRow?.trained_now ?? runRow;
+  const gainDay = receiptGainDay(receiptRun?.tick_date, copenhagenDayKey(nowMs));
+  const rows = Object.fromEntries(
+    withXpLines(
+      abilityReceipt(ABILITY_CATEGORIES.flatMap((c) => c.keys), {
+        abilities: rider.abilities,
+        seasonGains: seasonGainsByAbility,
+        gainDay,
+      }),
+      xpBars,
+      dayXpByAbility(dayRow?.activities ?? runRow?.activities),
+    ).map((row) => [row.ability, row]),
+  );
+  return (
+    <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]" data-testid="development-xp-abilities-card">
+      <h3 className="text-[15px] font-semibold leading-tight text-cz-1 m-0 mb-[11px]">
+        {t("profile.development.xp.title")}
+      </h3>
+      {/* Med sæson-kolonnen er en linje bredere end en tredjedel af kortet: to spalter, de
+          to korte kategorier stablet i den ene, så ingen "Seneste"-kolonne klippes. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-[18px] gap-y-[13px] items-start">
+        {[ABILITY_CATEGORIES.slice(0, 1), ABILITY_CATEGORIES.slice(1)].map((group) => (
+          <div key={group[0].key} className="flex flex-col gap-[13px] min-w-0">
+            {group.map((cat) => (
+              <div key={cat.key} className="min-w-0">
+                <span className="font-mono text-3xs font-bold uppercase tracking-widest text-cz-3">
+                  {t(`stats.categories.${cat.key}`)}
+                </span>
+                <div className="mt-[5px]">
+                  <AbilityReceiptHeader xp season />
+                  {cat.keys.map((key) => (
+                    <AbilityReceiptRow key={key} row={rows[key]} season />
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         ))}
       </div>
@@ -370,7 +431,7 @@ function LogCard({ viewer, entries, t }) {
   );
 }
 
-export default function RiderDevelopmentTab({ rider, history = [], types = [], trainingHistory, viewer = "own", projection: sentProjection = null }) {
+export default function RiderDevelopmentTab({ rider, history = [], types = [], trainingHistory, viewer = "own", projection: sentProjection = null, training }) {
   const { t } = useTranslation("rider");
   // #8476: under XP er der intet mål at nå. Grafen viser kun registreret rating, og
   // vækstkortet kun rating, point og "Målt siden": ingen mål-zone, stiplet projektion,
@@ -414,7 +475,10 @@ export default function RiderDevelopmentTab({ rider, history = [], types = [], t
   const currentSeason = segments[segments.length - 1].season;
   const primaryLabel = chartTypes[0].label;
   const growth = seasonDelta(snapshots, chartKeys[0], currentSeason);
-  const { totalPoints } = seasonAbilityGains(snapshots, currentSeason);
+  const { totalPoints, gains: seasonGains } = seasonAbilityGains(snapshots, currentSeason);
+  // #8540: kun egne ryttere under XP; fremmede har ingen XP-linjer at vise.
+  const xpBars = developmentXp && viewer === "own" ? riderXpBars(training?.xpBar, rider?.id) : null;
+  const seasonGainsByAbility = Object.fromEntries(seasonGains.map((g) => [g.ability, g.delta]));
 
   // Udviklingslog: én række pr. sæson i data, nyeste først. Fokus-chip + note
   // kun for indeværende sæson (trænings-historikken dækker de seneste 30 dage —
@@ -444,11 +508,22 @@ export default function RiderDevelopmentTab({ rider, history = [], types = [], t
             trackedSince={snapshots[0].snapshot_date}
             projection={projection}
             estimate={sentProjection}
+            showPoints={xpBars == null}
             t={t}
           />
           <ReadingCard viewer={viewer} growth={growth} primaryLabel={primaryLabel} t={t} />
         </div>
       </div>
+      {xpBars && (
+        <AbilityXpCard
+          rider={rider}
+          xpBars={xpBars}
+          seasonGainsByAbility={seasonGainsByAbility}
+          trainingHistory={trainingHistory}
+          todayRun={training?.todayRun ?? null}
+          t={t}
+        />
+      )}
       <LogCard viewer={viewer} entries={logEntries} t={t} />
     </div>
   );

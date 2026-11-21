@@ -10,6 +10,7 @@ import { stagePlanPreviewActive } from "../components/race/StagePlanPreviewMock.
 // og (#4948) spiller-svaret GET /api/feature-flags, afledt af SAMME tavle.
 
 import { previewPotentialEstimateEnabled } from "./potentialEstimateMock.ts";
+import { previewXpLinesActive } from "./xpLinesPreviewMock.ts"; // #8540
 import "../components/training/r5/todayR5PreviewSeed.ts"; // #7947: ?trainingR5=1 giver I dag R5 et fuldt hold
 
 function json(data, status = 200) {
@@ -214,6 +215,8 @@ function playerFlags() {
     if (key === "training_catalog_v3") return [key, previewCatalogV3Enabled()];
     if (key === "training_train_now_bonus") return [key, previewTrainNowBonusEnabled()];
     if (key === "training_page_r5") return [key, previewTrainingR5Enabled()];
+    // #8540: ?xp=1 taender XP-kontakten paa preview, saa profilens Udvikling-fane kan ses med XP-linjer.
+    if (key === "development_xp_model" && previewXpLinesActive()) return [key, true];
     if (key === "champion_jerseys_7824") return [key, previewChampionJerseysEnabled()];
     if (key === "potential_estimate_display") return [key, previewPotentialEstimateEnabled()];
     const stage = flags.find((f) => f.key === key)?.stage;

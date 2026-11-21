@@ -475,6 +475,9 @@
         "abilityPoints": "Gewonnen vaardigheidspunten",
         "trackedSince": "Bijgehouden sinds"
       },
+      "xp": {
+        "title": "Vaardigheden en XP"
+      },
       "reading": {
         "title": "Duiding",
         "own": {

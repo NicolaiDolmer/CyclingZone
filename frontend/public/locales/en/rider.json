@@ -475,6 +475,9 @@
         "abilityPoints": "Ability points gained",
         "trackedSince": "Tracked since"
       },
+      "xp": {
+        "title": "Abilities and XP"
+      },
       "reading": {
         "title": "Reading",
         "own": {

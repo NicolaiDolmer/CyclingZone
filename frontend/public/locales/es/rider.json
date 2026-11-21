@@ -475,6 +475,9 @@
         "abilityPoints": "Puntos de habilidad ganados",
         "trackedSince": "Seguido desde"
       },
+      "xp": {
+        "title": "Habilidades y XP"
+      },
       "reading": {
         "title": "Lectura",
         "own": {
