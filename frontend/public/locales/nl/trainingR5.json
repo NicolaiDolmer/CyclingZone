@@ -86,7 +86,6 @@
     "levelAria": "{scope}: niveau",
     "restAria": "{scope}: rust, zonder focus",
     "hardHint": "Zwaar vergroot het blessurerisico.",
-    "risk": "Blessurerisico {pct}%",
     "riskGeneric": "Zwaar vergroot het blessurerisico"
   },
   "yourDay": {

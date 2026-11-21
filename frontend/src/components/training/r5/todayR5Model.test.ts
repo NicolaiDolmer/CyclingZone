@@ -10,7 +10,7 @@ import {
   dayEffort, dayFields, dayLoad, effortOf, isTraining, matchesFilters, nextSort, overviewCounts,
   bulkPlan, readStoredFlag, settledDayFields, sortR5Rows, statusKeys, teamLine, toggleAllSelection, toggleOne, trainingChoiceOf,
   writeForEffort, writeForTraining, writeStoredFlag, yourDay,
-  bulkPlanLevels, effortOfIntensity, effortOfLevel, fieldEfforts, injuryRiskPercent, levelForDayEntry, levelOfEffort, planEffort,
+  bulkPlanLevels, effortOfIntensity, effortOfLevel, fieldEfforts, levelForDayEntry, levelOfEffort, planEffort,
   settledFieldEfforts, showsInjuryRisk, writeForLevel, writeForTrainingAtLevel,
   type R5Row, type SettledActivity, type SettledRow, type StatusInput,
 } from "./todayR5Model.ts";
@@ -417,15 +417,11 @@ test("settledFieldEfforts: det et afregnet felt koerte paa; felter uden kvitteri
   assert.deepEqual(settledFieldEfforts(null, 2), [null, null]);
 });
 
-test("skaderisiko vises kun paa Haard, som hele procent", () => {
+test("skaderisiko vises kun paa Haard, uden procent (ejer 21/11)", () => {
   assert.equal(showsInjuryRisk("hard"), true);
   for (const e of ["rest", "easy", "medium", null] as const) assert.equal(showsInjuryRisk(e), false);
-  assert.equal(injuryRiskPercent(0.08), 8);
-  assert.equal(injuryRiskPercent(0), 0);
-  assert.equal(injuryRiskPercent(1.4), 100);
-  assert.equal(injuryRiskPercent(null), null);
-  assert.equal(injuryRiskPercent(Number.NaN), null);
-  assert.equal(injuryRiskPercent(-0.1), null);
+  const picker = readFileSync(join(here, "EffortPickerR5.tsx"), "utf8");
+  assert.ok(!picker.includes("effortPicker.risk\""), "ingen procent-tekst til spilleren");
 });
 
 test("indsatsvaelgeren: kun et eksplicit true taender den, og effort sendes kun naar den er valgt", () => {
