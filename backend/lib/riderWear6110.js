@@ -42,7 +42,13 @@ const MAX_CURVE_AGE = 50;
 // sæson-alder til og med 30. Satsen kan først være over nul fra 31.
 export const AGING_PLATEAU_THROUGH_AGE = 30;
 
-const isNum = (x) => typeof x === "number" && Number.isFinite(x);
+/**
+ * @param {unknown} x
+ * @returns {x is number}
+ */
+function isNum(x) {
+  return typeof x === "number" && Number.isFinite(x);
+}
 const onlyKeys = (obj, allowed) => Object.keys(obj).every((k) => allowed.includes(k));
 
 /** Er `raw` talfilens G3a-form (kurver), og ikke kandidat B's trin-form? */
@@ -134,7 +140,7 @@ export function validateXpAgingBrake(raw) {
  * Kontrakt med XP-sporet (#8520, #8531, developmentXp.ts): talfilens validator kalder
  * denne for `aging` i G3a-form, så reglerne kun står ét sted.
  *
- * @param {unknown} raw
+ * @param {any} raw
  * @returns {Readonly<{ physical: readonly { at: number, value: number }[], mental: readonly { at: number, value: number }[], brakeLoadDays?: number, hardTrainingDayWeight?: number }> | null | undefined}
  */
 export function validateXpAgingPercent(raw) {
