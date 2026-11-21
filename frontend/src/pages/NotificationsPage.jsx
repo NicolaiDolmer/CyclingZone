@@ -730,7 +730,7 @@ export default function NotificationsPage() {
 
       {/* Primary tabs */}
       <Tabs value={tab} onChange={setTab} className="mb-4">
-        <TabList label={t("page.title")}>
+        <TabList label={t("page.title")} overflowHint>
           {[
             { key: "mine",         label: t("tabs.mine"),    badge: unreadCount },
             { key: "skal_handles", label: t("tabs.handle"),  badge: pending.counts.total },
