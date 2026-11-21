@@ -55,7 +55,8 @@
     "groupAll": "Alle groepen",
     "groupNone": "Geen groep",
     "typeAll": "Alle types",
-    "clear": "Filters wissen"
+    "clear": "Filters wissen",
+    "reset": "Filters herstellen"
   },
   "team": {
     "whole": "Hele team vandaag",
