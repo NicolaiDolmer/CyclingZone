@@ -85,6 +85,7 @@ export default function ProgramR5({
   onDrafts: Dispatch<SetStateAction<Record<string, Draft>>>;
 }) {
   const { t, i18n } = useTranslation("training");
+  const { t: tR5 } = useTranslation("trainingR5"); // #7456: lazy namespace (I18nReadyGate i TrainingPage)
   const tTypes = useTranslation("riderTypes").t;
   const lang = i18n.language;
 
@@ -197,7 +198,7 @@ export default function ProgramR5({
     if (Object.keys(drafts).some((key) => parseSubjectKey(key)?.kind === "rider")) await groups.reload();
     setDrafts(left);
     setSaving(false);
-    setNote(failed ? { tone: "error", text: t("programR5.saveError") } : { tone: "ok", text: t("programR5.saved") });
+    setNote(failed ? { tone: "error", text: tR5("programR5.saveError") } : { tone: "ok", text: tR5("programR5.saved") });
   };
 
   const putOn = async (value: string) => {
@@ -209,28 +210,28 @@ export default function ProgramR5({
     // Et program paa en rytter tager ham ud af gruppen; genindlaes saa biblioteket ser det.
     if (target.kind === "rider") await groups.reload();
     if (result.ok) setSubject(target);
-    setNote(result.ok ? null : { tone: "error", text: t("programR5.saveError") });
+    setNote(result.ok ? null : { tone: "error", text: tR5("programR5.saveError") });
   };
   const removeRider = async (riderId: string) => {
     const result = await onClearRider(riderId);
     await groups.reload();
-    if (!result.ok) setNote({ tone: "error", text: t("programR5.saveError") });
+    if (!result.ok) setNote({ tone: "error", text: tR5("programR5.saveError") });
   };
 
   const actions = (
     <span className="flex items-center gap-2">
       <Button variant="secondary" size="sm" disabled={!programKey || busy} onClick={() => setCopyOpen(true)}
-        title={programKey ? undefined : t("programR5.copyNeedsProgram")} data-testid="program-r5-copy">
-        {t("programR5.copyToRiders")}
+        title={programKey ? undefined : tR5("programR5.copyNeedsProgram")} data-testid="program-r5-copy">
+        {tR5("programR5.copyToRiders")}
       </Button>
       <Button variant="primary" size="sm" disabled={total === 0 || busy} onClick={savePlan} data-testid="program-r5-save">
-        {saving ? t("loading") : t("programR5.savePlan")}
+        {saving ? t("loading") : tR5("programR5.savePlan")}
       </Button>
     </span>
   );
 
-  const title = program ? programName(program, lang) : subject ? t("programR5.ownWeek") : t("programR5.noneSelected");
-  const intro = kind === "week" ? t("programR5.introWeek") : "";
+  const title = program ? programName(program, lang) : subject ? tR5("programR5.ownWeek") : tR5("programR5.noneSelected");
+  const intro = kind === "week" ? tR5("programR5.introWeek") : "";
 
   return (
     <div className={mobile ? "flex flex-col gap-4" : "grid grid-cols-[256px_minmax(0,1fr)] gap-5"} data-testid="program-r5">
@@ -250,12 +251,12 @@ export default function ProgramR5({
       <section className="flex min-w-0 flex-col gap-4" aria-label={title}>
         <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
           <div className="min-w-0">
-            <h2 className="text-[15px] font-semibold text-cz-1">{t("programR5.title", { name: title })}</h2>
+            <h2 className="text-[15px] font-semibold text-cz-1">{tR5("programR5.title", { name: title })}</h2>
             <p className="mt-0.5 text-xs text-cz-2">{program ? programTagline(program, lang) : intro}</p>
           </div>
           {AVAILABLE_KINDS.length > 1 && (
-            <Segmented label={t("programR5.kindLabel")} value={kind} onChange={setKind}
-              options={AVAILABLE_KINDS.map((k) => ({ value: k, label: t(`programR5.kind_${k}`) }))} />
+            <Segmented label={tR5("programR5.kindLabel")} value={kind} onChange={setKind}
+              options={AVAILABLE_KINDS.map((k) => ({ value: k, label: tR5(`programR5.kind_${k}`) }))} />
           )}
         </header>
 
@@ -281,14 +282,14 @@ export default function ProgramR5({
         <section>
           <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
             <span className="flex items-center gap-2">
-              <h3 className={LABEL}>{t("programR5.weekFor")}</h3>
+              <h3 className={LABEL}>{tR5("programR5.weekFor")}</h3>
               <select
                 value={sKey}
                 onChange={(e) => { const next = parseSubjectKey(e.target.value); setSubject(next); }}
-                aria-label={t("programR5.weekFor")}
+                aria-label={tR5("programR5.weekFor")}
                 className="rounded-cz border border-cz-border bg-cz-card py-1 pe-2 ps-2 text-xs font-semibold text-cz-1 max-sm:min-h-11"
               >
-                {subjects.length === 0 && !subject && <option value="">{t("programR5.asWritten")}</option>}
+                {subjects.length === 0 && !subject && <option value="">{tR5("programR5.asWritten")}</option>}
                 {subject && !subjects.some((s) => subjectKey(s) === sKey) && <option value={sKey}>{subjectName(subject)}</option>}
                 {subjects.map((s) => <option key={subjectKey(s)} value={subjectKey(s)}>{subjectName(s)}</option>)}
               </select>
@@ -300,7 +301,7 @@ export default function ProgramR5({
               <span className="font-data text-xs tabular-nums text-cz-2" data-testid="program-r5-unsaved">{t("weekPlan.unsaved", { n: total })}</span>
             )}
           </div>
-          {!subject && <p className="mb-1.5 text-2xs text-cz-3">{t("programR5.asWrittenNote")}</p>}
+          {!subject && <p className="mb-1.5 text-2xs text-cz-3">{tR5("programR5.asWrittenNote")}</p>}
           {riderDays?.isSeed && <p className="mb-1.5 text-2xs text-cz-3">{t("programs.seededHint")}</p>}
           <div className={mobile ? "overflow-x-auto" : ""}>
             <WeekGrid
@@ -320,8 +321,8 @@ export default function ProgramR5({
             />
           </div>
           <p className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-2xs text-cz-3">
-            <span className="inline-flex items-center gap-1"><FlagIcon size={10} aria-hidden="true" />{t("programR5.legendRace")}</span>
-            <span>{t("programR5.legendTaken")}</span>
+            <span className="inline-flex items-center gap-1"><FlagIcon size={10} aria-hidden="true" />{tR5("programR5.legendRace")}</span>
+            <span>{tR5("programR5.legendTaken")}</span>
           </p>
         </section>
 
@@ -329,7 +330,7 @@ export default function ProgramR5({
           <p role="status" className={`text-xs ${note.tone === "ok" ? "text-cz-success" : "text-cz-danger"}`}>{note.text}</p>
         )}
         <p className="inline-flex items-center gap-1 text-2xs text-cz-3" data-testid="program-r5-today-lock">
-          <LockIcon size={10} aria-hidden="true" />{t("programR5.todayLock")}
+          <LockIcon size={10} aria-hidden="true" />{tR5("programR5.todayLock")}
         </p>
       </section>
 
@@ -349,8 +350,8 @@ export default function ProgramR5({
             if (ids.length) await groups.reload();
             setCopyOpen(false);
             setNote(done === ids.length
-              ? { tone: "ok", text: t("programR5.copyDone", { n: done }) }
-              : { tone: "error", text: t("programR5.saveError") });
+              ? { tone: "ok", text: tR5("programR5.copyDone", { n: done }) }
+              : { tone: "error", text: tR5("programR5.saveError") });
           }}
         />
       )}
@@ -373,6 +374,7 @@ function LibraryPanel({
   onSubject: (s: Subject) => void;
 }) {
   const { t } = useTranslation("training");
+  const { t: tR5 } = useTranslation("trainingR5"); // #7456: lazy namespace (I18nReadyGate i TrainingPage)
   const [showAll, setShowAll] = useState(false);
   const inUse = library.programs.filter((p) => p.inUse);
   // Programmer i brug; er intet i brug endnu, de foerste fra kataloget. Resten bag "All programs".
@@ -380,7 +382,7 @@ function LibraryPanel({
   const visible = showAll ? library.programs : short;
   const nameOf = (key: string | null) => {
     const p = catalog.find((c) => c.key === key);
-    return p ? programName(p, lang) : t("programR5.ownWeek");
+    return p ? programName(p, lang) : tR5("programR5.ownWeek");
   };
   const row = "border-t border-cz-border px-3 py-2 first:border-t-0";
   const pick = (active: boolean) => (
@@ -388,9 +390,9 @@ function LibraryPanel({
   );
 
   return (
-    <aside className="flex flex-col gap-4" aria-label={t("programR5.library")} data-testid="program-r5-library">
+    <aside className="flex flex-col gap-4" aria-label={tR5("programR5.library")} data-testid="program-r5-library">
       <section>
-        <h3 className={`mb-1.5 ${LABEL}`}>{t("programR5.programs")}</h3>
+        <h3 className={`mb-1.5 ${LABEL}`}>{tR5("programR5.programs")}</h3>
         <ul className="flex flex-col gap-1">
           {visible.map((p) => {
             const program = catalog.find((c) => c.key === p.key);
@@ -401,9 +403,9 @@ function LibraryPanel({
                 <button type="button" aria-pressed={active} onClick={() => onProgram(p.key)}
                   className={`w-full rounded-cz border px-3 py-2 text-start ${active ? "border-cz-accent/50 bg-cz-accent/10" : "border-cz-border bg-cz-card hover:bg-cz-subtle"}`}>
                   <span className={`block text-[13px] font-semibold ${active ? "text-cz-accent-t" : "text-cz-1"}`}>{programName(program, lang)}</span>
-                  <span className="mt-0.5 block text-2xs text-cz-2">{t("programR5.kind_week")}</span>
+                  <span className="mt-0.5 block text-2xs text-cz-2">{tR5("programR5.kind_week")}</span>
                   <span className="mt-0.5 block truncate text-2xs text-cz-3">
-                    {on.length ? t("programR5.on", { names: on.join(", ") }) : t("programR5.notInUse")}
+                    {on.length ? tR5("programR5.on", { names: on.join(", ") }) : tR5("programR5.notInUse")}
                   </span>
                 </button>
               </li>
@@ -413,13 +415,13 @@ function LibraryPanel({
         {short.length < library.programs.length && (
           <button type="button" onClick={() => setShowAll((v) => !v)} className="mt-1.5 text-xs font-medium text-cz-2 hover:text-cz-1"
             aria-expanded={showAll}>
-            {showAll ? t("programR5.fewerPrograms") : t("programR5.allPrograms", { n: library.programs.length })}
+            {showAll ? tR5("programR5.fewerPrograms") : tR5("programR5.allPrograms", { n: library.programs.length })}
           </button>
         )}
       </section>
 
       <section>
-        <h3 className={`mb-1.5 ${LABEL}`}>{t("programR5.groupsAndRiders")}</h3>
+        <h3 className={`mb-1.5 ${LABEL}`}>{tR5("programR5.groupsAndRiders")}</h3>
         <ul className="rounded-cz border border-cz-border bg-cz-card text-xs">
           {library.groups.map((g) => {
             const gKey = `group:${g.id}`;
@@ -428,7 +430,7 @@ function LibraryPanel({
                 <button type="button" onClick={() => onSubject({ kind: "group", id: g.id })} className={`flex items-center gap-1.5 ${pick(selectedSubject === gKey)}`}>
                   <TeamIcon size={13} aria-hidden="true" className="shrink-0 text-cz-3" />
                   <span className="truncate font-semibold">{g.name}</span>
-                  <span className="ms-auto shrink-0 text-cz-2">{g.programKey ? nameOf(g.programKey) : t("programR5.ownWeek")}</span>
+                  <span className="ms-auto shrink-0 text-cz-2">{g.programKey ? nameOf(g.programKey) : tR5("programR5.ownWeek")}</span>
                 </button>
                 <ul className="mt-1 flex flex-col gap-0.5 ps-5">
                   {g.members.map((m) => (
@@ -437,7 +439,7 @@ function LibraryPanel({
                         className={`min-w-0 truncate text-start ${selectedSubject === `rider:${m.riderId}` ? "text-cz-accent-t" : "text-cz-2 hover:text-cz-1"}`}>
                         {riderName(m.riderId)}
                       </button>
-                      {m.own && <span className="shrink-0 text-cz-1">{t("programR5.ownPlan", { name: nameOf(m.ownProgramKey) })}</span>}
+                      {m.own && <span className="shrink-0 text-cz-1">{tR5("programR5.ownPlan", { name: nameOf(m.ownProgramKey) })}</span>}
                     </li>
                   ))}
                 </ul>
@@ -450,7 +452,7 @@ function LibraryPanel({
                 className={`flex items-center gap-1.5 ${pick(selectedSubject === `rider:${r.riderId}`)}`}>
                 <UserIcon size={13} aria-hidden="true" className="shrink-0 text-cz-3" />
                 <span className="truncate">{riderName(r.riderId)}</span>
-                <span className="ms-auto shrink-0 text-cz-2">{t("programR5.ownPlan", { name: nameOf(r.programKey) })}</span>
+                <span className="ms-auto shrink-0 text-cz-2">{tR5("programR5.ownPlan", { name: nameOf(r.programKey) })}</span>
               </button>
             </li>
           ))}
@@ -460,12 +462,12 @@ function LibraryPanel({
                 className={`flex items-center gap-1.5 ${pick(selectedSubject === `rider:${id}`)}`}>
                 <UserIcon size={13} aria-hidden="true" className="shrink-0 text-cz-3" />
                 <span className="truncate text-cz-2">{riderName(id)}</span>
-                <span className="ms-auto shrink-0 text-cz-3">{t("programR5.noProgram")}</span>
+                <span className="ms-auto shrink-0 text-cz-3">{tR5("programR5.noProgram")}</span>
               </button>
             </li>
           ))}
         </ul>
-        <p className="mt-1.5 text-2xs text-cz-3">{t("programR5.ownWins")}</p>
+        <p className="mt-1.5 text-2xs text-cz-3">{tR5("programR5.ownWins")}</p>
       </section>
     </aside>
   );
@@ -485,6 +487,7 @@ function AppliedTo({
   onRemoveRider: (riderId: string) => void;
 }) {
   const { t } = useTranslation("training");
+  const { t: tR5 } = useTranslation("trainingR5"); // #7456: lazy namespace (I18nReadyGate i TrainingPage)
   const entry = library.programs.find((p) => p.key === programKey);
   const chip = "inline-flex h-7 items-center gap-1 rounded-cz border border-cz-border bg-cz-card ps-2 pe-1 text-xs text-cz-1";
   const name = (id: string) => riders.find((r) => r.id === id)?.name ?? "";
@@ -492,7 +495,7 @@ function AppliedTo({
   const freeRiders = riders.filter((r) => !entry?.riders.includes(r.id));
   return (
     <div className="flex flex-wrap items-center gap-1.5" data-testid="program-r5-applied">
-      <span className="text-xs text-cz-2">{t("programR5.appliedOn")}</span>
+      <span className="text-xs text-cz-2">{tR5("programR5.appliedOn")}</span>
       {entry?.groups.map((g) => (
         <span key={g.id} className={`${chip} pe-2`}>
           <TeamIcon size={12} aria-hidden="true" className="text-cz-3" />{g.name}
@@ -502,23 +505,23 @@ function AppliedTo({
       {entry?.riders.map((id) => (
         <span key={id} className={chip}>
           <UserIcon size={12} aria-hidden="true" className="text-cz-3" />{name(id)}
-          <button type="button" disabled={busy} onClick={() => onRemoveRider(id)} aria-label={t("programR5.remove", { name: name(id) })}
+          <button type="button" disabled={busy} onClick={() => onRemoveRider(id)} aria-label={tR5("programR5.remove", { name: name(id) })}
             className="inline-flex h-6 w-6 items-center justify-center rounded-cz text-cz-3 hover:text-cz-1 disabled:opacity-50">
             <XIcon size={11} />
           </button>
         </span>
       ))}
       <span className="relative inline-flex h-7 items-center gap-1 rounded-cz border border-dashed border-cz-border px-2 text-xs text-cz-2 hover:text-cz-1">
-        <PlusIcon size={12} aria-hidden="true" />{t("programR5.addTarget")}
-        <select value="" disabled={busy} onChange={(e) => onAdd(e.target.value)} aria-label={t("programR5.addTarget")}
+        <PlusIcon size={12} aria-hidden="true" />{tR5("programR5.addTarget")}
+        <select value="" disabled={busy} onChange={(e) => onAdd(e.target.value)} aria-label={tR5("programR5.addTarget")}
           className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-default">
-          <option value="" disabled>{t("programR5.addTarget")}</option>
+          <option value="" disabled>{tR5("programR5.addTarget")}</option>
           {freeGroups.length > 0 && (
-            <optgroup label={t("programR5.groups")}>
+            <optgroup label={tR5("programR5.groups")}>
               {freeGroups.map((g) => <option key={g.id} value={`group:${g.id}`}>{g.name}</option>)}
             </optgroup>
           )}
-          <optgroup label={t("programR5.riders")}>
+          <optgroup label={tR5("programR5.riders")}>
             {freeRiders.map((r) => <option key={r.id} value={`rider:${r.id}`}>{r.name}</option>)}
           </optgroup>
         </select>
@@ -548,6 +551,7 @@ function WeekGrid({
   onCopyDay: (from: string, choice: string) => void;
 }) {
   const { t } = useTranslation("training");
+  const { t: tR5 } = useTranslation("trainingR5"); // #7456: lazy namespace (I18nReadyGate i TrainingPage)
   const head = "border-b border-s border-cz-border bg-cz-subtle px-2.5 py-1.5";
   const sideLabel = "flex items-center border-t border-cz-border px-2 font-data text-3xs uppercase leading-tight tracking-[.06em] text-cz-3";
   return (
@@ -561,17 +565,17 @@ function WeekGrid({
               <span className="flex items-center gap-1 text-xs font-semibold text-cz-1">
                 <span className="min-w-0 flex-1 truncate">{dayLabel(weekday)}</span>
                 {isToday && (
-                  <span className="inline-flex items-center gap-0.5 font-normal text-cz-2" title={t("programR5.todayLock")}>
+                  <span className="inline-flex items-center gap-0.5 font-normal text-cz-2" title={tR5("programR5.todayLock")}>
                     {todayLocked && <LockIcon size={10} aria-hidden="true" />}{t("weekPlan.today")}
                   </span>
                 )}
                 {editable && (
-                  <span className="relative inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-cz text-cz-3 hover:bg-cz-card hover:text-cz-1" title={t("programR5.copyDay", { day: dayLabel(weekday) })}>
+                  <span className="relative inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-cz text-cz-3 hover:bg-cz-card hover:text-cz-1" title={tR5("programR5.copyDay", { day: dayLabel(weekday) })}>
                     <ClipboardIcon size={12} aria-hidden="true" />
-                    <select value="" onChange={(e) => onCopyDay(weekday, e.target.value)} aria-label={t("programR5.copyDay", { day: dayLabel(weekday) })}
+                    <select value="" onChange={(e) => onCopyDay(weekday, e.target.value)} aria-label={tR5("programR5.copyDay", { day: dayLabel(weekday) })}
                       className="absolute inset-0 h-full w-full cursor-pointer opacity-0">
-                      <option value="" disabled>{t("programR5.copyDay", { day: dayLabel(weekday) })}</option>
-                      <option value="all">{t("programR5.copyAll")}</option>
+                      <option value="" disabled>{tR5("programR5.copyDay", { day: dayLabel(weekday) })}</option>
+                      <option value="all">{tR5("programR5.copyAll")}</option>
                       {weekdays.filter((w) => w !== weekday && !(todayLocked && w === todayWeekday)).map((w) => (
                         <option key={w} value={w}>{dayLabel(w)}</option>
                       ))}
@@ -580,7 +584,7 @@ function WeekGrid({
                 )}
               </span>
               {isToday && raceCount > 0 && (
-                <span className="block font-data text-3xs tabular-nums text-cz-2">{t("programR5.races", { n: raceCount })}</span>
+                <span className="block font-data text-3xs tabular-nums text-cz-2">{tR5("programR5.races", { n: raceCount })}</span>
               )}
             </div>
           );
@@ -615,6 +619,7 @@ function Row({
   onEdit: (weekday: string, slot: number, session: string) => void;
 }) {
   const { t } = useTranslation("training");
+  const { t: tR5 } = useTranslation("trainingR5"); // #7456: lazy namespace (I18nReadyGate i TrainingPage)
   return (
     <>
       <span className="flex items-center border-t border-cz-border px-2 font-data text-3xs font-semibold tabular-nums text-cz-2">
@@ -626,7 +631,7 @@ function Row({
         if (cell.kind === "race") {
           return (
             <div key={weekday} className={`${base} gap-1 bg-cz-subtle text-cz-2`} data-testid="program-r5-race">
-              <FlagIcon size={11} aria-hidden="true" className="shrink-0" />{t("programR5.race")}
+              <FlagIcon size={11} aria-hidden="true" className="shrink-0" />{tR5("programR5.race")}
             </div>
           );
         }
@@ -645,7 +650,7 @@ function Row({
               {cell.session ? sessionLabel(cell.session) : "–"}
             </span>
             {cell.changed && (
-              <span className="ms-1 h-1.5 w-1.5 shrink-0 rounded-full bg-cz-2" aria-label={t("programR5.notSaved")} />
+              <span className="ms-1 h-1.5 w-1.5 shrink-0 rounded-full bg-cz-2" aria-label={tR5("programR5.notSaved")} />
             )}
             {editable && !locked && (
               <select value={cell.session ?? ""} onChange={(e) => onEdit(weekday, slot, e.target.value)} aria-label={label}
@@ -674,6 +679,7 @@ function CopyToRiders({
   onCopy: (riderIds: string[]) => void;
 }) {
   const { t } = useTranslation("training");
+  const { t: tR5 } = useTranslation("trainingR5"); // #7456: lazy namespace (I18nReadyGate i TrainingPage)
   const [picked, setPicked] = useState<Set<string>>(() => new Set());
   const toggle = (id: string) => setPicked((prev) => {
     const next = new Set(prev);
@@ -685,21 +691,21 @@ function CopyToRiders({
       open
       onClose={onClose}
       size="sm"
-      title={t("programR5.copyTitle", { name: programName(program, lang) })}
+      title={tR5("programR5.copyTitle", { name: programName(program, lang) })}
       titleId="program-r5-copy-title"
       ariaLabelledby={undefined}
       description={null}
-      closeLabel={t("programR5.cancel")}
+      closeLabel={tR5("programR5.cancel")}
       footer={(
         <>
-          <Button variant="secondary" onClick={onClose}>{t("programR5.cancel")}</Button>
+          <Button variant="secondary" onClick={onClose}>{tR5("programR5.cancel")}</Button>
           <Button variant="primary" disabled={picked.size === 0 || busy} onClick={() => onCopy([...picked])} data-testid="program-r5-copy-go">
-            {t("programR5.copyGo", { n: picked.size })}
+            {tR5("programR5.copyGo", { n: picked.size })}
           </Button>
         </>
       )}
     >
-      <p className="mb-3 text-xs text-cz-2">{t("programR5.copyBody")}</p>
+      <p className="mb-3 text-xs text-cz-2">{tR5("programR5.copyBody")}</p>
       <ul className="flex max-h-80 flex-col gap-1.5 overflow-y-auto">
         {candidates.map((r) => (
           <li key={r.id}>

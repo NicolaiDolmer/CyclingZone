@@ -100,7 +100,8 @@ import XpReportSwitch from "../components/training/reportXp/XpReportSwitch.tsx";
 import { dayXpByAbility, riderXpBars, withXpLines } from "../lib/xpAbilityLine.ts"; // #7947
 import { useDevelopmentXpEnabled } from "../lib/developmentXpFlag.ts"; // #8476
 import { earnedGainTotal } from "../lib/trainingEarnedGains.ts"; // #8476
-import { fetchPlayerFeatureFlags } from "../lib/playerFeatureFlags.js"; // #7456: training_page_r5
+import I18nReadyGate from "../components/I18nReadyGate.jsx"; // #7947: trainingR5 er lazy
+import { useTrainingPageR5 } from "../components/training/r5/trainingPageR5Flag.ts"; // #7947/#7456: training_page_r5
 // #6030: fanerne Program, Development og Report hentes foerst naar de aabnes
 // (lazyWithRetry, #5014), saa foerste visning af Today henter mindre. Fallback er den
 // kanoniske skelet-markup (PAGE_TEMPLATES: aldrig en spinner i kort).
@@ -121,6 +122,8 @@ const TrainingMoment = tabPart("TrainingMoment");
 const DevelopmentXpSwitch = lazyWithRetry(() => import("../components/training/DevelopmentTabXp.tsx"));
 // #8363: "Today's training" after Train now (behind the XP switch; own chunk, loaded only after a press).
 const TrainNowMoment = lazyWithRetry(() => import("../components/training/TrainNowMoment.tsx"));
+// #7947: I dag-fanen i R5-udgaven (egen chunk, hentes kun naar kontakten training_page_r5 er on).
+const TodayR5Lazy = lazyWithRetry(() => import("../components/training/r5/TodayR5.tsx"));
 // #7456: R5's Program tab behind training_page_r5 (own chunk, loaded only when the switch is on).
 const ProgramR5 = lazyWithRetry(() => import("../components/training/r5/ProgramR5.tsx"));
 
@@ -445,6 +448,7 @@ export default function TrainingPage() {
   const catalogV3 = useTrainingCatalogV3(); // #5319
 
   const tTypes = useTranslation("riderTypes").t;
+  const trainingR5 = useTrainingPageR5(); // #7947
 
   // #3721: tre faner, ?tab=-synkroniseret efter samme mønster som FinancePage/
   // RiderStatsPage (VALID_TABS-fallback). Kun læst ved mount for den initiale
@@ -531,9 +535,8 @@ export default function TrainingPage() {
   const trainingGroups = useTrainingGroups({ onChanged: training.refresh });
   const [groupDialog, setGroupDialog] = useState(null);
   // #7456: kontakten training_page_r5 (off = fanen som i dag). Knapperne staar i sidehovedet.
-  const [programR5, setProgramR5] = useState(false);
+  const programR5 = trainingR5; // samme kontakt som I dag-fanen (een laesning, useTrainingPageR5)
   const [programR5Actions, setProgramR5Actions] = useState(/** @type {HTMLElement | null} */ (null));
-  useEffect(() => { let live = true; fetchPlayerFeatureFlags().then((f) => { if (live) setProgramR5(f?.training_page_r5 === true); }); return () => { live = false; }; }, []);
   // #4847: med flaget on ER guld-knappen "Train now" (aaben hele datoen indtil trykket).
   const trainNow = useTrainNow({ onSettled: training.refresh });
   const [trainNowMomentOpen, setTrainNowMomentOpen] = useState(false); // #8363
@@ -1369,7 +1372,7 @@ export default function TrainingPage() {
   // grå. #3643/PR #5552: dayClose-gaten gælder på alle flader og bor derfor i
   // primaryActionFor, ét sted.
   const primaryAction = primaryActionFor({
-    needsDay: overview.needsDay.length,
+    needsDay: trainingR5 ? 0 : overview.needsDay.length, // #7947: i R5 er guldknappen altid Train now
     trainedToday: runGate.trainedToday,
     enabled,
     dayClose: runGate.dayClose,
@@ -2156,10 +2159,10 @@ export default function TrainingPage() {
 
   function renderProgramTab() {
     if (programR5) return ( // #7456: R5's Program tab behind training_page_r5
-      <ProgramR5 riders={riders} weekdays={WEEKDAY_KEYS} todayWeekday={todayWeekday} todayLocked={trainNow.status.locked && !trainNow.status.settled}
+      <I18nReadyGate ns="trainingR5" fallback={<TabFallback />}><ProgramR5 riders={riders} weekdays={WEEKDAY_KEYS} todayWeekday={todayWeekday} todayLocked={trainNow.status.locked && !trainNow.status.settled}
         riderWeekPlans={riderWeekPlans} programs={programs} groups={trainingGroups} forecast={fatigueForecast.forecast} fatigueRules={fatigueRules}
         catalogV3={catalogV3} actionsEl={programR5Actions} mobile={isMobile} onClearRider={clearRiderWeekPlan}
-        drafts={programR5Drafts} onDrafts={setProgramR5Drafts} />
+        drafts={programR5Drafts} onDrafts={setProgramR5Drafts} /></I18nReadyGate>
     );
     const subLabel = (sub) => (sub === "limit"
       ? (isMobile ? t("subtabs.limitShort") : t("subtabs.limit"))
@@ -2482,6 +2485,18 @@ export default function TrainingPage() {
           : t("notTrainedYetToday");
 
 
+  // #7947: R5-fanens data og handlinger = sidens egne (samme gemme-flow, Train now, assistent).
+  const r5Today = trainingR5 ? {
+    riders, loading: ridersLoading, phone: phoneLayout, seasonYear, activeSeasonNumber, today, todayWeekday, condition, planFor, riderWeekPlans,
+    settledToday: todayRowByRider, // #7947 Codex P2: koerte felter fra kvitteringen, ikke fra planen
+    racingToday, forecast: fatigueForecast.forecast, programAssigned: programs.assigned, programCatalog: programs.catalog ?? [], groups: trainingGroups.groups ?? [],
+    fatigueDays70: training.fatigueDays70, smartDefaultFocus, trainedToday: runGate.trainedToday, savingId, bulkApplying, justSaved: lingerIds,
+    planError: planActionError, runError, decisionRows: decisionCardOn ? decisionRows : null, fatigueRules: fatigueRules.data, assistantPanel, bulkMessage: bulkMsgNode,
+    onPlan: handlePlanChange, onBulk: applyBulkChoice, onPickSession: setFocusPanelRiderId, onReset: handleResetToTeamProgram, onClearPlan: handleClearPlan,
+    onOpenPlan: (riderId) => { setWeekPlanFor(riderId); setTab("weekplan"); }, onOpenPrograms: () => setSub("programs"), onEditFatigueRule: () => setSub("limit"),
+    onOpenAssistant: handleOpenAssistantPanel, renderCard: renderRiderCard,
+  } : null;
+
   if (isLoading) {
     return (
       <div className="mx-auto max-w-[1600px]">
@@ -2564,6 +2579,7 @@ export default function TrainingPage() {
         </TabList>
 
       <TabPanel value="today">
+      {trainingR5 ? <I18nReadyGate ns="trainingR5" fallback={<TabFallback />}><Suspense fallback={<TabFallback />}><TodayR5Lazy r5={r5Today} /></Suspense></I18nReadyGate> : (
       <div className="space-y-3">
       {decisionCardOn && !ridersLoading && (
         <DailyDecision
@@ -2604,6 +2620,7 @@ export default function TrainingPage() {
           alle, så #5124's D-047-gren (telefonen uden flaget) er slettet. */}
       {phoneTodayView ? renderMobileToday() : renderDesktopToday()}
       </div>
+      )}
       </TabPanel>
 
       {/* #5485 (aendring 6): fanen Week plan — holdets plan og hver rytters

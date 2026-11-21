@@ -76,6 +76,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 |Race session settles when the stage is decided (`settle-race-session-after-stage`)|building|-|[TRAINING_RULES](TRAINING_RULES.md)|#7982|2026-11-15|Off i prod 15/11 (#8195). Kun med fatigue_now_7801 (ejer). Skærmdelen mangler.|
 |Every session at easy, normal or hard (`training-effort-levels-7947`)|building|-|[TRAINING_RULES](TRAINING_RULES.md)|#7947|2026-11-20|PR 1 af 4 (kontakt, lib, motorens læsesti). training_effort_levels seedes off post-merge; ejer tænder efter PR 2-4.|
 |Fatigue now counts today's earlier stages (`training-fatigue-now-7801`)|building|-|[TRAINING_RULES](TRAINING_RULES.md)|#7801|2026-11-13|fatigue_now_7801 ikke i prod app_config (13/11) = slukket; ejer tænder.|
+|New Training page (R5) (`training-page-r5`)|building|`training_page_r5`|[TRAINING_RULES](TRAINING_RULES.md)|#7947|2026-11-20|Bag training_page_r5 = off (migration #8511). I dag-fanen bygget (#8511), Program følger (#7456); ejer tænder, når siden er færdig.|
 
 ## academy
 
