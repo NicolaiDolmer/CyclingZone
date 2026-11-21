@@ -3,6 +3,7 @@
 // parameteren (eller med ?trainingR5=0) er seedet praecis som foer (Playwright-fixtures urort).
 // Navne, tal og loeb er preview-fiktion.
 import { RIDERS, SEED_TRAINING, TEST_TEAM } from "../../../preview/seedData.js";
+import { seedEffortPickerPreview } from "./effortPickerPreviewSeed.ts";
 
 type Seed = Record<string, unknown> & {
   todayRun?: unknown;
@@ -79,6 +80,7 @@ export function seedTodayR5Preview(): void {
   seed.racingToday = { "rider-r5-2": { race: "Ronde van Preview" }, "rider-r5-4": { race: "Ronde van Preview" } };
   seed.decisionCard = true;
   seed.fatigueDays70 = { "rider-r5-3": 2, "rider-r5-6": 1 };
+  seedEffortPickerPreview(seed as Parameters<typeof seedEffortPickerPreview>[0]); // #8530: ?trainingR5Levels=1
 }
 
 seedTodayR5Preview();

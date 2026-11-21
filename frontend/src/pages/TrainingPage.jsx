@@ -670,9 +670,9 @@ export default function TrainingPage() {
     }, SAVED_LINGER_MS));
   }
 
-  async function handlePlanChange(riderId, dayType, session = null) {
+  async function handlePlanChange(riderId, dayType, session = null, effort = null) {
     setPlanActionError(null);
-    const result = await setPlan(riderId, dayType, session);
+    const result = await setPlan(riderId, dayType, session, effort); // #7947 PR 3: effort kun fra indsatsvaelgeren
     if (result && !result.ok) {
       setPlanActionError({ riderId, error: result.error || "failed" });
       return false;
@@ -1068,7 +1068,7 @@ export default function TrainingPage() {
   // valgte fik dagen, så telefonen kan forlade markerings-tilstanden.
   // #6523: `idsOverride` lader "Set today's day
   // for All N riders" og "Set for group" bruge samme sti uden en markering.
-  async function applyBulkChoice(choice, idsOverride) {
+  async function applyBulkChoice(choice, idsOverride, effort = null) {
     setBulkMsg(null);
     if (!choice) {
       setBulkMsg({ type: "warn", text: t("bulkPickFocus") });
@@ -1079,7 +1079,7 @@ export default function TrainingPage() {
     const ids = idsOverride ?? [...pruneSelection(selected, filterIds)];
     if (ids.length === 0) return false;
     const { dayType, session } = bulkChoiceToDay(choice);
-    const result = await setPlanBulk(ids, dayType, session);
+    const result = await setPlanBulk(ids, dayType, session, effort);
     // #1894 variant 3: smart-mode springer ryttere MED eksisterende plan over
     // (server-håndhævet — overskriver ALDRIG en managers eget valg). Det er en
     // forventet, ikke-fejlende delmængde, så den vises separat fra "failed".
@@ -2495,6 +2495,7 @@ export default function TrainingPage() {
     onPlan: handlePlanChange, onBulk: applyBulkChoice, onPickSession: setFocusPanelRiderId, onReset: handleResetToTeamProgram, onClearPlan: handleClearPlan,
     onOpenPlan: (riderId) => { setWeekPlanFor(riderId); setTab("weekplan"); }, onOpenPrograms: () => setSub("programs"), onEditFatigueRule: () => setSub("limit"),
     onOpenAssistant: handleOpenAssistantPanel, renderCard: renderRiderCard,
+    effortLevels: training.effortLevels === true, // #7947 PR 3: Let/Mellem/Haard (training_effort_levels)
   } : null;
 
   if (isLoading) {

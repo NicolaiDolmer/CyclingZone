@@ -38,14 +38,18 @@ export function effortOf(session: string | null | undefined): Effort | null {
 
 const EFFORT_RANK: Readonly<Record<Effort, number>> = Object.freeze({ rest: 0, easy: 1, medium: 2, hard: 3 });
 
-/** Dagens indsats som eet ord: den hoejeste blandt dagens traeningsfelter. null = ingen dag. */
-export function dayEffort(fields: readonly Field[]): Effort | null {
+/**
+ * Dagens indsats som eet ord: den hoejeste blandt dagens traeningsfelter. null = ingen dag.
+ * `efforts` (indsatsvaelgeren, #7947) er den indsats hvert felt koerer paa; uden den
+ * er det sessionens eget niveau, som i dag.
+ */
+export function dayEffort(fields: readonly Field[], efforts?: readonly (Effort | null)[]): Effort | null {
   let best: Effort | null = null;
-  for (const f of fields) {
-    if (f === STAGE) continue;
-    const e = effortOf(f);
+  fields.forEach((f, i) => {
+    if (f === STAGE) return;
+    const e = efforts ? efforts[i] ?? null : effortOf(f);
     if (e && (best === null || EFFORT_RANK[e] > EFFORT_RANK[best])) best = e;
-  }
+  });
   return best;
 }
 
@@ -83,6 +87,161 @@ export function writeForEffort(
   return own ? { kind: "write", dayType: "training", session: own } : { kind: "pick" };
 }
 const SKILL = new Set(["technique", "aero", "loebslaere"]);
+
+// --- Indsatsvaelgeren Let/Mellem/Haard (#7947 PR 3, ejer 20/11) ------------------
+//
+// Bag kontakterne training_effort_levels OG training_page_r5 kan hver session koeres
+// paa Let, Mellem eller Haard. Niveauerne er spillets egne tre (samme ord som en
+// sessions niveau i dag); backend kalder det midterste "normal", R5-fladen "medium".
+// Hvile er et eget valg: ingen session, intet niveau. Kontakten off = ingen af
+// funktionerne herunder bruges, og fladen er praecis som foer.
+
+/** Spillets niveau-ord i API'et (som backend EFFORT_LEVELS). */
+export type EffortLevel = "easy" | "normal" | "hard";
+
+/** De tre niveauer i fladens raekkefoelge (Hvile er ikke et niveau). */
+export const LEVEL_EFFORTS: readonly Effort[] = Object.freeze(["easy", "medium", "hard"]);
+
+/** Fladens indsats som API'ets niveau-ord; Hvile (og ukendt) er intet niveau. */
+export function levelOfEffort(effort: Effort | null | undefined): EffortLevel | null {
+  if (effort === "easy") return "easy";
+  if (effort === "medium") return "normal";
+  if (effort === "hard") return "hard";
+  return null;
+}
+
+/** API'ets niveau-ord som fladens indsats; alt andet end easy/normal/hard er intet niveau. */
+export function effortOfLevel(level: unknown): Effort | null {
+  if (level === "easy") return "easy";
+  if (level === "normal") return "medium";
+  if (level === "hard") return "hard";
+  return null;
+}
+
+/** En dags intensitet (rest, recovery eller et niveau) som indsats. */
+export function effortOfIntensity(intensity: unknown): Effort | null {
+  if (intensity === "rest" || intensity === "recovery") return "rest";
+  return effortOfLevel(intensity);
+}
+
+/** Er sessionen en hel dag uden fokus (hvile, aktiv restitution)? De kender ikke et niveau. */
+export function isRestSession(session: string | null | undefined): boolean {
+  return !!session && REST_SESSIONS.has(session);
+}
+
+/**
+ * Det niveau en programcelle bærer for et felt: feltets eget, ellers dagens, ellers
+ * intet (= sessionens eget niveau). Laeser tolerant: en celle uden de to noegler
+ * (backend sender dem ikke endnu) giver null og aendrer intet.
+ */
+export function levelForDayEntry(entry: unknown, slot = 0): Effort | null {
+  if (!entry || typeof entry !== "object") return null;
+  const e = entry as { effort?: unknown; slotEfforts?: unknown };
+  const idx = Number.isInteger(slot) && slot >= 0 ? slot : 0;
+  const own = Array.isArray(e.slotEfforts) ? effortOfLevel(e.slotEfforts[idx]) : null;
+  return own ?? effortOfLevel(e.effort);
+}
+
+/** Rytterens egen dag som indsats: planens intensitet, ellers sessionens eget niveau. null = ingen egen dag. */
+export function planEffort(plan: { focus?: string | null; intensity?: string | null } | null | undefined): Effort | null {
+  if (!plan?.focus) return null;
+  if (plan.focus === "restitution") return "rest";
+  return effortOfIntensity(plan.intensity) ?? effortOf(plan.focus);
+}
+
+/**
+ * Den indsats hvert af dagens felter koerer paa. `levelFor` giver et felts valgte
+ * niveau (null = sessionens eget); hvile- og restitutionsfelter ignorerer det, et
+ * loebsfelt og et tomt felt har ingen indsats.
+ */
+export function fieldEfforts(
+  fields: readonly Field[],
+  levelFor: (slot: number, session: string) => Effort | null,
+): (Effort | null)[] {
+  return fields.map((f, slot) => {
+    if (f === STAGE || f === null) return null;
+    if (isRestSession(f)) return "rest";
+    return levelFor(slot, f) ?? effortOf(f);
+  });
+}
+
+/** Hvad et tryk i indsatsvaelgeren skriver: sessionen, og det niveau den koerer paa. */
+export type LevelWrite =
+  | { kind: "write"; dayType: "rest" | "recovery" | "training" | "skill"; session: string | null; effort: EffortLevel | null }
+  | { kind: "pick" };
+
+const trainable = (s: string | null | undefined): string | null => (s && !REST_SESSIONS.has(s) ? s : null);
+
+/**
+ * Et tryk paa Let, Mellem eller Haard: den valgte traening vinder, ellers rytterens
+ * gemte, ellers assistentens, og niveauet er det trykkede (hver session maa koere
+ * paa hvert niveau). Kendes ingen session, faar Let og Mellem de sessioner de har i
+ * dag; Haard gaetter aldrig og aabner sessionsvaelgeren. Hvile skriver en hviledag
+ * uden fokus og uden niveau.
+ */
+export function writeForLevel(
+  effort: Effort,
+  { storedFocus, assistantFocus, chosenFocus = null }: {
+    storedFocus: string | null | undefined;
+    assistantFocus: string | null | undefined;
+    chosenFocus?: string | null;
+  },
+): LevelWrite {
+  if (effort === "rest") return { kind: "write", dayType: "rest", session: null, effort: null };
+  const session = trainable(chosenFocus) ?? trainable(storedFocus) ?? trainable(assistantFocus)
+    ?? (effort === "easy" ? "endurance" : effort === "medium" ? "tempo" : null);
+  if (!session) return { kind: "pick" };
+  return { kind: "write", dayType: SKILL.has(session) ? "skill" : "training", session, effort: levelOfEffort(effort) };
+}
+
+/**
+ * Et valg i traeningsvaelgeren naar niveauer er taendt: traeningen gemmes paa det
+ * niveau dagen allerede staar paa (et valg aendrer ikke niveauet); staar rytteren paa
+ * hvile eller uden egen dag, faar traeningen sit eget niveau.
+ */
+export function writeForTrainingAtLevel(choice: string, current: Effort | null): LevelWrite | { kind: "clear" } {
+  const base = writeForTraining(choice);
+  if (base.kind !== "write") return base.kind === "clear" ? base : { kind: "pick" };
+  const keep = base.session && current && current !== "rest" ? levelOfEffort(current) : null;
+  return { kind: "write", dayType: base.dayType, session: base.session, effort: keep };
+}
+
+/**
+ * Holdlinjen og "Set for group" med niveauer: een skrivning pr. session (med den
+ * valgte traening paa alle, ellers pr. rytters egen session). Haard uden en kendt
+ * session springes over, aldrig et gaet.
+ */
+export function bulkPlanLevels(
+  effort: Effort,
+  ids: readonly string[],
+  focusOf: (id: string) => { storedFocus: string | null | undefined; assistantFocus: string | null | undefined },
+  training: string = PROGRAM_CHOICE,
+): { calls: Array<{ choice: string; effort: EffortLevel | null; ids: string[] }>; skipped: string[] } {
+  if (ids.length === 0) return { calls: [], skipped: [] };
+  if (effort === "rest") return { calls: [{ choice: "rest", effort: null, ids: [...ids] }], skipped: [] };
+  if (training !== PROGRAM_CHOICE && training !== RECOVERY_CHOICE) {
+    return { calls: [{ choice: training, effort: levelOfEffort(effort), ids: [...ids] }], skipped: [] };
+  }
+  const bySession = new Map<string, string[]>();
+  const skipped: string[] = [];
+  for (const id of ids) {
+    const w = writeForLevel(effort, focusOf(id));
+    if (w.kind === "pick" || !w.session) { skipped.push(id); continue; }
+    bySession.set(w.session, [...(bySession.get(w.session) ?? []), id]);
+  }
+  return { calls: [...bySession.entries()].map(([choice, list]) => ({ choice, effort: levelOfEffort(effort), ids: list })), skipped };
+}
+
+/** Skaderisikoen vises kun paa Haard (ejer 20/11). */
+export function showsInjuryRisk(effort: Effort | null | undefined): boolean {
+  return effort === "hard";
+}
+
+/** Skaderisikoen (0-1 fra spillets tilstand) som hele procent, eller null naar den ikke kendes. */
+export function injuryRiskPercent(risk: unknown): number | null {
+  if (typeof risk !== "number" || !Number.isFinite(risk) || risk < 0) return null;
+  return Math.min(100, Math.round(risk * 100));
+}
 
 // --- Traeningsvaelgeren (#7947, ejer 20/11) -------------------------------------
 //
@@ -164,6 +323,27 @@ export type SettledActivity = {
 };
 export type SettledRow = SettledActivity & { activities?: readonly SettledActivity[] | null };
 
+// Kvitteringens aktiviteter i loebsdags-orden (felt 1 er den foerste).
+function settledActivities(receipt: SettledRow): SettledActivity[] {
+  return (receipt.activities ?? [])
+    .map((a, i) => ({ a, i }))
+    .sort((x, y) => (x.a.game_day ?? Infinity) - (y.a.game_day ?? Infinity) || x.i - y.i)
+    .map((x) => x.a);
+}
+
+/**
+ * Den indsats et afregnet felt faktisk koerte paa (kvitteringens intensitet), pr. felt;
+ * null hvor kvitteringen ikke har felten eller ikke siger det (saa gaelder planen).
+ */
+export function settledFieldEfforts(receipt: SettledRow | null | undefined, slots = SLOTS): (Effort | null)[] {
+  if (!receipt) return Array.from({ length: slots }, () => null);
+  const acts = settledActivities(receipt);
+  return Array.from({ length: slots }, (_, slot) => {
+    const a = acts.length === 0 ? receipt : acts[slot];
+    return a && a.race_day !== true ? effortOfIntensity(a.intensity) : null;
+  });
+}
+
 /**
  * Dagens fem felter naar dagen (helt eller delvist) er afregnet. Et afregnet felt
  * laeses fra kvitteringen, aldrig fra planen: planen kan redigeres efter dagens
@@ -177,10 +357,7 @@ export function settledDayFields(
   sessionOf: (activity: SettledActivity) => string | null,
 ): Field[] {
   if (!receipt) return [...planned];
-  const acts = (receipt.activities ?? [])
-    .map((a, i) => ({ a, i }))
-    .sort((x, y) => (x.a.game_day ?? Infinity) - (y.a.game_day ?? Infinity) || x.i - y.i)
-    .map((x) => x.a);
+  const acts = settledActivities(receipt);
   if (acts.length === 0) {
     const session = sessionOf(receipt);
     return planned.map((f) => (f === STAGE ? STAGE : session));
@@ -202,10 +379,10 @@ export const DAY_LOADS: readonly DayLoad[] = Object.freeze(["easy", "light", "no
 const LOAD_BANDS: readonly number[] = [2, 5, 8, 11];
 
 /** Dagens belastning, eller null naar rytteren ingen dag har (aldrig et opdigtet ord). */
-export function dayLoad(fields: readonly Field[]): DayLoad | null {
+export function dayLoad(fields: readonly Field[], efforts?: readonly (Effort | null)[]): DayLoad | null {
   if (fields.every((f) => f === null)) return null;
   let sum = 0;
-  for (const f of fields) sum += f === STAGE ? EFFORT_RANK.hard : EFFORT_RANK[effortOf(f) ?? "rest"];
+  fields.forEach((f, i) => { sum += f === STAGE ? EFFORT_RANK.hard : EFFORT_RANK[(efforts ? efforts[i] : null) ?? effortOf(f) ?? "rest"]; });
   const band = LOAD_BANDS.findIndex((max) => sum <= max);
   return DAY_LOADS[band === -1 ? DAY_LOADS.length - 1 : band];
 }
@@ -263,6 +440,8 @@ export type R5Row = {
   program: { kind: ProgramKind; name: string | null };
   groupId: string | null;
   fields: Field[];
+  /** Indsatsen hvert felt koerer paa (indsatsvaelgeren); uden den gaelder sessionens eget niveau. */
+  efforts?: (Effort | null)[];
   /** Har rytteren en gemt dag (noget "Back to team program" kan fjerne)? */
   ownDay: boolean;
 };
@@ -330,7 +509,7 @@ function sortValue(row: R5Row, key: SortKey): string | number | null {
     case "program": return row.program.name?.toLowerCase() ?? null;
     case "form": return row.form;
     case "fatigue": return row.fatigue;
-    case "load": { const l = dayLoad(row.fields); return l ? DAY_LOADS.indexOf(l) : null; }
+    case "load": { const l = dayLoad(row.fields, row.efforts); return l ? DAY_LOADS.indexOf(l) : null; }
   }
 }
 

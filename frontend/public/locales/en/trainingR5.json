@@ -82,6 +82,13 @@
     "aria": "{name}: training today",
     "teamAria": "{scope}: training"
   },
+  "effortPicker": {
+    "levelAria": "{scope}: level",
+    "restAria": "{scope}: rest, no focus",
+    "hardHint": "Hard raises injury risk.",
+    "risk": "Injury risk {pct}%",
+    "riskGeneric": "Hard raises injury risk"
+  },
   "yourDay": {
     "onAll": "{n, plural, one {on # session} other {on all # sessions}}",
     "onSome": "on {n} of {total} sessions",

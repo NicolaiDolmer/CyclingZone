@@ -82,6 +82,13 @@
     "aria": "{name}: training vandaag",
     "teamAria": "{scope}: training"
   },
+  "effortPicker": {
+    "levelAria": "{scope}: niveau",
+    "restAria": "{scope}: rust, zonder focus",
+    "hardHint": "Zwaar vergroot het blessurerisico.",
+    "risk": "Blessurerisico {pct}%",
+    "riskGeneric": "Zwaar vergroot het blessurerisico"
+  },
   "yourDay": {
     "onAll": "{n, plural, one {op # sessie} other {op alle # sessies}}",
     "onSome": "op {n} van {total} sessies",

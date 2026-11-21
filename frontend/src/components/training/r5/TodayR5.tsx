@@ -50,12 +50,14 @@ import { groupRidersByType, UNTYPED_KEY } from "../../../lib/trainingRoster.js";
 import { formatDate } from "../../../lib/intl.js";
 import {
   AGE_FILTERS, ALL_SESSIONS_STORAGE_KEY, EFFORTS, NO_FILTERS, NO_GROUP, PROGRAM_CHOICE, RECOVERY_CHOICE, STAGE,
-  bulkPlan, dayEffort, dayFields, dayLoad, effortOf, filtersActive, matchesFilters, matchesOverview, nextSort,
-  overviewCounts, readStoredFlag, settledDayFields, sortR5Rows, statusKeys, teamLine, toggleAllSelection, toggleOne, trainingChoiceOf,
-  writeForEffort, writeForTraining, writeStoredFlag, yourDay,
-  type Effort, type Field, type Filters, type OverviewKey, type R5Row, type SettledActivity, type SettledRow, type Sort, type SortKey, type StatusKey,
-  type YourDay,
+  bulkPlan, bulkPlanLevels, dayEffort, dayFields, dayLoad, effortOf, fieldEfforts, filtersActive, levelForDayEntry, matchesFilters,
+  matchesOverview, nextSort, overviewCounts, planEffort, readStoredFlag, settledDayFields, settledFieldEfforts, showsInjuryRisk,
+  sortR5Rows, statusKeys, teamLine, toggleAllSelection, toggleOne, trainingChoiceOf,
+  writeForEffort, writeForLevel, writeForTraining, writeForTrainingAtLevel, writeStoredFlag, yourDay,
+  type Effort, type EffortLevel, type Field, type Filters, type OverviewKey, type R5Row, type SettledActivity, type SettledRow, type Sort,
+  type SortKey, type StatusKey, type YourDay,
 } from "./todayR5Model.ts";
+import EffortPickerR5, { HardRiskLine } from "./EffortPickerR5.tsx";
 
 // Et afregnet felts traening: hviledage som deres dagtype, ellers sessionen (samme
 // stige som den gamle fanes afregnede kolonne).
@@ -116,8 +118,15 @@ export type TodayR5Props = {
   fatigueRules: unknown;
   assistantPanel: ReactNode;
   bulkMessage: ReactNode;
-  onPlan: (riderId: string, dayType: string, session: string | null) => Promise<boolean>;
-  onBulk: (choice: string, ids: string[]) => Promise<boolean>;
+  /**
+   * #7947 PR 3: er indsatsvaelgeren Let/Mellem/Haard tilladt? Kommer fra stedet der kender
+   * kontakten training_effort_levels (feltet `effortLevels` i traeningssvaret). Manglende
+   * felt = false = de fire knapper som foer.
+   */
+  effortLevels?: boolean;
+  /** `effort` (easy | normal | hard) sendes kun naar vaelgeren er taendt; ellers udeladt, som i dag. */
+  onPlan: (riderId: string, dayType: string, session: string | null, effort?: EffortLevel | null) => Promise<boolean>;
+  onBulk: (choice: string, ids: string[], effort?: EffortLevel | null) => Promise<boolean>;
   onPickSession: (riderId: string) => void;
   onReset: (riderId: string) => Promise<Result>;
   /** Fjerner kun rytterens egen dag (aldrig hans ugeplan): traeningsvaelgerens "Program". */
@@ -166,6 +175,12 @@ type Row = R5Row & {
   /** Traeningsvaelgerens vaerdi: "program" eller traeningen rytterens egen dag bygger paa. */
   choice: string;
   yourDay: YourDay | null;
+  /** Den indsats hvert felt koerer paa (sessionens eget niveau, eller det valgte med indsatsvaelgeren). */
+  efforts: (Effort | null)[];
+  /** Rytterens egen dags indsats (trykket i vaelgeren); null = ingen egen dag. */
+  ownEffort: Effort | null;
+  /** Skaderisikoen fra spillets tilstand (0-1), vist kun paa Haard. */
+  risk: number | null;
 };
 
 // Raekkens og holdlinjens traeningsvalg, som TodayR5 holder (en traening valgt i
@@ -301,7 +316,7 @@ function YourDayLine({ row, day, r5 }: { row: Row; day: YourDay; r5: TodayR5Prop
   const { t: tR5 } = useTranslation("trainingR5"); // #7947: lazy namespace (I18nReadyGate i TrainingPage)
   const name = useTrainingName();
   const busy = r5.savingId === row.id || r5.bulkApplying;
-  const effort = effortOf(day.session);
+  const effort = row.ownEffort;
   const withEffort = day.session !== "rest" && day.session !== RECOVERY_CHOICE && effort;
   return (
     <span className="text-2xs text-cz-2" data-testid="r5-your-day">
@@ -345,9 +360,29 @@ function SourceLine({ row, r5 }: { row: Row; r5: TodayR5Props }) {
   );
 }
 
+// Indsatsknapperne: de fire (Rest | Easy | Medium | Hard) som foer, eller med
+// training_effort_levels indsatsvaelgeren (Let | Mellem | Haard + Hvile for sig, #7947 PR 3).
+function EffortControl({ levelsOn, label, scope, value, onPick, disabled, full = false, testId }: {
+  levelsOn: boolean; label: string; scope: string; value: Effort | null; onPick: (effort: Effort) => void;
+  disabled: boolean; full?: boolean; testId: string;
+}) {
+  const { t: tR5 } = useTranslation("trainingR5"); // #7947: lazy namespace (I18nReadyGate i TrainingPage)
+  if (levelsOn) return <EffortPickerR5 value={value} onPick={onPick} disabled={disabled} scope={scope} full={full} testId={testId} />;
+  return (
+    <Segmented
+      label={label}
+      value={value ?? "none"}
+      onChange={(v: Effort) => onPick(v)}
+      options={EFFORTS.map((e) => ({ value: e, label: tR5(`effort.${e}`), disabled }))}
+      className={full ? "w-full" : ""}
+    />
+  );
+}
+
 function QuickSelect({ row, r5, choices, full = false, tour }: { row: Row; r5: TodayR5Props; choices: Choices; full?: boolean; tour?: string }) {
   const { t } = useTranslation("training");
   const { t: tR5 } = useTranslation("trainingR5"); // #7947: lazy namespace (I18nReadyGate i TrainingPage)
+  const levelsOn = r5.effortLevels === true;
   const busy = r5.savingId === row.id || r5.bulkApplying;
   if (r5.trainedToday) {
     return (
@@ -358,16 +393,31 @@ function QuickSelect({ row, r5, choices, full = false, tour }: { row: Row; r5: T
     );
   }
   // Det trykkede segment er rytterens egen dag; et program eller ingen dag staar i linjen under.
-  const pressed = row.yourDay ? effortOf(row.yourDay.session) : null;
+  const pressed = row.ownEffort;
+  const focus = {
+    storedFocus: row.plan?.focus ?? null, assistantFocus: r5.smartDefaultFocus[row.id] ?? null, chosenFocus: choices.chosen[row.id] ?? null,
+  };
   const choose = (effort: Effort) => {
-    const w = writeForEffort(effort, {
-      storedFocus: row.plan?.focus ?? null, assistantFocus: r5.smartDefaultFocus[row.id] ?? null, chosenFocus: choices.chosen[row.id] ?? null,
-    });
+    if (levelsOn) {
+      // Hver session maa koere paa hvert niveau: tryk skriver den valgte/gemte session paa det trykkede niveau.
+      const w = writeForLevel(effort, focus);
+      if (w.kind === "pick") r5.onPickSession(row.id);
+      else void r5.onPlan(row.id, w.dayType, w.session, w.effort);
+      return;
+    }
+    const w = writeForEffort(effort, focus);
     if (w.kind === "pick") r5.onPickSession(row.id);
     else void r5.onPlan(row.id, w.dayType, w.session);
   };
-  // Et valg i vaelgeren gemmes straks paa traeningens egen indsats; "Program" fjerner kun dagen.
+  // Et valg i vaelgeren gemmes straks paa traeningens egen indsats (med niveauer: paa dagens niveau); "Program" fjerner kun dagen.
   const pickTraining = (choice: string) => {
+    if (levelsOn) {
+      const w = writeForTrainingAtLevel(choice, row.ownEffort);
+      choices.remember(row.id, w.kind === "clear" ? null : choice);
+      if (w.kind === "clear") void r5.onClearPlan(row.id);
+      else if (w.kind === "write") void r5.onPlan(row.id, w.dayType, w.session, w.effort);
+      return;
+    }
     const w = writeForTraining(choice);
     choices.remember(row.id, w.kind === "clear" ? null : choice);
     if (w.kind === "clear") void r5.onClearPlan(row.id);
@@ -380,15 +430,15 @@ function QuickSelect({ row, r5, choices, full = false, tour }: { row: Row; r5: T
       <div className={full ? "flex flex-col items-stretch gap-1.5 [&_[role=group]_button]:flex-1" : "flex flex-wrap items-center gap-x-2 gap-y-1"}>
         <TrainingPicker value={row.choice} onPick={pickTraining} disabled={busy} full={full}
           label={tR5("training.aria", { name: row.name })} testId="r5-row-training" />
-        <Segmented
-          label={tR5("quickLabel", { name: row.name })}
-          value={pressed ?? "none"}
-          onChange={(v: Effort) => choose(v)}
-          options={EFFORTS.map((e) => ({ value: e, label: tR5(`effort.${e}`), disabled: busy }))}
-          className={full ? "w-full" : ""}
-        />
+        <EffortControl levelsOn={levelsOn} label={tR5("quickLabel", { name: row.name })} scope={row.name} value={pressed}
+          onPick={choose} disabled={busy} full={full} testId="r5-row-effort" />
       </div>
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5"><SourceLine row={row} r5={r5} />{r5.justSaved.has(row.id) && <SavedMark />}</div>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+        <SourceLine row={row} r5={r5} />
+        {/* Skaderisikoen staar kun paa Haard (ejer 20/11). */}
+        {levelsOn && showsInjuryRisk(row.effective) && <HardRiskLine risk={row.risk} />}
+        {r5.justSaved.has(row.id) && <SavedMark />}
+      </div>
       {error && <span role="alert" className="text-3xs text-cz-danger">{t([`planActionError_${error}`, "planActionErrorGeneric"])}</span>}
     </div>
   );
@@ -414,7 +464,7 @@ function SessionsRow({ row, r5, mobile = false }: { row: Row; r5: TodayR5Props; 
             </span>,
           );
         }
-        const effort = effortOf(f);
+        const effort = row.efforts[i];
         const name = f ? t([sessionI18nKey("dayPanel.session", f), `dayPanel.dayType_${f}`], { defaultValue: f }) : tR5("source.noDay");
         const body = (
           <>
@@ -527,6 +577,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
   }, [r5.groups]);
   const groupNames = useMemo(() => groupNameByRider(r5.groups ?? []), [r5.groups]);
 
+  const levelsOn = r5.effortLevels === true; // #7947 PR 3: Let/Mellem/Haard (training_effort_levels)
   const rows: Row[] = useMemo(() => r5.riders.map((rider) => {
     const id = rider.id;
     const cond = r5.condition[id] ?? {};
@@ -555,6 +606,19 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
     const daysOver70 = daysOverLimit(r5.fatigueDays70, id);
     const age = ageForSeason(rider.birthdate, r5.seasonYear) as number | null;
     const own = hasOwnProgram({ weekDays, plan });
+    // Indsatsvaelgeren (#7947 PR 3): hvert felts indsats er kvitteringens, programcellens eller
+    // rytterens egen dags; uden kontakten (eller uden et niveau) er den sessionens eget niveau.
+    const settledEfforts = levelsOn ? settledFieldEfforts(r5.settledToday?.[id]) : null;
+    const todayEntry = weekDays?.[r5.todayWeekday] ?? null;
+    const ownLevel = levelsOn ? planEffort(plan) : null;
+    const efforts = fieldEfforts(fields, (slot) => {
+      if (!levelsOn) return null;
+      const settled = settledEfforts?.[slot] ?? null;
+      if (settled) return settled;
+      const fromProgram = programSessionToday(weekDays, WEEKDAY_KEYS, r5.todayWeekday, slot + 1) != null;
+      return fromProgram ? levelForDayEntry(todayEntry, slot) : ownLevel;
+    });
+    const rowYourDay = yourDay(fields, planSession ?? null);
     return {
       id,
       name: `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim(),
@@ -576,8 +640,11 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
       choice: trainingChoiceOf(plan),
       // Linjen under raekken: dagens egen traening paa de felter den faktisk faar
       // (et programfelt eller et loebsfelt vinder, samme stige som motoren).
-      yourDay: yourDay(fields, planSession ?? null),
-      effective: dayEffort(fields),
+      yourDay: rowYourDay,
+      effective: dayEffort(fields, efforts),
+      efforts,
+      ownEffort: rowYourDay ? (levelsOn ? ownLevel : effortOf(rowYourDay.session)) : null,
+      risk: typeof cond.risk === "number" ? cond.risk : null,
       rider,
       daysOver70,
       injuryLabel: injuryMsg ? t(injuryMsg.key, { days: injuryMsg.days }) : null,
@@ -615,6 +682,15 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
   // haard traening faar aldrig et gaet: han bliver staaende markeret, og linjen siger
   // at en traening skal vaelges.
   const applyEffort = async (effort: Effort, ids: string[]) => {
+    if (levelsOn) {
+      // Indsatsvaelgeren (#7947 PR 3): hver session paa det trykkede niveau; Hvile uden fokus.
+      const planned = bulkPlanLevels(effort, ids, focusOf, teamTraining);
+      setSkippedHard(planned.skipped.length);
+      let done = planned.calls.length > 0;
+      for (const call of planned.calls) done = (await r5.onBulk(call.choice, call.ids, call.effort)) && done;
+      if (done) setSelected(new Set(planned.skipped));
+      return;
+    }
     const { calls, skipped } = bulkPlan(effort, ids, focusOf, teamTraining);
     setSkippedHard(skipped.length);
     let ok = calls.length > 0;
@@ -686,11 +762,13 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
     <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-cz-border px-3 py-2 text-xs ${r5.phone ? "gap-x-2" : ""}`} data-testid="r5-team-line">
       <span className="font-semibold tabular-nums text-cz-1" data-testid="r5-team-scope">{scopeWord}</span>
       {locked ? <span className="text-cz-3">{t("oneTap.locked")}</span> : (
-        <div className={r5.phone ? "flex basis-full flex-col items-stretch gap-1.5 [&_[role=group]]:w-full [&_[role=group]_button]:flex-1" : "flex items-center gap-2"}>
+        <div className={r5.phone
+          ? `flex basis-full flex-col items-stretch gap-1.5 ${levelsOn ? "" : "[&_[role=group]]:w-full [&_[role=group]_button]:flex-1"}`
+          : "flex items-center gap-2"}>
           <TrainingPicker value={teamTraining} onPick={(v) => { setTeamTraining(v); setSkippedHard(0); }} disabled={r5.bulkApplying}
             full={r5.phone} label={tR5("training.teamAria", { scope: scopeWord })} testId="r5-team-training" />
-          <Segmented label={scopeWord} value="none" onChange={(v: Effort) => { void applyEffort(v, line.ids); }}
-            options={EFFORTS.map((e) => ({ value: e, label: tR5(`effort.${e}`), disabled: r5.bulkApplying || line.ids.length === 0 }))} />
+          <EffortControl levelsOn={levelsOn} label={scopeWord} scope={scopeWord} value={null} onPick={(v) => { void applyEffort(v, line.ids); }}
+            disabled={r5.bulkApplying || line.ids.length === 0} full={r5.phone} testId="r5-team-effort" />
         </div>
       )}
       {skippedHard > 0 && !locked && (
@@ -720,9 +798,9 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
   const setForGroup = (g: (typeof groups)[number]) => !locked && (
     <span className="ms-auto inline-flex items-center gap-2">
       <span className="text-cz-2">{t("today.setForGroup")}</span>
-      <Segmented label={`${t("today.setForGroup")} ${g.label}`} value="none"
-        onChange={(v: Effort) => { void applyEffort(v, g.rows.filter((r) => !r.racing).map((r) => r.id)); }}
-        options={EFFORTS.map((e) => ({ value: e, label: tR5(`effort.${e}`), disabled: r5.bulkApplying }))} />
+      <EffortControl levelsOn={levelsOn} label={`${t("today.setForGroup")} ${g.label}`} scope={g.label} value={null}
+        onPick={(v) => { void applyEffort(v, g.rows.filter((r) => !r.racing).map((r) => r.id)); }}
+        disabled={r5.bulkApplying} testId="r5-group-effort" />
     </span>
   );
 
@@ -766,7 +844,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
             {g.rows.map((row) => {
               const o = isOpen(row.id);
               const sel = selected.has(row.id);
-              const load = dayLoad(row.fields);
+              const load = dayLoad(row.fields, row.efforts);
               return (
                 <Fragment key={row.id}>
                   <tr className={`border-t border-cz-border first:border-t-0 ${o || sel ? "bg-cz-subtle/40" : ""}`} data-testid="r5-row">
@@ -847,10 +925,10 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
                 <span className="font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-1">{g.label}</span>
                 <span className="font-data tabular-nums text-cz-3">{g.rows.length}</span>
                 {!locked && (
-                  <div className="basis-full [&_[role=group]]:w-full [&_button]:flex-1">
-                    <Segmented label={`${t("today.setForGroup")} ${g.label}`} value="none"
-                      onChange={(v: Effort) => { void applyEffort(v, g.rows.filter((r) => !r.racing).map((r) => r.id)); }}
-                      options={EFFORTS.map((e) => ({ value: e, label: tR5(`effort.${e}`), disabled: r5.bulkApplying }))} />
+                  <div className={`basis-full ${levelsOn ? "" : "[&_[role=group]]:w-full [&_button]:flex-1"}`}>
+                    <EffortControl levelsOn={levelsOn} label={`${t("today.setForGroup")} ${g.label}`} scope={g.label} value={null}
+                      onPick={(v) => { void applyEffort(v, g.rows.filter((r) => !r.racing).map((r) => r.id)); }}
+                      disabled={r5.bulkApplying} full testId="r5-group-effort" />
                   </div>
                 )}
               </li>
@@ -872,7 +950,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
                     </span>
                     <span><FormPlate value={row.form} /></span>
                     <span><FatiguePlate value={row.fatigue} /></span>
-                    <span>{row.racing ? <RaceCell row={row} compact /> : <span className="[&>span]:whitespace-normal [&>span]:text-2xs [&>span]:leading-tight"><DayLoadCell load={dayLoad(row.fields)} label={(l) => tR5(`load.${l}`)} /></span>}</span>
+                    <span>{row.racing ? <RaceCell row={row} compact /> : <span className="[&>span]:whitespace-normal [&>span]:text-2xs [&>span]:leading-tight"><DayLoadCell load={dayLoad(row.fields, row.efforts)} label={(l) => tR5(`load.${l}`)} /></span>}</span>
                     <span>{!pickMode && (o ? <ChevronDownIcon size={13} aria-hidden="true" className="text-cz-3" /> : <ChevronRightIcon size={13} aria-hidden="true" className="text-cz-3" />)}</span>
                   </button>
                   {/* Eet tryk som foer (ejer 20/11): valgknapperne staar i raekken. */}

@@ -82,6 +82,13 @@
     "aria": "{name}: træning i dag",
     "teamAria": "{scope}: træning"
   },
+  "effortPicker": {
+    "levelAria": "{scope}: niveau",
+    "restAria": "{scope}: hvile, uden fokus",
+    "hardHint": "Hård øger skaderisikoen.",
+    "risk": "Skaderisiko {pct} %",
+    "riskGeneric": "Hård øger skaderisikoen"
+  },
   "yourDay": {
     "onAll": "{n, plural, one {på # pas} other {på alle # pas}}",
     "onSome": "på {n} af {total} pas",

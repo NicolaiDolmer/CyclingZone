@@ -82,6 +82,13 @@
     "aria": "{name} : entraînement du jour",
     "teamAria": "{scope} : entraînement"
   },
+  "effortPicker": {
+    "levelAria": "{scope} : niveau",
+    "restAria": "{scope} : repos, sans séance",
+    "hardHint": "Dur augmente le risque de blessure.",
+    "risk": "Risque de blessure {pct} %",
+    "riskGeneric": "Dur augmente le risque de blessure"
+  },
   "yourDay": {
     "onAll": "{n, plural, one {sur # séance} other {sur les # séances}}",
     "onSome": "sur {n} séances sur {total}",

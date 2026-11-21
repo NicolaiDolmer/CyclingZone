@@ -82,6 +82,13 @@
     "aria": "{name}: entrenamiento de hoy",
     "teamAria": "{scope}: entrenamiento"
   },
+  "effortPicker": {
+    "levelAria": "{scope}: nivel",
+    "restAria": "{scope}: descanso, sin enfoque",
+    "hardHint": "Duro aumenta el riesgo de lesión.",
+    "risk": "Riesgo de lesión {pct} %",
+    "riskGeneric": "Duro aumenta el riesgo de lesión"
+  },
   "yourDay": {
     "onAll": "{n, plural, one {en # sesión} other {en las # sesiones}}",
     "onSome": "en {n} de {total} sesiones",

@@ -10,6 +10,8 @@ import {
   dayEffort, dayFields, dayLoad, effortOf, isTraining, matchesFilters, nextSort, overviewCounts,
   bulkPlan, readStoredFlag, settledDayFields, sortR5Rows, statusKeys, teamLine, toggleAllSelection, toggleOne, trainingChoiceOf,
   writeForEffort, writeForTraining, writeStoredFlag, yourDay,
+  bulkPlanLevels, effortOfIntensity, effortOfLevel, fieldEfforts, injuryRiskPercent, levelForDayEntry, levelOfEffort, planEffort,
+  settledFieldEfforts, showsInjuryRisk, writeForLevel, writeForTrainingAtLevel,
   type R5Row, type SettledActivity, type SettledRow, type StatusInput,
 } from "./todayR5Model.ts";
 import { trainingR5On } from "./trainingPageR5Flag.ts";
@@ -289,4 +291,131 @@ test("kontakten off: I dag-fanens gamle indhold er praecis som paa merge-basen, 
   // R5-komponenten naevnes kun i import, kontaktens gren og dens props.
   const mounts = page.split("\n").filter((l) => l.includes("<TodayR5Lazy"));
   assert.equal(mounts.length, 1, "R5 monteres eet sted, bag kontakten");
+});
+
+// --- Indsatsvaelgeren Let/Mellem/Haard (#7947 PR 3, #8530) ---------------------------------
+
+test("niveau-ord: fladens Mellem er API'ets normal; Hvile er intet niveau", () => {
+  assert.equal(levelOfEffort("easy"), "easy");
+  assert.equal(levelOfEffort("medium"), "normal");
+  assert.equal(levelOfEffort("hard"), "hard");
+  assert.equal(levelOfEffort("rest"), null);
+  assert.equal(levelOfEffort(null), null);
+  assert.equal(effortOfLevel("normal"), "medium");
+  assert.equal(effortOfLevel("medium"), null, "kun API'ets ord taeller");
+  assert.equal(effortOfLevel("rest"), null);
+  assert.equal(effortOfIntensity("rest"), "rest");
+  assert.equal(effortOfIntensity("recovery"), "rest");
+  assert.equal(effortOfIntensity("hard"), "hard");
+  assert.equal(effortOfIntensity("ukendt"), null);
+});
+
+test("planEffort: rytterens egen dag er planens intensitet, ellers sessionens eget niveau", () => {
+  assert.equal(planEffort({ focus: "sprint", intensity: "normal" }), "medium", "en sprint paa Mellem");
+  assert.equal(planEffort({ focus: "endurance", intensity: "hard" }), "hard");
+  assert.equal(planEffort({ focus: "sprint", intensity: "rest" }), "rest");
+  assert.equal(planEffort({ focus: "restitution", intensity: "easy" }), "rest");
+  assert.equal(planEffort({ focus: "sprint", intensity: "ukendt" }), "hard", "ukendt intensitet: sessionens eget niveau");
+  assert.equal(planEffort({ focus: null, intensity: "hard" }), null);
+  assert.equal(planEffort(null), null);
+});
+
+test("levelForDayEntry: laeser tolerant; en celle uden niveau-noegler aendrer intet", () => {
+  assert.equal(levelForDayEntry({ session: "tempo", intensity: "normal" }, 0), null, "backend sender ikke noeglerne endnu");
+  assert.equal(levelForDayEntry({ effort: "hard" }, 3), "hard");
+  assert.equal(levelForDayEntry({ effort: "easy", slotEfforts: [null, "hard"] }, 1), "hard", "feltets eget vinder");
+  assert.equal(levelForDayEntry({ effort: "easy", slotEfforts: [null, "hard"] }, 0), "easy", "ellers dagens");
+  assert.equal(levelForDayEntry({ effort: "medium" }, 0), null, "ugyldigt ord taeller som fraevaerende");
+  assert.equal(levelForDayEntry(undefined), null);
+  assert.equal(levelForDayEntry("x"), null);
+});
+
+test("fieldEfforts: uden niveau er det sessionens eget (som foer); hvile ignorerer niveauet", () => {
+  const fields = ["sprint", "endurance", STAGE, null, "rest"];
+  assert.deepEqual(fieldEfforts(fields, () => null), ["hard", "easy", null, null, "rest"]);
+  assert.deepEqual(fieldEfforts(fields, () => "easy"), ["easy", "easy", null, null, "rest"]);
+  assert.deepEqual(fieldEfforts(["recovery"], () => "hard"), ["rest"]);
+  assert.deepEqual(fieldEfforts(["sprint", "tempo", "technique"], () => null), ["sprint", "tempo", "technique"].map((s) => effortOf(s)));
+});
+
+test("dayEffort og dayLoad: uden efforts uaendret, med efforts det valgte niveau", () => {
+  const fields = ["endurance", "endurance", "endurance", "endurance", "endurance"];
+  assert.equal(dayEffort(fields), "easy");
+  assert.equal(dayEffort(fields, ["hard", "easy", "easy", "easy", "easy"]), "hard");
+  assert.equal(dayLoad(fields), dayLoad(fields, undefined));
+  assert.equal(dayLoad(fields, fields.map(() => "hard" as const)), "veryHard", "fem hoeje felter er en meget haard dag");
+  assert.equal(dayLoad(fields, fields.map(() => null)), dayLoad(fields), "et felt uden indsats falder tilbage til sessionens");
+});
+
+test("writeForLevel: hver session paa det trykkede niveau; Hvile uden fokus; Haard gaetter aldrig", () => {
+  const none = { storedFocus: null, assistantFocus: null };
+  assert.deepEqual(writeForLevel("rest", { storedFocus: "sprint", assistantFocus: "vo2max" }), { kind: "write", dayType: "rest", session: null, effort: null });
+  assert.deepEqual(writeForLevel("easy", { storedFocus: "sprint", assistantFocus: null }), { kind: "write", dayType: "training", session: "sprint", effort: "easy" });
+  assert.deepEqual(writeForLevel("medium", { storedFocus: "vo2max", assistantFocus: null }), { kind: "write", dayType: "training", session: "vo2max", effort: "normal" });
+  assert.deepEqual(writeForLevel("hard", { storedFocus: "endurance", assistantFocus: "vo2max" }), { kind: "write", dayType: "training", session: "endurance", effort: "hard" });
+  assert.deepEqual(writeForLevel("hard", { storedFocus: "aero", assistantFocus: null }), { kind: "write", dayType: "skill", session: "aero", effort: "hard" });
+  assert.deepEqual(writeForLevel("hard", { storedFocus: "sprint", assistantFocus: "vo2max", chosenFocus: "threshold" }), { kind: "write", dayType: "training", session: "threshold", effort: "hard" }, "den valgte traening vinder");
+  assert.deepEqual(writeForLevel("easy", none), { kind: "write", dayType: "training", session: "endurance", effort: "easy" });
+  assert.deepEqual(writeForLevel("medium", none), { kind: "write", dayType: "training", session: "tempo", effort: "normal" });
+  assert.deepEqual(writeForLevel("hard", none), { kind: "pick" });
+  assert.deepEqual(writeForLevel("hard", { storedFocus: "rest", assistantFocus: "recovery" }), { kind: "pick" }, "hvile er ikke et fokus");
+});
+
+test("writeForTrainingAtLevel: et valg beholder dagens niveau; paa hvile eller uden dag faar det sit eget", () => {
+  assert.deepEqual(writeForTrainingAtLevel("sprint", "easy"), { kind: "write", dayType: "training", session: "sprint", effort: "easy" });
+  assert.deepEqual(writeForTrainingAtLevel("sprint", "medium"), { kind: "write", dayType: "training", session: "sprint", effort: "normal" });
+  assert.deepEqual(writeForTrainingAtLevel("sprint", "rest"), { kind: "write", dayType: "training", session: "sprint", effort: null });
+  assert.deepEqual(writeForTrainingAtLevel("sprint", null), { kind: "write", dayType: "training", session: "sprint", effort: null });
+  assert.deepEqual(writeForTrainingAtLevel("aero", "hard"), { kind: "write", dayType: "skill", session: "aero", effort: "hard" });
+  assert.deepEqual(writeForTrainingAtLevel(RECOVERY_CHOICE, "hard"), { kind: "write", dayType: "recovery", session: null, effort: null });
+  assert.deepEqual(writeForTrainingAtLevel(PROGRAM_CHOICE, "hard"), { kind: "clear" });
+});
+
+test("bulkPlanLevels: een skrivning pr. session paa det trykkede niveau, Hvile uden fokus, Haard springer ukendte over", () => {
+  const known: Record<string, { storedFocus: string | null; assistantFocus: string | null }> = {
+    a: { storedFocus: "sprint", assistantFocus: null },
+    b: { storedFocus: null, assistantFocus: "vo2max" },
+    c: { storedFocus: null, assistantFocus: null },
+  };
+  const focus = (id: string) => known[id];
+  assert.deepEqual(bulkPlanLevels("rest", ["a", "b"], focus), { calls: [{ choice: "rest", effort: null, ids: ["a", "b"] }], skipped: [] });
+  assert.deepEqual(bulkPlanLevels("medium", ["a", "b", "c"], focus), {
+    calls: [{ choice: "sprint", effort: "normal", ids: ["a"] }, { choice: "vo2max", effort: "normal", ids: ["b"] }, { choice: "tempo", effort: "normal", ids: ["c"] }],
+    skipped: [],
+  });
+  assert.deepEqual(bulkPlanLevels("hard", ["a", "c"], focus), { calls: [{ choice: "sprint", effort: "hard", ids: ["a"] }], skipped: ["c"] });
+  assert.deepEqual(bulkPlanLevels("easy", ["a", "b"], focus, "threshold"), { calls: [{ choice: "threshold", effort: "easy", ids: ["a", "b"] }], skipped: [] }, "holdlinjens traening paa et hvilket som helst niveau");
+  assert.deepEqual(bulkPlanLevels("hard", [], focus), { calls: [], skipped: [] });
+});
+
+test("settledFieldEfforts: det et afregnet felt koerte paa; felter uden kvittering falder tilbage til planen", () => {
+  const receipt: SettledRow = {
+    activities: [
+      { focus: "tempo", intensity: "hard", game_day: 2 },
+      { focus: "sprint", intensity: "easy", game_day: 1 },
+      { race_day: true, game_day: 3 },
+    ],
+  };
+  assert.deepEqual(settledFieldEfforts(receipt, 5), ["easy", "hard", null, null, null]);
+  assert.deepEqual(settledFieldEfforts({ focus: "sprint", intensity: "normal" }, 2), ["medium", "medium"], "aeldre kvittering uden aktiviteter gaelder alle felter");
+  assert.deepEqual(settledFieldEfforts(null, 2), [null, null]);
+});
+
+test("skaderisiko vises kun paa Haard, som hele procent", () => {
+  assert.equal(showsInjuryRisk("hard"), true);
+  for (const e of ["rest", "easy", "medium", null] as const) assert.equal(showsInjuryRisk(e), false);
+  assert.equal(injuryRiskPercent(0.08), 8);
+  assert.equal(injuryRiskPercent(0), 0);
+  assert.equal(injuryRiskPercent(1.4), 100);
+  assert.equal(injuryRiskPercent(null), null);
+  assert.equal(injuryRiskPercent(Number.NaN), null);
+  assert.equal(injuryRiskPercent(-0.1), null);
+});
+
+test("indsatsvaelgeren: kun et eksplicit true taender den, og effort sendes kun naar den er valgt", () => {
+  const todayR5 = readFileSync(join(here, "TodayR5.tsx"), "utf8");
+  assert.match(todayR5, /const levelsOn = r5\.effortLevels === true/, "kun et eksplicit true taender vaelgeren");
+  const hook = readFileSync(join(here, "../../../lib/useTraining.js"), "utf8");
+  assert.match(hook, /effort \? \{ dayType, session, effort \} : \{ dayType, session \}/, "effort sendes kun naar den er valgt");
+  assert.match(hook, /setEffortLevels\(.*\)\.effortLevels === true\)/, "manglende felt = slukket");
 });
