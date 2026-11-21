@@ -137,6 +137,18 @@
     "copyDone": "{n, plural, one {Copiado a # corredor} other {Copiado a # corredores}}",
     "legendRace": "Las carreras están en sus campos fijos y siempre se corren",
     "legendTaken": "Las sesiones que ocupa una carrera no se recuperan",
-    "todayLock": "Los campos de hoy se bloquean tras Entrenar ahora. Un plan guardado se aplica entonces desde mañana."
+    "todayLock": "Los campos de hoy se bloquean tras Entrenar ahora. Un plan guardado se aplica entonces desde mañana.",
+    "phone": {
+      "changeProgram": "Cambiar programa",
+      "close": "Cerrar",
+      "viewLabel": "Vista",
+      "viewDay": "Día",
+      "viewWeek": "Semana",
+      "prevDay": "Día anterior",
+      "nextDay": "Día siguiente",
+      "dayTabs": "Día",
+      "noRaces": "Sin carreras",
+      "fieldsOf": "Sesiones del {day}"
+    }
   }
 }

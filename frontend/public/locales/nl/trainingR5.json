@@ -137,6 +137,18 @@
     "copyDone": "{n, plural, one {Gekopieerd naar # renner} other {Gekopieerd naar # renners}}",
     "legendRace": "Koersen staan in hun vaste velden en worden altijd gereden",
     "legendTaken": "Sessies die een koers inneemt, worden niet ingehaald",
-    "todayLock": "De velden van vandaag worden vergrendeld na Nu trainen. Een opgeslagen plan geldt dan vanaf morgen."
+    "todayLock": "De velden van vandaag worden vergrendeld na Nu trainen. Een opgeslagen plan geldt dan vanaf morgen.",
+    "phone": {
+      "changeProgram": "Programma wijzigen",
+      "close": "Sluiten",
+      "viewLabel": "Weergave",
+      "viewDay": "Dag",
+      "viewWeek": "Week",
+      "prevDay": "Vorige dag",
+      "nextDay": "Volgende dag",
+      "dayTabs": "Dag",
+      "noRaces": "Geen koersen",
+      "fieldsOf": "Sessies op {day}"
+    }
   }
 }

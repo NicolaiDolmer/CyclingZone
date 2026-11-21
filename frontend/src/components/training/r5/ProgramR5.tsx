@@ -13,8 +13,8 @@
 //
 // Kun eksisterende API'er (useTrainingPrograms, useTrainingGroups, forecast,
 // traethedsgraensen). Rotation, prioritet og laas pr. dag findes ikke i backend
-// endnu; se designnoten i PR'en. Telefonen er midlertidigt en simpel stak af
-// desktop-visningen (TODO: den endelige telefonudgave kommer i et senere spor).
+// endnu; se designnoten i PR'en. Telefonen (#8547, ejer 21/11) er ProgramR5Phone: en skifter
+// Dag/Uge, Gem fast i bunden; data, kladder og gemme-kald er de samme som her.
 import { useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
@@ -39,9 +39,11 @@ import { sessionI18nKey } from "../../../lib/trainingDayTypes.js";
 import { PROGRAM_SLOTS, programName, programTagline, type CatalogProgram, type ProgramWeekDays } from "../../../lib/trainingPrograms.ts";
 import {
   AVAILABLE_KINDS, PROGRAM_VIEW_STORE, buildLibrary, catalogWeekDays, copyCandidates, copyDayIntoDraft, copyDayTargets,
-  draftSteps, draftTotal, parseSubjectKey, programKeyOf, rememberedKind, riderWeekDays, setDraftCell, subjectKey,
-  subjectsFor, weekCells, type Draft, type Kind, type Library, type R5Group, type R5Rider, type Subject, type WeekCell,
+  draftSteps, draftTotal, parseSubjectKey, programKeyOf, rememberedKind, riderWeekDays, setDraftCell, shortRiderName,
+  subjectKey, subjectsFor, weekCells, type Draft, type Kind, type Library, type R5Group, type R5Rider, type Subject,
+  type WeekCell,
 } from "./programR5Model.ts";
+import ProgramR5Phone, { type PhoneChip } from "./ProgramR5Phone.tsx";
 
 type RawRider = { id: string; firstname?: string | null; lastname?: string | null; primary_type?: string | null };
 type ProgramsClient = {
@@ -253,8 +255,129 @@ export default function ProgramR5({
   const title = program ? programName(program, lang) : subject ? tR5("programR5.ownWeek") : tR5("programR5.noneSelected");
   const intro = kind === "week" ? tR5("programR5.introWeek") : "";
 
+  const tonightEl = tonight ? <FatigueForecast entry={tonight} settled={forecast?.settled === true} label="" /> : null;
+  const limitEl = fatigueRules.enabled ? (
+    <div className="overflow-hidden rounded-cz border border-cz-border bg-cz-card [&>div]:border-t-0">
+      <FatigueRuleSummary data={fatigueRules.data} onEdit={() => setLimitOpen((v) => !v)} />
+      {limitOpen && <div className="border-t border-cz-border p-4"><FatigueRulePanel rules={fatigueRules} /></div>}
+    </div>
+  ) : null;
+  const noteEl = note ? (
+    <p role="status" className={`text-xs ${note.tone === "ok" ? "text-cz-success" : "text-cz-danger"}`}>{note.text}</p>
+  ) : null;
+  const copyModal = copyOpen && program ? (
+    <CopyToRiders
+      program={program}
+      lang={lang}
+      candidates={copyCandidates(program.key, library, riders)}
+      busy={busy}
+      onClose={() => setCopyOpen(false)}
+      onCopy={async (ids) => {
+        let done = 0;
+        for (const id of ids) {
+          const result = await programs.applyProgram(program.key, id);
+          if (result.ok) done += 1;
+        }
+        if (ids.length) await groups.reload();
+        setCopyOpen(false);
+        setNote(done === ids.length
+          ? { tone: "ok", text: tR5("programR5.copyDone", { n: done }) }
+          : { tone: "error", text: tR5("programR5.saveError") });
+      }}
+    />
+  ) : null;
+
+  // #8547 telefon: Skifter Dag/Uge. "Copy to riders" bliver i sidehovedet, Gem staar fast i bunden.
+  if (mobile) {
+    const entry = library.programs.find((p) => p.key === programKey);
+    const onNames = entry ? [...entry.groups.map((g) => g.name), ...entry.riders.map((id) => riderById.get(id)?.name ?? "")] : [];
+    const chipSubjects = subject && !subjects.some((s) => subjectKey(s) === sKey) ? [subject, ...subjects] : subjects;
+    const chips: PhoneChip[] = chipSubjects.map((s) => ({
+      key: subjectKey(s),
+      label: s.kind === "rider" ? shortRiderName(subjectName(s)) : subjectName(s),
+      active: subjectKey(s) === sKey,
+      group: s.kind === "group",
+    }));
+    const copyButton = (
+      <Button variant="secondary" size="md" className="min-h-11" disabled={!programKey || busy} onClick={() => setCopyOpen(true)}
+        title={programKey ? undefined : tR5("programR5.copyNeedsProgram")} data-testid="program-r5-copy">
+        {tR5("programR5.copyToRiders")}
+      </Button>
+    );
+    const riderType = subject?.kind === "rider" ? riderById.get(subject.id)?.type : null;
+    const hasHints = !subject || !!riderDays?.isSeed || !!riderType;
+    return (
+      <div className="flex flex-col" data-testid="program-r5">
+        {actionsEl ? createPortal(copyButton, actionsEl) : <div className="mb-3 flex justify-end">{copyButton}</div>}
+        <ProgramR5Phone
+          name={title}
+          subtitle={program
+            ? `${tR5("programR5.kind_week")} · ${onNames.length ? tR5("programR5.on", { names: onNames.join(", ") }) : tR5("programR5.notInUse")}`
+            : ""}
+          chips={chips}
+          onChip={(key) => setSubject(parseSubjectKey(key))}
+          renderLibrary={(close) => (
+            <>
+              {program && (
+                <AppliedTo library={library} programKey={program.key} riders={riders} groups={groupList} busy={busy}
+                  touch onAdd={putOn} onRemoveRider={removeRider} />
+              )}
+              <LibraryPanel
+                library={library}
+                catalog={programs.catalog}
+                lang={lang}
+                selectedProgram={programKey}
+                selectedSubject={sKey}
+                touch
+                riderName={(id) => riderById.get(id)?.name ?? ""}
+                onProgram={(key) => { pickProgram(key); close(); }}
+                onSubject={(next) => { pickSubject(next); close(); }}
+              />
+            </>
+          )}
+          limitEl={limitEl}
+          summary={total > 0
+            ? <span className="font-data tabular-nums" data-testid="program-r5-unsaved">{t("weekPlan.unsaved", { n: total })}</span>
+            : (program ? programTagline(program, lang) : intro)}
+          hints={hasHints ? (
+            <div className="flex flex-col gap-1">
+              {riderType && <p className="text-2xs text-cz-2">{tTypes(`types.${riderType}`)}</p>}
+              {!subject && <p className="text-2xs text-cz-3">{tR5("programR5.asWrittenNote")}</p>}
+              {riderDays?.isSeed && <p className="text-2xs text-cz-3">{t("programs.seededHint")}</p>}
+            </div>
+          ) : null}
+          footer={(
+            <>
+              {noteEl}
+              <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-2xs text-cz-3">
+                <span className="inline-flex items-center gap-1"><FlagIcon size={10} aria-hidden="true" />{tR5("programR5.legendRace")}</span>
+                <span>{tR5("programR5.legendTaken")}</span>
+              </p>
+            </>
+          )}
+          saveLabel={saving ? t("loading") : tR5("programR5.savePlan")}
+          saveDisabled={total === 0 || busy}
+          onSave={savePlan}
+          cells={cells}
+          weekdays={weekdays}
+          todayWeekday={todayWeekday}
+          todayLocked={todayLocked}
+          editable={editable && !busy}
+          sessionOrder={sessionOrder}
+          sessionLabel={sessionLabel}
+          dayLabel={dayLabel}
+          lang={lang}
+          tonight={tonightEl}
+          onEdit={editCell}
+          onCopyDay={copyDay}
+        />
+        {copyModal}
+      </div>
+    );
+  }
+
   return (
-    <div className={mobile ? "flex flex-col gap-4" : "grid grid-cols-[256px_minmax(0,1fr)] gap-5"} data-testid="program-r5">
+    <div className="grid grid-cols-[256px_minmax(0,1fr)] gap-5" data-testid="program-r5">
       {actionsEl ? createPortal(actions, actionsEl) : <div className="flex justify-end">{actions}</div>}
 
       <LibraryPanel
@@ -292,12 +415,7 @@ export default function ProgramR5({
           />
         )}
 
-        {fatigueRules.enabled && (
-          <div className="overflow-hidden rounded-cz border border-cz-border bg-cz-card [&>div]:border-t-0">
-            <FatigueRuleSummary data={fatigueRules.data} onEdit={() => setLimitOpen((v) => !v)} />
-            {limitOpen && <div className="border-t border-cz-border p-4"><FatigueRulePanel rules={fatigueRules} /></div>}
-          </div>
-        )}
+        {limitEl}
 
         <section>
           <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
@@ -307,7 +425,7 @@ export default function ProgramR5({
                 value={sKey}
                 onChange={(e) => { const next = parseSubjectKey(e.target.value); setSubject(next); }}
                 aria-label={tR5("programR5.weekFor")}
-                className="rounded-cz border border-cz-border bg-cz-card py-1 pe-2 ps-2 text-xs font-semibold text-cz-1 max-sm:min-h-11"
+                className="rounded-cz border border-cz-border bg-cz-card py-1 pe-2 ps-2 text-xs font-semibold text-cz-1"
               >
                 {subjects.length === 0 && !subject && <option value="">{tR5("programR5.asWritten")}</option>}
                 {subject && !subjects.some((s) => subjectKey(s) === sKey) && <option value={sKey}>{subjectName(subject)}</option>}
@@ -323,58 +441,33 @@ export default function ProgramR5({
           </div>
           {!subject && <p className="mb-1.5 text-2xs text-cz-3">{tR5("programR5.asWrittenNote")}</p>}
           {riderDays?.isSeed && <p className="mb-1.5 text-2xs text-cz-3">{t("programs.seededHint")}</p>}
-          <div className={mobile ? "overflow-x-auto" : ""}>
-            <WeekGrid
-              cells={cells}
-              weekdays={weekdays}
-              todayWeekday={todayWeekday}
-              todayLocked={todayLocked}
-              raceCount={raceToday.size}
-              editable={editable && !busy}
-              sessionOrder={sessionOrder}
-              sessionLabel={sessionLabel}
-              dayLabel={dayLabel}
-              tonight={tonight ? <FatigueForecast entry={tonight} settled={forecast?.settled === true} label="" /> : null}
-              mobile={mobile}
-              onEdit={editCell}
-              onCopyDay={copyDay}
-            />
-          </div>
+          <WeekGrid
+            cells={cells}
+            weekdays={weekdays}
+            todayWeekday={todayWeekday}
+            todayLocked={todayLocked}
+            raceCount={raceToday.size}
+            editable={editable && !busy}
+            sessionOrder={sessionOrder}
+            sessionLabel={sessionLabel}
+            dayLabel={dayLabel}
+            tonight={tonightEl}
+            onEdit={editCell}
+            onCopyDay={copyDay}
+          />
           <p className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-2xs text-cz-3">
             <span className="inline-flex items-center gap-1"><FlagIcon size={10} aria-hidden="true" />{tR5("programR5.legendRace")}</span>
             <span>{tR5("programR5.legendTaken")}</span>
           </p>
         </section>
 
-        {note && (
-          <p role="status" className={`text-xs ${note.tone === "ok" ? "text-cz-success" : "text-cz-danger"}`}>{note.text}</p>
-        )}
+        {noteEl}
         <p className="inline-flex items-center gap-1 text-2xs text-cz-3" data-testid="program-r5-today-lock">
           <LockIcon size={10} aria-hidden="true" />{tR5("programR5.todayLock")}
         </p>
       </section>
 
-      {copyOpen && program && (
-        <CopyToRiders
-          program={program}
-          lang={lang}
-          candidates={copyCandidates(program.key, library, riders)}
-          busy={busy}
-          onClose={() => setCopyOpen(false)}
-          onCopy={async (ids) => {
-            let done = 0;
-            for (const id of ids) {
-              const result = await programs.applyProgram(program.key, id);
-              if (result.ok) done += 1;
-            }
-            if (ids.length) await groups.reload();
-            setCopyOpen(false);
-            setNote(done === ids.length
-              ? { tone: "ok", text: tR5("programR5.copyDone", { n: done }) }
-              : { tone: "error", text: tR5("programR5.saveError") });
-          }}
-        />
-      )}
+      {copyModal}
     </div>
   );
 }
@@ -382,13 +475,14 @@ export default function ProgramR5({
 // --- Biblioteket ----------------------------------------------------------------------
 
 function LibraryPanel({
-  library, catalog, lang, selectedProgram, selectedSubject, riderName, onProgram, onSubject,
+  library, catalog, lang, selectedProgram, selectedSubject, riderName, onProgram, onSubject, touch = false,
 }: {
   library: Library;
   catalog: CatalogProgram[];
   lang: string;
   selectedProgram: string | null;
   selectedSubject: string;
+  touch?: boolean; // telefonens ark: mindst 44 px trykflader
   riderName: (id: string) => string;
   onProgram: (key: string) => void;
   onSubject: (s: Subject) => void;
@@ -405,8 +499,9 @@ function LibraryPanel({
     return p ? programName(p, lang) : tR5("programR5.ownWeek");
   };
   const row = "border-t border-cz-border px-3 py-2 first:border-t-0";
+  const tap = touch ? "min-h-11 " : "";
   const pick = (active: boolean) => (
-    `w-full text-start ${active ? "text-cz-accent-t" : "text-cz-1 hover:text-cz-accent-t"}`
+    `${tap}w-full text-start ${active ? "text-cz-accent-t" : "text-cz-1 hover:text-cz-accent-t"}`
   );
 
   return (
@@ -433,7 +528,7 @@ function LibraryPanel({
           })}
         </ul>
         {short.length < library.programs.length && (
-          <button type="button" onClick={() => setShowAll((v) => !v)} className="mt-1.5 text-xs font-medium text-cz-2 hover:text-cz-1"
+          <button type="button" onClick={() => setShowAll((v) => !v)} className={`${tap}mt-1.5 text-xs font-medium text-cz-2 hover:text-cz-1`}
             aria-expanded={showAll}>
             {showAll ? tR5("programR5.fewerPrograms") : tR5("programR5.allPrograms", { n: library.programs.length })}
           </button>
@@ -456,7 +551,7 @@ function LibraryPanel({
                   {g.members.map((m) => (
                     <li key={m.riderId} className="flex items-center justify-between gap-2 text-2xs">
                       <button type="button" onClick={() => onSubject({ kind: "rider", id: m.riderId })}
-                        className={`min-w-0 truncate text-start ${selectedSubject === `rider:${m.riderId}` ? "text-cz-accent-t" : "text-cz-2 hover:text-cz-1"}`}>
+                        className={`${tap}min-w-0 truncate text-start ${selectedSubject === `rider:${m.riderId}` ? "text-cz-accent-t" : "text-cz-2 hover:text-cz-1"}`}>
                         {riderName(m.riderId)}
                       </button>
                       {m.own && <span className="shrink-0 text-cz-1">{tR5("programR5.ownPlan", { name: nameOf(m.ownProgramKey) })}</span>}
@@ -496,20 +591,22 @@ function LibraryPanel({
 // --- Hvem programmet sidder paa ---------------------------------------------------------
 
 function AppliedTo({
-  library, programKey, riders, groups, busy, onAdd, onRemoveRider,
+  library, programKey, riders, groups, busy, onAdd, onRemoveRider, touch = false,
 }: {
   library: Library;
   programKey: string;
   riders: R5Rider[];
   groups: R5Group[];
   busy: boolean;
+  touch?: boolean; // telefonens ark: mindst 44 px trykflader
   onAdd: (value: string) => void;
   onRemoveRider: (riderId: string) => void;
 }) {
   const { t } = useTranslation("training");
   const { t: tR5 } = useTranslation("trainingR5"); // #7456: lazy namespace (I18nReadyGate i TrainingPage)
   const entry = library.programs.find((p) => p.key === programKey);
-  const chip = "inline-flex h-7 items-center gap-1 rounded-cz border border-cz-border bg-cz-card ps-2 pe-1 text-xs text-cz-1";
+  const h = touch ? "h-11" : "h-7";
+  const chip = `inline-flex ${h} items-center gap-1 rounded-cz border border-cz-border bg-cz-card ps-2 pe-1 text-xs text-cz-1`;
   const name = (id: string) => riders.find((r) => r.id === id)?.name ?? "";
   const freeGroups = groups.filter((g) => !entry?.groups.some((x) => x.id === g.id));
   const freeRiders = riders.filter((r) => !entry?.riders.includes(r.id));
@@ -526,12 +623,12 @@ function AppliedTo({
         <span key={id} className={chip}>
           <UserIcon size={12} aria-hidden="true" className="text-cz-3" />{name(id)}
           <button type="button" disabled={busy} onClick={() => onRemoveRider(id)} aria-label={tR5("programR5.remove", { name: name(id) })}
-            className="inline-flex h-6 w-6 items-center justify-center rounded-cz text-cz-3 hover:text-cz-1 disabled:opacity-50">
+            className={`inline-flex ${touch ? "h-11 w-11" : "h-6 w-6"} items-center justify-center rounded-cz text-cz-3 hover:text-cz-1 disabled:opacity-50`}>
             <XIcon size={11} />
           </button>
         </span>
       ))}
-      <span className="relative inline-flex h-7 items-center gap-1 rounded-cz border border-dashed border-cz-border px-2 text-xs text-cz-2 hover:text-cz-1">
+      <span className={`relative inline-flex ${h} items-center gap-1 rounded-cz border border-dashed border-cz-border px-2 text-xs text-cz-2 hover:text-cz-1`}>
         <PlusIcon size={12} aria-hidden="true" />{tR5("programR5.addTarget")}
         <select value="" disabled={busy} onChange={(e) => onAdd(e.target.value)} aria-label={tR5("programR5.addTarget")}
           className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-default">
@@ -553,7 +650,7 @@ function AppliedTo({
 // --- Ugen ---------------------------------------------------------------------------------
 
 function WeekGrid({
-  cells, weekdays, todayWeekday, todayLocked, raceCount, editable, sessionOrder, sessionLabel, dayLabel, tonight, mobile,
+  cells, weekdays, todayWeekday, todayLocked, raceCount, editable, sessionOrder, sessionLabel, dayLabel, tonight,
   onEdit, onCopyDay,
 }: {
   cells: WeekCell[][];
@@ -566,7 +663,6 @@ function WeekGrid({
   sessionLabel: (s: string) => string;
   dayLabel: (w: string) => string;
   tonight: ReactNode;
-  mobile: boolean;
   onEdit: (weekday: string, slot: number, session: string) => void;
   onCopyDay: (from: string, choice: string) => void;
 }) {
@@ -575,7 +671,7 @@ function WeekGrid({
   const head = "border-b border-s border-cz-border bg-cz-subtle px-2.5 py-1.5";
   const sideLabel = "flex items-center border-t border-cz-border px-2 font-data text-3xs uppercase leading-tight tracking-[.06em] text-cz-3";
   return (
-    <div className={`overflow-hidden rounded-cz border border-cz-border bg-cz-card ${mobile ? "min-w-[720px]" : ""}`} data-testid="program-r5-week">
+    <div className="overflow-hidden rounded-cz border border-cz-border bg-cz-card" data-testid="program-r5-week">
       <div className="grid grid-cols-[52px_repeat(7,minmax(0,1fr))]">
         <span className="border-b border-cz-border bg-cz-subtle" />
         {weekdays.map((weekday) => {
