@@ -598,17 +598,24 @@ export default function RiderTrainingTab({ rider, training, trainingHistory, pro
 
   // #8541: training_effort_levels (feltet `effortLevels` i traeningssvaret). Off = fanen som i dag.
   const levelsOn = training.effortLevels === true;
+  // #8541 (Codex P2): trykkede rytteren Haard uden en kendt session, aabnes panelet; saa skal
+  // den valgte session gemmes paa det niveau han trykkede, ikke paa dagens gamle.
+  const [pendingEffort, setPendingEffort] = useState(null);
+  function closePanel() {
+    setPanelOpen(false);
+    setPendingEffort(null);
+  }
 
   async function handlePanelSave(dayType, session) {
     setActionError(null);
     // #8541: et valg af traening aendrer ikke dagens niveau (som i I dag R5).
     const keep = levelsOn && session && (dayType === "training" || dayType === "skill")
-      ? writeForTrainingAtLevel(session, planEffort(training.planFor(rider.id)))
+      ? writeForTrainingAtLevel(session, pendingEffort ?? planEffort(training.planFor(rider.id)))
       : null;
     const effort = keep?.kind === "write" ? keep.effort : null;
     const result = await training.setPlan(rider.id, dayType, session, effort);
     if (result && !result.ok) setActionError(result.error || "failed");
-    else setPanelOpen(false);
+    else closePanel();
   }
   // #8541: et tryk paa Let/Mellem/Haard/Hvile. Kendes ingen session til Haard, aabnes
   // sessionsvaelgeren i stedet for at gaette (samme regel som I dag R5).
@@ -618,7 +625,7 @@ export default function RiderTrainingTab({ rider, training, trainingHistory, pro
       storedFocus: training.planFor(rider.id)?.focus ?? null,
       assistantFocus: training.smartDefaultFocus?.[rider.id] ?? null,
     });
-    if (w.kind === "pick") { setPanelOpen(true); return; }
+    if (w.kind === "pick") { setPendingEffort(effort); setPanelOpen(true); return; }
     const result = await training.setPlan(rider.id, w.dayType, w.session, w.effort);
     if (result && !result.ok) setActionError(result.error || "failed");
   }
@@ -677,7 +684,7 @@ export default function RiderTrainingTab({ rider, training, trainingHistory, pro
             training={training}
             t={t}
             actionError={actionError}
-            onOpenPanel={() => setPanelOpen(true)}
+            onOpenPanel={() => { setPendingEffort(null); setPanelOpen(true); }}
             levelsOn={levelsOn}
             onPickEffort={handleEffortPick}
           />
@@ -700,7 +707,7 @@ export default function RiderTrainingTab({ rider, training, trainingHistory, pro
           kolonnen frem for at vise et opfundet tal. */}
       <FocusPanel
         open={panelOpen}
-        onClose={() => setPanelOpen(false)}
+        onClose={closePanel}
         rider={rider}
         badges={[rider.is_academy && "academy", injuryTimeLeft(condition).count > 0 && "injured"]}
         focus={plan?.focus ?? null}

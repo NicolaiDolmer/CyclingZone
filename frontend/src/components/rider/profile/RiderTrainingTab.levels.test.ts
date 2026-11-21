@@ -34,6 +34,13 @@ test("Haard uden kendt session gaetter ikke (sessionsvaelgeren aabnes)", () => {
   assert.equal(w.kind === "write" && w.effort, "hard");
 });
 
+test("Haard uden session: det trykkede niveau huskes til panelet gemmer (Codex P2)", () => {
+  assert.match(src, /if \(w\.kind === "pick"\) \{ setPendingEffort\(effort\); setPanelOpen\(true\); return; \}/);
+  assert.match(src, /writeForTrainingAtLevel\(session, pendingEffort \?\? planEffort\(training\.planFor\(rider\.id\)\)\)/);
+  assert.match(src, /onClose=\{closePanel\}/);
+  assert.match(src, /onOpenPanel=\{\(\) => \{ setPendingEffort\(null\); setPanelOpen\(true\); \}\}/);
+});
+
 test("fanen bruger R5's vaelger og niveau-noegler, kun bag kontakten", () => {
   assert.match(src, /import EffortPickerR5, \{ HardRiskLine \} from "\.\.\/\.\.\/training\/r5\/EffortPickerR5\.tsx"/);
   assert.match(src, /const levelsOn = training\.effortLevels === true/);
