@@ -16,7 +16,8 @@
 // aldrig serveren. Derfor læses de kolonner slet ikke her.
 
 import { publicEstimateView } from "./potentialEstimate.js";
-import { DISPLAY_SEASONS, PEAK_AGE, projectTrack } from "./developmentProjection.js";
+import { DISPLAY_SEASONS, projectTrack } from "./developmentProjection.js";
+import { loadPastPeakAging, pastPeakFromAging } from "./pastPeakView.js"; // #7947: efter peak som motoren
 import { buildVerdict, ratingFromAbilities } from "./scoutingReport.js";
 import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
 import { bestRoleForAbilities } from "./riderBestRoleCache.js";
@@ -126,7 +127,7 @@ function estimateVerdict({ view, age, own, level, maxLevel, rating }) {
 
 // GET /riders/:id/scouting-report. `level` er knappens niveau (egen rytter = maxLevel);
 // `looks` er de kig holdet faktisk har taget ("bygger på", spec §3.6).
-export async function buildScoutingReportFromView(supabase, { teamId, rider, own, level, maxLevel, looks, age, scout, generatedAt }) {
+export async function buildScoutingReportFromView(supabase, { teamId, rider, own, level, maxLevel, looks, age, scout, generatedAt, clock = new Date() }) {
   const { ratings, views } = await loadEstimateContext(supabase, { teamId, riderIds: [rider.id] });
   const potentialView = views.get(rider.id) ?? UNSCOUTED;
   const rating = ratings.get(rider.id) ?? null;
@@ -135,7 +136,7 @@ export async function buildScoutingReportFromView(supabase, { teamId, rider, own
     level, maxLevel, own, looks,
     primaryKey: rider.primary_type ?? null,
     verdict: estimateVerdict({ view: potentialView, age, own, level, maxLevel, rating }),
-    pastPeak: age != null && age > PEAK_AGE,
+    pastPeak: pastPeakFromAging(age, await loadPastPeakAging(supabase, { now: clock })), // regel 16: uret injiceres
     scout, generatedAt,
   };
 }
@@ -147,7 +148,7 @@ export function buildEstimateLine({ now, value, age, seasons = DISPLAY_SEASONS }
 }
 
 // GET /riders/:id/development-projection.
-export async function buildProjectionFromView(supabase, { teamId, rider, own, level, maxLevel, age }) {
+export async function buildProjectionFromView(supabase, { teamId, rider, own, level, maxLevel, age, clock = new Date() }) {
   const { abilities, views } = await loadEstimateContext(supabase, { teamId, riderIds: [rider.id] });
   const potentialView = views.get(rider.id) ?? UNSCOUTED;
   const primaryKey = rider.primary_type ?? null;
@@ -161,7 +162,7 @@ export async function buildProjectionFromView(supabase, { teamId, rider, own, le
     now,
     estimateLine: canDraw ? buildEstimateLine({ now, value: potentialView.value, age }) : [],
     potentialView,
-    pastPeak: age != null && age > PEAK_AGE,
+    pastPeak: pastPeakFromAging(age, await loadPastPeakAging(supabase, { now: clock })), // regel 16: uret injiceres
   };
 }
 
