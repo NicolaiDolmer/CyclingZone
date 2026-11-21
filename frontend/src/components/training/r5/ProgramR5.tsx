@@ -65,7 +65,7 @@ function saveKind(kind: Kind) {
 
 export default function ProgramR5({
   riders: rawRiders, weekdays, todayWeekday, todayLocked, riderWeekPlans, programs, groups, forecast, fatigueRules,
-  catalogV3, actionsEl, mobile, onClearRider, drafts, onDrafts: setDrafts, request = null,
+  catalogV3, actionsEl, mobile, onClearRider, drafts, onDrafts: setDrafts, request = null, onRequestHandled,
 }: {
   riders: RawRider[];
   weekdays: readonly string[];
@@ -86,6 +86,9 @@ export default function ProgramR5({
   // #8533 Codex P2: "Rediger plan" paa en rytter / "Rediger" paa traethedsgraensen fra I dag.
   // `n` skifter ved hver anmodning, saa samme rytter kan vaelges igen.
   request?: { kind: "rider" | "limit"; id?: string; n: number } | null;
+  // Kaldes naar anmodningen er behandlet, saa siden kan nulstille den (fanen afmonteres og
+  // ville ellers afspille den igen ved naeste besoeg, Fable-fund 1 paa #8533).
+  onRequestHandled?: () => void;
 }) {
   const { t, i18n } = useTranslation("training");
   const { t: tR5 } = useTranslation("trainingR5"); // #7456: lazy namespace (I18nReadyGate i TrainingPage)
@@ -127,13 +130,14 @@ export default function ProgramR5({
   useEffect(() => {
     if (!request || request.n === handledRequest.current) return;
     handledRequest.current = request.n;
+    onRequestHandled?.();
     if (request.kind === "limit") { setLimitOpen(true); return; }
     if (!request.id) return;
     const riderId = request.id;
     const key = library.programs.find((p) => subjectsFor(p.key, library).some((s) => s.kind === "rider" && s.id === riderId))?.key;
     if (key) setProgramKey(key);
     setSubject({ kind: "rider", id: riderId });
-  }, [request, library]);
+  }, [request, library, onRequestHandled]);
 
   const program = programs.catalog.find((p) => p.key === programKey) ?? null;
   const subjects = subjectsFor(programKey, library);

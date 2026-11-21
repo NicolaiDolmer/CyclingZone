@@ -8,7 +8,7 @@ import { potentialViewOf, potentialViewValue } from "../lib/potentialEstimateDis
 // Rytterliste hentes fra Supabase (samme kilde som TeamPage) da det er holdets
 // egne ryttere vi træner. Condition/progress/todayRun serveres fra useTraining.
 
-import { useState, useEffect, useMemo, useRef, Fragment, Suspense } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, Fragment, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
 import { supabase } from "../lib/supabase";
@@ -774,6 +774,7 @@ export default function TrainingPage() {
   const [weekPlanFor, setWeekPlanFor] = useState("team");
   // #8533 Codex P2: R5-programfanen har sit eget valg; "Rediger plan" og "Rediger graense" skal naa ind i den.
   const [r5ProgramRequest, setR5ProgramRequest] = useState(/** @type {{ kind: "rider" | "limit"; id?: string; n: number } | null} */ (null));
+  const clearR5ProgramRequest = useCallback(() => setR5ProgramRequest(null), []);
   // #5932: fejl fra en felt-rettelse i Plan-kortet (felter gemmes med det samme).
   const [planCellError, setPlanCellError] = useState(null);
 
@@ -2175,7 +2176,7 @@ export default function TrainingPage() {
       <I18nReadyGate ns="trainingR5" fallback={<TabFallback />}><ProgramR5 riders={riders} weekdays={WEEKDAY_KEYS} todayWeekday={todayWeekday} todayLocked={trainNow.status.locked && !trainNow.status.settled}
         riderWeekPlans={riderWeekPlans} programs={programs} groups={trainingGroups} forecast={fatigueForecast.forecast} fatigueRules={fatigueRules}
         catalogV3={catalogV3} actionsEl={programR5Actions} mobile={isMobile} onClearRider={clearRiderWeekPlan}
-        drafts={programR5Drafts} onDrafts={setProgramR5Drafts} request={r5ProgramRequest} /></I18nReadyGate>
+        drafts={programR5Drafts} onDrafts={setProgramR5Drafts} request={r5ProgramRequest} onRequestHandled={clearR5ProgramRequest} /></I18nReadyGate>
     );
     const subLabel = (sub) => (sub === "limit"
       ? (isMobile ? t("subtabs.limitShort") : t("subtabs.limit"))
