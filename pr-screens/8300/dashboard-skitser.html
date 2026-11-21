@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sketch #8300 dashboard</title>
+<!--
+  Levende skitse til #8300 (dashboardet som spillets bedste side). Statisk, ingen build, ingen netvaerk:
+  aabn filen direkte i en browser.
+  Parametre: ?v=now|a|b|c  ?shield=off|on  ?theme=light|dark  ?return=1 (tilbagevendende spiller, ikke tilmeldt)
+  Data er opfundne eksempler (holdnavne, ryttere, tal). Flag er de rigtige flag-icons 7.6.0-SVG'er,
+  samme pakke og version som spillets <Flag>-komponent.
+  Spillertekst er EN (spillet er EN-first); skitse-baandet oeverst er dansk til ejeren.
+-->
+<style>
+@font-face{font-family:'DM Sans';src:url('../../frontend/public/fonts/dm-sans-latin-wght-normal.woff2') format('woff2');font-weight:100 1000}
+@font-face{font-family:'Inter Tight';src:url('../../frontend/public/fonts/inter-tight-latin-wght-normal.woff2') format('woff2');font-weight:100 900}
+@font-face{font-family:'Bebas Neue';src:url('../../frontend/public/fonts/bebas-neue-latin-400-normal.woff2') format('woff2')}
+:root{
+  --bg-body:#f4f2ec;--bg-card:#fcfbf7;--bg-subtle:#ece9e1;--border:#e5e0d5;--border-strong:#827f96;
+  --text-1:#0e0f15;--text-2:#4c4a5e;--text-3:#67657e;--accent:232 197 71;--accent-t:160 120 0;--on-accent:#1a1f38;
+  --success:21 119 47;--danger:168 30 30;--info:37 99 235;--radius:5px;
+  --sidebar:#1a1f38;--sidebar-t:#c9cbe0;--sidebar-t2:#8a8da8;
+  --font-sans:'DM Sans',system-ui,-apple-system,sans-serif;--font-data:'Inter Tight',system-ui,sans-serif;
+  --font-display:'Bebas Neue',Impact,'Arial Narrow',sans-serif;
+}
+[data-theme="dark"]{
+  --bg-body:#0e0f15;--bg-card:#161824;--bg-subtle:#1c1f2c;--border:#2a2d3a;--border-strong:#6a6e86;
+  --text-1:#ededf2;--text-2:#9da0b3;--text-3:#888ba0;--accent-t:255 217 102;--success:95 217 138;--danger:251 132 132;--info:125 165 255;
+  --sidebar:#0b0c12;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg-body);color:var(--text-1);font:14px/1.45 var(--font-sans);-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+.num{font-family:var(--font-data);font-variant-numeric:tabular-nums}
+svg.i{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.flag{width:18px;height:13.5px;border-radius:2px;flex:none;box-shadow:0 0 0 1px rgb(0 0 0 / .08);vertical-align:-2px}
+
+/* skitse-baand (braendt ind i billedet) */
+.sk{background:#fff8dc;border-bottom:1px solid #e8d48a;color:#3b2f00;padding:10px 20px;display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
+[data-theme="dark"] .sk{background:#2b2408;border-color:#5b4a10;color:#f3e3a6}
+.sk b.l{font:400 30px/1 var(--font-display);letter-spacing:.02em}
+.sk .n{font-weight:700;font-size:15px}
+.sk .s{font-size:13px;opacity:.9;flex:1 1 360px}
+.sk .t{font:500 11px var(--font-data);text-transform:uppercase;letter-spacing:.08em;opacity:.75}
+
+/* app-skal */
+.shell{display:flex;min-height:100vh}
+.side{width:208px;flex:none;background:var(--sidebar);color:var(--sidebar-t);padding:20px 14px;display:flex;flex-direction:column;gap:2px}
+.side .logo{font:400 24px/1 var(--font-display);letter-spacing:.04em;color:#fff;margin:0 8px 18px}
+.side a{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:var(--radius);font-size:13px;color:var(--sidebar-t)}
+.side a.on{background:rgb(255 255 255 / .07);color:#fff}
+.side a .b{margin-left:auto;font:600 11px var(--font-data);background:rgb(var(--accent));color:var(--on-accent);border-radius:999px;padding:0 6px}
+.side .grp{font:500 10px var(--font-data);text-transform:uppercase;letter-spacing:.1em;color:var(--sidebar-t2);margin:14px 8px 4px}
+.main{flex:1;min-width:0}
+.page{max-width:1600px;margin:0 auto;padding:28px 32px 64px}
+.mtop,.mnav{display:none}
+
+/* sidehoved (den ene opskrift) */
+.ph{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:24px;flex-wrap:wrap}
+.ph h1{font:400 34px/1 var(--font-display);letter-spacing:.02em;margin:0}
+.ph .sub{color:var(--text-2);font-size:13px;margin-top:4px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.ph .act{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.dl{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2)}
+.dl b{color:var(--text-1);font-weight:600}
+.dl .num{color:rgb(var(--danger));font-weight:600}
+.btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:var(--radius);font:600 13px var(--font-sans);border:1px solid var(--border);background:var(--bg-card);color:var(--text-1);cursor:pointer;white-space:nowrap}
+.btn.gold{background:rgb(var(--accent));border-color:rgb(var(--accent));color:var(--on-accent)}
+.btn.sm{height:30px;padding:0 10px;font-size:12px}
+.qa{color:rgb(var(--accent-t));font:500 12px var(--font-sans);display:inline-flex;align-items:center;gap:2px;white-space:nowrap}
+.qa svg.i{width:13px;height:13px}
+
+/* kort */
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;min-width:0}
+.ch{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:12px}
+.ch h2{font:600 15px/1.2 var(--font-sans);margin:0}
+.meta{font:500 11px/1.3 var(--font-data);text-transform:uppercase;letter-spacing:.08em;color:var(--text-3)}
+.stack{display:flex;flex-direction:column;gap:14px;min-width:0}
+.muted{color:var(--text-2)}
+.small{font-size:12px}
+
+/* noegletal */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.kpi{padding:14px 16px}
+.kpi .v{font:700 22px/1.1 var(--font-data);font-variant-numeric:tabular-nums;margin-top:4px}
+.kpi .d{font-size:12px;color:var(--text-2);margin-top:2px}
+.up{color:rgb(var(--success))}.down{color:rgb(var(--danger))}
+.kpis.rail{grid-template-columns:1fr 1fr}
+
+/* tabeller */
+table{width:100%;border-collapse:collapse}
+th{font:500 11px var(--font-data);text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);text-align:left;padding:0 8px 8px;white-space:nowrap}
+td{padding:9px 8px;border-top:1px solid var(--border);vertical-align:middle}
+th:first-child,td:first-child{padding-left:0}th:last-child,td:last-child{padding-right:0}
+td.r,th.r{text-align:right}
+tr.me td{background:rgb(var(--accent) / .10)}
+.race{display:flex;align-items:center;gap:8px;min-width:0}
+.race .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.race .st{color:var(--text-3);font-size:12px;white-space:nowrap}
+.pill{display:inline-flex;align-items:center;gap:4px;font:600 11px var(--font-data);text-transform:uppercase;letter-spacing:.06em;padding:2px 7px;border-radius:999px;border:1px solid var(--border);color:var(--text-2);white-space:nowrap}
+.pill.live{border-color:rgb(var(--danger) / .4);color:rgb(var(--danger))}
+.pill.live::before{content:"";width:6px;height:6px;border-radius:50%;background:rgb(var(--danger))}
+.pill.done{color:rgb(var(--success));border-color:rgb(var(--success) / .35)}
+.hid{display:inline-flex;align-items:center;gap:6px;color:var(--text-3);font-size:12px}
+.hid a{color:rgb(var(--accent-t));font-weight:500}
+.rider{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+
+/* liste/feed */
+.list{display:flex;flex-direction:column}
+.li{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-top:1px solid var(--border)}
+.li:first-child{border-top:0;padding-top:2px}
+.ico{width:30px;height:30px;border-radius:var(--radius);border:1px solid var(--border);display:grid;place-items:center;color:var(--text-2);flex:none;background:var(--bg-body)}
+.ico.warn{color:rgb(var(--danger));border-color:rgb(var(--danger) / .3)}
+.ico.good{color:rgb(var(--success));border-color:rgb(var(--success) / .3)}
+.ico.gold{color:rgb(var(--accent-t));border-color:rgb(var(--accent) / .5)}
+.li .tx{flex:1;min-width:0}
+.li .tx b{font-weight:600}
+.li .tx .s2{font-size:12px;color:var(--text-2);margin-top:1px}
+.li .rt{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}
+.when{font:500 11px var(--font-data);color:var(--text-3);white-space:nowrap}
+.grp-h{font:500 11px var(--font-data);text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);padding:14px 0 4px;border-top:1px solid var(--border)}
+.grp-h:first-child{border-top:0;padding-top:0}
+.sum{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid rgb(var(--accent) / .45);background:rgb(var(--accent) / .08);border-radius:var(--radius);margin-bottom:12px;font-size:13px}
+.sum b{font-weight:600}
+
+/* notat-pile paa billedet */
+.note{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#d6336c;color:#fff;font:700 11px var(--font-data);margin-left:6px;vertical-align:1px;flex:none}
+.hide-notes .note{display:none}
+
+/* grids pr. variant */
+.gA{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr) minmax(0,1fr);gap:14px;margin-top:14px}
+.gB{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:14px;margin-top:14px}
+.gC{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:14px}
+
+/* foer (nu-tilstand): approksimation af dagens side */
+.now-wrap{max-width:1024px;margin:0 auto}
+.banner{border:1px solid rgb(var(--accent) / .55);background:rgb(var(--accent) / .10);border-radius:var(--radius);padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+
+/* mobil */
+@media (max-width:640px){
+  .side{display:none}
+  .mtop{display:flex;align-items:center;justify-content:space-between;height:52px;padding:0 16px;background:var(--sidebar);color:#fff}
+  .mtop .logo{font:400 22px/1 var(--font-display);letter-spacing:.04em}
+  .mnav{display:grid;grid-template-columns:repeat(5,1fr);position:static;height:60px;background:var(--bg-card);border-top:1px solid var(--border);z-index:5}
+  .mnav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10px;color:var(--text-2)}
+  .mnav a.on{color:var(--text-1);font-weight:600}
+  .page{padding:16px 16px 24px}
+  .main{display:flex;flex-direction:column;min-height:100vh}.page{flex:1;width:100%}
+  .race{flex-wrap:wrap;gap:2px 8px}.race .nm{white-space:normal;flex:1 1 0;min-width:0}.race .st{flex-basis:100%;padding-left:26px}
+  td,th{padding-left:6px;padding-right:6px}
+  .ph{align-items:flex-start;flex-direction:column;gap:10px;margin-bottom:16px}
+  .ph h1{font-size:30px}
+  .ph .act{width:100%;justify-content:space-between}
+  .kpis{grid-template-columns:1fr 1fr;gap:10px}
+  .kpi{padding:12px}
+  .kpi .v{font-size:19px}
+  .gA,.gB,.gC{grid-template-columns:minmax(0,1fr);gap:12px;margin-top:12px}
+  .gC{margin-top:0}
+  .hide-m{display:none}
+  .sk b.l{font-size:26px}
+  .now-wrap .banner{flex-direction:column;align-items:flex-start}
+}
+@media (min-width:641px){.only-m{display:none}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const FLAGS={"dk": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGlkPSJmbGFnLWljb25zLWRrIiB2aWV3Qm94PSIwIDAgNjQwIDQ4MCI+CiAgPHBhdGggZmlsbD0iI2M4MTAyZSIgZD0iTTAgMGg2NDAuMXY0ODBIMHoiLz4KICA8cGF0aCBmaWxsPSIjZmZmIiBkPSJNMjA1LjcgMGg2OC42djQ4MGgtNjguNnoiLz4KICA8cGF0aCBmaWxsPSIjZmZmIiBkPSJNMCAyMDUuN2g2NDAuMXY2OC42SDB6Ii8+Cjwvc3ZnPgo=", "be": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGlkPSJmbGFnLWljb25zLWJlIiB2aWV3Qm94PSIwIDAgNjQwIDQ4MCI+CiAgPGcgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2Utd2lkdGg9IjFwdCI+CiAgICA8cGF0aCBmaWxsPSIjMDAwMDAxIiBkPSJNMCAwaDIxMy4zdjQ4MEgweiIvPgogICAgPHBhdGggZmlsbD0iI2ZmZDkwYyIgZD0iTTIxMy4zIDBoMjEzLjR2NDgwSDIxMy4zeiIvPgogICAgPHBhdGggZmlsbD0iI2YzMTgzMCIgZD0iTTQyNi43IDBINjQwdjQ4MEg0MjYuN3oiLz4KICA8L2c+Cjwvc3ZnPgo=", "fr": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGlkPSJmbGFnLWljb25zLWZyIiB2aWV3Qm94PSIwIDAgNjQwIDQ4MCI+CiAgPHBhdGggZmlsbD0iIzAwMDA5MSIgZD0iTTAgMGgyMTMuM3Y0ODBIMHoiLz4KICA8cGF0aCBmaWxsPSIjZmZmIiBkPSJNMjEzLjMgMGgyMTMuNHY0ODBIMjEzLjN6Ii8+CiAgPHBhdGggZmlsbD0iI2UxMDAwZiIgZD0iTTQyNi43IDBINjQwdjQ4MEg0MjYuN3oiLz4KPC9zdmc+Cg==", "it": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGlkPSJmbGFnLWljb25zLWl0IiB2aWV3Qm94PSIwIDAgNjQwIDQ4MCI+CiAgPGcgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2Utd2lkdGg9IjFwdCI+CiAgICA8cGF0aCBmaWxsPSIjZmZmIiBkPSJNMCAwaDY0MHY0ODBIMHoiLz4KICAgIDxwYXRoIGZpbGw9IiMwMDkyNDYiIGQ9Ik0wIDBoMjEzLjN2NDgwSDB6Ii8+CiAgICA8cGF0aCBmaWxsPSIjY2UyYjM3IiBkPSJNNDI2LjcgMEg2NDB2NDgwSDQyNi43eiIvPgogIDwvZz4KPC9zdmc+Cg==", "nl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGlkPSJmbGFnLWljb25zLW5sIiB2aWV3Qm94PSIwIDAgNjQwIDQ4MCI+CiAgPHBhdGggZmlsbD0iI2FlMWMyOCIgZD0iTTAgMGg2NDB2MTYwSDB6Ii8+CiAgPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTAgMTYwaDY0MHYxNjBIMHoiLz4KICA8cGF0aCBmaWxsPSIjMjE0NjhiIiBkPSJNMCAzMjBoNjQwdjE2MEgweiIvPgo8L3N2Zz4K", "no": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGlkPSJmbGFnLWljb25zLW5vIiB2aWV3Qm94PSIwIDAgNjQwIDQ4MCI+CiAgPHBhdGggZmlsbD0iI2VkMjkzOSIgZD0iTTAgMGg2NDB2NDgwSDB6Ii8+CiAgPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTE4MCAwaDEyMHY0ODBIMTgweiIvPgogIDxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik0wIDE4MGg2NDB2MTIwSDB6Ii8+CiAgPHBhdGggZmlsbD0iIzAwMjY2NCIgZD0iTTIxMCAwaDYwdjQ4MGgtNjB6Ii8+CiAgPHBhdGggZmlsbD0iIzAwMjY2NCIgZD0iTTAgMjEwaDY0MHY2MEgweiIvPgo8L3N2Zz4K", "gb": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGlkPSJmbGFnLWljb25zLWdiIiB2aWV3Qm94PSIwIDAgNjQwIDQ4MCI+CiAgPHBhdGggZmlsbD0iIzAxMjE2OSIgZD0iTTAgMGg2NDB2NDgwSDB6Ii8+CiAgPHBhdGggZmlsbD0iI0ZGRiIgZD0ibTc1IDAgMjQ0IDE4MUw1NjIgMGg3OHY2Mkw0MDAgMjQxbDI0MCAxNzh2NjFoLTgwTDMyMCAzMDEgODEgNDgwSDB2LTYwbDIzOS0xNzhMMCA2NFYweiIvPgogIDxwYXRoIGZpbGw9IiNDODEwMkUiIGQ9Im00MjQgMjgxIDIxNiAxNTl2NDBMMzY5IDI4MXptLTE4NCAyMCA2IDM1TDU0IDQ4MEgwek02NDAgMHYzTDM5MSAxOTFsMi00NEw1OTAgMHpNMCAwbDIzOSAxNzZoLTYwTDAgNDJ6Ii8+CiAgPHBhdGggZmlsbD0iI0ZGRiIgZD0iTTI0MSAwdjQ4MGgxNjBWMHpNMCAxNjB2MTYwaDY0MFYxNjB6Ii8+CiAgPHBhdGggZmlsbD0iI0M4MTAyRSIgZD0iTTAgMTkzdjk2aDY0MHYtOTZ6TTI3MyAwdjQ4MGg5NlYweiIvPgo8L3N2Zz4K", "si": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGlkPSJmbGFnLWljb25zLXNpIiB2aWV3Qm94PSIwIDAgNjQwIDQ4MCI+CiAgPGRlZnM+CiAgICA8Y2xpcFBhdGggaWQ9InNpLWEiPgogICAgICA8cGF0aCBmaWxsLW9wYWNpdHk9Ii43IiBkPSJNLTE1IDBoNjgyLjZ2NTEySC0xNS4xeiIvPgogICAgPC9jbGlwUGF0aD4KICA8L2RlZnM+CiAgPGcgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2Utd2lkdGg9IjFwdCIgY2xpcC1wYXRoPSJ1cmwoI3NpLWEpIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxNC4xKXNjYWxlKC45Mzc1KSI+CiAgICA8cGF0aCBmaWxsPSIjZmZmIiBkPSJNLTYyIDBIOTYydjUxMkgtNjJ6Ii8+CiAgICA8cGF0aCBmaWxsPSIjZDUwMDAwIiBkPSJNLTYyIDM0MS4zSDk2MlY1MTJILTYyeiIvPgogICAgPHBhdGggZmlsbD0iIzAwMDBiZiIgZD0iTS02MiAxNzAuN0g5NjJ2MTcwLjZILTYyeiIvPgogICAgPHBhdGggZmlsbD0iI2Q1MDAwMCIgZD0iTTIyOC40IDkzYy00IDYxLjYtNi40IDk1LjQtMTUuNyAxMTEtMTAuMiAxNi44LTIwIDI5LjEtNTkuNyA0NC0zOS42LTE0LjktNDkuNC0yNy4yLTU5LjYtNDQtOS40LTE1LjYtMTEuNy00OS40LTE1LjctMTExbDUuOC0yYzExLjgtMy42IDIwLjYtNi41IDI3LjEtNy44IDkuMy0yIDE3LjMtNC4yIDQyLjMtNC43IDI1IC40IDMzIDIuOCA0Mi4zIDQuOHE5LjcgMi4xIDI3LjMgNy43eiIvPgogICAgPHBhdGggZmlsbD0iIzAwMDBiZiIgZD0iTTIyMi42IDkxYy0zLjggNjEuNS03IDg5LjctMTIgMTAzLjItOS42IDIzLjItMjQuOCAzNS45LTU3LjYgNDgtMzIuOC0xMi4xLTQ4LTI0LjgtNTcuNy00OC01LTEzLjYtOC00MS43LTExLjgtMTAzLjNxMTcuNC01LjYgMjcuMS03LjdjOS4zLTIgMTcuMy00LjMgNDIuMy00LjcgMjUgLjQgMzMgMi43IDQyLjMgNC43YTI4NCAyODQgMCAwIDEgMjcuNCA3Ljd6Ii8+CiAgICA8cGF0aCBmaWxsPSIjZmZkZjAwIiBkPSJtMTUzIDEwOS44IDEuNSAzLjcgNyAxLTQuNSAyLjcgNC4zIDIuOS02LjMgMS0yIDMuNC0yLTMuNS02LS44IDQtMy00LjItMi43IDYuNy0xeiIvPgogICAgPHBhdGggZmlsbD0iI2ZmZiIgZD0ibTIwOC4zIDE3OS42LTMuOS0zLTIuNy00LjYtNS40LTQuNy0yLjktNC43LTUuNC00LjktMi42LTQuNy0zLTIuMy0xLjgtMS45LTUgNC4zLTIuNiA0LjctMy4zIDMtMy43LTIuOS0yLjctNC44LTEwLjMtMTguMy0xMC4zIDE4LjMtMi43IDQuOC0zLjcgMi45LTMuMy0zLTIuNy00LjctNC45LTQuMy0xLjkgMS44LTIuOSAyLjQtMi42IDQuNy01LjQgNC45LTIuOSA0LjctNS40IDQuNy0yLjcgNC42LTMuOSAzYTY2IDY2IDAgMCAwIDE4LjYgMzYuMyAxMDcgMTA3IDAgMCAwIDM2LjYgMjAuNSAxMDQgMTA0IDAgMCAwIDM2LjgtMjAuNWM1LjgtNiAxNi42LTE5LjMgMTguNi0zNi4zIi8+CiAgICA8cGF0aCBmaWxsPSIjZmZkZjAwIiBkPSJtMTY5LjQgODMuOSAxLjYgMy43IDcgMS00LjYgMi43IDQuNCAyLjktNi4zIDEtMiAzLjQtMi0zLjUtNi0uOCA0LTMtNC4yLTIuNyA2LjYtMXptLTMzIDAgMS42IDMuNyA3IC45LTQuNSAyLjcgNC4zIDIuOS02LjMgMS0yIDMuNC0yLTMuNC02LS45IDQtMy00LjItMi43IDYuNy0xeiIvPgogICAgPHBhdGggZmlsbD0iIzAwMDBiZiIgZD0iTTE5OS43IDIwM2gtNy40bC03LS41LTguMy00aC05LjRsLTguMSA0LTYuNS42LTYuNC0uNi04LjEtNEgxMjlsLTguNCA0LTYuOS42LTcuNi0uMS0zLjYtNi4yLjEtLjIgMTEuMiAxLjkgNi45LS41IDguMy00LjFoOS40bDguMiA0IDYuNC42IDYuNS0uNiA4LjEtNGg5LjRsOC40IDQgNi45LjYgMTAuOC0yIC4yLjR6bS04Ni40IDkuNSA3LjQtLjUgOC4zLTRoOS40bDguMiA0IDYuNC41IDYuNC0uNSA4LjItNGg5LjRsOC4zIDQgNy41LjUgNC44LTZoLS4xbC01LjIgMS40LTYuOS0uNS04LjMtNGgtOS40bC04LjIgNC02LjQuNi02LjUtLjYtOC4xLTRIMTI5bC04LjQgNC02LjkuNi01LTEuM3YuMmw0LjUgNS42eiIvPgogIDwvZz4KPC9zdmc+Cg==", "de": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGlkPSJmbGFnLWljb25zLWRlIiB2aWV3Qm94PSIwIDAgNjQwIDQ4MCI+CiAgPHBhdGggZmlsbD0iI2ZjMCIgZD0iTTAgMzIwaDY0MHYxNjBIMHoiLz4KICA8cGF0aCBmaWxsPSIjMDAwMDAxIiBkPSJNMCAwaDY0MHYxNjBIMHoiLz4KICA8cGF0aCBmaWxsPSJyZWQiIGQ9Ik0wIDE2MGg2NDB2MTYwSDB6Ii8+Cjwvc3ZnPgo="};
+const q=new URLSearchParams(location.search);
+const V=(q.get('v')||'c').toLowerCase();
+const SHIELD=q.get('shield')==='on';
+const RET=q.get('return')==='1';
+const NOTES=q.get('notes')!=='0';
+document.documentElement.dataset.theme=q.get('theme')==='dark'?'dark':'light';
+if(!NOTES)document.body.classList.add('hide-notes');
+
+const P={
+  bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+  users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  cal:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  gavel:'<path d="m14 13-7.5 7.5a2.12 2.12 0 0 1-3-3L11 10"/><path d="m16 16 6-6"/><path d="m8 8 6-6"/><path d="m9 7 8 8"/><path d="m21 11-8-8"/>',
+  swap:'<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>',
+  trophy:'<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
+  dumbbell:'<path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/>',
+  msg:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  brief:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
+  clip:'<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',
+  chev:'<path d="m9 18 6-6-6-6"/>',
+  clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  shield:'<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+  eyeoff:'<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.53 13.53 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><path d="m2 2 20 20"/>',
+  coins:'<circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/>',
+  list:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',
+  file:'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>'
+};
+const ic=(n,c='')=>`<svg class="i ${c}" viewBox="0 0 24 24">${P[n]}</svg>`;
+const fl=c=>`<img class="flag" src="${FLAGS[c]}" alt="${c.toUpperCase()}">`;
+const N=n=>`<span class="note">${n}</span>`;
+
+/* ---------- eksempeldata ---------- */
+const TEAM='Nordlys Cycling';
+const STAGES=[
+ {c:'be',race:'Ronde van het Noorden',st:'Stage 3 of 5',status:'done',winner:['R. Vermeulen','be'],mine:['S. Holm','dk',4],time:'Finished 13:42'},
+ {c:'fr',race:'Tour du Morvan',st:'Stage 2 of 4',status:'live',winner:null,mine:null,time:'Live · 38 km to go'},
+ {c:'it',race:'Giro delle Colline',st:'One-day',status:'next',winner:null,mine:null,time:'Starts 18:00',lineup:true}
+];
+const DIV=[[1,'Fjord Velo','no',412,'+18'],[2,'Équipe Lumière','fr',398,'+9'],[3,'Kustpijl','be',371,'+22'],[4,TEAM,'dk',356,'+31'],[5,'Alpenrose','de',349,'+4'],[6,'Squadra Aurora','it',333,'0']];
+const FEED_TODAY=[
+ {i:'trophy',k:'good',t:SHIELD?'<b>Ronde van het Noorden, stage 3</b> is finished':'<b>S. Holm</b> finished <b class="num">4th</b> in Ronde van het Noorden, stage 3',s:SHIELD?'Result hidden by your spoiler shield':'Best of your riders · +12 points',a:SHIELD?'Show result':'See stage',w:'13:42'},
+ {i:'gavel',k:'warn',t:'You were outbid on <b>M. Lindqvist</b>',s:'<span class="num">1,450,000</span> CZ$ · auction ends in <span class="num">2 h 10 m</span>',a:'Bid again',w:'12:05'},
+ {i:'swap',k:'gold',t:'<b>Kustpijl</b> offered <span class="num">2,100,000</span> CZ$ for <b>T. Berg</b>',s:'Answer within <span class="num">1 d</span>',a:'Answer',w:'10:31'},
+ {i:'dumbbell',k:'',t:'Training ran for 18 riders',s:'Form +2 on average · 1 rider tired',a:'Training',w:'06:00'}
+];
+const FEED_EARLIER=[
+ {i:'brief',k:'',t:'The board: <b>halfway check</b> passed',s:'Goal "Top 5 in division" is on track',a:'Board',w:'Yesterday'},
+ {i:'msg',k:'',t:'2 new replies in <b>"Who wins the Ronde?"</b>',s:'Forum',a:'Forum',w:'Yesterday'}
+];
+const ACTIONS=[
+ {i:'clip',t:'Pick your riders for <b>Giro delle Colline</b>',s:'Line-up locks in <span class="num" style="color:rgb(var(--danger));font-weight:600">3 h 12 m</span>',a:'Pick riders'},
+ {i:'swap',t:'Answer the offer for <b>T. Berg</b>',s:'Expires in <span class="num">1 d</span>',a:'Answer'},
+ {i:'gavel',t:'You are outbid on <b>M. Lindqvist</b>',s:'Ends in <span class="num">2 h 10 m</span>',a:'Bid'}
+];
+
+/* ---------- byggeklodser ---------- */
+const kpi=(lbl,v,d)=>`<div class="card kpi"><div class="meta">${lbl}</div><div class="v">${v}</div><div class="d">${d}</div></div>`;
+const KPI=[
+ ['Balance','<span class="num">4.2M</span>','<span class="num">3.1M</span> available after bids'],
+ ['Division 2','<span class="num">4th</span>','<span class="up num">+2</span> places in 7 days'],
+ ['Squad','<span class="num">24</span><span class="muted" style="font-size:14px;font-weight:500"> / 30</span>','<span class="num">2</span> contracts expire this season'],
+ ['Next race','<span class="num">3 h 12 m</span>','Giro delle Colline · line-up open']
+];
+const kpis=(cls='')=>`<div class="kpis ${cls}">${KPI.map(k=>kpi(...k)).join('')}</div>`;
+
+function stagesTable(wide){
+  const rows=STAGES.map(s=>{
+    let status=s.status==='done'?'<span class="pill done">Finished</span>':s.status==='live'?'<span class="pill live">Live</span>':'<span class="pill">Today</span>';
+    let win,mine;
+    if(s.status!=='done'){win=`<span class="muted small">${s.time}</span>`;mine=s.lineup?'<a class="qa" href="#">Pick riders'+ic('chev')+'</a>':'<span class="muted small">2 riders</span>';}
+    else if(SHIELD){win=`<span class="hid">${ic('eyeoff')} Hidden · <a href="#">Show result</a></span>`;mine='<span class="hid">Hidden</span>';}
+    else{win=`<span class="rider">${fl(s.winner[1])} ${s.winner[0]}</span>`;mine=`<span class="rider">${fl(s.mine[1])} ${s.mine[0]} <b class="num">${s.mine[2]}.</b></span>`;}
+    return `<tr><td><div class="race">${fl(s.c)}<span class="nm">${s.race}</span><span class="st">${s.st}</span></div></td><td>${status}</td>${wide?`<td class="hide-m">${win}</td>`:''}<td class="r">${mine}</td></tr>`;
+  }).join('');
+  return `<table><thead><tr><th>Race</th><th>Status</th>${wide?'<th class="hide-m">Winner</th>':''}<th class="r">Your best</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+const stagesCard=(wide,note='')=>`<div class="card"><div class="ch"><h2>On the road today${note}</h2><a class="qa" href="#">Race centre${ic('chev')}</a></div>${stagesTable(wide)}${SHIELD?`<p class="small muted" style="margin:10px 0 0;display:flex;gap:6px;align-items:center">${ic('shield')} Spoiler shield is on. Results open when you tap them, on every device.</p>`:''}</div>`;
+
+function divCard(note=''){
+  const rows=DIV.map(r=>`<tr class="${r[1]===TEAM?'me':''}"><td class="num" style="width:28px">${r[0]}</td><td><span class="rider">${fl(r[2])} ${r[1]}</span></td><td class="r num">${r[3]}</td><td class="r num ${r[4].startsWith('+')&&r[4]!=='+0'?'up':''}">${r[4]}</td></tr>`).join('');
+  return `<div class="card"><div class="ch"><h2>Division 2${note}</h2><a class="qa" href="#">Standings${ic('chev')}</a></div><table><thead><tr><th>#</th><th>Team</th><th class="r">Pts</th><th class="r">7 d</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+const latestCard=(note='')=>`<div class="card"><div class="ch"><h2>How your team did${note}</h2><span class="meta">Stage 3 · 13:42</span></div>${SHIELD?
+ `<div class="hid" style="font-size:13px;padding:6px 0">${ic('eyeoff')} Ronde van het Noorden, stage 3 is finished. Result hidden by your spoiler shield.</div><div style="margin-top:10px"><a class="btn sm" href="#">Show result</a></div>`:
+ `<div class="list">${[['S. Holm','dk',4,'+12'],['A. Moreau','fr',11,'+3'],['L. Bakker','nl',23,'0']].map(r=>`<div class="li" style="align-items:center"><span class="num" style="width:26px;font-weight:700">${r[2]}.</span><div class="tx"><span class="rider">${fl(r[1])} ${r[0]}</span></div><span class="num ${r[3]!=='0'?'up':'muted'}">${r[3]} pts</span></div>`).join('')}</div>`}</div>`;
+
+const feedItem=f=>`<div class="li"><div class="ico ${f.k}">${ic(f.i)}</div><div class="tx"><div>${f.t}</div><div class="s2">${f.s}</div></div><div class="rt"><span class="when">${f.w}</span><a class="qa" href="#">${f.a}${ic('chev')}</a></div></div>`;
+const actItem=(a,i)=>`<div class="li"><div class="ico ${i===0?'warn':''}">${ic(a.i)}</div><div class="tx"><div>${a.t}</div><div class="s2">${a.s}</div></div><div class="rt"><a class="btn sm" href="#">${a.a}</a></div></div>`;
+const actionsCard=(note='')=>`<div class="card"><div class="ch"><h2>Your next moves${note}</h2><span class="meta">${ACTIONS.length} open</span></div><div class="list">${ACTIONS.map(actItem).join('')}</div></div>`;
+const marketCard=()=>`<div class="card"><div class="ch"><h2>Market</h2><a class="qa" href="#">Auctions${ic('chev')}</a></div><div class="list">
+ <div class="li" style="align-items:center"><div class="tx"><span class="rider">${fl('no')} M. Lindqvist</span><div class="s2">Outbid · ends <span class="num">2 h 10 m</span></div></div><span class="num down">1.45M</span></div>
+ <div class="li" style="align-items:center"><div class="tx"><span class="rider">${fl('si')} J. Kranjc</span><div class="s2">Leading · ends <span class="num">5 h</span></div></div><span class="num up">0.82M</span></div>
+ <div class="li" style="align-items:center"><div class="tx"><span class="rider">${fl('gb')} O. Hart</span><div class="s2">Your sale · <span class="num">3</span> bids</div></div><span class="num">0.64M</span></div></div></div>`;
+
+/* sidehoved: fristen + den ENE guld-knap i handlingsraekken (regel 3, ingen banner) */
+function header(note=''){
+  const sub=`Division 2 · Season 2 · Race day <span class="num">14</span> of <span class="num">40</span>`;
+  return `<div class="ph"><div><h1>${TEAM}</h1><div class="sub">${fl('dk')} ${sub}</div></div>
+  <div class="act"><span class="dl">${ic('clock')} Season 3 sign-up closes in <span class="num">2 d 4 h</span></span><a class="btn gold" href="#">Keep your spot${note}</a></div></div>`;
+}
+function returnSummary(){
+  return RET?`<div class="sum">${ic('home')}<span><b>Welcome back.</b> Since your last visit 9 days ago: <b class="num">6</b> stages finished, you moved up <b class="num">2</b> places, <b class="num">2</b> contracts expire this season.</span></div>`:'';
+}
+
+/* ---------- varianter ---------- */
+const LBL={
+ now:['FØR','Dagens dashboard (gengivet)','Smal kolonne på 1024 px, påmindelsen som boks over indholdet, kort i lang række under hinanden.'],
+ a:['A','Kommandocentralen','Tre kolonner i fuld bredde: dine næste træk, dagens løb og holdets status står side om side over folden.'],
+ b:['B','Løbsdagen først','Dagens etaper som bred tabel øverst, derefter hvad der kræver dig og holdets tal.'],
+ c:['C','Siden sidst','Én prioriteret strøm af det der er sket og det du skal gøre, med holdets tal i en smal højre kolonne.']
+};
+function band(){
+  const [l,n,s]=LBL[V];
+  return `<div class="sk"><b class="l">${l}</b><span class="n">${n}</span><span class="s">${s}</span><span class="t">#8300 · eksempeldata · skjold ${SHIELD?'til':'fra'}${RET?' · tilbagevendende spiller':''}</span></div>`;
+}
+function body(){
+  if(V==='now'){
+    return `<div class="now-wrap">
+    <div class="ph"><div><h1>${TEAM}</h1><div class="sub">${fl('dk')} Division 2 · Season 2</div></div><div class="act"><a class="btn" href="#">Customize</a></div></div>
+    <div class="banner"><div><b>Keep your spot for season 3</b><div class="small muted">Sign-up closes in 2 d 4 h. Teams that don't sign up are parked.</div></div><a class="btn gold" href="#">Sign up</a></div>
+    ${kpis()}<div class="stack" style="margin-top:14px">${stagesCard(true)}${latestCard()}${actionsCard()}${marketCard()}${divCard()}</div></div>`;
+  }
+  if(V==='a'){
+    return `${header(N(1))}${returnSummary()}${kpis()}
+    <div class="gA"><div class="stack">${actionsCard(N(2))}</div><div class="stack">${stagesCard(false,N(3))}${latestCard(N(4))}</div><div class="stack">${divCard(N(5))}${marketCard()}</div></div>`;
+  }
+  if(V==='b'){
+    return `${header(N(1))}${returnSummary()}${stagesCard(true,N(2))}
+    <div class="gB"><div class="stack"><div class="card"><div class="ch"><h2>Needs you${N(3)}</h2><span class="meta">${ACTIONS.length} open</span></div><div class="list">${ACTIONS.map(actItem).join('')}</div></div>${latestCard()}</div>
+    <div class="stack">${kpis('rail')}${divCard(N(4))}</div></div>`;
+  }
+  // C
+  return `${header(N(1))}
+  <div class="gC"><div class="stack"><div class="card"><div class="ch"><h2>Since your last visit${N(2)}</h2><a class="qa" href="#">All messages${ic('chev')}</a></div>
+    ${returnSummary()}
+    <div class="list"><div class="grp-h">Do now</div>${ACTIONS.slice(0,1).map(actItem).join('')}<div class="grp-h">Today</div>${FEED_TODAY.map(feedItem).join('')}<div class="grp-h">Earlier</div>${FEED_EARLIER.map(feedItem).join('')}</div></div>
+    ${stagesCard(true,N(3))}</div>
+  <div class="stack">${kpis('rail')}${divCard(N(4))}${marketCard()}</div></div>`;
+}
+function shell(inner){
+  const nav=[['home','Dashboard',1],['bell','Messages',0,5],['users','My team'],['cal','Planning'],['dumbbell','Training'],['gavel','Auctions'],['swap','Transfers'],['list','Standings'],['brief','Board'],['msg','Forum']];
+  return `<div class="shell"><nav class="side"><div class="logo">Cycling Zone</div>${nav.map(n=>`<a class="${n[2]?'on':''}" href="#">${ic(n[0])}${n[1]}${n[3]?`<span class="b num">${n[3]}</span>`:''}</a>`).join('')}</nav>
+  <div class="main"><div class="mtop"><span class="logo">Cycling Zone</span>${ic('menu')}</div><div class="page">${inner}</div>
+  <nav class="mnav">${[['home','Home',1],['bell','Messages'],['users','Team'],['cal','Planning'],['menu','More']].map(n=>`<a class="${n[2]?'on':''}" href="#">${ic(n[0])}${n[1]}</a>`).join('')}</nav></div></div>`;
+}
+document.getElementById('app').innerHTML=band()+shell(body());
+</script>
+</body>
+</html>
