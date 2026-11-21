@@ -475,6 +475,9 @@
         "abilityPoints": "Evne-point vundet",
         "trackedSince": "Målt siden"
       },
+      "xp": {
+        "title": "Evner og XP"
+      },
       "reading": {
         "title": "Læsning",
         "own": {
