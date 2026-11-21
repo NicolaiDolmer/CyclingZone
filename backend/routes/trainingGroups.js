@@ -47,6 +47,8 @@ async function passes(middleware, req, res) {
 export function createTrainingGroupsRouter({
   supabase, requireAuth, isViewerBetaTester, writeLimiter = PASS, readLimiter = PASS, captureExceptionFn = () => {},
   planLock = () => PASS,
+  // Codex P1 paa #8532 (AGENTS: tests laeser aldrig vaegurets tid): tidsstempler fra en injicerbar klokke.
+  clock = () => new Date(),
 }) {
   const router = express.Router();
 
@@ -130,7 +132,7 @@ export function createTrainingGroupsRouter({
   // Skriver gruppens uge som KOPI ind i hver rytters egen raekke.
   async function writeCopies(teamId, rows, riderIds, days, programKey) {
     const byRider = new Map(rows.filter((r) => r.rider_id != null).map((r) => [r.rider_id, r.id]));
-    const now = new Date().toISOString();
+    const now = clock().toISOString();
     const inserts = [];
     for (const riderId of riderIds) {
       const patch = { days: copyWeekDays(days), program_key: programKey ?? null, updated_at: now };
@@ -239,7 +241,7 @@ export function createTrainingGroupsRouter({
       if (riderIds && hasDays && !(await passes(planLock("programApply"), req, res))) return;
       if (name) {
         const { error } = await supabase.from(GROUPS_TABLE)
-          .update({ name, updated_at: new Date().toISOString() }).eq("id", group.id).eq("team_id", req.team.id);
+          .update({ name, updated_at: clock().toISOString() }).eq("id", group.id).eq("team_id", req.team.id);
         if (error) throw new Error(error.message);
       }
       if (riderIds) {
@@ -293,7 +295,7 @@ export function createTrainingGroupsRouter({
       const days = setProgramCell(view.days, { weekday, slotIndex, session, effort: effortWrite.effort });
       if (!days) return res.status(400).json({ error: "invalid_cell" });
       const { error } = await supabase.from(GROUPS_TABLE)
-        .update({ days, updated_at: new Date().toISOString() }).eq("id", group.id).eq("team_id", req.team.id);
+        .update({ days, updated_at: clock().toISOString() }).eq("id", group.id).eq("team_id", req.team.id);
       if (error) throw new Error(error.message);
       // Regel A: rytterne med en etape i feltet beholder etapen (motoren springer
       // passet over paa en loebsdag han koerer), saa kopien skrives til alle.
@@ -315,7 +317,7 @@ export function createTrainingGroupsRouter({
       if (!group) return;
       const days = programWeekDaysFor(program.key);
       const { error } = await supabase.from(GROUPS_TABLE)
-        .update({ days, program_key: program.key, updated_at: new Date().toISOString() })
+        .update({ days, program_key: program.key, updated_at: clock().toISOString() })
         .eq("id", group.id).eq("team_id", req.team.id);
       if (error) throw new Error(error.message);
       // "Put on" en gruppe er spillerens eksplicitte valg for HELE gruppen: alle
@@ -365,7 +367,7 @@ export function createTrainingGroupsRouter({
       const group = await findGroup(req, res, ctx);
       if (!group) return;
       const { error } = await supabase.from(GROUPS_TABLE)
-        .update({ ...patch, updated_at: new Date().toISOString() }).eq("id", group.id).eq("team_id", req.team.id);
+        .update({ ...patch, updated_at: clock().toISOString() }).eq("id", group.id).eq("team_id", req.team.id);
       if (error) throw new Error(error.message);
       await respond(req, res);
     } catch (err) {

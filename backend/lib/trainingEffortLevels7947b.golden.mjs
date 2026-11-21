@@ -24,7 +24,8 @@ import { computeSeasonLoad, loadSeasonDevelopmentLoad } from "./seasonDevelopmen
 
 export const hash = (value) => createHash("sha256").update(JSON.stringify(value)).digest("hex").slice(0, 24);
 
-// Tidsstempler fra `new Date()` i ruterne er ikke en del af udfaldet.
+const FIXED_NOW = "2026-11-09T06:00:00.000Z";
+// Tidsstempler er ikke en del af udfaldet (facit er frosset fra basen, der brugte vaeguret).
 function stripTimes(value) {
   if (Array.isArray(value)) return value.map(stripTimes);
   if (value && typeof value === "object") {
@@ -93,6 +94,9 @@ async function withRouter(state, mount, create, fn) {
     supabase: fakeSupabase(state),
     requireAuth: (req, _res, next) => { req.user = { id: "user-a" }; req.team = { id: "team-a" }; next(); },
     isViewerBetaTester: async () => true,
+    // Codex P1 paa #8532: fast klokke, saa ruterne aldrig laeser vaegurets tid i proeven.
+    // Tidsstemplerne fjernes stadig foer hash, fordi facit er frosset fra basen uden klokke.
+    clock: () => new Date(FIXED_NOW),
   }));
   const server = app.listen(0);
   try {

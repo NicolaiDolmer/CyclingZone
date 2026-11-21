@@ -72,6 +72,8 @@ export function createTrainingProgramsRouter({
   supabase, requireAuth, isViewerBetaTester, writeLimiter = PASS, readLimiter = PASS, captureExceptionFn = () => {},
   // #4847: "Train now" laaser dagens felter (backend/lib/trainNow.js). Default = ingen laas.
   planLock = () => PASS,
+  // Codex P1 paa #8532 (AGENTS: tests laeser aldrig vaegurets tid): tidsstempler fra en injicerbar klokke.
+  clock = () => new Date(),
 }) {
   const router = express.Router();
 
@@ -220,7 +222,7 @@ export function createTrainingProgramsRouter({
     const targets = picked.filter((id) => !hasOwnRow.has(id) && !followers.has(id));
     const skipped = picked.length - targets.length + retiredPicked;
     if (targets.length === 0) return res.json({ ok: true, applied: 0, skipped, programKey: program.key });
-    const now = new Date().toISOString();
+    const now = clock().toISOString();
     const { error } = await insertRows(supabase, targets.map((riderId) => ({
       // En NY kopi pr. rytter — ingen delte objekter mellem raekkerne.
       team_id: teamId, rider_id: riderId, days: programWeekDaysFor(program.key), program_key: program.key, updated_at: now,
@@ -265,7 +267,7 @@ export function createTrainingProgramsRouter({
       const existingByRider = new Map(
         (rows ?? []).filter((r) => r.rider_id != null).map((r) => [r.rider_id, r.id]),
       );
-      const now = new Date().toISOString();
+      const now = clock().toISOString();
       const inserts = [];
       const updates = [];
       for (const riderId of targets) {
@@ -341,7 +343,7 @@ export function createTrainingProgramsRouter({
       const days = setProgramCell(current, { weekday, slotIndex, session, effort: effortWrite.effort });
       if (!days) return res.status(400).json({ error: "invalid_cell" });
       await markRidersOwnPlan(supabase, teamId, [riderId]); // #6000: egen plan vinder over gruppen. Foer skrivningen.
-      const now = new Date().toISOString();
+      const now = clock().toISOString();
       const { error } = row
         ? await updateRow(supabase, row.id, { days, updated_at: now })
         : await insertRows(supabase, [{ team_id: teamId, rider_id: riderId, days, updated_at: now }]);
@@ -362,7 +364,7 @@ export function createTrainingProgramsRouter({
     try {
       if (!(await cellsOn(req))) return res.json({ available: false, reason: "disabled", riders: {} });
       const seasonId = await activeSeasonId();
-      const forecast = await loadTeamFatigueForecast({ supabase, team: req.team, seasonId, now: new Date() });
+      const forecast = await loadTeamFatigueForecast({ supabase, team: req.team, seasonId, now: clock() });
       res.json(forecast);
     } catch (err) {
       captureExceptionFn(err);
