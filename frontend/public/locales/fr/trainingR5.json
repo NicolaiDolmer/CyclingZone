@@ -1,0 +1,143 @@
+{
+  "saved": "Enregistré",
+  "trained": "Entraîné",
+  "race": "Course",
+  "quickLabel": "{name} : entraînement du jour",
+  "effort": {
+    "rest": "Repos",
+    "easy": "Facile",
+    "medium": "Moyen",
+    "hard": "Dur"
+  },
+  "load": {
+    "easy": "Journée facile",
+    "light": "Journée légère",
+    "normal": "Journée normale",
+    "hard": "Journée dure",
+    "veryHard": "Journée très dure"
+  },
+  "status": {
+    "days70": "{n, plural, one {# jour} other {# jours}} à {from}+"
+  },
+  "card": {
+    "days70": "Jours d'affilée avec une fatigue de {from} ou plus : {n}"
+  },
+  "program": {
+    "none": "Aucun programme",
+    "own": "Plan perso",
+    "aria": "{name} : programme {program}",
+    "changeToday": "Changer les séances du jour",
+    "editPlan": "Modifier le plan",
+    "choose": "Choisir un programme",
+    "backToTeam": "Revenir au programme de l'équipe"
+  },
+  "source": {
+    "program": "Programme",
+    "group": "Groupe",
+    "own": "Ta journée",
+    "noDay": "Pas encore de journée",
+    "useAssistant": "Utiliser {session}"
+  },
+  "session": "Séance {n}",
+  "sessionAria": "{name}, séance {n} : {session}",
+  "overview": {
+    "today": "Aujourd'hui, {date}",
+    "training": "{n} s'entraînent",
+    "racing": "{n} en course",
+    "tired": "{n} fatigués",
+    "noProgram": "{n} sans programme"
+  },
+  "filter": {
+    "age_all": "Tous les âges",
+    "age_u23": "Moins de 23 ans",
+    "age_u25": "Moins de 25 ans",
+    "age_25plus": "25 ans et plus",
+    "groupAll": "Tous les groupes",
+    "groupNone": "Sans groupe",
+    "typeAll": "Tous les types",
+    "clear": "Effacer les filtres"
+  },
+  "team": {
+    "whole": "Toute l'équipe aujourd'hui",
+    "selected": "{n} sélectionnés aujourd'hui"
+  },
+  "sessions": {
+    "label": "Séances",
+    "simple": "Simple",
+    "all": "Toutes les séances"
+  },
+  "col": {
+    "program": "Programme",
+    "fatigueNow": "Fatigue actuelle",
+    "dayLoad": "Charge du jour",
+    "today": "Aujourd'hui"
+  },
+  "selectAll": "Tout sélectionner",
+  "selectRider": "Sélectionner {name}",
+  "openRider": "Séances et détails de {name}",
+  "sortBy": "Trier : {col}",
+  "training": {
+    "label": "Entraînement :",
+    "program": "Programme",
+    "aria": "{name} : entraînement du jour",
+    "teamAria": "{scope} : entraînement"
+  },
+  "effortPicker": {
+    "levelAria": "{scope} : niveau",
+    "restAria": "{scope} : repos, sans séance",
+    "hardHint": "Dur augmente le risque de blessure.",
+    "risk": "Risque de blessure {pct} %",
+    "riskGeneric": "Dur augmente le risque de blessure"
+  },
+  "yourDay": {
+    "onAll": "{n, plural, one {sur # séance} other {sur les # séances}}",
+    "onSome": "sur {n} séances sur {total}",
+    "backToProgram": "Revenir au programme"
+  },
+  "teamSkippedHard": "{n, plural, one {# coureur n'a} other {# coureurs n'ont}} pas encore d'entraînement dur. Choisis un entraînement, puis appuie sur Dur.",
+  "programR5": {
+    "library": "Bibliothèque de programmes",
+    "programs": "Programmes",
+    "allPrograms": "Tous les programmes ({n})",
+    "fewerPrograms": "Seulement les programmes utilisés",
+    "on": "Sur : {names}",
+    "notInUse": "Non utilisé",
+    "groupsAndRiders": "Groupes et coureurs",
+    "ownPlan": "Plan perso : {name}",
+    "ownWeek": "Semaine perso",
+    "noProgram": "Aucun programme",
+    "ownWins": "Le plan perso d'un coureur l'emporte sur celui du groupe.",
+    "title": "Plan d'entraînement · {name}",
+    "noneSelected": "Choisissez un programme",
+    "introWeek": "Chaque jour a son propre ordre de séances.",
+    "kindLabel": "Type de plan",
+    "kind_week": "Blocs de semaine",
+    "kind_rotation": "Rotation",
+    "appliedOn": "Sur",
+    "addTarget": "Groupe ou coureur",
+    "groups": "Groupes",
+    "riders": "Coureurs",
+    "remove": "Retirer {name}",
+    "weekFor": "Semaine de",
+    "asWritten": "Le programme tel qu'écrit",
+    "asWrittenNote": "Mettez le programme sur un groupe ou un coureur pour modifier ses séances.",
+    "races": "{n, plural, one {# course} other {# courses}}",
+    "race": "Course",
+    "notSaved": "Non enregistré",
+    "copyDay": "Copier {day} vers",
+    "copyAll": "Tous les autres jours",
+    "copyToRiders": "Copier vers des coureurs",
+    "copyNeedsProgram": "Choisissez d'abord un programme dans la bibliothèque",
+    "savePlan": "Enregistrer le plan",
+    "saved": "Plan enregistré",
+    "saveError": "Le plan n'a pas pu être enregistré. Réessayez.",
+    "copyTitle": "Copier {name} vers des coureurs",
+    "copyBody": "Chaque coureur reçoit sa propre copie. Le plan perso d'un coureur l'emporte sur celui du groupe.",
+    "copyGo": "{n, plural, =0 {Copier} one {Copier vers # coureur} other {Copier vers # coureurs}}",
+    "cancel": "Annuler",
+    "copyDone": "{n, plural, one {Copié vers # coureur} other {Copié vers # coureurs}}",
+    "legendRace": "Les courses occupent leurs champs fixes et ont toujours lieu",
+    "legendTaken": "Les séances prises par une course ne sont pas rattrapées",
+    "todayLock": "Les champs du jour se verrouillent après S'entraîner maintenant. Un plan enregistré s'applique alors dès demain."
+  }
+}
