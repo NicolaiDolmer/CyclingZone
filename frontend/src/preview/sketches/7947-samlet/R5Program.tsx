@@ -6,7 +6,7 @@
 // gruppens; "No program" faar ingen advarsel; traethedsgraensen vinder over
 // laasen; et loeb koerer altid; eet laast pas pr. dag.
 // "Copy to riders" og sidens ene guldknap "Save plan" staar i sidehovedet (R5.tsx).
-// Telefon: tre muligheder for ugeskemaet via ?phone=a|b|c (A er standard).
+// Telefon (#8547): fire muligheder via ?phone=v1|v2|b|switch, se R5ProgramPhone.tsx (v1 er standard).
 
 import { useState } from "react";
 import { Segmented } from "../../../components/ui/Segmented.jsx";
@@ -16,16 +16,18 @@ import {
 } from "../../../components/ui/icons/index.jsx";
 import { ROTATION, SESSION_EN } from "./r5data.ts";
 import { RiderName } from "./R5Parts.tsx";
+import ProgramPhone, { PHONE_MODES, type PhoneMode } from "./R5ProgramPhone.tsx";
 import {
   CODE, CellBody, DAYS, DAY_BLOCKS, FATIGUE_LIMIT, FIELDS, FIELD_TIME, GROUPS, KindIcon, LABEL, LIBRARY,
-  PhoneDayAtATime, PhoneGrid, PhoneWeekList, ROTATION_RIDERS, TODAY, TonightPlate,
+  ROTATION_RIDERS, TODAY, TonightPlate,
   cellTone, programOf, riderById, rotationView, usersOf, weekBlocksView, type Kind, type WeekView,
 } from "./R5ProgramParts.tsx";
 
 const Q = new URLSearchParams(window.location.search);
-const PHONE = (["a", "b", "c"] as const).find((p) => p === Q.get("phone")) ?? "a";
+const PHONE: PhoneMode = PHONE_MODES.find((p) => p === Q.get("phone")) ?? "v1";
+const PHONE_HEAD = Q.get("head") === "v2" ? "v2" : "v1";
+const PHONE_VIEW = Q.get("view") === "week" ? "week" : "day";
 const PHONE_DAY = Math.max(0, Math.min(6, Number(Q.get("pday") ?? TODAY) || 0));
-const SHEET = Q.get("sheet") === "1" ? { d: PHONE_DAY, f: 4 } : null;
 const STORE = "cz-training-program-view";
 
 // Ejer 19/11: et nyt program starter i Week blocks, og visningen husker spillerens sidste valg.
@@ -369,6 +371,8 @@ function RiderPicker({ value, options, onChange, full = false }: { value: string
   );
 }
 
+export { BOTTOM_SAVE } from "./R5ProgramPhone.tsx";
+
 export default function ProgramTab({ mode: urlMode, mobile }: { mode: Kind; mobile: boolean }) {
   const [kind, setKindRaw] = useState<Kind>(() => rememberedKind(urlMode));
   const [programId, setProgramId] = useState(kind === "rotation" ? "ardennes" : "team-week");
@@ -393,31 +397,8 @@ export default function ProgramTab({ mode: urlMode, mobile }: { mode: Kind; mobi
 
   if (mobile) {
     return (
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <button type="button" className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-cz border border-cz-border bg-cz-card px-3 text-start" aria-haspopup="dialog">
-            <KindIcon kind={program.kind} />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-semibold text-cz-1">{program.name}</span>
-              <span className="block truncate text-3xs text-cz-2">On: {[...usersOf(program.id).groups.map((g) => g.group.name), ...usersOf(program.id).riders.map((id) => riderById(id).name)].join(", ")}</span>
-            </span>
-            <ChevronDownIcon size={14} aria-hidden="true" className="shrink-0 text-cz-3" />
-          </button>
-          <Segmented label="Plan type" value={kind} onChange={(v: Kind) => setKind(v)}
-            options={[{ value: "week", label: "Week" }, { value: "rotation", label: "Rotation" }]} />
-        </div>
-        <p className="flex items-center gap-1.5 text-xs text-cz-2">
-          <FlameIcon size={13} aria-hidden="true" className="shrink-0 text-cz-3" />
-          <span><span className="font-semibold text-cz-1">Limit {FATIGUE_LIMIT}</span> · above it the rest of the day is active recovery</span>
-        </p>
-        <div className="flex items-center justify-between gap-2">
-          <RiderPicker value={rider} options={riders} onChange={setRider} />
-          <span className="text-right text-3xs text-cz-2">{view.summary}</span>
-        </div>
-        {PHONE === "a" && <PhoneDayAtATime key={`${kind}-${rider}`} view={view} start={PHONE_DAY} editable={kind === "week"} />}
-        {PHONE === "b" && <PhoneWeekList key={`${kind}-${rider}`} view={view} open={PHONE_DAY} />}
-        {PHONE === "c" && <PhoneGrid key={`${kind}-${rider}`} view={view} sheet={SHEET} />}
-      </div>
+      <ProgramPhone mode={PHONE} head={PHONE_HEAD} startView={PHONE_VIEW} startDay={PHONE_DAY} kind={kind} program={program}
+        riders={riders} rider={rider} onRider={setRider} view={view} />
     );
   }
 

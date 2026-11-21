@@ -9,12 +9,8 @@
 // - programmer saettes kun paa en gruppe eller en rytter, rytterens egen plan
 //   vinder over gruppens, og "No program" faar ingen advarsel.
 
-import { useLayoutEffect, useRef, useState } from "react";
-import Portal from "../../../components/ui/Portal.jsx";
-import { useModalA11y } from "../../../hooks/useModalA11y.js";
 import {
-  CalendarIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, ClipboardIcon, FlagIcon, FlameIcon,
-  GripVerticalIcon, LockIcon, RefreshIcon, XIcon,
+  CalendarIcon, ClipboardIcon, FlagIcon, GripVerticalIcon, LockIcon, RefreshIcon,
 } from "../../../components/ui/icons/index.jsx";
 import type { Session } from "./model.ts";
 import { EFFORT_TONE, EFFORT_WORD, effortOf, fillRotation } from "./r5model.ts";
@@ -253,10 +249,10 @@ export function TonightPlate({ value }: { value: number }) {
   return <FatiguePlate value={value} label="Fatigue tonight" />;
 }
 
-// --- Telefon: tre muligheder for ugeskemaet ---------------------------------
+// --- Telefon: byggestenene til dagen (selve varianterne ligger i R5ProgramPhone.tsx) ---
 
-/** En lodret liste over dagens fem felter (A og B). */
-function DayFields({ view, d }: { view: WeekView; d: number }) {
+/** En lodret liste over dagens fem felter. */
+export function DayFields({ view, d }: { view: WeekView; d: number }) {
   return (
     <ol className="rounded-cz border border-cz-border bg-cz-card">
       {FIELDS.map((f) => {
@@ -278,7 +274,7 @@ function DayFields({ view, d }: { view: WeekView; d: number }) {
   );
 }
 
-function DayFooter({ view, d }: { view: WeekView; d: number }) {
+export function DayFooter({ view, d }: { view: WeekView; d: number }) {
   const taken = view.taken[d];
   return (
     <div className="mt-2 flex items-center justify-between gap-3 text-xs text-cz-2">
@@ -290,7 +286,7 @@ function DayFooter({ view, d }: { view: WeekView; d: number }) {
   );
 }
 
-function DayBlockEditor({ d }: { d: number }) {
+export function DayBlockEditor({ d }: { d: number }) {
   const b = DAY_BLOCKS[d];
   return (
     <section className="mt-3" aria-label={`${DAYS[d].long} order`}>
@@ -319,223 +315,3 @@ function DayBlockEditor({ d }: { d: number }) {
     </section>
   );
 }
-
-/** A · een dag ad gangen: dagsvaelger + vandret swipe med scroll-snap. */
-export function PhoneDayAtATime({ view, start, editable }: { view: WeekView; start: number; editable: boolean }) {
-  const [day, setDay] = useState(start);
-  const track = useRef<HTMLDivElement>(null);
-  const go = (d: number, smooth = true) => {
-    const el = track.current?.children[d] as HTMLElement | undefined;
-    track.current?.scrollTo({ left: el ? el.offsetLeft - (track.current?.offsetLeft ?? 0) : 0, behavior: smooth ? "smooth" : "instant" });
-    setDay(d);
-  };
-  // Startdagen staar i sporet fra foerste billede (uden glidende rul).
-  useLayoutEffect(() => {
-    const place = () => {
-      const t = track.current;
-      const el = t?.children[start] as HTMLElement | undefined;
-      if (t && el) t.scrollLeft = el.offsetLeft - t.offsetLeft;
-    };
-    place();
-    // Fonte og faner kan flytte bredden efter foerste maaling; saet dagen igen naar layoutet staar.
-    const raf = requestAnimationFrame(place);
-    return () => cancelAnimationFrame(raf);
-  }, [start]);
-  // Fanger hvor sporet falder til ro, saa vaelgeren foelger et swipe.
-  const settle = useRef<number | undefined>(undefined);
-  const onScrollEnd = () => {
-    const t = track.current;
-    if (!t) return;
-    const d = Math.round(t.scrollLeft / t.clientWidth);
-    if (d !== day) setDay(d);
-  };
-  // Reserve til browsere uden scrollend: vent til rullen har staaet stille et oejeblik.
-  const onScroll = () => { window.clearTimeout(settle.current); settle.current = window.setTimeout(onScrollEnd, 120); };
-  return (
-    <div>
-      <div className="grid grid-cols-7 gap-1" role="tablist" aria-label="Day">
-        {DAYS.map((x, d) => {
-          const active = d === day;
-          const races = view.cells[d].filter((c) => c.kind === "race").length;
-          return (
-            <button key={x.short} type="button" role="tab" aria-selected={active} onClick={() => go(d)}
-              className={`flex min-h-[54px] flex-col items-center justify-center rounded-cz border text-center ${active ? "border-cz-1 bg-cz-card font-semibold text-cz-1" : "border-cz-border text-cz-2"}`}>
-              <span className="text-3xs uppercase tracking-[.06em]">{x.short}</span>
-              <span className="font-data text-sm tabular-nums">{x.date}</span>
-              <span className="flex h-3 items-center gap-0.5" aria-label={`${races} races`}>
-                {races > 0 && <FlagIcon size={10} aria-hidden="true" />}
-                {races > 1 && <span className="font-data text-3xs tabular-nums">{races}</span>}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-      <div className="mt-2 flex items-center justify-between">
-        <button type="button" aria-label="Previous day" onClick={() => go(Math.max(0, day - 1))} disabled={day === 0}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-cz text-cz-2 disabled:opacity-40"><ChevronLeftIcon size={18} /></button>
-        <span className="text-sm font-semibold text-cz-1">{DAYS[day].long} {DAYS[day].date}{day === TODAY ? " · today" : ""}</span>
-        <button type="button" aria-label="Next day" onClick={() => go(Math.min(6, day + 1))} disabled={day === 6}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-cz text-cz-2 disabled:opacity-40"><ChevronRightIcon size={18} /></button>
-      </div>
-      <div ref={track} onScroll={onScroll} className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none]" aria-live="polite">
-        {DAYS.map((x, d) => (
-          <div key={x.short} className="min-w-0 shrink-0 basis-full overflow-hidden snap-center snap-always" aria-hidden={d !== day} inert={d !== day}>
-            <DayFields view={view} d={d} />
-            <DayFooter view={view} d={d} />
-            {editable && <DayBlockEditor d={d} />}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/** Fem smaa felter som eet overblik i en raekke (B's sammenfoldede dag). */
-function MiniStrip({ cells }: { cells: Cell[] }) {
-  return (
-    <span className="grid grid-cols-5 gap-0.5" aria-hidden="true">
-      {cells.map((c, f) => (
-        <span key={f} className={`flex h-6 w-8 items-center justify-center rounded-cz border font-data text-3xs font-semibold ${
-          c.kind === "race" ? "border-cz-border-strong bg-cz-subtle text-cz-1"
-            : c.kind === "session" && c.limitedFrom ? "border-dashed border-cz-danger text-cz-danger"
-              : "border-cz-border text-cz-1"}`}>
-          {c.kind === "race" ? <FlagIcon size={10} /> : c.kind === "restDay" ? "RE" : c.locked ? <LockIcon size={10} /> : CODE[c.session]}
-        </span>
-      ))}
-    </span>
-  );
-}
-
-/** B · hele ugen som lodret liste; en dag foldes ud ad gangen (details name). */
-export function PhoneWeekList({ view, open }: { view: WeekView; open: number }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      {DAYS.map((x, d) => {
-        const races = view.cells[d].filter((c) => c.kind === "race").length;
-        return (
-          <details key={x.short} name="program-week" open={d === open} className="group rounded-cz border border-cz-border bg-cz-card">
-            <summary className="flex min-h-14 cursor-pointer list-none items-center gap-2 px-3 [&::-webkit-details-marker]:hidden">
-              <span className="w-[68px] shrink-0">
-                <span className="block text-sm font-semibold text-cz-1">{x.short} {x.date}</span>
-                <span className="block text-3xs text-cz-2">{d === TODAY ? "Today · " : ""}{races ? `${races} race${races > 1 ? "s" : ""}` : "No races"}</span>
-              </span>
-              <span className="flex-1"><MiniStrip cells={view.cells[d]} /></span>
-              <ChevronDownIcon size={16} aria-hidden="true" className="shrink-0 text-cz-3 transition-transform group-open:rotate-180" />
-            </summary>
-            <div className="px-3 pb-3">
-              <DayFields view={view} d={d} />
-              <DayFooter view={view} d={d} />
-            </div>
-          </details>
-        );
-      })}
-    </div>
-  );
-}
-
-/** C · kompakt 7x5-gitter med koder; et tryk aabner feltet i et ark. */
-export function PhoneGrid({ view, sheet }: { view: WeekView; sheet: { d: number; f: number } | null }) {
-  const [open, setOpen] = useState(sheet);
-  return (
-    <div>
-      <div className="grid grid-cols-[30px_repeat(7,minmax(0,1fr))] gap-0.5" role="grid" aria-label="Week">
-        <span />
-        {DAYS.map((x, d) => (
-          <span key={x.short} className={`pb-1 text-center leading-tight ${d === TODAY ? "font-semibold text-cz-1" : "text-cz-2"}`}>
-            <span className="block text-3xs uppercase">{x.short}</span>
-            <span className="block font-data text-xs tabular-nums">{x.date}</span>
-          </span>
-        ))}
-        {FIELDS.map((f) => (
-          <Row key={f} f={f} view={view} onOpen={(d) => setOpen({ d, f })} active={open} />
-        ))}
-        <span className="flex items-center text-cz-3"><FlameIcon size={13} aria-label="Fatigue tonight" /></span>
-        {DAYS.map((x, d) => (
-          <span key={x.short} className="flex justify-center pt-1"><TonightPlate value={view.fatigueTonight[d]} /></span>
-        ))}
-      </div>
-      <p className="mt-2 text-3xs leading-relaxed text-cz-3">
-        SP Sprint · TE Tempo · EN Endurance · TQ Technique · AE Aero · VO VO2max · TH Threshold · AR Active recovery · flag = race · flame = fatigue tonight
-      </p>
-      {open && <CellSheet view={view} at={open} onClose={() => setOpen(null)} />}
-    </div>
-  );
-}
-
-function Row({ f, view, onOpen, active }: { f: number; view: WeekView; onOpen: (d: number) => void; active: { d: number; f: number } | null }) {
-  return (
-    <>
-      <span className="flex items-center font-data text-3xs tabular-nums text-cz-3">LD{f + 1}</span>
-      {DAYS.map((x, d) => {
-        const c = view.cells[d][f];
-        const limitHere = view.limitAfter[d] !== undefined && f > view.limitAfter[d];
-        const isActive = active?.d === d && active.f === f;
-        return (
-          <button key={x.short} type="button" onClick={() => onOpen(d)}
-            aria-label={`${x.long} LD ${f + 1}: ${c.kind === "race" ? `race, ${c.event}` : c.kind === "restDay" ? "rest day" : SESSION_EN[c.session]}`}
-            className={`relative flex h-11 items-center justify-center rounded-cz border font-data text-xs font-semibold ${
-              c.kind === "race" ? "border-cz-border-strong bg-cz-subtle text-cz-1"
-                : limitHere ? "border-dashed border-cz-danger text-cz-danger"
-                  : "border-cz-border bg-cz-card text-cz-1"} ${isActive ? "outline-2 outline-offset-1 outline-cz-accent-t" : ""}`}>
-            {c.kind === "race" ? <FlagIcon size={13} aria-hidden="true" /> : c.kind === "restDay" ? "RE" : CODE[c.session]}
-            {c.kind === "session" && c.locked && <LockIcon size={9} aria-hidden="true" className="absolute end-0.5 top-0.5 text-cz-accent-t" />}
-            {c.kind === "session" && c.n !== undefined && <span className="absolute end-0.5 top-0 font-data text-3xs font-normal text-cz-3">{c.n}</span>}
-          </button>
-        );
-      })}
-    </>
-  );
-}
-
-const PICK: Session[] = ["recovery", "endurance", "technique", "tempo", "threshold", "sprint", "vo2max"];
-
-function CellSheet({ view, at, onClose }: { view: WeekView; at: { d: number; f: number }; onClose: () => void }) {
-  const ref = useModalA11y(onClose, true);
-  const c = view.cells[at.d][at.f];
-  const titleId = "program-cell-sheet";
-  return (
-    <Portal>
-      <div className="fixed inset-0 z-modal flex items-end justify-center">
-        <div className="cz-overlay-backdrop absolute inset-0 bg-black/60" aria-hidden="true" onClick={onClose} />
-        <div ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId}
-          className="cz-overlay-panel relative max-h-[85dvh] w-full max-w-lg overflow-y-auto rounded-t-cz border-x border-b-0 border-t border-cz-border bg-cz-card px-4 pb-4 pt-4 shadow-overlay outline-hidden">
-          <button type="button" onClick={onClose} aria-label="Close"
-            className="absolute right-2 top-2 inline-flex h-11 w-11 items-center justify-center rounded-cz text-cz-3 hover:bg-cz-subtle hover:text-cz-1">
-            <XIcon size={18} aria-hidden="true" />
-          </button>
-          <p className={LABEL}>{DAYS[at.d].long} {DAYS[at.d].date} · LD {at.f + 1} · {FIELD_TIME[at.f]}</p>
-          <h3 id={titleId} className="mt-1 text-base font-semibold text-cz-1">
-            {c.kind === "race" ? c.event : c.kind === "restDay" ? "Rest day" : SESSION_EN[c.session]}
-          </h3>
-          {c.kind === "session" && c.limitedFrom && (
-            <p className="mt-1 text-xs text-cz-2">
-              Planned: <span className="font-medium text-cz-1">{SESSION_EN[c.limitedFrom]}</span>{c.locked ? " (locked)" : ""}. Fatigue tonight passes the limit after LD {at.f}, so the rest of the day is active recovery. The limit beats the lock; a race would still run.
-            </p>
-          )}
-          {c.kind === "race" && <p className="mt-1 text-xs text-cz-2">{c.stage} · races sit in their fixed field and always run.</p>}
-          {c.kind === "session" && (
-            <>
-              <p className={`${LABEL} mt-4 mb-1.5`}>Planned session</p>
-              <div className="flex flex-wrap gap-1.5">
-                {PICK.map((s) => (
-                  <button key={s} type="button" aria-pressed={s === (c.limitedFrom ?? c.session)}
-                    className={`min-h-11 rounded-cz border px-3 text-xs ${s === (c.limitedFrom ?? c.session) ? "border-cz-1 font-semibold text-cz-1" : "border-cz-border text-cz-2"}`}>
-                    {SESSION_EN[s]}
-                  </button>
-                ))}
-              </div>
-              <div className="mt-4 flex items-center justify-between border-t border-cz-border pt-3">
-                <span className="inline-flex items-center gap-2 text-sm text-cz-1"><LockIcon size={14} aria-hidden="true" />Lock this session</span>
-                <span className="text-xs text-cz-2">{c.locked ? "On · one per day" : "Off"}</span>
-              </div>
-              <button type="button" className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-xs font-medium text-cz-2">
-                <ClipboardIcon size={14} aria-hidden="true" />Copy {DAYS[at.d].long} to other days
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    </Portal>
-  );
-}
-

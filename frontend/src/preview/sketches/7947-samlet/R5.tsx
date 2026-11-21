@@ -24,7 +24,7 @@ import { DATES, RACE, SESSION_EN, SESSION_GROUPS_EN, TEAM, programFields, type R
 import TodaysTraining from "./R5Moment.tsx";
 import { ArrowMark, FORM, FatiguePlate, RiderName, TypeCell, FilterWords } from "./R5Parts.tsx";
 import { FormPlate } from "../../../components/training/reportXp/XpToday.tsx";
-import ProgramTab from "./R5Program.tsx";
+import ProgramTab, { BOTTOM_SAVE } from "./R5Program.tsx";
 import DevelopmentTab from "./R5Development.tsx";
 import ReportTab, { type ReportRange } from "./R5Report.tsx";
 
@@ -340,7 +340,7 @@ export default function Direction5({ init, mobile }: { init: R5Init; mobile: boo
       ) : tab === "program" ? (
         <div className="flex items-center gap-2 max-sm:w-full">
           <Button variant="secondary" size="sm" className="max-sm:flex-1">Copy to riders</Button>
-          <Button size="sm" className="max-sm:flex-1">Save plan</Button>
+          {!(mobile && BOTTOM_SAVE) && <Button size="sm" className="max-sm:flex-1">Save plan</Button>}
         </div>
       ) : null}
     </header>
