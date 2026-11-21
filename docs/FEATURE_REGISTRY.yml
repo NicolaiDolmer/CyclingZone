@@ -376,12 +376,12 @@ features:
     area: season
     title_en: One planning page
     title_da: Én planlægningsside (ugeoversigt, løbsliste, trup)
-    state: beta
+    state: live
     flag: planning_workbench
     ssot: docs/PLANNING_CENTER_RULES.md
     epic: 7535
-    verified: 2026-11-17
-    note: "#7535: beta 17/11 efter ejerens kør; belastningsordenes grænser i private_config (planning_expected_load_7535)."
+    verified: 2026-11-21
+    note: "On for alle 21/11 aften (ejer-go)."
     decision: taend
     decide_by: 2026-11-28
     roadmap_en: "One planning page: race list, week board, route profile, squad, tactics and peak form in one place."
