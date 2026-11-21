@@ -380,7 +380,7 @@ export default function ProgramR5({
             </>
           )}
         >
-          <p className="text-xs text-cz-2" data-testid="program-r5-group-delete">{tR5("programR5.groups.deleteBody")}</p>
+          <p className="text-xs text-cz-2" data-testid="program-r5-group-delete-body">{tR5("programR5.groups.deleteBody")}</p>
         </Modal>
       )}
     </>
@@ -807,7 +807,7 @@ function GroupLimitFields({
   const control = "min-h-11 rounded-cz border border-cz-border bg-cz-card px-2 text-[13px] text-cz-1 disabled:opacity-50 sm:min-h-9";
   const label = tR5("programR5.groups.limitLabel");
   return (
-    <div className="flex flex-col gap-2 border-t border-cz-border pt-3" data-testid="program-r5-group-limit">
+    <div className="flex flex-col gap-2 border-t border-cz-border pt-3" data-testid="program-r5-group-limit-fields">
       <span className="font-data text-2xs font-semibold uppercase tracking-[.04em] text-cz-3">{label}</span>
       <Segmented label={label} value={draft.mode} onChange={(mode: GroupLimitDraft["mode"]) => onChange({ ...draft, mode })}
         options={GROUP_LIMIT_MODES.map((m) => ({ value: m, label: tR5(`programR5.groups.limit_${m}`), disabled: busy }))} />
