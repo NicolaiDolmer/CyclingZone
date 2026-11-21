@@ -68,8 +68,11 @@ test("trainingFocusXp findes paa alle fem sprog, uden loft, uden em-dash og elle
     assert.doesNotMatch(String(xp.text), ceiling[lng], `${lng}: naevner stadig loftet`);
     assert.doesNotMatch(String(xp.text), /—/, `${lng}: em-dash`);
     assert.match(String(old.text), ceiling[lng], `${lng}: dagens tekst er uaendret`);
-    // Kun den ene vending er skiftet: teksten er ellers ord for ord den samme.
-    const a = String(old.text), b = String(xp.text);
+    // Kun den ene vending er skiftet: teksten er ellers ord for ord den samme. Ejervalg 21/11
+    // (#6110/#7947): under XP kan indsatsen vaelges (Let/Mellem/Haard), saa indsats-saetningen
+    // er ogsaa ny; den fjernes fra begge, foer resten sammenlignes.
+    const EFFORT = /[^.!?]*(not a separate choice|selvstændigt valg|elección aparte|choix séparé|aparte keuze|standard effort|standardniveau|esfuerzo estándar|effort standard|standaardinspanning)[^.!?]*[.!?](\s+[^.!?]*(Easy, Medium or Hard|Let, Mellem eller Hård|Suave, Medio o Duro|Facile, Moyen ou Dur|Licht, Gemiddeld of Zwaar)[^.!?]*[.!?])?/g;
+    const a = String(old.text).replace(EFFORT, ""), b = String(xp.text).replace(EFFORT, "");
     let pre = 0;
     while (pre < a.length && a[pre] === b[pre]) pre++;
     let suf = 0;
