@@ -383,6 +383,7 @@ describe("migrationen 2026-11-21 (PGlite)", () => {
     db = await newDb();
     const cols = (await db.query("SELECT column_name FROM information_schema.columns WHERE table_name='rider_training_scores' ORDER BY ordinal_position")).rows.map((r) => r.column_name);
     assert.equal(cols.at(-1), "intensity");
+    assert.equal((await db.query("SELECT has_column_privilege('authenticated','public.rider_training_scores','intensity','SELECT') AS ok")).rows[0].ok, true);
     const migrated = (await db.query("SELECT prosrc FROM pg_proc WHERE proname='commit_training_date_tick'")).rows[0].prosrc;
     const frozen = (await db.query("SELECT prosrc FROM pg_proc WHERE proname='commit_training_date_tick_1118'")).rows[0].prosrc;
     assert.equal(frozen.split(OLD_INSERT).length, 2);
