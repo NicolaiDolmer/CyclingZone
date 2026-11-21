@@ -322,3 +322,107 @@ export function copyCandidates(programKey: string | null, library: Library, ride
   const already = new Set(library.programs.find((p) => p.key === programKey)?.riders ?? []);
   return riders.filter((r) => !already.has(r.id));
 }
+
+// --- Gruppestyring (#8560, ejer 21/11) -----------------------------------------------
+// Biblioteket faar "+ New group" og en menu pr. gruppe (Rename, Members, Fatigue limit,
+// Delete). Alt gaar gennem de eksisterende gruppe-kald (POST/PATCH/DELETE /groups,
+// /:id/follow, /:id/fatigue); her bor kun de rene valg, saa de kan testes uden browser.
+
+export const GROUP_MENU_ACTIONS = ["rename", "members", "limit", "delete"] as const;
+export type GroupMenuAction = (typeof GROUP_MENU_ACTIONS)[number];
+
+// Menuens punkter. Traethedsgraensen findes kun, naar traethedsreglerne er slaaet til.
+export function groupMenuActions({ limitEnabled }: { limitEnabled: boolean }): GroupMenuAction[] {
+  return GROUP_MENU_ACTIONS.filter((a) => a !== "limit" || limitEnabled);
+}
+
+type GroupLike = { id: string; name: string; members: readonly R5GroupMember[] };
+
+// PATCH kun med det der faktisk er aendret. Medlemmer sendes kun ved en aendring, fordi
+// serveren tjekker "Train now"-laasen, naar en gruppe med felter faar medlemmer; en ren
+// omdoebning skal ikke kunne afvises af laasen. null = intet at gemme.
+export function groupPatch(
+  group: GroupLike,
+  name: string,
+  riderIds: readonly string[],
+): { name?: string; riderIds?: string[] } | null {
+  const patch: { name?: string; riderIds?: string[] } = {};
+  const trimmed = name.trim();
+  if (trimmed && trimmed !== group.name) patch.name = trimmed;
+  const before = new Set(group.members.map((m) => m.riderId));
+  const after = new Set(riderIds);
+  const same = before.size === after.size && [...after].every((id) => before.has(id));
+  if (!same) patch.riderIds = [...after];
+  return Object.keys(patch).length ? patch : null;
+}
+
+// Den nye gruppe efter "Create": den id der ikke fandtes foer.
+export function createdGroupId(before: readonly string[], after: ReadonlyArray<{ id: string }> | null | undefined): string | null {
+  const known = new Set(before);
+  return (after ?? []).find((g) => !known.has(g.id))?.id ?? null;
+}
+
+// "Follow the group again": rytteren med egen plan (eller alle i gruppen med egen plan)
+// foelger gruppen igen. null = intet at foelge (rytteren er ikke i en gruppe, eller alle foelger).
+export function followAgainTarget(
+  subject: Subject | null,
+  groups: readonly GroupLike[],
+): { groupId: string; groupName: string; riderIds: string[] } | null {
+  if (!subject) return null;
+  if (subject.kind === "group") {
+    const group = groups.find((g) => g.id === subject.id);
+    const own = group?.members.filter((m) => !m.followsGroup).map((m) => m.riderId) ?? [];
+    return group && own.length ? { groupId: group.id, groupName: group.name, riderIds: own } : null;
+  }
+  for (const group of groups) {
+    const member = group.members.find((m) => m.riderId === subject.id);
+    if (member) return member.followsGroup ? null : { groupId: group.id, groupName: group.name, riderIds: [subject.id] };
+  }
+  return null;
+}
+
+// Kladder der ikke laengere har et emne (slettet gruppe, rytter der foelger gruppen igen).
+export function dropDrafts(drafts: Readonly<Record<string, Draft>>, keys: readonly string[]): Record<string, Draft> {
+  const out: Record<string, Draft> = { ...drafts };
+  for (const key of keys) delete out[key];
+  return out;
+}
+
+// Gruppens traethedsgraense i dialogen: Holdets / Egen: N / Fra (ejer 21/11).
+export type GroupLimitMode = "team" | "own" | "off";
+export type GroupLimitDraft = { mode: GroupLimitMode; threshold: string; fallback: string };
+export type GroupFatigue = { threshold: number | null; fallback: string } | null | undefined;
+export const GROUP_LIMIT_MODES: readonly GroupLimitMode[] = ["team", "own", "off"];
+
+// Startvaerdierne for "Egen" er de samme som i graense-kortets gruppe-undtagelse.
+export function groupLimitDraft(fatigue: GroupFatigue, defaults: { threshold: number; fallback: string }): GroupLimitDraft {
+  if (!fatigue) return { mode: "team", threshold: String(defaults.threshold), fallback: defaults.fallback };
+  if (fatigue.fallback === "off") return { mode: "off", threshold: String(defaults.threshold), fallback: defaults.fallback };
+  return {
+    mode: "own",
+    threshold: String(fatigue.threshold ?? defaults.threshold),
+    fallback: fatigue.fallback || defaults.fallback,
+  };
+}
+
+function limitThreshold(text: string): number | null {
+  const n = text.trim() === "" ? NaN : Number(text);
+  return Number.isInteger(n) && n >= 0 && n <= 100 ? n : null;
+}
+
+export function groupLimitValid(draft: GroupLimitDraft): boolean {
+  return draft.mode !== "own" || limitThreshold(draft.threshold) != null;
+}
+
+// Hvad der skal skrives til PUT /:id/fatigue. change null = graensen er uaendret.
+export function groupLimitWrite(
+  draft: GroupLimitDraft,
+  current: GroupFatigue,
+): { ok: false } | { ok: true; change: null | { mode: GroupLimitMode; own?: { threshold: number; fallback: string } } } {
+  if (!groupLimitValid(draft)) return { ok: false };
+  const was: GroupLimitMode = !current ? "team" : current.fallback === "off" ? "off" : "own";
+  if (draft.mode !== "own") return { ok: true, change: draft.mode === was ? null : { mode: draft.mode } };
+  const own = { threshold: limitThreshold(draft.threshold) as number, fallback: draft.fallback };
+  const same = was === "own" && current?.threshold === own.threshold && current?.fallback === own.fallback;
+  return { ok: true, change: same ? null : { mode: "own", own } };
+}
