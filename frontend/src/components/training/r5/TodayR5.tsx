@@ -49,7 +49,7 @@ import { ageForSeason, contractExpiringBadgeKey, retirementRiskBadgeKey } from "
 import { groupRidersByType, UNTYPED_KEY } from "../../../lib/trainingRoster.js";
 import { formatDate } from "../../../lib/intl.js";
 import {
-  AGE_FILTERS, ALL_SESSIONS_STORAGE_KEY, EFFORTS, NO_FILTERS, NO_GROUP, PROGRAM_CHOICE, RECOVERY_CHOICE, STAGE,
+  AGE_FILTERS, ALL_SESSIONS_STORAGE_KEY, EFFORTS, NO_FILTERS, NO_GROUP, canResetFilters, resetFilterState, PROGRAM_CHOICE, RECOVERY_CHOICE, STAGE,
   bulkPlan, bulkPlanLevels, dayEffort, dayFields, dayLoad, effortOf, fieldEfforts, filtersActive, levelForDayEntry, matchesFilters,
   matchesOverview, nextSort, overviewCounts, planEffort, readStoredFlag, settledDayFields, settledFieldEfforts, showsInjuryRisk,
   sortR5Rows, statusKeys, teamLine, toggleAllSelection, toggleOne, trainingChoiceOf,
@@ -940,9 +940,14 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
               const sel = selected.has(row.id);
               return (
                 <li key={row.id} className={`border-t border-cz-border first:border-t-0 ${sel ? "bg-cz-subtle/60" : ""}`} data-testid="r5-row">
+                  {/* #8563: knappen er en strakt flade bag indholdet, saa navnelinket (til profilen) ikke
+                      ligger inde i en knap. Kun linket tager imod tryk; resten af raekken folder ud. */}
+                  <div className={`relative ${o ? "bg-cz-subtle/60" : ""}`}>
                   <button type="button" onClick={() => (pickMode ? setSelected((s) => toggleOne(s, row.id)) : toggle(row.id))}
                     aria-expanded={pickMode ? undefined : o} aria-pressed={pickMode ? sel : undefined}
-                    className={`grid min-h-11 w-full ${mobileCols} items-center px-3 pt-2 text-start ${o ? "bg-cz-subtle/60" : ""} ${row.racing || locked || pickMode ? "pb-2" : "pb-1"}`}>
+                    aria-label={pickMode ? row.name : tR5("openRider", { name: row.name })} data-testid="r5-row-toggle"
+                    className="absolute inset-0 h-full w-full" />
+                  <div className={`pointer-events-none relative grid min-h-11 ${mobileCols} items-center px-3 pt-2 text-start ${pickMode ? "" : "[&_a]:pointer-events-auto [&_a]:relative [&_a]:z-10"} ${row.racing || locked || pickMode ? "pb-2" : "pb-1"}`}>
                     <span className="flex min-w-0 flex-col">
                       <span className="flex min-w-0 items-start gap-1">
                         {pickMode && <input type="checkbox" checked={sel} readOnly tabIndex={-1} aria-hidden="true" className="mt-0.5 h-4 w-4 flex-none rounded-[3px] accent-cz-accent" />}
@@ -954,7 +959,8 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
                     <span><FatiguePlate value={row.fatigue} /></span>
                     <span>{row.racing ? <RaceCell row={row} compact /> : <span className="[&>span]:whitespace-normal [&>span]:text-2xs [&>span]:leading-tight"><DayLoadCell load={dayLoad(row.fields, row.efforts)} label={(l) => tR5(`load.${l}`)} /></span>}</span>
                     <span>{!pickMode && (o ? <ChevronDownIcon size={13} aria-hidden="true" className="text-cz-3" /> : <ChevronRightIcon size={13} aria-hidden="true" className="text-cz-3" />)}</span>
-                  </button>
+                  </div>
+                  </div>
                   {/* Eet tryk som foer (ejer 20/11): valgknapperne staar i raekken. */}
                   {!row.racing && !pickMode && (
                     <div className="px-3 pb-2" data-testid="r5-onetap">
@@ -986,7 +992,15 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
   ) : r5.riders.length === 0 ? (
     <div className="p-5"><EmptyState icon={<TeamIcon size={26} aria-hidden="true" />} title={t("noRiders")} description={null} action={null} /></div>
   ) : shown.length === 0 ? (
-    <p className="px-3 py-6 text-sm text-cz-3" data-testid="r5-empty-filtered">{t("overview.emptyFiltered")}</p>
+    <div className="p-5" data-testid="r5-empty-filtered">
+      <EmptyState icon={<FilterIcon size={26} aria-hidden="true" />} title={t("overview.emptyFiltered")} description={null}
+        action={canResetFilters(filters, overview) ? (
+          <Button type="button" variant="primary" size="sm" data-testid="r5-reset-filters"
+            onClick={() => { const s = resetFilterState(); setFilters(s.filters); setOverview(s.overview); }}>
+            {tR5("filter.reset")}
+          </Button>
+        ) : null} />
+    </div>
   ) : r5.phone ? mobileList : desktopTable;
 
   return (

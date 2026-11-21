@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import {
-  NO_FILTERS, NO_GROUP, PROGRAM_CHOICE, RECOVERY_CHOICE, STAGE,
+  NO_FILTERS, NO_GROUP, canResetFilters, resetFilterState, PROGRAM_CHOICE, RECOVERY_CHOICE, STAGE,
   dayEffort, dayFields, dayLoad, effortOf, isTraining, matchesFilters, nextSort, overviewCounts,
   bulkPlan, readStoredFlag, settledDayFields, sortR5Rows, statusKeys, teamLine, toggleAllSelection, toggleOne, trainingChoiceOf,
   writeForEffort, writeForTraining, writeStoredFlag, yourDay,
@@ -26,6 +26,30 @@ function row(over: Partial<R5Row> & { id: string }): R5Row {
     ...over,
   };
 }
+
+test("canResetFilters/resetFilterState (#8563): kun et aktivt filter eller oversigtsvalg kan nulstilles, og nulstillingen rydder begge", () => {
+  assert.equal(canResetFilters(NO_FILTERS, null), false);
+  assert.equal(canResetFilters({ ...NO_FILTERS, age: "u23" }, null), true);
+  assert.equal(canResetFilters({ ...NO_FILTERS, group: NO_GROUP }, null), true);
+  assert.equal(canResetFilters({ ...NO_FILTERS, type: "climber" }, null), true);
+  assert.equal(canResetFilters(NO_FILTERS, "tired"), true);
+  const reset = resetFilterState();
+  assert.deepEqual(reset.filters, NO_FILTERS);
+  assert.equal(reset.overview, null);
+  assert.equal(canResetFilters(reset.filters, reset.overview), false);
+});
+
+test("TodayR5 (#8563): telefonens raekke har ingen link inde i en knap, og tomt filter har Nulstil-handlingen", () => {
+  const src = readFileSync(join(here, "TodayR5.tsx"), "utf8");
+  const start = src.indexOf("{g.rows.map((row) => {");
+  const mobileRow = src.slice(start, src.indexOf("</Fragment>", start));
+  // Foerste <button> i raekken er den strakte fold-ud-knap; navnet (NameCell) staar efter den, uden for en knap.
+  assert.ok(mobileRow.indexOf('data-testid="r5-row-toggle"') > -1);
+  const toggleEnd = mobileRow.indexOf("/>", mobileRow.indexOf('data-testid="r5-row-toggle"'));
+  assert.ok(mobileRow.indexOf("<NameCell", toggleEnd) > toggleEnd, "NameCell maa ikke ligge inde i fold-ud-knappen");
+  assert.match(src, /canResetFilters\(filters, overview\)/);
+  assert.match(src, /tR5\("filter\.reset"\)/);
+});
 
 // --- Indsatsen ------------------------------------------------------------------
 
