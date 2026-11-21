@@ -4,9 +4,10 @@ import assert from "node:assert/strict";
 import path from "node:path";
 
 import {
-  resolveOutDir, parseParams, parseArgs, currentRating, buildReport, renderMarkdown, applyReport, prognosisTop,
+  resolveOutDir, parseParams, parseArgs, currentRating, buildReport, renderMarkdown, applyReport, prognosisTop, prognosisTops,
 } from "./potentialP6110Convert.mjs";
 import { buildTypePrognosisBands } from "../lib/scoutingReport.js";
+import { displayPotentialBand } from "../lib/potentialDisplayBand.js";
 import { SCOUTING_CONFIG } from "../lib/scouting.js";
 import { DEFAULT_SCOUT } from "../lib/scoutEngine.js";
 import { ageForSeason } from "../lib/riderSeasonAge.js";
@@ -137,6 +138,23 @@ test("buildReport: unge over deres nye P får toppen af forventet niveau og tæl
   assert.equal(report.perStars["1"].liftedToPrognosis, 1);
   const md = renderMarkdown(report);
   assert.match(md, /toppen af forventet niveau: 1/);
+});
+
+test("prognosisTops: viste bånd er tabellernes valg; reglen bruger stadig primær type", () => {
+  const rider = { id: "y", potentiale: 5, primary_type: TYPE, secondary_type: null, team_id: "hold-a" };
+  const bands = buildTypePrognosisBands({
+    nowAbilities: LOW_ABILITIES, age: 21, primaryType: TYPE, secondaryType: null, potentiale: 5,
+    level: SCOUTING_CONFIG.maxLevel, riderId: "y", teamId: "hold-a",
+  });
+  const tops = prognosisTops(rider, LOW_ABILITIES, { age: 21 });
+  assert.equal(tops.primaryHi, bands.find((b) => b.key === TYPE).progHi);
+  assert.equal(tops.displayHi, displayPotentialBand(bands, TYPE).progHi);
+  assert.equal(prognosisTop(rider, LOW_ABILITIES, { age: 21 }), tops.primaryHi);
+  const lowStar = { ...rider, potentiale: 1, best_role_rating: 40, birthdate: birthdateForAge(21) };
+  const report = buildReport([lowStar], new Map([["y", LOW_ABILITIES]]), FIXTURE, { asOf: AS_OF, source: "test", seasonNumber: 1 });
+  const row = report.riders[0];
+  assert.equal(row.displayHi, prognosisTops(lowStar, LOW_ABILITIES, { age: 21 }).displayHi);
+  assert.equal(report.counts.liftedToPrognosisBelowDisplayed, row.liftedToPrognosis && row.displayHi > row.p ? 1 : 0);
 });
 
 test("buildReport: uden sæson er ingen ung, og resultatet er dagens regel", () => {

@@ -43,6 +43,7 @@ import {
 import { bestRoleForAbilities } from "../lib/riderBestRoleCache.js";
 import { REGISTRY_ABILITY_KEYS } from "../lib/abilityRegistry.js";
 import { buildTypePrognosisBands } from "../lib/scoutingReport.js";
+import { displayPotentialBand } from "../lib/potentialDisplayBand.js";
 import { SCOUTING_CONFIG } from "../lib/scouting.js";
 import { ageForSeason } from "../lib/riderSeasonAge.js";
 
@@ -101,7 +102,17 @@ export function currentRating(rider, abilities) {
  * @param {{ age: number|null, developmentXp?: unknown }} ctx
  * @returns {number|null}
  */
-export function prognosisTop(rider, abilities, { age, developmentXp = null }) {
+export function prognosisTop(rider, abilities, ctx) {
+  return prognosisTops(rider, abilities, ctx)?.primaryHi ?? null;
+}
+
+/**
+ * Som prognosisTop, men giver også toppen af det bånd tabellerne viser
+ * (displayPotentialBand: rollen med højeste potentiale). Kun til rapportens
+ * kontroltal: reglen bruger primær type (ejervalg 21/11).
+ * @returns {{ primaryHi: number|null, displayHi: number|null }|null}
+ */
+export function prognosisTops(rider, abilities, { age, developmentXp = null }) {
   if (!abilities || !rider.primary_type || age == null || rider.potentiale == null) return null;
   const bands = buildTypePrognosisBands({
     nowAbilities: abilities, age,
@@ -111,7 +122,11 @@ export function prognosisTop(rider, abilities, { age, developmentXp = null }) {
     developmentXp,
   });
   const band = bands.find((b) => b.key === rider.primary_type);
-  return band && band.progHi != null ? band.progHi : null;
+  const shown = displayPotentialBand(bands, rider.primary_type);
+  return {
+    primaryHi: band && band.progHi != null ? band.progHi : null,
+    displayHi: shown && shown.progHi != null ? shown.progHi : null,
+  };
 }
 
 /**
@@ -126,17 +141,20 @@ export function prognosisTop(rider, abilities, { age, developmentXp = null }) {
 export function buildReport(rows, abilitiesById, params, { asOf, source, seasonNumber = null, developmentXp = null }) {
   let missingPotentiale = 0;
   const inputs = [];
+  /** @type {Map<string, number|null>} */
+  const displayHiById = new Map();
   for (const r of rows) {
     if (r.potentiale == null) { missingPotentiale++; continue; }
     const abilities = abilitiesById.get(r.id);
     const age = Number.isFinite(seasonNumber) ? ageForSeason(r.birthdate, seasonNumber) : null;
     // Prognosen regnes kun for unge: kun de kan bruge den.
-    const prognosisHi = isYoungForP(age) ? prognosisTop(r, abilities, { age, developmentXp }) : null;
-    inputs.push({ id: r.id, potentiale: Number(r.potentiale), rating: currentRating(r, abilities), age, prognosisHi });
+    const tops = isYoungForP(age) ? prognosisTops(r, abilities, { age, developmentXp }) : null;
+    displayHiById.set(r.id, tops?.displayHi ?? null);
+    inputs.push({ id: r.id, potentiale: Number(r.potentiale), rating: currentRating(r, abilities), age, prognosisHi: tops?.primaryHi ?? null });
   }
   const { byId, skipped } = convertStarsToP(inputs, params);
   const rankViolations = findRankViolations(byId);
-  const converted = [...byId.entries()].map(([id, v]) => ({ id, ...v }));
+  const converted = [...byId.entries()].map(([id, v]) => ({ id, ...v, displayHi: displayHiById.get(id) ?? null }));
 
   const perStars = {};
   for (const step of STAR_STEPS) {
@@ -175,6 +193,9 @@ export function buildReport(rows, abilitiesById, params, { asOf, source, seasonN
       liftedToPrognosis: converted.filter((v) => v.liftedToPrognosis).length,
       // Heraf unge, der kun fik ratingen, fordi prognosen ikke kunne regnes.
       youngLiftedWithoutPrognosis: converted.filter((v) => v.lifted && !v.liftedToPrognosis && isYoungForP(v.age)).length,
+      // Kontroltal: unge hævet til primær types top, hvor tabellernes viste bånd
+      // (en anden rolle) har en højere top end det nye P.
+      liftedToPrognosisBelowDisplayed: converted.filter((v) => v.liftedToPrognosis && v.displayHi != null && v.displayHi > v.p).length,
       withoutRating: converted.filter((v) => v.rating == null).length,
       withoutAge: converted.filter((v) => v.age == null).length,
       wouldChange: changes,
@@ -184,7 +205,7 @@ export function buildReport(rows, abilitiesById, params, { asOf, source, seasonN
     distributionBeforeLift: summarizeP(converted.map((v) => v.pBase)),
     perStars,
     riders: converted.map((v) => ({
-      id: v.id, stars: v.stars, rating: v.rating, age: v.age, prognosisHi: v.prognosisHi,
+      id: v.id, stars: v.stars, rating: v.rating, age: v.age, prognosisHi: v.prognosisHi, displayHi: v.displayHi,
       pBase: v.pBase, p: v.p, lifted: v.lifted, liftedToPrognosis: v.liftedToPrognosis,
     })),
     skippedRiders: skipped,
@@ -202,7 +223,8 @@ export function renderMarkdown(report) {
     `- Læst: ${c.rowsRead} · omregnet: ${c.converted} · sprunget over: ${c.skipped} · uden stjerner: ${c.missingPotentiale}`,
     `- Hævet til rating: ${c.liftedToRating} · uden rating: ${c.withoutRating} · ville ændre: ${c.wouldChange}`,
     `- Unge (under ${report.youngAgeLimit}) hævet til toppen af forventet niveau: ${c.liftedToPrognosis} · unge hævet til rating (ingen prognose): ${c.youngLiftedWithoutPrognosis} · uden alder: ${c.withoutAge}`,
-    `- Sæson: ${report.seasonNumber ?? "ukendt"} · prognose med XP-model: ${report.prognosisUsesDevelopmentXp ? "ja" : "nej"}`,
+    `- Heraf hvor tabellernes viste bånd (en anden rolle end primær) har højere top end det nye P: ${c.liftedToPrognosisBelowDisplayed}`,
+    `- Sæson: ${report.seasonNumber ?? "ukendt"} · prognose med XP-model: ${report.prognosisUsesDevelopmentXp ? "ja" : "nej"} · scout: standard`,
     `- Rang-brud: ${report.rankViolations} (krav 0)`,
     "",
     "## Fordeling (P efter hævning)",
