@@ -1,0 +1,56 @@
+{
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "switched_on",
+      "flag": "training_page_r5",
+      "topic": "Training",
+      "area": "training",
+      "highlight": true,
+      "en": {
+        "title": "New training page with Light, Medium and Hard",
+        "body": "Daily training has a new look. In Today you pick an effort for the whole team or for each rider: Light, Medium or Hard. Hard gives the most progress but carries an injury risk; Light and Medium do not. In Program you plan the week for programs, groups and riders, and save it with Save plan. The page works on phone too."
+      },
+      "da": {
+        "title": "Ny træningsside med Let, Mellem og Hård",
+        "body": "Daglig træning har fået nyt udseende. I I dag vælger I en indsats for hele holdet eller for hver rytter: Let, Mellem eller Hård. Hård giver mest fremgang, men har en skaderisiko; Let og Mellem har ikke. I Program planlægger I ugen for programmer, grupper og ryttere og gemmer med Gem plan. Siden virker også på telefon."
+      },
+      "refs": [7947, 7456]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "switched_on",
+      "flag": "potential_estimate_display",
+      "topic": "Development",
+      "area": "development",
+      "en": {
+        "title": "Potential is a number from 1 to 99",
+        "body": "A rider's potential is now shown as a number from 1 to 99 instead of stars, with a word for how sure your scout is. Young riders never got a lower expectation than before the change."
+      },
+      "da": {
+        "title": "Potentiale er et tal fra 1 til 99",
+        "body": "En rytters potentiale vises nu som et tal fra 1 til 99 i stedet for stjerner, med et ord for, hvor sikker jeres spejder er. Ingen ung rytter fik en lavere forventning end før skiftet."
+      },
+      "refs": [6110]
+    },
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta_to_live",
+      "flag": "race_page_v6",
+      "topic": "Races",
+      "area": "races",
+      "en": {
+        "title": "The new race page is live for everyone",
+        "body": "The new race page with the race film, split times, tactics and the coloured route is now on for everyone. The spoiler shield in Settings now also hides the result on the race page until you open it."
+      },
+      "da": {
+        "title": "Den nye løbsside er tændt for alle",
+        "body": "Den nye løbsside med løbsfilmen, mellemtider, taktik og den farvede rute er nu tændt for alle. Spoiler-skjoldet under Indstillinger skjuler nu også resultatet på løbssiden, til I åbner det."
+      },
+      "refs": [7778, 7859]
+    }
+  ]
+}
