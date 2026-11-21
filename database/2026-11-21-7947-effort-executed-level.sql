@@ -21,8 +21,10 @@ ALTER TABLE public.rider_training_scores
   ADD COLUMN IF NOT EXISTS intensity text
   CHECK (intensity IS NULL OR intensity IN ('easy','normal','hard'));
 -- Tabellen har kolonne-privilegier (2026-10-23-6110: alt undtagen contributions). Det koerte
--- niveau er spillerens eget valg og ikke hemmeligt, saa det grantes som de oevrige kolonner.
-GRANT SELECT (intensity) ON public.rider_training_scores TO anon, authenticated;
+-- niveau er spillerens eget valg og ikke hemmeligt. Kolonnen grantes kun til authenticated:
+-- ingen klient laeser tabellen direkte (backend laeser som service_role), saa anon faar intet
+-- nyt, og audit-table-grants kraever en reviewet beslutning for anon paa en eksisterende tabel.
+GRANT SELECT (intensity) ON public.rider_training_scores TO authenticated;
 
 BEGIN;
 CREATE OR REPLACE FUNCTION public.commit_training_date_tick(
