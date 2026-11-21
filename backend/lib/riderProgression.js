@@ -21,7 +21,7 @@ import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { abilityMeta } from "./abilityRegistry.js";
 import { CAPS_SHAPING_WEIGHTS } from "./weights/capsShapingWeights.js";
 import { ageForSeason } from "./riderSeasonAge.js";
-import { isXpAgingPercentShape, validateXpAgingPercent, agingRateAt } from "./riderWear6110.js";
+import { isXpAgingPercentShape, validateXpAgingPercent, validateXpAgingBrake, agingRateAt } from "./riderWear6110.js";
 
 // ── EJER-JUSTERBARE KONSTANTER (kalibreres i previewRiderProgression.js) ────────
 export const PROGRESSION_CONFIG = Object.freeze({
@@ -656,24 +656,35 @@ export const AGING_V2_CONFIG = Object.freeze({
 
 // #6110 (ejervalg 19/11): sæsonskiftets cfg under XP. `xpParams` er de validerede
 // XP-params (developmentXp.ts); uden `aging` = null, og sæsonskiftet bruger dagens
-// AGING_V2_CONFIG uændret. Bremsen og typefaktoren er dagens.
+// AGING_V2_CONFIG uændret. Typefaktoren er dagens; bremsen er dagens, medmindre
+// talfilen kalibrerer den (#8531, nedenfor).
 //
 // #8522 (G3a, spec 2026-11-20 §3): har talfilen aldringen i procent-form (kurver,
-// riderWear6110.js), bliver cfg'en `percent`. Bremsen er stadig dagens. En ugyldig
+// riderWear6110.js), bliver cfg'en `percent`. En ugyldig
 // procent-form kaster: sæsonskiftet venter hellere end at ælde efter en halv model.
+//
+// #8531: talfilens aldring (begge former) kan kalibrere løbsbremsen (brakeLoadDays,
+// hardTrainingDayWeight, riderWear6110.validateXpAgingBrake). Kun de felter, der er
+// sat, erstatter dagens; uden dem er bremsen dagens, bit-identisk. Et ugyldigt felt
+// kaster af samme grund som en ugyldig procent-form.
 export function xpAgingConfig(xpParams) {
   const aging = xpParams?.aging;
   if (!aging) return null;
   if (isXpAgingPercentShape(aging)) {
-    const percent = validateXpAgingPercent(aging);
-    if (!percent) throw new Error("agingXp: invalid percent aging in development_xp_params");
-    return Object.freeze({ ...AGING_V2_CONFIG, percent });
+    const valid = validateXpAgingPercent(aging);
+    if (!valid) throw new Error("agingXp: invalid percent aging in development_xp_params");
+    // cfg.percent er kun kurverne; bremsen står på cfg'en som i AGING_V2_CONFIG.
+    const { physical, mental, ...brake } = valid;
+    return Object.freeze({ ...AGING_V2_CONFIG, ...brake, percent: Object.freeze({ physical, mental }) });
   }
+  const brake = validateXpAgingBrake(aging);
+  if (!brake) throw new Error("agingXp: invalid aging brake in development_xp_params");
   return Object.freeze({
     ...AGING_V2_CONFIG,
     plateauThroughAge: aging.plateauThroughAge,
     declineByYearsPastPlateau: aging.declineByYearsPastPlateau,
     ...(aging.late ? { late: aging.late } : {}),
+    ...brake,
   });
 }
 

@@ -42,7 +42,13 @@ const MAX_CURVE_AGE = 50;
 // sæson-alder til og med 30. Satsen kan først være over nul fra 31.
 export const AGING_PLATEAU_THROUGH_AGE = 30;
 
-const isNum = (x) => typeof x === "number" && Number.isFinite(x);
+/**
+ * @param {unknown} x
+ * @returns {x is number}
+ */
+function isNum(x) {
+  return typeof x === "number" && Number.isFinite(x);
+}
 const onlyKeys = (obj, allowed) => Object.keys(obj).every((k) => allowed.includes(k));
 
 /** Er `raw` talfilens G3a-form (kurver), og ikke kandidat B's trin-form? */
@@ -85,18 +91,64 @@ function validRateCurve(raw) {
   return Object.freeze(out);
 }
 
+// ── 1b) Løbsbremsen i talfilen (#8531) ───────────────────────────────────────
+//
+// Talfilens aldring (begge former) kan kalibrere sæsonskiftets bremse: hvor mange
+// belastningsdage der stopper faldet helt, og hvor meget en hård træningsdag tæller.
+// Felterne hedder det samme som i AGING_V2_CONFIG (riderProgression.js) og erstatter
+// kun dem. Udeladt = dagens bremse, bit-identisk. Tallene er private (hard rule 17).
+export const XP_AGING_BRAKE_KEYS = Object.freeze(["brakeLoadDays", "hardTrainingDayWeight"]);
+
+// Sikkerhedsskinner, ikke balancetal: bremsen skal kunne nås inden for et år, og en
+// hård træningsdag bremser aldrig mere end en løbsdag.
+const MAX_BRAKE_LOAD_DAYS = 365;
+const MAX_HARD_DAY_WEIGHT = 1;
+
+/**
+ * Bremse-felterne fra talfilens aldring: et frosset objekt med kun de felter, der er
+ * sat (tomt, når ingen er sat), eller null, når et sat felt er ugyldigt (hele talfilen
+ * afvises, fail-safe). Andre nøgler i `raw` ignoreres her; formens egen validator
+ * afgør, hvilke nøgler der er tilladt.
+ *
+ * @param {unknown} raw
+ * @returns {Readonly<{ brakeLoadDays?: number, hardTrainingDayWeight?: number }> | null}
+ */
+export function validateXpAgingBrake(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const r = /** @type {Record<string, unknown>} */ (raw);
+  /** @type {{ brakeLoadDays?: number, hardTrainingDayWeight?: number }} */
+  const out = {};
+  if (r.brakeLoadDays !== undefined) {
+    const d = r.brakeLoadDays;
+    if (!isNum(d) || !(d > 0 && d <= MAX_BRAKE_LOAD_DAYS)) return null;
+    out.brakeLoadDays = d;
+  }
+  if (r.hardTrainingDayWeight !== undefined) {
+    const w = r.hardTrainingDayWeight;
+    if (!isNum(w) || !(w >= 0 && w <= MAX_HARD_DAY_WEIGHT)) return null;
+    out.hardTrainingDayWeight = w;
+  }
+  return Object.freeze(out);
+}
+
 /**
  * Validerer talfilens G3a-aldring. Samme tre udfald som de andre valgfrie dele af
  * XP-params: udeladt = undefined (dagens aldring), sat men ugyldig = null (hele
- * talfilen afvises, fail-safe), ellers en frossen kopi.
+ * talfilen afvises, fail-safe), ellers en frossen kopi. Bremse-felterne (#8531) er
+ * valgfrie og står kun i kopien, når de er sat.
  *
- * Kontrakt med XP-sporet (#8520, developmentXp.ts): talfilens validator kalder denne
- * for `aging` i G3a-form, så reglerne kun står ét sted.
+ * Kontrakt med XP-sporet (#8520, #8531, developmentXp.ts): talfilens validator kalder
+ * denne for `aging` i G3a-form, så reglerne kun står ét sted.
+ *
+ * @param {any} raw
+ * @returns {Readonly<{ physical: readonly { at: number, value: number }[], mental: readonly { at: number, value: number }[], brakeLoadDays?: number, hardTrainingDayWeight?: number }> | null | undefined}
  */
 export function validateXpAgingPercent(raw) {
   if (raw === undefined) return undefined;
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
-  if (!onlyKeys(raw, XP_AGING_PERCENT_KEYS)) return null;
+  if (!onlyKeys(raw, [...XP_AGING_PERCENT_KEYS, ...XP_AGING_BRAKE_KEYS])) return null;
+  const brake = validateXpAgingBrake(raw);
+  if (!brake) return null;
   const physical = validRateCurve(raw.physical);
   const mental = validRateCurve(raw.mental);
   if (!physical || !mental) return null;
@@ -107,7 +159,7 @@ export function validateXpAgingPercent(raw) {
   for (const { at } of [...physical, ...mental]) {
     if (agingRateAt(mental, at) > agingRateAt(physical, at)) return null;
   }
-  return Object.freeze({ physical, mental });
+  return Object.freeze({ physical, mental, ...brake });
 }
 
 // ── 2) Sliddet ────────────────────────────────────────────────────────────────
