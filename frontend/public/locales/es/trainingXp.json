@@ -7,6 +7,9 @@
     "previousDay": "Día anterior",
     "nextDay": "Día siguiente",
     "lastSevenDays": "Últimos siete días",
+    "allDays": "Todos los días",
+    "showOlderDays": "Mostrar días anteriores",
+    "showFewerDays": "Mostrar menos días",
     "dayPoints": "{date}: {count, plural, one {# punto nuevo} other {# puntos nuevos}}",
     "xpToday": "XP ganada hoy",
     "xp30Sub": "30 días {xp}",
@@ -67,6 +70,15 @@
     "colXpToday": "XP hoy",
     "colEarned": "Ganado",
     "colPaid": "De la barra",
-    "details": "Detalles de {name}"
+    "details": "Detalles de {name}",
+    "loadError": "No se pudo cargar el informe",
+    "loadErrorBody": "No se ha cambiado nada. Tus planes de entrenamiento están a salvo.",
+    "retry": "Reintentar",
+    "empty": "Aún no hay entrenamiento en esta temporada.",
+    "emptyAction": "Ir al entrenamiento de hoy"
+  },
+  "devFocus": {
+    "change": "Cambiar enfoque",
+    "changeFor": "Cambiar el enfoque de {name}"
   }
 }

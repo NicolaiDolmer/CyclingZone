@@ -5,11 +5,11 @@ import Segmented from "../../ui/Segmented.jsx";
 import HeroStats from "../../ui/HeroStats.jsx";
 import { ArrowDownIcon, ArrowUpIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, InfoIcon } from "../../ui/icons/index.jsx";
 import RiderLink from "../../RiderLink.jsx";
-import { Flag, RiderNameCell, formatDay, statPlateStyle } from "./ui.ts";
+import { Flag, RiderNameCell, SecondaryButton, formatDay, statPlateStyle } from "./ui.ts";
 import { formatNumber } from "../../../lib/intl.js";
 import { riderShortName } from "../../../lib/riderName.ts";
 import { useMediaQuery } from "../../../hooks/useMediaQuery.ts";
-import { filterTodayRiders, xpOfPrice, type TodayFilter, type XpAbilityRow, type XpRiderType, type XpTodayRider, type XpTodayView } from "../../../lib/trainingReportXp.ts";
+import { filterTodayRiders, xpOfPrice, STRIP_DAYS, type TodayFilter, type XpAbilityRow, type XpRiderType, type XpTodayRider, type XpTodayView } from "../../../lib/trainingReportXp.ts";
 import { Swatch, XpBar, XpLegend } from "./XpBar.tsx";
 import type { RatingChange } from "../../../lib/xpRatingChange.ts";
 
@@ -206,7 +206,10 @@ export function RiderDetail({ rider, panel = false }: { rider: XpTodayRider; pan
   );
 }
 
-export default function XpToday({ view, onPickDate, switcher }: { view: XpTodayView; onPickDate: (date: string) => void; switcher: ReactNode }) {
+/** `showAll` + `onToggleDays` (#8562): the strip widens from the latest seven days to the whole window. */
+export default function XpToday({ view, onPickDate, switcher, showAll = false, onToggleDays }: {
+  view: XpTodayView; onPickDate: (date: string) => void; switcher: ReactNode; showAll?: boolean; onToggleDays?: () => void;
+}) {
   const { t } = useTranslation("trainingXp");
   const { t: tRider } = useTranslation("rider");
   const [filter, setFilter] = useState<TodayFilter>("all");
@@ -232,7 +235,7 @@ export default function XpToday({ view, onPickDate, switcher }: { view: XpTodayV
           </div>
           {switcher}
         </div>
-        <ol className="mt-3 grid grid-cols-7 gap-1" aria-label={t("xpReport.lastSevenDays")}>
+        <ol className="mt-3 grid grid-cols-7 gap-1" aria-label={showAll ? t("xpReport.allDays") : t("xpReport.lastSevenDays")} data-testid="xp-strip">
           {view.strip.map(day => {
             const active = day.date === view.date;
             return (
@@ -247,6 +250,13 @@ export default function XpToday({ view, onPickDate, switcher }: { view: XpTodayV
             );
           })}
         </ol>
+        {onToggleDays && (showAll ? view.strip.length > STRIP_DAYS : view.olderDays > 0) && (
+          <div className="mt-2 flex justify-center">
+            <SecondaryButton variant="secondary" size="sm" onClick={onToggleDays} aria-expanded={showAll} data-testid="xp-older-days">
+              {showAll ? t("xpReport.showFewerDays") : t("xpReport.showOlderDays")}
+            </SecondaryButton>
+          </div>
+        )}
         <HeroStats items={[
           { label: t("xpReport.xpToday"), value: xp(view.xp), sub: t("xpReport.xp30Sub", { xp: xp(view.xp30) }) },
           { label: t("xpReport.earnedToday"), value: `+${formatNumber(view.earned)}`, sub: t("xpReport.riders", { count: view.earnedRiders }) },
