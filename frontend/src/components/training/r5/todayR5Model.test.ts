@@ -145,6 +145,22 @@ test("settledDayFields: ikke-koerte felter er stadig planens; uden aktiviteter g
   assert.deepEqual(settledDayFields(planned, undefined, sessionOfTest), planned);
 });
 
+// #8533 Codex P2: kun et senere felt er afregnet. Det maa ikke rykke op paa felt 1.
+test("settledDayFields/settledFieldEfforts: et delvist afregnet felt lander paa sin egen loebsdag", () => {
+  const planned = dayFields({ programSlot: () => null, planSession: "tempo", raceSlots: new Set([3]) });
+  const gameDays = [31, 32, 33, 34, 35];
+  const lateRaceOnly: SettledRow = { focus: null, intensity: null, activities: [{ game_day: 34, race_day: true, focus: null, intensity: null }] };
+  assert.deepEqual(settledDayFields(planned, lateRaceOnly, sessionOfTest, gameDays), ["tempo", "tempo", "tempo", STAGE, "tempo"]);
+  const secondHard: SettledRow = { focus: "sprint", intensity: "hard", activities: [{ game_day: 32, focus: "sprint", intensity: "hard" }] };
+  assert.deepEqual(settledDayFields(planned, secondHard, sessionOfTest, gameDays), ["tempo", "sprint", "tempo", STAGE, "tempo"]);
+  assert.deepEqual(settledFieldEfforts(secondHard, 5, gameDays), [null, "hard", null, null, null]);
+  // Uden datoens loebsdage (aeldre kald) gaelder den gamle raekkefoelge uaendret.
+  assert.deepEqual(settledDayFields(planned, secondHard, sessionOfTest), ["sprint", "tempo", "tempo", STAGE, "tempo"]);
+  // En aktivitet uden kendt loebsdag: hele kvitteringen falder tilbage til raekkefoelgen.
+  const unknownDay: SettledRow = { focus: "sprint", intensity: "hard", activities: [{ game_day: 99, focus: "sprint", intensity: "hard" }] };
+  assert.deepEqual(settledDayFields(planned, unknownDay, sessionOfTest, gameDays), ["sprint", "tempo", "tempo", STAGE, "tempo"]);
+});
+
 test("dayLoad: ord fra let til meget haard; ingen dag = intet ord", () => {
   const all = (s: string) => [s, s, s, s, s];
   assert.equal(dayLoad([null, null, null, null, null]), null);

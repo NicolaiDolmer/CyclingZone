@@ -15,7 +15,7 @@
 // traethedsgraensen). Rotation, prioritet og laas pr. dag findes ikke i backend
 // endnu; se designnoten i PR'en. Telefonen er midlertidigt en simpel stak af
 // desktop-visningen (TODO: den endelige telefonudgave kommer i et senere spor).
-import { useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import { useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import Button from "../../ui/Button.jsx";
@@ -65,7 +65,7 @@ function saveKind(kind: Kind) {
 
 export default function ProgramR5({
   riders: rawRiders, weekdays, todayWeekday, todayLocked, riderWeekPlans, programs, groups, forecast, fatigueRules,
-  catalogV3, actionsEl, mobile, onClearRider, drafts, onDrafts: setDrafts,
+  catalogV3, actionsEl, mobile, onClearRider, drafts, onDrafts: setDrafts, request = null,
 }: {
   riders: RawRider[];
   weekdays: readonly string[];
@@ -83,6 +83,9 @@ export default function ProgramR5({
   // Kladderne bor paa siden (som ugeplan-kladderne), saa et fanebyt ikke kasserer dem.
   drafts: Record<string, Draft>;
   onDrafts: Dispatch<SetStateAction<Record<string, Draft>>>;
+  // #8533 Codex P2: "Rediger plan" paa en rytter / "Rediger" paa traethedsgraensen fra I dag.
+  // `n` skifter ved hver anmodning, saa samme rytter kan vaelges igen.
+  request?: { kind: "rider" | "limit"; id?: string; n: number } | null;
 }) {
   const { t, i18n } = useTranslation("training");
   const { t: tR5 } = useTranslation("trainingR5"); // #7456: lazy namespace (I18nReadyGate i TrainingPage)
@@ -118,6 +121,19 @@ export default function ProgramR5({
     setProgramKey(firstKey);
     setSubject(subjectsFor(firstKey, library)[0] ?? null);
   }, [firstKey, programKey, subject, library]);
+
+  // #8533 Codex P2: en anmodning udefra vaelger rytteren (i det program, han hoerer til) eller aabner graensen.
+  const handledRequest = useRef(0);
+  useEffect(() => {
+    if (!request || request.n === handledRequest.current) return;
+    handledRequest.current = request.n;
+    if (request.kind === "limit") { setLimitOpen(true); return; }
+    if (!request.id) return;
+    const riderId = request.id;
+    const key = library.programs.find((p) => subjectsFor(p.key, library).some((s) => s.kind === "rider" && s.id === riderId))?.key;
+    if (key) setProgramKey(key);
+    setSubject({ kind: "rider", id: riderId });
+  }, [request, library]);
 
   const program = programs.catalog.find((p) => p.key === programKey) ?? null;
   const subjects = subjectsFor(programKey, library);

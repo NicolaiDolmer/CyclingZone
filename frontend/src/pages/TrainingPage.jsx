@@ -577,6 +577,17 @@ export default function TrainingPage() {
   const scoreSettled = !!todayRun;
   const scoreCellFor = (riderId) => mobileScoreCell(trainingScore?.[riderId] ?? null, { settled: scoreSettled });
 
+  // #8533 Codex P2: aabner en rytters egen plan / traethedsgraensen, ogsaa i R5-programfanen.
+  const openOwnPlan = (riderId) => {
+    setWeekPlanFor(riderId);
+    if (trainingR5) setR5ProgramRequest((prev) => ({ kind: "rider", id: riderId, n: (prev?.n ?? 0) + 1 }));
+    setTab("weekplan");
+  };
+  const openFatigueRule = () => {
+    if (trainingR5) setR5ProgramRequest((prev) => ({ kind: "limit", n: (prev?.n ?? 0) + 1 }));
+    setSub("limit");
+  };
+
   // #2578: dagens vundne hele point pr. rytter fra dagens kørsel — så roster-
   // rækkens progress-celle kan vise "+N i dag" når baren netop har wrappet efter
   // et gennembrud (ellers fejllæses wrappen som "ingen fremgang").
@@ -761,6 +772,8 @@ export default function TrainingPage() {
   // #5485 (aendring 6): fanen Week plan redigerer enten holdets plan ("team")
   // eller een rytters egen plan (hans id).
   const [weekPlanFor, setWeekPlanFor] = useState("team");
+  // #8533 Codex P2: R5-programfanen har sit eget valg; "Rediger plan" og "Rediger graense" skal naa ind i den.
+  const [r5ProgramRequest, setR5ProgramRequest] = useState(/** @type {{ kind: "rider" | "limit"; id?: string; n: number } | null} */ (null));
   // #5932: fejl fra en felt-rettelse i Plan-kortet (felter gemmes med det samme).
   const [planCellError, setPlanCellError] = useState(null);
 
@@ -1486,7 +1499,7 @@ export default function TrainingPage() {
           <div className="text-[13px] text-cz-1">{hasOwn ? t("card.ownPlan") : t("card.followsTeam")}</div>
           <button
             type="button"
-            onClick={() => { setWeekPlanFor(riderId); setTab("weekplan"); }}
+            onClick={() => openOwnPlan(riderId)}
             className="mt-0.5 inline-flex items-center gap-0.5 text-xs font-medium text-cz-accent-t hover:underline"
           >
             {hasOwn ? t("card.editOwnPlan") : t("card.giveOwnPlan")}
@@ -2162,7 +2175,7 @@ export default function TrainingPage() {
       <I18nReadyGate ns="trainingR5" fallback={<TabFallback />}><ProgramR5 riders={riders} weekdays={WEEKDAY_KEYS} todayWeekday={todayWeekday} todayLocked={trainNow.status.locked && !trainNow.status.settled}
         riderWeekPlans={riderWeekPlans} programs={programs} groups={trainingGroups} forecast={fatigueForecast.forecast} fatigueRules={fatigueRules}
         catalogV3={catalogV3} actionsEl={programR5Actions} mobile={isMobile} onClearRider={clearRiderWeekPlan}
-        drafts={programR5Drafts} onDrafts={setProgramR5Drafts} /></I18nReadyGate>
+        drafts={programR5Drafts} onDrafts={setProgramR5Drafts} request={r5ProgramRequest} /></I18nReadyGate>
     );
     const subLabel = (sub) => (sub === "limit"
       ? (isMobile ? t("subtabs.limitShort") : t("subtabs.limit"))
@@ -2489,11 +2502,12 @@ export default function TrainingPage() {
   const r5Today = trainingR5 ? {
     riders, loading: ridersLoading, phone: phoneLayout, seasonYear, activeSeasonNumber, today, todayWeekday, condition, planFor, riderWeekPlans,
     settledToday: todayRowByRider, // #7947 Codex P2: koerte felter fra kvitteringen, ikke fra planen
+    settledGameDays: /** @type {{ expected_game_days?: number[] | null } | null} */ (todayRun)?.expected_game_days ?? null, // #8533 Codex P2: felt = datoens loebsdag, ikke kvitteringens raekkefoelge
     racingToday, forecast: fatigueForecast.forecast, programAssigned: programs.assigned, programCatalog: programs.catalog ?? [], groups: trainingGroups.groups ?? [],
     fatigueDays70: training.fatigueDays70, smartDefaultFocus, trainedToday: runGate.trainedToday, savingId, bulkApplying, justSaved: lingerIds,
     planError: planActionError, runError, decisionRows: decisionCardOn ? decisionRows : null, fatigueRules: fatigueRules.data, assistantPanel, bulkMessage: bulkMsgNode,
     onPlan: handlePlanChange, onBulk: applyBulkChoice, onPickSession: setFocusPanelRiderId, onReset: handleResetToTeamProgram, onClearPlan: handleClearPlan,
-    onOpenPlan: (riderId) => { setWeekPlanFor(riderId); setTab("weekplan"); }, onOpenPrograms: () => setSub("programs"), onEditFatigueRule: () => setSub("limit"),
+    onOpenPlan: openOwnPlan, onOpenPrograms: () => setSub("programs"), onEditFatigueRule: openFatigueRule,
     onOpenAssistant: handleOpenAssistantPanel, renderCard: renderRiderCard,
     effortLevels: training.effortLevels === true, // #7947 PR 3: Let/Mellem/Haard (training_effort_levels)
   } : null;

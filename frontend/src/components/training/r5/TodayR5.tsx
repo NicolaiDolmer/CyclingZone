@@ -100,6 +100,8 @@ export type TodayR5Props = {
   planFor: (riderId: string) => Plan;
   /** Dagens afregnede kvittering pr. rytter (TrainingPage.todayRowByRider): et koert felt laeses herfra, ikke fra planen. */
   settledToday?: Record<string, SettledRow | undefined> | null;
+  /** #8533 Codex P2: datoens forventede loebsdage, saa et afregnet felt lander paa sin plads. */
+  settledGameDays?: readonly number[] | null;
   riderWeekPlans: Record<string, ProgramWeekDays | null | undefined>;
   racingToday: Record<string, { race?: string | null } | null | undefined>;
   forecast: ForecastResponse | null;
@@ -594,7 +596,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
       raceSlots,
     });
     // Codex P2 paa #8511: et allerede koert felt viser kvitteringen, ikke den redigerbare plan.
-    const fields = settledDayFields(planned, r5.settledToday?.[id], settledSession);
+    const fields = settledDayFields(planned, r5.settledToday?.[id], settledSession, r5.settledGameDays);
     const programKey = r5.programAssigned?.[id] ?? null;
     const groupName = groupNames.get(id) ?? null;
     const program = programKey
@@ -608,7 +610,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
     const own = hasOwnProgram({ weekDays, plan });
     // Indsatsvaelgeren (#7947 PR 3): hvert felts indsats er kvitteringens, programcellens eller
     // rytterens egen dags; uden kontakten (eller uden et niveau) er den sessionens eget niveau.
-    const settledEfforts = levelsOn ? settledFieldEfforts(r5.settledToday?.[id]) : null;
+    const settledEfforts = levelsOn ? settledFieldEfforts(r5.settledToday?.[id], undefined, r5.settledGameDays) : null;
     const todayEntry = weekDays?.[r5.todayWeekday] ?? null;
     const ownLevel = levelsOn ? planEffort(plan) : null;
     const efforts = fieldEfforts(fields, (slot) => {

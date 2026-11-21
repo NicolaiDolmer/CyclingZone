@@ -332,14 +332,41 @@ function settledActivities(receipt: SettledRow): SettledActivity[] {
 }
 
 /**
+ * #8533 Codex P2: aktiviteterne paa deres egne felter. Kvitteringen har kun de afregnede
+ * felter, saa et senere loebsfelt maa ikke rykke op paa felt 1. Med datoens forventede
+ * loebsdage (receipt.expected_game_days) laegges hver aktivitet paa sin loebsdags plads;
+ * mangler de, eller mangler en aktivitet sin loebsdag, gaelder den gamle raekkefoelge.
+ */
+function activitiesBySlot(
+  acts: readonly SettledActivity[],
+  slots: number,
+  gameDays?: readonly number[] | null,
+): (SettledActivity | undefined)[] {
+  const known = Array.isArray(gameDays) && gameDays.length > 0
+    && acts.every((a) => Number.isInteger(a.game_day) && gameDays.includes(a.game_day as number));
+  if (!known) return [...acts];
+  const out: (SettledActivity | undefined)[] = Array.from({ length: slots }, () => undefined);
+  for (const a of acts) {
+    const slot = (gameDays as readonly number[]).indexOf(a.game_day as number);
+    if (slot >= 0 && slot < slots) out[slot] = a;
+  }
+  return out;
+}
+
+/**
  * Den indsats et afregnet felt faktisk koerte paa (kvitteringens intensitet), pr. felt;
  * null hvor kvitteringen ikke har felten eller ikke siger det (saa gaelder planen).
  */
-export function settledFieldEfforts(receipt: SettledRow | null | undefined, slots = SLOTS): (Effort | null)[] {
+export function settledFieldEfforts(
+  receipt: SettledRow | null | undefined,
+  slots = SLOTS,
+  gameDays?: readonly number[] | null,
+): (Effort | null)[] {
   if (!receipt) return Array.from({ length: slots }, () => null);
   const acts = settledActivities(receipt);
+  const bySlot = activitiesBySlot(acts, slots, gameDays);
   return Array.from({ length: slots }, (_, slot) => {
-    const a = acts.length === 0 ? receipt : acts[slot];
+    const a = acts.length === 0 ? receipt : bySlot[slot];
     return a && a.race_day !== true ? effortOfIntensity(a.intensity) : null;
   });
 }
@@ -355,6 +382,7 @@ export function settledDayFields(
   planned: readonly Field[],
   receipt: SettledRow | null | undefined,
   sessionOf: (activity: SettledActivity) => string | null,
+  gameDays?: readonly number[] | null,
 ): Field[] {
   if (!receipt) return [...planned];
   const acts = settledActivities(receipt);
@@ -362,8 +390,9 @@ export function settledDayFields(
     const session = sessionOf(receipt);
     return planned.map((f) => (f === STAGE ? STAGE : session));
   }
+  const bySlot = activitiesBySlot(acts, planned.length, gameDays);
   return planned.map((f, slot) => {
-    const a = acts[slot];
+    const a = bySlot[slot];
     if (!a) return f;
     return a.race_day === true ? STAGE : sessionOf(a);
   });
