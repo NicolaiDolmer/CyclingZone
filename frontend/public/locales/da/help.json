@@ -1376,7 +1376,7 @@
       },
       "potentialBestRoleEstimate": {
         "title": "Potentiale i hele spillet",
-        "text": "Overalt i spillet er en rytters potentiale ét tal på samme skala som hans rating, med ét ord ved siden af: Usikker, Rimelig eller Sikker. Tallet er dit holds skøn over, hvor højt han kan nå i sin naturlige rolle, og ordet siger, hvor meget du kan stole på det. Flere kig, en bedre spejder og, for dine egne ryttere, mere træning på dit hold gør det mere sikkert. Det flytter sig kun, når dit hold lærer noget nyt, ved søndagsopdateringen, eller når han skifter hold."
+        "text": "Overalt i spillet hedder en rytters potentiale Potentiale, med undertitlen spejderens skøn. Det vises som ét tal og ét ord, fx Potentiale 74 · Rimelig. Tallet er dit holds skøn over, hvor højt han kan nå i sin naturlige rolle, på samme skala som hans rating, og ordet siger, hvor meget du kan stole på det: Usikker, Rimelig eller Sikker, hvor Sikker er toppen. Er ordet Usikker, står tallet som ca. 74 i en afdæmpet farve. Det sande tal vises aldrig. For dine egne ryttere viser kolonnen Prognose én samlet rating: hvor han ender omkring toppen, hvis han fortsætter den nuværende fart, bygget på hans seneste 30 dage. Flere kig, en bedre spejder og, for dine egne ryttere, mere træning på dit hold gør skønnet mere sikkert. Det flytter sig kun, når dit hold lærer noget nyt, ved søndagsopdateringen, eller når han skifter hold. Intet andet sted i spillet annoncerer en ændring; her står forklaringen."
       },
       "potentialBestRole": {
         "title": "Potentiale i hele spillet",

@@ -8,6 +8,18 @@
   "loadError": "De renners konden niet worden geladen. Probeer het opnieuw.",
   "retry": "Probeer opnieuw",
   "watchlistToggleFailed": "Je volglijst kon niet worden bijgewerkt. Probeer het opnieuw.",
+  "potentialNumber": {
+    "potential": "Potentieel",
+    "prognosis": "Prognose",
+    "prognosisTitle": "Houd je het huidige tempo vast, dan eindigt hij ongeveer hier op zijn hoogtepunt. Gebaseerd op zijn laatste 30 dagen.",
+    "prognosisPastPeak": "Over zijn hoogtepunt",
+    "prognosisPastPeakTitle": "Hij is de leeftijd voorbij waarop renners pieken.",
+    "prognosisNoEstimateTitle": "De prognose komt zodra je een schatting van zijn potentieel hebt.",
+    "aiTeamTitle": "Renners van AI-ploegen kun je niet scouten.",
+    "potentialSubtitle": "inschatting van de scout",
+    "potentialTitle": "Potentieel, de inschatting van de scout. Een inschatting, geen feit.",
+    "approx": "ca. {value}"
+  },
   "table": {
     "nation": "Land",
     "rider": "Renner",

@@ -10,8 +10,8 @@ import { useTypeColumnLabel } from "../lib/useTypeColumnLabel.ts";
 import { WithBestRole } from "./rider/BestRoleTag.jsx";
 import PotentialRoleBox from "./rider/PotentialRoleBox";
 import { potentialFromEstimate } from "../lib/potentialDisplay6853";
-import { potentialViewOf, potentialViewValue } from "../lib/potentialEstimateDisplay";
-import PotentialEstimate from "./rider/PotentialEstimate";
+import { potentialViewOf, potentialViewValue, prognosisViewOf, prognosisViewValue } from "../lib/potentialEstimateDisplay";
+import PotentialEstimate, { PrognosisValue } from "./rider/PotentialEstimate";
 import { getRiderAge } from "../lib/riderAge";
 import { cycleSortState } from "../lib/riderSort";
 import { compareDevRows } from "../lib/teamDevelopmentSort.js";
@@ -37,6 +37,7 @@ import { DataTable, EmptyState, BikeIcon } from "./ui";
 // `currentRiders`, samme array SquadTab/TeamStatsTab allerede får).
 export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
   const { t } = useTranslation("team");
+  const { t: tRiders } = useTranslation("riders"); // #8523
   const typeColumnLabel = useTypeColumnLabel(); // #5435
   const navigate = useNavigate();
   const [sort, setSort] = useState("_progHi");
@@ -80,6 +81,8 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
       _band: hasBand ? band : null,
       _potential: potentialFromEstimate(estimate), // #6853: rolle + typeboks
       _estimateView: estimateView,
+      _prognosisView: prognosisViewOf(estimate), // #8523: samlet prognose, kun egne ryttere
+      _prognosisValue: prognosisViewValue(prognosisViewOf(estimate)),
       _progHi: estimateView ? potentialViewValue(estimateView) : hasBand ? band.hi : null,
     };
   }), [riders, scouting, seasonYear]);
@@ -91,8 +94,9 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
   }, [decorated, sort, sortDir]);
 
   const estimateMode = decorated.some((r) => r._estimateView);
+  const prognosisMode = estimateMode && decorated.some((r) => r._prognosisView);
   const projectedHeader = estimateMode
-    ? t("rider:profile.scouting.potentialLabel")
+    ? <span title={tRiders("potentialNumber.potentialTitle")}>{t("rider:profile.scouting.potentialLabel")}</span>
     : <span title={t("development.headers.projectedTitle")}>{t("development.headers.projected")}</span>;
   const columns = [
     {
@@ -157,6 +161,15 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
         <span className="text-cz-3 text-xs whitespace-nowrap">{t("development.noForecast")}</span>
       )),
     },
+    // #8523: den samlede prognose ved siden af skønnet, regnet af serveren ud fra de seneste 30 dages fart.
+    ...(prognosisMode ? [{
+      key: "prognosis",
+      header: <span title={tRiders("potentialNumber.prognosisTitle")}>{tRiders("potentialNumber.prognosis")}</span>,
+      sortKey: "_prognosisValue",
+      numeric: true,
+      compact: true,
+      render: (r) => (r._prognosisView ? <PrognosisValue view={r._prognosisView} /> : <span className="text-cz-3">—</span>),
+    }] : []),
   ];
 
   if (riders.length === 0) {
