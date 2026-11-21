@@ -699,6 +699,10 @@
     {
       "issue": 8341,
       "why": "Ejer-go 19/11 (PC1, gennemgang af skitse-PR'erne): gamle skitse-PR'er merges som arkiv eller lukkes med note; fund bliver issues før lukning."
+    },
+    {
+      "issue": 8568,
+      "why": "Perf-gaten (first load) var roed paa main efter #8556 og blokerede alle PRer; ejer-go 21/11 aften (PC1, AskUserQuestion): \"Ja, haev til 417 (anbefalet)\" + \"Du maa gerne ordne dette efter best practice\". PR #8569 haever loftet midlertidigt; lettelsen og saenkningen tilbage er resten af #8568."
     }
   ],
   "brandList": [
