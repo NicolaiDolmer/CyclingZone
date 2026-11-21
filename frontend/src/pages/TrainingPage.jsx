@@ -100,6 +100,7 @@ import XpReportSwitch from "../components/training/reportXp/XpReportSwitch.tsx";
 import { dayXpByAbility, riderXpBars, withXpLines } from "../lib/xpAbilityLine.ts"; // #7947
 import { useDevelopmentXpEnabled } from "../lib/developmentXpFlag.ts"; // #8476
 import { earnedGainTotal } from "../lib/trainingEarnedGains.ts"; // #8476
+import { fetchPlayerFeatureFlags } from "../lib/playerFeatureFlags.js"; // #7456: training_page_r5
 // #6030: fanerne Program, Development og Report hentes foerst naar de aabnes
 // (lazyWithRetry, #5014), saa foerste visning af Today henter mindre. Fallback er den
 // kanoniske skelet-markup (PAGE_TEMPLATES: aldrig en spinner i kort).
@@ -120,6 +121,8 @@ const TrainingMoment = tabPart("TrainingMoment");
 const DevelopmentXpSwitch = lazyWithRetry(() => import("../components/training/DevelopmentTabXp.tsx"));
 // #8363: "Today's training" after Train now (behind the XP switch; own chunk, loaded only after a press).
 const TrainNowMoment = lazyWithRetry(() => import("../components/training/TrainNowMoment.tsx"));
+// #7456: R5's Program tab behind training_page_r5 (own chunk, loaded only when the switch is on).
+const ProgramR5 = lazyWithRetry(() => import("../components/training/r5/ProgramR5.tsx"));
 
 // Skelet mens en lazy fane hentes (samme markup som Development-fanens egen
 // indlaesning: Card + SkeletonLines).
@@ -527,6 +530,10 @@ export default function TrainingPage() {
   // #6000: traeningsgrupper (beta). groupDialog: null = lukket, { group: null } = ny.
   const trainingGroups = useTrainingGroups({ onChanged: training.refresh });
   const [groupDialog, setGroupDialog] = useState(null);
+  // #7456: kontakten training_page_r5 (off = fanen som i dag). Knapperne staar i sidehovedet.
+  const [programR5, setProgramR5] = useState(false);
+  const [programR5Actions, setProgramR5Actions] = useState(/** @type {HTMLElement | null} */ (null));
+  useEffect(() => { let live = true; fetchPlayerFeatureFlags().then((f) => { if (live) setProgramR5(f?.training_page_r5 === true); }); return () => { live = false; }; }, []);
   // #4847: med flaget on ER guld-knappen "Train now" (aaben hele datoen indtil trykket).
   const trainNow = useTrainNow({ onSettled: training.refresh });
   const [trainNowMomentOpen, setTrainNowMomentOpen] = useState(false); // #8363
@@ -599,12 +606,13 @@ export default function TrainingPage() {
   // #1895 PR 2: individuel ugeplan pr. rytter (kladder indtil Gem).
   const [riderWeekDraftMap, setRiderWeekDraftMap] = useState({}); // { <rider_id>: days } — kun redigerede
   const [riderWeekMsgMap, setRiderWeekMsgMap] = useState({}); // { <rider_id>: {type,text} | null }
+  const [programR5Drafts, setProgramR5Drafts] = useState({}); // #7456: R5 Program-kladder overlever fanebyt
 
   // #5159 (B1): holdets ugerytme og de individuelle ugeplaner er kladder indtil
   // Gem. Et release-drevet reload kunne kassere dem uden en lyd — det tidligere
   // vaern ("er der fokus i en select?") holdt kun mens select'en HAVDE fokus.
   useReloadBlock(
-    weekDraft !== null || Object.keys(riderWeekDraftMap).length > 0,
+    weekDraft !== null || Object.keys(riderWeekDraftMap).length > 0 || Object.keys(programR5Drafts).length > 0,
     RELOAD_BLOCK_REASONS.DIRTY,
   );
   useReloadBlock(
@@ -2147,6 +2155,12 @@ export default function TrainingPage() {
   }
 
   function renderProgramTab() {
+    if (programR5) return ( // #7456: R5's Program tab behind training_page_r5
+      <ProgramR5 riders={riders} weekdays={WEEKDAY_KEYS} todayWeekday={todayWeekday} todayLocked={trainNow.status.locked && !trainNow.status.settled}
+        riderWeekPlans={riderWeekPlans} programs={programs} groups={trainingGroups} forecast={fatigueForecast.forecast} fatigueRules={fatigueRules}
+        catalogV3={catalogV3} actionsEl={programR5Actions} mobile={isMobile} onClearRider={clearRiderWeekPlan}
+        drafts={programR5Drafts} onDrafts={setProgramR5Drafts} />
+    );
     const subLabel = (sub) => (sub === "limit"
       ? (isMobile ? t("subtabs.limitShort") : t("subtabs.limit"))
       : t(`subtabs.${sub}`));
@@ -2487,10 +2501,10 @@ export default function TrainingPage() {
         // bredde under sidehovedet (44 px tryk-mål), ellers her. "Get
         // suggestions from the assistant" er flyttet til tabellens
         // værktøjslinje, så sidehovedet kun bærer den ene handling.
-        actions={isMobile ? null : primaryButton}
+        actions={programR5 && activeTab === "weekplan" ? <span ref={setProgramR5Actions} /> : isMobile ? null : primaryButton}
       />
 
-      {isMobile && primaryButton}
+      {isMobile && !(programR5 && activeTab === "weekplan") && primaryButton}
       <TrainNowNote status={trainNow.status} result={trainNow.result} error={trainNow.error} className="mb-3" />
       {trainNowMomentOpen && <Suspense fallback={null}><TrainNowMoment open onClose={() => setTrainNowMomentOpen(false)}
         onOpenReport={() => { setTrainNowMomentOpen(false); setReportKey((k) => k + 1); setTab("report"); }} runs={receiptRuns} roster={riders}
