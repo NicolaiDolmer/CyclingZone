@@ -86,7 +86,6 @@
     "levelAria": "{scope} : niveau",
     "restAria": "{scope} : repos, sans séance",
     "hardHint": "Dur augmente le risque de blessure.",
-    "risk": "Risque de blessure {pct} %",
     "riskGeneric": "Dur augmente le risque de blessure"
   },
   "yourDay": {

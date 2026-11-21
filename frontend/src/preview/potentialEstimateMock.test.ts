@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 
 import { previewEstimate, previewPotentialEstimateEnabled, previewProjection, previewReport } from "./potentialEstimateMock.ts";
 import { SEED_PROJECTION, SEED_SCOUTING_REPORT, SEED_SCOUT_ESTIMATES } from "./seedData.js";
-import { potentialViewOf, potentialViewValue } from "../lib/potentialEstimateDisplay.ts";
+import { potentialViewOf, prognosisViewOf } from "../lib/potentialEstimateDisplay.ts";
 
 const FORBIDDEN = /"(lo|hi|prog|ceil|loft|progLo|progHi|ceilLo|ceilHi|band|academyPrognosis)":/;
 
@@ -33,5 +33,14 @@ test("samme rytter har samme skøn på alle tre svar", () => {
   const projection = previewProjection("rider-1", SEED_PROJECTION);
   assert.deepEqual(estimate.potentialView, report.potentialView);
   assert.deepEqual(estimate.potentialView, projection.potentialView);
-  assert.equal(projection.estimateLine.at(-1)?.value, potentialViewValue(estimate.potentialView));
+  assert.ok(!("estimateLine" in projection), "#8523: den gamle kurve er væk");
+});
+
+test("#8523: egne ryttere har samme prognose på alle svar, andres ingen", () => {
+  const own = previewEstimate("rider-1", SEED_SCOUT_ESTIMATES["rider-1"]);
+  const report = previewReport("rider-1", SEED_SCOUTING_REPORT, true);
+  assert.ok(prognosisViewOf(own));
+  assert.deepEqual(prognosisViewOf(own), prognosisViewOf(report));
+  assert.equal(prognosisViewOf(previewEstimate("rider-x1")), null);
+  assert.equal(prognosisViewOf(previewReport("rider-x1", SEED_SCOUTING_REPORT, false)), null);
 });

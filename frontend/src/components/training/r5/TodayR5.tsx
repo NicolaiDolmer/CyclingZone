@@ -438,7 +438,7 @@ function QuickSelect({ row, r5, choices, full = false, tour }: { row: Row; r5: T
       <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
         <SourceLine row={row} r5={r5} />
         {/* Skaderisikoen staar kun paa Haard (ejer 20/11). */}
-        {levelsOn && showsInjuryRisk(row.effective) && <HardRiskLine risk={row.risk} />}
+        {levelsOn && showsInjuryRisk(row.effective) && <HardRiskLine />}
         {r5.justSaved.has(row.id) && <SavedMark />}
       </div>
       {error && <span role="alert" className="text-3xs text-cz-danger">{t([`planActionError_${error}`, "planActionErrorGeneric"])}</span>}

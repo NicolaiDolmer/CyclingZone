@@ -1376,7 +1376,7 @@
       },
       "potentialBestRoleEstimate": {
         "title": "El potencial en todo el juego",
-        "text": "En todo el juego, el potencial de un ciclista es un solo número en la misma escala que su valoración, con una palabra al lado: Incierto, Razonable o Seguro. El número es la estimación de tu equipo de hasta dónde puede llegar en su rol natural, y la palabra dice cuánto puedes fiarte de él. Más vistazos, un ojeador mejor y, en tus propios ciclistas, más entrenamiento en tu equipo la hacen más segura. Solo se mueve cuando tu equipo aprende algo nuevo, en la actualización del domingo o cuando cambia de equipo."
+        "text": "En todo el juego, el potencial de un ciclista se llama Potencial, con el subtítulo estimación del ojeador. Se muestra como un número y una palabra, por ejemplo Potencial 74 · Razonable. El número es la estimación de tu equipo de hasta dónde puede llegar en su rol natural, en la misma escala que su valoración, y la palabra dice cuánto puedes fiarte de él: Incierto, Razonable o Seguro, donde Seguro es lo más alto. Cuando la palabra es Incierto, el número aparece como aprox. 74 en un color apagado. El número real nunca se muestra. En tus propios ciclistas la columna Pronóstico muestra una sola valoración: dónde terminará cerca de su mejor momento si mantiene el ritmo actual, basada en sus últimos 30 días. Más vistazos, un ojeador mejor y, en tus propios ciclistas, más entrenamiento en tu equipo hacen la estimación más segura. Solo se mueve cuando tu equipo aprende algo nuevo, en la actualización del domingo o cuando cambia de equipo. Ningún otro lugar del juego anuncia un cambio; aquí está la explicación."
       },
       "potentialBestRole": {
         "title": "El potencial en todo el juego",

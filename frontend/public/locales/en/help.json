@@ -1376,7 +1376,7 @@
       },
       "potentialBestRoleEstimate": {
         "title": "Potential across the game",
-        "text": "Everywhere in the game a rider's potential is one number on the same scale as his rating, with one word next to it: Uncertain, Fair or Confident. The number is your team's estimate of how high he can reach in his natural role, and the word says how far to trust it. More looks, a better scout and, for your own riders, more training on your team make it more certain. It only moves when your team learns something new, at the Sunday update, or when he changes team."
+        "text": "Everywhere in the game a rider's potential is called Potential, with the line the scout's estimate under it. It shows as one number and one word, for example Potential 74 · Fair. The number is your team's estimate of how high he can reach in his natural role, on the same scale as his rating, and the word says how far to trust it: Uncertain, Fair or Confident, where Confident is the top. When the word is Uncertain the number shows as approx. 74 in a muted colour. The true number is never shown. For your own riders the Prognosis column shows one rating: where he ends up around his peak if he keeps his current pace, based on his last 30 days. More looks, a better scout and, for your own riders, more training on your team make the estimate more certain. It only moves when your team learns something new, at the Sunday update, or when he changes team. Nothing else in the game announces a change; this is where it is explained."
       },
       "potentialBestRole": {
         "title": "Potential across the game",
