@@ -27,6 +27,45 @@ export function rememberedKind(stored: string | null | undefined, available: rea
   return available.includes(stored as Kind) ? (stored as Kind) : "week";
 }
 
+// #8547 (ejer 21/11): telefonen skifter mellem Dag (en dag ad gangen) og Uge (hele ugen som
+// liste). Valget huskes pr. enhed; Dag er standard. Egen noegle, saa den ikke roerer programtypen.
+export type PhoneView = "day" | "week";
+export const PROGRAM_PHONE_VIEW_STORE = "cz-training-program-phone-view";
+export const PHONE_VIEWS: readonly PhoneView[] = ["day", "week"];
+
+export function rememberedPhoneView(stored: string | null | undefined): PhoneView {
+  return PHONE_VIEWS.includes(stored as PhoneView) ? (stored as PhoneView) : "day";
+}
+
+// "Tomas Varga" -> "T. Varga" (rytter-chips paa 390 px). Et enkelt ord staar uaendret.
+export function shortRiderName(name: string): string {
+  const [first, ...rest] = name.trim().split(/\s+/);
+  if (!first || rest.length === 0) return first ?? "";
+  return `${[...first][0]}. ${rest.join(" ")}`;
+}
+
+// Ugedagens fulde navn paa sproget (mon..sun). En kendt mandag som anker; ukendt noegle giver "".
+const WEEKDAY_ORDER = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
+export function weekdayLong(weekday: string, lang: string): string {
+  const index = WEEKDAY_ORDER.indexOf(weekday as (typeof WEEKDAY_ORDER)[number]);
+  if (index < 0) return "";
+  try {
+    return new Intl.DateTimeFormat(lang, { weekday: "long", timeZone: "UTC" }).format(new Date(Date.UTC(2024, 0, 1 + index)));
+  } catch {
+    return weekday;
+  }
+}
+
+// Dagen telefonen aabner paa: i dag, ellers foerste dag.
+export function startDayIndex(weekdays: readonly string[], todayWeekday: string | null | undefined): number {
+  const index = weekdays.indexOf(todayWeekday ?? "");
+  return index >= 0 ? index : 0;
+}
+
+export function clampDay(index: number, weekdays: readonly string[]): number {
+  return Math.max(0, Math.min(weekdays.length - 1, index));
+}
+
 export type R5Rider = { id: string; name: string; type: string | null };
 export type R5GroupMember = { riderId: string; followsGroup: boolean };
 export type R5Group = {
@@ -267,6 +306,14 @@ export function weekCells({
     const key = draftKey(weekday, slot);
     return { kind: "session", session: draftCellSession(days, draft, weekday, slot), changed: key in draft };
   }));
+}
+
+// Dagens tegn paa telefonen: loeb (flag), og om dagen har rettelser der ikke er gemt.
+export function dayMarks(dayCells: readonly WeekCell[]): { races: number; changed: number } {
+  return {
+    races: dayCells.filter((c) => c.kind === "race").length,
+    changed: dayCells.filter((c) => c.kind === "session" && c.changed).length,
+  };
 }
 
 // "Copy to riders": alle andre ryttere end dem der allerede har programmet som egen kopi.

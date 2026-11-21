@@ -137,6 +137,18 @@
     "copyDone": "{n, plural, one {Copied to # rider} other {Copied to # riders}}",
     "legendRace": "Races sit in their fixed fields and always run",
     "legendTaken": "Sessions taken by races are not made up",
-    "todayLock": "Today's fields lock after Train now. A saved plan then applies from tomorrow."
+    "todayLock": "Today's fields lock after Train now. A saved plan then applies from tomorrow.",
+    "phone": {
+      "changeProgram": "Change program",
+      "close": "Close",
+      "viewLabel": "View",
+      "viewDay": "Day",
+      "viewWeek": "Week",
+      "prevDay": "Previous day",
+      "nextDay": "Next day",
+      "dayTabs": "Day",
+      "noRaces": "No races",
+      "fieldsOf": "Sessions on {day}"
+    }
   }
 }

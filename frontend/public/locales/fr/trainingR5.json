@@ -137,6 +137,18 @@
     "copyDone": "{n, plural, one {Copié vers # coureur} other {Copié vers # coureurs}}",
     "legendRace": "Les courses occupent leurs champs fixes et ont toujours lieu",
     "legendTaken": "Les séances prises par une course ne sont pas rattrapées",
-    "todayLock": "Les champs du jour se verrouillent après S'entraîner maintenant. Un plan enregistré s'applique alors dès demain."
+    "todayLock": "Les champs du jour se verrouillent après S'entraîner maintenant. Un plan enregistré s'applique alors dès demain.",
+    "phone": {
+      "changeProgram": "Changer de programme",
+      "close": "Fermer",
+      "viewLabel": "Affichage",
+      "viewDay": "Jour",
+      "viewWeek": "Semaine",
+      "prevDay": "Jour précédent",
+      "nextDay": "Jour suivant",
+      "dayTabs": "Jour",
+      "noRaces": "Aucune course",
+      "fieldsOf": "Séances du {day}"
+    }
   }
 }
