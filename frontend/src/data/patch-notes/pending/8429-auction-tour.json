@@ -1,0 +1,20 @@
+{
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Onboarding",
+      "area": "help",
+      "en": {
+        "title": "Auction tour ends with a way out",
+        "body": "The auction tour now finishes with a Dashboard button instead of leaving you mid-page, and it no longer shows a technical message when a step has nothing to point at."
+      },
+      "da": {
+        "title": "Auktionsrundvisningen har nu en vej ud",
+        "body": "Auktionsrundvisningen slutter nu med en Dashboard-knap i stedet for at lade dig stå midt på siden, og den viser ikke længere en teknisk besked, når et trin ikke har noget at pege på."
+      },
+      "refs": [8429]
+    }
+  ]
+}
