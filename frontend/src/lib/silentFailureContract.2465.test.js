@@ -68,9 +68,10 @@ test("StrategyPage: preview/save/regenerate no longer swallow errors silently", 
 });
 
 test("TrainingPage: roster-row focus/intensity/clear handlers await setPlan/clearPlan", () => {
-  assert.match(trainingPage, /async function handlePlanChange\(riderId, dayType, session = null\)/);
+  // #7947 PR 3: effort er et valgfrit 4. argument (kun fra indsatsvaelgeren); fejlvejen er den samme.
+  assert.match(trainingPage, /async function handlePlanChange\(riderId, dayType, session = null, effort = null\)/);
   assert.match(trainingPage, /async function handleClearPlan\(riderId\)/);
-  assert.match(trainingPage, /const result = await setPlan\(riderId, dayType, session\)/);
+  assert.match(trainingPage, /const result = await setPlan\(riderId, dayType, session, effort\)/);
   assert.match(trainingPage, /const result = await clearPlan\(riderId\)/);
   // #3762/#6030: the day choice (TrainingDaySelect on desktop) still goes
   // through the wrapper, and its error is rendered on the same row.

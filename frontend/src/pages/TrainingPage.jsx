@@ -8,7 +8,7 @@ import { potentialViewOf, potentialViewValue } from "../lib/potentialEstimateDis
 // Rytterliste hentes fra Supabase (samme kilde som TeamPage) da det er holdets
 // egne ryttere vi træner. Condition/progress/todayRun serveres fra useTraining.
 
-import { useState, useEffect, useMemo, useRef, Fragment, Suspense } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, Fragment, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
 import { supabase } from "../lib/supabase";
@@ -100,7 +100,8 @@ import XpReportSwitch from "../components/training/reportXp/XpReportSwitch.tsx";
 import { dayXpByAbility, riderXpBars, withXpLines } from "../lib/xpAbilityLine.ts"; // #7947
 import { useDevelopmentXpEnabled } from "../lib/developmentXpFlag.ts"; // #8476
 import { earnedGainTotal } from "../lib/trainingEarnedGains.ts"; // #8476
-import { fetchPlayerFeatureFlags } from "../lib/playerFeatureFlags.js"; // #7456: training_page_r5
+import I18nReadyGate from "../components/I18nReadyGate.jsx"; // #7947: trainingR5 er lazy
+import { useTrainingPageR5 } from "../components/training/r5/trainingPageR5Flag.ts"; // #7947/#7456: training_page_r5
 // #6030: fanerne Program, Development og Report hentes foerst naar de aabnes
 // (lazyWithRetry, #5014), saa foerste visning af Today henter mindre. Fallback er den
 // kanoniske skelet-markup (PAGE_TEMPLATES: aldrig en spinner i kort).
@@ -121,6 +122,8 @@ const TrainingMoment = tabPart("TrainingMoment");
 const DevelopmentXpSwitch = lazyWithRetry(() => import("../components/training/DevelopmentTabXp.tsx"));
 // #8363: "Today's training" after Train now (behind the XP switch; own chunk, loaded only after a press).
 const TrainNowMoment = lazyWithRetry(() => import("../components/training/TrainNowMoment.tsx"));
+// #7947: I dag-fanen i R5-udgaven (egen chunk, hentes kun naar kontakten training_page_r5 er on).
+const TodayR5Lazy = lazyWithRetry(() => import("../components/training/r5/TodayR5.tsx"));
 // #7456: R5's Program tab behind training_page_r5 (own chunk, loaded only when the switch is on).
 const ProgramR5 = lazyWithRetry(() => import("../components/training/r5/ProgramR5.tsx"));
 
@@ -445,6 +448,7 @@ export default function TrainingPage() {
   const catalogV3 = useTrainingCatalogV3(); // #5319
 
   const tTypes = useTranslation("riderTypes").t;
+  const trainingR5 = useTrainingPageR5(); // #7947
 
   // #3721: tre faner, ?tab=-synkroniseret efter samme mønster som FinancePage/
   // RiderStatsPage (VALID_TABS-fallback). Kun læst ved mount for den initiale
@@ -531,9 +535,8 @@ export default function TrainingPage() {
   const trainingGroups = useTrainingGroups({ onChanged: training.refresh });
   const [groupDialog, setGroupDialog] = useState(null);
   // #7456: kontakten training_page_r5 (off = fanen som i dag). Knapperne staar i sidehovedet.
-  const [programR5, setProgramR5] = useState(false);
+  const programR5 = trainingR5; // samme kontakt som I dag-fanen (een laesning, useTrainingPageR5)
   const [programR5Actions, setProgramR5Actions] = useState(/** @type {HTMLElement | null} */ (null));
-  useEffect(() => { let live = true; fetchPlayerFeatureFlags().then((f) => { if (live) setProgramR5(f?.training_page_r5 === true); }); return () => { live = false; }; }, []);
   // #4847: med flaget on ER guld-knappen "Train now" (aaben hele datoen indtil trykket).
   const trainNow = useTrainNow({ onSettled: training.refresh });
   const [trainNowMomentOpen, setTrainNowMomentOpen] = useState(false); // #8363
@@ -573,6 +576,17 @@ export default function TrainingPage() {
   // tal for i dag, og Score viser det SENESTE tal dæmpet (mobileScoreCell).
   const scoreSettled = !!todayRun;
   const scoreCellFor = (riderId) => mobileScoreCell(trainingScore?.[riderId] ?? null, { settled: scoreSettled });
+
+  // #8533 Codex P2: aabner en rytters egen plan / traethedsgraensen, ogsaa i R5-programfanen.
+  const openOwnPlan = (riderId) => {
+    setWeekPlanFor(riderId);
+    if (trainingR5) setR5ProgramRequest((prev) => ({ kind: "rider", id: riderId, n: (prev?.n ?? 0) + 1 }));
+    setTab("weekplan");
+  };
+  const openFatigueRule = () => {
+    if (trainingR5) setR5ProgramRequest((prev) => ({ kind: "limit", n: (prev?.n ?? 0) + 1 }));
+    setSub("limit");
+  };
 
   // #2578: dagens vundne hele point pr. rytter fra dagens kørsel — så roster-
   // rækkens progress-celle kan vise "+N i dag" når baren netop har wrappet efter
@@ -667,9 +681,9 @@ export default function TrainingPage() {
     }, SAVED_LINGER_MS));
   }
 
-  async function handlePlanChange(riderId, dayType, session = null) {
+  async function handlePlanChange(riderId, dayType, session = null, effort = null) {
     setPlanActionError(null);
-    const result = await setPlan(riderId, dayType, session);
+    const result = await setPlan(riderId, dayType, session, effort); // #7947 PR 3: effort kun fra indsatsvaelgeren
     if (result && !result.ok) {
       setPlanActionError({ riderId, error: result.error || "failed" });
       return false;
@@ -758,6 +772,9 @@ export default function TrainingPage() {
   // #5485 (aendring 6): fanen Week plan redigerer enten holdets plan ("team")
   // eller een rytters egen plan (hans id).
   const [weekPlanFor, setWeekPlanFor] = useState("team");
+  // #8533 Codex P2: R5-programfanen har sit eget valg; "Rediger plan" og "Rediger graense" skal naa ind i den.
+  const [r5ProgramRequest, setR5ProgramRequest] = useState(/** @type {{ kind: "rider" | "limit"; id?: string; n: number } | null} */ (null));
+  const clearR5ProgramRequest = useCallback(() => setR5ProgramRequest(null), []);
   // #5932: fejl fra en felt-rettelse i Plan-kortet (felter gemmes med det samme).
   const [planCellError, setPlanCellError] = useState(null);
 
@@ -1065,7 +1082,7 @@ export default function TrainingPage() {
   // valgte fik dagen, så telefonen kan forlade markerings-tilstanden.
   // #6523: `idsOverride` lader "Set today's day
   // for All N riders" og "Set for group" bruge samme sti uden en markering.
-  async function applyBulkChoice(choice, idsOverride) {
+  async function applyBulkChoice(choice, idsOverride, effort = null) {
     setBulkMsg(null);
     if (!choice) {
       setBulkMsg({ type: "warn", text: t("bulkPickFocus") });
@@ -1076,7 +1093,7 @@ export default function TrainingPage() {
     const ids = idsOverride ?? [...pruneSelection(selected, filterIds)];
     if (ids.length === 0) return false;
     const { dayType, session } = bulkChoiceToDay(choice);
-    const result = await setPlanBulk(ids, dayType, session);
+    const result = await setPlanBulk(ids, dayType, session, effort);
     // #1894 variant 3: smart-mode springer ryttere MED eksisterende plan over
     // (server-håndhævet — overskriver ALDRIG en managers eget valg). Det er en
     // forventet, ikke-fejlende delmængde, så den vises separat fra "failed".
@@ -1369,7 +1386,7 @@ export default function TrainingPage() {
   // grå. #3643/PR #5552: dayClose-gaten gælder på alle flader og bor derfor i
   // primaryActionFor, ét sted.
   const primaryAction = primaryActionFor({
-    needsDay: overview.needsDay.length,
+    needsDay: trainingR5 ? 0 : overview.needsDay.length, // #7947: i R5 er guldknappen altid Train now
     trainedToday: runGate.trainedToday,
     enabled,
     dayClose: runGate.dayClose,
@@ -1483,7 +1500,7 @@ export default function TrainingPage() {
           <div className="text-[13px] text-cz-1">{hasOwn ? t("card.ownPlan") : t("card.followsTeam")}</div>
           <button
             type="button"
-            onClick={() => { setWeekPlanFor(riderId); setTab("weekplan"); }}
+            onClick={() => openOwnPlan(riderId)}
             className="mt-0.5 inline-flex items-center gap-0.5 text-xs font-medium text-cz-accent-t hover:underline"
           >
             {hasOwn ? t("card.editOwnPlan") : t("card.giveOwnPlan")}
@@ -2156,10 +2173,10 @@ export default function TrainingPage() {
 
   function renderProgramTab() {
     if (programR5) return ( // #7456: R5's Program tab behind training_page_r5
-      <ProgramR5 riders={riders} weekdays={WEEKDAY_KEYS} todayWeekday={todayWeekday} todayLocked={trainNow.status.locked && !trainNow.status.settled}
+      <I18nReadyGate ns="trainingR5" fallback={<TabFallback />}><ProgramR5 riders={riders} weekdays={WEEKDAY_KEYS} todayWeekday={todayWeekday} todayLocked={trainNow.status.locked && !trainNow.status.settled}
         riderWeekPlans={riderWeekPlans} programs={programs} groups={trainingGroups} forecast={fatigueForecast.forecast} fatigueRules={fatigueRules}
         catalogV3={catalogV3} actionsEl={programR5Actions} mobile={isMobile} onClearRider={clearRiderWeekPlan}
-        drafts={programR5Drafts} onDrafts={setProgramR5Drafts} />
+        drafts={programR5Drafts} onDrafts={setProgramR5Drafts} request={r5ProgramRequest} onRequestHandled={clearR5ProgramRequest} /></I18nReadyGate>
     );
     const subLabel = (sub) => (sub === "limit"
       ? (isMobile ? t("subtabs.limitShort") : t("subtabs.limit"))
@@ -2482,6 +2499,20 @@ export default function TrainingPage() {
           : t("notTrainedYetToday");
 
 
+  // #7947: R5-fanens data og handlinger = sidens egne (samme gemme-flow, Train now, assistent).
+  const r5Today = trainingR5 ? {
+    riders, loading: ridersLoading, phone: phoneLayout, seasonYear, activeSeasonNumber, today, todayWeekday, condition, planFor, riderWeekPlans,
+    settledToday: todayRowByRider, // #7947 Codex P2: koerte felter fra kvitteringen, ikke fra planen
+    settledGameDays: /** @type {{ expected_game_days?: number[] | null } | null} */ (todayRun)?.expected_game_days ?? null, // #8533 Codex P2: felt = datoens loebsdag, ikke kvitteringens raekkefoelge
+    racingToday, forecast: fatigueForecast.forecast, programAssigned: programs.assigned, programCatalog: programs.catalog ?? [], groups: trainingGroups.groups ?? [],
+    fatigueDays70: training.fatigueDays70, smartDefaultFocus, trainedToday: runGate.trainedToday, savingId, bulkApplying, justSaved: lingerIds,
+    planError: planActionError, runError, decisionRows: decisionCardOn ? decisionRows : null, fatigueRules: fatigueRules.data, assistantPanel, bulkMessage: bulkMsgNode,
+    onPlan: handlePlanChange, onBulk: applyBulkChoice, onPickSession: setFocusPanelRiderId, onReset: handleResetToTeamProgram, onClearPlan: handleClearPlan,
+    onOpenPlan: openOwnPlan, onOpenPrograms: () => setSub("programs"), onEditFatigueRule: openFatigueRule,
+    onOpenAssistant: handleOpenAssistantPanel, renderCard: renderRiderCard,
+    effortLevels: training.effortLevels === true, // #7947 PR 3: Let/Mellem/Haard (training_effort_levels)
+  } : null;
+
   if (isLoading) {
     return (
       <div className="mx-auto max-w-[1600px]">
@@ -2564,6 +2595,7 @@ export default function TrainingPage() {
         </TabList>
 
       <TabPanel value="today">
+      {trainingR5 ? <I18nReadyGate ns="trainingR5" fallback={<TabFallback />}><Suspense fallback={<TabFallback />}><TodayR5Lazy r5={r5Today} /></Suspense></I18nReadyGate> : (
       <div className="space-y-3">
       {decisionCardOn && !ridersLoading && (
         <DailyDecision
@@ -2604,6 +2636,7 @@ export default function TrainingPage() {
           alle, så #5124's D-047-gren (telefonen uden flaget) er slettet. */}
       {phoneTodayView ? renderMobileToday() : renderDesktopToday()}
       </div>
+      )}
       </TabPanel>
 
       {/* #5485 (aendring 6): fanen Week plan — holdets plan og hver rytters
