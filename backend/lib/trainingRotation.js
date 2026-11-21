@@ -173,8 +173,8 @@ export function parseRotationWrite(body) {
 }
 
 // Den nye tilstand oven paa den gemte. `passes` er den normaliserede liste (eller
-// undefined, naar klienten ikke sendte nogen). Samme pas uden "Spring til pas" er
-// ingen aendring: rev staar stille, saa rytternes stempler stadig passer.
+// undefined, naar klienten ikke sendte nogen). Samme pas uden "Spring til pas" eller
+// "Start fra pas 1" er ingen aendring: rev staar stille, saa stemplerne stadig passer.
 // { ok: true, rotation, planKind } | { ok: false, reason }
 export function applyRotationWrite({ prev = null, prevKind = null, write, passes }) {
   const prevValid = isValidRotation(prev) ? prev : null;
@@ -182,7 +182,8 @@ export function applyRotationWrite({ prev = null, prevKind = null, write, passes
   if (passes !== undefined || write.startIndex != null) {
     const base = passes ?? prevValid?.passes ?? null;
     if (!base) return { ok: false, reason: "rotation_missing" };
-    const unchanged = write.startIndex == null && sameRotationPasses(prevValid, base);
+    // keepPlace false = "Start fra pas 1": altid en ny rev, ogsaa med samme pas.
+    const unchanged = write.startIndex == null && write.keepPlace !== false && sameRotationPasses(prevValid, base);
     if (!unchanged) {
       rotation = buildRotationOnSave(prev, base, { keepPlace: write.keepPlace, startIndex: write.startIndex ?? undefined });
       if (!rotation) return { ok: false, reason: "invalid_start" };

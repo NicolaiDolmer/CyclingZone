@@ -171,7 +171,7 @@ export function copyWeekDays(days: WeekDays): WeekDays {
 // som felterne). Pladsen er altid pr. rytter (den ligger paa hans kvitteringer), saa
 // rev og anker bygges oven paa RYTTERENS forrige rotation, ikke gruppens:
 //   · gruppen staar paa Rotation: har rytteren allerede de samme pas (og intet "Spring
-//     til pas"), roeres hans rotation ikke; ellers en ny rev, der beholder hans plads
+//     til pas" / "Start fra pas 1"), roeres hans rotation ikke; ellers en ny rev, der beholder hans plads
 //     ved samme laengde (ejer 21/11, svar 3) eller starter ved startIndex.
 //   · gruppen staar paa Week blocks, og rytteren stod paa Rotation: plan_kind foelger
 //     gruppen; hans rotation bliver liggende, saa et skift tilbage fortsaetter.
@@ -187,7 +187,7 @@ export function groupRotationCopyPatch(
   if (group.plan_kind === "rotation" && isValidRotation(group.rotation)) {
     const { passes } = group.rotation as { passes: unknown[] };
     const own = row?.rotation ?? null;
-    const unchanged = startIndex == null && sameRotationPasses(own, passes);
+    const unchanged = startIndex == null && keepPlace !== false && sameRotationPasses(own, passes);
     return {
       rotation: unchanged ? own : buildRotationOnSave(own, passes, { keepPlace, startIndex: startIndex ?? undefined }),
       plan_kind: "rotation",
