@@ -62,6 +62,10 @@ const STATES: PotentialView[] = [shown(74, "unsure"), shown(61, "fair"), shown(6
 const FIXED: Record<string, PotentialViewShown> = {
   "rider-1": shown(46, "sure"),
   "rider-2": shown(58, "unsure"),
+  // #8543: akademiets tre kandidater viser alle tre sikkerhedsord.
+  "prospect-1": shown(58, "unsure"),
+  "prospect-2": shown(52, "fair"),
+  "prospect-3": shown(46, "sure"),
 };
 
 const FORCED: Record<string, PotentialView> = {
@@ -104,9 +108,16 @@ export function previewEstimate(id: string, seed?: SeedEstimate) {
 
 // GET /academy/me: truppen er altid egne ryttere og får skøn + prognose; den gamle
 // kendskabsmodel (prognosis) fjernes som i backend.
-export function previewAcademy<T extends { roster?: Array<Record<string, unknown> & { id: string }> }>(academy: T): T {
+export function previewAcademy<T extends {
+  roster?: Array<Record<string, unknown> & { id: string }>;
+  intake?: Array<Record<string, unknown> & { riderId: string }>;
+}>(academy: T): T {
   return {
     ...academy,
+    // #8543: kandidaterne får tal + ord, og intervallet og stjerne-skønnet er væk som i backend.
+    intake: (academy.intake ?? []).map((item) => ({
+      ...item, is_serious: false, potentialEstimate: null, potentialBand: null, potentialView: viewFor(item.riderId),
+    })),
     roster: (academy.roster ?? []).map((rider) => {
       // Egne talenter er aldrig uscoutede: uden skøn læres de stadig.
       const raw = viewFor(rider.id);
