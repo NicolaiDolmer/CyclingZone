@@ -265,7 +265,7 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
   // Motorens regler og straks-tilstandene afhaenger kun af holdet og datoen: de sendes med.
   const rulesP = fatigueRulesForForecast(supabase, team.id, riderIds, tickDate);
   const instantP = settle(loadInstantConditions({ supabase, riderIds, tickDate, failOpenWhenOff: true }));
-  const [conditions, abilities, plans, weekRows, receipts, loads, workRows, entryDays, raceDayEngineOn, cellsOn, catalogV3] = await Promise.all([
+  const [conditions, abilities, plans, weekRows, receipts, loads, workRows, entryDays, raceDayEngineOn, cellsOn, catalogV3, effortLevelsFlag] = await Promise.all([
     rows(supabase.from("rider_condition").select("*").in("rider_id", riderIds), "forecast condition"),
     rows(supabase.from("rider_derived_abilities").select("rider_id, recovery").in("rider_id", riderIds), "forecast recovery"),
     rows(supabase.from("training_plans").select("rider_id, focus, intensity").eq("team_id", team.id).eq("season_id", seasonId), "forecast plans"),
@@ -280,6 +280,7 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     isRaceDayEngineEnabled(supabase),
     cellsGateForTeam(supabase, team.id),
     catalogV3GateForTeam(supabase, team.id),
+    isTrainingEffortLevelsEnabled(supabase), // #7947: i den parallelle blok (Fable-dom #8517)
   ]);
 
   const instant = unwrap(await instantP);
@@ -330,9 +331,9 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
   const fatigueNow = conditionModelV2 ? unwrap(await fatigueNowP) : false; // #7801, samme gate som motoren
   // Fejl i opslaget = slukket (readFlagStage giver null), som delkoerslen selv.
   const settleRaceSession = settleRaceSessionP ? (await settleRaceSessionP).value === true : false;
-  // #7947: som motoren laeses kontakten kun, naar programcellerne laeses (fejl = slukket).
+  // #7947: som motoren gaelder kontakten kun, naar programcellerne laeses (fejl = slukket).
   const programCellsOn = cellsOn && weekRows.some((row) => weekDaysHaveSessions(row.days));
-  const effortLevels = programCellsOn ? await isTrainingEffortLevelsEnabled(supabase) : false;
+  const effortLevels = programCellsOn && effortLevelsFlag === true;
   const forecast = buildTeamFatigueForecast({
     conditionModelV2,
     fatigueNow,

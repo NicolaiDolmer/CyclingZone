@@ -11,7 +11,8 @@
 //   POST   /                 { name, riderIds }         opret (flytter ryttere fra en anden gruppe)
 //   PATCH  /:id              { name?, riderIds? }       omdoeb / saet medlemmer
 //   DELETE /:id                                         slet (rytterne beholder deres plan)
-//   PUT    /:id/cell         { weekday, slotIndex, session }  et felt for hele gruppen
+//   PUT    /:id/cell         { weekday, slotIndex, session, effort? }  et felt for hele gruppen
+//                            (#7947: effort gemmes kun med training_effort_levels on)
 //   POST   /:id/program      { programKey }             "Put on" et program paa gruppen
 //   POST   /:id/follow       { riderIds }               rytterne foelger gruppen igen
 //   PUT    /:id/fatigue      { mode, threshold?, fallback? }  traethedsundtagelse for hele gruppen
@@ -28,6 +29,7 @@ import {
 import { isTrainingCellsEnabled } from "../lib/trainingWeekPlanCellsFlag.js";
 import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer, v3SmartDefaultFocus } from "../lib/trainingCatalogV3.js"; // #5319
 import { seedProgramWeekDays } from "../lib/trainingWeekPlanCells.js";
+import { effortForWrite } from "../lib/trainingEffortLevels.js"; // #7947
 import {
   GROUPS_TABLE, MEMBERS_TABLE, isTrainingGroupsEnabled, loadTeamGroups, normalizeGroupName, sanitizeRiderIds,
   followerIds, groupSeedDays, groupFatiguePatch, copyWeekDays,
@@ -275,6 +277,9 @@ export function createTrainingGroupsRouter({
     try {
       const ctx = await writeContext(req, res);
       if (!ctx) return;
+      // #7947: indsatsen gemmes kun med kontakten on; ikke sendt = intet opslag, som i dag.
+      const effortWrite = await effortForWrite(supabase, req.body?.effort);
+      if (!effortWrite.ok) return res.status(400).json({ error: effortWrite.reason });
       // #5319: en v3-session kan kun vaelges naar training_catalog_v3 er aaben for viewer.
       if (isV3OnlySession(session) && !(await isTrainingCatalogV3EnabledForViewer(supabase, () => isViewerBetaTester(req)))) {
         return res.status(400).json({ error: "invalid_session" });
@@ -283,7 +288,7 @@ export function createTrainingGroupsRouter({
       if (!group) return;
       const view = groupView(group, ctx);
       if (!view.days) return res.status(409).json({ error: "group_empty" });
-      const days = setProgramCell(view.days, { weekday, slotIndex, session });
+      const days = setProgramCell(view.days, { weekday, slotIndex, session, effort: effortWrite.effort });
       if (!days) return res.status(400).json({ error: "invalid_cell" });
       const { error } = await supabase.from(GROUPS_TABLE)
         .update({ days, updated_at: new Date().toISOString() }).eq("id", group.id).eq("team_id", req.team.id);

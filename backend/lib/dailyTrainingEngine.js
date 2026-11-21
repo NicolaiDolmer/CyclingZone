@@ -40,7 +40,7 @@ import { loadRaceDayStagesByRider, loadRiderIdsWithStageOnGameDays } from "./rac
 import { resolveDayProgram, programSlotForRaceDay, weekDaysHaveSessions } from "./trainingPrograms.js";
 // #5932: felterne har eget flag (training_program_cells), med training_programs som fallback.
 import { isTrainingCellsEnabledForTeam } from "./trainingWeekPlanCellsFlag.js";
-import { isTrainingEffortLevelsEnabled } from "./trainingEffortLevels.js"; // #7947
+import { isTrainingEffortLevelsEnabled, executedEffortForScore } from "./trainingEffortLevels.js"; // #7947
 import { applyTrainingCatalog, isTrainingCatalogV3EnabledForTeam, v3SmartDefaultFocus } from "./trainingCatalogV3.js"; // #5319
 import {
   loadTeamFatigueRules, loadRiderIdsWithStageOnDate, previousDateString, applyFatigueRules,
@@ -1506,11 +1506,12 @@ export async function runTeamTrainingDay({
   // #4629: programcellerne laeses KUN naar holdet har programdata OG flaget er
   // on for holdet (beta: holdets ejer er beta-tester). Uden programdata er der
   // intet ekstra opslag, og stien er bit-identisk med foer.
-  programsOn = (Array.isArray(weekPlanRow) ? weekPlanRow : []).some((r) => weekDaysHaveSessions(r.days))
-    ? await isTrainingCellsEnabledForTeam(supabase, teamId)
-    : false;
-  // #7947: indsats pr. felt laeses kun naar programcellerne laeses; ellers intet opslag.
-  effortLevelsOn = programsOn ? await isTrainingEffortLevelsEnabled(supabase) : false;
+  // #7947: indsats pr. felt laeses kun for et hold med programdata, samtidig med felt-flaget
+  // (Fable-dom #8517: intet ekstra opslag i raekkefoelge); den gaelder kun naar felterne laeses.
+  [programsOn, effortLevelsOn] = (Array.isArray(weekPlanRow) ? weekPlanRow : []).some((r) => weekDaysHaveSessions(r.days))
+    ? await Promise.all([isTrainingCellsEnabledForTeam(supabase, teamId), isTrainingEffortLevelsEnabled(supabase)])
+    : [false, false];
+  effortLevelsOn = programsOn && effortLevelsOn;
   },
   async () => {
   // #5319: traeningskatalog v3 (beta: holdets ejer er beta-tester). Off = programmet uroert.
@@ -2365,6 +2366,8 @@ export function computeTrainingDayTick(input) {
         was_race_day: racedToday,
         intention: null,
         contributions: racedToday ? null : scoreDetail.contributions,
+        // #7947: det koerte niveau til aldringsbremsen; kun med kontakten on (off = samme raekke).
+        ...(effortLevelsOn ? { intensity: racedToday ? null : executedEffortForScore(program.intensity) } : {}),
       });
     } else if (boundRestToday && rodeToday) {
       // #4847: rytteren KOERTE en etape, men fik intet tick fordi udviklingen er

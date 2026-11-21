@@ -34,6 +34,7 @@ import { isTrainingProgramsEnabled } from "../lib/trainingProgramsFlag.js";
 import { isTrainingCellsEnabled } from "../lib/trainingWeekPlanCellsFlag.js";
 import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer, v3SmartDefaultFocus } from "../lib/trainingCatalogV3.js"; // #5319
 import { seedProgramWeekDays } from "../lib/trainingWeekPlanCells.js";
+import { effortForWrite } from "../lib/trainingEffortLevels.js"; // #7947
 import { loadTeamFatigueForecast } from "../lib/trainingWeekPlanForecast.js";
 import { markRidersOwnPlan, syncGroupsToSquadProgram, isMissingGroupsTable } from "../lib/trainingGroups.ts"; // #6000
 
@@ -296,7 +297,8 @@ export function createTrainingProgramsRouter({
   });
 
   // PUT /api/training/programs/cell — body { riderId, weekday, slotIndex (null = hele
-  // ugedagen, 0-4 = een loebsdag), session }. Spillerens klik paa EEN celle.
+  // ugedagen, 0-4 = een loebsdag), session, effort? }. Spillerens klik paa EEN celle.
+  // #7947: `effort` (easy/normal/hard, null = foelg) gemmes kun med training_effort_levels on.
   // Proveniensen bevares (UI'et viser "Sprinter · 2 aendret").
   router.put("/cell", requireAuth, writeLimiter, planLock("programCell"), async (req, res) => {
     if (!req.team) return res.status(400).json({ error: "No team found" });
@@ -308,6 +310,9 @@ export function createTrainingProgramsRouter({
     }
     try {
       if (!(await cellsOn(req))) return res.status(404).json({ error: "not_found" });
+      // #7947: indsatsen gemmes kun med kontakten on; ikke sendt = intet opslag, som i dag.
+      const effortWrite = await effortForWrite(supabase, req.body?.effort);
+      if (!effortWrite.ok) return res.status(400).json({ error: effortWrite.reason });
       // #5319: en v3-session kan kun vaelges naar training_catalog_v3 er aaben for viewer.
       if (isV3OnlySession(session) && !(await isTrainingCatalogV3EnabledForViewer(supabase, () => isViewerBetaTester(req)))) {
         return res.status(400).json({ error: "invalid_session" });
@@ -327,7 +332,7 @@ export function createTrainingProgramsRouter({
           const plans = await teamPlans(teamId);
           return seedsFor([rider], rows, plans, await seedCatalogV3(req, [rider], plans))[riderId];
         })();
-      const days = setProgramCell(current, { weekday, slotIndex, session });
+      const days = setProgramCell(current, { weekday, slotIndex, session, effort: effortWrite.effort });
       if (!days) return res.status(400).json({ error: "invalid_cell" });
       await markRidersOwnPlan(supabase, teamId, [riderId]); // #6000: egen plan vinder over gruppen. Foer skrivningen.
       const now = new Date().toISOString();

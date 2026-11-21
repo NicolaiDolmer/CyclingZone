@@ -147,11 +147,17 @@ export function groupFatiguePatch(body: unknown): { fatigue_threshold: number | 
 export function copyWeekDays(days: WeekDays): WeekDays {
   const out: WeekDays = {};
   for (const weekday of WEEKDAY_KEYS) {
-    const entry = days[weekday] as { session: string; intensity: string; slots?: Array<string | null> };
+    const entry = days[weekday] as {
+      session: string; intensity: string; slots?: Array<string | null>;
+      effort?: string; slotEfforts?: Array<string | null>;
+    };
     out[weekday] = {
       session: entry.session,
       intensity: entry.intensity,
       ...(entry.slots ? { slots: [...entry.slots] } : {}),
+      // #7947: gruppens indsats foelger med i kopien (noeglerne findes kun naar kontakten var on).
+      ...(entry.effort != null ? { effort: entry.effort } : {}),
+      ...(entry.slotEfforts ? { slotEfforts: [...entry.slotEfforts] } : {}),
     };
   }
   return out;
