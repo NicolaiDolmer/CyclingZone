@@ -1537,7 +1537,7 @@
       },
       "injuryRisk": {
         "title": "Riesgo de lesión",
-        "text": "El entrenamiento duro con Fatiga alta conlleva un riesgo de lesión. Mira la etiqueta de riesgo antes de entrenar. Una lesión leve suele costar de 1 a 5 días naturales. Cuando la ficha de tu ciclista cuenta días de carrera, la duración sigue el calendario de la temporada y la fecha de regreso es aproximada. En la temporada 4 eso significa de 5 a 25 días de entrenamiento perdidos. Normal o Descanso elimina el riesgo."
+        "text": "El entrenamiento duro con Fatiga alta conlleva un riesgo de lesión. Mira la etiqueta de riesgo antes de entrenar. Una lesión leve suele costar de 1 a 5 días naturales. Cuando la ficha de tu ciclista cuenta días de carrera, la duración sigue el calendario de la temporada y la fecha de regreso es aproximada. En la temporada 4 eso significa de 5 a 25 días de entrenamiento perdidos. Suave, Medio o Descanso eliminan el riesgo; solo Duro lo conlleva."
       },
       "progressBars": {
         "title": "Barras de progreso y puntos de habilidad",

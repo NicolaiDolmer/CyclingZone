@@ -1537,7 +1537,7 @@
       },
       "injuryRisk": {
         "title": "Skaderisiko",
-        "text": "Hård træning ved høj Træthed giver skaderisiko. Tjek risikomærket inden træning. En mild skade koster normalt 1-5 kalenderdage. Når din rytters kort tæller løbsdage, følger varigheden sæsonens kalender, og returdatoen er omtrentlig. I sæson 4 betyder det 5-25 mistede træningsdage. Normal eller Hvile fjerner risikoen."
+        "text": "Hård træning ved høj Træthed giver skaderisiko. Tjek risikomærket inden træning. En mild skade koster normalt 1-5 kalenderdage. Når din rytters kort tæller løbsdage, følger varigheden sæsonens kalender, og returdatoen er omtrentlig. I sæson 4 betyder det 5-25 mistede træningsdage. Let, Mellem eller Hvile fjerner risikoen; kun Hård giver den."
       },
       "progressBars": {
         "title": "Fremskridtslinjer og evnepoint",

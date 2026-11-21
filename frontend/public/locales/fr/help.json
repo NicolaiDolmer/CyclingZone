@@ -1537,7 +1537,7 @@
       },
       "injuryRisk": {
         "title": "Risque de blessure",
-        "text": "Un entraînement dur à forte fatigue comporte un risque de blessure. Vérifie le badge de risque avant de t'entraîner. Une blessure légère coûte normalement 1 à 5 jours calendaires. Quand la fiche de ton coureur compte en jours de course, la durée suit le calendrier de la saison et la date de retour est approximative. En saison 4, cela signifie 5 à 25 jours d'entraînement manqués. Normal ou Repos supprime le risque."
+        "text": "Un entraînement dur à forte fatigue comporte un risque de blessure. Vérifie le badge de risque avant de t'entraîner. Une blessure légère coûte normalement 1 à 5 jours calendaires. Quand la fiche de ton coureur compte en jours de course, la durée suit le calendrier de la saison et la date de retour est approximative. En saison 4, cela signifie 5 à 25 jours d'entraînement manqués. Facile, Moyen ou Repos suppriment le risque ; seul Dur le comporte."
       },
       "progressBars": {
         "title": "Barres de progression et points d'aptitude",

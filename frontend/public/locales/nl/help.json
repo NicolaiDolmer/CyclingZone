@@ -1537,7 +1537,7 @@
       },
       "injuryRisk": {
         "title": "Blessurerisico",
-        "text": "Zware training bij hoge Vermoeidheid brengt een blessurerisico met zich mee. Controleer de risicobadge voordat je traint. Een lichte blessure kost normaal 1-5 kalenderdagen. Wanneer de kaart van je renner koersdagen telt, volgt de duur de seizoenskalender en is de terugkeerdatum bij benadering. In seizoen 4 betekent dat 5-25 gemiste trainingsdagen. Normaal of Rust haalt het risico weg."
+        "text": "Zware training bij hoge Vermoeidheid brengt een blessurerisico met zich mee. Controleer de risicobadge voordat je traint. Een lichte blessure kost normaal 1-5 kalenderdagen. Wanneer de kaart van je renner koersdagen telt, volgt de duur de seizoenskalender en is de terugkeerdatum bij benadering. In seizoen 4 betekent dat 5-25 gemiste trainingsdagen. Licht, Gemiddeld of Rust haalt het risico weg; alleen Zwaar geeft het."
       },
       "progressBars": {
         "title": "Voortgangsbalken en vaardigheidspunten",
