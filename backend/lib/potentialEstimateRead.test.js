@@ -90,7 +90,7 @@ const world = (over = {}) => fakeSupabase({
 });
 
 // regel 16: testene læser aldrig vægur-tiden
-const FIXED_NOW = new Date("2026-11-20T12:00:00Z");
+const FIXED_CLOCK = new Date("2026-11-20T12:00:00Z");
 
 test("buildPotentialView: tal + ord er præcis kontrakten", () => {
   assert.deepEqual(buildPotentialView({ row: estimateRow(), currentRating: 60 }), {
@@ -171,14 +171,14 @@ test("loadPotentialViews: tom liste slår intet op", async () => {
 });
 
 test("buildEstimatesFromViews: skønnet står alene pr. rytter", async () => {
-  const estimates = await buildEstimatesFromViews(world(), { teamId: TEAM, riderIds: ["scouted", "stranger"], now: FIXED_NOW });
+  const estimates = await buildEstimatesFromViews(world(), { teamId: TEAM, riderIds: ["scouted", "stranger"], clock: FIXED_CLOCK });
   assert.deepEqual(Object.keys(estimates.scouted), ["potentialView"]);
   assert.deepEqual(estimates.stranger, { potentialView: { hidden: true, reason: "unscouted" } });
   assert.doesNotMatch(JSON.stringify(estimates), FORBIDDEN);
 });
 
 const reportInput = (over = {}) => ({
-  now: FIXED_NOW, // regel 16
+  clock: FIXED_CLOCK, // regel 16: fast ur, aldrig vægur
   teamId: TEAM,
   rider: { id: "scouted", primary_type: "climber", potentiale: 5.5 },
   own: false, level: 2, maxLevel: 3, looks: 2, age: 23,
@@ -213,7 +213,7 @@ test("scouting-rapporten: uden skøn er der ingen vurdering", async () => {
 });
 
 const projectionInput = (over = {}) => ({
-  now: FIXED_NOW, // regel 16
+  clock: FIXED_CLOCK, // regel 16: fast ur, aldrig vægur
   teamId: TEAM, rider: { id: "scouted", primary_type: "climber" }, own: false, level: 2, maxLevel: 3, age: 23, ...over,
 });
 
@@ -242,7 +242,7 @@ test("development-projection: skøn uden evner siger det ærligt", async () => {
 
 test("akademiet: trup og kandidater svarer fra skønnet og mister de gamle felter", async () => {
   const out = await buildAcademyFromViews(world(), {
-    teamId: TEAM, now: FIXED_NOW,
+    teamId: TEAM, clock: FIXED_CLOCK,
     roster: [{ id: "youth", firstname: "A", prognosis: { stage: "broad", band: { lo: 1, hi: 2 } } }],
     intake: [
       { riderId: "scouted", is_serious: true, potentialEstimate: { lo: 3, hi: 4 }, potentialBand: { prog: { lo: 60, hi: 80 } } },
@@ -265,10 +265,10 @@ test("akademiet: trup og kandidater svarer fra skønnet og mister de gamle felte
 test("H5: alle fire flader viser samme tal for samme (rytter, hold)", async () => {
   const supabase = world();
   const riderIds = ["scouted"];
-  const estimates = await buildEstimatesFromViews(supabase, { teamId: TEAM, riderIds, now: FIXED_NOW });
+  const estimates = await buildEstimatesFromViews(supabase, { teamId: TEAM, riderIds, clock: FIXED_CLOCK });
   const report = await buildScoutingReportFromView(supabase, reportInput());
   const projection = await buildProjectionFromView(supabase, projectionInput());
-  const academy = await buildAcademyFromViews(supabase, { teamId: TEAM, roster: [{ id: "scouted" }], intake: [], now: FIXED_NOW });
+  const academy = await buildAcademyFromViews(supabase, { teamId: TEAM, roster: [{ id: "scouted" }], intake: [], clock: FIXED_CLOCK });
   const expected = estimates.scouted.potentialView;
   assert.deepEqual(report.potentialView, expected);
   assert.deepEqual(projection.potentialView, expected);

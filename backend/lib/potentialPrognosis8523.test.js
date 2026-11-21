@@ -148,7 +148,7 @@ test("AI-hold: eget hold slås aldrig op som AI-hold", async () => {
 
 test("estimates: kun egne ryttere får prognosen, og den ligger mellem nu og skønnet", async () => {
   const estimates = await buildEstimatesFromViews(world(), {
-    teamId: TEAM, riderIds: ["growing", "flat", "veteran", "learner", "rival", "aiRider"], now: NOW,
+    teamId: TEAM, riderIds: ["growing", "flat", "veteran", "learner", "rival", "aiRider"], clock: NOW,
   });
   const growing = estimates.growing.prognosisView;
   assert.equal(growing.hidden, false);
@@ -163,28 +163,28 @@ test("estimates: kun egne ryttere får prognosen, og den ligger mellem nu og sk�
 
 test("estimates: uden billeder i vinduet er farten nul", async () => {
   const estimates = await buildEstimatesFromViews(world({ rider_derived_ability_history: [] }), {
-    teamId: TEAM, riderIds: ["growing"], now: NOW,
+    teamId: TEAM, riderIds: ["growing"], clock: NOW,
   });
   assert.deepEqual(estimates.growing.prognosisView, { hidden: false, value: 50 });
 });
 
 test("estimates: historikken læses kun for egne ryttere, der stadig kan vokse", async () => {
   const supabase = world();
-  await buildEstimatesFromViews(supabase, { teamId: TEAM, riderIds: ["veteran", "learner", "rival"], now: NOW });
+  await buildEstimatesFromViews(supabase, { teamId: TEAM, riderIds: ["veteran", "learner", "rival"], clock: NOW });
   assert.ok(!supabase.reads.some((read) => read.table === "rider_derived_ability_history"));
 });
 
 test("én kilde: estimates, rapport, projektion og akademi viser samme prognose", async () => {
   const supabase = world();
   const rider = { id: "growing", primary_type: "climber" };
-  const estimates = await buildEstimatesFromViews(supabase, { teamId: TEAM, riderIds: ["growing"], now: NOW });
+  const estimates = await buildEstimatesFromViews(supabase, { teamId: TEAM, riderIds: ["growing"], clock: NOW });
   const report = await buildScoutingReportFromView(supabase, {
-    teamId: TEAM, rider, own: true, level: 3, maxLevel: 3, looks: 0, age: 21, scout: null, generatedAt: null, now: NOW,
+    teamId: TEAM, rider, own: true, level: 3, maxLevel: 3, looks: 0, age: 21, scout: null, generatedAt: null, clock: NOW,
   });
   const projection = await buildProjectionFromView(supabase, {
-    teamId: TEAM, rider, own: true, level: 3, maxLevel: 3, age: 21, now: NOW,
+    teamId: TEAM, rider, own: true, level: 3, maxLevel: 3, age: 21, clock: NOW,
   });
-  const academy = await buildAcademyFromViews(supabase, { teamId: TEAM, roster: [{ id: "growing" }], intake: [], now: NOW });
+  const academy = await buildAcademyFromViews(supabase, { teamId: TEAM, roster: [{ id: "growing" }], intake: [], clock: NOW });
   const expected = estimates.growing.prognosisView;
   assert.deepEqual(report.prognosisView, expected);
   assert.deepEqual(projection.prognosisView, expected);

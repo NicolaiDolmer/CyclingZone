@@ -25,6 +25,7 @@
 
 import { publicEstimateView } from "./potentialEstimate.js";
 import { PEAK_AGE } from "./developmentProjection.js";
+import { loadPastPeakAging, pastPeakFromAging } from "./pastPeakView.js"; // #7947: efter peak som motoren
 import { buildVerdict, ratingFromAbilities } from "./scoutingReport.js";
 import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
 import { bestRoleForAbilities } from "./riderBestRoleCache.js";
@@ -186,7 +187,7 @@ async function loadPaceSnapshots(supabase, { riderIds, today }) {
 }
 
 // prognosisView pr. egen rytter. Andres ryttere er ikke med i resultatet.
-async function loadPrognosisViews(supabase, { teamId, context, now = new Date() }) {
+async function loadPrognosisViews(supabase, { teamId, context, clock = new Date() }) {
   const out = new Map();
   const own = context.riderRows.filter((rider) => rider.team_id === teamId);
   const ready = own.filter((rider) => {
@@ -196,7 +197,7 @@ async function loadPrognosisViews(supabase, { teamId, context, now = new Date() 
   });
   if (!ready.length) return out;
   const seasonNumber = await resolveScoutBandSeasonNumber(supabase);
-  const today = isoDay(now);
+  const today = isoDay(clock);
   const ages = new Map(ready.map((rider) => [rider.id, scoutBandAge(rider.birthdate, seasonNumber)]));
   const growing = ready.filter((rider) => {
     const age = ages.get(rider.id);
@@ -217,9 +218,9 @@ async function loadPrognosisViews(supabase, { teamId, context, now = new Date() 
 
 // POST /scouting/estimates. Skønnet står alene: de gamle bånd er en anden kilde.
 // Egne ryttere får prognosen med, så alle flader læser den samme.
-export async function buildEstimatesFromViews(supabase, { teamId, riderIds, now } = {}) {
+export async function buildEstimatesFromViews(supabase, { teamId, riderIds, clock = new Date() } = {}) {
   const context = await loadEstimateContext(supabase, { teamId, riderIds });
-  const prognoses = await loadPrognosisViews(supabase, { teamId, context, now });
+  const prognoses = await loadPrognosisViews(supabase, { teamId, context, clock });
   return Object.fromEntries([...context.views].map(([riderId, potentialView]) => [
     riderId,
     prognoses.has(riderId) ? { potentialView, prognosisView: prognoses.get(riderId) } : { potentialView },
@@ -236,31 +237,31 @@ function estimateVerdict({ view, age, own, level, maxLevel, rating }) {
 
 // GET /riders/:id/scouting-report. `level` er knappens niveau (egen rytter = maxLevel);
 // `looks` er de kig holdet faktisk har taget ("bygger på", spec §3.6).
-export async function buildScoutingReportFromView(supabase, { teamId, rider, own, level, maxLevel, looks, age, scout, generatedAt, now }) {
+export async function buildScoutingReportFromView(supabase, { teamId, rider, own, level, maxLevel, looks, age, scout, generatedAt, clock = new Date() }) {
   const context = await loadEstimateContext(supabase, { teamId, riderIds: [rider.id] });
   const potentialView = context.views.get(rider.id) ?? UNSCOUTED;
   const rating = context.ratings.get(rider.id) ?? null;
-  const prognoses = await loadPrognosisViews(supabase, { teamId, context, now });
+  const prognoses = await loadPrognosisViews(supabase, { teamId, context, clock });
   return {
     potentialView,
     ...(prognoses.has(rider.id) ? { prognosisView: prognoses.get(rider.id) } : {}),
     level, maxLevel, own, looks,
     primaryKey: rider.primary_type ?? null,
     verdict: estimateVerdict({ view: potentialView, age, own, level, maxLevel, rating }),
-    pastPeak: age != null && age > PEAK_AGE,
+    pastPeak: pastPeakFromAging(age, await loadPastPeakAging(supabase, { now: clock })), // regel 16: uret injiceres
     scout, generatedAt,
   };
 }
 
 // GET /riders/:id/development-projection. #8523: den gamle kurve mod skønnet er væk;
 // egne ryttere får den samlede prognose i stedet (spec 2026-11-20 §5).
-export async function buildProjectionFromView(supabase, { teamId, rider, own, level, maxLevel, age, now: clock }) {
+export async function buildProjectionFromView(supabase, { teamId, rider, own, level, maxLevel, age, clock = new Date() }) {
   const context = await loadEstimateContext(supabase, { teamId, riderIds: [rider.id] });
   const potentialView = context.views.get(rider.id) ?? UNSCOUTED;
   const primaryKey = rider.primary_type ?? null;
   const riderAbilities = context.abilities.get(rider.id);
   const now = riderAbilities && primaryKey ? ratingFromAbilities(riderAbilities, primaryKey) : null;
-  const prognoses = await loadPrognosisViews(supabase, { teamId, context, now: clock });
+  const prognoses = await loadPrognosisViews(supabase, { teamId, context, clock });
   return {
     level, maxLevel, own,
     capsMissing: !potentialView.hidden && (now == null || age == null),
@@ -268,20 +269,20 @@ export async function buildProjectionFromView(supabase, { teamId, rider, own, le
     now,
     potentialView,
     ...(prognoses.has(rider.id) ? { prognosisView: prognoses.get(rider.id) } : {}),
-    pastPeak: age != null && age > PEAK_AGE,
+    pastPeak: pastPeakFromAging(age, await loadPastPeakAging(supabase, { now: clock })), // regel 16: uret injiceres
   };
 }
 
 // GET /academy/me. is_serious er generatorens potentiale-mærke, og prognosen er den
 // gamle kendskabsmodel: begge ville fortælle mere end holdets skøn.
 // #8523: truppen får den samlede prognose (prognosisView) i stedet for den gamle.
-export async function buildAcademyFromViews(supabase, { teamId, roster, intake, now }) {
+export async function buildAcademyFromViews(supabase, { teamId, roster, intake, clock = new Date() }) {
   const candidateId = (item) => item?.riderId ?? item?.rider?.id;
   const context = await loadEstimateContext(supabase, {
     teamId,
     riderIds: [...(roster ?? []).map((rider) => rider.id), ...(intake ?? []).map(candidateId)],
   });
-  const prognoses = await loadPrognosisViews(supabase, { teamId, context, now });
+  const prognoses = await loadPrognosisViews(supabase, { teamId, context, clock });
   const viewOf = (riderId) => context.views.get(riderId) ?? UNSCOUTED;
   return {
     roster: (roster ?? []).map((rider) => {

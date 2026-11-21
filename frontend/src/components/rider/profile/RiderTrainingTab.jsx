@@ -32,6 +32,7 @@ import { ABILITY_CATEGORIES } from "../../../lib/abilities.js";
 import { formatDate } from "../../../lib/intl.js";
 import { copenhagenDayKey } from "../../../lib/raceCentre.js";
 import AbilityReceiptRow, { AbilityReceiptHeader } from "../../training/AbilityReceiptRow.jsx";
+import { dayXpByAbility, riderXpBars, withXpLines } from "../../../lib/xpAbilityLine.ts"; // #7947
 import FocusPanel from "../../training/FocusPanel.jsx";
 import { dayTypeForProgram, sessionForProgram } from "../../../lib/trainingDayTypes.js";
 import IconBase from "../../ui/icons/IconBase.jsx";
@@ -277,7 +278,7 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
   // <dato>" i begge. Kun den ikke-begyndte sæson siger "Starter <dato>".
   const seasonBegun = seasonRunning || seasonState === SEASON_RECEIPT_NO_DAYS;
   const seasonNoteKey = seasonRunning && seasonGains == null ? "receipt.pending" : SEASON_RECEIPT_NOTE_KEY[seasonState] ?? "receipt.pending";
-  const rowsByAbility = Object.fromEntries(
+  const receiptRows = Object.fromEntries(
     abilityReceipt(ABILITY_CATEGORIES.flatMap((c) => c.keys), {
       abilities: rider.abilities,
       progress,
@@ -289,6 +290,11 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
       gainDay,
     }).map((row) => [row.ability, row]),
   );
+  // #7947: under XP "x / y XP" i stedet for procent (null = XP slukket, dagens visning).
+  const xpBars = riderXpBars(training.xpBar, rider.id);
+  const rowsByAbility = xpBars
+    ? Object.fromEntries(withXpLines(Object.values(receiptRows), xpBars, dayXpByAbility(dayRow?.activities ?? runRow?.activities)).map((row) => [row.ability, row]))
+    : receiptRows;
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
@@ -313,12 +319,14 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
               {t(`stats.categories.${cat.key}`)}
             </span>
             <div className="mt-[5px]">
-              <AbilityReceiptHeader />
+              {/* #7947 (ejer 20/11): under XP er en sæson uden tal ingen kolonne. */}
+              <AbilityReceiptHeader xp={xpBars != null} season={seasonGains != null} />
               {cat.keys.map((key) => (
                 <AbilityReceiptRow
                   key={key}
                   row={rowsByAbility[key]}
                   inFocus={!!focusAbilities?.has(key)}
+                  season={seasonGains != null}
                 />
               ))}
             </div>
