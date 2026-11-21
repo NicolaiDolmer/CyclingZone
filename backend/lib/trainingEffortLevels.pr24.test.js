@@ -1,6 +1,6 @@
 // #7947 PR 2+4 (Let/Mellem/Haard): skrivestierne, det koerte niveau paa score-raekken,
 // aldringsbremsens taelling og R16-dommerens opregning. Lukker Fable-dommens fund paa #8517
-// (se #7947 og #8529): 1 (aldringsbremsen), 2 (R16), 4 (api.js) og 5 (de ekstra opslag).
+// (se #7947 og #8529): 1 (aldringsbremsen), 2 (R16) og 4 (api.js). Fund 5 er ikke flyttet (PR-body).
 //
 // Bevis for "kontakten off = bit-identisk" (#7587): trainingEffortLevels7947b.golden.json er
 // genereret af trainingEffortLevels7947b.golden.mjs paa MERGE-BASEN (se mergeBase i filen) i et
