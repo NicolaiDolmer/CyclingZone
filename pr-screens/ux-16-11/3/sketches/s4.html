@@ -1,0 +1,32 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css"><style>
+.rc{padding:12px 14px;border-bottom:1px solid var(--border)}
+.rc:last-child{border-bottom:0}
+.h{display:flex;justify-content:space-between;align-items:baseline}
+.h b{font-weight:600;font-size:15px}
+.mut{font-size:12px;color:var(--t3)}
+.chips{display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap}
+.chip{font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:5px;background:var(--subtle)}
+.arr{color:var(--t3);font-size:11px}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:5px;overflow:hidden;margin-top:8px}
+.seg div{min-height:44px;padding:0 12px;display:flex;align-items:center;font-size:13px;color:var(--t2)}
+.seg .on{background:var(--navy);color:#fff}
+.edit{color:var(--gold-t);font-weight:600;font-size:13px;min-height:44px;display:inline-flex;align-items:center}
+.strip{display:flex;gap:6px;margin:12px 0}
+.strip div{flex:1;border:1px solid var(--border);border-radius:5px;background:var(--card);padding:6px 8px;font-size:12px}
+.strip .on{border-color:var(--t1)}
+.foot{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-top:1px solid var(--border)}
+</style></head><body><div class="top">CYCLING ZONE</div><div class="wrap">
+<div class="card" style="border-top:2px solid var(--gold);padding:12px 14px"><div style="font-family:'Bebas Neue';font-size:30px;line-height:1">TOUR DE PREVIEW</div>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px"><div style="font-weight:600">Stage 1 locks in 4 h 20 min<div class="mut" style="font-weight:400">Sun 13:00</div></div><a class="btn gold">Save stage 1</a></div></div>
+<div class="tabs" style="margin-top:8px"><div>Stage</div><div>Standings</div><div>Team</div><div class="on">Tactics</div></div>
+<div class="strip"><div class="on"><b>1</b> Flat<br><span class="mut">Not saved</span></div><div><b>2</b> Mtn<br><span class="mut">Default</span></div><div><b>3</b> High mtn<br><span class="mut">Default</span></div><div><b>4</b> TT<br><span class="mut">Default</span></div></div>
+<div class="card">
+<div class="rc"><div class="h"><b>Ada Pedersen</b><span class="mut">Captain · route 58 · form 60</span></div>
+<div class="chips"><span class="chip">Stay protected</span><span class="arr">km 172 ›</span><span class="chip">Go for the win</span></div>
+<div style="display:flex;justify-content:space-between;align-items:center"><div class="seg"><div>Easy</div><div class="on">Normal</div><div>Hard</div></div><span class="edit">Edit plan</span></div></div>
+<div class="rc"><div class="h"><b>Lei Wu</b><span class="mut">Domestique · route 61 · form 55</span></div>
+<div class="chips"><span class="chip">Try the break</span><span class="arr">caught ›</span><span class="chip">Help captain</span></div>
+<div style="display:flex;justify-content:space-between;align-items:center"><div class="seg"><div>Easy</div><div>Normal</div><div class="on">Hard</div></div><span class="edit">Edit plan</span></div></div>
+</div>
+<div class="sub" style="margin-top:10px">One card per rider: the plan as chips along the route; editing opens a sheet (#7778 decision 15-16). Riders/numbers: example.</div>
+</div><div class="nav"><span>Dashboard</span><span>Inbox</span><span>Market</span><span>Riders</span><span>My Team</span></div></body></html>
