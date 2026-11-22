@@ -167,7 +167,8 @@ export function parseRotationWrite(body) {
   if (keepPlace !== undefined && typeof keepPlace !== "boolean") return { ok: false, reason: "invalid_keep_place" };
   const hasStart = startIndex !== undefined && startIndex !== null;
   if (hasStart && !(Number.isInteger(startIndex) && startIndex >= 0)) return { ok: false, reason: "invalid_start" };
-  if (planKind === undefined && passes === undefined && !hasStart) return { ok: false, reason: "nothing_to_write" };
+  // keepPlace false alene = "Start fra pas 1" paa den gemte rotation (Codex-fund).
+  if (planKind === undefined && passes === undefined && !hasStart && keepPlace !== false) return { ok: false, reason: "nothing_to_write" };
   return {
     ok: true,
     planKind: planKind ?? (passes !== undefined ? "rotation" : undefined),
@@ -184,7 +185,7 @@ export function parseRotationWrite(body) {
 export function applyRotationWrite({ prev = null, prevKind = null, write, passes }) {
   const prevValid = isValidRotation(prev) ? prev : null;
   let rotation = prevValid;
-  if (passes !== undefined || write.startIndex != null) {
+  if (passes !== undefined || write.startIndex != null || (write.keepPlace === false && prevValid)) {
     const base = passes ?? prevValid?.passes ?? null;
     if (!base) return { ok: false, reason: "rotation_missing" };
     // keepPlace false = "Start fra pas 1": altid en ny rev, ogsaa med samme pas.

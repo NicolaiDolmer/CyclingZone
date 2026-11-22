@@ -158,6 +158,15 @@ test("applyRotationWrite: Week blocks beholder rotationen, spring kraever en rot
   assert.deepEqual(applyRotationWrite({ write: parseRotationWrite({ planKind: "week" }) }), { ok: true, planKind: "week", rotation: null });
 });
 
+test("applyRotationWrite: keepPlace false alene = Start fra pas 1 paa den gemte rotation", () => {
+  const prev = rot(ABC, { rev: 2, anchor: { rev: 2, index: 1, fromRev: 1 } });
+  const write = parseRotationWrite({ keepPlace: false });
+  assert.equal(write.ok, true);
+  const reset = applyRotationWrite({ prev, prevKind: "rotation", write });
+  assert.deepEqual([reset.planKind, reset.rotation.rev, reset.rotation.anchor], ["rotation", 3, { rev: 3, index: 0 }]);
+  assert.deepEqual(applyRotationWrite({ write }), { ok: true, planKind: null, rotation: null }, "ingen rotation: intet at nulstille");
+});
+
 // ── Pladsen ──────────────────────────────────────────────────────────────────
 
 test("nextRotationIndex: intet stempel og intet anker = pas 1; ingen rotation = null", () => {

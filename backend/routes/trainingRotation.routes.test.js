@@ -292,6 +292,26 @@ test("gruppe: et felt rettet paa en rotationsgruppe genkopierer rotationen uden 
   assert.equal(rowOf(state, "r1").days.mon.slots[0], "rest");
 });
 
+test("gruppe uden felter paa Rotation: nye medlemmer og Follow group faar rotationen (Codex-fund)", async (t) => {
+  const state = seed({
+    groups: [{ id: "g1", team_id: "team-a", name: "New", days: null, program_key: null, fatigue_threshold: null, fallback: null }],
+    members: [
+      { rider_id: "r1", group_id: "g1", team_id: "team-a", follows_group: true },
+      { rider_id: "r3", group_id: "g1", team_id: "team-a", follows_group: false },
+    ],
+  });
+  const { call } = await fixture(t, { state });
+  await call("PUT", "/groups/g1/rotation", { passes: ABC });
+  assert.equal(state.training_groups[0].days, null, "gruppen har stadig ingen felter");
+  assert.equal(rowOf(state, "r3"), undefined);
+  assert.equal((await call("PATCH", "/groups/g1", { riderIds: ["r1", "r2", "r3"] })).status, 200);
+  const r2 = rowOf(state, "r2");
+  assert.ok(isValidProgramWeekDays(r2.days), "saaet uge, saa motoren har felter");
+  assert.deepEqual([r2.plan_kind, r2.rotation.passes], ["rotation", ABC]);
+  assert.equal((await call("POST", "/groups/g1/follow", { riderIds: ["r3"] })).status, 200);
+  assert.deepEqual([rowOf(state, "r3").plan_kind, rowOf(state, "r3").rotation.passes], ["rotation", ABC]);
+});
+
 test("gruppe: ukendt gruppe 404, ugyldig body 400", async (t) => {
   const state = groupState();
   const { call } = await fixture(t, { state });

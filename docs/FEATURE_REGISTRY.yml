@@ -1006,6 +1006,19 @@ features:
     decision: goer-faerdigt
     decide_by: 2026-12-04
 
+  - id: training-rotation-8548
+    area: training
+    title_en: Rotation plans that wait on rest and races
+    title_da: Rotation, der venter ved hvile og løb
+    state: building
+    flag: training_rotation
+    ssot: docs/TRAINING_RULES.md
+    epic: 7456
+    verified: 2026-11-22
+    note: "PR 1 af 3 (migration, validering, API) bag training_rotation = off. Motor (PR 2, Fable-dom) og R5-UI (PR 3) følger; ejer tænder."
+    decision: goer-faerdigt
+    decide_by: 2026-12-06
+
   # --- academy -------------------------------------------------------------
   - id: academy
     area: academy

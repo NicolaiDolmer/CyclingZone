@@ -1479,3 +1479,12 @@ Kontakt `development_xp_model` med startdato `development_xp_from_date`; slukket
 2. **Ryttere uden udvikling på tændingsnatten (fund 3a, ejervalg B 19/11).** En skadet rytter, en bundet hviledag eller en uafklaret plads har intet udviklings-tick den nat; han får sin gemte fremgang helt ud på sin første XP-dato. Tjek: koden er merget og deployet før startdatoen, og den rulles ikke tilbage, mens XP er tændt (ellers kan en rytter få en ekstra fuld udbetaling).
 3. **"Optjent i dag" skilt fra "udbetalt fra bjælken" (fund 5, #8210).** Opsparet XP købes også på hviledage og efter skift af fokus; spilleren må aldrig se et point fra bjælken som dagens træning.
 4. **Dommerkørslen over 15 sæsoner** med motorens egen datoregel, kohorte og kurve B som facit er lavet på den kode, der tændes, plus ny Fable-dom og ejerens ordrette "kør" efter at have set den live tilstand.
+
+### 13.8 Rotation: pas 1..N der venter ved hvile og løb (#8548, PR 1; bag slukket kontakt)
+
+Kontakt `training_rotation` (off | beta | on), seedet off; tænding er ejer-only. Design: undersøgelsen `docs/audits/undersoegelse-docs-8548-rotation-design.md` (PR #8557) og ejerens svar 21/11 på #8548. PR 1 er kun data og API; motoren læser intet før PR 2.
+
+- **Data (kopi-modellen, ejer-valg 1 26/9):** `rotation jsonb` på `training_week_plans` og `training_groups` med formen v1 `{ v, passes[2..35], rev, anchor: { rev, index, fromRev? } }` (valideres i `backend/lib/trainingRotation.js`). `plan_kind` (`week` | `rotation`, NULL = dagens felt-plan) er den ene markør for hvilken regel planen kører (afstemt med #8549); felterne i `days` bliver urørte, så et skift tilbage til Week blocks kræver ingen datamigration.
+- **Pladsen** gemmes ikke som en tæller. Den stemples på kvitteringen (PR 2) og afledes: findes et stempel med rotationens `rev`, fortsættes derfra, ellers fra ankeret. `rev` stiger ved hver gemning. Pladsen er altid pr. rytter, også i en gruppe.
+- **Rykker pladsen:** kun når rotationens pas blev kørt (almindeligt slot, Træn nu, frit slot på en etapedato). Løb, bundet hviledag, skade, uafklaret slot, "dagen efter en etape" og træthedsgrænsen med Hvile/Aktiv restitution venter. Træthedsgrænsen gælder felt for felt som i dag (ejer svar 1); med "samme pas på let" rykker rotationen (svar 2).
+- **Rettelser:** samme længde beholder hver rytters plads, ny længde starter fra pas 1 (svar 3); "Start fra pas 1" og "Spring til pas" sætter ankeret. Kontakten off: API'et afviser skrivning (409 `feature_disabled`), og intet læser kolonnerne.
