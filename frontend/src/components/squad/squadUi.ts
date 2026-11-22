@@ -37,6 +37,8 @@ export interface DataTableColumn<Row> {
 }
 
 export interface DataTableProps<Row> {
+  sketch8595?: boolean; // #8595 SKITSE
+  sketchCodeFor?: (row: any) => string | null | undefined; // #8595 SKITSE
   columns: DataTableColumn<Row>[];
   rows: Row[];
   rowKey: (row: Row) => string;

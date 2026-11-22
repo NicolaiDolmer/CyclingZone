@@ -748,7 +748,7 @@ export default function RidersPage() {
       <div data-tour="riders-list">
         <DataTable
           label={t("page.title")}
-          columns={columns}
+          columns={columns} sketch8595
           rows={showRows ? riders : []}
           rowKey={(r) => r.id}
           titleBar={(columnsControl) => (

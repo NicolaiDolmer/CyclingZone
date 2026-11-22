@@ -511,7 +511,7 @@ export default function WatchlistPage() {
             <>
               <DataTable
                 label={t("title")}
-                columns={columns}
+                columns={columns} sketch8595
                 rows={visible}
                 rowKey={(entry) => entry.id}
                 /* D-047 (#5102): oenskelistens POINT er handlingen — "Start

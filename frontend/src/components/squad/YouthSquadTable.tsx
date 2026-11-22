@@ -313,7 +313,7 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
   return (
     <DataTable
       label={label}
-      columns={columns}
+      columns={columns} sketch8595
       rows={rows}
       rowKey={(r) => r.id}
       mobileDefaults={tableMode === "abilities" ? ABILITY_MODE_MOBILE_DEFAULTS : MOBILE_DEFAULTS}

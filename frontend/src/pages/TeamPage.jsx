@@ -1038,7 +1038,7 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
            rækkehøjde rammer alle T2-tabeller på én gang, ikke kun holdsiden. */
         <DataTable
           label={t("tabs.squad", { count: displayRiders.length })}
-          columns={columns}
+          columns={columns} sketch8595
           rows={displayRiders}
           rowKey={(r) => r.id}
           mobileDefaults={mobileDefaults}

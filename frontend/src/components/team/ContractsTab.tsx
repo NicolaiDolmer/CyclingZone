@@ -521,7 +521,7 @@ export default function ContractsTab({ riders, scouting, seasonYear, onChanged }
             <div key={group.key} className={group.kind === "atCap" ? "opacity-60" : undefined} data-testid={`contracts-group-${group.key}`}>
               <DataTable
                 label={title}
-                columns={columns}
+                columns={columns} sketch8595 sketchCodeFor={(r: { id: string }) => (riders as Array<{ id: string; nationality_code?: string | null }>).find((x) => x.id === r.id)?.nationality_code}
                 rows={group.rows}
                 rowKey={(row) => row.id}
                 dense

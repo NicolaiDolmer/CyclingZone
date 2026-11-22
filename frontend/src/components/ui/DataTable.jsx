@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { sketch8595 } from "../../preview/sketches/8595/columnOrder8595.jsx"; // #8595 SKITSE
 import { useTranslation } from "react-i18next";
 import { SortIndicator } from "./SortableTh.jsx";
 import { WRAP, SCROLLER, MOBILE_SCROLLER, TABLE, COUNT, thClass, tdClass, mergeRowProps, zonePillClass } from "./dataTableStyles.js";
@@ -84,7 +85,9 @@ import {
 // ingen rå hex — og "Fuld tabel" er en NEUTRAL kontrol, aldrig gold: guld er
 // sidens ene primary, og en kolonne-kontrol er ikke sidens primære handling.
 export function DataTable({
-  columns,
+  columns: columnsIn,
+  sketch8595: sketchOn = false, // #8595 SKITSE (design-branch, merges aldrig)
+  sketchCodeFor = null,
   rows,
   rowKey,
   rowZone = null,
@@ -102,6 +105,7 @@ export function DataTable({
   viewModes = /** @type {any} */ (null),
   titleBar = /** @type {any} */ (null),
 }) {
+  const columns = sketchOn ? sketch8595(columnsIn, sketchCodeFor) : columnsIn;
   const { t } = useTranslation("common");
   const isMobile = useIsMobileViewport();
   const zones = rows.map((row, i) => (rowZone ? rowZone(row, i) : null));

@@ -586,10 +586,15 @@ export function restRows(table, requestUrl = "") {
     case "finance_transactions":
     case "notifications":
     case "player_events":
-    case "rider_watchlist":
     case "roadmap_votes":
     case "known_issue_reports":
       return [];
+    // #8595 SKITSE: tre ryttere paa oenskelisten, saa listen kan vises (preview-fiktion).
+    case "rider_watchlist":
+      return RIDERS.filter((r) => r.team_id !== TEST_TEAM.id).slice(0, 3).map((r, i) => ({
+        id: `wl-${i}`, note: null, created_at: "2026-11-20T10:00:00Z",
+        rider: { ...r, team: r.team_id ? { id: r.team_id, name: "AI Team" } : null },
+      }));
     case "seasons":
       return seasonRowsFor(requestUrl);
     case "transfer_windows":
