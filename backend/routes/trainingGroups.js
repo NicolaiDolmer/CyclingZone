@@ -194,8 +194,8 @@ export function createTrainingGroupsRouter({
     }
   }
 
-  // Gruppen staar paa Rotation, men har ingen felter: kun rotationen kan kopieres.
-  const rotationOnlyGroup = (ctx, group) => ctx.rotationOn && group.plan_kind === "rotation" && !isValidProgramWeekDays(group.days);
+  // Gruppen har en markoer (Rotation eller Week blocks), men ingen felter: kun markoeren kopieres. Codex P2 #8577: ogsaa "week", saa en foelger ikke beholder en gammel rotation.
+  const rotationOnlyGroup = (ctx, group) => ctx.rotationOn && group.plan_kind != null && !isValidProgramWeekDays(group.days);
 
   // Flytter ryttere ind i gruppen (en rytter er i hoejst een gruppe: rider_id er
   // PRIMARY KEY) og fjerner dem der ikke laengere er med.
