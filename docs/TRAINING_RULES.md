@@ -1503,3 +1503,15 @@ Kontakt `training_week_forecast` (off | beta | on), seedet off; tænding er ejer
 - **Løbsdagsaksen** kædes dato for dato med sweepens egen hul-udfyldning (`gameDaySpansByDivision`), og forrige løbsdag slås op over alle divisionens løb. En dato, der ikke giver præcis 5 løbsdage, er `available:false`: løbsdagen gættes aldrig ud fra datoen (UGE-5). Ved sæsonens sidste løbsdato forlænges der ikke, så den dato kan være `available:false`, selv om dagens `/forecast` den dag svarer (den sikre side).
 - **Bindinger og udgang af løb** genbruger motorens regel (`forecastBindingsFromEntryDays`, #5949). Et løb i divisionen, som rytteren ikke er udtaget til, er ikke hans felt (UGE-4).
 - **Kontakten off** (eller et svar uden ugen): `{ available:false, reason:"disabled", days:[] }`, og I dag-fanen er præcis som før.
+
+### 13.10 Week blocks: prioritet pr. felt og ét låst pas pr. dag (#8549 PR 2; bag slukket kontakt)
+
+Kontakt `training_week_priority` (off | beta | on), seedet off; tænding er ejer-only. Design: `docs/audits/undersoegelse-docs-8549-prioritet-laast-pas-design.md` §5. Dommer-scenarier: `docs/audits/7456-program-dommer-scenarier.md` §2 (WB-1..10). Kode: `backend/lib/trainingWeekBlocks.js` (kernen) og `backend/lib/trainingWeekPriority.js` (motorens og prognosens fælles indgang).
+
+- **Gælder kun rækker med `plan_kind = 'week'`** (sættes af den nye Program-fane, K-9). `NULL` = gammel felt-plan med dagens regel (OLD-1). `'rotation'` hører til §13.8 (OFF-2).
+- **Kildefeltet omdirigeres, ikke træningsstien:** session og indsats kommer fra kildefeltet (`resolveDayProgram` med kildefeltet), træthedsgrænsen vurderes på feltets eget tidspunkt og vinder over låsen (WB-7, ejer 19/11).
+- **Løb tager laveste prioritet;** pas taget af løb indhentes ikke. Låsen bliver i sit hjemmefelt, ellers flytter den til nærmeste frie, ikke-afregnede felt (lige afstand: det senere; ejer 21/11). Intet frit felt: låsen er taget.
+- **Afregnede felter ligger fast:** kvitteringen får `source_slot` (hvilket pas feltet kørte). Et felt uden stempel ligger fast med sin egen plads, et løbsfelt uden kilde. Et felt, træthedsgrænsen erstattede, er afregnet MED sin kilde (WB-7-kontrakten). Det gør afregning i rækkefølge, ude af rækkefølge (Træn nu) og efter etapen ens (WB-8).
+- **Løbsfelter for datoen** = afregnede løbsbelastninger (`canonicalLoadRows`) ∪ planlagte etaper (binding ∩ etapeplan, med udgang af løb #5949). Opslaget sker kun med kontakten on og en 'week'-plan.
+- **Prognosen** bruger samme indgang (I5), så ugegitteret viser det samme som motoren.
+- **Kontakten off:** intet ekstra opslag, ingen `source_slot` i rapporten, kildefeltet = feltet (bit-identisk).

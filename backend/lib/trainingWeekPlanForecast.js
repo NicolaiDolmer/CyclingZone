@@ -43,6 +43,7 @@ import { isTrainingCatalogV3EnabledForTeam } from "./trainingCatalogV3.js"; // #
 import { loadRaceExitGameDays, dropBindingsAfterRaceExit } from "./trainingRaceDayTick.js";
 import { isTrainingSettleRaceSessionEnabled } from "./trainingSettleRaceSession7982.js"; // #7982
 import { isTrainingEffortLevelsEnabled } from "./trainingEffortLevels.js"; // #7947
+import { isTrainingWeekPriorityEnabledForTeam, weekPrioritySourceSlot, winningWeekEntry } from "./trainingWeekPriority.js"; // #8549
 // #5932-integrationen: spillerens traethedsgraense (#4854) aendrer motorens pas
 // efter resolveDayProgram. Prognosen kalder SAMME funktion (I5).
 import {
@@ -124,6 +125,8 @@ export function buildTeamFatigueForecast({
   fatigueNow = false, // #7801: reglen paa traetheden lige nu, samme tal som motoren (I5)
   ranSlots = false, // #7982: kun med training_settle_race_session on; slukket = feltet findes ikke
   effortLevels = false, // #7947: samme kontakt som motoren
+  // #8549: Week blocks som motoren (I5). Off = kildefeltet er feltet (dagens prognose).
+  weekPriority = false, teamWeekRow = null, riderWeekRowByRider = new Map(),
 }) {
   const days = [...new Set((dateGameDays ?? []).map(Number).filter(Number.isFinite))].sort((a, b) => a - b);
   if (days.length !== FORECAST_SLOTS) return {};
@@ -145,8 +148,21 @@ export function buildTeamFatigueForecast({
     const ruleLoads = []; // #7801: etaper i tidligere felter samme dato
     const slots = days.map((day) => {
       const slotIndex = programSlotForRaceDay(day, days);
+      // #8549: samme omdirigering af kildefeltet som motoren; træthedsgrænsen bruger feltet selv.
+      const sourceSlot = weekPriority
+        ? weekPrioritySourceSlot({
+          winning: winningWeekEntry({ weekday, riderRow: riderWeekRowByRider.get(rider.id) ?? null, teamRow: teamWeekRow, hasExplicitPlan }),
+          programSlot: slotIndex,
+          dateDays: days,
+          raceGameDays: [
+            ...recordedLoads.filter((row) => row.rider_id === rider.id && row.duplicate_of_race_id == null).map((row) => Number(row.game_day)),
+            ...plannedStages.filter((row) => row.rider_id === rider.id).map((row) => Number(row.game_day)),
+          ],
+          priorReports: riderReceipts.filter((row) => Number(row.game_day) !== day).map((row) => ({ game_day: Number(row.game_day), report: row.report })),
+        }).sourceSlot
+        : slotIndex;
       const dayProgram = resolveDayProgram({
-        weekday, slotIndex,
+        weekday, slotIndex: sourceSlot,
         riderOverrideDays: riderWeekDaysByRider.get(rider.id) ?? null,
         teamWeekDays, program, hasExplicitPlan, programsOn: cellsOn, catalogV3, effortLevels,
       });
@@ -269,7 +285,7 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     rows(supabase.from("rider_condition").select("*").in("rider_id", riderIds), "forecast condition"),
     rows(supabase.from("rider_derived_abilities").select("rider_id, recovery").in("rider_id", riderIds), "forecast recovery"),
     rows(supabase.from("training_plans").select("rider_id, focus, intensity").eq("team_id", team.id).eq("season_id", seasonId), "forecast plans"),
-    rows(supabase.from("training_week_plans").select("rider_id, days").eq("team_id", team.id), "forecast week plans"),
+    rows(supabase.from("training_week_plans").select("rider_id, days, plan_kind").eq("team_id", team.id), "forecast week plans"),
     // pagination-safe: roster x five game days.
     rows(supabase.from("training_rider_ticks").select("rider_id, game_day, tick_date, report").eq("season_id", seasonId).in("game_day", dateGameDays).in("rider_id", riderIds), "forecast receipts"),
     // pagination-safe: roster x five game days.
@@ -333,6 +349,10 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
   // #7947: som motoren laeses kontakten kun, naar programcellerne laeses (fejl = slukket).
   const programCellsOn = cellsOn && weekRows.some((row) => weekDaysHaveSessions(row.days));
   const effortLevels = programCellsOn ? await isTrainingEffortLevelsEnabled(supabase) : false;
+  // #8549: samme gate som motoren (kun med programceller og en 'week'-plan; ellers intet opslag).
+  const weekPriority = programCellsOn && weekRows.some((row) => row.plan_kind === "week")
+    ? await isTrainingWeekPriorityEnabledForTeam(supabase, team.id)
+    : false;
   const forecast = buildTeamFatigueForecast({
     conditionModelV2,
     fatigueNow,
@@ -356,6 +376,9 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     catalogV3,
     ranSlots: settleRaceSession,
     effortLevels,
+    weekPriority,
+    teamWeekRow: weekRows.find((row) => row.rider_id == null) ?? null,
+    riderWeekRowByRider: new Map(weekRows.filter((row) => row.rider_id != null).map((row) => [row.rider_id, row])),
   });
   return {
     ...base, available: true, settled: false, riders: forecast,

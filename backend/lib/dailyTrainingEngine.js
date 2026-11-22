@@ -38,6 +38,7 @@ import { loadRaceDayStagesByRider, loadRiderIdsWithStageOnGameDays } from "./rac
 // #4629: programmer pr. loebsdag laeses gennem SAMME stige (resolveDayProgram
 // kalder resolveDayIntensity); flaget off = den gamle linje, bit for bit.
 import { resolveDayProgram, programSlotForRaceDay, weekDaysHaveSessions } from "./trainingPrograms.js";
+import { isTrainingWeekPriorityEnabledForTeam, loadPlannedStageDaysByRider, weekPrioritySourceSlot, winningWeekEntry } from "./trainingWeekPriority.js"; // #8549
 // #5932: felterne har eget flag (training_program_cells), med training_programs som fallback.
 import { isTrainingCellsEnabledForTeam } from "./trainingWeekPlanCellsFlag.js";
 import { isTrainingEffortLevelsEnabled, executedEffortForScore } from "./trainingEffortLevels.js"; // #7947
@@ -1335,6 +1336,8 @@ export async function runTeamTrainingDay({
   let raceDayEffortByRider = new Map(); // #6641 variant B: rider_id -> managerens intention paa dagens etape
   let raceDayRoleByRiderMap = new Map(); // #5950: rider_id -> rolle paa dagens etape (tom = fri rolle)
   let programsOn = false, catalogV3On = false, stageOnDateRiderIds = new Set();
+  let weekPriorityOn = false; // #8549: kun med programceller OG en plan med plan_kind 'week'
+  let plannedStageDaysByRider = {}; // #8549: { riderId: [game_day] } datoens planlagte etaper
   let effortLevelsOn = false; // #7947
   let fatigueRules = null, stageYesterdayRiderIds = new Set();
   let trainingFacilityTier, trainingStaff, teamMedicalBonus = 0, illnessHistoryByRider = new Map();
@@ -1407,7 +1410,8 @@ export async function runTeamTrainingDay({
     // (rider_id sat) hentes i ÉT kald — begge lever i samme tabel, splittes i JS.
     // PR 1 hentede kun team-rowet; PR 2 tilføjer rytter-override-laget.
     supabase.from("training_week_plans")
-      .select("rider_id, days")
+      // #8549: plan_kind afgoer Week blocks (NULL = gammel plan, uaendret adfaerd).
+      .select("rider_id, days, plan_kind")
       .eq("team_id", teamId),
     // #3459 D1 / #4277: kun query'et når UDVIKLINGS-flagget er on — off giver en
     // no-op-promise (bit-identisk med før #3459, ingen ekstra DB-kald). Bevidst
@@ -1519,6 +1523,15 @@ export async function runTeamTrainingDay({
       : false,
     isTrainingEffortLevelsEnabled(supabase),
   ]);
+  // #8549: Week blocks. Uden en 'week'-plan intet opslag; kontakten off = dagens kald (OFF-1).
+  weekPriorityOn = programsOn && (Array.isArray(weekPlanRow) ? weekPlanRow : []).some((r) => r.plan_kind === "week")
+    ? await isTrainingWeekPriorityEnabledForTeam(supabase, teamId)
+    : false;
+  // Datoens planlagte etaper (senere felter paa datoen). Kun med kontakten on og paa dato-aksen;
+  // ellers intet opslag (OFF-1). Afregnede loeb kommer fra canonicalLoadRows i regne-fasen.
+  plannedStageDaysByRider = weekPriorityOn && conditionPerDate && dateDays.length === 5
+    ? await loadPlannedStageDaysByRider({ supabase, seasonId, riderIds, dateDays })
+    : {};
   },
   async () => {
   // #5319: traeningskatalog v3 (beta: holdets ejer er beta-tester). Off = programmet uroert.
@@ -1593,6 +1606,7 @@ export async function runTeamTrainingDay({
     abilityRows, planRows, conditionRows, weekPlanRow, raceDayResult, boundRiderIds, racedRiderIds,
     racedRiderProfileByRider, raceDayEffortByRider, raceDayRoleByRiderMap, programsOn, catalogV3On,
     effortLevelsOn, // #7947
+    weekPriorityOn, plannedStageDaysByRider, // #8549
     stageOnDateRiderIds, fatigueRules, stageYesterdayRiderIds, trainingFacilityTier, trainingStaff,
     teamMedicalBonus, illnessOn, illnessHistoryByRider,
     // #7982 (afregning efter etapen): marks the race session's receipts (race_session_7982).
@@ -1801,6 +1815,7 @@ export function computeTrainingDayTick(input) {
     stageOnDateRiderIds, fatigueRules, stageYesterdayRiderIds, trainingFacilityTier, trainingStaff,
     teamMedicalBonus, illnessOn, illnessHistoryByRider, raceSessionRiderIds = null,
     effortLevelsOn = false, // #7947
+    weekPriorityOn = false, plannedStageDaysByRider = {}, // #8549
   } = input;
   const settlingRiderIds = new Set();
   const abilityByRider = new Map((abilityRows ?? []).map((a) => [a.rider_id, a]));
@@ -1814,6 +1829,9 @@ export function computeTrainingDayTick(input) {
     weekPlanRows.filter((r) => r.rider_id != null).map((r) => [r.rider_id, r.days]),
   );
   const weekday = copenhagenWeekdayKey(tickDate);
+  // #8549: raekkerne med plan_kind til Week blocks (samme lag som resolveDayProgram).
+  const teamWeekRow = weekPlanRows.find((r) => r.rider_id == null) ?? null;
+  const riderWeekRowByRider = new Map(weekPlanRows.filter((r) => r.rider_id != null).map((r) => [r.rider_id, r]));
 
   // ── 4) Tick pr. rytter ────────────────────────────────────────────────────────
   const abilityUpdates = []; // { riderId, patch }
@@ -1871,9 +1889,27 @@ export function computeTrainingDayTick(input) {
     // uden er det praecis den gamle `program.intensity = resolveDayIntensity(...)`.
     // Loeb er loeb (ejer-valg 2): en rytter der koerer/er bundet i dag rammer
     // racedToday/boundRestToday nedenfor, og programmets session springes over.
+    // #8549: Week blocks omdirigerer kildefeltet (session + indsats foelger passet); traethedsgraensen
+    // vurderes stadig paa feltets eget tidspunkt (programSlot). Off / plan_kind != 'week' = programSlot.
+    const weekPriority = weekPriorityOn
+      ? weekPrioritySourceSlot({
+        winning: winningWeekEntry({ weekday, riderRow: riderWeekRowByRider.get(rider.id) ?? null, teamRow: teamWeekRow, hasExplicitPlan }),
+        programSlot,
+        dateDays,
+        raceGameDays: [
+          ...canonicalLoadRows.filter((row) => row.rider_id === rider.id).map((row) => Number(row.game_day)),
+          ...(plannedStageDaysByRider[rider.id] ?? []),
+          ...(racedRiderIds.has(rider.id) ? [raceDay] : []),
+        ],
+        priorReports: dateDays
+          .map((day) => ({ day, receipt: dateReceipts.find((row) => row.rider_id === rider.id && row.game_day === day && row.game_day !== raceDay) }))
+          .filter(({ receipt }) => receipt)
+          .map(({ day, receipt }) => ({ game_day: day, report: receipt.report })),
+      })
+      : { sourceSlot: programSlot, applied: false };
     const dayProgram = resolveDayProgram({
       weekday,
-      slotIndex: programSlot,
+      slotIndex: weekPriority.sourceSlot,
       riderOverrideDays: riderOverrideByRider.get(rider.id) ?? null,
       teamWeekDays,
       program,
@@ -2500,6 +2536,8 @@ export function computeTrainingDayTick(input) {
       bound_race_day: boundToday,
       // #4846: hvilken loebsdag ticket hoerer til. null paa den gamle sti.
       game_day: useRaceDayKey ? raceDay : null,
+      // #8549: hvilket pas feltet koerte under Week blocks (kun naar reglen gjaldt; off = intet felt).
+      ...(weekPriority.applied ? { source_slot: weekPriority.sourceSlot } : {}),
       // #4854: kun naar holdet har regler; stemplet kun naar programmet faktisk koertes.
       ...(fatigueRuleResult ? {
         fatigue_rule: fatigueRuleResult.stamp && !raceLoadToday && !unknownSlot && !injuredToday && !racedToday && !boundRestToday
