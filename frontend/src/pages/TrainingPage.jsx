@@ -586,6 +586,11 @@ export default function TrainingPage() {
     if (trainingR5) setR5ProgramRequest((prev) => ({ kind: "rider", id: riderId, n: (prev?.n ?? 0) + 1 }));
     setTab("weekplan");
   };
+  // #8580 (Codex P2 #8594): "Ret <ugedag> i Program" aabner Program paa netop den ugedag.
+  const openProgramWeekday = (weekday) => {
+    if (trainingR5) setR5ProgramRequest((prev) => ({ kind: "weekday", weekday, n: (prev?.n ?? 0) + 1 }));
+    setTab("weekplan");
+  };
   const openFatigueRule = () => {
     if (trainingR5) setR5ProgramRequest((prev) => ({ kind: "limit", n: (prev?.n ?? 0) + 1 }));
     setSub("limit");
@@ -776,7 +781,7 @@ export default function TrainingPage() {
   // eller een rytters egen plan (hans id).
   const [weekPlanFor, setWeekPlanFor] = useState("team");
   // #8533 Codex P2: R5-programfanen har sit eget valg; "Rediger plan" og "Rediger graense" skal naa ind i den.
-  const [r5ProgramRequest, setR5ProgramRequest] = useState(/** @type {{ kind: "rider" | "limit"; id?: string; n: number } | null} */ (null));
+  const [r5ProgramRequest, setR5ProgramRequest] = useState(/** @type {{ kind: "rider" | "limit" | "weekday"; id?: string; weekday?: string; n: number } | null} */ (null));
   const clearR5ProgramRequest = useCallback(() => setR5ProgramRequest(null), []);
   // #5932: fejl fra en felt-rettelse i Plan-kortet (felter gemmes med det samme).
   const [planCellError, setPlanCellError] = useState(null);
@@ -2512,7 +2517,7 @@ export default function TrainingPage() {
     planError: planActionError, runError, decisionRows: decisionCardOn ? decisionRows : null, fatigueRules: fatigueRules.data, assistantPanel, bulkMessage: bulkMsgNode,
     onPlan: handlePlanChange, onBulk: applyBulkChoice, onPickSession: setFocusPanelRiderId, onReset: handleResetToTeamProgram, onClearPlan: handleClearPlan,
     onOpenPlan: openOwnPlan, onOpenPrograms: () => setSub("programs"), onEditFatigueRule: openFatigueRule,
-    week: trainingWeek.week, onEditWeekday: () => setTab("weekplan"), // #8580
+    week: trainingWeek.week, onEditWeekday: openProgramWeekday, // #8580
     onOpenAssistant: handleOpenAssistantPanel, renderCard: renderRiderCard,
     effortLevels: training.effortLevels === true, // #7947 PR 3: Let/Mellem/Haard (training_effort_levels)
   } : null;

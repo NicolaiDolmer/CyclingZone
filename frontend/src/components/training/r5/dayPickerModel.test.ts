@@ -41,7 +41,12 @@ test("futureFields: loeb fra serveren, hvile (bundet/skadet) fra serveren, eller
   assert.deepEqual(futureFields({ programSlot, planSession: null, fields: { raceSlots: [1], restSlots: [1] } })[1], STAGE, "etape vinder over hvile");
 });
 
-test("futureCounts: en rytter med mindst et loebsfelt koerer loeb; resten traener", () => {
-  assert.deepEqual(futureCounts([{ fields: [STAGE, "rest", null, null, null] }, { fields: ["tempo", "tempo", "tempo", "tempo", "tempo"] }], STAGE),
-    { training: 1, racing: 1 });
+test("futureCounts: samme regel som I dag-overblikket; hvile, restitution og tomme felter traener ikke", () => {
+  assert.deepEqual(futureCounts([
+    { fields: [STAGE, "rest", null, null, null] },
+    { fields: ["tempo", "tempo", "tempo", "tempo", "tempo"] },
+    { fields: ["rest", "rest", "rest", "rest", "rest"] },
+    { fields: ["recovery", "recovery", "recovery", "recovery", "recovery"] },
+    { fields: [null, null, null, null, null] },
+  ]), { training: 1, racing: 1 });
 });

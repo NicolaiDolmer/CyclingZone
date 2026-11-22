@@ -101,7 +101,7 @@ export default function DayPickerR5({
     });
     return { rider, fields };
   });
-  const counts = futureCounts(rows, STAGE);
+  const counts = futureCounts(rows);
   const grid = phone ? "grid-cols-1" : "grid-cols-[200px_repeat(5,minmax(0,1fr))]";
 
   return (

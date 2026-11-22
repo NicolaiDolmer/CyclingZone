@@ -2,7 +2,7 @@
 // sker i Program pr. ugedag). Ren model; data fra GET /api/training/programs/forecast/week
 // (#8591). Felterne for en dag frem regnes med SAMME funktion som i dag (dayFields) på
 // datoens ugedag, med datoens løbs- og hvilefelter fra serveren. Ingen træthed frem (K-7).
-import { dayFields, type Field } from "./todayR5Model.ts";
+import { dayFields, isTraining, STAGE, type Field } from "./todayR5Model.ts";
 
 export type WeekRace = { raceId: string; name: string | null; kind: "stage" | "oneday"; stages: number[]; ownRiders: number };
 export type WeekRiderFields = { raceSlots: number[]; restSlots: number[] };
@@ -61,9 +61,18 @@ export function futureFields({
   return dayFields({ programSlot, planSession, raceSlots }).map((field, slot) => (rest.has(slot) && !raceSlots.has(slot) ? "rest" : field));
 }
 
-/** Overblikket for en dag frem: hvor mange træner og hvor mange kører løb. */
-export function futureCounts(rows: ReadonlyArray<{ fields: Field[] }>, stage: Field): { training: number; racing: number } {
+/**
+ * Overblikket for en dag frem, med samme regel som I dag-fanens overblik (isTraining):
+ * kører løb = mindst ét løbsfelt; træner = ingen løb og mindst ét rigtigt træningspas
+ * (hvile, restitution og tomme felter tæller ikke). Codex P2 #8594.
+ */
+export function futureCounts(rows: ReadonlyArray<{ fields: Field[] }>): { training: number; racing: number } {
   let racing = 0;
-  for (const row of rows) if (row.fields.includes(stage)) racing += 1;
-  return { training: rows.length - racing, racing };
+  let training = 0;
+  for (const row of rows) {
+    const racingRow = row.fields.includes(STAGE);
+    if (racingRow) racing += 1;
+    else if (isTraining({ racing: false, fields: row.fields })) training += 1;
+  }
+  return { training, racing };
 }

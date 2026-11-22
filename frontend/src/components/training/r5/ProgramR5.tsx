@@ -96,7 +96,7 @@ export default function ProgramR5({
   onDrafts: Dispatch<SetStateAction<Record<string, Draft>>>;
   // #8533 Codex P2: "Rediger plan" paa en rytter / "Rediger" paa traethedsgraensen fra I dag.
   // `n` skifter ved hver anmodning, saa samme rytter kan vaelges igen.
-  request?: { kind: "rider" | "limit"; id?: string; n: number } | null;
+  request?: { kind: "rider" | "limit" | "weekday"; id?: string; weekday?: string; n: number } | null;
   // Kaldes naar anmodningen er behandlet, saa siden kan nulstille den (fanen afmonteres og
   // ville ellers afspille den igen ved naeste besoeg, Fable-fund 1 paa #8533).
   onRequestHandled?: () => void;
@@ -131,6 +131,7 @@ export default function ProgramR5({
   const [groupDialog, setGroupDialog] = useState<{ group: TrainingGroup | null } | null>(null);
   const [limitDraft, setLimitDraft] = useState<GroupLimitDraft>(() => groupLimitDraft(null, GROUP_LIMIT_DEFAULTS));
   const [deleting, setDeleting] = useState<TrainingGroup | null>(null);
+  const [focusWeekday, setFocusWeekday] = useState<{ weekday: string; n: number } | null>(null); // #8580
 
   // Kataloget kan lande efter fanen: vaelg da det foerste program, saa fanen aldrig staar tom.
   const firstKey = library.programs[0]?.key ?? null;
@@ -147,6 +148,8 @@ export default function ProgramR5({
     handledRequest.current = request.n;
     onRequestHandled?.();
     if (request.kind === "limit") { setLimitOpen(true); return; }
+    // #8580: dagsvaelgerens "Ret <ugedag> i Program" -> telefonen viser netop den ugedag.
+    if (request.kind === "weekday") { if (request.weekday) setFocusWeekday({ weekday: request.weekday, n: request.n }); return; }
     if (!request.id) return;
     const riderId = request.id;
     const key = library.programs.find((p) => subjectsFor(p.key, library).some((s) => s.kind === "rider" && s.id === riderId))?.key;
@@ -444,6 +447,7 @@ export default function ProgramR5({
       <div className="flex flex-col" data-testid="program-r5">
         {actionsEl ? createPortal(copyButton, actionsEl) : <div className="mb-3 flex justify-end">{copyButton}</div>}
         <ProgramR5Phone
+          focusWeekday={focusWeekday}
           name={title}
           subtitle={program
             ? `${tR5("programR5.kind_week")} · ${onNames.length ? tR5("programR5.on", { names: onNames.join(", ") }) : tR5("programR5.notInUse")}`
