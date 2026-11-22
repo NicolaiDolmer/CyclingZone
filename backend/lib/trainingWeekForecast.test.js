@@ -200,7 +200,7 @@ test("fund 5: I/O med etaper over to datoer (inkl. sommertidsskift), binding og 
     if (table === "race_stage_schedule" && select.includes("races!inner")) return stages.map((s) => ({ ...s, races: {} }));
     if (table === "race_stage_schedule" && select === "game_day") return []; // ingen loeb foer ugen: saesonstart
     if (table === "race_stage_schedule") return stages.map(({ scheduled_at: _s, ...s }) => s);
-    if (table === "race_entry_days") return [5, 6, 7, 8, 9].map((g) => ({ rider_id: "r1", race_id: "gt", game_day: g }));
+    if (table === "race_entry_days") return [0, 5, 6, 7, 8, 9].map((g) => ({ rider_id: "r1", race_id: "gt", game_day: g }));
     if (table === "rider_condition") return [{ rider_id: "r2", injury_season_id: "s1", injury_end_game_day: 7 }];
     if (table === "race_incidents") return [];
     void filters;
@@ -211,6 +211,7 @@ test("fund 5: I/O med etaper over to datoer (inkl. sommertidsskift), binding og 
     now: new Date("2027-03-27T09:00:00+01:00"), loadToday: async () => ({ available: true, riders: {} }),
   });
   assert.equal(week.days[0].date, "2027-03-27");
+  assert.deepEqual(week.days[0].races.map((r) => r.ownRiders), [1], "dag 0: r1 kører etapen på LD 0, så I dag-chippen kan sige Etape");
   const sun = week.days[1];
   assert.equal(sun.date, "2027-03-28");
   assert.equal(sun.available, true, "akse 5-9 kaedet fra lørdagens 0-4");

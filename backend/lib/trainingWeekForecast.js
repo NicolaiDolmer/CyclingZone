@@ -177,7 +177,9 @@ export async function loadTeamWeekForecast({ supabase, team, seasonId, now = new
   const races = new Map(divisionRaces.map((r) => [r.id, r]));
 
   const riderIds = riders.map((r) => r.id);
-  const futureDays = [...new Set(dates.slice(1).flatMap((d) => gameDaysByDate.get(d) ?? []))];
+  // Alle ugens løbsdage, også dag 0: dag 0's felter kommer fra /forecast, men dens løb skal
+  // også kunne sige, om holdet har ryttere med (ownRiders), så vælgeren viser "Etape" i dag.
+  const futureDays = [...new Set(dates.flatMap((d) => gameDaysByDate.get(d) ?? []))];
   // pagination-safe: roster x up to 30 game days, UNIQUE (rider_id, season_id, game_day); chunked by game day.
   const chunks = [];
   if (riderIds.length) for (let i = 0; i < futureDays.length; i += 10) chunks.push(futureDays.slice(i, i + 10));
