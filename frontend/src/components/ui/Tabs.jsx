@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useRef } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { tabClass, tabListClass } from "./tabsStyles.js";
+import { ChevronRightIcon } from "./icons/index.jsx";
 
 const TabsContext = createContext(null);
 // #5485: `fit` saettes paa TabList og gaelder alle dens faner (se tabsStyles.js).
@@ -17,8 +18,26 @@ export function Tabs({ value, onChange, className = "", children }) {
 
 // #4625 (slice 3 af #4622) — WAI-ARIA tabs-mønsteret i fuld: Left/Right flytter
 // ét tab, Home/End hopper til første/sidste (audit-krav "tastaturnavigation").
-export function TabList({ label, className = "", fit = false, accent = false, children }) {
+export function TabList({ label, className = "", fit = false, accent = false, overflowHint = false, children }) {
   const listRef = useRef(null);
+  const [hasMore, setHasMore] = useState(false);
+  useEffect(() => {
+    const list = /** @type {HTMLDivElement | null} */ (listRef.current);
+    if (!overflowHint || !list) return undefined;
+
+    const update = () => setHasMore(list.scrollWidth - list.scrollLeft - list.clientWidth > 1);
+    update();
+    list.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    const resize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
+    resize?.observe(list);
+    for (const tab of list.querySelectorAll('[role="tab"]')) resize?.observe(tab);
+    return () => {
+      resize?.disconnect();
+      list.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, [overflowHint]);
   const onKeyDown = (e) => {
     if (!["ArrowRight", "ArrowLeft", "Home", "End"].includes(e.key)) return;
     const tabs = Array.from(listRef.current?.querySelectorAll('[role="tab"]') ?? []);
@@ -33,7 +52,7 @@ export function TabList({ label, className = "", fit = false, accent = false, ch
     tabs[next]?.focus();
     tabs[next]?.click();
   };
-  return (
+  const list = (
     <div
       ref={listRef}
       role="tablist"
@@ -45,6 +64,21 @@ export function TabList({ label, className = "", fit = false, accent = false, ch
       <TabListFitContext.Provider value={fit}>
         <TabListAccentContext.Provider value={accent}>{children}</TabListAccentContext.Provider>
       </TabListFitContext.Provider>
+    </div>
+  );
+  if (!overflowHint) return list;
+  return (
+    <div className="relative min-w-0">
+      {list}
+      {hasMore && (
+        <span
+          aria-hidden="true"
+          data-testid="tab-overflow-hint"
+          className="pointer-events-none absolute inset-y-0 end-0 flex w-6 items-center justify-center border-s border-cz-border bg-cz-body text-cz-2 md:hidden"
+        >
+          <ChevronRightIcon size={14} />
+        </span>
+      )}
     </div>
   );
 }
