@@ -184,5 +184,21 @@
     "discardTitle": "Annuler {n, plural, one {# modification} other {# modifications}} ?",
     "discardBody": "La semaine revient au plan enregistré.",
     "discardGo": "Annuler les modifications"
+  },
+  "dayPicker": {
+    "label": "Choisir le jour",
+    "prev": "Jour précédent",
+    "next": "Jour suivant",
+    "today": "Aujourd'hui",
+    "training": "Entraînement",
+    "stage": "Étape {n}",
+    "stageRace": "Course par étapes",
+    "oneDay": "Course d'un jour",
+    "rider": "Coureur",
+    "countTraining": "s'entraînent",
+    "countRacing": "courent",
+    "notReady": "Les jours de course de cette date ne sont pas encore prêts.",
+    "aheadNote": "Les jours à venir montrent le plan. Un changement s'applique à chaque {weekday}.",
+    "editInProgram": "Modifier le {weekday} dans Programme"
   }
 }

@@ -184,5 +184,21 @@
     "discardTitle": "Kassér {n, plural, one {# ændring} other {# ændringer}}?",
     "discardBody": "Ugen går tilbage til den gemte plan.",
     "discardGo": "Kassér"
+  },
+  "dayPicker": {
+    "label": "Vælg dag",
+    "prev": "Forrige dag",
+    "next": "Næste dag",
+    "today": "I dag",
+    "training": "Træning",
+    "stage": "Etape {n}",
+    "stageRace": "Etapeløb",
+    "oneDay": "Endagsløb",
+    "rider": "Rytter",
+    "countTraining": "træner",
+    "countRacing": "kører løb",
+    "notReady": "Løbsdagene for denne dato er ikke klar endnu.",
+    "aheadNote": "Dagene frem viser planen. En ændring gælder hver {weekday}.",
+    "editInProgram": "Ret {weekday} i Program"
   }
 }

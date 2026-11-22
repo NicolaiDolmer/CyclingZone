@@ -184,5 +184,21 @@
     "discardTitle": "¿Descartar {n, plural, one {# cambio} other {# cambios}}?",
     "discardBody": "La semana vuelve al plan guardado.",
     "discardGo": "Descartar"
+  },
+  "dayPicker": {
+    "label": "Elige el día",
+    "prev": "Día anterior",
+    "next": "Día siguiente",
+    "today": "Hoy",
+    "training": "Entreno",
+    "stage": "Etapa {n}",
+    "stageRace": "Carrera por etapas",
+    "oneDay": "Clásica",
+    "rider": "Corredor",
+    "countTraining": "entrenan",
+    "countRacing": "corren",
+    "notReady": "Los días de carrera de esta fecha aún no están listos.",
+    "aheadNote": "Los próximos días muestran el plan. Un cambio se aplica a cada {weekday}.",
+    "editInProgram": "Editar el {weekday} en Programa"
   }
 }
