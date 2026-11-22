@@ -221,21 +221,41 @@ test("fund 5: I/O med etaper over to datoer (inkl. sommertidsskift), binding og 
   assert.equal(week.days[2].available, false, "mandag uden loeb: ingen gaet");
 });
 
-test("UGE-4b: auto-udtagelse. Kort loeb med assistentens tilmeldinger taeller; tomt, ikke slut loeb er auto", () => {
+test("UGE-4b: auto-udtagelse. Kort loeb med assistentens tilmeldinger taeller; tomt loeb, der starter paa datoen, er auto", () => {
   const races = new Map([
     ["kort", { name: "Ran", stages: 1, status: "completed" }],
-    ["kommer", { name: "Next", stages: 21, status: "scheduled" }],
+    ["kommer", { name: "Next", stages: 4, status: "scheduled" }],
     ["slut", { name: "Gone", stages: 1, status: "completed" }],
   ]);
-  const entriesByRace = new Map([["kort", new Set(["r1", "r2"])]]);
-  const out = weekDateRaces({ stages: [st("kort", 21, 1), st("kommer", 22, 3), st("slut", 23, 1)], races, entriesByRace });
+  const entryRows = [{ race_id: "kort", rider_id: "r1" }, { race_id: "kort", rider_id: "r2" }];
+  const out = weekDateRaces({ stages: [st("kort", 21, 1), st("kommer", 22, 1), st("slut", 23, 1)], races, entryRows });
   assert.deepEqual(out.map((r) => [r.raceId, r.ownRiders, r.autoLineup]), [
     ["slut", 0, false], ["kommer", 0, true], ["kort", 2, false],
   ]);
-  // Bindingen vinder over tilmeldingerne (udgang af loeb, #5949).
-  const withBinding = weekDateRaces({
-    stages: [st("kommer", 22, 3)], races, entriesByRace: new Map([["kommer", new Set(["r1", "r2", "r3"])]]),
-    plannedStages: [{ rider_id: "r1", game_day: 22 }], raceIdByEntry: new Map([["r1:22", "kommer"]]),
+});
+
+test("UGE-4b (Codex P2): igangvaerende loeb uden holdet er ikke auto, assistenten fylder kun ved 1. etape", () => {
+  const races = new Map([["gt", { name: "Tour", stages: 4, status: "scheduled" }]]);
+  const out = weekDateRaces({ stages: [st("gt", 22, 3), st("gt", 24, 4)], races, startedRaceIds: new Set(["gt"]) });
+  assert.deepEqual(out.map((r) => [r.ownRiders, r.autoLineup]), [[0, false]]);
+  // Et loeb, der starter senere i ugen (ingen koert etape), er auto paa alle sine datoer.
+  const later = weekDateRaces({ stages: [st("gt", 22, 3)], races });
+  assert.deepEqual(later.map((r) => [r.ownRiders, r.autoLineup]), [[0, true]]);
+});
+
+test("UGE-4b (Codex P2): ryttere, der er staaet af, kommer ikke tilbage via tilmeldingerne", () => {
+  const races = new Map([["gt", { name: "Tour", stages: 4, status: "scheduled" }]]);
+  const entryRows = [{ race_id: "gt", rider_id: "r1" }, { race_id: "gt", rider_id: "r2" }];
+  // r1 stod af efter dag 21, r2 koerer stadig. Datoens etaper er dag 22 og 24.
+  const exits = new Map([["r1:gt", 21]]);
+  const out = weekDateRaces({ stages: [st("gt", 22, 3), st("gt", 24, 4)], races, entryRows, exits });
+  assert.deepEqual(out.map((r) => [r.ownRiders, r.autoLineup]), [[1, false]]);
+  const allOut = weekDateRaces({ stages: [st("gt", 22, 3)], races, entryRows, exits: new Map([["r1:gt", 21], ["r2:gt", 20]]), startedRaceIds: new Set(["gt"]) });
+  assert.deepEqual(allOut.map((r) => [r.ownRiders, r.autoLineup]), [[0, false]]);
+  // Et loeb med bindinger taeller kun bindingerne (efter udgang), aldrig tilmeldingerne.
+  const bound = weekDateRaces({
+    stages: [st("gt", 22, 3)], races, entryRows,
+    plannedStages: [], raceIdByEntry: new Map([["r1:20", "gt"]]),
   });
-  assert.deepEqual(withBinding.map((r) => [r.ownRiders, r.autoLineup]), [[1, false]]);
+  assert.deepEqual(bound.map((r) => [r.ownRiders, r.autoLineup]), [[0, false]]);
 });

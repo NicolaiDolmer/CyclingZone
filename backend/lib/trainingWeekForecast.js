@@ -95,13 +95,15 @@ export function weekDateRiderFields({ gameDays, riderIds, plannedStages, boundRi
  * stages: datoens etaper i divisionen; races: Map<race_id, {name, stages}>.
  */
 //   ownRiders: hvor mange af holdets ryttere der kører løbet på datoen. Fund 2 i Fable-dommen 22/11.
-//     Bindingerne (race_entry_days) tæller først; har holdet ingen binding, tæller løbets
-//     tilmeldinger (race_entries, også assistentens auto-udtagelse), så et allerede kørt
-//     auto-løb ikke står som træning (#8580-rettelsen, UGE-4b).
-//   autoLineup: holdet har ingen i løbet endnu, og løbet er ikke slut. Assistenten udtager så
-//     holdet ved løbsstart (raceRunner fylder hvert hold uden tilmeldinger op), så datoen er en
-//     løbsdag, men hvilke ryttere der kører, kendes først ved start (UGE-4b).
-export function weekDateRaces({ stages, races, plannedStages = [], raceIdByEntry = null, entriesByRace = new Map() }) {
+//     Et løb med holdets bindinger (race_entry_days) tæller KUN bindingerne efter udgang af løb,
+//     så ryttere, der er stået af, aldrig kommer tilbage. Et løb uden bindinger tæller holdets
+//     tilmeldinger (race_entries, også assistentens auto-udtagelse) med samme udgangsfilter
+//     (exits), så et kørt auto-løb ikke står som træning (#8580-rettelsen, UGE-4b).
+//   autoLineup: holdet har ingen i løbet, og løbet er ikke startet (ingen kørt etape). Assistenten
+//     udtager kun ved løbsstart (raceRunner: allowAutofill kun på 1. etape), så et igangværende
+//     løb uden holdet er ikke holdets dag; et løb, der starter senere, er det på alle sine datoer
+//     (UGE-4b).
+export function weekDateRaces({ stages, races, plannedStages = [], raceIdByEntry = null, entryRows = [], exits = new Map(), startedRaceIds = new Set() }) {
   const byRace = new Map();
   for (const row of stages) {
     const race = races.get(row.race_id);
@@ -121,9 +123,26 @@ export function weekDateRaces({ stages, races, plannedStages = [], raceIdByEntry
     if (!ownByRace.has(raceId)) ownByRace.set(raceId, new Set());
     ownByRace.get(raceId).add(row.rider_id);
   }
+  const boundRaceIds = new Set(raceIdByEntry ? raceIdByEntry.values() : []);
+  const firstDayOfRace = new Map();
+  for (const row of stages) {
+    const day = Number(row.game_day);
+    if (!(firstDayOfRace.get(row.race_id) <= day)) firstDayOfRace.set(row.race_id, day);
+  }
+  const entriesByRace = new Map();
+  for (const row of entryRows) {
+    if (!byRace.has(row.race_id) || boundRaceIds.has(row.race_id)) continue;
+    // Samme regel som dropBindingsAfterRaceExit: rytteren kører en etape på datoen, hvis den
+    // første ikke ligger efter hans udgangsdag.
+    const exitDay = exits.get(`${row.rider_id}:${row.race_id}`);
+    if (exitDay !== undefined && firstDayOfRace.get(row.race_id) > exitDay) continue;
+    if (!entriesByRace.has(row.race_id)) entriesByRace.set(row.race_id, new Set());
+    entriesByRace.get(row.race_id).add(row.rider_id);
+  }
   return [...byRace.values()].map((r) => {
-    const ownRiders = ownByRace.get(r.raceId)?.size || entriesByRace.get(r.raceId)?.size || 0;
-    const autoLineup = ownRiders === 0 && races.get(r.raceId)?.status !== "completed";
+    const ownRiders = (boundRaceIds.has(r.raceId) ? ownByRace.get(r.raceId)?.size : entriesByRace.get(r.raceId)?.size) ?? 0;
+    const autoLineup = ownRiders === 0 && !boundRaceIds.has(r.raceId) && !startedRaceIds.has(r.raceId)
+      && races.get(r.raceId)?.status !== "completed";
     return { ...r, stages: r.stages.sort((a, b) => a - b), ownRiders, autoLineup };
   })
     .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
@@ -226,14 +245,21 @@ export async function loadTeamWeekForecast({ supabase, team, seasonId, now = new
   const entryRows = weekRaceIds.length && riderIds.length
     ? await rows(supabase.from("race_entries").select("race_id, rider_id").in("race_id", weekRaceIds).in("rider_id", riderIds), "week entries")
     : [];
-  const entriesByRace = new Map();
-  for (const row of entryRows) {
-    if (!entriesByRace.has(row.race_id)) entriesByRace.set(row.race_id, new Set());
-    entriesByRace.get(row.race_id).add(row.rider_id);
-  }
+  // Startede løb (mindst én kørt etape): her fylder assistenten ikke længere op (UGE-4b).
+  // pagination-safe: one row per ridden stage of the week's division races (a few dozen races x <= 21 stages).
+  const startedRaceIds = new Set(weekRaceIds.length
+    ? (await rows(supabase.from("race_simulation_runs").select("race_id").in("race_id", weekRaceIds), "week started races")).map((row) => row.race_id)
+    : []);
+  // Udgang af løb for tilmeldingerne (samme loader som bindingerne, #5949).
+  const entryExits = entryRows.length
+    ? await loadRaceExitGameDays({ supabase, rows: entryRows }).then(({ data, error }) => {
+      if (error) throw new Error(`week entry exits: ${error.message ?? error}`);
+      return data;
+    })
+    : new Map();
   const days = dates.map((date, i) => {
     const weekday = copenhagenWeekdayKey(date);
-    const dateRaces = weekDateRaces({ stages: stagesByDate.get(date) ?? [], races, plannedStages, raceIdByEntry, entriesByRace });
+    const dateRaces = weekDateRaces({ stages: stagesByDate.get(date) ?? [], races, plannedStages, raceIdByEntry, entryRows, exits: entryExits, startedRaceIds });
     if (i === 0) {
       return { date, weekday, available: today.available === true, races: dateRaces, today };
     }
