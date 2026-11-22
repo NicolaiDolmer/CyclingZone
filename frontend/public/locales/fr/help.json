@@ -1053,7 +1053,7 @@
           "Chaque coureur prend un an.",
           "La forme décroît vers 50 : environ 25 % de la forme de fin de saison de chaque coureur sont reportés dans la nouvelle saison.",
           "La fatigue repasse à 0 pour chaque coureur.",
-          "Les blessures ne sont PAS remises à zéro. Elles sont reportées telles quelles.",
+          "Toutes les blessures et maladies sont effacées. Chaque coureur commence la nouvelle saison en forme.",
           "Les plans de pic ne sont pas touchés par le changement.",
           "Les salaires de la saison sont payés pendant le changement. Les valeurs des coureurs se mettent à jour une fois, juste après la fin du changement, puis lors de la mise à jour normale du dimanche.",
           "La nouvelle saison commence après une courte pause entre les saisons, votée par les managers. La date de la première étape figure au calendrier des courses, tu as donc le temps de choisir tes équipes."
