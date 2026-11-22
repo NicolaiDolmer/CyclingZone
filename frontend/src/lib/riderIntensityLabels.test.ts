@@ -13,11 +13,12 @@ const INTENSITIES = ["rest", "easy", "normal", "hard", "recovery", "race", "unkn
 
 test("rider.json: hver intensitet har en tekst paa alle fem sprog (ingen raa noegler i dagsloggen)", () => {
   for (const lang of LANGS) {
-    const json = JSON.parse(readFileSync(resolve(__dirname, `../../public/locales/${lang}/rider.json`), "utf8"));
+    const json = JSON.parse(readFileSync(resolve(__dirname, `../../public/locales/${lang}/rider.json`), "utf8")) as {
+      training?: Record<string, unknown>;
+    };
     for (const intensity of INTENSITIES) {
       const value = json.training?.[`intensity_${intensity}`];
-      assert.equal(typeof value, "string", `${lang}: training.intensity_${intensity} mangler`);
-      assert.ok(value.trim().length > 0, `${lang}: training.intensity_${intensity} er tom`);
+      assert.ok(typeof value === "string" && value.trim().length > 0, `${lang}: training.intensity_${intensity} mangler eller er tom`);
     }
   }
 });
