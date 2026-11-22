@@ -4117,7 +4117,8 @@
         "days",
         "created_at",
         "updated_at",
-        "program_key"
+        "program_key",
+        "plan_kind"
       ]
     },
     "transfer_listings": {
