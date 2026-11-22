@@ -998,7 +998,8 @@
     "noSlots": "No focus slots left this season",
     "current": "Current focus",
     "tradeoff": "Other abilities grow a little slower.",
-    "intensity_recovery": "Recovery"
+    "intensity_recovery": "Recovery",
+    "intensity_race": "Race"
   },
   "championJersey": {
     "world": {

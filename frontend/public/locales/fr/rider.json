@@ -998,7 +998,8 @@
     "noSlots": "Plus de places d'axe cette saison",
     "current": "Axe actuel",
     "tradeoff": "Les autres aptitudes progressent un peu plus lentement.",
-    "intensity_recovery": "Récupération"
+    "intensity_recovery": "Récupération",
+    "intensity_race": "Course"
   },
   "championJersey": {
     "world": {

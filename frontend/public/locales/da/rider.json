@@ -998,7 +998,8 @@
     "noSlots": "Ingen fokus-slots tilbage i denne sæson",
     "current": "Nuværende fokus",
     "tradeoff": "Andre evner vokser en anelse langsommere.",
-    "intensity_recovery": "Restitution"
+    "intensity_recovery": "Restitution",
+    "intensity_race": "Løb"
   },
   "championJersey": {
     "world": {
