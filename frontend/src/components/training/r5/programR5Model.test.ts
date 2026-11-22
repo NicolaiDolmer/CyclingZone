@@ -5,6 +5,8 @@ import {
   copyCandidates, copyDayIntoDraft, copyDayTargets, dayMarks, draftSteps, draftTotal, parseSubjectKey, programKeyOf,
   rememberedKind, rememberedPhoneView, riderPlan, riderWeekDays, setDraftCell, shortRiderName, startDayIndex, subjectKey,
   subjectsFor, weekCells, weekdayLong,
+  GROUP_LIMIT_MODES, createdGroupId, dropDrafts, followAgainTarget, groupLimitDraft, groupLimitValid, groupLimitWrite,
+  groupAfterPatch, groupMenuActions, groupPatch,
 } from "./programR5Model.ts";
 import type { CatalogProgram, ProgramWeekDays } from "../../../lib/trainingPrograms.ts";
 
@@ -150,4 +152,82 @@ test("#8547 telefon: dagens tegn tael loeb og ugemte rettelser, ikke koerte felt
   });
   assert.deepEqual(dayMarks(cells[3]), { races: 1, changed: 2 });
   assert.deepEqual(dayMarks(cells[0]), { races: 0, changed: 0 });
+});
+
+// --- #8560 gruppestyring ---------------------------------------------------------------
+
+test("#8560 menuen pr. gruppe: graensen kun naar traethedsreglerne er slaaet til", () => {
+  assert.deepEqual(groupMenuActions({ limitEnabled: true }), ["rename", "members", "limit", "delete"]);
+  assert.deepEqual(groupMenuActions({ limitEnabled: false }), ["rename", "members", "delete"]);
+});
+
+test("#8560 PATCH kun med det der er aendret; en ren omdoebning sender ikke medlemmer", () => {
+  const g = GROUPS[0];
+  assert.equal(groupPatch(g, "Climbers", ["b", "a"]), null);
+  assert.equal(groupPatch(g, "  Climbers ", ["a", "b"]), null);
+  assert.deepEqual(groupPatch(g, "Hills", ["a", "b"]), { name: "Hills" });
+  assert.deepEqual(groupPatch(g, "Climbers", ["a", "c"]), { riderIds: ["a", "c"] });
+  assert.deepEqual(groupPatch(g, "Hills", ["a"]), { name: "Hills", riderIds: ["a"] });
+  assert.deepEqual(groupPatch(g, "Climbers", []), { riderIds: [] });
+});
+
+test("#8560 den nye gruppe er den id der ikke fandtes foer", () => {
+  assert.equal(createdGroupId(["g1"], [{ id: "g1" }, { id: "g2" }]), "g2");
+  assert.equal(createdGroupId(["g1"], [{ id: "g0" }, { id: "g1" }]), "g0");
+  assert.equal(createdGroupId(["g1"], [{ id: "g1" }]), null);
+  assert.equal(createdGroupId([], undefined), null);
+});
+
+test("#8560 foelg gruppen igen: rytter med egen plan, eller alle i gruppen med egen plan", () => {
+  assert.deepEqual(followAgainTarget({ kind: "rider", id: "b" }, GROUPS), { groupId: "g1", groupName: "Climbers", riderIds: ["b"] });
+  assert.equal(followAgainTarget({ kind: "rider", id: "a" }, GROUPS), null); // foelger allerede
+  assert.equal(followAgainTarget({ kind: "rider", id: "c" }, GROUPS), null); // ikke i en gruppe
+  assert.deepEqual(followAgainTarget({ kind: "group", id: "g1" }, GROUPS), { groupId: "g1", groupName: "Climbers", riderIds: ["b"] });
+  const allFollow = [{ ...GROUPS[0], members: [{ riderId: "a", followsGroup: true }] }];
+  assert.equal(followAgainTarget({ kind: "group", id: "g1" }, allFollow), null);
+  assert.equal(followAgainTarget(null, GROUPS), null);
+});
+
+test("#8560 kladder uden emne forsvinder, resten bliver", () => {
+  const drafts = { "group:g1": { "mon:0": "sprint" }, "rider:b": { "tue:1": "aero" } };
+  assert.deepEqual(dropDrafts(drafts, ["group:g1"]), { "rider:b": { "tue:1": "aero" } });
+  assert.deepEqual(dropDrafts(drafts, ["group:nope"]), drafts);
+  assert.ok(dropDrafts(drafts, ["rider:b"]) !== drafts);
+});
+
+const LIMIT_DEFAULTS = { threshold: 70, fallback: "light" };
+
+test("#8560 gruppens graense i dialogen: Holdets / Egen: N / Fra", () => {
+  assert.deepEqual(groupLimitDraft(null, LIMIT_DEFAULTS), { mode: "team", threshold: "70", fallback: "light" });
+  assert.deepEqual(groupLimitDraft({ threshold: null, fallback: "off" }, LIMIT_DEFAULTS), { mode: "off", threshold: "70", fallback: "light" });
+  assert.deepEqual(groupLimitDraft({ threshold: 55, fallback: "rest" }, LIMIT_DEFAULTS), { mode: "own", threshold: "55", fallback: "rest" });
+  assert.deepEqual([...GROUP_LIMIT_MODES], ["team", "own", "off"]);
+});
+
+test("#8560 graensen skrives kun ved en aendring, og et ugyldigt tal blokerer", () => {
+  const own = (threshold: string, fallback = "light") => ({ mode: "own" as const, threshold, fallback });
+  assert.deepEqual(groupLimitWrite({ mode: "team", threshold: "70", fallback: "light" }, null), { ok: true, change: null });
+  assert.deepEqual(groupLimitWrite({ mode: "off", threshold: "70", fallback: "light" }, null), { ok: true, change: { mode: "off" } });
+  assert.deepEqual(groupLimitWrite({ mode: "team", threshold: "70", fallback: "light" }, { threshold: 60, fallback: "rest" }), { ok: true, change: { mode: "team" } });
+  assert.deepEqual(groupLimitWrite({ mode: "off", threshold: "70", fallback: "light" }, { threshold: null, fallback: "off" }), { ok: true, change: null });
+  assert.deepEqual(groupLimitWrite(own("60", "rest"), { threshold: 60, fallback: "rest" }), { ok: true, change: null });
+  assert.deepEqual(groupLimitWrite(own("65", "rest"), { threshold: 60, fallback: "rest" }), { ok: true, change: { mode: "own", own: { threshold: 65, fallback: "rest" } } });
+  assert.deepEqual(groupLimitWrite(own("60"), null), { ok: true, change: { mode: "own", own: { threshold: 60, fallback: "light" } } });
+  for (const bad of ["", "abc", "-1", "101", "6.5"]) {
+    assert.deepEqual(groupLimitWrite(own(bad), null), { ok: false }, bad);
+    assert.equal(groupLimitValid(own(bad)), false, bad);
+  }
+  assert.equal(groupLimitValid({ mode: "off", threshold: "", fallback: "light" }), true);
+});
+
+test("#8560 efter et lykket PATCH sammenligner naeste Gem med det gemte (Codex P2)", () => {
+  const g = GROUPS[0];
+  const saved = { ...g, name: "Hills" };
+  // Serverens svar vinder.
+  assert.equal(groupAfterPatch(g, { name: "Hills" }, [saved]), saved);
+  // Uden svar bygges snapshottet af patchen; en tilbagerulning bliver derefter en aendring.
+  const snap = groupAfterPatch(g, { name: "Hills", riderIds: ["a"] }, undefined);
+  assert.equal(snap.name, "Hills");
+  assert.deepEqual(snap.members.map((m) => m.riderId), ["a"]);
+  assert.deepEqual(groupPatch(snap, g.name, g.members.map((m) => m.riderId)), { name: g.name, riderIds: g.members.map((m) => m.riderId) });
 });

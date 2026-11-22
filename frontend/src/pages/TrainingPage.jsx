@@ -2660,7 +2660,7 @@ export default function TrainingPage() {
           scout-knap eller slots-tilstand at vise her. */}
       <TabPanel value="development">
         <Suspense fallback={<TabFallback />}>
-        <DevelopmentXpSwitch runs={receiptRuns} roster={ridersLoading ? null : riders} estimateFor={estimateFor} seasonGains={seasonGainsByRider} racingToday={racingToday} ageFor={(id) => { const r = /** @type {any[]} */ (riders).find((/** @type {any} */ x) => x.id === id); return r ? ageForSeason(r.birthdate, seasonYear) : null; }}>
+        <DevelopmentXpSwitch runs={receiptRuns} roster={ridersLoading ? null : riders} onChangeFocus={setFocusPanelRiderId} estimateFor={estimateFor} seasonGains={seasonGainsByRider} racingToday={racingToday} ageFor={(id) => { const r = /** @type {any[]} */ (riders).find((/** @type {any} */ x) => x.id === id); return r ? ageForSeason(r.birthdate, seasonYear) : null; }}>
         {/* #6025 (ejer-valg A 1/10): saesonens fremgang staar oeverst her
             i stedet for i Today-tabellen. Samme tal og samme kvittering. */}
         {!ridersLoading && (
@@ -2794,7 +2794,7 @@ export default function TrainingPage() {
         {/* #6030: training_daily_receipt er on for alle (1/10); den gamle
             rapport-gren (legacy-tabellen + gaarsdagens fold-ud) er slettet. */}
         {/* #7627: XP-rapporten kun bag XP-kontakten eller preview ?xpreport=on; ellers uaendret. */}
-        <XpReportSwitch key={reportKey} runs={receiptRuns} roster={ridersLoading ? null : riders} trainingScore={trainingScore}>
+        <XpReportSwitch key={reportKey} runs={receiptRuns} roster={ridersLoading ? null : riders} trainingScore={trainingScore} loading={history.loading} error={history.error} onRetry={history.refresh}>
         <TrainingHistory history={{ ...history, runs: receiptRuns }} trainingScore={trainingScore} condition={condition} today={today} roster={ridersLoading ? null : riders} />
         </XpReportSwitch>
         <TrainingMoment latestRun={latestRun} isToday={latestIsToday} progressByRider={progress} pastRuns={pastRuns} xp={developmentXp} />

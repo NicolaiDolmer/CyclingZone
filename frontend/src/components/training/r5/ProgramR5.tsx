@@ -22,14 +22,19 @@ import Button from "../../ui/Button.jsx";
 import Checkbox from "../../ui/Checkbox.jsx";
 import Modal from "../../ui/Modal.jsx";
 import Segmented from "../../ui/Segmented.jsx";
+import { Menu, MenuItem } from "../../ui/Menu.jsx";
+import { useDismiss } from "../../ui/useDismiss.js";
 import {
-  ClipboardIcon, FlagIcon, LockIcon, PlusIcon, TeamIcon, UserIcon, XIcon,
+  ClipboardIcon, FlagIcon, LockIcon, MoreIcon, PlusIcon, TeamIcon, UserIcon, XIcon,
 } from "../../ui/icons/index.jsx";
 import FatigueForecast from "../FatigueForecast.tsx";
 import FatigueRuleSummary from "../FatigueRuleSummary.tsx";
 import FatigueRulePanel from "../FatigueRulePanel.tsx";
+import { FATIGUE_FALLBACKS } from "../FatigueRuleModel.ts";
 import { SESSION_ORDER, SESSION_ORDER_V3 } from "../TrainingPlanCard.tsx";
-import { groupForecastEntry } from "../groups/trainingGroupsModel.ts";
+import GroupFatigueExceptions from "../groups/GroupFatigueExceptions.tsx";
+import TrainingGroupDialog from "../groups/TrainingGroupDialog.tsx";
+import { groupForecastEntry, type TrainingGroup } from "../groups/trainingGroupsModel.ts";
 import { todayLockedSlots } from "../settleAfterStage7982/settleAfterStageModel.ts";
 import { raceSlotsFor, type ForecastEntry, type ForecastResponse } from "../FatigueForecastModel.ts";
 import type { FatigueRulesClient } from "../useFatigueRules.ts";
@@ -42,6 +47,8 @@ import {
   draftSteps, draftTotal, parseSubjectKey, programKeyOf, rememberedKind, riderWeekDays, setDraftCell, shortRiderName,
   subjectKey, subjectsFor, weekCells, type Draft, type Kind, type Library, type R5Group, type R5Rider, type Subject,
   type WeekCell,
+  GROUP_LIMIT_MODES, createdGroupId, dropDrafts, followAgainTarget, groupLimitDraft, groupLimitValid, groupLimitWrite,
+  groupAfterPatch, groupMenuActions, groupPatch, type GroupLimitDraft, type GroupMenuAction,
 } from "./programR5Model.ts";
 import ProgramR5Phone, { type PhoneChip } from "./ProgramR5Phone.tsx";
 
@@ -57,6 +64,8 @@ type ProgramsClient = {
 
 const FIRST_PROGRAMS = 5;
 const LABEL = "font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3";
+// #8560: "Egen" starter som graense-kortets gruppe-undtagelse (GroupFatigueExceptions).
+const GROUP_LIMIT_DEFAULTS = { threshold: 70, fallback: "light" };
 
 function loadKind(): Kind {
   try { return rememberedKind(localStorage.getItem(PROGRAM_VIEW_STORE)); } catch { return "week"; }
@@ -118,6 +127,10 @@ export default function ProgramR5({
   const [note, setNote] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [copyOpen, setCopyOpen] = useState(false);
   const [limitOpen, setLimitOpen] = useState(false);
+  // #8560: null = lukket, { group: null } = ny gruppe.
+  const [groupDialog, setGroupDialog] = useState<{ group: TrainingGroup | null } | null>(null);
+  const [limitDraft, setLimitDraft] = useState<GroupLimitDraft>(() => groupLimitDraft(null, GROUP_LIMIT_DEFAULTS));
+  const [deleting, setDeleting] = useState<TrainingGroup | null>(null);
 
   // Kataloget kan lande efter fanen: vaelg da det foerste program, saa fanen aldrig staar tom.
   const firstKey = library.programs[0]?.key ?? null;
@@ -240,6 +253,76 @@ export default function ProgramR5({
     if (!result.ok) setNote({ tone: "error", text: tR5("programR5.saveError") });
   };
 
+  // --- #8560 gruppestyring: opret, omdoeb, medlemmer, graense, slet, foelg igen ---------
+  const groupsOn = groups.enabled;
+  const menuActions = groupMenuActions({ limitEnabled: fatigueRules.enabled });
+  const openGroupDialog = (target: TrainingGroup | null) => {
+    setLimitDraft(groupLimitDraft(target?.fatigue, GROUP_LIMIT_DEFAULTS));
+    setGroupDialog({ group: target });
+  };
+  const groupAction = (id: string, action: GroupMenuAction) => {
+    const target = groups.groups.find((g) => g.id === id);
+    if (!target) return;
+    if (action === "delete") setDeleting(target);
+    else openGroupDialog(target);
+  };
+  const saveGroup = async (name: string, riderIds: string[]): Promise<boolean> => {
+    const editing = groupDialog?.group ?? null;
+    let id = editing?.id ?? null;
+    if (editing) {
+      const patch = groupPatch(editing, name, riderIds);
+      if (patch) {
+        const updated = await groups.update(editing.id, patch);
+        if (!updated.ok) return false;
+        // Fejler graensen bagefter, skal et nyt Gem sammenligne med det gemte (Codex P2).
+        setGroupDialog({ group: groupAfterPatch(editing, patch, updated.groups) });
+      }
+    } else {
+      const before = groups.groups.map((g) => g.id);
+      const created = await groups.create(name, riderIds);
+      if (!created.ok) return false;
+      id = createdGroupId(before, created.groups);
+      // Gruppen findes nu: et nyt tryk paa Gem maa ikke oprette den igen, hvis graensen fejler.
+      const made = created.groups?.find((g) => g.id === id) ?? null;
+      if (made) setGroupDialog({ group: made });
+    }
+    if (fatigueRules.enabled && id) {
+      const write = groupLimitWrite(limitDraft, editing?.fatigue);
+      if (!write.ok) return false;
+      if (write.change && !(await groups.setFatigue(id, write.change.mode, write.change.own)).ok) return false;
+    }
+    setGroupDialog(null);
+    setNote(null);
+    if (!editing && id) { setProgramKey(null); setSubject({ kind: "group", id }); }
+    return true;
+  };
+  const deleteGroup = async () => {
+    if (!deleting) return;
+    const key = subjectKey({ kind: "group", id: deleting.id });
+    const result = await groups.remove(deleting.id);
+    setDeleting(null);
+    if (!result.ok) { setNote({ tone: "error", text: tR5("programR5.saveError") }); return; }
+    setDrafts((prev) => dropDrafts(prev, [key]));
+    if (sKey === key) setSubject(null);
+    setNote(null);
+  };
+  const follow = groupsOn ? followAgainTarget(subject, groupList) : null;
+  const followAgain = async () => {
+    if (!follow) return;
+    const result = await groups.follow(follow.groupId, follow.riderIds);
+    if (!result.ok) { setNote({ tone: "error", text: tR5("programR5.saveError") }); return; }
+    // Rytterens egne rettelser gaelder ikke laengere: han koerer gruppens uge igen.
+    setDrafts((prev) => dropDrafts(prev, follow.riderIds.map((id) => subjectKey({ kind: "rider", id }))));
+    if (subject?.kind === "rider") setProgramKey(groupList.find((g) => g.id === follow.groupId)?.programKey ?? null);
+    setNote(null);
+  };
+  const followLabel = follow
+    ? (subject?.kind === "group"
+      ? tR5("programR5.manage.followAgainAll", { n: follow.riderIds.length })
+      : tR5("programR5.manage.followAgain"))
+    : "";
+  const ownOfGroup = follow && subject?.kind === "rider" ? tR5("programR5.manage.ownPlanOf", { name: follow.groupName }) : null;
+
   const actions = (
     <span className="flex items-center gap-2">
       <Button variant="secondary" size="sm" disabled={!programKey || busy} onClick={() => setCopyOpen(true)}
@@ -259,8 +342,59 @@ export default function ProgramR5({
   const limitEl = fatigueRules.enabled ? (
     <div className="overflow-hidden rounded-cz border border-cz-border bg-cz-card [&>div]:border-t-0">
       <FatigueRuleSummary data={fatigueRules.data} onEdit={() => setLimitOpen((v) => !v)} />
-      {limitOpen && <div className="border-t border-cz-border p-4"><FatigueRulePanel rules={fatigueRules} /></div>}
+      {limitOpen && (
+        <div className="border-t border-cz-border p-4">
+          <FatigueRulePanel rules={fatigueRules} groupExceptions={groupsOn && groups.groups.length > 0
+            ? <GroupFatigueExceptions groups={groups.groups} busy={groups.busy} onSave={groups.setFatigue} />
+            : null} />
+        </div>
+      )}
     </div>
+  ) : null;
+  const groupModals = (
+    <>
+      {groupDialog && (
+        <TrainingGroupDialog
+          open
+          group={groupDialog.group}
+          riders={riders}
+          groups={groups.groups}
+          busy={groups.busy}
+          onClose={() => setGroupDialog(null)}
+          onSave={saveGroup}
+          canSave={!fatigueRules.enabled || groupLimitValid(limitDraft)}
+          extra={fatigueRules.enabled ? <GroupLimitFields draft={limitDraft} busy={groups.busy} onChange={setLimitDraft} /> : null}
+        />
+      )}
+      {deleting && (
+        <Modal
+          open
+          onClose={() => setDeleting(null)}
+          size="sm"
+          title={tR5("programR5.manage.deleteTitle", { name: deleting.name })}
+          titleId="program-r5-group-delete-title"
+          ariaLabelledby={undefined}
+          description={null}
+          closeLabel={tR5("programR5.cancel")}
+          footer={(
+            <>
+              <Button variant="secondary" className={mobile ? "min-h-11" : ""} onClick={() => setDeleting(null)}>{tR5("programR5.cancel")}</Button>
+              <Button variant="danger" className={mobile ? "min-h-11" : ""} disabled={busy} onClick={deleteGroup} data-testid="program-r5-group-delete-go">
+                {tR5("programR5.manage.deleteGo")}
+              </Button>
+            </>
+          )}
+        >
+          <p className="text-xs text-cz-2" data-testid="program-r5-group-delete-body">{tR5("programR5.manage.deleteBody")}</p>
+        </Modal>
+      )}
+    </>
+  );
+  const followButton = follow ? (
+    <button type="button" disabled={busy} onClick={followAgain} data-testid="program-r5-follow-again"
+      className={`${mobile ? "min-h-11 " : ""}inline-flex items-center text-xs font-medium text-cz-accent-t hover:underline disabled:opacity-50`}>
+      {followLabel}
+    </button>
   ) : null;
   const noteEl = note ? (
     <p role="status" className={`text-xs ${note.tone === "ok" ? "text-cz-success" : "text-cz-danger"}`}>{note.text}</p>
@@ -305,7 +439,7 @@ export default function ProgramR5({
       </Button>
     );
     const riderType = subject?.kind === "rider" ? riderById.get(subject.id)?.type : null;
-    const hasHints = !subject || !!riderDays?.isSeed;
+    const hasHints = !subject || !!riderDays?.isSeed || !!follow;
     return (
       <div className="flex flex-col" data-testid="program-r5">
         {actionsEl ? createPortal(copyButton, actionsEl) : <div className="mb-3 flex justify-end">{copyButton}</div>}
@@ -333,6 +467,11 @@ export default function ProgramR5({
                 riderName={(id) => riderById.get(id)?.name ?? ""}
                 onProgram={(key) => { pickProgram(key); close(); }}
                 onSubject={(next) => { pickSubject(next); close(); }}
+                // Arket lukkes foer dialogen aabnes, saa der aldrig staar to vinduer oven i hinanden.
+                groupActions={menuActions}
+                groupBusy={busy}
+                onNewGroup={groupsOn ? () => { close(); openGroupDialog(null); } : undefined}
+                onGroupAction={groupsOn ? (id, action) => { close(); groupAction(id, action); } : undefined}
               />
             </>
           )}
@@ -344,6 +483,11 @@ export default function ProgramR5({
             <div className="flex flex-col gap-1">
               {!subject && <p className="text-2xs text-cz-3">{tR5("programR5.asWrittenNote")}</p>}
               {riderDays?.isSeed && <p className="text-2xs text-cz-3">{t("programs.seededHint")}</p>}
+              {follow && (
+                <p className="flex flex-wrap items-center gap-x-3 text-2xs text-cz-2">
+                  {ownOfGroup && <span>{ownOfGroup}</span>}{followButton}
+                </p>
+              )}
             </div>
           ) : null}
           footer={(
@@ -372,6 +516,7 @@ export default function ProgramR5({
           onCopyDay={copyDay}
         />
         {copyModal}
+        {groupModals}
       </div>
     );
   }
@@ -389,6 +534,10 @@ export default function ProgramR5({
         riderName={(id) => riderById.get(id)?.name ?? ""}
         onProgram={pickProgram}
         onSubject={pickSubject}
+        groupActions={menuActions}
+        groupBusy={busy}
+        onNewGroup={groupsOn ? () => openGroupDialog(null) : undefined}
+        onGroupAction={groupsOn ? groupAction : undefined}
       />
 
       <section className="flex min-w-0 flex-col gap-4" aria-label={title}>
@@ -434,6 +583,7 @@ export default function ProgramR5({
               {subject?.kind === "rider" && riderById.get(subject.id)?.type && (
                 <span className="text-2xs text-cz-2">{tTypes(`types.${riderById.get(subject.id)!.type}`)}</span>
               )}
+              {followButton}
             </span>
             {total > 0 && (
               <span className="font-data text-xs tabular-nums text-cz-2" data-testid="program-r5-unsaved">{t("weekPlan.unsaved", { n: total })}</span>
@@ -441,6 +591,7 @@ export default function ProgramR5({
           </div>
           {!subject && <p className="mb-1.5 text-2xs text-cz-3">{tR5("programR5.asWrittenNote")}</p>}
           {riderDays?.isSeed && <p className="mb-1.5 text-2xs text-cz-3">{t("programs.seededHint")}</p>}
+          {ownOfGroup && <p className="mb-1.5 text-2xs text-cz-3">{ownOfGroup}</p>}
           <WeekGrid
             cells={cells}
             weekdays={weekdays}
@@ -468,6 +619,7 @@ export default function ProgramR5({
       </section>
 
       {copyModal}
+      {groupModals}
     </div>
   );
 }
@@ -476,6 +628,7 @@ export default function ProgramR5({
 
 function LibraryPanel({
   library, catalog, lang, selectedProgram, selectedSubject, riderName, onProgram, onSubject, touch = false,
+  groupActions = [], groupBusy = false, onNewGroup, onGroupAction,
 }: {
   library: Library;
   catalog: CatalogProgram[];
@@ -486,6 +639,11 @@ function LibraryPanel({
   riderName: (id: string) => string;
   onProgram: (key: string) => void;
   onSubject: (s: Subject) => void;
+  // #8560: gruppestyring. Uden handlerne (grupper slukket) vises hverken "+ New group" eller menuen.
+  groupActions?: readonly GroupMenuAction[];
+  groupBusy?: boolean;
+  onNewGroup?: () => void;
+  onGroupAction?: (groupId: string, action: GroupMenuAction) => void;
 }) {
   const { t } = useTranslation("training");
   const { t: tR5 } = useTranslation("trainingR5"); // #7456: lazy namespace (I18nReadyGate i TrainingPage)
@@ -541,12 +699,17 @@ function LibraryPanel({
           {library.groups.map((g) => {
             const gKey = `group:${g.id}`;
             return (
-              <li key={g.id} className={row}>
-                <button type="button" onClick={() => onSubject({ kind: "group", id: g.id })} className={`flex items-center gap-1.5 ${pick(selectedSubject === gKey)}`}>
-                  <TeamIcon size={13} aria-hidden="true" className="shrink-0 text-cz-3" />
-                  <span className="truncate font-semibold">{g.name}</span>
-                  <span className="ms-auto shrink-0 text-cz-2">{g.programKey ? nameOf(g.programKey) : tR5("programR5.ownWeek")}</span>
-                </button>
+              <li key={g.id} className={row} data-testid="program-r5-group">
+                <div className="flex items-center gap-1">
+                  <button type="button" onClick={() => onSubject({ kind: "group", id: g.id })} className={`flex min-w-0 flex-1 items-center gap-1.5 ${pick(selectedSubject === gKey)}`}>
+                    <TeamIcon size={13} aria-hidden="true" className="shrink-0 text-cz-3" />
+                    <span className="truncate font-semibold">{g.name}</span>
+                    <span className="ms-auto shrink-0 text-cz-2">{g.programKey ? nameOf(g.programKey) : tR5("programR5.ownWeek")}</span>
+                  </button>
+                  {onGroupAction && (
+                    <GroupMenu name={g.name} actions={groupActions} touch={touch} disabled={groupBusy} onPick={(action) => onGroupAction(g.id, action)} />
+                  )}
+                </div>
                 <ul className="mt-1 flex flex-col gap-0.5 ps-5">
                   {g.members.map((m) => (
                     <li key={m.riderId} className="flex items-center justify-between gap-2 text-2xs">
@@ -561,6 +724,14 @@ function LibraryPanel({
               </li>
             );
           })}
+          {onNewGroup && (
+            <li className={row}>
+              <button type="button" disabled={groupBusy} onClick={onNewGroup} data-testid="program-r5-new-group"
+                className={`${tap}flex w-full items-center gap-1.5 text-start font-medium text-cz-2 hover:text-cz-1 disabled:opacity-50`}>
+                <PlusIcon size={13} aria-hidden="true" className="shrink-0 text-cz-3" />{tR5("programR5.manage.newGroup")}
+              </button>
+            </li>
+          )}
           {library.ownOnly.map((r) => (
             <li key={r.riderId} className={row}>
               <button type="button" onClick={() => onSubject({ kind: "rider", id: r.riderId })}
@@ -585,6 +756,85 @@ function LibraryPanel({
         <p className="mt-1.5 text-2xs text-cz-3">{tR5("programR5.ownWins")}</p>
       </section>
     </aside>
+  );
+}
+
+// --- #8560: menuen pr. gruppe og gruppens traethedsgraense ------------------------------
+
+function GroupMenu({
+  name, actions, touch, disabled, onPick,
+}: {
+  name: string;
+  actions: readonly GroupMenuAction[];
+  touch: boolean;
+  disabled: boolean;
+  onPick: (action: GroupMenuAction) => void;
+}) {
+  const { t: tR5 } = useTranslation("trainingR5"); // #7456: lazy namespace (I18nReadyGate i TrainingPage)
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+  useDismiss(ref, () => setOpen(false), open);
+  const label = tR5("programR5.manage.menu", { name });
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button type="button" aria-haspopup="menu" aria-expanded={open} aria-label={label} title={label} disabled={disabled}
+        onClick={() => setOpen((v) => !v)} data-testid="program-r5-group-menu"
+        className={`inline-flex ${touch ? "h-11 w-11" : "h-6 w-6"} items-center justify-center rounded-cz text-cz-3 hover:bg-cz-subtle hover:text-cz-1 disabled:opacity-50`}>
+        <MoreIcon size={14} aria-hidden="true" />
+      </button>
+      {open && (
+        <div className="absolute end-0 z-dropdown mt-1 min-w-[168px]">
+          <Menu aria-label={label}>
+            {actions.map((action) => (
+              <MenuItem key={action} danger={action === "delete"} className={touch ? "min-h-11" : ""}
+                onClick={() => { setOpen(false); onPick(action); }} data-testid={`program-r5-group-${action}`}>
+                {tR5(`programR5.manage.${action}`)}
+              </MenuItem>
+            ))}
+          </Menu>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Holdets / Egen: N / Fra. Gemmes sammen med dialogens navn og medlemmer.
+function GroupLimitFields({
+  draft, busy, onChange,
+}: {
+  draft: GroupLimitDraft;
+  busy: boolean;
+  onChange: (next: GroupLimitDraft) => void;
+}) {
+  const { t } = useTranslation("training");
+  const { t: tR5 } = useTranslation("trainingR5"); // #7456: lazy namespace (I18nReadyGate i TrainingPage)
+  const valid = groupLimitValid(draft);
+  const control = "min-h-11 rounded-cz border border-cz-border bg-cz-card px-2 text-[13px] text-cz-1 disabled:opacity-50 sm:min-h-9";
+  const label = tR5("programR5.manage.limitLabel");
+  return (
+    <div className="flex flex-col gap-2 border-t border-cz-border pt-3" data-testid="program-r5-group-limit-fields">
+      <span className="font-data text-2xs font-semibold uppercase tracking-[.04em] text-cz-3">{label}</span>
+      <Segmented label={label} value={draft.mode} onChange={(mode: GroupLimitDraft["mode"]) => onChange({ ...draft, mode })}
+        options={GROUP_LIMIT_MODES.map((m) => ({ value: m, label: tR5(`programR5.manage.limit_${m}`), disabled: busy }))} />
+      {draft.mode === "own" ? (
+        <span className="flex flex-wrap items-center gap-2 text-[13px] text-cz-1">
+          <span>{tR5("programR5.manage.limitAbove")}</span>
+          <input type="number" inputMode="numeric" min={0} max={100} step={1} value={draft.threshold} disabled={busy}
+            onChange={(e) => onChange({ ...draft, threshold: e.target.value })}
+            aria-label={t("fatigueRule.aboveLabel")} aria-invalid={!valid}
+            className={`${control} w-16 font-data tabular-nums`} data-testid="program-r5-group-limit-threshold" />
+          <span>{tR5("programR5.manage.limitRun")}</span>
+          <select value={draft.fallback} disabled={busy} onChange={(e) => onChange({ ...draft, fallback: e.target.value })}
+            aria-label={t("fatigueRule.insteadLabel")} className={control}>
+            {FATIGUE_FALLBACKS.map((f) => <option key={f} value={f}>{t(`fatigueRule.fallback_${f}`)}</option>)}
+          </select>
+          <span>{tR5("programR5.manage.limitInstead")}</span>
+        </span>
+      ) : (
+        <p className="text-xs text-cz-2">{tR5(draft.mode === "team" ? "programR5.manage.limitTeamNote" : "programR5.manage.limitOffNote")}</p>
+      )}
+      <p className="text-2xs text-cz-3">{t("groups.fatigueLadder")}</p>
+    </div>
   );
 }
 

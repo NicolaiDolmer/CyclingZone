@@ -5,7 +5,7 @@
 // allerede er i en anden gruppe, flyttes han (noten siger det).
 //
 // TASTE: hairlines, rounded-cz, stroke-ikoner, ingen skygger i indholdet.
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import Modal from "../../ui/Modal.jsx";
 import Button from "../../ui/Button.jsx";
@@ -23,6 +23,8 @@ export default function TrainingGroupDialog({
   onClose,
   onSave,
   onDelete,
+  extra = null, // #8560: Program R5 laegger gruppens traethedsgraense her
+  canSave = true,
 }: {
   open: boolean;
   group: TrainingGroup | null;
@@ -32,6 +34,8 @@ export default function TrainingGroupDialog({
   onClose: () => void;
   onSave: (name: string, riderIds: string[]) => Promise<boolean>;
   onDelete?: () => Promise<boolean>;
+  extra?: ReactNode;
+  canSave?: boolean;
 }) {
   const { t } = useTranslation("training");
   const tTypes = useTranslation("riderTypes").t;
@@ -101,7 +105,7 @@ export default function TrainingGroupDialog({
               {t("groups.delete")}
             </button>
           )}
-          <Button variant="primary" size="sm" disabled={!valid} loading={busy} onClick={save} data-testid="training-group-save">
+          <Button variant="primary" size="sm" disabled={!valid || !canSave} loading={busy} onClick={save} data-testid="training-group-save">
             {group ? t("groups.save") : t("groups.create")}
           </Button>
         </>
@@ -167,6 +171,7 @@ export default function TrainingGroupDialog({
         <p className="text-2xs text-cz-3">
           {moving > 0 ? t("groups.movingNote", { n: moving }) : t("groups.oneGroupNote")}
         </p>
+        {extra}
         {error && <p role="alert" className="text-xs text-cz-danger">{error}</p>}
       </div>
     </Modal>

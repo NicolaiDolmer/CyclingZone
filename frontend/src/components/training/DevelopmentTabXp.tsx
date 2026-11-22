@@ -15,7 +15,7 @@ import { copenhagenDayKey as copenhagenDayKeyJs } from "../../lib/raceCentre.js"
 import { formatDate as formatDateJs, formatNumber as formatNumberJs } from "../../lib/intl.js";
 import { useMediaQuery } from "../../hooks/useMediaQuery.ts";
 import { riderShortName } from "../../lib/riderName.ts";
-import { Flag, RiderNameCell } from "./reportXp/ui.ts";
+import { Flag, RiderNameCell, SecondaryButton } from "./reportXp/ui.ts";
 import { XpBar } from "./reportXp/XpBar.tsx";
 import {
   bandText, buildDevelopmentFixture, buildDevelopmentRows, devSummary, nextSort, previewXpDevelopment, signedText, sortDevRows, topOf,
@@ -61,10 +61,12 @@ type Props = {
   racingToday: Record<string, unknown> | null | undefined;
   /** Alder i sæsonen pr. rytter (samme som den gamle Udvikling-fane, ageForSeason). */
   ageFor?: (riderId: string) => number | null;
+  /** #8562: opens the page's one focus choice (FocusPanel) for this rider, as the old tab's button did. */
+  onChangeFocus?: (riderId: string) => void;
   children: ReactNode;
 };
 
-export default function DevelopmentXpSwitch({ runs, roster, estimateFor, seasonGains, racingToday, ageFor, children }: Props) {
+export default function DevelopmentXpSwitch({ runs, roster, estimateFor, seasonGains, racingToday, ageFor, onChangeFocus, children }: Props) {
   const isPreview = Boolean(import.meta.env.VITE_PREVIEW_MOCK);
   const preview = previewXpDevelopment(isPreview, typeof window === "undefined" ? "" : window.location.search);
   const [flagOn, setFlagOn] = useState(false);
@@ -76,7 +78,7 @@ export default function DevelopmentXpSwitch({ runs, roster, estimateFor, seasonG
   }, [isPreview]);
   const mode = xpDevelopmentMode({ preview, flagOn, hasXp: hasXpFields(runs as never) });
   if (mode === "off") return <>{children}</>;
-  return <DevelopmentTabXp fixture={mode === "fixture"} runs={runs} roster={roster} estimateFor={estimateFor} seasonGains={seasonGains} racingToday={racingToday} ageFor={ageFor} />;
+  return <DevelopmentTabXp fixture={mode === "fixture"} runs={runs} roster={roster} estimateFor={estimateFor} seasonGains={seasonGains} racingToday={racingToday} ageFor={ageFor} onChangeFocus={onChangeFocus} />;
 }
 
 const NUM = "font-data tabular-nums";
@@ -88,7 +90,7 @@ const LABEL = "mb-1 font-data text-3xs font-semibold uppercase tracking-[.06em] 
 const RATING_PLATE = `inline-flex min-w-[2.125rem] items-center justify-center rounded-cz border border-cz-border bg-cz-subtle px-1 py-0.5 text-[13px] font-semibold leading-none text-cz-1 ${NUM}`;
 const PHONE_GRID = "grid-cols-[minmax(0,1fr)_2.75rem_3.75rem_5.5rem]";
 
-function DevelopmentTabXp({ fixture, runs, roster, estimateFor, seasonGains, racingToday, ageFor }: Omit<Props, "children"> & { fixture: boolean }) {
+function DevelopmentTabXp({ fixture, runs, roster, estimateFor, seasonGains, racingToday, ageFor, onChangeFocus }: Omit<Props, "children"> & { fixture: boolean }) {
   const { t } = useTranslation("training");
   const desktop = useMediaQuery("(min-width: 1024px)");
   const [open, setOpen] = useState<Set<string>>(() => new Set());
@@ -154,8 +156,8 @@ function DevelopmentTabXp({ fixture, runs, roster, estimateFor, seasonGains, rac
         </div>
         {desktop
           // Below the content width the table needs, it scrolls sideways instead of clipping columns.
-          ? <div className="overflow-x-auto"><DesktopTable rows={sorted} open={open} toggle={toggle} sort={sort} onSort={onSort} columns={columns} /></div>
-          : <PhoneList rows={sorted} open={open} toggle={toggle} columns={columns} />}
+          ? <div className="overflow-x-auto"><DesktopTable rows={sorted} open={open} toggle={toggle} sort={sort} onSort={onSort} columns={columns} onChangeFocus={onChangeFocus} /></div>
+          : <PhoneList rows={sorted} open={open} toggle={toggle} columns={columns} onChangeFocus={onChangeFocus} />}
       </div>
       <p className="mt-3 text-2xs text-cz-3">
         {t("developmentXp.footnote")}{" "}
@@ -308,6 +310,24 @@ function XpLineCell({ line }: { line: XpLineView }) {
 }
 
 /**
+ * #8562: "Change focus" per rider, back from the old tab. It opens the same focus choice as the
+ * rest of the page (the page's FocusPanel); this tab invents no focus logic of its own. The text
+ * lives in trainingXp (lazy), so the button waits for it instead of showing raw keys.
+ */
+function ChangeFocus({ row, onChangeFocus }: { row: DevRow; onChangeFocus?: (riderId: string) => void }) {
+  const { t, ready } = useTranslation("trainingXp");
+  if (!onChangeFocus || !ready) return null;
+  return (
+    <div className="mb-2 flex justify-end">
+      <SecondaryButton variant="secondary" size="sm" onClick={() => onChangeFocus(row.id)} data-testid="development-xp-change-focus"
+        aria-label={t("devFocus.changeFor", { name: row.name })}>
+        {t("devFocus.change")}
+      </SecondaryButton>
+    </div>
+  );
+}
+
+/**
  * Ejer 20/11: the opened row reads like the rider's Training tab (#8488): now, season,
  * "x / y XP" on the game's neutral XP bar (never gold, TASTE P3) and the day's "+N XP".
  * No bar for an ability = an empty cell, never a dash (TASTE P13).
@@ -357,7 +377,7 @@ const BASE_MIN_WIDTH = 948;
 const OPTIONAL_WIDTH: Record<DevColumnKey, number> = { natural: 124, role: 84, rating30: 84 };
 const BASE_COLS = 9;
 
-function DesktopTable({ rows, open, toggle, sort, onSort, columns }: { rows: DevRow[]; open: Set<string>; toggle: (id: string) => void; sort: SortState; onSort: (k: SortKey) => void; columns: ReadonlySet<DevColumnKey> }) {
+function DesktopTable({ rows, open, toggle, sort, onSort, columns, onChangeFocus }: { rows: DevRow[]; open: Set<string>; toggle: (id: string) => void; sort: SortState; onSort: (k: SortKey) => void; columns: ReadonlySet<DevColumnKey>; onChangeFocus?: (riderId: string) => void }) {
   const { t } = useTranslation("training");
   const { t: tRider } = useTranslation("rider");
   const { t: tRiders } = useTranslation("riders");
@@ -420,7 +440,7 @@ function DesktopTable({ rows, open, toggle, sort, onSort, columns }: { rows: Dev
               {o && (
                 <tr className="bg-cz-subtle/40">
                   <td />
-                  <td colSpan={colCount - 1} className="px-3 pb-3 pt-1"><div className="max-w-[680px]"><Abilities row={row} phone={false} /></div></td>
+                  <td colSpan={colCount - 1} className="px-3 pb-3 pt-1"><div className="max-w-[680px]"><ChangeFocus row={row} onChangeFocus={onChangeFocus} /><Abilities row={row} phone={false} /></div></td>
                 </tr>
               )}
             </Fragment>
@@ -431,7 +451,7 @@ function DesktopTable({ rows, open, toggle, sort, onSort, columns }: { rows: Dev
   );
 }
 
-function PhoneList({ rows, open, toggle, columns }: { rows: DevRow[]; open: Set<string>; toggle: (id: string) => void; columns: ReadonlySet<DevColumnKey> }) {
+function PhoneList({ rows, open, toggle, columns, onChangeFocus }: { rows: DevRow[]; open: Set<string>; toggle: (id: string) => void; columns: ReadonlySet<DevColumnKey>; onChangeFocus?: (riderId: string) => void }) {
   const { t } = useTranslation("training");
   const { t: tRider } = useTranslation("rider");
   const { t: tRiders } = useTranslation("riders");
@@ -468,6 +488,7 @@ function PhoneList({ rows, open, toggle, columns }: { rows: DevRow[]; open: Set<
                     <div><div className={LABEL} title={t("developmentXp.ratingSeasonTitle")}>{t("developmentXp.colRatingSeason")}</div><RatingSeason value={row.ratingSeason} /></div>
                     {columns.has("rating30") && <div><div className={LABEL} title={t("developmentXp.rating30Title")}>{t("developmentXp.colRating30")}</div><RatingSeason value={row.rating30} testId="development-xp-rating-30" /></div>}
                   </div>
+                  <ChangeFocus row={row} onChangeFocus={onChangeFocus} />
                   <Abilities row={row} phone />
                 </div>
               )}
