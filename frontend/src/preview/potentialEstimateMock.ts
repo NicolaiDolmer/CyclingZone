@@ -12,6 +12,7 @@
 
 import type { Certainty, PotentialView, PotentialViewShown, PrognosisView } from "../lib/potentialEstimateDisplay";
 import { RIDERS, TEST_TEAM } from "./seedData.js";
+import { PREVIEW_YOUTH_RIDERS } from "./youthSquadsMock.ts";
 
 type SeedEstimate = { level?: number; role?: string | null; now?: number | null };
 type SeedReport = { maxLevel: number; scout?: unknown };
@@ -87,8 +88,12 @@ function viewFor(id: string): PotentialView {
   return FORCED[forcedState() ?? ""] ?? FIXED[id] ?? STATES[hash(id) % STATES.length];
 }
 
-const OWN_IDS = new Set((RIDERS as Array<{ id: string; team_id?: string | null }>)
-  .filter((rider) => rider.team_id === TEST_TEAM.id).map((rider) => rider.id));
+// #8544: U23- og juniorrytterne er ogsaa egne ryttere, saa trup-listen viser prognosen.
+const OWN_IDS = new Set([
+  ...(RIDERS as Array<{ id: string; team_id?: string | null }>)
+    .filter((rider) => rider.team_id === TEST_TEAM.id).map((rider) => rider.id),
+  ...(PREVIEW_YOUTH_RIDERS as Array<{ id: string }>).map((rider) => rider.id),
+]);
 
 // Opdigtet prognose: lidt under skønnet, så tallet ikke ligner skønnet selv.
 function prognosisFor(view: PotentialView): PrognosisView {

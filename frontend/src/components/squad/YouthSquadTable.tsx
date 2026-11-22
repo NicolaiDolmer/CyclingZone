@@ -61,6 +61,7 @@ function prognosisValue(estimate: unknown): number | null {
 
 interface Scouting {
   estimateFor: (riderId: string) => unknown;
+  requestEstimates?: (riderIds: string[]) => void;
 }
 
 interface Row extends YouthSquadRider {
@@ -145,6 +146,15 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
   // #6206: EXP-badgen (kontrakt udløber ved næste sæsonskifte) som på My Team.
   // contract_end_season er et sæson-NUMMER, så det udledes af referenceåret.
   const activeSeasonNumber = seasonNumberFromReferenceYear(seasonYear);
+
+  // #8544: estimaterne hentes for hele truppen med det samme. Ellers bad kun
+  // potentiale-cellen om dem, og den vises ikke paa telefon, saa prognosen (og
+  // dermed telefonens standardkolonner) aldrig blev hentet.
+  const riderIdsKey = riders.map((r) => r.id).join(",");
+  const requestEstimates = scouting.requestEstimates;
+  useEffect(() => {
+    if (riderIdsKey && requestEstimates) requestEstimates(riderIdsKey.split(","));
+  }, [riderIdsKey, requestEstimates]);
 
   const decorated = useMemo<Row[]>(() => riders.map((r) => {
     const ovr = riderOverallRating(r);
