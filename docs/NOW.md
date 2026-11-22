@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11 · slet `backup_5902_20261112_*` ~26/11 · slet `backup_8078/8080/8099_20261113_*` ~27/11.
 >
-> **🎯 Next action (22/11 aften, PC1 → Dolmer PC):** XP + Let/Mellem/Hård + potentiale 1-99 LIVE (21-22/11). Merget 22/11: #8577 #8578 (slukket), #8590 #8589 #8554 #8591 #8594 #8597. **Dagsvælgeren `training_week_forecast` tændt 18.39, SLUKKET 18.46**: viste "Træning" på løbsdage for auto-udtagede hold. Rækkefølge og stafet: #8584 seneste kommentar. Mandag: #8595 kolonner, #8466 saldo, 4 design-retninger, K-5/K-6.
+> **🎯 Next action (mandag 23/11):** 22/11 aften (Dolmer PC): **dagsvælgeren `training_week_forecast` ON 20.08** (#8599 merget, prod-billeder, #8580 lukket); #8560, #8543, #8562 lukket med prod-bevis; Hjælp om skader #8602 merget; 3 patch notes pending (dagsvælger, skader, aldring). Turbo Tester er nu beta-tester. **Mandag med ejeren:** #8579 forklares visuelt (Fable GODKENDT, CI grøn, ikke merget); #7323 Graduation planlægges; #8595 kolonner; #8531 slid-varsel; #8600 punkt 12+. **Torsdag 26/11:** S6-kalender (#5841) + prøveskifte (#7325) + samlet sæsonskifte-besked (#8397, billede før byg). #8422: kun Sentry-besked. Stafet: #8584.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; kurve "6 kombineret" (#3564) i samlet måling; Division 4 A/B/C har 25 hold (league-size-invariant).
 >
-> **🤖 Working agent:** Dolmer PC (#8584): #8580-rettelse → #8560 → motor PR 2 → #8543; tog, markører og XP-tick i aften. PC1: ingen aktiv session (ejer 22/11).
+> **🤖 Working agent:** Ingen aktiv session.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
