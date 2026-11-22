@@ -1,5 +1,79 @@
 export const PATCHES = [
 {
+  "version": "7.498",
+  "date": "2026-11-22",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Development",
+      "area": "development",
+      "en": {
+        "title": "New aging at the season change",
+        "body": "At the season change on 28 November, the new aging applies for the first time. Riders past their peak around thirty lose a small share of their physical abilities, and the share grows with age. Race days and hard training days in the season slow the decline. See Help for the details."
+      },
+      "da": {
+        "title": "Ny aldring ved sæsonskiftet",
+        "body": "Ved sæsonskiftet den 28. november gælder den nye aldring for første gang. Ryttere, der er forbi deres top omkring de 30, mister en lille andel af deres fysiske evner, og andelen vokser med alderen. Løbsdage og hårde træningsdage i sæsonen bremser faldet. Se Hjælp for detaljerne."
+      },
+      "refs": [
+        8522,
+        8531
+      ]
+    }
+  ]
+},
+{
+  "version": "7.497",
+  "date": "2026-11-22",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Season",
+      "area": "training",
+      "en": {
+        "title": "Injuries are cleared at the season change",
+        "body": "At the season change on 28 November, all injuries and illnesses are cleared, just like Fatigue. Every rider starts the new season fit."
+      },
+      "da": {
+        "title": "Skader nulstilles ved sæsonskiftet",
+        "body": "Ved sæsonskiftet den 28. november nulstilles alle skader og sygdomme, ligesom Træthed. Alle ryttere starter den nye sæson raske."
+      },
+      "refs": [
+        5865
+      ]
+    }
+  ]
+},
+{
+  "version": "7.496",
+  "date": "2026-11-22",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "switched_on",
+      "flag": "training_week_forecast",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "See the coming week on the Today tab",
+        "body": "The Today tab on the training page has a day picker for today and the next seven days. Race days show the race, also when the assistant picks your team at the start. Days without a race show Training."
+      },
+      "da": {
+        "title": "Se den kommende uge på fanen I dag",
+        "body": "Fanen I dag på træningssiden har en dagsvælger for i dag og de næste syv dage. Løbsdage viser løbet, også når assistenten udtager dit hold ved løbsstart. Dage uden løb viser Træning."
+      },
+      "refs": [
+        8580
+      ]
+    }
+  ]
+},
+{
   "version": "7.495",
   "date": "2026-11-22",
   "changes": [
