@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-158 poster: live 132 · dormant 8 · building 8 · spec 1 · idea 2 · retired 7. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+160 poster: live 134 · dormant 7 · building 9 · spec 1 · idea 2 · retired 7. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -47,9 +47,9 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## squad
 
-**live:** Champion jerseys beside rider names (`champion-jerseys`) 2026-11-07 · Rider card (`rider-hover-card`) 2026-11-11 · Talent marks (`talent-marks`) 2026-11-07
+**live:** Rider card (`rider-hover-card`) 2026-11-11
 
-**arkiv:** `contracts` · `rider-compare-and-watchlist` · `rider-rating-best-role-display` · `squad-management` · `youth-squad-pages`
+**arkiv:** `champion-jerseys` · `contracts` · `rider-compare-and-watchlist` · `rider-rating-best-role-display` · `squad-management` · `talent-marks` · `youth-squad-pages`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
@@ -58,18 +58,18 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## training
 
-**live:** Development XP (`development-xp-model`) 2026-11-21 · Race session settles when the stage is decided (`settle-race-session-after-stage`) 2026-11-20 · Train now bonus (`train-now-bonus`) 2026-11-17 · Train now straight away (`train-now-instant`) 2026-11-16 · Every session at easy, normal or hard (`training-effort-levels-7947`) 2026-11-21 · Fatigue now counts today's earlier stages (`training-fatigue-now-7801`) 2026-11-20 · Teams without a division do not train (`training-no-division-human-no-tick-6110`) 2026-11-20 · New Training page (R5) (`training-page-r5`) 2026-11-21 · Train now (no bonus) (`training-train-now`) 2026-11-13
+**live:** Development XP (`development-xp-model`) 2026-11-21 · One potential source (`potential-estimate-display`) 2026-11-22 · Stored potential estimates (`potential-estimate-writes`) 2026-11-22 · Race session settles when the stage is decided (`settle-race-session-after-stage`) 2026-11-20 · Train now bonus (`train-now-bonus`) 2026-11-17 · Train now straight away (`train-now-instant`) 2026-11-16 · Every session at easy, normal or hard (`training-effort-levels-7947`) 2026-11-21 · Fatigue now counts today's earlier stages (`training-fatigue-now-7801`) 2026-11-20 · Teams without a division do not train (`training-no-division-human-no-tick-6110`) 2026-11-20 · New Training page (R5) (`training-page-r5`) 2026-11-21 · Train now (no bonus) (`training-train-now`) 2026-11-13
 
 **arkiv:** `ability-cap-per-date` · `condition-model-v2` · `condition-v2-race-date-training-day` · `daily-training` · `development-curve-b` · `peak-planner` · `potential-single-number` · `race-day-role-yield` · `season-fatigue-reset` · `train-now-whole-day` · `training-bulk-day` · `training-catalog-v3` · `training-condition-per-date` · `training-daily-receipt` · `training-decision-card` · `training-fatigue-rules` · `training-groups` · `training-hard-sessions-cobbles-echelon-attack` · `training-mobile-table` · `training-program-cells` · `training-programs` · `training-score` · `training-tick-per-race-day` · `training-tick-system`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
 |Development Score B in the engine (`development-score-b-engine`)|dormant|`development_score_v2`|[TRAINING_RULES](TRAINING_RULES.md)|#6110|2026-11-13|Parkeret (ejer 31/10) til Udvikling 2.0. Aldrig samtidig med XP. Før tænding: #7584.|
-|One potential source (`potential-estimate-display`)|dormant|`potential_estimate_display`|[6110-potentiale-et-tal-samlet-design](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md)|#6110|2026-11-21|Tændt og slukket igen 21/11 aften (ejer): gemte skøn mangler (potential_estimate_writes + params + backfill, #7685). Tændes efter XP-start 22/11.|
 |Catch-up via racing (`race-day-catchup`)|dormant|`race_day_catchup_enabled`|[TRAINING_RULES](TRAINING_RULES.md)|#6950|2026-10-25|Ejer, med Udvikling 2.0.|
 |Race day role base day (`race-day-role-base-day`)|dormant|`race_day_role_base_day_enabled`|[TRAINING_RULES](TRAINING_RULES.md)|#6110|2026-11-03|#5950 løsning A (ejer 3/11), underkontakt til race-day-role-yield. Off.|
-|Stored potential estimates (`potential-estimate-writes`)|building|-|[6110-potentiale-et-tal-samlet-design](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md)|#6110|2026-11-05|Trin 5 (#7685): søndagsjob, holdskifte og nye kig; flaget seedes off.|
 |Injuries heal over the off-season (`season-injury-reset`)|building|`season_injury_reset_mode`|[TRAINING_RULES](TRAINING_RULES.md)|#5865|2026-11-16|Bag season_injury_reset_mode = off; ejer vælger clear/cap/light før S6.|
+|Rotation plans that wait on rest and races (`training-rotation-8548`)|building|`training_rotation`|[TRAINING_RULES](TRAINING_RULES.md)|#7456|2026-11-22|PR 1 af 3 (migration, validering, API) bag training_rotation = off. Motor (PR 2, Fable-dom) og R5-UI (PR 3) følger; ejer tænder.|
+|The rolling training week for the day picker (`training-week-forecast-8580`)|building|`training_week_forecast`|[TRAINING_RULES](TRAINING_RULES.md)|#7456|2026-11-22|PR 1 af 2 (GET /api/training/programs/forecast/week) bag training_week_forecast = off. Dag 0 = GET /forecast uændret; dagene frem har kun løbs- og hvilefelter (ingen træthed, K-7). Dagsvælgeren i I dag R5 (PR 2) følger; Fable-dom før merge; ejer tænder.|
 
 ## academy
 

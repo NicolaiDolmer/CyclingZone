@@ -173,6 +173,34 @@
       "limitAbove": "Por encima de",
       "limitRun": "hacer",
       "limitInstead": "en su lugar"
-    }
+    },
+    "loadErrorTitle": "No se pudieron cargar los programas",
+    "loadErrorBody": "No se ha perdido nada. Tus planes guardados están a salvo.",
+    "retry": "Reintentar",
+    "emptyTitle": "Aún no hay programa",
+    "emptyBody": "Crea un grupo y asígnale un programa para planificar la semana de varios corredores a la vez.",
+    "emptyBodyNoGroups": "Asigna un programa a un corredor para planificar la semana.",
+    "discard": "Descartar cambios",
+    "discardTitle": "¿Descartar {n, plural, one {# cambio} other {# cambios}}?",
+    "discardBody": "La semana vuelve al plan guardado.",
+    "discardGo": "Descartar"
+  },
+  "dayPicker": {
+    "label": "Elige el día",
+    "prev": "Día anterior",
+    "next": "Día siguiente",
+    "today": "Hoy",
+    "training": "Entreno",
+    "stage": "Etapa {n}",
+    "stageRace": "Carrera por etapas",
+    "oneDay": "Clásica",
+    "autoRace": "Carrera · auto",
+    "rider": "Corredor",
+    "countTraining": "entrenan",
+    "countRacing": "corren",
+    "notReady": "Los días de carrera de esta fecha aún no están listos.",
+    "autoNote": "El asistente elige tu equipo para {races} al inicio de la carrera. Quién corre se sabe entonces.",
+    "aheadNote": "Los próximos días muestran el plan. Un cambio se aplica a cada {weekday}.",
+    "editInProgram": "Editar el {weekday} en Programa"
   }
 }

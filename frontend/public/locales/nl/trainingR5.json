@@ -173,6 +173,34 @@
       "limitAbove": "Boven",
       "limitRun": "rijd",
       "limitInstead": "in plaats daarvan"
-    }
+    },
+    "loadErrorTitle": "De programma's konden niet worden geladen",
+    "loadErrorBody": "Er is niets verloren. Je opgeslagen plannen zijn veilig.",
+    "retry": "Opnieuw proberen",
+    "emptyTitle": "Nog geen programma",
+    "emptyBody": "Maak een groep en zet er een programma op om de week voor meerdere renners tegelijk te plannen.",
+    "emptyBodyNoGroups": "Zet een programma op een renner om de week te plannen.",
+    "discard": "Wijzigingen verwerpen",
+    "discardTitle": "{n, plural, one {# wijziging} other {# wijzigingen}} verwerpen?",
+    "discardBody": "De week gaat terug naar het opgeslagen plan.",
+    "discardGo": "Verwerpen"
+  },
+  "dayPicker": {
+    "label": "Kies dag",
+    "prev": "Vorige dag",
+    "next": "Volgende dag",
+    "today": "Vandaag",
+    "training": "Training",
+    "stage": "Etappe {n}",
+    "stageRace": "Etappekoers",
+    "oneDay": "Eendagskoers",
+    "autoRace": "Koers · auto",
+    "rider": "Renner",
+    "countTraining": "trainen",
+    "countRacing": "koersen",
+    "notReady": "De koersdagen voor deze datum zijn nog niet klaar.",
+    "autoNote": "De assistent kiest je ploeg voor {races} bij de start. Wie rijdt, zie je dan pas.",
+    "aheadNote": "De komende dagen tonen het plan. Een wijziging geldt voor elke {weekday}.",
+    "editInProgram": "Wijzig {weekday} in Programma"
   }
 }

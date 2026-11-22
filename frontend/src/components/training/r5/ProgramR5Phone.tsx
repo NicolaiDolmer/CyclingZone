@@ -8,7 +8,7 @@
 //
 // Komponenten er ren visning: data, kladder og gemme-kald ejes af ProgramR5 (samme som
 // desktop: programR5Drafts og PUT .../cell). Valget Dag/Uge huskes pr. enhed.
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import Button from "../../ui/Button.jsx";
@@ -52,8 +52,10 @@ type Shared = {
 
 export default function ProgramR5Phone({
   name, subtitle, typeLabel, chips, onChip, renderLibrary, limitEl, summary, hints, footer,
-  saveLabel, saveDisabled, onSave, ...shared
+  saveLabel, saveDisabled, onSave, focusWeekday = null, ...shared
 }: Shared & {
+  // #8580: en ugedag, der skal vælges og foldes ud (fra dagsvælgerens "Ret <ugedag> i Program").
+  focusWeekday?: { weekday: string; n: number } | null;
   name: string;
   subtitle: string;
   typeLabel: string | null;
@@ -73,8 +75,17 @@ export default function ProgramR5Phone({
   const { weekdays, todayWeekday } = shared;
   const [view, setViewRaw] = useState<PhoneView>(loadView);
   const setView = (next: PhoneView) => { setViewRaw(next); saveView(next); };
-  const [day, setDay] = useState(() => startDayIndex(weekdays, todayWeekday));
-  const [openDay, setOpenDay] = useState<number>(() => startDayIndex(weekdays, todayWeekday));
+  const [day, setDay] = useState(() => startDayIndex(weekdays, focusWeekday?.weekday ?? todayWeekday));
+  const [openDay, setOpenDay] = useState<number>(() => startDayIndex(weekdays, focusWeekday?.weekday ?? todayWeekday));
+  // Hver ny anmodning (n) vælger ugedagen igen, også når fanen allerede er åben.
+  const focusN = focusWeekday?.n ?? null;
+  const focusDay = focusWeekday?.weekday ?? null;
+  useEffect(() => {
+    if (focusN == null || !focusDay) return;
+    const idx = startDayIndex(weekdays, focusDay);
+    setDay(idx);
+    setOpenDay(idx);
+  }, [focusN, focusDay, weekdays]);
   const [sheet, setSheet] = useState(false);
 
   const closeSheet = () => setSheet(false);

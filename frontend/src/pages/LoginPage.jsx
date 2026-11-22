@@ -68,7 +68,7 @@ function ResendConfirmation({ t, state, error, cooldownLeft, onResend, disabled 
 }
 
 export default function LoginPage() {
-  const { t } = useTranslation(["auth", "errors"]);
+  const { t } = useTranslation(["auth", "errors", "common"]);
   const { language } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
@@ -98,6 +98,7 @@ export default function LoginPage() {
   });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [teamName, setTeamName] = useState("");
   const [managerName, setManagerName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -242,6 +243,7 @@ export default function LoginPage() {
   function handleFixEmail() {
     setSuccess(null);
     setMode("signup");
+    setShowPassword(false);
     setError("");
     setResendState("idle");
     setResendError("");
@@ -250,6 +252,7 @@ export default function LoginPage() {
 
   function switchMode(nextMode) {
     setMode(nextMode);
+    setShowPassword(false);
     resetMessages();
 
     if (nextMode !== "signup") {
@@ -498,7 +501,9 @@ export default function LoginPage() {
               header / marketing). The theme-aware logotype carries the brand name,
               so it doubles as the page heading — no redundant text title. */}
           <h1>
-            <Wordmark className="mx-auto h-9 w-auto" />
+            <Link to="/" className="inline-flex min-h-11 items-center">
+              <Wordmark className="h-9 w-auto" />
+            </Link>
           </h1>
           <p className="mt-4 text-sm text-cz-2">{subtitle}</p>
           {nextPath && (
@@ -613,6 +618,7 @@ export default function LoginPage() {
                   setTeamName("");
                   setManagerName("");
                   setPassword("");
+                  setShowPassword(false);
                 }}
               >
                 {t("auth:success.signupCta")}
@@ -671,7 +677,10 @@ export default function LoginPage() {
                 </label>
                 <Input
                   id="auth-email"
+                  name="email"
                   type="email"
+                  autoComplete="username"
+                  spellCheck={false}
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder={t("auth:field.email.placeholder")}
@@ -719,21 +728,38 @@ export default function LoginPage() {
                   <label htmlFor="auth-password" className={labelClass()}>
                     {t("auth:field.password.label")}
                   </label>
-                  <Input
-                    id="auth-password"
-                    type="password"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                    minLength={6}
-                    error={Boolean(error)}
-                    aria-describedby={
-                      [isSignupMode ? "auth-password-help" : null, error ? "auth-error" : null]
-                        .filter(Boolean)
-                        .join(" ") || undefined
-                    }
-                  />
+                  <div className="flex items-stretch gap-2">
+                    <Input
+                      id="auth-password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete={isSignupMode ? "new-password" : "current-password"}
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      className="min-w-0"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      required
+                      minLength={6}
+                      error={Boolean(error)}
+                      aria-describedby={
+                        [isSignupMode ? "auth-password-help" : null, error ? "auth-error" : null]
+                          .filter(Boolean)
+                          .join(" ") || undefined
+                      }
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="min-h-11 min-w-11 shrink-0"
+                      aria-controls="auth-password"
+                      aria-pressed={showPassword}
+                      onClick={() => setShowPassword(visible => !visible)}
+                    >
+                      {showPassword ? t("common:actions.hide") : t("common:actions.show")}
+                    </Button>
+                  </div>
                   {isSignupMode && (
                     <p id="auth-password-help" className={helperClass()}>{t("auth:field.password.help")}</p>
                   )}

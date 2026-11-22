@@ -1,5 +1,314 @@
 export const PATCHES = [
 {
+  "version": "7.495",
+  "date": "2026-11-22",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "switched_on",
+      "flag": "training_page_r5",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "Discard changes on the Program tab",
+        "body": "Unsaved changes to a week now sit next to Save plan, with a button to discard them. The tab also shows a clear message if the programs cannot load, and the dropdowns are easier to see and tap."
+      },
+      "da": {
+        "title": "Kassér ændringer på Program-fanen",
+        "body": "Ændringer i en uge, der ikke er gemt, står nu ved Gem plan, med en knap til at kassere dem. Fanen viser også en tydelig besked, hvis programmerne ikke kan hentes, og rullemenuerne er nemmere at se og trykke på."
+      },
+      "refs": [
+        8561,
+        7456
+      ]
+    }
+  ]
+},
+{
+  "version": "7.494",
+  "date": "2026-11-22",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "switched_on",
+      "flag": "training_effort_levels",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "Easy, Medium and Hard now show everywhere",
+        "body": "The rider profile's Training tab and Today still showed the old intensity words. They now use Easy, Medium and Hard, and the injury risk only shows on Hard."
+      },
+      "da": {
+        "title": "Let, Mellem og Hård vises nu overalt",
+        "body": "Rytterprofilens Træning-fane og I dag viste stadig de gamle intensitetsord. Nu bruger de Let, Mellem og Hård, og skaderisikoen står kun ved Hård."
+      },
+      "refs": [
+        8541,
+        7947
+      ]
+    }
+  ]
+},
+{
+  "version": "7.493",
+  "date": "2026-11-22",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Inbox",
+      "area": "mobile",
+      "en": {
+        "title": "Inbox shows there are more tabs",
+        "body": "When the inbox tabs don't fit on a small screen, a small arrow now shows that there are more tabs to scroll to."
+      },
+      "da": {
+        "title": "Indbakken viser, at der er flere faner",
+        "body": "Når indbakkens faner ikke kan være på en lille skærm, viser en lille pil nu, at der er flere faner at rulle til."
+      },
+      "refs": [
+        8073
+      ]
+    }
+  ]
+},
+{
+  "version": "7.492",
+  "date": "2026-11-22",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Onboarding",
+      "area": "help",
+      "en": {
+        "title": "Auction tour ends with a way out",
+        "body": "The auction tour now finishes with a Dashboard button instead of leaving you mid-page, and it no longer shows a technical message when a step has nothing to point at."
+      },
+      "da": {
+        "title": "Auktionsrundvisningen har nu en vej ud",
+        "body": "Auktionsrundvisningen slutter nu med en Dashboard-knap i stedet for at lade dig stå midt på siden, og den viser ikke længere en teknisk besked, når et trin ikke har noget at pege på."
+      },
+      "refs": [
+        8429
+      ]
+    }
+  ]
+},
+{
+  "version": "7.491",
+  "date": "2026-11-22",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "switched_on",
+      "flag": "potential_estimate_display",
+      "topic": "Development",
+      "area": "development",
+      "en": {
+        "title": "Potential is a number from 1 to 99",
+        "body": "A rider's potential is now shown as a number from 1 to 99 instead of stars, with a word for how sure your scout is. Young riders never got a lower expectation than before the change."
+      },
+      "da": {
+        "title": "Potentiale er et tal fra 1 til 99",
+        "body": "En rytters potentiale vises nu som et tal fra 1 til 99 i stedet for stjerner, med et ord for, hvor sikker jeres spejder er. Ingen ung rytter fik en lavere forventning end før skiftet."
+      },
+      "refs": [
+        6110,
+        7685
+      ]
+    }
+  ]
+},
+{
+  "version": "7.490",
+  "date": "2026-11-22",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Login",
+      "area": "interface",
+      "en": {
+        "title": "Login works with your password manager",
+        "body": "Login and sign-up now work with browser autofill and password managers. The empty password field no longer shows fake dots, there is a Show/Hide button for the password, and the logo takes you back to the front page."
+      },
+      "da": {
+        "title": "Login virker med din adgangskodehåndtering",
+        "body": "Login og oprettelse virker nu med browserens autofyld og adgangskodehåndtering. Det tomme kodeordsfelt viser ikke længere falske prikker, der er en Vis/Skjul-knap til kodeordet, og logoet fører tilbage til forsiden."
+      },
+      "refs": [
+        8428
+      ]
+    }
+  ]
+},
+{
+  "version": "7.489",
+  "date": "2026-11-22",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "switched_on",
+      "topic": "Development",
+      "area": "development",
+      "highlight": true,
+      "en": {
+        "title": "Riders develop by potential",
+        "body": "From today, development works differently. Every rider has a potential, and it decides how much XP he earns each day, the same through his whole career. From 34 he earns a little less. XP varies from day to day but evens out over a season. Each new point costs a little more XP than the last, and that price is the same for every rider, so a big talent goes higher because he earns more, not because his points are cheaper. Riders improve season after season and peak around 30. There is no longer a limit on how much an ability can rise on one date. Progress the riders on your team have saved on their bars is paid out in full on their first day with XP, so an injured rider gets it when he is back. From the season change on 27-28 November, riders also age differently. From around 31 the body ages: the physical abilities and cobbles drop at every season change, and the drop grows with age. Racing slows it, and his daily training wins some of it back, so a veteran who races and trains keeps his level longer. Late in a career, technique and the mental abilities drop a little too. This replaces an earlier promise that technique never dropped."
+      },
+      "da": {
+        "title": "Ryttere udvikler sig efter potentiale",
+        "body": "Fra i dag virker udviklingen anderledes. Hver rytter har et potentiale, og det bestemmer, hvor meget XP han tjener hver dag, det samme hele karrieren. Fra 34 tjener han lidt mindre. XP svinger fra dag til dag, men jævner sig ud over en sæson. Hvert nyt point koster lidt mere XP end det forrige, og den pris er den samme for alle ryttere, så et stort talent når højere, fordi han tjener mere, ikke fordi hans point er billigere. Ryttere bliver bedre sæson efter sæson og topper omkring 30. Der er ikke længere en grænse for, hvor meget en evne kan stige på én dato. Fremgang, som rytterne på dit hold har gemt på deres bjælker, udbetales helt på deres første dag med XP, så en skadet rytter får den, når han er tilbage. Fra sæsonskiftet 27.-28. november ældes ryttere også anderledes. Fra omkring 31 ældes kroppen: de fysiske evner og brosten falder ved hvert sæsonskifte, og faldet vokser med alderen. Løb bremser det, og hans daglige træning henter noget af det igen, så en veteran, der kører løb og træner, holder sit niveau længere. Sent i karrieren falder teknik og de mentale evner også en smule. Det afløser et tidligere løfte om, at teknik aldrig faldt."
+      },
+      "refs": [
+        6110
+      ]
+    }
+  ]
+},
+{
+  "version": "7.488",
+  "date": "2026-11-22",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "switched_on",
+      "flag": "training_page_r5",
+      "topic": "Training",
+      "area": "training",
+      "highlight": true,
+      "en": {
+        "title": "New training page with Light, Medium and Hard",
+        "body": "Daily training has a new look. In Today you pick an effort for the whole team or for each rider: Light, Medium or Hard. Hard gives the most progress but carries an injury risk; Light and Medium do not. In Program you plan the week for programs, groups and riders, and save it with Save plan. The page works on phone too."
+      },
+      "da": {
+        "title": "Ny træningsside med Let, Mellem og Hård",
+        "body": "Daglig træning har fået nyt udseende. I I dag vælger I en indsats for hele holdet eller for hver rytter: Let, Mellem eller Hård. Hård giver mest fremgang, men har en skaderisiko; Let og Mellem har ikke. I Program planlægger I ugen for programmer, grupper og ryttere og gemmer med Gem plan. Siden virker også på telefon."
+      },
+      "refs": [
+        7947,
+        7456
+      ]
+    },
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta_to_live",
+      "flag": "race_page_v6",
+      "topic": "Races",
+      "area": "races",
+      "en": {
+        "title": "The new race page is live for everyone",
+        "body": "The new race page with the race film, split times, tactics and the coloured route is now on for everyone. The spoiler shield in Settings now also hides the result on the race page until you open it."
+      },
+      "da": {
+        "title": "Den nye løbsside er tændt for alle",
+        "body": "Den nye løbsside med løbsfilmen, mellemtider, taktik og den farvede rute er nu tændt for alle. Spoiler-skjoldet under Indstillinger skjuler nu også resultatet på løbssiden, til I åbner det."
+      },
+      "refs": [
+        7778,
+        7859
+      ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "beta_to_live",
+      "flag": "planning_workbench",
+      "topic": "Planning",
+      "area": "races",
+      "en": {
+        "title": "The new planning page is live for everyone",
+        "body": "The planning page, with the race list, week overview, route profile, squad and form peak in one place, is now on for everyone."
+      },
+      "da": {
+        "title": "Den nye planlægningsside er tændt for alle",
+        "body": "Planlægningssiden, med løbsliste, ugeoversigt, ruteprofil, trup og formtop ét sted, er nu tændt for alle."
+      },
+      "refs": [
+        7535
+      ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "beta_to_live",
+      "flag": "patch_notes_v2_8049",
+      "topic": "Patch notes",
+      "area": "interface",
+      "en": {
+        "title": "The new patch notes page is live for everyone",
+        "body": "Patch notes are now grouped by area, week by week, with an archive per month. A dot shows what is new since your last visit."
+      },
+      "da": {
+        "title": "Den nye side for patch notes er tændt for alle",
+        "body": "Patch notes står nu efter område, uge for uge, med et arkiv pr. måned. En prik viser, hvad der er nyt siden sidst."
+      },
+      "refs": [
+        8049
+      ]
+    }
+  ]
+},
+{
+  "version": "7.487",
+  "date": "2026-11-22",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "switched_on",
+      "flag": "development_xp_model",
+      "topic": "Development",
+      "area": "development",
+      "en": {
+        "title": "Change focus and older days with XP",
+        "body": "With XP switched on, each rider in the Development tab has a Change focus button again. The Report tab can show older days, and it says clearly when there is no training yet or when the report could not be loaded."
+      },
+      "da": {
+        "title": "Skift fokus og ældre dage med XP",
+        "body": "Når XP er tændt, har hver rytter på fanen Udvikling igen knappen Skift fokus. Fanen Rapport kan vise ældre dage og siger tydeligt, når der ingen træning er endnu, eller når rapporten ikke kunne hentes."
+      },
+      "refs": [
+        8562
+      ]
+    }
+  ]
+},
+{
+  "version": "7.486",
+  "date": "2026-11-22",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "Manage training groups in Program",
+        "body": "In the Program tab you can now create, rename and delete training groups, pick their members and give a group its own fatigue limit. A rider on his own plan can follow his group again with one tap. It works on phone too."
+      },
+      "da": {
+        "title": "Styr træningsgrupper under Program",
+        "body": "Under fanen Program kan I nu oprette, omdøbe og slette træningsgrupper, vælge medlemmer og give en gruppe sin egen træthedsgrænse. En rytter med egen plan kan følge sin gruppe igen med ét tryk. Det virker også på telefon."
+      },
+      "refs": [
+        8560
+      ]
+    }
+  ]
+},
+{
   "version": "7.485",
   "date": "2026-11-21",
   "changes": [

@@ -1006,6 +1006,32 @@ features:
     decision: goer-faerdigt
     decide_by: 2026-12-04
 
+  - id: training-rotation-8548
+    area: training
+    title_en: Rotation plans that wait on rest and races
+    title_da: Rotation, der venter ved hvile og løb
+    state: building
+    flag: training_rotation
+    ssot: docs/TRAINING_RULES.md
+    epic: 7456
+    verified: 2026-11-22
+    note: "PR 1 af 3 (migration, validering, API) bag training_rotation = off. Motor (PR 2, Fable-dom) og R5-UI (PR 3) følger; ejer tænder."
+    decision: goer-faerdigt
+    decide_by: 2026-12-06
+
+  - id: training-week-forecast-8580
+    area: training
+    title_en: The rolling training week for the day picker
+    title_da: Den rullende træningsuge til dagsvælgeren
+    state: building
+    flag: training_week_forecast
+    ssot: docs/TRAINING_RULES.md
+    epic: 7456
+    verified: 2026-11-22
+    note: "PR 1 af 2 (GET /api/training/programs/forecast/week) bag training_week_forecast = off. Dag 0 = GET /forecast uændret; dagene frem har kun løbs- og hvilefelter (ingen træthed, K-7). Dagsvælgeren i I dag R5 (PR 2) følger; Fable-dom før merge; ejer tænder."
+    decision: goer-faerdigt
+    decide_by: 2026-12-06
+
   # --- academy -------------------------------------------------------------
   - id: academy
     area: academy
@@ -1274,12 +1300,12 @@ features:
     area: training
     title_en: One potential source
     title_da: Én prognose-kilde (gemt skøn pr. rytter og hold)
-    state: dormant
+    state: live
     flag: potential_estimate_display
     ssot: docs/superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md
     epic: 6110
-    verified: 2026-11-21
-    note: "Tændt og slukket igen 21/11 aften (ejer): gemte skøn mangler (potential_estimate_writes + params + backfill, #7685). Tændes efter XP-start 22/11."
+    verified: 2026-11-22
+    note: "Tændt 22/11 ca. 01.20 (ejer: \"Ret vægten + tænd i nat\") efter backfill med H6-rettet vægt, alle fem gater grønne."
     decision: goer-faerdigt
     decide_by: 2026-12-31
 
@@ -1287,13 +1313,13 @@ features:
     area: training
     title_en: Stored potential estimates
     title_da: Gemte potentiale-skøn (søndagsjob og skrivning)
-    state: building
+    state: live
     ssot: docs/superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md
     epic: 6110
-    verified: 2026-11-05
+    verified: 2026-11-22
     decision: goer-faerdigt
     decide_by: 2026-12-31
-    note: 'Trin 5 (#7685): søndagsjob, holdskifte og nye kig; flaget seedes off.'
+    note: "Tændt 22/11 ca. 01.15 sammen med backfill (#7685)."
 
   - id: train-now-instant
     area: training

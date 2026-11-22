@@ -45,6 +45,8 @@ import {
 } from "../../../lib/trainingDayTypes.js";
 import { useTrainingCatalogV3 } from "../../../lib/useTrainingCatalogV3.ts";
 import { WEEKDAY_KEYS, injuryBadgeMessage, injuryTimeLeft } from "../../../lib/training.js";
+import DayPickerR5 from "./DayPickerR5.tsx"; // #8580
+import { weekUsable, type WeekResponse } from "./dayPickerModel.ts"; // #8580
 import { ageForSeason, contractExpiringBadgeKey, retirementRiskBadgeKey } from "../../../lib/riderAge.js";
 import { groupRidersByType, UNTYPED_KEY } from "../../../lib/trainingRoster.js";
 import { formatDate } from "../../../lib/intl.js";
@@ -89,6 +91,10 @@ type Plan = { focus?: string | null; intensity?: string | null } | null | undefi
 type Result = { ok: boolean; error?: string } | null | undefined;
 
 export type TodayR5Props = {
+  /** #8580: den rullende uge (GET /forecast/week). null/undefined = ingen dagsvælger, fanen som før. */
+  week?: WeekResponse | null;
+  /** #8580: "Ret <ugedag> i Program" fra en dag frem. */
+  onEditWeekday?: (weekday: string) => void;
   riders: R5Rider[];
   loading: boolean;
   phone: boolean;
@@ -1003,7 +1009,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
     </div>
   ) : r5.phone ? mobileList : desktopTable;
 
-  return (
+  const page = (
     <div className="space-y-3" data-testid="r5-today">
       {overviewLine}
       <FatigueRuleSummary data={r5.fatigueRules as never} onEdit={r5.onEditFatigueRule} />
@@ -1027,5 +1033,11 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
         )}
       </div>
     </div>
+  );
+  // #8580: med ugen hentet (kontakten training_week_forecast) står dagsvælgeren øverst; dag 0 er fanen som før.
+  if (!weekUsable(r5.week)) return page;
+  return (
+    <DayPickerR5 week={r5.week} riders={r5.riders} planFor={r5.planFor} riderWeekPlans={r5.riderWeekPlans}
+      phone={r5.phone} onEditWeekday={r5.onEditWeekday} today={page} />
   );
 }

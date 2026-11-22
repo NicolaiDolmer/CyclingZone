@@ -81,6 +81,7 @@ import { trainNowRunGate, trainNowSaveErrorKey, trainNowNeedsConfirm, trainNowWa
 import TrainNowNote from "../components/training/TrainNowNote.tsx";
 import FatigueForecast from "../components/training/FatigueForecast.tsx";
 import { useFatigueForecast } from "../components/training/FatigueForecastData.ts";
+import { useTrainingWeek } from "../components/training/r5/useTrainingWeek.ts"; // #8580
 import { todayLockedSlots, ranSlotsFor } from "../components/training/settleAfterStage7982/settleAfterStageModel.ts"; // #7982
 import RaceSessionNote from "../components/training/settleAfterStage7982/RaceSessionNote.tsx";
 import { programSessionToday, PROGRAM_SLOTS, isProgramPlan } from "../lib/trainingPrograms.ts";
@@ -551,6 +552,8 @@ export default function TrainingPage() {
   // #5933: "Fatigue tonight: approx. X". Hentes igen hver gang planen eller
   // dagsvalget ændrer sig, så tallet følger felterne live før dagen bekræftes.
   const fatigueForecast = useFatigueForecast({ enabled: programs.cellsEnabled });
+  // #8580: dagsvælgerens uge; serveren afgør kontakten (available:false = ingen vælger).
+  const trainingWeek = useTrainingWeek({ enabled: trainingR5 });
   const reloadForecast = fatigueForecast.reload;
   useEffect(() => { reloadForecast(); }, [reloadForecast, riderWeekPlans, weekPlan, training.plans, todayRun]);
   const forecastFor = (riderId) => fatigueForecast.entryFor(riderId);
@@ -581,6 +584,11 @@ export default function TrainingPage() {
   const openOwnPlan = (riderId) => {
     setWeekPlanFor(riderId);
     if (trainingR5) setR5ProgramRequest((prev) => ({ kind: "rider", id: riderId, n: (prev?.n ?? 0) + 1 }));
+    setTab("weekplan");
+  };
+  // #8580 (Codex P2 #8594): "Ret <ugedag> i Program" aabner Program paa netop den ugedag.
+  const openProgramWeekday = (weekday) => {
+    if (trainingR5) setR5ProgramRequest((prev) => ({ kind: "weekday", weekday, n: (prev?.n ?? 0) + 1 }));
     setTab("weekplan");
   };
   const openFatigueRule = () => {
@@ -773,7 +781,7 @@ export default function TrainingPage() {
   // eller een rytters egen plan (hans id).
   const [weekPlanFor, setWeekPlanFor] = useState("team");
   // #8533 Codex P2: R5-programfanen har sit eget valg; "Rediger plan" og "Rediger graense" skal naa ind i den.
-  const [r5ProgramRequest, setR5ProgramRequest] = useState(/** @type {{ kind: "rider" | "limit"; id?: string; n: number } | null} */ (null));
+  const [r5ProgramRequest, setR5ProgramRequest] = useState(/** @type {{ kind: "rider" | "limit" | "weekday"; id?: string; weekday?: string; n: number } | null} */ (null));
   const clearR5ProgramRequest = useCallback(() => setR5ProgramRequest(null), []);
   // #5932: fejl fra en felt-rettelse i Plan-kortet (felter gemmes med det samme).
   const [planCellError, setPlanCellError] = useState(null);
@@ -2509,6 +2517,7 @@ export default function TrainingPage() {
     planError: planActionError, runError, decisionRows: decisionCardOn ? decisionRows : null, fatigueRules: fatigueRules.data, assistantPanel, bulkMessage: bulkMsgNode,
     onPlan: handlePlanChange, onBulk: applyBulkChoice, onPickSession: setFocusPanelRiderId, onReset: handleResetToTeamProgram, onClearPlan: handleClearPlan,
     onOpenPlan: openOwnPlan, onOpenPrograms: () => setSub("programs"), onEditFatigueRule: openFatigueRule,
+    week: trainingWeek.week, onEditWeekday: openProgramWeekday, // #8580
     onOpenAssistant: handleOpenAssistantPanel, renderCard: renderRiderCard,
     effortLevels: training.effortLevels === true, // #7947 PR 3: Let/Mellem/Haard (training_effort_levels)
   } : null;

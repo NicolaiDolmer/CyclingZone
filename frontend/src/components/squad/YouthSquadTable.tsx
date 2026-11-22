@@ -11,7 +11,8 @@
 // Værdien står i --text-1 og ikke i guld-tekst som på My Team: TASTE fork 3
 // forbyder guld-tal.
 //
-// Mobil (D-047): rating, værdi og løn, præcis som My Team (ejer 10/9).
+// Mobil (D-047): rating, værdi og løn som My Team (ejer 10/9); #8544: med prognosen
+// tændt i stedet rating, potentiale og prognose.
 //
 // #5631 (spillere i beta-forummet 24/9: "Abilities is also missing and is only
 // accessible from the My Team"): samme to kolonne-tilstande som My Team
@@ -37,11 +38,11 @@ import { prognosisViewOf } from "../../lib/potentialEstimateDisplay.ts";
 import { useTypeColumnLabel } from "../../lib/useTypeColumnLabel.ts";
 import { useTableSort } from "../../lib/useTableSort.js";
 import { riderNameSortKey } from "../../lib/riderColumnSort.js";
+import { riderShortName } from "../../lib/riderName.ts";
 import { riderOverallRating } from "../../lib/riderRating.js";
 import { statPlateStyle } from "../../lib/statColor.js";
 import { getRiderMarketValue } from "../../lib/marketValues.js";
 import { contractExpiringBadgeKey, getRiderAge, seasonNumberFromReferenceYear } from "../../lib/riderAge.js";
-import { getCountryCode3 } from "../../lib/countryUtils.js";
 import { scoutSortValue } from "../../lib/scouting.js";
 import { formatNumber } from "../../lib/intl.js";
 import { useRiderReputation } from "../../lib/useRiderReputation.ts";
@@ -60,6 +61,7 @@ function prognosisValue(estimate: unknown): number | null {
 
 interface Scouting {
   estimateFor: (riderId: string) => unknown;
+  requestEstimates?: (riderIds: string[]) => void;
 }
 
 interface Row extends YouthSquadRider {
@@ -90,6 +92,9 @@ const ACCESSORS: Record<string, (r: Row) => unknown> = {
 const DESC_FIRST = new Set(["_ovr", "age", "_scoutMid", "_prognosis", "_value", "salary", "popularity", "reputation", "contract_end_season", ...ABILITY_KEYS]);
 const SORT_OPTS = { descFirstKeys: DESC_FIRST };
 const MOBILE_DEFAULTS = ["rating", "value", "salary"];
+// #8544: med prognosen tændt er telefonens tre kolonner Rating, Potentiale og Prognose;
+// værdi og løn er ét tryk væk i chip-rækken. Slukket er standarden som før.
+const MOBILE_DEFAULTS_POTENTIAL = ["rating", "potential", "prognosis"];
 
 type TableMode = "overview" | "abilities";
 
@@ -142,6 +147,15 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
   // contract_end_season er et sæson-NUMMER, så det udledes af referenceåret.
   const activeSeasonNumber = seasonNumberFromReferenceYear(seasonYear);
 
+  // #8544: estimaterne hentes for hele truppen med det samme. Ellers bad kun
+  // potentiale-cellen om dem, og den vises ikke paa telefon, saa prognosen (og
+  // dermed telefonens standardkolonner) aldrig blev hentet.
+  const riderIdsKey = riders.map((r) => r.id).join(",");
+  const requestEstimates = scouting.requestEstimates;
+  useEffect(() => {
+    if (riderIdsKey && requestEstimates) requestEstimates(riderIdsKey.split(","));
+  }, [riderIdsKey, requestEstimates]);
+
   const decorated = useMemo<Row[]>(() => riders.map((r) => {
     const ovr = riderOverallRating(r);
     return {
@@ -164,8 +178,8 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
       key: "nation",
       header: t("squad.headers.nation"),
       sortKey: "nationality_code",
-      fold: true,
-      foldValue: (r) => getCountryCode3(r.nationality_code) || "—",
+      // Ejer 22/11 (#8554): alder og nation er ikke en del af navnet. Ingen fold ind i
+      // navnecellen paa telefon; de er egne kolonner (et tryk vaek i chip-raekken).
       render: (r) => <NationCell code={r.nationality_code} />,
     },
     {
@@ -178,6 +192,19 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
           {r.firstname} {r.lastname}
         </RiderLink>
       ),
+      // #8554 (ejer 22/11): paa telefon kun navnet paa EEN linje, i den korte form ejeren
+      // valgte 18/9 (#5350, "E. Vestergaard") som Rytterdatabasen, Mit Hold og traeningen.
+      // Tabellen tvinger ombrydning paa telefon (D-047, **:whitespace-normal); navnet holdes derfor
+      // paa een linje med `!`-nowrap og en fast maksbredde med ellipsis, saa ingen vandret scroll.
+      renderShort: (r) => (
+        <span className="block max-w-[10rem] truncate !whitespace-nowrap" title={[r.firstname, r.lastname].filter(Boolean).join(" ")}>
+          {/* Fuldt navn som tilgængeligt navn: skærmlæsere (og rækkens navn) får hele navnet. */}
+          <RiderLink id={r.id} stopPropagation aria-label={[r.firstname, r.lastname].filter(Boolean).join(" ")}
+            className="!whitespace-nowrap text-cz-1 hover:text-cz-accent-t transition-colors">
+            {riderShortName(r)}
+          </RiderLink>
+        </span>
+      ),
     },
     {
       key: "rating",
@@ -186,6 +213,7 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
       sortKey: "_ovr",
       numeric: true,
       compact: true,
+      tight: true, // #8554: tre tal-kolonner + navn skal kunne staa i 390 px uden klip
       render: (r) => (r._ovr != null ? (
         <WithBestRole rider={r}>
           <span className="inline-flex items-center justify-center min-w-[30px] px-1.5 py-0.5 rounded-cz font-semibold"
@@ -208,8 +236,6 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
       sortKey: "age",
       numeric: true,
       compact: true,
-      fold: true,
-      foldValue: (r) => String(r._age ?? "—"),
       render: (r) => <span className="text-cz-2">{r._age ?? "—"}</span>,
     },
     {
@@ -218,6 +244,7 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
       mobileLabel: t("squad.headers.potential"),
       sortKey: "_scoutMid",
       compact: true,
+      tight: true, // #8554
       render: (r) => <ScoutablePotentiale rider={r} scouting={scouting} labelAsTitle hideLevel />,
     },
     ...(prognosisOn ? [{
@@ -226,6 +253,7 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
       mobileLabel: tRiders("potentialNumber.prognosis"),
       sortKey: "_prognosis",
       compact: true,
+      tight: true, // #8554
       numeric: true,
       render: (r: Row) => {
         const view = prognosisViewOf(scouting.estimateFor(r.id));
@@ -316,7 +344,7 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
       columns={columns}
       rows={rows}
       rowKey={(r) => r.id}
-      mobileDefaults={tableMode === "abilities" ? ABILITY_MODE_MOBILE_DEFAULTS : MOBILE_DEFAULTS}
+      mobileDefaults={tableMode === "abilities" ? ABILITY_MODE_MOBILE_DEFAULTS : (prognosisOn ? MOBILE_DEFAULTS_POTENTIAL : MOBILE_DEFAULTS)}
       dense
       rowProps={(r) => ({ onClick: () => navigate(`/riders/${r.id}`), className: "cursor-pointer" })}
       sort={sort}

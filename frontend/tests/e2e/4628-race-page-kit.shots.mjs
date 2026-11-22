@@ -42,7 +42,7 @@ for (const vp of VIEWPORTS) {
   });
   await page.goto("/login");
   await page.getByPlaceholder("you@email.com").fill("manager@cyclingzone.test");
-  await page.getByPlaceholder("••••••••").fill("preview-mock");
+  await page.locator("#auth-password").fill("preview-mock");
   await page.getByRole("button", { name: /^Log in$/ }).click();
   await page.waitForURL(/\/(dashboard|races|$)/, { timeout: 20000 });
 

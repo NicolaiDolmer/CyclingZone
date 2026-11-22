@@ -173,6 +173,34 @@
       "limitAbove": "Au-dessus de",
       "limitRun": "faire",
       "limitInstead": "à la place"
-    }
+    },
+    "loadErrorTitle": "Les programmes n'ont pas pu être chargés",
+    "loadErrorBody": "Rien n'est perdu. Vos plans enregistrés sont en sécurité.",
+    "retry": "Réessayer",
+    "emptyTitle": "Aucun programme pour l'instant",
+    "emptyBody": "Créez un groupe et attribuez-lui un programme pour planifier la semaine de plusieurs coureurs à la fois.",
+    "emptyBodyNoGroups": "Attribuez un programme à un coureur pour planifier la semaine.",
+    "discard": "Annuler les modifications",
+    "discardTitle": "Annuler {n, plural, one {# modification} other {# modifications}} ?",
+    "discardBody": "La semaine revient au plan enregistré.",
+    "discardGo": "Annuler les modifications"
+  },
+  "dayPicker": {
+    "label": "Choisir le jour",
+    "prev": "Jour précédent",
+    "next": "Jour suivant",
+    "today": "Aujourd'hui",
+    "training": "Entraînement",
+    "stage": "Étape {n}",
+    "stageRace": "Course par étapes",
+    "oneDay": "Course d'un jour",
+    "autoRace": "Course · auto",
+    "rider": "Coureur",
+    "countTraining": "s'entraînent",
+    "countRacing": "courent",
+    "notReady": "Les jours de course de cette date ne sont pas encore prêts.",
+    "autoNote": "L’assistant sélectionne ton équipe pour {races} au départ. Les coureurs ne sont connus qu’à ce moment-là.",
+    "aheadNote": "Les jours à venir montrent le plan. Un changement s'applique à chaque {weekday}.",
+    "editInProgram": "Modifier le {weekday} dans Programme"
   }
 }

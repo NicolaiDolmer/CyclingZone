@@ -55,7 +55,7 @@ const CURVE_B_OFF_BLOCKS: Array<[string, string]> = [
 ];
 
 // Prod i dag: kurve B on, loebsdags-modellen on, bonus on, XP off.
-const TODAY = { [CURVE_B]: true, [TICK]: true, [BONUS]: true, [XP]: false };
+const TODAY = { [CURVE_B]: true, [TICK]: true, [BONUS]: true, [XP]: false, training_effort_levels: true };
 const XP_ON = { ...TODAY, [XP]: true };
 const STATES: Array<[string, Flags]> = [
   ["i dag", TODAY],

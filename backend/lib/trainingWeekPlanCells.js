@@ -35,6 +35,8 @@ function copyDays(days) {
       // #7947: indsats-noeglerne foelger med kopien (additive; laeses kun med kontakten).
       ...(entry.effort != null ? { effort: entry.effort } : {}),
       ...(entry.slotEfforts ? { slotEfforts: [...entry.slotEfforts] } : {}),
+      // #8549: dagens laas foelger med kopien (laeses foerst bag kontakten i en senere PR).
+      ...(entry.lockSlot != null ? { lockSlot: entry.lockSlot } : {}),
     };
   }
   return out;

@@ -173,6 +173,34 @@
       "limitAbove": "Above",
       "limitRun": "run",
       "limitInstead": "instead"
-    }
+    },
+    "loadErrorTitle": "The programs could not be loaded",
+    "loadErrorBody": "Nothing was lost. Your saved plans are safe.",
+    "retry": "Try again",
+    "emptyTitle": "No program yet",
+    "emptyBody": "Make a group and put a program on it to plan the week for several riders at once.",
+    "emptyBodyNoGroups": "Put a program on a rider to plan the week.",
+    "discard": "Discard changes",
+    "discardTitle": "Discard {n, plural, one {# change} other {# changes}}?",
+    "discardBody": "The week goes back to the saved plan.",
+    "discardGo": "Discard"
+  },
+  "dayPicker": {
+    "label": "Choose day",
+    "prev": "Previous day",
+    "next": "Next day",
+    "today": "Today",
+    "training": "Training",
+    "stage": "Stage {n}",
+    "stageRace": "Stage race",
+    "oneDay": "One-day race",
+    "autoRace": "Race · auto",
+    "rider": "Rider",
+    "countTraining": "training",
+    "countRacing": "racing",
+    "notReady": "The race days for this date are not ready yet.",
+    "autoNote": "The assistant picks your team for {races} at race start. Who rides is known then.",
+    "aheadNote": "Days ahead show the plan. A change applies to every {weekday}.",
+    "editInProgram": "Edit {weekday} in Program"
   }
 }

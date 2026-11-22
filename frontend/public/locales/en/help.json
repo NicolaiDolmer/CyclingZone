@@ -1053,7 +1053,7 @@
           "Every rider ages up by one year.",
           "Form decays toward 50: about 25% of each rider's end-of-season form carries into the new season.",
           "New seasons start with a little base fatigue for every rider. Before the first race, rest lowers form, normal training holds it and hard training raises it.",
-          "Injuries are NOT reset. They carry over unchanged.",
+          "All injuries and illnesses are cleared. Every rider starts the new season fit.",
           "Peak plans are unaffected by the changeover.",
           "Season wages are paid during the changeover. Rider values update once, right after the changeover has finished, and then at the normal Sunday update.",
           "Training continues every day between seasons and counts toward the new season. Your chosen program still applies, missed training is picked up automatically, and Train now also works before the first race. Check the calendar for the first race."

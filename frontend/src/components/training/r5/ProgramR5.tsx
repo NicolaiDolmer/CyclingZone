@@ -15,17 +15,22 @@
 // traethedsgraensen). Rotation, prioritet og laas pr. dag findes ikke i backend
 // endnu; se designnoten i PR'en. Telefonen (#8547, ejer 21/11) er ProgramR5Phone: en skifter
 // Dag/Uge, Gem fast i bunden; data, kladder og gemme-kald er de samme som her.
-import { useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentType, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import Button from "../../ui/Button.jsx";
 import Checkbox from "../../ui/Checkbox.jsx";
+import EmptyState from "../../ui/EmptyState.jsx";
+import ErrorStateJs from "../../ui/ErrorState.jsx";
+import Select from "../../ui/Select.jsx";
+import { controlClass } from "../../ui/fieldStyles.js";
+import Skeleton, { SkeletonLines } from "../../ui/Skeleton.jsx";
 import Modal from "../../ui/Modal.jsx";
 import Segmented from "../../ui/Segmented.jsx";
 import { Menu, MenuItem } from "../../ui/Menu.jsx";
 import { useDismiss } from "../../ui/useDismiss.js";
 import {
-  ClipboardIcon, FlagIcon, LockIcon, MoreIcon, PlusIcon, TeamIcon, UserIcon, XIcon,
+  CalendarIcon, ChevronDownIcon, ClipboardIcon, FlagIcon, LockIcon, MoreIcon, PlusIcon, TeamIcon, UserIcon, XIcon,
 } from "../../ui/icons/index.jsx";
 import FatigueForecast from "../FatigueForecast.tsx";
 import FatigueRuleSummary from "../FatigueRuleSummary.tsx";
@@ -58,12 +63,19 @@ type ProgramsClient = {
   assigned: Record<string, string>;
   seeds: Record<string, ProgramWeekDays>;
   busy: boolean;
+  // #8561: foerste hentning; mangler feltet (aeldre kalder), regnes kataloget som hentet.
+  status?: "loading" | "ready" | "error";
+  retry?: () => Promise<unknown> | void;
   applyProgram: (programKey: string, target: string) => Promise<ProgramsResult>;
   setCell: (riderId: string, weekday: string, slotIndex: number | null, session: string) => Promise<ProgramsResult>;
 };
 
+// ErrorState er JS med `action = null` som standard; TS udleder ellers typen null (som AcademyLedgerTab).
+const ErrorState = ErrorStateJs as unknown as ComponentType<{ title: ReactNode; description?: ReactNode; action?: ReactNode }>;
+
 const FIRST_PROGRAMS = 5;
-const LABEL = "font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3";
+// Kortets meta-label efter PAGE_TEMPLATES (data-font text-2xs, uppercase, tracking .08em, --text-3).
+const LABEL = "font-data text-2xs font-semibold uppercase tracking-[.08em] text-cz-3";
 // #8560: "Egen" starter som graense-kortets gruppe-undtagelse (GroupFatigueExceptions).
 const GROUP_LIMIT_DEFAULTS = { threshold: 70, fallback: "light" };
 
@@ -96,7 +108,7 @@ export default function ProgramR5({
   onDrafts: Dispatch<SetStateAction<Record<string, Draft>>>;
   // #8533 Codex P2: "Rediger plan" paa en rytter / "Rediger" paa traethedsgraensen fra I dag.
   // `n` skifter ved hver anmodning, saa samme rytter kan vaelges igen.
-  request?: { kind: "rider" | "limit"; id?: string; n: number } | null;
+  request?: { kind: "rider" | "limit" | "weekday"; id?: string; weekday?: string; n: number } | null;
   // Kaldes naar anmodningen er behandlet, saa siden kan nulstille den (fanen afmonteres og
   // ville ellers afspille den igen ved naeste besoeg, Fable-fund 1 paa #8533).
   onRequestHandled?: () => void;
@@ -131,6 +143,9 @@ export default function ProgramR5({
   const [groupDialog, setGroupDialog] = useState<{ group: TrainingGroup | null } | null>(null);
   const [limitDraft, setLimitDraft] = useState<GroupLimitDraft>(() => groupLimitDraft(null, GROUP_LIMIT_DEFAULTS));
   const [deleting, setDeleting] = useState<TrainingGroup | null>(null);
+  const [focusWeekday, setFocusWeekday] = useState<{ weekday: string; n: number } | null>(null); // #8580
+  // #8561: "Kassér ændringer" spoerger foer kladderne smides ud.
+  const [discardOpen, setDiscardOpen] = useState(false);
 
   // Kataloget kan lande efter fanen: vaelg da det foerste program, saa fanen aldrig staar tom.
   const firstKey = library.programs[0]?.key ?? null;
@@ -147,6 +162,8 @@ export default function ProgramR5({
     handledRequest.current = request.n;
     onRequestHandled?.();
     if (request.kind === "limit") { setLimitOpen(true); return; }
+    // #8580: dagsvaelgerens "Ret <ugedag> i Program" -> telefonen viser netop den ugedag.
+    if (request.kind === "weekday") { if (request.weekday) setFocusWeekday({ weekday: request.weekday, n: request.n }); return; }
     if (!request.id) return;
     const riderId = request.id;
     const key = library.programs.find((p) => subjectsFor(p.key, library).some((s) => s.kind === "rider" && s.id === riderId))?.key;
@@ -236,6 +253,13 @@ export default function ProgramR5({
     setNote(failed ? { tone: "error", text: tR5("programR5.saveError") } : { tone: "ok", text: tR5("programR5.saved") });
   };
 
+  // #8561: Kassér ændringer = ugen tilbage til det gemte (alle kladder, ogsaa andre gruppers/rytteres).
+  const discardDrafts = () => {
+    setDrafts({});
+    setDiscardOpen(false);
+    setNote(null);
+  };
+
   const putOn = async (value: string) => {
     const target = parseSubjectKey(value);
     if (!target || !programKey) return;
@@ -323,13 +347,23 @@ export default function ProgramR5({
     : "";
   const ownOfGroup = follow && subject?.kind === "rider" ? tR5("programR5.manage.ownPlanOf", { name: follow.groupName }) : null;
 
+  // #8561: gem-linjen i sidehovedets handlingsklynge (PAGE_TEMPLATES): "N ændringer ikke gemt" +
+  // Kassér ændringer ved siden af sidens ene guldknap. Knapperne er skabelonens md (44 px).
   const actions = (
-    <span className="flex items-center gap-2">
-      <Button variant="secondary" size="sm" disabled={!programKey || busy} onClick={() => setCopyOpen(true)}
+    <span className="flex flex-wrap items-center justify-end gap-2">
+      {total > 0 && (
+        <span className="font-data text-xs tabular-nums text-cz-2" data-testid="program-r5-unsaved">{t("weekPlan.unsaved", { n: total })}</span>
+      )}
+      {total > 0 && (
+        <Button variant="secondary" size="md" className="min-h-11" disabled={busy} onClick={() => setDiscardOpen(true)} data-testid="program-r5-discard">
+          {tR5("programR5.discard")}
+        </Button>
+      )}
+      <Button variant="secondary" size="md" className="min-h-11" disabled={!programKey || busy} onClick={() => setCopyOpen(true)}
         title={programKey ? undefined : tR5("programR5.copyNeedsProgram")} data-testid="program-r5-copy">
         {tR5("programR5.copyToRiders")}
       </Button>
-      <Button variant="primary" size="sm" disabled={total === 0 || busy} onClick={savePlan} data-testid="program-r5-save">
+      <Button variant="primary" size="md" className="min-h-11" disabled={total === 0 || busy} onClick={savePlan} data-testid="program-r5-save">
         {saving ? t("loading") : tR5("programR5.savePlan")}
       </Button>
     </span>
@@ -351,8 +385,29 @@ export default function ProgramR5({
       )}
     </div>
   ) : null;
+  const discardModal = discardOpen ? (
+    <Modal
+      open
+      onClose={() => setDiscardOpen(false)}
+      size="sm"
+      title={tR5("programR5.discardTitle", { n: total })}
+      titleId="program-r5-discard-title"
+      ariaLabelledby={undefined}
+      description={null}
+      closeLabel={tR5("programR5.cancel")}
+      footer={(
+        <>
+          <Button variant="secondary" className="min-h-11" onClick={() => setDiscardOpen(false)}>{tR5("programR5.cancel")}</Button>
+          <Button variant="danger" className="min-h-11" onClick={discardDrafts} data-testid="program-r5-discard-go">{tR5("programR5.discardGo")}</Button>
+        </>
+      )}
+    >
+      <p className="text-xs text-cz-2">{tR5("programR5.discardBody")}</p>
+    </Modal>
+  ) : null;
   const groupModals = (
     <>
+      {discardModal}
       {groupDialog && (
         <TrainingGroupDialog
           open
@@ -421,6 +476,45 @@ export default function ProgramR5({
     />
   ) : null;
 
+  // --- #8561 tilstande: henter / fejl (foer kataloget er der) og intet program endnu ---------
+  const status = programs.status ?? "ready";
+  if (status !== "ready") {
+    return (
+      <div data-testid="program-r5" data-state={status}>
+        {status === "loading"
+          ? <ProgramR5Skeleton mobile={mobile} />
+          : (
+            <ErrorState
+              title={tR5("programR5.loadErrorTitle")}
+              description={tR5("programR5.loadErrorBody")}
+              action={(
+                <Button variant="secondary" size="sm" className="min-h-11" onClick={() => { void programs.retry?.(); }} data-testid="program-r5-retry">
+                  {tR5("programR5.retry")}
+                </Button>
+              )}
+            />
+          )}
+      </div>
+    );
+  }
+  const nothingYet = library.groups.length === 0 && library.ownOnly.length === 0 && !library.programs.some((p) => p.inUse);
+  const emptyEl = nothingYet ? (
+    <EmptyState
+      icon={<CalendarIcon size={26} aria-hidden="true" />}
+      title={tR5("programR5.emptyTitle")}
+      description={tR5(groupsOn ? "programR5.emptyBody" : "programR5.emptyBodyNoGroups")}
+      action={groupsOn ? (
+        <Button variant="secondary" size="sm" className="min-h-11" disabled={busy} onClick={() => openGroupDialog(null)} data-testid="program-r5-empty-new-group">
+          <PlusIcon size={13} aria-hidden="true" />{tR5("programR5.manage.newGroup")}
+        </Button>
+      ) : (
+        <Button variant="secondary" size="sm" className="min-h-11" disabled={!programKey || busy} onClick={() => setCopyOpen(true)} data-testid="program-r5-empty-copy">
+          {tR5("programR5.copyToRiders")}
+        </Button>
+      )}
+    />
+  ) : null;
+
   // #8547 telefon: Skifter Dag/Uge. "Copy to riders" bliver i sidehovedet, Gem staar fast i bunden.
   if (mobile) {
     const entry = library.programs.find((p) => p.key === programKey);
@@ -443,7 +537,9 @@ export default function ProgramR5({
     return (
       <div className="flex flex-col" data-testid="program-r5">
         {actionsEl ? createPortal(copyButton, actionsEl) : <div className="mb-3 flex justify-end">{copyButton}</div>}
+        {emptyEl && <div className="mb-3">{emptyEl}</div>}
         <ProgramR5Phone
+          focusWeekday={focusWeekday}
           name={title}
           subtitle={program
             ? `${tR5("programR5.kind_week")} · ${onNames.length ? tR5("programR5.on", { names: onNames.join(", ") }) : tR5("programR5.notInUse")}`
@@ -477,7 +573,15 @@ export default function ProgramR5({
           )}
           limitEl={limitEl}
           summary={total > 0
-            ? <span className="font-data tabular-nums" data-testid="program-r5-unsaved">{t("weekPlan.unsaved", { n: total })}</span>
+            ? (
+              <span className="flex flex-wrap items-center gap-x-2">
+                <span className="font-data tabular-nums" data-testid="program-r5-unsaved">{t("weekPlan.unsaved", { n: total })}</span>
+                <button type="button" disabled={busy} onClick={() => setDiscardOpen(true)} data-testid="program-r5-discard"
+                  className="inline-flex min-h-11 items-center text-xs font-medium text-cz-1 underline underline-offset-2 disabled:opacity-50">
+                  {tR5("programR5.discard")}
+                </button>
+              </span>
+            )
             : (program ? programTagline(program, lang) : intro)}
           hints={hasHints ? (
             <div className="flex flex-col gap-1">
@@ -552,6 +656,8 @@ export default function ProgramR5({
           )}
         </header>
 
+        {emptyEl}
+
         {program && (
           <AppliedTo
             library={library}
@@ -570,24 +676,23 @@ export default function ProgramR5({
           <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
             <span className="flex items-center gap-2">
               <h3 className={LABEL}>{tR5("programR5.weekFor")}</h3>
-              <select
+              <Select
+                size="sm"
                 value={sKey}
-                onChange={(e) => { const next = parseSubjectKey(e.target.value); setSubject(next); }}
+                onChange={(e: { target: { value: string } }) => { const next = parseSubjectKey(e.target.value); setSubject(next); }}
                 aria-label={tR5("programR5.weekFor")}
-                className="rounded-cz border border-cz-border bg-cz-card py-1 pe-2 ps-2 text-xs font-semibold text-cz-1"
+                className="min-h-11 w-auto min-w-44 font-semibold"
+                data-testid="program-r5-week-for"
               >
                 {subjects.length === 0 && !subject && <option value="">{tR5("programR5.asWritten")}</option>}
                 {subject && !subjects.some((s) => subjectKey(s) === sKey) && <option value={sKey}>{subjectName(subject)}</option>}
                 {subjects.map((s) => <option key={subjectKey(s)} value={subjectKey(s)}>{subjectName(s)}</option>)}
-              </select>
+              </Select>
               {subject?.kind === "rider" && riderById.get(subject.id)?.type && (
                 <span className="text-2xs text-cz-2">{tTypes(`types.${riderById.get(subject.id)!.type}`)}</span>
               )}
               {followButton}
             </span>
-            {total > 0 && (
-              <span className="font-data text-xs tabular-nums text-cz-2" data-testid="program-r5-unsaved">{t("weekPlan.unsaved", { n: total })}</span>
-            )}
           </div>
           {!subject && <p className="mb-1.5 text-2xs text-cz-3">{tR5("programR5.asWrittenNote")}</p>}
           {riderDays?.isSeed && <p className="mb-1.5 text-2xs text-cz-3">{t("programs.seededHint")}</p>}
@@ -674,8 +779,9 @@ function LibraryPanel({
             return (
               <li key={p.key}>
                 <button type="button" aria-pressed={active} onClick={() => onProgram(p.key)}
-                  className={`w-full rounded-cz border px-3 py-2 text-start ${active ? "border-cz-accent/50 bg-cz-accent/10" : "border-cz-border bg-cz-card hover:bg-cz-subtle"}`}>
-                  <span className={`block text-[13px] font-semibold ${active ? "text-cz-accent-t" : "text-cz-1"}`}>{programName(program, lang)}</span>
+                  className={`${tap}w-full rounded-cz border px-3 py-2 text-start ${active ? "border-cz-1 bg-cz-card" : "border-cz-border bg-cz-card hover:bg-cz-subtle"}`}>
+                  {/* #8561: valgt kort = --text-1-kant som en valgt chip (TASTE), aldrig guld-tone. */}
+                  <span className="block text-[13px] font-semibold text-cz-1">{programName(program, lang)}</span>
                   <span className="mt-0.5 block text-2xs text-cz-2">{tR5("programR5.kind_week")}</span>
                   <span className="mt-0.5 block truncate text-2xs text-cz-3">
                     {on.length ? tR5("programR5.on", { names: on.join(", ") }) : tR5("programR5.notInUse")}
@@ -878,11 +984,10 @@ function AppliedTo({
           </button>
         </span>
       ))}
-      <span className={`relative inline-flex ${h} items-center gap-1 rounded-cz border border-dashed border-cz-border px-2 text-xs text-cz-2 hover:text-cz-1`}>
-        <PlusIcon size={12} aria-hidden="true" />{tR5("programR5.addTarget")}
-        <select value="" disabled={busy} onChange={(e) => onAdd(e.target.value)} aria-label={tR5("programR5.addTarget")}
-          className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-default">
-          <option value="" disabled>{tR5("programR5.addTarget")}</option>
+      {/* #8561: kittets synlige Select (44 px) i stedet for en usynlig native select over en chip. */}
+      <Select size="sm" value="" disabled={busy} onChange={(e: { target: { value: string } }) => onAdd(e.target.value)} aria-label={tR5("programR5.addTarget")}
+        className="min-h-11 w-auto min-w-44" data-testid="program-r5-add-target">
+          <option value="" disabled>{"+ " + tR5("programR5.addTarget")}</option>
           {freeGroups.length > 0 && (
             <optgroup label={tR5("programR5.groups")}>
               {freeGroups.map((g) => <option key={g.id} value={`group:${g.id}`}>{g.name}</option>)}
@@ -891,8 +996,7 @@ function AppliedTo({
           <optgroup label={tR5("programR5.riders")}>
             {freeRiders.map((r) => <option key={r.id} value={`rider:${r.id}`}>{r.name}</option>)}
           </optgroup>
-        </select>
-      </span>
+      </Select>
     </div>
   );
 }
@@ -924,7 +1028,7 @@ function WeekGrid({
     <div className="overflow-hidden rounded-cz border border-cz-border bg-cz-card" data-testid="program-r5-week">
       <div className="grid grid-cols-[52px_repeat(7,minmax(0,1fr))]">
         <span className="border-b border-cz-border bg-cz-subtle" />
-        {weekdays.map((weekday) => {
+        {weekdays.map((weekday, dayIndex) => {
           const isToday = weekday === todayWeekday;
           return (
             <div key={weekday} className={head}>
@@ -936,17 +1040,17 @@ function WeekGrid({
                   </span>
                 )}
                 {editable && (
-                  <span className="relative inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-cz text-cz-3 hover:bg-cz-card hover:text-cz-1" title={tR5("programR5.copyDay", { day: dayLabel(weekday) })}>
-                    <ClipboardIcon size={12} aria-hidden="true" />
-                    <select value="" onChange={(e) => onCopyDay(weekday, e.target.value)} aria-label={tR5("programR5.copyDay", { day: dayLabel(weekday) })}
-                      className="absolute inset-0 h-full w-full cursor-pointer opacity-0">
-                      <option value="" disabled>{tR5("programR5.copyDay", { day: dayLabel(weekday) })}</option>
-                      <option value="all">{tR5("programR5.copyAll")}</option>
-                      {weekdays.filter((w) => w !== weekday && !(todayLocked && w === todayWeekday)).map((w) => (
-                        <option key={w} value={w}>{dayLabel(w)}</option>
-                      ))}
-                    </select>
-                  </span>
+                  <CopyDayMenu
+                    // Codex P2 #8589: ugens foerste halvdel aabner mod hoejre, saa menuen bliver
+                    // inden for gitterets overflow-hidden-ramme (en end-0-menu paa mandag blev klippet).
+                    align={dayIndex < Math.ceil(weekdays.length / 2) ? "start" : "end"}
+                    label={tR5("programR5.copyDay", { day: dayLabel(weekday) })}
+                    options={[
+                      { value: "all", label: tR5("programR5.copyAll") },
+                      ...weekdays.filter((w) => w !== weekday && !(todayLocked && w === todayWeekday)).map((w) => ({ value: w, label: dayLabel(w) })),
+                    ]}
+                    onPick={(choice) => onCopyDay(weekday, choice)}
+                  />
                 )}
               </span>
               {isToday && raceCount > 0 && (
@@ -1010,25 +1114,105 @@ function Row({
         }
         const locked = todayLocked && weekday === todayWeekday;
         const label = `${dayLabel(weekday)} · ${t("mobile.raceDayShort", { n: slot + 1 })}`;
+        const dot = cell.changed
+          ? <span className="ms-1 h-1.5 w-1.5 shrink-0 rounded-full bg-cz-2" aria-label={tR5("programR5.notSaved")} />
+          : null;
+        if (editable && !locked) {
+          // #8561: kittets Select, synlig (tekst + chevron) og 44 px; kanten vises ved hover/fokus.
+          return (
+            <div key={weekday} className={`${base} px-1`}>
+              <div className="relative min-w-0 flex-1">
+                {/* Kittets felt-stil (controlClass, som Select) med en smal chevron, saa sessionsnavnet
+                    kan laeses i en syvendedel af ugen; Select's faste pr-9 afkortede det. */}
+                <select value={cell.session ?? ""} onChange={(e) => onEdit(weekday, slot, e.target.value)}
+                  aria-label={label} title={cell.session ? sessionLabel(cell.session) : undefined} data-testid="program-r5-cell"
+                  className={`${controlClass({ size: "sm" })} min-h-11 cursor-pointer appearance-none truncate border-transparent bg-transparent pe-5 ps-1.5 hover:border-cz-border ${cell.session ? "text-cz-1" : "text-cz-3"}`}>
+                  {!cell.session && <option value="" disabled>–</option>}
+                  {sessionOrder.map((s) => <option key={s} value={s}>{sessionLabel(s)}</option>)}
+                </select>
+                <ChevronDownIcon size={12} aria-hidden="true" className="pointer-events-none absolute end-1 top-1/2 -translate-y-1/2 text-cz-3" />
+              </div>
+              {dot}
+            </div>
+          );
+        }
         return (
-          <div key={weekday} className={`${base} ${editable && !locked ? "hover:bg-cz-subtle" : ""}`}>
+          <div key={weekday} className={base}>
             <span className={`min-w-0 flex-1 truncate ${cell.session ? "text-cz-1" : "text-cz-3"}`}>
               {cell.session ? sessionLabel(cell.session) : "–"}
             </span>
-            {cell.changed && (
-              <span className="ms-1 h-1.5 w-1.5 shrink-0 rounded-full bg-cz-2" aria-label={tR5("programR5.notSaved")} />
-            )}
-            {editable && !locked && (
-              <select value={cell.session ?? ""} onChange={(e) => onEdit(weekday, slot, e.target.value)} aria-label={label}
-                className="absolute inset-0 h-full w-full cursor-pointer opacity-0">
-                {!cell.session && <option value="" disabled>–</option>}
-                {sessionOrder.map((s) => <option key={s} value={s}>{sessionLabel(s)}</option>)}
-              </select>
-            )}
+            {dot}
           </div>
         );
       })}
     </>
+  );
+}
+
+// #8561: kopier dagen via en synlig menu-knap (44 px trykflade) i stedet for en usynlig select.
+function CopyDayMenu({
+  label, options, onPick, align = "end",
+}: {
+  align?: "start" | "end";
+  label: string;
+  options: { value: string; label: string }[];
+  onPick: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+  useDismiss(ref, () => setOpen(false), open);
+  return (
+    <div ref={ref} className="relative -my-2 -me-2 shrink-0">
+      <button type="button" aria-haspopup="menu" aria-expanded={open} aria-label={label} title={label}
+        onClick={() => setOpen((v) => !v)} data-testid="program-r5-copy-day"
+        className="inline-flex h-11 w-7 items-center justify-center rounded-cz text-cz-3 hover:bg-cz-card hover:text-cz-1">
+        <ClipboardIcon size={13} aria-hidden="true" />
+      </button>
+      {open && (
+        <div className={`absolute ${align === "start" ? "start-0" : "end-0"} z-dropdown mt-1 min-w-[168px]`}>
+          <Menu aria-label={label}>
+            {options.map((o) => (
+              <MenuItem key={o.value} className="min-h-11" onClick={() => { setOpen(false); onPick(o.value); }}>
+                {o.label}
+              </MenuItem>
+            ))}
+          </Menu>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// #8561: henter-tilstanden. Statiske graa linjer (ingen puls), samme geometri som biblioteket +
+// ugen, saa intet hopper, naar kataloget lander (PAGE_TEMPLATES, Canonical states).
+function ProgramR5Skeleton({ mobile }: { mobile: boolean }) {
+  const week = (
+    <div className="overflow-hidden rounded-cz border border-cz-border bg-cz-card p-3" aria-hidden="true">
+      <Skeleton className="mb-3 h-4 w-40" />
+      <div className="grid grid-cols-7 gap-2">
+        {Array.from({ length: 7 * (PROGRAM_SLOTS + 1) }, (_, i) => <Skeleton key={i} className="h-9 w-full" />)}
+      </div>
+    </div>
+  );
+  if (mobile) {
+    return (
+      <div className="flex flex-col gap-3" data-testid="program-r5-loading">
+        <Skeleton className="h-5 w-48" />
+        <SkeletonLines lines={2} />
+        {week}
+      </div>
+    );
+  }
+  return (
+    <div className="grid grid-cols-[256px_minmax(0,1fr)] gap-5" data-testid="program-r5-loading">
+      <div className="flex flex-col gap-2" aria-hidden="true">
+        {Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-14 w-full" />)}
+      </div>
+      <div className="flex flex-col gap-4">
+        <Skeleton className="h-5 w-64" />
+        {week}
+      </div>
+    </div>
   );
 }
 
