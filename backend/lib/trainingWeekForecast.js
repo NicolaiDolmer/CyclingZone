@@ -1,4 +1,4 @@
-// #8580 / #8550 del 3 · Den rullende uge: i dag + 6 dage, pr. dato holdets løb og
+// #8580 / #8550 del 3 · Den rullende uge: i dag + 7 dage (8 datoer), pr. dato holdets løb og
 // pr. rytter hvilke af datoens fem felter der er løb eller bundet hvile.
 //
 // Grundlag for dagsvælgeren i I dag R5 (#8580) og Program-fanens uge. Dommer-scenarier:
@@ -21,7 +21,9 @@ import { copenhagenDateString, copenhagenMidnightUTC, copenhagenWeekdayKey } fro
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 
 export const TRAINING_WEEK_FORECAST_FLAG_KEY = "training_week_forecast";
-export const WEEK_FORECAST_DAYS = 7;
+// 8 datoer: dagsvælgeren viser i dag + 7 dage (#8580, wireframe R5 Day); Program-fanens
+// ugegitter bruger de første 7 (i dag + 6, UGE-1).
+export const WEEK_FORECAST_DAYS = 8;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Viewerens svar: off | beta (kun beta-testere) | on. Manglende række/fejl = off.
@@ -114,7 +116,7 @@ function stripJoin(list) {
 
 // ── I/O: hele ugen for ét hold ───────────────────────────────────────────────
 // { available, reason?, tickDate, days: [{ date, weekday, available, races, riders }] }
-// days[0].riders er dagens GET /forecast-svar uændret (UGE-1); days[1..6].riders er
+// days[0].today er dagens GET /forecast-svar uændret (UGE-1); days[1..7].riders er
 // { raceSlots, restSlots } pr. rytter.
 // loadToday: dagens svar, som GET /forecast giver det (routen sender sin egen gate med, UGE-1).
 export async function loadTeamWeekForecast({ supabase, team, seasonId, now = new Date(), loadToday = () => loadTeamFatigueForecast({ supabase, team, seasonId, now }) }) {
@@ -126,7 +128,7 @@ export async function loadTeamWeekForecast({ supabase, team, seasonId, now = new
 
   const dates = Array.from({ length: WEEK_FORECAST_DAYS }, (_, i) => addDays(tickDate, i));
   const weekStart = copenhagenMidnightUTC(now);
-  // Seneste midnat efter dag 6: 7 døgn plus et kvarter, så en DST-uge ikke klipper sidste dag.
+  // Midnat efter sidste dato: N døgn plus tre timer, så en DST-uge ikke klipper sidste dag.
   const weekEnd = copenhagenMidnightUTC(new Date(weekStart.getTime() + WEEK_FORECAST_DAYS * DAY_MS + 3 * 60 * 60 * 1000));
 
   const todayP = loadToday();

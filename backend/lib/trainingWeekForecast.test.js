@@ -22,11 +22,12 @@ test("addDays krydser maaneds- og sommertidsgraense uden at tabe en dag", () => 
   assert.equal(addDays("2026-03-29", 1), "2026-03-30");
 });
 
-test("UGE-1: ugen er i dag + 6 dage, dag 0 er i dag", () => {
+test("ugen er i dag + 7 dage (dagsvaelgeren); Program-gitterets 7 kolonner er de foerste 7 (UGE-1)", () => {
   const dates = Array.from({ length: WEEK_FORECAST_DAYS }, (_, i) => addDays("2026-11-25", i));
-  assert.equal(dates.length, 7);
+  assert.equal(dates.length, 8);
   assert.equal(dates[0], "2026-11-25");
   assert.equal(dates[6], "2026-12-01");
+  assert.equal(dates[7], "2026-12-02");
 });
 
 test("aksen kaedes dato for dato: hver dato faar sine 5 loebsdage, hullet fyldes som i sweepen", () => {
@@ -127,7 +128,7 @@ test("UGE-1: dag 0 er praecis det svar, GET /forecast giver (samme objekt, ingen
     loadToday: async () => today,
   });
   assert.equal(week.available, true);
-  assert.equal(week.days.length, 7);
+  assert.equal(week.days.length, 8);
   assert.equal(week.days[0].today, today);
   assert.equal(week.days[0].date, "2026-11-22");
   for (const day of week.days.slice(1)) {
