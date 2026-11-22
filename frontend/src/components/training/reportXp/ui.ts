@@ -3,11 +3,19 @@
 // cast once.
 import type { ComponentType, CSSProperties, ReactNode } from "react";
 import { Flag as FlagJs } from "../../Flag.jsx";
+import EmptyStateJs from "../../ui/EmptyState.jsx";
+import ErrorStateJs from "../../ui/ErrorState.jsx";
+import ButtonJs from "../../ui/Button.jsx";
 import { formatDate } from "../../../lib/intl.js";
 import RiderNameCellJs from "../../rider/RiderNameCell.jsx";
 import { statPlateStyle as statPlateStyleJs } from "../../../lib/statColor.js";
 
 export const Flag = FlagJs as unknown as ComponentType<{ code: string; className?: string; title?: string }>;
+
+/** #8562: the kit's canonical empty and error states (docs/design/PAGE_TEMPLATES.md), typed once. */
+export const EmptyState = EmptyStateJs as unknown as ComponentType<{ icon?: ReactNode; title: string; description?: string | null; action?: ReactNode; className?: string }>;
+export const ErrorState = ErrorStateJs as unknown as ComponentType<{ title?: string; description?: string; action?: ReactNode; className?: string }>;
+export const SecondaryButton = ButtonJs as unknown as ComponentType<{ variant?: "primary" | "secondary" | "ghost"; size?: "sm" | "md"; onClick?: () => void; children?: ReactNode; "data-testid"?: string; "aria-expanded"?: boolean }>;
 
 /** A date with custom Intl options only (formatDate's `null` style). */
 export const formatDay = (date: string, options: Intl.DateTimeFormatOptions): string =>

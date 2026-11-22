@@ -7,6 +7,9 @@
     "previousDay": "Vorige dag",
     "nextDay": "Volgende dag",
     "lastSevenDays": "Laatste zeven dagen",
+    "allDays": "Alle dagen",
+    "showOlderDays": "Oudere dagen tonen",
+    "showFewerDays": "Minder dagen tonen",
     "dayPoints": "{date}: {count, plural, one {# nieuw punt} other {# nieuwe punten}}",
     "xpToday": "XP vandaag verdiend",
     "xp30Sub": "30 dagen {xp}",
@@ -67,6 +70,15 @@
     "colXpToday": "XP vandaag",
     "colEarned": "Verdiend",
     "colPaid": "Uit de balk",
-    "details": "Details voor {name}"
+    "details": "Details voor {name}",
+    "loadError": "Het rapport kon niet worden geladen",
+    "loadErrorBody": "Er is niets gewijzigd. Je trainingsplannen zijn veilig.",
+    "retry": "Opnieuw proberen",
+    "empty": "Nog geen training dit seizoen.",
+    "emptyAction": "Naar de training van vandaag"
+  },
+  "devFocus": {
+    "change": "Focus wijzigen",
+    "changeFor": "Focus wijzigen voor {name}"
   }
 }

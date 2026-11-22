@@ -35,7 +35,8 @@ const loader = registerHooks({ resolve(specifier, context, nextResolve) {
 } });
 const { default: XpToday, shortName, nameParts } = await import("./XpToday.tsx");
 const { default: XpMonth } = await import("./XpMonth.tsx");
-const { xpReportMode, previewXpReport } = await import("./XpReportSwitch.tsx");
+const { xpReportMode, previewXpReport, previewXpReportState } = await import("./XpReportSwitch.tsx");
+const { default: TrainingReportXp } = await import("./TrainingReportXp.tsx");
 loader.deregister();
 const { buildXpReportFixture } = await import("./xpReportFixture.ts");
 const { buildMonthView, buildTodayView } = await import("../../../lib/trainingReportXp.ts");
@@ -154,9 +155,85 @@ test("the switch: off by default, preview only on the preview build with ?xprepo
   assert.equal(previewXpReport(true, "?xpreport=off"), false);
   assert.equal(previewXpReport(true, "?xpreport=on"), true);
   assert.equal(xpReportMode({ preview: false, flagOn: false, runs: fx.receipts as never }), "off");
-  assert.equal(xpReportMode({ preview: false, flagOn: true, runs: [] }), "off", "switch on without XP in the payload keeps today's report");
+  // #8562: with the switch on and no receipts at all, the XP surface shows the loading, empty or error state.
+  assert.equal(xpReportMode({ preview: false, flagOn: true, runs: [] }), "live");
+  assert.equal(xpReportMode({ preview: false, flagOn: false, runs: [] }), "off", "switch off keeps today's report, also when empty");
+  const withoutXp = fx.receipts.map(r => ({ ...r, report: { ...r.report, riders: r.report.riders.map(row => ({ ...row, activities: row.activities?.map(a => ({ ...a, xp: undefined })) })) } }));
+  assert.equal(xpReportMode({ preview: false, flagOn: true, runs: withoutXp as never }), "off", "switch on with receipts but without XP keeps today's report");
   assert.equal(xpReportMode({ preview: false, flagOn: true, runs: fx.receipts as never }), "live");
   assert.equal(xpReportMode({ preview: true, flagOn: false, runs: [] }), "fixture");
+});
+
+test("#8562 the preview's report states: ?xpreport=on, empty and error", () => {
+  assert.equal(previewXpReportState("?xpreport=on"), "data");
+  assert.equal(previewXpReportState("?xpreport=empty"), "empty");
+  assert.equal(previewXpReportState("?xpreport=error"), "error");
+  assert.equal(previewXpReportState("?xpreport=nonsense"), null);
+  assert.equal(previewXpReport(true, "?xpreport=empty"), true);
+  assert.equal(previewXpReport(false, "?xpreport=empty"), false);
+});
+
+test("#8562 Show older days widens the seven-day strip to the whole window, and Show fewer days is its way back", () => {
+  const days = new Set(fx.receipts.map(r => r.tick_date)).size;
+  assert.ok(days > 7, "the fixture has more than seven dates");
+  const narrow = buildTodayView(fx.receipts, null, options)!;
+  assert.equal(narrow.strip.length, 7);
+  assert.equal(narrow.olderDays, days - 7, "the dates before the strip");
+  const wide = buildTodayView(fx.receipts, null, options, true)!;
+  assert.equal(wide.strip.length, Math.min(days, 30));
+  assert.equal(wide.olderDays, 0);
+  const html = (view: typeof narrow, showAll: boolean) => wrap(createElement(XpToday, { view, onPickDate: () => {}, switcher: null, showAll, onToggleDays: () => {} }));
+  const closed = html(narrow, false);
+  assert.match(closed, /data-testid="xp-older-days"[^>]*aria-expanded="false"|aria-expanded="false"[^>]*data-testid="xp-older-days"/);
+  assert.match(closed, />Show older days</);
+  assert.match(closed, /aria-label="Last seven days"/);
+  const open = html(wide, true);
+  assert.match(open, />Show fewer days</);
+  assert.match(open, /aria-label="All days"/);
+  assert.equal(open.split("aria-pressed=").length - 1 > closed.split("aria-pressed=").length - 1, true, "more days in the strip");
+  // No button without something older, and none without a handler.
+  const few = buildTodayView(fx.receipts.slice(0, 3), null, options)!;
+  assert.doesNotMatch(html(few, false), /xp-older-days/);
+  assert.doesNotMatch(wrap(createElement(XpToday, { view: narrow, onPickDate: () => {}, switcher: null })), /xp-older-days/);
+  assert.doesNotMatch(noSegmentGold(closed + open), /cz-accent/, "the button is secondary, never gold");
+});
+
+test("#8562 the report's empty state: the kit's EmptyState with one sentence and one way on", () => {
+  const html = wrap(createElement(TrainingReportXp, { runs: [], roster: [] }));
+  assert.match(html, /data-testid="training-report-xp-state"/);
+  assert.match(html, />No training yet this season\.</);
+  assert.match(html, /border-dashed/, "the kit's dashed state frame");
+  assert.match(html, />Go to today&#x27;s training<|>Go to today's training</);
+  assert.doesNotMatch(html, /role="alert"/);
+  assert.doesNotMatch(html, /xpReport\./, "every key has an English text");
+  assert.doesNotMatch(noSegmentGold(html), /cz-accent/);
+});
+
+test("#8562 the report's error state: the kit's ErrorState with Try again, and no empty text", () => {
+  let tries = 0;
+  const html = wrap(createElement(TrainingReportXp, { runs: [], roster: [], error: true, onRetry: () => { tries += 1; } }));
+  assert.match(html, /role="alert"/);
+  assert.match(html, />The report could not be loaded</);
+  assert.match(html, />Try again</);
+  assert.doesNotMatch(html, /No training yet this season/, "a failed fetch is never shown as an empty season");
+  assert.equal(tries, 0);
+  assert.doesNotMatch(noSegmentGold(html), /cz-accent/);
+  // Still loading: the skeleton, neither of the two.
+  const loading = wrap(createElement(TrainingReportXp, { runs: [], roster: [], loading: true }));
+  assert.match(loading, /data-testid="training-report-xp-state"/);
+  assert.doesNotMatch(loading, /No training yet|could not be loaded/);
+  // The preview's states carry the same markup.
+  assert.match(wrap(createElement(TrainingReportXp, { runs: [], fixture: true, fixtureState: "error" })), /role="alert"/);
+  assert.match(wrap(createElement(TrainingReportXp, { runs: [], fixture: true, fixtureState: "empty" })), />No training yet this season\.</);
+});
+
+test("#8562 the new texts exist in Danish as the owner worded them", () => {
+  const da = locale("da", "trainingXp");
+  assert.equal(da.xpReport.empty, "Ingen træning endnu i denne sæson.");
+  assert.equal(da.xpReport.loadError, "Rapporten kunne ikke hentes");
+  assert.equal(da.xpReport.retry, "Prøv igen");
+  assert.equal(da.xpReport.showOlderDays, "Vis ældre dage");
+  assert.equal(da.devFocus.change, "Skift fokus");
 });
 
 test("phones use the owner's short name form (18/9)", () => {

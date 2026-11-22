@@ -1,4 +1,5 @@
 import { test } from "node:test";
+import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import {
   bandText, barPct, buildDevelopmentRows, devSummary, nextSort, previewXpDevelopment, sortDevRows, topOf, topSortValue,
@@ -371,6 +372,26 @@ test("XP per day divides by the dates with XP, not by every receipt in the windo
   assert.equal(row.xpDays, 1);
   assert.equal(row.xpPerDay, 300);
   assert.equal(devSummary([row]).riderDays, 1);
+});
+
+// #8562 · "Change focus" per rider on the XP Development tab. The component needs the whole app's
+// kit to render, so the wiring is read from the source: the button exists in both layouts, calls the
+// page's one focus choice and uses the kit's secondary button; the page hands it the FocusPanel opener.
+test("#8562 the opened row carries a Change focus button that opens the page's focus choice", () => {
+  const read = (rel: string) => readFileSync(new URL(rel, import.meta.url), "utf8");
+  const tab = read("./DevelopmentTabXp.tsx");
+  assert.match(tab, /onChangeFocus\?: \(riderId: string\) => void;/);
+  assert.equal((tab.match(/<ChangeFocus row=\{row\} onChangeFocus=\{onChangeFocus\} \/>/g) ?? []).length, 2, "the desktop sub-row and the phone fold-out");
+  assert.match(tab, /onClick=\{\(\) => onChangeFocus\(row\.id\)\}/, "it hands the rider on, no focus logic of its own");
+  assert.match(tab, /<SecondaryButton variant="secondary" size="sm"/, "secondary, never gold in a row");
+  assert.match(tab, /if \(!onChangeFocus \|\| !ready\) return null;/, "no button without a handler or before the lazy texts are in");
+  const page = read("../../pages/TrainingPage.jsx");
+  assert.match(page, /<DevelopmentXpSwitch [^>]*onChangeFocus=\{setFocusPanelRiderId\}/, "the same opener as the roster's day button");
+  assert.match(page, /<XpReportSwitch [^>]*loading=\{history\.loading\} error=\{history\.error\} onRetry=\{history\.refresh\}/);
+  for (const lang of ["en", "da", "es", "fr", "nl"]) {
+    const texts = JSON.parse(read(`../../../public/locales/${lang}/trainingXp.json`));
+    assert.ok(texts.devFocus.change && texts.devFocus.changeFor.includes("{name}"), lang);
+  }
 });
 
 test("no date with XP gives a dash, and no row for today gives no XP today", () => {
