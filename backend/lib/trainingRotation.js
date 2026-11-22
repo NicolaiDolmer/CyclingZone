@@ -125,6 +125,11 @@ export function sameRotationPasses(rotation, passes) {
 //   startIndex  "Spring til pas" / "Start fra pas 1": eksplicit plads (0-baseret).
 //   keepPlace   (standard true) behold hver rytters plads, naar laengden er uaendret.
 // null = ugyldigt input (pas eller startIndex).
+/**
+ * @param {any} prev
+ * @param {any} passes
+ * @param {{ keepPlace?: boolean, startIndex?: number | null }} [opts]
+ */
 export function buildRotationOnSave(prev, passes, { keepPlace = true, startIndex } = {}) {
   if (!Array.isArray(passes) || !passes.every(isValidRotationPass)) return null;
   if (passes.length < ROTATION_MIN_PASSES || passes.length > ROTATION_MAX_PASSES) return null;
