@@ -149,7 +149,7 @@ export function copyWeekDays(days: WeekDays): WeekDays {
   for (const weekday of WEEKDAY_KEYS) {
     const entry = days[weekday] as {
       session: string; intensity: string; slots?: Array<string | null>;
-      effort?: string; slotEfforts?: Array<string | null>;
+      effort?: string; slotEfforts?: Array<string | null>; lockSlot?: number;
     };
     out[weekday] = {
       session: entry.session,
@@ -158,6 +158,8 @@ export function copyWeekDays(days: WeekDays): WeekDays {
       // #7947: gruppens indsats foelger med i kopien (noeglerne findes kun naar kontakten var on).
       ...(entry.effort != null ? { effort: entry.effort } : {}),
       ...(entry.slotEfforts ? { slotEfforts: [...entry.slotEfforts] } : {}),
+      // #8549: gruppens laaste pas foelger med i kopien til rytterne (samme som copyDays).
+      ...(entry.lockSlot != null ? { lockSlot: entry.lockSlot } : {}),
     };
   }
   return out;
