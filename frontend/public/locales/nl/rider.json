@@ -998,7 +998,8 @@
     "noSlots": "Geen focusplekken meer dit seizoen",
     "current": "Huidige focus",
     "tradeoff": "Andere vaardigheden groeien iets langzamer.",
-    "intensity_recovery": "Herstel"
+    "intensity_recovery": "Herstel",
+    "intensity_race": "Koers"
   },
   "championJersey": {
     "world": {

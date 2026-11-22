@@ -998,7 +998,8 @@
     "noSlots": "No quedan plazas de enfoque esta temporada",
     "current": "Enfoque actual",
     "tradeoff": "Las demás habilidades crecen algo más despacio.",
-    "intensity_recovery": "Recuperación"
+    "intensity_recovery": "Recuperación",
+    "intensity_race": "Carrera"
   },
   "championJersey": {
     "world": {
