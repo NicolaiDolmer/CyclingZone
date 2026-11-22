@@ -1,5 +1,79 @@
 export const PATCHES = [
 {
+  "version": "7.493",
+  "date": "2026-11-22",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Inbox",
+      "area": "mobile",
+      "en": {
+        "title": "Inbox shows there are more tabs",
+        "body": "When the inbox tabs don't fit on a small screen, a small arrow now shows that there are more tabs to scroll to."
+      },
+      "da": {
+        "title": "Indbakken viser, at der er flere faner",
+        "body": "Når indbakkens faner ikke kan være på en lille skærm, viser en lille pil nu, at der er flere faner at rulle til."
+      },
+      "refs": [
+        8073
+      ]
+    }
+  ]
+},
+{
+  "version": "7.492",
+  "date": "2026-11-22",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Onboarding",
+      "area": "help",
+      "en": {
+        "title": "Auction tour ends with a way out",
+        "body": "The auction tour now finishes with a Dashboard button instead of leaving you mid-page, and it no longer shows a technical message when a step has nothing to point at."
+      },
+      "da": {
+        "title": "Auktionsrundvisningen har nu en vej ud",
+        "body": "Auktionsrundvisningen slutter nu med en Dashboard-knap i stedet for at lade dig stå midt på siden, og den viser ikke længere en teknisk besked, når et trin ikke har noget at pege på."
+      },
+      "refs": [
+        8429
+      ]
+    }
+  ]
+},
+{
+  "version": "7.491",
+  "date": "2026-11-22",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "switched_on",
+      "flag": "potential_estimate_display",
+      "topic": "Development",
+      "area": "development",
+      "en": {
+        "title": "Potential is a number from 1 to 99",
+        "body": "A rider's potential is now shown as a number from 1 to 99 instead of stars, with a word for how sure your scout is. Young riders never got a lower expectation than before the change."
+      },
+      "da": {
+        "title": "Potentiale er et tal fra 1 til 99",
+        "body": "En rytters potentiale vises nu som et tal fra 1 til 99 i stedet for stjerner, med et ord for, hvor sikker jeres spejder er. Ingen ung rytter fik en lavere forventning end før skiftet."
+      },
+      "refs": [
+        6110,
+        7685
+      ]
+    }
+  ]
+},
+{
   "version": "7.490",
   "date": "2026-11-22",
   "changes": [
