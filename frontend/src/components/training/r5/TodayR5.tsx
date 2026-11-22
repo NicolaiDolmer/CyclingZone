@@ -45,6 +45,7 @@ import {
 } from "../../../lib/trainingDayTypes.js";
 import { useTrainingCatalogV3 } from "../../../lib/useTrainingCatalogV3.ts";
 import { WEEKDAY_KEYS, injuryBadgeMessage, injuryTimeLeft } from "../../../lib/training.js";
+import DayPickerSketch8580, { previewDayPicker } from "./DayPickerSketch8580.tsx"; // #8580 SKITSE (design-branch)
 import { ageForSeason, contractExpiringBadgeKey, retirementRiskBadgeKey } from "../../../lib/riderAge.js";
 import { groupRidersByType, UNTYPED_KEY } from "../../../lib/trainingRoster.js";
 import { formatDate } from "../../../lib/intl.js";
@@ -1003,7 +1004,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
     </div>
   ) : r5.phone ? mobileList : desktopTable;
 
-  return (
+  const page = (
     <div className="space-y-3" data-testid="r5-today">
       {overviewLine}
       <FatigueRuleSummary data={r5.fatigueRules as never} onEdit={r5.onEditFatigueRule} />
@@ -1028,4 +1029,6 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
       </div>
     </div>
   );
+  const sketch = previewDayPicker();
+  return sketch ? <DayPickerSketch8580 r5={r5} variant={sketch} today={page} /> : page;
 }
