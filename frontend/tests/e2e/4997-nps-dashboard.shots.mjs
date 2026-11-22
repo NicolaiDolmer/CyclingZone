@@ -41,7 +41,7 @@ async function shoot(browser, { name, width, height, pickScore }) {
   await page.addInitScript(INIT);
   await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" });
   await page.getByPlaceholder("you@email.com").fill("preview@cyclingzone.local");
-  await page.getByPlaceholder("••••••••").fill("preview-mock");
+  await page.locator("#auth-password").fill("preview-mock");
   await page.getByRole("button", { name: "Log in", exact: true }).click();
   await page.waitForURL(/\/dashboard$/, { timeout: 20000 });
   const bar = page.getByRole("region", { name: "Feedback prompt" });

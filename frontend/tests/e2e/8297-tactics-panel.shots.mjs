@@ -36,7 +36,7 @@ async function loginPreview(page) {
   const needsLogin = await email.waitFor({ timeout: 8000 }).then(() => true, () => false);
   if (!needsLogin) return;
   await page.getByPlaceholder(LANG === "da" ? "din@email.dk" : "you@email.com").fill("manager@cyclingzone.test");
-  await page.getByPlaceholder("••••••••").fill("preview-mock");
+  await page.locator("#auth-password").fill("preview-mock");
   await page.getByRole("button", { name: LANG === "da" ? /^Log ind$/ : /^Log in$/ }).click();
   await page.waitForURL(/\/(dashboard|races|$)/, { timeout: 30000 });
 }

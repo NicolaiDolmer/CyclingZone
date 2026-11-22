@@ -390,7 +390,7 @@ export async function login(page) {
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: "Cycling Zone" })).toBeVisible();
   await page.getByPlaceholder("din@email.dk").fill(TEST_USER.email);
-  await page.getByPlaceholder("••••••••").fill("playwright-password");
+  await page.locator("#auth-password").fill("playwright-password");
   await page.getByRole("button", { name: "Log ind" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
 }
