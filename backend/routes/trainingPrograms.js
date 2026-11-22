@@ -36,6 +36,7 @@ import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer, v3SmartDefaultFoc
 import { seedProgramWeekDays, planRunsOffStandard } from "../lib/trainingWeekPlanCells.js";
 import { effortForWrite, isTrainingEffortLevelsEnabled } from "../lib/trainingEffortLevels.js"; // #7947
 import { loadTeamFatigueForecast } from "../lib/trainingWeekPlanForecast.js";
+import { isTrainingWeekForecastEnabled, loadTeamWeekForecast } from "../lib/trainingWeekForecast.js"; // #8580
 import { markRidersOwnPlan, syncGroupsToSquadProgram, isMissingGroupsTable } from "../lib/trainingGroups.ts"; // #6000
 
 const PASS = (_req, _res, next) => next();
@@ -366,6 +367,31 @@ export function createTrainingProgramsRouter({
       const seasonId = await activeSeasonId();
       const forecast = await loadTeamFatigueForecast({ supabase, team: req.team, seasonId, now: clock() });
       res.json(forecast);
+    } catch (err) {
+      captureExceptionFn(err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // GET /api/training/programs/forecast/week — #8580 / #8550 del 3: den rullende uge (i dag + 6).
+  // Bag training_week_forecast (off/beta/on, seedet off). Dag 0 er GET /forecast's svar
+  // uændret, med samme gate; de andre dage har kun løbs- og hvilefelter (ingen træthed, K-7).
+  router.get("/forecast/week", requireAuth, readLimiter, async (req, res) => {
+    if (!req.team) return res.status(400).json({ error: "No team found" });
+    try {
+      const isBetaTester = await isViewerBetaTester(req);
+      if (!(await isTrainingWeekForecastEnabled(supabase, { isBetaTester }))) {
+        return res.json({ available: false, reason: "disabled", days: [] });
+      }
+      const seasonId = await activeSeasonId();
+      const now = clock();
+      const week = await loadTeamWeekForecast({
+        supabase, team: req.team, seasonId, now,
+        loadToday: async () => ((await cellsOn(req))
+          ? loadTeamFatigueForecast({ supabase, team: req.team, seasonId, now })
+          : { available: false, reason: "disabled", riders: {} }),
+      });
+      res.json(week);
     } catch (err) {
       captureExceptionFn(err);
       res.status(500).json({ error: err.message });
