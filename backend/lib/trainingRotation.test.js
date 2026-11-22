@@ -7,7 +7,7 @@ import {
   ROTATION_MAX_PASSES, ROTATION_MIN_PASSES, ROTATION_OUTCOMES, PLAN_KINDS,
   isPlanKind, isValidRotation, isValidRotationPass, normalizeRotationPasses, copyRotation, sameRotationPasses,
   buildRotationOnSave, nextRotationIndex, advancesRotation, rotationStamp, rotationPassAt,
-  parseRotationWrite, applyRotationWrite,
+  parseRotationWrite, applyRotationWrite, rotationRevFloor,
 } from "./trainingRotation.js";
 
 const P = (...sessions) => sessions.map((session) => ({ session }));
@@ -137,7 +137,7 @@ test("parseRotationWrite: typer, standarder og intet at skrive", () => {
 
 test("applyRotationWrite: nye pas giver ny rev; samme pas staar stille", () => {
   const first = applyRotationWrite({ write: parseRotationWrite({ passes: ABC }), passes: ABC });
-  assert.deepEqual(first, { ok: true, planKind: "rotation", rotation: { v: 1, passes: ABC, rev: 1, anchor: { rev: 1, index: 0 } } });
+  assert.deepEqual(first, { ok: true, rotationChanged: true, planKind: "rotation", rotation: { v: 1, passes: ABC, rev: 1, anchor: { rev: 1, index: 0 } } });
   const again = applyRotationWrite({ prev: first.rotation, prevKind: "rotation", write: parseRotationWrite({ passes: ABC }), passes: ABC });
   assert.deepEqual(again.rotation, first.rotation, "ingen rev-bump uden aendring");
   const edited = applyRotationWrite({ prev: first.rotation, prevKind: "rotation", write: parseRotationWrite({ passes: P("rest", "endurance", "threshold") }), passes: P("rest", "endurance", "threshold") });
@@ -147,7 +147,7 @@ test("applyRotationWrite: nye pas giver ny rev; samme pas staar stille", () => {
 test("applyRotationWrite: Week blocks beholder rotationen, spring kraever en rotation", () => {
   const prev = rot();
   const toWeek = applyRotationWrite({ prev, prevKind: "rotation", write: parseRotationWrite({ planKind: "week" }) });
-  assert.deepEqual(toWeek, { ok: true, planKind: "week", rotation: prev });
+  assert.deepEqual(toWeek, { ok: true, rotationChanged: false, planKind: "week", rotation: prev });
   const back = applyRotationWrite({ prev, prevKind: "week", write: parseRotationWrite({ planKind: "rotation" }) });
   assert.deepEqual(back.rotation, prev, "et skift tilbage fortsaetter (samme rev)");
   const jump = applyRotationWrite({ prev, prevKind: "rotation", write: parseRotationWrite({ startIndex: 2 }) });
@@ -155,7 +155,7 @@ test("applyRotationWrite: Week blocks beholder rotationen, spring kraever en rot
   assert.equal(applyRotationWrite({ prev, write: parseRotationWrite({ startIndex: 3 }) }).reason, "invalid_start");
   assert.equal(applyRotationWrite({ write: parseRotationWrite({ startIndex: 0 }) }).reason, "rotation_missing");
   assert.equal(applyRotationWrite({ write: parseRotationWrite({ planKind: "rotation" }) }).reason, "rotation_missing");
-  assert.deepEqual(applyRotationWrite({ write: parseRotationWrite({ planKind: "week" }) }), { ok: true, planKind: "week", rotation: null });
+  assert.deepEqual(applyRotationWrite({ write: parseRotationWrite({ planKind: "week" }) }), { ok: true, rotationChanged: false, planKind: "week", rotation: null });
 });
 
 test("applyRotationWrite: keepPlace false alene = Start fra pas 1 paa den gemte rotation", () => {
@@ -164,7 +164,7 @@ test("applyRotationWrite: keepPlace false alene = Start fra pas 1 paa den gemte 
   assert.equal(write.ok, true);
   const reset = applyRotationWrite({ prev, prevKind: "rotation", write });
   assert.deepEqual([reset.planKind, reset.rotation.rev, reset.rotation.anchor], ["rotation", 3, { rev: 3, index: 0 }]);
-  assert.deepEqual(applyRotationWrite({ write }), { ok: true, planKind: null, rotation: null }, "ingen rotation: intet at nulstille");
+  assert.deepEqual(applyRotationWrite({ write }), { ok: true, rotationChanged: false, planKind: null, rotation: null }, "ingen rotation: intet at nulstille");
 });
 
 // ── Pladsen ──────────────────────────────────────────────────────────────────
@@ -251,4 +251,39 @@ test("rotationStamp og rotationPassAt", () => {
   assert.deepEqual(rotationPassAt(rotation, 0), { session: "sprint", effort: "hard" });
   assert.notEqual(rotationPassAt(rotation, 0), rotation.passes[0]);
   assert.equal(rotationPassAt(rotation, 9), null);
+});
+
+// ── Dommer 22/11 (#8584 punkt 1) ──────────────────────────────────────────────
+test("fund 1: slettet raekke + ny rotation starter ved ankeret, ikke fra de gamle stempler", () => {
+  const t0 = rotationRevFloor(new Date("2026-12-01T10:00:00Z"));
+  const first = buildRotationOnSave(null, ABC, { revFloor: t0 });
+  assert.equal(first.rev, t0);
+  // Rytteren koerte pas 1 og 2 paa den foerste rotation.
+  const oldStamps = [stamp(first.rev, 0, 3), stamp(first.rev, 1, 3)];
+  assert.equal(nextRotationIndex({ rotation: first, stamps: oldStamps }), 2);
+  // Raekken slettes (DELETE week-plan), og en ny rotation gemmes et sekund senere: ny rev, pas 1.
+  const again = buildRotationOnSave(null, ABC, { revFloor: t0 + 1 });
+  assert.ok(again.rev > first.rev);
+  assert.equal(nextRotationIndex({ rotation: again, stamps: oldStamps }), 0);
+});
+
+test("fund 1: rev stiger stadig med 1 ved flere gemninger i samme sekund", () => {
+  const t0 = 1_800_000_000;
+  const a = buildRotationOnSave(null, ABC, { revFloor: t0 });
+  const b = buildRotationOnSave(a, P("sprint", "endurance"), { revFloor: t0 });
+  assert.equal(b.rev, t0 + 1);
+  assert.equal(buildRotationOnSave(rot(), ABC, {}).rev, 2, "uden ur: som foer");
+  assert.equal(rotationRevFloor(null), 0);
+});
+
+test("fund 2: kun planKind roerer ikke rotationen (heller ikke en ukendt version)", () => {
+  const unknown = { v: 99, passes: ABC, rev: 7 };
+  const write = parseRotationWrite({ planKind: "week" });
+  const next = applyRotationWrite({ prev: unknown, prevKind: "rotation", write, passes: undefined });
+  assert.equal(next.ok, true);
+  assert.equal(next.rotationChanged, false);
+  assert.equal(next.planKind, "week");
+  const withPasses = applyRotationWrite({ prev: rot(), prevKind: "rotation", write: parseRotationWrite({ passes: P("sprint", "tempo") }), passes: P("sprint", "tempo"), revFloor: 5 });
+  assert.equal(withPasses.rotationChanged, true);
+  assert.equal(withPasses.rotation.rev, 5);
 });

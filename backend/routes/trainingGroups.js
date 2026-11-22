@@ -38,7 +38,7 @@ import {
 } from "../lib/trainingGroups.ts";
 import { isTrainingRotationEnabled } from "../lib/trainingRotationFlag.js"; // #8548
 import { rotationWriteInput, rotationView } from "../lib/trainingRotationInput.js"; // #8548
-import { applyRotationWrite } from "../lib/trainingRotation.js"; // #8548
+import { applyRotationWrite, rotationRevFloor } from "../lib/trainingRotation.js"; // #8548
 
 const PASS = (_req, _res, next) => next();
 
@@ -152,7 +152,7 @@ export function createTrainingGroupsRouter({
       const row = byRider.get(riderId);
       const patch = {
         days: copyWeekDays(days), program_key: programKey ?? null, updated_at: now,
-        ...(rotationGroup ? groupRotationCopyPatch(rotationGroup, row) : {}),
+        ...(rotationGroup ? groupRotationCopyPatch(rotationGroup, row, { revFloor: rotationRevFloor(clock()) }) : {}),
       };
       const id = row?.id;
       if (id) {
@@ -178,7 +178,7 @@ export function createTrainingGroupsRouter({
     const inserts = [];
     for (const riderId of riderIds) {
       const row = byRider.get(riderId);
-      const patch = groupRotationCopyPatch(group, row, copyOpts);
+      const patch = groupRotationCopyPatch(group, row, { ...copyOpts, revFloor: rotationRevFloor(clock()) });
       if (Object.keys(patch).length === 0) continue;
       if (row) {
         const { error } = await supabase.from("training_week_plans").update({ ...patch, updated_at: now }).eq("id", row.id);
@@ -439,11 +439,12 @@ export function createTrainingGroupsRouter({
       if (!input.ok) return res.status(400).json({ error: input.reason });
       const group = await findGroup(req, res, ctx);
       if (!group) return;
-      const next = applyRotationWrite({ prev: group.rotation ?? null, prevKind: group.plan_kind ?? null, write: input.write, passes: input.passes });
+      const at = clock();
+      const next = applyRotationWrite({ prev: group.rotation ?? null, prevKind: group.plan_kind ?? null, write: input.write, passes: input.passes, revFloor: rotationRevFloor(at) });
       if (!next.ok) return res.status(400).json({ error: next.reason });
-      const now = clock().toISOString();
+      const now = at.toISOString();
       const { error } = await supabase.from(GROUPS_TABLE)
-        .update({ rotation: next.rotation, plan_kind: next.planKind, updated_at: now })
+        .update({ ...(next.rotationChanged ? { rotation: next.rotation } : {}), plan_kind: next.planKind, updated_at: now })
         .eq("id", group.id).eq("team_id", req.team.id);
       if (error) throw new Error(error.message);
       await writeRotationCopies(req.team.id, ctx, followerIds(ctx.members, group.id, ctx.ownIds),

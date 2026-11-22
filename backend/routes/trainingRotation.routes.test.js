@@ -103,6 +103,8 @@ async function fixture(t, { state, betaTester = true }) {
   return { call };
 }
 
+// Rutens faste ur (2026-11-22T10:00:00Z) i hele sekunder: foerste rev (dommer 22/11 fund 1).
+const T = 1795341600;
 const P = (...sessions) => sessions.map((session) => ({ session }));
 const ABC = P("sprint", "endurance", "threshold");
 const rowOf = (state, riderId) => state.training_week_plans.find((r) => r.rider_id === riderId);
@@ -146,7 +148,7 @@ test("rytter: foerste rotation saar ugen, saetter plan_kind og starter ved pas 1
   const { call } = await fixture(t, { state });
   const res = await call("PUT", "/programs/rotation", { riderId: "r1", passes: ABC });
   assert.equal(res.status, 200);
-  const expected = { v: 1, passes: ABC, rev: 1, anchor: { rev: 1, index: 0 } };
+  const expected = { v: 1, passes: ABC, rev: T, anchor: { rev: T, index: 0 } };
   assert.deepEqual(res.body, { ok: true, riderId: "r1", planKind: "rotation", rotation: expected });
   const row = rowOf(state, "r1");
   assert.ok(isValidProgramWeekDays(row.days), "Week blocks og motoren har stadig gyldige felter");
@@ -161,13 +163,13 @@ test("rytter: samme pas = ingen rev-bump; rettelse ved samme laengde beholder pl
   const { call } = await fixture(t, { state });
   await call("PUT", "/programs/rotation", { riderId: "r1", passes: ABC });
   await call("PUT", "/programs/rotation", { riderId: "r1", passes: ABC });
-  assert.equal(rowOf(state, "r1").rotation.rev, 1);
+  assert.equal(rowOf(state, "r1").rotation.rev, T);
   await call("PUT", "/programs/rotation", { riderId: "r1", passes: P("rest", "endurance", "threshold") });
-  assert.deepEqual(rowOf(state, "r1").rotation.anchor, { rev: 2, index: 0, fromRev: 1 });
+  assert.deepEqual(rowOf(state, "r1").rotation.anchor, { rev: T + 1, index: 0, fromRev: T });
   await call("PUT", "/programs/rotation", { riderId: "r1", passes: P("rest", "endurance", "threshold"), keepPlace: false });
-  assert.deepEqual(rowOf(state, "r1").rotation.anchor, { rev: 3, index: 0 }, "Start fra pas 1");
+  assert.deepEqual(rowOf(state, "r1").rotation.anchor, { rev: T + 2, index: 0 }, "Start fra pas 1");
   await call("PUT", "/programs/rotation", { riderId: "r1", startIndex: 2 });
-  assert.deepEqual(rowOf(state, "r1").rotation.anchor, { rev: 4, index: 2 });
+  assert.deepEqual(rowOf(state, "r1").rotation.anchor, { rev: T + 3, index: 2 });
 });
 
 test("rytter: Week blocks beholder rotationen, og et skift tilbage fortsaetter", async (t) => {
@@ -246,14 +248,14 @@ test("gruppe: rotationen kopieres til hver foelgende rytter med hans egen plads;
   const view = res.body.groups[0];
   assert.equal(view.planKind, "rotation");
   assert.deepEqual(view.rotation.passes, ABC);
-  assert.deepEqual(state.training_groups[0].rotation, { v: 1, passes: ABC, rev: 1, anchor: { rev: 1, index: 0 } });
+  assert.deepEqual(state.training_groups[0].rotation, { v: 1, passes: ABC, rev: T, anchor: { rev: T, index: 0 } });
 
   const r1 = rowOf(state, "r1");
   assert.ok(isValidProgramWeekDays(r1.days), "ny raekke faar gruppens felter");
-  assert.deepEqual([r1.plan_kind, r1.rotation], ["rotation", { v: 1, passes: ABC, rev: 1, anchor: { rev: 1, index: 0 } }]);
+  assert.deepEqual([r1.plan_kind, r1.rotation], ["rotation", { v: 1, passes: ABC, rev: T, anchor: { rev: T, index: 0 } }]);
   const r2 = rowOf(state, "r2");
   assert.equal(r2.plan_kind, "rotation");
-  assert.deepEqual(r2.rotation, { v: 1, passes: ABC, rev: 4, anchor: { rev: 4, index: 1, fromRev: 3 } }, "samme laengde: pladsen beholdes, rev stiger paa HANS raekke");
+  assert.deepEqual(r2.rotation, { v: 1, passes: ABC, rev: T, anchor: { rev: T, index: 1, fromRev: 3 } }, "samme laengde: pladsen beholdes, rev stiger paa HANS raekke");
   assert.deepEqual(rowOf(state, "r3").rotation, ownR3, "foelger ikke gruppen: uroert");
   assert.notEqual(r1.rotation.passes, r2.rotation.passes);
 });
@@ -263,12 +265,12 @@ test("gruppe: Start fra pas 1 og Spring til pas gaelder alle foelgere", async (t
   const { call } = await fixture(t, { state });
   await call("PUT", "/groups/g1/rotation", { passes: ABC });
   await call("PUT", "/groups/g1/rotation", { startIndex: 2 });
-  assert.deepEqual(rowOf(state, "r1").rotation.anchor, { rev: 2, index: 2 });
-  assert.deepEqual(rowOf(state, "r2").rotation.anchor, { rev: 2, index: 2 });
+  assert.deepEqual(rowOf(state, "r1").rotation.anchor, { rev: T + 1, index: 2 });
+  assert.deepEqual(rowOf(state, "r2").rotation.anchor, { rev: T + 1, index: 2 });
   await call("PUT", "/groups/g1/rotation", { passes: P("rest", "endurance", "threshold"), keepPlace: false });
-  assert.deepEqual(rowOf(state, "r1").rotation.anchor, { rev: 3, index: 0 });
+  assert.deepEqual(rowOf(state, "r1").rotation.anchor, { rev: T + 2, index: 0 });
   await call("PUT", "/groups/g1/rotation", { passes: P("rest", "endurance", "threshold"), keepPlace: false });
-  assert.deepEqual(rowOf(state, "r2").rotation.anchor, { rev: 4, index: 0 }, "Start fra pas 1 med samme pas nulstiller ogsaa");
+  assert.deepEqual(rowOf(state, "r2").rotation.anchor, { rev: T + 3, index: 0 }, "Start fra pas 1 med samme pas nulstiller ogsaa");
 });
 
 test("gruppe: skift til Week blocks foelger med til rytterne; deres rotation bliver liggende", async (t) => {
@@ -288,7 +290,7 @@ test("gruppe: et felt rettet paa en rotationsgruppe genkopierer rotationen uden 
   const { call } = await fixture(t, { state });
   await call("PUT", "/groups/g1/rotation", { passes: ABC });
   assert.equal((await call("PUT", "/groups/g1/cell", { weekday: "mon", slotIndex: 0, session: "rest" })).status, 200);
-  assert.deepEqual([rowOf(state, "r1").plan_kind, rowOf(state, "r1").rotation.rev], ["rotation", 1]);
+  assert.deepEqual([rowOf(state, "r1").plan_kind, rowOf(state, "r1").rotation.rev], ["rotation", T]);
   assert.equal(rowOf(state, "r1").days.mon.slots[0], "rest");
 });
 

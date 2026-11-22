@@ -39,7 +39,7 @@ import { loadTeamFatigueForecast } from "../lib/trainingWeekPlanForecast.js";
 import { markRidersOwnPlan, syncGroupsToSquadProgram, isMissingGroupsTable } from "../lib/trainingGroups.ts"; // #6000
 import { isTrainingRotationEnabled } from "../lib/trainingRotationFlag.js"; // #8548
 import { rotationWriteInput, rotationView } from "../lib/trainingRotationInput.js"; // #8548
-import { applyRotationWrite } from "../lib/trainingRotation.js"; // #8548
+import { applyRotationWrite, rotationRevFloor } from "../lib/trainingRotation.js"; // #8548
 
 const PASS = (_req, _res, next) => next();
 
@@ -408,11 +408,12 @@ export function createTrainingProgramsRouter({
       if (!rider) return res.status(403).json({ error: "not_own_rider" });
       const rows = await rotationRows(teamId);
       const row = rows.find((r) => r.rider_id === riderId) ?? null;
-      const next = applyRotationWrite({ prev: row?.rotation ?? null, prevKind: row?.plan_kind ?? null, write: input.write, passes: input.passes });
+      const at = clock();
+      const next = applyRotationWrite({ prev: row?.rotation ?? null, prevKind: row?.plan_kind ?? null, write: input.write, passes: input.passes, revFloor: rotationRevFloor(at) });
       if (!next.ok) return res.status(400).json({ error: next.reason });
       await markRidersOwnPlan(supabase, teamId, [riderId]); // #6000: egen plan vinder over gruppen. Foer skrivningen.
-      const now = clock().toISOString();
-      const patch = { rotation: next.rotation, plan_kind: next.planKind, updated_at: now };
+      const now = at.toISOString();
+      const patch = { ...(next.rotationChanged ? { rotation: next.rotation } : {}), plan_kind: next.planKind, updated_at: now };
       let error;
       if (row) {
         ({ error } = await supabase.from("training_week_plans").update(patch).eq("id", row.id));

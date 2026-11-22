@@ -176,20 +176,20 @@ export function copyWeekDays(days: WeekDays): WeekDays {
 //   · gruppen staar paa Week blocks, og rytteren stod paa Rotation: plan_kind foelger
 //     gruppen; hans rotation bliver liggende, saa et skift tilbage fortsaetter.
 //   · ellers intet: noeglerne skrives slet ikke (raekken er praecis som foer).
-export type RotationCopyOptions = { keepPlace?: boolean; startIndex?: number | null };
+export type RotationCopyOptions = { keepPlace?: boolean; startIndex?: number | null; revFloor?: number };
 export type RotationCopyPatch = { rotation?: unknown; plan_kind?: string | null };
 
 export function groupRotationCopyPatch(
   group: Pick<GroupRow, "rotation" | "plan_kind">,
   row: { rotation?: unknown; plan_kind?: string | null } | null | undefined,
-  { keepPlace = true, startIndex = null }: RotationCopyOptions = {},
+  { keepPlace = true, startIndex = null, revFloor = 0 }: RotationCopyOptions = {},
 ): RotationCopyPatch {
   if (group.plan_kind === "rotation" && isValidRotation(group.rotation)) {
     const { passes } = group.rotation as { passes: unknown[] };
     const own = row?.rotation ?? null;
     const unchanged = startIndex == null && keepPlace !== false && sameRotationPasses(own, passes);
     return {
-      rotation: unchanged ? own : buildRotationOnSave(own, passes, { keepPlace, startIndex: startIndex ?? undefined }),
+      rotation: unchanged ? own : buildRotationOnSave(own, passes, { keepPlace, startIndex: startIndex ?? undefined, revFloor }),
       plan_kind: "rotation",
     };
   }

@@ -16,7 +16,10 @@
 --    off = motoren læser aldrig kolonnerne, og API'et afviser skrivning (409 feature_disabled).
 --
 -- RLS: ingen ny tabel. De eksisterende policies på training_week_plans og training_groups
--- (eget hold) dækker de nye kolonner; backend skriver med service-role som i dag.
+-- (eget hold) dækker de nye kolonner for EJERSKAB; backend skriver med service-role som i dag.
+-- De dækker IKKE flaget eller valideringen: authenticated har skriveret på training_week_plans,
+-- så motoren (PR 2) skal selv tjekke kontakten og isValidRotation og aldrig stole på kolonnen
+-- (dommer 22/11 fund 3).
 
 -- Lock-sikkerhed (#6342): en nullable kolonne uden default er en ren katalog-ændring, men ALTER
 -- skal stadig have tabellens lås. Venter den, giver den op i stedet for at blokere læsninger;

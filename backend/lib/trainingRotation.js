@@ -10,7 +10,9 @@
 //   {
 //     v: 1,
 //     passes: [{ session, effort? }, ...]   2..35 pas i fast raekkefoelge
-//     rev: n                                stiger ved HVER gemning (pas eller anker)
+//     rev: n                                stiger ved HVER gemning (pas eller anker);
+//                                           mindst rutens ur i sekunder (revFloor), saa en
+//                                           slettet/ny raekke aldrig genbruger en gammel rev
 //     anchor: { rev, index, fromRev? }      hvor rotationen starter for denne rev
 //   }
 // Hvilken regel planen koerer, staar IKKE i rotationen: kolonnen plan_kind
@@ -130,13 +132,16 @@ export function sameRotationPasses(rotation, passes) {
  * @param {any} passes
  * @param {{ keepPlace?: boolean, startIndex?: number | null }} [opts]
  */
-export function buildRotationOnSave(prev, passes, { keepPlace = true, startIndex } = {}) {
+export function buildRotationOnSave(prev, passes, { keepPlace = true, startIndex, revFloor = 0 } = {}) {
   if (!Array.isArray(passes) || !passes.every(isValidRotationPass)) return null;
   if (passes.length < ROTATION_MIN_PASSES || passes.length > ROTATION_MAX_PASSES) return null;
   // rev skal altid stige paa raekken, ogsaa hvis den gamle vaerdi ikke laengere er gyldig:
   // ellers kunne et gammelt stempel med samme rev genbruges.
+  // Dommer 22/11 fund 1: en slettet raekke (DELETE week-plan) eller en rytter med ny raekke
+  // startede forfra paa rev 1 og matchede sine gamle stempler. revFloor (rutens ur i hele
+  // sekunder, rotationRevFloor) goer rev entydig pr. rytter paa tvaers af raekker.
   const prevRev = isPositiveInt(prev?.rev) ? prev.rev : 0;
-  const rev = prevRev + 1;
+  const rev = Math.max(prevRev + 1, isPositiveInt(revFloor) ? revFloor : 0);
   const next = { v: ROTATION_VERSION, passes: copyRotationPasses(passes), rev };
   if (startIndex !== undefined && startIndex !== null) {
     if (!Number.isInteger(startIndex) || startIndex < 0 || startIndex >= passes.length) return null;
@@ -151,6 +156,12 @@ export function buildRotationOnSave(prev, passes, { keepPlace = true, startIndex
   }
   next.anchor = { rev, index: 0 };
   return next;
+}
+
+// revFloor fra rutens ur: hele sekunder siden epoch. Ren, saa testene kan give et fast ur.
+export function rotationRevFloor(date) {
+  const ms = date instanceof Date ? date.getTime() : Number(date);
+  return Number.isFinite(ms) && ms > 0 ? Math.floor(ms / 1000) : 0;
 }
 
 // ═══ SKRIVNINGEN FRA KLIENTEN (rytterens plan og gruppens plan) ══════════════
@@ -181,23 +192,27 @@ export function parseRotationWrite(body) {
 // Den nye tilstand oven paa den gemte. `passes` er den normaliserede liste (eller
 // undefined, naar klienten ikke sendte nogen). Samme pas uden "Spring til pas" eller
 // "Start fra pas 1" er ingen aendring: rev staar stille, saa stemplerne stadig passer.
-// { ok: true, rotation, planKind } | { ok: false, reason }
-export function applyRotationWrite({ prev = null, prevKind = null, write, passes }) {
+// { ok: true, rotation, rotationChanged, planKind } | { ok: false, reason }
+// rotationChanged false = skriv IKKE rotation-kolonnen (dommer 22/11 fund 2: en skrivning kun
+// med planKind maa ikke nulstille en gemt vaerdi, heller ikke en ukendt version med sin rev).
+export function applyRotationWrite({ prev = null, prevKind = null, write, passes, revFloor = 0 }) {
   const prevValid = isValidRotation(prev) ? prev : null;
   let rotation = prevValid;
+  let rotationChanged = false;
   if (passes !== undefined || write.startIndex != null || (write.keepPlace === false && prevValid)) {
     const base = passes ?? prevValid?.passes ?? null;
     if (!base) return { ok: false, reason: "rotation_missing" };
     // keepPlace false = "Start fra pas 1": altid en ny rev, ogsaa med samme pas.
     const unchanged = write.startIndex == null && write.keepPlace !== false && sameRotationPasses(prevValid, base);
     if (!unchanged) {
-      rotation = buildRotationOnSave(prev, base, { keepPlace: write.keepPlace, startIndex: write.startIndex ?? undefined });
+      rotation = buildRotationOnSave(prev, base, { keepPlace: write.keepPlace, startIndex: write.startIndex ?? undefined, revFloor });
       if (!rotation) return { ok: false, reason: "invalid_start" };
+      rotationChanged = true;
     }
   }
   const planKind = write.planKind ?? (isPlanKind(prevKind) ? prevKind : null);
   if (planKind === "rotation" && !rotation) return { ok: false, reason: "rotation_missing" };
-  return { ok: true, rotation: rotation ? copyRotation(rotation) : null, planKind };
+  return { ok: true, rotation: rotation ? copyRotation(rotation) : null, rotationChanged, planKind };
 }
 
 function isValidStamp(stamp) {
