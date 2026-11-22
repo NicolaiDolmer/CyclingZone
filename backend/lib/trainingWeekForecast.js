@@ -109,7 +109,7 @@ async function rows(query, label) {
 }
 
 function stripJoin(list) {
-  return (list ?? []).map(({ races, ...row }) => row);
+  return (list ?? []).map(({ races: _join, ...row }) => row);
 }
 
 // ── I/O: hele ugen for ét hold ───────────────────────────────────────────────
