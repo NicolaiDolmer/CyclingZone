@@ -1024,7 +1024,7 @@ function WeekGrid({
     <div className="overflow-hidden rounded-cz border border-cz-border bg-cz-card" data-testid="program-r5-week">
       <div className="grid grid-cols-[52px_repeat(7,minmax(0,1fr))]">
         <span className="border-b border-cz-border bg-cz-subtle" />
-        {weekdays.map((weekday) => {
+        {weekdays.map((weekday, dayIndex) => {
           const isToday = weekday === todayWeekday;
           return (
             <div key={weekday} className={head}>
@@ -1037,6 +1037,9 @@ function WeekGrid({
                 )}
                 {editable && (
                   <CopyDayMenu
+                    // Codex P2 #8589: ugens foerste halvdel aabner mod hoejre, saa menuen bliver
+                    // inden for gitterets overflow-hidden-ramme (en end-0-menu paa mandag blev klippet).
+                    align={dayIndex < Math.ceil(weekdays.length / 2) ? "start" : "end"}
                     label={tR5("programR5.copyDay", { day: dayLabel(weekday) })}
                     options={[
                       { value: "all", label: tR5("programR5.copyAll") },
@@ -1144,8 +1147,9 @@ function Row({
 
 // #8561: kopier dagen via en synlig menu-knap (44 px trykflade) i stedet for en usynlig select.
 function CopyDayMenu({
-  label, options, onPick,
+  label, options, onPick, align = "end",
 }: {
+  align?: "start" | "end";
   label: string;
   options: { value: string; label: string }[];
   onPick: (value: string) => void;
@@ -1161,7 +1165,7 @@ function CopyDayMenu({
         <ClipboardIcon size={13} aria-hidden="true" />
       </button>
       {open && (
-        <div className="absolute end-0 z-dropdown mt-1 min-w-[168px]">
+        <div className={`absolute ${align === "start" ? "start-0" : "end-0"} z-dropdown mt-1 min-w-[168px]`}>
           <Menu aria-label={label}>
             {options.map((o) => (
               <MenuItem key={o.value} className="min-h-11" onClick={() => { setOpen(false); onPick(o.value); }}>
