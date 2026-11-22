@@ -130,7 +130,7 @@ export function sameRotationPasses(rotation, passes) {
 /**
  * @param {any} prev
  * @param {any} passes
- * @param {{ keepPlace?: boolean, startIndex?: number | null }} [opts]
+ * @param {{ keepPlace?: boolean, startIndex?: number | null, revFloor?: number }} [opts]
  */
 export function buildRotationOnSave(prev, passes, { keepPlace = true, startIndex, revFloor = 0 } = {}) {
   if (!Array.isArray(passes) || !passes.every(isValidRotationPass)) return null;
