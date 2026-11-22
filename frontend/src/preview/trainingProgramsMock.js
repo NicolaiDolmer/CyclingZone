@@ -57,6 +57,51 @@ export function previewTrainingProgramsEnabled() {
 // Loebsdags-kolonnerne paa preview: SEED_TRAINING baerer allerede dayClose
 // (training_tick_per_race_day on, 5 loebsdage i gitteret). ?raceDays=1 fjerner
 // den, saa gitteret kan ses som i prod i dag (flag off: kun "Hele dagen").
+function previewTrainingWeekEnabled() {
+  try {
+    const param = new URLSearchParams(window.location.search).get("trainingWeek");
+    if (param === "1") localStorage.setItem("cz_mock_training_week", "1");
+    if (param === "0") localStorage.setItem("cz_mock_training_week", "0");
+    return localStorage.getItem("cz_mock_training_week") === "1";
+  } catch {
+    return false;
+  }
+}
+
+// #8580: i dag + 7 dage. Loebene frem er preview-fiktion; dag 6 har ingen fuld akse endnu.
+function previewWeek(seedTraining) {
+  const ids = Object.keys(seedTraining.condition ?? {});
+  const weekdays = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+  const fixtures = {
+    2: { race: { raceId: "pv-trofeo", name: "Trofeo Preview", kind: "oneday", stages: [1] }, slots: [2] },
+    4: { race: { raceId: "pv-ronde", name: "Ronde Preview", kind: "stage", stages: [1] }, slots: [1, 3] },
+    5: { race: { raceId: "pv-ronde", name: "Ronde Preview", kind: "stage", stages: [3] }, slots: [0, 2, 4] },
+  };
+  const days = [];
+  for (let i = 0; i < 8; i += 1) {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const weekday = weekdays[d.getDay()];
+    if (i === 0) {
+      // Dagens etape i preview-kalenderen (Tour de Preview); holdets ryttere med = dem med loebsfelter i dag.
+      const today = previewForecast(seedTraining);
+      const own = Object.values(today.riders ?? {}).filter((r) => (r.raceSlots ?? []).length > 0).length;
+      days.push({ date, weekday, available: true, races: own ? [{ raceId: "pv-tour", name: "Tour de Preview", kind: "stage", stages: [3], ownRiders: own }] : [], today });
+      continue;
+    }
+    if (i === 6) { days.push({ date, weekday, available: false, races: [], riders: {} }); continue; }
+    const fx = fixtures[i];
+    const racers = fx ? ids.filter((_, idx) => idx % 3 === 0) : [];
+    const riders = Object.fromEntries(ids.map((id, idx) => [id, {
+      raceSlots: racers.includes(id) ? fx.slots : [],
+      restSlots: i === 3 && idx === 1 ? [0, 1, 2, 3, 4] : [],
+    }]));
+    days.push({ date, weekday, available: true, races: fx ? [{ ...fx.race, ownRiders: racers.length }] : [], riders });
+  }
+  return { available: true, tickDate: days[0].date, days };
+}
+
 export function previewSingleRaceDay() {
   try {
     const param = new URLSearchParams(window.location.search).get("raceDays");
@@ -125,6 +170,10 @@ function previewForecast(seedTraining) {
 
 export function trainingProgramsMockRoute(method, pathname, body, seedTraining) {
   if (!/^\/api\/training\/programs(\/|$)/.test(pathname)) return null;
+  // #8580: dagsvaelgerens uge. ?trainingWeek=1 taender den paa preview (kontakten er off i prod).
+  if (method === "GET" && pathname.endsWith("/forecast/week")) {
+    return { status: 200, body: previewTrainingWeekEnabled() ? previewWeek(seedTraining) : { available: false, reason: "disabled", days: [] } };
+  }
   const catalogOn = previewTrainingProgramsEnabled();
   const cellsOn = previewTrainingCellsEnabled();
   if (!catalogOn && !cellsOn) {

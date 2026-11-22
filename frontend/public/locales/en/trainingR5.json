@@ -174,5 +174,21 @@
       "limitRun": "run",
       "limitInstead": "instead"
     }
+  },
+  "dayPicker": {
+    "label": "Choose day",
+    "prev": "Previous day",
+    "next": "Next day",
+    "today": "Today",
+    "training": "Training",
+    "stage": "Stage {n}",
+    "stageRace": "Stage race",
+    "oneDay": "One-day race",
+    "rider": "Rider",
+    "countTraining": "training",
+    "countRacing": "racing",
+    "notReady": "The race days for this date are not ready yet.",
+    "aheadNote": "Days ahead show the plan. A change applies to every {weekday}.",
+    "editInProgram": "Edit {weekday} in Program"
   }
 }

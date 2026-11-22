@@ -174,5 +174,21 @@
       "limitRun": "rijd",
       "limitInstead": "in plaats daarvan"
     }
+  },
+  "dayPicker": {
+    "label": "Kies dag",
+    "prev": "Vorige dag",
+    "next": "Volgende dag",
+    "today": "Vandaag",
+    "training": "Training",
+    "stage": "Etappe {n}",
+    "stageRace": "Etappekoers",
+    "oneDay": "Eendagskoers",
+    "rider": "Renner",
+    "countTraining": "trainen",
+    "countRacing": "koersen",
+    "notReady": "De koersdagen voor deze datum zijn nog niet klaar.",
+    "aheadNote": "De komende dagen tonen het plan. Een wijziging geldt voor elke {weekday}.",
+    "editInProgram": "Wijzig {weekday} in Programma"
   }
 }
