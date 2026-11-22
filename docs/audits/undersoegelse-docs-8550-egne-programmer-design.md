@@ -270,3 +270,10 @@ Patch notes + `help.json` (en+da) skrives ved tænding, ikke ved merge bag slukk
 ## 10. Dom
 
 bekraeftet + fix-plan
+
+
+## Tilføjet 22/11 efter Codex-review: SSOT og dommer-scenarier (AGENTS regel 30 og 40)
+
+**SSOT.** Designet er afstemt mod [`docs/TRAINING_RULES.md`](../TRAINING_RULES.md) §3 (dagstyper og sessioner), §4 (ugerytme og hvilket lag der vinder), §5 (restitution, træthedsgrænse og skader), §6 (træning og løbsdage), §13 (træning pr. løbsdag, fem felter pr. dato) og [`docs/CALENDAR_RULES.md`](../CALENDAR_RULES.md) §0 (de to akser: dato og løbsdag), §2b (rytterbinding) og §4 (etapeløb og endagsløb). Hvor designet og reglerne er uenige, vinder reglerne, og afvigelsen er et ejer-spørgsmål før byg.
+
+**Dommer-scenarier før kode (AGENTS 40).** Den uafhængige Fable-dommer skriver de forventede scenarier ud fra reglerne ovenfor, før første kode-PR merges, i `docs/audits/7456-program-dommer-scenarier.md` (fælles for #8548, #8549 og #8550). Samme dommer gennemgår hver motor- og data-PR mod scenarierne før merge. PR 1 for #8548 og #8549 blev startet 22/11 nat før scenarierne. De merges ikke, før scenarierne og dommerens gennemgang foreligger.
