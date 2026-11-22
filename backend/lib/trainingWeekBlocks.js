@@ -51,11 +51,22 @@ function nearestField(home, candidates) {
   return best;
 }
 
+// settled som Map/iterable eller almindeligt objekt (noegler er strenge efter JSON).
+function settledEntries(settled) {
+  if (settled == null) return [];
+  if (typeof settled[Symbol.iterator] === "function") return settled;
+  if (typeof settled === "object") return Object.entries(settled);
+  return [];
+}
+
 // entry      : dagens plan-raekke ({ session, slots?, lockSlot?, ... }) eller null.
 // raceFields : felter (0..PROGRAM_SLOTS-1) hvor rytteren koerer loeb paa datoen
 //              (Set, Array eller anden iterable). Ugyldige vaerdier ignoreres.
-// settled    : allerede afregnede felter -> deres kildefelt (Map eller iterable af
-//              [felt, kilde]). Kilden null = feltet blev afregnet uden pas (fx loeb).
+// settled    : allerede afregnede felter -> deres kildefelt (Map, iterable af
+//              [felt, kilde] eller et almindeligt objekt { felt: kilde }, fx et Map der
+//              har vaeret gennem JSON). Kilden null BETYDER KUN loeb. Et felt som
+//              traethedsgraensen erstattede (Hvile/let/restitution) SKAL afregnes med sin
+//              kilde: passet er brugt og indhentes ikke (ejer 19/11, dommer WB-7).
 // Returnerer { fieldSource, taken, lockMovedFrom }:
 //   fieldSource   : laengde PROGRAM_SLOTS; kildefeltet pr. felt, null for et loebsfelt
 //                   (eller et felt afregnet uden pas).
@@ -64,7 +75,8 @@ function nearestField(home, candidates) {
 export function assignDayFields({ entry = null, raceFields = [], settled = null } = {}) {
   const races = new Set([...(raceFields ?? [])].filter(isField));
   const fixed = new Map();
-  for (const [field, source] of settled ?? []) {
+  for (const [rawField, source] of settledEntries(settled)) {
+    const field = Number(rawField);
     if (!isField(field)) continue;
     fixed.set(field, isField(source) ? source : null);
   }

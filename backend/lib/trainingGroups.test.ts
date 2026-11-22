@@ -59,6 +59,18 @@ test("kopi: ingen delte objekter", () => {
   assert.notEqual(copy.mon.slots, days.mon.slots);
 });
 
+// Dommer 22/11 fund 2 (#8549): gruppens laaste pas maa ikke tabes i kopien til rytterne.
+test("kopi: lockSlot foelger med (ogsaa 0), og mangler den, kommer noeglen ikke med", () => {
+  const days = programWeekDaysFor("sprinter") as Record<string, { lockSlot?: number }>;
+  days.tue.lockSlot = 3;
+  days.wed.lockSlot = 0;
+  const copy = copyWeekDays(days) as Record<string, { lockSlot?: number }>;
+  assert.deepEqual(copy, days);
+  assert.equal(copy.tue.lockSlot, 3);
+  assert.equal(copy.wed.lockSlot, 0);
+  assert.equal("lockSlot" in copy.mon, false);
+});
+
 test("undtagelse: validering af klientens mode", () => {
   assert.deepEqual(groupFatiguePatch({ mode: "team" }), { fatigue_threshold: null, fallback: null });
   assert.deepEqual(groupFatiguePatch({ mode: "off" }), { fatigue_threshold: null, fallback: "off" });

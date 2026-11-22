@@ -212,3 +212,28 @@ test("robust input: ugyldig laas, ugyldige loebsfelter, tom raekke, Array som se
     [0, 1, null, 2, 3],
   );
 });
+
+// Dommer 22/11 fund 1 (WB-7): et felt som traethedsgraensen erstattede, afregnes MED sin
+// kilde. Saa giver afregningen samme kilder og samme taget som foer, og laasen indhentes ikke.
+test("WB-7: laas B, etape paa LD2, graensen erstatter LD3: samme kilder foer og efter afregning", () => {
+  const entry = withLock(MIXED_DAY, 1);
+  const before = assignDayFields({ entry, raceFields: [1] });
+  assert.deepEqual(before.fieldSource, [0, null, 1, 2, 3]);
+  assert.deepEqual(before.taken, [4]);
+  assert.equal(before.lockMovedFrom, 1);
+
+  // LD1 koerte A, LD2 var loeb (null), LD3 blev erstattet af graensen, men passet (B) er brugt.
+  const after = assignDayFields({ entry, raceFields: [1], settled: new Map([[0, 0], [1, null], [2, 1]]) });
+  assert.deepEqual(after.fieldSource, before.fieldSource);
+  assert.deepEqual(after.taken, before.taken);
+  assert.equal(after.lockMovedFrom, 1);
+  assertPartition(after, "WB-7 efter afregning");
+});
+
+// Dommer 22/11 fund 3: et Map der har vaeret gennem JSON er et almindeligt objekt.
+test("settled som almindeligt objekt (efter JSON) giver samme svar som Map", () => {
+  const entry = withLock(MIXED_DAY, 1);
+  const asMap = assignDayFields({ entry, raceFields: [1], settled: new Map([[0, 0], [1, null], [2, 1]]) });
+  const asObject = assignDayFields({ entry, raceFields: [1], settled: JSON.parse(JSON.stringify({ 0: 0, 1: null, 2: 1 })) });
+  assert.deepEqual(asObject, asMap);
+});
