@@ -364,24 +364,24 @@ features:
     area: training
     title_en: Every session at easy, normal or hard
     title_da: Alle træninger på Let, Mellem eller Hård
-    state: building
+    state: live
     ssot: docs/TRAINING_RULES.md
     epic: 7947
-    verified: 2026-11-20
+    verified: 2026-11-21
     decision: taend
     decide_by: 2026-11-27
-    note: "PR 1 af 4 (kontakt, lib, motorens læsesti). training_effort_levels seedes off post-merge; ejer tænder efter PR 2-4."
+    note: "Tændt 21/11 aften (ejer-kør): Let/Mellem/Hård."
 
   - id: planning-workbench
     area: season
     title_en: One planning page
     title_da: Én planlægningsside (ugeoversigt, løbsliste, trup)
-    state: beta
+    state: live
     flag: planning_workbench
     ssot: docs/PLANNING_CENTER_RULES.md
     epic: 7535
-    verified: 2026-11-17
-    note: "#7535: beta 17/11 efter ejerens kør; belastningsordenes grænser i private_config (planning_expected_load_7535)."
+    verified: 2026-11-21
+    note: "On for alle 21/11 aften (ejer-go)."
     decision: taend
     decide_by: 2026-11-28
     roadmap_en: "One planning page: race list, week board, route profile, squad, tactics and peak form in one place."
@@ -528,14 +528,14 @@ features:
     area: race-day
     title_en: Race page v6, step 1 (results for a ridden stage)
     title_da: Løbssiden v6, trin 1 (resultater for en kørt etape)
-    state: beta
+    state: live
     flag: race_page_v6
     decision: ejer-beslutning
     decide_by: 2026-11-26
     epic: 7778
     ssot: docs/RACE_ENGINE_RULES.md
-    verified: 2026-11-18
-    note: "#7778: beta 18/11 efter ejerens kør (film, mellemtider, taktik v6c, farvet rute); kendt spoilerhul #8409."
+    verified: 2026-11-21
+    note: "On for alle 21/11 aften (ejer-go)."
     roadmap_en: "New race page: the race film, your orders and the results in one place"
     roadmap_da: "Ny løbsside: løbsfilmen, dine ordrer og resultaterne samlet ét sted"
 
@@ -543,14 +543,14 @@ features:
     area: race-day
     title_en: Spoiler shield
     title_da: Spoiler-skjold
-    state: beta
+    state: live
     flag: spoiler_shield_7859
     decision: taend
     decide_by: 2026-11-30
     epic: 7778
     ssot: docs/RACE_ENGINE_RULES.md
-    verified: 2026-11-17
-    note: "#7859: beta 17/11 efter ejer-go; løbssiden skjuler først med race_page_v6."
+    verified: 2026-11-21
+    note: "On for alle 21/11 aften (ejer-go)."
     roadmap_en: "Spoiler shield: watch the race before you see who won"
     roadmap_da: "Spoiler-skjold: se løbet, før du ser, hvem der vandt"
 
@@ -997,12 +997,12 @@ features:
     area: training
     title_en: New Training page (R5)
     title_da: Ny træningsside (R5)
-    state: building
+    state: live
     flag: training_page_r5
     ssot: docs/TRAINING_RULES.md
     epic: 7947
-    verified: 2026-11-20
-    note: 'Bag training_page_r5 = off (migration #8511). I dag-fanen bygget (#8511), Program følger (#7456); ejer tænder, når siden er færdig.'
+    verified: 2026-11-21
+    note: "On for alle 21/11 aften (ejer: live nu); binær kontakt, så beta virker ikke."
     decision: goer-faerdigt
     decide_by: 2026-12-04
 
@@ -1278,8 +1278,8 @@ features:
     flag: potential_estimate_display
     ssot: docs/superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md
     epic: 6110
-    verified: 2026-11-05
-    note: 'Trin 4 (#7684): fladerne læser potentialEstimateRead.js, når flaget er på.'
+    verified: 2026-11-21
+    note: "Tændt og slukket igen 21/11 aften (ejer): gemte skøn mangler (potential_estimate_writes + params + backfill, #7685). Tændes efter XP-start 22/11."
     decision: goer-faerdigt
     decide_by: 2026-12-31
 
@@ -1335,12 +1335,12 @@ features:
     area: training
     title_en: Development XP
     title_da: Udviklings-XP
-    state: dormant
+    state: live
     flag: development_xp_model
     ssot: docs/TRAINING_RULES.md
     epic: 6110
-    note: 'Off i prod 13/11 (#8041); ejer tænder, efter dommer + development_xp_from_date.'
-    verified: 2026-11-13
+    note: "Tændt 21/11 aften (ejer-kør): development_xp_from_date 2026-11-22; omregningen til P skrevet én gang."
+    verified: 2026-11-21
     decision: taend
     decide_by: 2026-11-21
 
@@ -1604,11 +1604,11 @@ features:
     area: comms
     title_en: Patch notes by area, week by week
     title_da: Patch notes efter område, uge for uge
-    state: building
+    state: live
     ssot: docs/PATCH_NOTES_RULES.md
     epic: 954
-    verified: 2026-11-16
-    note: Bag patch_notes_v2_8049, slukket.
+    verified: 2026-11-21
+    note: "On for alle 21/11 aften (ejer-go)."
     decision: ejer-beslutning
     decide_by: 2026-11-23
 
