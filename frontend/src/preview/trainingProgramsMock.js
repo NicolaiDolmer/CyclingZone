@@ -57,6 +57,10 @@ export function previewTrainingProgramsEnabled() {
 // Loebsdags-kolonnerne paa preview: SEED_TRAINING baerer allerede dayClose
 // (training_tick_per_race_day on, 5 loebsdage i gitteret). ?raceDays=1 fjerner
 // den, saa gitteret kan ses som i prod i dag (flag off: kun "Hele dagen").
+function previewProgramsState() {
+  try { return new URLSearchParams(window.location.search).get("programsState"); } catch { return null; }
+}
+
 export function previewSingleRaceDay() {
   try {
     const param = new URLSearchParams(window.location.search).get("raceDays");
@@ -125,6 +129,10 @@ function previewForecast(seedTraining) {
 
 export function trainingProgramsMockRoute(method, pathname, body, seedTraining) {
   if (!/^\/api\/training\/programs(\/|$)/.test(pathname)) return null;
+  // #8561: ?programsState=error giver Program-fanen R5's fejl-tilstand paa preview (kun katalog-GET'et).
+  if (method === "GET" && /\/programs\/?$/.test(pathname) && previewProgramsState() === "error") {
+    return { status: 500, body: { error: "preview_error" } };
+  }
   const catalogOn = previewTrainingProgramsEnabled();
   const cellsOn = previewTrainingCellsEnabled();
   if (!catalogOn && !cellsOn) {
