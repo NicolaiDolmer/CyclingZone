@@ -373,7 +373,7 @@ export function createTrainingProgramsRouter({
     }
   });
 
-  // GET /api/training/programs/forecast/week — #8580 / #8550 del 3: den rullende uge (i dag + 6).
+  // GET /api/training/programs/forecast/week — #8580 / #8550 del 3: den rullende uge (i dag + 7, 8 datoer; Program bruger de første 7).
   // Bag training_week_forecast (off/beta/on, seedet off). Dag 0 er GET /forecast's svar
   // uændret, med samme gate; de andre dage har kun løbs- og hvilefelter (ingen træthed, K-7).
   router.get("/forecast/week", requireAuth, readLimiter, async (req, res) => {

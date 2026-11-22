@@ -17,6 +17,7 @@ import { gameDaySpansByDivision, loadPriorMaxGameDayByDivision } from "./trainin
 import { forecastBindingsFromEntryDays, loadTeamFatigueForecast, FORECAST_SLOTS } from "./trainingWeekPlanForecast.js";
 import { loadRaceExitGameDays } from "./trainingRaceDayTick.js";
 import { programSlotForRaceDay } from "./trainingPrograms.js";
+import { isInjuredOnRaceDay } from "./injuryRaceDays.js";
 import { copenhagenDateString, copenhagenMidnightUTC, copenhagenWeekdayKey } from "./copenhagenTime.js";
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 
@@ -68,7 +69,9 @@ export function weekGameDaysByDate({ dates, stagesByDate, divisionId, basePrior 
  *   restSlots: felter hvor rytteren er bundet uden etape (GT-hviledag): hvile, ikke træning.
  * Et felt i ingen af dem er planens pas.
  */
-export function weekDateRiderFields({ gameDays, riderIds, plannedStages, boundRiderIdsByGameDay }) {
+//   Skadet på løbsdagen (isInjuredOnRaceDay, skadens kendte slut-løbsdag) er også hvile.
+// Forrang som dagens forecastSlotActivity: etape > skade > bundet hvile > planens pas.
+export function weekDateRiderFields({ gameDays, riderIds, plannedStages, boundRiderIdsByGameDay, injuredOn = () => false }) {
   const out = {};
   const days = new Set(gameDays.map(Number));
   for (const id of riderIds) {
@@ -78,6 +81,7 @@ export function weekDateRiderFields({ gameDays, riderIds, plannedStages, boundRi
     for (const day of gameDays) {
       const slot = programSlotForRaceDay(day, gameDays);
       if (stageDays.has(Number(day))) raceSlots.push(slot);
+      else if (injuredOn(id, Number(day))) restSlots.push(slot);
       else if (stageDays.size === 0 && boundRiderIdsByGameDay.get(Number(day))?.has(id)) restSlots.push(slot);
     }
     out[id] = { raceSlots, restSlots };
@@ -89,7 +93,9 @@ export function weekDateRiderFields({ gameDays, riderIds, plannedStages, boundRi
  * PUR: holdets løb på en dato (UGE-6): navn og etape eller endagsløb.
  * stages: datoens etaper i divisionen; races: Map<race_id, {name, stages}>.
  */
-export function weekDateRaces({ stages, races }) {
+//   ownRiders: hvor mange af holdets ryttere der kører løbet på datoen (0 = divisionens løb,
+//   holdet har ingen med). Fund 2 i Fable-dommen 22/11.
+export function weekDateRaces({ stages, races, plannedStages = [], raceIdByEntry = null }) {
   const byRace = new Map();
   for (const row of stages) {
     const race = races.get(row.race_id);
@@ -100,7 +106,16 @@ export function weekDateRaces({ stages, races }) {
     if (!prev) byRace.set(row.race_id, { raceId: row.race_id, name: race.name ?? null, kind, stages: [stageNumber] });
     else if (!prev.stages.includes(stageNumber)) prev.stages.push(stageNumber);
   }
-  return [...byRace.values()].map((r) => ({ ...r, stages: r.stages.sort((a, b) => a - b) }))
+  const days = new Set(stages.map((row) => Number(row.game_day)));
+  const ownByRace = new Map();
+  for (const row of plannedStages) {
+    if (!days.has(Number(row.game_day))) continue;
+    const raceId = raceIdByEntry?.get(`${row.rider_id}:${row.game_day}`) ?? null;
+    if (!raceId || !byRace.has(raceId)) continue;
+    if (!ownByRace.has(raceId)) ownByRace.set(raceId, new Set());
+    ownByRace.get(raceId).add(row.rider_id);
+  }
+  return [...byRace.values()].map((r) => ({ ...r, stages: r.stages.sort((a, b) => a - b), ownRiders: ownByRace.get(r.raceId)?.size ?? 0 }))
     .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
 }
 
@@ -143,7 +158,13 @@ export async function loadTeamWeekForecast({ supabase, team, seasonId, now = new
   // pagination-safe: one division's races in one season (well below 1000).
   const divisionRacesP = rows(supabase.from("races").select("id, name, stages").eq("season_id", seasonId).eq("league_division_id", divisionId), "week races");
 
-  const [today, riders, rawStages, divisionRaces] = await Promise.all([todayP, ridersP, stagesP, divisionRacesP]);
+  // Sidste løbsdag FØR ugen, over alle divisionens løb i sæsonen (samme loader som sweepen).
+  // Sendes, så snart løbslisten er der, parallelt med resten (fund 6).
+  const priorP = divisionRacesP.then((list) => loadPriorMaxGameDayByDivision({
+    supabase, raceIdsByDivision: new Map([[divisionId, list.map((r) => r.id)]]), dayStart: weekStart,
+  }));
+
+  const [today, riders, rawStages, divisionRaces, priorMap] = await Promise.all([todayP, ridersP, stagesP, divisionRacesP, priorP]);
   const stages = stripJoin(rawStages);
   const stagesByDate = new Map(dates.map((d) => [d, []]));
   for (const row of stages) {
@@ -151,9 +172,6 @@ export async function loadTeamWeekForecast({ supabase, team, seasonId, now = new
     stagesByDate.get(date)?.push(row);
   }
 
-  // Sidste løbsdag FØR ugen, over alle divisionens løb i sæsonen (samme loader som sweepen).
-  const divisionRaceIds = divisionRaces.map((r) => r.id);
-  const priorMap = await loadPriorMaxGameDayByDivision({ supabase, raceIdsByDivision: new Map([[divisionId, divisionRaceIds]]), dayStart: weekStart });
   const basePrior = priorMap.get(divisionId) ?? null;
   const gameDaysByDate = weekGameDaysByDate({ dates, stagesByDate, divisionId, basePrior });
   const races = new Map(divisionRaces.map((r) => [r.id, r]));
@@ -161,13 +179,19 @@ export async function loadTeamWeekForecast({ supabase, team, seasonId, now = new
   const riderIds = riders.map((r) => r.id);
   const futureDays = [...new Set(dates.slice(1).flatMap((d) => gameDaysByDate.get(d) ?? []))];
   // pagination-safe: roster x up to 30 game days, UNIQUE (rider_id, season_id, game_day); chunked by game day.
-  const entryDays = [];
-  if (riderIds.length && futureDays.length) {
-    for (let i = 0; i < futureDays.length; i += 10) {
-      entryDays.push(...await rows(supabase.from("race_entry_days").select("rider_id, race_id, game_day")
-        .eq("season_id", seasonId).in("game_day", futureDays.slice(i, i + 10)).in("rider_id", riderIds), "week bindings"));
-    }
-  }
+  const chunks = [];
+  if (riderIds.length) for (let i = 0; i < futureDays.length; i += 10) chunks.push(futureDays.slice(i, i + 10));
+  // Bindinger (bidder parallelt, fund 6) og trupens skader (fund 1) i samme runde.
+  // pagination-safe: one roster's condition rows.
+  const [entryChunks, conditions] = await Promise.all([
+    Promise.all(chunks.map((part) => rows(supabase.from("race_entry_days").select("rider_id, race_id, game_day")
+      .eq("season_id", seasonId).in("game_day", part).in("rider_id", riderIds), "week bindings"))),
+    riderIds.length
+      ? rows(supabase.from("rider_condition").select("rider_id, injury_end_game_day, injury_season_id, injured_until").in("rider_id", riderIds), "week injuries")
+      : Promise.resolve([]),
+  ]);
+  const entryDays = entryChunks.flat();
+  const conditionByRider = new Map(conditions.map((row) => [row.rider_id, row]));
   const boundRaceIds = [...new Set(entryDays.map((row) => row.race_id))];
   const [schedule, exits] = boundRaceIds.length
     ? await Promise.all([
@@ -182,9 +206,10 @@ export async function loadTeamWeekForecast({ supabase, team, seasonId, now = new
   // Profilerne bruges ikke uden træthed (K-7); en tom liste giver samme bindinger.
   const { plannedStages, boundRiderIdsByGameDay } = forecastBindingsFromEntryDays({ entryDays, schedule, profiles: [], exits });
 
+  const raceIdByEntry = new Map(entryDays.map((row) => [`${row.rider_id}:${row.game_day}`, row.race_id]));
   const days = dates.map((date, i) => {
     const weekday = copenhagenWeekdayKey(date);
-    const dateRaces = weekDateRaces({ stages: stagesByDate.get(date) ?? [], races });
+    const dateRaces = weekDateRaces({ stages: stagesByDate.get(date) ?? [], races, plannedStages, raceIdByEntry });
     if (i === 0) {
       return { date, weekday, available: today.available === true, races: dateRaces, today };
     }
@@ -192,7 +217,10 @@ export async function loadTeamWeekForecast({ supabase, team, seasonId, now = new
     if (!gameDays) return { date, weekday, available: false, races: dateRaces, riders: {} };
     return {
       date, weekday, available: true, races: dateRaces,
-      riders: weekDateRiderFields({ gameDays, riderIds, plannedStages, boundRiderIdsByGameDay }),
+      riders: weekDateRiderFields({
+        gameDays, riderIds, plannedStages, boundRiderIdsByGameDay,
+        injuredOn: (id, gameDay) => isInjuredOnRaceDay({ condition: conditionByRider.get(id), seasonId, gameDay, tickDate: date }),
+      }),
     };
   });
   return { ...base, available: true, days };

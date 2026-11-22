@@ -98,8 +98,8 @@ test("UGE-6: holdets loeb pr. dato med navn og etape/endagsloeb, ingen traethed 
   const races = new Map([["gt", { name: "Tour", stages: 21 }], ["one", { name: "Classic", stages: 1 }]]);
   const out = weekDateRaces({ stages: [st("gt", 21, 6), st("gt", 23, 7), st("one", 22, 1), st("ukendt", 24, 1)], races });
   assert.deepEqual(out, [
-    { raceId: "one", name: "Classic", kind: "oneday", stages: [1] },
-    { raceId: "gt", name: "Tour", kind: "stage", stages: [6, 7] },
+    { raceId: "one", name: "Classic", kind: "oneday", stages: [1], ownRiders: 0 },
+    { raceId: "gt", name: "Tour", kind: "stage", stages: [6, 7], ownRiders: 0 },
   ]);
   const riderOut = fields({ entryDays: [], schedule: [] }).r1;
   assert.deepEqual(Object.keys(riderOut).sort(), ["raceSlots", "restSlots"], "ingen fatigue/band frem i tiden");
@@ -145,4 +145,77 @@ test("route: kontakten off giver { available:false, reason:'disabled' } og samme
   assert.match(block, /isTrainingWeekForecastEnabled\(supabase, \{ isBetaTester \}\)/);
   assert.match(block, /available: false, reason: "disabled", days: \[\]/);
   assert.match(block, /await cellsOn\(req\)/);
+});
+
+// ── Fable-dom 22/11, fund 1, 2 og 5 ──────────────────────────────────────────
+test("fund 1: skadet rytter er hvile paa loebsdage t.o.m. skadens slut-loebsdag; etape vinder over skade", () => {
+  const { plannedStages, boundRiderIdsByGameDay } = forecastBindingsFromEntryDays({ entryDays: [], schedule: [], profiles: [], exits: new Map() });
+  const injuredOn = (id, gd) => id === "r1" && gd <= 22;
+  const out = weekDateRiderFields({ gameDays: GD, riderIds: ["r1", "r2"], plannedStages, boundRiderIdsByGameDay, injuredOn });
+  assert.deepEqual(out.r1, { raceSlots: [], restSlots: [0, 1, 2] });
+  assert.deepEqual(out.r2, { raceSlots: [], restSlots: [] });
+  const withStage = forecastBindingsFromEntryDays({ entryDays: [{ rider_id: "r1", race_id: "one", game_day: 21 }], schedule: [st("one", 21)], profiles: [], exits: new Map() });
+  const out2 = weekDateRiderFields({ gameDays: GD, riderIds: ["r1"], ...withStage, injuredOn });
+  assert.deepEqual(out2.r1, { raceSlots: [1], restSlots: [0, 2] });
+});
+
+test("fund 2: hvert loeb siger, hvor mange af holdets ryttere der koerer det paa datoen", () => {
+  const races = new Map([["gt", { name: "Tour", stages: 21 }], ["one", { name: "Classic", stages: 1 }]]);
+  const plannedStages = [{ rider_id: "r1", game_day: 21 }, { rider_id: "r2", game_day: 21 }, { rider_id: "r1", game_day: 23 }];
+  const raceIdByEntry = new Map([["r1:21", "gt"], ["r2:21", "gt"], ["r1:23", "gt"]]);
+  const out = weekDateRaces({ stages: [st("gt", 21, 6), st("one", 22, 1)], races, plannedStages, raceIdByEntry });
+  assert.deepEqual(out.map((r) => [r.raceId, r.ownRiders]), [["one", 0], ["gt", 2]]);
+});
+
+function routedSupabase(handler) {
+  return {
+    from(table) {
+      const state = { table, select: "", filters: [] };
+      const q = {
+        select(cols) { state.select = cols; return q; },
+        eq(k, v) { state.filters.push(["eq", k, v]); return q; },
+        in(k, v) { state.filters.push(["in", k, v]); return q; },
+        gte(k, v) { state.filters.push(["gte", k, v]); return q; },
+        lt(k, v) { state.filters.push(["lt", k, v]); return q; },
+        order() { return q; }, limit() { return q; },
+        then(res, rej) { return Promise.resolve({ data: handler(state), error: null }).then(res, rej); },
+      };
+      return q;
+    },
+  };
+}
+
+test("fund 5: I/O med etaper over to datoer (inkl. sommertidsskift), binding og skade", async () => {
+  // 2027-03-27 (lør) -> 2027-03-28 er sommertid. Aksen: loebsdag 0-4 og 5-9.
+  const at = (date, h) => new Date(`${date}T${String(h).padStart(2, "0")}:00:00+01:00`).toISOString();
+  const stages = [
+    { race_id: "gt", stage_number: 1, game_day: 0, scheduled_at: at("2027-03-27", 12) },
+    { race_id: "gt", stage_number: 2, game_day: 4, scheduled_at: at("2027-03-27", 16) },
+    { race_id: "gt", stage_number: 3, game_day: 6, scheduled_at: new Date("2027-03-28T13:00:00+02:00").toISOString() },
+    { race_id: "gt", stage_number: 4, game_day: 9, scheduled_at: new Date("2027-03-28T17:00:00+02:00").toISOString() },
+  ];
+  const supabase = routedSupabase(({ table, select, filters }) => {
+    if (table === "riders") return [{ id: "r1" }, { id: "r2" }];
+    if (table === "races") return [{ id: "gt", name: "Tour Preview", stages: 21 }];
+    if (table === "race_stage_schedule" && select.includes("races!inner")) return stages.map((s) => ({ ...s, races: {} }));
+    if (table === "race_stage_schedule" && select === "game_day") return []; // ingen loeb foer ugen: saesonstart
+    if (table === "race_stage_schedule") return stages.map(({ scheduled_at: _s, ...s }) => s);
+    if (table === "race_entry_days") return [5, 6, 7, 8, 9].map((g) => ({ rider_id: "r1", race_id: "gt", game_day: g }));
+    if (table === "rider_condition") return [{ rider_id: "r2", injury_season_id: "s1", injury_end_game_day: 7 }];
+    if (table === "race_incidents") return [];
+    void filters;
+    return [];
+  });
+  const week = await loadTeamWeekForecast({
+    supabase, team: { id: "t1", league_division_id: DIV }, seasonId: "s1",
+    now: new Date("2027-03-27T09:00:00+01:00"), loadToday: async () => ({ available: true, riders: {} }),
+  });
+  assert.equal(week.days[0].date, "2027-03-27");
+  const sun = week.days[1];
+  assert.equal(sun.date, "2027-03-28");
+  assert.equal(sun.available, true, "akse 5-9 kaedet fra lørdagens 0-4");
+  assert.deepEqual(sun.riders.r1, { raceSlots: [1, 4], restSlots: [] }, "etaper paa LD 6 og 9");
+  assert.deepEqual(sun.riders.r2, { raceSlots: [], restSlots: [0, 1, 2] }, "skadet t.o.m. LD 7");
+  assert.deepEqual(sun.races, [{ raceId: "gt", name: "Tour Preview", kind: "stage", stages: [3, 4], ownRiders: 1 }]);
+  assert.equal(week.days[2].available, false, "mandag uden loeb: ingen gaet");
 });
