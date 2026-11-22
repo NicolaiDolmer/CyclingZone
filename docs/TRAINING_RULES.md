@@ -1488,3 +1488,15 @@ Kontakt `training_rotation` (off | beta | on), seedet off; tænding er ejer-only
 - **Pladsen** gemmes ikke som en tæller. Den stemples på kvitteringen (PR 2) og afledes: findes et stempel med rotationens `rev`, fortsættes derfra, ellers fra ankeret. `rev` stiger ved hver gemning og er mindst rutens ur i hele sekunder, så en slettet eller ny række aldrig genbruger en gammel `rev` (dommer 22/11). Motoren (PR 2) læser kun stempler fra rytterens nuværende hold. Pladsen er altid pr. rytter, også i en gruppe.
 - **Rykker pladsen:** kun når rotationens pas blev kørt (almindeligt slot, Træn nu, frit slot på en etapedato). Løb, bundet hviledag, skade, uafklaret slot, "dagen efter en etape" og træthedsgrænsen med Hvile/Aktiv restitution venter. Træthedsgrænsen gælder felt for felt som i dag (ejer svar 1); med "samme pas på let" rykker rotationen (svar 2).
 - **Rettelser:** samme længde beholder hver rytters plads, ny længde starter fra pas 1 (svar 3); "Start fra pas 1" og "Spring til pas" sætter ankeret. Kontakten off: API'et afviser skrivning (409 `feature_disabled`), og intet læser kolonnerne.
+
+### 13.9 Den rullende uge: i dag + 7 dage (#8580 / #8550 del 3; bag slukket kontakt)
+
+Kontakt `training_week_forecast` (off | beta | on), seedet off; tænding er ejer-only. Grundlag for dagsvælgeren i I dag R5 og Program-fanens ugegitter. Dommer-scenarier: `docs/audits/7456-program-dommer-scenarier.md` §5 (UGE-1..7). Kode: `backend/lib/trainingWeekForecast.js`, `GET /api/training/programs/forecast/week`.
+
+- **Datoerne:** i dag + 7 dage (8 datoer). Program-gitteret bruger de første 7 (i dag + 6, UGE-1); dagsvælgeren bruger alle 8.
+- **Dag 0** er `GET /forecast`'s svar uændret (feltet `today`, samme gate og samme ur), så de to aldrig kan vise hver sit.
+- **Dagene frem** har pr. rytter kun `raceSlots` (felter med en etape, rytteren er udtaget til) og `restSlots` (bundet uden etape, dvs. GT-hviledag, eller skadet til og med skadens kendte slut-løbsdag). Forrang som i dag: etape > skade > bundet hvile > planens pas. **Ingen træthed frem** (ejer K-7). Planens pas regnes i klienten med samme funktion som i dag på datoens ugedag.
+- **Løb pr. dato:** divisionens løb på datoen med navn, `stage`/`oneday`, etapenumre og `ownRiders` (holdets ryttere i løbet den dato; 0 = kun divisionens løb, ikke holdets dag).
+- **Løbsdagsaksen** kædes dato for dato med sweepens egen hul-udfyldning (`gameDaySpansByDivision`), og forrige løbsdag slås op over alle divisionens løb. En dato, der ikke giver præcis 5 løbsdage, er `available:false`: løbsdagen gættes aldrig ud fra datoen (UGE-5). Ved sæsonens sidste løbsdato forlænges der ikke, så den dato kan være `available:false`, selv om dagens `/forecast` den dag svarer (den sikre side).
+- **Bindinger og udgang af løb** genbruger motorens regel (`forecastBindingsFromEntryDays`, #5949). Et løb i divisionen, som rytteren ikke er udtaget til, er ikke hans felt (UGE-4).
+- **Kontakten off** (eller et svar uden ugen): `{ available:false, reason:"disabled", days:[] }`, og I dag-fanen er præcis som før.
