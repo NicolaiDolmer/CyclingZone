@@ -1,5 +1,139 @@
 export const PATCHES = [
 {
+  "version": "7.488",
+  "date": "2026-11-22",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "switched_on",
+      "flag": "training_page_r5",
+      "topic": "Training",
+      "area": "training",
+      "highlight": true,
+      "en": {
+        "title": "New training page with Light, Medium and Hard",
+        "body": "Daily training has a new look. In Today you pick an effort for the whole team or for each rider: Light, Medium or Hard. Hard gives the most progress but carries an injury risk; Light and Medium do not. In Program you plan the week for programs, groups and riders, and save it with Save plan. The page works on phone too."
+      },
+      "da": {
+        "title": "Ny træningsside med Let, Mellem og Hård",
+        "body": "Daglig træning har fået nyt udseende. I I dag vælger I en indsats for hele holdet eller for hver rytter: Let, Mellem eller Hård. Hård giver mest fremgang, men har en skaderisiko; Let og Mellem har ikke. I Program planlægger I ugen for programmer, grupper og ryttere og gemmer med Gem plan. Siden virker også på telefon."
+      },
+      "refs": [
+        7947,
+        7456
+      ]
+    },
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta_to_live",
+      "flag": "race_page_v6",
+      "topic": "Races",
+      "area": "races",
+      "en": {
+        "title": "The new race page is live for everyone",
+        "body": "The new race page with the race film, split times, tactics and the coloured route is now on for everyone. The spoiler shield in Settings now also hides the result on the race page until you open it."
+      },
+      "da": {
+        "title": "Den nye løbsside er tændt for alle",
+        "body": "Den nye løbsside med løbsfilmen, mellemtider, taktik og den farvede rute er nu tændt for alle. Spoiler-skjoldet under Indstillinger skjuler nu også resultatet på løbssiden, til I åbner det."
+      },
+      "refs": [
+        7778,
+        7859
+      ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "beta_to_live",
+      "flag": "planning_workbench",
+      "topic": "Planning",
+      "area": "races",
+      "en": {
+        "title": "The new planning page is live for everyone",
+        "body": "The planning page, with the race list, week overview, route profile, squad and form peak in one place, is now on for everyone."
+      },
+      "da": {
+        "title": "Den nye planlægningsside er tændt for alle",
+        "body": "Planlægningssiden, med løbsliste, ugeoversigt, ruteprofil, trup og formtop ét sted, er nu tændt for alle."
+      },
+      "refs": [
+        7535
+      ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "beta_to_live",
+      "flag": "patch_notes_v2_8049",
+      "topic": "Patch notes",
+      "area": "interface",
+      "en": {
+        "title": "The new patch notes page is live for everyone",
+        "body": "Patch notes are now grouped by area, week by week, with an archive per month. A dot shows what is new since your last visit."
+      },
+      "da": {
+        "title": "Den nye side for patch notes er tændt for alle",
+        "body": "Patch notes står nu efter område, uge for uge, med et arkiv pr. måned. En prik viser, hvad der er nyt siden sidst."
+      },
+      "refs": [
+        8049
+      ]
+    }
+  ]
+},
+{
+  "version": "7.487",
+  "date": "2026-11-22",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "switched_on",
+      "flag": "development_xp_model",
+      "topic": "Development",
+      "area": "development",
+      "en": {
+        "title": "Change focus and older days with XP",
+        "body": "With XP switched on, each rider in the Development tab has a Change focus button again. The Report tab can show older days, and it says clearly when there is no training yet or when the report could not be loaded."
+      },
+      "da": {
+        "title": "Skift fokus og ældre dage med XP",
+        "body": "Når XP er tændt, har hver rytter på fanen Udvikling igen knappen Skift fokus. Fanen Rapport kan vise ældre dage og siger tydeligt, når der ingen træning er endnu, eller når rapporten ikke kunne hentes."
+      },
+      "refs": [
+        8562
+      ]
+    }
+  ]
+},
+{
+  "version": "7.486",
+  "date": "2026-11-22",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "Manage training groups in Program",
+        "body": "In the Program tab you can now create, rename and delete training groups, pick their members and give a group its own fatigue limit. A rider on his own plan can follow his group again with one tap. It works on phone too."
+      },
+      "da": {
+        "title": "Styr træningsgrupper under Program",
+        "body": "Under fanen Program kan I nu oprette, omdøbe og slette træningsgrupper, vælge medlemmer og give en gruppe sin egen træthedsgrænse. En rytter med egen plan kan følge sin gruppe igen med ét tryk. Det virker også på telefon."
+      },
+      "refs": [
+        8560
+      ]
+    }
+  ]
+},
+{
   "version": "7.485",
   "date": "2026-11-21",
   "changes": [
