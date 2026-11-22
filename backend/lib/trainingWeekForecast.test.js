@@ -98,8 +98,8 @@ test("UGE-6: holdets loeb pr. dato med navn og etape/endagsloeb, ingen traethed 
   const races = new Map([["gt", { name: "Tour", stages: 21 }], ["one", { name: "Classic", stages: 1 }]]);
   const out = weekDateRaces({ stages: [st("gt", 21, 6), st("gt", 23, 7), st("one", 22, 1), st("ukendt", 24, 1)], races });
   assert.deepEqual(out, [
-    { raceId: "one", name: "Classic", kind: "oneday", stages: [1], ownRiders: 0 },
-    { raceId: "gt", name: "Tour", kind: "stage", stages: [6, 7], ownRiders: 0 },
+    { raceId: "one", name: "Classic", kind: "oneday", stages: [1], ownRiders: 0, autoLineup: true },
+    { raceId: "gt", name: "Tour", kind: "stage", stages: [6, 7], ownRiders: 0, autoLineup: true },
   ]);
   const riderOut = fields({ entryDays: [], schedule: [] }).r1;
   assert.deepEqual(Object.keys(riderOut).sort(), ["raceSlots", "restSlots"], "ingen fatigue/band frem i tiden");
@@ -217,6 +217,45 @@ test("fund 5: I/O med etaper over to datoer (inkl. sommertidsskift), binding og 
   assert.equal(sun.available, true, "akse 5-9 kaedet fra lørdagens 0-4");
   assert.deepEqual(sun.riders.r1, { raceSlots: [1, 4], restSlots: [] }, "etaper paa LD 6 og 9");
   assert.deepEqual(sun.riders.r2, { raceSlots: [], restSlots: [0, 1, 2] }, "skadet t.o.m. LD 7");
-  assert.deepEqual(sun.races, [{ raceId: "gt", name: "Tour Preview", kind: "stage", stages: [3, 4], ownRiders: 1 }]);
+  assert.deepEqual(sun.races, [{ raceId: "gt", name: "Tour Preview", kind: "stage", stages: [3, 4], ownRiders: 1, autoLineup: false }]);
   assert.equal(week.days[2].available, false, "mandag uden loeb: ingen gaet");
+});
+
+test("UGE-4b: auto-udtagelse. Kort loeb med assistentens tilmeldinger taeller; tomt loeb, der starter paa datoen, er auto", () => {
+  const races = new Map([
+    ["kort", { name: "Ran", stages: 1, status: "completed" }],
+    ["kommer", { name: "Next", stages: 4, status: "scheduled" }],
+    ["slut", { name: "Gone", stages: 1, status: "completed" }],
+  ]);
+  const entryRows = [{ race_id: "kort", rider_id: "r1" }, { race_id: "kort", rider_id: "r2" }];
+  const out = weekDateRaces({ stages: [st("kort", 21, 1), st("kommer", 22, 1), st("slut", 23, 1)], races, entryRows });
+  assert.deepEqual(out.map((r) => [r.raceId, r.ownRiders, r.autoLineup]), [
+    ["slut", 0, false], ["kommer", 0, true], ["kort", 2, false],
+  ]);
+});
+
+test("UGE-4b (Codex P2): igangvaerende loeb uden holdet er ikke auto, assistenten fylder kun ved 1. etape", () => {
+  const races = new Map([["gt", { name: "Tour", stages: 4, status: "scheduled" }]]);
+  const out = weekDateRaces({ stages: [st("gt", 22, 3), st("gt", 24, 4)], races, startedRaceIds: new Set(["gt"]) });
+  assert.deepEqual(out.map((r) => [r.ownRiders, r.autoLineup]), [[0, false]]);
+  // Et loeb, der starter senere i ugen (ingen koert etape), er auto paa alle sine datoer.
+  const later = weekDateRaces({ stages: [st("gt", 22, 3)], races });
+  assert.deepEqual(later.map((r) => [r.ownRiders, r.autoLineup]), [[0, true]]);
+});
+
+test("UGE-4b (Codex P2): ryttere, der er staaet af, kommer ikke tilbage via tilmeldingerne", () => {
+  const races = new Map([["gt", { name: "Tour", stages: 4, status: "scheduled" }]]);
+  const entryRows = [{ race_id: "gt", rider_id: "r1" }, { race_id: "gt", rider_id: "r2" }];
+  // r1 stod af efter dag 21, r2 koerer stadig. Datoens etaper er dag 22 og 24.
+  const exits = new Map([["r1:gt", 21]]);
+  const out = weekDateRaces({ stages: [st("gt", 22, 3), st("gt", 24, 4)], races, entryRows, exits });
+  assert.deepEqual(out.map((r) => [r.ownRiders, r.autoLineup]), [[1, false]]);
+  const allOut = weekDateRaces({ stages: [st("gt", 22, 3)], races, entryRows, exits: new Map([["r1:gt", 21], ["r2:gt", 20]]), startedRaceIds: new Set(["gt"]) });
+  assert.deepEqual(allOut.map((r) => [r.ownRiders, r.autoLineup]), [[0, false]]);
+  // Et loeb med bindinger taeller kun bindingerne (efter udgang), aldrig tilmeldingerne.
+  const bound = weekDateRaces({
+    stages: [st("gt", 22, 3)], races, entryRows,
+    plannedStages: [], raceIdByEntry: new Map([["r1:20", "gt"]]),
+  });
+  assert.deepEqual(bound.map((r) => [r.ownRiders, r.autoLineup]), [[0, false]]);
 });

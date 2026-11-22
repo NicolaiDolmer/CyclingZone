@@ -194,10 +194,12 @@
     "stage": "Etappe {n}",
     "stageRace": "Etappekoers",
     "oneDay": "Eendagskoers",
+    "autoRace": "Koers · auto",
     "rider": "Renner",
     "countTraining": "trainen",
     "countRacing": "koersen",
     "notReady": "De koersdagen voor deze datum zijn nog niet klaar.",
+    "autoNote": "De assistent kiest je ploeg voor {races} bij de start. Wie rijdt, zie je dan pas.",
     "aheadNote": "De komende dagen tonen het plan. Een wijziging geldt voor elke {weekday}.",
     "editInProgram": "Wijzig {weekday} in Programma"
   }

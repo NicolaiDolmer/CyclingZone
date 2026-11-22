@@ -4,7 +4,8 @@
 // datoens ugedag, med datoens løbs- og hvilefelter fra serveren. Ingen træthed frem (K-7).
 import { dayFields, isTraining, STAGE, type Field } from "./todayR5Model.ts";
 
-export type WeekRace = { raceId: string; name: string | null; kind: "stage" | "oneday"; stages: number[]; ownRiders: number };
+// autoLineup (UGE-4b): holdet har ingen i løbet endnu; assistenten udtager ved løbsstart.
+export type WeekRace = { raceId: string; name: string | null; kind: "stage" | "oneday"; stages: number[]; ownRiders: number; autoLineup?: boolean };
 export type WeekRiderFields = { raceSlots: number[]; restSlots: number[] };
 export type WeekDay = {
   date: string;
@@ -30,19 +31,28 @@ export function pickerWindow(selected: number, count: number, phone: boolean): n
   return Array.from({ length: PICKER_PHONE_VISIBLE }, (_, i) => first + i);
 }
 
-/** Datoens løb, som holdet har ryttere med i (divisionens øvrige løb er ikke holdets dag). */
+/** Datoens løb for holdet: med egne ryttere, eller uden tilmeldinger, så assistenten udtager (UGE-4b). */
 export function ownRaces(day: WeekDay | null | undefined): WeekRace[] {
-  return (day?.races ?? []).filter((race) => race.ownRiders > 0);
+  return (day?.races ?? []).filter((race) => race.ownRiders > 0 || race.autoLineup === true);
+}
+
+/** Datoens løb, hvor assistenten udtager holdet ved start (UGE-4b). */
+export function autoRaces(day: WeekDay | null | undefined): WeekRace[] {
+  return ownRaces(day).filter((race) => race.ownRiders === 0 && race.autoLineup === true);
 }
 
 /** Chip-ordet for datoen: holdets løb (etape før endagsløb), ellers træning. */
-export function dayKind(day: WeekDay | null | undefined): { kind: "stage" | "oneday" | "training"; stage: number | null; name: string | null } {
-  const races = ownRaces(day);
+// auto: datoens løb har ingen af holdets ryttere endnu (assistenten udtager ved start). Løb med
+// egne ryttere går forud for auto-løb, så chippen siger det sikre først.
+export function dayKind(day: WeekDay | null | undefined): { kind: "stage" | "oneday" | "training"; stage: number | null; name: string | null; auto: boolean } {
+  const all = ownRaces(day);
+  const withOwn = all.filter((race) => race.ownRiders > 0);
+  const races = withOwn.length > 0 ? withOwn : all;
   const stage = races.find((race) => race.kind === "stage");
-  if (stage) return { kind: "stage", stage: stage.stages[0] ?? null, name: stage.name };
+  if (stage) return { kind: "stage", stage: stage.stages[0] ?? null, name: stage.name, auto: stage.ownRiders === 0 };
   const one = races.find((race) => race.kind === "oneday");
-  if (one) return { kind: "oneday", stage: null, name: one.name };
-  return { kind: "training", stage: null, name: null };
+  if (one) return { kind: "oneday", stage: null, name: one.name, auto: one.ownRiders === 0 };
+  return { kind: "training", stage: null, name: null, auto: false };
 }
 
 /**

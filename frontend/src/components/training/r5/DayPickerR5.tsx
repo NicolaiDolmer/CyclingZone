@@ -10,7 +10,7 @@ import { formatDate } from "../../../lib/intl.js";
 import { programSessionToday, type ProgramWeekDays } from "../../../lib/trainingPrograms.ts";
 import { DAY_TYPES_WITHOUT_SESSION, dayTypeForProgram, sessionForProgram, sessionI18nKey } from "../../../lib/trainingDayTypes.js";
 import { STAGE } from "./todayR5Model.ts";
-import { dayKind, futureCounts, futureFields, pickerWindow, ownRaces, type WeekResponse } from "./dayPickerModel.ts";
+import { autoRaces, dayKind, futureCounts, futureFields, pickerWindow, ownRaces, type WeekResponse } from "./dayPickerModel.ts";
 
 type Rider = { id: string; firstname?: string | null; lastname?: string | null };
 type Plan = { focus?: string | null; intensity?: string | null } | null | undefined;
@@ -39,6 +39,7 @@ export default function DayPickerR5({
 
   const chipWord = (i: number) => {
     const kind = dayKind(days[i]);
+    if (kind.auto) return tR5("dayPicker.autoRace");
     if (kind.kind === "stage") return kind.stage != null ? tR5("dayPicker.stage", { n: kind.stage }) : tR5("dayPicker.stageRace");
     if (kind.kind === "oneday") return tR5("dayPicker.oneDay");
     return tR5("dayPicker.training");
@@ -83,6 +84,7 @@ export default function DayPickerR5({
   const d = dateOf(day.date);
   const weekdayWord = weekdayLong.format(d);
   const races = ownRaces(day);
+  const auto = autoRaces(day);
   const raceLabel = (() => {
     const kind = dayKind(day);
     return kind.kind === "training" ? tR5("dayPicker.training") : chipWord(selected);
@@ -109,7 +111,7 @@ export default function DayPickerR5({
       {strip}
       <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-xs text-cz-2">
         <span className={`me-1 font-semibold text-cz-1 ${phone ? "basis-full" : ""}`}>{formatDate(d, "long")}</span>
-        {day.available && (
+        {day.available && auto.length === 0 && (
           <>
             <span><span className="font-data font-semibold tabular-nums text-cz-1">{counts.training}</span> {tR5("dayPicker.countTraining")}</span>
             <span className="px-1 text-cz-3" aria-hidden="true">·</span>
@@ -122,6 +124,12 @@ export default function DayPickerR5({
           </span>
         ))}
       </div>
+      {auto.length > 0 && (
+        <p className="flex items-start gap-1.5 text-xs text-cz-2" data-testid="r5-day-ahead-auto">
+          <FlagIcon size={12} aria-hidden="true" className="mt-px shrink-0" />
+          <span>{tR5("dayPicker.autoNote", { races: auto.map((race) => race.name ?? "").filter(Boolean).join(", ") })}</span>
+        </p>
+      )}
       {!day.available ? (
         <p className="rounded-cz border border-dashed border-cz-border bg-cz-card px-4 py-6 text-center text-[13px] text-cz-2" data-testid="r5-day-ahead-unavailable">
           {tR5("dayPicker.notReady")}
