@@ -1287,12 +1287,12 @@ features:
     area: training
     title_en: One potential source
     title_da: Én prognose-kilde (gemt skøn pr. rytter og hold)
-    state: dormant
+    state: live
     flag: potential_estimate_display
     ssot: docs/superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md
     epic: 6110
-    verified: 2026-11-21
-    note: "Tændt og slukket igen 21/11 aften (ejer): gemte skøn mangler (potential_estimate_writes + params + backfill, #7685). Tændes efter XP-start 22/11."
+    verified: 2026-11-22
+    note: "Tændt 22/11 ca. 01.20 (ejer: \"Ret vægten + tænd i nat\") efter backfill med H6-rettet vægt, alle fem gater grønne."
     decision: goer-faerdigt
     decide_by: 2026-12-31
 
@@ -1300,13 +1300,13 @@ features:
     area: training
     title_en: Stored potential estimates
     title_da: Gemte potentiale-skøn (søndagsjob og skrivning)
-    state: building
+    state: live
     ssot: docs/superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md
     epic: 6110
-    verified: 2026-11-05
+    verified: 2026-11-22
     decision: goer-faerdigt
     decide_by: 2026-12-31
-    note: 'Trin 5 (#7685): søndagsjob, holdskifte og nye kig; flaget seedes off.'
+    note: "Tændt 22/11 ca. 01.15 sammen med backfill (#7685)."
 
   - id: train-now-instant
     area: training
