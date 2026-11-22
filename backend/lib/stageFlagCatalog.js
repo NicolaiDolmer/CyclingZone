@@ -51,6 +51,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "training_mobile_table", area: "training", label: "Træningssiden på mobil — ny tabel" },
   // #7947 ejer 20/11: træningssidens I dag-fane i R5-udgaven. Seedet off; kun "on" tænder. Ejer-only flip.
   { key: "training_page_r5", area: "training", label: "Træningssiden: I dag-fanen i R5-udgaven" },
+  // #8548: rotation (pas 1..N der venter ved hvile og løb). Seedet off; ejer-only flip.
+  { key: "training_rotation", area: "training", label: "Træning — rotation (pas der venter ved hvile og løb)" },
   // #1140: "Your first race"-kort for nye hold paa dashboardet. Seedet off.
   { key: "first_race_card", area: "onboarding", label: "Dit første løb — kort på dashboardet (nye hold)" },
   // #6523: ingen kode laeser den laengere; raekken bliver kun for patch-noten (se PLAYER_VISIBLE_FLAG_KEYS).
