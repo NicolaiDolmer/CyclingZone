@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11 · slet `backup_5902_20261112_*` ~26/11 · slet `backup_8078/8080/8099_20261113_*` ~27/11.
 >
-> **🎯 Next action (20/11 aften, DolmerPC):** **Træthed nu + løbsafregning TÆNDT 19.20** (ejer-kør, Fable GO; første løbsafregning 21/11 kl. 11). **XP UDSAT** (ejer 19.10: fordelingen skal spredes bedre): potentialet designes først som 1-99 = forventet slut-rating for bedste type (ejerramme 20/11), XP-fart kalibreres til det, grænsen pr. dato fjernes i kode, 15-sæsoners-dom, så tænding (tidligst weekend). Tal privat i `balance-internals/6110/revision-2026-11-20/`. Let/Mellem/Hård: PR 1 #8517 (motor, slukket `training_effort_levels`, Fable før merge). R5: #8511 (perf) mangler ejer-merge. XP-flader #8479/#8488 markør. Tog på PC1.
+> **🎯 Next action (22/11 aften, PC1 → Dolmer PC):** XP + Let/Mellem/Hård + potentiale 1-99 LIVE (21-22/11). Merget 22/11: #8577 #8578 (slukket), #8590 #8589 #8554 #8591 #8594 #8597. **Dagsvælgeren `training_week_forecast` tændt 18.39, SLUKKET 18.46**: viste "Træning" på løbsdage for auto-udtagede hold. Rækkefølge og stafet: #8584 seneste kommentar. Mandag: #8595 kolonner, #8466 saldo, 4 design-retninger, K-5/K-6.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; kurve "6 kombineret" (#3564) i samlet måling; Division 4 A/B/C har 25 hold (league-size-invariant).
 >
-> **🤖 Working agent:** PC1: merge-tog-sessionen (tog, markører) + #6110-sessionen (migrationer, NOW). Ingen aktiv DolmerPC (ejer 21/11).
+> **🤖 Working agent:** Dolmer PC (#8584): #8580-rettelse → #8560 → motor PR 2 → #8543; tog, markører og XP-tick i aften. PC1: ingen aktiv session (ejer 22/11).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
