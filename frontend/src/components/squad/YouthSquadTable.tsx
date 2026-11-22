@@ -197,8 +197,10 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
       // Tabellen tvinger ombrydning paa telefon (D-047, **:whitespace-normal); navnet holdes derfor
       // paa een linje med `!`-nowrap og en fast maksbredde med ellipsis, saa ingen vandret scroll.
       renderShort: (r) => (
-        <span className="block max-w-[8.5rem] truncate !whitespace-nowrap" title={`${r.firstname ?? ""} ${r.lastname ?? ""}`.trim()}>
-          <RiderLink id={r.id} stopPropagation className="!whitespace-nowrap text-cz-1 hover:text-cz-accent-t transition-colors">
+        <span className="block max-w-[10rem] truncate !whitespace-nowrap" title={[r.firstname, r.lastname].filter(Boolean).join(" ")}>
+          {/* Fuldt navn som tilgængeligt navn: skærmlæsere (og rækkens navn) får hele navnet. */}
+          <RiderLink id={r.id} stopPropagation aria-label={[r.firstname, r.lastname].filter(Boolean).join(" ")}
+            className="!whitespace-nowrap text-cz-1 hover:text-cz-accent-t transition-colors">
             {riderShortName(r)}
           </RiderLink>
         </span>
@@ -211,6 +213,7 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
       sortKey: "_ovr",
       numeric: true,
       compact: true,
+      tight: true, // #8554: tre tal-kolonner + navn skal kunne staa i 390 px uden klip
       render: (r) => (r._ovr != null ? (
         <WithBestRole rider={r}>
           <span className="inline-flex items-center justify-center min-w-[30px] px-1.5 py-0.5 rounded-cz font-semibold"
@@ -241,6 +244,7 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
       mobileLabel: t("squad.headers.potential"),
       sortKey: "_scoutMid",
       compact: true,
+      tight: true, // #8554
       render: (r) => <ScoutablePotentiale rider={r} scouting={scouting} labelAsTitle hideLevel />,
     },
     ...(prognosisOn ? [{
@@ -249,6 +253,7 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
       mobileLabel: tRiders("potentialNumber.prognosis"),
       sortKey: "_prognosis",
       compact: true,
+      tight: true, // #8554
       numeric: true,
       render: (r: Row) => {
         const view = prognosisViewOf(scouting.estimateFor(r.id));

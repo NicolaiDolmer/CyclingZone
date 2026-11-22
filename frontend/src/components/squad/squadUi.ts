@@ -62,7 +62,7 @@ interface PageHeaderProps { title: ReactNode; subtitle?: ReactNode; actions?: Re
 interface TabsProps { value: string; onChange: (next: string) => void; className?: string; children: ReactNode }
 interface TabListProps { label: string; className?: string; children: ReactNode }
 interface TabProps { value: string; className?: string; children: ReactNode }
-interface RiderLinkProps { id: string; className?: string; stopPropagation?: boolean; children: ReactNode }
+interface RiderLinkProps { id: string; className?: string; stopPropagation?: boolean; "aria-label"?: string; children: ReactNode }
 interface WithBestRoleProps { rider: object; children: ReactNode }
 // #5631: Segmented.jsx (kolonne-tilstand), Select.jsx (trup-/gruppevælger) og
 // RiderBadges.jsx (status-kolonnen), læst direkte fra filerne.
