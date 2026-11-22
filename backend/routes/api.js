@@ -257,7 +257,7 @@ import {
 import { projectCeilingBand, ceilingTiming, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
 import { agingCfgForXp, loadPastPeakAging, pastPeakFromAging } from "../lib/pastPeakView.js"; // #7947 / #8476 pkt. 5
 import { programForChoice, normalizeProgram, smartDefaultSession } from "../lib/trainingDayTypes.js";
-import { effortForWrite } from "../lib/trainingEffortLevels.js"; // #7947
+import { effortForWrite, isTrainingEffortLevelsEnabled } from "../lib/trainingEffortLevels.js"; // #7947
 import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer, V3_TRAINING_FOCUSES } from "../lib/trainingCatalogV3.js"; // #5319
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, isValidWeekPlanDays } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
@@ -3133,7 +3133,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
     const teamId = req.team.id;
     const [
       { activeSeasonId, state }, isBetaTester, stage, raceDayDevelopmentStage, trainingScoreStage,
-      mobileTableStage, dailyReceiptStage, decisionCardStage,
+      mobileTableStage, dailyReceiptStage, decisionCardStage, effortLevelsOn,
     ] = await Promise.all([
       loadTrainingState(teamId),
       isViewerBetaTester(req),
@@ -3147,6 +3147,10 @@ router.get("/training/me", requireAuth, async (req, res) => {
       readFlagStage(supabase, TRAINING_MOBILE_TABLE_FLAG_KEY),
       readFlagStage(supabase, TRAINING_DAILY_RECEIPT_FLAG_KEY),
       readFlagStage(supabase, TRAINING_DECISION_FLAG_KEY), // #6110 S26
+      // #8541: Let/Mellem/Haard. Klienten (profilens Traening-fane, I dag R5) laeser feltet
+      // `effortLevels`; det blev aldrig sendt, saa fladerne stod paa de gamle ord med
+      // kontakten taendt i prod. Binaert flag, samme opslag som motoren og api-skrivningen.
+      isTrainingEffortLevelsEnabled(supabase),
     ]);
     // #6811 P2: et parkeret hold traener ikke (POST svarer 409 team_parked), saa
     // gaten staar lukket her ogsaa: fladen viser "sat paa pause".
@@ -3374,6 +3378,8 @@ router.get("/training/me", requireAuth, async (req, res) => {
       // mobil-visning der står i prod i dag. Se trainingMobileTableFlag.js.
       mobileTable,
       decisionCard,
+      // #8541: udelades HELT med kontakten off (klienten kraever `=== true`), saa svaret er som foer.
+      ...(effortLevelsOn === true ? { effortLevels: true } : {}),
       ...(fatigueStreaks ? { fatigueDays70: fatigueStreaks } : {}),
       dailyReceiptEnabled,
       // #3459 V3: feltet udelades HELT (ikke bare {}) når flaget er off — spejler
