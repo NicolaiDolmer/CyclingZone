@@ -37,6 +37,11 @@ export const HELP_SECTION_FLAGS = Object.freeze({
 const XP_OFF = Object.freeze({ flag: "development_xp_model", when: false });
 const XP_ON = Object.freeze({ flag: "development_xp_model", when: true });
 const withXp = (gate, xp) => Object.freeze({ ...gate, and: xp });
+// #8570: blokke der naevner Let/Mellem/Haard pr. session lover et valg, der kun findes
+// med training_effort_levels on. De skal derfor passe paa BAADE XP og indsats, saa
+// Hjaelp aldrig lover et valg, der ikke findes, hvis indsats slukkes alene.
+const EFFORT_LEVELS_ON = Object.freeze({ flag: "training_effort_levels", when: true });
+const XP_ON_WITH_EFFORT = withXp(XP_ON, EFFORT_LEVELS_ON);
 
 // #3564 kurve B (development_curve_b): dagens tekst (alderens turbo, potentiale =
 // kun fart) og kurve B-teksten (niveau koster, potentiale = hvor hoejt) maa aldrig
@@ -91,7 +96,7 @@ export const HELP_BLOCK_FLAGS = Object.freeze({
     potentialBestRoleEstimate: POTENTIAL_ESTIMATE_ON,
     // #8476: under XP vokser en traenet evne ikke "mod sit loft"; den tjener XP hurtigere.
     trainingFocus: XP_OFF,
-    trainingFocusXp: XP_ON,
+    trainingFocusXp: XP_ON_WITH_EFFORT,
     scouting: POTENTIAL_ESTIMATE_OFF,
     scoutingEstimate: POTENTIAL_ESTIMATE_ON,
   }),
@@ -120,7 +125,7 @@ export const HELP_BLOCK_FLAGS = Object.freeze({
     dayTypes: XP_OFF,
     dayTypesXp: XP_ON,
     focusAbilities: XP_OFF,
-    focusAbilitiesXp: XP_ON,
+    focusAbilitiesXp: XP_ON_WITH_EFFORT,
     progressBars: XP_OFF,
     progressBarsXp: XP_ON,
     maxOnePerDay: XP_OFF,

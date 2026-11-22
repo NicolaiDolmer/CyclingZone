@@ -117,10 +117,11 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "jersey_hunt_7855", // #7855 Hjaelp og patch-noten (binaert, off)
   "development_xp_model", // #6110 Hjaelp XP-tvillingerne (binaert, off)
   "training_page_r5", // #7947 I dag-fanen R5 (binaert, off; ?trainingR5=1 viser den)
+  "training_effort_levels", // #8570 Hjaelp Let/Mellem/Haard (binaert, off)
 ];
 
 // Spejler PLAYER_VISIBLE_BINARY_FLAG_KEYS i backenden: "beta" er off.
-const BINARY_FLAG_KEYS = ["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801", "sale_escrow_enabled", "training_history_from_ticks_6490", "jersey_hunt_7855", "development_xp_model", "training_page_r5"];
+const BINARY_FLAG_KEYS = ["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801", "sale_escrow_enabled", "training_history_from_ticks_6490", "jersey_hunt_7855", "development_xp_model", "training_page_r5", "training_effort_levels"];
 
 // #5319: træningskatalog v3 er OFF på preview (som i prod), men kan tændes med
 // ?catalogV3=on for at se de nye sessioner i vælgerne. Huskes i localStorage
