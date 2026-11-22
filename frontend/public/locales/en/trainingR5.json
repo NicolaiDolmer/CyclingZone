@@ -173,7 +173,17 @@
       "limitAbove": "Above",
       "limitRun": "run",
       "limitInstead": "instead"
-    }
+    },
+    "loadErrorTitle": "The programs could not be loaded",
+    "loadErrorBody": "Nothing was lost. Your saved plans are safe.",
+    "retry": "Try again",
+    "emptyTitle": "No program yet",
+    "emptyBody": "Make a group and put a program on it to plan the week for several riders at once.",
+    "emptyBodyNoGroups": "Put a program on a rider to plan the week.",
+    "discard": "Discard changes",
+    "discardTitle": "Discard {n, plural, one {# change} other {# changes}}?",
+    "discardBody": "The week goes back to the saved plan.",
+    "discardGo": "Discard"
   },
   "dayPicker": {
     "label": "Choose day",

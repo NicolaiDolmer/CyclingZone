@@ -173,7 +173,17 @@
       "limitAbove": "Por encima de",
       "limitRun": "hacer",
       "limitInstead": "en su lugar"
-    }
+    },
+    "loadErrorTitle": "No se pudieron cargar los programas",
+    "loadErrorBody": "No se ha perdido nada. Tus planes guardados están a salvo.",
+    "retry": "Reintentar",
+    "emptyTitle": "Aún no hay programa",
+    "emptyBody": "Crea un grupo y asígnale un programa para planificar la semana de varios corredores a la vez.",
+    "emptyBodyNoGroups": "Asigna un programa a un corredor para planificar la semana.",
+    "discard": "Descartar cambios",
+    "discardTitle": "¿Descartar {n, plural, one {# cambio} other {# cambios}}?",
+    "discardBody": "La semana vuelve al plan guardado.",
+    "discardGo": "Descartar"
   },
   "dayPicker": {
     "label": "Elige el día",

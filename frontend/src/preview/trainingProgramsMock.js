@@ -102,6 +102,10 @@ function previewWeek(seedTraining) {
   return { available: true, tickDate: days[0].date, days };
 }
 
+function previewProgramsState() {
+  try { return new URLSearchParams(window.location.search).get("programsState"); } catch { return null; }
+}
+
 export function previewSingleRaceDay() {
   try {
     const param = new URLSearchParams(window.location.search).get("raceDays");
@@ -173,6 +177,10 @@ export function trainingProgramsMockRoute(method, pathname, body, seedTraining) 
   // #8580: dagsvaelgerens uge. ?trainingWeek=1 taender den paa preview (kontakten er off i prod).
   if (method === "GET" && pathname.endsWith("/forecast/week")) {
     return { status: 200, body: previewTrainingWeekEnabled() ? previewWeek(seedTraining) : { available: false, reason: "disabled", days: [] } };
+  }
+  // #8561: ?programsState=error giver Program-fanen R5's fejl-tilstand paa preview (kun katalog-GET'et).
+  if (method === "GET" && /\/programs\/?$/.test(pathname) && previewProgramsState() === "error") {
+    return { status: 500, body: { error: "preview_error" } };
   }
   const catalogOn = previewTrainingProgramsEnabled();
   const cellsOn = previewTrainingCellsEnabled();

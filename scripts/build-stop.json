@@ -408,6 +408,11 @@
       "issue": 8570,
       "area": "udvikling-2",
       "why": "Ejer-go 21/11 aften (PC1, AskUserQuestion): \"Ja, begge nu (anbefalet)\" - rettelser til det taendte (udvikling 2.0 / Let-Mellem-Haard). Byg paa Dolmer PC."
+    },
+    {
+      "issue": 8580,
+      "area": "training-r5",
+      "why": "Ejer-go 22/11 formiddag (PC1, AskUserQuestion): \"Ja, byg #8580\" - I dag R5 dagsvælgeren med pile. Følger dommer-scenarierne UGE-1..7 i docs/audits/7456-program-dommer-scenarier.md. Byg på Dolmer PC (opgave #8584)."
     }
   ],
   "cleanupList": [

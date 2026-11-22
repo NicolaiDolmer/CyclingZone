@@ -173,7 +173,17 @@
       "limitAbove": "Over",
       "limitRun": "kør",
       "limitInstead": "i stedet"
-    }
+    },
+    "loadErrorTitle": "Programmerne kunne ikke hentes",
+    "loadErrorBody": "Intet er tabt. Dine gemte planer er i behold.",
+    "retry": "Prøv igen",
+    "emptyTitle": "Intet program endnu",
+    "emptyBody": "Lav en gruppe og sæt et program på den, så planlægger du ugen for flere ryttere på én gang.",
+    "emptyBodyNoGroups": "Sæt et program på en rytter for at planlægge ugen.",
+    "discard": "Kassér ændringer",
+    "discardTitle": "Kassér {n, plural, one {# ændring} other {# ændringer}}?",
+    "discardBody": "Ugen går tilbage til den gemte plan.",
+    "discardGo": "Kassér"
   },
   "dayPicker": {
     "label": "Vælg dag",

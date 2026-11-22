@@ -173,7 +173,17 @@
       "limitAbove": "Boven",
       "limitRun": "rijd",
       "limitInstead": "in plaats daarvan"
-    }
+    },
+    "loadErrorTitle": "De programma's konden niet worden geladen",
+    "loadErrorBody": "Er is niets verloren. Je opgeslagen plannen zijn veilig.",
+    "retry": "Opnieuw proberen",
+    "emptyTitle": "Nog geen programma",
+    "emptyBody": "Maak een groep en zet er een programma op om de week voor meerdere renners tegelijk te plannen.",
+    "emptyBodyNoGroups": "Zet een programma op een renner om de week te plannen.",
+    "discard": "Wijzigingen verwerpen",
+    "discardTitle": "{n, plural, one {# wijziging} other {# wijzigingen}} verwerpen?",
+    "discardBody": "De week gaat terug naar het opgeslagen plan.",
+    "discardGo": "Verwerpen"
   },
   "dayPicker": {
     "label": "Kies dag",
