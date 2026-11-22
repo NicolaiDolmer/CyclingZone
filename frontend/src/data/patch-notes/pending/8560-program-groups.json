@@ -1,0 +1,20 @@
+{
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "Manage training groups in Program",
+        "body": "In the Program tab you can now create, rename and delete training groups, pick their members and give a group its own fatigue limit. A rider on his own plan can follow his group again with one tap. It works on phone too."
+      },
+      "da": {
+        "title": "Styr træningsgrupper under Program",
+        "body": "Under fanen Program kan I nu oprette, omdøbe og slette træningsgrupper, vælge medlemmer og give en gruppe sin egen træthedsgrænse. En rytter med egen plan kan følge sin gruppe igen med ét tryk. Det virker også på telefon."
+      },
+      "refs": [8560]
+    }
+  ]
+}

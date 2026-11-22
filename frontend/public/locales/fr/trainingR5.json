@@ -150,6 +150,29 @@
       "dayTabs": "Jour",
       "noRaces": "Aucune course",
       "fieldsOf": "Séances du {day}"
+    },
+    "manage": {
+      "newGroup": "Nouveau groupe",
+      "menu": "{name} : options du groupe",
+      "rename": "Renommer",
+      "members": "Membres",
+      "limit": "Limite de fatigue",
+      "delete": "Supprimer",
+      "deleteTitle": "Supprimer {name} ?",
+      "deleteBody": "Les coureurs gardent le plan qu'ils ont maintenant, comme plan personnel. La limite de fatigue du groupe disparaît.",
+      "deleteGo": "Supprimer le groupe",
+      "followAgain": "Suivre à nouveau le groupe",
+      "followAgainAll": "Suivre à nouveau le groupe ({n})",
+      "ownPlanOf": "Plan personnel. Dans le groupe {name}.",
+      "limitLabel": "Limite de fatigue du groupe",
+      "limit_team": "Celle de l'équipe",
+      "limit_own": "Propre",
+      "limit_off": "Aucune",
+      "limitTeamNote": "Le groupe suit la règle de l'équipe.",
+      "limitOffNote": "Pas de limite de fatigue pour le groupe.",
+      "limitAbove": "Au-dessus de",
+      "limitRun": "faire",
+      "limitInstead": "à la place"
     }
   }
 }
