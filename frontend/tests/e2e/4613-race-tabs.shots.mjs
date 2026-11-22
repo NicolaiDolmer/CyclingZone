@@ -38,7 +38,7 @@ async function loginPreview(page, lang) {
   }, lang);
   await page.goto("/login");
   await page.getByPlaceholder(lang === "da" ? "din@email.dk" : "you@email.com").fill("manager@cyclingzone.test");
-  await page.getByPlaceholder("••••••••").fill("preview-mock");
+  await page.locator("#auth-password").fill("preview-mock");
   await page.getByRole("button", { name: lang === "da" ? /^Log ind$/ : /^Log in$/ }).click();
   await page.waitForURL(/\/(dashboard|races|$)/, { timeout: 30000 });
 }

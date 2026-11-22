@@ -230,7 +230,7 @@ async function login(context) {
   const email = page.getByPlaceholder(/e-?mail/i);
   await email.waitFor();
   await email.fill(TEST_USER.email);
-  await page.getByPlaceholder("••••••••").fill("playwright-password");
+  await page.locator("#auth-password").fill("playwright-password");
   await page.getByRole("button", { name: /log in/i }).click();
   await page.waitForURL(/\/dashboard$/);
   await page.close();

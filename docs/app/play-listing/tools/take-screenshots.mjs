@@ -165,7 +165,7 @@ async function main() {
       await installNetworkMocks(page);
       await page.goto(new URL("/login", flags.base).href);
       await page.getByPlaceholder(flags.lang === "da" ? "din@email.dk" : /email/i).fill(TEST_USER.email);
-      await page.getByPlaceholder("••••••••").fill("playwright-password");
+      await page.locator("#auth-password").fill("playwright-password");
       await page.getByRole("button", { name: /log ind|log in/i }).click();
       await page.waitForURL(/\/dashboard$/);
       return report(await shoot(page, sharp, flags, outDir), outDir, "fixtures") ? 1 : 0;
