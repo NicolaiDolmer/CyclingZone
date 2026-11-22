@@ -194,10 +194,12 @@
     "stage": "Stage {n}",
     "stageRace": "Stage race",
     "oneDay": "One-day race",
+    "autoRace": "Race · auto",
     "rider": "Rider",
     "countTraining": "training",
     "countRacing": "racing",
     "notReady": "The race days for this date are not ready yet.",
+    "autoNote": "The assistant picks your team for {races} at race start. Who rides is known then.",
     "aheadNote": "Days ahead show the plan. A change applies to every {weekday}.",
     "editInProgram": "Edit {weekday} in Program"
   }

@@ -1,7 +1,7 @@
 // #8580 · Dagsvælgerens rene model (ejer 22/11: A).
 import test from "node:test";
 import assert from "node:assert/strict";
-import { dayKind, futureCounts, futureFields, ownRaces, pickerWindow, weekUsable, type WeekDay } from "./dayPickerModel.ts";
+import { autoRaces, dayKind, futureCounts, futureFields, ownRaces, pickerWindow, weekUsable, type WeekDay } from "./dayPickerModel.ts";
 import { STAGE } from "./todayR5Model.ts";
 
 const day = (races: WeekDay["races"], extra: Partial<WeekDay> = {}): WeekDay => ({ date: "2026-11-24", weekday: "tue", available: true, races, ...extra });
@@ -24,9 +24,9 @@ test("dayKind: holdets etape foer endagsloeb; divisionens loeb uden holdets rytt
   const stage = { raceId: "gt", name: "Tour", kind: "stage" as const, stages: [6, 7], ownRiders: 2 };
   const one = { raceId: "c", name: "Classic", kind: "oneday" as const, stages: [1], ownRiders: 1 };
   const notOurs = { ...one, raceId: "x", ownRiders: 0 };
-  assert.deepEqual(dayKind(day([one, stage])), { kind: "stage", stage: 6, name: "Tour" });
-  assert.deepEqual(dayKind(day([one])), { kind: "oneday", stage: null, name: "Classic" });
-  assert.deepEqual(dayKind(day([notOurs])), { kind: "training", stage: null, name: null });
+  assert.deepEqual(dayKind(day([one, stage])), { kind: "stage", stage: 6, name: "Tour", auto: false });
+  assert.deepEqual(dayKind(day([one])), { kind: "oneday", stage: null, name: "Classic", auto: false });
+  assert.deepEqual(dayKind(day([notOurs])), { kind: "training", stage: null, name: null, auto: false });
   assert.deepEqual(ownRaces(day([notOurs, one])).map((r) => r.raceId), ["c"]);
 });
 
@@ -49,4 +49,17 @@ test("futureCounts: samme regel som I dag-overblikket; hvile, restitution og tom
     { fields: ["recovery", "recovery", "recovery", "recovery", "recovery"] },
     { fields: [null, null, null, null, null] },
   ]), { training: 1, racing: 1 });
+});
+
+test("UGE-4b: et loeb uden holdets tilmeldinger, som assistenten udtager til, er en loebsdag (auto)", () => {
+  const autoStage = { raceId: "gt", name: "Tour", kind: "stage" as const, stages: [3], ownRiders: 0, autoLineup: true };
+  const autoOne = { raceId: "c", name: "Classic", kind: "oneday" as const, stages: [1], ownRiders: 0, autoLineup: true };
+  const ownOne = { ...autoOne, raceId: "o", name: "Own", ownRiders: 4, autoLineup: false };
+  assert.deepEqual(dayKind(day([autoStage])), { kind: "stage", stage: 3, name: "Tour", auto: true });
+  assert.deepEqual(dayKind(day([autoOne])), { kind: "oneday", stage: null, name: "Classic", auto: true });
+  // Egne ryttere gaar forud: chippen siger det sikre loeb, ikke auto-etapen.
+  assert.deepEqual(dayKind(day([autoStage, ownOne])), { kind: "oneday", stage: null, name: "Own", auto: false });
+  assert.deepEqual(autoRaces(day([autoStage, ownOne])).map((r) => r.raceId), ["gt"]);
+  // Et slut loeb uden holdets ryttere (autoLineup false) er stadig ikke holdets dag.
+  assert.deepEqual(dayKind(day([{ ...autoOne, autoLineup: false }])).kind, "training");
 });

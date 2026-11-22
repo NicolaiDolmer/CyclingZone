@@ -194,10 +194,12 @@
     "stage": "Étape {n}",
     "stageRace": "Course par étapes",
     "oneDay": "Course d'un jour",
+    "autoRace": "Course · auto",
     "rider": "Coureur",
     "countTraining": "s'entraînent",
     "countRacing": "courent",
     "notReady": "Les jours de course de cette date ne sont pas encore prêts.",
+    "autoNote": "L’assistant sélectionne ton équipe pour {races} au départ. Les coureurs ne sont connus qu’à ce moment-là.",
     "aheadNote": "Les jours à venir montrent le plan. Un changement s'applique à chaque {weekday}.",
     "editInProgram": "Modifier le {weekday} dans Programme"
   }

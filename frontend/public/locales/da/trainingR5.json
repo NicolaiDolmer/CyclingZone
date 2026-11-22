@@ -194,10 +194,12 @@
     "stage": "Etape {n}",
     "stageRace": "Etapeløb",
     "oneDay": "Endagsløb",
+    "autoRace": "Løb · auto",
     "rider": "Rytter",
     "countTraining": "træner",
     "countRacing": "kører løb",
     "notReady": "Løbsdagene for denne dato er ikke klar endnu.",
+    "autoNote": "Assistenten udtager holdet til {races} ved løbsstart. Hvem der kører, ses først da.",
     "aheadNote": "Dagene frem viser planen. En ændring gælder hver {weekday}.",
     "editInProgram": "Ret {weekday} i Program"
   }

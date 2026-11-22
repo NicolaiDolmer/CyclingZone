@@ -13,6 +13,7 @@
 //   · bindinger, etaper og udgang af løb: forecastBindingsFromEntryDays (#5949, UGE-3).
 //   · felt pr. løbsdag: programSlotForRaceDay.
 // Et løb i divisionen, som rytteren ikke er udtaget til, er ikke hans løbsfelt (UGE-4).
+// Et løb, holdet ingen har i endnu, er en løbsdag med auto-udtagelse (UGE-4b).
 import { gameDaySpansByDivision, loadPriorMaxGameDayByDivision } from "./trainingDayCloseTrigger.js";
 import { forecastBindingsFromEntryDays, loadTeamFatigueForecast, FORECAST_SLOTS } from "./trainingWeekPlanForecast.js";
 import { loadRaceExitGameDays } from "./trainingRaceDayTick.js";
@@ -93,9 +94,14 @@ export function weekDateRiderFields({ gameDays, riderIds, plannedStages, boundRi
  * PUR: holdets løb på en dato (UGE-6): navn og etape eller endagsløb.
  * stages: datoens etaper i divisionen; races: Map<race_id, {name, stages}>.
  */
-//   ownRiders: hvor mange af holdets ryttere der kører løbet på datoen (0 = divisionens løb,
-//   holdet har ingen med). Fund 2 i Fable-dommen 22/11.
-export function weekDateRaces({ stages, races, plannedStages = [], raceIdByEntry = null }) {
+//   ownRiders: hvor mange af holdets ryttere der kører løbet på datoen. Fund 2 i Fable-dommen 22/11.
+//     Bindingerne (race_entry_days) tæller først; har holdet ingen binding, tæller løbets
+//     tilmeldinger (race_entries, også assistentens auto-udtagelse), så et allerede kørt
+//     auto-løb ikke står som træning (#8580-rettelsen, UGE-4b).
+//   autoLineup: holdet har ingen i løbet endnu, og løbet er ikke slut. Assistenten udtager så
+//     holdet ved løbsstart (raceRunner fylder hvert hold uden tilmeldinger op), så datoen er en
+//     løbsdag, men hvilke ryttere der kører, kendes først ved start (UGE-4b).
+export function weekDateRaces({ stages, races, plannedStages = [], raceIdByEntry = null, entriesByRace = new Map() }) {
   const byRace = new Map();
   for (const row of stages) {
     const race = races.get(row.race_id);
@@ -115,7 +121,11 @@ export function weekDateRaces({ stages, races, plannedStages = [], raceIdByEntry
     if (!ownByRace.has(raceId)) ownByRace.set(raceId, new Set());
     ownByRace.get(raceId).add(row.rider_id);
   }
-  return [...byRace.values()].map((r) => ({ ...r, stages: r.stages.sort((a, b) => a - b), ownRiders: ownByRace.get(r.raceId)?.size ?? 0 }))
+  return [...byRace.values()].map((r) => {
+    const ownRiders = ownByRace.get(r.raceId)?.size || entriesByRace.get(r.raceId)?.size || 0;
+    const autoLineup = ownRiders === 0 && races.get(r.raceId)?.status !== "completed";
+    return { ...r, stages: r.stages.sort((a, b) => a - b), ownRiders, autoLineup };
+  })
     .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
 }
 
@@ -156,7 +166,7 @@ export async function loadTeamWeekForecast({ supabase, team, seasonId, now = new
     .gte("scheduled_at", weekStart.toISOString()).lt("scheduled_at", weekEnd.toISOString()), "week stages");
 
   // pagination-safe: one division's races in one season (well below 1000).
-  const divisionRacesP = rows(supabase.from("races").select("id, name, stages").eq("season_id", seasonId).eq("league_division_id", divisionId), "week races");
+  const divisionRacesP = rows(supabase.from("races").select("id, name, stages, status").eq("season_id", seasonId).eq("league_division_id", divisionId), "week races");
 
   // Sidste løbsdag FØR ugen, over alle divisionens løb i sæsonen (samme loader som sweepen).
   // Sendes, så snart løbslisten er der, parallelt med resten (fund 6).
@@ -209,9 +219,21 @@ export async function loadTeamWeekForecast({ supabase, team, seasonId, now = new
   const { plannedStages, boundRiderIdsByGameDay } = forecastBindingsFromEntryDays({ entryDays, schedule, profiles: [], exits });
 
   const raceIdByEntry = new Map(entryDays.map((row) => [`${row.rider_id}:${row.game_day}`, row.race_id]));
+  // UGE-4b: holdets tilmeldinger til ugens løb (manuelle og assistentens), så et auto-løb
+  // tæller med, og et løb uden tilmeldinger kan vises som auto-udtagelse.
+  const weekRaceIds = [...new Set(stages.map((row) => row.race_id))];
+  // pagination-safe: one roster x the week's division races (a few dozen races x at most ~10 riders).
+  const entryRows = weekRaceIds.length && riderIds.length
+    ? await rows(supabase.from("race_entries").select("race_id, rider_id").in("race_id", weekRaceIds).in("rider_id", riderIds), "week entries")
+    : [];
+  const entriesByRace = new Map();
+  for (const row of entryRows) {
+    if (!entriesByRace.has(row.race_id)) entriesByRace.set(row.race_id, new Set());
+    entriesByRace.get(row.race_id).add(row.rider_id);
+  }
   const days = dates.map((date, i) => {
     const weekday = copenhagenWeekdayKey(date);
-    const dateRaces = weekDateRaces({ stages: stagesByDate.get(date) ?? [], races, plannedStages, raceIdByEntry });
+    const dateRaces = weekDateRaces({ stages: stagesByDate.get(date) ?? [], races, plannedStages, raceIdByEntry, entriesByRace });
     if (i === 0) {
       return { date, weekday, available: today.available === true, races: dateRaces, today };
     }
