@@ -38,11 +38,11 @@ import { prognosisViewOf } from "../../lib/potentialEstimateDisplay.ts";
 import { useTypeColumnLabel } from "../../lib/useTypeColumnLabel.ts";
 import { useTableSort } from "../../lib/useTableSort.js";
 import { riderNameSortKey } from "../../lib/riderColumnSort.js";
+import { riderShortName } from "../../lib/riderName.ts";
 import { riderOverallRating } from "../../lib/riderRating.js";
 import { statPlateStyle } from "../../lib/statColor.js";
 import { getRiderMarketValue } from "../../lib/marketValues.js";
 import { contractExpiringBadgeKey, getRiderAge, seasonNumberFromReferenceYear } from "../../lib/riderAge.js";
-import { getCountryCode3 } from "../../lib/countryUtils.js";
 import { scoutSortValue } from "../../lib/scouting.js";
 import { formatNumber } from "../../lib/intl.js";
 import { useRiderReputation } from "../../lib/useRiderReputation.ts";
@@ -178,8 +178,8 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
       key: "nation",
       header: t("squad.headers.nation"),
       sortKey: "nationality_code",
-      fold: true,
-      foldValue: (r) => getCountryCode3(r.nationality_code) || "—",
+      // Ejer 22/11 (#8554): alder og nation er ikke en del af navnet. Ingen fold ind i
+      // navnecellen paa telefon; de er egne kolonner (et tryk vaek i chip-raekken).
       render: (r) => <NationCell code={r.nationality_code} />,
     },
     {
@@ -191,6 +191,17 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
         <RiderLink id={r.id} stopPropagation className="text-cz-1 hover:text-cz-accent-t transition-colors">
           {r.firstname} {r.lastname}
         </RiderLink>
+      ),
+      // #8554 (ejer 22/11): paa telefon kun navnet paa EEN linje, i den korte form ejeren
+      // valgte 18/9 (#5350, "E. Vestergaard") som Rytterdatabasen, Mit Hold og traeningen.
+      // Tabellen tvinger ombrydning paa telefon (D-047, **:whitespace-normal); navnet holdes derfor
+      // paa een linje med `!`-nowrap og en fast maksbredde med ellipsis, saa ingen vandret scroll.
+      renderShort: (r) => (
+        <span className="block max-w-[8.5rem] truncate !whitespace-nowrap" title={`${r.firstname ?? ""} ${r.lastname ?? ""}`.trim()}>
+          <RiderLink id={r.id} stopPropagation className="!whitespace-nowrap text-cz-1 hover:text-cz-accent-t transition-colors">
+            {riderShortName(r)}
+          </RiderLink>
+        </span>
       ),
     },
     {
@@ -222,8 +233,6 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
       sortKey: "age",
       numeric: true,
       compact: true,
-      fold: true,
-      foldValue: (r) => String(r._age ?? "—"),
       render: (r) => <span className="text-cz-2">{r._age ?? "—"}</span>,
     },
     {

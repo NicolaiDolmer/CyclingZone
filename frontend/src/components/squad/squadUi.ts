@@ -26,6 +26,8 @@ export interface DataTableColumn<Row> {
   key: string;
   header: ReactNode;
   render: (row: Row) => ReactNode;
+  /** #5383/#8554: mobilens korte navneform (DataTable.jsx renderStickyCell), kun for sticky-kolonnen. */
+  renderShort?: (row: Row) => ReactNode;
   sortKey?: string;
   numeric?: boolean;
   compact?: boolean;
