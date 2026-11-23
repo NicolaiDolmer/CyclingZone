@@ -1,7 +1,7 @@
 // #8280 (TASTE P21) — ren logik bag tabellens titellinje, så den kan testes med
 // `node --test` uden DOM. Selve markuppen bor i TableTitleBar.tsx.
 
-export type TitleBarOption = { value: string | number; label: string };
+export type TitleBarOption = { value: string | number; label: string; shortLabel?: string };
 
 export type TitleBarChoice = {
   key: string;
@@ -35,10 +35,11 @@ export function columnsSummary(count: number | undefined, total: number | undefi
  * uden match (fx en værdi der ikke længere findes) falder tilbage til første
  * option, så linjen aldrig står tom.
  */
-export function choiceLabel(choice: { value?: string | number; options?: TitleBarOption[] } | null | undefined): string {
+export function choiceLabel(choice: { value?: string | number; options?: TitleBarOption[] } | null | undefined, compact = false): string {
   const options = choice?.options ?? [];
   const match = options.find((o) => String(o.value) === String(choice?.value ?? ""));
-  return (match ?? options[0])?.label ?? "";
+  const option = match ?? options[0];
+  return (compact ? option?.shortLabel : undefined) ?? option?.label ?? "";
 }
 
 /**
