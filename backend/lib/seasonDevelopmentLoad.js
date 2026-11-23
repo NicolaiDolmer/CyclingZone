@@ -14,7 +14,8 @@
 //                day_type = 'training', was_race_day = false og et KØRT niveau
 //                'hard', deduplikeret pr. (rytter, game_day ?? tick_date).
 //                #7947: det kørte niveau er rækkens `intensity` (motoren gemmer den
-//                med kontakten training_effort_levels on); er den null (kontakten
+//                med kontakten training_effort_levels on, for alle hold og ogsaa
+//                for ryttere uden plan, #8546); er den null (kontakten
 //                off, eller rækken er fra før kolonnen), er det sessionens
 //                standardniveau (trainingDayTypes.SESSION_INTENSITY), som før.
 //
