@@ -11,7 +11,7 @@
 //
 // RENE funktioner + kontaktens opslag. Motoren (dailyTrainingEngine.js) og prognosen
 // (trainingWeekPlanForecast.js) bruger de samme (I5).
-import { assignDayFields } from "./trainingWeekBlocks.js";
+import { assignDayFields, lockSlotOf } from "./trainingWeekBlocks.js";
 import { programSlotForRaceDay, sessionForDayEntry } from "./trainingPrograms.js";
 import { isValidIntensity } from "./training.js";
 import { readFlagStage } from "./featureStage.js";
@@ -59,32 +59,62 @@ export function winningWeekEntry({ weekday, riderRow = null, teamRow = null, has
 
 /**
  * Feltplaceringen for datoen under Week blocks.
- *   raceGameDays  : datoens løbsdage, hvor rytteren kører (afregnede løb + planlagte etaper).
- *   priorReports  : datoens allerede afregnede kvitteringer for rytteren ({ game_day, report }).
- *                   Et felt med `source_slot` ligger fast med den kilde. Et ældre felt uden
- *                   stempel ligger fast med sin egen plads, og et løbsfelt med null (WB-6, WB-8).
+ *   raceGameDays    : datoens løbsdage, hvor rytteren kører (afregnede løb + planlagte etaper).
+ *   priorReports    : datoens allerede afregnede kvitteringer for rytteren ({ game_day, report }).
+ *                     Et felt med `source_slot` ligger fast med den kilde. Et ældre felt uden
+ *                     stempel ligger fast med sin egen plads, og et løbsfelt med null (WB-6, WB-8).
+ *   injuredGameDays : datoens løbsdage, hvor rytteren er skadet (regel B, ejer 23/11).
  */
-export function weekPriorityPlacement({ winning, dateDays, raceGameDays = [], priorReports = [] }) {
+export function weekPriorityPlacement({ winning, dateDays, raceGameDays = [], priorReports = [], injuredGameDays = [] }) {
   if (winning?.planKind !== "week") return null;
   const days = [...new Set((dateDays ?? []).map(Number).filter(Number.isFinite))].sort((a, b) => a - b);
   if (days.length !== 5) return null;
   const slotOf = (gameDay) => programSlotForRaceDay(gameDay, days);
-  const raceFields = new Set([...raceGameDays].map(Number).filter((d) => days.includes(d)).map(slotOf));
+  const fieldsOf = (gameDays) => new Set([...gameDays].map(Number).filter((d) => days.includes(d)).map(slotOf));
+  const raceFields = fieldsOf(raceGameDays);
+  const injuredFields = fieldsOf(injuredGameDays);
   const settled = new Map();
   for (const prior of priorReports) {
     const day = Number(prior.game_day);
     if (!days.includes(day)) continue;
     const field = slotOf(day);
     const report = prior.report ?? {};
-    const raced = raceFields.has(field) || report.race_day === true
-      || report.intensity === "race" || report.intensity === "unknown_pending";
     const stamped = Number.isInteger(report.source_slot) ? report.source_slot : null;
+    // Fund A (Fable 23/11): a planned stage field that trained carries a stamp, and the stamp
+    // wins over the plan. Without a stamp the planned field stays a race field.
+    const raced = report.race_day === true || report.intensity === "race" || report.intensity === "unknown_pending"
+      || (raceFields.has(field) && stamped == null);
     // An injury without a training source must not change the placement of later fields.
-    if (!raced && stamped == null && report.injured === true) continue;
+    if (!raced && stamped == null && report.injured === true) {
+      injuredFields.add(field);
+      continue;
+    }
     // Et felt, træthedsgrænsen erstattede, er afregnet MED sin kilde (WB-7-kontrakten, #8578).
     settled.set(field, raced ? null : (stamped ?? field));
   }
-  return assignDayFields({ entry: winning.entry, raceFields, settled });
+  return placeLockOutOfInjury({ entry: winning.entry, raceFields, settled, injuredFields });
+}
+
+/**
+ * Regel B (ejer 23/11, #8549): lands the lock in a field where the rider is still injured,
+ * it moves to the nearest healthy free field on the date instead (the first one, when the
+ * injury ends later that date). The injured fields use the other passes in priority order,
+ * as they do without a lock, so only the lock moves and "taken" still means taken by a race.
+ * Without a healthy free field the placement is unchanged (the injury rests the whole date).
+ */
+function placeLockOutOfInjury({ entry, raceFields, settled, injuredFields }) {
+  const placement = assignDayFields({ entry, raceFields, settled });
+  const lock = lockSlotOf(entry);
+  const at = lock == null ? -1 : placement.fieldSource.indexOf(lock);
+  if (at < 0 || settled.has(at) || !injuredFields.has(at)) return placement;
+  const fields = placement.fieldSource.map((_, field) => field);
+  const open = fields.filter((field) => !raceFields.has(field) && !settled.has(field));
+  if (!open.some((field) => !injuredFields.has(field))) return placement;
+  const used = new Set([...settled.values()].filter((source) => source != null));
+  const queue = fields.filter((source) => source !== lock && !used.has(source));
+  const blocked = new Map(settled);
+  for (const field of open) if (injuredFields.has(field)) blocked.set(field, queue.shift() ?? null);
+  return assignDayFields({ entry, raceFields, settled: blocked });
 }
 
 export function weekPrioritySourceSlot({ programSlot, ...input }) {

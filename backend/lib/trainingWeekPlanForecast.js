@@ -153,6 +153,8 @@ export function buildTeamFatigueForecast({
         ...plannedStages.filter((row) => row.rider_id === rider.id).map((row) => Number(row.game_day)),
       ],
       priorReports: riderReceipts,
+      // #8549 regel B: samme skadede felter som motoren (isInjuredOnRaceDay pr. loebsdag).
+      injuredGameDays: days.filter((day) => isInjuredOnRaceDay({ condition: cond, seasonId, gameDay: day, tickDate })),
     }) : null;
     const ruleLoads = []; // #7801: etaper i tidligere felter samme dato
     const slots = days.map((day) => {
@@ -323,7 +325,7 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
   const dateReceipts = receipts.filter((row) => row.tick_date === tickDate);
   const programCellsOn = cellsOn && weekRows.some((row) => weekDaysHaveSessions(row.days));
   const weekPriority = programCellsOn && weekRows.some((row) => row.plan_kind === "week")
-    ? await isTrainingWeekPriorityEnabledForTeam(supabase, team.id)
+    ? await weekPriorityGateForTeam(supabase, team.id)
     : false;
   // A completed current-team roster says nothing about an acquired rider's
   // still-open date under the original team's durable stamp.
@@ -437,6 +439,17 @@ async function catalogV3GateForTeam(supabase, teamId) {
     return await isTrainingCatalogV3EnabledForTeam(supabase, teamId);
   } catch {
     // best-effort: prognosen er kun en visning; ukendt gate = dagens katalog.
+    return false;
+  }
+}
+
+// #8549 fund C: motorens gate for Week blocks. Motoren kaster ved en fejl i beta-opslaget og
+// proever datoen igen; prognosen er en visning, saa en fejl giver dagens felter.
+async function weekPriorityGateForTeam(supabase, teamId) {
+  try {
+    return await isTrainingWeekPriorityEnabledForTeam(supabase, teamId);
+  } catch {
+    // best-effort: prognosen er kun en visning; ukendt gate = ugen uden Week blocks.
     return false;
   }
 }
