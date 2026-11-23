@@ -1,0 +1,20 @@
+{
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Scouting",
+      "area": "development",
+      "en": {
+        "title": "The projection per rider type is back on the scouting tab",
+        "body": "I took it away by mistake when the potential became one number. The scouting tab now shows the projection per rider type again, right under the potential. For your own riders you see every type. For riders you have scouted on other teams you see the same list, with the band your scout can give you. Riders you have not scouted still show no list."
+      },
+      "da": {
+        "title": "Prognosen pr. ryttertype er tilbage på scouting-fanen",
+        "body": "Jeg fjernede den ved en fejl, da potentialet blev ét tal. Scouting-fanen viser nu igen prognosen pr. ryttertype lige under potentialet. På dine egne ryttere ser du alle typer. På ryttere, du har scoutet på andre hold, ser du den samme liste med det bånd, din spejder kan give dig. Ryttere, du ikke har scoutet, viser stadig ingen liste."
+      },
+      "refs": [6110]
+    }
+  ]
+}

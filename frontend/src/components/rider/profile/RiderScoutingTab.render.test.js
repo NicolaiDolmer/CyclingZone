@@ -32,7 +32,7 @@ const loader = registerHooks({
   load(url, context, nextLoad) {
     if (/\.css(\?.*)?$/.test(url)) return { format: "module", shortCircuit: true, source: "export default {};" };
     if (url.startsWith("file:") && !url.includes("node_modules") && /\.(tsx|jsx|ts|js)$/.test(url) && url.includes("/frontend/src/")) {
-      const lang = url.match(/\.(tsx|jsx|ts|js)$/)[1];
+      const lang = /** @type {"js" | "jsx" | "ts" | "tsx"} */ (url.match(/\.(tsx|jsx|ts|js)$/)?.[1]);
       const source = readFileSync(new URL(url), "utf8").replaceAll("import.meta.env", ENV);
       return {
         format: "module",
