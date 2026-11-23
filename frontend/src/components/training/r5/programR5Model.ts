@@ -338,6 +338,11 @@ export function groupMenuActions({ limitEnabled }: { limitEnabled: boolean }): G
 
 type GroupLike = { id: string; name: string; members: readonly R5GroupMember[] };
 
+export function groupMovePatch(group: GroupLike, riderId: string): { riderIds: string[] } | null {
+  const memberIds = group.members.map((member) => member.riderId);
+  return memberIds.includes(riderId) ? null : { riderIds: [...memberIds, riderId] };
+}
+
 // PATCH kun med det der faktisk er aendret. Medlemmer sendes kun ved en aendring, fordi
 // serveren tjekker "Train now"-laasen, naar en gruppe med felter faar medlemmer; en ren
 // omdoebning skal ikke kunne afvises af laasen. null = intet at gemme.
