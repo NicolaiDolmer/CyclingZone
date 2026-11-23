@@ -35,11 +35,11 @@
 //     pagehide/sendBeacon-flush. Et $pageview fra en besøgende der forlader
 //     siden hurtigt ville gå tabt. Derfor flushAt: 1 — hvert event sendes med
 //     det samme, samme adfærd som posthog-js.
-//   - lite sender ikke kampagne-parametre (utm_*/gclid/…) automatisk. De
-//     tilføjes her i CAMPAIGN_PARAMS-hjælperen, så PostHogs kanal- og
-//     UTM-opdelinger stadig virker.
+//   - lite tilføjer ikke kampagne-UTM automatisk. Vi tilføjer de tilladte
+//     felter som del af capture.
 
 import { isLikelyAutomation, isPrerendering } from "./clarityBotSignals.js";
+import { CLICK_ID_KEYS, UTM_KEYS, getLegacyCampaignParams } from "./attribution.js";
 
 // import.meta.env optional-chained så modulet kan importeres i node --test,
 // jf. konventionen i trafficBeacon.js / clarityIntegration.jsx.
@@ -115,6 +115,7 @@ let posthogStarted = false;
 let posthogOptedOut = false;
 // Den UUID klienten er identify'et som i denne page load (null = anonym).
 let identifiedUserId = null;
+let identifiedAttribution = null;
 // Bruger-events (logEvent-spejlingen) der kom FØR identify. De bindes til den
 // rigtige person ved at vente på identify i stedet for at gå afsted på den
 // anonyme memory-id. Kun i hukommelsen; ryddes ved opt-out/reset.
@@ -138,37 +139,51 @@ export function isPosthogCapturing() {
   return posthogStarted && Boolean(client) && !posthogOptedOut;
 }
 
-// Kampagne-parametre. posthog-js læste dem selv af URL'en og hængte dem på hvert
-// event; lite gør ikke, så listen er PostHogs egen (den delmængde der driver
-// kanal- og UTM-opdelingerne i Web Analytics). Læses ved hvert capture, præcis
-// som posthog-js gjorde — en SPA-navigation kan skifte query-strengen.
-//
-// BEMÆRK: person-egenskaberne $initial_utm_* (posthog-js' $set_once ved første
-// besøg) er bevidst IKKE genskabt. Sandheden om signup-attribution er tabellen
-// signup_attribution i Postgres (#4321); PostHog-kopien skal kunne opdele
-// events på kampagne, ikke eje attributionen.
-const CAMPAIGN_PARAMS = Object.freeze([
-  "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
-  "gclid", "gad_source", "fbclid", "msclkid", "ttclid", "twclid", "li_fat_id",
-]);
+// Campaign tags on a landing page describe that visit. The journey events
+// carry the first touch associated with the authenticated account instead.
+const FIRST_TOUCH_EVENTS = new Set(["signup", "team_created", "first_training"]);
+const FIRST_TOUCH_KEYS = UTM_KEYS.filter((key) => key !== "utm_term");
 
-function campaignProperties() {
-  if (typeof window === "undefined" || !window.location?.search) return null;
-  let params;
-  try {
-    params = new URLSearchParams(window.location.search);
-  } catch {
-    return null;
+function firstTouchProperties(attribution) {
+  const properties = {};
+  const legacyParams = getLegacyCampaignParams(attribution);
+  for (const key of FIRST_TOUCH_KEYS) {
+    const value = legacyParams?.get(key) || attribution?.[key];
+    if (typeof value === "string" && value.trim()) properties[key] = value.trim().slice(0, 200);
   }
-  let found = null;
-  for (const key of CAMPAIGN_PARAMS) {
+  return properties;
+}
+
+export function buildPosthogEventProperties(name, properties, attribution, search) {
+  if (FIRST_TOUCH_EVENTS.has(name)) {
+    const firstTouch = firstTouchProperties(attribution);
+    return Object.keys(firstTouch).length
+      ? { ...properties, ...firstTouch, $set_once: firstTouch }
+      : { ...properties };
+  }
+
+  const params = new URLSearchParams(search);
+  const contextualUtms = {};
+  for (const key of UTM_KEYS) {
     const value = params.get(key);
-    if (value) {
-      found = found || {};
-      found[key] = value;
-    }
+    if (value) contextualUtms[key] = value.slice(0, 200);
   }
-  return found;
+  return { ...properties, ...contextualUtms };
+}
+
+function stripClickIdsFromPosthogUrls(event) {
+  for (const key of ["$current_url", "$referrer"]) {
+    const value = event.properties?.[key];
+    if (typeof value !== "string" || !value) continue;
+    try {
+      const url = new URL(value);
+      if (CLICK_ID_KEYS.some((id) => url.searchParams.has(id))) {
+        for (const id of CLICK_ID_KEYS) url.searchParams.delete(id);
+        event.properties[key] = url.href;
+      }
+    } catch { /* an empty or non-URL referrer has no query to redact */ }
+  }
+  return event;
 }
 
 // #5162 (K3): frontend-releasens indholds-id (<meta name="cz-frontend">) på
@@ -187,9 +202,8 @@ function frontendIdProperty() {
 }
 
 function capture(name, properties) {
-  const campaign = campaignProperties();
-  const release = frontendIdProperty();
-  client.capture(name, campaign || release ? { ...(properties || {}), ...campaign, ...release } : (properties || {}));
+  const campaign = buildPosthogEventProperties(name, properties, identifiedAttribution, globalThis.window?.location?.search);
+  client.capture(name, { ...campaign, ...frontendIdProperty() });
 }
 
 // optIn()/optOut() er async i core'en, men laver kun en synkron
@@ -264,6 +278,7 @@ export const POSTHOG_OPTIONS = Object.freeze({
   // payloaden er et enkelt event ad gangen — komprimeringen ville spare
   // nogle hundrede bytes mod en uverificeret proxy-antagelse.
   disableCompression: true,
+  before_send: stripClickIdsFromPosthogUrls,
 });
 
 // Bygger klienten. Adskilt fra startPosthog() så testen kan køre den mod den
@@ -353,12 +368,13 @@ function flushPendingUserEvents() {
 // få e-mail eller andet der kan læses som PII i en tredjeparts UI.
 // Kaldes ved HVER page load efter login: memory-persistence giver en ny anonym
 // id pr. load, og identify er det der binder brugerens sessioner sammen.
-export function identifyPosthog(userId) {
+export function identifyPosthog(userId, accountAttribution) {
   if (!isPosthogCapturing() || !userId) return;
   const id = String(userId);
   try {
     client.identify(id);
     identifiedUserId = id;
+    identifiedAttribution = firstTouchProperties(accountAttribution);
   } catch { /* best-effort — identify må aldrig bryde brugerflowet */ }
   if (identifiedUserId === id) flushPendingUserEvents();
 }
@@ -367,6 +383,7 @@ export function identifyPosthog(userId) {
 // der lige loggede ud (delte enheder).
 export function resetPosthog() {
   identifiedUserId = null;
+  identifiedAttribution = null;
   pendingUserEvents.length = 0;
   if (!posthogStarted || !client) return;
   try {
