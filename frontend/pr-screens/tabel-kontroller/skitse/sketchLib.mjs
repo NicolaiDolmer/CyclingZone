@@ -68,6 +68,8 @@ export function installSketchLib() {
       .map((it, i) => `<div style="display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 12px;${i ? "border-top:1px solid var(--border);" : ""}font-size:13px;color:${active.includes(it) ? "var(--text-1)" : "var(--text-2)"};font-weight:${active.includes(it) ? 600 : 400}"><span>${it}</span>${active.includes(it) ? `<span style="color:rgb(var(--accent-t))">${icon("check", 16)}</span>` : ""}</div>`)
       .join("")}</div>`;
 
+  // CodeQL #396: tekst laest fra siden escapes foer den saettes ind som HTML.
+  const esc = (t) => String(t ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   const el = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstElementChild; };
   const hide = (...els) => els.forEach((e) => { if (e) e.style.display = "none"; });
   const byText = (sel, re, root = document) => [...root.querySelectorAll(sel)].find((e) => re.test((e.textContent || "").trim()));
@@ -116,5 +118,5 @@ export function installSketchLib() {
     layer().appendChild(line);
   };
 
-  window.__sk = { icon, select, search, seg, button, iconBtn, scopeBtn, textSelect, squareChips, toolbar, sheet, sheetLabel, radioList, el, hide, byText, mobile, mark, measure, ruler };
+  window.__sk = { icon, select, search, seg, button, iconBtn, scopeBtn, textSelect, squareChips, toolbar, sheet, sheetLabel, radioList, esc, el, hide, byText, mobile, mark, measure, ruler };
 }

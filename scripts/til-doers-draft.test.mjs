@@ -504,3 +504,9 @@ test('copenhagenDay og parseArgs', () => {
   assert.throws(() => parseArgs(['draft', '--repo', 'a b']), /repo/);
   assert.throws(() => parseArgs(['draft', '--bogus']), /Ukendt/);
 });
+
+test('CodeQL #395: indlejrede og uafsluttede HTML-kommentarer efterlader intet "<!--"', () => {
+  const body = '## Patch notes\nEN: Fixed <!-<!-- x -->- y --> thing\nDA: Rettet ting <!-- aldrig lukket';
+  const draft = extractPatchNoteDraft(body);
+  assert.ok(!JSON.stringify(draft).includes('<!--'));
+});
