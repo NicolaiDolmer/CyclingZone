@@ -137,6 +137,7 @@
     "kind_week": "Ugeblokke",
     "kind_rotation": "Rotation",
     "weekPriority": {
+      "moved": "Låst pas flyttet fra LD {n}",
       "title": "Feltprioritet",
       "day": "Dag for feltprioritet",
       "up": "Hæv prioriteten for felt {n}",

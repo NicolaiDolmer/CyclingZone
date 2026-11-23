@@ -51,7 +51,8 @@ export async function loadWeekPrioritySettled({ supabase, teamId, seasonId, tick
   for (const { rider_id: id, game_day: day, report } of data ?? []) {
     const slot = programSlotForRaceDay(day, gameDays);
     const target = out[id] ??= {};
-    const raced = report?.race_day === true || report?.intensity === "race";
+    const raced = report?.race_day === true || report?.intensity === "race" || report?.intensity === "unknown_pending";
+    if (!raced && report?.injured === true && !Number.isInteger(report?.source_slot)) continue;
     target[slot] = raced ? null : Number.isInteger(report?.source_slot) ? report.source_slot : slot;
   }
   return out;

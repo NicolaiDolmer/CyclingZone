@@ -323,14 +323,20 @@ export function draftTotal(drafts: Readonly<Record<string, Draft>>): number {
 
 export type WeekCell =
   | { kind: "race" }
+  | { kind: "rest" }
   | { kind: "ran"; session: string | null; sourceSlot?: number }
   | { kind: "session"; session: string | null; changed: boolean; sourceSlot?: number };
 
-export type WeekPlacement = { fieldSource: (number | null)[]; taken: number[] };
+export type WeekPlacement = { fieldSource: (number | null)[]; taken: number[]; lockMovedFrom: number | null; restSlots?: number[] };
 
 export function weekPlacement(lockSlot: number | null, races: readonly number[], settled?: Record<number, number | null>): WeekPlacement {
-  const { fieldSource, taken } = assignDayFields({ entry: { lockSlot }, raceFields: races, settled });
-  return { fieldSource: fieldSource.map((source) => source ?? null), taken };
+  const { fieldSource, taken, lockMovedFrom } = assignDayFields({ entry: { lockSlot }, raceFields: races, settled });
+  return { fieldSource: fieldSource.map((source) => source ?? null), taken, lockMovedFrom };
+}
+
+export function weekPlacementFromForecast(forecast: Partial<WeekPlacement> | null | undefined): WeekPlacement | null {
+  if (forecast?.fieldSource?.length !== PROGRAM_SLOTS || !Array.isArray(forecast.taken)) return null;
+  return { fieldSource: forecast.fieldSource, taken: forecast.taken, lockMovedFrom: forecast.lockMovedFrom ?? null, restSlots: forecast.restSlots ?? [] };
 }
 
 // 7 x 5 felter. Loebets felter i dag er graa + flag (regel A); felter med kvittering i
@@ -348,6 +354,7 @@ export function weekCells({
 }): WeekCell[][] {
   return weekdays.map((weekday) => Array.from({ length: PROGRAM_SLOTS }, (_, slot): WeekCell => {
     const placement = placements[weekday];
+    if (placement?.restSlots?.includes(slot)) return { kind: "rest" };
     if ((weekday === todayWeekday && raceToday.has(slot)) || placement?.fieldSource[slot] === null) return { kind: "race" };
     const source = placement?.fieldSource[slot] ?? slot;
     const metadata = source === slot ? {} : { sourceSlot: source };

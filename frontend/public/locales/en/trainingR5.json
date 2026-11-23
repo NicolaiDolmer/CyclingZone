@@ -137,6 +137,7 @@
     "kind_week": "Week blocks",
     "kind_rotation": "Rotation",
     "weekPriority": {
+      "moved": "Locked pass moved from RD {n}",
       "title": "Field priority",
       "day": "Day for field priority",
       "up": "Raise priority of field {n}",

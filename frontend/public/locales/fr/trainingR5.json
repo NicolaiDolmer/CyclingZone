@@ -137,6 +137,7 @@
     "kind_week": "Blocs de semaine",
     "kind_rotation": "Rotation",
     "weekPriority": {
+      "moved": "Séance verrouillée déplacée depuis le jour de course {n}",
       "title": "Priorité des créneaux",
       "day": "Jour à organiser",
       "up": "Augmenter la priorité du créneau {n}",

@@ -16,7 +16,8 @@ async function annotatedShot(page: Page, caption: string, path: string) {
     const badge = document.createElement("aside");
     badge.dataset.rotationEvidence = "true";
     window.scrollTo(0, 0);
-    badge.setAttribute("style", "position:absolute;right:10px;top:54px;z-index:1000;background:#18273b;color:#fff;border:1px solid #71839b;border-radius:5px;padding:6px 10px;font-family:system-ui,sans-serif;font-size:12px;font-weight:600;pointer-events:none");
+    const top = window.innerWidth < 640 ? 118 : 88;
+    badge.setAttribute("style", `position:absolute;right:10px;top:${top}px;z-index:1000;background:#18273b;color:#fff;border:1px solid #71839b;border-radius:5px;padding:6px 10px;font-family:system-ui,sans-serif;font-size:12px;font-weight:600;pointer-events:none`);
     badge.textContent = text;
     document.body.append(badge);
   }, caption);
@@ -58,12 +59,17 @@ test("R5 switches between week blocks and rotation and sends edits, jumps and co
     assigned: { [first.id]: "fixture" },
   }));
   const forecast = {
-    fatigue: 35, band: "ok", raceSlots: [1],
+    fatigue: 35, band: "ok", raceSlots: [4],
     rotationSlots: [{ index: 6, length: 10, session: "endurance" }, null, { index: 7, length: 10, session: "tempo" }],
     restSlots: [], nextRotationIndex: 8,
   };
   await page.route("**/api/training/programs/forecast", (route) => mock(route, {
-    available: true, tickDate: "2026-11-23", riders: { [first.id]: forecast, [second.id]: forecast },
+    available: true, tickDate: "2026-11-23", riders: {
+      [first.id]: on && mode === "week"
+        ? { ...forecast, fieldSource: [0, 1, null, 4, null], taken: [3], lockMovedFrom: 4, restSlots: [2] }
+        : forecast,
+      [second.id]: forecast,
+    },
   }));
   await page.route("**/api/training/programs/forecast/week", (route) => mock(route, {
     available: true, days: weekdays.map((weekday, index) => ({
@@ -107,6 +113,9 @@ test("R5 switches between week blocks and rotation and sends edits, jumps and co
   await page.getByTestId("program-r5-save").click();
   await expect.poll(() => writes.some((write) => write.planKind === "week" && !!write.weekBlock)).toBe(true);
   await expect(page.getByTestId("program-r5-save")).toBeDisabled();
+  await expect(page.getByTestId("program-r5-races-took")).toContainText("Tempo");
+  await expect(page.getByTestId("program-r5-lock-moved")).toContainText("RD 5");
+  await expect(page.getByTestId("program-r5-week-rest")).toContainText("Rest");
   if (screenshot) await annotatedShot(page, "After · Week blocks: priority and locked pass", `pr-screens/8548/${width}-week-blocks.png`);
 
   await page.getByRole("button", { name: "Rotation", exact: true }).click();

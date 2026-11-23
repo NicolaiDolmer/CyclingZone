@@ -2111,7 +2111,10 @@ export default function TrainingPage() {
     let forecastEntry = null;
     if (isTeam) {
       for (const entry of Object.values(fatigueForecast.forecast?.riders ?? {})) {
-        if (Number.isFinite(entry?.fatigue) && (!forecastEntry || entry.fatigue > forecastEntry.fatigue)) forecastEntry = entry;
+        const fatigue = entry?.fatigue;
+        if (fatigue != null && Number.isFinite(fatigue) && fatigue > (forecastEntry?.fatigue ?? -Infinity)) {
+          forecastEntry = entry;
+        }
       }
     } else {
       forecastEntry = forecastFor(key);

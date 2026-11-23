@@ -137,6 +137,7 @@
     "kind_week": "Bloques semanales",
     "kind_rotation": "Rotación",
     "weekPriority": {
+      "moved": "Sesión bloqueada desplazada desde el día de carrera {n}",
       "title": "Prioridad de los turnos",
       "day": "Día para ordenar los turnos",
       "up": "Subir la prioridad del turno {n}",

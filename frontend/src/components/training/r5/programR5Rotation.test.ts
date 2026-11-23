@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { availableKinds, rememberedKind, moveRotationPass, moveWeekBlock, weekCells, weekPlacement } from "./programR5Model.ts";
+import { availableKinds, rememberedKind, moveRotationPass, moveWeekBlock, weekCells, weekPlacement, weekPlacementFromForecast } from "./programR5Model.ts";
 
 test("R5 only restores the rotation view when its flag is on", () => {
   assert.deepEqual(availableKinds(false), ["week"]);
@@ -35,4 +35,18 @@ test("WB-2 and WB-6 use the same source in the grid and the Races took row", () 
   assert.deepEqual(placed.taken, [3]);
   assert.deepEqual(cells[0][3], { kind: "session", session: "threshold", changed: false, sourceSlot: 4 });
   assert.deepEqual(weekPlacement(4, [4], { 0: 0, 1: 1, 2: 2, 3: 3 }).taken, [4]);
+});
+
+test("R5 uses the server's settled placement, including an unavailable training field", () => {
+  const fieldSource = [0, 1, 2, 3, null];
+  const forecast = { fieldSource, taken: [4], lockMovedFrom: null, restSlots: [] };
+  assert.deepEqual(weekPlacementFromForecast(forecast), forecast);
+  assert.equal(weekPlacementFromForecast({}), null);
+
+  const rest = weekPlacementFromForecast({ fieldSource: [null, null, null, null, null], taken: [], lockMovedFrom: null, restSlots: [0, 1, 2, 3, 4] })!;
+  const cells = weekCells({
+    days: null, draft: {}, weekdays: ["mon"], todayWeekday: "mon",
+    raceToday: new Set(), lockedToday: new Set(), placements: { mon: rest },
+  });
+  assert.deepEqual(cells[0], Array.from({ length: 5 }, () => ({ kind: "rest" })));
 });

@@ -5,11 +5,11 @@ import Select from "../../ui/Select.jsx";
 import { ChevronUpIcon, ChevronDownIcon, LockIcon } from "../../ui/icons/index.jsx";
 import type { ProgramWeekDays } from "../../../lib/trainingPrograms.ts";
 import {
-  draftCellSession, moveWeekBlock, weekPlacement, type Draft, type WeekBlock,
+  draftCellSession, moveWeekBlock, type Draft, type WeekBlock, type WeekPlacement,
 } from "./programR5Model.ts";
 
 export default function WeekBlockEditor({
-  dayKeys, today, closed, days, draft, changes, racesFor, settledToday, active, disabled, dayLabel, sessionLabel, onChange,
+  dayKeys, today, closed, days, draft, changes, racesFor, placements, disabled, dayLabel, sessionLabel, onChange,
 }: {
   dayKeys: readonly string[];
   today: string;
@@ -18,8 +18,7 @@ export default function WeekBlockEditor({
   draft: Draft;
   changes: Record<string, WeekBlock>;
   racesFor: (weekday: string) => number[];
-  settledToday?: Record<number, number | null>;
-  active: boolean;
+  placements: Record<string, WeekPlacement>;
   disabled: boolean;
   dayLabel: (weekday: string) => string;
   sessionLabel: (session: string) => string;
@@ -38,10 +37,9 @@ export default function WeekBlockEditor({
     slots: saved.slots.map((session, index) => draft[`${weekday}:${index}`] ?? session),
   };
   const editable = !disabled && !(weekday === today && closed);
-  const races = racesFor(weekday);
-  const dropped = active || changes[weekday]
-    ? weekPlacement(block.lockSlot, races, weekday === today ? settledToday : undefined).taken
-    : races;
+  const placement = placements[weekday];
+  const dropped = placement?.taken ?? racesFor(weekday);
+  const lockMovedFrom = placement?.lockMovedFrom ?? null;
 
   return (
     <section className="mt-3 rounded-cz border border-cz-border bg-cz-card" aria-label={t("title")} data-testid="program-r5-week-priority">
@@ -77,6 +75,11 @@ export default function WeekBlockEditor({
         <span className="font-semibold text-cz-1">{t("taken")}</span>
         {dropped.length ? dropped.map((index: number) => <s key={index}>{sessionLabel(block.slots[index])}</s>) : "–"}
       </p>
+      {lockMovedFrom != null && (
+        <p className="flex items-center gap-1 px-3 pb-2 text-xs tabular-nums text-cz-2" data-testid="program-r5-lock-moved">
+          <LockIcon size={12} aria-hidden="true" />{t("moved", { n: lockMovedFrom + 1 })}
+        </p>
+      )}
     </section>
   );
 }

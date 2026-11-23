@@ -137,6 +137,7 @@
     "kind_week": "Weekblokken",
     "kind_rotation": "Rotatie",
     "weekPriority": {
+      "moved": "Vastgezette sessie verplaatst vanaf wedstrijddag {n}",
       "title": "Prioriteit van de tijdvakken",
       "day": "Dag voor de prioriteitsvolgorde",
       "up": "Tijdvak {n} meer prioriteit geven",

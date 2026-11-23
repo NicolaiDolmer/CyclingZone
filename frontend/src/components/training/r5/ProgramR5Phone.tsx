@@ -262,6 +262,9 @@ function DayBody({
               </li>
             );
           }
+          if (cell.kind === "rest") {
+            return <li key={slot} className={`${base} text-cz-2`} data-testid="program-r5-week-rest">{num}{sessionLabel("rest")}</li>;
+          }
           if (cell.kind === "ran") {
             return (
               <li key={slot} className={`${base} text-cz-3`} title={t("settleAfterStage.ranTitle")}>
@@ -349,6 +352,7 @@ function WeekList(props: Shared & { open: number; onOpen: (d: number) => void })
                       <span className="inline-flex items-center gap-1 font-semibold text-cz-1"><FlagIcon size={11} aria-hidden="true" />{tR5("programR5.race")}</span>
                     )}
                     {c.kind === "ran" && <span className="text-cz-3">{t("settleAfterStage.ran")}</span>}
+                    {c.kind === "rest" && <span className="text-cz-2">{sessionLabel("rest")}</span>}
                     {c.kind === "session" && (
                       <span className={c.session ? "text-cz-1" : "text-cz-3"}>{c.session ? sessionLabel(c.session) : "–"}</span>
                     )}

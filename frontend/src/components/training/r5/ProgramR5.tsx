@@ -50,7 +50,7 @@ import { PROGRAM_SLOTS, programName, programTagline, type CatalogProgram, type P
 import {
   availableKinds, PROGRAM_VIEW_STORE, buildLibrary, catalogWeekDays, copyCandidates, copyDayIntoDraft, copyDayTargets,
   draftSteps, draftTotal, parseSubjectKey, programKeyOf, rememberedKind, riderWeekDays, setDraftCell, shortRiderName,
-  subjectKey, subjectsFor, weekCells, weekPlacement, type Draft, type Kind, type Library, type R5Group, type R5Rider, type Subject,
+  subjectKey, subjectsFor, weekCells, weekPlacement, weekPlacementFromForecast, type Draft, type Kind, type Library, type R5Group, type R5Rider, type Subject,
   type WeekCell, type RotationPlan, type RotationWrite, type RotationDrafts, type WeekBlock, type WeekBlockDrafts, type WeekCellWrite,
   GROUP_LIMIT_MODES, createdGroupId, dropDrafts, followAgainTarget, groupLimitDraft, groupLimitValid, groupLimitWrite,
   groupAfterPatch, groupMenuActions, groupMovePatch, groupPatch, type GroupLimitDraft, type GroupMenuAction,
@@ -226,10 +226,12 @@ export default function ProgramR5({
     ...Object.fromEntries(Object.entries(weekDayDrafts).map(([day, block]) => [day, { ...days[day], ...block }])),
   } : days;
   const settledToday = subject?.kind === "rider" ? forecast?.weekPrioritySettled?.[subject.id] : undefined;
+  const riderForecast = subject?.kind === "rider" ? forecast?.riders?.[subject.id] : undefined;
+  const savedPlacement = weekPriority ? weekPlacementFromForecast(riderForecast) : null;
   const racesFor = (weekday: string) => {
     if (weekday === todayWeekday) {
       const settledRaces = Object.entries(settledToday ?? {}).flatMap(([slot, source]) => source === null ? [Number(slot)] : []);
-      return [...new Set([...raceToday, ...settledRaces])];
+      return [...new Set([...raceToday, ...settledRaces, ...(savedPlacement ? riderForecast?.raceSlots ?? [] : [])])];
     }
     if (subject?.kind !== "rider") return [];
     const future = trainingWeek?.days.find((entry) => entry.weekday === weekday);
@@ -238,8 +240,15 @@ export default function ProgramR5({
   const priorityActive = weekPriority && (subject?.kind === "group" ? groups.groups.find((g) => g.id === subject.id)?.planKind === "week"
     : subject?.kind === "rider" && programs.weekPriorityPlans?.includes(subject.id));
   const placements = weekPriority ? Object.fromEntries(weekdays.flatMap((weekday) => {
+    if (weekday === todayWeekday && savedPlacement && (!weekDayDrafts[weekday] || savedPlacement.restSlots?.length === PROGRAM_SLOTS)) {
+      return [[weekday, savedPlacement]];
+    }
     if (!priorityActive && !weekDayDrafts[weekday]) return [];
-    return [[weekday, weekPlacement(gridDays?.[weekday]?.lockSlot ?? null, racesFor(weekday), weekday === todayWeekday ? settledToday : undefined)]];
+    const placement = weekPlacement(gridDays?.[weekday]?.lockSlot ?? null, racesFor(weekday), weekday === todayWeekday ? settledToday : undefined);
+    const restSlots = weekday === todayWeekday ? savedPlacement?.restSlots : undefined;
+    return [[weekday, restSlots?.length
+      ? { ...placement, restSlots, fieldSource: placement.fieldSource.map((source, slot) => restSlots.includes(slot) ? null : source) }
+      : placement]];
   })) : {};
   const cells = weekCells({ days: gridDays, draft, weekdays, todayWeekday, raceToday, lockedToday, placements });
   const tonight = (subject?.kind === "rider"
@@ -329,7 +338,7 @@ export default function ProgramR5({
       dayKeys={weekdays} today={todayWeekday} closed={todayLocked} days={days}
       draft={draft} changes={weekDayDrafts} disabled={busy}
       dayLabel={dayLabel} sessionLabel={sessionLabel}
-      racesFor={racesFor} settledToday={settledToday} active={priorityActive === true}
+      racesFor={racesFor} placements={placements}
       onChange={(day, block) => {
         setWeekDrafts((prev) => ({ ...prev, [sKey]: { ...prev[sKey], [day]: block } }));
         setDrafts((prev) => ({
@@ -1356,6 +1365,9 @@ function Row({
               <FlagIcon size={11} aria-hidden="true" className="shrink-0" />{tR5("programR5.race")}
             </div>
           );
+        }
+        if (cell.kind === "rest") {
+          return <div key={weekday} className={`${base} text-cz-2`} data-testid="program-r5-week-rest">{sessionLabel("rest")}</div>;
         }
         if (cell.kind === "ran") {
           return (
