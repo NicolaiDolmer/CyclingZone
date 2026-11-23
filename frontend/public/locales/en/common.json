@@ -53,7 +53,7 @@
   },
   "sidebar": {
     "balance": "Balance",
-    "balanceTooltip": "CZ$ is the in-game currency. You earn it by playing, and it cannot be bought with real money.",
+    "balanceTooltip": "Your available balance is what you can spend after allowing for leading bids and active automatic bids.",
     "division": "Division {division}",
     "divisionTooltip": "Your league tier. Division 1 is the top tier, Division 4 the entry tier.",
     "onlineNow": "{count} online now",

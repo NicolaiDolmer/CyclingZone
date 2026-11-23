@@ -143,12 +143,15 @@ if (-not $VerifyOnly) {
       if($line -match '^COPY public\.(training_day_runs|training_rider_ticks) '){$writer.WriteLine('\echo RESTORE_STEP_'+$Matches[1])}
       $writer.WriteLine($line)
     }
+    # After public restore, the trigger function is available again.
+    $writer.WriteLine('CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();')
   } finally {$reader.Dispose();$writer.Dispose()}
   @'
 set statement_timeout=0;
 set idle_in_transaction_session_timeout=0;
 set transaction_timeout=0;
 set session_replication_role=replica;
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 '@ | Set-Content $guard -Encoding utf8
   $anonSql=New-RefreshSanitizeSql ([IO.File]::ReadAllText((Join-Path $repo 'scripts/staging/anonymize-staging.sql')))
   [IO.File]::WriteAllText($sanitize,$anonSql,[Text.UTF8Encoding]::new($false))
@@ -182,6 +185,20 @@ $files=@{
   counts=$verifySql
   privacy=$privacyFile
 }
+# Auth's custom trigger sits outside the public schema fingerprint.
+$signupTriggerCheck=Join-Path $DumpDir 'auth-signup-trigger-check.sql'
+@'
+select exists(
+  select 1 from pg_trigger
+  where tgrelid='auth.users'::regclass and tgname='on_auth_user_created'
+    and tgtype=5 and tgenabled in ('O','A') and tgqual is null and not tgisinternal
+    and tgfoid=to_regprocedure('public.handle_new_user()')
+);
+'@ | Set-Content $signupTriggerCheck -Encoding utf8
+if ((Invoke-StagingSqlData $signupTriggerCheck) -ne 't') {
+  throw 'Staging Auth profile trigger is missing or misconfigured'
+}
+
 # Fingerprint -> raekketal -> privacy (sidste database-kald, ogsaa i VerifyOnly). Intet GO uden alle tre.
 $gate=Invoke-RefreshGates `
   { param($f) Invoke-ProdSqlData $f } `

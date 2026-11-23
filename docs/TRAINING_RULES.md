@@ -1518,3 +1518,8 @@ Kontakt `training_week_priority` (off | beta | on), seedet off; tænding er ejer
 - **Flagopslag:** En databasefejl ved læsning af `training_week_priority` bruger den almindelige ugeplan, så datoen kan afregnes.
 - **Prognosen** bruger samme indgang (I5), så ugegitteret viser det samme som motoren.
 - **Kontakten off:** intet ekstra opslag, ingen `source_slot` i rapporten, kildefeltet = feltet (bit-identisk).
+
+## Program R5 · tildeling og gruppemedlemmer (#8608, ejer 23/11)
+
+- Biblioteket starter uden valgt program og viser hele kataloget. At åbne en rytters eller gruppes uge er et visningsvalg. Kun et aktivt valg i kataloget åbner for at kopiere eller tilføje programmet. Bekræftelsen viser altid program og antal ryttere eller gruppens navn før skrivning.
+- Gruppens Medlemmer-knap åbner gruppedialogen. Fra rytterens række kan spilleren flytte til en anden gruppe eller tilføje en rytter uden program. Klienten sender gruppens eksisterende medlemmer plus rytteren til `PATCH /api/training/groups/:id`. Serverens eksisterende regel om højst én gruppe pr. rytter gælder.
