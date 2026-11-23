@@ -19,16 +19,17 @@
 ## Denne uge: uge 48 (23.-29/11)
 
 **Faste datoer**
-- **man 23/11 · træning live (ejer):** programfælden #8608 · Codex O · PR #8622 markør sat, toget merger · ugeblokke #8549 · Codex P · PR #8601 Fable-afvist, rettes, Claude gendømmer · rotation #8548 (#7456) · Codex P · PR #8624 (motor, Fable før merge) + #8625 (skærm) · `training_week_priority` · ejer tænder.
-- **tir 24/11 · S6-løbskalender** #5841 (#8252) · ejer + Claude · overskredet (frist 21/11).
+- **man 23/11 · træning live (ejer):** programfælden #8608 · live (#8622) · saldoen #8357 · live (#8466) · ugeblokke #8549 · PR #8601 Fable godkendt m. bemærkninger, ejer "merge" bag slukket kontakt; før tænding: fund A (pas to gange) + regel B (lås i skadesfelt flyttes til første raske felt) · Claude · rotation #8548 · PR #8624 + #8625 stables på #8601 · Claude (Codex nede) · `training_week_priority` · ejer tænder.
+- **Træning først (ejer 23/11):** I dag, Rapport, Program og Udvikling færdige før nyt; siderne må kun blive samme eller bedre (paritet #8631). Én linje pr. rytter, egne kolonner, **ingen forkortelser** #7947 · Claude-spor. Ingen skjult holdplan (fast træning pr. rytter, overgang = dagens træning) #8026 · design + Fable før byg.
+- **tir 24/11 · sæsonskiftet forberedes teknisk** (ejer 23/11) · Claude: S6-kalender #5841, prøveskifte #7325, samlet besked #8397, Graduation Day-design #7323 · kontrakter til S7 #7138 undersøges · mail-billeder #8619 · patch notes-siden #8449.
 - **tor 26/11 · sæsonskifte-session** · ejer + Claude: prøveskifte på kopi #7325 · samlet besked #8397 · Graduation Day #7323 (layout A, mangler teknisk design + go) · AI-hold fryses #8614 · **mail 1** #8619.
 - **før 28/11 · skiftets rester** · Claude/Codex · byg + prøvekørsel: skader nulstilles #5865 (ejer 19/11) · aldring i procent + slid #8522 · aftenafregningen #6490 + deploy-vindue #8422 · ungdom #6882 · trupstørrelser #7490.
 - **lør 28/11 · S6 starter** · Claude · bevis på skiftedagen.
 - **søn 29/11 · mail 2** "S6 er i gang" #8619 · ejer godkender tekst + modtagerantal · kræver aktiv S6 og synlig kalender.
 
 **1. Til dørs og åbne PR'er** (Claude merger på ordret "merge")
-- Saldoen #8466 (#8357) · ejer · venter billed- og teksttjek.
-- Hook-PR #8613 · Claude · venter Codex-review af nyt hoved. Hooks svarer ikke #8612 · Codex K · kø.
+- **Prioriteringssession 23/11** (#8584 runde 1+3): denne uge #8024, #8100 (før 26/11), motorpakke #7645 + #7644 + #7715, #7137 rangliste, #7866 + #8458, #8419, akademi A (#8060, ejer tænder), #8034 (prøv til S6-start), #7455 + #7986, #6490, #6584, #8073 sidegennemgang (+ #8585, #8324), lofter + hybrid kortlægges · Claude/Codex. Nej/fjernet: #8576 karrierefase, startliste-rutematch (#8450: ratings bliver), Udviklingsscore B + catch-up (#8359).
+- Prod-bevis: #8611 kan lukkes; #7962, #7861, #7859, #7862, #8400, #7627, #8608 venter ejerens visuelle tjek; #8546 delvist.
 - Rapport A + B (#8584): 35 ejer-tjek, 11 med manglende arbejde · ejer + Claude · uge 48.
 - Discord-kanalen læst mod issues og merged PR'er + én spørgeliste · Claude · uge 48. Triage + GitHub-oprydning (#8600 punkt 61-62) · Claude · uge 48.
 
@@ -40,8 +41,8 @@
 - Roadmap-invitation: patch note + Discord "Stem på det næste" + link i mail 29/11 + dashboard-kort med 3 idéer + #6958 · Codex · efter G.
 
 **3. Marketing, fastholdelse, nye spillere** ("uden spillere er der intet spil")
-- Tracking før annonce (ejer 23/11): first-touch UTM gennem signup #8623 + første løb #8621 · Codex N · PR; staging-fejl rettes og bevis hele vejen på staging. PostHog-pipelinen #5305.
-- Annoncer, 500 kr.-test, én kanal, UTM · Codex J udkast, ejer godkender og betaler · klar privat; live først når tracking er bevist.
+- Tracking før annonce (ejer 23/11): #8621 + #8629 live, #8623 ejer "merge" · penge pr. kampagne (Pro-køb med kampagne, udgiftstabel, PostHog "Kampagner") · Codex N3.
+- Annonce Facebook DK 500 kr. · ejer starter efter egen testtilmelding · **stop-grænse 50 kr. pr. ny aktiv spiller** (dag 3; over = pause + ejer). Mails 26/11 + 29/11 løftes til best practice #8396 · Claude-spor.
 - Gratis kanaler + Google-sider #5249 · Codex J · overskredet (uge 47).
 - Første oplevelse + alle mails (Codex I): forside, oprettelse, mails, første session · Codex · kø (rapport). Første dage #8084 · forsiden #8431 · login #8428 · små tekster #8430 · byg.
 - Comeback uden bestyrelsesdom #8100 · Codex · overskredet (lovet uge 47).
@@ -51,7 +52,7 @@
 - **Motor og løbsfilm:** motor-dom #6649, #6940, #6299, #7290 · Claude (Fable) · overskredet (20/11). Selektion #7645 (A først) · ejer vælger mulighed 1/2. Nedkørsler #7644 · bjergudbrud #6912 · #7899 · #7902 · tidsgrænse ved træthed #7715 · slukket, frist overskredet. Tidsstempling #6350 · design. Realisme-gaten #7588 PR 4-6 · næste motorsession (ejer 23/11). Årsag til alt: #7714, #7725-#7730, #7754. Samleliste #7260; plan: [RACE_ENGINE_PLAN](RACE_ENGINE_PLAN.md).
 - **Løbsside v6:** live 21/11 · prod-bevis + luk · #8343, #8355, #8450, #8287.
 - **Taktik:** ændringerne gennemgås med ejeren. Træthed pr. indstilling #7638 · indsatskortet #5101 (mockup først) · delt kaptajn #7326 · #7266 · #7557 · trøjejagt #7855 (prod-bevis) · holdplaner #8013.
-- **Udvikling 2.0 #6110 og træning:** XP live; søndagsjob #7685 · karrierefase #8576 · XP fra P 1-99 #8545 (ejer 22/11: byg) · træthed nu #7801/#7982 (prod-bevis; #7536 forklaret) · træningssiden #7947 (skitse #8248) · Træn nu-øjeblikket #8363 · #3924 · bagefter #2798 og #3564; #3813 og #5238 med · Claude/Codex.
+- **Udvikling 2.0 #6110 og træning:** XP live; søndagsjob #7685 · XP fra P 1-99 #8545 (ejer 23/11: torsdag 26/11) · træthed nu #7801/#7982 (prod-bevis; #7536 forklaret) · træningssiden #7947 (skitse #8248) · Træn nu-øjeblikket #8363 · #3924 · bagefter #2798 og #3564; #3813 og #5238 med · Claude/Codex.
 - **Akademi** aldersgruppe #6944 · **planlægning** #8419, #8420, #8306 · **patch notes-siden** #8449 · Codex · byg. Spillernes rettelser og ønsker tages stilling til.
 - **Codex-kø fra 19/11 (#8374):** #8425 · #8428-#8430 · #6850 · #7233 · dashboard #8448 → #8019 → #8447 · UX #8434-#8442 · farveblind #7988 (lovet) · dashboard C #8300 når #8448 har en uges data · Codex · kø efter G-P.
 
@@ -65,13 +66,14 @@
 
 - Annoncens første måling: tilmelding, første løb, 7-dages retention · Claude · efter launch.
 - "Hvor hørte du om os?" #3796 · Codex · efter første kampagne · venter ejer.
-- Fælles kolonnerækkefølge #8595 · ejer · ikke uge 48; uge venter ejer.
+- Autopris-incitament #8474 · første dage #8084 · farvepakke #8325 + #8326 + #8364 + #7988 · lofter besluttes · assistent-design #8394 (byg dec.) · trækbar roadmap-tavle (admin, efter #8616) · Claude/Codex.
 - E-mail, winback, notifikationer, PWA, SEO #8396 · Claude · plan først.
 - Nyt byg efter til dørs: top 3 fra roadmap-afstemningen tages med i ugeplanen · ejer.
 
 ## S6 (starter 28/11)
 
 - Pro 2.0 (tre pakker med billeder, pris uændret, aldrig styrke) + betaling #4514 · billing #4512, #6062 · moms #4511 · udgivelseskrav.
+- Profiltop #8281 · kolonner #8595 · indbakke #8280/#2223/#7467 · badges i én komponent #8587 · angreb #7884, #6912, #8061 · akademi #6944/#8036 (ejer 23/11).
 - TTT #3463 · motor.
 - U23 #4620 og junior #4621: senest i S6, inden S7 · løbstyper #7471.
 - Holddynamik #1177 · onboarding #1140 · hjælp i kontekst #961.
