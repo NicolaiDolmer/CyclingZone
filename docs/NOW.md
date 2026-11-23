@@ -7,7 +7,7 @@
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11 · slet `backup_5902_20261112_*` ~26/11 · slet `backup_8078/8080/8099_20261113_*` ~27/11.
 >
 > **🎯 Next action (24/11, PC1):** Startprompt = seneste "Startprompt: PC1, 24/11" på #8584. Tirsdag: sæsonskiftet forberedes teknisk (S6-kalender #5841, prøveskifte #7325, besked #8397, Graduation Day #7323), kontrakter til S7 #7138, mail-billeder #8619, patch notes-siden #8449, **Supabase-session**, ugeblokke #8640 (Fable-dom) → tænding, rotation stables, annonce efter ny testtilmelding i rent vindue (første var gammel browser) (stop 50 kr./aktiv spiller), rækkefølgen i roadmappets Uge 48 (ejer), billeder #8637/#8393. Beslutninger: #8584 + MASTERPLAN.
-> **Merget 23/11:** 18 PR'er (git-log), bl.a. #8616 roadmap (migreret, uger W48/W49); i toget: #8630, #8636. Tændt: `training_history_from_ticks_6490` (0 afvigelser i 9.458 kørsler). **Åbent:** `backup_7153_wander_*` må ikke slettes; kurve "6 kombineret" (#3564) i samlet måling; Division 4 A/B/C har 25 hold (league-size-invariant).
+> **23/11:** 25+ PR'er merget (git-log); i toget/åbne: #8644, #8619, #8645, #8649, rotation #8624/#8625 (Fable-fund hos Codex). Tændt: `training_history_from_ticks_6490`. **Åbent:** `backup_7153_wander_*` må ikke slettes; kurve "6 kombineret" (#3564) i samlet måling; Division 4 A/B/C har 25 hold (league-size-invariant).
 >
 > **🤖 Working agent:** Ingen aktiv session.
 
