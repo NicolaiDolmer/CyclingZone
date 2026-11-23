@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { evaluatePr, issuesFromBody, issuesFromBranch, isDocsOrOpsFile } from './check-build-stop-pr.mjs';
-import { loadBuildStop } from './lib/build-stop.mjs';
+import { loadBuildStop, findOwnerGo } from './lib/build-stop.mjs';
 
 const cfg = {
   active: true,
@@ -127,4 +127,29 @@ test('#7336 loft: issue uden for listerne tillades via loft-label eller brand-la
   assert.equal(blocked.ok, false);
   assert.match(blocked.message, /loft-omraade/);
   assert.equal(evaluatePr({ body: 'Refs #9101', branch: 'feat/x', author: 'a', files: code, cfg: loftCfg }).ok, false, 'uden opslag ingen loft-adgang');
+});
+
+test('#7336 ejer-go: issue med ejerens markør tillades, uden markør eller ved timeout afvises som før', () => {
+  const comments = {
+    9901: [{ login: 'NicolaiDolmer', body: 'Ejer-go: "Ja, byg den"\n<!-- build-stop: ejer-go area=sponsor -->' }],
+    9902: [{ login: 'fremmed', body: 'Ejer-go: "Ja"\n<!-- build-stop: ejer-go area=sponsor -->' }],
+    9903: [{ login: 'NicolaiDolmer', body: '<!-- build-stop: ejer-go area=sponsor -->' }],
+  };
+  const fetchGo = n => findOwnerGo(comments[n] || []);
+  const ok = evaluatePr({ body: 'Refs #9901', branch: 'feat/x', author: 'a', files: code, cfg, fetchGo });
+  assert.equal(ok.ok, true);
+  assert.match(ok.message, /#9901 \(finish\)/);
+  for (const n of [9902, 9903, 9904]) {
+    const r = evaluatePr({ body: `Refs #${n}`, branch: 'feat/x', author: 'a', files: code, cfg, fetchGo });
+    assert.equal(r.ok, false, `#${n}`);
+    assert.match(r.message, /build-stop-go\.mjs/);
+  }
+  const timedOut = evaluatePr({ body: 'Refs #9901', branch: 'feat/x', author: 'a', files: code, cfg, fetchGo: () => null });
+  assert.equal(timedOut.ok, false, 'utilgængeligt GitHub åbner aldrig porten');
+  assert.equal(evaluatePr({ body: 'Refs #9901', branch: 'feat/x', author: 'a', files: code, cfg }).ok, false, 'uden opslag ingen markør');
+});
+
+test('#7336 ejer-go: listede issues slår ikke markøren op', () => {
+  const r = evaluatePr({ body: 'Refs #6110', branch: 'feat/x', author: 'a', files: code, cfg, fetchGo: () => assert.fail('allerede på listen') });
+  assert.equal(r.ok, true);
 });
