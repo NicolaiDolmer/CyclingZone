@@ -29,9 +29,9 @@ import { useAdminAuth } from "../shared/useAdminAuth";
 import {
   ADMIN_TABS, DEFAULT_ADMIN_TAB, DEFAULT_SORT, HORIZONS, HORIZON_LABELS, IDEA_TARGET, ISSUE_STATUSES,
   dontKnowTotal, fmtScore, filterIssueRows, filterItems, isAdminTab, isSplit, latestUpdateByIssue, mergeItemRows, movePatches,
-  nextSort, nextSortOrder, ownOrder, patchRows, sortRows, statusPatch, tabCounts, tabRows, visibleIdeaCount, ROADMAP_STATUSES,
+  nextSort, ownOrder, patchRows, sortRows, statusPatch, tabCounts, tabRows, visibleIdeaCount, ROADMAP_STATUSES,
   CHART_SCOPES, UNKNOWN_DIVISION, categoryPoints, chartRows, filterVotes, itemPoints, mergeCategories, parseVotePayload,
-  plottable, voterDivisions, votesForItems, distinctVoters, categoryOf, categoryLabel, isCategoryKey, totalScore,
+  plottable, voterDivisions, votesForItems, distinctVoters, categoryOf, horizonLabel, validRoadmapPlan, ROADMAP_CATEGORIES, totalScore,
 } from "../../../lib/roadmapAdminModel.ts";
 import RoadmapAdminChart from "./RoadmapAdminChart.tsx";
 import {
@@ -327,9 +327,6 @@ export default function GrowthRoadmapTab() {
   const { getAuth } = useAdminAuth();
   const [stats, setStats] = useState(null);
   const [baseRows, setRows] = useState(/** @type {any[]} */ ([]));
-  // #7789: kategorien og stemme-rækkerne til grafen. Begge er null/tomme, indtil
-  // migrationen er applied; så viser grafen viewets tal uden filtre.
-  const [categories, setCategories] = useState(/** @type {{ id: string, category: string | null }[]} */ ([]));
   const [votePayload, setVotePayload] = useState(/** @type {import("../../../lib/roadmapAdminModel.ts").VotePayload | null} */ (null));
   const [issues, setIssues] = useState([]);
   const [updates, setUpdates] = useState([]);
@@ -355,7 +352,7 @@ export default function GrowthRoadmapTab() {
         apiFetch(`${API}/api/admin/roadmap/stats`, { headers: await getAuth() }, { source: "admin-roadmap-stats" }),
         supabase.from("roadmap_item_scores").select("*"),
         supabase.from("roadmap_items")
-          .select("id, flag_key, beta_since, beta_soon, live_soon, created_at, updated_at, shipped_at"),
+          .select("id, category, flag_key, beta_since, beta_soon, live_soon, created_at, updated_at, shipped_at"),
         supabase.from("known_issue_scores").select("*"),
         supabase.from("known_issue_updates").select("issue_id, body_da, created_at")
           .order("created_at", { ascending: false }).limit(500),
@@ -364,7 +361,14 @@ export default function GrowthRoadmapTab() {
       const failed = [scoresRes, itemsRes, issuesRes, updatesRes].find((r) => r.error);
       if (failed) throw new Error(failed.error.message);
       setStats(statsRes.data?.stats ?? null);
-      setRows(mergeItemRows(scoresRes.data ?? [], itemsRes.data ?? []));
+      // category is present since #7789. The generated database types predate it.
+      const metadata = /** @type {(import("../../../lib/roadmapAdminModel.ts").ItemFlagRow & { category: string | null })[]} */ (
+        /** @type {unknown} */ (itemsRes.data ?? [])
+      );
+      const scoreRows = /** @type {import("../../../lib/roadmapAdminModel.ts").ScoreRow[]} */ (
+        /** @type {unknown} */ (scoresRes.data ?? [])
+      );
+      setRows(mergeCategories(mergeItemRows(scoreRows, metadata), metadata));
       setIssues(issuesRes.data ?? []);
       setUpdates(updatesRes.data ?? []);
       loadedRef.current = true;
@@ -381,17 +385,11 @@ export default function GrowthRoadmapTab() {
       const res = await apiFetch(`${API}/api/admin/feature-flags`, { headers: await getAuth() }, { source: "admin-roadmap-flags" });
       if (res.ok) setFlags(res.data?.flags ?? []);
     } catch { /* ignoreret, se ovenfor */ }
-    // Grafens ekstra data (#7789) er også en bonus: før migrationen findes
-    // hverken kolonnen eller RPC'en, og tabellerne skal virke alligevel.
+    // Stemme-rækkerne er valgfri. Grafen kan bruge viewets aggregater.
     try {
-      const [catRes, votesRes] = await Promise.all([
-        supabase.from("roadmap_items").select("id, category"),
-        apiFetch(`${API}/api/admin/roadmap/votes`, { headers: await getAuth() }, { source: "admin-roadmap-votes" }),
-      ]);
-      setCategories(catRes.error ? [] : /** @type {any} */ (catRes.data) ?? []);
+      const votesRes = await apiFetch(`${API}/api/admin/roadmap/votes`, { headers: await getAuth() }, { source: "admin-roadmap-votes" });
       setVotePayload(votesRes.ok ? parseVotePayload(/** @type {any} */ (votesRes.data)?.votes) : null);
     } catch {
-      setCategories([]);
       setVotePayload(null);
     }
   }, [getAuth]);
@@ -421,7 +419,7 @@ export default function GrowthRoadmapTab() {
 
   const updateItem = (id, patch) => supabase.from("roadmap_items").update({ ...patch, updated_at: nowIso() }).eq("id", id);
 
-  const rows = useMemo(() => mergeCategories(baseRows, categories), [baseRows, categories]);
+  const rows = baseRows;
   const order = useMemo(() => ownOrder(rows), [rows]);
   const latest = useMemo(() => latestUpdateByIssue(updates), [updates]);
   const flagByKey = useMemo(() => new Map(flags.map((f) => [f.key, f])), [flags]);
@@ -459,8 +457,11 @@ export default function GrowthRoadmapTab() {
     return sortRows(filterItems(tabRows(rows, tab), filters), sort);
   }, [isIssues, issues, rows, tab, filters, sort]);
 
+  const horizonFilters = [...new Set([...HORIZONS, ...rows.map((r) => r.horizon).filter(Boolean)])];
   const closeModal = () => setModal(null);
   const savedModal = () => { setModal(null); load(); };
+
+  const editPlan = (row) => setModal({ kind: "item", row, initialStatus: "planned" });
 
   const statusSelect = (row) => (
     <Select
@@ -469,6 +470,7 @@ export default function GrowthRoadmapTab() {
       value={row.status}
       disabled={busy !== null}
       onChange={(e) => {
+        if (e.target.value === "planned") { editPlan(row); return; }
         const patch = statusPatch(e.target.value, nowIso());
         run(`status-${row.item_id}`, () => updateItem(row.item_id, patch), [{ item_id: row.item_id, ...patch }]);
       }}
@@ -483,9 +485,11 @@ export default function GrowthRoadmapTab() {
       aria-label={`Horisont for ${row.title_da || row.title_en}`}
       value={row.horizon ?? "unscheduled"}
       disabled={busy !== null}
-      onChange={(e) => moveHorizon(row, e.target.value)}
+      onChange={(e) => e.target.value === "fixed" ? setModal({ kind: "item", row }) : moveHorizon(row, e.target.value)}
     >
-      {HORIZONS.map((h) => <option key={h} value={h}>{HORIZON_LABELS[h]}</option>)}
+      {row.horizon && !HORIZONS.includes(row.horizon) && <option value={row.horizon}>{horizonLabel(row.horizon)}</option>}
+      {HORIZONS.filter((h) => validRoadmapPlan(row.status, row.issue_ref, h)).map((h) => <option key={h} value={h}>{HORIZON_LABELS[h]}</option>)}
+      <option value="fixed">ISO-uge eller dato</option>
     </Select>
   );
 
@@ -501,8 +505,7 @@ export default function GrowthRoadmapTab() {
 
   const itemTags = (row) => (
     <>
-      <span>{AREA_LABELS[row.engine] ?? row.engine}</span>
-      {isCategoryKey(row.category) && <span className="normal-case tracking-normal">{categoryLabel(row.category)}</span>}
+      <span className="normal-case tracking-normal">{categoryOf(row)}</span>
       {row.approved === false && <Tag>Skjult</Tag>}
       {row.beta_soon && <Tag>Næste i beta</Tag>}
       {row.live_soon && <Tag>Snart for alle</Tag>}
@@ -510,16 +513,18 @@ export default function GrowthRoadmapTab() {
     </>
   );
 
-  const toPlan = (r) => {
-    const patch = { status: "planned", horizon: "next_week", sort_order: nextSortOrder(plannedRows) };
-    return run(`plan-${r.item_id}`, () => updateItem(r.item_id, patch), [{ item_id: r.item_id, ...patch }]);
+  const toPlan = editPlan;
+
+  const moveHorizon = (r, horizon) => {
+    if (!validRoadmapPlan(r.status, r.issue_ref, horizon)) { editPlan(r); return; }
+    return run(`hz-${r.item_id}`, () => updateItem(r.item_id, { horizon }), [{ item_id: r.item_id, horizon }]);
   };
 
-  const moveHorizon = (r, horizon) =>
-    run(`hz-${r.item_id}`, () => updateItem(r.item_id, { horizon }), [{ item_id: r.item_id, horizon }]);
-
-  const setApproved = (r, approved) =>
-    run(`${approved ? "show" : "hide"}-${r.item_id}`, () => updateItem(r.item_id, { approved }), [{ item_id: r.item_id, approved }]);
+  const setApproved = (r, approved) => {
+    if (approved && r.category === "growth") return;
+    if (approved && !validRoadmapPlan(r.status, r.issue_ref, r.horizon)) { editPlan(r); return; }
+    return run(`${approved ? "show" : "hide"}-${r.item_id}`, () => updateItem(r.item_id, { approved }), [{ item_id: r.item_id, approved }]);
+  };
 
   const move = (r, dir) => {
     const patches = movePatches(plannedRows, r.item_id, dir);
@@ -543,7 +548,7 @@ export default function GrowthRoadmapTab() {
     status: { key: "status", header: "Status", sortKey: "status", compact: true, render: (r) => <Tag>{STATUS_LABELS[r.status] ?? r.status}</Tag> },
     horizon: {
       key: "horizon", header: "Horisont", sortKey: "horizon", compact: true,
-      render: (r) => <Tag>{HORIZON_LABELS[r.horizon] ?? r.horizon ?? "–"}</Tag>,
+      render: (r) => <Tag>{horizonLabel(r.horizon)}</Tag>,
     },
     // Samme kolonner som vælgere, på de faner hvor man retter dem. `fold`: en
     // vælger er for bred til 390 px, så på mobil står værdien i navnecellens
@@ -555,7 +560,7 @@ export default function GrowthRoadmapTab() {
     },
     horizonEdit: {
       key: "horizon", header: "Horisont", sortKey: "horizon", compact: true, fold: true,
-      foldValue: (r) => HORIZON_LABELS[r.horizon] ?? r.horizon ?? "",
+      foldValue: (r) => horizonLabel(r.horizon),
       render: (r) => <div className="w-[128px]">{horizonSelect(r)}</div>,
     },
     idea: { key: "idea", header: "God idé", sortKey: "idea", numeric: true, compact: true, render: (r) => <Num>{fmtScore(r.avg_idea)}</Num> },
@@ -813,9 +818,11 @@ export default function GrowthRoadmapTab() {
                 <TabPanel key={t.key} value={t.key} className="space-y-3 pt-4">
                   <SectionHeader title={t.label} meta={META[t.key]} />
                   <div className="flex flex-wrap items-end gap-2" role="group" aria-label="Filtre">
-                    <Select size="sm" aria-label="Filtrer på område" value={filters.area} onChange={(e) => setFilter("area", e.target.value)}>
-                      <option value="">Alle områder</option>
-                      {Object.entries(AREA_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    <Select size="sm" aria-label={isIssues ? "Filtrer på område" : "Filtrer på kategori"} value={filters.area} onChange={(e) => setFilter("area", e.target.value)}>
+                      <option value="">{isIssues ? "Alle områder" : "Alle kategorier"}</option>
+                      {isIssues
+                        ? Object.entries(AREA_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)
+                        : ROADMAP_CATEGORIES.map(({ key, label }) => <option key={key} value={key}>{label}</option>)}
                     </Select>
                     {statusOptions && (
                       <Select size="sm" aria-label="Filtrer på status" value={filters.status} onChange={(e) => setFilter("status", e.target.value)}>
@@ -826,7 +833,7 @@ export default function GrowthRoadmapTab() {
                     {!isIssues && (
                       <Select size="sm" aria-label="Filtrer på horisont" value={filters.horizon} onChange={(e) => setFilter("horizon", e.target.value)}>
                         <option value="">Alle horisonter</option>
-                        {HORIZONS.map((h) => <option key={h} value={h}>{HORIZON_LABELS[h]}</option>)}
+                        {horizonFilters.map((h) => <option key={h} value={h}>{horizonLabel(h)}</option>)}
                       </Select>
                     )}
                     <div className="w-[120px]">
@@ -851,6 +858,7 @@ export default function GrowthRoadmapTab() {
       <ItemFormModal
         open={modal?.kind === "item"}
         item={modal?.kind === "item" ? modal.row : null}
+        initialStatus={modal?.initialStatus}
         flags={flags}
         planned={plannedRows}
         onClose={closeModal}

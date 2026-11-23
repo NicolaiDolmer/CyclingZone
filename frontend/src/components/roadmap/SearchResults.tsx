@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import type { SearchHit } from "../../lib/roadmapModel.ts";
 import { Button, CategoryTag, EmptyState, Section, SectionHeader } from "./roadmapUi.ts";
 import { RowMeta, TitleCount, ROW, ROW_LIST } from "./RoadmapRows.tsx";
+import { roadmapCategoryLabel } from "../../lib/roadmapVoting.js";
 import { areaTitle, localTitle } from "./roadmapFormat.ts";
 import { ChevronRightIcon, SearchIcon } from "../ui/index.js";
 
@@ -42,7 +43,7 @@ export default function SearchResults({ query, hits, onOpen, onClear }: SearchRe
             >
               <span className="flex-1 min-w-0">
                 <span className="block text-cz-1 text-sm leading-relaxed group-hover:underline">{localTitle(hit, i18n.language)}</span>
-                <RowMeta>{areaTitle(t, hit.area)} · {t(`tabs.${hit.tab}`)}</RowMeta>
+                <RowMeta>{hit.where === "issue" || hit.where === "done_fix" ? areaTitle(t, hit.area) : roadmapCategoryLabel(hit.area, i18n.language)} · {t(`tabs.${hit.tab}`)}</RowMeta>
               </span>
               <span className="shrink-0 pt-0.5 inline-flex items-center gap-1.5">
                 <CategoryTag>{t(`search.where.${hit.where}`)}</CategoryTag>

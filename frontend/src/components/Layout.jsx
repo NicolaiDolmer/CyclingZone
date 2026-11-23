@@ -1,3 +1,4 @@
+import { PUBLIC_ROADMAP_CATEGORY_FILTER } from "../lib/roadmapVoting.js";
 import { useState, useEffect, Suspense } from "react";
 import { Outlet, Link, NavLink, useNavigate, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -302,9 +303,11 @@ async function fetchForumUnread(headers) {
 async function fetchLatestRoadmapDate() {
   try {
     // #6150: nyeste af roadmap-punkter og publicerede kendte fejl (Known issues-fanen).
-    const latest = (table, flag) => supabase.from(table).select("created_at")
-      .eq(flag, true).order("created_at", { ascending: false }).limit(1);
-    const [items, issues] = await Promise.all([latest("roadmap_items", "approved"), latest("known_issues", "published")]);
+    const latest = (query) => query.order("created_at", { ascending: false }).limit(1);
+    const [items, issues] = await Promise.all([
+      latest(supabase.from("roadmap_items").select("created_at").eq("approved", true).or(PUBLIC_ROADMAP_CATEGORY_FILTER)),
+      latest(supabase.from("known_issues").select("created_at").eq("published", true)),
+    ]);
     return latestRoadmapCreatedAt([...(items.error ? [] : items.data ?? []), ...(issues.error ? [] : issues.data ?? [])]);
   } catch {
     return null;

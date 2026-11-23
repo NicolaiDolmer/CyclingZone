@@ -1,6 +1,45 @@
 // #6150: små visningshjælpere delt af roadmap-fanerne.
-import type { RoadmapVote } from "../../lib/roadmapModel.ts";
+import { parseHorizon, type RoadmapVote } from "../../lib/roadmapModel.ts";
 import { intlLocale } from "../../lib/intlLocale.ts";
+import { roadmapLanguage, type RoadmapLanguage } from "../../lib/roadmapCategories.ts";
+
+import { resolveRoadmapCategory, roadmapCategoryLabel } from "../../lib/roadmapVoting.js";
+
+export function itemCategoryTitle(item: { engine: string; category?: string | null }, language: string | undefined): string {
+  return roadmapCategoryLabel(resolveRoadmapCategory(item), language);
+}
+
+function dayMonth(key: string): string {
+  const [, month, day] = key.split("-").map(Number);
+  return day + "/" + month;
+}
+
+// Overskrifterne på alle fem sprog; "Sæson" følger plan.horizon.season i locale-filerne.
+const HORIZON_WORDS: Record<RoadmapLanguage, { week: string; season: string; seasonStart: string }> = {
+  da: { week: "Uge", season: "Sæson", seasonStart: "Starten af sæson" },
+  en: { week: "Week", season: "Season", seasonStart: "Start of season" },
+  es: { week: "Semana", season: "Temporada", seasonStart: "Inicio de la temporada" },
+  fr: { week: "Semaine", season: "Saison", seasonStart: "Début de la saison" },
+  nl: { week: "Week", season: "Seizoen", seasonStart: "Begin van seizoen" },
+};
+
+export function formatRoadmapHorizon(horizon: string | null | undefined, language: string | undefined): string {
+  const value = parseHorizon(horizon);
+  const words = HORIZON_WORDS[roadmapLanguage(language)];
+  switch (value.kind) {
+    case "week":
+      return words.week + " " + value.week + " (" + dayMonth(value.start) + "-" + dayMonth(value.end) + ")";
+    case "date":
+      return new Intl.DateTimeFormat(intlLocale(language), {
+        day: "numeric", month: "short", year: "numeric", timeZone: "UTC",
+      }).format(new Date(value.date));
+    case "season":
+      return (value.start ? words.seasonStart : words.season) + " " + value.season;
+    case "quarter": return "Q" + value.quarter + " " + value.year;
+    case "year": return String(value.year);
+    default: return "";
+  }
+}
 
 export type SaveState = "saving" | "saved" | "error";
 export type Translate = { (key: string): string; (key: string, opts: Record<string, unknown>): string };

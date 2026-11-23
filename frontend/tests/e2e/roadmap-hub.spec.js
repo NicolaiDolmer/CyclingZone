@@ -165,10 +165,8 @@ test("375 px: ingen vandret scroll på nogen fane", async ({ page }) => {
   }
 });
 
-// Fund 1 (PR #6160): på 375 px skal fanerækken og Vote-fanens områdefilter
-// hver stå på ÉN linje og scrolle vandret inde i rækken, så "Færdigt" kan nås.
-// Idéer i alle fem områder, så filteret har seks valg som i prod.
-test("375 px: fanerækken scroller til Færdigt, og fanerække og områdefilter står på én linje", async ({ page }) => {
+// På 375 px kan spilleren skifte kategori og scrolle fanerækken frem til Færdigt.
+test("375 px: kategorifilteret virker og fanerækken scroller til Færdigt", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await loggedIn(page);
   const extra = ["races", "training", "youth", "market", "club"].map((engine, i) => ({
@@ -182,8 +180,14 @@ test("375 px: fanerækken scroller til Færdigt, og fanerække og områdefilter 
     return json(route, [...ROADMAP_ITEMS, ...extra]);
   });
   await page.goto("/roadmap?tab=vote");
-  const areas = page.getByRole("group", { name: /område/i });
-  await expect(areas).toBeVisible();
+  const categories = page.getByRole("combobox", { name: /område/i });
+  await expect(categories).toBeVisible();
+  await expect(categories.getByRole("option")).toHaveCount(6);
+  await categories.selectOption("academy");
+  await expect(page.getByText("Idé nummer 2.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Idé nummer 0.", { exact: true })).toHaveCount(0);
+  await categories.selectOption("all");
+  await expect(page.getByText("Idé nummer 0.", { exact: true })).toBeVisible();
 
   // Én linje: alle elementer i rækken har samme top og samme højde (ingen brudte labels).
   const oneLine = (selector) => page.evaluate((sel) => {
@@ -198,10 +202,6 @@ test("375 px: fanerækken scroller til Færdigt, og fanerække og områdefilter 
   expect(tabs.count).toBe(5);
   expect(tabs.tops).toBeLessThanOrEqual(1);
   expect(tabs.heights).toBeLessThanOrEqual(1);
-  const segs = await oneLine('main [role="group"] > button');
-  expect(segs.count).toBe(6);
-  expect(segs.tops).toBeLessThanOrEqual(1);
-  expect(segs.heights).toBeLessThanOrEqual(1);
 
   // Fanerækken kan scrolles, til "Færdigt" står helt inden for rækken og skærmen.
   const done = page.getByRole("tab", { name: /Færdigt/ });

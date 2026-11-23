@@ -57,7 +57,7 @@
       "season": "Temporada {season}",
       "quarter": "Q{quarter} {year}",
       "year": "{year}",
-      "unscheduled": "Abierto a votación"
+      "unscheduled": "Fecha por determinar"
     }
   },
   "beta": {

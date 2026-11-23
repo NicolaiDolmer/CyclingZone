@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { roadmapRowId, type RoadmapItem } from "../../lib/roadmapModel.ts";
 import { CategoryTag, EmptyState, Section, SectionHeader, SectionStack, StatusBadge } from "./roadmapUi.ts";
 import { RowMeta, RowTitle, SkeletonRows, TitleCount, ROW, ROW_LIST } from "./RoadmapRows.tsx";
-import { areaTitle, localTitle, shortDate } from "./roadmapFormat.ts";
+import { itemCategoryTitle, localTitle, shortDate } from "./roadmapFormat.ts";
 import { buttonClass } from "../ui/buttonStyles.js";
 import { CheckIcon, RocketIcon } from "../ui/index.js";
 
@@ -99,7 +99,7 @@ export default function BetaTab({ loading, inBeta, comingToBeta, betaState, isLo
               <div className="min-w-0">
                 <RowTitle isNew={isNew(item)} newLabel={t("labels.new")}>{localTitle(item, lang)}</RowTitle>
                 <RowMeta>
-                  {areaTitle(t, item.engine)} · {t("beta.since", { date: shortDate(item.beta_since, lang) })}
+                  {itemCategoryTitle(item, lang)} · {t("beta.since", { date: shortDate(item.beta_since, lang) })}
                 </RowMeta>
               </div>
             </li>
@@ -118,7 +118,7 @@ export default function BetaTab({ loading, inBeta, comingToBeta, betaState, isLo
                 </div>
                 <div className="min-w-0">
                   <RowTitle isNew={isNew(item)} newLabel={t("labels.new")}>{localTitle(item, lang)}</RowTitle>
-                  <RowMeta>{areaTitle(t, item.engine)}</RowMeta>
+                  <RowMeta>{itemCategoryTitle(item, lang)}</RowMeta>
                 </div>
               </li>
             ))}
