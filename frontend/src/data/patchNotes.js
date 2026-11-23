@@ -36,11 +36,11 @@ export const PATCHES = [
       "area": "training",
       "en": {
         "title": "Injuries are cleared at the season change",
-        "body": "At the season change on 28 November, all injuries and illnesses are cleared, just like Fatigue. Every rider starts the new season fit."
+        "body": "At the season change on 28 November, all injuries and illnesses are cleared. Every rider starts the new season fit."
       },
       "da": {
         "title": "Skader nulstilles ved sæsonskiftet",
-        "body": "Ved sæsonskiftet den 28. november nulstilles alle skader og sygdomme, ligesom Træthed. Alle ryttere starter den nye sæson raske."
+        "body": "Ved sæsonskiftet den 28. november nulstilles alle skader og sygdomme. Alle ryttere starter den nye sæson raske."
       },
       "refs": [
         5865
@@ -190,7 +190,7 @@ export const PATCHES = [
       },
       "da": {
         "title": "Potentiale er et tal fra 1 til 99",
-        "body": "En rytters potentiale vises nu som et tal fra 1 til 99 i stedet for stjerner, med et ord for, hvor sikker jeres spejder er. Ingen ung rytter fik en lavere forventning end før skiftet."
+        "body": "En rytters potentiale vises nu som et tal fra 1 til 99 i stedet for stjerner, med et ord for, hvor sikker din spejder er. Ingen ung rytter fik en lavere forventning end før skiftet."
       },
       "refs": [
         6110,
@@ -261,12 +261,12 @@ export const PATCHES = [
       "area": "training",
       "highlight": true,
       "en": {
-        "title": "New training page with Light, Medium and Hard",
-        "body": "Daily training has a new look. In Today you pick an effort for the whole team or for each rider: Light, Medium or Hard. Hard gives the most progress but carries an injury risk; Light and Medium do not. In Program you plan the week for programs, groups and riders, and save it with Save plan. The page works on phone too."
+        "title": "New training page with Easy, Medium and Hard",
+        "body": "Daily training has a new look. In Today you pick an effort for the whole team or for each rider: Easy, Medium or Hard. Hard gives the most progress but carries an injury risk; Easy and Medium do not. In Program you plan the week for programs, groups and riders, and save it with Save plan. The page works on phone too."
       },
       "da": {
         "title": "Ny træningsside med Let, Mellem og Hård",
-        "body": "Daglig træning har fået nyt udseende. I I dag vælger I en indsats for hele holdet eller for hver rytter: Let, Mellem eller Hård. Hård giver mest fremgang, men har en skaderisiko; Let og Mellem har ikke. I Program planlægger I ugen for programmer, grupper og ryttere og gemmer med Gem plan. Siden virker også på telefon."
+        "body": "Daglig træning har fået nyt udseende. I I dag vælger du en indsats for hele holdet eller for hver rytter: Let, Mellem eller Hård. Hård giver mest fremgang, men har en skaderisiko; Let og Mellem har ikke. I Program planlægger du ugen for programmer, grupper og ryttere og gemmer med Gem plan. Siden virker også på telefon."
       },
       "refs": [
         7947,
@@ -286,7 +286,7 @@ export const PATCHES = [
       },
       "da": {
         "title": "Den nye løbsside er tændt for alle",
-        "body": "Den nye løbsside med løbsfilmen, mellemtider, taktik og den farvede rute er nu tændt for alle. Spoiler-skjoldet under Indstillinger skjuler nu også resultatet på løbssiden, til I åbner det."
+        "body": "Den nye løbsside med løbsfilmen, mellemtider, taktik og den farvede rute er nu tændt for alle. Spoiler-skjoldet under Indstillinger skjuler nu også resultatet på løbssiden, til du åbner det."
       },
       "refs": [
         7778,
@@ -374,7 +374,7 @@ export const PATCHES = [
       },
       "da": {
         "title": "Styr træningsgrupper under Program",
-        "body": "Under fanen Program kan I nu oprette, omdøbe og slette træningsgrupper, vælge medlemmer og give en gruppe sin egen træthedsgrænse. En rytter med egen plan kan følge sin gruppe igen med ét tryk. Det virker også på telefon."
+        "body": "Under fanen Program kan du nu oprette, omdøbe og slette træningsgrupper, vælge medlemmer og give en gruppe sin egen træthedsgrænse. En rytter med egen plan kan følge sin gruppe igen med ét tryk. Det virker også på telefon."
       },
       "refs": [
         8560
@@ -398,7 +398,7 @@ export const PATCHES = [
       },
       "da": {
         "title": "I dag på telefon: navn og række virker hver for sig",
-        "body": "På telefon åbner et tryk på rytterens navn i I dag hans profil, og et tryk på resten af rækken folder detaljerne ud. Skjuler jeres filtre alle ryttere, henter knappen Nulstil filtre dem frem igen."
+        "body": "På telefon åbner et tryk på rytterens navn i I dag hans profil, og et tryk på resten af rækken folder detaljerne ud. Skjuler dine filtre alle ryttere, henter knappen Nulstil filtre dem frem igen."
       },
       "refs": [
         8563
@@ -521,7 +521,7 @@ export const PATCHES = [
       },
       "da": {
         "title": "Trupmærke i Status",
-        "body": "Status på Mit Hold viser nu JR eller U23 efter rytterens trup i stedet for et aldersmærke. I finder alderen i sin egen kolonne."
+        "body": "Status på Mit Hold viser nu JR eller U23 efter rytterens trup i stedet for et aldersmærke. Du finder alderen i sin egen kolonne."
       },
       "refs": [
         7233
@@ -937,7 +937,7 @@ export const PATCHES = [
       },
       "da": {
         "title": "Gem tager ordrer med på alle etaper",
-        "body": "Hvis I ændrede ordrer på én etape og åbnede en anden før I gemte, sendte Gem kun den åbne etape, og de første ændringer gik tabt. Nu sender Gem ordrerne for alle etaper, I har ændret, og Gemt vises først, når de alle er bekræftet. Fanen siger også til, når en anden etape har ugemte ændringer."
+        "body": "Hvis du ændrede ordrer på én etape og åbnede en anden, før du gemte, sendte Gem kun den åbne etape, og de første ændringer gik tabt. Nu sender Gem ordrerne for alle etaper, du har ændret, og Gemt vises først, når de alle er bekræftet. Fanen siger også til, når en anden etape har ugemte ændringer."
       },
       "refs": [
         8381

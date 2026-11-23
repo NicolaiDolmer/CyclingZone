@@ -413,9 +413,18 @@
       "issue": 8580,
       "area": "training-r5",
       "why": "Ejer-go 22/11 formiddag (PC1, AskUserQuestion): \"Ja, byg #8580\" - I dag R5 dagsvælgeren med pile. Følger dommer-scenarierne UGE-1..7 i docs/audits/7456-program-dommer-scenarier.md. Byg på Dolmer PC (opgave #8584)."
+    },
+    {
+      "issue": 8584,
+      "area": "plan-og-vaekst",
+      "why": "Ejer-go 23/11 (PC1, chat): \"Ja de maa gerne komme paa listen\" - kun Codex G roadmap-model + faste tidspunkter (PR #8616), H saesonskifte-mails 26+29/11 (PR #8619), J annoncepakke, N tracking foer annoncer. Merge kraever stadig ejerens ordrette merge."
     }
   ],
   "cleanupList": [
+    {
+      "issue": 4016,
+      "why": "Multi-AI-gaten ved sessionsstart talte idle faner og planlagte opgaver som aktive sessioner og bad ejeren STOP ved hver start; ejer-go 23/11 (PC1, AskUserQuestion): \"Ja, cleanupList (Anbefalet)\". PR #8618"
+    },
     {
       "issue": 8206,
       "why": "Interne hook-vagter (secret, sletning, branch, preflight) blev stille sprunget over, naar cwd ikke var repo-roden; ejer-go 15/11 i hook-sessionen: 'Ja, cleanupList (Anbefalet)', og i hovedsessionen: 'Ja, paa listen'. PR #8207"
@@ -1820,6 +1829,11 @@
       "issue": 8476,
       "reason": "Ejer-go 19/11 (PC1, AskUserQuestion): \"Rettelser af forkert info\" + \"Træn nu-animationen (A)\" + \"Ny træningsside: Udvikling\" + \"Program med programmer\" (skitse). Gennemgang af alle trænings- og udviklingsvisninger før XP-tænding; forkert info rettes straks.",
       "since": "2026-11-19"
+    },
+    {
+      "issue": 8608,
+      "reason": "Ejer-go 23/11 (PC1, AskUserQuestion): \"Vi foelger din anbefaling nu. Alt angaaende trænings-ui skal laves faerdigt i dag og vaere live i dag\". Program R5 laegger forvalgt Sprinter paa uden at sige det, og ryttere er svaere at melde ind i grupper (spillerrapport 22/11). Codex O.",
+      "since": "2026-11-23"
     }
   ]
 }

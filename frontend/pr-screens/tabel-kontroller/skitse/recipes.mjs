@@ -18,12 +18,12 @@ export function rankings(dir, opts = {}) {
   const frame = root.querySelector("table").closest("div.rounded-cz");
   const block = frame.parentElement;
   const count = frame.nextElementSibling;
-  const divisionLabel = filterRow.querySelector("select[aria-label=Division]").selectedOptions[0].textContent.replace(/\s*\(\d+\)$/, "");
-  const divisions = [...filterRow.querySelector("select[aria-label=Division]").options].map((o) => o.textContent.replace(/\s*\(\d+\)$/, ""));
+  const divisionLabel = sk.esc(filterRow.querySelector("select[aria-label=Division]").selectedOptions[0].textContent.replace(/\s*\(\d+\)$/, ""));
+  const divisions = [...filterRow.querySelector("select[aria-label=Division]").options].map((o) => sk.esc(o.textContent.replace(/\s*\(\d+\)$/, "")));
   const poolSel = filterRow.querySelector("select[aria-label=Pool]");
-  const pools = poolSel ? [...poolSel.options].map((o) => o.textContent.replace(/\s*\(\d+\)$/, "")) : [];
-  const poolLabel = poolSel ? poolSel.selectedOptions[0].textContent.replace(/\s*\(\d+\)$/, "") : null;
-  const seasonText = season.childNodes[0] ? season.childNodes[0].textContent.trim() : "Season 1";
+  const pools = poolSel ? [...poolSel.options].map((o) => sk.esc(o.textContent.replace(/\s*\(\d+\)$/, ""))) : [];
+  const poolLabel = poolSel ? sk.esc(poolSel.selectedOptions[0].textContent.replace(/\s*\(\d+\)$/, "")) : null;
+  const seasonText = season.childNodes[0] ? sk.esc(season.childNodes[0].textContent.trim()) : "Season 1";
   sk.hide(season, filterRow, movement, chipRow);
 
   // Saeson + bevaegelses-reglen flytter ned i tabellens taellelinje (zone-forklaringen findes der allerede).
