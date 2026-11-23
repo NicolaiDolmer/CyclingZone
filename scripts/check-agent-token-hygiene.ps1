@@ -76,9 +76,13 @@ $contextFiles = @(
   @{ Name = "SESSION_CONTEXT.md"; Path = ".codex.local/SESSION_CONTEXT.md"; Warn = 800; Fail = 1200; OptionalCache = $true; CodexOnly = $true },
   # MASTERPLAN.md er IKKE auto-loaded ved session-start (den er under "On-demand docs" i
   # CLAUDE.md, ikke "Start"), så den tæller ikke med i cold-start-aggregatet (ExcludeFromColdStart).
-  # Egen gate mod CLAUDE.md close-out punkt 3: "budget ≤1.500 tok" (#3753 - gaten manglede
-  # denne helt før nu).
-  @{ Name = "MASTERPLAN.md"; Path = "docs/MASTERPLAN.md"; Warn = 1300; Fail = 1500; ExcludeFromColdStart = $true },
+  # Egen gate (#3753). Hævet fra 1300/1500 (#7631, ejer 23/11 på #8584): MASTERPLAN er nu den
+  # interne sandhed i fem sektioner (Denne uge, Næste uge, S6, Senere, Parkeret), og hvert punkt
+  # bærer issue + ejer + dato + status, så samme indhold fylder mere end den gamle prosa. Første
+  # udgave i tre lag målte ~2.260 tok; Fail 3000 giver plads til en travl uge, men fanger at
+  # historik hober sig op. Historik hører til i git-loggen, ikke i filen: rammer filen loftet,
+  # er svaret at rydde afsluttede punkter (fjern-reglen #8230), ikke at hæve grænsen igen.
+  @{ Name = "MASTERPLAN.md"; Path = "docs/MASTERPLAN.md"; Warn = 2600; Fail = 3000; ExcludeFromColdStart = $true },
   # FEATURE_STATUS.md er GENERERET fra docs/FEATURE_REGISTRY.yml (#4921) og auto-loader ikke
   # (on-demand-doc), saa den taeller ikke med i cold-start (ExcludeFromColdStart). Egen gate,
   # fordi hele pointen med at erstatte 33 KB prosa er at status-filen skal kunne LAESES af en
