@@ -187,16 +187,73 @@ const reportInput = (over = {}) => ({
   ...over,
 });
 
-test("scouting-rapporten: potentialView, kig og scout, ingen gamle bånd", async () => {
+test("scouting-rapporten: potentialView, kig og scout, ingen gamle stjerner eller loft", async () => {
   const report = await buildScoutingReportFromView(world(), reportInput());
   assert.equal(Object.keys(report)[0], "potentialView");
   assert.equal(report.potentialView.value, 74);
   assert.equal(report.looks, 2);
   assert.equal(report.scout.name, "Scout A");
-  for (const legacy of ["stars", "types", "displayKey", "precision", "capsMissing", "value"]) {
+  for (const legacy of ["stars", "displayKey", "precision", "capsMissing", "value"]) {
     assert.ok(!(legacy in report), `${legacy} er den gamle model`);
   }
   assert.doesNotMatch(JSON.stringify(report), FORBIDDEN);
+});
+
+// #6110: prognosen pr. ryttertype er tilbage under skønnet. Rytteren er 23, evnerne ligger
+// midt i feltet, og båndene bygges af serveren, så rå potentiale aldrig når svaret.
+const SCOUT = { isDefault: false, name: "Scout A", tier: 3, overall: 70, hiredAt: null };
+const roleInput = (over = {}) => reportInput({
+  rider: { id: "scouted", primary_type: "climber", secondary_type: "gc", potentiale: 5.5 },
+  bandScout: SCOUT,
+  ...over,
+});
+
+test("scouting-rapporten: scoutet fremmed rytter får et bånd pr. ryttertype", async () => {
+  const report = await buildScoutingReportFromView(world(), roleInput());
+  assert.equal(report.types.length, 8);
+  for (const band of report.types) {
+    assert.ok(Number.isInteger(band.now) && Number.isInteger(band.progLo) && Number.isInteger(band.progHi), band.key);
+    assert.ok(band.progLo <= band.progHi, band.key);
+  }
+  assert.ok(report.types.some((band) => band.key === "climber"));
+  assert.doesNotMatch(JSON.stringify(report), FORBIDDEN);
+});
+
+test("scouting-rapporten: egen rytter får hele listen", async () => {
+  const report = await buildScoutingReportFromView(world(), roleInput({ own: true, level: 3 }));
+  assert.equal(report.types.length, 8);
+});
+
+test("scouting-rapporten: spejderen styrer båndets bredde for fremmede ryttere", async () => {
+  const width = (band) => band.progHi - band.progLo;
+  const narrow = await buildScoutingReportFromView(world(), roleInput({ level: 3 }));
+  const wide = await buildScoutingReportFromView(world(), roleInput({ level: 1 }));
+  const total = (report) => report.types.reduce((sum, band) => sum + width(band), 0);
+  assert.ok(total(narrow) <= total(wide), "et højere scout-niveau gør aldrig båndet bredere");
+});
+
+test("scouting-rapporten: uscoutet, skjult og uden kig giver ingen liste", async () => {
+  const stranger = await buildScoutingReportFromView(world(), roleInput({ rider: { id: "stranger", primary_type: "climber", potentiale: 2 }, level: 0, looks: 0 }));
+  assert.ok(!("types" in stranger), "uscoutet");
+  const noLooks = await buildScoutingReportFromView(world(), roleInput({ level: 0, looks: 0 }));
+  assert.equal(noLooks.potentialView.value, 74, "skønnet står");
+  assert.ok(!("types" in noLooks), "et gammelt skøn uden kig åbner ikke båndene");
+});
+
+test("scouting-rapporten: uden evner eller alder er der intet at fremskrive", async () => {
+  const noAbilities = await buildScoutingReportFromView(world({ rider_derived_abilities: [] }), roleInput());
+  assert.ok(!("types" in noAbilities));
+  const noAge = await buildScoutingReportFromView(world(), roleInput({ age: null }));
+  assert.ok(!("types" in noAge));
+});
+
+test("scouting-rapporten: XP-modellen slås kun op, når der er en liste at bygge", async () => {
+  let loads = 0;
+  const loadDevelopmentXp = async () => { loads += 1; return null; };
+  await buildScoutingReportFromView(world(), roleInput({ loadDevelopmentXp }));
+  assert.equal(loads, 1);
+  await buildScoutingReportFromView(world(), roleInput({ rider: { id: "stranger", primary_type: "climber", potentiale: 2 }, level: 0, looks: 0, loadDevelopmentXp }));
+  assert.equal(loads, 1, "uscoutet rytter bygger ingen liste");
 });
 
 test("scouting-rapporten: vurderingen bygger på skønnet og følger ordet", async () => {

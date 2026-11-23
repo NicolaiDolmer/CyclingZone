@@ -27,7 +27,7 @@ import { publicEstimateView } from "./potentialEstimate.js";
 import { PEAK_AGE } from "./developmentProjection.js";
 import { loadPastPeakAging, pastPeakFromAging } from "./pastPeakView.js"; // #7947: efter peak som motoren
 import { mergeDevelopmentSnapshots } from "./riderDevelopmentReceipt.js";
-import { buildVerdict, ratingFromAbilities } from "./scoutingReport.js";
+import { buildTypePrognosisBands, buildVerdict, ratingFromAbilities } from "./scoutingReport.js";
 import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
 import { bestRoleForAbilities } from "./riderBestRoleCache.js";
 import { fetchAllRowsChunkedIn } from "./supabasePagination.js";
@@ -252,18 +252,40 @@ function estimateVerdict({ view, age, own, level, maxLevel, rating }) {
   };
 }
 
+// #6110: prognosen pr. ryttertype (nu-rating + prognose-bånd pr. type) står under
+// skønnet igen, for egne og scoutede ryttere. Båndene er de samme som før skønnet
+// blev ét tal og maskeres efter holdets scout-niveau og spejder: rå potentiale når
+// aldrig svaret, kun båndene. Skjulte ryttere (uscoutet, AI-hold, lærer endnu) får
+// ingen liste, og uden evner eller alder er der intet at fremskrive.
+async function loadRoleTypes({ rider, abilities, own, level, teamId, age, bandScout, loadDevelopmentXp, potentialView }) {
+  if (potentialView.hidden || !abilities || age == null) return [];
+  if (!own && !(level > 0)) return [];
+  const developmentXp = loadDevelopmentXp ? await loadDevelopmentXp() : null;
+  const bands = buildTypePrognosisBands({
+    nowAbilities: abilities, age, primaryType: rider.primary_type, secondaryType: rider.secondary_type,
+    potentiale: rider.potentiale, level, riderId: rider.id, teamId, scout: bandScout, developmentXp,
+  });
+  return bands.some((band) => band.now != null) ? bands : [];
+}
+
 // GET /riders/:id/scouting-report. `level` er knappens niveau (egen rytter = maxLevel);
 // `looks` er de kig holdet faktisk har taget ("bygger på", spec §3.6).
-export async function buildScoutingReportFromView(supabase, { teamId, rider, own, level, maxLevel, looks, age, scout, generatedAt, clock = new Date() }) {
+// `bandScout` er holdets rigtige spejder (til båndbredden), `scout` er kun visningens udsnit.
+// `loadDevelopmentXp` er valgfri (XP-modellen bag sin kontakt); uden den er prognosen som før.
+export async function buildScoutingReportFromView(supabase, { teamId, rider, own, level, maxLevel, looks, age, scout, generatedAt, bandScout, loadDevelopmentXp = null, clock = new Date() }) {
   const context = await loadEstimateContext(supabase, { teamId, riderIds: [rider.id] });
   const potentialView = context.views.get(rider.id) ?? UNSCOUTED;
   const rating = context.ratings.get(rider.id) ?? null;
   const prognoses = await loadPrognosisViews(supabase, { teamId, context, clock });
+  const types = await loadRoleTypes({
+    rider, abilities: context.abilities.get(rider.id), own, level, teamId, age, bandScout, loadDevelopmentXp, potentialView,
+  });
   return {
     potentialView,
     ...(prognoses.has(rider.id) ? { prognosisView: prognoses.get(rider.id) } : {}),
     level, maxLevel, own, looks,
     primaryKey: rider.primary_type ?? null,
+    ...(types.length ? { types } : {}),
     verdict: estimateVerdict({ view: potentialView, age, own, level, maxLevel, rating }),
     pastPeak: pastPeakFromAging(age, await loadPastPeakAging(supabase, { now: clock })), // regel 16: uret injiceres
     scout, generatedAt,

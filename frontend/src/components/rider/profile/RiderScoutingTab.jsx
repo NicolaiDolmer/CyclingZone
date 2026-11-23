@@ -317,6 +317,23 @@ function EstimateCard({ view, report, canLookAgain, scoutAction, t }) {
   );
 }
 
+// #6110: skønnet er kortet, og prognosen pr. ryttertype står under det igen, for egne og
+// scoutede ryttere. Serveren sender kun listen, når der er noget at vise (og med
+// spejderens bånd for andres ryttere); uscoutede, skjulte og AI-holdets ryttere har ingen.
+export function EstimateReport({ view, report, rider, canLookAgain, scoutAction, t, lang }) {
+  return (
+    <div className="space-y-3">
+      <EstimateCard view={view} report={report} canLookAgain={canLookAgain} scoutAction={scoutAction} t={t} />
+      {report.types?.length > 0 && (
+        <RolePrognosis types={report.types} primaryKey={report.primaryKey} secondaryKey={rider?.secondary_type}>
+          <p className="text-cz-3 text-3xs mt-1.5 mb-0">{t("profile.scouting.recalcNote")}</p>
+          {report.precision && <PrecisionNote precision={report.precision} t={t} lang={lang} />}
+        </RolePrognosis>
+      )}
+    </div>
+  );
+}
+
 export default function RiderScoutingTab({ rider, scouting }) {
   const { t, i18n } = useTranslation("rider");
   const [report, setReport] = useState(/** @type {any} */ (null));   // null = loader, ellers payload
@@ -477,12 +494,14 @@ export default function RiderScoutingTab({ rider, scouting }) {
   if (estimateView && !estimateView.hidden) {
     return (
       <EstimateCopyGate>
-        <EstimateCard
+        <EstimateReport
           view={estimateView}
           report={report}
+          rider={rider}
           canLookAgain={!report.own && level < maxLevel}
           scoutAction={<>{scoutButton("scouting.rescout")}{scoutErrorLine}</>}
           t={t}
+          lang={i18n.language}
         />
       </EstimateCopyGate>
     );
