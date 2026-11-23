@@ -862,7 +862,7 @@ const S6_COPY = {
       teamLine: (team, division) =>
         division ? `${team || "Your team"} rides Season 6 in ${division}.` : `Here's how to get ${team || "your team"} racing.`,
       openings: {
-        active: "The first race days are done. I'd start with the calendar and get your team ready for its next race.",
+        active: "The new season has begun. I'd start with the calendar and get your team ready for its next race.",
         dormant: "It's not too late to join in. Three steps get your team ready for its next race.",
         away: "If you're coming back after a long break, I'd start with one race. Three steps get you there.",
       },
@@ -917,7 +917,7 @@ const S6_COPY = {
       teamLine: (team, division) =>
         division ? `${team || "Dit hold"} kører sæson 6 i ${division}.` : `Sådan kommer ${team || "dit hold"} til start.`,
       openings: {
-        active: "De første løbsdage er kørt. Jeg ville begynde med kalenderen og gøre dit hold klar til næste løb.",
+        active: "Den nye sæson er skudt i gang. Jeg ville starte med kalenderen og gøre dit hold klar til næste løb.",
         dormant: "Det er ikke for sent at komme med. Tre trin gør dit hold klar til næste løb.",
         away: "Hvis du vender tilbage efter en lang pause, ville jeg begynde med ét løb. Tre trin får dig derhen.",
       },
