@@ -139,10 +139,27 @@ export const OWNER_LOGIN = 'NicolaiDolmer';
 export const GO_TIMEOUT_MS = 10000;
 
 // Kodeblokke (``` og ~~~, også uafsluttede til slutningen) og inline-kode fjernes.
-const stripCode = s => String(s)
-  .replace(/^[ \t]*(```|~~~)[\s\S]*?^[ \t]*\1[^\n]*$/gm, '')
-  .replace(/^[ \t]*(```|~~~)[\s\S]*$/m, '')
-  .replace(/`[^`\n]*`/g, '');
+// Som i CommonMark lukkes en blok kun af samme tegn i mindst samme længde,
+// alene på linjen og højst 3 mellemrum inde; ellers er linjen stadig kode.
+// Åbningen genkendes med enhver indrykning, så tvivl altid ender som kode.
+const FENCE_OPEN_RE = /^[ \t]*(`{3,}|~{3,})/;
+const FENCE_CLOSE_RE = /^ {0,3}(`{3,}|~{3,})[ \t]*$/;
+export function stripCode(s) {
+  const kept = [];
+  let fence = null;
+  for (const line of String(s).split('\n')) {
+    const text = line.replace(/\r$/, '');
+    if (fence) {
+      const m = FENCE_CLOSE_RE.exec(text);
+      if (m && m[1][0] === fence[0] && m[1].length >= fence.length) fence = null;
+      continue;
+    }
+    const open = FENCE_OPEN_RE.exec(text);
+    if (open) { fence = open[1]; continue; }
+    kept.push(line);
+  }
+  return kept.join('\n').replace(/`[^`\n]*`/g, '');
+}
 
 // Ren: kommentarer [{ login | author.login, body }] -> { area, quote } eller null.
 // Nyeste gyldige markør vinder (kommentarerne kommer i GitHubs rækkefølge).
@@ -184,24 +201,36 @@ export function ghOwnerGo(issue, { repo = 'NicolaiDolmer/CyclingZone', exec = ex
 }
 
 // Beriger kun de spor der ellers ville være 'new'. Label/titel/forælder hentes
-// kun når loftet er sat; ejer-go-markøren hentes for spor der stadig er 'new'
-// bagefter. Spor der allerede er beriget, hentes ikke igen. Alle opslag deler
-// én frist, så et langsomt GitHub aldrig får optaget til at overleve hookens
-// timeout (guard-agent-spawn); efter fristen forbliver resten 'new' (fail closed).
+// kun når loftet er sat; spor der allerede har labels, hentes ikke igen.
+// ejer-go-markøren hentes for spor der stadig er 'new' bagefter. Alle opslag
+// deler én frist, så et langsomt GitHub aldrig får optaget til at overleve
+// hookens timeout (guard-agent-spawn); efter fristen forbliver resten 'new'
+// (fail closed).
+//
+// Tillid (Codex-fund på #8630): sporene kommer fra kalderen (bølgeplan,
+// Codex-plan), så et medsendt ownerGo fjernes altid her ved optaget. Kun
+// fetchGo (det betroede GitHub-opslag) kan sætte det; uden fetchGo har intet
+// spor ejerens go.
 export const META_BUDGET_MS = 45000;
+const withoutOwnerGo = t => {
+  if (!t || typeof t !== 'object' || !Object.prototype.hasOwnProperty.call(t, 'ownerGo')) return t;
+  const { ownerGo: _untrusted, ...rest } = t;
+  return rest;
+};
 export function withIssueMeta(items, cfg, fetchMeta = ghIssueMeta, { budgetMs = META_BUDGET_MS, now = Date.now, fetchGo = null } = {}) {
+  const clean = items.map(withoutOwnerGo);
   const useMeta = Boolean(cfg?.loft && fetchMeta);
-  if (!useMeta && !fetchGo) return items;
+  if (!useMeta && !fetchGo) return clean;
   const deadline = now() + budgetMs;
-  return items.map(t => {
+  return clean.map(t => {
     if (!t || classifyWork(t, cfg).cls !== 'new') return t;
     let out = t;
     if (useMeta && !Array.isArray(t.labels)) {
       const left = deadline - now();
       const meta = left > 0 ? fetchMeta(t.issue, { timeout: Math.min(20000, left) }) : null;
-      out = meta ? { ...out, ...meta } : { ...out, metaUnavailable: true };
+      out = meta ? { ...out, ...withoutOwnerGo(meta) } : { ...out, metaUnavailable: true };
     }
-    if (fetchGo && out.ownerGo === undefined && classifyWork(out, cfg).cls === 'new') {
+    if (fetchGo && classifyWork(out, cfg).cls === 'new') {
       const left = deadline - now();
       const go = left > 0 ? fetchGo(out.issue, { timeout: Math.min(GO_TIMEOUT_MS, left) }) : null;
       out = go ? { ...out, ownerGo: go } : { ...out, ownerGo: null };
