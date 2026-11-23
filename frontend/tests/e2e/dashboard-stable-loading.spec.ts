@@ -299,7 +299,14 @@ test('#8019 completing the last owned auction preserves the initial Mine tab', a
   });
   const owned = { ...AUCTIONS[0], seller_team_id: TEST_TEAM.id, current_bidder_id: 'fixture-rival', is_guaranteed_sale: false,
     rider: { ...AUCTIONS[0].rider, team_id: TEST_TEAM.id } };
-  await page.route('**/rest/v1/auctions?**', route => json(route, [owned]));
+  // The server stops listing an auction once it completes, and the balance read only
+  // sees auctions the team leads. The settlement refetch must not resurrect the row.
+  let completed = false;
+  await page.route('**/rest/v1/auctions?**', route => {
+    const bidder = new URL(route.request().url()).searchParams.get('current_bidder_id');
+    const rows = completed ? [] : [owned];
+    return json(route, bidder ? rows.filter(row => bidder === `eq.${row.current_bidder_id}`) : rows);
+  });
   let complete: (() => void) | undefined;
   await page.routeWebSocket(/realtime\/v1\/websocket/, socket => {
     socket.onMessage(message => {
@@ -325,6 +332,7 @@ test('#8019 completing the last owned auction preserves the initial Mine tab', a
   await expect(mine).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('[data-auction-row]:visible').first()).toBeVisible();
   await expect.poll(() => typeof complete).toBe('function');
+  completed = true;
   complete!();
   await expect(page.locator('[data-auction-row]')).toHaveCount(0);
   await expect(mine).toHaveAttribute('aria-selected', 'true');
