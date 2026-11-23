@@ -43,6 +43,7 @@ import { isTrainingCatalogV3EnabledForTeam } from "./trainingCatalogV3.js"; // #
 import { loadRaceExitGameDays, dropBindingsAfterRaceExit } from "./trainingRaceDayTick.js";
 import { isTrainingSettleRaceSessionEnabled } from "./trainingSettleRaceSession7982.js"; // #7982
 import { isTrainingEffortLevelsEnabled } from "./trainingEffortLevels.js"; // #7947
+import { isTrainingWeekPriorityEnabledForTeam, weekPriorityPlacement, winningWeekEntry } from "./trainingWeekPriority.js"; // #8549
 // #5932-integrationen: spillerens traethedsgraense (#4854) aendrer motorens pas
 // efter resolveDayProgram. Prognosen kalder SAMME funktion (I5).
 import {
@@ -124,6 +125,8 @@ export function buildTeamFatigueForecast({
   fatigueNow = false, // #7801: reglen paa traetheden lige nu, samme tal som motoren (I5)
   ranSlots = false, // #7982: kun med training_settle_race_session on; slukket = feltet findes ikke
   effortLevels = false, // #7947: samme kontakt som motoren
+  // #8549: Week blocks som motoren (I5). Off = kildefeltet er feltet (dagens prognose).
+  weekPriority = false, teamWeekRow = null, riderWeekRowByRider = new Map(),
 }) {
   const days = [...new Set((dateGameDays ?? []).map(Number).filter(Number.isFinite))].sort((a, b) => a - b);
   if (days.length !== FORECAST_SLOTS) return {};
@@ -142,11 +145,22 @@ export function buildTeamFatigueForecast({
     const recoveryAbility = firstReport?.recovery_before_date ?? recoveryByRider.get(rider.id) ?? 50;
     const hasStageOnDate = plannedStages.some((row) => row.rider_id === rider.id)
       || recordedLoads.some((row) => row.rider_id === rider.id);
+    const placement = weekPriority ? weekPriorityPlacement({
+      winning: winningWeekEntry({ weekday, riderRow: riderWeekRowByRider.get(rider.id) ?? null, teamRow: teamWeekRow, hasExplicitPlan }),
+      dateDays: days,
+      raceGameDays: [
+        ...recordedLoads.filter((row) => row.rider_id === rider.id && row.duplicate_of_race_id == null).map((row) => Number(row.game_day)),
+        ...plannedStages.filter((row) => row.rider_id === rider.id).map((row) => Number(row.game_day)),
+      ],
+      priorReports: riderReceipts,
+    }) : null;
     const ruleLoads = []; // #7801: etaper i tidligere felter samme dato
     const slots = days.map((day) => {
       const slotIndex = programSlotForRaceDay(day, days);
+      // #8549: samme omdirigering af kildefeltet som motoren; træthedsgrænsen bruger feltet selv.
+      const sourceSlot = placement?.fieldSource[slotIndex] ?? slotIndex;
       const dayProgram = resolveDayProgram({
-        weekday, slotIndex,
+        weekday, slotIndex: sourceSlot,
         riderOverrideDays: riderWeekDaysByRider.get(rider.id) ?? null,
         teamWeekDays, program, hasExplicitPlan, programsOn: cellsOn, catalogV3, effortLevels,
       });
@@ -167,25 +181,44 @@ export function buildTeamFatigueForecast({
       const recorded = recordedLoads.find((row) => row.rider_id === rider.id && Number(row.game_day) === day && row.duplicate_of_race_id == null);
       const plannedStage = plannedStages.find((row) => row.rider_id === rider.id && Number(row.game_day) === day);
       const bound = boundRiderIdsByGameDay.get(day)?.has(rider.id) ?? false;
+      const injured = isInjuredOnRaceDay({ condition: cond, seasonId, gameDay: day, tickDate });
+      const boundRest = bound && !hasStageOnDate;
+      const receipt = riderReceipts.find((row) => row.game_day === day) ?? null;
       const activity = forecastSlotActivity({
         riderId: rider.id,
-        receipt: riderReceipts.find((row) => row.game_day === day) ?? null,
+        receipt,
         recordedLoad: recorded ? recorded.load : null,
         plannedStageProfile: plannedStage ? (plannedStage.profile_type ?? "rolling") : null,
-        injured: isInjuredOnRaceDay({ condition: cond, seasonId, gameDay: day, tickDate }),
-        boundRestDate: bound && !hasStageOnDate,
+        injured,
+        boundRestDate: boundRest,
         planIntensity,
         conditionModelV2,
       });
       if (fatigueNow && activity.intensity === "race") ruleLoads.push(Number(activity.raceLoad ?? 0));
+      const rested = receipt
+        ? !Number.isInteger(receipt.report?.source_slot) && (receipt.report?.injured === true || boundRest)
+        : injured || boundRest;
+      if (placement && activity.intensity === "rest" && rested) activity.weekRest = true;
       return activity;
     });
     const fatigue = forecastRiderFatigue({ riderId: rider.id, dateStr: tickDate, opening, slots, recoveryAbility, recoveryConfig, conditionModelV2, medicalBonus, raceDateTrainingDay });
-    if (fatigue == null) continue;
+    if (fatigue == null && !placement) continue;
     // raceSlots: dagens felter der er laast af et loeb (regel A). Gitteret viser
     // dem som etape; de oevrige felter er traening.
-    const raceSlots = slots.flatMap((slot, index) => (slot.intensity === "race" ? [index] : []));
+    const raceSlots = slots.flatMap((slot, index) => (
+      slot.intensity === "race" || (placement?.fieldSource[index] === null && !slot.weekRest) ? [index] : []
+    ));
     out[rider.id] = { fatigue, band: forecastBand(fatigue), raceSlots };
+    if (placement) {
+      const restSlots = slots.flatMap((slot, index) => slot.weekRest ? [index] : []);
+      const wholeDayRest = restSlots.length === days.length;
+      Object.assign(out[rider.id], {
+        fieldSource: placement.fieldSource.map((source, index) => slots[index].weekRest ? null : source),
+        taken: wholeDayRest ? [] : placement.taken,
+        lockMovedFrom: wholeDayRest ? null : placement.lockMovedFrom,
+        restSlots,
+      });
+    }
     // #7982: felter med kvittering er koert (fx loebets session efter etapen) og kan ikke aendres.
     if (ranSlots) out[rider.id].ranSlots = days.flatMap((day, index) => (riderReceipts.some((row) => row.game_day === day) ? [index] : []));
   }
@@ -269,7 +302,7 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     rows(supabase.from("rider_condition").select("*").in("rider_id", riderIds), "forecast condition"),
     rows(supabase.from("rider_derived_abilities").select("rider_id, recovery").in("rider_id", riderIds), "forecast recovery"),
     rows(supabase.from("training_plans").select("rider_id, focus, intensity").eq("team_id", team.id).eq("season_id", seasonId), "forecast plans"),
-    rows(supabase.from("training_week_plans").select("rider_id, days").eq("team_id", team.id), "forecast week plans"),
+    rows(supabase.from("training_week_plans").select("rider_id, days, plan_kind").eq("team_id", team.id), "forecast week plans"),
     // pagination-safe: roster x five game days.
     rows(supabase.from("training_rider_ticks").select("rider_id, game_day, tick_date, report").eq("season_id", seasonId).in("game_day", dateGameDays).in("rider_id", riderIds), "forecast receipts"),
     // pagination-safe: roster x five game days.
@@ -288,11 +321,15 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
   const work = workRows[0] ?? null;
   const conditionByRider = new Map(conditions.map((row) => [row.rider_id, row]));
   const dateReceipts = receipts.filter((row) => row.tick_date === tickDate);
+  const programCellsOn = cellsOn && weekRows.some((row) => weekDaysHaveSessions(row.days));
+  const weekPriority = programCellsOn && weekRows.some((row) => row.plan_kind === "week")
+    ? await isTrainingWeekPriorityEnabledForTeam(supabase, team.id)
+    : false;
   // A completed current-team roster says nothing about an acquired rider's
   // still-open date under the original team's durable stamp.
   const hasUnsettledInstant = [...instant.keys()].some(id => !instant.settledRiderIds.has(id));
   const settled = !hasUnsettledInstant && (work?.status === "complete" || riderIds.every((id) => dateGameDays.every((day) => dateReceipts.some((row) => row.rider_id === id && row.game_day === day))));
-  if (settled) {
+  if (settled && !weekPriority) {
     const actual = {};
     for (const id of riderIds) {
       const fatigue = Number(conditionByRider.get(id)?.fatigue);
@@ -303,7 +340,7 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
 
   // #7982: kontakten laeses kun, naar en kvittering findes paa en aaben dato (ellers er intet
   // koert at vise), og samtidig med etapeopslagene, saa en almindelig dag er uaendret.
-  const settleRaceSessionP = dateReceipts.length ? settle(isTrainingSettleRaceSessionEnabled(supabase)) : null;
+  const settleRaceSessionP = !settled && dateReceipts.length ? settle(isTrainingSettleRaceSessionEnabled(supabase)) : null;
 
   // Planlagte etaper: bindingens loeb har en etape paa netop den loebsdag.
   const raceIds = [...new Set(entryDays.map((row) => row.race_id).filter(Boolean))];
@@ -331,7 +368,6 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
   // Fejl i opslaget = slukket (readFlagStage giver null), som delkoerslen selv.
   const settleRaceSession = settleRaceSessionP ? (await settleRaceSessionP).value === true : false;
   // #7947: som motoren laeses kontakten kun, naar programcellerne laeses (fejl = slukket).
-  const programCellsOn = cellsOn && weekRows.some((row) => weekDaysHaveSessions(row.days));
   const effortLevels = programCellsOn ? await isTrainingEffortLevelsEnabled(supabase) : false;
   const forecast = buildTeamFatigueForecast({
     conditionModelV2,
@@ -356,9 +392,20 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     catalogV3,
     ranSlots: settleRaceSession,
     effortLevels,
+    weekPriority,
+    teamWeekRow: weekRows.find((row) => row.rider_id == null) ?? null,
+    riderWeekRowByRider: new Map(weekRows.filter((row) => row.rider_id != null).map((row) => [row.rider_id, row])),
   });
+  if (settled) {
+    for (const id of riderIds) {
+      const fatigue = Number(conditionByRider.get(id)?.fatigue);
+      if (!Number.isFinite(fatigue)) { delete forecast[id]; continue; }
+      const fields = forecast[id]?.fieldSource ? forecast[id] : {};
+      forecast[id] = { ...fields, fatigue, band: forecastBand(fatigue) };
+    }
+  }
   return {
-    ...base, available: true, settled: false, riders: forecast,
+    ...base, available: true, settled, riders: forecast,
     // #7982: skaermen ved, at loebets session afregnes efter etapen, og om traetheden lige nu viser loebet.
     ...(settleRaceSession ? { raceSessionSettle: { fatigueNow } } : {}),
   };

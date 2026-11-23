@@ -53,24 +53,51 @@ export function computeAvailableBalance(balance, reserved) {
 }
 
 /**
- * Henter holdets leading-auktioner + proxy-bud og beregner reserveret
- * beløb. Samme to queries som FinancePage har brugt siden #44 — genbruges
- * nu også af Dashboard-headeren så begge sider forbliver synkrone uden at
- * skulle huske at holde to query-implementeringer i sync.
+ * #8357: hvad en saldo-flade (sidemenu, dashboard, auktioner) skal vise.
+ * Saldoen må aldrig forsvinde: mens bindingen hentes vises en kort skeleton,
+ * og fejler eller trækker læsningen ud, vises den rå saldo under sit eget
+ * navn (aldrig som "til rådighed"), og "låst"-linjen skjules.
+ *
+ * @param {number|null|undefined} balance Rå team.balance (én fælles kilde).
+ * @param {number|null|undefined} reserved Bundet i bud, eller null når ukendt.
+ * @param {{ failed?: boolean, timedOut?: boolean, balanceUnconfirmed?: boolean }} [state]
+ * @returns {null
+ *   | { mode: "available", value: number, locked: number }
+ *   | { mode: "balance", value: number, locked: 0 }
+ *   | { mode: "pending", value: null, locked: 0 }}
+ */
+export function resolveBalanceDisplay(balance, reserved, state = {}) {
+  if (balance == null) return null;
+  if (state.balanceUnconfirmed || state.failed) return { mode: "balance", value: balance, locked: 0 };
+  if (typeof reserved === "number" && Number.isFinite(reserved)) {
+    return { mode: "available", value: computeAvailableBalance(balance, reserved), locked: Math.max(0, reserved) };
+  }
+  if (state.timedOut) return { mode: "balance", value: balance, locked: 0 };
+  return { mode: "pending", value: null, locked: 0 };
+}
+
+/**
+ * Henter de samme førende bud og autobud som Økonomi. En fejlet læsning
+ * må ikke vises som om der ingen binding er.
  *
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} teamId
+ * @param {AbortSignal} [signal]
  * @returns {Promise<number>}
  */
-export async function fetchReservedBalance(supabase, teamId) {
+export async function fetchReservedBalance(supabase, teamId, signal) {
+  const leading = supabase.from("auctions")
+    .select("id, current_price")
+    .in("status", ["active", "extended"])
+    .eq("current_bidder_id", teamId);
+  const proxies = supabase.from("auction_proxy_bids")
+    .select("auction_id, max_amount, auction:auction_id(status)")
+    .eq("team_id", teamId);
   const [leadingRes, proxiesRes] = await Promise.all([
-    supabase.from("auctions")
-      .select("id, current_price")
-      .in("status", ["active", "extended"])
-      .eq("current_bidder_id", teamId),
-    supabase.from("auction_proxy_bids")
-      .select("auction_id, max_amount, auction:auction_id(status)")
-      .eq("team_id", teamId),
+    signal ? leading.abortSignal(signal) : leading,
+    signal ? proxies.abortSignal(signal) : proxies,
   ]);
+  if (leadingRes.error) throw leadingRes.error;
+  if (proxiesRes.error) throw proxiesRes.error;
   return computeReservedBalance(leadingRes.data || [], proxiesRes.data || []);
 }

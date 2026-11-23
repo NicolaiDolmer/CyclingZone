@@ -79,9 +79,17 @@ test("aftenkoerslen spoerger om skadens pulje og loeb som paa main (kolonneliste
   ], "aftenkoerslen maa ikke spoerge med trykkets loebsdags-opslag (pressPath)");
 });
 
-test("fingeraftryk af alle aftenkoerslens laesninger, med kolonnelister, er mains", async () => {
+test("aftenkoerslen laeser plan_kind med ugeplanen og bevarer resten af mains laesninger", async () => {
   const { reads } = await eveningRun();
-  assert.equal(digest(reads), MAIN_EVENING_READS,
+  const weekPlanReads = reads.filter((entry) => entry.table === "training_week_plans");
+  assert.ok(weekPlanReads.length > 0, "aftenkoerslen laeser ugeplanen");
+  for (const entry of weekPlanReads) {
+    assert.equal(entry.select, "rider_id, days, plan_kind", "ugeplanen laeser markoeren sammen med de eksisterende felter");
+  }
+  // Keep the frozen fingerprint for the existing tables, filters, request order and columns.
+  // #8549 adds just the plan_kind marker to the existing week-plan projection.
+  const mainProjection = reads.map((entry) => entry.table === "training_week_plans" ? { ...entry, select: "rider_id, days" } : entry);
+  assert.equal(digest(mainProjection), MAIN_EVENING_READS,
     `aftenkoerslens laesninger (${reads.length}) er ikke laengere mains; foerste kalender-relaterede: `
     + JSON.stringify(reads.filter((entry) => ["teams", "races"].includes(entry.table)).slice(-2)));
 });
