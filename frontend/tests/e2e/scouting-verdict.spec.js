@@ -49,7 +49,7 @@ test("#3667 chippen beskriver scouting-graden, ikke tillid — og forklarer at b
   await page.screenshot({ path: evidenceShotPath("pr-screens/3667-scouting-verdict-desktop.png"), fullPage: false });
 });
 
-test("#3667 loftet vises som tal og ALTID som et interval, aldrig ét loft-tal", async ({ page }, testInfo) => {
+test("#3667/#8645 hver ryttertype viser nu-tal og ét prognosetal, aldrig et interval", async ({ page }, testInfo) => {
   collectBrowserErrors(page, testInfo);
   await login(page);
   await page.goto(`/riders/${OWN_RIDER}?tab=scouting`);
@@ -58,32 +58,15 @@ test("#3667 loftet vises som tal og ALTID som et interval, aldrig ét loft-tal",
   await expect(rows).toHaveCount(8);
 
   // help.json påstod at potentiale "aldrig" vises som et tal. Det gør det.
-  // Guarden holder den rettede tekst ærlig: hvis tallene nogensinde fjernes
-  // herfra, skal hjælpen skrives om igen — og så fejler denne test først.
-  //
-  // #3666 spec §D4: rytterens EGEN rolle vises nu stort, med ratingen som farvet
-  // plade og loftet i sin egen kolonne, mens de øvrige syv beholder den kompakte
-  // "nu · lo–hi"-form. Guarden er derfor bundet til INTENTIONEN (et nu-tal og et
-  // interval findes på rækken) frem for til separatoren, som kun beskrev det ene
-  // af de to layouts.
-  await expect(page.locator('[data-type="sprinter"]')).toHaveText(/\d+[\s\S]*\d+[–-]\d+/);
-  await expect(page.locator('[data-type="climber"]')).toHaveText(/\d+\s*·\s*\d+[–-]\d+/);
-
-  // #1543/#1162 anti-inversion: PROGNOSE-båndet må aldrig kollapse til ét tal.
-  // Hver række skal have lo < hi, ellers er sandheden aflæselig direkte fra
-  // skærmen. Overgangs-designet (ejer 18/8, #3746): rækken kan nu OGSÅ bære
-  // rollens loft som ét enkelt tal ("· loft 93") — det er bevidst og sikkert,
-  // for under det flade rolle-tag er loftet rolle+alder-bestemt og røber intet
-  // rytterspecifikt. Derfor tages det SIDSTE interval på rækken (prognosen),
-  // ikke et $-anchored match, som suffikset ellers ville skygge for.
-  const bounds = await rows.evaluateAll((nodes) => nodes.map((n) => {
-    const ms = [...n.textContent.matchAll(/(\d+)\s*[–-]\s*(\d+)/g)];
-    const m = ms.at(-1);
-    return m ? [Number(m[1]), Number(m[2])] : null;
-  }));
-  expect(bounds.filter(Boolean)).toHaveLength(8);
-  for (const [lo, hi] of bounds) {
-    expect(hi, `prognose-båndet kollapsede til ét tal (${lo}), hvilket gør det inverterbart`).toBeGreaterThan(lo);
+  // #8645 (ejer 23/11): "det skal bare ikke være et bånd der viser prognosen herinde heller".
+  // Hver række har et nu-tal og ét prognosetal; intet interval. Prognosen regnes på serveren
+  // fra holdets skøn og farten (samme regel som den samlede Prognose, #8523), så tallet røber
+  // aldrig det rå potentiale; den sikring testes i backend (potentialEstimateRead.test.js).
+  await expect(page.locator('[data-type="sprinter"]')).toHaveText(/\d+[\s\S]*\d+/);
+  await expect(page.locator('[data-type="climber"]')).toHaveText(/\d+\s*·\s*\d+/);
+  const texts = await rows.allTextContents();
+  for (const text of texts) {
+    expect(text, "ingen række viser et interval").not.toMatch(/\d+\s*[–-]\s*\d+/);
   }
 
   // #5435/#6853: med bedste rolle nu som eneste visning står loft-tallet ikke
