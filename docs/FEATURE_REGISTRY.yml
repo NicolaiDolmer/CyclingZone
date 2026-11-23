@@ -1019,6 +1019,19 @@ features:
     decision: goer-faerdigt
     decide_by: 2026-12-06
 
+  - id: training-week-priority-8549
+    area: training
+    title_en: Week blocks with priority and one locked session per day
+    title_da: Ugeblokke med prioritet og ét låst pas pr. dag
+    state: building
+    flag: training_week_priority
+    ssot: docs/TRAINING_RULES.md
+    epic: 7456
+    verified: 2026-11-22
+    note: "PR 2 (motor + prognose) bag training_week_priority = off. Kun rækker med plan_kind 'week'. PR 3 (API-skrivning af lockSlot/plan_kind + R5-UI) følger; Fable-dom før merge; ejer tænder."
+    decision: goer-faerdigt
+    decide_by: 2026-12-06
+
   - id: training-week-forecast-8580
     area: training
     title_en: The rolling training week for the day picker

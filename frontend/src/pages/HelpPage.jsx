@@ -127,6 +127,7 @@ const SECTION_DEFS = [
       { id: "flashAuction", kind: "text" },
       { id: "tenMinExtend", kind: "text" },
       { id: "squadAndAuctions", kind: "text" },
+      { id: "availableBalance", kind: "text" }, // #8357
     ],
   },
   {

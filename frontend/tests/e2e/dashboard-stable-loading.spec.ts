@@ -183,7 +183,7 @@ for (const width of [375, 1440]) {
       await expect(history).toBeVisible();
       const before = await history.boundingBox();
       release();
-      await expect(page.locator('main [role="status"][aria-label]')).toHaveCount(0);
+      await expect(page.locator('main header').getByText(/CZ\$ til rådighed/)).toBeVisible();
       await expect.poll(async () => (await history.boundingBox())!.y).toBe(before!.y);
       expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
     } finally { release(); }
@@ -278,8 +278,12 @@ test('#8019 a long balance wraps honestly without horizontal page overflow', asy
     if (params.get('select') !== '*' || !params.has('user_id')) return route.fallback();
     return json(route, { ...TEST_TEAM, balance: 123456789012345 });
   });
+  await page.route('**/rest/v1/auctions?**', route => {
+    const params = new URL(route.request().url()).searchParams;
+    return params.has('current_bidder_id') ? json(route, []) : route.fallback();
+  });
   await page.goto('/auctions?tab=all');
-  await expect(page.locator('main header')).toContainText('123.456.789.012.345');
+  await expect(page.locator('main header')).toContainText('123.456.789.012.345 CZ$ til rådighed');
   await expect(page.locator('main header a[href="/auctions/history"]')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
 });
@@ -295,7 +299,14 @@ test('#8019 completing the last owned auction preserves the initial Mine tab', a
   });
   const owned = { ...AUCTIONS[0], seller_team_id: TEST_TEAM.id, current_bidder_id: 'fixture-rival', is_guaranteed_sale: false,
     rider: { ...AUCTIONS[0].rider, team_id: TEST_TEAM.id } };
-  await page.route('**/rest/v1/auctions?**', route => json(route, [owned]));
+  // The server stops listing an auction once it completes, and the balance read only
+  // sees auctions the team leads. The settlement refetch must not resurrect the row.
+  let completed = false;
+  await page.route('**/rest/v1/auctions?**', route => {
+    const bidder = new URL(route.request().url()).searchParams.get('current_bidder_id');
+    const rows = completed ? [] : [owned];
+    return json(route, bidder ? rows.filter(row => bidder === `eq.${row.current_bidder_id}`) : rows);
+  });
   let complete: (() => void) | undefined;
   await page.routeWebSocket(/realtime\/v1\/websocket/, socket => {
     socket.onMessage(message => {
@@ -321,6 +332,7 @@ test('#8019 completing the last owned auction preserves the initial Mine tab', a
   await expect(mine).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('[data-auction-row]:visible').first()).toBeVisible();
   await expect.poll(() => typeof complete).toBe('function');
+  completed = true;
   complete!();
   await expect(page.locator('[data-auction-row]')).toHaveCount(0);
   await expect(mine).toHaveAttribute('aria-selected', 'true');
@@ -354,7 +366,7 @@ for (const endpoint of [
       await expect(auctions.locator('a').first()).toBeVisible();
       if (endpoint.includes('season_standings')) {
         await expect(page.locator('[data-loading-region="standings"]')).toHaveAttribute('aria-busy', 'true');
-        await expect(page.locator('main header a[href="/finance"]')).not.toContainText('0 CZ$');
+        await expect(page.locator('main header a[href="/finance"]').getByText(/^0 CZ\$(?: til rådighed)?$/)).toHaveCount(0);
       }
     } finally { release(); }
   });
@@ -385,7 +397,7 @@ for (const identity of ['teams', 'seasons']) {
         await expect.poll(() => held).toBe(true);
         await expect(page.locator('main header')).toBeVisible({ timeout: 2500 });
         await expect(page.getByRole('heading', { name: 'Dagens etaper', exact: true })).toBeVisible();
-        await expect(page.locator('main header a[href="/finance"]')).not.toContainText('0 CZ$');
+        await expect(page.locator('main header a[href="/finance"]').getByText(/^0 CZ\$(?: til rådighed)?$/)).toHaveCount(0);
         await page.evaluate(() => {
           const samples: boolean[] = [];
           Reflect.set(window, '__stripPresence', samples);

@@ -53,7 +53,7 @@ import {
   subjectKey, subjectsFor, weekCells, type Draft, type Kind, type Library, type R5Group, type R5Rider, type Subject,
   type WeekCell,
   GROUP_LIMIT_MODES, createdGroupId, dropDrafts, followAgainTarget, groupLimitDraft, groupLimitValid, groupLimitWrite,
-  groupAfterPatch, groupMenuActions, groupPatch, type GroupLimitDraft, type GroupMenuAction,
+  groupAfterPatch, groupMenuActions, groupMovePatch, groupPatch, type GroupLimitDraft, type GroupMenuAction,
 } from "./programR5Model.ts";
 import ProgramR5Phone, { type PhoneChip } from "./ProgramR5Phone.tsx";
 
@@ -73,7 +73,6 @@ type ProgramsClient = {
 // ErrorState er JS med `action = null` som standard; TS udleder ellers typen null (som AcademyLedgerTab).
 const ErrorState = ErrorStateJs as unknown as ComponentType<{ title: ReactNode; description?: ReactNode; action?: ReactNode }>;
 
-const FIRST_PROGRAMS = 5;
 // Kortets meta-label efter PAGE_TEMPLATES (data-font text-2xs, uppercase, tracking .08em, --text-3).
 const LABEL = "font-data text-2xs font-semibold uppercase tracking-[.08em] text-cz-3";
 // #8560: "Egen" starter som graense-kortets gruppe-undtagelse (GroupFatigueExceptions).
@@ -133,11 +132,14 @@ export default function ProgramR5({
 
   const [kind, setKindRaw] = useState<Kind>(loadKind);
   const setKind = (next: Kind) => { setKindRaw(next); saveKind(next); };
-  const [programKey, setProgramKey] = useState<string | null>(() => library.programs[0]?.key ?? null);
-  const [subject, setSubject] = useState<Subject | null>(() => subjectsFor(library.programs[0]?.key ?? null, library)[0] ?? null);
+  const [chosenProgramKey, setChosenProgramKey] = useState<string | null>(null);
+  const [subject, setSubject] = useState<Subject | null>(null);
   const [saving, setSaving] = useState(false);
   const [note, setNote] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [copyOpen, setCopyOpen] = useState(false);
+  const [addTarget, setAddTarget] = useState<Subject | null>(null);
+  const [moveRider, setMoveRider] = useState<{ id: string; add: boolean } | null>(null);
+  const [dialogError, setDialogError] = useState(false);
   const [limitOpen, setLimitOpen] = useState(false);
   // #8560: null = lukket, { group: null } = ny gruppe.
   const [groupDialog, setGroupDialog] = useState<{ group: TrainingGroup | null } | null>(null);
@@ -146,14 +148,6 @@ export default function ProgramR5({
   const [focusWeekday, setFocusWeekday] = useState<{ weekday: string; n: number } | null>(null); // #8580
   // #8561: "Kassér ændringer" spoerger foer kladderne smides ud.
   const [discardOpen, setDiscardOpen] = useState(false);
-
-  // Kataloget kan lande efter fanen: vaelg da det foerste program, saa fanen aldrig staar tom.
-  const firstKey = library.programs[0]?.key ?? null;
-  useEffect(() => {
-    if (programKey || subject || !firstKey) return;
-    setProgramKey(firstKey);
-    setSubject(subjectsFor(firstKey, library)[0] ?? null);
-  }, [firstKey, programKey, subject, library]);
 
   // #8533 Codex P2: en anmodning udefra vaelger rytteren (i det program, han hoerer til) eller aabner graensen.
   const handledRequest = useRef(0);
@@ -165,12 +159,12 @@ export default function ProgramR5({
     // #8580: dagsvaelgerens "Ret <ugedag> i Program" -> telefonen viser netop den ugedag.
     if (request.kind === "weekday") { if (request.weekday) setFocusWeekday({ weekday: request.weekday, n: request.n }); return; }
     if (!request.id) return;
-    const riderId = request.id;
-    const key = library.programs.find((p) => subjectsFor(p.key, library).some((s) => s.kind === "rider" && s.id === riderId))?.key;
-    if (key) setProgramKey(key);
-    setSubject({ kind: "rider", id: riderId });
-  }, [request, library, onRequestHandled]);
+    setChosenProgramKey(null);
+    setSubject({ kind: "rider", id: request.id });
+  }, [request, onRequestHandled]);
 
+  const chosenProgram = programs.catalog.find((p) => p.key === chosenProgramKey) ?? null;
+  const programKey = chosenProgram?.key ?? (subject ? programKeyOf(subject, library) : null);
   const program = programs.catalog.find((p) => p.key === programKey) ?? null;
   const subjects = subjectsFor(programKey, library);
   const busy = programs.busy || groups.busy || saving;
@@ -179,12 +173,12 @@ export default function ProgramR5({
   const total = draftTotal(drafts);
 
   const pickProgram = (key: string) => {
-    setProgramKey(key);
+    setChosenProgramKey(key);
     setSubject(subjectsFor(key, library)[0] ?? null);
     setNote(null);
   };
   const pickSubject = (next: Subject) => {
-    setProgramKey(programKeyOf(next, library));
+    setChosenProgramKey(null);
     setSubject(next);
     setNote(null);
   };
@@ -260,16 +254,30 @@ export default function ProgramR5({
     setNote(null);
   };
 
-  const putOn = async (value: string) => {
-    const target = parseSubjectKey(value);
-    if (!target || !programKey) return;
-    const result = target.kind === "group"
-      ? await groups.putProgram(target.id, programKey)
-      : await programs.applyProgram(programKey, target.id);
-    // Et program paa en rytter tager ham ud af gruppen; genindlaes saa biblioteket ser det.
-    if (target.kind === "rider") await groups.reload();
-    if (result.ok) setSubject(target);
-    setNote(result.ok ? null : { tone: "error", text: tR5("programR5.saveError") });
+  const askToAdd = (value: string) => {
+    if (!chosenProgram || busy) return;
+    setDialogError(false);
+    setAddTarget(parseSubjectKey(value));
+  };
+  const closeAdd = () => { if (!saving) setAddTarget(null); };
+  const putOn = async () => {
+    if (!addTarget || !chosenProgram || busy) return;
+    setSaving(true);
+    setDialogError(false);
+    try {
+      const result = addTarget.kind === "group"
+        ? await groups.putProgram(addTarget.id, chosenProgram.key)
+        : await programs.applyProgram(chosenProgram.key, addTarget.id);
+      if (addTarget.kind === "rider") await groups.reload();
+      if (!result.ok) { setDialogError(true); return; }
+      setSubject(addTarget);
+      setAddTarget(null);
+      setNote(null);
+    } catch {
+      setDialogError(true);
+    } finally {
+      setSaving(false);
+    }
   };
   const removeRider = async (riderId: string) => {
     const result = await onClearRider(riderId);
@@ -279,7 +287,30 @@ export default function ProgramR5({
 
   // --- #8560 gruppestyring: opret, omdoeb, medlemmer, graense, slet, foelg igen ---------
   const groupsOn = groups.enabled;
-  const menuActions = groupMenuActions({ limitEnabled: fatigueRules.enabled });
+  const menuActions = groupMenuActions({ limitEnabled: fatigueRules.enabled }).filter((action) => action !== "members");
+  const openMove = (id: string, add: boolean) => {
+    setDialogError(false);
+    setMoveRider({ id, add });
+  };
+  const closeMove = () => { if (!saving) setMoveRider(null); };
+  const moveToGroup = async (groupId: string) => {
+    if (!moveRider || busy) return;
+    const target = groupList.find((g) => g.id === groupId);
+    const patch = target && groupMovePatch(target, moveRider.id);
+    if (!patch) return;
+    setSaving(true);
+    setDialogError(false);
+    try {
+      const result = await groups.update(groupId, patch);
+      if (!result.ok) { setDialogError(true); return; }
+      pickSubject({ kind: "group", id: groupId });
+      setMoveRider(null);
+    } catch {
+      setDialogError(true);
+    } finally {
+      setSaving(false);
+    }
+  };
   const openGroupDialog = (target: TrainingGroup | null) => {
     setLimitDraft(groupLimitDraft(target?.fatigue, GROUP_LIMIT_DEFAULTS));
     setGroupDialog({ group: target });
@@ -317,7 +348,7 @@ export default function ProgramR5({
     }
     setGroupDialog(null);
     setNote(null);
-    if (!editing && id) { setProgramKey(null); setSubject({ kind: "group", id }); }
+    if (!editing && id) pickSubject({ kind: "group", id });
     return true;
   };
   const deleteGroup = async () => {
@@ -337,7 +368,6 @@ export default function ProgramR5({
     if (!result.ok) { setNote({ tone: "error", text: tR5("programR5.saveError") }); return; }
     // Rytterens egne rettelser gaelder ikke laengere: han koerer gruppens uge igen.
     setDrafts((prev) => dropDrafts(prev, follow.riderIds.map((id) => subjectKey({ kind: "rider", id }))));
-    if (subject?.kind === "rider") setProgramKey(groupList.find((g) => g.id === follow.groupId)?.programKey ?? null);
     setNote(null);
   };
   const followLabel = follow
@@ -359,8 +389,8 @@ export default function ProgramR5({
           {tR5("programR5.discard")}
         </Button>
       )}
-      <Button variant="secondary" size="md" className="min-h-11" disabled={!programKey || busy} onClick={() => setCopyOpen(true)}
-        title={programKey ? undefined : tR5("programR5.copyNeedsProgram")} data-testid="program-r5-copy">
+      <Button variant="secondary" size="md" className="min-h-11" disabled={!chosenProgram || busy} onClick={() => setCopyOpen(true)}
+        title={chosenProgram ? undefined : tR5("programR5.copyNeedsProgram")} data-testid="program-r5-copy">
         {tR5("programR5.copyToRiders")}
       </Button>
       <Button variant="primary" size="md" className="min-h-11" disabled={total === 0 || busy} onClick={savePlan} data-testid="program-r5-save">
@@ -454,27 +484,64 @@ export default function ProgramR5({
   const noteEl = note ? (
     <p role="status" className={`text-xs ${note.tone === "ok" ? "text-cz-success" : "text-cz-danger"}`}>{note.text}</p>
   ) : null;
-  const copyModal = copyOpen && program ? (
+  const copyModal = copyOpen && chosenProgram ? (
     <CopyToRiders
-      program={program}
+      program={chosenProgram}
       lang={lang}
-      candidates={copyCandidates(program.key, library, riders)}
+      candidates={copyCandidates(chosenProgram.key, library, riders)}
       busy={busy}
-      onClose={() => setCopyOpen(false)}
+      saving={saving}
+      onClose={() => { if (!saving) setCopyOpen(false); }}
       onCopy={async (ids) => {
+        if (busy) return;
+        setSaving(true);
         let done = 0;
-        for (const id of ids) {
-          const result = await programs.applyProgram(program.key, id);
-          if (result.ok) done += 1;
+        try {
+          for (const id of ids) {
+            const result = await programs.applyProgram(chosenProgram.key, id);
+            if (result.ok) done += 1;
+          }
+          await groups.reload();
+          setNote(done === ids.length
+            ? { tone: "ok", text: tR5("programR5.copyDone", { n: done }) }
+            : { tone: "error", text: tR5("programR5.saveError") });
+        } catch {
+          setNote({ tone: "error", text: tR5("programR5.saveError") });
+        } finally {
+          setCopyOpen(false);
+          setSaving(false);
         }
-        if (ids.length) await groups.reload();
-        setCopyOpen(false);
-        setNote(done === ids.length
-          ? { tone: "ok", text: tR5("programR5.copyDone", { n: done }) }
-          : { tone: "error", text: tR5("programR5.saveError") });
       }}
     />
   ) : null;
+  const targetDialogs = (
+    <>
+      {chosenProgram && addTarget && (
+        <ProgramAssignmentConfirmation
+          name={programName(chosenProgram, lang)}
+          target={addTarget.kind === "group" ? { group: subjectName(addTarget) } : { riders: [{ id: addTarget.id, name: subjectName(addTarget) }] }}
+          busy={busy}
+          saving={saving}
+          error={dialogError}
+          actionId="program-r5-add-confirm"
+          onClose={closeAdd}
+          onConfirm={putOn}
+        />
+      )}
+      {moveRider && (
+        <MoveRiderDialog
+          name={riderById.get(moveRider.id)?.name ?? ""}
+          add={moveRider.add}
+          targets={groupList.filter((g) => !g.members.some((m) => m.riderId === moveRider.id))}
+          busy={busy}
+          saving={saving}
+          error={dialogError}
+          onClose={closeMove}
+          onMove={moveToGroup}
+        />
+      )}
+    </>
+  );
 
   // --- #8561 tilstande: henter / fejl (foer kataloget er der) og intet program endnu ---------
   const status = programs.status ?? "ready";
@@ -508,7 +575,7 @@ export default function ProgramR5({
           <PlusIcon size={13} aria-hidden="true" />{tR5("programR5.manage.newGroup")}
         </Button>
       ) : (
-        <Button variant="secondary" size="sm" className="min-h-11" disabled={!programKey || busy} onClick={() => setCopyOpen(true)} data-testid="program-r5-empty-copy">
+        <Button variant="secondary" size="sm" className="min-h-11" disabled={!chosenProgram || busy} onClick={() => setCopyOpen(true)} data-testid="program-r5-empty-copy">
           {tR5("programR5.copyToRiders")}
         </Button>
       )}
@@ -527,19 +594,20 @@ export default function ProgramR5({
       group: s.kind === "group",
     }));
     const copyButton = (
-      <Button variant="secondary" size="md" className="min-h-11" disabled={!programKey || busy} onClick={() => setCopyOpen(true)}
-        title={programKey ? undefined : tR5("programR5.copyNeedsProgram")} data-testid="program-r5-copy">
+      <Button variant="secondary" size="md" className="min-h-11" disabled={!chosenProgram || busy} onClick={() => setCopyOpen(true)}
+        title={chosenProgram ? undefined : tR5("programR5.copyNeedsProgram")} data-testid="program-r5-copy">
         {tR5("programR5.copyToRiders")}
       </Button>
     );
     const riderType = subject?.kind === "rider" ? riderById.get(subject.id)?.type : null;
-    const hasHints = !subject || !!riderDays?.isSeed || !!follow;
+    const hasHints = (!!program && !subject) || !!riderDays?.isSeed || !!follow;
     return (
       <div className="flex flex-col" data-testid="program-r5">
         {actionsEl ? createPortal(copyButton, actionsEl) : <div className="mb-3 flex justify-end">{copyButton}</div>}
         {emptyEl && <div className="mb-3">{emptyEl}</div>}
         <ProgramR5Phone
           focusWeekday={focusWeekday}
+          showPlan={!!(program || subject)}
           name={title}
           subtitle={program
             ? `${tR5("programR5.kind_week")} · ${onNames.length ? tR5("programR5.on", { names: onNames.join(", ") }) : tR5("programR5.notInUse")}`
@@ -551,13 +619,13 @@ export default function ProgramR5({
             <>
               {program && (
                 <AppliedTo library={library} programKey={program.key} riders={riders} groups={groupList} busy={busy}
-                  touch onAdd={putOn} onRemoveRider={removeRider} />
+                  touch canAdd={!!chosenProgram} onAdd={(value) => { close(); askToAdd(value); }} onRemoveRider={removeRider} />
               )}
               <LibraryPanel
                 library={library}
                 catalog={programs.catalog}
                 lang={lang}
-                selectedProgram={programKey}
+                selectedProgram={chosenProgram?.key ?? null}
                 selectedSubject={sKey}
                 touch
                 riderName={(id) => riderById.get(id)?.name ?? ""}
@@ -568,6 +636,7 @@ export default function ProgramR5({
                 groupBusy={busy}
                 onNewGroup={groupsOn ? () => { close(); openGroupDialog(null); } : undefined}
                 onGroupAction={groupsOn ? (id, action) => { close(); groupAction(id, action); } : undefined}
+                onMoveRider={groupsOn ? (id, add) => { close(); openMove(id, add); } : undefined}
               />
             </>
           )}
@@ -597,10 +666,10 @@ export default function ProgramR5({
           footer={(
             <>
               {noteEl}
-              <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-2xs text-cz-3">
+              {(program || subject) && <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-2xs text-cz-3">
                 <span className="inline-flex items-center gap-1"><FlagIcon size={10} aria-hidden="true" />{tR5("programR5.legendRace")}</span>
                 <span>{tR5("programR5.legendTaken")}</span>
-              </p>
+              </p>}
             </>
           )}
           saveLabel={saving ? t("loading") : tR5("programR5.savePlan")}
@@ -621,6 +690,7 @@ export default function ProgramR5({
         />
         {copyModal}
         {groupModals}
+        {targetDialogs}
       </div>
     );
   }
@@ -633,7 +703,7 @@ export default function ProgramR5({
         library={library}
         catalog={programs.catalog}
         lang={lang}
-        selectedProgram={programKey}
+        selectedProgram={chosenProgram?.key ?? null}
         selectedSubject={sKey}
         riderName={(id) => riderById.get(id)?.name ?? ""}
         onProgram={pickProgram}
@@ -642,6 +712,7 @@ export default function ProgramR5({
         groupBusy={busy}
         onNewGroup={groupsOn ? () => openGroupDialog(null) : undefined}
         onGroupAction={groupsOn ? groupAction : undefined}
+        onMoveRider={groupsOn ? openMove : undefined}
       />
 
       <section className="flex min-w-0 flex-col gap-4" aria-label={title}>
@@ -665,14 +736,15 @@ export default function ProgramR5({
             riders={riders}
             groups={groupList}
             busy={busy}
-            onAdd={putOn}
+            canAdd={!!chosenProgram}
+            onAdd={askToAdd}
             onRemoveRider={removeRider}
           />
         )}
 
         {limitEl}
 
-        <section>
+        {(program || subject) && <section>
           <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
             <span className="flex items-center gap-2">
               <h3 className={LABEL}>{tR5("programR5.weekFor")}</h3>
@@ -715,7 +787,7 @@ export default function ProgramR5({
             <span className="inline-flex items-center gap-1"><FlagIcon size={10} aria-hidden="true" />{tR5("programR5.legendRace")}</span>
             <span>{tR5("programR5.legendTaken")}</span>
           </p>
-        </section>
+        </section>}
 
         {noteEl}
         <p className="inline-flex items-center gap-1 text-2xs text-cz-3" data-testid="program-r5-today-lock">
@@ -725,6 +797,7 @@ export default function ProgramR5({
 
       {copyModal}
       {groupModals}
+      {targetDialogs}
     </div>
   );
 }
@@ -733,7 +806,7 @@ export default function ProgramR5({
 
 function LibraryPanel({
   library, catalog, lang, selectedProgram, selectedSubject, riderName, onProgram, onSubject, touch = false,
-  groupActions = [], groupBusy = false, onNewGroup, onGroupAction,
+  groupActions = [], groupBusy = false, onNewGroup, onGroupAction, onMoveRider,
 }: {
   library: Library;
   catalog: CatalogProgram[];
@@ -749,14 +822,10 @@ function LibraryPanel({
   groupBusy?: boolean;
   onNewGroup?: () => void;
   onGroupAction?: (groupId: string, action: GroupMenuAction) => void;
+  onMoveRider?: (riderId: string, add: boolean) => void;
 }) {
   const { t } = useTranslation("training");
   const { t: tR5 } = useTranslation("trainingR5"); // #7456: lazy namespace (I18nReadyGate i TrainingPage)
-  const [showAll, setShowAll] = useState(false);
-  const inUse = library.programs.filter((p) => p.inUse);
-  // Programmer i brug; er intet i brug endnu, de foerste fra kataloget. Resten bag "All programs".
-  const short = inUse.length ? inUse : library.programs.slice(0, FIRST_PROGRAMS);
-  const visible = showAll ? library.programs : short;
   const nameOf = (key: string | null) => {
     const p = catalog.find((c) => c.key === key);
     return p ? programName(p, lang) : tR5("programR5.ownWeek");
@@ -766,13 +835,20 @@ function LibraryPanel({
   const pick = (active: boolean) => (
     `${tap}w-full text-start ${active ? "text-cz-accent-t" : "text-cz-1 hover:text-cz-accent-t"}`
   );
+  const moveAction = (id: string, add = false) => onMoveRider && (
+    <Button variant="secondary" size="sm" className="shrink-0"
+      disabled={groupBusy || !library.groups.some((g) => !g.members.some((m) => m.riderId === id))}
+      onClick={() => onMoveRider(id, add)} data-testid="program-r5-move-rider">
+      {tR5(add ? "programR5.manage.addToGroup" : "programR5.manage.moveToGroup")}
+    </Button>
+  );
 
   return (
     <aside className="flex flex-col gap-4" aria-label={tR5("programR5.library")} data-testid="program-r5-library">
       <section>
         <h3 className={`mb-1.5 ${LABEL}`}>{tR5("programR5.programs")}</h3>
-        <ul className="flex flex-col gap-1">
-          {visible.map((p) => {
+        <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto" data-testid="program-r5-catalog">
+          {library.programs.map((p) => {
             const program = catalog.find((c) => c.key === p.key);
             const active = p.key === selectedProgram;
             const on = [...p.groups.map((g) => g.name), ...p.riders.map(riderName)];
@@ -791,12 +867,6 @@ function LibraryPanel({
             );
           })}
         </ul>
-        {short.length < library.programs.length && (
-          <button type="button" onClick={() => setShowAll((v) => !v)} className={`${tap}mt-1.5 text-xs font-medium text-cz-2 hover:text-cz-1`}
-            aria-expanded={showAll}>
-            {showAll ? tR5("programR5.fewerPrograms") : tR5("programR5.allPrograms", { n: library.programs.length })}
-          </button>
-        )}
       </section>
 
       <section>
@@ -809,21 +879,30 @@ function LibraryPanel({
                 <div className="flex items-center gap-1">
                   <button type="button" onClick={() => onSubject({ kind: "group", id: g.id })} className={`flex min-w-0 flex-1 items-center gap-1.5 ${pick(selectedSubject === gKey)}`}>
                     <TeamIcon size={13} aria-hidden="true" className="shrink-0 text-cz-3" />
-                    <span className="truncate font-semibold">{g.name}</span>
-                    <span className="ms-auto shrink-0 text-cz-2">{g.programKey ? nameOf(g.programKey) : tR5("programR5.ownWeek")}</span>
+                    <span className="min-w-0">
+                      <span className="block truncate font-semibold">{g.name}</span>
+                      <span className="block truncate text-2xs text-cz-2">{g.programKey ? nameOf(g.programKey) : tR5("programR5.ownWeek")}</span>
+                    </span>
                   </button>
                   {onGroupAction && (
-                    <GroupMenu name={g.name} actions={groupActions} touch={touch} disabled={groupBusy} onPick={(action) => onGroupAction(g.id, action)} />
+                    <>
+                      <Button variant="secondary" size="sm" className="shrink-0" disabled={groupBusy}
+                        onClick={() => onGroupAction(g.id, "members")} data-testid="program-r5-group-members">
+                        {tR5("programR5.manage.members")}
+                      </Button>
+                      <GroupMenu name={g.name} actions={groupActions} touch={touch} disabled={groupBusy} onPick={(action) => onGroupAction(g.id, action)} />
+                    </>
                   )}
                 </div>
                 <ul className="mt-1 flex flex-col gap-0.5 ps-5">
                   {g.members.map((m) => (
-                    <li key={m.riderId} className="flex items-center justify-between gap-2 text-2xs">
+                    <li key={m.riderId} className="flex items-center gap-x-2 text-2xs" data-testid="program-r5-rider">
                       <button type="button" onClick={() => onSubject({ kind: "rider", id: m.riderId })}
-                        className={`${tap}min-w-0 truncate text-start ${selectedSubject === `rider:${m.riderId}` ? "text-cz-accent-t" : "text-cz-2 hover:text-cz-1"}`}>
+                        className={`${tap}min-w-0 flex-1 break-words text-start ${selectedSubject === `rider:${m.riderId}` ? "text-cz-accent-t" : "text-cz-2 hover:text-cz-1"}`}>
                         {riderName(m.riderId)}
+                        {m.own && <span className="block text-cz-2">{tR5("programR5.ownPlan", { name: nameOf(m.ownProgramKey) })}</span>}
                       </button>
-                      {m.own && <span className="shrink-0 text-cz-1">{tR5("programR5.ownPlan", { name: nameOf(m.ownProgramKey) })}</span>}
+                      {moveAction(m.riderId)}
                     </li>
                   ))}
                 </ul>
@@ -839,23 +918,29 @@ function LibraryPanel({
             </li>
           )}
           {library.ownOnly.map((r) => (
-            <li key={r.riderId} className={row}>
+            <li key={r.riderId} className={`${row} flex items-center gap-x-2`} data-testid="program-r5-rider">
               <button type="button" onClick={() => onSubject({ kind: "rider", id: r.riderId })}
-                className={`flex items-center gap-1.5 ${pick(selectedSubject === `rider:${r.riderId}`)}`}>
+                className={`flex min-w-0 flex-1 items-center gap-1.5 ${pick(selectedSubject === `rider:${r.riderId}`)}`}>
                 <UserIcon size={13} aria-hidden="true" className="shrink-0 text-cz-3" />
-                <span className="truncate">{riderName(r.riderId)}</span>
-                <span className="ms-auto shrink-0 text-cz-2">{tR5("programR5.ownPlan", { name: nameOf(r.programKey) })}</span>
+                <span className="min-w-0 break-words">
+                  {riderName(r.riderId)}
+                  <span className="block text-2xs text-cz-2">{tR5("programR5.ownPlan", { name: nameOf(r.programKey) })}</span>
+                </span>
               </button>
+              {moveAction(r.riderId)}
             </li>
           ))}
           {library.noProgram.map((id) => (
-            <li key={id} className={row}>
+            <li key={id} className={`${row} flex items-center gap-x-2`} data-testid="program-r5-rider">
               <button type="button" onClick={() => onSubject({ kind: "rider", id })}
-                className={`flex items-center gap-1.5 ${pick(selectedSubject === `rider:${id}`)}`}>
+                className={`flex min-w-0 flex-1 items-center gap-1.5 ${pick(selectedSubject === `rider:${id}`)}`}>
                 <UserIcon size={13} aria-hidden="true" className="shrink-0 text-cz-3" />
-                <span className="truncate text-cz-2">{riderName(id)}</span>
-                <span className="ms-auto shrink-0 text-cz-3">{tR5("programR5.noProgram")}</span>
+                <span className="min-w-0 break-words">
+                  {riderName(id)}
+                  <span className="block text-2xs text-cz-3">{tR5("programR5.noProgram")}</span>
+                </span>
               </button>
+              {moveAction(id, true)}
             </li>
           ))}
         </ul>
@@ -947,7 +1032,7 @@ function GroupLimitFields({
 // --- Hvem programmet sidder paa ---------------------------------------------------------
 
 function AppliedTo({
-  library, programKey, riders, groups, busy, onAdd, onRemoveRider, touch = false,
+  library, programKey, riders, groups, busy, canAdd, onAdd, onRemoveRider, touch = false,
 }: {
   library: Library;
   programKey: string;
@@ -955,6 +1040,7 @@ function AppliedTo({
   groups: R5Group[];
   busy: boolean;
   touch?: boolean; // telefonens ark: mindst 44 px trykflader
+  canAdd: boolean;
   onAdd: (value: string) => void;
   onRemoveRider: (riderId: string) => void;
 }) {
@@ -985,7 +1071,7 @@ function AppliedTo({
         </span>
       ))}
       {/* #8561: kittets synlige Select (44 px) i stedet for en usynlig native select over en chip. */}
-      <Select size="sm" value="" disabled={busy} onChange={(e: { target: { value: string } }) => onAdd(e.target.value)} aria-label={tR5("programR5.addTarget")}
+      <Select size="sm" value="" disabled={!canAdd || busy} onChange={(e: { target: { value: string } }) => onAdd(e.target.value)} aria-label={tR5("programR5.addTarget")}
         className="min-h-11 w-auto min-w-44" data-testid="program-r5-add-target">
           <option value="" disabled>{"+ " + tR5("programR5.addTarget")}</option>
           {freeGroups.length > 0 && (
@@ -1216,44 +1302,146 @@ function ProgramR5Skeleton({ mobile }: { mobile: boolean }) {
   );
 }
 
+export function ProgramAssignmentConfirmation({
+  name, target, busy, saving, error, actionId, onClose, onConfirm,
+}: {
+  name: string;
+  target: { group: string } | { riders: Pick<R5Rider, "id" | "name">[] };
+  busy: boolean;
+  saving: boolean;
+  error?: boolean;
+  actionId: string;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  const { t: tR5 } = useTranslation("trainingR5");
+  const title = "group" in target
+    ? tR5("programR5.confirmGroup", { name, group: target.group })
+    : tR5("programR5.confirmRiders", { name, n: target.riders.length });
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      size="sm"
+      title={title}
+      titleId="program-r5-confirm-title"
+      ariaLabelledby={undefined}
+      description={null}
+      closeLabel={tR5("programR5.cancel")}
+      footer={
+        <>
+          <Button variant="secondary" disabled={saving} onClick={onClose}>{tR5("programR5.cancel")}</Button>
+          <Button variant="primary" disabled={busy} onClick={onConfirm} data-testid={actionId}>{tR5("programR5.confirm")}</Button>
+        </>
+      }
+    >
+      {"riders" in target && (
+        <ul className="flex max-h-80 flex-col gap-1.5 overflow-y-auto text-xs text-cz-2">
+          {target.riders.map((rider) => <li key={rider.id}>{rider.name}</li>)}
+        </ul>
+      )}
+      {error && <p role="alert" className="text-xs text-cz-danger">{tR5("programR5.saveError")}</p>}
+    </Modal>
+  );
+}
+
+export function MoveRiderDialog({
+  name, add, targets, busy, saving, error, onClose, onMove,
+}: {
+  name: string;
+  add: boolean;
+  targets: R5Group[];
+  busy: boolean;
+  saving: boolean;
+  error: boolean;
+  onClose: () => void;
+  onMove: (id: string) => void;
+}) {
+  const { t: tR5 } = useTranslation("trainingR5");
+  const [groupId, setGroupId] = useState("");
+  const action = tR5(add ? "programR5.manage.addToGroup" : "programR5.manage.moveToGroup");
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      size="sm"
+      title={action}
+      titleId="program-r5-move-title"
+      ariaLabelledby={undefined}
+      description={null}
+      closeLabel={tR5("programR5.cancel")}
+      footer={
+        <>
+          <Button variant="secondary" disabled={saving} onClick={onClose}>{tR5("programR5.cancel")}</Button>
+          <Button variant="primary" disabled={busy || !targets.some((g) => g.id === groupId)}
+            onClick={() => onMove(groupId)} data-testid="program-r5-move-confirm">{action}</Button>
+        </>
+      }
+    >
+      <p className="mb-2 text-xs text-cz-2">{name}</p>
+      <Select size="sm" value={groupId} disabled={busy} onChange={(e: { target: { value: string } }) => setGroupId(e.target.value)}
+        aria-label={tR5("programR5.manage.chooseGroup")} className="min-h-11" data-testid="program-r5-move-target">
+        <option value="" disabled>{tR5("programR5.manage.chooseGroup")}</option>
+        {targets.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+      </Select>
+      {error && <p role="alert" className="mt-2 text-xs text-cz-danger">{tR5("programR5.saveError")}</p>}
+    </Modal>
+  );
+}
+
 // --- Copy to riders ---------------------------------------------------------------------
 
 function CopyToRiders({
-  program, lang, candidates, busy, onClose, onCopy,
+  program, lang, candidates, busy, saving, onClose, onCopy,
 }: {
   program: CatalogProgram;
   lang: string;
   candidates: R5Rider[];
   busy: boolean;
+  saving: boolean;
   onClose: () => void;
   onCopy: (riderIds: string[]) => void;
 }) {
   const { t } = useTranslation("training");
   const { t: tR5 } = useTranslation("trainingR5"); // #7456: lazy namespace (I18nReadyGate i TrainingPage)
   const [picked, setPicked] = useState<Set<string>>(() => new Set());
+  const [recipients, setRecipients] = useState<R5Rider[] | null>(null);
+  const selectedRiders = candidates.filter((r) => picked.has(r.id));
+  const name = programName(program, lang);
   const toggle = (id: string) => setPicked((prev) => {
     const next = new Set(prev);
     if (next.has(id)) next.delete(id); else next.add(id);
     return next;
   });
+  if (recipients) return (
+    <ProgramAssignmentConfirmation
+      name={name}
+      target={{ riders: recipients }}
+      busy={busy}
+      saving={saving}
+      actionId="program-r5-copy-confirm"
+      onClose={onClose}
+      onConfirm={() => onCopy(recipients.map((r) => r.id))}
+    />
+  );
   return (
     <Modal
       open
       onClose={onClose}
       size="sm"
-      title={tR5("programR5.copyTitle", { name: programName(program, lang) })}
+      title={tR5("programR5.copyTitle", { name })}
       titleId="program-r5-copy-title"
       ariaLabelledby={undefined}
       description={null}
       closeLabel={tR5("programR5.cancel")}
-      footer={(
+      footer={
         <>
           <Button variant="secondary" onClick={onClose}>{tR5("programR5.cancel")}</Button>
-          <Button variant="primary" disabled={picked.size === 0 || busy} onClick={() => onCopy([...picked])} data-testid="program-r5-copy-go">
-            {tR5("programR5.copyGo", { n: picked.size })}
+          <Button variant="primary" disabled={selectedRiders.length === 0 || busy} onClick={() => setRecipients(selectedRiders)} data-testid="program-r5-copy-go">
+            {tR5("programR5.continue")}
           </Button>
         </>
-      )}
+      }
     >
       <p className="mb-3 text-xs text-cz-2">{tR5("programR5.copyBody")}</p>
       <ul className="flex max-h-80 flex-col gap-1.5 overflow-y-auto">
