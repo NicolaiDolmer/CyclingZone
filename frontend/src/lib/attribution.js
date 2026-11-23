@@ -41,6 +41,16 @@ function parseUrl(raw) {
   }
 }
 
+// Matches the database writer's recovery for legacy same-site referrers.
+const OWN_SITE_HOSTS = ["cyclingzone.org", "cycling-zone.vercel.app", "cycling-zone-marketing.vercel.app"];
+
+export function getLegacyCampaignParams(record) {
+  if (typeof record?.utm_source === "string" && record.utm_source.trim()) return null;
+  const url = parseUrl(record?.referrer);
+  if (!url || !OWN_SITE_HOSTS.some((host) => url.hostname === host || url.hostname.endsWith("." + host))) return null;
+  return url.searchParams.get("utm_source")?.trim() ? url.searchParams : null;
+}
+
 // Builds the stored record. Pure, so the same-origin rule is unit-testable.
 // #5310: since the marketing front page took over "/" (14/9) a visitor can reach
 // the SPA from one of our own pages. A same-origin referrer is then our own page,
@@ -91,6 +101,8 @@ function resolveLocalStorage() {
   return window.localStorage;
 }
 
+let inMemoryFirstTouch = null;
+
 // Runs on every load but writes ONCE — the first visit wins. Args are injectable
 // for unit-testing; defaults read the real browser context.
 export function captureFirstTouch({
@@ -101,22 +113,24 @@ export function captureFirstTouch({
   storage,
   now = () => new Date().toISOString(),
 } = {}) {
+  let record;
   try {
     const store = storage ?? resolveLocalStorage();
     if (store.getItem(STORAGE_KEY)) return; // first-touch wins — never overwrite
-    const record = buildFirstTouchRecord({ search, referrer, path, origin, firstSeenAt: now() });
+    record = inMemoryFirstTouch ?? buildFirstTouchRecord({ search, referrer, path, origin, firstSeenAt: now() });
     store.setItem(STORAGE_KEY, JSON.stringify(record));
   } catch {
-    // localStorage unavailable (private mode / blocked) — attribution is best-effort.
+    // Keep the allowlisted signup snapshot available during this page load.
+    inMemoryFirstTouch ??= record ?? buildFirstTouchRecord({ search, referrer, path, origin, firstSeenAt: now() });
   }
 }
 
 export function getAttribution(storage) {
   try {
     const raw = (storage ?? resolveLocalStorage()).getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
+    return raw ? JSON.parse(raw) : inMemoryFirstTouch;
   } catch {
-    return null;
+    return inMemoryFirstTouch;
   }
 }
 
@@ -153,4 +167,13 @@ export function getAttributionForBackend(storage) {
 // too, not just the localStorage read.
 export function sanitizeAttributionForBackend(record) {
   return stripClickIds(record);
+}
+
+// The account snapshot was captured at signUp. A browser opening the email
+// confirmation may already have its own, unrelated first touch.
+export function resolveSignupAttribution(accountAttribution, storage) {
+  if (accountAttribution && typeof accountAttribution === "object" && !Array.isArray(accountAttribution)) {
+    return sanitizeAttributionForBackend(accountAttribution);
+  }
+  return getAttributionForBackend(storage);
 }

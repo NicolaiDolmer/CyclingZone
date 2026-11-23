@@ -139,6 +139,8 @@ Derfor er "(direct / ukendt)" med 76 af 152 rækker ikke en kanal. **Det er hull
 
 📄 Ikke bygget (#3796). Foreslået leverance: valgfri dropdown ved onboarding (Discord / Reddit / søgemaskine / ven eller bekendt / forum / AI-chatbot / andet), gemt som `self_reported_source` sammen med first-touch-rækken, service_role-only RLS som resten af tabellen, med i Attribution-fanen og CSV-eksporten. Det er den eneste mekanisme der kan udfylde hullet i §3.2.
 
+Ved bekræftelse af signup kommer first-touch fra auth-metadata, hvis snapshottet findes. Det bevarer kontooprettelsens kampagne, selv når bekræftelsen åbner i en anden browser. Hvis browseren blokerer localStorage, kan SPA'en bevare de indgående UTM'er i hukommelsen, mens signup-siden er åben.
+
 ### 3.4 UTM-konventionen (bindende)
 
 📄 Besluttet 8/9 (#3796, research §6). Konventionen bor **her**, ikke i et separat `docs/marketing/UTM_CONVENTION.md`.

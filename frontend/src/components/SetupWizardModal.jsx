@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
-import { getAttributionForBackend, sanitizeAttributionForBackend } from "../lib/attribution";
+import { resolveSignupAttribution } from "../lib/attribution";
 import { ChevronRightIcon } from "./ui/icons";
 // #5159 (B1): onboarding er foerste indtryk — et deploy midt i den maa ikke
 // nulstille holdnavn og managernavn under spilleren.
@@ -65,7 +65,7 @@ export default function SetupWizardModal({ onComplete, initialTeamName = "", ini
         body: JSON.stringify({
           name: teamName.trim(),
           manager_name: managerName.trim(),
-          attribution: getAttributionForBackend() || sanitizeAttributionForBackend(session.user?.user_metadata?.attribution) || null,
+          attribution: resolveSignupAttribution(session.user?.user_metadata?.attribution),
         }),
       });
       const data = res.data || {};

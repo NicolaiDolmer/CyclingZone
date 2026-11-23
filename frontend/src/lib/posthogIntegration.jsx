@@ -111,19 +111,29 @@ export default function PosthogIntegration() {
   useEffect(() => {
     if (!POSTHOG_ENABLED || !posthogOn) return;
     let cancelled = false;
-    startPosthog().then(() => {
+    startPosthog().then(async () => {
       if (cancelled) return;
       if (userId && profileReady) {
         if (identifiedRef.current === userId) return;
+        let user;
+        try {
+          const { data } = await supabase.auth.getSession();
+          user = data?.session?.user;
+          if (user?.id !== userId) return;
+        } catch {
+          // Attribution er best-effort, og profilen har allerede brugerens UUID.
+        }
+        if (cancelled || !posthogOnRef.current) return;
+        if (user) identifyPosthog(userId, user.user_metadata?.attribution);
+        else identifyPosthog(userId);
         identifiedRef.current = userId;
-        identifyPosthog(userId);
       } else if (!userId && identifiedRef.current) {
         // Logget ud: bryd koblingen, så næste anonyme session på samme fane
         // ikke hænger på den forrige bruger.
         identifiedRef.current = null;
         resetPosthog();
       }
-    });
+    }).catch(() => { /* best-effort — auth lookup must not break navigation */ });
     return () => { cancelled = true; };
   }, [posthogOn, userId, profileReady]);
 

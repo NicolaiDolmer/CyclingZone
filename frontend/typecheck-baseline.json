@@ -1642,10 +1642,9 @@
     "TS18048": 2
   },
   "src/lib/posthogClient.js": {
-    "TS18047": 3,
+    "TS18047": 2,
     "TS2322": 3,
-    "TS2339": 4,
-    "TS2698": 1
+    "TS2339": 4
   },
   "src/lib/posthogIntegration.jsx": {
     "TS2339": 1

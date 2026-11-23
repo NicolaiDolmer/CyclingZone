@@ -18,6 +18,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { runInNewContext } from "node:vm";
+import { setImmediate } from "node:timers/promises";
 
 import {
   POSTHOG_ENABLED,
@@ -28,6 +30,7 @@ import {
   isInternalPosthogUser,
   resolveEffectiveConsent,
   createPosthogClient,
+  buildPosthogEventProperties,
   startPosthog,
   capturePosthogEvent,
   capturePosthogPageview,
@@ -316,7 +319,7 @@ test("posthogIntegration.jsx: gaten er isPosthogAllowed, ikke analytics-ja", () 
 
 test("posthogIntegration.jsx: identify venter på profilen og bruger kun UUID'et", () => {
   assert.match(integrationSource, /const profileReady = Boolean\(userId\) && !profileLoading && teamLookupDone;/);
-  assert.match(integrationSource, /identifyPosthog\(userId\)/);
+  assert.match(integrationSource, /identifyPosthog\(userId, user\.user_metadata\?\.attribution\)/);
   assert.match(integrationSource, /resetPosthog\(\)/, "logout skal resette");
   assert.doesNotMatch(integrationSource, /identifyPosthog\([^)]*(email|name)/i);
 });
@@ -353,9 +356,6 @@ test("lite-specifikke valg: ingen tabte events, ingen ekstra rundture (#5055)", 
   assert.equal(POSTHOG_OPTIONS.flushAt, 1, "hvert event skal sendes med det samme");
   assert.equal(POSTHOG_OPTIONS.preloadFeatureFlags, false, "vi bruger ingen feature flags");
   assert.equal(POSTHOG_OPTIONS.disableSurveys, true, "vi bruger ingen surveys");
-  // posthog-js hængte selv kampagne-parametre på hvert event; lite gør ikke.
-  assert.match(clientSource, /utm_source/, "kampagne-parametre skal stadig med på events");
-  assert.match(clientSource, /gclid/, "klik-id'er skal stadig med på events");
 });
 
 test("genoptaget samtykke ophæver et opt-out i samme page load (#5055)", () => {
@@ -479,4 +479,64 @@ test("integrationen slår internt hold op og lukker gaten for interne brugere", 
 test("#7811: en start der lander efter lukket gate opter ud", () => {
   const src = readFileSync(new URL("./posthogIntegration.jsx", import.meta.url), "utf8");
   assert.match(src, /if \(cancelled\) \{\s*if \(!posthogOnRef\.current\) optOutPosthog\(\);/);
+});
+
+test("the real SDK sends first-touch properties and strips click IDs from URLs", async () => {
+  const env = installFakeBrowser();
+  try {
+    window.location.href += "?utm_campaign=later&fbclid=private";
+    Object.defineProperty(document, "referrer", { value: "https://example.org/?utm_source=original&gclid=private" });
+    const { PostHog } = await import("posthog-js-lite");
+    const client = createPosthogClient(PostHog, "test-project-key");
+    const campaign = { utm_source: "example-source", utm_campaign: "original" };
+    client.identify("11111111-1111-1111-1111-111111111111");
+    client.capture("signup", buildPosthogEventProperties("signup", {}, campaign, window.location.search));
+    await settle();
+    const signup = env.sent.flatMap((request) => request.body?.batch || []).find((event) => event.event === "signup");
+    assert.equal(signup.properties.utm_campaign, "original");
+    assert.deepEqual(signup.properties.$set_once, campaign);
+    assert.equal(new URL(signup.properties.$current_url).searchParams.has("fbclid"), false);
+    assert.equal(new URL(signup.properties.$referrer).searchParams.has("gclid"), false);
+  } finally {
+    env.restore();
+  }
+});
+
+test("identify bruger profilens UUID når opslaget af sessionsmetadata fejler", async () => {
+  const userId = "fixture-user";
+  const identify = test.mock.fn();
+  const getSession = test.mock.fn(async () => { throw new Error("storage unavailable"); });
+  /** @type {Array<() => void | (() => void)>} */
+  const effects = [];
+  const source = integrationSource.replace(/^[\s\S]*?export default function /, "function ");
+
+  // Komponenten returnerer null. Kør dens faktiske effects med en klar
+  // brugerprofil og afsluttet holdopslag som fixture.
+  runInNewContext(source + "\nPosthogIntegration();", {
+    POSTHOG_ENABLED: true,
+    useState: () => [{ userId, value: false }, () => {}],
+    useRef: (current) => ({ current }),
+    useEffect: (effect) => effects.push(effect),
+    useLocation: () => ({ pathname: "/dashboard" }),
+    useConsent: () => ({ consent: { analytics: true }, hasResponded: true }),
+    useUserProfile: () => ({ userId, profile: { role: "manager" }, loading: false }),
+    supabase: {
+      auth: { getSession },
+      from: () => ({ select: () => ({ eq: async () => ({ data: [], error: null }) }) }),
+    },
+    resolveEffectiveConsent,
+    isPosthogAllowed,
+    isInternalPosthogUser,
+    startPosthog: async () => {},
+    capturePosthogPageview: () => {},
+    identifyPosthog: identify,
+  });
+  for (const effect of effects) effect();
+  await setImmediate();
+
+  assert.equal(getSession.mock.callCount(), 1);
+  assert.equal(identify.mock.callCount(), 1);
+  const args = identify.mock.calls[0].arguments;
+  assert.equal(args.length, 1);
+  assert.equal(args[0], userId);
 });
