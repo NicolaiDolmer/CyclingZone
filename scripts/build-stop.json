@@ -413,6 +413,11 @@
       "issue": 8580,
       "area": "training-r5",
       "why": "Ejer-go 22/11 formiddag (PC1, AskUserQuestion): \"Ja, byg #8580\" - I dag R5 dagsvælgeren med pile. Følger dommer-scenarierne UGE-1..7 i docs/audits/7456-program-dommer-scenarier.md. Byg på Dolmer PC (opgave #8584)."
+    },
+    {
+      "issue": 8584,
+      "area": "plan-og-vaekst",
+      "why": "Ejer-go 23/11 (PC1, chat): \"Ja de maa gerne komme paa listen\" - kun Codex G roadmap-model + faste tidspunkter (PR #8616), H saesonskifte-mails 26+29/11 (PR #8619), J annoncepakke, N tracking foer annoncer. Merge kraever stadig ejerens ordrette merge."
     }
   ],
   "cleanupList": [
