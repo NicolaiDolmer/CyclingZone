@@ -1023,13 +1023,13 @@ features:
     area: training
     title_en: The rolling training week for the day picker
     title_da: Den rullende træningsuge til dagsvælgeren
-    state: building
+    state: live
     flag: training_week_forecast
     ssot: docs/TRAINING_RULES.md
     epic: 7456
     verified: 2026-11-22
-    note: "PR 1 af 2 (GET /api/training/programs/forecast/week) bag training_week_forecast = off. Dag 0 = GET /forecast uændret; dagene frem har kun løbs- og hvilefelter (ingen træthed, K-7). Dagsvælgeren i I dag R5 (PR 2) følger; Fable-dom før merge; ejer tænder."
-    decision: goer-faerdigt
+    note: "On 22/11 aften efter ejer-ja på prod-billeder (#8580): rettelsen #8599 merget, kontakten off → beta → on. GET /api/training/programs/forecast/week + dagsvælgeren i I dag R5; dag 0 = GET /forecast uændret, dagene frem har kun løbs- og hvilefelter (K-7)."
+    decision: taend
     decide_by: 2026-12-06
 
   # --- academy -------------------------------------------------------------
