@@ -15,7 +15,7 @@ import { RIDERS, TEST_TEAM } from "./seedData.js";
 import { PREVIEW_YOUTH_RIDERS } from "./youthSquadsMock.ts";
 
 type SeedEstimate = { level?: number; role?: string | null; now?: number | null };
-type SeedReport = { maxLevel: number; scout?: unknown };
+type SeedReport = { maxLevel: number; scout?: unknown; primaryKey?: string; types?: { key: string; now: number; progLo: number; progHi: number }[] };
 type SeedProjection = { level: number; maxLevel: number; own: boolean; now: number; primaryKey: string };
 
 const KEY = "cz_mock_potential_estimate";
@@ -135,7 +135,13 @@ export function previewAcademy<T extends {
 
 export function previewReport(id: string, seed: SeedReport, own: boolean) {
   const view = viewFor(id);
+  // #6110: prognosen pr. ryttertype står under skønnet igen, for egne og scoutede ryttere.
+  // Kun nu-rating og prognose-bånd, som serveren sender; loft og alias er ikke med.
+  const types = !view.hidden && seed.types?.length
+    ? seed.types.map(({ key, now, progLo, progHi }) => ({ key, now, progLo, progHi }))
+    : null;
   return {
+    ...(types ? { primaryKey: seed.primaryKey ?? null, types } : {}),
     level: view.hidden ? 0 : own ? seed.maxLevel : 1,
     maxLevel: seed.maxLevel,
     own,

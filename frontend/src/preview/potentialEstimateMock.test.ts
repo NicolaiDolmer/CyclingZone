@@ -21,7 +21,9 @@ test("ingen af de tre svar bærer interval eller loft", () => {
       previewProjection(id, SEED_PROJECTION),
     ];
     for (const answer of answers) {
-      assert.doesNotMatch(JSON.stringify(answer), FORBIDDEN, id);
+      // #6110: rapporten bærer prognose-båndene pr. ryttertype (nu + prognose), aldrig intervallet på skønnet selv.
+      const { types: _roleTypes, ...rest } = answer as Record<string, unknown>;
+      assert.doesNotMatch(JSON.stringify(rest), FORBIDDEN, id);
       assert.ok(potentialViewOf(answer), id);
     }
   }
@@ -34,6 +36,21 @@ test("samme rytter har samme skøn på alle tre svar", () => {
   assert.deepEqual(estimate.potentialView, report.potentialView);
   assert.deepEqual(estimate.potentialView, projection.potentialView);
   assert.ok(!("estimateLine" in projection), "#8523: den gamle kurve er væk");
+});
+
+test("#6110: rapporten bærer prognosen pr. ryttertype, men aldrig for skjulte ryttere", () => {
+  let withList = 0;
+  for (const id of ["rider-1", "rider-2", "rider-x1", "rider-x2", "rider-x3", "rider-x4"]) {
+    const report = previewReport(id, SEED_SCOUTING_REPORT, true) as { potentialView: { hidden: boolean }; types?: Record<string, unknown>[] };
+    if (report.potentialView.hidden) {
+      assert.equal(report.types, undefined, id);
+      continue;
+    }
+    withList += 1;
+    assert.equal(report.types?.length, 8, id);
+    assert.ok(report.types?.every((row) => !("loft" in row) && !("ceilLo" in row)), "kun nu og prognose-bånd");
+  }
+  assert.ok(withList > 0, "mindst én rytter har en liste");
 });
 
 test("#8523: egne ryttere har samme prognose på alle svar, andres ingen", () => {
