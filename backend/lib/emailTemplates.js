@@ -225,22 +225,43 @@ function outlineButtonHtml(url, label) {
 // replace the shared account-based footer for a mail sent on consent
 // (s5-launch), and preheader adds the hidden inbox-preview line. Left out, the
 // output is byte-identical to before, so no other mail type changes.
-function wrapHtml({ eyebrow, bodyHtml, unsubscribeUrl, language, unsubLine, unsubLinkText, preheader }) {
+//
+// #8396: the S6 campaign adds a few more, all optional and all off by default
+// so every other mail type stays byte-identical: a <title>, dir (set on <html>
+// and, with lang, on the body's first table, since some clients strip <html>),
+// larger body and footer text, extra colour-lock CSS and a sender line.
+function wrapHtml({
+  eyebrow,
+  bodyHtml,
+  unsubscribeUrl,
+  language,
+  unsubLine,
+  unsubLinkText,
+  preheader,
+  includeDiscord = true,
+  title,
+  dir,
+  bodyFontSize = 15,
+  footerFontSize = 12,
+  extraCss = "",
+  companyLine,
+}) {
   const lang = normalizeLanguage(language);
   const copy = copyFor(lang);
   const footerLine = unsubLine ?? copy.unsubLine;
   const footerLinkText = unsubLinkText ?? copy.unsubLinkText;
   return `<!doctype html>
-<html lang="${lang}" style="color-scheme:light;supported-color-schemes:light;">
+<html lang="${lang}"${dir ? ` dir="${dir}"` : ""} style="color-scheme:light;supported-color-schemes:light;">
   <head>
-    <meta charset="utf-8">
+    <meta charset="utf-8">${title ? `
+    <title>${escapeHtml(title)}</title>` : ""}
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light">
     <meta name="supported-color-schemes" content="light">
-    <style>${COLOR_LOCK_CSS}</style>
+    <style>${COLOR_LOCK_CSS}${extraCss}</style>
   </head>
   <body class="cz-page" bgcolor="${PAGE_BG}" style="margin:0;padding:0;background:${PAGE_BG};background-color:${PAGE_BG};color-scheme:light;supported-color-schemes:light;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">${preheaderHtml(preheader)}
-    <table role="presentation" class="cz-page" bgcolor="${PAGE_BG}" width="100%" cellpadding="0" cellspacing="0" style="background:${PAGE_BG};background-color:${PAGE_BG};padding:24px 0;">
+    <table role="presentation"${dir ? ` lang="${lang}" dir="${dir}"` : ""} class="cz-page" bgcolor="${PAGE_BG}" width="100%" cellpadding="0" cellspacing="0" style="background:${PAGE_BG};background-color:${PAGE_BG};padding:24px 0;">
       <tr>
         <td align="center">
           <table role="presentation" class="cz-card" bgcolor="${CARD_BG}" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:${CARD_BG};background-color:${CARD_BG};">
@@ -255,15 +276,16 @@ function wrapHtml({ eyebrow, bodyHtml, unsubscribeUrl, language, unsubLine, unsu
               </td>
             </tr>
             <tr>
-              <td class="cz-body" bgcolor="${CARD_BG}" style="background:${CARD_BG};background-color:${CARD_BG};padding:32px 24px;color:${TEXT};font-size:15px;line-height:1.55;">
-                ${bodyHtml}
+              <td class="cz-body" bgcolor="${CARD_BG}" style="background:${CARD_BG};background-color:${CARD_BG};padding:32px 24px;color:${TEXT};font-size:${bodyFontSize}px;line-height:1.55;">
+                ${bodyHtml}${includeDiscord ? `
                 <p class="cz-text" style="margin:32px 0 12px;color:${TEXT};">${escapeHtml(copy.discordLine)}</p>
-                <p style="margin:0 0 32px;">${outlineButtonHtml(DISCORD_URL, copy.discordButton)}</p>
+                <p style="margin:0 0 32px;">${outlineButtonHtml(DISCORD_URL, copy.discordButton)}</p>` : ""}
                 <p class="cz-text" style="margin:0;font-weight:700;color:${TEXT};">Dolmer, Cycling Zone</p>
-                <p class="cz-muted" style="margin:24px 0 0;font-size:12px;color:${TEXT_MUTED};">
+                <p class="cz-muted" style="margin:24px 0 0;font-size:${footerFontSize}px;color:${TEXT_MUTED};">
                   ${escapeHtml(footerLine)}
                   <a class="cz-muted" href="${escapeHtml(unsubscribeUrl)}" style="color:${TEXT_MUTED};">${escapeHtml(footerLinkText)}</a>.
-                </p>
+                </p>${companyLine ? `
+                <p class="cz-muted" style="margin:8px 0 0;font-size:${footerFontSize}px;color:${TEXT_MUTED};">${escapeHtml(companyLine)}</p>` : ""}
               </td>
             </tr>
           </table>
@@ -274,14 +296,14 @@ function wrapHtml({ eyebrow, bodyHtml, unsubscribeUrl, language, unsubLine, unsu
 </html>`;
 }
 
-function wrapText({ bodyText, unsubscribeUrl, language, unsubLine, unsubLinkText }) {
+function wrapText({ bodyText, unsubscribeUrl, language, unsubLine, unsubLinkText, includeDiscord = true, companyLine }) {
   const copy = copyFor(language);
   return [
     bodyText,
-    copy.discordLine,
-    `${copy.discordButton}: ${DISCORD_URL}`,
+    ...(includeDiscord ? [copy.discordLine, `${copy.discordButton}: ${DISCORD_URL}`] : []),
     "Dolmer, Cycling Zone",
     `${unsubLine ?? copy.unsubLine} ${unsubLinkText ?? copy.unsubLinkText}: ${unsubscribeUrl}`,
+    ...(companyLine ? [companyLine] : []),
   ].join("\n\n");
 }
 
@@ -759,6 +781,302 @@ export function buildS5LaunchEmail({ unsubscribeUrl, language, withPreheader = S
       preheader: withPreheader ? s5.preheader : undefined,
     }),
     text: wrapText({ bodyText, unsubscribeUrl, language: lang, unsubLine: s5.unsubLine, unsubLinkText: s5.unsubLinkText }),
+  };
+}
+
+
+// ─── Season 6 campaign drafts (#8584, #8396) ────────────────────────────────
+// Two dated mails: "before-start" (Thursday 26/11) and "started" (Sunday
+// 29/11). Each has three audiences by last visit: active (under two weeks),
+// dormant (two to eight weeks) and away (over eight weeks), so every reader
+// gets an opening that matches where they are. Only features that are on for
+// every player are named. DRAFT for owner approval: this builder has no entry
+// in the mail loop, the win-back sender or Resend.
+//
+// Best practice per the resend email-best-practices guide: a hero image of the
+// new screens with real alt text (it reads on a navy cell when images are
+// off), one gold primary button with a deep link, a hidden preheader, two
+// subject variants under 50 characters, a <title>, lang and dir on <html> and
+// on the body's first table, 16px text, a 48px tall button, sender details
+// and the signed unsubscribe link in the footer, plus a plain-text version.
+// The one-click List-Unsubscribe header is added by the sender
+// (emailService.js), not by the template.
+
+export const S6_EDITIONS = Object.freeze(["before-start", "started"]);
+export const S6_AUDIENCES = Object.freeze(["active", "dormant", "away"]);
+export const S6_SUBJECT_VARIANTS = Object.freeze(["a", "b"]);
+
+const S6_ASSET_BASE = "https://cyclingzone.org/email/s6";
+// The hero PNG is a 2x raster; the mail shows it at the body column's width.
+const S6_HERO_WIDTH = 552;
+const S6_HERO_HEIGHT = 301;
+const S6_BODY_FONT_SIZE = 16;
+const S6_FOOTER_FONT_SIZE = 14;
+
+// The audience a player belongs to, from whole days since the last visit. The
+// limits are the campaign's own definition (owner 23/11): two and eight weeks.
+export function s6AudienceForDaysAway(daysSinceLastSeen) {
+  // No known visit reads as away: the opening then explains the most.
+  if (daysSinceLastSeen === null || daysSinceLastSeen === undefined || daysSinceLastSeen === "") return "away";
+  const days = Number(daysSinceLastSeen);
+  if (!Number.isFinite(days) || days < 0) return "away";
+  if (days < 14) return "active";
+  if (days <= 56) return "dormant";
+  return "away";
+}
+
+const S6_COPY = {
+  en: {
+    eyebrow: "SEASON 6",
+    greeting: (team) => (team ? `Hi ${team},` : "Hi,"),
+    heroAlt:
+      "Three screens from Cycling Zone: the new race page with the race film, the Training page with the day picker, and a rider profile showing potential on a scale from 1 to 99.",
+    roadmapIntro: "I'd like to know what you want me to build next.",
+    roadmap: "Vote on the roadmap",
+    awayNote: "You log in with the same account as before.",
+    unsubLine: "You're receiving this because you opted in to emails about season updates.",
+    unsubLinkText: "Unsubscribe",
+    companyLine: "Cycling Zone is run by Dolmer Digital, CVR 46524861, Denmark.",
+    beforeStart: {
+      subjects: { a: "Season 6 starts Saturday", b: "Set your training before Season 6" },
+      preheader: "A new race page, a day picker in Training and potential from 1 to 99.",
+      heading: "Season 6 starts Saturday 28 November",
+      teamLine: (team, division) =>
+        division ? `${team || "Your team"} starts Season 6 in ${division}.` : `Here's what's new for ${team || "your team"}.`,
+      openings: {
+        active: "Thanks for racing in Season 5. Before the new season starts, here are three things that are new since it began.",
+        dormant: "It's been a few weeks since you were last in. Here are three things you haven't seen yet, all ready before the new season starts.",
+        away: "It's been a while since you played, and the game has changed a lot. A new season is a good time to come back. Here are three things you haven't seen yet.",
+      },
+      news: [
+        ["The race page.", "Watch the race film and read the results for a ridden stage in one place."],
+        ["Training.", "A new page with programs and groups, and a day picker on the Today tab that shows the coming days with races and training."],
+        ["Potential.", "Every rider has one potential from 1 to 99, with how sure the scout is. It's the same number everywhere in the game."],
+      ],
+      cta: "Set your training for Season 6",
+    },
+    started: {
+      subjects: { a: "Season 6 is underway", b: "Pick your team for Season 6" },
+      preheader: "Your Season 6 calendar is ready. Pick your lineup for the next race.",
+      heading: "Season 6 is underway",
+      teamLine: (team, division) =>
+        division ? `${team || "Your team"} rides Season 6 in ${division}.` : `Here's how to get ${team || "your team"} racing.`,
+      openings: {
+        active: "The new season has begun. I'd start with the calendar and get your team ready for its next race.",
+        dormant: "It's not too late to join in. Three steps get your team ready for its next race.",
+        away: "If you're coming back after a long break, I'd start with one race. Three steps get you there.",
+      },
+      steps: {
+        default: [
+          "Open the calendar and find your division's next race.",
+          "Look at the route and decide which riders suit it.",
+          "Pick your lineup in Planning and save it.",
+        ],
+        away: [
+          "Log in and open the calendar.",
+          "Find your division's next race.",
+          "Pick a lineup for that race in Planning and save it.",
+        ],
+      },
+      cta: "See your Season 6 calendar",
+    },
+  },
+  da: {
+    eyebrow: "SÆSON 6",
+    greeting: (team) => (team ? `Hej ${team},` : "Hej,"),
+    heroAlt:
+      "Tre skærmbilleder fra Cycling Zone: den nye løbsside med løbsfilmen, træningssiden med dagsvælgeren og en rytterprofil, der viser potentiale på en skala fra 1 til 99.",
+    roadmapIntro: "Jeg vil gerne høre, hvad du synes, jeg skal bygge næste gang.",
+    roadmap: "Stem på roadmappet",
+    awayNote: "Du logger ind med den samme konto som før.",
+    unsubLine: "Du får denne mail, fordi du har sagt ja til e-mails om sæsonopdateringer.",
+    unsubLinkText: "Afmeld e-mails",
+    companyLine: "Cycling Zone drives af Dolmer Digital, CVR 46524861, Danmark.",
+    beforeStart: {
+      subjects: { a: "Sæson 6 starter lørdag", b: "Sæt træningen før sæson 6" },
+      preheader: "Ny løbsside, dagsvælger i Træning og potentiale fra 1 til 99.",
+      heading: "Sæson 6 starter lørdag den 28. november",
+      teamLine: (team, division) =>
+        division ? `${team || "Dit hold"} starter sæson 6 i ${division}.` : `Her er det nye for ${team || "dit hold"}.`,
+      openings: {
+        active: "Tak fordi du kørte med i sæson 5. Inden den nye sæson starter, er her tre ting, der er nye, siden den begyndte.",
+        dormant: "Det er et par uger siden, du sidst var inde. Her er tre ting, du ikke har set endnu, og de er klar, før den nye sæson starter.",
+        away: "Det er længe siden, du har spillet, og spillet har ændret sig meget. En ny sæson er et godt tidspunkt at komme tilbage. Her er tre ting, du ikke har set endnu.",
+      },
+      news: [
+        ["Løbssiden.", "Se løbsfilmen og resultaterne for en kørt etape samme sted."],
+        ["Træning.", "En ny side med programmer og grupper og en dagsvælger under I dag, der viser de kommende dage med løb og træning."],
+        ["Potentiale.", "Hver rytter har ét potentiale fra 1 til 99 og hvor sikker spejderen er. Det er det samme tal overalt i spillet."],
+      ],
+      cta: "Sæt træningen for sæson 6",
+    },
+    started: {
+      subjects: { a: "Sæson 6 er i gang", b: "Udtag dit hold til sæson 6" },
+      preheader: "Din kalender for sæson 6 er klar. Udtag holdet til næste løb.",
+      heading: "Sæson 6 er i gang",
+      teamLine: (team, division) =>
+        division ? `${team || "Dit hold"} kører sæson 6 i ${division}.` : `Sådan kommer ${team || "dit hold"} til start.`,
+      openings: {
+        active: "Den nye sæson er skudt i gang. Jeg ville starte med kalenderen og gøre dit hold klar til næste løb.",
+        dormant: "Det er ikke for sent at komme med. Tre trin gør dit hold klar til næste løb.",
+        away: "Hvis du vender tilbage efter en lang pause, ville jeg begynde med ét løb. Tre trin får dig derhen.",
+      },
+      steps: {
+        default: [
+          "Åbn kalenderen, og find næste løb i din division.",
+          "Se på ruten, og vælg de ryttere, der passer til den.",
+          "Sæt holdet i Planlægning, og gem din udtagelse.",
+        ],
+        away: [
+          "Log ind, og åbn kalenderen.",
+          "Find næste løb i din division.",
+          "Sæt holdet til det løb i Planlægning, og gem din udtagelse.",
+        ],
+      },
+      cta: "Se din kalender for sæson 6",
+    },
+  },
+};
+
+// Each mail's primary action, as a deep link into the app. Login sends the
+// player back to the same path afterwards.
+const S6_CTA_PATH = {
+  "before-start": "/training?tab=today",
+  started: "/planning?tab=calendar",
+};
+
+// utm_source/utm_medium/utm_campaign are the names the channel pipeline reads
+// (see withEmailUtm). utm_content carries audience and subject variant, so
+// clicks can be split per group and per A/B arm.
+function s6CampaignUrl(destination, edition, audience, variant) {
+  const url = new URL(destination, DASHBOARD_URL);
+  url.searchParams.set("utm_source", "email");
+  url.searchParams.set("utm_medium", "email");
+  url.searchParams.set("utm_campaign", "s6-" + edition);
+  url.searchParams.set("utm_content", `${audience}-${variant}`);
+  return url.href;
+}
+
+// A larger take on primaryButtonHtml for this campaign: 16px label and enough
+// padding for a tap target of at least 44px. Same classes, so the dark-mode
+// colour lock applies unchanged.
+function s6ButtonHtml(url, label) {
+  return `<a class="cz-btn" href="${escapeHtml(url)}" style="display:inline-block;padding:14px 28px;background:${GOLD};background-color:${GOLD};border-radius:${RADIUS};color:${NAVY};font-weight:700;text-decoration:none;font-size:16px;line-height:20px;mso-padding-alt:0;"><span class="cz-btn-label" style="color:${NAVY};text-decoration:none;">${escapeHtml(label)}</span></a>`;
+}
+
+// The hero sits on a navy cell: with images off, the alt text is set in light
+// type on that navy, so the top of the mail still reads as a caption.
+function s6HeroHtml(lang, alt) {
+  const src = `${S6_ASSET_BASE}/s6-hero-${lang}.png`;
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+      <tr>
+        <td class="cz-band" bgcolor="${NAVY}" style="background:${NAVY};background-color:${NAVY};border-radius:${RADIUS};line-height:0;font-size:0;">
+          <img class="cz-hero" src="${src}" alt="${escapeHtml(alt)}" width="${S6_HERO_WIDTH}" height="${S6_HERO_HEIGHT}" style="display:block;width:100%;max-width:${S6_HERO_WIDTH}px;height:auto;border:0;outline:none;text-decoration:none;border-radius:${RADIUS};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.5;color:#ffffff;">
+        </td>
+      </tr>
+    </table>`;
+}
+
+const S6_EXTRA_CSS = [
+  `.cz-body h1{color:${TEXT} !important;}`,
+  `@media (prefers-color-scheme:dark){.cz-body h1{color:${TEXT} !important;}}`,
+  `[data-ogsc] .cz-body h1{color:${TEXT} !important;}`,
+].join("");
+
+function cleanText(value) {
+  const text = String(value ?? "").trim();
+  return text.length > 0 ? text : null;
+}
+
+// Draft for owner approval. Returns both subject variants plus the chosen one,
+// the preheader, HTML and plain text. teamName and divisionName are optional;
+// without them the greeting and the team line fall back to neutral wording.
+export function buildS6SeasonEmail({
+  edition,
+  audience,
+  language,
+  unsubscribeUrl,
+  teamName,
+  divisionName,
+  subjectVariant = "a",
+}) {
+  if (!S6_EDITIONS.includes(edition)) throw new RangeError("Unknown S6 email edition");
+  if (!S6_AUDIENCES.includes(audience)) throw new RangeError("Unknown S6 email audience");
+  if (!S6_SUBJECT_VARIANTS.includes(subjectVariant)) throw new RangeError("Unknown S6 subject variant");
+
+  const lang = normalizeLanguage(language);
+  const copy = S6_COPY[lang];
+  const started = edition === "started";
+  const version = started ? copy.started : copy.beforeStart;
+  const team = cleanText(teamName);
+  const division = cleanText(divisionName);
+
+  const ctaUrl = s6CampaignUrl(S6_CTA_PATH[edition], edition, audience, subjectVariant);
+  const roadmapUrl = s6CampaignUrl("/roadmap?tab=vote", edition, audience, subjectVariant);
+  const greeting = copy.greeting(team);
+  const teamLine = version.teamLine(team, division);
+  const opening = version.openings[audience];
+
+  const listHtml = started
+    ? `<ol style="margin:0 0 24px;padding-left:24px;">${(audience === "away" ? version.steps.away : version.steps.default)
+        .map((step) => `<li style="margin:0 0 8px;">${escapeHtml(step)}</li>`)
+        .join("")}</ol>`
+    : `<ul style="margin:0 0 24px;padding-left:24px;">${version.news
+        .map(([title, body]) => `<li style="margin:0 0 8px;"><strong>${escapeHtml(title)}</strong> ${escapeHtml(body)}</li>`)
+        .join("")}</ul>`;
+  const listText = started
+    ? (audience === "away" ? version.steps.away : version.steps.default).map((step, i) => `${i + 1}. ${step}`)
+    : version.news.map(([title, body]) => `- ${title} ${body}`);
+
+  const bodyHtml = `
+    ${s6HeroHtml(lang, copy.heroAlt)}
+    <h1 class="cz-text" style="margin:0 0 20px;font-size:24px;line-height:1.25;font-weight:700;color:${TEXT};">${escapeHtml(version.heading)}</h1>
+    <p style="margin:0 0 16px;">${escapeHtml(greeting)}</p>
+    <p style="margin:0 0 16px;"><strong>${escapeHtml(teamLine)}</strong></p>
+    <p style="margin:0 0 16px;">${escapeHtml(opening)}</p>
+    ${listHtml}
+    <p style="margin:0 0 24px;">${s6ButtonHtml(ctaUrl, version.cta)}</p>${audience === "away" ? `
+    <p style="margin:0 0 16px;">${escapeHtml(copy.awayNote)}</p>` : ""}
+    <p style="margin:0 0 24px;">${escapeHtml(copy.roadmapIntro)} <a href="${escapeHtml(roadmapUrl)}" style="color:inherit;">${escapeHtml(copy.roadmap)}</a>.</p>
+  `.trim();
+
+  const bodyText = [
+    version.heading,
+    greeting,
+    teamLine,
+    opening,
+    listText.join("\n"),
+    `${version.cta}: ${ctaUrl}`,
+    ...(audience === "away" ? [copy.awayNote] : []),
+    `${copy.roadmapIntro} ${copy.roadmap}: ${roadmapUrl}`,
+  ].join("\n\n");
+
+  const subject = version.subjects[subjectVariant];
+  const footer = {
+    language: lang,
+    unsubscribeUrl: s6CampaignUrl(unsubscribeUrl, edition, audience, subjectVariant),
+    unsubLine: copy.unsubLine,
+    unsubLinkText: copy.unsubLinkText,
+    includeDiscord: false,
+    companyLine: copy.companyLine,
+  };
+
+  return {
+    subject,
+    subjectVariants: { ...version.subjects },
+    preheader: version.preheader,
+    html: wrapHtml({
+      ...footer,
+      eyebrow: copy.eyebrow,
+      preheader: version.preheader,
+      bodyHtml,
+      title: subject,
+      dir: "ltr",
+      bodyFontSize: S6_BODY_FONT_SIZE,
+      footerFontSize: S6_FOOTER_FONT_SIZE,
+      extraCss: S6_EXTRA_CSS,
+    }),
+    text: wrapText({ ...footer, bodyText }),
   };
 }
 
