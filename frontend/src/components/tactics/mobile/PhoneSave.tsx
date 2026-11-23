@@ -15,6 +15,8 @@ export interface PhoneSaveState {
   saveLabel: string;
   saveDisabled: boolean;
   onSave: () => void;
+  /** Panelets forklaring ved fejl, delvist gem og konflikt (med genvejene), så arket ikke skjuler den. */
+  statusLine?: ReactNode;
 }
 
 /** Panelets gem til rytterens ark (null uden for panelet, fx den klassiske løbsside). */
@@ -25,7 +27,7 @@ export function usePhoneSave(): PhoneSaveState | null {
 }
 
 /** "NOT SAVED [Save stage 4]" på én linje. Intet på en låst etape. */
-export function PhoneSaveLine({ save }: { save: PhoneSaveState | null }) {
+export function PhoneSaveLine({ save, withStatus = false }: { save: PhoneSaveState | null; withStatus?: boolean }) {
   if (!save || save.locked) return null;
   const badge = save.badge === "saved"
     ? <StatusBadge state="won">{save.badgeLabels.saved}</StatusBadge>
@@ -33,11 +35,15 @@ export function PhoneSaveLine({ save }: { save: PhoneSaveState | null }) {
       ? <StatusBadge state="closing">{save.badgeLabels.notSaved}</StatusBadge>
       : null;
   return (
-    <div data-tactics-phone-save className="flex items-center gap-3">
-      {badge && <span className="shrink-0">{badge}</span>}
-      <Button variant="primary" size="md" disabled={save.saveDisabled} onClick={save.onSave} className="min-h-11 flex-1">
-        {save.saveLabel}
-      </Button>
+    <div data-tactics-phone-save className="flex flex-col gap-2">
+      {/* Ved fejl, delvist gem eller konflikt står forklaringen og genvejene her, ikke bag arket. */}
+      {withStatus && save.badge === "problem" && save.statusLine && <div className="min-w-0 text-xs text-cz-2">{save.statusLine}</div>}
+      <div className="flex items-center gap-3">
+        {badge && <span className="shrink-0">{badge}</span>}
+        <Button variant="primary" size="md" disabled={save.saveDisabled} onClick={save.onSave} className="min-h-11 flex-1">
+          {save.saveLabel}
+        </Button>
+      </div>
     </div>
   );
 }

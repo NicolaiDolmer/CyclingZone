@@ -139,7 +139,7 @@ function RiderSheet({ row, position, total, onPrev, onNext, onClose }: { row: Ta
           <p className="m-0 font-data text-2xs tabular-nums text-cz-3">{t("phone.riderOf", { n: position, total })}</p>
         </>
       )}
-      footer={save && !save.locked ? <PhoneSaveLine save={save} /> : null}
+      footer={save && !save.locked ? <PhoneSaveLine save={save} withStatus /> : null}
     >
       <div className="flex flex-col gap-3">
         <p className="m-0 text-center font-data text-xs tabular-nums text-cz-2">
