@@ -109,6 +109,26 @@ const P = (...sessions) => sessions.map((session) => ({ session }));
 const ABC = P("sprint", "endurance", "threshold");
 const rowOf = (state, riderId) => state.training_week_plans.find((r) => r.rider_id === riderId);
 
+test("Week blocks cell writes return 409 when off and 400 for an invalid lock", async (t) => {
+  const state = seed({ groups: [{ id: "g1", team_id: "team-a", name: "Climbers", days: null }] });
+  const { call } = await fixture(t, { state });
+  const slots = ["sprint", "tempo", "endurance", "threshold", "rest"];
+  const body = { weekday: "mon", slotIndex: 0, session: slots[0], weekBlock: { slots, lockSlot: 4 } };
+  for (const [path, target] of [["/programs/cell", { riderId: "r1" }], ["/groups/g1/cell", {}]]) {
+    const off = await call("PUT", path, { ...target, ...body });
+    assert.equal(off.status, 409);
+    assert.equal(off.body.error, "feature_disabled");
+  }
+  state.app_config.push({ key: "training_week_priority", value: "on" });
+  for (const [path, target] of [["/programs/cell", { riderId: "r1" }], ["/groups/g1/cell", {}]]) {
+    const invalid = await call("PUT", path, { ...target, ...body, weekBlock: { slots, lockSlot: 5 } });
+    assert.equal(invalid.status, 400);
+    assert.equal(invalid.body.error, "invalid_week_block");
+  }
+  assert.equal(state.training_week_plans.length, 0);
+  assert.equal(state.training_groups[0].days, null);
+});
+
 test("Week blocks marks group followers and new members when rotation is off", async (t) => {
   const state = seed({
     rotation: "off",
@@ -331,6 +351,7 @@ test("gruppe uden felter paa Rotation: nye medlemmer og Follow group faar rotati
   const r2 = rowOf(state, "r2");
   assert.ok(isValidProgramWeekDays(r2.days), "saaet uge, saa motoren har felter");
   assert.deepEqual([r2.plan_kind, r2.rotation.passes], ["rotation", ABC]);
+  assert.equal(r2.rotation.anchor.index, 0, "a new group member starts at pass 1");
   assert.equal((await call("POST", "/groups/g1/follow", { riderIds: ["r3"] })).status, 200);
   assert.deepEqual([rowOf(state, "r3").plan_kind, rowOf(state, "r3").rotation.passes], ["rotation", ABC]);
 });
@@ -341,4 +362,19 @@ test("gruppe: ukendt gruppe 404, ugyldig body 400", async (t) => {
   assert.equal((await call("PUT", "/groups/nope/rotation", { passes: ABC })).status, 404);
   assert.equal((await call("PUT", "/groups/g1/rotation", { passes: P("sprint") })).body.error, "invalid_passes");
   assert.equal((await call("PUT", "/groups/g1/rotation", { planKind: "rotation" })).body.error, "rotation_missing");
+});
+
+test("a rider added to a rotation group starts at pass 1 despite an earlier rotation", async (t) => {
+  for (const days of [null, programWeekDaysFor("sprinter")]) {
+    const earlier = { v: 1, passes: ABC, rev: 12, anchor: { rev: 12, index: 2 } };
+    const state = seed({
+      groups: [{ id: "g1", team_id: "team-a", name: "Rotation", days, plan_kind: "rotation", rotation: earlier }],
+      weekPlans: [{ id: "old-r2", team_id: "team-a", rider_id: "r2", days: programWeekDaysFor("sprinter"), plan_kind: "rotation", rotation: earlier }],
+    });
+    const { call } = await fixture(t, { state });
+    assert.equal((await call("PATCH", "/groups/g1", { riderIds: ["r2"] })).status, 200);
+    const member = rowOf(state, "r2");
+    assert.equal(member.rotation.anchor.index, 0);
+    assert.ok(member.rotation.rev > earlier.rev);
+  }
 });

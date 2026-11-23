@@ -137,14 +137,13 @@ export default function ProgramR5Phone({
 
       {hints}
       {kindSelector}
-      {rotationEditor ?? <>
-
-      <div className="flex items-center justify-between gap-3">
+      {(summary || !rotationEditor) && <div className="flex items-center justify-between gap-3">
         <div className="min-w-0 text-3xs leading-snug text-cz-2">{summary}</div>
-        <Segmented label={tR5("programR5.phone.viewLabel")} value={view} onChange={setView}
-          options={PHONE_VIEWS.map((v) => ({ value: v, label: tR5(v === "day" ? "programR5.phone.viewDay" : "programR5.phone.viewWeek") }))} />
-      </div>
+        {!rotationEditor && <Segmented label={tR5("programR5.phone.viewLabel")} value={view} onChange={setView}
+          options={PHONE_VIEWS.map((v) => ({ value: v, label: tR5(v === "day" ? "programR5.phone.viewDay" : "programR5.phone.viewWeek") }))} />}
+      </div>}
 
+      {rotationEditor ?? <>
       {view === "day"
         ? <DayView {...shared} day={day} onDay={setDay} />
         : <WeekList {...shared} open={openDay} onOpen={setOpenDay} />}

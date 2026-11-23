@@ -150,7 +150,7 @@ export function createTrainingGroupsRouter({
   // Skriver gruppens uge som KOPI ind i hver rytters egen raekke.
   // #8548: `rotationGroup` (kun med kontakten on) = gruppen, hvis rotation og markoer
   // ogsaa kopieres (groupRotationCopyPatch); null = noeglerne skrives slet ikke, som foer.
-  async function writeCopies(teamId, rows, riderIds, days, programKey, rotationGroup = null) {
+  async function writeCopies(teamId, rows, riderIds, days, programKey, rotationGroup = null, rotationCopyOpts = {}) {
     const byRider = new Map(rows.filter((r) => r.rider_id != null).map((r) => [r.rider_id, r]));
     const now = clock().toISOString();
     const inserts = [];
@@ -158,7 +158,7 @@ export function createTrainingGroupsRouter({
       const row = byRider.get(riderId);
       const patch = {
         days: copyWeekDays(days), program_key: programKey ?? null, updated_at: now,
-        ...(rotationGroup ? groupRotationCopyPatch(rotationGroup, row, { revFloor: rotationRevFloor(clock()) }) : {}),
+        ...(rotationGroup ? groupRotationCopyPatch(rotationGroup, row, { ...rotationCopyOpts, revFloor: rotationRevFloor(clock()) }) : {}),
         ...(rotationGroup?.plan_kind === "week" ? { plan_kind: "week" } : {}),
       };
       const id = row?.id;
@@ -303,8 +303,11 @@ export function createTrainingGroupsRouter({
       }
       if (riderIds) {
         const added = await setMembers(req.team.id, group.id, riderIds, ctx.members);
-        if (hasDays && added.length) await writeCopies(req.team.id, ctx.rows, added, group.days, group.program_key, copyGroupPlan(ctx, group));
-        else if (rotationOnly && added.length) await writeRotationCopies(req.team.id, ctx, added, group);
+        if (hasDays && added.length) {
+          await writeCopies(req.team.id, ctx.rows, added, group.days, group.program_key, copyGroupPlan(ctx, group), { keepPlace: false });
+        } else if (rotationOnly && added.length) {
+          await writeRotationCopies(req.team.id, ctx, added, group, { keepPlace: false });
+        }
       }
       await respond(req, res);
     } catch (err) {

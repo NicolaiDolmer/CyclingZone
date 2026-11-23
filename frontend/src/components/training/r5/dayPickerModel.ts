@@ -15,6 +15,14 @@ export type WeekRiderFields = {
   nextRotationIndex?: number;
   recoverySlots?: number[];
 };
+
+type RotationFields = Pick<WeekRiderFields, "rotationSlots" | "recoverySlots"> & { restSlots?: number[] };
+
+export function rotationFieldSession(fields: RotationFields | null | undefined, slot: number): string | null {
+  if (!fields?.rotationSlots) return null;
+  return fields.rotationSlots[slot]?.session
+    ?? (fields.recoverySlots?.includes(slot) ? "recovery" : fields.restSlots?.includes(slot) ? "rest" : null);
+}
 export type WeekDay = {
   date: string;
   weekday: string;
@@ -76,7 +84,9 @@ export function futureFields({
 }): Field[] {
   const raceSlots = new Set(fields?.raceSlots ?? []);
   const rest = new Set(fields?.restSlots ?? []);
-  return dayFields({ programSlot, planSession, raceSlots }).map((field, slot) => (rest.has(slot) && !raceSlots.has(slot) ? "rest" : field));
+  return dayFields({
+    programSlot: (slot) => rotationFieldSession(fields, slot) ?? programSlot(slot), planSession, raceSlots,
+  }).map((field, slot) => (rest.has(slot) && !raceSlots.has(slot) ? "rest" : field));
 }
 
 /**

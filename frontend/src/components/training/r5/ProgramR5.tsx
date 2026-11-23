@@ -355,16 +355,20 @@ export default function ProgramR5({
   };
   const copyDay = (from: string, choice: string) => {
     const targets = copyDayTargets(from, choice, weekdays, { todayWeekday, todayLocked });
-    setDrafts((prev) => ({ ...prev, [sKey]: copyDayIntoDraft(prev[sKey] ?? {}, days, from, targets) }));
+    setDrafts((prev) => ({ ...prev, [sKey]: copyDayIntoDraft(prev[sKey] ?? {}, gridDays, from, targets) }));
   };
 
   // Save plan: hver rettelse er en felt-skrivning til den eksisterende API (rytter eller gruppe).
   const savePlan = async () => {
     setSaving(true);
     let failed = false;
-    const saveCell = (target: Subject, weekday: string, slotIndex: number, session: string, write?: WeekCellWrite) =>
-      target.kind === "group" ? groups.setCell(target.id, weekday, slotIndex, session, write)
-        : programs.setCell(target.id, weekday, slotIndex, session, write);
+    let groupChanged = false;
+    const saveCell = async (target: Subject, weekday: string, slotIndex: number, session: string, write?: WeekCellWrite) => {
+      if (target.kind !== "group") return programs.setCell(target.id, weekday, slotIndex, session, write);
+      const result = await groups.setCell(target.id, weekday, slotIndex, session, write);
+      if (result.ok) groupChanged = true;
+      return result;
+    };
     const markWeek = weekPriority || programs.rotationEnabled ? { planKind: "week" as const } : undefined;
     const unsavedDays: Record<string, Record<string, WeekBlock>> = {};
     if (weekPriority) for (const [key, blocks] of Object.entries(weekDrafts)) {
@@ -396,11 +400,12 @@ export default function ProgramR5({
       || (weekPriority && Object.keys(weekDrafts[sKey] ?? {}).length > 0);
     if (switchToWeek && subject && !failed && !savedSubjectFields) {
       failed = !(await writeRotation(subject, { planKind: "week" })).ok;
+      if (!failed && subject.kind === "group") groupChanged = true;
     }
     if ([...Object.keys(drafts), ...Object.keys(weekDrafts)].some((key) => parseSubjectKey(key)?.kind === "rider")) await groups.reload();
     setDrafts(left);
     setWeekDrafts(unsavedDays);
-    if (weekPriority) await reloadTrainingWeek();
+    await Promise.all([groupChanged ? programs.reload?.() : undefined, weekPriority ? reloadTrainingWeek() : undefined]);
     setSaving(false);
     setNote(failed ? { tone: "error", text: tR5("programR5.saveError") } : { tone: "ok", text: tR5("programR5.saved") });
   };
@@ -832,7 +837,7 @@ export default function ProgramR5({
                 </button>
               </span>
             )
-            : (program ? programTagline(program, lang) : intro)}
+            : (isRotation ? null : program ? programTagline(program, lang) : intro)}
           hints={hasHints ? (
             <div className="flex flex-col gap-1">
               {!subject && <p className="text-2xs text-cz-3">{tR5("programR5.asWrittenNote")}</p>}

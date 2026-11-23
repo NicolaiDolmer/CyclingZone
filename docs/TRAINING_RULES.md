@@ -1525,7 +1525,10 @@ Kontakt `training_week_priority` (off | beta | on), seedet off; tænding er ejer
 - **Prognosen** bruger samme indgang (I5), så ugegitteret viser det samme som motoren.
 - **Kontakten off:** intet ekstra opslag, ingen `source_slot` i rapporten, kildefeltet = feltet (bit-identisk).
 
+- **Skrivning fra Program R5:** `PUT /api/training/programs/cell` for ryttere og `PUT /api/training/groups/:id/cell` for grupper tager valgfri `weekBlock: { slots, lockSlot, slotEfforts? }` sammen med cellens sædvanlige felter. `slots` indeholder datoens pas i prioriteret rækkefølge. `lockSlot` er et nulbaseret felt eller `null`, der fjerner låsen. Med indsatskontakten på har `slotEfforts` én gyldig indsats eller `null` pr. felt. En `weekBlock`-skrivning sætter `plan_kind = 'week'` og kopierer gruppeplanen til følgere. Off giver 409 `feature_disabled`. Ugyldigt indhold giver 400 uden skrivning.
+
 ## Program R5 · tildeling og gruppemedlemmer (#8608, ejer 23/11)
 
+- **Editorer på desktop og telefon:** Ugeblokke kan omprioritere pas og låse ét felt pr. dag. Kopiér dag bruger kladdens rækkefølge. Prognosen viser pas taget af løb og låsens oprindelige felt. Rotation kan tilføje, flytte, kassere og fjerne pas, vælge Hvile, springe til et pas og bekræfte en kopi til andre ryttere. I dag viser passets session. Pladsen i rotationen vises på Program-fanen. De to editorer følger deres egne kontakter (`training_week_priority` og `training_rotation`).
 - Biblioteket starter uden valgt program og viser hele kataloget. At åbne en rytters eller gruppes uge er et visningsvalg. Kun et aktivt valg i kataloget åbner for at kopiere eller tilføje programmet. Bekræftelsen viser altid program og antal ryttere eller gruppens navn før skrivning.
 - Gruppens Medlemmer-knap åbner gruppedialogen. Fra rytterens række kan spilleren flytte til en anden gruppe eller tilføje en rytter uden program. Klienten sender gruppens eksisterende medlemmer plus rytteren til `PATCH /api/training/groups/:id`. Serverens eksisterende regel om højst én gruppe pr. rytter gælder.
