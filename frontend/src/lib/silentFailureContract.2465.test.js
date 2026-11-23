@@ -24,7 +24,7 @@ const raceTacticsTab = read("../components/race/RaceTacticsTab.jsx");
 // unchanged and pinned at least as tightly as before.
 test("RiderTrainingTab: panel save/clear await setPlan/clearPlan and surface {ok:false}", () => {
   assert.match(riderTrainingTab, /async function handlePanelSave\(dayType, session\)/);
-  assert.match(riderTrainingTab, /const result = await training\.setPlan\(rider\.id, dayType, session\)/);
+  assert.match(riderTrainingTab, /const result = await training\.setPlan\(rider\.id, dayType, session(?:, effort)?\)/); // #8541: valgfrit niveau
   assert.match(riderTrainingTab, /async function handlePanelClear\(\)/);
   assert.match(riderTrainingTab, /const result = await training\.clearPlan\(rider\.id\)/);
   assert.match(riderTrainingTab, /if \(result && !result\.ok\) setActionError\(result\.error \|\| "failed"\)/);
@@ -68,9 +68,10 @@ test("StrategyPage: preview/save/regenerate no longer swallow errors silently", 
 });
 
 test("TrainingPage: roster-row focus/intensity/clear handlers await setPlan/clearPlan", () => {
-  assert.match(trainingPage, /async function handlePlanChange\(riderId, dayType, session = null\)/);
+  // #7947 PR 3: effort er et valgfrit 4. argument (kun fra indsatsvaelgeren); fejlvejen er den samme.
+  assert.match(trainingPage, /async function handlePlanChange\(riderId, dayType, session = null, effort = null\)/);
   assert.match(trainingPage, /async function handleClearPlan\(riderId\)/);
-  assert.match(trainingPage, /const result = await setPlan\(riderId, dayType, session\)/);
+  assert.match(trainingPage, /const result = await setPlan\(riderId, dayType, session, effort\)/);
   assert.match(trainingPage, /const result = await clearPlan\(riderId\)/);
   // #3762/#6030: the day choice (TrainingDaySelect on desktop) still goes
   // through the wrapper, and its error is rendered on the same row.

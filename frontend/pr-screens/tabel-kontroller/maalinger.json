@@ -1,0 +1,434 @@
+[
+ {
+  "letter": "A",
+  "page": "rankings",
+  "theme": "light",
+  "vw": 390,
+  "before": {
+   "top": 95,
+   "rowTop": 669,
+   "chrome": 574,
+   "controls": 14
+  },
+  "after": {
+   "top": 95,
+   "rowTop": 458,
+   "chrome": 363,
+   "controls": 15
+  }
+ },
+ {
+  "letter": "A",
+  "page": "rankings",
+  "theme": "light",
+  "vw": 1440,
+  "before": {
+   "top": 58,
+   "rowTop": 352,
+   "chrome": 294,
+   "controls": 8
+  },
+  "after": {
+   "top": 58,
+   "rowTop": 274,
+   "chrome": 216,
+   "controls": 9
+  }
+ },
+ {
+  "letter": "A",
+  "page": "rankings",
+  "theme": "dark",
+  "vw": 390,
+  "before": {
+   "top": 95,
+   "rowTop": 669,
+   "chrome": 574,
+   "controls": 14
+  },
+  "after": {
+   "top": 95,
+   "rowTop": 458,
+   "chrome": 363,
+   "controls": 15
+  }
+ },
+ {
+  "letter": "A",
+  "page": "rankings",
+  "theme": "dark",
+  "vw": 1440,
+  "before": {
+   "top": 58,
+   "rowTop": 352,
+   "chrome": 294,
+   "controls": 8
+  },
+  "after": {
+   "top": 58,
+   "rowTop": 274,
+   "chrome": 216,
+   "controls": 9
+  }
+ },
+ {
+  "letter": "A",
+  "page": "riders",
+  "theme": "light",
+  "vw": 390,
+  "before": {
+   "top": 179,
+   "rowTop": 670,
+   "chrome": 491,
+   "controls": 42
+  },
+  "after": {
+   "top": 179,
+   "rowTop": 442,
+   "chrome": 263,
+   "controls": 13
+  }
+ },
+ {
+  "letter": "A",
+  "page": "riders",
+  "theme": "light",
+  "vw": 1440,
+  "before": {
+   "top": 82,
+   "rowTop": 252,
+   "chrome": 170,
+   "controls": 14
+  },
+  "after": {
+   "top": 82,
+   "rowTop": 188,
+   "chrome": 106,
+   "controls": 7
+  }
+ },
+ {
+  "letter": "A",
+  "page": "team",
+  "theme": "dark",
+  "vw": 390,
+  "before": {
+   "top": 119,
+   "rowTop": 556,
+   "chrome": 437,
+   "controls": 17
+  },
+  "after": {
+   "top": 119,
+   "rowTop": 563,
+   "chrome": 444,
+   "controls": 15
+  }
+ },
+ {
+  "letter": "A",
+  "page": "team",
+  "theme": "dark",
+  "vw": 1440,
+  "before": {
+   "top": 82,
+   "rowTop": 342,
+   "chrome": 260,
+   "controls": 7
+  },
+  "after": {
+   "top": 82,
+   "rowTop": 342,
+   "chrome": 260,
+   "controls": 7
+  }
+ },
+ {
+  "letter": "B",
+  "page": "rankings",
+  "theme": "light",
+  "vw": 390,
+  "before": {
+   "top": 95,
+   "rowTop": 669,
+   "chrome": 574,
+   "controls": 14
+  },
+  "after": {
+   "top": 95,
+   "rowTop": 280,
+   "chrome": 185,
+   "controls": 6
+  }
+ },
+ {
+  "letter": "B",
+  "page": "rankings",
+  "theme": "light",
+  "vw": 1440,
+  "before": {
+   "top": 58,
+   "rowTop": 352,
+   "chrome": 294,
+   "controls": 8
+  },
+  "after": {
+   "top": 58,
+   "rowTop": 241,
+   "chrome": 183,
+   "controls": 6
+  }
+ },
+ {
+  "letter": "B",
+  "page": "rankings",
+  "theme": "dark",
+  "vw": 390,
+  "before": {
+   "top": 95,
+   "rowTop": 669,
+   "chrome": 574,
+   "controls": 14
+  },
+  "after": {
+   "top": 95,
+   "rowTop": 280,
+   "chrome": 185,
+   "controls": 6
+  }
+ },
+ {
+  "letter": "B",
+  "page": "rankings",
+  "theme": "dark",
+  "vw": 1440,
+  "before": {
+   "top": 58,
+   "rowTop": 352,
+   "chrome": 294,
+   "controls": 8
+  },
+  "after": {
+   "top": 58,
+   "rowTop": 241,
+   "chrome": 183,
+   "controls": 6
+  }
+ },
+ {
+  "letter": "B",
+  "page": "riders",
+  "theme": "light",
+  "vw": 390,
+  "before": {
+   "top": 179,
+   "rowTop": 670,
+   "chrome": 491,
+   "controls": 42
+  },
+  "after": {
+   "top": 179,
+   "rowTop": 299,
+   "chrome": 120,
+   "controls": 3
+  }
+ },
+ {
+  "letter": "B",
+  "page": "riders",
+  "theme": "light",
+  "vw": 1440,
+  "before": {
+   "top": 82,
+   "rowTop": 252,
+   "chrome": 170,
+   "controls": 14
+  },
+  "after": {
+   "top": 82,
+   "rowTop": 202,
+   "chrome": 120,
+   "controls": 2
+  }
+ },
+ {
+  "letter": "B",
+  "page": "team",
+  "theme": "dark",
+  "vw": 390,
+  "before": {
+   "top": 119,
+   "rowTop": 556,
+   "chrome": 437,
+   "controls": 17
+  },
+  "after": {
+   "top": 119,
+   "rowTop": 502,
+   "chrome": 383,
+   "controls": 6
+  }
+ },
+ {
+  "letter": "B",
+  "page": "team",
+  "theme": "dark",
+  "vw": 1440,
+  "before": {
+   "top": 82,
+   "rowTop": 342,
+   "chrome": 260,
+   "controls": 7
+  },
+  "after": {
+   "top": 82,
+   "rowTop": 342,
+   "chrome": 260,
+   "controls": 7
+  }
+ },
+ {
+  "letter": "C",
+  "page": "rankings",
+  "theme": "light",
+  "vw": 390,
+  "before": {
+   "top": 95,
+   "rowTop": 669,
+   "chrome": 574,
+   "controls": 14
+  },
+  "after": {
+   "top": 95,
+   "rowTop": 284,
+   "chrome": 189,
+   "controls": 10
+  }
+ },
+ {
+  "letter": "C",
+  "page": "rankings",
+  "theme": "light",
+  "vw": 1440,
+  "before": {
+   "top": 58,
+   "rowTop": 352,
+   "chrome": 294,
+   "controls": 8
+  },
+  "after": {
+   "top": 58,
+   "rowTop": 230,
+   "chrome": 172,
+   "controls": 8
+  }
+ },
+ {
+  "letter": "C",
+  "page": "rankings",
+  "theme": "dark",
+  "vw": 390,
+  "before": {
+   "top": 95,
+   "rowTop": 669,
+   "chrome": 574,
+   "controls": 14
+  },
+  "after": {
+   "top": 95,
+   "rowTop": 284,
+   "chrome": 189,
+   "controls": 10
+  }
+ },
+ {
+  "letter": "C",
+  "page": "rankings",
+  "theme": "dark",
+  "vw": 1440,
+  "before": {
+   "top": 58,
+   "rowTop": 352,
+   "chrome": 294,
+   "controls": 8
+  },
+  "after": {
+   "top": 58,
+   "rowTop": 230,
+   "chrome": 172,
+   "controls": 8
+  }
+ },
+ {
+  "letter": "C",
+  "page": "riders",
+  "theme": "light",
+  "vw": 390,
+  "before": {
+   "top": 179,
+   "rowTop": 670,
+   "chrome": 491,
+   "controls": 42
+  },
+  "after": {
+   "top": 179,
+   "rowTop": 303,
+   "chrome": 124,
+   "controls": 7
+  }
+ },
+ {
+  "letter": "C",
+  "page": "riders",
+  "theme": "light",
+  "vw": 1440,
+  "before": {
+   "top": 82,
+   "rowTop": 252,
+   "chrome": 170,
+   "controls": 14
+  },
+  "after": {
+   "top": 82,
+   "rowTop": 191,
+   "chrome": 109,
+   "controls": 4
+  }
+ },
+ {
+  "letter": "C",
+  "page": "team",
+  "theme": "dark",
+  "vw": 390,
+  "before": {
+   "top": 119,
+   "rowTop": 556,
+   "chrome": 437,
+   "controls": 17
+  },
+  "after": {
+   "top": 119,
+   "rowTop": 482,
+   "chrome": 363,
+   "controls": 9
+  }
+ },
+ {
+  "letter": "C",
+  "page": "team",
+  "theme": "dark",
+  "vw": 1440,
+  "before": {
+   "top": 82,
+   "rowTop": 342,
+   "chrome": 260,
+   "controls": 7
+  },
+  "after": {
+   "top": 82,
+   "rowTop": 336,
+   "chrome": 254,
+   "controls": 6
+  }
+ }
+]

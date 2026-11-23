@@ -165,6 +165,10 @@ def collect_sessions(repo_root: str, exclude_session_id: str, now_ms: int | None
             continue
         if not is_pid_alive(s["pid"]):
             continue
+        # Ejer 23/11: appen genaabner gamle faner og planlagte opgaver ved start.
+        # De staar "idle" og arbejder ikke; kun sessioner der arbejder, taeller i gaten.
+        if str(s.get("status", "")).lower() == "idle":
+            continue
         entry = {
             "pid": s["pid"],
             "sessionId": s.get("sessionId", ""),
@@ -305,7 +309,7 @@ def build_warning(others: list[dict]) -> str:
         "Signalet er lokalt best-effort (kun denne maskine, kun proces-liveness) -- "
         "ikke den fulde mcp__ccd_session_mgmt__list_sessions-visning."
     )
-    return "\\n".join(lines)
+    return "\n".join(lines)
 
 
 def emit(message: str) -> None:
@@ -332,7 +336,7 @@ def main() -> int:
             update_now_md(now_md_path, value)
             if others:
                 msg = build_warning(others)
-                emit(msg + ("\\n" + build_stale_note() if stale_claims else ""))
+                emit(msg + ("\n" + build_stale_note() if stale_claims else ""))
             elif stale_claims:
                 emit(build_stale_note())
         else:  # stop

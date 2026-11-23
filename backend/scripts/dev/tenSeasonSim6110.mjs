@@ -106,8 +106,18 @@ import {
 import { abilityMeta } from "../../lib/abilityRegistry.js";
 import {
   abilityXpForTick, buyPoints, developmentXpAbilityDelta, validateDevelopmentXpParams, xpPerDate, xpPriceForNextPoint,
-  xpSessionShare, xpTypeShare, xpDatePointAllowance, XP_MAX_POINTS_PER_DATE,
+  xpSessionShare, xpTypeShare, xpDistanceFactor, xpWearOf,
 } from "../../lib/developmentXp.ts";
+
+// G3a (spec 2026-11-20 §3, #8520): motoren har ingen grænse pr. evne pr. dato længere. Kørslens
+// varianter med en grænse (dagsloftet og _cap2) regnes her, så gamle kørsler kan genskabes;
+// `cap` null er motorens egen regel, og den er nu ingen grænse.
+export const XP_MAX_POINTS_PER_DATE = 2;
+function xpDatePointAllowance({ level, bar, used, storedBarPayout, cap }, xp) {
+  const left = cap == null ? Infinity : Math.max(0, cap - used);
+  if (!storedBarPayout || used > 0 || !(bar >= 1)) return left;
+  return Math.max(left, buyPoints({ level, bar }, xp).points);
+}
 import { developmentXpDayVariation, xpVariationFingerprint } from "../../lib/developmentXpVariation.ts";
 import { developmentXpRaceFitFloor } from "../../lib/developmentXpRaceFit.ts";
 import { withRaceDayRoleYieldXp } from "../../lib/developmentXpFlag.ts";
@@ -654,9 +664,9 @@ function simulateSeasonXp(world, seasonNumber, variant, opts) {
   const shareCache = new Map();
   const hooks = engineHooks(opts);
   // Intet dagsloft (#7739): kun prisen bremser. Med loft: maks +1 pr. evne pr. dato.
-  // _cap2: motorens EGEN regel (R16, ejervalg A 16/11) via xpDatePointCap, ikke en kopi; `dateCap` er dens loft.
+  // _cap2: R16-grænsen fra 16/11 (+2 pr. evne pr. dato for alle), bevaret som variant; motoren har ingen grænse efter G3a (#8520).
   const engineDateRule = variant.capPerDate !== false && Boolean(variant.dateCap);
-  const cap = variant.capPerDate === false ? Infinity : engineDateRule ? null : opts.abilityCapPerDate; // null, ikke undefined: applyTickXp har en standard
+  const cap = variant.capPerDate === false ? Infinity : engineDateRule ? variant.dateCap : opts.abilityCapPerDate;
   const trackCap = engineDateRule ? variant.dateCap : cap;
   const sharesFor = (program, ctx, typeKey) => {
     const key = `${typeKey}|${program.focus}|${program.intensity}`;
@@ -1440,20 +1450,26 @@ export function withXpAging(opts, variant) {
 }
 
 /** Forventet topniveau (§6): standardkarriere fra nuværende evner, i rytterens naturlige rolle. */
-export function expectedTopRating({ id, abilities, potentiale, age, primary_type, secondary_type }, xp, { endAge = 36, datesPerSeason = 32, raceDays = 32 } = {}) {
-  const program = assistantProgram(primary_type, secondary_type);
-  const shares = xpProgramShares(program, { primaryType: primary_type, secondaryType: secondary_type, xp });
+export function expectedTopRating({ id, abilities, potentiale, age, primary_type, secondary_type, ceiling = null, wear = null }, xp, { endAge = 36, datesPerSeason = 32, raceDays = 32 } = {}) {
+  // G3a (spec 2026-11-20 §6.1, #8520): den roterende plan, samme afstandsfaktor som motoren og
+  // ingen grænse pr. dato, som developmentXpExpectedTop.expectedCareer.
+  const rotationLength = (V3_RIDER_TYPE_HARD_PAIRS[primary_type]?.length ?? 0) + 2;
+  const rotation = Array.from({ length: rotationLength }, (_, i) => xpProgramShares(
+    rotatingProgram(primary_type, secondary_type, i), { primaryType: primary_type, secondaryType: secondary_type, xp }));
   let state = { ...abilities };
   const bars = {};
   let top = bestRating(state) ?? 0;
   for (let a = age; a <= endAge; a++) {
     const rates = riderXpRates({ potentiale, age: a }, xp);
     for (let d = 0; d < datesPerSeason; d++) {
+      const factor = xpDistanceFactor({ ceiling, rating: xp.distance ? bestRating(state) : null, wear: xpWearOf({ wear }) }, xp);
+      if (!(factor > 0)) continue;
+      const shares = rotation[d % rotationLength];
       for (const ability of Object.keys(shares)) {
         const level = Number(state[ability]);
         if (!Number.isFinite(level)) continue;
         const riderXp = MENTAL_ABILITIES.has(ability) ? rates.mental : rates.physical;
-        const out = buyPoints({ level, bar: bars[ability] ?? 0, xp: riderXp * shares[ability], maxPoints: 1 }, xp);
+        const out = buyPoints({ level, bar: bars[ability] ?? 0, xp: riderXp * shares[ability] * factor }, xp);
         bars[ability] = out.bar;
         state[ability] = out.level;
       }

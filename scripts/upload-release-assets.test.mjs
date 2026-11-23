@@ -222,6 +222,20 @@ test("Supabase-adapter: 404 og 400/not_found = findes ikke; dublet = created:fal
   assert.equal(attempts, 2);
 });
 
+test("Supabase-adapter: Cloudflare 520 paa PUT proeves igen; en PUT der lykkedes bag 520 giver dublet = created:false", async () => {
+  let puts = 0;
+  const fetchImpl = fakeFetch((url, init) => {
+    if (init.method === "POST" && url.includes("/assets/a.js")) {
+      puts += 1;
+      return puts === 1 ? { status: 520 } : { status: 400, body: { statusCode: "409", error: "Duplicate" } };
+    }
+    return { status: 200, body: "{}" };
+  });
+  const store = createSupabaseStore({ url: "https://p.supabase.co", key: "sb_secret_x", fetchImpl });
+  assert.deepEqual(await store.put("assets/a.js", Buffer.from("x")), { created: false });
+  assert.equal(puts, 2);
+});
+
 test("Supabase-adapter: sb_secret-noegle kun i apikey; legacy JWT ogsaa som Bearer", async () => {
   const fetchImpl = fakeFetch(() => ({ status: 200, body: "{}" }));
   await createSupabaseStore({ url: "https://p.supabase.co", key: "sb_secret_abc", fetchImpl }).getJson("x.json");

@@ -44,6 +44,12 @@ const LOAD_COUNTER_KEY = "cz_e2e_document_loads";
 // for at vente fem rigtige minutter.
 const PERIODIC = "05:05";
 
+// Flytter fokus vaek fra feltet med et rigtigt klik paa en tom flade. Logoet i
+// overskriften er et link til forsiden (#8428), saa det maa ikke vaere klikmaalet.
+async function blurField(page) {
+  await page.locator("body").click({ position: { x: 2, y: 2 } });
+}
+
 async function setupReleaseHarness(page, { served } = {}) {
   const state = { served: served ?? { release: CLIENT_SHA, frontend: CLIENT_FRONTEND }, versionCalls: 0 };
 
@@ -131,7 +137,7 @@ test("B1 login: usendt tekst overlever et deploy — intet reload, banner i sted
   const email = page.getByPlaceholder("din@email.dk");
   await email.fill("ugemt@cyclingzone.org");
   // Fokus VAEK — det var praecis her #5139 mistede teksten.
-  await page.getByRole("heading", { name: "Cycling Zone" }).click();
+  await blurField(page);
   await expect(email).not.toBeFocused();
 
   // Der deployes en ny frontend, og det periodiske tjek fyrer.
@@ -148,7 +154,7 @@ test("B1 login: det sikre punkt — reloadet sker naar teksten er ryddet", async
   await page.goto("/login");
   const email = page.getByPlaceholder("din@email.dk");
   await email.fill("ugemt@cyclingzone.org");
-  await page.getByRole("heading", { name: "Cycling Zone" }).click();
+  await blurField(page);
 
   state.served = { release: "e2e-sha-b", frontend: "e2e-frontend-b" };
   await page.clock.fastForward(PERIODIC);
@@ -157,7 +163,7 @@ test("B1 login: det sikre punkt — reloadet sker naar teksten er ryddet", async
 
   // Spilleren rydder feltet: der er ikke laengere noget at miste.
   await email.fill("");
-  await page.getByRole("heading", { name: "Cycling Zone" }).click();
+  await blurField(page);
 
   await expect.poll(() => documentLoads(page), { timeout: 15_000 }).toBe(2);
 });
@@ -168,7 +174,7 @@ test("B1 login: bannerets Update-klik bekraefter foerst, og genindlaeser saa", a
   const state = await setupReleaseHarness(page);
   await page.goto("/login");
   await page.getByPlaceholder("din@email.dk").fill("ugemt@cyclingzone.org");
-  await page.getByRole("heading", { name: "Cycling Zone" }).click();
+  await blurField(page);
 
   state.served = { release: "e2e-sha-b", frontend: "e2e-frontend-b" };
   await page.clock.fastForward(PERIODIC);
@@ -196,7 +202,7 @@ test("B1 login: 'Save first' lukker banneret uden at genindlaese", async ({ page
   await page.goto("/login");
   const email = page.getByPlaceholder("din@email.dk");
   await email.fill("ugemt@cyclingzone.org");
-  await page.getByRole("heading", { name: "Cycling Zone" }).click();
+  await blurField(page);
 
   state.served = { release: "e2e-sha-b", frontend: "e2e-frontend-b" };
   await page.clock.fastForward(PERIODIC);
@@ -212,7 +218,7 @@ test("B1 login: 'Save first' lukker banneret uden at genindlaese", async ({ page
   // Markoeren ligger der stadig: i det sekund der ikke laengere er noget at
   // miste, tages opdateringen af sig selv — ogsaa efter et "Save first".
   await email.fill("");
-  await page.getByRole("heading", { name: "Cycling Zone" }).click();
+  await blurField(page);
   await expect.poll(() => documentLoads(page), { timeout: 15_000 }).toBe(2);
 });
 
@@ -233,7 +239,7 @@ test("banneret venter paa cookie-banneret — to bundbjaelker tegner ikke oven i
   // Usendt tekst: porten er lukket, saa der sker intet AUTOMATISK, og testen
   // maaler netop bannerets synlighed — ikke en genindlaesning.
   await page.getByPlaceholder("din@email.dk").fill("ugemt@cyclingzone.org");
-  await page.getByRole("heading", { name: "Cycling Zone" }).click();
+  await blurField(page);
 
   state.served = { release: "e2e-sha-b", frontend: "e2e-frontend-b" };
   await page.clock.fastForward(PERIODIC);

@@ -4,7 +4,7 @@
 // begge konsumenter serverer præcis det samme.
 import { previewPlannerBoard } from "./plannerMock.js";
 import { isWorkbenchPreview, PLANNING_SEASON_SEED, PLANNING_STAGE_PROFILES, PLANNING_RIDER_ROWS, PLANNING_SEASON_LOAD, planningSelectionSeed } from "./planningWorkbenchMock.ts"; // #7535
-import { previewPotentialEstimateEnabled, previewProjection, previewReport } from "./potentialEstimateMock.ts";
+import { previewAcademy, previewPotentialEstimateEnabled, previewProjection, previewReport } from "./potentialEstimateMock.ts";
 import { raceHasReportableResults } from "../lib/raceResultVisibility.js";
 import { FORUM_CATEGORY_ORDER } from "../components/forum/forumCategories.js";
 import {
@@ -173,6 +173,10 @@ export function restRows(table, requestUrl = "") {
   switch (table) {
     case "users":
       return [{ id: TEST_USER.id, role: "manager", username: "Playwright Manager", login_streak: 3 }];
+    // #8523: akademiets talenter er egen avl (signeret fra optaget), så talenttabellen i
+    // akademisiden udgave A har rækker at vise. Kun useTalentOrigins læser tabellen.
+    case "academy_intake":
+      return (SEED_ACADEMY.roster ?? []).map((rider, i) => ({ id: `intake-${i + 1}`, rider_id: rider.id }));
     case "teams": {
       // #3197: en .eq("user_id", ...).maybeSingle()/.single()-forespørgsel (fx
       // "min egen pulje") skal få NETOP ét hold tilbage. Uden dette filter
@@ -1554,7 +1558,7 @@ export function apiResponse(pathname, search = "") {
     };
   }
 
-  if (pathname.endsWith("/api/academy/me")) return SEED_ACADEMY;
+  if (pathname.endsWith("/api/academy/me")) return previewPotentialEstimateEnabled() ? previewAcademy(SEED_ACADEMY) : SEED_ACADEMY; // #8523
   if (pathname.endsWith("/api/academy/pnl")) return SEED_ACADEMY_PNL;
 
   // #2466 "How your team did" — resultat-push for holdets seneste finaliserede

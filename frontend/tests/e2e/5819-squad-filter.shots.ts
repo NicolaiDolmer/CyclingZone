@@ -42,7 +42,7 @@ async function shoot(browser: Browser, base: string, { width, height, lang }: { 
   await page.goto("/login");
   await page.getByPlaceholder(/email/i).waitFor();
   await page.getByPlaceholder(/email/i).fill(TEST_USER.email);
-  await page.getByPlaceholder("••••••••").fill("playwright-password");
+  await page.locator("#auth-password").fill("playwright-password");
   await page.getByRole("button", { name: /log in|log ind/i }).click();
   await page.waitForURL(/\/dashboard$/);
   const roster = [RIDERS.find((r: { id: string }) => r.id === "rider-1"), ...PREVIEW_YOUTH_RIDERS.map((r: Record<string, unknown>) => ({ ...r, pending_team_id: null }))];

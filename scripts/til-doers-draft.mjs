@@ -140,12 +140,31 @@ function headingRe() {
  * starter med EN:/DA: (ogsaa **EN:** og "- EN:"); staar teksten paa linjerne
  * efter, tages afsnittet indtil en tom linje.
  */
+// Alt fra "<!--" til naeste "-->" (eller til slutningen, hvis den mangler)
+// droppes. Gentages til teksten er stabil, fordi stumperne omkring en fjernet
+// kommentar kan saette sig sammen til et nyt "<!--" ("<!-<!-- x -->-").
+function stripHtmlComments(src) {
+  let text = src;
+  for (let prev = null; prev !== text;) { prev = text; text = stripHtmlCommentsOnce(text); }
+  return text;
+}
+
+function stripHtmlCommentsOnce(src) {
+  let out = '';
+  let i = 0;
+  for (;;) {
+    const open = src.indexOf('<!--', i);
+    if (open < 0) return out + src.slice(i);
+    out += src.slice(i, open);
+    const close = src.indexOf('-->', open + 4);
+    if (close < 0) return out;
+    i = close + 3;
+  }
+}
+
 export function extractPatchNoteDraft(body) {
-  // CodeQL #394: fjern HTML-kommentarer til der ikke er flere (et enkelt pass
-  // kan efterlade "<!--" fra indlejrede/sammenflettede kommentarer).
-  let text = String(body || '');
-  for (let prev = null; prev !== text;) { prev = text; text = text.replace(/<!--[\s\S]*?-->/g, ''); }
-  text = text.replace(/<!--/g, '');
+  // CodeQL #394/#395: fjern HTML-kommentarer uden regex-erstatning (se stripHtmlComments).
+  const text = stripHtmlComments(String(body || ''));
   const lines = text.split(/\r?\n/);
   const start = lines.findIndex((l) => /^#{1,6}\s*patch[\s-]?notes?\b/i.test(l));
   if (start < 0) return null;

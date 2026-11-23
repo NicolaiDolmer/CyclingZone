@@ -7,6 +7,9 @@
     "previousDay": "Jour précédent",
     "nextDay": "Jour suivant",
     "lastSevenDays": "Sept derniers jours",
+    "allDays": "Tous les jours",
+    "showOlderDays": "Afficher les jours précédents",
+    "showFewerDays": "Afficher moins de jours",
     "dayPoints": "{date} : {count, plural, one {# nouveau point} other {# nouveaux points}}",
     "xpToday": "XP gagnée aujourd'hui",
     "xp30Sub": "30 jours {xp}",
@@ -67,6 +70,15 @@
     "colXpToday": "XP du jour",
     "colEarned": "Gagné",
     "colPaid": "Depuis la barre",
-    "details": "Détails pour {name}"
+    "details": "Détails pour {name}",
+    "loadError": "Impossible de charger le rapport",
+    "loadErrorBody": "Rien n'a été modifié. Vos plans d'entraînement sont en sécurité.",
+    "retry": "Réessayer",
+    "empty": "Pas encore d'entraînement cette saison.",
+    "emptyAction": "Aller à l'entraînement du jour"
+  },
+  "devFocus": {
+    "change": "Changer de focus",
+    "changeFor": "Changer le focus de {name}"
   }
 }

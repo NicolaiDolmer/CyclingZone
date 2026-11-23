@@ -40,6 +40,7 @@ import { loadRaceDayStagesByRider, loadRiderIdsWithStageOnGameDays } from "./rac
 import { resolveDayProgram, programSlotForRaceDay, weekDaysHaveSessions } from "./trainingPrograms.js";
 // #5932: felterne har eget flag (training_program_cells), med training_programs som fallback.
 import { isTrainingCellsEnabledForTeam } from "./trainingWeekPlanCellsFlag.js";
+import { isTrainingEffortLevelsEnabled, executedEffortForScore } from "./trainingEffortLevels.js"; // #7947
 import { applyTrainingCatalog, isTrainingCatalogV3EnabledForTeam, v3SmartDefaultFocus } from "./trainingCatalogV3.js"; // #5319
 import {
   loadTeamFatigueRules, loadRiderIdsWithStageOnDate, previousDateString, applyFatigueRules,
@@ -1141,7 +1142,8 @@ export async function runTeamTrainingDay({
   let rosterRows = [], eligibleIds = [], waitingIds = [];
   try {
   // ── 2) Load riders (ikke-pensionerede, dette hold) ──────────────────────────
-  const riderColumns = "id, primary_type, secondary_type, potentiale, birthdate, firstname, lastname, team_id, is_academy, is_retired";
+  // #6110 G3a (#8520): talent_ceiling er potentialet P til XP-afstanden; kun laest under XP (sharedTickArgs).
+  const riderColumns = "id, primary_type, secondary_type, potentiale, talent_ceiling, birthdate, firstname, lastname, team_id, is_academy, is_retired";
   const loadRiders = async (query) => {
     const {data,error}=await query;
     if (error) throw new Error(`riders load: ${error.message}`);
@@ -1333,6 +1335,7 @@ export async function runTeamTrainingDay({
   let raceDayEffortByRider = new Map(); // #6641 variant B: rider_id -> managerens intention paa dagens etape
   let raceDayRoleByRiderMap = new Map(); // #5950: rider_id -> rolle paa dagens etape (tom = fri rolle)
   let programsOn = false, catalogV3On = false, stageOnDateRiderIds = new Set();
+  let effortLevelsOn = false; // #7947
   let fatigueRules = null, stageYesterdayRiderIds = new Set();
   let trainingFacilityTier, trainingStaff, teamMedicalBonus = 0, illnessHistoryByRider = new Map();
   // #6938: sygdom af langvarig ekstrem traethed. Kun under condition_model_v2 OG naar
@@ -1503,9 +1506,19 @@ export async function runTeamTrainingDay({
   // #4629: programcellerne laeses KUN naar holdet har programdata OG flaget er
   // on for holdet (beta: holdets ejer er beta-tester). Uden programdata er der
   // intet ekstra opslag, og stien er bit-identisk med foer.
-  programsOn = (Array.isArray(weekPlanRow) ? weekPlanRow : []).some((r) => weekDaysHaveSessions(r.days))
-    ? await isTrainingCellsEnabledForTeam(supabase, teamId)
-    : false;
+  // #7947 + #8546: kontakten training_effort_levels laeses for ALLE hold, samtidig med
+  // programcelle-opslaget. Foer (#8537) blev den kun laest med programceller eller en plan paa
+  // andet niveau end standarden; saa fik en rytter uden plan (assistentens fokus paa Mellem), med
+  // kun den gamle ugerytme, eller sat ned af traethedsreglen, ingen koert niveau paa scoren, og
+  // aldringsbremsen talte sessionens tabel-niveau i stedet for det han koerte. Uden programceller
+  // roerer kontakten ikke traeningen (resolveDayProgram svarer den gamle sti), kun kvitteringen.
+  // Opslaget holdes uden for #7982's frosne facit (harness: effortSwitchReads).
+  [programsOn, effortLevelsOn] = await Promise.all([
+    (Array.isArray(weekPlanRow) ? weekPlanRow : []).some((r) => weekDaysHaveSessions(r.days))
+      ? isTrainingCellsEnabledForTeam(supabase, teamId)
+      : false,
+    isTrainingEffortLevelsEnabled(supabase),
+  ]);
   },
   async () => {
   // #5319: traeningskatalog v3 (beta: holdets ejer er beta-tester). Off = programmet uroert.
@@ -1579,6 +1592,7 @@ export async function runTeamTrainingDay({
     xpPayoutRiderIds,
     abilityRows, planRows, conditionRows, weekPlanRow, raceDayResult, boundRiderIds, racedRiderIds,
     racedRiderProfileByRider, raceDayEffortByRider, raceDayRoleByRiderMap, programsOn, catalogV3On,
+    effortLevelsOn, // #7947
     stageOnDateRiderIds, fatigueRules, stageYesterdayRiderIds, trainingFacilityTier, trainingStaff,
     teamMedicalBonus, illnessOn, illnessHistoryByRider,
     // #7982 (afregning efter etapen): marks the race session's receipts (race_session_7982).
@@ -1786,6 +1800,7 @@ export function computeTrainingDayTick(input) {
     racedRiderProfileByRider, raceDayEffortByRider, raceDayRoleByRiderMap, programsOn, catalogV3On,
     stageOnDateRiderIds, fatigueRules, stageYesterdayRiderIds, trainingFacilityTier, trainingStaff,
     teamMedicalBonus, illnessOn, illnessHistoryByRider, raceSessionRiderIds = null,
+    effortLevelsOn = false, // #7947
   } = input;
   const settlingRiderIds = new Set();
   const abilityByRider = new Map((abilityRows ?? []).map((a) => [a.rider_id, a]));
@@ -1865,6 +1880,7 @@ export function computeTrainingDayTick(input) {
       hasExplicitPlan,
       programsOn,
       catalogV3: catalogV3On,
+      effortLevels: effortLevelsOn, // #7947
     });
     if (dayProgram.source === "program") program.focus = dayProgram.focus;
     program.intensity = dayProgram.intensity;
@@ -2082,9 +2098,11 @@ export function computeTrainingDayTick(input) {
         curveB,
         curveBTransition: riderCurveBTransition, // #7382
         developmentXp, // #6110: null = dagens model
-        // #6110 R16: hoejst +2 pr. evne pr. dato under XP. Kun med XP, saa dagens model er uroert.
+        // #6110: datoens kvitteringer under XP (bar_paid); ingen graense pr. dato efter G3a (#8520). Kun med XP, saa dagens model er uroert.
         // #6110 (ejervalg B 19/11): ogsaa paa rytterens foerste XP-dato, naar han ikke udviklede sig paa startdatoen.
-        ...(developmentXp ? { xpDateUsedGains: dateUsedGains(), xpStoredBarPayout: developmentXpIgnition === true || xpPayoutRiderIds?.has(rider.id) === true, xpDateStart: xpDateStart?.dateStart ?? null } : {}),
+        ...(developmentXp ? { xpDateUsedGains: dateUsedGains(), xpStoredBarPayout: developmentXpIgnition === true || xpPayoutRiderIds?.has(rider.id) === true, xpDateStart: xpDateStart?.dateStart ?? null,
+          // #6110 G3a (#8520): potentialet P og traetheden ved datoens start til XP-afstanden og traetheden.
+          xpRider: { ceiling: rider.talent_ceiling == null ? null : Number(rider.talent_ceiling), fatigue: preFatigue } } : {}),
       };
       if (racedToday) {
         // #4850 variant A (ejer 24/9, S1 valgt efter simuleringen i #5640):
@@ -2355,6 +2373,8 @@ export function computeTrainingDayTick(input) {
         was_race_day: racedToday,
         intention: null,
         contributions: racedToday ? null : scoreDetail.contributions,
+        // #7947: det koerte niveau til aldringsbremsen; kun med kontakten on (off = samme raekke).
+        ...(effortLevelsOn ? { intensity: racedToday ? null : executedEffortForScore(program.intensity) } : {}),
       });
     } else if (boundRestToday && rodeToday) {
       // #4847: rytteren KOERTE en etape, men fik intet tick fordi udviklingen er

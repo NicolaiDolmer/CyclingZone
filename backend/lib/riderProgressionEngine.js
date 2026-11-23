@@ -38,6 +38,7 @@ import {
   developRiderSeasonV2, buildCapsForRider, sameCaps, resolveSeasonRetirement, xpAgingConfig,
 } from "./riderProgression.js";
 import { loadSeasonDevelopmentLoad } from "./seasonDevelopmentLoad.js";
+import { loadRiderWear, addWear, ABILITY_WEAR_PATCH_KEY } from "./riderWear6110.js";
 import {
   RETIREMENT_NOTICE_COLUMNS,
   frozenNoticeFor,
@@ -240,6 +241,12 @@ export async function developRidersForSeason({
   // (idempotent via dev-loggen), så ingen rytter ældes efter den forkerte regel.
   const agingCfg = await loadAgingCfgFn({ supabase, now, seasonId });
 
+  // #8522 (G3a): under procent-aldringen bliver det tabte varigt slid. Sliddet læses
+  // strengt FØR noget skrives: kan det ikke læses (fx migrationen mangler), kaster
+  // skiftet og kan køres igen, i stedet for at skrive et slid regnet fra nul.
+  // Med XP slukket (eller kandidat B's trin-form) røres slid-tabellen aldrig.
+  const wearByRider = agingCfg?.percent ? await loadRiderWear({ supabase }) : null;
+
   // ── Belastningen for den AFSLUTTEDE sæson (seasonNumber − 1) hentes FØR noget
   //    skrives. Fejler den, kaster vi: uden belastning ville alle få fuldt fald,
   //    og skiftet kan køres igen (idempotent via dev-loggen).
@@ -289,8 +296,9 @@ export async function developRidersForSeason({
     grew: 0, declined: 0, retired: 0, caps_initialised: 0,
     retirement_notice_frozen: 0,  // ryttere hvis pensionsvarsel blev skrevet ned her (#5073)
     retirement_notice_read: 0,    // ryttere hvor cutover LÆSTE et allerede frosset varsel (#5073)
-    aging_v2: { riders_with_load: 0, ability_points_declined: 0, rule: agingCfg ? "xp" : "v2" },
+    aging_v2: { riders_with_load: 0, ability_points_declined: 0, rule: agingCfg ? (agingCfg.percent ? "xp_pct" : "xp") : "v2" },
   };
+  if (wearByRider) Object.assign(summary.aging_v2, { riders_with_new_wear: 0, wear_points_added: 0 });
 
   for (const r of riders) {
     if (alreadyDeveloped.has(r.id)) { summary.skipped_already_done++; continue; }
@@ -346,6 +354,23 @@ export async function developRidersForSeason({
     // fuldført. Én kaldevej til værdikolonnerne; vagt i valuationRatingParity.test.js.
     const abilityPatch = { ...next };
     if (capsChanged) abilityPatch.ability_caps = caps;
+
+    // #8522: det aldringen tog i dette skifte lægges til rytterens slid. RPC'en skriver
+    // det i samme transaktion som evnerne, så slid og fald altid følges ad.
+    if (wearByRider) {
+      const drops = {};
+      let added = 0;
+      for (const k of VISIBLE_ABILITIES) {
+        if (abilities[k] == null || next[k] == null) continue;
+        const d = Math.round(abilities[k]) - next[k];
+        if (d > 0) { drops[k] = d; added += d; }
+      }
+      if (added > 0) {
+        abilityPatch[ABILITY_WEAR_PATCH_KEY] = addWear(wearByRider.get(r.id), drops);
+        summary.aging_v2.riders_with_new_wear++;
+        summary.aging_v2.wear_points_added += added;
+      }
+    }
 
     // U25 = UCI-reglen (ejer-beslutning 2/9-2026): sæson-alder ≤ 25 (ikke < 25).
     // `age` er allerede sæson-korrekt (ageForSeason ovenfor); grænsen selv bor

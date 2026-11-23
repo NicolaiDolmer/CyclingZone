@@ -1,8 +1,9 @@
 import { Skeleton } from "../components/ui/index.js";
 import { useState, useEffect, Fragment } from "react";
 import { useDashboardData } from "../data/dashboardData.ts"; // #6494
+import { useDashboardCardEvents } from "../lib/dashboardCardEvents.ts";
 import { useTodayStagesData } from "../data/todayStagesData.ts"; // #6494
-import { useFirstRaceCardData } from "../data/dashboardCards.ts"; // #1140/#6494
+import { useFirstRaceCardData, useSurveyInviteData } from "../data/dashboardCards.ts"; // #1140/#6494
 import { useTranslation } from "react-i18next";
 import ReservedBody from "../components/ui/ReservedBody.tsx";
 import AuthLoading from "../components/ui/AuthLoading.tsx";
@@ -119,6 +120,7 @@ function getAuctionLeaderId(auction) {
 const EMPTY_LIST = /** @type {any[]} */ ([]);
 
 export default function DashboardPage() {
+  const [cardTrackingRoot, setCardTrackingRoot] = useState(/** @type {HTMLDivElement | null} */ (null));
   const navigate = useNavigate();
   const { t, i18n } = useTranslation(["dashboard", "common"]);
   // #3697: board.json (55 KB rå pr. sprogpar) lazy-loades via HttpBackend i
@@ -179,6 +181,7 @@ export default function DashboardPage() {
     seasonStartWindowOpen: (season) => isSeasonStartWindow(season, new Date(nowMs)),
     academyEnabled,
   }));
+  useDashboardCardEvents(cardTrackingRoot, dashboard.scope.viewerId);
   const {
     team, loading, error, allAuctions, activeOffers, cardReady, teamRaceIds, teamRaceIdsLoaded,
     forecast, onboardingProgress, seasonSignupStatus, optionalModulesSettled, annualMeeting,
@@ -195,11 +198,11 @@ export default function DashboardPage() {
   const standings = core?.standings ?? EMPTY_LIST;
   const pools = core?.pools ?? EMPTY_LIST;
   const poolStages = core?.poolStages ?? null;
-  const board = core?.board ?? null;
-  const boardSatisfaction = core?.boardSatisfaction ?? null;
-  const boardOutlook = core?.boardOutlook ?? null;
-  const boardPlanMissing = core?.boardPlanMissing ?? false;
-  const boardStatusLoaded = core?.boardStatusLoaded ?? false;
+  const board = dashboard.boardStatus?.board ?? null;
+  const boardSatisfaction = dashboard.boardStatus?.boardSatisfaction ?? null;
+  const boardOutlook = dashboard.boardStatus?.boardOutlook ?? null;
+  const boardPlanMissing = dashboard.boardStatus?.boardPlanMissing ?? false;
+  const boardStatusLoaded = dashboard.boardStatus?.boardStatusLoaded ?? false;
   const showDiscordNudge = Boolean(dashboard.discordStatus && !dashboard.discordStatus.discord_id) && !discordNudgeDismissed;
   // #2439: server er sandheden: et tidligere dismiss eller et "etableret hold" skjuler kortet.
   const onboardingDismissed = onboardingDismissedLocal || Boolean(onboardingProgress?.dismissed || onboardingProgress?.established);
@@ -219,7 +222,12 @@ export default function DashboardPage() {
   useRealtimeRefetch("dashboard-live", REALTIME_TABLES, dashboard.refreshLive);
   // #6569: paa topniveau (foer early-return) saa stribens fetch starter naar team er kendt.
   const todayStages = withoutPausedUpcoming(useTodayStagesData(), Boolean(racePause)); // #6970
-  const initialDataReady = !loading && optionalModulesSettled && (!team || (!todayStages.loading && selectionReady && (!myLatestResultVisible || myLatestResultSettled)));
+  const surveyInvite = useSurveyInviteData();
+  // #8019: bestyrelsen hentes for sig selv og holder ikke siden tilbage. Kun i
+  // saesonstart-vinduet venter vi paa den inden for samme budget, fordi guiden
+  // ellers ville faa sit bestyrelses-flueben efter foerste visning.
+  const boardHoldsReveal = dashboard.boardPending && seasonStartWindowOpen && !seasonStartDismissed;
+  const initialDataReady = !loading && optionalModulesSettled && surveyInvite.settled && !boardHoldsReveal && (!team || (!todayStages.loading && selectionReady && (!myLatestResultVisible || myLatestResultSettled)));
   useEffect(() => {
     if (initialDataReady) setInitialWaitExpired(true);
   }, [initialDataReady]);
@@ -528,7 +536,7 @@ export default function DashboardPage() {
     // #2253: translate="no" — dashboardet re-committer hyppigt tekst-noder (live
     // race-data, countdowns); browser-oversættere muterede dem og udløste
     // NotFoundError-crashes (Sentry-events med url=/dashboard). Se PR #2272.
-    <div translate="no" className="max-w-5xl mx-auto">
+    <div ref={setCardTrackingRoot} data-dashboard-card-root translate="no" className="max-w-5xl mx-auto">
       {/* Header — #2849 bølge 1: kanonisk PageHeader (docs/design/PAGE_TEMPLATES.md).
           actions-slotten bærer saldo-linket + customize-menuen uændret (features
           bevares; action-cluster-kontrakten på maks 1 select + 1 primary håndhæves
@@ -582,11 +590,11 @@ export default function DashboardPage() {
 
       {/* #4943 (ejer-bestilling 8/9): flyttet til TOPPEN af dashboardet, som
           første element under sidehovedet — over squad-/kontrakt-advarslerne.
-          Indgang til det aktive spoergeskema. Selv-hentende og renderer intet
+          Indgang til det aktive spoergeskema. Renderer intet
           naar der ikke er et aabent skema, spilleren har gennemfoert, eller
           kortet er lukket inden for 3 dage. Sekundaer CTA: dashboardets ene
           guld-primaere element ejes af computeDashboardGoldCta. */}
-      <SurveyInviteCard />
+      <div data-dashboard-card="survey" className="contents"><SurveyInviteCard survey={surveyInvite.survey} hide={surveyInvite.hide} /></div>
 
       {/* Squad warning + kontrakt-fornyelses-advarsel — ALLERØVERST i
           indholdsflowet, over dagens etaper. #3915 satte oprindeligt dagens
@@ -595,7 +603,7 @@ export default function DashboardPage() {
           ting på siden der koster point hvis de overses (Clarity: 94,65%
           scroll-dybde — synlighed er ikke problemet, punktér de dyre ting). */}
       {seniorStartWarning && (
-        <div className="mb-4 px-4 py-3 rounded-cz text-sm border flex flex-wrap items-center gap-2 bg-cz-danger-bg text-cz-danger border-cz-danger/30">
+        <div data-dashboard-card="seniorStartsWarning" className="mb-4 px-4 py-3 rounded-cz text-sm border flex flex-wrap items-center gap-2 bg-cz-danger-bg text-cz-danger border-cz-danger/30">
           <AlertTriangleIcon size={16} className="shrink-0" />
           <span className="flex-1 min-w-[200px]">{t("dashboard:seniorStartWarning.message", seniorStartWarning)}</span>
           <Link to="/auctions" className="ms-auto inline-flex items-center gap-0.5 text-xs underline opacity-70 hover:opacity-100">
@@ -605,7 +613,7 @@ export default function DashboardPage() {
         </div>
       )}
       {squadWarning && (
-        <div className={`mb-4 px-4 py-3 rounded-cz text-sm border flex items-center gap-2
+        <div data-dashboard-card="squadWarning" className={`mb-4 px-4 py-3 rounded-cz text-sm border flex items-center gap-2
           ${squadWarning.color === "red"
             ? "bg-cz-danger-bg text-cz-danger border-cz-danger/30"
             : "bg-cz-warning-bg text-cz-warning border-cz-warning/30"}`}>
@@ -628,7 +636,7 @@ export default function DashboardPage() {
           har lukket den for resten af sæsonen (#4387, ejer-go i Discord-tråden
           29/8) og ingen NY rytter er kommet ind i vinduet siden da. */}
       {expiringContractCount > 0 && showContractExpiryNotice && (
-        <div className="mb-4 px-4 py-3 rounded-cz text-sm border flex flex-wrap items-center gap-2 bg-cz-warning-bg text-cz-warning border-cz-warning/30">
+        <div data-dashboard-card="contractWarning" className="mb-4 px-4 py-3 rounded-cz text-sm border flex flex-wrap items-center gap-2 bg-cz-warning-bg text-cz-warning border-cz-warning/30">
           <AlertTriangleIcon size={16} className="shrink-0" />
           <span className="flex-1 min-w-[200px]">{t("dashboard:contractWarning.message", { count: expiringContractCount })}</span>
           {/* #4387 — egen flex-gruppe (i stedet for løse ms-auto-børn på det
@@ -669,14 +677,16 @@ export default function DashboardPage() {
           holdudtagelsen eller første-løbs-øjeblikket med guld længere nede,
           er knappen her sekundær (én guld pr. view). */}
       {showSeasonSignupCard && (
-        <SeasonSignupCard
-          nextSeasonNumber={seasonSignupStatus?.next_season_number}
-          parked={Boolean(seasonSignupStatus?.parked)}
-          signedUp={Boolean(seasonSignupStatus?.signed_up)}
-          submitting={seasonSignupSubmitting}
-          primary={seasonSignupPrimary}
-          onSignUp={handleSeasonSignup}
-        />
+        <div data-dashboard-card="seasonSignup" className="contents">
+          <SeasonSignupCard
+            nextSeasonNumber={seasonSignupStatus?.next_season_number}
+            parked={Boolean(seasonSignupStatus?.parked)}
+            signedUp={Boolean(seasonSignupStatus?.signed_up)}
+            submitting={seasonSignupSubmitting}
+            primary={seasonSignupPrimary}
+            onSignUp={handleSeasonSignup}
+          />
+        </div>
       )}
 
       {/* #3915 — dagens etaper/løb for holdet, herefter i indholdsflowet (under
@@ -686,13 +696,15 @@ export default function DashboardPage() {
           må stå over dagens etaper — se docs/
           DASHBOARD_RULES.md §2. Skjuler sig selv når holdet ingen løb har i
           dag (mindst-støj-valg, ejer 18/8). */}
-      <RacePausedBanner pause={racePause} />
-      {(loading || team) && <TodayStagesStrip stages={todayStages} />}
+      <div data-dashboard-card="racePause" className="contents"><RacePausedBanner pause={racePause} /></div>
+      {(loading || team) && (
+        <div data-dashboard-card="todayStages" className="contents"><TodayStagesStrip stages={todayStages} /></div>
+      )}
 
       {/* #1140: "Your first race" (flag first_race_card), samme plads som #3310-kortet
           nedenfor; de to optræder aldrig sammen (se firstRaceCardGateOpen). */}
       {firstRaceCardModel && (
-        <div className="mb-4">
+        <div data-dashboard-card="firstRace" className="mb-4">
           <FirstRaceCard model={firstRaceCardModel} nowMs={nowMs} division={team?.division} />
         </div>
       )}
@@ -700,7 +712,7 @@ export default function DashboardPage() {
       {/* #3310: første-løbs-øjeblikket ejer toppen ALENE indtil resultatet er
           set — INGEN par, i modsætning til normaltilstanden lige nedenfor. */}
       {firstRaceMomentActive && (
-        <div className="mb-4">
+        <div data-dashboard-card="myLatestResult" className="mb-4">
           <MyLatestResultCard
             data={myLatestResult}
             nextRace={squadSelectionMissingRace}
@@ -719,16 +731,19 @@ export default function DashboardPage() {
       {(myLatestResultPaired || nextActionsVisible) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-[14px] mb-4">
           {myLatestResultPaired && (
-            <div className={nextActionsVisible ? undefined : "lg:col-span-2"}>
+            <div data-dashboard-card="myLatestResult" className={nextActionsVisible ? undefined : "lg:col-span-2"}>
               <MyLatestResultCard data={myLatestResult} />
             </div>
           )}
           {nextActionsVisible && (
-            <div className={myLatestResultPaired ? undefined : "lg:col-span-2"}>
+            <div data-dashboard-card="nextActions" className={myLatestResultPaired ? undefined : "lg:col-span-2"}>
+              {/* #8019: listen kan faa et bestyrelsespunkt, saa kortet bliver i sin
+                  reserverede ventetilstand til bestyrelsen er afklaret i stedet for
+                  at skifte indhold efter foerste visning. */}
               <NextActionsCard
                 pending={actionSummary}
                 urgentAuctionCount={urgentAuctionCount}
-                loading={actionLoading || !cardReady.auctions || !selectionReady}
+                loading={actionLoading || !cardReady.auctions || !selectionReady || dashboard.boardPending}
                 squadSelectionMissingRace={squadSelectionMissingRace}
                 notTrainedToday={notTrainedToday}
                 boardPlanMissing={boardPlanMissing}
@@ -746,7 +761,7 @@ export default function DashboardPage() {
       {(showTeamSelectionCta || seasonInfo) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-[14px] mb-4">
           {showTeamSelectionCta && (
-            <div className={seasonInfo ? undefined : "lg:col-span-2"}>
+            <div data-dashboard-card="teamSelection" className={seasonInfo ? undefined : "lg:col-span-2"}>
               {/* #1681: holdudtagelse-CTA — synlig genvej direkte til det løb der
                   reelt MANGLER udtagelse (squadSelectionMissingRace, #2328).
                   #3243: startAtMs/nowMs giver kortet en ægte countdown til
@@ -760,7 +775,7 @@ export default function DashboardPage() {
             </div>
           )}
           {seasonInfo && (
-            <div className={showTeamSelectionCta ? undefined : "lg:col-span-2"}>
+            <div data-dashboard-card="seasonStatus" className={showTeamSelectionCta ? undefined : "lg:col-span-2"}>
               {/* Season Status Banner — links to the race calendar (#1421: was a
                   dead Card). #2328: rettet fra /races (RaceHub) til /calendar.
                   #3102 etape 3 (PR 3): kalenderen er en fane i Planlægnings-hubben. */}
@@ -831,13 +846,13 @@ export default function DashboardPage() {
           ned efter de to nye par (docs/DASHBOARD_RULES.md §4 — "betingede
           engangskort" står EFTER [Seneste resultat|Næste træk] og
           [Holdudtagelse|Sæsonstatus], ikke lige efter dagens etaper). */}
-      <DevTransitionCard />
+      <div data-dashboard-card="developmentTransition" className="contents"><DevTransitionCard /></div>
 
       {/* #2288 B — Onboarding progress flyttet til TOP af stakken (over Næste
           træk) indtil onboarding er fuldført, så den ikke drukner blandt andre
           kort. Completion-kortet bliver hvor det plejer (post-onboarding). */}
       {!onboardingDismissed && onboardingIncomplete && (
-        <div className={firstRaceMomentActive || firstRaceCardModel ? "opacity-75" : undefined}>
+        <div data-dashboard-card="onboardingProgress" className={firstRaceMomentActive || firstRaceCardModel ? "opacity-75" : undefined}>
           <OnboardingProgressCard progress={onboardingProgress} onDismiss={dismissOnboarding} />
         </div>
       )}
@@ -848,43 +863,49 @@ export default function DashboardPage() {
           CTA'en leder til /seasons/:id, som nu viser SeasonRecapHero (samme
           data) for holdet. */}
       {showSeasonWrapNudge && (
-        <SeasonWrapNudgeCard
-          seasonNumber={completedSeasonRecap.seasonNumber}
-          seasonId={completedSeasonRecap.seasonId}
-          nextSeasonNumber={seasonInfo?.number}
-          division={completedSeasonRecap.division}
-          divisionSize={completedSeasonRecap.divisionSize}
-          rank={completedSeasonRecap.rank}
-          movement={completedSeasonRecap.movement}
-          points={completedSeasonRecap.points}
-          wins={completedSeasonRecap.wins}
-          primary={seasonWrapPrimary}
-          onView={() => navigate(`/seasons/${completedSeasonRecap.seasonId}`)}
-          onDismiss={dismissSeasonWrap}
-        />
+        <div data-dashboard-card="seasonWrap" className="contents">
+          <SeasonWrapNudgeCard
+            seasonNumber={completedSeasonRecap.seasonNumber}
+            seasonId={completedSeasonRecap.seasonId}
+            nextSeasonNumber={seasonInfo?.number}
+            division={completedSeasonRecap.division}
+            divisionSize={completedSeasonRecap.divisionSize}
+            rank={completedSeasonRecap.rank}
+            movement={completedSeasonRecap.movement}
+            points={completedSeasonRecap.points}
+            wins={completedSeasonRecap.wins}
+            primary={seasonWrapPrimary}
+            onView={() => navigate(`/seasons/${completedSeasonRecap.seasonId}`)}
+            onDismiss={dismissSeasonWrap}
+          />
+        </div>
       )}
 
       {/* #2925 — "Season N: kom i gang". Over "Næste træk", fordi de fire
           sæsonskifte-beslutninger er dét der reelt venter mandag morgen; kortet
           forsvinder af sig selv når vinduet lukker (7 dage) eller ved dismiss. */}
       {showSeasonStartGuide && (
-        <SeasonStartGuideCard
-          seasonNumber={seasonInfo?.number}
-          items={seasonStartItems}
-          onDismiss={dismissSeasonStart}
-        />
+        <div data-dashboard-card="seasonStart" className="contents">
+          <SeasonStartGuideCard
+            seasonNumber={seasonInfo?.number}
+            items={seasonStartItems}
+            onDismiss={dismissSeasonStart}
+          />
+        </div>
       )}
 
       {/* Onboarding completion — vis engang når alle 4 trin er gennemført */}
-      {!completionDismissed && onboardingProgress && onboardingProgress.completed_count === onboardingProgress.total_count && (
-        <OnboardingCompletionCard onDismiss={dismissCompletion} />
+      {!onboardingDismissed && !completionDismissed && onboardingProgress && onboardingProgress.completed_count === onboardingProgress.total_count && (
+        <div data-dashboard-card="onboardingCompletion" className="contents">
+          <OnboardingCompletionCard onDismiss={dismissCompletion} />
+        </div>
       )}
 
       {/* Discord DM nudge — undertrykt under onboarding (#2288 B). SurveyBanner er
           fjernet (#2467), så den var tidligere den anden halvdel af "max 1
           nudge-banner ad gangen"-reglen. */}
       {showDiscordNudgeBanner && (
-        <div className="mb-4 px-4 py-3 bg-cz-card border border-cz-discord/30 rounded-cz flex items-center gap-3">
+        <div data-dashboard-card="discord" className="mb-4 px-4 py-3 bg-cz-card border border-cz-discord/30 rounded-cz flex items-center gap-3">
           <div className="w-8 h-8 rounded-cz bg-cz-discord/20 flex items-center justify-center shrink-0">
             <DiscordIcon size={16} className="text-cz-discord" aria-hidden="true" />
           </div>
@@ -920,10 +941,14 @@ export default function DashboardPage() {
       {/* #3398 (Maiden Win Engine): career-first-momentkort — renderer intet
           uden data. Bevidst FØR Hero & Agony: en career-first er det sjældnere,
           større øjeblik. */}
-      <MaidenWinMomentCard />
+      <div data-dashboard-card="maidenWin" className="contents"><MaidenWinMomentCard /></div>
 
       {/* #3397: Hero & Agony moment-kort — selv-hentende, se HeroAgonyCard.jsx. */}
-      {heroAgonyVisible && <HeroAgonyCard teamId={team?.id} teamName={team?.name} />}
+      {heroAgonyVisible && (
+        <div data-dashboard-card="heroAgony" className="contents">
+          <HeroAgonyCard teamId={team?.id} teamName={team?.name} />
+        </div>
+      )}
 
       {/* #4557 (S-M2d): dashboard-genvej til aarsmoedet — fuld bredde,
           UDENFOR to-kolonne-gridet, i den oevre stak af betingede engangs-
@@ -941,7 +966,7 @@ export default function DashboardPage() {
           udelukkende naar GET /board/meeting svarer available:true —
           automatisk skjult for alle uden for beta. */}
       {annualMeeting?.mandate && (
-        <div className="mb-4">
+        <div data-dashboard-card="annualMeeting" className="mb-4">
           <AnnualMeetingNudgeCard daysLeft={daysUntil(annualMeeting.mandate.deadlineAt)} />
         </div>
       )}
@@ -951,7 +976,7 @@ export default function DashboardPage() {
 
         {/* My auctions + winning */}
         {isVisible("auctions") && (
-        <Section>
+        <Section data-dashboard-card="auctions">
           <SectionHeader
             title={t("dashboard:cards.auctions.title")}
             action={<SectionAction as={Link} to="/auctions">{t("dashboard:cards.auctions.linkAll")}</SectionAction>}
@@ -1007,7 +1032,7 @@ export default function DashboardPage() {
 
         {/* Pending transfers + offers */}
         {isVisible("transfers") && (
-        <Section>
+        <Section data-dashboard-card="transfers">
           <SectionHeader
             title={t("dashboard:cards.transfers.title")}
             action={<SectionAction as={Link} to="/transfers">{t("dashboard:cards.transfers.linkAll")}</SectionAction>}
@@ -1063,10 +1088,10 @@ export default function DashboardPage() {
 
         {/* Upcoming races */}
         {isVisible("races") && (
-        <Section>
+        <Section data-dashboard-card="races">
           <SectionHeader
             title={t("dashboard:cards.races.title")}
-            action={<SectionAction as={Link} to="/planning">{t("dashboard:cards.races.linkAll")}</SectionAction>}
+            action={<SectionAction as={Link} to="/planning?tab=calendar">{t("dashboard:cards.races.linkAll")}</SectionAction>}
           />
           <ReservedBody name="races" loading={!teamRaceIdsLoaded} rows={3} rowHeight={64}>
           {displayedRaces.length === 0 ? (
@@ -1074,7 +1099,7 @@ export default function DashboardPage() {
               title={t("dashboard:cards.races.empty")}
               description={t("dashboard:cards.races.emptyHint")}
               action={
-                <Link to="/planning" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                <Link to="/planning?tab=calendar" className={buttonClass({ variant: "secondary", size: "sm" })}>
                   {t("dashboard:cards.races.emptyCta")}
                 </Link>
               }
@@ -1129,7 +1154,7 @@ export default function DashboardPage() {
 
         {/* My division standings */}
         {isVisible("divStandings") && (
-        <Section>
+        <Section data-dashboard-card="divStandings">
           <SectionHeader
             // #2182 — når egen tier har flere puljer, vises puljens rigtige label
             // ("Division 3 — B", samme label-kilde som StandingsPage's
@@ -1229,14 +1254,16 @@ export default function DashboardPage() {
                 PageLoader: et badge der dukker op et oejeblik senere er bedre end
                 en spinner midt i dashboardet. */}
             <I18nReadyGate ns="backendMessages" fallback={null}>
-              <FinanceForecastBadge forecast={forecast} />
+              <div data-dashboard-card="forecast" className="contents">
+                <FinanceForecastBadge forecast={forecast} />
+              </div>
             </I18nReadyGate>
           </div>
         )}
 
         {/* Recent results (#1005) */}
         {isVisible("recentResults") && (
-        <Section>
+        <Section data-dashboard-card="recentResults">
           <SectionHeader
             title={t("dashboard:cards.recentResults.title")}
             action={<SectionAction as={Link} to="/resultater">{t("dashboard:cards.recentResults.linkAll")}</SectionAction>}
@@ -1246,7 +1273,7 @@ export default function DashboardPage() {
             <EmptyState
               title={t("dashboard:cards.recentResults.empty")}
               action={
-                <Link to="/planning" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                <Link to="/planning?tab=calendar" className={buttonClass({ variant: "secondary", size: "sm" })}>
                   {t("dashboard:cards.recentResults.emptyCta")}
                 </Link>
               }
@@ -1306,7 +1333,7 @@ export default function DashboardPage() {
             IKKE er sæson-global, og at "Fuld rangliste →" lander på præcis
             den samme liste (prod-bug var nul overlap mellem de to). */}
         {isVisible("riderRanking") && (
-        <Section>
+        <Section data-dashboard-card="riderRanking">
           <SectionHeader
             title={
               <>
@@ -1327,7 +1354,7 @@ export default function DashboardPage() {
             <EmptyState
               title={t("dashboard:cards.riderRanking.empty")}
               action={
-                <Link to="/planning" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                <Link to="/planning?tab=calendar" className={buttonClass({ variant: "secondary", size: "sm" })}>
                   {t("dashboard:cards.riderRanking.emptyCta")}
                 </Link>
               }
@@ -1365,9 +1392,14 @@ export default function DashboardPage() {
             #dashboard-layout-25/8: mistede sin lg:col-span-2 og flyttede til
             gridets sidste plads, parret med Global Rank-widget'en (docs/
             DASHBOARD_RULES.md §4 — /board har 959 sessions mod Mit Holds 5.955,
-            så den fyldte mest og blev brugt mindst). */}
+            så den fyldte mest og blev brugt mindst).
+            #8019: bestyrelsen hentes for sig selv og har bevidst INGEN
+            pladsholder: en graa kasse der forsvinder igen for spillere uden plan
+            er et blink (ejer 20/11). Kun Global Rank staar efter kortet, og den
+            holdes skjult til bestyrelsen er afklaret (se nedenfor), saa et sent
+            svar forlaenger siden nedad uden at flytte noget. */}
         {isVisible("board") && board && (
-        <Section>
+        <Section data-dashboard-card="board">
           <SectionHeader
             title={t("dashboard:cards.board.title")}
             action={<SectionAction as={Link} to="/board">{t("dashboard:cards.board.linkAll")}</SectionAction>}
@@ -1443,7 +1475,15 @@ export default function DashboardPage() {
 
         {/* Global Rank widget (#2453) — "#N ▲x · point", linker til /global-rank.
             Parret med Bestyrelse (docs/DASHBOARD_RULES.md §4). */}
-        {isVisible("globalRank") && <GlobalRankWidget />}
+        {/* #8019: widget'en monteres med det samme (dens læsning starter), men
+            vises først når bestyrelsen er afklaret, så et sent bestyrelseskort
+            aldrig skubber den til en ny plads. `contents` giver ingen ekstra
+            grid-celle, heller ikke når widget'en ikke har noget at vise. */}
+        {isVisible("globalRank") && (
+          <div data-dashboard-card="globalRank" className={dashboard.boardPending ? "hidden" : "contents"}>
+            <GlobalRankWidget />
+          </div>
+        )}
 
       </div>
 

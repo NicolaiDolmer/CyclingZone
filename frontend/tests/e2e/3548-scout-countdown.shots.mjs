@@ -67,7 +67,7 @@ async function login(page, lang) {
   const submitName = lang === "da" ? "Log ind" : "Log in";
   await page.getByPlaceholder(emailPlaceholder).waitFor();
   await page.getByPlaceholder(emailPlaceholder).fill(TEST_USER.email);
-  await page.getByPlaceholder("••••••••").fill("playwright-password");
+  await page.locator("#auth-password").fill("playwright-password");
   await page.getByRole("button", { name: submitName, exact: true }).click();
   await page.waitForURL(/\/dashboard$/);
 }

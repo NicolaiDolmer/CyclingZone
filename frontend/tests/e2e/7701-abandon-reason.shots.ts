@@ -132,7 +132,7 @@ async function shoot(base: string, out: string, label: string) {
 
     await page.goto("/login");
     await page.getByPlaceholder("you@email.com").fill(TEST_USER.email);
-    await page.getByPlaceholder("••••••••").fill("playwright-password");
+    await page.locator("#auth-password").fill("playwright-password");
     await page.getByRole("button", { name: /^Log in$/ }).click();
     await page.waitForURL(/\/dashboard$/);
 

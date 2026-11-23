@@ -100,6 +100,12 @@
     "peakShort": "Pico {date}",
     "peakTitle": "Pico de forma: {race}, {date} ({count, plural, =0 {hoy} one {en # día} other {en # días}})",
     "columns": "Columnas",
+    "short": {
+      "rating": "Valor.",
+      "fatigue": "Fatiga",
+      "load": "Carga",
+      "routeMatch": "Encaje"
+    },
     "mobileColumn": {
       "routeMatch": "Encaje",
       "form": "Forma",

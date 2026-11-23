@@ -7,6 +7,9 @@
     "previousDay": "Previous day",
     "nextDay": "Next day",
     "lastSevenDays": "Last seven days",
+    "allDays": "All days",
+    "showOlderDays": "Show older days",
+    "showFewerDays": "Show fewer days",
     "dayPoints": "{date}: {count, plural, one {# new point} other {# new points}}",
     "xpToday": "XP earned today",
     "xp30Sub": "30 days {xp}",
@@ -67,6 +70,15 @@
     "colXpToday": "XP today",
     "colEarned": "Earned",
     "colPaid": "From the bar",
-    "details": "Details for {name}"
+    "details": "Details for {name}",
+    "loadError": "The report could not be loaded",
+    "loadErrorBody": "Nothing was changed. Your training plans are safe.",
+    "retry": "Try again",
+    "empty": "No training yet this season.",
+    "emptyAction": "Go to today's training"
+  },
+  "devFocus": {
+    "change": "Change focus",
+    "changeFor": "Change focus for {name}"
   }
 }

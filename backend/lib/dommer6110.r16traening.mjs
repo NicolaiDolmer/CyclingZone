@@ -19,20 +19,33 @@
 
 import { kraev, koebMedPrisliste, EVNER } from "./dommer6110.fixtures.mjs";
 
-/** Alle traeningspas, en rytter kan faa paa en dato, i begge kataloger (i dag og v3). */
+/**
+ * Alle traeningspas, en rytter kan faa paa en dato, i begge kataloger (i dag og v3).
+ * #7947 (Fable-dom paa #8517, fund 2): med kontakten training_effort_levels kan enhver
+ * traenings- og faerdighedssession koeres paa Let, Mellem og Haard, saa proeven opregner
+ * hver session x de tre niveauer (standardniveauet er et af dem), ikke kun tabellens
+ * standardpar. Restitution har sit eget niveau og ignorerer indsatsen (programForChoice).
+ * `niveau` er passets niveau; `standard` siger om det er sessionens standardniveau.
+ */
 export async function traeningsPas() {
   const { sessionIntensityFor, RECOVERY_FOCUS, RECOVERY_INTENSITY } = await kraev(
     "./trainingDayTypes.js", "sessionIntensityFor", "RECOVERY_FOCUS", "RECOVERY_INTENSITY",
   );
+  const { EFFORT_LEVELS } = await kraev("./trainingEffortLevels.js", "EFFORT_LEVELS");
   const { applyTrainingCatalog } = await kraev("./trainingCatalogV3.js", "applyTrainingCatalog");
   const pas = [];
   for (const catalogV3 of [false, true]) {
+    const katalog = catalogV3 ? "v3" : "i dag";
     const tabel = sessionIntensityFor({ catalogV3 });
-    for (const [focus, intensity] of [...Object.entries(tabel), [RECOVERY_FOCUS, RECOVERY_INTENSITY]]) {
-      // applyTrainingCatalog laegger v3-sessionens evner og vaegte paa programmet, som motoren.
-      const program = applyTrainingCatalog({ focus, intensity }, { v3: catalogV3 });
-      pas.push({ katalog: catalogV3 ? "v3" : "i dag", program });
+    for (const [focus, standardNiveau] of Object.entries(tabel)) {
+      for (const niveau of EFFORT_LEVELS) {
+        // applyTrainingCatalog laegger v3-sessionens evner og vaegte paa programmet, som motoren.
+        const program = applyTrainingCatalog({ focus, intensity: niveau }, { v3: catalogV3 });
+        pas.push({ katalog, niveau, standard: niveau === standardNiveau, program });
+      }
     }
+    const program = applyTrainingCatalog({ focus: RECOVERY_FOCUS, intensity: RECOVERY_INTENSITY }, { v3: catalogV3 });
+    pas.push({ katalog, niveau: RECOVERY_INTENSITY, standard: true, program });
   }
   return pas;
 }
@@ -84,8 +97,8 @@ export async function lavTraeningsdato({ params, staff = null, facilityTier = nu
     const xp = b ? delta({ evne: b.evne, program: b.program, primaryType: b.primaryType, alder, potentiale, riderLevel }) : 0;
     const vaegt = b ? programAbilityWeight(b.program, b.evne) : null;
     return {
-      xp, mental: erMental, evne: b?.evne, vaegt, katalog: b?.katalog, pas: b?.program.focus, type: b?.primaryType,
-      hvor: b ? `${b.katalog} ${b.program.focus} (vaegt ${vaegt}) ${b.evne} ${b.primaryType ?? "uden type"}` : "intet pas",
+      xp, mental: erMental, evne: b?.evne, vaegt, katalog: b?.katalog, pas: b?.program.focus, niveau: b?.program.intensity, type: b?.primaryType,
+      hvor: b ? `${b.katalog} ${b.program.focus} paa ${b.program.intensity} (vaegt ${vaegt}) ${b.evne} ${b.primaryType ?? "uden type"}` : "intet pas",
     };
   });
 }

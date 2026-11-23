@@ -174,6 +174,24 @@ OUT="$(run_engine start '{"session_id":"self-sid"}')"
 check "stale/dead pid produces no warning" "$( [ -z "$OUT" ] && echo 0 || echo 1 )"
 
 # ---------------------------------------------------------------------
+# Test 4b (ejer 23/11): an alive but IDLE session (an old tab or a
+# scheduled task the desktop app reopened at start) does not count;
+# a working one does, and the warning uses real newlines.
+# ---------------------------------------------------------------------
+if [ -n "$ALIVE_PID" ]; then
+  rm -f "$FAKE_HOME/.claude/sessions"/*.json
+  printf '# NOW\r\n\r\n> **\xF0\x9F\xA4\x96 Aktive sessioner:** Ingen aktiv session\r\n' > "$NOW_MD"
+  write_session "$FAKE_HOME/.claude/sessions/idle.json" "$ALIVE_PID" "idle-sid" "C:\\Dev\\CyclingZone-Fake" 60000 "Weekly memory audit"
+  sed -i 's/"kind":"interactive"}/"kind":"interactive","status":"idle"}/' "$FAKE_HOME/.claude/sessions/idle.json"
+  OUT="$(run_engine start '{"session_id":"self-sid"}')"
+  check "idle session produces no warning" "$( [ -z "$OUT" ] && echo 0 || echo 1 )"
+  sed -i 's/"status":"idle"/"status":"busy"/' "$FAKE_HOME/.claude/sessions/idle.json"
+  OUT="$(run_engine start '{"session_id":"self-sid"}')"
+  check "busy session still warns" "$(printf '%s' "$OUT" | grep -q 'MULTI-AI GATE' && echo 0 || echo 1)"
+  check "warning has no literal backslash-n" "$(printf '%s' "$OUT" | grep -q 'repo (samme maskine):\\\\n' && echo 1 || echo 0)"
+fi
+
+# ---------------------------------------------------------------------
 # Test 5: session registered against an UNRELATED repo path is ignored.
 # ---------------------------------------------------------------------
 rm -f "$FAKE_HOME/.claude/sessions"/*.json
