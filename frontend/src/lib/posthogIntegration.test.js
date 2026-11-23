@@ -483,7 +483,7 @@ test("the real SDK sends first-touch properties and strips click IDs from URLs",
   const env = installFakeBrowser();
   try {
     window.location.href += "?utm_campaign=later&fbclid=private";
-    document.referrer = "https://example.org/?utm_source=original&gclid=private";
+    Object.defineProperty(document, "referrer", { value: "https://example.org/?utm_source=original&gclid=private" });
     const { PostHog } = await import("posthog-js-lite");
     const client = createPosthogClient(PostHog, "test-project-key");
     const campaign = { utm_source: "example-source", utm_campaign: "original" };
