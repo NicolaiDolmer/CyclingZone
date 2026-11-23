@@ -40,7 +40,6 @@ import { loadRaceDayStagesByRider, loadRiderIdsWithStageOnGameDays } from "./rac
 import { resolveDayProgram, programSlotForRaceDay, weekDaysHaveSessions } from "./trainingPrograms.js";
 // #5932: felterne har eget flag (training_program_cells), med training_programs som fallback.
 import { isTrainingCellsEnabledForTeam } from "./trainingWeekPlanCellsFlag.js";
-import { planRunsOffStandard } from "./trainingWeekPlanCells.js"; // #7947 Fable-fund 1 paa #8532
 import { isTrainingEffortLevelsEnabled, executedEffortForScore } from "./trainingEffortLevels.js"; // #7947
 import { applyTrainingCatalog, isTrainingCatalogV3EnabledForTeam, v3SmartDefaultFocus } from "./trainingCatalogV3.js"; // #5319
 import {
@@ -1507,16 +1506,19 @@ export async function runTeamTrainingDay({
   // #4629: programcellerne laeses KUN naar holdet har programdata OG flaget er
   // on for holdet (beta: holdets ejer er beta-tester). Uden programdata er der
   // intet ekstra opslag, og stien er bit-identisk med foer.
-  programsOn = (Array.isArray(weekPlanRow) ? weekPlanRow : []).some((r) => weekDaysHaveSessions(r.days))
-    ? await isTrainingCellsEnabledForTeam(supabase, teamId)
-    : false;
-  // #7947 (ejer 21/11, Fable-fund 1 paa #8532): kontakten laeses ogsaa for hold UDEN programceller,
-  // naar en rytters plan staar paa et andet niveau end sessionens standard (I dag-vaelgeren skriver
-  // dertil), saa det koerte niveau altid gemmes paa scoren. Uden saadan en plan: intet opslag, og
-  // aftenens laesninger er mains (frosne facit). Med kontakten off kan api.js ikke skrive en.
-  effortLevelsOn = programsOn || (Array.isArray(planRows) && planRows.some(planRunsOffStandard))
-    ? await isTrainingEffortLevelsEnabled(supabase)
-    : false;
+  // #7947 + #8546: kontakten training_effort_levels laeses for ALLE hold, samtidig med
+  // programcelle-opslaget. Foer (#8537) blev den kun laest med programceller eller en plan paa
+  // andet niveau end standarden; saa fik en rytter uden plan (assistentens fokus paa Mellem), med
+  // kun den gamle ugerytme, eller sat ned af traethedsreglen, ingen koert niveau paa scoren, og
+  // aldringsbremsen talte sessionens tabel-niveau i stedet for det han koerte. Uden programceller
+  // roerer kontakten ikke traeningen (resolveDayProgram svarer den gamle sti), kun kvitteringen.
+  // Opslaget holdes uden for #7982's frosne facit (harness: effortSwitchReads).
+  [programsOn, effortLevelsOn] = await Promise.all([
+    (Array.isArray(weekPlanRow) ? weekPlanRow : []).some((r) => weekDaysHaveSessions(r.days))
+      ? isTrainingCellsEnabledForTeam(supabase, teamId)
+      : false,
+    isTrainingEffortLevelsEnabled(supabase),
+  ]);
   },
   async () => {
   // #5319: traeningskatalog v3 (beta: holdets ejer er beta-tester). Off = programmet uroert.
