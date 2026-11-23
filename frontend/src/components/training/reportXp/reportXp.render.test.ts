@@ -111,6 +111,24 @@ test("#7947 the Rating column shows 'x > y' only when his rating moved", () => {
   assert.ok(older.riders.every(r => !r.rating), "an older date shows nothing");
 });
 
+test("#7947 (owner 23/11) names and types are never cut inside a word, and Fatigue and Rating have a column each", () => {
+  const view = buildTodayView(fx.receipts, null, options)!;
+  const html = wrap(createElement(XpToday, { view, onPickDate: () => {}, switcher: null }));
+  for (const row of html.split('data-testid="xp-row"').slice(1)) {
+    const name = row.slice(row.indexOf('data-testid="xp-name-cell"'), row.indexOf('data-testid="xp-type"'));
+    assert.doesNotMatch(name, /truncate|whitespace-nowrap|overflow-hidden/, "the name breaks between words, no ellipsis");
+  }
+  assert.doesNotMatch(html, /data-testid="xp-type"[^>]*class="[^"]*truncate|class="[^"]*truncate[^"]*"[^>]*data-testid="xp-type"/, "the type is never cut");
+  // One head and one grid for every row: fixed tracks, wide enough for "64 ^12" and "34 > 35" apart.
+  const src = readFileSync(new URL("./XpToday.tsx", import.meta.url), "utf8");
+  const grid = src.match(/const ROW_GRID = "([^"]+)"/)![1].split(" lg:grid-cols-[")[1].replace(/\]$/, "").split("_");
+  assert.equal(grid.length, 11, "eleven columns on the computer");
+  const rem = (track: string) => Number(track.match(/^([\d.]+)rem$/)?.[1] ?? NaN);
+  assert.ok(rem(grid[8]) >= 3.75, `Fatigue has room for its value and its change (${grid[8]})`);
+  assert.ok(rem(grid[9]) >= 4.25, `Rating has room for "from > to" (${grid[9]})`);
+  assert.ok(rem(grid[1]) >= 6.5, `Type has room for a whole long word (${grid[1]})`);
+});
+
 test("#7947 the XP report shows no training score (owner 20/11)", () => {
   const view = buildTodayView(fx.receipts, null, options)!;
   const html = wrap(createElement(XpToday, { view, onPickDate: () => {}, switcher: null }));

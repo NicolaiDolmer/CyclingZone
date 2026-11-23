@@ -12,6 +12,7 @@ import {
   writeForEffort, writeForTraining, writeStoredFlag, yourDay,
   bulkPlanLevels, effortOfIntensity, effortOfLevel, fieldEfforts, levelForDayEntry, levelOfEffort, planEffort,
   settledFieldEfforts, showsInjuryRisk, writeForLevel, writeForTrainingAtLevel,
+  STATUS_TONE, assistantVerdict, statusWordKey,
   type R5Row, type SettledActivity, type SettledRow, type StatusInput,
 } from "./todayR5Model.ts";
 import { trainingR5On } from "./trainingPageR5Flag.ts";
@@ -454,4 +455,51 @@ test("indsatsvaelgeren: kun et eksplicit true taender den, og effort sendes kun 
   const hook = readFileSync(join(here, "../../../lib/useTraining.js"), "utf8");
   assert.match(hook, /effort \? \{ dayType, session, effort \} : \{ dayType, session \}/, "effort sendes kun naar den er valgt");
   assert.match(hook, /setEffortLevels\(.*\)\.effortLevels === true\)/, "manglende felt = slukket");
+});
+
+// --- En linje pr. rytter (#7947, ejer 23/11) ------------------------------------
+
+test("status som ord: hvert maerke har sin fulde tekst i begge sprog, aldrig en forkortelse", () => {
+  const keys = ["injured", "injuryRisk", "days70", "u23", "junior", "academy", "contractExpiring", "retirementRisk"] as const;
+  for (const key of keys) assert.ok(STATUS_TONE[key], `tone for ${key}`);
+  assert.equal(STATUS_TONE.injured, "danger");
+  assert.equal(statusWordKey("injured"), null, "skaden har spillets egen skadebesked");
+  assert.equal(statusWordKey("days70"), null, "dagene over graensen har status.days70 med tal");
+  for (const lang of ["en", "da", "es", "fr", "nl"]) {
+    const loc = JSON.parse(readFileSync(join(here, `../../../../public/locales/${lang}/trainingR5.json`), "utf8"));
+    for (const key of keys) {
+      const k = statusWordKey(key);
+      if (!k) continue;
+      const word = k.split(".").reduce((o: Record<string, unknown>, p) => o?.[p] as Record<string, unknown>, loc) as unknown as string;
+      assert.equal(typeof word, "string", `${lang}: ${k}`);
+      assert.doesNotMatch(word, /^(U23|JR|ACAD|AKAD|EXP|UDLØB|35\+)$/i, `${lang}: ${key} skrives fuldt ud`);
+      assert.ok(word.length >= 5, `${lang}: ${key} er et ord, ikke en forkortelse (${word})`);
+    }
+  }
+  const da = JSON.parse(readFileSync(join(here, "../../../../public/locales/da/trainingR5.json"), "utf8"));
+  assert.equal(da.row.status.injuryRisk, "Høj skaderisiko");
+  assert.deepEqual([da.effort.rest, da.effort.easy, da.effort.medium, da.effort.hard], ["Hvile", "Let", "Mellem", "Hård"]);
+});
+
+test("assistentens dom: enig, forslag med eet tryk, eller ingen dom", () => {
+  const base = { decided: true, racing: false, recoverySuggested: false, noDay: false, smartFocus: "sprint" };
+  assert.deepEqual(assistantVerdict(base), { kind: "agrees" });
+  assert.deepEqual(assistantVerdict({ ...base, recoverySuggested: true }), { kind: "suggests", choice: RECOVERY_CHOICE }, "aktiv restitution vinder");
+  assert.deepEqual(assistantVerdict({ ...base, noDay: true }), { kind: "suggests", choice: "sprint" }, "uden dag: assistentens egen traening");
+  assert.equal(assistantVerdict({ ...base, noDay: true, smartFocus: null }), null, "intet grundlag, ingen dom");
+  assert.equal(assistantVerdict({ ...base, decided: false }), null, "dagen er koert eller beslutningen er slukket");
+  assert.equal(assistantVerdict({ ...base, racing: true, recoverySuggested: true }), null, "loeb vinder over traening");
+});
+
+test("TodayR5 en linje: navnecellen er kun flag + navn; status, traening, indsats og menu har egne kolonner", () => {
+  const src = readFileSync(join(here, "TodayR5.tsx"), "utf8");
+  const name = src.slice(src.indexOf("function NameCell("), src.indexOf("\n}\n", src.indexOf("function NameCell(")));
+  assert.doesNotMatch(name, /Status|RiderBadges|row\.status/, "intet andet end flag og navn i navnecellen");
+  assert.doesNotMatch(src, /RiderBadges/, "ingen korte maerker (U23/JR/AKAD) paa fanen");
+  for (const key of ["row.col.status", "row.col.training", "row.col.effort"]) assert.ok(src.includes(`tR5("${key}")`), key);
+  assert.match(src, /group-hover\/row:flex group-focus-within\/row:flex/, "Din dag vises ved hover og fokus");
+  assert.doesNotMatch(src, /<TypeCell[^>]*stacked|RiderTypeBadge[^>]*stacked/, "typen paa een linje");
+  assert.match(src, /data-testid="r5-row-menu"/);
+  const picker = readFileSync(join(here, "EffortPickerR5.tsx"), "utf8");
+  assert.match(picker, /EFFORTS\.map/, "Hvile, Let, Mellem og Haard i een kontrol");
 });
