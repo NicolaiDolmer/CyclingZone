@@ -18,6 +18,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { runInNewContext } from "node:vm";
+import { setImmediate } from "node:timers/promises";
 
 import {
   POSTHOG_ENABLED,
@@ -498,4 +500,43 @@ test("the real SDK sends first-touch properties and strips click IDs from URLs",
   } finally {
     env.restore();
   }
+});
+
+test("identify bruger profilens UUID når opslaget af sessionsmetadata fejler", async () => {
+  const userId = "fixture-user";
+  const identify = test.mock.fn();
+  const getSession = test.mock.fn(async () => { throw new Error("storage unavailable"); });
+  /** @type {Array<() => void | (() => void)>} */
+  const effects = [];
+  const source = integrationSource.replace(/^[\s\S]*?export default function /, "function ");
+
+  // Komponenten returnerer null. Kør dens faktiske effects med en klar
+  // brugerprofil og afsluttet holdopslag som fixture.
+  runInNewContext(source + "\nPosthogIntegration();", {
+    POSTHOG_ENABLED: true,
+    useState: () => [{ userId, value: false }, () => {}],
+    useRef: (current) => ({ current }),
+    useEffect: (effect) => effects.push(effect),
+    useLocation: () => ({ pathname: "/dashboard" }),
+    useConsent: () => ({ consent: { analytics: true }, hasResponded: true }),
+    useUserProfile: () => ({ userId, profile: { role: "manager" }, loading: false }),
+    supabase: {
+      auth: { getSession },
+      from: () => ({ select: () => ({ eq: async () => ({ data: [], error: null }) }) }),
+    },
+    resolveEffectiveConsent,
+    isPosthogAllowed,
+    isInternalPosthogUser,
+    startPosthog: async () => {},
+    capturePosthogPageview: () => {},
+    identifyPosthog: identify,
+  });
+  for (const effect of effects) effect();
+  await setImmediate();
+
+  assert.equal(getSession.mock.callCount(), 1);
+  assert.equal(identify.mock.callCount(), 1);
+  const args = identify.mock.calls[0].arguments;
+  assert.equal(args.length, 1);
+  assert.equal(args[0], userId);
 });

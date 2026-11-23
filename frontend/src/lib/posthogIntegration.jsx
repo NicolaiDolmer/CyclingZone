@@ -115,10 +115,17 @@ export default function PosthogIntegration() {
       if (cancelled) return;
       if (userId && profileReady) {
         if (identifiedRef.current === userId) return;
-        const { data } = await supabase.auth.getSession();
-        const user = data?.session?.user;
-        if (cancelled || !posthogOnRef.current || user?.id !== userId) return;
-        identifyPosthog(userId, user.user_metadata?.attribution);
+        let user;
+        try {
+          const { data } = await supabase.auth.getSession();
+          user = data?.session?.user;
+          if (user?.id !== userId) return;
+        } catch {
+          // Attribution er best-effort, og profilen har allerede brugerens UUID.
+        }
+        if (cancelled || !posthogOnRef.current) return;
+        if (user) identifyPosthog(userId, user.user_metadata?.attribution);
+        else identifyPosthog(userId);
         identifiedRef.current = userId;
       } else if (!userId && identifiedRef.current) {
         // Logget ud: bryd koblingen, så næste anonyme session på samme fane
