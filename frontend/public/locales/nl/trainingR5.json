@@ -95,6 +95,29 @@
     "backToProgram": "Terug naar programma"
   },
   "teamSkippedHard": "{n, plural, one {# renner heeft} other {# renners hebben}} nog geen zware training. Kies een training en druk dan op Zwaar.",
+  "row": {
+    "status": {
+      "injuryRisk": "Hoog blessurerisico",
+      "u23": "Onder 23",
+      "junior": "Junior",
+      "academy": "Academie",
+      "contractExpiring": "Contract loopt af",
+      "retirementRisk": "Pensioenrisico"
+    },
+    "col": {
+      "status": "Status",
+      "training": "Training",
+      "effort": "Inspanning",
+      "assistant": "Assistent",
+      "actions": "Meer"
+    },
+    "effortAria": "{scope}: inspanning",
+    "assistantAgrees": "Assistent is het eens",
+    "assistantSuggests": "Assistent stelt {session} voor",
+    "assistantUse": "Assistent stelt {session} voor. Tik om het te gebruiken.",
+    "menu": "Meer voor {name}",
+    "details": "Sessies en details"
+  },
   "programR5": {
     "library": "Programmabibliotheek",
     "programs": "Programma's",

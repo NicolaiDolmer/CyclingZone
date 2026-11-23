@@ -95,6 +95,29 @@
     "backToProgram": "Volver al programa"
   },
   "teamSkippedHard": "{n, plural, one {# corredor aún no tiene} other {# corredores aún no tienen}} entrenamiento duro. Elige un entrenamiento y pulsa Duro.",
+  "row": {
+    "status": {
+      "injuryRisk": "Riesgo alto de lesión",
+      "u23": "Menor de 23",
+      "junior": "Júnior",
+      "academy": "Academia",
+      "contractExpiring": "El contrato termina",
+      "retirementRisk": "Riesgo de retiro"
+    },
+    "col": {
+      "status": "Estado",
+      "training": "Entrenamiento",
+      "effort": "Esfuerzo",
+      "assistant": "Asistente",
+      "actions": "Más"
+    },
+    "effortAria": "{scope}: esfuerzo",
+    "assistantAgrees": "El asistente está de acuerdo",
+    "assistantSuggests": "El asistente sugiere {session}",
+    "assistantUse": "El asistente sugiere {session}. Toca para usarlo.",
+    "menu": "Más para {name}",
+    "details": "Sesiones y detalles"
+  },
   "programR5": {
     "library": "Biblioteca de programas",
     "programs": "Programas",

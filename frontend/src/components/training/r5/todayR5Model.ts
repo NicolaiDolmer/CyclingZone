@@ -447,6 +447,61 @@ export function statusKeys(input: StatusInput): StatusKey[] {
   return out;
 }
 
+// --- Status som ord i sin egen kolonne (#7947, ejer 23/11) ------------------------
+//
+// "Det her ... er ikke en del af rytterens navn. Skal staa i en anden kolonne." og
+// "Jeg oensker ikke forkortelser i spillet": hvert maerke skrives fuldt ud (aldrig
+// U23/JR/AKAD/UDLOEB), i sin egen kolonne. Tonen siger hvor alvorligt det er.
+
+export type StatusTone = "danger" | "warning" | "neutral";
+
+export const STATUS_TONE: Readonly<Record<StatusKey, StatusTone>> = Object.freeze({
+  injured: "danger",
+  injuryRisk: "warning",
+  days70: "warning",
+  contractExpiring: "warning",
+  retirementRisk: "warning",
+  u23: "neutral",
+  junior: "neutral",
+  academy: "neutral",
+});
+
+/**
+ * trainingR5-noeglen for et maerkes fulde ord. Skaden og dagene over graensen har
+ * egne tekster med tal (skadebeskeden og status.days70), saa de staar ikke her.
+ */
+export function statusWordKey(key: StatusKey): string | null {
+  if (key === "injured" || key === "days70") return null;
+  return `row.status.${key}`;
+}
+
+// --- Assistentens dom pr. rytter (#7947, ejer 23/11) -------------------------------
+//
+// Tilbage som een kort linje/et ikon i raekken: "Assistenten er enig" eller
+// "Assistenten foreslaar X" med eet tryk. Samme regler som den gamle fanes
+// Assistent-kolonne (TrainingTeamTableBModel.assistantKindFor): kun foer dagen er
+// laast, og kun med dagens beslutning taendt; et forslag om aktiv restitution vinder;
+// en rytter uden dag faar assistentens egen traening, eller intet naar den ingen har.
+
+export type AssistantVerdict = { kind: "agrees" } | { kind: "suggests"; choice: string } | null;
+
+export function assistantVerdict({ decided, racing, recoverySuggested, noDay, smartFocus }: {
+  /** Dagens beslutning er taendt og dagen er ikke koert endnu. */
+  decided: boolean;
+  racing: boolean;
+  /** Assistenten foreslaar aktiv restitution for rytteren i dag (DailyDecisionModel). */
+  recoverySuggested: boolean;
+  /** Rytteren har hverken program eller egen dag. */
+  noDay: boolean;
+  /** Den traening assistenten selv ville give ham (smartDefaultFocus). */
+  smartFocus: string | null | undefined;
+}): AssistantVerdict {
+  if (!decided || racing) return null;
+  if (recoverySuggested) return { kind: "suggests", choice: RECOVERY_CHOICE };
+  if (noDay) return smartFocus ? { kind: "suggests", choice: smartFocus } : null;
+  return { kind: "agrees" };
+}
+
 // --- Raekken og listen ------------------------------------------------------------
 
 export type ProgramKind = "program" | "group" | "own" | "none";

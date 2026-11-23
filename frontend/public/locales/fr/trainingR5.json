@@ -95,6 +95,29 @@
     "backToProgram": "Revenir au programme"
   },
   "teamSkippedHard": "{n, plural, one {# coureur n'a} other {# coureurs n'ont}} pas encore d'entraînement dur. Choisis un entraînement, puis appuie sur Dur.",
+  "row": {
+    "status": {
+      "injuryRisk": "Risque de blessure élevé",
+      "u23": "Moins de 23 ans",
+      "junior": "Junior",
+      "academy": "Académie",
+      "contractExpiring": "Fin de contrat",
+      "retirementRisk": "Risque de retraite"
+    },
+    "col": {
+      "status": "Statut",
+      "training": "Entraînement",
+      "effort": "Effort",
+      "assistant": "Assistant",
+      "actions": "Plus"
+    },
+    "effortAria": "{scope} : effort",
+    "assistantAgrees": "L’assistant est d’accord",
+    "assistantSuggests": "L’assistant suggère {session}",
+    "assistantUse": "L’assistant suggère {session}. Touchez pour l’utiliser.",
+    "menu": "Plus pour {name}",
+    "details": "Séances et détails"
+  },
   "programR5": {
     "library": "Bibliothèque de programmes",
     "programs": "Programmes",

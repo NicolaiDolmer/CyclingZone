@@ -95,6 +95,29 @@
     "backToProgram": "Tilbage til programmet"
   },
   "teamSkippedHard": "{n, plural, one {# rytter har} other {# ryttere har}} ingen hård træning endnu. Vælg en træning, og tryk så Hård.",
+  "row": {
+    "status": {
+      "injuryRisk": "Høj skaderisiko",
+      "u23": "Under 23",
+      "junior": "Junior",
+      "academy": "Akademi",
+      "contractExpiring": "Kontrakten udløber",
+      "retirementRisk": "Pensionsrisiko"
+    },
+    "col": {
+      "status": "Status",
+      "training": "Træning",
+      "effort": "Indsats",
+      "assistant": "Assistent",
+      "actions": "Mere"
+    },
+    "effortAria": "{scope}: indsats",
+    "assistantAgrees": "Assistenten er enig",
+    "assistantSuggests": "Assistenten foreslår {session}",
+    "assistantUse": "Assistenten foreslår {session}. Tryk for at bruge det.",
+    "menu": "Mere for {name}",
+    "details": "Pas og detaljer"
+  },
   "programR5": {
     "library": "Programbibliotek",
     "programs": "Programmer",
