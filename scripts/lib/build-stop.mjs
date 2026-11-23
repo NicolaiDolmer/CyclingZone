@@ -161,7 +161,8 @@ export function findOwnerGo(comments, { ownerLogin = OWNER_LOGIN } = {}) {
 export function ghOwnerGo(issue, { repo = 'NicolaiDolmer/CyclingZone', exec = execFileSync, timeout = GO_TIMEOUT_MS, ownerLogin = repo.split('/')[0] } = {}) {
   if (process.env.CZ_BUILD_STOP_NO_GH === '1') return null; // tests: ingen netværk
   if (!isIssue(issue)) return null;
-  const jq = '.[] | select((.body // "") | test("build-stop:\\\\s*ejer-go"; "i")) | {login: .user.login, body: .body}';
+  // Forfilter (kun for at holde svaret lille); parseren afgør stadig alt.
+  const jq = '.[] | select((.body // "") | ascii_downcase | contains("ejer-go")) | {login: .user.login, body: .body}';
   try {
     const out = exec('gh', ['api', '--paginate', `repos/${repo}/issues/${issue}/comments?per_page=100`, '--jq', jq],
       { encoding: 'utf8', timeout, stdio: ['ignore', 'pipe', 'ignore'] });
