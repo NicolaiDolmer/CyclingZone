@@ -44,6 +44,10 @@ const MISSING_TABLE_CODES = new Set(["42P01", "PGRST205"]);
 // denne graense, men chunking holder URL'en kort selv i et stort felt.
 const IN_CHUNK_SIZE = 150;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const CAMPAIGN_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_content"] as const;
+type CampaignKey = (typeof CAMPAIGN_KEYS)[number];
+type Campaign = Partial<Record<CampaignKey, string>>;
+type AttributionRow = { user_id: string } & Partial<Record<CampaignKey, string | null>>;
 
 type PgError = { message?: string; code?: string } | null | undefined;
 
@@ -315,20 +319,42 @@ export async function recordFirstRaceWithOwnSquad(args: RecordMilestoneArgs): Pr
     const apiKey = args.apiKey === undefined ? getPosthogProjectKey() : args.apiKey;
     if (!apiKey) return { recorded: recordedRows.length, sent: 0, skipped: "no_posthog_key" };
 
-    const timestamp = now.toISOString();
-    const sends = recordedRows
-      .filter((row) => !hasDeclinedAnalytics(userById.get(row.user_id)?.consent_preferences))
-      .map((row) =>
-        captureServerEvent(
-          { event: FIRST_RACE_WITH_OWN_SQUAD_EVENT, distinctId: row.user_id, timestamp, properties: { ...row.data, team_id: row.team_id } },
-          {
-            apiKey,
-            fetchImpl: args.fetchImpl,
-            timeoutMs: args.timeoutMs,
-            onError: (err) => console.warn(`  ⚠️  PostHog ${FIRST_RACE_WITH_OWN_SQUAD_EVENT} capture failed (race ${race.id}): ${(err as Error)?.message ?? err}`),
-          },
-        ),
+    const eligible = recordedRows.filter((row) => !hasDeclinedAnalytics(userById.get(row.user_id)?.consent_preferences));
+    const campaignByUser = new Map<string, Campaign>();
+    try {
+      const attribution = await selectIn<AttributionRow>(
+        supabase, "signup_attribution", ["user_id", ...CAMPAIGN_KEYS].join(", "), "user_id", eligible.map((row) => row.user_id),
       );
+      for (const row of attribution) {
+        const campaign: Campaign = {};
+        for (const key of CAMPAIGN_KEYS) {
+          const value = row[key]?.trim();
+          if (value) campaign[key] = value;
+        }
+        if (Object.keys(campaign).length) campaignByUser.set(row.user_id, campaign);
+      }
+    } catch (err) {
+      if (!isMissingTable(err)) report(err, "attribution");
+    }
+
+    const timestamp = now.toISOString();
+    const sends = eligible.map((row) => {
+      const campaign = campaignByUser.get(row.user_id);
+      return captureServerEvent(
+        {
+          event: FIRST_RACE_WITH_OWN_SQUAD_EVENT,
+          distinctId: row.user_id,
+          timestamp,
+          properties: { ...row.data, team_id: row.team_id, ...(campaign && { ...campaign, $set_once: campaign }) },
+        },
+        {
+          apiKey,
+          fetchImpl: args.fetchImpl,
+          timeoutMs: args.timeoutMs,
+          onError: (err) => console.warn(`  ⚠️  PostHog ${FIRST_RACE_WITH_OWN_SQUAD_EVENT} capture failed (race ${race.id}): ${(err as Error)?.message ?? err}`),
+        },
+      );
+    });
     const outcomes = await Promise.all(sends);
     return { recorded: recordedRows.length, sent: outcomes.filter(Boolean).length };
   } catch (err) {
