@@ -83,6 +83,7 @@ export const FRESH_FLAG_KEYS = Object.freeze(new Set([
   "training_calendar_tick_ai_only", // #6110 ejer 19/11: hold uden division traener ikke (motorens input)
   "training_effort_levels", // #7947: indsats pr. programfelt (motorens input)
   "training_week_priority",
+  "training_rotation",
   // Nødstop for live systemer
   "stage_scheduler_enabled",
   "auto_prize_enabled",
