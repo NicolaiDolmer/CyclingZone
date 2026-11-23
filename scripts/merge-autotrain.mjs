@@ -26,6 +26,14 @@
 // go aldrig daekker kode ejeren ikke har set. Kommentarer fra andre konti
 // ignoreres (repoet er offentligt).
 //
+// Gen-bestilling af Codex-review (#7654, ejer 23/11): efter update-branch eller merge af
+// main i en PR staar Codex-reviewet paa det gamle hoved, og ingen bestilte et nyt, saa PR'en
+// stod stille. For hver aaben, ikke-draft PR med ejer-markoer eller staaende kategori, hvor
+// review-gatens Codex-del mangler paa HEAD, skriver toget EN `@codex review`-kommentar
+// (idempotent pr. hoved: ikke naar en bestilling allerede er skrevet efter hovedets commit).
+// Svarede Codex "Something went wrong", bestilles igen hoejst een gang i timen. Ejer-markoerer
+// roeres aldrig.
+//
 // Merge-koeen genkontrollerer selv checks, review-gate, liga-audit og boelge-
 // ownership foer hvert merge; udvaelgelsen her er kun forfilteret.
 //
@@ -46,6 +54,7 @@ import { gitCommonRoot, markerFilePath, readActiveMarker } from './merge-queue-a
 import { deploymentAttemptState, handedOffRunVerdict } from './ci/deploy-verification-state.mjs';
 import { classifyPrFiles, mustRunAlone, touchesVercel } from './merge-queue-files.mjs';
 import { latestOwnerMarkerSha, runMergeGuard } from './merge-guard.mjs';
+import { CODEX_LOGIN, EXEMPT_AUTHORS, evaluateCodex } from './review-gate.mjs';
 
 export const LOG_RELATIVE = join('.claude', 'run', 'merge-autotrain.log');
 // Samme loft som merge-queue.ps1's -MaxBatch (testen laaser de to sammen).
@@ -264,7 +273,9 @@ export function evaluateOne(pr, { repo, ownerLogin, gh, log = () => {} }) {
   const allChecks = gh.json(['pr', 'checks', String(pr.number), '--repo', repo, '--json', 'name,bucket,startedAt,event'], { allowExit: CHECKS_EXIT }) ?? [];
   let classification = null;
   let deploy = null;
-  if (requiredChecksStatus(requiredChecks).green && reviewGateStatus(allChecks).green) {
+  // Klassifikationen kraever kun groenne paakraevede checks (review-gate er ikke paakraevet):
+  // en PR med roed/manglende review-gate skal ogsaa kendes som staaende kategori (#7654).
+  if (requiredChecksStatus(requiredChecks).green) {
     try {
       const rest = gh.json(['api', '--paginate', '--slurp', `repos/${repo}/pulls/${pr.number}/files?per_page=100`]);
       const files = completeFileList(rest, pr.changedFiles);
@@ -302,6 +313,100 @@ export function collectEvaluations({ repo, ownerLogin, gh = DEFAULT_GH, log = ()
 export function reevaluatePr(number, { repo, ownerLogin, gh = DEFAULT_GH, log = () => {} }) {
   const pr = gh.json(['pr', 'view', String(number), '--repo', repo, '--json', PR_FIELDS]);
   return evaluateOne(pr, { repo, ownerLogin, gh, log });
+}
+
+// ── Gen-bestilling af Codex-review (#7654) ─────────────────────────────────
+
+export const CODEX_REQUEST_COMMENT = '@codex review';
+// Hoejst een gen-bestilling i timen, naar Codex svarede med en fejl.
+export const CODEX_RETRY_MS = 60 * 60_000;
+// Kun en kommentar der STARTER med bestillingen taeller: review-gatens egne kommentarer
+// naevner `@codex review` midt i en forklaring og er ikke en bestilling.
+const CODEX_REQUEST_RE = /^\s*@codex\s+review\b/i;
+const CODEX_ERROR_RE = /something went wrong/i;
+const STANDING_CATEGORIES = new Set([CATEGORY.A_BRAND_FIX, CATEGORY.B_ENGINE_V4, CATEGORY.C_SAFE, CATEGORY.D_ADDITIVE_MIGRATION]);
+// Afslag fra precheck() der ikke giver mening at bruge en review paa (UNKNOWN maa gerne, det er kortvarigt).
+const NO_REVIEW_REASON_RE = /^(draft|base er ikke|label |mergeable=(CONFLICTING|DIRTY))/i;
+
+const botLogin = (l) => String(l ?? '').replace(/^app\//i, '').replace(/\[bot\]$/i, '').toLowerCase();
+const timeMs = (iso) => Date.parse(String(iso ?? ''));
+
+/**
+ * Hvilke vurderede PR'er kan komme i betragtning? Ikke klar (klar = gaten er groen, dvs.
+ * Codex har reviewet hovedet), ikke draft/hold/konflikt, og enten ejer-markoer eller staaende
+ * kategori. Ejer-go uden markoer er ejerens og faar ingen automatik.
+ */
+export function codexReviewCandidates(evaluations) {
+  return (evaluations ?? []).filter((e) => e
+    && Number.isSafeInteger(e.number)
+    && !e.ready
+    && !NO_REVIEW_REASON_RE.test(String(e.reason ?? ''))
+    && (e.ownerMarkerSha || STANDING_CATEGORIES.has(e.category)));
+}
+
+/**
+ * Skal der bestilles en Codex-review af hovedet nu? Ren funktion.
+ * Input er rene REST-former: comments {author, body, createdAt}, reviews {author, body, commit, submittedAt}.
+ * Samme Codex-regler som review-gaten (evaluateCodex): kun bevis paa PR'ens aktuelle HEAD taeller.
+ * @returns {{request: boolean, reason: string}}
+ */
+export function decideCodexRerequest({ comments = [], reviews = [], headSha, headCommittedAt, isDraft = false, author = '', now = new Date() }) {
+  if (isDraft) return { request: false, reason: 'draft' };
+  if (EXEMPT_AUTHORS.includes(botLogin(author))) return { request: false, reason: 'undtaget fra Codex-krav' };
+  const codex = evaluateCodex({ comments, reviews, headSha });
+  if (codex.state === 'completed') return { request: false, reason: 'Codex har reviewet hovedet' };
+  if (codex.state === 'pending') return { request: false, reason: 'Codex-review koerer' };
+  const headAt = timeMs(headCommittedAt);
+  if (!Number.isFinite(headAt)) return { request: false, reason: 'hovedets tidspunkt ukendt' };
+  const isCodex = (x) => botLogin(x?.author) === CODEX_LOGIN;
+  const requestAts = comments
+    .filter((c) => !isCodex(c) && CODEX_REQUEST_RE.test(String(c?.body ?? '')))
+    .map((c) => timeMs(c.createdAt)).filter((t) => Number.isFinite(t) && t > headAt);
+  if (!requestAts.length) return { request: true, reason: 'ingen bestilling efter hovedets commit' };
+  const lastRequest = Math.max(...requestAts);
+  const errorAts = [...comments.map((c) => ({ x: c, at: timeMs(c?.createdAt) })), ...reviews.map((r) => ({ x: r, at: timeMs(r?.submittedAt) }))]
+    .filter(({ x, at }) => isCodex(x) && CODEX_ERROR_RE.test(String(x?.body ?? '')) && Number.isFinite(at) && at > headAt)
+    .map(({ at }) => at);
+  const errored = codex.state === 'failed' || errorAts.some((t) => t > lastRequest);
+  if (!errored) return { request: false, reason: 'allerede bestilt efter hovedets commit' };
+  if (now.getTime() - lastRequest < CODEX_RETRY_MS) return { request: false, reason: 'Codex fejlede, men der er bestilt inden for den seneste time' };
+  return { request: true, reason: 'Codex fejlede paa hovedet; ny bestilling (hoejst en i timen)' };
+}
+
+/** Rene REST-fakta til decideCodexRerequest. Kaster ved gh-fejl. */
+export function fetchCodexFacts(number, { repo, gh = DEFAULT_GH }) {
+  const flat = (pages) => (Array.isArray(pages) ? pages.flat() : []);
+  const meta = gh.json(['api', `repos/${repo}/pulls/${number}`]);
+  const headSha = String(meta?.head?.sha ?? '');
+  if (!/^[0-9a-f]{40}$/i.test(headSha)) throw new Error('hoved-SHA ukendt');
+  const comments = flat(gh.json(['api', '--paginate', '--slurp', `repos/${repo}/issues/${number}/comments?per_page=100`]))
+    .map((c) => ({ author: c?.user?.login ?? '', body: c?.body ?? '', createdAt: c?.created_at ?? '' }));
+  const reviews = flat(gh.json(['api', '--paginate', '--slurp', `repos/${repo}/pulls/${number}/reviews?per_page=100`]))
+    .map((r) => ({ author: r?.user?.login ?? '', body: r?.body ?? '', commit: r?.commit_id ?? null, submittedAt: r?.submitted_at ?? '' }));
+  const headCommittedAt = String(gh.text(['api', `repos/${repo}/commits/${headSha}`, '--jq', '.commit.committer.date'])).trim();
+  return { headSha, isDraft: Boolean(meta?.draft), author: meta?.user?.login ?? '', comments, reviews, headCommittedAt };
+}
+
+/**
+ * Bestiller Codex-review paa de PR'er hvor den mangler paa hovedet. Hoejst een kommentar pr. PR
+ * pr. koersel, aldrig paa drafts, fail-soft pr. PR. Dry-run logger kun. Returnerer PR-numrene.
+ */
+export function requestStaleCodexReviews({ evaluations, repo, now = new Date(), dryRun = false, gh = DEFAULT_GH, log = () => {} }) {
+  const requested = [];
+  for (const e of codexReviewCandidates(evaluations)) {
+    try {
+      const facts = fetchCodexFacts(e.number, { repo, gh });
+      const verdict = decideCodexRerequest({ ...facts, now });
+      if (!verdict.request) continue;
+      if (dryRun) { log(`  DRY-RUN: ville gen-bestille review: #${e.number} (HEAD ${facts.headSha.slice(0, 7)}) - ${verdict.reason}.`); continue; }
+      gh.text(['pr', 'comment', String(e.number), '--repo', repo, '--body', CODEX_REQUEST_COMMENT]);
+      requested.push(e.number);
+      log(`  gen-bestilt review: #${e.number} (HEAD ${facts.headSha.slice(0, 7)})`);
+    } catch (err) {
+      log(`  #${e.number}: gen-bestilling af review fejlede (${err?.message ?? err}).`);
+    }
+  }
+  return requested;
 }
 
 /**
@@ -434,6 +539,7 @@ export async function run({
   checkMain = defaultCheckMain,
   blockFile = null,
   guard = runMergeGuard,
+  requestReviews = requestStaleCodexReviews,
   out =(line) => process.stdout.write(`${line}\n`),
 } = {}) {
   const opts = parseArgs(argv);
@@ -475,6 +581,8 @@ export async function run({
   for (const e of evaluations.filter((x) => x.ready)) log(`  #${e.number} klar: ${e.reason}${e.classification ? ` [${e.classification}]` : ''}`);
   // Merge-vagten (#8331): PR'er med ejer-markoer der staar stille; fail-soft.
   try { guard({ evaluations, repo: opts.repo, repoRoot, now, dryRun: opts.dryRun, log }); } catch (err) { log(`  MERGE-VAGT fejlede (${err?.message ?? err}).`); }
+  // Gen-bestilling af Codex-review paa et flyttet hoved (#7654); fail-soft, flytter aldrig en markoer.
+  try { requestReviews({ evaluations, repo: opts.repo, now, dryRun: opts.dryRun, log }); } catch (err) { log(`  gen-bestilling af review fejlede (${err?.message ?? err}).`); }
   const train = selectTrain(evaluations);
   const decision = decideAction({ activeMarker: null, train });
 
