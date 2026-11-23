@@ -26,6 +26,13 @@ test("rapporten faar kun source_slot, naar reglen gjaldt (off = intet nyt felt)"
 
 test("I5: prognosen bruger samme indgang og samme gate som motoren", () => {
   assert.match(forecast, /weekPriorityPlacement\(\{/);
-  assert.match(forecast, /weekRows\.some\(\(row\) => row\.plan_kind === "week"\)\n\s+\? await isTrainingWeekPriorityEnabledForTeam\(supabase, team\.id\)/);
+  assert.match(forecast, /weekRows\.some\(\(row\) => row\.plan_kind === "week"\)\n\s+\? await weekPriorityGateForTeam\(supabase, team\.id\)/);
+  assert.match(forecast, /return await isTrainingWeekPriorityEnabledForTeam\(supabase, teamId\);/);
   assert.match(forecast, /select\("rider_id, days, plan_kind"\)/);
+});
+
+test("regel B og fund A: motoren og prognosen giver placeringen samme skadede felter og løbsfelter", () => {
+  assert.match(engine, /injuredGameDays: dateDays\.filter\(\(day\) => \(useRaceDayKey\n\s+\? isInjuredOnRaceDay\(\{ condition: cond, seasonId, gameDay: day, tickDate \}\)/);
+  assert.match(forecast, /injuredGameDays: days\.filter\(\(day\) => isInjuredOnRaceDay\(\{ condition: cond, seasonId, gameDay: day, tickDate \}\)\)/);
+  assert.match(engine, /\.\.\.\(stageFieldTrains \? plannedStageDays\.filter\(\(day\) => day !== raceDay\) : plannedStageDays\)/);
 });

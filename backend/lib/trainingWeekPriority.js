@@ -11,11 +11,11 @@
 //
 // RENE funktioner + kontaktens opslag. Motoren (dailyTrainingEngine.js) og prognosen
 // (trainingWeekPlanForecast.js) bruger de samme (I5).
-import { assignDayFields } from "./trainingWeekBlocks.js";
+import { assignDayFields, lockSlotOf } from "./trainingWeekBlocks.js";
 import { programSlotForRaceDay, sessionForDayEntry } from "./trainingPrograms.js";
 import { isValidIntensity } from "./training.js";
 import { readFlagStage } from "./featureStage.js";
-import { loadRaceExitGameDays, dropBindingsAfterRaceExit } from "./trainingRaceDayTick.js";
+import { loadRaceExitGameDays, dropBindingsAfterRaceExit, releaseNonStarters } from "./trainingRaceDayTick.js";
 
 export const TRAINING_WEEK_PRIORITY_FLAG_KEY = "training_week_priority";
 
@@ -59,32 +59,62 @@ export function winningWeekEntry({ weekday, riderRow = null, teamRow = null, has
 
 /**
  * Feltplaceringen for datoen under Week blocks.
- *   raceGameDays  : datoens løbsdage, hvor rytteren kører (afregnede løb + planlagte etaper).
- *   priorReports  : datoens allerede afregnede kvitteringer for rytteren ({ game_day, report }).
- *                   Et felt med `source_slot` ligger fast med den kilde. Et ældre felt uden
- *                   stempel ligger fast med sin egen plads, og et løbsfelt med null (WB-6, WB-8).
+ *   raceGameDays    : datoens løbsdage, hvor rytteren kører (afregnede løb + planlagte etaper).
+ *   priorReports    : datoens allerede afregnede kvitteringer for rytteren ({ game_day, report }).
+ *                     Et felt med `source_slot` ligger fast med den kilde. Et ældre felt uden
+ *                     stempel ligger fast med sin egen plads, og et løbsfelt med null (WB-6, WB-8).
+ *   injuredGameDays : datoens løbsdage, hvor rytteren er skadet (regel B, ejer 23/11).
  */
-export function weekPriorityPlacement({ winning, dateDays, raceGameDays = [], priorReports = [] }) {
+export function weekPriorityPlacement({ winning, dateDays, raceGameDays = [], priorReports = [], injuredGameDays = [] }) {
   if (winning?.planKind !== "week") return null;
   const days = [...new Set((dateDays ?? []).map(Number).filter(Number.isFinite))].sort((a, b) => a - b);
   if (days.length !== 5) return null;
   const slotOf = (gameDay) => programSlotForRaceDay(gameDay, days);
-  const raceFields = new Set([...raceGameDays].map(Number).filter((d) => days.includes(d)).map(slotOf));
+  const fieldsOf = (gameDays) => new Set([...gameDays].map(Number).filter((d) => days.includes(d)).map(slotOf));
+  const raceFields = fieldsOf(raceGameDays);
+  const injuredFields = fieldsOf(injuredGameDays);
   const settled = new Map();
   for (const prior of priorReports) {
     const day = Number(prior.game_day);
     if (!days.includes(day)) continue;
     const field = slotOf(day);
     const report = prior.report ?? {};
-    const raced = raceFields.has(field) || report.race_day === true
-      || report.intensity === "race" || report.intensity === "unknown_pending";
     const stamped = Number.isInteger(report.source_slot) ? report.source_slot : null;
+    // Fund A (Fable 23/11): a planned stage field that trained carries a stamp, and the stamp
+    // wins over the plan. Without a stamp the planned field stays a race field.
+    const raced = report.race_day === true || report.intensity === "race" || report.intensity === "unknown_pending"
+      || (raceFields.has(field) && stamped == null);
     // An injury without a training source must not change the placement of later fields.
-    if (!raced && stamped == null && report.injured === true) continue;
+    if (!raced && stamped == null && report.injured === true) {
+      injuredFields.add(field);
+      continue;
+    }
     // Et felt, træthedsgrænsen erstattede, er afregnet MED sin kilde (WB-7-kontrakten, #8578).
     settled.set(field, raced ? null : (stamped ?? field));
   }
-  return assignDayFields({ entry: winning.entry, raceFields, settled });
+  return placeLockOutOfInjury({ entry: winning.entry, raceFields, settled, injuredFields });
+}
+
+/**
+ * Regel B (ejer 23/11, #8549): lands the lock in a field where the rider is still injured,
+ * it moves to the nearest healthy free field on the date instead (the first one, when the
+ * injury ends later that date). The injured fields use the other passes in priority order,
+ * as they do without a lock, so only the lock moves and "taken" still means taken by a race.
+ * Without a healthy free field the placement is unchanged (the injury rests the whole date).
+ */
+function placeLockOutOfInjury({ entry, raceFields, settled, injuredFields }) {
+  const placement = assignDayFields({ entry, raceFields, settled });
+  const lock = lockSlotOf(entry);
+  const at = lock == null ? -1 : placement.fieldSource.indexOf(lock);
+  if (at < 0 || settled.has(at) || !injuredFields.has(at)) return placement;
+  const fields = placement.fieldSource.map((_, field) => field);
+  const open = fields.filter((field) => !raceFields.has(field) && !settled.has(field));
+  if (!open.some((field) => !injuredFields.has(field))) return placement;
+  const used = new Set([...settled.values()].filter((source) => source != null));
+  const queue = fields.filter((source) => source !== lock && !used.has(source));
+  const blocked = new Map(settled);
+  for (const field of open) if (injuredFields.has(field)) blocked.set(field, queue.shift() ?? null);
+  return assignDayFields({ entry, raceFields, settled: blocked });
 }
 
 export function weekPrioritySourceSlot({ programSlot, ...input }) {
@@ -97,7 +127,9 @@ export function weekPrioritySourceSlot({ programSlot, ...input }) {
 /**
  * I/O (motorens læsefase, kun med kontakten on): datoens PLANLAGTE etaper pr. rytter.
  * Bindingen (race_entry_days) ∩ etapeplanen (race_stage_schedule) på datoens løbsdage, med
- * udgang af løb (#5949) som motorens binding. Afregnede løb kommer fra canonicalLoadRows.
+ * startfelt-frigivelsen (releaseNonStarters) og udgang af løb (#5949) som motorens binding:
+ * en kendt ikke-starter har ingen planlagt etape i nogen af datoens felter (fund E).
+ * Afregnede løb kommer fra canonicalLoadRows.
  * Returnerer et almindeligt objekt { riderId: [game_day] }, så input kan gemmes (Træn nu).
  */
 export async function loadPlannedStageDaysByRider({ supabase, seasonId, riderIds, dateDays }) {
@@ -106,16 +138,18 @@ export async function loadPlannedStageDaysByRider({ supabase, seasonId, riderIds
   const { data: entries, error } = await supabase.from("race_entry_days")
     .select("rider_id, race_id, game_day").eq("season_id", seasonId).in("game_day", dateDays).in("rider_id", riderIds);
   if (error) throw new Error(`week priority bindings: ${error.message ?? error}`);
-  const raceIds = [...new Set((entries ?? []).map((row) => row.race_id).filter(Boolean))];
+  const started = await releaseNonStarters(supabase, entries ?? []);
+  if (started.error) throw new Error(`week priority start fields: ${started.error.message ?? started.error}`);
+  const raceIds = [...new Set(started.data.map((row) => row.race_id).filter(Boolean))];
   if (!raceIds.length) return {};
   const [{ data: schedule, error: scheduleError }, exitsResult] = await Promise.all([
     // pagination-safe: a few bound races x five race days.
     supabase.from("race_stage_schedule").select("race_id, game_day").in("race_id", raceIds).in("game_day", dateDays),
-    loadRaceExitGameDays({ supabase, rows: entries ?? [] }),
+    loadRaceExitGameDays({ supabase, rows: started.data }),
   ]);
   if (scheduleError) throw new Error(`week priority schedule: ${scheduleError.message ?? scheduleError}`);
   if (exitsResult?.error) throw new Error(`week priority race exits: ${exitsResult.error.message ?? exitsResult.error}`);
-  const active = dropBindingsAfterRaceExit(entries ?? [], exitsResult?.data ?? new Map());
+  const active = dropBindingsAfterRaceExit(started.data, exitsResult?.data ?? new Map());
   const stageDays = new Set((schedule ?? []).map((row) => `${row.race_id}:${Number(row.game_day)}`));
   const out = {};
   for (const row of active) {

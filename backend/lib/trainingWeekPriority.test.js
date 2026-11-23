@@ -51,12 +51,49 @@ test("WB-3: laas C (hjem LD3), loeb LD3 -> A, B, L, C, D (lige afstand = det sen
 test("Fable: en kvittering uden træningskilde bruger ikke løbets låste pas", () => {
   const winning = week(lock(2));
   for (const [raceGameDays, report] of [
-    [[22], { source_slot: 2, intensity: "rest" }],
+    [[22], { intensity: "rest", bound_race_day: true }],
     [[], { intensity: "unknown_pending" }],
+    [[22], { source_slot: 2, intensity: "unknown_pending" }],
+    [[22], { source_slot: 2, race_day: true }],
   ]) {
     const assign = weekPriorityPlacement({ winning, dateDays: DAYS, raceGameDays, priorReports: [{ game_day: 22, report }] });
     assert.deepEqual(assign, { fieldSource: [0, 1, null, 2, 3], taken: [4], lockMovedFrom: 2 });
   }
+});
+
+test("fund A: en planlagt etape, han ikke kørte, men hvor feltet trænede (stemplet), er et frit felt", () => {
+  const winning = week(lock(2));
+  const priorReports = [0, 1].map((s) => ({ game_day: DAYS[s], report: { source_slot: s } }))
+    .concat({ game_day: 22, report: { source_slot: 2, intensity: "normal", bound_race_day: false } });
+  const assign = weekPriorityPlacement({ winning, dateDays: DAYS, raceGameDays: [22], priorReports });
+  assert.deepEqual(assign, { fieldSource: [0, 1, 2, 3, 4], taken: [], lockMovedFrom: null });
+});
+
+test("regel B: låsen i et skadet felt flytter til datoens første raske felt; de skadede felter bruger de andre pas", () => {
+  const injuredGameDays = [20, 21];
+  assert.deepEqual(
+    weekPriorityPlacement({ winning: week(lock(0)), dateDays: DAYS, injuredGameDays }),
+    { fieldSource: [1, 2, 0, 3, 4], taken: [], lockMovedFrom: 0 },
+  );
+  // Afregnede skadede felter (uden stempel) tæller som skadede, også når skaden er ryddet.
+  const priorReports = [20, 21].map((day) => ({ game_day: day, report: { injured: true, intensity: "rest" } }));
+  const ld3 = weekPrioritySourceSlot({ winning: week(lock(1)), programSlot: 2, dateDays: DAYS, priorReports });
+  assert.equal(ld3.sourceSlot, 1, "LD3 kører låsen B");
+  // Et løb i det første raske felt: låsen tager det næste raske felt.
+  assert.deepEqual(
+    weekPriorityPlacement({ winning: week(lock(0)), dateDays: DAYS, injuredGameDays, raceGameDays: [22] }),
+    { fieldSource: [1, 2, null, 0, 3], taken: [4], lockMovedFrom: 0 },
+  );
+  // Skadet hele datoen: intet råskt felt, placeringen er uændret (WB-9).
+  assert.deepEqual(
+    weekPriorityPlacement({ winning: week(lock(0)), dateDays: DAYS, injuredGameDays: DAYS }),
+    { fieldSource: [0, 1, 2, 3, 4], taken: [], lockMovedFrom: null },
+  );
+  // Låsen i et rask felt: uændret.
+  assert.deepEqual(
+    weekPriorityPlacement({ winning: week(lock(3)), dateDays: DAYS, injuredGameDays }),
+    { fieldSource: [0, 1, 2, 3, 4], taken: [], lockMovedFrom: null },
+  );
 });
 
 test("WB-4: laas E, loeb LD1+LD5 -> L, A, B, E, L", () => {

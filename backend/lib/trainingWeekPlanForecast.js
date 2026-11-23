@@ -40,7 +40,7 @@ import { riderFatigueNow } from "./riderFatigueNow.js"; // #7801
 import { isFatigueNow7801Enabled } from "./riderFatigueNowFlag.js";
 import { isTrainingCellsEnabledForTeam } from "./trainingWeekPlanCellsFlag.js";
 import { isTrainingCatalogV3EnabledForTeam } from "./trainingCatalogV3.js"; // #5319
-import { loadRaceExitGameDays, dropBindingsAfterRaceExit } from "./trainingRaceDayTick.js";
+import { loadRaceExitGameDays, dropBindingsAfterRaceExit, releaseNonStarters } from "./trainingRaceDayTick.js";
 import { isTrainingSettleRaceSessionEnabled } from "./trainingSettleRaceSession7982.js"; // #7982
 import { isTrainingEffortLevelsEnabled } from "./trainingEffortLevels.js"; // #7947
 import { isTrainingWeekPriorityEnabledForTeam, weekPriorityPlacement, winningWeekEntry } from "./trainingWeekPriority.js"; // #8549
@@ -153,6 +153,8 @@ export function buildTeamFatigueForecast({
         ...plannedStages.filter((row) => row.rider_id === rider.id).map((row) => Number(row.game_day)),
       ],
       priorReports: riderReceipts,
+      // #8549 regel B: samme skadede felter som motoren (isInjuredOnRaceDay pr. loebsdag).
+      injuredGameDays: days.filter((day) => isInjuredOnRaceDay({ condition: cond, seasonId, gameDay: day, tickDate })),
     }) : null;
     const ruleLoads = []; // #7801: etaper i tidligere felter samme dato
     const slots = days.map((day) => {
@@ -298,7 +300,7 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
   // Motorens regler og straks-tilstandene afhaenger kun af holdet og datoen: de sendes med.
   const rulesP = fatigueRulesForForecast(supabase, team.id, riderIds, tickDate);
   const instantP = settle(loadInstantConditions({ supabase, riderIds, tickDate, failOpenWhenOff: true }));
-  const [conditions, abilities, plans, weekRows, receipts, loads, workRows, entryDays, raceDayEngineOn, cellsOn, catalogV3] = await Promise.all([
+  const [conditions, abilities, plans, weekRows, receipts, loads, workRows, boundEntryDays, raceDayEngineOn, cellsOn, catalogV3] = await Promise.all([
     rows(supabase.from("rider_condition").select("*").in("rider_id", riderIds), "forecast condition"),
     rows(supabase.from("rider_derived_abilities").select("rider_id, recovery").in("rider_id", riderIds), "forecast recovery"),
     rows(supabase.from("training_plans").select("rider_id, focus, intensity").eq("team_id", team.id).eq("season_id", seasonId), "forecast plans"),
@@ -323,7 +325,7 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
   const dateReceipts = receipts.filter((row) => row.tick_date === tickDate);
   const programCellsOn = cellsOn && weekRows.some((row) => weekDaysHaveSessions(row.days));
   const weekPriority = programCellsOn && weekRows.some((row) => row.plan_kind === "week")
-    ? await isTrainingWeekPriorityEnabledForTeam(supabase, team.id)
+    ? await weekPriorityGateForTeam(supabase, team.id)
     : false;
   // A completed current-team roster says nothing about an acquired rider's
   // still-open date under the original team's durable stamp.
@@ -342,6 +344,10 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
   // koert at vise), og samtidig med etapeopslagene, saa en almindelig dag er uaendret.
   const settleRaceSessionP = !settled && dateReceipts.length ? settle(isTrainingSettleRaceSessionEnabled(supabase)) : null;
 
+  // #8549 fund E: med Week blocks samme startfelt-frigivelse som motorens binding og planlagte
+  // etaper, saa en kendt ikke-starter hverken er bundet eller har en etape i noget felt.
+  // Kontakten off: intet ekstra opslag, prognosen som foer.
+  const entryDays = weekPriority ? await startedEntryDays(supabase, boundEntryDays) : boundEntryDays;
   // Planlagte etaper: bindingens loeb har en etape paa netop den loebsdag.
   const raceIds = [...new Set(entryDays.map((row) => row.race_id).filter(Boolean))];
   const [schedule, profiles, exits] = raceIds.length
@@ -411,6 +417,14 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
   };
 }
 
+// #8549 fund E: motorens startfelt-frigivelse (I5: ingen kopi af reglen). Som udgangen af loeb
+// rejses en fejl her, saa prognosen aldrig viser en etape, motoren ikke regner med.
+async function startedEntryDays(supabase, entryDays) {
+  const { data, error } = await releaseNonStarters(supabase, entryDays);
+  if (error) throw new Error(`forecast start fields: ${error.message ?? error}`);
+  return data;
+}
+
 // Motorens regler (samme loader som dailyTrainingEngine.js). Motoren kaster ved
 // fejl; prognosen er kun en visning, saa en fejl giver "ingen regel" frem for
 // en vaeltet side. Etape-opslaget koeres kun naar en rytter har reglen sat.
@@ -437,6 +451,17 @@ async function catalogV3GateForTeam(supabase, teamId) {
     return await isTrainingCatalogV3EnabledForTeam(supabase, teamId);
   } catch {
     // best-effort: prognosen er kun en visning; ukendt gate = dagens katalog.
+    return false;
+  }
+}
+
+// #8549 fund C: motorens gate for Week blocks. Motoren kaster ved en fejl i beta-opslaget og
+// proever datoen igen; prognosen er en visning, saa en fejl giver dagens felter.
+async function weekPriorityGateForTeam(supabase, teamId) {
+  try {
+    return await isTrainingWeekPriorityEnabledForTeam(supabase, teamId);
+  } catch {
+    // best-effort: prognosen er kun en visning; ukendt gate = ugen uden Week blocks.
     return false;
   }
 }
