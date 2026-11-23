@@ -32,7 +32,7 @@ const NUM = "font-data tabular-nums";
 // words), and Fatigue ("64 ^12") and Rating ("34 > 35") each get a column wide enough for
 // their whole value, so the two never run into each other. Fixed tracks keep every row's
 // grid lined up with the head.
-const ROW_GRID = "grid-cols-[minmax(0,1fr)_2.5rem_2.75rem_2.75rem_2.75rem] lg:grid-cols-[minmax(5.5rem,1fr)_6.75rem_2.5rem_2.5rem_3rem_minmax(4.5rem,auto)_minmax(4.5rem,auto)_2.25rem_3.75rem_4.25rem_2.75rem]";
+const ROW_GRID = "grid-cols-[minmax(0,1fr)_2.5rem_2.75rem_2.75rem_2.75rem] lg:grid-cols-[minmax(7.5rem,1fr)_6.5rem_2.5rem_2.5rem_3rem_minmax(4.5rem,6rem)_minmax(4.5rem,6rem)_2.25rem_3.75rem_4.25rem_2.75rem]";
 const xp = (n: number) => formatNumber(Math.round(n));
 
 /** The owner's phone name form (18/9): "A. Brandvig". The receipt carries one full name. */
@@ -277,7 +277,7 @@ export default function XpToday({ view, onPickDate, switcher, showAll = false, o
             <Segmented label={t("xpReport.filterLabel")} value={filter} onChange={(v: TodayFilter) => setFilter(v)} className="whitespace-nowrap"
               options={(["all", "gained", "raced", "notRaced"] as TodayFilter[]).map(key => ({ value: key, label: t(`xpReport.filter.${key}`, { count: view.counts[key] }) }))} />
           </div>
-          <div className={`grid items-end gap-x-2 py-2 lg:gap-x-2.5 ${ROW_GRID} ${META}`} aria-hidden="true" data-testid="xp-head">
+          <div className={`grid items-end gap-x-2 py-2 lg:gap-x-1.5 ${ROW_GRID} ${META}`} aria-hidden="true" data-testid="xp-head">
             <span>{t("training:colRider")}</span>
             <span className="hidden lg:block">{t("training:colType")}</span>
             <span className="hidden text-right lg:block">{t("xpReport.legend.training")}</span>
@@ -297,7 +297,7 @@ export default function XpToday({ view, onPickDate, switcher, showAll = false, o
               <div key={rider.id} className="border-t border-cz-border" data-testid="xp-row">
                 {/* The row picks the rider (panel) or folds him out (phone); the name is its own link. */}
                 <div onClick={() => toggle(rider.id)}
-                  className={`grid min-h-11 w-full cursor-pointer items-center gap-x-2 hover:bg-cz-subtle lg:gap-x-2.5 ${ROW_GRID} ${isPicked ? "xl:bg-cz-subtle" : ""}`}>
+                  className={`grid min-h-11 w-full cursor-pointer items-center gap-x-2 hover:bg-cz-subtle lg:gap-x-1.5 ${ROW_GRID} ${isPicked ? "xl:bg-cz-subtle" : ""}`}>
                   <span className="flex min-w-0 flex-col justify-center">
                     {/* #7947 (owner 23/11): a long name breaks between words, never inside one (no ellipsis). */}
                     <span className="flex min-w-0 items-center gap-1.5" data-testid="xp-name-cell">

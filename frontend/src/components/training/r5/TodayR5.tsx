@@ -160,12 +160,11 @@ function EffortWord({ effort }: { effort: Effort }) {
   return <span className={EFFORT_TONE[effort]}>{tR5(`effort.${effort}`)}</span>;
 }
 
-function SavedMark() {
-  const { t } = useTranslation("training");
+function SavedMark({ iconOnly = false }: { iconOnly?: boolean }) {
   const { t: tR5 } = useTranslation("trainingR5"); // #7947: lazy namespace (I18nReadyGate i TrainingPage)
   return (
-    <span role="status" className="inline-flex shrink-0 items-center gap-1 text-2xs font-medium text-cz-success" data-testid="r5-saved">
-      <CheckIcon size={12} aria-hidden="true" />{tR5("saved")}
+    <span role="status" title={iconOnly ? tR5("saved") : undefined} className="inline-flex shrink-0 items-center gap-1 text-2xs font-medium text-cz-success" data-testid="r5-saved">
+      <CheckIcon size={12} aria-hidden="true" />{iconOnly ? <span className="sr-only">{tR5("saved")}</span> : tR5("saved")}
     </span>
   );
 }
@@ -218,7 +217,7 @@ function StatusCell({ row }: { row: Row }) {
   return (
     <span className="flex flex-wrap items-center gap-1" data-testid="r5-row-status">
       {words.map((w) => (
-        <span key={w.key} className={`rounded-cz-pill border px-1.5 py-px text-3xs font-medium leading-tight tabular-nums ${STATUS_PILL[STATUS_TONE[w.key]]}`}
+        <span key={w.key} className={`rounded-cz-pill border px-1.5 py-px text-3xs font-medium leading-tight tabular-nums ${w.key === "injured" ? "" : "whitespace-nowrap"} ${STATUS_PILL[STATUS_TONE[w.key]]}`}
           data-status={w.key}>{w.text}</span>
       ))}
     </span>
@@ -254,7 +253,7 @@ function TypeFull({ row }: { row: Row }) {
   return <RiderTypeBadge primaryType={row.primaryType} secondaryType={row.secondaryType} />;
 }
 
-function ProgramButton({ row, r5 }: { row: Row; r5: TodayR5Props }) {
+function ProgramButton({ row, r5, wrap = false }: { row: Row; r5: TodayR5Props; wrap?: boolean }) {
   const { t } = useTranslation("training");
   const { t: tR5 } = useTranslation("trainingR5"); // #7947: lazy namespace (I18nReadyGate i TrainingPage)
   const label = row.program.kind === "none" ? tR5("program.none") : row.program.name ?? tR5("program.own");
@@ -268,7 +267,8 @@ function ProgramButton({ row, r5 }: { row: Row; r5: TodayR5Props }) {
           className={`inline-flex max-w-full items-center justify-between gap-1.5 rounded-cz border border-cz-border px-2 py-1 text-xs font-medium hover:border-cz-3 max-sm:min-h-11 w-full ${
             row.program.kind === "none" ? "text-cz-2" : "text-cz-1"}`}>
           {/* Ejer 19/11: ingen advarsel ved "No program"; at undlade et program er et aktivt valg. */}
-          <span className="truncate">{label}</span>
+          {/* #7947 (ejer 23/11): i tabellen brydes et langt navn mellem ord, aldrig midt i et ord. */}
+          <span className={wrap ? "min-w-0 text-start leading-tight" : "truncate"}>{label}</span>
           <ChevronDownIcon size={12} aria-hidden="true" className="shrink-0 text-cz-3" />
         </button>
       )}
@@ -586,7 +586,7 @@ function RiderDetails({ row, r5, mobile }: { row: Row; r5: TodayR5Props; mobile:
 
 function SortTh({ k, label, cls, sort, onSort }: { k: SortKey | null; label: string; cls: string; sort: Sort; onSort: (k: SortKey) => void }) {
   return (
-    <th className={`px-2 py-2 text-start ${HEAD} ${cls}`}
+    <th className={`px-1.5 py-2 text-start ${HEAD} ${cls}`}
       aria-sort={sort && k === sort.key ? (sort.dir === 1 ? "ascending" : "descending") : undefined}>
       {k ? (
         <button type="button" onClick={() => onSort(k)} className="inline-flex max-w-full flex-wrap items-center gap-x-1 text-start uppercase hover:text-cz-1">
@@ -907,32 +907,32 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
   // Navnecellen er kun flag + navn; Status, Traening og Indsats har hver sin kolonne;
   // "Din dag ..." vises ved hover/fokus paa raekken (og naar den foldes ud), og vejen
   // tilbage til programmet ligger i menuen yderst. Maal: een raekke paa ca. 44 px.
-  const colCount = 14;
+  // Bredderne er regnet til indholdsbredden ved 1440 (ca. 1165 px): ingen vandret scroll dér.
+  // Markering + fold-ud deler den foerste celle, og assistent + menu den sidste.
+  const colCount = 12;
   const onSort = (k: SortKey) => setSort((s) => nextSort(s, k));
-  const CELL = "px-2 py-1.5";
+  const CELL = "px-1.5 py-1.5";
   const desktopTable = (
     <div className="max-xl:overflow-x-auto">
-    <table className="w-full min-w-[1080px] table-fixed text-xs" data-sortable data-testid="r5-table">
+    <table className="w-full min-w-[1150px] table-fixed text-xs" data-sortable data-testid="r5-table">
       <thead>
         <tr className="border-b border-cz-border">
-          <th className="w-[32px] ps-3 text-start">
+          <th className="w-[48px] ps-2.5 text-start">
             <input type="checkbox" checked={allSelected} onChange={() => setSelected(toggleAllSelection(selected, shownIds))}
               aria-label={tR5("selectAll")} className="h-4 w-4 rounded-[3px] accent-cz-accent" />
           </th>
-          <th className="w-[30px]"><span className="sr-only">{tR5("row.details")}</span></th>
-          <SortTh k="rider" label={t("colRider")} cls="w-[132px]" sort={sort} onSort={onSort} />
-          <SortTh k="type" label={t("colType")} cls="w-[100px]" sort={sort} onSort={onSort} />
-          <SortTh k="age" label={t("colAge")} cls="w-[52px]" sort={sort} onSort={onSort} />
-          <SortTh k="program" label={tR5("col.program")} cls="w-[108px]" sort={sort} onSort={onSort} />
-          <SortTh k="form" label={t("form")} cls="w-[52px]" sort={sort} onSort={onSort} />
+          <SortTh k="rider" label={t("colRider")} cls="w-[172px]" sort={sort} onSort={onSort} />
+          <SortTh k="type" label={t("colType")} cls="w-[104px]" sort={sort} onSort={onSort} />
+          <SortTh k="age" label={t("colAge")} cls="w-[48px]" sort={sort} onSort={onSort} />
+          <SortTh k="program" label={tR5("col.program")} cls="w-[126px]" sort={sort} onSort={onSort} />
+          <SortTh k="form" label={t("form")} cls="w-[48px]" sort={sort} onSort={onSort} />
           {/* En lang overskrift brydes inde i sin egen celle (ejer 20/11). */}
-          <SortTh k="fatigue" label={tR5("col.fatigueNow")} cls="w-[72px]" sort={sort} onSort={onSort} />
-          <SortTh k="load" label={tR5("col.dayLoad")} cls="w-[100px]" sort={sort} onSort={onSort} />
+          <SortTh k="fatigue" label={tR5("col.fatigueNow")} cls="w-[68px]" sort={sort} onSort={onSort} />
+          <SortTh k="load" label={tR5("col.dayLoad")} cls="w-[88px]" sort={sort} onSort={onSort} />
           <SortTh k={null} label={tR5("row.col.status")} cls="" sort={sort} onSort={onSort} />
-          <SortTh k={null} label={tR5("row.col.training")} cls="w-[128px]" sort={sort} onSort={onSort} />
-          <SortTh k={null} label={tR5("row.col.effort")} cls="w-[208px]" sort={sort} onSort={onSort} />
-          <th className="w-[32px]"><span className="sr-only">{tR5("row.col.assistant")}</span></th>
-          <th className="w-[36px]"><span className="sr-only">{tR5("row.col.actions")}</span></th>
+          <SortTh k={null} label={tR5("row.col.training")} cls="w-[108px]" sort={sort} onSort={onSort} />
+          <SortTh k={null} label={tR5("row.col.effort")} cls="w-[200px]" sort={sort} onSort={onSort} />
+          <th className="w-[56px]"><span className="sr-only">{tR5("row.col.assistant")} · {tR5("row.col.actions")}</span></th>
         </tr>
       </thead>
       <tbody>
@@ -959,23 +959,23 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
               return (
                 <Fragment key={row.id}>
                   <tr className={`group/row border-t border-cz-border first:border-t-0 hover:bg-cz-subtle/40 ${o || sel ? "bg-cz-subtle/40" : ""}`} data-testid="r5-row">
-                    <td className="ps-3">
-                      <input type="checkbox" checked={sel} onChange={() => setSelected((s) => toggleOne(s, row.id))}
-                        aria-label={tR5("selectRider", { name: row.name })} className="h-4 w-4 rounded-[3px] accent-cz-accent" />
-                    </td>
-                    <td>
-                      <button type="button" onClick={() => toggle(row.id)} aria-expanded={o} aria-label={tR5("openRider", { name: row.name })}
-                        className="flex h-7 w-7 items-center justify-center rounded-cz text-cz-2 hover:bg-cz-subtle hover:text-cz-1">
-                        {o ? <ChevronDownIcon size={14} aria-hidden="true" /> : <ChevronRightIcon size={14} aria-hidden="true" />}
-                      </button>
+                    <td className="ps-2.5">
+                      <span className="flex items-center gap-1">
+                        <input type="checkbox" checked={sel} onChange={() => setSelected((s) => toggleOne(s, row.id))}
+                          aria-label={tR5("selectRider", { name: row.name })} className="h-4 w-4 shrink-0 rounded-[3px] accent-cz-accent" />
+                        <button type="button" onClick={() => toggle(row.id)} aria-expanded={o} aria-label={tR5("openRider", { name: row.name })}
+                          className="flex h-7 w-5 shrink-0 items-center justify-center rounded-cz text-cz-2 hover:bg-cz-subtle hover:text-cz-1">
+                          {o ? <ChevronDownIcon size={14} aria-hidden="true" /> : <ChevronRightIcon size={14} aria-hidden="true" />}
+                        </button>
+                      </span>
                     </td>
                     <td className={CELL}><NameCell row={row} /></td>
                     <td className={CELL}><TypeCell row={row} /></td>
                     <td className={`${CELL} font-data text-[13px] tabular-nums text-cz-1`}>{row.age ?? "—"}</td>
-                    <td className={CELL}><ProgramButton row={row} r5={r5} /></td>
+                    <td className={CELL}><ProgramButton row={row} r5={r5} wrap /></td>
                     <td className={CELL}><FormPlate value={row.form} /></td>
                     <td className={CELL}><FatiguePlate value={row.fatigue} /></td>
-                    <td className={CELL}>{row.racing ? <RaceCell row={row} compact /> : <DayLoadCell load={load} label={(l) => tR5(`load.${l}`)} />}</td>
+                    <td className={`${CELL} [&>span]:whitespace-normal [&>span]:leading-tight`}>{row.racing ? <RaceCell row={row} compact /> : <DayLoadCell load={load} label={(l) => tR5(`load.${l}`)} />}</td>
                     <td className={CELL}><StatusCell row={row} /></td>
                     {row.racing || locked ? (
                       <td colSpan={2} className={`relative ${CELL}`}>
@@ -995,19 +995,23 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
                           <span className="flex items-center gap-1.5">
                             <EffortControl levelsOn={levelsOn} scope={row.name} value={row.ownEffort} onPick={w.pickEffort} disabled={busy} compact testId="r5-row-effort" />
                             {levelsOn && showsInjuryRisk(row.effective) && <HardRiskIcon />}
-                            {r5.justSaved.has(row.id) && <SavedMark />}
+                            {r5.justSaved.has(row.id) && <SavedMark iconOnly />}
                           </span>
                           <RowError row={row} r5={r5} />
                         </td>
                       </>
                     )}
-                    <td className="px-1 py-1.5"><AssistantMark row={row} r5={r5} onUse={w.useSuggestion} /></td>
-                    <td className="pe-2 ps-1"><RowMenu row={row} r5={r5} open={o} onToggleDetails={() => toggle(row.id)} /></td>
+                    <td className="pe-1.5 ps-0.5">
+                      <span className="flex items-center justify-end gap-0.5">
+                        <AssistantMark row={row} r5={r5} onUse={w.useSuggestion} />
+                        <RowMenu row={row} r5={r5} open={o} onToggleDetails={() => toggle(row.id)} />
+                      </span>
+                    </td>
                   </tr>
                   {o && (
                     <tr className="bg-cz-subtle/40">
-                      <td colSpan={2} />
-                      <td colSpan={colCount - 2} className="px-2 pb-3 pt-0.5"><RiderDetails row={row} r5={r5} mobile={false} /></td>
+                      <td />
+                      <td colSpan={colCount - 1} className="px-1.5 pb-3 pt-0.5"><RiderDetails row={row} r5={r5} mobile={false} /></td>
                     </tr>
                   )}
                 </Fragment>
