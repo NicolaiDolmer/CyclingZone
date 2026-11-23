@@ -2,12 +2,21 @@
 // Ingen imports, saa node --test kan koere den uden en browser.
 
 export type ForecastBand = "ok" | "warn" | "risk";
-export type ForecastEntry = { fatigue: number; band: ForecastBand | null; raceSlots?: number[] };
+import type { RotationPreviewSlot } from "./r5/programR5Model.ts";
+
+export type ForecastEntry = {
+  fatigue: number; band: ForecastBand | null; raceSlots?: number[];
+  rotationSlots?: RotationPreviewSlot[];
+  nextRotationIndex?: number;
+  restSlots?: number[];
+  recoverySlots?: number[];
+};
 export type ForecastResponse = {
   available?: boolean;
   settled?: boolean;
   tickDate?: string;
   riders?: Record<string, ForecastEntry>;
+  weekPrioritySettled?: Record<string, Record<number, number | null>>;
 };
 
 // Et svar uden kendt baand maa aldrig vises som "frisk": fald tilbage til den

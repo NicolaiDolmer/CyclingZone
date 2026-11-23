@@ -1428,7 +1428,10 @@
           "Find en rytter og vælg hvad det er for en dag: Hvile, Aktiv restitution, en Færdighedsdag eller Træning.",
           "På en træningsdag vælger du sessionen: Lang tur (let), Tempo (mellem), eller Blandede intervaller, Klatreintervaller, Punch-intervaller, Tærskel, Sprint, Brostenssektorer, Vifteøvelser eller Angrebsintervaller (hård). På en færdighedsdag: Teknik, Aero eller Løbslære.",
           "Gem. Dagen kører hver dag, indtil du ændrer den.",
-          "Der er ingen grænse for hvor mange ryttere der kan have et program: du kan sætte et for hele truppen."
+          "Der er ingen grænse for hvor mange ryttere der kan have et program: du kan sætte et for hele truppen.",
+          "Når Rotation er tilgængelig under Program, sætter du passene i den rækkefølge, de skal køres. Et løb, en skade eller hvile fra træthedsgrænsen sætter rotationen på pause. Kører samme pas på Let, fortsætter rotationen.",
+          "Brug Spring til pas for at ændre rytterens plads. Ved kopiering med samme længde beholder hver rytter sin plads, medmindre du vælger Start fra pas 1. En ny længde starter ved pas 1.",
+          "Når feltprioritet er tilgængelig i Ugeblokke, sætter du dagens pas i prioritetsrækkefølge. Du kan låse ét pas den dag. Løb tog viser de pas, der ikke blev plads til."
         ]
       },
       "dayTypes": {

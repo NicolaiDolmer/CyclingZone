@@ -1428,7 +1428,10 @@
           "Zoek een renner en kies wat voor dag het is: Rust, Actief herstel, een Techniekdag of Training.",
           "Kies op een trainingsdag de sessie: Lange rit (licht), Tempo (gemiddeld), of Gemengde intervallen, Klimintervallen, Punch-intervallen, Drempel, Sprint, Kasseienstroken, Waaieroefeningen of Aanvalsherhalingen (zwaar). Op een techniekdag: Techniek, Aero of Koersinzicht.",
           "Sla op. De dag draait elke dag tot je hem wijzigt.",
-          "Er is geen limiet op hoeveel renners een programma kunnen hebben: je kunt er een instellen voor je hele selectie."
+          "Er is geen limiet op hoeveel renners een programma kunnen hebben: je kunt er een instellen voor je hele selectie.",
+          "Als Rotatie beschikbaar is in Programma, zet je de sessies in de gewenste volgorde. Een wedstrijd, blessure of rust door de vermoeidheidslimiet onderbreekt de reeks. Als de renner dezelfde sessie licht uitvoert, gaat de rotatie verder.",
+          "Gebruik Naar sessie om de positie van een renner te veranderen. Een kopie van dezelfde lengte behoudt zijn positie, tenzij je kiest voor Vanaf sessie 1 beginnen. Een andere lengte begint bij sessie 1.",
+          "Als de tijdvakprioriteit beschikbaar is in Weekblokken, rangschik je de sessies per dag. Je kunt één sessie per dag vastzetten. Vervallen door wedstrijden toont de sessies waarvoor geen tijdvak overbleef."
         ]
       },
       "dayTypes": {

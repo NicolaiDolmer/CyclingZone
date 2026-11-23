@@ -109,6 +109,27 @@ const P = (...sessions) => sessions.map((session) => ({ session }));
 const ABC = P("sprint", "endurance", "threshold");
 const rowOf = (state, riderId) => state.training_week_plans.find((r) => r.rider_id === riderId);
 
+test("Week blocks marks group followers and new members when rotation is off", async (t) => {
+  const state = seed({
+    rotation: "off",
+    groups: [{ id: "g1", team_id: "team-a", name: "Climbers", days: null, program_key: null, fatigue_threshold: null, fallback: null }],
+    members: [{ rider_id: "r1", group_id: "g1", team_id: "team-a", follows_group: true }],
+  });
+  state.app_config.push({ key: "training_week_priority", value: "on" });
+  const { call } = await fixture(t, { state });
+  const slots = ["sprint", "tempo", "endurance", "threshold", "sprint"];
+  const response = await call("PUT", "/groups/g1/cell", {
+    weekday: "mon", slotIndex: 0, session: slots[0], planKind: "week", weekBlock: { slots, lockSlot: 4 },
+  });
+  assert.equal(response.status, 200);
+  assert.equal(rowOf(state, "r1").plan_kind, "week");
+  assert.equal(rowOf(state, "r1").days.mon.lockSlot, 4);
+  assert.deepEqual(rowOf(state, "r1").days.mon.slots, slots);
+  assert.equal((await call("PATCH", "/groups/g1", { riderIds: ["r1", "r2"] })).status, 200);
+  assert.equal(rowOf(state, "r2").plan_kind, "week");
+  assert.equal(rowOf(state, "r2").days.mon.lockSlot, 4);
+});
+
 // ── Kontakten off ────────────────────────────────────────────────────────────
 
 test("off: rytterens og gruppens rotation svarer 409 feature_disabled, intet skrives, GET uden noegler", async (t) => {

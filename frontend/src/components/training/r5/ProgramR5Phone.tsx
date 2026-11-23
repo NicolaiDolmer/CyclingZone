@@ -52,10 +52,13 @@ type Shared = {
 
 export default function ProgramR5Phone({
   name, subtitle, typeLabel, chips, onChip, renderLibrary, limitEl, summary, hints, footer, showPlan,
-  saveLabel, saveDisabled, onSave, focusWeekday = null, ...shared
+  saveLabel, saveDisabled, onSave, kindSelector = null, rotationEditor = null, weekBlockEditor = null, focusWeekday = null, ...shared
 }: Shared & {
   // #8580: en ugedag, der skal vælges og foldes ud (fra dagsvælgerens "Ret <ugedag> i Program").
   focusWeekday?: { weekday: string; n: number } | null;
+  kindSelector?: ReactNode;
+  rotationEditor?: ReactNode;
+  weekBlockEditor?: ReactNode;
   name: string;
   subtitle: string;
   showPlan: boolean;
@@ -133,6 +136,8 @@ export default function ProgramR5Phone({
       </div>}
 
       {hints}
+      {kindSelector}
+      {rotationEditor ?? <>
 
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0 text-3xs leading-snug text-cz-2">{summary}</div>
@@ -143,6 +148,7 @@ export default function ProgramR5Phone({
       {view === "day"
         ? <DayView {...shared} day={day} onDay={setDay} />
         : <WeekList {...shared} open={openDay} onOpen={setOpenDay} />}
+      {weekBlockEditor}
       </>}
 
       {/* Graensen under ugen, saa felterne faar pladsen oeverst paa en smal skaerm. */}

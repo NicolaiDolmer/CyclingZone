@@ -1428,7 +1428,10 @@
           "Trouve un coureur et choisis le genre de jour : Repos, Récupération active, Jour technique ou Entraînement.",
           "Un jour d'entraînement, choisis la séance : Sortie longue (facile), Tempo (moyenne), ou Intervalles mixtes, Intervalles en grimpe, Intervalles de punch, Seuil, Sprint, Secteurs pavés, Exercices de bordures ou Répétitions d'attaques (dures). Un jour technique : Technique, Aéro ou Sens de la course.",
           "Enregistre. Le jour se répète chaque jour jusqu'à ce que tu le changes.",
-          "Il n'y a pas de plafond au nombre de coureurs pouvant avoir un programme : tu peux en fixer un pour tout ton effectif."
+          "Il n'y a pas de plafond au nombre de coureurs pouvant avoir un programme : tu peux en fixer un pour tout ton effectif.",
+          "Lorsque Rotation est disponible dans Programme, placez les séances dans l’ordre souhaité. Une course, une blessure ou un repos imposé par la limite de fatigue suspend la rotation. Si la même séance est effectuée avec un effort léger, la rotation avance.",
+          "Utilisez Aller à la séance pour changer la position d’un coureur. Copier une rotation de même longueur conserve sa position, sauf si vous choisissez Repartir de la séance 1. Une longueur différente le ramène à la séance 1.",
+          "Lorsque la priorité des créneaux est disponible dans les blocs hebdomadaires, classez les séances de chaque jour par priorité. Vous pouvez verrouiller une séance par jour. Séances écartées par les courses indique les séances qui n’ont pas trouvé de créneau."
         ]
       },
       "dayTypes": {

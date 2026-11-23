@@ -72,6 +72,7 @@ function settledEntries(settled) {
 //                   (eller et felt afregnet uden pas).
 //   taken         : kilder der ikke faar plads (taget af loeb), i prioritetsraekkefoelge.
 //   lockMovedFrom : laasens hjemmefelt, naar laasen koerer i et andet felt, ellers null.
+/** @param {{ entry?: { lockSlot?: number | null } | null, raceFields?: Iterable<number>, settled?: Record<number, number | null> | Iterable<[number, number | null]> | null }} options */
 export function assignDayFields({ entry = null, raceFields = [], settled = null } = {}) {
   const races = new Set([...(raceFields ?? [])].filter(isField));
   const fixed = new Map();

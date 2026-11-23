@@ -9,19 +9,57 @@
 //     (POST /programs/apply) som en KOPI (ejer-valg 1, 26/9);
 //   - rytterens egen plan vinder over gruppens (#6000: follows_group=false);
 //   - felterne rettes pr. rytter eller pr. gruppe (PUT .../cell).
-// Rotation, prioritet og laas pr. dag findes ikke i backend endnu (PR-body'ens
-// designnote), saa de staar ikke i modellen som data, kun som valgbar visning
-// naar de findes (AVAILABLE_KINDS).
 
 import { PROGRAM_SLOTS, cellSession, isProgramPlan, type CatalogProgram, type ProgramWeekDays } from "../../../lib/trainingPrograms.ts";
+import { assignDayFields } from "../../../../../backend/lib/trainingWeekBlocks.js";
 
 export type Kind = "week" | "rotation";
 
 // Ejer 19/11: et nyt program starter i Week blocks, og visningen husker sidste valg.
 export const PROGRAM_VIEW_STORE = "cz-training-program-view";
-// Rotation kraever en plads pr. rytter i backend; indtil den findes er Week blocks
-// den eneste visning, og vaelgeren tegnes ikke.
+// Rotation is only available when the program API enables it for the viewer.
 export const AVAILABLE_KINDS: readonly Kind[] = ["week"];
+
+export function availableKinds(rotationEnabled: boolean): readonly Kind[] {
+  return rotationEnabled ? ["week", "rotation"] : AVAILABLE_KINDS;
+}
+
+export type RotationPass = { session: string; effort?: "easy" | "normal" | "hard" };
+export type RotationPreviewSlot = { index: number; length: number; session?: string; intensity?: string } | null;
+export type RotationPlan = {
+  planKind: Kind | null;
+  rotation: { v: 1; passes: RotationPass[]; rev: number; anchor?: { index: number } } | null;
+};
+export type RotationWrite = { planKind?: Kind; passes?: RotationPass[]; keepPlace?: boolean; startIndex?: number };
+export type WeekBlock = {
+  slots: string[];
+  lockSlot: number | null;
+  slotEfforts?: Array<NonNullable<RotationPass["effort"]> | null>;
+};
+export type WeekCellWrite = { planKind: "week"; weekBlock?: WeekBlock };
+export type RotationDrafts = Record<string, { passes?: RotationPass[]; startIndex?: number }>;
+export type WeekBlockDrafts = Record<string, Record<string, WeekBlock>>;
+
+export function moveWeekBlock(block: WeekBlock, from: number, to: number): WeekBlock {
+  const indices = block.slots.map((_, index) => index);
+  const [moved] = indices.splice(from, 1);
+  indices.splice(to, 0, moved);
+  return {
+    slots: indices.map((index) => block.slots[index]),
+    lockSlot: block.lockSlot == null ? null : indices.indexOf(block.lockSlot),
+    ...(block.slotEfforts ? { slotEfforts: indices.map((index) => block.slotEfforts?.[index] ?? null) } : {}),
+  };
+}
+export const ROTATION_MIN_PASSES = 2;
+export const ROTATION_MAX_PASSES = 35;
+
+export function moveRotationPass(passes: readonly RotationPass[], from: number, to: number): readonly RotationPass[] {
+  if (from === to || from < 0 || from >= passes.length || to < 0 || to >= passes.length) return passes;
+  const reordered = [...passes];
+  const [pass] = reordered.splice(from, 1);
+  reordered.splice(to, 0, pass);
+  return reordered;
+}
 
 export function rememberedKind(stored: string | null | undefined, available: readonly Kind[] = AVAILABLE_KINDS): Kind {
   return available.includes(stored as Kind) ? (stored as Kind) : "week";
@@ -285,13 +323,20 @@ export function draftTotal(drafts: Readonly<Record<string, Draft>>): number {
 
 export type WeekCell =
   | { kind: "race" }
-  | { kind: "ran"; session: string | null }
-  | { kind: "session"; session: string | null; changed: boolean };
+  | { kind: "ran"; session: string | null; sourceSlot?: number }
+  | { kind: "session"; session: string | null; changed: boolean; sourceSlot?: number };
+
+export type WeekPlacement = { fieldSource: (number | null)[]; taken: number[] };
+
+export function weekPlacement(lockSlot: number | null, races: readonly number[], settled?: Record<number, number | null>): WeekPlacement {
+  const { fieldSource, taken } = assignDayFields({ entry: { lockSlot }, raceFields: races, settled });
+  return { fieldSource: fieldSource.map((source) => source ?? null), taken };
+}
 
 // 7 x 5 felter. Loebets felter i dag er graa + flag (regel A); felter med kvittering i
 // dag er koert. Serveren kender kun dagens loebsfelter, saa de andre dage viser planen.
 export function weekCells({
-  days, draft, weekdays, todayWeekday, raceToday, lockedToday,
+  days, draft, weekdays, todayWeekday, raceToday, lockedToday, placements = {},
 }: {
   days: ProgramWeekDays | null | undefined;
   draft: Draft;
@@ -299,12 +344,15 @@ export function weekCells({
   todayWeekday: string | null;
   raceToday: ReadonlySet<number>;
   lockedToday: ReadonlySet<number>;
+  placements?: Record<string, WeekPlacement>;
 }): WeekCell[][] {
   return weekdays.map((weekday) => Array.from({ length: PROGRAM_SLOTS }, (_, slot): WeekCell => {
-    if (weekday === todayWeekday && raceToday.has(slot)) return { kind: "race" };
-    if (weekday === todayWeekday && lockedToday.has(slot)) return { kind: "ran", session: cellSession(days, weekday, slot) };
-    const key = draftKey(weekday, slot);
-    return { kind: "session", session: draftCellSession(days, draft, weekday, slot), changed: key in draft };
+    const placement = placements[weekday];
+    if ((weekday === todayWeekday && raceToday.has(slot)) || placement?.fieldSource[slot] === null) return { kind: "race" };
+    const source = placement?.fieldSource[slot] ?? slot;
+    const metadata = source === slot ? {} : { sourceSlot: source };
+    if (weekday === todayWeekday && lockedToday.has(slot)) return { kind: "ran", session: cellSession(days, weekday, source), ...metadata };
+    return { kind: "session", session: draftCellSession(days, draft, weekday, source), changed: draftKey(weekday, source) in draft, ...metadata };
   }));
 }
 
@@ -407,8 +455,8 @@ export function followAgainTarget(
 }
 
 // Kladder der ikke laengere har et emne (slettet gruppe, rytter der foelger gruppen igen).
-export function dropDrafts(drafts: Readonly<Record<string, Draft>>, keys: readonly string[]): Record<string, Draft> {
-  const out: Record<string, Draft> = { ...drafts };
+export function dropDrafts<T>(drafts: Readonly<Record<string, T>>, keys: readonly string[]): Record<string, T> {
+  const out: Record<string, T> = { ...drafts };
   for (const key of keys) delete out[key];
   return out;
 }

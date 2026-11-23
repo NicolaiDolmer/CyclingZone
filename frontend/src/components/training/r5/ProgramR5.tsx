@@ -48,14 +48,17 @@ import type { ProgramsResult } from "../useTrainingPrograms.ts";
 import { sessionI18nKey } from "../../../lib/trainingDayTypes.js";
 import { PROGRAM_SLOTS, programName, programTagline, type CatalogProgram, type ProgramWeekDays } from "../../../lib/trainingPrograms.ts";
 import {
-  AVAILABLE_KINDS, PROGRAM_VIEW_STORE, buildLibrary, catalogWeekDays, copyCandidates, copyDayIntoDraft, copyDayTargets,
+  availableKinds, PROGRAM_VIEW_STORE, buildLibrary, catalogWeekDays, copyCandidates, copyDayIntoDraft, copyDayTargets,
   draftSteps, draftTotal, parseSubjectKey, programKeyOf, rememberedKind, riderWeekDays, setDraftCell, shortRiderName,
-  subjectKey, subjectsFor, weekCells, type Draft, type Kind, type Library, type R5Group, type R5Rider, type Subject,
-  type WeekCell,
+  subjectKey, subjectsFor, weekCells, weekPlacement, type Draft, type Kind, type Library, type R5Group, type R5Rider, type Subject,
+  type WeekCell, type RotationPlan, type RotationWrite, type RotationDrafts, type WeekBlock, type WeekBlockDrafts, type WeekCellWrite,
   GROUP_LIMIT_MODES, createdGroupId, dropDrafts, followAgainTarget, groupLimitDraft, groupLimitValid, groupLimitWrite,
   groupAfterPatch, groupMenuActions, groupMovePatch, groupPatch, type GroupLimitDraft, type GroupMenuAction,
 } from "./programR5Model.ts";
 import ProgramR5Phone, { type PhoneChip } from "./ProgramR5Phone.tsx";
+import RotationEditor, { type RotationPreviewDay } from "./RotationEditor.tsx";
+import { useTrainingWeek } from "./useTrainingWeek.ts";
+import WeekBlockEditor from "./WeekBlockEditor.tsx";
 
 type RawRider = { id: string; firstname?: string | null; lastname?: string | null; primary_type?: string | null };
 type ProgramsClient = {
@@ -63,11 +66,17 @@ type ProgramsClient = {
   assigned: Record<string, string>;
   seeds: Record<string, ProgramWeekDays>;
   busy: boolean;
+  rotationEnabled?: boolean;
+  weekPriorityEnabled?: boolean;
+  weekPriorityPlans?: string[];
+  rotations?: Record<string, RotationPlan>;
+  setRotation: (id: string, write: RotationWrite) => Promise<ProgramsResult>;
   // #8561: foerste hentning; mangler feltet (aeldre kalder), regnes kataloget som hentet.
   status?: "loading" | "ready" | "error";
   retry?: () => Promise<unknown> | void;
-  applyProgram: (programKey: string, target: string) => Promise<ProgramsResult>;
-  setCell: (riderId: string, weekday: string, slotIndex: number | null, session: string) => Promise<ProgramsResult>;
+  reload?: () => Promise<unknown> | void;
+  applyProgram: (programKey: string, target: string, planKind?: "week") => Promise<ProgramsResult>;
+  setCell: (riderId: string, weekday: string, slotIndex: number | null, session: string, write?: WeekCellWrite) => Promise<ProgramsResult>;
 };
 
 // ErrorState er JS med `action = null` som standard; TS udleder ellers typen null (som AcademyLedgerTab).
@@ -79,7 +88,7 @@ const LABEL = "font-data text-2xs font-semibold uppercase tracking-[.08em] text-
 const GROUP_LIMIT_DEFAULTS = { threshold: 70, fallback: "light" };
 
 function loadKind(): Kind {
-  try { return rememberedKind(localStorage.getItem(PROGRAM_VIEW_STORE)); } catch { return "week"; }
+  try { return rememberedKind(localStorage.getItem(PROGRAM_VIEW_STORE), availableKinds(true)); } catch { return "week"; }
 }
 function saveKind(kind: Kind) {
   try { localStorage.setItem(PROGRAM_VIEW_STORE, kind); } catch { /* privat vindue: valget huskes bare ikke */ }
@@ -88,6 +97,7 @@ function saveKind(kind: Kind) {
 export default function ProgramR5({
   riders: rawRiders, weekdays, todayWeekday, todayLocked, riderWeekPlans, programs, groups, forecast, fatigueRules,
   catalogV3, actionsEl, mobile, onClearRider, drafts, onDrafts: setDrafts, request = null, onRequestHandled,
+  effortLevels = false, rotationDrafts, setRotationDrafts, weekDrafts, setWeekDrafts,
 }: {
   riders: RawRider[];
   weekdays: readonly string[];
@@ -101,6 +111,11 @@ export default function ProgramR5({
   catalogV3: boolean;
   actionsEl: HTMLElement | null;
   mobile: boolean;
+  effortLevels?: boolean;
+  rotationDrafts: RotationDrafts;
+  setRotationDrafts: Dispatch<SetStateAction<RotationDrafts>>;
+  weekDrafts: WeekBlockDrafts;
+  setWeekDrafts: Dispatch<SetStateAction<WeekBlockDrafts>>;
   onClearRider: (riderId: string) => Promise<{ ok: boolean }>;
   // Kladderne bor paa siden (som ugeplan-kladderne), saa et fanebyt ikke kasserer dem.
   drafts: Record<string, Draft>;
@@ -130,7 +145,12 @@ export default function ProgramR5({
     catalog: programs.catalog, groups: groupList, riders, ownPlanIds, assigned: programs.assigned,
   }), [programs.catalog, groupList, riders, ownPlanIds, programs.assigned]);
 
-  const [kind, setKindRaw] = useState<Kind>(loadKind);
+  const [storedKind, setKindRaw] = useState<Kind>(loadKind);
+  const kinds = availableKinds(programs.rotationEnabled === true);
+  const kind = rememberedKind(storedKind, kinds);
+  const isRotation = kind === "rotation";
+  const weekPriority = programs.weekPriorityEnabled === true;
+  const { week: trainingWeek, reload: reloadTrainingWeek } = useTrainingWeek({ enabled: isRotation || weekPriority });
   const setKind = (next: Kind) => { setKindRaw(next); saveKind(next); };
   const [chosenProgramKey, setChosenProgramKey] = useState<string | null>(null);
   const [subject, setSubject] = useState<Subject | null>(null);
@@ -200,7 +220,28 @@ export default function ProgramR5({
   };
   const raceToday = slotSet((id) => raceSlotsFor(forecast, id));
   const lockedToday = slotSet((id) => todayLockedSlots(forecast, id));
-  const cells = weekCells({ days, draft, weekdays, todayWeekday, raceToday, lockedToday });
+  const weekDayDrafts = weekDrafts[sKey] ?? {};
+  const gridDays = days && weekPriority ? {
+    ...days,
+    ...Object.fromEntries(Object.entries(weekDayDrafts).map(([day, block]) => [day, { ...days[day], ...block }])),
+  } : days;
+  const settledToday = subject?.kind === "rider" ? forecast?.weekPrioritySettled?.[subject.id] : undefined;
+  const racesFor = (weekday: string) => {
+    if (weekday === todayWeekday) {
+      const settledRaces = Object.entries(settledToday ?? {}).flatMap(([slot, source]) => source === null ? [Number(slot)] : []);
+      return [...new Set([...raceToday, ...settledRaces])];
+    }
+    if (subject?.kind !== "rider") return [];
+    const future = trainingWeek?.days.find((entry) => entry.weekday === weekday);
+    return future?.riders?.[subject.id]?.raceSlots ?? [];
+  };
+  const priorityActive = weekPriority && (subject?.kind === "group" ? groups.groups.find((g) => g.id === subject.id)?.planKind === "week"
+    : subject?.kind === "rider" && programs.weekPriorityPlans?.includes(subject.id));
+  const placements = weekPriority ? Object.fromEntries(weekdays.flatMap((weekday) => {
+    if (!priorityActive && !weekDayDrafts[weekday]) return [];
+    return [[weekday, weekPlacement(gridDays?.[weekday]?.lockSlot ?? null, racesFor(weekday), weekday === todayWeekday ? settledToday : undefined)]];
+  })) : {};
+  const cells = weekCells({ days: gridDays, draft, weekdays, todayWeekday, raceToday, lockedToday, placements });
   const tonight = (subject?.kind === "rider"
     ? forecast?.riders?.[subject.id] ?? null
     : groupForecastEntry(forecast?.riders, memberIds)) as ForecastEntry | null;
@@ -214,8 +255,94 @@ export default function ProgramR5({
     ? groupList.find((g) => g.id === s.id)?.name ?? ""
     : riderById.get(s.id)?.name ?? "");
 
+  const storedRotation = subject?.kind === "rider" ? programs.rotations?.[subject.id]
+    : subject?.kind === "group" ? groups.groups.find((item) => item.id === subject.id) : null;
+  const rotationDraft = rotationDrafts[sKey];
+  const rotationPasses = rotationDraft?.passes ?? storedRotation?.rotation?.passes
+    ?? [{ session: sessionOrder[0] ?? "rest" }, { session: sessionOrder[0] ?? "rest" }];
+  const rotationDirty = Boolean(subject && (rotationDraft || storedRotation?.planKind !== "rotation"));
+  const blockTotal = weekPriority ? Object.values(weekDrafts).reduce((count, blocks) => count + Object.keys(blocks).length, 0) : 0;
+  const switchToWeek = programs.rotationEnabled === true && storedRotation?.planKind === "rotation";
+  const activeTotal = isRotation ? Number(rotationDirty) : total + blockTotal + Number(switchToWeek && total + blockTotal === 0);
+  const canCopy = isRotation ? Boolean(subject && rotationPasses.length >= 2) : Boolean(chosenProgram);
+  const writeRotation = (target: Subject, change: RotationWrite) => target.kind === "group"
+    ? groups.setRotation(target.id, change) : programs.setRotation(target.id, change);
+  const clearRotationDraft = () => setRotationDrafts((prev) => {
+    const next = { ...prev };
+    delete next[sKey];
+    return next;
+  });
+  const saveRotation = async () => {
+    if (!subject) return;
+    setSaving(true);
+    try {
+      const result = await writeRotation(subject, {
+        planKind: "rotation",
+        ...(rotationDraft?.passes || !storedRotation?.rotation ? { passes: rotationPasses } : {}),
+        ...(rotationDraft?.startIndex == null ? {} : { startIndex: rotationDraft.startIndex }),
+      });
+      if (result.ok) {
+        clearRotationDraft();
+        await Promise.all([groups.reload(), reloadTrainingWeek(), subject.kind === "group" ? programs.reload?.() : undefined]);
+      }
+      setNote(result.ok ? { tone: "ok", text: tR5("programR5.saved") } : { tone: "error", text: tR5("programR5.saveError") });
+    } finally {
+      setSaving(false);
+    }
+  };
+  const rotationPreview: RotationPreviewDay[] = subject?.kind === "rider"
+    ? (trainingWeek?.days ?? []).slice(0, 7).map((day) => ({
+      date: day.date, label: dayLabel(day.weekday), ...(day.today?.riders ?? day.riders)?.[subject.id],
+    }))
+    : [];
+  const rotationNext = subject?.kind === "rider"
+    ? trainingWeek?.days[6]?.riders?.[subject.id]?.nextRotationIndex
+    : undefined;
+  const rotationEditor = subject ? (
+    <RotationEditor
+      passes={rotationPasses}
+      sessionLabel={sessionLabel}
+      sessionOrder={sessionOrder}
+      effortLevels={effortLevels}
+      disabled={busy}
+      mobile={mobile}
+      startIndex={rotationDraft?.startIndex ?? null}
+      preview={rotationPreview}
+      nextIndex={rotationNext}
+      canJump={subject.kind === "rider"}
+      onPasses={(passes) => setRotationDrafts((prev) => ({
+        ...prev, [sKey]: { passes, startIndex: prev[sKey]?.startIndex != null && prev[sKey].startIndex < passes.length ? prev[sKey].startIndex : undefined },
+      }))}
+      onJump={(index) => {
+        if (index === null && !rotationDraft?.passes) { clearRotationDraft(); return; }
+        setRotationDrafts((prev) => ({ ...prev, [sKey]: { ...prev[sKey], startIndex: index ?? undefined } }));
+      }}
+    />
+  ) : <p className="text-sm text-cz-2">{tR5("programR5.rotation.pickRider")}</p>;
+  const kindSelector = kinds.length > 1 ? (
+    <Segmented label={tR5("programR5.kindLabel")} value={kind} onChange={setKind}
+      options={kinds.map((k) => ({ value: k, label: tR5(`programR5.kind_${k}`) }))} />
+  ) : null;
+  const weekBlockEditor = weekPriority && editable && days ? (
+    <WeekBlockEditor
+      key={sKey}
+      dayKeys={weekdays} today={todayWeekday} closed={todayLocked} days={days}
+      draft={draft} changes={weekDayDrafts} disabled={busy}
+      dayLabel={dayLabel} sessionLabel={sessionLabel}
+      racesFor={racesFor} settledToday={settledToday} active={priorityActive === true}
+      onChange={(day, block) => {
+        setWeekDrafts((prev) => ({ ...prev, [sKey]: { ...prev[sKey], [day]: block } }));
+        setDrafts((prev) => ({
+          ...prev,
+          [sKey]: Object.fromEntries(Object.entries(prev[sKey] ?? {}).filter(([key]) => !key.startsWith(`${day}:`))),
+        }));
+      }}
+    />
+  ) : null;
+
   const editCell = (weekday: string, slot: number, session: string) => {
-    setDrafts((prev) => ({ ...prev, [sKey]: setDraftCell(prev[sKey] ?? {}, days, weekday, slot, session) }));
+    const sourceSlot = placements[weekday]?.fieldSource[slot] ?? slot;
+    setDrafts((prev) => ({ ...prev, [sKey]: setDraftCell(prev[sKey] ?? {}, gridDays, weekday, sourceSlot, session) }));
   };
   const copyDay = (from: string, choice: string) => {
     const targets = copyDayTargets(from, choice, weekdays, { todayWeekday, todayLocked });
@@ -226,30 +353,53 @@ export default function ProgramR5({
   const savePlan = async () => {
     setSaving(true);
     let failed = false;
+    const saveCell = (target: Subject, weekday: string, slotIndex: number, session: string, write?: WeekCellWrite) =>
+      target.kind === "group" ? groups.setCell(target.id, weekday, slotIndex, session, write)
+        : programs.setCell(target.id, weekday, slotIndex, session, write);
+    const markWeek = weekPriority || programs.rotationEnabled ? { planKind: "week" as const } : undefined;
+    const unsavedDays: Record<string, Record<string, WeekBlock>> = {};
+    if (weekPriority) for (const [key, blocks] of Object.entries(weekDrafts)) {
+      const target = parseSubjectKey(key);
+      if (!target) continue;
+      for (const [weekday, block] of Object.entries(blocks)) {
+        const result = await saveCell(target, weekday, 0, block.slots[0], { planKind: "week", weekBlock: block });
+        if (!result.ok) {
+          failed = true;
+          (unsavedDays[key] ??= {})[weekday] = block;
+        }
+      }
+    }
     const left: Record<string, Draft> = {};
     for (const [key, d] of Object.entries(drafts)) {
       const target = parseSubjectKey(key);
       if (!target) continue;
       const rest: Record<string, string> = { ...d };
       for (const step of draftSteps(d, weekdays)) {
-        const result = target.kind === "group"
-          ? await groups.setCell(target.id, step.weekday, step.slotIndex, step.session)
-          : await programs.setCell(target.id, step.weekday, step.slotIndex, step.session);
+        if (unsavedDays[key]?.[step.weekday]) continue;
+        const result = await saveCell(target, step.weekday, step.slotIndex, step.session, markWeek);
         if (!result.ok) { failed = true; break; }
         delete rest[`${step.weekday}:${step.slotIndex}`];
       }
       if (Object.keys(rest).length) left[key] = rest;
     }
     // En rytters felt-gem goer planen til hans egen; gruppeklienten skal se det.
-    if (Object.keys(drafts).some((key) => parseSubjectKey(key)?.kind === "rider")) await groups.reload();
+    const savedSubjectFields = Object.keys(drafts[sKey] ?? {}).length > 0
+      || (weekPriority && Object.keys(weekDrafts[sKey] ?? {}).length > 0);
+    if (switchToWeek && subject && !failed && !savedSubjectFields) {
+      failed = !(await writeRotation(subject, { planKind: "week" })).ok;
+    }
+    if ([...Object.keys(drafts), ...Object.keys(weekDrafts)].some((key) => parseSubjectKey(key)?.kind === "rider")) await groups.reload();
     setDrafts(left);
+    setWeekDrafts(unsavedDays);
+    if (weekPriority) await reloadTrainingWeek();
     setSaving(false);
     setNote(failed ? { tone: "error", text: tR5("programR5.saveError") } : { tone: "ok", text: tR5("programR5.saved") });
   };
 
   // #8561: Kassér ændringer = ugen tilbage til det gemte (alle kladder, ogsaa andre gruppers/rytteres).
   const discardDrafts = () => {
-    setDrafts({});
+    if (isRotation) clearRotationDraft();
+    else { setDrafts({}); setWeekDrafts({}); }
     setDiscardOpen(false);
     setNote(null);
   };
@@ -265,9 +415,10 @@ export default function ProgramR5({
     setSaving(true);
     setDialogError(false);
     try {
+      const planKind = programs.rotationEnabled || weekPriority ? "week" : undefined;
       const result = addTarget.kind === "group"
-        ? await groups.putProgram(addTarget.id, chosenProgram.key)
-        : await programs.applyProgram(chosenProgram.key, addTarget.id);
+        ? await groups.putProgram(addTarget.id, chosenProgram.key, planKind)
+        : await programs.applyProgram(chosenProgram.key, addTarget.id, planKind);
       if (addTarget.kind === "rider") await groups.reload();
       if (!result.ok) { setDialogError(true); return; }
       setSubject(addTarget);
@@ -321,6 +472,11 @@ export default function ProgramR5({
     if (action === "delete") setDeleting(target);
     else openGroupDialog(target);
   };
+  const dropPlanDrafts = (keys: string[]) => {
+    setDrafts((prev) => dropDrafts(prev, keys));
+    setRotationDrafts((prev) => dropDrafts(prev, keys));
+    setWeekDrafts((prev) => dropDrafts(prev, keys));
+  };
   const saveGroup = async (name: string, riderIds: string[]): Promise<boolean> => {
     const editing = groupDialog?.group ?? null;
     let id = editing?.id ?? null;
@@ -329,6 +485,11 @@ export default function ProgramR5({
       if (patch) {
         const updated = await groups.update(editing.id, patch);
         if (!updated.ok) return false;
+        if (patch.riderIds) {
+          const existing = new Set(editing.members.map((member) => member.riderId));
+          dropPlanDrafts(patch.riderIds.filter((riderId) => !existing.has(riderId)).map((riderId) => subjectKey({ kind: "rider", id: riderId })));
+          await Promise.all([programs.reload?.(), reloadTrainingWeek()]);
+        }
         // Fejler graensen bagefter, skal et nyt Gem sammenligne med det gemte (Codex P2).
         setGroupDialog({ group: groupAfterPatch(editing, patch, updated.groups) });
       }
@@ -357,7 +518,7 @@ export default function ProgramR5({
     const result = await groups.remove(deleting.id);
     setDeleting(null);
     if (!result.ok) { setNote({ tone: "error", text: tR5("programR5.saveError") }); return; }
-    setDrafts((prev) => dropDrafts(prev, [key]));
+    dropPlanDrafts([key]);
     if (sKey === key) setSubject(null);
     setNote(null);
   };
@@ -367,7 +528,8 @@ export default function ProgramR5({
     const result = await groups.follow(follow.groupId, follow.riderIds);
     if (!result.ok) { setNote({ tone: "error", text: tR5("programR5.saveError") }); return; }
     // Rytterens egne rettelser gaelder ikke laengere: han koerer gruppens uge igen.
-    setDrafts((prev) => dropDrafts(prev, follow.riderIds.map((id) => subjectKey({ kind: "rider", id }))));
+    dropPlanDrafts(follow.riderIds.map((id) => subjectKey({ kind: "rider", id })));
+    await Promise.all([programs.reload?.(), reloadTrainingWeek()]);
     setNote(null);
   };
   const followLabel = follow
@@ -381,19 +543,20 @@ export default function ProgramR5({
   // Kassér ændringer ved siden af sidens ene guldknap. Knapperne er skabelonens md (44 px).
   const actions = (
     <span className="flex flex-wrap items-center justify-end gap-2">
-      {total > 0 && (
-        <span className="font-data text-xs tabular-nums text-cz-2" data-testid="program-r5-unsaved">{t("weekPlan.unsaved", { n: total })}</span>
+      {activeTotal > 0 && (
+        <span className="font-data text-xs tabular-nums text-cz-2" data-testid="program-r5-unsaved">{t("weekPlan.unsaved", { n: activeTotal })}</span>
       )}
-      {total > 0 && (
+      {activeTotal > 0 && (
         <Button variant="secondary" size="md" className="min-h-11" disabled={busy} onClick={() => setDiscardOpen(true)} data-testid="program-r5-discard">
           {tR5("programR5.discard")}
         </Button>
       )}
-      <Button variant="secondary" size="md" className="min-h-11" disabled={!chosenProgram || busy} onClick={() => setCopyOpen(true)}
-        title={chosenProgram ? undefined : tR5("programR5.copyNeedsProgram")} data-testid="program-r5-copy">
+      <Button variant="secondary" size="md" className="min-h-11" disabled={!canCopy || busy} onClick={() => setCopyOpen(true)}
+        title={canCopy ? undefined : tR5("programR5.copyNeedsProgram")} data-testid="program-r5-copy">
         {tR5("programR5.copyToRiders")}
       </Button>
-      <Button variant="primary" size="md" className="min-h-11" disabled={total === 0 || busy} onClick={savePlan} data-testid="program-r5-save">
+      <Button variant="primary" size="md" className="min-h-11" disabled={activeTotal === 0 || busy}
+        onClick={isRotation ? saveRotation : savePlan} data-testid="program-r5-save">
         {saving ? t("loading") : tR5("programR5.savePlan")}
       </Button>
     </span>
@@ -484,21 +647,23 @@ export default function ProgramR5({
   const noteEl = note ? (
     <p role="status" className={`text-xs ${note.tone === "ok" ? "text-cz-success" : "text-cz-danger"}`}>{note.text}</p>
   ) : null;
-  const copyModal = copyOpen && chosenProgram ? (
+  const copyModal = copyOpen && canCopy ? (
     <CopyToRiders
-      program={chosenProgram}
-      lang={lang}
-      candidates={copyCandidates(chosenProgram.key, library, riders)}
+      name={isRotation ? tR5("programR5.kind_rotation") : programName(chosenProgram!, lang)}
+      rotation={isRotation}
+      candidates={isRotation ? riders.filter((rider) => rider.id !== subject?.id) : copyCandidates(chosenProgram!.key, library, riders)}
       busy={busy}
       saving={saving}
       onClose={() => { if (!saving) setCopyOpen(false); }}
-      onCopy={async (ids) => {
+      onCopy={async (ids, keepPlace) => {
         if (busy) return;
         setSaving(true);
         let done = 0;
         try {
           for (const id of ids) {
-            const result = await programs.applyProgram(chosenProgram.key, id);
+            const result = isRotation
+              ? await programs.setRotation(id, { planKind: "rotation", passes: rotationPasses, keepPlace })
+              : await programs.applyProgram(chosenProgram!.key, id, programs.rotationEnabled || weekPriority ? "week" : undefined);
             if (result.ok) done += 1;
           }
           await groups.reload();
@@ -594,8 +759,8 @@ export default function ProgramR5({
       group: s.kind === "group",
     }));
     const copyButton = (
-      <Button variant="secondary" size="md" className="min-h-11" disabled={!chosenProgram || busy} onClick={() => setCopyOpen(true)}
-        title={chosenProgram ? undefined : tR5("programR5.copyNeedsProgram")} data-testid="program-r5-copy">
+      <Button variant="secondary" size="md" className="min-h-11" disabled={!canCopy || busy} onClick={() => setCopyOpen(true)}
+        title={canCopy ? undefined : tR5("programR5.copyNeedsProgram")} data-testid="program-r5-copy">
         {tR5("programR5.copyToRiders")}
       </Button>
     );
@@ -606,11 +771,14 @@ export default function ProgramR5({
         {actionsEl ? createPortal(copyButton, actionsEl) : <div className="mb-3 flex justify-end">{copyButton}</div>}
         {emptyEl && <div className="mb-3">{emptyEl}</div>}
         <ProgramR5Phone
+          kindSelector={kindSelector}
+          rotationEditor={isRotation ? rotationEditor : null}
+          weekBlockEditor={weekBlockEditor}
           focusWeekday={focusWeekday}
           showPlan={!!(program || subject)}
           name={title}
           subtitle={program
-            ? `${tR5("programR5.kind_week")} · ${onNames.length ? tR5("programR5.on", { names: onNames.join(", ") }) : tR5("programR5.notInUse")}`
+            ? `${tR5(`programR5.kind_${kind}`)} · ${onNames.length ? tR5("programR5.on", { names: onNames.join(", ") }) : tR5("programR5.notInUse")}`
             : ""}
           typeLabel={riderType ? tTypes(`types.${riderType}`) : null}
           chips={chips}
@@ -641,10 +809,10 @@ export default function ProgramR5({
             </>
           )}
           limitEl={limitEl}
-          summary={total > 0
+          summary={activeTotal > 0
             ? (
               <span className="flex flex-wrap items-center gap-x-2">
-                <span className="font-data tabular-nums" data-testid="program-r5-unsaved">{t("weekPlan.unsaved", { n: total })}</span>
+                <span className="font-data tabular-nums" data-testid="program-r5-unsaved">{t("weekPlan.unsaved", { n: activeTotal })}</span>
                 <button type="button" disabled={busy} onClick={() => setDiscardOpen(true)} data-testid="program-r5-discard"
                   className="inline-flex min-h-11 items-center text-xs font-medium text-cz-1 underline underline-offset-2 disabled:opacity-50">
                   {tR5("programR5.discard")}
@@ -668,13 +836,13 @@ export default function ProgramR5({
               {noteEl}
               {(program || subject) && <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-2xs text-cz-3">
                 <span className="inline-flex items-center gap-1"><FlagIcon size={10} aria-hidden="true" />{tR5("programR5.legendRace")}</span>
-                <span>{tR5("programR5.legendTaken")}</span>
+                {!isRotation && <span>{tR5("programR5.legendTaken")}</span>}
               </p>}
             </>
           )}
           saveLabel={saving ? t("loading") : tR5("programR5.savePlan")}
-          saveDisabled={total === 0 || busy}
-          onSave={savePlan}
+          saveDisabled={activeTotal === 0 || busy}
+          onSave={isRotation ? saveRotation : savePlan}
           cells={cells}
           weekdays={weekdays}
           todayWeekday={todayWeekday}
@@ -721,10 +889,7 @@ export default function ProgramR5({
             <h2 className="text-[15px] font-semibold text-cz-1">{tR5("programR5.title", { name: title })}</h2>
             <p className="mt-0.5 text-xs text-cz-2">{program ? programTagline(program, lang) : intro}</p>
           </div>
-          {AVAILABLE_KINDS.length > 1 && (
-            <Segmented label={tR5("programR5.kindLabel")} value={kind} onChange={setKind}
-              options={AVAILABLE_KINDS.map((k) => ({ value: k, label: tR5(`programR5.kind_${k}`) }))} />
-          )}
+          {kindSelector}
         </header>
 
         {emptyEl}
@@ -769,7 +934,7 @@ export default function ProgramR5({
           {!subject && <p className="mb-1.5 text-2xs text-cz-3">{tR5("programR5.asWrittenNote")}</p>}
           {riderDays?.isSeed && <p className="mb-1.5 text-2xs text-cz-3">{t("programs.seededHint")}</p>}
           {ownOfGroup && <p className="mb-1.5 text-2xs text-cz-3">{ownOfGroup}</p>}
-          <WeekGrid
+          {isRotation ? rotationEditor : <WeekGrid
             cells={cells}
             weekdays={weekdays}
             todayWeekday={todayWeekday}
@@ -782,10 +947,11 @@ export default function ProgramR5({
             tonight={tonightEl}
             onEdit={editCell}
             onCopyDay={copyDay}
-          />
+          />}
+          {!isRotation && weekBlockEditor}
           <p className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-2xs text-cz-3">
             <span className="inline-flex items-center gap-1"><FlagIcon size={10} aria-hidden="true" />{tR5("programR5.legendRace")}</span>
-            <span>{tR5("programR5.legendTaken")}</span>
+            {!isRotation && <span>{tR5("programR5.legendTaken")}</span>}
           </p>
         </section>}
 
@@ -1392,22 +1558,22 @@ export function MoveRiderDialog({
 // --- Copy to riders ---------------------------------------------------------------------
 
 function CopyToRiders({
-  program, lang, candidates, busy, saving, onClose, onCopy,
+  name, rotation, candidates, busy, saving, onClose, onCopy,
 }: {
-  program: CatalogProgram;
-  lang: string;
+  name: string;
+  rotation: boolean;
   candidates: R5Rider[];
   busy: boolean;
   saving: boolean;
   onClose: () => void;
-  onCopy: (riderIds: string[]) => void;
+  onCopy: (riderIds: string[], keepPlace: boolean) => void;
 }) {
   const { t } = useTranslation("training");
   const { t: tR5 } = useTranslation("trainingR5"); // #7456: lazy namespace (I18nReadyGate i TrainingPage)
   const [picked, setPicked] = useState<Set<string>>(() => new Set());
   const [recipients, setRecipients] = useState<R5Rider[] | null>(null);
   const selectedRiders = candidates.filter((r) => picked.has(r.id));
-  const name = programName(program, lang);
+  const [keepPlace, setKeepPlace] = useState(true);
   const toggle = (id: string) => setPicked((prev) => {
     const next = new Set(prev);
     if (next.has(id)) next.delete(id); else next.add(id);
@@ -1421,7 +1587,7 @@ function CopyToRiders({
       saving={saving}
       actionId="program-r5-copy-confirm"
       onClose={onClose}
-      onConfirm={() => onCopy(recipients.map((r) => r.id))}
+      onConfirm={() => onCopy(recipients.map((r) => r.id), keepPlace)}
     />
   );
   return (
@@ -1443,7 +1609,11 @@ function CopyToRiders({
         </>
       }
     >
-      <p className="mb-3 text-xs text-cz-2">{tR5("programR5.copyBody")}</p>
+      <p className="mb-3 text-xs text-cz-2">{tR5(rotation ? "programR5.rotation.copyBody" : "programR5.copyBody")}</p>
+      {rotation && (
+        <Checkbox id="program-r5-copy-restart" label={tR5("programR5.rotation.restart")}
+          checked={!keepPlace} onChange={() => setKeepPlace((value) => !value)} />
+      )}
       <ul className="flex max-h-80 flex-col gap-1.5 overflow-y-auto">
         {candidates.map((r) => (
           <li key={r.id}>

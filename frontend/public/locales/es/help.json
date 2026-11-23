@@ -1428,7 +1428,10 @@
           "Busca a un ciclista y elige qué tipo de día es: Descanso, Recuperación activa, un Día de técnica o Entrenamiento.",
           "En un día de entrenamiento, elige la sesión: Salida larga (suave), Tempo (media), o Intervalos mixtos, Intervalos de escalada, Intervalos de punch, Umbral, Sprint, Sectores de adoquines, Ejercicios de abanicos o Repeticiones de ataque (duras). En un día de técnica: Técnica, Aerodinámica o Lectura de carrera.",
           "Guarda. El día se ejecuta todos los días hasta que lo cambies.",
-          "No hay tope en cuántos ciclistas pueden tener un programa: puedes fijar uno para toda tu plantilla."
+          "No hay tope en cuántos ciclistas pueden tener un programa: puedes fijar uno para toda tu plantilla.",
+          "Cuando Rotación esté disponible en Programa, ordena las sesiones como quieras realizarlas. Una carrera, una lesión o el descanso por el límite de fatiga detienen la secuencia. Si la misma sesión se realiza con esfuerzo suave, la rotación avanza.",
+          "Usa Ir a la sesión para cambiar la posición de un ciclista. Copiar una rotación de la misma longitud conserva su posición, salvo que elijas Empezar en la sesión 1. Una longitud distinta reinicia la rotación en la sesión 1.",
+          "Cuando la prioridad de los turnos esté disponible en Bloques semanales, ordena las sesiones de cada día por prioridad. Puedes bloquear una sesión por día. Sesiones desplazadas por carreras indica cuáles se quedaron sin turno."
         ]
       },
       "dayTypes": {

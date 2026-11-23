@@ -1,8 +1,10 @@
 // trainingGroupsModel — ren logik bag traeningsgrupper (#6000). Ingen React,
 // ingen fetch, saa node --test kan koere den uden en browser.
 
+import type { RotationPlan } from "../r5/programR5Model.ts";
+
 export type GroupMember = { riderId: string; followsGroup: boolean };
-export type TrainingGroup = {
+export type TrainingGroup = Partial<RotationPlan> & {
   id: string;
   name: string;
   days: Record<string, unknown> | null;

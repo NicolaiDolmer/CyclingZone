@@ -3,17 +3,25 @@
 // (#8591). Felterne for en dag frem regnes med SAMME funktion som i dag (dayFields) på
 // datoens ugedag, med datoens løbs- og hvilefelter fra serveren. Ingen træthed frem (K-7).
 import { dayFields, isTraining, STAGE, type Field } from "./todayR5Model.ts";
+import type { ForecastResponse } from "../FatigueForecastModel.ts";
+import type { RotationPreviewSlot } from "./programR5Model.ts";
 
 // autoLineup (UGE-4b): holdet har ingen i løbet endnu; assistenten udtager ved løbsstart.
 export type WeekRace = { raceId: string; name: string | null; kind: "stage" | "oneday"; stages: number[]; ownRiders: number; autoLineup?: boolean };
-export type WeekRiderFields = { raceSlots: number[]; restSlots: number[] };
+export type WeekRiderFields = {
+  raceSlots: number[];
+  restSlots: number[];
+  rotationSlots?: RotationPreviewSlot[];
+  nextRotationIndex?: number;
+  recoverySlots?: number[];
+};
 export type WeekDay = {
   date: string;
   weekday: string;
   available: boolean;
   races: WeekRace[];
   riders?: Record<string, WeekRiderFields>;
-  today?: unknown;
+  today?: ForecastResponse;
 };
 export type WeekResponse = { available: boolean; reason?: string; tickDate?: string; days: WeekDay[] };
 
