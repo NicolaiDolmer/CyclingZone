@@ -158,6 +158,7 @@ function fakeSupabase(
         return builder;
       },
       in(col: string, ids: string[]) {
+        if (table === "signup_attribution") log.push({ table, op: "filter", payload: { col, ids } });
         filters.push((row) => ids.includes(row[col]));
         return builder;
       },
@@ -240,7 +241,7 @@ test("records the milestone once per new human user and sends PostHog only for n
   assert.equal(upserts.length, 1);
   assert.equal(upserts[0].table, USER_MILESTONES_TABLE);
   assert.deepEqual(upserts[0].payload.opts, { onConflict: "user_id,milestone", ignoreDuplicates: true });
-  assert.equal(log.filter((l) => l.op === "select").length, 3);
+  assert.deepEqual(log.filter((l) => l.op === "select").map((l) => l.table), ["teams", USER_MILESTONES_TABLE, "users", "signup_attribution"]);
   // Milepaelen er IKKE brugeraktivitet: player_events roeres aldrig (#6278-review).
   assert.equal(log.filter((l) => l.table === "player_events").length, 0);
   // PostHog: kun den ikke-afviste bruger, distinct_id = intern UUID
@@ -346,4 +347,37 @@ test("the background entry never throws, even with a broken supabase client", as
   assert.deepEqual(await promise, { recorded: 0, sent: 0, skipped: "error" });
   const nothing = recordFirstRaceWithOwnSquadInBackground(undefined as any);
   assert.equal((await nothing).recorded, 0);
+});
+
+test("first race mirrors the stored campaign into event and first-touch person properties", async () => {
+  const tables = baseTables();
+  const campaign = { utm_source: "example-source", utm_medium: "paid", utm_campaign: "campaign", utm_content: "creative" };
+  tables.signup_attribution = [
+    { user_id: "u-new", ...campaign, utm_term: "excluded", referrer: "https://example.org", fbclid: "private" },
+    { user_id: "u-declined", ...campaign },
+  ];
+  const { supabase, log } = fakeSupabase(tables);
+  const calls: Array<{ url: string; body: any }> = [];
+  const result = await recordFirstRaceWithOwnSquad({ supabase, race, resultRows, apiKey: KEY, fetchImpl: okFetch(calls), now });
+
+  assert.deepEqual(result, { recorded: 2, sent: 1 });
+  assert.deepEqual(log.find((item) => item.table === "signup_attribution" && item.op === "filter")?.payload, { col: "user_id", ids: ["u-new"] });
+  const { properties } = calls[0].body;
+  for (const [key, value] of Object.entries(campaign)) assert.equal(properties[key], value);
+  assert.deepEqual(properties.$set_once, campaign);
+  for (const excluded of ["utm_term", "referrer", "fbclid"]) assert.equal(Object.hasOwn(properties, excluded), false);
+});
+
+test("an attribution lookup failure still sends the already recorded race", async () => {
+  const { supabase, inserted } = fakeSupabase(baseTables(), { failTable: "signup_attribution" });
+  const calls: Array<{ url: string; body: any }> = [];
+  const errors: unknown[] = [];
+  const result = await recordFirstRaceWithOwnSquad({
+    supabase, race, resultRows, apiKey: KEY, fetchImpl: okFetch(calls), now, reportError: (err) => errors.push(err),
+  });
+  assert.deepEqual(result, { recorded: 2, sent: 1 });
+  assert.equal(inserted.length, 2);
+  assert.equal(Object.hasOwn(calls[0].body.properties, "utm_campaign"), false);
+  assert.equal(Object.hasOwn(calls[0].body.properties, "$set_once"), false);
+  assert.equal(errors.length, 1);
 });
