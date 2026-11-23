@@ -1829,6 +1829,11 @@
       "issue": 8476,
       "reason": "Ejer-go 19/11 (PC1, AskUserQuestion): \"Rettelser af forkert info\" + \"Træn nu-animationen (A)\" + \"Ny træningsside: Udvikling\" + \"Program med programmer\" (skitse). Gennemgang af alle trænings- og udviklingsvisninger før XP-tænding; forkert info rettes straks.",
       "since": "2026-11-19"
+    },
+    {
+      "issue": 8608,
+      "reason": "Ejer-go 23/11 (PC1, AskUserQuestion): \"Vi foelger din anbefaling nu. Alt angaaende trænings-ui skal laves faerdigt i dag og vaere live i dag\". Program R5 laegger forvalgt Sprinter paa uden at sige det, og ryttere er svaere at melde ind i grupper (spillerrapport 22/11). Codex O.",
+      "since": "2026-11-23"
     }
   ]
 }
