@@ -1906,7 +1906,8 @@ export function computeTrainingDayTick(input) {
     const stageDateFree = !rodeToday && !raceLoadToday && (stageOnDateRiderIds.has(rider.id) || (instantRider && unresolvedSlots.length > 0));
     const plannedStageDays = plannedStageDaysByRider[rider.id] ?? [];
     // #8549 fund A: a planned stage he did not ride, while this field still trains, is a free
-    // field, so the placement and the stamp agree and no pass runs twice.
+    // field, so the placement and the stamp agree and no pass runs twice. A known non-starter
+    // has no planned stages at all (fund E: loadPlannedStageDaysByRider uses the start field release).
     const stageFieldTrains = !injuredToday && !rodeToday && !raceLoadToday && !unknownSlot && (!boundToday || stageDateFree);
     const weekPriority = weekPriorityOn
       ? weekPrioritySourceSlot({

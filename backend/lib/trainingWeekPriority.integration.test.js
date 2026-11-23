@@ -195,6 +195,34 @@ test("fund C: beta-trinnets ejer-opslag fejler: motoren afregner ikke, prognosen
   assert.equal("fieldSource" in svar.riders[RIDER], false, "ukendt gate = dagens felter");
 });
 
+// Fund E (Fable 23/11): a non-starter with several planned stages on the date. The start field
+// release (releaseNonStarters) clears every one of them, in the engine and in the forecast.
+for (const [name, lock, race] of [
+  ["låsen hjemme i LD5, etaper LD4+LD5 uden ham", 4, [3, 4]],
+  ["etaper i alle fem felter, låsen i LD5", 4, FIELDS],
+]) {
+  test(`fund E: ${name}: hvert felt kører sit eget pas, og prognosen før aftenen er motoren`, async () => {
+    const { state } = scenario({ lock, race, dns: true });
+    const before = await loadTeamFatigueForecast({ supabase: withScheduleJoin(createFake(state).supabase), team: state.teams[0], seasonId: SEASON.id, now: EVENING_AT });
+    assert.equal(before.available, true, before.reason);
+    assert.equal(before.settled, false);
+    await run(state);
+    assert.deepEqual(reports(state).map((report) => report.focus), SESSIONS);
+    assert.ok(reports(state).every((report) => report.bound_race_day !== true));
+    matchForecast(before.riders[RIDER], state, FIELDS, [], null);
+    assert.deepEqual(before.riders[RIDER].raceSlots, []);
+    assert.equal(before.riders[RIDER].fatigue, state.rider_condition[0].fatigue);
+  });
+}
+
+test("fund E: kontakten off: prognosen er som før (frigivelsen hører til Week blocks)", async () => {
+  const { state } = scenario({ lock: 4, race: [3, 4], dns: true, stage: "off" });
+  const svar = await loadTeamFatigueForecast({ supabase: withScheduleJoin(createFake(state).supabase), team: state.teams[0], seasonId: SEASON.id, now: EVENING_AT });
+  assert.equal(svar.available, true, svar.reason);
+  assert.equal("fieldSource" in svar.riders[RIDER], false);
+  assert.deepEqual(svar.riders[RIDER].raceSlots, [3, 4]);
+});
+
 test("WB-7: træthed erstatter låsen i LD3 og beholder kilden", async () => {
   const { state, forecast } = scenario({ lock: 1, race: [1], fatigue: true });
   const before = forecast([]);
