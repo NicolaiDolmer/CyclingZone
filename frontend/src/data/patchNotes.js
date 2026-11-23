@@ -1,5 +1,53 @@
 export const PATCHES = [
 {
+  "version": "7.501",
+  "date": "2026-11-23",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "Choose a training program before applying it",
+        "body": "I removed the default program. Pick one from the full list and confirm who gets it. You can also move riders straight from their rows."
+      },
+      "da": {
+        "title": "Vælg et træningsprogram, før du lægger det på",
+        "body": "Jeg har fjernet forvalget. Vælg et program fra hele listen, og bekræft hvem der får det. Du kan også flytte ryttere direkte fra deres række."
+      },
+      "refs": [
+        8608
+      ]
+    }
+  ]
+},
+{
+  "version": "7.500",
+  "date": "2026-11-23",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Finance",
+      "area": "economy",
+      "en": {
+        "title": "See what you can spend",
+        "body": "I’ve made the sidebar, dashboard and auctions show the same available balance. Below it you can see what’s locked in bids and automatic bids."
+      },
+      "da": {
+        "title": "Se, hvad du kan bruge",
+        "body": "Jeg har gjort saldoen ens i sidemenuen, på forsiden og på auktionerne. Du ser, hvad du har til rådighed, og hvor meget der er låst i bud og autobud."
+      },
+      "refs": [
+        8357
+      ]
+    }
+  ]
+},
+{
   "version": "7.499",
   "date": "2026-11-23",
   "changes": [
