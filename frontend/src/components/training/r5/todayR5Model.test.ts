@@ -497,7 +497,9 @@ test("TodayR5 en linje: navnecellen er kun flag + navn; status, traening, indsat
   assert.doesNotMatch(name, /Status|RiderBadges|row\.status/, "intet andet end flag og navn i navnecellen");
   assert.doesNotMatch(src, /RiderBadges/, "ingen korte maerker (U23/JR/AKAD) paa fanen");
   for (const key of ["row.col.status", "row.col.training", "row.col.effort"]) assert.ok(src.includes(`tR5("${key}")`), key);
-  assert.match(src, /group-hover\/row:flex group-focus-within\/row:flex/, "Din dag vises ved hover og fokus");
+  assert.doesNotMatch(src, /group-hover\/row:flex|top-full/, "Din dag er ingen boble oven paa naeste raekke");
+  assert.match(src, /<span className="sr-only"><RowNote /, "Din dag staar i raekken for skaermlaeseren og synligt i den udfoldede raekke");
+  assert.doesNotMatch(src, /<SortTh k=\{null\} label=\{tR5\("row\.col\.training"\)\} cls="w-\[(?:[1-9]\d?|1[0-5]\d)px\]"/, "Traening-kolonnen har plads til hele navnet");
   assert.doesNotMatch(src, /<TypeCell[^>]*stacked|RiderTypeBadge[^>]*stacked/, "typen paa een linje");
   assert.match(src, /data-testid="r5-row-menu"/);
   const picker = readFileSync(join(here, "EffortPickerR5.tsx"), "utf8");

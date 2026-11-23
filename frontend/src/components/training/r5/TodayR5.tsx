@@ -905,7 +905,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
 
   // --- Computer: tabellen, een linje pr. rytter (ejer 23/11) ---------------------------
   // Navnecellen er kun flag + navn; Status, Traening og Indsats har hver sin kolonne;
-  // "Din dag ..." vises ved hover/fokus paa raekken (og naar den foldes ud), og vejen
+  // "Din dag ..." staar i den udfoldede raekke (aldrig som boble oven paa naeste raekke), og vejen
   // tilbage til programmet ligger i menuen yderst. Maal: een raekke paa ca. 44 px.
   // Bredderne er regnet til indholdsbredden ved 1440 (ca. 1165 px): ingen vandret scroll dér.
   // Markering + fold-ud deler den foerste celle, og assistent + menu den sidste.
@@ -925,14 +925,14 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
           <SortTh k="rider" label={t("colRider")} cls="w-[160px]" sort={sort} onSort={onSort} />
           <SortTh k="type" label={t("colType")} cls="w-[96px]" sort={sort} onSort={onSort} />
           <SortTh k="age" label={t("colAge")} cls="w-[48px]" sort={sort} onSort={onSort} />
-          <SortTh k="program" label={tR5("col.program")} cls="w-[112px]" sort={sort} onSort={onSort} />
+          <SortTh k="program" label={tR5("col.program")} cls="w-[108px]" sort={sort} onSort={onSort} />
           <SortTh k="form" label={t("form")} cls="w-[48px]" sort={sort} onSort={onSort} />
           {/* En lang overskrift brydes inde i sin egen celle (ejer 20/11). */}
           <SortTh k="fatigue" label={tR5("col.fatigueNow")} cls="w-[64px]" sort={sort} onSort={onSort} />
           <SortTh k="load" label={tR5("col.dayLoad")} cls="w-[80px]" sort={sort} onSort={onSort} />
           <SortTh k={null} label={tR5("row.col.status")} cls="" sort={sort} onSort={onSort} />
-          <SortTh k={null} label={tR5("row.col.training")} cls="w-[184px]" sort={sort} onSort={onSort} />
-          <SortTh k={null} label={tR5("row.col.effort")} cls="w-[188px]" sort={sort} onSort={onSort} />
+          <SortTh k={null} label={tR5("row.col.training")} cls="w-[164px]" sort={sort} onSort={onSort} />
+          <SortTh k={null} label={tR5("row.col.effort")} cls="w-[180px]" sort={sort} onSort={onSort} />
           <th className="w-[56px]"><span className="sr-only">{tR5("row.col.assistant")} · {tR5("row.col.actions")}</span></th>
         </tr>
       </thead>

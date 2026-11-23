@@ -1,6 +1,6 @@
 // #7947 (ejer 23/11) · I dag R5 tegnet: een linje pr. rytter. Navnecellen er kun flag + navn,
 // status staar fuldt skrevet i sin egen kolonne, traening og indsats har hver sin kolonne
-// (Hvile · Let · Mellem · Haard), "Din dag ..." er en hover/fokus-linje, menuen staar yderst,
+// (Hvile · Let · Mellem · Haard), "Din dag ..."" er en hover/fokus-linje, menuen staar yderst,
 // og assistentens dom er tilbage i raekken. Telefonen faar et kort med etiketter.
 import test from "node:test";
 import assert from "node:assert/strict";
