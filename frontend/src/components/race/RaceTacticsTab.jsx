@@ -141,6 +141,7 @@ import { useV6TacticsSaved } from "./v6/v6TacticsSaved.ts"; // #7778: løbssiden
 // #8297: det fælles taktikpanel (wireframe v6c). Kun løbssiden v6 vælger det; ellers som før.
 import { useTacticsLayout, useTacticsRoute } from "../tactics/tacticsLayout.ts";
 import { saveBadge } from "../tactics/tacticsPanelModel.ts";
+import { otherUnsavedStages } from "../tactics/mobile/tacticsPhoneModel.ts"; // #8386
 // Panelets dele hentes foerst, naar panelet vises (kun under v6): den gamle sides stykke vokser ikke.
 const loadTactics = () => import("../tactics/index.ts");
 const TacticsPanel = lazyWithRetry(() => loadTactics().then((m) => ({ default: m.TacticsPanel })));
@@ -1322,6 +1323,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         name: rider.name,
         nation: typeof rider.nationality_code === "string" ? rider.nationality_code.toLowerCase() : null,
         abandoned: rider.abandoned === true,
+        role: tacticsRoleValue, // #8386: telefonens sortering efter rollehierarkiet
         roleLabel: t(`tacticsOrders.roleLabel.${roleKey(tacticsRoleValue)}`),
         roleOpen: openRoleRiderId === id,
         roleEditable: roleEditableFor(rider),
@@ -1452,6 +1454,20 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         </span>
       </>
     ) : null;
+    const planName = (kind, p) => (p?.target?.name && ["gc", "stage", "sprint"].includes(kind) ? t(`stagePlanReady.${kind}.named`, { name: surname(p.target.name) }) : t(`stagePlanReady.${kind}.name`));
+    // #8386: telefonens udgave B (holdets felter, andre etapers ugemte ændringer). Samme valg og handlinger som ovenfor.
+    const phone = {
+      planValue: selectedTeamPlan ? planName(selectedTeamPlan, readyPlans[selectedTeamPlan]) : tt("phone.planNone"),
+      team: teamShown ? {
+        label: tt("team.label"), question: tt("team.question"), value: order.breakaway_stance, disabled: stageLocked || saving,
+        options: BREAKAWAY_STANCES.map((stance) => {
+          const why = teamPlanKey(stance, captain?.name ?? null);
+          return { value: stance, label: tt(`team.${stance}`), note: stance === "neutral" ? (captainSurname ? tt("team.reacts", { name: captainSurname }) : tt("team.reactsNoLeader")) : /** @type {string} */ (t(why.key, why.params)) };
+        }),
+        onPick: (stance) => updateOrder((o) => setBreakawayStance(o, stance)),
+      } : null,
+      unsavedStages: otherUnsavedStages({ activeStage, draftMatrix, initialMatrix, ordersByStage, initialOrdersByStage, includeOrders: showOrders, bulkStages: Object.keys(bulkDrafts) }),
+    };
     const badge = saveBadge({ status: /** @type {import("../tactics/tacticsPanelModel.ts").TacticsSaveStatus} */ (status), dirty });
     const statusLine = (
       <div className="space-y-0.5">
@@ -1483,7 +1499,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
             ))}
           </span>
         </p>
-        <p className="m-0">{tt("legend.sort")}</p>
+        <p className="m-0 @max-[58.5rem]/tactics:hidden">{tt("legend.sort")}</p>{/* #8386: telefonen har ingen kolonner */}
       </>
     );
     const ordersToggle = (
@@ -1516,7 +1532,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
                 plans={/** @type {typeof readyPlans} */ (Object.fromEntries(TEAM_PLAN_KINDS.map((kind) => [kind, lockedRoleConflict(readyPlans[kind]) ? null : readyPlans[kind]])))}
                 active={selectedTeamPlan}
                 disabled={saving || stageLocked}
-                name={(kind, p) => (p?.target?.name && ["gc", "stage", "sprint"].includes(kind) ? t(`stagePlanReady.${kind}.named`, { name: surname(p.target.name) }) : t(`stagePlanReady.${kind}.name`))}
+                name={planName}
                 description={(kind) => tt(`plan.${kind}`)}
                 unavailable={(kind) => (lockedRoleConflict(readyPlans[kind]) ? tt("plan.lockedConflict", { name: lockedRoleConflict(readyPlans[kind])?.name ?? "" }) : kind === "gc" ? t("tacticsOrders.plan.noCaptain") : kind === "sprint" ? t("racePage.tactics.sprintTrainNone") : null)}
                 onApply={applyReadyPlan}
@@ -1561,6 +1577,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
           />
         )}
         legend={legend}
+        phone={phone}
         footer={{
           locked: stageLocked,
           lockedNote: t("tacticsOrders.lockedNote"),

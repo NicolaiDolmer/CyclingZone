@@ -128,5 +128,19 @@
   },
   "mobile": {
     "numbers": "Rating {rating} · vorm {form} · routematch {match} · vermoeidheid nu {fatigue}"
+  },
+  "phone": {
+    "planNone": "Geen teamplan gekozen",
+    "sort": "Sorteer:",
+    "sortAria": "Renners sorteren",
+    "open": "Orders openen voor {name}",
+    "riderOf": "Renner {n} van {total}",
+    "prev": "Vorige renner",
+    "next": "Volgende renner",
+    "close": "Sluiten",
+    "lock": "Vastzetten",
+    "locked": "Vast",
+    "unsaved": "{count, plural, one {Etappe {stages} heeft wijzigingen die je niet hebt opgeslagen.} other {Etappes {stages} hebben wijzigingen die je niet hebt opgeslagen.}}",
+    "unsavedNote": "Er gaat niets verloren als je van etappe wisselt."
   }
 }

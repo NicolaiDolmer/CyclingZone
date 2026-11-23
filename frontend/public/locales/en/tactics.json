@@ -128,5 +128,19 @@
   },
   "mobile": {
     "numbers": "Rating {rating} · form {form} · route match {match} · fatigue now {fatigue}"
+  },
+  "phone": {
+    "planNone": "No team plan chosen",
+    "sort": "Sort:",
+    "sortAria": "Sort riders",
+    "open": "Open orders for {name}",
+    "riderOf": "Rider {n} of {total}",
+    "prev": "Previous rider",
+    "next": "Next rider",
+    "close": "Close",
+    "lock": "Lock",
+    "locked": "Locked",
+    "unsaved": "{count, plural, one {Stage {stages} has changes you have not saved.} other {Stages {stages} have changes you have not saved.}}",
+    "unsavedNote": "Nothing is lost when you switch stage."
   }
 }

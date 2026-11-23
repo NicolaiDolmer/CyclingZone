@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "./e2e-base.js";
 import { evidenceShotPath, installNetworkMocks, json, login, raceResultsRoute, stabilizePage } from "./fixtures.js";
 import type { StagePlanLeg } from "../../src/components/race/StagePlanModel.ts";
@@ -18,6 +18,21 @@ const initialPlans: StagePlanLeg[][] = [
 ];
 const hardTasks = ["follow_moves", "tempo", "attack"];
 const hardLabels = ["Følg angrebene", "Kør tempo", "Angrib"];
+
+// #8386: paa telefonen (390) er rytterlisten udgave B: en linje pr. rytter og et ark med
+// indsats-gruppen, rollen og dagens linje. Samme adfaerd som computerens raekke, anden indgang.
+async function riderScope(page: Page, panel: Locator, id: string, width: number) {
+  if (width !== 390) return panel.locator("[data-tactics-rider=" + id + "]").filter({ visible: true });
+  await panel.locator("[data-tactics-phone-rider=" + id + "] button[aria-haspopup=dialog]").click();
+  const sheet = page.getByTestId("tactics-phone-rider-sheet");
+  await expect(sheet).toBeVisible();
+  return sheet;
+}
+async function closeRiderScope(page: Page, width: number) {
+  if (width !== 390) return;
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("tactics-phone-rider-sheet")).toHaveCount(0);
+}
 
 async function openRoadTactics(page: Page, plans = initialPlans) {
   const race = {
@@ -66,8 +81,7 @@ async function openRoadTactics(page: Page, plans = initialPlans) {
 test("v6c road shortcuts apply the stated role tasks and save through team-orders", async ({ page }) => {
   const { panel, saved, width } = await openRoadTactics(page);
   for (const [i, rider] of riders.entries()) {
-    const row = panel.locator('[data-tactics-rider="' + rider.rider_id + '"]').filter({ visible: true });
-    if (width === 390) await row.locator("button[aria-expanded]").first().click();
+    const row = await riderScope(page, panel, rider.rider_id, width);
     const group = row.getByRole("group", { name: /Indsats for/ });
     await expect(group).toBeVisible();
     if (shots && before) {
@@ -87,6 +101,7 @@ test("v6c road shortcuts apply the stated role tasks and save through team-order
       await row.scrollIntoViewIfNeeded();
       await page.screenshot({ path: evidenceShotPath("pr-screens/8356/after-" + rider.race_role + "-" + width + ".png"), scale: "css" });
     }
+    await closeRiderScope(page, width);
   }
   if (before) return;
   await panel.getByRole("button", { name: "Gem etape 2", exact: true }).filter({ visible: true }).click();
@@ -111,18 +126,20 @@ test("the road shortcuts merge redundant legs, leave mixed plans unselected and 
   const train: StagePlanLeg[] = [{ task: "shelter_leader" }, { task: "sprint_train", from: { at: "final_km" } }];
   const { panel, saved, width } = await openRoadTactics(page, [mixed, helpers, train]);
   const groupFor = async (id: string) => {
-    const row = panel.locator("[data-tactics-rider=" + id + "]").filter({ visible: true });
-    if (width === 390) await row.locator("button[aria-expanded]").first().click();
+    const row = await riderScope(page, panel, id, width);
     return row.getByRole("group", { name: /Indsats for/ });
   };
   const captain = await groupFor("r1");
   await expect(captain.getByRole("button", { pressed: true })).toHaveCount(0);
+  await closeRiderScope(page, width);
   const helper = await groupFor("r2");
   await helper.getByRole("button", { name: /^Hård.*Kør tempo/ }).click();
+  await closeRiderScope(page, width);
   const hunter = await groupFor("r3");
   const invalid = hunter.getByRole("button", { name: /^Normal.*Gå i udbrud/ });
   await expect(invalid).toBeDisabled();
   await expect(invalid).toHaveAttribute("title", /kan ikke trække spurten/);
+  await closeRiderScope(page, width);
   await panel.getByRole("button", { name: "Gem etape 2", exact: true }).filter({ visible: true }).click();
   await expect.poll(() => saved.length).toBe(1);
   expect(saved[0].riders.find(r => r.rider_id === "r2")?.plan).toEqual([{ task: "tempo" }, helpers[2]]);
@@ -134,8 +151,7 @@ test.describe("captain's day", () => {
   test("shows the opening and finale after picking Hard", async ({ page, isMobile }) => {
     if (isMobile) await page.setViewportSize({ width: 390, height: 900 });
     const { panel, width } = await openRoadTactics(page);
-    const captain = panel.locator('[data-tactics-rider="r1"]').filter({ visible: true });
-    if (width === 390) await captain.locator("button[aria-expanded]").first().click();
+    const captain = await riderScope(page, panel, "r1", width);
     const group = captain.getByRole("group", { name: /Indsats for/ });
     await group.getByRole("button", { name: /^Hård.*Følg angrebene/ }).click();
 
@@ -158,8 +174,9 @@ test.describe("captain's day", () => {
       expect.soft(lineCount).toBe(1);
       await expect(captain.getByRole("cell", { name: "Følger de bedste · Kører roligt i mål" })).toBeVisible();
     } else {
-      await expect(captain.locator("button[aria-expanded]").first()).toContainText("Følg");
-      await expect(captain.locator("button[aria-expanded]").first()).toContainText("Kør ind");
+      // Telefonens ark viser dagens linje (aabningen og afslutningen) over ordrerne.
+      await expect(captain).toContainText("Følg");
+      await expect(captain).toContainText("Kør roligt i mål");
     }
   });
 });
