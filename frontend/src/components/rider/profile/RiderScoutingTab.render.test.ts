@@ -32,7 +32,7 @@ const loader = registerHooks({
   load(url, context, nextLoad) {
     if (/\.css(\?.*)?$/.test(url)) return { format: "module", shortCircuit: true, source: "export default {};" };
     if (url.startsWith("file:") && !url.includes("node_modules") && /\.(tsx|jsx|ts|js)$/.test(url) && url.includes("/frontend/src/")) {
-      const lang = /** @type {"js" | "jsx" | "ts" | "tsx"} */ (url.match(/\.(tsx|jsx|ts|js)$/)?.[1]);
+      const lang = url.match(/\.(tsx|jsx|ts|js)$/)?.[1] as "js" | "jsx" | "ts" | "tsx";
       const source = readFileSync(new URL(url), "utf8").replaceAll("import.meta.env", ENV);
       return {
         format: "module",
@@ -46,7 +46,7 @@ const loader = registerHooks({
 const { EstimateReport } = await import("./RiderScoutingTab.jsx");
 loader.deregister();
 
-const locale = (lang, ns) => JSON.parse(readFileSync(new URL(`../../../../public/locales/${lang}/${ns}.json`, import.meta.url), "utf8"));
+const locale = (lang: string, ns: string) => JSON.parse(readFileSync(new URL(`../../../../public/locales/${lang}/${ns}.json`, import.meta.url), "utf8"));
 const NAMESPACES = ["rider", "riders", "riderTypes", "scouting", "common"];
 
 async function i18nFor(lng) {
