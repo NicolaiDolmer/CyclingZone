@@ -1,6 +1,7 @@
 // #6150: små visningshjælpere delt af roadmap-fanerne.
 import { parseHorizon, type RoadmapVote } from "../../lib/roadmapModel.ts";
 import { intlLocale } from "../../lib/intlLocale.ts";
+import { roadmapLanguage, type RoadmapLanguage } from "../../lib/roadmapCategories.ts";
 
 import { resolveRoadmapCategory, roadmapCategoryLabel } from "../../lib/roadmapVoting.js";
 
@@ -13,20 +14,27 @@ function dayMonth(key: string): string {
   return day + "/" + month;
 }
 
+// Overskrifterne på alle fem sprog; "Sæson" følger plan.horizon.season i locale-filerne.
+const HORIZON_WORDS: Record<RoadmapLanguage, { week: string; season: string; seasonStart: string }> = {
+  da: { week: "Uge", season: "Sæson", seasonStart: "Starten af sæson" },
+  en: { week: "Week", season: "Season", seasonStart: "Start of season" },
+  es: { week: "Semana", season: "Temporada", seasonStart: "Inicio de la temporada" },
+  fr: { week: "Semaine", season: "Saison", seasonStart: "Début de la saison" },
+  nl: { week: "Week", season: "Seizoen", seasonStart: "Begin van seizoen" },
+};
+
 export function formatRoadmapHorizon(horizon: string | null | undefined, language: string | undefined): string {
   const value = parseHorizon(horizon);
-  const da = isDanish(language);
+  const words = HORIZON_WORDS[roadmapLanguage(language)];
   switch (value.kind) {
     case "week":
-      return (da ? "Uge " : "Week ") + value.week + " (" + dayMonth(value.start) + "-" + dayMonth(value.end) + ")";
+      return words.week + " " + value.week + " (" + dayMonth(value.start) + "-" + dayMonth(value.end) + ")";
     case "date":
       return new Intl.DateTimeFormat(intlLocale(language), {
         day: "numeric", month: "short", year: "numeric", timeZone: "UTC",
       }).format(new Date(value.date));
-    case "season": {
-      const season = (da ? "Sæson " : "Season ") + value.season;
-      return value.start ? (da ? "Starten af sæson " : "Start of season ") + value.season : season;
-    }
+    case "season":
+      return (value.start ? words.seasonStart : words.season) + " " + value.season;
     case "quarter": return "Q" + value.quarter + " " + value.year;
     case "year": return String(value.year);
     default: return "";

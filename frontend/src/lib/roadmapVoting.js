@@ -6,7 +6,7 @@
 // renommé, stab, museum og social bor dér (ejer-godkendt 11/6).
 export const ENGINE_ORDER = ["races", "training", "youth", "market", "club"];
 
-import { ROADMAP_CATEGORIES } from "./roadmapCategories.ts";
+import { ROADMAP_CATEGORIES, roadmapLanguage } from "./roadmapCategories.ts";
 export { ROADMAP_CATEGORIES };
 
 export const PUBLIC_ROADMAP_CATEGORIES = ROADMAP_CATEGORIES.filter((category) => !category.internal);
@@ -30,9 +30,16 @@ export function resolveRoadmapCategory({ category, engine }) {
   return LEGACY_CATEGORY.get(category ?? "") ?? LEGACY_CATEGORY.get(engine ?? "") ?? (engine && isCategoryKey(engine) ? engine : "club");
 }
 
+/**
+ * @param {string | null | undefined} key
+ * @param {string | undefined} language
+ * @returns {string}
+ */
 export function roadmapCategoryLabel(key, language) {
-  const category = CATEGORY_BY_KEY.get(key);
-  return (language?.startsWith("da") ? category?.label : category?.en) ?? "";
+  const category = CATEGORY_BY_KEY.get(key ?? "");
+  if (!category) return "";
+  const lang = roadmapLanguage(language);
+  return (lang === "da" ? category.label : category[lang]) ?? category.en;
 }
 
 export function roadmapCategoryEngine(key) {
