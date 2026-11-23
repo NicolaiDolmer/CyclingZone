@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
 import {
   TEMPLATE_TYPES,
   buildWelcomeEmail,
@@ -855,43 +856,182 @@ test("every other mail type is byte-identical to before the s5-launch overrides"
   }
 });
 
-// S6 drafts stay outside the active campaign and mail-loop dispatchers.
-for (const edition of ["before-start", "started"]) {
-  for (const audience of ["current", "comeback"]) {
-    for (const language of ["en", "da"]) {
-      test(`S6 draft renders ${edition} / ${audience} / ${language}`, async () => {
-        const { buildS6SeasonEmail } = await import("./emailTemplates.js");
-        const mail = buildS6SeasonEmail({
-          edition, audience, language,
-          unsubscribeUrl: "https://cyclingzone.org/api/email/unsubscribe?token=preview%2Btoken",
-        });
-        const isStart = edition === "started";
-        assert.match(mail.html, new RegExp(`<html lang="${language}"`));
-        assert.match(mail.subject, isStart ? /underway|i gang/ : /Saturday|lørdag/);
-        assert.equal((mail.html.match(/class="cz-btn"/g) ?? []).length, 1);
-        assert.equal((mail.html.match(/<li>/g) ?? []).length, isStart ? 3 : 2);
-        assert.match(mail.html, /Dolmer, Cycling Zone/);
-        assert.match(mail.html, /Vote on what comes next|Stem på det næste/);
-        assert.doesNotMatch(mail.subject + mail.html + mail.text, /—/u);
+// ─── S6 campaign drafts (#8584, #8396) ──────────────────────────────────────
+// The drafts stay outside the mail loop and the senders; these tests cover
+// every edition x audience x language x subject variant.
+const S6_UNSUB = "https://cyclingzone.org/api/email/unsubscribe?token=preview%2Btoken";
+const S6_HERO_FILES = new URL("../../frontend/public/email/s6/", import.meta.url);
 
-        const hrefs = [...mail.html.matchAll(/href="([^"]+)"/g)];
-        assert.equal(hrefs.length, 3);
-        for (const [, href] of hrefs) {
-          const url = new URL(href.replaceAll("&amp;", "&"));
-          assert.equal(url.searchParams.get("utm_source"), "email");
-          assert.equal(url.searchParams.get("utm_medium"), "email");
-          assert.equal(url.searchParams.get("utm_campaign"), isStart ? "s6-started" : "s6-before-start");
-          assert.equal(url.searchParams.get("utm_content"), audience);
-          assert.ok(mail.text.includes(url.href));
-          if (url.pathname === "/api/email/unsubscribe") {
-            assert.equal(url.searchParams.get("token"), "preview+token");
-          } else if (url.pathname === "/roadmap") {
-            assert.equal(url.searchParams.get("tab"), "vote");
-          } else {
-            assert.equal(url.pathname, isStart && audience === "current" ? "/planning" : "/dashboard");
+function s6Hrefs(html) {
+  return [...html.matchAll(/href="([^"]+)"/g)].map(([, href]) => new URL(href.replaceAll("&amp;", "&")));
+}
+
+for (const edition of ["before-start", "started"]) {
+  for (const audience of ["active", "dormant", "away"]) {
+    for (const language of ["en", "da"]) {
+      for (const subjectVariant of ["a", "b"]) {
+        test(`S6 draft renders ${edition} / ${audience} / ${language} / subject ${subjectVariant}`, async () => {
+          const { buildS6SeasonEmail } = await import("./emailTemplates.js");
+          const mail = buildS6SeasonEmail({
+            edition,
+            audience,
+            language,
+            subjectVariant,
+            unsubscribeUrl: S6_UNSUB,
+            teamName: "Hold A",
+            divisionName: "Division 2",
+          });
+          const isStart = edition === "started";
+          const all = mail.subject + mail.preheader + mail.html + mail.text;
+
+          // Subject: the chosen arm of two, both short enough for a phone inbox.
+          assert.equal(mail.subject, mail.subjectVariants[subjectVariant]);
+          assert.notEqual(mail.subjectVariants.a, mail.subjectVariants.b);
+          for (const subject of Object.values(mail.subjectVariants)) assert.ok(subject.length <= 50, subject);
+          assert.ok(mail.preheader.length > 20 && mail.preheader.length <= 110);
+          assert.match(mail.html, /class="cz-preheader"/);
+
+          // Accessibility: lang + dir on <html> and on the body's first table, a title, one h1.
+          assert.match(mail.html, new RegExp(`<html lang="${language}" dir="ltr"`));
+          assert.match(mail.html, new RegExp(`<table role="presentation" lang="${language}" dir="ltr"`));
+          assert.ok(mail.html.includes(`<title>${mail.subject.replaceAll("'", "&#39;")}</title>`));
+          assert.equal((mail.html.match(/<h1\b/g) ?? []).length, 1);
+          for (const tag of mail.html.match(/<table\b[^>]*>/g)) assert.match(tag, /role="presentation"/);
+
+          // Hero: hosted PNG with an absolute URL, real alt text, and the file exists.
+          const hero = mail.html.match(/<img class="cz-hero" src="([^"]+)" alt="([^"]+)"/);
+          assert.ok(hero, "hero image");
+          assert.equal(hero[1], `https://cyclingzone.org/email/s6/s6-hero-${language}.png`);
+          assert.ok(hero[2].length > 60);
+          assert.ok(existsSync(new URL(`s6-hero-${language}.png`, S6_HERO_FILES)));
+          for (const img of mail.html.match(/<img\b[^>]*>/g)) assert.match(img, /\salt="[^"]+"/);
+
+          // Personal fields: team name in the greeting and the team line with the division.
+          assert.match(mail.html, /(Hi|Hej) Hold A,/);
+          assert.match(mail.html, /Hold A (starts|starter|rides|kører) (Season|sæson) 6 i?n? ?Division 2\./);
+          assert.match(mail.text, /Division 2/);
+
+          // One primary button, 16px label, tall enough to tap (44px or more).
+          const buttons = mail.html.match(/<a class="cz-btn"[^>]*>/g) ?? [];
+          assert.equal(buttons.length, 1);
+          assert.match(buttons[0], /padding:14px 28px/);
+          assert.match(buttons[0], /font-size:16px;line-height:20px/);
+          assert.match(mail.html, /class="cz-body"[^>]*font-size:16px;/);
+
+          // List: three news items before the start, three steps once it is underway.
+          assert.equal((mail.html.match(/<li\b/g) ?? []).length, 3);
+          assert.match(mail.html, isStart ? /<ol\b/ : /<ul\b/);
+
+          // Links: the deep-linked CTA, the roadmap vote and the unsubscribe, all with UTM.
+          const hrefs = s6Hrefs(mail.html);
+          assert.equal(hrefs.length, 3);
+          for (const url of hrefs) {
+            assert.equal(url.searchParams.get("utm_source"), "email");
+            assert.equal(url.searchParams.get("utm_medium"), "email");
+            assert.equal(url.searchParams.get("utm_campaign"), isStart ? "s6-started" : "s6-before-start");
+            assert.equal(url.searchParams.get("utm_content"), `${audience}-${subjectVariant}`);
+            assert.ok(mail.text.includes(url.href), url.href);
           }
-        }
-      });
+          const [cta, roadmap, unsub] = hrefs;
+          if (isStart) {
+            assert.equal(cta.pathname, "/planning");
+            assert.equal(cta.searchParams.get("tab"), "calendar");
+          } else {
+            assert.equal(cta.pathname, "/training");
+            assert.equal(cta.searchParams.get("tab"), "today");
+          }
+          assert.equal(roadmap.pathname, "/roadmap");
+          assert.equal(roadmap.searchParams.get("tab"), "vote");
+          assert.equal(unsub.pathname, "/api/email/unsubscribe");
+          assert.equal(unsub.searchParams.get("token"), "preview+token");
+
+          // Footer: signature, consent reason, unsubscribe and sender details; no Discord.
+          assert.match(mail.html, /Dolmer, Cycling Zone/);
+          assert.match(mail.html, /Dolmer Digital, CVR 46524861/);
+          assert.match(mail.text, /Dolmer Digital, CVR 46524861/);
+          assert.match(mail.html, /class="cz-muted"[^>]*font-size:14px;/);
+          assert.doesNotMatch(all, /discord/i);
+
+          // Away readers get the note about their old account; the others do not.
+          assert.equal(/same account|samme konto/.test(mail.text), audience === "away");
+
+          // Tone: no em dash, no "we", no emoji.
+          assert.doesNotMatch(all, /—/u);
+          assert.doesNotMatch(all, /\p{Extended_Pictographic}/u);
+          if (language === "en") assert.doesNotMatch(mail.text, /\b(we|our|us)\b/i);
+          else assert.doesNotMatch(mail.text, /\b(vi|vores)\b/i);
+        });
+      }
     }
   }
 }
+
+test("S6 drafts give every audience its own opening per edition and language", async () => {
+  const { buildS6SeasonEmail, S6_AUDIENCES, S6_EDITIONS } = await import("./emailTemplates.js");
+  for (const edition of S6_EDITIONS) {
+    for (const language of ["en", "da"]) {
+      const texts = S6_AUDIENCES.map(
+        (audience) => buildS6SeasonEmail({ edition, audience, language, unsubscribeUrl: S6_UNSUB }).text.split("\n\n")[3]
+      );
+      assert.equal(new Set(texts).size, S6_AUDIENCES.length, `${edition}/${language}`);
+    }
+  }
+});
+
+test("S6 drafts fall back to neutral wording without a team or division", async () => {
+  const { buildS6SeasonEmail } = await import("./emailTemplates.js");
+  const cases = [
+    [{ language: "en" }, /Hi,/, /Here&#39;s what&#39;s new for your team\./],
+    [{ language: "da" }, /Hej,/, /Her er det nye for dit hold\./],
+    [{ language: "en", teamName: "Hold B" }, /Hi Hold B,/, /Here&#39;s what&#39;s new for Hold B\./],
+    [{ language: "da", teamName: "  ", divisionName: "Division 3" }, /Hej,/, /Dit hold starter sæson 6 i Division 3\./],
+  ];
+  for (const [input, greeting, teamLine] of cases) {
+    const mail = buildS6SeasonEmail({ edition: "before-start", audience: "active", unsubscribeUrl: S6_UNSUB, ...input });
+    assert.match(mail.html, greeting);
+    assert.match(mail.html, teamLine);
+    assert.doesNotMatch(mail.html + mail.text, /undefined|null/);
+  }
+});
+
+test("S6 drafts escape the team name", async () => {
+  const { buildS6SeasonEmail } = await import("./emailTemplates.js");
+  const mail = buildS6SeasonEmail({
+    edition: "started",
+    audience: "dormant",
+    language: "en",
+    unsubscribeUrl: S6_UNSUB,
+    teamName: `<b>"Hold"</b>`,
+  });
+  assert.doesNotMatch(mail.html, /<b>"Hold"<\/b>/);
+  assert.match(mail.html, /&lt;b&gt;&quot;Hold&quot;&lt;\/b&gt;/);
+});
+
+test("S6 drafts reject unknown editions, audiences and subject variants", async () => {
+  const { buildS6SeasonEmail } = await import("./emailTemplates.js");
+  const ok = { edition: "started", audience: "active", language: "en", unsubscribeUrl: S6_UNSUB };
+  assert.throws(() => buildS6SeasonEmail({ ...ok, edition: "later" }), RangeError);
+  assert.throws(() => buildS6SeasonEmail({ ...ok, audience: "current" }), RangeError);
+  assert.throws(() => buildS6SeasonEmail({ ...ok, subjectVariant: "c" }), RangeError);
+});
+
+test("S6 audience follows days since the last visit: two and eight weeks", async () => {
+  const { s6AudienceForDaysAway } = await import("./emailTemplates.js");
+  assert.equal(s6AudienceForDaysAway(0), "active");
+  assert.equal(s6AudienceForDaysAway(13), "active");
+  assert.equal(s6AudienceForDaysAway(14), "dormant");
+  assert.equal(s6AudienceForDaysAway(56), "dormant");
+  assert.equal(s6AudienceForDaysAway(57), "away");
+  assert.equal(s6AudienceForDaysAway(null), "away");
+  assert.equal(s6AudienceForDaysAway(-1), "away");
+});
+
+test("S6 dark mode: the colour lock covers the new heading and the hero cell", async () => {
+  const { buildS6SeasonEmail } = await import("./emailTemplates.js");
+  const mail = buildS6SeasonEmail({ edition: "before-start", audience: "away", language: "da", unsubscribeUrl: S6_UNSUB });
+  assert.match(mail.html, /<meta name="color-scheme" content="light">/);
+  assert.match(mail.html, /@media \(prefers-color-scheme:dark\)\{\.cz-body h1\{/);
+  assert.match(mail.html, /\[data-ogsc\] \.cz-body h1\{/);
+  assert.match(mail.html, /<h1 class="cz-text"/);
+  assert.match(mail.html, /<td class="cz-band" bgcolor="#1B2A4A"[^>]*>\s*<img class="cz-hero"/);
+});
