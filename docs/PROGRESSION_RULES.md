@@ -184,6 +184,8 @@ Ejer-beslutning 13/8, "tredje vej" (**historisk: potentialet vises nu altid som 
 
 ## 6. Rating og scouting
 
+**Rytterdatabasens potentialesortering (#7924):** Med det gemte holdskøn i visningen sorteres hele det filtrerede sæt efter det viste skøn inklusive ratinggulvet, før siden afgrænses. Skjulte skøn ligger sidst i begge retninger. Sorteringen bruger kun det aktuelle holds skøn.
+
 **Nyere beslutning har afløst støjkravet nedenfor:** TRAINING_RULES §13, ejer 6/9,
 fastlægger ærlig træningsscore for egen manager fra dag ét og frafalder den
 tidligere privatlivs-/støj-gate. De to historiske rækker om mere dagsstøj og
