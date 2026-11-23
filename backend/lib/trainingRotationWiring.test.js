@@ -92,6 +92,56 @@ test("ROT-5: Træn nu og aften med planlagt løb bruger de samme pladser", async
   await sweep(morning, fake);
   assert.deepEqual(actualSlots(evening), [0, 1, "race", 2, 0]);
   assert.deepEqual(actualSlots(morning), actualSlots(evening));
+  const raceFocus = (state) => state.training_rider_ticks.find((row) => row.game_day === DAYS1[2]).report.focus;
+  assert.equal(raceFocus(morning), raceFocus(evening));
+});
+
+test("Fable B1: an unavailable v3 pass waits in the motor and both forecasts", async () => {
+  const rotation = { ...plan(), passes: [{ session: "itt_long" }, { session: "sprint" }] };
+  const state = fixture({ rotation, flags: { training_catalog_v3: "off" } });
+  await sweep(state, createFake(state));
+  assert.equal(state.training_rider_ticks.length, DAYS1.length);
+  assert.ok(state.training_rider_ticks.every((row) => !row.report.rotation?.advanced));
+  assert.deepEqual(numbers(forecast({ rotation, catalogV3: false })), Array(5).fill(null));
+  const week = forecastRotationFields({
+    rotation, startIndex: 0, gameDays: DAYS1, fields: { raceSlots: [], restSlots: [] }, catalogV3: false,
+  });
+  assert.deepEqual(numbers(week), Array(5).fill(null));
+  assert.equal(week.nextRotationIndex, 0);
+});
+
+test("Fable B2: an own rotation takes precedence over team week fields", async () => {
+  const teamWeekRow = { rider_id: null, team_id: TEAM, plan_kind: "week", days: {
+    mon: { session: "sprint", intensity: "normal", slots: Array(5).fill("sprint"), lockSlot: 2 },
+  } };
+  const state = fixture({ flags: { training_week_priority: "on" } });
+  state.training_week_plans.push(teamWeekRow);
+  await sweep(state, createFake(state));
+  assert.deepEqual(actualSlots(state), [0, 1, 2, 0, 1]);
+  assert.ok(state.training_rider_ticks.every((row) => !Object.hasOwn(row.report, "source_slot")));
+  const result = forecast({ weekPriority: true, teamWeekRow });
+  assert.deepEqual(numbers(result), [0, 1, 2, 0, 1]);
+  assert.equal(result.fieldSource, undefined);
+});
+
+test("Rotation continues from the latest receipt in the previous season", async () => {
+  const state = fixture();
+  state.training_rider_ticks.push({
+    rider_id: riderId, team_id: TEAM, season_id: "previous-season", tick_date: "2026-11-08", game_day: 40,
+    report: { rotation: { rev: 1, length: 3, index: 1, order: 3, advanced: true } },
+  });
+  await sweep(state, createFake(state));
+  assert.deepEqual(actualSlots(state), [2, 0, 1, 2, 0]);
+});
+
+test("A planned rest pass advances the rotation", async () => {
+  const rotation = { ...plan(), passes: [{ session: "rest" }, { session: "sprint" }] };
+  const state = fixture({ rotation });
+  await sweep(state, createFake(state));
+  const rows = state.training_rider_ticks;
+  assert.equal(rows[0].report.intensity, "rest");
+  assert.equal(rows[0].report.rotation?.advanced, true);
+  assert.equal(rows[1].report.rotation?.index, 1);
 });
 
 test("ROT-6: et sent DNS-felt bruger den sidste plads samme dato", async () => {

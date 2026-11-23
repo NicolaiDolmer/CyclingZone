@@ -1015,7 +1015,7 @@ features:
     ssot: docs/TRAINING_RULES.md
     epic: 7456
     verified: 2026-11-22
-    note: "PR 1 af 3 (migration, validering, API) bag training_rotation = off. Motor (PR 2, Fable-dom) og R5-UI (PR 3) følger; ejer tænder."
+    note: "Data, API, afregning og prognose bag training_rotation. Pladsen fortsætter over sæsonskift. Beta i to dage med aftenverifikation før ejerens go til on."
     decision: goer-faerdigt
     decide_by: 2026-12-06
 

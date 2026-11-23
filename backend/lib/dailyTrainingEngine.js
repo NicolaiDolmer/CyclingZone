@@ -1539,7 +1539,7 @@ export async function runTeamTrainingDay({
     rotationByRider = await loadRotationPlans({
       supabase, teamId, weekRows: weekPlanRow ?? [], riderIds, plans: planRows ?? [],
     });
-    rotationReceiptsByRider = await loadRotationReceipts({ supabase, teamId, seasonId, tickDate, rotationByRider, dateReceipts });
+    rotationReceiptsByRider = await loadRotationReceipts({ supabase, teamId, tickDate, rotationByRider, dateReceipts });
   }
   },
   async () => {
@@ -1920,7 +1920,8 @@ export function computeTrainingDayTick(input) {
     // field, so the placement and the stamp agree and no pass runs twice. A known non-starter
     // has no planned stages at all (fund E: loadPlannedStageDaysByRider uses the start field release).
     const stageFieldTrains = !injuredToday && !rodeToday && !raceLoadToday && !unknownSlot && (!boundToday || stageDateFree);
-    const weekPriority = weekPriorityOn
+    const rotation = rotationByRider?.get(rider.id);
+    const weekPriority = weekPriorityOn && !rotation
       ? weekPrioritySourceSlot({
         winning: winningWeekEntry({ weekday, riderRow: riderWeekRowByRider.get(rider.id) ?? null, teamRow: teamWeekRow, hasExplicitPlan }),
         programSlot,
@@ -1953,7 +1954,6 @@ export function computeTrainingDayTick(input) {
     });
     if (dayProgram.source === "program") program.focus = dayProgram.focus;
     program.intensity = dayProgram.intensity;
-    const rotation = rotationByRider?.get(rider.id);
     const riderRotationReceipts = rotation
       ? dateReceipts.filter((row) => row.rider_id === rider.id && row.team_id === teamId && row.tick_date === tickDate)
       : [];
@@ -1962,7 +1962,7 @@ export function computeTrainingDayTick(input) {
       dateReceipts: riderRotationReceipts,
       previousFocus: program.focus, catalogV3: catalogV3On, effortLevels: effortLevelsOn,
     }) : null;
-    if (rotationChoice) Object.assign(program, rotationChoice.program);
+    if (rotationChoice && !rodeToday && !raceLoadToday) Object.assign(program, rotationChoice.program);
     // #4854: reglen vurderes paa traethed ved DATOENS START og retter aldrig planen.
     // #7801: med kontakten paa trætheden lige nu (aabningen plus datoens koerte etaper).
     const fatigueRuleResult = fatigueRules ? applyFatigueRules({

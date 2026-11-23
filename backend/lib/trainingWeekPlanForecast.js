@@ -150,7 +150,7 @@ export function buildTeamFatigueForecast({
     const recoveryAbility = firstReport?.recovery_before_date ?? recoveryByRider.get(rider.id) ?? 50;
     const hasStageOnDate = plannedStages.some((row) => row.rider_id === rider.id)
       || recordedLoads.some((row) => row.rider_id === rider.id);
-    const placement = weekPriority ? weekPriorityPlacement({
+    const placement = weekPriority && !rotation ? weekPriorityPlacement({
       winning: winningWeekEntry({ weekday, riderRow: riderWeekRowByRider.get(rider.id) ?? null, teamRow: teamWeekRow, hasExplicitPlan }),
       dateDays: days,
       raceGameDays: [
@@ -356,7 +356,7 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     ? await weekPriorityGateForTeam(supabase, team.id)
     : false;
   const rotationByRider = await loadRotationPlans({ supabase, teamId: team.id, weekRows, riderIds, plans });
-  const rotationReceiptsByRider = await loadRotationReceipts({ supabase, teamId: team.id, seasonId, tickDate, rotationByRider, dateReceipts });
+  const rotationReceiptsByRider = await loadRotationReceipts({ supabase, teamId: team.id, tickDate, rotationByRider, dateReceipts });
   // A completed current-team roster says nothing about an acquired rider's
   // still-open date under the original team's durable stamp.
   const hasUnsettledInstant = [...instant.keys()].some(id => !instant.settledRiderIds.has(id));
@@ -477,7 +477,7 @@ async function fatigueRulesForForecast(supabase, teamId, riderIds, tickDate) {
 // skrivning, og en ukendt gate maa aldrig vaelte siden.
 // #5319: motorens katalog-gate (isTrainingCatalogV3EnabledForTeam). Fejl → off,
 // samme begrundelse som cellsGateForTeam nedenfor.
-async function catalogV3GateForTeam(supabase, teamId) {
+export async function catalogV3GateForTeam(supabase, teamId) {
   try {
     return await isTrainingCatalogV3EnabledForTeam(supabase, teamId);
   } catch {

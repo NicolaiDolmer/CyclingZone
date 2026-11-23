@@ -24,7 +24,7 @@ export async function loadRotationPlans({ supabase, teamId, weekRows, riderIds, 
   return rotations;
 }
 
-export async function loadRotationReceipts({ supabase, teamId, seasonId, tickDate, rotationByRider, dateReceipts = [] }) {
+export async function loadRotationReceipts({ supabase, teamId, tickDate, rotationByRider, dateReceipts = [] }) {
   const history = new Map();
   if (!rotationByRider.size) return history;
   // Once a rider has a receipt for this revision today, its cursor supersedes history.
@@ -35,31 +35,28 @@ export async function loadRotationReceipts({ supabase, teamId, seasonId, tickDat
       && stamp?.rev === rotation.rev && stamp.length === rotation.passes.length ? [row.rider_id] : [];
   }));
   const riderIds = [...rotationByRider.keys()].filter((id) => !started.has(id));
-  if (riderIds.length === 0) return history;
-  const pageSize = 500;
-  for (let offset = 0; ; offset += pageSize) {
-    const { data, error } = await supabase.from("training_rider_ticks")
-      .select("rider_id, tick_date, game_day, report")
-      .eq("team_id", teamId).eq("season_id", seasonId)
-      .in("rider_id", riderIds).lt("tick_date", tickDate).not("report->rotation", "is", null)
-      .order("tick_date", { ascending: false }).order("rider_id").order("game_day")
-      .range(offset, offset + pageSize - 1);
-    if (error) throw new Error(`training rotation receipts: ${error.message}`);
-    for (const row of data ?? []) {
-      const saved = history.get(row.rider_id) ?? [];
-      const active = rotationByRider.get(row.rider_id);
-      const stamp = row.report?.rotation;
-      if (!stamp || stamp.length !== active.passes.length) continue;
-      if (stamp.rev !== active.rev && !(stamp.rev >= active.anchor?.fromRev && stamp.rev < active.rev)) continue;
-      if (saved.length && (saved[0].tick_date !== row.tick_date || saved[0].report.rotation.rev > stamp.rev)) continue;
-      if (saved.length && stamp.rev > saved[0].report.rotation.rev) saved.length = 0;
-      saved.push(row);
-      history.set(row.rider_id, saved);
-    }
-    if ((data ?? []).length < pageSize) break;
-    // Read through one complete date before accepting its last receipt.
-    const lastDate = data.at(-1).tick_date;
-    if (riderIds.every((id) => history.get(id)?.[0].tick_date > lastDate)) break;
+  const batchSize = 5;
+  for (let start = 0; start < riderIds.length; start += batchSize) {
+    await Promise.all(riderIds.slice(start, start + batchSize).map(async (id) => {
+      const rotation = rotationByRider.get(id);
+      const fromRev = rotation.anchor?.rev === rotation.rev ? rotation.anchor.fromRev : null;
+      const latest = async (carry) => {
+        // The same team can continue the rider's cursor across seasons. Limit to the
+        // last receipt in settlement order, which can differ from game-day order.
+        const base = supabase.from("training_rider_ticks").select("tick_date, rotation:report->rotation")
+          .eq("team_id", teamId).eq("rider_id", id).lt("tick_date", tickDate)
+          .eq("report->rotation->length", rotation.passes.length);
+        const revisions = carry
+          ? base.gte("report->rotation->rev", fromRev).lt("report->rotation->rev", rotation.rev)
+          : base.eq("report->rotation->rev", rotation.rev);
+        const { data, error } = await revisions.order("tick_date", { ascending: false })
+          .order("report->rotation->order", { ascending: false }).limit(1).maybeSingle();
+        if (error) throw new Error(`training rotation receipts: ${error.message}`);
+        return data;
+      };
+      const receipt = await latest(false) ?? (fromRev != null ? await latest(true) : null);
+      if (receipt) history.set(id, [{ tick_date: receipt.tick_date, report: { rotation: receipt.rotation } }]);
+    }));
   }
   return history;
 }
@@ -86,7 +83,7 @@ export function rotationProgram({ rotation, receipts, dateReceipts, previousFocu
   const pass = rotationPassAt(rotation, index);
   if (!pass) return null;
   const program = programForSession(pass.session, previousFocus, { catalogV3, effortLevels, effort: pass.effort });
-  return program ? { index, pass, program, order, trained } : null;
+  return program?.ok ? { index, pass, program, order, trained } : null;
 }
 
 export function stampRotation({ rotation, chosen, raced, boundRest, injured, unknown, fatigueRule }) {
