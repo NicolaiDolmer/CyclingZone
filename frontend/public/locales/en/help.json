@@ -225,6 +225,10 @@
       "squadAndAuctions": {
         "title": "Squad size and auctions",
         "text": "Squad limits still apply per division. Active auctions where you lead reserve both balance and a potential squad slot, so you can't lead more auctions than your squad can hold."
+      },
+      "availableBalance": {
+        "title": "Available balance",
+        "text": "Your available balance is what you can spend after allowing for leading bids and active automatic bids."
       }
     },
     "transfers": {

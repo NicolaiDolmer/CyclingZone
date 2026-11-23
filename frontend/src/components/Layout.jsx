@@ -7,6 +7,7 @@ import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + c
 import { subscribeAuthedChannel } from "../lib/realtimeChannel";
 import { formatNumber } from "../lib/intl";
 import { LockedSalesLine, LOCKED_SALES_REFRESH_EVENT } from "./finance/LockedSaleEscrows.tsx"; // #6181
+import { refreshMarketBalance, useMarketBalance } from "../data/marketBalance.ts";
 import { ACTIVE_SURVEY_SLUG } from "../lib/survey.js"; // #4943
 import SetupWizardModal from "./SetupWizardModal";
 import { lazyWithRetry } from "../lib/lazyWithRetry.js";
@@ -23,6 +24,7 @@ import LanguageSwitcher from "./LanguageSwitcher";
 import { Wordmark } from "./Brand";
 import DiscordJoinLink from "./DiscordJoinLink";
 import { MenuIcon, BellIcon, ChevronDownIcon, ChevronLeftIcon } from "./ui/icons";
+import Skeleton from "./ui/Skeleton";
 import { resolveAcademyNavVisible, readCachedAcademyNav, writeCachedAcademyNav } from "../lib/academyNavVisibility";
 import { facilitiesNavItem } from "../lib/facilitiesNavVisibility";
 import { useFacilities } from "../lib/useFacilities";
@@ -372,8 +374,8 @@ function NavItem({ to, label, badge, beta, dot, dotLabel, dotLabelUrgent, onClic
   );
 }
 
-function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts, dotFlags, dotTones, logoutLabel, loginLabel, isAnonymous, onOpenFeedback, contactLabel }) {
-  const { t } = useTranslation("common");
+function SidebarContent({ onNav, navigate, team, balance, marketBalance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts, dotFlags, dotTones, logoutLabel, loginLabel, isAnonymous, onOpenFeedback, contactLabel }) {
+  const { t } = useTranslation(["common", "finance"]);
   const { isPro, isFounder } = useSubscription(team?.id);
   return (
     <div className="flex flex-col h-full">
@@ -405,12 +407,25 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
       </button>
 
       {/* Balance — guard mod undefined (jf. #446 bootstrap-race) */}
-      {balance != null && (
+      {marketBalance && (
         <div className="px-4 py-3 border-b border-cz-sidebar-border">
-          <p className="text-3xs text-cz-sidebar-2 uppercase tracking-widest mb-0.5">{t("sidebar.balance")}</p>
-          <p className="text-cz-accent font-mono font-bold text-sm leading-tight" title={t("sidebar.balanceTooltip")}>
-            {formatNumber(balance)} CZ$
-          </p>
+          {marketBalance.mode === "available" && (
+            <p className="text-cz-accent font-mono font-bold text-sm leading-tight tabular-nums" title={t("sidebar.balanceTooltip")}>
+              {t("finance:balance.available", { value: formatNumber(marketBalance.value) })}
+            </p>
+          )}
+          {marketBalance.mode === "balance" && (
+            <>
+              <p className="text-3xs text-cz-sidebar-2 uppercase tracking-widest mb-0.5">{t("sidebar.balance")}</p>
+              <p className="text-cz-accent font-mono font-bold text-sm leading-tight tabular-nums">{formatNumber(marketBalance.value)} CZ$</p>
+            </>
+          )}
+          {marketBalance.mode === "pending" && <Skeleton className="h-4 w-28 opacity-40" />}
+          {marketBalance.locked > 0 && (
+            <p className="text-cz-sidebar-2 font-mono tabular-nums text-3xs mt-0.5">
+              {t("finance:balance.lockedInBids", { value: formatNumber(marketBalance.locked) })}
+            </p>
+          )}
           <LockedSalesLine refreshKey={balance} className="text-cz-sidebar-2 text-3xs mt-0.5" />
           {team?.division != null && (
             <p className="text-cz-sidebar-2 text-3xs mt-0.5" title={t("sidebar.divisionTooltip")}>{t("sidebar.division", { division: team.division })}</p>
@@ -522,6 +537,9 @@ export default function Layout() {
   const [session, setSession]               = useState(null);
   const [team, setTeam]                     = useState(null);
   const [balance, setBalance]               = useState(null);
+  // #8357: én kilde. Sidemenuen viser den delte holdsaldo (samme som dashboard og
+  // auktioner); Layouts egen læsning bruges kun, til den delte er hentet.
+  const marketBalance = useMarketBalance(balance);
   const [unread, setUnread]   = useState(0);
   // #3811: ulæst-prik ved "Patch Notes" — patchNotesLatestDate er nyeste patch-
   // dato (fra den lette patch-notes-meta.json), patchNotesUnread er den afledte
@@ -766,7 +784,10 @@ export default function Layout() {
       channel.on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${session.user.id}` },
         async (payload) => {
           // #6181: et laast salg eller en refusion giver en NY besked, ikke en ny saldo. "Markeret som laest" aendrer intet laast.
-          if (payload?.eventType === "INSERT") window.dispatchEvent(new Event(LOCKED_SALES_REFRESH_EVENT));
+          if (payload?.eventType === "INSERT") {
+            window.dispatchEvent(new Event(LOCKED_SALES_REFRESH_EVENT));
+            refreshMarketBalance();
+          }
           setUnread(await fetchUnreadCount(session.user.id));
           const { data: t } = await supabase.from("teams").select("balance").eq("user_id", session.user.id).maybeSingle();
           if (t) setBalance(t.balance);
@@ -950,7 +971,7 @@ export default function Layout() {
   // #4983: samme kort-recipe, men tonen (gul/rød) i stedet for kun "vis den".
   const dotTones = { "/planning": selectionReminder.tone };
   const sidebarProps = {
-    navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts, dotFlags, dotTones,
+    navigate, team, balance, marketBalance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts, dotFlags, dotTones,
     logoutLabel: t("nav.item.logout"),
     loginLabel: t("landing:nav.login"),
     isAnonymous: !session,
