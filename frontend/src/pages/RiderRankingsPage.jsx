@@ -40,8 +40,8 @@ const ALL_DIVISIONS = Array.from(
 // Altid-synlige sejr-kolonner (kategori-sejre) — venstre→højre.
 const WIN_COLS = [
   { key: "stage_wins",   labelKey: "rankings.colStageWins",   shortKey: "rankings.shortStageWins" },
-  { key: "gc_wins",      labelKey: "rankings.colGcWins",      shortKey: "rankings.shortGcWins" },
-  { key: "classic_wins", labelKey: "rankings.colClassicWins", shortKey: "rankings.shortClassicWins" },
+  { key: "gc_wins",      labelKey: "rankings.colGcWins",      shortKey: "rankings.colGcWins" },
+  { key: "classic_wins", labelKey: "rankings.colClassicWins", shortKey: "rankings.colClassicWins" },
   { key: "pts_wins",     labelKey: "rankings.colPtsWins",     shortKey: "rankings.shortPtsWins" },
   { key: "mtn_wins",     labelKey: "rankings.colMtnWins",     shortKey: "rankings.shortMtnWins" },
   { key: "young_wins",   labelKey: "rankings.colYoungWins",   shortKey: "rankings.shortYoungWins" },
@@ -85,10 +85,10 @@ function loadColumnVisibility() {
 }
 
 const OWNER_FILTERS = [
-  { key: "all",     labelKey: "rankings.ownerAll",     shortKey: "rankings.ownerAll" },
-  { key: "manager", labelKey: "rankings.ownerManager", shortKey: "rankings.shortOwnerManager" },
-  { key: "ai",      labelKey: "rankings.ownerAi",      shortKey: "rankings.shortOwnerAi" },
-  { key: "free",    labelKey: "rankings.ownerFree",    shortKey: "rankings.shortOwnerFree" },
+  { key: "all",     labelKey: "rankings.ownerAll" },
+  { key: "manager", labelKey: "rankings.ownerManager" },
+  { key: "ai",      labelKey: "rankings.ownerAi" },
+  { key: "free",    labelKey: "rankings.ownerFree" },
 ];
 
 // Dobbelt header-label (kort på mobil, langt på desktop) — bevaret 1:1 fra den
@@ -361,7 +361,6 @@ export default function RiderRankingsPage() {
       key: col.key,
       header: <ColHeader t={t} labelKey={col.labelKey} shortKey={col.shortKey} />,
       mobileLabel: t(col.labelKey),
-      shortLabel: t(col.shortKey),
       numeric: true,
       sortKey: col.key,
       render: (rider) => <StatCell value={rider[col.key]} active={sortKey === col.key} />,
@@ -371,7 +370,6 @@ export default function RiderRankingsPage() {
       key: "total_wins",
       header: <ColHeader t={t} labelKey="rankings.colTotalWins" shortKey="rankings.shortTotalWins" />,
       mobileLabel: t("rankings.colTotalWins"),
-      shortLabel: t("rankings.shortTotalWins"),
       numeric: true,
       sortKey: "total_wins",
       render: (rider) => <StatCell value={rider.total_wins} active={sortKey === "total_wins"} />,
@@ -407,22 +405,15 @@ export default function RiderRankingsPage() {
       WIN_VIEW_KEYS.includes(col.key) || ("sticky" in col && col.sticky) || ("fold" in col && col.fold)
     )).map(col => {
       if (!WIN_VIEW_KEYS.includes(col.key) || typeof col.mobileLabel !== "string") return col;
-      const label = col.mobileLabel;
-      const buttonText = isMobile && "shortLabel" in col && typeof col.shortLabel === "string"
-        ? col.shortLabel
-        : label;
-      const accessibleLabel = label.toLowerCase().includes(buttonText.toLowerCase())
-        ? label
-        : `${buttonText}: ${label}`;
       return {
         ...col,
-        nowrapHeader: true,
+        tight: isMobile,
         // DataTable handles bubbled clicks and exposes its current aria-sort on the th.
         header: (
-          <button type="button" title={label} aria-label={accessibleLabel}
+          <button type="button"
             className="cursor-pointer rounded-cz text-end focus-visible:outline-2 focus-visible:outline-cz-accent-t"
           >
-            {buttonText}
+            {col.mobileLabel}
           </button>
         ),
       };
@@ -454,9 +445,9 @@ export default function RiderRankingsPage() {
         value: selection.tier ?? ALL_DIVISIONS_VALUE,
         onChange: e => changeDivision(e.target.value),
         options: [
-          { value: ALL_DIVISIONS_VALUE, label: t("rankings.divisionFilterAll"), shortLabel: t("rankings.shortDivisionAll") },
+          { value: ALL_DIVISIONS_VALUE, label: t("rankings.divisionFilterAll") },
           ...ALL_DIVISIONS.map(d => ({
-            value: String(d), label: t("rankings.divisionFilterOption", { n: d }), shortLabel: t("rankings.shortDivision", { n: d }),
+            value: String(d), label: t("rankings.divisionFilterOption", { n: d }),
           })),
         ],
       },
@@ -466,8 +457,8 @@ export default function RiderRankingsPage() {
         value: selection.poolId ?? ALL_POOLS_VALUE,
         onChange: e => changePool(e.target.value),
         options: [
-          { value: ALL_POOLS_VALUE, label: t("rankings.poolFilterAll"), shortLabel: t("rankings.shortPoolAll") },
-          ...tierPools.map(p => ({ value: String(p.id), label: p.label, shortLabel: String.fromCharCode(65 + p.pool_index) })),
+          { value: ALL_POOLS_VALUE, label: t("rankings.poolFilterAll") },
+          ...tierPools.map(p => ({ value: String(p.id), label: p.label })),
         ],
       }] : []),
       {
@@ -475,7 +466,7 @@ export default function RiderRankingsPage() {
         ariaLabel: t("rankings.ownerFilterLabel"),
         value: ownerFilter,
         onChange: e => setOwnerFilter(e.target.value),
-        options: OWNER_FILTERS.map(f => ({ value: f.key, label: t(f.labelKey), shortLabel: t(f.shortKey) })),
+        options: OWNER_FILTERS.map(f => ({ value: f.key, label: t(f.labelKey) })),
       },
     ],
     // #1004: filter på ét konkret hold (fx for at se egne ryttere samlet).
@@ -556,8 +547,6 @@ export default function RiderRankingsPage() {
           count={
             <div className="flex flex-wrap items-center gap-4">
               {!showWins && <span>{t("rankings.legendStage")}</span>}
-              <span>{t("rankings.legendGc")}</span>
-              {(!showWins || isMobile) && <span>{t("rankings.legendClassic")}</span>}
               {!showWins && <>
                 <span>{t("rankings.legendPcl")}</span>
                 <span>{t("rankings.legendMtn")}</span>

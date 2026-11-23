@@ -1194,7 +1194,7 @@
       "label": "Riders",
       "rankingWins": {
         "title": "Compare wins in the Rider Rankings",
-        "text": "Open Rankings, then Rider Rankings, and choose Wins in the table. GC wins are overall wins in stage races. Classic wins are one-day race wins. Total wins also includes stage wins and wins in the points, mountain and youth classifications. Select a column heading to sort by it."
+        "text": "Open Rankings, then Rider Rankings, and choose Wins in the table. Overall shows overall wins in stage races. Classics shows wins in one-day races. Total wins also includes stage wins and wins in the points, mountain and youth classifications. Select a column heading to sort by it."
       },
       "valueAndPrice": {
         "title": "Value and price",

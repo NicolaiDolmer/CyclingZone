@@ -3,6 +3,8 @@ import { corsHeaders, installNetworkMocks, json, login, stabilizePage } from "./
 import { RIDERS, SEED_RIDER_RANKINGS } from "../../src/preview/seedData.js";
 
 test("#7137 compares all three win counts and restores the overview", async ({ page }) => {
+  const mobile = (page.viewportSize()?.width ?? 1280) <= 640;
+  if (mobile) await page.setViewportSize({ width: 390, height: 844 });
   await stabilizePage(page);
   await installNetworkMocks(page);
   await page.route("**/api/rankings/riders?**", (route) => {
@@ -25,12 +27,14 @@ test("#7137 compares all three win counts and restores the overview", async ({ p
   const firstRider = table.locator("tbody tr").first().getByRole("link").first();
   await expect(firstRider).toHaveAttribute("href", "/riders/rider-1");
 
-  const mobile = (page.viewportSize()?.width ?? 1280) <= 640;
+  const titleBar = page.getByTestId("table-title-bar");
+  const divisionLabel = titleBar.locator('label > span[title="Alle divisioner"]');
+  await expect(divisionLabel).toHaveText("Alle divisioner", { useInnerText: true });
   if (mobile) {
     await page.getByTestId("table-columns-open").click();
-    await page.getByRole("button", { name: "GC-sejre", exact: true }).click();
+    await page.getByRole("button", { name: "Samlet", exact: true }).click();
     await page.keyboard.press("Escape");
-    await expect(table.getByRole("columnheader", { name: /^GC$/ })).toBeVisible();
+    await expect(table.getByRole("columnheader", { name: "Samlet", exact: true })).toBeVisible();
   }
 
   // Preserve a non-default overview sort when switching modes.
@@ -42,11 +46,16 @@ test("#7137 compares all three win counts and restores the overview", async ({ p
 
   const view = page.getByRole("combobox", { name: "Visning", exact: true });
   await view.selectOption("wins");
-  const gc = table.getByRole("columnheader", { name: "GC-sejre", exact: true });
-  const classic = table.getByRole("columnheader", { name: "Klassikersejre", exact: true });
+  const gc = table.getByRole("columnheader", { name: "Samlet", exact: true });
+  const classic = table.getByRole("columnheader", { name: "Klassikere", exact: true });
   const total = table.getByRole("columnheader", { name: "Sejre i alt", exact: true });
   for (const column of [gc, classic, total]) await expect(column).toBeVisible();
   await expect(total).toHaveAttribute("aria-sort", "descending");
+  await expect(page.getByText(/GC\s*=|Kla\s*=/)).toHaveCount(0);
+  if (mobile) {
+    expect(await table.evaluate(node => node.scrollWidth)).toBeLessThanOrEqual(390);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  }
   await expect(firstRider).toHaveAttribute("href", "/riders/rider-2");
 
   // 2 stage + 4 classic + 2 mountain wins; the GC field can be zero.
@@ -76,16 +85,16 @@ test("#7137 compares all three win counts and restores the overview", async ({ p
   await expect(overviewWins).toHaveAttribute("aria-sort", "descending");
   await expect(firstRider).toHaveAttribute("href", "/riders/rider-2");
   if (!mobile) return;
-  await expect(table.getByRole("columnheader", { name: /^GC$/ })).toBeVisible();
+  await expect(table.getByRole("columnheader", { name: "Samlet", exact: true })).toBeVisible();
 
-  const titleBar = page.getByTestId("table-title-bar");
   async function expectReadableChoices(count: number) {
     const labels = titleBar.locator("label > span[title]");
     await expect(labels).toHaveCount(count);
     const clipped = await labels.evaluateAll(spans => spans
-      .filter(span => span.scrollWidth > span.clientWidth + 1)
+      .filter(span => span.scrollWidth > span.clientWidth + 1 || span.scrollHeight > span.clientHeight + 1)
       .map(span => span.getAttribute("title")));
     expect(clipped).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   }
   await expectReadableChoices(3);
 
@@ -107,4 +116,8 @@ test("#7137 compares all three win counts and restores the overview", async ({ p
   await titleBar.getByRole("combobox", { name: "Filtrér efter pulje" }).selectOption("2");
   await titleBar.getByRole("combobox", { name: "Filtrér efter ejer" }).selectOption("manager");
   await expectReadableChoices(4);
+  const selectedLabels = await titleBar.locator("label > span[title]").allInnerTexts();
+  expect(selectedLabels.map(label => label.replace(/\s+/g, " "))).toEqual([
+    "Overblik", "Division 2", "Division 2 — A", "Manager-ejede",
+  ]);
 });

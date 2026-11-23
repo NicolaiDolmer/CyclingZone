@@ -1194,7 +1194,7 @@
       "label": "Ryttere",
       "rankingWins": {
         "title": "Sammenlign sejre på rytterranglisten",
-        "text": "Åbn Ranglister, vælg Rytterrangliste, og vælg Sejre i tabellen. GC-sejre er sejre i etapeløbets samlede klassement. Klassikersejre er sejre i endagsløb. Sejre i alt tæller også etapesejre og sejre i point-, bjerg- og ungdomsklassementerne. Vælg en kolonneoverskrift for at sortere efter den."
+        "text": "Åbn Ranglister, vælg Rytterrangliste, og vælg Sejre i tabellen. Samlet viser sejre i etapeløbenes samlede klassement. Klassikere viser sejre i endagsløb. Sejre i alt tæller også etapesejre og sejre i point-, bjerg- og ungdomsklassementerne. Vælg en kolonneoverskrift for at sortere efter den."
       },
       "valueAndPrice": {
         "title": "Værdi og pris",

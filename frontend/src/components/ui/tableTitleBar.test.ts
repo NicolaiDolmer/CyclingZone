@@ -25,13 +25,6 @@ test("choiceLabel viser den valgte options label og falder tilbage til den førs
   assert.equal(choiceLabel({ value: "x", options: [] }), "");
 });
 
-test("choiceLabel uses a short label only in compact mode", () => {
-  const choice = { value: "2", options: [{ value: "all", label: "All" }, { value: "2", label: "Division 2", shortLabel: "D2" }] };
-  assert.equal(choiceLabel(choice), "Division 2");
-  assert.equal(choiceLabel(choice, true), "D2");
-  assert.equal(choiceLabel({ ...choice, value: "all" }, true), "All");
-});
-
 test("table_control_used bærer kun side og kontrolnavn (aldrig værdier eller persondata)", () => {
   assert.deepEqual(tableControlPayload("rider_database", "filters"), { page: "rider_database", control: "filters" });
   assert.deepEqual(tableControlPayload("rider_rankings", "column", "top3"), {

@@ -35,7 +35,6 @@ import {
 //   sublineIndent,// kun sticky: true → pl-[17px] så underlinjen flugter forbi JerseyDot
 //   fold,         // true → skjules ≤640px og foldes ind i sticky-cellens underlinje
 //   foldValue,    // (row) => string — tekstværdi til mobil-fold (default row[key])
-//   nowrapHeader, // hold en kort overskrift og sorteringsikonet samlet på mobil
 //   mobileLabel,  // chip-label på mobil når `header` ikke er ren tekst
 //   mobileHeader, // kolonne-header ≤640px (fx sidens eksisterende korte label);
 //                 // default `header`. #5471: på 390px er tallenes headere det der
@@ -407,7 +406,7 @@ function TableHead({ columns, sort, sortDir, onSort, dense, mobile = false, stic
               // mobile ⇒ compact gutter (px-2) på ALLE celler: på 393px er de
               // 16px ekstra pr. kolonne forskellen på at tabellen passer og på
               // at den skubber sig selv ud over kanten (målt, ikke gættet).
-              className={`${thClass({ numeric: col.numeric, sticky: !mobile && col.sticky, compact: mobile || col.compact, tight: col.tight, dense, stickyHeader, wrap: mobile && !col.nowrapHeader })} ${!mobile && col.fold ? "hidden sm:table-cell" : ""} ${sortableCls}`}
+              className={`${thClass({ numeric: col.numeric, sticky: !mobile && col.sticky, compact: mobile || col.compact, tight: col.tight, dense, stickyHeader, wrap: mobile })} ${!mobile && col.fold ? "hidden sm:table-cell" : ""} ${sortableCls}`}
               onClick={sortable ? () => onSort(col.sortKey) : undefined}
               aria-sort={
                 sortable ? (active ? (sortDir === "desc" ? "descending" : "ascending") : "none") : undefined

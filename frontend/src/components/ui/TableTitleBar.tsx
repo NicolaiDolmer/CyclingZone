@@ -142,22 +142,25 @@ export default function TableTitleBar({
       )}
 
       <div className={`flex min-w-0 flex-1 items-center gap-x-1 ${search && searchOpen ? "max-sm:hidden" : ""}`}>
-        <div className="flex min-w-0 flex-1 items-center overflow-hidden">
+        <div className={compactChoices
+          ? "flex min-w-0 flex-1 items-center max-sm:flex-wrap sm:overflow-hidden"
+          : "flex min-w-0 flex-1 items-center overflow-hidden"
+        }>
           {choices.map((choice, index) => (
-            <span key={choice.key} className="flex min-w-0 shrink items-center">
+            <span key={choice.key} className={compactChoices
+              ? "flex min-w-0 shrink items-center max-sm:shrink-0 max-sm:basis-[min-content]"
+              : "flex min-w-0 shrink items-center"
+            }>
               {index > 0 && (
                 <span aria-hidden="true" className={compactChoices ? "hidden px-0.5 text-cz-3 sm:inline" : "px-0.5 text-cz-3"}>
                   ·
                 </span>
               )}
               <label className={`relative inline-flex h-11 min-w-0 cursor-pointer items-center rounded-cz font-medium text-cz-1 has-[select:focus-visible]:outline-2 has-[select:focus-visible]:outline-offset-[-2px] has-[select:focus-visible]:outline-cz-accent-t sm:h-9 ${
-                compactChoices ? "gap-0.5 px-0.5 text-xs sm:gap-1 sm:px-1.5 sm:text-[13.5px]" : "gap-1 px-1.5 text-[13.5px]"
+                compactChoices ? "gap-0.5 px-0.5 text-xs max-sm:h-auto max-sm:min-h-11 max-sm:py-1 sm:gap-1 sm:px-1.5 sm:text-[13.5px]" : "gap-1 px-1.5 text-[13.5px]"
               }`}>
-                <span className="truncate" title={choiceLabel(choice)}>
-                  {compactChoices ? <>
-                    <span className="sm:hidden">{choiceLabel(choice, true)}</span>
-                    <span className="hidden sm:inline">{choiceLabel(choice)}</span>
-                  </> : choiceLabel(choice)}
+                <span className={compactChoices ? "min-w-0 sm:truncate" : "truncate"} title={choiceLabel(choice)}>
+                  {choiceLabel(choice)}
                 </span>
                 <ChevronDownIcon size={12} aria-hidden="true" className={compactChoices ? "size-2.5 flex-none text-cz-3 sm:size-3" : "flex-none text-cz-3"} />
                 <select
