@@ -107,7 +107,7 @@ export default function TacticsBoardV6c({ riders, partLabels, allOrders, summary
 
   const rows: TacticsRiderRow[] = riders.map((r) => {
     const quick = r.quickEffort;
-    const level = (fill: boolean) => (r.levelText != null
+    const level = (fill: boolean, compact = false) => (r.levelText != null
       ? <span className="text-xs text-cz-2">{r.levelText}</span>
       : quick ? (
         <EffortSegmented
@@ -115,7 +115,7 @@ export default function TacticsBoardV6c({ riders, partLabels, allOrders, summary
           steps={QUICK_STEPS}
           value={QUICK_STEPS.find(step => quickEffortFor(step) === quick.value) ?? null}
           labelFor={(step) => step === "normal" ? normalEffortLabel : t("level." + quickEffortFor(step))}
-          describeFor={(step) => taskLabel(QUICK_TASK[quick.role][quickEffortFor(step)])}
+          describeFor={compact ? undefined : (step) => taskLabel(QUICK_TASK[quick.role][quickEffortFor(step)])}
           blockedReason={(step) => {
             const error = quick.errors[quickEffortFor(step)];
             if (!error) return null;
@@ -156,6 +156,7 @@ export default function TacticsBoardV6c({ riders, partLabels, allOrders, summary
       today: r.today.map(todayText).join(" · "),
       effort: level(false),
       effortMobile: level(true),
+      effortPhone: level(false, true), // #8386: telefonlisten viser kun Easy, Normal, Hard; opgaveteksten staar i arket
       parts: r.parts?.map((part, index) => {
         const opt = (task: StagePlanTask) => ({ value: task, label: taskLabel(task), cost: taskCostWord(task) });
         return {

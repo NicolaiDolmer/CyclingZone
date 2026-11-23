@@ -5,11 +5,12 @@
 //   node tests/e2e/8386-tactics-phone.shots.mjs phone http://localhost:5188 <outdir>
 // Computerens panel ved 1440 (til før/efter-sammenligningen: skal være uændret):
 //   node tests/e2e/8386-tactics-phone.shots.mjs desk http://localhost:5188 <outdir> <navn>
+// Uden server: SHOT_DIST=<build-mappe> (bygget med VITE_PREVIEW_MOCK=1) og http://cz.local som adresse; siden faar filerne direkte.
 // To billeder pixel for pixel (antal forskellige pixels; 0 = ens):
 //   node tests/e2e/8386-tactics-phone.shots.mjs diff <a.png> <b.png>
 import { chromium } from "@playwright/test";
-import { mkdirSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
+import { extname, resolve } from "node:path";
 
 const [mode = "phone", target = "http://localhost:5188", outArg = ".", nameArg = "desk"] = process.argv.slice(2);
 const RACE = process.env.SHOT_RACE || "race-live-1";
@@ -20,6 +21,17 @@ async function open(browser, { width, height, mobile, theme }) {
     baseURL: target, viewport: { width, height }, deviceScaleFactor: 2, isMobile: mobile, hasTouch: mobile,
     colorScheme: theme === "dark" ? "dark" : "light",
   });
+  // SHOT_DIST=<mappe med en build lavet med VITE_PREVIEW_MOCK=1>: filerne leveres direkte til siden (ingen server).
+  if (process.env.SHOT_DIST) {
+    const dist = resolve(process.env.SHOT_DIST);
+    const types = { ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png", ".woff2": "font/woff2", ".woff": "font/woff", ".ico": "image/x-icon", ".webp": "image/webp" };
+    await ctx.route(`${new URL(target).origin}/**`, async (route) => {
+      const pathname = decodeURIComponent(new URL(route.request().url()).pathname);
+      let file = resolve(dist, `.${pathname}`);
+      if (!file.startsWith(dist) || !existsSync(file) || statSync(file).isDirectory()) file = resolve(dist, "index.html");
+      await route.fulfill({ status: 200, contentType: types[extname(file)] || "application/octet-stream", body: readFileSync(file) });
+    });
+  }
   const page = await ctx.newPage();
   await page.addInitScript(({ lang, theme }) => {
     window.localStorage.setItem("cz_lang", lang);

@@ -207,7 +207,7 @@ export default function TacticsPhoneBoard({ rows, partLabels, allOrders }: Tacti
       </div>
       {allOrders && partLabels.length > 0 && (
         <div className="grid gap-x-2 px-0.5 text-2xs font-medium uppercase tracking-wider text-cz-3" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0,1fr))` }}>
-          {partLabels.map((label) => <span key={label} className="truncate">{label}</span>)}
+          {partLabels.map((label) => <span key={label} className="min-w-0 break-words leading-tight">{label}</span>)}
         </div>
       )}
       <ul className="m-0 list-none rounded-cz border border-cz-border p-0">
@@ -228,7 +228,7 @@ export default function TacticsPhoneBoard({ rows, partLabels, allOrders }: Tacti
                 </span>
                 <Meta row={row} dayLoad={dayLoad} />
               </button>
-              <div className="shrink-0">{row.effort}</div>
+              <div className="shrink-0">{row.effortPhone ?? row.effort}</div>
             </div>
             {allOrders && <OrdersLine row={row} columns={columns} />}
           </li>
