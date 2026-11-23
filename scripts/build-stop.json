@@ -418,6 +418,11 @@
       "issue": 8584,
       "area": "plan-og-vaekst",
       "why": "Ejer-go 23/11 (PC1, chat): \"Ja de maa gerne komme paa listen\" - kun Codex G roadmap-model + faste tidspunkter (PR #8616), H saesonskifte-mails 26+29/11 (PR #8619), J annoncepakke, N tracking foer annoncer. Merge kraever stadig ejerens ordrette merge."
+    },
+    {
+      "issue": 8386,
+      "area": "taktik",
+      "why": "Ejer-go 23/11 (PC1, AskUserQuestion, valg af PC1-laner): \"Taktik paa telefon B #8393\" - foer PR #8393 til doers (rebase, build, billeder 390). Merge kraever ejerens ordrette merge efter billeder."
     }
   ],
   "cleanupList": [
