@@ -22,6 +22,7 @@ test('validateGo: issue, område og citat valideres', () => {
   assert.throws(() => validateGo({ issue: 1, area: 'a', quote: '  ' }), /--quote/);
   assert.throws(() => validateGo({ issue: 1, area: 'a', quote: 'sagde "ja"' }), /anførselstegn/);
   assert.throws(() => validateGo({ issue: 1, area: 'a', quote: 'ja -->' }), /HTML/);
+  assert.throws(() => validateGo({ issue: 1, area: 'a', quote: 'Ja, brug `sponsor`' }), /markdown-kode/, 'Codex P2: citatet skal kunne læses tilbage uændret');
 });
 
 test('buildComment: kommentaren læses af samme parser som håndhævelsen', () => {

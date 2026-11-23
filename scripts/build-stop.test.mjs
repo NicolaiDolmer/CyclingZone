@@ -192,6 +192,8 @@ test('ejer-go: markør + citat fra ejerens konto tæller med sit område', () =>
   assert.deepEqual(findOwnerGo([goComment(GOOD)]), { area: 'sponsor', quote: 'Ja, byg den' });
   assert.deepEqual(findOwnerGo([{ login: 'nicolaidolmer', body: GOOD.replace('"Ja, byg den"', '“Kør”') }]), { area: 'sponsor', quote: 'Kør' });
   assert.deepEqual(findOwnerGo([{ user: { login: OWNER_LOGIN }, body: GOOD.replace('sponsor', 'udvikling-2') }]).area, 'udvikling-2');
+  assert.deepEqual(findOwnerGo([goComment(GOOD.replaceAll('\n', '\r\n'))]), { area: 'sponsor', quote: 'Ja, byg den' }, 'CRLF fra GitHub');
+  assert.deepEqual(findOwnerGo([goComment('Eksempel:\n```\n<!-- build-stop: ejer-go area=forkert -->\n```\n' + GOOD)]).area, 'sponsor', 'kode før en ægte markør skader ikke');
 });
 
 test('ejer-go: forkert format eller forkert konto tæller ikke', () => {
@@ -206,6 +208,11 @@ test('ejer-go: forkert format eller forkert konto tæller ikke', () => {
     goComment('"Ja"\n`<!-- build-stop: ejer-go area=sponsor -->`'), // inline-kode
     goComment('"Ja"\n```\n<!-- build-stop: ejer-go area=sponsor -->\n```'), // kodeblok
     goComment('""\n<!-- build-stop: ejer-go area=sponsor -->'), // tomt citat
+    goComment('"Ja"\n~~~\n<!-- build-stop: ejer-go area=sponsor -->\n~~~'), // tilde-kodeblok (Codex P2)
+    goComment('"Ja"\n```md\n<!-- build-stop: ejer-go area=sponsor -->'), // uafsluttet kodeblok
+    goComment('"Ja"\n    <!-- build-stop: ejer-go area=sponsor -->'), // indrykket kode
+    goComment('"Ja"\n> <!-- build-stop: ejer-go area=sponsor -->'), // citeret svar
+    goComment('"Ja" <!-- build-stop: ejer-go area=sponsor -->'), // ikke alene på linjen
   ];
   for (const c of bad) assert.equal(findOwnerGo([c]), null, c.body);
   assert.equal(findOwnerGo(null), null);

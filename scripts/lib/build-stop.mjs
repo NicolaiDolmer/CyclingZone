@@ -131,11 +131,18 @@ export function ghIssueMeta(issue, { repo = 'NicolaiDolmer/CyclingZone', exec = 
 // ekstra spor. Kode (blokke og inline) tæller aldrig, så et eksempel på
 // formatet i en kommentar ikke åbner porten.
 export const OWNER_GO_MARKER_RE = /<!--\s*build-stop:\s*ejer-go\s+area=([\p{L}\p{N}._-]{1,40})\s*-->/iu;
+// Håndhævelsen kræver markøren alene på sin linje i kolonne 0, så indrykket
+// kode og citerede svar ("> <!-- ... -->") aldrig tæller.
+const OWNER_GO_LINE_RE = /^<!--\s*build-stop:\s*ejer-go\s+area=([\p{L}\p{N}._-]{1,40})\s*-->[ \t\r]*$/imu;
 const QUOTE_RE = /["“„]([^"“”„\n]*?\S[^"“”„\n]*?)["”“]/u;
 export const OWNER_LOGIN = 'NicolaiDolmer';
 export const GO_TIMEOUT_MS = 10000;
 
-const stripCode = s => String(s).replace(/```[\s\S]*?```/g, '').replace(/`[^`\n]*`/g, '');
+// Kodeblokke (``` og ~~~, også uafsluttede til slutningen) og inline-kode fjernes.
+const stripCode = s => String(s)
+  .replace(/^[ \t]*(```|~~~)[\s\S]*?^[ \t]*\1[^\n]*$/gm, '')
+  .replace(/^[ \t]*(```|~~~)[\s\S]*$/m, '')
+  .replace(/`[^`\n]*`/g, '');
 
 // Ren: kommentarer [{ login | author.login, body }] -> { area, quote } eller null.
 // Nyeste gyldige markør vinder (kommentarerne kommer i GitHubs rækkefølge).
@@ -147,9 +154,9 @@ export function findOwnerGo(comments, { ownerLogin = OWNER_LOGIN } = {}) {
     const login = String(c?.login ?? c?.author?.login ?? c?.user?.login ?? '').toLowerCase();
     if (login !== owner) continue;
     const text = stripCode(c?.body ?? '');
-    const m = OWNER_GO_MARKER_RE.exec(text);
+    const m = OWNER_GO_LINE_RE.exec(text);
     if (!m) continue;
-    const q = QUOTE_RE.exec(text.replace(OWNER_GO_MARKER_RE, ''));
+    const q = QUOTE_RE.exec(text.replace(OWNER_GO_LINE_RE, ''));
     if (!q) continue; // markør uden ejerens citat tæller ikke
     found = { area: m[1], quote: q[1].trim() };
   }

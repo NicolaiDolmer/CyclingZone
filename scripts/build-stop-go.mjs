@@ -45,6 +45,7 @@ export function validateGo({ issue, area, quote }) {
   if (!q) throw Error('--quote skal være ejerens ordrette ja');
   if (/["“”„]/.test(q)) throw Error("--quote må ikke indeholde dobbelte anførselstegn (brug ')");
   if (/<!--|-->/.test(q)) throw Error('--quote må ikke indeholde HTML-kommentarer');
+  if (/[`~]/.test(q)) throw Error('--quote må ikke indeholde ` eller ~ (markdown-kode tæller ikke i byggestoppet)');
   return { issue: n, area: a, quote: q };
 }
 
@@ -66,7 +67,7 @@ export function run(argv, { exec = execFileSync, readBack = ghOwnerGo, log = con
   const body = buildComment(go);
   // Selvtjek: kommentaren skal kunne læses af samme parser som håndhævelsen.
   const self = findOwnerGo([{ login: 'owner', body }], { ownerLogin: 'owner' });
-  if (!self || self.area !== go.area || !OWNER_GO_MARKER_RE.test(body)) {
+  if (!self || self.area !== go.area || self.quote !== go.quote || !OWNER_GO_MARKER_RE.test(body)) {
     log('[build-stop-go] intern fejl: kommentaren kan ikke læses af byggestoppet');
     return 1;
   }
