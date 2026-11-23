@@ -1,5 +1,29 @@
 export const PATCHES = [
 {
+  "version": "7.504",
+  "date": "2026-11-23",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Rider Rankings",
+      "area": "races",
+      "en": {
+        "title": "Compare wins in the Rider Rankings",
+        "body": "What changed: The Rider Rankings has a Wins view with overall wins, classic wins and total wins side by side.\n\nWhat it means for you: Choose Wins in the table, then tap a column heading to see who leads that category."
+      },
+      "da": {
+        "title": "Sammenlign sejre på rytterranglisten",
+        "body": "Hvad er ændret: Rytterranglisten har fået visningen Sejre, der viser samlede sejre, klassikersejre og sejre i alt side om side.\n\nHvad betyder det for dig: Vælg Sejre i tabellen og tryk på en kolonneoverskrift for at se, hvem der fører i kategorien."
+      },
+      "refs": [
+        7137
+      ]
+    }
+  ]
+},
+{
   "version": "7.503",
   "date": "2026-11-23",
   "changes": [
