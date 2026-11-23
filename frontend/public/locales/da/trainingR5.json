@@ -147,7 +147,8 @@
     },
     "rotation": {
       "passes": "Rotationspas",
-      "setCount": "{count} pas",
+      "count": "{count} pas",
+      "setCount": "Fyld op til {count} pas",
       "session": "Pas {n}: træningspas",
       "effort": "Pas {n}: indsats",
       "defaultEffort": "Standardindsats",

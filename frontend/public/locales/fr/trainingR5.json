@@ -147,7 +147,8 @@
     },
     "rotation": {
       "passes": "Séances de la rotation",
-      "setCount": "{count} séances",
+      "count": "{count} séances",
+      "setCount": "Compléter à {count} séances",
       "session": "Séance {n} : type",
       "effort": "Séance {n} : effort",
       "defaultEffort": "Effort par défaut",

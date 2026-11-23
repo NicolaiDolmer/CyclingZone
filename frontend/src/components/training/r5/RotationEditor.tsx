@@ -50,7 +50,12 @@ export default function RotationEditor({
     <div className="flex min-w-0 flex-col gap-4" data-testid="program-r5-rotation">
       <section className="rounded-cz border border-cz-border bg-cz-card" aria-label={t("passes")}>
         <header className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
-          <h3 className="text-sm font-semibold text-cz-1">{t("passes")}</h3>
+          <div className="flex flex-wrap items-baseline gap-x-2">
+            <h3 className="text-sm font-semibold text-cz-1">{t("passes")}</h3>
+            <span className="font-data text-xs tabular-nums text-cz-2" data-testid="program-r5-rotation-count">
+              {t("count", { count: passes.length })}
+            </span>
+          </div>
           <div className="flex flex-wrap gap-1">
             {[5, 10, ROTATION_MAX_PASSES].filter((count) => count > passes.length).map((count) => (
               <Button key={count} variant="secondary" size="sm" disabled={disabled} onClick={() => editCount(count)}>

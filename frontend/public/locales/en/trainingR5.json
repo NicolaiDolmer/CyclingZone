@@ -147,7 +147,8 @@
     },
     "rotation": {
       "passes": "Rotation passes",
-      "setCount": "{count} passes",
+      "count": "{count} passes",
+      "setCount": "Fill to {count} passes",
       "session": "Pass {n}: session",
       "effort": "Pass {n}: effort",
       "defaultEffort": "Default effort",

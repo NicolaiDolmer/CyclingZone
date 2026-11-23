@@ -147,7 +147,8 @@
     },
     "rotation": {
       "passes": "Sessies in de rotatie",
-      "setCount": "{count} sessies",
+      "count": "{count} sessies",
+      "setCount": "Aanvullen tot {count} sessies",
       "session": "Sessie {n}: type",
       "effort": "Sessie {n}: inspanning",
       "defaultEffort": "Standaardinspanning",

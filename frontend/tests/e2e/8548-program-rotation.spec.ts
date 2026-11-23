@@ -1,6 +1,7 @@
 import type { Page, Route } from "@playwright/test";
 import { test, expect } from "./e2e-base.js";
 import { corsHeaders, evidenceShotPath, installNetworkMocks, json, login, RIDERS, stabilizePage, TEST_TEAM } from "./fixtures.js";
+import { addDays, forecastRotationFields } from "../../../backend/lib/trainingWeekForecast.js";
 
 const weekdays = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 const riders = RIDERS.slice(0, 2);
@@ -59,24 +60,35 @@ test("R5 switches between week blocks and rotation and sends edits, jumps and co
     assigned: { [first.id]: "fixture" },
   }));
   const baseForecast = { fatigue: 35, band: "ok", raceSlots: [4] };
-  const forecast = {
-    ...baseForecast,
-    rotationSlots: [{ index: 6, length: 10, session: "endurance" }, null, { index: 7, length: 10, session: "tempo" }],
-    restSlots: [], nextRotationIndex: 8,
-  };
+  const raceSlotsByDay = [[1, 4], [], [2], [], [0, 3], [], [4], []];
+  let nextRotationIndex = 6;
+  const rotationDays = raceSlotsByDay.map((raceSlots, i) => {
+    const gameDays = Array.from({ length: 5 }, (_, slot) => i * 5 + slot);
+    const fields = { raceSlots, restSlots: i === 1 ? [0, 1, 2, 3, 4] : [] };
+    const forecast = forecastRotationFields({
+      rotation: current, startIndex: nextRotationIndex, gameDays, fields, rule: null, rodeStagePreviousDate: false,
+    });
+    nextRotationIndex = forecast.nextRotationIndex;
+    return forecast;
+  });
+  const dailyRotation = { ...baseForecast, ...rotationDays[0] };
   await page.route("**/api/training/programs/forecast", (route) => mock(route, {
     available: true, tickDate: "2026-11-23", riders: {
       [first.id]: on && mode === "week"
         ? { ...baseForecast, fieldSource: [0, 1, null, 4, null], taken: [3], lockMovedFrom: 4, restSlots: [2] }
-        : on ? forecast : baseForecast,
+        : on ? dailyRotation : baseForecast,
       [second.id]: baseForecast,
     },
   }));
   await page.route("**/api/training/programs/forecast/week", (route) => mock(route, {
-    available: true, days: weekdays.map((weekday, index) => ({
-      date: `2026-11-${23 + index}`, weekday, available: true, races: [],
-      riders: { [first.id]: on && mode === "rotation" ? forecast : baseForecast, [second.id]: baseForecast },
-    })),
+    available: true, days: rotationDays.map((forecast, index) => {
+      const riders = { [first.id]: on && mode === "rotation" ? (index === 0 ? dailyRotation : forecast) : baseForecast, [second.id]: baseForecast };
+      const date = addDays("2026-11-23", index);
+      return {
+        date, weekday: weekdays[index % weekdays.length], available: true, races: [],
+        ...(index === 0 ? { today: { available: true, tickDate: date, riders } } : { riders }),
+      };
+    }),
   }));
   await page.route("**/api/training/programs/rotation", (route) => {
     if (route.request().method() === "PUT") {
@@ -140,7 +152,17 @@ test("R5 switches between week blocks and rotation and sends edits, jumps and co
   await page.getByTestId("program-r5-save").click();
   await expect(page.getByTestId("program-r5-save")).toBeDisabled();
   await expect(page.getByTestId("program-r5-rotation-index").filter({ hasText: "7/10" }).first()).toBeVisible();
-  if (screenshot) await annotatedShot(page, "After · Rotation: pass order and weekly position", `pr-screens/8548/${width}-rotation.png`);
+  const count = page.getByTestId("program-r5-rotation-count");
+  await expect(count).toHaveText("10 passes");
+  await expect(page.getByRole("button", { name: "Fill to 35 passes" })).toBeVisible();
+  const day = (name: string) => page.getByRole("heading", { name, exact: true }).locator("..");
+  await expect(day("Mon").getByTestId("program-r5-rotation-index")).toHaveText(["7/10", "8/10", "9/10"]);
+  await expect(day("Tue").getByText("Rest", { exact: true })).toHaveCount(5);
+  await expect(day("Tue").getByTestId("program-r5-rotation-index")).toHaveCount(0);
+  await expect(day("Wed").getByTestId("program-r5-rotation-index")).toHaveText(["10/10", "1/10", "2/10", "3/10"]);
+  await expect(day("Sun").getByTestId("program-r5-rotation-index")).toHaveText(["7/10", "8/10", "9/10", "10/10"]);
+  await expect(page.getByText("Next week starts at pass 1", { exact: true })).toBeVisible();
+  if (screenshot) await annotatedShot(page, "After · 10 passes and a rolling week", `pr-screens/8548/${width}-rotation-week-after.png`);
   await expect(page.getByTestId("program-r5-rotation").locator('option[value="rest"]').first()).toBeAttached();
   await page.getByRole("button", { name: "Move pass 2 up" }).click();
   await expect(page.getByTestId("program-r5-discard")).toBeVisible();
@@ -150,7 +172,9 @@ test("R5 switches between week blocks and rotation and sends edits, jumps and co
   await expect(page.getByTestId("program-r5-save")).toBeDisabled();
   await page.getByRole("button", { name: "Move pass 2 up" }).click();
   await page.getByRole("button", { name: "Add pass", exact: true }).click();
+  await expect(count).toHaveText("11 passes");
   await page.getByRole("button", { name: "Remove pass 11" }).click();
+  await expect(count).toHaveText("10 passes");
   await page.getByRole("combobox", { name: "Jump to pass" }).selectOption("2");
   await page.getByTestId("program-r5-save").click();
   await expect.poll(() => writes.some((write) => write.startIndex === 2 && write.planKind === "rotation")).toBe(true);
