@@ -51,13 +51,14 @@ type Shared = {
 };
 
 export default function ProgramR5Phone({
-  name, subtitle, typeLabel, chips, onChip, renderLibrary, limitEl, summary, hints, footer,
+  name, subtitle, typeLabel, chips, onChip, renderLibrary, limitEl, summary, hints, footer, showPlan,
   saveLabel, saveDisabled, onSave, focusWeekday = null, ...shared
 }: Shared & {
   // #8580: en ugedag, der skal vælges og foldes ud (fra dagsvælgerens "Ret <ugedag> i Program").
   focusWeekday?: { weekday: string; n: number } | null;
   name: string;
   subtitle: string;
+  showPlan: boolean;
   typeLabel: string | null;
   chips: PhoneChip[];
   onChip: (key: string) => void;
@@ -78,6 +79,7 @@ export default function ProgramR5Phone({
   const [day, setDay] = useState(() => startDayIndex(weekdays, focusWeekday?.weekday ?? todayWeekday));
   const [openDay, setOpenDay] = useState<number>(() => startDayIndex(weekdays, focusWeekday?.weekday ?? todayWeekday));
   // Hver ny anmodning (n) vælger ugedagen igen, også når fanen allerede er åben.
+  const [sheet, setSheet] = useState(false);
   const focusN = focusWeekday?.n ?? null;
   const focusDay = focusWeekday?.weekday ?? null;
   useEffect(() => {
@@ -85,8 +87,9 @@ export default function ProgramR5Phone({
     const idx = startDayIndex(weekdays, focusDay);
     setDay(idx);
     setOpenDay(idx);
+    setSheet(true);
   }, [focusN, focusDay, weekdays]);
-  const [sheet, setSheet] = useState(false);
+
 
   const closeSheet = () => setSheet(false);
   const saveBar = (
@@ -107,11 +110,12 @@ export default function ProgramR5Phone({
         </div>
         <button type="button" onClick={() => setSheet(true)} data-testid="program-r5-change"
           className="-me-1 inline-flex min-h-11 shrink-0 items-center px-1 text-xs font-medium text-cz-accent-t">
-          {tR5("programR5.phone.changeProgram")}
+          {tR5(showPlan ? "programR5.phone.changeProgram" : "programR5.programs")}
         </button>
       </div>
 
-      <div>
+      {showPlan && <>
+      {chips.length > 0 && <div>
         <span className="flex items-baseline justify-between gap-2">
           <span className={LABEL}>{tR5("programR5.weekFor")}</span>
           {typeLabel && <span className="text-2xs text-cz-2">{typeLabel}</span>}
@@ -126,7 +130,7 @@ export default function ProgramR5Phone({
             </button>
           ))}
         </div>
-      </div>
+      </div>}
 
       {hints}
 
@@ -139,6 +143,7 @@ export default function ProgramR5Phone({
       {view === "day"
         ? <DayView {...shared} day={day} onDay={setDay} />
         : <WeekList {...shared} open={openDay} onOpen={setOpenDay} />}
+      </>}
 
       {/* Graensen under ugen, saa felterne faar pladsen oeverst paa en smal skaerm. */}
       {limitEl}

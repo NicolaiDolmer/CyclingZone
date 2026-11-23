@@ -1503,3 +1503,8 @@ Kontakt `training_week_forecast` (off | beta | on), seedet off; tænding er ejer
 - **Løbsdagsaksen** kædes dato for dato med sweepens egen hul-udfyldning (`gameDaySpansByDivision`), og forrige løbsdag slås op over alle divisionens løb. En dato, der ikke giver præcis 5 løbsdage, er `available:false`: løbsdagen gættes aldrig ud fra datoen (UGE-5). Ved sæsonens sidste løbsdato forlænges der ikke, så den dato kan være `available:false`, selv om dagens `/forecast` den dag svarer (den sikre side).
 - **Bindinger og udgang af løb** genbruger motorens regel (`forecastBindingsFromEntryDays`, #5949). Et løb i divisionen, som rytteren ikke er udtaget til, er ikke hans felt (UGE-4).
 - **Kontakten off** (eller et svar uden ugen): `{ available:false, reason:"disabled", days:[] }`, og I dag-fanen er præcis som før.
+
+## Program R5 · tildeling og gruppemedlemmer (#8608, ejer 23/11)
+
+- Biblioteket starter uden valgt program og viser hele kataloget. At åbne en rytters eller gruppes uge er et visningsvalg. Kun et aktivt valg i kataloget åbner for at kopiere eller tilføje programmet. Bekræftelsen viser altid program og antal ryttere eller gruppens navn før skrivning.
+- Gruppens Medlemmer-knap åbner gruppedialogen. Fra rytterens række kan spilleren flytte til en anden gruppe eller tilføje en rytter uden program. Klienten sender gruppens eksisterende medlemmer plus rytteren til `PATCH /api/training/groups/:id`. Serverens eksisterende regel om højst én gruppe pr. rytter gælder.
