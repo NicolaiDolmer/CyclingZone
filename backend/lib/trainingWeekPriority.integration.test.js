@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
-import { buildTeamFatigueForecast } from "./trainingWeekPlanForecast.js";
+import { buildTeamFatigueForecast, loadTeamFatigueForecast } from "./trainingWeekPlanForecast.js";
 import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
 import { DATE1, DAYS1, EVENING_AT, RACE, SEASON, TEAM, createFake, digest, press, rider, seedState, sweep } from "./trainNowSameResult7982.harness.js";
 
@@ -144,6 +144,56 @@ for (const [name, race, fieldSource, taken] of [
     assert.equal(before.fatigue, state.rider_condition[0].fatigue);
   });
 }
+
+// The fake cannot filter on an embedded join (races!inner); every race in the scenario is in the
+// team's season and division, so the day-close lookup drops those two filters.
+const withScheduleJoin = (supabase) => new Proxy(supabase, {
+  get(target, key) {
+    if (key !== "from") return Reflect.get(target, key);
+    return (table) => {
+      const query = target.from(table);
+      if (table !== "race_stage_schedule") return query;
+      const eq = query.eq;
+      query.eq = (column, value) => (String(column).startsWith("races.") ? query : eq.call(query, column, value));
+      return query;
+    };
+  },
+});
+
+test("fund D: loadTeamFatigueForecast på en afregnet dato viser motorens felter med kontakten on", async () => {
+  for (const stage of ["on", "off"]) {
+    const { state } = scenario({ lock: 4, race: [4], stage });
+    const fake = await run(state);
+    const svar = await loadTeamFatigueForecast({ supabase: withScheduleJoin(fake.supabase), team: state.teams[0], seasonId: SEASON.id, now: EVENING_AT });
+    assert.equal(svar.available, true, svar.reason);
+    assert.equal(svar.settled, true);
+    const own = svar.riders[RIDER];
+    assert.equal(own.fatigue, state.rider_condition[0].fatigue, "en afregnet dato viser aftenens træthed");
+    if (stage === "on") {
+      assert.deepEqual(own.fieldSource, sources(state));
+      assert.deepEqual(own.fieldSource, [0, 1, 2, 4, null]);
+      assert.deepEqual(own.taken, [3]);
+      assert.equal(own.lockMovedFrom, 4);
+    } else {
+      assert.equal("fieldSource" in own, false, "slukket: svaret uden ugens felter");
+    }
+  }
+});
+
+test("fund C: beta-trinnets ejer-opslag fejler: motoren afregner ikke, prognosen viser dagens felter", async () => {
+  const { state } = scenario({ lock: 4, race: [4], stage: "beta" });
+  const failTeams = () => createFake(state, { fail: ({ entry }) => (entry.target === "teams" && entry.kind === "read" ? "error" : null) });
+  const output = await sweep(state, failTeams());
+  assert.ok(output.every((result) => result.error), "beta-opslaget kaster, så datoen prøves igen");
+  assert.equal(state.training_rider_ticks.length, 0);
+  await run(state);
+  assert.deepEqual(sources(state), [0, 1, 2, 4, null], "beta-tester: reglen gælder");
+  const failing = failTeams();
+  const svar = await loadTeamFatigueForecast({ supabase: withScheduleJoin(failing.supabase), team: state.teams[0], seasonId: SEASON.id, now: EVENING_AT });
+  assert.ok(failing.log.some((entry) => entry.target === "teams"), "prognosen spurgte beta-trinnet");
+  assert.equal(svar.available, true, svar.reason);
+  assert.equal("fieldSource" in svar.riders[RIDER], false, "ukendt gate = dagens felter");
+});
 
 test("WB-7: træthed erstatter låsen i LD3 og beholder kilden", async () => {
   const { state, forecast } = scenario({ lock: 1, race: [1], fatigue: true });
