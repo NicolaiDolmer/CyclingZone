@@ -1,5 +1,6 @@
 import { createAluntaClient } from "./alunta.js";
 import { captureException } from "./sentry.js";
+import { recordCheckoutEvent } from "./checkoutCampaign.js";
 
 // #2816: statusser hvor et hold allerede HAR et løbende abonnement — spejler
 // entitlement.js's SUBSCRIPTION_ACTIVE_STATUSES minus 'cancelled' (en opsagt
@@ -43,6 +44,7 @@ export function createCheckoutHandler({
   paused = CHECKOUT_PAUSED,
   currentTermsVersion = CURRENT_TERMS_VERSION,
   supabase = null,
+  captureCheckoutEventFn = undefined,
 } = {}) {
   return async function checkout(req, res) {
     if (paused) return res.status(503).json({ error: "Checkout paused", errorCode: "checkout_paused" });
@@ -130,32 +132,16 @@ export function createCheckoutHandler({
         backUrl: `${appBaseUrl}/pro`,
       });
 
-      // #4646: funnel-event — server-side write, samme skema som frontend/src/
-      // lib/logEvent.js. Modparten (checkout_completed) skrives i aluntaWebhook.js
-      // på selve betalingen. Fire-and-forget: instrumentering må ALDRIG vælte et
-      // ellers vellykket køb — kunden har allerede en gyldig checkout_url.
-      try {
-        if (supabase && req.user?.id) {
-          supabase
-            .from("player_events")
-            .insert({ team_id: req.team.id, user_id: req.user.id, event_name: "checkout_started", event_data: { interval, currency } })
-            .then(({ error: evErr }) => {
-              if (evErr) {
-                captureException(new Error(`player_events checkout_started insert fejlede: ${evErr.message}`), {
-                  tags: { flow: "billing", stage: "checkout-player-event" },
-                  teamId: req.team.id,
-                });
-              }
-            })
-            .catch((err) => {
-              // best-effort: kun en afvist promise (netværk/DB-drop) rammer her —
-              // en almindelig supabase-js-fejl kommer tilbage som {error} ovenfor,
-              // ikke som en rejection. Samme capture-mønster, ikke fatalt for købet.
-              captureException(err, { tags: { flow: "billing", stage: "checkout-player-event" }, teamId: req.team.id });
-            });
-        }
-      } catch {
-        // best-effort — se kommentaren ovenfor.
+      // Analytics runs independently of the issued checkout URL.
+      if (supabase && req.user?.id) {
+        recordCheckoutEvent({
+          supabase, teamId: req.team.id, userId: req.user.id, isTestAccount: req.team.is_test_account === true,
+          eventName: "checkout_started", eventData: { interval, currency }, captureCheckoutEventFn,
+        }).catch(() => {
+          captureException(new Error("checkout_started analytics failed"), {
+            tags: { flow: "billing", stage: "checkout-player-event" }, teamId: req.team.id,
+          });
+        });
       }
 
       return res.status(200).json({ checkout_url: checkoutUrl });
