@@ -417,6 +417,10 @@
   ],
   "cleanupList": [
     {
+      "issue": 4016,
+      "why": "Multi-AI-gaten ved sessionsstart talte idle faner og planlagte opgaver som aktive sessioner og bad ejeren STOP ved hver start; ejer-go 23/11 (PC1, AskUserQuestion): \"Ja, cleanupList (Anbefalet)\". PR #8618"
+    },
+    {
       "issue": 8206,
       "why": "Interne hook-vagter (secret, sletning, branch, preflight) blev stille sprunget over, naar cwd ikke var repo-roden; ejer-go 15/11 i hook-sessionen: 'Ja, cleanupList (Anbefalet)', og i hovedsessionen: 'Ja, paa listen'. PR #8207"
     },
