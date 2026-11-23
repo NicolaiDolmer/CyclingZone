@@ -150,6 +150,7 @@ export default function ProgramR5Phone({
         : <WeekList {...shared} open={openDay} onOpen={setOpenDay} />}
       {weekBlockEditor}
       </>}
+      </>}
 
       {/* Graensen under ugen, saa felterne faar pladsen oeverst paa en smal skaerm. */}
       {limitEl}

@@ -99,8 +99,11 @@ test("R5 switches between week blocks and rotation and sends edits, jumps and co
     await page.goto("/training");
     await page.getByRole("tab", { name: "Program", exact: true }).click();
     await expect(page.getByTestId("program-r5")).toBeVisible();
+    if (isMobile) await page.getByTestId("program-r5-change").click();
+    await page.getByTestId("program-r5-catalog").getByText("Road base", { exact: true }).click();
   };
   await open();
+  expect(writes).toEqual([]);
   await expect(page.getByRole("button", { name: "Rotation", exact: true })).toHaveCount(0);
   const screenshot = testInfo.project.name !== "mobile-chromium";
   if (screenshot) await annotatedShot(page, "Before · Week blocks", `pr-screens/8548/${width}-before.png`);
@@ -135,5 +138,7 @@ test("R5 switches between week blocks and rotation and sends edits, jumps and co
   await page.getByRole("checkbox", { name: "Start from pass 1" }).check();
   await page.getByRole("checkbox", { name: `${second.firstname} ${second.lastname}` }).check();
   await page.getByTestId("program-r5-copy-go").click();
+  expect(writes.some((write) => write.riderId === second.id && write.keepPlace === false)).toBe(false);
+  await page.getByTestId("program-r5-copy-confirm").click();
   await expect.poll(() => writes.some((write) => write.riderId === second.id && write.keepPlace === false)).toBe(true);
 });

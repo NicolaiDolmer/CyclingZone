@@ -463,6 +463,10 @@ export default function ProgramR5({
     try {
       const result = await groups.update(groupId, patch);
       if (!result.ok) { setDialogError(true); return; }
+      if (programs.rotationEnabled || weekPriority) {
+        dropPlanDrafts([subjectKey({ kind: "rider", id: moveRider.id })]);
+        await Promise.all([programs.reload?.(), reloadTrainingWeek()]);
+      }
       pickSubject({ kind: "group", id: groupId });
       setMoveRider(null);
     } catch {
