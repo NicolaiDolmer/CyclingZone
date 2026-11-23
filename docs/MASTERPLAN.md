@@ -69,6 +69,7 @@
 - Autopris-incitament #8474 · første dage #8084 · farvepakke #8325 + #8326 + #8364 + #7988 · lofter besluttes · assistent-design #8394 (byg dec.) · trækbar roadmap-tavle (admin, efter #8616) · Claude/Codex.
 - E-mail, winback, notifikationer, PWA, SEO #8396 · Claude · plan først.
 - Nyt byg efter til dørs: top 3 fra roadmap-afstemningen tages med i ugeplanen · ejer.
+- Fejlrettelse: sortér rytterlisten efter spejdet potentiale #7924 · "Stræk" bliver "Sværere" #5850 (ejer 23/11 aften).
 
 ## S6 (starter 28/11)
 
@@ -76,7 +77,8 @@
 - Profiltop #8281 · kolonner #8595 · indbakke #8280/#2223/#7467 · badges i én komponent #8587 · angreb #7884, #6912, #8061 · akademi #6944/#8036 (ejer 23/11).
 - TTT #3463 · motor.
 - U23 #4620 og junior #4621: senest i S6, inden S7 · løbstyper #7471.
-- Holddynamik #1177 · onboarding #1140 · hjælp i kontekst #961.
+- Holddynamik #1177 · onboarding #1140 · hjælp i kontekst #961 · evner forklaret #1833 · velkommen tilbage #8282 · etapeløbsguide #7708.
+- Taktik: hvis-så-ordrer #5574 · opgaveskift på stigning #7417 (med #7884) · enkeltstart-positionering #7565 · løbsfilm: angreb live #8045 (med #7861) · ungdom i bestyrelseslokalet #7096 (ejer 23/11 aften).
 - Fornyelser og udløbne kort (design 9/11) · deling efter sæsonstart · inviter en ven efter Pro 2.0.
 
 ## Senere
