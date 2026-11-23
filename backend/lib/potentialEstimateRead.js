@@ -277,8 +277,13 @@ export async function buildScoutingReportFromView(supabase, { teamId, rider, own
   const potentialView = context.views.get(rider.id) ?? UNSCOUTED;
   const rating = context.ratings.get(rider.id) ?? null;
   const prognoses = await loadPrognosisViews(supabase, { teamId, context, clock });
+  // Codex P2 (#8645): typebåndene bruger samme referencesæson som prognosisView, så en
+  // sæsonpause (ingen aktiv sæson) aldrig gør rytteren yngre i fremskrivningen.
+  const typesAge = rider.birthdate
+    ? scoutBandAge(rider.birthdate, await resolveScoutBandSeasonNumber(supabase)) ?? age
+    : age;
   const types = await loadRoleTypes({
-    rider, abilities: context.abilities.get(rider.id), own, level, teamId, age, bandScout, loadDevelopmentXp, potentialView,
+    rider, abilities: context.abilities.get(rider.id), own, level, teamId, age: typesAge, bandScout, loadDevelopmentXp, potentialView,
   });
   return {
     potentialView,

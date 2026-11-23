@@ -45,6 +45,7 @@ function fakeSupabase(stage) {
       changed_at: null, uncertainty: 3.5, knowledge_key: "s2t3", ceiling_at_write: 77,
     }],
     training_rider_ticks: [{ rider_id: "youth", team_id: TEAM, tick_date: "2026-11-01", season_id: "s", game_day: 1 }],
+    seasons: [{ number: 4, status: "active" }],
     rider_derived_abilities: [{ rider_id: "scouted", ...Object.fromEntries(REGISTRY_ABILITY_KEYS.map((key) => [key, 50])) }],
   };
   const reads = [];
@@ -53,11 +54,12 @@ function fakeSupabase(stage) {
     from(table) {
       reads.push(table);
       const filters = [];
-      const rows = () => (tables[table] ?? []).filter((row) => filters.every(([column, values]) => values.includes(row[column])));
+      const rows = () => (tables[table] ?? []).filter((row) => filters.every((filter) => typeof filter === "function" ? filter(row) : filter[1].includes(row[filter[0]])));
       const query = {
         select() { return query; },
         eq(column, value) { filters.push([column, [value]]); return query; },
         in(column, values) { filters.push([column, values]); return query; },
+        gt(column, value) { filters.push((row) => row[column] > value); return query; },
         order() { return query; },
         range: async () => ({ data: rows(), error: null }),
         maybeSingle: async () => ({ data: rows()[0] ?? null, error: null }),
