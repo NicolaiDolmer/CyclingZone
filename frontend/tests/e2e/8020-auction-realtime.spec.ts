@@ -132,23 +132,29 @@ test("#8020 own settlement removes the row but waits for fresh money reads befor
   const own = { ...base, id: "own-settles-a", rider_id: "own-settles-rider", current_price: 50000, current_bidder_id: TEST_TEAM.id, current_bidder: { id: TEST_TEAM.id, name: TEST_TEAM.name }, rider: { ...AUCTIONS[0].rider, id: "own-settles-rider", team_id: RIVAL_TEAM.id } };
   const other = { ...base, id: "other-b", rider_id: "other-rider", current_price: 100000, current_bidder_id: RIVAL_TEAM.id, current_bidder: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name }, rider: { ...AUCTIONS[0].rider, id: "other-rider", team_id: RIVAL_TEAM.id } };
   let rows = [own, other]; let holding = false, teamHeld = false, snapshotHeld = false;
+  const settledBalance = 410000;
   let release!: () => void; const fresh = new Promise<void>(resolve => { release = resolve; });
   await page.route("**/rest/v1/auctions?**", async route => {
     if (route.request().method() !== "GET") return route.fallback();
-    if (holding) { snapshotHeld = true; await fresh; }
-    return json(route, rows);
+    const bidder = new URL(route.request().url()).searchParams.get("current_bidder_id");
+    if (holding) {
+      if (!bidder) snapshotHeld = true;
+      await fresh;
+    }
+    return json(route, bidder ? rows.filter(row => bidder === `eq.${row.current_bidder_id}`) : rows);
   });
   await page.route("**/rest/v1/teams?**", async route => {
     if (route.request().method() !== "GET" || !new URL(route.request().url()).searchParams.has("user_id")) return route.fallback();
     if (holding) { teamHeld = true; await fresh; }
-    return json(route, { ...TEST_TEAM, balance: holding ? 410000 : 500000 });
+    return json(route, { ...TEST_TEAM, balance: holding ? settledBalance : 500000 });
   });
   let posts = 0;
+  let postedAmount = 0;
   await page.route("**/api/auctions/other-b/bid", route => {
     if (route.request().method() !== "POST") return route.fallback();
     posts += 1;
-    const amount = route.request().postDataJSON().amount;
-    rows = [{ ...other, current_price: amount, current_bidder_id: TEST_TEAM.id, current_bidder: { id: TEST_TEAM.id, name: TEST_TEAM.name } }];
+    postedAmount = route.request().postDataJSON().amount;
+    rows = [{ ...other, current_price: postedAmount, current_bidder_id: TEST_TEAM.id, current_bidder: { id: TEST_TEAM.id, name: TEST_TEAM.name } }];
     return json(route, { ok: true });
   });
   let send: (() => void) | undefined;
@@ -184,7 +190,9 @@ test("#8020 own settlement removes the row but waits for fresh money reads befor
     expect(posts).toBe(0);
     release();
     await expect.poll(() => posts).toBe(1);
-    await expect(page.locator("main header")).toContainText("410.000");
+    const format = new Intl.NumberFormat("da-DK");
+    await expect(page.locator("main header")).toContainText(`${format.format(settledBalance - postedAmount)} CZ$ til rådighed`);
+    await expect(page.locator("main header")).toContainText(`${format.format(postedAmount)} CZ$ låst i bud`);
     await expect(page.locator("main header .cz-skeleton-static")).toHaveCount(0);
     await page.screenshot({ path: evidenceShotPath("pr-screens/8020-own-settlement-confirmed.png"), fullPage: true });
   } finally { release(); }

@@ -10,7 +10,6 @@ import { hasSignedBoardPlan } from "../lib/boardCopy.js";
 import { dateTextToDayOfYear } from "../lib/raceCalendar.js";
 import { poolStageTotals, deriveRaceStatus } from "../lib/raceHubLogic.js";
 import { withActiveSeniorPools } from "../lib/seniorScope.ts";
-import { fetchReservedBalance } from "../lib/availableBalance.js";
 import { teamNudgeCandidates } from "../lib/dashboardNextRace.ts";
 import { isSquadSelectionMissing } from "../lib/raceSquadSelectionStatus.js";
 import { resolveSeasonMovement } from "../lib/seasonRecapData.js";
@@ -20,6 +19,7 @@ import { useDataScope, scopedHeaders } from "./useDataScope.ts";
 import { DataError } from "./apiQuery.ts";
 import { transferOffersQuery } from "./marketData.ts";
 import { LIVE_RESOURCES, isScopeResource, cancelledWithoutData, settledList, sameScopePlaceholder } from "./dashboardQueryPolicy.ts";
+import { MARKET_BALANCE_RESOURCES } from "./marketBalance.ts";
 
 // #6494: the Dashboard's page-owned server data. Every resource is one Query key under the
 // viewer/team scope; the page keeps only UI state (dismissals, menus, pending submits).
@@ -55,7 +55,6 @@ async function readApi(runtime: DataRuntime, scope: DataScope, path: string, sig
 }
 
 export interface DashboardCore {
-  reservedBalance: number;
   pools: Row[];
   poolStages: ReturnType<typeof poolStageTotals>;
   riders: Row[];
@@ -102,7 +101,7 @@ async function readCore(runtime: DataRuntime, scope: DataScope, team: Row, activ
     ? Promise.resolve(supabase.from("races").select("stages, stages_completed, status")
       .eq("season_id", activeSeason.id).eq("league_division_id", team.league_division_id).abortSignal(signal))
     : Promise.resolve({ data: [] });
-  const [teamsRes, ridersRes, squadCountInputs, racesRes, standingsRes, poolRacesRes, poolsRes, reservedBalanceValue] = await Promise.all([
+  const [teamsRes, ridersRes, squadCountInputs, racesRes, standingsRes, poolRacesRes, poolsRes] = await Promise.all([
     // #2182/#3506: same "real team" scope as the standings page (AI teams count).
     supabase.from("teams").select("id, name, division, is_ai, league_division_id")
       .eq("is_test_account", false).eq("is_frozen", false).order("division").order("name").abortSignal(signal),
@@ -124,9 +123,7 @@ async function readCore(runtime: DataRuntime, scope: DataScope, team: Row, activ
     poolRacesPromise,
     // #2182/#5648: active senior pools only.
     withActiveSeniorPools((poolScope) => poolScope(supabase.from("league_divisions").select("id, tier, pool_index, label"))),
-    // #3508: reserved in leading bids + proxy max, shared with the finance page.
-    fetchReservedBalance(supabase, team.id),
-  ]) as [SupabaseResult, SupabaseResult, { pendingIncomingCount: number }, SupabaseResult, SupabaseResult, SupabaseResult, SupabaseResult, number];
+  ]) as [SupabaseResult, SupabaseResult, { pendingIncomingCount: number }, SupabaseResult, SupabaseResult, SupabaseResult, SupabaseResult];
   runtime.assertReadCurrent(scope, revision);
   // #5312/#8019: the board read used to be the only call here that could surface "the game
   // server cannot be reached". It is a module now, so the core says it itself: when both of
@@ -139,7 +136,6 @@ async function readCore(runtime: DataRuntime, scope: DataScope, team: Row, activ
   const standingsMap: Record<string, Row> = {};
   for (const row of standingsRes.data || []) standingsMap[row.team_id] = row;
   return {
-    reservedBalance: reservedBalanceValue || 0,
     pools: poolsRes.data || [],
     poolStages: poolStageTotals(poolRacesRes.data || []),
     riders: ridersRes.data || [],
@@ -420,12 +416,16 @@ export function useDashboardData(options: DashboardOptions) {
   const error = bootstrapError ?? coreError ?? null;
   const loading = !signedOut && (!ready || context.bootstrapLoading || (hasTeam && (!seasonSettled || core === undefined) && !coreError));
 
+  // #8357: the reservation behind "available" lives outside the dashboard core now, so a
+  // live refresh re-reads it with the team balance.
+  const isLive = useCallback((query: Parameters<typeof isScopeResource>[0]) => isScopeResource(query, scope, LIVE_RESOURCES)
+    || isScopeResource(query, scope, MARKET_BALANCE_RESOURCES), [scope]);
   const refreshLive = useCallback(() => client.invalidateQueries(
-    { predicate: (query) => isScopeResource(query, scope, LIVE_RESOURCES) }, { cancelRefetch: false },
-  ), [client, scope]);
+    { predicate: isLive }, { cancelRefetch: false },
+  ), [client, isLive]);
   const retry = useCallback(() => client.refetchQueries(
-    { predicate: (query) => isScopeResource(query, scope, LIVE_RESOURCES) && query.state.status === "error" },
-  ), [client, scope]);
+    { predicate: (query) => isLive(query) && query.state.status === "error" },
+  ), [client, isLive]);
 
   // Writes bind to the captured viewer and hold reads while in flight; nothing is optimistic
   // on the server's behalf. Reads cancelled by the barrier without data are refetched after.

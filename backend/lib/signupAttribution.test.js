@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildAttributionRow } from "./signupAttribution.js";
+import { buildAttributionRow, buildSignupAttributionRow } from "./signupAttribution.js";
 
 test("buildAttributionRow returnerer null uden userId eller gyldig payload", () => {
   assert.equal(buildAttributionRow(null, { utm_source: "x" }), null);
@@ -71,4 +71,19 @@ test("buildAttributionRow capper for lange værdier", () => {
   const row = buildAttributionRow("u1", { utm_source: long, referrer: long });
   assert.equal(row.utm_source.length, 200);
   assert.equal(row.referrer.length, 500);
+});
+
+test("hold-bootstrap bruger den første kontoattribution frem for den aktuelle browser", () => {
+  const campaign = { utm_source: "example", utm_medium: "paid", utm_campaign: "first", utm_content: "creative" };
+  const user = { id: "u1", user_metadata: { attribution: { ...campaign, landing_path: "/da", fbclid: "private" } } };
+  const row = buildSignupAttributionRow(user, { landing_path: "/login", utm_source: "unrelated" });
+  for (const [key, value] of Object.entries(campaign)) assert.equal(row[key], value);
+  assert.equal(row.landing_path, "/da");
+  assert.equal(Object.hasOwn(row, "fbclid"), false);
+});
+
+test("hold-bootstrap bevarer browser-fallback for ældre konti uden et brugbart snapshot", () => {
+  const row = buildSignupAttributionRow({ id: "u1", user_metadata: { attribution: {} } }, { utm_source: "example", landing_path: "/signup" });
+  assert.equal(row.utm_source, "example");
+  assert.equal(row.landing_path, "/signup");
 });

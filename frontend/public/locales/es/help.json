@@ -225,6 +225,10 @@
       "squadAndAuctions": {
         "title": "Tamaño de la plantilla y subastas",
         "text": "Los límites de plantilla se siguen aplicando por división. Las subastas activas que lideras reservan tanto saldo como un posible hueco de plantilla, así que no puedes liderar más subastas de las que tu plantilla puede albergar."
+      },
+      "availableBalance": {
+        "title": "Saldo disponible",
+        "text": "Tu saldo disponible es lo que puedes gastar tras descontar lo que tienes bloqueado en las pujas que lideras y en las pujas automáticas activas."
       }
     },
     "transfers": {

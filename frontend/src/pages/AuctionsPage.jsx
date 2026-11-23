@@ -52,6 +52,7 @@ import { useAuctionBidding } from "../lib/useAuctionBidding";
 import { formatNumber } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import { computeBidValueDelta, getRiderSalary, getRiderMarketValue } from "../lib/marketValues.js";
+import { refreshMarketBalance, useMarketBalance } from "../data/marketBalance.ts";
 import { parseAmountInput } from "../lib/amountInput.js";
 import { riderOverallRating } from "../lib/riderRating";
 import { useTypeColumnLabel } from "../lib/useTypeColumnLabel.ts";
@@ -932,7 +933,8 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function AuctionsPage() {
-  const { t } = useTranslation(["auctions", "common"]);
+  const { t } = useTranslation(["auctions", "common", "finance"]);
+  const marketBalance = useMarketBalance();
   const reputationOn = useRiderReputation();
   const auctionsTourSteps = useMemo(() => getAuctionsTourSteps(t), [t]);
   // #1162: hoisted hertil (fra AuctionsContent) så rider-listen kan dekoreres med
@@ -1219,6 +1221,9 @@ export default function AuctionsPage() {
   useAuctionEvents(realtime, (updated, previous) => {
     const myTeam = myTeamIdRef.current;
     if (!previous) return;
+    if (myTeam && (getAuctionLeaderId(previous) === myTeam || getAuctionLeaderId(updated) === myTeam || previous.myProxyMax)) {
+      refreshMarketBalance();
+    }
     if (shouldFlashPrice(previous, updated)) flashAuctionPrice(updated.id);
     if (isOverbidEvent(previous, updated, myTeam)) {
       const rider = previous.rider;
@@ -1273,6 +1278,7 @@ export default function AuctionsPage() {
       }
     }
     if (res.ok) {
+      refreshMarketBalance();
       apiFetch(`/api/achievements/check`, {
         method: "POST",
         headers,
@@ -1304,7 +1310,7 @@ export default function AuctionsPage() {
       body: JSON.stringify({ max_amount: maxAmount }),
     });
     if (res.networkError) throw res.error ?? new Error("Network request failed"); // #5242/#3619, se handleBid
-    if (res.ok) { loadAll(); return { ok: true }; }
+    if (res.ok) { refreshMarketBalance(); loadAll(); return { ok: true }; }
     const data = res.data || {};
     return { ok: false, error: resolveApiError(data, t, t("auctions:error.proxyFailed")) };
   }
@@ -1320,7 +1326,7 @@ export default function AuctionsPage() {
       headers,
     });
     if (res.networkError) throw res.error ?? new Error("Network request failed"); // #5242/#3619, se handleBid
-    if (res.ok) { loadAll(); return { ok: true }; }
+    if (res.ok) { refreshMarketBalance(); loadAll(); return { ok: true }; }
     const data = res.data || {};
     return { ok: false, error: resolveApiError(data, t, t("auctions:error.proxyRemoveFailed")) };
   }
@@ -1521,10 +1527,8 @@ export default function AuctionsPage() {
         </div>
       )}
 
-      {/* #4628 (audit 2026-09, /auctions score 11: "556 px chrome foer foerste
-          auktion"): de fire stat-kort (Saldo / Reserveret / Ryttere / Prognose)
-          er nu ÉN meta-linje i sidehovedet. Tallene er kontekst for buddene,
-          ikke sidens indhold — TASTE P1 ("data foerst, forklaring bagefter").
+      {/* #8357: reserve the two balance rows before the auction data arrives
+          so the header actions do not move when the values replace the skeleton.
           Action-slotten holder de to tilladte quiet utility actions (live-feed
           + Historik, PAGE_TEMPLATES' header-kontrakt); "Aktiv (N)"-linket er
           vaek, fordi man staar paa den side, og tallet nu staar i "All (N)"-fanen.
@@ -1535,19 +1539,32 @@ export default function AuctionsPage() {
         title={t("auctions:page.title")}
         subtitle={
           <span className="block font-data tabular-nums text-cz-2">
-            {!loading && myTeamId && (moneyPending ? <Skeleton className="inline-block h-3 w-48 align-middle" /> :
+            {(loading || myTeamId) && (
+              <span className="block min-h-11">
+                {!loading && !moneyPending && marketBalance && marketBalance.mode !== "pending" ? (
+                  <>
+                    <span className="block text-xl font-semibold text-cz-1">
+                      {marketBalance.mode === "available"
+                        ? t("finance:balance.available", { value: formatNumber(marketBalance.value) })
+                        : <>{t("auctions:stats.balance")} {formatNumber(marketBalance.value)} CZ$</>}
+                    </span>
+                    {marketBalance.locked > 0 && (
+                      <span className="block text-xs">
+                        {t("finance:balance.lockedInBids", { value: formatNumber(marketBalance.locked) })}
+                      </span>
+                    )}
+                  </>
+                ) : <Skeleton className="block h-7 w-36" />}
+              </span>
+            )}
+            {!loading && myTeamId && !moneyPending && (
               <>
-                {t("auctions:stats.balance")} {formatNumber(myBalance)} CZ$
-                {reservedBalance > 0 && (
-                  <> · {t("auctions:stats.reserved")} {formatNumber(reservedBalance)} CZ$</>
-                )}
                 {currentRiderCount !== null && (
-                  <> · {t("auctions:stats.ridersNow")} {currentRiderCount}</>
+                  <>{t("auctions:stats.ridersNow")} {currentRiderCount} · </>
                 )}
                 {projectedRiderCount !== null && projectedRiderCount !== currentRiderCount && (
-                  <> · {t("auctions:stats.projection")} {projectedRiderCount}</>
+                  <>{t("auctions:stats.projection")} {projectedRiderCount} · </>
                 )}
-                {" · "}
               </>
             )}
             {/* #196: aggregat-ticker — rolling vindue, opdateres live via channel + 1s tick. */}
