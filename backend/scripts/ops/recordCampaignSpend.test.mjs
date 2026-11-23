@@ -2,6 +2,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
 import { parseCampaignSpend, recordCampaignSpend } from "./recordCampaignSpend.mjs";
 
@@ -50,5 +52,19 @@ test("the additive spend table can be applied twice and stays service-only", asy
     }
   } finally {
     await db.close();
+  }
+});
+
+test("the CLI prints its date and amount validation errors", () => {
+  const script = fileURLToPath(new URL("./recordCampaignSpend.mjs", import.meta.url));
+  for (const [index, invalid, expected] of [
+    [1, "2026-02-30", /Ugyldig dato/],
+    [5, "2.001", /højst to decimaler/],
+  ]) {
+    const invalidArgs = [...args];
+    invalidArgs[index] = invalid;
+    const result = spawnSync(process.execPath, [script, ...invalidArgs], { encoding: "utf8" });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, expected);
   }
 });
