@@ -361,7 +361,8 @@ export function decideCodexRerequest({ comments = [], reviews = [], headSha, hea
   if (EXEMPT_AUTHORS.includes(botLogin(author))) return { request: false, reason: 'undtaget fra Codex-krav' };
   const codex = evaluateCodex({ comments, reviews, headSha });
   if (codex.state === 'completed') return { request: false, reason: 'Codex har reviewet hovedet' };
-  if (codex.state === 'pending') return { request: false, reason: 'Codex-review koerer' };
+  // Et 'koerer'-resume paa hovedet maa ikke skjule en fejlbesked nyere end bestillingen (Codex P2): Codex opdaterer ikke altid resumeet.
+  const pending = codex.state === 'pending';
   const headAt = timeMs(headCommittedAt);
   const head = String(headSha ?? '').toLowerCase();
   const owner = botLogin(ownerLogin);
@@ -378,6 +379,7 @@ export function decideCodexRerequest({ comments = [], reviews = [], headSha, hea
     })
     .filter((t) => t !== null);
   if (!requestAts.length) {
+    if (pending) return { request: false, reason: 'Codex-review koerer' };
     // Uden kendt hovedtidspunkt kan en manuel bestilling ikke vurderes: hellere ingen kommentar end en dobbelt.
     if (!Number.isFinite(headAt)) return { request: false, reason: 'hovedets tidspunkt ukendt' };
     return { request: true, reason: 'ingen bestilling paa hovedet' };
@@ -387,6 +389,7 @@ export function decideCodexRerequest({ comments = [], reviews = [], headSha, hea
     .filter(({ x, at }) => isCodex(x) && CODEX_ERROR_RE.test(String(x?.body ?? '')) && Number.isFinite(at))
     .map(({ at }) => at);
   const errored = codex.state === 'failed' || errorAts.some((t) => t > lastRequest);
+  if (pending && !errored) return { request: false, reason: 'Codex-review koerer' };
   if (!errored) return { request: false, reason: 'allerede bestilt efter hovedets commit' };
   if (now.getTime() - lastRequest < CODEX_RETRY_MS) return { request: false, reason: 'Codex fejlede, men der er bestilt inden for den seneste time' };
   return { request: true, reason: 'Codex fejlede paa hovedet; ny bestilling (hoejst en i timen)' };

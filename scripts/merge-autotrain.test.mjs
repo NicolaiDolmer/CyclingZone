@@ -786,6 +786,19 @@ describe('#7654 decideCodexRerequest', () => {
     assert.equal(decide({ comments: [userRequest(61)], reviews: [review] }).request, true);
   });
 
+  it('koerer-resume paa hovedet + fejlbesked nyere end bestillingen: gen-bestiller efter en time (Codex P2)', () => {
+    const running = codexSummary(HEAD, 'In progress');
+    const late = decide({ comments: [running, userRequest(61), codexError(59)] });
+    assert.equal(late.request, true);
+    assert.match(late.reason, /fejlede/);
+    const early = decide({ comments: [running, userRequest(40), codexError(38)] });
+    assert.equal(early.request, false);
+    assert.match(early.reason, /inden for den seneste time/);
+    // Uden fejl, eller med en fejl FOER bestillingen, koerer reviewet stadig.
+    assert.match(decide({ comments: [running, userRequest(61)] }).reason, /koerer/);
+    assert.match(decide({ comments: [running, codexError(90), userRequest(61)] }).reason, /koerer/);
+  });
+
   it('en ny bestilling efter fejlen: ingen yderligere, til naeste fejl + en time', () => {
     const comments = [codexSummary(OLD_HEAD), userRequest(120 - 1), codexError(100), userRequest(5)];
     assert.equal(decide({ comments, headCommittedAt: rrAgo(130) }).request, false);
