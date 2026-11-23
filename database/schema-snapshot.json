@@ -3298,7 +3298,8 @@
         "was_race_day",
         "intention",
         "contributions",
-        "created_at"
+        "created_at",
+        "intensity"
       ]
     },
     "rider_uci_history": {

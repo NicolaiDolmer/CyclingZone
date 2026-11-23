@@ -23,6 +23,9 @@ type ProgramsResponse = {
 };
 
 export type ProgramsResult = { ok: boolean; error?: string; applied?: number; skipped?: number };
+// #8561: Program-fanen R5 viser henter / fejl ud fra den foerste hentning. "ready" bliver
+// staaende ved senere genindlaesninger, saa en gemning aldrig blinker skelettet frem.
+export type ProgramsStatus = "loading" | "ready" | "error";
 
 export function useTrainingPrograms({ onChanged }: { onChanged?: () => Promise<unknown> | void } = {}) {
   const [enabled, setEnabled] = useState(false);
@@ -31,12 +34,14 @@ export function useTrainingPrograms({ onChanged }: { onChanged?: () => Promise<u
   const [catalog, setCatalog] = useState<CatalogProgram[]>([]);
   const [assigned, setAssigned] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<ProgramsStatus>("loading");
 
   const load = useCallback(async () => {
     const headers = await authHeaders();
-    if (!headers) return;
+    if (!headers) { setStatus((prev) => (prev === "ready" ? prev : "error")); return; }
     const res = await apiFetch("/api/training/programs", { headers }, { source: "training-programs" });
-    if (!res.ok) return;
+    if (!res.ok) { setStatus((prev) => (prev === "ready" ? prev : "error")); return; }
+    setStatus("ready");
     const data = (res.data ?? {}) as ProgramsResponse;
     // `=== true`: et aeldre backend-svar uden feltet skal give den GAMLE flade.
     setEnabled(data.enabled === true);
@@ -86,5 +91,8 @@ export function useTrainingPrograms({ onChanged }: { onChanged?: () => Promise<u
     [send],
   );
 
-  return { enabled, cellsEnabled, seeds, catalog, assigned, busy, applyProgram, applyToRiders, setCell, reload: load };
+  // "Proev igen" fra fejl-tilstanden: tilbage til henter, saa knappen ikke staar doed under kaldet.
+  const retry = useCallback(async () => { setStatus("loading"); await load(); }, [load]);
+
+  return { enabled, cellsEnabled, seeds, catalog, assigned, busy, status, applyProgram, applyToRiders, setCell, reload: load, retry };
 }

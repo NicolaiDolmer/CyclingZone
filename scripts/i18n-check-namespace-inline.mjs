@@ -67,6 +67,7 @@ const INLINE_EXEMPT = new Set([
   "pro", // ProUpgradePage — ready-gate
   "watchlist", // WatchlistPage — ready-gate
   "staffOverview", // StaffOverviewPage (tab i KlubPage) — ready-gate
+  "trainingR5", // #7947 R5 I dag-fanen (TodayR5, bag training_page_r5) — I18nReadyGate i TrainingPage
   "standings",
   "squad", // #5519 SquadPage (U23 team / Junior team): I18nReadyGate i App.jsx
   "pwa", // #6584 InstallPrompt: mountInstallPrompt venter paa loadNamespaces + ready-gate

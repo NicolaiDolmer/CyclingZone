@@ -26,7 +26,7 @@ export default function ForumHighlightsCard() {
   if (status === "error") return null;
 
   return (
-    <Section data-testid="forum-highlights-card">
+    <Section data-testid="forum-highlights-card" data-dashboard-card="forumHighlights">
       <SectionHeader
         title={t("dashboard:forumHighlights.title")}
         action={

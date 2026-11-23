@@ -11,9 +11,12 @@
 //                'gc' (+ 'team'), aldrig 'stage' (ejer på #6499, 11/10).
 //                En etape/et endagsløb tæller én gang pr. rytter.
 //   hårde dage = rækker i rider_training_scores for sæsonen med
-//                day_type = 'training', was_race_day = false og en session hvis
-//                intensitet er 'hard' (trainingDayTypes.SESSION_INTENSITY),
-//                deduplikeret pr. (rytter, game_day ?? tick_date).
+//                day_type = 'training', was_race_day = false og et KØRT niveau
+//                'hard', deduplikeret pr. (rytter, game_day ?? tick_date).
+//                #7947: det kørte niveau er rækkens `intensity` (motoren gemmer den
+//                med kontakten training_effort_levels on); er den null (kontakten
+//                off, eller rækken er fra før kolonnen), er det sessionens
+//                standardniveau (trainingDayTypes.SESSION_INTENSITY), som før.
 //
 // Kun SELECT. Bruges af riderProgressionEngine (sæsonskiftet, flag on) og af den
 // read-only prøvekørsel backend/scripts/dev/agingV2DryRun6110.mjs.
@@ -35,11 +38,26 @@ export const HARD_TRAINING_SESSIONS = Object.freeze(
 // (supabasePagination.js #4010) og ingen .in()-liste nærmer sig URL-loftet (#3030).
 export const RACE_ID_CHUNK = 20;
 
-function isHardTrainingRow(row) {
-  return row?.day_type === "training"
-    && row.was_race_day === false
-    && SESSION_INTENSITY[row.session] === "hard";
+// #7947: kørt niveau før tabel-niveau. En Lang tur kørt hårdt er en hård dag; en
+// VO2max kørt let er ikke.
+function executedLevel(row) {
+  return row.intensity ?? SESSION_INTENSITY[row.session];
 }
+
+// Ejer 21/11 ("Hård er hård"): en færdighedsdag (teknik, aero, løbslære) kørt på Hård
+// tæller også. Færdighedssessioners standardniveau er aldrig hårdt, så uden et kørt
+// niveau (kontakten off) er tællingen uændret.
+const HARD_DAY_TYPES = ["training", "skill"];
+function isHardTrainingRow(row) {
+  return HARD_DAY_TYPES.includes(row?.day_type)
+    && row.was_race_day === false
+    && executedLevel(row) === "hard";
+}
+
+// 42703 = ukendt kolonne: backend kan deploye før auto-migrate har tilføjet
+// rider_training_scores.intensity (#2642). Så findes intet kørt niveau endnu, og
+// tabel-niveauet er sandheden, præcis som før.
+const isMissingColumn = (error) => error?.code === "42703";
 
 /**
  * Ren tælling fra rå rækker. Returnerer Map(rider_id → { raceDays, hardDays }).
@@ -128,18 +146,33 @@ export async function loadSeasonDevelopmentLoad({ supabase, seasonId = null, sea
   // Endagsløb har ingen 'stage'-rækker; rytterens 'gc'-række er hans løbsdag.
   const oneDayRows = await resultRows(singleRaceIds, "gc");
 
-  const trainingRows = await fetchAllRowsKeyset((after) => {
-    let q = supabase
+  // To opslag: (1) sessioner hvis standardniveau er hårdt (som før; deres kørte niveau
+  // kan være lavere), (2) #7947 rækker hvis kørte niveau er hårdt på en anden session.
+  // Dubletter mellem de to fjernes på id.
+  const trainingQuery = (columns, narrow, dayTypes = ["training"]) => fetchAllRowsKeyset((after) => {
+    let q = narrow(supabase
       .from("rider_training_scores")
-      .select("id, rider_id, day_type, was_race_day, session, game_day, tick_date")
+      .select(columns)
       .eq("season_id", sid)
-      .eq("day_type", "training")
-      .eq("was_race_day", false)
-      .in("session", HARD_TRAINING_SESSIONS)
+      .in("day_type", dayTypes)
+      .eq("was_race_day", false))
       .order("id", { ascending: true });
     if (after != null) q = q.gt("id", after);
     return q;
   });
+  const BASE_COLUMNS = "id, rider_id, day_type, was_race_day, session, game_day, tick_date";
+  const bySession = (q) => q.in("session", HARD_TRAINING_SESSIONS);
+  let trainingRows;
+  try {
+    trainingRows = await trainingQuery(`${BASE_COLUMNS}, intensity`, bySession);
+    const seen = new Set(trainingRows.map((r) => r.id));
+    for (const row of await trainingQuery(`${BASE_COLUMNS}, intensity`, (q) => q.eq("intensity", "hard"), HARD_DAY_TYPES)) {
+      if (!seen.has(row.id)) trainingRows.push(row);
+    }
+  } catch (err) {
+    if (!isMissingColumn(err)) throw err;
+    trainingRows = await trainingQuery(BASE_COLUMNS, bySession);
+  }
 
   // Kontroltal til prøvekørslen: at endagsløb faktisk tæller med (#6499).
   const oneDayRiderDays = new Set(

@@ -33,6 +33,7 @@
 // are always shown apart, per rider and in total (Fable verdict on PR #8276, point 5).
 import type { DailyRiderReceipt, DailyTrainingReceipt, TrainingActivity } from "./trainingDailyReceipt.ts";
 import { orderAbilities } from "./trainingReceiptView.ts";
+import { ratingChange, type RatingChange, type RosterAbilities } from "./xpRatingChange.ts";
 
 type Numbers = Record<string, number>;
 export interface XpBar { xp: number; price: number }
@@ -79,6 +80,8 @@ export interface XpTodayRider {
   sessions: XpSession[];
   abilities: XpAbilityRow[];
   sessionScore: number | null;
+  /** #7947: best-role rating before > after the date's points; null = unchanged or no data. */
+  rating?: RatingChange | null;
 }
 export interface XpDay { date: string; training: number; race: number; points: number; earned: number; paid: number; status: DailyTrainingReceipt["receipt_status"] }
 export type TodayFilter = "all" | "gained" | "raced" | "notRaced";
@@ -86,6 +89,8 @@ export interface XpTodayView {
   date: string; status: DailyTrainingReceipt["receipt_status"];
   previous: string | null; next: string | null;
   strip: XpDay[];
+  /** Dates before the strip's first day, still inside the 30-day window: what "Show older days" would add. */
+  olderDays: number;
   xp: number; xp30: number; points: number; pointRiders: number;
   earned: number; paid: number; earnedRiders: number; paidRiders: number;
   racePercent: number | null;
@@ -114,6 +119,8 @@ export interface XpViewOptions {
   types?: Record<string, XpRiderType | null | undefined>;
   /** The session score already shown on the training page, per slot. */
   scoreOf?: (riderId: string, date: string, activity: TrainingActivity, seasonId: string | null) => number | null;
+  /** #7947: rider id -> the roster row with abilities flattened, for the rating change. */
+  abilities?: Record<string, RosterAbilities | null | undefined>;
 }
 
 /** The display boundary the fatigue colour already uses (ConditionChips.fatigueColor). */
@@ -236,7 +243,7 @@ function single(entries: Array<[string, number]>): string | null {
   return hit.length === 1 && hit[0][1] === 1 ? hit[0][0] : null;
 }
 
-export function buildTodayView(runs: ReadonlyArray<XpReceipt>, date: string | null, options: XpViewOptions = {}): XpTodayView | null {
+export function buildTodayView(runs: ReadonlyArray<XpReceipt>, date: string | null, options: XpViewOptions = {}, showAllDays = false): XpTodayView | null {
   const days = xpDays(runs);
   if (days.length === 0) return null;
   // A picked date that is no longer in the receipts (e.g. after a refetch) falls back to the latest day.
@@ -245,6 +252,9 @@ export function buildTodayView(runs: ReadonlyArray<XpReceipt>, date: string | nu
   const day = days[index] ?? days.at(-1)!;
   const run = byDate(runs).get(day.date)!;
   const month = days.slice(-MONTH_DAYS);
+  // "Show older days" widens the strip to the whole window; otherwise the seven-day strip.
+  const strip = showAllDays ? month : stripWindow(days, index);
+  const olderDays = days.findIndex(d => d.date === strip[0]?.date);
   const riders: XpTodayRider[] = run.report.riders.map(row => {
     const sources = xpBySource(row.activities);
     const totals = riderTotals(row);
@@ -276,12 +286,14 @@ export function buildTodayView(runs: ReadonlyArray<XpReceipt>, date: string | nu
       sessions: row.activities.map((a, i) => sessionOf(a, scores[i])),
       abilities,
       sessionScore: sessionScores.length ? Math.round(sessionScores.reduce((s, n) => s + n, 0) / sessionScores.length) : null,
+      // #7947: the roster is the rider now, so only the newest date has a rating change.
+      rating: index === days.length - 1 ? ratingChange(options.abilities?.[row.rider_id], row.gains_detail) : null,
     };
   }).sort((a, b) => b.points - a.points || b.xp - a.xp || byName(a, b));
   return {
     date: day.date, status: day.status,
     previous: days[index - 1]?.date ?? null, next: days[index + 1]?.date ?? null,
-    strip: stripWindow(days, index),
+    strip, olderDays: Math.max(0, olderDays),
     xp: day.training + day.race,
     xp30: month.reduce((sum, d) => sum + d.training + d.race, 0),
     points: day.points, pointRiders: riders.filter(r => r.points > 0).length,

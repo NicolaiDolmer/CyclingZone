@@ -60,7 +60,7 @@ export function computeAvailableBalance(balance, reserved) {
  *
  * @param {number|null|undefined} balance Rå team.balance (én fælles kilde).
  * @param {number|null|undefined} reserved Bundet i bud, eller null når ukendt.
- * @param {{ failed?: boolean, timedOut?: boolean }} [state]
+ * @param {{ failed?: boolean, timedOut?: boolean, balanceUnconfirmed?: boolean }} [state]
  * @returns {null
  *   | { mode: "available", value: number, locked: number }
  *   | { mode: "balance", value: number, locked: 0 }
@@ -68,10 +68,11 @@ export function computeAvailableBalance(balance, reserved) {
  */
 export function resolveBalanceDisplay(balance, reserved, state = {}) {
   if (balance == null) return null;
-  if (!state.failed && typeof reserved === "number" && Number.isFinite(reserved)) {
+  if (state.balanceUnconfirmed || state.failed) return { mode: "balance", value: balance, locked: 0 };
+  if (typeof reserved === "number" && Number.isFinite(reserved)) {
     return { mode: "available", value: computeAvailableBalance(balance, reserved), locked: Math.max(0, reserved) };
   }
-  if (state.failed || state.timedOut) return { mode: "balance", value: balance, locked: 0 };
+  if (state.timedOut) return { mode: "balance", value: balance, locked: 0 };
   return { mode: "pending", value: null, locked: 0 };
 }
 

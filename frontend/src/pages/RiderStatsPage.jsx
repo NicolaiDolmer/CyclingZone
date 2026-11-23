@@ -2253,6 +2253,7 @@ export default function RiderStatsPage() {
           trainingHistory={trainingHistory}
           viewer={isMyRider ? "own" : "scouting"}
           projection={projection}
+          training={training}
         />
       )}
 

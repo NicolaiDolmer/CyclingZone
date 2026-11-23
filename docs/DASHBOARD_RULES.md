@@ -69,6 +69,10 @@ Bestyrelsen mistede sin `lg:col-span-2` i omlægningen: /board har 959 sessions 
 
 ## 5. Tjekliste før du tilføjer et modul
 
+Kalenderhandlingerne på dashboardet åbner `/planning?tab=calendar`. Det gælder sæsonstatus, kortet Kommende løb og kalenderlinks i tomtilstandene for Seneste resultater og Rytterrangliste. Refs #8447.
+
+Begynderforløbets tjekliste og afslutningskort følger begge serverens `dismissed`- og `established`-status. Tjeklistens rundvisning er en sekundær handling. Status for udført træning vises ved træningstrinnet eller som feedback på en handling i tjeklisten.
+
 1. Kan det være i halv bredde? Hvis ja, hører det i gridet. Hvis nej, skriv hvorfor i kodekommentaren.
 2. Rører placeringen en af rækkerne i §2? Så skal ejeren spørges først.
 3. Er det registreret i `DashboardCustomizeMenu`?
@@ -79,3 +83,13 @@ Bestyrelsen mistede sin `lg:col-span-2` i omlægningen: /board har 959 sessions 
 ### #8022 review geometry follow-up
 
 The unknown header identity uses compact, capped skeleton widths so it does not force the action cluster onto an extra mobile row. While balance is pending, its existing optional locked-balance line holds a local skeleton; confirmed zero still removes that line. Undefined latest-result data renders the existing Card/header and quiet pending body matching the measured synthetic fixture anatomy (355px desktop / 394px mobile; other histories and first-race variants can differ): five 58px rows, plus two mobile wrapping lines. Null/error and confirmed-empty behavior remain unchanged. This reserves genuine pending data only; late conditional content and a confirmed-empty stage strip still follow their established visibility rules, and their remaining CLS must be reported separately.
+
+### #8019 bestyrelsen for sig selv (ejer 20/11: hurtigt, men uden blink)
+
+Bestyrelsesstatus hentes parallelt med kernedata og holder ikke siden tilbage. Den er et modul som alle andre: fejler kaldet (netværk eller HTTP), skjules kun bestyrelseskortet, og dashboardet går aldrig i offline-tilstand på grund af det. Kernen siger selv til, når spillets server ikke kan nås: fejler både holdlisten og rytterlisten, er kernen utilgængelig og viser sin fejltilstand med Prøv igen (#5312).
+
+- **Ingen pladsholder for bestyrelseskortet.** Det vises først, når en etableret plan findes. En grå kasse, der forsvinder igen for spillere uden plan, er et blink.
+- **Global Rank holdes skjult, til bestyrelsen er afklaret.** Den står efter bestyrelseskortet, så et sent kort ellers ville flytte den. Widget'en monteres med det samme, så dens egen læsning ikke venter.
+- **Næste træk bliver i sin reserverede ventetilstand, til bestyrelsen er afklaret.** Listen kan få et bestyrelsespunkt og skifter derfor aldrig indhold efter første visning.
+- **Sæsonstart-guiden:** i sæsonstart-vinduet venter siden på bestyrelsen inden for det samme budget som de øvrige betingede kort, så guidens bestyrelsespunkt er afgjort ved første visning.
+- Spørgeskemakortets tilstedeværelse afklares med den øvrige øvre del inden sidens eksisterende ventefrist.

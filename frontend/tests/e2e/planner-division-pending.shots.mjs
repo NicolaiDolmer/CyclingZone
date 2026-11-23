@@ -46,7 +46,7 @@ async function loginEnglish(page) {
   await page.goto("/login");
   await page.getByPlaceholder("you@email.com").waitFor();
   await page.getByPlaceholder("you@email.com").fill(TEST_USER.email);
-  await page.getByPlaceholder("\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022").fill("playwright-password");
+  await page.locator("#auth-password").fill("playwright-password");
   await page.getByRole("button", { name: /^Log in$/ }).click();
   await page.waitForURL(/\/dashboard$/);
 }

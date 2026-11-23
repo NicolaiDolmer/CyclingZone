@@ -7,6 +7,9 @@
     "previousDay": "Forrige dag",
     "nextDay": "Næste dag",
     "lastSevenDays": "Seneste syv dage",
+    "allDays": "Alle dage",
+    "showOlderDays": "Vis ældre dage",
+    "showFewerDays": "Vis færre dage",
     "dayPoints": "{date}: {count, plural, one {# nyt point} other {# nye point}}",
     "xpToday": "XP optjent i dag",
     "xp30Sub": "30 dage {xp}",
@@ -67,6 +70,15 @@
     "colXpToday": "XP i dag",
     "colEarned": "Optjent",
     "colPaid": "Fra bjælken",
-    "details": "Detaljer for {name}"
+    "details": "Detaljer for {name}",
+    "loadError": "Rapporten kunne ikke hentes",
+    "loadErrorBody": "Intet er ændret. Dine træningsplaner er i sikkerhed.",
+    "retry": "Prøv igen",
+    "empty": "Ingen træning endnu i denne sæson.",
+    "emptyAction": "Gå til dagens træning"
+  },
+  "devFocus": {
+    "change": "Skift fokus",
+    "changeFor": "Skift fokus for {name}"
   }
 }

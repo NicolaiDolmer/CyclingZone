@@ -53,7 +53,7 @@
   },
   "sidebar": {
     "balance": "Balance",
-    "balanceTooltip": "Til rådighed er din saldo minus det, du har låst i bud, hvor du fører. Mister du føringen, frigives beløbet.",
+    "balanceTooltip": "Til rådighed er det, du kan bruge, når der er taget højde for dine førende bud og aktive autobud.",
     "division": "Division {division}",
     "divisionTooltip": "Dit ligatrin. Division 1 er øverste niveau, Division 4 er startniveauet.",
     "onlineNow": "{count} online nu",
@@ -75,6 +75,7 @@
     "save": "Gem",
     "close": "Luk",
     "hide": "Skjul",
+    "show": "Vis",
     "clickToClose": "Klik for at lukke",
     "loading": "Indlæser…",
     "loadingShort": "…",

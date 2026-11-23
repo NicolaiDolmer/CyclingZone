@@ -11,7 +11,8 @@ const riderProfile = read("./RiderStatsPage.jsx");
 
 test("#8357 uses the shared finance calculation for each balance surface", () => {
   assert.match(balance, /fetchReservedBalance\(supabase, teamId, signal\)/);
-  assert.match(balance, /resolveBalanceDisplay\(balance, reservation\.data \?\? null, \{ failed, timedOut \}\)/);
+  assert.match(balance, /const balanceUnconfirmed = !team \|\| teamRefreshing \|\| Boolean\(teamError\);/);
+  assert.match(balance, /resolveBalanceDisplay\(balance, reservation\.data \?\? null, \{ failed, timedOut, balanceUnconfirmed \}\)/);
   for (const source of [dashboard, sidebar, auctions]) {
     assert.match(source, /const marketBalance = useMarketBalance\((balance)?\)/);
     assert.match(source, /t\("finance:balance\.available", \{ value: formatNumber\(marketBalance\.value\) \}\)/);

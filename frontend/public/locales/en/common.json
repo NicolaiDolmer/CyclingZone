@@ -53,7 +53,7 @@
   },
   "sidebar": {
     "balance": "Balance",
-    "balanceTooltip": "Available is your balance minus what you have locked in bids you are leading. If you lose the lead, the amount is released.",
+    "balanceTooltip": "Your available balance is what you can spend after allowing for leading bids and active automatic bids.",
     "division": "Division {division}",
     "divisionTooltip": "Your league tier. Division 1 is the top tier, Division 4 the entry tier.",
     "onlineNow": "{count} online now",
@@ -75,6 +75,7 @@
     "save": "Save",
     "close": "Close",
     "hide": "Hide",
+    "show": "Show",
     "clickToClose": "Click to close",
     "loading": "Loading…",
     "loadingShort": "…",

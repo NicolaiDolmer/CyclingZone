@@ -53,7 +53,7 @@
   },
   "sidebar": {
     "balance": "Saldo",
-    "balanceTooltip": "Disponible es tu saldo menos lo que tienes bloqueado en pujas que lideras. Si pierdes el liderato, el importe se libera.",
+    "balanceTooltip": "Tu saldo disponible es lo que puedes gastar tras descontar lo que tienes bloqueado en las pujas que lideras y en las pujas automáticas activas.",
     "division": "División {division}",
     "divisionTooltip": "Tu nivel de liga. La División 1 es el nivel más alto y la División 4 el de entrada.",
     "onlineNow": "{count} en línea ahora",
@@ -75,6 +75,7 @@
     "save": "Guardar",
     "close": "Cerrar",
     "hide": "Ocultar",
+    "show": "Mostrar",
     "clickToClose": "Haz clic para cerrar",
     "loading": "Cargando…",
     "loadingShort": "…",

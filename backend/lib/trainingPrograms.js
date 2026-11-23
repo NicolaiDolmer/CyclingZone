@@ -28,6 +28,13 @@
 //               (resolveDayIntensity, flaget off) aldrig moeder en raekke den
 //               ikke kan laese. Flaget off = motoren laeser praecis som i dag.
 //   slots     : valgfri, laengde <= PROGRAM_SLOTS. null = foelg ugedagen.
+//   effort    : #7947, valgfri. Dagens valgte indsats (easy/normal/hard).
+//   slotEfforts : #7947, valgfri, laengde <= PROGRAM_SLOTS. null = foelg dagens indsats.
+//               De to indsats-noegler er ADDITIVE: `intensity` forbliver sessionens
+//               standardniveau, og motoren laeser dem kun med kontakten
+//               training_effort_levels (trainingEffortLevels.js). Slukket = ignoreret.
+//   lockSlot  : #8549, valgfri, heltal 0..PROGRAM_SLOTS-1. Dagens ene laaste pas (dets
+//               hjemmefelt). Godtages altid, laeses endnu ikke (trainingWeekBlocks.js).
 //
 // Gamle raekker (kun `intensity`, #1895) er uroerte og laeses praecis som i dag.
 
@@ -36,6 +43,7 @@ import {
 } from "./trainingDayTypes.js";
 import { isV3OnlySession } from "./trainingCatalogV3.js";
 import { WEEKDAY_KEYS, resolveDayIntensity, isValidIntensity } from "./training.js";
+import { isEffortLevel, effortForDayEntry } from "./trainingEffortLevels.js"; // #7947
 
 // Loebsdage pr. kalenderdato (CALENDAR_RULES §1e-b: 5 paa HVER dato, alle
 // divisioner). Det er gitterets bredde, ikke en balance-konstant.
@@ -220,14 +228,17 @@ export function weekDaysHaveSessions(days) {
 // objekt, saa den gamle skrivesti er uaendret.
 export function stripProgramFromWeekDays(days) {
   if (!days || typeof days !== "object") return days;
+  // #7947: indsats-noeglerne hoerer til programcellen og fjernes med den.
   const hasProgram = Object.values(days).some(
-    (entry) => entry && typeof entry === "object" && ("session" in entry || "slots" in entry),
+    (entry) => entry && typeof entry === "object"
+      && ("session" in entry || "slots" in entry || "effort" in entry || "slotEfforts" in entry
+        || "lockSlot" in entry), // #8549
   );
   if (!hasProgram) return days;
   const out = {};
   for (const [weekday, entry] of Object.entries(days)) {
     if (!entry || typeof entry !== "object") { out[weekday] = entry; continue; }
-    const { session: _s, slots: _sl, ...rest } = entry;
+    const { session: _s, slots: _sl, effort: _e, slotEfforts: _se, lockSlot: _ls, ...rest } = entry;
     out[weekday] = rest;
   }
   return out;
@@ -235,6 +246,9 @@ export function stripProgramFromWeekDays(days) {
 
 // Validering af en program-plan: alle 7 ugedage, hver med en gyldig session,
 // den AFLEDTE intensitet, og valgfrie slots (null eller gyldig session).
+// #7947: de additive indsats-noegler (effort, slotEfforts) godtages UANSET kontakten,
+// saa en raekke skrevet mens kontakten var on stadig er en gyldig programraekke, naar
+// den er off. Intensiteten er stadig sessionens standardniveau.
 export function isValidProgramWeekDays(days) {
   if (!days || typeof days !== "object" || Array.isArray(days)) return false;
   const keys = Object.keys(days);
@@ -249,7 +263,15 @@ export function isValidProgramWeekDays(days) {
       if (!Array.isArray(entry.slots) || entry.slots.length > PROGRAM_SLOTS) return false;
       if (!entry.slots.every((s) => s == null || isProgramSession(s))) return false;
     }
-    const extra = Object.keys(entry).filter((k) => !["session", "intensity", "slots"].includes(k));
+    if (entry.effort != null && !isEffortLevel(entry.effort)) return false;
+    if (entry.slotEfforts != null) {
+      if (!Array.isArray(entry.slotEfforts) || entry.slotEfforts.length > PROGRAM_SLOTS) return false;
+      if (!entry.slotEfforts.every((e) => e == null || isEffortLevel(e))) return false;
+    }
+    // #8549: laesesiden kommer foer skrivesiden, saa en tilbagerulning aldrig goer en raekke ugyldig.
+    if (entry.lockSlot != null
+      && !(Number.isInteger(entry.lockSlot) && entry.lockSlot >= 0 && entry.lockSlot < PROGRAM_SLOTS)) return false;
+    const extra = Object.keys(entry).filter((k) => !["session", "intensity", "slots", "effort", "slotEfforts", "lockSlot"].includes(k));
     if (extra.length) return false;
   }
   return true;
@@ -260,29 +282,52 @@ export function isValidProgramWeekDays(days) {
 // saettes til ugedagens egen session nulstilles til null, saa "foelger
 // ugedagen" og "staar tilfaeldigvis paa det samme" ikke er to tilstande.
 // Returnerer en NY days-struktur, eller null ved ugyldigt input.
-export function setProgramCell(days, { weekday, slotIndex = null, session }) {
+// #7947: `effort` er valgfri. Udeladt (undefined) = cellens indsats er uroert, saa
+// et kald uden indsats er praecis dagens. null = foelg (dagens indsats for et slot,
+// standardniveauet for ugedagen); ellers easy/normal/hard. Et slot hvis indsats er
+// lig dagens nulstilles til null, af samme grund som slots ovenfor.
+export function setProgramCell(days, { weekday, slotIndex = null, session, effort = undefined }) {
   if (!isValidProgramWeekDays(days)) return null;
   if (!WEEKDAY_KEYS.includes(weekday)) return null;
   if (!isProgramSession(session)) return null;
+  if (effort !== undefined && effort !== null && !isEffortLevel(effort)) return null;
   const next = {};
   for (const w of WEEKDAY_KEYS) {
-    next[w] = { ...days[w], ...(days[w].slots ? { slots: [...days[w].slots] } : {}) };
+    next[w] = {
+      ...days[w],
+      ...(days[w].slots ? { slots: [...days[w].slots] } : {}),
+      ...(days[w].slotEfforts ? { slotEfforts: [...days[w].slotEfforts] } : {}),
+    };
   }
   const entry = next[weekday];
   if (slotIndex == null) {
     entry.session = session;
     entry.intensity = intensityForSession(session);
+    if (effort !== undefined) {
+      if (effort === null) delete entry.effort;
+      else entry.effort = effort;
+    }
   } else {
     const idx = Number(slotIndex);
     if (!Number.isInteger(idx) || idx < 0 || idx >= PROGRAM_SLOTS) return null;
     const slots = Array.from({ length: PROGRAM_SLOTS }, (_, i) => entry.slots?.[i] ?? null);
     slots[idx] = session;
     entry.slots = slots;
+    if (effort !== undefined) {
+      const slotEfforts = Array.from({ length: PROGRAM_SLOTS }, (_, i) => entry.slotEfforts?.[i] ?? null);
+      slotEfforts[idx] = effort;
+      entry.slotEfforts = slotEfforts;
+    }
   }
   // Slots der er lig ugedagen er "foelger ugedagen".
   if (entry.slots) {
     entry.slots = entry.slots.map((s) => (s === entry.session ? null : s));
     if (entry.slots.every((s) => s == null)) delete entry.slots;
+  }
+  // #7947: slot-indsatser der er lig dagens er "foelger dagens indsats".
+  if (entry.slotEfforts) {
+    entry.slotEfforts = entry.slotEfforts.map((e) => (e === (entry.effort ?? null) ? null : e));
+    if (entry.slotEfforts.every((e) => e == null)) delete entry.slotEfforts;
   }
   return next;
 }
@@ -320,11 +365,13 @@ export function programSlotForRaceDay(gameDay, dateGameDays) {
 // Session → (focus, intensity), via SAMME skrivesti som dagsvalget
 // (programForChoice), saa et program aldrig kan traene noget et dagsvalg ikke
 // kan. Hvile bevarer rytterens fokus (REST_FOCUS_FALLBACK-reglen).
-export function programForSession(session, previousFocus = null, { catalogV3 = false } = {}) {
+// #7947: `effort`/`effortLevels` gaar samme vej (programForChoice); hvile og
+// restitution ignorerer dem.
+export function programForSession(session, previousFocus = null, { catalogV3 = false, effort = null, effortLevels = false } = {}) {
   if (session === "rest") return programForChoice({ dayType: "rest", previousFocus, catalogV3 });
   if (session === "recovery") return programForChoice({ dayType: "recovery" });
   const dayType = dayTypeForProgram({ focus: session, intensity: intensityForSession(session) });
-  return programForChoice({ dayType, session, catalogV3 });
+  return programForChoice({ dayType, session, catalogV3, effort, effortLevels });
 }
 
 // ── Motorens laesesti ────────────────────────────────────────────────────
@@ -343,9 +390,13 @@ export function programForSession(session, previousFocus = null, { catalogV3 = f
 //   slotIndex : programSlotForRaceDay(loebsdag, datoens loebsdage)
 // Returnerer { focus, intensity, source } hvor source er "program" naar en
 // programcelle vandt, ellers "legacy".
+// #7947: med `effortLevels` (kontakten training_effort_levels) koerer programcellens
+// session paa feltets indsats (slotEfforts[slot] ?? effort), ellers paa sessionens
+// standardniveau. Slukket = indsats-noeglerne ignoreres, bit-identisk med i dag.
 export function resolveDayProgram({
   weekday, slotIndex = 0, riderOverrideDays, teamWeekDays, program, hasExplicitPlan = false, programsOn = false,
   catalogV3 = false, // #5319: v3-sessioner traener kun naar flaget er on for holdet
+  effortLevels = false, // #7947
 }) {
   const legacyIntensity = resolveDayIntensity({
     weekday, riderOverrideDays, teamWeekDays, planIntensity: program?.intensity, hasExplicitPlan,
@@ -353,8 +404,9 @@ export function resolveDayProgram({
   const legacy = { focus: program?.focus, intensity: legacyIntensity, source: "legacy" };
   if (!programsOn) return legacy;
 
-  const fromSession = (session) => {
-    const chosen = programForSession(session, program?.focus, { catalogV3 });
+  const fromSession = (session, entry) => {
+    const effort = effortLevels ? effortForDayEntry(entry, slotIndex) : null;
+    const chosen = programForSession(session, program?.focus, { catalogV3, effort, effortLevels });
     return chosen.ok ? { focus: chosen.focus, intensity: chosen.intensity, source: "program" } : null;
   };
 
@@ -362,15 +414,16 @@ export function resolveDayProgram({
   // gammel raekke med kun intensitet vinder som i dag.
   const riderEntry = riderOverrideDays?.[weekday];
   const riderSession = sessionForDayEntry(riderEntry, slotIndex);
-  if (riderSession) return fromSession(riderSession) ?? legacy;
+  if (riderSession) return fromSession(riderSession, riderEntry) ?? legacy;
   if (isValidIntensity(riderEntry?.intensity)) return legacy;
 
   // Lag 2: rytterens eksplicitte plan vinder over holdets (#2438).
   if (hasExplicitPlan) return legacy;
 
   // Lag 3: holdets raekke.
-  const teamSession = sessionForDayEntry(teamWeekDays?.[weekday], slotIndex);
-  if (teamSession) return fromSession(teamSession) ?? legacy;
+  const teamEntry = teamWeekDays?.[weekday];
+  const teamSession = sessionForDayEntry(teamEntry, slotIndex);
+  if (teamSession) return fromSession(teamSession, teamEntry) ?? legacy;
 
   return legacy;
 }

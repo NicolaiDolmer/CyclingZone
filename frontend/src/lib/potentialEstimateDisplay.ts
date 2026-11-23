@@ -18,16 +18,16 @@ export type PotentialViewShown = {
   previousCertainty: Certainty | null;
   changedAt: string | null;
 };
+// #8523: "aiTeam" = rytter på et AI-hold uden holdets skøn; han kan ikke scoutes.
 export type PotentialViewUnscouted = { hidden: true; reason: "unscouted" };
+export type PotentialViewAiTeam = { hidden: true; reason: "aiTeam" };
 export type PotentialViewLearning = {
   hidden: true;
   reason: "learning";
   trainings: number;
   trainingsNeeded: number;
 };
-export type PotentialView = PotentialViewShown | PotentialViewUnscouted | PotentialViewLearning;
-
-export type EstimatePoint = { season: number; value: number };
+export type PotentialView = PotentialViewShown | PotentialViewUnscouted | PotentialViewAiTeam | PotentialViewLearning;
 
 function finite(n: unknown): n is number {
   return typeof n === "number" && Number.isFinite(n);
@@ -48,6 +48,7 @@ export function potentialViewOf(source: unknown): PotentialView | null {
   const view = raw as Record<string, unknown>;
   if (view.hidden === true) {
     if (view.reason === "unscouted") return { hidden: true, reason: "unscouted" };
+    if (view.reason === "aiTeam") return { hidden: true, reason: "aiTeam" };
     if (view.reason === "learning" && finite(view.trainings) && finite(view.trainingsNeeded)) {
       return { hidden: true, reason: "learning", trainings: view.trainings, trainingsNeeded: view.trainingsNeeded };
     }
@@ -65,6 +66,30 @@ export function potentialViewOf(source: unknown): PotentialView | null {
   };
 }
 
+// #8523 (spec 2026-11-20 §5): den samlede prognose for egne ryttere, "fortsætter du
+// den nuværende fart, ender du omkring her ved toppen". Serveren regner den; feltet
+// findes kun for egne ryttere med tændt flag.
+export type PrognosisView =
+  | { hidden: false; value: number }
+  | { hidden: true; reason: "noEstimate" | "pastPeak" };
+
+/** Læser `prognosisView`. null = feltet mangler (andres rytter eller slukket flag). */
+export function prognosisViewOf(source: unknown): PrognosisView | null {
+  const raw = (source as { prognosisView?: unknown } | null | undefined)?.prognosisView;
+  if (!raw || typeof raw !== "object") return null;
+  const view = raw as Record<string, unknown>;
+  if (view.hidden === false && finite(view.value)) return { hidden: false, value: view.value };
+  if (view.hidden === true && (view.reason === "noEstimate" || view.reason === "pastPeak")) {
+    return { hidden: true, reason: view.reason };
+  }
+  return null;
+}
+
+/** Prognosen som sorteringsværdi. null for begge tomme tilstande, så de falder sidst. */
+export function prognosisViewValue(view: PrognosisView | null | undefined): number | null {
+  return view && !view.hidden ? view.value : null;
+}
+
 /** Tallet spilleren ser, til sortering og grafer. null for begge tomme tilstande. */
 export function potentialViewValue(view: PotentialView | null | undefined): number | null {
   return view && !view.hidden ? view.value : null;
@@ -73,16 +98,6 @@ export function potentialViewValue(view: PotentialView | null | undefined): numb
 /** Hvor mange af måleren tre trin der er fyldt. */
 export function certaintyStep(certainty: Certainty): number {
   return CERTAINTIES.indexOf(certainty) + 1;
-}
-
-/** Udvikling-fanens kurve mod skønnet, sorteret efter sæson. Tom = ingen linje. */
-export function estimateLineOf(projection: unknown): EstimatePoint[] {
-  const raw = (projection as { estimateLine?: unknown } | null | undefined)?.estimateLine;
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .filter((point): point is EstimatePoint => finite(point?.season) && finite(point?.value))
-    .map(({ season, value }) => ({ season, value }))
-    .sort((a, b) => a.season - b.season);
 }
 
 /**

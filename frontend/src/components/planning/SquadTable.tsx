@@ -11,6 +11,9 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { SortableTh, Select, RiderNameCell, RiderBadges, Flag, isU23, injuryTimeLeft, statPlateStyle, RIDER_TYPE_KEYS } from "./primitives.ts";
 import { formatShortDate } from "./planningUi.tsx";
+import TableTitleBar from "../ui/TableTitleBar.tsx";
+import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
+import { OPTIONAL_COLUMNS, readColumnsPref, toggleOptionalColumn, writeColumnsPref, type OptionalColumn } from "./squadColumns.ts";
 import { injuryFitAgainDate } from "../../lib/injuryExplain.ts";
 import type { RiderDetail, SeasonLoad } from "../../lib/planningWorkbenchData.ts";
 import {
@@ -183,11 +186,24 @@ export default function SquadTable({
   const wrapRef = useRef<HTMLDivElement>(null);
   const [compact, setCompact] = useState(false);
   const fullWidth = useRef(0);
-  const shape = `${rows.length}|${showLoad ? 1 : 0}`;
+  const [optional, setOptional] = useState<OptionalColumn[]>(readColumnsPref);
+  const shown = (key: OptionalColumn) => optional.includes(key);
+  const optionalKeys = OPTIONAL_COLUMNS.filter((c) => c !== "load" || showLoad);
+  const shape = `${rows.length}|${showLoad ? 1 : 0}|${optional.join(",")}`;
+  const lastShape = useRef(shape);
   useLayoutEffect(() => {
     const box = wrapRef.current;
     const table = box?.firstElementChild as HTMLElement | null;
     if (!box || !table) return undefined;
+    // Andre kolonner = en anden fuld bredde: maal forfra, saa pynten kommer igen, naar der er plads.
+    if (lastShape.current !== shape) {
+      lastShape.current = shape;
+      if (compact) {
+        fullWidth.current = 0;
+        setCompact(false);
+        return undefined;
+      }
+    }
     const check = () => {
       if (!compact) {
         if (table.scrollWidth > box.clientWidth + 1) {
@@ -209,6 +225,9 @@ export default function SquadTable({
   const onMobile = (key: MobileColumn) => (mobileColumns.includes(key) ? "table-cell" : "hidden sm:table-cell");
   // Luft til kortets kant (ejer 14/11): foerste og sidste kolonne faar kortets egen indrykning paa pc.
   const edge = (key: SquadSortKey) => (key === "pick" ? (compact ? "sm:ps-3" : "sm:ps-4") : key === "routeMatch" ? "pe-3 sm:pe-4" : "");
+  // Valgfri kolonne paa pc: skjult som standard (kolonnevaelgeren); mobilen styres af chip-raekken.
+  const optionalOnPc = (key: OptionalColumn, mobile: boolean) => `${mobile ? "table-cell" : "hidden"} ${shown(key) ? "sm:table-cell" : "sm:hidden"}`;
+  // Overskrifterne staar paa én linje (nowrap); de laengste har en kort tekst, og hele ordet staar i title.
   const th = (key: SquadSortKey, label: ReactNode, { numeric = true, visibility = "hidden sm:table-cell", title }: { numeric?: boolean; visibility?: string; title?: string } = {}) => (
     <SortableTh
       key={key}
@@ -217,7 +236,7 @@ export default function SquadTable({
       sortDir={sort.dir}
       onSort={onSort}
       title={title}
-      className={`px-1.5 py-2 font-data text-2xs font-semibold uppercase tracking-normal text-cz-3 sm:px-1.5 sm:tracking-wide ${numeric ? "text-right" : "text-left"} bg-cz-subtle ${visibility} ${edge(key)}`}
+      className={`whitespace-nowrap align-bottom px-1.5 py-2 font-data text-2xs font-semibold uppercase leading-tight tracking-normal text-cz-3 sm:px-1.5 sm:tracking-wide ${numeric ? "text-right" : "text-left"} bg-cz-subtle ${visibility} ${edge(key)}`}
     >
       {label}
     </SortableTh>
@@ -225,6 +244,23 @@ export default function SquadTable({
   const td = "px-1.5 py-[7px] font-data text-[13px] tabular-nums";
 
   return (
+    <>
+    {/* Kolonnevaelger kun paa pc; mobilens tal-kolonner vaelges i chip-raekken over tabellen. */}
+    <div className="hidden sm:block" data-testid="planning-squad-columns-bar">
+      <TableTitleBar
+        page="planning-squad"
+        columns={{
+          count: optionalKeys.filter(shown).length,
+          total: optionalKeys.length,
+          items: optionalKeys.map((key) => ({ key, label: t(`squad.${key}`), checked: shown(key) })),
+          onToggle: (key) => {
+            const next = toggleOptionalColumn(optional, key as OptionalColumn);
+            setOptional(next);
+            writeColumnsPref(next);
+          },
+        }}
+      />
+    </div>
     <div
       ref={wrapRef}
       className={`overflow-x-clip sm:overflow-x-auto ${compact ? "[&_td]:px-1 [&_th]:px-1 sm:[&_td:first-child]:ps-3 sm:[&_th:first-child]:ps-3 sm:[&_td:last-child]:pe-3 sm:[&_th:last-child]:pe-3" : ""}`}
@@ -237,14 +273,14 @@ export default function SquadTable({
           <tr>
             {th("pick", compact ? <span className="sr-only">{t("squad.pick")}</span> : t("squad.pick"), { numeric: false, title: t("squad.pick") })}
             {th("name", t("squad.rider"), { numeric: false, visibility: "table-cell" })}
-            {th("status", t("squad.status"), { numeric: false })}
+            {th("status", t("squad.status"), { numeric: false, visibility: shown("status") ? "hidden sm:table-cell" : "hidden" })}
             {th("role", t("squad.role"), { numeric: false })}
             {th("type", t("squad.type"), { numeric: false })}
-            {th("rating", t("squad.rating"), { visibility: onMobile("rating") })}
+            {th("rating", t("squad.short.rating"), { visibility: onMobile("rating"), title: t("squad.rating") })}
             {th("form", t("squad.form"), { visibility: onMobile("form") })}
-            {th("fatigue", t("squad.fatigue"), { visibility: onMobile("fatigue") })}
-            {showLoad && th("load", t("squad.load"), { numeric: false, visibility: onMobile("load"), title: t("squad.loadTitle") })}
-            {th("routeMatch", t("squad.routeMatch"), { visibility: onMobile("routeMatch") })}
+            {th("fatigue", t("squad.short.fatigue"), { visibility: optionalOnPc("fatigue", mobileColumns.includes("fatigue")), title: t("squad.fatigue") })}
+            {showLoad && th("load", t("squad.short.load"), { numeric: false, visibility: optionalOnPc("load", mobileColumns.includes("load")), title: `${t("squad.load")}: ${t("squad.loadTitle")}` })}
+            {th("routeMatch", t("squad.short.routeMatch"), { visibility: onMobile("routeMatch"), title: t("squad.routeMatch") })}
           </tr>
         </thead>
         <tbody>
@@ -321,7 +357,7 @@ export default function SquadTable({
                     </div>
                   </div>
                 </td>
-                <td className="hidden px-1.5 py-[7px] text-left sm:table-cell">
+                <td className={`${shown("status") ? "hidden sm:table-cell" : "hidden"} px-1.5 py-[7px] text-left`}>
                   <StatusCell row={row} detail={detail} seasonYear={seasonYear} compact={compact} />
                 </td>
                 <td className="hidden px-1.5 py-[7px] text-left sm:table-cell">
@@ -337,9 +373,8 @@ export default function SquadTable({
                 </td>
                 <td className="hidden px-1.5 py-[7px] text-left text-[13px] text-cz-2 sm:table-cell">
                   {type ? (
-                    <span className={`block truncate ${compact ? "max-w-[4rem]" : ""}`} title={type}>
-                      {type}
-                    </span>
+                    // Ryttertypen som maerket paa de andre tabeller; aldrig afkortet.
+                    <RiderTypeBadge primaryType={row.type} secondaryType={null} />
                   ) : (
                     <span className="text-cz-3">-</span>
                   )}
@@ -352,11 +387,11 @@ export default function SquadTable({
                     {peak && <span className="hidden sm:inline"><PeakMark peak={peak} /></span>}
                   </span>
                 </td>
-                <td className={`${onMobile("fatigue")} whitespace-nowrap text-right ${td}`}>
+                <td className={`${optionalOnPc("fatigue", mobileColumns.includes("fatigue"))} whitespace-nowrap text-right ${td}`}>
                   <FatigueCell value={row.fatigue} compact={compact} />
                 </td>
                 {showLoad && (
-                  <td className={`${onMobile("load")} px-1.5 py-[7px] text-left`}>
+                  <td className={`${optionalOnPc("load", mobileColumns.includes("load"))} px-1.5 py-[7px] text-left`}>
                     <LoadCell value={row.load} />
                   </td>
                 )}
@@ -369,6 +404,7 @@ export default function SquadTable({
         </tbody>
       </table>
     </div>
+    </>
   );
 }
 

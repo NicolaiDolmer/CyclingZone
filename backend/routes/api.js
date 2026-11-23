@@ -254,8 +254,10 @@ import {
   buildTypeCeilingBands, buildVerdict, scoutPrecisionInfo,
   buildTypePrognosisBands, roleCeilRating, ratingFromAbilities,
 } from "../lib/scoutingReport.js";
-import { projectCeilingBand, ceilingTiming, PEAK_AGE, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
+import { projectCeilingBand, ceilingTiming, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
+import { agingCfgForXp, loadPastPeakAging, pastPeakFromAging } from "../lib/pastPeakView.js"; // #7947 / #8476 pkt. 5
 import { programForChoice, normalizeProgram, smartDefaultSession } from "../lib/trainingDayTypes.js";
+import { effortForWrite, isTrainingEffortLevelsEnabled } from "../lib/trainingEffortLevels.js"; // #7947
 import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer, V3_TRAINING_FOCUSES } from "../lib/trainingCatalogV3.js"; // #5319
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, isValidWeekPlanDays } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
@@ -2579,10 +2581,10 @@ router.post("/scouting/estimates", requireAuth, presencePulseLimiter, async (req
             // (se roleCeilRating/buildTypePrognosisBands i scoutingReport.js).
             estimate.loft = band.loft ?? null;
             // #4039: forbi-peak-flaget klienten dæmper loft-visningen med (samme
-            // PEAK_AGE-kilde som /development-projection's pastPeak, #2645). Loftet
+            // aldringskilde som /development-projection's pastPeak, pastPeakView.js, #2645). Loftet
             // selv forbliver ABSOLUT (ejer-beslutning 20/8) — flaget ændrer kun
             // hvordan det FORKLARES, ikke tallet.
-            estimate.pastPeak = age > PEAK_AGE;
+            estimate.pastPeak = pastPeakFromAging(age, agingCfgForXp(prognosisXp)); // #7947
           }
         }
       }
@@ -2985,7 +2987,7 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
         capsMissing: false,
         // #4039: samme forbi-peak-flag som /scouting/estimates — loftet er
         // rytterens, ikke pr. rolle, så det sidder på top-niveau af rapporten.
-        pastPeak: age > PEAK_AGE,
+        pastPeak: pastPeakFromAging(age, agingCfgForXp(prognosisXp)), // #7947
         scout: scoutMeta, generatedAt,
       });
     }
@@ -3066,7 +3068,7 @@ router.get("/riders/:id/development-projection", requireAuth, async (req, res) =
       ceil: { lo: primaryRow.ceilLo, hi: primaryRow.ceilHi },
       band: projectCeilingBand({ ...projInput, seasons: DISPLAY_SEASONS }),
       timing: ceilingTiming(projInput),
-      pastPeak: age > PEAK_AGE,
+      pastPeak: pastPeakFromAging(age, await loadPastPeakAging(supabase)), // #7947: som motoren
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -3089,10 +3091,11 @@ router.get("/riders/:id/development-projection", requireAuth, async (req, res) =
 //   body          : request-body
 //   previousFocus : rytterens hidtidige fokus (bevares hen over en hviledag)
 // Returnerer { ok, focus, intensity } eller { ok:false, reason }.
-function resolveTrainingWrite(body, previousFocus = null, catalogV3 = false) {
+// #7947: `effort` kommer fra effortForWrite; undefined (ikke sendt / kontakten off) = som i dag.
+function resolveTrainingWrite(body, previousFocus = null, catalogV3 = false, effort = undefined) {
   const { dayType, session, focus, intensity } = body ?? {};
   if (dayType != null) {
-    const out = programForChoice({ dayType, session: session ?? null, previousFocus, catalogV3 });
+    const out = programForChoice({ dayType, session: session ?? null, previousFocus, catalogV3, effort: effort ?? null, effortLevels: effort !== undefined });
     return out.ok ? { ok: true, focus: out.focus, intensity: out.intensity } : { ok: false, reason: out.reason };
   }
   if (!isValidFocus(focus) && !(catalogV3 && isV3OnlySession(focus))) return { ok: false, reason: "invalid_focus" };
@@ -3130,7 +3133,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
     const teamId = req.team.id;
     const [
       { activeSeasonId, state }, isBetaTester, stage, raceDayDevelopmentStage, trainingScoreStage,
-      mobileTableStage, dailyReceiptStage, decisionCardStage,
+      mobileTableStage, dailyReceiptStage, decisionCardStage, effortLevelsOn,
     ] = await Promise.all([
       loadTrainingState(teamId),
       isViewerBetaTester(req),
@@ -3144,6 +3147,10 @@ router.get("/training/me", requireAuth, async (req, res) => {
       readFlagStage(supabase, TRAINING_MOBILE_TABLE_FLAG_KEY),
       readFlagStage(supabase, TRAINING_DAILY_RECEIPT_FLAG_KEY),
       readFlagStage(supabase, TRAINING_DECISION_FLAG_KEY), // #6110 S26
+      // #8541: Let/Mellem/Haard. Klienten (profilens Traening-fane, I dag R5) laeser feltet
+      // `effortLevels`; det blev aldrig sendt, saa fladerne stod paa de gamle ord med
+      // kontakten taendt i prod. Binaert flag, samme opslag som motoren og api-skrivningen.
+      isTrainingEffortLevelsEnabled(supabase),
     ]);
     // #6811 P2: et parkeret hold traener ikke (POST svarer 409 team_parked), saa
     // gaten staar lukket her ogsaa: fladen viser "sat paa pause".
@@ -3371,6 +3378,8 @@ router.get("/training/me", requireAuth, async (req, res) => {
       // mobil-visning der står i prod i dag. Se trainingMobileTableFlag.js.
       mobileTable,
       decisionCard,
+      // #8541: udelades HELT med kontakten off (klienten kraever `=== true`), saa svaret er som foer.
+      ...(effortLevelsOn === true ? { effortLevels: true } : {}),
       ...(fatigueStreaks ? { fatigueDays70: fatigueStreaks } : {}),
       dailyReceiptEnabled,
       // #3459 V3: feltet udelades HELT (ikke bare {}) når flaget er off — spejler
@@ -3546,7 +3555,9 @@ router.post("/training/bulk", requireAuth, marketWriteLimiter, trainNowPlanLock(
   let bulkFocus = null;
   let bulkIntensity = null;
   if (!isSmartMode) {
-    const resolved = resolveTrainingWrite(req.body, null, await catalogV3ForTrainingWrite(req));
+    const effortWrite = await effortForWrite(supabase, req.body?.effort); // #7947
+    if (!effortWrite.ok) return res.status(400).json({ error: effortWrite.reason });
+    const resolved = resolveTrainingWrite(req.body, null, await catalogV3ForTrainingWrite(req), effortWrite.effort);
     if (!resolved.ok) return res.status(400).json({ error: resolved.reason });
     bulkFocus = resolved.focus;
     bulkIntensity = resolved.intensity;
@@ -3792,7 +3803,9 @@ router.post("/training/:riderId", requireAuth, marketWriteLimiter, trainNowPlanL
     // hvile, 252 planer i prod) ikke kan skrives igen ad bagvejen.
     // previousFocus bevarer spillerens sidste session hen over en hviledag.
     const previousFocus = state.plans[riderId]?.focus ?? null;
-    const resolved = resolveTrainingWrite(req.body, previousFocus, await catalogV3ForTrainingWrite(req, previousFocus));
+    const effortWrite = await effortForWrite(supabase, req.body?.effort); // #7947
+    if (!effortWrite.ok) return res.status(400).json({ error: effortWrite.reason });
+    const resolved = resolveTrainingWrite(req.body, previousFocus, await catalogV3ForTrainingWrite(req, previousFocus), effortWrite.effort);
     if (!resolved.ok) return res.status(400).json({ error: resolved.reason });
     const { focus, intensity } = resolved;
     if (!activeSeasonId) return res.status(409).json({ error: "No active season" });

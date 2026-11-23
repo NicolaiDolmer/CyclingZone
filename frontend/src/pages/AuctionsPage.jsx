@@ -1483,7 +1483,11 @@ export default function AuctionsPage() {
     // #2849 bølge 1: ÉN container-ramme om hele siden (T2, cap 1600px) —
     // erstatter det tidligere miks af max-w-full + spredte max-w-[1600px].
     <div className="max-w-[1600px] mx-auto">
-      <OnboardingTour pageKey="auctions" steps={auctionsTourSteps} />
+      <OnboardingTour
+        pageKey="auctions"
+        steps={auctionsTourSteps}
+        finishLink={{ to: "/dashboard", label: t("common:nav.item.dashboard") }}
+      />
       <ConfettiModal
         show={!!celebration}
         onClose={() => setCelebration(null)}
@@ -1523,10 +1527,8 @@ export default function AuctionsPage() {
         </div>
       )}
 
-      {/* #4628 (audit 2026-09, /auctions score 11: "556 px chrome foer foerste
-          auktion"): de fire stat-kort (Saldo / Reserveret / Ryttere / Prognose)
-          er nu ÉN meta-linje i sidehovedet. Tallene er kontekst for buddene,
-          ikke sidens indhold — TASTE P1 ("data foerst, forklaring bagefter").
+      {/* #8357: reserve the two balance rows before the auction data arrives
+          so the header actions do not move when the values replace the skeleton.
           Action-slotten holder de to tilladte quiet utility actions (live-feed
           + Historik, PAGE_TEMPLATES' header-kontrakt); "Aktiv (N)"-linket er
           vaek, fordi man staar paa den side, og tallet nu staar i "All (N)"-fanen.
@@ -1537,9 +1539,9 @@ export default function AuctionsPage() {
         title={t("auctions:page.title")}
         subtitle={
           <span className="block font-data tabular-nums text-cz-2">
-            {!loading && myTeamId && (moneyPending ? <Skeleton className="inline-block h-3 w-48 align-middle" /> :
-              <>
-                {marketBalance && marketBalance.mode !== "pending" ? (
+            {(loading || myTeamId) && (
+              <span className="block min-h-11">
+                {!loading && !moneyPending && marketBalance && marketBalance.mode !== "pending" ? (
                   <>
                     <span className="block text-xl font-semibold text-cz-1">
                       {marketBalance.mode === "available"
@@ -1552,7 +1554,11 @@ export default function AuctionsPage() {
                       </span>
                     )}
                   </>
-                ) : <Skeleton className="block h-6 w-36" />}
+                ) : <Skeleton className="block h-7 w-36" />}
+              </span>
+            )}
+            {!loading && myTeamId && !moneyPending && (
+              <>
                 {currentRiderCount !== null && (
                   <>{t("auctions:stats.ridersNow")} {currentRiderCount} · </>
                 )}

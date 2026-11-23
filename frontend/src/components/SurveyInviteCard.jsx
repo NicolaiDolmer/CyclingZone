@@ -6,8 +6,7 @@
 // selve SELECT'et, så status kan stå som 'open' længe efter closes_at uden at
 // nogen har flippet den manuelt (#4943-followup, prod 23/9), (3) spilleren
 // ikke allerede har gennemført det, og (4) kortet ikke er lukket inden for de
-// sidste 3 dage. Kortet henter selv sine data, så DashboardPage ikke skal
-// vokse med endnu en forespørgsel.
+// sidste 3 dage. Dashboardet starter læsningen i sin indlæsning af den øvre del.
 //
 // CTA'en er SEKUNDÆR med vilje: dashboardets ene guld-primære element styres
 // af computeDashboardGoldCta, og en guld-knap her ville være den anden
@@ -22,7 +21,6 @@
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 
-import { useSurveyInviteData } from "../data/dashboardCards.ts";
 import {
   inviteDismissKey,
   inviteDismissedUntil,
@@ -30,10 +28,8 @@ import {
 import { ClipboardIcon, XIcon } from "./ui";
 import { buttonClass } from "./ui/buttonStyles.js";
 
-export default function SurveyInviteCard() {
+export default function SurveyInviteCard({ survey, hide }) {
   const { t } = useTranslation("dashboard");
-  // #6494: read through the shared scope; a local dismiss hides it at once.
-  const { survey, hide } = useSurveyInviteData();
 
   if (!survey) return null;
 

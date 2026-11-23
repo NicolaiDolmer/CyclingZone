@@ -7,12 +7,12 @@
       "topic": "Finance",
       "area": "economy",
       "en": {
-        "title": "Available balance everywhere",
-        "body": "The sidebar, dashboard and auctions now show the same big number: what you have available. Under it you see how much is locked in bids you are leading. If you lose the lead, the amount is released. Your total balance is on the Finance page."
+        "title": "See what you can spend",
+        "body": "I’ve made the sidebar, dashboard and auctions show the same available balance. Below it you can see what’s locked in bids and automatic bids."
       },
       "da": {
-        "title": "Til rådighed overalt",
-        "body": "Sidemenuen, forsiden og auktionerne viser nu det samme store tal: det, du har til rådighed. Under det står, hvor meget du har låst i bud, hvor du fører. Mister du føringen, frigives beløbet. Din samlede saldo står på Økonomi-siden."
+        "title": "Se, hvad du kan bruge",
+        "body": "Jeg har gjort saldoen ens i sidemenuen, på forsiden og på auktionerne. Du ser, hvad du har til rådighed, og hvor meget der er låst i bud og autobud."
       },
       "refs": [8357]
     }

@@ -21,7 +21,7 @@ const locale = (lang: string): Help =>
 
 const XP = "development_xp_model";
 const SCORE = "training_score_visible";
-const TODAY = { [XP]: false, [SCORE]: true };
+const TODAY = { [XP]: false, [SCORE]: true, training_effort_levels: true };
 const XP_ON = { ...TODAY, [XP]: true };
 const STATES: Array<[string, Flags]> = [["i dag", TODAY], ["XP on", XP_ON], ["fejlsvar {}", {}], ["henter (null)", null]];
 
@@ -68,8 +68,11 @@ test("trainingFocusXp findes paa alle fem sprog, uden loft, uden em-dash og elle
     assert.doesNotMatch(String(xp.text), ceiling[lng], `${lng}: naevner stadig loftet`);
     assert.doesNotMatch(String(xp.text), /—/, `${lng}: em-dash`);
     assert.match(String(old.text), ceiling[lng], `${lng}: dagens tekst er uaendret`);
-    // Kun den ene vending er skiftet: teksten er ellers ord for ord den samme.
-    const a = String(old.text), b = String(xp.text);
+    // Kun den ene vending er skiftet: teksten er ellers ord for ord den samme. Ejervalg 21/11
+    // (#6110/#7947): under XP kan indsatsen vaelges (Let/Mellem/Haard), saa indsats-saetningen
+    // er ogsaa ny; den fjernes fra begge, foer resten sammenlignes.
+    const EFFORT = /[^.!?]*(not a separate choice|selvstændigt valg|elección aparte|choix séparé|aparte keuze|standard effort|standardniveau|esfuerzo estándar|effort standard|standaardinspanning)[^.!?]*[.!?](\s+[^.!?]*(Easy, Medium or Hard|Let, Mellem eller Hård|Suave, Medio o Duro|Facile, Moyen ou Dur|Licht, Gemiddeld of Zwaar)[^.!?]*[.!?])?/g;
+    const a = String(old.text).replace(EFFORT, ""), b = String(xp.text).replace(EFFORT, "");
     let pre = 0;
     while (pre < a.length && a[pre] === b[pre]) pre++;
     let suf = 0;
@@ -77,3 +80,16 @@ test("trainingFocusXp findes paa alle fem sprog, uden loft, uden em-dash og elle
     assert.ok(a.length - pre - suf < 80, `${lng}: mere end vendingen er aendret`);
   }
 });
+
+// #8570: Let/Mellem/Haard-teksterne under XP findes kun, naar indsats ogsaa er on.
+for (const [section, id] of [["riders", "trainingFocusXp"], ["dailytraining", "focusAbilitiesXp"]] as const) {
+  test(`${id}: kun synlig naar BAADE XP og training_effort_levels er on`, () => {
+    const effort = "training_effort_levels";
+    assert.equal(isHelpBlockVisible(section, id, { [XP]: true, [effort]: true }), true, "begge on");
+    assert.equal(isHelpBlockVisible(section, id, { [XP]: true, [effort]: false }), false, "XP on, indsats off");
+    assert.equal(isHelpBlockVisible(section, id, { [XP]: true }), false, "XP on, indsats mangler");
+    assert.equal(isHelpBlockVisible(section, id, { [XP]: false, [effort]: true }), false, "XP off");
+    assert.equal(isHelpBlockVisible(section, id, { [XP]: false, [effort]: false }), false, "begge off");
+    assert.equal(isHelpBlockVisible(section, id, null), false, "henter");
+  });
+}

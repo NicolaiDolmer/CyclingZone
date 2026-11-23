@@ -18,7 +18,7 @@ export type MarketBalance = NonNullable<ReturnType<typeof resolveBalanceDisplay>
  * different numbers. `fallbackBalance` is only used before the shared team has loaded.
  */
 export function useMarketBalance(fallbackBalance?: number | null): MarketBalance | null {
-  const { runtime, scope, team, ready } = useDataScope();
+  const { runtime, scope, team, ready, error: teamError, teamRefreshing } = useDataScope();
   const teamId = team?.id;
   const reservation = useQuery({
     queryKey: privateKey(scope, RESERVATION),
@@ -40,7 +40,9 @@ export function useMarketBalance(fallbackBalance?: number | null): MarketBalance
     return () => clearTimeout(timer);
   }, [waiting]);
   const balance = team?.balance ?? fallbackBalance ?? null;
-  return resolveBalanceDisplay(balance, reservation.data ?? null, { failed, timedOut });
+  // Settlement can release a reservation before the team read confirms payment.
+  const balanceUnconfirmed = !team || teamRefreshing || Boolean(teamError);
+  return resolveBalanceDisplay(balance, reservation.data ?? null, { failed, timedOut, balanceUnconfirmed });
 }
 
 export function refreshMarketBalance(): void {

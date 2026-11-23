@@ -27,6 +27,8 @@ import { Flag } from "../Flag.jsx";
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
 import RiderBadges from "../rider/RiderBadges.jsx";
 import ScoutablePotentiale from "../rider/ScoutablePotentiale.jsx";
+import { PrognosisValue } from "../rider/PotentialEstimate.tsx";
+import { prognosisViewOf } from "../../lib/potentialEstimateDisplay.ts";
 import { useScouting } from "../../lib/useScouting.js";
 import { ABILITY_SELECT } from "../../lib/abilities.js";
 import { statPlateStyle, statStyle } from "../../lib/statColor.js";
@@ -294,9 +296,26 @@ const JERSEY_VAR: Record<JerseyDayType, string> = {
   young_day: "young",
 };
 
+// #8523: potentialet og, med tændt flag, den samlede prognose fra samme estimat-svar.
+// Uden flaget har svaret ingen prognosisView, og kun potentialet vises som før.
 function OwnPotential({ riderId }: { riderId: string }) {
+  const { t } = useTranslation();
   const scouting = useScouting();
-  return <ScoutablePotentiale rider={{ id: riderId }} scouting={scouting} />;
+  const prognosis = prognosisViewOf(scouting.estimateFor(riderId));
+  return (
+    <>
+      <div className="mt-3 flex items-center justify-between gap-3 border-t border-cz-border pt-2.5" data-rider-hover-potential="">
+        <span className={LABEL}>{t("rider:header.potential")}</span>
+        <ScoutablePotentiale rider={{ id: riderId }} scouting={scouting} />
+      </div>
+      {prognosis && (
+        <div className="mt-2 flex items-center justify-between gap-3" data-rider-hover-prognosis="">
+          <span className={LABEL} title={t("riders:potentialNumber.prognosisTitle")}>{t("riders:potentialNumber.prognosis")}</span>
+          <PrognosisValue view={prognosis} />
+        </div>
+      )}
+    </>
+  );
 }
 
 function AbilityRow({ abilityKey, value }: { abilityKey: string; value: number | null }) {
@@ -523,12 +542,7 @@ export function CardContent({ model, extra, titleId, honours, onWatchlist = null
         </dl>
       )}
 
-      {model.showPotential && (
-        <div className="mt-3 flex items-center justify-between gap-3 border-t border-cz-border pt-2.5" data-rider-hover-potential="">
-          <span className={LABEL}>{t("rider:header.potential")}</span>
-          <OwnPotential riderId={model.id} />
-        </div>
-      )}
+      {model.showPotential && <OwnPotential riderId={model.id} />}
 
       {extra && <div className="mt-3 border-t border-cz-border pt-2.5">{extra}</div>}
 

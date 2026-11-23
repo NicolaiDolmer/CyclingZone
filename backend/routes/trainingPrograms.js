@@ -33,9 +33,14 @@ import {
 import { isTrainingProgramsEnabled } from "../lib/trainingProgramsFlag.js";
 import { isTrainingCellsEnabled } from "../lib/trainingWeekPlanCellsFlag.js";
 import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer, v3SmartDefaultFocus } from "../lib/trainingCatalogV3.js"; // #5319
-import { seedProgramWeekDays } from "../lib/trainingWeekPlanCells.js";
+import { seedProgramWeekDays, planRunsOffStandard } from "../lib/trainingWeekPlanCells.js";
+import { effortForWrite, isTrainingEffortLevelsEnabled } from "../lib/trainingEffortLevels.js"; // #7947
 import { loadTeamFatigueForecast } from "../lib/trainingWeekPlanForecast.js";
+import { isTrainingWeekForecastEnabled, loadTeamWeekForecast } from "../lib/trainingWeekForecast.js"; // #8580
 import { markRidersOwnPlan, syncGroupsToSquadProgram, isMissingGroupsTable } from "../lib/trainingGroups.ts"; // #6000
+import { isTrainingRotationEnabled } from "../lib/trainingRotationFlag.js"; // #8548
+import { rotationWriteInput, rotationView } from "../lib/trainingRotationInput.js"; // #8548
+import { applyRotationWrite, rotationRevFloor } from "../lib/trainingRotation.js"; // #8548
 
 const PASS = (_req, _res, next) => next();
 
@@ -71,6 +76,8 @@ export function createTrainingProgramsRouter({
   supabase, requireAuth, isViewerBetaTester, writeLimiter = PASS, readLimiter = PASS, captureExceptionFn = () => {},
   // #4847: "Train now" laaser dagens felter (backend/lib/trainNow.js). Default = ingen laas.
   planLock = () => PASS,
+  // Codex P1 paa #8532 (AGENTS: tests laeser aldrig vaegurets tid): tidsstempler fra en injicerbar klokke.
+  clock = () => new Date(),
 }) {
   const router = express.Router();
 
@@ -83,6 +90,35 @@ export function createTrainingProgramsRouter({
   async function cellsOn(req) {
     const isBetaTester = await isViewerBetaTester(req);
     return isTrainingCellsEnabled(supabase, { isBetaTester });
+  }
+
+  // #8548: rotationen foelger sin egen kontakt (training_rotation) mod viewerens beta-status.
+  async function rotationOn(req) {
+    const isBetaTester = await isViewerBetaTester(req);
+    return isTrainingRotationEnabled(supabase, { isBetaTester });
+  }
+
+  // #8548: kolonnerne findes foerst efter migrationen, og flag-raekken oprettes af samme
+  // migration; derfor laeses de kun med kontakten on.
+  async function rotationRows(teamId) {
+    const { data, error } = await supabase.from("training_week_plans")
+      // schema-columns-ok: rotation + plan_kind tilfoejes af database/2026-11-22-8548-training-rotation.sql (post-merge); kun laest med flaget on.
+      .select("id, rider_id, days, rotation, plan_kind")
+      .eq("team_id", teamId);
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  }
+
+  // GET-svarets rotation-del. Kontakten off = ingen noegler (svaret er praecis som foer).
+  async function rotationPayload(req) {
+    if (!(await rotationOn(req))) return {};
+    const rotations = {};
+    for (const row of await rotationRows(req.team.id)) {
+      if (row.rider_id == null) continue;
+      const view = rotationView(row);
+      if (view.planKind || view.rotation) rotations[row.rider_id] = view;
+    }
+    return { rotationEnabled: true, rotations };
   }
 
   async function ownRiders(teamId) {
@@ -123,7 +159,13 @@ export function createTrainingProgramsRouter({
     return affected ? isTrainingCatalogV3EnabledForViewer(supabase, () => isViewerBetaTester(req)) : false;
   }
 
-  function seedsFor(riders, rows, plansByRider, catalogV3 = false) {
+  // #7947: kontakten slaas kun op, naar en rytter der skal saaes har en plan paa et andet
+  // niveau end sessionens standard (kun muligt med kontakten on). Ellers intet opslag.
+  async function seedEffortLevels(riders, plansByRider) {
+    return riders.some((r) => planRunsOffStandard(plansByRider.get(r.id))) ? isTrainingEffortLevelsEnabled(supabase) : false;
+  }
+
+  function seedsFor(riders, rows, plansByRider, catalogV3 = false, effortLevels = false) {
     const teamDays = (rows ?? []).find((r) => r.rider_id == null)?.days ?? null;
     const seeds = {};
     for (const rider of riders) {
@@ -131,7 +173,7 @@ export function createTrainingProgramsRouter({
       if (isValidProgramWeekDays(riderDays)) continue;
       seeds[rider.id] = seedProgramWeekDays({
         riderDays, teamDays, plan: plansByRider.get(rider.id) ?? null, primaryType: rider.primary_type ?? null,
-        secondaryType: rider.secondary_type ?? null, catalogV3,
+        secondaryType: rider.secondary_type ?? null, catalogV3, effortLevels,
       });
     }
     return seeds;
@@ -157,7 +199,7 @@ export function createTrainingProgramsRouter({
       let seeds = {};
       if (cellsEnabled) {
         const [riders, plansByRider] = await Promise.all([ownRiders(req.team.id), teamPlans(req.team.id)]);
-        seeds = seedsFor(riders, rows, plansByRider, await seedCatalogV3(req, riders, plansByRider));
+        seeds = seedsFor(riders, rows, plansByRider, await seedCatalogV3(req, riders, plansByRider), await seedEffortLevels(riders, plansByRider));
       }
       res.json({
         enabled: catalogOn,
@@ -166,6 +208,7 @@ export function createTrainingProgramsRouter({
         catalog: catalogOn ? trainingProgramCatalog() : [],
         assigned,
         seeds,
+        ...(await rotationPayload(req)),
       });
     } catch (err) {
       captureExceptionFn(err);
@@ -213,7 +256,7 @@ export function createTrainingProgramsRouter({
     const targets = picked.filter((id) => !hasOwnRow.has(id) && !followers.has(id));
     const skipped = picked.length - targets.length + retiredPicked;
     if (targets.length === 0) return res.json({ ok: true, applied: 0, skipped, programKey: program.key });
-    const now = new Date().toISOString();
+    const now = clock().toISOString();
     const { error } = await insertRows(supabase, targets.map((riderId) => ({
       // En NY kopi pr. rytter — ingen delte objekter mellem raekkerne.
       team_id: teamId, rider_id: riderId, days: programWeekDaysFor(program.key), program_key: program.key, updated_at: now,
@@ -258,7 +301,7 @@ export function createTrainingProgramsRouter({
       const existingByRider = new Map(
         (rows ?? []).filter((r) => r.rider_id != null).map((r) => [r.rider_id, r.id]),
       );
-      const now = new Date().toISOString();
+      const now = clock().toISOString();
       const inserts = [];
       const updates = [];
       for (const riderId of targets) {
@@ -296,7 +339,8 @@ export function createTrainingProgramsRouter({
   });
 
   // PUT /api/training/programs/cell — body { riderId, weekday, slotIndex (null = hele
-  // ugedagen, 0-4 = een loebsdag), session }. Spillerens klik paa EEN celle.
+  // ugedagen, 0-4 = een loebsdag), session, effort? }. Spillerens klik paa EEN celle.
+  // #7947: `effort` (easy/normal/hard, null = foelg) gemmes kun med training_effort_levels on.
   // Proveniensen bevares (UI'et viser "Sprinter · 2 aendret").
   router.put("/cell", requireAuth, writeLimiter, planLock("programCell"), async (req, res) => {
     if (!req.team) return res.status(400).json({ error: "No team found" });
@@ -308,6 +352,9 @@ export function createTrainingProgramsRouter({
     }
     try {
       if (!(await cellsOn(req))) return res.status(404).json({ error: "not_found" });
+      // #7947: indsatsen gemmes kun med kontakten on; ikke sendt = intet opslag, som i dag.
+      const effortWrite = await effortForWrite(supabase, req.body?.effort);
+      if (!effortWrite.ok) return res.status(400).json({ error: effortWrite.reason });
       // #5319: en v3-session kan kun vaelges naar training_catalog_v3 er aaben for viewer.
       if (isV3OnlySession(session) && !(await isTrainingCatalogV3EnabledForViewer(supabase, () => isViewerBetaTester(req)))) {
         return res.status(400).json({ error: "invalid_session" });
@@ -325,17 +372,61 @@ export function createTrainingProgramsRouter({
         ? row.days
         : await (async () => {
           const plans = await teamPlans(teamId);
-          return seedsFor([rider], rows, plans, await seedCatalogV3(req, [rider], plans))[riderId];
+          return seedsFor([rider], rows, plans, await seedCatalogV3(req, [rider], plans), await seedEffortLevels([rider], plans))[riderId];
         })();
-      const days = setProgramCell(current, { weekday, slotIndex, session });
+      const days = setProgramCell(current, { weekday, slotIndex, session, effort: effortWrite.effort });
       if (!days) return res.status(400).json({ error: "invalid_cell" });
       await markRidersOwnPlan(supabase, teamId, [riderId]); // #6000: egen plan vinder over gruppen. Foer skrivningen.
-      const now = new Date().toISOString();
+      const now = clock().toISOString();
       const { error } = row
         ? await updateRow(supabase, row.id, { days, updated_at: now })
         : await insertRows(supabase, [{ team_id: teamId, rider_id: riderId, days, updated_at: now }]);
       if (error) throw new Error(error.message);
       res.json({ ok: true, riderId, days });
+    } catch (err) {
+      captureExceptionFn(err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // PUT /api/training/programs/rotation — body { riderId, planKind?, passes?, keepPlace?, startIndex? }
+  // (#8548). Rytterens egen rotation og markoeren plan_kind ('week' | 'rotation').
+  // Kontakten off = 409 feature_disabled og intet skrives. Pladsen gemmes ikke her:
+  // den stemples paa kvitteringen af motoren (PR 2), og rev + anker afgoer hvor
+  // rotationen fortsaetter (lib/trainingRotation.js). En rettelse er rytterens egen
+  // plan og vinder over gruppen (#6000), som et felt.
+  router.put("/rotation", requireAuth, writeLimiter, planLock("programApply"), async (req, res) => {
+    if (!req.team) return res.status(400).json({ error: "No team found" });
+    try {
+      if (!(await rotationOn(req))) return res.status(409).json({ error: "feature_disabled" });
+      const riderId = req.body?.riderId;
+      if (typeof riderId !== "string" || !riderId) return res.status(400).json({ error: "invalid_rider" });
+      const input = await rotationWriteInput(supabase, req.body, { viewerIsBeta: () => isViewerBetaTester(req) });
+      if (!input.ok) return res.status(400).json({ error: input.reason });
+      const teamId = req.team.id;
+      const riders = await ownRiders(teamId);
+      const rider = riders.find((r) => r.id === riderId);
+      if (!rider) return res.status(403).json({ error: "not_own_rider" });
+      const rows = await rotationRows(teamId);
+      const row = rows.find((r) => r.rider_id === riderId) ?? null;
+      const at = clock();
+      const next = applyRotationWrite({ prev: row?.rotation ?? null, prevKind: row?.plan_kind ?? null, write: input.write, passes: input.passes, revFloor: rotationRevFloor(at) });
+      if (!next.ok) return res.status(400).json({ error: next.reason });
+      await markRidersOwnPlan(supabase, teamId, [riderId]); // #6000: egen plan vinder over gruppen. Foer skrivningen.
+      const now = at.toISOString();
+      const patch = { ...(next.rotationChanged ? { rotation: next.rotation } : {}), plan_kind: next.planKind, updated_at: now };
+      let error;
+      if (row) {
+        ({ error } = await supabase.from("training_week_plans").update(patch).eq("id", row.id));
+      } else {
+        // En rytter uden raekke faar sin uge saaet (som PUT /cell), saa Week blocks og
+        // motoren altid har gyldige felter at falde tilbage paa.
+        const plans = await teamPlans(teamId);
+        const days = seedsFor([rider], rows, plans, await seedCatalogV3(req, [rider], plans), await seedEffortLevels([rider], plans))[riderId];
+        ({ error } = await supabase.from("training_week_plans").insert([{ team_id: teamId, rider_id: riderId, days, ...patch }]));
+      }
+      if (error) throw new Error(error.message);
+      res.json({ ok: true, riderId, ...rotationView({ rotation: next.rotation, plan_kind: next.planKind }) });
     } catch (err) {
       captureExceptionFn(err);
       res.status(500).json({ error: err.message });
@@ -351,8 +442,33 @@ export function createTrainingProgramsRouter({
     try {
       if (!(await cellsOn(req))) return res.json({ available: false, reason: "disabled", riders: {} });
       const seasonId = await activeSeasonId();
-      const forecast = await loadTeamFatigueForecast({ supabase, team: req.team, seasonId, now: new Date() });
+      const forecast = await loadTeamFatigueForecast({ supabase, team: req.team, seasonId, now: clock() });
       res.json(forecast);
+    } catch (err) {
+      captureExceptionFn(err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // GET /api/training/programs/forecast/week — #8580 / #8550 del 3: den rullende uge (i dag + 7, 8 datoer; Program bruger de første 7).
+  // Bag training_week_forecast (off/beta/on, seedet off). Dag 0 er GET /forecast's svar
+  // uændret, med samme gate; de andre dage har kun løbs- og hvilefelter (ingen træthed, K-7).
+  router.get("/forecast/week", requireAuth, readLimiter, async (req, res) => {
+    if (!req.team) return res.status(400).json({ error: "No team found" });
+    try {
+      const isBetaTester = await isViewerBetaTester(req);
+      if (!(await isTrainingWeekForecastEnabled(supabase, { isBetaTester }))) {
+        return res.json({ available: false, reason: "disabled", days: [] });
+      }
+      const seasonId = await activeSeasonId();
+      const now = clock();
+      const week = await loadTeamWeekForecast({
+        supabase, team: req.team, seasonId, now,
+        loadToday: async () => ((await cellsOn(req))
+          ? loadTeamFatigueForecast({ supabase, team: req.team, seasonId, now })
+          : { available: false, reason: "disabled", riders: {} }),
+      });
+      res.json(week);
     } catch (err) {
       captureExceptionFn(err);
       res.status(500).json({ error: err.message });

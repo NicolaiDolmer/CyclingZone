@@ -103,7 +103,7 @@ export function useDevTransitionData() {
 
 /** #4943: the newest open survey the viewer has neither completed nor dismissed. `hide` clears
  * the cached invite too, so a dismissed card does not return from cache on the next visit. */
-export function useSurveyInviteData(): { survey: Row | null; hide: () => void } {
+export function useSurveyInviteData(): { survey: Row | null; settled: boolean; hide: () => void } {
   const { runtime, scope } = useDataScope();
   const viewerId = scope.viewerId;
   const key = viewerKey(scope, "dashboard:survey-invite");
@@ -142,7 +142,11 @@ export function useSurveyInviteData(): { survey: Row | null; hide: () => void } 
     void runtime.client.cancelQueries({ queryKey: key });
     runtime.client.setQueryData(key, null);
   }, [runtime, key]);
-  return { survey: query.isError ? null : query.data ?? null, hide };
+  return {
+    survey: query.isError ? null : query.data ?? null,
+    settled: scope.ready && (viewerId === null || query.status !== "pending"),
+    hide,
+  };
 }
 
 /** #1140: server-decided "Your first race" card. null = no card (also while loading). */

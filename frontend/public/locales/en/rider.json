@@ -137,6 +137,7 @@
       "effectNote": "updates daily",
       "noRiskNote": "Higher intensity grows faster, with no risk of losing progress.",
       "restNote": "No ability growth on a rest day; fatigue recovers.",
+      "levelNote": "Hard trains more but tires more. Easy and Medium save energy.",
       "emptyFocus": "Pick a focus to assign training.",
       "actionErrorGeneric": "Could not save. Try again in a moment.",
       "actionErrors": {
@@ -474,6 +475,9 @@
         "thisSeason": "{delta} this season",
         "abilityPoints": "Ability points gained",
         "trackedSince": "Tracked since"
+      },
+      "xp": {
+        "title": "Abilities and XP"
       },
       "reading": {
         "title": "Reading",
@@ -994,7 +998,8 @@
     "noSlots": "No focus slots left this season",
     "current": "Current focus",
     "tradeoff": "Other abilities grow a little slower.",
-    "intensity_recovery": "Recovery"
+    "intensity_recovery": "Recovery",
+    "intensity_race": "Race"
   },
   "championJersey": {
     "world": {

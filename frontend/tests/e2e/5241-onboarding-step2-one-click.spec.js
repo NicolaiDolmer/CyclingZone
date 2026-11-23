@@ -279,7 +279,7 @@ test("idempotent: dagens traening allerede koert viser 'ugen er allerede koert' 
 
   await login(page);
 
-  await expect(page.getByText("Ugen er allerede kørt.")).toBeVisible();
+  await expect(page.getByText("Trænede i dag.")).toBeVisible();
   // Ingen knapper at klikke paa — flowet koerer aldrig, hverken bulk eller
   // run-today.
   await expect(page.getByRole("button", { name: "Kør ugens træning" })).toHaveCount(0);

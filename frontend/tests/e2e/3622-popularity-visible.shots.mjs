@@ -72,7 +72,7 @@ async function login(page) {
   await page.goto("/login");
   await page.getByPlaceholder(/email/i).waitFor();
   await page.getByPlaceholder(/email/i).fill(TEST_USER.email);
-  await page.getByPlaceholder("••••••••").fill("playwright-password");
+  await page.locator("#auth-password").fill("playwright-password");
   await page.getByRole("button", { name: /log in/i }).click();
   await page.waitForURL(/\/dashboard$/);
 }

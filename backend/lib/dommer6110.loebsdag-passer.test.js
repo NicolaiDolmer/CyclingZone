@@ -100,7 +100,7 @@ const ROLLETAL = {
 };
 // Ejervalg A (16/11): +2 kun for et ungt toptalent paa en meget lav evne. Opdigtede graenser,
 // saa KLATRER (19 aar, stort talent) paa en lav klatre-evne er netop saadan et talent.
-const RIGELIG = await xpParams({ ...RIGELIG_XP_RAA, datePlus2: { maxAge: 21, minPotential: 5.5, belowLevel: 20 } });
+const RIGELIG = await xpParams(RIGELIG_XP_RAA);
 const DATO = "2026-11-16";
 const dato = (n) => new Date(Date.UTC(2026, 10, 15) + n * 86_400_000).toISOString().slice(0, 10);
 
@@ -386,8 +386,8 @@ test("R15b + R16: gulvet er ikke et loft, den gamle regel om +1 pr. loebsdag kli
     assert.deepEqual(medGammelRegel.gains, fri.gains, "hardDailyCap maa ikke klippe koebet");
     const facit = koebMedPrisliste({ level: 12, xp: fri.xp.climbing }, (niveau) => xpPriceForNextPoint(niveau, RIGELIG));
     assert.ok(facit.point >= 2, `scenariet skal give mindst 2 point i klatring (gav ${facit.point})`);
-    assert.equal(fri.gains.climbing, Math.min(facit.point, 2), "alle point op til +2 koebes; resten venter paa bjaelken (ejervalg 16/11)");
-    if (facit.point > 2) assert.ok(fri.progress.climbing > 1, "resten staar paa bjaelken");
+    // G3a (spec 2026-11-20 §3, #8520): ingen graense pr. dato; alle point koebes (afloeser +2 fra 16/11).
+    assert.equal(fri.gains.climbing, facit.point, "alle point XP'en raekker til, koebes");
     const bedste = bedsteHaardePas(lav, valg);
     assert.ok(rund(sum(fri.xp)) >= rund(bedste.iAlt), `rigelig XP${akse ? " (loebsdags-aksen)" : ""}: loebsdag ${sum(fri.xp).toFixed(1)} < bedste haarde pas ${bedste.iAlt.toFixed(1)}`);
   }

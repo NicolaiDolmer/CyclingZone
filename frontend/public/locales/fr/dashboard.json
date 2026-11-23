@@ -486,7 +486,7 @@
       "secondaryCta": "Le faire moi-même",
       "resultLine": "Semaine lancée : {count, plural, one {# coureur entraîné} other {# coureurs entraînés}}.",
       "resultLink": "Voir l'entraînement",
-      "alreadyRun": "Cette semaine est déjà lancée.",
+      "alreadyRun": "Entraîné aujourd'hui.",
       "error": "Impossible de lancer l'entraînement de cette semaine. Réessaie."
     },
     "tour": "Montre-moi comment",

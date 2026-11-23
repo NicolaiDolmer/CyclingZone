@@ -34,6 +34,7 @@
 
 import { TRAINING_FOCUSES, smartDefaultFocus } from "./training.js";
 import { V3_NEW_HARD_SESSIONS, isV3OnlySession, v3SmartDefaultFocus } from "./trainingCatalogV3.js";
+import { isEffortLevel } from "./trainingEffortLevels.js"; // #7947
 
 // De fire dagstyper, i den rækkefølge de præsenteres.
 export const DAY_TYPES = Object.freeze(["rest", "recovery", "skill", "training"]);
@@ -175,8 +176,12 @@ export function levelForSession(session) {
 //   previousFocus : rytterens hidtidige fokus, kun brugt til at bevare valget
 //                   hen over en hviledag (se REST_FOCUS_FALLBACK).
 // dayType/session er uvalideret input (fx request-body); funktionen validerer dem selv.
-/** @param {{ dayType?: any, session?: any, previousFocus?: string | null, catalogV3?: boolean }} [choice] */
-export function programForChoice({ dayType, session = null, previousFocus = null, catalogV3 = false } = {}) {
+//   effort, effortLevels : #7947. Med kontakten (effortLevels) bevares en gyldig valgt indsats
+//                   som programmets intensitet; uden den, eller uden gyldig indsats, er
+//                   intensiteten sessionens standardniveau præcis som i dag. Hvile og
+//                   restitution ignorerer indsatsen.
+/** @param {{ dayType?: any, session?: any, previousFocus?: string | null, catalogV3?: boolean, effort?: any, effortLevels?: boolean }} [choice] */
+export function programForChoice({ dayType, session = null, previousFocus = null, catalogV3 = false, effort = null, effortLevels = false } = {}) {
   if (!DAY_TYPES.includes(dayType)) return { ok: false, reason: "invalid_day_type" };
 
   if (dayType === "rest") {
@@ -189,7 +194,8 @@ export function programForChoice({ dayType, session = null, previousFocus = null
   if (!sessionsForDayType(dayType, { catalogV3 }).includes(session)) {
     return { ok: false, reason: "invalid_session" };
   }
-  return { ok: true, focus: session, intensity: sessionIntensityFor({ catalogV3 })[session] };
+  const intensity = effortLevels && isEffortLevel(effort) ? effort : sessionIntensityFor({ catalogV3 })[session];
+  return { ok: true, focus: session, intensity };
 }
 
 // #5319: en GEMT v3-session genkendes altid (hviledagen bevarer valget). Om den
@@ -213,7 +219,11 @@ function isKnownFocus(focus) {
 //
 // Returnerer { dayType, session, focus, intensity, changed } hvor `changed`
 // fortæller om det gemte par ikke allerede var på modellens form.
-export function normalizeProgram(program, { catalogV3 = false } = {}) {
+//
+// #7947: med kontakten (effortLevels) er en gemt gyldig indsats (easy/normal/hard) på en
+// kendt trænings- eller færdighedssession et lovligt valg og bevares. Slukket = som i dag.
+// En ukendt session falder stadig tilbage til Lang tur på standardniveau (reparationsstien).
+export function normalizeProgram(program, { catalogV3 = false, effortLevels = false } = {}) {
   const dayType = dayTypeForProgram(program);
   const session = sessionForProgram(program);
   const previousFocus = program?.focus ?? null;
@@ -231,11 +241,12 @@ export function normalizeProgram(program, { catalogV3 = false } = {}) {
   const v3 = catalogV3 || isV3OnlySession(session);
   const known = sessionsForDayType(dayType, { catalogV3: v3 }).includes(session);
   const finalSession = known ? session : "endurance";
+  const keepEffort = effortLevels && known && isEffortLevel(program?.intensity);
   return withChanged(program, {
     dayType: known ? dayType : "training",
     session: finalSession,
     focus: finalSession,
-    intensity: sessionIntensityFor({ catalogV3: v3 })[finalSession],
+    intensity: keepEffort ? program.intensity : sessionIntensityFor({ catalogV3: v3 })[finalSession],
   });
 }
 

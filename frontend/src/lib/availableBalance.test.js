@@ -128,6 +128,10 @@ test("#8357 resolveBalanceDisplay: a slow reservation read stops the skeleton an
   assert.deepEqual(resolveBalanceDisplay(1000, 300, { timedOut: true }), { mode: "available", value: 700, locked: 300 });
 });
 
+test("#8357 resolveBalanceDisplay: a cleared reservation cannot make an unconfirmed team balance spendable", () => {
+  assert.deepEqual(resolveBalanceDisplay(1000, 0, { balanceUnconfirmed: true }), { mode: "balance", value: 1000, locked: 0 });
+});
+
 test("#8357 resolveBalanceDisplay: no balance at all renders nothing", () => {
   assert.equal(resolveBalanceDisplay(null, 300), null);
   assert.equal(resolveBalanceDisplay(undefined, null, { failed: true }), null);

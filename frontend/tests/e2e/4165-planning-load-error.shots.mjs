@@ -44,7 +44,7 @@ for (const vp of SHOTS) {
 
   await page.goto("/login");
   await page.getByPlaceholder(vp.lang === "da" ? "din@email.dk" : "you@email.com").fill("manager@cyclingzone.test");
-  await page.getByPlaceholder("••••••••").fill("preview-mock");
+  await page.locator("#auth-password").fill("preview-mock");
   await page.getByRole("button", { name: vp.lang === "da" ? /^Log ind$/ : /^Log in$/ }).click();
   await page.waitForURL(/\/(dashboard|races|$)/, { timeout: 20000 });
 
