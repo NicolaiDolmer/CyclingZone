@@ -40,6 +40,13 @@ test("#8357 one source: the sidebar shows the shared team balance, not its own c
   assert.doesNotMatch(sidebar, /\{formatNumber\(balance\)\} CZ\$/);
 });
 
+test("#8357 a dashboard live refresh re-reads the reservation beside the team balance", () => {
+  const dashboardData = read("../data/dashboardData.ts");
+  assert.match(balance, /export const MARKET_BALANCE_RESOURCES: ReadonlySet<string> = new Set\(\[RESERVATION\]\);/);
+  assert.match(dashboardData, /isScopeResource\(query, scope, LIVE_RESOURCES\)\s*\|\| isScopeResource\(query, scope, MARKET_BALANCE_RESOURCES\)/);
+  assert.match(dashboardData, /client\.invalidateQueries\(\s*\{ predicate: isLive \}/);
+});
+
 test("#8357 a successful auction start refreshes the reservation before navigation", () => {
   assert.match(riderProfile, /refreshMarketBalance\(\);\s*navigate\("\/auctions"\)/);
 });

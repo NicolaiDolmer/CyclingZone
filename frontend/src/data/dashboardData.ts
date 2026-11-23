@@ -19,6 +19,7 @@ import { useDataScope, scopedHeaders } from "./useDataScope.ts";
 import { DataError } from "./apiQuery.ts";
 import { transferOffersQuery } from "./marketData.ts";
 import { LIVE_RESOURCES, isScopeResource, cancelledWithoutData, settledList, sameScopePlaceholder } from "./dashboardQueryPolicy.ts";
+import { MARKET_BALANCE_RESOURCES } from "./marketBalance.ts";
 
 // #6494: the Dashboard's page-owned server data. Every resource is one Query key under the
 // viewer/team scope; the page keeps only UI state (dismissals, menus, pending submits).
@@ -415,12 +416,16 @@ export function useDashboardData(options: DashboardOptions) {
   const error = bootstrapError ?? coreError ?? null;
   const loading = !signedOut && (!ready || context.bootstrapLoading || (hasTeam && (!seasonSettled || core === undefined) && !coreError));
 
+  // #8357: the reservation behind "available" lives outside the dashboard core now, so a
+  // live refresh re-reads it with the team balance.
+  const isLive = useCallback((query: Parameters<typeof isScopeResource>[0]) => isScopeResource(query, scope, LIVE_RESOURCES)
+    || isScopeResource(query, scope, MARKET_BALANCE_RESOURCES), [scope]);
   const refreshLive = useCallback(() => client.invalidateQueries(
-    { predicate: (query) => isScopeResource(query, scope, LIVE_RESOURCES) }, { cancelRefetch: false },
-  ), [client, scope]);
+    { predicate: isLive }, { cancelRefetch: false },
+  ), [client, isLive]);
   const retry = useCallback(() => client.refetchQueries(
-    { predicate: (query) => isScopeResource(query, scope, LIVE_RESOURCES) && query.state.status === "error" },
-  ), [client, scope]);
+    { predicate: (query) => isLive(query) && query.state.status === "error" },
+  ), [client, isLive]);
 
   // Writes bind to the captured viewer and hold reads while in flight; nothing is optimistic
   // on the server's behalf. Reads cancelled by the barrier without data are refetched after.

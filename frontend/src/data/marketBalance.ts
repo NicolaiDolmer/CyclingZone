@@ -6,6 +6,9 @@ import { privateKey, viewerKey } from "./queryRuntime.ts";
 import { appRuntime, useDataScope } from "./useDataScope.ts";
 
 const RESERVATION = "market:reserved-balance";
+/** Reads a live refresh must re-run beside the team, so available never pairs a new
+ * balance with an old reservation (the dashboard used to read both in one module). */
+export const MARKET_BALANCE_RESOURCES: ReadonlySet<string> = new Set([RESERVATION]);
 // #8357: how long a surface may show a skeleton while the reservation loads. After this
 // the raw balance is shown, so the number never stays hidden behind a slow read.
 export const RESERVED_WAIT_MS = 4000;
