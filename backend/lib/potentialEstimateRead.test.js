@@ -12,6 +12,7 @@ import {
   buildPotentialView,
   buildProjectionFromView,
   buildScoutingReportFromView,
+  buildTypePrognoses,
   loadPotentialViews,
 } from "./potentialEstimateRead.js";
 
@@ -208,14 +209,16 @@ const roleInput = (over = {}) => reportInput({
   ...over,
 });
 
-test("scouting-rapporten: scoutet fremmed rytter får et bånd pr. ryttertype", async () => {
+test("scouting-rapporten: scoutet fremmed rytter får ét prognosetal pr. ryttertype, intet bånd", async () => {
   const report = await buildScoutingReportFromView(world(), roleInput());
   assert.equal(report.types.length, 8);
-  for (const band of report.types) {
-    assert.ok(Number.isInteger(band.now) && Number.isInteger(band.progLo) && Number.isInteger(band.progHi), band.key);
-    assert.ok(band.progLo <= band.progHi, band.key);
+  for (const row of report.types) {
+    assert.deepEqual(Object.keys(row), ["key", "now", "prog"], row.key);
+    assert.ok(Number.isInteger(row.now) && Number.isInteger(row.prog), row.key);
+    assert.ok(row.prog >= row.now, `${row.key}: prognosen står aldrig under niveauet i dag`);
   }
-  assert.ok(report.types.some((band) => band.key === "climber"));
+  assert.ok(report.types.some((row) => row.key === "climber"));
+  assert.doesNotMatch(JSON.stringify(report), /progLo|progHi|ceilLo|ceilHi|loft/);
   assert.doesNotMatch(JSON.stringify(report), FORBIDDEN);
 });
 
@@ -224,12 +227,63 @@ test("scouting-rapporten: egen rytter får hele listen", async () => {
   assert.equal(report.types.length, 8);
 });
 
-test("scouting-rapporten: spejderen styrer båndets bredde for fremmede ryttere", async () => {
-  const width = (band) => band.progHi - band.progLo;
-  const narrow = await buildScoutingReportFromView(world(), roleInput({ level: 3 }));
-  const wide = await buildScoutingReportFromView(world(), roleInput({ level: 1 }));
-  const total = (report) => report.types.reduce((sum, band) => sum + width(band), 0);
-  assert.ok(total(narrow) <= total(wide), "et højere scout-niveau gør aldrig båndet bredere");
+// Egen 22-årig rytter, der er gået frem i alle evner den seneste måned.
+const growingWorld = (over = {}) => world({
+  riders: [{ id: "scouted", team_id: TEAM, is_academy: false, best_role_rating: 50, birthdate: "2004-01-01", primary_type: "climber", secondary_type: "gc" }],
+  seasons: [{ number: 4, status: "active" }],
+  rider_derived_abilities: [{ rider_id: "scouted", ...abilitiesAt(50) }],
+  rider_derived_ability_history: [
+    { rider_id: "scouted", snapshot_date: "2026-10-15", season_number: 4, source: "daily", abilities: abilitiesAt(48) },
+  ],
+  rider_ability_race_day_history: [],
+  ...over,
+});
+const growingInput = (over = {}) => roleInput({
+  rider: { id: "scouted", birthdate: "2004-01-01", primary_type: "climber", secondary_type: "gc", potentiale: 5.5 },
+  own: true, level: 3, ...over,
+});
+
+test("scouting-rapporten: den bedste rolle har samme tal som den samlede prognose", async () => {
+  const report = await buildScoutingReportFromView(growingWorld(), growingInput());
+  assert.equal(report.prognosisView.hidden, false);
+  const climber = report.types.find((row) => row.key === "climber");
+  assert.equal(climber.prog, report.prognosisView.value, "samme regel, samme tal");
+  assert.ok(climber.prog > climber.now, "fremgang giver en prognose over niveauet i dag");
+});
+
+test("scouting-rapporten: uden fremgang står hver type på sit niveau i dag", async () => {
+  const report = await buildScoutingReportFromView(growingWorld({ rider_derived_ability_history: [] }), growingInput());
+  for (const row of report.types) assert.equal(row.prog, row.now, row.key);
+});
+
+test("scouting-rapporten: efter toppen vokser ingen type", async () => {
+  const report = await buildScoutingReportFromView(
+    growingWorld({ riders: [{ id: "scouted", team_id: TEAM, is_academy: false, best_role_rating: 50, birthdate: "1990-01-01", primary_type: "climber" }] }),
+    growingInput({ rider: { id: "scouted", birthdate: "1990-01-01", primary_type: "climber", potentiale: 5.5 } }),
+  );
+  assert.equal(report.prognosisView.reason, "pastPeak");
+  for (const row of report.types) assert.equal(row.prog, row.now, row.key);
+});
+
+test("buildTypePrognoses: målet for hver type er skønnet, flyttet med typens afstand i spejderens fremskrivning", () => {
+  // Alle evner ens: hver rolle står på 50 i dag og er gået lige meget frem.
+  const liveAbilities = abilitiesAt(50);
+  const snapshots = [{ snapshot_date: "2026-10-15", abilities: abilitiesAt(48) }];
+  const rider = { id: "r", primary_type: "climber" };
+  const bands = [
+    { key: "climber", now: 50, progLo: 60, progHi: 70 },
+    { key: "gc", now: 50, progLo: 70, progHi: 80 },
+    { key: "sprinter", now: 50, progLo: 30, progHi: 40 },
+  ];
+  const input = { bands, rider, liveAbilities, snapshots, today: "2026-11-20", estimate: 74, age: 22 };
+  const best = buildTypePrognoses(input).find((row) => row.key === "climber").prog;
+  const byKey = Object.fromEntries(buildTypePrognoses(input).map((row) => [row.key, row.prog]));
+  // Bedste rolle (her climber) har skønnet som mål.
+  assert.ok(byKey.climber > 50 && byKey.climber <= 74, "climber går mod skønnet");
+  assert.ok(byKey.gc >= best, "en type spejderen ser højere, får aldrig et lavere tal");
+  assert.equal(byKey.sprinter, 50, "et mål under niveauet i dag giver ingen fremgang");
+  // Uden billeder er farten nul, og tallet er niveauet i dag.
+  for (const row of buildTypePrognoses({ ...input, snapshots: [] })) assert.equal(row.prog, row.now, row.key);
 });
 
 test("scouting-rapporten: uscoutet, skjult og uden kig giver ingen liste", async () => {

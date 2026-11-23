@@ -135,10 +135,17 @@ export function previewAcademy<T extends {
 
 export function previewReport(id: string, seed: SeedReport, own: boolean) {
   const view = viewFor(id);
-  // #6110: prognosen pr. ryttertype står under skønnet igen, for egne og scoutede ryttere.
-  // Kun nu-rating og prognose-bånd, som serveren sender; loft og alias er ikke med.
+  const prognosis = own ? prognosisFor(view) : null;
+  // #6110 (ejer 23/11): prognosen pr. ryttertype står under skønnet igen, ét tal pr. type
+  // som serveren sender; bånd, loft og alias er ikke med. Opdigtet: den primære type får den
+  // samlede prognose for egne ryttere, de andre midten af frøets bånd, aldrig under nu.
   const types = !view.hidden && seed.types?.length
-    ? seed.types.map(({ key, now, progLo, progHi }) => ({ key, now, progLo, progHi }))
+    ? seed.types.map(({ key, now, progLo, progHi }) => {
+      const point = key === seed.primaryKey && prognosis && !prognosis.hidden
+        ? prognosis.value
+        : Math.round((progLo + progHi) / 2);
+      return { key, now, prog: Math.max(now, point) };
+    })
     : null;
   return {
     ...(types ? { primaryKey: seed.primaryKey ?? null, types } : {}),
@@ -148,7 +155,7 @@ export function previewReport(id: string, seed: SeedReport, own: boolean) {
     looks: view.hidden ? 0 : 1,
     scout: seed.scout,
     potentialView: view,
-    ...(own ? { prognosisView: prognosisFor(view) } : {}),
+    ...(prognosis ? { prognosisView: prognosis } : {}),
   };
 }
 

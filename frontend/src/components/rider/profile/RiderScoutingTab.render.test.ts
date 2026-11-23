@@ -49,7 +49,9 @@ loader.deregister();
 const locale = (lang: string, ns: string) => JSON.parse(readFileSync(new URL(`../../../../public/locales/${lang}/${ns}.json`, import.meta.url), "utf8"));
 const NAMESPACES = ["rider", "riders", "riderTypes", "scouting", "common"];
 
-async function i18nFor(lng) {
+type I18n = ReturnType<typeof createInstance>;
+
+async function i18nFor(lng: string): Promise<I18n> {
   const i18n = createInstance();
   await i18n.use(ICU).init({
     lng,
@@ -62,11 +64,12 @@ async function i18nFor(lng) {
 }
 
 const TYPE_KEYS = ["sprinter", "puncheur", "brostensrytter", "baroudeur", "rouleur", "tt", "gc", "climber"];
-const types = TYPE_KEYS.map((key, i) => ({ key, now: 40 + i, progLo: 50 + i, progHi: 58 + i }));
+// Serveren sender ét prognosetal pr. type (#6110, ejer 23/11): intet bånd.
+const types = TYPE_KEYS.map((key, i) => ({ key, now: 40 + i, prog: 50 + i }));
 const potentialView = { hidden: false, value: 74, certainty: "fair", previousValue: null, previousCertainty: null, changedAt: null };
 const scout = { isDefault: false, name: "Scout A", tier: 3, overall: 70 };
 
-function render(i18n, over = {}, props = {}) {
+function render(i18n: I18n, over: Record<string, unknown> = {}, props: Record<string, unknown> = {}) {
   const report = {
     potentialView, level: 2, maxLevel: 3, own: false, looks: 2, primaryKey: "climber", scout, types, ...over,
   };
@@ -87,7 +90,37 @@ test("#6110: egen rytter med skøn og typer får prognosen pr. ryttertype under 
   assert.doesNotMatch(html, /profile\.scouting\./, "alle nøgler har en tekst");
 });
 
-test("#6110: scoutet fremmed rytter får samme liste med spejderens bånd", async () => {
+test("#6110: hver type viser ét prognosetal og ét mærke, intet bånd og intet interval", async () => {
+  const html = render(await i18nFor("en"), { own: true });
+  const en = locale("en", "rider").profile.scouting;
+  // climber er primær: "Projected" + ét tal (57), ingen "lo–hi".
+  assert.match(html, /data-type="climber" data-prog="57"/);
+  assert.ok(html.includes(`>${en.primaryProgressionLabel}<`));
+  assert.doesNotMatch(html, /\d+\s*[–-]\s*\d+/, "intet interval i listen");
+  // sprinter (sekundær liste): "40 · 50"
+  assert.match(html, /<span class="text-cz-1 font-bold">40<\/span><span class="text-cz-3"> · 50<\/span>/);
+  assert.equal((html.match(/data-prognosis-mark/g) ?? []).length, TYPE_KEYS.length, "ét mærke pr. type");
+  assert.doesNotMatch(html, /bg-cz-accent\/25/, "det skraverede bånd er væk");
+  assert.ok(html.includes(en.typesPaceNote), "noten forklarer den samme regel som prognosen");
+  assert.ok(!/shaded|band\b|range/i.test(`${en.typesLegendNoLoft} ${en.typesPaceNote}`), "teksterne taler ikke om bånd eller interval");
+});
+
+test("#6110: dansk tekst under listen nævner hverken skraveret bånd eller interval", () => {
+  const da = locale("da", "rider").profile.scouting;
+  for (const key of ["typesLegendNoLoft", "typesPaceNote", "recalcNote", "precisionNext", "precisionAtMax", "precisionUseless"]) {
+    assert.ok(!/skraver|bånd|interval/i.test(da[key]), key);
+    assert.ok(!da[key].includes("—"), `${key}: ingen tankestreg`);
+  }
+});
+
+test("#6110: ældre svar med kun båndet viser båndets midte som ét tal", async () => {
+  const legacy = TYPE_KEYS.map((key, i) => ({ key, now: 40 + i, progLo: 50 + i, progHi: 58 + i }));
+  const html = render(await i18nFor("en"), { own: true, types: legacy });
+  assert.match(html, /data-type="climber" data-prog="61"/);
+  assert.doesNotMatch(html, /\d+\s*[–-]\s*\d+/);
+});
+
+test("#6110: scoutet fremmed rytter får samme liste", async () => {
   const html = render(await i18nFor("en"), { own: false });
   assert.match(html, /data-testid="scouting-estimate-card"/);
   assert.match(html, /data-testid="scouting-natural-secondary"/);

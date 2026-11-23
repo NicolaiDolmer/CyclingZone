@@ -21,8 +21,9 @@ test("ingen af de tre svar bærer interval eller loft", () => {
       previewProjection(id, SEED_PROJECTION),
     ];
     for (const answer of answers) {
-      // #6110: rapporten bærer prognose-båndene pr. ryttertype (nu + prognose), aldrig intervallet på skønnet selv.
-      const { types: _roleTypes, ...rest } = answer as Record<string, unknown>;
+      // #6110: rapporten bærer ét prognosetal pr. ryttertype (`prog` i typerne), aldrig et interval.
+      const { types: roleTypes, ...rest } = answer as Record<string, unknown>;
+      assert.doesNotMatch(JSON.stringify(roleTypes ?? []), /"(lo|hi|ceil|loft|progLo|progHi|ceilLo|ceilHi|band)":/, id);
       assert.doesNotMatch(JSON.stringify(rest), FORBIDDEN, id);
       assert.ok(potentialViewOf(answer), id);
     }
@@ -48,9 +49,18 @@ test("#6110: rapporten bærer prognosen pr. ryttertype, men aldrig for skjulte r
     }
     withList += 1;
     assert.equal(report.types?.length, 8, id);
-    assert.ok(report.types?.every((row) => !("loft" in row) && !("ceilLo" in row)), "kun nu og prognose-bånd");
+    assert.ok(report.types?.every((row) => Object.keys(row).join() === "key,now,prog"), "kun nu og ét prognosetal");
+    assert.ok(report.types?.every((row) => (row.prog as number) >= (row.now as number)), "prognosen står aldrig under nu");
   }
   assert.ok(withList > 0, "mindst én rytter har en liste");
+});
+
+test("#6110: egen rytters primære type har samme tal som den samlede prognose", () => {
+  const report = previewReport("rider-1", SEED_SCOUTING_REPORT, true) as { primaryKey?: string; types?: { key: string; now: number; prog: number }[] };
+  const primary = report.types?.find((row) => row.key === report.primaryKey);
+  const prognosis = prognosisViewOf(report);
+  assert.ok(primary && prognosis && !prognosis.hidden);
+  assert.equal(primary.prog, Math.max(primary.now, prognosis.value));
 });
 
 test("#8523: egne ryttere har samme prognose på alle svar, andres ingen", () => {

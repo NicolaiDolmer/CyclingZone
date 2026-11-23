@@ -60,6 +60,7 @@ function fakeSupabase(stage) {
         eq(column, value) { filters.push([column, [value]]); return query; },
         in(column, values) { filters.push([column, values]); return query; },
         gt(column, value) { filters.push((row) => row[column] > value); return query; },
+        gte(column, value) { filters.push((row) => row[column] >= value); return query; },
         order() { return query; },
         range: async () => ({ data: rows(), error: null }),
         maybeSingle: async () => ({ data: rows()[0] ?? null, error: null }),
@@ -201,6 +202,7 @@ test("scouting-rapport tændt: en scoutet rytter får prognosen pr. ryttertype, 
   })();
   assert.equal(out.potentialView.value, 74);
   assert.equal(out.types.length, 8);
+  assert.ok(out.types.every((row) => Number.isInteger(row.prog) && !("progLo" in row)), "ét tal pr. type, intet bånd");
   assert.equal(xpLoads, 1);
   assert.doesNotMatch(JSON.stringify(out), FORBIDDEN);
   assert.doesNotMatch(JSON.stringify(out), /potentiale"|ability_caps|hidden_potential/);
