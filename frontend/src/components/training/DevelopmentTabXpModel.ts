@@ -397,6 +397,17 @@ export const DEV_COLUMNS: readonly { key: DevColumnKey; defaultVisible: boolean 
 ];
 export const DEV_COLUMNS_STORAGE_KEY = "cz-training-development-xp-columns";
 
+/**
+ * #7947 (owner 23/11): the natural type on one line, never two types stacked in one cell.
+ * The table cell shows `primary`; `secondary` is the second type when it is a different
+ * one (read out for screen readers and shown in the fold-out). null = no natural type.
+ */
+export function naturalTypeLine(natural: XpRiderType | null | undefined): { primary: string; secondary: string | null } | null {
+  if (!natural?.primary) return null;
+  const secondary = natural.secondary && natural.secondary !== natural.primary ? natural.secondary : null;
+  return { primary: natural.primary, secondary };
+}
+
 export function defaultDevColumns(): Set<DevColumnKey> {
   return new Set(DEV_COLUMNS.filter(c => c.defaultVisible).map(c => c.key));
 }

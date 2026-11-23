@@ -1,52 +1,48 @@
-// #7947 PR 3 (#8530) · Indsatsvaelgeren Let | Mellem | Haard i I dag-fanen R5, paa
-// holdlinjen og i hver raekke. Vises kun naar BAADE training_effort_levels og
-// training_page_r5 er taendt; ellers tegner fanen sine fire knapper som foer.
+// #7947 · Indsatsen i I dag-fanen R5: een segmenteret kontrol med ordene
+// Hvile · Let · Mellem · Haard, paa holdlinjen, for en gruppe og i hver raekke.
 //
-// Tre ting er ejerens (20/11): niveauerne er spillets egne tre (ingen ny skala);
-// Hvile er sit eget valg, med egen knap ved siden af og uden fokus eller niveau;
-// og skaderisikoen staar kun paa Haard (en linje i raekken naar Haard er valgt, og
-// en forklaring paa Haard-knappen selv).
+// Ejer 17/11: Hvile staar til venstre for Let. Ejer 23/11: ordene skrives fuldt ud
+// ("Jeg oensker ikke forkortelser i spillet"), og indsatsen har sin egen kolonne.
+// Med training_effort_levels (ejer 20/11) er Let/Mellem/Haard niveauet for den valgte
+// traening, og Hvile er sit eget valg uden fokus eller niveau; skaderisikoen staar kun
+// paa Haard (forklaringen paa selve knappen og et ikon i raekken naar Haard er valgt).
 //
 // Ren praesentation: valget gives videre til TodayR5, der skriver med sidens egne
-// gemme-kald. TASTE: hairline, 5px radius, ingen skygger, stroke-ikon, tabular tal.
+// gemme-kald. TASTE: hairline, 5px radius, ingen skygger, stroke-ikon.
 
 import { useTranslation } from "react-i18next";
 import { Segmented } from "../../ui/Segmented.jsx";
 import { AlertTriangleIcon } from "../../ui/icons/index.jsx";
-import { LEVEL_EFFORTS, type Effort } from "./todayR5Model.ts";
+import { EFFORTS, type Effort } from "./todayR5Model.ts";
 
-export default function EffortPickerR5({ value, onPick, disabled, scope, full = false, testId }: {
-  /** Det trykkede valg (et niveau eller Hvile); null = intet trykket (holdlinjen). */
+export default function EffortPickerR5({ value, onPick, disabled, scope, full = false, compact = false, hardHint = true, testId }: {
+  /** Det trykkede valg; null = intet trykket (holdlinjen, eller rytteren foelger sit program). */
   value: Effort | null;
   onPick: (effort: Effort) => void;
   disabled: boolean;
   /** Hvem valget gaelder, til skaermlaeserens navn ("Whole team today", rytterens navn). */
   scope: string;
   full?: boolean;
+  /** Smallere knapper, saa de fire ord staar paa een linje i tabellens kolonne. */
+  compact?: boolean;
+  /** Forklaringen paa Haard-knappen (kun med niveauerne, hvor Haard er et valg for sig). */
+  hardHint?: boolean;
   testId: string;
 }) {
   const { t: tR5 } = useTranslation("trainingR5"); // #7947: lazy namespace (I18nReadyGate i TrainingPage)
-  const levelValue = value && value !== "rest" ? value : "none";
   return (
-    <div className={full ? "flex w-full items-stretch gap-1.5" : "inline-flex items-center gap-1.5"} data-testid={testId}>
+    <div className={full ? "flex w-full" : "inline-flex"} data-testid={testId}>
       <Segmented
-        label={tR5("effortPicker.levelAria", { scope })}
-        value={levelValue}
+        label={tR5("row.effortAria", { scope })}
+        value={value ?? "none"}
         onChange={(v: Effort) => onPick(v)}
-        options={LEVEL_EFFORTS.map((e) => ({
+        options={EFFORTS.map((e) => ({
           value: e,
           label: tR5(`effort.${e}`),
-          title: e === "hard" ? tR5("effortPicker.hardHint") : undefined,
+          title: hardHint && e === "hard" ? tR5("effortPicker.hardHint") : undefined,
           disabled,
         }))}
-        className={full ? "flex-1 [&>button]:flex-1" : ""}
-      />
-      {/* Hvile er et eget valg: ingen session og intet niveau (ejer 20/11). */}
-      <Segmented
-        label={tR5("effortPicker.restAria", { scope })}
-        value={value === "rest" ? "rest" : "none"}
-        onChange={(v: Effort) => onPick(v)}
-        options={[{ value: "rest", label: tR5("effort.rest"), disabled }]}
+        className={`whitespace-nowrap ${full ? "w-full [&>button]:flex-1" : ""} ${compact ? "[&>button]:px-2" : ""}`}
       />
     </div>
   );
@@ -62,6 +58,18 @@ export function HardRiskLine() {
     <span className="inline-flex items-center gap-1 text-2xs text-cz-warning" data-testid="r5-hard-risk">
       <AlertTriangleIcon size={12} aria-hidden="true" className="shrink-0" />
       <span>{tR5("effortPicker.riskGeneric")}</span>
+    </span>
+  );
+}
+
+/** Samme besked som ikon i tabellens raekke (een linje); ordene i title og for skaermlaeseren. */
+export function HardRiskIcon() {
+  const { t: tR5 } = useTranslation("trainingR5");
+  const text = tR5("effortPicker.riskGeneric");
+  return (
+    <span className="inline-flex shrink-0 text-cz-warning" title={text} data-testid="r5-hard-risk">
+      <AlertTriangleIcon size={13} aria-hidden="true" />
+      <span className="sr-only">{text}</span>
     </span>
   );
 }

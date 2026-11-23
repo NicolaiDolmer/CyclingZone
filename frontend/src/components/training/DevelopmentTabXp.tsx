@@ -20,7 +20,7 @@ import { XpBar } from "./reportXp/XpBar.tsx";
 import {
   bandText, buildDevelopmentFixture, buildDevelopmentRows, devSummary, nextSort, previewXpDevelopment, signedText, sortDevRows, topOf,
   xpDevelopmentMode, DEFAULT_SORT, DEV_FIXTURE_TODAY, XP_DEV_FLAG_KEY,
-  DEV_COLUMNS, DEV_COLUMNS_STORAGE_KEY, defaultDevColumns, parseDevColumns, serializeDevColumns, sortAfterColumns, toggleDevColumn,
+  DEV_COLUMNS, DEV_COLUMNS_STORAGE_KEY, defaultDevColumns, naturalTypeLine, parseDevColumns, serializeDevColumns, sortAfterColumns, toggleDevColumn,
   type DevColumnKey, type DevRiderInput, type DevRow, type DayXpWhen, type XpLineView, type SortKey, type SortState, type TopValue, type XpTodayCell,
 } from "./DevelopmentTabXpModel.ts";
 
@@ -233,10 +233,22 @@ function Name({ row, short = false }: { row: DevRow; short?: boolean }) {
   );
 }
 
-/** Natural type: the gold badge, primary and secondary stacked, as in the squad table. */
-function NaturalType({ natural }: { natural: XpRiderType | null }) {
-  if (!natural?.primary) return <span className="text-cz-3">—</span>;
-  return <span data-testid="development-xp-natural"><RiderTypeBadge primaryType={natural.primary} secondaryType={natural.secondary} stacked /></span>;
+/**
+ * Natural type: the gold badge on ONE line (#7947, owner 23/11: never two types stacked in
+ * one cell). The table shows the natural (primary) type; the second type is read out for
+ * screen readers and shown in full in the fold-out (`full`), on one line.
+ */
+function NaturalType({ natural, full = false }: { natural: XpRiderType | null; full?: boolean }) {
+  const { t: tTypes } = useTranslation("riderTypes");
+  const line = naturalTypeLine(natural);
+  if (!line) return <span className="text-cz-3">—</span>;
+  if (full) return <span data-testid="development-xp-natural"><RiderTypeBadge primaryType={line.primary} secondaryType={line.secondary} /></span>;
+  return (
+    <span className="inline-flex" data-testid="development-xp-natural">
+      <RiderTypeBadge primaryType={line.primary} secondaryType={null} />
+      {line.secondary && <span className="sr-only"> / {tTypes(`types.${line.secondary}`)}</span>}
+    </span>
+  );
 }
 
 /** Role now: the grey tag, the role he rates highest in now. */
@@ -368,7 +380,7 @@ function Abilities({ row, phone }: { row: DevRow; phone: boolean }) {
   );
 }
 
-// The optional columns: the stacked gold badge (124 px) holds the longest two-line natural type, the
+// The optional columns: the one-line gold badge (124 px) holds the natural type (#7947, owner 23/11), the
 // grey tag (84 px) the short role name, "Rating, 30 d" (84 px) a signed number; the headers may wrap.
 // With the default (natural only) the table fits the content width at 1440 without scrolling; the
 // minimum width grows with the columns shown. Ejer 20/11: XP/day is one number now (no sparkline),
@@ -480,7 +492,7 @@ function PhoneList({ rows, open, toggle, columns, onChangeFocus }: { rows: DevRo
               {o && (
                 <div className="flex flex-col gap-3 border-t border-cz-border bg-cz-subtle/60 px-3 pb-4 pt-3">
                   <div className="grid grid-cols-2 gap-3 text-xs">
-                    {columns.has("natural") && <div><div className={LABEL}>{t("developmentXp.colNatural")}</div><NaturalType natural={row.natural} /></div>}
+                    {columns.has("natural") && <div><div className={LABEL}>{t("developmentXp.colNatural")}</div><NaturalType natural={row.natural} full /></div>}
                     {columns.has("role") && <div><div className={LABEL}>{t("developmentXp.colRoleNow")}</div><RoleNow role={row.bestRole} /></div>}
                     <div><div className={LABEL}>{tRiders("table.age")}</div><span className={`text-[13px] text-cz-1 ${NUM}`} data-testid="development-xp-age">{row.age ?? "—"}</span></div>
                     <div><div className={LABEL}>{t("developmentXp.colTop")}</div><Top top={row.top} /></div>

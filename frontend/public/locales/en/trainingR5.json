@@ -95,6 +95,29 @@
     "backToProgram": "Back to program"
   },
   "teamSkippedHard": "{n, plural, one {# rider has} other {# riders have}} no hard training yet. Pick a training, then press Hard.",
+  "row": {
+    "status": {
+      "injuryRisk": "High injury risk",
+      "u23": "Under 23",
+      "junior": "Junior",
+      "academy": "Academy",
+      "contractExpiring": "Contract ends",
+      "retirementRisk": "Retirement risk"
+    },
+    "col": {
+      "status": "Status",
+      "training": "Training",
+      "effort": "Effort",
+      "assistant": "Assistant",
+      "actions": "More"
+    },
+    "effortAria": "{scope}: effort",
+    "assistantAgrees": "Assistant agrees",
+    "assistantSuggests": "Assistant suggests {session}",
+    "assistantUse": "Assistant suggests {session}. Tap to use it.",
+    "menu": "More for {name}",
+    "details": "Sessions and details"
+  },
   "programR5": {
     "library": "Program library",
     "programs": "Programs",
