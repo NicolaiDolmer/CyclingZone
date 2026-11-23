@@ -15,10 +15,11 @@ import { useEffect, useId, useState } from "react";
 import { supabase } from "../../../lib/supabase";
 import { apiFetch } from "../../../lib/apiFetch.ts";
 import { useAdminAuth } from "../shared/useAdminAuth";
-import { ENGINE_ORDER } from "../../../lib/roadmapVoting.js";
+import { resolveRoadmapCategory, roadmapCategoryEngine } from "../../../lib/roadmapVoting.js";
 import {
-  HORIZONS, HORIZON_LABELS, ISSUE_AREAS, NO_CATEGORY, ROADMAP_CATEGORIES, isCategoryKey, ISSUE_STATUSES, ROADMAP_STATUSES, issueStatusPatch, nextSortOrder, statusPatch, validateTitles,
+  HORIZONS, HORIZON_LABELS, ISSUE_AREAS, ROADMAP_CATEGORIES, ISSUE_STATUSES, ROADMAP_STATUSES, issueStatusPatch, nextSortOrder, statusPatch, validRoadmapPlan, validateTitles,
 } from "../../../lib/roadmapAdminModel.ts";
+import { isFixedRoadmapHorizon, UNSCHEDULED } from "../../../lib/roadmapModel.ts";
 import { Button, Checkbox, Field, Input, Modal, Select, Textarea } from "../../ui";
 
 export const AREA_LABELS = {
@@ -56,30 +57,52 @@ function FormFooter({ formId, saving, onClose, submitLabel }) {
 
 const nowIso = () => new Date().toISOString();
 
+const PLAN_ERROR = "Planlagt kræver et GitHub-issue og et fast tidspunkt.";
+
+function HorizonField({ uid, value, onChange }) {
+  const custom = !HORIZONS.includes(value);
+  return (
+    <Field label="Tidspunkt" htmlFor={uid}>
+      <Select id={uid} size="sm" value={custom ? "fixed" : value}
+        onChange={(e) => onChange(e.target.value === "fixed" ? "" : e.target.value)}>
+        {HORIZONS.map((key) => <option key={key} value={key}>{HORIZON_LABELS[key]}</option>)}
+        <option value="fixed">ISO-uge eller dato</option>
+      </Select>
+      {custom && (
+        <Input size="sm" aria-label="ISO-uge eller dato" placeholder="2026-W49 / 2026-12-01"
+          value={value} onChange={(e) => onChange(e.target.value)} />
+      )}
+    </Field>
+  );
+}
+
+function validHorizon(horizon) {
+  return horizon === UNSCHEDULED || isFixedRoadmapHorizon(horizon);
+}
+
 // ── Punkt: opret / ret ──────────────────────────────────────────────────────
 const EMPTY_ITEM = {
-  engine: "races", title_en: "", title_da: "", status: "planned", horizon: "next_week",
-  issue_ref: "", approved: false, flag_key: "", beta_soon: false, live_soon: false, category: "",
+  title_en: "", title_da: "", status: "active", horizon: UNSCHEDULED,
+  issue_ref: "", approved: false, flag_key: "", beta_soon: false, live_soon: false, category: "races",
 };
 
-function itemDraft(item) {
+function itemDraft(item, initialStatus) {
   if (!item) return EMPTY_ITEM;
   return {
-    engine: item.engine ?? "races",
     title_en: item.title_en ?? "",
     title_da: item.title_da ?? "",
-    status: item.status ?? "planned",
-    horizon: item.horizon ?? "next_week",
+    status: initialStatus ?? item.status ?? "active",
+    horizon: item.horizon ?? UNSCHEDULED,
     issue_ref: item.issue_ref ?? "",
     approved: item.approved !== false,
     flag_key: item.flag_key ?? "",
     beta_soon: Boolean(item.beta_soon),
     live_soon: Boolean(item.live_soon),
-    category: isCategoryKey(item.category) ? item.category : "",
+    category: resolveRoadmapCategory(item),
   };
 }
 
-export function ItemFormModal({ open, item, flags, planned, onClose, onSaved }) {
+export function ItemFormModal({ open, item, initialStatus, flags, planned, onClose, onSaved }) {
   const uid = useId();
   const formId = `${uid}-item`;
   const [form, setForm] = useState(EMPTY_ITEM);
@@ -87,8 +110,8 @@ export function ItemFormModal({ open, item, flags, planned, onClose, onSaved }) 
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (open) { setForm(itemDraft(item)); setError(""); setSaving(false); }
-  }, [open, item]);
+    if (open) { setForm(itemDraft(item, initialStatus)); setError(""); setSaving(false); }
+  }, [open, item, initialStatus]);
 
   const set = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
   const flag = (flags ?? []).find((f) => f.key === form.flag_key);
@@ -96,16 +119,22 @@ export function ItemFormModal({ open, item, flags, planned, onClose, onSaved }) 
   async function handleSubmit(e) {
     e.preventDefault();
     if (!validateTitles(form.title_en, form.title_da)) { setError("Begge titler skal udfyldes."); return; }
+    const issueRef = parseIssueRef(form.issue_ref);
+    const horizon = form.horizon.trim();
+    const planChanged = !item || form.status !== item.status || horizon !== item.horizon
+      || issueRef !== (item.issue_ref ?? null) || (form.approved && !item.approved);
+    if (planChanged && !validRoadmapPlan(form.status, issueRef, horizon)) { setError(PLAN_ERROR); return; }
+    if (horizon !== item?.horizon && !validHorizon(horizon)) { setError("Angiv en gyldig ISO-uge eller dato."); return; }
     setSaving(true);
     setError("");
     const now = nowIso();
     const payload = {
-      engine: form.engine,
+      engine: item?.engine ?? roadmapCategoryEngine(form.category),
       title_en: form.title_en.trim(),
       title_da: form.title_da.trim(),
-      horizon: form.horizon,
-      issue_ref: parseIssueRef(form.issue_ref),
-      approved: form.approved,
+      horizon,
+      issue_ref: issueRef,
+      approved: form.category !== "growth" && form.approved,
       flag_key: form.flag_key || null,
       beta_soon: form.beta_soon,
       live_soon: form.live_soon,
@@ -114,8 +143,8 @@ export function ItemFormModal({ open, item, flags, planned, onClose, onSaved }) 
     // Status skrives kun når den er ændret, så shipped_at ikke nulstilles ved
     // en titelrettelse. Er punktet koblet til en kontakt, overtager triggeren.
     if (!item || item.status !== form.status) Object.assign(payload, statusPatch(form.status, now));
-    // #7789: kun når den er ændret, så en gem virker, også før kolonnen findes.
-    if ((isCategoryKey(item?.category) ? item.category : "") !== form.category) payload.category = form.category || null;
+    if (item && form.status === "planned" && item.status !== "planned") payload.sort_order = nextSortOrder(planned ?? []);
+    if (!item || resolveRoadmapCategory(item) !== form.category) payload.category = form.category;
     const query = item
       ? supabase.from("roadmap_items").update(payload).eq("id", item.item_id)
       : supabase.from("roadmap_items").insert({ ...payload, sort_order: nextSortOrder(planned ?? []) });
@@ -136,9 +165,9 @@ export function ItemFormModal({ open, item, flags, planned, onClose, onSaved }) 
     >
       <form id={formId} onSubmit={handleSubmit} className="flex flex-col gap-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Field label="Område" htmlFor={`${uid}-engine`}>
-            <Select id={`${uid}-engine`} size="sm" value={form.engine} onChange={(e) => set("engine", e.target.value)}>
-              {ENGINE_ORDER.map((key) => <option key={key} value={key}>{AREA_LABELS[key] ?? key}</option>)}
+          <Field label="Kategori" htmlFor={uid + "-category"}>
+            <Select id={uid + "-category"} size="sm" value={form.category} onChange={(e) => set("category", e.target.value)}>
+              {ROADMAP_CATEGORIES.map(({ key, label }) => <option key={key} value={key}>{label}</option>)}
             </Select>
           </Field>
           <Field label="Status" htmlFor={`${uid}-status`}>
@@ -146,23 +175,13 @@ export function ItemFormModal({ open, item, flags, planned, onClose, onSaved }) 
               {ROADMAP_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
             </Select>
           </Field>
-          <Field label="Horisont" htmlFor={`${uid}-horizon`}>
-            <Select id={`${uid}-horizon`} size="sm" value={form.horizon} onChange={(e) => set("horizon", e.target.value)}>
-              {HORIZONS.map((h) => <option key={h} value={h}>{HORIZON_LABELS[h]}</option>)}
-            </Select>
-          </Field>
+          <HorizonField uid={uid + "-horizon"} value={form.horizon} onChange={(value) => set("horizon", value)} />
         </div>
         <Field label="Titel (EN)" htmlFor={`${uid}-en`}>
           <Input id={`${uid}-en`} size="sm" value={form.title_en} onChange={(e) => set("title_en", e.target.value)} />
         </Field>
         <Field label="Titel (DA)" htmlFor={`${uid}-da`}>
           <Input id={`${uid}-da`} size="sm" value={form.title_da} onChange={(e) => set("title_da", e.target.value)} />
-        </Field>
-        <Field label="Kategori" htmlFor={`${uid}-category`} helper="Grupperer punktet i admin-grafen og tabellerne. Ikke hemmelig." error={undefined}>
-          <Select id={`${uid}-category`} size="sm" value={form.category} onChange={(e) => set("category", e.target.value)}>
-            <option value="">{NO_CATEGORY}</option>
-            {ROADMAP_CATEGORIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
-          </Select>
         </Field>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="GitHub-issue" htmlFor={`${uid}-ref`} helper="Bruges af færdig-rutinen.">
@@ -186,7 +205,7 @@ export function ItemFormModal({ open, item, flags, planned, onClose, onSaved }) 
           </Field>
         </div>
         <div className="flex flex-wrap gap-x-6 gap-y-2">
-          <Checkbox id={`${uid}-approved`} label="Godkendt (synlig for spillerne)" checked={form.approved}
+          <Checkbox id={`${uid}-approved`} label="Godkendt (synlig for spillerne)" disabled={form.category === "growth"} checked={form.category !== "growth" && form.approved}
             onChange={(e) => set("approved", e.target.checked)} />
           <Checkbox id={`${uid}-beta-soon`} label="Næste i beta" checked={form.beta_soon}
             onChange={(e) => set("beta_soon", e.target.checked)} />
@@ -204,13 +223,13 @@ export function SplitItemModal({ open, item, onClose, onSaved }) {
   const { getAuth } = useAdminAuth();
   const uid = useId();
   const formId = `${uid}-split`;
-  const [form, setForm] = useState({ title_en: "", title_da: "", status: "planned", horizon: "next_week", issue_ref: "" });
+  const [form, setForm] = useState({ title_en: "", title_da: "", status: "active", horizon: UNSCHEDULED, issue_ref: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (open) {
-      setForm({ title_en: "", title_da: "", status: "planned", horizon: item?.horizon ?? "next_week", issue_ref: "" });
+      setForm({ title_en: "", title_da: "", status: "active", horizon: UNSCHEDULED, issue_ref: "" });
       setError("");
       setSaving(false);
     }
@@ -221,13 +240,17 @@ export function SplitItemModal({ open, item, onClose, onSaved }) {
   async function handleSubmit(e) {
     e.preventDefault();
     if (!validateTitles(form.title_en, form.title_da)) { setError("Begge titler skal udfyldes."); return; }
+    const issueRef = parseIssueRef(form.issue_ref);
+    const horizon = form.horizon.trim();
+    if (!validRoadmapPlan(form.status, issueRef, horizon)) { setError(PLAN_ERROR); return; }
+    if (!validHorizon(horizon)) { setError("Angiv en gyldig ISO-uge eller dato."); return; }
     setSaving(true);
     setError("");
     try {
       const result = await apiFetch(`${import.meta.env.VITE_API_URL}/api/admin/roadmap/split`, {
         method: "POST", headers: { ...await getAuth(), "Content-Type": "application/json" },
         body: JSON.stringify({ source: item.item_id, title_en: form.title_en.trim(), title_da: form.title_da.trim(),
-          status: form.status, horizon: form.horizon, issue_ref: parseIssueRef(form.issue_ref) }),
+          status: form.status, horizon, issue_ref: issueRef }),
       }, { source: "admin-roadmap-split" });
       if (!result.ok) { setError(`Kunne ikke dele punktet: ${result.data?.error || "Forbindelsen fejlede"}`); return; }
       onSaved();
@@ -260,11 +283,7 @@ export function SplitItemModal({ open, item, onClose, onSaved }) {
               {["planned", "in_progress", "active"].map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
             </Select>
           </Field>
-          <Field label="Horisont" htmlFor={`${uid}-horizon`}>
-            <Select id={`${uid}-horizon`} size="sm" value={form.horizon} onChange={(e) => set("horizon", e.target.value)}>
-              {HORIZONS.map((h) => <option key={h} value={h}>{HORIZON_LABELS[h]}</option>)}
-            </Select>
-          </Field>
+          <HorizonField uid={uid + "-horizon"} value={form.horizon} onChange={(value) => set("horizon", value)} />
           <Field label="GitHub-issue" htmlFor={`${uid}-ref`}>
             <Input id={`${uid}-ref`} size="sm" inputMode="numeric" value={form.issue_ref}
               onChange={(e) => set("issue_ref", e.target.value)} />

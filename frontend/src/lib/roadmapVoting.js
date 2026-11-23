@@ -6,12 +6,56 @@
 // renommé, stab, museum og social bor dér (ejer-godkendt 11/6).
 export const ENGINE_ORDER = ["races", "training", "youth", "market", "club"];
 
+import { ROADMAP_CATEGORIES } from "./roadmapCategories.ts";
+export { ROADMAP_CATEGORIES };
+
+export const PUBLIC_ROADMAP_CATEGORIES = ROADMAP_CATEGORIES.filter((category) => !category.internal);
+export const PUBLIC_ROADMAP_CATEGORY_FILTER = "category.is.null,category.neq.growth";
+const CATEGORY_BY_KEY = new Map(ROADMAP_CATEGORIES.map((category) => [category.key, category]));
+const LEGACY_CATEGORY = new Map([
+  ["race_film", "races"], ["race_engine", "races"], ["scouting", "market"],
+  ["messages", "social"], ["onboarding", "app"], ["dashboard", "app"], ["youth", "academy"],
+]);
+
+export function isCategoryKey(value) {
+  return CATEGORY_BY_KEY.has(value);
+}
+
+/**
+ * @param {{ category?: string | null, engine?: string }} item
+ * @returns {string}
+ */
+export function resolveRoadmapCategory({ category, engine }) {
+  if (category && isCategoryKey(category)) return category;
+  return LEGACY_CATEGORY.get(category ?? "") ?? LEGACY_CATEGORY.get(engine ?? "") ?? (engine && isCategoryKey(engine) ? engine : "club");
+}
+
+export function roadmapCategoryLabel(key, language) {
+  const category = CATEGORY_BY_KEY.get(key);
+  return (language?.startsWith("da") ? category?.label : category?.en) ?? "";
+}
+
+export function roadmapCategoryEngine(key) {
+  return CATEGORY_BY_KEY.get(key)?.engine;
+}
+
+export function categoryCounts(items) {
+  const counts = new Map();
+  for (const item of items) {
+    const key = resolveRoadmapCategory(item);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return PUBLIC_ROADMAP_CATEGORIES
+    .filter(({ key }) => counts.has(key))
+    .map(({ key }) => ({ key, count: counts.get(key) }));
+}
+
 // Delt kolonne-liste for roadmap_items-læsning (RoadmapPage og admin-fanen).
 // #6150: admin-formularen er flyttet fra /roadmap til /admin/growth (spor 3).
 // #5673: created_at tilføjet — kilden til roadmap-siden og -menupunktets nye
 // ulæst-prik (lib/roadmapUnread.ts: roadmap_items.created_at > sidst set).
 // #6150 (roadmap-hub): horizon (Next/Later) og beta-koblingens tre felter.
-export const ROADMAP_ITEM_COLUMNS = "id, engine, sort_order, title_en, title_da, approved, status, horizon, beta_since, beta_soon, live_soon, created_at, shipped_at";
+export const ROADMAP_ITEM_COLUMNS = "id, engine, category, sort_order, title_en, title_da, approved, status, horizon, beta_since, beta_soon, live_soon, created_at, shipped_at";
 
 export const SCORE_MIN = 1;
 export const SCORE_MAX = 6;
@@ -21,7 +65,12 @@ export function itemTitle(item, language) {
   return language?.startsWith("da") ? item.title_da : item.title_en;
 }
 
+/**
+ * @template {{ engine: string, sort_order: number, title_en: string }} T
+ * @param {T[] | null | undefined} items
+ */
 export function groupItemsByEngine(items) {
+  /** @type {Record<string, T[]>} */
   const grouped = Object.fromEntries(ENGINE_ORDER.map((engine) => [engine, []]));
   for (const item of items ?? []) {
     // Ukendte engines droppes frem for at vælte siden.

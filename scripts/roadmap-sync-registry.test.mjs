@@ -21,21 +21,24 @@ test("AREA_ENGINE daekker alle registrets areas med et lovligt engine", () => {
   }
 });
 
-test("itemFromEntry: skjult med publish_on_beta (ejer-gate), planned, flag_key, horizon default unscheduled (#7895), epic -> issue_ref", () => {
+test("itemFromEntry: skjult idé med kategori, publish_on_beta og epic -> issue_ref", () => {
   assert.deepEqual(itemFromEntry(entry({ epic: "6100" }), 70), {
     engine: "races",
+    category: "races",
     sort_order: 70,
     title_en: "New stage page",
     title_da: "Ny etapeside",
     approved: false,
     publish_on_beta: true,
-    status: "planned",
+    status: "active",
     horizon: "unscheduled",
     issue_ref: 6100,
     flag_key: "stage_page_v2",
   });
   const later = itemFromEntry(entry({ roadmap_horizon: "q1_2027" }));
   assert.equal(later.horizon, "q1_2027");
+  assert.equal(later.status, "active");
+  assert.equal(itemFromEntry(entry({ roadmap_horizon: "next_week" })).horizon, "unscheduled");
   assert.equal(later.issue_ref, null);
 });
 

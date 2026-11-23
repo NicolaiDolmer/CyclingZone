@@ -3,15 +3,15 @@ import assert from "node:assert/strict";
 import {
   parseTab, partitionItems, isRated, countUnrated, filterUnrated,
   engineCounts, issueAreaCounts, splitChecking, CHECKING_VISIBLE, splitIssues, buildDoneList, latestIssueUpdates,
-  groupPlan, planRanks, planStage, normalizeHorizon, weekRange, copenhagenDateKey, issueTimeline,
+  groupPlan, planRanks, planStage, normalizeHorizon, issueTimeline,
   splitRecentDone, patchNotesByIssue, pickPatchNote, searchRoadmap, normalizeSearch,
-  holdsItem, doneLimitFor, roadmapRowId, DONE_PAGE_SIZE, isFoldedHorizon, parseHorizon, horizonRank, horizonLabelKey,
+  holdsItem, doneLimitFor, roadmapRowId, DONE_PAGE_SIZE, isFoldedHorizon, parseHorizon, horizonRank,
   type RoadmapItem, type RoadmapVote, type KnownIssue,
 } from "./roadmapModel.ts";
 
 const item = (over: Partial<RoadmapItem> = {}): RoadmapItem => ({
   id: "i1", engine: "races", sort_order: 10, title_en: "A", title_da: "A",
-  approved: true, status: "active", horizon: "next_week",
+  approved: true, status: "active", horizon: "2026-W49",
   beta_since: null, beta_soon: false, live_soon: false,
   created_at: "2026-09-24T00:00:00Z", shipped_at: null, ...over,
 });
@@ -49,7 +49,7 @@ test("partitionItems deler efter status og horizon og sorterer på sort_order", 
   assert.deepEqual(p.comingToBeta.map((i) => i.id), ["j"]);
   // #7666: Plan = i gang og planlagt pr. horisont; beta står kun på Beta-fanen (#6160).
   assert.deepEqual(p.planGroups.map((g) => [g.horizon, g.items.map((i) => i.id)]), [
-    ["next_week", ["d", "c", "b", "j"]],
+    ["2026-W49", ["d", "c", "b", "j"]],
     ["q1_2027", ["a"]],
   ]);
   assert.deepEqual(p.ideas.map((i) => i.id), ["e"]);
@@ -169,17 +169,17 @@ test("groupPlan (#7895): uger, sæsoner, kvartaler, år; tomme udelades, ukendt 
     item({ id: "y", status: "planned", horizon: "y2027" }),
     item({ id: "q", status: "planned", horizon: "q1_2027" }),
     item({ id: "s6", status: "planned", horizon: "season_6" }),
-    item({ id: "w2", status: "planned", horizon: "this_week", sort_order: 20 }),
-    item({ id: "w1", status: "in_progress", horizon: "this_week", sort_order: 90 }),
-    item({ id: "n", status: "planned", horizon: "next_week" }),
+    item({ id: "w2", status: "planned", horizon: "2026-W48", sort_order: 20 }),
+    item({ id: "w1", status: "in_progress", horizon: "2026-W48", sort_order: 90 }),
+    item({ id: "n", status: "planned", horizon: "2026-W49" }),
     item({ id: "s", status: "planned", horizon: "season_5" }),
     item({ id: "u", status: "planned", horizon: "someday" as never }),
-    item({ id: "x", status: "active", horizon: "this_week" }),
-    item({ id: "z", status: "shipped", horizon: "this_week" }),
+    item({ id: "x", status: "active", horizon: "2026-W48" }),
+    item({ id: "z", status: "shipped", horizon: "2026-W48" }),
   ]);
   assert.deepEqual(groups.map((g) => [g.horizon, g.items.map((i) => i.id)]), [
-    ["this_week", ["w1", "w2"]],
-    ["next_week", ["n"]],
+    ["2026-W48", ["w1", "w2"]],
+    ["2026-W49", ["n"]],
     ["season_5", ["s"]],
     ["season_6", ["s6"]],
     ["q1_2027", ["q"]],
@@ -197,21 +197,12 @@ test("planStage og planRanks: kun planlagte nummereres, og ikke i de foldede hor
   assert.equal(planStage(item({ status: "in_progress" })), "in_progress");
   assert.equal(planStage(item({ status: "planned" })), "planned");
   const ranks = planRanks(groupPlan([
-    item({ id: "a", status: "planned", horizon: "next_week" }),
-    item({ id: "b", status: "in_progress", horizon: "this_week" }),
-    item({ id: "c", status: "planned", horizon: "this_week" }),
+    item({ id: "a", status: "planned", horizon: "2026-W49" }),
+    item({ id: "b", status: "in_progress", horizon: "2026-W48" }),
+    item({ id: "c", status: "planned", horizon: "2026-W48" }),
     item({ id: "d", status: "planned", horizon: "q1_2027" }),
   ]));
   assert.deepEqual([...ranks], [["c", 1], ["a", 2]]);
-});
-
-test("weekRange: mandag til søndag i dansk tid, også lige efter midnat søndag/mandag", () => {
-  // Søndag 8/11 23:30 UTC er mandag 9/11 00:30 i København.
-  assert.equal(copenhagenDateKey(new Date("2026-11-08T23:30:00Z")), "2026-11-09");
-  assert.deepEqual(weekRange(new Date("2026-11-08T23:30:00Z"), 0), { start: "2026-11-09", end: "2026-11-15" });
-  // Onsdag 4/11.
-  assert.deepEqual(weekRange(new Date("2026-11-04T12:00:00Z"), 0), { start: "2026-11-02", end: "2026-11-08" });
-  assert.deepEqual(weekRange(new Date("2026-11-04T12:00:00Z"), 1), { start: "2026-11-09", end: "2026-11-15" });
 });
 
 test("issueTimeline: datoer kun på nåede trin; et sprunget trin vises uden dato", () => {
@@ -305,7 +296,7 @@ test("doneLimitFor: et hit dybt i Done udvider listen, til punktet er med", () =
 
 test("holdsItem: kun folden med det valgte punkt åbner", () => {
   const groups = groupPlan([
-    item({ id: "near", status: "planned", horizon: "this_week" }),
+    item({ id: "near", status: "planned", horizon: "2026-W48" }),
     item({ id: "y", status: "planned", horizon: "y2027" }),
     item({ id: "l", status: "planned", horizon: "q2_2027" }),
   ]);
@@ -331,13 +322,10 @@ test("roadmapRowId: samme id på rækken og i scroll-opslaget", () => {
 });
 
 test("horisont-hjælpere (#7895): navne, rækkefølge og fold", () => {
-  assert.deepEqual(parseHorizon("season_5"), { kind: "season", season: 5 });
+  assert.deepEqual(parseHorizon("season_5"), { kind: "season", season: 5, start: false });
   assert.deepEqual(parseHorizon("q2_2027"), { kind: "quarter", quarter: 2, year: 2027 });
   assert.deepEqual(parseHorizon("next"), { kind: "unscheduled" });
-  assert.deepEqual(horizonLabelKey("season_6"), { key: "plan.horizon.season", values: { season: 6 } });
-  assert.deepEqual(horizonLabelKey("q1_2027"), { key: "plan.horizon.quarter", values: { quarter: 1, year: 2027 } });
-  assert.deepEqual(horizonLabelKey("y2027"), { key: "plan.horizon.year", values: { year: 2027 } });
-  assert.ok(horizonRank("next_week") < horizonRank("season_5"));
+  assert.ok(horizonRank("2026-W49") < horizonRank("season_5"));
   assert.ok(horizonRank("season_12") < horizonRank("q1_2027"));
   assert.ok(horizonRank("q4_2027") < horizonRank("y2027"));
   assert.equal(isFoldedHorizon("season_6"), false);

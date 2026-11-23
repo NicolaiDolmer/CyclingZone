@@ -1,6 +1,37 @@
 // #6150: små visningshjælpere delt af roadmap-fanerne.
-import type { RoadmapVote } from "../../lib/roadmapModel.ts";
+import { parseHorizon, type RoadmapVote } from "../../lib/roadmapModel.ts";
 import { intlLocale } from "../../lib/intlLocale.ts";
+
+import { resolveRoadmapCategory, roadmapCategoryLabel } from "../../lib/roadmapVoting.js";
+
+export function itemCategoryTitle(item: { engine: string; category?: string | null }, language: string | undefined): string {
+  return roadmapCategoryLabel(resolveRoadmapCategory(item), language);
+}
+
+function dayMonth(key: string): string {
+  const [, month, day] = key.split("-").map(Number);
+  return day + "/" + month;
+}
+
+export function formatRoadmapHorizon(horizon: string | null | undefined, language: string | undefined): string {
+  const value = parseHorizon(horizon);
+  const da = isDanish(language);
+  switch (value.kind) {
+    case "week":
+      return (da ? "Uge " : "Week ") + value.week + " (" + dayMonth(value.start) + "-" + dayMonth(value.end) + ")";
+    case "date":
+      return new Intl.DateTimeFormat(intlLocale(language), {
+        day: "numeric", month: "short", year: "numeric", timeZone: "UTC",
+      }).format(new Date(value.date));
+    case "season": {
+      const season = (da ? "Sæson " : "Season ") + value.season;
+      return value.start ? (da ? "Starten af sæson " : "Start of season ") + value.season : season;
+    }
+    case "quarter": return "Q" + value.quarter + " " + value.year;
+    case "year": return String(value.year);
+    default: return "";
+  }
+}
 
 export type SaveState = "saving" | "saved" | "error";
 export type Translate = { (key: string): string; (key: string, opts: Record<string, unknown>): string };

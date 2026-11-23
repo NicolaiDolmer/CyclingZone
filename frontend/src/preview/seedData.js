@@ -261,7 +261,7 @@ export const ROADMAP_ITEMS = [
   },
   // #6150 (roadmap-hub): et punkt pr. fane, så preview viser alle fem faner med
   // indhold. Eksempeltekst, ikke et roadmap-tilsagn.
-  { id: "rm-plan-1", engine: "training", sort_order: 1, title_en: "Example planned item.", title_da: "Eksempel på et planlagt punkt.", approved: true, status: "planned", horizon: "next_week", beta_since: null, beta_soon: false, live_soon: false, created_at: "2026-09-20T00:00:00Z", shipped_at: null },
+  { id: "rm-plan-1", engine: "training", sort_order: 1, title_en: "Example planned item.", title_da: "Eksempel på et planlagt punkt.", approved: true, status: "planned", horizon: "2026-W49", beta_since: null, beta_soon: false, live_soon: false, created_at: "2026-09-20T00:00:00Z", shipped_at: null },
   { id: "rm-plan-2", engine: "club", sort_order: 9, title_en: "Example item for later.", title_da: "Eksempel på et senere punkt.", approved: true, status: "planned", horizon: "q1_2027", beta_since: null, beta_soon: false, live_soon: false, created_at: "2026-09-20T00:00:00Z", shipped_at: null },
   { id: "rm-wip-1", engine: "races", sort_order: 1, title_en: "Example item in progress.", title_da: "Eksempel på et punkt i gang.", approved: true, status: "in_progress", horizon: "season_5", beta_since: null, beta_soon: true, live_soon: false, created_at: "2026-09-20T00:00:00Z", shipped_at: null },
   { id: "rm-beta-1", engine: "training", sort_order: 2, title_en: "Example item in beta.", title_da: "Eksempel på et punkt i beta.", approved: true, status: "in_progress", horizon: "season_5", beta_since: "2026-09-27T00:00:00Z", beta_soon: false, live_soon: true, created_at: "2026-09-20T00:00:00Z", shipped_at: null },

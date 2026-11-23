@@ -1,20 +1,19 @@
 // #6150 · Plan-fanen (spec §3.1): det besluttede, i ejerens rækkefølge.
-// #7666/#7895: grupperet efter horisont (denne uge, næste uge, sæson 5, sæson 6,
-// Q1 2027 ...), så spilleren kan se HVORNÅR noget kommer. Ugerne står
-// med datoer. Det der bygges nu, står øverst i sin horisont med et "I gang"-
+// #8584: hvert tidsvindue er en fast uge, dato eller milepæl. Det der bygges nu, står øverst i sin horisont med et "I gang"-
 // mærke og har ingen skala (det der er i beta, står kun på Beta-fanen, #6160);
 // planlagte punkter har én ("Important to you?"). Kvartaler og år er foldet.
+import { useState, type ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  holdsItem, horizonLabelKey, isFoldedHorizon, roadmapRowId, weekRange,
+  holdsItem, isFoldedHorizon, roadmapRowId,
   type PlanGroup, type RoadmapHorizon, type RoadmapItem, type RoadmapVote,
 } from "../../lib/roadmapModel.ts";
 import { CollapsibleSection, EmptyState, Section, SectionHeader, Button, StatusBadge } from "./roadmapUi.ts";
 import ScoreScale, { DontKnowButton } from "./ScoreScale.tsx";
-import { isDontKnow } from "../../lib/roadmapVoting.js";
+import { categoryCounts, isDontKnow, resolveRoadmapCategory, roadmapCategoryLabel } from "../../lib/roadmapVoting.js";
 import { RowMeta, RowTitle, SaveNote, SkeletonRows, ROW, ROW_LIST } from "./RoadmapRows.tsx";
-import { areaTitle, dateRange, localTitle, type SaveState } from "./roadmapFormat.ts";
-import { CheckIcon, ClipboardIcon } from "../ui/index.js";
+import { formatRoadmapHorizon, itemCategoryTitle, localTitle, type SaveState } from "./roadmapFormat.ts";
+import { CheckIcon, ClipboardIcon, Select } from "../ui/index.js";
 
 export interface PlanTabProps {
   loading: boolean;
@@ -37,16 +36,19 @@ export interface PlanTabProps {
   onGoVote: () => void;
   /** Punktet et søgehit åbnede; dets fold står åben. */
   revealId?: string | null;
-  /** Til ugernes datoer; kan fastlåses i tests og billeder. */
-  now?: Date;
 }
 
 
 export default function PlanTab(props: PlanTabProps) {
   const { t, i18n } = useTranslation("roadmap");
   const lang = i18n.language;
+  const [category, setCategory] = useState("all");
   const { loading, groups, decidedTotal, plannedTotal, onlyUnrated } = props;
-  const now = props.now ?? new Date();
+  const categories = categoryCounts(groups.flatMap((group) => group.items));
+  const selected = categories.some(({ key }) => key === category) ? category : "all";
+  const filteredGroups = selected === "all" ? groups : groups.map((group) => ({
+    ...group, items: group.items.filter((item) => resolveRoadmapCategory(item) === selected),
+  })).filter((group) => group.items.length > 0);
 
   if (loading) {
     return (
@@ -68,14 +70,6 @@ export default function PlanTab(props: PlanTabProps) {
     );
   }
 
-  const horizonDates = (horizon: RoadmapHorizon): string => {
-    if (horizon === "this_week" || horizon === "next_week") {
-      const { start, end } = weekRange(now, horizon === "this_week" ? 0 : 1);
-      return dateRange(start, end, lang);
-    }
-    return "";
-  };
-
   const renderRow = (item: RoadmapItem) => {
     const planned = item.status === "planned";
     const vote = props.votes.get(item.id);
@@ -89,7 +83,7 @@ export default function PlanTab(props: PlanTabProps) {
           <div className="min-w-0">
             {!planned && <div className="mb-1"><StatusBadge state="info">{t("plan.badgeInProgress")}</StatusBadge></div>}
             <RowTitle isNew={props.isNew(item)} newLabel={t("labels.new")}>{localTitle(item, lang)}</RowTitle>
-            <RowMeta>{areaTitle(t, item.engine)}</RowMeta>
+            <RowMeta>{itemCategoryTitle(item, lang)}</RowMeta>
           </div>
         </div>
         {planned && props.canVote && (
@@ -113,27 +107,31 @@ export default function PlanTab(props: PlanTabProps) {
     );
   };
 
-  const horizonTitle = (horizon: RoadmapHorizon): string => {
-    const { key, values } = horizonLabelKey(horizon);
-    return t(key, values);
-  };
-  const near = groups.filter((g) => !isFoldedHorizon(g.horizon));
-  const far = groups.filter((g) => isFoldedHorizon(g.horizon));
+  const horizonTitle = (horizon: RoadmapHorizon): string =>
+    formatRoadmapHorizon(horizon, lang) || t("plan.horizon.unscheduled");
+  const near = filteredGroups.filter((g) => !isFoldedHorizon(g.horizon));
+  const far = filteredGroups.filter((g) => isFoldedHorizon(g.horizon));
   const plannedVisible = groups.reduce((n, g) => n + g.items.filter((i) => i.status === "planned").length, 0);
   const allRated = onlyUnrated && plannedTotal > 0 && plannedVisible === 0;
 
   return (
     <Section>
       <SectionHeader title={t("plan.title")} meta={t("plan.plannedHint")} />
+      {categories.length > 1 && (
+        <div className="mb-3 w-full sm:max-w-xs">
+          <Select size="sm" aria-label={t("vote.areaLabel")} value={selected} onChange={(event: ChangeEvent<HTMLSelectElement>) => setCategory(event.target.value)}>
+            <option value="all">{t("vote.all")}</option>
+            {categories.map(({ key }) => <option key={key} value={key}>{roadmapCategoryLabel(key, lang)}</option>)}
+          </Select>
+        </div>
+      )}
       <div className="flex flex-col gap-5">
         {near.map((g) => {
-          const dates = horizonDates(g.horizon);
           return (
             <section key={g.horizon} aria-labelledby={`roadmap-horizon-${g.horizon}`}>
               <div className="flex items-baseline justify-between gap-3 pb-2 border-b border-cz-border">
-                <h3 id={`roadmap-horizon-${g.horizon}`} className="text-sm font-semibold text-cz-1">
+                <h3 id={`roadmap-horizon-${g.horizon}`} className="text-sm font-semibold text-cz-1 tabular-nums">
                   {horizonTitle(g.horizon)}
-                  {dates && <span className="ms-2 font-data tabular-nums text-xs font-normal text-cz-3">{dates}</span>}
                 </h3>
                 <span className="font-data tabular-nums text-xs text-cz-3">{g.items.length}</span>
               </div>

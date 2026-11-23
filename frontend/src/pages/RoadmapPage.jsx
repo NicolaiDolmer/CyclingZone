@@ -22,6 +22,8 @@ import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import { documentLang } from "../i18n/languages.js";
 import {
   ROADMAP_ITEM_COLUMNS,
+  PUBLIC_ROADMAP_CATEGORY_FILTER,
+  resolveRoadmapCategory,
   isValidScore,
   buildVotePayload,
   buildImportancePayload,
@@ -120,7 +122,7 @@ export default function RoadmapPage() {
   const setTab = (next) => setSearchParams({ tab: next }, { replace: true });
 
   const [userId, setUserId] = useState(null);
-  const [items, setItems] = useState(null); // null = ikke hentet endnu (skeleton)
+  const [items, setItems] = useState(/** @type {import("../lib/roadmapModel.ts").RoadmapItem[] | null} */ (null)); // null = ikke hentet endnu (skeleton)
   const [issues, setIssues] = useState([]);
   const [updates, setUpdates] = useState([]);
   const [betaState, setBetaState] = useState(null);
@@ -169,15 +171,18 @@ export default function RoadmapPage() {
       // aldrig vælter Plan/Vote.
       const [{ data: itemData }, { data: issueData }, { data: updateData }, { data: auth }] = await Promise.all([
         supabase.from("roadmap_items").select(ITEM_COLUMNS)
-          .eq("approved", true).in("status", ["active", "planned", "in_progress", "shipped"]).order("sort_order"),
+          .eq("approved", true).or(PUBLIC_ROADMAP_CATEGORY_FILTER).in("status", ["active", "planned", "in_progress", "shipped"]).order("sort_order"),
         fetchKnownIssues(),
         supabase.from("known_issue_updates")
           .select("id, issue_id, body_en, body_da, created_at").order("created_at", { ascending: false }),
         supabase.auth.getUser(),
       ]);
       if (cancelled) return;
-      const all = [...(itemData ?? []), ...(issueData ?? [])];
-      setItems(itemData ?? []);
+      // The generated schema predates the existing roadmap_items.category column.
+      const fetchedItems = /** @type {import("../lib/roadmapModel.ts").RoadmapItem[]} */ (/** @type {unknown} */ (itemData ?? []));
+      const publicItems = fetchedItems.filter((item) => resolveRoadmapCategory(item) !== "growth");
+      const all = [...publicItems, ...(issueData ?? [])];
+      setItems(publicItems);
       setIssues(issueData ?? []);
       setUpdates(updateData ?? []);
       // #5673: besøg nulstiller nav-prikken (Layout.jsx genberegner den).

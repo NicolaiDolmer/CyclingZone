@@ -5,7 +5,10 @@
 // De fire delte typer ejes af spillersiden (lib/roadmapModel.ts, #6150, planens
 // "Fælles kontrakt") og gen-eksporteres her, så admin-fladens importer er uændrede.
 import type { RoadmapStatus, RoadmapHorizon, IssueStatus, IssueArea } from "./roadmapModel.ts";
-import { HORIZON_ORDER, UNSCHEDULED, parseHorizon } from "./roadmapModel.ts";
+import { HORIZON_ORDER, UNSCHEDULED, isFixedRoadmapHorizon, parseHorizon } from "./roadmapModel.ts";
+import { ROADMAP_CATEGORIES, isCategoryKey, resolveRoadmapCategory, roadmapCategoryLabel } from "./roadmapVoting.js";
+import { formatRoadmapHorizon } from "../components/roadmap/roadmapFormat.ts";
+export { ROADMAP_CATEGORIES, isCategoryKey };
 export type { RoadmapStatus, RoadmapHorizon, IssueStatus, IssueArea };
 
 // Standardafvigelse på vigtighed, hvor "Deler spillerne" vises (spec §4).
@@ -227,16 +230,13 @@ export function isAdminTab(value: unknown): value is AdminTab {
 export const HORIZONS: readonly string[] = [...HORIZON_ORDER, UNSCHEDULED];
 export type AdminHorizon = string;
 
-/** Dansk navn på en horisont til admin ("Sæson 5", "Q1 2027"). */
 export function horizonLabel(horizon: string | null | undefined): string {
-  const h = parseHorizon(horizon);
-  switch (h.kind) {
-    case "week": return h.key === "this_week" ? "Denne uge" : "Næste uge";
-    case "season": return `Sæson ${h.season}`;
-    case "quarter": return `Q${h.quarter} ${h.year}`;
-    case "year": return String(h.year);
-    default: return "Uden tid";
-  }
+  return formatRoadmapHorizon(horizon, "da") || "Uden tid";
+}
+
+export function validRoadmapPlan(status: string, issueRef: number | null | undefined, horizon: string | null | undefined): boolean {
+  return status !== "planned" || (Number.isInteger(issueRef) && Number(issueRef) > 0
+    && Number(issueRef) <= 2_147_483_647 && isFixedRoadmapHorizon(horizon));
 }
 
 export const HORIZON_LABELS: Record<string, string> = Object.fromEntries(HORIZONS.map((h) => [h, horizonLabel(h)]));
@@ -288,7 +288,7 @@ function matchesIssue(ref: number | null | undefined, query: string): boolean {
 export function filterItems<T extends ScoreRow>(rows: T[], f: RowFilters): T[] {
   const area = clean(f.area), status = clean(f.status), horizon = clean(f.horizon), issue = clean(f.issue);
   return rows.filter((r) =>
-    (!area || r.engine === area)
+    (!area || resolveRoadmapCategory(r) === area)
     && (!status || r.status === status)
     && (!horizon || r.horizon === horizon)
     && matchesIssue(r.issue_ref, issue));
@@ -345,7 +345,7 @@ const ACCESSORS: Record<string, Accessor> = {
   own: numAcc("sort_order"),
   status: strAcc("status"),
   horizon: strAcc("horizon"),
-  area: (r) => strAcc("engine")(r) ?? strAcc("area")(r),
+  area: (r) => "engine" in r ? categoryOf(r as unknown as ScoreRow) : strAcc("area")(r),
   issue: numAcc("issue_ref"),
   sd: numAcc("sd_importance"),
   reports: numAcc("reports"),
@@ -551,43 +551,12 @@ function pointFromAcc(key: string, label: string, category: string, acc: Acc): C
   };
 }
 
-// De faste kategorier (#7971, ejer 10/11). Der gemmes den stabile nøgle i
-// roadmap_items.category (fritekst-kolonnen, 1-40 tegn); admin viser dansk navn.
-export const ROADMAP_CATEGORIES: { key: string; label: string }[] = [
-  { key: "race_film", label: "Løbsfilm & løbsside" },
-  { key: "race_engine", label: "Race engine" },
-  { key: "tactics", label: "Taktik" },
-  { key: "selection", label: "Holdudtagelse & planlægning" },
-  { key: "training", label: "Træning" },
-  { key: "development", label: "Udvikling" },
-  { key: "form", label: "Form, træthed & skader" },
-  { key: "academy", label: "Akademi & ungdom" },
-  { key: "scouting", label: "Scouting" },
-  { key: "market", label: "Transfermarked" },
-  { key: "club", label: "Klub & økonomi" },
-  { key: "rider_profile", label: "Rytterprofil & historik" },
-  { key: "calendar", label: "Kalender & mesterskaber" },
-  { key: "social", label: "Socialt & forum" },
-  { key: "messages", label: "Beskeder" },
-  { key: "onboarding", label: "Onboarding & hjælp" },
-  { key: "app", label: "App & navigation" },
-];
-export const NO_CATEGORY = "Ingen kategori";
-
-const CATEGORY_LABELS = new Map(ROADMAP_CATEGORIES.map((c) => [c.key, c.label]));
-
-export function isCategoryKey(value: unknown): value is string {
-  return typeof value === "string" && CATEGORY_LABELS.has(value);
-}
-
-// Gammel fritekst eller tom værdi = ingen kategori.
 export function categoryLabel(value: string | null | undefined): string {
-  return (isCategoryKey(value) ? CATEGORY_LABELS.get(value) : undefined) ?? NO_CATEGORY;
+  return roadmapCategoryLabel(value, "da");
 }
 
-// Kategorien på grafen og i tabellerne: det faste navn, ellers "Ingen kategori".
 export function categoryOf(row: ScoreRow): string {
-  return categoryLabel(row.category);
+  return categoryLabel(resolveRoadmapCategory(row));
 }
 
 export function mergeCategories<T extends ScoreRow>(

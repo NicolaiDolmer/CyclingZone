@@ -57,7 +57,7 @@
       "season": "Season {season}",
       "quarter": "Q{quarter} {year}",
       "year": "{year}",
-      "unscheduled": "Open for votes"
+      "unscheduled": "Schedule pending"
     }
   },
   "beta": {

@@ -6,7 +6,7 @@
 // #7666: Plan-fanen grupperes efter horisont (denne uge ... senere), færdige
 // punkter kobles til deres patch note, kendte fejl får en dateret tidslinje,
 // og en søgning går på tværs af alle fanerne.
-import { ENGINE_ORDER, isDontKnow, isValidScore } from "./roadmapVoting.js";
+import { ENGINE_ORDER, isDontKnow, isValidScore, resolveRoadmapCategory } from "./roadmapVoting.js";
 
 export type RoadmapStatus = "active" | "planned" | "in_progress" | "shipped" | "archived";
 // #7895 (ejer 8/11): ingen "Snart"/"Senere". Sæsoner har nummer (season_5 =
@@ -20,60 +20,72 @@ export type RoadmapTab = "plan" | "beta" | "vote" | "issues" | "done";
 
 export const ROADMAP_TABS: RoadmapTab[] = ["plan", "beta", "vote", "issues", "done"];
 export const ISSUE_AREA_ORDER: IssueArea[] = ["races", "training", "youth", "market", "club", "other"];
-/** De horisonter, admin kan vælge. Opdateres, når en ny sæson starter. */
-export const HORIZON_ORDER: RoadmapHorizon[] = [
-  "this_week", "next_week", "season_5", "season_6", "q1_2027", "q2_2027", "y2027",
-];
-export const UNSCHEDULED: RoadmapHorizon = "unscheduled";
+/** Faste milepæle, som admin kan vælge uden at indtaste en uge eller dato. */
+export const HORIZON_ORDER = ["season_6_start", "season_6", "q1_2027"];
+export const UNSCHEDULED = "unscheduled";
 
-const SEASON_RE = /^season_(\d{1,2})$/;
+const WEEK_RE = /^(20\d{2})-W(0[1-9]|[1-4]\d|5[0-3])$/;
+const DATE_RE = /^20\d{2}-\d{2}-\d{2}$/;
+const SEASON_RE = /^season_([1-9]\d?)(_start)?$/;
 const QUARTER_RE = /^q([1-4])_(20\d{2})$/;
 const YEAR_RE = /^y(20\d{2})$/;
 
 export type HorizonKind =
-  | { kind: "week"; key: "this_week" | "next_week" }
-  | { kind: "season"; season: number }
+  | { kind: "week"; week: number; start: string; end: string }
+  | { kind: "date"; date: string }
+  | { kind: "season"; season: number; start: boolean }
   | { kind: "quarter"; quarter: number; year: number }
   | { kind: "year"; year: number }
   | { kind: "unscheduled" };
 
-/** Læser en horisont-værdi. Ukendte værdier læses som "uden tid". */
 export function parseHorizon(horizon: string | null | undefined): HorizonKind {
-  if (horizon === "this_week" || horizon === "next_week") return { kind: "week", key: horizon };
-  let m = SEASON_RE.exec(horizon ?? "");
-  if (m) return { kind: "season", season: Number(m[1]) };
-  m = QUARTER_RE.exec(horizon ?? "");
-  if (m) return { kind: "quarter", quarter: Number(m[1]), year: Number(m[2]) };
-  m = YEAR_RE.exec(horizon ?? "");
-  if (m) return { kind: "year", year: Number(m[1]) };
+  const key = horizon ?? "";
+  const weekMatch = WEEK_RE.exec(key);
+  if (weekMatch) {
+    const year = Number(weekMatch[1]);
+    const week = Number(weekMatch[2]);
+    const jan4 = new Date(Date.UTC(year, 0, 4));
+    const monday = jan4.getTime() + ((week - 1) * 7 - (jan4.getUTCDay() + 6) % 7) * DAY_MS;
+    // Torsdagen afgør ugeåret, også når mandagen ligger i december.
+    if (new Date(monday + 3 * DAY_MS).getUTCFullYear() === year) {
+      return { kind: "week", week, start: isoDate(monday), end: isoDate(monday + 6 * DAY_MS) };
+    }
+  }
+  if (DATE_RE.test(key)) {
+    const time = Date.parse(key);
+    if (Number.isFinite(time) && isoDate(time) === key) return { kind: "date", date: key };
+  }
+  const season = SEASON_RE.exec(key);
+  if (season) return { kind: "season", season: Number(season[1]), start: Boolean(season[2]) };
+  const quarter = QUARTER_RE.exec(key);
+  if (quarter) return { kind: "quarter", quarter: Number(quarter[1]), year: Number(quarter[2]) };
+  const year = YEAR_RE.exec(key);
+  if (year) return { kind: "year", year: Number(year[1]) };
   return { kind: "unscheduled" };
 }
 
-/** Sorteringsnøgle: uger, så sæsoner, så kvartaler og år; uden tid sidst. */
+function isoDate(timestamp: number): string {
+  return new Date(timestamp).toISOString().slice(0, 10);
+}
+
+export function isFixedRoadmapHorizon(horizon: string | null | undefined): boolean {
+  const { kind } = parseHorizon(horizon);
+  return kind !== "unscheduled" && kind !== "year";
+}
+
+/** Først korte datoer og uger, derefter sæsoner og kvartaler. */
 export function horizonRank(horizon: string | null | undefined): number {
   const h = parseHorizon(horizon);
   switch (h.kind) {
-    case "week": return h.key === "this_week" ? 0 : 1;
-    case "season": return 100 + h.season;
-    case "quarter": return h.year * 10 + h.quarter;
-    case "year": return h.year * 10 + 9;
+    case "week": return Date.parse(h.start) / DAY_MS;
+    case "date": return Date.parse(h.date) / DAY_MS + 0.5;
+    case "season": return 100_000 + h.season * 2 + Number(!h.start);
+    case "quarter": return 200_000 + h.year * 10 + h.quarter;
+    case "year": return 200_000 + h.year * 10 + 9;
     default: return Number.MAX_SAFE_INTEGER;
   }
 }
 
-/** i18n-nøgle + værdier til en horisonts overskrift (roadmap.json plan.horizon.*). */
-export function horizonLabelKey(horizon: string | null | undefined): { key: string; values: Record<string, number> } {
-  const h = parseHorizon(horizon);
-  switch (h.kind) {
-    case "week": return { key: `plan.horizon.${h.key}`, values: {} };
-    case "season": return { key: "plan.horizon.season", values: { season: h.season } };
-    case "quarter": return { key: "plan.horizon.quarter", values: { quarter: h.quarter, year: h.year } };
-    case "year": return { key: "plan.horizon.year", values: { year: h.year } };
-    default: return { key: "plan.horizon.unscheduled", values: {} };
-  }
-}
-
-/** Horisonter langt ude ligger bag en fold, så planen starter med det nære. */
 export function isFoldedHorizon(horizon: string | null | undefined): boolean {
   const kind = parseHorizon(horizon).kind;
   return kind === "quarter" || kind === "year" || kind === "unscheduled";
@@ -87,10 +99,9 @@ export const SEARCH_MIN_CHARS = 2;
 export const SKELETON_ROWS = 4;
 
 const DAY_MS = 86_400_000;
-const COPENHAGEN = "Europe/Copenhagen";
 
 export interface RoadmapItem {
-  id: string; engine: string; sort_order: number; title_en: string; title_da: string;
+  id: string; engine: string; category?: string | null; sort_order: number; title_en: string; title_da: string;
   approved: boolean; status: RoadmapStatus; horizon: RoadmapHorizon;
   beta_since: string | null; beta_soon: boolean; live_soon: boolean;
   created_at: string; shipped_at: string | null;
@@ -175,22 +186,6 @@ export function planRanks(groups: PlanGroup[]): Map<string, number> {
     for (const item of g.items) if (item.status === "planned") ranks.set(item.id, ranks.size + 1);
   }
   return ranks;
-}
-
-/** Spillerens dato i København som "YYYY-MM-DD" (ugen skifter mandag kl. 00 dansk tid). */
-export function copenhagenDateKey(now: Date): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: COPENHAGEN, year: "numeric", month: "2-digit", day: "2-digit",
-  }).format(now);
-}
-
-/** Mandag til søndag for denne uge (offset 0) eller næste (offset 1), som datonøgler. */
-export function weekRange(now: Date, offsetWeeks: number): { start: string; end: string } {
-  const today = new Date(`${copenhagenDateKey(now)}T00:00:00Z`);
-  const sinceMonday = (today.getUTCDay() + 6) % 7;
-  const start = new Date(today.getTime() + (offsetWeeks * 7 - sinceMonday) * DAY_MS);
-  const end = new Date(start.getTime() + 6 * DAY_MS);
-  return { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) };
 }
 
 export function isRated(item: RoadmapItem, vote: RoadmapVote | undefined): boolean {
@@ -407,7 +402,7 @@ export function searchRoadmap(
   const hits: SearchHit[] = [];
   for (const item of items ?? []) {
     const at = itemWhere(item);
-    if (at && matches(item)) hits.push({ id: item.id, ...at, area: item.engine, title_en: item.title_en, title_da: item.title_da });
+    if (at && matches(item)) hits.push({ id: item.id, ...at, area: resolveRoadmapCategory(item), title_en: item.title_en, title_da: item.title_da });
   }
   for (const issue of issues ?? []) {
     const at = issueWhere(issue);
