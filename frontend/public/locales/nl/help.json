@@ -225,6 +225,10 @@
       "squadAndAuctions": {
         "title": "Selectiegrootte en veilingen",
         "text": "Selectielimieten gelden nog steeds per divisie. Actieve veilingen waarin je aan de leiding staat, reserveren zowel saldo als een mogelijke selectieplek, dus je kunt niet in meer veilingen leiden dan je selectie kan bevatten."
+      },
+      "availableBalance": {
+        "title": "Beschikbaar saldo",
+        "text": "Je beschikbare saldo is wat je kunt uitgeven na aftrek van het bedrag dat vastzit in je winnende biedingen en actieve automatische biedingen."
       }
     },
     "transfers": {

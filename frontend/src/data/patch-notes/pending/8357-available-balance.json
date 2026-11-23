@@ -1,0 +1,20 @@
+{
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Finance",
+      "area": "economy",
+      "en": {
+        "title": "See what you can spend",
+        "body": "I’ve made the sidebar, dashboard and auctions show the same available balance. Below it you can see what’s locked in bids and automatic bids."
+      },
+      "da": {
+        "title": "Se, hvad du kan bruge",
+        "body": "Jeg har gjort saldoen ens i sidemenuen, på forsiden og på auktionerne. Du ser, hvad du har til rådighed, og hvor meget der er låst i bud og autobud."
+      },
+      "refs": [8357]
+    }
+  ]
+}

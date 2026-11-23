@@ -225,6 +225,10 @@
       "squadAndAuctions": {
         "title": "Taille de l'effectif et enchères",
         "text": "Les limites d'effectif s'appliquent toujours par division. Les enchères en cours où tu mènes réservent à la fois du solde et une place potentielle dans l'effectif, tu ne peux donc pas mener plus d'enchères que ton effectif ne peut en accueillir."
+      },
+      "availableBalance": {
+        "title": "Solde disponible",
+        "text": "Ton solde disponible est ce que tu peux dépenser après avoir déduit les montants bloqués par tes meilleures offres et tes enchères automatiques actives."
       }
     },
     "transfers": {

@@ -79,7 +79,7 @@ test("menuen opdaterer sig selv: ved sideskift, fokus og ny besked, og alle sted
   assert.match(component, /for \(const listener of listeners\) listener\(latest\.data\);/, "hvert svar gaar til alle steder paa skaermen");
   assert.match(component, /return res\.ok \? lockedSalesFromResponse\(res\.data\) : null;/, "en fejl er ikke 'intet laast'");
   const layout = src("../Layout.jsx").replace(/\r\n/g, "\n");
-  assert.match(layout, /channel\.on\("postgres_changes", \{ event: "\*", schema: "public", table: "notifications"[^\n]*\n\s*async \(payload\) => \{\n[^\n]*\n\s*if \(payload\?\.eventType === "INSERT"\) window\.dispatchEvent\(new Event\(LOCKED_SALES_REFRESH_EVENT\)\);/, "kun en ny besked henter de laaste salg igen, ikke 'markeret som laest'");
+  assert.match(layout, /channel\.on\("postgres_changes", \{ event: "\*", schema: "public", table: "notifications"[^\n]*\n\s*async \(payload\) => \{\n[^\n]*\n\s*if \(payload\?\.eventType === "INSERT"\) \{\s*window\.dispatchEvent\(new Event\(LOCKED_SALES_REFRESH_EVENT\)\);/, "kun en ny besked henter de laaste salg igen, ikke 'markeret som laest'");
 });
 
 /** Et kald, der koerer, til proeven siger stop. */
@@ -170,7 +170,7 @@ test("kontakten slukket: menu, dashboard og Oekonomi viser kun det ekstra, naar 
   assert.match(finance, /<LockedSalesLine refreshKey=\{\/\*\* @type \{any\} \*\/ \(team\)\?\.balance\}/);
   assert.match(finance, /<LockedSaleEscrows refreshKey=\{\/\*\* @type \{any\} \*\/ \(team\)\?\.balance\} \/>/);
   // Saldo-tallet selv er uroert: det er stadig det, holdet kan bruge.
-  assert.match(layout, /\{formatNumber\(balance\)\} CZ\$/);
+  assert.match(layout, /t\("finance:balance\.available", \{ value: formatNumber\(marketBalance\.value\) \}\)/);
   assert.match(finance, /\{formatNumber\(team\?\.balance \|\| 0\)\} CZ\$/);
 });
 
