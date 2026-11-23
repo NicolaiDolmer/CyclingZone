@@ -12,3 +12,17 @@ export const TRAINING_ROTATION_FLAG_KEY = "training_rotation";
 export async function isTrainingRotationEnabled(supabase, opts = {}) {
   return evaluateFlagStage(await readFlagStage(supabase, TRAINING_ROTATION_FLAG_KEY), opts);
 }
+
+export async function isTrainingRotationEnabledForTeam(supabase, teamId) {
+  const { data: flag, error: flagError } = await supabase.from("app_config").select("value")
+    .eq("key", TRAINING_ROTATION_FLAG_KEY).maybeSingle();
+  if (flagError) throw new Error(`training rotation flag: ${flagError.message}`);
+  const stage = flag?.value ?? null;
+  if (stage !== "beta") return evaluateFlagStage(stage);
+  const { data: team, error: teamError } = await supabase.from("teams").select("user_id").eq("id", teamId).maybeSingle();
+  if (teamError) throw new Error(`training rotation owner: ${teamError.message}`);
+  if (!team?.user_id) return false;
+  const { data: owner, error } = await supabase.from("users").select("role, is_beta_tester").eq("id", team.user_id).maybeSingle();
+  if (error) throw new Error(`training rotation owner beta: ${error.message}`);
+  return owner?.role === "admin" || owner?.is_beta_tester === true;
+}
