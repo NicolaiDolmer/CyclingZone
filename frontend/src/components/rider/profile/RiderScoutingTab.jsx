@@ -4,13 +4,12 @@ import AcademyScoutingPrognosis from "../AcademyScoutingPrognosis";
 // Viser den server-beregnede scouting-rapport (GET /api/riders/:id/scouting-report):
 //   • Scout verdict — klart sprog ("Din spejders vurdering" / "Talentspejder-
 //     rapport"), confidence-chip og 4 understøttende faktorer. Ingen jargon.
-//   • Prognose pr. ryttertype — nuværende rating + skraveret PROGNOSE-BÅND pr. type
-//     (#3746: hvor rytteren realistisk lander med træning, ikke et loft). Prognosen
-//     er ALTID et bånd (#1543 beslutning 3: ingen når 100% præcision, heller
-//     ikke på egne ryttere — beslutning 4).
+//   • Prognose pr. ryttertype — nuværende rating + ÉT prognosetal pr. type med et
+//     mærke på baren (#6110, ejer 23/11: intet bånd; samme regel som den samlede
+//     prognose på kortet).
 //   • Røverkøb? — markedsværdi vs. modellens forventede værdi; kun sammenligningen
 //     og en one-line read, INGEN verdict-label (design-SSOT).
-// Rå potentiale/ability_caps findes ALDRIG i klienten (#1162) — alt er bånd.
+// Rå potentiale/ability_caps findes ALDRIG i klienten (#1162).
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -61,7 +60,7 @@ function Eyebrow({ children }) {
 //
 // #3666: ABSOLUT, ikke en populations-percentil. Det var 0,99 som et bart tal i
 // bredde-udtrykket før. Værdien er den samme, men grunden til den skal stå et
-// sted: baren viser en MAGNITUDE (og prognosebåndet, som kan ligge højere end
+// sted: baren viser en MAGNITUDE (og prognose-mærket, som kan ligge højere end
 // nogen nuværende rating), så den må ikke skaleres efter hvor bestanden tilfældigvis ligger —
 // ellers flytter en rytters bar sig fordi ANDRE ryttere har ændret sig, hvilket
 // er præcis den egenskab omlægningen fjernede fra selve ratingen.
@@ -73,28 +72,49 @@ function Eyebrow({ children }) {
 // rytter, hvor et fælles LINEÆRT 0-99-domæne enten ville klemme polygonen
 // sammen til en prik for de fleste (spændet mellem en typisk lav akse og
 // toppen er en faktor ~28) eller klampe toppen falsk. Baren her
-// sammenligner niveau mod prognosebåndet på én lineær akse, og der er kun én værdi pr. rytter, ikke otte samtidig, så
+// sammenligner niveau mod prognosen på én lineær akse, og der er kun én værdi pr. rytter, ikke otte samtidig, så
 // samme spænd-problem opstår ikke her.
 const BAR_SCALE_MAX = 99;
 const barPct = (v) => `${(Math.max(0, Math.min(BAR_SCALE_MAX, v)) / BAR_SCALE_MAX) * 100}%`;
 
-// Én ryttertype-række: navn · bar (nu-fyld + skraveret prognose-bånd) · nu / prognose-tal.
-// #3746: progLo/progHi er prognose-båndets navn; ceilLo/ceilHi er en alias
-// (samme tal) for ældre klient-cache — se backend/routes/api.js.
-function TypeRow({ typeKey, now, progLo, progHi, label }) {
+// #6110 (ejer 23/11): ét prognosetal pr. type, intet bånd. Serveren sender `prog`, regnet
+// med samme regel som den samlede prognose på kortet. Ældre svar uden feltet (kontakten
+// slukket, akademiets sidste trin) har kun båndet; dér vises båndets midte som ét tal.
+// #3746: progLo/progHi er båndets navn; ceilLo/ceilHi er en alias for ældre klient-cache.
+function typePrognosis(row) {
+  if (Number.isFinite(row?.prog)) return row.prog;
+  const lo = row?.progLo ?? row?.ceilLo;
+  const hi = row?.progHi ?? row?.ceilHi;
+  return Number.isFinite(lo) && Number.isFinite(hi) ? Math.round((lo + hi) / 2) : null;
+}
+
+// Bar: fyldt til niveauet i dag og ét mærke ved prognosen.
+function PrognosisBar({ now, prog, height }) {
   return (
-    <div className="flex items-center gap-3" data-type={typeKey}>
-      <span className="w-[110px] shrink-0 text-[12px] text-cz-2 truncate">{label}</span>
-      <div className="relative flex-1 h-[7px] rounded-full bg-cz-subtle overflow-hidden" aria-hidden="true">
+    <div className={`relative ${height}`} aria-hidden="true">
+      <div className="absolute inset-0 rounded-full bg-cz-subtle overflow-hidden">
         <div className="absolute inset-y-0 left-0 bg-cz-accent rounded-full" style={{ width: barPct(now) }} />
-        <div
-          className="absolute inset-y-0 bg-cz-accent/25 border-x border-cz-accent/50"
-          style={{ left: barPct(progLo), width: `calc(${barPct(progHi)} - ${barPct(progLo)})` }}
-        />
       </div>
-      <span className="w-[86px] shrink-0 text-right font-mono tabular-nums text-2xs">
+      {prog != null && (
+        <div
+          className="absolute -top-[2px] -bottom-[2px] w-[2px] -translate-x-1/2 rounded-full bg-cz-1"
+          style={{ left: barPct(prog) }}
+          data-prognosis-mark
+        />
+      )}
+    </div>
+  );
+}
+
+// Én ryttertype-række: navn · bar (nu-fyld + prognose-mærke) · nu / prognose-tal.
+function TypeRow({ typeKey, now, prog, label }) {
+  return (
+    <div className="flex items-center gap-3" data-type={typeKey} data-prog={prog ?? undefined}>
+      <span className="w-[110px] shrink-0 text-[12px] text-cz-2 truncate">{label}</span>
+      <div className="flex-1"><PrognosisBar now={now} prog={prog} height="h-[7px]" /></div>
+      <span className="w-[64px] shrink-0 text-right font-mono tabular-nums text-2xs">
         <span className="text-cz-1 font-bold">{now}</span>
-        <span className="text-cz-3"> · {progLo}–{progHi}</span>
+        {prog != null && <span className="text-cz-3"> · {prog}</span>}
       </span>
     </div>
   );
@@ -104,11 +124,11 @@ function TypeRow({ typeKey, now, progLo, progHi, label }) {
 // svaret på "hvor god er han, og hvor god kan han blive". Ratingen bruger den
 // DELTE statPlateStyle, så tallet her og tallet i heroen er samme plade — de er
 // samme tal, og må ikke kunne se forskellige ud.
-// #3746: progLo/progHi + progressionLabel — se TypeRow.
+// #6110: `prog` + progressionLabel, se TypeRow.
 // #5435: `extra` = anlæggets anden rolle, vist inde i samme sektion.
-function PrimaryTypeRow({ typeKey, now, progLo, progHi, label, roleLabel, progressionLabel, extra = null }) {
+function PrimaryTypeRow({ typeKey, now, prog, label, roleLabel, progressionLabel, extra = null }) {
   return (
-    <div data-type={typeKey} className="border-b border-cz-border pb-3.5 mb-3.5">
+    <div data-type={typeKey} data-prog={prog ?? undefined} className="border-b border-cz-border pb-3.5 mb-3.5">
       <span className="font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3">
         {roleLabel}
       </span>
@@ -122,22 +142,18 @@ function PrimaryTypeRow({ typeKey, now, progLo, progHi, label, roleLabel, progre
         <span className="text-[15px] font-semibold leading-tight text-cz-1">
           {label}
         </span>
-        <span className="ms-auto text-right">
-          <span className="block font-mono text-3xs uppercase tracking-[0.12em] text-cz-3">
-            {progressionLabel}
+        {prog != null && (
+          <span className="ms-auto text-right">
+            <span className="block font-mono text-3xs uppercase tracking-[0.12em] text-cz-3">
+              {progressionLabel}
+            </span>
+            <span className="block font-mono tabular-nums text-[15px] text-cz-1 mt-0.5">
+              {prog}
+            </span>
           </span>
-          <span className="block font-mono tabular-nums text-[15px] text-cz-1 mt-0.5">
-            {progLo}–{progHi}
-          </span>
-        </span>
+        )}
       </div>
-      <div className="relative h-[11px] rounded-full bg-cz-subtle overflow-hidden mt-2.5" aria-hidden="true">
-        <div className="absolute inset-y-0 left-0 bg-cz-accent rounded-full" style={{ width: barPct(now) }} />
-        <div
-          className="absolute inset-y-0 bg-cz-accent/25 border-x border-cz-accent/50"
-          style={{ left: barPct(progLo), width: `calc(${barPct(progHi)} - ${barPct(progLo)})` }}
-        />
-      </div>
+      <div className="mt-2.5"><PrognosisBar now={now} prog={prog} height="h-[11px]" /></div>
       {extra}
     </div>
   );
@@ -181,15 +197,13 @@ function RolePrognosis({ types, primaryKey, secondaryKey, children = /** @type {
         <PrimaryTypeRow
           typeKey={primaryRow.key}
           now={primaryRow.now}
-          progLo={primaryRow.progLo ?? primaryRow.ceilLo}
-          progHi={primaryRow.progHi ?? primaryRow.ceilHi}
+          prog={typePrognosis(primaryRow)}
           label={tTypes(`types.${primaryRow.key}`)}
           roleLabel={t("profile.scouting.naturalRolesLabel")}
           extra={naturalSecondaryRow && (
             <div className="mt-3" data-testid="scouting-natural-secondary">
               <TypeRow typeKey={naturalSecondaryRow.key} now={naturalSecondaryRow.now}
-                progLo={naturalSecondaryRow.progLo ?? naturalSecondaryRow.ceilLo}
-                progHi={naturalSecondaryRow.progHi ?? naturalSecondaryRow.ceilHi}
+                prog={typePrognosis(naturalSecondaryRow)}
                 label={tTypes(`types.${naturalSecondaryRow.key}`)} />
             </div>
           )}
@@ -207,7 +221,7 @@ function RolePrognosis({ types, primaryKey, secondaryKey, children = /** @type {
       <div className="space-y-2">
         {secondaryRows.map((row) => (
           <TypeRow key={row.key} typeKey={row.key} now={row.now}
-            progLo={row.progLo ?? row.ceilLo} progHi={row.progHi ?? row.ceilHi}
+            prog={typePrognosis(row)}
             label={tTypes(`types.${row.key}`)} />
         ))}
       </div>
@@ -314,6 +328,23 @@ function EstimateCard({ view, report, canLookAgain, scoutAction, t }) {
         <p className="text-cz-3 text-3xs mt-3 mb-0">{t("scouting:potentialEstimate.notAFactLong")}</p>
       </div>
     </SectionCard>
+  );
+}
+
+// #6110: skønnet er kortet, og prognosen pr. ryttertype står under det igen, for egne og
+// scoutede ryttere: ét tal pr. type med samme regel som den samlede prognose. Serveren
+// sender kun listen, når der er noget at vise; uscoutede, skjulte og AI-holdets ryttere har ingen.
+export function EstimateReport({ view, report, rider, canLookAgain, scoutAction, t, lang }) {
+  return (
+    <div className="space-y-3">
+      <EstimateCard view={view} report={report} canLookAgain={canLookAgain} scoutAction={scoutAction} t={t} />
+      {report.types?.length > 0 && (
+        <RolePrognosis types={report.types} primaryKey={report.primaryKey} secondaryKey={rider?.secondary_type}>
+          <p className="text-cz-3 text-3xs mt-1.5 mb-0" data-testid="scouting-types-pace-note">{t("profile.scouting.typesPaceNote")}</p>
+          {report.precision && <PrecisionNote precision={report.precision} t={t} lang={lang} />}
+        </RolePrognosis>
+      )}
+    </div>
   );
 }
 
@@ -477,12 +508,14 @@ export default function RiderScoutingTab({ rider, scouting }) {
   if (estimateView && !estimateView.hidden) {
     return (
       <EstimateCopyGate>
-        <EstimateCard
+        <EstimateReport
           view={estimateView}
           report={report}
+          rider={rider}
           canLookAgain={!report.own && level < maxLevel}
           scoutAction={<>{scoutButton("scouting.rescout")}{scoutErrorLine}</>}
           t={t}
+          lang={i18n.language}
         />
       </EstimateCopyGate>
     );

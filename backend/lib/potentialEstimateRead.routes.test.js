@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 
+import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
 import { isPotentialEstimateDisplayEnabled } from "./potentialEstimateFlag.js";
 import {
   buildAcademyFromViews,
@@ -36,7 +37,7 @@ function fakeSupabase(stage) {
     app_config: [{ key: "potential_estimate_display", value: stage }],
     users: [{ id: "user", role: "manager", is_beta_tester: true }],
     riders: [
-      { id: "scouted", team_id: "other", is_academy: false, best_role_rating: 60, birthdate: "2003-01-01", primary_type: "climber" },
+      { id: "scouted", team_id: "other", is_academy: false, best_role_rating: 60, birthdate: "2003-01-01", primary_type: "climber", secondary_type: "gc", potentiale: 5.5 },
       { id: "youth", team_id: TEAM, is_academy: true, best_role_rating: 20, birthdate: "2008-01-01", primary_type: "climber" },
     ],
     rider_potential_estimates: [{
@@ -44,7 +45,8 @@ function fakeSupabase(stage) {
       changed_at: null, uncertainty: 3.5, knowledge_key: "s2t3", ceiling_at_write: 77,
     }],
     training_rider_ticks: [{ rider_id: "youth", team_id: TEAM, tick_date: "2026-11-01", season_id: "s", game_day: 1 }],
-    rider_derived_abilities: [{ rider_id: "scouted", climbing: 50 }],
+    seasons: [{ number: 4, status: "active" }],
+    rider_derived_abilities: [{ rider_id: "scouted", ...Object.fromEntries(REGISTRY_ABILITY_KEYS.map((key) => [key, 50])) }],
   };
   const reads = [];
   return {
@@ -52,11 +54,13 @@ function fakeSupabase(stage) {
     from(table) {
       reads.push(table);
       const filters = [];
-      const rows = () => (tables[table] ?? []).filter((row) => filters.every(([column, values]) => values.includes(row[column])));
+      const rows = () => (tables[table] ?? []).filter((row) => filters.every((filter) => typeof filter === "function" ? filter(row) : filter[1].includes(row[filter[0]])));
       const query = {
         select() { return query; },
         eq(column, value) { filters.push([column, [value]]); return query; },
         in(column, values) { filters.push([column, values]); return query; },
+        gt(column, value) { filters.push((row) => row[column] > value); return query; },
+        gte(column, value) { filters.push((row) => row[column] >= value); return query; },
         order() { return query; },
         range: async () => ({ data: rows(), error: null }),
         maybeSingle: async () => ({ data: rows()[0] ?? null, error: null }),
@@ -189,6 +193,26 @@ test("scouting-rapport tændt: et gemt skøn vinder, også uden kig i scout_acti
   assert.equal(out.generatedAt, "2026-11-05T12:00:00.000Z");
   assert.ok(!("hidden" in out) && !("types" in out) && !("stars" in out));
   assert.doesNotMatch(JSON.stringify(out), FORBIDDEN);
+});
+
+test("scouting-rapport tændt: en scoutet rytter får prognosen pr. ryttertype, uden rå potentiale (#6110)", async () => {
+  let xpLoads = 0;
+  const out = await route("get", "/riders/:id/scouting-report", fakeSupabase("on"), {
+    loadEstimateDevelopmentXp: async () => { xpLoads += 1; return null; },
+  })();
+  assert.equal(out.potentialView.value, 74);
+  assert.equal(out.types.length, 8);
+  assert.ok(out.types.every((row) => Number.isInteger(row.prog) && !("progLo" in row)), "ét tal pr. type, intet bånd");
+  assert.equal(xpLoads, 1);
+  assert.doesNotMatch(JSON.stringify(out), FORBIDDEN);
+  assert.doesNotMatch(JSON.stringify(out), /potentiale"|ability_caps|hidden_potential/);
+});
+
+test("scouting-rapport tændt: uden kig er der ingen liste og intet XP-opslag (#6110)", async () => {
+  const out = await route("get", "/riders/:id/scouting-report", fakeSupabase("on"), {
+    loadScoutState: async () => ({ state: { maxLevel: 3, levels: {} } }),
+  })();
+  assert.ok(!("types" in out));
 });
 
 test("development-projection slukket: uscoutet rytter er dagens skjulte svar uden opslag", async () => {

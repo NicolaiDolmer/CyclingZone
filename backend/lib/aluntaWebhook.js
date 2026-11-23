@@ -68,6 +68,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { FOUNDER_SEAT_CAP, getFounderSeats } from "./founderSeats.js";
 import { captureException } from "./sentry.js";
+import { recordCheckoutEvent } from "./checkoutCampaign.js";
 import { normalizePlanInterval } from "./subscriptionPlanInterval.js";
 import { runAluntaSubscriptionReconcileForTeam } from "./aluntaSubscriptionReconcile.js";
 
@@ -144,6 +145,7 @@ export async function handleAluntaWebhook({
   // køre uden netværk.
   client = undefined,
   reconcileForTeamFn = runAluntaSubscriptionReconcileForTeam,
+  captureCheckoutEventFn = undefined,
 }) {
   // #2817: forventet-men-interessant afvisning — console.warn, ikke captureException.
   // Logger ALDRIG payload/signatur/headers/secret, kun at det skete.
@@ -270,25 +272,25 @@ export async function handleAluntaWebhook({
   // er allerede skrevet, dette lukker funnellen. Fejl her må ALDRIG få eventet
   // til at fremstå som en fejlet betaling for kunden — klienten har allerede 200.
   if (event === "checkout.completed") {
-    try {
-      // #4646: samme player_events-skema som frontend/src/lib/logEvent.js, men
-      // skrevet server-side via service-role (ingen RLS/consent-gate her — dette
-      // er betalings-telemetri, ikke spilleradfærd, og bærer ingen PII).
-      // user_id er NOT NULL på tabellen, så opslaget er nødvendigt.
-      const { data: teamRow, error: teamErr } = await supabase.from("teams").select("user_id").eq("id", teamId).maybeSingle();
-      if (teamErr) throw new Error(`teams-opslag (player_events) fejlede: ${teamErr.message}`);
-      if (teamRow?.user_id) {
-        const { error: evErr } = await supabase.from("player_events").insert({
-          team_id: teamId,
-          user_id: teamRow.user_id,
-          event_name: "checkout_completed",
-          event_data: { plan_interval: row.plan_interval ?? null, currency: data.currency ?? null },
+    const checkoutTelemetry = (async () => {
+      try {
+        const { data: teamRow, error: teamErr } = await supabase.from("teams")
+          .select("user_id, is_test_account").eq("id", teamId).maybeSingle();
+        if (teamErr) throw new Error("checkout team lookup failed");
+        if (teamRow?.user_id) {
+          await recordCheckoutEvent({
+            supabase, teamId, userId: teamRow.user_id, isTestAccount: teamRow.is_test_account === true,
+            eventName: "checkout_completed",
+            eventData: { plan_interval: row.plan_interval ?? null, currency: data.currency ?? null },
+            captureCheckoutEventFn,
+          });
+        }
+      } catch {
+        captureExceptionFn(new Error("checkout_completed analytics failed"), {
+          tags: { flow: "billing", stage: "webhook-player-event" }, teamId, event,
         });
-        if (evErr) throw new Error(`player_events checkout_completed insert fejlede: ${evErr.message}`);
       }
-    } catch (err) {
-      captureExceptionFn(err, { tags: { flow: "billing", stage: "webhook-player-event" }, teamId, event });
-    }
+    })();
 
     // #4648: reconcilen er ellers time-vis (aluntaSubscriptionReconcile.js) —
     // dette henter Aluntas fulde billing-felter for DETTE ene hold straks efter
@@ -302,5 +304,6 @@ export async function handleAluntaWebhook({
         captureExceptionFn(err, { tags: { flow: "billing", stage: "webhook-reconcile-team" }, teamId, event });
       }
     }
+    await checkoutTelemetry;
   }
 }

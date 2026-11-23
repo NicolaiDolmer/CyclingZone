@@ -12,6 +12,7 @@ import {
   buildPotentialView,
   buildProjectionFromView,
   buildScoutingReportFromView,
+  buildTypePrognoses,
   loadPotentialViews,
 } from "./potentialEstimateRead.js";
 
@@ -187,16 +188,126 @@ const reportInput = (over = {}) => ({
   ...over,
 });
 
-test("scouting-rapporten: potentialView, kig og scout, ingen gamle bånd", async () => {
+test("scouting-rapporten: potentialView, kig og scout, ingen gamle stjerner eller loft", async () => {
   const report = await buildScoutingReportFromView(world(), reportInput());
   assert.equal(Object.keys(report)[0], "potentialView");
   assert.equal(report.potentialView.value, 74);
   assert.equal(report.looks, 2);
   assert.equal(report.scout.name, "Scout A");
-  for (const legacy of ["stars", "types", "displayKey", "precision", "capsMissing", "value"]) {
+  for (const legacy of ["stars", "displayKey", "precision", "capsMissing", "value"]) {
     assert.ok(!(legacy in report), `${legacy} er den gamle model`);
   }
   assert.doesNotMatch(JSON.stringify(report), FORBIDDEN);
+});
+
+// #6110: prognosen pr. ryttertype er tilbage under skønnet. Rytteren er 23, evnerne ligger
+// midt i feltet, og båndene bygges af serveren, så rå potentiale aldrig når svaret.
+const SCOUT = { isDefault: false, name: "Scout A", tier: 3, overall: 70, hiredAt: null };
+const roleInput = (over = {}) => reportInput({
+  rider: { id: "scouted", primary_type: "climber", secondary_type: "gc", potentiale: 5.5 },
+  bandScout: SCOUT,
+  ...over,
+});
+
+test("scouting-rapporten: scoutet fremmed rytter får ét prognosetal pr. ryttertype, intet bånd", async () => {
+  const report = await buildScoutingReportFromView(world(), roleInput());
+  assert.equal(report.types.length, 8);
+  for (const row of report.types) {
+    assert.deepEqual(Object.keys(row), ["key", "now", "prog"], row.key);
+    assert.ok(Number.isInteger(row.now) && Number.isInteger(row.prog), row.key);
+    assert.ok(row.prog >= row.now, `${row.key}: prognosen står aldrig under niveauet i dag`);
+  }
+  assert.ok(report.types.some((row) => row.key === "climber"));
+  assert.doesNotMatch(JSON.stringify(report), /progLo|progHi|ceilLo|ceilHi|loft/);
+  assert.doesNotMatch(JSON.stringify(report), FORBIDDEN);
+});
+
+test("scouting-rapporten: egen rytter får hele listen", async () => {
+  const report = await buildScoutingReportFromView(world(), roleInput({ own: true, level: 3 }));
+  assert.equal(report.types.length, 8);
+});
+
+// Egen 22-årig rytter, der er gået frem i alle evner den seneste måned.
+const growingWorld = (over = {}) => world({
+  riders: [{ id: "scouted", team_id: TEAM, is_academy: false, best_role_rating: 50, birthdate: "2004-01-01", primary_type: "climber", secondary_type: "gc" }],
+  seasons: [{ number: 4, status: "active" }],
+  rider_derived_abilities: [{ rider_id: "scouted", ...abilitiesAt(50) }],
+  rider_derived_ability_history: [
+    { rider_id: "scouted", snapshot_date: "2026-10-15", season_number: 4, source: "daily", abilities: abilitiesAt(48) },
+  ],
+  rider_ability_race_day_history: [],
+  ...over,
+});
+const growingInput = (over = {}) => roleInput({
+  rider: { id: "scouted", birthdate: "2004-01-01", primary_type: "climber", secondary_type: "gc", potentiale: 5.5 },
+  own: true, level: 3, ...over,
+});
+
+test("scouting-rapporten: den bedste rolle har samme tal som den samlede prognose", async () => {
+  const report = await buildScoutingReportFromView(growingWorld(), growingInput());
+  assert.equal(report.prognosisView.hidden, false);
+  const climber = report.types.find((row) => row.key === "climber");
+  assert.equal(climber.prog, report.prognosisView.value, "samme regel, samme tal");
+  assert.ok(climber.prog > climber.now, "fremgang giver en prognose over niveauet i dag");
+});
+
+test("scouting-rapporten: uden fremgang står hver type på sit niveau i dag", async () => {
+  const report = await buildScoutingReportFromView(growingWorld({ rider_derived_ability_history: [] }), growingInput());
+  for (const row of report.types) assert.equal(row.prog, row.now, row.key);
+});
+
+test("scouting-rapporten: efter toppen vokser ingen type", async () => {
+  const report = await buildScoutingReportFromView(
+    growingWorld({ riders: [{ id: "scouted", team_id: TEAM, is_academy: false, best_role_rating: 50, birthdate: "1990-01-01", primary_type: "climber" }] }),
+    growingInput({ rider: { id: "scouted", birthdate: "1990-01-01", primary_type: "climber", potentiale: 5.5 } }),
+  );
+  assert.equal(report.prognosisView.reason, "pastPeak");
+  for (const row of report.types) assert.equal(row.prog, row.now, row.key);
+});
+
+test("buildTypePrognoses: målet for hver type er skønnet, flyttet med typens afstand i spejderens fremskrivning", () => {
+  // Alle evner ens: hver rolle står på 50 i dag og er gået lige meget frem.
+  const liveAbilities = abilitiesAt(50);
+  const snapshots = [{ snapshot_date: "2026-10-15", abilities: abilitiesAt(48) }];
+  const rider = { id: "r", primary_type: "climber" };
+  const bands = [
+    { key: "climber", now: 50, progLo: 60, progHi: 70 },
+    { key: "gc", now: 50, progLo: 70, progHi: 80 },
+    { key: "sprinter", now: 50, progLo: 30, progHi: 40 },
+  ];
+  const input = { bands, rider, liveAbilities, snapshots, today: "2026-11-20", estimate: 74, age: 22 };
+  const best = buildTypePrognoses(input).find((row) => row.key === "climber").prog;
+  const byKey = Object.fromEntries(buildTypePrognoses(input).map((row) => [row.key, row.prog]));
+  // Bedste rolle (her climber) har skønnet som mål.
+  assert.ok(byKey.climber > 50 && byKey.climber <= 74, "climber går mod skønnet");
+  assert.ok(byKey.gc >= best, "en type spejderen ser højere, får aldrig et lavere tal");
+  assert.equal(byKey.sprinter, 50, "et mål under niveauet i dag giver ingen fremgang");
+  // Uden billeder er farten nul, og tallet er niveauet i dag.
+  for (const row of buildTypePrognoses({ ...input, snapshots: [] })) assert.equal(row.prog, row.now, row.key);
+});
+
+test("scouting-rapporten: uscoutet, skjult og uden kig giver ingen liste", async () => {
+  const stranger = await buildScoutingReportFromView(world(), roleInput({ rider: { id: "stranger", primary_type: "climber", potentiale: 2 }, level: 0, looks: 0 }));
+  assert.ok(!("types" in stranger), "uscoutet");
+  const noLooks = await buildScoutingReportFromView(world(), roleInput({ level: 0, looks: 0 }));
+  assert.equal(noLooks.potentialView.value, 74, "skønnet står");
+  assert.ok(!("types" in noLooks), "et gammelt skøn uden kig åbner ikke båndene");
+});
+
+test("scouting-rapporten: uden evner eller alder er der intet at fremskrive", async () => {
+  const noAbilities = await buildScoutingReportFromView(world({ rider_derived_abilities: [] }), roleInput());
+  assert.ok(!("types" in noAbilities));
+  const noAge = await buildScoutingReportFromView(world(), roleInput({ age: null }));
+  assert.ok(!("types" in noAge));
+});
+
+test("scouting-rapporten: XP-modellen slås kun op, når der er en liste at bygge", async () => {
+  let loads = 0;
+  const loadDevelopmentXp = async () => { loads += 1; return null; };
+  await buildScoutingReportFromView(world(), roleInput({ loadDevelopmentXp }));
+  assert.equal(loads, 1);
+  await buildScoutingReportFromView(world(), roleInput({ rider: { id: "stranger", primary_type: "climber", potentiale: 2 }, level: 0, looks: 0, loadDevelopmentXp }));
+  assert.equal(loads, 1, "uscoutet rytter bygger ingen liste");
 });
 
 test("scouting-rapporten: vurderingen bygger på skønnet og følger ordet", async () => {

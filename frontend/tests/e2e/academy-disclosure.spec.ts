@@ -72,7 +72,10 @@ for (const width of [1440, roleShots ? 390 : 375]) {
             const rows = page.locator("[data-type]");
             await expect(rows).toHaveCount(roleKeys.length);
             for (const { key, progLo, progHi } of types) {
-              await expect(page.locator("[data-type=\"" + key + "\"]")).toContainText(progLo + "–" + progHi);
+              // #8645 (ejer 23/11): ét tal pr. type; et gammelt svar med kun bånd vises som båndets midte.
+              const row = page.locator("[data-type=\"" + key + "\"]");
+              await expect(row).toContainText(String(Math.round((progLo + progHi) / 2)));
+              await expect(row).not.toContainText(progLo + "–" + progHi);
             }
             await expect(page.getByTestId("academy-scouting-prognosis")).toHaveCount(0);
             await rows.first().scrollIntoViewIfNeeded();

@@ -21,7 +21,10 @@ test("ingen af de tre svar bærer interval eller loft", () => {
       previewProjection(id, SEED_PROJECTION),
     ];
     for (const answer of answers) {
-      assert.doesNotMatch(JSON.stringify(answer), FORBIDDEN, id);
+      // #6110: rapporten bærer ét prognosetal pr. ryttertype (`prog` i typerne), aldrig et interval.
+      const { types: roleTypes, ...rest } = answer as Record<string, unknown>;
+      assert.doesNotMatch(JSON.stringify(roleTypes ?? []), /"(lo|hi|ceil|loft|progLo|progHi|ceilLo|ceilHi|band)":/, id);
+      assert.doesNotMatch(JSON.stringify(rest), FORBIDDEN, id);
       assert.ok(potentialViewOf(answer), id);
     }
   }
@@ -34,6 +37,30 @@ test("samme rytter har samme skøn på alle tre svar", () => {
   assert.deepEqual(estimate.potentialView, report.potentialView);
   assert.deepEqual(estimate.potentialView, projection.potentialView);
   assert.ok(!("estimateLine" in projection), "#8523: den gamle kurve er væk");
+});
+
+test("#6110: rapporten bærer prognosen pr. ryttertype, men aldrig for skjulte ryttere", () => {
+  let withList = 0;
+  for (const id of ["rider-1", "rider-2", "rider-x1", "rider-x2", "rider-x3", "rider-x4"]) {
+    const report = previewReport(id, SEED_SCOUTING_REPORT, true) as { potentialView: { hidden: boolean }; types?: Record<string, unknown>[] };
+    if (report.potentialView.hidden) {
+      assert.equal(report.types, undefined, id);
+      continue;
+    }
+    withList += 1;
+    assert.equal(report.types?.length, 8, id);
+    assert.ok(report.types?.every((row) => Object.keys(row).join() === "key,now,prog"), "kun nu og ét prognosetal");
+    assert.ok(report.types?.every((row) => (row.prog as number) >= (row.now as number)), "prognosen står aldrig under nu");
+  }
+  assert.ok(withList > 0, "mindst én rytter har en liste");
+});
+
+test("#6110: egen rytters primære type har samme tal som den samlede prognose", () => {
+  const report = previewReport("rider-1", SEED_SCOUTING_REPORT, true) as { primaryKey?: string; types?: { key: string; now: number; prog: number }[] };
+  const primary = report.types?.find((row) => row.key === report.primaryKey);
+  const prognosis = prognosisViewOf(report);
+  assert.ok(primary && prognosis && !prognosis.hidden);
+  assert.equal(primary.prog, Math.max(primary.now, prognosis.value));
 });
 
 test("#8523: egne ryttere har samme prognose på alle svar, andres ingen", () => {

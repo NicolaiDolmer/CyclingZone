@@ -88,7 +88,7 @@ Valget gemmes to steder: `localStorage["cz_consent_v1"]` og `users.consent_prefe
 | Traffic beacon | **ingen gate** (cookie-fri, storage-less, kun offentlige sider) | `frontend/src/lib/trafficBeacon.js` |
 | First-touch attribution | **ingen gate** (fanges før banneret besvares, skrives først ved signup) | `frontend/src/lib/attribution.js`, på marketing-siderne `marketing/lib/attribution.ts` (samme felter, #5310) |
 | Presence (`users.last_seen`) | **ingen gate** (nødvendig drift) | `POST /api/presence`, RPC `touch_user_presence` |
-| Server-events (`checkout_started`/`checkout_completed`) | **ingen gate** (betalings-telemetri, service-role) | `backend/lib/billingCheckout.js`, `backend/lib/aluntaWebhook.js` |
+| Server-events (`checkout_started`/`checkout_completed`) | Betalingsloggen skrives service-role. Kampagnefelter og PostHog-spejling følger serverens consent-gate fra første løb | `backend/lib/billingCheckout.js`, `backend/lib/aluntaWebhook.js`, `backend/lib/checkoutCampaign.js` |
 
 Alle fire browser-vendors er monteret i `AnalyticsBoundary` (`frontend/src/lib/sentry.jsx:138-152`), en egen error boundary, så en analytics-fejl aldrig vælter appen. 📄
 
@@ -292,6 +292,8 @@ Den fulde union med `auction_bids`, `race_entries`, `xp_log` og forum lever i `s
 | **LTV** | Estimat: `max(1, ceil(dækket tid / periodelængde)) * periodepris`. Ikke en regnskabssum: `subscriptions` har ingen betalingshistorik | `estimateSubscriptionLtvCents()` |
 
 > ⚠️ LTV er **for høj i dag**: halvårsprisen står som 26500 øre i koden mod faktisk 21200. Se §6 og [#5051](https://github.com/NicolaiDolmer/CyclingZone/issues/5051).
+
+Checkout-events får kontoens first-touch fra `signup_attribution`, når serverens samtykkekontrol tillader det. Kun validerede UTM-tags og faste betalingslabels spejles. Køb og webhook-kvittering afhænger aldrig af opslaget eller telemetrien. Kampagneopslaget har en frist på to sekunder, hvorefter betalingsloggen skrives med de eksisterende felter. Brug små bogstaver i utm_campaign, også ved join af historiske first-touch-rækker til campaign_spend_daily. Brug faktiske Alunta-fakturaer til omsætning.
 
 ### 4e. NPS
 
