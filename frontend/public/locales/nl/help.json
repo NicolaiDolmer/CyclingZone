@@ -1192,6 +1192,10 @@
     },
     "riders": {
       "label": "Renners",
+      "rankingWins": {
+        "title": "Vergelijk zeges op de rennersranglijst",
+        "text": "Open de rennersranglijst en kies Zeges in de tabel. Klassementszeges zijn eindzeges in rittenkoersen. Klassiekerzeges zijn zeges in eendagskoersen. Het totaal telt ook ritzeges en zeges in het punten-, berg- en jongerenklassement mee. Kies een kolomkop om op die kolom te sorteren."
+      },
       "valueAndPrice": {
         "title": "Waarde en prijs",
         "text": "De marktwaarde van een renner komt uit het waarderingsmodel van het spel: het schat de productie die de renner naar verwachting de rest van zijn carrière levert, afgemeten aan de eigen seizoenskalender van het spel en aangepast voor leeftijd en ontwikkeling. Het is opgebouwd uit dezelfde vaardigheden als de rating op zijn kaart en wordt voor elke renner op dezelfde manier berekend, welk type hij ook is, dus als zijn vaardigheden bewegen, volgt zijn waarde. Jonge talenten dragen waarde voor de seizoenen die voor hen liggen; veteranen worden geprijsd op wat ze nog hebben; de absolute elite van het spel draagt sterrenprijzen ver boven het budget van elk team. De startprijs van een veiling moet minstens gelijk zijn aan de Waarde van de renner. Waarden worden eenmaal per week herberekend, elke zondag vanaf 14:00 Deense tijd, dus de waarde van een renner beweegt in wekelijkse stappen in plaats van dag voor dag. Training verandert zijn vaardigheden meteen; zijn waarde volgt bij de volgende zondagse update. De waarde kan al in de late twintig gaan zakken, voordat een vaardigheid omslaat: ze prijst zijn hele resterende carrière, niet alleen zijn huidige niveau. Een renner die nog op zijn scherpst is, kan zijn waarde toch zien dalen, puur omdat er minder seizoenen over zijn om hem in te verkopen."

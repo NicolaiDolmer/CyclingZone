@@ -345,6 +345,7 @@ const SECTION_DEFS = [
     key: "riders",
     Icon: BikeIcon,
     blocks: [
+      { id: "rankingWins", kind: "text" },
       { id: "valueAndPrice", kind: "text" },
       { id: "salary", kind: "text" },
       { id: "reputation", kind: "text" },
