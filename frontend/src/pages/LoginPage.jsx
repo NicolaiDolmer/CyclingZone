@@ -434,7 +434,7 @@ export default function LoginPage() {
         body: JSON.stringify({
           name: teamName.trim(),
           manager_name: managerName.trim(),
-          attribution: getAttributionForBackend(), // #5304: se attribution.js
+          attribution,
         }),
       });
       let bootstrapData = {};

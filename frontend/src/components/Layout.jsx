@@ -42,7 +42,7 @@ import {
 import { syncSeenMarkers } from "../lib/seenMarkers6515.ts"; // #6515: prikkerne foelger brugeren
 import ProBadge from "./ProBadge";
 import { useSubscription } from "../lib/useSubscription";
-import { getAttributionForBackend, sanitizeAttributionForBackend } from "../lib/attribution";
+import { resolveSignupAttribution } from "../lib/attribution";
 import { useActionSummary } from "../hooks/useActionSummary";
 import { useSelectionReminder } from "../hooks/useSelectionReminder.js"; // #4983
 import { resolveNavDotTone, NAV_DOT_TONE_CLASS } from "../lib/selectionReminder.js"; // #4983
@@ -691,7 +691,7 @@ export default function Layout() {
                 // attribution-snapshottet som LoginPage gemte i auth-metadata.
                 // #5304: begge grene skal saniteres — click-ids må ikke sendes
                 // videre til backend uden ejer-go, se attribution.js.
-                attribution: getAttributionForBackend() || sanitizeAttributionForBackend(meta.attribution) || null,
+                attribution: resolveSignupAttribution(meta.attribution),
               }),
             }, { source: "team-bootstrap" });
             if (res.ok) {
