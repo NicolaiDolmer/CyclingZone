@@ -127,6 +127,11 @@ test("#7947 (owner 23/11) names and types are never cut inside a word, and Fatig
   assert.ok(rem(grid[8]) >= 3.75, `Fatigue has room for its value and its change (${grid[8]})`);
   assert.ok(rem(grid[9]) >= 4.25, `Rating has room for "from > to" (${grid[9]})`);
   assert.ok(rem(grid[1]) >= 6.5, `Type has room for a whole long word (${grid[1]})`);
+  // Codex P2 on #8637: at 1024 px the list has about 710 px after the sidebar and paddings.
+  const minRem = (track: string) => Number(track.match(/^(?:minmax\()?([\d.]+)rem/)?.[1] ?? 0);
+  const gapPx = src.includes("lg:gap-x-1 ${ROW_GRID}") ? 4 : 6;
+  const minPx = grid.reduce((sum, t) => sum + minRem(t) * 16, 0) + gapPx * (grid.length - 1);
+  assert.ok(minPx <= 710, `the computer grid fits a 1024 px screen (${minPx} px)`);
 });
 
 test("#7947 the XP report shows no training score (owner 20/11)", () => {

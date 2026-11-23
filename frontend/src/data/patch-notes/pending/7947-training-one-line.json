@@ -1,0 +1,22 @@
+{
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "One line per rider in Today, Report and Development",
+        "body": "Each rider now takes one line. Status and effort have their own columns, the name cell shows only the name, and the row menu holds the rider's day."
+      },
+      "da": {
+        "title": "Én linje pr. rytter i I dag, Rapport og Udvikling",
+        "body": "Hver rytter fylder nu én linje. Status og indsats har hver sin kolonne, navnecellen viser kun navnet, og rækkens menu rummer rytterens dag."
+      },
+      "refs": [
+        7947
+      ]
+    }
+  ]
+}
