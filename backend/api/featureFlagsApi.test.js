@@ -123,6 +123,7 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
   assert.deepEqual(Object.keys(body.flags).sort(), [...PLAYER_VISIBLE_FLAG_KEYS].sort());
   assert.deepEqual(body.flags, {
     auto_accept_enabled: false,
+    training_week_forecast: false,
     race_engine_v4: false,
     board_mandate_model_enabled: false,
     training_tick_per_race_day: false,
@@ -206,6 +207,7 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
   const body = await res.json();
   assert.deepEqual(body.flags, {
     auto_accept_enabled: false,
+    training_week_forecast: false,
     race_engine_v4: false,
     board_mandate_model_enabled: false,
     training_tick_per_race_day: false,
@@ -297,6 +299,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
   const supabase = fakeSupabase({ race_engine_v4: "beta", training_tick_per_race_day: "on" });
   assert.deepEqual(await readPlayerFeatureFlags(supabase), {
     auto_accept_enabled: false,
+    training_week_forecast: false,
     race_engine_v4: false,
     board_mandate_model_enabled: false,
     training_tick_per_race_day: true,
@@ -349,6 +352,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
   });
   assert.deepEqual(await readPlayerFeatureFlags(supabase, { isBetaTester: true }), {
     auto_accept_enabled: false,
+    training_week_forecast: false,
     race_engine_v4: true,
     board_mandate_model_enabled: false,
     training_tick_per_race_day: true,

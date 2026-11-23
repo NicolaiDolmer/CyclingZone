@@ -285,6 +285,8 @@ export function isUnknownStageValue(value) {
 // spoerge om det uden en mere specifik route at spoerge.
 export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "auto_accept_enabled",
+  // #8580: patch note 7.496 (dagsvaelgeren) gater paa denne kontakt (ON 22/11).
+  "training_week_forecast",
   "race_engine_v4",
   "board_mandate_model_enabled",
   "training_tick_per_race_day",

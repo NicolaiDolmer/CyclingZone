@@ -7,7 +7,7 @@
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11 · slet `backup_5902_20261112_*` ~26/11 · slet `backup_8078/8080/8099_20261113_*` ~27/11.
 >
 > **🎯 Next action (23/11, PC1 overtager):** Startprompt = seneste kommentar på #8584. Ejerens rækkefølge 23/11: (1) åbne PR'er + til dørs, (2) roadmap og planer (MASTERPLAN i 3 lag, Codex G), (3) marketing/fastholdelse/nye spillere (Codex J annoncer 500 kr., H mails 26+29/11, I ny spiller), (4) kernefunktioner til dørs, (5) drift (Codex K/L/M, udgifter). Tirsdag 24/11: S6-løbskalender. Torsdag 26/11: sæsonskiftet. Codex maks 3 samtidig (2 bygger). Alle beslutninger: #8584 del 1-3.
-> **Åbent:** `backup_7153_wander_*` må ikke slettes; kurve "6 kombineret" (#3564) i samlet måling; Division 4 A/B/C har 25 hold (league-size-invariant).
+> **Merget 23/11 (PC1-toget):** #8579 aldringsbremsen (`39d5bc04`) og #8603 CodeQL + rød main (`59774b31`); main grøn. Venter: #8618+#8620, #8615, #8613, #8466, #8616, #8619. **Åbent:** `backup_7153_wander_*` må ikke slettes; kurve "6 kombineret" (#3564) i samlet måling; Division 4 A/B/C har 25 hold (league-size-invariant).
 >
 > **🤖 Working agent:** Ingen aktiv session.
 
