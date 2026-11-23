@@ -108,10 +108,11 @@ test("computer: Traening og Indsats i hver sin kolonne; indsatsen er ordene Hvil
   const words = [...effort.matchAll(/aria-pressed="(?:true|false)"[^>]*>([^<]+)</g)].map((m) => m[1]).slice(0, 4);
   assert.deepEqual(words, ["Hvile", "Let", "Mellem", "Hård"]);
   assert.match(effort, /aria-pressed="true"[^>]*>Hård</, "rytterens egen dag er trykket");
-  // "Din dag ..." er ikke en fast linje: den ligger i hover/fokus-boblen og i den udfoldede raekke.
+  // "Din dag ..." er hverken en fast linje eller en boble oven paa naeste raekke: skjult for skaermlaeseren i raekken, synlig i den udfoldede raekke.
   const note = first.indexOf('data-testid="r5-row-note"');
   assert.ok(note > -1);
-  assert.match(first.slice(0, note), /hidden[^"]*group-hover\/row:flex group-focus-within\/row:flex/);
+  assert.match(first.slice(Math.max(0, note - 200), note), /sr-only/);
+  assert.doesNotMatch(first, /group-hover\/row:flex|top-full/, "ingen hover-boble");
   assert.match(first, /data-testid="r5-row-menu"/, "menuen yderst i raekken");
   assert.doesNotMatch(first, /Tilbage til programmet<\/button>/, "vejen tilbage bor i menuen");
 });

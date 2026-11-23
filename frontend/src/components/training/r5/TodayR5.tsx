@@ -922,17 +922,17 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
             <input type="checkbox" checked={allSelected} onChange={() => setSelected(toggleAllSelection(selected, shownIds))}
               aria-label={tR5("selectAll")} className="h-4 w-4 rounded-[3px] accent-cz-accent" />
           </th>
-          <SortTh k="rider" label={t("colRider")} cls="w-[172px]" sort={sort} onSort={onSort} />
-          <SortTh k="type" label={t("colType")} cls="w-[104px]" sort={sort} onSort={onSort} />
+          <SortTh k="rider" label={t("colRider")} cls="w-[160px]" sort={sort} onSort={onSort} />
+          <SortTh k="type" label={t("colType")} cls="w-[96px]" sort={sort} onSort={onSort} />
           <SortTh k="age" label={t("colAge")} cls="w-[48px]" sort={sort} onSort={onSort} />
-          <SortTh k="program" label={tR5("col.program")} cls="w-[126px]" sort={sort} onSort={onSort} />
+          <SortTh k="program" label={tR5("col.program")} cls="w-[112px]" sort={sort} onSort={onSort} />
           <SortTh k="form" label={t("form")} cls="w-[48px]" sort={sort} onSort={onSort} />
           {/* En lang overskrift brydes inde i sin egen celle (ejer 20/11). */}
-          <SortTh k="fatigue" label={tR5("col.fatigueNow")} cls="w-[68px]" sort={sort} onSort={onSort} />
-          <SortTh k="load" label={tR5("col.dayLoad")} cls="w-[88px]" sort={sort} onSort={onSort} />
+          <SortTh k="fatigue" label={tR5("col.fatigueNow")} cls="w-[64px]" sort={sort} onSort={onSort} />
+          <SortTh k="load" label={tR5("col.dayLoad")} cls="w-[80px]" sort={sort} onSort={onSort} />
           <SortTh k={null} label={tR5("row.col.status")} cls="" sort={sort} onSort={onSort} />
-          <SortTh k={null} label={tR5("row.col.training")} cls="w-[108px]" sort={sort} onSort={onSort} />
-          <SortTh k={null} label={tR5("row.col.effort")} cls="w-[200px]" sort={sort} onSort={onSort} />
+          <SortTh k={null} label={tR5("row.col.training")} cls="w-[184px]" sort={sort} onSort={onSort} />
+          <SortTh k={null} label={tR5("row.col.effort")} cls="w-[188px]" sort={sort} onSort={onSort} />
           <th className="w-[56px]"><span className="sr-only">{tR5("row.col.assistant")} · {tR5("row.col.actions")}</span></th>
         </tr>
       </thead>
@@ -987,10 +987,8 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
                         <td className={`relative ${CELL}`} data-tour={tourAnchor()}>
                           <TrainingPicker value={row.choice} onPick={w.pickTraining} disabled={busy} full prefix={false}
                             label={tR5("training.aria", { name: row.name })} describedBy={noteId} testId="r5-row-training" />
-                          {/* Linjen "Din dag ..." ved hover og fokus (ejer 23/11), ikke en fast tredje linje. */}
-                          <span className="pointer-events-none absolute start-2 top-full z-10 -mt-1 hidden whitespace-nowrap rounded-cz border border-cz-border bg-cz-card px-2 py-1 group-hover/row:flex group-focus-within/row:flex">
-                            <RowNote row={row} r5={r5} levelsOn={levelsOn} id={noteId} />
-                          </span>
+                          {/* "Din dag ..." er ingen boble oven paa naeste raekke (ejer 23/11 aften): teksten staar skjult for skaermlaeseren her og synligt i den udfoldede raekke. */}
+                          <span className="sr-only"><RowNote row={row} r5={r5} levelsOn={levelsOn} id={noteId} /></span>
                         </td>
                         <td className={CELL}>
                           <span className="flex items-center gap-1.5">
