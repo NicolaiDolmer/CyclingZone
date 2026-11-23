@@ -535,7 +535,7 @@ import { checkAchievements, getAchievementProgressMap } from "../lib/achievement
 import { captureException, setSentryUser } from "../lib/sentry.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
 import { markActionTiming } from "../lib/actionTimingMonitor8101.js"; // #8101
-import { buildAttributionRow } from "../lib/signupAttribution.js";
+import { buildSignupAttributionRow } from "../lib/signupAttribution.js";
 import { recordIdentityEvent } from "../lib/identityTelemetry.js";
 import { aggregateAttribution } from "../lib/attributionDashboard.js";
 import { computeRetentionCohorts } from "../lib/retentionScorecard.js";
@@ -10221,7 +10221,7 @@ router.put("/teams/my", requireAuth, marketWriteLimiter, async (req, res) => {
       // #8101: kun en rigtig oprettelse måles som "Opret hold"; profil-gem på
       // samme rute måles for sig uden alarm. Ingen databasekald, kaster aldrig.
       markActionTiming(res, "team_create");
-      const attributionRow = buildAttributionRow(req.user.id, req.body?.attribution);
+      const attributionRow = buildSignupAttributionRow(req.user, req.body?.attribution);
       if (attributionRow) {
         supabase
           .from("signup_attribution")

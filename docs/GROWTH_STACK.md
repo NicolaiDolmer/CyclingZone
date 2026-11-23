@@ -114,7 +114,8 @@ Egen referrer  → en same-origin referrer er vores egen side og gemmes aldrig s
 Klik til app   → login/signup-links på marketing-siderne bærer de tilladte utm_* med videre
                  (AppLink), så SPA'en også ser kampagnen hvis localStorage er blokeret.
 Holdoprettelse → PUT /api/teams/my (kun når result.created === true) sender payloaden med;
-                 backend/routes/api.js skriver rækken til signup_attribution (service_role-only).
+                 backend/routes/api.js bruger kontoens first-touch fra Auth, med browser-payload
+                 som fallback, og skriver rækken til signup_attribution (service_role-only).
 Aflæsning      → GET /api/admin/attribution, Attribution-fanen i AdminGrowthPage.
 ```
 
