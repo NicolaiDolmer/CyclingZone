@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   CODEX_REQUEST_COMMENT,
+  codexRequestBody,
   CODEX_RETRY_MS,
   QUEUE_CI_TIMEOUT_MINUTES,
   TRAIN_MAX_BATCH,
@@ -790,6 +791,20 @@ describe('#7654 decideCodexRerequest', () => {
     assert.equal(decide({ comments, headCommittedAt: rrAgo(130) }).request, false);
   });
 
+  it('togets egen bestilling er bundet til hoved-SHA\'en, ikke til commit-tiden (Codex P2)', () => {
+    const own = (sha, minutesAgo, login = OWNER) => ({ author: login, body: codexRequestBody(sha), createdAt: rrAgo(minutesAgo) });
+    const opts = { ownerLogin: OWNER, comments: [] };
+    // Et allerede oprettet commit pushes efter bestillingen paa det forrige hoved: committer-datoen ligger FOER den gamle bestilling.
+    assert.equal(decide({ ...opts, headCommittedAt: rrAgo(300), comments: [own(OLD_HEAD, 30)] }).request, true, 'bestilling paa gammelt hoved daekker ikke');
+    // Fremtidsdateret hoved: bestillingen er "foer" hovedet efter tid, men bundet til SHA'en, saa ingen gentagelse.
+    const future = decide({ ...opts, headCommittedAt: new Date(RR_NOW.getTime() + 86_400_000).toISOString(), comments: [own(HEAD, 30)] });
+    assert.equal(future.request, false);
+    assert.match(future.reason, /allerede bestilt/);
+    // En markoer fra en anden konto er ikke togets: den behandles som en manuel bestilling (tidsregel).
+    assert.equal(decide({ ...opts, comments: [own(HEAD, 200, 'someone')] }).request, true, 'foer hovedets commit og ikke fra ejeren');
+    assert.equal(decide({ ...opts, comments: [own(HEAD, 30, 'someone')] }).request, false, 'efter hovedets commit taeller som manuel bestilling');
+  });
+
   it('en fejl fra et AELDRE hoved udloeser ikke noget', () => {
     const comments = [codexError(500), userRequest(30)];
     assert.equal(decide({ comments }).request, false);
@@ -871,11 +886,14 @@ describe('#7654 requestStaleCodexReviews (gh injiceret)', () => {
     const res = requestStaleCodexReviews({ evaluations: [stale(10, { comments: [markerComment(OLD)] })], repo: 'o/r', now: RR_NOW, gh: f.gh, log: (l) => lines.push(l) });
     assert.deepEqual(res, [10]);
     assert.equal(f.posted.length, 1);
-    assert.equal(f.posted[0].body, CODEX_REQUEST_COMMENT);
+    assert.ok(f.posted[0].body.startsWith(CODEX_REQUEST_COMMENT), 'bestillingen starter med @codex review');
+    assert.equal(f.posted[0].body, codexRequestBody(HEAD), 'bundet til hoved-SHA\'en');
     assert.ok(f.posted[0].args.includes('--repo') && f.posted[0].args.includes('o/r'));
     assert.ok(lines.some((l) => l.includes(`gen-bestilt review: #10 (HEAD ${HEAD.slice(0, 7)})`)), lines.join('\n'));
     // Eneste skrivning er selve kommentaren: ingen markoer-tekst, ingen labels, ingen luk/genaabn.
-    assert.deepEqual(f.calls.filter((c) => /^pr /.test(c)), ['pr comment 10 --repo o/r --body @codex review']);
+    const prCalls = f.calls.filter((c) => /^pr /.test(c));
+    assert.equal(prCalls.length, 1);
+    assert.match(prCalls[0], /^pr comment 10 --repo o\/r --body @codex review\r?\n\r?\n<!-- merge-autotrain: codex-review-request sha=a{40} -->$/);
   });
 
   it('allerede bestilt efter hovedet: intet; et nyt kald er idempotent efter den foerste bestilling', () => {

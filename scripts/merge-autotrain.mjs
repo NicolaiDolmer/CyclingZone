@@ -30,7 +30,9 @@
 // main i en PR staar Codex-reviewet paa det gamle hoved, og ingen bestilte et nyt, saa PR'en
 // stod stille. For hver aaben, ikke-draft PR med ejer-markoer eller staaende kategori, hvor
 // review-gatens Codex-del mangler paa HEAD, skriver toget EN `@codex review`-kommentar
-// (idempotent pr. hoved: ikke naar en bestilling allerede er skrevet efter hovedets commit).
+// (idempotent pr. hoved: ikke naar en bestilling allerede daekker hovedet. Togets egen bestilling
+// baerer en skjult markoer med hoved-SHA'en; en manuel bestilling daekker, hvis den er skrevet
+// efter hovedets commit).
 // Svarede Codex "Something went wrong", bestilles igen hoejst een gang i timen. Ejer-markoerer
 // roeres aldrig.
 //
@@ -318,6 +320,10 @@ export function reevaluatePr(number, { repo, ownerLogin, gh = DEFAULT_GH, log = 
 // ── Gen-bestilling af Codex-review (#7654) ─────────────────────────────────
 
 export const CODEX_REQUEST_COMMENT = '@codex review';
+// Toget binder sin bestilling til hoved-SHA'en med en skjult markoer (Codex P2 paa PR'en): committer-datoen er
+// forfatter-styret og kan ligge foer en bestilling paa det forrige hoved eller i fremtiden.
+export const CODEX_REQUEST_MARKER_RE = /<!--\s*merge-autotrain:\s*codex-review-request\s+sha=([0-9a-f]{7,40})\s*-->/i;
+export const codexRequestBody = (headSha) => `${CODEX_REQUEST_COMMENT}\n\n<!-- merge-autotrain: codex-review-request sha=${String(headSha).toLowerCase()} -->`;
 // Hoejst een gen-bestilling i timen, naar Codex svarede med en fejl.
 export const CODEX_RETRY_MS = 60 * 60_000;
 // Kun en kommentar der STARTER med bestillingen taeller: review-gatens egne kommentarer
@@ -350,22 +356,35 @@ export function codexReviewCandidates(evaluations) {
  * Samme Codex-regler som review-gaten (evaluateCodex): kun bevis paa PR'ens aktuelle HEAD taeller.
  * @returns {{request: boolean, reason: string}}
  */
-export function decideCodexRerequest({ comments = [], reviews = [], headSha, headCommittedAt, isDraft = false, author = '', now = new Date() }) {
+export function decideCodexRerequest({ comments = [], reviews = [], headSha, headCommittedAt, isDraft = false, author = '', ownerLogin = '', now = new Date() }) {
   if (isDraft) return { request: false, reason: 'draft' };
   if (EXEMPT_AUTHORS.includes(botLogin(author))) return { request: false, reason: 'undtaget fra Codex-krav' };
   const codex = evaluateCodex({ comments, reviews, headSha });
   if (codex.state === 'completed') return { request: false, reason: 'Codex har reviewet hovedet' };
   if (codex.state === 'pending') return { request: false, reason: 'Codex-review koerer' };
   const headAt = timeMs(headCommittedAt);
-  if (!Number.isFinite(headAt)) return { request: false, reason: 'hovedets tidspunkt ukendt' };
+  const head = String(headSha ?? '').toLowerCase();
+  const owner = botLogin(ownerLogin);
   const isCodex = (x) => botLogin(x?.author) === CODEX_LOGIN;
+  // En bestilling daekker hovedet, naar den er togets egen (ejerens konto + markoer) og bundet til SHA'en,
+  // ellers (manuel bestilling) naar den er skrevet efter hovedets commit.
   const requestAts = comments
     .filter((c) => !isCodex(c) && CODEX_REQUEST_RE.test(String(c?.body ?? '')))
-    .map((c) => timeMs(c.createdAt)).filter((t) => Number.isFinite(t) && t > headAt);
-  if (!requestAts.length) return { request: true, reason: 'ingen bestilling efter hovedets commit' };
+    .map((c) => {
+      const at = timeMs(c.createdAt);
+      const bound = owner && botLogin(c.author) === owner ? CODEX_REQUEST_MARKER_RE.exec(String(c.body ?? ''))?.[1]?.toLowerCase() : null;
+      const covers = bound ? head.startsWith(bound) : Number.isFinite(headAt) && Number.isFinite(at) && at > headAt;
+      return covers && Number.isFinite(at) ? at : null;
+    })
+    .filter((t) => t !== null);
+  if (!requestAts.length) {
+    // Uden kendt hovedtidspunkt kan en manuel bestilling ikke vurderes: hellere ingen kommentar end en dobbelt.
+    if (!Number.isFinite(headAt)) return { request: false, reason: 'hovedets tidspunkt ukendt' };
+    return { request: true, reason: 'ingen bestilling paa hovedet' };
+  }
   const lastRequest = Math.max(...requestAts);
   const errorAts = [...comments.map((c) => ({ x: c, at: timeMs(c?.createdAt) })), ...reviews.map((r) => ({ x: r, at: timeMs(r?.submittedAt) }))]
-    .filter(({ x, at }) => isCodex(x) && CODEX_ERROR_RE.test(String(x?.body ?? '')) && Number.isFinite(at) && at > headAt)
+    .filter(({ x, at }) => isCodex(x) && CODEX_ERROR_RE.test(String(x?.body ?? '')) && Number.isFinite(at))
     .map(({ at }) => at);
   const errored = codex.state === 'failed' || errorAts.some((t) => t > lastRequest);
   if (!errored) return { request: false, reason: 'allerede bestilt efter hovedets commit' };
@@ -396,10 +415,10 @@ export function requestStaleCodexReviews({ evaluations, repo, now = new Date(), 
   for (const e of codexReviewCandidates(evaluations)) {
     try {
       const facts = fetchCodexFacts(e.number, { repo, gh });
-      const verdict = decideCodexRerequest({ ...facts, now });
+      const verdict = decideCodexRerequest({ ...facts, ownerLogin: repo.split('/')[0], now });
       if (!verdict.request) continue;
       if (dryRun) { log(`  DRY-RUN: ville gen-bestille review: #${e.number} (HEAD ${facts.headSha.slice(0, 7)}) - ${verdict.reason}.`); continue; }
-      gh.text(['pr', 'comment', String(e.number), '--repo', repo, '--body', CODEX_REQUEST_COMMENT]);
+      gh.text(['pr', 'comment', String(e.number), '--repo', repo, '--body', codexRequestBody(facts.headSha)]);
       requested.push(e.number);
       log(`  gen-bestilt review: #${e.number} (HEAD ${facts.headSha.slice(0, 7)})`);
     } catch (err) {
