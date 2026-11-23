@@ -12,7 +12,7 @@ const WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 
 function scenario({
   lock, race = [], bound = race, injured = false, injuryEnd, pending = false, fatigue = false, efforts,
-  stage = "on", planKind = "week",
+  stage = "on", planKind = "week", dns = false,
 } = {}) {
   const state = seedState({
     count: 1, noPlan: [0], injured: injured ? [0] : [], entered: bound.length ? [0] : [],
@@ -34,6 +34,11 @@ function scenario({
   const settle = () => {
     ownedRace.stages_completed = race.length;
     ownedRace.status = "completed";
+    // Fund A: the stage ran, but he was not in the start field (no result, no load).
+    if (dns) {
+      state.race_simulation_runs.push({ id: "run-dns", race_id: RACE, stage_number: 1, entrant_snapshot: [] });
+      return;
+    }
     for (const [i, slot] of race.entries()) {
       const stageNumber = i + 1;
       state.race_results.push({ id: `result-${slot}`, race_id: RACE, stage_number: stageNumber, rider_id: RIDER, result_type: "stage", rank: 1, imported_at: `${DATE1}T17:00:00Z` });
@@ -104,6 +109,26 @@ test("ejer 23/11: låsen i et frit felt mellem to etaper bliver hjemme", async (
   assert.equal(reports(state)[2].focus, "threshold");
   assert.equal(reports(state)[2].source_slot, 2);
   matchForecast(before, state, [0, null, 2, null, 1], [3, 4], null);
+});
+
+test("fund A: etapen i LD3 blev kørt uden ham, så C kører én gang i LD3 og LD4 får D", async () => {
+  const { state, forecast } = scenario({ lock: 2, race: [2], dns: true });
+  await run(state);
+  assert.deepEqual(reports(state).map((report) => report.focus), SESSIONS);
+  assert.equal(reports(state)[2].bound_race_day, false);
+  matchForecast(forecast(), state, FIELDS, [], null);
+});
+
+test("regel B: låsen i et skadet felt flytter til datoens første raske felt", async () => {
+  const { state, forecast } = scenario({ lock: 0, injured: true, injuryEnd: DAYS1[1] });
+  const before = forecast([]);
+  await run(state);
+  assert.deepEqual(reports(state).map((report) => report.intensity).slice(0, 2), ["rest", "rest"]);
+  assert.equal(reports(state)[2].focus, "sprint");
+  assert.deepEqual(reports(state).slice(3).map((report) => report.focus), ["vo2max", "endurance"]);
+  matchForecast(before, state, [null, null, 0, 3, 4], [], 0);
+  matchForecast(forecast(), state, [null, null, 0, 3, 4], [], 0);
+  assert.equal(before.fatigue, state.rider_condition[0].fatigue);
 });
 
 for (const [name, race, fieldSource, taken] of [
