@@ -1,4 +1,4 @@
-import { captureServerEvent, hasDeclinedAnalytics } from "./posthogServer.ts";
+import { captureServerEvent, hasDeclinedAnalytics, POSTHOG_DEFAULT_TIMEOUT_MS } from "./posthogServer.ts";
 
 const CAMPAIGN_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_content"];
 const UTM_TAG = /^[a-z0-9][a-z0-9._-]{0,79}$/i;
@@ -17,7 +17,9 @@ async function readCheckoutCampaign(supabase, userId) {
   const campaign = {};
   for (const key of CAMPAIGN_KEYS) {
     const tag = typeof row?.[key] === "string" ? row[key].trim() : "";
-    if (UTM_TAG.test(tag) && !UUID.test(tag) && !PHONE_LIKE.test(tag)) campaign[key] = tag;
+    if (UTM_TAG.test(tag) && !UUID.test(tag) && !PHONE_LIKE.test(tag)) {
+      campaign[key] = key === "utm_campaign" ? tag.toLowerCase() : tag;
+    }
   }
   return campaign;
 }
@@ -26,10 +28,19 @@ export async function recordCheckoutEvent({
   supabase, teamId, userId, isTestAccount, eventName, eventData, captureCheckoutEventFn = captureServerEvent,
 }) {
   let campaign = null;
+  let timer;
   try {
-    if (!isTestAccount) campaign = await readCheckoutCampaign(supabase, userId);
+    if (!isTestAccount) {
+      const timeout = new Promise((resolve) => {
+        timer = setTimeout(() => resolve(null), POSTHOG_DEFAULT_TIMEOUT_MS);
+        timer.unref?.();
+      });
+      campaign = await Promise.race([readCheckoutCampaign(supabase, userId), timeout]);
+    }
   } catch {
     // Best-effort attribution. The original billing event is retained.
+  } finally {
+    clearTimeout(timer);
   }
 
   const { error } = await supabase.from("player_events").insert({

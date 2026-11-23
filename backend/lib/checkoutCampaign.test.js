@@ -10,7 +10,7 @@ const campaign = { utm_source: "facebook", utm_medium: "paid", utm_campaign: "fi
 const uid = "fixture-account";
 const tid = "fixture-team";
 
-async function checkout(kind, { consent = null, attribution = campaign, lookupError = false, captureError = false } = {}) {
+async function checkout(kind, { consent = null, attribution = campaign, lookupError = false, lookupHangs = false, captureError = false } = {}) {
   const inserts = [];
   const captures = [];
   const upserts = [];
@@ -28,6 +28,7 @@ async function checkout(kind, { consent = null, attribution = campaign, lookupEr
           reads.push({ table, columns });
           return { eq: () => ({ maybeSingle: async () => {
             if (table === "signup_attribution" && lookupError) throw new Error("lookup failed");
+            if (table === "signup_attribution" && lookupHangs) return new Promise(() => {});
             return { data: stored[table] ?? null, error: null };
           } }) };
         },
@@ -111,4 +112,30 @@ test("checkout ignores unsafe or missing UTM values and tolerates a failed mirro
   assert.equal(Object.hasOwn(data, "utm_medium"), false);
   assert.equal(Object.hasOwn(data, "utm_content"), false);
   assert.deepEqual(captures[0].properties.$set_once, { utm_source: "facebook", utm_campaign: "first-touch" });
+});
+
+test("checkout lowercases the campaign key in both event sinks", async () => {
+  const { data, captures } = await checkout("checkout_started", {
+    attribution: { ...campaign, utm_campaign: "First-Touch" },
+  });
+  assert.equal(data.utm_campaign, "first-touch");
+  assert.equal(captures[0].properties.utm_campaign, "first-touch");
+  assert.equal(captures[0].properties.$set_once.utm_campaign, "first-touch");
+});
+
+test("checkout writes the billing event after a timed-out campaign lookup", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  let result;
+  const pending = checkout("checkout_completed", { lookupHangs: true }).then((value) => { result = value; });
+  await setImmediate();
+  t.mock.timers.tick(1999);
+  await setImmediate();
+  assert.equal(result, undefined);
+  t.mock.timers.tick(1);
+  await setImmediate();
+
+  assert.ok(result, "billing event must be written even when the lookup never settles");
+  await pending;
+  assert.deepEqual(result.data, { plan_interval: "monthly", currency: "DKK" });
+  assert.deepEqual(result.captures, []);
 });

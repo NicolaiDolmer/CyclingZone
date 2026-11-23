@@ -291,7 +291,7 @@ Den fulde union med `auction_bids`, `race_entries`, `xp_log` og forum lever i `s
 
 > ⚠️ LTV er **for høj i dag**: halvårsprisen står som 26500 øre i koden mod faktisk 21200. Se §6 og [#5051](https://github.com/NicolaiDolmer/CyclingZone/issues/5051).
 
-Checkout-events får kontoens first-touch fra `signup_attribution`, når serverens samtykkekontrol tillader det. Kun validerede UTM-tags og faste betalingslabels spejles. Køb og webhook-kvittering afhænger aldrig af opslaget eller telemetrien. Brug faktiske Alunta-fakturaer til omsætning.
+Checkout-events får kontoens first-touch fra `signup_attribution`, når serverens samtykkekontrol tillader det. Kun validerede UTM-tags og faste betalingslabels spejles. Køb og webhook-kvittering afhænger aldrig af opslaget eller telemetrien. Kampagneopslaget har en frist på to sekunder, hvorefter betalingsloggen skrives med de eksisterende felter. Brug små bogstaver i utm_campaign, også ved join af historiske first-touch-rækker til campaign_spend_daily. Brug faktiske Alunta-fakturaer til omsætning.
 
 ### 4e. NPS
 
