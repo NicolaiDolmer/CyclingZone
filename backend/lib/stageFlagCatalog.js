@@ -53,6 +53,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "training_page_r5", area: "training", label: "Træningssiden: I dag-fanen i R5-udgaven" },
   // #8548: rotation (pas 1..N der venter ved hvile og løb). Seedet off; ejer-only flip.
   { key: "training_rotation", area: "training", label: "Træning — rotation (pas der venter ved hvile og løb)" },
+  // #8549 PR 2: Week blocks i motoren (prioritet pr. felt, ét låst pas pr. dag). Seedet off; ejer-only flip.
+  { key: "training_week_priority", area: "training", label: "Træning — Week blocks: prioritet og låst pas" },
   // #8580 / #8550 del 3: den rullende uge (i dag + 7 dage) til dagsvælgeren. Seedet off; ejer-only flip.
   { key: "training_week_forecast", area: "training", label: "Træning — den rullende uge (dagsvælgeren)" },
   // #1140: "Your first race"-kort for nye hold paa dashboardet. Seedet off.
