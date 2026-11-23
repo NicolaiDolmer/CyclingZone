@@ -1513,5 +1513,8 @@ Kontakt `training_week_priority` (off | beta | on), seedet off; tænding er ejer
 - **Løb tager laveste prioritet;** pas taget af løb indhentes ikke. Låsen bliver i sit hjemmefelt, ellers flytter den til nærmeste frie, ikke-afregnede felt (lige afstand: det senere; ejer 21/11). Intet frit felt: låsen er taget.
 - **Afregnede felter ligger fast:** kvitteringen får `source_slot` (hvilket pas feltet kørte). Et felt uden stempel ligger fast med sin egen plads, et løbsfelt uden kilde. Et felt, træthedsgrænsen erstattede, er afregnet MED sin kilde (WB-7-kontrakten). Det gør afregning i rækkefølge, ude af rækkefølge (Træn nu) og efter etapen ens (WB-8).
 - **Løbsfelter for datoen** = afregnede løbsbelastninger (`canonicalLoadRows`) ∪ planlagte etaper (binding ∩ etapeplan, med udgang af løb #5949). Opslaget sker kun med kontakten on og en 'week'-plan.
+- **Frie felter på etapedatoer:** Felter uden etape træner normalt, også mellem to etaper. Et låst pas med hjem i et frit felt kører dér (ejer 23/11, #8549). En hel bundet dato uden etape giver kun hvile.
+- **Løbsfelt uden resultat:** En afregnet `unknown_pending`-kvittering eller et felt i datoens løbsfelter tæller som løb. Feltet har intet `source_slot`, så låsen stadig kan placeres i et frit felt.
+- **Flagopslag:** En databasefejl ved læsning af `training_week_priority` bruger den almindelige ugeplan, så datoen kan afregnes.
 - **Prognosen** bruger samme indgang (I5), så ugegitteret viser det samme som motoren.
 - **Kontakten off:** intet ekstra opslag, ingen `source_slot` i rapporten, kildefeltet = feltet (bit-identisk).

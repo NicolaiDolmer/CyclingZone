@@ -16,16 +16,16 @@ test("OFF-1: kontakten laeses kun med programceller OG en 'week'-plan; ellers fa
 
 test("motoren: off giver dagens kald (kildefelt = programSlot), og traethedsgraensen bruger feltet selv", () => {
   assert.match(engine, /: \{ sourceSlot: programSlot, applied: false \};/);
-  assert.match(engine, /slotIndex: weekPriority\.sourceSlot,/);
+  assert.match(engine, /slotIndex: weekPriority\.sourceSlot \?\? programSlot,/);
   assert.match(engine, /slotIndex: programSlot, rodeStagePreviousDate:/);
 });
 
 test("rapporten faar kun source_slot, naar reglen gjaldt (off = intet nyt felt)", () => {
-  assert.match(engine, /\.\.\.\(weekPriority\.applied \? \{ source_slot: weekPriority\.sourceSlot \} : \{\}\),/);
+  assert.match(engine, /weekPriority\.applied && weekPriority\.sourceSlot != null[^{}]+\{ source_slot: weekPriority\.sourceSlot \}/);
 });
 
 test("I5: prognosen bruger samme indgang og samme gate som motoren", () => {
-  assert.match(forecast, /weekPrioritySourceSlot\(\{/);
+  assert.match(forecast, /weekPriorityPlacement\(\{/);
   assert.match(forecast, /weekRows\.some\(\(row\) => row\.plan_kind === "week"\)\n\s+\? await isTrainingWeekPriorityEnabledForTeam\(supabase, team\.id\)/);
   assert.match(forecast, /select\("rider_id, days, plan_kind"\)/);
 });

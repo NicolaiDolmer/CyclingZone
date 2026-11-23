@@ -1891,6 +1891,7 @@ export function computeTrainingDayTick(input) {
     // racedToday/boundRestToday nedenfor, og programmets session springes over.
     // #8549: Week blocks omdirigerer kildefeltet (session + indsats foelger passet); traethedsgraensen
     // vurderes stadig paa feltets eget tidspunkt (programSlot). Off / plan_kind != 'week' = programSlot.
+    const plannedStageDays = plannedStageDaysByRider[rider.id] ?? [];
     const weekPriority = weekPriorityOn
       ? weekPrioritySourceSlot({
         winning: winningWeekEntry({ weekday, riderRow: riderWeekRowByRider.get(rider.id) ?? null, teamRow: teamWeekRow, hasExplicitPlan }),
@@ -1898,7 +1899,7 @@ export function computeTrainingDayTick(input) {
         dateDays,
         raceGameDays: [
           ...canonicalLoadRows.filter((row) => row.rider_id === rider.id).map((row) => Number(row.game_day)),
-          ...(plannedStageDaysByRider[rider.id] ?? []),
+          ...plannedStageDays,
           ...(racedRiderIds.has(rider.id) ? [raceDay] : []),
         ],
         priorReports: dateDays
@@ -1909,7 +1910,7 @@ export function computeTrainingDayTick(input) {
       : { sourceSlot: programSlot, applied: false };
     const dayProgram = resolveDayProgram({
       weekday,
-      slotIndex: weekPriority.sourceSlot,
+      slotIndex: weekPriority.sourceSlot ?? programSlot,
       riderOverrideDays: riderOverrideByRider.get(rider.id) ?? null,
       teamWeekDays,
       program,
@@ -2026,7 +2027,10 @@ export function computeTrainingDayTick(input) {
     // etape paa en anden af datoens loebsdage ⇒ datoens frie loebsdag er traening.
     // Koerte han paa denne loebsdag (rodeToday), gaelder reglen ovenfor uaendret.
     // #7737: at a press his stage has not run yet, so an open slot on the date counts too.
-    const freeSlotOnStageDate = !rodeToday && !raceLoadToday && (stageOnDateRiderIds.has(rider.id) || (instantRider && unresolvedSlots.length > 0));
+    const plannedFreeField = weekPriority.applied && plannedStageDays.length > 0 && !plannedStageDays.includes(raceDay);
+    const freeSlotOnStageDate = !rodeToday && !raceLoadToday && (
+      stageOnDateRiderIds.has(rider.id) || (instantRider && unresolvedSlots.length > 0) || plannedFreeField
+    );
     const boundRestToday = !injuredToday && !racedToday && boundToday && !freeSlotOnStageDate;
 
     // Pre-tick træthed til skaderisiko-beregning (brug den aktuelle, ikke den næste).
@@ -2537,7 +2541,8 @@ export function computeTrainingDayTick(input) {
       // #4846: hvilken loebsdag ticket hoerer til. null paa den gamle sti.
       game_day: useRaceDayKey ? raceDay : null,
       // #8549: hvilket pas feltet koerte under Week blocks (kun naar reglen gjaldt; off = intet felt).
-      ...(weekPriority.applied ? { source_slot: weekPriority.sourceSlot } : {}),
+      ...(weekPriority.applied && weekPriority.sourceSlot != null && !rodeToday && !raceLoadToday
+        && !unknownSlot && !injuredToday && !boundRestToday ? { source_slot: weekPriority.sourceSlot } : {}),
       // #4854: kun naar holdet har regler; stemplet kun naar programmet faktisk koertes.
       ...(fatigueRuleResult ? {
         fatigue_rule: fatigueRuleResult.stamp && !raceLoadToday && !unknownSlot && !injuredToday && !racedToday && !boundRestToday

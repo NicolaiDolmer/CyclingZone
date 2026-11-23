@@ -14,17 +14,14 @@
 import { assignDayFields } from "./trainingWeekBlocks.js";
 import { programSlotForRaceDay, sessionForDayEntry } from "./trainingPrograms.js";
 import { isValidIntensity } from "./training.js";
+import { readFlagStage } from "./featureStage.js";
 import { loadRaceExitGameDays, dropBindingsAfterRaceExit } from "./trainingRaceDayTick.js";
 
 export const TRAINING_WEEK_PRIORITY_FLAG_KEY = "training_week_priority";
 
-// off | beta (holdets ejer er beta-tester eller admin) | on. Fejl kastes som catalogV3-gaten:
-// motoren må ikke gætte på en kontakt, der styrer hvilket pas der køres.
+// The optional rule defaults to off when app_config cannot be read.
 export async function isTrainingWeekPriorityEnabledForTeam(supabase, teamId) {
-  const { data: flagRow, error } = await supabase
-    .from("app_config").select("value").eq("key", TRAINING_WEEK_PRIORITY_FLAG_KEY).maybeSingle();
-  if (error) throw new Error(`training_week_priority flag load: ${error.message ?? error}`);
-  const stage = flagRow?.value ?? null;
+  const stage = await readFlagStage(supabase, TRAINING_WEEK_PRIORITY_FLAG_KEY, { fresh: true });
   if (stage === true || stage === "on") return true;
   if (stage !== "beta") return false;
   const { data: team, error: teamError } = await supabase
@@ -61,32 +58,40 @@ export function winningWeekEntry({ weekday, riderRow = null, teamRow = null, has
 }
 
 /**
- * Kildefeltet for datoens felt `programSlot` under Week blocks.
+ * Feltplaceringen for datoen under Week blocks.
  *   raceGameDays  : datoens løbsdage, hvor rytteren kører (afregnede løb + planlagte etaper).
  *   priorReports  : datoens allerede afregnede kvitteringer for rytteren ({ game_day, report }).
  *                   Et felt med `source_slot` ligger fast med den kilde. Et ældre felt uden
  *                   stempel ligger fast med sin egen plads, og et løbsfelt med null (WB-6, WB-8).
- * Returnerer { sourceSlot, applied }. applied=false = dagens kald (feltet selv).
  */
-export function weekPrioritySourceSlot({ winning, programSlot, dateDays, raceGameDays = [], priorReports = [] }) {
-  if (!winning || winning.planKind !== "week") return { sourceSlot: programSlot, applied: false };
+export function weekPriorityPlacement({ winning, dateDays, raceGameDays = [], priorReports = [] }) {
+  if (winning?.planKind !== "week") return null;
   const days = [...new Set((dateDays ?? []).map(Number).filter(Number.isFinite))].sort((a, b) => a - b);
-  if (days.length !== 5) return { sourceSlot: programSlot, applied: false };
-  const slotOf = (gameDay) => programSlotForRaceDay(Number(gameDay), days);
+  if (days.length !== 5) return null;
+  const slotOf = (gameDay) => programSlotForRaceDay(gameDay, days);
   const raceFields = new Set([...raceGameDays].map(Number).filter((d) => days.includes(d)).map(slotOf));
   const settled = new Map();
   for (const prior of priorReports) {
-    const field = slotOf(prior.game_day);
+    const day = Number(prior.game_day);
+    if (!days.includes(day)) continue;
+    const field = slotOf(day);
     const report = prior.report ?? {};
-    const raced = report.race_day === true || report.intensity === "race";
+    const raced = raceFields.has(field) || report.race_day === true
+      || report.intensity === "race" || report.intensity === "unknown_pending";
     const stamped = Number.isInteger(report.source_slot) ? report.source_slot : null;
+    // An injury without a training source must not change the placement of later fields.
+    if (!raced && stamped == null && report.injured === true) continue;
     // Et felt, træthedsgrænsen erstattede, er afregnet MED sin kilde (WB-7-kontrakten, #8578).
     settled.set(field, raced ? null : (stamped ?? field));
   }
-  const { fieldSource } = assignDayFields({ entry: winning.entry, raceFields, settled });
-  const source = fieldSource[programSlot];
-  // Et løbsfelt (null) har ingen kilde; løbsstien (racedToday/boundRestToday) håndterer feltet.
-  return { sourceSlot: source == null ? programSlot : source, applied: true };
+  return assignDayFields({ entry: winning.entry, raceFields, settled });
+}
+
+export function weekPrioritySourceSlot({ programSlot, ...input }) {
+  const placement = weekPriorityPlacement(input);
+  return placement
+    ? { sourceSlot: placement.fieldSource[programSlot] ?? null, applied: true }
+    : { sourceSlot: programSlot, applied: false };
 }
 
 /**

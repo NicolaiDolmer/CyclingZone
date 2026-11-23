@@ -1,7 +1,7 @@
 // #8549 PR 2 · Week blocks i motoren mod dommer-scenarierne (7456-program-dommer-scenarier.md §2-3).
 import test from "node:test";
 import assert from "node:assert/strict";
-import { weekPrioritySourceSlot, winningWeekEntry } from "./trainingWeekPriority.js";
+import { weekPriorityPlacement, weekPrioritySourceSlot, winningWeekEntry } from "./trainingWeekPriority.js";
 
 const DAYS = [20, 21, 22, 23, 24]; // LD 1..5 = felt 0..4
 const ENTRY = { session: "endurance", intensity: "easy", slots: ["sprint", "tempo", "technique", "vo2max", "threshold"] };
@@ -46,6 +46,17 @@ test("WB-2: laas E (hjem LD5), loeb LD5 -> A, B, C, E, L", () => {
 
 test("WB-3: laas C (hjem LD3), loeb LD3 -> A, B, L, C, D (lige afstand = det senere)", () => {
   assert.deepEqual(dayPlan(week(lock(2)), [22]), [0, 1, "L", 2, 3]);
+});
+
+test("Fable: en kvittering uden træningskilde bruger ikke løbets låste pas", () => {
+  const winning = week(lock(2));
+  for (const [raceGameDays, report] of [
+    [[22], { source_slot: 2, intensity: "rest" }],
+    [[], { intensity: "unknown_pending" }],
+  ]) {
+    const assign = weekPriorityPlacement({ winning, dateDays: DAYS, raceGameDays, priorReports: [{ game_day: 22, report }] });
+    assert.deepEqual(assign, { fieldSource: [0, 1, null, 2, 3], taken: [4], lockMovedFrom: 2 });
+  }
 });
 
 test("WB-4: laas E, loeb LD1+LD5 -> L, A, B, E, L", () => {
