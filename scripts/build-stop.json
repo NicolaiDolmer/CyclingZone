@@ -732,6 +732,18 @@
     {
       "issue": 8568,
       "why": "Perf-gaten (first load) var roed paa main efter #8556 og blokerede alle PRer; ejer-go 21/11 aften (PC1, AskUserQuestion): \"Ja, haev til 417 (anbefalet)\" + \"Du maa gerne ordne dette efter best practice\". PR #8569 haever loftet midlertidigt; lettelsen og saenkningen tilbage er resten af #8568."
+    },
+    {
+      "issue": 6205,
+      "why": "Ejer-go 23/11 (PC1, AskUserQuestion, arbejdsforbedringer): Ejet svar opdaterer alt: beslutning til issue + MASTERPLAN + roadmap i én kommando. Bygges som PC1-spor; merge kraever ejerens ordrette merge."
+    },
+    {
+      "issue": 8633,
+      "why": "Ejer-go 23/11 (PC1, AskUserQuestion, arbejdsforbedringer): Discord-vagt: ejer-direktiver uden plads i planen. Bygges som PC1-spor; merge kraever ejerens ordrette merge."
+    },
+    {
+      "issue": 8634,
+      "why": "Ejer-go 23/11 (PC1, AskUserQuestion, arbejdsforbedringer): Fast Codex-prompt-skabelon. Bygges som PC1-spor; merge kraever ejerens ordrette merge."
     }
   ],
   "brandList": [
