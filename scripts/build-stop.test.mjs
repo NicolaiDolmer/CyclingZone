@@ -265,6 +265,7 @@ test('ghOwnerGo: læser alle sider via gh og bruger samme parser; null ved fejl 
     assert.equal(ghOwnerGo(42, { exec: () => 'ikke json' }), null);
     assert.equal(ghOwnerGo(42, { exec: () => '' }), null);
     assert.equal(ghOwnerGo(0, { exec: () => assert.fail('ugyldigt issue slår ikke op') }), null);
+    if (process.env.NODE_TEST_CONTEXT) assert.equal(ghOwnerGo(42), null, 'default-gh slår aldrig op under node --test');
   } finally {
     if (prev === undefined) delete process.env.CZ_BUILD_STOP_NO_GH; else process.env.CZ_BUILD_STOP_NO_GH = prev;
   }

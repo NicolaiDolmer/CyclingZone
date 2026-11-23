@@ -160,6 +160,9 @@ export function findOwnerGo(comments, { ownerLogin = OWNER_LOGIN } = {}) {
 // enhver fejl eller timeout, så et utilgængeligt GitHub aldrig åbner porten.
 export function ghOwnerGo(issue, { repo = 'NicolaiDolmer/CyclingZone', exec = execFileSync, timeout = GO_TIMEOUT_MS, ownerLogin = repo.split('/')[0] } = {}) {
   if (process.env.CZ_BUILD_STOP_NO_GH === '1') return null; // tests: ingen netværk
+  // Under node --test (fx wave-policy-testene, der kalder assertBuildStop med
+  // defaults) slår det rigtige gh-kald aldrig op; tests injicerer exec.
+  if (exec === execFileSync && process.env.NODE_TEST_CONTEXT) return null;
   if (!isIssue(issue)) return null;
   // Forfilter (kun for at holde svaret lille); parseren afgør stadig alt.
   const jq = '.[] | select((.body // "") | ascii_downcase | contains("ejer-go")) | {login: .user.login, body: .body}';
