@@ -11,7 +11,9 @@ const riderProfile = read("./RiderStatsPage.jsx");
 
 test("#8357 uses the shared finance calculation for each balance surface", () => {
   assert.match(balance, /fetchReservedBalance\(supabase, teamId, signal\)/);
-  assert.match(balance, /const balanceUnconfirmed = !team \|\| teamRefreshing \|\| Boolean\(teamError\);/);
+  assert.match(balance, /const balanceUnconfirmed = !team \|\| teamRefreshing \|\| Boolean\(teamError\) \|\| reservationUnconfirmed;/);
+  // Codex P2 on #8466: an invalidated reservation is old until its refetch lands.
+  assert.match(balance, /const reservationUnconfirmed = reservation\.isFetching\s*&& runtime\.client\.getQueryState\(reservationKey\)\?\.isInvalidated === true;/);
   assert.match(balance, /resolveBalanceDisplay\(balance, reservation\.data \?\? null, \{ failed, timedOut, balanceUnconfirmed \}\)/);
   for (const source of [dashboard, sidebar, auctions]) {
     assert.match(source, /const marketBalance = useMarketBalance\((balance)?\)/);

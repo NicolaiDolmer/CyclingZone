@@ -20,8 +20,9 @@ export type MarketBalance = NonNullable<ReturnType<typeof resolveBalanceDisplay>
 export function useMarketBalance(fallbackBalance?: number | null): MarketBalance | null {
   const { runtime, scope, team, ready, error: teamError, teamRefreshing } = useDataScope();
   const teamId = team?.id;
+  const reservationKey = privateKey(scope, RESERVATION);
   const reservation = useQuery({
-    queryKey: privateKey(scope, RESERVATION),
+    queryKey: reservationKey,
     enabled: ready && Boolean(teamId),
     async queryFn({ signal }) {
       if (!teamId) throw new Error("Market balance has no team");
@@ -41,7 +42,11 @@ export function useMarketBalance(fallbackBalance?: number | null): MarketBalance
   }, [waiting]);
   const balance = team?.balance ?? fallbackBalance ?? null;
   // Settlement can release a reservation before the team read confirms payment.
-  const balanceUnconfirmed = !team || teamRefreshing || Boolean(teamError);
+  // A bid or automatic-bid change invalidates the reservation; its cached amount is
+  // old until the refetch lands, so it must not be shown as available meanwhile.
+  const reservationUnconfirmed = reservation.isFetching
+    && runtime.client.getQueryState(reservationKey)?.isInvalidated === true;
+  const balanceUnconfirmed = !team || teamRefreshing || Boolean(teamError) || reservationUnconfirmed;
   return resolveBalanceDisplay(balance, reservation.data ?? null, { failed, timedOut, balanceUnconfirmed });
 }
 
