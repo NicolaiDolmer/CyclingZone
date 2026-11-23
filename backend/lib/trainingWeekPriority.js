@@ -15,7 +15,7 @@ import { assignDayFields, lockSlotOf } from "./trainingWeekBlocks.js";
 import { programSlotForRaceDay, sessionForDayEntry } from "./trainingPrograms.js";
 import { isValidIntensity } from "./training.js";
 import { readFlagStage } from "./featureStage.js";
-import { loadRaceExitGameDays, dropBindingsAfterRaceExit } from "./trainingRaceDayTick.js";
+import { loadRaceExitGameDays, dropBindingsAfterRaceExit, releaseNonStarters } from "./trainingRaceDayTick.js";
 
 export const TRAINING_WEEK_PRIORITY_FLAG_KEY = "training_week_priority";
 
@@ -127,7 +127,9 @@ export function weekPrioritySourceSlot({ programSlot, ...input }) {
 /**
  * I/O (motorens læsefase, kun med kontakten on): datoens PLANLAGTE etaper pr. rytter.
  * Bindingen (race_entry_days) ∩ etapeplanen (race_stage_schedule) på datoens løbsdage, med
- * udgang af løb (#5949) som motorens binding. Afregnede løb kommer fra canonicalLoadRows.
+ * startfelt-frigivelsen (releaseNonStarters) og udgang af løb (#5949) som motorens binding:
+ * en kendt ikke-starter har ingen planlagt etape i nogen af datoens felter (fund E).
+ * Afregnede løb kommer fra canonicalLoadRows.
  * Returnerer et almindeligt objekt { riderId: [game_day] }, så input kan gemmes (Træn nu).
  */
 export async function loadPlannedStageDaysByRider({ supabase, seasonId, riderIds, dateDays }) {
@@ -136,16 +138,18 @@ export async function loadPlannedStageDaysByRider({ supabase, seasonId, riderIds
   const { data: entries, error } = await supabase.from("race_entry_days")
     .select("rider_id, race_id, game_day").eq("season_id", seasonId).in("game_day", dateDays).in("rider_id", riderIds);
   if (error) throw new Error(`week priority bindings: ${error.message ?? error}`);
-  const raceIds = [...new Set((entries ?? []).map((row) => row.race_id).filter(Boolean))];
+  const started = await releaseNonStarters(supabase, entries ?? []);
+  if (started.error) throw new Error(`week priority start fields: ${started.error.message ?? started.error}`);
+  const raceIds = [...new Set(started.data.map((row) => row.race_id).filter(Boolean))];
   if (!raceIds.length) return {};
   const [{ data: schedule, error: scheduleError }, exitsResult] = await Promise.all([
     // pagination-safe: a few bound races x five race days.
     supabase.from("race_stage_schedule").select("race_id, game_day").in("race_id", raceIds).in("game_day", dateDays),
-    loadRaceExitGameDays({ supabase, rows: entries ?? [] }),
+    loadRaceExitGameDays({ supabase, rows: started.data }),
   ]);
   if (scheduleError) throw new Error(`week priority schedule: ${scheduleError.message ?? scheduleError}`);
   if (exitsResult?.error) throw new Error(`week priority race exits: ${exitsResult.error.message ?? exitsResult.error}`);
-  const active = dropBindingsAfterRaceExit(entries ?? [], exitsResult?.data ?? new Map());
+  const active = dropBindingsAfterRaceExit(started.data, exitsResult?.data ?? new Map());
   const stageDays = new Set((schedule ?? []).map((row) => `${row.race_id}:${Number(row.game_day)}`));
   const out = {};
   for (const row of active) {
