@@ -918,21 +918,21 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
     <table className="w-full min-w-[1150px] table-fixed text-xs" data-sortable data-testid="r5-table">
       <thead>
         <tr className="border-b border-cz-border">
-          <th className="w-[48px] ps-2.5 text-start">
+          <th className="w-[44px] ps-2.5 text-start">
             <input type="checkbox" checked={allSelected} onChange={() => setSelected(toggleAllSelection(selected, shownIds))}
               aria-label={tR5("selectAll")} className="h-4 w-4 rounded-[3px] accent-cz-accent" />
           </th>
-          <SortTh k="rider" label={t("colRider")} cls="w-[160px]" sort={sort} onSort={onSort} />
+          <SortTh k="rider" label={t("colRider")} cls="w-[156px]" sort={sort} onSort={onSort} />
           <SortTh k="type" label={t("colType")} cls="w-[96px]" sort={sort} onSort={onSort} />
-          <SortTh k="age" label={t("colAge")} cls="w-[48px]" sort={sort} onSort={onSort} />
-          <SortTh k="program" label={tR5("col.program")} cls="w-[108px]" sort={sort} onSort={onSort} />
-          <SortTh k="form" label={t("form")} cls="w-[48px]" sort={sort} onSort={onSort} />
+          <SortTh k="age" label={t("colAge")} cls="w-[44px]" sort={sort} onSort={onSort} />
+          <SortTh k="program" label={tR5("col.program")} cls="w-[126px]" sort={sort} onSort={onSort} />
+          <SortTh k="form" label={t("form")} cls="w-[44px]" sort={sort} onSort={onSort} />
           {/* En lang overskrift brydes inde i sin egen celle (ejer 20/11). */}
           <SortTh k="fatigue" label={tR5("col.fatigueNow")} cls="w-[64px]" sort={sort} onSort={onSort} />
-          <SortTh k="load" label={tR5("col.dayLoad")} cls="w-[80px]" sort={sort} onSort={onSort} />
+          <SortTh k="load" label={tR5("col.dayLoad")} cls="w-[84px]" sort={sort} onSort={onSort} />
           <SortTh k={null} label={tR5("row.col.status")} cls="" sort={sort} onSort={onSort} />
           <SortTh k={null} label={tR5("row.col.training")} cls="w-[164px]" sort={sort} onSort={onSort} />
-          <SortTh k={null} label={tR5("row.col.effort")} cls="w-[180px]" sort={sort} onSort={onSort} />
+          <SortTh k={null} label={tR5("row.col.effort")} cls="w-[184px]" sort={sort} onSort={onSort} />
           <th className="w-[56px]"><span className="sr-only">{tR5("row.col.assistant")} · {tR5("row.col.actions")}</span></th>
         </tr>
       </thead>
