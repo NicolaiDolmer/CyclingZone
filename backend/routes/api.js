@@ -2891,6 +2891,7 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
       return res.json(await buildScoutingReportFromView(supabase, {
         teamId: req.team.id, rider, own, level, maxLevel: state.maxLevel, looks: state.levels[rider.id] ?? 0,
         age: ageForSeason(rider.birthdate, await getActiveSeasonNumber()), scout: scoutMeta, generatedAt,
+        bandScout: scout, loadDevelopmentXp: () => loadEstimateDevelopmentXp(supabase), // #6110: prognose pr. ryttertype
       }));
     }
     if (!own && level <= 0) {
