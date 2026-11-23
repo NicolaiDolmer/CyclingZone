@@ -225,7 +225,7 @@ function outlineButtonHtml(url, label) {
 // replace the shared account-based footer for a mail sent on consent
 // (s5-launch), and preheader adds the hidden inbox-preview line. Left out, the
 // output is byte-identical to before, so no other mail type changes.
-function wrapHtml({ eyebrow, bodyHtml, unsubscribeUrl, language, unsubLine, unsubLinkText, preheader }) {
+function wrapHtml({ eyebrow, bodyHtml, unsubscribeUrl, language, unsubLine, unsubLinkText, preheader, includeDiscord = true }) {
   const lang = normalizeLanguage(language);
   const copy = copyFor(lang);
   const footerLine = unsubLine ?? copy.unsubLine;
@@ -256,9 +256,9 @@ function wrapHtml({ eyebrow, bodyHtml, unsubscribeUrl, language, unsubLine, unsu
             </tr>
             <tr>
               <td class="cz-body" bgcolor="${CARD_BG}" style="background:${CARD_BG};background-color:${CARD_BG};padding:32px 24px;color:${TEXT};font-size:15px;line-height:1.55;">
-                ${bodyHtml}
+                ${bodyHtml}${includeDiscord ? `
                 <p class="cz-text" style="margin:32px 0 12px;color:${TEXT};">${escapeHtml(copy.discordLine)}</p>
-                <p style="margin:0 0 32px;">${outlineButtonHtml(DISCORD_URL, copy.discordButton)}</p>
+                <p style="margin:0 0 32px;">${outlineButtonHtml(DISCORD_URL, copy.discordButton)}</p>` : ""}
                 <p class="cz-text" style="margin:0;font-weight:700;color:${TEXT};">Dolmer, Cycling Zone</p>
                 <p class="cz-muted" style="margin:24px 0 0;font-size:12px;color:${TEXT_MUTED};">
                   ${escapeHtml(footerLine)}
@@ -274,12 +274,11 @@ function wrapHtml({ eyebrow, bodyHtml, unsubscribeUrl, language, unsubLine, unsu
 </html>`;
 }
 
-function wrapText({ bodyText, unsubscribeUrl, language, unsubLine, unsubLinkText }) {
+function wrapText({ bodyText, unsubscribeUrl, language, unsubLine, unsubLinkText, includeDiscord = true }) {
   const copy = copyFor(language);
   return [
     bodyText,
-    copy.discordLine,
-    `${copy.discordButton}: ${DISCORD_URL}`,
+    ...(includeDiscord ? [copy.discordLine, `${copy.discordButton}: ${DISCORD_URL}`] : []),
     "Dolmer, Cycling Zone",
     `${unsubLine ?? copy.unsubLine} ${unsubLinkText ?? copy.unsubLinkText}: ${unsubscribeUrl}`,
   ].join("\n\n");
@@ -761,6 +760,161 @@ export function buildS5LaunchEmail({ unsubscribeUrl, language, withPreheader = S
     text: wrapText({ bodyText, unsubscribeUrl, language: lang, unsubLine: s5.unsubLine, unsubLinkText: s5.unsubLinkText }),
   };
 }
+
+
+const S6_SEASON_COPY = {
+  en: {
+    eyebrow: "SEASON 6",
+    roadmap: "Vote on what comes next",
+    voteIntro: "I’d like to know what you want me to work on next.",
+    unsubLine: "You’re receiving this because you opted in to emails about season updates.",
+    unsubLinkText: "Unsubscribe",
+    beforeStart: {
+      subject: "Season 6 starts Saturday",
+      preheader: "What’s new before 28 November.",
+      current: {
+        opening: "Season 6 starts on Saturday, 28 November. Here are two things I’ve changed since the last season started.",
+        cta: "Open your dashboard",
+      },
+      comeback: {
+        opening: "Season 6 starts on Saturday, 28 November. If it’s been a while since you played, I’d like you to come back and see how the game has changed.",
+        cta: "Return to Cycling Zone",
+      },
+      news: [
+        "On the race page, you can find the race film and the results for a finished stage in one place.",
+        "On the Today tab in Training, you can look ahead and see which days have a race and which are for training.",
+      ],
+    },
+    started: {
+      subject: "Season 6 is underway",
+      preheader: "Find your next race in the new calendar and pick your lineup.",
+      current: {
+        opening: "Season 6 is underway. I’d start with the new calendar and get your team ready for its next race.",
+        steps: [
+          "Open the new race calendar and find your division’s next race.",
+          "Look at the route and decide which riders suit it.",
+          "Pick your lineup in Planning and save it.",
+        ],
+        cta: "Open the race calendar",
+      },
+      comeback: {
+        opening: "Season 6 is underway. If you’re coming back after a break, I’d start with one race.",
+        steps: [
+          "Log in and open your dashboard.",
+          "Find your division’s next race in the new calendar.",
+          "Pick a lineup for that race in Planning and save it.",
+        ],
+        cta: "Return to Cycling Zone",
+      },
+    },
+  },
+  da: {
+    eyebrow: "SÆSON 6",
+    roadmap: "Stem på det næste",
+    voteIntro: "Jeg vil gerne høre, hvad du synes, jeg skal arbejde på næste gang.",
+    unsubLine: "Du får denne mail, fordi du har sagt ja til e-mails om sæsonopdateringer.",
+    unsubLinkText: "Afmeld e-mails",
+    beforeStart: {
+      subject: "S6 starter lørdag",
+      preheader: "Det nye inden 28. november.",
+      current: {
+        opening: "Sæson 6 starter lørdag den 28. november. Her er to ting, jeg har ændret siden sidste sæsonstart.",
+        cta: "Åbn dit dashboard",
+      },
+      comeback: {
+        opening: "Sæson 6 starter lørdag den 28. november. Hvis det er længe siden, du har spillet, vil jeg gerne invitere dig tilbage og vise dig, hvad der er ændret.",
+        cta: "Tilbage til Cycling Zone",
+      },
+      news: [
+        "På løbssiden finder du løbsfilmen og resultaterne for en kørt etape samme sted.",
+        "På fanen I dag under Træning kan du bladre frem og se, hvilke dage der er løb, og hvilke dage der er træning.",
+      ],
+    },
+    started: {
+      subject: "S6 er i gang",
+      preheader: "Find dit næste løb i den nye kalender, og sæt dit hold.",
+      current: {
+        opening: "Sæson 6 er i gang. Jeg ville begynde med den nye kalender og gøre dit hold klar til næste løb.",
+        steps: [
+          "Åbn den nye løbskalender, og find næste løb i din division.",
+          "Se på ruten, og vælg de ryttere, der passer til den.",
+          "Sæt holdet i Planlægning, og gem din udtagelse.",
+        ],
+        cta: "Åbn løbskalenderen",
+      },
+      comeback: {
+        opening: "Sæson 6 er i gang. Hvis du vender tilbage efter en pause, ville jeg begynde med ét løb.",
+        steps: [
+          "Log ind, og åbn dit dashboard.",
+          "Find næste løb i din division i den nye kalender.",
+          "Sæt holdet til det løb i Planlægning, og gem din udtagelse.",
+        ],
+        cta: "Tilbage til Cycling Zone",
+      },
+    },
+  },
+};
+
+function s6CampaignUrl(destination, edition, audience) {
+  const url = new URL(destination, DASHBOARD_URL);
+  url.searchParams.set("utm_source", "email");
+  url.searchParams.set("utm_medium", "email");
+  url.searchParams.set("utm_campaign", "s6-" + edition);
+  url.searchParams.set("utm_content", audience);
+  return url.href;
+}
+
+// Draft for owner approval. This builder has no entry in the mail loop or sender.
+export function buildS6SeasonEmail({ edition, audience, language, unsubscribeUrl }) {
+  if (edition !== "before-start" && edition !== "started") {
+    throw new RangeError("Unknown S6 email edition");
+  }
+  if (audience !== "current" && audience !== "comeback") {
+    throw new RangeError("Unknown S6 email audience");
+  }
+
+  const lang = normalizeLanguage(language);
+  const layout = copyFor(lang);
+  const copy = S6_SEASON_COPY[lang];
+  const started = edition === "started";
+  const version = started ? copy.started : copy.beforeStart;
+  const { opening, cta, steps } = version[audience];
+  const ctaUrl = s6CampaignUrl(started && audience === "current" ? "/planning?tab=calendar" : DASHBOARD_URL, edition, audience);
+  const roadmapUrl = s6CampaignUrl("/roadmap?tab=vote", edition, audience);
+  const items = started ? steps : version.news;
+  const listTag = started ? "ol" : "ul";
+  const listHtml = items.map((item) => "<li>" + escapeHtml(item) + "</li>").join("");
+  const listText = items.map((item, index) => started ? (index + 1) + ". " + item : "- " + item);
+
+  const bodyHtml = `
+    <p style="margin:0 0 16px;">${layout.greeting}</p>
+    <p style="margin:0 0 16px;">${escapeHtml(opening)}</p>
+    <${listTag} style="margin:0 0 20px;padding-left:22px;">${listHtml}</${listTag}>
+    <p style="margin:0 0 20px;">${primaryButtonHtml(ctaUrl, cta)}</p>
+    <p style="margin:0 0 24px;">${escapeHtml(copy.voteIntro)} <a href="${escapeHtml(roadmapUrl)}" style="color:inherit;">${escapeHtml(copy.roadmap)}</a>.</p>
+  `.trim();
+  const bodyText = [
+    layout.greeting,
+    opening,
+    listText.join("\n"),
+    cta + ": " + ctaUrl,
+    copy.voteIntro + " " + copy.roadmap + ": " + roadmapUrl,
+  ].join("\n\n");
+  const footer = {
+    language: lang,
+    unsubscribeUrl: s6CampaignUrl(unsubscribeUrl, edition, audience),
+    unsubLine: copy.unsubLine,
+    unsubLinkText: copy.unsubLinkText,
+    includeDiscord: false,
+  };
+
+  return {
+    subject: version.subject,
+    html: wrapHtml({ ...footer, eyebrow: copy.eyebrow, preheader: version.preheader, bodyHtml }),
+    text: wrapText({ ...footer, bodyText }),
+  };
+}
+
 
 // ─── season_signup_reminder (#5814) ─────────────────────────────────────────
 // One-off reminder, sent by scripts/season-signup-reminder-send.mjs on the

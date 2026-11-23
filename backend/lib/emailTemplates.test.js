@@ -854,3 +854,44 @@ test("every other mail type is byte-identical to before the s5-launch overrides"
     }
   }
 });
+
+// S6 drafts stay outside the active campaign and mail-loop dispatchers.
+for (const edition of ["before-start", "started"]) {
+  for (const audience of ["current", "comeback"]) {
+    for (const language of ["en", "da"]) {
+      test(`S6 draft renders ${edition} / ${audience} / ${language}`, async () => {
+        const { buildS6SeasonEmail } = await import("./emailTemplates.js");
+        const mail = buildS6SeasonEmail({
+          edition, audience, language,
+          unsubscribeUrl: "https://cyclingzone.org/api/email/unsubscribe?token=preview%2Btoken",
+        });
+        const isStart = edition === "started";
+        assert.match(mail.html, new RegExp(`<html lang="${language}"`));
+        assert.match(mail.subject, isStart ? /underway|i gang/ : /Saturday|lørdag/);
+        assert.equal((mail.html.match(/class="cz-btn"/g) ?? []).length, 1);
+        assert.equal((mail.html.match(/<li>/g) ?? []).length, isStart ? 3 : 2);
+        assert.match(mail.html, /Dolmer, Cycling Zone/);
+        assert.match(mail.html, /Vote on what comes next|Stem på det næste/);
+        assert.doesNotMatch(mail.subject + mail.html + mail.text, /—/u);
+
+        const hrefs = [...mail.html.matchAll(/href="([^"]+)"/g)];
+        assert.equal(hrefs.length, 3);
+        for (const [, href] of hrefs) {
+          const url = new URL(href.replaceAll("&amp;", "&"));
+          assert.equal(url.searchParams.get("utm_source"), "email");
+          assert.equal(url.searchParams.get("utm_medium"), "email");
+          assert.equal(url.searchParams.get("utm_campaign"), isStart ? "s6-started" : "s6-before-start");
+          assert.equal(url.searchParams.get("utm_content"), audience);
+          assert.ok(mail.text.includes(url.href));
+          if (url.pathname === "/api/email/unsubscribe") {
+            assert.equal(url.searchParams.get("token"), "preview+token");
+          } else if (url.pathname === "/roadmap") {
+            assert.equal(url.searchParams.get("tab"), "vote");
+          } else {
+            assert.equal(url.pathname, isStart && audience === "current" ? "/planning" : "/dashboard");
+          }
+        }
+      });
+    }
+  }
+}
