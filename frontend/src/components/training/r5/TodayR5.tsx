@@ -217,7 +217,7 @@ function StatusCell({ row }: { row: Row }) {
   return (
     <span className="flex flex-wrap items-center gap-1" data-testid="r5-row-status">
       {words.map((w) => (
-        <span key={w.key} className={`rounded-cz-pill border px-1.5 py-px text-3xs font-medium leading-tight tabular-nums ${w.key === "injured" ? "" : "whitespace-nowrap"} ${STATUS_PILL[STATUS_TONE[w.key]]}`}
+        <span key={w.key} className={`rounded-cz-pill border px-1.5 py-px text-3xs font-medium leading-tight tabular-nums ${w.key === "days70" ? "whitespace-nowrap" : ""} ${STATUS_PILL[STATUS_TONE[w.key]]}`}
           data-status={w.key}>{w.text}</span>
       ))}
     </span>
@@ -913,7 +913,8 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
   const onSort = (k: SortKey) => setSort((s) => nextSort(s, k));
   const CELL = "px-1.5 py-1.5";
   const desktopTable = (
-    <div className="max-xl:overflow-x-auto">
+    // Smallere end tabellen (fx 1280): tabellen scroller i sin egen ramme, med plads under den sidste raekke til menuerne.
+    <div className="@container"><div className="@max-[71.875rem]:overflow-x-auto @max-[71.875rem]:pb-32">
     <table className="w-full min-w-[1150px] table-fixed text-xs" data-sortable data-testid="r5-table">
       <thead>
         <tr className="border-b border-cz-border">
@@ -1021,7 +1022,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
         ))}
       </tbody>
     </table>
-    </div>
+    </div></div>
   );
 
   // --- Telefonen: et kompakt kort pr. rytter (ejer 23/11) -----------------------------
