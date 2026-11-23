@@ -169,3 +169,10 @@ test('#5904: direct URL is derived from the pooler URL; non-pooler or malformed 
   const noRef=run(`Get-RefreshDirectUrl 'postgresql://postgres:topsecret@aws-0-x.pooler.supabase.com:6543/postgres'`);
   assert.notEqual(noRef.status,0); assert.doesNotMatch(noRef.stderr+noRef.stdout,/topsecret/);
 });
+
+test("staging refresh drops the managed auth trigger before replacing public functions and restores it after", () => {
+  const body = readFileSync(new URL("./refresh-staging.ps1", import.meta.url), "utf8");
+  assert.match(body, /set session_replication_role=replica;\s*DROP TRIGGER IF EXISTS on_auth_user_created ON auth\.users;/);
+  assert.match(body, /After public restore[\s\S]*CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth\.users FOR EACH ROW EXECUTE FUNCTION public\.handle_new_user\(\)/);
+  assert.ok(body.indexOf("CREATE TRIGGER on_auth_user_created") < body.indexOf("Get-RefreshRestoreArguments"));
+});
