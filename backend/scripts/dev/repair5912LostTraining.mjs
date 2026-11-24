@@ -42,6 +42,10 @@ import {
   TRAINING_RACE_DAY_CONFIG, resolveRaceDayBudgetDivisor, raceDaySeedKey,
 } from "../../lib/trainingRaceDayTick.js";
 import { copenhagenWeekdayKey, copenhagenHour, copenhagenDateString } from "../../lib/copenhagenTime.js";
+// #8606: the engine's own builders for the development model, curve B and the per-date rules.
+import { developmentModelTickArgs, sumDateGains, capTickGainsPerDate } from "../../lib/dailyTrainingEngine.js";
+import { developmentTickArgs } from "../../lib/developmentScoreWiring.js";
+import { xpDateStartFromRows } from "../../lib/developmentXp.ts";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "../../lib/supabasePagination.js";
 
 export const REPAIR_TICK_DATE = "2026-09-28";
@@ -118,6 +122,21 @@ export function classifyLostRiderDays({ runs, stageGameDaysByRider }) {
 }
 
 /**
+ * #8606: the date whose slots pay the rider's stored bar under XP (#6110, ejervalg 19/11), by the
+ * engine's rule: the XP start date pays everyone on a manager team; a later first XP date pays
+ * only a rider who was on a manager team at the start (developmentXpFirstDate.js). The repair
+ * replays dates after later dates already ran, so a rider who has developed under XP on any real
+ * date has been paid already and is never paid twice. PURE.
+ */
+export function xpPayoutDate({ xpByDate = {}, xpFromDate = null, eligibleAfterIgnition = false, alreadyDeveloped = false } = {}, days = []) {
+  if (alreadyDeveloped || !xpFromDate) return null;
+  const first = days.filter((d) => d.kind !== "bound_rest" && d.tickDate && xpByDate[d.tickDate])
+    .map((d) => d.tickDate).sort()[0] ?? null;
+  if (!first) return null;
+  return first === xpFromDate || eligibleAfterIgnition === true ? first : null;
+}
+
+/**
  * Ren beregning af én rytters genopretning: hans tabte loebsdage koeres i
  * raekkefoelge gennem samme applyDailyTick som sweepen, oven paa hans NUVAERENDE
  * evner/fremdrift (den tilstand en apply ville skrive oven paa).
@@ -125,6 +144,12 @@ export function classifyLostRiderDays({ runs, stageGameDaysByRider }) {
 export function simulateRiderRepair({
   rider, abilityRow, days, plan = null, teamWeekDays = null, riderOverrideDays = null,
   programsOn = false, staff = null, facilityTier = null, seasonNumber, recomputeCapsPerTick = false,
+  // #8606: the development model the engine used on each date (see developmentContextForRider in
+  // calculate6061Compensation.mjs). null = the #5912/#6061 behaviour, unchanged.
+  developmentContext = null,
+  // Test seam only: "calendar" runs the engine's calendar-day frame (date seed, no race-day
+  // budget or cap), so a test can compare with the engine fixture. Repairs use the race-day frame.
+  frame = "race_day",
 }) {
   const startAbilities = {};
   for (const k of VISIBLE_ABILITIES) if (abilityRow?.[k] != null) startAbilities[k] = Number(abilityRow[k]);
@@ -133,12 +158,17 @@ export function simulateRiderRepair({
   const age = ageForSeason(rider.birthdate, seasonNumber);
   if (age == null) return { skipped: "no_age", gains: {}, totalPoints: 0, perDay: [] };
   const caps = buildCapsForRider(abilities, { ...rider, age }, rider.primary_type, rider.secondary_type);
-  const budgetDivisor = resolveRaceDayBudgetDivisor({ seasonNumber });
+  const raceDayFrame = frame !== "calendar";
+  const budgetDivisor = raceDayFrame ? resolveRaceDayBudgetDivisor({ seasonNumber }) : null;
   const hasExplicitPlan = !!(plan?.focus && plan?.intensity);
   const totalGains = {};
   const perDay = [];
+  // #8606: the rider's simulated slots per date, so a later slot sees the date's earlier gains
+  // and bar exactly like the engine's later slots see the date's earlier receipts.
+  const simulatedByDate = new Map();
+  const payoutDate = developmentContext ? xpPayoutDate(developmentContext, days) : null;
   let totalProgress = 0;
-  for (const day of [...days].sort((a, b) => a.gameDay - b.gameDay)) {
+  for (const day of [...days].sort((a, b) => (a.tickDate ?? "").localeCompare(b.tickDate ?? "") || a.gameDay - b.gameDay)) {
     const tickDate = day.tickDate ?? REPAIR_TICK_DATE;
     const weekday = copenhagenWeekdayKey(tickDate);
     if (day.kind === "bound_rest") {
@@ -160,20 +190,60 @@ export function simulateRiderRepair({
       tickProgram = day.tickProgram ? { ...program, ...day.tickProgram } : program;
     }
     const tickCaps = recomputeCapsPerTick ? buildCapsForRider(abilities, { ...rider, age }, rider.primary_type, rider.secondary_type) : caps;
-    const result = applyDailyTick({
+    const tickSeedKey = raceDayFrame ? raceDaySeedKey({ seasonId: day.seasonId, gameDay: day.gameDay }) : null;
+    const tickArgs = {
       riderId: rider.id, dateStr: tickDate, age, abilities, caps: tickCaps, progress,
       program: tickProgram,
       conditionMult: conditionMultiplier({ form: day.formBefore, fatigue: day.fatigueBefore }),
       potentiale: rider.potentiale, primaryType: rider.primary_type, secondaryType: rider.secondary_type,
       staff, facilityTier, riderLevel: riderLevelBand({ is_academy: rider.is_academy, age }),
-      tickSeedKey: raceDaySeedKey({ seasonId: day.seasonId, gameDay: day.gameDay }),
-      budgetDivisor, hardDailyCap,
-    });
+      tickSeedKey, budgetDivisor, hardDailyCap: raceDayFrame ? hardDailyCap : undefined,
+    };
+    let result;
+    let developmentXp = null;
+    let xpStart = null;
+    const progressBefore = progress;
+    if (!developmentContext) {
+      result = applyDailyTick(tickArgs);
+    } else {
+      // #8606: the date's earlier rows for this rider (real receipts on its other race days
+      // plus the slots simulated before this one) feed the same date rules as in the engine.
+      const dateRows = [...(developmentContext.dateReports?.[tickDate] ?? []), ...(simulatedByDate.get(tickDate) ?? [])];
+      developmentXp = developmentContext.xpByDate?.[tickDate] ?? null;
+      xpStart = developmentXp ? xpDateStartFromRows(dateRows) : null;
+      const sharedTickArgs = {
+        ...tickArgs,
+        ...developmentModelTickArgs({
+          rider, curveB: developmentContext.curveB ?? null,
+          curveBTransition: developmentContext.curveBTransitionByDate?.[tickDate] ?? null,
+          developmentXp, dateUsedGains: () => sumDateGains(dateRows),
+          xpStoredBarPayout: payoutDate === tickDate,
+          xpDateStart: xpStart, preFatigue: day.fatigueBefore,
+        }),
+      };
+      // Race days need the stage's role and intention; the calculator blocks them before this.
+      if (day.kind === "raced_missed") throw new Error("Race-day compensation needs the stage role; review it separately");
+      result = applyDailyTick({ ...sharedTickArgs, ...developmentTickArgs({
+        developmentScoreB: developmentContext.developmentScoreB ?? null, raceCatchUp: developmentContext.raceCatchUp ?? null,
+        dayKey: tickSeedKey ?? tickDate, tickArgs: sharedTickArgs,
+      }) });
+      // Same order as the engine: under XP there is nothing to clip; today's model and curve B
+      // keep the per-date rule (#6210) when it is on.
+      if (!developmentXp && developmentContext.capPerDateOn) {
+        result = capTickGainsPerDate({ tickResult: result, abilities, usedGains: sumDateGains(dateRows) });
+      }
+      if (!simulatedByDate.has(tickDate)) simulatedByDate.set(tickDate, []);
+      simulatedByDate.get(tickDate).push({
+        game_day: day.gameDay, gains: result.gains ?? {}, progress_before: progressBefore,
+        ...(developmentXp ? { bar_paid: result.barPaid ?? {}, xp_slot_seq: xpStart?.seq ?? 1 } : {}),
+      });
+    }
     abilities = result.abilities;
     progress = result.progress;
     for (const [k, n] of Object.entries(result.gains)) totalGains[k] = (totalGains[k] ?? 0) + n;
     totalProgress += result.score;
-    perDay.push({ key: day.key, gameDay: day.gameDay, kind: day.kind, intensity: tickProgram.intensity, gains: result.gains, progress: result.score });
+    perDay.push({ key: day.key, gameDay: day.gameDay, kind: day.kind, intensity: tickProgram.intensity, gains: result.gains, progress: result.score,
+      ...(developmentContext ? { model: developmentXp ? "xp" : "today", ...(developmentXp ? { xp: result.xp ?? {} } : {}) } : {}) });
   }
   const patch = { ability_progress: progress };
   for (const k of VISIBLE_ABILITIES) if (abilities[k] !== startAbilities[k]) patch[k] = abilities[k];
