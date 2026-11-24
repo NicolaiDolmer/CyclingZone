@@ -274,6 +274,10 @@ Sådan læses det: kør `scripts/monday-numbers.mjs --json` **lige før** opslag
 
 ## 6. Kampagne-skabelon
 
+### Daglig annonceudgift
+
+Efter database-migrationen kan en operatør køre `node scripts/ops/recordCampaignSpend.mjs --date YYYY-MM-DD --campaign SLUG --amount-dkk BELOEB` fra `backend/`. Det validerer uden at skrive. Tilføj `--apply` med det tilsigtede Supabase-service-miljø for at gemme dagens samlede beløb. Datoen følger kampagnerapportens Europe/Copenhagen-dag. `campaign_spend_daily` gemmer DKK-øre, og samme dato og kampagne erstatter dagens beløb. En manglende række betyder manglende dækning. Indtast et eksplicit nul for en målt dag uden annonceudgift.
+
 En kampagne er et afgrænset skub med et mål, ikke løbende posting. Skabelonen udfyldes **før** noget postes.
 
 | Felt | Udfyldes med |
