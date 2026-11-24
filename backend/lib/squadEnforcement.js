@@ -40,6 +40,8 @@ import {
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,
   FINANCE_RELATED_ENTITY,
+  SQUAD_FINE_AMOUNT,
+  SQUAD_PENALTY_POINTS,
 } from "./economyConstants.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
@@ -62,8 +64,7 @@ async function fetchActiveSeasonNumber(supabase) {
 }
 
 const NOOP = async () => {};
-export const SQUAD_FINE_AMOUNT = 100000;
-export const SQUAD_PENALTY_POINTS = 200;
+export { SQUAD_FINE_AMOUNT, SQUAD_PENALTY_POINTS };
 export const SQUAD_PURCHASE_MARKUP = 1.5;
 
 // ─── Utility helpers ──────────────────────────────────────────────────────────

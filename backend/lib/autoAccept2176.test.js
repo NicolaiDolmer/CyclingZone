@@ -609,6 +609,21 @@ test("editable bid is separate from expected listing price and reaches atomic re
   assert.equal(client.rpcCalls[0].args.p_bid_amount, 7);
 });
 
+test("an opening bid is rejected cleanly when the club has no reserved place", async () => {
+  const { client, handler, identity, announced } = startedFixture();
+  const invoke = client.rpc.bind(client);
+  client.rpc = (name, args) => name === "start_auto_accept_auction_bid"
+    ? Promise.resolve({ data: null, error: { code: "23514", message: "club_roster_full" } })
+    : invoke(name, args);
+  const res = fakeRes();
+  await handler(START_REQ, res);
+  assert.equal(res.statusCode, 409);
+  assert.equal(res.body.errorCode, "auto_accept_squad_full");
+  assert.equal(res.body.errorParams.maxRiders, 60);
+  assert.equal(identity.length, 0);
+  assert.equal(announced.length, 0);
+});
+
 test("editable bid rejects invalid and below-minimum amounts before mutation", async () => {
   for (const bid of [0, 1, -1, 2.5, "", null, 2147483648]) {
     const { client, handler } = startedFixture();

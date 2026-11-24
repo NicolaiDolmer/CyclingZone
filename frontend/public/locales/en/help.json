@@ -1719,7 +1719,7 @@
       },
       "academySize": {
         "title": "Academy size (per team)",
-        "text": "Each squad can hold up to 30 riders and your club can have up to 60 in total. To bid for or buy a rider, you need a free place in an eligible squad and in the club. To move a rider already at your club, you need a free place in the destination squad. Automatic promotions can go over a squad limit. You can still race, train and sell riders."
+        "text": "Each squad can hold up to {squadCap} riders and your club can have up to {clubRiderCap} in total. To bid for or buy a rider, you need a free place in an eligible squad and in the club. To move a rider already at your club, you need a free place in the destination squad. Automatic promotions can go over a squad limit. You can still race, train and sell riders."
       },
       "dailyTrainingBoost": {
         "title": "Daily training in the academy",

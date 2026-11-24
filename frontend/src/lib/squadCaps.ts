@@ -23,6 +23,8 @@ import { YOUTH_SQUADS, type YouthSquad } from "./youthSquadPages.ts";
 import type { supabase as appSupabase } from "./supabase.ts";
 
 /** Loft pr. ungdomstrup. Spejl af backend/lib/squads.js SQUAD_CAPS. */
+export const CLUB_RIDER_CAP = 60;
+
 export const SQUAD_CAPS: Readonly<Record<YouthSquad, number>> = Object.freeze({ u23: 30, junior: 30 });
 
 /** Højeste sæsonalder i junior-truppen. Spejl af squads.js SQUAD_MAX_AGE.junior. */

@@ -102,6 +102,11 @@ test("cutover promotes despite full squads and open sales, closes old rows, and 
     assert.deepEqual((await db.query("SELECT id,team_id FROM riders WHERE id IN ($1,$2) ORDER BY id", [STAYS, SOLD])).rows,
       [{ id: SOLD, team_id: BUYER }, { id: STAYS, team_id: CLUB }]);
     await db.query("UPDATE riders SET team_id=$1 WHERE id IN (SELECT id FROM riders WHERE team_id=$2 AND squad='senior' LIMIT 4)", [BUYER, CLUB]);
+    const openAuction = () => db.query("INSERT INTO auctions(id,status,current_bidder_id) VALUES (gen_random_uuid(), 'active', $1)", [CLUB]);
+    await assert.rejects(openAuction(), /club_roster_full/);
+    await db.query("UPDATE auctions SET status = 'completed' WHERE current_bidder_id=$1", [CLUB]);
+    await openAuction();
+    await assert.rejects(openAuction(), /club_roster_full/);
     await buy("team_id");
     await assert.rejects(buy("team_id"), /club_roster_full/);
     assert.equal((await db.query("SELECT count(*)::int AS pending FROM riders WHERE promotion_pending_to IS NOT NULL")).rows[0].pending, 0);

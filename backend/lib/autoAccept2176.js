@@ -596,6 +596,9 @@ export function makeStartAutoAcceptHandler({
       p_min_seller_riders: SELLER_SQUAD_FLOOR,
       p_seller_at_risk_rider_ids: sellerFloorRiskIds(atRisk),
       p_now: startedAt.toISOString(),
+    }).catch((error) => {
+      if (error?.message !== "club_roster_full") throw error;
+      return { status: "squad_full", max_riders: CLUB_RIDER_CAP };
     });
     const mapped = mapStartAutoAcceptResult(result);
     if (result.status === "started") {

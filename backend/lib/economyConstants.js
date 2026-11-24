@@ -477,3 +477,7 @@ export const FINANCE_REASON = Object.freeze({
 // Frontenden duplikerer tallet i auctionValueUpdateWindow.js (backend-kode må
 // ikke ind i bundlen); auctionValueUpdateWindow.parity.test.js holder de to i sync.
 export const SUNDAY_VALUE_FROM_HOUR = 14;
+
+// Legacy transfer-window enforcement until the season 6 cutover (#8034).
+export const SQUAD_FINE_AMOUNT = 100000;
+export const SQUAD_PENALTY_POINTS = 200;

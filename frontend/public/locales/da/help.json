@@ -1719,7 +1719,7 @@
       },
       "academySize": {
         "title": "Akademistørrelse (pr. hold)",
-        "text": "Hver trup kan have op til 30 ryttere, og klubben kan have op til 60 i alt. For at byde på eller købe en rytter skal du have en ledig plads i en trup, rytteren kan køre for, og i klubben samlet. For at flytte en rytter, du allerede har, skal der være en ledig plads i den nye trup. Automatiske oprykninger må overskride trupgrænsen. Du kan stadig køre løb, træne og sælge ryttere."
+        "text": "Hver trup kan have op til {squadCap} ryttere, og klubben kan have op til {clubRiderCap} i alt. For at byde på eller købe en rytter skal du have en ledig plads i en trup, rytteren kan køre for, og i klubben samlet. For at flytte en rytter, du allerede har, skal der være en ledig plads i den nye trup. Automatiske oprykninger må overskride trupgrænsen. Du kan stadig køre løb, træne og sælge ryttere."
       },
       "dailyTrainingBoost": {
         "title": "Daglig træning i akademiet",

@@ -1719,7 +1719,7 @@
       },
       "academySize": {
         "title": "Taille de l'académie (par équipe)",
-        "text": "Chaque équipe peut compter jusqu’à 30 coureurs et le club peut en compter jusqu’à 60 au total. Pour enchérir sur un coureur ou le recruter, il faut une place libre dans une équipe où il peut courir et dans le club. Un transfert interne demande une place dans l’équipe de destination. Une promotion automatique peut dépasser la limite de l’équipe. Vous pouvez toujours courir, entraîner et vendre des coureurs."
+        "text": "Chaque équipe peut compter jusqu’à {squadCap} coureurs et le club peut en compter jusqu’à {clubRiderCap} au total. Pour enchérir sur un coureur ou le recruter, il faut une place libre dans une équipe où il peut courir et dans le club. Un transfert interne demande une place dans l’équipe de destination. Une promotion automatique peut dépasser la limite de l’équipe. Vous pouvez toujours courir, entraîner et vendre des coureurs."
       },
       "dailyTrainingBoost": {
         "title": "Entraînement quotidien à l'académie",
