@@ -6,7 +6,7 @@
       "intake": "Recrutement de la semaine",
       "talents": "Tes talents",
       "ledger": "Comptes de l'académie",
-      "profile": "Profil et âge"
+      "profile": "Profil"
     },
     "stats": {
       "intake": "Recrutement",
@@ -22,7 +22,7 @@
     },
     "landsOn": "Rejoint l'équipe {squad}",
     "talents": {
-      "colNation": "Nat.",
+      "colNation": "Nationalité",
       "colRider": "Coureur",
       "colType": "Type de coureur",
       "colSquad": "Équipe",

@@ -98,7 +98,7 @@ export default function AcademyPage() {
   const {
     enabled, squads, intake, graduations, balance,
     intakePull, loading, error, signCandidate, rejectCandidate,
-    pullIntake, academyProfile, saveProfile, roster, refresh,
+    pullIntake, academyProfile, saveProfile, roster,
   } = useAcademy();
   // #8081: null = kontakten hentes endnu (siden venter i PageLoader, som på akademi-data).
   const pageV2 = useAcademyPageV2Flag();
@@ -423,7 +423,6 @@ export default function AcademyPage() {
       // academy, som hentes ved første indlæsning), så siden venter på det.
       <I18nReadyGate ns="academyV2">
       <AcademyV2
-        graduationCount={graduations.length}
         giftIntake={giftIntake}
         regularIntake={regularIntake}
         renderIntakeCard={renderIntakeCard}
@@ -435,7 +434,7 @@ export default function AcademyPage() {
         seasonYear={seasonYear}
         squadCounts={squadCounts}
         academyProfile={academyProfile}
-        refreshAcademy={refresh}
+        saveProfile={saveProfile}
         // #8060: regnskabet er en fane i udgave A; det gamle AcademyPnl ville modsige den.
         footer={null}
       />

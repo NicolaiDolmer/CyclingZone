@@ -6,7 +6,7 @@
       "intake": "Ugens optag",
       "talents": "Dine talenter",
       "ledger": "Akademi-regnskab",
-      "profile": "Profil og alder"
+      "profile": "Profil"
     },
     "stats": {
       "intake": "Optag",
@@ -22,7 +22,7 @@
     },
     "landsOn": "Lander på {squad}-truppen",
     "talents": {
-      "colNation": "Nat.",
+      "colNation": "Nationalitet",
       "colRider": "Rytter",
       "colType": "Ryttertype",
       "colSquad": "Trup",
