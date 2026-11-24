@@ -3,7 +3,7 @@
 // clarityIntegration). Sektioner markeres med data-race-section. Maalingen maa aldrig
 // paavirke siden: uden browser-API'erne sker der intet.
 import { useEffect } from "react";
-import { capturePosthogEvent } from "./posthogClient.js";
+import { capturePosthogEvent } from "./posthogCapture.ts";
 import { clickKind, createRaceViewLog } from "./raceViewLog.ts";
 
 const SECTION_SELECTOR = "[data-race-section]";
