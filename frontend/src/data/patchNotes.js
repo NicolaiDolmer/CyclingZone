@@ -1,5 +1,53 @@
 export const PATCHES = [
 {
+  "version": "7.510",
+  "date": "2026-11-24",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Help",
+      "area": "interface",
+      "en": {
+        "title": "Full division names in Help",
+        "body": "The race examples in Help spell out the division next to each race name."
+      },
+      "da": {
+        "title": "Fulde divisionsnavne i Hjælp",
+        "body": "Løbseksemplerne i Hjælp skriver divisionen med fuldt navn ud for hvert løb."
+      },
+      "refs": [
+        8651
+      ]
+    }
+  ]
+},
+{
+  "version": "7.509",
+  "date": "2026-11-24",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Rider Rankings",
+      "area": "interface",
+      "en": {
+        "title": "Full column names on the rider rankings",
+        "body": "The rider rankings use full names for points, wins and classifications, including on phones."
+      },
+      "da": {
+        "title": "Fulde kolonnenavne på rytterranglisten",
+        "body": "Rytterranglisten bruger fulde navne for point, sejre og klassementer, også på telefonen."
+      },
+      "refs": [
+        8651
+      ]
+    }
+  ]
+},
+{
   "version": "7.508",
   "date": "2026-11-24",
   "changes": [
