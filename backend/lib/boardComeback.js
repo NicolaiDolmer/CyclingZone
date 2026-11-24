@@ -9,7 +9,8 @@ import { isParkedTeam } from "./managerParking.js";
  * @param {number | null | undefined} seasonNumber
  */
 export function isComebackSeason(team, seasonId, seasonNumber) {
-  if (seasonNumber != null && team?.comeback_board_season_number != null) {
+  if (seasonNumber != null && team?.comeback_board_season_number != null
+      && team.comeback_board_season_number >= seasonNumber) {
     return team.comeback_board_season_number === seasonNumber;
   }
   return seasonId != null && team?.comeback_season_id === seasonId;

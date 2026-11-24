@@ -30,6 +30,7 @@
 // Skalerings-præmis (CLAUDE.md): ingen kode-loops over fast manager-antal —
 // kun human teams loades, division-standings batch-loades én gang.
 
+import { isMissingBoardComebackColumn } from "./boardComebackSchema.js";
 import { BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
 import { parseBoardGoals, evaluateGoalProgress, isExpiredSeasonBoundGoal } from "./boardGoals.js";
 import { buildKeyedNotification } from "./notificationKeys.js";
@@ -87,14 +88,20 @@ export async function processMidSeasonReviewCron({
   // (scoreFinanceHealthGoal, boardUtils.js) — bruges af evaluateMidSeasonTrigger.
   // #8099 · `parked_at` SKAL med: isParkedTeam læser et manglende felt som
   // "ikke parkeret", så uden kolonnen ville filteret nedenfor åbne igen.
-  const { data: humanTeams, error: teamsError } = await supabase
+  const loadHumanTeams = (/** @type {boolean} */ includeBoardSeason) => supabase
     .from("teams")
     // schema-columns-ok: comeback_board_season_number is added by 2026-11-24-8100-board-comeback.sql.
-    .select("id, user_id, name, division, season_1_identity_basis, balance, parked_at, comeback_season_id, comeback_board_season_number")
+    .select(includeBoardSeason
+      ? "id, user_id, name, division, season_1_identity_basis, balance, parked_at, comeback_season_id, comeback_board_season_number"
+      : "id, user_id, name, division, season_1_identity_basis, balance, parked_at, comeback_season_id")
     .eq("is_ai", false)
     .eq("is_bank", false)
     .eq("is_frozen", false)
     .eq("is_test_account", false);
+  let { data: humanTeams, error: teamsError } = await loadHumanTeams(true);
+  if (isMissingBoardComebackColumn(teamsError)) {
+    ({ data: humanTeams, error: teamsError } = await loadHumanTeams(false));
+  }
   if (teamsError) throw teamsError;
   if (!humanTeams?.length) return summary;
 

@@ -60,6 +60,7 @@
 // over for baseline-boards — season-end-evalueringen (economyEngine.js) fortsætter
 // uændret med at skippe is_baseline=true.
 
+import { isMissingBoardComebackColumn } from "./boardComebackSchema.js";
 import {
   computeWeekendSatisfactionUpdate,
   computeBaselineWeekendUpdate,
@@ -259,20 +260,26 @@ export async function processBoardWeekendFinalization({
     });
 
   // 1. Rigtige human-hold (match-UI-filter: ikke-AI/bank/test/frosne).
-  const humanTeams = await withPaginationErrorLabel(
-    fetchAllRows(() => supabase
+  const loadHumanTeams = (/** @type {boolean} */ includeBoardSeason) => fetchAllRows(() => supabase
       .from("teams")
       // #2521 · `balance` er tilføjet til selectet: baseline-boards' økonomi-signal
       // (positiv saldo, ingen nødlån) i computeBaselineWeekendUpdate.
       // #5902 · `parked_at` SKAL med: isParkedTeam læser et manglende felt som
       // "ikke parkeret", så uden kolonnen ville filteret nedenfor åbne igen.
       // schema-columns-ok: comeback_board_season_number is added by 2026-11-24-8100-board-comeback.sql.
-      .select("id, user_id, name, division, sponsor_income, balance, season_1_identity_basis, team_dna_key, created_at, parked_at, comeback_season_id, comeback_board_season_number")
+      .select(includeBoardSeason
+        ? "id, user_id, name, division, sponsor_income, balance, season_1_identity_basis, team_dna_key, created_at, parked_at, comeback_season_id, comeback_board_season_number"
+        : "id, user_id, name, division, sponsor_income, balance, season_1_identity_basis, team_dna_key, created_at, parked_at, comeback_season_id")
       .eq("is_ai", false)
       .eq("is_bank", false)
       .eq("is_frozen", false)
       .eq("is_test_account", false)
-      .order("id", { ascending: true })),
+      .order("id", { ascending: true }));
+  const humanTeams = await withPaginationErrorLabel(
+    loadHumanTeams(true).catch((error) => {
+      if (!isMissingBoardComebackColumn(error)) throw error;
+      return loadHumanTeams(false);
+    }),
     "teams"
   );
   // #5902 · Parkerede hold sorteres fra HER, før alt andet: de får hverken

@@ -18,3 +18,8 @@ test("a season-change comeback uses the receiving season, including before its r
   assert.equal(boardJudgmentHold(team, "S6", 6), "comeback_season");
   assert.equal(boardJudgmentHold(team, "S7", 7), null);
 });
+
+test("the legacy season id can identify a later comeback during rollout", () => {
+  const team = { parked_at: null, comeback_board_season_number: 4, comeback_season_id: "S6" };
+  assert.equal(boardJudgmentHold(team, "S6", 6), "comeback_season");
+});

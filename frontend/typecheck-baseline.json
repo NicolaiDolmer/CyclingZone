@@ -256,7 +256,7 @@
   "../backend/lib/managerParking.js": {
     "TS18047": 3,
     "TS2322": 1,
-    "TS2339": 35,
+    "TS2339": 33,
     "TS2345": 2,
     "TS2739": 1
   },
