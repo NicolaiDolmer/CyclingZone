@@ -41,6 +41,7 @@ import { markRidersOwnPlan, syncGroupsToSquadProgram, isMissingGroupsTable } fro
 import { isTrainingRotationEnabled } from "../lib/trainingRotationFlag.js"; // #8548
 import { rotationWriteInput, rotationView } from "../lib/trainingRotationInput.js"; // #8548
 import { applyRotationWrite, rotationRevFloor } from "../lib/trainingRotation.js"; // #8548
+import { isWeekPriorityEditorEnabled, loadWeekPrioritySettled, setWeekBlockDay, weekBlockDayWrite } from "../lib/trainingWeekEditor.js";
 
 const PASS = (_req, _res, next) => next();
 
@@ -201,6 +202,15 @@ export function createTrainingProgramsRouter({
         const [riders, plansByRider] = await Promise.all([ownRiders(req.team.id), teamPlans(req.team.id)]);
         seeds = seedsFor(riders, rows, plansByRider, await seedCatalogV3(req, riders, plansByRider), await seedEffortLevels(riders, plansByRider));
       }
+      const weekPriorityEnabled = cellsEnabled && await isWeekPriorityEditorEnabled(supabase, await isViewerBetaTester(req));
+      let priorityPayload = {};
+      if (weekPriorityEnabled) {
+        // pagination-safe: one team roster and its default week row.
+        const { data, error } = await supabase.from("training_week_plans").select("rider_id")
+          .eq("team_id", req.team.id).eq("plan_kind", "week");
+        if (error) throw new Error(error.message);
+        priorityPayload = { weekPriorityEnabled, weekPriorityPlans: (data ?? []).map((row) => row.rider_id).filter(Boolean) };
+      }
       res.json({
         enabled: catalogOn,
         cellsEnabled,
@@ -209,6 +219,7 @@ export function createTrainingProgramsRouter({
         assigned,
         seeds,
         ...(await rotationPayload(req)),
+        ...priorityPayload,
       });
     } catch (err) {
       captureExceptionFn(err);
@@ -293,6 +304,8 @@ export function createTrainingProgramsRouter({
       else if (riderIds.includes(target)) targets = [target];
       else return res.status(403).json({ error: "not_own_rider" });
       if (targets.length === 0) return res.json({ ok: true, applied: 0 });
+      const markWeek = req.body?.planKind === "week" && target !== "squad"
+        && (await rotationOn(req) || await isWeekPriorityEditorEnabled(supabase, await isViewerBetaTester(req)));
       // #6000: en rytter-tildeling er rytterens egen plan (vinder over gruppen). Foer skrivningen.
       if (target !== "squad") await markRidersOwnPlan(supabase, teamId, targets);
 
@@ -308,8 +321,9 @@ export function createTrainingProgramsRouter({
         // En NY kopi pr. rytter — ingen delte objekter mellem raekkerne.
         const days = programWeekDaysFor(program.key);
         const existingId = existingByRider.get(riderId);
-        if (existingId) updates.push({ id: existingId, patch: { days, program_key: program.key, updated_at: now } });
-        else inserts.push({ team_id: teamId, rider_id: riderId, days, program_key: program.key, updated_at: now });
+        const patch = { days, program_key: program.key, updated_at: now, ...(markWeek ? { plan_kind: "week" } : {}) };
+        if (existingId) updates.push({ id: existingId, patch });
+        else inserts.push({ team_id: teamId, rider_id: riderId, ...patch });
       }
       // Ikke atomisk (PostgREST kan ikke upserte paa det partielle unikke index,
       // se PUT /training/week-plan/:riderId i api.js). Hver skrivning er
@@ -352,6 +366,14 @@ export function createTrainingProgramsRouter({
     }
     try {
       if (!(await cellsOn(req))) return res.status(404).json({ error: "not_found" });
+      const weekEnabled = req.body?.planKind === "week" || req.body?.weekBlock !== undefined
+        ? await isWeekPriorityEditorEnabled(supabase, await isViewerBetaTester(req))
+        : false;
+      const blockWrite = await weekBlockDayWrite(supabase, req.body ?? {}, {
+        enabled: weekEnabled, v3Only: isV3OnlySession,
+        allowsV3: () => isTrainingCatalogV3EnabledForViewer(supabase, () => isViewerBetaTester(req)),
+      });
+      if (!blockWrite.ok) return res.status(blockWrite.status).json({ error: blockWrite.reason });
       // #7947: indsatsen gemmes kun med kontakten on; ikke sendt = intet opslag, som i dag.
       const effortWrite = await effortForWrite(supabase, req.body?.effort);
       if (!effortWrite.ok) return res.status(400).json({ error: effortWrite.reason });
@@ -374,13 +396,17 @@ export function createTrainingProgramsRouter({
           const plans = await teamPlans(teamId);
           return seedsFor([rider], rows, plans, await seedCatalogV3(req, [rider], plans), await seedEffortLevels([rider], plans))[riderId];
         })();
-      const days = setProgramCell(current, { weekday, slotIndex, session, effort: effortWrite.effort });
+      const days = blockWrite.block
+        ? setWeekBlockDay(current, weekday, blockWrite.block)
+        : setProgramCell(current, { weekday, slotIndex, session, effort: effortWrite.effort });
       if (!days) return res.status(400).json({ error: "invalid_cell" });
       await markRidersOwnPlan(supabase, teamId, [riderId]); // #6000: egen plan vinder over gruppen. Foer skrivningen.
       const now = clock().toISOString();
+      const markWeek = blockWrite.block || (req.body?.planKind === "week" && (weekEnabled || await rotationOn(req)));
+      const patch = { days, updated_at: now, ...(markWeek ? { plan_kind: "week" } : {}) };
       const { error } = row
-        ? await updateRow(supabase, row.id, { days, updated_at: now })
-        : await insertRows(supabase, [{ team_id: teamId, rider_id: riderId, days, updated_at: now }]);
+        ? await updateRow(supabase, row.id, patch)
+        : await insertRows(supabase, [{ team_id: teamId, rider_id: riderId, ...patch }]);
       if (error) throw new Error(error.message);
       res.json({ ok: true, riderId, days });
     } catch (err) {
@@ -443,6 +469,9 @@ export function createTrainingProgramsRouter({
       if (!(await cellsOn(req))) return res.json({ available: false, reason: "disabled", riders: {} });
       const seasonId = await activeSeasonId();
       const forecast = await loadTeamFatigueForecast({ supabase, team: req.team, seasonId, now: clock() });
+      if (forecast.available && await isWeekPriorityEditorEnabled(supabase, await isViewerBetaTester(req))) {
+        forecast.weekPrioritySettled = await loadWeekPrioritySettled({ supabase, teamId: req.team.id, seasonId, tickDate: forecast.tickDate });
+      }
       res.json(forecast);
     } catch (err) {
       captureExceptionFn(err);

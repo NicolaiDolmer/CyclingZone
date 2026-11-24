@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { assignDayFields, lockSlotOf } from "./trainingWeekBlocks.js";
+import { assignDayFields, lockSlotOf, PROGRAM_SLOTS as BLOCK_SLOTS } from "./trainingWeekBlocks.js";
 import { PROGRAM_SLOTS, sessionForDayEntry } from "./trainingPrograms.js";
 import { effortForDayEntry } from "./trainingEffortLevels.js";
 
@@ -236,4 +236,11 @@ test("settled som almindeligt objekt (efter JSON) giver samme svar som Map", () 
   const asMap = assignDayFields({ entry, raceFields: [1], settled: new Map([[0, 0], [1, null], [2, 1]]) });
   const asObject = assignDayFields({ entry, raceFields: [1], settled: JSON.parse(JSON.stringify({ 0: 0, 1: null, 2: 1 })) });
   assert.deepEqual(asObject, asMap);
+});
+
+test("trainingWeekBlocks er ren og har samme antal felter som trainingPrograms (frontend-bygget, 24/11)", async () => {
+  assert.equal(BLOCK_SLOTS, PROGRAM_SLOTS);
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("./trainingWeekBlocks.js", import.meta.url), "utf8");
+  assert.doesNotMatch(src, /^import /m, "ingen imports: filen bygges også ind i frontend (Program R5)");
 });

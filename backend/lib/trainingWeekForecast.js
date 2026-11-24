@@ -15,7 +15,9 @@
 // Et løb i divisionen, som rytteren ikke er udtaget til, er ikke hans løbsfelt (UGE-4).
 // Et løb, holdet ingen har i endnu, er en løbsdag med auto-udtagelse (UGE-4b).
 import { gameDaySpansByDivision, loadPriorMaxGameDayByDivision } from "./trainingDayCloseTrigger.js";
-import { catalogV3GateForTeam, forecastBindingsFromEntryDays, loadTeamFatigueForecast, FORECAST_SLOTS } from "./trainingWeekPlanForecast.js";
+import {
+  catalogV3GateForTeam, forecastBindingsFromEntryDays, loadTeamFatigueForecast, releaseForecastNonStarters, FORECAST_SLOTS,
+} from "./trainingWeekPlanForecast.js";
 import { loadRaceExitGameDays } from "./trainingRaceDayTick.js";
 import { programForSession, programSlotForRaceDay } from "./trainingPrograms.js";
 import { rotationPassAt } from "./trainingRotation.js";
@@ -247,7 +249,11 @@ export async function loadTeamWeekForecast({ supabase, team, seasonId, now = new
       ? rows(supabase.from("rider_condition").select("rider_id, injury_end_game_day, injury_season_id, injured_until").in("rider_id", riderIds), "week injuries")
       : Promise.resolve([]),
   ]);
-  const entryDays = entryChunks.flat();
+  const rotationStarts = new Map(Object.entries(today.riders ?? {})
+    .filter(([, result]) => Number.isInteger(result.nextRotationIndex))
+    .map(([id, result]) => [id, result.nextRotationIndex]));
+  const boundEntryDays = entryChunks.flat();
+  const entryDays = rotationStarts.size ? await releaseForecastNonStarters(supabase, boundEntryDays, rotationStarts) : boundEntryDays;
   const conditionByRider = new Map(conditions.map((row) => [row.rider_id, row]));
   const boundRaceIds = [...new Set(entryDays.map((row) => row.race_id))];
   const [schedule, exits] = boundRaceIds.length
@@ -263,7 +269,8 @@ export async function loadTeamWeekForecast({ supabase, team, seasonId, now = new
   // Profilerne bruges ikke uden træthed (K-7); en tom liste giver samme bindinger.
   const { plannedStages, boundRiderIdsByGameDay } = forecastBindingsFromEntryDays({ entryDays, schedule, profiles: [], exits });
 
-  const raceIdByEntry = new Map(entryDays.map((row) => [`${row.rider_id}:${row.game_day}`, row.race_id]));
+  // A known non-starter must not come back through the fallback to race_entries.
+  const raceIdByEntry = new Map(boundEntryDays.map((row) => [`${row.rider_id}:${row.game_day}`, row.race_id]));
   // UGE-4b: holdets tilmeldinger til ugens løb (manuelle og assistentens), så et auto-løb
   // tæller med, og et løb uden tilmeldinger kan vises som auto-udtagelse.
   const weekRaceIds = [...new Set(stages.map((row) => row.race_id))];
@@ -283,9 +290,6 @@ export async function loadTeamWeekForecast({ supabase, team, seasonId, now = new
       return data;
     })
     : new Map();
-  const rotationStarts = new Map(Object.entries(today.riders ?? {})
-    .filter(([, result]) => Number.isInteger(result.nextRotationIndex))
-    .map(([id, result]) => [id, result.nextRotationIndex]));
   const rotations = rotationStarts.size ? await loadRotationPlans({
     supabase, teamId: team.id, riderIds: [...rotationStarts.keys()], plans: [],
     // schema-columns-ok: plan_kind was added by the merged #8577 rotation migration.

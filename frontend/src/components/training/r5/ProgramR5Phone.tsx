@@ -52,10 +52,13 @@ type Shared = {
 
 export default function ProgramR5Phone({
   name, subtitle, typeLabel, chips, onChip, renderLibrary, limitEl, summary, hints, footer, showPlan,
-  saveLabel, saveDisabled, onSave, focusWeekday = null, ...shared
+  saveLabel, saveDisabled, onSave, kindSelector = null, rotationEditor = null, weekBlockEditor = null, focusWeekday = null, ...shared
 }: Shared & {
   // #8580: en ugedag, der skal vælges og foldes ud (fra dagsvælgerens "Ret <ugedag> i Program").
   focusWeekday?: { weekday: string; n: number } | null;
+  kindSelector?: ReactNode;
+  rotationEditor?: ReactNode;
+  weekBlockEditor?: ReactNode;
   name: string;
   subtitle: string;
   showPlan: boolean;
@@ -133,16 +136,19 @@ export default function ProgramR5Phone({
       </div>}
 
       {hints}
-
-      <div className="flex items-center justify-between gap-3">
+      {kindSelector}
+      {(summary || !rotationEditor) && <div className="flex items-center justify-between gap-3">
         <div className="min-w-0 text-3xs leading-snug text-cz-2">{summary}</div>
-        <Segmented label={tR5("programR5.phone.viewLabel")} value={view} onChange={setView}
-          options={PHONE_VIEWS.map((v) => ({ value: v, label: tR5(v === "day" ? "programR5.phone.viewDay" : "programR5.phone.viewWeek") }))} />
-      </div>
+        {!rotationEditor && <Segmented label={tR5("programR5.phone.viewLabel")} value={view} onChange={setView}
+          options={PHONE_VIEWS.map((v) => ({ value: v, label: tR5(v === "day" ? "programR5.phone.viewDay" : "programR5.phone.viewWeek") }))} />}
+      </div>}
 
+      {rotationEditor ?? <>
       {view === "day"
         ? <DayView {...shared} day={day} onDay={setDay} />
         : <WeekList {...shared} open={openDay} onOpen={setOpenDay} />}
+      {weekBlockEditor}
+      </>}
       </>}
 
       {/* Graensen under ugen, saa felterne faar pladsen oeverst paa en smal skaerm. */}
@@ -256,6 +262,9 @@ function DayBody({
               </li>
             );
           }
+          if (cell.kind === "rest") {
+            return <li key={slot} className={`${base} text-cz-2`} data-testid="program-r5-week-rest">{num}{sessionLabel("rest")}</li>;
+          }
           if (cell.kind === "ran") {
             return (
               <li key={slot} className={`${base} text-cz-3`} title={t("settleAfterStage.ranTitle")}>
@@ -343,6 +352,7 @@ function WeekList(props: Shared & { open: number; onOpen: (d: number) => void })
                       <span className="inline-flex items-center gap-1 font-semibold text-cz-1"><FlagIcon size={11} aria-hidden="true" />{tR5("programR5.race")}</span>
                     )}
                     {c.kind === "ran" && <span className="text-cz-3">{t("settleAfterStage.ran")}</span>}
+                    {c.kind === "rest" && <span className="text-cz-2">{sessionLabel("rest")}</span>}
                     {c.kind === "session" && (
                       <span className={c.session ? "text-cz-1" : "text-cz-3"}>{c.session ? sessionLabel(c.session) : "–"}</span>
                     )}

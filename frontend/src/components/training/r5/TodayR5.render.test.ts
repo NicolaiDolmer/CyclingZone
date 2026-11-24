@@ -151,3 +151,19 @@ test("engelsk: de samme ord fuldt ud", async () => {
   assert.deepEqual(words, ["Rest", "Easy", "Medium", "Hard"]);
   assert.match(html, />High injury risk</);
 });
+
+test("I dag shows the forecast rotation session without the pass number", async () => {
+  const [row] = rowsOf(await render("en", {
+    effortLevels: true,
+    planFor: (id: string) => id === "a" ? { focus: "sprint", intensity: "easy" } : null,
+    forecast: {
+      available: true, riders: { a: { fatigue: 30, band: "ok", rotationSlots: [
+        { session: "endurance", intensity: "hard", index: 6, length: 10 },
+      ] } },
+    },
+  }));
+  const training = row.slice(row.indexOf('data-testid="r5-row-training"'), row.indexOf('data-testid="r5-row-effort"'));
+  assert.match(training, /<option[^>]*selected=""[^>]*>Long ride<\/option>/);
+  assert.doesNotMatch(row, /7\/10/);
+  assert.match(row, /data-testid="r5-hard-risk"/);
+});

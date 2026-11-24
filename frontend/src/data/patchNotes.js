@@ -1,5 +1,73 @@
 export const PATCHES = [
 {
+  "version": "7.506",
+  "date": "2026-11-24",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "flag": "training_rotation",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "Build a training rotation",
+        "body": "Put your training passes in order and follow each rider’s position in Program. Rotation waits during races, injury and rest from the fatigue limit."
+      },
+      "da": {
+        "title": "Byg en træningsrotation",
+        "body": "Sæt træningspassene i rækkefølge, og følg hver rytters plads under Program. Rotationen venter ved løb, skade og hvile fra træthedsgrænsen."
+      },
+      "refs": [
+        8548
+      ]
+    },
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "flag": "training_week_priority",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "Set training priorities for race days",
+        "body": "Order your passes in Week blocks and lock one pass per day. Races took shows which passes the rider missed."
+      },
+      "da": {
+        "title": "Prioritér træningen på løbsdage",
+        "body": "Sæt passene i rækkefølge i Ugeblokke, og lås ét pas pr. dag. Løb tog viser, hvilke pas rytteren gik glip af."
+      },
+      "refs": [
+        8549
+      ]
+    }
+  ]
+},
+{
+  "version": "7.505",
+  "date": "2026-11-24",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Scouting",
+      "area": "development",
+      "en": {
+        "title": "The projection per rider type is back on the scouting tab",
+        "body": "I took it away by mistake when the potential became one number. The scouting tab now shows the projection per rider type again, right under the potential. Each type shows one number, worked out like the projection on the card: where he ends up at his peak if he keeps his current pace. The bar shows his level today with a mark at the projection. For your own riders you see every type, and so do you for riders you have scouted on other teams. Riders you have not scouted still show no list."
+      },
+      "da": {
+        "title": "Prognosen pr. ryttertype er tilbage på scouting-fanen",
+        "body": "Jeg fjernede den ved en fejl, da potentialet blev ét tal. Scouting-fanen viser nu igen prognosen pr. ryttertype lige under potentialet. Hver type viser ét tal, regnet som prognosen på kortet: hvor han ender ved toppen, hvis han fortsætter i sin nuværende fart. Baren viser niveauet i dag med et mærke ved prognosen. På dine egne ryttere ser du alle typer, og det gør du også på ryttere, du har scoutet på andre hold. Ryttere, du ikke har scoutet, viser stadig ingen liste."
+      },
+      "refs": [
+        6110
+      ]
+    }
+  ]
+},
+{
   "version": "7.504",
   "date": "2026-11-23",
   "changes": [

@@ -21,7 +21,9 @@ test('validateGo: issue, område og citat valideres', () => {
   assert.throws(() => validateGo({ issue: 1, area: 'a b', quote: 'Ja' }), /--area/);
   assert.throws(() => validateGo({ issue: 1, area: 'a', quote: '  ' }), /--quote/);
   assert.throws(() => validateGo({ issue: 1, area: 'a', quote: 'sagde "ja"' }), /anførselstegn/);
-  assert.throws(() => validateGo({ issue: 1, area: 'a', quote: 'ja -->' }), /HTML/);
+  assert.throws(() => validateGo({ issue: 1, area: 'a', quote: 'ja -->' }), /< eller >/);
+  assert.throws(() => validateGo({ issue: 1, area: 'a', quote: 'ja --!> x' }), /< eller >/, 'CodeQL #397: også --!>');
+  assert.throws(() => validateGo({ issue: 1, area: 'a', quote: '<b>ja</b>' }), /< eller >/);
   assert.throws(() => validateGo({ issue: 1, area: 'a', quote: 'Ja, brug `sponsor`' }), /markdown-kode/, 'Codex P2: citatet skal kunne læses tilbage uændret');
 });
 
