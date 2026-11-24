@@ -21,6 +21,7 @@ export default function VisionSlotSection({ visionSlot, choice, onChoose }) {
           <p className="font-data text-2xs uppercase tracking-[.06em] tabular-nums text-cz-3">
             {t("boardroom.meeting.visionSlot.targetSeason", { season: visionSlot.target_season_number })}
           </p>
+          <p className="mt-1 text-xs text-cz-2">{t("boardroom.meeting.visionSlot.confidenceEffect")}</p>
         </div>
         <div className="flex shrink-0 gap-[6px]">
           <button

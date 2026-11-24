@@ -34,7 +34,7 @@ Dette afsnit afløser ældre STATUS-påstande nedenfor, ikke de uændrede mekani
 | Del | Godkendt slutbillede for det eksisterende rework | Kilde/bevis |
 |---|---|---|
 | Tre parallelle planer og satisfaction-tal | Erstattes af én relation med confidence, ét årligt mandat og langsigtede visions-milepæle | Spec 7/8 §3; `boardMandate.js`, `boardMandateEngine.js` |
-| Managerens forhandling | Ét årsmøde med fokusvalg, Easier/Keep/Stretch, anmodning og underskrift; mid-season/ekstraordinær samtale består som retning | Spec §3.2-3.3 (layout: inde i Layout med venstremenu, jf. slice 09c §4.7, #5848); `boardMandateMeeting.js`; `annualMeeting/AnnualMeetingPage.jsx`; PR #4656/#4661 |
+| Managerens forhandling | Ét årsmøde med fokusvalg, Easier/Keep/Harder med forklaring af tillid på tværs af mandatet, anmodning og underskrift; mid-season/ekstraordinær samtale består som retning | Spec §3.2-3.3 (layout: inde i Layout med venstremenu, jf. slice 09c §4.7, #5848); `boardMandateMeeting.js`; `annualMeeting/AnnualMeetingPage.jsx`; PR #4656/#4661 |
 | Navngivne medlemmer og mål-ejerskab | Bevares og får stemme, kvitteringer, referater og medlemsvisning | Addendum 1/9 A3; `boardVoice.js`, `BoardCard.jsx`; PR #4558 |
 | Langsigtede mål | Bliver visions-milepæle med oprindelige frister; tidligt opnået milepæl fejres straks, nyt slot-forslag ved næste årsmøde | Addendum 1/9 A7 afløser spec'ens venten til målsæsonen for tidlig opfyldelse |
 | Sponsorsamtale | Flyttet til egen Sponsors-side; den økonomiske kobling til bestyrelsens tillid består | §5; merged PR #4843; `SponsorsPage.jsx`, `App.jsx` |
@@ -45,6 +45,8 @@ Dette afsnit afløser ældre STATUS-påstande nedenfor, ikke de uændrede mekani
 | Gammel BoardPage | Fallback under beta/rollback; planlagt slettet efter stabil fuld aktivering | `BoardroomRoute.jsx`; [#4858](https://github.com/NicolaiDolmer/CyclingZone/issues/4858) |
 
 ### 0.2 Hvad er faktisk leveret og aktiveret?
+
+**Årsmødets målvalg (#5850):** Keep og Harder kan have forskellige historiske belønningsfelter og alligevel lande på samme tillid. Evalueringen beregner tillid fra den samlede præstation på mandatet. UI viser derfor ikke felterne som udbetalt tillid pr. mål. En accepteret visionsmilepæl behandles særskilt ved sæsonafslutning med en belønning ved opnåelse eller et engangstab ved manglende opnåelse.
 
 **Mandatets livscyklus pr. sæson (#6773, 17/10):**
 - Et hold har højst ét gældende mandat: det `active` mandat for den **aktive sæson**. Boardroom, bonusmålet og årsmødet vælger altid den aktive sæsons mandat (falder tilbage til nyeste sæson, hvis der ingen aktiv sæson er).

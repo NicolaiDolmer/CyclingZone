@@ -1817,7 +1817,7 @@
       "achievedTarget": "Achieved {achieved} / target {target}",
       "expandAll": "Expand all",
       "collapseAll": "Collapse all",
-      "stretch": "Stretch",
+      "stretch": "Harder",
       "discussTarget": "Discuss target",
       "discussTargetDisabledHint": "Discussing targets opens at the annual meeting.",
       "receipt": {
@@ -1945,20 +1945,21 @@
       "mandate": {
         "title": "Proposed mandate · focus: {focus}",
         "meta": "{count, plural, one {# goal} other {# goals}} · {used} of {allowed} adjustments used",
-        "reward": "Reward +{bonus} confidence · miss -{penalty}",
-        "rewardWas": "Reward +{bonus} confidence · miss -{penalty} · was {was}",
+        "previousTarget": "Previous target: {target}",
+        "confidenceEffect": "The board updates your confidence based on how you do across the whole mandate.",
         "choice": {
           "easier": "Easier",
           "keep": "Keep",
-          "stretch": "Stretch"
+          "stretch": "Harder"
         },
         "choiceDisabledEasier": "This goal can't be eased further.",
-        "choiceDisabledStretch": "This goal can't be stretched further.",
+        "choiceDisabledStretch": "This goal can't be made harder.",
         "choiceDisabledBudget": "You've used all your adjustments for this meeting.",
         "reactionAttribution": "{name}, who owns this goal"
       },
       "visionSlot": {
         "title": "The board proposes a new milestone",
+        "confidenceEffect": "Reach it by the end of the target season to gain confidence. Miss it and you lose confidence once.",
         "targetSeason": "Target: season {season}",
         "accept": "Accept",
         "decline": "Decline"

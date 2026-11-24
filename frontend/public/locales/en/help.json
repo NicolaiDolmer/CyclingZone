@@ -153,9 +153,9 @@
         "steps": [
           "A gold button appears on the Board page when the meeting is ready. Before that there is no button, not a greyed-out one.",
           "You pick a focus first. Changing focus makes the board rebuild its proposal around it, and any adjustments you had already made start over.",
-          "The proposal is 3 to 5 targets. Each one can be kept as it stands, made easier, or stretched. A stretched target pays more confidence if you make it and costs more if you miss it.",
+          "The board proposes 3 to 5 goals. Choose Easier, Keep or Harder. Harder raises the target. The board updates your confidence based on how you do across the whole mandate.",
           "You get a set number of adjustments per meeting, shown at the top. A board that is confident in you grants more of them and stretches further in its counter-offers.",
-          "The board may propose a new milestone for the club vision, with the season it should be reached in. Accept it or decline it.",
+          "The board may propose a new milestone for the club vision. Accept it and you gain confidence if you reach it by the end of the target season. If you miss it, you lose confidence once. You can also decline.",
           "You get one request per meeting. A refusal always comes back with a counter-offer, never a flat no.",
           "Sign, and the mandate is active for the season. Until it is signed it stays a proposal. After you sign, the board does not change it. The only thing that can be added is a bonus offer, and only if you accept it yourself.",
           "If you never answer, the board signs its own proposal for you when the deadline shown at the top of the meeting runs out. You keep the mandate, you just did not shape it."

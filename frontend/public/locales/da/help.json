@@ -153,9 +153,9 @@
         "steps": [
           "En guldknap dukker op på Bestyrelses-siden, når mødet er klar. Før det er der ingen knap, ikke en gråtonet en.",
           "Du vælger et fokus først. Skifter du fokus, bygger bestyrelsen sit forslag op omkring det på ny, og de justeringer du allerede havde lavet starter forfra.",
-          "Forslaget er 3 til 5 mål. Hvert mål kan beholdes som det står, gøres lettere eller strækkes. Et strakt mål giver mere tillid, hvis du når det, og koster mere, hvis du misser.",
+          "Bestyrelsen foreslår 3 til 5 mål. Vælg Lettere, Behold eller Sværere. Sværere hæver målet. Bestyrelsen justerer sin tillid efter, hvordan du klarer hele mandatet.",
           "Du har et fast antal justeringer pr. møde, vist øverst. En bestyrelse med tillid til dig giver flere af dem og strækker sig længere i sine modtilbud.",
-          "Bestyrelsen kan foreslå en ny milepæl til klubvisionen, med den sæson den skal nås i. Accepter den eller afvis den.",
+          "Bestyrelsen kan foreslå en ny milepæl til klubvisionen. Accepterer du den, stiger tilliden, hvis du når den inden udgangen af målsæsonen. Misser du den, falder tilliden én gang. Du kan også afvise.",
           "Du har én anmodning pr. møde. Et afslag kommer altid tilbage med et modtilbud, aldrig et rent nej.",
           "Underskriv, og mandatet er aktivt for sæsonen. Indtil det er underskrevet, står det som et forslag. Efter underskrift ændrer bestyrelsen det ikke. Det eneste der kan komme til, er et bonustilbud, og kun hvis du selv siger ja.",
           "Svarer du aldrig, underskriver bestyrelsen sit eget forslag for dig, når fristen øverst på mødet løber ud. Du får mandatet, du har bare ikke formet det."

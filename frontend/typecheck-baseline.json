@@ -2676,7 +2676,6 @@
     "TS2345": 3
   },
   "src/pages/annualMeeting/MandateGoalRow.jsx": {
-    "TS2322": 1,
     "TS2741": 2
   },
   "src/pages/annualMeeting/RequestSection.jsx": {

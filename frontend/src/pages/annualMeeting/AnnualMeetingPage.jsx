@@ -195,6 +195,7 @@ export default function AnnualMeetingPage({ initialMeeting, confidenceValue }) {
             title={t("boardroom.meeting.mandate.title", { focus: t(`focus.${mandate.focus}`) })}
             meta={t("boardroom.meeting.mandate.meta", { count: goals.length, used: usedCount, allowed })}
           />
+          <p className="mb-3 text-xs text-cz-2">{t("boardroom.meeting.mandate.confidenceEffect")}</p>
           <div>
             {goals.map((goal) => {
               const choice = choices[goal.goalKey] || "keep";
