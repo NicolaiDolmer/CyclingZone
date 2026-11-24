@@ -1,5 +1,49 @@
 export const PATCHES = [
 {
+  "version": "7.506",
+  "date": "2026-11-24",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "flag": "training_rotation",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "Build a training rotation",
+        "body": "Put your training passes in order and follow each rider’s position in Program. Rotation waits during races, injury and rest from the fatigue limit."
+      },
+      "da": {
+        "title": "Byg en træningsrotation",
+        "body": "Sæt træningspassene i rækkefølge, og følg hver rytters plads under Program. Rotationen venter ved løb, skade og hvile fra træthedsgrænsen."
+      },
+      "refs": [
+        8548
+      ]
+    },
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "flag": "training_week_priority",
+      "topic": "Training",
+      "area": "training",
+      "en": {
+        "title": "Set training priorities for race days",
+        "body": "Order your passes in Week blocks and lock one pass per day. Races took shows which passes the rider missed."
+      },
+      "da": {
+        "title": "Prioritér træningen på løbsdage",
+        "body": "Sæt passene i rækkefølge i Ugeblokke, og lås ét pas pr. dag. Løb tog viser, hvilke pas rytteren gik glip af."
+      },
+      "refs": [
+        8549
+      ]
+    }
+  ]
+},
+{
   "version": "7.505",
   "date": "2026-11-24",
   "changes": [
