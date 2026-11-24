@@ -23,6 +23,7 @@ import { evaluateFlagStage } from "./featureStage.js";
 import { isAutoAcceptActorEnabled2176, isAutoAcceptPairEnabled2176, isMarketTransportEnabled2176, readMarketFlag2176, readMarketSpendIssue2176 } from "./marketBeta2176.ts";
 import { calculateAuctionEnd, getAuctionSeasonBoundaryIssue } from "./auctionEngine.js";
 import { getTeamMarketState, SELLER_SQUAD_FLOOR, sellerFloorRiskIds, calculateRiderMarketValue } from "./marketUtils.js";
+import { CLUB_RIDER_CAP } from "./squads.js";
 import { readTransferPriceBandConfig, getPriceBandViolation } from "./transferPriceBand.js";
 import { buildAtRiskErrorParams, fetchAtRiskRiders } from "./squadRiskGuard.js";
 import { assertSigningAllowed } from "./boardConsequences.js";
@@ -381,6 +382,9 @@ export async function claimSwapUnderTeamLock(supabase, {
   deferRegistration, now, offeredPatch, requestedPatch, marketBeta = false, dealId = null, cash = 0,
   payment = /** @type {import('./marketBeta2176.ts').MarketSwapPayment2176 | null} */ (null),
 }) {
+  const capacityIssue = (error) => error?.message === "club_roster_full"
+    ? { code: "buyer_squad_full", teamId: error.details, maxRiders: CLUB_RIDER_CAP }
+    : null;
   if (marketBeta) {
     try {
       const result = await rpc(supabase, "auto_accept_claim_swap_paid", {
@@ -395,17 +399,23 @@ export async function claimSwapUnderTeamLock(supabase, {
       if (result?.status === "swap_squad_full") return { issue: { code: "buyer_squad_full", teamId: result.team_id, maxRiders: result.max_riders } };
       if (result?.status !== "legacy") throw new Error(`auto_accept_claim_swap_paid: unexpected status ${result?.status}`);
     } catch (error) {
+      const issue = capacityIssue(error);
+      if (issue) return { issue };
       if (readMarketSpendIssue2176(error)) return { issue: { code: cash > 0 ? "proposing_insufficient_balance" : "receiving_insufficient_balance" } };
       throw error;
     }
   }
-  if (!(await isAutoAcceptEnabled(supabase))) return null;
   const result = await rpc(supabase, "auto_accept_claim_swap", {
     p_offered_rider_id: offeredRiderId, p_requested_rider_id: requestedRiderId,
     p_proposing_team_id: proposingTeamId, p_receiving_team_id: receivingTeamId,
     p_defer_registration: deferRegistration, p_now: now,
     p_offered_patch: offeredPatch, p_requested_patch: requestedPatch,
+  }).catch((error) => {
+    const issue = capacityIssue(error);
+    if (issue) return { issue };
+    throw error;
   });
+  if (result?.issue) return { issue: result.issue };
   switch (result?.status) {
     case "claimed": return { data: { id: result.offered_rider_id } };
     case "rider_state_changed":

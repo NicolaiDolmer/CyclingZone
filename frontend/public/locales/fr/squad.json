@@ -14,7 +14,7 @@
     },
     "seniorsStayHint": "Les coureurs de ton effectif senior restent seniors tant que tu ne les déplaces pas. Ouvre un coureur et utilise Changer d'effectif.",
     "stats": {
-      "riders": "Coureurs",
+      "riders": "Coureurs, limite temporaire",
       "squadValue": "Valeur de l'effectif"
     }
   },

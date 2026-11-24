@@ -656,6 +656,8 @@ Tændt:
 
 ## 9. Trup-lofter
 
+Fra sæsonskiftet 28/11 har hver trup 30 pladser og klubben højst 60 ryttere på tværs (#8034). Nye handler kræver plads under begge grænser. Intern flytning ændrer ikke klubtallet, men kræver plads i måltruppen. Automatisk oprykning kan overskride trupgrænsen uden at udløse sanktioner. Den gamle trupbøde og tvangssalgskørsel stopper fra sæson 6.
+
 | Regel | Værdi | Hvor låst | Fil |
 |---|---|---|---|
 | `MAX_SQUAD_SIZE` (senior, alle divisioner) | **30** | #838 | `marketUtils.js:9-15` |

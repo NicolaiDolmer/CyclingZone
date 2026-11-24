@@ -1,4 +1,6 @@
 {
+  "clubRoster": "Renners van de club",
+  "clubFull": "Je club heeft geen vrije plaatsen.",
   "title": "Academie",
   "subtitle": "Contracteer jong talent voor je U23-team en je juniorenteam, en volg wat je jeugdwerk oplevert.",
   "slotsU23": "U23 {used}/{max}",

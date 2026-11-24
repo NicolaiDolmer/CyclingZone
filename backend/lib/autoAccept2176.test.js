@@ -570,13 +570,13 @@ test("fejlteksten paa en listing naevner den rigtige aarsag", () => {
   assert.equal(getListingPriceUpdateErrorResponse(null), null);
 });
 
-test("bytte-claim: slukket laeser kun kontakten; taendt sender begge ben og oversaetter status", async () => {
+test("swap ownership is atomic regardless of the auto-accept flag", async () => {
   const args = { offeredRiderId: "R1", requestedRiderId: "R2", proposingTeamId: "A", receivingTeamId: "B",
     deferRegistration: true, now: "2026-11-09T10:00:00.000Z", offeredPatch: { squad: "senior" }, requestedPatch: {} };
-  const off = fakeSupabase({ flag: "off" });
-  assert.equal(await claimSwapUnderTeamLock(off, args), null);
-  assert.deepEqual(tablesTouched(off), ["app_config"]);
-  assert.equal(off.rpcCalls.length, 0);
+  const off = fakeSupabase({ flag: "off", rpc: () => ({ data: { status: "claimed", offered_rider_id: "R1" }, error: null }) });
+  assert.deepEqual(await claimSwapUnderTeamLock(off, args), { data: { id: "R1" } });
+  assert.deepEqual(tablesTouched(off), []);
+  assert.equal(off.rpcCalls[0].name, "auto_accept_claim_swap");
 
   const on = fakeSupabase({ flag: "on", rpc: () => ({ data: { status: "claimed", offered_rider_id: "R1" }, error: null }) });
   assert.deepEqual(await claimSwapUnderTeamLock(on, args), { data: { id: "R1" } });

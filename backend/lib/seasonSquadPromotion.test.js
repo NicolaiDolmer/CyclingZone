@@ -12,6 +12,11 @@ test("cutover advances owned youth riders to the age-eligible squad", () => {
     { id: "retired", team_id: "a", squad: "u23", birthdate: "2008-01-01", is_retired: true },
     { id: "unknown", team_id: "a", squad: "u23", birthdate: null },
   ];
+  for (const squad of ["u23", "senior"]) {
+    for (let i = 0; i < 30; i += 1) {
+      riders.push({ id: `${squad}-${i}`, team_id: "a", squad, birthdate: "2009-01-01" });
+    }
+  }
   assert.deepEqual(planSeasonSquadPromotions(riders, 6), [
     { rider_id: "junior", team_id: "a", from_squad: "junior", to_squad: "u23" },
     { rider_id: "u23", team_id: "a", from_squad: "u23", to_squad: "senior" },

@@ -72,10 +72,10 @@ test("#6155 academyLandingSquad: ukendt alder → ingen U23-mulighed; ukendt tru
   assert.equal(academyLandingSquad("junior", 17, { u23: null, junior: null }).squad, "junior");
 });
 
-test("squadCapRows: 'U23 5/12 · Junior 3/10' i fast rækkefølge", () => {
-  assert.deepEqual(squadCapRows({ u23: 5, junior: 10 }), [
+test("squadCapRows: each squad reports its current limit in stable order", () => {
+  assert.deepEqual(squadCapRows({ u23: 5, junior: SQUAD_CAPS.junior }), [
     { squad: "u23", used: 5, max: SQUAD_CAPS.u23, full: false },
-    { squad: "junior", used: 10, max: SQUAD_CAPS.junior, full: true },
+    { squad: "junior", used: SQUAD_CAPS.junior, max: SQUAD_CAPS.junior, full: true },
   ]);
   assert.deepEqual(squadCapRows(null).map((r) => r.used), [0, 0]);
 });

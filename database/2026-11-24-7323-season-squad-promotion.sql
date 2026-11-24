@@ -1,3 +1,5 @@
+SET lock_timeout = '3s';
+
 -- Refs #7323. The cutover supplies age-eligible moves from riderSeasonAge.js.
 -- Installation adds the RPC. The subsequent season cutover owns data changes.
 BEGIN;

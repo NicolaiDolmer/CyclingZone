@@ -49,6 +49,7 @@ export interface AcademyV2Props {
   roster: TalentRider[];
   seasonYear: number | null;
   squadCounts: Partial<SquadCounts>;
+  clubCapacity: { used: number; max: number } | null;
   academyProfile: AcademyProfile | null;
   saveProfile: (profile: ProfileValue) => Promise<SaveResult>;
   footer: ReactNode;
@@ -57,7 +58,7 @@ export interface AcademyV2Props {
 export default function AcademyV2(props: AcademyV2Props) {
   const {
     giftIntake, regularIntake, renderIntakeCard, intakePull, pullBusy, pullError, onPull,
-    roster, seasonYear, squadCounts, academyProfile, saveProfile, footer,
+    roster, seasonYear, squadCounts, clubCapacity, academyProfile, saveProfile, footer,
   } = props;
   const { t } = useTranslation(["academy", "academyV2"]);
   const pullOpen = intakePull.enabled && !intakePull.pulledThisWeek;
@@ -98,6 +99,7 @@ export default function AcademyV2(props: AcademyV2Props) {
         </>
       ),
     })),
+    ...(clubCapacity == null ? [] : [{ label: t("clubRoster"), value: t("squadLinks.count", clubCapacity) }]),
     { label: t("academyV2:v2.stats.talents"), value: ownTalents ? String(ownTalents.length) : "–" },
   ];
 

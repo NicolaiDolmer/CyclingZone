@@ -1719,7 +1719,7 @@
       },
       "academySize": {
         "title": "Grootte van de Academie (per team)",
-        "text": "Je Academie heeft twee teams, elk met een eigen limiet: maximaal {u23SquadCap} renners in je U23-team en maximaal {juniorSquadCap} in je juniorenteam. Een renner neemt een plek in op het team waar zijn leeftijd hem plaatst. Deze plekken staan volledig los van je seniorenlimiet van {squadCap}. Academierenners tellen nooit mee voor je seniorenlimiet en koersen nooit in seniorenkoersen; vanaf seizoen 4 koersen ze in plaats daarvan in hun eigen jeugdkoersen."
+        "text": "Elk team mag maximaal 30 renners hebben en de club mag er in totaal 60 hebben. Om op een renner te bieden of hem te kopen, heb je een vrije plaats nodig in een geschikt team en in de club als geheel. Voor een interne overstap moet er ruimte zijn in het ontvangende team. Automatische promoties kunnen de teamlimiet overschrijden. Je kunt blijven koersen, trainen en renners verkopen."
       },
       "dailyTrainingBoost": {
         "title": "Dagelijkse training in de academie",

@@ -36,6 +36,7 @@ export function useAcademy() {
   const [graduations, setGraduations] = useState([]);
   const [seniorCount, setSeniorCount] = useState(0);
   const [seniorMax, setSeniorMax] = useState(30);
+  const [clubCapacity, setClubCapacity] = useState(/** @type {{ used: number, max: number } | null} */ (null));
   const [balance, setBalance]   = useState(null);
   const [division, setDivision] = useState(null); // #2594: løn-satsen er per-division
   const [loading, setLoading]   = useState(true);
@@ -100,6 +101,8 @@ export function useAcademy() {
       setGraduations(data.graduations ?? []);
       setSeniorCount(data.seniorCount ?? 0);
       setSeniorMax(data.seniorMax ?? 30);
+      const capacity = /** @type {{ clubCapacity?: { used: number, max: number } }} */ (data).clubCapacity;
+      setClubCapacity(capacity ?? null);
       setIntakePull(data.intakePull ?? { enabled: false, pulledThisWeek: false });
       setAcademyProfile(data.academyProfile ?? null);
       setError(null);
@@ -326,5 +329,5 @@ export function useAcademy() {
     }
   }, [refresh]);
 
-  return { enabled, squads, seniorCount, seniorMax, roster, intake, graduations, balance, division, intakePull, loading, error, signCandidate, rejectCandidate, resolveGraduate, promoteRider, moveRider, fetchMoveState, fetchReleaseQuote, releaseRider, pullIntake, academyProfile, saveProfile, refresh };
+  return { enabled, squads, seniorCount, seniorMax, clubCapacity, roster, intake, graduations, balance, division, intakePull, loading, error, signCandidate, rejectCandidate, resolveGraduate, promoteRider, moveRider, fetchMoveState, fetchReleaseQuote, releaseRider, pullIntake, academyProfile, saveProfile, refresh };
 }

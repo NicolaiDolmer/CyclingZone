@@ -43,6 +43,7 @@ import { flushDmRunGuard } from "./lib/discordDmRateGuard.js"; // #2571
 import { makeBoardDmNotifier, makeInAppBoardNotifier } from "./lib/boardDmMirror.js"; // #2619, #8196
 import { syncAllDivisionRoles } from "./lib/discordRoleSync.js";
 import { processSquadEnforcementCron } from "./lib/squadEnforcement.js";
+import { loadSingleActiveSeason } from "./lib/seasonLookup.js";
 import { runSelectionWarningSweep } from "./lib/selectionWarningSweep.js"; // #2180
 import { runSeniorStartReminderSweep } from "./lib/seniorStartReminder.js"; // #5867
 import { createEmergencyLoan } from "./lib/loanEngine.js";
@@ -632,6 +633,8 @@ async function runStallWatchdogCron() {
 // ─── Squad Enforcement ───────────────────────────────────────────────────────
 
 async function runSquadEnforcementCron() {
+  const season = await loadSingleActiveSeason(supabase, { select: "id, number", tag: "squad-enforcement" });
+  if (!season || season.number >= 6) return;
   const result = await processSquadEnforcementCron({
     supabase,
     notifyTeamOwner,

@@ -319,7 +319,7 @@ import { applyRiderEligibilityFilter, applyRosterVisibilityFilter, isRiderInjure
 // #5517: withSeniorSquadScope er puljernes og løbenes senior-scope — alle liste-læsere
 // af league_divisions og sæson-læsere af races i denne fil går gennem den
 // (forward-guard: lib/squadSeniorReaders.test.js).
-import { applySeniorSquadFilter, SQUAD_CAPS, withSeniorSquadScope, academyPlacementSquad, seniorSquadPatch } from "../lib/squads.js";
+import { applySeniorSquadFilter, CLUB_RIDER_CAP, SQUAD_CAPS, withSeniorSquadScope, academyPlacementSquad, seniorSquadPatch } from "../lib/squads.js";
 import { youthSquadRoom, youthSquadRooms } from "../lib/youthSquadRoom.js"; // #5568: loft pr. ungdomstrup
 import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/seasonDay.js";
 import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, raceDaysByRace, seasonLoadByRider, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
@@ -7892,6 +7892,8 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
       getTeamMarketState(supabase, initialBidderId),
     ]);
     const activeLeading = leadingAuctions.data || [];
+    const noRoom = getAuctionBidRoomBlock({ teamState, activeLeadingCount: activeLeading.length });
+    if (noRoom) return res.status(400).json({ error: "No room for another rider", errorCode: "squad_full_bid", maxRiders: noRoom.maxRiders });
     // #6181 PR 5: taendt kraever startbuddet penge (worst case) OG plads, ikke kun en advarsel.
     const startGate = await auctionStartCommitmentResponse6181(supabase, { teamId: initialBidderId, teamState, price });
     if (startGate) return res.status(startGate.status).json(startGate.body);
@@ -19390,6 +19392,7 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       squads,
       seniorCount,
       seniorMax,
+      clubCapacity: { used: seniorState.club_count, max: CLUB_RIDER_CAP },
       roster: estimateViews?.roster ?? intake2?.roster ?? roster,
       intake: estimateViews?.intake ?? intake2?.intake ?? intake,
       graduations: [], // Compatibility for clients cached before #7323.
@@ -19503,7 +19506,7 @@ router.get("/academy/pnl", requireAuth, async (req, res) => {
 
     // #5568: pladserne er summen af ungdomstruppernes lofter (U23 + junior),
     // afledt af SQUAD_CAPS — ikke det gamle flade akademi-loft.
-    const youthPlacesMax = Object.values(SQUAD_CAPS).reduce((sum, cap) => sum + cap, 0);
+    const youthPlacesMax = SQUAD_CAPS.u23 + SQUAD_CAPS.junior;
     const current = computeAcademyCurrent(rosterRows ?? [], { slotsMax: youthPlacesMax });
     const { driftPaid, signingFeesPaid } = computeAcademyCumulative(financeRows ?? []);
     const sales = buildAcademySales(auctionRows, transferRows, riderById);
@@ -19590,7 +19593,7 @@ router.post("/academy/sign", requireAuth, marketWriteLimiter, async (req, res) =
     res.json(result);
   } catch (err) {
     const msg = err?.message ?? "";
-    if (msg === "academy_full") return res.status(409).json({ error: "academy_full" });
+    if (msg === "club_roster_full" || msg === "academy_full") return res.status(409).json({ error: msg });
     if (msg === "not_offered") return res.status(409).json({ error: "not_offered" });
     // #2796: signAcademyCandidate kaster også insufficient_balance og
     // already_assigned. De faldt tidligere igennem til captureException + 500,

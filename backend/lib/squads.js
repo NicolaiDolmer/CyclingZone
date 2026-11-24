@@ -42,24 +42,9 @@ export const DEFAULT_SQUAD = "senior";
  */
 export const SQUAD_MAX_AGE = Object.freeze({ junior: 18, u23: 22, senior: null });
 
-/**
- * Loft pr. trup — SIM-STARTPUNKT, ikke et endeligt balance-tal.
- *
- * U23 = 12: EJER-VALGT 15/9 2026 (spec §10.6, svar A): "U23 = 12 pladser som
- * SIM-STARTPUNKT (migration + dry-run-diff bygges på det), kalibreres efter S4's
- * første økonomidata sammen med facilitetstrinnene (D-032)."
- * Junior = 10: forslaget i YOUTH_RULES §2.4 / issue #4619, samme kalibrerings-
- * forbehold. Begge tal er GRUNDloftet: D-032 (ejer 10/9) siger samme grundloft
- * pr. trup for ALLE klubber, ekstra pladser købes som facilitetstrin med stigende
- * drift — aldrig af division, aldrig af resultater. Facilitetstrinnene findes
- * ikke endnu; når de gør, lægges de oven på disse tal, de erstatter dem ikke.
- *
- * Senior har bevidst INGEN værdi her: seniortruppens 30-cap kommer fra holdets
- * division (`squad_limits.max` via marketUtils.getTeamMarketState) og er uændret
- * (GAME_INVARIANTS.md). At lægge et tal for senior ind her ville skabe kopi nr.
- * to af den cap.
- */
-export const SQUAD_CAPS = Object.freeze({ u23: 12, junior: 10 });
+/** Structural roster limits from the season change (#8034). */
+export const SQUAD_CAPS = Object.freeze({ senior: 30, u23: 30, junior: 30 });
+export const CLUB_RIDER_CAP = 60;
 
 /**
  * Gyldig trup-værdi?

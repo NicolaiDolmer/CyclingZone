@@ -606,6 +606,7 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
     if (issue) throw Object.assign(new Error(issue.error), issue);
     // 23505 = denne rytter er allerede optaget (cron-/dobbeltklik-retry). Behandl
     // som idempotent no-op snarere end hård fejl.
+    if (acqErr.message === "club_roster_full") throw new Error("club_roster_full");
     if (acqErr.code === DUPLICATE_VIOLATION_CODE) throw new Error("already_assigned");
     throw acqErr;
   }

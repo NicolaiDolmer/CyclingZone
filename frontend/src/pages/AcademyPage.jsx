@@ -96,7 +96,7 @@ export default function AcademyPage() {
   // #5519: med U23/Junior-siderne tændt erstatter links Youth squads-kortet (3a).
   const youthSquadPagesOn = useYouthSquadPages();
   const {
-    enabled, squads, intake, balance,
+    enabled, squads, intake, balance, clubCapacity,
     intakePull, loading, error, signCandidate, rejectCandidate,
     pullIntake, academyProfile, saveProfile, roster,
   } = useAcademy();
@@ -124,6 +124,7 @@ export default function AcademyPage() {
 
   // #6155: kun signeringens fejl er tilbage; flyt/fyr sker på rytterprofilen.
   function mapActionError(err) {
+    if (err === "club_roster_full") return t("clubFull");
     if (err === "academy_full") return t("error.academyFull");
     if (err === "not_offered") return t("error.notOffered");
     // #2796: begge faldt før igennem til den generiske besked (+ Sentry-500).
@@ -241,9 +242,12 @@ export default function AcademyPage() {
     // er plads (academyLandingSquad, spejl af signeringens prøve-rækkefølge).
     const targetSquad = item.targetSquad ?? academyTargetSquad(rider.birthdate, seasonYear);
     const landing = academyLandingSquad(targetSquad, ageForSeason(rider.birthdate, seasonYear), squadCounts);
-    const isFull = landing.full;
+    const clubFull = clubCapacity != null && clubCapacity.used >= clubCapacity.max;
+    const isFull = landing.full || clubFull;
     const blockedBoth = isFull && landing.options.length > 1;
-    const fullTooltip = blockedBoth
+    const fullTooltip = clubFull
+      ? t("clubFull")
+      : blockedBoth
       ? t("fullTooltipBoth")
       : targetSquad === "junior"
         ? t("fullTooltipJunior", { max: SQUAD_CAPS.junior })
@@ -433,6 +437,7 @@ export default function AcademyPage() {
         roster={roster ?? []}
         seasonYear={seasonYear}
         squadCounts={squadCounts}
+        clubCapacity={clubCapacity}
         academyProfile={academyProfile}
         saveProfile={saveProfile}
         // #8060: regnskabet er en fane i udgave A; det gamle AcademyPnl ville modsige den.
@@ -459,6 +464,11 @@ export default function AcademyPage() {
             {balance != null && (
               <span className="font-data text-sm tabular-nums text-cz-2">
                 {t("balance", { amount: formatMoney(balance) })}
+              </span>
+            )}
+            {clubCapacity != null && (
+              <span className="font-data text-sm tabular-nums text-cz-2">
+                {t("clubRoster")}: {t("squadLinks.count", clubCapacity)}
               </span>
             )}
             {/* #5568: "U23 5/12 · Junior 3/10" — loftet pr. trup, ikke ét akademital. */}

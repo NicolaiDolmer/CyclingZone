@@ -143,7 +143,7 @@ export async function promote(supabase, {
   // Cap-guard: en promotion må ikke bringe future_count over division-cap'en.
   const state = await getMarketState(supabase, teamId);
   const cap = state?.squad_limits?.max ?? 30;
-  const future = state?.future_count ?? state?.rider_count ?? 0;
+  const future = Math.max(state?.rider_count ?? 0, state?.future_count ?? 0);
   if (future + 1 > cap) throw new Error("squad_cap_violation");
 
   // #2881/#1309: kun kontraktløse ryttere (salary == null) får en ny kontrakt;

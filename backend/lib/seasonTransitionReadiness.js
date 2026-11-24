@@ -197,7 +197,7 @@ export async function assessTransitionReadiness({ supabase, fromSeasonId } = {})
 
   // #5855: trup-loftet maales altid paa data (ingen vindue-markoer at stole paa).
   const { violations, violating_teams: violatingTeams = [] } = await countSquadLimitViolations({ supabase });
-  const squadOk = violations === 0;
+  const squadOk = season.number >= 6 || violations === 0;
   // #6784: admin skal kunne handle paa fundet, saa de foerste 5 hold vises med antal.
   const shownTeams = violatingTeams.slice(0, 5)
     .map((t) => `${t.teamName ?? t.teamId} ${t.count} (${t.count > t.max ? `max ${t.max}` : `min ${t.min}`})`)

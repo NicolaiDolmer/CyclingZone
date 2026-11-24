@@ -1719,7 +1719,7 @@
       },
       "academySize": {
         "title": "Taille de l'académie (par équipe)",
-        "text": "Ton académie compte deux équipes, chacune avec son propre plafond : jusqu'à {u23SquadCap} coureurs dans ton équipe U23 et jusqu'à {juniorSquadCap} dans ton équipe juniors. Un coureur prend une place dans l'équipe où son âge le place. Ces places sont totalement séparées de ton plafond d'effectif senior de {squadCap}. Les coureurs de l'académie ne comptent jamais dans ta limite d'effectif senior et ne courent jamais dans les courses seniors ; à partir de la saison 4, ils courent à la place dans leurs propres courses de jeunes."
+        "text": "Chaque équipe peut compter jusqu’à 30 coureurs et le club peut en compter jusqu’à 60 au total. Pour enchérir sur un coureur ou le recruter, il faut une place libre dans une équipe où il peut courir et dans le club. Un transfert interne demande une place dans l’équipe de destination. Une promotion automatique peut dépasser la limite de l’équipe. Vous pouvez toujours courir, entraîner et vendre des coureurs."
       },
       "dailyTrainingBoost": {
         "title": "Entraînement quotidien à l'académie",

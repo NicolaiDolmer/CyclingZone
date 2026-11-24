@@ -14,7 +14,7 @@
     },
     "seniorsStayHint": "Ryttere på seniortruppen bliver seniorer, indtil du flytter dem. Åbn rytteren og brug Flyt trup.",
     "stats": {
-      "riders": "Ryttere",
+      "riders": "Ryttere, midlertidig grænse",
       "squadValue": "Trupværdi"
     }
   },

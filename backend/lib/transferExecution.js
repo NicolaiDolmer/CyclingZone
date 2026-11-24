@@ -913,10 +913,6 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
   // Rollback-patchen for det FØRSTE ben: præcis den trup-tilstand rytteren
   // havde før byttet. `squad` udelades hvis rækken ikke bar en (kun muligt før
   // migrationen er applied), så vi aldrig skriver undefined over en god værdi.
-  const offeredSquadRestorePatch = {
-    is_academy: offered.is_academy,
-    ...(offered.squad ? { squad: offered.squad } : {}),
-  };
 
   // #19: parkér = sæt pending_team_id på begge ryttere (kræver at ingen af dem
   // allerede er reserveret til en anden handel); registrér = flyt team_id direkte.
@@ -977,7 +973,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
   };
   const swapRiderRestore = [squadRestoreImage(offered, offeredGraduatePatch), squadRestoreImage(requested, requestedGraduatePatch)];
   const priorSaleEscrow = cash !== 0 ? await saleEscrowStatusForDeal(supabase, { dealType: "swap", dealId: swap.id }) : "none";
-  // #2176: taendt flyttes begge ben her under holdlaasene; slukket = null og den gamle sti.
+  // The ownership claim is atomic for both payment paths.
   const lockedSwap = priorSaleEscrow === "refunded" ? null : await claimSwapUnderTeamLock(supabase, {
     offeredRiderId: offered.id, requestedRiderId: requested.id,
     proposingTeamId: swap.proposing_team_id, receivingTeamId: swap.receiving_team_id,
@@ -1003,26 +999,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     await notifyTeamOwner(swap.receiving_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, swap.id, meta);
     return failure(400, message.error, claimIssue.code, "errorParams" in message ? { errorParams: message.errorParams } : {});
   }
-  const movedOffered = priorSaleEscrow === "refunded"
-    ? null
-    : lockedSwap ? lockedSwap.data : deferRegistration
-    ? await expectMaybeSingle(
-        supabase
-          .from("riders")
-          .update({ pending_team_id: swap.receiving_team_id, updated_at: swapTimestamp, ...offeredContractPatch, ...offeredGraduatePatch })
-          .eq("id", offered.id)
-          .eq("team_id", swap.proposing_team_id)
-          .is("pending_team_id", null)
-          .select("id")
-      )
-    : await expectMaybeSingle(
-        supabase
-          .from("riders")
-          .update({ team_id: swap.receiving_team_id, pending_team_id: null, acquired_at: swapTimestamp, ...offeredContractPatch, ...offeredGraduatePatch })
-          .eq("id", offered.id)
-          .eq("team_id", swap.proposing_team_id)
-          .select("id")
-      );
+  const movedOffered = lockedSwap?.data ?? null;
 
   if (!movedOffered) {
     await withdrawSwapOffer(supabase, swap.id);
@@ -1032,46 +1009,6 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     return failure(409, "The offered rider changed status during confirmation. The swap was cancelled", "stale_offered_rider_state");
   }
 
-  const movedRequested = lockedSwap ? lockedSwap.data : deferRegistration
-    ? await expectMaybeSingle(
-        supabase
-          .from("riders")
-          .update({ pending_team_id: swap.proposing_team_id, updated_at: swapTimestamp, ...requestedContractPatch, ...requestedGraduatePatch })
-          .eq("id", requested.id)
-          .eq("team_id", swap.receiving_team_id)
-          .is("pending_team_id", null)
-          .select("id")
-      )
-    : await expectMaybeSingle(
-        supabase
-          .from("riders")
-          .update({ team_id: swap.proposing_team_id, pending_team_id: null, acquired_at: swapTimestamp, ...requestedContractPatch, ...requestedGraduatePatch })
-          .eq("id", requested.id)
-          .eq("team_id", swap.receiving_team_id)
-          .select("id")
-      );
-
-  if (!movedRequested) {
-    // Rul den første ben tilbage så vi ikke efterlader en halv byttehandel.
-    // #2797: is_academy rulles OGSÅ tilbage til den oprindelige værdi — ellers
-    // ville en fejlet swap efterlade en gradueret akademi-rytter hos SIN EGEN
-    // sælger (han bliver aldrig sendt af sted, men mistede sin akademi-plads).
-    // #4619: squad rulles tilbage SAMMEN med is_academy (offeredSquadRestorePatch).
-    if (deferRegistration) {
-      await expectMutation(
-        supabase.from("riders").update({ pending_team_id: null, ...offeredSquadRestorePatch }).eq("id", offered.id)
-      );
-    } else {
-      await expectMutation(
-        supabase.from("riders").update({ team_id: swap.proposing_team_id, acquired_at: swapTimestamp, ...offeredSquadRestorePatch }).eq("id", offered.id)
-      );
-    }
-    await withdrawSwapOffer(supabase, swap.id);
-    const requestedStalePayload = buildSwapCancelledStaleNotification({ riderName: `${requested.firstname} ${requested.lastname}` });
-    await notifyTeamOwner(swap.proposing_team_id, requestedStalePayload.type, requestedStalePayload.title, requestedStalePayload.message, swap.id, requestedStalePayload.metadata);
-    await notifyTeamOwner(swap.receiving_team_id, requestedStalePayload.type, requestedStalePayload.title, requestedStalePayload.message, swap.id, requestedStalePayload.metadata);
-    return failure(409, "The requested rider changed status during confirmation. The swap was cancelled", "stale_requested_rider_state");
-  }
 
   // #1906 defense-in-depth: ryd begge byttede ryttere fremtidige ghost-race_entries.
   // #2579: også i deferRegistration-stien (se executeTransferOffer for begrundelsen) —

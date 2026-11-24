@@ -1222,7 +1222,7 @@ test("signAcademyCandidate (#6155): juniortruppen fuld → talentet lander på U
   assert.equal(r.squad, "u23");
   assert.deepEqual(supabase._rpcCalls.map((c) => c._args.p_squad), ["junior", "u23"]);
   const [first, second] = supabase._rpcCalls;
-  assert.equal(second._args.p_squad_cap, 12, "U23-forsøget tælles mod U23-loftet");
+  assert.equal(second._args.p_squad_cap, 30, "U23-forsøget tælles mod U23-loftet");
   assert.deepEqual({ ...second._args, p_squad: first._args.p_squad, p_squad_cap: first._args.p_squad_cap }, first._args,
     "andet forsøg er samme køb (pris, løn, idempotency_key); kun truppen skifter");
   assert.equal(supabase._riderUpdates.length, 1, "rytteren optages én gang");

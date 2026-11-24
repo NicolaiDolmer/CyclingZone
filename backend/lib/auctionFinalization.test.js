@@ -258,6 +258,10 @@ function createFinalizeAuctionSupabase({
             // en ekstra .eq() (is_academy-filtret). Korrekt count dispatches efter
             // den samlede kæde.
             return {
+              or(filters) {
+                const teamId = filters.split(",")[0].slice("team_id.eq.".length);
+                return { eq: () => Promise.resolve({ count: teamMarketCounts[teamId]?.clubCount ?? 0, error: null }) };
+              },
               eq(column, value) {
                 const counts = teamMarketCounts[value] || {};
 
@@ -3164,6 +3168,7 @@ function makeYouthFinalizeSupabase({
   // #2754: vinderens senior-trup-størrelse (ikke-akademi-ryttere). Bruges KUN når
   // akademiet er fuldt og senior-fallbacken forsøges. Cap er 30 for alle divisioner.
   seniorCount = 0,
+  clubCount = 0,
   buyerDivision = 3,
   // #2456-testknobs:
   claimRaced = false,      // simulér at et bud lander mellem read og atomisk claim → claim rammer 0 rækker
@@ -3301,6 +3306,7 @@ function makeYouthFinalizeSupabase({
             assert.equal(cols, "id");
             assert.deepEqual(options, { count: "exact", head: true });
             return {
+              or() { return { eq: () => Promise.resolve({ count: clubCount, error: null }) }; },
               eq(column, _value) {
                 if (column === "team_id") {
                   const b = {
@@ -3656,6 +3662,24 @@ test("youth-auktion MED bud men akademi (8) OG senior (30) fyldt: annulleres + s
     JSON.stringify(supabase._notifications).includes(`"slots":${YOUTH_SQUAD_FULL}`),
     "slots = junior-loftet",
   );
+});
+
+test("youth auction closes if the winner has no club place at settlement", async () => {
+  const auction = {
+    id: "full-club-youth-auction",
+    status: "active",
+    is_youth: true,
+    seller_team_id: null,
+    current_bidder_id: "buyer-team",
+    current_price: 25000,
+    rider: { ...YOUTH_RIDER },
+  };
+  const supabase = makeYouthFinalizeSupabase({ auction, seniorCount: 20, clubCount: 60 });
+  const outcome = await finalizeAuctionById({ supabase, notifyTeamOwner: async () => {}, now: new Date("2026-11-28T12:00:00Z") });
+  assert.equal(outcome.code, "club_roster_full");
+  assert.ok(supabase._auctionUpdates.some(update => update.status === "cancelled"));
+  assert.equal(supabase._riderUpdates.length, 0);
+  assert.equal(supabase._financeInserts.length, 0);
 });
 
 test("youth-auktion MED bud, senior har plads men vinderen har ikke råd: annulleres + slettes (samme pris begge steder → ingen akademi-forsøg)", async () => {

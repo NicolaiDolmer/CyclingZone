@@ -623,6 +623,23 @@ function makeSupabase(db, { claimTransfer = null, claimSwap = null, beforeRiderU
       if (["auto_accept_claim_swap","auto_accept_claim_swap_paid"].includes(name) && claimSwap) {
         return Promise.resolve({ data: claimSwap(params), error: null });
       }
+      if (name === "auto_accept_claim_swap") {
+        const offered = db.riders.find(rider => rider.id === params.p_offered_rider_id);
+        const requested = db.riders.find(rider => rider.id === params.p_requested_rider_id);
+        if (offered?.team_id !== params.p_proposing_team_id || requested?.team_id !== params.p_receiving_team_id) {
+          return Promise.resolve({ data: { status: "rider_state_changed" }, error: null });
+        }
+        for (const [rider, teamId, patch] of [
+          [offered, params.p_receiving_team_id, params.p_offered_patch],
+          [requested, params.p_proposing_team_id, params.p_requested_patch],
+        ]) {
+          const placement = params.p_defer_registration
+            ? { pending_team_id: teamId, updated_at: params.p_now }
+            : { team_id: teamId, pending_team_id: null, acquired_at: params.p_now };
+          Object.assign(rider, placement, patch);
+        }
+        return Promise.resolve({ data: { status: "claimed", offered_rider_id: offered.id }, error: null });
+      }
       assert.equal(name, "increment_balance_with_audit");
       const key = params.p_finance_payload?.idempotency_key;
       if (key && seenIdempotencyKeys.has(key)) {

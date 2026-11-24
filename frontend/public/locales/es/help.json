@@ -1719,7 +1719,7 @@
       },
       "academySize": {
         "title": "Tamaño de la academia (por equipo)",
-        "text": "Tu Academia tiene dos equipos, cada uno con su propio tope: hasta {u23SquadCap} ciclistas en tu equipo sub-23 y hasta {juniorSquadCap} en tu equipo júnior. Un ciclista ocupa una plaza en el equipo en el que lo sitúa su edad. Estas plazas son completamente independientes de tu tope de plantilla sénior de {squadCap}. Los ciclistas de la academia nunca cuentan para tu límite de plantilla sénior y nunca corren en carreras sénior; desde la temporada 4 corren en sus propias carreras juveniles."
+        "text": "Cada equipo tiene un máximo de 30 ciclistas y el club puede tener hasta 60 en total. Para pujar por un ciclista o ficharlo, necesitas una plaza libre en un equipo en el que pueda competir y en el conjunto del club. Los traslados internos requieren una plaza en el equipo de destino. Los ascensos automáticos pueden superar el límite del equipo. Puedes seguir compitiendo, entrenando y vendiendo ciclistas."
       },
       "dailyTrainingBoost": {
         "title": "Entrenamiento diario en la academia",
