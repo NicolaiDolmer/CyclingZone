@@ -1274,6 +1274,10 @@ async function settleParity(concurrency) {
       return { ...row };
     },
     loadLegacyRuns: async () => new Set(legacyRuns),
+    // #8606: the finished team's other riders are outside its roster; this fixture is about
+    // parity, so admission answers as in the deploy window (nobody admitted). Admission has its
+    // own tests (trainingLateRider8606.pglite.test.js).
+    admitRiders: async () => null,
     quarantineRiders: async () => { throw new Error("parity fixture has no unavailable riders"); },
     refreshRankings: async () => {},
     dispatchAlarms: async () => ({ dates: 0, failed: 0 }),

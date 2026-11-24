@@ -220,6 +220,62 @@ export async function registerTrainingDateWork({ supabase, teamId, seasonId, tic
   return checked(trainingDateRpc(supabase, 'register_training_date_work', args, nonBlocking), 'register training date');
 }
 
+/**
+ * #8606: riders on the team now (by the date's roster rule) who are not in the date's frozen
+ * roster. Nobody may have them yet: a new academy rider, a free agent, a rider from a team
+ * without the date. The admission RPC decides from the database who really is free.
+ * @param {{expected_rider_ids?: string[]|null}|null|undefined} work
+ * @param {string[]} currentIds
+ * @returns {string[]}
+ */
+export function lateRiderIds(work, currentIds) {
+  const frozen = new Set(work?.expected_rider_ids ?? []);
+  return [...new Set(currentIds)].filter(id => !frozen.has(id)).sort();
+}
+
+/**
+ * #8606: add riders who joined after the date was registered to its frozen roster
+ * (database/2026-11-24-8606-late-rider-training-date.sql). The RPC re-checks every rider
+ * server-side and returns the ones it took plus the updated work row. Before auto-migrate
+ * has created the function (PGRST202/42883) nobody is admitted, exactly as before #8606.
+ */
+export async function admitLateTrainingDateRiders({ supabase, teamId, seasonId, tickDate, riderIds, now }) {
+  const { data, error } = await supabase.rpc('admit_late_training_date_riders', {
+    p_team_id: teamId, p_season_id: seasonId, p_tick_date: tickDate, p_rider_ids: riderIds, p_now: now.toISOString(),
+  });
+  if (error?.code === 'PGRST202' || error?.code === '42883') return null;
+  if (error) throw new Error(`admit late riders to training date: ${error.message}`);
+  return data ?? null;
+}
+
+/**
+ * #8606: riders who joined a team on the date (created or acquired since it started).
+ * Read only while a swept date is still open, so a rider who arrives later that evening
+ * reopens the date instead of waiting for a restart. Two small reads, filtered again here.
+ */
+export async function loadRidersJoinedOnDate({ supabase, tickDate }) {
+  const { start } = trainingDateBounds(tickDate);
+  const read = column => fetchAllRows(() => supabase.from('riders').select('id,team_id,created_at,acquired_at')
+    .eq('is_retired', false).not('team_id', 'is', null).gte(column, start.toISOString()).order('id'));
+  const [acquired, created] = await Promise.all([read('acquired_at'), read('created_at')]);
+  return ridersJoinedOnDate([...acquired, ...created], tickDate);
+}
+
+/**
+ * PURE (#8606): the riders on a team who were created or acquired on the date, once each.
+ * @param {Array<{id: string, team_id?: string|null, created_at?: string|null, acquired_at?: string|null, is_retired?: boolean}>} riders
+ * @param {string} tickDate
+ */
+export function ridersJoinedOnDate(riders, tickDate) {
+  const { start, end } = trainingDateBounds(tickDate);
+  const joined = new Map();
+  for (const rider of riders) {
+    const at = [rider.created_at, rider.acquired_at].filter(Boolean).map(value => new Date(value));
+    if (rider.team_id && rider.is_retired !== true && at.some(value => value >= start) && at.every(value => value < end)) joined.set(rider.id, rider);
+  }
+  return [...joined.values()];
+}
+
 async function loadTrainingWorkRows({ supabase, season, tickDate }) {
   return fetchAllRows(() => supabase.from('training_date_work').select('team_id,game_days,expected_rider_ids,status,opening_conditions,quarantined_rider_ids').eq('season_id', season.id).eq('tick_date', tickDate).order('team_id'));
 }
@@ -258,6 +314,7 @@ async function loadLegacyRunTeamIds({ supabase, tickDate }) {
 // the teams that pass saw. A date swept before it ended can still gain a team (one
 // created, or back from parking, later that evening), so while `open` the sweep checks
 // for a new one and sweeps the date again, instead of skipping it until a restart.
+// #8606: the same for a rider who joins a team after the pass (`riderTeams`).
 const completedDates = new Map();
 const NO_REGISTERED_TEAMS = new Set();
 // #6004: dates whose full pass already ran in this process without a failure
@@ -342,6 +399,8 @@ export async function runNormalizedTrainingDateSweep({
   loadLegacyRuns = loadLegacyRunTeamIds, loadTeams = loadTrainingDateTeams,
   loadSeasonDivisions = loadSeasonStandingDivisions, loadParkedTeams = loadTeamsParkedAfter,
   refreshRankings = refreshRankingsAfterTrainingSettlement,
+  // #8606: riders who joined after the date was registered.
+  admitRiders = admitLateTrainingDateRiders, loadJoinedRiders = loadRidersJoinedOnDate,
   elapsedClock = () => performance.now(),
   // #5911: how many teams settle at once. 1 = the old sequential sweep.
   teamConcurrency = 1,
@@ -369,7 +428,10 @@ export async function runNormalizedTrainingDateSweep({
       const { end } = trainingDateBounds(job.tickDate);
       currentTeams ??= await loadTeams(supabase);
       const newTeam = currentTeams.some(team => !cached.teamIds.has(team.id) && isTrainingDateTeam(team, NO_REGISTERED_TEAMS, end));
-      if (!newTeam) {
+      // #8606: a rider who joined a team after that pass (a new academy rider, a purchase).
+      const newRider = !newTeam && cached.riderTeams
+        && (await loadJoinedRiders({ supabase, tickDate: job.tickDate })).some(rider => !cached.riderTeams.has(`${rider.id}:${rider.team_id}`));
+      if (!newTeam && !newRider) {
         // Read after the date ended: a team created or back later is not on this date.
         if (now >= end) cached.open = false;
         continue;
@@ -399,12 +461,17 @@ export async function runNormalizedTrainingDateSweep({
     const registeredTeamIds = [...new Set([...workRows.map(row => row.team_id), ...parkedAfterCutoff])];
     const context = await loadContext({ supabase, ...job, loadDaySpans, registeredTeamIds });
     const workByTeam = new Map(workRows.map(row => [row.team_id, row]));
+    // #8606: who already holds each rider on this date (same rule as register_training_date_work).
+    const rosterOwner = new Map();
+    for (const row of workRows) {
+      for (const id of row.expected_rider_ids ?? []) if (!(row.quarantined_rider_ids ?? []).includes(id)) rosterOwner.set(id, row.team_id);
+    }
     const riderById = new Map((context.riders ?? []).map(rider => [rider.id, rider]));
     await forEachTeamBounded(context.teams, teamConcurrency, async (team) => {
       const unsafeSeason = !final && index.activeSeasonId !== undefined && index.activeSeasonId !== job.season.id;
       if (unsafeSeason && !workByTeam.has(team.id)) return;
       if (retryOnly && !['pending', 'partial'].includes(workByTeam.get(team.id)?.status)) return;
-      if (['complete', 'needs_reconciliation'].includes(workByTeam.get(team.id)?.status)) return;
+      if (workByTeam.get(team.id)?.status === 'needs_reconciliation') return;
       if (final && !workByTeam.has(team.id) && !existedAt(team, final.cutoff, ['created_at', 'comeback_at'])) return;
       const dateEnd = trainingDateBounds(job.tickDate).end;
       // #6924: riders created after the cutoff (the new season's intake) did not
@@ -413,6 +480,15 @@ export async function runNormalizedTrainingDateSweep({
       const currentIds = context.riders.filter(rider => rider.team_id === team.id &&
         (!rider.created_at || new Date(rider.created_at) < createdBy) &&
         (!rider.acquired_at || new Date(rider.acquired_at) < dateEnd)).map(rider => rider.id);
+      // #8606: a settled date is only reopened for a rider who joined after it was registered.
+      // Not on a season's final date (#6924) or a historical season, and not for bank, frozen
+      // or test teams (they keep the alarm path), and only until the date's deadline (the RPC
+      // refuses later, so an old date never costs a call per restart).
+      const admissible = !final && !unsafeSeason && !team.is_bank && !team.is_frozen && !team.is_test_account
+        && now < trainingDateDeadline(job.tickDate);
+      // #6439: a rider in another team's roster for the date trains there, so he is never a candidate.
+      const lateFor = work => (admissible ? lateRiderIds(work, currentIds).filter(id => (rosterOwner.get(id) ?? team.id) === team.id) : []);
+      if (workByTeam.get(team.id)?.status === 'complete' && !lateFor(workByTeam.get(team.id)).length) return;
       if (!currentIds.length && !workByTeam.has(team.id)) return;
       const divisionId = final ? (seasonDivisions.get(team.id) ?? team.league_division_id) : team.league_division_id;
       const days = workByTeam.get(team.id)?.game_days ?? context.gameDaysByDivision.get(divisionId);
@@ -446,9 +522,20 @@ export async function runNormalizedTrainingDateSweep({
         // already moved the riders, which the late RPC cannot see.
         const late = !workByTeam.has(team.id) && now >= trainingDateDeadline(job.tickDate);
         const lateBridge = late && days.every(day => day < 0);
-        const work = workByTeam.get(team.id) ?? await registerWork({ supabase, teamId: team.id, seasonId: job.season.id, tickDate: job.tickDate, gameDays: days, riderIds: currentIds, now, lateBridge, lateDate: late && !lateBridge && !final });
+        let work = workByTeam.get(team.id) ?? await registerWork({ supabase, teamId: team.id, seasonId: job.season.id, tickDate: job.tickDate, gameDays: days, riderIds: currentIds, now, lateBridge, lateDate: late && !lateBridge && !final });
         if (!work) { deferredLateTeams.add(team.id); waitingForDate = true; return; }
         tracked = true;
+        // #8606: a rider who joined after the date was registered (in no roster on the date)
+        // enters this team's roster with his condition now, so the date trains him too.
+        const joinedLate = lateFor(work);
+        if (joinedLate.length) {
+          const admission = await admitRiders({ supabase, teamId: team.id, seasonId: job.season.id, tickDate: job.tickDate, riderIds: joinedLate, now });
+          if (admission?.work) work = admission.work;
+          // Only present when someone was admitted, so a sweep without late riders answers as before.
+          const admitted = admission?.admitted_rider_ids?.length ?? 0;
+          if (admitted) summary.admitted = (summary.admitted ?? 0) + admitted;
+        }
+        if (work.status === 'complete') return;
         const remaining = work.expected_rider_ids.filter(id => !(work.quarantined_rider_ids ?? []).includes(id));
         // #6439 (owner 10/10): training follows the rider. A rider who changed team
         // after this date opened keeps his slot in the frozen roster and settles the
@@ -512,7 +599,9 @@ export async function runNormalizedTrainingDateSweep({
     });
     // Capacity only: persisted unfinished work always bypasses this cache.
     if (!waitingForDate && summary.failed === failuresBeforeDate) {
-      completedDates.set(dateKey, { teamIds: new Set(context.teams.map(team => team.id)), open: now < trainingDateBounds(job.tickDate).end });
+      completedDates.set(dateKey, { teamIds: new Set(context.teams.map(team => team.id)), open: now < trainingDateBounds(job.tickDate).end,
+        // #8606: every rider and his team as this pass saw them; a pair it did not see reopens the date.
+        riderTeams: new Set((context.riders ?? []).map(rider => `${rider.id}:${rider.team_id}`)) });
     }
     // Failures without durable work are only found again by a full pass.
     if (!untrackedFailure) fullPassDates.add(dateKey);
