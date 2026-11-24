@@ -1490,7 +1490,7 @@ Kontakt `training_rotation` (off | beta | on), seedet off. Tænding er ejer-only
 - **Kvitteringsrækkefølge:** et stempel har dagens afregningsnummer `order` og det valgte pas. Flere felter kan få samme tidsstempel. Ved sen frigivelse bruger feltet næste pas efter felter, der allerede er afregnet (K-2), og passets udvikling bruger nummeret blandt datoens gennemførte rotationspas.
 - **Prognose:** dagens felter genbruger afregnede kvitteringer og motorens pladsberegning. Ugen fremskriver frie felter, planlagte løb, bundne hviledage og kendte skader efter i dag.
 - **Rettelser:** samme længde beholder hver rytters plads, ny længde starter fra pas 1 (svar 3); "Start fra pas 1" og "Spring til pas" sætter ankeret. Kontakten off: API'et afviser skrivning (409 `feature_disabled`), og intet læser kolonnerne.
-- **Egen rotation** gælder over gruppens ugeblokke. Motor og prognose udelader ugeblokkenes kildefelt og lås for rytteren. Et planlagt Hvile-pas afregnes og rykker pladsen. Kan kataloget ikke levere et pas, står pladsen stille. Løbsfeltets fokus følger den almindelige løbsafregning i Træn nu og om aftenen.
+- **Egen rotation** gælder over gruppens ugeblokke. Motor og prognose udelader ugeblokkenes kildefelt og lås for rytteren. Et planlagt Hvile-pas afregnes og rykker pladsen. Dagens prognose viser en forfalden etape som afventende efter reglen i §13.10. Feltet rykker ikke rotationen, og næste frie felt får det pas, der stadig står for tur. Kan kataloget ikke levere et pas, står pladsen stille. Løbsfeltets fokus følger den almindelige løbsafregning i Træn nu og om aftenen.
 
 ### 13.9 Den rullende uge: i dag + 7 dage (#8580 / #8550 del 3; bag slukket kontakt)
 

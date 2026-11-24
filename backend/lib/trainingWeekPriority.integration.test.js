@@ -3,7 +3,7 @@ import test from "node:test";
 import { readFileSync } from "node:fs";
 import { buildTeamFatigueForecast, loadTeamFatigueForecast } from "./trainingWeekPlanForecast.js";
 import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
-import { DATE1, DAYS1, EVENING_AT, RACE, SEASON, TEAM, createFake, digest, press, rider, seedState, sweep } from "./trainNowSameResult7982.harness.js";
+import { DATE1, DATE2, DAYS1, EVENING_AT, RACE, SEASON, TEAM, createFake, digest, press, rider, seedState, sweep } from "./trainNowSameResult7982.harness.js";
 
 const RIDER = rider(0);
 const SESSIONS = ["sprint", "tempo", "threshold", "vo2max", "endurance"];
@@ -12,10 +12,10 @@ const WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 
 function scenario({
   lock, race = [], bound = race, injured = false, injuryEnd, pending = false, fatigue = false, efforts,
-  stage = "on", planKind = "week", dns = false,
+  stage = "on", planKind = "week", dns = false, secondDate = false,
 } = {}) {
   const state = seedState({
-    count: 1, noPlan: [0], injured: injured ? [0] : [], entered: bound.length ? [0] : [],
+    count: 1, noPlan: [0], secondDate, injured: injured ? [0] : [], entered: bound.length ? [0] : [],
     flags: {
       training_week_priority: stage, training_effort_levels: efforts ? "on" : "off",
       fatigue_now_7801: fatigue ? "on" : "off", development_curve_b: "off", race_day_role_yield_enabled: "off",
@@ -256,6 +256,53 @@ test("fund E: kontakten off: prognosen er som før (frigivelsen hører til Week 
   assert.equal(svar.available, true, svar.reason);
   assert.equal("fieldSource" in svar.riders[RIDER], false);
   assert.deepEqual(svar.riders[RIDER].raceSlots, [3, 4]);
+});
+
+function overdueRotationScenario() {
+  const { state } = scenario({ race: [0, 2], dns: true, stage: "off", planKind: "rotation", secondDate: true });
+  state.app_config.push({ key: "training_rotation", value: "on" });
+  state.training_week_plans.find((row) => row.rider_id === RIDER).rotation = {
+    v: 1, rev: 1, passes: [{ session: "sprint" }, { session: "endurance" }, { session: "tempo" }],
+  };
+  const race = state.races.find((row) => row.id === RACE);
+  race.stages_completed = 1;
+  race.status = "in_progress";
+  const forecastAt = (now) => loadTeamFatigueForecast({
+    supabase: withScheduleJoin(createFake(state).supabase),
+    team: state.teams[0], seasonId: SEASON.id, now,
+  });
+  return { state, forecastAt };
+}
+
+test("#8646: an overdue rotation slot waits and later rotations match deadline settlement", async () => {
+  const { state, forecastAt } = overdueRotationScenario();
+  const future = (await forecastAt(new Date(`${DATE1}T14:59:59Z`))).riders[RIDER];
+  assert.equal(future.pendingSlots, undefined);
+  assert.equal(future.rotationSlots[2]?.index, 2);
+
+  const overdue = (await forecastAt(new Date(`${DATE1}T15:00:01Z`))).riders[RIDER];
+  assert.deepEqual(overdue.pendingSlots, [2]);
+  assert.deepEqual(overdue.rotationSlots.map((slot) => slot?.index ?? null), [0, 1, null, 2, 0]);
+  assert.equal(overdue.nextRotationIndex, 1);
+
+  await run(state, createFake(state), { deadlineReached: true, now: new Date("2026-11-10T01:00:00Z") });
+  const actual = reports(state);
+  assert.equal(actual[2].intensity, "unknown_pending");
+  assert.equal(actual[2].rotation, undefined);
+  assert.deepEqual(overdue.rotationSlots.map((slot) => slot?.index ?? null), actual.map((report) => report.rotation?.index ?? null));
+  assert.equal(overdue.fatigue, state.rider_condition[0].fatigue);
+});
+
+test("#8646: rotation pending fields belong to the current Copenhagen date", async () => {
+  const { forecastAt } = overdueRotationScenario();
+  const before = await forecastAt(new Date("2026-11-09T22:59:59.999Z"));
+  const after = await forecastAt(new Date("2026-11-09T23:00:00.000Z"));
+  assert.equal(before.tickDate, DATE1);
+  assert.equal(before.available, true, before.reason);
+  assert.deepEqual(before.riders[RIDER].pendingSlots, [2]);
+  assert.equal(after.tickDate, DATE2);
+  assert.equal(after.available, true, after.reason);
+  assert.equal(after.riders[RIDER].pendingSlots, undefined);
 });
 
 test("Rotation forecast and evening run both free the slots of a known non-starter", async () => {

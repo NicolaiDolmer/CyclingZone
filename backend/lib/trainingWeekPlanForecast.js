@@ -165,8 +165,8 @@ export function buildTeamFatigueForecast({
       injuredGameDays: days.filter((day) => isInjuredOnRaceDay({ condition: cond, seasonId, gameDay: day, tickDate })),
     } : null;
     let placement = weekPlacementInput ? weekPriorityPlacement(weekPlacementInput) : null;
-    const overdue = placement ? overdueByRider.get(rider.id) : null;
-    const projectedReports = overdue?.size ? [...riderReceipts] : null;
+    const overdue = placement || rotation ? overdueByRider.get(rider.id) : null;
+    const projectedReports = placement && overdue?.size ? [...riderReceipts] : null;
     const ruleLoads = []; // #7801: etaper i tidligere felter samme dato
     const slots = days.map((day) => {
       const slotIndex = programSlotForRaceDay(day, days);
@@ -235,7 +235,10 @@ export function buildTeamFatigueForecast({
       if (rotation) {
         const stamp = receipt
           ? (teamId == null || receipt.team_id === teamId ? receipt.report?.rotation : null)
-          : stampRotation({ rotation, chosen: choice, raced: activity.intensity === "race", injured, boundRest, fatigueRule: ruled?.stamp });
+          : stampRotation({
+            rotation, chosen: choice, raced: activity.intensity === "race", injured, boundRest,
+            unknown: activity.intensity === "unknown_pending", fatigueRule: ruled?.stamp,
+          });
         if (!receipt && stamp) rotationReceipts.push({ tick_date: tickDate, report: { rotation: stamp } });
         if (stamp?.advanced) activity.rotation = { ...stamp, intensity: activity.intensity };
         const replacement = receipt ? receipt.report?.fatigue_rule : ruled?.stamp;
@@ -253,16 +256,18 @@ export function buildTeamFatigueForecast({
       slot.intensity === "race" || (placement?.fieldSource[index] === null && !slot.weekRest) ? [index] : []
     ));
     out[rider.id] = { fatigue, band: forecastBand(fatigue), raceSlots };
+    if (placement || rotation) {
+      const pendingSlots = slots.flatMap((slot, index) => slot.intensity === "unknown_pending" ? [index] : []);
+      if (pendingSlots.length) out[rider.id].pendingSlots = pendingSlots;
+    }
     if (placement) {
       const restSlots = slots.flatMap((slot, index) => slot.weekRest ? [index] : []);
       const wholeDayRest = restSlots.length === days.length;
-      const pendingSlots = slots.flatMap((slot, index) => slot.intensity === "unknown_pending" ? [index] : []);
       Object.assign(out[rider.id], {
         fieldSource: placement.fieldSource.map((source, index) => slots[index].weekRest ? null : source),
         taken: wholeDayRest ? [] : placement.taken,
         lockMovedFrom: wholeDayRest ? null : placement.lockMovedFrom,
         restSlots,
-        ...(pendingSlots.length ? { pendingSlots } : {}),
       });
     }
     if (rotation) {
@@ -404,8 +409,9 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     : boundEntryDays;
   // Planlagte etaper: bindingens loeb har en etape paa netop den loebsdag.
   const raceIds = [...new Set(entryDays.map((row) => row.race_id).filter(Boolean))];
-  const scheduleEntries = weekPriority && !settled ? boundEntryDays : entryDays;
-  const scheduledRaceIds = [...new Set(scheduleEntries.map((row) => row.race_id).filter(Boolean))];
+  // A later stage can still be pending after the first start field released the rider's binding.
+  const pendingEntries = settled ? [] : boundEntryDays.filter((row) => weekPriority || rotationByRider.has(row.rider_id));
+  const scheduledRaceIds = [...new Set([...raceIds, ...pendingEntries.map((row) => row.race_id).filter(Boolean)])];
   const [schedule, profiles, exits] = scheduledRaceIds.length
     ? await Promise.all([
       // pagination-safe: a few bound races x five game days.
@@ -421,8 +427,8 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     : [[], [], new Map()];
   const { plannedStages, boundRiderIdsByGameDay } = forecastBindingsFromEntryDays({ entryDays, schedule, profiles, exits });
   const keptEntries = new Set(entryDays);
-  const overdueByRider = weekPriority && !settled ? await loadOverdueForecastStages({
-    supabase, now, tickDate, schedule, entries: scheduleEntries.filter((entry) => !keptEntries.has(entry) || plannedStages.some((stage) =>
+  const overdueByRider = pendingEntries.length ? await loadOverdueForecastStages({
+    supabase, now, tickDate, schedule, entries: pendingEntries.filter((entry) => !keptEntries.has(entry) || plannedStages.some((stage) =>
       stage.rider_id === entry.rider_id && stage.game_day === Number(entry.game_day))),
   }) : new Map();
 
