@@ -6,7 +6,7 @@
       "intake": "Instroom van deze week",
       "talents": "Jouw talenten",
       "ledger": "Academieboekhouding",
-      "profile": "Profiel en leeftijd"
+      "profile": "Profiel"
     },
     "stats": {
       "intake": "Instroom",
@@ -22,7 +22,7 @@
     },
     "landsOn": "Komt in de {squad}-ploeg",
     "talents": {
-      "colNation": "Nat.",
+      "colNation": "Nationaliteit",
       "colRider": "Renner",
       "colType": "Rennerstype",
       "colSquad": "Ploeg",

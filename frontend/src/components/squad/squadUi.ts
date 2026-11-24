@@ -6,7 +6,9 @@
 // greb som GraduationDayPage.tsx: kontrakten skrives ned her, læst direkte af
 // DataTable.jsx, EmptyState.jsx, ErrorState.jsx, PageHeader.jsx, Tabs.jsx og
 // RiderLink.jsx, og castes ét sted.
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
+import type TableTitleBar from "../ui/TableTitleBar.tsx";
+import type { TitleBarColumns } from "../ui/tableTitleBar.ts";
 import {
   DataTable as DataTableJs,
   EmptyState as EmptyStateJs,
@@ -41,7 +43,7 @@ export interface DataTableColumn<Row> {
 export interface DataTableProps<Row> {
   columns: DataTableColumn<Row>[];
   rows: Row[];
-  rowKey: (row: Row) => string;
+  rowKey: (row: Row, index: number) => string;
   rowProps?: (row: Row) => Record<string, unknown>;
   sort?: string | null;
   sortDir?: "asc" | "desc";
@@ -52,6 +54,8 @@ export interface DataTableProps<Row> {
   mobileDefaults?: string[];
   empty?: ReactNode;
   toolbar?: ReactNode;
+  titleBar?: ComponentProps<typeof TableTitleBar> | ((columns: TitleBarColumns | null) => ReactNode);
+  "data-sort-exempt"?: string;
   // #8278: visnings-tilstand (Overblik/Evner); toolbar på desktop, chip-række på mobil.
   viewModes?: { label: string; value: string; onChange: (next: string) => void; options: { value: string; label: ReactNode; title?: string; disabled?: boolean }[] };
 }

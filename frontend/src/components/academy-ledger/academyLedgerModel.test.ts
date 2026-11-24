@@ -73,7 +73,7 @@ test("fanen: ready-gate på det lazy namespace og hentning fra endpointet", () =
   const tab = read("AcademyLedgerTab.tsx");
   assert.match(tab, /\{ t, ready \} = useTranslation\("academyLedger"\)/);
   assert.match(tab, /if \(!ready \|\|/);
-  assert.match(tab, /<th scope="col"/, "sæsontabellen har kolonneoverskrifter");
+  assert.equal(tab.match(/<DataTable\b/g)?.length, 2, "begge tabeller bruger den fælles komponent");
   assert.match(tab, /tabular-nums/);
   const hook = read("useAcademyLedger.ts");
   assert.match(hook, /apiFetch\("\/api\/academy\/pnl"/);

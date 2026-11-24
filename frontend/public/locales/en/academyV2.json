@@ -6,7 +6,7 @@
       "intake": "This week's intake",
       "talents": "Your talents",
       "ledger": "Academy ledger",
-      "profile": "Profile and age"
+      "profile": "Profile"
     },
     "stats": {
       "intake": "Intake",
@@ -22,7 +22,7 @@
     },
     "landsOn": "Lands on the {squad} squad",
     "talents": {
-      "colNation": "Nat.",
+      "colNation": "Nationality",
       "colRider": "Rider",
       "colType": "Rider type",
       "colSquad": "Squad",

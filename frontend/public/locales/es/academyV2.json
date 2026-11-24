@@ -6,7 +6,7 @@
       "intake": "Captación de la semana",
       "talents": "Tus talentos",
       "ledger": "Contabilidad de la academia",
-      "profile": "Perfil y edad"
+      "profile": "Perfil"
     },
     "stats": {
       "intake": "Captación",
@@ -22,7 +22,7 @@
     },
     "landsOn": "Va al equipo {squad}",
     "talents": {
-      "colNation": "Nac.",
+      "colNation": "Nacionalidad",
       "colRider": "Ciclista",
       "colType": "Tipo de ciclista",
       "colSquad": "Equipo",

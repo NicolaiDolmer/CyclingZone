@@ -358,7 +358,13 @@ test("#8081: v2-teksterne findes på alle fem sprog med samme nøgler og uden em
     for (const [key, text] of flat(academyV2Locale(lng).v2)) assert.doesNotMatch(String(text), /—/, `${lng}: em-dash i v2.${key}`);
   }
   assert.equal(academyV2Locale("en").v2.tabs.talents, "Your talents");
-  assert.equal(academyV2Locale("da").v2.tabs.profile, "Profil og alder");
+  assert.equal(academyV2Locale("da").v2.tabs.profile, "Profil");
+  assert.equal(academyV2Locale("en").v2.tabs.profile, "Profile");
+  for (const [lng, label] of Object.entries({
+    da: "Nationalitet", en: "Nationality", es: "Nacionalidad", fr: "Nationalité", nl: "Nationaliteit",
+  })) {
+    assert.equal(academyV2Locale(lng).v2.talents.colNation, label);
+  }
   // academy.json må ikke længere bære v2 (det ville igen veje på første indlæsning).
   for (const lng of ["en", "da", "es", "fr", "nl"]) assert.equal(academyLocale(lng).v2, undefined, `${lng}: v2 ligger stadig i academy.json`);
 });
