@@ -1,0 +1,22 @@
+{
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Rider Rankings",
+      "area": "interface",
+      "en": {
+        "title": "Flags on the rider rankings",
+        "body": "The rider rankings show a flag for each rider's country. Hover over the flag or tap it to see the full country name."
+      },
+      "da": {
+        "title": "Flag på rytterranglisten",
+        "body": "Rytterranglisten viser et flag for rytterens land. Hold musen over flaget, eller tryk på det, for at se landenavnet."
+      },
+      "refs": [
+        8648
+      ]
+    }
+  ]
+}

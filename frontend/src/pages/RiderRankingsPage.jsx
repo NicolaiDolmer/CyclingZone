@@ -3,14 +3,15 @@ import { useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import TeamLink from "../components/TeamLink";
-import NationCell from "../components/rider/NationCell";
+import { Flag } from "../components/Flag";
+import Tooltip from "../components/ui/Tooltip.jsx";
 import RiderNameCell from "../components/rider/RiderNameCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import { ageBadgeKey } from "../lib/riderAge";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { formatNumber } from "../lib/intl";
 import { riderNameMatches } from "../lib/riderNameSearch";
-import { compareNationality, getCountryCode3 } from "../lib/countryUtils";
+import { compareNationality, getCountryCode3, getCountryName } from "../lib/countryUtils";
 import { useRiderRankings } from "../hooks/useRiderRankings";
 import UpdatedAtLine from "../components/rankings/UpdatedAtLine.tsx"; // #7664
 import { filterByDivisionPool, ALL_POOLS_VALUE } from "../lib/resultsFilter";
@@ -110,6 +111,29 @@ function StatCell({ value, active }) {
       {value || 0}
     </span>
   );
+}
+
+function RankingCountryFlag({ code }) {
+  const { i18n } = useTranslation();
+  if (!getCountryCode3(code)) return null;
+  const country = getCountryName(code, i18n.language);
+  return (
+    <span className="inline-flex align-middle" onClick={(event) => event.stopPropagation()}>
+      <Tooltip label={country} labelTrigger dismissOnEscape id={undefined}>
+        <button
+          type="button"
+          onClick={(event) => event.currentTarget.focus()}
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-cz text-sm focus-visible:outline-2 focus-visible:outline-cz-accent [@media(min-width:641px)_and_(pointer:fine)]:min-h-6 [@media(min-width:641px)_and_(pointer:fine)]:min-w-6"
+        >
+          <span aria-hidden="true"><Flag code={code} title="" /></span>
+        </button>
+      </Tooltip>
+    </span>
+  );
+}
+
+function rankingCountry(rider) {
+  return getCountryCode3(rider.nationality_code) ? <RankingCountryFlag code={rider.nationality_code} /> : null;
 }
 
 export default function RiderRankingsPage() {
@@ -315,8 +339,8 @@ export default function RiderRankingsPage() {
       header: t("rankings.thNation"),
       sortKey: "nationality_code",
       fold: true,
-      foldValue: (rider) => getCountryCode3(rider.nationality_code) || "",
-      render: (rider) => <NationCell code={rider.nationality_code} />,
+      foldValue: rankingCountry,
+      render: rankingCountry,
     },
     {
       key: "badges",

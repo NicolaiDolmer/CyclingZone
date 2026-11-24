@@ -10,7 +10,7 @@ import { placeTooltip, tooltipMaxWidth } from "./tooltipPlacement.ts";
 // inde fra kanten. Samme greb som MarkerTip i RaceDetailPage.jsx (#6185).
 // Hover viser den, fokus (tryk på mobil) viser den, `open` tvinger den åben
 // (kitchen-sink/snapshot).
-export default function Tooltip({ label, side = "top", open = false, dismissOnEscape = false, id, className = "", children }) {
+export default function Tooltip({ label, side = "top", open = false, dismissOnEscape = false, labelTrigger = false, id, className = "", children }) {
   const anchorRef = useRef(null);
   const bubbleRef = useRef(null);
   // Hover og fokus holdes hver for sig, som group-hover/group-focus-within
@@ -26,9 +26,9 @@ export default function Tooltip({ label, side = "top", open = false, dismissOnEs
   // på via aria-describedby.
   const descId = `${useId()}-desc`;
   const trigger = isValidElement(children)
-    ? cloneElement(children, {
-      "aria-describedby": [children.props["aria-describedby"], descId].filter(Boolean).join(" "),
-    })
+    ? cloneElement(children, labelTrigger
+      ? { "aria-labelledby": descId }
+      : { "aria-describedby": [children.props["aria-describedby"], descId].filter(Boolean).join(" ") })
     : children;
 
   const place = useCallback(() => {
