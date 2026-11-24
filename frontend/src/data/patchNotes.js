@@ -1,5 +1,53 @@
 export const PATCHES = [
 {
+  "version": "7.512",
+  "date": "2026-11-24",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Market",
+      "area": "interface",
+      "en": {
+        "title": "Full ability names on the market",
+        "body": "Auctions and transfers use full ability names in tables, sorting choices and swap previews."
+      },
+      "da": {
+        "title": "Fulde evnenavne på markedet",
+        "body": "Auktioner og transfers bruger fulde evnenavne i tabeller, sorteringsvalg og forhåndsvisning af bytter."
+      },
+      "refs": [
+        8651
+      ]
+    }
+  ]
+},
+{
+  "version": "7.511",
+  "date": "2026-11-24",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Results",
+      "area": "interface",
+      "en": {
+        "title": "Full terms in race results",
+        "body": "Results, the points guide and race history spell out points and overall wins."
+      },
+      "da": {
+        "title": "Fulde ord i løbsresultater",
+        "body": "Resultater, pointregler og løbshistorik skriver point og samlede sejre med fulde ord."
+      },
+      "refs": [
+        8651
+      ]
+    }
+  ]
+},
+{
   "version": "7.510",
   "date": "2026-11-24",
   "changes": [
