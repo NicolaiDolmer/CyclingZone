@@ -31,9 +31,9 @@ import type { AcademyLedger, LedgerSale, LedgerSeasonRow, LineDef } from "./acad
 const TONE = { positive: "text-cz-success", negative: "text-cz-danger", neutral: "text-cz-2" } as const;
 
 function Money({ value, net = false }: { value: number; net?: boolean }) {
-  if (!net) return <span className="text-cz-1">{formatCz(value)}</span>;
+  if (!net) return <span className="text-xs text-cz-1 sm:text-sm">{formatCz(value)}</span>;
   return (
-    <span className={`font-semibold ${TONE[netTone(value)]}`}>
+    <span className={`text-xs font-semibold sm:text-sm ${TONE[netTone(value)]}`}>
       {value > 0 ? "+" : ""}{formatCz(value)}
     </span>
   );
@@ -64,6 +64,7 @@ function SeasonTable({ t, ledger, lines }: { t: TFunction; ledger: AcademyLedger
       key: line.key,
       header: t(line.labelKey),
       numeric: true,
+      tight: true,
       render: (row) => (
         <>
           <Money value={signedAmount(row[line.key], line.sign)} />
@@ -73,7 +74,7 @@ function SeasonTable({ t, ledger, lines }: { t: TFunction; ledger: AcademyLedger
         </>
       ),
     })),
-    { key: "net", header: t("net"), numeric: true, render: (row) => <Money value={row.net} net /> },
+    { key: "net", header: t("net"), numeric: true, tight: true, render: (row) => <Money value={row.net} net /> },
   ];
 
   return (
@@ -124,14 +125,19 @@ function SalesTable({ t, sales }: { t: TFunction; sales: LedgerSale[] }) {
       key: "date", header: t("colDate"), sortKey: "date",
       render: (sale) => (
         <div className="font-data tabular-nums text-cz-2">
-          {sale.soldAt ? formatDate(sale.soldAt) : "–"}
+          {sale.soldAt ? (
+            <time dateTime={sale.soldAt}>
+              <span className="whitespace-nowrap sm:hidden">{formatDate(sale.soldAt, "short")}</span>
+              <span className="hidden sm:inline">{formatDate(sale.soldAt)}</span>
+            </time>
+          ) : "–"}
           {sale.seasonNumber != null && <span className="block text-3xs text-cz-3">{t("season", { n: sale.seasonNumber })}</span>}
         </div>
       ),
     },
     { key: "origin", header: t("colOrigin"), sortKey: "origin", render: (sale) => t(`origin.${sale.origin}`) },
     { key: "via", header: t("colVia"), sortKey: "via", render: (sale) => t(`via.${sale.via}`) },
-    { key: "price", header: t("colPrice"), sortKey: "price", numeric: true, render: (sale) => <Money value={sale.price} /> },
+    { key: "price", header: t("colPrice"), sortKey: "price", numeric: true, tight: true, render: (sale) => <Money value={sale.price} /> },
   ];
 
   return (

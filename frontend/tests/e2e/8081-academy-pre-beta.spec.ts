@@ -127,7 +127,7 @@ for (const width of [1440, 390]) {
     await expect(ledger.getByRole("link", { name: "Sam Rivera" })).toBeVisible();
     if (!before) {
       const salesTable = ledger.getByRole("table", { name: "Salg af ryttere hentet som unge" });
-      await salesTable.getByRole("button", { name: "Dato" }).click();
+      await salesTable.getByRole("columnheader", { name: "Dato" }).click();
       await expect(salesTable.getByRole("row").nth(1)).toContainText("Sam Rivera");
       if (width === 390) {
         await ledger.getByTestId("table-columns-open").nth(1).click();
