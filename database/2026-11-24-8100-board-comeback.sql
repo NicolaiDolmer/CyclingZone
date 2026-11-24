@@ -9,6 +9,8 @@ RETURNS trigger
 LANGUAGE plpgsql
 SET search_path = ''
 AS $$
+DECLARE
+  neutral_confidence constant integer := 50;
 BEGIN
   -- Judgment precedes parking in the season-end sweep, but the sweep uses
   -- the timestamp captured before judgment. Active penalties are frozen
@@ -31,6 +33,19 @@ BEGIN
   UPDATE public.board_profiles
   SET satisfaction = DEFAULT,
       budget_modifier = CASE WHEN budget_modifier < 1 THEN 1 ELSE budget_modifier END
+  WHERE team_id = NEW.id;
+
+  -- Keep the recorded season and receipt metadata. A missing or older
+  -- season anchor will be recreated from neutral confidence by the evaluator.
+  UPDATE public.board_relations
+  SET confidence = neutral_confidence,
+      confidence_source = jsonb_set(
+        CASE WHEN jsonb_typeof(confidence_source) = 'object' THEN confidence_source ELSE '{}'::jsonb END,
+        '{season_anchor}',
+        (CASE WHEN jsonb_typeof(confidence_source->'season_anchor') = 'object'
+          THEN confidence_source->'season_anchor' ELSE '{}'::jsonb END)
+          || jsonb_build_object('confidence', neutral_confidence)
+      )
   WHERE team_id = NEW.id;
 
   RETURN NEW;

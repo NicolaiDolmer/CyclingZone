@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { PGlite } from "@electric-sql/pglite";
+import { getTrustTier } from "../boardMandate.js";
+import { resolveRelationSeasonAnchor } from "../boardMandateEngine.js";
 
 const returned = "10000000-0000-0000-0000-000000000001";
 const parked = "10000000-0000-0000-0000-000000000002";
@@ -15,15 +17,24 @@ test("return clears penalties from the parking sweep and withdraws a paused forc
       CREATE ROLE authenticated;
       CREATE TABLE teams (id uuid PRIMARY KEY, parked_at timestamptz);
       CREATE TABLE board_profiles (team_id uuid, budget_modifier numeric, satisfaction integer DEFAULT 50);
+      CREATE TABLE board_relations (
+        team_id uuid PRIMARY KEY, confidence integer NOT NULL DEFAULT 50, confidence_source jsonb NOT NULL DEFAULT '{}'
+      );
       CREATE TABLE board_consequences (
         team_id uuid, layer integer, status text, created_at timestamptz,
         resolved_at timestamptz, payload jsonb
       );
       CREATE TABLE transfer_listings (id uuid, seller_team_id uuid, status text);
     `);
+    const seasonId = "30000000-0000-0000-0000-000000000001";
+    const oldSource = { method: "weekend_update", season_anchor: { season_id: seasonId, confidence: 17 } };
+    const readRelation = async (teamId) => (await db.query(
+      "SELECT confidence,confidence_source FROM board_relations WHERE team_id=$1", [teamId],
+    )).rows[0];
     for (const teamId of [returned, parked]) {
       await db.query("INSERT INTO teams VALUES ($1, NULL)", [teamId]);
       await db.query("INSERT INTO board_profiles VALUES ($1, 0.9, 15)", [teamId]);
+      await db.query("INSERT INTO board_relations VALUES ($1, 18, $2)", [teamId, oldSource]);
       await db.query(`
         INSERT INTO board_consequences
         SELECT $1, layer, 'active',
@@ -51,10 +62,20 @@ test("return clears penalties from the parking sweep and withdraws a paused forc
       { team_id: returned, satisfaction: 50 },
       { team_id: parked, satisfaction: 15 },
     ]);
+    const neutral = await readRelation(returned);
+    assert.equal(neutral.confidence, 50);
+    assert.equal(getTrustTier(neutral.confidence).key, "standard");
+    assert.deepEqual(neutral.confidence_source, { ...oldSource, season_anchor: { season_id: seasonId, confidence: 50 } });
+    assert.deepEqual(resolveRelationSeasonAnchor(neutral, seasonId), { anchor: 50, reanchored: false });
+    assert.deepEqual(resolveRelationSeasonAnchor(neutral, "30000000-0000-0000-0000-000000000002"), { anchor: 50, reanchored: true });
+    assert.deepEqual(await readRelation(parked), { confidence: 18, confidence_source: oldSource });
     await db.query("UPDATE board_profiles SET satisfaction = 55 WHERE team_id = $1", [returned]);
+    await db.query("UPDATE board_relations SET confidence = 57, confidence_source = $2 WHERE team_id = $1", [returned, oldSource]);
     await unpark();
 
     assert.equal((await db.query("SELECT satisfaction FROM board_profiles WHERE team_id = $1", [returned])).rows[0].satisfaction, 55);
+
+    assert.deepEqual(await readRelation(returned), { confidence: 57, confidence_source: oldSource });
 
     const { rows: expired } = await db.query(
       "SELECT team_id, layer FROM board_consequences WHERE status = 'expired' ORDER BY layer",
