@@ -72,6 +72,7 @@ const SECTION_DEFS = [
     Icon: ClipboardIcon,
     blocks: [
       { id: "whatBoard", kind: "text" },
+      { id: "afterBreak", kind: "text" },
       { id: "season1Baseline", kind: "text" },
       // #5483 · national kerne-taerskel forklaret lige efter den foerste
       // omtale (season1Baseline), foer selve plan-onboardingen.

@@ -42,6 +42,10 @@
     },
     "board": {
       "label": "Board",
+      "afterBreak": {
+        "title": "A fresh start after a break",
+        "text": "When your club returns from a break, the board lifts the penalties it imposed before you left. The board starts assessing your club again the following season."
+      },
       "whatBoard": {
         "title": "What does the board do?",
         "text": "The board sets targets for your team and follows your season live: satisfaction now updates after every race weekend (it moves at most 5 points per weekend) towards what a full season evaluation would give. Satisfaction determines your sponsor modifier, i.e. how much of the sponsor income gets paid out, and the modifier follows satisfaction live. Hard consequences (salary cap, signing restriction, forced sale) are only evaluated at two predictable checkpoints: mid-season and season end. You cannot be fired; consequences are graduated and always predictable. You can follow this race by race in the plan details on the Board page, where a weekend-by-weekend history shows whether satisfaction went up or down and which goal area drove it."

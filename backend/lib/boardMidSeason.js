@@ -37,7 +37,7 @@ import { buildKeyedNotification } from "./notificationKeys.js";
 import { sumRiderSalaries } from "./boardUtils.js";
 import { unlockExtraordinaryRequestForTeam as unlockExtraordinaryRequestForTeamShared } from "./boardMandateEngine.js";
 import { fetchAllRows } from "./supabasePagination.js";
-import { isParkedTeam } from "./managerParking.js";
+import { boardJudgmentHold } from "./boardComeback.js";
 
 export const MID_SEASON_TITLE_PREFIX = "Mid-season check";
 export const MID_SEASON_MARKER_COLUMN = "mid_season_notified_season";
@@ -89,7 +89,8 @@ export async function processMidSeasonReviewCron({
   // "ikke parkeret", så uden kolonnen ville filteret nedenfor åbne igen.
   const { data: humanTeams, error: teamsError } = await supabase
     .from("teams")
-    .select("id, user_id, name, division, season_1_identity_basis, balance, parked_at")
+    // schema-columns-ok: comeback_board_season_number is added by 2026-11-24-8100-board-comeback.sql.
+    .select("id, user_id, name, division, season_1_identity_basis, balance, parked_at, comeback_season_id, comeback_board_season_number")
     .eq("is_ai", false)
     .eq("is_bank", false)
     .eq("is_frozen", false)
@@ -110,8 +111,8 @@ export async function processMidSeasonReviewCron({
   if (humanTeams.some((team) => team?.parked_at === undefined)) {
     throw new Error("mid-season check: teams.parked_at mangler i hold-opslaget, intet sendt (#8099 fail-closed)");
   }
-  const teams = humanTeams.filter((/** @type {{ parked_at?: string|null }} */ team) => !isParkedTeam(team));
-  summary.parked_teams_skipped = humanTeams.length - teams.length;
+  const teams = humanTeams.filter((/** @type {{ parked_at?: string|null }} */ team) => !boardJudgmentHold(team, activeSeason.id, activeSeason.number));
+  summary.parked_teams_skipped = humanTeams.filter((team) => boardJudgmentHold(team, activeSeason.id, activeSeason.number) === "parked_team").length;
   if (!teams.length) return summary;
 
   // #1237 · aktiv gæld pr. hold (batch), samme mønster som boardWeekendFinalization.js.

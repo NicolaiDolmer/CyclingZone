@@ -42,6 +42,10 @@
     },
     "board": {
       "label": "Bestuur",
+      "afterBreak": {
+        "title": "Een nieuwe start na een pauze",
+        "text": "Wanneer je club terugkeert na een pauze, trekt het bestuur de straffen van vóór je vertrek in. Het bestuur beoordeelt je club pas weer in het volgende seizoen."
+      },
       "whatBoard": {
         "title": "Wat doet het bestuur?",
         "text": "Het bestuur stelt doelen voor je team en volgt je seizoen live: de tevredenheid wordt nu na elk koersweekend bijgewerkt (hij beweegt maximaal 5 punten per weekend) richting wat een volledige seizoensbeoordeling zou geven. De tevredenheid bepaalt je sponsormodifier, oftewel hoeveel van de sponsorinkomsten wordt uitbetaald, en de modifier volgt de tevredenheid live. Harde gevolgen (salarisplafond, contracteerbeperking, gedwongen verkoop) worden alleen op twee voorspelbare controlemomenten beoordeeld: halverwege het seizoen en aan het eind van het seizoen. Je kunt niet worden ontslagen; gevolgen zijn gradueel en altijd voorspelbaar. Je kunt dit koers voor koers volgen in de plandetails op de pagina Bestuur, waar een weekend-voor-weekendgeschiedenis laat zien of de tevredenheid steeg of daalde en welk doelgebied daarvoor zorgde."

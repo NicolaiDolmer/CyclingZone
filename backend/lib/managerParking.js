@@ -302,7 +302,12 @@ export async function unparkTeam({
   const { division, leagueDivisionId } = await pickDivision(supabase);
   const { data, error } = await supabase
     .from("teams")
-    .update({ parked_at: null, division, league_division_id: leagueDivisionId })
+    .update({
+      parked_at: null,
+      division,
+      league_division_id: leagueDivisionId,
+      ...(mandateSeasonNumber == null ? {} : { comeback_board_season_number: mandateSeasonNumber }),
+    })
     .eq("id", teamId)
     .not("parked_at", "is", null)
     .select("id");

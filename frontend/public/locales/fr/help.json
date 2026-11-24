@@ -42,6 +42,10 @@
     },
     "board": {
       "label": "Direction",
+      "afterBreak": {
+        "title": "Repartir après une pause",
+        "text": "Lorsque votre club revient après une pause, la direction lève les sanctions imposées avant votre départ. Elle reprend son évaluation du club la saison suivante."
+      },
       "whatBoard": {
         "title": "Que fait la direction ?",
         "text": "La direction fixe des objectifs à ton équipe et suit ta saison en direct : la satisfaction se met à jour après chaque week-end de course (elle bouge de 5 points au maximum par week-end) vers ce que donnerait une évaluation complète de la saison. La satisfaction détermine ton modificateur de sponsor, c'est-à-dire la part du revenu de sponsor qui est versée, et le modificateur suit la satisfaction en direct. Les conséquences dures (plafond salarial, restriction de signature, vente forcée) ne sont évaluées qu'à deux points de contrôle prévisibles : la mi-saison et la fin de saison. Tu ne peux pas être renvoyé ; les conséquences sont graduelles et toujours prévisibles. Tu peux suivre ça course par course dans les détails du plan sur la page Direction, où un historique week-end par week-end montre si la satisfaction a monté ou baissé et quel domaine d'objectif l'a fait bouger."

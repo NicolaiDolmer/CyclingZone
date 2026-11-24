@@ -315,15 +315,12 @@ Halvsæson-tjekket (`boardMidSeason.js`, #8099) bruger samme filter: et parkeret
 "Mid-season check"-beskeden eller oplåsning af den ekstraordinære forespørgsel, og mangler
 `parked_at` i opslaget, stopper kørslen uden at sende noget (fail-closed).
 Årsmandat-kørslen (`boardMandateAutoAccept.js`), plan-auto-accepten (`boardAutoAccept.js`) og advarslen om negativ saldo (`cron.js`) bruger samme filter og samme fail-closed (#8110): ingen påmindelse, ingen underskrift på holdets vegne, ingen advarsel.
-Frosset betyder urørt, ikke nulstillet: aktive rækker fra før parkeringen står, som de stod. Når
-holdet vender tilbage (comeback nulstiller `parked_at`), dømmes det igen fra næste kørsel som
-alle andre: lag 2-3 udløber ved den næste evaluering, hvis tilfredsheden er over tærsklen, lag
-4 står, til rytteren er solgt (koden har intet andet udløb for den række), lag 5 udløber ved næste sæsonstart
-for alle hold, og lag 6 udløber med sin sæson. Rækker, der blev skabt ved en fejl, mens holdet
-var parkeret, ryddes af ejeren som dataoprydning, ikke af koden.
-**Forbehold (uafhængig dom 12/11):** "dømmes igen som alle andre" beskriver koden i dag, ikke en
-ejer-regel. Ejerens regel 24/9 (#4592, punkt 3) er ingen bestyrelsesdom i comeback-sæsonen; den er
-ikke bygget (#8100).
+Mens holdet er parkeret, er bestyrelsen frosset. Ved genindplacering ophæves aktive
+straffe fra før parkeringen, og en aktiv tvangsliste trækkes tilbage. Den passive
+sponsorreduktion nulstilles. Historik og bonusser bevares. Uge-, halvsæson- og
+sæsonslutdom springes over i comeback-sæsonen. Normal vurdering genoptages i den
+efterfølgende sæson. Gælder både comeback midt i sæsonen og genindplacering ved
+sæsonskiftet (ejer 13/11, #8100).
 
 **Rytteromdømme (#4956/#5828):** Ved `rider_reputation_enabled=on` viser
 rytterfladerne mindst den gamle popularitet: `max(popularity, reputation)`.

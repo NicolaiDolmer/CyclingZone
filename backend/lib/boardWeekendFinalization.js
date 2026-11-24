@@ -83,6 +83,7 @@ import { sumRiderSalaries } from "./boardUtils.js";
 import { notifyTeamOwner } from "./notificationService.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { isYouthSquad } from "./squads.js";
+import { boardJudgmentHold } from "./boardComeback.js";
 import { isParkedTeam } from "./managerParking.js";
 
 function toFiniteOr(value, fallback) {
@@ -178,8 +179,8 @@ export function resolveCrossedCheckpoint({
  *
  * @param {object} args
  * @param {object} args.supabase  — Supabase client (service role)
- * @param {object} args.season    — { id, number, status, race_days_total } +
- *                                  race_days_completed = NY værdi (efter recompute)
+ * @param {{ id?: string | null, number?: number | null, status?: string | null,
+ *   race_days_total?: number | null, race_days_completed?: number | null } | null} args.season
  * @param {number|null} args.previousRaceDaysCompleted — race_days_completed FØR
  *                                  denne finalization (til checkpoint-krydsning)
  * @param {Date}   [args.now]
@@ -265,7 +266,8 @@ export async function processBoardWeekendFinalization({
       // (positiv saldo, ingen nødlån) i computeBaselineWeekendUpdate.
       // #5902 · `parked_at` SKAL med: isParkedTeam læser et manglende felt som
       // "ikke parkeret", så uden kolonnen ville filteret nedenfor åbne igen.
-      .select("id, user_id, name, division, sponsor_income, balance, season_1_identity_basis, team_dna_key, created_at, parked_at")
+      // schema-columns-ok: comeback_board_season_number is added by 2026-11-24-8100-board-comeback.sql.
+      .select("id, user_id, name, division, sponsor_income, balance, season_1_identity_basis, team_dna_key, created_at, parked_at, comeback_season_id, comeback_board_season_number")
       .eq("is_ai", false)
       .eq("is_bank", false)
       .eq("is_frozen", false)
@@ -277,17 +279,9 @@ export async function processBoardWeekendFinalization({
   // planer, standings, ryttere eller lån hentet, og når aldrig hold-løkken
   // (tilfredshed, events, mandat-sync, mid-season-konsekvenser, beskeder).
   //
-  // Hvilken sandhed: samme som sæson-slutningen, managerParking.isParkedTeam
-  // på det aktuelle teams.parked_at. Sæson-slutningen må ikke stole blindt på
-  // feltet, fordi parkerings-sweepen ved sæsonskiftet ændrer det (repair-stien
-  // afbryder derfor, når sweepen har kørt for sæsonen). Denne kørsel sker kun
-  // for en AKTIV sæson (tjekket ovenfor), og sweepen kører kun inde i
-  // sæsonafslutningen, så i hele sæsonen er det aktuelle felt præcis "parkeret
-  // lige nu". Den eneste anden skriver er comeback (tilmelding midt i sæsonen),
-  // som nulstiller feltet i det øjeblik holdet er tilbage i en pulje og kører
-  // løb igen; fra da af dømmes holdet som alle andre.
-  const teams = (humanTeams || []).filter((/** @type {{ parked_at?: string|null }} */ team) => !isParkedTeam(team));
-  summary.parked_teams_skipped = (humanTeams || []).length - teams.length;
+  // The active season uses the same eligibility rule as the season-end review.
+  const teams = (humanTeams || []).filter((/** @type {{ parked_at?: string|null }} */ team) => !boardJudgmentHold(team, season.id, season.number));
+  summary.parked_teams_skipped = (humanTeams || []).filter(isParkedTeam).length;
   if (!teams.length) {
     summary.skipped_reason = "no_human_teams";
     return summary;
@@ -725,6 +719,7 @@ export async function processBoardWeekendFinalization({
             goalsTotal: update.goalsTotal,
             planIsComplete: false,
             seasonId: season.id,
+            seasonNumber: season.number,
             consecutiveLowExpirations: 0,
             boardTestMode,
             now,

@@ -402,6 +402,7 @@ export async function returnParkedTeam({ supabase, teamId, now = new Date(), dep
     parked_at: null,
     next_season_signup_at: null,
     comeback_season_id: season.id,
+    comeback_board_season_number: season.number,
   };
   const moveTeam = (fields) => supabase
     .from("teams")

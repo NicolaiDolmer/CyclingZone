@@ -76,6 +76,7 @@ import { reconcileAiTeamsForPool } from "./aiTeamGenerator.js";
 import { isSeasonEndDivisionMovementSkipped } from "./seasonEndMovementFlag.js";
 import { isSeasonSignupEnabled } from "./seasonSignupFlag.js";
 import { runParkingSweep, isParkedTeam, hasParkingSweepRunForSeason } from "./managerParking.js";
+import { boardJudgmentHold } from "./boardComeback.js";
 import { buildTierInputs, planRealTeamReseed } from "./poolBalance.js";
 import { isPoolReseedEnabled, readPoolReseedThreshold } from "./poolReseedFlag.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
@@ -1951,10 +1952,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
   // processSeasonEnd henter holdene FØR parkerings-sweepen, så et hold der
   // parkeres i dette skifte, får dommen for den sæson det kørte. Kun hold der
   // allerede var parkeret hele sæsonen, springes over.
-  if (isParkedTeam(team)) {
-    console.log(`  🅿️  ${team.name}: parkeret, ingen bestyrelsesdom denne sæson (#4592)`);
-    return;
-  }
+  if (boardJudgmentHold(team, seasonId, currentSeasonNumber)) return;
 
   const supabaseClient = deps.supabase ?? await getDefaultSupabaseClient();
   const processReplacementTriggerFn = deps.processReplacementTrigger ?? processReplacementTrigger;
@@ -2340,6 +2338,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
         goalsTotal: goals.length,
         planIsComplete,
         seasonId,
+        seasonNumber: currentSeasonNumber,
         // #4482 · Regel A: sæson-slut-tilbud indløses i den FØLGENDE sæson.
         // Stemples NULL her og re-stemples af seasonStartHooks når den nye
         // sæson findes (FK forhindrer at stemple en endnu-ikke-oprettet sæson).
