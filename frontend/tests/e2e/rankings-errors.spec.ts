@@ -20,6 +20,6 @@ test("#5176 failed top-scorer request shows an error and retry restores results"
   await expect(page.getByText("Resultater kunne ikke indlæses", { exact: true })).toBeVisible();
   shouldFail = false;
   await page.getByRole("button", { name: "Prøv igen", exact: true }).click();
-  await expect(page.getByRole("link", { name: /Ada Pedersen.*1\.840 pt/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Ada Pedersen.*1\.840 point/ })).toBeVisible();
   await expect(page.getByText("Resultater kunne ikke indlæses", { exact: true })).toHaveCount(0);
 });
