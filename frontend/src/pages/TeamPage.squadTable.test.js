@@ -189,3 +189,9 @@ test("team.json har de nye nøgler i BÅDE en og da", () => {
     assert.equal(typeof teamJson?.squad?.count, "string", `${lng}: squad.count mangler`);
   }
 });
+
+
+test("kompakt trup-overblik viser Rating, Værdi og Status som standard (#7233)", () => {
+  assert.match(src, /const mobileDefaults = tableMode === "abilities"\s*\?[^\r\n]*\s*:\s*\["rating", "value", "badges"\]/);
+  assert.match(src, /key: "badges",[\s\S]{0,650}squadBadgeKey\(r\.squad\)/);
+});
