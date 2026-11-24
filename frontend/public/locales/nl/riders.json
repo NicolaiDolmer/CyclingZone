@@ -12,6 +12,8 @@
     "potential": "Potentieel",
     "prognosis": "Prognose",
     "prognosisTitle": "Houd je het huidige tempo vast, dan eindigt hij ongeveer hier op zijn hoogtepunt. Gebaseerd op zijn laatste 30 dagen.",
+    "prognosisPending": "In afwachting",
+    "prognosisPendingTitle": "De prognose vereist minstens 14 dagen aan vergelijkbare ontwikkelingsgeschiedenis.",
     "prognosisPastPeak": "Over zijn hoogtepunt",
     "prognosisPastPeakTitle": "Hij is de leeftijd voorbij waarop renners pieken.",
     "prognosisNoEstimateTitle": "De prognose komt zodra je een schatting van zijn potentieel hebt.",

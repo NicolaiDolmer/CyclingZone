@@ -71,7 +71,7 @@ export function potentialViewOf(source: unknown): PotentialView | null {
 // findes kun for egne ryttere med tændt flag.
 export type PrognosisView =
   | { hidden: false; value: number }
-  | { hidden: true; reason: "noEstimate" | "pastPeak" };
+  | { hidden: true; reason: "noEstimate" | "pastPeak" | "insufficientHistory" };
 
 /** Læser `prognosisView`. null = feltet mangler (andres rytter eller slukket flag). */
 export function prognosisViewOf(source: unknown): PrognosisView | null {
@@ -79,13 +79,13 @@ export function prognosisViewOf(source: unknown): PrognosisView | null {
   if (!raw || typeof raw !== "object") return null;
   const view = raw as Record<string, unknown>;
   if (view.hidden === false && finite(view.value)) return { hidden: false, value: view.value };
-  if (view.hidden === true && (view.reason === "noEstimate" || view.reason === "pastPeak")) {
+  if (view.hidden === true && (view.reason === "noEstimate" || view.reason === "pastPeak" || view.reason === "insufficientHistory")) {
     return { hidden: true, reason: view.reason };
   }
   return null;
 }
 
-/** Prognosen som sorteringsværdi. null for begge tomme tilstande, så de falder sidst. */
+/** Prognosen som sorteringsværdi. null uden en numerisk prognose, så den falder sidst. */
 export function prognosisViewValue(view: PrognosisView | null | undefined): number | null {
   return view && !view.hidden ? view.value : null;
 }

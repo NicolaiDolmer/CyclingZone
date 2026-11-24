@@ -12,6 +12,8 @@
     "potential": "Potentiel",
     "prognosis": "Pronostic",
     "prognosisTitle": "Si tu gardes le rythme actuel, il finira à peu près ici à son pic. Basé sur ses 30 derniers jours.",
+    "prognosisPending": "En attente",
+    "prognosisPendingTitle": "La projection nécessite au moins 14 jours d’historique de progression comparable.",
     "prognosisPastPeak": "Après son pic",
     "prognosisPastPeakTitle": "Il a dépassé l'âge où les coureurs atteignent leur pic.",
     "prognosisNoEstimateTitle": "Le pronostic arrive quand tu as une estimation de son potentiel.",

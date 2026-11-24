@@ -161,12 +161,21 @@ test("estimates: kun egne ryttere får prognosen, og den ligger mellem nu og sk�
   assert.doesNotMatch(JSON.stringify(estimates), FORBIDDEN);
 });
 
-test("estimates: uden billeder i vinduet er farten nul", async () => {
-  const estimates = await buildEstimatesFromViews(world({ rider_derived_ability_history: [] }), {
-    teamId: TEAM, riderIds: ["growing"], clock: NOW,
+for (const [label, snapshot, expected] of [
+  ["ingen historik", null, { hidden: true, reason: "insufficientHistory" }],
+  ["13 dages historik", { snapshot_date: "2026-11-07", abilities: abilitiesAt(49) }, { hidden: true, reason: "insufficientHistory" }],
+  ["14 dages stilstand", { snapshot_date: "2026-11-06", abilities: abilitiesAt(50) }, { hidden: false, value: 50 }],
+  ["14 dage med ubrugelige evner", { snapshot_date: "2026-11-06", abilities: {} }, { hidden: true, reason: "insufficientHistory" }],
+]) {
+  test(`#8604: ${label}`, async () => {
+    const history = snapshot ? [{ rider_id: "growing", ...snapshot }] : [];
+    const estimates = await buildEstimatesFromViews(world({ rider_derived_ability_history: history }), {
+      teamId: TEAM, riderIds: ["growing"], clock: NOW,
+    });
+    assert.deepEqual(estimates.growing.prognosisView, expected);
+    assert.equal(estimates.growing.potentialView.value, 70);
   });
-  assert.deepEqual(estimates.growing.prognosisView, { hidden: false, value: 50 });
-});
+}
 
 // Kalenderdagens række fryser på datoens første gevinst-tick; løbsdags-billedet har dagens
 // sande slut-tilstand. Uden fletningen tæller senere gevinster samme dag som fremgang i vinduet.

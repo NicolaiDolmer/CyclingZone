@@ -12,6 +12,8 @@
     "potential": "Potencial",
     "prognosis": "Pronóstico",
     "prognosisTitle": "Si mantienes el ritmo actual, terminará más o menos aquí en su mejor momento. Basado en sus últimos 30 días.",
+    "prognosisPending": "Pendiente",
+    "prognosisPendingTitle": "La proyección requiere al menos 14 días de historial de desarrollo comparable.",
     "prognosisPastPeak": "Pasado su mejor momento",
     "prognosisPastPeakTitle": "Ya pasó la edad en la que los ciclistas alcanzan su mejor momento.",
     "prognosisNoEstimateTitle": "El pronóstico llega cuando tengas una estimación de su potencial.",

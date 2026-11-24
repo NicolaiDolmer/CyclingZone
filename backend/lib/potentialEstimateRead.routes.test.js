@@ -47,6 +47,10 @@ function fakeSupabase(stage) {
     training_rider_ticks: [{ rider_id: "youth", team_id: TEAM, tick_date: "2026-11-01", season_id: "s", game_day: 1 }],
     seasons: [{ number: 4, status: "active" }],
     rider_derived_abilities: [{ rider_id: "scouted", ...Object.fromEntries(REGISTRY_ABILITY_KEYS.map((key) => [key, 50])) }],
+    rider_derived_ability_history: [{
+      rider_id: "scouted", snapshot_date: "2026-10-22",
+      abilities: Object.fromEntries(REGISTRY_ABILITY_KEYS.map((key) => [key, 49])),
+    }],
   };
   const reads = [];
   return {

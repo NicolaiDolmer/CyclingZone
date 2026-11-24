@@ -226,7 +226,9 @@ function RolePrognosis({ types, primaryKey, secondaryKey, children = /** @type {
         ))}
       </div>
       <p className="text-cz-3 text-3xs mt-3 mb-0">
-        {t("profile.scouting.typesLegendNoLoft")}
+        {orderedTypes.some((row) => row.prog === null)
+          ? t("riders:potentialNumber.prognosisPendingTitle")
+          : t("profile.scouting.typesLegendNoLoft")}
       </p>
       {children}
     </SectionCard>

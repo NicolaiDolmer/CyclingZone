@@ -11,13 +11,15 @@
   "potentialNumber": {
     "potential": "Potentiale",
     "prognosis": "Prognose",
-    "prognosisTitle": "Fortsætter du den nuværende fart, ender han omkring her ved toppen. Bygger på hans seneste 30 dage.",
+    "prognosisTitle": "Prognosen viser, hvor rytteren forventes at ende, hvis han fortsætter med sin nuværende udviklingsfart.",
+    "prognosisPending": "Afventende",
+    "prognosisPendingTitle": "Prognosen afventer mindst 14 dages sammenlignelig udviklingshistorik.",
     "prognosisPastPeak": "Forbi toppen",
     "prognosisPastPeakTitle": "Han er forbi den alder, hvor ryttere topper.",
     "prognosisNoEstimateTitle": "Prognosen kommer, når du har et skøn over hans potentiale.",
     "aiTeamTitle": "AI-holdenes ryttere kan ikke scoutes.",
     "potentialSubtitle": "spejderens skøn",
-    "potentialTitle": "Potentiale, spejderens skøn. Et skøn, ikke et facit.",
+    "potentialTitle": "Potentiale er spejderens skøn over det højeste niveau, rytteren kan nå.",
     "approx": "ca. {value}"
   },
   "table": {

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import Tooltip from "../ui/Tooltip.jsx";
 import { CERTAINTIES, certaintyStep } from "../../lib/potentialEstimateDisplay";
 import type { Certainty, PotentialView, PrognosisView } from "../../lib/potentialEstimateDisplay";
 
@@ -78,6 +79,20 @@ export function CertaintyMeter({ certainty }: { certainty: Certainty }) {
 export function PrognosisValue({ view, size = "cell" }: { view: PrognosisView; size?: Size }) {
   const { t } = useTranslation();
   if (view.hidden) {
+    if (view.reason === "insufficientHistory") {
+      return (
+        <Tooltip label={t("riders:potentialNumber.prognosisPendingTitle")} dismissOnEscape id={undefined}>
+          <button type="button" className="text-xs text-cz-3 whitespace-nowrap cursor-help underline decoration-dotted underline-offset-2"
+            data-testid="prognosis-hidden" data-prognosis-hidden={view.reason}
+            onClick={(event) => {
+              event.stopPropagation();
+              event.currentTarget.focus();
+            }}>
+            {t("riders:potentialNumber.prognosisPending")}
+          </button>
+        </Tooltip>
+      );
+    }
     const pastPeak = view.reason === "pastPeak";
     return (
       <span
@@ -149,7 +164,7 @@ export default function PotentialEstimate({ view, size = "cell", action = null, 
       <span className={`inline-flex items-baseline gap-x-1.5 gap-y-1 ${size === "cell" ? "flex-nowrap" : "flex-wrap"}`} data-testid="potential-estimate">
         <span
           className={`tabular-nums whitespace-nowrap ${unsure ? "text-cz-3" : "text-cz-1"} ${NUMBER_CLASS[size]}`}
-          title={t("rider:potentialEstimate.notAFact")}
+          title={t("riders:potentialNumber.potentialTitle")}
           data-potential-value={view.value}
         >
           {unsure ? t("riders:potentialNumber.approx", { value: view.value }) : view.value}

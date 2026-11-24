@@ -299,3 +299,7 @@ XP-modellen ([spec 6/11](superpowers/specs/2026-11-06-6110-xp-udvikling-design.m
 
 Prøvekørslen (`backend/scripts/dev/tenSeasonSim6110.mjs`, #7757) læser dagsvariationen samme sted som motoren (`xp.variation`) og regner løbsdage som motoren, inklusive R15b, så R16 også måles på løbsdatoer og enkeltstart, før der tændes.
 
+### Potentiale og prognose (#8604)
+
+Potentialet er spejderens skøn over det niveau, rytteren kan nå. Prognosen bruger den nuværende udviklingsfart og kræver sammenlignelig historik for ryttere under topalderen. Uden grundlag vises prognosen som afventende, både samlet og ved fremskrivning pr. rolle. Den gældende regel står i [G3a-specifikationen](superpowers/specs/2026-11-20-6110-potentiale-p-og-udvikling-g3a-design.md#5-skøn-og-prognose).
+

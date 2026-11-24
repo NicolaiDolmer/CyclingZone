@@ -42,7 +42,7 @@ import { useRiderReputation } from "../../../lib/useRiderReputation.ts";
 import { riderReputationBand, riderReputationProgress, riderReputationValue } from "../../../lib/riderReputationView.ts";
 import { formatNumber } from "../../../lib/intl.js";
 import { squadBadgeKey } from "../../../lib/squadBadge.ts";
-import { AlertTriangleIcon, CategoryTag, HeroStats, StarIcon, ChevronRightIcon, Portal } from "../../ui";
+import { AlertTriangleIcon, CategoryTag, HeroStats, StarIcon, ChevronRightIcon, Portal, Tooltip } from "../../ui";
 
 // Division-chip — ENESTE rå-hex-undtagelse (spec): brand-uafhængig divisions-blå.
 const DIVISION_CHIP = "rgb(96 165 250)";
@@ -439,7 +439,12 @@ export default function RiderProfileHero({
                 {/* Ejer 20/11 (#8523): navnet er Potentiale, undertitlen er "spejderens skøn". */}
                 {potentialViewOf(scouting?.estimateFor?.(rider?.id)) && (
                   <span className="mb-0.5 block text-2xs font-normal text-cz-3" data-testid="potential-subtitle">
-                    {t("riders:potentialNumber.potentialSubtitle")}
+                    <Tooltip label={t("riders:potentialNumber.potentialTitle")} dismissOnEscape id={undefined}>
+                      <button type="button" className="cursor-help underline decoration-dotted underline-offset-2"
+                        onClick={(event) => event.currentTarget.focus()}>
+                        {t("riders:potentialNumber.potentialSubtitle")}
+                      </button>
+                    </Tooltip>
                   </span>
                 )}
                 <ScoutablePotentiale rider={rider} scouting={scouting} showScout={viewer === "scouting"} labelAsTitle hideLevel estimateSize="hero" showLooks={viewer === "scouting"} />
@@ -447,7 +452,12 @@ export default function RiderProfileHero({
                     potentialet, så stat-rækken ikke får et syvende tal og brydes. */}
                 {heroPrognosis && (
                   <span className="mt-1 flex items-baseline gap-1.5 text-2xs font-normal text-cz-3" data-testid="rider-hero-prognosis">
-                    <span title={t("riders:potentialNumber.prognosisTitle")}>{t("riders:potentialNumber.prognosis")}</span>
+                    <Tooltip label={t("riders:potentialNumber.prognosisTitle")} dismissOnEscape id={undefined}>
+                      <button type="button" className="cursor-help underline decoration-dotted underline-offset-2"
+                        onClick={(event) => event.currentTarget.focus()}>
+                        {t("riders:potentialNumber.prognosis")}
+                      </button>
+                    </Tooltip>
                     <PrognosisValue view={heroPrognosis} />
                   </span>
                 )}

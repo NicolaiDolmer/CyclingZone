@@ -37,7 +37,7 @@ Prøvekørslen af kandidat B for tændingsnatten 20/11 gav de højeste stjerner 
 ## 5. Skøn og prognose
 
 - Skønnet over P vises som ét tal med et sikkerhedsord (låst 23/10). Egne ryttere: skarpere med træning (5/12/20 datoer, låst 11/10). Andres: intet uden scouting. AI-ryttere på AI-hold kan ikke scoutes. Opdateres søndag og ved holdskifte.
-- **Prognosen** (kun egne ryttere): én samlet rating, "fortsætter du den nuværende fart, ender du omkring her ved toppen", regnet med rytterens fart de sidste 30 dage. Alle flader læser samme kilde.
+- **Prognosen** (kun egne ryttere): én samlet rating, "fortsætter du den nuværende fart, ender du omkring her ved toppen", regnet med rytterens fart de sidste 30 dage. Alle flader læser samme kilde. Ved manglende sammenlignelig historik eller kortere historik end det godkendte minimum (#8604) afventer prognosen for ryttere, der endnu ikke har nået toppen. Målt stilstand giver stadig den nuværende rating; potentialeskønnet vises uafhængigt.
 - **UI:** stjernerne fjernes helt; tal + sikkerhedsord overalt; samme tal hele livet; egen sorterbar kolonne "Potentiale" efter Rating i trup- og markedslister. Lofter og den gamle prognose fjernes fra fladerne.
 - XP og potentiale-tallet går live samme dag. Værdi/løn-omregning og AI-holdenes styrke over tid afgøres efter tænding.
 

@@ -1383,8 +1383,8 @@
         "text": "Ryttere på AI-hold og ryttere uden kontrakt udvikler sig ikke. De ældes stadig som alle andre. Når en af dem kommer på dit hold, begynder han at udvikle sig gennem din træning fra næste dag."
       },
       "potentialBestRoleEstimate": {
-        "title": "Potentiale i hele spillet",
-        "text": "Overalt i spillet hedder en rytters potentiale Potentiale, med undertitlen spejderens skøn. Det vises som ét tal og ét ord, fx Potentiale 74 · Rimelig. Tallet er dit holds skøn over, hvor højt han kan nå i sin naturlige rolle, på samme skala som hans rating, og ordet siger, hvor meget du kan stole på det: Usikker, Rimelig eller Sikker, hvor Sikker er toppen. Er ordet Usikker, står tallet som ca. 74 i en afdæmpet farve. Det sande tal vises aldrig. For dine egne ryttere viser kolonnen Prognose én samlet rating: hvor han ender omkring toppen, hvis han fortsætter den nuværende fart, bygget på hans seneste 30 dage. Flere kig, en bedre spejder og, for dine egne ryttere, mere træning på dit hold gør skønnet mere sikkert. Det flytter sig kun, når dit hold lærer noget nyt, ved søndagsopdateringen, eller når han skifter hold. Intet andet sted i spillet annoncerer en ændring; her står forklaringen."
+        "title": "Potentiale og prognose",
+        "text": "Potentiale er spejderens skøn over det højeste niveau, rytteren kan nå. Ordet Usikker, Rimelig eller Sikker viser, hvor sikker spejderen er. Prognosen viser, hvor rytteren forventes at ende, hvis han fortsætter med sin nuværende udviklingsfart. Den bygger på de seneste 30 dage. Hvis rytteren endnu ikke har nået toppen og har under 14 dages sammenlignelig historik, står prognosen som afventende. Spejderens skøn kan blive mere sikkert med flere kig, en bedre spejder eller mere træning på dit hold."
       },
       "potentialBestRole": {
         "title": "Potentiale i hele spillet",

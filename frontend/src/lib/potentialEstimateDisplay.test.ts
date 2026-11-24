@@ -7,6 +7,7 @@ import {
   potentialViewOf,
   potentialViewValue,
   prognosisViewOf,
+  prognosisViewValue,
 } from "./potentialEstimateDisplay.ts";
 
 const shown = { hidden: false, value: 74, certainty: "fair", previousValue: 71, previousCertainty: "unsure", changedAt: "2026-11-01T04:00:00.000Z" };
@@ -67,10 +68,13 @@ test("#8523: AI-holdets rytter læses som en tom tilstand", () => {
   assert.equal(potentialViewValue({ hidden: true, reason: "aiTeam" }), null);
 });
 
-test("#8523: prognosen læses som ét tal eller en af to tomme tilstande", () => {
+test("#8523: prognosen læses som ét tal eller en tom tilstand", () => {
   assert.deepEqual(prognosisViewOf({ prognosisView: { hidden: false, value: 61 } }), { hidden: false, value: 61 });
   assert.deepEqual(prognosisViewOf({ prognosisView: { hidden: true, reason: "pastPeak" } }), { hidden: true, reason: "pastPeak" });
   assert.deepEqual(prognosisViewOf({ prognosisView: { hidden: true, reason: "noEstimate" } }), { hidden: true, reason: "noEstimate" });
+  const pending = { hidden: true, reason: "insufficientHistory" };
+  assert.deepEqual(prognosisViewOf({ prognosisView: pending }), pending);
+  assert.equal(prognosisViewValue(prognosisViewOf({ prognosisView: pending })), null);
   assert.equal(prognosisViewOf({ prognosisView: { hidden: false, value: null } }), null);
   assert.equal(prognosisViewOf({ prognosisView: { hidden: true, reason: "other" } }), null);
   assert.equal(prognosisViewOf({ potentialView: {} }), null, "slukket flag: intet felt");

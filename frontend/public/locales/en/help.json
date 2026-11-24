@@ -1383,8 +1383,8 @@
         "text": "Riders on AI teams and riders without a contract don't develop. They still age like everyone else. When one of them joins your team, he starts developing through your training from the next day."
       },
       "potentialBestRoleEstimate": {
-        "title": "Potential across the game",
-        "text": "Everywhere in the game a rider's potential is called Potential, with the line the scout's estimate under it. It shows as one number and one word, for example Potential 74 · Fair. The number is your team's estimate of how high he can reach in his natural role, on the same scale as his rating, and the word says how far to trust it: Uncertain, Fair or Confident, where Confident is the top. When the word is Uncertain the number shows as approx. 74 in a muted colour. The true number is never shown. For your own riders the Prognosis column shows one rating: where he ends up around his peak if he keeps his current pace, based on his last 30 days. More looks, a better scout and, for your own riders, more training on your team make the estimate more certain. It only moves when your team learns something new, at the Sunday update, or when he changes team. Nothing else in the game announces a change; this is where it is explained."
+        "title": "Potential and prognosis",
+        "text": "Potential is the scout's estimate of the highest level the rider can reach. Uncertain, Fair or Confident tells you how sure the scout is. The prognosis shows where the rider is expected to end up if he keeps developing at his current pace. It uses the last 30 days. If the rider is still below his peak age and has fewer than 14 days of comparable history, the prognosis shows as pending. More scouting, a better scout or more training with your team can make the estimate more reliable."
       },
       "potentialBestRole": {
         "title": "Potential across the game",

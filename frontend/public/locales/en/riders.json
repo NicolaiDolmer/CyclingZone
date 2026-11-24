@@ -11,13 +11,15 @@
   "potentialNumber": {
     "potential": "Potential",
     "prognosis": "Prognosis",
-    "prognosisTitle": "Keep up the current pace and he ends up around here at his peak. Based on his last 30 days.",
+    "prognosisTitle": "The prognosis shows where the rider is expected to end up if he keeps developing at his current pace.",
+    "prognosisPending": "Pending",
+    "prognosisPendingTitle": "The prognosis needs at least 14 days of comparable development history.",
     "prognosisPastPeak": "Past his peak",
     "prognosisPastPeakTitle": "He is past the age where riders peak.",
     "prognosisNoEstimateTitle": "The prognosis comes once you have an estimate of his potential.",
     "aiTeamTitle": "Riders on AI teams can't be scouted.",
     "potentialSubtitle": "the scout's estimate",
-    "potentialTitle": "Potential, the scout's estimate. An estimate, not a fact.",
+    "potentialTitle": "Potential is the scout's estimate of the highest level the rider can reach.",
     "approx": "approx. {value}"
   },
   "table": {

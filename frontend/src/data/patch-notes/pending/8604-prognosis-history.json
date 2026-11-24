@@ -1,0 +1,22 @@
+{
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Rider development",
+      "area": "development",
+      "da": {
+        "title": "Prognoser afventer historik",
+        "body": "Prognosen står som afventende, når der mangler udviklingshistorik. Profilen og Hjælp forklarer forskellen på spejderens potentialeskøn og prognosen ud fra rytterens nuværende udviklingsfart."
+      },
+      "en": {
+        "title": "Prognoses wait for development history",
+        "body": "The prognosis shows as pending when development history is too short. The rider profile and Help explain the difference between the scout's estimate of potential and the prognosis based on the rider's current development pace."
+      },
+      "refs": [
+        8604
+      ]
+    }
+  ]
+}

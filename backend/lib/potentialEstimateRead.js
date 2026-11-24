@@ -19,7 +19,7 @@
 // #8523 (spec 2026-11-20 §5): egne ryttere får desuden prognosisView, den samlede
 // prognose "fortsætter du den nuværende fart, ender du omkring her ved toppen":
 //   { hidden:false, value }
-//   { hidden:true, reason:'noEstimate' | 'pastPeak' }
+//   { hidden:true, reason:'noEstimate' | 'pastPeak' | 'insufficientHistory' }
 // Andres ryttere får aldrig feltet. Ryttere på et AI-hold kan ikke scoutes, så uden
 // et gemt skøn svarer de { hidden:true, reason:'aiTeam' } i stedet for 'unscouted'.
 
@@ -140,8 +140,10 @@ export async function loadPotentialViews(supabase, { teamId, riderIds }) {
 // ── Samlet prognose for egne ryttere (#8523) ─────────────────────────────────────
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const MIN_PROGNOSIS_HISTORY_DAYS = 14;
 const NO_ESTIMATE = Object.freeze({ hidden: true, reason: "noEstimate" });
 const PAST_PEAK = Object.freeze({ hidden: true, reason: "pastPeak" });
+const INSUFFICIENT_HISTORY = Object.freeze({ hidden: true, reason: "insufficientHistory" });
 
 const isoDay = (date) => date.toISOString().slice(0, 10);
 const daysBetween = (from, to) => Math.round((Date.parse(to) - Date.parse(from)) / DAY_MS);
@@ -163,7 +165,7 @@ function bestRoleOf(rider, liveAbilities) {
 }
 
 // Farten-vinduets startbillede: seneste billede fra før vinduet, ellers det ældste i
-// vinduet. Uden billeder har rytteren ingen registreret fremgang, og farten er nul.
+// vinduet. Et tidspunkt er ikke nok, hvis evnerne ikke kan sammenlignes i rollen.
 function paceBaseline(snapshots, today) {
   const windowStart = isoDay(new Date(Date.parse(today) - PROGNOSIS_PACE_DAYS * DAY_MS));
   const sorted = [...(snapshots ?? [])].sort((a, b) => a.snapshot_date.localeCompare(b.snapshot_date));
@@ -176,6 +178,10 @@ function rolePaceInputs(role, liveAbilities, baseline) {
   if (now == null) return null;
   const past = baseline ? roleOutputRaw(baseline.abilities, role) : null;
   return { now, past, daysAgo: baseline?.daysAgo ?? null };
+}
+
+function hasPaceHistory(inputs) {
+  return Number.isFinite(inputs?.past) && inputs.daysAgo >= MIN_PROGNOSIS_HISTORY_DAYS;
 }
 
 // Evne-billeder fra lidt før farten-vinduet og frem, kun for de ryttere der skal bruge dem.
@@ -239,8 +245,13 @@ async function loadPrognosisViews(supabase, { teamId, context, clock = new Date(
     : await loadPaceSnapshots(supabase, { riderIds: growing.map((rider) => rider.id), today });
   for (const rider of growing) {
     const inputs = paceInputs(rider, context.abilities.get(rider.id), snapshots.get(rider.id), today);
+    const age = ages.get(rider.id);
+    if (inputs && age < PEAK_AGE && !hasPaceHistory(inputs)) {
+      out.set(rider.id, INSUFFICIENT_HISTORY);
+      continue;
+    }
     const value = inputs
-      ? pacePrognosis({ ...inputs, estimate: context.views.get(rider.id).value, age: ages.get(rider.id) })
+      ? pacePrognosis({ ...inputs, estimate: context.views.get(rider.id).value, age })
       : null;
     out.set(rider.id, value == null ? NO_ESTIMATE : { hidden: false, value });
   }
@@ -301,6 +312,7 @@ export function buildTypePrognoses({ bands, rider, liveAbilities, snapshots, tod
       : bestMid != null && mid != null ? estimate + mid - bestMid
         : mid;
     const inputs = liveAbilities ? rolePaceInputs(band.key, liveAbilities, baseline) : null;
+    if (age < PEAK_AGE && !hasPaceHistory(inputs)) return { key: band.key, now: band.now, prog: null };
     const prog = inputs && target != null && age <= PEAK_AGE
       ? pacePrognosis({ ...inputs, estimate: target, age })
       : null;

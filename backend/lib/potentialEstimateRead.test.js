@@ -210,7 +210,9 @@ const roleInput = (over = {}) => reportInput({
 });
 
 test("scouting-rapporten: scoutet fremmed rytter får ét prognosetal pr. ryttertype, intet bånd", async () => {
-  const report = await buildScoutingReportFromView(world(), roleInput());
+  const report = await buildScoutingReportFromView(world({
+    rider_derived_ability_history: [{ rider_id: "scouted", snapshot_date: "2026-11-06", abilities: abilitiesAt(49) }],
+  }), roleInput());
   assert.equal(report.types.length, 8);
   for (const row of report.types) {
     assert.deepEqual(Object.keys(row), ["key", "now", "prog"], row.key);
@@ -251,8 +253,10 @@ test("scouting-rapporten: den bedste rolle har samme tal som den samlede prognos
   assert.ok(climber.prog > climber.now, "fremgang giver en prognose over niveauet i dag");
 });
 
-test("scouting-rapporten: uden fremgang står hver type på sit niveau i dag", async () => {
-  const report = await buildScoutingReportFromView(growingWorld({ rider_derived_ability_history: [] }), growingInput());
+test("scouting-rapporten: målt stilstand viser niveauet i dag for hver type", async () => {
+  const report = await buildScoutingReportFromView(growingWorld({
+    rider_derived_ability_history: [{ rider_id: "scouted", snapshot_date: "2026-11-06", abilities: abilitiesAt(50) }],
+  }), growingInput());
   for (const row of report.types) assert.equal(row.prog, row.now, row.key);
 });
 
@@ -283,7 +287,7 @@ test("buildTypePrognoses: målet for hver type er skønnet, flyttet med typens a
   assert.ok(byKey.gc >= best, "en type spejderen ser højere, får aldrig et lavere tal");
   assert.equal(byKey.sprinter, 50, "et mål under niveauet i dag giver ingen fremgang");
   // Uden billeder er farten nul, og tallet er niveauet i dag.
-  for (const row of buildTypePrognoses({ ...input, snapshots: [] })) assert.equal(row.prog, row.now, row.key);
+  for (const row of buildTypePrognoses({ ...input, snapshots: [] })) assert.equal(row.prog, null, row.key);
 });
 
 test("scouting-rapporten: uscoutet, skjult og uden kig giver ingen liste", async () => {
