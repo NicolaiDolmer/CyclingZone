@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuctionData, useAuctionEvents } from "../data/auctionData.ts";
 
@@ -8,7 +8,7 @@ import RiderLink from "../components/RiderLink";
 import MessageManagerButton from "../components/messages/MessageManagerButton.jsx"; // #3200
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
-import { ABILITY_STATS, ABILITY_SHORT } from "../lib/abilities";
+import { ABILITY_STATS } from "../lib/abilities";
 import { statStyle } from "../lib/statColor";
 import { ConfettiModal } from "../components/ConfettiModal";
 import { RacePriceModal } from "../components/RacePriceModal";
@@ -102,9 +102,8 @@ const BID_FEED_WINDOW_MS = 15 * 60 * 1000;
 
 // Stat-kolonner = de 15 CZ-evner (delt config lib/abilities.js). #1529: erstattede
 // de 14 PCM stat_*-kolonner — visningen viser nu evner. STATS = de bare evne-keys
-// (til visibleStats-filter + join-select), labels via ABILITY_SHORT.
+// (til visibleStats-filter + join-select), fulde navne via rider-oversættelsen.
 const STATS = ABILITY_STATS.map(s => s.key);
-const STAT_LABEL_BY_KEY = ABILITY_SHORT;
 
 // #2464: nøgle-evner er synlige som DEFAULT — en køber skal kunne vurdere en
 // rytter uden først at opdage stat-toggle'en (28 kiggede, 10 bød). De 5
@@ -790,7 +789,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
         <div className={`mt-2 grid gap-1.5`} style={{ gridTemplateColumns: `repeat(${Math.min(visibleStatsArr.length, 5)}, minmax(0, 1fr))` }}>
           {visibleStatsArr.map(key => (
             <div key={key} className="text-center">
-              <p className="text-cz-3 text-3xs uppercase mb-0.5">{STAT_LABEL_BY_KEY[key]}</p>
+              <p className="text-cz-3 text-3xs uppercase mb-0.5 hyphens-auto wrap-anywhere">{t(`rider:racePreview.derived.${key}`)}</p>
               <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded-cz" style={statStyle(r?.[key] || 0)}>
                 {r?.[key] || "—"}
               </span>
@@ -1804,7 +1803,7 @@ function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort,
           sortDir={activeSortDir("_ovr")} onSort={handleSort}
           title={t("table.ovrTitle")}
           className={`px-2 py-3 text-center ${TH_BASE}`}>
-          {t("table.ovr")}
+          {t("riders:table.rating")}
         </SortTh>
         <SortTh sortKey="_scoutMid"
           sort={activeSort("_scoutMid") ? "_scoutMid" : riderFiltersSort}
@@ -1820,7 +1819,7 @@ function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort,
           <SortTh key={key} sortKey={key}
             sort={activeSort(key) ? key : riderFiltersSort}
             sortDir={activeSortDir(key)} onSort={handleSort}
-            className={`px-1 py-3 text-center w-9 ${TH_BASE}`}>{STAT_LABEL_BY_KEY[key]}</SortTh>
+            className={`px-1 py-3 text-center w-9 hyphens-auto wrap-anywhere ${TH_BASE}`}>{t(`rider:racePreview.derived.${key}`)}</SortTh>
         ))}
         {/* Sticky bud-kolonne: 1px border-rule (border-l) erstatter den rå
             skygge; .auction-bid-cell giver opak cellebund (index.css). */}
@@ -1853,9 +1852,9 @@ function AuctionMobileSortControl({ visibleStats, activeSortDir, handleSort, rid
     { key: "salary", label: t("table.salary") },
     { key: "value", label: t("table.value") },
     { key: reputationOn ? "reputation" : "popularity", label: t(reputationOn ? "table.reputation" : "table.popularity") },
-    { key: "_ovr", label: t("table.ovr") },
+    { key: "_ovr", label: t("riders:table.rating") },
     { key: "_scoutMid", label: t("table.potential") },
-    ...visibleStatsArr.map((key) => ({ key, label: STAT_LABEL_BY_KEY[key] })),
+    ...visibleStatsArr.map((key) => ({ key, label: t(`rider:racePreview.derived.${key}`) })),
   ];
   const currentKey = auctionSort.key || riderFiltersSort;
   const currentDir = activeSortDir(currentKey);

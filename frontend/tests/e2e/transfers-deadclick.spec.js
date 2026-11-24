@@ -89,9 +89,9 @@ test("SwapCard rytter-celle navigerer til rytterprofil (#1421)", async ({ page }
   await login(page);
   await page.goto("/transfers?tab=swaps");
 
-  // Hele rytter-cellen (label + navn + CLM/SPR/TT/FLT-evner) er ét link med rytternavnet
-  // som aria-label; 'CLM' findes kun i celle-evnerne, ikke i navne-linket.
-  const swapCell = page.locator('a[href="/riders/rider-offered"]').filter({ hasText: "CLM" });
+  // Hele rytter-cellen (label + navn + evnenavne) er ét link med rytternavnet
+  // som aria-label; 'Klatring' findes kun i celle-evnerne, ikke i navne-linket.
+  const swapCell = page.locator('a[href="/riders/rider-offered"]').filter({ hasText: "Klatring" });
   await expect(swapCell).toBeVisible();
   await swapCell.hover();
 

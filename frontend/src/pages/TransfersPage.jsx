@@ -45,7 +45,7 @@ import { useBlockedAction } from "../lib/useBlockedAction.js";
 import { WRAP } from "../components/ui/dataTableStyles.js";
 import { useIsMobileViewport } from "../hooks/useMediaQuery.ts";
 import { FullTableToggle } from "../components/ui/MobileTableChips.jsx";
-import { ABILITY_STATS as LISTING_STATS, ABILITY_KEYS, ABILITY_SHORT } from "../lib/abilities";
+import { ABILITY_KEYS } from "../lib/abilities";
 import { getRiderAge, retirementBidWarningTier } from "../lib/riderAge";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import NationCell from "../components/rider/NationCell";
@@ -172,7 +172,7 @@ const TAB_TO_MODE = Object.fromEntries(
   TAB_MODES.flatMap((m) => m.tabs.map((tab) => [tab, m.key])),
 );
 
-// #1529: stat-kolonnerne = de 15 CZ-evner (delt config, importeret som LISTING_STATS).
+// #1529: stat-kolonnerne bruger de delte evnenøgler for tabellen og sorteringen.
 // Erstattede de 14 PCM stat_*. Backend /api/transfers (+ my-offers/swaps) leverer
 // rider_derived_abilities, som flades op på rytter-objektet (flattenAbilities) ved load.
 //
@@ -180,9 +180,8 @@ const TAB_TO_MODE = Object.fromEntries(
 // rækkefølge og labels udledes af SSOT (abilities.js), så den aldrig kan divergere
 // fra de andre evne-flader. Nøglerne holdes i ABILITY_KEYS-rækkefølge (guard-test i
 // TransfersPage.abilities.test.js fejler hvis en nøgle er ukendt eller ude af orden),
-// og labelen kommer fra ABILITY_SHORT i stedet for en hardcodet streng.
+// og navnet hentes fra den delte evneoversættelse.
 const SWAP_PREVIEW_KEYS = ["climbing", "sprint", "flat", "time_trial"];
-const SWAP_PREVIEW = SWAP_PREVIEW_KEYS.map((key) => [ABILITY_SHORT[key], key]);
 
 function useTimeAgo() {
   const { t } = useTranslation("transfers");
@@ -671,9 +670,12 @@ function SwapCard({ swap, myTeamId, onAction, showArchive = true }) {
             <p className="text-cz-1 text-sm font-semibold transition-colors group-hover:text-cz-accent-t">
               {rider?.firstname} {rider?.lastname}
             </p>
-            <div className="flex gap-2 mt-1">
-              {SWAP_PREVIEW.map(([l, k]) => (
-                <span key={k} className="text-3xs text-cz-3">{l}<span className="text-cz-2 ms-0.5">{rider?.[k] ?? "—"}</span></span>
+            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+              {SWAP_PREVIEW_KEYS.map((key) => (
+                <span key={key} className="text-3xs text-cz-3">
+                  {t(`rider:racePreview.derived.${key}`)}
+                  <span className="ms-1 font-data tabular-nums text-cz-2">{rider?.[key] ?? "—"}</span>
+                </span>
               ))}
             </div>
           </RiderLink>
@@ -1274,6 +1276,7 @@ function BulkPriceEditor({ selectedListings, onApply, onClear, busy }) {
 export default function TransfersPage() {
   const { t } = useTranslation("transfers");
   const { t: tCommon } = useTranslation("common");
+  const listingStats = ABILITY_KEYS.map((key) => ({ key, label: t(`rider:racePreview.derived.${key}`) }));
   const navigate = useNavigate();
   // #3071: sæson-referenceår til alders-visning/filtre (se riderAge.js).
   const seasonYear = useActiveSeasonYear();
@@ -1959,7 +1962,7 @@ export default function TransfersPage() {
                 sort={marketSort}
                 sortDir={marketSortDir}
                 onSort={handleMarketSort}
-                statCols={LISTING_STATS}
+                statCols={listingStats}
                 t={t}
               />
               {/* #2451: bulk-prisredigering — "Markér alle" er kun synlig når manageren
@@ -2058,9 +2061,9 @@ export default function TransfersPage() {
                             className={`px-3 py-3 text-right w-32 ${MARKET_TH_BASE}`}>
                             {t("marketRow.price")}
                           </SortableTh>
-                          {showMarketStatCols && LISTING_STATS.map(({ key, label }) => (
+                          {showMarketStatCols && listingStats.map(({ key, label }) => (
                             <SortableTh key={key} sortKey={key} sort={marketSort} sortDir={marketSortDir} onSort={handleMarketSort}
-                              className={`px-1.5 py-3 text-center w-14 ${MARKET_TH_BASE}`}>
+                              className={`px-1.5 py-3 text-center w-14 hyphens-auto wrap-anywhere ${MARKET_TH_BASE}`}>
                               {label}
                             </SortableTh>
                           ))}
@@ -2073,7 +2076,7 @@ export default function TransfersPage() {
                             key={l.id}
                             listing={l}
                             myTeamId={myTeamId}
-                            statCols={LISTING_STATS}
+                            statCols={listingStats}
                             showStatCols={showMarketStatCols}
                             isMobile={isMobile}
                             expanded={expandedListingId === l.id}

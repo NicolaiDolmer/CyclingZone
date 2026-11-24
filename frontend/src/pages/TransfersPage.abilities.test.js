@@ -42,11 +42,7 @@ test("#2002 SWAP_PREVIEW_KEYS følger SSOT-rækkefølgen (ABILITY_KEYS)", () => 
   );
 });
 
-test("#2002 SwapCard-labels udledes af ABILITY_SHORT (ingen hardcodede label-strenge)", () => {
-  // Preview'et bygges via ABILITY_SHORT[key] — ikke via en hardcodet [label, key]-liste.
-  assert.match(
-    src,
-    /SWAP_PREVIEW_KEYS\.map\(\s*\(key\)\s*=>\s*\[ABILITY_SHORT\[key\]/,
-    "SWAP_PREVIEW skal udlede labelen fra ABILITY_SHORT (SSOT), ikke en hardcodet streng",
-  );
+test("#8651 swap cards use complete localized ability names", () => {
+  assert.match(src, /SWAP_PREVIEW_KEYS\.map\(\(key\)/);
+  assert.match(src, /rider:racePreview\.derived\.\$\{key\}/);
 });

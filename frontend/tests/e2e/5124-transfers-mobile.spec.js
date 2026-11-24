@@ -80,7 +80,7 @@ test("mobil 393px: markeds-tabellen scroller aldrig vandret, og bulk-select + 'T
   await expect.poll(noPageScroll).toBe(true);
 
   // De 15 evne-kolonner er væk som standard — ingen "CLM"/klatre-header synlig.
-  await expect(page.getByRole("columnheader", { name: "CLM" })).toHaveCount(0);
+  await expect(page.getByRole("columnheader", { name: "Klatring" })).toHaveCount(0);
 
   await page.screenshot({ path: evidenceShotPath(`pr-screens/5124-transfers-mobile-393-${testInfo.project.name}.png`), fullPage: false });
 
@@ -99,7 +99,7 @@ test("mobil 393px: markeds-tabellen scroller aldrig vandret, og bulk-select + 'T
 
   // "Fuld tabel" afslører evne-kolonnerne — stadig ingen sidescroll (kontaineret).
   await page.getByRole("button", { name: "Fuld tabel" }).click();
-  await expect(page.getByRole("columnheader", { name: "CLM" })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Klatring" })).toBeVisible();
   await expect.poll(noPageScroll).toBe(true);
 
   await page.screenshot({ path: evidenceShotPath(`pr-screens/5124-transfers-mobile-393-fulltable-${testInfo.project.name}.png`), fullPage: false });
@@ -111,7 +111,7 @@ test("desktop 1280px: uændret — evne-kolonner synlige uden 'Fuld tabel'-knap"
   await page.goto("/transfers?tab=market");
   await page.locator("table[data-sortable]").first().waitFor();
 
-  await expect(page.getByRole("columnheader", { name: "CLM" })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Klatring" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Fuld tabel" })).toHaveCount(0);
 
   await page.screenshot({ path: evidenceShotPath(`pr-screens/5124-transfers-desktop-1280-${testInfo.project.name}.png`), fullPage: false });
