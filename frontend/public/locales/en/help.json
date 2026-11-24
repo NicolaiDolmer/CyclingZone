@@ -1432,7 +1432,10 @@
           "Find a rider and choose what kind of day it is: Rest, Active recovery, a Skill day or Training.",
           "On a training day, pick the session: Long ride (easy), Tempo (medium), or Mixed intervals, Climbing intervals, Punch intervals, Threshold, Sprint, Cobbled Sectors, Echelon Drills or Attack Repeats (hard). On a skill day: Technique, Aero or Race craft.",
           "Save. The day runs every day until you change it.",
-          "There is no cap on how many riders can have a program: you can set one for your entire squad."
+          "There is no cap on how many riders can have a program: you can set one for your entire squad.",
+          "When Rotation is available in Program, put the passes in the order you want them to run. A race, injury or rest from the fatigue limit pauses the sequence. If the same pass runs on Light, the rotation moves on.",
+          "Use Jump to pass to change a rider’s place. Copying a rotation of the same length keeps each rider’s place unless you select Start from pass 1. A different length starts at pass 1.",
+          "When field priority is available in Week blocks, order each day’s passes by priority. You can lock one pass on that day. Races took lists the passes that did not fit."
         ]
       },
       "dayTypes": {

@@ -1002,7 +1002,7 @@ features:
     ssot: docs/TRAINING_RULES.md
     epic: 7947
     verified: 2026-11-21
-    note: "On for alle 21/11 aften (ejer: live nu); binær kontakt, så beta virker ikke."
+    note: "On for alle 21/11 aften. Program R5 har de selvstændigt flaggede editorer til Rotation (#8548) og Ugeblokke (#8549). I dag viser rotationspassets session."
     decision: goer-faerdigt
     decide_by: 2026-12-04
 
@@ -1028,7 +1028,7 @@ features:
     ssot: docs/TRAINING_RULES.md
     epic: 7456
     verified: 2026-11-22
-    note: "PR 2 (motor + prognose) bag training_week_priority = off. Kun rækker med plan_kind 'week'. PR 3 (API-skrivning af lockSlot/plan_kind + R5-UI) følger; Fable-dom før merge; ejer tænder."
+    note: "Motor, prognose og Program R5 bag training_week_priority. Feltprioritet og lås gemmes med weekBlock på celle-API'et for ryttere og grupper."
     decision: goer-faerdigt
     decide_by: 2026-12-06
 

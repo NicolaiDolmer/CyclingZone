@@ -356,6 +356,10 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "day_words_7725",
   // #7801: Hjaelp viser traethed lige nu og regel-teksten paa dette flag (binaert, som motoren).
   "fatigue_now_7801",
+  // #8548/#8549: patch note 7.506 (rotation og ugeblokke) gater paa disse kontakter,
+  // saa maerket skifter til "Now for everyone", naar de er on for alle.
+  "training_rotation",
+  "training_week_priority",
   // #7535: den nye planlaegningsside (/planning/workbench) findes kun paa dette flag.
   "planning_workbench",
   // #8031: beta-noten om Træn nu-kvitteringen skifter til "Now for everyone", naar kontakten er on for alle.
