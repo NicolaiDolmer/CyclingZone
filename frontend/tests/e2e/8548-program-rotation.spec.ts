@@ -1,7 +1,11 @@
 import type { Page, Route } from "@playwright/test";
 import { test, expect } from "./e2e-base.js";
 import { corsHeaders, evidenceShotPath, installNetworkMocks, json, login, RIDERS, stabilizePage, TEST_TEAM } from "./fixtures.js";
-import { addDays, forecastRotationFields } from "../../../backend/lib/trainingWeekForecast.js";
+// Ingen backend-import her: e2e bygges uden serverpakker (CI 24/11). ROTATION_DAYS er motorens
+// forecastRotationFields-svar for dette scenarie; backend/lib/trainingRotationE2eFixture.test.js
+// holder den lig motoren.
+import { ROTATION_DAYS } from "./fixtures/8548-rotation-days.ts";
+const addDays = (date: string, n: number) => { const d = new Date(`${date}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 
 const weekdays = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 const riders = RIDERS.slice(0, 2);
@@ -60,17 +64,7 @@ test("R5 switches between week blocks and rotation and sends edits, jumps and co
     assigned: { [first.id]: "fixture" },
   }));
   const baseForecast = { fatigue: 35, band: "ok", raceSlots: [4] };
-  const raceSlotsByDay = [[1, 4], [], [2], [], [0, 3], [], [4], []];
-  let nextRotationIndex = 6;
-  const rotationDays = raceSlotsByDay.map((raceSlots, i) => {
-    const gameDays = Array.from({ length: 5 }, (_, slot) => i * 5 + slot);
-    const fields = { raceSlots, restSlots: i === 1 ? [0, 1, 2, 3, 4] : [] };
-    const forecast = forecastRotationFields({
-      rotation: current, startIndex: nextRotationIndex, gameDays, fields, rule: null, rodeStagePreviousDate: false,
-    });
-    nextRotationIndex = forecast.nextRotationIndex;
-    return forecast;
-  });
+  const rotationDays = ROTATION_DAYS;
   const dailyRotation = { ...baseForecast, ...rotationDays[0] };
   await page.route("**/api/training/programs/forecast", (route) => mock(route, {
     available: true, tickDate: "2026-11-23", riders: {
