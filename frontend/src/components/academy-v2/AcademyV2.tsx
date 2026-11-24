@@ -3,7 +3,7 @@
 //
 //   Overblik  Optag · Junior x/10 · U23 y/12 · Talenter. Trupgrænserne er de
 //             RIGTIGE lofter (squadCaps.ts, spejl af backend/lib/squads.js SQUAD_CAPS).
-//   Faner     Ugens optag · Dine talenter · Profil.
+//   Faner     Ugens optag · Dine talenter · Profil og alder.
 //
 // Fund fra design-gennemgangen (PR #8249) rettet her:
 //   A1 åbner på "Dine talenter", når optaget intet har at gøre (initialAcademyTab).
@@ -26,10 +26,10 @@ import { buttonClass } from "../ui/buttonStyles.js";
 import { GiftIcon } from "../ui/icons/index.jsx";
 import { squadCapRows, type SquadCounts } from "../../lib/squadCaps.ts";
 import TalentTable, { type TalentRider } from "./TalentTable.tsx";
-import type { SaveResult } from "./useAcademyAgeFocus.ts";
+import { useAcademyAgeFocus, type ProfileWithAgeFocus, type SaveResult } from "./useAcademyAgeFocus.ts";
 import { useTalentOrigins } from "./useTalentOrigins.ts";
 import { AcademyLedgerTab } from "../academy-ledger/index.ts";
-import { initialAcademyTab, ownAcademyTalents, type AcademyV2Tab } from "./academyV2Model.ts";
+import { ageFocusChoice, initialAcademyTab, ownAcademyTalents, AGE_FOCUS_MIXED, type AcademyV2Tab } from "./academyV2Model.ts";
 
 // Kit-primitiverne er utypede .jsx; kontrakten skrives ned her (samme greb som AcademyProfileCard.tsx).
 const SectionHeader = SectionHeaderJs as unknown as ComponentType<{ title: ReactNode; meta?: ReactNode }>;
@@ -45,20 +45,21 @@ export interface AcademyV2Props {
   intakePull: { enabled: boolean; pulledThisWeek: boolean };
   pullBusy: boolean;
   pullError: string | null;
-  onPull: () => void;
+  onPull: () => Promise<void>;
   roster: TalentRider[];
   seasonYear: number | null;
   squadCounts: Partial<SquadCounts>;
   clubCapacity: { used: number; max: number } | null;
   academyProfile: AcademyProfile | null;
   saveProfile: (profile: ProfileValue) => Promise<SaveResult>;
+  refreshAcademy: () => Promise<void>;
   footer: ReactNode;
 }
 
 export default function AcademyV2(props: AcademyV2Props) {
   const {
     giftIntake, regularIntake, renderIntakeCard, intakePull, pullBusy, pullError, onPull,
-    roster, seasonYear, squadCounts, clubCapacity, academyProfile, saveProfile, footer,
+    roster, seasonYear, squadCounts, clubCapacity, academyProfile, saveProfile, refreshAcademy, footer,
   } = props;
   const { t } = useTranslation(["academy", "academyV2"]);
   const pullOpen = intakePull.enabled && !intakePull.pulledThisWeek;
@@ -66,6 +67,19 @@ export default function AcademyV2(props: AcademyV2Props) {
     regularCount: regularIntake.length, giftCount: giftIntake.length, pullOpen, talentCount: roster.length,
   }));
   const showProfileTab = Boolean(academyProfile);
+  const ageFocus = useAcademyAgeFocus(showProfileTab);
+  const focusState = !ageFocus.error && ageFocus.state?.unlocked ? ageFocus.state : null;
+  const focusLabel = (value: string | null) => (ageFocusChoice(value) === AGE_FOCUS_MIXED ? t("academyV2:v2.age.mixed") : String(value));
+  async function pullAndRefreshFocus() {
+    await onPull();
+    await ageFocus.refresh();
+  }
+
+  async function saveWithAgeFocus(profile: ProfileWithAgeFocus) {
+    const result = await ageFocus.saveProfile(profile);
+    if (result.ok) await refreshAcademy();
+    return result;
+  }
   // Spillerens eget fanevalg vinder altid over den automatiske start-fane.
   const tabPicked = useRef(false);
   const pickTab = (next: AcademyV2Tab) => {
@@ -101,6 +115,7 @@ export default function AcademyV2(props: AcademyV2Props) {
     })),
     ...(clubCapacity == null ? [] : [{ label: t("clubRoster"), value: t("squadLinks.count", clubCapacity) }]),
     { label: t("academyV2:v2.stats.talents"), value: ownTalents ? String(ownTalents.length) : "–" },
+    ...(focusState ? [{ label: t("academyV2:v2.stats.ageFocus"), value: focusLabel(focusState.active?.ageFocus ?? null) }] : []),
   ];
 
   const goToIntake = (
@@ -125,7 +140,7 @@ export default function AcademyV2(props: AcademyV2Props) {
             <Tab value="intake">{t("academyV2:v2.tabs.intake")}</Tab>
             <Tab value="talents">{t("academyV2:v2.tabs.talents")}</Tab>
             <Tab value="ledger">{t("academyV2:v2.tabs.ledger")}</Tab>
-            {showProfileTab ? <Tab value="profile">{t("academyV2:v2.tabs.profile")}</Tab> : null}
+            {showProfileTab ? <Tab value="profile">{t(focusState ? "academyV2:v2.tabs.profileAndAge" : "academyV2:v2.tabs.profile")}</Tab> : null}
           </TabList>
 
           <TabPanel value="intake" className="space-y-6">
@@ -148,7 +163,7 @@ export default function AcademyV2(props: AcademyV2Props) {
                   <p className="text-xs text-cz-2 max-w-md">{t("intakePull.description")}</p>
                   <p className="text-xs text-cz-2">{t("intakePull.deadlineNote")}</p>
                   {pullError && <p className="text-xs text-cz-danger">{pullError}</p>}
-                  <Button size="sm" variant="primary" onClick={onPull} disabled={pullBusy} loading={pullBusy}>
+                  <Button size="sm" variant="primary" onClick={pullAndRefreshFocus} disabled={pullBusy} loading={pullBusy}>
                     {t("intakePull.pullBtn")}
                   </Button>
                 </Card>
@@ -185,8 +200,16 @@ export default function AcademyV2(props: AcademyV2Props) {
 
           {showProfileTab ? (
             <TabPanel value="profile">
-              {/* Reconnect age focus only once the weekly draw uses it. */}
-              <AcademyProfileCard profile={academyProfile} onSave={saveProfile} />
+              {ageFocus.loading ? <SkeletonLines lines={5} /> : (
+                <>
+                  {ageFocus.error && <p role="status" className="mb-3 text-sm text-cz-2">{t("academyV2:v2.age.errorTitle")}</p>}
+                  <AcademyProfileCard
+                    profile={academyProfile}
+                    onSave={saveProfile}
+                    ageFocus={focusState ? { state: focusState, onSave: saveWithAgeFocus, describe: focusLabel } : null}
+                  />
+                </>
+              )}
             </TabPanel>
           ) : null}
         </Tabs>

@@ -18,6 +18,7 @@ import {
   referenceYearForSeason,
   seedAcademyCohortForTeam,
 } from "./academyIntake.js";
+import { loadWeeklyAgeFocus } from "./academyAgeFocus.ts";
 import { isAcademyIntakePullEnabled } from "./academyIntakePullFlag.ts";
 import { makeRng } from "./fictionalRiderGenerator.js";
 import { deriveForRiderIds } from "./backfillCores.js";
@@ -116,6 +117,7 @@ export async function pullWeeklyAcademyIntake(supabase, {
   isEnabled = isAcademyIntakePullEnabled,
   seedCohortFn = seedAcademyCohortForTeam,
   loadProfileState = loadAcademyProfileState,
+  isBetaTester = false,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!teamId) throw new Error("teamId required");
@@ -157,7 +159,17 @@ export async function pullWeeklyAcademyIntake(supabase, {
     // meget den AKTIVE profil (den der er trådt i kraft, punkt 5) må overvægte.
     // Potentiale-trækket er urørt: profilen flytter nationalitet og anlæg, ikke talent.
     const profileState = await loadProfileState(supabase, { teamId, now });
-    const generatorOptions = buildProfileGeneratorOptions(profileState.effective, profileState.tier);
+    const profileOptions = buildProfileGeneratorOptions(profileState.effective, profileState.tier);
+    const ageFocus = await loadWeeklyAgeFocus(supabase, { teamId, tier: profileState.tier, now, isBetaTester });
+    const generatorOptions = ageFocus
+      ? {
+        ...profileOptions,
+        ageFocus: {
+          ...ageFocus,
+          rng: makeRng(((seed >>> 0) ^ hashStringToSeed([teamId, weekKey, "age-focus"].join(":"))) >>> 0),
+        },
+      }
+      : profileOptions;
 
     newIds = await seedCohortFn(supabase, {
       teamId,

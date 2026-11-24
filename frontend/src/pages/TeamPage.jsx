@@ -937,7 +937,8 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
   const columns = tableMode === "abilities" ? abilityModeColumns : overviewColumns;
 
   // D-047 (#5102): Mit holds tre standardkolonner paa mobil. Ejer-beslutning
-  // 10/9: OVR, vaerdi og LOEN — de tre tal en trup vurderes paa. Handlingen
+  // #7233 (ejer 24/11): rating, vaerdi og Status i Overblik. Loen kan
+  // stadig vaelges i kolonnevaelgeren. Handlingen
   // ("Saelg / Auktion") er eet chip-tryk vaek og ligger desuden paa
   // rytterprofilen, som raekken selv linker til. Akademiet, Stab og Oensken
   // beholder handlingen som deres tredje, fordi den DER er sidens primaere
@@ -945,7 +946,7 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
   // dér er de tre OVR + de to foerste evner.
   const mobileDefaults = tableMode === "abilities"
     ? ["rating", ...STATS.slice(0, 2).map((s) => s.key)]
-    : ["rating", "value", "salary"];
+    : ["rating", "value", "badges"];
 
   // #4628 (audit 2026-09 række #2): kontrol-rækken lå som en LØSREVET række
   // mellem sidehovedet og tabellen — præcis PAGE_TEMPLATES' "no orphan action

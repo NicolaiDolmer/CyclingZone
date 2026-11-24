@@ -8,9 +8,8 @@
 //
 // Åbent fra FØRSTE profilniveau (ejer 16/11): kræver samme niveau som nationaliteten, intet mere.
 //
-// HVAD DETTE MODUL IKKE GØR: vægtningen af ugens kandidater efter alder er motor/balance og
-// er ikke bygget. Modulet gemmer og viser valget; ugens træk læser det endnu ikke. Kontakten
-// academy_page_v2_8081 må derfor ikke tændes for spillere, før trækket bruger valget.
+// Ugens træk bruger det aktive valg med samme virkning pr. kandidat for alle profiler
+// med adgang. Kalibreringen ligger i private_config. Blandet bruger grundtrækket.
 //
 // Kontakten: academy_page_v2_8081 (off | beta | on, ikke seedet = off). Slukket svarer begge
 // ruter 409, og akademisiden er præcis som før.
@@ -18,6 +17,7 @@ import { Router } from "express";
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 import { isAcademyEnabled } from "./academyFlag.js";
+import { readPrivateConfig } from "./privateConfig.ts";
 import { isAcademyIntakePullEnabled } from "./academyIntakePullFlag.ts";
 import {
   PROFILE_DELAY_DAYS,
@@ -121,6 +121,23 @@ async function loadAgeFocusRows(supabase: Db, teamId: string): Promise<AgeFocusR
   return data ?? [];
 }
 
+function readAgeFocusParams(supabase: Db) {
+  return readPrivateConfig<{ share: number }>(supabase, "academy_age_focus_params");
+}
+
+/** Resolve the same effective choice that the academy page displays. */
+export async function loadWeeklyAgeFocus(
+  supabase: Db,
+  { teamId, tier, now, isBetaTester }: { teamId: string; tier: number; now: DateInput; isBetaTester: boolean },
+): Promise<{ age: number; share: number } | null> {
+  if (tierRules(tier).origins === 0 || !(await isAcademyPageV2Enabled(supabase, { isBetaTester }))) return null;
+  const { active } = resolveAgeFocusRows(await loadAgeFocusRows(supabase, teamId), now);
+  if (!active?.ageFocus) return null;
+  const params = await readAgeFocusParams(supabase);
+  if (!params) throw new Error("academy-age-focus configuration unavailable");
+  return { age: Number(active.ageFocus), share: params.share };
+}
+
 /** Aldersfokus-tilstanden til GET /api/academy/v2/age-focus. */
 export async function loadAgeFocusState(
   supabase: Db,
@@ -212,7 +229,8 @@ export function createAcademyV2Router({
     try {
       if (!(await gate(req, res))) return;
       res.set("Cache-Control", "no-store");
-      res.json(await loadAgeFocusState(supabase, { teamId: req.team!.id, now: now() }));
+      const state = await loadAgeFocusState(supabase, { teamId: req.team!.id, now: now() });
+      res.json({ ...state, unlocked: state.unlocked && Boolean(await readAgeFocusParams(supabase)) });
     } catch (err) {
       captureException(err, { tags: { route: `/academy/v2${req.path}`, method: req.method } });
       respondFailed(res);
@@ -223,6 +241,10 @@ export function createAcademyV2Router({
     try {
       if (!(await gate(req, res))) return;
       if (!(await isAcademyIntakePullEnabled(supabase))) { res.status(409).json({ error: "intake_pull_disabled" }); return; }
+      if (normalizeAgeFocus(req.body?.ageFocus) && !(await readAgeFocusParams(supabase))) {
+        respondFailed(res);
+        return;
+      }
       const result = await saveAcademyProfileWithAgeFocus(supabase, { teamId: req.team!.id, input: req.body ?? {}, now: now() });
       if (!result.ok) { res.status(400).json({ error: result.error }); return; }
       res.json(result);

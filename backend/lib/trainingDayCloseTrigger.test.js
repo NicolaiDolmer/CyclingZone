@@ -1274,6 +1274,10 @@ async function settleParity(concurrency) {
       return { ...row };
     },
     loadLegacyRuns: async () => new Set(legacyRuns),
+    // #8606: the finished team's other riders are outside its roster; this fixture is about
+    // parity, so admission answers as in the deploy window (nobody admitted). Admission has its
+    // own tests (trainingLateRider8606.pglite.test.js).
+    admitRiders: async () => null,
     quarantineRiders: async () => { throw new Error("parity fixture has no unavailable riders"); },
     refreshRankings: async () => {},
     dispatchAlarms: async () => ({ dates: 0, failed: 0 }),
@@ -1487,5 +1491,47 @@ describe("training day-close failure formatting + escalation (#6609)", () => {
     const r = t.track(res([fail("t1", 77, "b")]));
     assert.equal(r.level, "error");
     assert.equal(r.capture, true);
+  });
+});
+
+describe("#8606: sen rytter mens optagelses-RPC'en mangler", () => {
+  it("en dato hvor optagelsen ikke kunne ske, caches ikke; naeste sweep spoerger igen", async () => {
+    __resetNormalizedTrainingDateCacheForTests();
+    const team = { id: "t1", league_division_id: "d1" };
+    const riders = [
+      { id: "r1", team_id: "t1", created_at: "2026-09-01T10:00:00Z", acquired_at: null },
+      { id: "r2", team_id: "t1", created_at: "2026-10-11T17:30:00Z", acquired_at: "2026-10-11T17:30:00Z" },
+    ];
+    const work = { team_id: "t1", game_days: [3], expected_rider_ids: ["r1"], status: "complete",
+      opening_conditions: { r1: {} }, quarantined_rider_ids: [] };
+    let rpcExists = false;
+    const admitCalls = [];
+    const options = {
+      supabase: {}, elapsedClock: () => 0, logger: { error() {} },
+      now: new Date("2026-10-11T18:00:00Z"),
+      loadIndex: async () => ({ today: "2026-10-11", activeSeasonId: "season",
+        jobs: [{ tickDate: "2026-10-11", season: { id: "season", number: 4 } }] }),
+      loadWorkRows: async () => [{ ...work }],
+      loadContext: async () => ({ teams: [{ ...team }], riders: riders.map((r) => ({ ...r })),
+        races: [], stages: [], runs: [], entries: [], results: [], incidents: [], loads: [],
+        gameDaysByDivision: new Map([["d1", [3]]]) }),
+      loadTeams: async () => [{ ...team }],
+      loadJoinedRiders: async () => [riders[1]],
+      admitRiders: async ({ riderIds }) => {
+        admitCalls.push(riderIds);
+        if (!rpcExists) return null;
+        return { admitted_rider_ids: riderIds, work: { ...work, expected_rider_ids: ["r1", ...riderIds] } };
+      },
+      registerWork: async () => { throw new Error("work already exists"); },
+      quarantineRiders: async () => { throw new Error("no unavailable riders"); },
+      refreshRankings: async () => {},
+      dispatchAlarms: async () => ({ dates: 0, failed: 0 }),
+      runDay: async () => { throw new Error("complete date never runs"); },
+    };
+    await runNormalizedTrainingDateSweep(options);
+    rpcExists = true;
+    const second = await runNormalizedTrainingDateSweep(options);
+    assert.deepEqual(admitCalls, [["r2"], ["r2"]]);
+    assert.equal(second.admitted, 1);
   });
 });

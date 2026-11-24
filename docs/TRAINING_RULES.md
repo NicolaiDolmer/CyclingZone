@@ -120,6 +120,14 @@ ejer-go og præcis fil-hash. Dette er ikke en godkendelse af en ny datareparatio
 - **Nås holdet først efter fristen** (fx efter en genstart), registrerer sweepen en almindelig dato via `register_late_training_date_work` (`database/2026-11-07-7832-late-team-training-date.sql`). Den gemmer starttilstanden, kun når registreringen sker efter fristen, rækken er ny og tom, holdet intet arbejde har på en senere dato, og ingen af rytterne har et tick eller en tilstands-afregning på en senere dato. Ellers er svaret som `register_training_date_work`: karantæne og alarm (alarmen dæmpes ikke). Samme princip som broen (#7282); sæsonens sidste dato er undtaget (se ovenfor).
 - **Deploy-vinduet:** mangler funktionen, registreres den sene dato ikke. Holdet venter til næste kørsel, og senere datoer for holdet holdes tilbage i samme kørsel, så datoen aldrig fryses tom.
 
+## Sent hentede ryttere mister aldrig datoen (#8606, 22/11)
+
+- Samme princip for den enkelte rytter: en rytter, der kommer til holdet efter at datoen er registreret (nyt akademioptag, fri agent, køb fra et hold uden datoen), træner datoen. Før #8606 stod han i ingen frosset trup og mistede hele datoen; efter #7982 registreres datoen ved dagens første etape, så det ramte de fleste akademioptag om eftermiddagen.
+- **Aftenkørslen tager ham ind:** for holdets nuværende ryttere uden for datoens trup kalder sweepen `admit_late_training_date_riders` (`database/2026-11-24-8606-late-rider-training-date.sql`). Den tilføjer kun en rytter, som ingen anden har på datoen: han står på holdet, er ikke pensioneret, kom før datoens slutning, står ikke i et andet holds trup (#6439 bestemmer dér), har ingen kvittering, Træn nu-lås eller etapebelastning på datoen, ingen kvittering eller tilstands-afregning senere og ingen uafsluttet tidligere dato. Hans starttilstand er hans tilstand nu. En `complete` dato bliver `partial`, og sweepen afregner ham i samme kørsel; de andres kvitteringer røres ikke. Ikke for sæsonens sidste dato, historiske sæsoner, bank-, frosne og testhold, eller efter fristen.
+- **Samme proces finder ham:** cachen husker også hver rytter og hans hold fra kørslen (`riderTeams`). Mens datoen er åben, læser sweepen de ryttere, der kom til et hold på datoen, og kører datoen igen ved en ny.
+- **Træn nu udvider ikke truppen** (uændret): trykker manageren før kl. 20, trænes den nye rytter af aftenkørslen.
+- **Deploy-vinduet:** mangler funktionen, tages ingen ind (præcis som før), og der prøves igen næste kørsel.
+
 ## Forbigående DB-fejl i facilitets- og træneropslaget (#6596, 17/10)
 
 - **Forbigående fejl** (HTTP 0/502/503/504/520-524, netværksfejl, statement-timeout): træningsmotoren afregner IKKE holdet uden facilitets- og trænerbonus. Tick'et kaster, intet skrives, og holdet tages ved næste sweep. Kun motoren beder om dette (`loadTrainingStaffContext(..., { retryOnTransient: true })`).

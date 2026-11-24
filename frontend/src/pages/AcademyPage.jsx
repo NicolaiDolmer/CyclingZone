@@ -98,7 +98,7 @@ export default function AcademyPage() {
   const {
     enabled, squads, intake, balance, clubCapacity,
     intakePull, loading, error, signCandidate, rejectCandidate,
-    pullIntake, academyProfile, saveProfile, roster,
+    pullIntake, academyProfile, saveProfile, roster, refresh,
   } = useAcademy();
   // #8081: null = kontakten hentes endnu (siden venter i PageLoader, som på akademi-data).
   const pageV2 = useAcademyPageV2Flag();
@@ -440,6 +440,7 @@ export default function AcademyPage() {
         clubCapacity={clubCapacity}
         academyProfile={academyProfile}
         saveProfile={saveProfile}
+        refreshAcademy={refresh}
         // #8060: regnskabet er en fane i udgave A; det gamle AcademyPnl ville modsige den.
         footer={null}
       />

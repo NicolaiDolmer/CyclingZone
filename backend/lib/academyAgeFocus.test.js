@@ -35,6 +35,7 @@ function fakeSupabase({ tier = 1, rows = [], flag = undefined, rpcResult = { dat
     from(table) {
       if (table === "team_facilities") return chain({ data: { tier }, error: null });
       if (table === "academy_intake_profiles") return chain({ data: rows, error: null });
+      if (table === "private_config") return chain({ data: { value: { share: 0.4 } }, error: null });
       if (table === "app_config") return chain({ data: flag === undefined ? null : { value: flag }, error: null });
       throw new Error(`unexpected table ${table}`);
     },

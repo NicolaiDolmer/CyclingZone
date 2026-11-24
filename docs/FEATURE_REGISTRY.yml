@@ -1064,7 +1064,7 @@ features:
     ssot: docs/YOUTH_RULES.md
     epic: 8081
     verified: 2026-11-16
-    note: Slukket; trækket læser ikke aldersfokus.
+    note: Slukket. Ugens træk læser aktivt aldersfokus med gyldig privat konfiguration. Aktivering er en særskilt ejerbeslutning.
     decision: ejer-beslutning
     decide_by: 2026-11-30
 

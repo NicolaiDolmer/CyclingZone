@@ -163,6 +163,7 @@ export const HELP_BLOCK_FLAGS = Object.freeze({
  * loebsdags-modellen er taendt. En FAQ uden en linje her er altid synlig.
  */
 export const HELP_FAQ_FLAGS = Object.freeze({
+  academyAgeFocusFaq: Object.freeze({ flag: "academy_page_v2_8081", when: true }),
   raceDayIntensityFaq: RACE_DAY_TICK_OFF,
   raceDayIntensityPerRaceDayFaq: RACE_DAY_TICK_ON,
   raceDayAcademyFaq: RACE_DAY_TICK_OFF,

@@ -8,7 +8,7 @@
 //      rytternavn og et 8-cifret beloeb (review-fundet: "kun tilfaeldigt
 //      opfyldt af testdata" med een raekke og et 13-tegns navn),
 //   2. raekkens handling er hoejst EET chip-tryk vaek — aldrig bag "Fuld tabel"
-//      (Mit holds tre er OVR/vaerdi/loen efter ejer-beslutningen 10/9),
+//      (Mit Hold viser rating, værdi og Status som standard efter #7233),
 //   3. et chip-tryk flytter ikke chippen under fingeren,
 //   4. "Fuld tabel" er neutral, aldrig gold (TASTE P3: een gold pr. view).
 //
@@ -67,12 +67,18 @@ test.describe("D-047 mobilstandard for DataTable (#5102)", () => {
     expect(after.page).toBeLessThanOrEqual(1);
   });
 
+  test("viser Status som standard, mens Løn fortsat kan vælges (#7233)", async ({ page }) => {
+    await expect(page.getByRole("columnheader", { name: /^Status$/i })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: /^Løn/i })).toHaveCount(0);
+    await revealMobileTableColumn(page, /^Løn$/i);
+    await expect(page.getByRole("columnheader", { name: /^Løn/i })).toBeVisible();
+  });
+
   test("raekkens handling kan trykkes uden at aabne Fuld tabel foerst", async ({ page }) => {
     const fullTable = page.getByRole("button", { name: FULL_TABLE });
     await expect(fullTable).toHaveAttribute("aria-pressed", "false");
 
-    // Ejer-beslutning 10/9: Mit holds tre er OVR, vaerdi og LOEN, saa
-    // handlingen er ikke fremme fra start her.
+    // Mit Hold viser rating, værdi og Status som standard (#7233).
     await expect(page.getByRole("button", { name: SELL_BUTTON })).toHaveCount(0);
 
     // Men den er hoejst EET chip-tryk vaek — aldrig bag "Fuld tabel".

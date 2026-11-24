@@ -79,7 +79,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 |-|-|-|-|-|-|-|
 |AI academy pull (`academy-ai-weekly-pull`)|dormant|-|[YOUTH_RULES](YOUTH_RULES.md)|#6666|2026-10-25|Flag academy_ai_weekly_pull_enabled; ikke nu.|
 |Season academy intake (`season-academy-intake`)|dormant|`season_academy_intake_enabled`|[YOUTH_RULES](YOUTH_RULES.md)|#2911|2026-10-15|Sikkerhedsventil (#2911); off i prod, ejer flipper.|
-|Academy page with tabs and age focus (`academy-page-v2-8081`)|building|-|[YOUTH_RULES](YOUTH_RULES.md)|#8081|2026-11-16|Slukket; trækket læser ikke aldersfokus.|
+|Academy page with tabs and age focus (`academy-page-v2-8081`)|building|-|[YOUTH_RULES](YOUTH_RULES.md)|#8081|2026-11-16|Slukket. Ugens træk læser aktivt aldersfokus med gyldig privat konfiguration. Aktivering er en særskilt ejerbeslutning.|
 |Automatic youth squad promotion (`season-squad-promotion`)|building|-|[YOUTH_RULES](YOUTH_RULES.md)|#7323|2026-11-24|Bygget til prøveskiftet #7325, afventer verifikation og release.|
 |Three squads (`three-squads`)|spec|-|[YOUTH_RULES](YOUTH_RULES.md)|#2492|2026-09-06|Slice 0 er leveret; resten er spec.|
 |Awaiting promotion instead of auto-sale (`promotion-pending`)|retired|-|[YOUTH_RULES](YOUTH_RULES.md)|#5833|2026-11-24|#7323 erstatter valget med automatisk oprykning ved sæsonskiftet.|

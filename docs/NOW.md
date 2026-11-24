@@ -4,10 +4,10 @@
 
 ## Aktiv styring
 
-> **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11 · slet `backup_5902_20261112_*` ~26/11 · slet `backup_8078/8080/8099_20261113_*` ~27/11.
+> **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · slet `backup_7401_20261101_riders`, `backup_7488_20261102_riders`, `backup_7508_20261102_notif_ids` (forfaldne) · slet `backup_5902_20261112_*` ~26/11 · slet `backup_8078/8080/8099_20261113_*` ~27/11.
 >
-> **🎯 Next action (24/11 eftermiddag, PC1):** Startprompt = seneste "Startprompt" på #8584. Claude: prognosefald #8604 + gammel score/løbsudvikling #8476 · selv-verificér og luk #7855/#8386/#8428/#7233/#8434 · rotation-SQL efter aftenkørslen (#8548). Codex: oprykning #7323 + lofter #8034 + bestyrelse #8100 før 28/11 · #8666 rotation-del · akademi #8081 rettelser · tog-vagt #8665. Torsdag: #8449, #7645, sæsonskifte-session. Beslutninger: #8584 + MASTERPLAN.
-> **24/11:** toget låst 03:06-09:15 (patch note 7.506 → rød main); rettet #8664 (`d4407a3`). Tændt: `training_rotation` = beta. Akademiside #8081 IKKE tændt (Fable blokerende). Graduation Day erstattes af automatisk oprykning; Uge 48-rækkefølge i MASTERPLAN. **Åbent:** `backup_7153_wander_*` må ikke slettes; Division 4 A/B/C har 25 hold.
+> **🎯 Next action (24/11 aften → torsdag 26/11):** Codex er koordinator på Dolmer PC: startprompt = "Startprompt: Codex-koordinator på Dolmer PC" på #8584 (Codex-topmodel som dommer indtil torsdag). Rækkefølge: #8675 (merget + migreret senest torsdag aften, sæsonskifte lørdag 28/11) + #8668 → weboplevelse → prognose #8678/#8604 (model 2: simulér frem) → #8681 tilmelding (måling). Claude 25/11: #8679 Codex P1/P2 (kildehash dækker XP-model) + TRAINING_RULES; udbetaling #8606 besluttes 25/11. Torsdag Claude: løbsmotor-måling, dashboard "Kommende etaper", #8672.
+> **24/11:** merget #8652 #8666 #8673 #8674 #8676. #8606-migration verificeret. `academy_age_focus_params` = 0,4; akademisiden IKKE tændt (billeder + ejerens ja). Division 4 A/B/C 25 hold løst selv 17:26 (AI-trim efter løb). **Åbent:** `backup_7153_wander_*` må ikke slettes.
 >
 > **🤖 Working agent:** Ingen aktiv session.
 
