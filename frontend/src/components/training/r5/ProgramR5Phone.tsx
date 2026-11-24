@@ -244,7 +244,7 @@ function DayView(props: Shared & { day: number; onDay: (d: number) => void }) {
 function DayBody({
   cells, weekdays, todayWeekday, todayLocked, editable, sessionOrder, sessionLabel, dayLabel, lang, tonight, onEdit, onCopyDay, d,
 }: Shared & { d: number }) {
-  const { t } = useTranslation("training");
+  const { t } = useTranslation(["training", "races"]);
   const { t: tR5 } = useTranslation("trainingR5");
   const weekday = weekdays[d];
   const locked = todayLocked && weekday === todayWeekday;
@@ -260,6 +260,14 @@ function DayBody({
               <li key={slot} className={`${base} bg-cz-subtle text-cz-2`} data-testid="program-r5-race">
                 {num}<FlagIcon size={12} aria-hidden="true" className="shrink-0" />
                 {tR5("programR5.race")}
+              </li>
+            );
+          }
+          if (cell.kind === "nonStarter") {
+            return (
+              <li key={slot} className={base + " text-cz-2"}>
+                {num}
+                <span className="min-w-0 break-words" data-testid="program-r5-non-starter">{t("races:racehub.status.didNotStart")} · {sessionLabel(cell.session)}</span>
               </li>
             );
           }

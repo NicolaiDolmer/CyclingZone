@@ -30,10 +30,11 @@ import { raceConditionLoads } from "./raceFatigue.js";
 import { resolveDayProgram, programSlotForRaceDay, weekDaysHaveSessions } from "./trainingPrograms.js";
 import { loadRotationPlans, loadRotationReceipts, rotationProgram, rotationProgress, stampRotation } from "./trainingRotationProgress.js";
 import { resolveProgram } from "./dailyTraining.js";
+import { dayTypeForProgram, sessionForProgram } from "./trainingDayTypes.js";
 import { isInjuredOnRaceDay } from "./injuryRaceDays.js";
 import { copenhagenDateString, copenhagenWeekdayKey } from "./copenhagenTime.js";
 import { fetchAllRows } from "./supabasePagination.js";
-import { isTrainingDateTeam, stageEntrantSnapshotIds, trainingDateBounds } from "./trainingDateReadiness.js";
+import { stageEntrantSnapshotIds, trainingDateBounds, trainingDateDeadline } from "./trainingDateReadiness.js";
 import { resolveDayCloseStatus } from "./trainingDayCloseTrigger.js";
 import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 import { isTrainingConditionPerDateEnabled } from "./trainingDateConditionFlag.js";
@@ -132,6 +133,7 @@ export function buildTeamFatigueForecast({
   effortLevels = false, // #7947: samme kontakt som motoren
   // #8549: Week blocks som motoren (I5). Off = kildefeltet er feltet (dagens prognose).
   weekPriority = false, teamWeekRow = null, riderWeekRowByRider = new Map(), overdueByRider = new Map(),
+  nonStartersByRider = new Map(),
   rotationByRider = new Map(), rotationReceiptsByRider = new Map(), teamId = null,
 }) {
   const days = [...new Set((dateGameDays ?? []).map(Number).filter(Number.isFinite))].sort((a, b) => a - b);
@@ -168,6 +170,7 @@ export function buildTeamFatigueForecast({
     let placement = weekPlacementInput ? weekPriorityPlacement(weekPlacementInput) : null;
     const overdue = placement || rotation ? overdueByRider.get(rider.id) : null;
     const projectedReports = placement && overdue?.size ? [...riderReceipts] : null;
+    const pendingNonStarterSessions = {};
     const ruleLoads = []; // #7801: etaper i tidligere felter samme dato
     const slots = days.map((day) => {
       const slotIndex = programSlotForRaceDay(day, days);
@@ -214,6 +217,12 @@ export function buildTeamFatigueForecast({
         conditionModelV2,
         overdue: overdue?.has(day),
       });
+      // The first start field can prove DNS even when the later stage still
+      // has an open slot. Show the training choice without advancing that slot.
+      if (activity.intensity === "unknown_pending" && !plannedStage && nonStartersByRider.get(rider.id)?.has(day)) {
+        const training = { focus: ruled?.focus ?? planned.focus, intensity: injured || boundRest ? "rest" : planIntensity };
+        pendingNonStarterSessions[slotIndex] = sessionForProgram(training) ?? dayTypeForProgram(training);
+      }
       if (projectedReports && !receipt) {
         // Match the sweep: earlier fields keep the source they would already have used
         // when a released stage is stamped as pending. Re-place only the remaining fields.
@@ -261,6 +270,7 @@ export function buildTeamFatigueForecast({
     if (placement || rotation) {
       const pendingSlots = slots.flatMap((slot, index) => slot.intensity === "unknown_pending" ? [index] : []);
       if (pendingSlots.length) out[rider.id].pendingSlots = pendingSlots;
+      if (Object.keys(pendingNonStarterSessions).length) out[rider.id].pendingNonStarterSessions = pendingNonStarterSessions;
     }
     if (placement) {
       const restSlots = slots.flatMap((slot, index) => slot.weekRest ? [index] : []);
@@ -399,7 +409,7 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     rows(supabase.from("training_rider_ticks").select("rider_id, game_day, tick_date, team_id, report").eq("season_id", seasonId).in("game_day", dateGameDays).in("rider_id", riderIds), "forecast receipts"),
     // pagination-safe: roster x five game days.
     rows(supabase.from("training_race_loads").select("*").eq("season_id", seasonId).eq("tick_date", tickDate).in("rider_id", riderIds), "forecast race loads"),
-    rows(supabase.from("training_date_work").select("tick_date, opening_conditions, status, expected_rider_ids, updated_at").eq("team_id", team.id).eq("season_id", seasonId).in("tick_date", [previousDate, tickDate]), "forecast date work"),
+    rows(supabase.from("training_date_work").select("tick_date, opening_conditions, status, expected_rider_ids").eq("team_id", team.id).eq("season_id", seasonId).in("tick_date", [previousDate, tickDate]), "forecast date work"),
     // pagination-safe: roster x five game days, UNIQUE (rider_id, season_id, game_day).
     rows(supabase.from("race_entry_days").select("rider_id, race_id, game_day").eq("season_id", seasonId).in("game_day", dateGameDays).in("rider_id", riderIds), "forecast bindings"),
     isRaceDayEngineEnabled(supabase),
@@ -411,20 +421,9 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
   const instant = unwrap(await instantP);
   const work = workRows.find((row) => row.tick_date === tickDate);
   const previousWork = workRows.find((row) => row.tick_date === previousDate);
-  // Switching civil dates alone does not publish a new number. Keep the last
-  // result until today's motor work is visible. A late close stays on its
-  // recorded result until today's training work starts.
-  const dayStart = trainingDateBounds(tickDate).start;
-  const showPrevious = previousWork &&
-    (previousWork.status === "pending" || previousWork.status === "partial"
-      || (!work && (!close.hasRecordedStage || Date.parse(previousWork.updated_at) >= dayStart.getTime())));
-  // The first sweep can be late enough that yesterday has not registered work.
-  // Only carry an unregistered date for a team the motor expected on that date.
-  const unregisteredPrevious = !previousWork && !work && !close.hasRecordedStage && team.created_at
-    && isTrainingDateTeam(team, new Set(), dayStart)
-    && (await resolveDayCloseStatus({ supabase, seasonId, divisionId: team.league_division_id,
-      now: new Date(dayStart.getTime() - 1) })).gameDays.length > 0;
-  const previousRiders = new Set(unregisteredPrevious ? riderIds : showPrevious ? previousWork.expected_rider_ids ?? [] : []);
+  const previousOpen = previousWork?.status === "pending" || previousWork?.status === "partial";
+  const holdPrevious = previousOpen && now < trainingDateDeadline(previousDate);
+  const previousRiders = new Set(holdPrevious ? previousWork.expected_rider_ids ?? [] : []);
   const openingByRider = new Map(Object.entries(work?.opening_conditions ?? {}));
   for (const [id, opening] of instant.openingByRider) openingByRider.set(id, opening);
   const conditionByRider = new Map(conditions.map((row) => [row.rider_id, row]));
@@ -495,6 +494,12 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
   const schedule = [...divisionSchedule, ...otherSchedule];
   const { plannedStages, boundRiderIdsByGameDay } = forecastBindingsFromEntryDays({ entryDays, schedule, profiles, exits });
   const keptEntries = new Set(entryDays);
+  const nonStartersByRider = new Map();
+  for (const entry of pendingEntries) {
+    if (keptEntries.has(entry)) continue;
+    if (!nonStartersByRider.has(entry.rider_id)) nonStartersByRider.set(entry.rider_id, new Set());
+    nonStartersByRider.get(entry.rider_id).add(Number(entry.game_day));
+  }
   const overdueByRider = pendingEntries.length ? await loadOverdueForecastStages({
     supabase, now, tickDate, schedule, entries: pendingEntries.filter((entry) => !keptEntries.has(entry) || plannedStages.some((stage) =>
       stage.rider_id === entry.rider_id && stage.game_day === Number(entry.game_day))),
@@ -535,6 +540,7 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     effortLevels,
     weekPriority,
     overdueByRider,
+    nonStartersByRider,
     teamWeekRow: weekRows.find((row) => row.rider_id == null) ?? null,
     riderWeekRowByRider: new Map(weekRows.filter((row) => row.rider_id != null).map((row) => [row.rider_id, row])),
     rotationByRider, rotationReceiptsByRider, teamId: team.id,
