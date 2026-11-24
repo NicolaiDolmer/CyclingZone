@@ -399,8 +399,17 @@ function describeSwapIssue(issue, { offered, requested }) {
   const requestedName = `${requested.firstname} ${requested.lastname}`;
   const cancelTitle = { notificationTitle: "Swap cancelled", notificationTitleCode: "notif.transfer.issue.swapTitle" };
 
-  if (issue.code === "club_roster_full") {
-    return { ...clubRosterFull, ...cancelTitle };
+  if (issue.code === "swap_club_roster_full" || issue.code === "swap_pending_registration") {
+    const pending = issue.code === "swap_pending_registration";
+    const error = pending
+      ? "Wait for the earlier rider move to be registered before proposing this swap again."
+      : "One of the clubs has no free places for this swap.";
+    return {
+      ...cancelTitle,
+      error,
+      notificationMessage: error,
+      notificationMessageCode: pending ? "notif.transfer.issue.swapPendingRegistration" : "notif.transfer.issue.swapClubRosterFull",
+    };
   }
 
   if (issue.code === "offered_rider_moved") {
@@ -1019,7 +1028,8 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     const meta = issueNotificationMetadata(message, incomingRider.id);
     await notifyTeamOwner(swap.proposing_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, swap.id, meta);
     await notifyTeamOwner(swap.receiving_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, swap.id, meta);
-    return failure(claimIssue.code === "club_roster_full" ? 409 : 400, message.error, claimIssue.code, "errorParams" in message ? { errorParams: message.errorParams } : {});
+    const status = claimIssue.code === "swap_club_roster_full" || claimIssue.code === "swap_pending_registration" ? 409 : 400;
+    return failure(status, message.error, claimIssue.code, "errorParams" in message ? { errorParams: message.errorParams } : {});
   }
   const movedOffered = lockedSwap?.data ?? null;
 

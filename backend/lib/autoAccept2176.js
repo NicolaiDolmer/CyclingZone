@@ -383,7 +383,8 @@ export async function claimSwapUnderTeamLock(supabase, {
   payment = /** @type {import('./marketBeta2176.ts').MarketSwapPayment2176 | null} */ (null),
 }) {
   const capacityIssue = (error) => {
-    if (error?.message === "club_roster_full") return { code: "club_roster_full", teamId: error.details };
+    if (error?.message === "club_roster_full") return { code: "swap_club_roster_full", teamId: error.details };
+    if (error?.message === "swap_pending_registration") return { code: "swap_pending_registration", teamId: error.details };
     if (error?.message === "swap_destination_squad_full") {
       return { code: "buyer_squad_full", teamId: error.details, maxRiders: SQUAD_CAPS.senior };
     }

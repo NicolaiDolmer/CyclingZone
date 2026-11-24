@@ -157,6 +157,13 @@ test("cutover promotes despite full squads and open sales, closes old rows, and 
           assert.deepEqual((await db.query(
             "SELECT count(*)::int AS count FROM riders WHERE pending_team_id IS NOT NULL GROUP BY pending_team_id ORDER BY pending_team_id",
           )).rows, [{ count: 2 }, { count: 2 }]);
+          const { rows: [freshSenior] } = await db.query(
+            "SELECT id FROM riders WHERE team_id=$1 AND squad='senior' AND pending_team_id IS NULL LIMIT 1", [BUYER],
+          );
+          await db.query("SAVEPOINT pending_swap");
+          await assert.rejects(swap(STAYS, freshSenior.id, true), /swap_pending_registration/);
+          await db.query("ROLLBACK TO SAVEPOINT pending_swap");
+          assert.equal((await db.query("SELECT pending_team_id FROM riders WHERE id=$1", [STAYS])).rows[0].pending_team_id, null);
           await db.query("SAVEPOINT purchase");
           await assert.rejects(buy("team_id"), /club_roster_full/);
           await db.query("ROLLBACK TO SAVEPOINT purchase");

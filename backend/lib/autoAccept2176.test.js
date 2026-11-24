@@ -601,7 +601,7 @@ for (const marketBeta of [false, true]) {
       offeredRiderId: "R1", requestedRiderId: "R2", proposingTeamId: "A", receivingTeamId: "B",
       marketBeta, now: "2026-11-24T10:00:00.000Z",
     });
-    assert.deepEqual(result, { issue: { code: "club_roster_full", teamId: "A" } });
+    assert.deepEqual(result, { issue: { code: "swap_club_roster_full", teamId: "A" } });
   });
 }
 

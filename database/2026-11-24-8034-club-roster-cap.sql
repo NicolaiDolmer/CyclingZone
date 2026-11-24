@@ -12,6 +12,8 @@ DECLARE
   previous_teams uuid[] := ARRAY[]::uuid[];
   swap_leg jsonb;
   departing_rider uuid;
+  occupied_count integer;
+  after_registration_count integer;
 BEGIN
   IF NEW.is_retired IS TRUE THEN RETURN NEW; END IF;
 
@@ -41,12 +43,16 @@ BEGIN
     IF departing_rider IS NOT NULL AND swap_leg->'replaces_place' = 'true'::jsonb THEN
       CONTINUE;
     END IF;
-    IF (
-      SELECT count(*) FROM public.riders r
+    SELECT count(*), count(*) FILTER (WHERE coalesce(r.pending_team_id, r.team_id) = incoming_team)
+      INTO occupied_count, after_registration_count
+      FROM public.riders r
       WHERE (r.team_id = incoming_team OR r.pending_team_id = incoming_team)
         AND r.is_retired IS NOT TRUE
-        AND (r.id IS DISTINCT FROM departing_rider OR r.team_id IS DISTINCT FROM incoming_team)
-    ) >= 60 THEN
+        AND (r.id IS DISTINCT FROM departing_rider OR r.team_id IS DISTINCT FROM incoming_team);
+    IF occupied_count >= 60 THEN
+      IF departing_rider IS NOT NULL AND after_registration_count < 60 THEN
+        RAISE EXCEPTION USING MESSAGE = 'swap_pending_registration', ERRCODE = '23514', DETAIL = incoming_team::text;
+      END IF;
       RAISE EXCEPTION USING MESSAGE = 'club_roster_full', ERRCODE = '23514', DETAIL = incoming_team::text;
     END IF;
   END LOOP;

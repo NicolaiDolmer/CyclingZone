@@ -512,6 +512,8 @@
         "sellerNoLongerOwns": "{riderName} kunne ikke gennemføres, fordi rytteren ikke længere står på sælgers hold.",
         "sellerSquadTooSmall": "{riderName} kunne ikke sælges, fordi sælgeren ellers ville komme under {minRiders} ryttere i Division {division}.",
         "sellerSquadRiskTooSmall": "{riderName} kunne ikke sælges, fordi sælgeren ellers ville komme under {minRiders} ryttere, når ryttere der forlader holdet ved næste sæsonskifte (kontraktudløb eller pensionsrisiko) tælles med.",
+        "swapClubRosterFull": "En af klubberne har ingen ledige pladser til byttet.",
+        "swapPendingRegistration": "Vent på, at det tidligere rytterskifte bliver registreret, før du foreslår byttet igen.",
         "clubRosterFull": "Køberens klub har ingen ledige pladser. Sælg eller frigiv en rytter først.",
         "buyerSquadFull": "{riderName} kunne ikke overdrages, fordi købers hold allerede er fuldt.",
         "buyerCannotAfford": "Handlen på {riderName} kunne ikke gennemføres, fordi køber mangler midler.",
