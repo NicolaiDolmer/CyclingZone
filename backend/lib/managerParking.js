@@ -34,6 +34,7 @@
 // selectActiveSubscriptionTeamIds) — ingen DB, letter unit-test og genbrug i
 // scripts/parkingDryRun.js (read-only) uden duplikeret udvælgelseslogik.
 
+import { isMissingBoardComebackColumn } from "./boardComebackSchema.js";
 import { isDormantManager } from "./managerActivity.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { captureException } from "./sentry.js";
@@ -41,6 +42,7 @@ import { computeIsPro } from "./entitlement.js";
 import { pickDivisionForNewTeam } from "./teamProfileEngine.js";
 import { reconcileAiTeamsForPool } from "./aiTeamGenerator.js";
 import { ensureMandateForReturningTeam } from "./boardMandateEngine.js";
+import { findSeasonByNumber } from "./seasonLookup.js";
 
 // Holdfelterne sweepen, CLI'en og dry-run'et læser. Samlet ét sted, så de tre
 // indgange altid ser det samme grundlag.
@@ -298,14 +300,29 @@ export async function unparkTeam({
   mandateSeasonNumber = null,
   ensureReturningMandate = ensureMandateForReturningTeam,
 }) {
-  if (!supabase?.from) throw new Error("Supabase client required");
+  const client = /** @type {import("@supabase/supabase-js").SupabaseClient} */ (supabase);
+  if (!client?.from) throw new Error("Supabase client required");
   const { division, leagueDivisionId } = await pickDivision(supabase);
-  const { data, error } = await supabase
+  const move = (/** @type {number | null} */ boardSeason, legacySeasonId = /** @type {string | null} */ (null)) => client
     .from("teams")
-    .update({ parked_at: null, division, league_division_id: leagueDivisionId })
+    .update({
+      parked_at: null,
+      division,
+      league_division_id: leagueDivisionId,
+      ...(boardSeason == null ? {} : { comeback_board_season_number: boardSeason }),
+      ...(legacySeasonId == null ? {} : { comeback_season_id: legacySeasonId }),
+    })
     .eq("id", teamId)
     .not("parked_at", "is", null)
     .select("id");
+  let { data, error } = await move(mandateSeasonNumber);
+  if (mandateSeasonNumber != null && isMissingBoardComebackColumn(error)) {
+    // Never clear parked_at unless a receiving-season marker can be written.
+    const { season } = await findSeasonByNumber({ supabase, number: mandateSeasonNumber, columns: "id" });
+    const receivingSeasonId = /** @type {{ id?: string } | null} */ (season)?.id;
+    if (!receivingSeasonId) throw new Error(`teams (unparkTeam ${teamId}): receiving season is not available during rollout`);
+    ({ data, error } = await move(null, receivingSeasonId));
+  }
   if (error) throw new Error(`teams (unparkTeam ${teamId}): ${error.message}`);
   const unparked = Array.isArray(data) && data.length > 0;
 

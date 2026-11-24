@@ -27,6 +27,7 @@
 // comeback_season_id er markøren for spor A5 (ingen bestyrelsesdom i comeback-sæsonen).
 // Den læses ikke her ud over genoptagelses-grenen nedenfor.
 
+import { isMissingBoardComebackColumn } from "./boardComebackSchema.js";
 import { resolveComebackRank, tierForGlobalRank, pickComebackPool } from "./comebackPlacement.js";
 import { proRataShare, proRataAmount, ensureMidSeasonSponsor } from "./midSeasonSponsor.js";
 import { getActiveContract } from "./sponsorContractsService.js";
@@ -410,14 +411,24 @@ export async function returnParkedTeam({ supabase, teamId, now = new Date(), dep
     // Compare-and-swap: kun hvis holdet stadig er parkeret med præcis den værdi vi læste.
     .eq("parked_at", team.parked_at)
     .select("id");
-  // #6811: comeback_at er træningens varige grænse for parkeringsperioden
-  // (trainingDateReadiness.isTrainingDateTeam). Kolonnen kommer med
-  // database/2026-10-17-6811-team-comeback-at.sql; i deploy-vinduet før
-  // auto-migrate (#2642) gentages flytningen uden den, så et comeback aldrig fejler.
-  let { data: moved, error: moveError } = await moveTeam({ ...moveFields, comeback_at: now.toISOString() });
-  if (isMissingComebackAtColumn(moveError)) {
-    console.warn(`[comeback] teams.comeback_at mangler endnu; hold ${team.id} flyttes uden (#6811)`);
-    ({ data: moved, error: moveError } = await moveTeam(moveFields));
+  // The API and migrations can roll out separately. Drop only the optional
+  // field PostgREST identifies, and keep the legacy comeback season marker.
+  let includeBoardSeason = true;
+  let includeComebackAt = true;
+  let moved, moveError;
+  for (;;) {
+    ({ data: moved, error: moveError } = await moveTeam({
+      ...moveFields,
+      ...(includeBoardSeason ? { comeback_board_season_number: season.number } : {}),
+      ...(includeComebackAt ? { comeback_at: now.toISOString() } : {}),
+    }));
+    if (includeBoardSeason && isMissingBoardComebackColumn(moveError)) {
+      includeBoardSeason = false;
+    } else if (includeComebackAt && isMissingComebackAtColumn(moveError)) {
+      includeComebackAt = false;
+    } else {
+      break;
+    }
   }
   if (moveError) throw new Error(`teams (comeback ${team.id}): ${moveError.message}`);
   if (!Array.isArray(moved) || moved.length === 0) {

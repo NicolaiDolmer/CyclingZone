@@ -296,10 +296,11 @@ test("#5902 · halvsæson-tjek: et parkeret holds eksisterende aktive rækker st
   assert.equal(state.board_consequences.filter((r) => r.team_id === ACTIVE && r.layer === CONSEQUENCE_LAYERS.BONUS_OFFER).length, 1);
 });
 
-test("#5902 · et hold der er vendt tilbage (parked_at nulstillet af comeback) dømmes igen som alle andre", async () => {
+test("#5902 · et hold vurderes normalt efter sin comeback-sæson", async () => {
   const state = makeState();
   const parkedTeam = state.teams.find((t) => t.id === PARKED);
   parkedTeam.parked_at = null;
+  parkedTeam.comeback_season_id = "previous-season";
   parkedTeam.league_division_id = "pool-a";
   state.season_standings.find((s) => s.team_id === PARKED).league_division_id = "pool-a";
   const { deps } = recordingDeps();
@@ -315,6 +316,19 @@ test("#5902 · et hold der er vendt tilbage (parked_at nulstillet af comeback) d
 
   assert.equal(summary.parked_teams_skipped, 0);
   assert.ok(rowsFor(state, PARKED).consequences.length > 0);
+});
+
+test("#8100 · no checkpoint judgment during the comeback season", async () => {
+  const state = makeState();
+  const returning = state.teams.find((team) => team.id === PARKED);
+  returning.parked_at = null;
+  returning.comeback_season_id = MIDSEASON_SEASON.id;
+  const { deps } = recordingDeps();
+  await processBoardWeekendFinalization({
+    supabase: makeSupabase(state), season: MIDSEASON_SEASON, previousRaceDaysCompleted: 24, race: RACE, now: NOW, deps,
+  });
+  assert.equal(rowsFor(state, PARKED).consequences.length, 0);
+  assert.ok(rowsFor(state, ACTIVE).consequences.length > 0);
 });
 
 test("#5902 · kun parkerede hold → ingen kørsel, ingen skrivning", async () => {

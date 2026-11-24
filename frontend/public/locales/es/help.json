@@ -42,6 +42,10 @@
     },
     "board": {
       "label": "Directiva",
+      "afterBreak": {
+        "title": "Volver después de una pausa",
+        "text": "Cuando tu club vuelve después de una pausa, la directiva levanta las sanciones que impuso antes de que te marcharas. Volverá a evaluar tu club en la temporada siguiente."
+      },
       "whatBoard": {
         "title": "¿Qué hace la directiva?",
         "text": "La directiva fija objetivos para tu equipo y sigue tu temporada en directo: la satisfacción ahora se actualiza después de cada fin de semana de carreras (se mueve como máximo 5 puntos por fin de semana) hacia lo que daría una evaluación completa de la temporada. La satisfacción determina tu modificador de patrocinio, es decir, cuánto de los ingresos de patrocinio se paga, y el modificador sigue a la satisfacción en directo. Las consecuencias duras (tope salarial, restricción de fichajes, venta forzosa) solo se evalúan en dos puntos de control previsibles: a mitad de temporada y al final de la temporada. No te pueden despedir; las consecuencias son graduales y siempre previsibles. Puedes seguirlo carrera a carrera en los detalles del plan de la página de la Directiva, donde un historial fin de semana a fin de semana muestra si la satisfacción subió o bajó y qué área de objetivos la movió."
