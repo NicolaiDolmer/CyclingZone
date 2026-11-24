@@ -46,13 +46,13 @@ import {
 import { useTrainingCatalogV3 } from "../../../lib/useTrainingCatalogV3.ts";
 import { WEEKDAY_KEYS, injuryBadgeMessage, injuryTimeLeft } from "../../../lib/training.js";
 import DayPickerR5 from "./DayPickerR5.tsx"; // #8580
-import { weekUsable, type WeekResponse } from "./dayPickerModel.ts"; // #8580
+import { rotationFieldSession, weekUsable, type WeekResponse } from "./dayPickerModel.ts"; // #8580
 import { ageForSeason, contractExpiringBadgeKey, retirementRiskBadgeKey } from "../../../lib/riderAge.js";
 import { groupRidersByType, UNTYPED_KEY } from "../../../lib/trainingRoster.js";
 import { formatDate } from "../../../lib/intl.js";
 import {
   AGE_FILTERS, ALL_SESSIONS_STORAGE_KEY, EFFORTS, NO_FILTERS, NO_GROUP, canResetFilters, resetFilterState, PROGRAM_CHOICE, RECOVERY_CHOICE, STAGE,
-  bulkPlan, bulkPlanLevels, dayEffort, dayFields, dayLoad, effortOf, fieldEfforts, filtersActive, levelForDayEntry, matchesFilters,
+  bulkPlan, bulkPlanLevels, dayEffort, dayFields, dayLoad, effortOf, effortOfIntensity, fieldEfforts, filtersActive, levelForDayEntry, matchesFilters,
   matchesOverview, nextSort, overviewCounts, planEffort, readStoredFlag, settledDayFields, settledFieldEfforts, showsInjuryRisk,
   sortR5Rows, statusKeys, teamLine, toggleAllSelection, toggleOne, trainingChoiceOf,
   writeForEffort, writeForLevel, writeForTraining, writeForTrainingAtLevel, writeStoredFlag, yourDay,
@@ -182,6 +182,7 @@ type Row = R5Row & {
   hasOwn: boolean;
   /** Traeningsvaelgerens vaerdi: "program" eller traeningen rytterens egen dag bygger paa. */
   choice: string;
+  rotationSession: string | null;
   yourDay: YourDay | null;
   /** Den indsats hvert felt koerer paa (sessionens eget niveau, eller det valgte med indsatsvaelgeren). */
   efforts: (Effort | null)[];
@@ -305,10 +306,10 @@ function useTrainingName() {
 // samme niveauer og samme v3-styring som den gamle fanes "Set day". Foerste valg
 // "Program" er som i dag. En naturlig <select>: telefonens egen liste er den
 // bedste tryk-flade, og et valg er eet tryk.
-function TrainingPicker({ value, onPick, disabled, label, full = false, prefix = true, describedBy, testId }: {
+function TrainingPicker({ value, onPick, disabled, label, full = false, prefix = true, describedBy, testId, programSession }: {
   value: string; onPick: (choice: string) => void; disabled: boolean; label: string; full?: boolean;
   /** "Training:" foran valget; i raekken staar ordet i kolonnens overskrift i stedet. */
-  prefix?: boolean; describedBy?: string; testId: string;
+  prefix?: boolean; describedBy?: string; testId: string; programSession?: string | null;
 }) {
   const { t } = useTranslation("training");
   const { t: tR5 } = useTranslation("trainingR5"); // #7947: lazy namespace (I18nReadyGate i TrainingPage)
@@ -321,7 +322,9 @@ function TrainingPicker({ value, onPick, disabled, label, full = false, prefix =
       {prefix && <span className="shrink-0 text-cz-2">{tR5("training.label")}</span>}
       <select value={value} disabled={disabled} aria-label={label} aria-describedby={describedBy} onChange={(e) => onPick(e.target.value)}
         className="min-w-0 flex-1 cursor-pointer appearance-none truncate bg-transparent py-1 font-medium text-cz-1 outline-hidden disabled:cursor-default">
-        <option value={PROGRAM_CHOICE}>{tR5("training.program")}</option>
+        {programSession
+          ? <optgroup label={tR5("training.program")}><option value={PROGRAM_CHOICE}>{name(programSession)}</option></optgroup>
+          : <option value={PROGRAM_CHOICE}>{tR5("training.program")}</option>}
         {(TRAINING_LEVELS as readonly string[]).map((level) => (
           <optgroup key={level} label={`${t("dayPanel.dayType_training")} · ${t(`dayPanel.level_${level}`)}`}>
             {(byLevel[level] ?? []).map((s) => <option key={s} value={s}>{name(s)}</option>)}
@@ -680,8 +683,11 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
     const known = raceSlotsFor(r5.forecast, id);
     const raceSlots = racing && known.size === 0 ? new Set([0]) : known;
     const weekDays = r5.riderWeekPlans[id] ?? null;
+    const riderForecast = r5.forecast?.riders?.[id];
+    const onRotation = riderForecast?.rotationSlots != null;
     const planned = dayFields({
-      programSlot: (slot) => programSessionToday(weekDays, WEEKDAY_KEYS, r5.todayWeekday, slot + 1),
+      programSlot: (slot) => rotationFieldSession(riderForecast, slot)
+        ?? programSessionToday(weekDays, WEEKDAY_KEYS, r5.todayWeekday, slot + 1),
       planSession: planSession ?? null,
       raceSlots,
     });
@@ -707,10 +713,15 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
       if (!levelsOn) return null;
       const settled = settledEfforts?.[slot] ?? null;
       if (settled) return settled;
+      if (rotationFieldSession(riderForecast, slot)) {
+        return effortOfIntensity(riderForecast?.rotationSlots?.[slot]?.intensity);
+      }
       const fromProgram = programSessionToday(weekDays, WEEKDAY_KEYS, r5.todayWeekday, slot + 1) != null;
       return fromProgram ? levelForDayEntry(todayEntry, slot) : ownLevel;
     });
-    const rowYourDay = yourDay(fields, planSession ?? null);
+    const rotationSession = onRotation ? planned.map((_, slot) => rotationFieldSession(riderForecast, slot))
+      .find((session) => session != null) ?? null : null;
+    const rowYourDay = onRotation ? null : yourDay(fields, planSession ?? null);
     return {
       id,
       name: `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim(),
@@ -729,7 +740,8 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
       ownDay: !!plan?.focus,
       hasOwn: own.any,
       plan,
-      choice: trainingChoiceOf(plan),
+      choice: onRotation ? PROGRAM_CHOICE : trainingChoiceOf(plan),
+      rotationSession,
       // Linjen under raekken: dagens egen traening paa de felter den faktisk faar
       // (et programfelt eller et loebsfelt vinder, samme stige som motoren).
       yourDay: rowYourDay,
@@ -985,7 +997,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
                     ) : (
                       <>
                         <td className={`relative ${CELL}`} data-tour={tourAnchor()}>
-                          <TrainingPicker value={row.choice} onPick={w.pickTraining} disabled={busy} full prefix={false}
+                          <TrainingPicker value={row.choice} programSession={row.rotationSession} onPick={w.pickTraining} disabled={busy} full prefix={false}
                             label={tR5("training.aria", { name: row.name })} describedBy={noteId} testId="r5-row-training" />
                           {/* "Din dag ..." er ingen boble oven paa naeste raekke (ejer 23/11 aften): teksten staar skjult for skaermlaeseren her og synligt i den udfoldede raekke. */}
                           <span className="sr-only"><RowNote row={row} r5={r5} levelsOn={levelsOn} id={noteId} /></span>
@@ -1103,7 +1115,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
                     <div className="flex flex-col gap-1.5 px-3 pb-2" data-testid="r5-onetap">
                       {locked ? <TrainedMark row={row} /> : (
                         <div className="grid gap-1.5 @[34rem]:grid-cols-[minmax(0,1fr)_auto]" data-tour={tourAnchor()}>
-                          <TrainingPicker value={row.choice} onPick={w.pickTraining} disabled={busy} full
+                          <TrainingPicker value={row.choice} programSession={row.rotationSession} onPick={w.pickTraining} disabled={busy} full
                             label={tR5("training.aria", { name: row.name })} testId="r5-row-training" />
                           <EffortControl levelsOn={levelsOn} scope={row.name} value={row.ownEffort} onPick={w.pickEffort} disabled={busy} full testId="r5-row-effort" />
                         </div>

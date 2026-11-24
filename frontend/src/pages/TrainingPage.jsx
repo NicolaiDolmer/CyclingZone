@@ -629,6 +629,8 @@ export default function TrainingPage() {
   const [riderWeekDraftMap, setRiderWeekDraftMap] = useState({}); // { <rider_id>: days } — kun redigerede
   const [riderWeekMsgMap, setRiderWeekMsgMap] = useState({}); // { <rider_id>: {type,text} | null }
   const [programR5Drafts, setProgramR5Drafts] = useState({}); // #7456: R5 Program-kladder overlever fanebyt
+  const [rotationDrafts, setRotationDrafts] = useState({});
+  const [weekBlockDrafts, setWeekBlockDrafts] = useState({});
 
   // #5159 (B1): holdets ugerytme og de individuelle ugeplaner er kladder indtil
   // Gem. Et release-drevet reload kunne kassere dem uden en lyd — det tidligere
@@ -2109,7 +2111,10 @@ export default function TrainingPage() {
     let forecastEntry = null;
     if (isTeam) {
       for (const entry of Object.values(fatigueForecast.forecast?.riders ?? {})) {
-        if (Number.isFinite(entry?.fatigue) && (!forecastEntry || entry.fatigue > forecastEntry.fatigue)) forecastEntry = entry;
+        const fatigue = entry?.fatigue;
+        if (fatigue != null && Number.isFinite(fatigue) && fatigue > (forecastEntry?.fatigue ?? -Infinity)) {
+          forecastEntry = entry;
+        }
       }
     } else {
       forecastEntry = forecastFor(key);
@@ -2183,8 +2188,10 @@ export default function TrainingPage() {
     if (programR5) return ( // #7456: R5's Program tab behind training_page_r5
       <I18nReadyGate ns="trainingR5" fallback={<TabFallback />}><ProgramR5 riders={riders} weekdays={WEEKDAY_KEYS} todayWeekday={todayWeekday} todayLocked={trainNow.status.locked && !trainNow.status.settled}
         riderWeekPlans={riderWeekPlans} programs={programs} groups={trainingGroups} forecast={fatigueForecast.forecast} fatigueRules={fatigueRules}
-        catalogV3={catalogV3} actionsEl={programR5Actions} mobile={isMobile} onClearRider={clearRiderWeekPlan}
-        drafts={programR5Drafts} onDrafts={setProgramR5Drafts} request={r5ProgramRequest} onRequestHandled={clearR5ProgramRequest} /></I18nReadyGate>
+        catalogV3={catalogV3} effortLevels={training.effortLevels === true} actionsEl={programR5Actions} mobile={isMobile} onClearRider={clearRiderWeekPlan}
+        drafts={programR5Drafts} onDrafts={setProgramR5Drafts}
+        rotationDrafts={rotationDrafts} setRotationDrafts={setRotationDrafts} weekDrafts={weekBlockDrafts} setWeekDrafts={setWeekBlockDrafts}
+        request={r5ProgramRequest} onRequestHandled={clearR5ProgramRequest} /></I18nReadyGate>
     );
     const subLabel = (sub) => (sub === "limit"
       ? (isMobile ? t("subtabs.limitShort") : t("subtabs.limit"))

@@ -166,6 +166,8 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     patch_notes_v2_8049: false, // #8049
     day_words_7725: false,
     fatigue_now_7801: false,
+    training_rotation: false,
+    training_week_priority: false,
     planning_workbench: false,
     training_train_now_instant: false,
     training_train_now_bonus: false, // #7741
@@ -250,6 +252,8 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
     patch_notes_v2_8049: false, // #8049
     day_words_7725: false,
     fatigue_now_7801: false,
+    training_rotation: false,
+    training_week_priority: false,
     planning_workbench: false,
     training_train_now_instant: false,
     training_train_now_bonus: false, // #7741
@@ -342,6 +346,8 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     patch_notes_v2_8049: false, // #8049
     day_words_7725: false,
     fatigue_now_7801: false,
+    training_rotation: false,
+    training_week_priority: false,
     planning_workbench: false,
     training_train_now_instant: false,
     training_train_now_bonus: false, // #7741
@@ -395,6 +401,8 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     patch_notes_v2_8049: false, // #8049
     day_words_7725: false,
     fatigue_now_7801: false,
+    training_rotation: false,
+    training_week_priority: false,
     planning_workbench: false,
     training_train_now_instant: false,
     training_train_now_bonus: false, // #7741

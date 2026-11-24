@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import {
   addDays, weekDateRaces, weekDateRiderFields, weekGameDaysByDate, loadTeamWeekForecast, WEEK_FORECAST_DAYS,
 } from "./trainingWeekForecast.js";
-import { forecastBindingsFromEntryDays } from "./trainingWeekPlanForecast.js";
+import { buildTeamFatigueForecast, forecastBindingsFromEntryDays } from "./trainingWeekPlanForecast.js";
 import { NO_PRIOR_GAME_DAY } from "./trainingDayCloseTrigger.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -178,12 +178,67 @@ function routedSupabase(handler) {
         gte(k, v) { state.filters.push(["gte", k, v]); return q; },
         lt(k, v) { state.filters.push(["lt", k, v]); return q; },
         order() { return q; }, limit() { return q; },
+        maybeSingle() { return Promise.resolve({ data: handler(state)[0] ?? null, error: null }); },
         then(res, rej) { return Promise.resolve({ data: handler(state), error: null }).then(res, rej); },
       };
       return q;
     },
   };
 }
+
+test("rotation week continues the daily forecast, pauses for races and rest, and releases a known non-starter", async () => {
+  const date = "2026-11-23";
+  const rotation = {
+    v: 1, rev: 1, anchor: { rev: 1, index: 6 },
+    passes: ["sprint", "threshold", "endurance", "tempo", "sprint", "threshold", "endurance", "tempo", "sprint", "threshold"]
+      .map((session) => ({ session })),
+  };
+  const riders = [{ id: "r1", primary_type: "sprinter" }, { id: "r2", primary_type: "sprinter" }];
+  const today = {
+    available: true, riders: buildTeamFatigueForecast({
+      tickDate: date, seasonId: "s1", dateGameDays: [0, 1, 2, 3, 4], riders, conditionModelV2: true,
+      rotationByRider: new Map(riders.map(({ id }) => [id, rotation])),
+      plannedStages: riders.flatMap(({ id }) => [1, 4].map((game_day) => ({ rider_id: id, game_day }))),
+    }),
+  };
+  const stages = Array.from({ length: WEEK_FORECAST_DAYS }, (_, i) => ({
+    ...st("calendar", i * 5 + 4, i + 1), scheduled_at: addDays(date, i) + "T13:00:00Z",
+  }));
+  stages.push({ ...st("gt", 12, 2), scheduled_at: addDays(date, 2) + "T12:00:00Z" });
+  const entries = riders.flatMap(({ id }) => [5, 6, 7, 8, 9, 12].map((game_day) => ({ rider_id: id, game_day, race_id: "gt" })));
+  const supabase = routedSupabase(({ table, select, filters }) => {
+    if (table === "app_config") {
+      return filters.some(([, key, value]) => key === "key" && value === "training_rotation") ? [{ value: "on" }] : [];
+    }
+    if (table === "riders") return riders;
+    if (table === "training_week_plans") return riders.map(({ id }) => ({ rider_id: id, plan_kind: "rotation", rotation }));
+    if (table === "races") return [{ id: "calendar", name: "Calendar" }, { id: "gt", name: "Tour", stages: 3 }];
+    if (table === "race_stage_schedule") {
+      if (select === "game_day") return [];
+      return select.includes("races!inner") ? stages : stages.filter((row) => row.race_id === "gt");
+    }
+    if (table === "race_entry_days") {
+      const gameDays = filters.find(([, column]) => column === "game_day")?.[2] ?? [];
+      return entries.filter((row) => gameDays.includes(row.game_day));
+    }
+    if (table === "race_simulation_runs") return [{ race_id: "gt", entrant_snapshot: ["r1"] }];
+    return [];
+  });
+  const week = await loadTeamWeekForecast({
+    supabase, team: { id: "t1", league_division_id: DIV }, seasonId: "s1",
+    now: new Date(date + "T10:00:00Z"), loadToday: async () => today,
+  });
+  const numbers = (rider) => rider.rotationSlots.map((slot) => slot?.index ?? null);
+  assert.equal(week.days[0].today, today);
+  assert.deepEqual(numbers(today.riders.r1), [6, null, 7, 8, null]);
+  assert.deepEqual(numbers(week.days[1].riders.r1), [null, null, null, null, null]);
+  assert.deepEqual(numbers(week.days[2].riders.r1), [9, 0, null, 1, 2]);
+  assert.deepEqual(numbers(week.days[6].riders.r1), [8, 9, 0, 1, 2]);
+  assert.equal(week.days[6].riders.r1.nextRotationIndex, 3);
+  assert.equal(week.days[7].riders.r1.rotationSlots[0].index, 3);
+  assert.deepEqual(numbers(week.days[1].riders.r2), [9, 0, 1, 2, 3]);
+  assert.deepEqual(week.days[2].riders.r2.raceSlots, []);
+});
 
 test("fund 5: I/O med etaper over to datoer (inkl. sommertidsskift), binding og skade", async () => {
   // 2027-03-27 (lør) -> 2027-03-28 er sommertid. Aksen: loebsdag 0-4 og 5-9.

@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import { authHeaders } from "../../../lib/supabase";
 import { apiFetch } from "../../../lib/apiFetch.ts";
 import type { TrainingGroup } from "./trainingGroupsModel.ts";
+import type { RotationWrite, WeekCellWrite } from "../r5/programR5Model.ts";
 
 type GroupsResponse = { enabled?: boolean; groups?: TrainingGroup[] };
 export type GroupsResult = { ok: boolean; error?: string; groups?: TrainingGroup[] };
@@ -61,11 +62,12 @@ export function useTrainingGroups({ onChanged }: { onChanged?: () => Promise<unk
   const remove = useCallback((id: string) => send(`/${id}`, "DELETE"), [send]);
   // slotIndex null = hele ugedagen; 0-4 = een loebsdag.
   const setCell = useCallback(
-    (id: string, weekday: string, slotIndex: number | null, session: string) =>
-      send(`/${id}/cell`, "PUT", { weekday, slotIndex, session }),
+    (id: string, weekday: string, slotIndex: number | null, session: string, plan?: WeekCellWrite) =>
+      send(`/${id}/cell`, "PUT", { weekday, slotIndex, session, ...plan }),
     [send],
   );
-  const putProgram = useCallback((id: string, programKey: string) => send(`/${id}/program`, "POST", { programKey }), [send]);
+  const putProgram = useCallback((id: string, programKey: string, planKind?: "week") =>
+    send(`/${id}/program`, "POST", { programKey, planKind }), [send]);
   const follow = useCallback((id: string, riderIds: string[]) => send(`/${id}/follow`, "POST", { riderIds }), [send]);
   const setFatigue = useCallback(
     (id: string, mode: GroupFatigueMode, own?: { threshold: number; fallback: string }) =>
@@ -73,7 +75,12 @@ export function useTrainingGroups({ onChanged }: { onChanged?: () => Promise<unk
     [send],
   );
 
-  return { enabled, groups, busy, create, update, remove, setCell, putProgram, follow, setFatigue, reload: load };
+  const setRotation = useCallback(
+    (id: string, change: RotationWrite) => send(`/${id}/rotation`, "PUT", change),
+    [send],
+  );
+
+  return { enabled, groups, busy, create, update, remove, setCell, putProgram, follow, setFatigue, setRotation, reload: load };
 }
 
 export type TrainingGroupsClient = ReturnType<typeof useTrainingGroups>;
