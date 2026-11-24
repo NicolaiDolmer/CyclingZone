@@ -1584,7 +1584,7 @@
       },
       "raceSource": {
         "title": "Where the progress came from",
-        "text": "Open a rider in the training report to see where his progress came from, ability by ability: Training, Race and Total. Race progress is drawn hatched in a neutral colour and is already part of the day's total, so it is never counted twice. A rider who only trained shows only Training, and a rider who only raced shows only Race. When an ability landed a whole point, the row shows it with the jump, for example 54 to 56. On a date your team raced, a line under the key numbers says how much of the squad's progress came from races. Older reports that did not store each activity on its own keep the old lists and show no split."
+        "text": "After the race at 14:00 Danish time, the report can show race development before daily training has run. Training appears separately when it is recorded, either after you select Train now or during the evening update. Open a rider in the training report to see where his progress came from, ability by ability: Training, Race and Total. Race progress is drawn hatched in a neutral colour and is already part of the day's total, so it is never counted twice. A rider who only trained shows only Training, and a rider who only raced shows only Race. When an ability landed a whole point, the row shows it with the jump, for example 54 to 56. On a date your team raced, a line under the key numbers says how much of the squad's progress came from races. Older reports that did not store each activity on its own keep the old lists and show no split."
       },
       "trainingHistory": {
         "title": "Training history",

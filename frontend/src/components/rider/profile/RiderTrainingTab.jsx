@@ -660,7 +660,7 @@ export default function RiderTrainingTab({ rider, training, trainingHistory, pro
   // tomme tilstand — ellers ville fladen falde tilbage til den boks kortet
   // netop ERSTATTER, og to ryttere paa samme hold ville vise to forskellige
   // kort-typer.
-  const scoreVisible = training.trainingScore != null;
+  const scoreVisible = !developmentXp && training.trainingScore != null;
   const riderScore = training.trainingScore?.[rider.id] ?? {};
   const condition = training.condition?.[rider.id] ?? null;
   const plan = training.planFor(rider.id);

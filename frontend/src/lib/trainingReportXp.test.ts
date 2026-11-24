@@ -129,6 +129,8 @@ test("buildTodayView: totals, filters, a single point names its ability", () => 
   assert.equal(view.previous, "2026-11-01");
   assert.equal(view.next, null);
   assert.equal(view.xp, 20);
+  assert.equal(view.race, 11);
+  assert.equal(view.training, 9);
   assert.equal(view.xp30, 30);
   assert.equal(view.points, 4);
   assert.equal(view.pointRiders, 2);

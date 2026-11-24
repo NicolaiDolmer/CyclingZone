@@ -1584,7 +1584,7 @@
       },
       "raceSource": {
         "title": "Hvor fremgangen kom fra",
-        "text": "Fold en rytter ud i træningsrapporten for at se, hvor hans fremgang kom fra, evne for evne: Træning, Løb og I alt. Fremgangen fra løb vises skraveret i en neutral farve og er allerede med i dagens sum, så den tælles aldrig to gange. En rytter, der kun trænede, viser kun Træning, og en rytter, der kun kørte løb, viser kun Løb. Når en evne landede et helt point, viser rækken det med springet, for eksempel 54 til 56. På en dato, hvor dit hold kørte løb, står der under nøgletallene, hvor meget af holdets fremgang der kom fra løb. Ældre rapporter, der ikke gemte hver aktivitet for sig, beholder de gamle lister og viser ingen opdeling."
+        "text": "Efter løbet klokken 14.00 dansk tid kan rapporten vise løbsudvikling, før dagens træning er kørt. Træningen vises for sig, når den er registreret, enten når du vælger Træn nu eller ved aftenens opdatering. Fold en rytter ud i træningsrapporten for at se, hvor hans fremgang kom fra, evne for evne: Træning, Løb og I alt. Fremgangen fra løb vises skraveret i en neutral farve og er allerede med i dagens sum, så den tælles aldrig to gange. En rytter, der kun trænede, viser kun Træning, og en rytter, der kun kørte løb, viser kun Løb. Når en evne landede et helt point, viser rækken det med springet, for eksempel 54 til 56. På en dato, hvor dit hold kørte løb, står der under nøgletallene, hvor meget af holdets fremgang der kom fra løb. Ældre rapporter, der ikke gemte hver aktivitet for sig, beholder de gamle lister og viser ingen opdeling."
       },
       "trainingHistory": {
         "title": "Træningshistorik",

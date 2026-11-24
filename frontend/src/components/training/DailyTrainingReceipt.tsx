@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { raceDevelopmentBeforeTraining } from "../../lib/trainingDailyReceipt.ts";
 import type { DailyTrainingReceipt as DateReceipt, DailyRiderReceipt, TrainingActivity } from "../../lib/trainingDailyReceipt.ts";
 import { averagePassScore, sortReceiptRiders, formatSlotRange, waitingForRace, type ReceiptSort } from "../../lib/trainingDailyReceipt.ts";
 import { progressOnlyEntries, wholePointEntries } from "../../lib/trainingReceiptView.ts";
@@ -55,9 +56,11 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
   const rows = sortReceiptRiders(run.report.riders, sortBy, avgScore);
   const gameDays = Array.isArray(run.game_days) ? run.game_days : [];
   const trainedNowSlots = run.trained_now_slots ?? [];
+  const raceBeforeTraining = raceDevelopmentBeforeTraining(run);
   const trainedNow = run.receipt_status === "pending" && trainedNowSlots.length > 0;
+  const trainingRecorded = trainedNow && !raceBeforeTraining;
   const trainedRows = rows.filter(row => row.trained_now != null);
-  const waiting = sortReceiptRiders(waitingForRace(run, roster).map(rider => ({
+  const waiting = sortReceiptRiders((raceBeforeTraining ? [] : waitingForRace(run, roster)).map(rider => ({
     rider_id: rider.id, name: `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim(),
   })), "name");
   const trainedNowLabel = t("dailyReceipt.trainedNow", { count: trainedNowSlots.length, range: formatSlotRange(trainedNowSlots) });
@@ -160,17 +163,17 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
         <span className={`flex items-center gap-2 ${META}`}>
           {/* #7745: a folded date still says what it landed. */}
           {!expanded && pointsKnown && <><span className="tabular-nums text-cz-1" data-testid="daily-receipt-points-meta">{t("dailyReceipt.pointsMeta",{count:points})}</span><span aria-hidden="true">·</span></>}
-          <span data-testid="daily-receipt-status">{trainedNow ? trainedNowLabel : t(`dailyReceipt.status.${run.receipt_status}`)}</span>
+          <span data-testid="daily-receipt-status">{trainingRecorded ? trainedNowLabel : t(`dailyReceipt.status.${run.receipt_status}`)}</span>
           <ChevronDownIcon size={14} className={expanded ? "rotate-180" : ""} aria-hidden="true" />
         </span>
       </button>
       {expanded && <>
       <p className="mb-4 text-xs text-cz-2" role={wholeDateKnown ? undefined : "status"}>
-        {trainedNow ? <span data-testid="daily-receipt-trained-now-note">{t("dailyReceipt.note.trainedNow")}</span> : t(`dailyReceipt.note.${run.receipt_status}`)}
+        {trainingRecorded ? <span data-testid="daily-receipt-trained-now-note">{t("dailyReceipt.note.trainedNow")}</span> : t(raceBeforeTraining ? "dailyReceipt.raceBeforeTraining" : `dailyReceipt.note.${run.receipt_status}`)}
       </p>
       <div className="mb-3 grid grid-cols-3 gap-3 border-b border-cz-border pb-4">
         <div data-testid="daily-receipt-whole-points-total"><p className="font-data text-xl font-bold tabular-nums text-cz-1">{pointsKnown ? points : "—"}</p><p className="text-2xs text-cz-3">{t(trainedNow ? "dailyReceipt.wholePointsSoFar" : "dailyReceipt.wholePoints")}</p></div>
-        {trainedNow
+        {trainingRecorded
           ? <div data-testid="daily-receipt-trained-now-count"><p className="font-data text-lg font-semibold tabular-nums text-cz-1">{trainedRows.length}</p><p className="text-2xs text-cz-3">{t("dailyReceipt.trainedNowCount")}</p></div>
           : <div><p className="font-data text-lg font-semibold tabular-nums text-cz-1">{known.length} / {rows.length}</p><p className="text-2xs text-cz-3">{t("dailyReceipt.riderReceipts")}</p></div>}
         <div><p className="font-data text-lg font-semibold tabular-nums text-cz-1">{gameDays.length || "—"}{run.expected_game_days ? ` / ${run.expected_game_days.length}` : ""}</p><p className="text-2xs text-cz-3">{t("dailyReceipt.activitiesRecorded")}</p></div>

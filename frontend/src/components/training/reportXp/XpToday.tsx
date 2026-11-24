@@ -270,6 +270,16 @@ export default function XpToday({ view, onPickDate, switcher, showAll = false, o
           { label: t("xpReport.fromRaces"), value: view.racePercent != null ? `${formatNumber(view.racePercent)} %` : t("xpReport.noRace"),
             sub: view.racePercent != null ? <span className="mt-1 block w-24"><XpBar training={(100 - view.racePercent) / 100} race={view.racePercent / 100} label={t("xpReport.shareLabel", { race: formatNumber(view.racePercent) })} /></span> : undefined },
         ]} />
+        <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-cz-border pt-3" data-testid="xp-activity-sources">
+          <div>
+            <dt className={META}>{t("xpReport.legend.race")}</dt>
+            <dd className={`text-sm text-cz-1 ${NUM}`}>{xp(view.race)}</dd>
+          </div>
+          <div>
+            <dt className={META}>{t("xpReport.legend.training")}</dt>
+            <dd className={`text-sm text-cz-1 ${NUM}`}>{view.raceBeforeTraining ? t("training:dailyReceipt.status.pending") : xp(view.training)}</dd>
+          </div>
+        </dl>
         {view.paid > 0 && <PaidNote className="mt-3" />}
       </Section>
       <div className="grid items-start gap-[14px] min-[1440px]:grid-cols-[minmax(0,1fr)_22rem]">
