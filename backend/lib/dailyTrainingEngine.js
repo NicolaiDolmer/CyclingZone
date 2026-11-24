@@ -488,6 +488,30 @@ async function loadRaceStageProfiles(supabase, raceIds) {
 // are fetched from that memory. The helpers below hold the rules both ways of fetching use, so a
 // rule lives in one place and the two ways can only differ in where the numbers come from.
 
+/**
+ * PURE (#8606): the development-model part of a tick's arguments. Both training ticks and race
+ * days get curve B (#3564) and the rider's transition (#7382); under the XP model (#6110) also the
+ * date's earlier gains and bar (bar_paid), the stored-bar payout and the rider's ceiling and
+ * fatigue at the date's start (G3a, #8520). Without XP nothing new is added, so today's model is
+ * untouched. The engine and the compensation repair (scripts/dev/repair5912LostTraining.mjs) both
+ * build the arguments here, so a repair can never pass a different model than the engine did.
+ * `dateUsedGains` is a function, read only under XP.
+ */
+export function developmentModelTickArgs({
+  rider, curveB, curveBTransition, developmentXp, dateUsedGains, xpStoredBarPayout, xpDateStart, preFatigue,
+}) {
+  return {
+    curveB,
+    curveBTransition,
+    developmentXp, // null = dagens model
+    // #6110: datoens kvitteringer under XP (bar_paid); ingen graense pr. dato efter G3a (#8520). Kun med XP, saa dagens model er uroert.
+    // #6110 (ejervalg B 19/11): ogsaa paa rytterens foerste XP-dato, naar han ikke udviklede sig paa startdatoen.
+    ...(developmentXp ? { xpDateUsedGains: dateUsedGains(), xpStoredBarPayout: xpStoredBarPayout === true, xpDateStart: xpDateStart?.dateStart ?? null,
+      // #6110 G3a (#8520): potentialet P og traetheden ved datoens start til XP-afstanden og traetheden.
+      xpRider: { ceiling: rider.talent_ceiling == null ? null : Number(rider.talent_ceiling), fatigue: preFatigue } } : {}),
+  };
+}
+
 /** PURE: the per-race-day keys of a day field (which slot, which seed, does it close the date). */
 export function raceDayFrame({ useRaceDayKey, conditionPerDate, raceDay, dateDays, dateGameDays, seasonId, tickDate }) {
   // Loebsdags-stoej/skade-seed (A3). null paa den gamle sti ⇒ dailyTraining.js falder
@@ -2170,15 +2194,13 @@ export function computeTrainingDayTick(input) {
         tickSeedKey,
         budgetDivisor,
         hardDailyCap,
-        // #3564: baade traeningsdagen og loebsdagen (applyDailyTick nedenfor) faar kurven.
-        curveB,
-        curveBTransition: riderCurveBTransition, // #7382
-        developmentXp, // #6110: null = dagens model
-        // #6110: datoens kvitteringer under XP (bar_paid); ingen graense pr. dato efter G3a (#8520). Kun med XP, saa dagens model er uroert.
-        // #6110 (ejervalg B 19/11): ogsaa paa rytterens foerste XP-dato, naar han ikke udviklede sig paa startdatoen.
-        ...(developmentXp ? { xpDateUsedGains: dateUsedGains(), xpStoredBarPayout: developmentXpIgnition === true || xpPayoutRiderIds?.has(rider.id) === true, xpDateStart: xpDateStart?.dateStart ?? null,
-          // #6110 G3a (#8520): potentialet P og traetheden ved datoens start til XP-afstanden og traetheden.
-          xpRider: { ceiling: rider.talent_ceiling == null ? null : Number(rider.talent_ceiling), fatigue: preFatigue } } : {}),
+        // #3564 kurve B, #7382 overgangen og #6110 XP-modellen: samme byggesten som
+        // kompensationsvejen (#8606), saa de to aldrig kan sende forskellige modeller.
+        ...developmentModelTickArgs({
+          rider, curveB, curveBTransition: riderCurveBTransition, developmentXp, dateUsedGains,
+          xpStoredBarPayout: developmentXpIgnition === true || xpPayoutRiderIds?.has(rider.id) === true,
+          xpDateStart, preFatigue,
+        }),
       };
       if (racedToday) {
         // #4850 variant A (ejer 24/9, S1 valgt efter simuleringen i #5640):
