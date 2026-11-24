@@ -56,14 +56,15 @@ const props = {
   riders: [{ id: "a", firstname: "Rider A" }, { id: "b", firstname: "Rider B" }],
   weekdays, todayWeekday: "mon", todayLocked: false, mobile: false,
   riderWeekPlans: {}, catalogV3: false, actionsEl: null, forecast: null,
-  programs: { catalog, assigned: {}, seeds: {}, busy: false, applyProgram: ok, setCell: ok },
+  programs: { catalog, assigned: {}, seeds: {}, busy: false, applyProgram: ok, setCell: ok, setRotation: ok },
   groups: {
     enabled: true, busy: false,
     groups: [{ id: "g", name: "Group A", programKey: "sprinter", days: null, fatigue: null, isSeed: false, members: [{ riderId: "a", followsGroup: true }] }],
-    create: ok, update: ok, remove: ok, putProgram: ok, setCell: ok, follow: ok, setFatigue: ok, reload: async () => {},
+    create: ok, update: ok, remove: ok, putProgram: ok, setCell: ok, follow: ok, setFatigue: ok, setRotation: ok, reload: async () => {},
   },
   fatigueRules: { enabled: false },
   drafts: {}, onDrafts: noop, onClearRider: ok,
+  rotationDrafts: {}, setRotationDrafts: noop, weekDrafts: {}, setWeekDrafts: noop,
 };
 
 const renderComponent = (component: ReactElement) => renderToStaticMarkup(createElement(I18nextProvider, { i18n }, component));

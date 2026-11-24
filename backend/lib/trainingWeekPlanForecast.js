@@ -374,10 +374,11 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
   // koert at vise), og samtidig med etapeopslagene, saa en almindelig dag er uaendret.
   const settleRaceSessionP = !settled && dateReceipts.length ? settle(isTrainingSettleRaceSessionEnabled(supabase)) : null;
 
-  // #8549 fund E: med Week blocks samme startfelt-frigivelse som motorens binding og planlagte
-  // etaper, saa en kendt ikke-starter hverken er bundet eller har en etape i noget felt.
-  // Kontakten off: intet ekstra opslag, prognosen som foer.
-  const entryDays = weekPriority ? await startedEntryDays(supabase, boundEntryDays) : boundEntryDays;
+  // Week blocks and Rotation use the engine's start field release. A known
+  // non-starter's slots are available for training.
+  const entryDays = weekPriority || rotationByRider.size
+    ? await releaseForecastNonStarters(supabase, boundEntryDays, weekPriority ? null : rotationByRider)
+    : boundEntryDays;
   // Planlagte etaper: bindingens loeb har en etape paa netop den loebsdag.
   const raceIds = [...new Set(entryDays.map((row) => row.race_id).filter(Boolean))];
   const [schedule, profiles, exits] = raceIds.length
@@ -450,10 +451,11 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
 
 // #8549 fund E: motorens startfelt-frigivelse (I5: ingen kopi af reglen). Som udgangen af loeb
 // rejses en fejl her, saa prognosen aldrig viser en etape, motoren ikke regner med.
-async function startedEntryDays(supabase, entryDays) {
-  const { data, error } = await releaseNonStarters(supabase, entryDays);
+export async function releaseForecastNonStarters(supabase, entryDays, rotations = null) {
+  const relevant = rotations ? entryDays.filter((row) => rotations.has(row.rider_id)) : entryDays;
+  const { data, error } = await releaseNonStarters(supabase, relevant);
   if (error) throw new Error(`forecast start fields: ${error.message ?? error}`);
-  return data;
+  return rotations ? [...data, ...entryDays.filter((row) => !rotations.has(row.rider_id))] : data;
 }
 
 // Motorens regler (samme loader som dailyTrainingEngine.js). Motoren kaster ved
