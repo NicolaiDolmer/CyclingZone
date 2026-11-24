@@ -940,7 +940,7 @@
     "type": {
       "Klassement": {
         "label": "Clasificación general",
-        "desc": "Puesto en la general de las carreras por etapas"
+        "desc": "Puesto en la clasificación general de las carreras por etapas"
       },
       "Klassiker": {
         "label": "Clásicas",
@@ -2286,8 +2286,9 @@
     "bestRiders": "Mejores ciclistas",
     "bestRidersSub": "Acumulado de todas las ediciones",
     "noResultsYet": "Aún no hay resultados",
-    "statGc": "{count} general",
-    "statStageWins": "{count} victorias de etapa",
+    "statGc": "{count, plural, one {# victoria en la clasificación general} other {# victorias en la clasificación general}}",
+    "statPoints": "{count, plural, one {# punto} other {# puntos}}",
+    "statStageWins": "{count, plural, one {# victoria de etapa} other {# victorias de etapa}}",
     "statTop3": "{count} top 3",
     "noWins": "Sin victorias",
     "accumulatedTitle": "Total de puntos acumulados",

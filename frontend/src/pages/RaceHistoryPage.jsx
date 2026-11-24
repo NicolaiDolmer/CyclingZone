@@ -245,7 +245,7 @@ export default function RaceHistoryPage() {
                           )}
                           {s.rider_name}
                         </p>
-                        <p className="truncate font-data text-2xs uppercase tracking-[.04em] text-cz-3">
+                        <p className="font-data text-2xs uppercase tracking-[.04em] text-cz-3">
                           {[
                             s.gc_wins > 0 && t("history.statGc", { count: s.gc_wins }),
                             s.stage_wins > 0 && t("history.statStageWins", { count: s.stage_wins }),
@@ -254,7 +254,7 @@ export default function RaceHistoryPage() {
                         </p>
                       </div>
                       <span className="shrink-0 font-mono text-xs font-bold text-cz-accent-t">
-                        {formatNumber(s.total_points)} pt
+                        {t("history.statPoints", { count: Number(s.total_points || 0) })}
                       </span>
                     </RiderLink>
                   ))}

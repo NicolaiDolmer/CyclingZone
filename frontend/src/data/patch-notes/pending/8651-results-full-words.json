@@ -1,0 +1,22 @@
+{
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Results",
+      "area": "interface",
+      "en": {
+        "title": "Full terms in race results",
+        "body": "Results, the points guide and race history spell out points and overall wins."
+      },
+      "da": {
+        "title": "Fulde ord i løbsresultater",
+        "body": "Resultater, pointregler og løbshistorik skriver point og samlede sejre med fulde ord."
+      },
+      "refs": [
+        8651
+      ]
+    }
+  ]
+}

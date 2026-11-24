@@ -151,7 +151,7 @@ export default function RacePointsPage() {
           {PRIZE_EXAMPLES.map(ex => (
             <div key={ex.key} className="bg-cz-card rounded-cz px-3 py-2 border border-cz-accent/30">
               <p className="text-xs text-cz-2 truncate">{t(`points.prizeExample.${ex.key}`)}</p>
-              <p className="font-mono font-bold text-cz-accent-t text-sm">{fmt(ex.points)} pt</p>
+              <p className="font-mono font-bold text-cz-accent-t text-sm">{t("results:points", { count: Number(ex.points) })}</p>
               <p className="text-xs text-cz-3">{fmtPrize(ex.points)}</p>
             </div>
           ))}
@@ -209,7 +209,7 @@ export default function RacePointsPage() {
                   <div className="px-4 py-4 flex items-center justify-between">
                     <p className="text-cz-2 text-sm">{desc}</p>
                     <div className="text-right">
-                      <p className="font-mono font-bold text-cz-accent-t">{fmt(pt)} pt</p>
+                      <p className="font-mono font-bold text-cz-accent-t">{t("results:points", { count: Number(pt) })}</p>
                       <p className="text-xs text-cz-3">{fmtPrize(pt)}</p>
                     </div>
                   </div>
