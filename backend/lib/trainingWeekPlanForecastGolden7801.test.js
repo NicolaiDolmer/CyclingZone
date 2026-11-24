@@ -57,7 +57,8 @@ test("prognosen venter hoejst det antal gange paa databasen, ombygningen giver (
   assert.deepEqual(over, []);
 });
 
-test("opslaget af gemte udtagelser tilføjer ét kald i samme runde som programmets data", async () => {
-  assert.equal((await forecastCalls("midt_paa_dagen", "team-b")).kald, 36);
-  assert.equal((await forecastCalls("aften_alle_koert", "team-a")).kald, 36);
+test("prognosen sender de opslag, der ikke afhaenger af hinanden, i samme runde, og ingen kald oeges paa en almindelig dag", async () => {
+  // Kaldene er de samme som paa merge-base (35 for et hold uden stempler); kun ventetiden er kortere.
+  assert.equal((await forecastCalls("midt_paa_dagen", "team-b")).kald, 35);
+  assert.equal((await forecastCalls("aften_alle_koert", "team-a")).kald, 35);
 });

@@ -730,6 +730,7 @@ export async function resolveDayCloseStatus({
 
     const stageContext = includeStages ? {
       stages: todaysStages,
+      divisionRaceIds: [...raceById.keys()],
       hasRecordedStage: todaysStages.some((stage) =>
         Number(raceById.get(stage.race_id)?.stages_completed) >= Number(stage.stage_number)),
     } : {};

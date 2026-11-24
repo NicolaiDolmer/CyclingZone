@@ -689,7 +689,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
     const riderForecast = r5.forecast?.riders?.[id];
     const known = raceSlotsFor(r5.forecast, id);
     const hasForecastFields = !r5.forecast?.settled && riderForecast?.raceSlots != null;
-    const racing = hasForecastFields ? known.size > 0 : r5.racingToday[id] != null;
+    const racing = r5.racingToday[id] != null;
     const raceSlots = !hasForecastFields && racing ? new Set([0]) : known;
     const weekDays = r5.riderWeekPlans[id] ?? null;
     const onRotation = riderForecast?.rotationSlots != null;

@@ -322,6 +322,19 @@ test("#8666: a saved selection without a binding reserves the stage field before
   assert.deepEqual((await load()).riders[RIDER].raceSlots, [4]);
 });
 
+test("#8666: a withdrawal keeps the saved lineup without reserving a race field", async () => {
+  const { state } = scenario({ lock: 4, race: [4], pending: true });
+  state.race_entry_days.length = 0;
+  state.race_withdrawals.push({ race_id: RACE, team_id: TEAM, withdrawn_reason: "manager" });
+  assert.ok(state.race_entries.some((entry) => entry.race_id === RACE && entry.rider_id === RIDER));
+  const forecast = await loadTeamFatigueForecast({
+    supabase: withScheduleJoin(createFake(state).supabase),
+    team: state.teams[0], seasonId: SEASON.id, now: new Date(`${DATE1}T13:59:59Z`),
+  });
+  assert.deepEqual(forecast.riders[RIDER].raceSlots, []);
+  assert.deepEqual(forecast.riders[RIDER].fieldSource, FIELDS);
+});
+
 test("#8666: previous-date retry publishes no intermediate forecast value at midnight or deadline", async () => {
   const { state, forecastAt } = overdueRotationScenario();
   const fake = createFake(state);
