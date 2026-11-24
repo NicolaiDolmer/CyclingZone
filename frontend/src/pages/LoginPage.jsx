@@ -111,7 +111,7 @@ export default function LoginPage() {
   const [managerName, setManagerName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(null);
+  const [success, setSuccess] = useState(/** @type {null | {kind: "confirm", email: string} | {kind: "signup" | "forgot", message: string}} */ (null));
   // #2068: "send bekræftelsesmail igen" — dækker både signup-succes-skærmen
   // (kind: "confirm") og login-forsøg der rammer Supabases "email not
   // confirmed"-fejl (bruger er stadig ubekræftet men prøver at logge ind).
