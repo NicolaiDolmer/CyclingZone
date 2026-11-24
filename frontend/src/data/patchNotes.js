@@ -1,5 +1,29 @@
 export const PATCHES = [
 {
+  "version": "7.513",
+  "date": "2026-11-24",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Riders",
+      "area": "interface",
+      "en": {
+        "title": "Sort riders by scouted potential",
+        "body": "You can sort the rider database by the potential your scout has seen. Riders without a visible estimate stay at the bottom."
+      },
+      "da": {
+        "title": "Sortér ryttere efter scoutet potentiale",
+        "body": "Du kan sortere rytterdatabasen efter det potentiale, din spejder har set. Ryttere uden et synligt skøn står nederst."
+      },
+      "refs": [
+        7924
+      ]
+    }
+  ]
+},
+{
   "version": "7.512",
   "date": "2026-11-24",
   "changes": [
