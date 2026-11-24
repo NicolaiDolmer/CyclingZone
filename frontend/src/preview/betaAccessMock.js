@@ -100,6 +100,8 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "talent_marks_7879", // #7879
   "tactics_ready_7864", // Missing stage keeps this preview feature off.
   "rider_hover_card", // #2009
+  "training_rotation", // #8548 (patch note 7.506)
+  "training_week_priority", // #8549 (patch note 7.506)
   "planning_workbench", // #7535
   "ability_cap_per_date_enabled", // #6110 Hjaelp
   "training_decision_card", // #6110 Hjaelp

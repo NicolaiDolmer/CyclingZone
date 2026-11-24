@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from "react";
 import { authHeaders } from "../../lib/supabase";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import type { CatalogProgram, ProgramWeekDays } from "../../lib/trainingPrograms.ts";
+import type { RotationPlan, RotationWrite, WeekCellWrite } from "./r5/programR5Model.ts";
 
 type ProgramsResponse = {
   enabled?: boolean;
@@ -20,6 +21,10 @@ type ProgramsResponse = {
   seeds?: Record<string, ProgramWeekDays>;
   catalog?: CatalogProgram[];
   assigned?: Record<string, string>;
+  rotationEnabled?: boolean;
+  rotations?: Record<string, RotationPlan>;
+  weekPriorityEnabled?: boolean;
+  weekPriorityPlans?: string[];
 };
 
 export type ProgramsResult = { ok: boolean; error?: string; applied?: number; skipped?: number };
@@ -33,6 +38,10 @@ export function useTrainingPrograms({ onChanged }: { onChanged?: () => Promise<u
   const [seeds, setSeeds] = useState<Record<string, ProgramWeekDays>>({});
   const [catalog, setCatalog] = useState<CatalogProgram[]>([]);
   const [assigned, setAssigned] = useState<Record<string, string>>({});
+  const [rotationEnabled, setRotationEnabled] = useState(false);
+  const [rotations, setRotations] = useState<Record<string, RotationPlan>>({});
+  const [weekPriorityEnabled, setWeekPriorityEnabled] = useState(false);
+  const [weekPriorityPlans, setWeekPriorityPlans] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<ProgramsStatus>("loading");
 
@@ -49,6 +58,10 @@ export function useTrainingPrograms({ onChanged }: { onChanged?: () => Promise<u
     setSeeds(data.seeds && typeof data.seeds === "object" ? data.seeds : {});
     setCatalog(Array.isArray(data.catalog) ? data.catalog : []);
     setAssigned(data.assigned && typeof data.assigned === "object" ? data.assigned : {});
+    setRotationEnabled(data.rotationEnabled === true);
+    setRotations(data.rotations ?? {});
+    setWeekPriorityEnabled(data.weekPriorityEnabled === true);
+    setWeekPriorityPlans(data.weekPriorityPlans ?? []);
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -72,7 +85,7 @@ export function useTrainingPrograms({ onChanged }: { onChanged?: () => Promise<u
 
   // target: "squad" eller et rytter-id.
   const applyProgram = useCallback(
-    (programKey: string, target: string) => send("/api/training/programs/apply", "POST", { programKey, target }),
+    (programKey: string, target: string, planKind?: "week") => send("/api/training/programs/apply", "POST", { programKey, target, planKind }),
     [send],
   );
 
@@ -86,13 +99,18 @@ export function useTrainingPrograms({ onChanged }: { onChanged?: () => Promise<u
 
   // slotIndex null = hele ugedagen; 0-4 = een loebsdag.
   const setCell = useCallback(
-    (riderId: string, weekday: string, slotIndex: number | null, session: string) =>
-      send("/api/training/programs/cell", "PUT", { riderId, weekday, slotIndex, session }),
+    (riderId: string, weekday: string, slotIndex: number | null, session: string, plan?: WeekCellWrite) =>
+      send("/api/training/programs/cell", "PUT", { riderId, weekday, slotIndex, session, ...plan }),
     [send],
   );
 
   // "Proev igen" fra fejl-tilstanden: tilbage til henter, saa knappen ikke staar doed under kaldet.
   const retry = useCallback(async () => { setStatus("loading"); await load(); }, [load]);
+  const setRotation = useCallback(
+    (riderId: string, change: RotationWrite) => send("/api/training/programs/rotation", "PUT", { riderId, ...change }),
+    [send],
+  );
 
-  return { enabled, cellsEnabled, seeds, catalog, assigned, busy, status, applyProgram, applyToRiders, setCell, reload: load, retry };
+  return { enabled, cellsEnabled, seeds, catalog, assigned, busy, status, applyProgram, applyToRiders, setCell,
+    rotationEnabled, rotations, setRotation, weekPriorityEnabled, weekPriorityPlans, reload: load, retry };
 }

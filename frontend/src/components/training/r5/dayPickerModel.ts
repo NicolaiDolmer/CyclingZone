@@ -3,17 +3,33 @@
 // (#8591). Felterne for en dag frem regnes med SAMME funktion som i dag (dayFields) på
 // datoens ugedag, med datoens løbs- og hvilefelter fra serveren. Ingen træthed frem (K-7).
 import { dayFields, isTraining, STAGE, type Field } from "./todayR5Model.ts";
+import type { ForecastResponse } from "../FatigueForecastModel.ts";
+import type { RotationPreviewSlot } from "./programR5Model.ts";
 
 // autoLineup (UGE-4b): holdet har ingen i løbet endnu; assistenten udtager ved løbsstart.
 export type WeekRace = { raceId: string; name: string | null; kind: "stage" | "oneday"; stages: number[]; ownRiders: number; autoLineup?: boolean };
-export type WeekRiderFields = { raceSlots: number[]; restSlots: number[] };
+export type WeekRiderFields = {
+  raceSlots: number[];
+  restSlots: number[];
+  rotationSlots?: RotationPreviewSlot[];
+  nextRotationIndex?: number;
+  recoverySlots?: number[];
+};
+
+type RotationFields = Pick<WeekRiderFields, "rotationSlots" | "recoverySlots"> & { restSlots?: number[] };
+
+export function rotationFieldSession(fields: RotationFields | null | undefined, slot: number): string | null {
+  if (!fields?.rotationSlots) return null;
+  return fields.rotationSlots[slot]?.session
+    ?? (fields.recoverySlots?.includes(slot) ? "recovery" : fields.restSlots?.includes(slot) ? "rest" : null);
+}
 export type WeekDay = {
   date: string;
   weekday: string;
   available: boolean;
   races: WeekRace[];
   riders?: Record<string, WeekRiderFields>;
-  today?: unknown;
+  today?: ForecastResponse;
 };
 export type WeekResponse = { available: boolean; reason?: string; tickDate?: string; days: WeekDay[] };
 
@@ -68,7 +84,9 @@ export function futureFields({
 }): Field[] {
   const raceSlots = new Set(fields?.raceSlots ?? []);
   const rest = new Set(fields?.restSlots ?? []);
-  return dayFields({ programSlot, planSession, raceSlots }).map((field, slot) => (rest.has(slot) && !raceSlots.has(slot) ? "rest" : field));
+  return dayFields({
+    programSlot: (slot) => rotationFieldSession(fields, slot) ?? programSlot(slot), planSession, raceSlots,
+  }).map((field, slot) => (rest.has(slot) && !raceSlots.has(slot) ? "rest" : field));
 }
 
 /**

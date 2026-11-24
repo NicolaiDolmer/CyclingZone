@@ -236,14 +236,15 @@ async function isEnabledForTeam(supabase: Supa, teamId: string): Promise<boolean
 // Holdets grupper + medlemmer. Manglende tabeller = ingen grupper.
 // #8548: `rotation: true` (kun med training_rotation on) laeser ogsaa rotation og plan_kind.
 export async function loadTeamGroups(
-  supabase: Supa, teamId: string, { rotation = false }: { rotation?: boolean } = {},
+  supabase: Supa, teamId: string, { rotation = false, weekPriority = false }: { rotation?: boolean; weekPriority?: boolean } = {},
 ): Promise<{ groups: GroupRow[]; members: MemberRow[] }> {
   const [groupsRes, membersRes] = await Promise.all([
     supabase.from(GROUPS_TABLE)
       // schema-columns-ok: rotation + plan_kind tilfoejes af database/2026-11-22-8548-training-rotation.sql (post-merge); kun laest med flaget on.
       .select(rotation
         ? "id, team_id, name, days, program_key, fatigue_threshold, fallback, rotation, plan_kind"
-        : "id, team_id, name, days, program_key, fatigue_threshold, fallback")
+        : weekPriority ? "id, team_id, name, days, program_key, fatigue_threshold, fallback, plan_kind"
+          : "id, team_id, name, days, program_key, fatigue_threshold, fallback")
       .eq("team_id", teamId).order("created_at", { ascending: true }),
     supabase.from(MEMBERS_TABLE).select("rider_id, group_id, team_id, follows_group").eq("team_id", teamId),
   ]);
