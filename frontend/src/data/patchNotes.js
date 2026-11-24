@@ -1,5 +1,55 @@
 export const PATCHES = [
 {
+  "version": "7.515",
+  "date": "2026-11-24",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "topic": "Board",
+      "area": "board",
+      "en": {
+        "title": "A fresh start after a break",
+        "body": "When your club returns from a break, the board lifts the penalties it imposed before you left. Board satisfaction starts from a neutral level. The board starts assessing your club again the following season."
+      },
+      "da": {
+        "title": "En frisk start efter en pause",
+        "body": "Når din klub vender tilbage efter en pause, ophæver bestyrelsen de straffe, den gav før pausen. Bestyrelsens tilfredshed starter neutralt. Bestyrelsen vurderer først klubben igen i den følgende sæson."
+      },
+      "refs": [
+        8100
+      ],
+      "rollout": "live"
+    }
+  ]
+},
+{
+  "version": "7.514",
+  "date": "2026-11-24",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "flag": "academy_page_v2_8081",
+      "topic": "Academy",
+      "area": "academy",
+      "en": {
+        "title": "Choose an age focus for your academy",
+        "body": "Your weekly intake is more likely to include the age you choose. Other ages can still appear. Mixed keeps the usual draw. Changes take effect after fourteen days."
+      },
+      "da": {
+        "title": "Vælg aldersfokus i akademiet",
+        "body": "Den alder, du vælger, bliver mere sandsynlig i ugens optag. Andre aldre kan stadig dukke op. Blandet følger det almindelige træk. Ændringer træder i kraft efter fjorten dage."
+      },
+      "refs": [
+        6944,
+        8081
+      ]
+    }
+  ]
+},
+{
   "version": "7.513",
   "date": "2026-11-24",
   "changes": [
