@@ -115,6 +115,7 @@ function pickYouthArchetype(rng, primaryDistribution = null) {
  * @param {"own-priors"|"pcm"} [opts.mode]  #5269: fødsels-tilstand. Default
  *   "own-priors" — kandidaten fødes direkte i evne-rummet fra ungdomsbåndet i
  *   riderBirthPriors.js og får INGEN stat_*. "pcm" er den gamle sti (uændret).
+ * @param {{age:number,share:number,rng:()=>number}|null} [opts.ageFocus] Optional weekly age preference.
  * @param {{min:number,max:number}|null} [opts.ageBand]  (5844) fast aldersbånd
  *   (sæsonalder, inklusiv) i stedet for den gaussiske 16-21-alder. null = uændret.
  * @param {{value:string,weight:number}[]|null} [opts.nationalityWeights]  (5844)
@@ -139,6 +140,7 @@ export function generateAcademyCandidates({
   genCfg = YOUTH_GEN_CONFIG,
   mode = DEFAULT_BIRTH_MODE,
   ageBand = null,
+  ageFocus = null,
   nationalityWeights = null,
   topTalentIndex = null,
   topTalentMin = 3,
@@ -191,9 +193,10 @@ export function generateAcademyCandidates({
     // Alder + fødselsdato
     // #5844: ageBand giver et uniformt træk i båndet (U23- eller junior-alder).
     // Uden ageBand er rng-rækkefølgen uændret for de eksisterende kaldere.
-    const age = ageBand
+    const standardAge = ageBand
       ? ageBand.min + Math.floor(rng() * (ageBand.max - ageBand.min + 1))
       : Math.round(clamp(gaussian(rng, 18, 1.6), ACADEMY.MIN_AGE, ACADEMY.MAX_AGE));
+    const age = !ageBand && ageFocus && ageFocus.rng() < ageFocus.share ? ageFocus.age : standardAge;
     const birthdate = `${referenceYear - age}-06-15`;
 
     // Potentiale: geometrisk træk (0.5-trin, 1.0-6.0). 'Seriøs' = pot ≥ 4.5 (afledt).

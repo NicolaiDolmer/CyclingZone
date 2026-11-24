@@ -20,6 +20,9 @@ import { seedAcademyCohortForTeam } from "./academyIntake.js";
 // DI-hooks og injiceres direkte, så mocken IKKE behøver understøtte
 // riders-insert eller academy_intake-insert (dækket af academyIntake.test.js).
 function buildMockSupabase({
+  ageStage = null,
+  ageRows = [],
+  ageShare = null,
   season = { id: "season-1", number: 2, start_date: "2026-07-27" },
   team = { id: "team-A", season_1_identity_basis: null },
   existingRiders = [],
@@ -41,6 +44,13 @@ function buildMockSupabase({
   });
   const supabase = {
     from(table) {
+      if (table === "app_config" || table === "private_config") {
+        const value = table === "app_config" ? ageStage : ageShare;
+        const query = { select: () => query, eq: () => query, maybeSingle: async () => ({
+          data: value === null ? null : { value }, error: null,
+        }) };
+        return query;
+      }
       if (table === "seasons") {
         const api = {
           select() { return api; },
@@ -137,7 +147,7 @@ function buildMockSupabase({
           select() { return api; },
           eq() { return api; },
           order() { return api; },
-          limit() { return Promise.resolve({ data: [], error: null }); },
+          limit() { return Promise.resolve({ data: ageRows, error: null }); },
         };
         return api;
       }
@@ -484,4 +494,47 @@ test("seedAcademyCohortForTeam (#6666): fejler intake-indsættelsen, slettes de 
     /intake boom/,
   );
   assert.deepEqual(deleted, [{ col: "id", ids: ["new-0", "new-1"] }]);
+});
+
+test("pull forwards only the effective, unlocked age focus through the viewer flag", async () => {
+  const ageRows = [
+    { age_focus: "17", effective_from: "2026-11-12T00:00:00Z" },
+    { age_focus: "19", effective_from: "2026-11-24T12:00:00Z" },
+  ];
+  for (const [ageStage, isBetaTester, tier, now, expected] of [
+    ["off", true, 1, "2026-11-24T12:00:00Z", null],
+    ["beta", false, 1, "2026-11-24T12:00:00Z", null],
+    ["on", false, 0, "2026-11-24T12:00:00Z", null],
+    ["beta", true, 1, "2026-11-24T11:59:59Z", 17],
+    ["beta", true, 1, "2026-11-24T12:00:00Z", 19],
+    ["on", false, 5, "2026-11-24T12:00:00Z", 19],
+  ]) {
+    const db = buildMockSupabase({ ageStage, ageRows, ageShare: { share: 0.4 } });
+    let options;
+    const deps = {
+      teamId: "team-A", now: new Date(now), isBetaTester, isEnabled: async () => true,
+      loadProfileState: async () => ({ tier, effective: null }),
+      seedCohortFn: async (_db, input) => { options = input.generatorOptions; return []; },
+    };
+    await pullWeeklyAcademyIntake(db, deps);
+    if (expected === null) assert.equal(options, null);
+    else {
+      assert.equal(options.ageFocus.age, expected);
+      assert.equal(options.ageFocus.share, 0.4);
+    }
+    assert.equal((await pullWeeklyAcademyIntake(db, deps)).alreadyPulled, true);
+  }
+});
+
+test("missing private weights release the claim for an active focus", async () => {
+  const db = buildMockSupabase({
+    ageStage: "on",
+    ageRows: [{ age_focus: "16", effective_from: "2026-11-12T00:00:00Z" }],
+  });
+  await assert.rejects(pullWeeklyAcademyIntake(db, {
+    teamId: "team-A", now: new Date("2026-11-24T12:00:00Z"), isEnabled: async () => true,
+    loadProfileState: async () => ({ tier: 1, effective: null }),
+    seedCohortFn: async () => assert.fail("must not generate a cohort without the configured focus"),
+  }), /configuration unavailable/);
+  assert.equal(db._capture.claimDeletes.length, 1);
 });

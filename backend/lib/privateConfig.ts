@@ -50,6 +50,16 @@ export interface PrivateConfigKeySpec<T> {
 }
 
 export const PRIVATE_CONFIG_KEYS = Object.freeze({
+  academy_age_focus_params: Object.freeze({
+    description: "Aldersfokus i akademiets ugentlige træk (#6944).",
+    private: true,
+    parse: (raw: unknown): { share: number } | null => {
+      const share = (raw as { share?: unknown } | null)?.share;
+      return typeof share === "number" && Number.isFinite(share) && share > 0 && share < 1
+        ? { share }
+        : null;
+    },
+  }) as PrivateConfigKeySpec<{ share: number }>,
   development_curve_b_params: Object.freeze({
     description: "Kurve B's kalibrering (#3564). Læses af developmentCurveBFlag.ts.",
     private: true,

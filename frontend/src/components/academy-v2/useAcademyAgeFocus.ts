@@ -1,8 +1,7 @@
 // #8081 / #6944: aldersfokus i akademiets profil (GET/PUT /api/academy/v2, kun bag kontakten).
 //
 // Valget gemmes sammen med resten af profilen (én ny række, samme 14-dages ur), så PUT sender
-// hele profilen: { origins, types, ageFocus }. Selve vægtningen af ugens kandidater efter alder
-// er ikke bygget; her gemmes og vises valget kun.
+// hele profilen: { origins, types, ageFocus }. Ugens træk bruger det aktive valg.
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import { authHeaders } from "../../lib/supabase.ts";
@@ -26,6 +25,7 @@ export function useAcademyAgeFocus(enabled: boolean): {
   loading: boolean;
   error: boolean;
   saveProfile: (profile: ProfileWithAgeFocus) => Promise<SaveResult>;
+  refresh: () => Promise<boolean>;
 } {
   const [state, setState] = useState<AgeFocusState | null>(null);
   const [loading, setLoading] = useState(enabled);
@@ -69,5 +69,5 @@ export function useAcademyAgeFocus(enabled: boolean): {
     return { ok: true, result: data };
   }, [load]);
 
-  return { state, loading, error, saveProfile };
+  return { state, loading, error, saveProfile, refresh: load };
 }

@@ -19609,7 +19609,7 @@ router.post("/academy/intake/pull", requireAuth, marketWriteLimiter, async (req,
     const pullEnabled = await isAcademyIntakePullEnabled(supabase);
     if (!pullEnabled) return res.status(409).json({ error: "intake_pull_disabled" });
 
-    const result = await pullWeeklyAcademyIntake(supabase, { teamId: req.team.id });
+    const result = await pullWeeklyAcademyIntake(supabase, { teamId: req.team.id, isBetaTester });
     if (!result.ok) return res.status(409).json({ error: result.reason });
 
     res.json(result);

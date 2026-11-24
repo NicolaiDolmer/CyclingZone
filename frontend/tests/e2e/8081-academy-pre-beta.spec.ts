@@ -39,25 +39,42 @@ const sales = Array.from({ length: 9 }, (_, index) => ({
 }));
 
 for (const width of [1440, 390]) {
-  test(`academy overview, profile and ledger before beta at ${width}px`, async ({ page }) => {
+  test(`academy overview, profile and ledger before beta at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });
     await installNetworkMocks(page);
     await stabilizePage(page);
     await page.clock.setFixedTime(new Date("2026-11-24T10:00:00Z"));
     await page.route("**/api/feature-flags**", (route) =>
       json(route, { flags: { academy_page_v2_8081: true } }));
+    let activeProfile = profile.active;
+    let activeFocus = { ageFocus: "17", effectiveFrom: "2026-11-01" };
+    let pulledThisWeek = false;
+    let pendingProfile: typeof profile.active | null = null;
+    let pendingFocus: { ageFocus: string; effectiveFrom: string } | null = null;
     await page.route("**/api/academy/me**", (route) => json(route, {
       ...SEED_ACADEMY,
       intake: [],
       roster: SEED_ACADEMY.roster.map((rider) => ({ ...rider, squad: "u23" })),
-      academyProfile: profile,
+      academyProfile: { ...profile, active: activeProfile, pending: pendingProfile },
+      intakePull: { enabled: true, pulledThisWeek },
     }));
     await page.route("**/api/academy/v2/age-focus", (route) => json(route, {
-      tier: 2, unlocked: true, active: { ageFocus: "17" }, pending: null, options: ["16", "17", "18", "19"],
+      tier: 2, unlocked: true, active: activeFocus, pending: pendingFocus, options: ["16", "17", "18", "19"],
     }));
-    await page.route("**/api/academy/profile", (route) => {
-      expect(route.request().postDataJSON()).toEqual({ origins: ["fr"], types: ["climber"] });
-      return json(route, { ok: true, effectiveFrom: "2026-12-08" });
+    await page.route("**/api/academy/v2/profile", (route) => {
+      expect(route.request().postDataJSON()).toEqual({ origins: ["dk"], types: ["climber"], ageFocus: "19" });
+      pendingProfile = { origins: ["dk"], types: ["climber"], effectiveFrom: "2026-12-08" };
+      pendingFocus = { ageFocus: "19", effectiveFrom: "2026-12-08" };
+      return json(route, { ok: true, ...pendingFocus });
+    });
+    await page.route("**/api/academy/intake/pull", (route) => {
+      if (!pendingProfile || !pendingFocus) throw new Error("Missing saved focus");
+      activeProfile = pendingProfile;
+      activeFocus = pendingFocus;
+      pendingProfile = null;
+      pendingFocus = null;
+      pulledThisWeek = true;
+      return json(route, { ok: true, candidates: [] });
     });
     let releaseOrigins = () => {};
     const waitForOrigins = new Promise<void>((resolve) => { releaseOrigins = resolve; });
@@ -70,7 +87,7 @@ for (const width of [1440, 390]) {
     }));
 
     const shot = async (name: string) => {
-      if (shots) await page.screenshot({ path: join(shots, `${before ? "before" : "after"}-${name}-${width}.png`), animations: "disabled" });
+      if (shots && testInfo.project.name === "desktop-chromium") await page.screenshot({ path: join(shots, `${before ? "before" : "after"}-${name}-${width}.png`), animations: "disabled" });
     };
     await login(page);
     await page.goto("/academy");
@@ -93,20 +110,23 @@ for (const width of [1440, 390]) {
     }
     await shot("talents");
 
-    const ageRequests: string[] = [];
-    page.on("request", (request) => {
-      if (request.url().includes("/api/academy/v2/")) ageRequests.push(request.url());
-    });
-    await academy.getByRole("tab", { name: before ? "Profil og alder" : "Profil", exact: true }).click();
+    await academy.getByRole("tab", { name: "Profil og alder", exact: true }).click();
     const profileCard = academy.getByTestId("academy-profile");
-    await expect(profileCard).toBeVisible();
+    const ageFocus = profileCard.getByTestId("academy-age-focus");
+    await expect(ageFocus.getByRole("button", { name: "17", exact: true })).toHaveAttribute("aria-pressed", "true");
     await shot("profile");
     if (!before) {
-      await expect(academy.getByText(/aldersfokus|forventet optag pr\. alder/i)).toHaveCount(0);
-      await profileCard.locator("#academy-profile-origin").selectOption("fr");
+      await expect(ageFocus).toContainText("Andre aldre kan stadig dukke op");
+      await ageFocus.getByRole("button", { name: "19", exact: true }).click();
       await profileCard.getByRole("button", { name: /gem/i }).click();
-      await expect(profileCard.getByText(/^Gemt/)).toBeVisible();
-      expect(ageRequests).toEqual([]);
+      await expect(profileCard.getByText(/^Gemt/)).toBeVisible({ timeout: 15000 });
+      await expect(profileCard.getByText(/^Fra .*aldersfokus.*19/i)).toBeVisible();
+      if (shots && width === 390) await profileCard.evaluate((element) => element.scrollIntoView({ block: "end" }));
+      await shot("profile-pending");
+      await page.clock.setFixedTime(new Date("2026-12-08T10:00:00Z"));
+      await academy.getByRole("tab", { name: "Ugens optag", exact: true }).click();
+      await academy.getByRole("button", { name: "Hent ugens kandidater", exact: true }).click();
+      await expect(academy.getByTestId("academy-v2-overview").getByText("19", { exact: true })).toBeVisible({ timeout: 15000 });
     }
 
     await academy.getByRole("tab", { name: "Akademi-regnskab" }).click();

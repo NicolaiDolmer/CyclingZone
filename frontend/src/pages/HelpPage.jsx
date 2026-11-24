@@ -627,6 +627,7 @@ const FAQ_KEYS = [
   "riderSalaryView",
   "riderDevelopment",
   "academyIntakeScoutingFaq",
+  "academyAgeFocusFaq",
   "academyIntakeExpiryFaq",
   "academySigningMidRaceFaq",
   "howToWinRace",

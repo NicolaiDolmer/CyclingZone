@@ -331,15 +331,15 @@ test("#8081 (ejer 16/11): Dine talenter viser kun egen avl; oprindelsen læses r
   assert.equal(academyV2Locale("da").v2.talents.colVia, undefined);
 });
 
-test("#8081: fordelingen pr. alder står under aldersvælgeren i ord og følger det valgte fokus (ingen tal)", () => {
-  assert.match(ageFieldSource, /const distribution = ageFocusDistribution\(value\);/);
-  assert.ok(ageFieldSource.indexOf("<Segmented") < ageFieldSource.indexOf('data-testid="academy-age-distribution"'), "linjen står under vælgeren");
+test("#6944: viser det virksomme aldersvalg uden en skønnet fordeling", () => {
+  assert.match(v2Source, /ageFocus\.state\?\.unlocked/);
+  assert.match(v2Source, /v2\.tabs\.profileAndAge/);
+  assert.match(ageFieldSource, /<Segmented/);
+  assert.doesNotMatch(ageFieldSource, /ageFocusDistribution|distributionLabel/);
   for (const lng of ["en", "da", "es", "fr", "nl"]) {
-    const age = academyV2Locale(lng).v2.age;
-    for (const word of Object.values(age.share)) assert.doesNotMatch(String(word), /\d|%/, `${lng}: kun ord, ingen tal`);
-    assert.doesNotMatch(age.row, /%/, `${lng}: ingen procent`);
+    assert.ok(academyV2Locale(lng).v2.age.intro);
+    assert.doesNotMatch(academyV2Locale(lng).v2.age.intro, /\d|%|—/);
   }
-  assert.deepEqual(academyV2Locale("da").v2.age.share, { many: "mange", some: "nogle", few: "få" });
 });
 
 test("#8081 (Codex-fund): en fejlet genhentning efter et gemt valg viser ikke 'intet blev ændret'", () => {
