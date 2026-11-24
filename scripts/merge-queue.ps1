@@ -410,6 +410,7 @@ function Wait-ForWorkflowRun {
     [string] $Sha,
     [int] $TimeoutMinutes,
     [string] $Label,
+    [string] $SuccessJob = '',
     # #6859: haenger-alarm (0 = slaaet fra). Sat af kalderen til -StallMinutes.
     [double] $StallMinutes = 0,
     [scriptblock] $Now = { Get-Date },
@@ -464,7 +465,7 @@ function Wait-ForWorkflowRun {
     $viewJson = Invoke-GhWithRetry @('run', 'view', "$runId", '--repo', $Repo, '--json', 'headSha,status,conclusion,jobs') -TolerateFailure
     $run = $null
     if ($viewJson) { try { $run = ($viewJson -join "") | ConvertFrom-Json } catch {} }
-    if ($WorkflowFile -eq 'auto-migrate.yml' -and $run -and $run.headSha -ne $Sha) {
+    if (($WorkflowFile -eq 'auto-migrate.yml' -or $SuccessJob) -and $run -and $run.headSha -ne $Sha) {
       $script:workflowRunState = 'blocked'
       Write-Host "  [STOP] '$Label': workflow SHA matcher ikke $Sha." -ForegroundColor Red
       return $false
@@ -473,6 +474,21 @@ function Wait-ForWorkflowRun {
       $ok = ($run.conclusion -eq 'success')
       $script:workflowRunState = if ($ok) { 'success' } elseif ($run.conclusion -eq 'failure') { 'failure' } else { 'blocked' }
       break
+    }
+    if ($SuccessJob -and $run) {
+      $finished = @($run.jobs | Where-Object { $_.status -eq 'completed' })
+      $failed = $finished | Where-Object { $_.conclusion -notin @('success', 'skipped', 'neutral') } | Select-Object -First 1
+      if ($failed) {
+        $script:workflowRunState = if ($failed.conclusion -eq 'failure') { 'failure' } else { 'blocked' }
+        Write-Host "  '$Label' job '$($failed.name)' afsluttet med $($failed.conclusion)."
+        break
+      }
+      $job = $finished | Where-Object { $_.name -eq $SuccessJob } | Select-Object -First 1
+      if ($job -and $job.conclusion -eq 'success') {
+        $ok = $true
+        $script:workflowRunState = 'success'
+        break
+      }
     }
     $sig = "ulaeselig"
     if ($run) {
@@ -686,18 +702,18 @@ function Invoke-TrainCloseOut {
 
 # #8346 (Codex P1, PR #8353; AGENTS regel 20): patch notes-commit'et fra close-out er et nyt
 # main-commit med spillersynlig tekst (frontend/ = Vercel-deploy). Close-out er foerst faerdig,
-# naar main-CI og deploy-verifikation er groenne for netop den SHA; ellers samme stop som et tog.
+# naar datatesten og deploy-verifikation er groenne for netop den SHA. Mangler datatesten, bruges hele CI.
 function Confirm-PatchNotesCommit([string]$Sha) {
   $short = $Sha.Substring(0, [Math]::Min(8, $Sha.Length))
-  Write-Host "  Patch notes-commit ${short}: verificerer main-CI + deploy for det nye main-commit, foer close-out er faerdig." -ForegroundColor Cyan
+  Write-Host "  Patch notes-commit ${short}: verificerer patch notes-CI + deploy for det nye main-commit, foer close-out er faerdig." -ForegroundColor Cyan
   # Egne variabelnavne: merge-queue-train.test.mjs laeser togets foerste `$ciOk`/`$gate`-blok som tekst.
-  $patchCiOk = Wait-ForWorkflowRun -WorkflowFile 'ci.yml' -Sha $Sha -TimeoutMinutes $CiTimeoutMinutes -Label "CI (main) patch notes $short" -StallMinutes $StallMinutes
+  $patchCiOk = Wait-ForWorkflowRun -WorkflowFile 'ci.yml' -Sha $Sha -TimeoutMinutes $CiTimeoutMinutes -Label "CI (main) patch notes $short" -SuccessJob 'patch-notes-numbering' -StallMinutes $StallMinutes
   if (-not $patchCiOk) {
     if ($script:queueStall) { Stop-QueueStall }
     if ($script:workflowRunState -eq 'failure') {
-      Write-Host "STOP: main-CI er ROED for patch notes-commit $short. Fix main FOER naeste merge i koeen." -ForegroundColor Red
+      Write-Host "STOP: patch notes-CI er ROED for patch notes-commit $short. Fix main FOER naeste merge i koeen." -ForegroundColor Red
     } else {
-      Write-Host "STOP: main-CI er endnu ikke verificeret groen for patch notes-commit $short. Kontroller koerslen foer naeste merge." -ForegroundColor Yellow
+      Write-Host "STOP: patch notes-CI er endnu ikke verificeret groen for patch notes-commit $short. Kontroller koerslen foer naeste merge." -ForegroundColor Yellow
     }
     exit 1
   }
@@ -712,7 +728,7 @@ function Confirm-PatchNotesCommit([string]$Sha) {
     Write-Host "STOP: deploy-verifikation for patch notes-commit $short er $patchDeployState. Ingen naeste merge uden positivt bevis." -ForegroundColor Red
     exit 1
   }
-  Write-Host "  [ok] patch notes-commit ${short}: main-CI + deploy-verifikation groenne." -ForegroundColor Green
+  Write-Host "  [ok] patch notes-commit ${short}: patch notes-CI + deploy-verifikation groenne." -ForegroundColor Green
 }
 
 # #7587: tog-markoer (.claude/run/merge-queue-active.json, scripts/merge-queue-active-marker.mjs),
@@ -1148,7 +1164,7 @@ function Close-OpenTrain {
   $patchNotesSha = $null
   try { $patchNotesSha = Invoke-TrainCloseOut -Entries $closeOutEntries -DeployVerified $closeOutDeploys }
   catch { Write-Host '  (close-out kunne ikke startes; merget er stadig verificeret.)' -ForegroundColor DarkYellow }
-  # #8346 (Codex P1, PR #8353): nyt patch notes-commit = main-CI + deploy-verifikation foer koeen gaar videre.
+  # #8346: nyt patch notes-commit = datatest + deploy-verifikation foer koeen gaar videre.
   if ($patchNotesSha) { Confirm-PatchNotesCommit $patchNotesSha }
   # #7585: loesrevet auto-bevis (dry-run foerste uge) for togets PR'er efter close-out. Fail-soft, ingen ventetid, gater aldrig koeen.
   try { $proofPrs = (@($closeOutEntries | Where-Object { $null -ne $_ } | ForEach-Object { [int]$_.number }) -join ','); if ($proofPrs) { Start-Process -FilePath node -ArgumentList @((Join-Path $PSScriptRoot 'til-doers-proof.mjs'), 'run', '--pr', $proofPrs, '--dry-run', '--repo', $Repo) -WindowStyle Hidden | Out-Null } } catch {}

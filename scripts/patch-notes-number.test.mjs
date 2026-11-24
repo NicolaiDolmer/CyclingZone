@@ -22,6 +22,7 @@ import {
   defaultGit,
   isPendingFragmentPath,
   commitMessage,
+  isNumberingCommit,
   NUMBERED_SHA_RE,
   numberedShaLine,
 } from './patch-notes-number.mjs';
@@ -375,4 +376,55 @@ test('den rigtige patchNotes.js kan nummereres: header, JSON-form og top-version
   const { source, assigned } = numberFragments(real, [{ path: `${PENDING_DIR}/x.json`, order: 0, date: '2026-11-17', data: { changes: [change()] } }]);
   assert.equal(assigned[0].version, bumpVersion(before[0].version));
   assert.equal(assertNumbered(source, assigned), before.length + 1);
+});
+
+test('numbering-only requires the canonical data, deleted fragments and one pushed commit', () => {
+  const before = 'a'.repeat(40);
+  const after = 'b'.repeat(40);
+  const path = PENDING_DIR + '/5841-each-race-once.json';
+  const iso = '2026-11-17T10:00:00Z';
+  const fragment = { path, data: JSON.parse(fragmentText()), date: '2026-11-17', order: 0 };
+  const { source, assigned } = numberFragments(BASE, [fragment]);
+  const expectedDiff = 'M\t' + PATCH_FILE + '\nD\t' + path + '\n';
+  const expectedMessage = commitMessage(assigned);
+  const verify = ({ parent = before, noteSource = source, diff = expectedDiff, message = expectedMessage, modeChange = '' } = {}) =>
+    isNumberingCommit({ before, after, git(args) {
+      const key = args.join(' ');
+      const responses = new Map([
+        ['show -s --format=%P ' + after, parent],
+        ['show -s --format=%B ' + after, message + '\n'],
+        ['show -s --format=%cI ' + after, iso],
+        ['diff --name-status --no-renames ' + before + ' ' + after + ' --', diff],
+        ['diff --summary ' + before + ' ' + after + ' -- ' + PATCH_FILE, modeChange],
+        ['ls-tree --name-only ' + before + ' -- ' + PENDING_DIR + '/', path + '\n'],
+        ['log --first-parent --diff-filter=A --name-only --format=@@%H %cI ' + before + ' -- ' + PENDING_DIR + '/', '@@' + before + ' ' + iso + '\n' + path + '\n'],
+        ['show ' + before + ':' + path, fragmentText()],
+        ['show ' + before + ':' + PATCH_FILE, BASE],
+        ['show ' + after + ':' + PATCH_FILE, noteSource],
+      ]);
+      assert.ok(responses.has(key), key);
+      return responses.get(key);
+    } });
+  assert.equal(verify(), true);
+  assert.equal(verify({ parent: 'c'.repeat(40) }), false, 'push contains more than the numbering commit');
+  assert.equal(verify({ parent: before + ' ' + 'c'.repeat(40) }), false, 'merge commit');
+  assert.equal(verify({ diff: expectedDiff + 'M\tbackend/server.js\n' }), false, 'code changed too');
+  assert.equal(verify({ diff: 'M\t' + PATCH_FILE + '\n' }), false, 'fragment left behind');
+  assert.equal(verify({ modeChange: 'mode change 100644 => 100755 ' + PATCH_FILE }), false);
+  assert.equal(verify({ noteSource: source.replace('each race once', 'a different note') }), false);
+  assert.equal(verify({ message: expectedMessage.replace('7.457', '7.458') }), false);
+});
+
+test('main CI gates the heavy jobs on numbering proof and retains the patch notes data test', () => {
+  const ci = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  const block = name => ci.split(new RegExp('^  ' + name + ':\\s*$', 'm'))[1]?.split(/^  [\w-]+:\s*$/m)[0];
+  assert.match(block('patch-notes-mode'), /github\.event_name == 'push'/);
+  assert.match(block('patch-notes-mode'), /verify-numbering --before "\$BEFORE_SHA" --after "\$AFTER_SHA"/);
+  assert.match(block('patch-notes-numbering'), /needs\.patch-notes-mode\.outputs\.numbering_only == 'true'/);
+  assert.match(block('patch-notes-numbering'), /node --test frontend\/src\/lib\/patchNotes\.test\.js/);
+  assert.match(block('backend-changes'), /if \[\[ "\$NUMBERING_ONLY" == "true" \]\]; then\s+record "false"/);
+  for (const job of ['frontend-build', 'build-determinism-two-builds', 'warning-budget', 'static-guards', 'ops-script-tests', 'migration-idempotency']) {
+    assert.match(block(job), /needs: patch-notes-mode/);
+    assert.match(block(job), /!cancelled\(\) && needs\.patch-notes-mode\.outputs\.numbering_only != 'true'/);
+  }
 });
