@@ -1817,7 +1817,7 @@
       "achievedTarget": "Atteint {achieved} / objectif {target}",
       "expandAll": "Tout développer",
       "collapseAll": "Tout réduire",
-      "stretch": "Défi",
+      "stretch": "Plus difficile",
       "discussTarget": "Discuter de l'objectif",
       "discussTargetDisabledHint": "La discussion des objectifs ouvre à l'assemblée annuelle.",
       "receipt": {
@@ -1945,20 +1945,21 @@
       "mandate": {
         "title": "Mandat proposé · axe : {focus}",
         "meta": "{count, plural, one {# objectif} other {# objectifs}} · {used} ajustements utilisés sur {allowed}",
-        "reward": "Récompense +{bonus} de confiance · raté -{penalty}",
-        "rewardWas": "Récompense +{bonus} de confiance · raté -{penalty} · était {was}",
+        "previousTarget": "Objectif précédent : {target}",
+        "confidenceEffect": "Le conseil ajuste sa confiance selon tes résultats sur l’ensemble du mandat.",
         "choice": {
           "easier": "Plus facile",
           "keep": "Garder",
-          "stretch": "Défi"
+          "stretch": "Plus difficile"
         },
         "choiceDisabledEasier": "Cet objectif ne peut pas être assoupli davantage.",
-        "choiceDisabledStretch": "Cet objectif ne peut pas être relevé davantage.",
+        "choiceDisabledStretch": "Cet objectif ne peut pas être rendu plus difficile.",
         "choiceDisabledBudget": "Tu as utilisé tous tes ajustements pour cette assemblée.",
         "reactionAttribution": "{name}, qui porte cet objectif"
       },
       "visionSlot": {
         "title": "La direction propose une nouvelle étape",
+        "confidenceEffect": "Atteins ce jalon avant la fin de la saison cible pour gagner la confiance du conseil. Si tu le rates, cette confiance baisse une fois.",
         "targetSeason": "Cible : saison {season}",
         "accept": "Accepter",
         "decline": "Refuser"

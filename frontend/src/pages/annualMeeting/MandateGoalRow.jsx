@@ -1,34 +1,26 @@
 import { useTranslation } from "react-i18next";
 import MonogramAvatar from "../../components/MonogramAvatar";
+import { formatNumber } from "../../lib/intl";
 import { resolveBoardCopy } from "../../lib/boardCopy";
 import { resolveMeetingGoalOptionTitle, initialsFromName } from "./meetingFormat";
 
 const CHOICES = ["easier", "keep", "stretch"];
 
 function ChoicePill({ active, disabled, disabledReason, onClick, label }) {
-  const base = "rounded-cz-pill border px-3 py-[5px] text-xs font-medium transition-colors duration-150";
-  if (active) {
-    return (
-      <button type="button" onClick={onClick} className={`${base} border-cz-sidebar bg-cz-sidebar font-semibold text-cz-sidebar-1`}>
-        {label}
-      </button>
-    );
-  }
-  if (disabled) {
-    return (
-      <button
-        type="button"
-        disabled
-        aria-disabled="true"
-        title={disabledReason}
-        className={`${base} cursor-not-allowed border-cz-border bg-cz-card text-cz-3`}
-      >
-        {label}
-      </button>
-    );
-  }
+  const appearance = active
+    ? "border-cz-sidebar bg-cz-sidebar font-semibold text-cz-sidebar-1"
+    : disabled
+      ? "cursor-not-allowed border-cz-border bg-cz-card text-cz-3"
+      : "border-cz-border bg-cz-card text-cz-2 hover:border-cz-3";
   return (
-    <button type="button" onClick={onClick} className={`${base} border-cz-border bg-cz-card text-cz-2 hover:border-cz-3`}>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={active}
+      title={disabledReason || undefined}
+      className={`min-h-11 rounded-cz-pill border px-3 py-[5px] text-xs font-medium transition-colors duration-150 ${appearance}`}
+    >
       {label}
     </button>
   );
@@ -44,17 +36,6 @@ export default function MandateGoalRow({ goal, choice, onChoose, wouldExceedBudg
   const activeOption = options[choice] || options.keep;
   const title = resolveMeetingGoalOptionTitle(t, goal, activeOption);
   const keepTarget = options.keep?.target;
-
-  const rewardText = choice === "keep"
-    ? t("boardroom.meeting.mandate.reward", {
-      bonus: activeOption?.satisfaction_bonus ?? 0,
-      penalty: activeOption?.satisfaction_penalty ?? 0,
-    })
-    : t("boardroom.meeting.mandate.rewardWas", {
-      bonus: activeOption?.satisfaction_bonus ?? 0,
-      penalty: activeOption?.satisfaction_penalty ?? 0,
-      was: keepTarget,
-    });
 
   const reaction = choice === "easier" ? goal.reactions?.easier : choice === "stretch" ? goal.reactions?.stretch : null;
   const reactionQuote = reaction ? resolveBoardCopy(t, reaction.textKey, reaction.textFallback) : "";
@@ -73,7 +54,11 @@ export default function MandateGoalRow({ goal, choice, onChoose, wouldExceedBudg
                 </span>
               )}
             </p>
-            <p className="font-data text-2xs uppercase tracking-[.06em] tabular-nums text-cz-3">{rewardText}</p>
+            {choice !== "keep" && keepTarget != null && (
+              <p className="font-data text-2xs tabular-nums text-cz-3">
+                {t("boardroom.meeting.mandate.previousTarget", { target: formatNumber(keepTarget) })}
+              </p>
+            )}
           </div>
         </div>
         <div className="flex shrink-0 gap-[6px]">
@@ -91,7 +76,6 @@ export default function MandateGoalRow({ goal, choice, onChoose, wouldExceedBudg
             return (
               <ChoicePill
                 key={choiceKey}
-                choice={choiceKey}
                 active={choice === choiceKey}
                 disabled={disabled}
                 disabledReason={disabledReason}

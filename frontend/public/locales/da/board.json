@@ -1817,7 +1817,7 @@
       "achievedTarget": "Opnået {achieved} / mål {target}",
       "expandAll": "Fold alle ud",
       "collapseAll": "Fold alle sammen",
-      "stretch": "Stræk",
+      "stretch": "Sværere",
       "discussTarget": "Diskutér mål",
       "discussTargetDisabledHint": "Diskussion af mål åbner på årsmødet.",
       "receipt": {
@@ -1945,20 +1945,21 @@
       "mandate": {
         "title": "Foreslået mandat · fokus: {focus}",
         "meta": "{count, plural, one {# mål} other {# mål}} · {used} af {allowed} justeringer brugt",
-        "reward": "Gevinst +{bonus} tillid · tab -{penalty}",
-        "rewardWas": "Gevinst +{bonus} tillid · tab -{penalty} · var {was}",
+        "previousTarget": "Tidligere mål: {target}",
+        "confidenceEffect": "Bestyrelsen justerer sin tillid efter, hvordan du klarer hele mandatet.",
         "choice": {
           "easier": "Lettere",
           "keep": "Behold",
-          "stretch": "Stræk"
+          "stretch": "Sværere"
         },
         "choiceDisabledEasier": "Dette mål kan ikke lempes yderligere.",
-        "choiceDisabledStretch": "Dette mål kan ikke strækkes yderligere.",
+        "choiceDisabledStretch": "Målet kan ikke gøres sværere.",
         "choiceDisabledBudget": "Du har brugt alle dine justeringer til dette møde.",
         "reactionAttribution": "{name}, der ejer målet"
       },
       "visionSlot": {
         "title": "Bestyrelsen foreslår en ny milepæl",
+        "confidenceEffect": "Når du milepælen inden udgangen af målsæsonen, stiger bestyrelsens tillid. Misser du den, falder tilliden én gang.",
         "targetSeason": "Mål: sæson {season}",
         "accept": "Accepter",
         "decline": "Afvis"

@@ -1817,7 +1817,7 @@
       "achievedTarget": "Gehaald {achieved} / doel {target}",
       "expandAll": "Alles uitklappen",
       "collapseAll": "Alles inklappen",
-      "stretch": "Uitdaging",
+      "stretch": "Moeilijker",
       "discussTarget": "Doel bespreken",
       "discussTargetDisabledHint": "Doelen bespreken kan vanaf de jaarvergadering.",
       "receipt": {
@@ -1945,20 +1945,21 @@
       "mandate": {
         "title": "Voorgesteld mandaat · focus: {focus}",
         "meta": "{count, plural, one {# doel} other {# doelen}} · {used} van {allowed} aanpassingen gebruikt",
-        "reward": "Beloning +{bonus} vertrouwen · gemist -{penalty}",
-        "rewardWas": "Beloning +{bonus} vertrouwen · gemist -{penalty} · was {was}",
+        "previousTarget": "Vorig doel: {target}",
+        "confidenceEffect": "Het bestuur past zijn vertrouwen aan op basis van je prestaties voor het hele mandaat.",
         "choice": {
           "easier": "Makkelijker",
           "keep": "Houden",
-          "stretch": "Uitdagender"
+          "stretch": "Moeilijker"
         },
         "choiceDisabledEasier": "Dit doel kan niet verder worden versoepeld.",
-        "choiceDisabledStretch": "Dit doel kan niet verder worden opgerekt.",
+        "choiceDisabledStretch": "Dit doel kan niet moeilijker worden.",
         "choiceDisabledBudget": "Je hebt al je aanpassingen voor deze vergadering gebruikt.",
         "reactionAttribution": "{name}, die dit doel beheert"
       },
       "visionSlot": {
         "title": "Het bestuur stelt een nieuwe mijlpaal voor",
+        "confidenceEffect": "Haal deze mijlpaal uiterlijk aan het eind van het doelseizoen om vertrouwen te winnen. Mis je hem, dan verlies je één keer vertrouwen.",
         "targetSeason": "Doel: seizoen {season}",
         "accept": "Accepteren",
         "decline": "Afwijzen"

@@ -1,0 +1,22 @@
+{
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Board",
+      "area": "interface",
+      "en": {
+        "title": "Clearer choices at the annual meeting",
+        "body": "The harder goal option is called Harder. The meeting explains how your mandate and vision milestones affect the board's confidence."
+      },
+      "da": {
+        "title": "Tydeligere valg på årsmødet",
+        "body": "Det sværere målvalg hedder Sværere. Årsmødet forklarer, hvordan mandat og visionsmilepæle påvirker bestyrelsens tillid."
+      },
+      "refs": [
+        5850
+      ]
+    }
+  ]
+}

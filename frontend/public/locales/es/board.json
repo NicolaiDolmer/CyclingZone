@@ -1817,7 +1817,7 @@
       "achievedTarget": "Conseguido {achieved} / objetivo {target}",
       "expandAll": "Desplegar todo",
       "collapseAll": "Plegar todo",
-      "stretch": "Exigente",
+      "stretch": "Más difícil",
       "discussTarget": "Hablar del objetivo",
       "discussTargetDisabledHint": "Hablar de los objetivos se abre en la junta anual.",
       "receipt": {
@@ -1945,20 +1945,21 @@
       "mandate": {
         "title": "Mandato propuesto · enfoque: {focus}",
         "meta": "{count, plural, one {# objetivo} other {# objetivos}} · {used} de {allowed} ajustes usados",
-        "reward": "Recompensa +{bonus} de confianza · fallo -{penalty}",
-        "rewardWas": "Recompensa +{bonus} de confianza · fallo -{penalty} · antes {was}",
+        "previousTarget": "Objetivo anterior: {target}",
+        "confidenceEffect": "El consejo ajusta su confianza según tus resultados en todo el mandato.",
         "choice": {
           "easier": "Más fácil",
           "keep": "Mantener",
-          "stretch": "Más exigente"
+          "stretch": "Más difícil"
         },
         "choiceDisabledEasier": "Este objetivo no se puede suavizar más.",
-        "choiceDisabledStretch": "Este objetivo no se puede endurecer más.",
+        "choiceDisabledStretch": "Este objetivo no puede hacerse más difícil.",
         "choiceDisabledBudget": "Has usado todos tus ajustes de esta junta.",
         "reactionAttribution": "{name}, responsable de este objetivo"
       },
       "visionSlot": {
         "title": "La directiva propone un hito nuevo",
+        "confidenceEffect": "Cumple el hito antes de que termine la temporada objetivo para ganar confianza. Si no lo cumples, perderás confianza una vez.",
         "targetSeason": "Objetivo: temporada {season}",
         "accept": "Aceptar",
         "decline": "Rechazar"

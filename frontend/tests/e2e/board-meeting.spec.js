@@ -160,7 +160,7 @@ test("to-klik-stien: Enter annual meeting fra Boardroom, saa Sign mandate unders
   expect(state.lastSignBody.request).toBeNull();
 });
 
-test("Stræk paa et mål viser ejerens forudberegnede reaktion inline (#4557)", async ({ page }) => {
+test("Sværere hæver målet og viser bestyrelsens reaktion (#5850)", async ({ page }) => {
   await stabilizePage(page);
   await installNetworkMocks(page);
   await installMeetingMocks(page);
@@ -171,17 +171,23 @@ test("Stræk paa et mål viser ejerens forudberegnede reaktion inline (#4557)", 
 
   // Goal 1 (stage_wins) kommer først i DOM-rækkefølgen — dens Stræk-pille er
   // den eneste AKTIVEREDE (Goal 2 er binær og har ingen Stræk-mulighed).
-  await page.getByRole("button", { name: "Stræk" }).first().click();
+  const harder = page.getByRole("button", { name: /^Sværere/ }).first();
+  await expect(page.getByText(/hvordan du klarer hele mandatet/)).toBeVisible();
+  await expect(harder).toHaveText("Sværere");
+  await expect(harder).toHaveAttribute("aria-pressed", "false");
+  await harder.click();
+  await expect(harder).toHaveAttribute("aria-pressed", "true");
 
   // Mål-titlen opdaterer sig til det strakte tal (type-styret resolver,
   // lib/boardGoalLabel.js: "stage_wins" → "Mindst N sejre"), og medlemmets
   // citat vises inline (spec §4.2: kun ved Easier/Stretch, ikke Keep).
   await expect(page.getByText("Mindst 5 sejre")).toBeVisible();
+  await expect(page.getByText("Tidligere mål: 4")).toBeVisible();
   await expect(page.getByText(/Jørgen Brandt, der ejer målet/)).toBeVisible();
 
   // Det binaere mål (Goal 2, no_outstanding_debt) kan IKKE strækkes —
   // pillen er deaktiveret, ikke et dødt klik (#3012-klassen).
-  await expect(page.getByRole("button", { name: "Stræk" }).last()).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Sværere", exact: true }).last()).toBeDisabled();
 });
 
 test("en anmodning viser altid et modtilbud, aldrig et rent nej (#4557)", async ({ page }) => {
