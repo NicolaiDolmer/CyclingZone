@@ -27,14 +27,22 @@ async function strictStaff(supabase,teamId){
  const best=profiles.reduce((a,b)=>(b.overall??0)>(a?.overall??0)?b:a,null);
  return {facilityTier:facilities[0]?.tier??0,staff:best?{overall:best.overall,dimensions:best.dimensions??{},levels:normalizeLevelBands(best.levels??{})}:null};
 }
-export async function calculateCompensation({state,fullRiders,abilityRows,seasons,teamContexts,stageBySlot,boundBySlot={}}){
+// #8606: developmentContexts (rider id -> the engine's development model per date, see
+// 8606LateRiderCompensation.mjs) and managerTeamIds (teams the engine develops) are optional.
+// Without them the #6061 calculation is unchanged.
+export async function calculateCompensation({state,fullRiders,abilityRows,seasons,teamContexts,stageBySlot,boundBySlot={},developmentContexts=null,managerTeamIds=null}){
  const inventory=buildRecoveryManifest(state);const plans=[];const blocked=[];
+ const managers=managerTeamIds?new Set(managerTeamIds):null;
  for(const id of new Set(inventory.candidates.map(c=>c.rider_id))){
   const rider=fullRiders.find(r=>r.id===id);const abilities=abilityRows.find(r=>r.rider_id===id);
   if(!rider?.team_id||rider.is_retired||!abilities){blocked.push({rider_id:id,reason:'missing_or_unowned_or_retired'});continue;}
+  // A team the engine does not develop (AI, bank, test) gets no gains from a real tick either.
+  if(managers&&!managers.has(rider.team_id)){blocked.push({rider_id:id,reason:'team_without_development'});continue;}
+  if(developmentContexts&&!developmentContexts[id]){blocked.push({rider_id:id,reason:'missing_development_model'});continue;}
   const currentCondition=state.conditions.find(c=>c.rider_id===id);
   if((currentCondition?.injured_until&&currentCondition.injured_until>=copenhagenDateString(new Date(state.asOf)))||Number(currentCondition?.injury_race_days_left)>0){blocked.push({rider_id:id,reason:'injury_state_requires_review'});continue;}
-  const entries=inventory.candidates.filter(c=>c.rider_id===id&&c.team_id===rider.team_id);
+  // #8606: on a rider-date list the training follows the rider to his current team.
+  const entries=inventory.candidates.filter(c=>c.rider_id===id&&(c.team_id===rider.team_id||c.follows_rider));
   if(!entries.length){blocked.push({rider_id:id,reason:'historical_owner_differs'});continue;}
   const affected=inventory.candidates.filter(c=>c.rider_id===id&&c.missing_game_days.length);
   const waived=new Set(['missing_opening_condition','missing_historical_training_inputs']);
@@ -68,14 +76,16 @@ export async function calculateCompensation({state,fullRiders,abilityRows,season
    if(fatal)break;
   }
   if(fatal||!days.length)continue;
+  // #8606: a race day needs the stage's role and intention, which the list does not carry.
+  if(developmentContexts&&days.some(d=>d.kind==='raced_missed')){blocked.push({rider_id:id,reason:'race_day_needs_stage_role'});continue;}
   const plan=state.plans.filter(p=>p.rider_id===id&&p.team_id===rider.team_id).at(-1)??null;
   const weeks=state.weekPlans.filter(w=>w.team_id===rider.team_id);
-  const result=simulateRiderRepair({rider,abilityRow:abilities,days,plan,teamWeekDays:weeks.find(w=>w.rider_id==null)?.days??null,riderOverrideDays:weeks.find(w=>w.rider_id===id)?.days??null,...ctx,seasonNumber:season.number,recomputeCapsPerTick:true});
+  const result=simulateRiderRepair({rider,abilityRow:abilities,days,plan,teamWeekDays:weeks.find(w=>w.rider_id==null)?.days??null,riderOverrideDays:weeks.find(w=>w.rider_id===id)?.days??null,...ctx,seasonNumber:season.number,recomputeCapsPerTick:true,developmentContext:developmentContexts?.[id]??null});
   if(Object.entries(result.patch??{}).some(([key,value])=>key!=='ability_progress'&&Number(value)<Number(abilities[key]??0))){blocked.push({rider_id:id,reason:'would_reduce_visible_ability'});continue;}
   if(result.skipped){blocked.push({rider_id:id,reason:result.skipped});continue;}
   plans.push({rider_id:id,team_id:rider.team_id,season_id:season.id,days,current_condition:currentCondition??null,condition_policy:'frozen_opening_else_current_condition_else_engine_first_use_default',expected_abilities:abilities,...result});
  }
- const hash=createHash('sha256').update(JSON.stringify({state,fullRiders,abilityRows,seasons,teamContexts,stageBySlot,boundBySlot})).digest('hex');
+ const hash=createHash('sha256').update(JSON.stringify({state,fullRiders,abilityRows,seasons,teamContexts,stageBySlot,boundBySlot,...(developmentContexts?{developmentContexts,managerTeamIds}:{})})).digest('hex');
  return {issue:6061,policy:'current_plans_current_engine',through:state.through,source_hash:hash,requires_owner_go:true,write_ready:false,summary:{inventory_slots:inventory.summary.rider_days,riders:plans.length,rider_days:plans.reduce((n,p)=>n+p.days.length,0),race_days:plans.flatMap(p=>p.days).filter(d=>d.kind==='raced_missed').length,blocked_riders:new Set(blocked.map(b=>b.rider_id)).size},plans,blocked};
 }
 export function buildHistoricalRaceEvidence({ids,raceRows,scheduleRows,profiles,firstRuns,results,loads,through,selections=[]}){
@@ -120,11 +130,13 @@ export function buildHistoricalRaceEvidence({ids,raceRows,scheduleRows,profiles,
  }
  return {stageBySlot,boundBySlot};
 }
-async function main(){
- const opts=parseArgs(process.argv.slice(2));const {createClient}=await import('@supabase/supabase-js');
- const supabase=createClient(process.env.SUPABASE_URL,process.env.SUPABASE_SERVICE_KEY,{auth:{persistSession:false}});
+// Read-only: every input of one calculation, bracketed by the first source-hash capture (the
+// caller captures again after calculating). #8606 passes `riderDates`; then the riders' current
+// teams join the scope and get a team context, because the training follows the rider there.
+export async function loadCompensationInputs(supabase,opts){
  const initial=await loadRecoveryInputs(supabase,opts);const ids=[...new Set(initial.work.flatMap(w=>w.quarantined_rider_ids))];
- const scope=normalizeScope({ids,teamIds:initial.work.map(w=>w.team_id),seasonIds:initial.work.map(w=>w.season_id)});
+ const currentTeamIds=opts.riderDates?initial.riders.map(r=>r.team_id).filter(Boolean):[];
+ const scope=normalizeScope({ids,teamIds:[...initial.work.map(w=>w.team_id),...currentTeamIds],seasonIds:initial.work.map(w=>w.season_id)});
  // Hash first, read second, hash again: identical hashes bracket every input.
  const hashesBefore=await captureSourceHashes(supabase,scope,opts.through);
  const state=await loadRecoveryInputs(supabase,opts);
@@ -133,7 +145,8 @@ async function main(){
   fetchAllRowsChunkedIn(ids,c=>supabase.from('rider_derived_abilities').select('*').in('rider_id',c).order('rider_id')),
   fetchAllRowsChunkedIn([...new Set(state.work.map(w=>w.season_id))],c=>supabase.from('seasons').select('id,number,status').in('id',c).order('id')),
  ]);
- const teamContexts={};for(const teamId of new Set(state.work.map(w=>w.team_id))){
+ const contextTeamIds=new Set([...state.work.map(w=>w.team_id),...(opts.riderDates?fullRiders.map(r=>r.team_id).filter(Boolean):[])]);
+ const teamContexts={};for(const teamId of contextTeamIds){
   const weeks=state.weekPlans.filter(w=>w.team_id===teamId);
   const fatigueRules=await loadTeamFatigueRules(supabase,teamId);
   teamContexts[teamId]={rulesByRider:Object.fromEntries(fullRiders.filter(r=>r.team_id===teamId).map(r=>[r.id,fatigueRules?.forRider(r.id)??null])),...await strictStaff(supabase,teamId),programsOn:weeks.some(w=>weekDaysHaveSessions(w.days))?await isTrainingCellsEnabledForTeam(supabase,teamId):false};
@@ -151,6 +164,12 @@ async function main(){
  const results=[];
  for(let from=0;from<ids.length;from+=100){const chunk=ids.slice(from,from+100);results.push(...await fetchAllRowsChunkedIn(raceIds,c=>supabase.from('race_results').select('id,race_id,stage_number,rider_id,result_type').in('race_id',c).in('rider_id',chunk).order('id')));}
  const {stageBySlot,boundBySlot}=buildHistoricalRaceEvidence({ids,raceRows,scheduleRows,profiles,firstRuns,results,loads:state.loads,through:opts.through,selections});
+ return {ids,scope,hashesBefore,state,fullRiders,abilityRows,seasons,teamContexts,stageBySlot,boundBySlot,selections};
+}
+async function main(){
+ const opts=parseArgs(process.argv.slice(2));const {createClient}=await import('@supabase/supabase-js');
+ const supabase=createClient(process.env.SUPABASE_URL,process.env.SUPABASE_SERVICE_KEY,{auth:{persistSession:false}});
+ const {scope,hashesBefore,state,fullRiders,abilityRows,seasons,teamContexts,stageBySlot,boundBySlot,selections}=await loadCompensationInputs(supabase,opts);
  const result=await calculateCompensation({state,fullRiders,abilityRows,seasons,teamContexts,stageBySlot,boundBySlot});
  const changed=changedSourceTables(hashesBefore,await captureSourceHashes(supabase,scope,opts.through));
  if(changed.length)throw new Error(`Source changed during calculation (${changed.join(',')}); repeat dry-run`);
