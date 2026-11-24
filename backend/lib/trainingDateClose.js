@@ -530,6 +530,9 @@ export async function runNormalizedTrainingDateSweep({
         const joinedLate = lateFor(work);
         if (joinedLate.length) {
           const admission = await admitRiders({ supabase, teamId: team.id, seasonId: job.season.id, tickDate: job.tickDate, riderIds: joinedLate, now });
+          // No RPC yet (deploy window before auto-migrate): the riders are still waiting, so the
+          // date must not be cached as inspected; the next sweep asks again once the RPC exists.
+          if (admission == null) waitingForDate = true;
           if (admission?.work) work = admission.work;
           // Only present when someone was admitted, so a sweep without late riders answers as before.
           const admitted = admission?.admitted_rider_ids?.length ?? 0;
