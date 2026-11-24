@@ -26,6 +26,8 @@ import {
 import { fetchAllRows } from "./supabasePagination.js";
 import { riderBestRole } from "./riderRating.js";
 import { mergeReputationSortedIds } from "./reputationSort.ts";
+import { apiFetch } from "./apiFetch.ts";
+import { authHeaders } from "./supabase";
 import { RIDER_TYPE_KEYS } from "./riderTypeKeys.js";
 
 export { compareRidersByFilter, mergeSalarySortedIds, mergeRatingSortedIds, applyRiderColumnSort };
@@ -370,6 +372,36 @@ async function fetchRidersSortedByReputation(supabase, { filters, from, to, ride
   return { rows: pageIds.map(id => byId.get(id)).filter(Boolean), count: orderedIds.length };
 }
 
+async function fetchRidersSortedByPotential(supabase, { filters, page, pageSize, riderSelect, abilSelect, seasonYear }) {
+  const abilityJoin = anyAbilityFilterActive(filters) ? ", " + ABILITY_TABLE + "!inner()" : "";
+  const candidates = await fetchAllRows(() => {
+    let query = supabase.from("riders").select("id" + abilityJoin);
+    query = applyRiderColumnFilters(query, filters, {}, seasonYear);
+    return applyAbilityFilters(query, filters, { prefix: ABILITY_TABLE + "." }).order("id");
+  });
+  if (!candidates.length) return { rows: [], count: 0 };
+  const headers = await authHeaders();
+  if (!headers) throw new Error("rider_sort_unauthenticated");
+  const result = await apiFetch("/api/scouting/sort-riders", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      riderIds: candidates.map((row) => row.id),
+      page, pageSize, direction: filters.sort_dir === "asc" ? "asc" : "desc",
+    }),
+  });
+  if (!result.ok) throw new Error("rider_sort_failed");
+  const { ids, count } = /** @type {{ ids: string[], count: number }} */ (result.data);
+  if (!ids.length) return { rows: [], count };
+
+  const { data, error } = await supabase.from("riders")
+    // pagination-safe: ids already represent a single page of at most 50 riders.
+    .select(riderSelect + ", " + abilSelect).in("id", ids);
+  if (error) throw error;
+  const byId = new Map((data || []).map(flattenAbilities).map((rider) => [rider.id, rider]));
+  return { rows: ids.map((id) => byId.get(id)).filter(Boolean), count };
+}
+
 export async function fetchRidersPage(supabase, { filters, page, pageSize = 50, riderSelect, seasonYear = null }) {
   const from = (page - 1) * pageSize;
   const to = page * pageSize - 1;
@@ -403,6 +435,9 @@ export async function fetchRidersPage(supabase, { filters, page, pageSize = 50, 
   // #4035: se fetchRidersSortedByRating ovenfor — rating kan heller ikke ORDER BY'es direkte.
   if (filters.sort === "reputation") {
     return fetchRidersSortedByReputation(supabase, { filters, from, to, riderSelect, abilSelect, seasonYear });
+  }
+  if (filters.sort === "potential") {
+    return fetchRidersSortedByPotential(supabase, { filters, page, pageSize, riderSelect, abilSelect, seasonYear });
   }
   if (filters.sort === "rating") {
     return fetchRidersSortedByRating(supabase, { filters, from, to, riderSelect, abilSelect, seasonYear });

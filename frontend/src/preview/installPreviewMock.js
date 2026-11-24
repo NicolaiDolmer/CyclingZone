@@ -311,6 +311,17 @@ export function installPreviewMock() {
         if (res) return jsonResponse(res.body, res.status);
       }
 
+      if (method === "POST" && /\/api\/scouting\/sort-riders$/.test(url)) {
+        const { riderIds, page, pageSize, direction } = JSON.parse(init.body);
+        const scored = riderIds.map((id) => [id, previewEstimate(id, SEED_SCOUT_ESTIMATES[id]).potentialView]);
+        scored.sort(([a, av], [b, bv]) => {
+          if (av.hidden !== bv.hidden) return av.hidden ? 1 : -1;
+          return (av.hidden ? 0 : (direction === "asc" ? av.value - bv.value : bv.value - av.value)) || a.localeCompare(b);
+        });
+        const from = (page - 1) * pageSize;
+        return jsonResponse({ ids: scored.slice(from, from + pageSize).map(([id]) => id), count: scored.length });
+      }
+
       // #2454: potentiale-estimaterne. Preview faldt før igennem til den
       // generiske /api-blok og fik `{ ok: true }` på denne POST, så hver
       // potentiale-celle stod tom — inklusive de ti flader landing 1 lægger om.

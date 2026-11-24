@@ -357,7 +357,7 @@ import { pullWeeklyAcademyIntake, hasPulledThisWeek } from "../lib/academyIntake
 import { academyEstimate, loadAcademyPrognoses, isAcademyKnowledgeEnabled } from "../lib/academyDisclosure.ts";
 import { buildIntake2View } from "../lib/academyIntake2View.ts"; // #6666
 import { isPotentialEstimateDisplayEnabled } from "../lib/potentialEstimateFlag.js"; // #7684
-import { buildAcademyFromViews, buildEstimatesFromViews, buildProjectionFromView, buildScoutingReportFromView } from "../lib/potentialEstimateRead.js"; // #7684
+import { buildAcademyFromViews, buildEstimatesFromViews, buildProjectionFromView, buildScoutingReportFromView, sortScoutedRiderPage } from "../lib/potentialEstimateRead.js"; // #7684
 import { saveAcademyProfile } from "../lib/academyIntakeProfile.ts"; // #6666
 import { createAcademyV2Router } from "../lib/academyAgeFocus.ts"; // #8081
 import { computeFrozenSalary } from "../lib/contractSeed.js";
@@ -2485,6 +2485,33 @@ router.get("/scouting/me", requireAuth, async (req, res) => {
     res.json({ ...state, teamId: req.team.id, scoutSystemEnabled, ...(jobModel ? { jobModel } : {}) });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/scouting/sort-riders — the browser sends the public IDs matched
+// by its normal filters. Only the ordered page IDs leave the scoring path.
+router.post("/scouting/sort-riders", requireAuth, presencePulseLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  const { riderIds, page, pageSize, direction } = req.body ?? {};
+  if (!Array.isArray(riderIds) || riderIds.length > 100_000
+    || !riderIds.every((id) => typeof id === "string" && UUID_RE.test(id))
+    || !Number.isSafeInteger(page) || page < 1 || page > 100_000
+    || !Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 50
+    || !["asc", "desc"].includes(direction)) {
+    return res.status(400).json({ error: "invalid_sort_request" });
+  }
+  try {
+    if (!await isPotentialEstimateOn(req)) return res.status(409).json({ error: "sort_unavailable" });
+    const result = await sortScoutedRiderPage(supabase, {
+      teamId: req.team.id,
+      riderIds: riderIds.map((id) => id.toLowerCase()),
+      page, pageSize, ascending: direction === "asc",
+    });
+    res.set("Cache-Control", "private, no-store");
+    return res.json(result);
+  } catch (err) {
+    captureException(err);
+    return res.status(500).json({ error: "rider_sort_failed" });
   }
 });
 

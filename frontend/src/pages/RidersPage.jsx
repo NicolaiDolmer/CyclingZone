@@ -22,6 +22,7 @@ import { riderShortName } from "../lib/riderName.ts";
 import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale.jsx";
+import { fetchPlayerFeatureFlags } from "../lib/playerFeatureFlags.js";
 import { useScouting } from "../lib/useScouting.js";
 import TeamCell from "../components/rider/TeamCell";
 import { ageBadgeKey, getRiderAge, seasonNumberFromReferenceYear } from "../lib/riderAge";
@@ -148,7 +149,7 @@ function AbilityLegend({ t, tRider }) {
 // Denne select + retnings-toggle eksponerer NØJAGTIG de samme sort-nøgler som
 // desktop-headerne og skriver til samme filters.sort/sort_dir via handleSort —
 // ingen ny sort-logik. Synlig kun under sm-breakpointet (`sm:hidden`).
-function MobileSortControl({ sort, sortDir, onSort, statCols, t, reputationOn }) {
+function MobileSortControl({ sort, sortDir, onSort, statCols, t, reputationOn, potentialSortOn, potentialLabel }) {
   const typeColumnLabel = useTypeColumnLabel(); // #6853: samme naturlige rolle-label som desktop
   // Samme nøgler + rækkefølge som desktop-kolonnerne (RidersPage's `columns`).
   // Labels genbruger table.*-nøglerne; stat-options bruger de internationale
@@ -161,6 +162,7 @@ function MobileSortControl({ sort, sortDir, onSort, statCols, t, reputationOn })
     { key: "is_u25", label: t("table.badges") },
     { key: "primary_type", label: typeColumnLabel },
     { key: "value", label: t("table.value") },
+    ...(potentialSortOn ? [{ key: "potential", label: potentialLabel }] : []),
     { key: "salary", label: t("table.salary") },
     { key: reputationOn ? "reputation" : "popularity", label: t(reputationOn ? "table.reputationLabel" : "table.popularity") },
   ];
@@ -217,6 +219,14 @@ export default function RidersPage() {
   const navigationType = useNavigationType();
   const filterWriterId = useId();
   const scouting = useScouting();
+  const [potentialSortOn, setPotentialSortOn] = useState(false);
+  useEffect(() => {
+    let current = true;
+    fetchPlayerFeatureFlags().then((flags) => {
+      if (current) setPotentialSortOn(flags.potential_estimate_display === true);
+    });
+    return () => { current = false; };
+  }, []);
   const [riders, setRiders] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -352,7 +362,9 @@ export default function RidersPage() {
   // #4448: memoized så mount-/filter-effekten kan liste den i sit dependency-
   // array. Realtime-refetchen nedenfor bliver ved at gå gennem loadRidersRef —
   // den må IKKE gen-subscribe hver gang filtrene ændrer sig.
-  const displaySort = reputationSortKey(filters.sort, reputationOn);
+  const displaySort = filters.sort === "potential" && !potentialSortOn
+    ? FILTER_DEFAULTS.sort
+    : reputationSortKey(filters.sort, reputationOn);
   const loadSequence = useRef(0);
   const loadRiders = useCallback(async ({ silent = false } = {}) => {
     const request = ++loadSequence.current;
@@ -574,6 +586,7 @@ export default function RidersPage() {
     {
       key: "potential",
       header: tRider("header.potential"),
+      sortKey: potentialSortOn ? "potential" : undefined,
       render: (r) => <ScoutablePotentiale rider={r} scouting={scouting} showScout />,
     },
     {
@@ -771,6 +784,8 @@ export default function RidersPage() {
                     sortDir={filters.sort_dir}
                     onSort={handleSort}
                     reputationOn={reputationOn}
+                    potentialSortOn={potentialSortOn}
+                    potentialLabel={tRider("header.potential")}
                     statCols={visibleStatCols}
                     t={t}
                   />

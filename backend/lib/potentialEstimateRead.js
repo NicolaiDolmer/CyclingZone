@@ -30,7 +30,7 @@ import { mergeDevelopmentSnapshots } from "./riderDevelopmentReceipt.js";
 import { buildTypePrognosisBands, buildVerdict, ratingFromAbilities } from "./scoutingReport.js";
 import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
 import { bestRoleForAbilities } from "./riderBestRoleCache.js";
-import { fetchAllRowsChunkedIn } from "./supabasePagination.js";
+import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { PROGNOSIS_PACE_DAYS, pacePrognosis } from "./riderPrognosis.js";
 import { resolveScoutBandSeasonNumber, scoutBandAge } from "./scoutBandAge.js";
 import { roleOutputRaw } from "./weights/displayRecipes.js";
@@ -135,6 +135,41 @@ async function loadEstimateContext(supabase, { teamId, riderIds }) {
 
 export async function loadPotentialViews(supabase, { teamId, riderIds }) {
   return (await loadEstimateContext(supabase, { teamId, riderIds })).views;
+}
+
+// Only public rider IDs enter this read. Fetch the requesting team's estimate
+// rows first, then load live ratings only for its matching scouted riders.
+export async function sortScoutedRiderPage(supabase, { teamId, riderIds, page, pageSize, ascending }) {
+  const candidates = new Set(riderIds);
+  if (!candidates.size) return { ids: [], count: 0 };
+  const estimates = await fetchAllRows(() => supabase
+    .from("rider_potential_estimates").select("rider_id, value, certainty")
+    .eq("team_id", teamId).order("rider_id"));
+  const visible = estimates.filter((row) => candidates.has(row.rider_id) && !publicEstimateView(row).hidden);
+  const ids = visible.map((row) => row.rider_id);
+  const [riders, abilities] = await Promise.all([
+    fetchAllRowsChunkedIn(ids, (chunk) => supabase.from("riders")
+      .select("id, primary_type, secondary_type, best_role_rating").in("id", chunk).order("id")),
+    fetchAllRowsChunkedIn(ids, (chunk) => supabase.from("rider_derived_abilities")
+      .select(ABILITY_COLUMNS).in("rider_id", chunk).order("rider_id")),
+  ]);
+  const abilitiesById = new Map(abilities.map((row) => [row.rider_id, row]));
+  const estimateById = new Map(visible.map((row) => [row.rider_id, row]));
+  const values = new Map(riders.map((rider) => [
+    rider.id,
+    publicEstimateView(estimateById.get(rider.id), {
+      currentRating: currentRating(rider, abilitiesById.get(rider.id)),
+    }).value,
+  ]));
+  const ordered = [...candidates].sort((a, b) => {
+    const av = values.get(a);
+    const bv = values.get(b);
+    if (av == null) return bv == null ? a.localeCompare(b) : 1;
+    if (bv == null) return -1;
+    return (ascending ? av - bv : bv - av) || a.localeCompare(b);
+  });
+  const from = (page - 1) * pageSize;
+  return { ids: ordered.slice(from, from + pageSize), count: ordered.length };
 }
 
 // ── Samlet prognose for egne ryttere (#8523) ─────────────────────────────────────
