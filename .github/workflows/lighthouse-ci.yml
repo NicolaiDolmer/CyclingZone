@@ -76,7 +76,7 @@ jobs:
             echo "build=true" >> "$GITHUB_OUTPUT"
           else
             files=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files?per_page=100" --jq '.[] | .filename, (.previous_filename // empty)')
-            if printf '%s\n' "$files" | sed -E '/^docs\//d; /\.md$/d' | grep -E '^(frontend/|scripts/(check-bundle-budget(\.test)?|dependabot-perf-gate\.test)\.mjs$|lighthouserc\.json$|\.github/workflows/lighthouse-ci\.yml$)' > /dev/null; then
+            if printf '%s\n' "$files" | sed -E '/^docs\//d; /^(frontend|backend)\//b; /\.md$/d' | grep -E '^(frontend/|scripts/(check-bundle-budget(\.test)?|dependabot-perf-gate\.test)\.mjs$|lighthouserc\.json$|\.github/workflows/lighthouse-ci\.yml$)' > /dev/null; then
               echo "build=true" >> "$GITHUB_OUTPUT"
             else
               echo "build=false" >> "$GITHUB_OUTPUT"

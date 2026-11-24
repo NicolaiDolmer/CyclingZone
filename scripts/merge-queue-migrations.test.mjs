@@ -99,7 +99,7 @@ test('real PR planning classifies SQL, renames and unknown or incomplete file li
 $Repo='fixture'; $CodeRabbitNight=$false
 $script:meta=${psQuote(JSON.stringify(meta))}
 $script:rows=ConvertFrom-Json ${psQuote(JSON.stringify(rows))}
-function gh { $global:LASTEXITCODE=1 }
+function Get-PrCheckSnapshot { return $null }
 function Invoke-GhWithRetry {
  param($GhArgs,[switch]$TolerateFailure)
  if($GhArgs -contains 'files,changedFiles,title,mergeable,isDraft,headRefOid,mergeStateStatus'){return $script:meta}

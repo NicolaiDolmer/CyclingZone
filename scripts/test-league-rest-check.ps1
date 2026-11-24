@@ -43,10 +43,13 @@ $script:gateReads=0
 $script:requiredExit=0
 $script:reviewBucket='pass'
 $script:pushBeforeAudit=$false
-function gh {
-  $global:LASTEXITCODE = 0
-  if ($args -contains '--required') { $script:gateReads++; $global:LASTEXITCODE=$script:requiredExit; return }
-  ConvertTo-Json -InputObject @(@{name='review-gate';bucket=$script:reviewBucket;startedAt='2026-10-27T20:00:00Z';event='pull_request_target'}) -Compress
+function Get-PrCheckSnapshot {
+  $script:gateReads++
+  if ($script:requiredExit -ne 0) { return $null }
+  return @{
+    required = @(@{name='CI';bucket='pass'})
+    all = @([pscustomobject]@{name='review-gate';bucket=$script:reviewBucket;startedAt='2026-10-27T20:00:00Z';event='pull_request_target'})
+  }
 }
 function Invoke-GhWithRetry {
   param([string[]]$GhArgs, [switch]$TolerateFailure)

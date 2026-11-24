@@ -83,10 +83,8 @@ test('a red required check is accepted only with explicit stale-base evidence on
     $script:head = 'a' * 40
     $expected = $script:head
     $script:state = 'FAILURE'; $script:title = 'Tests failed'
+    function Get-PrCheckSnapshot { return @{required=@(@{name='CI'; bucket='fail'; state=$script:state; link='https://github.com/o/r/actions/runs/1/job/9'})} }
     function Invoke-GhWithRetry($a, [switch]$TolerateFailure) {
-      if ($a[0] -eq 'pr' -and $a -contains '--required') {
-        return ConvertTo-Json @{ name='CI'; state=$script:state; link='https://github.com/o/r/actions/runs/1/job/9' } -Compress
-      }
       if ($a[1] -eq 'repos/o/r/actions/jobs/9') { return 'https://api.github.com/repos/o/r/check-runs/11' }
       if ($a[1] -eq 'repos/o/r/check-runs/11') {
         return ConvertTo-Json @{ head_sha=$script:head; name='CI'; title=$script:title; conclusion='failure' } -Compress
@@ -115,21 +113,23 @@ test('a later train can reserve the slot only after the prior update has termina
     $script:oldHead = 'a' * 40
     $script:newHead = $script:oldHead
     $script:state = 'OPEN'; $script:bucket = 'pending'
+    $script:branchUpdateSlotLogged = $false
+    $now = { [datetimeoffset]'2026-11-24T12:00:00Z' }
     function Test-Path { return $true }
-    function Get-Content { return (ConvertTo-Json @{ repo=$Repo; number=7; head=$script:oldHead; checks=@('CI') } -Compress) }
+    function Get-Content { return (ConvertTo-Json @{ repo=$Repo; number=7; head=$script:oldHead; checks=@('CI'); expiresAt='2026-11-24T14:00:00Z' } -Compress) }
+    function Get-PrCheckSnapshot { return @{ required=@(@{name='CI';bucket=$script:bucket}) } }
     function Invoke-GhWithRetry($a, [switch]$TolerateFailure) {
       if ($a -contains 'state,headRefOid') { return (ConvertTo-Json @{ state=$script:state; headRefOid=$script:newHead } -Compress) }
-      if ($a -contains 'name,bucket') { return (ConvertTo-Json @{ name='CI'; bucket=$script:bucket } -Compress) }
       if ($a -contains '.headRefOid') { return $script:newHead }
       throw 'unexpected request'
     }
-    $unchanged = Test-BranchUpdateSlotOpen
+    $unchanged = Test-BranchUpdateSlotOpen -Now $now
     $script:newHead = 'b' * 40
-    $pending = Test-BranchUpdateSlotOpen
+    $pending = Test-BranchUpdateSlotOpen -Now $now
     $script:bucket = 'fail'
-    $terminal = Test-BranchUpdateSlotOpen
+    $terminal = Test-BranchUpdateSlotOpen -Now $now
     $script:state = 'CLOSED'
-    $closed = Test-BranchUpdateSlotOpen
+    $closed = Test-BranchUpdateSlotOpen -Now $now
     "RESULT=" + (@{ unchanged=$unchanged; pending=$pending; terminal=$terminal; closed=$closed } | ConvertTo-Json -Compress)
   `);
   assert.ok(result, stdout);
@@ -144,6 +144,7 @@ test('an accepted update keeps its reservation, while a definite rejection clear
     $script:updated = @{}
     $script:status = '422 Unprocessable Entity'
     $script:head = 'a' * 40
+    $now = { [datetimeoffset]'2026-11-24T12:00:00Z' }
     $script:base = 'stacked-base'
     function Invoke-GhWithRetry($a, [switch]$TolerateFailure) {
       if ($a[1] -eq 'view') {
@@ -158,15 +159,15 @@ test('an accepted update keeps its reservation, while a definite rejection clear
       if ($script:status) { "HTTP/2.0 $script:status" }
     }
     try {
-      $nonMain = Invoke-PrUpdateBehind 7 $script:head
+      $nonMain = Invoke-PrUpdateBehind 7 $script:head -Now $now
       $script:base = 'main'
-      $null = Invoke-PrUpdateBehind 7 $script:head
+      $null = Invoke-PrUpdateBehind 7 $script:head -Now $now
       $rejected = Test-Path -LiteralPath $script:branchUpdateSlot
       $script:status = '202 Accepted'
-      $accepted = Invoke-PrUpdateBehind 7 $script:head
+      $accepted = Invoke-PrUpdateBehind 7 $script:head -Now $now
       $saved = Test-Path -LiteralPath $script:branchUpdateSlot
       $script:status = $null
-      $uncertain = Invoke-PrUpdateBehind 7 $script:head
+      $uncertain = Invoke-PrUpdateBehind 7 $script:head -Now $now
       $retained = Test-Path -LiteralPath $script:branchUpdateSlot
       "RESULT=" + (@{ nonMain=$nonMain; rejected=$rejected; accepted=$accepted; saved=$saved; uncertain=$uncertain; retained=$retained } | ConvertTo-Json -Compress)
     } finally {
@@ -248,4 +249,27 @@ test('Claude shell hook blocks both direct branch update commands', () => {
     });
     assert.equal(result.status, expected, result.error?.message ?? result.stderr);
   }
+});
+
+test('expired update reservation releases the slot without GitHub and logs occupied reservations', () => {
+  const { result, stdout } = pwsh(`
+    ${load(['Test-BranchUpdateSlotOpen'])}
+    $Repo = 'o/r'; $script:branchUpdateSlot = 'simulated'
+    $script:current = [datetimeoffset]'2026-11-24T12:00:00Z'
+    $script:reads = 0
+    $script:branchUpdateSlotLogged = $false
+    function Test-Path { return $true }
+    function Get-Content { return (ConvertTo-Json @{ repo=$Repo; number=7; head=('a' * 40); expiresAt='2026-11-24T12:01:00Z' } -Compress) }
+    function Invoke-GhWithRetry { $script:reads++; return $null }
+    $held = Test-BranchUpdateSlotOpen -Now { $script:current }
+    $script:current = $script:current.AddMinutes(1)
+    $expired = Test-BranchUpdateSlotOpen -Now { $script:current }
+    function Get-Content { return '{}' }
+    function Get-Item { return @{LastWriteTimeUtc=[datetime]'2026-11-24T10:01:00Z'} }
+    $legacyExpired = Test-BranchUpdateSlotOpen -Now { $script:current }
+    "RESULT=" + (@{ held=$held; expired=$expired; legacyExpired=$legacyExpired; reads=$script:reads } | ConvertTo-Json -Compress)
+  `);
+  assert.ok(result, stdout);
+  assert.deepEqual(result, { held: false, expired: true, legacyExpired: true, reads: 1 });
+  assert.match(stdout, /vagt:.*#7/);
 });

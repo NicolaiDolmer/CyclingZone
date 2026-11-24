@@ -23,6 +23,7 @@ import {
   decideCodexRerequest,
   deployImpact,
   evaluatePr,
+  evaluateOne,
   hasOwnerMergeApproval,
   mainVerifiedFromRuns,
   parseArgs,
@@ -978,4 +979,34 @@ describe('#7654 requestStaleCodexReviews (gh injiceret)', () => {
       assert.deepEqual(seen[0].evaluations.map((e) => e.number), [11]);
     } finally { rmSync(dir, { recursive: true, force: true }); }
   });
+});
+
+it('refreshes UNKNOWN via REST and retries only that PR three times', () => {
+  const calls = [];
+  const delays = [];
+  const candidate = pr({mergeable: 'UNKNOWN'});
+  const gh = {json(args) {
+    calls.push(args);
+    assert.equal(args[1], 'repos/o/r/pulls/100');
+    return {state:'open', head:{sha:HEAD}, base:{ref:'main'}, mergeable:calls.length === 4 ? false : null};
+  }};
+  const result = evaluateOne(candidate, {repo:'o/r', ownerLogin:OWNER, gh, pause:ms=>delays.push(ms)});
+  assert.equal(result.reason, 'mergeable=CONFLICTING');
+  assert.equal(calls.length, 4);
+  assert.deepEqual(delays, [15000,15000,15000]);
+});
+
+it('admits REST mergeable true only for the same open PR head and base', () => {
+  const candidate = pr({mergeable: 'UNKNOWN'});
+  const delays = [];
+  const result = evaluateOne(candidate, {repo:'o/r', ownerLogin:OWNER, pause:ms=>delays.push(ms), gh:{json(args) {
+    if (args[0] === 'pr') return [];
+    return {state:'open', head:{sha:HEAD}, base:{ref:'main'}, mergeable:true};
+  }}});
+  assert.match(result.reason, /^checks:/);
+  assert.deepEqual(delays, []);
+  const raced = evaluateOne(candidate, {repo:'o/r', ownerLogin:OWNER, pause() {}, gh:{json() {
+    return {state:'open', head:{sha:'b'.repeat(40)}, base:{ref:'main'}, mergeable:true};
+  }}});
+  assert.equal(raced.reason, 'mergeable=UNKNOWN');
 });

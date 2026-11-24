@@ -127,7 +127,7 @@ jobs:
           FILES=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER/files?per_page=100" --paginate --jq '.[] | .filename, (.previous_filename // empty)')
           # Ikke `grep -q`: tidlig exit + pipefail kan SIGPIPE printf og vende
           # svaret til falsk "ingen frontend-ændringer". >/dev/null læser alt.
-          if printf '%s\n' "$FILES" | sed -E '/^docs\//d; /\.md$/d' | grep -E '^(frontend/|scripts/(check-e2e-shard-budget|extract-e2e-flakes|update-axe-baseline|lib/axe-(ratchet|inputs)|tests/axe-ratchet\.test)\.mjs$|\.github/workflows/playwright-smoke\.yml$)' > /dev/null; then
+          if printf '%s\n' "$FILES" | sed -E '/^docs\//d; /^(frontend|backend)\//b; /\.md$/d' | grep -E '^(frontend/|scripts/(check-e2e-shard-budget|extract-e2e-flakes|update-axe-baseline|lib/axe-(ratchet|inputs)|tests/axe-ratchet\.test)\.mjs$|\.github/workflows/playwright-smoke\.yml$)' > /dev/null; then
             echo "frontend=true" >> "$GITHUB_OUTPUT"
           else
             echo "frontend=false" >> "$GITHUB_OUTPUT"

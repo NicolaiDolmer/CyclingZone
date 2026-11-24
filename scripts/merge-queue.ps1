@@ -175,6 +175,16 @@ if ($waveEvidenceFailure) { throw $waveEvidenceFailure }
 $wavePolicyOutput | ForEach-Object { Write-Host $_ }
 if ($wavePolicyExit -ne 0) { throw 'Aktiv boelgemarkoer: merge-koeen er blokeret.' }
 
+function Get-PrCheckSnapshot([int]$number, [string]$head, [switch]$RequiredOnly) {
+  $argsForChecks = @($Repo, "$number", $head)
+  if ($RequiredOnly) { $argsForChecks += '--required' }
+  try {
+    $json = & node (Join-Path $PSScriptRoot 'lib/pr-checks.mjs') @argsForChecks
+    if ($LASTEXITCODE -ne 0 -or -not $json) { return $null }
+    return (($json -join '') | ConvertFrom-Json -ErrorAction Stop)
+  } catch { return $null }
+}
+
 function Get-PrPlanEntry([int]$number) {
   # Read-only: PR-metadata + required-checks-status. Sikkert at koere i -DryRun.
   $checksExit = 0
@@ -183,50 +193,44 @@ function Get-PrPlanEntry([int]$number) {
   $reviewDeadlineMs = 0
   # Bind required checks and the review gate to the same HEAD as the audit and metadata.
   $startHead = ((Invoke-GhWithRetry @('pr', 'view', "$number", '--repo', $Repo, '--json', 'headRefOid', '--jq', '.headRefOid') -TolerateFailure) -join '').Trim()
-  try {
-    & gh pr checks $number --repo $Repo --required *> $null
-    $checksExit = $LASTEXITCODE
-  } catch {
-    $checksExit = 1
+  $snapshot = Get-PrCheckSnapshot $number $startHead
+  $checksExit = 1
+  if ($snapshot -and @($snapshot.required).Count -gt 0) {
+    $blocked = @($snapshot.required | Where-Object { $_.bucket -notin @('pass', 'skipping') })
+    if ($blocked.Count -eq 0) { $checksExit = 0 }
+    elseif (@($blocked | Where-Object { $_.bucket -ne 'pending' }).Count -eq 0) { $checksExit = 8 }
   }
-  # #4753: the production invariant is mandatory even before GitHub settings
-  # are updated. Missing, pending, skipped and failing all stop this queue.
+  # #4753: the production invariant is mandatory even before GitHub settings are updated.
   if ($checksExit -eq 0) {
-    $leagueJson = & gh pr checks $number --repo $Repo --json name,bucket,startedAt,event
-    $leagueExit = $LASTEXITCODE
     try {
-      if ($leagueExit -notin @(0, 1, 8)) {
-        $checksExit = 1
-      } else {
-        $allChecks = @(($leagueJson -join "") | ConvertFrom-Json)
-        # #7312: statusCheckRollup hides audits in skipped suites. REST is authoritative.
-        $auditHead = ((Invoke-GhWithRetry @('pr', 'view', "$number", '--repo', $Repo, '--json', 'headRefOid', '--jq', '.headRefOid') -TolerateFailure) -join '').Trim()
-        $leagueCode = 1
-        if ($auditHead -match '^[0-9a-f]{40}$') {
-          $auditJson = Invoke-GhWithRetry @('api', "repos/$Repo/commits/$auditHead/check-runs?check_name=league-size-invariant&filter=latest&per_page=100", '--paginate', '--slurp') -TolerateFailure
-          if ($auditJson) {
-            $auditPages = @(($auditJson -join '') | ConvertFrom-Json)
-            $auditChecks = @($auditPages | ForEach-Object { $_.check_runs } | Where-Object { $null -ne $_ })
-            $leagueCode = Get-LeagueRestCheckExitCode -Checks $auditChecks -HeadSha $auditHead
-          }
+      $allChecks = @($snapshot.all)
+      # #7312: statusCheckRollup hides audits in skipped suites. REST is authoritative.
+      $auditHead = ((Invoke-GhWithRetry @('pr', 'view', "$number", '--repo', $Repo, '--json', 'headRefOid', '--jq', '.headRefOid') -TolerateFailure) -join '').Trim()
+      $leagueCode = 1
+      if ($auditHead -match '^[0-9a-f]{40}$') {
+        $auditJson = Invoke-GhWithRetry @('api', "repos/$Repo/commits/$auditHead/check-runs?check_name=league-size-invariant&filter=latest&per_page=100", '--paginate', '--slurp') -TolerateFailure
+        if ($auditJson) {
+          $auditPages = @(($auditJson -join '') | ConvertFrom-Json)
+          $auditChecks = @($auditPages | ForEach-Object { $_.check_runs } | Where-Object { $null -ne $_ })
+          $leagueCode = Get-LeagueRestCheckExitCode -Checks $auditChecks -HeadSha $auditHead
         }
-        # #6654: review-gate (rule 35) stopper koeen ogsaa foer ejeren goer den
-        # required. Rod/mangler = stop, afventer = vent (scripts/lib/league-check.ps1).
-        $gateCode = Get-ReviewGateCheckExitCode -Checks $allChecks
-        if ($CodeRabbitNight) {
-          $gateCode = 1
-          $rabbitOutput = @(& node (Join-Path $PSScriptRoot 'lib/review-coderabbit-night.mjs') --pr "$number" --head $auditHead)
-          $rabbitExit = $LASTEXITCODE
-          if ($rabbitExit -eq 0 -and $rabbitOutput.Count -eq 1) {
-            $rabbit = $rabbitOutput[0] | ConvertFrom-Json
-            if ($rabbit.ok -and $rabbit.secondReviewer -eq 'CodeRabbit' -and $rabbit.headSha -eq $auditHead -and [long]$rabbit.expiresAt -gt 0) { $gateCode = 0; $reviewDeadlineMs = [long]$rabbit.expiresAt }
-          }
-          Write-Host "      PR #${number}: ejerautoriseret CodeRabbit-erstatning (kun #7313, udloeber 29/10 kl. 23)."
+      }
+      # #6654: review-gate (rule 35) stopper koeen ogsaa foer ejeren goer den
+      # required. Rod/mangler = stop, afventer = vent (scripts/lib/league-check.ps1).
+      $gateCode = Get-ReviewGateCheckExitCode -Checks $allChecks
+      if ($CodeRabbitNight) {
+        $gateCode = 1
+        $rabbitOutput = @(& node (Join-Path $PSScriptRoot 'lib/review-coderabbit-night.mjs') --pr "$number" --head $auditHead)
+        $rabbitExit = $LASTEXITCODE
+        if ($rabbitExit -eq 0 -and $rabbitOutput.Count -eq 1) {
+          $rabbit = $rabbitOutput[0] | ConvertFrom-Json
+          if ($rabbit.ok -and $rabbit.secondReviewer -eq 'CodeRabbit' -and $rabbit.headSha -eq $auditHead -and [long]$rabbit.expiresAt -gt 0) { $gateCode = 0; $reviewDeadlineMs = [long]$rabbit.expiresAt }
         }
-        $checksExit = $(if ($leagueCode -eq 1 -or $gateCode -eq 1) { 1 } elseif ($leagueCode -eq 8 -or $gateCode -eq 8) { 8 } else { 0 })
-        if (-not $CodeRabbitNight -and @($allChecks | Where-Object { Test-TrustedReviewGateCheck $_ }).Count -eq 0) {
-          Write-Host "      (PR #${number}: intet review-gate-check fra pull_request_target - push et commit eller skift en label for at starte det, #6654)" -ForegroundColor DarkYellow
-        }
+        Write-Host "      PR #${number}: ejerautoriseret CodeRabbit-erstatning (kun #7313, udloeber 29/10 kl. 23)."
+      }
+      $checksExit = $(if ($leagueCode -eq 1 -or $gateCode -eq 1) { 1 } elseif ($leagueCode -eq 8 -or $gateCode -eq 8) { 8 } else { 0 })
+      if (-not $CodeRabbitNight -and @($allChecks | Where-Object { Test-TrustedReviewGateCheck $_ }).Count -eq 0) {
+        Write-Host "      (PR #${number}: intet review-gate-check fra pull_request_target - push et commit eller skift en label for at starte det, #6654)" -ForegroundColor DarkYellow
       }
     } catch { $checksExit = 1 }
   }
@@ -992,14 +996,14 @@ $script:skipped = @()
 $script:frontPr = 0
 $script:branchUpdateAttempted = $false
 $script:branchUpdateSlot = $null
+$script:branchUpdateSlotLogged = $false
 
 function Test-RequiredCheckFailedBecauseBehind([int]$number, [string]$head) {
   # BEHIND alene fortæller intet om årsagen til et rødt check.
-  $json = Invoke-GhWithRetry @('pr', 'checks', "$number", '--repo', $Repo, '--required', '--json', 'name,state,link') -TolerateFailure
-  if (-not $json) { return $false }
-  try { $checks = ($json -join '') | ConvertFrom-Json -ErrorAction Stop } catch { return $false }
-  foreach ($check in $checks) {
-    if ($check.state -ne 'FAILURE' -or $check.link -notmatch '/actions/runs/\d+/job/(\d+)$') { continue }
+  $snapshot = Get-PrCheckSnapshot $number $head -RequiredOnly
+  if (-not $snapshot) { return $false }
+  foreach ($check in $snapshot.required) {
+    if ($check.bucket -ne 'fail' -or $check.state -ne 'FAILURE' -or $check.link -notmatch '/actions/runs/\d+/job/(\d+)$') { continue }
     $jobId = $Matches[1]
     $checkRunUrl = (Invoke-GhWithRetry @('api', "repos/$Repo/actions/jobs/$jobId", '--jq', '.check_run_url') -TolerateFailure) -join ''
     if ($checkRunUrl -notmatch ("^https://api\.github\.com/repos/" + [regex]::Escape($Repo) + "/check-runs/(\d+)$")) { continue }
@@ -1013,31 +1017,52 @@ function Test-RequiredCheckFailedBecauseBehind([int]$number, [string]$head) {
   return $false
 }
 
-function Test-BranchUpdateSlotOpen {
-  # Filen deles af maskinens worktrees og læses/skrives under køens eksisterende lås.
+function Test-BranchUpdateSlotOpen([scriptblock]$Now = { Get-Date }) {
+  # Shared across worktrees and read under the queue lock. Legacy reservations age from the file mtime.
   if (-not $script:branchUpdateSlot) { return $false }
   if (-not (Test-Path -LiteralPath $script:branchUpdateSlot)) { return $true }
+  $open = $false
+  $label = 'ukendt PR'
+  $expiryText = 'ukendt udløb'
   try {
-    $prior = Get-Content -LiteralPath $script:branchUpdateSlot -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
-    if ($prior.repo -ne $Repo -or $prior.number -le 0 -or $prior.head -notmatch '^[0-9a-f]{40}$') { return $false }
+    $prior = $null
+    try { $prior = Get-Content -LiteralPath $script:branchUpdateSlot -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop } catch { }
+    if ($prior -and $prior.PSObject.Properties['number'] -and $prior.number -gt 0) { $label = "PR #$($prior.number)" }
+    $expires = $null
+    if ($prior -and $prior.PSObject.Properties['expiresAt']) {
+      try { $expires = [datetimeoffset]$prior.expiresAt } catch { }
+    }
+    if (-not $expires) {
+      $expires = ([datetimeoffset](Get-Item -LiteralPath $script:branchUpdateSlot -ErrorAction Stop).LastWriteTimeUtc).AddHours(2)
+    }
+    $expiryText = 'udløber ' + $expires.UtcDateTime.ToString('yyyy-MM-dd HH:mm:ss') + ' UTC'
+    if ([datetimeoffset](& $Now) -ge $expires) { $open = $true; return $true }
+    if (-not $prior -or $prior.repo -ne $Repo -or $prior.number -le 0 -or $prior.head -notmatch '^[0-9a-f]{40}$') { return $false }
     $json = Invoke-GhWithRetry @('pr', 'view', "$($prior.number)", '--repo', $Repo, '--json', 'state,headRefOid') -TolerateFailure
     if (-not $json) { return $false }
     $pr = ($json -join '') | ConvertFrom-Json -ErrorAction Stop
-    if ($pr.state -in @('CLOSED', 'MERGED')) { return $true }
+    if ($pr.state -in @('CLOSED', 'MERGED')) { $open = $true; return $true }
     if ($pr.state -ne 'OPEN' -or $pr.headRefOid -notmatch '^[0-9a-f]{40}$' -or $pr.headRefOid -eq $prior.head) { return $false }
-    $json = Invoke-GhWithRetry @('pr', 'checks', "$($prior.number)", '--repo', $Repo, '--required', '--json', 'name,bucket') -TolerateFailure
-    if (-not $json -or -not $prior.checks) { return $false }
-    $checks = ($json -join '') | ConvertFrom-Json -ErrorAction Stop
+    $snapshot = Get-PrCheckSnapshot $prior.number $pr.headRefOid -RequiredOnly
+    if (-not $snapshot -or -not $prior.checks) { return $false }
+    $checks = @($snapshot.required)
     if (@($checks | Where-Object { $_.bucket -notin @('pass', 'fail', 'skipping', 'cancel') }).Count -gt 0) { return $false }
     foreach ($name in $prior.checks) {
-      if ($name -notin $checks.name) { return $false }
+      if ($name -notin @($checks | ForEach-Object { $_.name })) { return $false }
     }
     $head = (Invoke-GhWithRetry @('pr', 'view', "$($prior.number)", '--repo', $Repo, '--json', 'headRefOid', '--jq', '.headRefOid') -TolerateFailure) -join ''
-    return ($head -eq $pr.headRefOid)
+    $open = ($head -eq $pr.headRefOid)
+    return $open
   } catch { return $false }
+  finally {
+    if (-not $open -and -not $script:branchUpdateSlotLogged) {
+      Write-Host "  vagt: branch-opdateringspladsen er optaget af $label ($expiryText)." -ForegroundColor Yellow
+      $script:branchUpdateSlotLogged = $true
+    }
+  }
 }
 
-function Invoke-PrUpdateBehind([int]$number, [string]$head) {
+function Invoke-PrUpdateBehind([int]$number, [string]$head, [scriptblock]$Now = { Get-Date }) {
   $viewJson = Invoke-GhWithRetry @('pr', 'view', "$number", '--repo', $Repo, '--json', 'baseRefName,headRefOid,isDraft,mergeStateStatus,state') -TolerateFailure
   if (-not $viewJson) { return $false }
   try { $pr = ($viewJson -join '') | ConvertFrom-Json -ErrorAction Stop } catch { return $false }
@@ -1050,7 +1075,7 @@ function Invoke-PrUpdateBehind([int]$number, [string]$head) {
   try {
     $required = @(($json -join '') | ConvertFrom-Json -ErrorAction Stop | ForEach-Object { $_.name })
     if (-not $required) { return $false }
-    @{ repo = $Repo; number = $number; head = $head; checks = $required } | ConvertTo-Json -Compress |
+    @{ repo = $Repo; number = $number; head = $head; checks = $required; expiresAt = ([datetimeoffset](& $Now)).ToUniversalTime().AddHours(2).ToString('o') } | ConvertTo-Json -Compress |
       Set-Content -LiteralPath $script:branchUpdateSlot -Encoding utf8 -ErrorAction Stop
   } catch {
     Write-Warning "Branch-opdatering stoppet: reservationen kunne ikke gemmes."
@@ -1081,10 +1106,10 @@ function Wait-PrGreen([int]$number, [int]$Minutes, [scriptblock]$Now = { Get-Dat
   while ($last.checksExit -ne 0 -and (& $Now) -lt $deadline) {
     if (-not $NoUpdateBehind -and -not $script:branchUpdateAttempted -and $script:frontPr -eq $number -and
         -not $script:updated.ContainsKey("$number") -and $last.mergeState -eq 'BEHIND' -and
-        $last.headSha -match '^[0-9a-f]{40}$' -and (Test-RequiredCheckFailedBecauseBehind $number $last.headSha) -and
-        (Test-BranchUpdateSlotOpen)) {
+        $last.headSha -match '^[0-9a-f]{40}$' -and (Test-BranchUpdateSlotOpen -Now $Now) -and
+        (Test-RequiredCheckFailedBecauseBehind $number $last.headSha)) {
       $script:branchUpdateAttempted = $true
-      if (Invoke-PrUpdateBehind $number $last.headSha) { $updatedFrom = $last.headSha }
+      if (Invoke-PrUpdateBehind $number $last.headSha -Now $Now) { $updatedFrom = $last.headSha }
     }
     Write-Host "  venter paa PR #$number ($($last.checksSummary)), hoejst til $($deadline.ToString('HH:mm'))..." -ForegroundColor DarkGray
     & $Pause 60
@@ -1199,6 +1224,7 @@ if (-not $DryRun) {
   $commonDir = & git -C $PSScriptRoot rev-parse --path-format=absolute --git-common-dir
   if ($LASTEXITCODE -eq 0 -and $commonDir) {
     $script:branchUpdateSlot = Join-Path $commonDir 'merge-queue-branch-update.json'
+    [void](Test-BranchUpdateSlotOpen)
   }
 }
 for ($idx = 0; $idx -lt $plan.Count; $idx++) {
