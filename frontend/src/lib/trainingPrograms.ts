@@ -23,6 +23,8 @@ export type ProgramDayEntry = {
   session?: string;
   intensity?: string;
   slots?: ReadonlyArray<string | null> | null;
+  slotEfforts?: ReadonlyArray<"easy" | "normal" | "hard" | null>;
+  lockSlot?: number | null;
 };
 export type ProgramWeekDays = Record<string, ProgramDayEntry | undefined>;
 
