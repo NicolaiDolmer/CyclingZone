@@ -46,7 +46,7 @@ const EFFORT_RANK: Readonly<Record<Effort, number>> = Object.freeze({ rest: 0, e
 export function dayEffort(fields: readonly Field[], efforts?: readonly (Effort | null)[]): Effort | null {
   let best: Effort | null = null;
   fields.forEach((f, i) => {
-    if (f === STAGE) return;
+    if (f === STAGE || f === PENDING) return;
     const e = efforts ? efforts[i] ?? null : effortOf(f);
     if (e && (best === null || EFFORT_RANK[e] > EFFORT_RANK[best])) best = e;
   });
@@ -159,7 +159,7 @@ export function fieldEfforts(
   levelFor: (slot: number, session: string) => Effort | null,
 ): (Effort | null)[] {
   return fields.map((f, slot) => {
-    if (f === STAGE || f === null) return null;
+    if (f === STAGE || f === PENDING || f === null) return null;
     if (isRestSession(f)) return "rest";
     return levelFor(slot, f) ?? effortOf(f);
   });
@@ -275,7 +275,7 @@ export type YourDay = { session: string; count: number; free: number };
 
 export function yourDay(fields: readonly Field[], daySession: string | null | undefined): YourDay | null {
   if (!daySession) return null;
-  const free = fields.filter((f) => f !== STAGE).length;
+  const free = fields.filter((f) => f !== STAGE && f !== PENDING).length;
   const count = fields.filter((f) => f === daySession).length;
   return count > 0 ? { session: daySession, count, free } : null;
 }
@@ -283,6 +283,7 @@ export function yourDay(fields: readonly Field[], daySession: string | null | un
 // --- Dagens fem felter --------------------------------------------------------
 
 export const STAGE = "stage" as const;
+export const PENDING = "unknown_pending" as const;
 export type Field = string | null | typeof STAGE;
 export const SLOTS = 5;
 
@@ -293,13 +294,15 @@ export const SLOTS = 5;
 export function dayFields({
   programSlot,
   planSession,
-  raceSlots,
+  raceSlots, pendingSlots = [],
 }: {
   programSlot: (slot: number) => string | null;
   planSession: string | null;
   raceSlots: ReadonlySet<number>;
+  pendingSlots?: readonly number[];
 }): Field[] {
   return Array.from({ length: SLOTS }, (_, slot) => {
+    if (pendingSlots.includes(slot)) return PENDING;
     if (raceSlots.has(slot)) return STAGE;
     return programSlot(slot) ?? planSession ?? null;
   });
@@ -382,12 +385,13 @@ export function settledDayFields(
   const acts = settledActivities(receipt);
   if (acts.length === 0) {
     const session = sessionOf(receipt);
-    return planned.map((f) => (f === STAGE ? STAGE : session));
+    return planned.map((f) => (f === STAGE || f === PENDING ? f : session));
   }
   const bySlot = activitiesBySlot(acts, planned.length, gameDays);
   return planned.map((f, slot) => {
     const a = bySlot[slot];
     if (!a) return f;
+    if (a.intensity === PENDING) return PENDING;
     return a.race_day === true ? STAGE : sessionOf(a);
   });
 }
@@ -403,7 +407,7 @@ const LOAD_BANDS: readonly number[] = [2, 5, 8, 11];
 
 /** Dagens belastning, eller null naar rytteren ingen dag har (aldrig et opdigtet ord). */
 export function dayLoad(fields: readonly Field[], efforts?: readonly (Effort | null)[]): DayLoad | null {
-  if (fields.every((f) => f === null)) return null;
+  if (fields.every((f) => f === null || f === PENDING)) return null;
   let sum = 0;
   fields.forEach((f, i) => { sum += f === STAGE ? EFFORT_RANK.hard : EFFORT_RANK[(efforts ? efforts[i] : null) ?? effortOf(f) ?? "rest"]; });
   const band = LOAD_BANDS.findIndex((max) => sum <= max);

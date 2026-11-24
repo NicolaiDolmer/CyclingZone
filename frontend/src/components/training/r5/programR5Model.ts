@@ -322,7 +322,7 @@ export function draftTotal(drafts: Readonly<Record<string, Draft>>): number {
 // --- Ugen for et emne ----------------------------------------------------------------
 
 export type WeekCell =
-  | { kind: "race" }
+  | { kind: "race"; pending?: true }
   | { kind: "rest" }
   | { kind: "ran"; session: string | null; sourceSlot?: number }
   | { kind: "session"; session: string | null; changed: boolean; sourceSlot?: number };
@@ -342,18 +342,20 @@ export function weekPlacementFromForecast(forecast: Partial<WeekPlacement> | nul
 // 7 x 5 felter. Loebets felter i dag er graa + flag (regel A); felter med kvittering i
 // dag er koert. Serveren kender kun dagens loebsfelter, saa de andre dage viser planen.
 export function weekCells({
-  days, draft, weekdays, todayWeekday, raceToday, lockedToday, placements = {},
+  days, draft, weekdays, todayWeekday, raceToday, pendingToday, lockedToday, placements = {},
 }: {
   days: ProgramWeekDays | null | undefined;
   draft: Draft;
   weekdays: readonly string[];
   todayWeekday: string | null;
   raceToday: ReadonlySet<number>;
+  pendingToday?: ReadonlySet<number>;
   lockedToday: ReadonlySet<number>;
   placements?: Record<string, WeekPlacement>;
 }): WeekCell[][] {
   return weekdays.map((weekday) => Array.from({ length: PROGRAM_SLOTS }, (_, slot): WeekCell => {
     const placement = placements[weekday];
+    if (weekday === todayWeekday && pendingToday?.has(slot)) return { kind: "race", pending: true };
     if (placement?.restSlots?.includes(slot)) return { kind: "rest" };
     if ((weekday === todayWeekday && raceToday.has(slot)) || placement?.fieldSource[slot] === null) return { kind: "race" };
     const source = placement?.fieldSource[slot] ?? slot;

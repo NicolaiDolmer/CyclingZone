@@ -70,7 +70,7 @@ export async function loadSeasonBridgeBounds(supabase, season) {
   return { firstRaceDate: startDate ?? null, previousEndDate: previousEndDate ?? null };
 }
 
-function snapshotIds(run) {
+export function stageEntrantSnapshotIds(run) {
   if (!Array.isArray(run?.entrant_snapshot)) return null;
   const ids = run.entrant_snapshot.map(entry => typeof entry === 'string' ? entry : entry?.rider_id);
   return ids.every(id => typeof id === 'string' && id.length > 0) ? ids : null;
@@ -85,7 +85,7 @@ export function resolveTrainingDateReadiness({
   for (const stage of stages) {
     const race = races.find(row => row.id === stage.race_id);
     const match = row => row.race_id === stage.race_id && Number(row.stage_number) === Number(stage.stage_number);
-    const snapshot = snapshotIds(runs.find(match));
+    const snapshot = stageEntrantSnapshotIds(runs.find(match));
     const selected = entries.filter(row => row.race_id === stage.race_id).map(row => row.rider_id);
     const reserved = frozenEntries.filter(row => row.slots.some(slot => slot.raceId === stage.race_id && Number(slot.stageNumber) === Number(stage.stage_number))).map(row => row.rider_id);
     const candidates = snapshot ?? [...new Set([...selected, ...(candidateRiderIdsByRace.get(stage.race_id) ?? []), ...reserved])];
@@ -128,7 +128,7 @@ export function resolveRaceSessionReadiness({ riderIds, stages = [], races = [],
     const race = races.find(row => row.id === stage.race_id);
     if (!race || race.finalize_state != null || !(Number(race.stages_completed) >= Number(stage.stage_number))) continue;
     const match = row => row.race_id === stage.race_id && Number(row.stage_number) === Number(stage.stage_number);
-    const snapshot = snapshotIds(runs.find(match));
+    const snapshot = stageEntrantSnapshotIds(runs.find(match));
     if (!snapshot || !Number.isInteger(Number(stage.game_day))) continue;
     for (const riderId of snapshot) {
       if (!owned.has(riderId)) continue;

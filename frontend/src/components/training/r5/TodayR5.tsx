@@ -51,7 +51,7 @@ import { ageForSeason, contractExpiringBadgeKey, retirementRiskBadgeKey } from "
 import { groupRidersByType, UNTYPED_KEY } from "../../../lib/trainingRoster.js";
 import { formatDate } from "../../../lib/intl.js";
 import {
-  AGE_FILTERS, ALL_SESSIONS_STORAGE_KEY, EFFORTS, NO_FILTERS, NO_GROUP, canResetFilters, resetFilterState, PROGRAM_CHOICE, RECOVERY_CHOICE, STAGE,
+  AGE_FILTERS, ALL_SESSIONS_STORAGE_KEY, EFFORTS, NO_FILTERS, NO_GROUP, canResetFilters, resetFilterState, PROGRAM_CHOICE, RECOVERY_CHOICE, STAGE, PENDING,
   bulkPlan, bulkPlanLevels, dayEffort, dayFields, dayLoad, effortOf, effortOfIntensity, fieldEfforts, filtersActive, levelForDayEntry, matchesFilters,
   matchesOverview, nextSort, overviewCounts, planEffort, readStoredFlag, settledDayFields, settledFieldEfforts, showsInjuryRisk,
   sortR5Rows, statusKeys, teamLine, toggleAllSelection, toggleOne, trainingChoiceOf,
@@ -528,6 +528,13 @@ function SessionsRow({ row, r5, mobile = false }: { row: Row; r5: TodayR5Props; 
         const wrap = (body: ReactNode) => (
           <div key={i} className={mobile ? "grid grid-cols-[76px_1fr] items-center gap-x-2" : ""}>{head}{body}</div>
         );
+        if (f === PENDING) {
+          return wrap(
+            <span className="flex min-h-9 items-center gap-1.5 rounded-cz border border-cz-border bg-cz-subtle px-2 text-xs text-cz-2 max-sm:min-h-11" data-testid="r5-session-pending">
+              {t("dailyReceipt.status.pending")}
+            </span>,
+          );
+        }
         if (f === STAGE) {
           return wrap(
             <span className="flex min-h-9 items-center gap-1.5 rounded-cz bg-cz-1 px-2 text-xs font-semibold text-cz-card max-sm:min-h-11">
@@ -690,6 +697,7 @@ export default function TodayR5({ r5 }: { r5: TodayR5Props }) {
         ?? programSessionToday(weekDays, WEEKDAY_KEYS, r5.todayWeekday, slot + 1),
       planSession: planSession ?? null,
       raceSlots,
+      pendingSlots: riderForecast?.pendingSlots,
     });
     // Codex P2 paa #8511: et allerede koert felt viser kvitteringen, ikke den redigerbare plan.
     const fields = settledDayFields(planned, r5.settledToday?.[id], settledSession, r5.settledGameDays);

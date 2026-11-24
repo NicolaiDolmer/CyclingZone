@@ -215,6 +215,41 @@ for (const [name, lock, race] of [
   });
 }
 
+test("#8646: a known non-starter's overdue stage follows deadline settlement", async () => {
+  for (const slot of [2, 4]) {
+    const { state } = scenario({ lock: slot, race: [0, slot], dns: true });
+    const race = state.races.find((row) => row.id === RACE);
+    race.stages_completed = 1;
+    race.status = "in_progress";
+    const forecastAt = async (now) => (await loadTeamFatigueForecast({
+      supabase: withScheduleJoin(createFake(state).supabase),
+      team: state.teams[0], seasonId: SEASON.id, now,
+    })).riders[RIDER];
+    const plannedTime = Date.parse(state.race_stage_schedule.find((row) => row.race_id === RACE && row.stage_number === 2).scheduled_at);
+    assert.deepEqual((await forecastAt(new Date(plannedTime - 1))).fieldSource, FIELDS);
+    const before = await forecastAt(new Date(plannedTime + 1));
+    await run(state, createFake(state), { deadlineReached: true });
+    assert.equal(reports(state)[slot].intensity, "unknown_pending");
+    assert.deepEqual(before.fieldSource, sources(state));
+    assert.deepEqual(before.pendingSlots, [slot]);
+    assert.equal(before.fatigue, state.rider_condition[0].fatigue);
+  }
+});
+
+test("#8646: only missing stage evidence is pending", async () => {
+  const { state } = scenario({ race: [2, 4], pending: true });
+  const load = async () => (await loadTeamFatigueForecast({
+    supabase: withScheduleJoin(createFake(state).supabase),
+    team: state.teams[0], seasonId: SEASON.id, now: EVENING_AT,
+  })).riders[RIDER];
+  assert.deepEqual((await load()).pendingSlots, [2, 4]);
+  state.race_results.push({ id: "8646-first-result", rider_id: RIDER, race_id: RACE,
+    stage_number: 1, result_type: "stage" });
+  assert.deepEqual((await load()).pendingSlots, [4]);
+  state.race_simulation_runs.push({ id: "8646-later-snapshot", race_id: RACE, stage_number: 2, entrant_snapshot: [] });
+  assert.equal((await load()).pendingSlots, undefined);
+});
+
 test("fund E: kontakten off: prognosen er som før (frigivelsen hører til Week blocks)", async () => {
   const { state } = scenario({ lock: 4, race: [3, 4], dns: true, stage: "off" });
   const svar = await loadTeamFatigueForecast({ supabase: withScheduleJoin(createFake(state).supabase), team: state.teams[0], seasonId: SEASON.id, now: EVENING_AT });

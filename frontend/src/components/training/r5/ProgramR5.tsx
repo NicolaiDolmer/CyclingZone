@@ -219,6 +219,7 @@ export default function ProgramR5({
     return new Set([...sets[0]].filter((slot) => sets.every((s) => s.has(slot))));
   };
   const raceToday = slotSet((id) => raceSlotsFor(forecast, id));
+  const pendingToday = slotSet((id) => new Set(forecast?.riders?.[id]?.pendingSlots ?? []));
   const lockedToday = slotSet((id) => todayLockedSlots(forecast, id));
   const weekDayDrafts = weekDrafts[sKey] ?? {};
   const gridDays = days && weekPriority ? {
@@ -250,7 +251,7 @@ export default function ProgramR5({
       ? { ...placement, restSlots, fieldSource: placement.fieldSource.map((source, slot) => restSlots.includes(slot) ? null : source) }
       : placement]];
   })) : {};
-  const cells = weekCells({ days: gridDays, draft, weekdays, todayWeekday, raceToday, lockedToday, placements });
+  const cells = weekCells({ days: gridDays, draft, weekdays, todayWeekday, raceToday, pendingToday, lockedToday, placements });
   const tonight = (subject?.kind === "rider"
     ? forecast?.riders?.[subject.id] ?? null
     : groupForecastEntry(forecast?.riders, memberIds)) as ForecastEntry | null;
@@ -1370,8 +1371,9 @@ function Row({
         const base = "relative flex min-h-[44px] items-center border-s border-t border-cz-border px-2.5 py-1.5 text-xs";
         if (cell.kind === "race") {
           return (
-            <div key={weekday} className={`${base} gap-1 bg-cz-subtle text-cz-2`} data-testid="program-r5-race">
-              <FlagIcon size={11} aria-hidden="true" className="shrink-0" />{tR5("programR5.race")}
+            <div key={weekday} className={`${base} gap-1 bg-cz-subtle text-cz-2`} data-testid={cell.pending ? "program-r5-pending" : "program-r5-race"}>
+              <FlagIcon size={11} aria-hidden="true" className="shrink-0" />
+              {cell.pending ? t("dailyReceipt.status.pending") : tR5("programR5.race")}
             </div>
           );
         }

@@ -257,8 +257,9 @@ function DayBody({
           const num = <span className="w-9 shrink-0 font-data text-2xs font-semibold tabular-nums text-cz-3">{t("mobile.raceDayShort", { n: slot + 1 })}</span>;
           if (cell.kind === "race") {
             return (
-              <li key={slot} className={`${base} bg-cz-subtle text-cz-2`} data-testid="program-r5-race">
-                {num}<FlagIcon size={12} aria-hidden="true" className="shrink-0" />{tR5("programR5.race")}
+              <li key={slot} className={`${base} bg-cz-subtle text-cz-2`} data-testid={cell.pending ? "program-r5-pending" : "program-r5-race"}>
+                {num}<FlagIcon size={12} aria-hidden="true" className="shrink-0" />
+              {cell.pending ? t("dailyReceipt.status.pending") : tR5("programR5.race")}
               </li>
             );
           }
